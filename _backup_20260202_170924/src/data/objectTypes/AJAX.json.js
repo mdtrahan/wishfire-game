@@ -1,0 +1,12 @@
+export const AJAX = {
+  "name": "AJAX",
+  "plugin-id": "AJAX",
+  "sid": 457807379765899,
+  "singleglobal-inst": {
+    "type": "AJAX",
+    "properties": {},
+    "uid": 29,
+    "sid": 470755390377196,
+    "tags": ""
+  }
+};

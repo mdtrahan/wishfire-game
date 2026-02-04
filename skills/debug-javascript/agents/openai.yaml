@@ -1,0 +1,4 @@
+interface:
+  display_name: "Debug JavaScript"
+  short_description: "Diagnose and fix JavaScript bugs"
+  default_prompt: "Diagnose JavaScript failures and provide minimal, correct fixes."

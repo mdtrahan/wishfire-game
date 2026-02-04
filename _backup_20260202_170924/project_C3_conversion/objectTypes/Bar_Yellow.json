@@ -1,0 +1,76 @@
+{
+	"name": "Bar_Yellow",
+	"plugin-id": "Sprite",
+	"sid": 944043065709129,
+	"isGlobal": false,
+	"editorNewInstanceIsReplica": true,
+	"instanceVariables": [
+		{
+			"name": "ownerID",
+			"type": "number",
+			"desc": "",
+			"show": true,
+			"sid": 159979839966097
+		},
+		{
+			"name": "barType",
+			"type": "number",
+			"desc": "",
+			"show": true,
+			"sid": 803898992707173
+		},
+		{
+			"name": "targetWidth",
+			"type": "number",
+			"desc": "",
+			"show": true,
+			"sid": 541137104137945
+		},
+		{
+			"name": "baseW",
+			"type": "number",
+			"desc": "",
+			"show": true,
+			"sid": 512663948486710
+		},
+		{
+			"name": "showUtil",
+			"type": "number",
+			"desc": "",
+			"show": true,
+			"sid": 574063128578856
+		}
+	],
+	"behaviorTypes": [],
+	"effectTypes": [],
+	"animations": {
+		"items": [
+			{
+				"frames": [
+					{
+						"width": 250,
+						"height": 25,
+						"originX": 0,
+						"originY": 0.02,
+						"originalSource": "",
+						"exportFormat": "lossless",
+						"exportQuality": 0.8,
+						"fileType": "image/png",
+						"imageSpriteId": 1723826,
+						"useCollisionPoly": true,
+						"duration": 1,
+						"tag": ""
+					}
+				],
+				"sid": 426694779691063,
+				"name": "Animation 1",
+				"isLooping": false,
+				"isPingPong": false,
+				"repeatCount": 1,
+				"repeatTo": 0,
+				"speed": 0
+			}
+		],
+		"subfolders": []
+	}
+}

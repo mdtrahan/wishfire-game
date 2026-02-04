@@ -1,0 +1,10 @@
+export const dbg = {
+  "name": "dbg",
+  "plugin-id": "Text",
+  "sid": 694609456938796,
+  "isGlobal": false,
+  "editorNewInstanceIsReplica": true,
+  "instanceVariables": [],
+  "behaviorTypes": [],
+  "effectTypes": []
+};

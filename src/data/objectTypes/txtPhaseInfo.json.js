@@ -1,0 +1,10 @@
+export const txtPhaseInfo = {
+  "name": "txtPhaseInfo",
+  "plugin-id": "Text",
+  "sid": 333893446639875,
+  "isGlobal": false,
+  "editorNewInstanceIsReplica": true,
+  "instanceVariables": [],
+  "behaviorTypes": [],
+  "effectTypes": []
+};

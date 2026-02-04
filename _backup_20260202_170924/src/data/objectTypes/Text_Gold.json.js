@@ -1,0 +1,10 @@
+export const Text_Gold = {
+  "name": "Text_Gold",
+  "plugin-id": "Text",
+  "sid": 449116816070425,
+  "isGlobal": false,
+  "editorNewInstanceIsReplica": true,
+  "instanceVariables": [],
+  "behaviorTypes": [],
+  "effectTypes": []
+};

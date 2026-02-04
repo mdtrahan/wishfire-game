@@ -1,0 +1,10 @@
+export const TierReporter = {
+  "name": "TierReporter",
+  "plugin-id": "Text",
+  "sid": 734437433490210,
+  "isGlobal": false,
+  "editorNewInstanceIsReplica": true,
+  "instanceVariables": [],
+  "behaviorTypes": [],
+  "effectTypes": []
+};

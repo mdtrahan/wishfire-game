@@ -1,0 +1,8 @@
+export const GemRefillArray = {
+  "name": "GemRefillArray",
+  "plugin-id": "Arr",
+  "sid": 615672223889149,
+  "isGlobal": true,
+  "editorNewInstanceIsReplica": true,
+  "instanceVariables": []
+};

@@ -1,0 +1,10 @@
+export const Nav_MapText = {
+  "name": "Nav_MapText",
+  "plugin-id": "Text",
+  "sid": 496470252325747,
+  "isGlobal": false,
+  "editorNewInstanceIsReplica": true,
+  "instanceVariables": [],
+  "behaviorTypes": [],
+  "effectTypes": []
+};

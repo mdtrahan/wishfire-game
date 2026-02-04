@@ -1,0 +1,10 @@
+export const Nav_MissionText = {
+  "name": "Nav_MissionText",
+  "plugin-id": "Text",
+  "sid": 284668773588632,
+  "isGlobal": false,
+  "editorNewInstanceIsReplica": true,
+  "instanceVariables": [],
+  "behaviorTypes": [],
+  "effectTypes": []
+};

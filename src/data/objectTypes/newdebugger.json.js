@@ -1,0 +1,10 @@
+export const newdebugger = {
+  "name": "newdebugger",
+  "plugin-id": "Text",
+  "sid": 314717485847687,
+  "isGlobal": false,
+  "editorNewInstanceIsReplica": true,
+  "instanceVariables": [],
+  "behaviorTypes": [],
+  "effectTypes": []
+};

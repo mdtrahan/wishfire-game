@@ -1,0 +1,23 @@
+export const SpriteFont = {
+  "name": "SpriteFont",
+  "plugin-id": "Spritefont2",
+  "sid": 920369456637660,
+  "isGlobal": false,
+  "editorNewInstanceIsReplica": true,
+  "instanceVariables": [],
+  "behaviorTypes": [],
+  "effectTypes": [],
+  "image": {
+    "width": 128,
+    "height": 256,
+    "originX": 0.5,
+    "originY": 0.5,
+    "originalSource": "",
+    "exportFormat": "lossless",
+    "exportQuality": 0.8,
+    "fileType": "image/png",
+    "imageSpriteId": 6360825,
+    "useCollisionPoly": true,
+    "tag": ""
+  }
+};

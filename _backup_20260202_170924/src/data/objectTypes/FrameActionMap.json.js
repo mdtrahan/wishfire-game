@@ -1,0 +1,8 @@
+export const FrameActionMap = {
+  "name": "FrameActionMap",
+  "plugin-id": "Arr",
+  "sid": 188534868920654,
+  "isGlobal": true,
+  "editorNewInstanceIsReplica": true,
+  "instanceVariables": []
+};

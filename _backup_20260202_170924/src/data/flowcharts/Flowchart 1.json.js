@@ -1,0 +1,11 @@
+export const Flowchart_1 = {
+  "sid": 442325216442979,
+  "nodes": [],
+  "preset-nodes": {
+    "items": [],
+    "subfolders": []
+  },
+  "name": "Flowchart 1",
+  "w": 20000,
+  "h": 20000
+};

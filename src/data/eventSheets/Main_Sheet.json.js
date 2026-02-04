@@ -1,0 +1,3388 @@
+export const Main_Sheet = {
+  "name": "Main_Sheet",
+  "events": [
+    {
+      "eventType": "include",
+      "includeSheet": "CombatLogic"
+    },
+    {
+      "eventType": "include",
+      "includeSheet": "UI_Logic"
+    },
+    {
+      "eventType": "include",
+      "includeSheet": "Function_Bank"
+    },
+    {
+      "eventType": "include",
+      "includeSheet": "Skill Sheet"
+    },
+    {
+      "eventType": "variable",
+      "name": "cellSize",
+      "type": "number",
+      "initialValue": "45",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 534028635782135
+    },
+    {
+      "eventType": "variable",
+      "name": "gx",
+      "type": "number",
+      "initialValue": "32",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 637839299432881
+    },
+    {
+      "eventType": "variable",
+      "name": "gy",
+      "type": "number",
+      "initialValue": "365",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 551226741555648
+    },
+    {
+      "eventType": "variable",
+      "name": "cols",
+      "type": "number",
+      "initialValue": "6",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 518326828574843
+    },
+    {
+      "eventType": "variable",
+      "name": "rows",
+      "type": "number",
+      "initialValue": "4",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 400940726913703
+    },
+    {
+      "eventType": "variable",
+      "name": "gap",
+      "type": "number",
+      "initialValue": "5",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 904588238005720
+    },
+    {
+      "eventType": "variable",
+      "name": "TapIndex",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 705119747578675
+    },
+    {
+      "eventType": "variable",
+      "name": "UIOverlay",
+      "type": "boolean",
+      "initialValue": "false",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 426642889232770
+    },
+    {
+      "eventType": "variable",
+      "name": "Slots",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 900688735823005
+    },
+    {
+      "eventType": "variable",
+      "name": "MARGIN",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 384757580798218
+    },
+    {
+      "eventType": "variable",
+      "name": "enemyGAP",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 763034634720464
+    },
+    {
+      "eventType": "variable",
+      "name": "VW",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 129476148351724
+    },
+    {
+      "eventType": "variable",
+      "name": "VH",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 811209718859713
+    },
+    {
+      "eventType": "variable",
+      "name": "clickTotal",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 451755365301180
+    },
+    {
+      "eventType": "variable",
+      "name": "EnemySize",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 522927278370934
+    },
+    {
+      "eventType": "variable",
+      "name": "Spacing",
+      "type": "number",
+      "initialValue": "90",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 168761049605130
+    },
+    {
+      "eventType": "variable",
+      "name": "OffscreenX",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 819296480009900
+    },
+    {
+      "eventType": "variable",
+      "name": "biomeLimit",
+      "type": "number",
+      "initialValue": "5",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 588860410056667
+    },
+    {
+      "eventType": "variable",
+      "name": "X0",
+      "type": "number",
+      "initialValue": "87.155639",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 600986180546377
+    },
+    {
+      "eventType": "variable",
+      "name": "enemySpacing",
+      "type": "number",
+      "initialValue": "132.891745",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 881905275006998
+    },
+    {
+      "eventType": "variable",
+      "name": "DamageValue",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 804267095915800
+    },
+    {
+      "eventType": "variable",
+      "name": "MatchedColorValue",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 276830628633076
+    },
+    {
+      "eventType": "variable",
+      "name": "goldTotal",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 719158464599769
+    },
+    {
+      "eventType": "variable",
+      "name": "RefillStep",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 259335203073914
+    },
+    {
+      "eventType": "variable",
+      "name": "refillBusy",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 386385182049513
+    },
+    {
+      "eventType": "variable",
+      "name": "refillIndex",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 262878542818002
+    },
+    {
+      "eventType": "variable",
+      "name": "Player_HP",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 112398759894767
+    },
+    {
+      "eventType": "variable",
+      "name": "Player_maxHP",
+      "type": "number",
+      "initialValue": "300",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 224494393522175
+    },
+    {
+      "eventType": "variable",
+      "name": "Player_Energy",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 712881878366409
+    },
+    {
+      "eventType": "variable",
+      "name": "Player_maxEnergy",
+      "type": "number",
+      "initialValue": "150",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 366282802222546
+    },
+    {
+      "eventType": "variable",
+      "name": "BoardPhase",
+      "type": "string",
+      "initialValue": "\"PlayerTurn\"",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 608235473260435
+    },
+    {
+      "eventType": "variable",
+      "name": "TurnPhase",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 479705086132671
+    },
+    {
+      "eventType": "variable",
+      "name": "CanPickGems",
+      "type": "boolean",
+      "initialValue": "true",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 850005008032212
+    },
+    {
+      "eventType": "variable",
+      "name": "SlotDelay",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 666361335449474
+    },
+    {
+      "eventType": "variable",
+      "name": "IsPlayerBusy",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 694508387585928
+    },
+    {
+      "eventType": "variable",
+      "name": "matched",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 201925481918010
+    },
+    {
+      "eventType": "variable",
+      "name": "PartyHP",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 967317690949046
+    },
+    {
+      "eventType": "variable",
+      "name": "PartyMaxHP",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 814375005562543
+    },
+    {
+      "eventType": "variable",
+      "name": "LastHealed",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 219486805868487
+    },
+    {
+      "eventType": "variable",
+      "name": "EnemyAreaLeft",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 720717945055445
+    },
+    {
+      "eventType": "variable",
+      "name": "EnemyAreaRight",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 562907415325733
+    },
+    {
+      "eventType": "variable",
+      "name": "EnemyAreaTop",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 174660870906771
+    },
+    {
+      "eventType": "variable",
+      "name": "EnemyAreaBottom",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 341218248271227
+    },
+    {
+      "eventType": "variable",
+      "name": "EnemyAreaY0",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 862991173502899
+    },
+    {
+      "eventType": "variable",
+      "name": "EnemyAreaCX",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 645073654755430
+    },
+    {
+      "eventType": "variable",
+      "name": "EnemyAreaCY",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 176063340693776
+    },
+    {
+      "eventType": "variable",
+      "name": "EnemyRowGap",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 763588993981638
+    },
+    {
+      "eventType": "variable",
+      "name": "EnemyTopY",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 118630430566141
+    },
+    {
+      "eventType": "variable",
+      "name": "EnemySizeH",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 882073704718653
+    },
+    {
+      "eventType": "variable",
+      "name": "EnemySizeW",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 165189574810839
+    },
+    {
+      "eventType": "variable",
+      "name": "LastMatchColor",
+      "type": "number",
+      "initialValue": "-1",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 914617406974834
+    },
+    {
+      "eventType": "variable",
+      "name": "ChainNumber",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 517741031440602
+    },
+    {
+      "eventType": "variable",
+      "name": "ChainMultiplier",
+      "type": "number",
+      "initialValue": "1",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 175139365364674
+    },
+    {
+      "eventType": "variable",
+      "name": "ApplyChainToNextDamage",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 107202220221795
+    },
+    {
+      "eventType": "variable",
+      "name": "ApplyChainToNextHeal",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 177804363087070
+    },
+    {
+      "eventType": "variable",
+      "name": "ChainUIHideAt",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 740803018837532
+    },
+    {
+      "eventType": "variable",
+      "name": "ChainUIDuration",
+      "type": "number",
+      "initialValue": "1.25",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 334882042730850
+    },
+    {
+      "eventType": "variable",
+      "name": "SuppressChainUI",
+      "type": "boolean",
+      "initialValue": "false",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 781539081520247
+    },
+    {
+      "eventType": "variable",
+      "name": "ShowAllEnemyBars",
+      "type": "boolean",
+      "initialValue": "false",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 182555027442005
+    },
+    {
+      "eventType": "variable",
+      "name": "IsAOEMatch",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 764572104049830
+    },
+    {
+      "eventType": "variable",
+      "name": "PendingSkillID",
+      "type": "string",
+      "initialValue": "",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 502978029681771
+    },
+    {
+      "eventType": "variable",
+      "name": "PendingSkillTargetMode",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 463918198071043
+    },
+    {
+      "eventType": "variable",
+      "name": "PendingSkillValue",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 774578052418957
+    },
+    {
+      "eventType": "variable",
+      "name": "PartyBuff_DEF",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 559214443163587
+    },
+    {
+      "eventType": "variable",
+      "name": "PartyBuff_SPD",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 120303911051889
+    },
+    {
+      "eventType": "variable",
+      "name": "PartyBuff_ATK",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 742700867682809
+    },
+    {
+      "eventType": "variable",
+      "name": "PartyBuff_RES",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 717166571087924
+    },
+    {
+      "eventType": "variable",
+      "name": "PartyBuff_MAG",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 718921198720861
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffTurns_DEF",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 998137021722896
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffTurns_SPD",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 957492048592003
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffTurns_ATK",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 947504797937903
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffTurns_MATK",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 904349044877173
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffTurns_MAG",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 564359467488662
+    },
+    {
+      "eventType": "variable",
+      "name": "PartyBuffCap_ATK",
+      "type": "number",
+      "initialValue": "20",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 785116426950096
+    },
+    {
+      "eventType": "variable",
+      "name": "PartyBuffCap_DEF",
+      "type": "number",
+      "initialValue": "20",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 361548318266529
+    },
+    {
+      "eventType": "variable",
+      "name": "PartyBuffCap_MAG",
+      "type": "number",
+      "initialValue": "20",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 746895922646809
+    },
+    {
+      "eventType": "variable",
+      "name": "PartyBuffCap_RES",
+      "type": "number",
+      "initialValue": "20",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 368500533584023
+    },
+    {
+      "eventType": "variable",
+      "name": "PartyBuffCap_SPD",
+      "type": "number",
+      "initialValue": "20",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 183346776706518
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffUIFrame",
+      "type": "number",
+      "initialValue": "-1",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 202604436378749
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffCasterUID_DEF",
+      "type": "number",
+      "initialValue": "-1",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 242130691943361
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffExpire_DEF",
+      "type": "number",
+      "initialValue": "-1",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 932289388076344
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffCasterUID_RES",
+      "type": "number",
+      "initialValue": "-1",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 106951377708425
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffExpire_RES",
+      "type": "number",
+      "initialValue": "-1",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 195070890524918
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffCasterUID_SPD",
+      "type": "number",
+      "initialValue": "-1",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 833610677055486
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffExpire_SPD",
+      "type": "number",
+      "initialValue": "-1",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 544188335098024
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffCasterUID_MAG",
+      "type": "number",
+      "initialValue": "-1",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 764620530424229
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffExpire_MAG",
+      "type": "number",
+      "initialValue": "-1",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 370476527183086
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffCasterUID_ATK",
+      "type": "number",
+      "initialValue": "-1",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 880474749974668
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffExpire_ATK",
+      "type": "number",
+      "initialValue": "-1",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 730565496046683
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffRollActive",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 456219717556866
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffRollEndsAt",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 473445146100560
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffRollSlot",
+      "type": "number",
+      "initialValue": "-1",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 672382532971286
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffRollType",
+      "type": "number",
+      "initialValue": "-1",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 879264464865883
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffRollFrame",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 883179797534938
+    },
+    {
+      "eventType": "variable",
+      "name": "HeroTurnClock",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 770647137295548
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffApplyClock",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 882626870908004
+    },
+    {
+      "eventType": "variable",
+      "name": "PendingActor",
+      "type": "number",
+      "initialValue": "-1",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 557454532573813
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffsInitialized",
+      "type": "boolean",
+      "initialValue": "false",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 562506517237439
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffProgActive",
+      "type": "boolean",
+      "initialValue": "false",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 100104302239103
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffProgEndAt",
+      "type": "number",
+      "initialValue": "0",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 803138328922362
+    },
+    {
+      "eventType": "variable",
+      "name": "BuffProgSlot",
+      "type": "number",
+      "initialValue": "-1",
+      "comment": "",
+      "isStatic": false,
+      "isConstant": false,
+      "sid": 405037309983193
+    },
+    {
+      "eventType": "group",
+      "disabled": false,
+      "title": "Gameplay",
+      "description": "",
+      "isActiveOnStart": true,
+      "children": [
+        {
+          "eventType": "block",
+          "conditions": [
+            {
+              "id": "on-object-clicked",
+              "objectClass": "Mouse",
+              "sid": 703643221950649,
+              "parameters": {
+                "mouse-button": "left",
+                "click-type": "clicked",
+                "object-clicked": "Gem"
+              }
+            },
+            {
+              "id": "compare-boolean-eventvar",
+              "objectClass": "System",
+              "sid": 469327821318035,
+              "parameters": {
+                "variable": "CanPickGems"
+              }
+            }
+          ],
+          "actions": [],
+          "sid": 331702841751307,
+          "children": [
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-eventvar",
+                  "objectClass": "System",
+                  "sid": 156331179730835,
+                  "parameters": {
+                    "variable": "TapIndex",
+                    "comparison": 2,
+                    "value": "3"
+                  }
+                },
+                {
+                  "id": "compare-instance-variable",
+                  "objectClass": "Gem",
+                  "sid": 701604635386169,
+                  "parameters": {
+                    "instance-variable": "Selected",
+                    "comparison": 0,
+                    "value": "0"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 847217534013585,
+                  "parameters": {
+                    "variable": "TurnPhase",
+                    "value": "0"
+                  }
+                },
+                {
+                  "id": "set-at-xyz",
+                  "objectClass": "TapSeq",
+                  "sid": 140775030246567,
+                  "parameters": {
+                    "x": "TapIndex",
+                    "y": "0",
+                    "z": "0",
+                    "value": "Gem.elementIndex"
+                  }
+                },
+                {
+                  "id": "set-text",
+                  "objectClass": "ActorIntent",
+                  "sid": 571820927294264,
+                  "parameters": {
+                    "text": "\"[outline=#000000][linethickness=4]Seq: \" & TapSeq.At(0,0,0) & \",\" & TapSeq.At(1,0,0) & \",\" & TapSeq.At(2,0,0) & \"[/linethickness][/outline]\"\n"
+                  }
+                },
+                {
+                  "id": "add-to-eventvar",
+                  "objectClass": "System",
+                  "sid": 754296337878996,
+                  "parameters": {
+                    "variable": "TapIndex",
+                    "value": "1"
+                  }
+                },
+                {
+                  "id": "set-instvar-value",
+                  "objectClass": "Gem",
+                  "sid": 258821813988274,
+                  "parameters": {
+                    "instance-variable": "Selected",
+                    "value": "1"
+                  }
+                },
+                {
+                  "id": "set-opacity",
+                  "objectClass": "Gem",
+                  "sid": 988085959640208,
+                  "parameters": {
+                    "opacity": "50"
+                  }
+                },
+                {
+                  "id": "set-size",
+                  "objectClass": "Gem",
+                  "sid": 528788332327603,
+                  "parameters": {
+                    "width": "cellSize*0.7",
+                    "height": "cellSize*0.7"
+                  }
+                },
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 916732451413636,
+                  "parameters": {
+                    "variable": "IsAOEMatch",
+                    "value": "0"
+                  }
+                }
+              ],
+              "sid": 444610224494538
+            }
+          ]
+        }
+      ],
+      "sid": 529255449243419
+    },
+    {
+      "eventType": "comment",
+      "text": "BUTTONS",
+      "background-color": [
+        0.9921568627450981,
+        0.7254901960784313,
+        0.807843137254902,
+        1
+      ]
+    },
+    {
+      "eventType": "group",
+      "disabled": false,
+      "title": "BUTTONS",
+      "description": "",
+      "isActiveOnStart": true,
+      "children": [
+        {
+          "eventType": "block",
+          "conditions": [
+            {
+              "id": "on-object-clicked",
+              "objectClass": "Mouse",
+              "sid": 428982025008859,
+              "parameters": {
+                "mouse-button": "left",
+                "click-type": "clicked",
+                "object-clicked": "AttackButton"
+              }
+            }
+          ],
+          "actions": [
+            {
+              "callFunction": "LogCombat",
+              "sid": 216719228817552,
+              "disabled": true,
+              "parameters": [
+                "\"AttackButton clicked. PendingSkillID='\" & PendingSkillID & \"'\""
+              ]
+            }
+          ],
+          "sid": 304994897240631,
+          "children": [
+            {
+              "eventType": "block",
+              "conditions": [],
+              "actions": [
+                {
+                  "callFunction": "ExecuteSkill",
+                  "sid": 178503077469549,
+                  "parameters": [
+                    "PendingSkillID",
+                    "PendingActor",
+                    "Functions.GetCurrentType"
+                  ]
+                },
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 806095782753697,
+                  "parameters": {
+                    "variable": "IsPlayerBusy",
+                    "value": "1"
+                  }
+                },
+                {
+                  "id": "destroy",
+                  "objectClass": "AttackButton",
+                  "sid": 919193511743148
+                },
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 163807338712130,
+                  "parameters": {
+                    "variable": "IsPlayerBusy",
+                    "value": "0"
+                  }
+                }
+              ],
+              "sid": 266947402430328
+            }
+          ]
+        },
+        {
+          "eventType": "block",
+          "conditions": [
+            {
+              "id": "on-clicked",
+              "objectClass": "AddMore",
+              "sid": 685481916755746
+            },
+            {
+              "id": "compare-two-values",
+              "objectClass": "System",
+              "sid": 942637561938151,
+              "parameters": {
+                "first-value": "refillBusy",
+                "comparison": 0,
+                "second-value": "0"
+              }
+            }
+          ],
+          "actions": [
+            {
+              "id": "set-eventvar-value",
+              "objectClass": "System",
+              "sid": 585695567346735,
+              "parameters": {
+                "variable": "refillBusy",
+                "value": "1"
+              }
+            },
+            {
+              "id": "set-eventvar-value",
+              "objectClass": "System",
+              "sid": 275624484422261,
+              "parameters": {
+                "variable": "refillIndex",
+                "value": "0"
+              }
+            },
+            {
+              "id": "clear",
+              "objectClass": "Grid",
+              "sid": 721871265404321,
+              "parameters": {
+                "value": "0"
+              }
+            },
+            {
+              "callFunction": "Sub_Energy",
+              "sid": 231099609328367
+            }
+          ],
+          "sid": 746719525602712,
+          "children": [
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "for-each",
+                  "objectClass": "System",
+                  "sid": 489826639894130,
+                  "parameters": {
+                    "object": "Gem"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-at-xyz",
+                  "objectClass": "Grid",
+                  "sid": 767897843455290,
+                  "parameters": {
+                    "x": "Gem.cellC",
+                    "y": "Gem.cellR",
+                    "z": "0",
+                    "value": "Gem.UID"
+                  }
+                }
+              ],
+              "sid": 945264447964596
+            },
+            {
+              "eventType": "block",
+              "conditions": [],
+              "actions": [
+                {
+                  "id": "clear",
+                  "objectClass": "GemRefillArray",
+                  "sid": 803578540482575,
+                  "parameters": {
+                    "value": "0"
+                  }
+                },
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 878871921727238,
+                  "parameters": {
+                    "variable": "RefillStep",
+                    "value": "0"
+                  }
+                }
+              ],
+              "sid": 801470576459902
+            },
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "for",
+                  "objectClass": "System",
+                  "sid": 244478791950629,
+                  "parameters": {
+                    "name": "\"c\"",
+                    "start-index": "0",
+                    "end-index": "cols-1"
+                  }
+                }
+              ],
+              "actions": [],
+              "sid": 302741385945508,
+              "children": [
+                {
+                  "eventType": "block",
+                  "conditions": [
+                    {
+                      "id": "for",
+                      "objectClass": "System",
+                      "sid": 215218311480435,
+                      "parameters": {
+                        "name": "\"r\"",
+                        "start-index": "0",
+                        "end-index": "rows-1"
+                      }
+                    }
+                  ],
+                  "actions": [],
+                  "sid": 725780193909865,
+                  "children": [
+                    {
+                      "eventType": "block",
+                      "conditions": [
+                        {
+                          "id": "compare-two-values",
+                          "objectClass": "System",
+                          "sid": 879807189024700,
+                          "parameters": {
+                            "first-value": "Grid.At(loopindex(\"c\"), loopindex(\"r\"), 0)",
+                            "comparison": 0,
+                            "second-value": "0"
+                          }
+                        }
+                      ],
+                      "actions": [
+                        {
+                          "id": "push",
+                          "objectClass": "GemRefillArray",
+                          "sid": 480361523472580,
+                          "parameters": {
+                            "where": "back",
+                            "value": "loopindex(\"c\")",
+                            "axis": "x"
+                          }
+                        },
+                        {
+                          "id": "push",
+                          "objectClass": "GemRefillArray",
+                          "sid": 991631960499413,
+                          "parameters": {
+                            "where": "back",
+                            "value": "loopindex(\"r\")",
+                            "axis": "x"
+                          }
+                        }
+                      ],
+                      "sid": 724898637860658
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "eventType": "block",
+              "conditions": [],
+              "actions": [],
+              "sid": 151246610492568
+            },
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-two-values",
+                  "objectClass": "System",
+                  "sid": 516116419124561,
+                  "parameters": {
+                    "first-value": "refillIndex",
+                    "comparison": 2,
+                    "second-value": "GemRefillArray.Width/2"
+                  }
+                }
+              ],
+              "actions": [],
+              "sid": 138635259887635
+            },
+            {
+              "eventType": "block",
+              "conditions": [],
+              "actions": [
+                {
+                  "callFunction": "DoRefillStep",
+                  "sid": 803967284754829,
+                  "parameters": [
+                    "0"
+                  ]
+                }
+              ],
+              "sid": 362005246226650
+            }
+          ]
+        },
+        {
+          "eventType": "block",
+          "conditions": [
+            {
+              "id": "on-object-clicked",
+              "objectClass": "Mouse",
+              "sid": 666380138696714,
+              "parameters": {
+                "mouse-button": "left",
+                "click-type": "clicked",
+                "object-clicked": "Enemy_Sprite"
+              }
+            }
+          ],
+          "actions": [],
+          "sid": 191075782539652,
+          "children": [
+            {
+              "eventType": "variable",
+              "name": "clickUID",
+              "type": "number",
+              "initialValue": "0",
+              "comment": "",
+              "isStatic": false,
+              "isConstant": false,
+              "sid": 863128843304083
+            },
+            {
+              "eventType": "block",
+              "conditions": [],
+              "actions": [
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 573221105484949,
+                  "parameters": {
+                    "variable": "clickUID",
+                    "value": "Enemy_Sprite.UID"
+                  }
+                }
+              ],
+              "sid": 336077987421934
+            },
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "pick-all",
+                  "objectClass": "System",
+                  "sid": 102307183510381,
+                  "parameters": {
+                    "object": "Enemy_Sprite"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-instvar-value",
+                  "objectClass": "Enemy_Sprite",
+                  "sid": 747008782990393,
+                  "parameters": {
+                    "instance-variable": "IsSelected",
+                    "value": "0"
+                  }
+                }
+              ],
+              "sid": 630162556572271
+            },
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "pick-by-unique-id",
+                  "objectClass": "Enemy_Sprite",
+                  "sid": 422786056545558,
+                  "parameters": {
+                    "unique-id": "clickUID"
+                  }
+                },
+                {
+                  "id": "compare-instance-variable",
+                  "objectClass": "Enemy_Sprite",
+                  "sid": 746315443334728,
+                  "parameters": {
+                    "instance-variable": "HP",
+                    "comparison": 4,
+                    "value": "0"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-instvar-value",
+                  "objectClass": "Enemy_Sprite",
+                  "sid": 511225296539212,
+                  "parameters": {
+                    "instance-variable": "IsSelected",
+                    "value": "1"
+                  }
+                },
+                {
+                  "callFunction": "RefreshSelectors",
+                  "sid": 420445526473830
+                }
+              ],
+              "sid": 761440362232054
+            }
+          ]
+        }
+      ],
+      "sid": 246755312487538,
+      "background-color": [
+        0.30196078431372547,
+        0.6274509803921569,
+        1,
+        1
+      ]
+    },
+    {
+      "functionName": "ComputeEnemyLayout",
+      "functionDescription": "",
+      "functionCategory": "",
+      "functionReturnType": "none",
+      "functionCopyPicked": false,
+      "functionIsAsync": false,
+      "functionParameters": [],
+      "eventType": "function-block",
+      "conditions": [],
+      "actions": [
+        {
+          "id": "set-eventvar-value",
+          "objectClass": "System",
+          "sid": 274320448995305,
+          "parameters": {
+            "variable": "Slots",
+            "value": "3"
+          }
+        },
+        {
+          "id": "set-eventvar-value",
+          "objectClass": "System",
+          "sid": 936593761252227,
+          "parameters": {
+            "variable": "MARGIN",
+            "value": "8"
+          }
+        },
+        {
+          "id": "set-eventvar-value",
+          "objectClass": "System",
+          "sid": 988901773375705,
+          "parameters": {
+            "variable": "enemyGAP",
+            "value": "8"
+          }
+        },
+        {
+          "id": "set-eventvar-value",
+          "objectClass": "System",
+          "sid": 140632858838981,
+          "parameters": {
+            "variable": "EnemyRowGap",
+            "value": "enemyGAP"
+          }
+        },
+        {
+          "id": "set-eventvar-value",
+          "objectClass": "System",
+          "sid": 785514269947221,
+          "parameters": {
+            "variable": "EnemyAreaLeft",
+            "value": "EnemyArea.X - (EnemyArea.Width/2)"
+          }
+        },
+        {
+          "id": "set-eventvar-value",
+          "objectClass": "System",
+          "sid": 487803612896854,
+          "parameters": {
+            "variable": "EnemyAreaRight",
+            "value": "EnemyArea.X + (EnemyArea.Width/2)"
+          }
+        },
+        {
+          "id": "set-eventvar-value",
+          "objectClass": "System",
+          "sid": 192988729185992,
+          "parameters": {
+            "variable": "EnemyAreaTop",
+            "value": "EnemyArea.Y - (EnemyArea.Height/2)"
+          }
+        },
+        {
+          "id": "set-eventvar-value",
+          "objectClass": "System",
+          "sid": 751415163855461,
+          "parameters": {
+            "variable": "EnemyAreaBottom",
+            "value": "EnemyArea.Y + (EnemyArea.Height/2)"
+          }
+        },
+        {
+          "id": "set-eventvar-value",
+          "objectClass": "System",
+          "sid": 812961176147890,
+          "parameters": {
+            "variable": "EnemyAreaCX",
+            "value": "EnemyArea.X"
+          }
+        },
+        {
+          "id": "set-eventvar-value",
+          "objectClass": "System",
+          "sid": 208130782261385,
+          "parameters": {
+            "variable": "EnemyAreaCY",
+            "value": "EnemyArea.Y"
+          }
+        },
+        {
+          "id": "set-eventvar-value",
+          "objectClass": "System",
+          "sid": 919542989191633,
+          "parameters": {
+            "variable": "VW",
+            "value": "(EnemyAreaRight - EnemyAreaLeft)"
+          }
+        },
+        {
+          "id": "set-eventvar-value",
+          "objectClass": "System",
+          "sid": 918417750705201,
+          "parameters": {
+            "variable": "VH",
+            "value": "(EnemyAreaBottom - EnemyAreaTop)"
+          }
+        },
+        {
+          "id": "set-eventvar-value",
+          "objectClass": "System",
+          "sid": 764718833866053,
+          "parameters": {
+            "variable": "EnemySizeW",
+            "value": "floor((VW - 2*MARGIN - (Slots-1)*enemyGAP) / Slots)"
+          }
+        },
+        {
+          "id": "set-eventvar-value",
+          "objectClass": "System",
+          "sid": 537117856254864,
+          "parameters": {
+            "variable": "EnemySizeH",
+            "value": "floor((VH - 2*MARGIN - 2*EnemyRowGap) / 3)\n"
+          }
+        },
+        {
+          "id": "set-eventvar-value",
+          "objectClass": "System",
+          "sid": 482943583137617,
+          "parameters": {
+            "variable": "EnemySize",
+            "value": "min(EnemySizeW, EnemySizeH)"
+          }
+        },
+        {
+          "id": "set-eventvar-value",
+          "objectClass": "System",
+          "sid": 986996228113898,
+          "parameters": {
+            "variable": "X0",
+            "value": "EnemyAreaCX"
+          }
+        },
+        {
+          "id": "set-eventvar-value",
+          "objectClass": "System",
+          "sid": 107401029475911,
+          "parameters": {
+            "variable": "Spacing",
+            "value": "EnemySize + enemyGAP"
+          }
+        },
+        {
+          "id": "set-eventvar-value",
+          "objectClass": "System",
+          "sid": 808722785984291,
+          "parameters": {
+            "variable": "EnemyAreaY0",
+            "value": "EnemyAreaTop + MARGIN + (EnemySize/2)"
+          }
+        },
+        {
+          "id": "set-eventvar-value",
+          "objectClass": "System",
+          "sid": 670452036255650,
+          "parameters": {
+            "variable": "OffscreenX",
+            "value": "EnemyAreaRight + EnemySize"
+          }
+        }
+      ],
+      "sid": 488055898528968
+    },
+    {
+      "eventType": "block",
+      "conditions": [
+        {
+          "id": "compare-two-values",
+          "objectClass": "System",
+          "sid": 292196683070622,
+          "parameters": {
+            "first-value": "TapIndex",
+            "comparison": 5,
+            "second-value": "3"
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "set-instvar-value",
+          "objectClass": "Gem",
+          "sid": 324137120736345,
+          "parameters": {
+            "instance-variable": "IsBlocked",
+            "value": "1"
+          }
+        }
+      ],
+      "sid": 773609568207963
+    },
+    {
+      "eventType": "block",
+      "conditions": [
+        {
+          "id": "every-tick",
+          "objectClass": "System",
+          "sid": 454762669077031
+        }
+      ],
+      "actions": [],
+      "sid": 971835408972455,
+      "children": [
+        {
+          "eventType": "variable",
+          "name": "actorlabel",
+          "type": "string",
+          "initialValue": "",
+          "comment": "",
+          "isStatic": false,
+          "isConstant": false,
+          "sid": 635065193998300
+        },
+        {
+          "eventType": "block",
+          "conditions": [
+            {
+              "id": "compare-two-values",
+              "objectClass": "System",
+              "sid": 911392553873536,
+              "parameters": {
+                "first-value": "Functions.GetCurrentType",
+                "comparison": 0,
+                "second-value": "0"
+              }
+            }
+          ],
+          "actions": [
+            {
+              "id": "set-eventvar-value",
+              "objectClass": "System",
+              "sid": 536234861563124,
+              "parameters": {
+                "variable": "actorlabel",
+                "value": "\"Hero Turn\""
+              }
+            }
+          ],
+          "sid": 906458755440896
+        },
+        {
+          "eventType": "block",
+          "conditions": [
+            {
+              "id": "compare-two-values",
+              "objectClass": "System",
+              "sid": 244345287281994,
+              "parameters": {
+                "first-value": "Functions.GetCurrentType",
+                "comparison": 0,
+                "second-value": "1"
+              }
+            }
+          ],
+          "actions": [
+            {
+              "id": "set-eventvar-value",
+              "objectClass": "System",
+              "sid": 455184085352767,
+              "parameters": {
+                "variable": "actorlabel",
+                "value": "\"Enemy Turn\""
+              }
+            }
+          ],
+          "sid": 639201904632833
+        },
+        {
+          "eventType": "block",
+          "conditions": [],
+          "actions": [
+            {
+              "id": "set-text",
+              "objectClass": "dbg",
+              "sid": 364666442517123,
+              "parameters": {
+                "text": "\"Phase=\" & TurnPhase & newline &\n        \"ActorType=\" & Functions.GetCurrentType & \" (\" & actorLabel & \")\" & newline &\n        \"ActorUID=\" & Functions.GetCurrentTurn & newline &\n        \"CanPickGems=\" & CanPickGems & newline &\n        \"IsPlayerBusy=\" & IsPlayerBusy & newline &\n        \"CurrentTurnIndex=\" & CurrentTurnIndex"
+              }
+            }
+          ],
+          "sid": 192210389398363
+        },
+        {
+          "eventType": "block",
+          "conditions": [
+            {
+              "id": "for-each",
+              "objectClass": "System",
+              "sid": 440754842941003,
+              "parameters": {
+                "object": "Bar_Fill"
+              }
+            }
+          ],
+          "actions": [
+            {
+              "id": "set-width",
+              "objectClass": "Bar_Fill",
+              "sid": 944984540198265,
+              "parameters": {
+                "width": "max(Bar_Fill.targetWidth,Bar_Fill.Width-180*dt)"
+              }
+            }
+          ],
+          "sid": 342567420709725
+        },
+        {
+          "eventType": "block",
+          "conditions": [
+            {
+              "id": "for-each",
+              "objectClass": "System",
+              "sid": 582918679558131,
+              "parameters": {
+                "object": "Bar_Yellow"
+              }
+            }
+          ],
+          "actions": [
+            {
+              "id": "set-width",
+              "objectClass": "Bar_Yellow",
+              "sid": 373719325041886,
+              "parameters": {
+                "width": "max(Bar_Yellow.targetWidth,Bar_Yellow.Width-40*dt)"
+              }
+            }
+          ],
+          "sid": 116597859180853
+        },
+        {
+          "eventType": "block",
+          "conditions": [
+            {
+              "id": "is-visible",
+              "objectClass": "Chain_Tracker",
+              "sid": 151312685051592
+            },
+            {
+              "id": "compare-two-values",
+              "objectClass": "System",
+              "sid": 266644224669618,
+              "parameters": {
+                "first-value": "ChainUIHideAt",
+                "comparison": 4,
+                "second-value": "0"
+              }
+            },
+            {
+              "id": "compare-two-values",
+              "objectClass": "System",
+              "sid": 753059840552286,
+              "parameters": {
+                "first-value": "time",
+                "comparison": 5,
+                "second-value": "ChainUIHideAt"
+              }
+            }
+          ],
+          "actions": [
+            {
+              "id": "set-text",
+              "objectClass": "Chain_Tracker",
+              "sid": 379641588773715,
+              "parameters": {
+                "text": "\"\""
+              }
+            },
+            {
+              "id": "set-visible",
+              "objectClass": "Chain_Tracker",
+              "sid": 602655067568283,
+              "parameters": {
+                "visibility": "invisible"
+              }
+            },
+            {
+              "id": "set-eventvar-value",
+              "objectClass": "System",
+              "sid": 707806312447161,
+              "parameters": {
+                "variable": "ChainUIHideAt",
+                "value": "0"
+              }
+            }
+          ],
+          "sid": 255920659369445
+        }
+      ]
+    },
+    {
+      "eventType": "block",
+      "conditions": [
+        {
+          "id": "every-tick",
+          "objectClass": "System",
+          "sid": 834135722485146
+        }
+      ],
+      "actions": [],
+      "sid": 813883195866811,
+      "children": [
+        {
+          "eventType": "variable",
+          "name": "count",
+          "type": "number",
+          "initialValue": "0",
+          "comment": "",
+          "isStatic": false,
+          "isConstant": false,
+          "sid": 849446962386454
+        },
+        {
+          "eventType": "variable",
+          "name": "baseIndex",
+          "type": "number",
+          "initialValue": "0",
+          "comment": "",
+          "isStatic": false,
+          "isConstant": false,
+          "sid": 917504168369132
+        },
+        {
+          "eventType": "variable",
+          "name": "idx",
+          "type": "number",
+          "initialValue": "0",
+          "comment": "",
+          "isStatic": false,
+          "isConstant": false,
+          "sid": 599925569499395
+        },
+        {
+          "eventType": "variable",
+          "name": "uid",
+          "type": "number",
+          "initialValue": "0",
+          "comment": "",
+          "isStatic": false,
+          "isConstant": false,
+          "sid": 735100195832121
+        },
+        {
+          "eventType": "variable",
+          "name": "type",
+          "type": "number",
+          "initialValue": "0",
+          "comment": "",
+          "isStatic": false,
+          "isConstant": false,
+          "sid": 659877776587793
+        },
+        {
+          "eventType": "variable",
+          "name": "spd",
+          "type": "number",
+          "initialValue": "0",
+          "comment": "",
+          "isStatic": false,
+          "isConstant": false,
+          "sid": 388048834848475
+        },
+        {
+          "eventType": "variable",
+          "name": "label",
+          "type": "string",
+          "initialValue": "\"\"",
+          "comment": "",
+          "isStatic": false,
+          "isConstant": false,
+          "sid": 719224041057458
+        },
+        {
+          "eventType": "block",
+          "conditions": [],
+          "actions": [
+            {
+              "id": "set-eventvar-value",
+              "objectClass": "System",
+              "sid": 942115767632947,
+              "parameters": {
+                "variable": "count",
+                "value": "TurnOrderArray.Width/3"
+              }
+            },
+            {
+              "id": "set-eventvar-value",
+              "objectClass": "System",
+              "sid": 271259144321578,
+              "parameters": {
+                "variable": "baseIndex",
+                "value": "CurrentTurnIndex"
+              }
+            },
+            {
+              "id": "set-text",
+              "objectClass": "track_next",
+              "sid": 968382025464039,
+              "parameters": {
+                "text": "\"\""
+              }
+            },
+            {
+              "id": "set-text",
+              "objectClass": "track_nextplus1",
+              "sid": 478845281725906,
+              "parameters": {
+                "text": "\"\""
+              }
+            },
+            {
+              "id": "set-text",
+              "objectClass": "track_nextplus2",
+              "sid": 484403599978221,
+              "parameters": {
+                "text": "\"\""
+              }
+            },
+            {
+              "callFunction": "UpdatePartyHPText",
+              "sid": 145592400742734
+            }
+          ],
+          "sid": 442849935280746
+        },
+        {
+          "eventType": "block",
+          "conditions": [
+            {
+              "id": "compare-eventvar",
+              "objectClass": "System",
+              "sid": 796403179129354,
+              "parameters": {
+                "variable": "count",
+                "comparison": 4,
+                "value": "0"
+              }
+            }
+          ],
+          "actions": [
+            {
+              "id": "set-eventvar-value",
+              "objectClass": "System",
+              "sid": 331499968007169,
+              "parameters": {
+                "variable": "idx",
+                "value": "(baseIndex+0)%count"
+              }
+            },
+            {
+              "id": "set-eventvar-value",
+              "objectClass": "System",
+              "sid": 649476884411314,
+              "parameters": {
+                "variable": "uid",
+                "value": "TurnOrderArray.At(idx*3)"
+              }
+            },
+            {
+              "id": "set-eventvar-value",
+              "objectClass": "System",
+              "sid": 626182512910761,
+              "parameters": {
+                "variable": "type",
+                "value": "TurnOrderArray.At(idx*3+2)"
+              }
+            }
+          ],
+          "sid": 822661427867649,
+          "children": [
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-two-values",
+                  "objectClass": "System",
+                  "sid": 111324811455969,
+                  "parameters": {
+                    "first-value": "type",
+                    "comparison": 0,
+                    "second-value": "0"
+                  }
+                },
+                {
+                  "id": "pick-by-unique-id",
+                  "objectClass": "Heroes",
+                  "sid": 498785247421099,
+                  "parameters": {
+                    "unique-id": "uid"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 294285795525414,
+                  "parameters": {
+                    "variable": "label",
+                    "value": "Heroes.name"
+                  }
+                },
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 829929574299389,
+                  "parameters": {
+                    "variable": "spd",
+                    "value": "Heroes.SPD"
+                  }
+                }
+              ],
+              "sid": 102429510331428
+            },
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-two-values",
+                  "objectClass": "System",
+                  "sid": 696934534445835,
+                  "parameters": {
+                    "first-value": "type",
+                    "comparison": 0,
+                    "second-value": "1"
+                  }
+                },
+                {
+                  "id": "pick-by-unique-id",
+                  "objectClass": "Enemy_Sprite",
+                  "sid": 822112404371190,
+                  "parameters": {
+                    "unique-id": "uid"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 377077245824188,
+                  "parameters": {
+                    "variable": "label",
+                    "value": "Enemy_Sprite.name"
+                  }
+                },
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 987574261172671,
+                  "parameters": {
+                    "variable": "spd",
+                    "value": "Enemy_Sprite.SPD"
+                  }
+                }
+              ],
+              "sid": 793513593518262
+            },
+            {
+              "eventType": "block",
+              "conditions": [],
+              "actions": [
+                {
+                  "id": "set-text",
+                  "objectClass": "track_next",
+                  "sid": 776125633700612,
+                  "parameters": {
+                    "text": "label& \" \" & spd"
+                  }
+                }
+              ],
+              "sid": 914623155896663
+            }
+          ]
+        },
+        {
+          "eventType": "block",
+          "conditions": [
+            {
+              "id": "compare-eventvar",
+              "objectClass": "System",
+              "sid": 145646946440780,
+              "parameters": {
+                "variable": "count",
+                "comparison": 4,
+                "value": "1"
+              }
+            }
+          ],
+          "actions": [
+            {
+              "id": "set-eventvar-value",
+              "objectClass": "System",
+              "sid": 415948228267267,
+              "parameters": {
+                "variable": "idx",
+                "value": "(baseIndex+1)%count"
+              }
+            },
+            {
+              "id": "set-eventvar-value",
+              "objectClass": "System",
+              "sid": 532797560416519,
+              "parameters": {
+                "variable": "uid",
+                "value": "TurnOrderArray.At(idx*3)"
+              }
+            },
+            {
+              "id": "set-eventvar-value",
+              "objectClass": "System",
+              "sid": 762775922039118,
+              "parameters": {
+                "variable": "type",
+                "value": "TurnOrderArray.At(idx*3+2)"
+              }
+            }
+          ],
+          "sid": 496823992780885,
+          "children": [
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-two-values",
+                  "objectClass": "System",
+                  "sid": 781000190658993,
+                  "parameters": {
+                    "first-value": "type",
+                    "comparison": 0,
+                    "second-value": "0"
+                  }
+                },
+                {
+                  "id": "pick-by-unique-id",
+                  "objectClass": "Heroes",
+                  "sid": 311097402284138,
+                  "parameters": {
+                    "unique-id": "uid"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 872052029391651,
+                  "parameters": {
+                    "variable": "label",
+                    "value": "Heroes.name"
+                  }
+                },
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 325270255717401,
+                  "parameters": {
+                    "variable": "spd",
+                    "value": "Heroes.SPD"
+                  }
+                }
+              ],
+              "sid": 417540151271461
+            },
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-two-values",
+                  "objectClass": "System",
+                  "sid": 545915955101004,
+                  "parameters": {
+                    "first-value": "type",
+                    "comparison": 0,
+                    "second-value": "1"
+                  }
+                },
+                {
+                  "id": "pick-by-unique-id",
+                  "objectClass": "Enemy_Sprite",
+                  "sid": 124568284935900,
+                  "parameters": {
+                    "unique-id": "uid"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 237461549597012,
+                  "parameters": {
+                    "variable": "label",
+                    "value": "Enemy_Sprite.name"
+                  }
+                },
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 446271596790052,
+                  "parameters": {
+                    "variable": "spd",
+                    "value": "Enemy_Sprite.SPD"
+                  }
+                }
+              ],
+              "sid": 453408915158345
+            },
+            {
+              "eventType": "block",
+              "conditions": [],
+              "actions": [
+                {
+                  "id": "set-text",
+                  "objectClass": "track_nextplus1",
+                  "sid": 906545000704500,
+                  "parameters": {
+                    "text": "label& \" \" & spd"
+                  }
+                }
+              ],
+              "sid": 496814655899480
+            }
+          ]
+        },
+        {
+          "eventType": "block",
+          "conditions": [
+            {
+              "id": "compare-eventvar",
+              "objectClass": "System",
+              "sid": 510816085859193,
+              "parameters": {
+                "variable": "count",
+                "comparison": 4,
+                "value": "2"
+              }
+            }
+          ],
+          "actions": [
+            {
+              "id": "set-eventvar-value",
+              "objectClass": "System",
+              "sid": 175361617381235,
+              "parameters": {
+                "variable": "idx",
+                "value": "(baseIndex+2)%count"
+              }
+            },
+            {
+              "id": "set-eventvar-value",
+              "objectClass": "System",
+              "sid": 995771460782042,
+              "parameters": {
+                "variable": "uid",
+                "value": "TurnOrderArray.At(idx*3)"
+              }
+            },
+            {
+              "id": "set-eventvar-value",
+              "objectClass": "System",
+              "sid": 943759977136474,
+              "parameters": {
+                "variable": "type",
+                "value": "TurnOrderArray.At(idx*3+2)"
+              }
+            }
+          ],
+          "sid": 947090169462541,
+          "children": [
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-two-values",
+                  "objectClass": "System",
+                  "sid": 956563740674604,
+                  "parameters": {
+                    "first-value": "type",
+                    "comparison": 0,
+                    "second-value": "0"
+                  }
+                },
+                {
+                  "id": "pick-by-unique-id",
+                  "objectClass": "Heroes",
+                  "sid": 864663644099058,
+                  "parameters": {
+                    "unique-id": "uid"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 638006640115560,
+                  "parameters": {
+                    "variable": "label",
+                    "value": "Heroes.name"
+                  }
+                },
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 758623690293474,
+                  "parameters": {
+                    "variable": "spd",
+                    "value": "Heroes.SPD"
+                  }
+                }
+              ],
+              "sid": 349351117059663
+            },
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-two-values",
+                  "objectClass": "System",
+                  "sid": 744780449274236,
+                  "parameters": {
+                    "first-value": "type",
+                    "comparison": 0,
+                    "second-value": "1"
+                  }
+                },
+                {
+                  "id": "pick-by-unique-id",
+                  "objectClass": "Enemy_Sprite",
+                  "sid": 707830474490811,
+                  "parameters": {
+                    "unique-id": "uid"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 107504972801974,
+                  "parameters": {
+                    "variable": "label",
+                    "value": "Enemy_Sprite.name"
+                  }
+                },
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 469486891093955,
+                  "parameters": {
+                    "variable": "spd",
+                    "value": "Enemy_Sprite.SPD"
+                  }
+                }
+              ],
+              "sid": 531007061274316
+            },
+            {
+              "eventType": "block",
+              "conditions": [],
+              "actions": [
+                {
+                  "id": "set-text",
+                  "objectClass": "track_nextplus2",
+                  "sid": 177595877975154,
+                  "parameters": {
+                    "text": "label& \" \" & spd"
+                  }
+                }
+              ],
+              "sid": 463676949094584
+            }
+          ]
+        },
+        {
+          "eventType": "block",
+          "conditions": [
+            {
+              "id": "for-each",
+              "objectClass": "System",
+              "sid": 399695981730783,
+              "parameters": {
+                "object": "Selector"
+              }
+            }
+          ],
+          "actions": [],
+          "sid": 485039603071755,
+          "children": [
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "pick-by-unique-id",
+                  "objectClass": "Enemy_Sprite",
+                  "sid": 574356676843310,
+                  "parameters": {
+                    "unique-id": "Selector.ownerID"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-position",
+                  "objectClass": "Selector",
+                  "sid": 145896891843174,
+                  "parameters": {
+                    "x": "Enemy_Sprite.X",
+                    "y": "Enemy_Sprite.BBoxTop-10"
+                  }
+                }
+              ],
+              "sid": 628806234906971
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "eventType": "block",
+      "conditions": [
+        {
+          "id": "every-tick",
+          "objectClass": "System",
+          "sid": 528826419248832
+        }
+      ],
+      "actions": [],
+      "sid": 504026811051253,
+      "children": [
+        {
+          "eventType": "block",
+          "conditions": [
+            {
+              "id": "for-each",
+              "objectClass": "System",
+              "sid": 307450456679121,
+              "parameters": {
+                "object": "DamageText"
+              }
+            }
+          ],
+          "actions": [
+            {
+              "id": "set-instvar-value",
+              "objectClass": "DamageText",
+              "sid": 878712674742675,
+              "parameters": {
+                "instance-variable": "age",
+                "value": "DamageText.age+dt"
+              }
+            }
+          ],
+          "sid": 133578759534754,
+          "children": [
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-two-values",
+                  "objectClass": "System",
+                  "sid": 973814071579056,
+                  "parameters": {
+                    "first-value": "DamageText.phase",
+                    "comparison": 0,
+                    "second-value": "0"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-y",
+                  "objectClass": "DamageText",
+                  "sid": 927034430429975,
+                  "parameters": {
+                    "y": "lerp(DamageText.yStart, DamageText.yTarget, min(1, DamageText.age / max(0.001, DamageText.riseInSec)))"
+                  }
+                },
+                {
+                  "id": "set-opacity",
+                  "objectClass": "DamageText",
+                  "sid": 782338959214575,
+                  "parameters": {
+                    "opacity": "100"
+                  }
+                }
+              ],
+              "sid": 252902884614116,
+              "children": [
+                {
+                  "eventType": "block",
+                  "conditions": [
+                    {
+                      "id": "compare-two-values",
+                      "objectClass": "System",
+                      "sid": 451367132237880,
+                      "parameters": {
+                        "first-value": "DamageText.age",
+                        "comparison": 5,
+                        "second-value": "DamageText.riseInSec"
+                      }
+                    }
+                  ],
+                  "actions": [
+                    {
+                      "id": "set-instvar-value",
+                      "objectClass": "DamageText",
+                      "sid": 385133575538892,
+                      "parameters": {
+                        "instance-variable": "phase",
+                        "value": "1"
+                      }
+                    },
+                    {
+                      "id": "set-instvar-value",
+                      "objectClass": "DamageText",
+                      "sid": 613109884456921,
+                      "parameters": {
+                        "instance-variable": "age",
+                        "value": "0"
+                      }
+                    },
+                    {
+                      "id": "set-y",
+                      "objectClass": "DamageText",
+                      "sid": 727585249826978,
+                      "parameters": {
+                        "y": "DamageText.yTarget"
+                      }
+                    }
+                  ],
+                  "sid": 447212746510456
+                }
+              ]
+            },
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-two-values",
+                  "objectClass": "System",
+                  "sid": 991297872439602,
+                  "parameters": {
+                    "first-value": "DamageText.phase",
+                    "comparison": 0,
+                    "second-value": "1"
+                  }
+                }
+              ],
+              "actions": [],
+              "sid": 135422507290863,
+              "children": [
+                {
+                  "eventType": "block",
+                  "conditions": [
+                    {
+                      "id": "compare-two-values",
+                      "objectClass": "System",
+                      "sid": 827181926016341,
+                      "parameters": {
+                        "first-value": "DamageText.age",
+                        "comparison": 5,
+                        "second-value": "DamageText.holdSec"
+                      }
+                    }
+                  ],
+                  "actions": [
+                    {
+                      "id": "set-opacity",
+                      "objectClass": "DamageText",
+                      "sid": 887858978635033,
+                      "parameters": {
+                        "opacity": "100"
+                      }
+                    },
+                    {
+                      "id": "set-instvar-value",
+                      "objectClass": "DamageText",
+                      "sid": 653968198504733,
+                      "parameters": {
+                        "instance-variable": "phase",
+                        "value": "2"
+                      }
+                    },
+                    {
+                      "id": "set-instvar-value",
+                      "objectClass": "DamageText",
+                      "sid": 687391860679632,
+                      "parameters": {
+                        "instance-variable": "age",
+                        "value": "0"
+                      }
+                    }
+                  ],
+                  "sid": 983323950245373
+                }
+              ]
+            },
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-two-values",
+                  "objectClass": "System",
+                  "sid": 306691696259717,
+                  "parameters": {
+                    "first-value": "DamageText.phase",
+                    "comparison": 0,
+                    "second-value": "2"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-opacity",
+                  "objectClass": "DamageText",
+                  "sid": 481267237020987,
+                  "parameters": {
+                    "opacity": "max(0, 100 * (1 - (DamageText.age / max(0.001, DamageText.fadeSec))))"
+                  }
+                }
+              ],
+              "sid": 798678884084033,
+              "children": [
+                {
+                  "eventType": "block",
+                  "conditions": [
+                    {
+                      "id": "compare-two-values",
+                      "objectClass": "System",
+                      "sid": 538088150025336,
+                      "parameters": {
+                        "first-value": "DamageText.age",
+                        "comparison": 5,
+                        "second-value": "DamageText.fadeSec"
+                      }
+                    }
+                  ],
+                  "actions": [
+                    {
+                      "id": "destroy",
+                      "objectClass": "DamageText",
+                      "sid": 537468048754692
+                    }
+                  ],
+                  "sid": 332211048691056
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "eventType": "group",
+      "disabled": false,
+      "title": "ROULETTE_TICKERS",
+      "description": "",
+      "isActiveOnStart": true,
+      "children": [
+        {
+          "eventType": "block",
+          "conditions": [
+            {
+              "id": "every-x-seconds",
+              "objectClass": "System",
+              "sid": 190911511615896,
+              "parameters": {
+                "interval-seconds": "0.18"
+              }
+            },
+            {
+              "id": "compare-eventvar",
+              "objectClass": "System",
+              "sid": 548135691257133,
+              "parameters": {
+                "variable": "BuffRollActive",
+                "comparison": 0,
+                "value": "1"
+              }
+            }
+          ],
+          "actions": [
+            {
+              "id": "set-eventvar-value",
+              "objectClass": "System",
+              "sid": 940506029136368,
+              "parameters": {
+                "variable": "BuffRollFrame",
+                "value": "(BuffRollFrame + 1) % 5"
+              }
+            }
+          ],
+          "sid": 555539384515001,
+          "children": [
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-eventvar",
+                  "objectClass": "System",
+                  "sid": 415518654018270,
+                  "parameters": {
+                    "variable": "BuffRollSlot",
+                    "comparison": 0,
+                    "value": "0"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-animation-frame",
+                  "objectClass": "buffIcon1",
+                  "sid": 240255539643290,
+                  "parameters": {
+                    "frame-number": "BuffRollFrame"
+                  }
+                }
+              ],
+              "sid": 409757670908739
+            },
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-eventvar",
+                  "objectClass": "System",
+                  "sid": 380068545899301,
+                  "parameters": {
+                    "variable": "BuffRollSlot",
+                    "comparison": 0,
+                    "value": "1"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-animation-frame",
+                  "objectClass": "buffIcon2",
+                  "sid": 701077127567236,
+                  "parameters": {
+                    "frame-number": "BuffRollFrame"
+                  }
+                }
+              ],
+              "sid": 710683329448876
+            },
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-eventvar",
+                  "objectClass": "System",
+                  "sid": 412410977381750,
+                  "parameters": {
+                    "variable": "BuffRollSlot",
+                    "comparison": 0,
+                    "value": "2"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-animation-frame",
+                  "objectClass": "buffIcon3",
+                  "sid": 298222886194339,
+                  "parameters": {
+                    "frame-number": "BuffRollFrame"
+                  }
+                }
+              ],
+              "sid": 284992493381540
+            },
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-eventvar",
+                  "objectClass": "System",
+                  "sid": 952502577824033,
+                  "parameters": {
+                    "variable": "BuffRollSlot",
+                    "comparison": 0,
+                    "value": "3"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-animation-frame",
+                  "objectClass": "buffIcon4",
+                  "sid": 763812743294264,
+                  "parameters": {
+                    "frame-number": "BuffRollFrame"
+                  }
+                }
+              ],
+              "sid": 707659039278899
+            },
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-eventvar",
+                  "objectClass": "System",
+                  "sid": 551282006634320,
+                  "parameters": {
+                    "variable": "BuffRollSlot",
+                    "comparison": 0,
+                    "value": "4"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-animation-frame",
+                  "objectClass": "buffIcon5",
+                  "sid": 299881227552673,
+                  "parameters": {
+                    "frame-number": "BuffRollFrame"
+                  }
+                }
+              ],
+              "sid": 527737031944314
+            }
+          ]
+        },
+        {
+          "eventType": "block",
+          "conditions": [
+            {
+              "id": "compare-eventvar",
+              "objectClass": "System",
+              "sid": 397692067065362,
+              "parameters": {
+                "variable": "BuffRollActive",
+                "comparison": 0,
+                "value": "1"
+              }
+            },
+            {
+              "id": "compare-two-values",
+              "objectClass": "System",
+              "sid": 120509404985490,
+              "parameters": {
+                "first-value": "time",
+                "comparison": 5,
+                "second-value": "BuffRollEndsAt"
+              }
+            }
+          ],
+          "actions": [
+            {
+              "id": "set-eventvar-value",
+              "objectClass": "System",
+              "sid": 111256784660083,
+              "parameters": {
+                "variable": "BuffRollFrame",
+                "value": "BuffRollType"
+              }
+            }
+          ],
+          "sid": 653171062722389,
+          "children": [
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-eventvar",
+                  "objectClass": "System",
+                  "sid": 833817720801803,
+                  "parameters": {
+                    "variable": "BuffRollSlot",
+                    "comparison": 0,
+                    "value": "0"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-animation-frame",
+                  "objectClass": "buffIcon1",
+                  "sid": 972645078016496,
+                  "parameters": {
+                    "frame-number": "BuffRollFrame"
+                  }
+                }
+              ],
+              "sid": 359370525978051
+            },
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-eventvar",
+                  "objectClass": "System",
+                  "sid": 788779778325850,
+                  "parameters": {
+                    "variable": "BuffRollSlot",
+                    "comparison": 0,
+                    "value": "1"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-animation-frame",
+                  "objectClass": "buffIcon2",
+                  "sid": 845387568711931,
+                  "parameters": {
+                    "frame-number": "BuffRollFrame"
+                  }
+                }
+              ],
+              "sid": 391743832158305
+            },
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-eventvar",
+                  "objectClass": "System",
+                  "sid": 427380822596908,
+                  "parameters": {
+                    "variable": "BuffRollSlot",
+                    "comparison": 0,
+                    "value": "2"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-animation-frame",
+                  "objectClass": "buffIcon3",
+                  "sid": 516825380647111,
+                  "parameters": {
+                    "frame-number": "BuffRollFrame"
+                  }
+                }
+              ],
+              "sid": 898937606233745
+            },
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-eventvar",
+                  "objectClass": "System",
+                  "sid": 554677082500399,
+                  "parameters": {
+                    "variable": "BuffRollSlot",
+                    "comparison": 0,
+                    "value": "3"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-animation-frame",
+                  "objectClass": "buffIcon4",
+                  "sid": 573613762330367,
+                  "parameters": {
+                    "frame-number": "BuffRollFrame"
+                  }
+                }
+              ],
+              "sid": 718224447189230
+            },
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-eventvar",
+                  "objectClass": "System",
+                  "sid": 467214069477940,
+                  "parameters": {
+                    "variable": "BuffRollSlot",
+                    "comparison": 0,
+                    "value": "4"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "set-animation-frame",
+                  "objectClass": "buffIcon5",
+                  "sid": 207946077491160,
+                  "parameters": {
+                    "frame-number": "BuffRollFrame"
+                  }
+                }
+              ],
+              "sid": 319608408583759
+            },
+            {
+              "eventType": "block",
+              "conditions": [],
+              "actions": [
+                {
+                  "id": "set-boolean-eventvar",
+                  "objectClass": "System",
+                  "sid": 345263531338392,
+                  "parameters": {
+                    "variable": "SuppressChainUI",
+                    "value": "false"
+                  }
+                },
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 937471949736913,
+                  "parameters": {
+                    "variable": "BuffRollSlot",
+                    "value": "-1"
+                  }
+                },
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 645543983974931,
+                  "parameters": {
+                    "variable": "BuffRollActive",
+                    "value": "0"
+                  }
+                },
+                {
+                  "callFunction": "RegisterPartyBuffSlot",
+                  "sid": 166895972773889,
+                  "parameters": [
+                    "BuffRollType"
+                  ]
+                },
+                {
+                  "callFunction": "RefreshPartyBuffUI",
+                  "sid": 451737890525350
+                },
+                {
+                  "callFunction": "ExecuteSkill",
+                  "sid": 170144907575532,
+                  "parameters": [
+                    "PendingSkillID",
+                    "PendingActor",
+                    "0"
+                  ]
+                }
+              ],
+              "sid": 186523349562306
+            },
+            {
+              "eventType": "block",
+              "conditions": [],
+              "actions": [
+                {
+                  "id": "set-eventvar-value",
+                  "objectClass": "System",
+                  "sid": 828689210807628,
+                  "parameters": {
+                    "variable": "IsPlayerBusy",
+                    "value": "0"
+                  }
+                },
+                {
+                  "id": "set-boolean-eventvar",
+                  "objectClass": "System",
+                  "sid": 409965503488050,
+                  "parameters": {
+                    "variable": "CanPickGems",
+                    "value": "true"
+                  }
+                },
+                {
+                  "callFunction": "AdvanceTurn",
+                  "sid": 476115642554628
+                },
+                {
+                  "callFunction": "ProcessTurn",
+                  "sid": 707749453119506
+                }
+              ],
+              "sid": 395700228913716
+            }
+          ]
+        }
+      ],
+      "sid": 135390452025531
+    },
+    {
+      "eventType": "group",
+      "disabled": false,
+      "title": "BUFF PROGRESS BARS",
+      "description": "",
+      "isActiveOnStart": true,
+      "children": [
+        {
+          "eventType": "block",
+          "conditions": [
+            {
+              "id": "every-tick",
+              "objectClass": "System",
+              "sid": 541763875621753
+            }
+          ],
+          "actions": [],
+          "sid": 727852718206545,
+          "children": [
+            {
+              "eventType": "block",
+              "conditions": [
+                {
+                  "id": "compare-boolean-eventvar",
+                  "objectClass": "System",
+                  "sid": 947078104731457,
+                  "parameters": {
+                    "variable": "BuffProgActive"
+                  }
+                }
+              ],
+              "actions": [],
+              "sid": 948595101293117,
+              "children": [
+                {
+                  "eventType": "block",
+                  "conditions": [
+                    {
+                      "id": "compare-two-values",
+                      "objectClass": "System",
+                      "sid": 439897434748860,
+                      "parameters": {
+                        "first-value": "time",
+                        "comparison": 5,
+                        "second-value": "BuffProgEndAt"
+                      }
+                    }
+                  ],
+                  "actions": [
+                    {
+                      "id": "set-visible",
+                      "objectClass": "BuffProg_Bar",
+                      "sid": 997519011926761,
+                      "parameters": {
+                        "visibility": "invisible"
+                      }
+                    },
+                    {
+                      "id": "set-boolean-eventvar",
+                      "objectClass": "System",
+                      "sid": 139072451558588,
+                      "parameters": {
+                        "variable": "BuffProgActive",
+                        "value": "false"
+                      }
+                    },
+                    {
+                      "id": "set-eventvar-value",
+                      "objectClass": "System",
+                      "sid": 551335539837178,
+                      "parameters": {
+                        "variable": "BuffProgSlot",
+                        "value": "-1"
+                      }
+                    },
+                    {
+                      "id": "stop-loop",
+                      "objectClass": "System",
+                      "sid": 242764846621253
+                    }
+                  ],
+                  "sid": 449395682855604
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "sid": 372299140916289
+    }
+  ],
+  "sid": 521470070382208
+};

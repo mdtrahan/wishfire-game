@@ -1,0 +1,10 @@
+{
+	"name": "PartyHP_text",
+	"plugin-id": "Text",
+	"sid": 466083334520873,
+	"isGlobal": false,
+	"editorNewInstanceIsReplica": true,
+	"instanceVariables": [],
+	"behaviorTypes": [],
+	"effectTypes": []
+}

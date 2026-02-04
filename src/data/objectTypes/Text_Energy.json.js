@@ -1,0 +1,10 @@
+export const Text_Energy = {
+  "name": "Text_Energy",
+  "plugin-id": "Text",
+  "sid": 855829543481087,
+  "isGlobal": false,
+  "editorNewInstanceIsReplica": true,
+  "instanceVariables": [],
+  "behaviorTypes": [],
+  "effectTypes": []
+};

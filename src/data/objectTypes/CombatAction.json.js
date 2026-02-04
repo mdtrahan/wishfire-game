@@ -1,0 +1,10 @@
+export const CombatAction = {
+  "name": "CombatAction",
+  "plugin-id": "Text",
+  "sid": 904988326344633,
+  "isGlobal": false,
+  "editorNewInstanceIsReplica": true,
+  "instanceVariables": [],
+  "behaviorTypes": [],
+  "effectTypes": []
+};

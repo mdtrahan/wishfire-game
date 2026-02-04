@@ -1,0 +1,262 @@
+export const CombatLogic_uistate = {
+  "name": "CombatLogic",
+  "tabColor": [
+    0.8000000000000002,
+    0.9999999999999999,
+    0.8500000000000001,
+    1
+  ],
+  "tabTextColor": null,
+  "uiState": {
+    "viewsUIState": [
+      {
+        "scroll": 0,
+        "eventSheetView": {
+          "conditionsColumnWidth": 364,
+          "conditionNameCellWidth": 90,
+          "actionNameCellWidth": 90,
+          "fontSizeEm": 1
+        }
+      }
+    ],
+    "bookmark": false,
+    "eventsUIState": [
+      {
+        "viewsUIState": [
+          {}
+        ],
+        "bookmark": false
+      },
+      {
+        "viewsUIState": [
+          {
+            "expanded": true
+          }
+        ],
+        "bookmark": false,
+        "children": [
+          {
+            "viewsUIState": [
+              {}
+            ],
+            "bookmark": false
+          },
+          {
+            "viewsUIState": [
+              {}
+            ],
+            "bookmark": false
+          },
+          {
+            "viewsUIState": [
+              {}
+            ],
+            "bookmark": false
+          },
+          {
+            "viewsUIState": [
+              {}
+            ],
+            "bookmark": false
+          },
+          {
+            "viewsUIState": [
+              {}
+            ],
+            "bookmark": false
+          },
+          {
+            "viewsUIState": [
+              {}
+            ],
+            "bookmark": false
+          },
+          {
+            "viewsUIState": [
+              {}
+            ],
+            "bookmark": false
+          },
+          {
+            "viewsUIState": [
+              {
+                "expanded": true
+              }
+            ],
+            "bookmark": false,
+            "children": [
+              {
+                "viewsUIState": [
+                  {
+                    "expanded": true
+                  }
+                ],
+                "bookmark": false,
+                "children": [
+                  {
+                    "viewsUIState": [
+                      {
+                        "expanded": true
+                      }
+                    ],
+                    "bookmark": false,
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "viewsUIState": [
+                  {
+                    "expanded": true
+                  }
+                ],
+                "bookmark": false,
+                "children": [
+                  {
+                    "viewsUIState": [
+                      {
+                        "expanded": true
+                      }
+                    ],
+                    "bookmark": false,
+                    "children": [
+                      {
+                        "viewsUIState": [
+                          {
+                            "expanded": true
+                          }
+                        ],
+                        "bookmark": false,
+                        "children": []
+                      },
+                      {
+                        "viewsUIState": [
+                          {
+                            "expanded": true
+                          }
+                        ],
+                        "bookmark": false,
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "viewsUIState": [
+                      {
+                        "expanded": true
+                      }
+                    ],
+                    "bookmark": false,
+                    "children": [
+                      {
+                        "viewsUIState": [
+                          {
+                            "expanded": true
+                          }
+                        ],
+                        "bookmark": false,
+                        "children": []
+                      },
+                      {
+                        "viewsUIState": [
+                          {
+                            "expanded": true
+                          }
+                        ],
+                        "bookmark": false,
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "viewsUIState": [
+                      {
+                        "expanded": true
+                      }
+                    ],
+                    "bookmark": false,
+                    "children": [
+                      {
+                        "viewsUIState": [
+                          {
+                            "expanded": true
+                          }
+                        ],
+                        "bookmark": false,
+                        "children": []
+                      },
+                      {
+                        "viewsUIState": [
+                          {
+                            "expanded": true
+                          }
+                        ],
+                        "bookmark": false,
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "viewsUIState": [
+                      {
+                        "expanded": true
+                      }
+                    ],
+                    "bookmark": false,
+                    "children": []
+                  },
+                  {
+                    "viewsUIState": [
+                      {
+                        "expanded": true
+                      }
+                    ],
+                    "bookmark": false,
+                    "children": [
+                      {
+                        "viewsUIState": [
+                          {
+                            "expanded": true
+                          }
+                        ],
+                        "bookmark": false,
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "viewsUIState": [
+                      {
+                        "expanded": true
+                      }
+                    ],
+                    "bookmark": false,
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "viewsUIState": [
+                  {
+                    "expanded": true
+                  }
+                ],
+                "bookmark": false,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "viewsUIState": [
+          {
+            "expanded": true
+          }
+        ],
+        "bookmark": false,
+        "children": []
+      }
+    ]
+  }
+};

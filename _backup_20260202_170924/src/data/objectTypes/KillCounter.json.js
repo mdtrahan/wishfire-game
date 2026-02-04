@@ -1,0 +1,10 @@
+export const KillCounter = {
+  "name": "KillCounter",
+  "plugin-id": "Text",
+  "sid": 708624739263671,
+  "isGlobal": false,
+  "editorNewInstanceIsReplica": true,
+  "instanceVariables": [],
+  "behaviorTypes": [],
+  "effectTypes": []
+};

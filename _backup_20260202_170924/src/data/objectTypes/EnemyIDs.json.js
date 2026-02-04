@@ -1,0 +1,8 @@
+export const EnemyIDs = {
+  "name": "EnemyIDs",
+  "plugin-id": "Arr",
+  "sid": 966129915451444,
+  "isGlobal": true,
+  "editorNewInstanceIsReplica": true,
+  "instanceVariables": []
+};

@@ -1,0 +1,10 @@
+export const EnemyKeyList = {
+  "name": "EnemyKeyList",
+  "plugin-id": "Text",
+  "sid": 540324801488085,
+  "isGlobal": false,
+  "editorNewInstanceIsReplica": true,
+  "instanceVariables": [],
+  "behaviorTypes": [],
+  "effectTypes": []
+};

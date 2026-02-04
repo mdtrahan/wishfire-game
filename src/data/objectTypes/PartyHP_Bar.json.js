@@ -1,0 +1,9 @@
+export const PartyHP_Bar = {
+  "name": "PartyHP_Bar",
+  "plugin-id": "progressbar",
+  "sid": 342297578272640,
+  "isGlobal": false,
+  "editorNewInstanceIsReplica": true,
+  "instanceVariables": [],
+  "behaviorTypes": []
+};

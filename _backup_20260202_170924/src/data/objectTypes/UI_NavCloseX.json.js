@@ -1,0 +1,10 @@
+export const UI_NavCloseX = {
+  "name": "UI_NavCloseX",
+  "plugin-id": "Text",
+  "sid": 513500054505446,
+  "isGlobal": false,
+  "editorNewInstanceIsReplica": true,
+  "instanceVariables": [],
+  "behaviorTypes": [],
+  "effectTypes": []
+};

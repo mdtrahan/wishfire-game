@@ -1,0 +1,10 @@
+export const Nav_HomeText = {
+  "name": "Nav_HomeText",
+  "plugin-id": "Text",
+  "sid": 996571220055552,
+  "isGlobal": false,
+  "editorNewInstanceIsReplica": true,
+  "instanceVariables": [],
+  "behaviorTypes": [],
+  "effectTypes": []
+};

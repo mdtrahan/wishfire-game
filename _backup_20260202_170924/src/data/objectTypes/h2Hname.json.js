@@ -1,0 +1,10 @@
+export const h2Hname = {
+  "name": "h2Hname",
+  "plugin-id": "Text",
+  "sid": 679252475853152,
+  "isGlobal": false,
+  "editorNewInstanceIsReplica": true,
+  "instanceVariables": [],
+  "behaviorTypes": [],
+  "effectTypes": []
+};

@@ -1,0 +1,13 @@
+export const Flowchart_1_uistate = {
+  "flowchart": {
+    "propertiesBar": {},
+    "z": 1,
+    "sx": 0.5,
+    "sy": 0.5,
+    "preset-nodes": {
+      "expanded": true,
+      "subfolders": []
+    }
+  },
+  "nodes": []
+};
