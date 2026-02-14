@@ -1,35 +1,68 @@
 ## Project Guardrails (Codex-Orka)
 
-### Source of Truth
-- **JSON files in `project_C3_conversion/` are ground truth.** Never edit them.
-- The JS/HTML must mirror Construct 3 behavior; do not invent mechanics without explicit design approval.
+### Canonical Runtime Source (Critical)
+
+- The authoritative runtime source is:
+  - `Scripts/`
+  - `web-runner/`
+- The deployed Netlify build defines canonical gameplay behavior.
+- `main` branch is the only production branch.
+- All new feature branches must branch from `main`.
+
+### Legacy Construct 3 Archive (Read-Only)
+
+- `project_C3_conversion/` is a historical archive.
+- It is NOT runtime source of truth.
+- It must never be used to regenerate or rewrite current runtime logic.
+- No gameplay logic should be inferred from Construct 3 JSON.
+- Do not mirror Construct 3 behavior unless explicitly instructed.
 
 ### Rendering & Assets
-- Use sprite assets from `project_C3_conversion/images/` (no placeholder art).
-- When a sprite is not placed on a layout, load its object type explicitly in JS.
-- UI text styling/size should not change unless requested.
 
-### Turn/Combat System
-- Turn order is **strictly SPD‑sorted** (no jitter).
-- Speed buffs trigger a **turn order rebuild** while preserving the current actor.
-- **Speed spike rule:** if `SPD_self >= SPD_fastest_opponent * SpeedDoubleRatio` then insert one extra immediate turn (heroes only by default).
-- **Newly spawned enemies** are appended to the **bottom** of the turn order unless they qualify for the speed spike rule.
-- Party uses a **shared HP pool**; heroes remain in the turn order while `PartyHP > 0`.
+- Runtime assets must be referenced from the active runtime directories.
+- Do not introduce placeholder art unless explicitly requested.
+- UI text styling/size must not change unless requested.
 
-### Gem/Action Flow
-- Player activities are **mutually exclusive**: gem selection, target selection + confirm, nav menu, refill.
-- Refill is gated during gem selection, target selection, and overlay.
-- Blue gem = party buff roulette (no target selection).
+### Turn/Combat System (Canonical Behavior)
 
-### UI/Modal Layering
-- Nav menu elements (labels, refill, backer, close button + X) must render **above** the dark field.
-- Dark field blocks gameplay while nav is open but must **not** cover nav UI.
-- Do not move/alter gemboard layers when showing nav UI.
+- Turn order is strictly SPD-sorted.
+- Speed buffs rebuild turn order while preserving the current actor.
+- Speed spike rule:
+  - If `SPD_self >= SPD_fastest_opponent * SpeedDoubleRatio`
+  - Insert one extra immediate turn (heroes only unless specified).
+- Newly spawned enemies append to bottom unless spike-qualified.
+- Party uses a shared HP pool.
+- Purple gem behavior:
+  - Applies party attack amplification (not debuff).
+  - No legacy debuff behavior is valid.
 
-### Debug/QA Aids
-- Track‑next group shows upcoming turns with **base and boosted stats**.
-- Maintain combat logs and buff logs for QA visibility.
+### Gem / Action Flow
 
-### Netlify Packaging (when asked)
-- Make all asset paths **relative** (no leading `/`).
-- Deploy with `web-runner/` and `project_C3_conversion/` together.
+- Player states are mutually exclusive:
+  - gem selection
+  - target selection
+  - nav menu
+  - refill
+- Refill is gated during gem selection, target selection, and overlays.
+- Blue gem = party buff roulette.
+- Purple gem = party attack amplification (canonical behavior).
+
+### UI / Modal Layering
+
+- Nav UI renders above dark field.
+- Dark field blocks gameplay but never covers nav UI.
+- Gemboard layers must not shift during nav display.
+
+### Deployment & Safety
+
+- All deploys originate from `main`.
+- Netlify must track `main`.
+- Production builds must be tagged.
+- Never rebuild runtime from archived C3 JSON.
+- Never treat ZIP artifacts as secondary; they are canonical snapshots.
+
+### Debug / QA
+
+- Track-next group shows upcoming turns with base and boosted stats.
+- Combat logs must remain intact.
+- New instrumentation must be removable and isolated.

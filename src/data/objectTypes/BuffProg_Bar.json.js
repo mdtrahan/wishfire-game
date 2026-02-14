@@ -1,9 +1,0 @@
-export const BuffProg_Bar = {
-  "name": "BuffProg_Bar",
-  "plugin-id": "progressbar",
-  "sid": 941207656880740,
-  "isGlobal": false,
-  "editorNewInstanceIsReplica": true,
-  "instanceVariables": [],
-  "behaviorTypes": []
-};

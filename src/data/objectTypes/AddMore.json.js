@@ -1,9 +1,0 @@
-export const AddMore = {
-  "name": "AddMore",
-  "plugin-id": "Button",
-  "sid": 501659417170710,
-  "isGlobal": false,
-  "editorNewInstanceIsReplica": true,
-  "instanceVariables": [],
-  "behaviorTypes": []
-};

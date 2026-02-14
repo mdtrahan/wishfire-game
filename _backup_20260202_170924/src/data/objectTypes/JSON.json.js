@@ -1,8 +1,0 @@
-export const JSON = {
-  "name": "JSON",
-  "plugin-id": "Json",
-  "sid": 393612752809563,
-  "isGlobal": true,
-  "editorNewInstanceIsReplica": true,
-  "instanceVariables": []
-};

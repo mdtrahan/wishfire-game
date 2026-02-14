@@ -1,3 +1,10 @@
 .env
 .venv
 __pycache__/
+
+# Legacy / archive directories
+/_archive/
+/project_C3_conversion/
+/_legacy/
+/_backup*
+/src/data/

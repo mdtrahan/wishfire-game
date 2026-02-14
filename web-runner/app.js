@@ -1,5 +1,5 @@
-import { state } from '../Scripts/state.js';
-import { createContext, callFunctionWithContext } from '../Scripts/functionRegistry.js';
+import { state } from './modules/state.js';
+import { createContext, callFunctionWithContext } from './modules/functionRegistry.js';
 
 const out = document.getElementById('output');
 const walletOut = document.getElementById('wallet-output');
@@ -16,8 +16,8 @@ function getHeroUIDByIndex(idx) {
   selectedHero: 0,
   selectedEnemy: 0,
   playerTurn: true,
-  partyHP: [100, 80, 90, 75],
-  partyMaxHP: [100, 100, 100, 100],
+  partyHP: [42, 35, 30, 40],
+  partyMaxHP: [42, 35, 30, 40],
   enemyHP: [50, 60, 55],
   enemyMaxHP: [50, 60, 55],
   // Overlay state - NavMenu opens overlay window
@@ -50,6 +50,13 @@ function getHeroUIDByIndex(idx) {
   },
   lastTurnPhase: null,
 };
+
+const CANONICAL_HERO_ROSTER = [
+  { name: 'Falie', hp: 42, maxHP: 42, ATK: 18, DEF: 20, MAG: 10, RES: 18, SPD: 9, attackType: 'melee' },
+  { name: 'Huun', hp: 35, maxHP: 35, ATK: 22, DEF: 10, MAG: 8, RES: 12, SPD: 20, attackType: 'melee' },
+  { name: 'Runa', hp: 30, maxHP: 30, ATK: 8, DEF: 8, MAG: 28, RES: 20, SPD: 11, attackType: 'magic' },
+  { name: 'Kojonn', hp: 40, maxHP: 40, ATK: 12, DEF: 14, MAG: 22, RES: 18, SPD: 14, attackType: 'magic' },
+];
 
 function setGemArray(arr) {
   state.globals.Gems = arr;
@@ -107,7 +114,22 @@ async function fetchJson(url){
 }
 
 function assetUrl(path){
-  return new URL(`../project_C3_conversion/${path}`, window.location.href).toString();
+  return new URL(`./assets/${path}`, window.location.href).toString();
+}
+
+const runtimeImageBaseUrl = assetUrl('images/');
+
+function resolveRuntimeImageUrl(inputUrl){
+  if (!inputUrl) return inputUrl;
+  try {
+    const raw = String(inputUrl);
+    if (raw.startsWith('images/')) {
+      return new URL(raw.slice('images/'.length), runtimeImageBaseUrl).toString();
+    }
+    return new URL(raw, window.location.href).toString();
+  } catch {
+    return String(inputUrl);
+  }
 }
 
 function summaryText(layout, types, enemies){
@@ -142,48 +164,35 @@ function initEntities(enemyRows, layoutInstances) {
   state.entities = [];
   state.globals.EnemyData = enemyRows || [];
 
-  const heroByIndex = new Map();
-  if (Array.isArray(layoutInstances)) {
-    for (const ins of layoutInstances) {
-      if (!ins || !ins.type) continue;
-      const m = String(ins.type).match(/^icon_hero(\d+)$/i);
-      if (!m) continue;
-      const idx = Number(m[1]) - 1;
-      if (idx < 0 || idx > 3) continue;
-      const vars = ins.variables || {};
-      heroByIndex.set(idx, vars);
-    }
-  }
-
   const partyHP = [];
   const partyMaxHP = [];
   for (let i = 0; i < 4; i++) {
-    const v = heroByIndex.get(i) || {};
-    // Permanent SPD overrides in JS (ground-truth JSON remains untouched).
-    if (i === 0) v.SPD = 9;   // Falie
-    if (i === 2) v.SPD = 11;  // Runa
-    const hp = Number(v.HP ?? gameState.partyHP[i] ?? 0);
-    let maxHP = Number(v.maxHP ?? (v.HP ?? gameState.partyMaxHP[i] ?? 0));
-    if (!maxHP || maxHP < hp) maxHP = hp;
+    const v = CANONICAL_HERO_ROSTER[i];
+    let maxHP = Number(v.maxHP);
+    if (!Number.isFinite(maxHP) || maxHP <= 0) maxHP = 1;
+    let hp = Number(v.hp);
+    if (!Number.isFinite(hp) || hp < 0) hp = maxHP;
+    if (hp > maxHP) hp = maxHP;
     partyHP[i] = hp;
     partyMaxHP[i] = maxHP;
     state.entities.push({
       uid: i + 1,
       kind: 'hero',
-      name: v.name || `Hero ${i + 1}`,
+      name: v.name,
       hp,
       maxHP: partyMaxHP[i],
       stats: {
-        ATK: Number(v.ATK ?? 0),
-        DEF: Number(v.DEF ?? 0),
-        MAG: Number(v.MAG ?? 0),
-        RES: Number(v.RES ?? 0),
-        SPD: Number(v.SPD ?? 0),
+        ATK: Number(v.ATK),
+        DEF: Number(v.DEF),
+        MAG: Number(v.MAG),
+        RES: Number(v.RES),
+        SPD: Number(v.SPD),
       },
       heroIndex: i,
-      attackType: v.attackType || 'melee',
+      attackType: v.attackType,
       isAlive: true,
     });
+    console.log(`[HP_FIX] hero=${v.name} maxHP=${maxHP}`);
   }
 
   gameState.partyHP = partyHP;
@@ -711,29 +720,11 @@ function handleGemMatch(color) {
 }
 
 function tryGetInstances(layout){
-  const instances = [];
-  if(!layout || !layout.layers) return instances;
-  
-  // Skip reference/guide layers and debug layers
-  const skipLayers = new Set(['UI_SAMPLE', 'UI layout  sizing']);
-  
-  for(let layerIdx = 0; layerIdx < layout.layers.length; layerIdx++){
-    const layer = layout.layers[layerIdx];
-    if(!layer.instances || skipLayers.has(layer.name)) continue;
-    
-    for(const ins of layer.instances){
-      instances.push({ 
-        type: ins.type, 
-        world: ins.world || {x:0,y:0,width:32,height:32},
-        uid: ins.uid,
-        layerName: layer.name,
-        layerIndex: layerIdx,
-        variables: ins.instanceVariables || ins.variables,
-        properties: ins.properties
-      });
-      if(instances.length>200) return instances;
-    }
-  }
+  if (!layout || !Array.isArray(layout.layers)) return [];
+  const instances = layout.layers
+    .filter(layer => layer && Array.isArray(layer.instances))
+    .flatMap(layer => layer.instances);
+  console.log('[LAYOUT_AUDIT] flattenedInstanceCount', instances.length);
   return instances;
 }
 
@@ -747,7 +738,10 @@ function makeImagePath(typeName, animName){
 
 async function loadImage(url){
   return new Promise((res)=>{
-    const img = new Image(); img.onload = ()=>res(img); img.onerror = ()=>res(null); img.src = url;
+    const img = new Image();
+    img.onload = ()=>res(img);
+    img.onerror = ()=>res(null);
+    img.src = resolveRuntimeImageUrl(url);
   });
 }
 
@@ -763,32 +757,39 @@ async function main(){
     state.globals.DevTestMode = params.has('devtest');
     window.__codexGameDevTest = !!state.globals.DevTestMode;
   }
-  const layout = await fetchJson(assetUrl('layouts/Layout 1.json'));
-  if(!layout){ out.textContent = 'Failed to load layout'; return; }
+  const runtimeLayouts = await fetchJson(assetUrl('layouts.json')) || {};
+  const layout = runtimeLayouts.layout || { name: 'runtime-fallback', layers: [] };
+  console.log('[LAYOUT_AUDIT] topLevelKeys', Object.keys(layout || {}));
   console.log('[INIT] Layout loaded');
-  const assetsLayout = await fetchJson(assetUrl('layouts/Assets.json'));
+  const assetsLayout = runtimeLayouts.assetsLayout || null;
 
   // read project viewport to scale coordinates
-  const project = await fetchJson(assetUrl('project.c3proj'));
+  const project = runtimeLayouts.project || { viewportWidth: 360, viewportHeight: 640 };
   const viewW = project && project.viewportWidth ? project.viewportWidth : 360;
   const viewH = project && project.viewportHeight ? project.viewportHeight : 640;
   console.log('[INIT] Project viewport:', viewW, 'x', viewH);
 
   const instances = tryGetInstances(layout);
+  console.log('[LAYOUT_AUDIT] instanceCount', Array.isArray(instances) ? instances.length : 0);
+  const gemInstanceCount = Array.isArray(instances)
+    ? instances.filter(i => i && i.type === 'Gem').length
+    : 0;
+  console.log('[LAYOUT_AUDIT] gemInstanceCount', gemInstanceCount);
   const typesNeeded = Array.from(new Set(instances.map(i=>i.type)));
   // Ensure required types are loaded even if not placed on layout
   ['Enemy_Sprite', 'Bar_Fill', 'Bar_Yellow', 'Bar_Back', 'PartyHP_Bar', 'Gem', 'AttackButton', 'Selector'].forEach(t => {
     if (!typesNeeded.includes(t)) typesNeeded.push(t);
   });
+  const objectTypeData = await fetchJson(assetUrl('objectTypes.json')) || { types: {} };
+  const allTypes = objectTypeData.types || {};
   const types = {};
-  for(const t of typesNeeded){
-    const url = assetUrl(`objectTypes/${encodeURIComponent(t)}.json`);
-    const data = await fetchJson(url);
-    if(data) types[t] = data;
+  for (const t of typesNeeded) {
+    const data = allTypes[t];
+    if (data) types[t] = data;
   }
   console.log('[INIT] Loaded', Object.keys(types).length, 'object types');
 
-  const enemies = await fetchJson(assetUrl('files/Enemies.json'));
+  const enemies = await fetchJson(assetUrl('enemies.json'));
   const enemyRows = parseC2ArrayTable(enemies);
   initEntities(enemyRows, instances);
   const baseSummary = summaryText(layout, types, enemies);
