@@ -1,3 +1,4 @@
+<!-- Runtime source of truth is Scripts/ + web-runner/. -->
 # Codex-Orka (workspace bootstrap)
 
 This repository contains process docs (ATLAS/GOTCHA). The workspace has been initialized with a minimal GOTCHA layout and a sample deterministic tool.
