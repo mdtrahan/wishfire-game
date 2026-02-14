@@ -1,10 +1,170 @@
 import { state } from './modules/state.js';
 import { createContext, callFunctionWithContext } from './modules/functionRegistry.js';
+import { CombatRuntimeGateway } from '../src/core/combatRuntimeGateway.js';
 
 const out = document.getElementById('output');
 const walletOut = document.getElementById('wallet-output');
 const canvas = document.getElementById('view');
 const ctx = canvas.getContext('2d');
+const HARNESS_MODE = typeof window !== 'undefined' && window.location.search.includes('harness=true');
+const DEBUG_LAYOUT = (() => {
+  let enabled = false;
+  try {
+    if (typeof process !== 'undefined' && process && process.env && process.env.DEBUG_LAYOUT === 'true') {
+      enabled = true;
+    }
+  } catch {}
+  try {
+    if (typeof window !== 'undefined' && window && window.DEBUG_LAYOUT === true) {
+      enabled = true;
+    }
+  } catch {}
+  return enabled;
+})();
+function debugLayoutLog(message) {
+  if (!DEBUG_LAYOUT) return;
+  console.log(message);
+}
+const layoutHarnessEnabled = (() => {
+  return HARNESS_MODE;
+})();
+
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function createHarnessEventBus() {
+  const listeners = new Map();
+  const events = [];
+  return {
+    events,
+    on(eventName, handler) {
+      if (!listeners.has(eventName)) listeners.set(eventName, new Set());
+      listeners.get(eventName).add(handler);
+      return () => listeners.get(eventName)?.delete(handler);
+    },
+    emit(eventName, payload = {}) {
+      events.push({ name: eventName, payload });
+      const subs = listeners.get(eventName);
+      if (!subs || subs.size === 0) return;
+      for (const fn of [...subs]) fn(payload);
+    },
+  };
+}
+
+class HarnessInputDomainManager {
+  constructor(eventBus) {
+    this.eventBus = eventBus;
+    this.activeDomain = null;
+    this.locked = false;
+  }
+
+  setActiveDomain(domain) {
+    this.activeDomain = domain || null;
+  }
+
+  getActiveDomain() {
+    return this.activeDomain;
+  }
+
+  lock() {
+    this.locked = true;
+    debugLayoutLog('[Input] Locked');
+  }
+
+  unlock() {
+    this.locked = false;
+    debugLayoutLog('[Input] Unlocked');
+  }
+
+  emit(domain, eventName, payload = {}) {
+    const allowed = !this.locked && !!domain && domain === this.activeDomain;
+    debugLayoutLog(`[Input] Emit → domain:${domain} event:${eventName} allowed:${allowed} active:${this.activeDomain}`);
+    if (!allowed) return false;
+    this.eventBus.emit(eventName, { ...payload, domain });
+    return true;
+  }
+}
+
+function createHarnessLayoutState({ eventBus, inputDomains, combatRuntimeGateway }) {
+  const layouts = new Map();
+  const snapshotsByLayout = new Map();
+  let activeLayoutId = null;
+  let isTransitioning = false;
+
+  return {
+    registerLayout(descriptor) {
+      layouts.set(descriptor.id, descriptor);
+    },
+    getActiveLayoutId() {
+      return activeLayoutId;
+    },
+    getSnapshot(layoutId) {
+      return snapshotsByLayout.get(layoutId);
+    },
+    async activateInitialLayout(layoutId, payload = {}) {
+      const targetLayout = layouts.get(layoutId);
+      if (!targetLayout) throw new Error(`Missing layout: ${layoutId}`);
+      activeLayoutId = layoutId;
+      inputDomains.setActiveDomain(layoutId);
+      debugLayoutLog(`[Layout] Initial activation → ${layoutId}`);
+      const context = {
+        eventBus,
+        payload,
+        reason: 'harness-initial',
+        from: null,
+        to: layoutId,
+        resumeSnapshot: snapshotsByLayout.get(layoutId) || null,
+      };
+      if (typeof targetLayout.onEnter === 'function') await targetLayout.onEnter(context);
+      if (typeof targetLayout.onActive === 'function') await targetLayout.onActive(context);
+    },
+    async requestLayoutChange(targetLayoutId, reason = 'harness-request', payload = {}) {
+      debugLayoutLog(`[Layout] Request → from:${activeLayoutId} to:${targetLayoutId} reason:${reason}`);
+      if (isTransitioning) return false;
+      if (activeLayoutId === targetLayoutId) return false;
+      const sourceLayout = activeLayoutId ? layouts.get(activeLayoutId) : null;
+      const targetLayout = layouts.get(targetLayoutId);
+      if (!targetLayout) return false;
+      if (sourceLayout && Array.isArray(sourceLayout.allowedTransitions)) {
+        if (!sourceLayout.allowedTransitions.includes(targetLayoutId)) {
+          debugLayoutLog(`[Layout] Invalid transition → from:${activeLayoutId} to:${targetLayoutId}`);
+          return false;
+        }
+      }
+
+      isTransitioning = true;
+      inputDomains.lock();
+      eventBus.emit('layout:changeRequested', { from: activeLayoutId, to: targetLayoutId, reason });
+      try {
+        if (sourceLayout && typeof sourceLayout.onExit === 'function') {
+          const exitContext = { eventBus, payload, reason, from: activeLayoutId, to: targetLayoutId };
+          const snapshot = await sourceLayout.onExit(exitContext);
+          if (snapshot !== undefined) snapshotsByLayout.set(activeLayoutId, snapshot);
+        }
+        const from = activeLayoutId;
+        activeLayoutId = targetLayoutId;
+        inputDomains.setActiveDomain(targetLayoutId);
+        const enterContext = {
+          eventBus,
+          payload,
+          reason,
+          from,
+          to: targetLayoutId,
+          resumeSnapshot: snapshotsByLayout.get(targetLayoutId) || null,
+        };
+        if (typeof targetLayout.onEnter === 'function') await targetLayout.onEnter(enterContext);
+        if (typeof targetLayout.onActive === 'function') await targetLayout.onActive(enterContext);
+        eventBus.emit('layout:changed', { from, to: targetLayoutId, reason });
+        debugLayoutLog(`[Layout] Active → ${targetLayoutId}`);
+        return true;
+      } finally {
+        isTransitioning = false;
+        inputDomains.unlock();
+      }
+    },
+  };
+}
 
 function getHeroUIDByIndex(idx) {
   const hero = state.entities.find(e => e.kind === 'hero' && e.heroIndex === idx);
@@ -49,7 +209,20 @@ function getHeroUIDByIndex(idx) {
     current: null,
   },
   lastTurnPhase: null,
+  baseSummary: '',
 };
+let COMBAT_LAYOUT_READY = false;
+let COMBAT_BOOTSTRAP_COMPLETE = false;
+
+const eventBus = createHarnessEventBus();
+let layoutState = null;
+const animationLayer = null;
+const combatRuntimeGateway = new CombatRuntimeGateway({
+  combatState: gameState,
+  eventBus,
+  layoutState: null,
+  callFunctionWithContext,
+});
 
 const CANONICAL_HERO_ROSTER = [
   { name: 'Falie', hp: 42, maxHP: 42, ATK: 18, DEF: 20, MAG: 10, RES: 18, SPD: 9, attackType: 'melee' },
@@ -95,6 +268,16 @@ function syncFromGlobals() {
   }
   if (state.globals.Gems && Array.isArray(state.globals.Gems)) {
     gameState.gems = state.globals.Gems;
+  }
+}
+
+function assertCombatLayoutDev(functionName) {
+  if (!state || !state.globals || !state.globals.DevTestMode) return;
+  const activeLayoutId = (layoutState && typeof layoutState.getActiveLayoutId === 'function')
+    ? layoutState.getActiveLayoutId()
+    : null;
+  if (activeLayoutId !== 'combat') {
+    throw new Error(`[LayoutAssert] ${functionName} called outside combat layout (active=${activeLayoutId})`);
   }
 }
 
@@ -161,6 +344,7 @@ function parseC2ArrayTable(c2) {
 }
 
 function initEntities(enemyRows, layoutInstances) {
+  assertCombatLayoutDev('initEntities');
   state.entities = [];
   state.globals.EnemyData = enemyRows || [];
 
@@ -222,8 +406,6 @@ function initEntities(enemyRows, layoutInstances) {
     state.globals.BattleStartMode = Math.random() < 0.5 ? 'ambush' : 'initiative';
   }
 
-  callFunctionWithContext(fnContext, 'StartRound');
-  state.globals.CurrentTurnIndex = 0;
   if (!state.globals.BattleStartShown) {
     state.globals.BattleStartShown = 1;
     const msg = state.globals.BattleStartMode === 'ambush'
@@ -236,8 +418,6 @@ function initEntities(enemyRows, layoutInstances) {
     state.globals.BattleStartFadeEndsAt = 2.4;
     state.globals.IsPlayerBusy = 1;
     state.globals.CanPickGems = 0;
-  } else {
-    callFunctionWithContext(fnContext, 'ProcessTurn');
   }
   callFunctionWithContext(fnContext, 'InitPartyHPFromHeroes');
   // Ensure party starts at full health
@@ -254,6 +434,7 @@ function initEntities(enemyRows, layoutInstances) {
 
 // Create gem board with random colors (0-5: Hero1, Hero2, Heal, Buff, AOE, Energy)
 function createGemBoard(gridBounds = null) {
+  assertCombatLayoutDev('createGemBoard');
   gameState.gems = [];
   gameState.grid = [];
   const g = boardGeometry;
@@ -711,7 +892,7 @@ function handleGemMatch(color) {
 
   gameState.boardCreated = gameState.gems.length > 0;
   if (!gameState.boardCreated) {
-    createGemBoard(gameState.gridBounds);
+    combatRuntimeGateway.runCombatBoardInit(createGemBoard, gameState.gridBounds);
   }
   if (state.globals.TurnPhase === 2) {
     callFunctionWithContext(fnContext, 'EnemyTurn');
@@ -746,8 +927,342 @@ async function loadImage(url){
 }
 
 async function main(){
-  console.log('[INIT] Starting initialization...');
-  syncPartyTotals();
+  const HARNESS_MODE = window.location.search.includes('harness=true');
+  if (HARNESS_MODE) {
+    console.log('[Harness] Enabled');
+    console.log('[Harness] Boot override BEFORE C3 init');
+
+    const inputDomains = new HarnessInputDomainManager(eventBus);
+
+    const createLayoutStateSingleton = ({ eventBus: bus, inputDomains: domains, combatRuntimeGateway: gateway }) =>
+      createHarnessLayoutState({ eventBus: bus, inputDomains: domains, combatRuntimeGateway: gateway });
+
+    const registerCoreLayouts = (layoutState, { combatGateway: gateway }) => {
+      layoutState.registerLayout({
+        id: 'combat',
+        allowedTransitions: ['base', 'shop', 'intro', 'astralOverlay'],
+        onEnter({ resumeSnapshot }) {
+          gateway.resume(resumeSnapshot || null);
+          eventBus.emit('layout:combat:entered', { restored: Boolean(resumeSnapshot) });
+        },
+        onActive() {},
+        onExit() {
+          return gateway.suspend();
+        },
+      });
+      layoutState.registerLayout({
+        id: 'base',
+        allowedTransitions: ['combat', 'shop', 'intro'],
+        onEnter() {},
+        onActive() {},
+        onExit() { return null; },
+      });
+      layoutState.registerLayout({
+        id: 'intro',
+        allowedTransitions: ['base', 'combat'],
+        onEnter() {},
+        onActive() {},
+        onExit() { return null; },
+      });
+      layoutState.registerLayout({
+        id: 'shop',
+        allowedTransitions: ['base', 'combat'],
+        onEnter() {},
+        onActive() {},
+        onExit() { return null; },
+      });
+    };
+
+    const registerHarnessLayouts = (layoutState) => {
+      layoutState.registerLayout({
+        id: 'storyMock',
+        allowedTransitions: ['combat'],
+        onEnter() {
+          gameState.overlayVisible = false;
+        },
+        onActive() {},
+        onExit() { return null; },
+      });
+      layoutState.registerLayout({
+        id: 'astralOverlay',
+        allowedTransitions: ['combat'],
+        onEnter() {
+          gameState.overlayVisible = false;
+          console.log('[Harness] astralOverlay active');
+        },
+        onActive() {},
+        onExit() { return null; },
+      });
+    };
+
+    layoutState = createLayoutStateSingleton({
+      eventBus,
+      animationLayer,
+      combatRuntimeGateway,
+      inputDomains,
+    });
+    combatRuntimeGateway.setLayoutState(layoutState);
+
+    registerCoreLayouts(layoutState, { combatGateway: combatRuntimeGateway });
+    registerHarnessLayouts(layoutState, { combatGateway: combatRuntimeGateway });
+
+    await layoutState.activateInitialLayout('storyMock');
+    console.log('[Harness] storyMock activated');
+
+    return;
+  }
+
+  const InputDomainManager = HarnessInputDomainManager;
+  const inputDomains = new InputDomainManager(eventBus);
+  const createLayoutStateSingleton = ({ eventBus: bus, animationLayer, combatRuntimeGateway, inputDomains: domains }) =>
+    createHarnessLayoutState({ eventBus: bus, inputDomains: domains, combatRuntimeGateway });
+  let instances = [];
+  let enemyRows = [];
+  let gridBounds = null;
+  let freshCombatBootstrapped = false;
+  let runtimeLayouts = {};
+  let layout = { name: 'runtime-fallback', layers: [] };
+  let assetsLayout = null;
+  let viewW = 360;
+  let viewH = 640;
+  let types = {};
+  let images = {};
+  let enemySpriteImages = {};
+  let heroPortraitImages = {};
+  let heroSelectorImage = null;
+  let gemFrameImages = [];
+  let buffIconFrameImages = {};
+  let debuffIconImages = {};
+  const calculateGridBounds = (layoutInstances) => {
+    const placeholders = (layoutInstances || []).filter(inst => inst && inst.type === 'grid_placeholder' && inst.world);
+    if (!placeholders.length) {
+      gameState.gridBounds = null;
+      return null;
+    }
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const inst of placeholders) {
+      const world = inst.world;
+      const w = world.width || 45;
+      const h = world.height || 45;
+      const ox = (world.originX !== undefined) ? world.originX : 0.5;
+      const oy = (world.originY !== undefined) ? world.originY : 0.5;
+      const left = (world.x || 0) - w * ox;
+      const right = (world.x || 0) + w * (1 - ox);
+      const top = (world.y || 0) - h * oy;
+      const bottom = (world.y || 0) + h * (1 - oy);
+      minX = Math.min(minX, left);
+      maxX = Math.max(maxX, right);
+      minY = Math.min(minY, top);
+      maxY = Math.max(maxY, bottom);
+    }
+    const bounds = { minX, maxX, minY, maxY };
+    gameState.gridBounds = bounds;
+    console.log(`[BOARD] Grid bounds calculated: (${minX.toFixed(1)}, ${minY.toFixed(1)}) to (${maxX.toFixed(1)}, ${maxY.toFixed(1)})`);
+    return bounds;
+  };
+  function prepareCombatSetupFromInstances(layoutInstances, gameStateRef) {
+    assertCombatLayoutDev('prepareCombatSetupFromInstances');
+    gridBounds = calculateGridBounds(layoutInstances);
+    if (gameStateRef && gridBounds) {
+      gameStateRef.gridBounds = gridBounds;
+    }
+  }
+  async function loadC3ProjectAssets() {
+    assertCombatLayoutDev('loadC3ProjectAssets');
+    runtimeLayouts = await fetchJson(assetUrl('layouts.json')) || {};
+    layout = runtimeLayouts.layout || { name: 'runtime-fallback', layers: [] };
+    console.log('[LAYOUT_AUDIT] topLevelKeys', Object.keys(layout || {}));
+    console.log('[INIT] Layout loaded');
+    assetsLayout = runtimeLayouts.assetsLayout || null;
+
+    const project = runtimeLayouts.project || { viewportWidth: 360, viewportHeight: 640 };
+    viewW = project && project.viewportWidth ? project.viewportWidth : 360;
+    viewH = project && project.viewportHeight ? project.viewportHeight : 640;
+    console.log('[INIT] Project viewport:', viewW, 'x', viewH);
+
+    instances = tryGetInstances(layout);
+    console.log('[LAYOUT_AUDIT] instanceCount', Array.isArray(instances) ? instances.length : 0);
+    const gemInstanceCount = Array.isArray(instances)
+      ? instances.filter(i => i && i.type === 'Gem').length
+      : 0;
+    console.log('[LAYOUT_AUDIT] gemInstanceCount', gemInstanceCount);
+    const typesNeeded = Array.from(new Set(instances.map(i=>i.type)));
+    ['Enemy_Sprite', 'Bar_Fill', 'Bar_Yellow', 'Bar_Back', 'PartyHP_Bar', 'Gem', 'AttackButton', 'Selector'].forEach(t => {
+      if (!typesNeeded.includes(t)) typesNeeded.push(t);
+    });
+    const objectTypeData = await fetchJson(assetUrl('objectTypes.json')) || { types: {} };
+    const allTypes = objectTypeData.types || {};
+    types = {};
+    for (const t of typesNeeded) {
+      const data = allTypes[t];
+      if (data) types[t] = data;
+    }
+    console.log('[INIT] Loaded', Object.keys(types).length, 'object types');
+
+    const enemies = await fetchJson(assetUrl('enemies.json'));
+    enemyRows = parseC2ArrayTable(enemies);
+    gameState.baseSummary = summaryText(layout, types, enemies);
+    out.textContent = gameState.baseSummary + '\n\nLoading images...';
+
+    images = {};
+    enemySpriteImages = {};
+    heroPortraitImages = {};
+    heroSelectorImage = null;
+    gemFrameImages = [];
+    buffIconFrameImages = {};
+    debuffIconImages = {};
+    let loadedCount = 0;
+    const failedImages = [];
+    const loadBaseSprites = async () => {
+      for(const [t,data] of Object.entries(types)){
+        try {
+          const pluginId = data && data['plugin-id'];
+          if (pluginId && pluginId !== 'Sprite') continue;
+          let animName = null;
+          try{ animName = data.animations && data.animations.items && data.animations.items[0] && data.animations.items[0].name; } catch(e){}
+          const imgPath = makeImagePath(t, animName);
+          if(imgPath){
+            const img = await loadImage(imgPath);
+            if(img) {
+              images[t] = img;
+              loadedCount++;
+              if(['UI_NavCloseButton', 'UI_NavCloseX', 'UI_CloseWin'].includes(t)) {
+                console.log(`[LOAD] SUCCESS: ${t} loaded from ${imgPath}`);
+              }
+            } else {
+              failedImages.push({type: t, path: imgPath, anim: animName});
+              if(['UI_NavCloseButton', 'UI_NavCloseX', 'UI_CloseWin'].includes(t)) {
+                console.log(`[LOAD] FAILED: ${t} from ${imgPath}`);
+              }
+            }
+          }
+        } catch(e) {
+          console.warn(`[LOAD] Failed to load image for type ${t}:`, e.message);
+        }
+      }
+    };
+
+    const loadCoreVisuals = async () => {
+      heroPortraitImages.Falie = await loadImage(assetUrl('images/Falie.png'));
+      heroPortraitImages.Huun = await loadImage(assetUrl('images/Huun.png'));
+      heroPortraitImages.Runa = await loadImage(assetUrl('images/Runa.png'));
+      heroPortraitImages.Kojonn = await loadImage(assetUrl('images/Kojonn.png'));
+      heroSelectorImage = await loadImage(assetUrl('images/h_selector-animation 1-000.png'));
+      for (let i = 0; i < 8; i++) {
+        const imgPath = assetUrl(`images/gem-animation 1-${String(i).padStart(3, '0')}.png`);
+        const img = await loadImage(imgPath);
+        if (img) gemFrameImages[i] = img;
+      }
+    };
+
+    const loadDeferredVisuals = async () => {
+      const enemyType = types['Enemy_Sprite'];
+      if (enemyType && enemyType.animations && Array.isArray(enemyType.animations.items)) {
+        for (const anim of enemyType.animations.items) {
+          const animName = anim.name;
+          const imgPath = makeImagePath('Enemy_Sprite', animName);
+          if (!imgPath) continue;
+          const img = await loadImage(imgPath);
+          if (img) enemySpriteImages[String(animName).toLowerCase()] = img;
+        }
+        console.log('[LOAD] Enemy_Sprite animations loaded:', Object.keys(enemySpriteImages).length);
+      }
+      for (let i = 1; i <= 5; i++) {
+        const key = `buffIcon${i}`;
+        buffIconFrameImages[key] = [];
+        for (let f = 0; f < 5; f++) {
+          const imgPath = assetUrl(`images/bufficon${i}-animation 1-${String(f).padStart(3, '0')}.png`);
+          const img = await loadImage(imgPath);
+          if (img) buffIconFrameImages[key][f] = img;
+        }
+      }
+      debuffIconImages.ATK = await loadImage(assetUrl('images/ATK_down.png'));
+      debuffIconImages.DEF = await loadImage(assetUrl('images/DEF_down.png'));
+      debuffIconImages.MAG = await loadImage(assetUrl('images/MAG_down.png'));
+      debuffIconImages.RES = await loadImage(assetUrl('images/RES_down.png'));
+      debuffIconImages.SPD = await loadImage(assetUrl('images/SPD_down.png'));
+    };
+
+    try {
+      await loadBaseSprites();
+      await loadCoreVisuals();
+      console.log(`[LOAD] Core assets loaded: ${loadedCount}/${Object.keys(types).length} base sprites`);
+      if(failedImages.length > 0) {
+        console.log(`[LOAD] Failed images (first 5):`, failedImages.slice(0, 5).map(f => `${f.type}(${f.path})`).join(', '));
+      }
+      setTimeout(() => {
+        loadDeferredVisuals().catch(e => console.error('[LOAD] Deferred asset preload error:', e));
+      }, 0);
+    } catch(e) {
+      console.error(`[LOAD] Error during image preload:`, e);
+    }
+
+    console.log('[INIT] Processing instances...');
+  }
+  const registerCoreLayouts = (layoutState, { combatGateway: gateway }) => {
+    layoutState.registerLayout({
+      id: 'combat',
+      allowedTransitions: ['base', 'shop', 'intro'],
+      async onEnter({ resumeSnapshot }) {
+        console.log('[Layout] Combat activated via LayoutState');
+        COMBAT_LAYOUT_READY = true;
+        console.log('[LayoutGuard] Combat layout ready');
+        if (!resumeSnapshot) {
+          console.log('[INIT] Starting initialization...');
+          await loadC3ProjectAssets();
+          prepareCombatSetupFromInstances(instances, gameState);
+          assertCombatLayoutDev('StartRound');
+          callFunctionWithContext(fnContext, 'StartRound');
+          freshCombatBootstrapped = true;
+          COMBAT_BOOTSTRAP_COMPLETE = true;
+        }
+        gateway.resume(resumeSnapshot || null);
+        if (!resumeSnapshot) {
+          initEntities(enemyRows, instances);
+          createGemBoard(gridBounds);
+        }
+        eventBus.emit('layout:combat:entered', { restored: Boolean(resumeSnapshot) });
+      },
+      onActive() {},
+      onExit() {
+        return gateway.suspend();
+      },
+    });
+    layoutState.registerLayout({
+      id: 'base',
+      allowedTransitions: ['combat', 'shop', 'intro'],
+      onEnter() {},
+      onActive() {},
+      onExit() { return null; },
+    });
+    layoutState.registerLayout({
+      id: 'intro',
+      allowedTransitions: ['base', 'combat'],
+      onEnter() {},
+      onActive() {},
+      onExit() { return null; },
+    });
+    layoutState.registerLayout({
+      id: 'shop',
+      allowedTransitions: ['base', 'combat'],
+      onEnter() {},
+      onActive() {},
+      onExit() { return null; },
+    });
+  };
+
+  layoutState = createLayoutStateSingleton({
+    eventBus,
+    animationLayer,
+    combatRuntimeGateway,
+    inputDomains,
+  });
+  combatRuntimeGateway.setLayoutState(layoutState);
+  registerCoreLayouts(layoutState, { combatGateway: combatRuntimeGateway });
+
   state.globals.Player_maxEnergy = 150;
   state.globals.Player_Energy = state.globals.Player_maxEnergy;
   state.globals.EnergyInitialized = 1;
@@ -757,145 +1272,20 @@ async function main(){
     state.globals.DevTestMode = params.has('devtest');
     window.__codexGameDevTest = !!state.globals.DevTestMode;
   }
-  const runtimeLayouts = await fetchJson(assetUrl('layouts.json')) || {};
-  const layout = runtimeLayouts.layout || { name: 'runtime-fallback', layers: [] };
-  console.log('[LAYOUT_AUDIT] topLevelKeys', Object.keys(layout || {}));
-  console.log('[INIT] Layout loaded');
-  const assetsLayout = runtimeLayouts.assetsLayout || null;
 
-  // read project viewport to scale coordinates
-  const project = runtimeLayouts.project || { viewportWidth: 360, viewportHeight: 640 };
-  const viewW = project && project.viewportWidth ? project.viewportWidth : 360;
-  const viewH = project && project.viewportHeight ? project.viewportHeight : 640;
-  console.log('[INIT] Project viewport:', viewW, 'x', viewH);
-
-  const instances = tryGetInstances(layout);
-  console.log('[LAYOUT_AUDIT] instanceCount', Array.isArray(instances) ? instances.length : 0);
-  const gemInstanceCount = Array.isArray(instances)
-    ? instances.filter(i => i && i.type === 'Gem').length
-    : 0;
-  console.log('[LAYOUT_AUDIT] gemInstanceCount', gemInstanceCount);
-  const typesNeeded = Array.from(new Set(instances.map(i=>i.type)));
-  // Ensure required types are loaded even if not placed on layout
-  ['Enemy_Sprite', 'Bar_Fill', 'Bar_Yellow', 'Bar_Back', 'PartyHP_Bar', 'Gem', 'AttackButton', 'Selector'].forEach(t => {
-    if (!typesNeeded.includes(t)) typesNeeded.push(t);
+  eventBus.on('nav:clicked', async ({ label }) => {
+    if (label === 'AstralFlow') {
+      await layoutState.requestLayoutChange('astralOverlay', 'nav-astral-flow');
+      return;
+    }
+    gameState.overlayVisible = true;
   });
-  const objectTypeData = await fetchJson(assetUrl('objectTypes.json')) || { types: {} };
-  const allTypes = objectTypeData.types || {};
-  const types = {};
-  for (const t of typesNeeded) {
-    const data = allTypes[t];
-    if (data) types[t] = data;
+
+  if (layoutHarnessEnabled) {
+    debugLayoutLog('[Harness] Enabled');
   }
-  console.log('[INIT] Loaded', Object.keys(types).length, 'object types');
 
-  const enemies = await fetchJson(assetUrl('enemies.json'));
-  const enemyRows = parseC2ArrayTable(enemies);
-  initEntities(enemyRows, instances);
-  const baseSummary = summaryText(layout, types, enemies);
-  out.textContent = baseSummary + '\n\nLoading images...';
-
-  // preload representative images per type
-  const images = {};
-  const enemySpriteImages = {};
-  const heroPortraitImages = {};
-  let heroSelectorImage = null;
-  const gemFrameImages = [];
-  const buffIconFrameImages = {};
-  const debuffIconImages = {};
-  let loadedCount = 0;
-  const failedImages = [];
-  const loadBaseSprites = async () => {
-    for(const [t,data] of Object.entries(types)){
-      try {
-        const pluginId = data && data['plugin-id'];
-        if (pluginId && pluginId !== 'Sprite') {
-          continue;
-        }
-        let animName = null;
-        try{ animName = data.animations && data.animations.items && data.animations.items[0] && data.animations.items[0].name; } catch(e){}
-        const imgPath = makeImagePath(t, animName);
-        if(imgPath){
-          const img = await loadImage(imgPath);
-          if(img) {
-            images[t] = img;
-            loadedCount++;
-            if(['UI_NavCloseButton', 'UI_NavCloseX', 'UI_CloseWin'].includes(t)) {
-              console.log(`[LOAD] SUCCESS: ${t} loaded from ${imgPath}`);
-            }
-          } else {
-            failedImages.push({type: t, path: imgPath, anim: animName});
-            if(['UI_NavCloseButton', 'UI_NavCloseX', 'UI_CloseWin'].includes(t)) {
-              console.log(`[LOAD] FAILED: ${t} from ${imgPath}`);
-            }
-          }
-        }
-      } catch(e) {
-        console.warn(`[LOAD] Failed to load image for type ${t}:`, e.message);
-      }
-    }
-  };
-
-  const loadCoreVisuals = async () => {
-    heroPortraitImages.Falie = await loadImage(assetUrl('images/Falie.png'));
-    heroPortraitImages.Huun = await loadImage(assetUrl('images/Huun.png'));
-    heroPortraitImages.Runa = await loadImage(assetUrl('images/Runa.png'));
-    heroPortraitImages.Kojonn = await loadImage(assetUrl('images/Kojonn.png'));
-    heroSelectorImage = await loadImage(assetUrl('images/h_selector-animation 1-000.png'));
-    for (let i = 0; i < 8; i++) {
-      const imgPath = assetUrl(`images/gem-animation 1-${String(i).padStart(3, '0')}.png`);
-      const img = await loadImage(imgPath);
-      if (img) gemFrameImages[i] = img;
-    }
-  };
-
-  const loadDeferredVisuals = async () => {
-    // Enemy_Sprite animations
-    const enemyType = types['Enemy_Sprite'];
-    if (enemyType && enemyType.animations && Array.isArray(enemyType.animations.items)) {
-      for (const anim of enemyType.animations.items) {
-        const animName = anim.name;
-        const imgPath = makeImagePath('Enemy_Sprite', animName);
-        if (!imgPath) continue;
-        const img = await loadImage(imgPath);
-        if (img) {
-          enemySpriteImages[String(animName).toLowerCase()] = img;
-        }
-      }
-      console.log('[LOAD] Enemy_Sprite animations loaded:', Object.keys(enemySpriteImages).length);
-    }
-    // Buff icons
-    for (let i = 1; i <= 5; i++) {
-      const key = `buffIcon${i}`;
-      buffIconFrameImages[key] = [];
-      for (let f = 0; f < 5; f++) {
-        const imgPath = assetUrl(`images/bufficon${i}-animation 1-${String(f).padStart(3, '0')}.png`);
-        const img = await loadImage(imgPath);
-        if (img) buffIconFrameImages[key][f] = img;
-      }
-    }
-    // Debuff icons
-    debuffIconImages.ATK = await loadImage(assetUrl('images/ATK_down.png'));
-    debuffIconImages.DEF = await loadImage(assetUrl('images/DEF_down.png'));
-    debuffIconImages.MAG = await loadImage(assetUrl('images/MAG_down.png'));
-    debuffIconImages.RES = await loadImage(assetUrl('images/RES_down.png'));
-    debuffIconImages.SPD = await loadImage(assetUrl('images/SPD_down.png'));
-  };
-
-  try {
-    await loadBaseSprites();
-    await loadCoreVisuals();
-    console.log(`[LOAD] Core assets loaded: ${loadedCount}/${Object.keys(types).length} base sprites`);
-    if(failedImages.length > 0) {
-      console.log(`[LOAD] Failed images (first 5):`, failedImages.slice(0, 5).map(f => `${f.type}(${f.path})`).join(', '));
-    }
-    setTimeout(() => {
-      loadDeferredVisuals().catch(e => console.error('[LOAD] Deferred asset preload error:', e));
-    }, 0);
-  } catch(e) {
-    console.error(`[LOAD] Error during image preload:`, e);
-  }
-  console.log('[INIT] Processing instances...');
+  await layoutState.activateInitialLayout('combat');
 
   const layoutW = viewW;
   const layoutH = viewH;
@@ -930,6 +1320,76 @@ async function main(){
     const cx = layoutOffsetX + wx * layoutScale;
     const cy = layoutOffsetY + wy * layoutScale;
     return { x: cx, y: cy };
+  }
+
+  if (layoutHarnessEnabled && harnessLayoutState) {
+    const combatLayout = {
+      id: 'combat',
+      allowedTransitions: ['astralOverlay'],
+      onEnter({ resumeSnapshot }) {
+        const snapshot = resumeSnapshot || null;
+        harnessCombatGateway.resume(snapshot);
+        harnessEventBus.emit('layout:combat:entered', { restored: Boolean(snapshot) });
+      },
+      onActive() {},
+      onExit() {
+        return harnessCombatGateway.suspend();
+      },
+    };
+    const storyMockLayout = {
+      id: 'storyMock',
+      allowedTransitions: ['combat'],
+      onEnter() {
+        gameState.overlayVisible = false;
+        debugLayoutLog('[Harness] storyMock active');
+      },
+      onActive() {},
+      onExit() {
+        return null;
+      },
+    };
+    const astralOverlayLayout = {
+      id: 'astralOverlay',
+      allowedTransitions: ['combat'],
+      onEnter() {
+        gameState.overlayVisible = false;
+        console.log('[Harness] astralOverlay active');
+      },
+      onActive() {},
+      onExit() {
+        return null;
+      },
+    };
+
+    harnessLayoutState.registerLayout(combatLayout);
+    harnessLayoutState.registerLayout(storyMockLayout);
+    harnessLayoutState.registerLayout(astralOverlayLayout);
+    debugLayoutLog('[Harness] Layouts registered: storyMock, astralOverlay');
+
+    harnessEventBus.on('layout:storyMock:click', async () => {
+      await harnessLayoutState.requestLayoutChange('combat', 'storyMock-click', { source: 'storyMock' });
+    });
+    harnessEventBus.on('nav:astral-flow', async () => {
+      if (harnessLayoutState.getActiveLayoutId() !== 'combat') return;
+      if (!harnessCombatGateway.canAcceptEvents()) return;
+      console.log('[Harness] Requesting astralOverlay');
+      await harnessLayoutState.requestLayoutChange('astralOverlay', 'astral-flow-nav');
+    });
+    harnessEventBus.on('layout:astralOverlay:click', async () => {
+      await harnessLayoutState.requestLayoutChange('combat', 'astralOverlay-click', { source: 'astralOverlay' });
+    });
+
+    await harnessLayoutState.activateInitialLayout('storyMock');
+
+    if (typeof window !== 'undefined') {
+      window.__layoutHarness = {
+        enabled: true,
+        eventBus: harnessEventBus,
+        inputDomains: harnessInputDomains,
+        layoutState: harnessLayoutState,
+        combatRuntimeGateway: harnessCombatGateway,
+      };
+    }
   }
 
   function getSpriteOrigin(typeName) {
@@ -1064,31 +1524,6 @@ async function main(){
   console.log(`[DEBUG] All rendered objects: ${baseRendered.length} total`);
   console.log(`[DEBUG] Modal objects:`, windowPopupItems.map(r => r.inst.type).join(', '));
 
-  // Calculate grid bounds from grid_placeholder objects for gem board centering
-  const gridPlaceholders = baseRendered.filter(r => r.inst.type === 'grid_placeholder');
-  let gridBounds = null;
-  if (gridPlaceholders.length > 0) {
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (const gp of gridPlaceholders) {
-      const world = gp.inst.world;
-      const w = world.width || 45;
-      const h = world.height || 45;
-      const ox = (world.originX !== undefined) ? world.originX : 0.5;
-      const oy = (world.originY !== undefined) ? world.originY : 0.5;
-      const left = (world.x || 0) - w * ox;
-      const right = (world.x || 0) + w * (1 - ox);
-      const top = (world.y || 0) - h * oy;
-      const bottom = (world.y || 0) + h * (1 - oy);
-      minX = Math.min(minX, left);
-      maxX = Math.max(maxX, right);
-      minY = Math.min(minY, top);
-      maxY = Math.max(maxY, bottom);
-    }
-    gridBounds = { minX, maxX, minY, maxY };
-    gameState.gridBounds = gridBounds; // Store for later use in refill
-    console.log(`[BOARD] Grid bounds calculated: (${minX.toFixed(1)}, ${minY.toFixed(1)}) to (${maxX.toFixed(1)}, ${maxY.toFixed(1)})`);
-  }
-
   // Calculate EnemyArea bounds for layout math (ComputeEnemyLayout parity)
   const enemyAreas = baseRendered.filter(r => r.inst.type === 'EnemyArea');
   if (enemyAreas.length > 0) {
@@ -1113,16 +1548,39 @@ async function main(){
     callFunctionWithContext(fnContext, 'RefreshEnemyPositions');
   }
   
-  // Create gem board centered within grid bounds
-  createGemBoard(gridBounds);
-  
   out.textContent = `🎮 Puzzle RPG\n\n✓ Game loaded\n${rendered.length} total objects loaded`;
 
   // Track last overlay state for logging only on change
   let lastOverlayState = null;
+
+  function drawHarnessLayoutTakeover(layoutId) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = layoutId === 'storyMock' ? '#1557ff' : '#d52525';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '600 18px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(
+      layoutId === 'storyMock' ? 'Story Mock (click to enter combat)' : 'Astral Overlay (click to return to combat)',
+      (canvas.width / dpr) / 2,
+      (canvas.height / dpr) / 2
+    );
+    ctx.textAlign = 'left';
+  }
   
   // helper function to draw all instances
   function drawFrame(dtOverride){
+    if (!COMBAT_BOOTSTRAP_COMPLETE && !layoutHarnessEnabled) {
+      return;
+    }
+    if (layoutHarnessEnabled && harnessLayoutState) {
+      const activeLayout = harnessLayoutState.getActiveLayoutId();
+      if (activeLayout && activeLayout !== 'combat') {
+        drawHarnessLayoutTakeover(activeLayout);
+        return;
+      }
+    }
+
     const now = performance.now();
     const dt = dtOverride != null
       ? dtOverride
@@ -1198,7 +1656,7 @@ async function main(){
         if (!state.globals.BattleStartProcessStarted) {
           state.globals.BattleStartProcessStarted = 1;
           state.globals.IsPlayerBusy = 0;
-          callFunctionWithContext(fnContext, 'ProcessTurn');
+          combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
         }
       }
     }
@@ -1346,7 +1804,7 @@ async function main(){
           state.globals.CanPickGems = true;
           state.globals.BoardFillActive = 0;
           if (state.globals.TurnPhase === 2 && !state.globals.ActionInProgress) {
-            callFunctionWithContext(fnContext, 'ProcessTurn');
+            combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
           }
         }
       };
@@ -1911,7 +2369,7 @@ async function main(){
           !state.globals.ActionInProgress &&
           !state.globals.IsPlayerBusy
         ) {
-          callFunctionWithContext(fnContext, 'ProcessTurn');
+          combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
         }
       }
     }
@@ -2806,8 +3264,9 @@ async function main(){
   }
 
   function drawHUD(){
+    if (!gameState.baseSummary) return;
     const lines = [
-      baseSummary,
+      gameState.baseSummary,
       '',
       `TurnPhase: ${state.globals.TurnPhase}`,
       `Board: ${gameState.boardCreated ? gameState.gems.length + ' gems' : 'waiting'}`,
@@ -2875,6 +3334,20 @@ async function main(){
     const rect = canvas.getBoundingClientRect();
     const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
 
+    if (layoutHarnessEnabled && harnessLayoutState && harnessInputDomains) {
+      const activeLayout = harnessLayoutState.getActiveLayoutId();
+      if (activeLayout === 'storyMock') {
+        harnessInputDomains.emit(activeLayout, 'layout:storyMock:click', { x: mx, y: my });
+        drawFrame();
+        return;
+      }
+      if (activeLayout === 'astralOverlay') {
+        harnessInputDomains.emit(activeLayout, 'layout:astralOverlay:click', { x: mx, y: my });
+        drawFrame();
+        return;
+      }
+    }
+
     // REFILL click: use actual AddMore object bounds at click time
     const refillObj = rendered.find(r => r.inst.type === 'AddMore');
     if (refillObj) {
@@ -2894,13 +3367,25 @@ async function main(){
       const navTypes = new Set(['Nav_HeroText', 'Nav_MapText', 'Nav_MissionText', 'Nav_AstralFlowText', 'Nav_HomeText']);
       const navLabelItems = rendered.filter(r => navTypes.has(r.inst.type));
       for (const r of navLabelItems) {
+        const labelMap = {
+          Nav_HeroText: 'Hero',
+          Nav_MapText: 'Map',
+          Nav_MissionText: 'Mission',
+          Nav_AstralFlowText: 'AstralFlow',
+          Nav_HomeText: 'Home',
+        };
+        const labelName = labelMap[r.inst.type] || '';
         const pos = worldToCanvas(r.world.x || 0, r.world.y || 0);
         const w = Math.max(40, (r.world.width || 60) * layoutScale);
         const h = Math.max(16, (r.world.height || 20) * layoutScale);
         const dx = pos.x - w * r.ox;
         const dy = pos.y - h * r.oy;
         if (mx >= dx && mx <= dx + w && my >= dy && my <= dy + h) {
-          gameState.overlayVisible = true;
+          inputDomains.emit(
+            layoutState.getActiveLayoutId(),
+            'nav:clicked',
+            { label: labelName }
+          );
           drawFrame();
           return;
         }
@@ -3125,12 +3610,12 @@ async function main(){
           state.globals.AdvanceAfterAction = 0;
           state.globals.ActionOwnerUID = 0;
           callFunctionWithContext(fnContext, 'AdvanceTurn');
-          callFunctionWithContext(fnContext, 'ProcessTurn');
+          combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
         } else if (!ownerOk) {
           state.globals.DeferAdvance = 0;
           state.globals.AdvanceAfterAction = 0;
           state.globals.ActionOwnerUID = 0;
-          callFunctionWithContext(fnContext, 'ProcessTurn');
+          combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
         } else if (!state.globals._DeferBlockLogged) {
           state.globals._DeferBlockLogged = 1;
           console.log(`[TURN] DeferAdvance blocked pendingSelect=${!!pendingSelect} IsPlayerBusy=${state.globals.IsPlayerBusy} TurnPhase=${state.globals.TurnPhase} owner=${ownerUID} cur=${currentUID} canPick=${state.globals.CanPickGems} actionInProgress=${state.globals.ActionInProgress}`);
@@ -3191,6 +3676,10 @@ async function main(){
           isPlayerBusy: state.globals.IsPlayerBusy,
           pendingSkillId: state.globals.PendingSkillID || null,
           overlayVisible: gameState.overlayVisible,
+          layoutId: layoutHarnessEnabled && harnessLayoutState ? harnessLayoutState.getActiveLayoutId() : 'combat',
+          combatAcceptEvents: layoutHarnessEnabled && harnessCombatGateway
+            ? harnessCombatGateway.canAcceptEvents()
+            : true,
         },
         heroes: state.entities
           .filter(e => e.kind === 'hero')
@@ -3255,7 +3744,11 @@ async function main(){
   }
 }
 
-main().catch(err => {
-  console.error('[ERROR] Initialization failed:', err);
-  out.textContent = `🎮 Puzzle RPG\n\n⚠️ Initialization Error\n${err.message}`;
-});
+(async function boot() {
+  try {
+    await main();
+  } catch (err) {
+    console.error('[ERROR] Initialization failed:', err);
+    out.textContent = `🎮 Puzzle RPG\n\n⚠️ Initialization Error\n${err.message}`;
+  }
+})();

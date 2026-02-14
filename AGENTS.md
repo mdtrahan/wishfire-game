@@ -9,6 +9,33 @@
 - `main` branch is the only production branch.
 - All new feature branches must branch from `main`.
 
+# Always-on project rules (Codex must follow)
+
+## Startup
+- Before any work: read
+  - ai-memory/context.md
+  - ai-memory/todo.md
+  - ai-memory/insights.md
+
+## Execution
+- Work on ONLY the first unchecked item in todo.md.
+- Keep scope tight: do not do extra tasks “while you’re here”.
+
+## Checkpoint (required)
+- After completing the one task:
+  1) Update ai-memory/todo.md (check it off; add any new tasks underneath)
+  2) Append a dated entry to ai-memory/insights.md:
+     - What changed
+     - Decisions made
+     - Files touched
+     - Next task to do
+
+## Disk safety
+- Update each ai-memory file at most once per task.
+- No loops, no background or repeated writing.
+- If blocked: add a TODO item describing the blocker and stop.
+
+
 ### Legacy Construct 3 Archive (Read-Only)
 
 - `project_C3_conversion/` is a historical archive.
