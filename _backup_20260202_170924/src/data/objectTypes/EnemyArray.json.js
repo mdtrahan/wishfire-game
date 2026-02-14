@@ -1,8 +1,0 @@
-export const EnemyArray = {
-  "name": "EnemyArray",
-  "plugin-id": "Arr",
-  "sid": 359472063203051,
-  "isGlobal": true,
-  "editorNewInstanceIsReplica": true,
-  "instanceVariables": []
-};

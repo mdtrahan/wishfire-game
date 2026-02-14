@@ -1,8 +1,0 @@
-export const Grid = {
-  "name": "Grid",
-  "plugin-id": "Arr",
-  "sid": 272380029346356,
-  "isGlobal": true,
-  "editorNewInstanceIsReplica": true,
-  "instanceVariables": []
-};

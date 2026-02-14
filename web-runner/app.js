@@ -107,7 +107,7 @@ async function fetchJson(url){
 }
 
 function assetUrl(path){
-  return new URL(`../project_C3_conversion/${path}`, window.location.href).toString();
+  return new URL(`../runtime-data/${path}`, window.location.href).toString();
 }
 
 function summaryText(layout, types, enemies){
@@ -763,8 +763,7 @@ async function main(){
     state.globals.DevTestMode = params.has('devtest');
     window.__codexGameDevTest = !!state.globals.DevTestMode;
   }
-  const layout = await fetchJson(assetUrl('layouts/Layout 1.json'));
-  if(!layout){ out.textContent = 'Failed to load layout'; return; }
+  const layout = await fetchJson(assetUrl('layouts/Layout 1.json')) || { name: 'runtime-fallback', layers: [] };
   console.log('[INIT] Layout loaded');
   const assetsLayout = await fetchJson(assetUrl('layouts/Assets.json'));
 

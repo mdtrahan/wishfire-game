@@ -1,9 +1,0 @@
-export const JSButton = {
-  "name": "JSButton",
-  "plugin-id": "Button",
-  "sid": 834422121082289,
-  "isGlobal": true,
-  "editorNewInstanceIsReplica": true,
-  "instanceVariables": [],
-  "behaviorTypes": []
-};
