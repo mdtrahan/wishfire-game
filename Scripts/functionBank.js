@@ -1769,7 +1769,7 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
   const actor = GetActorByUID(ctx, actorUID);
   const actorName = actor ? actor.name : 'Actor';
   console.log(`[SKILL] start skill=${skillId} actor=${actorName} uid=${actorUID} phase=${g.TurnPhase} busy=${g.IsPlayerBusy} canPick=${g.CanPickGems}`);
-  const buffTurns = g.BuffDurationDefault || 51;
+  const buffTurns = Math.min(12, g.BuffDurationDefault || 12);
   if (actor && actor.kind === 'hero' && (skillId === 'HERO_SINGLE' || skillId === 'HERO_AOE')) {
     StartHeroLunge(ctx, actorUID);
   }

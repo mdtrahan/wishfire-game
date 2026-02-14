@@ -1,10 +1,212 @@
 import { state } from './modules/state.js';
 import { createContext, callFunctionWithContext } from './modules/functionRegistry.js';
+import { CombatRuntimeGateway } from '../src/core/combatRuntimeGateway.js';
 
 const out = document.getElementById('output');
 const walletOut = document.getElementById('wallet-output');
 const canvas = document.getElementById('view');
 const ctx = canvas.getContext('2d');
+const HARNESS_MODE = typeof window !== 'undefined' && window.location.search.includes('harness=true');
+const DEBUG_LAYOUT = (() => {
+  let enabled = false;
+  try {
+    if (typeof process !== 'undefined' && process && process.env && process.env.DEBUG_LAYOUT === 'true') {
+      enabled = true;
+    }
+  } catch {}
+  try {
+    if (typeof window !== 'undefined' && window && window.DEBUG_LAYOUT === true) {
+      enabled = true;
+    }
+  } catch {}
+  return enabled;
+})();
+const DEBUG_GEMS_QUERY = (() => {
+  if (typeof window === 'undefined') return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return (
+      params.has('devtest') ||
+      params.get('devtest') === 'true' ||
+      params.has('debug_gems') ||
+      params.get('debug_gems') === 'true'
+    );
+  } catch {
+    return false;
+  }
+})();
+const GEM_DEBUG_LEVEL = (function () {
+  const p = new URLSearchParams(window.location.search);
+  return p.get('gemlog') || 'minimal';
+})();
+function debugLayoutLog(message) {
+  if (!DEBUG_LAYOUT) return;
+  console.log(message);
+}
+function isGemDebugEnabled() {
+  if (DEBUG_GEMS_QUERY) return true;
+  if (state && state.globals && state.globals.DevTestMode === true) return true;
+  if (state && state.globals && state.globals.DebugGemsMode === true) return true;
+  try {
+    const hook = typeof window !== 'undefined' ? window.__codexGame : null;
+    if (hook && hook.globals && hook.globals.DevTestMode === true) return true;
+    if (hook && hook.globals && hook.globals.DebugGemsMode === true) return true;
+  } catch {}
+  return false;
+}
+function gemDebugLog(tag, payload) {
+  if (!isGemDebugEnabled()) return;
+
+  const allowedTags = new Set([
+    '[TURN_RESTORE_PICK]',
+    '[GEM_REJECT]',
+    '[REFILL_STUCK]',
+    '[GATE_STUCK_CANPICK]'
+  ]);
+  if (!allowedTags.has(tag)) return;
+
+  console.log(tag, payload);
+}
+const layoutHarnessEnabled = (() => {
+  return HARNESS_MODE;
+})();
+
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function createHarnessEventBus() {
+  const listeners = new Map();
+  const events = [];
+  return {
+    events,
+    on(eventName, handler) {
+      if (!listeners.has(eventName)) listeners.set(eventName, new Set());
+      listeners.get(eventName).add(handler);
+      return () => listeners.get(eventName)?.delete(handler);
+    },
+    emit(eventName, payload = {}) {
+      events.push({ name: eventName, payload });
+      const subs = listeners.get(eventName);
+      if (!subs || subs.size === 0) return;
+      for (const fn of [...subs]) fn(payload);
+    },
+  };
+}
+
+class HarnessInputDomainManager {
+  constructor(eventBus) {
+    this.eventBus = eventBus;
+    this.activeDomain = null;
+    this.locked = false;
+  }
+
+  setActiveDomain(domain) {
+    this.activeDomain = domain || null;
+  }
+
+  getActiveDomain() {
+    return this.activeDomain;
+  }
+
+  lock() {
+    this.locked = true;
+    debugLayoutLog('[Input] Locked');
+  }
+
+  unlock() {
+    this.locked = false;
+    debugLayoutLog('[Input] Unlocked');
+  }
+
+  emit(domain, eventName, payload = {}) {
+    const allowed = !this.locked && !!domain && domain === this.activeDomain;
+    debugLayoutLog(`[Input] Emit → domain:${domain} event:${eventName} allowed:${allowed} active:${this.activeDomain}`);
+    if (!allowed) return false;
+    this.eventBus.emit(eventName, { ...payload, domain });
+    return true;
+  }
+}
+
+function createHarnessLayoutState({ eventBus, inputDomains, combatRuntimeGateway }) {
+  const layouts = new Map();
+  const snapshotsByLayout = new Map();
+  let activeLayoutId = null;
+  let isTransitioning = false;
+
+  return {
+    registerLayout(descriptor) {
+      layouts.set(descriptor.id, descriptor);
+    },
+    getActiveLayoutId() {
+      return activeLayoutId;
+    },
+    getSnapshot(layoutId) {
+      return snapshotsByLayout.get(layoutId);
+    },
+    async activateInitialLayout(layoutId, payload = {}) {
+      const targetLayout = layouts.get(layoutId);
+      if (!targetLayout) throw new Error(`Missing layout: ${layoutId}`);
+      activeLayoutId = layoutId;
+      inputDomains.setActiveDomain(layoutId);
+      debugLayoutLog(`[Layout] Initial activation → ${layoutId}`);
+      const context = {
+        eventBus,
+        payload,
+        reason: 'harness-initial',
+        from: null,
+        to: layoutId,
+        resumeSnapshot: snapshotsByLayout.get(layoutId) || null,
+      };
+      if (typeof targetLayout.onEnter === 'function') await targetLayout.onEnter(context);
+      if (typeof targetLayout.onActive === 'function') await targetLayout.onActive(context);
+    },
+    async requestLayoutChange(targetLayoutId, reason = 'harness-request', payload = {}) {
+      debugLayoutLog(`[Layout] Request → from:${activeLayoutId} to:${targetLayoutId} reason:${reason}`);
+      if (isTransitioning) return false;
+      if (activeLayoutId === targetLayoutId) return false;
+      const sourceLayout = activeLayoutId ? layouts.get(activeLayoutId) : null;
+      const targetLayout = layouts.get(targetLayoutId);
+      if (!targetLayout) return false;
+      if (sourceLayout && Array.isArray(sourceLayout.allowedTransitions)) {
+        if (!sourceLayout.allowedTransitions.includes(targetLayoutId)) {
+          debugLayoutLog(`[Layout] Invalid transition → from:${activeLayoutId} to:${targetLayoutId}`);
+          return false;
+        }
+      }
+
+      isTransitioning = true;
+      inputDomains.lock();
+      eventBus.emit('layout:changeRequested', { from: activeLayoutId, to: targetLayoutId, reason });
+      try {
+        if (sourceLayout && typeof sourceLayout.onExit === 'function') {
+          const exitContext = { eventBus, payload, reason, from: activeLayoutId, to: targetLayoutId };
+          const snapshot = await sourceLayout.onExit(exitContext);
+          if (snapshot !== undefined) snapshotsByLayout.set(activeLayoutId, snapshot);
+        }
+        const from = activeLayoutId;
+        activeLayoutId = targetLayoutId;
+        inputDomains.setActiveDomain(targetLayoutId);
+        const enterContext = {
+          eventBus,
+          payload,
+          reason,
+          from,
+          to: targetLayoutId,
+          resumeSnapshot: snapshotsByLayout.get(targetLayoutId) || null,
+        };
+        if (typeof targetLayout.onEnter === 'function') await targetLayout.onEnter(enterContext);
+        if (typeof targetLayout.onActive === 'function') await targetLayout.onActive(enterContext);
+        eventBus.emit('layout:changed', { from, to: targetLayoutId, reason });
+        debugLayoutLog(`[Layout] Active → ${targetLayoutId}`);
+        return true;
+      } finally {
+        isTransitioning = false;
+        inputDomains.unlock();
+      }
+    },
+  };
+}
 
 function getHeroUIDByIndex(idx) {
   const hero = state.entities.find(e => e.kind === 'hero' && e.heroIndex === idx);
@@ -49,7 +251,20 @@ function getHeroUIDByIndex(idx) {
     current: null,
   },
   lastTurnPhase: null,
+  baseSummary: '',
 };
+let COMBAT_LAYOUT_READY = false;
+let COMBAT_BOOTSTRAP_COMPLETE = false;
+
+const eventBus = createHarnessEventBus();
+let layoutState = null;
+const animationLayer = null;
+const combatRuntimeGateway = new CombatRuntimeGateway({
+  combatState: gameState,
+  eventBus,
+  layoutState: null,
+  callFunctionWithContext,
+});
 
 const CANONICAL_HERO_ROSTER = [
   { name: 'Falie', hp: 42, maxHP: 42, ATK: 18, DEF: 20, MAG: 10, RES: 18, SPD: 9, attackType: 'melee' },
@@ -95,6 +310,16 @@ function syncFromGlobals() {
   }
   if (state.globals.Gems && Array.isArray(state.globals.Gems)) {
     gameState.gems = state.globals.Gems;
+  }
+}
+
+function assertCombatLayoutDev(functionName) {
+  if (!state || !state.globals || !state.globals.DevTestMode) return;
+  const activeLayoutId = (layoutState && typeof layoutState.getActiveLayoutId === 'function')
+    ? layoutState.getActiveLayoutId()
+    : null;
+  if (activeLayoutId !== 'combat') {
+    throw new Error(`[LayoutAssert] ${functionName} called outside combat layout (active=${activeLayoutId})`);
   }
 }
 
@@ -161,6 +386,7 @@ function parseC2ArrayTable(c2) {
 }
 
 function initEntities(enemyRows, layoutInstances) {
+  assertCombatLayoutDev('initEntities');
   state.entities = [];
   state.globals.EnemyData = enemyRows || [];
 
@@ -222,8 +448,6 @@ function initEntities(enemyRows, layoutInstances) {
     state.globals.BattleStartMode = Math.random() < 0.5 ? 'ambush' : 'initiative';
   }
 
-  callFunctionWithContext(fnContext, 'StartRound');
-  state.globals.CurrentTurnIndex = 0;
   if (!state.globals.BattleStartShown) {
     state.globals.BattleStartShown = 1;
     const msg = state.globals.BattleStartMode === 'ambush'
@@ -236,8 +460,6 @@ function initEntities(enemyRows, layoutInstances) {
     state.globals.BattleStartFadeEndsAt = 2.4;
     state.globals.IsPlayerBusy = 1;
     state.globals.CanPickGems = 0;
-  } else {
-    callFunctionWithContext(fnContext, 'ProcessTurn');
   }
   callFunctionWithContext(fnContext, 'InitPartyHPFromHeroes');
   // Ensure party starts at full health
@@ -254,6 +476,7 @@ function initEntities(enemyRows, layoutInstances) {
 
 // Create gem board with random colors (0-5: Hero1, Hero2, Heal, Buff, AOE, Energy)
 function createGemBoard(gridBounds = null) {
+  assertCombatLayoutDev('createGemBoard');
   gameState.gems = [];
   gameState.grid = [];
   const g = boardGeometry;
@@ -427,7 +650,8 @@ function handleSpecialGem6(gem) {
 
 const YELLOW_COLOR = 3;
 const YELLOW_CASINO_TELEGRAPH_SEC = 0.15;
-const YELLOW_CASINO_SPIN_SEC = 0.4;
+const yellowMatchAnimationDuration = 0.4;
+const YELLOW_CASINO_SPIN_SEC = yellowMatchAnimationDuration;
 const YELLOW_CASINO_TARGETS = [0, 1, 2, 4, 5];
 const YELLOW_CASINO_WALK = [YELLOW_COLOR, ...YELLOW_CASINO_TARGETS];
 
@@ -467,58 +691,60 @@ function buildYellowCasinoSequence(targetFrame) {
 }
 
 function startYellowCasinoSequence(actorUID) {
+  if (state.globals.GamePhase !== 'RUNTIME') {
+    return;
+  }
   const now = state.globals.time || 0;
   const casino = gameState.yellowCasino || (gameState.yellowCasino = {});
   casino.mode = 'yellow';
-  const remaining = (gameState.gems || []).filter(gm => {
-    const c = gm && gm.color != null ? gm.color : (gm ? gm.elementIndex : null);
-    return c === YELLOW_COLOR;
-  }).sort((a, b) => {
-    const ar = a && a.cellR != null ? a.cellR : 0;
-    const br = b && b.cellR != null ? b.cellR : 0;
-    if (ar !== br) return ar - br;
-    const ac = a && a.cellC != null ? a.cellC : 0;
-    const bc = b && b.cellC != null ? b.cellC : 0;
-    return ac - bc;
-  });
+  const gemByCell = new Map();
+  for (const gm of (gameState.gems || [])) {
+    if (!gm || gm.cellR == null || gm.cellC == null) continue;
+    gemByCell.set(`${gm.cellR},${gm.cellC}`, gm);
+  }
   const emptySlots = [];
-  if (gameState.grid && gameState.grid.length) {
+  const queue = [];
+  for (let r = 0; r < boardGeometry.rows; r++) {
     for (let c = 0; c < boardGeometry.cols; c++) {
-      for (let r = 0; r < boardGeometry.rows; r++) {
-      if (gameState.grid[c] && gameState.grid[c][r] === 0) {
-        emptySlots.push({ cellC: c, cellR: r });
+      const key = `${r},${c}`;
+      const gem = gemByCell.get(key) || null;
+      const color = gem && gem.color != null ? gem.color : (gem ? gem.elementIndex : null);
+      if (gem && color === YELLOW_COLOR) {
+        queue.push({
+          type: 'yellow',
+          reason: 'yellow-reassign',
+          uid: gem.uid,
+          cellC: c,
+          cellR: r,
+          target: pickYellowCasinoTarget(),
+          sequence: null,
+          startAt: 0,
+          duration: YELLOW_CASINO_SPIN_SEC,
+          frameDuration: 0,
+        });
+      } else if (!gem && gameState.grid && gameState.grid[c] && gameState.grid[c][r] === 0) {
+        const slot = { cellC: c, cellR: r, index: (r * boardGeometry.cols) + c };
+        emptySlots.push(slot);
+        queue.push({
+          type: 'empty',
+          reason: 'empty',
+          uid: 0,
+          cellC: c,
+          cellR: r,
+          target: pickYellowCasinoTarget(),
+          sequence: null,
+          startAt: 0,
+          duration: YELLOW_CASINO_SPIN_SEC,
+          frameDuration: 0,
+        });
       }
     }
   }
-  }
-  const cols = boardGeometry.cols;
-  for (const slot of emptySlots) {
-    slot.index = (slot.cellR * cols) + slot.cellC;
-  }
-  emptySlots.sort((a, b) => a.index - b.index);
 
-  const hasWork = remaining.length > 0 || emptySlots.length > 0;
+  const hasWork = queue.length > 0;
   casino.active = hasWork;
   casino.phase = hasWork ? 'telegraph' : 'idle';
-  casino.queue = remaining.map(gm => ({
-    type: 'yellow',
-    uid: gm.uid,
-    target: pickYellowCasinoTarget(),
-    sequence: null,
-    startAt: 0,
-    duration: YELLOW_CASINO_SPIN_SEC,
-    frameDuration: 0,
-  })).concat(emptySlots.map(slot => ({
-    type: 'empty',
-    uid: 0,
-    cellC: slot.cellC,
-    cellR: slot.cellR,
-    target: pickYellowCasinoTarget(),
-    sequence: null,
-    startAt: 0,
-    duration: YELLOW_CASINO_SPIN_SEC,
-    frameDuration: 0,
-  })));
+  casino.queue = queue;
   casino.index = 0;
   casino.current = null;
   casino.telegraphUntil = now + YELLOW_CASINO_TELEGRAPH_SEC;
@@ -528,11 +754,39 @@ function startYellowCasinoSequence(actorUID) {
     return { ...slot, x: pos.x, y: pos.y, w: pos.w, h: pos.h };
   });
 
-  for (const gm of remaining) {
-    gm.flashUntil = now + YELLOW_CASINO_TELEGRAPH_SEC;
+  for (const item of queue) {
+    if (item.type !== 'yellow') continue;
+    const gm = gemByCell.get(`${item.cellR},${item.cellC}`);
+    if (gm) gm.flashUntil = now + YELLOW_CASINO_TELEGRAPH_SEC;
   }
 
-  const totalDuration = YELLOW_CASINO_TELEGRAPH_SEC + ((remaining.length + emptySlots.length) * YELLOW_CASINO_SPIN_SEC);
+  gemDebugLog('[FILL_GATE]', {
+    stage: 'yellow-sequence-start',
+    queueLength: queue.length,
+    emptyCount: emptySlots.length,
+    globals: {
+      CanPickGems: state.globals.CanPickGems,
+      IsPlayerBusy: state.globals.IsPlayerBusy,
+      PendingSkillID: state.globals.PendingSkillID || '',
+      BoardFillActive: state.globals.BoardFillActive,
+      TurnPhase: state.globals.TurnPhase,
+      DeferAdvance: state.globals.DeferAdvance,
+      ActionLockUntil: state.globals.ActionLockUntil,
+      MatchedColorValue: state.globals.MatchedColorValue,
+      TapIndex: state.globals.TapIndex,
+    },
+  });
+  gemDebugLog('[FILL_CANDIDATES]', queue.map((item, idx) => ({
+    idx,
+    reason: item.reason,
+    type: item.type,
+    cellR: item.cellR,
+    cellC: item.cellC,
+    target: item.target,
+    uid: item.uid || 0,
+  })));
+
+  const totalDuration = YELLOW_CASINO_TELEGRAPH_SEC + (queue.length * YELLOW_CASINO_SPIN_SEC);
   state.globals.ActionLockUntil = now + Math.max(0.1, totalDuration);
   state.globals.DeferAdvance = 1;
   state.globals.AdvanceAfterAction = 1;
@@ -540,25 +794,41 @@ function startYellowCasinoSequence(actorUID) {
 }
 
 function startRefillBounce(speedScale = 1) {
-  const now = state.globals.time || 0;
   const refill = gameState.refillBounce || (gameState.refillBounce = {});
   refill.speedScale = speedScale;
   const emptySlots = [];
   if (gameState.grid && gameState.grid.length) {
-    for (let c = 0; c < boardGeometry.cols; c++) {
-      for (let r = 0; r < boardGeometry.rows; r++) {
+    for (let r = 0; r < boardGeometry.rows; r++) {
+      for (let c = 0; c < boardGeometry.cols; c++) {
         if (gameState.grid[c] && gameState.grid[c][r] === 0) {
-          emptySlots.push({ cellC: c, cellR: r });
+          emptySlots.push({ cellC: c, cellR: r, reason: 'empty', index: (r * boardGeometry.cols) + c });
         }
       }
     }
   }
-  const cols = boardGeometry.cols;
-  for (const slot of emptySlots) {
-    slot.index = (slot.cellR * cols) + slot.cellC;
-  }
-  emptySlots.sort((a, b) => a.index - b.index);
   const hasWork = emptySlots.length > 0;
+  gemDebugLog('[FILL_GATE]', {
+    stage: 'refill-bounce-start',
+    hasWork,
+    emptyCount: emptySlots.length,
+    globals: {
+      CanPickGems: state.globals.CanPickGems,
+      IsPlayerBusy: state.globals.IsPlayerBusy,
+      PendingSkillID: state.globals.PendingSkillID || '',
+      BoardFillActive: state.globals.BoardFillActive,
+      TurnPhase: state.globals.TurnPhase,
+      DeferAdvance: state.globals.DeferAdvance,
+      ActionLockUntil: state.globals.ActionLockUntil,
+      MatchedColorValue: state.globals.MatchedColorValue,
+      TapIndex: state.globals.TapIndex,
+    },
+  });
+  gemDebugLog('[FILL_CANDIDATES]', emptySlots.map((slot, idx) => ({
+    idx,
+    reason: slot.reason,
+    cellR: slot.cellR,
+    cellC: slot.cellC,
+  })));
   refill.active = hasWork;
   refill.queue = emptySlots;
   refill.index = 0;
@@ -567,6 +837,8 @@ function startRefillBounce(speedScale = 1) {
     state.globals.BoardFillActive = 1;
     state.globals.CanPickGems = false;
     state.globals.IsPlayerBusy = 1;
+  } else {
+    gemDebugLog('[FILL_SKIP]', { stage: 'refill-bounce-start', reason: 'not-needed' });
   }
 }
 
@@ -580,7 +852,116 @@ function hasEmptySlots() {
   return false;
 }
 
+function collectBoardCoverageIssues() {
+  const counts = new Map();
+  for (const g of (gameState.gems || [])) {
+    if (!g) continue;
+    const key = `${g.cellR},${g.cellC}`;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  const missingCells = [];
+  const duplicates = [];
+  for (let r = 0; r < boardGeometry.rows; r++) {
+    for (let c = 0; c < boardGeometry.cols; c++) {
+      const key = `${r},${c}`;
+      const n = counts.get(key) || 0;
+      if (n === 0) missingCells.push({ r, c });
+      if (n > 1) duplicates.push({ r, c, count: n });
+    }
+  }
+  return { missingCells, duplicates };
+}
+
+function findBootstrapMatchCells() {
+  const rows = boardGeometry.rows;
+  const cols = boardGeometry.cols;
+  const colorAt = Array.from({ length: rows }, () => Array(cols).fill(null));
+  for (const g of (gameState.gems || [])) {
+    if (!g || g.cellR == null || g.cellC == null) continue;
+    if (g.cellR < 0 || g.cellR >= rows || g.cellC < 0 || g.cellC >= cols) continue;
+    colorAt[g.cellR][g.cellC] = g.color != null ? g.color : g.elementIndex;
+  }
+  const matched = new Set();
+  for (let r = 0; r < rows; r++) {
+    let c = 0;
+    while (c < cols) {
+      const color = colorAt[r][c];
+      if (color == null) {
+        c += 1;
+        continue;
+      }
+      let end = c + 1;
+      while (end < cols && colorAt[r][end] === color) end += 1;
+      if (end - c >= 3) {
+        for (let x = c; x < end; x++) matched.add(`${r},${x}`);
+      }
+      c = end;
+    }
+  }
+  for (let c = 0; c < cols; c++) {
+    let r = 0;
+    while (r < rows) {
+      const color = colorAt[r][c];
+      if (color == null) {
+        r += 1;
+        continue;
+      }
+      let end = r + 1;
+      while (end < rows && colorAt[end][c] === color) end += 1;
+      if (end - r >= 3) {
+        for (let y = r; y < end; y++) matched.add(`${y},${c}`);
+      }
+      r = end;
+    }
+  }
+  return matched;
+}
+
+function clearBootstrapMatchesIfAny() {
+  if (!Array.isArray(gameState.gems) || gameState.gems.length === 0) return;
+  const MAX_PASSES = 24;
+  for (let pass = 0; pass < MAX_PASSES; pass++) {
+    const matched = findBootstrapMatchCells();
+    if (matched.size === 0) return;
+    for (const key of matched) {
+      const [rRaw, cRaw] = key.split(',');
+      const r = Number(rRaw);
+      const c = Number(cRaw);
+      const gem = gameState.gems.find(g => g && g.cellR === r && g.cellC === c);
+      if (!gem) continue;
+      gem.color = randomGemFrame();
+      gem.elementIndex = gem.color;
+      gem.selected = false;
+      gem.Selected = 0;
+    }
+    setGemArray(gameState.gems);
+  }
+}
+
+function tryActivateRuntimePhase() {
+  if (state.globals.GamePhase !== 'BOOTSTRAP') return false;
+  const refill = gameState.refillBounce;
+  const casino = gameState.yellowCasino;
+  if (refill && refill.active) return false;
+  if (casino && casino.active) return false;
+  if (!Array.isArray(gameState.gems) || gameState.gems.length !== (boardGeometry.rows * boardGeometry.cols)) return false;
+
+  clearBootstrapMatchesIfAny();
+  const coverage = collectBoardCoverageIssues();
+  if (coverage.missingCells.length > 0 || coverage.duplicates.length > 0) return false;
+
+  state.globals.GamePhase = 'RUNTIME';
+  state.globals.CanPickGems = true;
+  state.globals.BoardFillActive = 0;
+  state.globals.IsPlayerBusy = 0;
+  console.log('[GAME_PHASE] RUNTIME');
+  return true;
+}
+
 function handleGemMatch(color) {
+  if (state.globals.GamePhase !== 'RUNTIME') {
+    return;
+  }
   const g = state.globals;
   g.DebugMatchCount = (g.DebugMatchCount || 0) + 1;
   console.log(`[DEBUG] matches=${g.DebugMatchCount} turns=${g.DebugTurnCount || 0}`);
@@ -711,7 +1092,7 @@ function handleGemMatch(color) {
 
   gameState.boardCreated = gameState.gems.length > 0;
   if (!gameState.boardCreated) {
-    createGemBoard(gameState.gridBounds);
+    combatRuntimeGateway.runCombatBoardInit(createGemBoard, gameState.gridBounds);
   }
   if (state.globals.TurnPhase === 2) {
     callFunctionWithContext(fnContext, 'EnemyTurn');
@@ -746,156 +1127,375 @@ async function loadImage(url){
 }
 
 async function main(){
-  console.log('[INIT] Starting initialization...');
-  syncPartyTotals();
+  const HARNESS_MODE = window.location.search.includes('harness=true');
+  if (HARNESS_MODE) {
+    console.log('[Harness] Enabled');
+    console.log('[Harness] Boot override BEFORE C3 init');
+
+    const inputDomains = new HarnessInputDomainManager(eventBus);
+
+    const createLayoutStateSingleton = ({ eventBus: bus, inputDomains: domains, combatRuntimeGateway: gateway }) =>
+      createHarnessLayoutState({ eventBus: bus, inputDomains: domains, combatRuntimeGateway: gateway });
+
+    const registerCoreLayouts = (layoutState, { combatGateway: gateway }) => {
+      layoutState.registerLayout({
+        id: 'combat',
+        allowedTransitions: ['base', 'shop', 'intro', 'astralOverlay'],
+        onEnter({ resumeSnapshot }) {
+          gateway.resume(resumeSnapshot || null);
+          eventBus.emit('layout:combat:entered', { restored: Boolean(resumeSnapshot) });
+        },
+        onActive() {},
+        onExit() {
+          return gateway.suspend();
+        },
+      });
+      layoutState.registerLayout({
+        id: 'base',
+        allowedTransitions: ['combat', 'shop', 'intro'],
+        onEnter() {},
+        onActive() {},
+        onExit() { return null; },
+      });
+      layoutState.registerLayout({
+        id: 'intro',
+        allowedTransitions: ['base', 'combat'],
+        onEnter() {},
+        onActive() {},
+        onExit() { return null; },
+      });
+      layoutState.registerLayout({
+        id: 'shop',
+        allowedTransitions: ['base', 'combat'],
+        onEnter() {},
+        onActive() {},
+        onExit() { return null; },
+      });
+    };
+
+    const registerHarnessLayouts = (layoutState) => {
+      layoutState.registerLayout({
+        id: 'storyMock',
+        allowedTransitions: ['combat'],
+        onEnter() {
+          gameState.overlayVisible = false;
+        },
+        onActive() {},
+        onExit() { return null; },
+      });
+      layoutState.registerLayout({
+        id: 'astralOverlay',
+        allowedTransitions: ['combat'],
+        onEnter() {
+          gameState.overlayVisible = false;
+          console.log('[Harness] astralOverlay active');
+        },
+        onActive() {},
+        onExit() { return null; },
+      });
+    };
+
+    layoutState = createLayoutStateSingleton({
+      eventBus,
+      animationLayer,
+      combatRuntimeGateway,
+      inputDomains,
+    });
+    combatRuntimeGateway.setLayoutState(layoutState);
+
+    registerCoreLayouts(layoutState, { combatGateway: combatRuntimeGateway });
+    registerHarnessLayouts(layoutState, { combatGateway: combatRuntimeGateway });
+
+    await layoutState.activateInitialLayout('storyMock');
+    console.log('[Harness] storyMock activated');
+
+    return;
+  }
+
+  const InputDomainManager = HarnessInputDomainManager;
+  const inputDomains = new InputDomainManager(eventBus);
+  const createLayoutStateSingleton = ({ eventBus: bus, animationLayer, combatRuntimeGateway, inputDomains: domains }) =>
+    createHarnessLayoutState({ eventBus: bus, inputDomains: domains, combatRuntimeGateway });
+  let instances = [];
+  let enemyRows = [];
+  let gridBounds = null;
+  let freshCombatBootstrapped = false;
+  let runtimeLayouts = {};
+  let layout = { name: 'runtime-fallback', layers: [] };
+  let assetsLayout = null;
+  let viewW = 360;
+  let viewH = 640;
+  let types = {};
+  let images = {};
+  let enemySpriteImages = {};
+  let heroPortraitImages = {};
+  let heroSelectorImage = null;
+  let gemFrameImages = [];
+  let buffIconFrameImages = {};
+  let debuffIconImages = {};
+  const calculateGridBounds = (layoutInstances) => {
+    const placeholders = (layoutInstances || []).filter(inst => inst && inst.type === 'grid_placeholder' && inst.world);
+    if (!placeholders.length) {
+      gameState.gridBounds = null;
+      return null;
+    }
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const inst of placeholders) {
+      const world = inst.world;
+      const w = world.width || 45;
+      const h = world.height || 45;
+      const ox = (world.originX !== undefined) ? world.originX : 0.5;
+      const oy = (world.originY !== undefined) ? world.originY : 0.5;
+      const left = (world.x || 0) - w * ox;
+      const right = (world.x || 0) + w * (1 - ox);
+      const top = (world.y || 0) - h * oy;
+      const bottom = (world.y || 0) + h * (1 - oy);
+      minX = Math.min(minX, left);
+      maxX = Math.max(maxX, right);
+      minY = Math.min(minY, top);
+      maxY = Math.max(maxY, bottom);
+    }
+    const bounds = { minX, maxX, minY, maxY };
+    gameState.gridBounds = bounds;
+    console.log(`[BOARD] Grid bounds calculated: (${minX.toFixed(1)}, ${minY.toFixed(1)}) to (${maxX.toFixed(1)}, ${maxY.toFixed(1)})`);
+    return bounds;
+  };
+  function prepareCombatSetupFromInstances(layoutInstances, gameStateRef) {
+    assertCombatLayoutDev('prepareCombatSetupFromInstances');
+    gridBounds = calculateGridBounds(layoutInstances);
+    if (gameStateRef && gridBounds) {
+      gameStateRef.gridBounds = gridBounds;
+    }
+  }
+  async function loadC3ProjectAssets() {
+    assertCombatLayoutDev('loadC3ProjectAssets');
+    runtimeLayouts = await fetchJson(assetUrl('layouts.json')) || {};
+    layout = runtimeLayouts.layout || { name: 'runtime-fallback', layers: [] };
+    console.log('[LAYOUT_AUDIT] topLevelKeys', Object.keys(layout || {}));
+    console.log('[INIT] Layout loaded');
+    assetsLayout = runtimeLayouts.assetsLayout || null;
+
+    const project = runtimeLayouts.project || { viewportWidth: 360, viewportHeight: 640 };
+    viewW = project && project.viewportWidth ? project.viewportWidth : 360;
+    viewH = project && project.viewportHeight ? project.viewportHeight : 640;
+    console.log('[INIT] Project viewport:', viewW, 'x', viewH);
+
+    instances = tryGetInstances(layout);
+    console.log('[LAYOUT_AUDIT] instanceCount', Array.isArray(instances) ? instances.length : 0);
+    const gemInstanceCount = Array.isArray(instances)
+      ? instances.filter(i => i && i.type === 'Gem').length
+      : 0;
+    console.log('[LAYOUT_AUDIT] gemInstanceCount', gemInstanceCount);
+    const typesNeeded = Array.from(new Set(instances.map(i=>i.type)));
+    ['Enemy_Sprite', 'Bar_Fill', 'Bar_Yellow', 'Bar_Back', 'PartyHP_Bar', 'Gem', 'AttackButton', 'Selector'].forEach(t => {
+      if (!typesNeeded.includes(t)) typesNeeded.push(t);
+    });
+    const objectTypeData = await fetchJson(assetUrl('objectTypes.json')) || { types: {} };
+    const allTypes = objectTypeData.types || {};
+    types = {};
+    for (const t of typesNeeded) {
+      const data = allTypes[t];
+      if (data) types[t] = data;
+    }
+    console.log('[INIT] Loaded', Object.keys(types).length, 'object types');
+
+    const enemies = await fetchJson(assetUrl('enemies.json'));
+    enemyRows = parseC2ArrayTable(enemies);
+    gameState.baseSummary = summaryText(layout, types, enemies);
+    out.textContent = gameState.baseSummary + '\n\nLoading images...';
+
+    images = {};
+    enemySpriteImages = {};
+    heroPortraitImages = {};
+    heroSelectorImage = null;
+    gemFrameImages = [];
+    buffIconFrameImages = {};
+    debuffIconImages = {};
+    let loadedCount = 0;
+    const failedImages = [];
+    const loadBaseSprites = async () => {
+      for(const [t,data] of Object.entries(types)){
+        try {
+          const pluginId = data && data['plugin-id'];
+          if (pluginId && pluginId !== 'Sprite') continue;
+          let animName = null;
+          try{ animName = data.animations && data.animations.items && data.animations.items[0] && data.animations.items[0].name; } catch(e){}
+          const imgPath = makeImagePath(t, animName);
+          if(imgPath){
+            const img = await loadImage(imgPath);
+            if(img) {
+              images[t] = img;
+              loadedCount++;
+              if(['UI_NavCloseButton', 'UI_NavCloseX', 'UI_CloseWin'].includes(t)) {
+                console.log(`[LOAD] SUCCESS: ${t} loaded from ${imgPath}`);
+              }
+            } else {
+              failedImages.push({type: t, path: imgPath, anim: animName});
+              if(['UI_NavCloseButton', 'UI_NavCloseX', 'UI_CloseWin'].includes(t)) {
+                console.log(`[LOAD] FAILED: ${t} from ${imgPath}`);
+              }
+            }
+          }
+        } catch(e) {
+          console.warn(`[LOAD] Failed to load image for type ${t}:`, e.message);
+        }
+      }
+    };
+
+    const loadCoreVisuals = async () => {
+      heroPortraitImages.Falie = await loadImage(assetUrl('images/Falie.png'));
+      heroPortraitImages.Huun = await loadImage(assetUrl('images/Huun.png'));
+      heroPortraitImages.Runa = await loadImage(assetUrl('images/Runa.png'));
+      heroPortraitImages.Kojonn = await loadImage(assetUrl('images/Kojonn.png'));
+      heroSelectorImage = await loadImage(assetUrl('images/h_selector-animation 1-000.png'));
+      for (let i = 0; i < 8; i++) {
+        const imgPath = assetUrl(`images/gem-animation 1-${String(i).padStart(3, '0')}.png`);
+        const img = await loadImage(imgPath);
+        if (img) gemFrameImages[i] = img;
+      }
+    };
+
+    const loadDeferredVisuals = async () => {
+      const enemyType = types['Enemy_Sprite'];
+      if (enemyType && enemyType.animations && Array.isArray(enemyType.animations.items)) {
+        for (const anim of enemyType.animations.items) {
+          const animName = anim.name;
+          const imgPath = makeImagePath('Enemy_Sprite', animName);
+          if (!imgPath) continue;
+          const img = await loadImage(imgPath);
+          if (img) enemySpriteImages[String(animName).toLowerCase()] = img;
+        }
+        console.log('[LOAD] Enemy_Sprite animations loaded:', Object.keys(enemySpriteImages).length);
+      }
+      for (let i = 1; i <= 5; i++) {
+        const key = `buffIcon${i}`;
+        buffIconFrameImages[key] = [];
+        for (let f = 0; f < 5; f++) {
+          const imgPath = assetUrl(`images/bufficon${i}-animation 1-${String(f).padStart(3, '0')}.png`);
+          const img = await loadImage(imgPath);
+          if (img) buffIconFrameImages[key][f] = img;
+        }
+      }
+      debuffIconImages.ATK = await loadImage(assetUrl('images/ATK_down.png'));
+      debuffIconImages.DEF = await loadImage(assetUrl('images/DEF_down.png'));
+      debuffIconImages.MAG = await loadImage(assetUrl('images/MAG_down.png'));
+      debuffIconImages.RES = await loadImage(assetUrl('images/RES_down.png'));
+      debuffIconImages.SPD = await loadImage(assetUrl('images/SPD_down.png'));
+    };
+
+    try {
+      await loadBaseSprites();
+      await loadCoreVisuals();
+      console.log(`[LOAD] Core assets loaded: ${loadedCount}/${Object.keys(types).length} base sprites`);
+      if(failedImages.length > 0) {
+        console.log(`[LOAD] Failed images (first 5):`, failedImages.slice(0, 5).map(f => `${f.type}(${f.path})`).join(', '));
+      }
+      setTimeout(() => {
+        loadDeferredVisuals().catch(e => console.error('[LOAD] Deferred asset preload error:', e));
+      }, 0);
+    } catch(e) {
+      console.error(`[LOAD] Error during image preload:`, e);
+    }
+
+    console.log('[INIT] Processing instances...');
+  }
+  const registerCoreLayouts = (layoutState, { combatGateway: gateway }) => {
+    layoutState.registerLayout({
+      id: 'combat',
+      allowedTransitions: ['base', 'shop', 'intro'],
+      async onEnter({ resumeSnapshot }) {
+        console.log('[Layout] Combat activated via LayoutState');
+        COMBAT_LAYOUT_READY = true;
+        console.log('[LayoutGuard] Combat layout ready');
+        if (!resumeSnapshot) {
+          state.globals.GamePhase = 'BOOTSTRAP';
+          console.log('[INIT] Starting initialization...');
+          await loadC3ProjectAssets();
+          prepareCombatSetupFromInstances(instances, gameState);
+          assertCombatLayoutDev('StartRound');
+          callFunctionWithContext(fnContext, 'StartRound');
+          freshCombatBootstrapped = true;
+          COMBAT_BOOTSTRAP_COMPLETE = true;
+        }
+        gateway.resume(resumeSnapshot || null);
+        if (!resumeSnapshot) {
+          initEntities(enemyRows, instances);
+          createGemBoard(gridBounds);
+          if (isGemDebugEnabled()) {
+            setTimeout(() => {
+              runGemInteractivityDiagnostic().catch((err) => {
+                console.error('[DIAG] Gem interactivity diagnostic failed:', err);
+              });
+            }, 1000);
+          }
+        }
+        eventBus.emit('layout:combat:entered', { restored: Boolean(resumeSnapshot) });
+      },
+      onActive() {},
+      onExit() {
+        return gateway.suspend();
+      },
+    });
+    layoutState.registerLayout({
+      id: 'base',
+      allowedTransitions: ['combat', 'shop', 'intro'],
+      onEnter() {},
+      onActive() {},
+      onExit() { return null; },
+    });
+    layoutState.registerLayout({
+      id: 'intro',
+      allowedTransitions: ['base', 'combat'],
+      onEnter() {},
+      onActive() {},
+      onExit() { return null; },
+    });
+    layoutState.registerLayout({
+      id: 'shop',
+      allowedTransitions: ['base', 'combat'],
+      onEnter() {},
+      onActive() {},
+      onExit() { return null; },
+    });
+  };
+
+  layoutState = createLayoutStateSingleton({
+    eventBus,
+    animationLayer,
+    combatRuntimeGateway,
+    inputDomains,
+  });
+  combatRuntimeGateway.setLayoutState(layoutState);
+  registerCoreLayouts(layoutState, { combatGateway: combatRuntimeGateway });
+
   state.globals.Player_maxEnergy = 150;
   state.globals.Player_Energy = state.globals.Player_maxEnergy;
   state.globals.EnergyInitialized = 1;
   if (state.globals.EnemyDoTs) delete state.globals.EnemyDoTs;
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
-    state.globals.DevTestMode = params.has('devtest');
+    state.globals.DevTestMode = params.has('devtest') || params.get('devtest') === 'true';
+    state.globals.DebugGemsMode = params.has('debug_gems') || params.get('debug_gems') === 'true';
     window.__codexGameDevTest = !!state.globals.DevTestMode;
   }
-  const runtimeLayouts = await fetchJson(assetUrl('layouts.json')) || {};
-  const layout = runtimeLayouts.layout || { name: 'runtime-fallback', layers: [] };
-  console.log('[LAYOUT_AUDIT] topLevelKeys', Object.keys(layout || {}));
-  console.log('[INIT] Layout loaded');
-  const assetsLayout = runtimeLayouts.assetsLayout || null;
+  state.globals.GamePhase = 'BOOTSTRAP';
 
-  // read project viewport to scale coordinates
-  const project = runtimeLayouts.project || { viewportWidth: 360, viewportHeight: 640 };
-  const viewW = project && project.viewportWidth ? project.viewportWidth : 360;
-  const viewH = project && project.viewportHeight ? project.viewportHeight : 640;
-  console.log('[INIT] Project viewport:', viewW, 'x', viewH);
-
-  const instances = tryGetInstances(layout);
-  console.log('[LAYOUT_AUDIT] instanceCount', Array.isArray(instances) ? instances.length : 0);
-  const gemInstanceCount = Array.isArray(instances)
-    ? instances.filter(i => i && i.type === 'Gem').length
-    : 0;
-  console.log('[LAYOUT_AUDIT] gemInstanceCount', gemInstanceCount);
-  const typesNeeded = Array.from(new Set(instances.map(i=>i.type)));
-  // Ensure required types are loaded even if not placed on layout
-  ['Enemy_Sprite', 'Bar_Fill', 'Bar_Yellow', 'Bar_Back', 'PartyHP_Bar', 'Gem', 'AttackButton', 'Selector'].forEach(t => {
-    if (!typesNeeded.includes(t)) typesNeeded.push(t);
+  eventBus.on('nav:clicked', async ({ label }) => {
+    if (label === 'AstralFlow') {
+      await layoutState.requestLayoutChange('astralOverlay', 'nav-astral-flow');
+      return;
+    }
+    gameState.overlayVisible = true;
   });
-  const objectTypeData = await fetchJson(assetUrl('objectTypes.json')) || { types: {} };
-  const allTypes = objectTypeData.types || {};
-  const types = {};
-  for (const t of typesNeeded) {
-    const data = allTypes[t];
-    if (data) types[t] = data;
+
+  if (layoutHarnessEnabled) {
+    debugLayoutLog('[Harness] Enabled');
   }
-  console.log('[INIT] Loaded', Object.keys(types).length, 'object types');
 
-  const enemies = await fetchJson(assetUrl('enemies.json'));
-  const enemyRows = parseC2ArrayTable(enemies);
-  initEntities(enemyRows, instances);
-  const baseSummary = summaryText(layout, types, enemies);
-  out.textContent = baseSummary + '\n\nLoading images...';
-
-  // preload representative images per type
-  const images = {};
-  const enemySpriteImages = {};
-  const heroPortraitImages = {};
-  let heroSelectorImage = null;
-  const gemFrameImages = [];
-  const buffIconFrameImages = {};
-  const debuffIconImages = {};
-  let loadedCount = 0;
-  const failedImages = [];
-  const loadBaseSprites = async () => {
-    for(const [t,data] of Object.entries(types)){
-      try {
-        const pluginId = data && data['plugin-id'];
-        if (pluginId && pluginId !== 'Sprite') {
-          continue;
-        }
-        let animName = null;
-        try{ animName = data.animations && data.animations.items && data.animations.items[0] && data.animations.items[0].name; } catch(e){}
-        const imgPath = makeImagePath(t, animName);
-        if(imgPath){
-          const img = await loadImage(imgPath);
-          if(img) {
-            images[t] = img;
-            loadedCount++;
-            if(['UI_NavCloseButton', 'UI_NavCloseX', 'UI_CloseWin'].includes(t)) {
-              console.log(`[LOAD] SUCCESS: ${t} loaded from ${imgPath}`);
-            }
-          } else {
-            failedImages.push({type: t, path: imgPath, anim: animName});
-            if(['UI_NavCloseButton', 'UI_NavCloseX', 'UI_CloseWin'].includes(t)) {
-              console.log(`[LOAD] FAILED: ${t} from ${imgPath}`);
-            }
-          }
-        }
-      } catch(e) {
-        console.warn(`[LOAD] Failed to load image for type ${t}:`, e.message);
-      }
-    }
-  };
-
-  const loadCoreVisuals = async () => {
-    heroPortraitImages.Falie = await loadImage(assetUrl('images/Falie.png'));
-    heroPortraitImages.Huun = await loadImage(assetUrl('images/Huun.png'));
-    heroPortraitImages.Runa = await loadImage(assetUrl('images/Runa.png'));
-    heroPortraitImages.Kojonn = await loadImage(assetUrl('images/Kojonn.png'));
-    heroSelectorImage = await loadImage(assetUrl('images/h_selector-animation 1-000.png'));
-    for (let i = 0; i < 8; i++) {
-      const imgPath = assetUrl(`images/gem-animation 1-${String(i).padStart(3, '0')}.png`);
-      const img = await loadImage(imgPath);
-      if (img) gemFrameImages[i] = img;
-    }
-  };
-
-  const loadDeferredVisuals = async () => {
-    // Enemy_Sprite animations
-    const enemyType = types['Enemy_Sprite'];
-    if (enemyType && enemyType.animations && Array.isArray(enemyType.animations.items)) {
-      for (const anim of enemyType.animations.items) {
-        const animName = anim.name;
-        const imgPath = makeImagePath('Enemy_Sprite', animName);
-        if (!imgPath) continue;
-        const img = await loadImage(imgPath);
-        if (img) {
-          enemySpriteImages[String(animName).toLowerCase()] = img;
-        }
-      }
-      console.log('[LOAD] Enemy_Sprite animations loaded:', Object.keys(enemySpriteImages).length);
-    }
-    // Buff icons
-    for (let i = 1; i <= 5; i++) {
-      const key = `buffIcon${i}`;
-      buffIconFrameImages[key] = [];
-      for (let f = 0; f < 5; f++) {
-        const imgPath = assetUrl(`images/bufficon${i}-animation 1-${String(f).padStart(3, '0')}.png`);
-        const img = await loadImage(imgPath);
-        if (img) buffIconFrameImages[key][f] = img;
-      }
-    }
-    // Debuff icons
-    debuffIconImages.ATK = await loadImage(assetUrl('images/ATK_down.png'));
-    debuffIconImages.DEF = await loadImage(assetUrl('images/DEF_down.png'));
-    debuffIconImages.MAG = await loadImage(assetUrl('images/MAG_down.png'));
-    debuffIconImages.RES = await loadImage(assetUrl('images/RES_down.png'));
-    debuffIconImages.SPD = await loadImage(assetUrl('images/SPD_down.png'));
-  };
-
-  try {
-    await loadBaseSprites();
-    await loadCoreVisuals();
-    console.log(`[LOAD] Core assets loaded: ${loadedCount}/${Object.keys(types).length} base sprites`);
-    if(failedImages.length > 0) {
-      console.log(`[LOAD] Failed images (first 5):`, failedImages.slice(0, 5).map(f => `${f.type}(${f.path})`).join(', '));
-    }
-    setTimeout(() => {
-      loadDeferredVisuals().catch(e => console.error('[LOAD] Deferred asset preload error:', e));
-    }, 0);
-  } catch(e) {
-    console.error(`[LOAD] Error during image preload:`, e);
-  }
-  console.log('[INIT] Processing instances...');
+  await layoutState.activateInitialLayout('combat');
 
   const layoutW = viewW;
   const layoutH = viewH;
@@ -930,6 +1530,76 @@ async function main(){
     const cx = layoutOffsetX + wx * layoutScale;
     const cy = layoutOffsetY + wy * layoutScale;
     return { x: cx, y: cy };
+  }
+
+  if (layoutHarnessEnabled && harnessLayoutState) {
+    const combatLayout = {
+      id: 'combat',
+      allowedTransitions: ['astralOverlay'],
+      onEnter({ resumeSnapshot }) {
+        const snapshot = resumeSnapshot || null;
+        harnessCombatGateway.resume(snapshot);
+        harnessEventBus.emit('layout:combat:entered', { restored: Boolean(snapshot) });
+      },
+      onActive() {},
+      onExit() {
+        return harnessCombatGateway.suspend();
+      },
+    };
+    const storyMockLayout = {
+      id: 'storyMock',
+      allowedTransitions: ['combat'],
+      onEnter() {
+        gameState.overlayVisible = false;
+        debugLayoutLog('[Harness] storyMock active');
+      },
+      onActive() {},
+      onExit() {
+        return null;
+      },
+    };
+    const astralOverlayLayout = {
+      id: 'astralOverlay',
+      allowedTransitions: ['combat'],
+      onEnter() {
+        gameState.overlayVisible = false;
+        console.log('[Harness] astralOverlay active');
+      },
+      onActive() {},
+      onExit() {
+        return null;
+      },
+    };
+
+    harnessLayoutState.registerLayout(combatLayout);
+    harnessLayoutState.registerLayout(storyMockLayout);
+    harnessLayoutState.registerLayout(astralOverlayLayout);
+    debugLayoutLog('[Harness] Layouts registered: storyMock, astralOverlay');
+
+    harnessEventBus.on('layout:storyMock:click', async () => {
+      await harnessLayoutState.requestLayoutChange('combat', 'storyMock-click', { source: 'storyMock' });
+    });
+    harnessEventBus.on('nav:astral-flow', async () => {
+      if (harnessLayoutState.getActiveLayoutId() !== 'combat') return;
+      if (!harnessCombatGateway.canAcceptEvents()) return;
+      console.log('[Harness] Requesting astralOverlay');
+      await harnessLayoutState.requestLayoutChange('astralOverlay', 'astral-flow-nav');
+    });
+    harnessEventBus.on('layout:astralOverlay:click', async () => {
+      await harnessLayoutState.requestLayoutChange('combat', 'astralOverlay-click', { source: 'astralOverlay' });
+    });
+
+    await harnessLayoutState.activateInitialLayout('storyMock');
+
+    if (typeof window !== 'undefined') {
+      window.__layoutHarness = {
+        enabled: true,
+        eventBus: harnessEventBus,
+        inputDomains: harnessInputDomains,
+        layoutState: harnessLayoutState,
+        combatRuntimeGateway: harnessCombatGateway,
+      };
+    }
   }
 
   function getSpriteOrigin(typeName) {
@@ -1064,31 +1734,6 @@ async function main(){
   console.log(`[DEBUG] All rendered objects: ${baseRendered.length} total`);
   console.log(`[DEBUG] Modal objects:`, windowPopupItems.map(r => r.inst.type).join(', '));
 
-  // Calculate grid bounds from grid_placeholder objects for gem board centering
-  const gridPlaceholders = baseRendered.filter(r => r.inst.type === 'grid_placeholder');
-  let gridBounds = null;
-  if (gridPlaceholders.length > 0) {
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (const gp of gridPlaceholders) {
-      const world = gp.inst.world;
-      const w = world.width || 45;
-      const h = world.height || 45;
-      const ox = (world.originX !== undefined) ? world.originX : 0.5;
-      const oy = (world.originY !== undefined) ? world.originY : 0.5;
-      const left = (world.x || 0) - w * ox;
-      const right = (world.x || 0) + w * (1 - ox);
-      const top = (world.y || 0) - h * oy;
-      const bottom = (world.y || 0) + h * (1 - oy);
-      minX = Math.min(minX, left);
-      maxX = Math.max(maxX, right);
-      minY = Math.min(minY, top);
-      maxY = Math.max(maxY, bottom);
-    }
-    gridBounds = { minX, maxX, minY, maxY };
-    gameState.gridBounds = gridBounds; // Store for later use in refill
-    console.log(`[BOARD] Grid bounds calculated: (${minX.toFixed(1)}, ${minY.toFixed(1)}) to (${maxX.toFixed(1)}, ${maxY.toFixed(1)})`);
-  }
-
   // Calculate EnemyArea bounds for layout math (ComputeEnemyLayout parity)
   const enemyAreas = baseRendered.filter(r => r.inst.type === 'EnemyArea');
   if (enemyAreas.length > 0) {
@@ -1113,16 +1758,39 @@ async function main(){
     callFunctionWithContext(fnContext, 'RefreshEnemyPositions');
   }
   
-  // Create gem board centered within grid bounds
-  createGemBoard(gridBounds);
-  
   out.textContent = `🎮 Puzzle RPG\n\n✓ Game loaded\n${rendered.length} total objects loaded`;
 
   // Track last overlay state for logging only on change
   let lastOverlayState = null;
+
+  function drawHarnessLayoutTakeover(layoutId) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = layoutId === 'storyMock' ? '#1557ff' : '#d52525';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '600 18px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(
+      layoutId === 'storyMock' ? 'Story Mock (click to enter combat)' : 'Astral Overlay (click to return to combat)',
+      (canvas.width / dpr) / 2,
+      (canvas.height / dpr) / 2
+    );
+    ctx.textAlign = 'left';
+  }
   
   // helper function to draw all instances
   function drawFrame(dtOverride){
+    if (!COMBAT_BOOTSTRAP_COMPLETE && !layoutHarnessEnabled) {
+      return;
+    }
+    if (layoutHarnessEnabled && harnessLayoutState) {
+      const activeLayout = harnessLayoutState.getActiveLayoutId();
+      if (activeLayout && activeLayout !== 'combat') {
+        drawHarnessLayoutTakeover(activeLayout);
+        return;
+      }
+    }
+
     const now = performance.now();
     const dt = dtOverride != null
       ? dtOverride
@@ -1198,12 +1866,20 @@ async function main(){
         if (!state.globals.BattleStartProcessStarted) {
           state.globals.BattleStartProcessStarted = 1;
           state.globals.IsPlayerBusy = 0;
-          callFunctionWithContext(fnContext, 'ProcessTurn');
+          if (state.globals.GamePhase === 'RUNTIME') {
+            combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+          }
         }
       }
     }
 
     const casino = gameState.yellowCasino;
+    if (state.globals.GamePhase !== 'RUNTIME' && casino && casino.active) {
+      casino.active = false;
+      casino.phase = 'idle';
+      casino.current = null;
+      casino.ghost = null;
+    }
     if (casino && casino.active) {
       const nowTime = state.globals.time || 0;
       if (casino.phase === 'telegraph' && nowTime >= casino.telegraphUntil) {
@@ -1217,6 +1893,17 @@ async function main(){
             const item = casino.queue[casino.index];
             const gem = item.type === 'yellow' ? getGemByUid(item.uid) : null;
             if (item.type === 'yellow' && !gem) {
+              gemDebugLog('[FILL_SKIP]', {
+                stage: 'yellow-sequence',
+                step: casino.index,
+                cellR: item.cellR,
+                cellC: item.cellC,
+                reason: 'missing-yellow-gem',
+                tag: item.reason || item.type,
+              });
+              if (isGemDebugEnabled()) {
+                gemDebugLog('[COVERAGE]', countCellCoverage());
+              }
               casino.index += 1;
               continue;
             }
@@ -1257,6 +1944,18 @@ async function main(){
               if (elapsed >= item.duration) {
                 gem.color = item.target;
                 gem.elementIndex = item.target;
+                if (isGemDebugEnabled()) {
+                  gemDebugLog('[COVERAGE]', countCellCoverage());
+                }
+                gemDebugLog('[FILL]', {
+                  stage: 'yellow-sequence',
+                  step: casino.index,
+                  cellR: item.cellR,
+                  cellC: item.cellC,
+                  reason: item.reason || 'yellow-reassign',
+                  assignedColor: item.target,
+                  assignedUid: gem.uid,
+                });
                 casino.index += 1;
                 casino.current = null;
               }
@@ -1265,6 +1964,9 @@ async function main(){
             const pos = getCellWorldPos(item.cellC, item.cellR);
             casino.ghost = { x: pos.x, y: pos.y, w: pos.w, h: pos.h, frame };
             if (elapsed >= item.duration) {
+              const step = casino.index;
+              const cellR = item.cellR;
+              const cellC = item.cellC;
               const newGem = {
                 uid: gameState.nextGemUID++,
                 cellC: item.cellC,
@@ -1281,9 +1983,38 @@ async function main(){
                 Selected: 0,
                 flashUntil: 0
               };
+              if (isGemDebugEnabled()) {
+                gemDebugLog('[REFILL_BEFORE]', {
+                  step,
+                  cellR,
+                  cellC,
+                  gemCount: gameState.gems.length
+                });
+              }
+              gameState.gems = gameState.gems.filter(g => !(g.cellR === cellR && g.cellC === cellC));
               gameState.gems.push(newGem);
+              if (isGemDebugEnabled()) {
+                gemDebugLog('[REFILL_AFTER]', {
+                  step,
+                  cellR,
+                  cellC,
+                  gemCount: gameState.gems.length
+                });
+              }
               if (gameState.grid[item.cellC]) gameState.grid[item.cellC][item.cellR] = newGem.uid;
               setGemArray(gameState.gems);
+              if (isGemDebugEnabled()) {
+                gemDebugLog('[COVERAGE]', countCellCoverage());
+              }
+              gemDebugLog('[FILL]', {
+                stage: 'yellow-sequence',
+                step: casino.index,
+                cellR: item.cellR,
+                cellC: item.cellC,
+                reason: item.reason || 'empty',
+                assignedColor: item.target,
+                assignedUid: newGem.uid,
+              });
               casino.ghost = null;
               casino.index += 1;
               casino.current = null;
@@ -1293,10 +2024,51 @@ async function main(){
             casino.active = false;
             casino.phase = 'idle';
             casino.ghost = null;
-            if (casino.mode === 'refill') {
+            const refill = gameState.refillBounce;
+            const canRestorePickability =
+              !(refill && refill.active) &&
+              state.entities.length > 0 &&
+              state.globals.TurnPhase === 0 &&
+              state.globals.IsPlayerBusy === 0 &&
+              (state.globals.ActionLockUntil || 0) <= (state.globals.time || 0);
+            if (canRestorePickability) {
               state.globals.CanPickGems = true;
+              state.globals.BoardFillActive = 0;
+              state.globals.DeferAdvance = 0;
+              if (isGemDebugEnabled()) {
+                gemDebugLog('[RESTORE_PICKABILITY]', {
+                  globals: {
+                    BoardFillActive: state.globals.BoardFillActive,
+                    CanPickGems: state.globals.CanPickGems,
+                    IsPlayerBusy: state.globals.IsPlayerBusy,
+                    DeferAdvance: state.globals.DeferAdvance,
+                    ActionLockUntil: state.globals.ActionLockUntil,
+                    PendingSkillID: state.globals.PendingSkillID || '',
+                    TurnPhase: state.globals.TurnPhase,
+                    time: state.globals.time,
+                  },
+                });
+              }
             }
             state.globals.IsPlayerBusy = 0;
+            if (isGemDebugEnabled()) {
+              gemDebugLog('[REFILL_COMPLETE]', {
+                stage: 'yellow-sequence-finished',
+                globals: {
+                  BoardFillActive: state.globals.BoardFillActive,
+                  CanPickGems: state.globals.CanPickGems,
+                  IsPlayerBusy: state.globals.IsPlayerBusy,
+                  DeferAdvance: state.globals.DeferAdvance,
+                  ActionLockUntil: state.globals.ActionLockUntil,
+                  PendingSkillID: state.globals.PendingSkillID || '',
+                  TurnPhase: state.globals.TurnPhase,
+                },
+              });
+              const integrity = assertBoardIntegrity('yellow-sequence-finished');
+              if (!integrity.ok) {
+                throw new Error('[BOARD_INTEGRITY_FAIL] yellow-sequence-finished');
+              }
+            }
           }
         }
       }
@@ -1311,9 +2083,23 @@ async function main(){
         while (refill.index < refill.queue.length) {
           const slot = refill.queue[refill.index];
           if (!gameState.grid[slot.cellC] || gameState.grid[slot.cellC][slot.cellR] !== 0) {
+            gemDebugLog('[FILL_SKIP]', {
+              stage: 'refill-bounce',
+              step: refill.index,
+              cellR: slot.cellR,
+              cellC: slot.cellC,
+              reason: !gameState.grid[slot.cellC] ? 'missing-column' : 'not-needed',
+              tag: slot.reason || 'empty',
+            });
+            if (isGemDebugEnabled()) {
+              gemDebugLog('[COVERAGE]', countCellCoverage());
+            }
             refill.index += 1;
             continue;
           }
+          const step = refill.index;
+          const cellR = slot.cellR;
+          const cellC = slot.cellC;
           const pos = getCellWorldPos(slot.cellC, slot.cellR);
           const color = randomGemFrame();
           const newGem = {
@@ -1334,9 +2120,38 @@ async function main(){
             bounceStart: nowTime,
             bounceDur,
           };
+          if (isGemDebugEnabled()) {
+            gemDebugLog('[REFILL_BEFORE]', {
+              step,
+              cellR,
+              cellC,
+              gemCount: gameState.gems.length
+            });
+          }
+          gameState.gems = gameState.gems.filter(g => !(g.cellR === cellR && g.cellC === cellC));
           gameState.gems.push(newGem);
+          if (isGemDebugEnabled()) {
+            gemDebugLog('[REFILL_AFTER]', {
+              step,
+              cellR,
+              cellC,
+              gemCount: gameState.gems.length
+            });
+          }
           gameState.grid[slot.cellC][slot.cellR] = newGem.uid;
           setGemArray(gameState.gems);
+          if (isGemDebugEnabled()) {
+            gemDebugLog('[COVERAGE]', countCellCoverage());
+          }
+          gemDebugLog('[FILL]', {
+            stage: 'refill-bounce',
+            step: refill.index,
+            cellR: slot.cellR,
+            cellC: slot.cellC,
+            reason: slot.reason || 'empty',
+            assignedColor: color,
+            assignedUid: newGem.uid,
+          });
           refill.current = { doneAt: nowTime + bounceDur };
           break;
         }
@@ -1345,8 +2160,62 @@ async function main(){
           state.globals.IsPlayerBusy = 0;
           state.globals.CanPickGems = true;
           state.globals.BoardFillActive = 0;
+          if (isGemDebugEnabled()) {
+            gemDebugLog('[REFILL_COMPLETE]', {
+              stage: 'refill-bounce-finished',
+              globals: {
+                BoardFillActive: state.globals.BoardFillActive,
+                CanPickGems: state.globals.CanPickGems,
+                IsPlayerBusy: state.globals.IsPlayerBusy,
+                DeferAdvance: state.globals.DeferAdvance,
+                ActionLockUntil: state.globals.ActionLockUntil,
+                PendingSkillID: state.globals.PendingSkillID || '',
+                TurnPhase: state.globals.TurnPhase,
+              },
+            });
+            const integrity = assertBoardIntegrity('refill-bounce-finished');
+            if (!integrity.ok) {
+              throw new Error('[BOARD_INTEGRITY_FAIL] refill-bounce-finished');
+            }
+          }
+          if (isGemDebugEnabled()) {
+            const queueDone = !Array.isArray(refill.queue) || refill.index >= refill.queue.length;
+            const noSpinActive = !(gameState.yellowCasino && gameState.yellowCasino.active);
+            if (queueDone && noSpinActive && state.globals.BoardFillActive !== 0) {
+              console.error('[REFILL_STUCK]', {
+                reason: 'BoardFillActive-not-reset',
+                refillIndex: refill.index,
+                refillQueueLength: Array.isArray(refill.queue) ? refill.queue.length : 0,
+                yellowSpinActive: !!(gameState.yellowCasino && gameState.yellowCasino.active),
+                globals: getGemGateSnapshot(),
+              });
+            }
+          }
+          if (isGemDebugEnabled()) {
+            const noSpinActive = !(gameState.yellowCasino && gameState.yellowCasino.active);
+            const queueDone = !Array.isArray(refill.queue) || refill.index >= refill.queue.length;
+            const shouldValidate =
+              state.globals.BoardFillActive === 0 &&
+              queueDone &&
+              noSpinActive &&
+              state.globals.TurnPhase === 0 &&
+              state.globals.IsPlayerBusy === 0;
+            if (shouldValidate && state.globals.CanPickGems !== true) {
+              console.error('[GATE_STUCK_AFTER_REFILL]', {
+                reason: 'CanPickGems-false-after-refill',
+                refillIndex: refill.index,
+                refillQueueLength: Array.isArray(refill.queue) ? refill.queue.length : 0,
+                yellowSpinActive: !!(gameState.yellowCasino && gameState.yellowCasino.active),
+                globals: getGemGateSnapshot(),
+              });
+              state.globals.CanPickGems = true;
+              gemDebugLog('[GATE_STUCK_AFTER_REFILL]', { corrected: true, globals: getGemGateSnapshot() });
+            }
+          }
           if (state.globals.TurnPhase === 2 && !state.globals.ActionInProgress) {
-            callFunctionWithContext(fnContext, 'ProcessTurn');
+            if (state.globals.GamePhase === 'RUNTIME') {
+              combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+            }
           }
         }
       };
@@ -1907,11 +2776,12 @@ async function main(){
       if (!rouletteInFlight && ((landedAt != null && nowTime >= landedAt + popDuration) || fallbackDone)) {
         state.globals.BlueBuffSequenceActive = 0;
         if (
+          state.globals.GamePhase === 'RUNTIME' &&
           state.globals.TurnPhase === 2 &&
           !state.globals.ActionInProgress &&
           !state.globals.IsPlayerBusy
         ) {
-          callFunctionWithContext(fnContext, 'ProcessTurn');
+          combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
         }
       }
     }
@@ -2806,8 +3676,9 @@ async function main(){
   }
 
   function drawHUD(){
+    if (!gameState.baseSummary) return;
     const lines = [
-      baseSummary,
+      gameState.baseSummary,
       '',
       `TurnPhase: ${state.globals.TurnPhase}`,
       `Board: ${gameState.boardCreated ? gameState.gems.length + ' gems' : 'waiting'}`,
@@ -2845,6 +3716,247 @@ async function main(){
   }
   drawFrame(); // initial render
 
+  const devSleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  function getGemGateSnapshot() {
+    return {
+      CanPickGems: state.globals.CanPickGems,
+      IsPlayerBusy: state.globals.IsPlayerBusy,
+      PendingSkillID: state.globals.PendingSkillID || '',
+      BoardFillActive: state.globals.BoardFillActive,
+      TurnPhase: state.globals.TurnPhase,
+      DeferAdvance: state.globals.DeferAdvance,
+      ActionLockUntil: state.globals.ActionLockUntil,
+      MatchedColorValue: state.globals.MatchedColorValue,
+      TapIndex: state.globals.TapIndex,
+      time: state.globals.time,
+    };
+  }
+  function getGemByRC(row, col) {
+    return (gameState.gems || []).find(g => g && g.cellR === row && g.cellC === col);
+  }
+  function getSelectionLen() {
+    return Array.isArray(gameState.selection) ? gameState.selection.length : 0;
+  }
+  function countCellCoverage() {
+    const coverage = {};
+    for (const g of gameState.gems) {
+      const key = `${g.cellR},${g.cellC}`;
+      coverage[key] = (coverage[key] || 0) + 1;
+    }
+    return coverage;
+  }
+  function clearSelectionOnly() {
+    gameState.selectedGems = [];
+    gameState.selectionLocked = false;
+    if (Array.isArray(gameState.gems)) {
+      for (const gm of gameState.gems) {
+        if (!gm) continue;
+        gm.selected = false;
+        gm.Selected = 0;
+      }
+    }
+    state.globals.TapIndex = 0;
+  }
+  function clickGemCell(row, col) {
+    const gem = getGemByRC(row, col);
+    if (!gem) return false;
+    const pos = worldToCanvas(gem.x, gem.y);
+    const rect = canvas.getBoundingClientRect();
+    const clientX = rect.left + pos.x;
+    const clientY = rect.top + pos.y;
+    const ev = typeof PointerEvent === 'function'
+      ? new PointerEvent('pointerdown', {
+          clientX,
+          clientY,
+          bubbles: true,
+          cancelable: true,
+          pointerType: 'mouse',
+          button: 0,
+          buttons: 1,
+        })
+      : new MouseEvent('pointerdown', {
+          clientX,
+          clientY,
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+          buttons: 1,
+        });
+    canvas.dispatchEvent(ev);
+    return true;
+  }
+  async function waitForRefillReady() {
+    const timeoutMs = 15000;
+    const start = performance.now();
+    while (performance.now() - start < timeoutMs) {
+      const ready = (
+        state.globals.BoardFillActive === 0 &&
+        state.globals.CanPickGems === true &&
+        Array.isArray(gameState.gems) &&
+        gameState.gems.length === 24
+      );
+      if (ready) return true;
+      await devSleep(50);
+    }
+    return false;
+  }
+  function assertBoardIntegrity(reasonTag) {
+    const exportedGame = (typeof window !== 'undefined' && window.__codexGame) ? window.__codexGame : null;
+    const gems = (exportedGame && Array.isArray(exportedGame.gems))
+      ? exportedGame.gems
+      : (Array.isArray(gameState.gems) ? gameState.gems : []);
+    const rows = 4;
+    const cols = 6;
+    const counts = new Map();
+    for (const g of gems) {
+      if (!g) continue;
+      const key = `${g.cellR},${g.cellC}`;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    const missingCells = [];
+    const duplicates = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const key = `${r},${c}`;
+        const n = counts.get(key) || 0;
+        if (n === 0) missingCells.push({ r, c });
+        if (n > 1) duplicates.push({ r, c, count: n });
+      }
+    }
+    const gemsLength = gems.length;
+    const ok = missingCells.length === 0 && duplicates.length === 0;
+    const result = { ok, missingCells, duplicates, gemsLength };
+    console.error('[BOARD_INTEGRITY]', { reasonTag, gemsLength, missingCells, duplicates });
+    return result;
+  }
+  async function auditGemClickability(reasonTag) {
+    if (!isGemDebugEnabled()) return;
+    const rows = [];
+    const inertCells = [];
+    for (let row = 0; row < boardGeometry.rows; row++) {
+      for (let col = 0; col < boardGeometry.cols; col++) {
+        clearSelectionOnly();
+        const beforeGem = getGemByRC(row, col);
+        const beforeSelectedLen = Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0;
+        const beforeSelectionLen = getSelectionLen();
+        const beforeGlobals = getGemGateSnapshot();
+        const clicked = clickGemCell(row, col);
+        await devSleep(20);
+        const afterGem = getGemByRC(row, col);
+        const afterSelectedLen = Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0;
+        const afterSelectionLen = getSelectionLen();
+        const afterGlobals = getGemGateSnapshot();
+        const selectionIncreased = afterSelectedLen > beforeSelectedLen || afterSelectionLen > beforeSelectionLen;
+        const selectedFlipped = !!(afterGem && (afterGem.selected || afterGem.Selected));
+        const gateTransition = JSON.stringify(beforeGlobals) !== JSON.stringify(afterGlobals);
+        const inert = !clicked || (!selectionIncreased && !selectedFlipped && !gateTransition);
+        const rowState = {
+          reasonTag,
+          row,
+          col,
+          gem: afterGem ? {
+            uid: afterGem.uid,
+            color: afterGem.color != null ? afterGem.color : afterGem.elementIndex,
+            x: afterGem.x,
+            y: afterGem.y,
+            selected: !!afterGem.selected,
+            Selected: !!afterGem.Selected,
+            flashUntil: afterGem.flashUntil || 0,
+            cellR: afterGem.cellR,
+            cellC: afterGem.cellC,
+          } : null,
+          selection: {
+            selectedGemsBefore: beforeSelectedLen,
+            selectedGemsAfter: afterSelectedLen,
+            selectionBefore: beforeSelectionLen,
+            selectionAfter: afterSelectionLen,
+          },
+          beforeGlobals,
+          afterGlobals,
+          gateTransition,
+        };
+        rows.push(rowState);
+        if (inert) {
+          const inertDiag = {
+            ...rowState,
+            turn: {
+              uid: callFunctionWithContext(fnContext, 'GetCurrentTurn'),
+              type: callFunctionWithContext(fnContext, 'GetCurrentType'),
+            },
+          };
+          console.error('[INERT_CELL]', inertDiag);
+          inertCells.push(inertDiag);
+        }
+      }
+    }
+    gemDebugLog('[GEM_AUDIT]', { reasonTag, rows });
+    if (inertCells.length > 0) {
+      throw new Error(`[DIAG] Inert gem cells detected at ${reasonTag}: ${inertCells.length}`);
+    }
+  }
+  async function autoPlayTurnsDev(turnCount) {
+    if (!isGemDebugEnabled()) return;
+    if (state.globals.GamePhase !== 'RUNTIME') return;
+    for (let i = 0; i < turnCount; i++) {
+      callFunctionWithContext(fnContext, 'AdvanceTurn');
+      combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+      await devSleep(40);
+    }
+  }
+  async function runGemInteractivityDiagnostic() {
+    if (!isGemDebugEnabled()) return;
+    const runtimeWaitStart = performance.now();
+    while (state.globals.GamePhase !== 'RUNTIME' && (performance.now() - runtimeWaitStart) < 15000) {
+      await devSleep(50);
+    }
+    if (state.globals.GamePhase !== 'RUNTIME') return;
+    const forceDeterministicBoard = () => {
+      if (!Array.isArray(gameState.gems)) return;
+      for (const gem of gameState.gems) {
+        if (!gem) continue;
+        let forcedColor = (gem.cellR + gem.cellC) % 2 === 0 ? 0 : 1;
+        if (gem.cellR === 0 && gem.cellC >= 0 && gem.cellC <= 2) forcedColor = 3;
+        gem.color = forcedColor;
+        gem.elementIndex = forcedColor;
+        gem.flashUntil = 0;
+      }
+      setGemArray(gameState.gems);
+    };
+    const setControlledGates = () => {
+      state.globals.CanPickGems = true;
+      state.globals.IsPlayerBusy = 0;
+      state.globals.PendingSkillID = '';
+      state.globals.BoardFillActive = 0;
+      state.globals.TurnPhase = 0;
+      state.globals.DeferAdvance = 0;
+      state.globals.ActionLockUntil = 0;
+      state.globals.MatchedColorValue = -1;
+    };
+
+    const readyInitial = await waitForRefillReady();
+    if (!readyInitial) throw new Error('[DIAG] Initial board did not become playable');
+    await auditGemClickability('post-initial-board');
+
+    forceDeterministicBoard();
+    clearSelectionOnly();
+    gemDebugLog('[FILL_GATE]', { stage: 'forced-yellow-before', globals: getGemGateSnapshot() });
+    setControlledGates();
+    gemDebugLog('[FILL_GATE]', { stage: 'forced-yellow-after', globals: getGemGateSnapshot() });
+    clickGemCell(0, 0);
+    await devSleep(20);
+    clickGemCell(0, 1);
+    await devSleep(20);
+    clickGemCell(0, 2);
+    const readyAfterYellow = await waitForRefillReady();
+    if (!readyAfterYellow) throw new Error('[DIAG] Refill wait timed out after forced yellow');
+    await auditGemClickability('post-yellow-refill');
+
+    await autoPlayTurnsDev(10);
+    const readyAfterTurns = await waitForRefillReady();
+    if (!readyAfterTurns) throw new Error('[DIAG] Board not playable after auto turns');
+    await auditGemClickability('post-10-auto-turns');
+  }
+
 
   function getEnemyHit(mx, my) {
     const enemies = state.entities.filter(e => e.kind === 'enemy' && (e.hp ?? 0) > 0);
@@ -2875,6 +3987,24 @@ async function main(){
     const rect = canvas.getBoundingClientRect();
     const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
 
+    if (layoutHarnessEnabled && harnessLayoutState && harnessInputDomains) {
+      const activeLayout = harnessLayoutState.getActiveLayoutId();
+      if (activeLayout === 'storyMock') {
+        harnessInputDomains.emit(activeLayout, 'layout:storyMock:click', { x: mx, y: my });
+        drawFrame();
+        return;
+      }
+      if (activeLayout === 'astralOverlay') {
+        harnessInputDomains.emit(activeLayout, 'layout:astralOverlay:click', { x: mx, y: my });
+        drawFrame();
+        return;
+      }
+    }
+
+    if (state.globals.GamePhase !== 'RUNTIME') {
+      return;
+    }
+
     // REFILL click: use actual AddMore object bounds at click time
     const refillObj = rendered.find(r => r.inst.type === 'AddMore');
     if (refillObj) {
@@ -2894,13 +4024,25 @@ async function main(){
       const navTypes = new Set(['Nav_HeroText', 'Nav_MapText', 'Nav_MissionText', 'Nav_AstralFlowText', 'Nav_HomeText']);
       const navLabelItems = rendered.filter(r => navTypes.has(r.inst.type));
       for (const r of navLabelItems) {
+        const labelMap = {
+          Nav_HeroText: 'Hero',
+          Nav_MapText: 'Map',
+          Nav_MissionText: 'Mission',
+          Nav_AstralFlowText: 'AstralFlow',
+          Nav_HomeText: 'Home',
+        };
+        const labelName = labelMap[r.inst.type] || '';
         const pos = worldToCanvas(r.world.x || 0, r.world.y || 0);
         const w = Math.max(40, (r.world.width || 60) * layoutScale);
         const h = Math.max(16, (r.world.height || 20) * layoutScale);
         const dx = pos.x - w * r.ox;
         const dy = pos.y - h * r.oy;
         if (mx >= dx && mx <= dx + w && my >= dy && my <= dy + h) {
-          gameState.overlayVisible = true;
+          inputDomains.emit(
+            layoutState.getActiveLayoutId(),
+            'nav:clicked',
+            { label: labelName }
+          );
           drawFrame();
           return;
         }
@@ -2932,7 +4074,25 @@ async function main(){
     
     // Check for gem clicks (only if board is created and overlay is not visible)
     if (gameState.boardCreated && gameState.gems && !gameState.overlayVisible) {
-      if (state.globals.CanPickGems === false || callFunctionWithContext(fnContext, 'IsHeroTurn') === false) {
+      if (state.globals.GamePhase !== 'RUNTIME') {
+        return;
+      }
+      const isHeroTurn = callFunctionWithContext(fnContext, 'IsHeroTurn') === true;
+      if (state.globals.CanPickGems === false || !isHeroTurn) {
+        gemDebugLog('[GEM_REJECT]', {
+          reason: state.globals.CanPickGems === false ? 'reject-gate-can-pick-false' : 'reject-gate-not-hero-turn',
+          globals: {
+            CanPickGems: state.globals.CanPickGems,
+            IsPlayerBusy: state.globals.IsPlayerBusy,
+            PendingSkillID: state.globals.PendingSkillID || '',
+            BoardFillActive: state.globals.BoardFillActive,
+            TurnPhase: state.globals.TurnPhase,
+            DeferAdvance: state.globals.DeferAdvance,
+            ActionLockUntil: state.globals.ActionLockUntil,
+            MatchedColorValue: state.globals.MatchedColorValue,
+            TapIndex: state.globals.TapIndex,
+          },
+        });
         return;
       }
       for (let i = 0; i < gameState.gems.length; i++) {
@@ -2946,6 +4106,24 @@ async function main(){
         const dist = Math.sqrt(dx * dx + dy * dy);
         
         if (dist < gemRadius) {
+          gemDebugLog('[GEM_ENTRY]', {
+            cellR: gem.cellR,
+            cellC: gem.cellC,
+            uid: gem.uid,
+            selectedGemsLength: Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0,
+            selectionLength: Array.isArray(gameState.selection) ? gameState.selection.length : 0,
+            globals: {
+              CanPickGems: state.globals.CanPickGems,
+              IsPlayerBusy: state.globals.IsPlayerBusy,
+              PendingSkillID: state.globals.PendingSkillID || '',
+              BoardFillActive: state.globals.BoardFillActive,
+              TurnPhase: state.globals.TurnPhase,
+              DeferAdvance: state.globals.DeferAdvance,
+              ActionLockUntil: state.globals.ActionLockUntil,
+              MatchedColorValue: state.globals.MatchedColorValue,
+              TapIndex: state.globals.TapIndex,
+            },
+          });
           if (gem.color == null && gem.elementIndex != null) {
             gem.color = gem.elementIndex;
           }
@@ -2957,6 +4135,23 @@ async function main(){
             gameState.selectionLocked = false;
           }
           if (gameState.selectionLocked || gameState.selectedGems.length >= 3) {
+            gemDebugLog('[GEM_REJECT]', {
+              reason: gameState.selectionLocked ? 'reject-selection-locked' : 'reject-selection-cap-reached',
+              row: gem.cellR,
+              col: gem.cellC,
+              selectedGemsLength: gameState.selectedGems.length,
+              globals: {
+                CanPickGems: state.globals.CanPickGems,
+                IsPlayerBusy: state.globals.IsPlayerBusy,
+                PendingSkillID: state.globals.PendingSkillID || '',
+                BoardFillActive: state.globals.BoardFillActive,
+                TurnPhase: state.globals.TurnPhase,
+                DeferAdvance: state.globals.DeferAdvance,
+                ActionLockUntil: state.globals.ActionLockUntil,
+                MatchedColorValue: state.globals.MatchedColorValue,
+                TapIndex: state.globals.TapIndex,
+              },
+            });
             return;
           }
           
@@ -2967,6 +4162,23 @@ async function main(){
             gem.Selected = 0;
           } else {
             if (gameState.selectedGems.length >= 3) {
+              gemDebugLog('[GEM_REJECT]', {
+                reason: 'reject-selection-cap-guard',
+                row: gem.cellR,
+                col: gem.cellC,
+                selectedGemsLength: gameState.selectedGems.length,
+                globals: {
+                  CanPickGems: state.globals.CanPickGems,
+                  IsPlayerBusy: state.globals.IsPlayerBusy,
+                  PendingSkillID: state.globals.PendingSkillID || '',
+                  BoardFillActive: state.globals.BoardFillActive,
+                  TurnPhase: state.globals.TurnPhase,
+                  DeferAdvance: state.globals.DeferAdvance,
+                  ActionLockUntil: state.globals.ActionLockUntil,
+                  MatchedColorValue: state.globals.MatchedColorValue,
+                  TapIndex: state.globals.TapIndex,
+                },
+              });
               return;
             }
             gem.selected = true;
@@ -3070,6 +4282,9 @@ async function main(){
   let frameCount = 0;
   function tick(){
     frameCount++;
+    if (state.globals.GamePhase === 'BOOTSTRAP') {
+      tryActivateRuntimePhase();
+    }
     if (
       state.globals.TurnPhase === 0 &&
       !state.globals.IsPlayerBusy &&
@@ -3081,14 +4296,46 @@ async function main(){
     }
     const refill = gameState.refillBounce;
     const phaseNow = state.globals.TurnPhase;
-    if (
+    const hasEmpty = hasEmptySlots();
+    const refillReady =
       phaseNow === 0 &&
       !state.globals.IsPlayerBusy &&
       !state.globals.PendingSkillID &&
       !state.globals.ActionInProgress &&
       !state.globals.DeferAdvance &&
-      !(refill && refill.active) &&
-      hasEmptySlots()
+      !(refill && refill.active);
+    if (hasEmpty && !refillReady) {
+      const sig = JSON.stringify({
+        phaseNow,
+        IsPlayerBusy: state.globals.IsPlayerBusy,
+        PendingSkillID: state.globals.PendingSkillID || '',
+        ActionInProgress: state.globals.ActionInProgress,
+        DeferAdvance: state.globals.DeferAdvance,
+        refillActive: !!(refill && refill.active),
+      });
+      if (gameState._lastRefillBlockSig !== sig) {
+        gameState._lastRefillBlockSig = sig;
+        gemDebugLog('[FILL_SKIP]', {
+          stage: 'tick-refill-gate',
+          reason: 'gate',
+          hasEmpty,
+          globals: {
+            TurnPhase: state.globals.TurnPhase,
+            CanPickGems: state.globals.CanPickGems,
+            IsPlayerBusy: state.globals.IsPlayerBusy,
+            PendingSkillID: state.globals.PendingSkillID || '',
+            BoardFillActive: state.globals.BoardFillActive,
+            DeferAdvance: state.globals.DeferAdvance,
+            ActionLockUntil: state.globals.ActionLockUntil,
+            MatchedColorValue: state.globals.MatchedColorValue,
+            TapIndex: state.globals.TapIndex,
+          },
+        });
+      }
+    }
+    if (
+      refillReady &&
+      hasEmpty
     ) {
       startRefillBounce();
     }
@@ -3104,7 +4351,37 @@ async function main(){
       startRefillBounce();
     }
     gameState.lastTurnPhase = phaseNow;
-    if (state.globals.DeferAdvance && (state.globals.time || 0) >= (state.globals.ActionLockUntil || 0)) {
+    if (isGemDebugEnabled()) {
+      const noRefillActive = !(gameState.refillBounce && gameState.refillBounce.active);
+      const noSpinActive = !(gameState.yellowCasino && gameState.yellowCasino.active);
+      const boardFull = Array.isArray(gameState.gems) && gameState.gems.length === 24;
+      const idlePhase = state.globals.TurnPhase === 0;
+      if (noRefillActive && noSpinActive && boardFull && idlePhase && state.globals.CanPickGems === false) {
+        const sig = JSON.stringify({
+          boardFull,
+          TurnPhase: state.globals.TurnPhase,
+          CanPickGems: state.globals.CanPickGems,
+          IsPlayerBusy: state.globals.IsPlayerBusy,
+          DeferAdvance: state.globals.DeferAdvance,
+          ActionLockUntil: state.globals.ActionLockUntil,
+          BoardFillActive: state.globals.BoardFillActive,
+        });
+        if (gameState._gateStuckCanPickSig !== sig) {
+          gameState._gateStuckCanPickSig = sig;
+          console.error('[GATE_STUCK_CANPICK]', {
+            globals: getGemGateSnapshot(),
+            gemsLength: gameState.gems.length,
+            refillActive: false,
+            spinActive: false,
+          });
+        }
+      }
+    }
+    if (
+      state.globals.GamePhase === 'RUNTIME' &&
+      state.globals.DeferAdvance &&
+      (state.globals.time || 0) >= (state.globals.ActionLockUntil || 0)
+    ) {
       if (state.globals.TextAnimating) {
         state.globals.ActionLockUntil = (state.globals.time || 0) + 0.1;
       } else {
@@ -3125,12 +4402,12 @@ async function main(){
           state.globals.AdvanceAfterAction = 0;
           state.globals.ActionOwnerUID = 0;
           callFunctionWithContext(fnContext, 'AdvanceTurn');
-          callFunctionWithContext(fnContext, 'ProcessTurn');
+          combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
         } else if (!ownerOk) {
           state.globals.DeferAdvance = 0;
           state.globals.AdvanceAfterAction = 0;
           state.globals.ActionOwnerUID = 0;
-          callFunctionWithContext(fnContext, 'ProcessTurn');
+          combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
         } else if (!state.globals._DeferBlockLogged) {
           state.globals._DeferBlockLogged = 1;
           console.log(`[TURN] DeferAdvance blocked pendingSelect=${!!pendingSelect} IsPlayerBusy=${state.globals.IsPlayerBusy} TurnPhase=${state.globals.TurnPhase} owner=${ownerUID} cur=${currentUID} canPick=${state.globals.CanPickGems} actionInProgress=${state.globals.ActionInProgress}`);
@@ -3138,6 +4415,32 @@ async function main(){
       }
     } else {
       state.globals._DeferBlockLogged = 0;
+    }
+    const currentTurnType = callFunctionWithContext(fnContext, 'GetCurrentType');
+    const noRefillActive = !(gameState.refillBounce && gameState.refillBounce.active);
+    if (
+      state.globals.GamePhase === 'RUNTIME' &&
+      currentTurnType === 0 &&
+      state.globals.TurnPhase === 0 &&
+      noRefillActive &&
+      (state.globals.CanPickGems !== true || state.globals.BoardFillActive !== 0)
+    ) {
+      state.globals.CanPickGems = true;
+      state.globals.BoardFillActive = 0;
+      if (isGemDebugEnabled()) {
+        gemDebugLog('[TURN_RESTORE_PICK]', {
+          globals: {
+            BoardFillActive: state.globals.BoardFillActive,
+            CanPickGems: state.globals.CanPickGems,
+            IsPlayerBusy: state.globals.IsPlayerBusy,
+            DeferAdvance: state.globals.DeferAdvance,
+            ActionLockUntil: state.globals.ActionLockUntil,
+            PendingSkillID: state.globals.PendingSkillID || '',
+            TurnPhase: state.globals.TurnPhase,
+            time: state.globals.time,
+          },
+        });
+      }
     }
     // Enemy turns are started by ProcessTurn; avoid double-triggering here.
     gameState.enemyTurnKicked = state.globals.TurnPhase === 2;
@@ -3191,6 +4494,10 @@ async function main(){
           isPlayerBusy: state.globals.IsPlayerBusy,
           pendingSkillId: state.globals.PendingSkillID || null,
           overlayVisible: gameState.overlayVisible,
+          layoutId: layoutHarnessEnabled && harnessLayoutState ? harnessLayoutState.getActiveLayoutId() : 'combat',
+          combatAcceptEvents: layoutHarnessEnabled && harnessCombatGateway
+            ? harnessCombatGateway.canAcceptEvents()
+            : true,
         },
         heroes: state.entities
           .filter(e => e.kind === 'hero')
@@ -3252,10 +4559,15 @@ async function main(){
         handleGemMatch(color);
       },
     };
+    window.__auditBoard = () => assertBoardIntegrity('manual');
   }
 }
 
-main().catch(err => {
-  console.error('[ERROR] Initialization failed:', err);
-  out.textContent = `🎮 Puzzle RPG\n\n⚠️ Initialization Error\n${err.message}`;
-});
+(async function boot() {
+  try {
+    await main();
+  } catch (err) {
+    console.error('[ERROR] Initialization failed:', err);
+    out.textContent = `🎮 Puzzle RPG\n\n⚠️ Initialization Error\n${err.message}`;
+  }
+})();
