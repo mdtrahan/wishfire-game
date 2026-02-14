@@ -3,12 +3,15 @@ import { state } from './state.js';
 function getGlobals(ctx) {
   return (ctx && ctx.state ? ctx.state.globals : state.globals);
 }
+function clampBuffDuration(turns) {
+  return Math.min(12, Math.max(0, Math.trunc(Number(turns) || 0)));
+}
 
 export function Party_DEF_UP(ctx, turns, actorUID, actorType, addAmt) {
   const g = getGlobals(ctx);
   const amt = Math.trunc(addAmt || 0);
   g.PartyBuff_DEF = Math.min(g.PartyBuffCap_DEF || 0, (g.PartyBuff_DEF || 0) + amt);
-  if ((g.BuffTurns_DEF || 0) <= 0) g.BuffTurns_DEF = turns || 0;
+  if ((g.BuffTurns_DEF || 0) <= 0) g.BuffTurns_DEF = clampBuffDuration(turns);
   g.BuffText = `BUFF DEF=${g.PartyBuff_DEF}/${g.PartyBuffCap_DEF}`;
   ctx.callFunction('Update_Bars');
   ctx.callFunction('RefreshPartyBuffUI');
@@ -18,7 +21,7 @@ export function Party_SPD_UP(ctx, turns, actorUID, actorType, addAmt) {
   const g = getGlobals(ctx);
   const amt = Math.trunc(addAmt || 0);
   g.PartyBuff_SPD = Math.min(g.PartyBuffCap_SPD || 0, (g.PartyBuff_SPD || 0) + amt);
-  if ((g.BuffTurns_SPD || 0) <= 0) g.BuffTurns_SPD = turns || 0;
+  if ((g.BuffTurns_SPD || 0) <= 0) g.BuffTurns_SPD = clampBuffDuration(turns);
   g.BuffText = `BUFF SPD=${g.PartyBuff_SPD}/${g.PartyBuffCap_SPD}`;
   console.log(`[BUFF] SPD_UP -> ${g.PartyBuff_SPD}/${g.PartyBuffCap_SPD} (+${amt})`);
   ctx.callFunction('Update_Bars');
@@ -29,7 +32,7 @@ export function Party_ATK_UP(ctx, turns, actorUID, actorType, addAmt) {
   const g = getGlobals(ctx);
   const amt = Math.trunc(addAmt || 0);
   g.PartyBuff_ATK = Math.min(g.PartyBuffCap_ATK || 0, (g.PartyBuff_ATK || 0) + amt);
-  if ((g.BuffTurns_ATK || 0) <= 0) g.BuffTurns_ATK = turns || 0;
+  if ((g.BuffTurns_ATK || 0) <= 0) g.BuffTurns_ATK = clampBuffDuration(turns);
   g.BuffText = `BUFF ATK=${g.PartyBuff_ATK}/${g.PartyBuffCap_ATK}`;
   ctx.callFunction('Update_Bars');
   ctx.callFunction('RefreshPartyBuffUI');
@@ -39,7 +42,7 @@ export function Party_MAG_UP(ctx, turns, actorUID, actorType, addAmt) {
   const g = getGlobals(ctx);
   const amt = Math.trunc(addAmt || 0);
   g.PartyBuff_MAG = Math.min(g.PartyBuffCap_MAG || 0, (g.PartyBuff_MAG || 0) + amt);
-  if ((g.BuffTurns_MAG || 0) <= 0) g.BuffTurns_MAG = turns || 0;
+  if ((g.BuffTurns_MAG || 0) <= 0) g.BuffTurns_MAG = clampBuffDuration(turns);
   g.BuffText = `BUFF MAG=${g.PartyBuff_MAG}/${g.PartyBuffCap_MAG}`;
   ctx.callFunction('Update_Bars');
   ctx.callFunction('RefreshPartyBuffUI');
@@ -49,7 +52,7 @@ export function Party_RES_UP(ctx, turns, actorUID, actorType, addAmt) {
   const g = getGlobals(ctx);
   const amt = Math.trunc(addAmt || 0);
   g.PartyBuff_RES = Math.min(g.PartyBuffCap_RES || 0, (g.PartyBuff_RES || 0) + amt);
-  if ((g.BuffTurns_RES || 0) <= 0) g.BuffTurns_RES = turns || 0;
+  if ((g.BuffTurns_RES || 0) <= 0) g.BuffTurns_RES = clampBuffDuration(turns);
   g.BuffText = `BUFF RES=${g.PartyBuff_RES}/${g.PartyBuffCap_RES}`;
   ctx.callFunction('Update_Bars');
   ctx.callFunction('RefreshPartyBuffUI');
