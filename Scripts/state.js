@@ -25,6 +25,8 @@ export const state = {
     Player_Energy: 0,
     Player_maxEnergy: 150,
     goldTotal: 0,
+    TokenWallet: {},
+    LiveOpsProgress: {},
 
     // Party HP/buffs (totals mirror Construct globals)
     PartyHP: 0,
@@ -85,6 +87,13 @@ export const state = {
     UnisonTolerance: 0.5,
     SpeedDoubleRatio: 2.0,
     DamageTextDurationSec: 1.35,
+    InitiativeMode: 'time',
+    InitiativeThreshold: 100,
+    InitiativeMeters: {},
+    InitiativeCurrentUID: 0,
+    InitiativePreviewSize: 6,
+    InitiativeMaxLoops: 500,
+    BattleStartRemaining: {},
 
     // Enemy/turn order arrays
     EnemyArray: [],
@@ -104,6 +113,22 @@ export const state = {
     PartyBuffSlots: [],
     BuffText: '',
     CombatActionLines: ['', '', '', ''],
+    BlueBuffSequenceActive: 0,
+    PowerAmpActive: 0,
+    PowerAmpUID: 0,
+    PowerAmpMultiplier: 1,
+    PowerAmpConsumed: 0,
+    PowerAmpByUID: {},
+    PowerAmpPendingClearUID: 0,
+    PowerAmpShownMultiplier: 1,
+    PowerAmpVisualStartAt: 0,
+    PowerAmpFadeUID: 0,
+    PowerAmpFadeMultiplier: 1,
+    PowerAmpFadeStartAt: 0,
+    PowerAmpFadeDuration: 0.16,
+    BoardFillActive: 0,
+    PowerAmpVisualByUID: {},
+    PowerAmpFadeByUID: {},
   },
 };
 

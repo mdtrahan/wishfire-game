@@ -1,4 +1,12 @@
 import { state } from './state.js';
+import { MONSTER_KEYS, MONSTER_LOOT_TABLE, TOKEN, EMPTY } from './monsterLootTableEventTokens.js';
+import { ACTIVE_EVENT_IDS, LIVE_OPS_EVENTS, TOKEN_REGISTRY } from './liveOpsTokens.js';
+
+const POWER_AMP_OUTCOMES = [
+  { key: 'HERO_2X', multiplier: 2, chance: 0.62 },
+  { key: 'HERO_3X', multiplier: 3, chance: 0.34 },
+  { key: 'JACKPOT_ALL_2X', multiplier: 2, chance: 0.04, jackpotAllLivingHeroes: true },
+];
 
 function getGlobals(ctx) {
   return (ctx && ctx.state ? ctx.state.globals : state.globals);
@@ -39,6 +47,185 @@ function setSelectedGemIndices(ctx, arr) {
   if (ctx && typeof ctx.setSelectedGemIndices === 'function') ctx.setSelectedGemIndices(arr);
   const g = getGlobals(ctx);
   g.SelectedGems = arr;
+}
+
+function ensurePowerAmpByUID(ctx) {
+  const g = getGlobals(ctx);
+  if (!g.PowerAmpByUID || typeof g.PowerAmpByUID !== 'object') g.PowerAmpByUID = {};
+  return g.PowerAmpByUID;
+}
+
+function ensurePowerAmpVisuals(g) {
+  if (!g.PowerAmpVisualByUID || typeof g.PowerAmpVisualByUID !== 'object') g.PowerAmpVisualByUID = {};
+  if (!g.PowerAmpFadeByUID || typeof g.PowerAmpFadeByUID !== 'object') g.PowerAmpFadeByUID = {};
+}
+
+function setPowerAmpVisual(g, uid, mult) {
+  ensurePowerAmpVisuals(g);
+  g.PowerAmpVisualByUID[uid] = { mult, startAt: g.time || 0 };
+}
+
+function startPowerAmpFade(g, uid, mult) {
+  ensurePowerAmpVisuals(g);
+  g.PowerAmpFadeByUID[uid] = { mult, startAt: g.time || 0, duration: 0.16 };
+  delete g.PowerAmpVisualByUID[uid];
+}
+
+function pickPowerAmpOutcome() {
+  let r = Math.random();
+  for (const entry of POWER_AMP_OUTCOMES) {
+    r -= entry.chance;
+    if (r <= 0) return entry;
+  }
+  return POWER_AMP_OUTCOMES[POWER_AMP_OUTCOMES.length - 1];
+}
+
+function activatePowerAmp(ctx, actorUID) {
+  const g = getGlobals(ctx);
+  const store = ensurePowerAmpByUID(ctx);
+  const outcome = pickPowerAmpOutcome();
+  const grantTurn = g.DebugTurnCount || 0;
+  if (outcome.jackpotAllLivingHeroes) {
+    for (const hero of getHeroes(ctx)) {
+      if ((hero.hp ?? 0) > 0) {
+        store[hero.uid] = {
+          mult: outcome.multiplier,
+          grantedTurn: grantTurn,
+          readyTurn: null,
+          usedThisTurn: false,
+        };
+      }
+    }
+    for (const hero of getHeroes(ctx)) {
+      if (store[hero.uid]) setPowerAmpVisual(g, hero.uid, store[hero.uid].mult);
+    }
+    LogCombat(ctx, 'JACKPOT! All heroes get Power Amp x2!');
+    return;
+  }
+  store[actorUID] = {
+    mult: outcome.multiplier,
+    grantedTurn: grantTurn,
+    readyTurn: null,
+    usedThisTurn: false,
+  };
+  setPowerAmpVisual(g, actorUID, outcome.multiplier);
+  LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} gained Power Amp x${outcome.multiplier}!`);
+}
+
+function consumePowerAmpForEvent(ctx, actorUID, values) {
+  const g = getGlobals(ctx);
+  const store = ensurePowerAmpByUID(ctx);
+  const entry = store[actorUID];
+  const mult = Number(entry?.mult || 0);
+  if (!mult) return values;
+  if (entry && entry.readyTurn === (g.DebugTurnCount || 0)) {
+    entry.usedThisTurn = true;
+    return values.map(v => Math.max(1, Math.ceil((v || 0) * mult)));
+  }
+  return values;
+}
+
+export function GetPowerAmpMultiplierForActor(ctx, actorUID) {
+  const g = getGlobals(ctx);
+  const store = ensurePowerAmpByUID(ctx);
+  const entry = store[actorUID];
+  if (!entry) return 0;
+  if (entry.readyTurn !== (g.DebugTurnCount || 0)) return 0;
+  entry.usedThisTurn = true;
+  return Number(entry.mult || 0);
+}
+
+export function ConsumePowerAmpForActor(ctx, actorUID) {
+  const store = ensurePowerAmpByUID(ctx);
+  const entry = store[actorUID];
+  const mult = Number(entry?.mult || 0);
+  if (!mult) return 0;
+  return mult;
+}
+
+export function FinalizePowerAmpVisualClear(ctx, actorUID) {
+  const g = getGlobals(ctx);
+  const uid = Number(actorUID || 0);
+  if (!uid) return;
+  ensurePowerAmpVisuals(g);
+  delete g.PowerAmpVisualByUID[uid];
+  delete g.PowerAmpFadeByUID[uid];
+}
+
+function ensureTokenWallet(ctx) {
+  const g = getGlobals(ctx);
+  if (!g.TokenWallet || typeof g.TokenWallet !== 'object') g.TokenWallet = {};
+  return g.TokenWallet;
+}
+
+function parseDropId(dropId) {
+  if (!dropId || dropId === EMPTY) return { type: 'EMPTY', id: null };
+  const raw = String(dropId);
+  const parts = raw.split('.');
+  if (parts.length === 2) return { type: parts[0], id: parts[1] };
+  return { type: 'UNKNOWN', id: raw };
+}
+
+function getMonsterIdByName(name) {
+  if (!name) return -1;
+  return MONSTER_KEYS.findIndex(k => k === name);
+}
+
+function getActiveEventByToken(tokenId) {
+  if (!tokenId) return null;
+  const active = new Set(ACTIVE_EVENT_IDS || []);
+  return (LIVE_OPS_EVENTS || []).find(e => e.token_id === tokenId && active.has(e.id)) || null;
+}
+
+function getOrCreateEventProgress(ctx, eventId) {
+  const g = getGlobals(ctx);
+  if (!g.LiveOpsProgress || typeof g.LiveOpsProgress !== 'object') g.LiveOpsProgress = {};
+  if (!g.LiveOpsProgress[eventId]) {
+    g.LiveOpsProgress[eventId] = {
+      tierIndex: 0,
+      tierProgress: 0,
+      milestoneIndex: 0,
+      totalSpent: 0,
+    };
+  }
+  return g.LiveOpsProgress[eventId];
+}
+
+function pickDropTier(g) {
+  if (g && Number.isFinite(g.DropTierOverride)) return Math.max(0, Math.min(3, Math.floor(g.DropTierOverride)));
+  const weights = [2, 8, 20, 70];
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < weights.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return i;
+  }
+  return 3;
+}
+
+function applyRewardPayload(ctx, payload) {
+  if (!payload || !payload.type) return;
+  const g = getGlobals(ctx);
+  if (payload.type === 'HEAL_RANDOM') {
+    const amt = Math.max(1, Math.floor(Math.random() * 40) + 1);
+    ctx.callFunction('ApplyPartyHeal', amt);
+    LogCombat(ctx, `Event reward: +${amt} HP`);
+    return;
+  }
+  if (payload.type === 'ENERGY_RANDOM') {
+    const options = [10, 20, 30, 40];
+    const amt = options[Math.floor(Math.random() * options.length)];
+    const next = (g.Player_Energy || 0) + amt;
+    g.Player_Energy = next;
+    LogCombat(ctx, `Event reward: +${amt} Energy`);
+    return;
+  }
+  if (payload.type === 'GOLD_RANDOM') {
+    const options = [15, 30];
+    const amt = options[Math.floor(Math.random() * options.length)];
+    g.goldTotal = (g.goldTotal || 0) + amt;
+    LogCombat(ctx, `Event reward: +${amt} Gold`);
+  }
 }
 
 function sum(list) {
@@ -204,14 +391,254 @@ export function RefreshEnemyPositions(ctx) {
   }
 }
 
+function isTimeInitiative(ctx) {
+  const g = getGlobals(ctx);
+  return g.InitiativeMode === 'time';
+}
+
+function getInitiativeRoster(ctx) {
+  const g = getGlobals(ctx);
+  const roster = [];
+  const seen = new Set();
+  const partyAlive = (g.PartyHP || 0) > 0;
+  if (partyAlive) {
+    for (const h of getHeroes(ctx)) {
+      if (seen.has(h.uid)) continue;
+      const spd = GetEffectiveStat(ctx, h, 'SPD');
+      roster.push({ uid: h.uid, type: 0, spd });
+      seen.add(h.uid);
+    }
+  }
+  for (const e of getEnemies(ctx)) {
+    if ((e.hp ?? 0) <= 0) continue;
+    if (seen.has(e.uid)) continue;
+    const spd = GetEffectiveStat(ctx, e, 'SPD');
+    roster.push({ uid: e.uid, type: 1, spd });
+    seen.add(e.uid);
+  }
+  return roster;
+}
+
+function getMeter(meters, uid) {
+  return Number(meters[String(uid)] ?? 0);
+}
+
+function setMeter(meters, uid, value) {
+  meters[String(uid)] = value;
+}
+
+function syncInitiativeMeters(ctx, roster) {
+  const g = getGlobals(ctx);
+  const meters = g.InitiativeMeters || {};
+  const rosterUIDs = new Set(roster.map(r => r.uid));
+  const meterVals = Object.values(meters).map(v => Number(v) || 0);
+  const minMeter = meterVals.length ? Math.min(...meterVals) : 0;
+  for (const key of Object.keys(meters)) {
+    if (!rosterUIDs.has(Number(key))) delete meters[key];
+  }
+  for (const r of roster) {
+    if (meters[String(r.uid)] == null) {
+      // New spawns start at the lowest meter so they trail the queue.
+      setMeter(meters, r.uid, minMeter);
+    }
+  }
+  g.InitiativeMeters = meters;
+  return meters;
+}
+
+function buildInitiativePreview(roster, meters, threshold, count, currentUID, pool = null) {
+  const preview = [];
+  const localMeters = {};
+  for (const [key, val] of Object.entries(meters)) {
+    localMeters[key] = Number(val) || 0;
+  }
+  const localRoster = roster.map(r => ({ ...r }));
+  const localPool = (pool && pool.length) ? pool.map(r => ({ ...r })) : localRoster;
+  let lastUID = null;
+  if (currentUID) {
+    const cur = localRoster.find(r => r.uid === currentUID);
+    if (cur) {
+      preview.push({ uid: cur.uid, spd: cur.spd, type: cur.type, extra: false });
+      lastUID = cur.uid;
+    }
+  }
+  const targetCount = Math.max(1, count || localRoster.length || 1);
+  while (preview.length < targetCount) {
+    let guard = 0;
+    while (guard < 500) {
+      let ready = null;
+      for (const r of localPool) {
+        const meter = getMeter(localMeters, r.uid);
+        if (meter < threshold) continue;
+        if (
+          !ready ||
+          meter > ready.meter ||
+          (meter === ready.meter && (r.spd > ready.spd || (r.spd === ready.spd && r.uid < ready.uid)))
+        ) {
+          ready = { ...r, meter };
+        }
+      }
+      if (ready) {
+        setMeter(localMeters, ready.uid, ready.meter - threshold);
+        const extra = lastUID === ready.uid;
+        preview.push({ uid: ready.uid, spd: ready.spd, type: ready.type, extra });
+        lastUID = ready.uid;
+        break;
+      }
+      for (const r of localPool) {
+        const meter = getMeter(localMeters, r.uid);
+        setMeter(localMeters, r.uid, meter + (r.spd || 0));
+      }
+      guard += 1;
+    }
+    if (guard >= 500) break;
+  }
+  return preview;
+}
+
+function getInitiativeOverridePool(ctx, roster) {
+  const g = getGlobals(ctx);
+  const startMode = g.BattleStartMode;
+  const startActive = Boolean(startMode && !g.BattleStartResolved);
+  if (!startActive) return { active: false, pool: roster };
+  const teamType = startMode === 'ambush' ? 1 : 0;
+  if (!g.BattleStartRemaining || typeof g.BattleStartRemaining !== 'object') {
+    g.BattleStartRemaining = {};
+  }
+  const remaining = g.BattleStartRemaining;
+  if (Object.keys(remaining).length === 0) {
+    for (const r of roster) {
+      if (r.type === teamType) remaining[r.uid] = true;
+    }
+  }
+  const rosterUIDs = new Set(roster.map(r => r.uid));
+  for (const uid of Object.keys(remaining)) {
+    const num = Number(uid);
+    const inRoster = rosterUIDs.has(num);
+    const actor = roster.find(r => r.uid === num);
+    if (!inRoster || !actor || actor.type !== teamType) delete remaining[uid];
+  }
+  if (Object.keys(remaining).length === 0) {
+    g.BattleStartResolved = 1;
+    g.BattleStartMode = '';
+    return { active: false, pool: roster };
+  }
+  const pool = roster.filter(r => remaining[r.uid]);
+  return { active: true, pool, remaining, teamType };
+}
+
+function selectNextInitiativeActor(ctx) {
+  const g = getGlobals(ctx);
+  const roster = getInitiativeRoster(ctx);
+  if (!roster.length) {
+    g.InitiativeCurrentUID = 0;
+    g.CurrentTurnIndex = 0;
+    g.TurnOrderArray = [];
+    return null;
+  }
+  const threshold = Number(g.InitiativeThreshold || 100);
+  const meters = syncInitiativeMeters(ctx, roster);
+  const override = getInitiativeOverridePool(ctx, roster);
+  const pool = override.pool || roster;
+  const maxLoops = Number(g.InitiativeMaxLoops || 500);
+  let loops = 0;
+  while (loops < maxLoops) {
+    let ready = null;
+    for (const r of pool) {
+      const meter = getMeter(meters, r.uid);
+      if (meter < threshold) continue;
+      if (
+        !ready ||
+        meter > ready.meter ||
+        (meter === ready.meter && (r.spd > ready.spd || (r.spd === ready.spd && r.uid < ready.uid)))
+      ) {
+        ready = { ...r, meter };
+      }
+    }
+    if (ready) {
+      setMeter(meters, ready.uid, ready.meter - threshold);
+      if (override.active && override.remaining) {
+        delete override.remaining[ready.uid];
+        if (Object.keys(override.remaining).length === 0) {
+          g.BattleStartResolved = 1;
+          g.BattleStartMode = '';
+        }
+      }
+      g.InitiativeCurrentUID = ready.uid;
+      g.CurrentTurnIndex = 0;
+      const previewSize = Number(g.InitiativePreviewSize || 6);
+      g.TurnOrderArray = buildInitiativePreview(roster, meters, threshold, previewSize, ready.uid, pool);
+      return ready;
+    }
+    for (const r of pool) {
+      const meter = getMeter(meters, r.uid);
+      setMeter(meters, r.uid, meter + (r.spd || 0));
+    }
+    loops += 1;
+  }
+  console.log('[INIT] guard hit; forcing next actor');
+  const fallback = roster[0];
+  g.InitiativeCurrentUID = fallback.uid;
+  g.CurrentTurnIndex = 0;
+  const previewSize = Number(g.InitiativePreviewSize || 6);
+  g.TurnOrderArray = buildInitiativePreview(roster, meters, threshold, previewSize, fallback.uid, pool);
+  return fallback;
+}
+
+function refreshInitiativePreview(ctx) {
+  const g = getGlobals(ctx);
+  const roster = getInitiativeRoster(ctx);
+  if (!roster.length) {
+    g.TurnOrderArray = [];
+    g.CurrentTurnIndex = 0;
+    g.InitiativeCurrentUID = 0;
+    return;
+  }
+  const meters = syncInitiativeMeters(ctx, roster);
+  const threshold = Number(g.InitiativeThreshold || 100);
+  const previewSize = Number(g.InitiativePreviewSize || 6);
+  const curUID = g.InitiativeCurrentUID;
+  const override = getInitiativeOverridePool(ctx, roster);
+  const pool = override.pool || roster;
+  g.TurnOrderArray = buildInitiativePreview(roster, meters, threshold, previewSize, curUID, pool);
+  const idx = g.TurnOrderArray.findIndex(a => a.uid === curUID);
+  g.CurrentTurnIndex = idx !== -1 ? idx : 0;
+}
+
+function resolvePendingDeathsForInitiative(ctx) {
+  const g = getGlobals(ctx);
+  const pending = g.PendingDeaths || {};
+  for (const uidStr of Object.keys(pending)) {
+    const uid = Number(uidStr);
+    const actor = GetActorByUID(ctx, uid);
+    if (actor && actor.kind === 'enemy') {
+      AwardMonsterDrop(ctx, actor.name || actor.key || actor.type || '');
+      KillEnemyAt(ctx, actor.slotIndex ?? 0);
+    } else if (actor && actor.kind === 'hero') {
+      actor.isAlive = false;
+    }
+    delete pending[uidStr];
+  }
+  g.PendingDeaths = pending;
+  g.GroupResolving = 0;
+}
+
 export function BuildTurnOrder(ctx) {
   const g = getGlobals(ctx);
+  if (isTimeInitiative(ctx)) {
+    refreshInitiativePreview(ctx);
+    return;
+  }
   if (g.RoundActive) return;
   BuildRoundGroups(ctx);
 }
 
 export function RebuildTurnOrderPreserveCurrent(ctx) {
   const g = getGlobals(ctx);
+  if (isTimeInitiative(ctx)) {
+    refreshInitiativePreview(ctx);
+    return;
+  }
   if (g.RoundActive) return;
   const prevOrder = (g.TurnOrderArray || []).slice();
   const currentUID = GetCurrentTurn(ctx);
@@ -254,6 +681,9 @@ export function RebuildTurnOrderPreserveCurrent(ctx) {
 
 export function GetCurrentTurn(ctx) {
   const g = getGlobals(ctx);
+  if (isTimeInitiative(ctx)) {
+    return g.InitiativeCurrentUID || 0;
+  }
   if (g.RoundActive && Array.isArray(g.RoundGroups) && g.RoundGroups.length) {
     const group = g.RoundGroups[g.RoundGroupIndex] || null;
     const member = group && group.members ? group.members[g.RoundMemberIndex] : null;
@@ -266,6 +696,10 @@ export function GetCurrentTurn(ctx) {
 
 export function GetCurrentType(ctx) {
   const g = getGlobals(ctx);
+  if (isTimeInitiative(ctx)) {
+    const actor = GetActorByUID(ctx, g.InitiativeCurrentUID || 0);
+    return actor && actor.kind === 'enemy' ? 1 : 0;
+  }
   if (g.RoundActive && Array.isArray(g.RoundGroups) && g.RoundGroups.length) {
     const group = g.RoundGroups[g.RoundGroupIndex] || null;
     const member = group && group.members ? group.members[g.RoundMemberIndex] : null;
@@ -278,6 +712,13 @@ export function GetCurrentType(ctx) {
 
 export function ProcessCurrentTurn(ctx) {
   const g = getGlobals(ctx);
+  if (isTimeInitiative(ctx)) {
+    const curUID = g.InitiativeCurrentUID || 0;
+    const idx = (g.TurnOrderArray || []).findIndex(a => a.uid === curUID);
+    g.CurrentTurnIndex = idx !== -1 ? idx : 0;
+    g.TurnPhase = GetCurrentType(ctx) === 0 ? 0 : 2;
+    return;
+  }
   if (g.RoundActive && Array.isArray(g.RoundGroups) && g.RoundGroups.length) {
     const groups = g.RoundGroups;
     const group = groups[g.RoundGroupIndex] || { members: [] };
@@ -291,6 +732,7 @@ export function ProcessCurrentTurn(ctx) {
         const uid = Number(uidStr);
         const actor = GetActorByUID(ctx, uid);
         if (actor && actor.kind === 'enemy') {
+          AwardMonsterDrop(ctx, actor.name || actor.key || actor.type || '');
           KillEnemyAt(ctx, actor.slotIndex ?? 0);
         } else if (actor && actor.kind === 'hero') {
           actor.isAlive = false;
@@ -331,6 +773,15 @@ export function AdvanceTurn(ctx) {
   const g = getGlobals(ctx);
   const currentUID = GetCurrentTurn(ctx);
   const currentType = GetCurrentType(ctx);
+  if (currentType === 0 && currentUID) {
+    const store = ensurePowerAmpByUID(ctx);
+    const entry = store[currentUID];
+    if (entry && entry.readyTurn === (g.DebugTurnCount || 0)) {
+      const mult = Number(entry.mult || 0);
+      delete store[currentUID];
+      if (mult) startPowerAmpFade(g, currentUID, mult);
+    }
+  }
   if (currentType === 1 && currentUID) {
     const debuffs = g.EnemyDebuffs?.[currentUID];
     const turns = g.EnemyDebuffTurns?.[currentUID];
@@ -346,6 +797,12 @@ export function AdvanceTurn(ctx) {
         }
       }
     }
+  }
+  if (isTimeInitiative(ctx)) {
+    resolvePendingDeathsForInitiative(ctx);
+    selectNextInitiativeActor(ctx);
+    ProcessCurrentTurn(ctx);
+    return;
   }
   ProcessCurrentTurn(ctx);
 }
@@ -413,6 +870,37 @@ export function GetBaseStat(ctx, inst, stat) {
   return Number(inst.stats?.[stat] ?? inst[stat] ?? 0);
 }
 
+export function ApplyScaledCrit({
+  baseValue,
+  relevantBuffTotal,
+  sourceType,
+  critThreshold = 0.1,
+  rngRoll = Math.random(),
+}) {
+  const value = Number(baseValue) || 0;
+  const buff = Math.max(0, Number(relevantBuffTotal) || 0);
+  const buffCap = 2;
+  let critMultiplierRaw = 1.1;
+  if (buff > 0) {
+    critMultiplierRaw = Math.min(1 + (buff / 10), 1 + buffCap);
+  }
+  critMultiplierRaw = Math.min(3.0, critMultiplierRaw);
+
+  let critMultiplier = 1;
+  if (sourceType === 'HERO') {
+    critMultiplier = critMultiplierRaw;
+  } else if (sourceType === 'ENEMY') {
+    critMultiplier = 1 + ((critMultiplierRaw - 1) * 0.1);
+  }
+
+  const didCrit = rngRoll <= critThreshold;
+  return {
+    didCrit,
+    critMultiplier,
+    value: didCrit ? (value * critMultiplier) : value,
+  };
+}
+
 export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
   const g = getGlobals(ctx);
   const atk = GetActorByUID(ctx, attackerUID);
@@ -440,6 +928,12 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
     dmg = Math.ceil((power - resist / 2) * roll);
   }
   dmg = Math.max(1, dmg);
+  const crit = ApplyScaledCrit({
+    baseValue: dmg,
+    relevantBuffTotal: isMagic ? power : power,
+    sourceType: isHeroAttacker ? 'HERO' : 'ENEMY',
+  });
+  dmg = Math.max(1, Math.ceil(crit.value));
   if (g.ApplyChainToNextDamage === 1) {
     dmg = Math.ceil(dmg * (g.ChainMultiplier || 1));
     g.ApplyChainToNextDamage = 0;
@@ -466,12 +960,13 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
     SpawnDamageText(ctx, dmg, dx, dy, 'damage', t.kind || null);
   }
   if (t.hp === 0) {
-    if (g.RoundActive && g.GroupResolving) {
+    if ((g.RoundActive && g.GroupResolving) || (isTimeInitiative(ctx) && g.GroupResolving)) {
       g.PendingDeaths = g.PendingDeaths || {};
       g.PendingDeaths[t.uid] = g.RoundGroupIndex || 0;
     } else {
       t.isAlive = false;
       if (t.kind === 'enemy') {
+        AwardMonsterDrop(ctx, t.name || t.key || t.type || '');
         KillEnemyAt(ctx, t.slotIndex ?? 0);
       }
     }
@@ -483,7 +978,15 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
 export function CalculateHeal(ctx, actorUID) {
   const h = GetActorByUID(ctx, actorUID);
   if (!h) return 1;
-  return Math.max(1, Math.floor(GetEffectiveStat(ctx, h, 'MAG') * 0.75));
+  const magTotal = GetEffectiveStat(ctx, h, 'MAG');
+  const baseHeal = Math.max(1, Math.floor(magTotal * 0.75));
+  const sourceType = h.kind === 'hero' ? 'HERO' : 'ENEMY';
+  const crit = ApplyScaledCrit({
+    baseValue: baseHeal,
+    relevantBuffTotal: magTotal,
+    sourceType,
+  });
+  return Math.max(1, Math.floor(crit.value));
 }
 
 export function UpdateEnemyHPUI(ctx) {
@@ -673,6 +1176,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
   const actor = GetActorByUID(ctx, heroUID);
   const mode = actor && actor.attackType === 'magic' ? 'magic' : 'melee';
   const dmg = CalculateDamage(ctx, heroUID, targetUID, mode);
+  const ampMult = GetPowerAmpMultiplierForActor(ctx, heroUID);
   const g = getGlobals(ctx);
   const now = g.time || 0;
   const hitDelay = Math.max(0.14 + 0.32, 0.46);
@@ -683,6 +1187,11 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
     heroUID,
     targetUID,
     dmg,
+    powerAmpMultiplier: ampMult,
+    consumePowerAmp: ampMult > 0 ? 1 : 0,
+    calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
+    heroName: actorName,
+    heroType: mode,
     msg: `${actorName} hit ${target.name || '?'} for ${dmg}!`,
   });
 }
@@ -696,12 +1205,16 @@ export function HeroAttackAOE(ctx, heroUID) {
   const aoeName = isKojonn ? 'Burst' : (['Pummel', 'Swipe', 'Burst', 'Faze'][heroIndex] || 'AOE');
   let totalDamage = 0;
   const g = getGlobals(ctx);
+  const ampMult = GetPowerAmpMultiplierForActor(ctx, heroUID);
+  const enemies = getEnemies(ctx);
   const hits = [];
-  for (const e of getEnemies(ctx)) {
+  for (const e of enemies) {
     const dmg = CalculateDamage(ctx, heroUID, e.uid, mode);
-    hits.push({ targetUID: e.uid, dmg });
-    totalDamage += dmg;
+    const finalDmg = ampMult > 0 ? Math.max(1, Math.ceil(dmg * ampMult)) : dmg;
+    hits.push({ targetUID: e.uid, dmg, powerAmpMultiplier: ampMult, consumePowerAmp: 0, finalDmg });
+    totalDamage += finalDmg;
   }
+  if (hits.length > 0 && ampMult > 0) hits[0].consumePowerAmp = 1;
   const now = g.time || 0;
   const hitDelay = Math.max(0.14 + 0.32, 0.46);
   const applyAt = now + hitDelay;
@@ -712,6 +1225,11 @@ export function HeroAttackAOE(ctx, heroUID) {
       heroUID,
       targetUID: hit.targetUID,
       dmg: hit.dmg,
+      powerAmpMultiplier: hit.powerAmpMultiplier,
+      consumePowerAmp: hit.consumePowerAmp,
+      calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
+      heroName: actorName,
+      heroType: mode,
     });
   }
   LogCombat(ctx, `${actorName} used ${aoeName} on all enemies for ${totalDamage}!`);
@@ -784,6 +1302,11 @@ export function SpawnEnemy(ctx, enemyData, slotIndex = 0) {
     g.NewSpawnUIDs[enemy.uid] = true;
   }
   UpdateEnemyHPUI(ctx);
+  if (isTimeInitiative(ctx)) {
+    const roster = getInitiativeRoster(ctx);
+    syncInitiativeMeters(ctx, roster);
+    refreshInitiativePreview(ctx);
+  }
   return enemy;
 }
 
@@ -830,6 +1353,97 @@ export function UpdateChain(ctx, color) {
   else g.ChainNumber = 1;
   g.LastMatchColor = color;
   g.ChainMultiplier = g.ChainNumber >= 3 ? 1.25 : 1;
+}
+
+export function AddToken(ctx, tokenId, amount = 1) {
+  if (!tokenId) return 0;
+  const wallet = ensureTokenWallet(ctx);
+  const key = String(tokenId);
+  const next = (wallet[key] || 0) + (Number(amount) || 0);
+  wallet[key] = Math.max(0, next);
+  return wallet[key];
+}
+
+export function SpendToken(ctx, tokenId, amount = 1) {
+  if (!tokenId) return false;
+  const wallet = ensureTokenWallet(ctx);
+  const key = String(tokenId);
+  const current = wallet[key] || 0;
+  if (current < amount) return false;
+  wallet[key] = current - amount;
+  return true;
+}
+
+export function GetTokenBalance(ctx, tokenId) {
+  if (!tokenId) return 0;
+  const wallet = ensureTokenWallet(ctx);
+  return wallet[String(tokenId)] || 0;
+}
+
+export function ResolveMonsterDrop(ctx, monsterName, tierIndex = null) {
+  const monsterId = getMonsterIdByName(monsterName);
+  if (monsterId < 0) return EMPTY;
+  const tiers = MONSTER_LOOT_TABLE[monsterId] || [];
+  const idx = tierIndex == null ? pickDropTier(getGlobals(ctx)) : Math.max(0, Math.min(3, Math.floor(tierIndex)));
+  return tiers[idx] ?? EMPTY;
+}
+
+export function AwardMonsterDrop(ctx, monsterName, tierIndex = null) {
+  const dropId = ResolveMonsterDrop(ctx, monsterName, tierIndex);
+  const parsed = parseDropId(dropId);
+  if (parsed.type === 'TOKEN') {
+    const registry = TOKEN_REGISTRY[parsed.id];
+    const activeEvent = getActiveEventByToken(parsed.id);
+    if (!activeEvent && registry && registry.fallback && registry.fallback !== EMPTY) {
+      const fallbackParsed = parseDropId(registry.fallback);
+      if (fallbackParsed.type === 'TOKEN') {
+        AddToken(ctx, fallbackParsed.id, 1);
+        LogCombat(ctx, `Token drop (fallback): ${fallbackParsed.id}`);
+        return dropId;
+      }
+      if (registry.fallback === EMPTY) return EMPTY;
+    }
+    AddToken(ctx, parsed.id, 1);
+    LogCombat(ctx, `Token drop: ${parsed.id}`);
+    return dropId;
+  }
+  if (parsed.type === 'ITEM') {
+    LogCombat(ctx, `Item drop: ${parsed.id}`);
+    return dropId;
+  }
+  return EMPTY;
+}
+
+export function SpendTokensOnEvent(ctx, eventId, amount) {
+  if (!eventId || !amount) return false;
+  const event = (LIVE_OPS_EVENTS || []).find(e => e.id === eventId);
+  if (!event) return false;
+  const tokenId = event.token_id;
+  if (!SpendToken(ctx, tokenId, amount)) return false;
+  const progress = getOrCreateEventProgress(ctx, eventId);
+  progress.totalSpent += amount;
+  let remaining = amount;
+  while (remaining > 0) {
+    const tier = event.tiers[progress.tierIndex];
+    if (!tier) break;
+    const tierRemaining = Math.max(0, tier.required - progress.tierProgress);
+    const spendNow = Math.min(remaining, tierRemaining);
+    progress.tierProgress += spendNow;
+    remaining -= spendNow;
+    const milestones = tier.milestones || [];
+    const nextMilestone = milestones[progress.milestoneIndex];
+    if (nextMilestone && progress.tierProgress >= nextMilestone.spend) {
+      for (const reward of nextMilestone.rewards || []) applyRewardPayload(ctx, reward);
+      progress.milestoneIndex += 1;
+    }
+    if (progress.tierProgress >= tier.required) {
+      for (const reward of tier.rewards || []) applyRewardPayload(ctx, reward);
+      progress.tierIndex += 1;
+      progress.tierProgress = 0;
+      progress.milestoneIndex = 0;
+    }
+  }
+  return true;
 }
 
 export function GetChainMultiplier(ctx, chainNum) {
@@ -965,12 +1579,7 @@ export function ResolveGemAction(ctx, gemColor, actorUID) {
     return;
   }
   if (gemColor === 3) {
-    LogGemIntent(ctx, 3, 'GOLD', 'Add_Gold', 'hero-routing', actorUID);
-    ctx.callFunction('Add_Gold', Math.floor(Math.random() * 45) + 1);
-    g.ActionLockUntil = (g.time || 0) + 0.6;
-    g.DeferAdvance = 1;
-    g.AdvanceAfterAction = 1;
-    g.ActionOwnerUID = actorUID;
+    LogGemIntent(ctx, 3, 'YELLOW', 'Casino_Recolor', '', actorUID);
     return;
   }
   if (gemColor === 4) {
@@ -979,8 +1588,8 @@ export function ResolveGemAction(ctx, gemColor, actorUID) {
     return;
   }
   if (gemColor === 5) {
-    LogGemIntent(ctx, 5, 'PURPLE', 'Enemy_Debuff', 'hero-routing', actorUID);
-    ExecutePurpleDebuff(ctx, actorUID);
+    LogGemIntent(ctx, 5, 'PURPLE', 'Power_Amp', 'hero-routing', actorUID);
+    activatePowerAmp(ctx, actorUID);
     g.ActionLockUntil = (g.time || 0) + 0.6;
     g.DeferAdvance = 1;
     g.AdvanceAfterAction = 1;
@@ -998,6 +1607,31 @@ export function DebugTest() {}
 
 export function BuildRoundGroups(ctx) {
   const g = getGlobals(ctx);
+  if (isTimeInitiative(ctx)) {
+    const roster = getInitiativeRoster(ctx);
+    if (!roster.length) {
+      g.InitiativeMeters = {};
+      g.TurnOrderArray = [];
+      g.InitiativeCurrentUID = 0;
+      g.CurrentTurnIndex = 0;
+      return;
+    }
+    syncInitiativeMeters(ctx, roster);
+    if (g.BattleStartMode && !g.BattleStartResolved) {
+      g.BattleStartRemaining = {};
+      const teamType = g.BattleStartMode === 'ambush' ? 1 : 0;
+      for (const r of roster) {
+        if (r.type === teamType) g.BattleStartRemaining[r.uid] = true;
+      }
+    }
+    if (!g.InitiativeCurrentUID) {
+      selectNextInitiativeActor(ctx);
+    } else {
+      refreshInitiativePreview(ctx);
+    }
+    g.RoundActive = 0;
+    return;
+  }
   const roster = [];
   const seen = new Set();
   for (const h of getHeroes(ctx)) {
@@ -1085,6 +1719,7 @@ export function StartRound(ctx) {
 
 export function SortTurnOrder(ctx) {
   const g = getGlobals(ctx);
+  if (isTimeInitiative(ctx)) return;
   const arr = g.TurnOrderArray || [];
   arr.sort((a, b) => (b.spd || 0) - (a.spd || 0));
   g.TurnOrderArray = arr;
@@ -1254,6 +1889,7 @@ export function EnemyTurn(ctx, enemyUID) {
 
 export function HeroTurn(ctx, heroUID) {
   const g = getGlobals(ctx);
+  const store = ensurePowerAmpByUID(ctx);
   g.TurnPhase = 0;
   g.CanPickGems = 1;
   g.IsPlayerBusy = 0;
@@ -1262,6 +1898,14 @@ export function HeroTurn(ctx, heroUID) {
   g.AdvanceAfterAction = 0;
   g.ActionLockUntil = 0;
   if (heroUID) g.CurrentHeroUID = heroUID;
+  if (heroUID && store[heroUID]) {
+    const entry = store[heroUID];
+    const turnNow = g.DebugTurnCount || 0;
+    if (entry.readyTurn == null && turnNow > (entry.grantedTurn || 0)) {
+      entry.readyTurn = turnNow;
+      entry.usedThisTurn = false;
+    }
+  }
 }
 
 export function ProcessTurn(ctx) {
@@ -1269,13 +1913,14 @@ export function ProcessTurn(ctx) {
   const uid = GetCurrentTurn(ctx);
   const actor = GetActorByUID(ctx, uid);
   const g = getGlobals(ctx);
+  if (g.BoardFillActive) return;
   if (g.ActionInProgress && g.ActionActorUID && g.ActionActorUID !== uid) return;
   if (g.IsPlayerBusy && g.TurnPhase === 1) return;
   g.DebugTurnCount = (g.DebugTurnCount || 0) + 1;
   console.log(`[DEBUG] matches=${g.DebugMatchCount || 0} turns=${g.DebugTurnCount}`);
-  const flatRaw = g.RoundActive
-    ? (g.RoundGroups || []).flatMap(gr => gr.members || [])
-    : (g.TurnOrderArray || []);
+  const flatRaw = isTimeInitiative(ctx)
+    ? (g.TurnOrderArray || [])
+    : (g.RoundActive ? (g.RoundGroups || []).flatMap(gr => gr.members || []) : (g.TurnOrderArray || []));
   const flatOrder = flatRaw.filter(a => GetActorByUID(ctx, a.uid));
   if (g.RoundActive) {
     g.TurnOrderArray = flatOrder.map(a => ({ uid: a.uid, spd: a.spd, type: a.type }));
@@ -1298,14 +1943,18 @@ export function ProcessTurn(ctx) {
   }
 
   if (type === 0) {
+    g.GroupResolving = 1;
     if (g.RoundActive) {
-      g.GroupResolving = 1;
       g.ActiveGroupIndex = g.RoundGroupIndex || 0;
     }
     const pendingGroup = g.PendingDeaths ? g.PendingDeaths[uid] : null;
-    if (actor && ((actor.hp ?? 0) > 0 || (g.RoundActive && pendingGroup === g.RoundGroupIndex))) {
+    const partyAlive = (g.PartyHP || 0) > 0;
+    if (actor && (partyAlive || (g.RoundActive && pendingGroup === g.RoundGroupIndex))) {
       HeroTurn(ctx, uid);
     } else {
+      if (actor && !partyAlive) {
+        console.log(`[TURN] skip hero uid=${uid} partyHP=${g.PartyHP || 0}`);
+      }
       AdvanceTurn(ctx);
       ProcessTurn(ctx);
     }
@@ -1313,11 +1962,12 @@ export function ProcessTurn(ctx) {
   }
 
   if (type === 1) {
+    g.GroupResolving = 1;
     if (g.RoundActive) {
-      g.GroupResolving = 1;
       g.ActiveGroupIndex = g.RoundGroupIndex || 0;
     }
     const pendingGroup = g.PendingDeaths ? g.PendingDeaths[uid] : null;
+    if (g.BlueBuffSequenceActive) return;
     if (actor && ((actor.hp ?? 0) > 0 || (g.RoundActive && pendingGroup === g.RoundGroupIndex))) {
       EnemyTurn(ctx, uid);
     } else {
@@ -1421,6 +2071,7 @@ export function StartBuffRoll(ctx) {
   const g = getGlobals(ctx);
   const buffType = g.BuffRollType ?? 0;
   if (buffType < 0 || buffType > 4) return;
+  g.BlueBuffSequenceActive = 1;
   g.IsPlayerBusy = 1;
   g.CanPickGems = false;
   g.SuppressChainUI = 0;
@@ -1435,6 +2086,8 @@ export function StartBuffRoll(ctx) {
     g.BuffRollSkillID = '';
     g.BuffRollActor = 0;
   }
+  // Buff roll has no lunge/animation to clear busy; allow DeferAdvance to resolve.
+  g.IsPlayerBusy = 0;
   const until = (g.time || 0) + 0.6;
   g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, until);
   g.DeferAdvance = 1;
@@ -1482,6 +2135,7 @@ export function RegisterPartyBuffSlot(ctx, buffType) {
   if (g.TrackBuffs.includes(buffType)) {
     g.BuffIconPopType = buffType;
     g.BuffIconPopAt = g.time || 0;
+    g.BuffIconPopStacking = 1;
     return;
   }
   const emptyIndex = g.TrackBuffs.findIndex(v => v === -1);
@@ -1492,4 +2146,5 @@ export function RegisterPartyBuffSlot(ctx, buffType) {
   }
   g.BuffIconPopType = buffType;
   g.BuffIconPopAt = g.time || 0;
+  g.BuffIconPopStacking = 0;
 }

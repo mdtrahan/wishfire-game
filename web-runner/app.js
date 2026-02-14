@@ -2,6 +2,7 @@ import { state } from '../Scripts/state.js';
 import { createContext, callFunctionWithContext } from '../Scripts/functionRegistry.js';
 
 const out = document.getElementById('output');
+const walletOut = document.getElementById('wallet-output');
 const canvas = document.getElementById('view');
 const ctx = canvas.getContext('2d');
 
@@ -31,6 +32,23 @@ function getHeroUIDByIndex(idx) {
   selectionLocked: false,
   enemyTurnKicked: false,
   buffRollTimer: 0,
+  buffIconPresentation: null,
+  gemMergeFx: null,
+  yellowCasino: {
+    active: false,
+    phase: 'idle',
+    queue: [],
+    index: 0,
+    current: null,
+    telegraphUntil: 0,
+  },
+  refillBounce: {
+    active: false,
+    queue: [],
+    index: 0,
+    current: null,
+  },
+  lastTurnPhase: null,
 };
 
 function setGemArray(arr) {
@@ -83,10 +101,13 @@ const boardGeometry = {
   gy: 365,     // top-left y
 };
 
-function e(u){return encodeURI(u)}
 async function fetchJson(url){
-  try{ const r = await fetch(e(url)); if(!r.ok) return null; return await r.json(); }
+  try{ const r = await fetch(url); if(!r.ok) return null; return await r.json(); }
   catch(e){ return null }
+}
+
+function assetUrl(path){
+  return new URL(`../project_C3_conversion/${path}`, window.location.href).toString();
 }
 
 function summaryText(layout, types, enemies){
@@ -138,6 +159,9 @@ function initEntities(enemyRows, layoutInstances) {
   const partyMaxHP = [];
   for (let i = 0; i < 4; i++) {
     const v = heroByIndex.get(i) || {};
+    // Permanent SPD overrides in JS (ground-truth JSON remains untouched).
+    if (i === 0) v.SPD = 9;   // Falie
+    if (i === 2) v.SPD = 11;  // Runa
     const hp = Number(v.HP ?? gameState.partyHP[i] ?? 0);
     let maxHP = Number(v.maxHP ?? (v.HP ?? gameState.partyMaxHP[i] ?? 0));
     if (!maxHP || maxHP < hp) maxHP = hp;
@@ -248,38 +272,13 @@ function createGemBoard(gridBounds = null) {
     }
   }
 
-  for (let c = 0; c < g.cols; c++) {
-    for (let r = 0; r < g.rows; r++) {
-      const x = Math.floor(startX + c * (g.cellSize + g.gap) + g.cellSize / 2) + 0.5;
-      const y = Math.floor(startY + r * (g.cellSize + g.gap) + g.cellSize / 2) + 0.5;
-      const color = randomGemFrame(); // gated frame selection per JSON
-      
-      gameState.gems.push({
-        uid: gameState.nextGemUID++,
-        cellC: c,
-        cellR: r,
-        color: color,
-        elementIndex: color,
-        x: x,
-        y: y,
-        worldX: x,  // for canvas coordinate conversion
-        worldY: y,
-        width: g.cellSize,
-        height: g.cellSize,
-        selected: false,
-        Selected: 0,
-        flashUntil: 0
-      });
-      gameState.grid[c][r] = gameState.gems[gameState.gems.length - 1].uid;
-    }
-  }
-  
   gameState.selectedGems = [];
   gameState.selectionLocked = false;
   gameState.boardCreated = true;
   setGemArray(gameState.gems);
   state.globals.TapIndex = 0;
   console.log(`[BOARD] Created gem board: ${g.cols}x${g.rows} = ${gameState.gems.length} gems`);
+  startRefillBounce(0.31);
 }
 
 function rebuildGridFromGems() {
@@ -299,19 +298,31 @@ function rebuildGridFromGems() {
 }
 
 function randomGemFrame() {
+  const MAX_PURPLE_ON_BOARD = 3;
+  const PURPLE_WEIGHT = 0.25;
   const x = Math.floor(Math.random() * 1000);
-  if (x >= 998) return x === 998 ? 6 : 7;
-  // Weighted distribution for 0-5 (reduce Gold, keep board balanced)
-  // Colors: 0,1,2,3,4,5 with Gold on 3
-  const weights = [2, 2, 2, 1, 2, 2];
-  let total = 0;
-  for (const w of weights) total += w;
-  let r = Math.random() * total;
-  for (let i = 0; i < weights.length; i++) {
-    r -= weights[i];
-    if (r <= 0) return i;
+  if (x === 998) return 6;
+  const countPurple = () => (gameState.gems || []).reduce((n, g) => {
+    const c = g && g.color != null ? g.color : (g ? g.elementIndex : null);
+    return n + (c === 5 ? 1 : 0);
+  }, 0);
+  const pickByWeights = (weights) => {
+    let total = 0;
+    for (const w of weights) total += w;
+    let r = Math.random() * total;
+    for (let i = 0; i < weights.length; i++) {
+      r -= weights[i];
+      if (r <= 0) return i;
+    }
+    return 0;
+  };
+  // Colors 0-4 standard, 5 purple jackpot.
+  const weights = [1, 1, 1, 1, 1, PURPLE_WEIGHT];
+  let frame = pickByWeights(weights);
+  if (frame === 5 && countPurple() >= MAX_PURPLE_ON_BOARD) {
+    frame = pickByWeights([1, 1, 1, 1, 1]);
   }
-  return 0;
+  return frame;
 }
 
 function refillGemBoard(gridBounds = null) {
@@ -338,8 +349,8 @@ function refillGemBoard(gridBounds = null) {
     startX = gridBounds.minX + (gridWidth - boardWidth) / 2;
     startY = gridBounds.minY + (gridHeight - boardHeight) / 2;
   }
-  for (let c = 0; c < g.cols; c++) {
-    for (let r = 0; r < g.rows; r++) {
+  for (let r = 0; r < g.rows; r++) {
+    for (let c = 0; c < g.cols; c++) {
       if (gameState.grid[c][r] !== 0) continue;
       const x = Math.floor(startX + c * (g.cellSize + g.gap) + g.cellSize / 2) + 0.5;
       const y = Math.floor(startY + r * (g.cellSize + g.gap) + g.cellSize / 2) + 0.5;
@@ -387,9 +398,8 @@ function handleSpecialGem6(gem) {
   } else {
     const energyOptions = [6, 12, 15];
     const amt = energyOptions[Math.floor(Math.random() * energyOptions.length)];
-    const maxE = Math.max(0, g.Player_maxEnergy || 0);
     const next = (g.Player_Energy || 0) + amt;
-    g.Player_Energy = maxE > 0 ? Math.min(maxE, next) : next;
+    g.Player_Energy = next;
     callFunctionWithContext(fnContext, 'LogCombat', `${actorName} gained ${amt} energy!`);
     callFunctionWithContext(fnContext, 'SpawnDamageText', amt, gem.x, gem.y, 'heal');
   }
@@ -404,6 +414,161 @@ function handleSpecialGem6(gem) {
   state.globals.TapIndex = 0;
   rebuildGridFromGems();
   setGemArray(gameState.gems);
+}
+
+const YELLOW_COLOR = 3;
+const YELLOW_CASINO_TELEGRAPH_SEC = 0.15;
+const YELLOW_CASINO_SPIN_SEC = 0.4;
+const YELLOW_CASINO_TARGETS = [0, 1, 2, 4, 5];
+const YELLOW_CASINO_WALK = [YELLOW_COLOR, ...YELLOW_CASINO_TARGETS];
+
+function getCellWorldPos(cellC, cellR) {
+  const g = boardGeometry;
+  const boardWidth = g.cols * g.cellSize + (g.cols - 1) * g.gap;
+  const boardHeight = g.rows * g.cellSize + (g.rows - 1) * g.gap;
+  let startX = g.gx;
+  let startY = g.gy;
+  if (gameState.gridBounds) {
+    const gridWidth = gameState.gridBounds.maxX - gameState.gridBounds.minX;
+    const gridHeight = gameState.gridBounds.maxY - gameState.gridBounds.minY;
+    startX = gameState.gridBounds.minX + (gridWidth - boardWidth) / 2;
+    startY = gameState.gridBounds.minY + (gridHeight - boardHeight) / 2;
+  }
+  const x = Math.floor(startX + cellC * (g.cellSize + g.gap) + g.cellSize / 2) + 0.5;
+  const y = Math.floor(startY + cellR * (g.cellSize + g.gap) + g.cellSize / 2) + 0.5;
+  return { x, y, w: g.cellSize, h: g.cellSize };
+}
+
+function pickYellowCasinoTarget() {
+  const idx = Math.floor(Math.random() * YELLOW_CASINO_TARGETS.length);
+  return YELLOW_CASINO_TARGETS[idx];
+}
+
+function buildYellowCasinoSequence(targetFrame) {
+  const idx = YELLOW_CASINO_WALK.indexOf(targetFrame);
+  const seq = [];
+  seq.push(YELLOW_CASINO_WALK[0]);
+  for (let i = 1; i < YELLOW_CASINO_WALK.length; i++) {
+    seq.push(YELLOW_CASINO_WALK[i]);
+  }
+  for (let i = 0; i <= idx; i++) {
+    seq.push(YELLOW_CASINO_WALK[i]);
+  }
+  return seq;
+}
+
+function startYellowCasinoSequence(actorUID) {
+  const now = state.globals.time || 0;
+  const casino = gameState.yellowCasino || (gameState.yellowCasino = {});
+  casino.mode = 'yellow';
+  const remaining = (gameState.gems || []).filter(gm => {
+    const c = gm && gm.color != null ? gm.color : (gm ? gm.elementIndex : null);
+    return c === YELLOW_COLOR;
+  }).sort((a, b) => {
+    const ar = a && a.cellR != null ? a.cellR : 0;
+    const br = b && b.cellR != null ? b.cellR : 0;
+    if (ar !== br) return ar - br;
+    const ac = a && a.cellC != null ? a.cellC : 0;
+    const bc = b && b.cellC != null ? b.cellC : 0;
+    return ac - bc;
+  });
+  const emptySlots = [];
+  if (gameState.grid && gameState.grid.length) {
+    for (let c = 0; c < boardGeometry.cols; c++) {
+      for (let r = 0; r < boardGeometry.rows; r++) {
+      if (gameState.grid[c] && gameState.grid[c][r] === 0) {
+        emptySlots.push({ cellC: c, cellR: r });
+      }
+    }
+  }
+  }
+  const cols = boardGeometry.cols;
+  for (const slot of emptySlots) {
+    slot.index = (slot.cellR * cols) + slot.cellC;
+  }
+  emptySlots.sort((a, b) => a.index - b.index);
+
+  const hasWork = remaining.length > 0 || emptySlots.length > 0;
+  casino.active = hasWork;
+  casino.phase = hasWork ? 'telegraph' : 'idle';
+  casino.queue = remaining.map(gm => ({
+    type: 'yellow',
+    uid: gm.uid,
+    target: pickYellowCasinoTarget(),
+    sequence: null,
+    startAt: 0,
+    duration: YELLOW_CASINO_SPIN_SEC,
+    frameDuration: 0,
+  })).concat(emptySlots.map(slot => ({
+    type: 'empty',
+    uid: 0,
+    cellC: slot.cellC,
+    cellR: slot.cellR,
+    target: pickYellowCasinoTarget(),
+    sequence: null,
+    startAt: 0,
+    duration: YELLOW_CASINO_SPIN_SEC,
+    frameDuration: 0,
+  })));
+  casino.index = 0;
+  casino.current = null;
+  casino.telegraphUntil = now + YELLOW_CASINO_TELEGRAPH_SEC;
+  casino.ghost = null;
+  casino.emptyTelegraph = emptySlots.map(slot => {
+    const pos = getCellWorldPos(slot.cellC, slot.cellR);
+    return { ...slot, x: pos.x, y: pos.y, w: pos.w, h: pos.h };
+  });
+
+  for (const gm of remaining) {
+    gm.flashUntil = now + YELLOW_CASINO_TELEGRAPH_SEC;
+  }
+
+  const totalDuration = YELLOW_CASINO_TELEGRAPH_SEC + ((remaining.length + emptySlots.length) * YELLOW_CASINO_SPIN_SEC);
+  state.globals.ActionLockUntil = now + Math.max(0.1, totalDuration);
+  state.globals.DeferAdvance = 1;
+  state.globals.AdvanceAfterAction = 1;
+  state.globals.ActionOwnerUID = actorUID;
+}
+
+function startRefillBounce(speedScale = 1) {
+  const now = state.globals.time || 0;
+  const refill = gameState.refillBounce || (gameState.refillBounce = {});
+  refill.speedScale = speedScale;
+  const emptySlots = [];
+  if (gameState.grid && gameState.grid.length) {
+    for (let c = 0; c < boardGeometry.cols; c++) {
+      for (let r = 0; r < boardGeometry.rows; r++) {
+        if (gameState.grid[c] && gameState.grid[c][r] === 0) {
+          emptySlots.push({ cellC: c, cellR: r });
+        }
+      }
+    }
+  }
+  const cols = boardGeometry.cols;
+  for (const slot of emptySlots) {
+    slot.index = (slot.cellR * cols) + slot.cellC;
+  }
+  emptySlots.sort((a, b) => a.index - b.index);
+  const hasWork = emptySlots.length > 0;
+  refill.active = hasWork;
+  refill.queue = emptySlots;
+  refill.index = 0;
+  refill.current = null;
+  if (hasWork) {
+    state.globals.BoardFillActive = 1;
+    state.globals.CanPickGems = false;
+    state.globals.IsPlayerBusy = 1;
+  }
+}
+
+function hasEmptySlots() {
+  if (!gameState.grid || !gameState.grid.length) return false;
+  for (let c = 0; c < boardGeometry.cols; c++) {
+    for (let r = 0; r < boardGeometry.rows; r++) {
+      if (gameState.grid[c] && gameState.grid[c][r] === 0) return true;
+    }
+  }
+  return false;
 }
 
 function handleGemMatch(color) {
@@ -452,6 +617,23 @@ function handleGemMatch(color) {
     }
   };
 
+  const startGemMergeFx = () => {
+    const now = state.globals.time || 0;
+    const items = (gameState.selectedGems || []).map(idx => {
+      const gm = gameState.gems && gameState.gems[idx];
+      if (!gm) return null;
+      return { x: gm.x, y: gm.y, color: gm.color ?? gm.elementIndex };
+    }).filter(Boolean);
+    if (!items.length) return;
+    gameState.gemMergeFx = {
+      active: true,
+      startAt: now,
+      duration: 0.28,
+      items,
+      doneAt: null,
+    };
+  };
+
   if (color === 0 || color === 1) {
     g.TurnPhase = 1;
     callFunctionWithContext(fnContext, 'UpdateChain', color);
@@ -465,6 +647,7 @@ function handleGemMatch(color) {
     callFunctionWithContext(fnContext, 'Sub_Energy');
     g.ApplyChainToNextDamage = g.ChainNumber >= 2 ? 1 : 0;
   } else if (color === 2) {
+    startGemMergeFx();
     g.MatchedColorValue = 0;
     g.IsAOEMatch = 0;
     g.SuppressChainUI = 0;
@@ -478,12 +661,13 @@ function handleGemMatch(color) {
     callFunctionWithContext(fnContext, 'Sub_Energy');
     g.ApplyChainToNextDamage = 0;
   } else if (color === 3) {
-    callFunctionWithContext(fnContext, 'ResolveGemAction', 3, actorUID);
     callFunctionWithContext(fnContext, 'DestroyGem');
     callFunctionWithContext(fnContext, 'ClearMatchState');
     syncGemsFromGlobals();
     clearLocalSelection();
     rebuildGridFromGems();
+    callFunctionWithContext(fnContext, 'Sub_Energy');
+    startYellowCasinoSequence(actorUID);
   } else if (color === 4) {
     g.MatchedColorValue = 4;
     g.IsAOEMatch = 0;
@@ -558,7 +742,7 @@ function makeImagePath(typeName, animName){
   const t = typeName.toLowerCase();
   const a = (animName||'animation 1').toLowerCase();
   // common filenames: type-anim-000.png, allow spaces
-  return `/project_C3_conversion/images/${t}-${a}-000.png`;
+  return assetUrl(`images/${t}-${a}-000.png`);
 }
 
 async function loadImage(url){
@@ -579,13 +763,13 @@ async function main(){
     state.globals.DevTestMode = params.has('devtest');
     window.__codexGameDevTest = !!state.globals.DevTestMode;
   }
-  const layout = await fetchJson('/project_C3_conversion/layouts/Layout 1.json');
+  const layout = await fetchJson(assetUrl('layouts/Layout 1.json'));
   if(!layout){ out.textContent = 'Failed to load layout'; return; }
   console.log('[INIT] Layout loaded');
-  const assetsLayout = await fetchJson('/project_C3_conversion/layouts/Assets.json');
+  const assetsLayout = await fetchJson(assetUrl('layouts/Assets.json'));
 
   // read project viewport to scale coordinates
-  const project = await fetchJson('/project_C3_conversion/project.c3proj');
+  const project = await fetchJson(assetUrl('project.c3proj'));
   const viewW = project && project.viewportWidth ? project.viewportWidth : 360;
   const viewH = project && project.viewportHeight ? project.viewportHeight : 640;
   console.log('[INIT] Project viewport:', viewW, 'x', viewH);
@@ -598,13 +782,13 @@ async function main(){
   });
   const types = {};
   for(const t of typesNeeded){
-    const url = `/project_C3_conversion/objectTypes/${encodeURIComponent(t)}.json`;
+    const url = assetUrl(`objectTypes/${encodeURIComponent(t)}.json`);
     const data = await fetchJson(url);
     if(data) types[t] = data;
   }
   console.log('[INIT] Loaded', Object.keys(types).length, 'object types');
 
-  const enemies = await fetchJson('/project_C3_conversion/files/Enemies.json');
+  const enemies = await fetchJson(assetUrl('files/Enemies.json'));
   const enemyRows = parseC2ArrayTable(enemies);
   initEntities(enemyRows, instances);
   const baseSummary = summaryText(layout, types, enemies);
@@ -620,7 +804,7 @@ async function main(){
   const debuffIconImages = {};
   let loadedCount = 0;
   const failedImages = [];
-  try {
+  const loadBaseSprites = async () => {
     for(const [t,data] of Object.entries(types)){
       try {
         const pluginId = data && data['plugin-id'];
@@ -649,7 +833,23 @@ async function main(){
         console.warn(`[LOAD] Failed to load image for type ${t}:`, e.message);
       }
     }
-    // Load Enemy_Sprite animations by name for per-enemy rendering
+  };
+
+  const loadCoreVisuals = async () => {
+    heroPortraitImages.Falie = await loadImage(assetUrl('images/Falie.png'));
+    heroPortraitImages.Huun = await loadImage(assetUrl('images/Huun.png'));
+    heroPortraitImages.Runa = await loadImage(assetUrl('images/Runa.png'));
+    heroPortraitImages.Kojonn = await loadImage(assetUrl('images/Kojonn.png'));
+    heroSelectorImage = await loadImage(assetUrl('images/h_selector-animation 1-000.png'));
+    for (let i = 0; i < 8; i++) {
+      const imgPath = assetUrl(`images/gem-animation 1-${String(i).padStart(3, '0')}.png`);
+      const img = await loadImage(imgPath);
+      if (img) gemFrameImages[i] = img;
+    }
+  };
+
+  const loadDeferredVisuals = async () => {
+    // Enemy_Sprite animations
     const enemyType = types['Enemy_Sprite'];
     if (enemyType && enemyType.animations && Array.isArray(enemyType.animations.items)) {
       for (const anim of enemyType.animations.items) {
@@ -663,39 +863,34 @@ async function main(){
       }
       console.log('[LOAD] Enemy_Sprite animations loaded:', Object.keys(enemySpriteImages).length);
     }
-    // Load hero portraits for field rendering (left side)
-    heroPortraitImages.Falie = await loadImage('/project_C3_conversion/images/Falie.png');
-    heroPortraitImages.Huun = await loadImage('/project_C3_conversion/images/Huun.png');
-    heroPortraitImages.Runa = await loadImage('/project_C3_conversion/images/Runa.png');
-    heroPortraitImages.Kojonn = await loadImage('/project_C3_conversion/images/Kojonn.png');
-    // Load Hero selector image
-    heroSelectorImage = await loadImage('/project_C3_conversion/images/h_selector-animation 1-000.png');
-    // Load Gem animation frames (0-7) for board rendering
-    for (let i = 0; i < 8; i++) {
-      const imgPath = `/project_C3_conversion/images/gem-animation 1-${String(i).padStart(3, '0')}.png`;
-      const img = await loadImage(imgPath);
-      if (img) gemFrameImages[i] = img;
-    }
-    // Load Buff icon frames (0-4) as separate files (not a sprite sheet)
+    // Buff icons
     for (let i = 1; i <= 5; i++) {
       const key = `buffIcon${i}`;
       buffIconFrameImages[key] = [];
       for (let f = 0; f < 5; f++) {
-        const imgPath = `/project_C3_conversion/images/bufficon${i}-animation 1-${String(f).padStart(3, '0')}.png`;
+        const imgPath = assetUrl(`images/bufficon${i}-animation 1-${String(f).padStart(3, '0')}.png`);
         const img = await loadImage(imgPath);
         if (img) buffIconFrameImages[key][f] = img;
       }
     }
-    // Load Debuff icon assets
-    debuffIconImages.ATK = await loadImage('/project_C3_conversion/images/ATK_down.png');
-    debuffIconImages.DEF = await loadImage('/project_C3_conversion/images/DEF_down.png');
-    debuffIconImages.MAG = await loadImage('/project_C3_conversion/images/MAG_down.png');
-    debuffIconImages.RES = await loadImage('/project_C3_conversion/images/RES_down.png');
-    debuffIconImages.SPD = await loadImage('/project_C3_conversion/images/SPD_down.png');
-    console.log(`[LOAD] Completed image preloading: ${loadedCount}/${Object.keys(types).length} images loaded`);
+    // Debuff icons
+    debuffIconImages.ATK = await loadImage(assetUrl('images/ATK_down.png'));
+    debuffIconImages.DEF = await loadImage(assetUrl('images/DEF_down.png'));
+    debuffIconImages.MAG = await loadImage(assetUrl('images/MAG_down.png'));
+    debuffIconImages.RES = await loadImage(assetUrl('images/RES_down.png'));
+    debuffIconImages.SPD = await loadImage(assetUrl('images/SPD_down.png'));
+  };
+
+  try {
+    await loadBaseSprites();
+    await loadCoreVisuals();
+    console.log(`[LOAD] Core assets loaded: ${loadedCount}/${Object.keys(types).length} base sprites`);
     if(failedImages.length > 0) {
       console.log(`[LOAD] Failed images (first 5):`, failedImages.slice(0, 5).map(f => `${f.type}(${f.path})`).join(', '));
     }
+    setTimeout(() => {
+      loadDeferredVisuals().catch(e => console.error('[LOAD] Deferred asset preload error:', e));
+    }, 0);
   } catch(e) {
     console.error(`[LOAD] Error during image preload:`, e);
   }
@@ -952,7 +1147,17 @@ async function main(){
             continue;
           }
           if (tickNow >= (regen.nextFireTick || 0)) {
-            const heal = Math.max(1, Math.round(regen.healPerFire || 1));
+            let heal = 1;
+            if (regen.totalHealRemaining != null && regen.remainingFires > 0) {
+              const remaining = Math.max(1, Math.floor(regen.totalHealRemaining));
+              const fires = Math.max(1, Math.floor(regen.remainingFires));
+              const base = Math.floor(remaining / fires);
+              const extra = (remaining % fires) > 0 ? 1 : 0;
+              heal = Math.max(1, base + extra);
+              regen.totalHealRemaining = Math.max(0, remaining - heal);
+            } else {
+              heal = Math.max(1, Math.round(regen.healPerFire || 1));
+            }
             const beforeHP = state.globals.PartyHP || 0;
             const prev = state.globals.SpawnDamageText;
             const prevHero = state.globals.SuppressHeroHealText;
@@ -997,6 +1202,162 @@ async function main(){
       }
     }
 
+    const casino = gameState.yellowCasino;
+    if (casino && casino.active) {
+      const nowTime = state.globals.time || 0;
+      if (casino.phase === 'telegraph' && nowTime >= casino.telegraphUntil) {
+        casino.phase = 'spin';
+      }
+      if (casino.phase === 'spin') {
+        const getGemByUid = (uid) => (gameState.gems || []).find(gm => gm && gm.uid === uid);
+        const startNext = () => {
+          casino.current = null;
+          while (casino.index < casino.queue.length) {
+            const item = casino.queue[casino.index];
+            const gem = item.type === 'yellow' ? getGemByUid(item.uid) : null;
+            if (item.type === 'yellow' && !gem) {
+              casino.index += 1;
+              continue;
+            }
+            if (!item.sequence) item.sequence = buildYellowCasinoSequence(item.target);
+            item.startAt = nowTime;
+            item.frameDuration = item.sequence.length > 1
+              ? item.duration / (item.sequence.length - 1)
+              : item.duration;
+            casino.current = item;
+            break;
+          }
+          if (!casino.current) {
+            casino.active = false;
+            casino.phase = 'idle';
+            casino.ghost = null;
+            state.globals.IsPlayerBusy = 0;
+          }
+        };
+        if (!casino.current) {
+          startNext();
+        }
+        if (casino.current) {
+          const item = casino.current;
+          const elapsed = Math.max(0, nowTime - item.startAt);
+          const seq = item.sequence || [YELLOW_COLOR];
+          const frameIdx = item.frameDuration > 0
+            ? Math.min(seq.length - 1, Math.floor(elapsed / item.frameDuration))
+            : seq.length - 1;
+          const frame = seq[frameIdx];
+          if (item.type === 'yellow') {
+            const gem = getGemByUid(item.uid);
+            if (!gem) {
+              casino.index += 1;
+              startNext();
+            } else {
+              gem.color = frame;
+              gem.elementIndex = frame;
+              if (elapsed >= item.duration) {
+                gem.color = item.target;
+                gem.elementIndex = item.target;
+                casino.index += 1;
+                casino.current = null;
+              }
+            }
+          } else if (item.type === 'empty') {
+            const pos = getCellWorldPos(item.cellC, item.cellR);
+            casino.ghost = { x: pos.x, y: pos.y, w: pos.w, h: pos.h, frame };
+            if (elapsed >= item.duration) {
+              const newGem = {
+                uid: gameState.nextGemUID++,
+                cellC: item.cellC,
+                cellR: item.cellR,
+                color: item.target,
+                elementIndex: item.target,
+                x: pos.x,
+                y: pos.y,
+                worldX: pos.x,
+                worldY: pos.y,
+                width: pos.w,
+                height: pos.h,
+                selected: false,
+                Selected: 0,
+                flashUntil: 0
+              };
+              gameState.gems.push(newGem);
+              if (gameState.grid[item.cellC]) gameState.grid[item.cellC][item.cellR] = newGem.uid;
+              setGemArray(gameState.gems);
+              casino.ghost = null;
+              casino.index += 1;
+              casino.current = null;
+            }
+          }
+          if (!casino.current && casino.index >= casino.queue.length) {
+            casino.active = false;
+            casino.phase = 'idle';
+            casino.ghost = null;
+            if (casino.mode === 'refill') {
+              state.globals.CanPickGems = true;
+            }
+            state.globals.IsPlayerBusy = 0;
+          }
+        }
+      }
+    }
+
+    const refill = gameState.refillBounce;
+    if (refill && refill.active) {
+      const nowTime = state.globals.time || 0;
+      const bounceDur = 0.16 * (refill.speedScale || 1);
+      const startNext = () => {
+        refill.current = null;
+        while (refill.index < refill.queue.length) {
+          const slot = refill.queue[refill.index];
+          if (!gameState.grid[slot.cellC] || gameState.grid[slot.cellC][slot.cellR] !== 0) {
+            refill.index += 1;
+            continue;
+          }
+          const pos = getCellWorldPos(slot.cellC, slot.cellR);
+          const color = randomGemFrame();
+          const newGem = {
+            uid: gameState.nextGemUID++,
+            cellC: slot.cellC,
+            cellR: slot.cellR,
+            color,
+            elementIndex: color,
+            x: pos.x,
+            y: pos.y,
+            worldX: pos.x,
+            worldY: pos.y,
+            width: pos.w,
+            height: pos.h,
+            selected: false,
+            Selected: 0,
+            flashUntil: 0,
+            bounceStart: nowTime,
+            bounceDur,
+          };
+          gameState.gems.push(newGem);
+          gameState.grid[slot.cellC][slot.cellR] = newGem.uid;
+          setGemArray(gameState.gems);
+          refill.current = { doneAt: nowTime + bounceDur };
+          break;
+        }
+        if (!refill.current) {
+          refill.active = false;
+          state.globals.IsPlayerBusy = 0;
+          state.globals.CanPickGems = true;
+          state.globals.BoardFillActive = 0;
+          if (state.globals.TurnPhase === 2 && !state.globals.ActionInProgress) {
+            callFunctionWithContext(fnContext, 'ProcessTurn');
+          }
+        }
+      };
+      if (!refill.current) {
+        startNext();
+      } else if (nowTime >= (refill.current.doneAt || 0)) {
+        refill.index += 1;
+        refill.current = null;
+        startNext();
+      }
+    }
+
     // Apply delayed hero hits after lunge/impact timing
     if (state.globals.PendingHeroHits && state.globals.PendingHeroHits.length) {
       const now = state.globals.time || 0;
@@ -1004,9 +1365,25 @@ async function main(){
       for (let i = pending.length - 1; i >= 0; i--) {
         const hit = pending[i];
         if (!hit || now < (hit.at || 0)) continue;
-        callFunctionWithContext(fnContext, 'ApplyDamageToTarget', hit.targetUID, hit.dmg);
+        const ampMult = Number(hit.powerAmpMultiplier || 0);
+        const finalDmg = ampMult > 0 ? Math.max(1, Math.ceil((hit.dmg || 0) * ampMult)) : hit.dmg;
+        if (state.globals.DebugPowerAmp && hit.consumePowerAmp && ampMult > 0) {
+          const heroName = hit.heroName || 'Hero';
+          const heroType = hit.heroType || 'melee';
+          const calcPath = hit.calcPath || (heroType === 'magic' ? 'magicCalc' : 'meleeCalc');
+          console.log(
+            `[POWER_AMP] hero=${hit.heroUID} name=${heroName} type=${heroType} path=${calcPath} ` +
+            `base=${hit.dmg} amp=${ampMult} final=${finalDmg}`
+          );
+        }
+        callFunctionWithContext(fnContext, 'ApplyDamageToTarget', hit.targetUID, finalDmg);
         if (hit.msg) {
-          callFunctionWithContext(fnContext, 'LogCombat', hit.msg);
+          if (ampMult > 0) {
+            const msg = String(hit.msg).replace(/ for \d+!$/, ` for ${finalDmg}!`);
+            callFunctionWithContext(fnContext, 'LogCombat', msg);
+          } else {
+            callFunctionWithContext(fnContext, 'LogCombat', hit.msg);
+          }
         }
         pending.splice(i, 1);
       }
@@ -1041,7 +1418,6 @@ async function main(){
     }
     const animEndAt = state.globals.TextAnimEndAt || 0;
     state.globals.TextAnimating = (dmgTexts.length > 0 || (state.globals.time || 0) < animEndAt) ? 1 : 0;
-
     // Enemy action state machine (advance -> act -> retreat -> done)
     const enemyAction = state.globals.EnemyAction;
     if (enemyAction && enemyAction.active) {
@@ -1239,9 +1615,19 @@ async function main(){
       state.globals.BuffProgActive = 0;
       state.globals.BuffProgSlot = -1;
     }
+    if (state.globals.PowerAmpFadeByUID && typeof state.globals.PowerAmpFadeByUID === 'object') {
+      const now = state.globals.time || 0;
+      for (const [uid, fade] of Object.entries(state.globals.PowerAmpFadeByUID)) {
+        if (!fade) continue;
+        const duration = fade.duration || 0.16;
+        if (now >= (fade.startAt || 0) + duration) {
+          delete state.globals.PowerAmpFadeByUID[uid];
+        }
+      }
+    }
     // Dynamically filter overlay elements based on current state
     const overlayElements = new Set(['UI_CloseWin', 'UI_NavCloseButton', 'UI_NavCloseX']);
-    const debugElements = new Set(['newdebugger', 'newdebugger2', 'InputBlocker', 'EnemyKeyList', 'KillCounter', 'turnTracker', 'Chain_Tracker', 'txtPhaseInfo']);
+    const debugElements = new Set(['newdebugger', 'newdebugger2', 'InputBlocker', 'EnemyKeyList', 'KillCounter', 'turnTracker', 'txtPhaseInfo']);
     const buffIcons = new Set(['buffIcon1', 'buffIcon2', 'buffIcon3', 'buffIcon4', 'buffIcon5']);
 
     
@@ -1267,6 +1653,9 @@ async function main(){
         const frame = frames[slotIndex];
         if (frame == null || frame < 0) return false;
         buffIconFrames[r.inst.type] = frame;
+      }
+      if (r.inst.type === 'AddMore') {
+        return false;
       }
       // Hide debug and nav text elements (we'll render clean nav labels instead)
       if(debugElements.has(r.inst.type)){
@@ -1316,7 +1705,7 @@ async function main(){
     // Separate modal and non-modal objects for proper z-ordering
     const isModalObject = (type) => ['UI_CloseWin', 'UI_NavCloseButton', 'UI_NavCloseX'].includes(type);
     const navTextTypes = new Set(['Nav_HeroText', 'Nav_MapText', 'Nav_MissionText', 'Nav_AstralFlowText', 'Nav_HomeText']);
-    const navTopTypes = new Set([...navTextTypes, 'AddMore']);
+    const navTopTypes = new Set([...navTextTypes]);
     const extraTrackTypes = new Set(['track_nextplus1', 'track_nextplus2', 'track_nextplus3', 'track_nextplus4', 'track_nextplus5']);
     const presentTrackOffsets = new Set(
       rendered
@@ -1402,21 +1791,174 @@ async function main(){
     const popDuration = 0.22;
     const popScale = (t) => {
       const x = Math.max(0, Math.min(1, t));
-      if (x < 0.5) return 1 + (1.35 - 1) * (x / 0.5);
-      if (x < 0.8) return 1.35 + (0.90 - 1.35) * ((x - 0.5) / 0.3);
+      if (x < 0.5) return 1 + (1.485 - 1) * (x / 0.5);
+      if (x < 0.8) return 1.485 + (0.90 - 1.485) * ((x - 0.5) / 0.3);
       return 0.90 + (1 - 0.90) * ((x - 0.8) / 0.2);
     };
+    const easeInOutQuad = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+    if (!gameState.buffIconPresentation) {
+      gameState.buffIconPresentation = {
+        key: '',
+        active: false,
+        phase: 'idle',
+        holdStartAt: 0,
+        travelStartAt: 0,
+        holdSec: 0.5,
+        travelSec: 0.34,
+        frameType: -1,
+        slotType: '',
+        from: { x: 0, y: 0, w: 0, h: 0 },
+        to: { x: 0, y: 0, w: 0, h: 0 },
+        landedAt: null,
+        pending: null,
+      };
+    }
+    const iconPresentation = gameState.buffIconPresentation;
+    const buffSlotByFrame = {};
+    for (const r of nonModalRendered) {
+      if (!buffIcons.has(r.inst.type)) continue;
+      const frameIdx = buffIconFrames[r.inst.type] || 0;
+      if (buffSlotByFrame[frameIdx]) continue;
+      buffSlotByFrame[frameIdx] = {
+        slotType: r.inst.type,
+        x: r.dx + r.w / 2,
+        y: r.dy + r.h / 2,
+        w: r.w,
+        h: r.h,
+      };
+    }
+    const popTypeNow = state.globals.BuffIconPopType;
+    const popAtNow = state.globals.BuffIconPopAt;
+    const beginIconPresentation = (target, key) => {
+      const centerX = layoutOffsetX + (layoutW * layoutScale) / 2;
+      const centerY = layoutOffsetY + (layoutH * layoutScale) / 2 - 40;
+      iconPresentation.key = key;
+      iconPresentation.active = !!target;
+      iconPresentation.phase = 'hold';
+      iconPresentation.holdStartAt = state.globals.time || 0;
+      iconPresentation.travelStartAt = 0;
+      iconPresentation.frameType = popTypeNow;
+      iconPresentation.slotType = target ? target.slotType : '';
+      iconPresentation.from = {
+        x: centerX,
+        y: centerY,
+        w: target ? target.w * 4.2 : 0,
+        h: target ? target.h * 4.2 : 0,
+      };
+      iconPresentation.to = target
+        ? { x: target.x, y: target.y, w: target.w, h: target.h }
+        : { x: centerX, y: centerY, w: 0, h: 0 };
+      iconPresentation.landedAt = null;
+      iconPresentation.pending = null;
+    };
+    if (popTypeNow != null && popAtNow != null) {
+      const key = `${popTypeNow}:${popAtNow}`;
+      if (iconPresentation.key !== key) {
+        const target = buffSlotByFrame[popTypeNow];
+        const mergeFx = gameState.gemMergeFx;
+        if (mergeFx && mergeFx.active) {
+          iconPresentation.key = key;
+          iconPresentation.active = false;
+          iconPresentation.phase = 'waiting';
+          iconPresentation.pending = { target, key };
+          iconPresentation.frameType = popTypeNow;
+          iconPresentation.landedAt = null;
+        } else {
+          beginIconPresentation(target, key);
+        }
+      }
+    }
+    if (iconPresentation.pending && (!gameState.gemMergeFx || !gameState.gemMergeFx.active)) {
+      const { target, key } = iconPresentation.pending;
+      beginIconPresentation(target, key);
+    }
+    if (iconPresentation.active && iconPresentation.slotType) {
+      const target = buffSlotByFrame[iconPresentation.frameType];
+      if (target) {
+        iconPresentation.slotType = target.slotType;
+        iconPresentation.to = { x: target.x, y: target.y, w: target.w, h: target.h };
+      }
+      const nowTime = state.globals.time || 0;
+      if (iconPresentation.phase === 'hold' && nowTime >= iconPresentation.holdStartAt + iconPresentation.holdSec) {
+        iconPresentation.phase = 'travel';
+        iconPresentation.travelStartAt = nowTime;
+      } else if (iconPresentation.phase === 'travel') {
+        const t = iconPresentation.travelSec > 0
+          ? (nowTime - iconPresentation.travelStartAt) / iconPresentation.travelSec
+          : 1;
+        if (t >= 1) {
+          iconPresentation.phase = 'done';
+          iconPresentation.active = false;
+          iconPresentation.landedAt = nowTime;
+        }
+      }
+    }
 
+    const rouletteTargetFrame = iconPresentation && iconPresentation.frameType >= 0
+      ? iconPresentation.frameType
+      : popTypeNow;
+    const rouletteInFlight = !!(gameState.gemMergeFx && gameState.gemMergeFx.active) ||
+      (iconPresentation && (iconPresentation.phase === 'waiting' || iconPresentation.phase === 'hold' || iconPresentation.phase === 'travel' || iconPresentation.active));
+    if (state.globals.BlueBuffSequenceActive) {
+      const nowTime = state.globals.time || 0;
+      const landedAt = iconPresentation ? iconPresentation.landedAt : null;
+      const fallbackDone = popAtNow != null && (nowTime - popAtNow) > 1.2;
+      if (!rouletteInFlight && ((landedAt != null && nowTime >= landedAt + popDuration) || fallbackDone)) {
+        state.globals.BlueBuffSequenceActive = 0;
+        if (
+          state.globals.TurnPhase === 2 &&
+          !state.globals.ActionInProgress &&
+          !state.globals.IsPlayerBusy
+        ) {
+          callFunctionWithContext(fnContext, 'ProcessTurn');
+        }
+      }
+    }
+
+    let energyLayout = null;
+    if (navBacker) {
+      const hudLeft = navBacker.dx;
+      const hudTop = navBacker.dy;
+      const hudWidth = navBacker.w;
+      const hudHeight = navBacker.h;
+      energyLayout = {
+        centerX: hudLeft + (hudWidth * 0.5),
+        barY: hudTop + (hudHeight * 0.52),
+        textY: hudTop + (hudHeight * 0.83),
+      };
+    }
     // Draw non-modal objects first
     for(const r of nonModalRendered){
       const img = r.img;
       if(img){
         const frameIdx = buffIcons.has(r.inst.type) ? (buffIconFrames[r.inst.type] || 0) : null;
         if (frameIdx != null && buffIconFrameImages[r.inst.type] && buffIconFrameImages[r.inst.type][frameIdx]) {
+          if (
+            rouletteInFlight &&
+            rouletteTargetFrame != null &&
+            rouletteTargetFrame === frameIdx &&
+            !state.globals.BuffIconPopStacking
+          ) {
+            continue;
+          }
           let scale = 1;
           if (buffIcons.has(r.inst.type)) {
             const popType = state.globals.BuffIconPopType;
-            const popAt = state.globals.BuffIconPopAt;
+            let popAt = state.globals.BuffIconPopAt;
+            if (
+              iconPresentation.landedAt != null &&
+              iconPresentation.slotType === r.inst.type &&
+              iconPresentation.frameType === frameIdx
+            ) {
+              popAt = iconPresentation.landedAt;
+            }
+            if (state.globals.BuffIconPopStacking) {
+              popAt = (iconPresentation.landedAt != null &&
+                iconPresentation.slotType === r.inst.type &&
+                iconPresentation.frameType === frameIdx)
+                ? iconPresentation.landedAt
+                : null;
+            }
             if (popType != null && popAt != null && popType === frameIdx) {
               const t = (state.globals.time - popAt) / popDuration;
               if (t >= 0 && t <= 1) scale = popScale(t);
@@ -1480,6 +2022,27 @@ async function main(){
         ctx.font = `${fontSize}px sans-serif`;
         // Draw actual text content (extracted or generated label)
         let text = r.textContent || '[Text]';
+        if (r.inst.type === 'Chain_Tracker') {
+          const chainNum = Math.max(0, Number(state.globals.ChainNumber || 0));
+          const suppress = !!state.globals.SuppressChainUI;
+          const hideAt = Number(state.globals.ChainUIHideAt || 0);
+          const now = Number(state.globals.time || 0);
+          const isVisible = chainNum >= 2 && !suppress && (hideAt === 0 || now <= hideAt);
+          if (!isVisible) {
+            continue;
+          }
+          text = `Chain x${chainNum}`;
+          ctx.save();
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowColor = 'rgba(0,0,0,0.85)';
+          ctx.shadowBlur = Math.max(2, Math.round(4 * layoutScale));
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = Math.max(1, Math.round(2 * layoutScale));
+          ctx.textAlign = 'center';
+          ctx.fillText(text, r.dx + r.w/2, r.dy + r.h/2 + 5);
+          ctx.restore();
+          continue;
+        }
         if (r.inst.type === 'BuffText') {
           text = state.globals.BuffText || '';
         } else if (r.inst.type === 'ActorIntent') {
@@ -1507,9 +2070,8 @@ async function main(){
           const energy = state.globals.Player_Energy ?? 0;
           const maxEnergy = state.globals.Player_maxEnergy ?? 0;
           text = `${energy}/${maxEnergy}`;
-          const refillRender = filteredRendered.find(r2 => r2.inst.type === 'AddMore') || rendered.find(r2 => r2.inst.type === 'AddMore');
-          const centerX = layoutOffsetX + (layoutW * layoutScale) / 2;
-          const y = refillRender ? (refillRender.dy + refillRender.h + (20 * layoutScale)) : (r.dy + r.h/2);
+          const centerX = energyLayout ? energyLayout.centerX : (r.dx + r.w / 2);
+          const y = energyLayout ? energyLayout.textY : (r.dy + r.h / 2);
           ctx.fillStyle = '#ffd200';
           ctx.textAlign = 'center';
           ctx.fillText(text, centerX, y + 5);
@@ -1617,8 +2179,18 @@ async function main(){
         const gem = gameState.gems[i];
         const g = boardGeometry;
         const pos = worldToCanvas(gem.x, gem.y);
-        const gemW = gem.width * layoutScale;
-        const gemH = gem.height * layoutScale;
+        let scale = 1;
+        if (gem.bounceStart != null && gem.bounceDur != null) {
+          const t = (state.globals.time - gem.bounceStart) / Math.max(0.001, gem.bounceDur);
+          if (t >= 1) {
+            gem.bounceStart = null;
+            gem.bounceDur = null;
+          } else if (t >= 0) {
+            scale = 1 + (0.12 * Math.sin(Math.PI * t));
+          }
+        }
+        const gemW = gem.width * layoutScale * scale;
+        const gemH = gem.height * layoutScale * scale;
         const gemX = pos.x - gemW * 0.5;
         const gemY = pos.y - gemH * 0.5;
         const frameIndex = (gem.color ?? 0) % 8;
@@ -1641,6 +2213,71 @@ async function main(){
           ctx.arc(pos.x, pos.y, gemW * 0.48, 0, Math.PI * 2);
           ctx.stroke();
         }
+      }
+    }
+    if (gameState.yellowCasino && gameState.yellowCasino.phase === 'telegraph') {
+      const slots = gameState.yellowCasino.emptyTelegraph || [];
+      if (slots.length) {
+        ctx.save();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = Math.max(2, Math.round(3 * layoutScale));
+        for (const slot of slots) {
+          const pos = worldToCanvas(slot.x, slot.y);
+          const w = slot.w * layoutScale;
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y, w * 0.48, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+    if (gameState.yellowCasino && gameState.yellowCasino.ghost) {
+      const ghost = gameState.yellowCasino.ghost;
+      const pos = worldToCanvas(ghost.x, ghost.y);
+      const w = ghost.w * layoutScale;
+      const h = ghost.h * layoutScale;
+      const gemX = pos.x - w * 0.5;
+      const gemY = pos.y - h * 0.5;
+      const frameIndex = (ghost.frame ?? 0) % 8;
+      const gemImg = gemFrameImages[frameIndex];
+      if (gemImg) {
+        ctx.drawImage(gemImg, gemX, gemY, w, h);
+      } else {
+        ctx.fillStyle = '#ffa500';
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, w * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    if (gameState.gemMergeFx && gameState.gemMergeFx.active) {
+      const merge = gameState.gemMergeFx;
+      const nowTime = state.globals.time || 0;
+      const tRaw = merge.duration > 0 ? (nowTime - merge.startAt) / merge.duration : 1;
+      const t = Math.max(0, Math.min(1, tRaw));
+      const e = t * t;
+      const centerX = layoutOffsetX + (layoutW * layoutScale) / 2;
+      const centerY = layoutOffsetY + (layoutH * layoutScale) / 2 - 40;
+      const baseSize = boardGeometry.cellSize * layoutScale * 0.5;
+      const fade = t > 0.8 ? Math.max(0, 1 - ((t - 0.8) / 0.2)) : 1;
+      const scale = t > 0.8 ? Math.max(0.05, 1 - ((t - 0.8) / 0.2)) : 1;
+      for (const item of merge.items || []) {
+        const pos = worldToCanvas(item.x, item.y);
+        const x = pos.x + (centerX - pos.x) * e;
+        const y = pos.y + (centerY - pos.y) * e;
+        const frameIndex = (item.color ?? 0) % 8;
+        const gemImg = gemFrameImages[frameIndex];
+        if (!gemImg) continue;
+        const w = baseSize * scale;
+        const h = baseSize * scale;
+        ctx.save();
+        ctx.globalAlpha = fade;
+        ctx.drawImage(gemImg, x - w * 0.5, y - h * 0.5, w, h);
+        ctx.restore();
+      }
+      if (t >= 1) {
+        merge.active = false;
+        merge.doneAt = nowTime;
       }
     }
 
@@ -1669,6 +2306,33 @@ async function main(){
       ctx.fillRect(barX, barY, barW * ratio, barH);
       ctx.strokeStyle = '#0f0f0f';
       ctx.strokeRect(barX, barY, barW, barH);
+    }
+
+    if (
+      iconPresentation &&
+      iconPresentation.active &&
+      iconPresentation.frameType >= 0 &&
+      iconPresentation.slotType &&
+      buffIconFrameImages[iconPresentation.slotType] &&
+      buffIconFrameImages[iconPresentation.slotType][iconPresentation.frameType]
+    ) {
+      const img = buffIconFrameImages[iconPresentation.slotType][iconPresentation.frameType];
+      let cx = iconPresentation.from.x;
+      let cy = iconPresentation.from.y;
+      let w = iconPresentation.from.w;
+      let h = iconPresentation.from.h;
+      if (iconPresentation.phase === 'travel') {
+        const rawT = iconPresentation.travelSec > 0
+          ? ((state.globals.time || 0) - iconPresentation.travelStartAt) / iconPresentation.travelSec
+          : 1;
+        const t = Math.max(0, Math.min(1, rawT));
+        const e = easeInOutQuad(t);
+        cx = iconPresentation.from.x + (iconPresentation.to.x - iconPresentation.from.x) * e;
+        cy = iconPresentation.from.y + (iconPresentation.to.y - iconPresentation.from.y) * e;
+        w = iconPresentation.from.w + (iconPresentation.to.w - iconPresentation.from.w) * e;
+        h = iconPresentation.from.h + (iconPresentation.to.h - iconPresentation.from.h) * e;
+      }
+      ctx.drawImage(img, cx - w / 2, cy - h / 2, w, h);
     }
 
     // Enemy debuff icons (max 3 per enemy, tinted red)
@@ -1747,14 +2411,13 @@ async function main(){
       }
     }
 
-    // Energy bar centered beneath REFILL button
-    const refillRender = filteredRendered.find(r => r.inst.type === 'AddMore') || rendered.find(r => r.inst.type === 'AddMore');
-    if (refillRender) {
-      const centerX = layoutOffsetX + (layoutW * layoutScale) / 2;
-      const barW = Math.max(60, refillRender.w * 0.8);
+    // Energy bar aligned to energy text within HUD container
+    if (energyLayout) {
+      const centerX = energyLayout.centerX;
+      const barW = Math.max(60, 80 * layoutScale);
       const barH = Math.max(4, 6 * layoutScale);
       const barX = centerX - barW / 2;
-      const barY = refillRender.dy + refillRender.h + (6 * layoutScale);
+      const barY = energyLayout.barY;
       const maxE = Math.max(1, state.globals.Player_maxEnergy || 1);
       const curE = Math.max(0, state.globals.Player_Energy || 0);
       const ratio = Math.max(0, Math.min(1, curE / maxE));
@@ -1891,7 +2554,7 @@ async function main(){
         const baseFont = Math.max(12, Math.round(16 * layoutScale));
         const fontSize = Math.max(8, Math.round(baseFont * scale));
         ctx.font = `bold ${fontSize}px sans-serif`;
-        ctx.shadowColor = d.targetKind === 'hero' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.55)';
+        ctx.shadowColor = 'rgba(30,30,30,0.8)';
         ctx.shadowBlur = Math.max(3, 6 * scale);
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
@@ -1964,18 +2627,82 @@ async function main(){
           const pos = worldToCanvas(xWorld, yWorld);
           const w = wWorld * layoutScale;
           const h = hWorld * layoutScale;
-          ctx.drawImage(img, pos.x - w / 2, pos.y - h / 2, w, h);
+          const ampStore = g.PowerAmpByUID || {};
+          const ampVisuals = g.PowerAmpVisualByUID || {};
+          const ampFades = g.PowerAmpFadeByUID || {};
+          const visual = hero ? ampVisuals[hero.uid] : null;
+          const fade = hero ? ampFades[hero.uid] : null;
+          const storeEntry = hero ? ampStore[hero.uid] : null;
+          const storeMult = Number(storeEntry?.mult || 0);
+          const ampActive = !!visual || (!!hero && storeMult > 0);
+          let heroScale = 1;
+          if (ampActive) {
+            const startAt = visual ? (visual.startAt || 0) : (g.time || 0);
+            const tIn = Math.max(0, Math.min(1, ((g.time || 0) - startAt) / 0.18));
+            const eIn = 1 - Math.pow(1 - tIn, 2);
+            heroScale = 1 + (1.3 - 1) * eIn;
+          }
+          const scaledW = w * heroScale;
+          const scaledH = h * heroScale;
+          const footY = pos.y + h / 2;
+          ctx.drawImage(img, pos.x - scaledW / 2, footY - scaledH, scaledW, scaledH);
+
+          const fadeActive = !!(
+            hero &&
+            !ampActive &&
+            fade &&
+            (g.time || 0) < ((fade.startAt || 0) + (fade.duration || 0.16))
+          );
+          if (ampActive || fadeActive) {
+            const mult = ampActive
+              ? (visual?.mult || storeMult || 1)
+              : (fade?.mult || 1);
+            const badgeText = `${mult}\u00d7`;
+            const baseY = footY;
+            const badgeX = pos.x;
+            const badgeY = baseY - (10 * layoutScale);
+            let badgeScale = 1;
+            let badgeAlpha = 1;
+            if (ampActive) {
+              const startAt = visual ? (visual.startAt || 0) : (g.time || 0);
+              const inT = Math.max(0, Math.min(1, ((g.time || 0) - startAt) / 0.22));
+              badgeScale = popScale(inT) * (1 + 0.03 * Math.sin((g.time || 0) * 6));
+            } else {
+              const fadeT = Math.max(0, Math.min(1, ((g.time || 0) - (fade.startAt || 0)) / (fade.duration || 0.16)));
+              badgeScale = 1 + 0.08 * (1 - fadeT);
+              badgeAlpha = 1 - fadeT;
+            }
+            const bw = Math.max(24, 30 * layoutScale) * badgeScale;
+            const bh = Math.max(14, 18 * layoutScale) * badgeScale;
+            ctx.save();
+            ctx.globalAlpha = badgeAlpha;
+            ctx.fillStyle = 'rgba(24,24,24,0.92)';
+            ctx.strokeStyle = 'rgba(250,250,250,0.75)';
+            ctx.lineWidth = Math.max(1, 1.2 * layoutScale);
+            ctx.fillRect(badgeX - bw / 2, badgeY - bh, bw, bh);
+            ctx.strokeRect(badgeX - bw / 2, badgeY - bh, bw, bh);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `bold ${Math.max(10, Math.round(12 * layoutScale * badgeScale))}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(badgeText, badgeX, badgeY - bh / 2);
+            ctx.restore();
+          }
 
           // Hero turn indicator selector (only on hero turns)
           if (currentHero && hero && currentHero.uid === hero.uid && state.globals.TurnPhase === 0) {
             if (state.globals.HideHeroSelector) continue;
             if (selectorImg) {
-              const selW = (selectorAsset ? selectorAsset.width : selectorImg.width) * layoutScale;
-              const selH = (selectorAsset ? selectorAsset.height : selectorImg.height) * layoutScale;
+              const t = g.time || 0;
+              const pulse = Math.sin(t * 6);
+              const selScale = 1 + 0.035 * pulse;
+              const bob = 2.2 * layoutScale * pulse;
+              const selW = (selectorAsset ? selectorAsset.width : selectorImg.width) * layoutScale * selScale;
+              const selH = (selectorAsset ? selectorAsset.height : selectorImg.height) * layoutScale * selScale;
               const selOx = selectorAsset ? selectorAsset.originX : 0.5;
               const selOy = selectorAsset ? selectorAsset.originY : 0.5;
               const targetX = pos.x;
-              const targetY = pos.y - h / 2 - (10 * layoutScale);
+              const targetY = pos.y - scaledH / 2 - (10 * layoutScale) + bob;
               ctx.drawImage(selectorImg, targetX - selW * selOx, targetY - selH * selOy, selW, selH);
             }
           }
@@ -2086,6 +2813,34 @@ async function main(){
       `Overlay: ${gameState.overlayVisible ? 'OPEN' : 'closed'}`,
     ];
     out.textContent = lines.join('\n');
+    drawWalletHUD();
+  }
+  function drawWalletHUD() {
+    if (!walletOut) return;
+    const g = state.globals || {};
+    const wallet =
+      g.TokenWallet ||
+      g.tokenWallet ||
+      g.WalletTokens ||
+      g.walletTokens ||
+      null;
+    if (!wallet || typeof wallet !== 'object') {
+      walletOut.textContent = 'Wallet:\n(empty)';
+      return;
+    }
+    const entries = Object.entries(wallet)
+      .filter(([, v]) => v != null)
+      .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+    if (entries.length === 0) {
+      walletOut.textContent = 'Wallet:\n(empty)';
+      return;
+    }
+    const total = entries.reduce((sum, [, v]) => sum + (Number(v) || 0), 0);
+    const lines = ['Wallet:', `Total: ${total}`];
+    for (const [key, val] of entries) {
+      lines.push(`${key}: ${val}`);
+    }
+    walletOut.textContent = lines.join('\n');
   }
   drawFrame(); // initial render
 
@@ -2129,12 +2884,6 @@ async function main(){
       const dy = pos.y - h * refillObj.oy - (10 * layoutScale);
       const pad = 6 * layoutScale;
       if (mx >= dx - pad && mx <= dx + w + pad && my >= dy - pad && my <= dy + h + pad) {
-        if (gameState.selectedGems.length > 0 || gameState.selectionLocked || state.globals.PendingSkillID || gameState.overlayVisible || state.globals.CanPickGems === false || state.globals.IsPlayerBusy) {
-          return;
-        }
-        refillGemBoard(gameState.gridBounds);
-        syncFromGlobals();
-        drawFrame();
         return;
       }
     }
@@ -2273,7 +3022,7 @@ async function main(){
       }
     }
     
-    // Check for rendered element clicks (REFILL button, close button, etc)
+    // Check for rendered element clicks (close button, etc)
     // First check modal objects if overlay is visible
     if (gameState.overlayVisible) {
       const isModalObject = (type) => ['UI_CloseWin', 'UI_NavCloseButton', 'UI_NavCloseX'].includes(type);
@@ -2292,14 +3041,6 @@ async function main(){
     
     for(const r of rendered){
       if(mx >= r.dx && mx <= r.dx + r.w && my >= r.dy && my <= r.dy + r.h){
-        // REFILL button clicked
-        if(r.inst.type === 'AddMore'){
-          // Handle refill gem action
-          refillGemBoard(gameState.gridBounds);
-          syncFromGlobals();
-          drawFrame();
-          return;
-        }
         // Other interactive elements
         return;
       }
@@ -2337,19 +3078,47 @@ async function main(){
     ) {
       state.globals.HideHeroSelector = 0;
     }
+    const refill = gameState.refillBounce;
+    const phaseNow = state.globals.TurnPhase;
+    if (
+      phaseNow === 0 &&
+      !state.globals.IsPlayerBusy &&
+      !state.globals.PendingSkillID &&
+      !state.globals.ActionInProgress &&
+      !state.globals.DeferAdvance &&
+      !(refill && refill.active) &&
+      hasEmptySlots()
+    ) {
+      startRefillBounce();
+    }
+    if (
+      phaseNow === 0 &&
+      gameState.lastTurnPhase !== 0 &&
+      !state.globals.IsPlayerBusy &&
+      !state.globals.PendingSkillID &&
+      !state.globals.ActionInProgress &&
+      !state.globals.DeferAdvance &&
+      !(refill && refill.active)
+    ) {
+      startRefillBounce();
+    }
+    gameState.lastTurnPhase = phaseNow;
     if (state.globals.DeferAdvance && (state.globals.time || 0) >= (state.globals.ActionLockUntil || 0)) {
       if (state.globals.TextAnimating) {
         state.globals.ActionLockUntil = (state.globals.time || 0) + 0.1;
       } else {
-        // Never auto-advance out of an active hero input turn
+        // Only block auto-advance while an action/selection is still active.
         const pendingSelect = state.globals.TurnPhase === 1 && state.globals.PendingSkillID;
-        const blockedPhase = state.globals.TurnPhase === 1 && (state.globals.IsPlayerBusy || pendingSelect);
-        const heroInput = (state.globals.TurnPhase === 0 && state.globals.CanPickGems);
-        const allowHeroAdvance = !heroInput || state.globals.AdvanceAfterAction;
+        const staleBusy = state.globals.IsPlayerBusy && !state.globals.ActionInProgress && !pendingSelect;
+        if (staleBusy) {
+          state.globals.IsPlayerBusy = 0;
+          console.log(`[TURN] cleared stale IsPlayerBusy before advance phase=${state.globals.TurnPhase} owner=${state.globals.ActionOwnerUID || 0}`);
+        }
+        const blockedPhase = state.globals.IsPlayerBusy || state.globals.ActionInProgress || pendingSelect;
         const ownerUID = state.globals.ActionOwnerUID || 0;
         const currentUID = callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0;
         const ownerOk = !ownerUID || ownerUID === currentUID;
-        if (!blockedPhase && allowHeroAdvance && ownerOk) {
+        if (!blockedPhase && ownerOk) {
           console.log(`[TURN] DeferAdvance -> AdvanceTurn owner=${ownerUID} cur=${currentUID} phase=${state.globals.TurnPhase} busy=${state.globals.IsPlayerBusy} canPick=${state.globals.CanPickGems}`);
           state.globals.DeferAdvance = 0;
           state.globals.AdvanceAfterAction = 0;
@@ -2360,9 +3129,10 @@ async function main(){
           state.globals.DeferAdvance = 0;
           state.globals.AdvanceAfterAction = 0;
           state.globals.ActionOwnerUID = 0;
+          callFunctionWithContext(fnContext, 'ProcessTurn');
         } else if (!state.globals._DeferBlockLogged) {
           state.globals._DeferBlockLogged = 1;
-          console.log(`[TURN] DeferAdvance blocked pendingSelect=${!!pendingSelect} IsPlayerBusy=${state.globals.IsPlayerBusy} TurnPhase=${state.globals.TurnPhase} heroInput=${heroInput} advanceAfter=${!!state.globals.AdvanceAfterAction} owner=${ownerUID} cur=${currentUID} canPick=${state.globals.CanPickGems} actionInProgress=${state.globals.ActionInProgress}`);
+          console.log(`[TURN] DeferAdvance blocked pendingSelect=${!!pendingSelect} IsPlayerBusy=${state.globals.IsPlayerBusy} TurnPhase=${state.globals.TurnPhase} owner=${ownerUID} cur=${currentUID} canPick=${state.globals.CanPickGems} actionInProgress=${state.globals.ActionInProgress}`);
         }
       }
     } else {
@@ -2479,11 +3249,6 @@ async function main(){
       },
       forceMatch(color) {
         handleGemMatch(color);
-      },
-      refill() {
-        refillGemBoard(gameState.gridBounds);
-        syncFromGlobals();
-        drawFrame();
       },
     };
   }

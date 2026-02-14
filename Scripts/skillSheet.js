@@ -87,13 +87,12 @@ export function DoHeal(ctx, actorUID) {
   const actorName = actor && actor.name ? actor.name : '?';
   if (actor && actor.name === 'Kojonn') {
     const totalTicks = 8;
-    const perTick = Math.max(1, Math.floor(heal / totalTicks));
     const nowTick = getGlobals(ctx).RegenTickCounter || 0;
-    console.log(`[REGEN] start actor=${actorName} totalHeal=${Math.round(heal)} ticks=${totalTicks} perTick=${perTick}`);
+    console.log(`[REGEN] start actor=${actorName} totalHeal=${Math.round(heal)} ticks=${totalTicks}`);
     if (!g.PartyRegens) g.PartyRegens = [];
     g.PartyRegens.push({
       remainingFires: totalTicks,
-      healPerFire: perTick,
+      totalHealRemaining: Math.max(1, Math.floor(heal)),
       firesEveryTicks: 1,
       nextFireTick: nowTick + 1,
       sourceUID: actorUID
@@ -101,9 +100,26 @@ export function DoHeal(ctx, actorUID) {
     ctx.callFunction('LogCombat', `${actorName} applies Regen over time!`);
   } else {
     const beforeHP = g.PartyHP || 0;
+    const prevSpawn = g.SpawnDamageText;
+    const prevHero = g.SuppressHeroHealText;
+    g.SpawnDamageText = 0;
+    g.SuppressHeroHealText = 1;
     ctx.callFunction('ApplyPartyHeal', heal);
+    g.SpawnDamageText = prevSpawn;
+    g.SuppressHeroHealText = prevHero;
     const afterHP = g.PartyHP || 0;
-    ctx.callFunction('LogCombat', `${actorName} healed party for ${Math.max(0, afterHP - beforeHP)}`);
+    const totalHeal = Math.max(0, afterHP - beforeHP);
+    const barPos = g.PartyHPBarPosWorld;
+    if (totalHeal > 0 && barPos && barPos.w > 0 && barPos.h > 0) {
+      const left = barPos.x - barPos.w * barPos.ox;
+      const barW = barPos.w;
+      const barH = barPos.h;
+      const ratio = Math.max(0, Math.min(1, (g.PartyHP || 0) / Math.max(1, g.PartyMaxHP || 1)));
+      const textX = left + barW * ratio;
+      const textY = (barPos.y - barH * barPos.oy) + barH * 0.5;
+      ctx.callFunction('SpawnDamageText', totalHeal, textX, textY, 'heal', 'bar');
+    }
+    ctx.callFunction('LogCombat', `${actorName} heals party for ${totalHeal}`);
   }
   g.ActionLockUntil = (g.time || 0) + (g.DamageTextDurationSec || 1.35);
   g.DeferAdvance = 1;
