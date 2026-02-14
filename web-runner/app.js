@@ -1,5 +1,5 @@
-import { state } from '../Scripts/state.js';
-import { createContext, callFunctionWithContext } from '../Scripts/functionRegistry.js';
+import { state } from './modules/state.js';
+import { createContext, callFunctionWithContext } from './modules/functionRegistry.js';
 
 const out = document.getElementById('output');
 const walletOut = document.getElementById('wallet-output');
