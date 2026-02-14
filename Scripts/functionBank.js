@@ -928,16 +928,23 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
     dmg = Math.ceil((power - resist / 2) * roll);
   }
   dmg = Math.max(1, dmg);
+  const baseDmg = dmg;
   const crit = ApplyScaledCrit({
     baseValue: dmg,
     relevantBuffTotal: isMagic ? power : power,
     sourceType: isHeroAttacker ? 'HERO' : 'ENEMY',
   });
   dmg = Math.max(1, Math.ceil(crit.value));
-  if (g.ApplyChainToNextDamage === 1) {
+  let chainApplied = false;
+  if (isHeroAttacker && g.ApplyChainToNextDamage === 1) {
     dmg = Math.ceil(dmg * (g.ChainMultiplier || 1));
     g.ApplyChainToNextDamage = 0;
+    chainApplied = true;
   }
+  console.log(
+    `[DMG_AUDIT] attackerType=${isHeroAttacker ? 'H' : 'E'} base=${baseDmg} final=${dmg} target=${tgt.name || tgt.uid || 'unknown'}`
+  );
+  console.log(`[DMG_AUDIT] chainApplied=${chainApplied} attackerType=${isHeroAttacker ? 'H' : 'E'}`);
   return dmg;
 }
 
@@ -1389,29 +1396,41 @@ export function ResolveMonsterDrop(ctx, monsterName, tierIndex = null) {
 }
 
 export function AwardMonsterDrop(ctx, monsterName, tierIndex = null) {
-  const dropId = ResolveMonsterDrop(ctx, monsterName, tierIndex);
-  const parsed = parseDropId(dropId);
-  if (parsed.type === 'TOKEN') {
-    const registry = TOKEN_REGISTRY[parsed.id];
-    const activeEvent = getActiveEventByToken(parsed.id);
-    if (!activeEvent && registry && registry.fallback && registry.fallback !== EMPTY) {
-      const fallbackParsed = parseDropId(registry.fallback);
-      if (fallbackParsed.type === 'TOKEN') {
-        AddToken(ctx, fallbackParsed.id, 1);
-        LogCombat(ctx, `Token drop (fallback): ${fallbackParsed.id}`);
-        return dropId;
+  const rollsPerDeath = 4;
+  const awarded = [];
+  for (let i = 0; i < rollsPerDeath; i++) {
+    const dropId = ResolveMonsterDrop(ctx, monsterName, tierIndex);
+    const parsed = parseDropId(dropId);
+    if (parsed.type === 'TOKEN') {
+      const registry = TOKEN_REGISTRY[parsed.id];
+      const activeEvent = getActiveEventByToken(parsed.id);
+      if (!activeEvent && registry && registry.fallback && registry.fallback !== EMPTY) {
+        const fallbackParsed = parseDropId(registry.fallback);
+        if (fallbackParsed.type === 'TOKEN') {
+          AddToken(ctx, fallbackParsed.id, 1);
+          LogCombat(ctx, `Token drop (fallback): ${fallbackParsed.id}`);
+          awarded.push(fallbackParsed.id);
+          continue;
+        }
+        if (registry.fallback === EMPTY) {
+          awarded.push('EMPTY');
+          continue;
+        }
       }
-      if (registry.fallback === EMPTY) return EMPTY;
+      AddToken(ctx, parsed.id, 1);
+      LogCombat(ctx, `Token drop: ${parsed.id}`);
+      awarded.push(parsed.id);
+      continue;
     }
-    AddToken(ctx, parsed.id, 1);
-    LogCombat(ctx, `Token drop: ${parsed.id}`);
-    return dropId;
+    if (parsed.type === 'ITEM') {
+      LogCombat(ctx, `Item drop: ${parsed.id}`);
+      awarded.push(parsed.id);
+      continue;
+    }
+    awarded.push('EMPTY');
   }
-  if (parsed.type === 'ITEM') {
-    LogCombat(ctx, `Item drop: ${parsed.id}`);
-    return dropId;
-  }
-  return EMPTY;
+  console.log(`[LOOT] Monster ${monsterName} awarded: ${awarded.join(', ')}`);
+  return awarded.find(v => v && v !== 'EMPTY') || EMPTY;
 }
 
 export function SpendTokensOnEvent(ctx, eventId, amount) {

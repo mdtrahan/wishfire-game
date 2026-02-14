@@ -5,8 +5,8 @@ export const gameState = {
   selectedEnemy: 0,
   playerTurn: true,
   enemies: [],
-  partyHP: { hero1: 100, hero2: 80, hero3: 90, hero4: 75 },
-  partyMaxHP: { hero1: 100, hero2: 100, hero3: 100, hero4: 100 },
+  partyHP: { hero1: 42, hero2: 35, hero3: 30, hero4: 40 },
+  partyMaxHP: { hero1: 42, hero2: 35, hero3: 30, hero4: 40 },
   enemyHP: [50, 60, 55],
   enemyMaxHP: [50, 60, 55],
 };
