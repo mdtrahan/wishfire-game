@@ -21,9 +21,51 @@ const DEBUG_LAYOUT = (() => {
   } catch {}
   return enabled;
 })();
+const DEBUG_GEMS_QUERY = (() => {
+  if (typeof window === 'undefined') return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return (
+      params.has('devtest') ||
+      params.get('devtest') === 'true' ||
+      params.has('debug_gems') ||
+      params.get('debug_gems') === 'true'
+    );
+  } catch {
+    return false;
+  }
+})();
+const GEM_DEBUG_LEVEL = (function () {
+  const p = new URLSearchParams(window.location.search);
+  return p.get('gemlog') || 'minimal';
+})();
 function debugLayoutLog(message) {
   if (!DEBUG_LAYOUT) return;
   console.log(message);
+}
+function isGemDebugEnabled() {
+  if (DEBUG_GEMS_QUERY) return true;
+  if (state && state.globals && state.globals.DevTestMode === true) return true;
+  if (state && state.globals && state.globals.DebugGemsMode === true) return true;
+  try {
+    const hook = typeof window !== 'undefined' ? window.__codexGame : null;
+    if (hook && hook.globals && hook.globals.DevTestMode === true) return true;
+    if (hook && hook.globals && hook.globals.DebugGemsMode === true) return true;
+  } catch {}
+  return false;
+}
+function gemDebugLog(tag, payload) {
+  if (!isGemDebugEnabled()) return;
+
+  const allowedTags = new Set([
+    '[TURN_RESTORE_PICK]',
+    '[GEM_REJECT]',
+    '[REFILL_STUCK]',
+    '[GATE_STUCK_CANPICK]'
+  ]);
+  if (!allowedTags.has(tag)) return;
+
+  console.log(tag, payload);
 }
 const layoutHarnessEnabled = (() => {
   return HARNESS_MODE;
@@ -608,7 +650,8 @@ function handleSpecialGem6(gem) {
 
 const YELLOW_COLOR = 3;
 const YELLOW_CASINO_TELEGRAPH_SEC = 0.15;
-const YELLOW_CASINO_SPIN_SEC = 0.4;
+const yellowMatchAnimationDuration = 0.4;
+const YELLOW_CASINO_SPIN_SEC = yellowMatchAnimationDuration;
 const YELLOW_CASINO_TARGETS = [0, 1, 2, 4, 5];
 const YELLOW_CASINO_WALK = [YELLOW_COLOR, ...YELLOW_CASINO_TARGETS];
 
@@ -648,58 +691,60 @@ function buildYellowCasinoSequence(targetFrame) {
 }
 
 function startYellowCasinoSequence(actorUID) {
+  if (state.globals.GamePhase !== 'RUNTIME') {
+    return;
+  }
   const now = state.globals.time || 0;
   const casino = gameState.yellowCasino || (gameState.yellowCasino = {});
   casino.mode = 'yellow';
-  const remaining = (gameState.gems || []).filter(gm => {
-    const c = gm && gm.color != null ? gm.color : (gm ? gm.elementIndex : null);
-    return c === YELLOW_COLOR;
-  }).sort((a, b) => {
-    const ar = a && a.cellR != null ? a.cellR : 0;
-    const br = b && b.cellR != null ? b.cellR : 0;
-    if (ar !== br) return ar - br;
-    const ac = a && a.cellC != null ? a.cellC : 0;
-    const bc = b && b.cellC != null ? b.cellC : 0;
-    return ac - bc;
-  });
+  const gemByCell = new Map();
+  for (const gm of (gameState.gems || [])) {
+    if (!gm || gm.cellR == null || gm.cellC == null) continue;
+    gemByCell.set(`${gm.cellR},${gm.cellC}`, gm);
+  }
   const emptySlots = [];
-  if (gameState.grid && gameState.grid.length) {
+  const queue = [];
+  for (let r = 0; r < boardGeometry.rows; r++) {
     for (let c = 0; c < boardGeometry.cols; c++) {
-      for (let r = 0; r < boardGeometry.rows; r++) {
-      if (gameState.grid[c] && gameState.grid[c][r] === 0) {
-        emptySlots.push({ cellC: c, cellR: r });
+      const key = `${r},${c}`;
+      const gem = gemByCell.get(key) || null;
+      const color = gem && gem.color != null ? gem.color : (gem ? gem.elementIndex : null);
+      if (gem && color === YELLOW_COLOR) {
+        queue.push({
+          type: 'yellow',
+          reason: 'yellow-reassign',
+          uid: gem.uid,
+          cellC: c,
+          cellR: r,
+          target: pickYellowCasinoTarget(),
+          sequence: null,
+          startAt: 0,
+          duration: YELLOW_CASINO_SPIN_SEC,
+          frameDuration: 0,
+        });
+      } else if (!gem && gameState.grid && gameState.grid[c] && gameState.grid[c][r] === 0) {
+        const slot = { cellC: c, cellR: r, index: (r * boardGeometry.cols) + c };
+        emptySlots.push(slot);
+        queue.push({
+          type: 'empty',
+          reason: 'empty',
+          uid: 0,
+          cellC: c,
+          cellR: r,
+          target: pickYellowCasinoTarget(),
+          sequence: null,
+          startAt: 0,
+          duration: YELLOW_CASINO_SPIN_SEC,
+          frameDuration: 0,
+        });
       }
     }
   }
-  }
-  const cols = boardGeometry.cols;
-  for (const slot of emptySlots) {
-    slot.index = (slot.cellR * cols) + slot.cellC;
-  }
-  emptySlots.sort((a, b) => a.index - b.index);
 
-  const hasWork = remaining.length > 0 || emptySlots.length > 0;
+  const hasWork = queue.length > 0;
   casino.active = hasWork;
   casino.phase = hasWork ? 'telegraph' : 'idle';
-  casino.queue = remaining.map(gm => ({
-    type: 'yellow',
-    uid: gm.uid,
-    target: pickYellowCasinoTarget(),
-    sequence: null,
-    startAt: 0,
-    duration: YELLOW_CASINO_SPIN_SEC,
-    frameDuration: 0,
-  })).concat(emptySlots.map(slot => ({
-    type: 'empty',
-    uid: 0,
-    cellC: slot.cellC,
-    cellR: slot.cellR,
-    target: pickYellowCasinoTarget(),
-    sequence: null,
-    startAt: 0,
-    duration: YELLOW_CASINO_SPIN_SEC,
-    frameDuration: 0,
-  })));
+  casino.queue = queue;
   casino.index = 0;
   casino.current = null;
   casino.telegraphUntil = now + YELLOW_CASINO_TELEGRAPH_SEC;
@@ -709,11 +754,39 @@ function startYellowCasinoSequence(actorUID) {
     return { ...slot, x: pos.x, y: pos.y, w: pos.w, h: pos.h };
   });
 
-  for (const gm of remaining) {
-    gm.flashUntil = now + YELLOW_CASINO_TELEGRAPH_SEC;
+  for (const item of queue) {
+    if (item.type !== 'yellow') continue;
+    const gm = gemByCell.get(`${item.cellR},${item.cellC}`);
+    if (gm) gm.flashUntil = now + YELLOW_CASINO_TELEGRAPH_SEC;
   }
 
-  const totalDuration = YELLOW_CASINO_TELEGRAPH_SEC + ((remaining.length + emptySlots.length) * YELLOW_CASINO_SPIN_SEC);
+  gemDebugLog('[FILL_GATE]', {
+    stage: 'yellow-sequence-start',
+    queueLength: queue.length,
+    emptyCount: emptySlots.length,
+    globals: {
+      CanPickGems: state.globals.CanPickGems,
+      IsPlayerBusy: state.globals.IsPlayerBusy,
+      PendingSkillID: state.globals.PendingSkillID || '',
+      BoardFillActive: state.globals.BoardFillActive,
+      TurnPhase: state.globals.TurnPhase,
+      DeferAdvance: state.globals.DeferAdvance,
+      ActionLockUntil: state.globals.ActionLockUntil,
+      MatchedColorValue: state.globals.MatchedColorValue,
+      TapIndex: state.globals.TapIndex,
+    },
+  });
+  gemDebugLog('[FILL_CANDIDATES]', queue.map((item, idx) => ({
+    idx,
+    reason: item.reason,
+    type: item.type,
+    cellR: item.cellR,
+    cellC: item.cellC,
+    target: item.target,
+    uid: item.uid || 0,
+  })));
+
+  const totalDuration = YELLOW_CASINO_TELEGRAPH_SEC + (queue.length * YELLOW_CASINO_SPIN_SEC);
   state.globals.ActionLockUntil = now + Math.max(0.1, totalDuration);
   state.globals.DeferAdvance = 1;
   state.globals.AdvanceAfterAction = 1;
@@ -721,25 +794,41 @@ function startYellowCasinoSequence(actorUID) {
 }
 
 function startRefillBounce(speedScale = 1) {
-  const now = state.globals.time || 0;
   const refill = gameState.refillBounce || (gameState.refillBounce = {});
   refill.speedScale = speedScale;
   const emptySlots = [];
   if (gameState.grid && gameState.grid.length) {
-    for (let c = 0; c < boardGeometry.cols; c++) {
-      for (let r = 0; r < boardGeometry.rows; r++) {
+    for (let r = 0; r < boardGeometry.rows; r++) {
+      for (let c = 0; c < boardGeometry.cols; c++) {
         if (gameState.grid[c] && gameState.grid[c][r] === 0) {
-          emptySlots.push({ cellC: c, cellR: r });
+          emptySlots.push({ cellC: c, cellR: r, reason: 'empty', index: (r * boardGeometry.cols) + c });
         }
       }
     }
   }
-  const cols = boardGeometry.cols;
-  for (const slot of emptySlots) {
-    slot.index = (slot.cellR * cols) + slot.cellC;
-  }
-  emptySlots.sort((a, b) => a.index - b.index);
   const hasWork = emptySlots.length > 0;
+  gemDebugLog('[FILL_GATE]', {
+    stage: 'refill-bounce-start',
+    hasWork,
+    emptyCount: emptySlots.length,
+    globals: {
+      CanPickGems: state.globals.CanPickGems,
+      IsPlayerBusy: state.globals.IsPlayerBusy,
+      PendingSkillID: state.globals.PendingSkillID || '',
+      BoardFillActive: state.globals.BoardFillActive,
+      TurnPhase: state.globals.TurnPhase,
+      DeferAdvance: state.globals.DeferAdvance,
+      ActionLockUntil: state.globals.ActionLockUntil,
+      MatchedColorValue: state.globals.MatchedColorValue,
+      TapIndex: state.globals.TapIndex,
+    },
+  });
+  gemDebugLog('[FILL_CANDIDATES]', emptySlots.map((slot, idx) => ({
+    idx,
+    reason: slot.reason,
+    cellR: slot.cellR,
+    cellC: slot.cellC,
+  })));
   refill.active = hasWork;
   refill.queue = emptySlots;
   refill.index = 0;
@@ -748,6 +837,8 @@ function startRefillBounce(speedScale = 1) {
     state.globals.BoardFillActive = 1;
     state.globals.CanPickGems = false;
     state.globals.IsPlayerBusy = 1;
+  } else {
+    gemDebugLog('[FILL_SKIP]', { stage: 'refill-bounce-start', reason: 'not-needed' });
   }
 }
 
@@ -761,7 +852,116 @@ function hasEmptySlots() {
   return false;
 }
 
+function collectBoardCoverageIssues() {
+  const counts = new Map();
+  for (const g of (gameState.gems || [])) {
+    if (!g) continue;
+    const key = `${g.cellR},${g.cellC}`;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  const missingCells = [];
+  const duplicates = [];
+  for (let r = 0; r < boardGeometry.rows; r++) {
+    for (let c = 0; c < boardGeometry.cols; c++) {
+      const key = `${r},${c}`;
+      const n = counts.get(key) || 0;
+      if (n === 0) missingCells.push({ r, c });
+      if (n > 1) duplicates.push({ r, c, count: n });
+    }
+  }
+  return { missingCells, duplicates };
+}
+
+function findBootstrapMatchCells() {
+  const rows = boardGeometry.rows;
+  const cols = boardGeometry.cols;
+  const colorAt = Array.from({ length: rows }, () => Array(cols).fill(null));
+  for (const g of (gameState.gems || [])) {
+    if (!g || g.cellR == null || g.cellC == null) continue;
+    if (g.cellR < 0 || g.cellR >= rows || g.cellC < 0 || g.cellC >= cols) continue;
+    colorAt[g.cellR][g.cellC] = g.color != null ? g.color : g.elementIndex;
+  }
+  const matched = new Set();
+  for (let r = 0; r < rows; r++) {
+    let c = 0;
+    while (c < cols) {
+      const color = colorAt[r][c];
+      if (color == null) {
+        c += 1;
+        continue;
+      }
+      let end = c + 1;
+      while (end < cols && colorAt[r][end] === color) end += 1;
+      if (end - c >= 3) {
+        for (let x = c; x < end; x++) matched.add(`${r},${x}`);
+      }
+      c = end;
+    }
+  }
+  for (let c = 0; c < cols; c++) {
+    let r = 0;
+    while (r < rows) {
+      const color = colorAt[r][c];
+      if (color == null) {
+        r += 1;
+        continue;
+      }
+      let end = r + 1;
+      while (end < rows && colorAt[end][c] === color) end += 1;
+      if (end - r >= 3) {
+        for (let y = r; y < end; y++) matched.add(`${y},${c}`);
+      }
+      r = end;
+    }
+  }
+  return matched;
+}
+
+function clearBootstrapMatchesIfAny() {
+  if (!Array.isArray(gameState.gems) || gameState.gems.length === 0) return;
+  const MAX_PASSES = 24;
+  for (let pass = 0; pass < MAX_PASSES; pass++) {
+    const matched = findBootstrapMatchCells();
+    if (matched.size === 0) return;
+    for (const key of matched) {
+      const [rRaw, cRaw] = key.split(',');
+      const r = Number(rRaw);
+      const c = Number(cRaw);
+      const gem = gameState.gems.find(g => g && g.cellR === r && g.cellC === c);
+      if (!gem) continue;
+      gem.color = randomGemFrame();
+      gem.elementIndex = gem.color;
+      gem.selected = false;
+      gem.Selected = 0;
+    }
+    setGemArray(gameState.gems);
+  }
+}
+
+function tryActivateRuntimePhase() {
+  if (state.globals.GamePhase !== 'BOOTSTRAP') return false;
+  const refill = gameState.refillBounce;
+  const casino = gameState.yellowCasino;
+  if (refill && refill.active) return false;
+  if (casino && casino.active) return false;
+  if (!Array.isArray(gameState.gems) || gameState.gems.length !== (boardGeometry.rows * boardGeometry.cols)) return false;
+
+  clearBootstrapMatchesIfAny();
+  const coverage = collectBoardCoverageIssues();
+  if (coverage.missingCells.length > 0 || coverage.duplicates.length > 0) return false;
+
+  state.globals.GamePhase = 'RUNTIME';
+  state.globals.CanPickGems = true;
+  state.globals.BoardFillActive = 0;
+  state.globals.IsPlayerBusy = 0;
+  console.log('[GAME_PHASE] RUNTIME');
+  return true;
+}
+
 function handleGemMatch(color) {
+  if (state.globals.GamePhase !== 'RUNTIME') {
+    return;
+  }
   const g = state.globals;
   g.DebugMatchCount = (g.DebugMatchCount || 0) + 1;
   console.log(`[DEBUG] matches=${g.DebugMatchCount} turns=${g.DebugTurnCount || 0}`);
@@ -1211,6 +1411,7 @@ async function main(){
         COMBAT_LAYOUT_READY = true;
         console.log('[LayoutGuard] Combat layout ready');
         if (!resumeSnapshot) {
+          state.globals.GamePhase = 'BOOTSTRAP';
           console.log('[INIT] Starting initialization...');
           await loadC3ProjectAssets();
           prepareCombatSetupFromInstances(instances, gameState);
@@ -1223,6 +1424,13 @@ async function main(){
         if (!resumeSnapshot) {
           initEntities(enemyRows, instances);
           createGemBoard(gridBounds);
+          if (isGemDebugEnabled()) {
+            setTimeout(() => {
+              runGemInteractivityDiagnostic().catch((err) => {
+                console.error('[DIAG] Gem interactivity diagnostic failed:', err);
+              });
+            }, 1000);
+          }
         }
         eventBus.emit('layout:combat:entered', { restored: Boolean(resumeSnapshot) });
       },
@@ -1269,9 +1477,11 @@ async function main(){
   if (state.globals.EnemyDoTs) delete state.globals.EnemyDoTs;
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
-    state.globals.DevTestMode = params.has('devtest');
+    state.globals.DevTestMode = params.has('devtest') || params.get('devtest') === 'true';
+    state.globals.DebugGemsMode = params.has('debug_gems') || params.get('debug_gems') === 'true';
     window.__codexGameDevTest = !!state.globals.DevTestMode;
   }
+  state.globals.GamePhase = 'BOOTSTRAP';
 
   eventBus.on('nav:clicked', async ({ label }) => {
     if (label === 'AstralFlow') {
@@ -1656,12 +1866,20 @@ async function main(){
         if (!state.globals.BattleStartProcessStarted) {
           state.globals.BattleStartProcessStarted = 1;
           state.globals.IsPlayerBusy = 0;
-          combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+          if (state.globals.GamePhase === 'RUNTIME') {
+            combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+          }
         }
       }
     }
 
     const casino = gameState.yellowCasino;
+    if (state.globals.GamePhase !== 'RUNTIME' && casino && casino.active) {
+      casino.active = false;
+      casino.phase = 'idle';
+      casino.current = null;
+      casino.ghost = null;
+    }
     if (casino && casino.active) {
       const nowTime = state.globals.time || 0;
       if (casino.phase === 'telegraph' && nowTime >= casino.telegraphUntil) {
@@ -1675,6 +1893,17 @@ async function main(){
             const item = casino.queue[casino.index];
             const gem = item.type === 'yellow' ? getGemByUid(item.uid) : null;
             if (item.type === 'yellow' && !gem) {
+              gemDebugLog('[FILL_SKIP]', {
+                stage: 'yellow-sequence',
+                step: casino.index,
+                cellR: item.cellR,
+                cellC: item.cellC,
+                reason: 'missing-yellow-gem',
+                tag: item.reason || item.type,
+              });
+              if (isGemDebugEnabled()) {
+                gemDebugLog('[COVERAGE]', countCellCoverage());
+              }
               casino.index += 1;
               continue;
             }
@@ -1715,6 +1944,18 @@ async function main(){
               if (elapsed >= item.duration) {
                 gem.color = item.target;
                 gem.elementIndex = item.target;
+                if (isGemDebugEnabled()) {
+                  gemDebugLog('[COVERAGE]', countCellCoverage());
+                }
+                gemDebugLog('[FILL]', {
+                  stage: 'yellow-sequence',
+                  step: casino.index,
+                  cellR: item.cellR,
+                  cellC: item.cellC,
+                  reason: item.reason || 'yellow-reassign',
+                  assignedColor: item.target,
+                  assignedUid: gem.uid,
+                });
                 casino.index += 1;
                 casino.current = null;
               }
@@ -1723,6 +1964,9 @@ async function main(){
             const pos = getCellWorldPos(item.cellC, item.cellR);
             casino.ghost = { x: pos.x, y: pos.y, w: pos.w, h: pos.h, frame };
             if (elapsed >= item.duration) {
+              const step = casino.index;
+              const cellR = item.cellR;
+              const cellC = item.cellC;
               const newGem = {
                 uid: gameState.nextGemUID++,
                 cellC: item.cellC,
@@ -1739,9 +1983,38 @@ async function main(){
                 Selected: 0,
                 flashUntil: 0
               };
+              if (isGemDebugEnabled()) {
+                gemDebugLog('[REFILL_BEFORE]', {
+                  step,
+                  cellR,
+                  cellC,
+                  gemCount: gameState.gems.length
+                });
+              }
+              gameState.gems = gameState.gems.filter(g => !(g.cellR === cellR && g.cellC === cellC));
               gameState.gems.push(newGem);
+              if (isGemDebugEnabled()) {
+                gemDebugLog('[REFILL_AFTER]', {
+                  step,
+                  cellR,
+                  cellC,
+                  gemCount: gameState.gems.length
+                });
+              }
               if (gameState.grid[item.cellC]) gameState.grid[item.cellC][item.cellR] = newGem.uid;
               setGemArray(gameState.gems);
+              if (isGemDebugEnabled()) {
+                gemDebugLog('[COVERAGE]', countCellCoverage());
+              }
+              gemDebugLog('[FILL]', {
+                stage: 'yellow-sequence',
+                step: casino.index,
+                cellR: item.cellR,
+                cellC: item.cellC,
+                reason: item.reason || 'empty',
+                assignedColor: item.target,
+                assignedUid: newGem.uid,
+              });
               casino.ghost = null;
               casino.index += 1;
               casino.current = null;
@@ -1751,10 +2024,51 @@ async function main(){
             casino.active = false;
             casino.phase = 'idle';
             casino.ghost = null;
-            if (casino.mode === 'refill') {
+            const refill = gameState.refillBounce;
+            const canRestorePickability =
+              !(refill && refill.active) &&
+              state.entities.length > 0 &&
+              state.globals.TurnPhase === 0 &&
+              state.globals.IsPlayerBusy === 0 &&
+              (state.globals.ActionLockUntil || 0) <= (state.globals.time || 0);
+            if (canRestorePickability) {
               state.globals.CanPickGems = true;
+              state.globals.BoardFillActive = 0;
+              state.globals.DeferAdvance = 0;
+              if (isGemDebugEnabled()) {
+                gemDebugLog('[RESTORE_PICKABILITY]', {
+                  globals: {
+                    BoardFillActive: state.globals.BoardFillActive,
+                    CanPickGems: state.globals.CanPickGems,
+                    IsPlayerBusy: state.globals.IsPlayerBusy,
+                    DeferAdvance: state.globals.DeferAdvance,
+                    ActionLockUntil: state.globals.ActionLockUntil,
+                    PendingSkillID: state.globals.PendingSkillID || '',
+                    TurnPhase: state.globals.TurnPhase,
+                    time: state.globals.time,
+                  },
+                });
+              }
             }
             state.globals.IsPlayerBusy = 0;
+            if (isGemDebugEnabled()) {
+              gemDebugLog('[REFILL_COMPLETE]', {
+                stage: 'yellow-sequence-finished',
+                globals: {
+                  BoardFillActive: state.globals.BoardFillActive,
+                  CanPickGems: state.globals.CanPickGems,
+                  IsPlayerBusy: state.globals.IsPlayerBusy,
+                  DeferAdvance: state.globals.DeferAdvance,
+                  ActionLockUntil: state.globals.ActionLockUntil,
+                  PendingSkillID: state.globals.PendingSkillID || '',
+                  TurnPhase: state.globals.TurnPhase,
+                },
+              });
+              const integrity = assertBoardIntegrity('yellow-sequence-finished');
+              if (!integrity.ok) {
+                throw new Error('[BOARD_INTEGRITY_FAIL] yellow-sequence-finished');
+              }
+            }
           }
         }
       }
@@ -1769,9 +2083,23 @@ async function main(){
         while (refill.index < refill.queue.length) {
           const slot = refill.queue[refill.index];
           if (!gameState.grid[slot.cellC] || gameState.grid[slot.cellC][slot.cellR] !== 0) {
+            gemDebugLog('[FILL_SKIP]', {
+              stage: 'refill-bounce',
+              step: refill.index,
+              cellR: slot.cellR,
+              cellC: slot.cellC,
+              reason: !gameState.grid[slot.cellC] ? 'missing-column' : 'not-needed',
+              tag: slot.reason || 'empty',
+            });
+            if (isGemDebugEnabled()) {
+              gemDebugLog('[COVERAGE]', countCellCoverage());
+            }
             refill.index += 1;
             continue;
           }
+          const step = refill.index;
+          const cellR = slot.cellR;
+          const cellC = slot.cellC;
           const pos = getCellWorldPos(slot.cellC, slot.cellR);
           const color = randomGemFrame();
           const newGem = {
@@ -1792,9 +2120,38 @@ async function main(){
             bounceStart: nowTime,
             bounceDur,
           };
+          if (isGemDebugEnabled()) {
+            gemDebugLog('[REFILL_BEFORE]', {
+              step,
+              cellR,
+              cellC,
+              gemCount: gameState.gems.length
+            });
+          }
+          gameState.gems = gameState.gems.filter(g => !(g.cellR === cellR && g.cellC === cellC));
           gameState.gems.push(newGem);
+          if (isGemDebugEnabled()) {
+            gemDebugLog('[REFILL_AFTER]', {
+              step,
+              cellR,
+              cellC,
+              gemCount: gameState.gems.length
+            });
+          }
           gameState.grid[slot.cellC][slot.cellR] = newGem.uid;
           setGemArray(gameState.gems);
+          if (isGemDebugEnabled()) {
+            gemDebugLog('[COVERAGE]', countCellCoverage());
+          }
+          gemDebugLog('[FILL]', {
+            stage: 'refill-bounce',
+            step: refill.index,
+            cellR: slot.cellR,
+            cellC: slot.cellC,
+            reason: slot.reason || 'empty',
+            assignedColor: color,
+            assignedUid: newGem.uid,
+          });
           refill.current = { doneAt: nowTime + bounceDur };
           break;
         }
@@ -1803,8 +2160,62 @@ async function main(){
           state.globals.IsPlayerBusy = 0;
           state.globals.CanPickGems = true;
           state.globals.BoardFillActive = 0;
+          if (isGemDebugEnabled()) {
+            gemDebugLog('[REFILL_COMPLETE]', {
+              stage: 'refill-bounce-finished',
+              globals: {
+                BoardFillActive: state.globals.BoardFillActive,
+                CanPickGems: state.globals.CanPickGems,
+                IsPlayerBusy: state.globals.IsPlayerBusy,
+                DeferAdvance: state.globals.DeferAdvance,
+                ActionLockUntil: state.globals.ActionLockUntil,
+                PendingSkillID: state.globals.PendingSkillID || '',
+                TurnPhase: state.globals.TurnPhase,
+              },
+            });
+            const integrity = assertBoardIntegrity('refill-bounce-finished');
+            if (!integrity.ok) {
+              throw new Error('[BOARD_INTEGRITY_FAIL] refill-bounce-finished');
+            }
+          }
+          if (isGemDebugEnabled()) {
+            const queueDone = !Array.isArray(refill.queue) || refill.index >= refill.queue.length;
+            const noSpinActive = !(gameState.yellowCasino && gameState.yellowCasino.active);
+            if (queueDone && noSpinActive && state.globals.BoardFillActive !== 0) {
+              console.error('[REFILL_STUCK]', {
+                reason: 'BoardFillActive-not-reset',
+                refillIndex: refill.index,
+                refillQueueLength: Array.isArray(refill.queue) ? refill.queue.length : 0,
+                yellowSpinActive: !!(gameState.yellowCasino && gameState.yellowCasino.active),
+                globals: getGemGateSnapshot(),
+              });
+            }
+          }
+          if (isGemDebugEnabled()) {
+            const noSpinActive = !(gameState.yellowCasino && gameState.yellowCasino.active);
+            const queueDone = !Array.isArray(refill.queue) || refill.index >= refill.queue.length;
+            const shouldValidate =
+              state.globals.BoardFillActive === 0 &&
+              queueDone &&
+              noSpinActive &&
+              state.globals.TurnPhase === 0 &&
+              state.globals.IsPlayerBusy === 0;
+            if (shouldValidate && state.globals.CanPickGems !== true) {
+              console.error('[GATE_STUCK_AFTER_REFILL]', {
+                reason: 'CanPickGems-false-after-refill',
+                refillIndex: refill.index,
+                refillQueueLength: Array.isArray(refill.queue) ? refill.queue.length : 0,
+                yellowSpinActive: !!(gameState.yellowCasino && gameState.yellowCasino.active),
+                globals: getGemGateSnapshot(),
+              });
+              state.globals.CanPickGems = true;
+              gemDebugLog('[GATE_STUCK_AFTER_REFILL]', { corrected: true, globals: getGemGateSnapshot() });
+            }
+          }
           if (state.globals.TurnPhase === 2 && !state.globals.ActionInProgress) {
-            combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+            if (state.globals.GamePhase === 'RUNTIME') {
+              combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+            }
           }
         }
       };
@@ -2365,6 +2776,7 @@ async function main(){
       if (!rouletteInFlight && ((landedAt != null && nowTime >= landedAt + popDuration) || fallbackDone)) {
         state.globals.BlueBuffSequenceActive = 0;
         if (
+          state.globals.GamePhase === 'RUNTIME' &&
           state.globals.TurnPhase === 2 &&
           !state.globals.ActionInProgress &&
           !state.globals.IsPlayerBusy
@@ -3304,6 +3716,247 @@ async function main(){
   }
   drawFrame(); // initial render
 
+  const devSleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  function getGemGateSnapshot() {
+    return {
+      CanPickGems: state.globals.CanPickGems,
+      IsPlayerBusy: state.globals.IsPlayerBusy,
+      PendingSkillID: state.globals.PendingSkillID || '',
+      BoardFillActive: state.globals.BoardFillActive,
+      TurnPhase: state.globals.TurnPhase,
+      DeferAdvance: state.globals.DeferAdvance,
+      ActionLockUntil: state.globals.ActionLockUntil,
+      MatchedColorValue: state.globals.MatchedColorValue,
+      TapIndex: state.globals.TapIndex,
+      time: state.globals.time,
+    };
+  }
+  function getGemByRC(row, col) {
+    return (gameState.gems || []).find(g => g && g.cellR === row && g.cellC === col);
+  }
+  function getSelectionLen() {
+    return Array.isArray(gameState.selection) ? gameState.selection.length : 0;
+  }
+  function countCellCoverage() {
+    const coverage = {};
+    for (const g of gameState.gems) {
+      const key = `${g.cellR},${g.cellC}`;
+      coverage[key] = (coverage[key] || 0) + 1;
+    }
+    return coverage;
+  }
+  function clearSelectionOnly() {
+    gameState.selectedGems = [];
+    gameState.selectionLocked = false;
+    if (Array.isArray(gameState.gems)) {
+      for (const gm of gameState.gems) {
+        if (!gm) continue;
+        gm.selected = false;
+        gm.Selected = 0;
+      }
+    }
+    state.globals.TapIndex = 0;
+  }
+  function clickGemCell(row, col) {
+    const gem = getGemByRC(row, col);
+    if (!gem) return false;
+    const pos = worldToCanvas(gem.x, gem.y);
+    const rect = canvas.getBoundingClientRect();
+    const clientX = rect.left + pos.x;
+    const clientY = rect.top + pos.y;
+    const ev = typeof PointerEvent === 'function'
+      ? new PointerEvent('pointerdown', {
+          clientX,
+          clientY,
+          bubbles: true,
+          cancelable: true,
+          pointerType: 'mouse',
+          button: 0,
+          buttons: 1,
+        })
+      : new MouseEvent('pointerdown', {
+          clientX,
+          clientY,
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+          buttons: 1,
+        });
+    canvas.dispatchEvent(ev);
+    return true;
+  }
+  async function waitForRefillReady() {
+    const timeoutMs = 15000;
+    const start = performance.now();
+    while (performance.now() - start < timeoutMs) {
+      const ready = (
+        state.globals.BoardFillActive === 0 &&
+        state.globals.CanPickGems === true &&
+        Array.isArray(gameState.gems) &&
+        gameState.gems.length === 24
+      );
+      if (ready) return true;
+      await devSleep(50);
+    }
+    return false;
+  }
+  function assertBoardIntegrity(reasonTag) {
+    const exportedGame = (typeof window !== 'undefined' && window.__codexGame) ? window.__codexGame : null;
+    const gems = (exportedGame && Array.isArray(exportedGame.gems))
+      ? exportedGame.gems
+      : (Array.isArray(gameState.gems) ? gameState.gems : []);
+    const rows = 4;
+    const cols = 6;
+    const counts = new Map();
+    for (const g of gems) {
+      if (!g) continue;
+      const key = `${g.cellR},${g.cellC}`;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    const missingCells = [];
+    const duplicates = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const key = `${r},${c}`;
+        const n = counts.get(key) || 0;
+        if (n === 0) missingCells.push({ r, c });
+        if (n > 1) duplicates.push({ r, c, count: n });
+      }
+    }
+    const gemsLength = gems.length;
+    const ok = missingCells.length === 0 && duplicates.length === 0;
+    const result = { ok, missingCells, duplicates, gemsLength };
+    console.error('[BOARD_INTEGRITY]', { reasonTag, gemsLength, missingCells, duplicates });
+    return result;
+  }
+  async function auditGemClickability(reasonTag) {
+    if (!isGemDebugEnabled()) return;
+    const rows = [];
+    const inertCells = [];
+    for (let row = 0; row < boardGeometry.rows; row++) {
+      for (let col = 0; col < boardGeometry.cols; col++) {
+        clearSelectionOnly();
+        const beforeGem = getGemByRC(row, col);
+        const beforeSelectedLen = Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0;
+        const beforeSelectionLen = getSelectionLen();
+        const beforeGlobals = getGemGateSnapshot();
+        const clicked = clickGemCell(row, col);
+        await devSleep(20);
+        const afterGem = getGemByRC(row, col);
+        const afterSelectedLen = Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0;
+        const afterSelectionLen = getSelectionLen();
+        const afterGlobals = getGemGateSnapshot();
+        const selectionIncreased = afterSelectedLen > beforeSelectedLen || afterSelectionLen > beforeSelectionLen;
+        const selectedFlipped = !!(afterGem && (afterGem.selected || afterGem.Selected));
+        const gateTransition = JSON.stringify(beforeGlobals) !== JSON.stringify(afterGlobals);
+        const inert = !clicked || (!selectionIncreased && !selectedFlipped && !gateTransition);
+        const rowState = {
+          reasonTag,
+          row,
+          col,
+          gem: afterGem ? {
+            uid: afterGem.uid,
+            color: afterGem.color != null ? afterGem.color : afterGem.elementIndex,
+            x: afterGem.x,
+            y: afterGem.y,
+            selected: !!afterGem.selected,
+            Selected: !!afterGem.Selected,
+            flashUntil: afterGem.flashUntil || 0,
+            cellR: afterGem.cellR,
+            cellC: afterGem.cellC,
+          } : null,
+          selection: {
+            selectedGemsBefore: beforeSelectedLen,
+            selectedGemsAfter: afterSelectedLen,
+            selectionBefore: beforeSelectionLen,
+            selectionAfter: afterSelectionLen,
+          },
+          beforeGlobals,
+          afterGlobals,
+          gateTransition,
+        };
+        rows.push(rowState);
+        if (inert) {
+          const inertDiag = {
+            ...rowState,
+            turn: {
+              uid: callFunctionWithContext(fnContext, 'GetCurrentTurn'),
+              type: callFunctionWithContext(fnContext, 'GetCurrentType'),
+            },
+          };
+          console.error('[INERT_CELL]', inertDiag);
+          inertCells.push(inertDiag);
+        }
+      }
+    }
+    gemDebugLog('[GEM_AUDIT]', { reasonTag, rows });
+    if (inertCells.length > 0) {
+      throw new Error(`[DIAG] Inert gem cells detected at ${reasonTag}: ${inertCells.length}`);
+    }
+  }
+  async function autoPlayTurnsDev(turnCount) {
+    if (!isGemDebugEnabled()) return;
+    if (state.globals.GamePhase !== 'RUNTIME') return;
+    for (let i = 0; i < turnCount; i++) {
+      callFunctionWithContext(fnContext, 'AdvanceTurn');
+      combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+      await devSleep(40);
+    }
+  }
+  async function runGemInteractivityDiagnostic() {
+    if (!isGemDebugEnabled()) return;
+    const runtimeWaitStart = performance.now();
+    while (state.globals.GamePhase !== 'RUNTIME' && (performance.now() - runtimeWaitStart) < 15000) {
+      await devSleep(50);
+    }
+    if (state.globals.GamePhase !== 'RUNTIME') return;
+    const forceDeterministicBoard = () => {
+      if (!Array.isArray(gameState.gems)) return;
+      for (const gem of gameState.gems) {
+        if (!gem) continue;
+        let forcedColor = (gem.cellR + gem.cellC) % 2 === 0 ? 0 : 1;
+        if (gem.cellR === 0 && gem.cellC >= 0 && gem.cellC <= 2) forcedColor = 3;
+        gem.color = forcedColor;
+        gem.elementIndex = forcedColor;
+        gem.flashUntil = 0;
+      }
+      setGemArray(gameState.gems);
+    };
+    const setControlledGates = () => {
+      state.globals.CanPickGems = true;
+      state.globals.IsPlayerBusy = 0;
+      state.globals.PendingSkillID = '';
+      state.globals.BoardFillActive = 0;
+      state.globals.TurnPhase = 0;
+      state.globals.DeferAdvance = 0;
+      state.globals.ActionLockUntil = 0;
+      state.globals.MatchedColorValue = -1;
+    };
+
+    const readyInitial = await waitForRefillReady();
+    if (!readyInitial) throw new Error('[DIAG] Initial board did not become playable');
+    await auditGemClickability('post-initial-board');
+
+    forceDeterministicBoard();
+    clearSelectionOnly();
+    gemDebugLog('[FILL_GATE]', { stage: 'forced-yellow-before', globals: getGemGateSnapshot() });
+    setControlledGates();
+    gemDebugLog('[FILL_GATE]', { stage: 'forced-yellow-after', globals: getGemGateSnapshot() });
+    clickGemCell(0, 0);
+    await devSleep(20);
+    clickGemCell(0, 1);
+    await devSleep(20);
+    clickGemCell(0, 2);
+    const readyAfterYellow = await waitForRefillReady();
+    if (!readyAfterYellow) throw new Error('[DIAG] Refill wait timed out after forced yellow');
+    await auditGemClickability('post-yellow-refill');
+
+    await autoPlayTurnsDev(10);
+    const readyAfterTurns = await waitForRefillReady();
+    if (!readyAfterTurns) throw new Error('[DIAG] Board not playable after auto turns');
+    await auditGemClickability('post-10-auto-turns');
+  }
+
 
   function getEnemyHit(mx, my) {
     const enemies = state.entities.filter(e => e.kind === 'enemy' && (e.hp ?? 0) > 0);
@@ -3346,6 +3999,10 @@ async function main(){
         drawFrame();
         return;
       }
+    }
+
+    if (state.globals.GamePhase !== 'RUNTIME') {
+      return;
     }
 
     // REFILL click: use actual AddMore object bounds at click time
@@ -3417,7 +4074,25 @@ async function main(){
     
     // Check for gem clicks (only if board is created and overlay is not visible)
     if (gameState.boardCreated && gameState.gems && !gameState.overlayVisible) {
-      if (state.globals.CanPickGems === false || callFunctionWithContext(fnContext, 'IsHeroTurn') === false) {
+      if (state.globals.GamePhase !== 'RUNTIME') {
+        return;
+      }
+      const isHeroTurn = callFunctionWithContext(fnContext, 'IsHeroTurn') === true;
+      if (state.globals.CanPickGems === false || !isHeroTurn) {
+        gemDebugLog('[GEM_REJECT]', {
+          reason: state.globals.CanPickGems === false ? 'reject-gate-can-pick-false' : 'reject-gate-not-hero-turn',
+          globals: {
+            CanPickGems: state.globals.CanPickGems,
+            IsPlayerBusy: state.globals.IsPlayerBusy,
+            PendingSkillID: state.globals.PendingSkillID || '',
+            BoardFillActive: state.globals.BoardFillActive,
+            TurnPhase: state.globals.TurnPhase,
+            DeferAdvance: state.globals.DeferAdvance,
+            ActionLockUntil: state.globals.ActionLockUntil,
+            MatchedColorValue: state.globals.MatchedColorValue,
+            TapIndex: state.globals.TapIndex,
+          },
+        });
         return;
       }
       for (let i = 0; i < gameState.gems.length; i++) {
@@ -3431,6 +4106,24 @@ async function main(){
         const dist = Math.sqrt(dx * dx + dy * dy);
         
         if (dist < gemRadius) {
+          gemDebugLog('[GEM_ENTRY]', {
+            cellR: gem.cellR,
+            cellC: gem.cellC,
+            uid: gem.uid,
+            selectedGemsLength: Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0,
+            selectionLength: Array.isArray(gameState.selection) ? gameState.selection.length : 0,
+            globals: {
+              CanPickGems: state.globals.CanPickGems,
+              IsPlayerBusy: state.globals.IsPlayerBusy,
+              PendingSkillID: state.globals.PendingSkillID || '',
+              BoardFillActive: state.globals.BoardFillActive,
+              TurnPhase: state.globals.TurnPhase,
+              DeferAdvance: state.globals.DeferAdvance,
+              ActionLockUntil: state.globals.ActionLockUntil,
+              MatchedColorValue: state.globals.MatchedColorValue,
+              TapIndex: state.globals.TapIndex,
+            },
+          });
           if (gem.color == null && gem.elementIndex != null) {
             gem.color = gem.elementIndex;
           }
@@ -3442,6 +4135,23 @@ async function main(){
             gameState.selectionLocked = false;
           }
           if (gameState.selectionLocked || gameState.selectedGems.length >= 3) {
+            gemDebugLog('[GEM_REJECT]', {
+              reason: gameState.selectionLocked ? 'reject-selection-locked' : 'reject-selection-cap-reached',
+              row: gem.cellR,
+              col: gem.cellC,
+              selectedGemsLength: gameState.selectedGems.length,
+              globals: {
+                CanPickGems: state.globals.CanPickGems,
+                IsPlayerBusy: state.globals.IsPlayerBusy,
+                PendingSkillID: state.globals.PendingSkillID || '',
+                BoardFillActive: state.globals.BoardFillActive,
+                TurnPhase: state.globals.TurnPhase,
+                DeferAdvance: state.globals.DeferAdvance,
+                ActionLockUntil: state.globals.ActionLockUntil,
+                MatchedColorValue: state.globals.MatchedColorValue,
+                TapIndex: state.globals.TapIndex,
+              },
+            });
             return;
           }
           
@@ -3452,6 +4162,23 @@ async function main(){
             gem.Selected = 0;
           } else {
             if (gameState.selectedGems.length >= 3) {
+              gemDebugLog('[GEM_REJECT]', {
+                reason: 'reject-selection-cap-guard',
+                row: gem.cellR,
+                col: gem.cellC,
+                selectedGemsLength: gameState.selectedGems.length,
+                globals: {
+                  CanPickGems: state.globals.CanPickGems,
+                  IsPlayerBusy: state.globals.IsPlayerBusy,
+                  PendingSkillID: state.globals.PendingSkillID || '',
+                  BoardFillActive: state.globals.BoardFillActive,
+                  TurnPhase: state.globals.TurnPhase,
+                  DeferAdvance: state.globals.DeferAdvance,
+                  ActionLockUntil: state.globals.ActionLockUntil,
+                  MatchedColorValue: state.globals.MatchedColorValue,
+                  TapIndex: state.globals.TapIndex,
+                },
+              });
               return;
             }
             gem.selected = true;
@@ -3555,6 +4282,9 @@ async function main(){
   let frameCount = 0;
   function tick(){
     frameCount++;
+    if (state.globals.GamePhase === 'BOOTSTRAP') {
+      tryActivateRuntimePhase();
+    }
     if (
       state.globals.TurnPhase === 0 &&
       !state.globals.IsPlayerBusy &&
@@ -3566,14 +4296,46 @@ async function main(){
     }
     const refill = gameState.refillBounce;
     const phaseNow = state.globals.TurnPhase;
-    if (
+    const hasEmpty = hasEmptySlots();
+    const refillReady =
       phaseNow === 0 &&
       !state.globals.IsPlayerBusy &&
       !state.globals.PendingSkillID &&
       !state.globals.ActionInProgress &&
       !state.globals.DeferAdvance &&
-      !(refill && refill.active) &&
-      hasEmptySlots()
+      !(refill && refill.active);
+    if (hasEmpty && !refillReady) {
+      const sig = JSON.stringify({
+        phaseNow,
+        IsPlayerBusy: state.globals.IsPlayerBusy,
+        PendingSkillID: state.globals.PendingSkillID || '',
+        ActionInProgress: state.globals.ActionInProgress,
+        DeferAdvance: state.globals.DeferAdvance,
+        refillActive: !!(refill && refill.active),
+      });
+      if (gameState._lastRefillBlockSig !== sig) {
+        gameState._lastRefillBlockSig = sig;
+        gemDebugLog('[FILL_SKIP]', {
+          stage: 'tick-refill-gate',
+          reason: 'gate',
+          hasEmpty,
+          globals: {
+            TurnPhase: state.globals.TurnPhase,
+            CanPickGems: state.globals.CanPickGems,
+            IsPlayerBusy: state.globals.IsPlayerBusy,
+            PendingSkillID: state.globals.PendingSkillID || '',
+            BoardFillActive: state.globals.BoardFillActive,
+            DeferAdvance: state.globals.DeferAdvance,
+            ActionLockUntil: state.globals.ActionLockUntil,
+            MatchedColorValue: state.globals.MatchedColorValue,
+            TapIndex: state.globals.TapIndex,
+          },
+        });
+      }
+    }
+    if (
+      refillReady &&
+      hasEmpty
     ) {
       startRefillBounce();
     }
@@ -3589,7 +4351,37 @@ async function main(){
       startRefillBounce();
     }
     gameState.lastTurnPhase = phaseNow;
-    if (state.globals.DeferAdvance && (state.globals.time || 0) >= (state.globals.ActionLockUntil || 0)) {
+    if (isGemDebugEnabled()) {
+      const noRefillActive = !(gameState.refillBounce && gameState.refillBounce.active);
+      const noSpinActive = !(gameState.yellowCasino && gameState.yellowCasino.active);
+      const boardFull = Array.isArray(gameState.gems) && gameState.gems.length === 24;
+      const idlePhase = state.globals.TurnPhase === 0;
+      if (noRefillActive && noSpinActive && boardFull && idlePhase && state.globals.CanPickGems === false) {
+        const sig = JSON.stringify({
+          boardFull,
+          TurnPhase: state.globals.TurnPhase,
+          CanPickGems: state.globals.CanPickGems,
+          IsPlayerBusy: state.globals.IsPlayerBusy,
+          DeferAdvance: state.globals.DeferAdvance,
+          ActionLockUntil: state.globals.ActionLockUntil,
+          BoardFillActive: state.globals.BoardFillActive,
+        });
+        if (gameState._gateStuckCanPickSig !== sig) {
+          gameState._gateStuckCanPickSig = sig;
+          console.error('[GATE_STUCK_CANPICK]', {
+            globals: getGemGateSnapshot(),
+            gemsLength: gameState.gems.length,
+            refillActive: false,
+            spinActive: false,
+          });
+        }
+      }
+    }
+    if (
+      state.globals.GamePhase === 'RUNTIME' &&
+      state.globals.DeferAdvance &&
+      (state.globals.time || 0) >= (state.globals.ActionLockUntil || 0)
+    ) {
       if (state.globals.TextAnimating) {
         state.globals.ActionLockUntil = (state.globals.time || 0) + 0.1;
       } else {
@@ -3623,6 +4415,32 @@ async function main(){
       }
     } else {
       state.globals._DeferBlockLogged = 0;
+    }
+    const currentTurnType = callFunctionWithContext(fnContext, 'GetCurrentType');
+    const noRefillActive = !(gameState.refillBounce && gameState.refillBounce.active);
+    if (
+      state.globals.GamePhase === 'RUNTIME' &&
+      currentTurnType === 0 &&
+      state.globals.TurnPhase === 0 &&
+      noRefillActive &&
+      (state.globals.CanPickGems !== true || state.globals.BoardFillActive !== 0)
+    ) {
+      state.globals.CanPickGems = true;
+      state.globals.BoardFillActive = 0;
+      if (isGemDebugEnabled()) {
+        gemDebugLog('[TURN_RESTORE_PICK]', {
+          globals: {
+            BoardFillActive: state.globals.BoardFillActive,
+            CanPickGems: state.globals.CanPickGems,
+            IsPlayerBusy: state.globals.IsPlayerBusy,
+            DeferAdvance: state.globals.DeferAdvance,
+            ActionLockUntil: state.globals.ActionLockUntil,
+            PendingSkillID: state.globals.PendingSkillID || '',
+            TurnPhase: state.globals.TurnPhase,
+            time: state.globals.time,
+          },
+        });
+      }
     }
     // Enemy turns are started by ProcessTurn; avoid double-triggering here.
     gameState.enemyTurnKicked = state.globals.TurnPhase === 2;
@@ -3741,6 +4559,7 @@ async function main(){
         handleGemMatch(color);
       },
     };
+    window.__auditBoard = () => assertBoardIntegrity('manual');
   }
 }
 

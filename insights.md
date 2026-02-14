@@ -33,3 +33,13 @@ CHECKPOINT
 - processed: Implement <next feature you want> (placeholder)
 - added: marked placeholder closed + documented requirement for explicit feature spec
 - next: Wait for concrete feature request
+
+- Workflow alignment update:
+  - Created root memory files expected by improved workflow: `context.md`, `todo.md`, `insights.md` (copied from `ai-memory/`).
+  - Created `inputs/` directory at repo root.
+  - Current status: no unchecked todo items and no files in `inputs/`.
+
+CHECKPOINT
+- processed: workflow alignment check
+- added: root memory files + inputs directory + current idle status
+- next: wait for new files in `inputs/` or new todo items
