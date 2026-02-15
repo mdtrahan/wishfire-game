@@ -8,3 +8,4 @@ __pycache__/
 /_legacy/
 /_backup*
 /src/data/
+.DS_Store
