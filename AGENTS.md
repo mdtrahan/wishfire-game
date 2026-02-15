@@ -212,6 +212,41 @@ Code Review Agent may not:
 - Propose architectural redesign.
 - Drift into retention/monetization unless milestone requires.
 
+
+### 10.2.1 Severity Classification (MANDATORY)
+
+Every ADV entry MUST include:
+
+- Severity: BLOCKER / CRITICAL / MAJOR / MINOR
+- Rationale: 1–2 lines referencing observable impact signals
+
+Severity definitions:
+
+BLOCKER:
+- Game cannot start OR
+- Core gameplay loop broken OR
+- State corruption or unrecoverable lock OR
+- Player progression impossible
+
+CRITICAL:
+- Milestone acceptance criteria violated
+- Deterministic behavior broken
+- Transition flow incomplete
+- Reproducible gameplay integrity defect
+
+MAJOR:
+- Feature partially functional
+- Intermittent state issues
+- Visual or control inconsistency affecting experience
+
+MINOR:
+- Cosmetic issue
+- Low-impact logging inconsistency
+- Non-core UX defect
+
+Code Review must derive severity from tester-provided impact signals.
+Code Review must not leave Severity undefined.
+
 ------------------------------------------------------------------------
 
 ### 10.3 PM / Orchestration Agent
@@ -259,27 +294,80 @@ Lead may not:
 
 Lead defines execution phases and guardrails only.
 
+## Lead Agent Ingestion Rule
+
+Before issuing any dev directive:
+
+1. Read:
+   - governance/audit/adversarial-ledger.md
+   - governance/planning/sprint-board.md
+
+2. Compare:
+   - Any new ADV entries not mapped to REM or TASK?
+
+3. If unmapped:
+   - STOP
+   - Propose triage decision
+
+4. If mapped:
+   - Continue normal sprint execution
+
+
+### 10.4.1 Severity Escalation Rule
+
+When ingesting adversarial-ledger.md:
+
+If Severity = BLOCKER:
+- Immediately freeze feature execution.
+- Override 70/30 allocation rule.
+- Convert finding into REM-###.
+- Dispatch Dev with remediation directive.
+- Do NOT wait for executive confirmation.
+
+If Severity = CRITICAL:
+- Map to active TASK as sprint-blocking acceptance criterion.
+- Update execution plan before Dev continues.
+
+If Severity = MAJOR:
+- Triage within current sprint capacity.
+
+If Severity = MINOR:
+- Move to backlog.
+
+Failure to act on BLOCKER or CRITICAL is governance violation.
+
+
 ------------------------------------------------------------------------
 
 ### 10.5 Dev Agent (Code-Writing Authority)
 
+Dev executes implementation only.
+
 Before writing code, Dev MUST:
 
-1. Read:
-   governance/execution/dev-directives/ACTIVE.md
-2. Identify "Dev Next Action".
-3. Read corresponding TASK-###-execution-plan.md.
-4. Execute only Phase 1 unless plan authorizes continuation.
+1. Read ACTIVE.md.
+2. Identify Dev Next Action.
+3. Read TASK-###-execution-plan.md.
+4. Confirm Severity context (if related to ADV).
+
+Dev may run Playwright or runtime probes ONLY when:
+
+- Verifying a just-implemented change.
+- Reproducing a logged ADV item.
+- Explicitly instructed in ACTIVE.md.
 
 Dev must NOT:
-- Infer tasks from chat.
-- Skip ACTIVE.md.
+
+- Perform exploratory validation.
+- Redefine acceptance criteria.
+- Self-classify severity.
 - Modify sprint-board.md.
 - Modify adversarial-ledger.md.
 - Expand scope beyond execution plan.
 
-If ACTIVE.md is missing:
-STOP and request Lead Agent to generate it.
+If execution plan is ambiguous:
+STOP and request clarification from Lead.
+
 
 ------------------------------------------------------------------------
 
@@ -305,6 +393,21 @@ Stability may not:
 - Modify sprint-board.
 - Modify adversarial-ledger.
 - Modify execution plans.
+
+
+### 10.6.1 Stability Escalation Monitoring
+
+If Stability detects:
+
+- BLOCKER unresolved > 24h
+- CRITICAL unresolved > 1 sprint
+- Reopened BLOCKER
+
+It must append "Escalation Trigger" section to stability-metrics.md.
+
+Stability may not reclassify severity.
+It may only flag persistence.
+
 
 ------------------------------------------------------------------------
 
@@ -332,4 +435,15 @@ The task must be halted and logged in:
 ai-memory/insights.md under "Governance Drift".
 
 ------------------------------------------------------------------------
+### 10.9 Sprint Freeze Protocol
+
+If BLOCKER exists and is unmapped:
+
+- ACTIVE.md becomes invalid.
+- Dev must halt.
+- Lead must issue remediation directive.
+
+Feature work cannot continue while BLOCKER remains unresolved.
+
+This rule overrides allocation ratios.
 
