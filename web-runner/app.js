@@ -1400,17 +1400,42 @@ async function main(){
       console.error(`[LOAD] Error during image preload:`, e);
     }
 
+    rebuildRenderedCache();
     console.log('[INIT] Processing instances...');
   }
   const registerCoreLayouts = (layoutState, { combatGateway: gateway }) => {
+    const validateCombatSnapshot = (snapshot, stage, transitionLabel) => {
+      const valid = !snapshot || (
+        Array.isArray(snapshot.turnQueue) &&
+        Number.isFinite(Number(snapshot.currentActorIndex))
+      );
+      console.log('[LAYOUT_PHASE1]', {
+        stage,
+        transition: transitionLabel,
+        hasSnapshot: Boolean(snapshot),
+        snapshotValid: valid,
+      });
+      return valid;
+    };
+
     layoutState.registerLayout({
       id: 'combat',
-      allowedTransitions: ['base', 'shop', 'intro'],
+      allowedTransitions: ['base', 'shop', 'intro', 'astralOverlay'],
       async onEnter({ resumeSnapshot }) {
+        const hasRuntimeData =
+          Array.isArray(instances) && instances.length > 0 &&
+          types && Object.keys(types).length > 0 &&
+          Array.isArray(enemyRows) && enemyRows.length > 0;
+        const needsBootstrap = !freshCombatBootstrapped || !hasRuntimeData;
+
+        validateCombatSnapshot(resumeSnapshot || null, 'onEnter', 'x->1');
         console.log('[Layout] Combat activated via LayoutState');
         COMBAT_LAYOUT_READY = true;
         console.log('[LayoutGuard] Combat layout ready');
-        if (!resumeSnapshot) {
+        if (needsBootstrap) {
+          if (!hasRuntimeData) {
+            console.log('[LayoutGuard] Combat bootstrap forcing asset init (missing runtime data)');
+          }
           state.globals.GamePhase = 'BOOTSTRAP';
           console.log('[INIT] Starting initialization...');
           await loadC3ProjectAssets();
@@ -1421,7 +1446,7 @@ async function main(){
           COMBAT_BOOTSTRAP_COMPLETE = true;
         }
         gateway.resume(resumeSnapshot || null);
-        if (!resumeSnapshot) {
+        if (needsBootstrap) {
           initEntities(enemyRows, instances);
           createGemBoard(gridBounds);
           if (isGemDebugEnabled()) {
@@ -1435,8 +1460,11 @@ async function main(){
         eventBus.emit('layout:combat:entered', { restored: Boolean(resumeSnapshot) });
       },
       onActive() {},
-      onExit() {
-        return gateway.suspend();
+      onExit({ to }) {
+        const snapshot = gateway.suspend();
+        const transitionLabel = to === 'astralOverlay' ? '1->2' : '1->x';
+        validateCombatSnapshot(snapshot, 'onExit', transitionLabel);
+        return snapshot;
       },
     });
     layoutState.registerLayout({
@@ -1457,6 +1485,22 @@ async function main(){
       id: 'shop',
       allowedTransitions: ['base', 'combat'],
       onEnter() {},
+      onActive() {},
+      onExit() { return null; },
+    });
+    layoutState.registerLayout({
+      id: 'storyMock',
+      allowedTransitions: ['combat'],
+      onEnter() {},
+      onActive() {},
+      onExit() { return null; },
+    });
+    layoutState.registerLayout({
+      id: 'astralOverlay',
+      allowedTransitions: ['combat'],
+      onEnter() {
+        gameState.overlayVisible = false;
+      },
       onActive() {},
       onExit() { return null; },
     });
@@ -1485,17 +1529,32 @@ async function main(){
 
   eventBus.on('nav:clicked', async ({ label }) => {
     if (label === 'AstralFlow') {
+      if (layoutState.getActiveLayoutId() !== 'combat') {
+        console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->2', trigger: 'astral-flow-click', blocked: 'active-layout-not-combat' });
+        return;
+      }
+      console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->2', trigger: 'astral-flow-click' });
       await layoutState.requestLayoutChange('astralOverlay', 'nav-astral-flow');
       return;
     }
     gameState.overlayVisible = true;
+  });
+  eventBus.on('layout:storyMock:click', async () => {
+    if (layoutState.getActiveLayoutId() !== 'storyMock') return;
+    console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '0->1', trigger: 'blue-click' });
+    await layoutState.requestLayoutChange('combat', 'story-blue-click');
+  });
+  eventBus.on('layout:astralOverlay:click', async () => {
+    if (layoutState.getActiveLayoutId() !== 'astralOverlay') return;
+    console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '2->1', trigger: 'red-click' });
+    await layoutState.requestLayoutChange('combat', 'overlay-red-click');
   });
 
   if (layoutHarnessEnabled) {
     debugLayoutLog('[Harness] Enabled');
   }
 
-  await layoutState.activateInitialLayout('combat');
+  await layoutState.activateInitialLayout('storyMock');
 
   const layoutW = viewW;
   const layoutH = viewH;
@@ -1683,8 +1742,15 @@ async function main(){
     const moveUp = (asset ? asset.height : (img ? img.height : 60)) / 2;
     const worldY = 235 - moveUp;
     const pos = worldToCanvas(worldX, worldY);
-    const w = (asset ? asset.width : (img ? img.width : 120)) * layoutScale;
-    const h = (asset ? asset.height : (img ? img.height : 60)) * layoutScale;
+    const controlScale = Math.max(0.7, Math.min(layoutScale, 1));
+    const minW = 52;
+    const maxW = 120;
+    const minH = 22;
+    const maxH = 48;
+    const rawW = (asset ? asset.width : (img ? img.width : 120)) * controlScale;
+    const rawH = (asset ? asset.height : (img ? img.height : 60)) * controlScale;
+    const w = Math.max(minW, Math.min(maxW, rawW));
+    const h = Math.max(minH, Math.min(maxH, rawH));
     const ox = asset ? asset.originX : origin.ox;
     const oy = asset ? asset.originY : origin.oy;
     const dx = pos.x - w * ox;
@@ -1698,67 +1764,68 @@ async function main(){
   let lastFrameTime = performance.now();
   const buffIconFrames = { buffIcon1: 0, buffIcon2: 0, buffIcon3: 0, buffIcon4: 0, buffIcon5: 0 };
   let rendered = [];
-  for(let i=0;i<Math.min(instances.length, 500); i++){
-    const inst = instances[i];
-    const world = inst.world || { x:0, y:0, width:32, height:32, originX:0.5, originY:0.5 };
-    const img = images[inst.type];
-    const typeData = types[inst.type];
-    const ox = (world.originX !== undefined) ? world.originX : 0.5;
-    const oy = (world.originY !== undefined) ? world.originY : 0.5;
-    const isTextObject = typeData && typeData['plugin-id'] === 'Text';
-    const isButton = typeData && typeData['plugin-id'] === 'Button';
-    const isSprite = typeData && typeData['plugin-id'] === 'Sprite';
-    const textContent = isTextObject ? getTextContent(inst, typeData) : 
-                       (isButton && inst.properties && inst.properties.text) ? inst.properties.text : null;
-    rendered.push({
-      inst, typeData, world, ox, oy,
-      uid: inst.uid,
-      dx: 0, dy: 0, w: 0, h: 0,
-      isText: isTextObject, isButton, isSprite, img, textContent,
-      layerIndex: inst.layerIndex || 0,
-      layerName: inst.layerName || 'Unknown'
-    });
-  }
-  
-  // Remove legacy hero icon sprites from rendering
-  const baseRendered = rendered.filter(r => !['icon_hero1','icon_hero2','icon_hero3','icon_hero4'].includes(r.inst.type));
-  // Sort by layer index to ensure proper rendering order (background first)
-  baseRendered.sort((a, b) => a.layerIndex - b.layerIndex);
-  rendered = baseRendered;
-
-  // Debug: Check if modal elements are present in layout
-  const windowPopupItems = baseRendered.filter(r => r.layerName === 'Window Popup');
-  const modalObjects = baseRendered.filter(r => ['UI_CloseWin', 'UI_NavCloseButton', 'UI_NavCloseX'].includes(r.inst.type));
-  console.log(`[DEBUG] Window Popup layer items: ${windowPopupItems.length} found`);
-  console.log(`[DEBUG] Modal objects: ${modalObjects.length} found:`, modalObjects.map(r => `${r.inst.type} at (${r.inst.world.x || 0}, ${r.inst.world.y || 0})`).join(', '));
-  console.log(`[DEBUG] All rendered objects: ${baseRendered.length} total`);
-  console.log(`[DEBUG] Modal objects:`, windowPopupItems.map(r => r.inst.type).join(', '));
-
-  // Calculate EnemyArea bounds for layout math (ComputeEnemyLayout parity)
-  const enemyAreas = baseRendered.filter(r => r.inst.type === 'EnemyArea');
-  if (enemyAreas.length > 0) {
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (const ea of enemyAreas) {
-      const world = ea.inst.world;
-      const w = world.width || 45;
-      const h = world.height || 45;
+  function rebuildRenderedCache() {
+    const nextRendered = [];
+    for (let i = 0; i < Math.min(instances.length, 500); i++) {
+      const inst = instances[i];
+      const world = inst.world || { x: 0, y: 0, width: 32, height: 32, originX: 0.5, originY: 0.5 };
+      const img = images[inst.type];
+      const typeData = types[inst.type];
       const ox = (world.originX !== undefined) ? world.originX : 0.5;
       const oy = (world.originY !== undefined) ? world.originY : 0.5;
-      const left = (world.x || 0) - w * ox;
-      const right = (world.x || 0) + w * (1 - ox);
-      const top = (world.y || 0) - h * oy;
-      const bottom = (world.y || 0) + h * (1 - oy);
-      minX = Math.min(minX, left);
-      maxX = Math.max(maxX, right);
-      minY = Math.min(minY, top);
-      maxY = Math.max(maxY, bottom);
+      const isTextObject = typeData && typeData['plugin-id'] === 'Text';
+      const isButton = typeData && typeData['plugin-id'] === 'Button';
+      const isSprite = typeData && typeData['plugin-id'] === 'Sprite';
+      const textContent = isTextObject
+        ? getTextContent(inst, typeData)
+        : (isButton && inst.properties && inst.properties.text) ? inst.properties.text : null;
+      nextRendered.push({
+        inst, typeData, world, ox, oy,
+        uid: inst.uid,
+        dx: 0, dy: 0, w: 0, h: 0,
+        isText: isTextObject, isButton, isSprite, img, textContent,
+        layerIndex: inst.layerIndex || 0,
+        layerName: inst.layerName || 'Unknown'
+      });
     }
-    state.globals.EnemyAreaRect = { minX, maxX, minY, maxY };
-    callFunctionWithContext(fnContext, 'ComputeEnemyLayout');
-    callFunctionWithContext(fnContext, 'RefreshEnemyPositions');
+
+    const baseRendered = nextRendered.filter(r => !['icon_hero1', 'icon_hero2', 'icon_hero3', 'icon_hero4'].includes(r.inst.type));
+    baseRendered.sort((a, b) => a.layerIndex - b.layerIndex);
+    rendered = baseRendered;
+
+    const windowPopupItems = baseRendered.filter(r => r.layerName === 'Window Popup');
+    const modalObjects = baseRendered.filter(r => ['UI_CloseWin', 'UI_NavCloseButton', 'UI_NavCloseX'].includes(r.inst.type));
+    console.log(`[DEBUG] Window Popup layer items: ${windowPopupItems.length} found`);
+    console.log(`[DEBUG] Modal objects: ${modalObjects.length} found:`, modalObjects.map(r => `${r.inst.type} at (${r.inst.world.x || 0}, ${r.inst.world.y || 0})`).join(', '));
+    console.log(`[DEBUG] All rendered objects: ${baseRendered.length} total`);
+    console.log(`[DEBUG] Modal objects:`, windowPopupItems.map(r => r.inst.type).join(', '));
+
+    const enemyAreas = baseRendered.filter(r => r.inst.type === 'EnemyArea');
+    if (enemyAreas.length > 0) {
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const ea of enemyAreas) {
+        const areaWorld = ea.inst.world;
+        const w = areaWorld.width || 45;
+        const h = areaWorld.height || 45;
+        const ox = (areaWorld.originX !== undefined) ? areaWorld.originX : 0.5;
+        const oy = (areaWorld.originY !== undefined) ? areaWorld.originY : 0.5;
+        const left = (areaWorld.x || 0) - w * ox;
+        const right = (areaWorld.x || 0) + w * (1 - ox);
+        const top = (areaWorld.y || 0) - h * oy;
+        const bottom = (areaWorld.y || 0) + h * (1 - oy);
+        minX = Math.min(minX, left);
+        maxX = Math.max(maxX, right);
+        minY = Math.min(minY, top);
+        maxY = Math.max(maxY, bottom);
+      }
+      state.globals.EnemyAreaRect = { minX, maxX, minY, maxY };
+      callFunctionWithContext(fnContext, 'ComputeEnemyLayout');
+      callFunctionWithContext(fnContext, 'RefreshEnemyPositions');
+    }
+
+    out.textContent = `🎮 Puzzle RPG\n\n✓ Game loaded\n${rendered.length} total objects loaded`;
   }
-  
-  out.textContent = `🎮 Puzzle RPG\n\n✓ Game loaded\n${rendered.length} total objects loaded`;
+  rebuildRenderedCache();
 
   // Track last overlay state for logging only on change
   let lastOverlayState = null;
@@ -1780,7 +1847,11 @@ async function main(){
   
   // helper function to draw all instances
   function drawFrame(dtOverride){
-    if (!COMBAT_BOOTSTRAP_COMPLETE && !layoutHarnessEnabled) {
+    const activeRuntimeLayout = layoutState && typeof layoutState.getActiveLayoutId === 'function'
+      ? layoutState.getActiveLayoutId()
+      : null;
+    if (activeRuntimeLayout && activeRuntimeLayout !== 'combat') {
+      drawHarnessLayoutTakeover(activeRuntimeLayout);
       return;
     }
     if (layoutHarnessEnabled && harnessLayoutState) {
@@ -1789,6 +1860,9 @@ async function main(){
         drawHarnessLayoutTakeover(activeLayout);
         return;
       }
+    }
+    if (!COMBAT_BOOTSTRAP_COMPLETE && !layoutHarnessEnabled) {
+      return;
     }
 
     const now = performance.now();
@@ -3567,9 +3641,12 @@ async function main(){
               const t = g.time || 0;
               const pulse = Math.sin(t * 6);
               const selScale = 1 + 0.035 * pulse;
-              const bob = 2.2 * layoutScale * pulse;
-              const selW = (selectorAsset ? selectorAsset.width : selectorImg.width) * layoutScale * selScale;
-              const selH = (selectorAsset ? selectorAsset.height : selectorImg.height) * layoutScale * selScale;
+              const controlScale = Math.max(0.7, Math.min(layoutScale, 1));
+              const bob = 2.2 * controlScale * pulse;
+              const rawSelW = (selectorAsset ? selectorAsset.width : selectorImg.width) * controlScale * selScale;
+              const rawSelH = (selectorAsset ? selectorAsset.height : selectorImg.height) * controlScale * selScale;
+              const selW = Math.max(12, Math.min(46, rawSelW));
+              const selH = Math.max(8, Math.min(24, rawSelH));
               const selOx = selectorAsset ? selectorAsset.originX : 0.5;
               const selOy = selectorAsset ? selectorAsset.originY : 0.5;
               const targetX = pos.x;
@@ -3590,6 +3667,11 @@ async function main(){
     if (state.globals.PendingSkillID) {
       const selectorImg = images['Selector'] || null;
       const selectorAsset = assetSizes.Selector;
+      const controlScale = Math.max(0.7, Math.min(layoutScale, 1));
+      const clampSelectorSize = (rawW, rawH) => ({
+        w: Math.max(12, Math.min(46, rawW)),
+        h: Math.max(8, Math.min(24, rawH)),
+      });
       const g = state.globals;
       const spacing = g.Spacing || ((g.EnemySize || 40) + (g.enemyGAP || 8));
       const center = Math.floor((g.Slots || 0) / 2);
@@ -3612,8 +3694,9 @@ async function main(){
         const enemyW = enemyH * (origW / origH);
         const pos = worldToCanvas(x, y);
         if (selectorImg) {
-          const selW = (selectorAsset ? selectorAsset.width : selectorImg.width) * layoutScale;
-          const selH = (selectorAsset ? selectorAsset.height : selectorImg.height) * layoutScale;
+          const rawSelW = (selectorAsset ? selectorAsset.width : selectorImg.width) * controlScale;
+          const rawSelH = (selectorAsset ? selectorAsset.height : selectorImg.height) * controlScale;
+          const { w: selW, h: selH } = clampSelectorSize(rawSelW, rawSelH);
           const selOx = selectorAsset ? selectorAsset.originX : 0.5;
           const selOy = selectorAsset ? selectorAsset.originY : 0.5;
           const targetX = pos.x;
@@ -3987,6 +4070,20 @@ async function main(){
     const rect = canvas.getBoundingClientRect();
     const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
 
+    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
+      ? layoutState.getActiveLayoutId()
+      : null;
+    if (activeLayoutId === 'storyMock') {
+      inputDomains.emit('storyMock', 'layout:storyMock:click', { x: mx, y: my });
+      drawFrame();
+      return;
+    }
+    if (activeLayoutId === 'astralOverlay') {
+      inputDomains.emit('astralOverlay', 'layout:astralOverlay:click', { x: mx, y: my });
+      drawFrame();
+      return;
+    }
+
     if (layoutHarnessEnabled && harnessLayoutState && harnessInputDomains) {
       const activeLayout = harnessLayoutState.getActiveLayoutId();
       if (activeLayout === 'storyMock') {
@@ -4019,33 +4116,36 @@ async function main(){
       }
     }
 
-    // Check nav label clicks using actual Nav_* text objects
-    if (!(gameState.selectedGems.length > 0 || gameState.selectionLocked || state.globals.CanPickGems === false)) {
-      const navTypes = new Set(['Nav_HeroText', 'Nav_MapText', 'Nav_MissionText', 'Nav_AstralFlowText', 'Nav_HomeText']);
-      const navLabelItems = rendered.filter(r => navTypes.has(r.inst.type));
-      for (const r of navLabelItems) {
-        const labelMap = {
-          Nav_HeroText: 'Hero',
-          Nav_MapText: 'Map',
-          Nav_MissionText: 'Mission',
-          Nav_AstralFlowText: 'AstralFlow',
-          Nav_HomeText: 'Home',
-        };
-        const labelName = labelMap[r.inst.type] || '';
-        const pos = worldToCanvas(r.world.x || 0, r.world.y || 0);
-        const w = Math.max(40, (r.world.width || 60) * layoutScale);
-        const h = Math.max(16, (r.world.height || 20) * layoutScale);
-        const dx = pos.x - w * r.ox;
-        const dy = pos.y - h * r.oy;
-        if (mx >= dx && mx <= dx + w && my >= dy && my <= dy + h) {
-          inputDomains.emit(
-            layoutState.getActiveLayoutId(),
-            'nav:clicked',
-            { label: labelName }
-          );
-          drawFrame();
-          return;
-        }
+    // Check nav label clicks using actual Nav_* text objects.
+    // AstralFlow is processed first so intended 1->2 transition remains reachable.
+    const navTypes = new Set(['Nav_HeroText', 'Nav_MapText', 'Nav_MissionText', 'Nav_AstralFlowText', 'Nav_HomeText']);
+    const navLabelItems = rendered.filter(r => navTypes.has(r.inst.type));
+    const labelMap = {
+      Nav_HeroText: 'Hero',
+      Nav_MapText: 'Map',
+      Nav_MissionText: 'Mission',
+      Nav_AstralFlowText: 'AstralFlow',
+      Nav_HomeText: 'Home',
+    };
+    const navHit = navLabelItems.find((r) => {
+      const pos = worldToCanvas(r.world.x || 0, r.world.y || 0);
+      const w = Math.max(40, (r.world.width || 60) * layoutScale);
+      const h = Math.max(16, (r.world.height || 20) * layoutScale);
+      const dx = pos.x - w * r.ox;
+      const dy = pos.y - h * r.oy;
+      return mx >= dx && mx <= dx + w && my >= dy && my <= dy + h;
+    });
+    if (navHit) {
+      const labelName = labelMap[navHit.inst.type] || '';
+      const navBlockedBySelection = gameState.selectedGems.length > 0 || gameState.selectionLocked || state.globals.CanPickGems === false;
+      if (labelName === 'AstralFlow' || !navBlockedBySelection) {
+        inputDomains.emit(
+          layoutState.getActiveLayoutId(),
+          'nav:clicked',
+          { label: labelName }
+        );
+        drawFrame();
+        return;
       }
     }
 

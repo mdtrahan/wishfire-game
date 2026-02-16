@@ -1,3 +1,8 @@
+## Backlog Priority (Post Primary Sprint Goal)
+- Priority 1 after `TASK-003`: TASK-004 (turn-state source/snapshot/post-resume validation hardening).
+- Priority 2 after `TASK-003`: TASK-005 (deterministic transition scenario suite).
+- Priority 3 after `TASK-003`: deferred ADV remediation candidates `ADV-2026-002`, `ADV-2026-003`, `ADV-2026-004` (under remediation cap governance).
+
 ## Deferred Adversarial Findings (Sprint X Triage)
 
 ### Theme: Transition target mismatch / layout registration integrity
@@ -16,5 +21,5 @@
   - Milestone Alignment: Pending (milestone-definition.md is currently empty).
 
 ## Deferred Feature Tasks (Sprint Containment)
-- TASK-003 Define and enforce transition contract matrix (allowed transitions, registered targets, rejection telemetry) to remove silent layout-change failures and enforce transition atomicity.
+- TASK-004 Define authoritative turn-state source of truth, suspend/resume snapshot structure, and deterministic post-resume validation checkpoints; instrument validation only, with no transition contract enforcement, no layout registration policy changes, and no atomic transition queue refactors.
 - TASK-005 Add deterministic transition scenario suite (fixed-seed bootstrap plus transition/resume assertions) mapped to milestone Definition of Done criteria.

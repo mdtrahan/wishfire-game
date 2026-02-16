@@ -9,3 +9,7 @@ __pycache__/
 /_backup*
 /src/data/
 .DS_Store
+
+# Local validation artifacts
+test-results/
+

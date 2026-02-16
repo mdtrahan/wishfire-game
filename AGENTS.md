@@ -247,6 +247,19 @@ MINOR:
 Code Review must derive severity from tester-provided impact signals.
 Code Review must not leave Severity undefined.
 
+Upon validating execution artifacts, Code Review must issue:
+- PASS
+- FAIL
+- PARTIAL PASS
+
+PASS requires:
+- No open BLOCKER
+- No open CRITICAL tied to TASK
+- Milestone criteria satisfied
+
+PASS must explicitly close related ADV entries.
+
+
 ------------------------------------------------------------------------
 
 ### 10.3 PM / Orchestration Agent
@@ -263,6 +276,9 @@ PM may not:
 - Define implementation architecture.
 - Modify adversarial-ledger entries.
 - Write execution plans for Dev.
+
+PM may mark TASK-### complete only after Code Review PASS.
+
 
 ------------------------------------------------------------------------
 
@@ -446,4 +462,21 @@ If BLOCKER exists and is unmapped:
 Feature work cannot continue while BLOCKER remains unresolved.
 
 This rule overrides allocation ratios.
+
+------------------------------------------------------------------------
+
+### MVP Validation Authority
+
+During MVP phase:
+
+Manual deterministic QA verification in browser is canonical PASS.
+
+Node test runner results do not override validated runtime behavior.
+
+Canonical validation artifact for MVP is:
+- Playwright browser validation
+OR
+- Manual deterministic run verified by Tester
+
+npm test is advisory only until ESM/CommonJS alignment is complete.
 
