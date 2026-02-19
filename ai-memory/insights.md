@@ -1,335 +1,43 @@
 # Insights / Decisions Log
 
-## 2026-02-14
-- Initialized memory system files.
-- Next: Inventory repo structure and key gameplay loop files.
-- Repo structure inventory:
-  - Runtime roots: `web-runner/`, `Scripts/`, `src/core/`, `src/layout/`, `tests/`.
-  - Legacy/archive roots present but non-runtime: `_archive/`, `project_C3_conversion/` (per guardrails).
-- Key gameplay loop files and anchors:
-  - `web-runner/app.js`: layout registration (`registerLayout`), initial activation (`activateInitialLayout('combat')`), input/match handling (`handleGemMatch`), main tick loop (`tick` + `requestAnimationFrame`), debug state export (`window.render_game_to_text`).
-  - `src/core/combatRuntimeGateway.js`: combat authority boundary (`runCombatStep`, `suspend/resume`, `isInAtomicSection`).
-  - `src/core/layoutState.js`: layout transition/atomic guard integration.
-
-CHECKPOINT
-- processed: Inventory repo structure and key gameplay loop files
-- added: runtime directory map + key gameplay loop file anchors
-- next: Add a deterministic debug snapshot output for testing
-
-- Deterministic debug snapshot is already implemented in runtime:
-  - `web-runner/app.js` exports `window.render_game_to_text` with stable JSON payload (turn, order, resources, entities, gems, flags).
-  - `web-runner/app.js` exports `window.advanceTime(ms)` stepping frames deterministically via fixed `1/60` step.
-  - `window.__codexGame` helper object exists for targeted test control hooks.
-
-CHECKPOINT
-- processed: Add a deterministic debug snapshot output for testing
-- added: verified existing deterministic snapshot + time-step hooks; no code changes needed
-- next: Implement <next feature you want>
-
-- Placeholder todo item was not actionable without a concrete feature spec; closed to keep queue deterministic.
-- Follow-up expectation: next run should replace placeholder with one explicit feature request before coding.
-
-CHECKPOINT
-- processed: Implement <next feature you want> (placeholder)
-- added: marked placeholder closed + documented requirement for explicit feature spec
-- next: Wait for concrete feature request
-
-## 2026-02-15
-- Created governance scaffold exactly as requested under `governance/` with `audit/`, `planning/`, `execution/`, and `metrics/` subdirectories.
-- Decision: created empty markdown files only; no templated contents were added to avoid scope expansion.
-- Files touched:
-  - `governance/audit/adversarial-ledger.md`
-  - `governance/audit/regression-history.md`
-  - `governance/planning/roadmap.md`
-  - `governance/planning/milestone-definition.md`
-  - `governance/planning/sprint-board.md`
-  - `governance/planning/backlog.md`
-  - `governance/execution/remediation-log.md`
-  - `governance/execution/task-queue.md`
-  - `governance/execution/done-log.md`
-  - `governance/metrics/stability-metrics.md`
-  - `governance/metrics/delivery-velocity.md`
-- Next task: Await next explicit user request.
-- Added `governance/product/` with the requested markdown docs.
-- Decision: kept files empty and matched exact names and location from user request.
-- Files touched:
-  - `governance/product/retention-hypotheses.md`
-  - `governance/product/monetization-architecture.md`
-  - `governance/product/liveops-readiness.md`
-- Next task: Await next explicit user request.
-- Created audit report placeholder file at `governance/audit/reports/2026-Layout-Harness-Conformance-Report.md`.
-- Decision: created an empty markdown file only, matching exact user path/name.
-- Files touched:
-  - `governance/audit/reports/2026-Layout-Harness-Conformance-Report.md`
-- Next task: Await next explicit user request.
-
-- Executed Sprint Triage on new adversarial findings in `governance/audit/adversarial-ledger.md`.
+## 2026-02-18
+- Consolidated operational memory files to restore signal over noise.
 - Decisions made:
-  - Clustered findings by root-cause theme.
-  - Selected only `ADV-2026-001` for next sprint remediation to enforce 30% cap (1 of 4 findings = 25%).
-  - Deferred `ADV-2026-002`, `ADV-2026-003`, and `ADV-2026-004` to backlog due to cap/severity prioritization.
-  - Created `REM-2026-001` with explicit regression guard and closure conditions.
-  - Index gap: `ai-memory/PROJECT_INDEX.md` is missing.
+  - Reduced `ai-memory/todo.md` to one completed sync task plus one active waiting item.
+  - Pruned completed-task history to a short recent slice instead of a full transcript.
+  - Reframed this log as decision-only records (no repetitive run-status entries).
+- Files touched:
+  - `ai-memory/todo.md`
+  - `ai-memory/insights.md`
+  - `AGENTS.md`
+- Next task:
+  - Await next explicit user request.
+
+- Advanced Dev intake to TASK-004 after governance sync confirmed TASK-003 closure.
+- Decisions made:
+  - Confirmed sprint-board marks `TASK-003` complete and `TASK-004` as active feature allocation.
+  - Confirmed no new unmapped BLOCKER/CRITICAL entries requiring triage stop.
+  - Updated `ACTIVE.md` to set active task to `TASK-004` with a Phase 1-only Dev Next Action.
+  - Updated `TASK-004-execution-plan.md` scope to turn-state authority + snapshot schema + deterministic checkpoints + instrumentation only, with explicit exclusions preserved.
+- Files touched:
+  - `governance/execution/dev-directives/ACTIVE.md`
+  - `governance/execution/dev-directives/TASK-004-execution-plan.md`
+  - `ai-memory/todo.md`
+  - `ai-memory/insights.md`
+- Next task:
+  - Await next explicit user request.
+
+## 2026-02-19
+- Executed PM closure lock for TASK-003 and next-task promotion.
+- Decisions made:
+  - Marked TASK-003 complete in sprint board based on recorded Code Review PASS and closure evidence artifacts.
+  - Removed stale pending-closure language from remediation log and synchronized resolved ADV mapping statements.
+  - Promoted TASK-004 out of backlog into active sprint feature allocation; backlog now starts at TASK-005.
 - Files touched:
   - `governance/planning/sprint-board.md`
   - `governance/execution/remediation-log.md`
   - `governance/planning/backlog.md`
-- Next task: Await next explicit user request.
-
-- Re-ran sprint triage execution against current `ADV-2026-*` set in `governance/audit/adversarial-ledger.md`.
-- Decisions made:
-  - Kept `REM-2026-001` (linked `ADV-2026-001`, Critical) as sole remediation item for next sprint.
-  - Kept `ADV-2026-002`, `ADV-2026-003`, `ADV-2026-004` in backlog due to 30% cap.
-  - Confirmed remediation allocation remains 25% (1 selected of 4 open findings), within cap.
-  - Index gap persists: `ai-memory/PROJECT_INDEX.md` missing.
-- Files touched:
   - `ai-memory/todo.md`
   - `ai-memory/insights.md`
-- Next task: Await next explicit user request.
-
-- Added requested milestone extension and Definition of Done additions to milestone definition.
-- Decision: inserted user text verbatim to preserve policy intent without reinterpretation.
-- Files touched:
-  - `governance/planning/milestone-definition.md`
-- Next task: Await next explicit user request.
-
-- Evaluated milestone progress coverage against current sprint/remediation/audit artifacts.
-- Decisions made:
-  - Current feature tasks (`TASK-001`, `TASK-002`) are placeholder-level and do not explicitly cover milestone criteria.
-  - Only explicit criterion coverage in active sprint is from remediation `REM-2026-001` (pointer/tick lifecycle continuity).
-  - Milestone progression is incomplete and at risk without criterion-mapped feature tasks.
-  - Proposed next feature tasks to cover uncovered criteria while preserving 70/30 allocation.
-- Files touched:
-  - `ai-memory/todo.md`
-  - `ai-memory/insights.md`
-- Next task: Await next explicit user request.
-
-- Applied sprint containment directive for 7-day sprint.
-- Decisions made:
-  - Selected only `TASK-004` as the single active feature task because it unblocks the milestone extension plus turn-order and snapshot/resume criteria with highest centrality.
-  - Preserved sprint allocation at Feature 70% / Remediation 30%.
-  - Moved remaining proposed feature tasks (`TASK-003`, `TASK-005`) into backlog.
-- Files touched:
-  - `governance/planning/sprint-board.md`
-  - `governance/planning/backlog.md`
-- Next task: Await next explicit user request.
-
-- Refined `TASK-004` scope to strict deterministic turn-state/snapshot validation work.
-- Decisions made:
-  - Explicitly excluded transition contract enforcement, layout registration policy changes, and atomic transition queue refactors from `TASK-004`.
-  - Kept overlap cleanly split, with transition-contract scope remaining in backlog `TASK-003`.
-- Files touched:
-  - `governance/planning/sprint-board.md`
-- Next task: Await next explicit user request.
-
-- Created pre-execution invariant specification for `TASK-004`.
-- Decisions made:
-  - Defined explicit invariant IDs (I-001..I-006) for authoritative queue, index constraints, pre-suspend validity, post-resume guarantees, forbidden intermediate states, and tick interaction contract.
-  - Kept scope strictly to invariant definition and deterministic validation predicates; no transition routing or registration policy changes included.
-- Files touched:
-  - `governance/planning/turn-state-invariants.md`
-- Next task: Await next explicit user request.
-
-- Executed Phase 1 for `TASK-004` from `governance/execution/dev-directives/ACTIVE.md`.
-- Decisions made:
-  - Formalized a single authoritative turn-state contract in runtime core with legacy fallback compatibility.
-  - Implemented deterministic invariant predicates (I-001..I-006) and deterministic failure IDs for suspend/resume validation output.
-  - Expanded suspend snapshot payload with required fields (`snapshotVersion`, `capturedAtTick`, `turnState`, `resumeToken`) while preserving backward-compatible snapshot keys.
-  - Kept scope to Phase 1 only; no transition contract enforcement or layout policy changes.
-  - Index gap: `ai-memory/PROJECT_INDEX.md` is missing.
-- Files touched:
-  - `src/core/combatRuntimeGateway.js`
-  - `ai-memory/todo.md`
-  - `ai-memory/insights.md`
-- Next task: Await next explicit user request.
-
-- Validated proposed combat layout-transition scope against sprint board and re-mapped active feature allocation.
-- Decisions made:
-  - Scope did not map to active `TASK-004` (explicitly excludes transition contract/routing scope).
-  - Promoted transition-flow scope into active `TASK-003` on sprint board with explicit `0 -> 1 -> 2 -> 1` flow and DoD criteria.
-  - Deferred `TASK-004` into backlog to preserve sprint containment and maintain 70% feature / 30% remediation ratio.
-- Files touched:
-  - `governance/planning/sprint-board.md`
-  - `governance/planning/backlog.md`
-- Next task: Await next explicit user request.
-
-- Executed Phase 1 for `TASK-003` from active dev directive.
-- Decisions made:
-  - Wired deterministic transition entry points for `0 -> 1` (story blue click), `1 -> 2` (Astral Flow nav click), and `2 -> 1` (astral red click) in runtime event handlers.
-  - Registered dormant `storyMock` and `astralOverlay` layouts in core runtime layout registration so transition targets are valid in non-harness mode.
-  - Added suspend/resume handoff validation logging (`[LAYOUT_PHASE1]`) around combat snapshot exit/enter boundaries without changing combat math or turn logic.
-- Files touched:
-  - `web-runner/app.js`
-  - `ai-memory/todo.md`
-  - `ai-memory/insights.md`
-- Next task: Await next explicit user request.
-- Added explicit runtime guard for `combat -> astralOverlay` transition request path.
-- Decisions made:
-  - Added `activeLayoutId === 'combat'` pre-check in `nav:clicked` Astral Flow branch before calling `requestLayoutChange('astralOverlay', ...)`.
-  - Kept controller-level validation unchanged; this is an explicit entry-point guard only.
-  - No suspend/resume logic changes and no combat math changes.
-- Files touched:
-  - `web-runner/app.js`
-  - `ai-memory/todo.md`
-  - `ai-memory/insights.md`
-- Next task: Await next explicit user request.
-
-- Confirmed sprint anchor as Layout 0 startup and explicit required flow `0 -> 1 -> 2 -> 1`.
-- Decisions made:
-  - Added primary sprint goal section to sprint board to remove ambiguity.
-  - Tidied backlog into post-goal priority order so TASK-004/TASK-005 follow completion of active TASK-003.
-  - Preserved governance split at Feature 70% / Remediation 30%.
-- Files touched:
-  - `governance/planning/sprint-board.md`
-  - `governance/planning/backlog.md`
-- Next task: Await next explicit user request.
-
-- Synced and re-dispatched active Dev directives from updated sprint artifacts.
-- Decisions made:
-  - Kept `TASK-003` as the active sprint task, anchored to Layout 0 startup and required `0 -> 1 -> 2 -> 1` flow.
-  - Updated `ACTIVE.md` to point Dev at one concrete next step: switch normal startup to Layout 0 (`storyMock`) and verify `0 -> 1` handoff.
-  - Refreshed `TASK-003` execution plan to keep scope bounded and phased under current sprint constraints.
-- Files touched:
-  - `governance/execution/dev-directives/ACTIVE.md`
-  - `governance/execution/dev-directives/TASK-003-execution-plan.md`
-  - `ai-memory/todo.md`
-  - `ai-memory/insights.md`
-- Next task: Await next explicit user request.
-- Executed active TASK-003 next action to align normal startup with Layout 0.
-- Decisions made:
-  - Switched normal runtime initial layout activation from `combat` to `storyMock` so startup follows `0 -> 1 -> 2 -> 1` sprint path.
-  - Kept all transition guards and suspend/resume handoff logic unchanged.
-  - No combat/system math changes.
-- Files touched:
-  - `web-runner/app.js`
-  - `ai-memory/todo.md`
-  - `ai-memory/insights.md`
-- Next task: Await next explicit user request.
-- Synced and re-dispatched active TASK-003 after confirming startup already lands on Layout 0 in normal runtime.
-- Decisions made:
-  - Verified normal runtime initial activation is already `storyMock` (`web-runner/app.js`), so prior Dev Next Action was stale.
-  - Updated `ACTIVE.md` Dev Next Action to the next Phase 2 concrete step: execute one deterministic `0 -> 1 -> 2 -> 1` loop with suspend/resume + input/transition integrity checks.
-  - Kept execution plan scope unchanged (no scope expansion).
-- Files touched:
-  - `governance/execution/dev-directives/ACTIVE.md`
-  - `ai-memory/todo.md`
-  - `ai-memory/insights.md`
-- Next task: Await next explicit user request.
-- Applied approved triage mapping: ADV-2026-005 is now bound to active TASK-003 as a sprint-blocking acceptance criterion.
-- Decisions made:
-  - Updated sprint board TASK-003 definition to include explicit ADV-2026-005 acceptance condition (`0 -> 1` must not enter `0 loaded objects` malformed combat state).
-  - Updated TASK-003 execution plan scope and Phase 2/criteria to require first-entry combat bootstrap integrity.
-  - Updated ACTIVE Dev Next Action to execute Phase 2 under the mapped criterion; no new REM item created.
-- Files touched:
-  - `governance/planning/sprint-board.md`
-  - `governance/execution/dev-directives/TASK-003-execution-plan.md`
-  - `governance/execution/dev-directives/ACTIVE.md`
-  - `ai-memory/todo.md`
-  - `ai-memory/insights.md`
-- Next task: Await next explicit user request.
-- Executed TASK-003 Phase 2 from active directive.
-- Decisions made:
-  - Hardened combat first-entry bootstrap by forcing runtime asset/data bootstrap when cache is missing (`instances/types/enemyRows`) even if a snapshot is present.
-  - Fixed first-entry malformed state root cause by rebuilding `rendered` cache after `loadC3ProjectAssets()` so nav hit targets and layout-derived objects exist on first `0 -> 1` entry.
-  - Verified deterministic normal-runtime loop markers for `0 -> 1 -> 2 -> 1`, including `1 -> 2` onExit snapshot validation and `2 -> 1` resume snapshot validation.
-- Files touched:
-  - `web-runner/app.js`
-  - `ai-memory/todo.md`
-  - `ai-memory/insights.md`
-- Validation artifacts:
-  - Playwright probe output captured in terminal with markers:
-    - `[LAYOUT_PHASE1] ... transition: 0->1`
-    - `[LAYOUT_PHASE1] ... transition: 1->2`
-    - `[LAYOUT_PHASE1] ... transition: 2->1`
-- Next task: Await next explicit user request.
-- Synced and re-dispatched after post-update ingestion with Severity Escalation Rule applied.
-- Decisions made:
-  - Detected unmapped `CRITICAL` finding `ADV-2026-007` in adversarial ledger during ingestion.
-  - Mapped `ADV-2026-007` into active `TASK-003` as sprint-blocking acceptance scope and updated task execution plan before further Dev execution.
-  - Updated ACTIVE directive so Dev next action prioritizes `1 -> 2` pathway reachability fix while preserving mapped `ADV-2026-005` `0 -> 1` bootstrap integrity.
-- Files touched:
-  - `governance/execution/dev-directives/TASK-003-execution-plan.md`
-  - `governance/execution/dev-directives/ACTIVE.md`
-  - `ai-memory/todo.md`
-  - `ai-memory/insights.md`
-- Next task: Await next explicit user request.
-- Re-validated TASK-003 Phase 2 after hard resync under updated CRITICAL mapping (ADV-2026-007).
-- Decisions made:
-  - No additional mutation required; existing Phase 2 fixes satisfy current ACTIVE acceptance checks.
-  - Deterministic normal-runtime sequence `0 -> 1 -> 2 -> 1` passes with markers for `0->1`, `1->2`, `2->1`, suspend snapshot validity, and resume snapshot validity.
-  - `1 -> 2` Astral pathway remains reachable under intended nav interaction state (after explicit selection clear).
-- Files touched:
-  - `ai-memory/todo.md`
-  - `ai-memory/insights.md`
-- Validation output (terminal):
-  - `saw0to1: true`
-  - `saw1to2: true`
-  - `saw2to1: true`
-  - `sawSuspendSnapshot: true`
-  - `sawResumeSnapshot: true`
-- Next task: Await next explicit user request.
-- Executed TASK-003 Phase 2 CRITICAL fix pass for QA-reported root causes in runtime transitions/render.
-- Decisions made:
-  - Enabled non-combat takeover rendering in normal runtime by honoring active `layoutState` non-combat layouts in `drawFrame` (not harness-only).
-  - Split nav hit handling so `AstralFlow` click emission is not suppressed by gem-selection/nav gating, while preserving gating for other nav labels.
-  - Added bounded size clamps for selector and attack controls to prevent oversized obstructive render in Layout 1.
-- Files touched:
-  - `web-runner/app.js`
-  - `ai-memory/todo.md`
-  - `ai-memory/insights.md`
-- Validation:
-  - Deterministic runtime run produced full marker chain with valid handoff snapshots:
-    - `0->1`, `1->2`, `2->1`
-    - suspend snapshot valid on `1->2`
-    - resume snapshot valid on `2->1`
-- Next task: Await next explicit user request.
-- Tightened control-size normalization in active TASK-003 scope to address remaining oversized selector/attack obstruction reports.
-- Decisions made:
-  - Switched selector and attack-size scaling from unconstrained `layoutScale` coupling to capped control-scale (`min(layoutScale, 1)` with lower bound) plus fixed pixel clamps.
-  - Updated both hero-turn selector draw path and pending-target selector draw path to the same bounded size model.
-  - Kept attack-button draw and click hitbox in a shared normalized bounds function to avoid interaction mismatch.
-- Files touched:
-  - `web-runner/app.js`
-  - `ai-memory/todo.md`
-  - `ai-memory/insights.md`
-- Validation:
-  - Deterministic `0 -> 1 -> 2 -> 1` smoke check remains passing with valid suspend/resume handoff markers.
-- Next task: Await next explicit user request.
-
-- Performed Sprint Sync governance reconciliation using sprint-board, adversarial-ledger, remediation-log, and ACTIVE.
-- Decisions made:
-  - Code review state remains FAIL due to open CRITICAL findings (`ADV-2026-005` reopened, `ADV-2026-007` open) and additional open findings.
-  - Mapped CRITICAL findings explicitly to active `TASK-003` acceptance criteria on sprint board (`ADV-2026-005`, `ADV-2026-007`).
-  - Added MAJOR quality criterion mapping for `ADV-2026-006` into active `TASK-003` scope.
-  - Reconciled remediation log to reflect current critical-to-task mappings and current allocation baseline.
-  - ACTIVE alignment is partial: active task matches (`TASK-003`), but Dev Next Action does not yet mention newly mapped `ADV-2026-006`.
-- Files touched:
-  - `governance/planning/sprint-board.md`
-  - `governance/execution/remediation-log.md`
-  - `ai-memory/todo.md`
-  - `ai-memory/insights.md`
-- Next task: Await next explicit user request.
-- Triggered canonical validation pipeline after QA pass declaration.
-- Decisions made:
-  - Executed repository-configured validation command (`npm test` -> `node --test`) as canonical pipeline entrypoint from repo config.
-  - Pipeline failed immediately due module-format mismatch (`src/core/combatRuntimeGateway.js` uses ESM `export` while test runtime loaded via CommonJS).
-  - Index gap confirmed again: `ai-memory/PROJECT_INDEX.md` still missing.
-- Files touched:
-  - `ai-memory/todo.md`
-  - `ai-memory/insights.md`
-- Validation result summary:
-  - Failing suites: `tests/combatRuntimeGateway.test.js`, `tests/layoutState.test.js`
-  - Error: `SyntaxError: Unexpected token 'export'` from `src/core/combatRuntimeGateway.js`
-- Next task: Await next explicit user request.
-- Applied approved triage option 1 for newly ingested `ADV-2026-008`.
-- Decisions made:
-  - Mapped `ADV-2026-008` into active `TASK-003` execution scope as an in-sprint quality criterion (no new REM item).
-  - Updated TASK-003 plan phases/success criteria to require full first-entry Layout 1 composition on `0 -> 1`.
-  - Updated ACTIVE Dev Next Action to include `ADV-2026-008` alongside mapped CRITICAL items and MVP runtime QA authority.
-  - Recorded MVP validation policy in execution plan: manual deterministic browser QA authoritative; `npm test` advisory until module-format alignment.
-- Files touched:
-  - `governance/execution/dev-directives/TASK-003-execution-plan.md`
-  - `governance/execution/dev-directives/ACTIVE.md`
-  - `ai-memory/todo.md`
-  - `ai-memory/insights.md`
-- Next task: Await next explicit user request.
+- Next task:
+  - Await next explicit user request.

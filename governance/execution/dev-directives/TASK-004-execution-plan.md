@@ -4,34 +4,36 @@
 Define and validate deterministic suspend/resume turn-state behavior across layout transitions while tick timers are active.
 
 ## Scope Boundaries
-- In scope:
-  - Authoritative turn-state source definition for suspend/resume validation.
-  - Deterministic validation checkpoints at pre-suspend, snapshot creation, and post-resume.
-  - Verifiable pass/fail outcomes mapped to milestone DoD items.
-- Out of scope:
-  - Transition contract enforcement changes.
-  - Layout registration policy changes.
-  - Atomic transition queue refactors.
-  - Remediation scope changes.
+- In scope (only):
+  - Turn-state authority definition used as the single validation source.
+  - Snapshot schema definition (required payload fields and invariants).
+  - Deterministic checkpoint definitions at pre-suspend, snapshot emit, and post-resume.
+  - Instrumentation required to emit deterministic validation outcomes.
+- Explicit exclusions:
+  - no transition contract enforcement
+  - no layout registration policy changes
+  - no atomic transition queue refactors
+  - no remediation scope changes
 
 ## Phase 1
 - Establish one authoritative turn-state contract for validation.
-- Define explicit invariant predicates and deterministic failure IDs.
-- Specify snapshot payload fields required for resume integrity checks.
+- Define snapshot schema fields required for resume integrity checks.
+- Define explicit checkpoint predicates and deterministic failure IDs.
 
 ## Phase 2
-- Instrument validation checkpoints at suspend/resume boundaries only.
-- Ensure post-resume validation completes before next turn advancement.
-- Emit deterministic validation outcomes through existing observability paths.
+- Implement instrumentation at suspend/resume boundaries only.
+- Ensure post-resume checkpoint validation completes before next turn advancement.
+- Emit deterministic outcomes through existing observability paths.
 
 ## Phase 3
-- Add/extend deterministic tests covering:
+- Validate deterministic checkpoint output for:
   - Normal suspend/resume pass path.
   - Invariant violation classification path.
   - Tick continuity with no turn-order corruption after resume.
 
 ## Verifiable Success Criteria
-- Snapshot/resume integrity checks are deterministic and repeatable.
+- Turn-state authority and snapshot schema are explicitly defined and used by validation.
+- Deterministic checkpoint instrumentation reports repeatable pass/fail outcomes.
 - Turn order and current actor remain consistent after resume.
 - Pointer and tick loop continuity remains active across transitions.
 - No changes made outside TASK-004 boundaries.

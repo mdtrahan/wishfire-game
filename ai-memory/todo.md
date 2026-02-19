@@ -1,52 +1,14 @@
 # TODO
 
 ## Queue (top is next)
-- [x] Inventory repo structure and key gameplay loop files.
-- [x] Add a deterministic debug snapshot output for testing.
-- [x] Implement <next feature you want>. (placeholder closed; requires explicit user feature request)
-- [x] Execute Phase 1 for TASK-004: turn-state contract + deterministic invariant predicates.
+- [x] PM closure lock: close TASK-003 governance state and promote TASK-004 as next feature task.
 - [x] Await next explicit user request.
-- [x] Execute Phase 1 for TASK-003: wire deterministic transition entry points and suspend/resume handoff checks.
-- [x] Await next explicit user request.
-- [x] Wire explicit active-layout guard for `combat -> astralOverlay` transition request path.
-- [x] Await next explicit user request.
-- [x] Sync and dispatch active TASK-003 dev directives from updated sprint artifacts.
-- [x] Change normal startup initial layout to `storyMock` (Layout 0) for TASK-003 phase alignment.
-- [x] Await next explicit user request.
-- [x] Sync and dispatch active TASK-003 directive to next concrete step after Layout 0 startup completion.
-- [x] Await next explicit user request.
-- [x] Sync and dispatch with approved mapping of ADV-2026-005 into TASK-003 as sprint-blocking acceptance criterion.
-- [x] Await next explicit user request.
-- [x] Execute TASK-003 Phase 2: harden first `0 -> 1` combat bootstrap and validate one deterministic `0 -> 1 -> 2 -> 1` loop.
-- [x] Await next explicit user request.
-- [x] Sync and dispatch with CRITICAL escalation mapping for ADV-2026-007 into active TASK-003 directives.
-- [x] Await next explicit user request.
-- [x] Re-validate TASK-003 Phase 2 CRITICAL reachability (`1 -> 2`) and full deterministic `0 -> 1 -> 2 -> 1` loop after hard resync.
-- [x] Await next explicit user request.
-- [x] Execute TASK-003 Phase 2 CRITICAL fixes: non-combat Layout 0 takeover render, Astral nav reachability under selection states, and combat control size clamps.
-- [x] Await next explicit user request.
-- [x] Tighten combat control size normalization to prevent selector/attack oversized obstruction while preserving transition behavior.
-- [x] Await next explicit user request.
-- [x] Trigger canonical validation pipeline after QA pass declaration.
-- [x] Await next explicit user request.
-- [x] Map ADV-2026-008 to active TASK-003 (option 1) and re-dispatch under MVP validation authority.
+- [x] Advance execution intake from TASK-003 closure to TASK-004 in dev directives with Phase 1-only next action.
 - [ ] Await next explicit user request.
 
-## Done
-- [x] Inventory repo structure and key gameplay loop files.
-- [x] Add a deterministic debug snapshot output for testing.
-- [x] Implement <next feature you want>. (placeholder closed; requires explicit user feature request)
-- [x] Create governance directory scaffold and markdown files requested by user.
-- [x] Add governance/product folder with retention, monetization, and liveops docs.
-- [x] Create governance audit report placeholder: 2026-Layout-Harness-Conformance-Report.md.
-- [x] Execute sprint triage for ADV-2026 findings and allocate remediation within 30% cap.
-- [x] Re-run sprint triage execution for ADV-2026 findings and confirm cap/backlog/remediation alignment.
-- [x] Add milestone extension and DoD additions to milestone-definition.md.
-- [x] Evaluate milestone progress coverage and propose next feature tasks.
-- [x] Apply sprint containment: select one feature task, preserve 70/30 split, defer remaining feature tasks to backlog.
-- [x] Refine TASK-004 scope to deterministic turn-state/snapshot validation only and exclude transition policy/refactor scope.
-- [x] Define deterministic turn-state invariants for TASK-004 preconditions.
-- [x] Execute Phase 1 for TASK-004: turn-state contract + deterministic invariant predicates.
-- [x] Re-map proposed combat layout-transition scope to active sprint task and defer non-active feature scope to backlog.
-- [x] Confirm Layout 0 startup as primary sprint goal and tidy backlog priority around explicit `0 -> 1 -> 2 -> 1` flow.
-- [x] Reconcile sprint governance across sprint-board, adversarial mapping, remediation log, and ACTIVE alignment check.
+## Done (recent)
+- [x] Sync status scan: detect directive drift between adversarial-ledger resolution state and ACTIVE Dev Next Action.
+- [x] Fix radiator placement regression by moving combat log/turn-order outputs off combat canvas and into side runtime panel output.
+- [x] Execute TASK-003 ADV-2026-009 deterministic re-validation run (`0 -> 1 -> 2 -> 1`).
+- [x] Execute TASK-003 ADV-2026-009 anchor-binding validation.
+- [x] Execute TASK-003 UI-only slice: relocate chain/combat-tracker/turn-order radiators into side frames/windows.
