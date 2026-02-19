@@ -208,20 +208,16 @@ All communication must occur through repository artifacts.
 
 ### 10.1 Authority Chain
 
-PM Agent → Lead Agent → Dev Agent  
+Code Review Agent → PM Agent → Lead Agent → Dev Agent  
 Stability Agent operates in parallel (metrics only).
 
 No agent may skip hierarchy.
 
 ------------------------------------------------------------------------
 
-### 10.2 Review Function (Owned by Lead Agent)
+### 10.2 Code Review Agent (Read-Only on Code)
 
-There is no separate Code Review Agent.
-All review, severity classification, adversarial logging, and PASS/FAIL
-verdict authority is owned by Lead Agent.
-
-Responsibilities (Lead-owned):
+Responsibilities:
 - Log milestone-relevant violations only.
 - Append structured entries to:
   governance/audit/adversarial-ledger.md
@@ -230,7 +226,7 @@ Responsibilities (Lead-owned):
 - Never edit sprint-board.md.
 - Never edit remediation-log.md.
 
-Lead (in review mode) may not:
+Code Review Agent may not:
 - Refactor.
 - Propose architectural redesign.
 - Drift into retention/monetization unless milestone requires.
@@ -267,10 +263,10 @@ MINOR:
 - Low-impact logging inconsistency
 - Non-core UX defect
 
-Lead review must derive severity from tester-provided impact signals.
-Lead review must not leave Severity undefined.
+Code Review must derive severity from tester-provided impact signals.
+Code Review must not leave Severity undefined.
 
-Upon validating execution artifacts, Lead must issue:
+Upon validating execution artifacts, Code Review must issue:
 - PASS
 - FAIL
 - PARTIAL PASS
@@ -300,7 +296,7 @@ PM may not:
 - Modify adversarial-ledger entries.
 - Write execution plans for Dev.
 
-PM may mark TASK-### complete only after Lead PASS.
+PM may mark TASK-### complete only after Code Review PASS.
 
 
 ------------------------------------------------------------------------
@@ -327,10 +323,11 @@ ACTIVE.md must contain:
 
 Lead may not:
 - Edit sprint-board.md.
+- Edit adversarial-ledger.md.
 - Modify governance allocation ratios.
 - Modify code.
 
-Lead defines execution phases, review verdicts, and guardrails.
+Lead defines execution phases and guardrails only.
 
 ## Lead Agent Ingestion Rule
 
@@ -459,7 +456,7 @@ Agents communicate only through repository files.
 
 ACTIVE.md is the single Dev intake artifact.
 sprint-board.md is the single PM allocation artifact.
-adversarial-ledger.md is the single Lead review logging artifact.
+adversarial-ledger.md is the single Code Review logging artifact.
 
 No agent may bypass this contract.
 
