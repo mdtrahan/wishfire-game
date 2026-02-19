@@ -1762,7 +1762,7 @@ async function main(){
   const animState = {};
   const enemyBars = new Map();
   let lastFrameTime = performance.now();
-  const buffIconFrames = { buffIcon1: 0, buffIcon2: 0, buffIcon3: 0, buffIcon4: 0, buffIcon5: 0 };
+  const buffIconFrames = { buffIcon1: 0, buffIcon2: 0, buffIcon3: 0, buffIcon4: 0 };
   let rendered = [];
   function rebuildRenderedCache() {
     const nextRendered = [];
@@ -2572,7 +2572,7 @@ async function main(){
     // Dynamically filter overlay elements based on current state
     const overlayElements = new Set(['UI_CloseWin', 'UI_NavCloseButton', 'UI_NavCloseX']);
     const debugElements = new Set(['newdebugger', 'newdebugger2', 'InputBlocker', 'EnemyKeyList', 'KillCounter', 'turnTracker', 'txtPhaseInfo']);
-    const buffIcons = new Set(['buffIcon1', 'buffIcon2', 'buffIcon3', 'buffIcon4', 'buffIcon5']);
+    const buffIcons = new Set(['buffIcon1', 'buffIcon2', 'buffIcon3', 'buffIcon4']);
 
     
     // Center the close button + X on the layout viewport
@@ -2591,8 +2591,11 @@ async function main(){
       if(!gameState.overlayVisible && overlayElements.has(r.inst.type)){
         return false;
       }
+      if (r.inst.type === 'buffIcon5') {
+        return false;
+      }
       if(buffIcons.has(r.inst.type)) {
-        const slotIndex = { buffIcon1: 0, buffIcon2: 1, buffIcon3: 2, buffIcon4: 3, buffIcon5: 4 }[r.inst.type];
+        const slotIndex = { buffIcon1: 0, buffIcon2: 1, buffIcon3: 2, buffIcon4: 3 }[r.inst.type];
         const frames = state.globals.BuffFrames || [];
         const frame = frames[slotIndex];
         if (frame == null || frame < 0) return false;
@@ -2649,6 +2652,21 @@ async function main(){
     // Separate modal and non-modal objects for proper z-ordering
     const isModalObject = (type) => ['UI_CloseWin', 'UI_NavCloseButton', 'UI_NavCloseX'].includes(type);
     const navTextTypes = new Set(['Nav_HeroText', 'Nav_MapText', 'Nav_MissionText', 'Nav_AstralFlowText', 'Nav_HomeText']);
+    const movedRadiatorsToSidebar = true;
+    const movedRadiatorTextTypes = new Set([
+      'Chain_Tracker',
+      'ActorIntent',
+      'CombatAction',
+      'CombatAction1',
+      'CombatAction2',
+      'CombatAction3',
+      'track_next',
+      'track_nextplus1',
+      'track_nextplus2',
+      'track_nextplus3',
+      'track_nextplus4',
+      'track_nextplus5',
+    ]);
     const navTopTypes = new Set([...navTextTypes]);
     const extraTrackTypes = new Set(['track_nextplus1', 'track_nextplus2', 'track_nextplus3', 'track_nextplus4', 'track_nextplus5']);
     const presentTrackOffsets = new Set(
@@ -2688,10 +2706,48 @@ async function main(){
       maxX: boardGeometry.gx + boardW,
       maxY: boardGeometry.gy + boardH
     };
-    const trackAnchorWorld = { x: grid.maxX - 108, y: grid.minY - 65 };
-    const combatAnchorWorld = { x: grid.minX + 0, y: grid.minY - 60 };
-    const trackAnchor = worldToCanvas(trackAnchorWorld.x, trackAnchorWorld.y);
-    const combatAnchor = worldToCanvas(combatAnchorWorld.x, combatAnchorWorld.y);
+    const radiatorScale = Math.max(0.85, Math.min(layoutScale, 1.05));
+    const radiatorSidePad = Math.max(6, 8 * radiatorScale);
+    const radiatorGap = Math.max(8, 10 * radiatorScale);
+    const radiatorPanelW = Math.max(112, Math.round(120 * radiatorScale));
+    const radiatorTrackPanelW = Math.max(122, Math.round(132 * radiatorScale));
+    const radiatorPanelY = layoutOffsetY + Math.max(6, 8 * radiatorScale);
+    const panelH = Math.max(72, Math.round(78 * radiatorScale));
+    const trackPanelH = Math.max(90, Math.round(96 * radiatorScale));
+    const leftPanelX = layoutOffsetX + radiatorSidePad;
+    const rightPanelX = layoutOffsetX + (layoutW * layoutScale) - radiatorSidePad - radiatorTrackPanelW;
+    const chainPanelH = Math.max(26, Math.round(28 * radiatorScale));
+    const chainAnchor = {
+      x: leftPanelX + radiatorPanelW / 2,
+      y: radiatorPanelY + chainPanelH - Math.max(7, Math.round(8 * radiatorScale))
+    };
+    const combatAnchor = {
+      x: leftPanelX + Math.max(4, Math.round(5 * radiatorScale)),
+      y: radiatorPanelY + chainPanelH + Math.max(12, Math.round(13 * radiatorScale))
+    };
+    const trackAnchor = {
+      x: rightPanelX + Math.max(4, Math.round(5 * radiatorScale)),
+      y: radiatorPanelY + Math.max(16, Math.round(17 * radiatorScale))
+    };
+    const radiatorPanels = {
+      chain: { x: leftPanelX, y: radiatorPanelY, w: radiatorPanelW, h: chainPanelH },
+      combat: { x: leftPanelX, y: radiatorPanelY + chainPanelH + Math.max(4, Math.round(5 * radiatorScale)), w: radiatorPanelW, h: panelH },
+      track: { x: rightPanelX, y: radiatorPanelY, w: radiatorTrackPanelW, h: trackPanelH }
+    };
+    const drawRadiatorPanel = (panel) => {
+      ctx.save();
+      ctx.fillStyle = 'rgba(240,240,240,0.92)';
+      ctx.strokeStyle = 'rgba(60,60,60,0.85)';
+      ctx.lineWidth = 1;
+      ctx.fillRect(panel.x, panel.y, panel.w, panel.h);
+      ctx.strokeRect(panel.x, panel.y, panel.w, panel.h);
+      ctx.restore();
+    };
+    if (!movedRadiatorsToSidebar) {
+      drawRadiatorPanel(radiatorPanels.chain);
+      drawRadiatorPanel(radiatorPanels.combat);
+      drawRadiatorPanel(radiatorPanels.track);
+    }
     
     const drawBasicItem = (r) => {
       if (!r) return;
@@ -2962,6 +3018,9 @@ async function main(){
         ctx.fillText('X', cx, cy);
         ctx.textBaseline = 'alphabetic';
       } else if(r.isText){
+        if (movedRadiatorsToSidebar && movedRadiatorTextTypes.has(r.inst.type)) {
+          continue;
+        }
         const baseSize = r.inst.properties && r.inst.properties.size ? r.inst.properties.size : 12;
         const fontSize = scaleFont(baseSize) + (navTextTypes.has(r.inst.type) ? navFontBoost : 0);
         ctx.font = `${fontSize}px sans-serif`;
@@ -2984,7 +3043,7 @@ async function main(){
           ctx.shadowOffsetX = 0;
           ctx.shadowOffsetY = Math.max(1, Math.round(2 * layoutScale));
           ctx.textAlign = 'center';
-          ctx.fillText(text, r.dx + r.w/2, r.dy + r.h/2 + 5);
+          ctx.fillText(text, chainAnchor.x, chainAnchor.y);
           ctx.restore();
           continue;
         }
@@ -2993,7 +3052,8 @@ async function main(){
         } else if (r.inst.type === 'ActorIntent') {
           text = state.globals.ActorIntent || text;
           ctx.textAlign = 'left';
-          ctx.fillText(text, r.dx + 4, r.dy + r.h/2 + 5 + (120 * layoutScale));
+          const lineH = Math.max(12, (r.h || 14 * layoutScale));
+          ctx.fillText(text, combatAnchor.x, combatAnchor.y + lineH * 4);
           continue;
         } else if (['CombatAction', 'CombatAction1', 'CombatAction2', 'CombatAction3'].includes(r.inst.type)) {
           const lines = state.globals.CombatActionLines || ['', '', '', ''];
@@ -3760,12 +3820,48 @@ async function main(){
 
   function drawHUD(){
     if (!gameState.baseSummary) return;
+    const g = state.globals || {};
+    const combatActionLines = Array.isArray(g.CombatActionLines) ? g.CombatActionLines : [];
+    const combatLogLines = [0, 1, 2, 3].map((idx) => {
+      const line = combatActionLines[idx];
+      return (typeof line === 'string' && line.trim()) ? line : 'What happened?';
+    });
+    const chainNum = Math.max(0, Number(g.ChainNumber || 0));
+    const suppressChain = !!g.SuppressChainUI;
+    const chainHideAt = Number(g.ChainUIHideAt || 0);
+    const chainVisible = chainNum >= 2 && !suppressChain && (chainHideAt === 0 || Number(g.time || 0) <= chainHideAt);
+    const actorIntent = typeof g.ActorIntent === 'string' && g.ActorIntent.trim() ? g.ActorIntent.trim() : 'Combat intent log';
+    const order = Array.isArray(g.TurnOrderArray) ? g.TurnOrderArray : [];
+    const count = order.length;
+    const baseIndex = Number(g.CurrentTurnIndex || 0);
+    const turnOrderLines = [];
+    for (let offset = 0; offset < Math.min(6, count); offset++) {
+      const idx = (baseIndex + offset) % count;
+      const row = order[idx];
+      if (!row) continue;
+      const actor = state.entities.find(e => e.uid === row.uid);
+      if (!actor) continue;
+      const label = actor.name || '?';
+      const baseSpd = Number(actor.stats?.SPD ?? actor.SPD ?? 0);
+      const buff = actor.kind === 'hero' ? Number(g.PartyBuff_SPD || 0) : 0;
+      const debuff = actor.kind === 'enemy' ? Number(g.EnemyDebuffs?.[actor.uid]?.SPD || 0) : 0;
+      const curSpd = baseSpd + buff - debuff;
+      const extraTag = row.extra ? ' (x2)' : '';
+      const delta = actor.kind === 'enemy' ? `(-${Math.round(debuff)})` : `(+${Math.round(buff)})`;
+      turnOrderLines.push(`${label} ${Math.round(curSpd)}/${Math.round(baseSpd)} ${delta}${extraTag}`);
+    }
     const lines = [
       gameState.baseSummary,
       '',
       `TurnPhase: ${state.globals.TurnPhase}`,
       `Board: ${gameState.boardCreated ? gameState.gems.length + ' gems' : 'waiting'}`,
       `Overlay: ${gameState.overlayVisible ? 'OPEN' : 'closed'}`,
+      '',
+      actorIntent,
+      ...combatLogLines,
+      ...(chainVisible ? [`Chain x${chainNum}`] : []),
+      '',
+      ...turnOrderLines,
     ];
     out.textContent = lines.join('\n');
     drawWalletHUD();

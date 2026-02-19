@@ -101,7 +101,7 @@ export const state = {
     EnemyKeyList: [],
     TurnOrderArray: [],
     TrackBuffs: [],
-    BuffFrames: [-1, -1, -1, -1, -1],
+    BuffFrames: [-1, -1, -1, -1],
     GemRefillArray: [],
     EnemyData: [],
     NextUID: 1,
@@ -109,7 +109,7 @@ export const state = {
     // UI overlay state
     UIOverlay: 0,
     Locked: 0,
-    PartyBuffUI: { atk: false, def: false, spd: false, mag: false, res: false },
+    PartyBuffUI: { atk: false, def: false, mag: false, res: false },
     PartyBuffSlots: [],
     BuffText: '',
     CombatActionLines: ['', '', '', ''],

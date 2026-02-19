@@ -179,3 +179,151 @@ Reproduction Logic: Start runtime at Layout 0, click to enter Layout 1; observe 
 Linked Milestone Criteria: No silent layout-change failures; Pointer + tick loop remain active across transitions; Combat state deterministic/resumable across transitions.
 First Logged: 2026-02-15
 Last Reviewed: 2026-02-15
+
+## ID: ADV-2026-009
+Status: OPEN
+Severity: CRITICAL
+Rationale: Active TASK-003 UI-slice acceptance requires radiators to clear the central combat viewport/offscreen intent. Current runtime draws tracker/intent surfaces inside the combat canvas and obstructs playfield readability.
+Subsystem: Layout 1 UI containerization / radiator relocation
+Root Cause Theme: Radiator relocation anchors were implemented as in-canvas panels instead of offscreen/side-window isolation, leaving combat-log and intent text intruding into Layout 1 playfield.
+Evidence:
+- file: /Users/Mace/Wishfire/Codex-Orka/web-runner/app.js:2721
+- function: drawFrame (radiatorPanels definition)
+- file: /Users/Mace/Wishfire/Codex-Orka/web-runner/app.js:2735
+- function: drawFrame (drawRadiatorPanel on-canvas)
+- file: /Users/Mace/Wishfire/Codex-Orka/web-runner/app.js:3048
+- function: drawFrame (CombatAction* rendered at combatAnchor in playfield)
+- file: /Users/Mace/Wishfire/Codex-Orka/web-runner/app.js:3039
+- function: drawFrame (ActorIntent forced +120y offset into active field)
+- file: /Users/Mace/Wishfire/Codex-Orka/web-runner/app.js:3067
+- function: drawFrame (Text_Gold still rendered in top panel region)
+Risk: Layout 1 remains visually contaminated by diagnostic/info windows, causing UI overlap with heroes and reducing interaction clarity; sprint conformance for containerized/offscreen info windows is not met.
+Reproduction Logic: Start game, enter Layout 1 combat, observe `What happened?` combat log beneath hero area, ActorIntent/header text not offscreen, and an additional top textbox/panel (`Gold: 0`) occupying viewport.
+Linked Milestone Criteria: No silent layout-change failures; Pointer + tick loop remain active across transitions; Combat state deterministic/resumable across transitions.
+First Logged: 2026-02-18
+Last Reviewed: 2026-02-18
+
+### Evidence Addendum (2026-02-18)
+ID: ADV-2026-009
+Status: REOPENED
+Rationale: QA screenshot confirms intended offscreen windows are not receiving combat-log and turn-order payloads; both radiators remain over the combat viewport and obscure actor space.
+Evidence:
+- file: /Users/Mace/Wishfire/Codex-Orka/web-runner/app.js:2713
+- function: drawFrame (combatAnchor remains in visible playfield)
+- file: /Users/Mace/Wishfire/Codex-Orka/web-runner/app.js:2717
+- function: drawFrame (trackAnchor remains in visible playfield)
+- file: /Users/Mace/Wishfire/Codex-Orka/web-runner/app.js:3048
+- function: drawFrame (CombatAction* text drawn at combatAnchor)
+- file: /Users/Mace/Wishfire/Codex-Orka/web-runner/app.js:3111
+- function: drawFrame (turn-order text drawn at trackAnchor)
+- file: /Users/Mace/Wishfire/Codex-Orka/web-runner/app.js:3067
+- function: drawFrame (Text_Gold panel still occupies top viewport band)
+Reproduction Logic: Enter Layout 1 and observe combat-log + turn-order text over active board/actors instead of isolated offscreen windows; screenshot evidence shows overlap obscuring play area.
+Last Reviewed: 2026-02-18
+
+### Placement Clarification Addendum (2026-02-18)
+ID: ADV-2026-009
+Status: REOPENED
+Severity: CRITICAL
+Rationale: QA provided explicit target homes for offscreen relocation; current in-viewport placement still violates the accepted UI containment requirement.
+Expected Placement Mapping (deterministic for remediation validation):
+- Group A (combat logging): `What happened?` header + `CombatAction/CombatAction1/CombatAction2/CombatAction3` + `ActorIntent` must render in side debug column slot #1 (green-arrow home), fully outside active combat field.
+- Group B (turn order): `track_next` + `track_nextplus1..5` must render in side debug column slot #2 (purple-arrow home), fully outside active combat field.
+- Constraint: Translation-only UI relocation; no gameplay flow, transition routing, combat math, or state logic mutation.
+Evidence:
+- file: /Users/Mace/Wishfire/Codex-Orka/web-runner/app.js:2713
+- function: drawFrame (combatAnchor currently inside playfield)
+- file: /Users/Mace/Wishfire/Codex-Orka/web-runner/app.js:2717
+- function: drawFrame (trackAnchor currently inside playfield)
+- file: /Users/Mace/Wishfire/Codex-Orka/web-runner/app.js:3048
+- function: drawFrame (combat log lines drawn at in-field anchor)
+- file: /Users/Mace/Wishfire/Codex-Orka/web-runner/app.js:3111
+- function: drawFrame (turn-order lines drawn at in-field anchor)
+Reproduction Logic: Enter Layout 1; observe both debug textbox groups overlap actor/board region instead of rendering in right-side offscreen debug windows indicated by QA arrows.
+Last Reviewed: 2026-02-18
+
+### Resolution Addendum (2026-02-18)
+ID: ADV-2026-009
+Status: RESOLVED
+Rationale: QA confirmed both textbox groups were moved to the designated offscreen side homes and no longer overlap the combat viewport.
+Validation Signal:
+- Manual deterministic runtime QA: PASS for textbox-group placement containment.
+Resolved At: 2026-02-18
+Last Reviewed: 2026-02-18
+
+## Closure Sync: TASK-003 (2026-02-18)
+Authority: Code Review Agent
+Scope: ADV-2026-005, ADV-2026-006, ADV-2026-007, ADV-2026-008
+
+### Resolution Entry
+ID: ADV-2026-005
+Status: RESOLVED
+Severity: CRITICAL
+Rationale: Deterministic QA and runtime validation artifacts confirm `0 -> 1` no longer enters malformed Layout 1 bootstrap state; combat presentation and interaction are restored.
+Evidence:
+- file: /Users/Mace/Wishfire/Codex-Orka/test-results/task003-mvp-validation/mvp-validation.json
+- function: n/a
+- file: /Users/Mace/Wishfire/Codex-Orka/test-results/task003-ui-relocation/validation.json
+- function: n/a
+- file: /Users/Mace/Wishfire/Codex-Orka/test-results/task003-adv2026-009/validation.json
+- function: n/a
+Resolved At: 2026-02-18
+Last Reviewed: 2026-02-18
+
+### Severity Hygiene Supersession
+ID: ADV-2026-005
+Canonical Severity: CRITICAL
+Hygiene Action: Legacy duplicate block with `Severity: UNASSIGNED` is superseded by this canonical severity/status record for closure governance.
+Last Reviewed: 2026-02-18
+
+### Resolution Entry
+ID: ADV-2026-007
+Status: RESOLVED
+Severity: CRITICAL
+Rationale: Validation markers show deterministic `1 -> 2` reachability via Astral Flow and successful loop completion with suspend/resume integrity.
+Evidence:
+- file: /Users/Mace/Wishfire/Codex-Orka/test-results/task003-mvp-validation/mvp-validation.json
+- function: n/a
+- file: /Users/Mace/Wishfire/Codex-Orka/test-results/task003-ui-relocation/validation.json
+- function: n/a
+Resolved At: 2026-02-18
+Last Reviewed: 2026-02-18
+
+### Resolution Entry
+ID: ADV-2026-006
+Status: RESOLVED
+Severity: MAJOR
+Rationale: MVP validation artifact confirms Layout 0 full-screen blue takeover is visible before `0 -> 1`, satisfying the visual registration contract.
+Evidence:
+- file: /Users/Mace/Wishfire/Codex-Orka/test-results/task003-mvp-validation/mvp-validation.json
+- function: n/a
+- file: /Users/Mace/Wishfire/Codex-Orka/test-results/task003-mvp-validation/startup-layout0.png
+- function: n/a
+Resolved At: 2026-02-18
+Last Reviewed: 2026-02-18
+
+### Resolution Entry
+ID: ADV-2026-008
+Status: RESOLVED
+Severity: MAJOR
+Rationale: Runtime composition integrity is validated on first `0 -> 1` entry with full heroes/enemies/gems and stable loop continuity.
+Evidence:
+- file: /Users/Mace/Wishfire/Codex-Orka/test-results/task003-mvp-validation/mvp-validation.json
+- function: n/a
+- file: /Users/Mace/Wishfire/Codex-Orka/test-results/task003-adv2026-009/validation.json
+- function: n/a
+Resolved At: 2026-02-18
+Last Reviewed: 2026-02-18
+
+### TASK-003 Critical Sync Note
+ID: ADV-2026-009
+Status: RESOLVED
+Severity: CRITICAL
+Rationale: QA-confirmed relocation and deterministic validation confirm radiator payloads are container-scoped to side windows with no combat-field contamination.
+Evidence:
+- file: /Users/Mace/Wishfire/Codex-Orka/test-results/task003-adv2026-009/validation.json
+- function: n/a
+- file: /Users/Mace/Wishfire/Codex-Orka/test-results/qa-radiator-relocate/shot-0.png
+- function: n/a
+Resolved At: 2026-02-18
+Last Reviewed: 2026-02-18

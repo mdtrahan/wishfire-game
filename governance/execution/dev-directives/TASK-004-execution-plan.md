@@ -9,6 +9,9 @@ Define and validate deterministic suspend/resume turn-state behavior across layo
   - Snapshot schema definition (required payload fields and invariants).
   - Deterministic checkpoint definitions at pre-suspend, snapshot emit, and post-resume.
   - Instrumentation required to emit deterministic validation outcomes.
+- Unauthorized code-edit disposition for this task:
+  - KEEP current contents of `Scripts/functionBank.js`, `Scripts/state.js`, and `web-runner/app.js` unchanged within TASK-004 execution.
+  - Revert discussion is deferred outside TASK-004 to avoid scope expansion (Lead sync: 2026-02-19).
 - Explicit exclusions:
   - no transition contract enforcement
   - no layout registration policy changes

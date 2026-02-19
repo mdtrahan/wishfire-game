@@ -1541,16 +1541,14 @@ export function RefreshPartyBuffUI(ctx) {
   const ordered = [
     { type: 'atk', active: g.PartyBuff_ATK > 0 && g.BuffTurns_ATK > 0 },
     { type: 'def', active: g.PartyBuff_DEF > 0 && g.BuffTurns_DEF > 0 },
-    { type: 'spd', active: g.PartyBuff_SPD > 0 && g.BuffTurns_SPD > 0 },
     { type: 'mag', active: g.PartyBuff_MAG > 0 && g.BuffTurns_MAG > 0 },
     { type: 'res', active: g.PartyBuff_RES > 0 && g.BuffTurns_RES > 0 },
   ];
   g.PartyBuffUI = {
     atk: ordered[0].active,
     def: ordered[1].active,
-    spd: ordered[2].active,
-    mag: ordered[3].active,
-    res: ordered[4].active,
+    mag: ordered[2].active,
+    res: ordered[3].active,
   };
   g.PartyBuffSlots = ordered.filter(b => b.active).map(b => b.type);
   g.BuffFrames = [
@@ -1558,7 +1556,6 @@ export function RefreshPartyBuffUI(ctx) {
     track[1] ?? -1,
     track[2] ?? -1,
     track[3] ?? -1,
-    track[4] ?? -1,
   ];
 }
 
@@ -1583,13 +1580,12 @@ export function ResolveGemAction(ctx, gemColor, actorUID) {
   }
   if (gemColor === 2) {
     g.IsAOEMatch = 0;
-    const roll = Math.floor(Math.random() * 5);
+    const roll = Math.floor(Math.random() * 4);
     let skillId = 'DEF_UP';
     let intentKey = 'Party_DEF_UP';
     if (roll === 1) { skillId = 'ATK_UP'; intentKey = 'Party_ATK_UP'; }
     if (roll === 2) { skillId = 'MAG_UP'; intentKey = 'Party_MAG_UP'; }
-    if (roll === 3) { skillId = 'SPD_UP'; intentKey = 'Party_SPD_UP'; }
-    if (roll === 4) { skillId = 'RES_UP'; intentKey = 'Party_RES_UP'; }
+    if (roll === 3) { skillId = 'RES_UP'; intentKey = 'Party_RES_UP'; }
     LogGemIntent(ctx, 2, 'BLUE', intentKey, '', actorUID);
     g.BuffRollSkillID = skillId;
     g.BuffRollActor = actorUID;
@@ -2089,7 +2085,7 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
 export function StartBuffRoll(ctx) {
   const g = getGlobals(ctx);
   const buffType = g.BuffRollType ?? 0;
-  if (buffType < 0 || buffType > 4) return;
+  if (buffType < 0 || buffType > 3) return;
   g.BlueBuffSequenceActive = 1;
   g.IsPlayerBusy = 1;
   g.CanPickGems = false;
@@ -2147,9 +2143,9 @@ export function ShowBuffProgress(ctx) {
 
 export function RegisterPartyBuffSlot(ctx, buffType) {
   const g = getGlobals(ctx);
-  if (buffType == null || buffType < 0 || buffType > 4) return;
-  if (!Array.isArray(g.TrackBuffs) || g.TrackBuffs.length !== 5) {
-    g.TrackBuffs = [-1, -1, -1, -1, -1];
+  if (buffType == null || buffType < 0 || buffType > 3) return;
+  if (!Array.isArray(g.TrackBuffs) || g.TrackBuffs.length !== 4) {
+    g.TrackBuffs = [-1, -1, -1, -1];
   }
   if (g.TrackBuffs.includes(buffType)) {
     g.BuffIconPopType = buffType;

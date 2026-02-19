@@ -9,6 +9,17 @@
   - Scope lock: instrumentation and validation only.
   - Exclusions: no transition contract enforcement, no layout registration policy changes, no atomic transition queue refactors.
 
+## PM Throughput Directive (Urgency)
+- Lead must dispatch work in bundled packets, not micro-steps.
+- For each active TASK, `ACTIVE.md` must publish one execution packet with:
+  - `Packet Step 1` (current implementation action)
+  - `Packet Step 2` (immediate follow-up action)
+  - `Packet Step 3` (validation/closeout action)
+- Dev executes packet steps sequentially without waiting for intermediate resync unless:
+  - A BLOCKER/CRITICAL escalation is triggered, or
+  - Scope boundary is hit.
+- While Dev executes current packet, Lead must pre-stage next TASK intake artifacts so sprint transition is immediate at completion.
+
 ## Completed Feature Tasks
 - TASK-003 COMPLETE (Lead PASS recorded 2026-02-18)
   - Validated flow: `0 -> 1 -> 2 -> 1`.

@@ -1,25 +1,23 @@
-## Backlog Priority (Post Primary Sprint Goal)
-- Priority 1 after `TASK-003`: TASK-004 (turn-state source/snapshot/post-resume validation hardening).
-- Priority 2 after `TASK-003`: TASK-005 (deterministic transition scenario suite).
-- Priority 3 after `TASK-003`: deferred ADV remediation candidates `ADV-2026-002`, `ADV-2026-003`, `ADV-2026-004` (under remediation cap governance).
+## Sprint Next Up
+- TASK-005 Remove speed buff from Blue Gem buff system
+  - Objective: Remove SPD buff effect path to stabilize turn-based integrity and simplify growth/IAP balance surface.
+  - Scope:
+    - Remove Blue-gem speed buff outcome from buff roulette logic.
+    - Remove speed buff icon usage.
+    - Collapse buff slots from 5 to 4 (`ATK`, `DEF`, `MAG`, `RES` only).
+  - Constraints:
+    - No other gameplay logic changes.
+    - No unrelated visual redesign.
+    - No transition-flow edits.
+  - Acceptance:
+    - Blue gem no longer produces SPD buff.
+    - No SPD buff icon appears.
+    - Buff display/slot system shows exactly 4 party buff slots (`ATK/DEF/MAG/RES`).
 
-## Deferred Adversarial Findings (Sprint X Triage)
+## Next Feature Candidates
+- TASK-006 Deterministic transition scenario suite (`0 -> 1 -> 2 -> 1`) with suspend/resume assertions.
 
-### Theme: Transition target mismatch / layout registration integrity
-- ADV-2026-002 (High)
-  - Rationale: Deferred due to 30% remediation cap; selected Critical ADV-2026-001 for current sprint slot.
-  - Milestone Alignment: Pending (milestone-definition.md is currently empty).
-
-### Theme: Turn-model snapshot authority mismatch
-- ADV-2026-003 (High)
-  - Rationale: Deferred due to 30% remediation cap; selected Critical ADV-2026-001 for current sprint slot.
-  - Milestone Alignment: Pending (milestone-definition.md is currently empty).
-
-### Theme: Non-deterministic combat bootstrap
-- ADV-2026-004 (Medium)
-  - Rationale: Deferred due to cap and lower severity than selected item.
-  - Milestone Alignment: Pending (milestone-definition.md is currently empty).
-
-## Deferred Feature Tasks (Sprint Containment)
-- TASK-004 Define authoritative turn-state source of truth, suspend/resume snapshot structure, and deterministic post-resume validation checkpoints; instrument validation only, with no transition contract enforcement, no layout registration policy changes, and no atomic transition queue refactors.
-- TASK-005 Add deterministic transition scenario suite (fixed-seed bootstrap plus transition/resume assertions) mapped to milestone Definition of Done criteria.
+## Deferred Remediation Candidates
+- ADV-2026-002 (High) - deferred under remediation cap.
+- ADV-2026-003 (High) - deferred under remediation cap.
+- ADV-2026-004 (Medium) - deferred under remediation cap.

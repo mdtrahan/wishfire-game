@@ -1,12 +1,12 @@
 # TODO
 
 ## Queue (top is next)
-- [x] Remap governance flow: remove separate Code Review agent and transfer review authority to Lead.
+- [x] Agile reset: remove verbose TODO logging mandates and remap TASK-005 to speed-buff removal scope.
 - [ ] Await next explicit user request.
 
 ## Done (recent)
-- [x] Add governance-drift postmortem and regression-prevention checklist to insights.
-- [x] Lead sync: continue TASK-004 only, keep TASK-005 backlog, and set keep/revert disposition for PM-disclosed code edits in directives.
-- [x] Execute TASK-004 Phase 1 turn-state contract + snapshot schema + deterministic checkpoint/failure-ID definitions in combat runtime gateway.
-- [x] PM disclosure task: document exact unauthorized code mutations and hand off correction ownership to Lead/Dev.
-- [x] PM correction: enforce role boundary, direct Lead to continue TASK-004, and load scoped TASK-005 into backlog.
+- [x] Add PM urgency/throughput governance so Lead dispatches bundled work packets and pre-stages next task.
+- [x] Harden AGENTS.md to require pre-execution TODO declaration before agents begin work.
+- [x] Sync and dispatch validation: confirm TASK-004 Phase 2 directives remain current and TASK-005 stays backlog-only.
+- [x] Validate TASK-004 Phase 2 implementation conformance (checkpoint emissions + post-resume validation ordering) with protected-file constraints intact.
+- [x] Enforce strict TODO output template in AGENTS.md to stop non-checkbox status replies.
