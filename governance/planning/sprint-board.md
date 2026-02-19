@@ -5,9 +5,19 @@
 - Explicit required flow: `0 -> 1 -> 2 -> 1`.
 
 ## Feature Allocation (70%)
-- TASK-004 Define authoritative turn-state source of truth, suspend/resume snapshot structure, and deterministic post-resume validation checkpoints.
-  - Scope lock: instrumentation and validation only.
-  - Exclusions: no transition contract enforcement, no layout registration policy changes, no atomic transition queue refactors.
+- TASK-005 Remove speed buff from Blue Gem buff system.
+  - Scope:
+    - Remove Blue-gem speed buff outcome from buff roulette logic.
+    - Remove speed buff icon usage.
+    - Collapse buff slots from 5 to 4 (`ATK`, `DEF`, `MAG`, `RES` only).
+  - Constraints:
+    - No other gameplay logic changes.
+    - No unrelated visual redesign.
+    - No transition-flow edits.
+  - Acceptance:
+    - Blue gem no longer produces SPD buff.
+    - No SPD buff icon appears.
+    - Buff display/slot system shows exactly 4 party buff slots (`ATK/DEF/MAG/RES`).
 
 ## PM Throughput Directive (Urgency)
 - Lead must dispatch work in bundled packets, not micro-steps.
@@ -24,18 +34,21 @@
 - TASK-003 COMPLETE (Lead PASS recorded 2026-02-18)
   - Validated flow: `0 -> 1 -> 2 -> 1`.
   - Resolved milestone-linked findings: `ADV-2026-005`, `ADV-2026-006`, `ADV-2026-007`, `ADV-2026-008`, `ADV-2026-009`.
+- TASK-004 COMPLETE (Lead PASS recorded 2026-02-19)
+  - Validation artifact: `test-results/task004-phase3/validation.json`.
+  - Closure basis: checkpoint instrumentation + deterministic pass path + expected violation classification.
 
 ## QA Governance Note
 - Runtime feature drift: CLEARED for primary flow `0 -> 1 -> 2 -> 1`.
-- Governance/documentation drift: CLEARED for TASK-003 closure artifacts.
-- Lead sync required: ACTIVE Dev Next Action must be advanced from TASK-003 closure context to TASK-004 execution intake.
+- Governance/documentation drift: CLEARED for TASK-003 and TASK-004 closure artifacts.
+- Lead sync required: ACTIVE Dev Next Action must be advanced from TASK-004 closeout to TASK-005 intake.
 
 ## PM Correction Directive
 - PM role correction applied: PM will not perform code edits; execution continues through Lead -> Dev chain only.
 - Lead continuation order for active sprint work:
-  - Continue `TASK-004` without scope expansion.
-  - Keep `TASK-004` constrained to turn-state authority, snapshot schema, deterministic checkpoints, and instrumentation.
-  - Hold `TASK-005` in backlog until `TASK-004` completion gate is satisfied.
+  - Continue active sprint task without scope expansion.
+  - Keep task scope constrained to defined sprint criteria.
+  - Pre-stage next task so intake is immediate after completion gate.
 
 ### Unauthorized Code-Edit Disclosure (for Lead/Dev correction)
 - PM accidentally modified runtime code (role violation). Exact files:

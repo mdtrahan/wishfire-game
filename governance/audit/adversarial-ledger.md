@@ -252,7 +252,7 @@ Resolved At: 2026-02-18
 Last Reviewed: 2026-02-18
 
 ## Closure Sync: TASK-003 (2026-02-18)
-Authority: Code Review Agent
+Authority: Lead Agent (Review Function)
 Scope: ADV-2026-005, ADV-2026-006, ADV-2026-007, ADV-2026-008
 
 ### Resolution Entry

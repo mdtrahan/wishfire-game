@@ -34,6 +34,14 @@ Define and validate deterministic suspend/resume turn-state behavior across layo
   - Invariant violation classification path.
   - Tick continuity with no turn-order corruption after resume.
 
+## Execution Packet (Current Dispatch)
+- Packet Step 1:
+  - Implement Phase 2 boundary instrumentation at suspend/resume checkpoints with pre-turn-advance validation ordering.
+- Packet Step 2:
+  - Emit deterministic pass/fail outputs via existing observability paths without modifying transition contracts, layout policy, or queue architecture.
+- Packet Step 3:
+  - Run deterministic validation for pass path + invariant-violation path and capture artifacts for Lead closure review.
+
 ## Verifiable Success Criteria
 - Turn-state authority and snapshot schema are explicitly defined and used by validation.
 - Deterministic checkpoint instrumentation reports repeatable pass/fail outcomes.

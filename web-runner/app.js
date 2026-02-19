@@ -1370,7 +1370,7 @@ async function main(){
         }
         console.log('[LOAD] Enemy_Sprite animations loaded:', Object.keys(enemySpriteImages).length);
       }
-      for (let i = 1; i <= 5; i++) {
+      for (let i = 1; i <= 4; i++) {
         const key = `buffIcon${i}`;
         buffIconFrameImages[key] = [];
         for (let f = 0; f < 5; f++) {
@@ -2591,9 +2591,6 @@ async function main(){
       if(!gameState.overlayVisible && overlayElements.has(r.inst.type)){
         return false;
       }
-      if (r.inst.type === 'buffIcon5') {
-        return false;
-      }
       if(buffIcons.has(r.inst.type)) {
         const slotIndex = { buffIcon1: 0, buffIcon2: 1, buffIcon3: 2, buffIcon4: 3 }[r.inst.type];
         const frames = state.globals.BuffFrames || [];
@@ -3104,16 +3101,15 @@ async function main(){
               if (actor) {
                 const label = actor.name || '?';
                 const baseSpd = Number(actor.stats?.SPD ?? actor.SPD ?? 0);
-                const buff = actor.kind === 'hero' ? (state.globals.PartyBuff_SPD || 0) : 0;
                 const debuff = actor.kind === 'enemy'
                   ? (state.globals.EnemyDebuffs?.[actor.uid]?.SPD || 0)
                   : 0;
-                const curSpd = baseSpd + buff - debuff;
+                const curSpd = baseSpd - debuff;
                 const extraTag = row.extra ? ' (x2)' : '';
-                const delta = actor.kind === 'enemy'
+                const delta = actor.kind === 'enemy' && debuff > 0
                   ? `(-${Math.round(debuff)})`
-                  : `(+${Math.round(buff)})`;
-                text = `${label} ${Math.round(curSpd)}/${Math.round(baseSpd)} ${delta}${extraTag}`;
+                  : '';
+                text = `${label} ${Math.round(curSpd)}/${Math.round(baseSpd)}${delta ? ` ${delta}` : ''}${extraTag}`;
               } else {
                 text = '';
               }
@@ -3138,16 +3134,15 @@ async function main(){
               if (!actor) continue;
               const label = actor.name || '?';
               const baseSpd = Number(actor.stats?.SPD ?? actor.SPD ?? 0);
-              const buff = actor.kind === 'hero' ? (state.globals.PartyBuff_SPD || 0) : 0;
               const debuff = actor.kind === 'enemy'
                 ? (state.globals.EnemyDebuffs?.[actor.uid]?.SPD || 0)
                 : 0;
-              const curSpd = baseSpd + buff - debuff;
+              const curSpd = baseSpd - debuff;
               const extraTag = row.extra ? ' (x2)' : '';
-              const delta = actor.kind === 'enemy'
+              const delta = actor.kind === 'enemy' && debuff > 0
                 ? `(-${Math.round(debuff)})`
-                : `(+${Math.round(buff)})`;
-              const line = `${label} ${Math.round(curSpd)}/${Math.round(baseSpd)} ${delta}${extraTag}`;
+                : '';
+              const line = `${label} ${Math.round(curSpd)}/${Math.round(baseSpd)}${delta ? ` ${delta}` : ''}${extraTag}`;
               const y = trackAnchor.y + lineH * i;
               ctx.fillText(line, trackAnchor.x + 4, y);
             }
@@ -3843,12 +3838,11 @@ async function main(){
       if (!actor) continue;
       const label = actor.name || '?';
       const baseSpd = Number(actor.stats?.SPD ?? actor.SPD ?? 0);
-      const buff = actor.kind === 'hero' ? Number(g.PartyBuff_SPD || 0) : 0;
       const debuff = actor.kind === 'enemy' ? Number(g.EnemyDebuffs?.[actor.uid]?.SPD || 0) : 0;
-      const curSpd = baseSpd + buff - debuff;
+      const curSpd = baseSpd - debuff;
       const extraTag = row.extra ? ' (x2)' : '';
-      const delta = actor.kind === 'enemy' ? `(-${Math.round(debuff)})` : `(+${Math.round(buff)})`;
-      turnOrderLines.push(`${label} ${Math.round(curSpd)}/${Math.round(baseSpd)} ${delta}${extraTag}`);
+      const delta = actor.kind === 'enemy' && debuff > 0 ? `(-${Math.round(debuff)})` : '';
+      turnOrderLines.push(`${label} ${Math.round(curSpd)}/${Math.round(baseSpd)}${delta ? ` ${delta}` : ''}${extraTag}`);
     }
     const lines = [
       gameState.baseSummary,

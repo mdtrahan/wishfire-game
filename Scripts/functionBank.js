@@ -1583,13 +1583,15 @@ export function ResolveGemAction(ctx, gemColor, actorUID) {
     const roll = Math.floor(Math.random() * 4);
     let skillId = 'DEF_UP';
     let intentKey = 'Party_DEF_UP';
+    let buffType = 0;
     if (roll === 1) { skillId = 'ATK_UP'; intentKey = 'Party_ATK_UP'; }
     if (roll === 2) { skillId = 'MAG_UP'; intentKey = 'Party_MAG_UP'; }
-    if (roll === 3) { skillId = 'RES_UP'; intentKey = 'Party_RES_UP'; }
+    if (roll === 3) { skillId = 'RES_UP'; intentKey = 'Party_RES_UP'; buffType = 4; }
+    if (roll === 1 || roll === 2) buffType = roll;
     LogGemIntent(ctx, 2, 'BLUE', intentKey, '', actorUID);
     g.BuffRollSkillID = skillId;
     g.BuffRollActor = actorUID;
-    g.BuffRollType = roll;
+    g.BuffRollType = buffType;
     StartBuffRoll(ctx);
     return;
   }
@@ -1782,10 +1784,6 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     handled = true;
     ctx.callFunction('Party_MAG_UP', buffTurns, actorUID, 0, 2);
     LogCombat(ctx, `${actorName} increased the party's magic attack!`);
-  } else if (skillId === 'SPD_UP') {
-    handled = true;
-    ctx.callFunction('Party_SPD_UP', buffTurns, actorUID, 0, 2);
-    LogCombat(ctx, `${actorName} increased the party's speed!`);
   } else if (skillId === 'RES_UP') {
     handled = true;
     ctx.callFunction('Party_RES_UP', buffTurns, actorUID, 0, 2);
@@ -2085,7 +2083,7 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
 export function StartBuffRoll(ctx) {
   const g = getGlobals(ctx);
   const buffType = g.BuffRollType ?? 0;
-  if (buffType < 0 || buffType > 3) return;
+  if (buffType < 0 || buffType > 4) return;
   g.BlueBuffSequenceActive = 1;
   g.IsPlayerBusy = 1;
   g.CanPickGems = false;
@@ -2143,7 +2141,7 @@ export function ShowBuffProgress(ctx) {
 
 export function RegisterPartyBuffSlot(ctx, buffType) {
   const g = getGlobals(ctx);
-  if (buffType == null || buffType < 0 || buffType > 3) return;
+  if (buffType == null || buffType < 0 || buffType > 4) return;
   if (!Array.isArray(g.TrackBuffs) || g.TrackBuffs.length !== 4) {
     g.TrackBuffs = [-1, -1, -1, -1];
   }

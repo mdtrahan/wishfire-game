@@ -1,10 +1,10 @@
 # Insights / Decisions Log
 
 ## 2026-02-19
-- Agile reset applied:
-  - Removed verbose TODO-output enforcement blocks from `AGENTS.md`.
-  - Reworked backlog into a cleaner Agile queue.
-  - Remapped `TASK-005` to speed-buff removal scope (remove SPD blue-buff path, speed icon, and 5th slot; keep `ATK/DEF/MAG/RES`).
-- Backed up `AGENTS.md` before this edit: `AGENTS.md.bak-2026-02-19-agile-reset`.
+- Resolved weekly sweep blockers at governance layer:
+  - Updated role-switch stale authority label in adversarial ledger from `Code Review Agent` to `Lead Agent (Review Function)`.
+  - Added stability cron pre-check section requiring `governance/planning/turn-state-invariants.md` and explicit sync guidance for stale cron worktrees.
+- Turn invariants spec file is present in repo at:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/planning/turn-state-invariants.md`
 - Index gap: `ai-memory/PROJECT_INDEX.md` missing.
 - Next: Await next explicit user request.
