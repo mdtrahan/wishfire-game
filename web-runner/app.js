@@ -4639,7 +4639,7 @@ async function main(){
   }
   tick();
 
-  // Dev-only test hooks for deterministic Playwright control
+  // Dev-only test hooks for deterministic agent-browser CLI control
   if (typeof window !== 'undefined') {
     window.render_game_to_text = () => {
       const currentUID = callFunctionWithContext(fnContext, 'GetCurrentTurn');

@@ -329,6 +329,9 @@ Lead may not:
 - Edit sprint-board.md.
 - Modify governance allocation ratios.
 - Modify code.
+- Generate legacy browser-driver code.
+- Suggest deprecated browser MCP usage.
+- Add deprecated browser-driver dependencies.
 
 Lead defines execution phases, review verdicts, and guardrails.
 
@@ -388,11 +391,12 @@ Before writing code, Dev MUST:
 3. Read TASK-###-execution-plan.md.
 4. Confirm Severity context (if related to ADV).
 
-Dev may run Playwright or runtime probes ONLY when:
+Dev may run agent-browser CLI or runtime probes ONLY when:
 
 - Verifying a just-implemented change.
 - Reproducing a logged ADV item.
 - Explicitly instructed in ACTIVE.md.
+- `agent-browser --help` succeeds in current environment before first use in a run.
 
 Dev must NOT:
 
@@ -499,7 +503,7 @@ Manual deterministic QA verification in browser is canonical PASS.
 Node test runner results do not override validated runtime behavior.
 
 Canonical validation artifact for MVP is:
-- Playwright browser validation
+- agent-browser CLI validation
 OR
 - Manual deterministic run verified by Tester
 
