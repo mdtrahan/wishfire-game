@@ -1,262 +1,145 @@
-# Insights / Decisions Log
+# Insights (High-Impact Only)
 
 ## 2026-02-20
-- Executed PM override to break approval loop and advance sprint flow.
-- Updated planning artifacts:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/planning/sprint-board.md`
-    - marked TASK-007 complete (PM override PASS from QA signal)
-    - marked TASK-011 complete (PM override PASS from QA signal)
-    - switched active feature allocation to TASK-008
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/planning/backlog.md`
-    - set Sprint Next Up to TASK-009
-    - marked TASK-011 spike queue entry closed
-- Next: Await next explicit user request.
-- Applied immediate PM correction to prevent further functional-risk churn on TASK-011.
-- Updated planning:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/planning/sprint-board.md`
-    - restored `TASK-007` as active feature task
-    - moved `TASK-011` to closure-only state pending Lead verdict finalization
-    - blocked new TASK-011 implementation packets unless new BLOCKER/CRITICAL evidence exists
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/planning/backlog.md`
-    - converted TASK-011 queue entry to closure-only governance step
-- Next: Await next explicit user request.
-- Root-cause fix for pass-loop implemented in governance:
-  - Conflict identified: MVP rule says QA is canonical PASS, but Lead gate held tasks in PARTIAL PASS for non-critical proof additions.
-  - Updated `/Users/Mace/Wishfire/Codex-Orka/AGENTS.md` with:
-    - status/sync output routing contract (`Next Actor`, `Action Required`, `Ready Prompt`)
-    - MVP closure anti-loop rule (QA PASS must close next sync unless new BLOCKER/CRITICAL evidence exists).
-- Next: Await next explicit user request.
-- Added explicit TASK-011 evidence capture requirement for rapid startup -> Layout 1 load -> refill screenshots to isolate improper instant-swap event.
-- File touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/planning/sprint-board.md`
-- Next: Await next explicit user request.
-- Added new observed refill failure signal into active spike scope:
-  - gems fill then immediately swap state unexpectedly.
-- Tightened `/Users/Mace/Wishfire/Codex-Orka/governance/planning/sprint-board.md` TASK-011 acceptance to require post-fill slot stability (no unsolicited second write/swap).
-- Next: Await next explicit user request.
-- Applied user-directed agile spike override for refill safety risk.
-- Updated planning scope:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/planning/sprint-board.md`: active task switched to `TASK-011` non-destructive refill slot-assignment spike.
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/planning/backlog.md`: `TASK-007` paused pending spike completion; spike queue added.
-- Next: Await next explicit user request.
-- Activated TASK-007 as current sprint feature allocation and reordered backlog next-up to TASK-008.
+- QA-PASS closure lag created rework loops; governance now requires immediate Lead PASS/FAIL after QA signal to prevent duplicate implementation cycles.
+- Sprint throughput dropped when tasks were decomposed into micro-steps; execution should run in 3-step packets (build, follow-up, validate) per active TASK.
+- Planning artifacts became noisy when they mixed audit history with live execution state; keep sprint-board/backlog operational and move historical detail to audit/regression records only.
+- Scope drift risk increases when PM/Lead/Dev boundaries blur; PM remains allocation/governance only, Lead owns technical directives, Dev owns code changes.
+- Browser backend drift caused tool confusion; agent-browser policy must stay explicit and enforced before runtime validation.
+
+## Operating Rule
+- Add only decisions that change future behavior, reduce cycle time, or prevent regressions. Do not log routine sync/status events.
+- Sync-and-continue executed under ACTIVE TASK-008 updated packet (data-driven assignment + decision traces + deterministic artifacts).
+- Implemented data-driven enemy skill assignment and threshold decision model in runtime path:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/modules/functionBank.js`
+  - Added `ENEMY_SKILL_ASSIGNMENT_MAP`, `resolveEnemySkillDecision(...)`, and decision trace capture in `PickEnemySkill(...)`.
+  - Added `GetEnemySkillAssignmentMap()` for deterministic QA artifact extraction.
+- Mirrored assignment/decision logic to `/Users/Mace/Wishfire/Codex-Orka/Scripts/functionBank.js` for source parity.
+- Published deterministic TASK-008 artifacts under `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/`:
+  - `assignment-map.json`
+  - `decision-traces.json`
+  - `refill-turn-trace.json`
+  - `refill-sequencing-assertions.json`
+  - `layout1-skill-check.png`
+- Assertions confirm:
+  - QA coverage for Djinn/Marid/Chimerilass skill decisions.
+  - Special vs regular thresholds match expected ratio pattern.
+  - Drain Buff/X Out/Wipe runtime effects pass deterministic checks.
 - Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/planning/sprint-board.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/planning/backlog.md`
-- Next: Await next explicit user request.
-- De-scoped TASK-006 from active sprint and moved it to backlog as BLOCKED.
-- Reason: current layout graph depth is insufficient to produce passable transition-depth suspend/resume validation for TASK-006 acceptance.
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/planning/sprint-board.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/planning/backlog.md`
-- Next: Await next explicit user request.
-- Reconciled stale planning artifacts to match active execution state.
-- Updated `/Users/Mace/Wishfire/Codex-Orka/governance/planning/sprint-board.md`:
-  - Marked `TASK-005` complete (Lead PASS 2026-02-20).
-  - Shifted active feature allocation to `TASK-006`.
-  - Removed stale sync note that kept focus on prior layout-containment loop.
-- Created roadmap content in `/Users/Mace/Wishfire/Codex-Orka/governance/planning/roadmap.md` with Now/Next/After phases tied to TASK-006..TASK-010.
-- Next: Await next explicit user request.
-- Hardened Playwright policy to hard-deny agent requests/usage unless PM logs explicit task-scoped exception in repository artifacts.
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/AGENTS.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/docs/backend/browser-backend-policy.md`
-- Ingested and enforced repository containment policy for all agents.
-- Added global containment section in `/Users/Mace/Wishfire/Codex-Orka/AGENTS.md` (execution boundary, pre/post `git status`, escalation denied-by-default, backend isolation, PM/Lead/Dev handoff confirmation).
-- Updated `/Users/Mace/Wishfire/Codex-Orka/docs/backend/browser-backend-policy.md` to require `pwd`, pre/post `git status`, no auto-escalation, and explicit containment handoff gate.
-- Next: Await next explicit user request.
-- Executed TASK-005 closeout packet on user "sync and continue".
-- Decisions made:
-  - Removed the orphan right-most Layout 1 buff backer source from `/Users/Mace/Wishfire/Codex-Orka/web-runner/assets/layouts.json` by deleting extra `Sprite5` instance `uid:84` in `BoardBG`.
-  - Verified Layout 1 buff backer source count is now 4 (`uid:79,80,81,82`) with 4 legal buff icons (`buffIcon1..4`) and no illegal `buffIcon*` instances.
-  - Used `agent-browser` for required closeout screenshot capture:
-    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task005-closeout/layout1-final.png`
-  - Wrote closeout runtime evidence:
-    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task005-closeout/runtime-trace.json`
-    - includes `buffBackerRenderCount: 4` and `verdict: PASS`.
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/assets/layouts.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task005-closeout/layout1-final.png`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task005-closeout/runtime-trace.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/modules/functionBank.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/Scripts/functionBank.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/assignment-map.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/decision-traces.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/refill-turn-trace.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/refill-sequencing-assertions.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/layout1-skill-check.png`
   - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
   - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
 - Next: Await next explicit user request.
-- Sync-and-dispatch verification completed.
-- Decisions made:
-  - Confirmed `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md` still carries the uninterrupted TASK-005 closeout packet, required artifact paths, and Lead verdict gate.
-  - Confirmed `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-005-execution-plan.md` remains aligned to the orphan 5th backer removal scope with Layout 1-only acceptance.
-  - No directive edits were required in this sync pass.
+- Continued TASK-008 under ACTIVE intake and finalized Lead closure artifact packaging.
+- Added `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/closure-recommendation.json` with PASS recommendation and deterministic artifact index.
+- No scope expansion and no additional runtime behavior changes in this continuation step.
 - Files touched:
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/closure-recommendation.json`
   - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
   - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
 - Next: Await next explicit user request.
-- TASK-005 closeout re-dispatch applied from user-confirmed persistent fail (right-most empty grey backer).
-- Decisions made:
-  - Updated `ACTIVE.md` to require explicit object inventory and permanent removal of the right-most empty backer source (no runtime hide workaround).
-  - Updated `TASK-005-execution-plan.md` to require inventory evidence (object/path + x-order), removal proof, and runtime trace confirming 4 backers with no trailing empty source.
-  - Retrieved current static Layout 1 buff-row object inventory from `web-runner/assets/layouts.json` for directive grounding.
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-005-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Applied surgical Wipe behavior adjustment per user directive:
+  - `Enemy_Wipe` now consumes only light-green gems (color 4), not all gems.
+  - Heal pool now equals `lightGreenConsumed * 4`, split deterministically across living enemies.
+- Runtime file updated:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/modules/functionBank.js`
+- Source parity file updated:
+  - `/Users/Mace/Wishfire/Codex-Orka/Scripts/functionBank.js`
+- Self-validation artifacts:
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/wipe-lightgreen-check.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/wipe-lightgreen-check-seeded.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/wipe-lightgreen-assertions.json` (pass=true)
 - Next: Await next explicit user request.
-- QA pass accepted for TASK-005 closeout (image caching issue acknowledged; runtime state accepted).
-- Decisions made:
-  - Issued Lead verdict `PASS` in `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-005-execution-plan.md`.
-  - Advanced ACTIVE intake from TASK-005 to TASK-006 staging in `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`.
-  - Created `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-006-execution-plan.md` for deterministic transition suite staging scope.
-  - Kept sprint-board untouched (PM authority boundary preserved).
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-005-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-006-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Await next explicit user request.
-- Sync-and-dispatch verification completed.
-- Decisions made:
-  - Confirmed `ACTIVE.md` remains on `TASK-006 (staging)` and links the TASK-006 execution plan.
-  - Confirmed `TASK-006-execution-plan.md` remains unchanged and aligned to staging-only scope.
-  - No directive file edits were required during this sync.
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Await next explicit user request.
-- Executed TASK-006 staging packet authoring on user "continue".
-- Decisions made:
-  - Expanded `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-006-execution-plan.md` with:
-    - deterministic preconditions
-    - concrete step matrix for `0 -> 1 -> 2 -> 1`
-    - suspend/resume checkpoint assertions
-    - invariant list for transition boundaries
-    - exact artifact paths and minimum trace fields for execution packet
-  - No runtime code files were edited; staging-only scope preserved.
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-006-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Await next explicit user request.
-- Sync-and-dispatch reconciliation completed for sprint allocation drift.
-- Decisions made:
-  - Detected mismatch: sprint-board marks `TASK-006` backlogged/blocked while `ACTIVE.md` still advertised active TASK-006 execution intake.
-  - Updated `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md` to blocked-staging hold instructions (no execution until PM/Lead reactivation).
-  - Left TASK-006 execution plan intact as staging reference artifact only.
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Await next explicit user request.
-- Sync-and-continue pass completed under blocked TASK-006 intake.
-- Decisions made:
-  - Re-read ACTIVE and confirmed current `Dev Next Action` is hold-only:
-    - do not execute TASK-006 implementation while blocked
-    - keep staging plan reference-only
-    - await explicit PM/Lead reactivation
-  - No runtime code edits and no execution-plan mutations performed in this pass.
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Await explicit PM/Lead reactivation directive.
-- Refill leak escalation mapped to active sprint feature lane and dispatched.
-- Decisions made:
-  - Detected drift between sprint-board active task (`TASK-007`) and ACTIVE intake (still blocked `TASK-006`).
-  - Updated `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md` to activate `TASK-007` with a 3-step packet:
-    - fix hero-turn-end refill timing
-    - enforce refill-before-enemy-turn sequencing
-    - run deterministic refill/turn-advance validation
-  - Created `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-007-execution-plan.md` with explicit artifact contract for refill leak verification.
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-007-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Await next explicit user request.
-- Sprint override reconciliation completed.
-- Decisions made:
-  - Detected drift: sprint-board active task is `TASK-011` (spike override), while ACTIVE intake still targeted `TASK-007`.
-  - Updated `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md` to activate `TASK-011` with a 3-step packet focused on non-destructive refill slot safety and refill/turn-flow validation.
-  - Created `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-011-execution-plan.md` with explicit rapid-frame artifact contract for startup/Layout1/refill swap detection.
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-011-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Await next explicit user request.
-- Executed TASK-007 implementation and artifact packet on user "continue".
-- Decisions made:
-  - Added minimal sequencing guard in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` within DeferAdvance resolution:
-    - if board has empty slots and refill is not active, start refill first and delay turn advance.
-    - only run AdvanceTurn/ProcessTurn from the non-refill branch.
-  - Captured required TASK-007 screenshot artifact using `agent-browser`:
-    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task007/layout1-refill-check.png`
-  - Wrote required deterministic JSON artifacts:
-    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task007/refill-turn-trace.json`
-    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task007/refill-sequencing-assertions.json`
+- Reopened TASK-008 closure gate due new QA regression signal: initial refill shows frame/state swap contamination with suspected yellow-path bleed into regular non-yellow refill.
+- Updated dispatch artifacts:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-008-execution-plan.md` -> closure gate set to `PARTIAL PASS (REOPENED)` with corrective packet.
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md` -> 3-step corrective Dev packet for reproduce/fix/validate.
+- Scope lock: no transition-flow edits, no unrelated gameplay logic changes; target is regular refill stability and yellow-path isolation only.
+- Next: Await Dev corrective artifact packet for Lead closure re-check.
+- Executed reopened TASK-008 corrective packet for initial refill frame/state swap contamination (yellow-path isolation).
+- Minimal corrective fix in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`:
+  - `startYellowCasinoSequence(...)` now queues only `type:'yellow'` items.
+  - Removed yellow-sequence `empty` queue entries to isolate regular refill path from yellow animation path.
+  - Lock/defer is now only applied when yellow queue has work; otherwise immediate fallback to `startRefillBounce()`.
+- Deterministic reopened artifacts published under `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/`:
+  - `reopened-repro-start.json`
+  - `reopened-repro-console.log`
+  - `reopened-repro-post.json`
+  - `reopened-repro-frame.png`
+  - `reopened-refill-trace.json`
+  - `reopened-refill-assertions.json`
+- Assertion result: PASS for non-yellow anchor, zero yellow-sequence markers after non-yellow resolve anchor, and board remains populated post-action.
+- Additional test-hook correction:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` `__codexGame.selectGemByRC` now records selected gem index (runtime parity with click path) instead of UID.
 - Files touched:
   - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task007/layout1-refill-check.png`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task007/refill-turn-trace.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task007/refill-sequencing-assertions.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/reopened-repro-start.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/reopened-repro-console.log`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/reopened-repro-post.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/reopened-repro-frame.png`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/reopened-refill-trace.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/reopened-refill-assertions.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Await next explicit user request.
+- TASK-008 reopen corrective packet reviewed and closed with Lead PASS.
+- Refill regression evidence confirms non-yellow regular refill no longer triggers yellow-sequence markers after non-yellow resolve anchor.
+- Directive sync updated:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-008-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+- Note captured: `reopened-repro-start.json` path referenced by Dev is missing, but closure evidence remained sufficient via trace/log/post-state artifacts.
+
+## 2026-02-20 (startup refill diagnostics)
+- Added startup `Layout 1` refill diagnostics in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` with no gameplay logic changes:
+  - `[LAYOUT1_REFILL_START]` logs full board array snapshot at refill start.
+  - `[LAYOUT1_REFILL_STEP]` logs board array at each refill queue step (`skip`/`occupied`/`set`).
+  - `[LAYOUT1_REFILL_FINISH]` logs final board array plus deterministic start-vs-final cell diff and `BattleStartMode` (`initiative`/`ambush`) for leakage checks.
+- Capture is scoped to first combat-layout startup refill per runtime session to keep output focused.
+- Index gap recorded: `ai-memory/PROJECT_INDEX.md` is missing; direct file discovery was used for this task.
+- Files touched:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
   - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
   - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
 - Next: Await next explicit user request.
 
-## 2026-02-19
-- Applied hardening clause for browser backend integrity.
-- Added required policy file:
-  - `/Users/Mace/Wishfire/Codex-Orka/docs/backend/browser-backend-policy.md`
-- Updated `AGENTS.md` with Lead/Dev constraints against legacy browser-driver usage and explicit `agent-browser --help` prerequisite.
-- Mandatory regression scan executed for banned legacy browser-driver tokens with zero matches.
-- Validation gate check: `agent-browser --help` exit code `0`.
-- Next: Await next explicit user request.
-- Executed TASK-011 packet continuation on user "continue" with minimal refill-slot write guards.
-- Decisions made:
-  - Updated `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` refill write paths to enforce empty-slot-only assignment and avoid cell replacement (`filter+push`) during yellow-empty and refill-bounce assignment steps.
-  - Added occupied-slot skip handling that preserves grid UID when a slot already has a gem entry.
-  - Captured TASK-011 artifact set:
-    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011/frame-0-layout1.png`
-    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011/frame-1-refill-start.png`
-    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011/frame-2-refill-post.png`
-    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011/refill-slot-integrity-trace.json`
-    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011/refill-assertions.json`
-  - Index gap noted: `/Users/Mace/Wishfire/Codex-Orka/ai-memory/PROJECT_INDEX.md` is missing.
+## 2026-02-20 (diagnostic cleanup after QA PASS)
+- Removed temporary startup refill diagnostics from `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`:
+  - deleted `[LAYOUT1_REFILL_START]`, `[LAYOUT1_REFILL_STEP]`, `[LAYOUT1_REFILL_FINISH]` logs
+  - deleted audit helper functions used only by those logs
+  - removed temporary refill-audit state wiring in `startRefillBounce(...)`
+- No gameplay behavior changes applied; refill/turn flow logic unchanged.
 - Files touched:
   - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011/frame-0-layout1.png`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011/frame-1-refill-start.png`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011/frame-2-refill-post.png`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011/refill-slot-integrity-trace.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011/refill-assertions.json`
   - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
   - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
 - Next: Await next explicit user request.
-- TASK-011 closure gate executed under PM directive.
-- Decisions made:
-  - Reviewed required inputs:
-    - `governance/execution/dev-directives/TASK-011-execution-plan.md`
-    - `governance/execution/dev-directives/ACTIVE.md`
-    - `governance/planning/sprint-board.md`
-    - TASK-011 JSON trace/assertion artifacts
-    - TASK-011 frame artifacts
-  - Issued closure verdict: `PARTIAL PASS` in `TASK-011-execution-plan.md`.
-  - Kept TASK-011 active and updated `ACTIVE.md` with corrective packet requiring:
-    - slot-level refill write event instrumentation
-    - explicit assertions for all TASK-011 criteria
-    - hero-action -> refill -> enemy-boundary verification run
+
+## 2026-02-20 (startup log condensation)
+- Condensed startup render debug spam in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` by replacing four repeated modal/window debug lines with one deduplicated summary log:
+  - New tag: `[DEBUG_RENDER_SUMMARY]`
+  - Emits only when render/modal signature changes.
+- This is logging-only; no gameplay/UI behavior changes.
 - Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-011-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
   - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
   - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
 - Next: Await next explicit user request.
-- Sync verification completed.
-- Decisions made:
-  - Confirmed `ACTIVE.md` still targets TASK-011 corrective packet after PARTIAL PASS gate.
-  - Confirmed `TASK-011-execution-plan.md` still carries PARTIAL PASS verdict and unmet criteria list.
-  - Confirmed sprint-board still allocates active feature scope to TASK-011 spike override.
-  - No directive-content changes required in this sync pass.
+
+## 2026-02-20 (startup debug efficiency pass)
+- Added startup debug gate in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`:
+  - `STARTUP_DEBUG` query flag (`?startup_debug=1`)
+  - `startupDebugLog(...)` helper
+- Routed high-volume startup diagnostics to gated logger:
+  - `[HP_FIX]`, `[LAYOUT_AUDIT]`, `[INIT]` startup chatter, per-asset `[LOAD] SUCCESS`, `[DEBUG_RENDER_SUMMARY]`, and `[FILTER]` chatter.
+- Kept warnings/errors and key non-debug runtime logs unchanged.
 - Files touched:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
   - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
   - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
 - Next: Await next explicit user request.

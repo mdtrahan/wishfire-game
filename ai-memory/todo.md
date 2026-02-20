@@ -20,9 +20,27 @@
 - [x] Await next explicit user request.
 - [x] Run TASK-011 closure gate review and issue PARTIAL PASS with corrective packet while keeping TASK-011 active.
 - [x] Sync verification: TASK-011 PARTIAL PASS corrective packet remains active with no directive drift.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Tech debt: prune unused visual assets listed in `/Users/Mace/Wishfire/Codex-Orka/docs/asset-usage-audit.md` after one safety smoke pass.
+- [x] Reopen TASK-008 closure gate: dispatch corrective packet for initial refill frame/state swap contamination (yellow-path isolation).
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+
+## Queue (new)
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
 - [ ] Await next explicit user request.
 
 ## Done (recent)
+- [x] Require Lead post-execution closure checks on bundled asset-prune packet before bundle close.
+- [x] Scope asset-prune debt into three bounded backlog tasks (manifest/plan, controlled deletion, validation+rollback) with no gameplay/UI logic change scope.
+- [x] Condense AGENTS.md from verbose prose to compact directive format without dropping hard governance constraints.
+- [x] Encode buff-only combat-skill policy for Lead/Dev in AGENTS.md and TASK-008 governance artifacts.
 - [x] Apply PM override closure and advance sprint: mark TASK-007 and TASK-011 complete from QA pass signal and move active lane to TASK-008.
 - [x] Stop TASK-011 overwork loop: restore TASK-007 as active feature allocation and constrain TASK-011 to closure-only governance step.
 - [x] Add anti-loop governance rule: QA PASS must convert to Lead closure verdict next sync unless new BLOCKER/CRITICAL evidence exists.

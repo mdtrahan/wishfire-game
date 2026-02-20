@@ -39,9 +39,22 @@ const GEM_DEBUG_LEVEL = (function () {
   const p = new URLSearchParams(window.location.search);
   return p.get('gemlog') || 'minimal';
 })();
+const STARTUP_DEBUG = (() => {
+  if (typeof window === 'undefined') return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.has('startup_debug') || params.get('startup_debug') === 'true';
+  } catch {
+    return false;
+  }
+})();
 function debugLayoutLog(message) {
   if (!DEBUG_LAYOUT) return;
   console.log(message);
+}
+function startupDebugLog(...args) {
+  if (!STARTUP_DEBUG) return;
+  console.log(...args);
 }
 function isGemDebugEnabled() {
   if (DEBUG_GEMS_QUERY) return true;
@@ -492,7 +505,7 @@ function initEntities(enemyRows, layoutInstances) {
       attackType: v.attackType,
       isAlive: true,
     });
-    console.log(`[HP_FIX] hero=${v.name} maxHP=${maxHP}`);
+    startupDebugLog(`[HP_FIX] hero=${v.name} maxHP=${maxHP}`);
   }
 
   gameState.partyHP = partyHP;
@@ -568,7 +581,7 @@ function createGemBoard(gridBounds = null) {
     const gridHeight = gridBounds.maxY - gridBounds.minY;
     startX = gridBounds.minX + (gridWidth - boardWidth) / 2;
     startY = gridBounds.minY + (gridHeight - boardHeight) / 2;
-    console.log(`[BOARD] Centered within grid bounds: (${startX.toFixed(1)}, ${startY.toFixed(1)})`);
+    startupDebugLog(`[BOARD] Centered within grid bounds: (${startX.toFixed(1)}, ${startY.toFixed(1)})`);
   }
   
   for (let c = 0; c < g.cols; c++) {
@@ -583,7 +596,7 @@ function createGemBoard(gridBounds = null) {
   gameState.boardCreated = true;
   setGemArray(gameState.gems);
   state.globals.TapIndex = 0;
-  console.log(`[BOARD] Created gem board: ${g.cols}x${g.rows} = ${gameState.gems.length} gems`);
+  startupDebugLog(`[BOARD] Created gem board: ${g.cols}x${g.rows} = ${gameState.gems.length} gems`);
   startRefillBounce(0.31);
 }
 
@@ -631,6 +644,7 @@ function randomGemFrame() {
   return frame;
 }
 
+
 function refillGemBoard(gridBounds = null) {
   const g = boardGeometry;
   rebuildGridFromGems();
@@ -642,7 +656,7 @@ function refillGemBoard(gridBounds = null) {
     if (hasEmpty) break;
   }
   if (!hasEmpty) {
-    console.log('[BOARD] Refill skipped (board full)');
+    startupDebugLog('[BOARD] Refill skipped (board full)');
     return false;
   }
   const boardWidth = g.cols * g.cellSize + (g.cols - 1) * g.gap;
@@ -685,7 +699,7 @@ function refillGemBoard(gridBounds = null) {
   gameState.selectionLocked = false;
   setGemArray(gameState.gems);
   state.globals.TapIndex = 0;
-  console.log('[BOARD] Refilled missing gems');
+  startupDebugLog('[BOARD] Refilled missing gems');
   return true;
 }
 
@@ -776,7 +790,6 @@ function startYellowCasinoSequence(actorUID) {
     if (!gm || gm.cellR == null || gm.cellC == null) continue;
     gemByCell.set(`${gm.cellR},${gm.cellC}`, gm);
   }
-  const emptySlots = [];
   const queue = [];
   for (let r = 0; r < boardGeometry.rows; r++) {
     for (let c = 0; c < boardGeometry.cols; c++) {
@@ -788,21 +801,6 @@ function startYellowCasinoSequence(actorUID) {
           type: 'yellow',
           reason: 'yellow-reassign',
           uid: gem.uid,
-          cellC: c,
-          cellR: r,
-          target: pickYellowCasinoTarget(),
-          sequence: null,
-          startAt: 0,
-          duration: YELLOW_CASINO_SPIN_SEC,
-          frameDuration: 0,
-        });
-      } else if (!gem && gameState.grid && gameState.grid[c] && gameState.grid[c][r] === 0) {
-        const slot = { cellC: c, cellR: r, index: (r * boardGeometry.cols) + c };
-        emptySlots.push(slot);
-        queue.push({
-          type: 'empty',
-          reason: 'empty',
-          uid: 0,
           cellC: c,
           cellR: r,
           target: pickYellowCasinoTarget(),
@@ -823,10 +821,7 @@ function startYellowCasinoSequence(actorUID) {
   casino.current = null;
   casino.telegraphUntil = now + YELLOW_CASINO_TELEGRAPH_SEC;
   casino.ghost = null;
-  casino.emptyTelegraph = emptySlots.map(slot => {
-    const pos = getCellWorldPos(slot.cellC, slot.cellR);
-    return { ...slot, x: pos.x, y: pos.y, w: pos.w, h: pos.h };
-  });
+  casino.emptyTelegraph = [];
 
   for (const item of queue) {
     if (item.type !== 'yellow') continue;
@@ -837,7 +832,7 @@ function startYellowCasinoSequence(actorUID) {
   gemDebugLog('[FILL_GATE]', {
     stage: 'yellow-sequence-start',
     queueLength: queue.length,
-    emptyCount: emptySlots.length,
+    emptyCount: 0,
     globals: {
       CanPickGems: state.globals.CanPickGems,
       IsPlayerBusy: state.globals.IsPlayerBusy,
@@ -860,11 +855,15 @@ function startYellowCasinoSequence(actorUID) {
     uid: item.uid || 0,
   })));
 
-  const totalDuration = YELLOW_CASINO_TELEGRAPH_SEC + (queue.length * YELLOW_CASINO_SPIN_SEC);
-  state.globals.ActionLockUntil = now + Math.max(0.1, totalDuration);
-  state.globals.DeferAdvance = 1;
-  state.globals.AdvanceAfterAction = 1;
-  state.globals.ActionOwnerUID = actorUID;
+  if (hasWork) {
+    const totalDuration = YELLOW_CASINO_TELEGRAPH_SEC + (queue.length * YELLOW_CASINO_SPIN_SEC);
+    state.globals.ActionLockUntil = now + Math.max(0.1, totalDuration);
+    state.globals.DeferAdvance = 1;
+    state.globals.AdvanceAfterAction = 1;
+    state.globals.ActionOwnerUID = actorUID;
+  } else {
+    startRefillBounce();
+  }
 }
 
 function startRefillBounce(speedScale = 1) {
@@ -946,72 +945,6 @@ function collectBoardCoverageIssues() {
   return { missingCells, duplicates };
 }
 
-function findBootstrapMatchCells() {
-  const rows = boardGeometry.rows;
-  const cols = boardGeometry.cols;
-  const colorAt = Array.from({ length: rows }, () => Array(cols).fill(null));
-  for (const g of (gameState.gems || [])) {
-    if (!g || g.cellR == null || g.cellC == null) continue;
-    if (g.cellR < 0 || g.cellR >= rows || g.cellC < 0 || g.cellC >= cols) continue;
-    colorAt[g.cellR][g.cellC] = g.color != null ? g.color : g.elementIndex;
-  }
-  const matched = new Set();
-  for (let r = 0; r < rows; r++) {
-    let c = 0;
-    while (c < cols) {
-      const color = colorAt[r][c];
-      if (color == null) {
-        c += 1;
-        continue;
-      }
-      let end = c + 1;
-      while (end < cols && colorAt[r][end] === color) end += 1;
-      if (end - c >= 3) {
-        for (let x = c; x < end; x++) matched.add(`${r},${x}`);
-      }
-      c = end;
-    }
-  }
-  for (let c = 0; c < cols; c++) {
-    let r = 0;
-    while (r < rows) {
-      const color = colorAt[r][c];
-      if (color == null) {
-        r += 1;
-        continue;
-      }
-      let end = r + 1;
-      while (end < rows && colorAt[end][c] === color) end += 1;
-      if (end - r >= 3) {
-        for (let y = r; y < end; y++) matched.add(`${y},${c}`);
-      }
-      r = end;
-    }
-  }
-  return matched;
-}
-
-function clearBootstrapMatchesIfAny() {
-  if (!Array.isArray(gameState.gems) || gameState.gems.length === 0) return;
-  const MAX_PASSES = 24;
-  for (let pass = 0; pass < MAX_PASSES; pass++) {
-    const matched = findBootstrapMatchCells();
-    if (matched.size === 0) return;
-    for (const key of matched) {
-      const [rRaw, cRaw] = key.split(',');
-      const r = Number(rRaw);
-      const c = Number(cRaw);
-      const gem = gameState.gems.find(g => g && g.cellR === r && g.cellC === c);
-      if (!gem) continue;
-      gem.color = randomGemFrame();
-      gem.elementIndex = gem.color;
-      gem.selected = false;
-      gem.Selected = 0;
-    }
-    setGemArray(gameState.gems);
-  }
-}
-
 function tryActivateRuntimePhase() {
   if (state.globals.GamePhase !== 'BOOTSTRAP') return false;
   const refill = gameState.refillBounce;
@@ -1020,7 +953,6 @@ function tryActivateRuntimePhase() {
   if (casino && casino.active) return false;
   if (!Array.isArray(gameState.gems) || gameState.gems.length !== (boardGeometry.rows * boardGeometry.cols)) return false;
 
-  clearBootstrapMatchesIfAny();
   const coverage = collectBoardCoverageIssues();
   if (coverage.missingCells.length > 0 || coverage.duplicates.length > 0) return false;
 
@@ -1180,7 +1112,7 @@ function tryGetInstances(layout){
   const instances = layout.layers
     .filter(layer => layer && Array.isArray(layer.instances))
     .flatMap(layer => layer.instances);
-  console.log('[LAYOUT_AUDIT] flattenedInstanceCount', instances.length);
+  startupDebugLog('[LAYOUT_AUDIT] flattenedInstanceCount', instances.length);
   return instances;
 }
 
@@ -1335,7 +1267,7 @@ async function main(){
     }
     const bounds = { minX, maxX, minY, maxY };
     gameState.gridBounds = bounds;
-    console.log(`[BOARD] Grid bounds calculated: (${minX.toFixed(1)}, ${minY.toFixed(1)}) to (${maxX.toFixed(1)}, ${maxY.toFixed(1)})`);
+    startupDebugLog(`[BOARD] Grid bounds calculated: (${minX.toFixed(1)}, ${minY.toFixed(1)}) to (${maxX.toFixed(1)}, ${maxY.toFixed(1)})`);
     return bounds;
   };
   function prepareCombatSetupFromInstances(layoutInstances, gameStateRef) {
@@ -1349,21 +1281,21 @@ async function main(){
     assertCombatLayoutDev('loadC3ProjectAssets');
     runtimeLayouts = await fetchJson(assetUrl('layouts.json')) || {};
     layout = runtimeLayouts.layout || { name: 'runtime-fallback', layers: [] };
-    console.log('[LAYOUT_AUDIT] topLevelKeys', Object.keys(layout || {}));
-    console.log('[INIT] Layout loaded');
+    startupDebugLog('[LAYOUT_AUDIT] topLevelKeys', Object.keys(layout || {}));
+    startupDebugLog('[INIT] Layout loaded');
     assetsLayout = runtimeLayouts.assetsLayout || null;
 
     const project = runtimeLayouts.project || { viewportWidth: 360, viewportHeight: 640 };
     viewW = project && project.viewportWidth ? project.viewportWidth : 360;
     viewH = project && project.viewportHeight ? project.viewportHeight : 640;
-    console.log('[INIT] Project viewport:', viewW, 'x', viewH);
+    startupDebugLog('[INIT] Project viewport:', viewW, 'x', viewH);
 
     instances = tryGetInstances(layout);
-    console.log('[LAYOUT_AUDIT] instanceCount', Array.isArray(instances) ? instances.length : 0);
+    startupDebugLog('[LAYOUT_AUDIT] instanceCount', Array.isArray(instances) ? instances.length : 0);
     const gemInstanceCount = Array.isArray(instances)
       ? instances.filter(i => i && i.type === 'Gem').length
       : 0;
-    console.log('[LAYOUT_AUDIT] gemInstanceCount', gemInstanceCount);
+    startupDebugLog('[LAYOUT_AUDIT] gemInstanceCount', gemInstanceCount);
     const typesNeeded = Array.from(new Set(instances.map(i=>i.type)));
     ['Enemy_Sprite', 'Bar_Fill', 'Bar_Yellow', 'Bar_Back', 'PartyHP_Bar', 'Gem', 'AttackButton', 'Selector'].forEach(t => {
       if (!typesNeeded.includes(t)) typesNeeded.push(t);
@@ -1375,7 +1307,7 @@ async function main(){
       const data = allTypes[t];
       if (data) types[t] = data;
     }
-    console.log('[INIT] Loaded', Object.keys(types).length, 'object types');
+    startupDebugLog('[INIT] Loaded', Object.keys(types).length, 'object types');
 
     const enemies = await fetchJson(assetUrl('enemies.json'));
     enemyRows = parseC2ArrayTable(enemies);
@@ -1405,7 +1337,7 @@ async function main(){
               images[t] = img;
               loadedCount++;
               if(['UI_NavCloseButton', 'UI_NavCloseX', 'UI_CloseWin'].includes(t)) {
-                console.log(`[LOAD] SUCCESS: ${t} loaded from ${imgPath}`);
+                startupDebugLog(`[LOAD] SUCCESS: ${t} loaded from ${imgPath}`);
               }
             } else {
               failedImages.push({type: t, path: imgPath, anim: animName});
@@ -1443,7 +1375,7 @@ async function main(){
           const img = await loadImage(imgPath);
           if (img) enemySpriteImages[String(animName).toLowerCase()] = img;
         }
-        console.log('[LOAD] Enemy_Sprite animations loaded:', Object.keys(enemySpriteImages).length);
+        startupDebugLog('[LOAD] Enemy_Sprite animations loaded:', Object.keys(enemySpriteImages).length);
       }
       for (let i = 1; i <= 4; i++) {
         const key = `buffIcon${i}`;
@@ -1476,7 +1408,7 @@ async function main(){
     }
 
     rebuildRenderedCache();
-    console.log('[INIT] Processing instances...');
+    startupDebugLog('[INIT] Processing instances...');
   }
   const registerCoreLayouts = (layoutState, { combatGateway: gateway }) => {
     const validateCombatSnapshot = (snapshot, stage, transitionLabel) => {
@@ -1512,7 +1444,7 @@ async function main(){
             console.log('[LayoutGuard] Combat bootstrap forcing asset init (missing runtime data)');
           }
           state.globals.GamePhase = 'BOOTSTRAP';
-          console.log('[INIT] Starting initialization...');
+          startupDebugLog('[INIT] Starting initialization...');
           await loadC3ProjectAssets();
           prepareCombatSetupFromInstances(instances, gameState);
           assertCombatLayoutDev('StartRound');
@@ -1838,6 +1770,7 @@ async function main(){
   const enemyBars = new Map();
   let lastFrameTime = performance.now();
   const buffIconFrames = { buffIcon1: 0, buffIcon2: 0, buffIcon3: 0, buffIcon4: 0 };
+  let lastRenderDebugSignature = '';
   let rendered = [];
   function rebuildRenderedCache() {
     const nextRendered = [];
@@ -1870,10 +1803,21 @@ async function main(){
 
     const windowPopupItems = baseRendered.filter(r => r.layerName === 'Window Popup');
     const modalObjects = baseRendered.filter(r => ['UI_CloseWin', 'UI_NavCloseButton', 'UI_NavCloseX'].includes(r.inst.type));
-    console.log(`[DEBUG] Window Popup layer items: ${windowPopupItems.length} found`);
-    console.log(`[DEBUG] Modal objects: ${modalObjects.length} found:`, modalObjects.map(r => `${r.inst.type} at (${r.inst.world.x || 0}, ${r.inst.world.y || 0})`).join(', '));
-    console.log(`[DEBUG] All rendered objects: ${baseRendered.length} total`);
-    console.log(`[DEBUG] Modal objects:`, windowPopupItems.map(r => r.inst.type).join(', '));
+    const modalSummary = modalObjects
+      .map(r => `${r.inst.type}@(${Math.round(r.inst.world.x || 0)},${Math.round(r.inst.world.y || 0)})`)
+      .join('|');
+    const popupSummary = windowPopupItems.map(r => r.inst.type).join('|');
+    const debugSig = `${windowPopupItems.length}:${modalObjects.length}:${baseRendered.length}:${modalSummary}:${popupSummary}`;
+    if (debugSig !== lastRenderDebugSignature) {
+      lastRenderDebugSignature = debugSig;
+      startupDebugLog('[DEBUG_RENDER_SUMMARY]', {
+        popupCount: windowPopupItems.length,
+        modalCount: modalObjects.length,
+        renderedCount: baseRendered.length,
+        modals: modalSummary,
+        popupTypes: popupSummary,
+      });
+    }
 
     const enemyAreas = baseRendered.filter(r => r.inst.type === 'EnemyArea');
     if (enemyAreas.length > 0) {
@@ -2790,7 +2734,7 @@ async function main(){
     
     // Debug: Log filter results
     if (gameState.overlayVisible !== lastOverlayState) {
-      console.log(`[FILTER] overlayVisible=${gameState.overlayVisible}, filteredRendered=${filteredRendered.length} items`);
+      startupDebugLog(`[FILTER] overlayVisible=${gameState.overlayVisible}, filteredRendered=${filteredRendered.length} items`);
       lastOverlayState = gameState.overlayVisible;
     }
     
@@ -4900,10 +4844,11 @@ async function main(){
         for (let i = 0; i < n; i++) drawFrame();
       },
       selectGemByRC(row, col) {
-        const gem = gameState.gems.find(g => g.cellR === row && g.cellC === col);
-        if (!gem) return false;
-        if (gameState.selectedGems.includes(gem.uid)) return true;
-        gameState.selectedGems.push(gem.uid);
+        const idx = gameState.gems.findIndex(g => g.cellR === row && g.cellC === col);
+        if (idx === -1) return false;
+        const gem = gameState.gems[idx];
+        if (gameState.selectedGems.includes(idx)) return true;
+        gameState.selectedGems.push(idx);
         gem.selected = true;
         gem.Selected = 1;
         return true;
@@ -4919,6 +4864,9 @@ async function main(){
       },
       forceMatch(color) {
         handleGemMatch(color);
+      },
+      callFunction(fnName, ...args) {
+        return callFunctionWithContext(fnContext, fnName, ...args);
       },
       getTask011Audit() {
         return JSON.parse(JSON.stringify(ensureTask011Audit()));
