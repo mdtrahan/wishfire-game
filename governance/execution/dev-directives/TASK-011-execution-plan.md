@@ -1,55 +1,89 @@
 # TASK-011 Execution Plan
 
 ## Objective
-Eliminate non-destructive refill assignment failures where gems refill then immediately swap/toggle state, and ensure refill sequencing remains deterministic without leaking into enemy turns.
+Execute legacy test-pipeline cleanup for `test-results/` only, using a non-destructive assessment-first workflow, then approved archive/flush with rollback safety.
 
 ## Scope Boundaries
 - In scope (only):
-  - Refill writes only to validated empty slots.
-  - One slot assignment per refill step (no bulk overwrite side effects).
-  - Remove non-yellow refill frame toggling/animation-like swap behavior.
-  - Preserve yellow match unique animation exception only.
-  - Validate startup/Layout1/refill windows for immediate post-fill swap defects.
+  - `test-results/` inventory, age/size profiling, and repo reference scan.
+  - Classification into keep/archive/delete candidates with explicit rationale.
+  - Execute approved archive/flush set only after classification output is reviewed.
+  - Produce rollback manifest for every moved/deleted file.
 - Explicit exclusions:
-  - no unrelated gameplay logic changes
-  - no transition-flow edits
-  - no UI redesign outside refill safety scope
+  - no runtime/source code edits
+  - no gameplay logic changes
+  - no governance file deletion/mutation beyond directive artifact updates
+  - no deletion outside `test-results/`
 
 ## Phase 1
-- Identify refill assignment points where occupied slots can be mutated or post-fill swaps can occur.
-- Apply minimal guardrails to enforce empty-slot-only writes and single-step slot assignment.
+- Perform recursive `test-results/` inventory.
+- Capture age/size summary and reference scan against repo usage.
+- Produce candidate matrix: keep/archive/delete with reason.
 
 ## Phase 2
-- Remove/tighten refill path behavior that causes immediate unsolicited second write/swap after fill.
-- Ensure yellow match animation exception is isolated to yellow-specific path and not reused by normal refill.
+- Execute approved archive/flush set only.
+- Ensure protected files (runtime/governance/tooling referenced) are preserved.
+- Record exact file operations in rollback manifest.
 
 ## Phase 3
-- Deterministic validation required:
-  - first stable Layout 1 frame after load
-  - first refill-assignment frame
-  - immediate post-refill frame(s)
-  - no occupied-slot overwrite
-  - no immediate post-fill swap/toggle
-  - no refill leak into next enemy turn for same hero action cycle
-- Required artifacts:
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011/refill-slot-integrity-trace.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011/refill-assertions.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011/frame-0-layout1.png`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011/frame-1-refill-start.png`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011/frame-2-refill-post.png`
+- Validate post-cleanup integrity:
+  - expected retained files still present
+  - archived/deleted files match approved set
+  - rollback manifest is complete and deterministic
+- Publish artifacts under:
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/`
 
 ## Verifiable Success Criteria
-- Refill mutates only validated empty slots.
-- Each refill assignment step performs one stable slot write with no immediate unsolicited swap.
-- Non-yellow refill paths show no animation/toggle side effects.
-- Enemy turns do not begin with pending refill from prior hero action cycle.
-- Behavior is deterministic across repeated runs.
+- Cleanup is restricted to `test-results/` scope.
+- No referenced runtime/tooling files are removed.
+- Archive/flush actions match approved candidate matrix.
+- Rollback manifest fully reconstructs cleanup actions.
+
+## Lead Phase 1 Review (2026-02-20)
+- Status: APPROVED FOR STEP 2 WITH CONSTRAINTS
+- Review outcome:
+  - Phase 1 artifact package is present and complete:
+    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/inventory.tsv`
+    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/age-size-summary.json`
+    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/reference-scan.tsv`
+    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/candidate-matrix.tsv`
+    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/candidate-summary.json`
+  - Safety adjustment required:
+    - `test-results/.last-run.json` must be protected (referenced in governance artifacts) and is not approved for deletion.
+- Step 2 approved action set:
+  - Archive approved (15 files):
+    - `test-results/task005-phase3/layout1-check/state-0.json`
+    - `test-results/task005-phase3/layout1-check/probe.json`
+    - `test-results/task005-phase3/layout1-check/startup-layout1.png`
+    - `test-results/task005-phase3/layout1-check/post-blue-trigger-layout1.png`
+    - `test-results/task005-phase3/layout1-check/runtime-trace.json`
+    - `test-results/task005-closeout/layout1-final-after-clamp.png`
+    - `test-results/task007/phase1-hero-audit-after-match.json`
+    - `test-results/task007/phase1-hero-audit-post.json`
+    - `test-results/task007/phase1-start-state.json`
+    - `test-results/task007/phase1-audit-after-match.json`
+    - `test-results/task007/phase1-audit-post.json`
+    - `test-results/task007/phase1-baseline.json`
+    - `test-results/task007/phase2-audit-after-match.json`
+    - `test-results/task007/phase2-start-state.json`
+    - `test-results/task007/phase2-audit-post.json`
+  - Delete approved (1 file):
+    - `test-results/.DS_Store`
+  - Keep protected:
+    - `test-results/.last-run.json`
 
 ## Lead Closure Gate (2026-02-20)
 - Verdict: PASS
 - Basis:
-  - MVP manual deterministic QA PASS has been declared for TASK-011 behavior.
-  - Required artifact set is present under `/Users/Mace/Wishfire/Codex-Orka/test-results/task011/`.
-  - No new BLOCKER/CRITICAL evidence was logged against TASK-011 since the prior PARTIAL PASS gate.
-- Closure note:
-  - Under MVP Closure Anti-Loop Rule, closure is issued at this sync.
+  - Step 2 executed exactly as approved:
+    - 15 approved files archived to `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/archive/`
+    - only `test-results/.DS_Store` deleted
+    - protected `test-results/.last-run.json` kept
+  - Deterministic operation and rollback evidence is present:
+    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/approved-archive-list.txt`
+    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/operation-log.tsv`
+    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/rollback-manifest.json`
+    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/post-cleanup-assertions.json`
+    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/post-inventory.txt`
+    - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/closure-recommendation.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/post-cleanup-assertions.json` reports `pass: true`.

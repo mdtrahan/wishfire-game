@@ -143,3 +143,172 @@
   - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
   - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
 - Next: Await next explicit user request.
+
+## 2026-02-20 (TASK-009 execution packet)
+- Implemented dedicated non-modal map layout routing from Nav Map in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`:
+  - Added `mapLayout` registration in LayoutState with strict `mapLayout -> combat` transition.
+  - Added `combat -> mapLayout` transition allowance.
+  - Wired `nav:clicked` Map to request `mapLayout` (instead of overlay fallback).
+- Implemented map-layout isolated interaction/render path:
+  - Added map pan/drag state under `gameState.mapLayout`.
+  - Added map-only pointer handlers (`pointerdown`/`pointermove`/`pointerup`/`pointercancel`) scoped to active `mapLayout`.
+  - Added top war-meter rendering and map takeover rendering (`4x_map` + `4X_tower`) only when active layout is `mapLayout`.
+  - Added explicit map return button path to transition back to combat.
+- Updated dev snapshot surface:
+  - `render_game_to_text()` now reports active runtime `layoutId` via `layoutState` and includes `mapLayout` pan/war fields.
+- Published TASK-009 validation artifacts:
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/assertions.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/closure-recommendation.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/map-enter.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/map-drag.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/map-return.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/transition-trace.log`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/console.log`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/map-layout.png`
+- Files touched:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Lead closure gate review for TASK-009.
+
+## 2026-02-20 (TASK-009 corrective visual acceptance packet)
+- Executed corrective packet from ACTIVE.md for TASK-009 in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`:
+  - removed standalone tower overlay render path from `mapLayout`
+  - set map background to art-delivered `images/map-layout.png`
+  - implemented deterministic vertical-fit map scaling (aspect ratio preserved)
+  - kept war-meter + return-to-combat behavior intact
+- Added runtime map render telemetry for deterministic validation:
+  - `gameState.mapLayout.lastRender` and `render_game_to_text().mapLayout.render`
+- Published corrective artifacts under `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/`:
+  - `map-layout-corrective.png`
+  - `map-enter-corrective.json`
+  - `map-drag-corrective.json`
+  - `map-return-corrective.json`
+  - `console-corrective.log`
+  - `assertions-corrective.json` (`pass: true`)
+  - `closure-recommendation-corrective.json` (`PASS`)
+- Files touched:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/assets/images/map-layout.png`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Lead closure gate review for TASK-009 corrective packet.
+- Reopened TASK-009 acceptance to BLOCKED due missing canonical map asset creation/distribution.
+- Forward execution freeze applied in dev directives:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-009-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+- TASK-010 intake is frozen behind asset pipeline delivery.
+- Next: Await map asset creation/distribution package and then re-run unblock gate.
+- Map asset blocker cleared: runtime now has delivered map background asset (`images/map-layout.png`).
+- TASK-009 reopened as visual acceptance corrective packet due QA findings:
+  - remove standalone tower overlay (tower to be baked into map art)
+  - enforce vertical-fit map scaling with preserved aspect ratio
+  - keep Return Combat behavior unchanged; keep war-meter as stub
+- Updated directives:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-009-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+- TASK-010 remains frozen behind TASK-009 corrective closeout.
+- TASK-009 corrective scope extended per QA feedback:
+  - lock pan to horizontal axis only
+  - drag must end immediately on pointer/touch end/cancel (no sticky follow)
+  - maintain viewport containment while preserving vertical-fit aspect-ratio scaling
+- Updated dispatch artifacts:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-009-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+- TASK-010 remains frozen behind TASK-009 corrective closeout.
+- TASK-009 corrective visual acceptance packet reviewed and closed with Lead PASS.
+- Closure evidence validated from corrective artifact bundle, including horizontal-only pan, non-sticky drag-end, contained bounds, no tower overlay, and return-to-combat pass checks.
+- Directive sync updated:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-009-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+- Intake promoted to TASK-010; freeze removed now that TASK-009 corrective gate is closed.
+
+## 2026-02-20 (TASK-011 Phase 1 assessment-only)
+- Executed TASK-011 Phase 1 only (no archive/delete actions), scoped strictly to `test-results/`.
+- Published assessment artifacts under `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/`:
+  - `inventory.tsv` (recursive file inventory with mtime/size/path)
+  - `age-size-summary.json` (bucketed age/size totals)
+  - `reference-scan.tsv` (repo path/basename reference counts)
+  - `candidate-matrix.tsv` (keep/archive/delete candidates with rationale)
+  - `candidate-summary.json` (action totals and byte counts)
+- Phase 1 output summary:
+  - keep: 50 files / 2,465,666 bytes
+  - archive candidates: 15 files / 244,273 bytes
+  - delete candidates: 2 files / 6,244 bytes
+- No file move/delete operations were performed; awaiting Lead review for Step 2 approval.
+
+## 2026-02-20 (TASK-011 Step 2/3 approved cleanup executed)
+- Executed approved TASK-011 cleanup set scoped to `test-results/` only:
+  - Archived 15 approved files into `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/archive/...`
+  - Deleted only `/Users/Mace/Wishfire/Codex-Orka/test-results/.DS_Store`
+  - Preserved protected file `/Users/Mace/Wishfire/Codex-Orka/test-results/.last-run.json`
+- Published deterministic Step 2/3 artifacts:
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/approved-archive-list.txt`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/operation-log.tsv`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/rollback-manifest.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/post-cleanup-assertions.json` (`pass: true`)
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/post-inventory.txt`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/closure-recommendation.json` (`PASS`)
+- Before/after state from rollback manifest:
+  - before: 67 files, 2,716,183 bytes
+  - after: 51 files, 2,465,762 bytes
+- Next: Lead closure gate review for TASK-011 cleanup packet.
+- TASK-011 Phase 1 artifact review completed; Step 2 approved with constraints.
+- Safety correction applied: `test-results/.last-run.json` reclassified as protected due governance references and excluded from delete set.
+- Approved Step 2 operations:
+  - archive 15 candidate files from task005/task007 historical subsets
+  - delete only `test-results/.DS_Store`
+  - emit deterministic rollback manifest + before/after summary
+- Updated directives:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-011-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+- TASK-011 Step 2/3 artifacts reviewed; closure gate set to PASS.
+- Verified approved operation set was executed exactly:
+  - 15 approved files archived
+  - only `.DS_Store` deleted
+  - `.last-run.json` protected and retained
+- Updated directives:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-011-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+- ACTIVE now in TASK-011 closure-admin hold pending PM sprint-board closeout; TASK-010 remains blocked.
+- Dispatched sprint bundle intake `TASK-012/013/014` as one ACTIVE cycle.
+- Published/updated directive artifacts:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-012-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-013-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-014-execution-plan.md`
+- Packet contract now enforces exact sequence: manifest publish -> approved deletion only -> deterministic validation+rollback with PASS/FAIL closure recommendation.
+- Constraint preserved: no gameplay/runtime logic edits.
+
+## 2026-02-20 (TASK-012/013/014 bundle executed)
+- Completed one-cycle bundle from ACTIVE.md:
+  - TASK-012: published deterministic manifest with explicit keep/delete rationale and reference safety checks.
+  - TASK-013: deleted only approved files from manifest (18 unused image assets under `web-runner/assets/images/`) and logged each operation.
+  - TASK-014: published post-delete validation + rollback assets and explicit PASS recommendation.
+- Bundle artifacts published under `/Users/Mace/Wishfire/Codex-Orka/test-results/task012-014-cleanup/`:
+  - `manifest.tsv`
+  - `manifest.txt`
+  - `approved-delete-list.txt`
+  - `deletion-operation-log.tsv`
+  - `post-delete-validation.json` (`pass: true`)
+  - `rollback-backup/` (backup copy for each deleted file)
+  - `before-after-summary.json`
+  - `closure-recommendation.json` (`PASS`)
+- Execution constraints respected:
+  - no runtime/gameplay logic edits
+  - deletion scope limited to approved image files
+  - deterministic rollback path preserved via `rollback-backup/` and operation log.
+- Next: Lead closure gate review for TASK-012/013/014 bundle.
+
+## 2026-02-20 (TASK-012/013/014 Lead closure gate)
+- Completed Lead closure review for bundle artifacts and issued PASS at TASK-014 plan level.
+- Verified deterministic evidence:
+  - `post-delete-validation.json` reports `pass: true`
+  - `approved-delete-list.txt` contains 18 approved paths
+  - `deletion-operation-log.tsv` contains header + 18 `ok` delete operations, matching approved set
+  - `rollback-backup/` contains rollback copies for all deleted files
+- Updated directives:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-014-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+- ACTIVE now reflects bundle execution complete at Lead gate and sets Dev to hold pending PM sprint-board completion marking and next intake packet.
+- Next: Await next explicit user request.

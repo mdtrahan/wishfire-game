@@ -34,6 +34,20 @@
 - [x] Await next explicit user request.
 - [x] Await next explicit user request.
 - [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] BLOCKED: Map asset creation/distribution required before TASK-010 or further map-dependent execution.
+- [x] Reopened TASK-009 visual acceptance corrective packet: remove tower overlay + vertical-fit map scaling (aspect-ratio preserved).
+- [x] Await next explicit user request.
+- [x] Extend TASK-009 corrective packet: horizontal-only pan, immediate drag-end (no sticky follow), and strict viewport containment.
+- [x] Await next explicit user request.
+- [x] Execute TASK-011 Phase 1 only: test-results inventory + age/size summary + repo reference scan + candidate matrix artifacts.
+- [x] Await next explicit user request.
+- [x] TASK-011 Step 2 approved: execute constrained archive/delete set with rollback manifest (`.last-run.json` protected).
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Execute TASK-012/013/014 one-cycle bundle from ACTIVE.md (manifest -> approved delete -> validation+rollback -> PASS/FAIL).
+- [x] Await next explicit user request.
 - [ ] Await next explicit user request.
 
 ## Done (recent)

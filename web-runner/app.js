@@ -257,6 +257,21 @@ function getHeroUIDByIndex(idx) {
     current: null,
     telegraphUntil: 0,
   },
+  mapLayout: {
+    panX: 0,
+    panY: 0,
+    panBounds: { minX: 0, maxX: 0 },
+    drag: {
+      active: false,
+      pointerId: null,
+      lastX: 0,
+      lastY: 0,
+      moved: 0,
+    },
+    returnButton: { x: 14, y: 14, w: 112, h: 30 },
+    warMeter: 0.64,
+    lastRender: null,
+  },
   refillBounce: {
     active: false,
     queue: [],
@@ -1240,6 +1255,7 @@ async function main(){
   let gemFrameImages = [];
   let buffIconFrameImages = {};
   let debuffIconImages = {};
+  let mapBackgroundImage = null;
   const calculateGridBounds = (layoutInstances) => {
     const placeholders = (layoutInstances || []).filter(inst => inst && inst.type === 'grid_placeholder' && inst.world);
     if (!placeholders.length) {
@@ -1321,6 +1337,7 @@ async function main(){
     gemFrameImages = [];
     buffIconFrameImages = {};
     debuffIconImages = {};
+    mapBackgroundImage = null;
     let loadedCount = 0;
     const failedImages = [];
     const loadBaseSprites = async () => {
@@ -1363,6 +1380,7 @@ async function main(){
         const img = await loadImage(imgPath);
         if (img) gemFrameImages[i] = img;
       }
+      mapBackgroundImage = await loadImage(assetUrl('images/map-layout.png'));
     };
 
     const loadDeferredVisuals = async () => {
@@ -1427,7 +1445,7 @@ async function main(){
 
     layoutState.registerLayout({
       id: 'combat',
-      allowedTransitions: ['base', 'shop', 'intro', 'astralOverlay'],
+      allowedTransitions: ['base', 'shop', 'intro', 'astralOverlay', 'mapLayout'],
       async onEnter({ resumeSnapshot }) {
         const hasRuntimeData =
           Array.isArray(instances) && instances.length > 0 &&
@@ -1473,6 +1491,23 @@ async function main(){
         validateCombatSnapshot(snapshot, 'onExit', transitionLabel);
         return snapshot;
       },
+    });
+    layoutState.registerLayout({
+      id: 'mapLayout',
+      allowedTransitions: ['combat'],
+      onEnter() {
+        gameState.overlayVisible = false;
+        gameState.mapLayout.panY = 0;
+        const drag = gameState.mapLayout.drag;
+        drag.active = false;
+        drag.pointerId = null;
+        drag.lastX = 0;
+        drag.lastY = 0;
+        drag.moved = 0;
+        console.log('[LAYOUT_PHASE1]', { stage: 'onEnter', transition: '1->map', trigger: 'map-click' });
+      },
+      onActive() {},
+      onExit() { return null; },
     });
     layoutState.registerLayout({
       id: 'base',
@@ -1535,6 +1570,15 @@ async function main(){
   state.globals.GamePhase = 'BOOTSTRAP';
 
   eventBus.on('nav:clicked', async ({ label }) => {
+    if (label === 'Map') {
+      if (layoutState.getActiveLayoutId() !== 'combat') {
+        console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->map', trigger: 'map-click', blocked: 'active-layout-not-combat' });
+        return;
+      }
+      console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->map', trigger: 'map-click' });
+      await layoutState.requestLayoutChange('mapLayout', 'nav-map');
+      return;
+    }
     if (label === 'AstralFlow') {
       if (layoutState.getActiveLayoutId() !== 'combat') {
         console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->2', trigger: 'astral-flow-click', blocked: 'active-layout-not-combat' });
@@ -1850,6 +1894,79 @@ async function main(){
   let lastOverlayState = null;
 
   function drawHarnessLayoutTakeover(layoutId) {
+    if (layoutId === 'mapLayout') {
+      const viewWidth = canvas.width / dpr;
+      const viewHeight = canvas.height / dpr;
+      const panX = Number(gameState.mapLayout.panX || 0);
+      gameState.mapLayout.panY = 0;
+      ctx.clearRect(0, 0, viewWidth, viewHeight);
+      ctx.fillStyle = '#1f2d3d';
+      ctx.fillRect(0, 0, viewWidth, viewHeight);
+
+      const drawParallax = (img, scale, alpha) => {
+        if (!img) return;
+        const w = img.width * scale;
+        const h = img.height * scale;
+        const halfSpillX = Math.max(0, (w - viewWidth) / 2);
+        const minPanX = -halfSpillX;
+        const maxPanX = halfSpillX;
+        gameState.mapLayout.panBounds = { minX: minPanX, maxX: maxPanX };
+        const clampedPanX = Math.max(minPanX, Math.min(maxPanX, panX));
+        gameState.mapLayout.panX = clampedPanX;
+        const x = ((viewWidth - w) / 2) + clampedPanX;
+        const y = 0;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.drawImage(img, x, y, w, h);
+        ctx.restore();
+        gameState.mapLayout.lastRender = {
+          fitMode: 'vertical',
+          viewWidth,
+          viewHeight,
+          drawW: w,
+          drawH: h,
+          drawX: x,
+          drawY: y,
+          panX: clampedPanX,
+          panY: 0,
+          panBounds: { minX: minPanX, maxX: maxPanX },
+          towerOverlayRendered: false,
+        };
+      };
+      const verticalFitScale = mapBackgroundImage ? (viewHeight / mapBackgroundImage.height) : 1;
+      drawParallax(mapBackgroundImage, verticalFitScale, 0.95);
+
+      const meterPad = 14;
+      const meterW = Math.max(180, viewWidth - (meterPad * 2));
+      const meterH = 16;
+      const meterX = meterPad;
+      const meterY = 14;
+      const pct = Math.max(0, Math.min(1, Number(gameState.mapLayout.warMeter || 0)));
+      ctx.fillStyle = '#0f1722';
+      ctx.fillRect(meterX, meterY, meterW, meterH);
+      ctx.fillStyle = '#cf3d2e';
+      ctx.fillRect(meterX + 2, meterY + 2, Math.max(0, (meterW - 4) * pct), meterH - 4);
+      ctx.strokeStyle = '#d6dbe3';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(meterX, meterY, meterW, meterH);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '600 12px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(`War Meter ${Math.round(pct * 100)}%`, meterX + 6, meterY + 12);
+
+      const btn = gameState.mapLayout.returnButton;
+      ctx.fillStyle = '#f4f6f8';
+      ctx.fillRect(btn.x, btn.y + 24, btn.w, btn.h);
+      ctx.strokeStyle = '#1b1f23';
+      ctx.strokeRect(btn.x, btn.y + 24, btn.w, btn.h);
+      ctx.fillStyle = '#111';
+      ctx.font = '600 12px Arial';
+      ctx.fillText('Return Combat', btn.x + 10, btn.y + 43);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '500 14px Arial';
+      ctx.fillText('Map Layout (drag to pan)', 14, viewHeight - 18);
+      return;
+    }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = layoutId === 'storyMock' ? '#1557ff' : '#d52525';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -4280,6 +4397,26 @@ async function main(){
       drawFrame();
       return;
     }
+    if (activeLayoutId === 'mapLayout') {
+      const btn = gameState.mapLayout.returnButton;
+      const buttonTop = btn.y + 24;
+      if (mx >= btn.x && mx <= (btn.x + btn.w) && my >= buttonTop && my <= (buttonTop + btn.h)) {
+        layoutState.requestLayoutChange('combat', 'map-return-button').catch((err) => {
+          console.error('[LAYOUT_PHASE1] map return failed', err);
+        });
+        drawFrame();
+        return;
+      }
+      const drag = gameState.mapLayout.drag;
+      drag.active = true;
+      drag.pointerId = ev.pointerId;
+      drag.lastX = mx;
+      drag.lastY = my;
+      drag.moved = 0;
+      try { canvas.setPointerCapture(ev.pointerId); } catch {}
+      drawFrame();
+      return;
+    }
 
     if (layoutHarnessEnabled && harnessLayoutState && harnessInputDomains) {
       const activeLayout = harnessLayoutState.getActiveLayoutId();
@@ -4575,6 +4712,41 @@ async function main(){
     if(ev.key === ' ') { gameState.playerTurn = !gameState.playerTurn; ev.preventDefault(); }
   });
 
+  canvas.addEventListener('pointermove', (ev) => {
+    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
+      ? layoutState.getActiveLayoutId()
+      : null;
+    if (activeLayoutId !== 'mapLayout') return;
+    const drag = gameState.mapLayout.drag;
+    if (!drag.active || drag.pointerId !== ev.pointerId) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = ev.clientX - rect.left;
+    const my = ev.clientY - rect.top;
+    const dx = mx - drag.lastX;
+    drag.lastX = mx;
+    drag.lastY = my;
+    drag.moved += Math.abs(dx);
+    const bounds = gameState.mapLayout.panBounds || { minX: 0, maxX: 0 };
+    const nextPanX = gameState.mapLayout.panX + dx;
+    gameState.mapLayout.panX = Math.max(bounds.minX, Math.min(bounds.maxX, nextPanX));
+    gameState.mapLayout.panY = 0;
+    drawFrame();
+  });
+
+  const finishMapDrag = (ev) => {
+    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
+      ? layoutState.getActiveLayoutId()
+      : null;
+    if (activeLayoutId !== 'mapLayout') return;
+    const drag = gameState.mapLayout.drag;
+    if (!drag.active || drag.pointerId !== ev.pointerId) return;
+    drag.active = false;
+    drag.pointerId = null;
+    try { canvas.releasePointerCapture(ev.pointerId); } catch {}
+  };
+  canvas.addEventListener('pointerup', finishMapDrag);
+  canvas.addEventListener('pointercancel', finishMapDrag);
+
   // per-frame tick loop with animation cycling
   let frameCount = 0;
   function tick(){
@@ -4795,12 +4967,20 @@ async function main(){
           maxEnergy: state.globals.Player_maxEnergy || 0,
           gold: state.globals.goldTotal || 0,
         },
+        mapLayout: {
+          panX: Number(gameState.mapLayout.panX || 0),
+          panY: Number(gameState.mapLayout.panY || 0),
+          warMeter: Number(gameState.mapLayout.warMeter || 0),
+          render: gameState.mapLayout.lastRender || null,
+        },
         flags: {
           canPickGems: state.globals.CanPickGems,
           isPlayerBusy: state.globals.IsPlayerBusy,
           pendingSkillId: state.globals.PendingSkillID || null,
           overlayVisible: gameState.overlayVisible,
-          layoutId: layoutHarnessEnabled && harnessLayoutState ? harnessLayoutState.getActiveLayoutId() : 'combat',
+          layoutId: layoutState && typeof layoutState.getActiveLayoutId === 'function'
+            ? layoutState.getActiveLayoutId()
+            : (layoutHarnessEnabled && harnessLayoutState ? harnessLayoutState.getActiveLayoutId() : 'combat'),
           combatAcceptEvents: layoutHarnessEnabled && harnessCombatGateway
             ? harnessCombatGateway.canAcceptEvents()
             : true,
