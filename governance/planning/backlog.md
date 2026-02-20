@@ -1,30 +1,24 @@
 ## Sprint Next Up
+- TASK-009 Map button route to overworld layout.
+
+## Spike Priority Queue
+- TASK-011 Agile Spike: Non-destructive gem refill slot assignment safety.
+  - Status: CLOSED (PM override PASS from QA signal; no new BLOCKER/CRITICAL evidence).
+
+## Blocked Feature Backlog
 - TASK-006 Deterministic transition scenario suite (`0 -> 1 -> 2 -> 1`) with suspend/resume assertions.
+  - Status: BLOCKED (de-scoped from active sprint).
+  - Blocker:
+    - Current route depth is insufficient for passable transition-depth suspend/resume validation.
+    - Available routes are effectively one-outcome transitions (`0 -> 1`, `2 -> 1`) with tick-critical runtime concentrated in Layout 1.
+  - Re-entry Condition:
+    - Add additional layout routes/depth enabling meaningful multi-branch transition/timer-resume verification.
 
 ## Design Input Policy
 - The user/CEO will provide visual mockups when a sprint task requires UI/UX design guidance.
 - On task activation, Lead must ingest provided mockups before finalizing execution packet details for layout/UI behavior.
 
 ## Feature Backlog (Rewritten)
-- TASK-007 End-of-turn gem refill reliability
-  - Objective: Gem autofill must execute at end-of-turn immediately, never delayed to a later turn.
-  - Rules:
-    - Exactly one action cycle triggers one refill cycle.
-    - Refill skips only when there are zero valid empty slots.
-  - Acceptance:
-    - No turn can end with pending refill work that rolls into the next turn.
-    - Refill behavior is deterministic across repeated runs.
-
-- TASK-008 Job-skill framework + enemy board-manipulation skills
-  - Objective: Add a reusable job-skill system that supports enemy skills interacting with gems, buffs, and combat outcomes.
-  - Initial skill set:
-    - `Drain Buff`: consume all blue gems; gain `DEF` equal to consumed count; if zero consumed then zero gained; refill at end of that enemy turn.
-    - `X Out`: destroy gems in both corner-to-corner diagonals (X pattern); refill afterwards.
-    - `Wipe`: consume all gems; heal self and allies; refill afterwards.
-  - Acceptance:
-    - Skill effects resolve in deterministic order.
-    - Gem destruction and refill timing follow end-of-turn refill rules.
-
 - TASK-009 Map button route to overworld layout
   - Objective: `Map` text button opens a dedicated map layout (not modal behavior).
   - Scope:

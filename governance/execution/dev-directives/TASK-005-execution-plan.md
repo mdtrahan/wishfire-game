@@ -21,8 +21,9 @@ Observed validation failure to clear in this plan:
   - no TASK-005 failure triage on Layout 0/2
 
 ## Phase 1
-- Identify the specific Layout 1 render/object path that draws the trailing empty backer.
-- Remove that path while preserving the four legal slot backers.
+- Inventory all Layout 1 buff-row visuals (instances + draw paths), including object ids/types and x-ordering.
+- Identify the right-most persistent empty grey backer source causing the extra placeholder.
+- Remove that source permanently from layout/runtime data (no runtime-only hide toggles).
 
 ## Phase 2
 - Verify four legal buff slots still render correctly with their backers and icons.
@@ -33,13 +34,14 @@ Observed validation failure to clear in this plan:
   - Layout 1 renders exactly 4 buff backers and 4 legal buff icons.
   - No trailing empty 5th backer placeholder is visible.
 - Required artifacts:
+  - Object inventory trace listing buff-row backer/icon sources and confirming removal of the right-most empty backer source.
   - `/Users/Mace/Wishfire/Codex-Orka/test-results/task005-closeout/layout1-final.png` showing final buff row state (four legal slots only, no empty fifth backer).
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task005-closeout/runtime-trace.json` confirming buff-backer render count is 4.
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task005-closeout/runtime-trace.json` confirming buff-backer render count is 4 and no right-most empty backer source.
 - Capture validation artifacts for closure review.
 
 ## Execution Packet (Current Dispatch)
 - Packet Step 1:
-  - Remove the orphan 5th backer render/object path on Layout 1.
+  - Identify and remove the right-most persistent empty backer source on Layout 1.
 - Packet Step 2:
   - Preserve the four legal buff slots/backers and ensure no trailing empty placeholder backer is rendered.
 - Packet Step 3:
@@ -57,3 +59,10 @@ Observed validation failure to clear in this plan:
   - Mark TASK-005 complete in execution artifacts.
   - Advance ACTIVE intake to TASK-006 staging packet.
   - PM owns sprint-board completion marking.
+
+## Lead Verdict
+- Verdict: PASS
+- Date: 2026-02-20
+- Basis:
+  - QA confirmed pass and identified prior symptom as image caching artifact, not active runtime defect.
+  - Layout 1 final state accepted: four legal buff backers/icons and no trailing empty fifth backer.

@@ -2,9 +2,38 @@
 
 ## Queue (top is next)
 - [x] Enforce hard browser-backend integrity clause (policy file + lead constraints + mandatory regression scan).
+- [x] Sync and dispatch verification: TASK-005 closeout packet + artifact paths + verdict gate remain active with no drift.
+- [x] Re-dispatch TASK-005 to remove right-most persistent empty grey buff backer source permanently (Layout 1 only).
+- [x] Await next explicit user request.
+- [x] Execute TASK-005 closeout packet with agent-browser artifacts: remove orphan 5th backer source and validate 4 backers + 4 legal buff icons.
+- [x] Close TASK-005 with Lead PASS and advance ACTIVE intake to TASK-006 staging packet.
+- [x] Sync and dispatch verification: TASK-006 staging intake remains active with no directive drift.
+- [x] Await next explicit user request.
+- [x] Execute TASK-006 staging packet authoring: publish deterministic transition matrix, suspend/resume assertion contract, and concrete artifact path contract.
+- [x] Reconcile ACTIVE intake with sprint-board: TASK-006 flagged blocked/backlogged; dispatch set to hold until reactivation.
+- [x] Await next explicit user request.
+- [x] Sync and continue pass: confirmed ACTIVE hold state for TASK-006 and paused execution pending PM/Lead reactivation.
+- [x] Reconcile sprint drift and dispatch TASK-007 active intake for refill timing leak with required refill/turn-advance test artifacts.
+- [x] Await next explicit user request.
+- [x] Execute TASK-007 packet step 1-3: add DeferAdvance refill-before-advance guard and produce required task007 artifacts.
+- [x] Reconcile sprint override drift and dispatch TASK-011 as active refill-slot-safety spike with required rapid frame capture artifacts.
+- [x] Await next explicit user request.
+- [x] Run TASK-011 closure gate review and issue PARTIAL PASS with corrective packet while keeping TASK-011 active.
+- [x] Sync verification: TASK-011 PARTIAL PASS corrective packet remains active with no directive drift.
 - [ ] Await next explicit user request.
 
 ## Done (recent)
+- [x] Apply PM override closure and advance sprint: mark TASK-007 and TASK-011 complete from QA pass signal and move active lane to TASK-008.
+- [x] Stop TASK-011 overwork loop: restore TASK-007 as active feature allocation and constrain TASK-011 to closure-only governance step.
+- [x] Add anti-loop governance rule: QA PASS must convert to Lead closure verdict next sync unless new BLOCKER/CRITICAL evidence exists.
+- [x] Add TASK-011 validation requirement for rapid startup/Layout1/refill screenshots to capture improper post-fill swap event.
+- [x] Ingest spike evidence: startup/refill immediate gem-state swap and tighten TASK-011 acceptance gates.
+- [x] Apply agile spike override: activate TASK-011 refill slot-safety spike and pause TASK-007 behind it.
+- [x] Activate TASK-007 in sprint-board feature allocation and advance backlog ordering (TASK-008 next up).
+- [x] Move TASK-006 out of sprint allocation and into backlog as blocked by current layout-route depth constraints.
+- [x] Reconcile stale planning state: mark TASK-005 complete, promote TASK-006 on sprint board, and publish roadmap phases.
+- [x] Harden Playwright hard-deny rules so Dev cannot request/use it without explicit PM exception in repo artifacts.
+- [x] Ingest repository containment enforcement and harden AGENTS/policy gates for all agents.
 - [x] Replace Playwright references with agent-browser CLI in active automation/test/governance files.
 - [x] Rewrite and add new product requests into Agile backlog as actionable TASK items.
 - [x] Resolve cron sweep drift: fix post-role-switch authority label and add invariants artifact pre-check guidance.

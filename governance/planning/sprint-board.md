@@ -1,23 +1,21 @@
 # Sprint X
 
 ## Primary Sprint Goal
-- Layout 0 startup is the sprint anchor.
-- Explicit required flow: `0 -> 1 -> 2 -> 1`.
+- Layout startup/transition anchor achieved.
+- Required flow `0 -> 1 -> 2 -> 1` validated.
+- Stabilize functional runtime by preventing overwork loops after QA-validated spike behavior.
 
 ## Feature Allocation (70%)
-- TASK-005 Remove speed buff from Blue Gem buff system.
-  - Scope:
-    - Remove Blue-gem speed buff outcome from buff roulette logic.
-    - Remove speed buff icon usage.
-    - Collapse buff slots from 5 to 4 (`ATK`, `DEF`, `MAG`, `RES` only).
-  - Constraints:
-    - No other gameplay logic changes.
-    - No unrelated visual redesign.
-    - No transition-flow edits.
+- TASK-008 Job-skill framework + enemy board-manipulation skills.
+  - Objective:
+    - Add a reusable job-skill system for enemy skills that interact with gems, buffs, and combat outcomes.
+  - Initial skill set:
+    - `Drain Buff`: consume all blue gems; gain `DEF` equal to consumed count; zero consumed = zero gained.
+    - `X Out`: destroy gems in both corner-to-corner diagonals (X pattern).
+    - `Wipe`: consume all gems; heal self and allies.
   - Acceptance:
-    - Blue gem no longer produces SPD buff.
-    - No SPD buff icon appears.
-    - Buff display/slot system shows exactly 4 party buff slots (`ATK/DEF/MAG/RES`).
+    - Skill effects resolve in deterministic order.
+    - Gem destruction and refill timing follow end-of-turn refill rules.
 
 ## PM Throughput Directive (Urgency)
 - Lead must dispatch work in bundled packets, not micro-steps.
@@ -37,11 +35,19 @@
 - TASK-004 COMPLETE (Lead PASS recorded 2026-02-19)
   - Validation artifact: `test-results/task004-phase3/validation.json`.
   - Closure basis: checkpoint instrumentation + deterministic pass path + expected violation classification.
+- TASK-005 COMPLETE (Lead PASS recorded 2026-02-20)
+  - Closure artifact set: `test-results/task005-closeout/`.
+  - Closure basis: speed buff removed from blue-gem path and buff UI constrained to 4-slot model (`ATK/DEF/MAG/RES`).
+- TASK-007 COMPLETE (PM override PASS recorded 2026-02-20 from QA pass signal)
+  - Closure basis: refill timing behavior accepted as cleared in QA and moved out of active sprint lane.
+- TASK-011 COMPLETE (PM override PASS recorded 2026-02-20 from QA pass signal)
+  - Closure basis: spike behavior accepted in QA; no new BLOCKER/CRITICAL evidence logged.
 
 ## QA Governance Note
 - Runtime feature drift: CLEARED for primary flow `0 -> 1 -> 2 -> 1`.
-- Governance/documentation drift: CLEARED for TASK-003 and TASK-004 closure artifacts.
-- Lead sync required: ACTIVE Dev Next Action must be advanced from TASK-004 closeout to TASK-005 intake.
+- Governance/documentation drift: TASK-005 board-state sync now reconciled.
+- TASK-006 moved out of sprint allocation: current route graph (`0 -> 1`, `2 -> 1`) does not provide sufficient branch depth to pass its transition-depth suspend/resume acceptance criteria.
+- TASK-007 and TASK-011 marked complete via PM override to stop post-QA churn.
 
 ## PM Correction Directive
 - PM role correction applied: PM will not perform code edits; execution continues through Lead -> Dev chain only.

@@ -273,6 +273,80 @@ const CANONICAL_HERO_ROSTER = [
   { name: 'Kojonn', hp: 40, maxHP: 40, ATK: 12, DEF: 14, MAG: 22, RES: 18, SPD: 14, attackType: 'magic' },
 ];
 
+function ensureTask011Audit() {
+  if (!gameState.task011Audit) {
+    gameState.task011Audit = {
+      cycleCounter: 0,
+      currentActionCycleId: 0,
+      currentActionActorUID: 0,
+      lastTurnType: null,
+      actionCycles: [],
+      refillWrites: [],
+      enemyBoundaries: [],
+    };
+  }
+  return gameState.task011Audit;
+}
+
+function beginTask011ActionCycle(color, actorUID) {
+  const audit = ensureTask011Audit();
+  audit.cycleCounter += 1;
+  audit.currentActionCycleId = audit.cycleCounter;
+  audit.currentActionActorUID = Number(actorUID || 0);
+  audit.actionCycles.push({
+    cycleId: audit.currentActionCycleId,
+    color: Number(color),
+    actorUID: audit.currentActionActorUID,
+    startTime: Number(state.globals.time || 0),
+    startTurnPhase: Number(state.globals.TurnPhase || 0),
+  });
+  return audit.currentActionCycleId;
+}
+
+function recordTask011RefillWriteEvent({
+  source,
+  step,
+  cellR,
+  cellC,
+  reason,
+  writeType,
+  previousUid,
+  newUid,
+}) {
+  const audit = ensureTask011Audit();
+  audit.refillWrites.push({
+    cycleId: Number(audit.currentActionCycleId || 0),
+    source: String(source || ''),
+    step: Number(step || 0),
+    cellR: Number(cellR),
+    cellC: Number(cellC),
+    slotId: `${Number(cellR)},${Number(cellC)}`,
+    reason: String(reason || ''),
+    writeType: String(writeType || 'set'),
+    previousUid: Number(previousUid || 0),
+    newUid: Number(newUid || 0),
+    time: Number(state.globals.time || 0),
+    turnType: Number(callFunctionWithContext(fnContext, 'GetCurrentType') || 0),
+    turnPhase: Number(state.globals.TurnPhase || 0),
+    boardFillActive: Number(state.globals.BoardFillActive || 0),
+  });
+}
+
+function trackTask011EnemyBoundary(turnType) {
+  const audit = ensureTask011Audit();
+  const currentTurnType = Number(turnType || 0);
+  if (audit.lastTurnType === 0 && currentTurnType === 1) {
+    audit.enemyBoundaries.push({
+      cycleId: Number(audit.currentActionCycleId || 0),
+      time: Number(state.globals.time || 0),
+      turnPhase: Number(state.globals.TurnPhase || 0),
+      boardFillActive: Number(state.globals.BoardFillActive || 0),
+      refillActive: !!(gameState.refillBounce && gameState.refillBounce.active),
+    });
+  }
+  audit.lastTurnType = currentTurnType;
+}
+
 function setGemArray(arr) {
   state.globals.Gems = arr;
   gameState.gems = arr;
@@ -988,6 +1062,7 @@ function handleGemMatch(color) {
   state.globals.IsPlayerBusy = 1;
 
   const actorUID = callFunctionWithContext(fnContext, 'GetCurrentTurn') || getHeroUIDByIndex(gameState.selectedHero) || gameState.selectedHero;
+  beginTask011ActionCycle(color, actorUID);
 
   const clearLocalSelection = () => {
     fnContext.setSelectedGemIndices([]);
@@ -2041,57 +2116,99 @@ async function main(){
               const step = casino.index;
               const cellR = item.cellR;
               const cellC = item.cellC;
-              const newGem = {
-                uid: gameState.nextGemUID++,
-                cellC: item.cellC,
-                cellR: item.cellR,
-                color: item.target,
-                elementIndex: item.target,
-                x: pos.x,
-                y: pos.y,
-                worldX: pos.x,
-                worldY: pos.y,
-                width: pos.w,
-                height: pos.h,
-                selected: false,
-                Selected: 0,
-                flashUntil: 0
-              };
-              if (isGemDebugEnabled()) {
-                gemDebugLog('[REFILL_BEFORE]', {
+              const previousUid = gameState.grid[cellC] ? Number(gameState.grid[cellC][cellR] || 0) : 0;
+              const occupiedGem = (gameState.gems || []).find(g => g && g.cellR === cellR && g.cellC === cellC);
+              const slotFilled = !gameState.grid[cellC] || gameState.grid[cellC][cellR] !== 0;
+              if (slotFilled || occupiedGem) {
+                recordTask011RefillWriteEvent({
+                  source: 'yellow-sequence',
                   step,
                   cellR,
                   cellC,
-                  gemCount: gameState.gems.length
+                  reason: slotFilled ? 'not-empty' : 'occupied-slot',
+                  writeType: 'skip',
+                  previousUid,
+                  newUid: previousUid,
                 });
-              }
-              gameState.gems = gameState.gems.filter(g => !(g.cellR === cellR && g.cellC === cellC));
-              gameState.gems.push(newGem);
-              if (isGemDebugEnabled()) {
-                gemDebugLog('[REFILL_AFTER]', {
+                gemDebugLog('[FILL_SKIP]', {
+                  stage: 'yellow-sequence',
                   step,
                   cellR,
                   cellC,
-                  gemCount: gameState.gems.length
+                  reason: slotFilled ? (!gameState.grid[cellC] ? 'missing-column' : 'not-empty') : 'occupied-slot',
+                  tag: item.reason || 'empty',
                 });
+                if (occupiedGem && gameState.grid[cellC]) {
+                  gameState.grid[cellC][cellR] = occupiedGem.uid;
+                }
+                if (isGemDebugEnabled()) {
+                  gemDebugLog('[COVERAGE]', countCellCoverage());
+                }
+                casino.ghost = null;
+                casino.index += 1;
+                casino.current = null;
+              } else {
+                const newGem = {
+                  uid: gameState.nextGemUID++,
+                  cellC: item.cellC,
+                  cellR: item.cellR,
+                  color: item.target,
+                  elementIndex: item.target,
+                  x: pos.x,
+                  y: pos.y,
+                  worldX: pos.x,
+                  worldY: pos.y,
+                  width: pos.w,
+                  height: pos.h,
+                  selected: false,
+                  Selected: 0,
+                  flashUntil: 0
+                };
+                if (isGemDebugEnabled()) {
+                  gemDebugLog('[REFILL_BEFORE]', {
+                    step,
+                    cellR,
+                    cellC,
+                    gemCount: gameState.gems.length
+                  });
+                }
+                gameState.gems.push(newGem);
+                if (isGemDebugEnabled()) {
+                  gemDebugLog('[REFILL_AFTER]', {
+                    step,
+                    cellR,
+                    cellC,
+                    gemCount: gameState.gems.length
+                  });
+                }
+                if (gameState.grid[item.cellC]) gameState.grid[item.cellC][item.cellR] = newGem.uid;
+                recordTask011RefillWriteEvent({
+                  source: 'yellow-sequence',
+                  step,
+                  cellR,
+                  cellC,
+                  reason: item.reason || 'empty',
+                  writeType: 'set',
+                  previousUid,
+                  newUid: newGem.uid,
+                });
+                setGemArray(gameState.gems);
+                if (isGemDebugEnabled()) {
+                  gemDebugLog('[COVERAGE]', countCellCoverage());
+                }
+                gemDebugLog('[FILL]', {
+                  stage: 'yellow-sequence',
+                  step: casino.index,
+                  cellR: item.cellR,
+                  cellC: item.cellC,
+                  reason: item.reason || 'empty',
+                  assignedColor: item.target,
+                  assignedUid: newGem.uid,
+                });
+                casino.ghost = null;
+                casino.index += 1;
+                casino.current = null;
               }
-              if (gameState.grid[item.cellC]) gameState.grid[item.cellC][item.cellR] = newGem.uid;
-              setGemArray(gameState.gems);
-              if (isGemDebugEnabled()) {
-                gemDebugLog('[COVERAGE]', countCellCoverage());
-              }
-              gemDebugLog('[FILL]', {
-                stage: 'yellow-sequence',
-                step: casino.index,
-                cellR: item.cellR,
-                cellC: item.cellC,
-                reason: item.reason || 'empty',
-                assignedColor: item.target,
-                assignedUid: newGem.uid,
-              });
-              casino.ghost = null;
-              casino.index += 1;
-              casino.current = null;
             }
           }
           if (!casino.current && casino.index >= casino.queue.length) {
@@ -2174,6 +2291,34 @@ async function main(){
           const step = refill.index;
           const cellR = slot.cellR;
           const cellC = slot.cellC;
+          const previousUid = gameState.grid[cellC] ? Number(gameState.grid[cellC][cellR] || 0) : 0;
+          const occupiedGem = (gameState.gems || []).find(g => g && g.cellR === cellR && g.cellC === cellC);
+          if (occupiedGem) {
+            recordTask011RefillWriteEvent({
+              source: 'refill-bounce',
+              step,
+              cellR,
+              cellC,
+              reason: 'occupied-slot',
+              writeType: 'skip',
+              previousUid,
+              newUid: previousUid,
+            });
+            gemDebugLog('[FILL_SKIP]', {
+              stage: 'refill-bounce',
+              step,
+              cellR,
+              cellC,
+              reason: 'occupied-slot',
+              tag: slot.reason || 'empty',
+            });
+            if (gameState.grid[cellC]) gameState.grid[cellC][cellR] = occupiedGem.uid;
+            if (isGemDebugEnabled()) {
+              gemDebugLog('[COVERAGE]', countCellCoverage());
+            }
+            refill.index += 1;
+            continue;
+          }
           const pos = getCellWorldPos(slot.cellC, slot.cellR);
           const color = randomGemFrame();
           const newGem = {
@@ -2202,7 +2347,6 @@ async function main(){
               gemCount: gameState.gems.length
             });
           }
-          gameState.gems = gameState.gems.filter(g => !(g.cellR === cellR && g.cellC === cellC));
           gameState.gems.push(newGem);
           if (isGemDebugEnabled()) {
             gemDebugLog('[REFILL_AFTER]', {
@@ -2213,6 +2357,16 @@ async function main(){
             });
           }
           gameState.grid[slot.cellC][slot.cellR] = newGem.uid;
+          recordTask011RefillWriteEvent({
+            source: 'refill-bounce',
+            step,
+            cellR,
+            cellC,
+            reason: slot.reason || 'empty',
+            writeType: 'set',
+            previousUid,
+            newUid: newGem.uid,
+          });
           setGemArray(gameState.gems);
           if (isGemDebugEnabled()) {
             gemDebugLog('[COVERAGE]', countCellCoverage());
@@ -2586,7 +2740,16 @@ async function main(){
       if (closeBtn) closeX.world.y = closeBtn.world.y;
     }
 
+    const boardBackers = rendered
+      .filter(r => r.inst && r.inst.type === 'Sprite5' && r.layerName === 'BoardBG')
+      .sort((a, b) => (a.world?.x || 0) - (b.world?.x || 0));
+    const allowedBoardBackerUIDs = new Set(boardBackers.slice(0, 4).map(r => r.uid));
+
     const filteredRendered = rendered.filter(r => {
+      // Hard clamp buff backer placeholders to 4 slots.
+      if (r.inst && r.inst.type === 'Sprite5' && r.layerName === 'BoardBG' && !allowedBoardBackerUIDs.has(r.uid)) {
+        return false;
+      }
       // Hide overlay elements when overlay is not visible
       if(!gameState.overlayVisible && overlayElements.has(r.inst.type)){
         return false;
@@ -4572,6 +4735,13 @@ async function main(){
       state.globals.DeferAdvance &&
       (state.globals.time || 0) >= (state.globals.ActionLockUntil || 0)
     ) {
+      const refillActive = !!(gameState.refillBounce && gameState.refillBounce.active);
+      const refillPending = hasEmpty && !refillActive;
+      if (refillPending) {
+        // Refill must complete before advancing to the next actor.
+        startRefillBounce();
+        state.globals.ActionLockUntil = Math.max(state.globals.ActionLockUntil || 0, (state.globals.time || 0) + 0.05);
+      } else {
       if (state.globals.TextAnimating) {
         state.globals.ActionLockUntil = (state.globals.time || 0) + 0.1;
       } else {
@@ -4603,10 +4773,12 @@ async function main(){
           console.log(`[TURN] DeferAdvance blocked pendingSelect=${!!pendingSelect} IsPlayerBusy=${state.globals.IsPlayerBusy} TurnPhase=${state.globals.TurnPhase} owner=${ownerUID} cur=${currentUID} canPick=${state.globals.CanPickGems} actionInProgress=${state.globals.ActionInProgress}`);
         }
       }
+      }
     } else {
       state.globals._DeferBlockLogged = 0;
     }
     const currentTurnType = callFunctionWithContext(fnContext, 'GetCurrentType');
+    trackTask011EnemyBoundary(currentTurnType);
     const noRefillActive = !(gameState.refillBounce && gameState.refillBounce.active);
     if (
       state.globals.GamePhase === 'RUNTIME' &&
@@ -4747,6 +4919,13 @@ async function main(){
       },
       forceMatch(color) {
         handleGemMatch(color);
+      },
+      getTask011Audit() {
+        return JSON.parse(JSON.stringify(ensureTask011Audit()));
+      },
+      resetTask011Audit() {
+        gameState.task011Audit = null;
+        return true;
       },
     };
     window.__auditBoard = () => assertBoardIntegrity('manual');

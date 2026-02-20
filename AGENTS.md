@@ -398,6 +398,11 @@ Dev may run agent-browser CLI or runtime probes ONLY when:
 - Explicitly instructed in ACTIVE.md.
 - `agent-browser --help` succeeds in current environment before first use in a run.
 
+Playwright / Legacy Driver Prohibition:
+- Dev must not request, generate, suggest, or execute Playwright workflows.
+- Any request to use Playwright is invalid unless PM publishes explicit exception authorization in repository artifacts first.
+- Without explicit PM exception, Dev must stop and request updated Lead directive.
+
 Dev must NOT:
 
 - Perform exploratory validation.
@@ -467,6 +472,13 @@ adversarial-ledger.md is the single Lead review logging artifact.
 
 No agent may bypass this contract.
 
+Status/Sync Output Contract (all agents):
+- Every status or sync response must end with:
+  - `Next Actor: <role>`
+  - `Action Required: <single concrete action>`
+- If waiting on another role, include `Ready Prompt:` with copy/paste text.
+- Sync-only responses without next-actor routing are non-compliant.
+
 ------------------------------------------------------------------------
 
 ### 10.8 Drift Prevention Rule
@@ -494,6 +506,52 @@ This rule overrides allocation ratios.
 
 ------------------------------------------------------------------------
 
+### 10.10 Repository Containment Enforcement (Global)
+
+Applies to PM, Lead, Dev, and Stability for any shell or browser task.
+
+Execution Boundary:
+- First command in a run must be `pwd`.
+- Execution is valid only if `pwd` resolves inside repository root.
+- If outside repository root: stop immediately.
+
+Pre/Post Integrity Check:
+- Before shell or browser execution, run `git status`.
+- After execution, run `git status`.
+- If any file change is detected:
+  - Abort task.
+  - Reject task output.
+  - Log violation in `ai-memory/insights.md`.
+  - Do not continue.
+
+Escalation Default:
+- Escalation is denied by default.
+- If sandbox blocks execution, task fails unless PM explicitly authorizes escalation in repository artifacts first.
+- No auto-escalation.
+
+Backend Isolation:
+- Allowed backend: `agent-browser` CLI only.
+- Forbidden:
+  - Playwright invocation or dependency usage
+  - Playwright MCP/server recommendations
+  - Runtime global installs
+  - Writes outside repository
+  - System file edits
+  - Background daemon persistence beyond session
+
+Handoff Requirement:
+- PM must state exactly: `Containment guard active.`
+- Lead must confirm containment before delegating to Dev.
+- Dev must confirm containment before executing.
+- Missing confirmation invalidates execution authority.
+
+Playwright Exception Gate:
+- Default state is hard-deny.
+- Exception allowed only if PM records explicit approval in repository artifacts for a named task and duration.
+- Missing explicit PM exception means Playwright remains forbidden.
+
+------------------------------------------------------------------------
+
 ### MVP Validation Authority
 
 During MVP phase:
@@ -508,3 +566,9 @@ OR
 - Manual deterministic run verified by Tester
 
 npm test is advisory only until ESM/CommonJS alignment is complete.
+
+MVP Closure Anti-Loop Rule:
+- If QA/Tester reports PASS for the active TASK, Lead must issue closure verdict in next sync cycle.
+- After QA PASS, Lead may keep task open only with new reproducible BLOCKER/CRITICAL evidence tied to acceptance criteria.
+- `PARTIAL PASS` may not be used to hold a QA-passed task for additional non-critical instrumentation preference.
+- If no new BLOCKER/CRITICAL evidence is logged, Lead must mark PASS and advance intake.
