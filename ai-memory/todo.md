@@ -1,24 +1,81 @@
 # TODO
 
 ## Queue (top is next)
-- [x] Inventory repo structure and key gameplay loop files.
-- [x] Add a deterministic debug snapshot output for testing.
-- [x] Implement <next feature you want>. (placeholder closed; requires explicit user feature request)
-- [x] Execute Phase 1 for TASK-004: turn-state contract + deterministic invariant predicates.
+- [x] Enforce hard browser-backend integrity clause (policy file + lead constraints + mandatory regression scan).
+- [x] Sync and dispatch verification: TASK-005 closeout packet + artifact paths + verdict gate remain active with no drift.
+- [x] Re-dispatch TASK-005 to remove right-most persistent empty grey buff backer source permanently (Layout 1 only).
+- [x] Await next explicit user request.
+- [x] Execute TASK-005 closeout packet with agent-browser artifacts: remove orphan 5th backer source and validate 4 backers + 4 legal buff icons.
+- [x] Close TASK-005 with Lead PASS and advance ACTIVE intake to TASK-006 staging packet.
+- [x] Sync and dispatch verification: TASK-006 staging intake remains active with no directive drift.
+- [x] Await next explicit user request.
+- [x] Execute TASK-006 staging packet authoring: publish deterministic transition matrix, suspend/resume assertion contract, and concrete artifact path contract.
+- [x] Reconcile ACTIVE intake with sprint-board: TASK-006 flagged blocked/backlogged; dispatch set to hold until reactivation.
+- [x] Await next explicit user request.
+- [x] Sync and continue pass: confirmed ACTIVE hold state for TASK-006 and paused execution pending PM/Lead reactivation.
+- [x] Reconcile sprint drift and dispatch TASK-007 active intake for refill timing leak with required refill/turn-advance test artifacts.
+- [x] Await next explicit user request.
+- [x] Execute TASK-007 packet step 1-3: add DeferAdvance refill-before-advance guard and produce required task007 artifacts.
+- [x] Reconcile sprint override drift and dispatch TASK-011 as active refill-slot-safety spike with required rapid frame capture artifacts.
+- [x] Await next explicit user request.
+- [x] Run TASK-011 closure gate review and issue PARTIAL PASS with corrective packet while keeping TASK-011 active.
+- [x] Sync verification: TASK-011 PARTIAL PASS corrective packet remains active with no directive drift.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Tech debt: prune unused visual assets listed in `/Users/Mace/Wishfire/Codex-Orka/docs/asset-usage-audit.md` after one safety smoke pass.
+- [x] Reopen TASK-008 closure gate: dispatch corrective packet for initial refill frame/state swap contamination (yellow-path isolation).
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+
+## Queue (new)
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] BLOCKED: Map asset creation/distribution required before TASK-010 or further map-dependent execution.
+- [x] Reopened TASK-009 visual acceptance corrective packet: remove tower overlay + vertical-fit map scaling (aspect-ratio preserved).
+- [x] Await next explicit user request.
+- [x] Extend TASK-009 corrective packet: horizontal-only pan, immediate drag-end (no sticky follow), and strict viewport containment.
+- [x] Await next explicit user request.
+- [x] Execute TASK-011 Phase 1 only: test-results inventory + age/size summary + repo reference scan + candidate matrix artifacts.
+- [x] Await next explicit user request.
+- [x] TASK-011 Step 2 approved: execute constrained archive/delete set with rollback manifest (`.last-run.json` protected).
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Execute TASK-012/013/014 one-cycle bundle from ACTIVE.md (manifest -> approved delete -> validation+rollback -> PASS/FAIL).
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
 - [ ] Await next explicit user request.
 
-## Done
-- [x] Inventory repo structure and key gameplay loop files.
-- [x] Add a deterministic debug snapshot output for testing.
-- [x] Implement <next feature you want>. (placeholder closed; requires explicit user feature request)
-- [x] Create governance directory scaffold and markdown files requested by user.
-- [x] Add governance/product folder with retention, monetization, and liveops docs.
-- [x] Create governance audit report placeholder: 2026-Layout-Harness-Conformance-Report.md.
-- [x] Execute sprint triage for ADV-2026 findings and allocate remediation within 30% cap.
-- [x] Re-run sprint triage execution for ADV-2026 findings and confirm cap/backlog/remediation alignment.
-- [x] Add milestone extension and DoD additions to milestone-definition.md.
-- [x] Evaluate milestone progress coverage and propose next feature tasks.
-- [x] Apply sprint containment: select one feature task, preserve 70/30 split, defer remaining feature tasks to backlog.
-- [x] Refine TASK-004 scope to deterministic turn-state/snapshot validation only and exclude transition policy/refactor scope.
-- [x] Define deterministic turn-state invariants for TASK-004 preconditions.
-- [x] Execute Phase 1 for TASK-004: turn-state contract + deterministic invariant predicates.
+## Done (recent)
+- [x] Require Lead post-execution closure checks on bundled asset-prune packet before bundle close.
+- [x] Scope asset-prune debt into three bounded backlog tasks (manifest/plan, controlled deletion, validation+rollback) with no gameplay/UI logic change scope.
+- [x] Condense AGENTS.md from verbose prose to compact directive format without dropping hard governance constraints.
+- [x] Encode buff-only combat-skill policy for Lead/Dev in AGENTS.md and TASK-008 governance artifacts.
+- [x] Apply PM override closure and advance sprint: mark TASK-007 and TASK-011 complete from QA pass signal and move active lane to TASK-008.
+- [x] Stop TASK-011 overwork loop: restore TASK-007 as active feature allocation and constrain TASK-011 to closure-only governance step.
+- [x] Add anti-loop governance rule: QA PASS must convert to Lead closure verdict next sync unless new BLOCKER/CRITICAL evidence exists.
+- [x] Add TASK-011 validation requirement for rapid startup/Layout1/refill screenshots to capture improper post-fill swap event.
+- [x] Ingest spike evidence: startup/refill immediate gem-state swap and tighten TASK-011 acceptance gates.
+- [x] Apply agile spike override: activate TASK-011 refill slot-safety spike and pause TASK-007 behind it.
+- [x] Activate TASK-007 in sprint-board feature allocation and advance backlog ordering (TASK-008 next up).
+- [x] Move TASK-006 out of sprint allocation and into backlog as blocked by current layout-route depth constraints.
+- [x] Reconcile stale planning state: mark TASK-005 complete, promote TASK-006 on sprint board, and publish roadmap phases.
+- [x] Harden Playwright hard-deny rules so Dev cannot request/use it without explicit PM exception in repo artifacts.
+- [x] Ingest repository containment enforcement and harden AGENTS/policy gates for all agents.
+- [x] Replace Playwright references with agent-browser CLI in active automation/test/governance files.
+- [x] Rewrite and add new product requests into Agile backlog as actionable TASK items.
+- [x] Resolve cron sweep drift: fix post-role-switch authority label and add invariants artifact pre-check guidance.
+- [x] Close TASK-004 at PM layer and promote TASK-005 into active sprint feature allocation.
+- [x] Agile reset: remove verbose TODO logging mandates and remap TASK-005 to speed-buff removal scope.

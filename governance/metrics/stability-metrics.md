@@ -19,3 +19,9 @@ Remediation Allocation % (Sprint): N/A (no sprint allocation records)
 - Governance artifacts lack finding and remediation entries, preventing trend validation.
 - No subsystem-tagged incidents are recorded, so instability concentration cannot be measured.
 - No sprint allocation data is recorded, so remediation governance coverage is unmeasurable.
+
+## Required Artifact Paths (Cron Pre-Check)
+- `governance/planning/turn-state-invariants.md` must exist before turn-invariant validation runs.
+- Canonical path in this repo:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/planning/turn-state-invariants.md`
+- If missing in a cron worktree, sync that worktree to latest branch head before running sweep checks.

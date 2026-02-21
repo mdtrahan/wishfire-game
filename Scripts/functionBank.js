@@ -8,6 +8,30 @@ const POWER_AMP_OUTCOMES = [
   { key: 'JACKPOT_ALL_2X', multiplier: 2, chance: 0.04, jackpotAllLivingHeroes: true },
 ];
 
+const ENEMY_SKILL_ASSIGNMENT_MAP = {
+  Djinn: {
+    specialSkill: 'Enemy_Drain_Buff',
+    specialChance: 0.30,
+    regularSkill: 'Enemy_MAG_Single',
+    regularChance: 0.85,
+    requiresDamaged: false,
+  },
+  Marid: {
+    specialSkill: 'Enemy_X_Out',
+    specialChance: 0.25,
+    regularSkill: 'Enemy_MAG_Single',
+    regularChance: 0.65,
+    requiresDamaged: false,
+  },
+  Chimerilass: {
+    specialSkill: 'Enemy_Wipe',
+    specialChance: 0.20,
+    regularSkill: 'Enemy_Heal_Self',
+    regularChance: 0.49,
+    requiresDamaged: true,
+  },
+};
+
 function getGlobals(ctx) {
   return (ctx && ctx.state ? ctx.state.globals : state.globals);
 }
@@ -123,6 +147,40 @@ function consumePowerAmpForEvent(ctx, actorUID, values) {
     return values.map(v => Math.max(1, Math.ceil((v || 0) * mult)));
   }
   return values;
+}
+
+function resolveEnemySkillDecision(enemy, roll) {
+  const name = String(enemy?.name || '');
+  const conf = ENEMY_SKILL_ASSIGNMENT_MAP[name];
+  const fallback = 'Enemy_ATK_Single';
+  if (!conf) {
+    return { roll, selected: fallback, branch: 'fallback', enemyName: name };
+  }
+  const isDamaged = Number(enemy.hp || 0) < Number(enemy.maxHP || 0);
+  const hpEligible = conf.requiresDamaged ? isDamaged : true;
+  if (hpEligible && roll < Number(conf.specialChance || 0)) {
+    return { roll, selected: conf.specialSkill, branch: 'special', enemyName: name };
+  }
+  if (hpEligible && roll < Number(conf.regularChance || 0)) {
+    return { roll, selected: conf.regularSkill, branch: 'regular', enemyName: name };
+  }
+  return { roll, selected: fallback, branch: 'fallback', enemyName: name };
+}
+
+function traceEnemySkillDecision(ctx, enemyUID, decision) {
+  const g = getGlobals(ctx);
+  if (!Array.isArray(g.EnemySkillDecisionTrace)) g.EnemySkillDecisionTrace = [];
+  g.EnemySkillDecisionTrace.push({
+    enemyUID: Number(enemyUID || 0),
+    enemyName: decision.enemyName,
+    roll: Number(decision.roll),
+    branch: decision.branch,
+    selected: decision.selected,
+    time: Number(g.time || 0),
+  });
+  if (g.EnemySkillDecisionTrace.length > 120) {
+    g.EnemySkillDecisionTrace.shift();
+  }
 }
 
 export function GetPowerAmpMultiplierForActor(ctx, actorUID) {
@@ -1541,16 +1599,14 @@ export function RefreshPartyBuffUI(ctx) {
   const ordered = [
     { type: 'atk', active: g.PartyBuff_ATK > 0 && g.BuffTurns_ATK > 0 },
     { type: 'def', active: g.PartyBuff_DEF > 0 && g.BuffTurns_DEF > 0 },
-    { type: 'spd', active: g.PartyBuff_SPD > 0 && g.BuffTurns_SPD > 0 },
     { type: 'mag', active: g.PartyBuff_MAG > 0 && g.BuffTurns_MAG > 0 },
     { type: 'res', active: g.PartyBuff_RES > 0 && g.BuffTurns_RES > 0 },
   ];
   g.PartyBuffUI = {
     atk: ordered[0].active,
     def: ordered[1].active,
-    spd: ordered[2].active,
-    mag: ordered[3].active,
-    res: ordered[4].active,
+    mag: ordered[2].active,
+    res: ordered[3].active,
   };
   g.PartyBuffSlots = ordered.filter(b => b.active).map(b => b.type);
   g.BuffFrames = [
@@ -1558,7 +1614,6 @@ export function RefreshPartyBuffUI(ctx) {
     track[1] ?? -1,
     track[2] ?? -1,
     track[3] ?? -1,
-    track[4] ?? -1,
   ];
 }
 
@@ -1583,17 +1638,18 @@ export function ResolveGemAction(ctx, gemColor, actorUID) {
   }
   if (gemColor === 2) {
     g.IsAOEMatch = 0;
-    const roll = Math.floor(Math.random() * 5);
+    const roll = Math.floor(Math.random() * 4);
     let skillId = 'DEF_UP';
     let intentKey = 'Party_DEF_UP';
+    let buffType = 0;
     if (roll === 1) { skillId = 'ATK_UP'; intentKey = 'Party_ATK_UP'; }
     if (roll === 2) { skillId = 'MAG_UP'; intentKey = 'Party_MAG_UP'; }
-    if (roll === 3) { skillId = 'SPD_UP'; intentKey = 'Party_SPD_UP'; }
-    if (roll === 4) { skillId = 'RES_UP'; intentKey = 'Party_RES_UP'; }
+    if (roll === 3) { skillId = 'RES_UP'; intentKey = 'Party_RES_UP'; buffType = 4; }
+    if (roll === 1 || roll === 2) buffType = roll;
     LogGemIntent(ctx, 2, 'BLUE', intentKey, '', actorUID);
     g.BuffRollSkillID = skillId;
     g.BuffRollActor = actorUID;
-    g.BuffRollType = roll;
+    g.BuffRollType = buffType;
     StartBuffRoll(ctx);
     return;
   }
@@ -1786,10 +1842,6 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     handled = true;
     ctx.callFunction('Party_MAG_UP', buffTurns, actorUID, 0, 2);
     LogCombat(ctx, `${actorName} increased the party's magic attack!`);
-  } else if (skillId === 'SPD_UP') {
-    handled = true;
-    ctx.callFunction('Party_SPD_UP', buffTurns, actorUID, 0, 2);
-    LogCombat(ctx, `${actorName} increased the party's speed!`);
   } else if (skillId === 'RES_UP') {
     handled = true;
     ctx.callFunction('Party_RES_UP', buffTurns, actorUID, 0, 2);
@@ -1865,28 +1917,14 @@ export function ResolveEnemyAction(ctx, enemyUID) {
 }
 
 export function ExecuteEnemySkill(ctx, enemyUID, skillId) {
-  if (skillId === 'Enemy_Heal_Self') {
-    Enemy_Heal_Self(ctx, enemyUID);
-    return 1;
-  }
-  if (skillId === 'Enemy_MAG_Single') {
-    const target = randomPick(getHeroes(ctx));
-    if (target) Enemy_MAG_Single(ctx, enemyUID, target.uid);
-    return 1;
-  }
-  if (skillId === 'Enemy_ATK_Single') {
-    const target = randomPick(getHeroes(ctx));
-    if (target) Enemy_ATK_Single(ctx, enemyUID, target.uid);
-    return 1;
-  }
-  return 0;
+  return ExecuteEnemyJobSkill(ctx, enemyUID, skillId, 0);
 }
 
 export function EnemyAttack(ctx, enemyUID) {
   const skillId = PickEnemySkill(ctx, enemyUID);
   const target = randomPick(getHeroes(ctx));
   const targetUID = target ? target.uid : 0;
-  ApplyEnemySkill(ctx, enemyUID, skillId, targetUID);
+  ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID);
   return 1;
 }
 
@@ -2004,30 +2042,147 @@ export function PickEnemySkill(ctx, enemyUID) {
   const enemy = GetActorByUID(ctx, enemyUID);
   if (!enemy) return 'Enemy_ATK_Single';
   const roll = Math.random();
-  const name = enemy.name || '';
-  if (name === 'Chimerilass' && enemy.hp < enemy.maxHP && roll < 0.49) return 'Enemy_Heal_Self';
-  if (name === 'Djinn' && roll < 0.85) return 'Enemy_MAG_Single';
-  if (name === 'Marid' && roll < 0.65) return 'Enemy_MAG_Single';
-  return 'Enemy_ATK_Single';
+  const decision = resolveEnemySkillDecision(enemy, roll);
+  traceEnemySkillDecision(ctx, enemyUID, decision);
+  return decision.selected;
+}
+
+export function GetEnemySkillAssignmentMap() {
+  return JSON.parse(JSON.stringify(ENEMY_SKILL_ASSIGNMENT_MAP));
 }
 
 export function ApplyEnemySkill(ctx, enemyUID, skillId, targetUID) {
+  ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID);
+}
+
+export function Enemy_Drain_Buff(ctx, enemyUID) {
+  const g = getGlobals(ctx);
+  const enemy = GetActorByUID(ctx, enemyUID);
+  if (!enemy) return 0;
+  const gems = getGems(ctx);
+  const nextGems = [];
+  let consumedBlue = 0;
+  // Board mutation first: consume all blue gems.
+  for (const gem of gems) {
+    const color = Number(gem?.color ?? gem?.elementIndex ?? -1);
+    if (color === 2) {
+      consumedBlue += 1;
+      continue;
+    }
+    nextGems.push(gem);
+  }
+  setGems(ctx, nextGems);
+  setSelectedGemIndices(ctx, []);
+  g.TapIndex = 0;
+  if (consumedBlue > 0) {
+    enemy.stats = enemy.stats || {};
+    enemy.stats.DEF = Number(enemy.stats.DEF || enemy.DEF || 0) + consumedBlue;
+    enemy.DEF = Number(enemy.DEF || 0) + consumedBlue;
+  }
+  const enemyName = getActorNameByUID(ctx, enemyUID);
+  LogCombat(ctx, `${enemyName} used Drain Buff and gained ${consumedBlue} DEF.`);
+  return 1;
+}
+
+export function Enemy_X_Out(ctx, enemyUID) {
+  const g = getGlobals(ctx);
+  const gems = getGems(ctx);
+  const rows = Number(g.BoardRows || 4);
+  const cols = Number(g.BoardCols || 6);
+  const diagonalSlots = new Set();
+  for (let r = 0; r < rows; r++) {
+    const cMain = r;
+    const cAnti = (cols - 1) - r;
+    if (cMain >= 0 && cMain < cols) diagonalSlots.add(`${r},${cMain}`);
+    if (cAnti >= 0 && cAnti < cols) diagonalSlots.add(`${r},${cAnti}`);
+  }
+  // Board mutation first: remove both diagonals.
+  const nextGems = [];
+  let consumed = 0;
+  for (const gem of gems) {
+    const key = `${Number(gem?.cellR ?? -1)},${Number(gem?.cellC ?? -1)}`;
+    if (diagonalSlots.has(key)) {
+      consumed += 1;
+      continue;
+    }
+    nextGems.push(gem);
+  }
+  setGems(ctx, nextGems);
+  setSelectedGemIndices(ctx, []);
+  g.TapIndex = 0;
+  const enemyName = getActorNameByUID(ctx, enemyUID);
+  LogCombat(ctx, `${enemyName} used X Out and removed ${consumed} diagonal gems.`);
+  return 1;
+}
+
+export function Enemy_Wipe(ctx, enemyUID) {
+  const g = getGlobals(ctx);
+  const gems = getGems(ctx);
+  const LIGHT_GREEN_COLOR = 4;
+  // Board mutation first: consume only light-green gems.
+  const nextGems = [];
+  let consumed = 0;
+  for (const gem of gems) {
+    const color = Number(gem?.color ?? gem?.elementIndex ?? -1);
+    if (color === LIGHT_GREEN_COLOR) {
+      consumed += 1;
+      continue;
+    }
+    nextGems.push(gem);
+  }
+  setGems(ctx, nextGems);
+  setSelectedGemIndices(ctx, []);
+  g.TapIndex = 0;
+  // Combat effect second: total heal pool = consumed * 4, split across living enemies.
+  const totalHeal = Math.max(0, consumed * 4);
+  const livingEnemies = getEnemies(ctx).filter(enemy => (enemy.hp || 0) > 0);
+  if (totalHeal > 0 && livingEnemies.length > 0) {
+    const baseShare = Math.floor(totalHeal / livingEnemies.length);
+    let remainder = totalHeal % livingEnemies.length;
+    for (const enemy of livingEnemies) {
+      const share = baseShare + (remainder > 0 ? 1 : 0);
+      if (remainder > 0) remainder -= 1;
+      if ((enemy.hp || 0) <= 0) continue;
+      enemy.hp = Math.min(enemy.maxHP || enemy.hp || 0, (enemy.hp || 0) + share);
+    }
+    UpdateEnemyHPUI(ctx);
+  }
+  const enemyName = getActorNameByUID(ctx, enemyUID);
+  LogCombat(ctx, `${enemyName} used Wipe and healed allies for ${totalHeal}.`);
+  return 1;
+}
+
+export function ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID = 0) {
+  const resolvedTargetUID = targetUID || (randomPick(getHeroes(ctx))?.uid || 0);
   if (skillId === 'Enemy_Heal_Self') {
     Enemy_Heal_Self(ctx, enemyUID);
-    return;
+    return 1;
   }
   if (skillId === 'Enemy_MAG_Single') {
-    if (targetUID) Enemy_MAG_Single(ctx, enemyUID, targetUID);
-    return;
+    if (resolvedTargetUID) Enemy_MAG_Single(ctx, enemyUID, resolvedTargetUID);
+    return 1;
   }
   if (skillId === 'Enemy_MAG_AOE') {
     for (const h of getHeroes(ctx)) {
       const dmg = CalculateDamage(ctx, enemyUID, h.uid, 'magic');
       ApplyDamageToTarget(ctx, h.uid, dmg);
     }
-    return;
+    return 1;
   }
-  if (targetUID) Enemy_ATK_Single(ctx, enemyUID, targetUID);
+  if (skillId === 'Enemy_Drain_Buff') {
+    return Enemy_Drain_Buff(ctx, enemyUID);
+  }
+  if (skillId === 'Enemy_X_Out') {
+    return Enemy_X_Out(ctx, enemyUID);
+  }
+  if (skillId === 'Enemy_Wipe') {
+    return Enemy_Wipe(ctx, enemyUID);
+  }
+  if (resolvedTargetUID) {
+    Enemy_ATK_Single(ctx, enemyUID, resolvedTargetUID);
+    return 1;
+  }
+  return 0;
 }
 
 export function StartEnemyAction(ctx, enemyUID) {
@@ -2148,8 +2303,8 @@ export function ShowBuffProgress(ctx) {
 export function RegisterPartyBuffSlot(ctx, buffType) {
   const g = getGlobals(ctx);
   if (buffType == null || buffType < 0 || buffType > 4) return;
-  if (!Array.isArray(g.TrackBuffs) || g.TrackBuffs.length !== 5) {
-    g.TrackBuffs = [-1, -1, -1, -1, -1];
+  if (!Array.isArray(g.TrackBuffs) || g.TrackBuffs.length !== 4) {
+    g.TrackBuffs = [-1, -1, -1, -1];
   }
   if (g.TrackBuffs.includes(buffType)) {
     g.BuffIconPopType = buffType;

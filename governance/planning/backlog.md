@@ -1,20 +1,29 @@
-## Deferred Adversarial Findings (Sprint X Triage)
+# Product Backlog (PO View)
 
-### Theme: Transition target mismatch / layout registration integrity
-- ADV-2026-002 (High)
-  - Rationale: Deferred due to 30% remediation cap; selected Critical ADV-2026-001 for current sprint slot.
-  - Milestone Alignment: Pending (milestone-definition.md is currently empty).
+## Ready (Priority Order)
+1. TASK-015: Story card slot output-only UI that mirrors the exact latest combat action/debug text line.
+   - single live line only (replace on new action)
+   - no caching/history stack
+   - no new scripting/text database
+   - no combat logic/effect changes
+   - primitives/placeholders only for visuals
+2. Feature intake reserved for player-facing work after blockers clear (`TASK-010` unblock path first).
 
-### Theme: Turn-model snapshot authority mismatch
-- ADV-2026-003 (High)
-  - Rationale: Deferred due to 30% remediation cap; selected Critical ADV-2026-001 for current sprint slot.
-  - Milestone Alignment: Pending (milestone-definition.md is currently empty).
+## Completed
+- TASK-011: Legacy test-pipeline cleanup closed (Lead PASS 2026-02-20); artifacts in `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/`.
+- TASK-012/013/014 Bundle: one-cycle asset-prune closeout closed (Lead PASS 2026-02-20); validation + rollback artifacts accepted.
 
-### Theme: Non-deterministic combat bootstrap
-- ADV-2026-004 (Medium)
-  - Rationale: Deferred due to cap and lower severity than selected item.
-  - Milestone Alignment: Pending (milestone-definition.md is currently empty).
+## In Sprint (Do Not Duplicate Here)
+- None.
 
-## Deferred Feature Tasks (Sprint Containment)
-- TASK-003 Define and enforce transition contract matrix (allowed transitions, registered targets, rejection telemetry) to remove silent layout-change failures and enforce transition atomicity.
-- TASK-005 Add deterministic transition scenario suite (fixed-seed bootstrap plus transition/resume assertions) mapped to milestone Definition of Done criteria.
+## Blocked
+- TASK-006: Transition-depth suspend/resume scenario suite is blocked by current route depth (`0 -> 1`, `2 -> 1` only).
+- TASK-010: Tower war-beacon loop blocked pending art-team map update and required tower/war asset package.
+
+## Deferred Remediation
+- ADV-2026-002
+- ADV-2026-003
+- ADV-2026-004
+
+## Intake Notes
+- User will provide visual mockups when relevant tasks enter active sprint.

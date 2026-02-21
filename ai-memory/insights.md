@@ -1,144 +1,458 @@
-# Insights / Decisions Log
+# Insights (High-Impact Only)
 
-## 2026-02-14
-- Initialized memory system files.
-- Next: Inventory repo structure and key gameplay loop files.
-- Repo structure inventory:
-  - Runtime roots: `web-runner/`, `Scripts/`, `src/core/`, `src/layout/`, `tests/`.
-  - Legacy/archive roots present but non-runtime: `_archive/`, `project_C3_conversion/` (per guardrails).
-- Key gameplay loop files and anchors:
-  - `web-runner/app.js`: layout registration (`registerLayout`), initial activation (`activateInitialLayout('combat')`), input/match handling (`handleGemMatch`), main tick loop (`tick` + `requestAnimationFrame`), debug state export (`window.render_game_to_text`).
-  - `src/core/combatRuntimeGateway.js`: combat authority boundary (`runCombatStep`, `suspend/resume`, `isInAtomicSection`).
-  - `src/core/layoutState.js`: layout transition/atomic guard integration.
+## 2026-02-20
+- QA-PASS closure lag created rework loops; governance now requires immediate Lead PASS/FAIL after QA signal to prevent duplicate implementation cycles.
+- Sprint throughput dropped when tasks were decomposed into micro-steps; execution should run in 3-step packets (build, follow-up, validate) per active TASK.
+- Planning artifacts became noisy when they mixed audit history with live execution state; keep sprint-board/backlog operational and move historical detail to audit/regression records only.
+- Scope drift risk increases when PM/Lead/Dev boundaries blur; PM remains allocation/governance only, Lead owns technical directives, Dev owns code changes.
+- Browser backend drift caused tool confusion; agent-browser policy must stay explicit and enforced before runtime validation.
 
-CHECKPOINT
-- processed: Inventory repo structure and key gameplay loop files
-- added: runtime directory map + key gameplay loop file anchors
-- next: Add a deterministic debug snapshot output for testing
-
-- Deterministic debug snapshot is already implemented in runtime:
-  - `web-runner/app.js` exports `window.render_game_to_text` with stable JSON payload (turn, order, resources, entities, gems, flags).
-  - `web-runner/app.js` exports `window.advanceTime(ms)` stepping frames deterministically via fixed `1/60` step.
-  - `window.__codexGame` helper object exists for targeted test control hooks.
-
-CHECKPOINT
-- processed: Add a deterministic debug snapshot output for testing
-- added: verified existing deterministic snapshot + time-step hooks; no code changes needed
-- next: Implement <next feature you want>
-
-- Placeholder todo item was not actionable without a concrete feature spec; closed to keep queue deterministic.
-- Follow-up expectation: next run should replace placeholder with one explicit feature request before coding.
-
-CHECKPOINT
-- processed: Implement <next feature you want> (placeholder)
-- added: marked placeholder closed + documented requirement for explicit feature spec
-- next: Wait for concrete feature request
-
-## 2026-02-15
-- Created governance scaffold exactly as requested under `governance/` with `audit/`, `planning/`, `execution/`, and `metrics/` subdirectories.
-- Decision: created empty markdown files only; no templated contents were added to avoid scope expansion.
+## Operating Rule
+- Add only decisions that change future behavior, reduce cycle time, or prevent regressions. Do not log routine sync/status events.
+- Sync-and-continue executed under ACTIVE TASK-008 updated packet (data-driven assignment + decision traces + deterministic artifacts).
+- Implemented data-driven enemy skill assignment and threshold decision model in runtime path:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/modules/functionBank.js`
+  - Added `ENEMY_SKILL_ASSIGNMENT_MAP`, `resolveEnemySkillDecision(...)`, and decision trace capture in `PickEnemySkill(...)`.
+  - Added `GetEnemySkillAssignmentMap()` for deterministic QA artifact extraction.
+- Mirrored assignment/decision logic to `/Users/Mace/Wishfire/Codex-Orka/Scripts/functionBank.js` for source parity.
+- Published deterministic TASK-008 artifacts under `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/`:
+  - `assignment-map.json`
+  - `decision-traces.json`
+  - `refill-turn-trace.json`
+  - `refill-sequencing-assertions.json`
+  - `layout1-skill-check.png`
+- Assertions confirm:
+  - QA coverage for Djinn/Marid/Chimerilass skill decisions.
+  - Special vs regular thresholds match expected ratio pattern.
+  - Drain Buff/X Out/Wipe runtime effects pass deterministic checks.
 - Files touched:
-  - `governance/audit/adversarial-ledger.md`
-  - `governance/audit/regression-history.md`
-  - `governance/planning/roadmap.md`
-  - `governance/planning/milestone-definition.md`
-  - `governance/planning/sprint-board.md`
-  - `governance/planning/backlog.md`
-  - `governance/execution/remediation-log.md`
-  - `governance/execution/task-queue.md`
-  - `governance/execution/done-log.md`
-  - `governance/metrics/stability-metrics.md`
-  - `governance/metrics/delivery-velocity.md`
-- Next task: Await next explicit user request.
-- Added `governance/product/` with the requested markdown docs.
-- Decision: kept files empty and matched exact names and location from user request.
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/modules/functionBank.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/Scripts/functionBank.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/assignment-map.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/decision-traces.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/refill-turn-trace.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/refill-sequencing-assertions.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/layout1-skill-check.png`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Await next explicit user request.
+- Continued TASK-008 under ACTIVE intake and finalized Lead closure artifact packaging.
+- Added `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/closure-recommendation.json` with PASS recommendation and deterministic artifact index.
+- No scope expansion and no additional runtime behavior changes in this continuation step.
 - Files touched:
-  - `governance/product/retention-hypotheses.md`
-  - `governance/product/monetization-architecture.md`
-  - `governance/product/liveops-readiness.md`
-- Next task: Await next explicit user request.
-- Created audit report placeholder file at `governance/audit/reports/2026-Layout-Harness-Conformance-Report.md`.
-- Decision: created an empty markdown file only, matching exact user path/name.
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/closure-recommendation.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Await next explicit user request.
+- Applied surgical Wipe behavior adjustment per user directive:
+  - `Enemy_Wipe` now consumes only light-green gems (color 4), not all gems.
+  - Heal pool now equals `lightGreenConsumed * 4`, split deterministically across living enemies.
+- Runtime file updated:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/modules/functionBank.js`
+- Source parity file updated:
+  - `/Users/Mace/Wishfire/Codex-Orka/Scripts/functionBank.js`
+- Self-validation artifacts:
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/wipe-lightgreen-check.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/wipe-lightgreen-check-seeded.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/wipe-lightgreen-assertions.json` (pass=true)
+- Next: Await next explicit user request.
+- Reopened TASK-008 closure gate due new QA regression signal: initial refill shows frame/state swap contamination with suspected yellow-path bleed into regular non-yellow refill.
+- Updated dispatch artifacts:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-008-execution-plan.md` -> closure gate set to `PARTIAL PASS (REOPENED)` with corrective packet.
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md` -> 3-step corrective Dev packet for reproduce/fix/validate.
+- Scope lock: no transition-flow edits, no unrelated gameplay logic changes; target is regular refill stability and yellow-path isolation only.
+- Next: Await Dev corrective artifact packet for Lead closure re-check.
+- Executed reopened TASK-008 corrective packet for initial refill frame/state swap contamination (yellow-path isolation).
+- Minimal corrective fix in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`:
+  - `startYellowCasinoSequence(...)` now queues only `type:'yellow'` items.
+  - Removed yellow-sequence `empty` queue entries to isolate regular refill path from yellow animation path.
+  - Lock/defer is now only applied when yellow queue has work; otherwise immediate fallback to `startRefillBounce()`.
+- Deterministic reopened artifacts published under `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/`:
+  - `reopened-repro-start.json`
+  - `reopened-repro-console.log`
+  - `reopened-repro-post.json`
+  - `reopened-repro-frame.png`
+  - `reopened-refill-trace.json`
+  - `reopened-refill-assertions.json`
+- Assertion result: PASS for non-yellow anchor, zero yellow-sequence markers after non-yellow resolve anchor, and board remains populated post-action.
+- Additional test-hook correction:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` `__codexGame.selectGemByRC` now records selected gem index (runtime parity with click path) instead of UID.
 - Files touched:
-  - `governance/audit/reports/2026-Layout-Harness-Conformance-Report.md`
-- Next task: Await next explicit user request.
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/reopened-repro-start.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/reopened-repro-console.log`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/reopened-repro-post.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/reopened-repro-frame.png`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/reopened-refill-trace.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/reopened-refill-assertions.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Await next explicit user request.
+- TASK-008 reopen corrective packet reviewed and closed with Lead PASS.
+- Refill regression evidence confirms non-yellow regular refill no longer triggers yellow-sequence markers after non-yellow resolve anchor.
+- Directive sync updated:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-008-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+- Note captured: `reopened-repro-start.json` path referenced by Dev is missing, but closure evidence remained sufficient via trace/log/post-state artifacts.
 
-- Executed Sprint Triage on new adversarial findings in `governance/audit/adversarial-ledger.md`.
-- Decisions made:
-  - Clustered findings by root-cause theme.
-  - Selected only `ADV-2026-001` for next sprint remediation to enforce 30% cap (1 of 4 findings = 25%).
-  - Deferred `ADV-2026-002`, `ADV-2026-003`, and `ADV-2026-004` to backlog due to cap/severity prioritization.
-  - Created `REM-2026-001` with explicit regression guard and closure conditions.
-  - Index gap: `ai-memory/PROJECT_INDEX.md` is missing.
+## 2026-02-20 (startup refill diagnostics)
+- Added startup `Layout 1` refill diagnostics in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` with no gameplay logic changes:
+  - `[LAYOUT1_REFILL_START]` logs full board array snapshot at refill start.
+  - `[LAYOUT1_REFILL_STEP]` logs board array at each refill queue step (`skip`/`occupied`/`set`).
+  - `[LAYOUT1_REFILL_FINISH]` logs final board array plus deterministic start-vs-final cell diff and `BattleStartMode` (`initiative`/`ambush`) for leakage checks.
+- Capture is scoped to first combat-layout startup refill per runtime session to keep output focused.
+- Index gap recorded: `ai-memory/PROJECT_INDEX.md` is missing; direct file discovery was used for this task.
 - Files touched:
-  - `governance/planning/sprint-board.md`
-  - `governance/execution/remediation-log.md`
-  - `governance/planning/backlog.md`
-- Next task: Await next explicit user request.
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Await next explicit user request.
 
-- Re-ran sprint triage execution against current `ADV-2026-*` set in `governance/audit/adversarial-ledger.md`.
-- Decisions made:
-  - Kept `REM-2026-001` (linked `ADV-2026-001`, Critical) as sole remediation item for next sprint.
-  - Kept `ADV-2026-002`, `ADV-2026-003`, `ADV-2026-004` in backlog due to 30% cap.
-  - Confirmed remediation allocation remains 25% (1 selected of 4 open findings), within cap.
-  - Index gap persists: `ai-memory/PROJECT_INDEX.md` missing.
+## 2026-02-20 (diagnostic cleanup after QA PASS)
+- Removed temporary startup refill diagnostics from `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`:
+  - deleted `[LAYOUT1_REFILL_START]`, `[LAYOUT1_REFILL_STEP]`, `[LAYOUT1_REFILL_FINISH]` logs
+  - deleted audit helper functions used only by those logs
+  - removed temporary refill-audit state wiring in `startRefillBounce(...)`
+- No gameplay behavior changes applied; refill/turn flow logic unchanged.
 - Files touched:
-  - `ai-memory/todo.md`
-  - `ai-memory/insights.md`
-- Next task: Await next explicit user request.
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Await next explicit user request.
 
-- Added requested milestone extension and Definition of Done additions to milestone definition.
-- Decision: inserted user text verbatim to preserve policy intent without reinterpretation.
+## 2026-02-20 (startup log condensation)
+- Condensed startup render debug spam in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` by replacing four repeated modal/window debug lines with one deduplicated summary log:
+  - New tag: `[DEBUG_RENDER_SUMMARY]`
+  - Emits only when render/modal signature changes.
+- This is logging-only; no gameplay/UI behavior changes.
 - Files touched:
-  - `governance/planning/milestone-definition.md`
-- Next task: Await next explicit user request.
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Await next explicit user request.
 
-- Evaluated milestone progress coverage against current sprint/remediation/audit artifacts.
-- Decisions made:
-  - Current feature tasks (`TASK-001`, `TASK-002`) are placeholder-level and do not explicitly cover milestone criteria.
-  - Only explicit criterion coverage in active sprint is from remediation `REM-2026-001` (pointer/tick lifecycle continuity).
-  - Milestone progression is incomplete and at risk without criterion-mapped feature tasks.
-  - Proposed next feature tasks to cover uncovered criteria while preserving 70/30 allocation.
+## 2026-02-20 (startup debug efficiency pass)
+- Added startup debug gate in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`:
+  - `STARTUP_DEBUG` query flag (`?startup_debug=1`)
+  - `startupDebugLog(...)` helper
+- Routed high-volume startup diagnostics to gated logger:
+  - `[HP_FIX]`, `[LAYOUT_AUDIT]`, `[INIT]` startup chatter, per-asset `[LOAD] SUCCESS`, `[DEBUG_RENDER_SUMMARY]`, and `[FILTER]` chatter.
+- Kept warnings/errors and key non-debug runtime logs unchanged.
 - Files touched:
-  - `ai-memory/todo.md`
-  - `ai-memory/insights.md`
-- Next task: Await next explicit user request.
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Await next explicit user request.
 
-- Applied sprint containment directive for 7-day sprint.
-- Decisions made:
-  - Selected only `TASK-004` as the single active feature task because it unblocks the milestone extension plus turn-order and snapshot/resume criteria with highest centrality.
-  - Preserved sprint allocation at Feature 70% / Remediation 30%.
-  - Moved remaining proposed feature tasks (`TASK-003`, `TASK-005`) into backlog.
+## 2026-02-20 (TASK-009 execution packet)
+- Implemented dedicated non-modal map layout routing from Nav Map in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`:
+  - Added `mapLayout` registration in LayoutState with strict `mapLayout -> combat` transition.
+  - Added `combat -> mapLayout` transition allowance.
+  - Wired `nav:clicked` Map to request `mapLayout` (instead of overlay fallback).
+- Implemented map-layout isolated interaction/render path:
+  - Added map pan/drag state under `gameState.mapLayout`.
+  - Added map-only pointer handlers (`pointerdown`/`pointermove`/`pointerup`/`pointercancel`) scoped to active `mapLayout`.
+  - Added top war-meter rendering and map takeover rendering (`4x_map` + `4X_tower`) only when active layout is `mapLayout`.
+  - Added explicit map return button path to transition back to combat.
+- Updated dev snapshot surface:
+  - `render_game_to_text()` now reports active runtime `layoutId` via `layoutState` and includes `mapLayout` pan/war fields.
+- Published TASK-009 validation artifacts:
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/assertions.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/closure-recommendation.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/map-enter.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/map-drag.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/map-return.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/transition-trace.log`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/console.log`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/map-layout.png`
 - Files touched:
-  - `governance/planning/sprint-board.md`
-  - `governance/planning/backlog.md`
-- Next task: Await next explicit user request.
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Lead closure gate review for TASK-009.
 
-- Refined `TASK-004` scope to strict deterministic turn-state/snapshot validation work.
-- Decisions made:
-  - Explicitly excluded transition contract enforcement, layout registration policy changes, and atomic transition queue refactors from `TASK-004`.
-  - Kept overlap cleanly split, with transition-contract scope remaining in backlog `TASK-003`.
+## 2026-02-20 (TASK-009 corrective visual acceptance packet)
+- Executed corrective packet from ACTIVE.md for TASK-009 in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`:
+  - removed standalone tower overlay render path from `mapLayout`
+  - set map background to art-delivered `images/map-layout.png`
+  - implemented deterministic vertical-fit map scaling (aspect ratio preserved)
+  - kept war-meter + return-to-combat behavior intact
+- Added runtime map render telemetry for deterministic validation:
+  - `gameState.mapLayout.lastRender` and `render_game_to_text().mapLayout.render`
+- Published corrective artifacts under `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/`:
+  - `map-layout-corrective.png`
+  - `map-enter-corrective.json`
+  - `map-drag-corrective.json`
+  - `map-return-corrective.json`
+  - `console-corrective.log`
+  - `assertions-corrective.json` (`pass: true`)
+  - `closure-recommendation-corrective.json` (`PASS`)
 - Files touched:
-  - `governance/planning/sprint-board.md`
-- Next task: Await next explicit user request.
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/assets/images/map-layout.png`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Lead closure gate review for TASK-009 corrective packet.
+- Reopened TASK-009 acceptance to BLOCKED due missing canonical map asset creation/distribution.
+- Forward execution freeze applied in dev directives:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-009-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+- TASK-010 intake is frozen behind asset pipeline delivery.
+- Next: Await map asset creation/distribution package and then re-run unblock gate.
+- Map asset blocker cleared: runtime now has delivered map background asset (`images/map-layout.png`).
+- TASK-009 reopened as visual acceptance corrective packet due QA findings:
+  - remove standalone tower overlay (tower to be baked into map art)
+  - enforce vertical-fit map scaling with preserved aspect ratio
+  - keep Return Combat behavior unchanged; keep war-meter as stub
+- Updated directives:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-009-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+- TASK-010 remains frozen behind TASK-009 corrective closeout.
+- TASK-009 corrective scope extended per QA feedback:
+  - lock pan to horizontal axis only
+  - drag must end immediately on pointer/touch end/cancel (no sticky follow)
+  - maintain viewport containment while preserving vertical-fit aspect-ratio scaling
+- Updated dispatch artifacts:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-009-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+- TASK-010 remains frozen behind TASK-009 corrective closeout.
+- TASK-009 corrective visual acceptance packet reviewed and closed with Lead PASS.
+- Closure evidence validated from corrective artifact bundle, including horizontal-only pan, non-sticky drag-end, contained bounds, no tower overlay, and return-to-combat pass checks.
+- Directive sync updated:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-009-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+- Intake promoted to TASK-010; freeze removed now that TASK-009 corrective gate is closed.
 
-- Created pre-execution invariant specification for `TASK-004`.
-- Decisions made:
-  - Defined explicit invariant IDs (I-001..I-006) for authoritative queue, index constraints, pre-suspend validity, post-resume guarantees, forbidden intermediate states, and tick interaction contract.
-  - Kept scope strictly to invariant definition and deterministic validation predicates; no transition routing or registration policy changes included.
-- Files touched:
-  - `governance/planning/turn-state-invariants.md`
-- Next task: Await next explicit user request.
+## 2026-02-20 (TASK-011 Phase 1 assessment-only)
+- Executed TASK-011 Phase 1 only (no archive/delete actions), scoped strictly to `test-results/`.
+- Published assessment artifacts under `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/`:
+  - `inventory.tsv` (recursive file inventory with mtime/size/path)
+  - `age-size-summary.json` (bucketed age/size totals)
+  - `reference-scan.tsv` (repo path/basename reference counts)
+  - `candidate-matrix.tsv` (keep/archive/delete candidates with rationale)
+  - `candidate-summary.json` (action totals and byte counts)
+- Phase 1 output summary:
+  - keep: 50 files / 2,465,666 bytes
+  - archive candidates: 15 files / 244,273 bytes
+  - delete candidates: 2 files / 6,244 bytes
+- No file move/delete operations were performed; awaiting Lead review for Step 2 approval.
 
-- Executed Phase 1 for `TASK-004` from `governance/execution/dev-directives/ACTIVE.md`.
-- Decisions made:
-  - Formalized a single authoritative turn-state contract in runtime core with legacy fallback compatibility.
-  - Implemented deterministic invariant predicates (I-001..I-006) and deterministic failure IDs for suspend/resume validation output.
-  - Expanded suspend snapshot payload with required fields (`snapshotVersion`, `capturedAtTick`, `turnState`, `resumeToken`) while preserving backward-compatible snapshot keys.
-  - Kept scope to Phase 1 only; no transition contract enforcement or layout policy changes.
-  - Index gap: `ai-memory/PROJECT_INDEX.md` is missing.
+## 2026-02-20 (TASK-011 Step 2/3 approved cleanup executed)
+- Executed approved TASK-011 cleanup set scoped to `test-results/` only:
+  - Archived 15 approved files into `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/archive/...`
+  - Deleted only `/Users/Mace/Wishfire/Codex-Orka/test-results/.DS_Store`
+  - Preserved protected file `/Users/Mace/Wishfire/Codex-Orka/test-results/.last-run.json`
+- Published deterministic Step 2/3 artifacts:
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/approved-archive-list.txt`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/operation-log.tsv`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/rollback-manifest.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/post-cleanup-assertions.json` (`pass: true`)
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/post-inventory.txt`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/closure-recommendation.json` (`PASS`)
+- Before/after state from rollback manifest:
+  - before: 67 files, 2,716,183 bytes
+  - after: 51 files, 2,465,762 bytes
+- Next: Lead closure gate review for TASK-011 cleanup packet.
+- TASK-011 Phase 1 artifact review completed; Step 2 approved with constraints.
+- Safety correction applied: `test-results/.last-run.json` reclassified as protected due governance references and excluded from delete set.
+- Approved Step 2 operations:
+  - archive 15 candidate files from task005/task007 historical subsets
+  - delete only `test-results/.DS_Store`
+  - emit deterministic rollback manifest + before/after summary
+- Updated directives:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-011-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+- TASK-011 Step 2/3 artifacts reviewed; closure gate set to PASS.
+- Verified approved operation set was executed exactly:
+  - 15 approved files archived
+  - only `.DS_Store` deleted
+  - `.last-run.json` protected and retained
+- Updated directives:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-011-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+- ACTIVE now in TASK-011 closure-admin hold pending PM sprint-board closeout; TASK-010 remains blocked.
+- Dispatched sprint bundle intake `TASK-012/013/014` as one ACTIVE cycle.
+- Published/updated directive artifacts:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-012-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-013-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-014-execution-plan.md`
+- Packet contract now enforces exact sequence: manifest publish -> approved deletion only -> deterministic validation+rollback with PASS/FAIL closure recommendation.
+- Constraint preserved: no gameplay/runtime logic edits.
+
+## 2026-02-20 (TASK-012/013/014 bundle executed)
+- Completed one-cycle bundle from ACTIVE.md:
+  - TASK-012: published deterministic manifest with explicit keep/delete rationale and reference safety checks.
+  - TASK-013: deleted only approved files from manifest (18 unused image assets under `web-runner/assets/images/`) and logged each operation.
+  - TASK-014: published post-delete validation + rollback assets and explicit PASS recommendation.
+- Bundle artifacts published under `/Users/Mace/Wishfire/Codex-Orka/test-results/task012-014-cleanup/`:
+  - `manifest.tsv`
+  - `manifest.txt`
+  - `approved-delete-list.txt`
+  - `deletion-operation-log.tsv`
+  - `post-delete-validation.json` (`pass: true`)
+  - `rollback-backup/` (backup copy for each deleted file)
+  - `before-after-summary.json`
+  - `closure-recommendation.json` (`PASS`)
+- Execution constraints respected:
+  - no runtime/gameplay logic edits
+  - deletion scope limited to approved image files
+  - deterministic rollback path preserved via `rollback-backup/` and operation log.
+- Next: Lead closure gate review for TASK-012/013/014 bundle.
+
+## 2026-02-20 (TASK-012/013/014 Lead closure gate)
+- Completed Lead closure review for bundle artifacts and issued PASS at TASK-014 plan level.
+- Verified deterministic evidence:
+  - `post-delete-validation.json` reports `pass: true`
+  - `approved-delete-list.txt` contains 18 approved paths
+  - `deletion-operation-log.tsv` contains header + 18 `ok` delete operations, matching approved set
+  - `rollback-backup/` contains rollback copies for all deleted files
+- Updated directives:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-014-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+- ACTIVE now reflects bundle execution complete at Lead gate and sets Dev to hold pending PM sprint-board completion marking and next intake packet.
+- Next: Await next explicit user request.
+
+## 2026-02-20 (Sync and dispatch to TASK-015)
+- Governance sync completed against sprint-board, adversarial-ledger, remediation-log, and ACTIVE.
+- No new unmapped ADV entries detected during ingestion; execution can continue under current sprint mapping.
+- ACTIVE intake advanced from closed TASK-012/013/014 bundle to TASK-015 per sprint-board.
+- Published TASK-015 execution plan with strict scope:
+  - output-only Layout 1 story-card slot
+  - mirror exact latest combat debug/action line as single live line
+  - no cache/stack; lightweight placeholder animation only
+  - no combat/transition/layout-policy refactors
 - Files touched:
-  - `src/core/combatRuntimeGateway.js`
-  - `ai-memory/todo.md`
-  - `ai-memory/insights.md`
-- Next task: Await next explicit user request.
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-015-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Await next explicit user request.
+
+## 2026-02-20 (TASK-015 QA reopen dispatch)
+- Received QA failure report for TASK-015 partial implementation:
+  - story-card slot location incorrect
+  - dimensions incorrect
+  - placeholder flip/slot animation not visible
+- Dispatched corrective packet (no scope expansion) by tightening TASK-015 execution plan and ACTIVE Dev Next Action:
+  - enforce relational anchoring into the band between buff row and gemboard
+  - enforce gemboard-aligned width/contracted height
+  - require visible on-update animation with single-line overwrite semantics only
+  - require deterministic corrective artifacts for placement, animation, and overwrite/containment proof
+- Files touched:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-015-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Await Dev corrective artifact packet for Lead closure review.
+
+## 2026-02-20 (TASK-015 QA FAIL regression containment dispatch)
+- QA reported additional regressions after partial TASK-015 implementation:
+  - story card initial placement incorrect
+  - card repositions only after blue-buff interaction (invalid trigger coupling)
+  - corrected state under-scaled (required width target unmet)
+  - yellow refill invariants regressed (row-wise order + yellow animation path)
+- Updated TASK-015 execution plan and ACTIVE packet to fail/reopen with sprint-blocking acceptance criteria:
+  - Story card must initialize from Layout 1 activation only (not turn/buff/gem events).
+  - Story card must be horizontally centered at approximately 95% width of viewport content band.
+  - Yellow refill order and yellow-sequence animation must be restored and proven unchanged by story-card work.
+- Required artifact set added for deterministic re-close attempt:
+  - `layout1-start.png`
+  - `layout1-post-blue-match.png`
+  - `storycard-placement-trace.json`
+  - `yellow-refill-order-trace.json`
+  - `yellow-animation-trace.json`
+  - `assertions-regression-guard.json`
+- Files touched:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-015-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Await Dev regression-corrective artifact packet for Lead review.
+
+## 2026-02-20 (TASK-015 visual typography tuning dispatch)
+- QA reported functional PASS on TASK-015 and requested visual readability adjustment only.
+- Dispatched narrow-scope follow-up:
+  - increase story-card font size to match sample readability target
+  - no text/content expansion
+  - no card anchor/size contract changes
+  - no refill behavior or yellow-path behavior changes
+- Updated directive files:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-015-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+- Required closure artifacts set:
+  - `storycard-font-before-after.png`
+  - `storycard-font-assertions.json`
+- Next: Await Dev typography artifact packet for Lead closure check.
+
+## 2026-02-20 (TASK-015 story-card single-line wiring)
+- Executed TASK-015 scope in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` only:
+  - Added single-line story-card runtime state (`gameState.storyCardLine`) with overwrite semantics.
+  - Added `getLatestCombatActionLine()` authority resolver from `state.globals.CombatActionLines[3]`.
+  - Added `getStoryCardLiveLineState()` for lightweight placeholder alpha pulse on line replacement.
+  - Updated Layout 1 combat text draw path so only `CombatAction` renders the live line; `CombatAction1/2/3` are skipped.
+  - Updated `drawHUD()` debug panel to mirror one latest action line only.
+- Deterministic artifacts published:
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/phase1-source-contract.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/phase3-validation.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/closure-recommendation.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/runtime-probe.log`
+- Closure recommendation: `PARTIAL PASS` (static contract/wiring checks pass; runtime probe blocked by local `agent-browser` daemon socket startup failure).
+- Index gap: `/Users/Mace/Wishfire/Codex-Orka/ai-memory/PROJECT_INDEX.md` is missing.
+- Files touched:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/phase1-source-contract.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/phase3-validation.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/closure-recommendation.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/runtime-probe.log`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Await next explicit user request.
+
+## 2026-02-20 (TASK-015 visible story-card slot placement fix)
+- Confirmed QA report: story-card slot was not visible in combat layout because `CombatAction` text was still suppressed by sidebar migration filter.
+- Updated `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` to:
+  - allow `CombatAction` through the text render filter while keeping other radiator text in sidebar,
+  - render a dedicated story-card slot band above gemboard (between buff row and board),
+  - draw the single live latest action line inside that slot with overwrite semantics and existing placeholder pulse.
+- Runtime validation artifacts:
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/runtime-slot-visible.png`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/runtime-slot-line.txt`
+- Next: Await next explicit user request.
+
+## 2026-02-20 (TASK-015 regression corrective packet executed)
+- Implemented TASK-015 QA-fail corrective in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` with no scope expansion:
+  - Story-card placement is initialized on `combat` layout activation (`layout1-active`) and no longer tied to turn/buff/gem event updates.
+  - Story-card width is centered and derived at ~95% of content band width.
+  - Added deterministic trace capture for TASK-015 contracts:
+    - story-card placement trigger/bounds
+    - yellow refill queue ordering
+    - yellow-sequence animation path stages
+- Exposed runtime trace retrieval hooks:
+  - `window.__codexGame.getTask015Trace()`
+  - `window.__codexGame.resetTask015Trace()`
+- Published required corrective artifact pack:
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/layout1-start.png`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/layout1-post-blue-match.png`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-placement-trace.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/yellow-refill-order-trace.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/yellow-animation-trace.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/assertions-regression-guard.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/closure-recommendation.json`
+- Corrective assertion verdict: PASS.
+- Next: Await next explicit user request.
+
+## 2026-02-20 (TASK-015 visual tuning packet)
+- Executed ACTIVE visual-tuning-only packet in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`:
+  - increased only story-card line font size in CombatAction render path,
+  - preserved story-card bounds/anchor logic,
+  - preserved latest-line overwrite semantics and refill/yellow behavior contracts.
+- Published typography closure artifacts:
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-font-before.png`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-font-after.png`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-font-before-after.png`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-font-state-after.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-font-trace-after.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-font-assertions.json`
+- Assertion verdict: PASS (`font-size-increased`, `card-bounds-unchanged`, `latest-overwrite-semantics-unchanged`).
+- Next: Await next explicit user request.

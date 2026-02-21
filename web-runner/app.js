@@ -39,9 +39,22 @@ const GEM_DEBUG_LEVEL = (function () {
   const p = new URLSearchParams(window.location.search);
   return p.get('gemlog') || 'minimal';
 })();
+const STARTUP_DEBUG = (() => {
+  if (typeof window === 'undefined') return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.has('startup_debug') || params.get('startup_debug') === 'true';
+  } catch {
+    return false;
+  }
+})();
 function debugLayoutLog(message) {
   if (!DEBUG_LAYOUT) return;
   console.log(message);
+}
+function startupDebugLog(...args) {
+  if (!STARTUP_DEBUG) return;
+  console.log(...args);
 }
 function isGemDebugEnabled() {
   if (DEBUG_GEMS_QUERY) return true;
@@ -214,7 +227,7 @@ function getHeroUIDByIndex(idx) {
 }
 
 // simple inline game state (could import from gameLogic.js if module support added)
-  const gameState = {
+const gameState = {
   selectedHero: 0,
   selectedEnemy: 0,
   playerTurn: true,
@@ -244,15 +257,98 @@ function getHeroUIDByIndex(idx) {
     current: null,
     telegraphUntil: 0,
   },
+  mapLayout: {
+    panX: 0,
+    panY: 0,
+    panBounds: { minX: 0, maxX: 0 },
+    drag: {
+      active: false,
+      pointerId: null,
+      lastX: 0,
+      lastY: 0,
+      moved: 0,
+    },
+    returnButton: { x: 14, y: 14, w: 112, h: 30 },
+    warMeter: 0.64,
+    lastRender: null,
+  },
   refillBounce: {
     active: false,
     queue: [],
     index: 0,
     current: null,
   },
+  storyCardLine: {
+    text: 'What happened?',
+    animUntil: 0,
+  },
+  storyCardLayout: {
+    x: 0,
+    y: 0,
+    w: 0,
+    h: 0,
+    initialized: false,
+    trigger: '',
+  },
+  task015Trace: {
+    storycardPlacement: [],
+    yellowQueue: [],
+    yellowRefillQueue: [],
+    yellowWrites: [],
+    yellowAnimation: [],
+  },
   lastTurnPhase: null,
   baseSummary: '',
 };
+
+function getTask015TraceStore() {
+  if (!gameState.task015Trace) {
+    gameState.task015Trace = {
+      storycardPlacement: [],
+      yellowQueue: [],
+      yellowRefillQueue: [],
+      yellowWrites: [],
+      yellowAnimation: [],
+    };
+  }
+  return gameState.task015Trace;
+}
+
+function traceTask015YellowQueue(queue) {
+  const store = getTask015TraceStore();
+  store.yellowQueue = (queue || []).map((item, idx) => ({
+    idx: Number(idx),
+    type: String(item.type || ''),
+    cellR: Number(item.cellR || 0),
+    cellC: Number(item.cellC || 0),
+    reason: String(item.reason || ''),
+    uid: Number(item.uid || 0),
+    target: Number(item.target || 0),
+  }));
+}
+
+function traceTask015YellowWrite(source, item, step) {
+  const store = getTask015TraceStore();
+  store.yellowWrites.push({
+    source: String(source || ''),
+    step: Number(step || 0),
+    cellR: Number(item.cellR || 0),
+    cellC: Number(item.cellC || 0),
+    type: String(item.type || ''),
+    time: Number(state.globals.time || 0),
+  });
+  if (store.yellowWrites.length > 120) store.yellowWrites.shift();
+}
+
+function traceTask015YellowAnimation(stage, payload = {}) {
+  const store = getTask015TraceStore();
+  store.yellowAnimation.push({
+    stage: String(stage || ''),
+    time: Number(state.globals.time || 0),
+    ...payload,
+  });
+  if (store.yellowAnimation.length > 200) store.yellowAnimation.shift();
+}
 let COMBAT_LAYOUT_READY = false;
 let COMBAT_BOOTSTRAP_COMPLETE = false;
 
@@ -272,6 +368,80 @@ const CANONICAL_HERO_ROSTER = [
   { name: 'Runa', hp: 30, maxHP: 30, ATK: 8, DEF: 8, MAG: 28, RES: 20, SPD: 11, attackType: 'magic' },
   { name: 'Kojonn', hp: 40, maxHP: 40, ATK: 12, DEF: 14, MAG: 22, RES: 18, SPD: 14, attackType: 'magic' },
 ];
+
+function ensureTask011Audit() {
+  if (!gameState.task011Audit) {
+    gameState.task011Audit = {
+      cycleCounter: 0,
+      currentActionCycleId: 0,
+      currentActionActorUID: 0,
+      lastTurnType: null,
+      actionCycles: [],
+      refillWrites: [],
+      enemyBoundaries: [],
+    };
+  }
+  return gameState.task011Audit;
+}
+
+function beginTask011ActionCycle(color, actorUID) {
+  const audit = ensureTask011Audit();
+  audit.cycleCounter += 1;
+  audit.currentActionCycleId = audit.cycleCounter;
+  audit.currentActionActorUID = Number(actorUID || 0);
+  audit.actionCycles.push({
+    cycleId: audit.currentActionCycleId,
+    color: Number(color),
+    actorUID: audit.currentActionActorUID,
+    startTime: Number(state.globals.time || 0),
+    startTurnPhase: Number(state.globals.TurnPhase || 0),
+  });
+  return audit.currentActionCycleId;
+}
+
+function recordTask011RefillWriteEvent({
+  source,
+  step,
+  cellR,
+  cellC,
+  reason,
+  writeType,
+  previousUid,
+  newUid,
+}) {
+  const audit = ensureTask011Audit();
+  audit.refillWrites.push({
+    cycleId: Number(audit.currentActionCycleId || 0),
+    source: String(source || ''),
+    step: Number(step || 0),
+    cellR: Number(cellR),
+    cellC: Number(cellC),
+    slotId: `${Number(cellR)},${Number(cellC)}`,
+    reason: String(reason || ''),
+    writeType: String(writeType || 'set'),
+    previousUid: Number(previousUid || 0),
+    newUid: Number(newUid || 0),
+    time: Number(state.globals.time || 0),
+    turnType: Number(callFunctionWithContext(fnContext, 'GetCurrentType') || 0),
+    turnPhase: Number(state.globals.TurnPhase || 0),
+    boardFillActive: Number(state.globals.BoardFillActive || 0),
+  });
+}
+
+function trackTask011EnemyBoundary(turnType) {
+  const audit = ensureTask011Audit();
+  const currentTurnType = Number(turnType || 0);
+  if (audit.lastTurnType === 0 && currentTurnType === 1) {
+    audit.enemyBoundaries.push({
+      cycleId: Number(audit.currentActionCycleId || 0),
+      time: Number(state.globals.time || 0),
+      turnPhase: Number(state.globals.TurnPhase || 0),
+      boardFillActive: Number(state.globals.BoardFillActive || 0),
+      refillActive: !!(gameState.refillBounce && gameState.refillBounce.active),
+    });
+  }
+  audit.lastTurnType = currentTurnType;
+}
 
 function setGemArray(arr) {
   state.globals.Gems = arr;
@@ -418,7 +588,7 @@ function initEntities(enemyRows, layoutInstances) {
       attackType: v.attackType,
       isAlive: true,
     });
-    console.log(`[HP_FIX] hero=${v.name} maxHP=${maxHP}`);
+    startupDebugLog(`[HP_FIX] hero=${v.name} maxHP=${maxHP}`);
   }
 
   gameState.partyHP = partyHP;
@@ -494,7 +664,7 @@ function createGemBoard(gridBounds = null) {
     const gridHeight = gridBounds.maxY - gridBounds.minY;
     startX = gridBounds.minX + (gridWidth - boardWidth) / 2;
     startY = gridBounds.minY + (gridHeight - boardHeight) / 2;
-    console.log(`[BOARD] Centered within grid bounds: (${startX.toFixed(1)}, ${startY.toFixed(1)})`);
+    startupDebugLog(`[BOARD] Centered within grid bounds: (${startX.toFixed(1)}, ${startY.toFixed(1)})`);
   }
   
   for (let c = 0; c < g.cols; c++) {
@@ -509,7 +679,7 @@ function createGemBoard(gridBounds = null) {
   gameState.boardCreated = true;
   setGemArray(gameState.gems);
   state.globals.TapIndex = 0;
-  console.log(`[BOARD] Created gem board: ${g.cols}x${g.rows} = ${gameState.gems.length} gems`);
+  startupDebugLog(`[BOARD] Created gem board: ${g.cols}x${g.rows} = ${gameState.gems.length} gems`);
   startRefillBounce(0.31);
 }
 
@@ -557,6 +727,7 @@ function randomGemFrame() {
   return frame;
 }
 
+
 function refillGemBoard(gridBounds = null) {
   const g = boardGeometry;
   rebuildGridFromGems();
@@ -568,7 +739,7 @@ function refillGemBoard(gridBounds = null) {
     if (hasEmpty) break;
   }
   if (!hasEmpty) {
-    console.log('[BOARD] Refill skipped (board full)');
+    startupDebugLog('[BOARD] Refill skipped (board full)');
     return false;
   }
   const boardWidth = g.cols * g.cellSize + (g.cols - 1) * g.gap;
@@ -611,7 +782,7 @@ function refillGemBoard(gridBounds = null) {
   gameState.selectionLocked = false;
   setGemArray(gameState.gems);
   state.globals.TapIndex = 0;
-  console.log('[BOARD] Refilled missing gems');
+  startupDebugLog('[BOARD] Refilled missing gems');
   return true;
 }
 
@@ -702,7 +873,6 @@ function startYellowCasinoSequence(actorUID) {
     if (!gm || gm.cellR == null || gm.cellC == null) continue;
     gemByCell.set(`${gm.cellR},${gm.cellC}`, gm);
   }
-  const emptySlots = [];
   const queue = [];
   for (let r = 0; r < boardGeometry.rows; r++) {
     for (let c = 0; c < boardGeometry.cols; c++) {
@@ -722,26 +892,16 @@ function startYellowCasinoSequence(actorUID) {
           duration: YELLOW_CASINO_SPIN_SEC,
           frameDuration: 0,
         });
-      } else if (!gem && gameState.grid && gameState.grid[c] && gameState.grid[c][r] === 0) {
-        const slot = { cellC: c, cellR: r, index: (r * boardGeometry.cols) + c };
-        emptySlots.push(slot);
-        queue.push({
-          type: 'empty',
-          reason: 'empty',
-          uid: 0,
-          cellC: c,
-          cellR: r,
-          target: pickYellowCasinoTarget(),
-          sequence: null,
-          startAt: 0,
-          duration: YELLOW_CASINO_SPIN_SEC,
-          frameDuration: 0,
-        });
       }
     }
   }
 
   const hasWork = queue.length > 0;
+  traceTask015YellowQueue(queue);
+  traceTask015YellowAnimation('yellow-sequence-start', {
+    queueLength: Number(queue.length),
+    hasWork: Boolean(hasWork),
+  });
   casino.active = hasWork;
   casino.phase = hasWork ? 'telegraph' : 'idle';
   casino.queue = queue;
@@ -749,10 +909,7 @@ function startYellowCasinoSequence(actorUID) {
   casino.current = null;
   casino.telegraphUntil = now + YELLOW_CASINO_TELEGRAPH_SEC;
   casino.ghost = null;
-  casino.emptyTelegraph = emptySlots.map(slot => {
-    const pos = getCellWorldPos(slot.cellC, slot.cellR);
-    return { ...slot, x: pos.x, y: pos.y, w: pos.w, h: pos.h };
-  });
+  casino.emptyTelegraph = [];
 
   for (const item of queue) {
     if (item.type !== 'yellow') continue;
@@ -763,7 +920,7 @@ function startYellowCasinoSequence(actorUID) {
   gemDebugLog('[FILL_GATE]', {
     stage: 'yellow-sequence-start',
     queueLength: queue.length,
-    emptyCount: emptySlots.length,
+    emptyCount: 0,
     globals: {
       CanPickGems: state.globals.CanPickGems,
       IsPlayerBusy: state.globals.IsPlayerBusy,
@@ -786,11 +943,16 @@ function startYellowCasinoSequence(actorUID) {
     uid: item.uid || 0,
   })));
 
-  const totalDuration = YELLOW_CASINO_TELEGRAPH_SEC + (queue.length * YELLOW_CASINO_SPIN_SEC);
-  state.globals.ActionLockUntil = now + Math.max(0.1, totalDuration);
-  state.globals.DeferAdvance = 1;
-  state.globals.AdvanceAfterAction = 1;
-  state.globals.ActionOwnerUID = actorUID;
+  if (hasWork) {
+    const totalDuration = YELLOW_CASINO_TELEGRAPH_SEC + (queue.length * YELLOW_CASINO_SPIN_SEC);
+    state.globals.ActionLockUntil = now + Math.max(0.1, totalDuration);
+    state.globals.DeferAdvance = 1;
+    state.globals.AdvanceAfterAction = 1;
+    state.globals.ActionOwnerUID = actorUID;
+  } else {
+    traceTask015YellowAnimation('yellow-sequence-skip', { reason: 'no-yellow-gems' });
+    startRefillBounce();
+  }
 }
 
 function startRefillBounce(speedScale = 1) {
@@ -807,6 +969,13 @@ function startRefillBounce(speedScale = 1) {
     }
   }
   const hasWork = emptySlots.length > 0;
+  const store = getTask015TraceStore();
+  store.yellowRefillQueue = emptySlots.map((slot, idx) => ({
+    idx: Number(idx),
+    cellR: Number(slot.cellR || 0),
+    cellC: Number(slot.cellC || 0),
+    reason: String(slot.reason || ''),
+  }));
   gemDebugLog('[FILL_GATE]', {
     stage: 'refill-bounce-start',
     hasWork,
@@ -872,72 +1041,6 @@ function collectBoardCoverageIssues() {
   return { missingCells, duplicates };
 }
 
-function findBootstrapMatchCells() {
-  const rows = boardGeometry.rows;
-  const cols = boardGeometry.cols;
-  const colorAt = Array.from({ length: rows }, () => Array(cols).fill(null));
-  for (const g of (gameState.gems || [])) {
-    if (!g || g.cellR == null || g.cellC == null) continue;
-    if (g.cellR < 0 || g.cellR >= rows || g.cellC < 0 || g.cellC >= cols) continue;
-    colorAt[g.cellR][g.cellC] = g.color != null ? g.color : g.elementIndex;
-  }
-  const matched = new Set();
-  for (let r = 0; r < rows; r++) {
-    let c = 0;
-    while (c < cols) {
-      const color = colorAt[r][c];
-      if (color == null) {
-        c += 1;
-        continue;
-      }
-      let end = c + 1;
-      while (end < cols && colorAt[r][end] === color) end += 1;
-      if (end - c >= 3) {
-        for (let x = c; x < end; x++) matched.add(`${r},${x}`);
-      }
-      c = end;
-    }
-  }
-  for (let c = 0; c < cols; c++) {
-    let r = 0;
-    while (r < rows) {
-      const color = colorAt[r][c];
-      if (color == null) {
-        r += 1;
-        continue;
-      }
-      let end = r + 1;
-      while (end < rows && colorAt[end][c] === color) end += 1;
-      if (end - r >= 3) {
-        for (let y = r; y < end; y++) matched.add(`${y},${c}`);
-      }
-      r = end;
-    }
-  }
-  return matched;
-}
-
-function clearBootstrapMatchesIfAny() {
-  if (!Array.isArray(gameState.gems) || gameState.gems.length === 0) return;
-  const MAX_PASSES = 24;
-  for (let pass = 0; pass < MAX_PASSES; pass++) {
-    const matched = findBootstrapMatchCells();
-    if (matched.size === 0) return;
-    for (const key of matched) {
-      const [rRaw, cRaw] = key.split(',');
-      const r = Number(rRaw);
-      const c = Number(cRaw);
-      const gem = gameState.gems.find(g => g && g.cellR === r && g.cellC === c);
-      if (!gem) continue;
-      gem.color = randomGemFrame();
-      gem.elementIndex = gem.color;
-      gem.selected = false;
-      gem.Selected = 0;
-    }
-    setGemArray(gameState.gems);
-  }
-}
-
 function tryActivateRuntimePhase() {
   if (state.globals.GamePhase !== 'BOOTSTRAP') return false;
   const refill = gameState.refillBounce;
@@ -946,7 +1049,6 @@ function tryActivateRuntimePhase() {
   if (casino && casino.active) return false;
   if (!Array.isArray(gameState.gems) || gameState.gems.length !== (boardGeometry.rows * boardGeometry.cols)) return false;
 
-  clearBootstrapMatchesIfAny();
   const coverage = collectBoardCoverageIssues();
   if (coverage.missingCells.length > 0 || coverage.duplicates.length > 0) return false;
 
@@ -988,6 +1090,7 @@ function handleGemMatch(color) {
   state.globals.IsPlayerBusy = 1;
 
   const actorUID = callFunctionWithContext(fnContext, 'GetCurrentTurn') || getHeroUIDByIndex(gameState.selectedHero) || gameState.selectedHero;
+  beginTask011ActionCycle(color, actorUID);
 
   const clearLocalSelection = () => {
     fnContext.setSelectedGemIndices([]);
@@ -1105,7 +1208,7 @@ function tryGetInstances(layout){
   const instances = layout.layers
     .filter(layer => layer && Array.isArray(layer.instances))
     .flatMap(layer => layer.instances);
-  console.log('[LAYOUT_AUDIT] flattenedInstanceCount', instances.length);
+  startupDebugLog('[LAYOUT_AUDIT] flattenedInstanceCount', instances.length);
   return instances;
 }
 
@@ -1233,6 +1336,7 @@ async function main(){
   let gemFrameImages = [];
   let buffIconFrameImages = {};
   let debuffIconImages = {};
+  let mapBackgroundImage = null;
   const calculateGridBounds = (layoutInstances) => {
     const placeholders = (layoutInstances || []).filter(inst => inst && inst.type === 'grid_placeholder' && inst.world);
     if (!placeholders.length) {
@@ -1260,7 +1364,7 @@ async function main(){
     }
     const bounds = { minX, maxX, minY, maxY };
     gameState.gridBounds = bounds;
-    console.log(`[BOARD] Grid bounds calculated: (${minX.toFixed(1)}, ${minY.toFixed(1)}) to (${maxX.toFixed(1)}, ${maxY.toFixed(1)})`);
+    startupDebugLog(`[BOARD] Grid bounds calculated: (${minX.toFixed(1)}, ${minY.toFixed(1)}) to (${maxX.toFixed(1)}, ${maxY.toFixed(1)})`);
     return bounds;
   };
   function prepareCombatSetupFromInstances(layoutInstances, gameStateRef) {
@@ -1274,21 +1378,21 @@ async function main(){
     assertCombatLayoutDev('loadC3ProjectAssets');
     runtimeLayouts = await fetchJson(assetUrl('layouts.json')) || {};
     layout = runtimeLayouts.layout || { name: 'runtime-fallback', layers: [] };
-    console.log('[LAYOUT_AUDIT] topLevelKeys', Object.keys(layout || {}));
-    console.log('[INIT] Layout loaded');
+    startupDebugLog('[LAYOUT_AUDIT] topLevelKeys', Object.keys(layout || {}));
+    startupDebugLog('[INIT] Layout loaded');
     assetsLayout = runtimeLayouts.assetsLayout || null;
 
     const project = runtimeLayouts.project || { viewportWidth: 360, viewportHeight: 640 };
     viewW = project && project.viewportWidth ? project.viewportWidth : 360;
     viewH = project && project.viewportHeight ? project.viewportHeight : 640;
-    console.log('[INIT] Project viewport:', viewW, 'x', viewH);
+    startupDebugLog('[INIT] Project viewport:', viewW, 'x', viewH);
 
     instances = tryGetInstances(layout);
-    console.log('[LAYOUT_AUDIT] instanceCount', Array.isArray(instances) ? instances.length : 0);
+    startupDebugLog('[LAYOUT_AUDIT] instanceCount', Array.isArray(instances) ? instances.length : 0);
     const gemInstanceCount = Array.isArray(instances)
       ? instances.filter(i => i && i.type === 'Gem').length
       : 0;
-    console.log('[LAYOUT_AUDIT] gemInstanceCount', gemInstanceCount);
+    startupDebugLog('[LAYOUT_AUDIT] gemInstanceCount', gemInstanceCount);
     const typesNeeded = Array.from(new Set(instances.map(i=>i.type)));
     ['Enemy_Sprite', 'Bar_Fill', 'Bar_Yellow', 'Bar_Back', 'PartyHP_Bar', 'Gem', 'AttackButton', 'Selector'].forEach(t => {
       if (!typesNeeded.includes(t)) typesNeeded.push(t);
@@ -1300,7 +1404,7 @@ async function main(){
       const data = allTypes[t];
       if (data) types[t] = data;
     }
-    console.log('[INIT] Loaded', Object.keys(types).length, 'object types');
+    startupDebugLog('[INIT] Loaded', Object.keys(types).length, 'object types');
 
     const enemies = await fetchJson(assetUrl('enemies.json'));
     enemyRows = parseC2ArrayTable(enemies);
@@ -1314,6 +1418,7 @@ async function main(){
     gemFrameImages = [];
     buffIconFrameImages = {};
     debuffIconImages = {};
+    mapBackgroundImage = null;
     let loadedCount = 0;
     const failedImages = [];
     const loadBaseSprites = async () => {
@@ -1330,7 +1435,7 @@ async function main(){
               images[t] = img;
               loadedCount++;
               if(['UI_NavCloseButton', 'UI_NavCloseX', 'UI_CloseWin'].includes(t)) {
-                console.log(`[LOAD] SUCCESS: ${t} loaded from ${imgPath}`);
+                startupDebugLog(`[LOAD] SUCCESS: ${t} loaded from ${imgPath}`);
               }
             } else {
               failedImages.push({type: t, path: imgPath, anim: animName});
@@ -1356,6 +1461,7 @@ async function main(){
         const img = await loadImage(imgPath);
         if (img) gemFrameImages[i] = img;
       }
+      mapBackgroundImage = await loadImage(assetUrl('images/map-layout.png'));
     };
 
     const loadDeferredVisuals = async () => {
@@ -1368,9 +1474,9 @@ async function main(){
           const img = await loadImage(imgPath);
           if (img) enemySpriteImages[String(animName).toLowerCase()] = img;
         }
-        console.log('[LOAD] Enemy_Sprite animations loaded:', Object.keys(enemySpriteImages).length);
+        startupDebugLog('[LOAD] Enemy_Sprite animations loaded:', Object.keys(enemySpriteImages).length);
       }
-      for (let i = 1; i <= 5; i++) {
+      for (let i = 1; i <= 4; i++) {
         const key = `buffIcon${i}`;
         buffIconFrameImages[key] = [];
         for (let f = 0; f < 5; f++) {
@@ -1400,19 +1506,44 @@ async function main(){
       console.error(`[LOAD] Error during image preload:`, e);
     }
 
-    console.log('[INIT] Processing instances...');
+    rebuildRenderedCache();
+    startupDebugLog('[INIT] Processing instances...');
   }
   const registerCoreLayouts = (layoutState, { combatGateway: gateway }) => {
+    const validateCombatSnapshot = (snapshot, stage, transitionLabel) => {
+      const valid = !snapshot || (
+        Array.isArray(snapshot.turnQueue) &&
+        Number.isFinite(Number(snapshot.currentActorIndex))
+      );
+      console.log('[LAYOUT_PHASE1]', {
+        stage,
+        transition: transitionLabel,
+        hasSnapshot: Boolean(snapshot),
+        snapshotValid: valid,
+      });
+      return valid;
+    };
+
     layoutState.registerLayout({
       id: 'combat',
-      allowedTransitions: ['base', 'shop', 'intro'],
+      allowedTransitions: ['base', 'shop', 'intro', 'astralOverlay', 'mapLayout'],
       async onEnter({ resumeSnapshot }) {
+        const hasRuntimeData =
+          Array.isArray(instances) && instances.length > 0 &&
+          types && Object.keys(types).length > 0 &&
+          Array.isArray(enemyRows) && enemyRows.length > 0;
+        const needsBootstrap = !freshCombatBootstrapped || !hasRuntimeData;
+
+        validateCombatSnapshot(resumeSnapshot || null, 'onEnter', 'x->1');
         console.log('[Layout] Combat activated via LayoutState');
         COMBAT_LAYOUT_READY = true;
         console.log('[LayoutGuard] Combat layout ready');
-        if (!resumeSnapshot) {
+        if (needsBootstrap) {
+          if (!hasRuntimeData) {
+            console.log('[LayoutGuard] Combat bootstrap forcing asset init (missing runtime data)');
+          }
           state.globals.GamePhase = 'BOOTSTRAP';
-          console.log('[INIT] Starting initialization...');
+          startupDebugLog('[INIT] Starting initialization...');
           await loadC3ProjectAssets();
           prepareCombatSetupFromInstances(instances, gameState);
           assertCombatLayoutDev('StartRound');
@@ -1421,7 +1552,7 @@ async function main(){
           COMBAT_BOOTSTRAP_COMPLETE = true;
         }
         gateway.resume(resumeSnapshot || null);
-        if (!resumeSnapshot) {
+        if (needsBootstrap) {
           initEntities(enemyRows, instances);
           createGemBoard(gridBounds);
           if (isGemDebugEnabled()) {
@@ -1432,12 +1563,34 @@ async function main(){
             }, 1000);
           }
         }
+        initializeStoryCardLayout('layout1-active');
         eventBus.emit('layout:combat:entered', { restored: Boolean(resumeSnapshot) });
       },
       onActive() {},
-      onExit() {
-        return gateway.suspend();
+      onExit({ to }) {
+        gameState.storyCardLayout.initialized = false;
+        const snapshot = gateway.suspend();
+        const transitionLabel = to === 'astralOverlay' ? '1->2' : '1->x';
+        validateCombatSnapshot(snapshot, 'onExit', transitionLabel);
+        return snapshot;
       },
+    });
+    layoutState.registerLayout({
+      id: 'mapLayout',
+      allowedTransitions: ['combat'],
+      onEnter() {
+        gameState.overlayVisible = false;
+        gameState.mapLayout.panY = 0;
+        const drag = gameState.mapLayout.drag;
+        drag.active = false;
+        drag.pointerId = null;
+        drag.lastX = 0;
+        drag.lastY = 0;
+        drag.moved = 0;
+        console.log('[LAYOUT_PHASE1]', { stage: 'onEnter', transition: '1->map', trigger: 'map-click' });
+      },
+      onActive() {},
+      onExit() { return null; },
     });
     layoutState.registerLayout({
       id: 'base',
@@ -1457,6 +1610,22 @@ async function main(){
       id: 'shop',
       allowedTransitions: ['base', 'combat'],
       onEnter() {},
+      onActive() {},
+      onExit() { return null; },
+    });
+    layoutState.registerLayout({
+      id: 'storyMock',
+      allowedTransitions: ['combat'],
+      onEnter() {},
+      onActive() {},
+      onExit() { return null; },
+    });
+    layoutState.registerLayout({
+      id: 'astralOverlay',
+      allowedTransitions: ['combat'],
+      onEnter() {
+        gameState.overlayVisible = false;
+      },
       onActive() {},
       onExit() { return null; },
     });
@@ -1484,18 +1653,42 @@ async function main(){
   state.globals.GamePhase = 'BOOTSTRAP';
 
   eventBus.on('nav:clicked', async ({ label }) => {
+    if (label === 'Map') {
+      if (layoutState.getActiveLayoutId() !== 'combat') {
+        console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->map', trigger: 'map-click', blocked: 'active-layout-not-combat' });
+        return;
+      }
+      console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->map', trigger: 'map-click' });
+      await layoutState.requestLayoutChange('mapLayout', 'nav-map');
+      return;
+    }
     if (label === 'AstralFlow') {
+      if (layoutState.getActiveLayoutId() !== 'combat') {
+        console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->2', trigger: 'astral-flow-click', blocked: 'active-layout-not-combat' });
+        return;
+      }
+      console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->2', trigger: 'astral-flow-click' });
       await layoutState.requestLayoutChange('astralOverlay', 'nav-astral-flow');
       return;
     }
     gameState.overlayVisible = true;
+  });
+  eventBus.on('layout:storyMock:click', async () => {
+    if (layoutState.getActiveLayoutId() !== 'storyMock') return;
+    console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '0->1', trigger: 'blue-click' });
+    await layoutState.requestLayoutChange('combat', 'story-blue-click');
+  });
+  eventBus.on('layout:astralOverlay:click', async () => {
+    if (layoutState.getActiveLayoutId() !== 'astralOverlay') return;
+    console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '2->1', trigger: 'red-click' });
+    await layoutState.requestLayoutChange('combat', 'overlay-red-click');
   });
 
   if (layoutHarnessEnabled) {
     debugLayoutLog('[Harness] Enabled');
   }
 
-  await layoutState.activateInitialLayout('combat');
+  await layoutState.activateInitialLayout('storyMock');
 
   const layoutW = viewW;
   const layoutH = viewH;
@@ -1530,6 +1723,74 @@ async function main(){
     const cx = layoutOffsetX + wx * layoutScale;
     const cy = layoutOffsetY + wy * layoutScale;
     return { x: cx, y: cy };
+  }
+
+  function traceTask015StoryPlacement(trigger, bounds) {
+    const store = getTask015TraceStore();
+    store.storycardPlacement.push({
+      trigger: String(trigger || ''),
+      layoutId: layoutState && typeof layoutState.getActiveLayoutId === 'function' ? layoutState.getActiveLayoutId() : null,
+      x: Number(bounds.x || 0),
+      y: Number(bounds.y || 0),
+      w: Number(bounds.w || 0),
+      h: Number(bounds.h || 0),
+      time: Number(state.globals.time || 0),
+    });
+    if (store.storycardPlacement.length > 50) store.storycardPlacement.shift();
+  }
+
+  function initializeStoryCardLayout(trigger = 'layout-active') {
+    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
+      ? layoutState.getActiveLayoutId()
+      : null;
+    if (activeLayoutId !== 'combat') return false;
+
+    const viewLeft = layoutOffsetX;
+    const viewTop = layoutOffsetY;
+    const viewWidth = layoutW * layoutScale;
+    const contentBandWidth = viewWidth * 0.95;
+    const slotX = viewLeft + (viewWidth - contentBandWidth) * 0.5;
+
+    const buffTypes = new Set(['buffIcon1', 'buffIcon2', 'buffIcon3', 'buffIcon4']);
+    const buffInstances = (instances || []).filter(ins => ins && buffTypes.has(ins.type) && ins.world);
+    const buffBottom = buffInstances.length
+      ? Math.max(...buffInstances.map(ins => {
+          const p = worldToCanvas(ins.world.x || 0, ins.world.y || 0);
+          const h = Number(ins.world.height || 0) * layoutScale;
+          const oy = Number(ins.world.originY != null ? ins.world.originY : 0.5);
+          return p.y - (h * oy) + h;
+        }))
+      : (viewTop + Math.max(240, Math.round(250 * layoutScale)));
+
+    const grid = gameState.gridBounds || {
+      minX: boardGeometry.gx,
+      minY: boardGeometry.gy,
+      maxX: boardGeometry.gx + (boardGeometry.cols * boardGeometry.cellSize + (boardGeometry.cols - 1) * boardGeometry.gap),
+      maxY: boardGeometry.gy + (boardGeometry.rows * boardGeometry.cellSize + (boardGeometry.rows - 1) * boardGeometry.gap),
+    };
+    const gridTop = layoutOffsetY + Number(grid.minY || 0) * layoutScale;
+    const topMargin = Math.max(8, Math.round(10 * layoutScale));
+    const bottomMargin = Math.max(8, Math.round(10 * layoutScale));
+    const slotY = buffBottom + topMargin;
+    const rawH = gridTop - bottomMargin - slotY;
+    const slotH = Math.max(Math.round(34 * layoutScale), Math.min(Math.round(58 * layoutScale), rawH));
+    const adjustedY = rawH >= Math.round(24 * layoutScale)
+      ? slotY
+      : (gridTop - bottomMargin - Math.max(Math.round(34 * layoutScale), Math.round(38 * layoutScale)));
+
+    const bounds = {
+      x: slotX,
+      y: adjustedY,
+      w: contentBandWidth,
+      h: Math.max(Math.round(34 * layoutScale), slotH),
+    };
+    gameState.storyCardLayout = {
+      ...bounds,
+      initialized: true,
+      trigger: String(trigger || 'layout-active'),
+    };
+    traceTask015StoryPlacement(trigger, bounds);
+    return true;
   }
 
   if (layoutHarnessEnabled && harnessLayoutState) {
@@ -1683,8 +1944,15 @@ async function main(){
     const moveUp = (asset ? asset.height : (img ? img.height : 60)) / 2;
     const worldY = 235 - moveUp;
     const pos = worldToCanvas(worldX, worldY);
-    const w = (asset ? asset.width : (img ? img.width : 120)) * layoutScale;
-    const h = (asset ? asset.height : (img ? img.height : 60)) * layoutScale;
+    const controlScale = Math.max(0.7, Math.min(layoutScale, 1));
+    const minW = 52;
+    const maxW = 120;
+    const minH = 22;
+    const maxH = 48;
+    const rawW = (asset ? asset.width : (img ? img.width : 120)) * controlScale;
+    const rawH = (asset ? asset.height : (img ? img.height : 60)) * controlScale;
+    const w = Math.max(minW, Math.min(maxW, rawW));
+    const h = Math.max(minH, Math.min(maxH, rawH));
     const ox = asset ? asset.originX : origin.ox;
     const oy = asset ? asset.originY : origin.oy;
     const dx = pos.x - w * ox;
@@ -1696,74 +1964,160 @@ async function main(){
   const animState = {};
   const enemyBars = new Map();
   let lastFrameTime = performance.now();
-  const buffIconFrames = { buffIcon1: 0, buffIcon2: 0, buffIcon3: 0, buffIcon4: 0, buffIcon5: 0 };
+  const buffIconFrames = { buffIcon1: 0, buffIcon2: 0, buffIcon3: 0, buffIcon4: 0 };
+  let lastRenderDebugSignature = '';
   let rendered = [];
-  for(let i=0;i<Math.min(instances.length, 500); i++){
-    const inst = instances[i];
-    const world = inst.world || { x:0, y:0, width:32, height:32, originX:0.5, originY:0.5 };
-    const img = images[inst.type];
-    const typeData = types[inst.type];
-    const ox = (world.originX !== undefined) ? world.originX : 0.5;
-    const oy = (world.originY !== undefined) ? world.originY : 0.5;
-    const isTextObject = typeData && typeData['plugin-id'] === 'Text';
-    const isButton = typeData && typeData['plugin-id'] === 'Button';
-    const isSprite = typeData && typeData['plugin-id'] === 'Sprite';
-    const textContent = isTextObject ? getTextContent(inst, typeData) : 
-                       (isButton && inst.properties && inst.properties.text) ? inst.properties.text : null;
-    rendered.push({
-      inst, typeData, world, ox, oy,
-      uid: inst.uid,
-      dx: 0, dy: 0, w: 0, h: 0,
-      isText: isTextObject, isButton, isSprite, img, textContent,
-      layerIndex: inst.layerIndex || 0,
-      layerName: inst.layerName || 'Unknown'
-    });
-  }
-  
-  // Remove legacy hero icon sprites from rendering
-  const baseRendered = rendered.filter(r => !['icon_hero1','icon_hero2','icon_hero3','icon_hero4'].includes(r.inst.type));
-  // Sort by layer index to ensure proper rendering order (background first)
-  baseRendered.sort((a, b) => a.layerIndex - b.layerIndex);
-  rendered = baseRendered;
-
-  // Debug: Check if modal elements are present in layout
-  const windowPopupItems = baseRendered.filter(r => r.layerName === 'Window Popup');
-  const modalObjects = baseRendered.filter(r => ['UI_CloseWin', 'UI_NavCloseButton', 'UI_NavCloseX'].includes(r.inst.type));
-  console.log(`[DEBUG] Window Popup layer items: ${windowPopupItems.length} found`);
-  console.log(`[DEBUG] Modal objects: ${modalObjects.length} found:`, modalObjects.map(r => `${r.inst.type} at (${r.inst.world.x || 0}, ${r.inst.world.y || 0})`).join(', '));
-  console.log(`[DEBUG] All rendered objects: ${baseRendered.length} total`);
-  console.log(`[DEBUG] Modal objects:`, windowPopupItems.map(r => r.inst.type).join(', '));
-
-  // Calculate EnemyArea bounds for layout math (ComputeEnemyLayout parity)
-  const enemyAreas = baseRendered.filter(r => r.inst.type === 'EnemyArea');
-  if (enemyAreas.length > 0) {
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (const ea of enemyAreas) {
-      const world = ea.inst.world;
-      const w = world.width || 45;
-      const h = world.height || 45;
+  function rebuildRenderedCache() {
+    const nextRendered = [];
+    for (let i = 0; i < Math.min(instances.length, 500); i++) {
+      const inst = instances[i];
+      const world = inst.world || { x: 0, y: 0, width: 32, height: 32, originX: 0.5, originY: 0.5 };
+      const img = images[inst.type];
+      const typeData = types[inst.type];
       const ox = (world.originX !== undefined) ? world.originX : 0.5;
       const oy = (world.originY !== undefined) ? world.originY : 0.5;
-      const left = (world.x || 0) - w * ox;
-      const right = (world.x || 0) + w * (1 - ox);
-      const top = (world.y || 0) - h * oy;
-      const bottom = (world.y || 0) + h * (1 - oy);
-      minX = Math.min(minX, left);
-      maxX = Math.max(maxX, right);
-      minY = Math.min(minY, top);
-      maxY = Math.max(maxY, bottom);
+      const isTextObject = typeData && typeData['plugin-id'] === 'Text';
+      const isButton = typeData && typeData['plugin-id'] === 'Button';
+      const isSprite = typeData && typeData['plugin-id'] === 'Sprite';
+      const textContent = isTextObject
+        ? getTextContent(inst, typeData)
+        : (isButton && inst.properties && inst.properties.text) ? inst.properties.text : null;
+      nextRendered.push({
+        inst, typeData, world, ox, oy,
+        uid: inst.uid,
+        dx: 0, dy: 0, w: 0, h: 0,
+        isText: isTextObject, isButton, isSprite, img, textContent,
+        layerIndex: inst.layerIndex || 0,
+        layerName: inst.layerName || 'Unknown'
+      });
     }
-    state.globals.EnemyAreaRect = { minX, maxX, minY, maxY };
-    callFunctionWithContext(fnContext, 'ComputeEnemyLayout');
-    callFunctionWithContext(fnContext, 'RefreshEnemyPositions');
+
+    const baseRendered = nextRendered.filter(r => !['icon_hero1', 'icon_hero2', 'icon_hero3', 'icon_hero4'].includes(r.inst.type));
+    baseRendered.sort((a, b) => a.layerIndex - b.layerIndex);
+    rendered = baseRendered;
+
+    const windowPopupItems = baseRendered.filter(r => r.layerName === 'Window Popup');
+    const modalObjects = baseRendered.filter(r => ['UI_CloseWin', 'UI_NavCloseButton', 'UI_NavCloseX'].includes(r.inst.type));
+    const modalSummary = modalObjects
+      .map(r => `${r.inst.type}@(${Math.round(r.inst.world.x || 0)},${Math.round(r.inst.world.y || 0)})`)
+      .join('|');
+    const popupSummary = windowPopupItems.map(r => r.inst.type).join('|');
+    const debugSig = `${windowPopupItems.length}:${modalObjects.length}:${baseRendered.length}:${modalSummary}:${popupSummary}`;
+    if (debugSig !== lastRenderDebugSignature) {
+      lastRenderDebugSignature = debugSig;
+      startupDebugLog('[DEBUG_RENDER_SUMMARY]', {
+        popupCount: windowPopupItems.length,
+        modalCount: modalObjects.length,
+        renderedCount: baseRendered.length,
+        modals: modalSummary,
+        popupTypes: popupSummary,
+      });
+    }
+
+    const enemyAreas = baseRendered.filter(r => r.inst.type === 'EnemyArea');
+    if (enemyAreas.length > 0) {
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const ea of enemyAreas) {
+        const areaWorld = ea.inst.world;
+        const w = areaWorld.width || 45;
+        const h = areaWorld.height || 45;
+        const ox = (areaWorld.originX !== undefined) ? areaWorld.originX : 0.5;
+        const oy = (areaWorld.originY !== undefined) ? areaWorld.originY : 0.5;
+        const left = (areaWorld.x || 0) - w * ox;
+        const right = (areaWorld.x || 0) + w * (1 - ox);
+        const top = (areaWorld.y || 0) - h * oy;
+        const bottom = (areaWorld.y || 0) + h * (1 - oy);
+        minX = Math.min(minX, left);
+        maxX = Math.max(maxX, right);
+        minY = Math.min(minY, top);
+        maxY = Math.max(maxY, bottom);
+      }
+      state.globals.EnemyAreaRect = { minX, maxX, minY, maxY };
+      callFunctionWithContext(fnContext, 'ComputeEnemyLayout');
+      callFunctionWithContext(fnContext, 'RefreshEnemyPositions');
+    }
+
+    out.textContent = `🎮 Puzzle RPG\n\n✓ Game loaded\n${rendered.length} total objects loaded`;
   }
-  
-  out.textContent = `🎮 Puzzle RPG\n\n✓ Game loaded\n${rendered.length} total objects loaded`;
+  rebuildRenderedCache();
 
   // Track last overlay state for logging only on change
   let lastOverlayState = null;
 
   function drawHarnessLayoutTakeover(layoutId) {
+    if (layoutId === 'mapLayout') {
+      const viewWidth = canvas.width / dpr;
+      const viewHeight = canvas.height / dpr;
+      const panX = Number(gameState.mapLayout.panX || 0);
+      gameState.mapLayout.panY = 0;
+      ctx.clearRect(0, 0, viewWidth, viewHeight);
+      ctx.fillStyle = '#1f2d3d';
+      ctx.fillRect(0, 0, viewWidth, viewHeight);
+
+      const drawParallax = (img, scale, alpha) => {
+        if (!img) return;
+        const w = img.width * scale;
+        const h = img.height * scale;
+        const halfSpillX = Math.max(0, (w - viewWidth) / 2);
+        const minPanX = -halfSpillX;
+        const maxPanX = halfSpillX;
+        gameState.mapLayout.panBounds = { minX: minPanX, maxX: maxPanX };
+        const clampedPanX = Math.max(minPanX, Math.min(maxPanX, panX));
+        gameState.mapLayout.panX = clampedPanX;
+        const x = ((viewWidth - w) / 2) + clampedPanX;
+        const y = 0;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.drawImage(img, x, y, w, h);
+        ctx.restore();
+        gameState.mapLayout.lastRender = {
+          fitMode: 'vertical',
+          viewWidth,
+          viewHeight,
+          drawW: w,
+          drawH: h,
+          drawX: x,
+          drawY: y,
+          panX: clampedPanX,
+          panY: 0,
+          panBounds: { minX: minPanX, maxX: maxPanX },
+          towerOverlayRendered: false,
+        };
+      };
+      const verticalFitScale = mapBackgroundImage ? (viewHeight / mapBackgroundImage.height) : 1;
+      drawParallax(mapBackgroundImage, verticalFitScale, 0.95);
+
+      const meterPad = 14;
+      const meterW = Math.max(180, viewWidth - (meterPad * 2));
+      const meterH = 16;
+      const meterX = meterPad;
+      const meterY = 14;
+      const pct = Math.max(0, Math.min(1, Number(gameState.mapLayout.warMeter || 0)));
+      ctx.fillStyle = '#0f1722';
+      ctx.fillRect(meterX, meterY, meterW, meterH);
+      ctx.fillStyle = '#cf3d2e';
+      ctx.fillRect(meterX + 2, meterY + 2, Math.max(0, (meterW - 4) * pct), meterH - 4);
+      ctx.strokeStyle = '#d6dbe3';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(meterX, meterY, meterW, meterH);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '600 12px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(`War Meter ${Math.round(pct * 100)}%`, meterX + 6, meterY + 12);
+
+      const btn = gameState.mapLayout.returnButton;
+      ctx.fillStyle = '#f4f6f8';
+      ctx.fillRect(btn.x, btn.y + 24, btn.w, btn.h);
+      ctx.strokeStyle = '#1b1f23';
+      ctx.strokeRect(btn.x, btn.y + 24, btn.w, btn.h);
+      ctx.fillStyle = '#111';
+      ctx.font = '600 12px Arial';
+      ctx.fillText('Return Combat', btn.x + 10, btn.y + 43);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '500 14px Arial';
+      ctx.fillText('Map Layout (drag to pan)', 14, viewHeight - 18);
+      return;
+    }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = layoutId === 'storyMock' ? '#1557ff' : '#d52525';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1780,7 +2134,11 @@ async function main(){
   
   // helper function to draw all instances
   function drawFrame(dtOverride){
-    if (!COMBAT_BOOTSTRAP_COMPLETE && !layoutHarnessEnabled) {
+    const activeRuntimeLayout = layoutState && typeof layoutState.getActiveLayoutId === 'function'
+      ? layoutState.getActiveLayoutId()
+      : null;
+    if (activeRuntimeLayout && activeRuntimeLayout !== 'combat') {
+      drawHarnessLayoutTakeover(activeRuntimeLayout);
       return;
     }
     if (layoutHarnessEnabled && harnessLayoutState) {
@@ -1789,6 +2147,9 @@ async function main(){
         drawHarnessLayoutTakeover(activeLayout);
         return;
       }
+    }
+    if (!COMBAT_BOOTSTRAP_COMPLETE && !layoutHarnessEnabled) {
+      return;
     }
 
     const now = performance.now();
@@ -1884,6 +2245,9 @@ async function main(){
       const nowTime = state.globals.time || 0;
       if (casino.phase === 'telegraph' && nowTime >= casino.telegraphUntil) {
         casino.phase = 'spin';
+        traceTask015YellowAnimation('yellow-sequence-spin-enter', {
+          queueLength: Number((casino.queue || []).length),
+        });
       }
       if (casino.phase === 'spin') {
         const getGemByUid = (uid) => (gameState.gems || []).find(gm => gm && gm.uid === uid);
@@ -1913,6 +2277,12 @@ async function main(){
               ? item.duration / (item.sequence.length - 1)
               : item.duration;
             casino.current = item;
+            traceTask015YellowAnimation('yellow-sequence-item-start', {
+              step: Number(casino.index),
+              type: String(item.type || ''),
+              cellR: Number(item.cellR || 0),
+              cellC: Number(item.cellC || 0),
+            });
             break;
           }
           if (!casino.current) {
@@ -1956,6 +2326,7 @@ async function main(){
                   assignedColor: item.target,
                   assignedUid: gem.uid,
                 });
+                traceTask015YellowWrite('yellow-sequence', item, casino.index);
                 casino.index += 1;
                 casino.current = null;
               }
@@ -1967,57 +2338,100 @@ async function main(){
               const step = casino.index;
               const cellR = item.cellR;
               const cellC = item.cellC;
-              const newGem = {
-                uid: gameState.nextGemUID++,
-                cellC: item.cellC,
-                cellR: item.cellR,
-                color: item.target,
-                elementIndex: item.target,
-                x: pos.x,
-                y: pos.y,
-                worldX: pos.x,
-                worldY: pos.y,
-                width: pos.w,
-                height: pos.h,
-                selected: false,
-                Selected: 0,
-                flashUntil: 0
-              };
-              if (isGemDebugEnabled()) {
-                gemDebugLog('[REFILL_BEFORE]', {
+              const previousUid = gameState.grid[cellC] ? Number(gameState.grid[cellC][cellR] || 0) : 0;
+              const occupiedGem = (gameState.gems || []).find(g => g && g.cellR === cellR && g.cellC === cellC);
+              const slotFilled = !gameState.grid[cellC] || gameState.grid[cellC][cellR] !== 0;
+              if (slotFilled || occupiedGem) {
+                recordTask011RefillWriteEvent({
+                  source: 'yellow-sequence',
                   step,
                   cellR,
                   cellC,
-                  gemCount: gameState.gems.length
+                  reason: slotFilled ? 'not-empty' : 'occupied-slot',
+                  writeType: 'skip',
+                  previousUid,
+                  newUid: previousUid,
                 });
-              }
-              gameState.gems = gameState.gems.filter(g => !(g.cellR === cellR && g.cellC === cellC));
-              gameState.gems.push(newGem);
-              if (isGemDebugEnabled()) {
-                gemDebugLog('[REFILL_AFTER]', {
+                gemDebugLog('[FILL_SKIP]', {
+                  stage: 'yellow-sequence',
                   step,
                   cellR,
                   cellC,
-                  gemCount: gameState.gems.length
+                  reason: slotFilled ? (!gameState.grid[cellC] ? 'missing-column' : 'not-empty') : 'occupied-slot',
+                  tag: item.reason || 'empty',
                 });
+                if (occupiedGem && gameState.grid[cellC]) {
+                  gameState.grid[cellC][cellR] = occupiedGem.uid;
+                }
+                if (isGemDebugEnabled()) {
+                  gemDebugLog('[COVERAGE]', countCellCoverage());
+                }
+                casino.ghost = null;
+                casino.index += 1;
+                casino.current = null;
+              } else {
+                const newGem = {
+                  uid: gameState.nextGemUID++,
+                  cellC: item.cellC,
+                  cellR: item.cellR,
+                  color: item.target,
+                  elementIndex: item.target,
+                  x: pos.x,
+                  y: pos.y,
+                  worldX: pos.x,
+                  worldY: pos.y,
+                  width: pos.w,
+                  height: pos.h,
+                  selected: false,
+                  Selected: 0,
+                  flashUntil: 0
+                };
+                if (isGemDebugEnabled()) {
+                  gemDebugLog('[REFILL_BEFORE]', {
+                    step,
+                    cellR,
+                    cellC,
+                    gemCount: gameState.gems.length
+                  });
+                }
+                gameState.gems.push(newGem);
+                if (isGemDebugEnabled()) {
+                  gemDebugLog('[REFILL_AFTER]', {
+                    step,
+                    cellR,
+                    cellC,
+                    gemCount: gameState.gems.length
+                  });
+                }
+                if (gameState.grid[item.cellC]) gameState.grid[item.cellC][item.cellR] = newGem.uid;
+                recordTask011RefillWriteEvent({
+                  source: 'yellow-sequence',
+                  step,
+                  cellR,
+                  cellC,
+                  reason: item.reason || 'empty',
+                  writeType: 'set',
+                  previousUid,
+                  newUid: newGem.uid,
+                });
+                setGemArray(gameState.gems);
+                if (isGemDebugEnabled()) {
+                  gemDebugLog('[COVERAGE]', countCellCoverage());
+                }
+                gemDebugLog('[FILL]', {
+                  stage: 'yellow-sequence',
+                  step: casino.index,
+                  cellR: item.cellR,
+                  cellC: item.cellC,
+                  reason: item.reason || 'empty',
+                  assignedColor: item.target,
+                  assignedUid: newGem.uid,
+                });
+                traceTask015YellowWrite('yellow-sequence', item, casino.index);
+                casino.ghost = null;
+                casino.index += 1;
+                casino.current = null;
               }
-              if (gameState.grid[item.cellC]) gameState.grid[item.cellC][item.cellR] = newGem.uid;
-              setGemArray(gameState.gems);
-              if (isGemDebugEnabled()) {
-                gemDebugLog('[COVERAGE]', countCellCoverage());
-              }
-              gemDebugLog('[FILL]', {
-                stage: 'yellow-sequence',
-                step: casino.index,
-                cellR: item.cellR,
-                cellC: item.cellC,
-                reason: item.reason || 'empty',
-                assignedColor: item.target,
-                assignedUid: newGem.uid,
-              });
-              casino.ghost = null;
-              casino.index += 1;
-              casino.current = null;
             }
           }
           if (!casino.current && casino.index >= casino.queue.length) {
@@ -2069,6 +2483,9 @@ async function main(){
                 throw new Error('[BOARD_INTEGRITY_FAIL] yellow-sequence-finished');
               }
             }
+            traceTask015YellowAnimation('yellow-sequence-finished', {
+              queueLength: Number((casino.queue || []).length),
+            });
           }
         }
       }
@@ -2100,6 +2517,34 @@ async function main(){
           const step = refill.index;
           const cellR = slot.cellR;
           const cellC = slot.cellC;
+          const previousUid = gameState.grid[cellC] ? Number(gameState.grid[cellC][cellR] || 0) : 0;
+          const occupiedGem = (gameState.gems || []).find(g => g && g.cellR === cellR && g.cellC === cellC);
+          if (occupiedGem) {
+            recordTask011RefillWriteEvent({
+              source: 'refill-bounce',
+              step,
+              cellR,
+              cellC,
+              reason: 'occupied-slot',
+              writeType: 'skip',
+              previousUid,
+              newUid: previousUid,
+            });
+            gemDebugLog('[FILL_SKIP]', {
+              stage: 'refill-bounce',
+              step,
+              cellR,
+              cellC,
+              reason: 'occupied-slot',
+              tag: slot.reason || 'empty',
+            });
+            if (gameState.grid[cellC]) gameState.grid[cellC][cellR] = occupiedGem.uid;
+            if (isGemDebugEnabled()) {
+              gemDebugLog('[COVERAGE]', countCellCoverage());
+            }
+            refill.index += 1;
+            continue;
+          }
           const pos = getCellWorldPos(slot.cellC, slot.cellR);
           const color = randomGemFrame();
           const newGem = {
@@ -2128,7 +2573,6 @@ async function main(){
               gemCount: gameState.gems.length
             });
           }
-          gameState.gems = gameState.gems.filter(g => !(g.cellR === cellR && g.cellC === cellC));
           gameState.gems.push(newGem);
           if (isGemDebugEnabled()) {
             gemDebugLog('[REFILL_AFTER]', {
@@ -2139,6 +2583,16 @@ async function main(){
             });
           }
           gameState.grid[slot.cellC][slot.cellR] = newGem.uid;
+          recordTask011RefillWriteEvent({
+            source: 'refill-bounce',
+            step,
+            cellR,
+            cellC,
+            reason: slot.reason || 'empty',
+            writeType: 'set',
+            previousUid,
+            newUid: newGem.uid,
+          });
           setGemArray(gameState.gems);
           if (isGemDebugEnabled()) {
             gemDebugLog('[COVERAGE]', countCellCoverage());
@@ -2498,7 +2952,7 @@ async function main(){
     // Dynamically filter overlay elements based on current state
     const overlayElements = new Set(['UI_CloseWin', 'UI_NavCloseButton', 'UI_NavCloseX']);
     const debugElements = new Set(['newdebugger', 'newdebugger2', 'InputBlocker', 'EnemyKeyList', 'KillCounter', 'turnTracker', 'txtPhaseInfo']);
-    const buffIcons = new Set(['buffIcon1', 'buffIcon2', 'buffIcon3', 'buffIcon4', 'buffIcon5']);
+    const buffIcons = new Set(['buffIcon1', 'buffIcon2', 'buffIcon3', 'buffIcon4']);
 
     
     // Center the close button + X on the layout viewport
@@ -2512,13 +2966,22 @@ async function main(){
       if (closeBtn) closeX.world.y = closeBtn.world.y;
     }
 
+    const boardBackers = rendered
+      .filter(r => r.inst && r.inst.type === 'Sprite5' && r.layerName === 'BoardBG')
+      .sort((a, b) => (a.world?.x || 0) - (b.world?.x || 0));
+    const allowedBoardBackerUIDs = new Set(boardBackers.slice(0, 4).map(r => r.uid));
+
     const filteredRendered = rendered.filter(r => {
+      // Hard clamp buff backer placeholders to 4 slots.
+      if (r.inst && r.inst.type === 'Sprite5' && r.layerName === 'BoardBG' && !allowedBoardBackerUIDs.has(r.uid)) {
+        return false;
+      }
       // Hide overlay elements when overlay is not visible
       if(!gameState.overlayVisible && overlayElements.has(r.inst.type)){
         return false;
       }
       if(buffIcons.has(r.inst.type)) {
-        const slotIndex = { buffIcon1: 0, buffIcon2: 1, buffIcon3: 2, buffIcon4: 3, buffIcon5: 4 }[r.inst.type];
+        const slotIndex = { buffIcon1: 0, buffIcon2: 1, buffIcon3: 2, buffIcon4: 3 }[r.inst.type];
         const frames = state.globals.BuffFrames || [];
         const frame = frames[slotIndex];
         if (frame == null || frame < 0) return false;
@@ -2553,7 +3016,7 @@ async function main(){
     
     // Debug: Log filter results
     if (gameState.overlayVisible !== lastOverlayState) {
-      console.log(`[FILTER] overlayVisible=${gameState.overlayVisible}, filteredRendered=${filteredRendered.length} items`);
+      startupDebugLog(`[FILTER] overlayVisible=${gameState.overlayVisible}, filteredRendered=${filteredRendered.length} items`);
       lastOverlayState = gameState.overlayVisible;
     }
     
@@ -2575,6 +3038,21 @@ async function main(){
     // Separate modal and non-modal objects for proper z-ordering
     const isModalObject = (type) => ['UI_CloseWin', 'UI_NavCloseButton', 'UI_NavCloseX'].includes(type);
     const navTextTypes = new Set(['Nav_HeroText', 'Nav_MapText', 'Nav_MissionText', 'Nav_AstralFlowText', 'Nav_HomeText']);
+    const movedRadiatorsToSidebar = true;
+    const movedRadiatorTextTypes = new Set([
+      'Chain_Tracker',
+      'ActorIntent',
+      'CombatAction',
+      'CombatAction1',
+      'CombatAction2',
+      'CombatAction3',
+      'track_next',
+      'track_nextplus1',
+      'track_nextplus2',
+      'track_nextplus3',
+      'track_nextplus4',
+      'track_nextplus5',
+    ]);
     const navTopTypes = new Set([...navTextTypes]);
     const extraTrackTypes = new Set(['track_nextplus1', 'track_nextplus2', 'track_nextplus3', 'track_nextplus4', 'track_nextplus5']);
     const presentTrackOffsets = new Set(
@@ -2614,10 +3092,49 @@ async function main(){
       maxX: boardGeometry.gx + boardW,
       maxY: boardGeometry.gy + boardH
     };
-    const trackAnchorWorld = { x: grid.maxX - 108, y: grid.minY - 65 };
-    const combatAnchorWorld = { x: grid.minX + 0, y: grid.minY - 60 };
-    const trackAnchor = worldToCanvas(trackAnchorWorld.x, trackAnchorWorld.y);
-    const combatAnchor = worldToCanvas(combatAnchorWorld.x, combatAnchorWorld.y);
+    const radiatorScale = Math.max(0.85, Math.min(layoutScale, 1.05));
+    const radiatorSidePad = Math.max(6, 8 * radiatorScale);
+    const radiatorGap = Math.max(8, 10 * radiatorScale);
+    const radiatorPanelW = Math.max(112, Math.round(120 * radiatorScale));
+    const radiatorTrackPanelW = Math.max(122, Math.round(132 * radiatorScale));
+    const radiatorPanelY = layoutOffsetY + Math.max(6, 8 * radiatorScale);
+    const panelH = Math.max(72, Math.round(78 * radiatorScale));
+    const trackPanelH = Math.max(90, Math.round(96 * radiatorScale));
+    const leftPanelX = layoutOffsetX + radiatorSidePad;
+    const rightPanelX = layoutOffsetX + (layoutW * layoutScale) - radiatorSidePad - radiatorTrackPanelW;
+    const chainPanelH = Math.max(26, Math.round(28 * radiatorScale));
+    const chainAnchor = {
+      x: leftPanelX + radiatorPanelW / 2,
+      y: radiatorPanelY + chainPanelH - Math.max(7, Math.round(8 * radiatorScale))
+    };
+    const combatAnchor = {
+      x: leftPanelX + Math.max(4, Math.round(5 * radiatorScale)),
+      y: radiatorPanelY + chainPanelH + Math.max(12, Math.round(13 * radiatorScale))
+    };
+    const storySlot = gameState.storyCardLayout;
+    const trackAnchor = {
+      x: rightPanelX + Math.max(4, Math.round(5 * radiatorScale)),
+      y: radiatorPanelY + Math.max(16, Math.round(17 * radiatorScale))
+    };
+    const radiatorPanels = {
+      chain: { x: leftPanelX, y: radiatorPanelY, w: radiatorPanelW, h: chainPanelH },
+      combat: { x: leftPanelX, y: radiatorPanelY + chainPanelH + Math.max(4, Math.round(5 * radiatorScale)), w: radiatorPanelW, h: panelH },
+      track: { x: rightPanelX, y: radiatorPanelY, w: radiatorTrackPanelW, h: trackPanelH }
+    };
+    const drawRadiatorPanel = (panel) => {
+      ctx.save();
+      ctx.fillStyle = 'rgba(240,240,240,0.92)';
+      ctx.strokeStyle = 'rgba(60,60,60,0.85)';
+      ctx.lineWidth = 1;
+      ctx.fillRect(panel.x, panel.y, panel.w, panel.h);
+      ctx.strokeRect(panel.x, panel.y, panel.w, panel.h);
+      ctx.restore();
+    };
+    if (!movedRadiatorsToSidebar) {
+      drawRadiatorPanel(radiatorPanels.chain);
+      drawRadiatorPanel(radiatorPanels.combat);
+      drawRadiatorPanel(radiatorPanels.track);
+    }
     
     const drawBasicItem = (r) => {
       if (!r) return;
@@ -2888,6 +3405,9 @@ async function main(){
         ctx.fillText('X', cx, cy);
         ctx.textBaseline = 'alphabetic';
       } else if(r.isText){
+        if (movedRadiatorsToSidebar && movedRadiatorTextTypes.has(r.inst.type) && r.inst.type !== 'CombatAction') {
+          continue;
+        }
         const baseSize = r.inst.properties && r.inst.properties.size ? r.inst.properties.size : 12;
         const fontSize = scaleFont(baseSize) + (navTextTypes.has(r.inst.type) ? navFontBoost : 0);
         ctx.font = `${fontSize}px sans-serif`;
@@ -2910,7 +3430,7 @@ async function main(){
           ctx.shadowOffsetX = 0;
           ctx.shadowOffsetY = Math.max(1, Math.round(2 * layoutScale));
           ctx.textAlign = 'center';
-          ctx.fillText(text, r.dx + r.w/2, r.dy + r.h/2 + 5);
+          ctx.fillText(text, chainAnchor.x, chainAnchor.y);
           ctx.restore();
           continue;
         }
@@ -2919,16 +3439,33 @@ async function main(){
         } else if (r.inst.type === 'ActorIntent') {
           text = state.globals.ActorIntent || text;
           ctx.textAlign = 'left';
-          ctx.fillText(text, r.dx + 4, r.dy + r.h/2 + 5 + (120 * layoutScale));
+          const lineH = Math.max(12, (r.h || 14 * layoutScale));
+          ctx.fillText(text, combatAnchor.x, combatAnchor.y + lineH * 4);
           continue;
         } else if (['CombatAction', 'CombatAction1', 'CombatAction2', 'CombatAction3'].includes(r.inst.type)) {
-          const lines = state.globals.CombatActionLines || ['', '', '', ''];
-          const idx = { CombatAction: 0, CombatAction1: 1, CombatAction2: 2, CombatAction3: 3 }[r.inst.type];
-          const fallback = 'What happened?';
-          text = lines[idx] || fallback;
+          if (r.inst.type !== 'CombatAction') {
+            continue;
+          }
+          if (!storySlot || !storySlot.initialized) {
+            continue;
+          }
+          const liveLine = getStoryCardLiveLineState();
+          text = liveLine.text;
+          const storyFontSizeBase = Math.max(Math.round(18 * layoutScale), scaleFont(14));
+          const storyFontSize = Math.max(8, Math.round(storyFontSizeBase * 0.595));
+          ctx.save();
+          ctx.fillStyle = 'rgba(245,245,245,0.96)';
+          ctx.strokeStyle = 'rgba(80,80,80,0.7)';
+          ctx.lineWidth = 1;
+          ctx.fillRect(storySlot.x, storySlot.y, storySlot.w, storySlot.h);
+          ctx.strokeRect(storySlot.x, storySlot.y, storySlot.w, storySlot.h);
+          ctx.restore();
           ctx.textAlign = 'left';
-          const lineH = Math.max(12, (r.h || 14 * layoutScale));
-          ctx.fillText(text, combatAnchor.x + 4, combatAnchor.y + lineH * idx);
+          ctx.font = `bold ${storyFontSize}px sans-serif`;
+          ctx.save();
+          ctx.globalAlpha = liveLine.animAlpha;
+          ctx.fillText(text, storySlot.x + Math.max(10, Math.round(12 * layoutScale)), storySlot.y + (storySlot.h * 0.58));
+          ctx.restore();
           continue;
         } else if (r.inst.type === 'PartyHP_text') {
           const cur = state.globals.PartyHP ?? 0;
@@ -2970,16 +3507,15 @@ async function main(){
               if (actor) {
                 const label = actor.name || '?';
                 const baseSpd = Number(actor.stats?.SPD ?? actor.SPD ?? 0);
-                const buff = actor.kind === 'hero' ? (state.globals.PartyBuff_SPD || 0) : 0;
                 const debuff = actor.kind === 'enemy'
                   ? (state.globals.EnemyDebuffs?.[actor.uid]?.SPD || 0)
                   : 0;
-                const curSpd = baseSpd + buff - debuff;
+                const curSpd = baseSpd - debuff;
                 const extraTag = row.extra ? ' (x2)' : '';
-                const delta = actor.kind === 'enemy'
+                const delta = actor.kind === 'enemy' && debuff > 0
                   ? `(-${Math.round(debuff)})`
-                  : `(+${Math.round(buff)})`;
-                text = `${label} ${Math.round(curSpd)}/${Math.round(baseSpd)} ${delta}${extraTag}`;
+                  : '';
+                text = `${label} ${Math.round(curSpd)}/${Math.round(baseSpd)}${delta ? ` ${delta}` : ''}${extraTag}`;
               } else {
                 text = '';
               }
@@ -3004,16 +3540,15 @@ async function main(){
               if (!actor) continue;
               const label = actor.name || '?';
               const baseSpd = Number(actor.stats?.SPD ?? actor.SPD ?? 0);
-              const buff = actor.kind === 'hero' ? (state.globals.PartyBuff_SPD || 0) : 0;
               const debuff = actor.kind === 'enemy'
                 ? (state.globals.EnemyDebuffs?.[actor.uid]?.SPD || 0)
                 : 0;
-              const curSpd = baseSpd + buff - debuff;
+              const curSpd = baseSpd - debuff;
               const extraTag = row.extra ? ' (x2)' : '';
-              const delta = actor.kind === 'enemy'
+              const delta = actor.kind === 'enemy' && debuff > 0
                 ? `(-${Math.round(debuff)})`
-                : `(+${Math.round(buff)})`;
-              const line = `${label} ${Math.round(curSpd)}/${Math.round(baseSpd)} ${delta}${extraTag}`;
+                : '';
+              const line = `${label} ${Math.round(curSpd)}/${Math.round(baseSpd)}${delta ? ` ${delta}` : ''}${extraTag}`;
               const y = trackAnchor.y + lineH * i;
               ctx.fillText(line, trackAnchor.x + 4, y);
             }
@@ -3567,9 +4102,12 @@ async function main(){
               const t = g.time || 0;
               const pulse = Math.sin(t * 6);
               const selScale = 1 + 0.035 * pulse;
-              const bob = 2.2 * layoutScale * pulse;
-              const selW = (selectorAsset ? selectorAsset.width : selectorImg.width) * layoutScale * selScale;
-              const selH = (selectorAsset ? selectorAsset.height : selectorImg.height) * layoutScale * selScale;
+              const controlScale = Math.max(0.7, Math.min(layoutScale, 1));
+              const bob = 2.2 * controlScale * pulse;
+              const rawSelW = (selectorAsset ? selectorAsset.width : selectorImg.width) * controlScale * selScale;
+              const rawSelH = (selectorAsset ? selectorAsset.height : selectorImg.height) * controlScale * selScale;
+              const selW = Math.max(12, Math.min(46, rawSelW));
+              const selH = Math.max(8, Math.min(24, rawSelH));
               const selOx = selectorAsset ? selectorAsset.originX : 0.5;
               const selOy = selectorAsset ? selectorAsset.originY : 0.5;
               const targetX = pos.x;
@@ -3590,6 +4128,11 @@ async function main(){
     if (state.globals.PendingSkillID) {
       const selectorImg = images['Selector'] || null;
       const selectorAsset = assetSizes.Selector;
+      const controlScale = Math.max(0.7, Math.min(layoutScale, 1));
+      const clampSelectorSize = (rawW, rawH) => ({
+        w: Math.max(12, Math.min(46, rawW)),
+        h: Math.max(8, Math.min(24, rawH)),
+      });
       const g = state.globals;
       const spacing = g.Spacing || ((g.EnemySize || 40) + (g.enemyGAP || 8));
       const center = Math.floor((g.Slots || 0) / 2);
@@ -3612,8 +4155,9 @@ async function main(){
         const enemyW = enemyH * (origW / origH);
         const pos = worldToCanvas(x, y);
         if (selectorImg) {
-          const selW = (selectorAsset ? selectorAsset.width : selectorImg.width) * layoutScale;
-          const selH = (selectorAsset ? selectorAsset.height : selectorImg.height) * layoutScale;
+          const rawSelW = (selectorAsset ? selectorAsset.width : selectorImg.width) * controlScale;
+          const rawSelH = (selectorAsset ? selectorAsset.height : selectorImg.height) * controlScale;
+          const { w: selW, h: selH } = clampSelectorSize(rawSelW, rawSelH);
           const selOx = selectorAsset ? selectorAsset.originX : 0.5;
           const selOy = selectorAsset ? selectorAsset.originY : 0.5;
           const targetX = pos.x;
@@ -3675,14 +4219,69 @@ async function main(){
     drawHUD();
   }
 
+  function getLatestCombatActionLine() {
+    const g = state.globals || {};
+    const lines = Array.isArray(g.CombatActionLines) ? g.CombatActionLines : [];
+    const latest = lines[3];
+    return (typeof latest === 'string' && latest.trim()) ? latest.trim() : 'What happened?';
+  }
+
+  function getStoryCardLiveLineState() {
+    if (!gameState.storyCardLine) {
+      gameState.storyCardLine = { text: 'What happened?', animUntil: 0 };
+    }
+    const nextText = getLatestCombatActionLine();
+    const now = Number(state.globals?.time || 0);
+    if (gameState.storyCardLine.text !== nextText) {
+      gameState.storyCardLine.text = nextText;
+      gameState.storyCardLine.animUntil = now + 0.35;
+    }
+    const animRemaining = Math.max(0, Number(gameState.storyCardLine.animUntil || 0) - now);
+    return {
+      text: gameState.storyCardLine.text || 'What happened?',
+      animAlpha: animRemaining > 0 ? (0.75 + ((animRemaining / 0.35) * 0.25)) : 1,
+    };
+  }
+
   function drawHUD(){
     if (!gameState.baseSummary) return;
+    const g = state.globals || {};
+    const combatLogLines = [getLatestCombatActionLine()];
+    const chainNum = Math.max(0, Number(g.ChainNumber || 0));
+    const suppressChain = !!g.SuppressChainUI;
+    const chainHideAt = Number(g.ChainUIHideAt || 0);
+    const chainVisible = chainNum >= 2 && !suppressChain && (chainHideAt === 0 || Number(g.time || 0) <= chainHideAt);
+    const actorIntent = typeof g.ActorIntent === 'string' && g.ActorIntent.trim() ? g.ActorIntent.trim() : 'Combat intent log';
+    const order = Array.isArray(g.TurnOrderArray) ? g.TurnOrderArray : [];
+    const count = order.length;
+    const baseIndex = Number(g.CurrentTurnIndex || 0);
+    const turnOrderLines = [];
+    for (let offset = 0; offset < Math.min(6, count); offset++) {
+      const idx = (baseIndex + offset) % count;
+      const row = order[idx];
+      if (!row) continue;
+      const actor = state.entities.find(e => e.uid === row.uid);
+      if (!actor) continue;
+      const label = actor.name || '?';
+      const baseSpd = Number(actor.stats?.SPD ?? actor.SPD ?? 0);
+      const debuff = actor.kind === 'enemy' ? Number(g.EnemyDebuffs?.[actor.uid]?.SPD || 0) : 0;
+      const curSpd = baseSpd - debuff;
+      const extraTag = row.extra ? ' (x2)' : '';
+      const delta = actor.kind === 'enemy' && debuff > 0 ? `(-${Math.round(debuff)})` : '';
+      turnOrderLines.push(`${label} ${Math.round(curSpd)}/${Math.round(baseSpd)}${delta ? ` ${delta}` : ''}${extraTag}`);
+    }
     const lines = [
       gameState.baseSummary,
       '',
       `TurnPhase: ${state.globals.TurnPhase}`,
       `Board: ${gameState.boardCreated ? gameState.gems.length + ' gems' : 'waiting'}`,
       `Overlay: ${gameState.overlayVisible ? 'OPEN' : 'closed'}`,
+      '',
+      actorIntent,
+      ...combatLogLines,
+      ...(chainVisible ? [`Chain x${chainNum}`] : []),
+      '',
+      ...turnOrderLines,
     ];
     out.textContent = lines.join('\n');
     drawWalletHUD();
@@ -3987,6 +4586,40 @@ async function main(){
     const rect = canvas.getBoundingClientRect();
     const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
 
+    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
+      ? layoutState.getActiveLayoutId()
+      : null;
+    if (activeLayoutId === 'storyMock') {
+      inputDomains.emit('storyMock', 'layout:storyMock:click', { x: mx, y: my });
+      drawFrame();
+      return;
+    }
+    if (activeLayoutId === 'astralOverlay') {
+      inputDomains.emit('astralOverlay', 'layout:astralOverlay:click', { x: mx, y: my });
+      drawFrame();
+      return;
+    }
+    if (activeLayoutId === 'mapLayout') {
+      const btn = gameState.mapLayout.returnButton;
+      const buttonTop = btn.y + 24;
+      if (mx >= btn.x && mx <= (btn.x + btn.w) && my >= buttonTop && my <= (buttonTop + btn.h)) {
+        layoutState.requestLayoutChange('combat', 'map-return-button').catch((err) => {
+          console.error('[LAYOUT_PHASE1] map return failed', err);
+        });
+        drawFrame();
+        return;
+      }
+      const drag = gameState.mapLayout.drag;
+      drag.active = true;
+      drag.pointerId = ev.pointerId;
+      drag.lastX = mx;
+      drag.lastY = my;
+      drag.moved = 0;
+      try { canvas.setPointerCapture(ev.pointerId); } catch {}
+      drawFrame();
+      return;
+    }
+
     if (layoutHarnessEnabled && harnessLayoutState && harnessInputDomains) {
       const activeLayout = harnessLayoutState.getActiveLayoutId();
       if (activeLayout === 'storyMock') {
@@ -4019,33 +4652,36 @@ async function main(){
       }
     }
 
-    // Check nav label clicks using actual Nav_* text objects
-    if (!(gameState.selectedGems.length > 0 || gameState.selectionLocked || state.globals.CanPickGems === false)) {
-      const navTypes = new Set(['Nav_HeroText', 'Nav_MapText', 'Nav_MissionText', 'Nav_AstralFlowText', 'Nav_HomeText']);
-      const navLabelItems = rendered.filter(r => navTypes.has(r.inst.type));
-      for (const r of navLabelItems) {
-        const labelMap = {
-          Nav_HeroText: 'Hero',
-          Nav_MapText: 'Map',
-          Nav_MissionText: 'Mission',
-          Nav_AstralFlowText: 'AstralFlow',
-          Nav_HomeText: 'Home',
-        };
-        const labelName = labelMap[r.inst.type] || '';
-        const pos = worldToCanvas(r.world.x || 0, r.world.y || 0);
-        const w = Math.max(40, (r.world.width || 60) * layoutScale);
-        const h = Math.max(16, (r.world.height || 20) * layoutScale);
-        const dx = pos.x - w * r.ox;
-        const dy = pos.y - h * r.oy;
-        if (mx >= dx && mx <= dx + w && my >= dy && my <= dy + h) {
-          inputDomains.emit(
-            layoutState.getActiveLayoutId(),
-            'nav:clicked',
-            { label: labelName }
-          );
-          drawFrame();
-          return;
-        }
+    // Check nav label clicks using actual Nav_* text objects.
+    // AstralFlow is processed first so intended 1->2 transition remains reachable.
+    const navTypes = new Set(['Nav_HeroText', 'Nav_MapText', 'Nav_MissionText', 'Nav_AstralFlowText', 'Nav_HomeText']);
+    const navLabelItems = rendered.filter(r => navTypes.has(r.inst.type));
+    const labelMap = {
+      Nav_HeroText: 'Hero',
+      Nav_MapText: 'Map',
+      Nav_MissionText: 'Mission',
+      Nav_AstralFlowText: 'AstralFlow',
+      Nav_HomeText: 'Home',
+    };
+    const navHit = navLabelItems.find((r) => {
+      const pos = worldToCanvas(r.world.x || 0, r.world.y || 0);
+      const w = Math.max(40, (r.world.width || 60) * layoutScale);
+      const h = Math.max(16, (r.world.height || 20) * layoutScale);
+      const dx = pos.x - w * r.ox;
+      const dy = pos.y - h * r.oy;
+      return mx >= dx && mx <= dx + w && my >= dy && my <= dy + h;
+    });
+    if (navHit) {
+      const labelName = labelMap[navHit.inst.type] || '';
+      const navBlockedBySelection = gameState.selectedGems.length > 0 || gameState.selectionLocked || state.globals.CanPickGems === false;
+      if (labelName === 'AstralFlow' || !navBlockedBySelection) {
+        inputDomains.emit(
+          layoutState.getActiveLayoutId(),
+          'nav:clicked',
+          { label: labelName }
+        );
+        drawFrame();
+        return;
       }
     }
 
@@ -4278,6 +4914,41 @@ async function main(){
     if(ev.key === ' ') { gameState.playerTurn = !gameState.playerTurn; ev.preventDefault(); }
   });
 
+  canvas.addEventListener('pointermove', (ev) => {
+    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
+      ? layoutState.getActiveLayoutId()
+      : null;
+    if (activeLayoutId !== 'mapLayout') return;
+    const drag = gameState.mapLayout.drag;
+    if (!drag.active || drag.pointerId !== ev.pointerId) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = ev.clientX - rect.left;
+    const my = ev.clientY - rect.top;
+    const dx = mx - drag.lastX;
+    drag.lastX = mx;
+    drag.lastY = my;
+    drag.moved += Math.abs(dx);
+    const bounds = gameState.mapLayout.panBounds || { minX: 0, maxX: 0 };
+    const nextPanX = gameState.mapLayout.panX + dx;
+    gameState.mapLayout.panX = Math.max(bounds.minX, Math.min(bounds.maxX, nextPanX));
+    gameState.mapLayout.panY = 0;
+    drawFrame();
+  });
+
+  const finishMapDrag = (ev) => {
+    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
+      ? layoutState.getActiveLayoutId()
+      : null;
+    if (activeLayoutId !== 'mapLayout') return;
+    const drag = gameState.mapLayout.drag;
+    if (!drag.active || drag.pointerId !== ev.pointerId) return;
+    drag.active = false;
+    drag.pointerId = null;
+    try { canvas.releasePointerCapture(ev.pointerId); } catch {}
+  };
+  canvas.addEventListener('pointerup', finishMapDrag);
+  canvas.addEventListener('pointercancel', finishMapDrag);
+
   // per-frame tick loop with animation cycling
   let frameCount = 0;
   function tick(){
@@ -4382,6 +5053,13 @@ async function main(){
       state.globals.DeferAdvance &&
       (state.globals.time || 0) >= (state.globals.ActionLockUntil || 0)
     ) {
+      const refillActive = !!(gameState.refillBounce && gameState.refillBounce.active);
+      const refillPending = hasEmpty && !refillActive;
+      if (refillPending) {
+        // Refill must complete before advancing to the next actor.
+        startRefillBounce();
+        state.globals.ActionLockUntil = Math.max(state.globals.ActionLockUntil || 0, (state.globals.time || 0) + 0.05);
+      } else {
       if (state.globals.TextAnimating) {
         state.globals.ActionLockUntil = (state.globals.time || 0) + 0.1;
       } else {
@@ -4413,10 +5091,12 @@ async function main(){
           console.log(`[TURN] DeferAdvance blocked pendingSelect=${!!pendingSelect} IsPlayerBusy=${state.globals.IsPlayerBusy} TurnPhase=${state.globals.TurnPhase} owner=${ownerUID} cur=${currentUID} canPick=${state.globals.CanPickGems} actionInProgress=${state.globals.ActionInProgress}`);
         }
       }
+      }
     } else {
       state.globals._DeferBlockLogged = 0;
     }
     const currentTurnType = callFunctionWithContext(fnContext, 'GetCurrentType');
+    trackTask011EnemyBoundary(currentTurnType);
     const noRefillActive = !(gameState.refillBounce && gameState.refillBounce.active);
     if (
       state.globals.GamePhase === 'RUNTIME' &&
@@ -4449,7 +5129,7 @@ async function main(){
   }
   tick();
 
-  // Dev-only test hooks for deterministic Playwright control
+  // Dev-only test hooks for deterministic agent-browser CLI control
   if (typeof window !== 'undefined') {
     window.render_game_to_text = () => {
       const currentUID = callFunctionWithContext(fnContext, 'GetCurrentTurn');
@@ -4489,12 +5169,20 @@ async function main(){
           maxEnergy: state.globals.Player_maxEnergy || 0,
           gold: state.globals.goldTotal || 0,
         },
+        mapLayout: {
+          panX: Number(gameState.mapLayout.panX || 0),
+          panY: Number(gameState.mapLayout.panY || 0),
+          warMeter: Number(gameState.mapLayout.warMeter || 0),
+          render: gameState.mapLayout.lastRender || null,
+        },
         flags: {
           canPickGems: state.globals.CanPickGems,
           isPlayerBusy: state.globals.IsPlayerBusy,
           pendingSkillId: state.globals.PendingSkillID || null,
           overlayVisible: gameState.overlayVisible,
-          layoutId: layoutHarnessEnabled && harnessLayoutState ? harnessLayoutState.getActiveLayoutId() : 'combat',
+          layoutId: layoutState && typeof layoutState.getActiveLayoutId === 'function'
+            ? layoutState.getActiveLayoutId()
+            : (layoutHarnessEnabled && harnessLayoutState ? harnessLayoutState.getActiveLayoutId() : 'combat'),
           combatAcceptEvents: layoutHarnessEnabled && harnessCombatGateway
             ? harnessCombatGateway.canAcceptEvents()
             : true,
@@ -4538,10 +5226,11 @@ async function main(){
         for (let i = 0; i < n; i++) drawFrame();
       },
       selectGemByRC(row, col) {
-        const gem = gameState.gems.find(g => g.cellR === row && g.cellC === col);
-        if (!gem) return false;
-        if (gameState.selectedGems.includes(gem.uid)) return true;
-        gameState.selectedGems.push(gem.uid);
+        const idx = gameState.gems.findIndex(g => g.cellR === row && g.cellC === col);
+        if (idx === -1) return false;
+        const gem = gameState.gems[idx];
+        if (gameState.selectedGems.includes(idx)) return true;
+        gameState.selectedGems.push(idx);
         gem.selected = true;
         gem.Selected = 1;
         return true;
@@ -4557,6 +5246,29 @@ async function main(){
       },
       forceMatch(color) {
         handleGemMatch(color);
+      },
+      callFunction(fnName, ...args) {
+        return callFunctionWithContext(fnContext, fnName, ...args);
+      },
+      getTask011Audit() {
+        return JSON.parse(JSON.stringify(ensureTask011Audit()));
+      },
+      resetTask011Audit() {
+        gameState.task011Audit = null;
+        return true;
+      },
+      getTask015Trace() {
+        return JSON.parse(JSON.stringify(getTask015TraceStore()));
+      },
+      resetTask015Trace() {
+        gameState.task015Trace = {
+          storycardPlacement: [],
+          yellowQueue: [],
+          yellowRefillQueue: [],
+          yellowWrites: [],
+          yellowAnimation: [],
+        };
+        return true;
       },
     };
     window.__auditBoard = () => assertBoardIntegrity('manual');
