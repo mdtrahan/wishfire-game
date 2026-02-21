@@ -48,6 +48,14 @@
 - [x] Await next explicit user request.
 - [x] Execute TASK-012/013/014 one-cycle bundle from ACTIVE.md (manifest -> approved delete -> validation+rollback -> PASS/FAIL).
 - [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
+- [x] Await next explicit user request.
 - [ ] Await next explicit user request.
 
 ## Done (recent)

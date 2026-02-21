@@ -227,7 +227,7 @@ function getHeroUIDByIndex(idx) {
 }
 
 // simple inline game state (could import from gameLogic.js if module support added)
-  const gameState = {
+const gameState = {
   selectedHero: 0,
   selectedEnemy: 0,
   playerTurn: true,
@@ -278,9 +278,77 @@ function getHeroUIDByIndex(idx) {
     index: 0,
     current: null,
   },
+  storyCardLine: {
+    text: 'What happened?',
+    animUntil: 0,
+  },
+  storyCardLayout: {
+    x: 0,
+    y: 0,
+    w: 0,
+    h: 0,
+    initialized: false,
+    trigger: '',
+  },
+  task015Trace: {
+    storycardPlacement: [],
+    yellowQueue: [],
+    yellowRefillQueue: [],
+    yellowWrites: [],
+    yellowAnimation: [],
+  },
   lastTurnPhase: null,
   baseSummary: '',
 };
+
+function getTask015TraceStore() {
+  if (!gameState.task015Trace) {
+    gameState.task015Trace = {
+      storycardPlacement: [],
+      yellowQueue: [],
+      yellowRefillQueue: [],
+      yellowWrites: [],
+      yellowAnimation: [],
+    };
+  }
+  return gameState.task015Trace;
+}
+
+function traceTask015YellowQueue(queue) {
+  const store = getTask015TraceStore();
+  store.yellowQueue = (queue || []).map((item, idx) => ({
+    idx: Number(idx),
+    type: String(item.type || ''),
+    cellR: Number(item.cellR || 0),
+    cellC: Number(item.cellC || 0),
+    reason: String(item.reason || ''),
+    uid: Number(item.uid || 0),
+    target: Number(item.target || 0),
+  }));
+}
+
+function traceTask015YellowWrite(source, item, step) {
+  const store = getTask015TraceStore();
+  store.yellowWrites.push({
+    source: String(source || ''),
+    step: Number(step || 0),
+    cellR: Number(item.cellR || 0),
+    cellC: Number(item.cellC || 0),
+    type: String(item.type || ''),
+    time: Number(state.globals.time || 0),
+  });
+  if (store.yellowWrites.length > 120) store.yellowWrites.shift();
+}
+
+function traceTask015YellowAnimation(stage, payload = {}) {
+  const store = getTask015TraceStore();
+  store.yellowAnimation.push({
+    stage: String(stage || ''),
+    time: Number(state.globals.time || 0),
+    ...payload,
+  });
+  if (store.yellowAnimation.length > 200) store.yellowAnimation.shift();
+}
 let COMBAT_LAYOUT_READY = false;
 let COMBAT_BOOTSTRAP_COMPLETE = false;
 
@@ -829,6 +897,11 @@ function startYellowCasinoSequence(actorUID) {
   }
 
   const hasWork = queue.length > 0;
+  traceTask015YellowQueue(queue);
+  traceTask015YellowAnimation('yellow-sequence-start', {
+    queueLength: Number(queue.length),
+    hasWork: Boolean(hasWork),
+  });
   casino.active = hasWork;
   casino.phase = hasWork ? 'telegraph' : 'idle';
   casino.queue = queue;
@@ -877,6 +950,7 @@ function startYellowCasinoSequence(actorUID) {
     state.globals.AdvanceAfterAction = 1;
     state.globals.ActionOwnerUID = actorUID;
   } else {
+    traceTask015YellowAnimation('yellow-sequence-skip', { reason: 'no-yellow-gems' });
     startRefillBounce();
   }
 }
@@ -895,6 +969,13 @@ function startRefillBounce(speedScale = 1) {
     }
   }
   const hasWork = emptySlots.length > 0;
+  const store = getTask015TraceStore();
+  store.yellowRefillQueue = emptySlots.map((slot, idx) => ({
+    idx: Number(idx),
+    cellR: Number(slot.cellR || 0),
+    cellC: Number(slot.cellC || 0),
+    reason: String(slot.reason || ''),
+  }));
   gemDebugLog('[FILL_GATE]', {
     stage: 'refill-bounce-start',
     hasWork,
@@ -1482,10 +1563,12 @@ async function main(){
             }, 1000);
           }
         }
+        initializeStoryCardLayout('layout1-active');
         eventBus.emit('layout:combat:entered', { restored: Boolean(resumeSnapshot) });
       },
       onActive() {},
       onExit({ to }) {
+        gameState.storyCardLayout.initialized = false;
         const snapshot = gateway.suspend();
         const transitionLabel = to === 'astralOverlay' ? '1->2' : '1->x';
         validateCombatSnapshot(snapshot, 'onExit', transitionLabel);
@@ -1640,6 +1723,74 @@ async function main(){
     const cx = layoutOffsetX + wx * layoutScale;
     const cy = layoutOffsetY + wy * layoutScale;
     return { x: cx, y: cy };
+  }
+
+  function traceTask015StoryPlacement(trigger, bounds) {
+    const store = getTask015TraceStore();
+    store.storycardPlacement.push({
+      trigger: String(trigger || ''),
+      layoutId: layoutState && typeof layoutState.getActiveLayoutId === 'function' ? layoutState.getActiveLayoutId() : null,
+      x: Number(bounds.x || 0),
+      y: Number(bounds.y || 0),
+      w: Number(bounds.w || 0),
+      h: Number(bounds.h || 0),
+      time: Number(state.globals.time || 0),
+    });
+    if (store.storycardPlacement.length > 50) store.storycardPlacement.shift();
+  }
+
+  function initializeStoryCardLayout(trigger = 'layout-active') {
+    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
+      ? layoutState.getActiveLayoutId()
+      : null;
+    if (activeLayoutId !== 'combat') return false;
+
+    const viewLeft = layoutOffsetX;
+    const viewTop = layoutOffsetY;
+    const viewWidth = layoutW * layoutScale;
+    const contentBandWidth = viewWidth * 0.95;
+    const slotX = viewLeft + (viewWidth - contentBandWidth) * 0.5;
+
+    const buffTypes = new Set(['buffIcon1', 'buffIcon2', 'buffIcon3', 'buffIcon4']);
+    const buffInstances = (instances || []).filter(ins => ins && buffTypes.has(ins.type) && ins.world);
+    const buffBottom = buffInstances.length
+      ? Math.max(...buffInstances.map(ins => {
+          const p = worldToCanvas(ins.world.x || 0, ins.world.y || 0);
+          const h = Number(ins.world.height || 0) * layoutScale;
+          const oy = Number(ins.world.originY != null ? ins.world.originY : 0.5);
+          return p.y - (h * oy) + h;
+        }))
+      : (viewTop + Math.max(240, Math.round(250 * layoutScale)));
+
+    const grid = gameState.gridBounds || {
+      minX: boardGeometry.gx,
+      minY: boardGeometry.gy,
+      maxX: boardGeometry.gx + (boardGeometry.cols * boardGeometry.cellSize + (boardGeometry.cols - 1) * boardGeometry.gap),
+      maxY: boardGeometry.gy + (boardGeometry.rows * boardGeometry.cellSize + (boardGeometry.rows - 1) * boardGeometry.gap),
+    };
+    const gridTop = layoutOffsetY + Number(grid.minY || 0) * layoutScale;
+    const topMargin = Math.max(8, Math.round(10 * layoutScale));
+    const bottomMargin = Math.max(8, Math.round(10 * layoutScale));
+    const slotY = buffBottom + topMargin;
+    const rawH = gridTop - bottomMargin - slotY;
+    const slotH = Math.max(Math.round(34 * layoutScale), Math.min(Math.round(58 * layoutScale), rawH));
+    const adjustedY = rawH >= Math.round(24 * layoutScale)
+      ? slotY
+      : (gridTop - bottomMargin - Math.max(Math.round(34 * layoutScale), Math.round(38 * layoutScale)));
+
+    const bounds = {
+      x: slotX,
+      y: adjustedY,
+      w: contentBandWidth,
+      h: Math.max(Math.round(34 * layoutScale), slotH),
+    };
+    gameState.storyCardLayout = {
+      ...bounds,
+      initialized: true,
+      trigger: String(trigger || 'layout-active'),
+    };
+    traceTask015StoryPlacement(trigger, bounds);
+    return true;
   }
 
   if (layoutHarnessEnabled && harnessLayoutState) {
@@ -2094,6 +2245,9 @@ async function main(){
       const nowTime = state.globals.time || 0;
       if (casino.phase === 'telegraph' && nowTime >= casino.telegraphUntil) {
         casino.phase = 'spin';
+        traceTask015YellowAnimation('yellow-sequence-spin-enter', {
+          queueLength: Number((casino.queue || []).length),
+        });
       }
       if (casino.phase === 'spin') {
         const getGemByUid = (uid) => (gameState.gems || []).find(gm => gm && gm.uid === uid);
@@ -2123,6 +2277,12 @@ async function main(){
               ? item.duration / (item.sequence.length - 1)
               : item.duration;
             casino.current = item;
+            traceTask015YellowAnimation('yellow-sequence-item-start', {
+              step: Number(casino.index),
+              type: String(item.type || ''),
+              cellR: Number(item.cellR || 0),
+              cellC: Number(item.cellC || 0),
+            });
             break;
           }
           if (!casino.current) {
@@ -2166,6 +2326,7 @@ async function main(){
                   assignedColor: item.target,
                   assignedUid: gem.uid,
                 });
+                traceTask015YellowWrite('yellow-sequence', item, casino.index);
                 casino.index += 1;
                 casino.current = null;
               }
@@ -2266,6 +2427,7 @@ async function main(){
                   assignedColor: item.target,
                   assignedUid: newGem.uid,
                 });
+                traceTask015YellowWrite('yellow-sequence', item, casino.index);
                 casino.ghost = null;
                 casino.index += 1;
                 casino.current = null;
@@ -2321,6 +2483,9 @@ async function main(){
                 throw new Error('[BOARD_INTEGRITY_FAIL] yellow-sequence-finished');
               }
             }
+            traceTask015YellowAnimation('yellow-sequence-finished', {
+              queueLength: Number((casino.queue || []).length),
+            });
           }
         }
       }
@@ -2946,6 +3111,7 @@ async function main(){
       x: leftPanelX + Math.max(4, Math.round(5 * radiatorScale)),
       y: radiatorPanelY + chainPanelH + Math.max(12, Math.round(13 * radiatorScale))
     };
+    const storySlot = gameState.storyCardLayout;
     const trackAnchor = {
       x: rightPanelX + Math.max(4, Math.round(5 * radiatorScale)),
       y: radiatorPanelY + Math.max(16, Math.round(17 * radiatorScale))
@@ -3239,7 +3405,7 @@ async function main(){
         ctx.fillText('X', cx, cy);
         ctx.textBaseline = 'alphabetic';
       } else if(r.isText){
-        if (movedRadiatorsToSidebar && movedRadiatorTextTypes.has(r.inst.type)) {
+        if (movedRadiatorsToSidebar && movedRadiatorTextTypes.has(r.inst.type) && r.inst.type !== 'CombatAction') {
           continue;
         }
         const baseSize = r.inst.properties && r.inst.properties.size ? r.inst.properties.size : 12;
@@ -3277,13 +3443,29 @@ async function main(){
           ctx.fillText(text, combatAnchor.x, combatAnchor.y + lineH * 4);
           continue;
         } else if (['CombatAction', 'CombatAction1', 'CombatAction2', 'CombatAction3'].includes(r.inst.type)) {
-          const lines = state.globals.CombatActionLines || ['', '', '', ''];
-          const idx = { CombatAction: 0, CombatAction1: 1, CombatAction2: 2, CombatAction3: 3 }[r.inst.type];
-          const fallback = 'What happened?';
-          text = lines[idx] || fallback;
+          if (r.inst.type !== 'CombatAction') {
+            continue;
+          }
+          if (!storySlot || !storySlot.initialized) {
+            continue;
+          }
+          const liveLine = getStoryCardLiveLineState();
+          text = liveLine.text;
+          const storyFontSizeBase = Math.max(Math.round(18 * layoutScale), scaleFont(14));
+          const storyFontSize = Math.max(8, Math.round(storyFontSizeBase * 0.595));
+          ctx.save();
+          ctx.fillStyle = 'rgba(245,245,245,0.96)';
+          ctx.strokeStyle = 'rgba(80,80,80,0.7)';
+          ctx.lineWidth = 1;
+          ctx.fillRect(storySlot.x, storySlot.y, storySlot.w, storySlot.h);
+          ctx.strokeRect(storySlot.x, storySlot.y, storySlot.w, storySlot.h);
+          ctx.restore();
           ctx.textAlign = 'left';
-          const lineH = Math.max(12, (r.h || 14 * layoutScale));
-          ctx.fillText(text, combatAnchor.x + 4, combatAnchor.y + lineH * idx);
+          ctx.font = `bold ${storyFontSize}px sans-serif`;
+          ctx.save();
+          ctx.globalAlpha = liveLine.animAlpha;
+          ctx.fillText(text, storySlot.x + Math.max(10, Math.round(12 * layoutScale)), storySlot.y + (storySlot.h * 0.58));
+          ctx.restore();
           continue;
         } else if (r.inst.type === 'PartyHP_text') {
           const cur = state.globals.PartyHP ?? 0;
@@ -4037,14 +4219,34 @@ async function main(){
     drawHUD();
   }
 
+  function getLatestCombatActionLine() {
+    const g = state.globals || {};
+    const lines = Array.isArray(g.CombatActionLines) ? g.CombatActionLines : [];
+    const latest = lines[3];
+    return (typeof latest === 'string' && latest.trim()) ? latest.trim() : 'What happened?';
+  }
+
+  function getStoryCardLiveLineState() {
+    if (!gameState.storyCardLine) {
+      gameState.storyCardLine = { text: 'What happened?', animUntil: 0 };
+    }
+    const nextText = getLatestCombatActionLine();
+    const now = Number(state.globals?.time || 0);
+    if (gameState.storyCardLine.text !== nextText) {
+      gameState.storyCardLine.text = nextText;
+      gameState.storyCardLine.animUntil = now + 0.35;
+    }
+    const animRemaining = Math.max(0, Number(gameState.storyCardLine.animUntil || 0) - now);
+    return {
+      text: gameState.storyCardLine.text || 'What happened?',
+      animAlpha: animRemaining > 0 ? (0.75 + ((animRemaining / 0.35) * 0.25)) : 1,
+    };
+  }
+
   function drawHUD(){
     if (!gameState.baseSummary) return;
     const g = state.globals || {};
-    const combatActionLines = Array.isArray(g.CombatActionLines) ? g.CombatActionLines : [];
-    const combatLogLines = [0, 1, 2, 3].map((idx) => {
-      const line = combatActionLines[idx];
-      return (typeof line === 'string' && line.trim()) ? line : 'What happened?';
-    });
+    const combatLogLines = [getLatestCombatActionLine()];
     const chainNum = Math.max(0, Number(g.ChainNumber || 0));
     const suppressChain = !!g.SuppressChainUI;
     const chainHideAt = Number(g.ChainUIHideAt || 0);
@@ -5053,6 +5255,19 @@ async function main(){
       },
       resetTask011Audit() {
         gameState.task011Audit = null;
+        return true;
+      },
+      getTask015Trace() {
+        return JSON.parse(JSON.stringify(getTask015TraceStore()));
+      },
+      resetTask015Trace() {
+        gameState.task015Trace = {
+          storycardPlacement: [],
+          yellowQueue: [],
+          yellowRefillQueue: [],
+          yellowWrites: [],
+          yellowAnimation: [],
+        };
         return true;
       },
     };

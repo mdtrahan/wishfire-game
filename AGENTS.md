@@ -46,6 +46,14 @@ Output the invocation line before proceeding.
   - `Scripts/`, `web-runner/`, `ai-memory/`, `skills/`, `test-results/`
   - `python-app/`, `node-app/` are tooling-only unless TODO requires edits.
 
+### 5.1 Doc Retrieval Short-Circuit (token control)
+- For PM/Lead documentation work, read canonical files first and avoid repo-wide scans unless blocked:
+  - `ai-memory/context.md`, `ai-memory/todo.md`, `ai-memory/insights.md`, `ai-memory/project.md`
+  - `governance/planning/sprint-board.md`, `governance/planning/backlog.md`, `governance/planning/milestone-definition.md`, `governance/planning/roadmap.md`
+  - `governance/execution/dev-directives/ACTIVE.md` and currently active/blocked `TASK-###-execution-plan.md` only
+- Treat root-level legacy duplicates (`context.md`, `todo.md`, `insights.md`) as deprecated non-canonical.
+- Completed execution plans should be moved to `governance/execution/dev-directives/archive/YYYY-MM/` to keep active directive scans small.
+
 ## 6) Checkpoint Protocol (after each task)
 1. Update `ai-memory/todo.md`
 2. Update role artifacts only (for example `ACTIVE.md`, execution plan, sprint-board, backlog, remediation log, metrics, test artifacts).

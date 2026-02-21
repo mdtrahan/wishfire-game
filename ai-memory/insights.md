@@ -312,3 +312,147 @@
   - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
 - ACTIVE now reflects bundle execution complete at Lead gate and sets Dev to hold pending PM sprint-board completion marking and next intake packet.
 - Next: Await next explicit user request.
+
+## 2026-02-20 (Sync and dispatch to TASK-015)
+- Governance sync completed against sprint-board, adversarial-ledger, remediation-log, and ACTIVE.
+- No new unmapped ADV entries detected during ingestion; execution can continue under current sprint mapping.
+- ACTIVE intake advanced from closed TASK-012/013/014 bundle to TASK-015 per sprint-board.
+- Published TASK-015 execution plan with strict scope:
+  - output-only Layout 1 story-card slot
+  - mirror exact latest combat debug/action line as single live line
+  - no cache/stack; lightweight placeholder animation only
+  - no combat/transition/layout-policy refactors
+- Files touched:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-015-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Await next explicit user request.
+
+## 2026-02-20 (TASK-015 QA reopen dispatch)
+- Received QA failure report for TASK-015 partial implementation:
+  - story-card slot location incorrect
+  - dimensions incorrect
+  - placeholder flip/slot animation not visible
+- Dispatched corrective packet (no scope expansion) by tightening TASK-015 execution plan and ACTIVE Dev Next Action:
+  - enforce relational anchoring into the band between buff row and gemboard
+  - enforce gemboard-aligned width/contracted height
+  - require visible on-update animation with single-line overwrite semantics only
+  - require deterministic corrective artifacts for placement, animation, and overwrite/containment proof
+- Files touched:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-015-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Await Dev corrective artifact packet for Lead closure review.
+
+## 2026-02-20 (TASK-015 QA FAIL regression containment dispatch)
+- QA reported additional regressions after partial TASK-015 implementation:
+  - story card initial placement incorrect
+  - card repositions only after blue-buff interaction (invalid trigger coupling)
+  - corrected state under-scaled (required width target unmet)
+  - yellow refill invariants regressed (row-wise order + yellow animation path)
+- Updated TASK-015 execution plan and ACTIVE packet to fail/reopen with sprint-blocking acceptance criteria:
+  - Story card must initialize from Layout 1 activation only (not turn/buff/gem events).
+  - Story card must be horizontally centered at approximately 95% width of viewport content band.
+  - Yellow refill order and yellow-sequence animation must be restored and proven unchanged by story-card work.
+- Required artifact set added for deterministic re-close attempt:
+  - `layout1-start.png`
+  - `layout1-post-blue-match.png`
+  - `storycard-placement-trace.json`
+  - `yellow-refill-order-trace.json`
+  - `yellow-animation-trace.json`
+  - `assertions-regression-guard.json`
+- Files touched:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-015-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Await Dev regression-corrective artifact packet for Lead review.
+
+## 2026-02-20 (TASK-015 visual typography tuning dispatch)
+- QA reported functional PASS on TASK-015 and requested visual readability adjustment only.
+- Dispatched narrow-scope follow-up:
+  - increase story-card font size to match sample readability target
+  - no text/content expansion
+  - no card anchor/size contract changes
+  - no refill behavior or yellow-path behavior changes
+- Updated directive files:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-015-execution-plan.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
+- Required closure artifacts set:
+  - `storycard-font-before-after.png`
+  - `storycard-font-assertions.json`
+- Next: Await Dev typography artifact packet for Lead closure check.
+
+## 2026-02-20 (TASK-015 story-card single-line wiring)
+- Executed TASK-015 scope in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` only:
+  - Added single-line story-card runtime state (`gameState.storyCardLine`) with overwrite semantics.
+  - Added `getLatestCombatActionLine()` authority resolver from `state.globals.CombatActionLines[3]`.
+  - Added `getStoryCardLiveLineState()` for lightweight placeholder alpha pulse on line replacement.
+  - Updated Layout 1 combat text draw path so only `CombatAction` renders the live line; `CombatAction1/2/3` are skipped.
+  - Updated `drawHUD()` debug panel to mirror one latest action line only.
+- Deterministic artifacts published:
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/phase1-source-contract.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/phase3-validation.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/closure-recommendation.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/runtime-probe.log`
+- Closure recommendation: `PARTIAL PASS` (static contract/wiring checks pass; runtime probe blocked by local `agent-browser` daemon socket startup failure).
+- Index gap: `/Users/Mace/Wishfire/Codex-Orka/ai-memory/PROJECT_INDEX.md` is missing.
+- Files touched:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/phase1-source-contract.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/phase3-validation.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/closure-recommendation.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/runtime-probe.log`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Next: Await next explicit user request.
+
+## 2026-02-20 (TASK-015 visible story-card slot placement fix)
+- Confirmed QA report: story-card slot was not visible in combat layout because `CombatAction` text was still suppressed by sidebar migration filter.
+- Updated `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` to:
+  - allow `CombatAction` through the text render filter while keeping other radiator text in sidebar,
+  - render a dedicated story-card slot band above gemboard (between buff row and board),
+  - draw the single live latest action line inside that slot with overwrite semantics and existing placeholder pulse.
+- Runtime validation artifacts:
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/runtime-slot-visible.png`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/runtime-slot-line.txt`
+- Next: Await next explicit user request.
+
+## 2026-02-20 (TASK-015 regression corrective packet executed)
+- Implemented TASK-015 QA-fail corrective in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` with no scope expansion:
+  - Story-card placement is initialized on `combat` layout activation (`layout1-active`) and no longer tied to turn/buff/gem event updates.
+  - Story-card width is centered and derived at ~95% of content band width.
+  - Added deterministic trace capture for TASK-015 contracts:
+    - story-card placement trigger/bounds
+    - yellow refill queue ordering
+    - yellow-sequence animation path stages
+- Exposed runtime trace retrieval hooks:
+  - `window.__codexGame.getTask015Trace()`
+  - `window.__codexGame.resetTask015Trace()`
+- Published required corrective artifact pack:
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/layout1-start.png`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/layout1-post-blue-match.png`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-placement-trace.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/yellow-refill-order-trace.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/yellow-animation-trace.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/assertions-regression-guard.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/closure-recommendation.json`
+- Corrective assertion verdict: PASS.
+- Next: Await next explicit user request.
+
+## 2026-02-20 (TASK-015 visual tuning packet)
+- Executed ACTIVE visual-tuning-only packet in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`:
+  - increased only story-card line font size in CombatAction render path,
+  - preserved story-card bounds/anchor logic,
+  - preserved latest-line overwrite semantics and refill/yellow behavior contracts.
+- Published typography closure artifacts:
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-font-before.png`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-font-after.png`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-font-before-after.png`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-font-state-after.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-font-trace-after.json`
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-font-assertions.json`
+- Assertion verdict: PASS (`font-size-increased`, `card-bounds-unchanged`, `latest-overwrite-semantics-unchanged`).
+- Next: Await next explicit user request.
