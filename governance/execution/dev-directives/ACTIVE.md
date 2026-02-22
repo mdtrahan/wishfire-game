@@ -4,8 +4,8 @@
 Sprint X
 
 ## Dispatch Integrity (Mandatory)
-- Expected Branch: `main`
-- Baseline Commit or Tag: `650fa31`
+- Expected Branch: `codex/task019-poweramp-next-own-turn-expiry`
+- Baseline Commit or Tag: `d11a540`
 - Drift Action: if branch/baseline check fails, stop immediately and request Lead resync before any code execution.
 
 ## Active TASK-###
@@ -15,7 +15,6 @@ Sprint X
 
 ## Strict File Lock (TASK-019)
 - Allowed files:
-  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
   - `/Users/Mace/Wishfire/Codex-Orka/web-runner/modules/functionBank.js`
   - `/Users/Mace/Wishfire/Codex-Orka/Scripts/functionBank.js` (parity only if needed)
   - `/Users/Mace/Wishfire/Codex-Orka/test-results/task019/*`
@@ -27,7 +26,15 @@ Sprint X
 - Rule: any modification outside allowed list = automatic FAIL.
 
 ## Dev Next Action
-- Execute TASK-019 only and return PASS/FAIL with full TASK-019 artifact contract.
+1. Implement TASK-019 authoritative lifecycle exactly:
+   - pending-next-own-turn arm state
+   - active-this-turn usage state
+   - mandatory own-turn-end expiry for attack and non-attack paths
+2. Keep patch isolated to power-amp lifecycle only:
+   - no initiative text edits
+   - no story-card/yellow behavior edits
+   - no combat balance tuning
+3. Publish full artifact contract and return PASS/FAIL with strict file-lock compliance statement.
 
 ## Artifact Contract
 - `task019-poweramp-recipient-turn-trace.json`

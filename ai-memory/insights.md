@@ -465,3 +465,6 @@
 
 ## 2026-02-22 (TASK-020 closure and intake advance)
 - QA PASS on initiative no-resurrection was converted to Lead PASS for TASK-020, and ACTIVE intake was advanced to TASK-019 (party-wide power-amp expiry leak) with strict file-lock constraints.
+
+## 2026-02-22 (TASK-019 authority lock)
+- Lifecycle ambiguity created reopen loops; TASK-019 is now locked to a deterministic per-hero next-own-turn state model with explicit arming, turn-start activation, and mandatory own-turn-end expiry semantics to prevent interpretation drift across Lead/Dev handoffs.
