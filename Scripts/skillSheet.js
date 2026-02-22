@@ -22,8 +22,6 @@ export function Party_SPD_UP(ctx, turns, actorUID, actorType, addAmt) {
   const amt = Math.trunc(addAmt || 0);
   g.PartyBuff_SPD = Math.min(g.PartyBuffCap_SPD || 0, (g.PartyBuff_SPD || 0) + amt);
   if ((g.BuffTurns_SPD || 0) <= 0) g.BuffTurns_SPD = clampBuffDuration(turns);
-  g.BuffText = `BUFF SPD=${g.PartyBuff_SPD}/${g.PartyBuffCap_SPD}`;
-  console.log(`[BUFF] SPD_UP -> ${g.PartyBuff_SPD}/${g.PartyBuffCap_SPD} (+${amt})`);
   ctx.callFunction('Update_Bars');
   ctx.callFunction('RefreshPartyBuffUI');
 }

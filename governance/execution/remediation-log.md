@@ -20,6 +20,18 @@
 - ADV-2026-003 (deferred to backlog: 30% cap; High severity, not selected over Critical)
 - ADV-2026-004 (deferred to backlog: 30% cap; Medium severity)
 
+## Critical-to-Task Mapping (Current Sprint)
+- ADV-2026-005 -> TASK-003 sprint-blocking acceptance criterion (`0 -> 1` bootstrap integrity); status: RESOLVED (closure sync 2026-02-18).
+- ADV-2026-007 -> TASK-003 sprint-blocking acceptance criterion (`1 -> 2` pathway reachability); status: RESOLVED (closure sync 2026-02-18).
+
+## Re-scope Note (Post-QA)
+- No new REM item opened for ADV-2026-005 or ADV-2026-007 because both were handled as TASK-003 acceptance criteria and validated in QA.
+- Closure sync complete: Lead review status and evidence are recorded in adversarial-ledger and regression-history.
+
+## PM Forward-Drive Directive (Lead Review Output Required)
+- TASK-003 closure gate is satisfied and closed at PM layer.
+- Next governance action: keep REM-2026-001 active and transition feature execution focus to TASK-004.
+
 ## Closure Rule
 A finding may be marked CLOSED only if:
 - Linked REM item exists
@@ -27,6 +39,7 @@ A finding may be marked CLOSED only if:
 - Regression guard defined
 
 ## Current Sprint Allocation Check
-- Remediation allocation: 25% (1 remediation item out of 4 open findings)
+- Planned allocation: Feature 70% / Remediation 30%
+- Active remediation items: 1 (`REM-2026-001`)
 - Cap status: Within 30% cap
-- Override status: No Critical override applied
+- Override status: No BLOCKER override applied
