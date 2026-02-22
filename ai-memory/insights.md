@@ -456,3 +456,12 @@
   - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-font-assertions.json`
 - Assertion verdict: PASS (`font-size-increased`, `card-bounds-unchanged`, `latest-overwrite-semantics-unchanged`).
 - Next: Await next explicit user request.
+
+## 2026-02-22 (Drift audit retry)
+- Retry audit still failed: ACTIVE remained regressed to TASK-015 and required TASK-020 plan was absent, so runtime deltas could not be scope-certified despite baseline/branch checks passing.
+
+## 2026-02-22 (Alignment retry PASS)
+- Restoring ACTIVE/task-plan parity before re-auditing converted drift gate from FAIL to PASS, confirming that scope compliance checks are reliable only after directive alignment is re-established.
+
+## 2026-02-22 (TASK-020 closure and intake advance)
+- QA PASS on initiative no-resurrection was converted to Lead PASS for TASK-020, and ACTIVE intake was advanced to TASK-019 (party-wide power-amp expiry leak) with strict file-lock constraints.

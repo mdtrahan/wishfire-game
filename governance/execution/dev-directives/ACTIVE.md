@@ -3,30 +3,41 @@
 ## Current Sprint
 Sprint X
 
+## Dispatch Integrity (Mandatory)
+- Expected Branch: `main`
+- Baseline Commit or Tag: `650fa31`
+- Drift Action: if branch/baseline check fails, stop immediately and request Lead resync before any code execution.
+
 ## Active TASK-###
-- TASK-015
+- TASK-019
   - Plan:
-    - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-015-execution-plan.md`
+    - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-019-execution-plan.md`
+
+## Strict File Lock (TASK-019)
+- Allowed files:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/modules/functionBank.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/Scripts/functionBank.js` (parity only if needed)
+  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task019/*`
+- Forbidden files:
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/planning/*`
+  - `/Users/Mace/Wishfire/Codex-Orka/governance/audit/*`
+  - `/Users/Mace/Wishfire/Codex-Orka/AGENTS.md`
+  - any file outside the allowed list
+- Rule: any modification outside allowed list = automatic FAIL.
 
 ## Dev Next Action
-- Execute TASK-015 visual tuning packet now (post-QA functional PASS):
-  - Step 1: Increase only story-card text font size to match sample readability target.
-  - Step 2: Preserve all functional behavior and layout contracts (no copy changes, no card anchor/size changes, no refill behavior changes).
-  - Step 3: Publish typography closure artifacts (`storycard-font-before-after.png`, `storycard-font-assertions.json`) and return PASS/PARTIAL PASS/FAIL.
+- Execute TASK-019 only and return PASS/FAIL with full TASK-019 artifact contract.
+
+## Artifact Contract
+- `task019-poweramp-recipient-turn-trace.json`
+- `task019-poweramp-next-turn-only-assertions.json`
+- `task019-poweramp-partywide-expiry-assertions.json`
+- `task019-no-carryover-assertions.json`
+- `task019-partywide-skew-trace.json`
+- `task019-partywide-leak-stomp-assertions.json`
+- `task019-text-print-regression-guard.json`
+- `task019-closure-recommendation.json`
 
 ## Prior Task Closure
-- TASK-005 Lead verdict: PASS (2026-02-20).
-- TASK-007 intake: CLOSED per sprint-board alignment.
-- TASK-008 Lead verdict: PASS (2026-02-20).
-- TASK-008 reopen corrective gate verdict: PASS (2026-02-20).
-- TASK-009 Lead verdict: PASS (2026-02-20).
-- TASK-009 Lead reopen corrective closure gate verdict: PASS (2026-02-20).
-- TASK-011 Lead verdict: PASS (2026-02-20).
-- TASK-012/013/014 bundle Lead verdict: PASS (2026-02-20).
-- PM retains sprint-board completion marking authority.
-
-## Current Task Status
-- TASK-015 intake active per sprint-board.
-- TASK-015 functional QA PASS; visual typography tuning pending.
-- TASK-010 remains blocked by art-team map/tower asset dependency.
-- Constraint remains: no scope drift beyond TASK-015 execution plan.
+- TASK-020 Lead verdict: PASS (2026-02-22).

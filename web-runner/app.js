@@ -279,7 +279,7 @@ const gameState = {
     current: null,
   },
   storyCardLine: {
-    text: 'What happened?',
+    text: '',
     animUntil: 0,
   },
   storyCardLayout: {
@@ -559,6 +559,7 @@ function initEntities(enemyRows, layoutInstances) {
   assertCombatLayoutDev('initEntities');
   state.entities = [];
   state.globals.EnemyData = enemyRows || [];
+  state.globals.CombatSessionId = Number(state.globals.CombatSessionId || 0) + 1;
 
   const partyHP = [];
   const partyMaxHP = [];
@@ -614,23 +615,21 @@ function initEntities(enemyRows, layoutInstances) {
     state.globals.InitialSpawn = 0;
   }
 
-  if (state.globals.BattleStartMode == null) {
-    state.globals.BattleStartMode = Math.random() < 0.5 ? 'ambush' : 'initiative';
-  }
-
-  if (!state.globals.BattleStartShown) {
-    state.globals.BattleStartShown = 1;
-    const msg = state.globals.BattleStartMode === 'ambush'
-      ? 'Ambushed by enemy team!'
-      : 'Heroes surprised the enemies!';
-    state.globals.BattleStartText = msg;
-    state.globals.BattleStartActive = 1;
-    state.globals.BattleStartProcessStarted = 0;
-    state.globals.BattleStartEndsAt = 2.0;
-    state.globals.BattleStartFadeEndsAt = 2.4;
-    state.globals.IsPlayerBusy = 1;
-    state.globals.CanPickGems = 0;
-  }
+  state.globals.BattleStartMode = Math.random() < 0.5 ? 'ambush' : 'initiative';
+  state.globals.BattleStartShown = 1;
+  state.globals.BattleStartClearedForSession = 0;
+  const msg = state.globals.BattleStartMode === 'ambush'
+    ? 'Ambushed by enemy team!'
+    : 'Heroes surprised the enemies!';
+  state.globals.BattleStartText = msg;
+  state.globals.BattleStartSessionText = msg;
+  state.globals.BattleStartSessionId = Number(state.globals.CombatSessionId || 0);
+  state.globals.BattleStartActive = 1;
+  state.globals.BattleStartProcessStarted = 0;
+  state.globals.BattleStartEndsAt = 2.0;
+  state.globals.BattleStartFadeEndsAt = 2.4;
+  state.globals.IsPlayerBusy = 1;
+  state.globals.CanPickGems = 0;
   callFunctionWithContext(fnContext, 'InitPartyHPFromHeroes');
   // Ensure party starts at full health
   if (state.globals.PartyMaxHP > 0) {
@@ -2224,6 +2223,7 @@ async function main(){
       const fadeEnd = state.globals.BattleStartFadeEndsAt ?? 2.4;
       if (t >= fadeEnd) {
         state.globals.BattleStartActive = 0;
+        state.globals.BattleStartClearedForSession = 1;
         if (!state.globals.BattleStartProcessStarted) {
           state.globals.BattleStartProcessStarted = 1;
           state.globals.IsPlayerBusy = 0;
@@ -3462,9 +3462,21 @@ async function main(){
           ctx.restore();
           ctx.textAlign = 'left';
           ctx.font = `bold ${storyFontSize}px sans-serif`;
+          const storyTextX = storySlot.x + Math.max(10, Math.round(12 * layoutScale));
+          const storyTextY = storySlot.y + (storySlot.h * 0.58);
+          const split = splitStoryCardActorSegment(text);
           ctx.save();
           ctx.globalAlpha = liveLine.animAlpha;
-          ctx.fillText(text, storySlot.x + Math.max(10, Math.round(12 * layoutScale)), storySlot.y + (storySlot.h * 0.58));
+          if (split.actor) {
+            ctx.fillStyle = '#E35822';
+            ctx.fillText(split.actor, storyTextX, storyTextY);
+            const actorWidth = ctx.measureText(split.actor).width;
+            ctx.fillStyle = '#314877';
+            ctx.fillText(split.rest, storyTextX + actorWidth, storyTextY);
+          } else {
+            ctx.fillStyle = '#314877';
+            ctx.fillText(text, storyTextX, storyTextY);
+          }
           ctx.restore();
           continue;
         } else if (r.inst.type === 'PartyHP_text') {
@@ -3556,7 +3568,7 @@ async function main(){
           continue;
         }
         if (text === 'What happen?') {
-          text = 'What happened?';
+          text = '';
         }
         if (['h1name','h2Hname','h3name','h4name'].includes(r.inst.type)) {
           continue;
@@ -3794,25 +3806,6 @@ async function main(){
         } else {
           ctx.drawImage(img, x, y, iconSize, iconSize);
         }
-        ctx.restore();
-      }
-    }
-
-    if (state.globals.BattleStartActive) {
-      const showUntil = state.globals.BattleStartEndsAt ?? 2.0;
-      const fadeEnd = state.globals.BattleStartFadeEndsAt ?? (showUntil + 0.4);
-      const t = state.globals.time || 0;
-      const alpha = t <= showUntil ? 1 : Math.max(0, 1 - ((t - showUntil) / Math.max(0.001, fadeEnd - showUntil)));
-      const text = state.globals.BattleStartText || '';
-      if (text) {
-        const centerX = layoutOffsetX + (layoutW * layoutScale) / 2;
-        const baseY = partyBar ? (partyBar.dy - (20 * layoutScale)) : (layoutOffsetY + (layoutH * layoutScale) * 0.45);
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = '#111';
-        ctx.font = `${Math.round(18 * layoutScale)}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText(text, centerX, baseY);
         ctx.restore();
       }
     }
@@ -4223,24 +4216,121 @@ async function main(){
     const g = state.globals || {};
     const lines = Array.isArray(g.CombatActionLines) ? g.CombatActionLines : [];
     const latest = lines[3];
-    return (typeof latest === 'string' && latest.trim()) ? latest.trim() : 'What happened?';
+    return (typeof latest === 'string' && latest.trim()) ? latest.trim() : '';
   }
 
-  function getStoryCardLiveLineState() {
-    if (!gameState.storyCardLine) {
-      gameState.storyCardLine = { text: 'What happened?', animUntil: 0 };
+  function isStoryCardTokenLine(text) {
+    const value = typeof text === 'string' ? text.trim() : '';
+    if (!value) return false;
+    return /^token drop(?:\s*\(fallback\))?:/i.test(value);
+  }
+
+  function getStoryCardIntentFallbackLine() {
+    const actorIntent = typeof state.globals?.ActorIntent === 'string' ? state.globals.ActorIntent : '';
+    if (!actorIntent) return '';
+    if (!actorIntent.includes('YELLOW') || !actorIntent.includes('Casino_Recolor')) return '';
+    const m = actorIntent.match(/\]\s*(.+?)\s*->\s*Casino_Recolor/i);
+    const actor = m && m[1] ? String(m[1]).trim() : '';
+    if (!actor) return '';
+    return `${actor} used Wild Magic!`;
+  }
+
+  function getLatestStoryCardActionLine() {
+    const g = state.globals || {};
+    const lines = Array.isArray(g.CombatActionLines) ? g.CombatActionLines : [];
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = typeof lines[i] === 'string' ? lines[i].trim() : '';
+      if (!line) continue;
+      if (isStoryCardTokenLine(line)) continue;
+      return line;
     }
-    const nextText = getLatestCombatActionLine();
-    const now = Number(state.globals?.time || 0);
-    if (gameState.storyCardLine.text !== nextText) {
-      gameState.storyCardLine.text = nextText;
+    return getStoryCardIntentFallbackLine() || '';
+  }
+
+function getBattleStartStoryCardOverlay() {
+  const g = state.globals || {};
+  if (g.BattleStartClearedForSession) return { active: false, text: '', alpha: 1 };
+  if (!g.BattleStartActive) return { active: false, text: '', alpha: 1 };
+  const text = typeof g.BattleStartText === 'string' ? g.BattleStartText : '';
+  if (!text.trim()) return { active: false, text: '', alpha: 1 };
+    const showUntil = Number(g.BattleStartEndsAt ?? 2.0);
+    const fadeEnd = Number(g.BattleStartFadeEndsAt ?? (showUntil + 0.4));
+    const t = Number(g.time || 0);
+    const alpha = t <= showUntil ? 1 : Math.max(0, 1 - ((t - showUntil) / Math.max(0.001, fadeEnd - showUntil)));
+    return { active: alpha > 0, text, alpha };
+}
+
+function isBattleStartSessionLine(text) {
+  const line = typeof text === 'string' ? text.trim() : '';
+  if (!line) return false;
+  const g = state.globals || {};
+  const sessionText = typeof g.BattleStartSessionText === 'string' ? g.BattleStartSessionText.trim() : '';
+  if (sessionText && line === sessionText) return true;
+  return line === 'Ambushed by enemy team!' || line === 'Heroes surprised the enemies!';
+}
+
+function getStoryCardLiveLineState() {
+  if (!gameState.storyCardLine) {
+    gameState.storyCardLine = { text: '', animUntil: 0 };
+  }
+  const battleStart = getBattleStartStoryCardOverlay();
+  const combatText = getLatestStoryCardActionLine();
+  const candidateText = combatText || (battleStart.active ? battleStart.text : '');
+  let nextText = candidateText || gameState.storyCardLine.text || '';
+  if (!battleStart.active && !combatText && isBattleStartSessionLine(nextText)) {
+    nextText = '';
+    state.globals.BattleStartClearedForSession = 1;
+  }
+  const now = Number(state.globals?.time || 0);
+  if (gameState.storyCardLine.text !== nextText) {
+    gameState.storyCardLine.text = nextText;
       gameState.storyCardLine.animUntil = now + 0.35;
     }
     const animRemaining = Math.max(0, Number(gameState.storyCardLine.animUntil || 0) - now);
+    const fadeAlpha = animRemaining > 0 ? (0.75 + ((animRemaining / 0.35) * 0.25)) : 1;
     return {
-      text: gameState.storyCardLine.text || 'What happened?',
-      animAlpha: animRemaining > 0 ? (0.75 + ((animRemaining / 0.35) * 0.25)) : 1,
+      text: gameState.storyCardLine.text || '',
+      animAlpha: battleStart.active ? Math.min(fadeAlpha, battleStart.alpha) : fadeAlpha,
     };
+  }
+
+  function splitStoryCardActorSegment(text) {
+    const line = typeof text === 'string' ? text : '';
+    if (!line) return { actor: '', rest: '' };
+    const names = Array.from(new Set(
+      (Array.isArray(state.entities) ? state.entities : [])
+        .map(e => String(e?.name || '').trim())
+        .filter(Boolean),
+    )).sort((a, b) => b.length - a.length);
+    for (const name of names) {
+      if (line === name) return { actor: name, rest: '' };
+      if (line.startsWith(`${name} `)) return { actor: name, rest: line.slice(name.length) };
+    }
+    const delimiters = [
+      ' hit ',
+      ' cast on ',
+      ' used ',
+      ' heals ',
+      ' healed ',
+      ' found ',
+      ' grabbed ',
+      ' increased ',
+      ' applies ',
+      ' gained ',
+      ' tried ',
+      ' had ',
+      ' resisted ',
+    ];
+    let boundary = -1;
+    for (const token of delimiters) {
+      const idx = line.indexOf(token);
+      if (idx > 0 && (boundary === -1 || idx < boundary)) boundary = idx;
+    }
+    if (boundary > 0) {
+      const actor = line.slice(0, boundary).trimEnd();
+      return { actor, rest: line.slice(actor.length) };
+    }
+    return { actor: '', rest: line };
   }
 
   function drawHUD(){
@@ -5249,6 +5339,32 @@ async function main(){
       },
       callFunction(fnName, ...args) {
         return callFunctionWithContext(fnContext, fnName, ...args);
+      },
+      getStoryCardDebugLine() {
+        const rawLatest = getLatestCombatActionLine();
+        const filteredLatest = getLatestStoryCardActionLine();
+        const live = getStoryCardLiveLineState();
+        const split = splitStoryCardActorSegment(live.text);
+        const intentFallback = getStoryCardIntentFallbackLine();
+        const g = state.globals || {};
+        return {
+          rawLatest,
+          filteredLatest,
+          intentFallback,
+          rendered: live.text,
+          split,
+          battleStart: {
+            active: !!g.BattleStartActive,
+            clearedForSession: !!g.BattleStartClearedForSession,
+            sessionId: Number(g.BattleStartSessionId || 0),
+            sessionText: String(g.BattleStartSessionText || ''),
+          },
+          colors: {
+            actor: '#E35822',
+            rest: '#314877',
+          },
+          filteredToken: isStoryCardTokenLine(rawLatest),
+        };
       },
       getTask011Audit() {
         return JSON.parse(JSON.stringify(ensureTask011Audit()));

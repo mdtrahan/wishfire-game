@@ -56,6 +56,8 @@
 - [x] Await next explicit user request.
 - [x] Await next explicit user request.
 - [x] Await next explicit user request.
+- [x] Retry process-debt drift audit after claimed compliance completion and republish verdict artifact.
+- [x] Close TASK-020 on QA PASS and advance ACTIVE intake to TASK-019 with restored plan artifacts.
 - [ ] Await next explicit user request.
 
 ## Done (recent)

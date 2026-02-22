@@ -142,7 +142,8 @@ function consumePowerAmpForEvent(ctx, actorUID, values) {
   const entry = store[actorUID];
   const mult = Number(entry?.mult || 0);
   if (!mult) return values;
-  if (entry && entry.readyTurn === (g.DebugTurnCount || 0)) {
+  const turnNow = Number(g.DebugTurnCount || 0);
+  if (entry && entry.readyTurn != null && turnNow >= Number(entry.readyTurn || 0)) {
     entry.usedThisTurn = true;
     return values.map(v => Math.max(1, Math.ceil((v || 0) * mult)));
   }
@@ -188,7 +189,8 @@ export function GetPowerAmpMultiplierForActor(ctx, actorUID) {
   const store = ensurePowerAmpByUID(ctx);
   const entry = store[actorUID];
   if (!entry) return 0;
-  if (entry.readyTurn !== (g.DebugTurnCount || 0)) return 0;
+  const turnNow = Number(g.DebugTurnCount || 0);
+  if (entry.readyTurn == null || turnNow < Number(entry.readyTurn || 0)) return 0;
   entry.usedThisTurn = true;
   return Number(entry.mult || 0);
 }
@@ -834,7 +836,8 @@ export function AdvanceTurn(ctx) {
   if (currentType === 0 && currentUID) {
     const store = ensurePowerAmpByUID(ctx);
     const entry = store[currentUID];
-    if (entry && entry.readyTurn === (g.DebugTurnCount || 0)) {
+    const turnNow = Number(g.DebugTurnCount || 0);
+    if (entry && entry.readyTurn != null && turnNow >= Number(entry.readyTurn || 0)) {
       const mult = Number(entry.mult || 0);
       delete store[currentUID];
       if (mult) startPowerAmpFade(g, currentUID, mult);
@@ -2148,7 +2151,7 @@ export function Enemy_Wipe(ctx, enemyUID) {
     UpdateEnemyHPUI(ctx);
   }
   const enemyName = getActorNameByUID(ctx, enemyUID);
-  LogCombat(ctx, `${enemyName} used Wipe and healed allies for ${totalHeal}.`);
+  LogCombat(ctx, `${enemyName} used Wipe and healed allies for ${totalHeal}!`);
   return 1;
 }
 
