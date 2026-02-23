@@ -468,3 +468,6 @@
 
 ## 2026-02-22 (TASK-019 authority lock)
 - Lifecycle ambiguity created reopen loops; TASK-019 is now locked to a deterministic per-hero next-own-turn state model with explicit arming, turn-start activation, and mandatory own-turn-end expiry semantics to prevent interpretation drift across Lead/Dev handoffs.
+
+## 2026-02-23 (Beads issue-gated workflow)
+- Work tracking was migrated from markdown backlog into Beads, with local git hooks enforcing issue-tracked commits and active work selection (`bd ready` + active in_progress issue). This creates a hard "No issue, no work" gate and reduces unsourced execution drift.

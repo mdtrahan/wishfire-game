@@ -19,17 +19,28 @@
 
 ## 2) Startup Protocol (required order)
 1. Read `ai-memory/context.md`
-2. Read `ai-memory/todo.md`
-3. Read `ai-memory/insights.md`
+2. Run `bd ready`
+3. Select active work and run `bd show <id>`
+4. Read `ai-memory/insights.md`
 - If conflict exists, `AGENTS.md` wins.
 
 ## 3) Execution Scope
-- Work only the first unchecked item in `ai-memory/todo.md`.
+- Work only the active Beads issue selected for this lane.
 - No opportunistic refactors or “while here” extras.
 
+### 3.1 Beads Work Gating (mandatory)
+- No issue, no work. Always run `bd ready` then `bd show <id>`. Commits require `bd-<id>` in the message.
+- Use Beads (`bd`) as the source of truth for active work tracking.
+- Before any implementation work:
+  1. Run `bd ready`
+  2. Select issue and run `bd show <id>`
+  3. Mark active issue (`in_progress`) before editing code
+- Commit messages must include `bd-<id>` reference tokens to satisfy commit hook policy.
+- If hooks fail due missing Beads context, stop and fix issue selection/state before retrying commit.
+
 ### Blocker Rule
-If first unchecked TODO is placeholder/undefined/needs clarification:
-- Add `- [ ] BLOCKED: Need explicit feature request/spec from user.`
+If there is no ready/selected Beads issue or scope is ambiguous:
+- Mark issue blocked in Beads and request explicit clarification on that issue.
 - Stop immediately.
 
 ## 4) Deterministic Skill Router
@@ -41,27 +52,26 @@ Output the invocation line before proceeding.
 
 ## 5) Retrieval Map
 - Consult `ai-memory/PROJECT_INDEX.md` before broad search.
-- If missing info discovered, record `Index gap:` in `ai-memory/todo.md` (not `insights.md`).
+- If missing info discovered, record `Index gap:` in active Beads issue notes/comments.
 - Top-level map:
   - `Scripts/`, `web-runner/`, `ai-memory/`, `skills/`, `test-results/`
   - `python-app/`, `node-app/` are tooling-only unless TODO requires edits.
 
 ### 5.1 Doc Retrieval Short-Circuit (token control)
 - For PM/Lead documentation work, read canonical files first and avoid repo-wide scans unless blocked:
-  - `ai-memory/context.md`, `ai-memory/todo.md`, `ai-memory/insights.md`, `ai-memory/project.md`
-  - `governance/planning/sprint-board.md`, `governance/planning/backlog.md`, `governance/planning/milestone-definition.md`, `governance/planning/roadmap.md`
-  - `governance/execution/dev-directives/ACTIVE.md` and currently active/blocked `TASK-###-execution-plan.md` only
+  - `ai-memory/context.md`, `ai-memory/insights.md`, `ai-memory/project.md`
+  - `governance/planning/milestone-definition.md`, `governance/planning/roadmap.md`
+  - `governance/execution/dev-directives/ACTIVE.md` and active execution-plan file only
 - Treat root-level legacy duplicates (`context.md`, `todo.md`, `insights.md`) as deprecated non-canonical.
 - Completed execution plans should be moved to `governance/execution/dev-directives/archive/YYYY-MM/` to keep active directive scans small.
 
 ## 6) Checkpoint Protocol (after each task)
-1. Update `ai-memory/todo.md`
-2. Update role artifacts only (for example `ACTIVE.md`, execution plan, sprint-board, backlog, remediation log, metrics, test artifacts).
+1. Update Beads issue state/notes (`bd update`, `bd comments`, `bd close` as appropriate)
+2. Update role artifacts only (for example `ACTIVE.md`, execution plan, remediation log, metrics, test artifacts).
 
 ### Disk Safety
 - Update each ai-memory file at most once per task.
 - No loops/repeated writes.
-- `todo.md`: queue-style (one active unchecked at top + short done list).
 - `insights.md`: decisions log only, not transcript.
 - Verbose traces belong in runtime/governance artifacts.
 - `insights.md` must contain high-impact process or product decisions only (no sync chatter, no status replay).
