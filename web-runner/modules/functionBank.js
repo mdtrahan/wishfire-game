@@ -218,6 +218,12 @@ function ensureTokenWallet(ctx) {
   return g.TokenWallet;
 }
 
+function ensureAstralFlowWallet(ctx) {
+  const g = getGlobals(ctx);
+  if (!Number.isFinite(g.AstralFlowWallet)) g.AstralFlowWallet = 0;
+  return g.AstralFlowWallet;
+}
+
 function parseDropId(dropId) {
   if (!dropId || dropId === EMPTY) return { type: 'EMPTY', id: null };
   const raw = String(dropId);
@@ -1620,7 +1626,7 @@ export function RefreshPartyBuffUI(ctx) {
   ];
 }
 
-export function ResolveGemAction(ctx, gemColor, actorUID) {
+export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
   const g = getGlobals(ctx);
   g.HideHeroSelector = 1;
   if (gemColor === 0) {
@@ -1653,6 +1659,10 @@ export function ResolveGemAction(ctx, gemColor, actorUID) {
     g.BuffRollSkillID = skillId;
     g.BuffRollActor = actorUID;
     g.BuffRollType = buffType;
+    const consumedBlue = Math.max(0, Number(consumedCount) || 0);
+    const wallet = ensureAstralFlowWallet(ctx);
+    g.AstralFlowWallet = wallet + consumedBlue;
+    LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} channeled ${consumedBlue} Astral Flow.`);
     StartBuffRoll(ctx);
     return;
   }
@@ -2258,11 +2268,9 @@ export function StartBuffRoll(ctx) {
   g.BuffRollEndsAt = 0;
   RegisterPartyBuffSlot(ctx, buffType);
   RefreshPartyBuffUI(ctx);
-  if (g.BuffRollSkillID) {
-    ExecuteSkill(ctx, g.BuffRollSkillID, g.BuffRollActor, 0);
-    g.BuffRollSkillID = '';
-    g.BuffRollActor = 0;
-  }
+  // Blue gem path keeps icon/scale-up promotion visuals but no direct buff apply.
+  g.BuffRollSkillID = '';
+  g.BuffRollActor = 0;
   // Buff roll has no lunge/animation to clear busy; allow DeferAdvance to resolve.
   g.IsPlayerBusy = 0;
   const until = (g.time || 0) + 0.6;
