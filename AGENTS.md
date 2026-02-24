@@ -213,6 +213,19 @@ Then append `Escalation Trigger` section to stability metrics.
   - `AGENTS.md`
   - `governance/audit/adversarial-ledger.md` (when adversarial findings are logged)
 
+Control phrases (PM shorthand):
+- `commit check <bd-id>` is a response contract, not a shell command.
+- Required output for `commit check <bd-id>`:
+  - `COMMIT: YES|NO`
+  - `Reason: <one line>`
+  - `If YES: Commit Message: <type: summary bd-<id>>`
+  - `If NO: Missing: <1-2 concrete items>`
+- `qa handoff <bd-id>` is a response contract, not a shell command.
+- Required output for `qa handoff <bd-id>`:
+  - `Test URL: <local/runtime url>`
+  - `Steps: <3 short deterministic steps>`
+  - `Expected: <pass condition>`
+
 Iteration cadence rule:
 - Work in short execution packets and close them quickly:
   - plan -> build -> review -> adapt
