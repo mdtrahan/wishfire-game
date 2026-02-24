@@ -263,6 +263,15 @@ function pickDropTier(g) {
   return 3;
 }
 
+function getDropSlotChancePct(g, slotIndex) {
+  const idx = Math.max(0, Number(slotIndex) | 0);
+  const fromArray = Array.isArray(g?.DropSlotChancePctByIndex) ? Number(g.DropSlotChancePctByIndex[idx]) : NaN;
+  if (Number.isFinite(fromArray)) return clamp(0, fromArray, 100);
+  const keyed = Number(g?.[`DropSlotChancePct${idx + 1}`]);
+  if (Number.isFinite(keyed)) return clamp(0, keyed, 100);
+  return 50;
+}
+
 function applyRewardPayload(ctx, payload) {
   if (!payload || !payload.type) return;
   const g = getGlobals(ctx);
@@ -1457,11 +1466,17 @@ export function ResolveMonsterDrop(ctx, monsterName, tierIndex = null) {
 }
 
 export function AwardMonsterDrop(ctx, monsterName, tierIndex = null) {
-  const rollsPerDeath = 4;
+  const g = getGlobals(ctx);
+  const slotCount = 4;
   const awarded = [];
-  for (let i = 0; i < rollsPerDeath; i++) {
-    const dropId = ResolveMonsterDrop(ctx, monsterName, tierIndex);
+  const slotTraces = [];
+  for (let i = 0; i < slotCount; i++) {
+    const slotChancePct = getDropSlotChancePct(g, i);
+    const rollPct = Math.random() * 100;
+    const passed = rollPct < slotChancePct;
+    const dropId = passed ? ResolveMonsterDrop(ctx, monsterName, tierIndex == null ? i : tierIndex) : EMPTY;
     const parsed = parseDropId(dropId);
+    let resolved = 'EMPTY';
     if (parsed.type === 'TOKEN') {
       const registry = TOKEN_REGISTRY[parsed.id];
       const activeEvent = getActiveEventByToken(parsed.id);
@@ -1471,25 +1486,71 @@ export function AwardMonsterDrop(ctx, monsterName, tierIndex = null) {
           AddToken(ctx, fallbackParsed.id, 1);
           LogCombat(ctx, `Token drop (fallback): ${fallbackParsed.id}`);
           awarded.push(fallbackParsed.id);
+          resolved = `TOKEN.${fallbackParsed.id}`;
+          slotTraces.push({
+            slot: i + 1,
+            chancePct: slotChancePct,
+            rollPct: Number(rollPct.toFixed(4)),
+            passed,
+            dropId: String(dropId),
+            resolved,
+          });
           continue;
         }
         if (registry.fallback === EMPTY) {
           awarded.push('EMPTY');
+          resolved = 'EMPTY';
+          slotTraces.push({
+            slot: i + 1,
+            chancePct: slotChancePct,
+            rollPct: Number(rollPct.toFixed(4)),
+            passed,
+            dropId: String(dropId),
+            resolved,
+          });
           continue;
         }
       }
       AddToken(ctx, parsed.id, 1);
       LogCombat(ctx, `Token drop: ${parsed.id}`);
       awarded.push(parsed.id);
+      resolved = `TOKEN.${parsed.id}`;
+      slotTraces.push({
+        slot: i + 1,
+        chancePct: slotChancePct,
+        rollPct: Number(rollPct.toFixed(4)),
+        passed,
+        dropId: String(dropId),
+        resolved,
+      });
       continue;
     }
     if (parsed.type === 'ITEM') {
       LogCombat(ctx, `Item drop: ${parsed.id}`);
       awarded.push(parsed.id);
+      resolved = `ITEM.${parsed.id}`;
+      slotTraces.push({
+        slot: i + 1,
+        chancePct: slotChancePct,
+        rollPct: Number(rollPct.toFixed(4)),
+        passed,
+        dropId: String(dropId),
+        resolved,
+      });
       continue;
     }
     awarded.push('EMPTY');
+    slotTraces.push({
+      slot: i + 1,
+      chancePct: slotChancePct,
+      rollPct: Number(rollPct.toFixed(4)),
+      passed,
+      dropId: String(dropId),
+      resolved,
+    });
   }
+  g.LastLootSlotTrace = slotTraces;
+  console.log(`[LOOT_TRACE] ${monsterName} ${JSON.stringify(slotTraces)}`);
   console.log(`[LOOT] Monster ${monsterName} awarded: ${awarded.join(', ')}`);
   return awarded.find(v => v && v !== 'EMPTY') || EMPTY;
 }
