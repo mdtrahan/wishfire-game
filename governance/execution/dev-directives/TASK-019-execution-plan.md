@@ -1,4 +1,14 @@
-# TASK-019 Implementation Spec: Power Amp Next-Own-Turn Expiry (Authoritative)
+# DEPRECATED: Historical TASK-019 Plan
+
+This execution plan is retained for audit history only.
+
+Authoritative execution intake is now:
+- Beads issue state (`bd ready`, `bd show <id>`, `bd update`)
+- `/Users/Mace/Wishfire/Codex-Orka/AGENTS.md`
+
+Do not use this file to impose current file-lock or dispatch gating.
+
+# TASK-019 Implementation Spec: Power Amp Next-Own-Turn Expiry (Historical)
 
 ## Summary
 Implement purple Power Amp as a per-hero, one-turn armed state with strict next-own-turn expiry.

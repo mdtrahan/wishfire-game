@@ -3,7 +3,7 @@
 ## 0) Core Philosophy
 - Prefer retrieval over memory.
 - Read relevant project files before proposing edits.
-- Do not infer behavior from legacy Construct 3 unless explicitly instructed.
+- Construct 3 artifacts are retired; do not infer or regenerate runtime behavior from C3 sources.
 
 ## 1) Canonical Sources
 ### Runtime (authoritative)
@@ -12,10 +12,9 @@
 - Netlify deployment behavior is canonical.
 - `main` is production branch and branch base.
 
-### Legacy (read-only)
-- `project_C3_conversion/` is historical only.
-- Do not regenerate runtime logic from C3 JSON.
-- ZIP artifacts are canonical snapshots.
+### Retired Legacy
+- Construct 3 conversion artifacts were removed from this repository on 2026-02-24.
+- Retirement reference: `docs/construct3-retirement.md`.
 
 ## 2) Startup Protocol (required order)
 1. Read `ai-memory/context.md`
@@ -58,16 +57,16 @@ Output the invocation line before proceeding.
   - `python-app/`, `node-app/` are tooling-only unless TODO requires edits.
 
 ### 5.1 Doc Retrieval Short-Circuit (token control)
-- For PM/Lead documentation work, read canonical files first and avoid repo-wide scans unless blocked:
+- For PM/worker documentation work, read canonical files first and avoid repo-wide scans unless blocked:
   - `ai-memory/context.md`, `ai-memory/insights.md`, `ai-memory/project.md`
   - `governance/planning/milestone-definition.md`, `governance/planning/roadmap.md`
-  - `governance/execution/dev-directives/ACTIVE.md` and active execution-plan file only
+  - Beads issue details (`bd show <id>`) and linked acceptance/evidence artifacts
 - Treat root-level legacy duplicates (`context.md`, `todo.md`, `insights.md`) as deprecated non-canonical.
 - Completed execution plans should be moved to `governance/execution/dev-directives/archive/YYYY-MM/` to keep active directive scans small.
 
 ## 6) Checkpoint Protocol (after each task)
 1. Update Beads issue state/notes (`bd update`, `bd comments`, `bd close` as appropriate)
-2. Update role artifacts only (for example `ACTIVE.md`, execution plan, remediation log, metrics, test artifacts).
+2. Update role artifacts only when needed (for example remediation log, metrics, test artifacts).
 
 ### Disk Safety
 - Update each ai-memory file at most once per task.
@@ -75,8 +74,8 @@ Output the invocation line before proceeding.
 - `insights.md`: decisions log only, not transcript.
 - Verbose traces belong in runtime/governance artifacts.
 - `insights.md` must contain high-impact process or product decisions only (no sync chatter, no status replay).
-- `insights.md` write authority: PM and Lead only.
-- Dev/Stability must not append to `insights.md`; route operational detail to task/governance artifacts.
+- `insights.md` write authority: PM only.
+- Workers/Stability must not append to `insights.md`; route operational detail to issue comments and task artifacts.
 
 ## 7) Rendering & Assets
 - Use active runtime directories for assets.
@@ -131,30 +130,58 @@ Output the invocation line before proceeding.
 - Track-next group must show upcoming turns with base + boosted stats.
 - Build/lint/test commands: use repo config if defined; otherwise note absence.
 
-## 10) Agent Hierarchy & Role Isolation
+## 10) Agent Operating Model
 - Threads-as-agents architecture.
 - No hidden cross-thread memory assumptions.
 - Repository artifacts are the only communication channel.
 
-### 10.1 Authority Chain
-- PM -> Lead -> Dev
+### 10.1 Authority Model
+- PM orchestrates priorities, dependencies, and acceptance via Beads.
+- Any available worker agent may pick ready Beads work under PM orchestration rules.
 - Stability runs in parallel for metrics only.
-- No hierarchy skipping.
+- No fixed worker-count cap; worker pool is elastic.
 
-### 10.2 Lead-Owned Review Function
-No separate Code Review Agent. Lead owns review/severity/verdict authority.
-- Lead review responsibilities:
-  - Log milestone-relevant violations only.
-  - Append to `governance/audit/adversarial-ledger.md`.
-  - Never assign priority.
-  - Never create sprint tasks.
-  - Never edit `sprint-board.md` or `remediation-log.md`.
-- Lead review must not refactor/re-architect/drift into monetization unless milestone requires.
+### 10.2 PM / Orchestration
+- PM never edits code.
+- PM uses Beads as the only intake/order/closure system (`bd ready`, `bd show`, dependencies, status transitions).
+- PM sets a dynamic cycle WIP target (integer, flexible), based on:
+  - truly ready/unblocked issues
+  - conflict risk (shared files/systems)
+  - QA bandwidth
+- PM classifies issues for safe parallelism:
+  - `core-mutation` (high coupling)
+  - `sidecar-hardening` (medium coupling)
+  - `isolated` (low coupling)
+- Parallel safety partition:
+  - any number of `isolated` issues may run concurrently if QA can absorb.
+  - `core-mutation` issues should be serialized per subsystem unless explicitly proven independent.
+- PM uses Beads dependencies to enforce safety, not role bottlenecks.
 
-#### Severity (mandatory)
-Every ADV entry must include:
-- Severity: BLOCKER / CRITICAL / MAJOR / MINOR
-- Rationale: 1-2 lines with observable impact.
+### 10.3 Worker / Execution Authority
+Before code changes, worker must:
+1. Run `bd ready`
+2. Pick one ready issue and run `bd show <id>`
+3. Mark issue `in_progress` if not already
+4. Execute only the scoped change for that issue
+
+Worker may run `agent-browser`/runtime probes only when:
+- verifying just-implemented change
+- reproducing logged defect behavior
+- `agent-browser --help` succeeds in current run
+
+Playwright prohibition:
+- Workers must not request/suggest/generate/execute Playwright workflows.
+- Exception only with explicit PM authorization recorded in repository artifacts.
+
+Workers must not:
+- perform unscheduled exploratory implementation
+- redefine acceptance criteria or severity
+- expand scope beyond issue description/acceptance
+- add speculative cross-layout checks outside issue scope
+
+### 10.4 Severity & Review
+Severity categories:
+- BLOCKER / CRITICAL / MAJOR / MINOR
 
 Definitions:
 - BLOCKER: startup failure, core loop broken, unrecoverable lock/corruption, progression impossible.
@@ -162,80 +189,13 @@ Definitions:
 - MAJOR: partially functional feature, intermittent state issues, meaningful UX/control inconsistency.
 - MINOR: cosmetic or low-impact non-core defect.
 
-Verdict options:
-- PASS / FAIL / PARTIAL PASS
-- PASS requires:
-  - no open BLOCKER
-  - no open CRITICAL tied to task
-  - milestone criteria satisfied
-  - related ADV entries explicitly closed
+PM owns severity triage and closure decisions in Beads.
 
-### 10.3 PM / Orchestration
-- PM maintains milestone-definition/sprint-board, enforces 70/30 split, creates REM items, moves unselected to backlog.
-- PM never edits code.
-- PM may not define implementation architecture or edit adversarial ledger.
-- PM marks TASK complete only after Lead PASS.
-- PM keeps planning artifacts minimal and operational:
-  - `sprint-board.md`: sprint goal, active WIP (3-5 max), blockers, allocation check.
-  - `backlog.md`: ordered queue of ready/blocked/deferred items only.
-  - Historical narrative belongs in audit/regression artifacts, not sprint-board/backlog.
-
-### 10.4 Lead / Technical Direction
-- Read `sprint-board.md`, identify active TASK, create execution plan, maintain `ACTIVE.md`.
-- Plan file path: `governance/execution/dev-directives/TASK-###-execution-plan.md`.
-- `ACTIVE.md` must include sprint id, active task, plan link, Dev Next Action.
-- Lead may not edit sprint-board, allocation ratios, or code.
-- Lead may not generate/suggest deprecated browser-driver usage/dependencies.
-
-#### Lead Ingestion Rule
-Before issuing any dev directive:
-1. Read `governance/audit/adversarial-ledger.md` and `governance/planning/sprint-board.md`.
-2. Check for unmapped ADV entries.
-3. If unmapped: stop and propose triage.
-4. If mapped: continue.
-
-#### Severity Escalation
-- BLOCKER: freeze features, override 70/30, convert to REM, dispatch remediation immediately.
-- CRITICAL: map to active task as sprint-blocking acceptance criterion, update plan before Dev continues.
-- MAJOR: triage in current sprint capacity.
-- MINOR: backlog.
-- Failure to act on BLOCKER/CRITICAL is governance violation.
-
-### 10.5 Dev / Code-Writing Authority
-Before code changes, Dev must:
-1. Read `ACTIVE.md`
-2. Identify Dev Next Action
-3. Read task execution plan
-4. Confirm severity context when ADV-related
-
-Dev may run `agent-browser`/runtime probes only when:
-- verifying just-implemented change
-- reproducing logged ADV item
-- explicitly instructed in `ACTIVE.md`
-- `agent-browser --help` succeeds in current run
-
-Playwright prohibition:
-- Dev must not request/suggest/generate/execute Playwright workflows.
-- Exception only with explicit PM authorization recorded in repository artifacts.
-- Without exception: stop and request updated Lead directive.
-
-Dev must not:
-- perform exploratory validation
-- redefine acceptance criteria or severity
-- edit sprint-board or adversarial ledger
-- expand scope beyond execution plan
-- add speculative cross-layout checks outside scope
-
-If plan is ambiguous: stop and request Lead clarification.
-
-### 10.6 Stability / Metrics
+### 10.5 Stability / Metrics
 - Stability runs on schedule only.
 - Writes only to `governance/metrics/stability-metrics.md`.
-- Reports open/reopened findings, remediation velocity, and operational signals:
-  - ACTIVE.md presence
-  - TASK->plan mapping coverage
-  - REM items without plans
-- Stability must not create tasks or modify sprint-board/adversarial/execution plans.
+- Reports open/reopened findings, remediation velocity, and operational signals.
+- Stability must not create or reprioritize Beads issues.
 
 #### Stability Escalation Monitoring
 If detected:
@@ -245,43 +205,36 @@ If detected:
 Then append `Escalation Trigger` section to stability metrics.
 - Stability may flag persistence but not reclassify severity.
 
-### 10.7 Communication Contract
+### 10.6 Communication Contract
 - No chat-to-chat agent coordination.
 - Repository artifacts only.
 - Canonical artifacts:
-  - `ACTIVE.md` (Dev intake)
-  - `sprint-board.md` (PM allocation)
-  - `adversarial-ledger.md` (Lead review logging)
-
-Status/sync output contract (all agents):
-- Every status/sync must end with:
-  - `Next Actor: <role>`
-  - `Action Required: <single concrete action>`
-- If waiting on another role, include `Ready Prompt:` with copy/paste text.
-- Sync-only responses without routing are non-compliant.
+  - Beads issue database (`bd`)
+  - `AGENTS.md`
+  - `governance/audit/adversarial-ledger.md` (when adversarial findings are logged)
 
 Iteration cadence rule:
 - Work in short execution packets and close them quickly:
   - plan -> build -> review -> adapt
-- After each packet, PM/Lead must either:
+- After each packet, PM must either:
   - advance next task, or
   - record one explicit blocker with owner.
 - No idle "awaiting request" loops while an active task is open.
 
-### 10.8 Drift Prevention
+### 10.7 Drift Prevention
 If agent works outside role, edits unauthorized files, or expands scope without directive:
 - Halt task and log `Governance Drift:` in `ai-memory/todo.md`; PM decides whether a high-impact insight is warranted.
 
-### 10.9 Sprint Freeze
+### 10.8 Sprint Freeze
 If BLOCKER exists and is unmapped:
-- `ACTIVE.md` becomes invalid.
-- Dev halts.
-- Lead issues remediation directive.
+- current issue lane becomes invalid.
+- worker execution halts on affected lane.
+- PM issues remediation directive.
 - Feature work cannot continue.
 - Overrides allocation ratios.
 
-### 10.10 Repository Containment (global)
-Applies to PM, Lead, Dev, Stability for any shell/browser task.
+### 10.9 Repository Containment (global)
+Applies to PM, workers, and Stability for any shell/browser task.
 
 Execution boundary:
 - First command must be `pwd`.
@@ -307,16 +260,13 @@ Backend isolation:
   - background daemon persistence beyond session
 
 Handoff requirement:
-- PM must state exactly: `Containment guard active.`
-- Lead confirms containment before delegating.
-- Dev confirms containment before executing.
-- Missing confirmation invalidates execution authority.
+- Worker must confirm containment checks before execution.
 
 Playwright exception gate:
 - Hard-deny by default.
 - Exception only via explicit PM approval in repository artifacts for named task + duration.
 
-### 10.11 Governance File Change Control
+### 10.10 Governance File Change Control
 - `AGENTS.md` is a stability artifact, not a running log.
 - Edit `AGENTS.md` only when a repeated process failure is observed (same failure class at least twice).
 - Prefer surgical patches (smallest possible diff) over refactors.
@@ -330,7 +280,7 @@ Playwright exception gate:
   - manual deterministic tester-verified run.
 
 ### MVP Closure Anti-Loop Rule
-- If QA/Tester reports PASS for active task, Lead must issue closure verdict in next sync cycle.
-- After QA PASS, Lead may keep task open only with new reproducible BLOCKER/CRITICAL evidence tied to acceptance criteria.
+- If QA/Tester reports PASS for active task, PM must issue closure verdict in next sync cycle.
+- After QA PASS, PM may keep task open only with new reproducible BLOCKER/CRITICAL evidence tied to acceptance criteria.
 - PARTIAL PASS may not hold a QA-passed task for non-critical instrumentation preference.
-- If no new BLOCKER/CRITICAL evidence is logged, Lead must mark PASS and advance intake.
+- If no new BLOCKER/CRITICAL evidence is logged, PM must mark PASS and advance intake.
