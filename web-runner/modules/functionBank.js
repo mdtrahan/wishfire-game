@@ -36,6 +36,23 @@ function getGlobals(ctx) {
   return (ctx && ctx.state ? ctx.state.globals : state.globals);
 }
 
+function getRandomSource(ctx) {
+  const g = getGlobals(ctx);
+  const fn = g && typeof g.RuntimeRandom === 'function' ? g.RuntimeRandom : null;
+  return fn || Math.random;
+}
+
+function random01(ctx) {
+  const value = Number(getRandomSource(ctx)());
+  if (Number.isFinite(value) && value >= 0 && value < 1) return value;
+  return Math.random();
+}
+
+function randomIndex(ctx, size) {
+  if (!(size > 0)) return 0;
+  return Math.floor(random01(ctx) * size);
+}
+
 function getEntities(ctx) {
   return (ctx && ctx.state ? ctx.state.entities : state.entities) || [];
 }
@@ -95,8 +112,8 @@ function startPowerAmpFade(g, uid, mult) {
   delete g.PowerAmpVisualByUID[uid];
 }
 
-function pickPowerAmpOutcome() {
-  let r = Math.random();
+function pickPowerAmpOutcome(ctx) {
+  let r = random01(ctx);
   for (const entry of POWER_AMP_OUTCOMES) {
     r -= entry.chance;
     if (r <= 0) return entry;
@@ -255,11 +272,12 @@ function getOrCreateEventProgress(ctx, eventId) {
   return g.LiveOpsProgress[eventId];
 }
 
-function pickDropTier(g) {
+function pickDropTier(ctx) {
+  const g = getGlobals(ctx);
   if (g && Number.isFinite(g.DropTierOverride)) return Math.max(0, Math.min(3, Math.floor(g.DropTierOverride)));
   const weights = [2, 8, 20, 70];
   const total = weights.reduce((a, b) => a + b, 0);
-  let r = Math.random() * total;
+  let r = random01(ctx) * total;
   for (let i = 0; i < weights.length; i++) {
     r -= weights[i];
     if (r <= 0) return i;
@@ -267,18 +285,137 @@ function pickDropTier(g) {
   return 3;
 }
 
+function getDropGateChancePct(g) {
+  const topLevel = Number(g?.DropGateChancePct);
+  if (Number.isFinite(topLevel)) return clamp(0, topLevel, 100);
+  const legacy = Number(g?.DropChancePct);
+  if (Number.isFinite(legacy)) return clamp(0, legacy, 100);
+  const fromArray = Array.isArray(g?.DropSlotChancePctByIndex) ? Number(g.DropSlotChancePctByIndex[0]) : NaN;
+  if (Number.isFinite(fromArray)) return clamp(0, fromArray, 100);
+  const keyed = Number(g?.DropSlotChancePct1);
+  if (Number.isFinite(keyed)) return clamp(0, keyed, 100);
+  return 50;
+}
+
+// Basis points thresholds for TH bracket classification (10000 = 100%).
+const TH_DROP_BRACKET_THRESHOLDS = [
+  { bracket: 1, threshold: 2400 },
+  { bracket: 2, threshold: 1500 },
+  { bracket: 3, threshold: 1000 },
+  { bracket: 4, threshold: 500 },
+  { bracket: 5, threshold: 100 },
+  { bracket: 6, threshold: 50 },
+  { bracket: 7, threshold: 0 },
+];
+
+// Default Treasure Hunter effective drop-rate table in basis points.
+// Rows are TH tiers (0..14); columns are brackets (1..7).
+const DEFAULT_TREASURE_HUNTER_TABLE = [
+  [5000, 2400, 1500, 1000, 500, 100, 50],
+  [5200, 2550, 1600, 1080, 550, 120, 60],
+  [5350, 2700, 1700, 1160, 600, 140, 70],
+  [5500, 2850, 1800, 1240, 650, 160, 80],
+  [5650, 3000, 1900, 1320, 700, 180, 90],
+  [5800, 3150, 2000, 1400, 750, 200, 100],
+  [5950, 3300, 2100, 1480, 800, 220, 110],
+  [6100, 3450, 2200, 1560, 850, 240, 120],
+  [6250, 3600, 2300, 1640, 900, 260, 130],
+  [6400, 3750, 2400, 1720, 950, 280, 140],
+  [6550, 3900, 2500, 1800, 1000, 300, 150],
+  [6700, 4050, 2600, 1880, 1050, 320, 160],
+  [6850, 4200, 2700, 1960, 1100, 340, 170],
+  [7000, 4350, 2800, 2040, 1150, 360, 180],
+  [7150, 4500, 2900, 2120, 1200, 380, 190],
+];
+
+function sanitizeInt(input, fallback = 0) {
+  const n = Number(input);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.trunc(n);
+}
+
+function getTreasureHunterLevel(g) {
+  const raw = g?.DropTHLevel ?? g?.TreasureHunterLevel ?? g?.THLevel ?? 0;
+  return clamp(0, sanitizeInt(raw, 0), 14);
+}
+
+function getDropBracket(dropRate) {
+  for (const row of TH_DROP_BRACKET_THRESHOLDS) {
+    if (dropRate >= row.threshold) return row.bracket;
+  }
+  return 7;
+}
+
+export function getDropRate(thLevel, dropRate) {
+  const tier = clamp(0, sanitizeInt(thLevel, 0), 14);
+  const sanitizedDropRate = clamp(0, sanitizeInt(dropRate, 0), 10000);
+  if (sanitizedDropRate === 10000) return 10000;
+  if (sanitizedDropRate === 0) return 0;
+  const bracket = getDropBracket(sanitizedDropRate);
+  const row = DEFAULT_TREASURE_HUNTER_TABLE[tier];
+  const entry = row ? row[bracket - 1] : null;
+  if (!Number.isFinite(entry)) {
+    console.warn(`[TH_DROP_RATE] Missing table entry for tier=${tier} bracket=${bracket}; using sanitized input.`);
+    return sanitizedDropRate;
+  }
+  return clamp(0, sanitizeInt(entry, sanitizedDropRate), 10000);
+}
+
+export function getDropRateBracket(dropRate) {
+  const sanitizedDropRate = clamp(0, sanitizeInt(dropRate, 0), 10000);
+  return getDropBracket(sanitizedDropRate);
+}
+
+function pickWeightedLootToken(ctx) {
+  const g = getGlobals(ctx);
+  const configured = Array.isArray(g?.DropTokenWeights) ? g.DropTokenWeights : null;
+  const defaultWeights = [
+    { token: TOKEN.BONE_CHIP, weight: 55 },
+    { token: TOKEN.SAND, weight: 25 },
+    { token: TOKEN.SHELL, weight: 15 },
+    { token: TOKEN.SLIME, weight: 5 },
+  ];
+  const source = configured && configured.length >= 4
+    ? configured.map((entry, idx) => {
+        const fallback = defaultWeights[idx] || defaultWeights[0];
+        const token = String(entry?.token || fallback.token);
+        const weight = Number(entry?.weight ?? fallback.weight);
+        return { token, weight: Number.isFinite(weight) && weight > 0 ? weight : 0 };
+      })
+    : defaultWeights;
+  const total = source.reduce((acc, item) => acc + Number(item.weight || 0), 0);
+  if (!(total > 0)) return { dropId: EMPTY, itemRollPct: 0, selectedWeightPct: 0 };
+  let cursor = random01(ctx) * total;
+  for (const item of source) {
+    cursor -= Number(item.weight || 0);
+    if (cursor <= 0) {
+      return {
+        dropId: `TOKEN.${item.token}`,
+        itemRollPct: Number(((cursor + Number(item.weight || 0)) / total * 100).toFixed(4)),
+        selectedWeightPct: Number(((Number(item.weight || 0) / total) * 100).toFixed(4)),
+      };
+    }
+  }
+  const tail = source[source.length - 1];
+  return {
+    dropId: `TOKEN.${tail.token}`,
+    itemRollPct: 99.9999,
+    selectedWeightPct: Number(((Number(tail.weight || 0) / total) * 100).toFixed(4)),
+  };
+}
+
 function applyRewardPayload(ctx, payload) {
   if (!payload || !payload.type) return;
   const g = getGlobals(ctx);
   if (payload.type === 'HEAL_RANDOM') {
-    const amt = Math.max(1, Math.floor(Math.random() * 40) + 1);
+    const amt = Math.max(1, Math.floor(random01(ctx) * 40) + 1);
     ctx.callFunction('ApplyPartyHeal', amt);
     LogCombat(ctx, `Event reward: +${amt} HP`);
     return;
   }
   if (payload.type === 'ENERGY_RANDOM') {
     const options = [10, 20, 30, 40];
-    const amt = options[Math.floor(Math.random() * options.length)];
+    const amt = options[randomIndex(ctx, options.length)];
     const next = (g.Player_Energy || 0) + amt;
     g.Player_Energy = next;
     LogCombat(ctx, `Event reward: +${amt} Energy`);
@@ -286,7 +423,7 @@ function applyRewardPayload(ctx, payload) {
   }
   if (payload.type === 'GOLD_RANDOM') {
     const options = [15, 30];
-    const amt = options[Math.floor(Math.random() * options.length)];
+    const amt = options[randomIndex(ctx, options.length)];
     g.goldTotal = (g.goldTotal || 0) + amt;
     LogCombat(ctx, `Event reward: +${amt} Gold`);
   }
@@ -320,9 +457,9 @@ function nextUID(ctx) {
   return g.NextUID;
 }
 
-function randomPick(list) {
+function randomPick(ctx, list) {
   if (!list || list.length === 0) return null;
-  const idx = Math.floor(Math.random() * list.length);
+  const idx = randomIndex(ctx, list.length);
   return list[idx];
 }
 
@@ -496,14 +633,14 @@ function syncInitiativeMeters(ctx, roster) {
   const meters = g.InitiativeMeters || {};
   const rosterUIDs = new Set(roster.map(r => r.uid));
   const meterVals = Object.values(meters).map(v => Number(v) || 0);
-  const minMeter = meterVals.length ? Math.min(...meterVals) : 0;
+  const baselineMeter = meterVals.length ? Math.max(...meterVals) : 0;
   for (const key of Object.keys(meters)) {
     if (!rosterUIDs.has(Number(key))) delete meters[key];
   }
   for (const r of roster) {
     if (meters[String(r.uid)] == null) {
-      // New spawns start at the lowest meter so they trail the queue.
-      setMeter(meters, r.uid, minMeter);
+      // New spawns inherit the current initiative baseline; SPD decides placement.
+      setMeter(meters, r.uid, baselineMeter);
     }
   }
   g.InitiativeMeters = meters;
@@ -980,7 +1117,7 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
   const resist = isMagic
     ? (isHeroDefender ? GetEffectiveStat(ctx, tgt, 'RES') : GetEffectiveStat(ctx, tgt, 'RES'))
     : (isHeroDefender ? GetEffectiveStat(ctx, tgt, 'DEF') : GetEffectiveStat(ctx, tgt, 'DEF'));
-  const roll = 0.8 + Math.random() * 0.4;
+  const roll = 0.8 + random01(ctx) * 0.4;
   let dmg = 0;
   if (isHeroAttacker) {
     if (g.IsAOEMatch === 1) {
@@ -997,6 +1134,7 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
     baseValue: dmg,
     relevantBuffTotal: isMagic ? power : power,
     sourceType: isHeroAttacker ? 'HERO' : 'ENEMY',
+    rngRoll: random01(ctx),
   });
   dmg = Math.max(1, Math.ceil(crit.value));
   let chainApplied = false;
@@ -1030,12 +1168,12 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
   if (dx != null && dy != null && g.SpawnDamageText !== 0) {
     SpawnDamageText(ctx, dmg, dx, dy, 'damage', t.kind || null);
   }
-  if (t.hp === 0) {
+  if (t.hp === 0 && t.isAlive !== false) {
+    t.isAlive = false;
     if ((g.RoundActive && g.GroupResolving) || (isTimeInitiative(ctx) && g.GroupResolving)) {
       g.PendingDeaths = g.PendingDeaths || {};
       g.PendingDeaths[t.uid] = g.RoundGroupIndex || 0;
     } else {
-      t.isAlive = false;
       if (t.kind === 'enemy') {
         AwardMonsterDrop(ctx, t.name || t.key || t.type || '');
         KillEnemyAt(ctx, t.slotIndex ?? 0);
@@ -1056,6 +1194,7 @@ export function CalculateHeal(ctx, actorUID) {
     baseValue: baseHeal,
     relevantBuffTotal: magTotal,
     sourceType,
+    rngRoll: random01(ctx),
   });
   return Math.max(1, Math.floor(crit.value));
 }
@@ -1128,7 +1267,7 @@ export function Sub_Energy(ctx) {
 
 export function Add_Energy(ctx) {
   const g = getGlobals(ctx);
-  const roll = Math.random();
+  const roll = random01(ctx);
   let add = 3;
   if (roll < 0.65) add = 3;
   else if (roll < 0.85) add = 6;
@@ -1146,11 +1285,11 @@ export function AddGoldToPlayer(ctx, amt) {
   const cap = Math.min(30, max);
   const curve = Math.max(1, g.GoldDropCurve ?? 2.0);
   let finalAmount = min;
-  if (cap >= 30 && Math.random() < 0.015) {
+  if (cap >= 30 && random01(ctx) < 0.015) {
     finalAmount = 30;
   } else {
     const upper = Math.max(min, cap - 1);
-    const u = Math.random();
+    const u = random01(ctx);
     const biased = Math.pow(u, curve);
     finalAmount = Math.floor(min + (upper - min + 1) * biased);
   }
@@ -1162,7 +1301,7 @@ export function AddGoldToPlayer(ctx, amt) {
 function getRandomLivingEnemy(ctx) {
   const enemies = getEnemies(ctx).filter(e => (e.hp ?? 0) > 0);
   if (!enemies.length) return null;
-  return enemies[Math.floor(Math.random() * enemies.length)];
+  return enemies[randomIndex(ctx, enemies.length)];
 }
 
 function ensureEnemyDebuffRecord(ctx, enemyUID) {
@@ -1188,7 +1327,7 @@ export function ExecutePurpleDebuff(ctx, actorUID) {
   const hero = GetActorByUID(ctx, actorUID);
   if (!enemy || !hero) return;
 
-  const roll = Math.floor(Math.random() * 5);
+  const roll = randomIndex(ctx, 5);
   const statKeys = ['ATK', 'DEF', 'MAG', 'SPD', 'RES'];
   const stat = statKeys[roll] || 'ATK';
 
@@ -1348,7 +1487,7 @@ export function PickNextEnemyID(ctx) {
   const g = getGlobals(ctx);
   const pool = Array.isArray(g.EnemyData) ? g.EnemyData : [];
   if (pool.length === 0) return null;
-  const idx = Math.floor(Math.random() * pool.length);
+  const idx = randomIndex(ctx, pool.length);
   return pool[idx] || null;
 }
 
@@ -1468,46 +1607,67 @@ export function ResolveMonsterDrop(ctx, monsterName, tierIndex = null) {
   const monsterId = getMonsterIdByName(monsterName);
   if (monsterId < 0) return EMPTY;
   const tiers = MONSTER_LOOT_TABLE[monsterId] || [];
-  const idx = tierIndex == null ? pickDropTier(getGlobals(ctx)) : Math.max(0, Math.min(3, Math.floor(tierIndex)));
+  const idx = tierIndex == null ? pickDropTier(ctx) : Math.max(0, Math.min(3, Math.floor(tierIndex)));
   return tiers[idx] ?? EMPTY;
 }
 
 export function AwardMonsterDrop(ctx, monsterName, tierIndex = null) {
-  const rollsPerDeath = 4;
-  const awarded = [];
-  for (let i = 0; i < rollsPerDeath; i++) {
-    const dropId = ResolveMonsterDrop(ctx, monsterName, tierIndex);
-    const parsed = parseDropId(dropId);
-    if (parsed.type === 'TOKEN') {
-      const registry = TOKEN_REGISTRY[parsed.id];
-      const activeEvent = getActiveEventByToken(parsed.id);
-      if (!activeEvent && registry && registry.fallback && registry.fallback !== EMPTY) {
-        const fallbackParsed = parseDropId(registry.fallback);
-        if (fallbackParsed.type === 'TOKEN') {
-          AddToken(ctx, fallbackParsed.id, 1);
-          LogCombat(ctx, `Token drop (fallback): ${fallbackParsed.id}`);
-          awarded.push(fallbackParsed.id);
-          continue;
-        }
-        if (registry.fallback === EMPTY) {
-          awarded.push('EMPTY');
-          continue;
-        }
+  const g = getGlobals(ctx);
+  const baseGateChancePct = getDropGateChancePct(g);
+  const baseGateRateBps = clamp(0, sanitizeInt(baseGateChancePct * 100, 0), 10000);
+  const thLevel = getTreasureHunterLevel(g);
+  const effectiveGateRateBps = getDropRate(thLevel, baseGateRateBps);
+  const gateChancePct = clamp(0, effectiveGateRateBps / 100, 100);
+  const gateRollPct = random01(ctx) * 100;
+  const gatePassed = gateRollPct < gateChancePct;
+  const weighted = gatePassed ? pickWeightedLootToken(ctx) : { dropId: EMPTY, itemRollPct: null, selectedWeightPct: 0 };
+  const dropId = weighted.dropId;
+  const parsed = parseDropId(dropId);
+  let resolved = 'EMPTY';
+
+  if (parsed.type === 'TOKEN') {
+    const registry = TOKEN_REGISTRY[parsed.id];
+    const activeEvent = getActiveEventByToken(parsed.id);
+    if (!activeEvent && registry && registry.fallback && registry.fallback !== EMPTY) {
+      const fallbackParsed = parseDropId(registry.fallback);
+      if (fallbackParsed.type === 'TOKEN') {
+        AddToken(ctx, fallbackParsed.id, 1);
+        LogCombat(ctx, `Token drop (fallback): ${fallbackParsed.id}`);
+        resolved = `TOKEN.${fallbackParsed.id}`;
+      } else if (registry.fallback === EMPTY) {
+        resolved = 'EMPTY';
       }
+    } else {
       AddToken(ctx, parsed.id, 1);
       LogCombat(ctx, `Token drop: ${parsed.id}`);
-      awarded.push(parsed.id);
-      continue;
+      resolved = `TOKEN.${parsed.id}`;
     }
-    if (parsed.type === 'ITEM') {
-      LogCombat(ctx, `Item drop: ${parsed.id}`);
-      awarded.push(parsed.id);
-      continue;
-    }
-    awarded.push('EMPTY');
+  } else if (parsed.type === 'ITEM') {
+    LogCombat(ctx, `Item drop: ${parsed.id}`);
+    resolved = `ITEM.${parsed.id}`;
   }
-  console.log(`[LOOT] Monster ${monsterName} awarded: ${awarded.join(', ')}`);
-  return awarded.find(v => v && v !== 'EMPTY') || EMPTY;
+
+  const trace = {
+    thLevel,
+    baseGateRateBps,
+    effectiveGateRateBps,
+    bracket: getDropRateBracket(baseGateRateBps),
+    baseGateChancePct: Number(baseGateChancePct.toFixed(4)),
+    gateChancePct,
+    gateRollPct: Number(gateRollPct.toFixed(4)),
+    gatePassed,
+    itemRollPct: weighted.itemRollPct,
+    selectedWeightPct: weighted.selectedWeightPct,
+    dropId: String(dropId),
+    resolved,
+  };
+  g.LastLootSlotTrace = [trace];
+  g.LastLootGateTrace = trace;
+  console.log(`[LOOT_TRACE] ${monsterName} ${JSON.stringify(trace)}`);
+  console.log(`[LOOT] Monster ${monsterName} awarded: ${resolved}`);
+  return resolved && resolved !== 'EMPTY'
+    ? String(resolved).replace(/^TOKEN\./, '').replace(/^ITEM\./, '')
+    : EMPTY;
 }
 
 export function SpendTokensOnEvent(ctx, eventId, amount) {
@@ -1657,7 +1817,7 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
   }
   if (gemColor === 2) {
     g.IsAOEMatch = 0;
-    const roll = Math.floor(Math.random() * 4);
+    const roll = randomIndex(ctx, 4);
     let skillId = 'DEF_UP';
     let intentKey = 'Party_DEF_UP';
     let buffType = 0;
@@ -1764,7 +1924,7 @@ export function BuildRoundGroups(ctx) {
   const tol = g.UnisonTolerance ?? 0.5;
   const withInit = roster.map(r => ({
     ...r,
-    init: r.spd + ((Math.random() * 2 - 1) * jitter)
+    init: r.spd + ((random01(ctx) * 2 - 1) * jitter)
   }));
   const startMode = g.BattleStartMode;
   const startModeApplied = Boolean(startMode && !g.BattleStartResolved);
@@ -1885,11 +2045,11 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, now + 0.5);
   } else if (skillId === 'Enemy_ATK_Single') {
     handled = true;
-    const target = randomPick(getHeroes(ctx));
+    const target = randomPick(ctx, getHeroes(ctx));
     if (target) Enemy_ATK_Single(ctx, actorUID, target.uid);
   } else if (skillId === 'Enemy_MAG_Single') {
     handled = true;
-    const target = randomPick(getHeroes(ctx));
+    const target = randomPick(ctx, getHeroes(ctx));
     if (target) Enemy_MAG_Single(ctx, actorUID, target.uid);
   } else if (skillId === 'Enemy_MAG_AOE') {
     handled = true;
@@ -1921,7 +2081,7 @@ export function ResolveEnemyAction(ctx, enemyUID) {
   const enemy = GetActorByUID(ctx, enemyUID);
   if (!enemy) return 0;
   let handled = 0;
-  const roll = Math.random();
+  const roll = random01(ctx);
   const name = enemy.name || '';
 
   if (!handled && name === 'Chimerilass' && enemy.hp < enemy.maxHP && roll < 0.49) {
@@ -1946,7 +2106,7 @@ export function ExecuteEnemySkill(ctx, enemyUID, skillId) {
 
 export function EnemyAttack(ctx, enemyUID) {
   const skillId = PickEnemySkill(ctx, enemyUID);
-  const target = randomPick(getHeroes(ctx));
+  const target = randomPick(ctx, getHeroes(ctx));
   const targetUID = target ? target.uid : 0;
   ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID);
   return 1;
@@ -2066,7 +2226,7 @@ export function ProcessTurn(ctx) {
 export function PickEnemySkill(ctx, enemyUID) {
   const enemy = GetActorByUID(ctx, enemyUID);
   if (!enemy) return 'Enemy_ATK_Single';
-  const roll = Math.random();
+  const roll = random01(ctx);
   const decision = resolveEnemySkillDecision(enemy, roll);
   traceEnemySkillDecision(ctx, enemyUID, decision);
   return decision.selected;
@@ -2178,7 +2338,7 @@ export function Enemy_Wipe(ctx, enemyUID) {
 }
 
 export function ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID = 0) {
-  const resolvedTargetUID = targetUID || (randomPick(getHeroes(ctx))?.uid || 0);
+  const resolvedTargetUID = targetUID || (randomPick(ctx, getHeroes(ctx))?.uid || 0);
   if (skillId === 'Enemy_Heal_Self') {
     Enemy_Heal_Self(ctx, enemyUID);
     return 1;
@@ -2221,7 +2381,7 @@ export function StartEnemyAction(ctx, enemyUID) {
   if (enemy.originY == null) enemy.originY = SlotY(ctx, enemy.slotIndex ?? 0);
   if (enemy.x == null) enemy.x = enemy.originX;
   if (enemy.y == null) enemy.y = enemy.originY;
-  const target = randomPick(getHeroes(ctx));
+  const target = randomPick(ctx, getHeroes(ctx));
   const targetUID = target ? target.uid : 0;
   const skillId = PickEnemySkill(ctx, enemyUID);
   g.EnemyAction = {
