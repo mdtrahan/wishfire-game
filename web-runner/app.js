@@ -4,6 +4,7 @@ import { CombatRuntimeGateway } from '../src/core/combatRuntimeGateway.js';
 
 const out = document.getElementById('output');
 const walletOut = document.getElementById('wallet-output');
+const astralWalletOut = document.getElementById('astral-wallet-output');
 const canvas = document.getElementById('view');
 const ctx = canvas.getContext('2d');
 const HARNESS_MODE = typeof window !== 'undefined' && window.location.search.includes('harness=true');
@@ -1198,12 +1199,13 @@ function handleGemMatch(color) {
     callFunctionWithContext(fnContext, 'Sub_Energy');
     g.ApplyChainToNextDamage = g.ChainNumber >= 2 ? 1 : 0;
   } else if (color === 2) {
+    const consumedBlue = Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0;
     startGemMergeFx();
     g.MatchedColorValue = 0;
     g.IsAOEMatch = 0;
     g.SuppressChainUI = 0;
     callFunctionWithContext(fnContext, 'UpdateChain', 2);
-    callFunctionWithContext(fnContext, 'ResolveGemAction', 2, actorUID);
+    callFunctionWithContext(fnContext, 'ResolveGemAction', 2, actorUID, consumedBlue);
     callFunctionWithContext(fnContext, 'DestroyGem');
     callFunctionWithContext(fnContext, 'ClearMatchState');
     syncGemsFromGlobals();
@@ -4441,6 +4443,21 @@ function getStoryCardLiveLineState() {
     ];
     out.textContent = lines.join('\n');
     drawWalletHUD();
+    drawAstralWalletHUD();
+  }
+  function formatWalletText(title, wallet) {
+    if (!wallet || typeof wallet !== 'object') {
+      return `${title}:\nTotal: 0`;
+    }
+    const entries = Object.entries(wallet)
+      .filter(([, v]) => v != null)
+      .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+    const total = entries.reduce((sum, [, v]) => sum + (Number(v) || 0), 0);
+    const lines = [`${title}:`, `Total: ${total}`];
+    for (const [key, val] of entries) {
+      lines.push(`${key}: ${val}`);
+    }
+    return lines.join('\n');
   }
   function drawWalletHUD() {
     if (!walletOut) return;
@@ -4451,25 +4468,27 @@ function getStoryCardLiveLineState() {
       g.WalletTokens ||
       g.walletTokens ||
       null;
-    if (!wallet || typeof wallet !== 'object') {
-      walletOut.textContent = 'Wallet:\n(empty)';
-      return;
-    }
-    const entries = Object.entries(wallet)
-      .filter(([, v]) => v != null)
-      .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
-    if (entries.length === 0) {
-      walletOut.textContent = 'Wallet:\n(empty)';
-      return;
-    }
-    const total = entries.reduce((sum, [, v]) => sum + (Number(v) || 0), 0);
-    const lines = ['Wallet:', `Total: ${total}`];
-    for (const [key, val] of entries) {
-      lines.push(`${key}: ${val}`);
-    }
-    walletOut.textContent = lines.join('\n');
+    walletOut.textContent = formatWalletText('Wallet', wallet);
+  }
+  function drawAstralWalletHUD() {
+    if (!astralWalletOut) return;
+    const g = state.globals || {};
+    const astralWallet =
+      g.AstralFlowWallet ||
+      g.astralFlowWallet ||
+      g.AstralWallet ||
+      g.astralWallet ||
+      null;
+    astralWalletOut.textContent = formatWalletText('Astral Flow Wallet', astralWallet);
+  }
+  function drawAstralWalletHUD() {
+    if (!astralWalletOut) return;
+    const g = state.globals || {};
+    const total = Math.max(0, Number(g.AstralFlowWallet || 0));
+    astralWalletOut.textContent = `Astral Flow Wallet:\nTotal: ${total}`;
   }
   drawFrame(); // initial render
+  drawAstralWalletHUD();
 
   const devSleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
   function getGemGateSnapshot() {
@@ -5300,6 +5319,7 @@ function getStoryCardLiveLineState() {
     // Enemy turns are started by ProcessTurn; avoid double-triggering here.
     gameState.enemyTurnKicked = state.globals.TurnPhase === 2;
     drawFrame();
+    drawAstralWalletHUD();
     requestAnimationFrame(tick);
   }
   tick();
@@ -5343,6 +5363,7 @@ function getStoryCardLiveLineState() {
           energy: state.globals.Player_Energy || 0,
           maxEnergy: state.globals.Player_maxEnergy || 0,
           gold: state.globals.goldTotal || 0,
+          astralFlowWallet: Number(state.globals.AstralFlowWallet || 0),
         },
         mapLayout: {
           panX: Number(gameState.mapLayout.panX || 0),
