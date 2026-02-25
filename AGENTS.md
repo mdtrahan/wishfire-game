@@ -238,6 +238,20 @@ Iteration cadence rule:
 If agent works outside role, edits unauthorized files, or expands scope without directive:
 - Halt task and log `Governance Drift:` in `ai-memory/todo.md`; PM decides whether a high-impact insight is warranted.
 
+### 10.8 Single Active Branch Policy (operator safety)
+- Active integration branch for agent execution is `codex/live`.
+- `main` remains release-only; merge to `main` only after QA PASS.
+- Workers must not ask the user to resolve Git conflicts.
+- If sync conflict occurs, worker resolves it locally, reruns checks, and reports clean state before handoff.
+- Before starting an issue:
+  1. `git checkout codex/live`
+  2. `git pull --ff-only`
+  3. `bd ready` -> `bd show <id>` -> set `in_progress`
+- Commit and push flow:
+  1. commit with `bd-<id>`
+  2. push to `origin/codex/live`
+  3. if push is rejected, worker must sync/reconcile and re-push; user handoff is blocked until branch is clean.
+
 ### 10.8 Sprint Freeze
 If BLOCKER exists and is unmapped:
 - current issue lane becomes invalid.
