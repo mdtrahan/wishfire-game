@@ -1338,6 +1338,12 @@ async function main(){
   let buffIconFrameImages = {};
   let debuffIconImages = {};
   let mapBackgroundImage = null;
+  const layout0LoadState = {
+    started: false,
+    ready: false,
+    failed: false,
+    error: '',
+  };
   const calculateGridBounds = (layoutInstances) => {
     const placeholders = (layoutInstances || []).filter(inst => inst && inst.type === 'grid_placeholder' && inst.world);
     if (!placeholders.length) {
@@ -1510,6 +1516,25 @@ async function main(){
     rebuildRenderedCache();
     startupDebugLog('[INIT] Processing instances...');
   }
+  async function beginLayout0Preload() {
+    if (layout0LoadState.started) return;
+    layout0LoadState.started = true;
+    layout0LoadState.ready = false;
+    layout0LoadState.failed = false;
+    layout0LoadState.error = '';
+    out.textContent = 'Layout 0 Loading...\nPreparing runtime assets.';
+    try {
+      await loadC3ProjectAssets();
+      layout0LoadState.ready = true;
+      out.textContent = 'Layout 0 Ready.\nClick to advance.';
+      console.log('[LAYOUT0] preload-ready');
+    } catch (err) {
+      layout0LoadState.failed = true;
+      layout0LoadState.error = String(err && err.message ? err.message : err || 'unknown error');
+      out.textContent = `Layout 0 Load Failed.\n${layout0LoadState.error}`;
+      console.error('[LAYOUT0] preload-failed', err);
+    }
+  }
   const registerCoreLayouts = (layoutState, { combatGateway: gateway }) => {
     const validateCombatSnapshot = (snapshot, stage, transitionLabel) => {
       const valid = !snapshot || (
@@ -1542,10 +1567,13 @@ async function main(){
         if (needsBootstrap) {
           if (!hasRuntimeData) {
             console.log('[LayoutGuard] Combat bootstrap forcing asset init (missing runtime data)');
+            await beginLayout0Preload();
+            if (!layout0LoadState.ready) {
+              throw new Error('Layout 0 preload not ready; combat transition blocked');
+            }
           }
           state.globals.GamePhase = 'BOOTSTRAP';
           startupDebugLog('[INIT] Starting initialization...');
-          await loadC3ProjectAssets();
           prepareCombatSetupFromInstances(instances, gameState);
           assertCombatLayoutDev('StartRound');
           callFunctionWithContext(fnContext, 'StartRound');
@@ -1676,6 +1704,13 @@ async function main(){
   });
   eventBus.on('layout:storyMock:click', async () => {
     if (layoutState.getActiveLayoutId() !== 'storyMock') return;
+    if (!layout0LoadState.ready) {
+      out.textContent = layout0LoadState.failed
+        ? `Layout 0 Load Failed.\n${layout0LoadState.error || 'retry required'}`
+        : 'Layout 0 Loading...\nPlease wait for readiness.';
+      console.log('[LAYOUT0] click-blocked-not-ready');
+      return;
+    }
     console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '0->1', trigger: 'blue-click' });
     await layoutState.requestLayoutChange('combat', 'story-blue-click');
   });
@@ -1690,6 +1725,9 @@ async function main(){
   }
 
   await layoutState.activateInitialLayout('storyMock');
+  beginLayout0Preload().catch((err) => {
+    console.error('[LAYOUT0] preload-start-failed', err);
+  });
 
   const layoutW = viewW;
   const layoutH = viewH;
@@ -5287,6 +5325,8 @@ function getStoryCardLiveLineState() {
           combatAcceptEvents: layoutHarnessEnabled && harnessCombatGateway
             ? harnessCombatGateway.canAcceptEvents()
             : true,
+          layout0Ready: !!layout0LoadState.ready,
+          layout0Failed: !!layout0LoadState.failed,
         },
         heroes: state.entities
           .filter(e => e.kind === 'hero')
