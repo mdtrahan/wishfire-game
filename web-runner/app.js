@@ -75,6 +75,22 @@ const nextBootstrapRandom = (() => {
   const seeded = createSeededRandom(BOOTSTRAP_SEED);
   return () => seeded();
 })();
+if (state && state.globals) {
+  state.globals.RuntimeRandom = nextBootstrapRandom;
+  state.globals.RuntimeSeed = BOOTSTRAP_SEED == null ? '' : String(BOOTSTRAP_SEED);
+}
+function runtimeRandom() {
+  const fn = state?.globals && typeof state.globals.RuntimeRandom === 'function'
+    ? state.globals.RuntimeRandom
+    : nextBootstrapRandom;
+  const value = Number(fn());
+  if (Number.isFinite(value) && value >= 0 && value < 1) return value;
+  return Math.random();
+}
+function runtimeRandomIndex(size) {
+  if (!(size > 0)) return 0;
+  return Math.floor(runtimeRandom() * size);
+}
 let bootstrapDeterministicRefillPending = BOOTSTRAP_SEED != null;
 function debugLayoutLog(message) {
   if (!DEBUG_LAYOUT) return;
@@ -760,7 +776,7 @@ function randomGemFrame() {
   if (bootstrapDeterministicRefillPending && Array.isArray(gameState.gems) && gameState.gems.length >= boardCellCount) {
     bootstrapDeterministicRefillPending = false;
   }
-  const rng = bootstrapDeterministicRefillPending ? nextBootstrapRandom : Math.random;
+  const rng = bootstrapDeterministicRefillPending ? nextBootstrapRandom : runtimeRandom;
   const x = Math.floor(rng() * 1000);
   if (x === 998) return 6;
   const countPurple = () => (gameState.gems || []).reduce((n, g) => {
@@ -850,16 +866,16 @@ function handleSpecialGem6(gem) {
   const actorUID = callFunctionWithContext(fnContext, 'GetCurrentTurn') || getHeroUIDByIndex(gameState.selectedHero) || gameState.selectedHero;
   const actor = state.entities.find(e => e.uid === actorUID);
   const actorName = actor ? (actor.name || 'Hero') : 'Hero';
-  const rollReward = Math.random() < 0.5 ? 'gold' : 'energy';
+  const rollReward = runtimeRandom() < 0.5 ? 'gold' : 'energy';
   if (rollReward === 'gold') {
     const goldOptions = [10, 15, 20];
-    const amt = goldOptions[Math.floor(Math.random() * goldOptions.length)];
+    const amt = goldOptions[runtimeRandomIndex(goldOptions.length)];
     g.goldTotal = (g.goldTotal || 0) + amt;
     callFunctionWithContext(fnContext, 'LogCombat', `${actorName} found ${amt} gold!`);
     callFunctionWithContext(fnContext, 'SpawnDamageText', amt, gem.x, gem.y, 'damage');
   } else {
     const energyOptions = [6, 12, 15];
-    const amt = energyOptions[Math.floor(Math.random() * energyOptions.length)];
+    const amt = energyOptions[runtimeRandomIndex(energyOptions.length)];
     const next = (g.Player_Energy || 0) + amt;
     g.Player_Energy = next;
     callFunctionWithContext(fnContext, 'LogCombat', `${actorName} gained ${amt} energy!`);
@@ -903,7 +919,7 @@ function getCellWorldPos(cellC, cellR) {
 }
 
 function pickYellowCasinoTarget() {
-  const idx = Math.floor(Math.random() * YELLOW_CASINO_TARGETS.length);
+  const idx = runtimeRandomIndex(YELLOW_CASINO_TARGETS.length);
   return YELLOW_CASINO_TARGETS[idx];
 }
 
