@@ -60,6 +60,10 @@
 - [x] Close TASK-020 on QA PASS and advance ACTIVE intake to TASK-019 with restored plan artifacts.
 - [x] Await next explicit user request.
 - [ ] Await next explicit user request.
+- [x] Execute ORKA-a09 ART-001: restore canonical `4X_tower.png` + `4x_map.png` runtime assets and close Beads issue.
+- [x] Execute ORKA-zl6: add fallback game-loop interval guard + explicit teardown path in `Scripts/logicCore.js`.
+- [x] Execute ORKA-69r: reroute blue gems to Astral Flow wallet with no direct stat buff apply; add separate astral wallet info panel.
+- [ ] Index gap: `ai-memory/PROJECT_INDEX.md` missing; add canonical retrieval map file.
 
 ## Done (recent)
 - [x] Require Lead post-execution closure checks on bundled asset-prune packet before bundle close.
