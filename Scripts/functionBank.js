@@ -498,14 +498,14 @@ function syncInitiativeMeters(ctx, roster) {
   const meters = g.InitiativeMeters || {};
   const rosterUIDs = new Set(roster.map(r => r.uid));
   const meterVals = Object.values(meters).map(v => Number(v) || 0);
-  const minMeter = meterVals.length ? Math.min(...meterVals) : 0;
+  const baselineMeter = meterVals.length ? Math.max(...meterVals) : 0;
   for (const key of Object.keys(meters)) {
     if (!rosterUIDs.has(Number(key))) delete meters[key];
   }
   for (const r of roster) {
     if (meters[String(r.uid)] == null) {
-      // New spawns start at the lowest meter so they trail the queue.
-      setMeter(meters, r.uid, minMeter);
+      // New spawns inherit the current initiative baseline; SPD decides placement.
+      setMeter(meters, r.uid, baselineMeter);
     }
   }
   g.InitiativeMeters = meters;

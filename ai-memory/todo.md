@@ -61,6 +61,7 @@
 - [x] Execute ORKA-a09 ART-001: restore canonical `4X_tower.png` + `4x_map.png` runtime assets and close Beads issue.
 - [x] Execute ORKA-zl6: add fallback game-loop interval guard + explicit teardown path in `Scripts/logicCore.js`.
 - [x] Execute ORKA-69r: reroute blue gems to Astral Flow wallet with no direct stat buff apply; add separate astral wallet info panel.
+- [x] Execute ORKA-cki: remove hidden spawn initiative penalty; insert replacements by baseline+SPD ordering with immediate preview refresh.
 - [ ] Index gap: `ai-memory/PROJECT_INDEX.md` missing; add canonical retrieval map file.
 
 ## Done (recent)
