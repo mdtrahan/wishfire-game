@@ -4377,6 +4377,21 @@ function getStoryCardLiveLineState() {
     ];
     out.textContent = lines.join('\n');
     drawWalletHUD();
+    drawAstralWalletHUD();
+  }
+  function formatWalletText(title, wallet) {
+    if (!wallet || typeof wallet !== 'object') {
+      return `${title}:\nTotal: 0`;
+    }
+    const entries = Object.entries(wallet)
+      .filter(([, v]) => v != null)
+      .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+    const total = entries.reduce((sum, [, v]) => sum + (Number(v) || 0), 0);
+    const lines = [`${title}:`, `Total: ${total}`];
+    for (const [key, val] of entries) {
+      lines.push(`${key}: ${val}`);
+    }
+    return lines.join('\n');
   }
   function drawWalletHUD() {
     if (!walletOut) return;
@@ -4387,23 +4402,18 @@ function getStoryCardLiveLineState() {
       g.WalletTokens ||
       g.walletTokens ||
       null;
-    if (!wallet || typeof wallet !== 'object') {
-      walletOut.textContent = 'Wallet:\n(empty)';
-      return;
-    }
-    const entries = Object.entries(wallet)
-      .filter(([, v]) => v != null)
-      .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
-    if (entries.length === 0) {
-      walletOut.textContent = 'Wallet:\n(empty)';
-      return;
-    }
-    const total = entries.reduce((sum, [, v]) => sum + (Number(v) || 0), 0);
-    const lines = ['Wallet:', `Total: ${total}`];
-    for (const [key, val] of entries) {
-      lines.push(`${key}: ${val}`);
-    }
-    walletOut.textContent = lines.join('\n');
+    walletOut.textContent = formatWalletText('Wallet', wallet);
+  }
+  function drawAstralWalletHUD() {
+    if (!astralWalletOut) return;
+    const g = state.globals || {};
+    const astralWallet =
+      g.AstralFlowWallet ||
+      g.astralFlowWallet ||
+      g.AstralWallet ||
+      g.astralWallet ||
+      null;
+    astralWalletOut.textContent = formatWalletText('Astral Flow Wallet', astralWallet);
   }
   function drawAstralWalletHUD() {
     if (!astralWalletOut) return;

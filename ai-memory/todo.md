@@ -58,6 +58,8 @@
 - [x] Await next explicit user request.
 - [x] Retry process-debt drift audit after claimed compliance completion and republish verdict artifact.
 - [x] Close TASK-020 on QA PASS and advance ACTIVE intake to TASK-019 with restored plan artifacts.
+- [x] Await next explicit user request.
+- [ ] Await next explicit user request.
 - [x] Execute ORKA-a09 ART-001: restore canonical `4X_tower.png` + `4x_map.png` runtime assets and close Beads issue.
 - [x] Execute ORKA-zl6: add fallback game-loop interval guard + explicit teardown path in `Scripts/logicCore.js`.
 - [x] Execute ORKA-69r: reroute blue gems to Astral Flow wallet with no direct stat buff apply; add separate astral wallet info panel.
