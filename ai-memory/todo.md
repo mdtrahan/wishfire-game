@@ -63,6 +63,12 @@
 - [x] Run next ready Beads issue: close ORKA-lo7 by adding deterministic combat bootstrap seed flow.
 - [x] Run next ready Beads issue: close ORKA-69r blue gems to Astral wallet (no direct stat buff apply).
 - [ ] Await next explicit user request.
+- [x] Execute ORKA-a09 ART-001: restore canonical `4X_tower.png` + `4x_map.png` runtime assets and close Beads issue.
+- [x] Execute ORKA-zl6: add fallback game-loop interval guard + explicit teardown path in `Scripts/logicCore.js`.
+- [x] Execute ORKA-69r: reroute blue gems to Astral Flow wallet with no direct stat buff apply; add separate astral wallet info panel.
+- [x] Execute ORKA-cki: remove hidden spawn initiative penalty; insert replacements by baseline+SPD ordering with immediate preview refresh.
+- [x] Execute ORKA-dsq: convert Layout 0 to preload-gated loading screen; block click advance until downstream assets are ready.
+- [ ] Index gap: `ai-memory/PROJECT_INDEX.md` missing; add canonical retrieval map file.
 
 ## Done (recent)
 - [x] Require Lead post-execution closure checks on bundled asset-prune packet before bundle close.

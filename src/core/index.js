@@ -5,7 +5,7 @@ const {
   resetLayoutStateSingletonForTests,
 } = require('./layoutState');
 const { InputDomainManager } = require('./inputDomains');
-const { CombatRuntimeGateway } = require('./combatRuntimeGateway');
+const { CombatRuntimeGateway } = require('./combatRuntimeGateway.cjs');
 
 module.exports = {
   LayoutStateController,
