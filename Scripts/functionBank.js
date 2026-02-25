@@ -104,12 +104,14 @@ function pickPowerAmpOutcome() {
   return POWER_AMP_OUTCOMES[POWER_AMP_OUTCOMES.length - 1];
 }
 
-function armPowerAmpEntry(multiplier, turnNow) {
+function armPowerAmpEntry(multiplier, turnNow, turnSerialNow) {
   return {
     mult: Number(multiplier || 0),
     state: 'pending_next_own_turn',
     armedAtTurn: Number(turnNow || 0),
+    armedAtTurnSerial: Number(turnSerialNow || 0),
     activatedAtTurn: -1,
+    activatedAtTurnSerial: -1,
     usedThisTurn: false,
   };
 }
@@ -119,10 +121,11 @@ function activatePowerAmp(ctx, actorUID) {
   const store = ensurePowerAmpByUID(ctx);
   const outcome = pickPowerAmpOutcome();
   const grantTurn = Number(g.DebugTurnCount || 0);
+  const grantTurnSerial = Number(g.TurnSerial || 0);
   if (outcome.jackpotAllLivingHeroes) {
     for (const hero of getHeroes(ctx)) {
       if ((hero.hp ?? 0) > 0) {
-        store[hero.uid] = armPowerAmpEntry(outcome.multiplier, grantTurn);
+        store[hero.uid] = armPowerAmpEntry(outcome.multiplier, grantTurn, grantTurnSerial);
       }
     }
     for (const hero of getHeroes(ctx)) {
@@ -131,7 +134,7 @@ function activatePowerAmp(ctx, actorUID) {
     LogCombat(ctx, 'JACKPOT! All heroes get Power Amp x2!');
     return;
   }
-  store[actorUID] = armPowerAmpEntry(outcome.multiplier, grantTurn);
+  store[actorUID] = armPowerAmpEntry(outcome.multiplier, grantTurn, grantTurnSerial);
   setPowerAmpVisual(g, actorUID, outcome.multiplier);
   LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} gained Power Amp x${outcome.multiplier}!`);
 }
@@ -842,10 +845,20 @@ export function AdvanceTurn(ctx) {
   if (currentType === 0 && currentUID) {
     const store = ensurePowerAmpByUID(ctx);
     const entry = store[currentUID];
-    if (entry && entry.state === 'active_this_turn') {
+    if (entry) {
       const mult = Number(entry.mult || 0);
-      delete store[currentUID];
-      if (mult) startPowerAmpFade(g, currentUID, mult);
+      if (entry.state === 'active_this_turn') {
+        delete store[currentUID];
+        if (mult) startPowerAmpFade(g, currentUID, mult);
+      } else if (
+        entry.state === 'pending_next_own_turn' &&
+        Number(g.TurnSerial || 0) > Number(entry.armedAtTurnSerial || 0)
+      ) {
+        // Strict safety net: if a hero reached next own turn but activation was missed,
+        // force expiry at that turn end to prevent carryover leaks.
+        delete store[currentUID];
+        if (mult) startPowerAmpFade(g, currentUID, mult);
+      }
     }
   }
   if (currentType === 1 && currentUID) {
@@ -864,6 +877,7 @@ export function AdvanceTurn(ctx) {
       }
     }
   }
+  g.TurnSerial = Number(g.TurnSerial || 0) + 1;
   if (isTimeInitiative(ctx)) {
     resolvePendingDeathsForInitiative(ctx);
     selectNextInitiativeActor(ctx);
@@ -1984,9 +1998,14 @@ export function HeroTurn(ctx, heroUID) {
   if (heroUID && store[heroUID]) {
     const entry = store[heroUID];
     const turnNow = Number(g.DebugTurnCount || 0);
-    if (entry.state === 'pending_next_own_turn' && turnNow > Number(entry.armedAtTurn || 0)) {
+    const turnSerialNow = Number(g.TurnSerial || 0);
+    if (
+      entry.state === 'pending_next_own_turn' &&
+      turnSerialNow > Number(entry.armedAtTurnSerial || 0)
+    ) {
       entry.state = 'active_this_turn';
       entry.activatedAtTurn = turnNow;
+      entry.activatedAtTurnSerial = turnSerialNow;
       entry.usedThisTurn = false;
     }
   }
