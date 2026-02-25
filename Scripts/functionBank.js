@@ -36,6 +36,23 @@ function getGlobals(ctx) {
   return (ctx && ctx.state ? ctx.state.globals : state.globals);
 }
 
+function getRandomSource(ctx) {
+  const g = getGlobals(ctx);
+  const fn = g && typeof g.RuntimeRandom === 'function' ? g.RuntimeRandom : null;
+  return fn || Math.random;
+}
+
+function random01(ctx) {
+  const value = Number(getRandomSource(ctx)());
+  if (Number.isFinite(value) && value >= 0 && value < 1) return value;
+  return Math.random();
+}
+
+function randomIndex(ctx, size) {
+  if (!(size > 0)) return 0;
+  return Math.floor(random01(ctx) * size);
+}
+
 function getEntities(ctx) {
   return (ctx && ctx.state ? ctx.state.entities : state.entities) || [];
 }
@@ -95,8 +112,8 @@ function startPowerAmpFade(g, uid, mult) {
   delete g.PowerAmpVisualByUID[uid];
 }
 
-function pickPowerAmpOutcome() {
-  let r = Math.random();
+function pickPowerAmpOutcome(ctx) {
+  let r = random01(ctx);
   for (const entry of POWER_AMP_OUTCOMES) {
     r -= entry.chance;
     if (r <= 0) return entry;
@@ -107,7 +124,7 @@ function pickPowerAmpOutcome() {
 function activatePowerAmp(ctx, actorUID) {
   const g = getGlobals(ctx);
   const store = ensurePowerAmpByUID(ctx);
-  const outcome = pickPowerAmpOutcome();
+  const outcome = pickPowerAmpOutcome(ctx);
   const grantTurn = g.DebugTurnCount || 0;
   if (outcome.jackpotAllLivingHeroes) {
     for (const hero of getHeroes(ctx)) {
@@ -251,11 +268,12 @@ function getOrCreateEventProgress(ctx, eventId) {
   return g.LiveOpsProgress[eventId];
 }
 
-function pickDropTier(g) {
+function pickDropTier(ctx) {
+  const g = getGlobals(ctx);
   if (g && Number.isFinite(g.DropTierOverride)) return Math.max(0, Math.min(3, Math.floor(g.DropTierOverride)));
   const weights = [2, 8, 20, 70];
   const total = weights.reduce((a, b) => a + b, 0);
-  let r = Math.random() * total;
+  let r = random01(ctx) * total;
   for (let i = 0; i < weights.length; i++) {
     r -= weights[i];
     if (r <= 0) return i;
@@ -344,7 +362,8 @@ export function getDropRateBracket(dropRate) {
   return getDropBracket(sanitizedDropRate);
 }
 
-function pickWeightedLootToken(g) {
+function pickWeightedLootToken(ctx) {
+  const g = getGlobals(ctx);
   const configured = Array.isArray(g?.DropTokenWeights) ? g.DropTokenWeights : null;
   const defaultWeights = [
     { token: TOKEN.BONE_CHIP, weight: 55 },
@@ -362,7 +381,7 @@ function pickWeightedLootToken(g) {
     : defaultWeights;
   const total = source.reduce((acc, item) => acc + Number(item.weight || 0), 0);
   if (!(total > 0)) return { dropId: EMPTY, itemRollPct: 0, selectedWeightPct: 0 };
-  let cursor = Math.random() * total;
+  let cursor = random01(ctx) * total;
   for (const item of source) {
     cursor -= Number(item.weight || 0);
     if (cursor <= 0) {
@@ -385,14 +404,14 @@ function applyRewardPayload(ctx, payload) {
   if (!payload || !payload.type) return;
   const g = getGlobals(ctx);
   if (payload.type === 'HEAL_RANDOM') {
-    const amt = Math.max(1, Math.floor(Math.random() * 40) + 1);
+    const amt = Math.max(1, Math.floor(random01(ctx) * 40) + 1);
     ctx.callFunction('ApplyPartyHeal', amt);
     LogCombat(ctx, `Event reward: +${amt} HP`);
     return;
   }
   if (payload.type === 'ENERGY_RANDOM') {
     const options = [10, 20, 30, 40];
-    const amt = options[Math.floor(Math.random() * options.length)];
+    const amt = options[randomIndex(ctx, options.length)];
     const next = (g.Player_Energy || 0) + amt;
     g.Player_Energy = next;
     LogCombat(ctx, `Event reward: +${amt} Energy`);
@@ -400,7 +419,7 @@ function applyRewardPayload(ctx, payload) {
   }
   if (payload.type === 'GOLD_RANDOM') {
     const options = [15, 30];
-    const amt = options[Math.floor(Math.random() * options.length)];
+    const amt = options[randomIndex(ctx, options.length)];
     g.goldTotal = (g.goldTotal || 0) + amt;
     LogCombat(ctx, `Event reward: +${amt} Gold`);
   }
@@ -434,9 +453,9 @@ function nextUID(ctx) {
   return g.NextUID;
 }
 
-function randomPick(list) {
+function randomPick(ctx, list) {
   if (!list || list.length === 0) return null;
-  const idx = Math.floor(Math.random() * list.length);
+  const idx = randomIndex(ctx, list.length);
   return list[idx];
 }
 
@@ -1095,7 +1114,7 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
   const resist = isMagic
     ? (isHeroDefender ? GetEffectiveStat(ctx, tgt, 'RES') : GetEffectiveStat(ctx, tgt, 'RES'))
     : (isHeroDefender ? GetEffectiveStat(ctx, tgt, 'DEF') : GetEffectiveStat(ctx, tgt, 'DEF'));
-  const roll = 0.8 + Math.random() * 0.4;
+  const roll = 0.8 + random01(ctx) * 0.4;
   let dmg = 0;
   if (isHeroAttacker) {
     if (g.IsAOEMatch === 1) {
@@ -1112,6 +1131,7 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
     baseValue: dmg,
     relevantBuffTotal: isMagic ? power : power,
     sourceType: isHeroAttacker ? 'HERO' : 'ENEMY',
+    rngRoll: random01(ctx),
   });
   dmg = Math.max(1, Math.ceil(crit.value));
   let chainApplied = false;
@@ -1171,6 +1191,7 @@ export function CalculateHeal(ctx, actorUID) {
     baseValue: baseHeal,
     relevantBuffTotal: magTotal,
     sourceType,
+    rngRoll: random01(ctx),
   });
   return Math.max(1, Math.floor(crit.value));
 }
@@ -1230,7 +1251,7 @@ export function Sub_Energy(ctx) {
 
 export function Add_Energy(ctx) {
   const g = getGlobals(ctx);
-  const roll = Math.random();
+  const roll = random01(ctx);
   let add = 3;
   if (roll < 0.65) add = 3;
   else if (roll < 0.85) add = 6;
@@ -1248,11 +1269,11 @@ export function AddGoldToPlayer(ctx, amt) {
   const cap = Math.min(30, max);
   const curve = Math.max(1, g.GoldDropCurve ?? 2.0);
   let finalAmount = min;
-  if (cap >= 30 && Math.random() < 0.015) {
+  if (cap >= 30 && random01(ctx) < 0.015) {
     finalAmount = 30;
   } else {
     const upper = Math.max(min, cap - 1);
-    const u = Math.random();
+    const u = random01(ctx);
     const biased = Math.pow(u, curve);
     finalAmount = Math.floor(min + (upper - min + 1) * biased);
   }
@@ -1264,7 +1285,7 @@ export function AddGoldToPlayer(ctx, amt) {
 function getRandomLivingEnemy(ctx) {
   const enemies = getEnemies(ctx).filter(e => (e.hp ?? 0) > 0);
   if (!enemies.length) return null;
-  return enemies[Math.floor(Math.random() * enemies.length)];
+  return enemies[randomIndex(ctx, enemies.length)];
 }
 
 function ensureEnemyDebuffRecord(ctx, enemyUID) {
@@ -1290,7 +1311,7 @@ export function ExecutePurpleDebuff(ctx, actorUID) {
   const hero = GetActorByUID(ctx, actorUID);
   if (!enemy || !hero) return;
 
-  const roll = Math.floor(Math.random() * 5);
+  const roll = randomIndex(ctx, 5);
   const statKeys = ['ATK', 'DEF', 'MAG', 'SPD', 'RES'];
   const stat = statKeys[roll] || 'ATK';
 
@@ -1450,7 +1471,7 @@ export function PickNextEnemyID(ctx) {
   const g = getGlobals(ctx);
   const pool = Array.isArray(g.EnemyData) ? g.EnemyData : [];
   if (pool.length === 0) return null;
-  const idx = Math.floor(Math.random() * pool.length);
+  const idx = randomIndex(ctx, pool.length);
   return pool[idx] || null;
 }
 
@@ -1570,7 +1591,7 @@ export function ResolveMonsterDrop(ctx, monsterName, tierIndex = null) {
   const monsterId = getMonsterIdByName(monsterName);
   if (monsterId < 0) return EMPTY;
   const tiers = MONSTER_LOOT_TABLE[monsterId] || [];
-  const idx = tierIndex == null ? pickDropTier(getGlobals(ctx)) : Math.max(0, Math.min(3, Math.floor(tierIndex)));
+  const idx = tierIndex == null ? pickDropTier(ctx) : Math.max(0, Math.min(3, Math.floor(tierIndex)));
   return tiers[idx] ?? EMPTY;
 }
 
@@ -1581,9 +1602,9 @@ export function AwardMonsterDrop(ctx, monsterName, tierIndex = null) {
   const thLevel = getTreasureHunterLevel(g);
   const effectiveGateRateBps = getDropRate(thLevel, baseGateRateBps);
   const gateChancePct = clamp(0, effectiveGateRateBps / 100, 100);
-  const gateRollPct = Math.random() * 100;
+  const gateRollPct = random01(ctx) * 100;
   const gatePassed = gateRollPct < gateChancePct;
-  const weighted = gatePassed ? pickWeightedLootToken(g) : { dropId: EMPTY, itemRollPct: null, selectedWeightPct: 0 };
+  const weighted = gatePassed ? pickWeightedLootToken(ctx) : { dropId: EMPTY, itemRollPct: null, selectedWeightPct: 0 };
   const dropId = weighted.dropId;
   const parsed = parseDropId(dropId);
   let resolved = 'EMPTY';
@@ -1780,7 +1801,7 @@ export function ResolveGemAction(ctx, gemColor, actorUID) {
   }
   if (gemColor === 2) {
     g.IsAOEMatch = 0;
-    const roll = Math.floor(Math.random() * 4);
+    const roll = randomIndex(ctx, 4);
     let skillId = 'DEF_UP';
     let intentKey = 'Party_DEF_UP';
     let buffType = 0;
@@ -1882,7 +1903,7 @@ export function BuildRoundGroups(ctx) {
   const tol = g.UnisonTolerance ?? 0.5;
   const withInit = roster.map(r => ({
     ...r,
-    init: r.spd + ((Math.random() * 2 - 1) * jitter)
+    init: r.spd + ((random01(ctx) * 2 - 1) * jitter)
   }));
   const startMode = g.BattleStartMode;
   const startModeApplied = Boolean(startMode && !g.BattleStartResolved);
@@ -2003,11 +2024,11 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, now + 0.5);
   } else if (skillId === 'Enemy_ATK_Single') {
     handled = true;
-    const target = randomPick(getHeroes(ctx));
+    const target = randomPick(ctx, getHeroes(ctx));
     if (target) Enemy_ATK_Single(ctx, actorUID, target.uid);
   } else if (skillId === 'Enemy_MAG_Single') {
     handled = true;
-    const target = randomPick(getHeroes(ctx));
+    const target = randomPick(ctx, getHeroes(ctx));
     if (target) Enemy_MAG_Single(ctx, actorUID, target.uid);
   } else if (skillId === 'Enemy_MAG_AOE') {
     handled = true;
@@ -2039,7 +2060,7 @@ export function ResolveEnemyAction(ctx, enemyUID) {
   const enemy = GetActorByUID(ctx, enemyUID);
   if (!enemy) return 0;
   let handled = 0;
-  const roll = Math.random();
+  const roll = random01(ctx);
   const name = enemy.name || '';
 
   if (!handled && name === 'Chimerilass' && enemy.hp < enemy.maxHP && roll < 0.49) {
@@ -2064,7 +2085,7 @@ export function ExecuteEnemySkill(ctx, enemyUID, skillId) {
 
 export function EnemyAttack(ctx, enemyUID) {
   const skillId = PickEnemySkill(ctx, enemyUID);
-  const target = randomPick(getHeroes(ctx));
+  const target = randomPick(ctx, getHeroes(ctx));
   const targetUID = target ? target.uid : 0;
   ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID);
   return 1;
@@ -2183,7 +2204,7 @@ export function ProcessTurn(ctx) {
 export function PickEnemySkill(ctx, enemyUID) {
   const enemy = GetActorByUID(ctx, enemyUID);
   if (!enemy) return 'Enemy_ATK_Single';
-  const roll = Math.random();
+  const roll = random01(ctx);
   const decision = resolveEnemySkillDecision(enemy, roll);
   traceEnemySkillDecision(ctx, enemyUID, decision);
   return decision.selected;
@@ -2295,7 +2316,7 @@ export function Enemy_Wipe(ctx, enemyUID) {
 }
 
 export function ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID = 0) {
-  const resolvedTargetUID = targetUID || (randomPick(getHeroes(ctx))?.uid || 0);
+  const resolvedTargetUID = targetUID || (randomPick(ctx, getHeroes(ctx))?.uid || 0);
   if (skillId === 'Enemy_Heal_Self') {
     Enemy_Heal_Self(ctx, enemyUID);
     return 1;
@@ -2338,7 +2359,7 @@ export function StartEnemyAction(ctx, enemyUID) {
   if (enemy.originY == null) enemy.originY = SlotY(ctx, enemy.slotIndex ?? 0);
   if (enemy.x == null) enemy.x = enemy.originX;
   if (enemy.y == null) enemy.y = enemy.originY;
-  const target = randomPick(getHeroes(ctx));
+  const target = randomPick(ctx, getHeroes(ctx));
   const targetUID = target ? target.uid : 0;
   const skillId = PickEnemySkill(ctx, enemyUID);
   g.EnemyAction = {
