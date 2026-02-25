@@ -510,14 +510,15 @@ function syncInitiativeMeters(ctx, roster) {
   return meters;
 }
 
-function buildInitiativePreview(roster, meters, threshold, count, currentUID, pool = null) {
+function buildInitiativePreview(roster, meters, threshold, count, currentUID, selectionPool = null, tickPool = null) {
   const preview = [];
   const localMeters = {};
   for (const [key, val] of Object.entries(meters)) {
     localMeters[key] = Number(val) || 0;
   }
   const localRoster = roster.map(r => ({ ...r }));
-  const localPool = (pool && pool.length) ? pool.map(r => ({ ...r })) : localRoster;
+  const localSelectionPool = (selectionPool && selectionPool.length) ? selectionPool.map(r => ({ ...r })) : localRoster;
+  const localTickPool = (tickPool && tickPool.length) ? tickPool.map(r => ({ ...r })) : localRoster;
   let lastUID = null;
   if (currentUID) {
     const cur = localRoster.find(r => r.uid === currentUID);
@@ -531,7 +532,7 @@ function buildInitiativePreview(roster, meters, threshold, count, currentUID, po
     let guard = 0;
     while (guard < 500) {
       let ready = null;
-      for (const r of localPool) {
+      for (const r of localSelectionPool) {
         const meter = getMeter(localMeters, r.uid);
         if (meter < threshold) continue;
         if (
@@ -549,7 +550,7 @@ function buildInitiativePreview(roster, meters, threshold, count, currentUID, po
         lastUID = ready.uid;
         break;
       }
-      for (const r of localPool) {
+      for (const r of localTickPool) {
         const meter = getMeter(localMeters, r.uid);
         setMeter(localMeters, r.uid, meter + (r.spd || 0));
       }
@@ -603,12 +604,13 @@ function selectNextInitiativeActor(ctx) {
   const threshold = Number(g.InitiativeThreshold || 100);
   const meters = syncInitiativeMeters(ctx, roster);
   const override = getInitiativeOverridePool(ctx, roster);
-  const pool = override.pool || roster;
+  const selectionPool = override.pool || roster;
+  const tickPool = roster;
   const maxLoops = Number(g.InitiativeMaxLoops || 500);
   let loops = 0;
   while (loops < maxLoops) {
     let ready = null;
-    for (const r of pool) {
+    for (const r of selectionPool) {
       const meter = getMeter(meters, r.uid);
       if (meter < threshold) continue;
       if (
@@ -631,10 +633,10 @@ function selectNextInitiativeActor(ctx) {
       g.InitiativeCurrentUID = ready.uid;
       g.CurrentTurnIndex = 0;
       const previewSize = Number(g.InitiativePreviewSize || 6);
-      g.TurnOrderArray = buildInitiativePreview(roster, meters, threshold, previewSize, ready.uid, pool);
+      g.TurnOrderArray = buildInitiativePreview(roster, meters, threshold, previewSize, ready.uid, selectionPool, tickPool);
       return ready;
     }
-    for (const r of pool) {
+    for (const r of tickPool) {
       const meter = getMeter(meters, r.uid);
       setMeter(meters, r.uid, meter + (r.spd || 0));
     }
@@ -645,7 +647,7 @@ function selectNextInitiativeActor(ctx) {
   g.InitiativeCurrentUID = fallback.uid;
   g.CurrentTurnIndex = 0;
   const previewSize = Number(g.InitiativePreviewSize || 6);
-  g.TurnOrderArray = buildInitiativePreview(roster, meters, threshold, previewSize, fallback.uid, pool);
+  g.TurnOrderArray = buildInitiativePreview(roster, meters, threshold, previewSize, fallback.uid, selectionPool, tickPool);
   return fallback;
 }
 
@@ -663,8 +665,8 @@ function refreshInitiativePreview(ctx) {
   const previewSize = Number(g.InitiativePreviewSize || 6);
   const curUID = g.InitiativeCurrentUID;
   const override = getInitiativeOverridePool(ctx, roster);
-  const pool = override.pool || roster;
-  g.TurnOrderArray = buildInitiativePreview(roster, meters, threshold, previewSize, curUID, pool);
+  const selectionPool = override.pool || roster;
+  g.TurnOrderArray = buildInitiativePreview(roster, meters, threshold, previewSize, curUID, selectionPool, roster);
   const idx = g.TurnOrderArray.findIndex(a => a.uid === curUID);
   g.CurrentTurnIndex = idx !== -1 ? idx : 0;
 }

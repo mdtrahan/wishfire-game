@@ -139,13 +139,14 @@ function selectNext(state, roster) {
   syncMeters(roster, state.InitiativeMeters);
   const meters = state.InitiativeMeters;
   const override = getOverride(state, roster);
-  const pool = override.pool || roster;
+  const selectionPool = override.pool || roster;
+  const tickPool = roster;
 
   let loops = 0;
   const maxLoops = 500;
   while (loops < maxLoops) {
     let ready = null;
-    for (const r of pool) {
+    for (const r of selectionPool) {
       const meter = getMeter(meters, r.uid);
       if (meter < THRESHOLD) continue;
       if (
@@ -176,7 +177,7 @@ function selectNext(state, roster) {
       };
     }
 
-    for (const r of pool) {
+    for (const r of tickPool) {
       setMeter(meters, r.uid, getMeter(meters, r.uid) + (r.spd || 0));
     }
     loops += 1;
