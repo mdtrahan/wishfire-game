@@ -64,6 +64,7 @@ export const state = {
     BuffRollFrame: 0,
     BuffRollSlot: 0,
     BuffRollType: 0,
+    BuffRollApplyStat: 0,
     BuffRollSkillID: '',
     BuffRollActor: 0,
     BuffDurationDefault: 12,

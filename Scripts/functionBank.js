@@ -121,20 +121,25 @@ function pickPowerAmpOutcome(ctx) {
   return POWER_AMP_OUTCOMES[POWER_AMP_OUTCOMES.length - 1];
 }
 
+function armPowerAmpEntry(multiplier, turnNow) {
+  return {
+    mult: Number(multiplier || 0),
+    state: 'pending_next_own_turn',
+    armedAtTurn: Number(turnNow || 0),
+    activatedAtTurn: -1,
+    usedThisTurn: false,
+  };
+}
+
 function activatePowerAmp(ctx, actorUID) {
   const g = getGlobals(ctx);
   const store = ensurePowerAmpByUID(ctx);
-  const outcome = pickPowerAmpOutcome(ctx);
-  const grantTurn = g.DebugTurnCount || 0;
+  const outcome = pickPowerAmpOutcome();
+  const grantTurn = Number(g.DebugTurnCount || 0);
   if (outcome.jackpotAllLivingHeroes) {
     for (const hero of getHeroes(ctx)) {
       if ((hero.hp ?? 0) > 0) {
-        store[hero.uid] = {
-          mult: outcome.multiplier,
-          grantedTurn: grantTurn,
-          readyTurn: null,
-          usedThisTurn: false,
-        };
+        store[hero.uid] = armPowerAmpEntry(outcome.multiplier, grantTurn);
       }
     }
     for (const hero of getHeroes(ctx)) {
@@ -143,12 +148,7 @@ function activatePowerAmp(ctx, actorUID) {
     LogCombat(ctx, 'JACKPOT! All heroes get Power Amp x2!');
     return;
   }
-  store[actorUID] = {
-    mult: outcome.multiplier,
-    grantedTurn: grantTurn,
-    readyTurn: null,
-    usedThisTurn: false,
-  };
+  store[actorUID] = armPowerAmpEntry(outcome.multiplier, grantTurn);
   setPowerAmpVisual(g, actorUID, outcome.multiplier);
   LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} gained Power Amp x${outcome.multiplier}!`);
 }
@@ -159,8 +159,7 @@ function consumePowerAmpForEvent(ctx, actorUID, values) {
   const entry = store[actorUID];
   const mult = Number(entry?.mult || 0);
   if (!mult) return values;
-  const turnNow = Number(g.DebugTurnCount || 0);
-  if (entry && entry.readyTurn != null && turnNow >= Number(entry.readyTurn || 0)) {
+  if (entry && entry.state === 'active_this_turn') {
     entry.usedThisTurn = true;
     return values.map(v => Math.max(1, Math.ceil((v || 0) * mult)));
   }
@@ -202,12 +201,10 @@ function traceEnemySkillDecision(ctx, enemyUID, decision) {
 }
 
 export function GetPowerAmpMultiplierForActor(ctx, actorUID) {
-  const g = getGlobals(ctx);
   const store = ensurePowerAmpByUID(ctx);
   const entry = store[actorUID];
   if (!entry) return 0;
-  const turnNow = Number(g.DebugTurnCount || 0);
-  if (entry.readyTurn == null || turnNow < Number(entry.readyTurn || 0)) return 0;
+  if (entry.state !== 'active_this_turn') return 0;
   entry.usedThisTurn = true;
   return Number(entry.mult || 0);
 }
@@ -215,6 +212,7 @@ export function GetPowerAmpMultiplierForActor(ctx, actorUID) {
 export function ConsumePowerAmpForActor(ctx, actorUID) {
   const store = ensurePowerAmpByUID(ctx);
   const entry = store[actorUID];
+  if (!entry || entry.state !== 'active_this_turn') return 0;
   const mult = Number(entry?.mult || 0);
   if (!mult) return 0;
   return mult;
@@ -979,8 +977,7 @@ export function AdvanceTurn(ctx) {
   if (currentType === 0 && currentUID) {
     const store = ensurePowerAmpByUID(ctx);
     const entry = store[currentUID];
-    const turnNow = Number(g.DebugTurnCount || 0);
-    if (entry && entry.readyTurn != null && turnNow >= Number(entry.readyTurn || 0)) {
+    if (entry && entry.state === 'active_this_turn') {
       const mult = Number(entry.mult || 0);
       delete store[currentUID];
       if (mult) startPowerAmpFade(g, currentUID, mult);
@@ -1253,6 +1250,19 @@ export function UpdatePartyHPBar(ctx) {
 export function Sub_Energy(ctx) {
   const g = getGlobals(ctx);
   g.Player_Energy = (g.Player_Energy || 0) - 3;
+  // Yellow recolor path can bypass skill defer wiring; ensure deterministic turn handoff.
+  if (Number(g.MatchedColorValue || -1) === 3) {
+    const now = Number(g.time || 0);
+    g.DeferAdvance = 1;
+    g.AdvanceAfterAction = 1;
+    if (!Number(g.ActionOwnerUID || 0)) {
+      g.ActionOwnerUID = Number(GetCurrentTurn(ctx) || 0);
+    }
+    const lockUntil = Number(g.ActionLockUntil || 0);
+    if (lockUntil <= now) {
+      g.ActionLockUntil = now + 0.05;
+    }
+  }
 }
 
 export function Add_Energy(ctx) {
@@ -1819,6 +1829,7 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
     g.BuffRollSkillID = skillId;
     g.BuffRollActor = actorUID;
     g.BuffRollType = buffType;
+    g.BuffRollApplyStat = 0;
     const consumedBlue = Math.max(0, Number(consumedCount) || 0);
     const wallet = ensureAstralFlowWallet(ctx);
     g.AstralFlowWallet = wallet + consumedBlue;
@@ -2130,9 +2141,10 @@ export function HeroTurn(ctx, heroUID) {
   if (heroUID) g.CurrentHeroUID = heroUID;
   if (heroUID && store[heroUID]) {
     const entry = store[heroUID];
-    const turnNow = g.DebugTurnCount || 0;
-    if (entry.readyTurn == null && turnNow > (entry.grantedTurn || 0)) {
-      entry.readyTurn = turnNow;
+    const turnNow = Number(g.DebugTurnCount || 0);
+    if (entry.state === 'pending_next_own_turn' && turnNow > Number(entry.armedAtTurn || 0)) {
+      entry.state = 'active_this_turn';
+      entry.activatedAtTurn = turnNow;
       entry.usedThisTurn = false;
     }
   }
@@ -2428,7 +2440,10 @@ export function StartBuffRoll(ctx) {
   g.BuffRollEndsAt = 0;
   RegisterPartyBuffSlot(ctx, buffType);
   RefreshPartyBuffUI(ctx);
-  // Blue gem path keeps icon/scale-up promotion visuals but no direct buff apply.
+  if (g.BuffRollApplyStat === 1 && g.BuffRollSkillID) {
+    ExecuteSkill(ctx, g.BuffRollSkillID, g.BuffRollActor, 0);
+  }
+  g.BuffRollApplyStat = 0;
   g.BuffRollSkillID = '';
   g.BuffRollActor = 0;
   // Buff roll has no lunge/animation to clear busy; allow DeferAdvance to resolve.

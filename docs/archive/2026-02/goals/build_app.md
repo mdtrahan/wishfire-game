@@ -1,3 +1,11 @@
+# Archived (2026-02-23)
+
+Reason: Historical archive
+
+Original path: `goals/build_app.md`
+
+---
+
 # Build App — ATLAS Workflow
 
 ## Goal

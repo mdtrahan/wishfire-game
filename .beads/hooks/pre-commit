@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Keep Beads native hook behavior.
+if ! command -v bd >/dev/null 2>&1; then
+  echo "ERROR: bd command not found in PATH." >&2
+  exit 1
+fi
+
+bd hooks run pre-commit "$@"
+
+# Enforce issue-gated workflow.
+if ! bd ready --json >/tmp/bd_precommit_ready.json 2>/tmp/bd_precommit_ready.err; then
+  echo "ERROR: bd ready failed. Run 'bd ready' and select a valid issue first." >&2
+  cat /tmp/bd_precommit_ready.err >&2 || true
+  exit 1
+fi
+
+if ! bd list --status=in_progress --json >/tmp/bd_precommit_inprogress.json 2>/tmp/bd_precommit_inprogress.err; then
+  echo "ERROR: Unable to verify active in-progress issue." >&2
+  cat /tmp/bd_precommit_inprogress.err >&2 || true
+  exit 1
+fi
+
+if ! grep -q '"id"' /tmp/bd_precommit_inprogress.json; then
+  echo "ERROR: No in-progress Beads issue found. Set one issue to in_progress before commit." >&2
+  exit 1
+fi

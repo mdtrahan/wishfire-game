@@ -1,3 +1,11 @@
+# Archived (2026-02-23)
+
+Reason: Historical archive
+
+Original path: `governance/execution/dev-directives/TASK-010-execution-plan.md`
+
+---
+
 # TASK-010 Execution Plan
 
 ## Objective
