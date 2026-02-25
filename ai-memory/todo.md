@@ -58,6 +58,10 @@
 - [x] Await next explicit user request.
 - [x] Retry process-debt drift audit after claimed compliance completion and republish verdict artifact.
 - [x] Close TASK-020 on QA PASS and advance ACTIVE intake to TASK-019 with restored plan artifacts.
+- [x] Run next ready Beads issue: restore missing ART-001 map/tower assets and close ORKA-a09.
+- [x] Run next ready Beads issue: resolve ORKA-91y AstralFlow transition target mismatch no-op path.
+- [x] Run next ready Beads issue: close ORKA-lo7 by adding deterministic combat bootstrap seed flow.
+- [x] Run next ready Beads issue: close ORKA-69r blue gems to Astral wallet (no direct stat buff apply).
 - [ ] Await next explicit user request.
 
 ## Done (recent)
