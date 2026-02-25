@@ -4,6 +4,7 @@ import { CombatRuntimeGateway } from '../src/core/combatRuntimeGateway.js';
 
 const out = document.getElementById('output');
 const walletOut = document.getElementById('wallet-output');
+const astralWalletOut = document.getElementById('astral-wallet-output');
 const canvas = document.getElementById('view');
 const ctx = canvas.getContext('2d');
 const HARNESS_MODE = typeof window !== 'undefined' && window.location.search.includes('harness=true');
@@ -48,6 +49,33 @@ const STARTUP_DEBUG = (() => {
     return false;
   }
 })();
+const RUNTIME_FINGERPRINT = (() => {
+  const source = (typeof window !== 'undefined' && window.__ORKA_RUNTIME_FINGERPRINT__)
+    ? window.__ORKA_RUNTIME_FINGERPRINT__
+    : {};
+  const params = (typeof window !== 'undefined')
+    ? new URLSearchParams(window.location.search)
+    : null;
+  const qaTaskOverride = params
+    ? (params.get('qa_task') || params.get('task') || '').trim()
+    : '';
+  const worktree = source.worktree || 'unknown-worktree';
+  const branch = source.branch || 'unknown-branch';
+  const issueId = qaTaskOverride || source.issueId || 'ORKA-UNKNOWN';
+  const orka69rReady = Boolean(source.contracts && source.contracts.ORKA69R_READY);
+  return {
+    worktree,
+    branch,
+    issueId,
+    orka69rReady,
+    label: `WT:${worktree} BR:${branch} TASK:${issueId} 69R:${orka69rReady ? 'READY' : 'MISSING'}`,
+  };
+})();
+console.info(`[RUNTIME_FINGERPRINT] ${RUNTIME_FINGERPRINT.label}`);
+if (!RUNTIME_FINGERPRINT.orka69rReady) {
+  console.warn('[RUNTIME_CONTRACT] ORKA-69r not present in this build (69R:MISSING).');
+}
+
 function debugLayoutLog(message) {
   if (!DEBUG_LAYOUT) return;
   console.log(message);
@@ -1139,12 +1167,13 @@ function handleGemMatch(color) {
     callFunctionWithContext(fnContext, 'Sub_Energy');
     g.ApplyChainToNextDamage = g.ChainNumber >= 2 ? 1 : 0;
   } else if (color === 2) {
+    const consumedBlue = Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0;
     startGemMergeFx();
     g.MatchedColorValue = 0;
     g.IsAOEMatch = 0;
     g.SuppressChainUI = 0;
     callFunctionWithContext(fnContext, 'UpdateChain', 2);
-    callFunctionWithContext(fnContext, 'ResolveGemAction', 2, actorUID);
+    callFunctionWithContext(fnContext, 'ResolveGemAction', 2, actorUID, consumedBlue);
     callFunctionWithContext(fnContext, 'DestroyGem');
     callFunctionWithContext(fnContext, 'ClearMatchState');
     syncGemsFromGlobals();
@@ -2128,6 +2157,12 @@ async function main(){
       (canvas.width / dpr) / 2,
       (canvas.height / dpr) / 2
     );
+    if (layoutId === 'storyMock') {
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.font = '500 10px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(RUNTIME_FINGERPRINT.label, 8, 14);
+    }
     ctx.textAlign = 'left';
   }
   
@@ -4375,6 +4410,7 @@ function getStoryCardLiveLineState() {
     ];
     out.textContent = lines.join('\n');
     drawWalletHUD();
+    drawAstralWalletHUD();
   }
   function drawWalletHUD() {
     if (!walletOut) return;
@@ -4403,7 +4439,14 @@ function getStoryCardLiveLineState() {
     }
     walletOut.textContent = lines.join('\n');
   }
+  function drawAstralWalletHUD() {
+    if (!astralWalletOut) return;
+    const g = state.globals || {};
+    const total = Math.max(0, Number(g.AstralFlowWallet || 0));
+    astralWalletOut.textContent = `Astral Flow Wallet:\nTotal: ${total}`;
+  }
   drawFrame(); // initial render
+  drawAstralWalletHUD();
 
   const devSleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
   function getGemGateSnapshot() {
@@ -5258,6 +5301,7 @@ function getStoryCardLiveLineState() {
           energy: state.globals.Player_Energy || 0,
           maxEnergy: state.globals.Player_maxEnergy || 0,
           gold: state.globals.goldTotal || 0,
+          astralFlowWallet: state.globals.AstralFlowWallet || 0,
         },
         mapLayout: {
           panX: Number(gameState.mapLayout.panX || 0),

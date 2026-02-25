@@ -8,12 +8,16 @@
     html,body{height:100%;margin:0}
     body{font-family:system-ui,Segoe UI,Arial,sans-serif;display:flex;gap:8px;padding:8px;align-items:flex-start}
     canvas{border:1px solid #ccc;background:#fafafa;flex:0 0 auto}
-    #output,#wallet-output{white-space:pre-wrap;font-size:10px;max-width:280px;max-height:640px;overflow:auto;padding:6px;border:1px solid #ddd;background:#f5f5f5;flex:0 0 auto}
+    #output,#wallet-output,#astral-wallet-output{white-space:pre-wrap;font-size:10px;max-width:280px;max-height:640px;overflow:auto;padding:6px;border:1px solid #ddd;background:#f5f5f5;flex:0 0 auto}
+    .layout-side{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
   </style>
 </head>
 <body>
   <canvas id="view" width="360" height="640"></canvas>
-  <pre id="output">Loading...</pre>
+  <div class="layout-side">
+    <pre id="output">Loading...</pre>
+    <pre id="astral-wallet-output">Astral Flow Wallet: loading...</pre>
+  </div>
   <pre id="wallet-output">Wallet: loading...</pre>
   <script>
     (function() {
@@ -29,6 +33,7 @@
       });
     })();
   </script>
+  <script src="./runtime-fingerprint.js"></script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>

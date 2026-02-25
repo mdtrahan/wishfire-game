@@ -4,7 +4,8 @@
   "description": "This repository contains process docs (ATLAS/GOTCHA). The workspace has been initialized with a minimal GOTCHA layout and a sample deterministic tool.",
   "main": "index.js",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "serve:qa": "node tools/serve_web.js --port 8000"
   },
   "keywords": [],
   "author": "",
