@@ -423,6 +423,22 @@ function getHeroScreenRoster() {
   }));
 }
 
+function getHeroStatValue(hero, key) {
+  if (!hero) return 0;
+  const stats = hero.stats || {};
+  if (key === 'HP') {
+    return {
+      hp: Number(hero.hp || 0),
+      maxHP: Number(hero.maxHP || hero.hp || 0),
+    };
+  }
+  const nestedValue = Number(stats[key]);
+  if (Number.isFinite(nestedValue)) return nestedValue;
+  const topLevelValue = Number(hero[key]);
+  if (Number.isFinite(topLevelValue)) return topLevelValue;
+  return 0;
+}
+
 function normalizeHeroSelectionIndex() {
   const roster = getHeroScreenRoster();
   const maxIndex = Math.max(0, roster.length - 1);
@@ -1539,10 +1555,11 @@ async function main(){
         if (img) gemFrameImages[i] = img;
       }
       mapBackgroundImage = await loadImage(assetUrl('images/map-layout.png'));
-      heroCapsuleImages.Falie = await loadImage(assetUrl('images/cap_Falie.png'));
-      heroCapsuleImages.Huun = await loadImage(assetUrl('images/cap_Huun.png'));
-      heroCapsuleImages.Runa = await loadImage(assetUrl('images/cap_Runa.png'));
-      heroCapsuleImages.Kojonn = await loadImage(assetUrl('images/cap_Kojonn.png'));
+      for (const hero of CANONICAL_HERO_ROSTER) {
+        const key = String(hero.name || '');
+        if (!key) continue;
+        heroCapsuleImages[key] = await loadImage(assetUrl(`images/cap_${key}.png`));
+      }
       plusIconImage = await loadImage(assetUrl('images/plus.png'));
       minusIconImage = await loadImage(assetUrl('images/minus.png'));
     };
@@ -2233,9 +2250,7 @@ async function main(){
         stats: { ATK: 0, DEF: 0, MAG: 0, RES: 0, SPD: 0 },
       };
       const heroName = String(hero.name || 'Hero');
-      const stats = hero.stats || {};
-      const heroHP = Number(hero.hp || 0);
-      const heroMaxHP = Number(hero.maxHP || 0);
+      const heroHPValue = getHeroStatValue(hero, 'HP');
       const viewWidth = canvas.width / dpr;
       const viewHeight = canvas.height / dpr;
       const pad = 14;
@@ -2347,8 +2362,8 @@ async function main(){
         for (let col = 0; col < 2; col++) {
           const statKey = HERO_STAT_KEYS[statIdx];
           const statValue = statKey === 'HP'
-            ? `${heroHP}/${heroMaxHP}`
-            : `${Number(stats[statKey] || 0)}`;
+            ? `${heroHPValue.hp}/${heroHPValue.maxHP}`
+            : `${getHeroStatValue(hero, statKey)}`;
           const statBox = {
             x: statArea.x + col * (statW + statGap),
             y: statArea.y + row * (statH + statGap),
