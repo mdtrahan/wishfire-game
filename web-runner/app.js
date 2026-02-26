@@ -1555,10 +1555,10 @@ async function main(){
     };
 
     const loadCoreVisuals = async () => {
-      heroPortraitImages.Falie = await loadImage(assetUrl('images/Falie.png'));
-      heroPortraitImages.Huun = await loadImage(assetUrl('images/Huun.png'));
-      heroPortraitImages.Runa = await loadImage(assetUrl('images/Runa.png'));
-      heroPortraitImages.Kojonn = await loadImage(assetUrl('images/Kojonn.png'));
+      heroPortraitImages.Falie = await loadImage(assetUrl('images/cap_Falie.png'));
+      heroPortraitImages.Huun = await loadImage(assetUrl('images/cap_Huun.png'));
+      heroPortraitImages.Runa = await loadImage(assetUrl('images/cap_Runa.png'));
+      heroPortraitImages.Kojonn = await loadImage(assetUrl('images/cap_Kojonn.png'));
       heroSelectorImage = await loadImage(assetUrl('images/h_selector-animation 1-000.png'));
       for (let i = 0; i < 8; i++) {
         const imgPath = assetUrl(`images/gem-animation 1-${String(i).padStart(3, '0')}.png`);
