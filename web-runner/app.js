@@ -318,6 +318,9 @@ const gameState = {
     initialized: false,
     trigger: '',
   },
+  heroScreen: {
+    hitZones: null,
+  },
   task015Trace: {
     storycardPlacement: [],
     yellowQueue: [],
@@ -396,6 +399,46 @@ const CANONICAL_HERO_ROSTER = [
   { name: 'Runa', hp: 30, maxHP: 30, ATK: 8, DEF: 8, MAG: 28, RES: 20, SPD: 11, attackType: 'magic' },
   { name: 'Kojonn', hp: 40, maxHP: 40, ATK: 12, DEF: 14, MAG: 22, RES: 18, SPD: 14, attackType: 'magic' },
 ];
+const HERO_STAT_KEYS = ['ATK', 'DEF', 'MAG', 'RES', 'SPD', 'HP'];
+
+function getHeroScreenRoster() {
+  const runtimeHeroes = (state.entities || [])
+    .filter(e => e && e.kind === 'hero')
+    .sort((a, b) => Number(a.heroIndex || 0) - Number(b.heroIndex || 0));
+  if (runtimeHeroes.length) return runtimeHeroes;
+  return CANONICAL_HERO_ROSTER.map((hero, idx) => ({
+    uid: idx + 1,
+    kind: 'hero',
+    name: hero.name,
+    heroIndex: idx,
+    hp: Number(hero.hp || 0),
+    maxHP: Number(hero.maxHP || hero.hp || 0),
+    stats: {
+      ATK: Number(hero.ATK || 0),
+      DEF: Number(hero.DEF || 0),
+      MAG: Number(hero.MAG || 0),
+      RES: Number(hero.RES || 0),
+      SPD: Number(hero.SPD || 0),
+    },
+  }));
+}
+
+function normalizeHeroSelectionIndex() {
+  const roster = getHeroScreenRoster();
+  const maxIndex = Math.max(0, roster.length - 1);
+  const selected = Number(gameState.selectedHero || 0);
+  if (!Number.isFinite(selected)) {
+    gameState.selectedHero = 0;
+  } else {
+    gameState.selectedHero = Math.max(0, Math.min(maxIndex, Math.floor(selected)));
+  }
+  return gameState.selectedHero;
+}
+
+function isPointInRect(mx, my, rect) {
+  if (!rect) return false;
+  return mx >= rect.x && mx <= (rect.x + rect.w) && my >= rect.y && my <= (rect.y + rect.h);
+}
 
 function ensureTask011Audit() {
   if (!gameState.task011Audit) {
@@ -1365,6 +1408,9 @@ async function main(){
   let buffIconFrameImages = {};
   let debuffIconImages = {};
   let mapBackgroundImage = null;
+  let heroCapsuleImages = {};
+  let plusIconImage = null;
+  let minusIconImage = null;
   const calculateGridBounds = (layoutInstances) => {
     const placeholders = (layoutInstances || []).filter(inst => inst && inst.type === 'grid_placeholder' && inst.world);
     if (!placeholders.length) {
@@ -1447,6 +1493,9 @@ async function main(){
     buffIconFrameImages = {};
     debuffIconImages = {};
     mapBackgroundImage = null;
+    heroCapsuleImages = {};
+    plusIconImage = null;
+    minusIconImage = null;
     let loadedCount = 0;
     const failedImages = [];
     const loadBaseSprites = async () => {
@@ -1490,6 +1539,12 @@ async function main(){
         if (img) gemFrameImages[i] = img;
       }
       mapBackgroundImage = await loadImage(assetUrl('images/map-layout.png'));
+      heroCapsuleImages.Falie = await loadImage(assetUrl('images/cap_Falie.png'));
+      heroCapsuleImages.Huun = await loadImage(assetUrl('images/cap_Huun.png'));
+      heroCapsuleImages.Runa = await loadImage(assetUrl('images/cap_Runa.png'));
+      heroCapsuleImages.Kojonn = await loadImage(assetUrl('images/cap_Kojonn.png'));
+      plusIconImage = await loadImage(assetUrl('images/plus.png'));
+      minusIconImage = await loadImage(assetUrl('images/minus.png'));
     };
 
     const loadDeferredVisuals = async () => {
@@ -1554,7 +1609,7 @@ async function main(){
 
     layoutState.registerLayout({
       id: 'combat',
-      allowedTransitions: ['base', 'shop', 'intro', 'astralOverlay', 'mapLayout'],
+      allowedTransitions: ['base', 'shop', 'intro', 'astralOverlay', 'mapLayout', 'heroLayout'],
       async onEnter({ resumeSnapshot }) {
         const hasRuntimeData =
           Array.isArray(instances) && instances.length > 0 &&
@@ -1619,6 +1674,20 @@ async function main(){
       },
       onActive() {},
       onExit() { return null; },
+    });
+    layoutState.registerLayout({
+      id: 'heroLayout',
+      allowedTransitions: ['combat'],
+      onEnter() {
+        gameState.overlayVisible = false;
+        gameState.heroScreen.hitZones = null;
+        normalizeHeroSelectionIndex();
+      },
+      onActive() {},
+      onExit() {
+        gameState.heroScreen.hitZones = null;
+        return null;
+      },
     });
     layoutState.registerLayout({
       id: 'base',
@@ -1697,6 +1766,14 @@ async function main(){
       }
       console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->2', trigger: 'astral-flow-click' });
       await layoutState.requestLayoutChange('astralOverlay', 'nav-astral-flow');
+      return;
+    }
+    if (label === 'Hero') {
+      if (layoutState.getActiveLayoutId() !== 'combat') {
+        return;
+      }
+      gameState.overlayVisible = false;
+      await layoutState.requestLayoutChange('heroLayout', 'nav-hero');
       return;
     }
     gameState.overlayVisible = true;
@@ -2144,6 +2221,174 @@ async function main(){
       ctx.fillStyle = '#ffffff';
       ctx.font = '500 14px Arial';
       ctx.fillText('Map Layout (drag to pan)', 14, viewHeight - 18);
+      return;
+    }
+    if (layoutId === 'heroLayout') {
+      normalizeHeroSelectionIndex();
+      const roster = getHeroScreenRoster();
+      const hero = roster[gameState.selectedHero] || roster[0] || {
+        name: 'Hero',
+        hp: 0,
+        maxHP: 0,
+        stats: { ATK: 0, DEF: 0, MAG: 0, RES: 0, SPD: 0 },
+      };
+      const heroName = String(hero.name || 'Hero');
+      const stats = hero.stats || {};
+      const heroHP = Number(hero.hp || 0);
+      const heroMaxHP = Number(hero.maxHP || 0);
+      const viewWidth = canvas.width / dpr;
+      const viewHeight = canvas.height / dpr;
+      const pad = 14;
+      const panelX = pad;
+      const panelY = 14;
+      const panelW = viewWidth - (pad * 2);
+      const panelH = viewHeight - 28;
+      const closeW = 34;
+      const closeH = 34;
+      const closeX = panelX + panelW - closeW - 10;
+      const closeY = panelY + 10;
+      const portraitBox = { x: panelX + 12, y: panelY + 52, w: 132, h: 176 };
+      const nameBar = { x: portraitBox.x, y: portraitBox.y + portraitBox.h + 10, w: portraitBox.w, h: 30 };
+      const statArea = { x: portraitBox.x + portraitBox.w + 12, y: portraitBox.y, w: panelW - portraitBox.w - 36, h: 176 };
+      const statGap = 8;
+      const statW = Math.floor((statArea.w - statGap) / 2);
+      const statH = Math.floor((statArea.h - (statGap * 2)) / 3);
+      const skillRow = { x: panelX + 12, y: nameBar.y + nameBar.h + 12, w: panelW - 24, h: 38 };
+      const skillGap = 10;
+      const cardW = skillRow.w;
+      const cardH = 64;
+      const cardX = skillRow.x;
+      const firstCardY = skillRow.y + skillRow.h + 10;
+      const cards = [
+        { x: cardX, y: firstCardY, w: cardW, h: cardH },
+        { x: cardX, y: firstCardY + cardH + skillGap, w: cardW, h: cardH },
+        { x: cardX, y: firstCardY + (cardH + skillGap) * 2, w: cardW, h: cardH },
+      ];
+      const arrowSize = 22;
+      const minusZone = {
+        x: skillRow.x + 8,
+        y: skillRow.y + (skillRow.h - arrowSize) / 2,
+        w: arrowSize,
+        h: arrowSize,
+      };
+      const plusZone = {
+        x: skillRow.x + skillRow.w - arrowSize - 8,
+        y: skillRow.y + (skillRow.h - arrowSize) / 2,
+        w: arrowSize,
+        h: arrowSize,
+      };
+      gameState.heroScreen.hitZones = {
+        close: { x: closeX, y: closeY, w: closeW, h: closeH },
+        minus: minusZone,
+        plus: plusZone,
+      };
+
+      const drawPanelBox = (box, fill, stroke) => {
+        ctx.fillStyle = fill;
+        ctx.fillRect(box.x, box.y, box.w, box.h);
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(box.x, box.y, box.w, box.h);
+      };
+      const drawIconOrFallback = (img, zone, fallbackText) => {
+        if (img) {
+          ctx.drawImage(img, zone.x, zone.y, zone.w, zone.h);
+          return;
+        }
+        drawPanelBox(zone, '#ffffff', '#5e6d82');
+        ctx.fillStyle = '#1c2431';
+        ctx.font = '600 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(fallbackText, zone.x + zone.w / 2, zone.y + zone.h / 2);
+        ctx.textBaseline = 'alphabetic';
+      };
+
+      ctx.clearRect(0, 0, viewWidth, viewHeight);
+      const gradient = ctx.createLinearGradient(0, 0, 0, viewHeight);
+      gradient.addColorStop(0, '#d9e5f4');
+      gradient.addColorStop(1, '#c9d9ed');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, viewWidth, viewHeight);
+      drawPanelBox({ x: panelX, y: panelY, w: panelW, h: panelH }, '#eef3fb', '#6f829d');
+      drawPanelBox({ x: closeX, y: closeY, w: closeW, h: closeH }, '#dfe8f7', '#5e6d82');
+      ctx.fillStyle = '#2a3850';
+      ctx.font = '600 18px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('X', closeX + closeW / 2, closeY + closeH / 2);
+      ctx.textBaseline = 'alphabetic';
+
+      drawPanelBox(portraitBox, '#d8e4f8', '#5e6d82');
+      const capImg = heroCapsuleImages[heroName] || null;
+      if (capImg) {
+        const maxW = portraitBox.w - 8;
+        const maxH = portraitBox.h - 8;
+        const scale = Math.min(maxW / capImg.width, maxH / capImg.height);
+        const drawW = capImg.width * scale;
+        const drawH = capImg.height * scale;
+        const drawX = portraitBox.x + (portraitBox.w - drawW) / 2;
+        const drawY = portraitBox.y + (portraitBox.h - drawH) / 2;
+        ctx.drawImage(capImg, drawX, drawY, drawW, drawH);
+      } else {
+        ctx.fillStyle = '#5b6f8c';
+        ctx.font = '600 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Portrait', portraitBox.x + portraitBox.w / 2, portraitBox.y + portraitBox.h / 2);
+      }
+      drawPanelBox(nameBar, '#f8fbff', '#5e6d82');
+      ctx.fillStyle = '#2a3850';
+      ctx.font = '700 15px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(heroName, nameBar.x + nameBar.w / 2, nameBar.y + 20);
+
+      let statIdx = 0;
+      for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 2; col++) {
+          const statKey = HERO_STAT_KEYS[statIdx];
+          const statValue = statKey === 'HP'
+            ? `${heroHP}/${heroMaxHP}`
+            : `${Number(stats[statKey] || 0)}`;
+          const statBox = {
+            x: statArea.x + col * (statW + statGap),
+            y: statArea.y + row * (statH + statGap),
+            w: statW,
+            h: statH,
+          };
+          drawPanelBox(statBox, '#f8fbff', '#5e6d82');
+          ctx.fillStyle = '#415875';
+          ctx.font = '600 11px Arial';
+          ctx.textAlign = 'left';
+          ctx.fillText(statKey, statBox.x + 8, statBox.y + 14);
+          ctx.fillStyle = '#223147';
+          ctx.font = '700 14px Arial';
+          ctx.textAlign = 'right';
+          ctx.fillText(statValue, statBox.x + statBox.w - 8, statBox.y + statBox.h - 10);
+          statIdx += 1;
+        }
+      }
+
+      drawPanelBox(skillRow, '#f8fbff', '#5e6d82');
+      drawIconOrFallback(minusIconImage, minusZone, '-');
+      drawIconOrFallback(plusIconImage, plusZone, '+');
+      ctx.fillStyle = '#2a3850';
+      ctx.font = '600 14px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Skill Points 0', skillRow.x + skillRow.w / 2, skillRow.y + 24);
+
+      cards.forEach((card, idx) => {
+        drawPanelBox(card, '#f8fbff', '#5e6d82');
+        const accent = ['#8eb1e2', '#95c6d0', '#d2b38a'][idx] || '#9aa7b8';
+        ctx.fillStyle = accent;
+        ctx.fillRect(card.x + 6, card.y + 8, 38, card.h - 16);
+        ctx.fillStyle = '#25354c';
+        ctx.font = '600 12px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(`Skill ${idx + 1} Placeholder`, card.x + 52, card.y + 26);
+        ctx.font = '500 10px Arial';
+        ctx.fillStyle = '#4a5a70';
+        ctx.fillText('Description placeholder', card.x + 52, card.y + 42);
+      });
       return;
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -4752,6 +4997,26 @@ function getStoryCardLiveLineState() {
       drawFrame();
       return;
     }
+    if (activeLayoutId === 'heroLayout') {
+      const zones = (gameState.heroScreen && gameState.heroScreen.hitZones) || {};
+      if (isPointInRect(mx, my, zones.close)) {
+        layoutState.requestLayoutChange('combat', 'hero-close-button').catch((err) => {
+          console.error('[LAYOUT_PHASE1] hero return failed', err);
+        });
+      } else if (isPointInRect(mx, my, zones.minus)) {
+        const roster = getHeroScreenRoster();
+        if (roster.length) {
+          gameState.selectedHero = (normalizeHeroSelectionIndex() + roster.length - 1) % roster.length;
+        }
+      } else if (isPointInRect(mx, my, zones.plus)) {
+        const roster = getHeroScreenRoster();
+        if (roster.length) {
+          gameState.selectedHero = (normalizeHeroSelectionIndex() + 1) % roster.length;
+        }
+      }
+      drawFrame();
+      return;
+    }
 
     if (layoutHarnessEnabled && harnessLayoutState && harnessInputDomains) {
       const activeLayout = harnessLayoutState.getActiveLayoutId();
@@ -4807,7 +5072,7 @@ function getStoryCardLiveLineState() {
     if (navHit) {
       const labelName = labelMap[navHit.inst.type] || '';
       const navBlockedBySelection = gameState.selectedGems.length > 0 || gameState.selectionLocked || state.globals.CanPickGems === false;
-      if (labelName === 'AstralFlow' || !navBlockedBySelection) {
+      if (labelName === 'AstralFlow' || labelName === 'Hero' || !navBlockedBySelection) {
         inputDomains.emit(
           layoutState.getActiveLayoutId(),
           'nav:clicked',
@@ -5308,6 +5573,15 @@ function getStoryCardLiveLineState() {
           panY: Number(gameState.mapLayout.panY || 0),
           warMeter: Number(gameState.mapLayout.warMeter || 0),
           render: gameState.mapLayout.lastRender || null,
+        },
+        heroScreen: {
+          selectedHero: Number(gameState.selectedHero || 0),
+          activeHeroName: (() => {
+            const roster = getHeroScreenRoster();
+            const idx = normalizeHeroSelectionIndex();
+            const hero = roster[idx];
+            return hero ? String(hero.name || '') : '';
+          })(),
         },
         flags: {
           canPickGems: state.globals.CanPickGems,
