@@ -2279,23 +2279,23 @@ async function main(){
         { x: cardX, y: firstCardY + cardH + skillGap, w: cardW, h: cardH },
         { x: cardX, y: firstCardY + (cardH + skillGap) * 2, w: cardW, h: cardH },
       ];
-      const arrowSize = 22;
-      const minusZone = {
-        x: skillRow.x + 8,
-        y: skillRow.y + (skillRow.h - arrowSize) / 2,
+      const arrowSize = 24;
+      const leftArrowZone = {
+        x: Math.max(panelX + 4, portraitBox.x - arrowSize - 6),
+        y: portraitBox.y + (portraitBox.h - arrowSize) / 2,
         w: arrowSize,
         h: arrowSize,
       };
-      const plusZone = {
-        x: skillRow.x + skillRow.w - arrowSize - 8,
-        y: skillRow.y + (skillRow.h - arrowSize) / 2,
+      const rightArrowZone = {
+        x: portraitBox.x + portraitBox.w + 6,
+        y: portraitBox.y + (portraitBox.h - arrowSize) / 2,
         w: arrowSize,
         h: arrowSize,
       };
       gameState.heroScreen.hitZones = {
         close: { x: closeX, y: closeY, w: closeW, h: closeH },
-        minus: minusZone,
-        plus: plusZone,
+        prevHero: leftArrowZone,
+        nextHero: rightArrowZone,
       };
 
       const drawPanelBox = (box, fill, stroke) => {
@@ -2305,20 +2305,6 @@ async function main(){
         ctx.lineWidth = 1;
         ctx.strokeRect(box.x, box.y, box.w, box.h);
       };
-      const drawIconOrFallback = (img, zone, fallbackText) => {
-        if (img) {
-          ctx.drawImage(img, zone.x, zone.y, zone.w, zone.h);
-          return;
-        }
-        drawPanelBox(zone, '#ffffff', '#5e6d82');
-        ctx.fillStyle = '#1c2431';
-        ctx.font = '600 14px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(fallbackText, zone.x + zone.w / 2, zone.y + zone.h / 2);
-        ctx.textBaseline = 'alphabetic';
-      };
-
       ctx.clearRect(0, 0, viewWidth, viewHeight);
       const gradient = ctx.createLinearGradient(0, 0, 0, viewHeight);
       gradient.addColorStop(0, '#d9e5f4');
@@ -2335,6 +2321,15 @@ async function main(){
       ctx.textBaseline = 'alphabetic';
 
       drawPanelBox(portraitBox, '#d8e4f8', '#5e6d82');
+      drawPanelBox(leftArrowZone, '#f8fbff', '#5e6d82');
+      drawPanelBox(rightArrowZone, '#f8fbff', '#5e6d82');
+      ctx.fillStyle = '#2a3850';
+      ctx.font = '700 16px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('<', leftArrowZone.x + leftArrowZone.w / 2, leftArrowZone.y + leftArrowZone.h / 2);
+      ctx.fillText('>', rightArrowZone.x + rightArrowZone.w / 2, rightArrowZone.y + rightArrowZone.h / 2);
+      ctx.textBaseline = 'alphabetic';
       const capImg = heroCapsuleImages[heroName] || null;
       if (capImg) {
         const maxW = portraitBox.w - 8;
@@ -2384,8 +2379,6 @@ async function main(){
       }
 
       drawPanelBox(skillRow, '#f8fbff', '#5e6d82');
-      drawIconOrFallback(minusIconImage, minusZone, '-');
-      drawIconOrFallback(plusIconImage, plusZone, '+');
       ctx.fillStyle = '#2a3850';
       ctx.font = '600 14px Arial';
       ctx.textAlign = 'center';
@@ -5018,12 +5011,12 @@ function getStoryCardLiveLineState() {
         layoutState.requestLayoutChange('combat', 'hero-close-button').catch((err) => {
           console.error('[LAYOUT_PHASE1] hero return failed', err);
         });
-      } else if (isPointInRect(mx, my, zones.minus)) {
+      } else if (isPointInRect(mx, my, zones.prevHero)) {
         const roster = getHeroScreenRoster();
         if (roster.length) {
           gameState.selectedHero = (normalizeHeroSelectionIndex() + roster.length - 1) % roster.length;
         }
-      } else if (isPointInRect(mx, my, zones.plus)) {
+      } else if (isPointInRect(mx, my, zones.nextHero)) {
         const roster = getHeroScreenRoster();
         if (roster.length) {
           gameState.selectedHero = (normalizeHeroSelectionIndex() + 1) % roster.length;
