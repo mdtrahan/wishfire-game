@@ -56,11 +56,14 @@ build_function_ranges() {
   local file="$1"
   awk '
     {
-      if (match($0, /^[[:space:]]*(export[[:space:]]+)?function[[:space:]]+([A-Za-z0-9_$]+)[[:space:]]*\(/, m)) {
+      if ($0 ~ /^[[:space:]]*(export[[:space:]]+)?function[[:space:]]+[A-Za-z0-9_$]+[[:space:]]*\(/) {
         if (name != "") {
           print name "\t" start "\t" NR-1
         }
-        name = m[2]
+        line = $0
+        sub(/^[[:space:]]*(export[[:space:]]+)?function[[:space:]]+/, "", line)
+        name = line
+        sub(/[[:space:]]*\(.*/, "", name)
         start = NR
       }
     }
@@ -76,12 +79,14 @@ changed_lines_for_file() {
   local file="$1"
   git diff --cached -U0 -- "$file" | awk '
     /^@@ / {
-      if (match($0, /\+([0-9]+)(,([0-9]+))?/, m)) {
-        s = m[1] + 0
-        c = (m[3] == "" ? 1 : m[3] + 0)
-        if (c > 0) {
-          for (i = 0; i < c; i++) print s + i
-        }
+      line = $0
+      sub(/^.*\+/, "", line)
+      sub(/ .*/, "", line)
+      n = split(line, arr, ",")
+      s = arr[1] + 0
+      c = (n < 2 || arr[2] == "" ? 1 : arr[2] + 0)
+      if (c > 0) {
+        for (i = 0; i < c; i++) print s + i
       }
     }
   '
