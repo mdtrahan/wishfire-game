@@ -2264,12 +2264,18 @@ async function main(){
       const heroHPValue = getHeroStatValue(hero, 'HP');
       const viewWidth = canvas.width / dpr;
       const viewHeight = canvas.height / dpr;
+      const ART_W = 360;
+      const ART_H = 640;
+      const artOffsetX = Math.round((viewWidth - ART_W) / 2);
+      const artOffsetY = Math.round((viewHeight - ART_H) / 2);
+      const px = (x) => artOffsetX + x;
+      const py = (y) => artOffsetY + y;
       const outerPad = 12;
-      const portraitW = 128;
-      const portraitH = 124;
+      const portraitW = 116;
+      const portraitH = 90;
       const portraitBox = {
-        x: Math.round((viewWidth - portraitW) / 2),
-        y: 56,
+        x: px(Math.round((ART_W - portraitW) / 2)),
+        y: py(44),
         w: portraitW,
         h: portraitH,
       };
@@ -2287,46 +2293,49 @@ async function main(){
         h: arrowSize,
       };
       const namePill = {
-        x: Math.round((viewWidth - 124) / 2),
-        y: portraitBox.y + portraitBox.h + 10,
+        x: px(114),
+        y: py(144),
         w: 124,
         h: 30,
       };
       const statLabels = ['HP', 'ATK', 'DEF', 'MAG', 'RES', 'SPD'];
-      const statsX = outerPad;
-      const statsW = viewWidth - (outerPad * 2);
+      const statsX = px(outerPad);
+      const statsW = ART_W - (outerPad * 2);
       const statGap = 4;
       const statBoxW = Math.floor((statsW - (statGap * 5)) / 6);
-      const statLabelRowY = namePill.y + namePill.h + 10;
+      const statLabelRowY = py(184);
       const statLabelH = 20;
-      const statValueRowY = statLabelRowY + statLabelH + 4;
+      const statValueRowY = py(208);
       const statValueH = 24;
       const skillPointsRow = {
-        x: outerPad,
-        y: statValueRowY + statValueH + 10,
-        w: viewWidth - (outerPad * 2),
-        h: 30,
+        x: px(12),
+        y: py(244),
+        w: 336,
+        h: 32,
       };
       const skillPointsChip = {
-        x: skillPointsRow.x + skillPointsRow.w - 48,
+        x: skillPointsRow.x + skillPointsRow.w - 50,
         y: skillPointsRow.y + 4,
-        w: 40,
-        h: 22,
+        w: 42,
+        h: 24,
       };
+      const closeRadius = 14;
+      const closeCenterX = px(180);
+      const closeCenterY = py(624);
       const closeBtn = {
-        x: Math.round((viewWidth - 128) / 2),
-        y: viewHeight - 42,
-        w: 128,
-        h: 26,
+        x: closeCenterX - closeRadius,
+        y: closeCenterY - closeRadius,
+        w: closeRadius * 2,
+        h: closeRadius * 2,
       };
-      const cardsTop = skillPointsRow.y + skillPointsRow.h + 10;
-      const cardsBottom = closeBtn.y - 10;
+      const cardW = 336;
+      const cardH = 79.53;
       const cardGap = 8;
-      const cardH = Math.floor((cardsBottom - cardsTop - (cardGap * 2)) / 3);
+      const cardsTop = py(284);
       const cards = [
-        { x: outerPad, y: cardsTop, w: viewWidth - (outerPad * 2), h: cardH },
-        { x: outerPad, y: cardsTop + cardH + cardGap, w: viewWidth - (outerPad * 2), h: cardH },
-        { x: outerPad, y: cardsTop + ((cardH + cardGap) * 2), w: viewWidth - (outerPad * 2), h: cardH },
+        { x: px(12), y: cardsTop, w: cardW, h: cardH },
+        { x: px(12), y: cardsTop + cardH + cardGap, w: cardW, h: cardH },
+        { x: px(12), y: cardsTop + ((cardH + cardGap) * 2), w: cardW, h: cardH },
       ];
       const roundRect = (x, y, w, h, r, fill, stroke) => {
         const radius = Math.max(0, Math.min(r, Math.min(w, h) / 2));
@@ -2413,38 +2422,33 @@ async function main(){
       }
 
       roundRect(skillPointsRow.x, skillPointsRow.y, skillPointsRow.w, skillPointsRow.h, 14, '#eaf0fb', '#6f829d');
-      roundRect(skillPointsChip.x, skillPointsChip.y, skillPointsChip.w, skillPointsChip.h, 10, '#ffffff', '#6f829d');
+      roundRect(skillPointsChip.x, skillPointsChip.y, skillPointsChip.w, skillPointsChip.h, 11, '#ffffff', '#6f829d');
       ctx.fillStyle = '#2a3850';
       ctx.font = '600 14px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('Skill Points', skillPointsRow.x + 90, skillPointsRow.y + 21);
+      ctx.fillText('Skill Points', skillPointsRow.x + 86, skillPointsRow.y + 22);
       ctx.fillStyle = '#25354c';
       ctx.font = '700 12px Arial';
       ctx.fillText('0', skillPointsChip.x + skillPointsChip.w / 2, skillPointsChip.y + 15);
 
       cards.forEach((card, idx) => {
         roundRect(card.x, card.y, card.w, card.h, 12, '#f4f7fc', '#6f829d');
-        const titleBar = {
-          x: card.x + 8,
-          y: card.y + 8,
-          w: card.w - 16,
-          h: 18,
-        };
+        const titleBar = { x: card.x + 8, y: card.y + 8, w: card.w - 16, h: 18 };
         roundRect(titleBar.x, titleBar.y, titleBar.w, titleBar.h, 8, '#dbe4f4', null);
         const iconTile = {
           x: card.x + 8,
-          y: card.y + 30,
+          y: card.y + 24,
           w: 36,
-          h: Math.max(34, card.h - 38),
+          h: 48,
         };
         const accent = ['#8eb1e2', '#95c6d0', '#d2b38a'][idx] || '#9aa7b8';
         ctx.fillStyle = accent;
         roundRect(iconTile.x, iconTile.y, iconTile.w, iconTile.h, 6, accent, null);
-        const controlsY = card.y + card.h - 24;
-        const controlSize = 14;
-        const plusZone = { x: card.x + card.w - 18, y: controlsY, w: controlSize, h: controlSize };
-        const valueZone = { x: plusZone.x - 20, y: controlsY, w: 16, h: controlSize };
-        const minusZone = { x: valueZone.x - 20, y: controlsY, w: controlSize, h: controlSize };
+        const controlsY = card.y + card.h - 18;
+        const controlSize = 12;
+        const plusZone = { x: card.x + card.w - 16, y: controlsY, w: controlSize, h: controlSize };
+        const valueZone = { x: plusZone.x - 18, y: controlsY, w: 14, h: controlSize };
+        const minusZone = { x: valueZone.x - 18, y: controlsY, w: controlSize, h: controlSize };
         if (minusIconImage) {
           ctx.drawImage(minusIconImage, minusZone.x, minusZone.y, minusZone.w, minusZone.h);
         } else {
@@ -2452,13 +2456,13 @@ async function main(){
           ctx.fillStyle = '#2a3850';
           ctx.font = '700 10px Arial';
           ctx.textAlign = 'center';
-          ctx.fillText('-', minusZone.x + minusZone.w / 2, minusZone.y + 10);
+          ctx.fillText('-', minusZone.x + minusZone.w / 2, minusZone.y + 9);
         }
         roundRect(valueZone.x, valueZone.y, valueZone.w, valueZone.h, 3, '#ffffff', '#6f829d');
         ctx.fillStyle = '#25354c';
         ctx.font = '700 10px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('1', valueZone.x + valueZone.w / 2, valueZone.y + 10);
+        ctx.fillText('1', valueZone.x + valueZone.w / 2, valueZone.y + 9);
         if (plusIconImage) {
           ctx.drawImage(plusIconImage, plusZone.x, plusZone.y, plusZone.w, plusZone.h);
         } else {
@@ -2466,7 +2470,7 @@ async function main(){
           ctx.fillStyle = '#2a3850';
           ctx.font = '700 10px Arial';
           ctx.textAlign = 'center';
-          ctx.fillText('+', plusZone.x + plusZone.w / 2, plusZone.y + 10);
+          ctx.fillText('+', plusZone.x + plusZone.w / 2, plusZone.y + 9);
         }
         ctx.fillStyle = '#25354c';
         ctx.font = '700 11px Arial';
@@ -2477,14 +2481,14 @@ async function main(){
         ctx.fillText(title, card.x + 52, card.y + 21);
         ctx.font = '500 9px Arial';
         ctx.fillStyle = '#4a5a70';
-        ctx.fillText('Description placeholder', card.x + 52, card.y + 40);
-        ctx.fillText('Multiline body text block', card.x + 52, card.y + 53);
+        ctx.fillText('Description placeholder', card.x + 52, card.y + 38);
+        ctx.fillText('Multiline body text block', card.x + 52, card.y + 50);
       });
-      roundRect(closeBtn.x, closeBtn.y, closeBtn.w, closeBtn.h, 12, '#eaf0fb', '#6f829d');
+      roundRect(closeBtn.x, closeBtn.y, closeBtn.w, closeBtn.h, closeRadius, '#eaf0fb', '#6f829d');
       ctx.fillStyle = '#2a3850';
-      ctx.font = '700 13px Arial';
+      ctx.font = '700 16px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('Close', closeBtn.x + closeBtn.w / 2, closeBtn.y + 17);
+      ctx.fillText('X', closeBtn.x + closeBtn.w / 2, closeBtn.y + closeRadius + 5);
       return;
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
