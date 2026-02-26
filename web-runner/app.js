@@ -2264,35 +2264,18 @@ async function main(){
       const heroHPValue = getHeroStatValue(hero, 'HP');
       const viewWidth = canvas.width / dpr;
       const viewHeight = canvas.height / dpr;
-      const pad = 14;
-      const panelX = pad;
-      const panelY = 14;
-      const panelW = viewWidth - (pad * 2);
-      const panelH = viewHeight - 28;
-      const closeW = 34;
-      const closeH = 34;
-      const closeX = panelX + panelW - closeW - 10;
-      const closeY = panelY + 10;
-      const portraitBox = { x: panelX + 12, y: panelY + 52, w: 132, h: 176 };
-      const nameBar = { x: portraitBox.x, y: portraitBox.y + portraitBox.h + 10, w: portraitBox.w, h: 30 };
-      const statArea = { x: portraitBox.x + portraitBox.w + 12, y: portraitBox.y, w: panelW - portraitBox.w - 36, h: 176 };
-      const statGap = 8;
-      const statW = Math.floor((statArea.w - statGap) / 2);
-      const statH = Math.floor((statArea.h - (statGap * 2)) / 3);
-      const skillRow = { x: panelX + 12, y: nameBar.y + nameBar.h + 12, w: panelW - 24, h: 38 };
-      const skillGap = 10;
-      const cardW = skillRow.w;
-      const cardH = 64;
-      const cardX = skillRow.x;
-      const firstCardY = skillRow.y + skillRow.h + 10;
-      const cards = [
-        { x: cardX, y: firstCardY, w: cardW, h: cardH },
-        { x: cardX, y: firstCardY + cardH + skillGap, w: cardW, h: cardH },
-        { x: cardX, y: firstCardY + (cardH + skillGap) * 2, w: cardW, h: cardH },
-      ];
+      const outerPad = 12;
+      const portraitW = 128;
+      const portraitH = 124;
+      const portraitBox = {
+        x: Math.round((viewWidth - portraitW) / 2),
+        y: 56,
+        w: portraitW,
+        h: portraitH,
+      };
       const arrowSize = 24;
       const leftArrowZone = {
-        x: Math.max(panelX + 4, portraitBox.x - arrowSize - 6),
+        x: portraitBox.x - arrowSize - 6,
         y: portraitBox.y + (portraitBox.h - arrowSize) / 2,
         w: arrowSize,
         h: arrowSize,
@@ -2303,52 +2286,88 @@ async function main(){
         w: arrowSize,
         h: arrowSize,
       };
-      const controlIconSize = 22;
-      const minusControlZone = {
-        x: skillRow.x + 8,
-        y: skillRow.y + (skillRow.h - controlIconSize) / 2,
-        w: controlIconSize,
-        h: controlIconSize,
+      const namePill = {
+        x: Math.round((viewWidth - 124) / 2),
+        y: portraitBox.y + portraitBox.h + 10,
+        w: 124,
+        h: 30,
       };
-      const plusControlZone = {
-        x: skillRow.x + skillRow.w - controlIconSize - 8,
-        y: skillRow.y + (skillRow.h - controlIconSize) / 2,
-        w: controlIconSize,
-        h: controlIconSize,
+      const statLabels = ['HP', 'ATK', 'DEF', 'MAG', 'RES', 'SPD'];
+      const statsX = outerPad;
+      const statsW = viewWidth - (outerPad * 2);
+      const statGap = 4;
+      const statBoxW = Math.floor((statsW - (statGap * 5)) / 6);
+      const statLabelRowY = namePill.y + namePill.h + 10;
+      const statLabelH = 20;
+      const statValueRowY = statLabelRowY + statLabelH + 4;
+      const statValueH = 24;
+      const skillPointsRow = {
+        x: outerPad,
+        y: statValueRowY + statValueH + 10,
+        w: viewWidth - (outerPad * 2),
+        h: 30,
+      };
+      const skillPointsChip = {
+        x: skillPointsRow.x + skillPointsRow.w - 48,
+        y: skillPointsRow.y + 4,
+        w: 40,
+        h: 22,
+      };
+      const closeBtn = {
+        x: Math.round((viewWidth - 128) / 2),
+        y: viewHeight - 42,
+        w: 128,
+        h: 26,
+      };
+      const cardsTop = skillPointsRow.y + skillPointsRow.h + 10;
+      const cardsBottom = closeBtn.y - 10;
+      const cardGap = 8;
+      const cardH = Math.floor((cardsBottom - cardsTop - (cardGap * 2)) / 3);
+      const cards = [
+        { x: outerPad, y: cardsTop, w: viewWidth - (outerPad * 2), h: cardH },
+        { x: outerPad, y: cardsTop + cardH + cardGap, w: viewWidth - (outerPad * 2), h: cardH },
+        { x: outerPad, y: cardsTop + ((cardH + cardGap) * 2), w: viewWidth - (outerPad * 2), h: cardH },
+      ];
+      const roundRect = (x, y, w, h, r, fill, stroke) => {
+        const radius = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + w - radius, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+        ctx.lineTo(x + w, y + h - radius);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+        ctx.lineTo(x + radius, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+        if (fill) {
+          ctx.fillStyle = fill;
+          ctx.fill();
+        }
+        if (stroke) {
+          ctx.strokeStyle = stroke;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
       };
       gameState.heroScreen.hitZones = {
-        close: { x: closeX, y: closeY, w: closeW, h: closeH },
+        close: closeBtn,
         prevHero: leftArrowZone,
         nextHero: rightArrowZone,
       };
 
-      const drawPanelBox = (box, fill, stroke) => {
-        ctx.fillStyle = fill;
-        ctx.fillRect(box.x, box.y, box.w, box.h);
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(box.x, box.y, box.w, box.h);
-      };
       ctx.clearRect(0, 0, viewWidth, viewHeight);
       const gradient = ctx.createLinearGradient(0, 0, 0, viewHeight);
-      gradient.addColorStop(0, '#d9e5f4');
-      gradient.addColorStop(1, '#c9d9ed');
+      gradient.addColorStop(0, '#cfd9ea');
+      gradient.addColorStop(1, '#c3d1e7');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, viewWidth, viewHeight);
-      drawPanelBox({ x: panelX, y: panelY, w: panelW, h: panelH }, '#eef3fb', '#6f829d');
-      drawPanelBox({ x: closeX, y: closeY, w: closeW, h: closeH }, '#dfe8f7', '#5e6d82');
+      roundRect(portraitBox.x, portraitBox.y, portraitBox.w, portraitBox.h, 10, '#dbe4f4', '#7f90ab');
+      roundRect(leftArrowZone.x, leftArrowZone.y, leftArrowZone.w, leftArrowZone.h, 4, '#eaf0fb', '#6f829d');
+      roundRect(rightArrowZone.x, rightArrowZone.y, rightArrowZone.w, rightArrowZone.h, 4, '#eaf0fb', '#6f829d');
       ctx.fillStyle = '#2a3850';
-      ctx.font = '600 18px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('X', closeX + closeW / 2, closeY + closeH / 2);
-      ctx.textBaseline = 'alphabetic';
-
-      drawPanelBox(portraitBox, '#d8e4f8', '#5e6d82');
-      drawPanelBox(leftArrowZone, '#f8fbff', '#5e6d82');
-      drawPanelBox(rightArrowZone, '#f8fbff', '#5e6d82');
-      ctx.fillStyle = '#2a3850';
-      ctx.font = '700 16px Arial';
+      ctx.font = '700 15px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('<', leftArrowZone.x + leftArrowZone.w / 2, leftArrowZone.y + leftArrowZone.h / 2);
@@ -2370,78 +2389,102 @@ async function main(){
         ctx.textAlign = 'center';
         ctx.fillText('Portrait', portraitBox.x + portraitBox.w / 2, portraitBox.y + portraitBox.h / 2);
       }
-      drawPanelBox(nameBar, '#f8fbff', '#5e6d82');
+      roundRect(namePill.x, namePill.y, namePill.w, namePill.h, 8, '#eaf0fb', '#6f829d');
       ctx.fillStyle = '#2a3850';
       ctx.font = '700 15px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText(heroName, nameBar.x + nameBar.w / 2, nameBar.y + 20);
+      ctx.fillText(heroName, namePill.x + namePill.w / 2, namePill.y + 20);
 
-      let statIdx = 0;
-      for (let row = 0; row < 3; row++) {
-        for (let col = 0; col < 2; col++) {
-          const statKey = HERO_STAT_KEYS[statIdx];
-          const statValue = statKey === 'HP'
-            ? `${heroHPValue.hp}/${heroHPValue.maxHP}`
-            : `${getHeroStatValue(hero, statKey)}`;
-          const statBox = {
-            x: statArea.x + col * (statW + statGap),
-            y: statArea.y + row * (statH + statGap),
-            w: statW,
-            h: statH,
-          };
-          drawPanelBox(statBox, '#f8fbff', '#5e6d82');
-          ctx.fillStyle = '#415875';
-          ctx.font = '600 11px Arial';
-          ctx.textAlign = 'left';
-          ctx.fillText(statKey, statBox.x + 8, statBox.y + 14);
-          ctx.fillStyle = '#223147';
-          ctx.font = '700 14px Arial';
-          ctx.textAlign = 'right';
-          ctx.fillText(statValue, statBox.x + statBox.w - 8, statBox.y + statBox.h - 10);
-          statIdx += 1;
-        }
+      for (let i = 0; i < statLabels.length; i++) {
+        const statKey = statLabels[i];
+        const statX = statsX + i * (statBoxW + statGap);
+        const statValue = statKey === 'HP'
+          ? `${heroHPValue.hp}/${heroHPValue.maxHP}`
+          : `${getHeroStatValue(hero, statKey)}`;
+        roundRect(statX, statLabelRowY, statBoxW, statLabelH, 4, '#eaf0fb', '#6f829d');
+        roundRect(statX, statValueRowY, statBoxW, statValueH, 4, '#ffffff', '#6f829d');
+        ctx.fillStyle = '#4a5f7e';
+        ctx.font = '700 10px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(statKey, statX + statBoxW / 2, statLabelRowY + 14);
+        ctx.fillStyle = '#25354c';
+        ctx.font = '700 13px Arial';
+        ctx.fillText(statValue, statX + statBoxW / 2, statValueRowY + 16);
       }
 
-      drawPanelBox(skillRow, '#f8fbff', '#5e6d82');
-      if (minusIconImage) {
-        ctx.drawImage(minusIconImage, minusControlZone.x, minusControlZone.y, minusControlZone.w, minusControlZone.h);
-      } else {
-        drawPanelBox(minusControlZone, '#ffffff', '#5e6d82');
-        ctx.fillStyle = '#2a3850';
-        ctx.font = '700 14px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('-', minusControlZone.x + minusControlZone.w / 2, minusControlZone.y + minusControlZone.h * 0.7);
-      }
-      if (plusIconImage) {
-        ctx.drawImage(plusIconImage, plusControlZone.x, plusControlZone.y, plusControlZone.w, plusControlZone.h);
-      } else {
-        drawPanelBox(plusControlZone, '#ffffff', '#5e6d82');
-        ctx.fillStyle = '#2a3850';
-        ctx.font = '700 14px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('+', plusControlZone.x + plusControlZone.w / 2, plusControlZone.y + plusControlZone.h * 0.7);
-      }
+      roundRect(skillPointsRow.x, skillPointsRow.y, skillPointsRow.w, skillPointsRow.h, 14, '#eaf0fb', '#6f829d');
+      roundRect(skillPointsChip.x, skillPointsChip.y, skillPointsChip.w, skillPointsChip.h, 10, '#ffffff', '#6f829d');
       ctx.fillStyle = '#2a3850';
       ctx.font = '600 14px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('Skill Points 0', skillRow.x + skillRow.w / 2, skillRow.y + 24);
+      ctx.fillText('Skill Points', skillPointsRow.x + 90, skillPointsRow.y + 21);
+      ctx.fillStyle = '#25354c';
+      ctx.font = '700 12px Arial';
+      ctx.fillText('0', skillPointsChip.x + skillPointsChip.w / 2, skillPointsChip.y + 15);
 
       cards.forEach((card, idx) => {
-        drawPanelBox(card, '#f8fbff', '#5e6d82');
+        roundRect(card.x, card.y, card.w, card.h, 12, '#f4f7fc', '#6f829d');
+        const titleBar = {
+          x: card.x + 8,
+          y: card.y + 8,
+          w: card.w - 16,
+          h: 18,
+        };
+        roundRect(titleBar.x, titleBar.y, titleBar.w, titleBar.h, 8, '#dbe4f4', null);
+        const iconTile = {
+          x: card.x + 8,
+          y: card.y + 30,
+          w: 36,
+          h: Math.max(34, card.h - 38),
+        };
         const accent = ['#8eb1e2', '#95c6d0', '#d2b38a'][idx] || '#9aa7b8';
         ctx.fillStyle = accent;
-        ctx.fillRect(card.x + 6, card.y + 8, 38, card.h - 16);
+        roundRect(iconTile.x, iconTile.y, iconTile.w, iconTile.h, 6, accent, null);
+        const controlsY = card.y + card.h - 24;
+        const controlSize = 14;
+        const plusZone = { x: card.x + card.w - 18, y: controlsY, w: controlSize, h: controlSize };
+        const valueZone = { x: plusZone.x - 20, y: controlsY, w: 16, h: controlSize };
+        const minusZone = { x: valueZone.x - 20, y: controlsY, w: controlSize, h: controlSize };
+        if (minusIconImage) {
+          ctx.drawImage(minusIconImage, minusZone.x, minusZone.y, minusZone.w, minusZone.h);
+        } else {
+          roundRect(minusZone.x, minusZone.y, minusZone.w, minusZone.h, 3, '#ffffff', '#6f829d');
+          ctx.fillStyle = '#2a3850';
+          ctx.font = '700 10px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('-', minusZone.x + minusZone.w / 2, minusZone.y + 10);
+        }
+        roundRect(valueZone.x, valueZone.y, valueZone.w, valueZone.h, 3, '#ffffff', '#6f829d');
         ctx.fillStyle = '#25354c';
-        ctx.font = '600 12px Arial';
+        ctx.font = '700 10px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('1', valueZone.x + valueZone.w / 2, valueZone.y + 10);
+        if (plusIconImage) {
+          ctx.drawImage(plusIconImage, plusZone.x, plusZone.y, plusZone.w, plusZone.h);
+        } else {
+          roundRect(plusZone.x, plusZone.y, plusZone.w, plusZone.h, 3, '#ffffff', '#6f829d');
+          ctx.fillStyle = '#2a3850';
+          ctx.font = '700 10px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('+', plusZone.x + plusZone.w / 2, plusZone.y + 10);
+        }
+        ctx.fillStyle = '#25354c';
+        ctx.font = '700 11px Arial';
         ctx.textAlign = 'left';
         const title = idx === 0
           ? getHeroStarterSkillTitle(heroName)
           : `Skill ${idx + 1} Placeholder`;
-        ctx.fillText(title, card.x + 52, card.y + 26);
-        ctx.font = '500 10px Arial';
+        ctx.fillText(title, card.x + 52, card.y + 21);
+        ctx.font = '500 9px Arial';
         ctx.fillStyle = '#4a5a70';
-        ctx.fillText('Description placeholder', card.x + 52, card.y + 42);
+        ctx.fillText('Description placeholder', card.x + 52, card.y + 40);
+        ctx.fillText('Multiline body text block', card.x + 52, card.y + 53);
       });
+      roundRect(closeBtn.x, closeBtn.y, closeBtn.w, closeBtn.h, 12, '#eaf0fb', '#6f829d');
+      ctx.fillStyle = '#2a3850';
+      ctx.font = '700 13px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Close', closeBtn.x + closeBtn.w / 2, closeBtn.y + 17);
       return;
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
