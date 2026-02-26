@@ -439,6 +439,17 @@ function getHeroStatValue(hero, key) {
   return 0;
 }
 
+function getHeroStarterSkillTitle(heroName) {
+  const key = String(heroName || '');
+  const byHero = {
+    Falie: 'Pummel',
+    Huun: 'Swipe',
+    Runa: 'Burst',
+    Kojonn: 'Faze',
+  };
+  return byHero[key] || 'Skill 1 Placeholder';
+}
+
 function normalizeHeroSelectionIndex() {
   const roster = getHeroScreenRoster();
   const maxIndex = Math.max(0, roster.length - 1);
@@ -2292,6 +2303,19 @@ async function main(){
         w: arrowSize,
         h: arrowSize,
       };
+      const controlIconSize = 22;
+      const minusControlZone = {
+        x: skillRow.x + 8,
+        y: skillRow.y + (skillRow.h - controlIconSize) / 2,
+        w: controlIconSize,
+        h: controlIconSize,
+      };
+      const plusControlZone = {
+        x: skillRow.x + skillRow.w - controlIconSize - 8,
+        y: skillRow.y + (skillRow.h - controlIconSize) / 2,
+        w: controlIconSize,
+        h: controlIconSize,
+      };
       gameState.heroScreen.hitZones = {
         close: { x: closeX, y: closeY, w: closeW, h: closeH },
         prevHero: leftArrowZone,
@@ -2379,6 +2403,24 @@ async function main(){
       }
 
       drawPanelBox(skillRow, '#f8fbff', '#5e6d82');
+      if (minusIconImage) {
+        ctx.drawImage(minusIconImage, minusControlZone.x, minusControlZone.y, minusControlZone.w, minusControlZone.h);
+      } else {
+        drawPanelBox(minusControlZone, '#ffffff', '#5e6d82');
+        ctx.fillStyle = '#2a3850';
+        ctx.font = '700 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('-', minusControlZone.x + minusControlZone.w / 2, minusControlZone.y + minusControlZone.h * 0.7);
+      }
+      if (plusIconImage) {
+        ctx.drawImage(plusIconImage, plusControlZone.x, plusControlZone.y, plusControlZone.w, plusControlZone.h);
+      } else {
+        drawPanelBox(plusControlZone, '#ffffff', '#5e6d82');
+        ctx.fillStyle = '#2a3850';
+        ctx.font = '700 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('+', plusControlZone.x + plusControlZone.w / 2, plusControlZone.y + plusControlZone.h * 0.7);
+      }
       ctx.fillStyle = '#2a3850';
       ctx.font = '600 14px Arial';
       ctx.textAlign = 'center';
@@ -2392,7 +2434,10 @@ async function main(){
         ctx.fillStyle = '#25354c';
         ctx.font = '600 12px Arial';
         ctx.textAlign = 'left';
-        ctx.fillText(`Skill ${idx + 1} Placeholder`, card.x + 52, card.y + 26);
+        const title = idx === 0
+          ? getHeroStarterSkillTitle(heroName)
+          : `Skill ${idx + 1} Placeholder`;
+        ctx.fillText(title, card.x + 52, card.y + 26);
         ctx.font = '500 10px Arial';
         ctx.fillStyle = '#4a5a70';
         ctx.fillText('Description placeholder', card.x + 52, card.y + 42);
