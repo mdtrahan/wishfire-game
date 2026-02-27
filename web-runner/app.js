@@ -2282,29 +2282,29 @@ async function main(){
       const portraitBox = box(Math.round((ART_W - portraitW) / 2), 44, portraitW, portraitH);
       const arrowSize = ps(24);
       const leftArrowZone = {
-        x: portraitBox.x - arrowSize - ps(6),
-        y: portraitBox.y + (portraitBox.h - arrowSize) / 2,
+        x: px(92),
+        y: py(77),
         w: arrowSize,
         h: arrowSize,
       };
       const rightArrowZone = {
-        x: portraitBox.x + portraitBox.w + ps(6),
-        y: portraitBox.y + (portraitBox.h - arrowSize) / 2,
+        x: px(244),
+        y: py(77),
         w: arrowSize,
         h: arrowSize,
       };
-      const namePill = box(114, 144, 124, 30);
+      const namePill = box(114, 134, 124, 30);
       const statLabels = ['HP', 'ATK', 'DEF', 'MAG', 'RES', 'SPD'];
       const statsX = px(outerPad);
       const statsW = ART_W - (outerPad * 2);
       const statGap = ps(4);
       const statBoxW = Math.floor((statsW - (statGap * 5)) / 6);
-      const statLabelRowY = py(184);
+      const statLabelRowY = py(168);
       const statLabelH = ps(20);
-      const statValueRowY = py(208);
+      const statValueRowY = py(190);
       const statValueH = ps(24);
-      const skillPointsRow = box(12, 244, 336, 32);
-      const skillPointsChip = box(12 + 336 - 50, 248, 42, 24);
+      const skillPointsRow = box(12, 251, 336, 32);
+      const skillPointsChip = box(12 + 336 - 50, 255, 42, 24);
       const closeRadius = ps(14);
       const closeCenterX = px(180);
       const closeCenterY = py(624);
@@ -2316,12 +2316,10 @@ async function main(){
       };
       const cardW = ps(336);
       const cardH = ps(79.53);
-      const cardGap = ps(8);
-      const cardsTop = py(284);
       const cards = [
-        { x: px(12), y: cardsTop, w: cardW, h: cardH },
-        { x: px(12), y: cardsTop + cardH + cardGap, w: cardW, h: cardH },
-        { x: px(12), y: cardsTop + ((cardH + cardGap) * 2), w: cardW, h: cardH },
+        { x: px(12), y: py(287), w: cardW, h: cardH },
+        { x: px(12), y: py(380.44), w: cardW, h: cardH },
+        { x: px(12), y: py(473.89), w: cardW, h: cardH },
       ];
       const roundRect = (x, y, w, h, r, fill, stroke) => {
         const radius = Math.max(0, Math.min(r, Math.min(w, h) / 2));
@@ -2355,8 +2353,6 @@ async function main(){
       ctx.clearRect(0, 0, viewWidth, viewHeight);
       ctx.fillStyle = '#f2f2f2';
       ctx.fillRect(0, 0, viewWidth, viewHeight);
-      roundRect(leftArrowZone.x, leftArrowZone.y, leftArrowZone.w, leftArrowZone.h, ps(4), '#e9eef1', '#dfe3e8');
-      roundRect(rightArrowZone.x, rightArrowZone.y, rightArrowZone.w, rightArrowZone.h, ps(4), '#e9eef1', '#dfe3e8');
       ctx.fillStyle = '#111111';
       ctx.font = `700 ${fs(15)}px Arial`;
       ctx.textAlign = 'center';
@@ -2426,11 +2422,15 @@ async function main(){
         const accent = ['#ecd23d', '#ecd23d', '#d98de5'][idx] || '#9aa7b8';
         ctx.fillStyle = accent;
         roundRect(iconTile.x, iconTile.y, iconTile.w, iconTile.h, 6, accent, null);
-        const controlsY = card.y + card.h - ps(18);
         const controlSize = ps(12);
-        const plusZone = { x: card.x + card.w - ps(16), y: controlsY, w: controlSize, h: controlSize };
-        const valueZone = { x: plusZone.x - ps(18), y: controlsY, w: ps(14), h: controlSize };
-        const minusZone = { x: valueZone.x - ps(18), y: controlsY, w: controlSize, h: controlSize };
+        const controlAnchors = [
+          { minusX: 296, valueX: 314, plusX: 332, y: 351.5 },
+          { minusX: 296, valueX: 314, plusX: 332, y: 444.94 },
+          { minusX: 296, valueX: 314, plusX: 332, y: 538.39 },
+        ][idx] || { minusX: 296, valueX: 314, plusX: 332, y: 351.5 };
+        const plusZone = { x: px(controlAnchors.plusX), y: py(controlAnchors.y), w: controlSize, h: controlSize };
+        const valueZone = { x: px(controlAnchors.valueX), y: py(controlAnchors.y), w: ps(14), h: controlSize };
+        const minusZone = { x: px(controlAnchors.minusX), y: py(controlAnchors.y), w: controlSize, h: controlSize };
         roundRect(valueZone.x, valueZone.y, valueZone.w, valueZone.h, ps(3), '#ffffff', '#dfe3e8');
         ctx.fillStyle = '#f87c17';
         ctx.font = `700 ${fs(10, 7)}px Arial`;
