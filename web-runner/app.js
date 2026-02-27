@@ -400,6 +400,69 @@ const CANONICAL_HERO_ROSTER = [
   { name: 'Kojonn', hp: 40, maxHP: 40, ATK: 12, DEF: 14, MAG: 22, RES: 18, SPD: 14, attackType: 'magic' },
 ];
 const HERO_STAT_KEYS = ['ATK', 'DEF', 'MAG', 'RES', 'SPD', 'HP'];
+const heroLayoutSpec = {
+  artboard: { w: 360, h: 640 },
+  portrait: { x: 120, y: 34, w: 120, h: 92 },
+  arrows: {
+    left: { x: 92, y: 77, w: 24, h: 24, glyphX: 102, glyphY: 94 },
+    right: { x: 244, y: 77, w: 24, h: 24, glyphX: 257, glyphY: 94 },
+  },
+  namePill: { x: 114, y: 134, w: 124, h: 30 },
+  stats: {
+    labelsTop: 168,
+    valuesTop: 190,
+    labelH: 20,
+    valueH: 24,
+    cells: [
+      { x: 14, w: 52 },
+      { x: 70, w: 52 },
+      { x: 126, w: 52 },
+      { x: 182, w: 52 },
+      { x: 238, w: 52 },
+      { x: 294, w: 52 },
+    ],
+  },
+  skillPoints: {
+    row: { x: 12, y: 251, w: 336, h: 32 },
+    chip: { x: 300, y: 255, w: 42, h: 24 },
+  },
+  cards: [
+    {
+      card: { x: 12, y: 287, w: 336, h: 79.53 },
+      titleStrip: { x: 64, y: 295, w: 276, h: 18 },
+      iconTile: { x: 20, y: 301, w: 36, h: 62 },
+      bodyText: { x: 66, titleY: 308, line1Y: 325, line2Y: 338 },
+      controls: {
+        minus: { x: 296, y: 351.5, w: 12, h: 12 },
+        value: { x: 314, y: 351.5, w: 14, h: 12 },
+        plus: { x: 332, y: 351.5, w: 12, h: 12 },
+      },
+    },
+    {
+      card: { x: 12, y: 380.44, w: 336, h: 79.53 },
+      titleStrip: { x: 64, y: 388.44, w: 276, h: 18 },
+      iconTile: { x: 20, y: 394.44, w: 36, h: 62 },
+      bodyText: { x: 66, titleY: 401.44, line1Y: 418.44, line2Y: 431.44 },
+      controls: {
+        minus: { x: 296, y: 444.94, w: 12, h: 12 },
+        value: { x: 314, y: 444.94, w: 14, h: 12 },
+        plus: { x: 332, y: 444.94, w: 12, h: 12 },
+      },
+    },
+    {
+      card: { x: 12, y: 473.89, w: 336, h: 79.53 },
+      titleStrip: { x: 64, y: 481.89, w: 276, h: 18 },
+      iconTile: { x: 20, y: 487.89, w: 36, h: 62 },
+      bodyText: { x: 66, titleY: 494.89, line1Y: 511.89, line2Y: 524.89 },
+      controls: {
+        minus: { x: 296, y: 538.39, w: 12, h: 12 },
+        value: { x: 314, y: 538.39, w: 14, h: 12 },
+        plus: { x: 332, y: 538.39, w: 12, h: 12 },
+      },
+    },
+  ],
+  close: { cx: 180, cy: 624, r: 14 },
+};
 
 function getHeroScreenRoster() {
   const runtimeHeroes = (state.entities || [])
@@ -2264,63 +2327,43 @@ async function main(){
       const heroHPValue = getHeroStatValue(hero, 'HP');
       const viewWidth = canvas.width / dpr;
       const viewHeight = canvas.height / dpr;
-      const ART_W = 360;
-      const ART_H = 640;
-      const fitScale = Math.min(viewWidth / ART_W, viewHeight / ART_H);
-      const artDrawW = ART_W * fitScale;
-      const artDrawH = ART_H * fitScale;
-      const artOffsetX = Math.round((viewWidth - artDrawW) / 2);
-      const artOffsetY = Math.round((viewHeight - artDrawH) / 2);
-      const px = (x) => artOffsetX + (x * fitScale);
-      const py = (y) => artOffsetY + (y * fitScale);
-      const ps = (v) => v * fitScale;
-      const fs = (v, min = 8) => Math.max(min, Math.round(v * fitScale));
-      const box = (x, y, w, h) => ({ x: px(x), y: py(y), w: ps(w), h: ps(h) });
-      const outerPad = 12;
-      const portraitW = 116;
-      const portraitH = 90;
-      const portraitBox = box(Math.round((ART_W - portraitW) / 2), 44, portraitW, portraitH);
-      const arrowSize = ps(24);
-      const leftArrowZone = {
-        x: px(92),
-        y: py(77),
-        w: arrowSize,
-        h: arrowSize,
-      };
-      const rightArrowZone = {
-        x: px(244),
-        y: py(77),
-        w: arrowSize,
-        h: arrowSize,
-      };
-      const namePill = box(114, 134, 124, 30);
+      const artW = heroLayoutSpec.artboard.w;
+      const artH = heroLayoutSpec.artboard.h;
+      const fitScale = Math.min(viewWidth / artW, viewHeight / artH);
+      const artOffsetX = (viewWidth - (artW * fitScale)) * 0.5;
+      const artOffsetY = (viewHeight - (artH * fitScale)) * 0.5;
+      const sx = (x) => artOffsetX + (x * fitScale);
+      const sy = (y) => artOffsetY + (y * fitScale);
+      const ss = (v) => v * fitScale;
+      const sf = (v, min = 8) => Math.max(min, Math.round(v * fitScale));
+      const mapRect = (rect) => ({
+        x: sx(rect.x),
+        y: sy(rect.y),
+        w: ss(rect.w),
+        h: ss(rect.h),
+      });
+      const mapPoint = (x, y) => ({ x: sx(x), y: sy(y) });
+      const portraitBox = mapRect(heroLayoutSpec.portrait);
+      const leftArrowZone = mapRect(heroLayoutSpec.arrows.left);
+      const rightArrowZone = mapRect(heroLayoutSpec.arrows.right);
+      const leftArrowGlyph = mapPoint(heroLayoutSpec.arrows.left.glyphX, heroLayoutSpec.arrows.left.glyphY);
+      const rightArrowGlyph = mapPoint(heroLayoutSpec.arrows.right.glyphX, heroLayoutSpec.arrows.right.glyphY);
+      const namePill = mapRect(heroLayoutSpec.namePill);
       const statLabels = ['HP', 'ATK', 'DEF', 'MAG', 'RES', 'SPD'];
-      const statsX = px(outerPad);
-      const statsW = ART_W - (outerPad * 2);
-      const statGap = ps(4);
-      const statBoxW = Math.floor((statsW - (statGap * 5)) / 6);
-      const statLabelRowY = py(168);
-      const statLabelH = ps(20);
-      const statValueRowY = py(190);
-      const statValueH = ps(24);
-      const skillPointsRow = box(12, 251, 336, 32);
-      const skillPointsChip = box(12 + 336 - 50, 255, 42, 24);
-      const closeRadius = ps(14);
-      const closeCenterX = px(180);
-      const closeCenterY = py(624);
+      const statLabelTop = heroLayoutSpec.stats.labelsTop;
+      const statValueTop = heroLayoutSpec.stats.valuesTop;
+      const statLabelH = heroLayoutSpec.stats.labelH;
+      const statValueH = heroLayoutSpec.stats.valueH;
+      const skillPointsRow = mapRect(heroLayoutSpec.skillPoints.row);
+      const skillPointsChip = mapRect(heroLayoutSpec.skillPoints.chip);
+      const closeRadius = ss(heroLayoutSpec.close.r);
+      const closeCenter = mapPoint(heroLayoutSpec.close.cx, heroLayoutSpec.close.cy);
       const closeBtn = {
-        x: closeCenterX - closeRadius,
-        y: closeCenterY - closeRadius,
+        x: closeCenter.x - closeRadius,
+        y: closeCenter.y - closeRadius,
         w: closeRadius * 2,
         h: closeRadius * 2,
       };
-      const cardW = ps(336);
-      const cardH = ps(79.53);
-      const cards = [
-        { x: px(12), y: py(287), w: cardW, h: cardH },
-        { x: px(12), y: py(380.44), w: cardW, h: cardH },
-        { x: px(12), y: py(473.89), w: cardW, h: cardH },
-      ];
       const roundRect = (x, y, w, h, r, fill, stroke) => {
         const radius = Math.max(0, Math.min(r, Math.min(w, h) / 2));
         ctx.beginPath();
@@ -2354,16 +2397,16 @@ async function main(){
       ctx.fillStyle = '#f2f2f2';
       ctx.fillRect(0, 0, viewWidth, viewHeight);
       ctx.fillStyle = '#111111';
-      ctx.font = `700 ${fs(15)}px Arial`;
+      ctx.font = `700 ${sf(18)}px Arial`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('<', leftArrowZone.x + leftArrowZone.w / 2, leftArrowZone.y + leftArrowZone.h / 2);
-      ctx.fillText('>', rightArrowZone.x + rightArrowZone.w / 2, rightArrowZone.y + rightArrowZone.h / 2);
+      ctx.fillText('<', leftArrowGlyph.x, leftArrowGlyph.y);
+      ctx.fillText('>', rightArrowGlyph.x, rightArrowGlyph.y);
       ctx.textBaseline = 'alphabetic';
       const capImg = heroCapsuleImages[heroName] || null;
       if (capImg) {
-        const maxW = portraitBox.w - ps(8);
-        const maxH = portraitBox.h - ps(8);
+        const maxW = portraitBox.w - ss(8);
+        const maxH = portraitBox.h - ss(8);
         const scale = Math.min(maxW / capImg.width, maxH / capImg.height);
         const drawW = capImg.width * scale;
         const drawH = capImg.height * scale;
@@ -2372,107 +2415,105 @@ async function main(){
         ctx.drawImage(capImg, drawX, drawY, drawW, drawH);
       } else {
         ctx.fillStyle = '#666666';
-        ctx.font = `600 ${fs(14)}px Arial`;
+        ctx.font = `600 ${sf(14)}px Arial`;
         ctx.textAlign = 'center';
         ctx.fillText('Portrait', portraitBox.x + portraitBox.w / 2, portraitBox.y + portraitBox.h / 2);
       }
-      roundRect(namePill.x, namePill.y, namePill.w, namePill.h, ps(8), '#e9eef1', null);
+      roundRect(namePill.x, namePill.y, namePill.w, namePill.h, ss(8), '#e9eef1', '#dfe3e8');
       ctx.fillStyle = '#111111';
-      ctx.font = `700 ${fs(15)}px Arial`;
+      ctx.font = `700 ${sf(15)}px Arial`;
       ctx.textAlign = 'center';
-      ctx.fillText(heroName, namePill.x + namePill.w / 2, namePill.y + ps(20));
+      ctx.fillText(heroName, namePill.x + namePill.w / 2, namePill.y + ss(20));
 
       for (let i = 0; i < statLabels.length; i++) {
         const statKey = statLabels[i];
-        const statX = statsX + i * (statBoxW + statGap);
+        const cell = heroLayoutSpec.stats.cells[i] || heroLayoutSpec.stats.cells[0];
+        const labelRect = mapRect({ x: cell.x, y: statLabelTop, w: cell.w, h: statLabelH });
+        const valueRect = mapRect({ x: cell.x, y: statValueTop, w: cell.w, h: statValueH });
         const statValue = statKey === 'HP'
           ? `${heroHPValue.hp}/${heroHPValue.maxHP}`
           : `${getHeroStatValue(hero, statKey)}`;
-        roundRect(statX, statLabelRowY, statBoxW, statLabelH, ps(4), '#e9eef1', '#dfe3e8');
-        roundRect(statX, statValueRowY, statBoxW, statValueH, ps(4), '#ffffff', '#dfe3e8');
+        roundRect(labelRect.x, labelRect.y, labelRect.w, labelRect.h, ss(4), '#e9eef1', '#dfe3e8');
+        roundRect(valueRect.x, valueRect.y, valueRect.w, valueRect.h, ss(4), '#ffffff', '#dfe3e8');
         ctx.fillStyle = '#666666';
-        ctx.font = `700 ${fs(10, 7)}px Arial`;
+        ctx.font = `700 ${sf(10, 7)}px Arial`;
         ctx.textAlign = 'center';
-        ctx.fillText(statKey, statX + statBoxW / 2, statLabelRowY + ps(14));
+        ctx.fillText(statKey, labelRect.x + labelRect.w / 2, labelRect.y + ss(14));
         ctx.fillStyle = '#bcb7b2';
-        ctx.font = `700 ${fs(13, 8)}px Arial`;
-        ctx.fillText(statValue, statX + statBoxW / 2, statValueRowY + ps(16));
+        ctx.font = `700 ${sf(13, 8)}px Arial`;
+        ctx.fillText(statValue, valueRect.x + valueRect.w / 2, valueRect.y + ss(16));
       }
 
-      roundRect(skillPointsRow.x, skillPointsRow.y, skillPointsRow.w, skillPointsRow.h, ps(14), '#e9eef1', '#dfe3e8');
-      roundRect(skillPointsChip.x, skillPointsChip.y, skillPointsChip.w, skillPointsChip.h, ps(11), '#ffffff', '#dfe3e8');
+      roundRect(skillPointsRow.x, skillPointsRow.y, skillPointsRow.w, skillPointsRow.h, ss(14), '#e9eef1', '#dfe3e8');
+      roundRect(skillPointsChip.x, skillPointsChip.y, skillPointsChip.w, skillPointsChip.h, ss(11), '#ffffff', '#dfe3e8');
       ctx.fillStyle = '#737373';
-      ctx.font = `600 ${fs(14)}px Arial`;
+      ctx.font = `600 ${sf(14)}px Arial`;
       ctx.textAlign = 'center';
-      ctx.fillText('Skill Points', skillPointsRow.x + ps(86), skillPointsRow.y + ps(22));
+      ctx.fillText('Skill Points', skillPointsRow.x + ss(86), skillPointsRow.y + ss(22));
       ctx.fillStyle = '#666666';
-      ctx.font = `700 ${fs(12, 8)}px Arial`;
-      ctx.fillText('0', skillPointsChip.x + skillPointsChip.w / 2, skillPointsChip.y + ps(15));
+      ctx.font = `700 ${sf(12, 8)}px Arial`;
+      ctx.fillText('0', skillPointsChip.x + skillPointsChip.w / 2, skillPointsChip.y + ss(15));
 
-      cards.forEach((card, idx) => {
-        roundRect(card.x, card.y, card.w, card.h, ps(12), '#e9eef1', null);
-        const titleBar = { x: card.x + ps(8), y: card.y + ps(8), w: card.w - ps(16), h: ps(18) };
-        roundRect(titleBar.x, titleBar.y, titleBar.w, titleBar.h, ps(8), '#cfe2ea', null);
-        const iconTile = {
-          x: card.x + ps(8),
-          y: card.y + ps(24),
-          w: ps(36),
-          h: ps(48),
+      heroLayoutSpec.cards.forEach((cardSpec, idx) => {
+        const card = mapRect(cardSpec.card);
+        const titleBar = mapRect(cardSpec.titleStrip);
+        const iconTile = mapRect(cardSpec.iconTile);
+        const bodyText = {
+          x: sx(cardSpec.bodyText.x),
+          titleY: sy(cardSpec.bodyText.titleY),
+          line1Y: sy(cardSpec.bodyText.line1Y),
+          line2Y: sy(cardSpec.bodyText.line2Y),
         };
+        roundRect(card.x, card.y, card.w, card.h, ss(12), '#e9eef1', '#dfe3e8');
+        roundRect(titleBar.x, titleBar.y, titleBar.w, titleBar.h, ss(8), '#cfe2ea', null);
         const accent = ['#ecd23d', '#ecd23d', '#d98de5'][idx] || '#9aa7b8';
         ctx.fillStyle = accent;
-        roundRect(iconTile.x, iconTile.y, iconTile.w, iconTile.h, 6, accent, null);
-        const controlSize = ps(12);
-        const controlAnchors = [
-          { minusX: 296, valueX: 314, plusX: 332, y: 351.5 },
-          { minusX: 296, valueX: 314, plusX: 332, y: 444.94 },
-          { minusX: 296, valueX: 314, plusX: 332, y: 538.39 },
-        ][idx] || { minusX: 296, valueX: 314, plusX: 332, y: 351.5 };
-        const plusZone = { x: px(controlAnchors.plusX), y: py(controlAnchors.y), w: controlSize, h: controlSize };
-        const valueZone = { x: px(controlAnchors.valueX), y: py(controlAnchors.y), w: ps(14), h: controlSize };
-        const minusZone = { x: px(controlAnchors.minusX), y: py(controlAnchors.y), w: controlSize, h: controlSize };
-        roundRect(valueZone.x, valueZone.y, valueZone.w, valueZone.h, ps(3), '#ffffff', '#dfe3e8');
+        roundRect(iconTile.x, iconTile.y, iconTile.w, iconTile.h, ss(6), accent, null);
+        const minusZone = mapRect(cardSpec.controls.minus);
+        const valueZone = mapRect(cardSpec.controls.value);
+        const plusZone = mapRect(cardSpec.controls.plus);
+        roundRect(valueZone.x, valueZone.y, valueZone.w, valueZone.h, ss(3), '#ffffff', '#dfe3e8');
         ctx.fillStyle = '#f87c17';
-        ctx.font = `700 ${fs(10, 7)}px Arial`;
+        ctx.font = `700 ${sf(10, 7)}px Arial`;
         ctx.textAlign = 'center';
-        ctx.fillText('1', valueZone.x + valueZone.w / 2, valueZone.y + ps(9));
+        ctx.fillText('1', valueZone.x + valueZone.w / 2, valueZone.y + ss(9));
         if (minusIconImage) {
-          roundRect(minusZone.x, minusZone.y, minusZone.w, minusZone.h, ps(3), '#e9eef1', '#dfe3e8');
-          ctx.drawImage(minusIconImage, minusZone.x + ps(1), minusZone.y + ps(1), minusZone.w - ps(2), minusZone.h - ps(2));
+          roundRect(minusZone.x, minusZone.y, minusZone.w, minusZone.h, ss(3), '#e9eef1', '#dfe3e8');
+          ctx.drawImage(minusIconImage, minusZone.x + ss(1), minusZone.y + ss(1), minusZone.w - ss(2), minusZone.h - ss(2));
         } else {
-          roundRect(minusZone.x, minusZone.y, minusZone.w, minusZone.h, ps(3), '#e9eef1', '#dfe3e8');
+          roundRect(minusZone.x, minusZone.y, minusZone.w, minusZone.h, ss(3), '#e9eef1', '#dfe3e8');
           ctx.fillStyle = '#666666';
-          ctx.font = `700 ${fs(10, 7)}px Arial`;
+          ctx.font = `700 ${sf(10, 7)}px Arial`;
           ctx.textAlign = 'center';
-          ctx.fillText('-', minusZone.x + minusZone.w / 2, minusZone.y + ps(9));
+          ctx.fillText('-', minusZone.x + minusZone.w / 2, minusZone.y + ss(9));
         }
         if (plusIconImage) {
-          roundRect(plusZone.x, plusZone.y, plusZone.w, plusZone.h, ps(3), '#e9eef1', '#dfe3e8');
-          ctx.drawImage(plusIconImage, plusZone.x + ps(1), plusZone.y + ps(1), plusZone.w - ps(2), plusZone.h - ps(2));
+          roundRect(plusZone.x, plusZone.y, plusZone.w, plusZone.h, ss(3), '#e9eef1', '#dfe3e8');
+          ctx.drawImage(plusIconImage, plusZone.x + ss(1), plusZone.y + ss(1), plusZone.w - ss(2), plusZone.h - ss(2));
         } else {
-          roundRect(plusZone.x, plusZone.y, plusZone.w, plusZone.h, ps(3), '#e9eef1', '#dfe3e8');
+          roundRect(plusZone.x, plusZone.y, plusZone.w, plusZone.h, ss(3), '#e9eef1', '#dfe3e8');
           ctx.fillStyle = '#666666';
-          ctx.font = `700 ${fs(10, 7)}px Arial`;
+          ctx.font = `700 ${sf(10, 7)}px Arial`;
           ctx.textAlign = 'center';
-          ctx.fillText('+', plusZone.x + plusZone.w / 2, plusZone.y + ps(9));
+          ctx.fillText('+', plusZone.x + plusZone.w / 2, plusZone.y + ss(9));
         }
         ctx.fillStyle = '#111111';
-        ctx.font = `700 ${fs(11, 8)}px Arial`;
+        ctx.font = `700 ${sf(11, 8)}px Arial`;
         ctx.textAlign = 'left';
         const title = idx === 0
           ? getHeroStarterSkillTitle(heroName)
           : `Skill ${idx + 1} Placeholder`;
-        ctx.fillText(title, card.x + ps(52), card.y + ps(21));
-        ctx.font = `500 ${fs(9, 7)}px Arial`;
+        ctx.fillText(title, bodyText.x, bodyText.titleY);
+        ctx.font = `500 ${sf(9, 7)}px Arial`;
         ctx.fillStyle = '#666666';
-        ctx.fillText('Description placeholder', card.x + ps(52), card.y + ps(38));
-        ctx.fillText('Multiline body text block', card.x + ps(52), card.y + ps(50));
+        ctx.fillText('Description placeholder', bodyText.x, bodyText.line1Y);
+        ctx.fillText('Multiline body text block', bodyText.x, bodyText.line2Y);
       });
       roundRect(closeBtn.x, closeBtn.y, closeBtn.w, closeBtn.h, closeRadius, '#d9d9d9', '#dfe3e8');
       ctx.fillStyle = '#111111';
-      ctx.font = `700 ${fs(16, 10)}px Arial`;
+      ctx.font = `700 ${sf(16, 10)}px Arial`;
       ctx.textAlign = 'center';
-      ctx.fillText('X', closeBtn.x + closeBtn.w / 2, closeBtn.y + closeRadius + ps(5));
+      ctx.fillText('X', closeBtn.x + closeBtn.w / 2, closeBtn.y + closeRadius + ss(5));
       return;
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
