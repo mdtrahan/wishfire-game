@@ -180,6 +180,19 @@ function createHarnessLayoutState({ eventBus, inputDomains, combatRuntimeGateway
     registerLayout(descriptor) {
       layouts.set(descriptor.id, descriptor);
     },
+    hasLayout(layoutId) {
+      return layouts.has(layoutId);
+    },
+    canTransitionTo(targetLayoutId) {
+      const sourceLayout = activeLayoutId ? layouts.get(activeLayoutId) : null;
+      if (!layouts.has(targetLayoutId)) {
+        return { allowed: false, reason: 'target-unregistered', from: activeLayoutId, to: targetLayoutId };
+      }
+      if (sourceLayout && Array.isArray(sourceLayout.allowedTransitions) && !sourceLayout.allowedTransitions.includes(targetLayoutId)) {
+        return { allowed: false, reason: 'transition-forbidden', from: activeLayoutId, to: targetLayoutId };
+      }
+      return { allowed: true, reason: 'ok', from: activeLayoutId, to: targetLayoutId };
+    },
     getActiveLayoutId() {
       return activeLayoutId;
     },
@@ -416,6 +429,118 @@ const CANONICAL_HERO_ROSTER = [
   { name: 'Kojonn', hp: 40, maxHP: 40, ATK: 12, DEF: 14, MAG: 22, RES: 18, SPD: 14, attackType: 'magic' },
 ];
 
+const BOOTSTRAP_RNG_BASE_SEED = 20260223;
+
+function createSeededRng(seed) {
+  let stateSeed = (Number(seed) >>> 0);
+  if (!stateSeed) stateSeed = 1;
+  return () => {
+    stateSeed = ((stateSeed * 1664525) + 1013904223) >>> 0;
+    return stateSeed / 4294967296;
+  };
+}
+
+function getBootstrapDeterminismConfig() {
+  if (typeof window === 'undefined') {
+    return { enabled: false, baseSeed: BOOTSTRAP_RNG_BASE_SEED, source: 'no-window' };
+  }
+  const params = new URLSearchParams(window.location.search);
+  const explicitRandom = params.has('bootstrap_random') && params.get('bootstrap_random') !== '0';
+  if (explicitRandom) {
+    return { enabled: false, baseSeed: BOOTSTRAP_RNG_BASE_SEED, source: 'bootstrap-random' };
+  }
+  const seedRaw = params.get('bootstrap_seed');
+  const hasExplicitSeed = seedRaw != null && seedRaw !== '';
+  const explicitSeed = hasExplicitSeed ? Number(seedRaw) : NaN;
+  const devDeterministic =
+    params.has('devtest') ||
+    params.get('devtest') === 'true' ||
+    params.has('debug_gems') ||
+    params.get('debug_gems') === 'true' ||
+    params.has('bootstrap_deterministic');
+  if (!hasExplicitSeed && !devDeterministic) {
+    return { enabled: false, baseSeed: BOOTSTRAP_RNG_BASE_SEED, source: 'disabled' };
+  }
+  const baseSeed = Number.isFinite(explicitSeed)
+    ? (explicitSeed >>> 0)
+    : BOOTSTRAP_RNG_BASE_SEED;
+  return {
+    enabled: true,
+    baseSeed: baseSeed || BOOTSTRAP_RNG_BASE_SEED,
+    source: hasExplicitSeed ? 'bootstrap-seed' : 'dev-deterministic',
+  };
+}
+
+function resetBootstrapRngSession() {
+  const config = getBootstrapDeterminismConfig();
+  const sessionId = Number(state.globals.CombatSessionId || 0) >>> 0;
+  if (!config.enabled) {
+    gameState.bootstrapRng = {
+      enabled: false,
+      source: config.source,
+      seed: 0,
+      calls: 0,
+      random: Math.random,
+      gemInitRemaining: 0,
+    };
+    state.globals.BootstrapDeterministic = 0;
+    state.globals.BootstrapSeed = 0;
+    state.globals.BootstrapSeedSource = config.source;
+    return;
+  }
+  const mixedSeed = (config.baseSeed ^ ((sessionId * 2654435761) >>> 0)) >>> 0;
+  const seed = mixedSeed || config.baseSeed || BOOTSTRAP_RNG_BASE_SEED;
+  gameState.bootstrapRng = {
+    enabled: true,
+    source: config.source,
+    seed,
+    calls: 0,
+    random: createSeededRng(seed),
+    gemInitRemaining: 0,
+  };
+  state.globals.BootstrapDeterministic = 1;
+  state.globals.BootstrapSeed = seed;
+  state.globals.BootstrapSeedSource = config.source;
+}
+
+function nextBootstrapRandom(tag = '') {
+  const runtimeRng = gameState.bootstrapRng;
+  if (!runtimeRng || !runtimeRng.enabled || typeof runtimeRng.random !== 'function') {
+    return Math.random();
+  }
+  const value = runtimeRng.random();
+  runtimeRng.calls = Number(runtimeRng.calls || 0) + 1;
+  if (runtimeRng.calls <= 6) {
+    console.log('[BOOTSTRAP_RNG]', {
+      seed: runtimeRng.seed,
+      source: runtimeRng.source,
+      call: runtimeRng.calls,
+      tag,
+      value: Number(value.toFixed(8)),
+    });
+  }
+  return value;
+}
+
+function getGemSpawnRandom() {
+  const runtimeRng = gameState.bootstrapRng;
+  if (runtimeRng && runtimeRng.enabled && Number(runtimeRng.gemInitRemaining || 0) > 0) {
+    return nextBootstrapRandom('gem-init');
+  }
+  return Math.random();
+}
+
+function shuffledWithRng(input, randomFn) {
+  const arr = input.slice();
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(randomFn() * (i + 1));
+    const tmp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = tmp;
+  }
+  return arr;
+}
+
 function ensureTask011Audit() {
   if (!gameState.task011Audit) {
     gameState.task011Audit = {
@@ -607,6 +732,7 @@ function initEntities(enemyRows, layoutInstances) {
   state.entities = [];
   state.globals.EnemyData = enemyRows || [];
   state.globals.CombatSessionId = Number(state.globals.CombatSessionId || 0) + 1;
+  resetBootstrapRngSession();
 
   const partyHP = [];
   const partyMaxHP = [];
@@ -730,6 +856,9 @@ function createGemBoard(gridBounds = null) {
 
   gameState.selectedGems = [];
   gameState.selectionLocked = false;
+  if (gameState.bootstrapRng && gameState.bootstrapRng.enabled) {
+    gameState.bootstrapRng.gemInitRemaining = g.cols * g.rows;
+  }
   gameState.boardCreated = true;
   setGemArray(gameState.gems);
   state.globals.TapIndex = 0;
@@ -756,12 +885,7 @@ function rebuildGridFromGems() {
 function randomGemFrame() {
   const MAX_PURPLE_ON_BOARD = 3;
   const PURPLE_WEIGHT = 0.25;
-  const boardCellCount = boardGeometry.rows * boardGeometry.cols;
-  if (bootstrapDeterministicRefillPending && Array.isArray(gameState.gems) && gameState.gems.length >= boardCellCount) {
-    bootstrapDeterministicRefillPending = false;
-  }
-  const rng = bootstrapDeterministicRefillPending ? nextBootstrapRandom : runtimeRandom;
-  const x = Math.floor(rng() * 1000);
+  const x = Math.floor(getGemSpawnRandom() * 1000);
   if (x === 998) return 6;
   const countPurple = () => (gameState.gems || []).reduce((n, g) => {
     const c = g && g.color != null ? g.color : (g ? g.elementIndex : null);
@@ -770,7 +894,7 @@ function randomGemFrame() {
   const pickByWeights = (weights) => {
     let total = 0;
     for (const w of weights) total += w;
-    let r = rng() * total;
+    let r = getGemSpawnRandom() * total;
     for (let i = 0; i < weights.length; i++) {
       r -= weights[i];
       if (r <= 0) return i;
@@ -833,6 +957,9 @@ function refillGemBoard(gridBounds = null) {
         Selected: 0,
         flashUntil: 0
       });
+      if (gameState.bootstrapRng && gameState.bootstrapRng.enabled && gameState.bootstrapRng.gemInitRemaining > 0) {
+        gameState.bootstrapRng.gemInitRemaining -= 1;
+      }
       gameState.grid[c][r] = gameState.gems[gameState.gems.length - 1].uid;
     }
   }
@@ -1204,8 +1331,10 @@ function handleGemMatch(color) {
     g.MatchedColorValue = 0;
     g.IsAOEMatch = 0;
     g.SuppressChainUI = 0;
+    g.BlueGemConsumedCount = Math.max(0, Number((gameState.selectedGems || []).length));
     callFunctionWithContext(fnContext, 'UpdateChain', 2);
-    callFunctionWithContext(fnContext, 'ResolveGemAction', 2, actorUID, consumedBlue);
+    callFunctionWithContext(fnContext, 'ResolveGemAction', 2, actorUID);
+    g.BlueGemConsumedCount = 0;
     callFunctionWithContext(fnContext, 'DestroyGem');
     callFunctionWithContext(fnContext, 'ClearMatchState');
     syncGemsFromGlobals();
@@ -1755,8 +1884,32 @@ async function main(){
         console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->2', trigger: 'astral-flow-click', blocked: 'active-layout-not-combat' });
         return;
       }
+      const transitionCheck = typeof layoutState.canTransitionTo === 'function'
+        ? layoutState.canTransitionTo('astralOverlay')
+        : { allowed: true, reason: 'unknown' };
+      if (!transitionCheck.allowed) {
+        console.log('[LAYOUT_PHASE1]', {
+          stage: 'entry',
+          transition: '1->2',
+          trigger: 'astral-flow-click',
+          blocked: transitionCheck.reason,
+          fallback: 'overlay-visible',
+        });
+        gameState.overlayVisible = true;
+        return;
+      }
       console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->2', trigger: 'astral-flow-click' });
-      await layoutState.requestLayoutChange('astralOverlay', 'nav-astral-flow');
+      const transitioned = await layoutState.requestLayoutChange('astralOverlay', 'nav-astral-flow');
+      if (!transitioned) {
+        console.log('[LAYOUT_PHASE1]', {
+          stage: 'entry',
+          transition: '1->2',
+          trigger: 'astral-flow-click',
+          blocked: 'request-denied',
+          fallback: 'overlay-visible',
+        });
+        gameState.overlayVisible = true;
+      }
       return;
     }
     gameState.overlayVisible = true;
@@ -4489,15 +4642,32 @@ function getStoryCardLiveLineState() {
     drawWalletHUD();
     drawAstralWalletHUD();
   }
-  function formatWalletText(title, wallet) {
+  function drawWalletHUD() {
+    if (!walletOut) return;
+    const g = state.globals || {};
+    const astralFlow = Math.max(0, Number(g.AstralFlowWallet || 0));
+    const wallet =
+      g.TokenWallet ||
+      g.tokenWallet ||
+      g.WalletTokens ||
+      g.walletTokens ||
+      null;
+    const lines = ['Astral Wallet:', `Astral Flow: ${astralFlow}`, '', 'Wallet:'];
     if (!wallet || typeof wallet !== 'object') {
-      return `${title}:\nTotal: 0`;
+      lines.push('(empty)');
+      walletOut.textContent = lines.join('\n');
+      return;
     }
     const entries = Object.entries(wallet)
       .filter(([, v]) => v != null)
       .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+    if (entries.length === 0) {
+      lines.push('(empty)');
+      walletOut.textContent = lines.join('\n');
+      return;
+    }
     const total = entries.reduce((sum, [, v]) => sum + (Number(v) || 0), 0);
-    const lines = [`${title}:`, `Total: ${total}`];
+    lines.push(`Total: ${total}`);
     for (const [key, val] of entries) {
       lines.push(`${key}: ${val}`);
     }

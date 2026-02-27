@@ -1817,15 +1817,20 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
   }
   if (gemColor === 2) {
     g.IsAOEMatch = 0;
-    const roll = randomIndex(ctx, 4);
+    const consumedBlue = Math.max(1, Number(g.BlueGemConsumedCount || 0));
+    g.AstralFlowWallet = Number(g.AstralFlowWallet || 0) + consumedBlue;
+    g.LastAstralFlowGain = consumedBlue;
+    const roll = Math.floor(Math.random() * 4);
     let skillId = 'DEF_UP';
-    let intentKey = 'Party_DEF_UP';
+    let intentKey = 'AstralFlow_Wallet_Add';
     let buffType = 0;
-    if (roll === 1) { skillId = 'ATK_UP'; intentKey = 'Party_ATK_UP'; }
-    if (roll === 2) { skillId = 'MAG_UP'; intentKey = 'Party_MAG_UP'; }
-    if (roll === 3) { skillId = 'RES_UP'; intentKey = 'Party_RES_UP'; buffType = 4; }
+    if (roll === 1) { skillId = 'ATK_UP'; }
+    if (roll === 2) { skillId = 'MAG_UP'; }
+    if (roll === 3) { skillId = 'RES_UP'; buffType = 4; }
     if (roll === 1 || roll === 2) buffType = roll;
-    LogGemIntent(ctx, 2, 'BLUE', intentKey, '', actorUID);
+    LogGemIntent(ctx, 2, 'BLUE', intentKey, `+${consumedBlue}`, actorUID);
+    const actorName = getActorNameByUID(ctx, actorUID);
+    LogCombat(ctx, `${actorName} stored ${consumedBlue} Astral Flow.`);
     g.BuffRollSkillID = skillId;
     g.BuffRollActor = actorUID;
     g.BuffRollType = buffType;
