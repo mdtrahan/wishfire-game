@@ -2479,7 +2479,15 @@ async function main(){
         ctx.fillText('1', valueZone.x + valueZone.w / 2, valueZone.y + ss(9));
         if (minusIconImage) {
           roundRect(minusZone.x, minusZone.y, minusZone.w, minusZone.h, ss(3), '#e9eef1', '#dfe3e8');
-          ctx.drawImage(minusIconImage, minusZone.x + ss(1), minusZone.y + ss(1), minusZone.w - ss(2), minusZone.h - ss(2));
+          const minusDrawX = minusZone.x + ss(1);
+          const minusDrawY = minusZone.y + ss(1);
+          const minusDrawW = minusZone.w - ss(2);
+          const minusDrawH = minusZone.h - ss(2);
+          ctx.save();
+          ctx.translate(minusDrawX + (minusDrawW / 2), minusDrawY + (minusDrawH / 2));
+          ctx.rotate(Math.PI);
+          ctx.drawImage(minusIconImage, -minusDrawW / 2, -minusDrawH / 2, minusDrawW, minusDrawH);
+          ctx.restore();
         } else {
           roundRect(minusZone.x, minusZone.y, minusZone.w, minusZone.h, ss(3), '#e9eef1', '#dfe3e8');
           ctx.fillStyle = '#666666';
