@@ -2431,7 +2431,7 @@ async function main(){
         const labelRect = mapRect({ x: cell.x, y: statLabelTop, w: cell.w, h: statLabelH });
         const valueRect = mapRect({ x: cell.x, y: statValueTop, w: cell.w, h: statValueH });
         const statValue = statKey === 'HP'
-          ? `${heroHPValue.hp}/${heroHPValue.maxHP}`
+          ? `${heroHPValue.hp}`
           : `${getHeroStatValue(hero, statKey)}`;
         roundRect(labelRect.x, labelRect.y, labelRect.w, labelRect.h, ss(4), '#e9eef1', '#dfe3e8');
         roundRect(valueRect.x, valueRect.y, valueRect.w, valueRect.h, ss(4), '#ffffff', '#dfe3e8');
