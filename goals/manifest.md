@@ -1,3 +1,7 @@
-# Goals manifest
+# Moved To Archive
 
-# Add goal files here, e.g. `goals/sample_app.md`
+Moved to: `docs/archive/2026-02/goals/manifest.md`
+
+Reason: Superseded by tools/manifest.md
+
+Beads issue: ORKA-bvv

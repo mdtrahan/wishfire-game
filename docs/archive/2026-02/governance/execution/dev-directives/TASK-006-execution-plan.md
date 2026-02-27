@@ -1,3 +1,11 @@
+# Archived (2026-02-23)
+
+Reason: Historical archive
+
+Original path: `governance/execution/dev-directives/TASK-006-execution-plan.md`
+
+---
+
 # TASK-006 Execution Plan (Staging)
 
 ## Objective

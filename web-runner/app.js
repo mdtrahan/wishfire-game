@@ -49,49 +49,33 @@ const STARTUP_DEBUG = (() => {
     return false;
   }
 })();
-const BOOTSTRAP_SEED = (() => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const raw = params.get('bootstrap_seed') || params.get('seed');
-    if (raw == null || raw === '') return null;
-    const n = Number(raw);
-    if (!Number.isFinite(n)) return null;
-    return (Math.abs(Math.trunc(n)) >>> 0);
-  } catch {
-    return null;
-  }
-})();
-function createSeededRandom(seed) {
-  let state = (Number(seed) >>> 0);
-  if (state === 0) state = 0x9e3779b9;
-  return () => {
-    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
-    return state / 0x100000000;
+const RUNTIME_FINGERPRINT = (() => {
+  const source = (typeof window !== 'undefined' && window.__ORKA_RUNTIME_FINGERPRINT__)
+    ? window.__ORKA_RUNTIME_FINGERPRINT__
+    : {};
+  const params = (typeof window !== 'undefined')
+    ? new URLSearchParams(window.location.search)
+    : null;
+  const qaTaskOverride = params
+    ? (params.get('qa_task') || params.get('task') || '').trim()
+    : '';
+  const worktree = source.worktree || 'unknown-worktree';
+  const branch = source.branch || 'unknown-branch';
+  const issueId = qaTaskOverride || source.issueId || 'ORKA-UNKNOWN';
+  const orka69rReady = Boolean(source.contracts && source.contracts.ORKA69R_READY);
+  return {
+    worktree,
+    branch,
+    issueId,
+    orka69rReady,
+    label: `WT:${worktree} BR:${branch} TASK:${issueId} 69R:${orka69rReady ? 'READY' : 'MISSING'}`,
   };
-}
-const nextBootstrapRandom = (() => {
-  if (BOOTSTRAP_SEED == null) return () => Math.random();
-  const seeded = createSeededRandom(BOOTSTRAP_SEED);
-  return () => seeded();
 })();
-if (state && state.globals) {
-  state.globals.RuntimeRandom = nextBootstrapRandom;
-  state.globals.RuntimeSeed = BOOTSTRAP_SEED == null ? '' : String(BOOTSTRAP_SEED);
+console.info(`[RUNTIME_FINGERPRINT] ${RUNTIME_FINGERPRINT.label}`);
+if (!RUNTIME_FINGERPRINT.orka69rReady) {
+  console.warn('[RUNTIME_CONTRACT] ORKA-69r not present in this build (69R:MISSING).');
 }
-function runtimeRandom() {
-  const fn = state?.globals && typeof state.globals.RuntimeRandom === 'function'
-    ? state.globals.RuntimeRandom
-    : nextBootstrapRandom;
-  const value = Number(fn());
-  if (Number.isFinite(value) && value >= 0 && value < 1) return value;
-  return Math.random();
-}
-function runtimeRandomIndex(size) {
-  if (!(size > 0)) return 0;
-  return Math.floor(runtimeRandom() * size);
-}
-let bootstrapDeterministicRefillPending = BOOTSTRAP_SEED != null;
+
 function debugLayoutLog(message) {
   if (!DEBUG_LAYOUT) return;
   console.log(message);
@@ -2403,6 +2387,12 @@ async function main(){
       (canvas.width / dpr) / 2,
       (canvas.height / dpr) / 2
     );
+    if (layoutId === 'storyMock') {
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.font = '500 10px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(RUNTIME_FINGERPRINT.label, 8, 14);
+    }
     ctx.textAlign = 'left';
   }
   
@@ -4711,6 +4701,12 @@ function getStoryCardLiveLineState() {
     const total = Math.max(0, Number(g.AstralFlowWallet || 0));
     astralWalletOut.textContent = `Astral Flow Wallet:\nTotal: ${total}`;
   }
+  function drawAstralWalletHUD() {
+    if (!astralWalletOut) return;
+    const g = state.globals || {};
+    const total = Math.max(0, Number(g.AstralFlowWallet || 0));
+    astralWalletOut.textContent = `Astral Flow Wallet:\nTotal: ${total}`;
+  }
   drawFrame(); // initial render
   drawAstralWalletHUD();
 
@@ -5587,7 +5583,7 @@ function getStoryCardLiveLineState() {
           energy: state.globals.Player_Energy || 0,
           maxEnergy: state.globals.Player_maxEnergy || 0,
           gold: state.globals.goldTotal || 0,
-          astralFlowWallet: Number(state.globals.AstralFlowWallet || 0),
+          astralFlowWallet: state.globals.AstralFlowWallet || 0,
         },
         mapLayout: {
           panX: Number(gameState.mapLayout.panX || 0),

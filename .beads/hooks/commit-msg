@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+MSG_FILE="$1"
+MSG_CONTENT="$(cat "$MSG_FILE")"
+if ! grep -Eiq 'bd-[A-Za-z0-9][A-Za-z0-9._:-]*' <<<"$MSG_CONTENT"; then
+  echo "ERROR: Commit message must reference a Beads issue as bd-<issue-id> (example: bd-ORKA-8ri)." >&2
+  exit 1
+fi
