@@ -2266,60 +2266,46 @@ async function main(){
       const viewHeight = canvas.height / dpr;
       const ART_W = 360;
       const ART_H = 640;
-      const artOffsetX = Math.round((viewWidth - ART_W) / 2);
-      const artOffsetY = Math.round((viewHeight - ART_H) / 2);
-      const px = (x) => artOffsetX + x;
-      const py = (y) => artOffsetY + y;
+      const fitScale = Math.min(viewWidth / ART_W, viewHeight / ART_H);
+      const artDrawW = ART_W * fitScale;
+      const artDrawH = ART_H * fitScale;
+      const artOffsetX = Math.round((viewWidth - artDrawW) / 2);
+      const artOffsetY = Math.round((viewHeight - artDrawH) / 2);
+      const px = (x) => artOffsetX + (x * fitScale);
+      const py = (y) => artOffsetY + (y * fitScale);
+      const ps = (v) => v * fitScale;
+      const fs = (v, min = 8) => Math.max(min, Math.round(v * fitScale));
+      const box = (x, y, w, h) => ({ x: px(x), y: py(y), w: ps(w), h: ps(h) });
       const outerPad = 12;
       const portraitW = 116;
       const portraitH = 90;
-      const portraitBox = {
-        x: px(Math.round((ART_W - portraitW) / 2)),
-        y: py(44),
-        w: portraitW,
-        h: portraitH,
-      };
-      const arrowSize = 24;
+      const portraitBox = box(Math.round((ART_W - portraitW) / 2), 44, portraitW, portraitH);
+      const arrowSize = ps(24);
       const leftArrowZone = {
-        x: portraitBox.x - arrowSize - 6,
+        x: portraitBox.x - arrowSize - ps(6),
         y: portraitBox.y + (portraitBox.h - arrowSize) / 2,
         w: arrowSize,
         h: arrowSize,
       };
       const rightArrowZone = {
-        x: portraitBox.x + portraitBox.w + 6,
+        x: portraitBox.x + portraitBox.w + ps(6),
         y: portraitBox.y + (portraitBox.h - arrowSize) / 2,
         w: arrowSize,
         h: arrowSize,
       };
-      const namePill = {
-        x: px(114),
-        y: py(144),
-        w: 124,
-        h: 30,
-      };
+      const namePill = box(114, 144, 124, 30);
       const statLabels = ['HP', 'ATK', 'DEF', 'MAG', 'RES', 'SPD'];
       const statsX = px(outerPad);
       const statsW = ART_W - (outerPad * 2);
-      const statGap = 4;
+      const statGap = ps(4);
       const statBoxW = Math.floor((statsW - (statGap * 5)) / 6);
       const statLabelRowY = py(184);
-      const statLabelH = 20;
+      const statLabelH = ps(20);
       const statValueRowY = py(208);
-      const statValueH = 24;
-      const skillPointsRow = {
-        x: px(12),
-        y: py(244),
-        w: 336,
-        h: 32,
-      };
-      const skillPointsChip = {
-        x: skillPointsRow.x + skillPointsRow.w - 50,
-        y: skillPointsRow.y + 4,
-        w: 42,
-        h: 24,
-      };
-      const closeRadius = 14;
+      const statValueH = ps(24);
+      const skillPointsRow = box(12, 244, 336, 32);
+      const skillPointsChip = box(12 + 336 - 50, 248, 42, 24);
+      const closeRadius = ps(14);
       const closeCenterX = px(180);
       const closeCenterY = py(624);
       const closeBtn = {
@@ -2328,9 +2314,9 @@ async function main(){
         w: closeRadius * 2,
         h: closeRadius * 2,
       };
-      const cardW = 336;
-      const cardH = 79.53;
-      const cardGap = 8;
+      const cardW = ps(336);
+      const cardH = ps(79.53);
+      const cardGap = ps(8);
       const cardsTop = py(284);
       const cards = [
         { x: px(12), y: cardsTop, w: cardW, h: cardH },
@@ -2372,11 +2358,11 @@ async function main(){
       gradient.addColorStop(1, '#c3d1e7');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, viewWidth, viewHeight);
-      roundRect(portraitBox.x, portraitBox.y, portraitBox.w, portraitBox.h, 10, '#dbe4f4', '#7f90ab');
-      roundRect(leftArrowZone.x, leftArrowZone.y, leftArrowZone.w, leftArrowZone.h, 4, '#eaf0fb', '#6f829d');
-      roundRect(rightArrowZone.x, rightArrowZone.y, rightArrowZone.w, rightArrowZone.h, 4, '#eaf0fb', '#6f829d');
+      roundRect(portraitBox.x, portraitBox.y, portraitBox.w, portraitBox.h, ps(10), '#dbe4f4', '#7f90ab');
+      roundRect(leftArrowZone.x, leftArrowZone.y, leftArrowZone.w, leftArrowZone.h, ps(4), '#eaf0fb', '#6f829d');
+      roundRect(rightArrowZone.x, rightArrowZone.y, rightArrowZone.w, rightArrowZone.h, ps(4), '#eaf0fb', '#6f829d');
       ctx.fillStyle = '#2a3850';
-      ctx.font = '700 15px Arial';
+      ctx.font = `700 ${fs(15)}px Arial`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('<', leftArrowZone.x + leftArrowZone.w / 2, leftArrowZone.y + leftArrowZone.h / 2);
@@ -2384,8 +2370,8 @@ async function main(){
       ctx.textBaseline = 'alphabetic';
       const capImg = heroCapsuleImages[heroName] || null;
       if (capImg) {
-        const maxW = portraitBox.w - 8;
-        const maxH = portraitBox.h - 8;
+        const maxW = portraitBox.w - ps(8);
+        const maxH = portraitBox.h - ps(8);
         const scale = Math.min(maxW / capImg.width, maxH / capImg.height);
         const drawW = capImg.width * scale;
         const drawH = capImg.height * scale;
@@ -2394,15 +2380,15 @@ async function main(){
         ctx.drawImage(capImg, drawX, drawY, drawW, drawH);
       } else {
         ctx.fillStyle = '#5b6f8c';
-        ctx.font = '600 14px Arial';
+        ctx.font = `600 ${fs(14)}px Arial`;
         ctx.textAlign = 'center';
         ctx.fillText('Portrait', portraitBox.x + portraitBox.w / 2, portraitBox.y + portraitBox.h / 2);
       }
-      roundRect(namePill.x, namePill.y, namePill.w, namePill.h, 8, '#eaf0fb', '#6f829d');
+      roundRect(namePill.x, namePill.y, namePill.w, namePill.h, ps(8), '#eaf0fb', '#6f829d');
       ctx.fillStyle = '#2a3850';
-      ctx.font = '700 15px Arial';
+      ctx.font = `700 ${fs(15)}px Arial`;
       ctx.textAlign = 'center';
-      ctx.fillText(heroName, namePill.x + namePill.w / 2, namePill.y + 20);
+      ctx.fillText(heroName, namePill.x + namePill.w / 2, namePill.y + ps(20));
 
       for (let i = 0; i < statLabels.length; i++) {
         const statKey = statLabels[i];
@@ -2410,85 +2396,85 @@ async function main(){
         const statValue = statKey === 'HP'
           ? `${heroHPValue.hp}/${heroHPValue.maxHP}`
           : `${getHeroStatValue(hero, statKey)}`;
-        roundRect(statX, statLabelRowY, statBoxW, statLabelH, 4, '#eaf0fb', '#6f829d');
-        roundRect(statX, statValueRowY, statBoxW, statValueH, 4, '#ffffff', '#6f829d');
+        roundRect(statX, statLabelRowY, statBoxW, statLabelH, ps(4), '#eaf0fb', '#6f829d');
+        roundRect(statX, statValueRowY, statBoxW, statValueH, ps(4), '#ffffff', '#6f829d');
         ctx.fillStyle = '#4a5f7e';
-        ctx.font = '700 10px Arial';
+        ctx.font = `700 ${fs(10, 7)}px Arial`;
         ctx.textAlign = 'center';
-        ctx.fillText(statKey, statX + statBoxW / 2, statLabelRowY + 14);
+        ctx.fillText(statKey, statX + statBoxW / 2, statLabelRowY + ps(14));
         ctx.fillStyle = '#25354c';
-        ctx.font = '700 13px Arial';
-        ctx.fillText(statValue, statX + statBoxW / 2, statValueRowY + 16);
+        ctx.font = `700 ${fs(13, 8)}px Arial`;
+        ctx.fillText(statValue, statX + statBoxW / 2, statValueRowY + ps(16));
       }
 
-      roundRect(skillPointsRow.x, skillPointsRow.y, skillPointsRow.w, skillPointsRow.h, 14, '#eaf0fb', '#6f829d');
-      roundRect(skillPointsChip.x, skillPointsChip.y, skillPointsChip.w, skillPointsChip.h, 11, '#ffffff', '#6f829d');
+      roundRect(skillPointsRow.x, skillPointsRow.y, skillPointsRow.w, skillPointsRow.h, ps(14), '#eaf0fb', '#6f829d');
+      roundRect(skillPointsChip.x, skillPointsChip.y, skillPointsChip.w, skillPointsChip.h, ps(11), '#ffffff', '#6f829d');
       ctx.fillStyle = '#2a3850';
-      ctx.font = '600 14px Arial';
+      ctx.font = `600 ${fs(14)}px Arial`;
       ctx.textAlign = 'center';
-      ctx.fillText('Skill Points', skillPointsRow.x + 86, skillPointsRow.y + 22);
+      ctx.fillText('Skill Points', skillPointsRow.x + ps(86), skillPointsRow.y + ps(22));
       ctx.fillStyle = '#25354c';
-      ctx.font = '700 12px Arial';
-      ctx.fillText('0', skillPointsChip.x + skillPointsChip.w / 2, skillPointsChip.y + 15);
+      ctx.font = `700 ${fs(12, 8)}px Arial`;
+      ctx.fillText('0', skillPointsChip.x + skillPointsChip.w / 2, skillPointsChip.y + ps(15));
 
       cards.forEach((card, idx) => {
-        roundRect(card.x, card.y, card.w, card.h, 12, '#f4f7fc', '#6f829d');
-        const titleBar = { x: card.x + 8, y: card.y + 8, w: card.w - 16, h: 18 };
-        roundRect(titleBar.x, titleBar.y, titleBar.w, titleBar.h, 8, '#dbe4f4', null);
+        roundRect(card.x, card.y, card.w, card.h, ps(12), '#f4f7fc', '#6f829d');
+        const titleBar = { x: card.x + ps(8), y: card.y + ps(8), w: card.w - ps(16), h: ps(18) };
+        roundRect(titleBar.x, titleBar.y, titleBar.w, titleBar.h, ps(8), '#dbe4f4', null);
         const iconTile = {
-          x: card.x + 8,
-          y: card.y + 24,
-          w: 36,
-          h: 48,
+          x: card.x + ps(8),
+          y: card.y + ps(24),
+          w: ps(36),
+          h: ps(48),
         };
         const accent = ['#8eb1e2', '#95c6d0', '#d2b38a'][idx] || '#9aa7b8';
         ctx.fillStyle = accent;
         roundRect(iconTile.x, iconTile.y, iconTile.w, iconTile.h, 6, accent, null);
-        const controlsY = card.y + card.h - 18;
-        const controlSize = 12;
-        const plusZone = { x: card.x + card.w - 16, y: controlsY, w: controlSize, h: controlSize };
-        const valueZone = { x: plusZone.x - 18, y: controlsY, w: 14, h: controlSize };
-        const minusZone = { x: valueZone.x - 18, y: controlsY, w: controlSize, h: controlSize };
+        const controlsY = card.y + card.h - ps(18);
+        const controlSize = ps(12);
+        const plusZone = { x: card.x + card.w - ps(16), y: controlsY, w: controlSize, h: controlSize };
+        const valueZone = { x: plusZone.x - ps(18), y: controlsY, w: ps(14), h: controlSize };
+        const minusZone = { x: valueZone.x - ps(18), y: controlsY, w: controlSize, h: controlSize };
         if (minusIconImage) {
           ctx.drawImage(minusIconImage, minusZone.x, minusZone.y, minusZone.w, minusZone.h);
         } else {
-          roundRect(minusZone.x, minusZone.y, minusZone.w, minusZone.h, 3, '#ffffff', '#6f829d');
+          roundRect(minusZone.x, minusZone.y, minusZone.w, minusZone.h, ps(3), '#ffffff', '#6f829d');
           ctx.fillStyle = '#2a3850';
-          ctx.font = '700 10px Arial';
+          ctx.font = `700 ${fs(10, 7)}px Arial`;
           ctx.textAlign = 'center';
-          ctx.fillText('-', minusZone.x + minusZone.w / 2, minusZone.y + 9);
+          ctx.fillText('-', minusZone.x + minusZone.w / 2, minusZone.y + ps(9));
         }
-        roundRect(valueZone.x, valueZone.y, valueZone.w, valueZone.h, 3, '#ffffff', '#6f829d');
+        roundRect(valueZone.x, valueZone.y, valueZone.w, valueZone.h, ps(3), '#ffffff', '#6f829d');
         ctx.fillStyle = '#25354c';
-        ctx.font = '700 10px Arial';
+        ctx.font = `700 ${fs(10, 7)}px Arial`;
         ctx.textAlign = 'center';
-        ctx.fillText('1', valueZone.x + valueZone.w / 2, valueZone.y + 9);
+        ctx.fillText('1', valueZone.x + valueZone.w / 2, valueZone.y + ps(9));
         if (plusIconImage) {
           ctx.drawImage(plusIconImage, plusZone.x, plusZone.y, plusZone.w, plusZone.h);
         } else {
-          roundRect(plusZone.x, plusZone.y, plusZone.w, plusZone.h, 3, '#ffffff', '#6f829d');
+          roundRect(plusZone.x, plusZone.y, plusZone.w, plusZone.h, ps(3), '#ffffff', '#6f829d');
           ctx.fillStyle = '#2a3850';
-          ctx.font = '700 10px Arial';
+          ctx.font = `700 ${fs(10, 7)}px Arial`;
           ctx.textAlign = 'center';
-          ctx.fillText('+', plusZone.x + plusZone.w / 2, plusZone.y + 9);
+          ctx.fillText('+', plusZone.x + plusZone.w / 2, plusZone.y + ps(9));
         }
         ctx.fillStyle = '#25354c';
-        ctx.font = '700 11px Arial';
+        ctx.font = `700 ${fs(11, 8)}px Arial`;
         ctx.textAlign = 'left';
         const title = idx === 0
           ? getHeroStarterSkillTitle(heroName)
           : `Skill ${idx + 1} Placeholder`;
-        ctx.fillText(title, card.x + 52, card.y + 21);
-        ctx.font = '500 9px Arial';
+        ctx.fillText(title, card.x + ps(52), card.y + ps(21));
+        ctx.font = `500 ${fs(9, 7)}px Arial`;
         ctx.fillStyle = '#4a5a70';
-        ctx.fillText('Description placeholder', card.x + 52, card.y + 38);
-        ctx.fillText('Multiline body text block', card.x + 52, card.y + 50);
+        ctx.fillText('Description placeholder', card.x + ps(52), card.y + ps(38));
+        ctx.fillText('Multiline body text block', card.x + ps(52), card.y + ps(50));
       });
       roundRect(closeBtn.x, closeBtn.y, closeBtn.w, closeBtn.h, closeRadius, '#eaf0fb', '#6f829d');
       ctx.fillStyle = '#2a3850';
-      ctx.font = '700 16px Arial';
+      ctx.font = `700 ${fs(16, 10)}px Arial`;
       ctx.textAlign = 'center';
-      ctx.fillText('X', closeBtn.x + closeBtn.w / 2, closeBtn.y + closeRadius + 5);
+      ctx.fillText('X', closeBtn.x + closeBtn.w / 2, closeBtn.y + closeRadius + ps(5));
       return;
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
