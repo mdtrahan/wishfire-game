@@ -2353,15 +2353,11 @@ async function main(){
       };
 
       ctx.clearRect(0, 0, viewWidth, viewHeight);
-      const gradient = ctx.createLinearGradient(0, 0, 0, viewHeight);
-      gradient.addColorStop(0, '#cfd9ea');
-      gradient.addColorStop(1, '#c3d1e7');
-      ctx.fillStyle = gradient;
+      ctx.fillStyle = '#e8edf6';
       ctx.fillRect(0, 0, viewWidth, viewHeight);
-      roundRect(portraitBox.x, portraitBox.y, portraitBox.w, portraitBox.h, ps(10), '#dbe4f4', '#7f90ab');
-      roundRect(leftArrowZone.x, leftArrowZone.y, leftArrowZone.w, leftArrowZone.h, ps(4), '#eaf0fb', '#6f829d');
-      roundRect(rightArrowZone.x, rightArrowZone.y, rightArrowZone.w, rightArrowZone.h, ps(4), '#eaf0fb', '#6f829d');
-      ctx.fillStyle = '#2a3850';
+      roundRect(leftArrowZone.x, leftArrowZone.y, leftArrowZone.w, leftArrowZone.h, ps(4), '#e5ecf6', '#93a1b6');
+      roundRect(rightArrowZone.x, rightArrowZone.y, rightArrowZone.w, rightArrowZone.h, ps(4), '#e5ecf6', '#93a1b6');
+      ctx.fillStyle = '#3b4d66';
       ctx.font = `700 ${fs(15)}px Arial`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -2379,13 +2375,13 @@ async function main(){
         const drawY = portraitBox.y + (portraitBox.h - drawH) / 2;
         ctx.drawImage(capImg, drawX, drawY, drawW, drawH);
       } else {
-        ctx.fillStyle = '#5b6f8c';
+        ctx.fillStyle = '#6a7b94';
         ctx.font = `600 ${fs(14)}px Arial`;
         ctx.textAlign = 'center';
         ctx.fillText('Portrait', portraitBox.x + portraitBox.w / 2, portraitBox.y + portraitBox.h / 2);
       }
-      roundRect(namePill.x, namePill.y, namePill.w, namePill.h, ps(8), '#eaf0fb', '#6f829d');
-      ctx.fillStyle = '#2a3850';
+      roundRect(namePill.x, namePill.y, namePill.w, namePill.h, ps(8), '#e6edf7', '#93a1b6');
+      ctx.fillStyle = '#33465f';
       ctx.font = `700 ${fs(15)}px Arial`;
       ctx.textAlign = 'center';
       ctx.fillText(heroName, namePill.x + namePill.w / 2, namePill.y + ps(20));
@@ -2396,38 +2392,38 @@ async function main(){
         const statValue = statKey === 'HP'
           ? `${heroHPValue.hp}/${heroHPValue.maxHP}`
           : `${getHeroStatValue(hero, statKey)}`;
-        roundRect(statX, statLabelRowY, statBoxW, statLabelH, ps(4), '#eaf0fb', '#6f829d');
-        roundRect(statX, statValueRowY, statBoxW, statValueH, ps(4), '#ffffff', '#6f829d');
-        ctx.fillStyle = '#4a5f7e';
+        roundRect(statX, statLabelRowY, statBoxW, statLabelH, ps(4), '#e4ebf6', '#93a1b6');
+        roundRect(statX, statValueRowY, statBoxW, statValueH, ps(4), '#f7f9fc', '#93a1b6');
+        ctx.fillStyle = '#5c6f88';
         ctx.font = `700 ${fs(10, 7)}px Arial`;
         ctx.textAlign = 'center';
         ctx.fillText(statKey, statX + statBoxW / 2, statLabelRowY + ps(14));
-        ctx.fillStyle = '#25354c';
+        ctx.fillStyle = '#2f4158';
         ctx.font = `700 ${fs(13, 8)}px Arial`;
         ctx.fillText(statValue, statX + statBoxW / 2, statValueRowY + ps(16));
       }
 
-      roundRect(skillPointsRow.x, skillPointsRow.y, skillPointsRow.w, skillPointsRow.h, ps(14), '#eaf0fb', '#6f829d');
-      roundRect(skillPointsChip.x, skillPointsChip.y, skillPointsChip.w, skillPointsChip.h, ps(11), '#ffffff', '#6f829d');
-      ctx.fillStyle = '#2a3850';
+      roundRect(skillPointsRow.x, skillPointsRow.y, skillPointsRow.w, skillPointsRow.h, ps(14), '#e6edf7', '#93a1b6');
+      roundRect(skillPointsChip.x, skillPointsChip.y, skillPointsChip.w, skillPointsChip.h, ps(11), '#f7f9fc', '#93a1b6');
+      ctx.fillStyle = '#33465f';
       ctx.font = `600 ${fs(14)}px Arial`;
       ctx.textAlign = 'center';
       ctx.fillText('Skill Points', skillPointsRow.x + ps(86), skillPointsRow.y + ps(22));
-      ctx.fillStyle = '#25354c';
+      ctx.fillStyle = '#2f4158';
       ctx.font = `700 ${fs(12, 8)}px Arial`;
       ctx.fillText('0', skillPointsChip.x + skillPointsChip.w / 2, skillPointsChip.y + ps(15));
 
       cards.forEach((card, idx) => {
-        roundRect(card.x, card.y, card.w, card.h, ps(12), '#f4f7fc', '#6f829d');
+        roundRect(card.x, card.y, card.w, card.h, ps(12), '#edf1f7', '#93a1b6');
         const titleBar = { x: card.x + ps(8), y: card.y + ps(8), w: card.w - ps(16), h: ps(18) };
-        roundRect(titleBar.x, titleBar.y, titleBar.w, titleBar.h, ps(8), '#dbe4f4', null);
+        roundRect(titleBar.x, titleBar.y, titleBar.w, titleBar.h, ps(8), '#d4dde9', null);
         const iconTile = {
           x: card.x + ps(8),
           y: card.y + ps(24),
           w: ps(36),
           h: ps(48),
         };
-        const accent = ['#8eb1e2', '#95c6d0', '#d2b38a'][idx] || '#9aa7b8';
+        const accent = ['#85a5d3', '#8ab9c3', '#ccb089'][idx] || '#9aa7b8';
         ctx.fillStyle = accent;
         roundRect(iconTile.x, iconTile.y, iconTile.w, iconTile.h, 6, accent, null);
         const controlsY = card.y + card.h - ps(18);
@@ -2435,30 +2431,32 @@ async function main(){
         const plusZone = { x: card.x + card.w - ps(16), y: controlsY, w: controlSize, h: controlSize };
         const valueZone = { x: plusZone.x - ps(18), y: controlsY, w: ps(14), h: controlSize };
         const minusZone = { x: valueZone.x - ps(18), y: controlsY, w: controlSize, h: controlSize };
+        roundRect(valueZone.x, valueZone.y, valueZone.w, valueZone.h, ps(3), '#f7f9fc', '#93a1b6');
+        ctx.fillStyle = '#4b5f79';
+        ctx.font = `700 ${fs(10, 7)}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.fillText('1', valueZone.x + valueZone.w / 2, valueZone.y + ps(9));
         if (minusIconImage) {
-          ctx.drawImage(minusIconImage, minusZone.x, minusZone.y, minusZone.w, minusZone.h);
+          roundRect(minusZone.x, minusZone.y, minusZone.w, minusZone.h, ps(3), '#f0f4fa', '#93a1b6');
+          ctx.drawImage(minusIconImage, minusZone.x + ps(1), minusZone.y + ps(1), minusZone.w - ps(2), minusZone.h - ps(2));
         } else {
-          roundRect(minusZone.x, minusZone.y, minusZone.w, minusZone.h, ps(3), '#ffffff', '#6f829d');
-          ctx.fillStyle = '#2a3850';
+          roundRect(minusZone.x, minusZone.y, minusZone.w, minusZone.h, ps(3), '#f0f4fa', '#93a1b6');
+          ctx.fillStyle = '#3b4d66';
           ctx.font = `700 ${fs(10, 7)}px Arial`;
           ctx.textAlign = 'center';
           ctx.fillText('-', minusZone.x + minusZone.w / 2, minusZone.y + ps(9));
         }
-        roundRect(valueZone.x, valueZone.y, valueZone.w, valueZone.h, ps(3), '#ffffff', '#6f829d');
-        ctx.fillStyle = '#25354c';
-        ctx.font = `700 ${fs(10, 7)}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.fillText('1', valueZone.x + valueZone.w / 2, valueZone.y + ps(9));
         if (plusIconImage) {
-          ctx.drawImage(plusIconImage, plusZone.x, plusZone.y, plusZone.w, plusZone.h);
+          roundRect(plusZone.x, plusZone.y, plusZone.w, plusZone.h, ps(3), '#f0f4fa', '#93a1b6');
+          ctx.drawImage(plusIconImage, plusZone.x + ps(1), plusZone.y + ps(1), plusZone.w - ps(2), plusZone.h - ps(2));
         } else {
-          roundRect(plusZone.x, plusZone.y, plusZone.w, plusZone.h, ps(3), '#ffffff', '#6f829d');
-          ctx.fillStyle = '#2a3850';
+          roundRect(plusZone.x, plusZone.y, plusZone.w, plusZone.h, ps(3), '#f0f4fa', '#93a1b6');
+          ctx.fillStyle = '#3b4d66';
           ctx.font = `700 ${fs(10, 7)}px Arial`;
           ctx.textAlign = 'center';
           ctx.fillText('+', plusZone.x + plusZone.w / 2, plusZone.y + ps(9));
         }
-        ctx.fillStyle = '#25354c';
+        ctx.fillStyle = '#2f4158';
         ctx.font = `700 ${fs(11, 8)}px Arial`;
         ctx.textAlign = 'left';
         const title = idx === 0
@@ -2466,12 +2464,12 @@ async function main(){
           : `Skill ${idx + 1} Placeholder`;
         ctx.fillText(title, card.x + ps(52), card.y + ps(21));
         ctx.font = `500 ${fs(9, 7)}px Arial`;
-        ctx.fillStyle = '#4a5a70';
+        ctx.fillStyle = '#4d6078';
         ctx.fillText('Description placeholder', card.x + ps(52), card.y + ps(38));
         ctx.fillText('Multiline body text block', card.x + ps(52), card.y + ps(50));
       });
-      roundRect(closeBtn.x, closeBtn.y, closeBtn.w, closeBtn.h, closeRadius, '#eaf0fb', '#6f829d');
-      ctx.fillStyle = '#2a3850';
+      roundRect(closeBtn.x, closeBtn.y, closeBtn.w, closeBtn.h, closeRadius, '#e5ecf6', '#93a1b6');
+      ctx.fillStyle = '#33465f';
       ctx.font = `700 ${fs(16, 10)}px Arial`;
       ctx.textAlign = 'center';
       ctx.fillText('X', closeBtn.x + closeBtn.w / 2, closeBtn.y + closeRadius + ps(5));
