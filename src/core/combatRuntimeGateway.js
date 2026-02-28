@@ -47,7 +47,7 @@ function combatLog(message) {
   console.log(message);
 }
 
-export class CombatRuntimeGateway {
+class CombatRuntimeGateway {
   constructor({ combatState, eventBus, layoutState, callFunctionWithContext } = {}) {
     this.combatState = combatState || {};
     this.eventBus = eventBus || null;
@@ -267,3 +267,7 @@ export class CombatRuntimeGateway {
     return true;
   }
 }
+
+module.exports = {
+  CombatRuntimeGateway,
+};
