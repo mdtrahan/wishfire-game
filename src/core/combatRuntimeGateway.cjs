@@ -268,5 +268,6 @@ class CombatRuntimeGateway {
   }
 }
 
-export { CombatRuntimeGateway };
-export default CombatRuntimeGateway;
+module.exports = {
+  CombatRuntimeGateway,
+};
