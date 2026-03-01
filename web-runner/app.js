@@ -1039,16 +1039,34 @@ function startYellowCasinoSequence(actorUID) {
   const emptyTelegraph = [];
   for (let r = 0; r < boardGeometry.rows; r++) {
     for (let c = 0; c < boardGeometry.cols; c++) {
+      const key = `${r},${c}`;
+      const gem = gemByCell.get(key) || null;
+      const color = gem && gem.color != null ? gem.color : (gem ? gem.elementIndex : null);
       const cellFilled = !!(gameState.grid[c] && gameState.grid[c][r]);
-      if (!cellFilled) {
+      if (gem && color === YELLOW_COLOR) {
+        const retargetPool = [0, 1, 2];
+        queue.push({
+          type: 'yellow',
+          reason: 'yellow-reassign',
+          uid: gem.uid,
+          cellC: c,
+          cellR: r,
+          target: retargetPool[Math.floor(Math.random() * retargetPool.length)],
+          sequence: null,
+          startAt: 0,
+          duration: YELLOW_CASINO_SPIN_SEC,
+          frameDuration: 0,
+        });
+      } else if (!cellFilled) {
         const pos = getCellWorldPos(c, r);
+        const refillPool = [0, 1, 2, 4, 5];
         queue.push({
           type: 'empty',
           reason: 'yellow-refill',
           uid: 0,
           cellC: c,
           cellR: r,
-          target: pickYellowCasinoTarget(),
+          target: refillPool[Math.floor(Math.random() * refillPool.length)],
           sequence: null,
           startAt: 0,
           duration: YELLOW_CASINO_SPIN_SEC,
