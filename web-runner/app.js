@@ -366,6 +366,8 @@ function traceTask015YellowWrite(source, item, step) {
     cellR: Number(item.cellR || 0),
     cellC: Number(item.cellC || 0),
     type: String(item.type || ''),
+    target: Number(item.target || 0),
+    assignedColor: Number(item.target || 0),
     time: Number(state.globals.time || 0),
   });
   if (store.yellowWrites.length > 120) store.yellowWrites.shift();
@@ -1034,16 +1036,16 @@ function startYellowCasinoSequence(actorUID) {
     gemByCell.set(`${gm.cellR},${gm.cellC}`, gm);
   }
   const queue = [];
+  const emptyTelegraph = [];
   for (let r = 0; r < boardGeometry.rows; r++) {
     for (let c = 0; c < boardGeometry.cols; c++) {
-      const key = `${r},${c}`;
-      const gem = gemByCell.get(key) || null;
-      const color = gem && gem.color != null ? gem.color : (gem ? gem.elementIndex : null);
-      if (gem && color === YELLOW_COLOR) {
+      const cellFilled = !!(gameState.grid[c] && gameState.grid[c][r]);
+      if (!cellFilled) {
+        const pos = getCellWorldPos(c, r);
         queue.push({
-          type: 'yellow',
-          reason: 'yellow-reassign',
-          uid: gem.uid,
+          type: 'empty',
+          reason: 'yellow-refill',
+          uid: 0,
           cellC: c,
           cellR: r,
           target: pickYellowCasinoTarget(),
@@ -1052,6 +1054,7 @@ function startYellowCasinoSequence(actorUID) {
           duration: YELLOW_CASINO_SPIN_SEC,
           frameDuration: 0,
         });
+        emptyTelegraph.push(pos);
       }
     }
   }
@@ -1069,7 +1072,7 @@ function startYellowCasinoSequence(actorUID) {
   casino.current = null;
   casino.telegraphUntil = now + YELLOW_CASINO_TELEGRAPH_SEC;
   casino.ghost = null;
-  casino.emptyTelegraph = [];
+  casino.emptyTelegraph = emptyTelegraph;
 
   for (const item of queue) {
     if (item.type !== 'yellow') continue;
@@ -1109,9 +1112,13 @@ function startYellowCasinoSequence(actorUID) {
     state.globals.DeferAdvance = 1;
     state.globals.AdvanceAfterAction = 1;
     state.globals.ActionOwnerUID = actorUID;
+    state.globals.CanPickGems = false;
+    state.globals.IsPlayerBusy = 1;
+    state.globals.BoardFillActive = 1;
   } else {
-    traceTask015YellowAnimation('yellow-sequence-skip', { reason: 'no-yellow-gems' });
-    startRefillBounce();
+    traceTask015YellowAnimation('yellow-sequence-skip', { reason: 'no-yellow-slots' });
+    state.globals.BoardFillActive = 0;
+    state.globals.IsPlayerBusy = 0;
   }
 }
 
