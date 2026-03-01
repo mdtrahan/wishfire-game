@@ -127,12 +127,14 @@ function activatePowerAmp(ctx, actorUID) {
     for (const hero of getHeroes(ctx)) {
       if ((hero.hp ?? 0) > 0) {
         store[hero.uid] = armPowerAmpEntry(outcome.multiplier, grantTurn, grantTurnSerial);
+        setPowerAmpVisual(g, hero.uid, outcome.multiplier);
       }
     }
     LogCombat(ctx, 'JACKPOT! All heroes get Power Amp x2!');
     return;
   }
   store[actorUID] = armPowerAmpEntry(outcome.multiplier, grantTurn, grantTurnSerial);
+  setPowerAmpVisual(g, actorUID, outcome.multiplier);
   LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} gained Power Amp x${outcome.multiplier}!`);
 }
 
@@ -2624,7 +2626,10 @@ export function HeroTurn(ctx, heroUID) {
       entry.activatedAtTurnSerial = turnSerialNow;
       entry.usedThisTurn = false;
       if (entry.mult > 0) {
-        setPowerAmpVisual(g, heroUID, entry.mult);
+        const existingVisual = g.PowerAmpVisualByUID && g.PowerAmpVisualByUID[heroUID];
+        if (!existingVisual || Number(existingVisual.mult || 0) !== Number(entry.mult || 0)) {
+          setPowerAmpVisual(g, heroUID, entry.mult);
+        }
       }
     }
   }

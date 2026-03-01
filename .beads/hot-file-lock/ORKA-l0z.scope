@@ -1,5 +1,5 @@
 web-runner/app.js:drawFrame
-web-runner/modules/functionBank.js:startPowerAmpFade
-Scripts/functionBank.js:startPowerAmpFade
+web-runner/modules/functionBank.js:startPowerAmpFade,activatePowerAmp,HeroTurn
+Scripts/functionBank.js:startPowerAmpFade,activatePowerAmp,HeroTurn
 web-runner/modules/skillSheet.js:ApplyPartyHeal,DoHeal
 Scripts/skillSheet.js:ApplyPartyHeal,DoHeal
