@@ -333,6 +333,12 @@ function appendHeroSkillPointTxn(g, entry) {
   if (ledger.length > 240) ledger.shift();
 }
 
+function appendHeroSkillPointRewardTrace(g, entry) {
+  const trace = Array.isArray(g.HeroSkillPointRewardTrace) ? g.HeroSkillPointRewardTrace : (g.HeroSkillPointRewardTrace = []);
+  trace.push(entry);
+  if (trace.length > 120) trace.shift();
+}
+
 function buildHeroSkillPointTxn(g, identity, source, delta, balanceAfter, kind, status, reason = '') {
   return {
     seq: nextHeroSkillLedgerSeq(g),
@@ -438,6 +444,67 @@ export function GetHeroSkillPointLedger(ctx, limit = 60) {
   return ledger.slice(-max).map(row => ({ ...row }));
 }
 
+export function GrantHeroSkillPointsToParty(ctx, amountEach, source = 'party_reward') {
+  const g = getGlobals(ctx);
+  const heroes = getAllHeroActors(ctx)
+    .slice()
+    .sort((a, b) => Number(a.heroIndex || 0) - Number(b.heroIndex || 0));
+  const results = heroes.map(hero => {
+    const grant = GrantHeroSkillPoints(ctx, hero.uid, amountEach, source);
+    const identity = resolveHeroSkillPointIdentity(ctx, hero.uid);
+    return {
+      ok: !!grant.ok,
+      balance: Number(grant.balance || 0),
+      heroId: String(identity.heroId || ''),
+      heroIndex: Number((identity.heroIndex) ?? -1),
+      heroName: String(identity.heroName || ''),
+      actorUID: Number(identity.actorUID || 0),
+      tx: grant.tx ? { ...grant.tx } : null,
+    };
+  });
+  const entry = {
+    kind: 'party_grant',
+    source: String(source || 'party_reward'),
+    amountEach: Math.floor(Number(amountEach || 0)),
+    grantsApplied: results.filter(row => row.ok).length,
+    heroIds: results.map(row => row.heroId),
+    actorUIDs: results.map(row => row.actorUID),
+    time: Number(g.time || 0),
+    turn: Number(g.DebugTurnCount || 0),
+    turnSerial: Number(g.TurnSerial || 0),
+    results: results.map(row => ({
+      ok: row.ok,
+      balance: row.balance,
+      heroId: row.heroId,
+      heroIndex: row.heroIndex,
+      heroName: row.heroName,
+      actorUID: row.actorUID,
+    })),
+  };
+  appendHeroSkillPointRewardTrace(g, entry);
+  return { ok: results.every(row => row.ok), entry, results };
+}
+
+export function GrantTowerSkillPoints(ctx, amountEach = 1, source = 'tower_takedown') {
+  return GrantHeroSkillPointsToParty(ctx, amountEach, source);
+}
+
+export function GrantBoPSkillPoints(ctx, amountEach = 1, source = 'bop_reward') {
+  return GrantHeroSkillPointsToParty(ctx, amountEach, source);
+}
+
+export function GetHeroSkillPointRewardTrace(ctx, limit = 20) {
+  const g = getGlobals(ctx);
+  const max = Math.max(1, Math.floor(Number(limit || 20)));
+  const trace = Array.isArray(g.HeroSkillPointRewardTrace) ? g.HeroSkillPointRewardTrace : [];
+  return trace.slice(-max).map(row => ({
+    ...row,
+    heroIds: Array.isArray(row.heroIds) ? row.heroIds.slice() : [],
+    actorUIDs: Array.isArray(row.actorUIDs) ? row.actorUIDs.slice() : [],
+    results: Array.isArray(row.results) ? row.results.map(item => ({ ...item })) : [],
+  }));
+}
+
 function ensureTokenWallet(ctx) {
   const g = getGlobals(ctx);
   if (!g.TokenWallet || typeof g.TokenWallet !== 'object') g.TokenWallet = {};
@@ -498,6 +565,21 @@ function pickDropTier(g) {
 function applyRewardPayload(ctx, payload) {
   if (!payload || !payload.type) return;
   const g = getGlobals(ctx);
+  if (payload.type === 'SKILL_POINTS_PARTY') {
+    const amountEach = payload.amountEach ?? payload.amount ?? 0;
+    GrantHeroSkillPointsToParty(ctx, amountEach, payload.source || 'event_skill_points_party');
+    return;
+  }
+  if (payload.type === 'SKILL_POINTS_TOWER') {
+    const amountEach = payload.amountEach ?? payload.amount ?? 1;
+    GrantTowerSkillPoints(ctx, amountEach, payload.source || 'tower_takedown');
+    return;
+  }
+  if (payload.type === 'SKILL_POINTS_BOP') {
+    const amountEach = payload.amountEach ?? payload.amount ?? 1;
+    GrantBoPSkillPoints(ctx, amountEach, payload.source || 'bop_reward');
+    return;
+  }
   if (payload.type === 'HEAL_RANDOM') {
     const amt = Math.max(1, Math.floor(Math.random() * 40) + 1);
     ctx.callFunction('ApplyPartyHeal', amt);

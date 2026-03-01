@@ -29,6 +29,7 @@ export const state = {
     HeroSkillPointsByUID: {},
     HeroSkillPointLedger: [],
     HeroSkillPointLedgerSeq: 0,
+    HeroSkillPointRewardTrace: [],
     TokenWallet: {},
     LiveOpsProgress: {},
 
