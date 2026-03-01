@@ -1340,6 +1340,10 @@ function handleGemMatch(color) {
     callFunctionWithContext(fnContext, 'Sub_Energy');
     g.ApplyChainToNextDamage = 0;
   } else if (color === 3) {
+    const actor = state.entities.find(e => e.uid === actorUID);
+    const actorName = actor ? (actor.name || 'Hero') : 'Hero';
+    callFunctionWithContext(fnContext, 'ResolveGemAction', 3, actorUID);
+    callFunctionWithContext(fnContext, 'LogCombat', `${actorName} used Wild Magic!`);
     callFunctionWithContext(fnContext, 'DestroyGem');
     callFunctionWithContext(fnContext, 'ClearMatchState');
     syncGemsFromGlobals();
