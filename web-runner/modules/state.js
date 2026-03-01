@@ -101,9 +101,11 @@ export const state = {
     InitiativeThreshold: 100,
     InitiativeMeters: {},
     InitiativeCurrentUID: 0,
+    InitiativeSessionId: 0,
     InitiativePreviewSize: 6,
     InitiativeMaxLoops: 500,
     BattleStartRemaining: {},
+    BattleStartResolved: 0,
 
     // Enemy/turn order arrays
     EnemyArray: [],

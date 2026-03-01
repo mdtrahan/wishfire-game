@@ -1,0 +1,157 @@
+{
+  "issue": "ORKA-mwl",
+  "sourcePath": "/Users/Mace/Wishfire/Codex-Orka/web-runner/modules/functionBank.js",
+  "rootCause": {
+    "verdict": "defect",
+    "summary": "Improper extra turns were caused by combat-session carryover: InitiativeMeters, InitiativeCurrentUID, and BattleStartResolved were not reset when CombatSessionId changed. That let Huun inherit stale meter lead and skip fresh battle-start ordering.",
+    "note": "Consecutive fast-hero turns can still be valid in time-initiative mode, but only when earned within the current combat. Cross-session carryover was the defective case."
+  },
+  "beforeTrace_preFixCarryoverModel": [
+    {
+      "step": 1,
+      "uid": 2,
+      "actor": "Huun",
+      "meters": {
+        "1": 10,
+        "2": 290
+      },
+      "currentUID": 2,
+      "battleStartResolved": 1,
+      "initiativeSessionId": 2,
+      "combatSessionId": 2
+    },
+    {
+      "step": 2,
+      "uid": 2,
+      "actor": "Huun",
+      "meters": {
+        "1": 10,
+        "2": 190
+      },
+      "currentUID": 2,
+      "battleStartResolved": 1,
+      "initiativeSessionId": 2,
+      "combatSessionId": 2
+    },
+    {
+      "step": 3,
+      "uid": 2,
+      "actor": "Huun",
+      "meters": {
+        "1": 10,
+        "2": 90
+      },
+      "currentUID": 2,
+      "battleStartResolved": 1,
+      "initiativeSessionId": 2,
+      "combatSessionId": 2
+    },
+    {
+      "step": 4,
+      "uid": 2,
+      "actor": "Huun",
+      "meters": {
+        "1": 19,
+        "2": 10
+      },
+      "currentUID": 2,
+      "battleStartResolved": 1,
+      "initiativeSessionId": 2,
+      "combatSessionId": 2
+    },
+    {
+      "step": 5,
+      "uid": 2,
+      "actor": "Huun",
+      "meters": {
+        "1": 64,
+        "2": 10
+      },
+      "currentUID": 2,
+      "battleStartResolved": 1,
+      "initiativeSessionId": 2,
+      "combatSessionId": 2
+    }
+  ],
+  "afterTrace_sessionResetFix": [
+    {
+      "step": 1,
+      "uid": 2,
+      "actor": "Huun",
+      "meters": {
+        "1": 45,
+        "2": 0
+      },
+      "currentUID": 2,
+      "battleStartResolved": 0,
+      "initiativeSessionId": 2,
+      "combatSessionId": 2
+    },
+    {
+      "step": 2,
+      "uid": 1,
+      "actor": "Falie",
+      "meters": {
+        "1": 8,
+        "2": 140
+      },
+      "currentUID": 1,
+      "battleStartResolved": 1,
+      "initiativeSessionId": 2,
+      "combatSessionId": 2
+    },
+    {
+      "step": 3,
+      "uid": 2,
+      "actor": "Huun",
+      "meters": {
+        "1": 8,
+        "2": 40
+      },
+      "currentUID": 2,
+      "battleStartResolved": 1,
+      "initiativeSessionId": 2,
+      "combatSessionId": 2
+    },
+    {
+      "step": 4,
+      "uid": 2,
+      "actor": "Huun",
+      "meters": {
+        "1": 35,
+        "2": 0
+      },
+      "currentUID": 2,
+      "battleStartResolved": 1,
+      "initiativeSessionId": 2,
+      "combatSessionId": 2
+    },
+    {
+      "step": 5,
+      "uid": 2,
+      "actor": "Huun",
+      "meters": {
+        "1": 80,
+        "2": 0
+      },
+      "currentUID": 2,
+      "battleStartResolved": 1,
+      "initiativeSessionId": 2,
+      "combatSessionId": 2
+    }
+  ],
+  "beforeSequence": [
+    "Huun",
+    "Huun",
+    "Huun",
+    "Huun",
+    "Huun"
+  ],
+  "afterSequence": [
+    "Huun",
+    "Falie",
+    "Huun",
+    "Huun",
+    "Huun"
+  ]
+}

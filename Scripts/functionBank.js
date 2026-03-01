@@ -1023,8 +1023,26 @@ function setMeter(meters, uid, value) {
   meters[String(uid)] = value;
 }
 
+function syncInitiativeSessionState(ctx) {
+  const g = getGlobals(ctx);
+  const combatSessionId = Number(g.CombatSessionId || 0);
+  if (!Number.isFinite(combatSessionId) || combatSessionId <= 0) return false;
+  const initiativeSessionId = Number(g.InitiativeSessionId || 0);
+  if (initiativeSessionId === combatSessionId) return false;
+  g.InitiativeMeters = {};
+  g.InitiativeCurrentUID = 0;
+  g.TurnOrderArray = [];
+  g.CurrentTurnIndex = 0;
+  g.BattleStartRemaining = {};
+  g.BattleStartResolved = 0;
+  g.ExtraTurnGranted = {};
+  g.InitiativeSessionId = combatSessionId;
+  return true;
+}
+
 function syncInitiativeMeters(ctx, roster) {
   const g = getGlobals(ctx);
+  syncInitiativeSessionState(ctx);
   const meters = g.InitiativeMeters || {};
   const rosterUIDs = new Set(roster.map(r => r.uid));
   const meterVals = Object.values(meters).map(v => Number(v) || 0);
