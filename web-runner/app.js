@@ -4489,13 +4489,53 @@ async function main(){
           const scaledW = w * heroScale;
           const scaledH = h * heroScale;
           const footY = pos.y + h / 2;
+          const auraActive = ampActive || !!(
+            hero &&
+            fade &&
+            (g.time || 0) < ((fade.startAt || 0) + (fade.duration || 0.42))
+          );
+          if (auraActive) {
+            let auraAlpha = 0.55;
+            let auraScale = 1;
+            if (ampActive) {
+              const startAt = visual ? (visual.startAt || 0) : (g.time || 0);
+              const inT = Math.max(0, Math.min(1, ((g.time || 0) - startAt) / 0.22));
+              auraAlpha = 0.18 + (0.44 * inT);
+              auraScale = 0.88 + (0.24 * popScale(inT));
+            } else {
+              const fadeT = Math.max(0, Math.min(1, ((g.time || 0) - (fade.startAt || 0)) / (fade.duration || 0.42)));
+              auraAlpha = 0.52 * (1 - fadeT);
+              auraScale = 1.08 + (0.08 * fadeT);
+            }
+            const auraCx = pos.x;
+            const auraCy = footY - (scaledH * 0.56);
+            const auraRx = Math.max(18, scaledW * 0.42) * auraScale;
+            const auraRy = Math.max(16, scaledH * 0.28) * auraScale;
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            const glow = ctx.createRadialGradient(auraCx, auraCy, 0, auraCx, auraCy, Math.max(auraRx, auraRy) * 1.35);
+            glow.addColorStop(0, `rgba(238, 208, 255, ${Math.max(0, auraAlpha * 0.95)})`);
+            glow.addColorStop(0.35, `rgba(196, 92, 255, ${Math.max(0, auraAlpha * 0.72)})`);
+            glow.addColorStop(0.7, `rgba(121, 42, 224, ${Math.max(0, auraAlpha * 0.42)})`);
+            glow.addColorStop(1, 'rgba(121, 42, 224, 0)');
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.ellipse(auraCx, auraCy, auraRx * 1.18, auraRy * 1.35, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = `rgba(236, 210, 255, ${Math.max(0, auraAlpha * 0.85)})`;
+            ctx.lineWidth = Math.max(1.5, 2 * layoutScale);
+            ctx.beginPath();
+            ctx.ellipse(auraCx, auraCy, auraRx, auraRy, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
           ctx.drawImage(img, pos.x - scaledW / 2, footY - scaledH, scaledW, scaledH);
 
           const fadeActive = !!(
             hero &&
             !ampActive &&
             fade &&
-            (g.time || 0) < ((fade.startAt || 0) + (fade.duration || 0.16))
+            (g.time || 0) < ((fade.startAt || 0) + (fade.duration || 0.42))
           );
           if (ampActive || fadeActive) {
             const mult = ampActive
@@ -4512,7 +4552,7 @@ async function main(){
               const inT = Math.max(0, Math.min(1, ((g.time || 0) - startAt) / 0.22));
               badgeScale = popScale(inT) * (1 + 0.03 * Math.sin((g.time || 0) * 6));
             } else {
-              const fadeT = Math.max(0, Math.min(1, ((g.time || 0) - (fade.startAt || 0)) / (fade.duration || 0.16)));
+              const fadeT = Math.max(0, Math.min(1, ((g.time || 0) - (fade.startAt || 0)) / (fade.duration || 0.42)));
               badgeScale = 1 + 0.08 * (1 - fadeT);
               badgeAlpha = 1 - fadeT;
             }
@@ -4520,12 +4560,12 @@ async function main(){
             const bh = Math.max(14, 18 * layoutScale) * badgeScale;
             ctx.save();
             ctx.globalAlpha = badgeAlpha;
-            ctx.fillStyle = 'rgba(24,24,24,0.92)';
-            ctx.strokeStyle = 'rgba(250,250,250,0.75)';
+            ctx.fillStyle = 'rgba(82, 24, 120, 0.92)';
+            ctx.strokeStyle = 'rgba(234, 214, 255, 0.88)';
             ctx.lineWidth = Math.max(1, 1.2 * layoutScale);
             ctx.fillRect(badgeX - bw / 2, badgeY - bh, bw, bh);
             ctx.strokeRect(badgeX - bw / 2, badgeY - bh, bw, bh);
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = '#f8f1ff';
             ctx.font = `bold ${Math.max(10, Math.round(12 * layoutScale * badgeScale))}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
