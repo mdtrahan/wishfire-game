@@ -106,7 +106,8 @@ function pickPowerAmpOutcome() {
 
 function armPowerAmpEntry(multiplier, turnNow, turnSerialNow) {
   return {
-    mult: Number(multiplier || 0),
+    mult: 0,
+    pendingMult: Number(multiplier || 0),
     state: 'pending_next_own_turn',
     armedAtTurn: Number(turnNow || 0),
     armedAtTurnSerial: Number(turnSerialNow || 0),
@@ -128,14 +129,10 @@ function activatePowerAmp(ctx, actorUID) {
         store[hero.uid] = armPowerAmpEntry(outcome.multiplier, grantTurn, grantTurnSerial);
       }
     }
-    for (const hero of getHeroes(ctx)) {
-      if (store[hero.uid]) setPowerAmpVisual(g, hero.uid, store[hero.uid].mult);
-    }
     LogCombat(ctx, 'JACKPOT! All heroes get Power Amp x2!');
     return;
   }
   store[actorUID] = armPowerAmpEntry(outcome.multiplier, grantTurn, grantTurnSerial);
-  setPowerAmpVisual(g, actorUID, outcome.multiplier);
   LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} gained Power Amp x${outcome.multiplier}!`);
 }
 
@@ -191,16 +188,19 @@ export function GetPowerAmpMultiplierForActor(ctx, actorUID) {
   const entry = store[actorUID];
   if (!entry) return 0;
   if (entry.state !== 'active_this_turn') return 0;
-  entry.usedThisTurn = true;
   return Number(entry.mult || 0);
 }
 
 export function ConsumePowerAmpForActor(ctx, actorUID) {
+  const g = getGlobals(ctx);
   const store = ensurePowerAmpByUID(ctx);
   const entry = store[actorUID];
   if (!entry || entry.state !== 'active_this_turn') return 0;
   const mult = Number(entry?.mult || 0);
   if (!mult) return 0;
+  entry.usedThisTurn = true;
+  delete store[actorUID];
+  startPowerAmpFade(g, actorUID, mult);
   return mult;
 }
 
@@ -1823,7 +1823,11 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
   const actor = GetActorByUID(ctx, heroUID);
   const mode = actor && actor.attackType === 'magic' ? 'magic' : 'melee';
   const dmg = CalculateDamage(ctx, heroUID, targetUID, mode);
-  const ampMult = GetPowerAmpMultiplierForActor(ctx, heroUID);
+  let ampMult = GetPowerAmpMultiplierForActor(ctx, heroUID);
+  if (ampMult > 0) {
+    const consumed = ConsumePowerAmpForActor(ctx, heroUID);
+    if (consumed > 0) ampMult = consumed;
+  }
   const g = getGlobals(ctx);
   const now = g.time || 0;
   const hitDelay = Math.max(0.14 + 0.32, 0.46);
@@ -1852,7 +1856,11 @@ export function HeroAttackAOE(ctx, heroUID) {
   const aoeName = isKojonn ? 'Burst' : (['Pummel', 'Swipe', 'Burst', 'Faze'][heroIndex] || 'AOE');
   let totalDamage = 0;
   const g = getGlobals(ctx);
-  const ampMult = GetPowerAmpMultiplierForActor(ctx, heroUID);
+  let ampMult = GetPowerAmpMultiplierForActor(ctx, heroUID);
+  if (ampMult > 0) {
+    const consumed = ConsumePowerAmpForActor(ctx, heroUID);
+    if (consumed > 0) ampMult = consumed;
+  }
   const enemies = getEnemies(ctx);
   const hits = [];
   for (const e of enemies) {
@@ -2611,9 +2619,13 @@ export function HeroTurn(ctx, heroUID) {
       turnSerialNow > Number(entry.armedAtTurnSerial || 0)
     ) {
       entry.state = 'active_this_turn';
+      entry.mult = Number(entry.pendingMult || entry.mult || 0);
       entry.activatedAtTurn = turnNow;
       entry.activatedAtTurnSerial = turnSerialNow;
       entry.usedThisTurn = false;
+      if (entry.mult > 0) {
+        setPowerAmpVisual(g, heroUID, entry.mult);
+      }
     }
   }
 }
