@@ -2877,7 +2877,14 @@ async function main(){
             casino.phase = 'idle';
             casino.ghost = null;
             const refill = gameState.refillBounce;
+            const handoffPending =
+              !!state.globals.DeferAdvance &&
+              !!state.globals.AdvanceAfterAction &&
+              !!state.globals.ActionOwnerUID;
+            state.globals.IsPlayerBusy = 0;
+            state.globals.BoardFillActive = 0;
             const canRestorePickability =
+              !handoffPending &&
               !(refill && refill.active) &&
               state.entities.length > 0 &&
               state.globals.TurnPhase === 0 &&
@@ -2885,7 +2892,6 @@ async function main(){
               (state.globals.ActionLockUntil || 0) <= (state.globals.time || 0);
             if (canRestorePickability) {
               state.globals.CanPickGems = true;
-              state.globals.BoardFillActive = 0;
               state.globals.DeferAdvance = 0;
               if (isGemDebugEnabled()) {
                 gemDebugLog('[RESTORE_PICKABILITY]', {
@@ -2901,8 +2907,9 @@ async function main(){
                   },
                 });
               }
+            } else if (handoffPending) {
+              state.globals.CanPickGems = false;
             }
-            state.globals.IsPlayerBusy = 0;
             if (isGemDebugEnabled()) {
               gemDebugLog('[REFILL_COMPLETE]', {
                 stage: 'yellow-sequence-finished',
