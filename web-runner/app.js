@@ -2635,7 +2635,6 @@ async function main(){
             state.globals.SuppressHeroHealText = prevHero;
             const afterHP = state.globals.PartyHP || 0;
             const actualHeal = Math.max(0, afterHP - beforeHP);
-            console.log(`[REGEN] tick=${tickNow} healReq=${heal} actual=${actualHeal} hp=${afterHP}/${state.globals.PartyMaxHP || 0} firesLeft=${regen.remainingFires - 1}`);
             const barPos = state.globals.PartyHPBarPosWorld;
             if (actualHeal > 0 && barPos && barPos.w > 0 && barPos.h > 0) {
               const left = barPos.x - barPos.w * barPos.ox;

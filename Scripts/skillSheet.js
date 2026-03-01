@@ -61,7 +61,6 @@ export function ApplyPartyHeal(ctx, healAmount) {
   const before = g.PartyHP || 0;
   const desiredHP = Math.min(g.PartyMaxHP || 0, (g.PartyHP || 0) + (healAmount || 0));
   g.PartyHP = desiredHP;
-  console.log(`[REGEN] ApplyPartyHeal amount=${healAmount} before=${before} after=${g.PartyHP} max=${g.PartyMaxHP}`);
   ctx.callFunction('SyncPartyHPToHeroes');
   ctx.callFunction('UpdateHeroHPUI');
   // Preserve shared party HP after hero HP normalization
@@ -89,7 +88,6 @@ export function DoHeal(ctx, actorUID) {
   if (actor && actor.name === 'Kojonn') {
     const totalTicks = 8;
     const nowTick = getGlobals(ctx).RegenTickCounter || 0;
-    console.log(`[REGEN] start actor=${actorName} totalHeal=${Math.round(heal)} ticks=${totalTicks}`);
     if (!g.PartyRegens) g.PartyRegens = [];
     g.PartyRegens.push({
       remainingFires: totalTicks,
