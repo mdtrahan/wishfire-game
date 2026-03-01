@@ -4478,21 +4478,27 @@ async function main(){
           const storeEntry = hero ? ampStore[hero.uid] : null;
           const storeMult = Number(storeEntry?.mult || 0);
           const ampActive = !!visual || (!!hero && storeMult > 0);
+          const fadeDuration = Number(fade?.duration || 0.42);
+          const fadeActive = !!(
+            hero &&
+            !ampActive &&
+            fade &&
+            (g.time || 0) < ((fade.startAt || 0) + fadeDuration)
+          );
           let heroScale = 1;
           if (ampActive) {
             const startAt = visual ? (visual.startAt || 0) : (g.time || 0);
             const tIn = Math.max(0, Math.min(1, ((g.time || 0) - startAt) / 0.18));
             const eIn = 1 - Math.pow(1 - tIn, 2);
             heroScale = 1 + (1.3 - 1) * eIn;
+          } else if (fadeActive) {
+            const fadeT = Math.max(0, Math.min(1, ((g.time || 0) - (fade.startAt || 0)) / fadeDuration));
+            heroScale = 1 + (1.3 - 1) * (1 - fadeT);
           }
           const scaledW = w * heroScale;
           const scaledH = h * heroScale;
           const footY = pos.y + h / 2;
-          const auraActive = ampActive || !!(
-            hero &&
-            fade &&
-            (g.time || 0) < ((fade.startAt || 0) + (fade.duration || 0.42))
-          );
+          const auraActive = ampActive || fadeActive;
           if (auraActive) {
             let auraAlpha = 0.55;
             let auraScale = 1;
@@ -4530,20 +4536,13 @@ async function main(){
           }
           ctx.drawImage(img, pos.x - scaledW / 2, footY - scaledH, scaledW, scaledH);
 
-          const fadeActive = !!(
-            hero &&
-            !ampActive &&
-            fade &&
-            (g.time || 0) < ((fade.startAt || 0) + (fade.duration || 0.42))
-          );
           if (ampActive || fadeActive) {
             const mult = ampActive
               ? (visual?.mult || storeMult || 1)
               : (fade?.mult || 1);
             const badgeText = `${mult}\u00d7`;
-            const baseY = footY;
             const badgeX = pos.x;
-            const badgeY = baseY - (10 * layoutScale);
+            const badgeBottomY = footY - Math.max(2, 2 * layoutScale);
             let badgeScale = 1;
             let badgeAlpha = 1;
             if (ampActive) {
@@ -4562,13 +4561,13 @@ async function main(){
             ctx.fillStyle = 'rgba(82, 24, 120, 0.92)';
             ctx.strokeStyle = 'rgba(234, 214, 255, 0.88)';
             ctx.lineWidth = Math.max(1, 1.2 * layoutScale);
-            ctx.fillRect(badgeX - bw / 2, badgeY - bh, bw, bh);
-            ctx.strokeRect(badgeX - bw / 2, badgeY - bh, bw, bh);
+            ctx.fillRect(badgeX - bw / 2, badgeBottomY - bh, bw, bh);
+            ctx.strokeRect(badgeX - bw / 2, badgeBottomY - bh, bw, bh);
             ctx.fillStyle = '#f8f1ff';
             ctx.font = `bold ${Math.max(10, Math.round(12 * layoutScale * badgeScale))}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(badgeText, badgeX, badgeY - bh / 2);
+            ctx.fillText(badgeText, badgeX, badgeBottomY - bh / 2);
             ctx.restore();
           }
 

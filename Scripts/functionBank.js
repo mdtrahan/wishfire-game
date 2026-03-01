@@ -190,19 +190,18 @@ export function GetPowerAmpMultiplierForActor(ctx, actorUID) {
   const entry = store[actorUID];
   if (!entry) return 0;
   if (entry.state !== 'active_this_turn') return 0;
+  if (entry.usedThisTurn) return 0;
   return Number(entry.mult || 0);
 }
 
 export function ConsumePowerAmpForActor(ctx, actorUID) {
-  const g = getGlobals(ctx);
   const store = ensurePowerAmpByUID(ctx);
   const entry = store[actorUID];
   if (!entry || entry.state !== 'active_this_turn') return 0;
   const mult = Number(entry?.mult || 0);
   if (!mult) return 0;
+  if (entry.usedThisTurn) return 0;
   entry.usedThisTurn = true;
-  delete store[actorUID];
-  startPowerAmpFade(g, actorUID, mult);
   return mult;
 }
 
