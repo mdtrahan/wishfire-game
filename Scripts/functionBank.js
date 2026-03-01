@@ -339,6 +339,154 @@ function appendHeroSkillPointRewardTrace(g, entry) {
   if (trace.length > 120) trace.shift();
 }
 
+function getHeroSkillProgressConfigForHero(heroName) {
+  const key = String(heroName || '').trim().toLowerCase();
+  const titleByHero = {
+    falie: 'Pummel',
+    huun: 'Swipe',
+    runa: 'Burst',
+    kojonn: 'Faze',
+  };
+  const skill1Title = titleByHero[key] || 'Skill 1 Placeholder';
+  return [
+    { slot: 0, key: 'skill1', title: skill1Title, maxRank: 3, costs: [2, 3, 4] },
+    { slot: 1, key: 'skill2', title: 'Skill 2 Placeholder', maxRank: 3, costs: [1, 2, 3] },
+    { slot: 2, key: 'skill3', title: 'Skill 3 Placeholder', maxRank: 3, costs: [1, 2, 3] },
+  ];
+}
+
+function buildDefaultHeroSkillProgressState(def) {
+  const maxRank = Math.max(1, Math.floor(Number(def && def.maxRank) || 1));
+  const costs = Array.isArray(def && def.costs)
+    ? def.costs.map(value => Math.max(0, Math.floor(Number(value || 0))))
+    : [];
+  const nextCost = costs.length > 0 ? Number(costs[0] || 0) : 0;
+  return {
+    slot: Math.max(0, Math.floor(Number(def && def.slot) || 0)),
+    key: String((def && def.key) || ''),
+    title: String((def && def.title) || ''),
+    status: 'locked',
+    rank: 0,
+    maxRank,
+    costs,
+    nextCost,
+    lastCost: 0,
+  };
+}
+
+function cloneHeroSkillProgressState(entry) {
+  return {
+    slot: Math.max(0, Math.floor(Number(entry && entry.slot) || 0)),
+    key: String((entry && entry.key) || ''),
+    title: String((entry && entry.title) || ''),
+    status: String((entry && entry.status) || 'locked'),
+    rank: Math.max(0, Math.floor(Number(entry && entry.rank) || 0)),
+    maxRank: Math.max(1, Math.floor(Number(entry && entry.maxRank) || 1)),
+    costs: Array.isArray(entry && entry.costs) ? entry.costs.map(value => Math.max(0, Math.floor(Number(value || 0)))) : [],
+    nextCost: Math.max(0, Math.floor(Number(entry && entry.nextCost) || 0)),
+    lastCost: Math.max(0, Math.floor(Number(entry && entry.lastCost) || 0)),
+  };
+}
+
+function ensureHeroSkillProgressStore(ctx) {
+  const g = getGlobals(ctx);
+  if (!g.HeroSkillProgressByHeroId || typeof g.HeroSkillProgressByHeroId !== 'object') {
+    g.HeroSkillProgressByHeroId = {};
+  }
+  if (!Array.isArray(g.HeroSkillProgressTrace)) g.HeroSkillProgressTrace = [];
+  if (!Number.isFinite(g.HeroSkillProgressTraceSeq)) g.HeroSkillProgressTraceSeq = 0;
+  return g.HeroSkillProgressByHeroId;
+}
+
+function nextHeroSkillProgressTraceSeq(g) {
+  g.HeroSkillProgressTraceSeq = Number(g.HeroSkillProgressTraceSeq || 0) + 1;
+  return g.HeroSkillProgressTraceSeq;
+}
+
+function appendHeroSkillProgressTrace(g, entry) {
+  const trace = Array.isArray(g.HeroSkillProgressTrace) ? g.HeroSkillProgressTrace : (g.HeroSkillProgressTrace = []);
+  trace.push(entry);
+  if (trace.length > 180) trace.shift();
+}
+
+function buildHeroSkillProgressTrace(g, identity, skillState, action, cost, status, reason, balanceAfter) {
+  return {
+    seq: nextHeroSkillProgressTraceSeq(g),
+    who: String((identity && identity.heroId) || ''),
+    heroId: String((identity && identity.heroId) || ''),
+    heroIndex: Number((identity && identity.heroIndex) ?? -1),
+    heroName: String((identity && identity.heroName) || ''),
+    actorUID: Number((identity && identity.actorUID) || 0),
+    skillKey: String((skillState && skillState.key) || ''),
+    skillTitle: String((skillState && skillState.title) || ''),
+    slot: Number((skillState && skillState.slot) ?? -1),
+    action: String(action || 'unknown'),
+    cost: Math.max(0, Math.floor(Number(cost || 0))),
+    status: String(status || 'unknown'),
+    reason: String(reason || ''),
+    balanceAfter: Math.max(0, Math.floor(Number(balanceAfter || 0))),
+    rankAfter: Math.max(0, Math.floor(Number(skillState && skillState.rank) || 0)),
+    time: Number(g.time || 0),
+    turn: Number(g.DebugTurnCount || 0),
+    turnSerial: Number(g.TurnSerial || 0),
+  };
+}
+
+function ensureHeroSkillProgressRecord(ctx, heroRef) {
+  const store = ensureHeroSkillProgressStore(ctx);
+  const identity = resolveHeroSkillPointIdentity(ctx, heroRef);
+  if (!identity.heroId) return { identity, record: null };
+  if (!store[identity.heroId] || typeof store[identity.heroId] !== 'object') {
+    store[identity.heroId] = {};
+  }
+  const record = store[identity.heroId];
+  const defs = getHeroSkillProgressConfigForHero(identity.heroName);
+  for (const def of defs) {
+    if (!record[def.key] || typeof record[def.key] !== 'object') {
+      record[def.key] = buildDefaultHeroSkillProgressState(def);
+      continue;
+    }
+    const current = cloneHeroSkillProgressState(record[def.key]);
+    current.slot = Math.max(0, Math.floor(Number(def.slot || 0)));
+    current.key = String(def.key || current.key || '');
+    current.title = String(def.title || current.title || '');
+    current.maxRank = Math.max(1, Math.floor(Number(def.maxRank || current.maxRank || 1)));
+    current.costs = Array.isArray(def.costs) ? def.costs.map(value => Math.max(0, Math.floor(Number(value || 0)))) : current.costs;
+    current.nextCost = current.rank >= current.maxRank
+      ? 0
+      : Math.max(0, Math.floor(Number(current.costs[current.rank] || 0)));
+    record[def.key] = current;
+  }
+  return { identity, record };
+}
+
+function resolveHeroSkillProgressEntry(record, skillRef) {
+  if (!record || typeof record !== 'object') return null;
+  if (typeof skillRef === 'number' && Number.isFinite(skillRef)) {
+    const slot = Math.floor(Number(skillRef));
+    const bySlot = Object.values(record).find(entry => Number(entry && entry.slot) === slot);
+    if (bySlot) return bySlot;
+  }
+  if (skillRef && typeof skillRef === 'object') {
+    if (Object.prototype.hasOwnProperty.call(skillRef, 'slot')) {
+      const bySlot = resolveHeroSkillProgressEntry(record, Number(skillRef.slot));
+      if (bySlot) return bySlot;
+    }
+    if (Object.prototype.hasOwnProperty.call(skillRef, 'key')) {
+      const byKey = resolveHeroSkillProgressEntry(record, String(skillRef.key || ''));
+      if (byKey) return byKey;
+    }
+  }
+  if (typeof skillRef === 'string') {
+    const text = skillRef.trim().toLowerCase();
+    if (!text) return null;
+    if (Object.prototype.hasOwnProperty.call(record, text)) return record[text];
+    const byTitle = Object.values(record).find(entry => String(entry && entry.title || '').trim().toLowerCase() === text);
+    if (byTitle) return byTitle;
+  }
+  return null;
+}
+
 function buildHeroSkillPointTxn(g, identity, source, delta, balanceAfter, kind, status, reason = '') {
   return {
     seq: nextHeroSkillLedgerSeq(g),
@@ -503,6 +651,80 @@ export function GetHeroSkillPointRewardTrace(ctx, limit = 20) {
     actorUIDs: Array.isArray(row.actorUIDs) ? row.actorUIDs.slice() : [],
     results: Array.isArray(row.results) ? row.results.map(item => ({ ...item })) : [],
   }));
+}
+
+export function GetHeroSkillState(ctx, heroUID, skillRef) {
+  const pair = ensureHeroSkillProgressRecord(ctx, heroUID);
+  if (!pair.identity.heroId || !pair.record) return null;
+  const entry = resolveHeroSkillProgressEntry(pair.record, skillRef);
+  return entry ? cloneHeroSkillProgressState(entry) : null;
+}
+
+export function GetAllHeroSkillStates(ctx, heroUID) {
+  const pair = ensureHeroSkillProgressRecord(ctx, heroUID);
+  if (!pair.identity.heroId || !pair.record) return {};
+  const out = {};
+  for (const [key, entry] of Object.entries(pair.record)) {
+    out[key] = cloneHeroSkillProgressState(entry);
+  }
+  return out;
+}
+
+export function GetHeroSkillProgressTrace(ctx, limit = 40) {
+  const g = getGlobals(ctx);
+  ensureHeroSkillProgressStore(ctx);
+  const max = Math.max(1, Math.floor(Number(limit || 40)));
+  const trace = Array.isArray(g.HeroSkillProgressTrace) ? g.HeroSkillProgressTrace : [];
+  return trace.slice(-max).map(row => ({ ...row }));
+}
+
+export function AttemptHeroSkillUpgrade(ctx, heroUID, skillRef, source = 'hero_skill_upgrade') {
+  const g = getGlobals(ctx);
+  const pair = ensureHeroSkillProgressRecord(ctx, heroUID);
+  if (!pair.identity.heroId || !pair.record) {
+    const rejectedState = buildDefaultHeroSkillProgressState({ key: '', title: '', slot: -1, maxRank: 1, costs: [] });
+    const trace = buildHeroSkillProgressTrace(g, pair.identity, rejectedState, 'upgrade', 0, 'rejected', 'hero_not_found', 0);
+    appendHeroSkillProgressTrace(g, trace);
+    return { ok: false, reason: 'hero_not_found', state: null, trace };
+  }
+  const entry = resolveHeroSkillProgressEntry(pair.record, skillRef);
+  if (!entry) {
+    const rejectedState = buildDefaultHeroSkillProgressState({ key: '', title: '', slot: -1, maxRank: 1, costs: [] });
+    const trace = buildHeroSkillProgressTrace(g, pair.identity, rejectedState, 'upgrade', 0, 'rejected', 'skill_not_found', GetHeroSkillPointBalance(ctx, heroUID));
+    appendHeroSkillProgressTrace(g, trace);
+    return { ok: false, reason: 'skill_not_found', state: null, trace };
+  }
+  const state = cloneHeroSkillProgressState(entry);
+  if (state.rank >= state.maxRank) {
+    const trace = buildHeroSkillProgressTrace(g, pair.identity, state, 'upgrade', 0, 'rejected', 'max_rank_reached', GetHeroSkillPointBalance(ctx, heroUID));
+    appendHeroSkillProgressTrace(g, trace);
+    return { ok: false, reason: 'max_rank_reached', state, trace };
+  }
+  const cost = Math.max(0, Math.floor(Number(state.costs[state.rank] || 0)));
+  if (!Number.isFinite(cost) || cost <= 0) {
+    const trace = buildHeroSkillProgressTrace(g, pair.identity, state, 'upgrade', 0, 'rejected', 'invalid_cost_config', GetHeroSkillPointBalance(ctx, heroUID));
+    appendHeroSkillProgressTrace(g, trace);
+    return { ok: false, reason: 'invalid_cost_config', state, trace };
+  }
+  const action = state.rank === 0 ? 'unlock' : 'upgrade';
+  const spend = SpendHeroSkillPoints(ctx, heroUID, cost, `${source}:${state.key}:${action}`);
+  if (!spend.ok) {
+    const reason = spend.reason === 'overdraft' ? 'insufficient_points' : String(spend.reason || 'spend_rejected');
+    const trace = buildHeroSkillProgressTrace(g, pair.identity, state, action, cost, 'rejected', reason, Number(spend.balance || GetHeroSkillPointBalance(ctx, heroUID)));
+    appendHeroSkillProgressTrace(g, trace);
+    return { ok: false, reason, state, trace, spend };
+  }
+  state.rank += 1;
+  state.status = 'unlocked';
+  state.lastCost = cost;
+  state.nextCost = state.rank >= state.maxRank
+    ? 0
+    : Math.max(0, Math.floor(Number(state.costs[state.rank] || 0)));
+  pair.record[state.key] = state;
+  const snapshot = cloneHeroSkillProgressState(state);
+  const trace = buildHeroSkillProgressTrace(g, pair.identity, snapshot, action, cost, 'applied', '', Number(spend.balance || 0));
+  appendHeroSkillProgressTrace(g, trace);
+  return { ok: true, action, cost, balance: Number(spend.balance || 0), state: snapshot, trace, spend };
 }
 
 function ensureTokenWallet(ctx) {

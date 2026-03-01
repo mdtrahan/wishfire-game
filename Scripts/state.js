@@ -30,6 +30,9 @@ export const state = {
     HeroSkillPointLedger: [],
     HeroSkillPointLedgerSeq: 0,
     HeroSkillPointRewardTrace: [],
+    HeroSkillProgressByHeroId: {},
+    HeroSkillProgressTrace: [],
+    HeroSkillProgressTraceSeq: 0,
     TokenWallet: {},
     LiveOpsProgress: {},
 
