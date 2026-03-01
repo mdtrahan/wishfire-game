@@ -213,19 +213,113 @@ export function FinalizePowerAmpVisualClear(ctx, actorUID) {
   delete g.PowerAmpFadeByUID[uid];
 }
 
-function ensureHeroSkillPointStore(g) {
-  if (!g.HeroSkillPointsByUID || typeof g.HeroSkillPointsByUID !== 'object') {
-    g.HeroSkillPointsByUID = {};
-  }
-  if (!Array.isArray(g.HeroSkillPointLedger)) g.HeroSkillPointLedger = [];
-  if (!Number.isFinite(g.HeroSkillPointLedgerSeq)) g.HeroSkillPointLedgerSeq = 0;
-  return g.HeroSkillPointsByUID;
+function getAllHeroActors(ctx) {
+  return getEntities(ctx).filter(e => e && e.kind === 'hero');
 }
 
-function getHeroByUID(ctx, heroUID) {
-  const uid = Number(heroUID || 0);
-  if (!uid) return null;
-  return getHeroes(ctx).find(hero => Number(hero.uid || 0) === uid) || null;
+function makeStableHeroSkillPointId(hero) {
+  const heroIndex = Number(hero && hero.heroIndex);
+  if (Number.isInteger(heroIndex) && heroIndex >= 0) return `hero:${heroIndex}`;
+  const heroName = String((hero && hero.name) || '').trim().toLowerCase();
+  if (heroName) return `hero_name:${heroName}`;
+  return '';
+}
+
+function resolveHeroSkillPointIdentity(ctx, heroRef) {
+  const heroes = getAllHeroActors(ctx);
+  const fromActor = (hero) => ({
+    heroId: makeStableHeroSkillPointId(hero),
+    heroIndex: Number.isInteger(Number(hero && hero.heroIndex)) ? Number(hero.heroIndex) : -1,
+    heroName: String((hero && hero.name) || ''),
+    actorUID: Number((hero && hero.uid) || 0),
+  });
+  const fromStableId = (heroId) => {
+    const text = String(heroId || '');
+    if (text.startsWith('hero:')) {
+      const idx = Number(text.slice(5));
+      const match = heroes.find(hero => Number(hero.heroIndex) === idx) || null;
+      return {
+        heroId: text,
+        heroIndex: Number.isInteger(idx) ? idx : -1,
+        heroName: match ? String(match.name || '') : '',
+        actorUID: match ? Number(match.uid || 0) : 0,
+      };
+    }
+    if (text.startsWith('hero_name:')) {
+      const key = text.slice(10);
+      const match = heroes.find(hero => String(hero.name || '').trim().toLowerCase() === key) || null;
+      return {
+        heroId: text,
+        heroIndex: match && Number.isInteger(Number(match.heroIndex)) ? Number(match.heroIndex) : -1,
+        heroName: match ? String(match.name || '') : key,
+        actorUID: match ? Number(match.uid || 0) : 0,
+      };
+    }
+    return { heroId: '', heroIndex: -1, heroName: '', actorUID: 0 };
+  };
+
+  if (heroRef && typeof heroRef === 'object') {
+    const byActor = fromActor(heroRef);
+    if (byActor.heroId) return byActor;
+  }
+
+  if (typeof heroRef === 'string') {
+    const text = heroRef.trim();
+    const byStableId = fromStableId(text);
+    if (byStableId.heroId) return byStableId;
+    const byName = heroes.find(hero => String(hero.name || '').trim().toLowerCase() === text.toLowerCase());
+    if (byName) return fromActor(byName);
+  }
+
+  const numeric = Number(heroRef);
+  if (Number.isFinite(numeric) && numeric > 0) {
+    const byUID = heroes.find(hero => Number(hero.uid || 0) === numeric);
+    if (byUID) return fromActor(byUID);
+    const byIndex = heroes.find(hero => Number(hero.heroIndex) === numeric);
+    if (byIndex) return fromActor(byIndex);
+  }
+
+  return { heroId: '', heroIndex: -1, heroName: '', actorUID: 0 };
+}
+
+function syncHeroSkillPointLegacyUidView(ctx, store) {
+  const g = getGlobals(ctx);
+  const legacy = {};
+  const heroes = getAllHeroActors(ctx);
+  for (const hero of heroes) {
+    const identity = resolveHeroSkillPointIdentity(ctx, hero);
+    if (!identity.heroId || !identity.actorUID) continue;
+    legacy[identity.actorUID] = Number(store[identity.heroId] || 0);
+  }
+  g.HeroSkillPointsByUID = legacy;
+  return legacy;
+}
+
+function ensureHeroSkillPointStore(ctx) {
+  const g = getGlobals(ctx);
+  if (!g.HeroSkillPointsByHeroId || typeof g.HeroSkillPointsByHeroId !== 'object') {
+    g.HeroSkillPointsByHeroId = {};
+  }
+  const store = g.HeroSkillPointsByHeroId;
+  if (!Array.isArray(g.HeroSkillPointLedger)) g.HeroSkillPointLedger = [];
+  if (!Number.isFinite(g.HeroSkillPointLedgerSeq)) g.HeroSkillPointLedgerSeq = 0;
+
+  const legacyStore = (g.HeroSkillPointsByUID && typeof g.HeroSkillPointsByUID === 'object') ? g.HeroSkillPointsByUID : {};
+  if (Object.keys(store).length === 0) {
+    for (const [legacyKey, rawValue] of Object.entries(legacyStore)) {
+      const value = Number(rawValue || 0);
+      if (!Number.isFinite(value) || value === 0) continue;
+      const identity = resolveHeroSkillPointIdentity(ctx, legacyKey);
+      if (!identity.heroId) continue;
+      if (!Object.prototype.hasOwnProperty.call(store, identity.heroId)) {
+        store[identity.heroId] = 0;
+      }
+      store[identity.heroId] += value;
+    }
+  }
+
+  syncHeroSkillPointLegacyUidView(ctx, store);
+  return store;
 }
 
 function nextHeroSkillLedgerSeq(g) {
@@ -239,10 +333,14 @@ function appendHeroSkillPointTxn(g, entry) {
   if (ledger.length > 240) ledger.shift();
 }
 
-function buildHeroSkillPointTxn(g, heroUID, source, delta, balanceAfter, kind, status, reason = '') {
+function buildHeroSkillPointTxn(g, identity, source, delta, balanceAfter, kind, status, reason = '') {
   return {
     seq: nextHeroSkillLedgerSeq(g),
-    who: Number(heroUID || 0),
+    who: String((identity && identity.heroId) || ''),
+    heroId: String((identity && identity.heroId) || ''),
+    heroIndex: Number((identity && identity.heroIndex) ?? -1),
+    heroName: String((identity && identity.heroName) || ''),
+    actorUID: Number((identity && identity.actorUID) || 0),
     source: String(source || 'unknown'),
     delta: Number(delta || 0),
     balanceAfter: Number(balanceAfter || 0),
@@ -257,86 +355,84 @@ function buildHeroSkillPointTxn(g, heroUID, source, delta, balanceAfter, kind, s
 
 export function GrantHeroSkillPoints(ctx, heroUID, amount, source = 'unspecified') {
   const g = getGlobals(ctx);
-  const uid = Number(heroUID || 0);
   const delta = Math.floor(Number(amount || 0));
-  const store = ensureHeroSkillPointStore(g);
-  const hero = getHeroByUID(ctx, uid);
-  if (!hero) {
-    const tx = buildHeroSkillPointTxn(g, uid, source, delta, Number(store[uid] || 0), 'grant', 'rejected', 'hero_not_found');
+  const store = ensureHeroSkillPointStore(ctx);
+  const identity = resolveHeroSkillPointIdentity(ctx, heroUID);
+  if (!identity.heroId) {
+    const tx = buildHeroSkillPointTxn(g, identity, source, delta, 0, 'grant', 'rejected', 'hero_not_found');
     appendHeroSkillPointTxn(g, tx);
     return { ok: false, reason: 'hero_not_found', tx };
   }
   if (!Number.isFinite(delta) || delta <= 0) {
-    const tx = buildHeroSkillPointTxn(g, uid, source, delta, Number(store[uid] || 0), 'grant', 'rejected', 'invalid_amount');
+    const tx = buildHeroSkillPointTxn(g, identity, source, delta, Number(store[identity.heroId] || 0), 'grant', 'rejected', 'invalid_amount');
     appendHeroSkillPointTxn(g, tx);
     return { ok: false, reason: 'invalid_amount', tx };
   }
-  const current = Number(store[uid] || 0);
+  const current = Number(store[identity.heroId] || 0);
   const next = current + delta;
-  store[uid] = next;
-  const tx = buildHeroSkillPointTxn(g, uid, source, delta, next, 'grant', 'applied');
+  store[identity.heroId] = next;
+  syncHeroSkillPointLegacyUidView(ctx, store);
+  const tx = buildHeroSkillPointTxn(g, identity, source, delta, next, 'grant', 'applied');
   appendHeroSkillPointTxn(g, tx);
   return { ok: true, balance: next, tx };
 }
 
 export function SpendHeroSkillPoints(ctx, heroUID, amount, source = 'unspecified') {
   const g = getGlobals(ctx);
-  const uid = Number(heroUID || 0);
   const spend = Math.floor(Number(amount || 0));
-  const store = ensureHeroSkillPointStore(g);
-  const hero = getHeroByUID(ctx, uid);
-  if (!hero) {
-    const tx = buildHeroSkillPointTxn(g, uid, source, -Math.abs(spend || 0), Number(store[uid] || 0), 'spend', 'rejected', 'hero_not_found');
+  const store = ensureHeroSkillPointStore(ctx);
+  const identity = resolveHeroSkillPointIdentity(ctx, heroUID);
+  if (!identity.heroId) {
+    const tx = buildHeroSkillPointTxn(g, identity, source, -Math.abs(spend || 0), 0, 'spend', 'rejected', 'hero_not_found');
     appendHeroSkillPointTxn(g, tx);
     return { ok: false, reason: 'hero_not_found', tx };
   }
   if (!Number.isFinite(spend) || spend <= 0) {
-    const tx = buildHeroSkillPointTxn(g, uid, source, -Math.abs(spend || 0), Number(store[uid] || 0), 'spend', 'rejected', 'invalid_amount');
+    const tx = buildHeroSkillPointTxn(g, identity, source, -Math.abs(spend || 0), Number(store[identity.heroId] || 0), 'spend', 'rejected', 'invalid_amount');
     appendHeroSkillPointTxn(g, tx);
     return { ok: false, reason: 'invalid_amount', tx };
   }
-  const current = Number(store[uid] || 0);
+  const current = Number(store[identity.heroId] || 0);
   if (spend > current) {
-    const tx = buildHeroSkillPointTxn(g, uid, source, -spend, current, 'spend', 'rejected', 'overdraft');
+    const tx = buildHeroSkillPointTxn(g, identity, source, -spend, current, 'spend', 'rejected', 'overdraft');
     appendHeroSkillPointTxn(g, tx);
     return { ok: false, reason: 'overdraft', balance: current, tx };
   }
   const next = current - spend;
-  store[uid] = next;
-  const tx = buildHeroSkillPointTxn(g, uid, source, -spend, next, 'spend', 'applied');
+  store[identity.heroId] = next;
+  syncHeroSkillPointLegacyUidView(ctx, store);
+  const tx = buildHeroSkillPointTxn(g, identity, source, -spend, next, 'spend', 'applied');
   appendHeroSkillPointTxn(g, tx);
   return { ok: true, balance: next, tx };
 }
 
 export function GetHeroSkillPointBalance(ctx, heroUID) {
-  const g = getGlobals(ctx);
-  const uid = Number(heroUID || 0);
-  const store = ensureHeroSkillPointStore(g);
-  return Number(store[uid] || 0);
+  const store = ensureHeroSkillPointStore(ctx);
+  const identity = resolveHeroSkillPointIdentity(ctx, heroUID);
+  if (!identity.heroId) return 0;
+  return Number(store[identity.heroId] || 0);
 }
 
 export function GetAllHeroSkillPointBalances(ctx) {
-  const g = getGlobals(ctx);
-  const store = ensureHeroSkillPointStore(g);
+  const store = ensureHeroSkillPointStore(ctx);
   const out = {};
-  const heroUIDs = getHeroes(ctx)
-    .map(hero => Number(hero.uid || 0))
-    .filter(uid => uid > 0)
-    .sort((a, b) => a - b);
-  for (const uid of heroUIDs) {
-    out[uid] = Number(store[uid] || 0);
+  const stableIds = getAllHeroActors(ctx)
+    .sort((a, b) => Number(a.heroIndex || 0) - Number(b.heroIndex || 0))
+    .map(hero => makeStableHeroSkillPointId(hero))
+    .filter(id => id);
+  for (const heroId of stableIds) {
+    out[heroId] = Number(store[heroId] || 0);
   }
   for (const key of Object.keys(store)) {
-    const uid = Number(key || 0);
-    if (!uid || out[uid] != null) continue;
-    out[uid] = Number(store[uid] || 0);
+    if (out[key] != null) continue;
+    out[key] = Number(store[key] || 0);
   }
   return out;
 }
 
 export function GetHeroSkillPointLedger(ctx, limit = 60) {
   const g = getGlobals(ctx);
-  ensureHeroSkillPointStore(g);
+  ensureHeroSkillPointStore(ctx);
   const max = Math.max(1, Math.floor(Number(limit || 60)));
   const ledger = Array.isArray(g.HeroSkillPointLedger) ? g.HeroSkillPointLedger : [];
   return ledger.slice(-max).map(row => ({ ...row }));

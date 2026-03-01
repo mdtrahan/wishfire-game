@@ -26,6 +26,7 @@ export const state = {
     Player_maxEnergy: 150,
     goldTotal: 0,
     AstralFlowWallet: 0,
+    HeroSkillPointsByHeroId: {},
     HeroSkillPointsByUID: {},
     HeroSkillPointLedger: [],
     HeroSkillPointLedgerSeq: 0,

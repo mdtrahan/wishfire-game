@@ -25,6 +25,7 @@ export const state = {
     Player_Energy: 0,
     Player_maxEnergy: 150,
     goldTotal: 0,
+    HeroSkillPointsByHeroId: {},
     HeroSkillPointsByUID: {},
     HeroSkillPointLedger: [],
     HeroSkillPointLedgerSeq: 0,
