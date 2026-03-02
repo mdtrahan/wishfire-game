@@ -84,6 +84,30 @@ function ensurePowerAmpVisuals(g) {
   if (!g.PowerAmpFadeByUID || typeof g.PowerAmpFadeByUID !== 'object') g.PowerAmpFadeByUID = {};
 }
 
+function isPowerAmpLifecycleDebugEnabled(source) {
+  const g = source && source.globals ? source.globals : (source && source.state ? source.state.globals : source);
+  return !!(g && g.DebugPowerAmpLifecycle);
+}
+
+function emitPowerAmpStateLog(ctx, phase, actorUID, extra = {}) {
+  if (!isPowerAmpLifecycleDebugEnabled(ctx)) return;
+  const g = getGlobals(ctx);
+  const uid = Number(actorUID || 0);
+  const heroName = uid ? getActorNameByUID(ctx, uid) : '';
+  const parts = [
+    `[POWER_AMP_STATE] phase=${phase}`,
+    uid ? `uid=${uid}` : '',
+    heroName ? `name=${heroName}` : '',
+    Number.isFinite(g?.TurnSerial) ? `turnSerial=${Number(g.TurnSerial)}` : '',
+    Number.isFinite(g?.DebugTurnCount) ? `turn=${Number(g.DebugTurnCount)}` : '',
+  ];
+  for (const [key, value] of Object.entries(extra || {})) {
+    if (value == null || value === '') continue;
+    parts.push(`${key}=${value}`);
+  }
+  console.log(parts.filter(Boolean).join(' '));
+}
+
 function setPowerAmpVisual(g, uid, mult) {
   ensurePowerAmpVisuals(g);
   g.PowerAmpVisualByUID[uid] = { mult, startAt: g.time || 0 };
@@ -127,14 +151,18 @@ function activatePowerAmp(ctx, actorUID) {
     for (const hero of getHeroes(ctx)) {
       if ((hero.hp ?? 0) > 0) {
         store[hero.uid] = armPowerAmpEntry(outcome.multiplier, grantTurn, grantTurnSerial);
+        emitPowerAmpStateLog(ctx, 'activation_armed', hero.uid, { mult: outcome.multiplier, mode: 'jackpot' });
         setPowerAmpVisual(g, hero.uid, outcome.multiplier);
+        emitPowerAmpStateLog(ctx, 'activation_visible', hero.uid, { mult: outcome.multiplier, mode: 'jackpot' });
       }
     }
     LogCombat(ctx, 'JACKPOT! All heroes get Power Amp x2!');
     return;
   }
   store[actorUID] = armPowerAmpEntry(outcome.multiplier, grantTurn, grantTurnSerial);
+  emitPowerAmpStateLog(ctx, 'activation_armed', actorUID, { mult: outcome.multiplier, mode: 'single' });
   setPowerAmpVisual(g, actorUID, outcome.multiplier);
+  emitPowerAmpStateLog(ctx, 'activation_visible', actorUID, { mult: outcome.multiplier, mode: 'single' });
   LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} gained Power Amp x${outcome.multiplier}!`);
 }
 
@@ -202,6 +230,24 @@ export function ConsumePowerAmpForActor(ctx, actorUID) {
   if (!mult) return 0;
   if (entry.usedThisTurn) return 0;
   entry.usedThisTurn = true;
+  emitPowerAmpStateLog(ctx, 'consume', actorUID, { mult });
+  return mult;
+}
+
+export function ClosePowerAmpForActor(ctx, actorUID, reason = 'manual_close') {
+  const store = ensurePowerAmpByUID(ctx);
+  const uid = Number(actorUID || 0);
+  if (!uid) return 0;
+  const entry = store[uid];
+  if (!entry) return 0;
+  const mult = Number(entry.mult || entry.pendingMult || 0);
+  delete store[uid];
+  if (mult > 0) {
+    emitPowerAmpStateLog(ctx, 'fade_start', uid, { mult, reason });
+    startPowerAmpFade(getGlobals(ctx), uid, mult);
+  } else {
+    FinalizePowerAmpVisualClear(ctx, uid);
+  }
   return mult;
 }
 
@@ -1397,18 +1443,15 @@ export function AdvanceTurn(ctx) {
     const store = ensurePowerAmpByUID(ctx);
     const entry = store[currentUID];
     if (entry) {
-      const mult = Number(entry.mult || 0);
       if (entry.state === 'active_this_turn') {
-        delete store[currentUID];
-        if (mult) startPowerAmpFade(g, currentUID, mult);
+        ClosePowerAmpForActor(ctx, currentUID, 'turn_complete');
       } else if (
         entry.state === 'pending_next_own_turn' &&
         Number(g.TurnSerial || 0) > Number(entry.armedAtTurnSerial || 0)
       ) {
         // Strict safety net: if a hero reached next own turn but activation was missed,
         // force expiry at that turn end to prevent carryover leaks.
-        delete store[currentUID];
-        if (mult) startPowerAmpFade(g, currentUID, mult);
+        ClosePowerAmpForActor(ctx, currentUID, 'missed_activation_expire');
       }
     }
   }
@@ -2639,10 +2682,8 @@ export function HeroTurn(ctx, heroUID) {
       entry.activatedAtTurnSerial = turnSerialNow;
       entry.usedThisTurn = false;
       if (entry.mult > 0) {
-        const existingVisual = g.PowerAmpVisualByUID && g.PowerAmpVisualByUID[heroUID];
-        if (!existingVisual || Number(existingVisual.mult || 0) !== Number(entry.mult || 0)) {
-          setPowerAmpVisual(g, heroUID, entry.mult);
-        }
+        setPowerAmpVisual(g, heroUID, entry.mult);
+        emitPowerAmpStateLog(ctx, 'activation_on', heroUID, { mult: entry.mult });
       }
     }
   }

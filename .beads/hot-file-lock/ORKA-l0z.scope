@@ -1,2 +1,5 @@
 web-runner/app.js:drawFrame
-web-runner/modules/functionBank.js:startPowerAmpFade
+web-runner/modules/functionBank.js:activatePowerAmp
+web-runner/modules/functionBank.js:ConsumePowerAmpForActor
+web-runner/modules/functionBank.js:AdvanceTurn
+web-runner/modules/functionBank.js:HeroTurn

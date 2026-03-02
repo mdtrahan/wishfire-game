@@ -3138,13 +3138,13 @@ async function main(){
         if (!hit || now < (hit.at || 0)) continue;
         const ampMult = Number(hit.powerAmpMultiplier || 0);
         const finalDmg = ampMult > 0 ? Math.max(1, Math.ceil((hit.dmg || 0) * ampMult)) : hit.dmg;
-        if (state.globals.DebugPowerAmp && hit.consumePowerAmp && ampMult > 0) {
+        if (state.globals.DebugPowerAmpLifecycle) {
           const heroName = hit.heroName || 'Hero';
           const heroType = hit.heroType || 'melee';
           const calcPath = hit.calcPath || (heroType === 'magic' ? 'magicCalc' : 'meleeCalc');
           console.log(
-            `[POWER_AMP] hero=${hit.heroUID} name=${heroName} type=${heroType} path=${calcPath} ` +
-            `base=${hit.dmg} amp=${ampMult} final=${finalDmg}`
+            `[POWER_AMP_DMG] hero=${hit.heroUID} name=${heroName} type=${heroType} path=${calcPath} ` +
+            `base=${hit.dmg} amp=${ampMult} final=${finalDmg} active=${ampMult > 0 ? 1 : 0} consume=${hit.consumePowerAmp ? 1 : 0}`
           );
         }
         callFunctionWithContext(fnContext, 'ApplyDamageToTarget', hit.targetUID, finalDmg);
@@ -3392,6 +3392,14 @@ async function main(){
         if (!fade) continue;
         const duration = fade.duration || 0.16;
         if (now >= (fade.startAt || 0) + duration) {
+          if (state.globals.DebugPowerAmpLifecycle) {
+            const actor = state.entities.find(e => e && Number(e.uid || 0) === Number(uid || 0));
+            console.log(
+              `[POWER_AMP_STATE] phase=closed_off uid=${Number(uid || 0)} ` +
+              `name=${actor ? String(actor.name || '') : ''} turnSerial=${Number(state.globals.TurnSerial || 0)} ` +
+              `turn=${Number(state.globals.DebugTurnCount || 0)}`
+            );
+          }
           delete state.globals.PowerAmpFadeByUID[uid];
         }
       }
@@ -4498,6 +4506,21 @@ async function main(){
           } else if (fadeActive) {
             const fadeT = Math.max(0, Math.min(1, ((g.time || 0) - (fade.startAt || 0)) / fadeDuration));
             heroScale = 1 + (ampScalePeak - 1) * (1 - fadeT);
+          }
+          if (hero && g.DebugPowerAmpLifecycle) {
+            if (!g.PowerAmpScaleDebugLastByUID || typeof g.PowerAmpScaleDebugLastByUID !== 'object') {
+              g.PowerAmpScaleDebugLastByUID = {};
+            }
+            const scaleState = ampActive ? 'active' : (fadeActive ? 'fade' : 'normal');
+            const ratio = Number(heroScale.toFixed(3));
+            const lastScale = g.PowerAmpScaleDebugLastByUID[hero.uid];
+            if (!lastScale || lastScale.state !== scaleState || Math.abs(Number(lastScale.ratio || 0) - ratio) >= 0.02) {
+              console.log(
+                `[POWER_AMP_SCALE] uid=${hero.uid} name=${String(hero.name || '')} ` +
+                `baseline=1 ratio=${ratio} state=${scaleState}`
+              );
+              g.PowerAmpScaleDebugLastByUID[hero.uid] = { state: scaleState, ratio };
+            }
           }
           const scaledW = w * heroScale;
           const scaledH = h * heroScale;
@@ -5643,6 +5666,9 @@ function getStoryCardLiveLineState() {
           callFunctionWithContext(fnContext, 'AdvanceTurn');
           combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
         } else if (!ownerOk) {
+          if (ownerUID) {
+            callFunctionWithContext(fnContext, 'ClosePowerAmpForActor', ownerUID, 'owner_mismatch_autoclose');
+          }
           state.globals.DeferAdvance = 0;
           state.globals.AdvanceAfterAction = 0;
           state.globals.ActionOwnerUID = 0;
