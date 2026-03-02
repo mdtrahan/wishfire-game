@@ -1242,6 +1242,27 @@ function schedulerApplyBattleStartRoundPartition(g, withInit, startMode) {
   schedulerResetBattleStartOverride(g);
   return withInit;
 }
+function schedulerInsertExplicitExtraTurn(ctx, actorUID, effectiveSPD) {
+  const g = getGlobals(ctx);
+  const arr = Array.isArray(g.TurnOrderArray) ? g.TurnOrderArray.slice() : [];
+  const insertAt = Math.min(arr.length, Number(g.CurrentTurnIndex || 0) + 1);
+  arr.splice(insertAt, 0, { uid: actorUID, spd: effectiveSPD, type: 0, extra: true });
+  schedulerWriteQueue(ctx, arr);
+  return insertAt;
+}
+function schedulerApplySpawnInsertion(ctx) {
+  if (!isTimeInitiative(ctx)) return null;
+  const roster = getInitiativeRoster(ctx);
+  syncInitiativeMeters(ctx, roster);
+  refreshInitiativePreview(ctx);
+  return roster.length;
+}
+function schedulerApplyRemovalCompaction(ctx, removedUID) {
+  if (!isTimeInitiative(ctx)) return null;
+  const g = getGlobals(ctx);
+  if (Number(g.InitiativeCurrentUID || 0) === Number(removedUID || 0)) g.InitiativeCurrentUID = 0;
+  return null;
+}
 
 function syncInitiativeSessionState(ctx) {
   const g = getGlobals(ctx);
@@ -1644,10 +1665,7 @@ export function TryGrantSpeedExtraTurn(ctx, actorUID) {
   }
   const ratio = g.SpeedDoubleRatio || 2.0;
   if (spdSelf < spdOppMax * ratio) return false;
-  const arr = g.TurnOrderArray || [];
-  const insertAt = Math.min(arr.length, (g.CurrentTurnIndex || 0) + 1);
-  arr.splice(insertAt, 0, { uid: actorUID, spd: spdSelf, type: 0, extra: true });
-  schedulerWriteQueue(ctx, arr);
+  schedulerInsertExplicitExtraTurn(ctx, actorUID, spdSelf);
   g.ExtraTurnGranted[actorUID] = true;
   return true;
 }
@@ -2145,9 +2163,7 @@ export function SpawnEnemy(ctx, enemyData, slotIndex = 0) {
   }
   UpdateEnemyHPUI(ctx);
   if (isTimeInitiative(ctx)) {
-    const roster = getInitiativeRoster(ctx);
-    syncInitiativeMeters(ctx, roster);
-    refreshInitiativePreview(ctx);
+    schedulerApplySpawnInsertion(ctx);
   }
   return enemy;
 }
@@ -2172,6 +2188,7 @@ export function KillEnemyAt(ctx, slotIndex) {
   g.EnemySlots[slotIndex] = 0;
   if (Array.isArray(g.EnemyIDs)) g.EnemyIDs[slotIndex] = 0;
   g.IsPlayerBusy = 1;
+  schedulerApplyRemovalCompaction(ctx, deadUID);
   UpdateEnemyHPUI(ctx);
   const respawnDelay = Math.max(0.4, (g.DamageTextDurationSec || 1.35));
   setTimeout(() => {

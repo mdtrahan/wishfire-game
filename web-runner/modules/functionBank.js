@@ -1254,6 +1254,28 @@ function schedulerApplyBattleStartRoundPartition(g, withInit, startMode) {
   schedulerResetBattleStartOverride(g);
   return withInit;
 }
+function schedulerInsertExplicitExtraTurn(ctx, actorUID, effectiveSPD) {
+  const g = getGlobals(ctx);
+  const arr = Array.isArray(g.TurnOrderArray) ? g.TurnOrderArray.slice() : [];
+  const insertAt = Math.min(arr.length, Number(g.CurrentTurnIndex || 0) + 1);
+  arr.splice(insertAt, 0, { uid: actorUID, spd: effectiveSPD, type: 0, extra: true });
+  setTurnOrderArrayWithAudit(ctx, arr, 'explicit_extra_turn_insert', { actorUID, insertAt, effectiveSPD });
+  return insertAt;
+}
+function schedulerApplySpawnInsertion(ctx, spawnedUID, slotIndex) {
+  const roster = getInitiativeRoster(ctx);
+  syncInitiativeMeters(ctx, roster);
+  return reconcileInitiativeQueue(ctx, roster, 'spawn_insertion', { trigger: 'spawn_enemy', spawnedUID, slotIndex });
+}
+function schedulerApplyRemovalCompaction(ctx, removedUID, slotIndex, currentUID) {
+  const g = getGlobals(ctx);
+  const nextQueue = (g.TurnOrderArray || []).filter(slot => Number(slot?.uid || 0) !== removedUID && GetActorByUID(ctx, Number(slot?.uid || 0)));
+  setTurnOrderArrayWithAudit(ctx, nextQueue, 'initiative_remove_actor', { trigger: 'kill_enemy_at', removedUID, slotIndex, currentUID });
+  if (Number(g.InitiativeCurrentUID || 0) === removedUID) g.InitiativeCurrentUID = 0;
+  if (nextQueue.length <= 0) schedulerWriteIndex(ctx, 0);
+  else if (Number(g.CurrentTurnIndex || 0) >= nextQueue.length) schedulerWriteIndex(ctx, Math.max(0, nextQueue.length - 1));
+  return nextQueue;
+}
 function setTurnOrderArrayWithAudit(ctx, nextQueue, cause, details = {}) { const g = getGlobals(ctx), audit = ensureTurnSchedulerAudit(g), beforeSlots = snapshotTurnOrderSlots(ctx), before = new Map(); for (const slot of beforeSlots) before.set(slot.uid, (before.get(slot.uid) || 0) + 1); schedulerWriteQueue(ctx, nextQueue); const afterSlots = snapshotTurnOrderSlots(ctx), after = new Map(), removedUIDs = [], addedUIDs = []; for (const slot of afterSlots) after.set(slot.uid, (after.get(slot.uid) || 0) + 1); for (const uid of new Set([...before.keys(), ...after.keys()])) { const beforeCount = before.get(uid) || 0, afterCount = after.get(uid) || 0; for (let i = 0; i < beforeCount - afterCount; i++) removedUIDs.push(uid); for (let i = 0; i < afterCount - beforeCount; i++) addedUIDs.push(uid); } let mutationSource = null; if (cause === 'explicit_extra_turn_insert' || cause === 'spawn_insertion') mutationSource = 'explicit_mechanic'; else if (removedUIDs.length > 0 && Number(audit.lastRemovalSeq || 0) > 0 && Number(audit.lastRemovalSeq || 0) >= Number(audit.seq || 0) - 2) mutationSource = 'collapse_after_future_slot_removal'; recordTurnSchedulerEvent(ctx, 'queue_mutation', { cause, beforeLength: beforeSlots.length, afterLength: afterSlots.length, removedUIDs, addedUIDs, mutationSource, queue: afterSlots, ...details }); return afterSlots; }
 function buildInitiativeCycle(ctx, roster, currentUID = 0, selectionPool = null) {
   const g = getGlobals(ctx), cycle = roster.map(r => ({ uid: r.uid, type: r.type, spd: Number(r.spd || 0), extra: false })), startPool = Array.isArray(selectionPool) && selectionPool.length && selectionPool.length < cycle.length ? new Set(selectionPool.map(r => Number(r.uid || 0))) : null;
@@ -1653,10 +1675,7 @@ export function TryGrantSpeedExtraTurn(ctx, actorUID) {
   }
   const ratio = g.SpeedDoubleRatio || 2.0;
   if (spdSelf < spdOppMax * ratio) return false;
-  const arr = g.TurnOrderArray || [];
-  const insertAt = Math.min(arr.length, (g.CurrentTurnIndex || 0) + 1);
-  arr.splice(insertAt, 0, { uid: actorUID, spd: spdSelf, type: 0, extra: true });
-  setTurnOrderArrayWithAudit(ctx, arr, 'explicit_extra_turn_insert', { actorUID, insertAt, effectiveSPD: spdSelf });
+  schedulerInsertExplicitExtraTurn(ctx, actorUID, spdSelf);
   g.ExtraTurnGranted[actorUID] = true;
   return true;
 }
@@ -2160,9 +2179,7 @@ export function SpawnEnemy(ctx, enemyData, slotIndex = 0) {
   }
   UpdateEnemyHPUI(ctx);
   if (isTimeInitiative(ctx)) {
-    const roster = getInitiativeRoster(ctx);
-    syncInitiativeMeters(ctx, roster);
-    reconcileInitiativeQueue(ctx, roster, 'spawn_insertion', { trigger: 'spawn_enemy', spawnedUID: enemy.uid, slotIndex });
+    schedulerApplySpawnInsertion(ctx, enemy.uid, slotIndex);
   }
   return enemy;
 }
@@ -2189,11 +2206,7 @@ export function KillEnemyAt(ctx, slotIndex) {
   g.IsPlayerBusy = 1;
   recordTurnSchedulerEvent(ctx, 'removal_commit', { cause: 'kill_enemy_at', removed: [{ uid: deadUID, kind: 'enemy', slotIndex }], currentUID });
   if (isTimeInitiative(ctx)) {
-    const nextQueue = (g.TurnOrderArray || []).filter(slot => Number(slot?.uid || 0) !== deadUID && GetActorByUID(ctx, Number(slot?.uid || 0)));
-    setTurnOrderArrayWithAudit(ctx, nextQueue, 'initiative_remove_actor', { trigger: 'kill_enemy_at', removedUID: deadUID, slotIndex, currentUID });
-    if (Number(g.InitiativeCurrentUID || 0) === deadUID) g.InitiativeCurrentUID = 0;
-    if (nextQueue.length <= 0) schedulerWriteIndex(ctx, 0);
-    else if (Number(g.CurrentTurnIndex || 0) >= nextQueue.length) schedulerWriteIndex(ctx, Math.max(0, nextQueue.length - 1));
+    schedulerApplyRemovalCompaction(ctx, deadUID, slotIndex, currentUID);
   }
   UpdateEnemyHPUI(ctx);
   const respawnDelay = Math.max(0.4, (g.DamageTextDurationSec || 1.35));
