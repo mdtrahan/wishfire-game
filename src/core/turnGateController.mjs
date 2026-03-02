@@ -103,3 +103,37 @@ export function createRefillCompleteGate(current = {}) {
     IsPlayerBusy: 0,
   };
 }
+
+export function createDeferredRefillHold(current = {}, { now = 0 } = {}) {
+  const base = normalizeTurnGateState(current);
+  return {
+    ...base,
+    ActionLockUntil: Math.max(Number(base.ActionLockUntil || 0), Number(now || 0) + 0.05),
+  };
+}
+
+export function createDeferredTextHold(current = {}, { now = 0 } = {}) {
+  const base = normalizeTurnGateState(current);
+  return {
+    ...base,
+    ActionLockUntil: Number(now || 0) + 0.1,
+  };
+}
+
+export function createDeferredStaleBusyRecovery(current = {}) {
+  const base = normalizeTurnGateState(current);
+  return {
+    ...base,
+    IsPlayerBusy: 0,
+  };
+}
+
+export function createDeferredAdvanceResolved(current = {}) {
+  const base = normalizeTurnGateState(current);
+  return {
+    ...base,
+    DeferAdvance: 0,
+    AdvanceAfterAction: 0,
+    ActionOwnerUID: 0,
+  };
+}

@@ -2,6 +2,10 @@ import { state } from './modules/state.js';
 import { createContext, callFunctionWithContext } from './modules/functionRegistry.js';
 import { CombatRuntimeGateway } from '../src/core/combatRuntimeGateway.js';
 import {
+  createDeferredAdvanceResolved,
+  createDeferredRefillHold,
+  createDeferredStaleBusyRecovery,
+  createDeferredTextHold,
   createRefillCompleteGate,
   createRefillStartGate,
   createYellowSequenceCompletion,
@@ -5621,16 +5625,20 @@ function getStoryCardLiveLineState() {
       if (refillPending) {
         // Refill must complete before advancing to the next actor.
         startRefillBounce();
-        state.globals.ActionLockUntil = Math.max(state.globals.ActionLockUntil || 0, (state.globals.time || 0) + 0.05);
+        applyTurnGateGlobals(createDeferredRefillHold(state.globals, {
+          now: Number(state.globals.time || 0),
+        }));
       } else {
       if (state.globals.TextAnimating) {
-        state.globals.ActionLockUntil = (state.globals.time || 0) + 0.1;
+        applyTurnGateGlobals(createDeferredTextHold(state.globals, {
+          now: Number(state.globals.time || 0),
+        }));
       } else {
         // Only block auto-advance while an action/selection is still active.
         const pendingSelect = state.globals.TurnPhase === 1 && state.globals.PendingSkillID;
         const staleBusy = state.globals.IsPlayerBusy && !state.globals.ActionInProgress && !pendingSelect;
         if (staleBusy) {
-          state.globals.IsPlayerBusy = 0;
+          applyTurnGateGlobals(createDeferredStaleBusyRecovery(state.globals));
           console.log(`[TURN] cleared stale IsPlayerBusy before advance phase=${state.globals.TurnPhase} owner=${state.globals.ActionOwnerUID || 0}`);
         }
         const blockedPhase = state.globals.IsPlayerBusy || state.globals.ActionInProgress || pendingSelect;
@@ -5639,18 +5647,14 @@ function getStoryCardLiveLineState() {
         const ownerOk = !ownerUID || ownerUID === currentUID;
         if (!blockedPhase && ownerOk) {
           console.log(`[TURN] DeferAdvance -> AdvanceTurn owner=${ownerUID} cur=${currentUID} phase=${state.globals.TurnPhase} busy=${state.globals.IsPlayerBusy} canPick=${state.globals.CanPickGems}`);
-          state.globals.DeferAdvance = 0;
-          state.globals.AdvanceAfterAction = 0;
-          state.globals.ActionOwnerUID = 0;
+          applyTurnGateGlobals(createDeferredAdvanceResolved(state.globals));
           callFunctionWithContext(fnContext, 'AdvanceTurn');
           combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
         } else if (!ownerOk) {
           if (ownerUID) {
             callFunctionWithContext(fnContext, 'ClosePowerAmpForActor', ownerUID, 'owner_mismatch_autoclose');
           }
-          state.globals.DeferAdvance = 0;
-          state.globals.AdvanceAfterAction = 0;
-          state.globals.ActionOwnerUID = 0;
+          applyTurnGateGlobals(createDeferredAdvanceResolved(state.globals));
           combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
         } else if (!state.globals._DeferBlockLogged) {
           state.globals._DeferBlockLogged = 1;
