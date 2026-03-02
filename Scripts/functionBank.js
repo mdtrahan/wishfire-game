@@ -1,6 +1,16 @@
 import { state } from './state.js';
 import { MONSTER_KEYS, MONSTER_LOOT_TABLE, TOKEN, EMPTY } from './monsterLootTableEventTokens.js';
 import { ACTIVE_EVENT_IDS, LIVE_OPS_EVENTS, TOKEN_REGISTRY } from './liveOpsTokens.js';
+import {
+  createPowerAmpArmedEntry,
+  derivePowerAmpActivationEntry,
+  derivePowerAmpCloseDecision,
+  derivePowerAmpConsumeState,
+  derivePowerAmpFadeState,
+  derivePowerAmpRenderState,
+  derivePowerAmpVisualState,
+  normalizePowerAmpLifecycleMeta,
+} from '../src/core/powerAmpRules.mjs';
 
 const POWER_AMP_OUTCOMES = [
   { key: 'HERO_2X', multiplier: 2, chance: 0.62 },
@@ -94,19 +104,8 @@ function ensureLifecycleMetaForActor(g, uid, lifecycleId = 0) {
   const normalizedUID = Number(uid || 0);
   const normalizedLife = Number(lifecycleId || 0);
   if (!normalizedUID) return null;
-  let meta = allMeta[normalizedUID];
-  if (!meta || Number(meta.lifecycleId || 0) !== normalizedLife) {
-    meta = {
-      lifecycleId: normalizedLife,
-      visualStarted: false,
-      visualStartAt: 0,
-      consumed: false,
-      fadeStarted: false,
-      fadeStartAt: 0,
-      closed: false,
-    };
-    allMeta[normalizedUID] = meta;
-  }
+  const meta = normalizePowerAmpLifecycleMeta(allMeta[normalizedUID], normalizedLife);
+  allMeta[normalizedUID] = meta;
   return meta;
 }
 
@@ -123,36 +122,31 @@ function nextPowerAmpLifecycleId(g) {
 
 function setPowerAmpVisual(g, uid, mult, lifecycleId = 0) {
   ensurePowerAmpVisuals(g);
-  const meta = ensureLifecycleMetaForActor(g, uid, lifecycleId);
-  if (meta && meta.fadeStarted) {
-    return { seeded: false, startAt: Number(meta.visualStartAt || 0), lifecycleId: Number(meta.lifecycleId || 0) };
-  }
-  const startAt = meta && meta.visualStarted
-    ? Number(meta.visualStartAt || 0)
-    : Number(g.time || 0);
-  if (meta) {
-    meta.visualStarted = true;
-    meta.visualStartAt = startAt;
-  }
-  g.PowerAmpVisualByUID[uid] = { mult, startAt, lifecycleId: Number(lifecycleId || 0) };
-  return { seeded: !!(meta ? startAt === Number(g.time || 0) : true), startAt, lifecycleId: Number(lifecycleId || 0) };
+  const next = derivePowerAmpVisualState({
+    existingVisual: g.PowerAmpVisualByUID[uid] || null,
+    existingMeta: ensureLifecycleMetaForActor(g, uid, lifecycleId),
+    now: Number(g.time || 0),
+    mult,
+    lifecycleId,
+  });
+  ensurePowerAmpLifecycleMeta(g)[Number(uid || 0)] = next.meta;
+  if (next.visual) g.PowerAmpVisualByUID[uid] = next.visual;
+  return { seeded: !!next.seeded, startAt: Number(next.startAt || 0), lifecycleId: Number(next.lifecycleId || 0) };
 }
 
 function startPowerAmpFade(g, uid, mult, lifecycleId = 0) {
   ensurePowerAmpVisuals(g);
-  const meta = ensureLifecycleMetaForActor(g, uid, lifecycleId);
-  if (meta && meta.fadeStarted) {
-    return { started: false, startAt: Number(meta.fadeStartAt || 0), lifecycleId: Number(meta.lifecycleId || 0) };
-  }
-  const startAt = Number(g.time || 0);
-  if (meta) {
-    meta.fadeStarted = true;
-    meta.fadeStartAt = startAt;
-    meta.closed = true;
-  }
-  g.PowerAmpFadeByUID[uid] = { mult, startAt, duration: 0.42, lifecycleId: Number(lifecycleId || 0) };
+  const next = derivePowerAmpFadeState({
+    existingMeta: ensureLifecycleMetaForActor(g, uid, lifecycleId),
+    now: Number(g.time || 0),
+    mult,
+    lifecycleId,
+    duration: 0.42,
+  });
+  ensurePowerAmpLifecycleMeta(g)[Number(uid || 0)] = next.meta;
+  if (next.fade) g.PowerAmpFadeByUID[uid] = next.fade;
   delete g.PowerAmpVisualByUID[uid];
-  return { started: true, startAt, lifecycleId: Number(lifecycleId || 0) };
+  return { started: !!next.started, startAt: Number(next.startAt || 0), lifecycleId: Number(next.lifecycleId || 0) };
 }
 
 function pickPowerAmpOutcome() {
@@ -165,17 +159,7 @@ function pickPowerAmpOutcome() {
 }
 
 function armPowerAmpEntry(multiplier, turnNow, turnSerialNow, lifecycleId) {
-  return {
-    mult: 0,
-    pendingMult: Number(multiplier || 0),
-    lifecycleId: Number(lifecycleId || 0),
-    state: 'pending_next_own_turn',
-    armedAtTurn: Number(turnNow || 0),
-    armedAtTurnSerial: Number(turnSerialNow || 0),
-    activatedAtTurn: -1,
-    activatedAtTurnSerial: -1,
-    usedThisTurn: false,
-  };
+  return createPowerAmpArmedEntry(multiplier, turnNow, turnSerialNow, lifecycleId);
 }
 
 function activatePowerAmp(ctx, actorUID) {
@@ -261,15 +245,11 @@ export function ConsumePowerAmpForActor(ctx, actorUID) {
   const g = getGlobals(ctx);
   const store = ensurePowerAmpByUID(ctx);
   const entry = store[actorUID];
-  if (!entry || entry.state !== 'active_this_turn') return 0;
-  const mult = Number(entry?.mult || 0);
-  if (!mult) return 0;
-  if (entry.usedThisTurn) return 0;
-  const meta = ensureLifecycleMetaForActor(g, actorUID, Number(entry.lifecycleId || 0));
-  if (meta && meta.consumed) return 0;
-  entry.usedThisTurn = true;
-  if (meta) meta.consumed = true;
-  return mult;
+  const next = derivePowerAmpConsumeState(entry, ensureLifecycleMetaForActor(g, actorUID, Number(entry?.lifecycleId || 0)));
+  if (!next.canConsume) return 0;
+  store[actorUID] = next.entry;
+  ensurePowerAmpLifecycleMeta(g)[Number(actorUID || 0)] = next.meta;
+  return Number(next.multiplier || 0);
 }
 
 export function ClosePowerAmpForActor(ctx, actorUID, reason = 'manual_close') {
@@ -278,20 +258,16 @@ export function ClosePowerAmpForActor(ctx, actorUID, reason = 'manual_close') {
   const uid = Number(actorUID || 0);
   if (!uid) return 0;
   const entry = store[uid];
-  if (!entry) return 0;
-  const mult = Number(entry.mult || entry.pendingMult || 0);
-  const lifecycleId = Number(entry.lifecycleId || 0);
-  const meta = ensureLifecycleMetaForActor(g, uid, lifecycleId);
-  if (meta && meta.closed) {
-    delete store[uid];
-    return mult;
-  }
+  const next = derivePowerAmpCloseDecision(entry, ensureLifecycleMetaForActor(g, uid, Number(entry?.lifecycleId || 0)));
+  if (!next.shouldClose) return 0;
+  const mult = Number(next.mult || 0);
   delete store[uid];
-  if (mult > 0) {
-    startPowerAmpFade(g, uid, mult, lifecycleId);
+  ensurePowerAmpLifecycleMeta(g)[uid] = next.meta;
+  if (next.alreadyClosed) return mult;
+  if (next.shouldFade) {
+    startPowerAmpFade(g, uid, mult, next.lifecycleId);
   } else {
-    if (meta) meta.closed = true;
-    FinalizePowerAmpVisualClear(ctx, uid, lifecycleId);
+    FinalizePowerAmpVisualClear(ctx, uid, next.lifecycleId);
   }
   return mult;
 }
@@ -348,39 +324,26 @@ export function GetHeroPowerAmpRenderState(ctx, actorUID) {
   const visual = g.PowerAmpVisualByUID[uid] || null;
   const fade = g.PowerAmpFadeByUID[uid] || null;
   const entry = store[uid] || null;
-  const meta = ensureLifecycleMetaForActor(g, uid, Number(visual?.lifecycleId || entry?.lifecycleId || fade?.lifecycleId || 0));
-  const storeMult = Number(entry?.mult || 0);
-  const active = !!visual || storeMult > 0;
-  const fadeDuration = Number(fade?.duration || 0.42);
-  const now = Number(g.time || 0);
-  const fadeActive = !!(!active && fade && now < Number(fade.startAt || 0) + fadeDuration);
-  const mult = Number(visual?.mult || storeMult || fade?.mult || entry?.pendingMult || 0);
-  const visualStartAt = Number(visual?.startAt || meta?.visualStartAt || now);
-  const fadeStartAt = Number(fade?.startAt || meta?.fadeStartAt || 0);
-  const lifecycleId = Number(visual?.lifecycleId || entry?.lifecycleId || fade?.lifecycleId || 0);
-  const ampScalePeak = 1.3;
-  let heroScale = 1;
-  let scaleState = 'normal';
-  if (active) {
-    const tIn = Math.max(0, Math.min(1, (now - visualStartAt) / 0.18));
-    const eIn = 1 - Math.pow(1 - tIn, 2);
-    heroScale = 1 + (ampScalePeak - 1) * eIn;
-    scaleState = 'active';
-  } else if (fadeActive) {
-    const fadeT = Math.max(0, Math.min(1, (now - fadeStartAt) / fadeDuration));
-    heroScale = 1 + (ampScalePeak - 1) * (1 - fadeT);
-    scaleState = 'fade';
-  }
+  const next = derivePowerAmpRenderState({
+    entry,
+    visual,
+    fade,
+    existingMeta: ensureLifecycleMetaForActor(g, uid, Number(visual?.lifecycleId || entry?.lifecycleId || fade?.lifecycleId || 0)),
+    now: Number(g.time || 0),
+    defaultFadeDuration: 0.42,
+    scalePeak: 1.3,
+  });
+  ensurePowerAmpLifecycleMeta(g)[uid] = next.meta;
   return {
-    active,
-    fadeActive,
-    mult,
-    lifecycleId,
-    visualStartAt,
-    fadeStartAt,
-    fadeDuration,
-    heroScale,
-    scaleState,
+    active: !!next.active,
+    fadeActive: !!next.fadeActive,
+    mult: Number(next.mult || 0),
+    lifecycleId: Number(next.lifecycleId || 0),
+    visualStartAt: Number(next.visualStartAt || 0),
+    fadeStartAt: Number(next.fadeStartAt || 0),
+    fadeDuration: Number(next.fadeDuration || 0.42),
+    heroScale: Number(next.heroScale || 1),
+    scaleState: String(next.scaleState || 'normal'),
   };
 }
 
@@ -2786,15 +2749,13 @@ export function HeroTurn(ctx, heroUID) {
       entry.state === 'pending_next_own_turn' &&
       turnSerialNow > Number(entry.armedAtTurnSerial || 0)
     ) {
-      entry.state = 'active_this_turn';
-      entry.mult = Number(entry.pendingMult || entry.mult || 0);
-      entry.activatedAtTurn = turnNow;
-      entry.activatedAtTurnSerial = turnSerialNow;
-      entry.usedThisTurn = false;
-      if (entry.mult > 0) {
+      const next = derivePowerAmpActivationEntry(entry, turnNow, turnSerialNow);
+      store[heroUID] = next.entry;
+      const activeEntry = next.entry;
+      if (activeEntry && activeEntry.mult > 0) {
         const existingVisual = g.PowerAmpVisualByUID && g.PowerAmpVisualByUID[heroUID];
-        if (!existingVisual || Number(existingVisual.mult || 0) !== Number(entry.mult || 0)) {
-          setPowerAmpVisual(g, heroUID, entry.mult, entry.lifecycleId);
+        if (!existingVisual || Number(existingVisual.mult || 0) !== Number(activeEntry.mult || 0)) {
+          setPowerAmpVisual(g, heroUID, activeEntry.mult, activeEntry.lifecycleId);
         }
       }
     }
