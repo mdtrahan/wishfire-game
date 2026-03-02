@@ -1222,6 +1222,38 @@ function schedulerWriteIndex(ctx, nextIndex) { const g = getGlobals(ctx), normal
 function schedulerClearQueue(ctx) { schedulerWriteQueue(ctx, []); schedulerWriteIndex(ctx, 0); return []; }
 function schedulerSyncIndexToUID(ctx, uid, queue = null, fallback = 0) { const arr = Array.isArray(queue) ? queue : (Array.isArray(getGlobals(ctx).TurnOrderArray) ? getGlobals(ctx).TurnOrderArray : []), idx = arr.findIndex(slot => Number(slot?.uid || 0) === Number(uid || 0)); if (idx !== -1) schedulerWriteIndex(ctx, idx); else schedulerWriteIndex(ctx, fallback); return idx; }
 function schedulerClampIndex(ctx, queue = null) { const arr = Array.isArray(queue) ? queue : (Array.isArray(getGlobals(ctx).TurnOrderArray) ? getGlobals(ctx).TurnOrderArray : []); if (!arr.length) return schedulerWriteIndex(ctx, 0); const current = Number(getGlobals(ctx).CurrentTurnIndex || 0); return schedulerWriteIndex(ctx, Math.max(0, Math.min(current, arr.length - 1))); }
+function schedulerResetBattleStartOverride(g) { g.BattleStartResolved = 1; g.BattleStartMode = ''; g.BattleStartRemaining = {}; }
+function schedulerBuildBattleStartRemaining(g, roster, teamType, allowCurrentTurnReseed = false) {
+  if (!g.BattleStartRemaining || typeof g.BattleStartRemaining !== 'object') g.BattleStartRemaining = {};
+  const remaining = g.BattleStartRemaining;
+  if (Object.keys(remaining).length === 0) {
+    for (const r of roster) if (r.type === teamType) remaining[r.uid] = true;
+  } else if (allowCurrentTurnReseed && !Number(g.InitiativeCurrentUID || 0)) {
+    for (const r of roster) if (r.type === teamType && !remaining[r.uid]) remaining[r.uid] = true;
+  }
+  const rosterUIDs = new Set(roster.map(r => r.uid));
+  for (const uid of Object.keys(remaining)) {
+    const num = Number(uid);
+    const actor = roster.find(r => r.uid === num);
+    if (!rosterUIDs.has(num) || !actor || actor.type !== teamType) delete remaining[uid];
+  }
+  return remaining;
+}
+function schedulerConsumeBattleStartActor(g, remaining, uid) {
+  if (!remaining || !remaining[uid]) return false;
+  delete remaining[uid];
+  if (Object.keys(remaining).length === 0) schedulerResetBattleStartOverride(g);
+  return true;
+}
+function schedulerApplyBattleStartRoundPartition(g, withInit, startMode) {
+  const heroes = withInit.filter(a => a.type === 0).sort((a, b) => b.init - a.init);
+  const enemies = withInit.filter(a => a.type === 1).sort((a, b) => b.init - a.init);
+  withInit.length = 0;
+  if (startMode === 'ambush') withInit.push(...enemies, ...heroes);
+  else withInit.push(...heroes, ...enemies);
+  schedulerResetBattleStartOverride(g);
+  return withInit;
+}
 function setTurnOrderArrayWithAudit(ctx, nextQueue, cause, details = {}) { const g = getGlobals(ctx), audit = ensureTurnSchedulerAudit(g), beforeSlots = snapshotTurnOrderSlots(ctx), before = new Map(); for (const slot of beforeSlots) before.set(slot.uid, (before.get(slot.uid) || 0) + 1); schedulerWriteQueue(ctx, nextQueue); const afterSlots = snapshotTurnOrderSlots(ctx), after = new Map(), removedUIDs = [], addedUIDs = []; for (const slot of afterSlots) after.set(slot.uid, (after.get(slot.uid) || 0) + 1); for (const uid of new Set([...before.keys(), ...after.keys()])) { const beforeCount = before.get(uid) || 0, afterCount = after.get(uid) || 0; for (let i = 0; i < beforeCount - afterCount; i++) removedUIDs.push(uid); for (let i = 0; i < afterCount - beforeCount; i++) addedUIDs.push(uid); } let mutationSource = null; if (cause === 'explicit_extra_turn_insert' || cause === 'spawn_insertion') mutationSource = 'explicit_mechanic'; else if (removedUIDs.length > 0 && Number(audit.lastRemovalSeq || 0) > 0 && Number(audit.lastRemovalSeq || 0) >= Number(audit.seq || 0) - 2) mutationSource = 'collapse_after_future_slot_removal'; recordTurnSchedulerEvent(ctx, 'queue_mutation', { cause, beforeLength: beforeSlots.length, afterLength: afterSlots.length, removedUIDs, addedUIDs, mutationSource, queue: afterSlots, ...details }); return afterSlots; }
 function buildInitiativeCycle(ctx, roster, currentUID = 0, selectionPool = null) {
   const g = getGlobals(ctx), cycle = roster.map(r => ({ uid: r.uid, type: r.type, spd: Number(r.spd || 0), extra: false })), startPool = Array.isArray(selectionPool) && selectionPool.length && selectionPool.length < cycle.length ? new Set(selectionPool.map(r => Number(r.uid || 0))) : null;
@@ -1334,29 +1366,9 @@ function getInitiativeOverridePool(ctx, roster) {
   const startActive = Boolean(startMode && !g.BattleStartResolved);
   if (!startActive) return { active: false, pool: roster };
   const teamType = startMode === 'ambush' ? 1 : 0;
-  if (!g.BattleStartRemaining || typeof g.BattleStartRemaining !== 'object') {
-    g.BattleStartRemaining = {};
-  }
-  const remaining = g.BattleStartRemaining;
+  const remaining = schedulerBuildBattleStartRemaining(g, roster, teamType, true);
   if (Object.keys(remaining).length === 0) {
-    for (const r of roster) {
-      if (r.type === teamType) remaining[r.uid] = true;
-    }
-  } else if (!Number(g.InitiativeCurrentUID || 0)) {
-    for (const r of roster) {
-      if (r.type === teamType && !remaining[r.uid]) remaining[r.uid] = true;
-    }
-  }
-  const rosterUIDs = new Set(roster.map(r => r.uid));
-  for (const uid of Object.keys(remaining)) {
-    const num = Number(uid);
-    const inRoster = rosterUIDs.has(num);
-    const actor = roster.find(r => r.uid === num);
-    if (!inRoster || !actor || actor.type !== teamType) delete remaining[uid];
-  }
-  if (Object.keys(remaining).length === 0) {
-    g.BattleStartResolved = 1;
-    g.BattleStartMode = '';
+    schedulerResetBattleStartOverride(g);
     return { active: false, pool: roster };
   }
   const pool = roster.filter(r => remaining[r.uid]);
@@ -1387,14 +1399,7 @@ function selectNextInitiativeActor(ctx) {
   const next = queue[nextIndex] || null;
   schedulerWriteIndex(ctx, next ? nextIndex : 0);
   g.InitiativeCurrentUID = next ? Number(next.uid || 0) : 0;
-  if (override.active && next && override.remaining && override.remaining[g.InitiativeCurrentUID]) {
-    delete override.remaining[g.InitiativeCurrentUID];
-    if (Object.keys(override.remaining).length === 0) {
-      g.BattleStartResolved = 1;
-      g.BattleStartMode = '';
-      g.BattleStartRemaining = {};
-    }
-  }
+  if (override.active && next && override.remaining) schedulerConsumeBattleStartActor(g, override.remaining, g.InitiativeCurrentUID);
   return next ? { ...next, meter: 100 } : null;
 }
 
@@ -2553,11 +2558,9 @@ export function BuildRoundGroups(ctx) {
     }
     syncInitiativeMeters(ctx, roster);
     if (g.BattleStartMode && !g.BattleStartResolved) {
-      g.BattleStartRemaining = {};
       const teamType = g.BattleStartMode === 'ambush' ? 1 : 0;
-      for (const r of roster) {
-        if (r.type === teamType) g.BattleStartRemaining[r.uid] = true;
-      }
+      g.BattleStartRemaining = {};
+      schedulerBuildBattleStartRemaining(g, roster, teamType, false);
     }
     if (!g.InitiativeCurrentUID) {
       selectNextInitiativeActor(ctx);
@@ -2604,12 +2607,7 @@ export function BuildRoundGroups(ctx) {
   const startMode = g.BattleStartMode;
   const startModeApplied = Boolean(startMode && !g.BattleStartResolved);
   if (startModeApplied) {
-    const heroes = withInit.filter(a => a.type === 0).sort((a, b) => b.init - a.init);
-    const enemies = withInit.filter(a => a.type === 1).sort((a, b) => b.init - a.init);
-    withInit.length = 0;
-    if (startMode === 'ambush') withInit.push(...enemies, ...heroes);
-    else withInit.push(...heroes, ...enemies);
-    g.BattleStartResolved = 1;
+    schedulerApplyBattleStartRoundPartition(g, withInit, startMode);
   } else {
     withInit.sort((a, b) => b.init - a.init);
   }

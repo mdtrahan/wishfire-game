@@ -1205,6 +1205,44 @@ function schedulerClampIndex(ctx, queue = null) {
   return schedulerWriteIndex(ctx, Math.max(0, Math.min(current, arr.length - 1)));
 }
 
+function schedulerResetBattleStartOverride(g) {
+  g.BattleStartResolved = 1;
+  g.BattleStartMode = '';
+  g.BattleStartRemaining = {};
+}
+
+function schedulerBuildBattleStartRemaining(g, roster, teamType) {
+  if (!g.BattleStartRemaining || typeof g.BattleStartRemaining !== 'object') g.BattleStartRemaining = {};
+  const remaining = g.BattleStartRemaining;
+  if (Object.keys(remaining).length === 0) {
+    for (const r of roster) if (r.type === teamType) remaining[r.uid] = true;
+  }
+  const rosterUIDs = new Set(roster.map(r => r.uid));
+  for (const uid of Object.keys(remaining)) {
+    const num = Number(uid);
+    const actor = roster.find(r => r.uid === num);
+    if (!rosterUIDs.has(num) || !actor || actor.type !== teamType) delete remaining[uid];
+  }
+  return remaining;
+}
+
+function schedulerConsumeBattleStartActor(g, remaining, uid) {
+  if (!remaining || !remaining[uid]) return false;
+  delete remaining[uid];
+  if (Object.keys(remaining).length === 0) schedulerResetBattleStartOverride(g);
+  return true;
+}
+
+function schedulerApplyBattleStartRoundPartition(g, withInit, startMode) {
+  const heroes = withInit.filter(a => a.type === 0).sort((a, b) => b.init - a.init);
+  const enemies = withInit.filter(a => a.type === 1).sort((a, b) => b.init - a.init);
+  withInit.length = 0;
+  if (startMode === 'ambush') withInit.push(...enemies, ...heroes);
+  else withInit.push(...heroes, ...enemies);
+  schedulerResetBattleStartOverride(g);
+  return withInit;
+}
+
 function syncInitiativeSessionState(ctx) {
   const g = getGlobals(ctx);
   const combatSessionId = Number(g.CombatSessionId || 0);
@@ -1298,25 +1336,9 @@ function getInitiativeOverridePool(ctx, roster) {
   const startActive = Boolean(startMode && !g.BattleStartResolved);
   if (!startActive) return { active: false, pool: roster };
   const teamType = startMode === 'ambush' ? 1 : 0;
-  if (!g.BattleStartRemaining || typeof g.BattleStartRemaining !== 'object') {
-    g.BattleStartRemaining = {};
-  }
-  const remaining = g.BattleStartRemaining;
+  const remaining = schedulerBuildBattleStartRemaining(g, roster, teamType);
   if (Object.keys(remaining).length === 0) {
-    for (const r of roster) {
-      if (r.type === teamType) remaining[r.uid] = true;
-    }
-  }
-  const rosterUIDs = new Set(roster.map(r => r.uid));
-  for (const uid of Object.keys(remaining)) {
-    const num = Number(uid);
-    const inRoster = rosterUIDs.has(num);
-    const actor = roster.find(r => r.uid === num);
-    if (!inRoster || !actor || actor.type !== teamType) delete remaining[uid];
-  }
-  if (Object.keys(remaining).length === 0) {
-    g.BattleStartResolved = 1;
-    g.BattleStartMode = '';
+    schedulerResetBattleStartOverride(g);
     return { active: false, pool: roster };
   }
   const pool = roster.filter(r => remaining[r.uid]);
@@ -1354,13 +1376,7 @@ function selectNextInitiativeActor(ctx) {
     }
     if (ready) {
       setMeter(meters, ready.uid, ready.meter - threshold);
-      if (override.active && override.remaining) {
-        delete override.remaining[ready.uid];
-        if (Object.keys(override.remaining).length === 0) {
-          g.BattleStartResolved = 1;
-          g.BattleStartMode = '';
-        }
-      }
+      if (override.active && override.remaining) schedulerConsumeBattleStartActor(g, override.remaining, ready.uid);
       g.InitiativeCurrentUID = ready.uid;
       schedulerWriteIndex(ctx, 0);
       const previewSize = Number(g.InitiativePreviewSize || 6);
@@ -2519,11 +2535,9 @@ export function BuildRoundGroups(ctx) {
     }
     syncInitiativeMeters(ctx, roster);
     if (g.BattleStartMode && !g.BattleStartResolved) {
-      g.BattleStartRemaining = {};
       const teamType = g.BattleStartMode === 'ambush' ? 1 : 0;
-      for (const r of roster) {
-        if (r.type === teamType) g.BattleStartRemaining[r.uid] = true;
-      }
+      g.BattleStartRemaining = {};
+      schedulerBuildBattleStartRemaining(g, roster, teamType);
     }
     if (!g.InitiativeCurrentUID) {
       selectNextInitiativeActor(ctx);
@@ -2570,12 +2584,7 @@ export function BuildRoundGroups(ctx) {
   const startMode = g.BattleStartMode;
   const startModeApplied = Boolean(startMode && !g.BattleStartResolved);
   if (startModeApplied) {
-    const heroes = withInit.filter(a => a.type === 0).sort((a, b) => b.init - a.init);
-    const enemies = withInit.filter(a => a.type === 1).sort((a, b) => b.init - a.init);
-    withInit.length = 0;
-    if (startMode === 'ambush') withInit.push(...enemies, ...heroes);
-    else withInit.push(...heroes, ...enemies);
-    g.BattleStartResolved = 1;
+    schedulerApplyBattleStartRoundPartition(g, withInit, startMode);
   } else {
     withInit.sort((a, b) => b.init - a.init);
   }
