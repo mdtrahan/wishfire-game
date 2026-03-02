@@ -4481,14 +4481,14 @@ async function main(){
           const storeEntry = hero ? ampStore[hero.uid] : null;
           const storeMult = Number(storeEntry?.mult || 0);
           const ampActive = !!visual || (!!hero && storeMult > 0);
-          const fadeDuration = Number(fade?.duration || 0.42);
+          const fadeDuration = Number(fade?.duration || 0.16);
           const fadeActive = !!(
             hero &&
             !ampActive &&
             fade &&
             (g.time || 0) < ((fade.startAt || 0) + fadeDuration)
           );
-          const ampScalePeak = 1.45;
+          const ampScalePeak = 1.3;
           let heroScale = 1;
           if (ampActive) {
             const startAt = visual ? (visual.startAt || 0) : (g.time || 0);
@@ -4502,73 +4502,29 @@ async function main(){
           const scaledW = w * heroScale;
           const scaledH = h * heroScale;
           const footY = pos.y + h / 2;
-          const auraActive = ampActive || fadeActive;
-          if (auraActive) {
-            let auraAlpha = 0.55;
-            let auraScale = 1;
-            if (ampActive) {
-              const startAt = visual ? (visual.startAt || 0) : (g.time || 0);
-              const inT = Math.max(0, Math.min(1, ((g.time || 0) - startAt) / 0.22));
-              auraAlpha = 0.28 + (0.58 * inT);
-              auraScale = 0.96 + (0.32 * popScale(inT));
-            } else {
-              const fadeT = Math.max(0, Math.min(1, ((g.time || 0) - (fade.startAt || 0)) / (fade.duration || 0.42)));
-              auraAlpha = 0.66 * (1 - fadeT);
-              auraScale = 1.14 + (0.1 * fadeT);
-            }
-            const auraCx = pos.x;
-            const auraCy = footY - (scaledH * 0.56);
-            const auraRx = Math.max(18, scaledW * 0.42) * auraScale;
-            const auraRy = Math.max(16, scaledH * 0.28) * auraScale;
-            ctx.save();
-            ctx.globalCompositeOperation = 'lighter';
-            const glow = ctx.createRadialGradient(auraCx, auraCy, 0, auraCx, auraCy, Math.max(auraRx, auraRy) * 1.35);
-            glow.addColorStop(0, `rgba(248, 232, 255, ${Math.max(0, auraAlpha)})`);
-            glow.addColorStop(0.3, `rgba(206, 110, 255, ${Math.max(0, auraAlpha * 0.86)})`);
-            glow.addColorStop(0.68, `rgba(121, 42, 224, ${Math.max(0, auraAlpha * 0.56)})`);
-            glow.addColorStop(1, 'rgba(121, 42, 224, 0)');
-            ctx.fillStyle = glow;
-            ctx.beginPath();
-            ctx.ellipse(auraCx, auraCy, auraRx * 1.18, auraRy * 1.35, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = `rgba(246, 226, 255, ${Math.max(0, auraAlpha * 0.92)})`;
-            ctx.lineWidth = Math.max(2, 2.6 * layoutScale);
-            ctx.beginPath();
-            ctx.ellipse(auraCx, auraCy, auraRx, auraRy, 0, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.restore();
-          }
           ctx.drawImage(img, pos.x - scaledW / 2, footY - scaledH, scaledW, scaledH);
 
-          if (ampActive || fadeActive) {
-            const mult = ampActive
-              ? (visual?.mult || storeMult || 1)
-              : (fade?.mult || 1);
+          if (ampActive) {
+            const mult = visual?.mult || storeMult || 1;
             const badgeText = `${mult}\u00d7`;
             const badgeX = pos.x;
-            const badgeBottomY = footY + Math.max(6, 6 * layoutScale);
+            const badgeBottomY = footY - Math.max(2, 2 * layoutScale);
             let badgeScale = 1;
             let badgeAlpha = 1;
-            if (ampActive) {
-              const startAt = visual ? (visual.startAt || 0) : (g.time || 0);
-              const inT = Math.max(0, Math.min(1, ((g.time || 0) - startAt) / 0.22));
-              badgeScale = popScale(inT) * (1 + 0.03 * Math.sin((g.time || 0) * 6));
-            } else {
-              const fadeT = Math.max(0, Math.min(1, ((g.time || 0) - (fade.startAt || 0)) / (fade.duration || 0.42)));
-              badgeScale = 1 + 0.08 * (1 - fadeT);
-              badgeAlpha = 1 - fadeT;
-            }
-            const bw = Math.max(28, 36 * layoutScale) * badgeScale;
-            const bh = Math.max(16, 22 * layoutScale) * badgeScale;
+            const startAt = visual ? (visual.startAt || 0) : (g.time || 0);
+            const inT = Math.max(0, Math.min(1, ((g.time || 0) - startAt) / 0.22));
+            badgeScale = popScale(inT) * (1 + 0.03 * Math.sin((g.time || 0) * 6));
+            const bw = Math.max(24, 30 * layoutScale) * badgeScale;
+            const bh = Math.max(14, 18 * layoutScale) * badgeScale;
             ctx.save();
             ctx.globalAlpha = badgeAlpha;
-            ctx.fillStyle = 'rgba(98, 24, 146, 0.96)';
-            ctx.strokeStyle = 'rgba(248, 234, 255, 0.96)';
-            ctx.lineWidth = Math.max(1.25, 1.5 * layoutScale);
+            ctx.fillStyle = 'rgba(82, 24, 120, 0.92)';
+            ctx.strokeStyle = 'rgba(234, 214, 255, 0.88)';
+            ctx.lineWidth = Math.max(1, 1.2 * layoutScale);
             ctx.fillRect(badgeX - bw / 2, badgeBottomY - bh, bw, bh);
             ctx.strokeRect(badgeX - bw / 2, badgeBottomY - bh, bw, bh);
             ctx.fillStyle = '#f8f1ff';
-            ctx.font = `bold ${Math.max(11, Math.round(13 * layoutScale * badgeScale))}px sans-serif`;
+            ctx.font = `bold ${Math.max(10, Math.round(12 * layoutScale * badgeScale))}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(badgeText, badgeX, badgeBottomY - bh / 2);

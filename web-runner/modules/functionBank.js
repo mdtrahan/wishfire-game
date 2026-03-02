@@ -91,7 +91,7 @@ function setPowerAmpVisual(g, uid, mult) {
 
 function startPowerAmpFade(g, uid, mult) {
   ensurePowerAmpVisuals(g);
-  g.PowerAmpFadeByUID[uid] = { mult, startAt: g.time || 0, duration: 0.42 };
+  g.PowerAmpFadeByUID[uid] = { mult, startAt: g.time || 0, duration: 0.16 };
   delete g.PowerAmpVisualByUID[uid];
 }
 
