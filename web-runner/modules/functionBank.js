@@ -11,6 +11,10 @@ import {
   derivePowerAmpVisualState,
   normalizePowerAmpLifecycleMeta,
 } from '../../src/core/powerAmpRules.mjs';
+import {
+  createEnemyTurnGateBaseline,
+  createHeroTurnGateBaseline,
+} from '../../src/core/turnGateController.mjs';
 
 const POWER_AMP_OUTCOMES = [
   { key: 'HERO_2X', multiplier: 2, chance: 0.62 },
@@ -81,6 +85,16 @@ function setSelectedGemIndices(ctx, arr) {
   if (ctx && typeof ctx.setSelectedGemIndices === 'function') ctx.setSelectedGemIndices(arr);
   const g = getGlobals(ctx);
   g.SelectedGems = arr;
+}
+
+function applyTurnGateState(g, next) {
+  if (!g || !next) return;
+  g.CanPickGems = next.CanPickGems;
+  g.IsPlayerBusy = next.IsPlayerBusy;
+  g.DeferAdvance = next.DeferAdvance;
+  g.AdvanceAfterAction = next.AdvanceAfterAction;
+  g.ActionLockUntil = next.ActionLockUntil;
+  g.ActionOwnerUID = next.ActionOwnerUID;
 }
 
 function ensurePowerAmpByUID(ctx) {
@@ -2779,11 +2793,7 @@ export function EnemyAttack(ctx, enemyUID) {
 export function EnemyTurn(ctx, enemyUID) {
   const g = getGlobals(ctx);
   g.TurnPhase = 2;
-  g.CanPickGems = 0;
-  g.IsPlayerBusy = 1;
-  g.DeferAdvance = 0;
-  g.AdvanceAfterAction = 0;
-  g.ActionLockUntil = 0;
+  applyTurnGateState(g, createEnemyTurnGateBaseline(g));
   if (!enemyUID) {
     AdvanceTurn(ctx);
     ProcessTurn(ctx);
@@ -2796,12 +2806,8 @@ export function HeroTurn(ctx, heroUID) {
   const g = getGlobals(ctx);
   const store = ensurePowerAmpByUID(ctx);
   g.TurnPhase = 0;
-  g.CanPickGems = 1;
-  g.IsPlayerBusy = 0;
+  applyTurnGateState(g, createHeroTurnGateBaseline(g));
   g.HideHeroSelector = 0;
-  g.DeferAdvance = 0;
-  g.AdvanceAfterAction = 0;
-  g.ActionLockUntil = 0;
   if (heroUID) g.CurrentHeroUID = heroUID;
   if (heroUID && store[heroUID]) {
     const entry = store[heroUID];
