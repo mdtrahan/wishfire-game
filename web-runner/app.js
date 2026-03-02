@@ -3386,24 +3386,7 @@ async function main(){
       state.globals.BuffProgActive = 0;
       state.globals.BuffProgSlot = -1;
     }
-    if (state.globals.PowerAmpFadeByUID && typeof state.globals.PowerAmpFadeByUID === 'object') {
-      const now = state.globals.time || 0;
-      for (const [uid, fade] of Object.entries(state.globals.PowerAmpFadeByUID)) {
-        if (!fade) continue;
-        const duration = fade.duration || 0.16;
-        if (now >= (fade.startAt || 0) + duration) {
-          if (state.globals.DebugPowerAmpLifecycle) {
-            const actor = state.entities.find(e => e && Number(e.uid || 0) === Number(uid || 0));
-            console.log(
-              `[POWER_AMP_STATE] phase=closed_off uid=${Number(uid || 0)} ` +
-              `name=${actor ? String(actor.name || '') : ''} turnSerial=${Number(state.globals.TurnSerial || 0)} ` +
-              `turn=${Number(state.globals.DebugTurnCount || 0)} lifecycle=${Number(fade.lifecycleId || 0)}`
-            );
-          }
-          delete state.globals.PowerAmpFadeByUID[uid];
-        }
-      }
-    }
+    callFunctionWithContext(fnContext, 'TickPowerAmpState');
     // Dynamically filter overlay elements based on current state
     const overlayElements = new Set(['UI_CloseWin', 'UI_NavCloseButton', 'UI_NavCloseX']);
     const debugElements = new Set(['newdebugger', 'newdebugger2', 'InputBlocker', 'EnemyKeyList', 'KillCounter', 'turnTracker', 'txtPhaseInfo']);

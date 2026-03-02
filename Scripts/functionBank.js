@@ -84,6 +84,12 @@ function ensurePowerAmpVisuals(g) {
   if (!g.PowerAmpFadeByUID || typeof g.PowerAmpFadeByUID !== 'object') g.PowerAmpFadeByUID = {};
 }
 
+function clearPowerAmpVisualState(g, uid) {
+  ensurePowerAmpVisuals(g);
+  delete g.PowerAmpVisualByUID[uid];
+  delete g.PowerAmpFadeByUID[uid];
+}
+
 function setPowerAmpVisual(g, uid, mult) {
   ensurePowerAmpVisuals(g);
   g.PowerAmpVisualByUID[uid] = { mult, startAt: g.time || 0 };
@@ -209,9 +215,27 @@ export function FinalizePowerAmpVisualClear(ctx, actorUID) {
   const g = getGlobals(ctx);
   const uid = Number(actorUID || 0);
   if (!uid) return;
-  ensurePowerAmpVisuals(g);
-  delete g.PowerAmpVisualByUID[uid];
-  delete g.PowerAmpFadeByUID[uid];
+  clearPowerAmpVisualState(g, uid);
+}
+
+function expirePowerAmpFadeEntries(ctx) {
+  const g = getGlobals(ctx);
+  const fades = g.PowerAmpFadeByUID;
+  if (!fades || typeof fades !== 'object') return 0;
+  const now = Number(g.time || 0);
+  let expiredCount = 0;
+  for (const [uid, fade] of Object.entries(fades)) {
+    if (!fade) continue;
+    const duration = Number(fade.duration || 0.42);
+    if (now < Number(fade.startAt || 0) + duration) continue;
+    delete fades[uid];
+    expiredCount += 1;
+  }
+  return expiredCount;
+}
+
+export function TickPowerAmpState(ctx) {
+  return expirePowerAmpFadeEntries(ctx);
 }
 
 function getAllHeroActors(ctx) {
