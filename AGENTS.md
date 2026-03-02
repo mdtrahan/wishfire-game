@@ -29,6 +29,7 @@
   5. Mark that issue `in_progress`
 - Commits must include `bd-<id>`.
 - If scope is ambiguous, stop and clarify on that issue.
+- PM/assigner must always provide the explicit Beads issue ID when assigning a lane. Do not start from title-only instructions.
 
 ## 4) Execution Rules
 - Edit the minimum files needed.
@@ -36,6 +37,12 @@
 - Resolve Git conflicts locally. Do not ask the user to resolve them.
 - If unexpected tracked changes appear, stop and ask how to proceed unless the user already authorized them.
 - Repository artifacts and Beads are the durable coordination channel.
+
+### 4.1) Ownership Discipline
+- Keep one ownership lane per issue: change only one of render/projection, combat rules, or lifecycle/state cleanup unless the issue explicitly authorizes a cross-boundary change.
+- For hot-file issues, define exact allowed files/functions and name forbidden adjacent systems before editing.
+- Do not write feature-owned globals outside the owning seam. If no clear owner exists yet, inventory direct read/write sites first, then extract the seam before expanding the feature.
+- If a deterministic rule must change in both `Scripts/` and `web-runner/`, move that rule into `src/` or mark the duplicate edit as temporary mirrored maintenance in the issue.
 
 ## 5) Containment
 - First shell command: `pwd`
