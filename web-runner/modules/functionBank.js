@@ -1024,6 +1024,11 @@ function setMeter(meters, uid, value) {
   meters[String(uid)] = value;
 }
 
+function ensureTurnSchedulerAudit(g) { if (!g.TurnSchedulerAudit || typeof g.TurnSchedulerAudit !== 'object') g.TurnSchedulerAudit = { seq: 0, events: [], lastQueueMutation: null, lastRemovalSeq: 0 }; return g.TurnSchedulerAudit; }
+function snapshotTurnOrderSlots(ctx, queue = null) { const g = getGlobals(ctx), arr = Array.isArray(queue) ? queue : (Array.isArray(g.TurnOrderArray) ? g.TurnOrderArray : []); return arr.map((slot, idx) => { const uid = Number(slot?.uid || 0), actor = uid ? GetActorByUID(ctx, uid) : null; return { idx, uid, type: Number(slot?.type ?? (actor && actor.kind === 'enemy' ? 1 : 0)), spd: Number(slot?.spd ?? (actor ? Number(actor.stats?.SPD ?? actor.SPD ?? 0) : 0)), extra: !!slot?.extra, name: actor ? String(actor.name || uid) : null }; }); }
+function recordTurnSchedulerEvent(ctx, kind, details = {}) { const g = getGlobals(ctx), audit = ensureTurnSchedulerAudit(g), queue = Array.isArray(details.queue) ? details.queue : snapshotTurnOrderSlots(ctx), { queue: _queue, ...rest } = details, currentIndex = Number.isFinite(Number(g.CurrentTurnIndex)) ? Number(g.CurrentTurnIndex) : 0, currentSlot = queue[currentIndex] || null, positionsByUID = new Map(); for (const slot of queue) { const uid = Number(slot.uid || 0); if (!positionsByUID.has(uid)) positionsByUID.set(uid, []); positionsByUID.get(uid).push(slot.idx); } const repeats = []; for (const [uid, positions] of positionsByUID.entries()) { if (positions.length <= 1) continue; const repeatedSlots = positions.map(idx => queue[idx]).filter(Boolean), name = repeatedSlots[0]?.name || null, source = rest.mutationSource === 'collapse_after_future_slot_removal' ? 'collapse_after_future_slot_removal' : (rest.cause === 'explicit_extra_turn_insert' ? 'explicit_mechanic' : (repeatedSlots.some(slot => slot.extra) ? 'non_compliant_scheduler_behavior' : 'ambiguous_repeat')); repeats.push({ uid, name, positions, source }); } const event = { seq: Number(audit.seq || 0) + 1, kind: String(kind || 'unknown'), time: Number(g.time || 0), turnSerial: Number(g.TurnSerial || 0), initiativeMode: String(g.InitiativeMode || ''), roundActive: !!g.RoundActive, currentTurnIndex: currentIndex, currentUID: currentSlot ? Number(currentSlot.uid || 0) : Number(g.InitiativeCurrentUID || 0), queueShape: queue.map(slot => ({ idx: slot.idx, uid: slot.uid, type: slot.type, spd: slot.spd, extra: !!slot.extra, name: slot.name })), repeats, ...rest }; audit.seq = event.seq; audit.events.push(event); if (audit.events.length > 500) audit.events.shift(); if (kind === 'queue_mutation' && event.mutationSource) audit.lastQueueMutation = { seq: event.seq, cause: event.cause || null, source: event.mutationSource, removedUIDs: Array.isArray(event.removedUIDs) ? event.removedUIDs.slice() : [], addedUIDs: Array.isArray(event.addedUIDs) ? event.addedUIDs.slice() : [] }; if (kind === 'removal_commit') audit.lastRemovalSeq = event.seq; return event; }
+function setTurnOrderArrayWithAudit(ctx, nextQueue, cause, details = {}) { const g = getGlobals(ctx), audit = ensureTurnSchedulerAudit(g), beforeSlots = snapshotTurnOrderSlots(ctx), before = new Map(); for (const slot of beforeSlots) before.set(slot.uid, (before.get(slot.uid) || 0) + 1); g.TurnOrderArray = Array.isArray(nextQueue) ? nextQueue : []; const afterSlots = snapshotTurnOrderSlots(ctx), after = new Map(), removedUIDs = [], addedUIDs = []; for (const slot of afterSlots) after.set(slot.uid, (after.get(slot.uid) || 0) + 1); for (const uid of new Set([...before.keys(), ...after.keys()])) { const beforeCount = before.get(uid) || 0, afterCount = after.get(uid) || 0; for (let i = 0; i < beforeCount - afterCount; i++) removedUIDs.push(uid); for (let i = 0; i < afterCount - beforeCount; i++) addedUIDs.push(uid); } let mutationSource = null; if (cause === 'explicit_extra_turn_insert') mutationSource = 'explicit_mechanic'; else if (removedUIDs.length > 0 && Number(audit.lastRemovalSeq || 0) > 0 && Number(audit.lastRemovalSeq || 0) >= Number(audit.seq || 0) - 2) mutationSource = 'collapse_after_future_slot_removal'; recordTurnSchedulerEvent(ctx, 'queue_mutation', { cause, beforeLength: beforeSlots.length, afterLength: afterSlots.length, removedUIDs, addedUIDs, mutationSource, queue: afterSlots, ...details }); return afterSlots; }
+
 function syncInitiativeSessionState(ctx) {
   const g = getGlobals(ctx);
   const combatSessionId = Number(g.CombatSessionId || 0);
@@ -1184,7 +1189,7 @@ function selectNextInitiativeActor(ctx) {
       g.InitiativeCurrentUID = ready.uid;
       g.CurrentTurnIndex = 0;
       const previewSize = Number(g.InitiativePreviewSize || 6);
-      g.TurnOrderArray = buildInitiativePreview(roster, meters, threshold, previewSize, ready.uid, selectionPool, tickPool);
+      setTurnOrderArrayWithAudit(ctx, buildInitiativePreview(roster, meters, threshold, previewSize, ready.uid, selectionPool, tickPool), 'initiative_select_next_ready', { trigger: 'select_next_initiative_actor', selectedUID: ready.uid, selectedMeter: Number(ready.meter || 0), threshold, loops, previewSize, overrideActive: !!override.active });
       return ready;
     }
     for (const r of tickPool) {
@@ -1217,7 +1222,7 @@ function refreshInitiativePreview(ctx) {
   const curUID = g.InitiativeCurrentUID;
   const override = getInitiativeOverridePool(ctx, roster);
   const selectionPool = override.pool || roster;
-  g.TurnOrderArray = buildInitiativePreview(roster, meters, threshold, previewSize, curUID, selectionPool, roster);
+  setTurnOrderArrayWithAudit(ctx, buildInitiativePreview(roster, meters, threshold, previewSize, curUID, selectionPool, roster), 'initiative_refresh_preview', { trigger: 'refresh_initiative_preview', currentUID: curUID, threshold, previewSize, overrideActive: !!override.active });
   const idx = g.TurnOrderArray.findIndex(a => a.uid === curUID);
   g.CurrentTurnIndex = idx !== -1 ? idx : 0;
 }
@@ -1276,7 +1281,7 @@ export function RebuildTurnOrderPreserveCurrent(ctx) {
   const actedSet = new Set(actedUIDs);
   const actedSegment = actedUIDs.map(uid => byUid.get(uid)).filter(Boolean);
   const remaining = sorted.filter(a => !actedSet.has(a.uid));
-  g.TurnOrderArray = actedSegment.concat(remaining);
+  setTurnOrderArrayWithAudit(ctx, actedSegment.concat(remaining), 'rebuild_preserve_current_round', { currentUID, currentIndex, actedUIDs });
   const idx = g.TurnOrderArray.findIndex(a => a.uid === currentUID);
   if (idx !== -1) g.CurrentTurnIndex = idx;
   const after = g.TurnOrderArray.map(a => {
@@ -1390,6 +1395,7 @@ export function AdvanceTurn(ctx) {
   const g = getGlobals(ctx);
   const currentUID = GetCurrentTurn(ctx);
   const currentType = GetCurrentType(ctx);
+  const timeMode = isTimeInitiative(ctx), beforeQueue = snapshotTurnOrderSlots(ctx), beforeIndex = Number(g.CurrentTurnIndex || 0), beforeSlot = beforeQueue[beforeIndex] || null, rolloverCandidate = !timeMode && beforeQueue.length > 0 && beforeIndex >= beforeQueue.length - 1;
   if (currentType === 0 && currentUID) {
     const store = ensurePowerAmpByUID(ctx);
     const entry = store[currentUID];
@@ -1426,13 +1432,16 @@ export function AdvanceTurn(ctx) {
     }
   }
   g.TurnSerial = Number(g.TurnSerial || 0) + 1;
-  if (isTimeInitiative(ctx)) {
+  if (timeMode) {
     resolvePendingDeathsForInitiative(ctx);
     selectNextInitiativeActor(ctx);
     ProcessCurrentTurn(ctx);
-    return;
+  } else {
+    ProcessCurrentTurn(ctx);
   }
-  ProcessCurrentTurn(ctx);
+  const afterQueue = snapshotTurnOrderSlots(ctx), afterIndex = Number(g.CurrentTurnIndex || 0), afterSlot = afterQueue[afterIndex] || null, audit = ensureTurnSchedulerAudit(g); let repeatSource = null;
+  if (beforeSlot && afterSlot && Number(beforeSlot.uid || 0) === Number(afterSlot.uid || 0)) { if (timeMode) repeatSource = 'non_compliant_scheduler_behavior'; else if (rolloverCandidate) repeatSource = 'cycle_rollover'; else if (audit.lastQueueMutation?.source === 'explicit_mechanic') repeatSource = 'explicit_mechanic'; else if (audit.lastQueueMutation?.source === 'collapse_after_future_slot_removal') repeatSource = 'collapse_after_future_slot_removal'; }
+  recordTurnSchedulerEvent(ctx, 'pointer_advance', { cause: timeMode ? 'time_select_next' : (rolloverCandidate ? 'round_cycle_rollover' : 'round_pointer_increment'), beforeUID: beforeSlot ? beforeSlot.uid : 0, afterUID: afterSlot ? afterSlot.uid : 0, beforeIndex, afterIndex, repeatSource, rolloverCandidate, queue: afterQueue });
 }
 
 export function TryGrantSpeedExtraTurn(ctx, actorUID) {
@@ -1455,7 +1464,7 @@ export function TryGrantSpeedExtraTurn(ctx, actorUID) {
   const arr = g.TurnOrderArray || [];
   const insertAt = Math.min(arr.length, (g.CurrentTurnIndex || 0) + 1);
   arr.splice(insertAt, 0, { uid: actorUID, spd: spdSelf, type: 0, extra: true });
-  g.TurnOrderArray = arr;
+  setTurnOrderArrayWithAudit(ctx, arr, 'explicit_extra_turn_insert', { actorUID, insertAt, effectiveSPD: spdSelf });
   g.ExtraTurnGranted[actorUID] = true;
   return true;
 }
@@ -1986,6 +1995,7 @@ export function KillEnemyAt(ctx, slotIndex) {
   g.EnemySlots[slotIndex] = 0;
   if (Array.isArray(g.EnemyIDs)) g.EnemyIDs[slotIndex] = 0;
   g.IsPlayerBusy = 1;
+  recordTurnSchedulerEvent(ctx, 'removal_commit', { cause: 'kill_enemy_at', removed: [{ uid: deadUID, kind: 'enemy', slotIndex }], currentUID });
   UpdateEnemyHPUI(ctx);
   const respawnDelay = Math.max(0.4, (g.DamageTextDurationSec || 1.35));
   setTimeout(() => {
