@@ -1034,7 +1034,6 @@ function buildInitiativeCycle(ctx, roster, currentUID = 0, selectionPool = null)
     const rankA = startPool ? (startPool.has(a.uid) ? 0 : 1) : 0, rankB = startPool ? (startPool.has(b.uid) ? 0 : 1) : 0;
     return rankA - rankB || (Number(b.spd || 0) - Number(a.spd || 0)) || (Number(a.type || 0) - Number(b.type || 0)) || (Number(a.uid || 0) - Number(b.uid || 0));
   });
-  if (startPool && g.BattleStartMode && !g.BattleStartResolved) { g.BattleStartResolved = 1; g.BattleStartMode = ''; g.BattleStartRemaining = {}; }
   const anchorUID = Number(currentUID || 0);
   if (!anchorUID) return cycle;
   const idx = cycle.findIndex(slot => Number(slot.uid || 0) === anchorUID);
@@ -1046,6 +1045,7 @@ function reconcileInitiativeQueue(ctx, roster, cause = 'initiative_refresh_previ
   const currentUID = Number(g.InitiativeCurrentUID || 0);
   const existing = Array.isArray(g.TurnOrderArray) ? g.TurnOrderArray : [];
   const rosterByUID = new Map(roster.map(r => [Number(r.uid || 0), { uid: Number(r.uid || 0), type: Number(r.type || 0), spd: Number(r.spd || 0) }]));
+  const override = getInitiativeOverridePool(ctx, roster);
   const nextQueue = [];
   const seenBase = new Set();
   for (const slot of existing) {
@@ -1066,10 +1066,19 @@ function reconcileInitiativeQueue(ctx, roster, cause = 'initiative_refresh_previ
     extra: false,
   }));
   if (!nextQueue.length) {
-    const override = getInitiativeOverridePool(ctx, roster);
     return setTurnOrderArrayWithAudit(ctx, buildInitiativeCycle(ctx, roster, 0, override.pool || roster), cause, { ...details, trigger: details.trigger || 'reconcile_initiative_queue', overrideActive: !!override.active });
   }
-  if (missingBase.length) {
+  if (override.active) {
+    const extraSlots = nextQueue
+      .filter(slot => !!slot.extra && rosterByUID.has(Number(slot.uid || 0)))
+      .map(slot => {
+        const live = rosterByUID.get(Number(slot.uid || 0));
+        return { uid: live.uid, type: live.type, spd: live.spd, extra: true };
+      });
+    nextQueue.length = 0;
+    for (const slot of buildInitiativeCycle(ctx, roster, currentUID, override.pool || roster)) nextQueue.push(slot);
+    for (const slot of extraSlots) nextQueue.push(slot);
+  } else if (missingBase.length) {
     const orderedMissing = buildInitiativeCycle(ctx, missingBase, 0);
     for (const slot of orderedMissing) nextQueue.push(slot);
   }
@@ -1139,6 +1148,10 @@ function getInitiativeOverridePool(ctx, roster) {
     for (const r of roster) {
       if (r.type === teamType) remaining[r.uid] = true;
     }
+  } else if (!Number(g.InitiativeCurrentUID || 0)) {
+    for (const r of roster) {
+      if (r.type === teamType && !remaining[r.uid]) remaining[r.uid] = true;
+    }
   }
   const rosterUIDs = new Set(roster.map(r => r.uid));
   for (const uid of Object.keys(remaining)) {
@@ -1171,14 +1184,23 @@ function selectNextInitiativeActor(ctx) {
   let idx = queue.findIndex(slot => Number(slot.uid || 0) === Number(g.InitiativeCurrentUID || 0));
   if (idx === -1 && queue.length) idx = Math.max(-1, Math.min(Number(g.CurrentTurnIndex || 0), queue.length) - 1);
   let nextIndex = idx + 1;
+  const override = getInitiativeOverridePool(ctx, roster);
   if (!queue.length || nextIndex >= queue.length) {
-    const override = getInitiativeOverridePool(ctx, roster), cycle = buildInitiativeCycle(ctx, roster, 0, override.pool || roster);
+    const cycle = buildInitiativeCycle(ctx, roster, 0, override.pool || roster);
     queue = setTurnOrderArrayWithAudit(ctx, cycle, 'initiative_cycle_build', { trigger: 'select_next_initiative_actor', rollover: !!(g.TurnOrderArray || []).length, overrideActive: !!override.active });
     nextIndex = 0;
   }
   const next = queue[nextIndex] || null;
   g.CurrentTurnIndex = next ? nextIndex : 0;
   g.InitiativeCurrentUID = next ? Number(next.uid || 0) : 0;
+  if (override.active && next && override.remaining && override.remaining[g.InitiativeCurrentUID]) {
+    delete override.remaining[g.InitiativeCurrentUID];
+    if (Object.keys(override.remaining).length === 0) {
+      g.BattleStartResolved = 1;
+      g.BattleStartMode = '';
+      g.BattleStartRemaining = {};
+    }
+  }
   return next ? { ...next, meter: 100 } : null;
 }
 
