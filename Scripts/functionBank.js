@@ -1172,6 +1172,39 @@ function setMeter(meters, uid, value) {
   meters[String(uid)] = value;
 }
 
+function schedulerWriteQueue(ctx, nextQueue) {
+  const g = getGlobals(ctx);
+  g.TurnOrderArray = Array.isArray(nextQueue) ? nextQueue : [];
+  return g.TurnOrderArray;
+}
+
+function schedulerWriteIndex(ctx, nextIndex) {
+  const g = getGlobals(ctx), normalized = Number(nextIndex);
+  g.CurrentTurnIndex = Number.isFinite(normalized) ? Math.max(0, Math.trunc(normalized)) : 0;
+  return g.CurrentTurnIndex;
+}
+
+function schedulerClearQueue(ctx) {
+  schedulerWriteQueue(ctx, []);
+  schedulerWriteIndex(ctx, 0);
+  return [];
+}
+
+function schedulerSyncIndexToUID(ctx, uid, queue = null, fallback = 0) {
+  const arr = Array.isArray(queue) ? queue : (Array.isArray(getGlobals(ctx).TurnOrderArray) ? getGlobals(ctx).TurnOrderArray : []);
+  const idx = arr.findIndex(slot => Number(slot?.uid || 0) === Number(uid || 0));
+  if (idx !== -1) schedulerWriteIndex(ctx, idx);
+  else schedulerWriteIndex(ctx, fallback);
+  return idx;
+}
+
+function schedulerClampIndex(ctx, queue = null) {
+  const arr = Array.isArray(queue) ? queue : (Array.isArray(getGlobals(ctx).TurnOrderArray) ? getGlobals(ctx).TurnOrderArray : []);
+  if (!arr.length) return schedulerWriteIndex(ctx, 0);
+  const current = Number(getGlobals(ctx).CurrentTurnIndex || 0);
+  return schedulerWriteIndex(ctx, Math.max(0, Math.min(current, arr.length - 1)));
+}
+
 function syncInitiativeSessionState(ctx) {
   const g = getGlobals(ctx);
   const combatSessionId = Number(g.CombatSessionId || 0);
@@ -1180,8 +1213,7 @@ function syncInitiativeSessionState(ctx) {
   if (initiativeSessionId === combatSessionId) return false;
   g.InitiativeMeters = {};
   g.InitiativeCurrentUID = 0;
-  g.TurnOrderArray = [];
-  g.CurrentTurnIndex = 0;
+  schedulerClearQueue(ctx);
   g.BattleStartRemaining = {};
   g.BattleStartResolved = 0;
   g.ExtraTurnGranted = {};
@@ -1296,8 +1328,8 @@ function selectNextInitiativeActor(ctx) {
   const roster = getInitiativeRoster(ctx);
   if (!roster.length) {
     g.InitiativeCurrentUID = 0;
-    g.CurrentTurnIndex = 0;
-    g.TurnOrderArray = [];
+    schedulerWriteIndex(ctx, 0);
+    schedulerClearQueue(ctx);
     return null;
   }
   const threshold = Number(g.InitiativeThreshold || 100);
@@ -1330,9 +1362,9 @@ function selectNextInitiativeActor(ctx) {
         }
       }
       g.InitiativeCurrentUID = ready.uid;
-      g.CurrentTurnIndex = 0;
+      schedulerWriteIndex(ctx, 0);
       const previewSize = Number(g.InitiativePreviewSize || 6);
-      g.TurnOrderArray = buildInitiativePreview(roster, meters, threshold, previewSize, ready.uid, selectionPool, tickPool);
+      schedulerWriteQueue(ctx, buildInitiativePreview(roster, meters, threshold, previewSize, ready.uid, selectionPool, tickPool));
       return ready;
     }
     for (const r of tickPool) {
@@ -1344,9 +1376,9 @@ function selectNextInitiativeActor(ctx) {
   console.log('[INIT] guard hit; forcing next actor');
   const fallback = roster[0];
   g.InitiativeCurrentUID = fallback.uid;
-  g.CurrentTurnIndex = 0;
+  schedulerWriteIndex(ctx, 0);
   const previewSize = Number(g.InitiativePreviewSize || 6);
-  g.TurnOrderArray = buildInitiativePreview(roster, meters, threshold, previewSize, fallback.uid, selectionPool, tickPool);
+  schedulerWriteQueue(ctx, buildInitiativePreview(roster, meters, threshold, previewSize, fallback.uid, selectionPool, tickPool));
   return fallback;
 }
 
@@ -1354,8 +1386,7 @@ function refreshInitiativePreview(ctx) {
   const g = getGlobals(ctx);
   const roster = getInitiativeRoster(ctx);
   if (!roster.length) {
-    g.TurnOrderArray = [];
-    g.CurrentTurnIndex = 0;
+    schedulerClearQueue(ctx);
     g.InitiativeCurrentUID = 0;
     return;
   }
@@ -1365,9 +1396,9 @@ function refreshInitiativePreview(ctx) {
   const curUID = g.InitiativeCurrentUID;
   const override = getInitiativeOverridePool(ctx, roster);
   const selectionPool = override.pool || roster;
-  g.TurnOrderArray = buildInitiativePreview(roster, meters, threshold, previewSize, curUID, selectionPool, roster);
+  schedulerWriteQueue(ctx, buildInitiativePreview(roster, meters, threshold, previewSize, curUID, selectionPool, roster));
   const idx = g.TurnOrderArray.findIndex(a => a.uid === curUID);
-  g.CurrentTurnIndex = idx !== -1 ? idx : 0;
+  schedulerWriteIndex(ctx, idx !== -1 ? idx : 0);
 }
 
 function resolvePendingDeathsForInitiative(ctx) {
@@ -1424,9 +1455,9 @@ export function RebuildTurnOrderPreserveCurrent(ctx) {
   const actedSet = new Set(actedUIDs);
   const actedSegment = actedUIDs.map(uid => byUid.get(uid)).filter(Boolean);
   const remaining = sorted.filter(a => !actedSet.has(a.uid));
-  g.TurnOrderArray = actedSegment.concat(remaining);
+  schedulerWriteQueue(ctx, actedSegment.concat(remaining));
   const idx = g.TurnOrderArray.findIndex(a => a.uid === currentUID);
-  if (idx !== -1) g.CurrentTurnIndex = idx;
+  if (idx !== -1) schedulerWriteIndex(ctx, idx);
   const after = g.TurnOrderArray.map(a => {
     const actor = GetActorByUID(ctx, a.uid);
     const base = actor ? Number(actor.stats?.SPD ?? actor.SPD ?? 0) : 0;
@@ -1480,7 +1511,7 @@ export function ProcessCurrentTurn(ctx) {
   if (isTimeInitiative(ctx)) {
     const curUID = g.InitiativeCurrentUID || 0;
     const idx = (g.TurnOrderArray || []).findIndex(a => a.uid === curUID);
-    g.CurrentTurnIndex = idx !== -1 ? idx : 0;
+    schedulerWriteIndex(ctx, idx !== -1 ? idx : 0);
     g.TurnPhase = GetCurrentType(ctx) === 0 ? 0 : 2;
     return;
   }
@@ -1514,17 +1545,17 @@ export function ProcessCurrentTurn(ctx) {
     }
     // update CurrentTurnIndex for UI (flattened order)
     const flat = g.RoundGroups.flatMap(gr => gr.members || []);
-    g.TurnOrderArray = flat.map(a => ({ uid: a.uid, spd: a.spd, type: a.type }));
+    schedulerWriteQueue(ctx, flat.map(a => ({ uid: a.uid, spd: a.spd, type: a.type })));
     const curUID = GetCurrentTurn(ctx);
     const idx = g.TurnOrderArray.findIndex(a => a.uid === curUID);
-    if (idx !== -1) g.CurrentTurnIndex = idx;
+    if (idx !== -1) schedulerWriteIndex(ctx, idx);
   } else {
     const arr = g.TurnOrderArray || [];
     const actorCount = arr.length;
 
-    g.CurrentTurnIndex = (g.CurrentTurnIndex || 0) + 1;
+    schedulerWriteIndex(ctx, Number(g.CurrentTurnIndex || 0) + 1);
     if (actorCount === 0 || g.CurrentTurnIndex >= actorCount) {
-      g.CurrentTurnIndex = 0;
+      schedulerWriteIndex(ctx, 0);
       BuildTurnOrder(ctx);
       g.ExtraTurnGranted = {};
     }
@@ -1600,7 +1631,7 @@ export function TryGrantSpeedExtraTurn(ctx, actorUID) {
   const arr = g.TurnOrderArray || [];
   const insertAt = Math.min(arr.length, (g.CurrentTurnIndex || 0) + 1);
   arr.splice(insertAt, 0, { uid: actorUID, spd: spdSelf, type: 0, extra: true });
-  g.TurnOrderArray = arr;
+  schedulerWriteQueue(ctx, arr);
   g.ExtraTurnGranted[actorUID] = true;
   return true;
 }
@@ -2481,9 +2512,9 @@ export function BuildRoundGroups(ctx) {
     const roster = getInitiativeRoster(ctx);
     if (!roster.length) {
       g.InitiativeMeters = {};
-      g.TurnOrderArray = [];
+      schedulerWriteQueue(ctx, []);
       g.InitiativeCurrentUID = 0;
-      g.CurrentTurnIndex = 0;
+      schedulerWriteIndex(ctx, 0);
       return;
     }
     syncInitiativeMeters(ctx, roster);
@@ -2527,8 +2558,7 @@ export function BuildRoundGroups(ctx) {
     g.RoundMemberIndex = 0;
     g.RoundActive = 0;
     g.PendingDeaths = {};
-    g.TurnOrderArray = [];
-    g.CurrentTurnIndex = 0;
+    schedulerClearQueue(ctx);
     return;
   }
   const jitter = g.RoundJitter ?? 0;
@@ -2575,8 +2605,8 @@ export function BuildRoundGroups(ctx) {
   g.GroupResolving = 0;
   g.ActiveGroupIndex = 0;
   const flat = groups.flatMap(gr => gr.members || []);
-  g.TurnOrderArray = flat.map(a => ({ uid: a.uid, spd: a.spd, type: a.type }));
-  g.CurrentTurnIndex = 0;
+  schedulerWriteQueue(ctx, flat.map(a => ({ uid: a.uid, spd: a.spd, type: a.type })));
+  schedulerWriteIndex(ctx, 0);
   console.log('[ROUND] Built groups:', groups.map(gp => gp.members.map(m => {
     const a = GetActorByUID(ctx, m.uid);
     return a && a.name ? a.name : m.uid;
@@ -2592,7 +2622,7 @@ export function SortTurnOrder(ctx) {
   if (isTimeInitiative(ctx)) return;
   const arr = g.TurnOrderArray || [];
   arr.sort((a, b) => (b.spd || 0) - (a.spd || 0));
-  g.TurnOrderArray = arr;
+  schedulerWriteQueue(ctx, arr);
 }
 
 export function LogCombat(ctx, text) {
@@ -2778,11 +2808,11 @@ export function ProcessTurn(ctx) {
     : (g.RoundActive ? (g.RoundGroups || []).flatMap(gr => gr.members || []) : (g.TurnOrderArray || []));
   const flatOrder = flatRaw.filter(a => GetActorByUID(ctx, a.uid));
   if (g.RoundActive) {
-    g.TurnOrderArray = flatOrder.map(a => ({ uid: a.uid, spd: a.spd, type: a.type }));
+    schedulerWriteQueue(ctx, flatOrder.map(a => ({ uid: a.uid, spd: a.spd, type: a.type })));
   }
   const curUID = uid;
   const currentIdx = flatOrder.findIndex(a => a.uid === curUID);
-  if (currentIdx !== -1) g.CurrentTurnIndex = currentIdx;
+  if (currentIdx !== -1) schedulerWriteIndex(ctx, currentIdx);
   const orderLine = flatOrder.map((a, i) => {
     const act = GetActorByUID(ctx, a.uid);
     const name = act && act.name ? act.name : a.uid;
