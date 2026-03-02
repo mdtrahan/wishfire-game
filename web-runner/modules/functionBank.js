@@ -16,6 +16,12 @@ import {
   createHeroTurnGateBaseline,
   createYellowSafetyNet,
 } from '../../src/core/turnGateController.mjs';
+import {
+  buildFixedCycleSlots,
+  deriveBattleStartConsume,
+  deriveBattleStartRemaining,
+  deriveBattleStartRoundPartition,
+} from '../../src/core/schedulerRules.mjs';
 
 const POWER_AMP_OUTCOMES = [
   { key: 'HERO_2X', multiplier: 2, chance: 0.62 },
@@ -1224,33 +1230,26 @@ function schedulerSyncIndexToUID(ctx, uid, queue = null, fallback = 0) { const a
 function schedulerClampIndex(ctx, queue = null) { const arr = Array.isArray(queue) ? queue : (Array.isArray(getGlobals(ctx).TurnOrderArray) ? getGlobals(ctx).TurnOrderArray : []); if (!arr.length) return schedulerWriteIndex(ctx, 0); const current = Number(getGlobals(ctx).CurrentTurnIndex || 0); return schedulerWriteIndex(ctx, Math.max(0, Math.min(current, arr.length - 1))); }
 function schedulerResetBattleStartOverride(g) { g.BattleStartResolved = 1; g.BattleStartMode = ''; g.BattleStartRemaining = {}; }
 function schedulerBuildBattleStartRemaining(g, roster, teamType, allowCurrentTurnReseed = false) {
-  if (!g.BattleStartRemaining || typeof g.BattleStartRemaining !== 'object') g.BattleStartRemaining = {};
-  const remaining = g.BattleStartRemaining;
-  if (Object.keys(remaining).length === 0) {
-    for (const r of roster) if (r.type === teamType) remaining[r.uid] = true;
-  } else if (allowCurrentTurnReseed && !Number(g.InitiativeCurrentUID || 0)) {
-    for (const r of roster) if (r.type === teamType && !remaining[r.uid]) remaining[r.uid] = true;
-  }
-  const rosterUIDs = new Set(roster.map(r => r.uid));
-  for (const uid of Object.keys(remaining)) {
-    const num = Number(uid);
-    const actor = roster.find(r => r.uid === num);
-    if (!rosterUIDs.has(num) || !actor || actor.type !== teamType) delete remaining[uid];
-  }
-  return remaining;
+  const next = deriveBattleStartRemaining({
+    remaining: g.BattleStartRemaining,
+    roster,
+    teamType,
+    allowCurrentTurnReseed,
+    currentUID: Number(g.InitiativeCurrentUID || 0),
+  });
+  g.BattleStartRemaining = next.remaining;
+  return g.BattleStartRemaining;
 }
 function schedulerConsumeBattleStartActor(g, remaining, uid) {
-  if (!remaining || !remaining[uid]) return false;
-  delete remaining[uid];
-  if (Object.keys(remaining).length === 0) schedulerResetBattleStartOverride(g);
-  return true;
+  const next = deriveBattleStartConsume(remaining, uid);
+  g.BattleStartRemaining = next.remaining;
+  if (next.exhausted) schedulerResetBattleStartOverride(g);
+  return next.consumed;
 }
 function schedulerApplyBattleStartRoundPartition(g, withInit, startMode) {
-  const heroes = withInit.filter(a => a.type === 0).sort((a, b) => b.init - a.init);
-  const enemies = withInit.filter(a => a.type === 1).sort((a, b) => b.init - a.init);
+  const ordered = deriveBattleStartRoundPartition(withInit, startMode);
   withInit.length = 0;
-  if (startMode === 'ambush') withInit.push(...enemies, ...heroes);
-  else withInit.push(...heroes, ...enemies);
+  withInit.push(...ordered);
   schedulerResetBattleStartOverride(g);
   return withInit;
 }
@@ -1278,15 +1277,7 @@ function schedulerApplyRemovalCompaction(ctx, removedUID, slotIndex, currentUID)
 }
 function setTurnOrderArrayWithAudit(ctx, nextQueue, cause, details = {}) { const g = getGlobals(ctx), audit = ensureTurnSchedulerAudit(g), beforeSlots = snapshotTurnOrderSlots(ctx), before = new Map(); for (const slot of beforeSlots) before.set(slot.uid, (before.get(slot.uid) || 0) + 1); schedulerWriteQueue(ctx, nextQueue); const afterSlots = snapshotTurnOrderSlots(ctx), after = new Map(), removedUIDs = [], addedUIDs = []; for (const slot of afterSlots) after.set(slot.uid, (after.get(slot.uid) || 0) + 1); for (const uid of new Set([...before.keys(), ...after.keys()])) { const beforeCount = before.get(uid) || 0, afterCount = after.get(uid) || 0; for (let i = 0; i < beforeCount - afterCount; i++) removedUIDs.push(uid); for (let i = 0; i < afterCount - beforeCount; i++) addedUIDs.push(uid); } let mutationSource = null; if (cause === 'explicit_extra_turn_insert' || cause === 'spawn_insertion') mutationSource = 'explicit_mechanic'; else if (removedUIDs.length > 0 && Number(audit.lastRemovalSeq || 0) > 0 && Number(audit.lastRemovalSeq || 0) >= Number(audit.seq || 0) - 2) mutationSource = 'collapse_after_future_slot_removal'; recordTurnSchedulerEvent(ctx, 'queue_mutation', { cause, beforeLength: beforeSlots.length, afterLength: afterSlots.length, removedUIDs, addedUIDs, mutationSource, queue: afterSlots, ...details }); return afterSlots; }
 function buildInitiativeCycle(ctx, roster, currentUID = 0, selectionPool = null) {
-  const g = getGlobals(ctx), cycle = roster.map(r => ({ uid: r.uid, type: r.type, spd: Number(r.spd || 0), extra: false })), startPool = Array.isArray(selectionPool) && selectionPool.length && selectionPool.length < cycle.length ? new Set(selectionPool.map(r => Number(r.uid || 0))) : null;
-  cycle.sort((a, b) => {
-    const rankA = startPool ? (startPool.has(a.uid) ? 0 : 1) : 0, rankB = startPool ? (startPool.has(b.uid) ? 0 : 1) : 0;
-    return rankA - rankB || (Number(b.spd || 0) - Number(a.spd || 0)) || (Number(a.type || 0) - Number(b.type || 0)) || (Number(a.uid || 0) - Number(b.uid || 0));
-  });
-  const anchorUID = Number(currentUID || 0);
-  if (!anchorUID) return cycle;
-  const idx = cycle.findIndex(slot => Number(slot.uid || 0) === anchorUID);
-  return idx > 0 ? cycle.slice(idx).concat(cycle.slice(0, idx)) : cycle;
+  return buildFixedCycleSlots(roster, currentUID, selectionPool);
 }
 
 function reconcileInitiativeQueue(ctx, roster, cause = 'initiative_refresh_preview', details = {}) {

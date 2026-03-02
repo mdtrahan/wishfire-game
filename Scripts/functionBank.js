@@ -16,6 +16,11 @@ import {
   createHeroTurnGateBaseline,
   createYellowSafetyNet,
 } from '../src/core/turnGateController.mjs';
+import {
+  deriveBattleStartConsume,
+  deriveBattleStartRemaining,
+  deriveBattleStartRoundPartition,
+} from '../src/core/schedulerRules.mjs';
 
 const POWER_AMP_OUTCOMES = [
   { key: 'HERO_2X', multiplier: 2, chance: 0.62 },
@@ -1212,33 +1217,26 @@ function schedulerResetBattleStartOverride(g) {
 }
 
 function schedulerBuildBattleStartRemaining(g, roster, teamType) {
-  if (!g.BattleStartRemaining || typeof g.BattleStartRemaining !== 'object') g.BattleStartRemaining = {};
-  const remaining = g.BattleStartRemaining;
-  if (Object.keys(remaining).length === 0) {
-    for (const r of roster) if (r.type === teamType) remaining[r.uid] = true;
-  }
-  const rosterUIDs = new Set(roster.map(r => r.uid));
-  for (const uid of Object.keys(remaining)) {
-    const num = Number(uid);
-    const actor = roster.find(r => r.uid === num);
-    if (!rosterUIDs.has(num) || !actor || actor.type !== teamType) delete remaining[uid];
-  }
-  return remaining;
+  const next = deriveBattleStartRemaining({
+    remaining: g.BattleStartRemaining,
+    roster,
+    teamType,
+  });
+  g.BattleStartRemaining = next.remaining;
+  return g.BattleStartRemaining;
 }
 
 function schedulerConsumeBattleStartActor(g, remaining, uid) {
-  if (!remaining || !remaining[uid]) return false;
-  delete remaining[uid];
-  if (Object.keys(remaining).length === 0) schedulerResetBattleStartOverride(g);
-  return true;
+  const next = deriveBattleStartConsume(remaining, uid);
+  g.BattleStartRemaining = next.remaining;
+  if (next.exhausted) schedulerResetBattleStartOverride(g);
+  return next.consumed;
 }
 
 function schedulerApplyBattleStartRoundPartition(g, withInit, startMode) {
-  const heroes = withInit.filter(a => a.type === 0).sort((a, b) => b.init - a.init);
-  const enemies = withInit.filter(a => a.type === 1).sort((a, b) => b.init - a.init);
+  const ordered = deriveBattleStartRoundPartition(withInit, startMode);
   withInit.length = 0;
-  if (startMode === 'ambush') withInit.push(...enemies, ...heroes);
-  else withInit.push(...heroes, ...enemies);
+  withInit.push(...ordered);
   schedulerResetBattleStartOverride(g);
   return withInit;
 }
