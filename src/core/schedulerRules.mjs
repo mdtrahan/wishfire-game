@@ -4,6 +4,14 @@ export function compareSchedulerSlots(a = {}, b = {}) {
     || (Number(a.uid || 0) - Number(b.uid || 0));
 }
 
+export function createBattleStartResetState() {
+  return {
+    remaining: {},
+    resolved: 1,
+    mode: '',
+  };
+}
+
 export function buildFixedCycleSlots(roster = [], currentUID = 0, selectionPool = null) {
   const cycle = roster.map(r => ({
     uid: Number(r?.uid || 0),

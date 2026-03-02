@@ -17,6 +17,7 @@ import {
   createYellowSafetyNet,
 } from '../src/core/turnGateController.mjs';
 import {
+  createBattleStartResetState,
   deriveBattleStartConsume,
   deriveBattleStartRemaining,
   deriveBattleStartRoundPartition,
@@ -1210,35 +1211,14 @@ function schedulerClampIndex(ctx, queue = null) {
   return schedulerWriteIndex(ctx, Math.max(0, Math.min(current, arr.length - 1)));
 }
 
-function schedulerResetBattleStartOverride(g) {
-  g.BattleStartResolved = 1;
-  g.BattleStartMode = '';
-  g.BattleStartRemaining = {};
-}
-
-function schedulerBuildBattleStartRemaining(g, roster, teamType) {
-  const next = deriveBattleStartRemaining({
-    remaining: g.BattleStartRemaining,
-    roster,
-    teamType,
-  });
-  g.BattleStartRemaining = next.remaining;
-  return g.BattleStartRemaining;
-}
-
-function schedulerConsumeBattleStartActor(g, remaining, uid) {
-  const next = deriveBattleStartConsume(remaining, uid);
-  g.BattleStartRemaining = next.remaining;
-  if (next.exhausted) schedulerResetBattleStartOverride(g);
-  return next.consumed;
-}
-
-function schedulerApplyBattleStartRoundPartition(g, withInit, startMode) {
-  const ordered = deriveBattleStartRoundPartition(withInit, startMode);
-  withInit.length = 0;
-  withInit.push(...ordered);
-  schedulerResetBattleStartOverride(g);
-  return withInit;
+function schedulerApplyBattleStartState(g, next = {}) {
+  if (Object.prototype.hasOwnProperty.call(next, 'remaining')) g.BattleStartRemaining = next.remaining;
+  if (next.reset) {
+    const reset = createBattleStartResetState();
+    g.BattleStartRemaining = reset.remaining;
+    g.BattleStartResolved = reset.resolved;
+    g.BattleStartMode = reset.mode;
+  }
 }
 function schedulerInsertExplicitExtraTurn(ctx, actorUID, effectiveSPD) {
   const g = getGlobals(ctx);
@@ -1355,13 +1335,18 @@ function getInitiativeOverridePool(ctx, roster) {
   const startActive = Boolean(startMode && !g.BattleStartResolved);
   if (!startActive) return { active: false, pool: roster };
   const teamType = startMode === 'ambush' ? 1 : 0;
-  const remaining = schedulerBuildBattleStartRemaining(g, roster, teamType);
-  if (Object.keys(remaining).length === 0) {
-    schedulerResetBattleStartOverride(g);
+  const next = deriveBattleStartRemaining({
+    remaining: g.BattleStartRemaining,
+    roster,
+    teamType,
+  });
+  schedulerApplyBattleStartState(g, { remaining: next.remaining });
+  if (next.exhausted) {
+    schedulerApplyBattleStartState(g, { reset: true });
     return { active: false, pool: roster };
   }
-  const pool = roster.filter(r => remaining[r.uid]);
-  return { active: true, pool, remaining, teamType };
+  const pool = roster.filter(r => next.remaining[r.uid]);
+  return { active: true, pool, remaining: next.remaining, teamType };
 }
 
 function selectNextInitiativeActor(ctx) {
@@ -1395,7 +1380,10 @@ function selectNextInitiativeActor(ctx) {
     }
     if (ready) {
       setMeter(meters, ready.uid, ready.meter - threshold);
-      if (override.active && override.remaining) schedulerConsumeBattleStartActor(g, override.remaining, ready.uid);
+      if (override.active && override.remaining) {
+        const consumed = deriveBattleStartConsume(override.remaining, ready.uid);
+        schedulerApplyBattleStartState(g, { remaining: consumed.remaining, reset: consumed.exhausted });
+      }
       g.InitiativeCurrentUID = ready.uid;
       schedulerWriteIndex(ctx, 0);
       const previewSize = Number(g.InitiativePreviewSize || 6);
@@ -2551,8 +2539,8 @@ export function BuildRoundGroups(ctx) {
     syncInitiativeMeters(ctx, roster);
     if (g.BattleStartMode && !g.BattleStartResolved) {
       const teamType = g.BattleStartMode === 'ambush' ? 1 : 0;
-      g.BattleStartRemaining = {};
-      schedulerBuildBattleStartRemaining(g, roster, teamType);
+      const next = deriveBattleStartRemaining({ remaining: {}, roster, teamType });
+      schedulerApplyBattleStartState(g, { remaining: next.remaining });
     }
     if (!g.InitiativeCurrentUID) {
       selectNextInitiativeActor(ctx);
@@ -2599,7 +2587,10 @@ export function BuildRoundGroups(ctx) {
   const startMode = g.BattleStartMode;
   const startModeApplied = Boolean(startMode && !g.BattleStartResolved);
   if (startModeApplied) {
-    schedulerApplyBattleStartRoundPartition(g, withInit, startMode);
+    const ordered = deriveBattleStartRoundPartition(withInit, startMode);
+    withInit.length = 0;
+    withInit.push(...ordered);
+    schedulerApplyBattleStartState(g, { reset: true });
   } else {
     withInit.sort((a, b) => b.init - a.init);
   }
