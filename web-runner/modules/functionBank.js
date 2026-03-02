@@ -84,6 +84,11 @@ function ensurePowerAmpVisuals(g) {
   if (!g.PowerAmpFadeByUID || typeof g.PowerAmpFadeByUID !== 'object') g.PowerAmpFadeByUID = {};
 }
 
+function nextPowerAmpLifecycleId(g) {
+  g.PowerAmpLifecycleSeq = Number(g.PowerAmpLifecycleSeq || 0) + 1;
+  return g.PowerAmpLifecycleSeq;
+}
+
 function isPowerAmpLifecycleDebugEnabled(source) {
   const g = source && source.globals ? source.globals : (source && source.state ? source.state.globals : source);
   return !!(g && g.DebugPowerAmpLifecycle);
@@ -108,14 +113,21 @@ function emitPowerAmpStateLog(ctx, phase, actorUID, extra = {}) {
   console.log(parts.filter(Boolean).join(' '));
 }
 
-function setPowerAmpVisual(g, uid, mult) {
+function setPowerAmpVisual(g, uid, mult, lifecycleId = 0) {
   ensurePowerAmpVisuals(g);
-  g.PowerAmpVisualByUID[uid] = { mult, startAt: g.time || 0 };
+  const existing = g.PowerAmpVisualByUID[uid];
+  const normalizedLife = Number(lifecycleId || 0);
+  if (existing && Number(existing.lifecycleId || 0) === normalizedLife && normalizedLife > 0) {
+    existing.mult = mult;
+    return { seeded: false, startAt: Number(existing.startAt || 0), lifecycleId: normalizedLife };
+  }
+  g.PowerAmpVisualByUID[uid] = { mult, startAt: g.time || 0, lifecycleId: normalizedLife };
+  return { seeded: true, startAt: Number(g.time || 0), lifecycleId: normalizedLife };
 }
 
-function startPowerAmpFade(g, uid, mult) {
+function startPowerAmpFade(g, uid, mult, lifecycleId = 0) {
   ensurePowerAmpVisuals(g);
-  g.PowerAmpFadeByUID[uid] = { mult, startAt: g.time || 0, duration: 0.16 };
+  g.PowerAmpFadeByUID[uid] = { mult, startAt: g.time || 0, duration: 0.16, lifecycleId: Number(lifecycleId || 0) };
   delete g.PowerAmpVisualByUID[uid];
 }
 
@@ -128,10 +140,11 @@ function pickPowerAmpOutcome() {
   return POWER_AMP_OUTCOMES[POWER_AMP_OUTCOMES.length - 1];
 }
 
-function armPowerAmpEntry(multiplier, turnNow, turnSerialNow) {
+function armPowerAmpEntry(multiplier, turnNow, turnSerialNow, lifecycleId) {
   return {
     mult: 0,
     pendingMult: Number(multiplier || 0),
+    lifecycleId: Number(lifecycleId || 0),
     state: 'pending_next_own_turn',
     armedAtTurn: Number(turnNow || 0),
     armedAtTurnSerial: Number(turnSerialNow || 0),
@@ -150,19 +163,21 @@ function activatePowerAmp(ctx, actorUID) {
   if (outcome.jackpotAllLivingHeroes) {
     for (const hero of getHeroes(ctx)) {
       if ((hero.hp ?? 0) > 0) {
-        store[hero.uid] = armPowerAmpEntry(outcome.multiplier, grantTurn, grantTurnSerial);
-        emitPowerAmpStateLog(ctx, 'activation_armed', hero.uid, { mult: outcome.multiplier, mode: 'jackpot' });
-        setPowerAmpVisual(g, hero.uid, outcome.multiplier);
-        emitPowerAmpStateLog(ctx, 'activation_visible', hero.uid, { mult: outcome.multiplier, mode: 'jackpot' });
+        const lifecycleId = nextPowerAmpLifecycleId(g);
+        store[hero.uid] = armPowerAmpEntry(outcome.multiplier, grantTurn, grantTurnSerial, lifecycleId);
+        emitPowerAmpStateLog(ctx, 'activation_armed', hero.uid, { mult: outcome.multiplier, mode: 'jackpot', lifecycle: lifecycleId });
+        const seeded = setPowerAmpVisual(g, hero.uid, outcome.multiplier, lifecycleId);
+        emitPowerAmpStateLog(ctx, 'activation_visible', hero.uid, { mult: outcome.multiplier, mode: 'jackpot', lifecycle: lifecycleId, seeded: seeded.seeded ? 1 : 0 });
       }
     }
     LogCombat(ctx, 'JACKPOT! All heroes get Power Amp x2!');
     return;
   }
-  store[actorUID] = armPowerAmpEntry(outcome.multiplier, grantTurn, grantTurnSerial);
-  emitPowerAmpStateLog(ctx, 'activation_armed', actorUID, { mult: outcome.multiplier, mode: 'single' });
-  setPowerAmpVisual(g, actorUID, outcome.multiplier);
-  emitPowerAmpStateLog(ctx, 'activation_visible', actorUID, { mult: outcome.multiplier, mode: 'single' });
+  const lifecycleId = nextPowerAmpLifecycleId(g);
+  store[actorUID] = armPowerAmpEntry(outcome.multiplier, grantTurn, grantTurnSerial, lifecycleId);
+  emitPowerAmpStateLog(ctx, 'activation_armed', actorUID, { mult: outcome.multiplier, mode: 'single', lifecycle: lifecycleId });
+  const seeded = setPowerAmpVisual(g, actorUID, outcome.multiplier, lifecycleId);
+  emitPowerAmpStateLog(ctx, 'activation_visible', actorUID, { mult: outcome.multiplier, mode: 'single', lifecycle: lifecycleId, seeded: seeded.seeded ? 1 : 0 });
   LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} gained Power Amp x${outcome.multiplier}!`);
 }
 
@@ -230,7 +245,7 @@ export function ConsumePowerAmpForActor(ctx, actorUID) {
   if (!mult) return 0;
   if (entry.usedThisTurn) return 0;
   entry.usedThisTurn = true;
-  emitPowerAmpStateLog(ctx, 'consume', actorUID, { mult });
+  emitPowerAmpStateLog(ctx, 'consume', actorUID, { mult, lifecycle: Number(entry.lifecycleId || 0) });
   return mult;
 }
 
@@ -241,10 +256,11 @@ export function ClosePowerAmpForActor(ctx, actorUID, reason = 'manual_close') {
   const entry = store[uid];
   if (!entry) return 0;
   const mult = Number(entry.mult || entry.pendingMult || 0);
+  const lifecycleId = Number(entry.lifecycleId || 0);
   delete store[uid];
   if (mult > 0) {
-    emitPowerAmpStateLog(ctx, 'fade_start', uid, { mult, reason });
-    startPowerAmpFade(getGlobals(ctx), uid, mult);
+    emitPowerAmpStateLog(ctx, 'fade_start', uid, { mult, reason, lifecycle: lifecycleId });
+    startPowerAmpFade(getGlobals(ctx), uid, mult, lifecycleId);
   } else {
     FinalizePowerAmpVisualClear(ctx, uid);
   }
@@ -1873,6 +1889,8 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
   const actor = GetActorByUID(ctx, heroUID);
   const mode = actor && actor.attackType === 'magic' ? 'magic' : 'melee';
   const dmg = CalculateDamage(ctx, heroUID, targetUID, mode);
+  const ampEntry = ensurePowerAmpByUID(ctx)[heroUID];
+  const ampLifecycleId = Number(ampEntry?.lifecycleId || 0);
   let ampMult = GetPowerAmpMultiplierForActor(ctx, heroUID);
   if (ampMult > 0) {
     const consumed = ConsumePowerAmpForActor(ctx, heroUID);
@@ -1889,6 +1907,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
     targetUID,
     dmg,
     powerAmpMultiplier: ampMult,
+    powerAmpLifecycleId: ampLifecycleId,
     consumePowerAmp: ampMult > 0 ? 1 : 0,
     calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
     heroName: actorName,
@@ -1906,6 +1925,8 @@ export function HeroAttackAOE(ctx, heroUID) {
   const aoeName = isKojonn ? 'Burst' : (['Pummel', 'Swipe', 'Burst', 'Faze'][heroIndex] || 'AOE');
   let totalDamage = 0;
   const g = getGlobals(ctx);
+  const ampEntry = ensurePowerAmpByUID(ctx)[heroUID];
+  const ampLifecycleId = Number(ampEntry?.lifecycleId || 0);
   let ampMult = GetPowerAmpMultiplierForActor(ctx, heroUID);
   if (ampMult > 0) {
     const consumed = ConsumePowerAmpForActor(ctx, heroUID);
@@ -1916,7 +1937,7 @@ export function HeroAttackAOE(ctx, heroUID) {
   for (const e of enemies) {
     const dmg = CalculateDamage(ctx, heroUID, e.uid, mode);
     const finalDmg = ampMult > 0 ? Math.max(1, Math.ceil(dmg * ampMult)) : dmg;
-    hits.push({ targetUID: e.uid, dmg, powerAmpMultiplier: ampMult, consumePowerAmp: 0, finalDmg });
+    hits.push({ targetUID: e.uid, dmg, powerAmpMultiplier: ampMult, powerAmpLifecycleId: ampLifecycleId, consumePowerAmp: 0, finalDmg });
     totalDamage += finalDmg;
   }
   if (hits.length > 0 && ampMult > 0) hits[0].consumePowerAmp = 1;
@@ -1931,6 +1952,7 @@ export function HeroAttackAOE(ctx, heroUID) {
       targetUID: hit.targetUID,
       dmg: hit.dmg,
       powerAmpMultiplier: hit.powerAmpMultiplier,
+      powerAmpLifecycleId: hit.powerAmpLifecycleId,
       consumePowerAmp: hit.consumePowerAmp,
       calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
       heroName: actorName,
@@ -2682,8 +2704,8 @@ export function HeroTurn(ctx, heroUID) {
       entry.activatedAtTurnSerial = turnSerialNow;
       entry.usedThisTurn = false;
       if (entry.mult > 0) {
-        setPowerAmpVisual(g, heroUID, entry.mult);
-        emitPowerAmpStateLog(ctx, 'activation_on', heroUID, { mult: entry.mult });
+        const seeded = setPowerAmpVisual(g, heroUID, entry.mult, entry.lifecycleId);
+        emitPowerAmpStateLog(ctx, 'activation_on', heroUID, { mult: entry.mult, lifecycle: Number(entry.lifecycleId || 0), seeded: seeded.seeded ? 1 : 0 });
       }
     }
   }

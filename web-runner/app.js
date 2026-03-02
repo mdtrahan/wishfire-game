@@ -3144,7 +3144,7 @@ async function main(){
           const calcPath = hit.calcPath || (heroType === 'magic' ? 'magicCalc' : 'meleeCalc');
           console.log(
             `[POWER_AMP_DMG] hero=${hit.heroUID} name=${heroName} type=${heroType} path=${calcPath} ` +
-            `base=${hit.dmg} amp=${ampMult} final=${finalDmg} active=${ampMult > 0 ? 1 : 0} consume=${hit.consumePowerAmp ? 1 : 0}`
+            `base=${hit.dmg} amp=${ampMult} final=${finalDmg} active=${ampMult > 0 ? 1 : 0} consume=${hit.consumePowerAmp ? 1 : 0} lifecycle=${Number(hit.powerAmpLifecycleId || 0)}`
           );
         }
         callFunctionWithContext(fnContext, 'ApplyDamageToTarget', hit.targetUID, finalDmg);
@@ -3397,7 +3397,7 @@ async function main(){
             console.log(
               `[POWER_AMP_STATE] phase=closed_off uid=${Number(uid || 0)} ` +
               `name=${actor ? String(actor.name || '') : ''} turnSerial=${Number(state.globals.TurnSerial || 0)} ` +
-              `turn=${Number(state.globals.DebugTurnCount || 0)}`
+              `turn=${Number(state.globals.DebugTurnCount || 0)} lifecycle=${Number(fade.lifecycleId || 0)}`
             );
           }
           delete state.globals.PowerAmpFadeByUID[uid];
@@ -4488,6 +4488,7 @@ async function main(){
           const fade = hero ? ampFades[hero.uid] : null;
           const storeEntry = hero ? ampStore[hero.uid] : null;
           const storeMult = Number(storeEntry?.mult || 0);
+          const lifecycleId = Number(visual?.lifecycleId || storeEntry?.lifecycleId || fade?.lifecycleId || 0);
           const ampActive = !!visual || (!!hero && storeMult > 0);
           const fadeDuration = Number(fade?.duration || 0.16);
           const fadeActive = !!(
@@ -4514,12 +4515,15 @@ async function main(){
             const scaleState = ampActive ? 'active' : (fadeActive ? 'fade' : 'normal');
             const ratio = Number(heroScale.toFixed(3));
             const lastScale = g.PowerAmpScaleDebugLastByUID[hero.uid];
-            if (!lastScale || lastScale.state !== scaleState || Math.abs(Number(lastScale.ratio || 0) - ratio) >= 0.02) {
+            const phase = scaleState === 'active' && (!lastScale || lastScale.lifecycleId !== lifecycleId || lastScale.state !== 'active')
+              ? 'scale_start'
+              : 'sample';
+            if (!lastScale || lastScale.state !== scaleState || lastScale.lifecycleId !== lifecycleId || Math.abs(Number(lastScale.ratio || 0) - ratio) >= 0.02) {
               console.log(
                 `[POWER_AMP_SCALE] uid=${hero.uid} name=${String(hero.name || '')} ` +
-                `baseline=1 ratio=${ratio} state=${scaleState}`
+                `baseline=1 ratio=${ratio} state=${scaleState} lifecycle=${lifecycleId} phase=${phase}`
               );
-              g.PowerAmpScaleDebugLastByUID[hero.uid] = { state: scaleState, ratio };
+              g.PowerAmpScaleDebugLastByUID[hero.uid] = { state: scaleState, ratio, lifecycleId };
             }
           }
           const scaledW = w * heroScale;
