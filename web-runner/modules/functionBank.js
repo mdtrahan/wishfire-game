@@ -84,6 +84,32 @@ function ensurePowerAmpVisuals(g) {
   if (!g.PowerAmpFadeByUID || typeof g.PowerAmpFadeByUID !== 'object') g.PowerAmpFadeByUID = {};
 }
 
+function ensurePowerAmpLifecycleMeta(g) {
+  if (!g.PowerAmpLifecycleMetaByUID || typeof g.PowerAmpLifecycleMetaByUID !== 'object') g.PowerAmpLifecycleMetaByUID = {};
+  return g.PowerAmpLifecycleMetaByUID;
+}
+
+function ensureLifecycleMetaForActor(g, uid, lifecycleId = 0) {
+  const allMeta = ensurePowerAmpLifecycleMeta(g);
+  const normalizedUID = Number(uid || 0);
+  const normalizedLife = Number(lifecycleId || 0);
+  if (!normalizedUID) return null;
+  let meta = allMeta[normalizedUID];
+  if (!meta || Number(meta.lifecycleId || 0) !== normalizedLife) {
+    meta = {
+      lifecycleId: normalizedLife,
+      visualStarted: false,
+      visualStartAt: 0,
+      consumed: false,
+      fadeStarted: false,
+      fadeStartAt: 0,
+      closed: false,
+    };
+    allMeta[normalizedUID] = meta;
+  }
+  return meta;
+}
+
 function clearPowerAmpVisualState(g, uid) {
   ensurePowerAmpVisuals(g);
   delete g.PowerAmpVisualByUID[uid];
@@ -121,20 +147,42 @@ function emitPowerAmpStateLog(ctx, phase, actorUID, extra = {}) {
 
 function setPowerAmpVisual(g, uid, mult, lifecycleId = 0) {
   ensurePowerAmpVisuals(g);
+  const meta = ensureLifecycleMetaForActor(g, uid, lifecycleId);
+  if (meta && meta.fadeStarted) {
+    return { seeded: false, startAt: Number(meta.visualStartAt || 0), lifecycleId: Number(meta.lifecycleId || 0) };
+  }
   const existing = g.PowerAmpVisualByUID[uid];
   const normalizedLife = Number(lifecycleId || 0);
   if (existing && Number(existing.lifecycleId || 0) === normalizedLife && normalizedLife > 0) {
     existing.mult = mult;
     return { seeded: false, startAt: Number(existing.startAt || 0), lifecycleId: normalizedLife };
   }
-  g.PowerAmpVisualByUID[uid] = { mult, startAt: g.time || 0, lifecycleId: normalizedLife };
-  return { seeded: true, startAt: Number(g.time || 0), lifecycleId: normalizedLife };
+  const startAt = meta && meta.visualStarted
+    ? Number(meta.visualStartAt || 0)
+    : Number(g.time || 0);
+  if (meta) {
+    meta.visualStarted = true;
+    meta.visualStartAt = startAt;
+  }
+  g.PowerAmpVisualByUID[uid] = { mult, startAt, lifecycleId: normalizedLife };
+  return { seeded: !!(meta ? startAt === Number(g.time || 0) : true), startAt, lifecycleId: normalizedLife };
 }
 
 function startPowerAmpFade(g, uid, mult, lifecycleId = 0) {
   ensurePowerAmpVisuals(g);
-  g.PowerAmpFadeByUID[uid] = { mult, startAt: g.time || 0, duration: 0.16, lifecycleId: Number(lifecycleId || 0) };
+  const meta = ensureLifecycleMetaForActor(g, uid, lifecycleId);
+  if (meta && meta.fadeStarted) {
+    return { started: false, startAt: Number(meta.fadeStartAt || 0), lifecycleId: Number(meta.lifecycleId || 0) };
+  }
+  const startAt = Number(g.time || 0);
+  if (meta) {
+    meta.fadeStarted = true;
+    meta.fadeStartAt = startAt;
+    meta.closed = true;
+  }
+  g.PowerAmpFadeByUID[uid] = { mult, startAt, duration: 0.16, lifecycleId: Number(lifecycleId || 0) };
   delete g.PowerAmpVisualByUID[uid];
+  return { started: true, startAt, lifecycleId: Number(lifecycleId || 0) };
 }
 
 function pickPowerAmpOutcome() {
@@ -244,39 +292,56 @@ export function GetPowerAmpMultiplierForActor(ctx, actorUID) {
 }
 
 export function ConsumePowerAmpForActor(ctx, actorUID) {
+  const g = getGlobals(ctx);
   const store = ensurePowerAmpByUID(ctx);
   const entry = store[actorUID];
   if (!entry || entry.state !== 'active_this_turn') return 0;
   const mult = Number(entry?.mult || 0);
   if (!mult) return 0;
   if (entry.usedThisTurn) return 0;
+  const meta = ensureLifecycleMetaForActor(g, actorUID, Number(entry.lifecycleId || 0));
+  if (meta && meta.consumed) return 0;
   entry.usedThisTurn = true;
+  if (meta) meta.consumed = true;
   emitPowerAmpStateLog(ctx, 'consume', actorUID, { mult, lifecycle: Number(entry.lifecycleId || 0) });
   return mult;
 }
 
 export function ClosePowerAmpForActor(ctx, actorUID, reason = 'manual_close') {
   const store = ensurePowerAmpByUID(ctx);
+  const g = getGlobals(ctx);
   const uid = Number(actorUID || 0);
   if (!uid) return 0;
   const entry = store[uid];
   if (!entry) return 0;
   const mult = Number(entry.mult || entry.pendingMult || 0);
   const lifecycleId = Number(entry.lifecycleId || 0);
+  const meta = ensureLifecycleMetaForActor(g, uid, lifecycleId);
+  if (meta && meta.closed) {
+    delete store[uid];
+    return mult;
+  }
   delete store[uid];
   if (mult > 0) {
-    emitPowerAmpStateLog(ctx, 'fade_start', uid, { mult, reason, lifecycle: lifecycleId });
-    startPowerAmpFade(getGlobals(ctx), uid, mult, lifecycleId);
+    const fade = startPowerAmpFade(g, uid, mult, lifecycleId);
+    if (fade.started) {
+      emitPowerAmpStateLog(ctx, 'fade_start', uid, { mult, reason, lifecycle: lifecycleId });
+    }
   } else {
-    FinalizePowerAmpVisualClear(ctx, uid);
+    if (meta) meta.closed = true;
+    FinalizePowerAmpVisualClear(ctx, uid, lifecycleId);
   }
   return mult;
 }
 
-export function FinalizePowerAmpVisualClear(ctx, actorUID) {
+export function FinalizePowerAmpVisualClear(ctx, actorUID, lifecycleId = 0) {
   const g = getGlobals(ctx);
   const uid = Number(actorUID || 0);
   if (!uid) return;
+  if (lifecycleId) {
+    const meta = ensureLifecycleMetaForActor(g, uid, lifecycleId);
+    if (meta) meta.closed = true;
+  }
   clearPowerAmpVisualState(g, uid);
 }
 
@@ -329,14 +394,15 @@ export function GetHeroPowerAmpRenderState(ctx, actorUID) {
   const visual = g.PowerAmpVisualByUID[uid] || null;
   const fade = g.PowerAmpFadeByUID[uid] || null;
   const entry = store[uid] || null;
+  const meta = ensureLifecycleMetaForActor(g, uid, Number(visual?.lifecycleId || entry?.lifecycleId || fade?.lifecycleId || 0));
   const storeMult = Number(entry?.mult || 0);
   const active = !!visual || storeMult > 0;
   const fadeDuration = Number(fade?.duration || 0.16);
   const now = Number(g.time || 0);
   const fadeActive = !!(!active && fade && now < Number(fade.startAt || 0) + fadeDuration);
   const mult = Number(visual?.mult || storeMult || fade?.mult || entry?.pendingMult || 0);
-  const visualStartAt = Number(visual?.startAt || now);
-  const fadeStartAt = Number(fade?.startAt || 0);
+  const visualStartAt = Number(visual?.startAt || meta?.visualStartAt || now);
+  const fadeStartAt = Number(fade?.startAt || meta?.fadeStartAt || 0);
   const lifecycleId = Number(visual?.lifecycleId || entry?.lifecycleId || fade?.lifecycleId || 0);
   const ampScalePeak = 1.3;
   let heroScale = 1;
