@@ -1,6 +1,13 @@
 import { state } from './modules/state.js';
 import { createContext, callFunctionWithContext } from './modules/functionRegistry.js';
 import { CombatRuntimeGateway } from '../src/core/combatRuntimeGateway.js';
+import {
+  createRefillCompleteGate,
+  createRefillStartGate,
+  createYellowSequenceCompletion,
+  createYellowSequenceGate,
+  createYellowSequenceSkip,
+} from '../src/core/turnGateController.mjs';
 
 const out = document.getElementById('output');
 const walletOut = document.getElementById('wallet-output');
@@ -49,6 +56,16 @@ const STARTUP_DEBUG = (() => {
     return false;
   }
 })();
+
+function applyTurnGateGlobals(next) {
+  if (!next) return;
+  state.globals.CanPickGems = next.CanPickGems;
+  state.globals.IsPlayerBusy = next.IsPlayerBusy;
+  state.globals.DeferAdvance = next.DeferAdvance;
+  state.globals.AdvanceAfterAction = next.AdvanceAfterAction;
+  state.globals.ActionLockUntil = next.ActionLockUntil;
+  state.globals.ActionOwnerUID = next.ActionOwnerUID;
+}
 const RUNTIME_FINGERPRINT = (() => {
   const source = (typeof window !== 'undefined' && window.__ORKA_RUNTIME_FINGERPRINT__)
     ? window.__ORKA_RUNTIME_FINGERPRINT__
@@ -1125,17 +1142,16 @@ function startYellowCasinoSequence(actorUID) {
 
   if (hasWork) {
     const totalDuration = YELLOW_CASINO_TELEGRAPH_SEC + (queue.length * YELLOW_CASINO_SPIN_SEC);
-    state.globals.ActionLockUntil = now + Math.max(0.1, totalDuration);
-    state.globals.DeferAdvance = 1;
-    state.globals.AdvanceAfterAction = 1;
-    state.globals.ActionOwnerUID = actorUID;
-    state.globals.CanPickGems = false;
-    state.globals.IsPlayerBusy = 1;
+    applyTurnGateGlobals(createYellowSequenceGate(state.globals, {
+      now,
+      totalDuration,
+      actorUID,
+    }));
     state.globals.BoardFillActive = 1;
   } else {
     traceTask015YellowAnimation('yellow-sequence-skip', { reason: 'no-yellow-slots' });
     state.globals.BoardFillActive = 0;
-    state.globals.IsPlayerBusy = 0;
+    applyTurnGateGlobals(createYellowSequenceSkip(state.globals));
   }
 }
 
@@ -1188,8 +1204,7 @@ function startRefillBounce(speedScale = 1) {
   refill.current = null;
   if (hasWork) {
     state.globals.BoardFillActive = 1;
-    state.globals.CanPickGems = false;
-    state.globals.IsPlayerBusy = 1;
+    applyTurnGateGlobals(createRefillStartGate(state.globals));
   } else {
     gemDebugLog('[FILL_SKIP]', { stage: 'refill-bounce-start', reason: 'not-needed' });
   }
@@ -2883,18 +2898,18 @@ async function main(){
               !!state.globals.DeferAdvance &&
               !!state.globals.AdvanceAfterAction &&
               !!state.globals.ActionOwnerUID;
-            state.globals.IsPlayerBusy = 0;
             state.globals.BoardFillActive = 0;
             const canRestorePickability =
               !handoffPending &&
               !(refill && refill.active) &&
               state.entities.length > 0 &&
               state.globals.TurnPhase === 0 &&
-              state.globals.IsPlayerBusy === 0 &&
               (state.globals.ActionLockUntil || 0) <= (state.globals.time || 0);
+            applyTurnGateGlobals(createYellowSequenceCompletion(state.globals, {
+              handoffPending,
+              canRestorePickability,
+            }));
             if (canRestorePickability) {
-              state.globals.CanPickGems = true;
-              state.globals.DeferAdvance = 0;
               if (isGemDebugEnabled()) {
                 gemDebugLog('[RESTORE_PICKABILITY]', {
                   globals: {
@@ -2909,8 +2924,6 @@ async function main(){
                   },
                 });
               }
-            } else if (handoffPending) {
-              state.globals.CanPickGems = false;
             }
             if (isGemDebugEnabled()) {
               gemDebugLog('[REFILL_COMPLETE]', {
@@ -3058,8 +3071,7 @@ async function main(){
         }
         if (!refill.current) {
           refill.active = false;
-          state.globals.IsPlayerBusy = 0;
-          state.globals.CanPickGems = true;
+          applyTurnGateGlobals(createRefillCompleteGate(state.globals));
           state.globals.BoardFillActive = 0;
           if (isGemDebugEnabled()) {
             gemDebugLog('[REFILL_COMPLETE]', {

@@ -14,6 +14,7 @@ import {
 import {
   createEnemyTurnGateBaseline,
   createHeroTurnGateBaseline,
+  createYellowSafetyNet,
 } from '../../src/core/turnGateController.mjs';
 
 const POWER_AMP_OUTCOMES = [
@@ -1869,16 +1870,10 @@ export function Sub_Energy(ctx) {
   g.Player_Energy = (g.Player_Energy || 0) - 3;
   // Yellow recolor path can bypass skill defer wiring; ensure deterministic turn handoff.
   if (Number(g.MatchedColorValue || -1) === 3) {
-    const now = Number(g.time || 0);
-    g.DeferAdvance = 1;
-    g.AdvanceAfterAction = 1;
-    if (!Number(g.ActionOwnerUID || 0)) {
-      g.ActionOwnerUID = Number(GetCurrentTurn(ctx) || 0);
-    }
-    const lockUntil = Number(g.ActionLockUntil || 0);
-    if (lockUntil <= now) {
-      g.ActionLockUntil = now + 0.05;
-    }
+    applyTurnGateState(g, createYellowSafetyNet(g, {
+      now: Number(g.time || 0),
+      currentTurnUID: Number(GetCurrentTurn(ctx) || 0),
+    }));
   }
 }
 
