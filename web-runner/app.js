@@ -757,6 +757,22 @@ function initEntities(enemyRows, layoutInstances) {
 
   gameState.partyHP = partyHP;
   gameState.partyMaxHP = partyMaxHP;
+  callFunctionWithContext(fnContext, 'InitPartyHPFromHeroes');
+  state.globals.BattleStartMode = Math.random() < 0.5 ? 'ambush' : 'initiative';
+  state.globals.BattleStartShown = 1;
+  state.globals.BattleStartClearedForSession = 0;
+  const msg = state.globals.BattleStartMode === 'ambush'
+    ? 'Ambushed by enemy team!'
+    : 'Heroes surprised the enemies!';
+  state.globals.BattleStartText = msg;
+  state.globals.BattleStartSessionText = msg;
+  state.globals.BattleStartSessionId = Number(state.globals.CombatSessionId || 0);
+  state.globals.BattleStartActive = 1;
+  state.globals.BattleStartProcessStarted = 0;
+  state.globals.BattleStartEndsAt = 2.0;
+  state.globals.BattleStartFadeEndsAt = 2.4;
+  state.globals.IsPlayerBusy = 1;
+  state.globals.CanPickGems = 0;
   // Ensure enemy UIDs don't collide with hero UIDs
   state.globals.NextUID = state.entities.reduce((max, e) => Math.max(max, e.uid || 0), 0) + 1;
 
@@ -777,23 +793,6 @@ function initEntities(enemyRows, layoutInstances) {
     }
     state.globals.InitialSpawn = 0;
   }
-
-  state.globals.BattleStartMode = Math.random() < 0.5 ? 'ambush' : 'initiative';
-  state.globals.BattleStartShown = 1;
-  state.globals.BattleStartClearedForSession = 0;
-  const msg = state.globals.BattleStartMode === 'ambush'
-    ? 'Ambushed by enemy team!'
-    : 'Heroes surprised the enemies!';
-  state.globals.BattleStartText = msg;
-  state.globals.BattleStartSessionText = msg;
-  state.globals.BattleStartSessionId = Number(state.globals.CombatSessionId || 0);
-  state.globals.BattleStartActive = 1;
-  state.globals.BattleStartProcessStarted = 0;
-  state.globals.BattleStartEndsAt = 2.0;
-  state.globals.BattleStartFadeEndsAt = 2.4;
-  state.globals.IsPlayerBusy = 1;
-  state.globals.CanPickGems = 0;
-  callFunctionWithContext(fnContext, 'InitPartyHPFromHeroes');
   // Ensure party starts at full health
   if (state.globals.PartyMaxHP > 0) {
     state.globals.PartyHP = state.globals.PartyMaxHP;
@@ -1749,14 +1748,14 @@ async function main(){
           startupDebugLog('[INIT] Starting initialization...');
           await loadC3ProjectAssets();
           prepareCombatSetupFromInstances(instances, gameState);
-          assertCombatLayoutDev('StartRound');
-          callFunctionWithContext(fnContext, 'StartRound');
           freshCombatBootstrapped = true;
           COMBAT_BOOTSTRAP_COMPLETE = true;
         }
         gateway.resume(resumeSnapshot || null);
         if (needsBootstrap) {
           initEntities(enemyRows, instances);
+          assertCombatLayoutDev('StartRound');
+          callFunctionWithContext(fnContext, 'StartRound');
           createGemBoard(gridBounds);
           if (isGemDebugEnabled()) {
             setTimeout(() => {
