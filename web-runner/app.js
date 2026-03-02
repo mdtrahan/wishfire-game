@@ -4464,38 +4464,18 @@ async function main(){
           const pos = worldToCanvas(xWorld, yWorld);
           const w = wWorld * layoutScale;
           const h = hWorld * layoutScale;
-          const ampStore = g.PowerAmpByUID || {};
-          const ampVisuals = g.PowerAmpVisualByUID || {};
-          const ampFades = g.PowerAmpFadeByUID || {};
-          const visual = hero ? ampVisuals[hero.uid] : null;
-          const fade = hero ? ampFades[hero.uid] : null;
-          const storeEntry = hero ? ampStore[hero.uid] : null;
-          const storeMult = Number(storeEntry?.mult || 0);
-          const lifecycleId = Number(visual?.lifecycleId || storeEntry?.lifecycleId || fade?.lifecycleId || 0);
-          const ampActive = !!visual || (!!hero && storeMult > 0);
-          const fadeDuration = Number(fade?.duration || 0.16);
-          const fadeActive = !!(
-            hero &&
-            !ampActive &&
-            fade &&
-            (g.time || 0) < ((fade.startAt || 0) + fadeDuration)
-          );
-          const ampScalePeak = 1.3;
-          let heroScale = 1;
-          if (ampActive) {
-            const startAt = visual ? (visual.startAt || 0) : (g.time || 0);
-            const tIn = Math.max(0, Math.min(1, ((g.time || 0) - startAt) / 0.18));
-            const eIn = 1 - Math.pow(1 - tIn, 2);
-            heroScale = 1 + (ampScalePeak - 1) * eIn;
-          } else if (fadeActive) {
-            const fadeT = Math.max(0, Math.min(1, ((g.time || 0) - (fade.startAt || 0)) / fadeDuration));
-            heroScale = 1 + (ampScalePeak - 1) * (1 - fadeT);
-          }
+          const ampProjection = hero
+            ? (callFunctionWithContext(fnContext, 'GetHeroPowerAmpRenderState', hero.uid) || null)
+            : null;
+          const ampActive = !!ampProjection?.active;
+          const fadeActive = !!ampProjection?.fadeActive;
+          const lifecycleId = Number(ampProjection?.lifecycleId || 0);
+          const heroScale = Number(ampProjection?.heroScale || 1);
           if (hero && g.DebugPowerAmpLifecycle) {
             if (!g.PowerAmpScaleDebugLastByUID || typeof g.PowerAmpScaleDebugLastByUID !== 'object') {
               g.PowerAmpScaleDebugLastByUID = {};
             }
-            const scaleState = ampActive ? 'active' : (fadeActive ? 'fade' : 'normal');
+            const scaleState = String(ampProjection?.scaleState || 'normal');
             const ratio = Number(heroScale.toFixed(3));
             const lastScale = g.PowerAmpScaleDebugLastByUID[hero.uid];
             const phase = scaleState === 'active' && (!lastScale || lastScale.lifecycleId !== lifecycleId || lastScale.state !== 'active')
@@ -4515,13 +4495,13 @@ async function main(){
           ctx.drawImage(img, pos.x - scaledW / 2, footY - scaledH, scaledW, scaledH);
 
           if (ampActive) {
-            const mult = visual?.mult || storeMult || 1;
+            const mult = Number(ampProjection?.mult || 1);
             const badgeText = `${mult}\u00d7`;
             const badgeX = pos.x;
             const badgeBottomY = footY - Math.max(2, 2 * layoutScale);
             let badgeScale = 1;
             let badgeAlpha = 1;
-            const startAt = visual ? (visual.startAt || 0) : (g.time || 0);
+            const startAt = Number(ampProjection?.visualStartAt || (g.time || 0));
             const inT = Math.max(0, Math.min(1, ((g.time || 0) - startAt) / 0.22));
             badgeScale = popScale(inT) * (1 + 0.03 * Math.sin((g.time || 0) * 6));
             const bw = Math.max(24, 30 * layoutScale) * badgeScale;

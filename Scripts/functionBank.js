@@ -238,6 +238,62 @@ export function TickPowerAmpState(ctx) {
   return expirePowerAmpFadeEntries(ctx);
 }
 
+export function GetHeroPowerAmpRenderState(ctx, actorUID) {
+  const g = getGlobals(ctx);
+  const uid = Number(actorUID || 0);
+  if (!uid) {
+    return {
+      active: false,
+      fadeActive: false,
+      mult: 0,
+      lifecycleId: 0,
+      visualStartAt: 0,
+      fadeStartAt: 0,
+      fadeDuration: 0.42,
+      heroScale: 1,
+      scaleState: 'normal',
+    };
+  }
+  ensurePowerAmpVisuals(g);
+  const store = ensurePowerAmpByUID(ctx);
+  const visual = g.PowerAmpVisualByUID[uid] || null;
+  const fade = g.PowerAmpFadeByUID[uid] || null;
+  const entry = store[uid] || null;
+  const storeMult = Number(entry?.mult || 0);
+  const active = !!visual || storeMult > 0;
+  const fadeDuration = Number(fade?.duration || 0.42);
+  const now = Number(g.time || 0);
+  const fadeActive = !!(!active && fade && now < Number(fade.startAt || 0) + fadeDuration);
+  const mult = Number(visual?.mult || storeMult || fade?.mult || entry?.pendingMult || 0);
+  const visualStartAt = Number(visual?.startAt || now);
+  const fadeStartAt = Number(fade?.startAt || 0);
+  const lifecycleId = Number(visual?.lifecycleId || entry?.lifecycleId || fade?.lifecycleId || 0);
+  const ampScalePeak = 1.3;
+  let heroScale = 1;
+  let scaleState = 'normal';
+  if (active) {
+    const tIn = Math.max(0, Math.min(1, (now - visualStartAt) / 0.18));
+    const eIn = 1 - Math.pow(1 - tIn, 2);
+    heroScale = 1 + (ampScalePeak - 1) * eIn;
+    scaleState = 'active';
+  } else if (fadeActive) {
+    const fadeT = Math.max(0, Math.min(1, (now - fadeStartAt) / fadeDuration));
+    heroScale = 1 + (ampScalePeak - 1) * (1 - fadeT);
+    scaleState = 'fade';
+  }
+  return {
+    active,
+    fadeActive,
+    mult,
+    lifecycleId,
+    visualStartAt,
+    fadeStartAt,
+    fadeDuration,
+    heroScale,
+    scaleState,
+  };
+}
+
 function getAllHeroActors(ctx) {
   return getEntities(ctx).filter(e => e && e.kind === 'hero');
 }
