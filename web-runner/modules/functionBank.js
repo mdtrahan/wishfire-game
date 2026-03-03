@@ -105,6 +105,11 @@ function applyTurnGateState(g, next) {
   g.ActionOwnerUID = next.ActionOwnerUID;
 }
 
+function applyTurnGateIntent(g, createIntent, options = undefined) {
+  if (!g || typeof createIntent !== 'function') return;
+  applyTurnGateState(g, createIntent(g, options));
+}
+
 function ensurePowerAmpByUID(ctx) {
   const g = getGlobals(ctx);
   if (!g.PowerAmpByUID || typeof g.PowerAmpByUID !== 'object') g.PowerAmpByUID = {};
@@ -1886,10 +1891,10 @@ export function Sub_Energy(ctx) {
   g.Player_Energy = (g.Player_Energy || 0) - 3;
   // Yellow recolor path can bypass skill defer wiring; ensure deterministic turn handoff.
   if (Number(g.MatchedColorValue || -1) === 3) {
-    applyTurnGateState(g, createYellowSafetyNet(g, {
+    applyTurnGateIntent(g, createYellowSafetyNet, {
       now: Number(g.time || 0),
       currentTurnUID: Number(GetCurrentTurn(ctx) || 0),
-    }));
+    });
   }
 }
 
@@ -2793,7 +2798,7 @@ export function EnemyAttack(ctx, enemyUID) {
 export function EnemyTurn(ctx, enemyUID) {
   const g = getGlobals(ctx);
   g.TurnPhase = 2;
-  applyTurnGateState(g, createEnemyTurnGateBaseline(g));
+  applyTurnGateIntent(g, createEnemyTurnGateBaseline);
   if (!enemyUID) {
     AdvanceTurn(ctx);
     ProcessTurn(ctx);
@@ -2806,7 +2811,7 @@ export function HeroTurn(ctx, heroUID) {
   const g = getGlobals(ctx);
   const store = ensurePowerAmpByUID(ctx);
   g.TurnPhase = 0;
-  applyTurnGateState(g, createHeroTurnGateBaseline(g));
+  applyTurnGateIntent(g, createHeroTurnGateBaseline);
   g.HideHeroSelector = 0;
   if (heroUID) g.CurrentHeroUID = heroUID;
   if (heroUID && store[heroUID]) {

@@ -70,6 +70,11 @@ function applyTurnGateGlobals(next) {
   state.globals.ActionLockUntil = next.ActionLockUntil;
   state.globals.ActionOwnerUID = next.ActionOwnerUID;
 }
+
+function applyTurnGateIntent(createIntent, options = undefined) {
+  if (typeof createIntent !== 'function') return;
+  applyTurnGateGlobals(createIntent(state.globals, options));
+}
 const RUNTIME_FINGERPRINT = (() => {
   const source = (typeof window !== 'undefined' && window.__ORKA_RUNTIME_FINGERPRINT__)
     ? window.__ORKA_RUNTIME_FINGERPRINT__
@@ -1146,16 +1151,16 @@ function startYellowCasinoSequence(actorUID) {
 
   if (hasWork) {
     const totalDuration = YELLOW_CASINO_TELEGRAPH_SEC + (queue.length * YELLOW_CASINO_SPIN_SEC);
-    applyTurnGateGlobals(createYellowSequenceGate(state.globals, {
+    applyTurnGateIntent(createYellowSequenceGate, {
       now,
       totalDuration,
       actorUID,
-    }));
+    });
     state.globals.BoardFillActive = 1;
   } else {
     traceTask015YellowAnimation('yellow-sequence-skip', { reason: 'no-yellow-slots' });
     state.globals.BoardFillActive = 0;
-    applyTurnGateGlobals(createYellowSequenceSkip(state.globals));
+    applyTurnGateIntent(createYellowSequenceSkip);
   }
 }
 
@@ -1208,7 +1213,7 @@ function startRefillBounce(speedScale = 1) {
   refill.current = null;
   if (hasWork) {
     state.globals.BoardFillActive = 1;
-    applyTurnGateGlobals(createRefillStartGate(state.globals));
+    applyTurnGateIntent(createRefillStartGate);
   } else {
     gemDebugLog('[FILL_SKIP]', { stage: 'refill-bounce-start', reason: 'not-needed' });
   }
@@ -2909,10 +2914,10 @@ async function main(){
               state.entities.length > 0 &&
               state.globals.TurnPhase === 0 &&
               (state.globals.ActionLockUntil || 0) <= (state.globals.time || 0);
-            applyTurnGateGlobals(createYellowSequenceCompletion(state.globals, {
+            applyTurnGateIntent(createYellowSequenceCompletion, {
               handoffPending,
               canRestorePickability,
-            }));
+            });
             if (canRestorePickability) {
               if (isGemDebugEnabled()) {
                 gemDebugLog('[RESTORE_PICKABILITY]', {
@@ -3075,7 +3080,7 @@ async function main(){
         }
         if (!refill.current) {
           refill.active = false;
-          applyTurnGateGlobals(createRefillCompleteGate(state.globals));
+          applyTurnGateIntent(createRefillCompleteGate);
           state.globals.BoardFillActive = 0;
           if (isGemDebugEnabled()) {
             gemDebugLog('[REFILL_COMPLETE]', {
@@ -5625,20 +5630,20 @@ function getStoryCardLiveLineState() {
       if (refillPending) {
         // Refill must complete before advancing to the next actor.
         startRefillBounce();
-        applyTurnGateGlobals(createDeferredRefillHold(state.globals, {
+        applyTurnGateIntent(createDeferredRefillHold, {
           now: Number(state.globals.time || 0),
-        }));
+        });
       } else {
       if (state.globals.TextAnimating) {
-        applyTurnGateGlobals(createDeferredTextHold(state.globals, {
+        applyTurnGateIntent(createDeferredTextHold, {
           now: Number(state.globals.time || 0),
-        }));
+        });
       } else {
         // Only block auto-advance while an action/selection is still active.
         const pendingSelect = state.globals.TurnPhase === 1 && state.globals.PendingSkillID;
         const staleBusy = state.globals.IsPlayerBusy && !state.globals.ActionInProgress && !pendingSelect;
         if (staleBusy) {
-          applyTurnGateGlobals(createDeferredStaleBusyRecovery(state.globals));
+          applyTurnGateIntent(createDeferredStaleBusyRecovery);
           console.log(`[TURN] cleared stale IsPlayerBusy before advance phase=${state.globals.TurnPhase} owner=${state.globals.ActionOwnerUID || 0}`);
         }
         const blockedPhase = state.globals.IsPlayerBusy || state.globals.ActionInProgress || pendingSelect;
@@ -5647,14 +5652,14 @@ function getStoryCardLiveLineState() {
         const ownerOk = !ownerUID || ownerUID === currentUID;
         if (!blockedPhase && ownerOk) {
           console.log(`[TURN] DeferAdvance -> AdvanceTurn owner=${ownerUID} cur=${currentUID} phase=${state.globals.TurnPhase} busy=${state.globals.IsPlayerBusy} canPick=${state.globals.CanPickGems}`);
-          applyTurnGateGlobals(createDeferredAdvanceResolved(state.globals));
+          applyTurnGateIntent(createDeferredAdvanceResolved);
           callFunctionWithContext(fnContext, 'AdvanceTurn');
           combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
         } else if (!ownerOk) {
           if (ownerUID) {
             callFunctionWithContext(fnContext, 'ClosePowerAmpForActor', ownerUID, 'owner_mismatch_autoclose');
           }
-          applyTurnGateGlobals(createDeferredAdvanceResolved(state.globals));
+          applyTurnGateIntent(createDeferredAdvanceResolved);
           combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
         } else if (!state.globals._DeferBlockLogged) {
           state.globals._DeferBlockLogged = 1;
