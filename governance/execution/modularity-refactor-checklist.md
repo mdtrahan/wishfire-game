@@ -1,6 +1,6 @@
 # Modularity Refactor Checklist
 
-Last Updated: 2026-03-02 (Queue Mutation Ownership activated)
+Last Updated: 2026-03-02 (Shared core and adapter thinning reconciled)
 Update Rule: PM updates this file whenever a new modularity/ownership prompt is issued to Don or a modularity lane is accepted/re-scoped.
 
 ## Purpose
@@ -26,28 +26,27 @@ Update Rule: PM updates this file whenever a new modularity/ownership prompt is 
 ### Governance
 - [x] `ORKA-9zc` `[CHORE] Record Beads ID requirement in AGENTS.md`
 
-## Next Up
-
 ### Queue Mutation Ownership
 - [x] `ORKA-6w2` `[TASK] Inventory raw queue write sites`
 - [x] `ORKA-0ls` `[FEAT] Introduce scheduler facade for all queue writes`
 - [x] `ORKA-y7j` `[BUG] Route battle-start override through scheduler mutation API`
 - [x] `ORKA-86x` `[BUG] Route explicit queue mutations through scheduler API`
 
-## Planned After Queue Mutation Ownership
-
 ### Shared Core Follow-Through
-- [ ] Thin Power Amp runtime adapters around shared `src` rules
-- [ ] Thin TurnGate runtime adapters around shared `src` controller
+- [x] `ORKA-d1a` `[TASK] Thin Power Amp runtime adapters around shared src rules`
+- [x] `ORKA-gqq` `[TASK] Thin TurnGate runtime adapters around shared src controller`
 - [x] `ORKA-0m2` `[TASK] Extract scheduler deterministic rule logic into src`
-- [ ] Convert `web-runner/` and `Scripts/` into thinner adapters for scheduler logic
+- [x] `ORKA-8yi` `[TASK] Convert web-runner and Scripts into thinner adapters for scheduler logic`
+
+## Next Up
+- [ ] No active modularity lane. Refactor stream is paused unless a new hotspot justifies another ownership seam.
 
 ## Current Program Status
 - Power Amp pilot modularization: materially complete
 - Turn Gate control seam: materially complete
 - Queue mutation ownership: materially complete
-- Shared scheduler core extraction: active workstream
-- Current active lane: thin scheduler runtime adapters around shared `src` rules
+- Shared scheduler core extraction: materially complete for current scope
+- Current active lane: none (modularity stream paused)
 
 ## Notes
 - Power Amp was the pilot feature, not the whole refactor.
@@ -56,5 +55,10 @@ Update Rule: PM updates this file whenever a new modularity/ownership prompt is 
   - establish owner seam
   - migrate highest-risk writes behind the seam
   - extract deterministic logic to `src`
+- Completed current-scope lanes:
+  - Power Amp modularization
+  - Turn Gate Ownership
+  - Queue Mutation Ownership
+  - Shared scheduler extraction and adapter thinning
 - Human QA remains for player-facing lanes only.
 - Infra/modularity lanes should continue to use artifact-based `validation handoff`.

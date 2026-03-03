@@ -37,6 +37,7 @@
 - Resolve Git conflicts locally. Do not ask the user to resolve them.
 - If unexpected tracked changes appear, stop and ask how to proceed unless the user already authorized them.
 - Repository artifacts and Beads are the durable coordination channel.
+- PM/assigner must not implement, commit, or push worker-owned feature/refactor lanes. PM creates/issues prompts/tracking only unless the user explicitly assigns PM a separate scoped repo change.
 
 ### 4.1) Ownership Discipline
 - Keep one ownership lane per issue: change only one of render/projection, combat rules, or lifecycle/state cleanup unless the issue explicitly authorizes a cross-boundary change.
@@ -48,9 +49,10 @@
 - First shell command: `pwd`
 - Work only inside the repo root.
 - Run `git status` before and after execution.
+- PM-authored governance/tracking files may remain dirty if they are explicitly identified as PM-authorized and out-of-scope for the active worker lane. Workers should ignore them, not stage them, and continue.
 - Do not write outside the repo unless the user explicitly authorizes it.
-- Allowed browser/runtime verification tool: `agent-browser`
-- Do not use Playwright unless explicitly authorized for the named issue.
+- Allowed browser/runtime verification tools: `agent-browser`, `playwright`
+- Use the tool named in the active issue when specified; otherwise prefer the lightest tool that fits the task.
 
 ## 6) Validation
 - Use existing repo test commands when available.
