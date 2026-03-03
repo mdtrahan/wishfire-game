@@ -60,6 +60,10 @@
 - Manual browser QA is valid for MVP runtime behavior.
 - Keep new instrumentation isolated and removable.
 
+## 6.1) Large Code Exploration
+- For large hot files and cross-file rule tracing, prefer `jcodemunch-mcp` when available instead of brute-force full-file reads.
+- Keep `jcodemunch` use focused on symbol retrieval and dependency tracing; do not use it as a substitute for the active Beads issue scope.
+
 ## 7) Output Contracts
 - `commit check <bd-id>`:
   - `COMMIT: YES|NO`
