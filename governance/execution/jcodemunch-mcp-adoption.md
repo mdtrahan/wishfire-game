@@ -18,6 +18,28 @@
   - final diff verification
   - local artifacts and docs
 
+## Standard Analysis Pipeline
+- Use this order for large code understanding:
+  1. repo outline or file tree
+  2. symbol search or file outline
+  3. exact symbol retrieval
+  4. broad file reads only if symbol-level retrieval is insufficient
+
+- PM and worker should use the same order so:
+  - prompts are based on the same code understanding
+  - implementation lanes stay scoped to actual symbols/functions
+  - token use stays low on hot files
+
+- Default use cases:
+  - PM: issue shaping, ownership mapping, hot-file boundary definition
+  - Worker: target function lookup, dependency tracing, exact change validation
+
+- Fallback to direct file reads when:
+  - the file is small
+  - the target is non-code text
+  - the symbol index is missing or stale
+  - final diff verification needs direct file context
+
 ## Project Policy
 - `jcodemunch-mcp` is a tooling aid, not a gameplay/runtime dependency.
 - It should not be imported by game code.
@@ -37,7 +59,10 @@
   - non-commercial use is permitted under the included license
   - commercial use requires a paid commercial license
 
-- This project is commercially relevant, so do not treat the tool as cleared for unrestricted production use until the license decision is confirmed by the project owner.
+- Current project policy:
+  - use is limited to internal pre-MVP evaluation during development
+  - obtain the commercial license before public release or any commercial operation
 
 ## Operational Default
 - When `jcodemunch-mcp` is available in the active session, prefer it for large code analysis before falling back to broad `sed`/`rg` reads across giant files.
+- Treat this as the default for both PM planning and worker implementation on hot runtime files.

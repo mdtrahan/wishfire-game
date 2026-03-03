@@ -63,6 +63,12 @@
 ## 6.1) Large Code Exploration
 - For large hot files and cross-file rule tracing, prefer `jcodemunch-mcp` when available instead of brute-force full-file reads.
 - Keep `jcodemunch` use focused on symbol retrieval and dependency tracing; do not use it as a substitute for the active Beads issue scope.
+- PM and worker should both use the same exploration order for hot code:
+  1. repo outline / file tree
+  2. symbol search / file outline
+  3. exact symbol retrieval
+  4. only then fall back to broad file reads if still necessary
+- Use `jcodemunch` first when a file is large, mirrored, or known to be a hot regression surface.
 
 ## 7) Output Contracts
 - `commit check <bd-id>`:
