@@ -7,7 +7,16 @@ const args = process.argv.slice(2);
 let port = 8080;
 for(let i=0;i<args.length;i++) if(args[i]==='--port' && args[i+1]) port = +args[i+1];
 const root = process.cwd();
-const mime = {'.html':'text/html','.js':'application/javascript','.json':'application/json','.css':'text/css','.png':'image/png','.jpg':'image/jpeg','.svg':'image/svg+xml'};
+const mime = {
+  '.html':'text/html',
+  '.js':'application/javascript',
+  '.mjs':'application/javascript',
+  '.json':'application/json',
+  '.css':'text/css',
+  '.png':'image/png',
+  '.jpg':'image/jpeg',
+  '.svg':'image/svg+xml',
+};
 
 function safeGit(args, fallback = '') {
   try {
