@@ -1048,7 +1048,7 @@ function buildYellowCasinoSequence(targetFrame) {
   return seq;
 }
 
-function startYellowCasinoSequence(actorUID) {
+function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0) {
   if (state.globals.GamePhase !== 'RUNTIME') {
     return;
   }
@@ -1103,6 +1103,9 @@ function startYellowCasinoSequence(actorUID) {
   }
 
   const hasWork = queue.length > 0;
+  const additionalYellowConsumed = queue.filter((item) => item.type === 'yellow').length;
+  const totalYellowConsumed = Math.max(0, Number(initialMatchedYellowCount || 0)) + additionalYellowConsumed;
+  state.globals.goldTotal = Number(state.globals.goldTotal || 0) + totalYellowConsumed;
   traceTask015YellowQueue(queue);
   traceTask015YellowAnimation('yellow-sequence-start', {
     queueLength: Number(queue.length),
@@ -1373,8 +1376,6 @@ function handleGemMatch(color) {
         return isSelected && gemColor === YELLOW_COLOR;
       }).length
     );
-    const yellowGoldGain = matchedYellowCount;
-    g.goldTotal = Number(g.goldTotal || 0) + yellowGoldGain;
     callFunctionWithContext(fnContext, 'ResolveGemAction', 3, actorUID);
     callFunctionWithContext(fnContext, 'LogCombat', `${actorName} used Wild Magic!`);
     callFunctionWithContext(fnContext, 'DestroyGem');
@@ -1383,7 +1384,7 @@ function handleGemMatch(color) {
     clearLocalSelection();
     rebuildGridFromGems();
     callFunctionWithContext(fnContext, 'Sub_Energy');
-    startYellowCasinoSequence(actorUID);
+    startYellowCasinoSequence(actorUID, matchedYellowCount);
   } else if (color === 4) {
     g.MatchedColorValue = 4;
     g.IsAOEMatch = 0;
