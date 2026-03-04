@@ -2505,24 +2505,16 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
   }
   if (gemColor === 2) {
     g.IsAOEMatch = 0;
-    const roll = Math.floor(Math.random() * 4);
-    let skillId = 'DEF_UP';
-    let intentKey = 'Party_DEF_UP';
-    let buffType = 0;
-    if (roll === 1) { skillId = 'ATK_UP'; intentKey = 'Party_ATK_UP'; }
-    if (roll === 2) { skillId = 'MAG_UP'; intentKey = 'Party_MAG_UP'; }
-    if (roll === 3) { skillId = 'RES_UP'; intentKey = 'Party_RES_UP'; buffType = 4; }
-    if (roll === 1 || roll === 2) buffType = roll;
-    LogGemIntent(ctx, 2, 'BLUE', intentKey, '', actorUID);
-    g.BuffRollSkillID = skillId;
-    g.BuffRollActor = actorUID;
-    g.BuffRollType = buffType;
+    LogGemIntent(ctx, 2, 'BLUE', 'Astral_Flow', '', actorUID);
     g.BuffRollApplyStat = 0;
+    g.BuffRollSkillID = '';
+    g.BuffRollActor = 0;
+    g.BuffRollType = 0;
     const consumedBlue = Math.max(0, Number(consumedCount) || 0);
     const wallet = ensureAstralFlowWallet(ctx);
     g.AstralFlowWallet = wallet + consumedBlue;
     LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} channeled ${consumedBlue} Astral Flow.`);
-    StartBuffRoll(ctx);
+    RefreshPartyBuffUI(ctx);
     return;
   }
   if (gemColor === 3) {
