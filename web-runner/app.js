@@ -4293,11 +4293,11 @@ async function main(){
       return Number(flashes[uid] || 0) > Number(state.globals.time || 0);
     };
 
-    const renderHitFlashOverlay = (x, y, w, h) => {
+    const renderHitFlashOverlay = (drawSprite) => {
       ctx.save();
-      ctx.globalCompositeOperation = 'source-atop';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(x, y, w, h);
+      ctx.globalAlpha = 0.5;
+      ctx.filter = 'brightness(0) invert(1)';
+      drawSprite();
       ctx.restore();
     };
 
@@ -4326,7 +4326,7 @@ async function main(){
         if (sprite) {
           ctx.drawImage(sprite, drawX, drawY, enemyW, enemyH);
           if (isHitFlashActive(enemy.uid)) {
-            renderHitFlashOverlay(drawX, drawY, enemyW, enemyH);
+            renderHitFlashOverlay(() => ctx.drawImage(sprite, drawX, drawY, enemyW, enemyH));
           }
         } else {
           ctx.fillStyle = '#7d2b2b';
@@ -4540,7 +4540,7 @@ async function main(){
           const drawY = footY - scaledH;
           ctx.drawImage(img, drawX, drawY, scaledW, scaledH);
           if (hero && isHitFlashActive(hero.uid)) {
-            renderHitFlashOverlay(drawX, drawY, scaledW, scaledH);
+            renderHitFlashOverlay(() => ctx.drawImage(img, drawX, drawY, scaledW, scaledH));
           }
 
           if (ampActive) {
