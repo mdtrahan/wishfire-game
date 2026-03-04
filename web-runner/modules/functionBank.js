@@ -2515,11 +2515,19 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
     g.BuffRollSkillID = '';
     g.BuffRollActor = 0;
     g.BuffRollType = 0;
+    // Blue path is wallet-only: clear deprecated buff icon loop state.
+    g.BlueBuffSequenceActive = 0;
+    g.BuffIconPopType = -1;
+    g.BuffIconPopAt = 0;
+    g.BuffIconPopStacking = 0;
+    g.TrackBuffs = [-1, -1, -1, -1];
+    g.PartyBuffSlots = [];
+    g.PartyBuffUI = { atk: false, def: false, mag: false, res: false };
+    g.BuffFrames = [-1, -1, -1, -1];
     const consumedBlue = Math.max(0, Number(consumedCount) || 0);
     const wallet = ensureAstralFlowWallet(ctx);
     g.AstralFlowWallet = wallet + consumedBlue;
     LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} channeled ${consumedBlue} Astral Flow.`);
-    RefreshPartyBuffUI(ctx);
     return;
   }
   if (gemColor === 3) {
