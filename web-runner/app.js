@@ -1007,8 +1007,6 @@ function handleSpecialGem6(gem) {
 }
 
 const YELLOW_COLOR = 3;
-const YELLOW_MATCH_GOLD_PER_GEM = 5;
-const YELLOW_MATCH_MIN_GOLD = 15;
 const YELLOW_CASINO_TELEGRAPH_SEC = 0.15;
 const yellowMatchAnimationDuration = 0.4;
 const YELLOW_CASINO_SPIN_SEC = yellowMatchAnimationDuration;
@@ -1367,11 +1365,15 @@ function handleGemMatch(color) {
   } else if (color === 3) {
     const actor = state.entities.find(e => e.uid === actorUID);
     const actorName = actor ? (actor.name || 'Hero') : 'Hero';
-    const matchedYellowCount = Math.max(0, Number((gameState.selectedGems || []).length || 0));
-    const yellowGoldGain = Math.max(
-      YELLOW_MATCH_MIN_GOLD,
-      matchedYellowCount * YELLOW_MATCH_GOLD_PER_GEM
+    const matchedYellowCount = Math.max(
+      0,
+      (gameState.gems || []).filter((gm) => {
+        const gemColor = Number(gm && (gm.color ?? gm.elementIndex));
+        const isSelected = !!(gm && (gm.selected || gm.Selected));
+        return isSelected && gemColor === YELLOW_COLOR;
+      }).length
     );
+    const yellowGoldGain = matchedYellowCount;
     g.goldTotal = Number(g.goldTotal || 0) + yellowGoldGain;
     callFunctionWithContext(fnContext, 'ResolveGemAction', 3, actorUID);
     callFunctionWithContext(fnContext, 'LogCombat', `${actorName} used Wild Magic!`);
