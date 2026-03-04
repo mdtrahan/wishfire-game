@@ -1795,6 +1795,11 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
   if (!t) return;
   t.hp = Math.max(0, (t.hp ?? 0) - dmg);
   const g = getGlobals(ctx);
+  const now = Number(g.time || 0);
+  if (!g.HitFlashByUID || typeof g.HitFlashByUID !== 'object') {
+    g.HitFlashByUID = {};
+  }
+  g.HitFlashByUID[uid] = now + 0.14;
   let dx = t.x;
   let dy = t.y;
   if (t.kind === 'hero') {

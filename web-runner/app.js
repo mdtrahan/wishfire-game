@@ -4287,6 +4287,20 @@ async function main(){
       ctx.strokeRect(barX, barY, barW, barH);
     }
 
+    const isHitFlashActive = (uid) => {
+      const flashes = state.globals.HitFlashByUID;
+      if (!uid || !flashes || typeof flashes !== 'object') return false;
+      return Number(flashes[uid] || 0) > Number(state.globals.time || 0);
+    };
+
+    const renderHitFlashOverlay = (x, y, w, h) => {
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x, y, w, h);
+      ctx.restore();
+    };
+
     // Render enemies (use Enemy_Sprite animations)
     const enemiesToDraw = state.entities.filter(e => e.kind === 'enemy' && (e.hp ?? 0) > 0);
     if (enemiesToDraw.length) {
@@ -4307,13 +4321,22 @@ async function main(){
         const enemyW = enemyH * (origW / origH);
         const pos = worldToCanvas(x, y);
         const sprite = enemySpriteImages[String(enemy.name || '').toLowerCase()];
+        const drawX = pos.x - enemyW / 2;
+        const drawY = pos.y - enemyH / 2;
         if (sprite) {
-          ctx.drawImage(sprite, pos.x - enemyW / 2, pos.y - enemyH / 2, enemyW, enemyH);
+          ctx.drawImage(sprite, drawX, drawY, enemyW, enemyH);
+          if (isHitFlashActive(enemy.uid)) {
+            renderHitFlashOverlay(drawX, drawY, enemyW, enemyH);
+          }
         } else {
           ctx.fillStyle = '#7d2b2b';
-          ctx.fillRect(pos.x - enemyW / 2, pos.y - enemyH / 2, enemyW, enemyH);
+          ctx.fillRect(drawX, drawY, enemyW, enemyH);
+          if (isHitFlashActive(enemy.uid)) {
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(drawX, drawY, enemyW, enemyH);
+          }
           ctx.strokeStyle = '#fff';
-          ctx.strokeRect(pos.x - enemyW / 2, pos.y - enemyH / 2, enemyW, enemyH);
+          ctx.strokeRect(drawX, drawY, enemyW, enemyH);
         }
 
         // Queue enemy HP bars to draw above all enemies
@@ -4513,7 +4536,12 @@ async function main(){
           const scaledW = w * heroScale;
           const scaledH = h * heroScale;
           const footY = pos.y + h / 2;
-          ctx.drawImage(img, pos.x - scaledW / 2, footY - scaledH, scaledW, scaledH);
+          const drawX = pos.x - scaledW / 2;
+          const drawY = footY - scaledH;
+          ctx.drawImage(img, drawX, drawY, scaledW, scaledH);
+          if (hero && isHitFlashActive(hero.uid)) {
+            renderHitFlashOverlay(drawX, drawY, scaledW, scaledH);
+          }
 
           if (ampActive) {
             const mult = Number(ampProjection?.mult || 1);
