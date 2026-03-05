@@ -2517,6 +2517,8 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
     g.BuffRollType = 0;
     // Blue path is wallet-only: clear deprecated buff icon loop state.
     g.BlueBuffSequenceActive = 0;
+    g.BuffRollActive = 0;
+    g.BuffRollDoneAt = 0;
     g.BuffIconPopType = -1;
     g.BuffIconPopAt = 0;
     g.BuffIconPopStacking = 0;
