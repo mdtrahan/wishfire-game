@@ -4583,7 +4583,7 @@ async function main(){
 
           // Hero turn indicator selector (only on hero turns)
           if (currentHero && hero && currentHero.uid === hero.uid && state.globals.TurnPhase === 0) {
-            if (state.globals.HideHeroSelector) continue;
+            if (state.globals.HideHeroSelector && !state.globals.CanPickGems) continue;
             if (selectorImg) {
               const t = g.time || 0;
               const pulse = Math.sin(t * 6);
@@ -5567,13 +5567,13 @@ function getStoryCardLiveLineState() {
     if (state.globals.GamePhase === 'BOOTSTRAP') {
       tryActivateRuntimePhase();
     }
-    if (
+    const activeTurnType = callFunctionWithContext(fnContext, 'GetCurrentType');
+    const heroInputActive =
       state.globals.TurnPhase === 0 &&
-      !state.globals.IsPlayerBusy &&
-      !state.globals.PendingSkillID &&
-      !state.globals.ActionInProgress &&
-      !state.globals.DeferAdvance
-    ) {
+      activeTurnType === 0 &&
+      !!state.globals.CanPickGems &&
+      !state.globals.PendingSkillID;
+    if (heroInputActive) {
       state.globals.HideHeroSelector = 0;
     }
     const refill = gameState.refillBounce;
