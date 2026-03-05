@@ -2513,6 +2513,13 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
     const wallet = ensureAstralFlowWallet(ctx);
     g.AstralFlowWallet = wallet + consumedBlue;
     LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} channeled ${consumedBlue} Astral Flow.`);
+    // Blue matches are turn-consuming actions: lock input and defer exactly one handoff.
+    g.CanPickGems = 0;
+    g.IsPlayerBusy = 0;
+    g.ActionOwnerUID = actorUID;
+    g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, (g.time || 0) + 0.25);
+    g.DeferAdvance = 1;
+    g.AdvanceAfterAction = 1;
     return;
   }
   if (gemColor === 3) {
