@@ -2517,7 +2517,8 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
     g.CanPickGems = 0;
     g.IsPlayerBusy = 0;
     g.ActionOwnerUID = actorUID;
-    g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, (g.time || 0) + 0.25);
+    // Keep handoff behind blue merge/fly-up completion (app blue merge duration is 0.28s).
+    g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, (g.time || 0) + 0.32);
     g.DeferAdvance = 1;
     g.AdvanceAfterAction = 1;
     return;
