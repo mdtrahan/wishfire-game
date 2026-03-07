@@ -27,3 +27,9 @@
 - test evidence: `npm test -- tests/runaMagicResistContract.test.js tests/falieEnmityTargetBiasContract.test.js tests/traitHookFrameworkContract.test.js tests/debuffLifecycleReliabilityContract.test.js` (10/10 pass)
 - scope confirmation: Confined to Runa defensive trait behavior for incoming enemy magic and mirror parity.
 
+- bead id: ORKA-mo4
+- summary of changes: Added Huun-only execution drop bonus by carrying kill-credit through pending death resolution and applying a deterministic TH level bonus in existing drop-rate transform path.
+- files modified: web-runner/modules/functionBank.js; Scripts/functionBank.js; tests/huunExecutionDropBonusContract.test.js
+- test evidence: `npm test -- tests/huunExecutionDropBonusContract.test.js tests/runaMagicResistContract.test.js tests/falieEnmityTargetBiasContract.test.js tests/debuffLifecycleReliabilityContract.test.js` (11/11 pass)
+- scope confirmation: Confined to kill-credit-aware drop bonus behavior for Huun executions inside existing loot pipeline (no new loot systems).
+

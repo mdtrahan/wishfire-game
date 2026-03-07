@@ -75,3 +75,19 @@ _Last updated: 2026-03-07_
 
 ## Known Issues
 - ORKA-9ri remains intentionally held for scope reframing to avoid RPG-style persistent debuff model drift.
+
+---
+
+_Last updated: 2026-03-07_
+
+## Completed Beads
+- ORKA-mo4 (Huun execution drop bonus chance via existing TH drop pipeline)
+
+## Active Work
+- Queue continuing through aligned class-identity + wallet/progression lanes.
+
+## Next Tasks
+- ORKA-69r QA closeout or ORKA-9hl cleanup/closure alignment.
+
+## Known Issues
+- ORKA-9ri remains on hold pending model-aligned rewrite.

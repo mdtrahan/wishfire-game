@@ -1536,10 +1536,16 @@ function resolvePendingDeathsForInitiative(ctx) {
   const g = getGlobals(ctx);
   const pending = g.PendingDeaths || {};
   for (const uidStr of Object.keys(pending)) {
+    const pendingMeta = pending[uidStr];
+    const killerUID = Number(
+      (pendingMeta && typeof pendingMeta === 'object' && pendingMeta.killerUID != null)
+        ? pendingMeta.killerUID
+        : (g.LastDamageSourceUID || GetCurrentTurn(ctx) || 0)
+    );
     const uid = Number(uidStr);
     const actor = GetActorByUID(ctx, uid);
     if (actor && actor.kind === 'enemy') {
-      AwardMonsterDrop(ctx, actor.name || actor.key || actor.type || '');
+      AwardMonsterDrop(ctx, actor.name || actor.key || actor.type || '', null, killerUID);
       KillEnemyAt(ctx, actor.slotIndex ?? 0);
     } else if (actor && actor.kind === 'hero') {
       actor.isAlive = false;
@@ -1654,12 +1660,22 @@ export function ProcessCurrentTurn(ctx) {
       // end of group: resolve pending deaths for this group
       const pending = g.PendingDeaths || {};
       const resolvedGroup = g.RoundGroupIndex || 0;
-      for (const [uidStr, grp] of Object.entries(pending)) {
+      for (const [uidStr, pendingMeta] of Object.entries(pending)) {
+        const grp = Number(
+          (pendingMeta && typeof pendingMeta === 'object' && pendingMeta.group != null)
+            ? pendingMeta.group
+            : pendingMeta
+        );
         if (grp !== resolvedGroup) continue;
+        const killerUID = Number(
+          (pendingMeta && typeof pendingMeta === 'object' && pendingMeta.killerUID != null)
+            ? pendingMeta.killerUID
+            : (g.LastDamageSourceUID || GetCurrentTurn(ctx) || 0)
+        );
         const uid = Number(uidStr);
         const actor = GetActorByUID(ctx, uid);
         if (actor && actor.kind === 'enemy') {
-          AwardMonsterDrop(ctx, actor.name || actor.key || actor.type || '');
+          AwardMonsterDrop(ctx, actor.name || actor.key || actor.type || '', null, killerUID);
           KillEnemyAt(ctx, actor.slotIndex ?? 0);
         } else if (actor && actor.kind === 'hero') {
           actor.isAlive = false;
@@ -1899,6 +1915,8 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
 }
 
 export function ApplyDamageToTarget(ctx, uid, dmg) {
+  const g = getGlobals(ctx);
+  g.LastDamageSourceUID = Number(GetCurrentTurn(ctx) || 0);
   const t = GetActorByUID(ctx, uid);
   if (!t) return;
   const beforeHP = Number(t.hp ?? 0);
@@ -1911,7 +1929,6 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
     beforeHP,
     afterHP,
   });
-  const g = getGlobals(ctx);
   const now = Number(g.time || 0);
   if (!g.HitFlashByUID || typeof g.HitFlashByUID !== 'object') {
     g.HitFlashByUID = {};
@@ -1933,11 +1950,14 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
   if (t.hp === 0) {
     if ((g.RoundActive && g.GroupResolving) || (isTimeInitiative(ctx) && g.GroupResolving)) {
       g.PendingDeaths = g.PendingDeaths || {};
-      g.PendingDeaths[t.uid] = g.RoundGroupIndex || 0;
+      g.PendingDeaths[t.uid] = {
+        group: Number(g.RoundGroupIndex || 0),
+        killerUID: Number(g.LastDamageSourceUID || 0),
+      };
     } else {
       t.isAlive = false;
       if (t.kind === 'enemy') {
-        AwardMonsterDrop(ctx, t.name || t.key || t.type || '');
+        AwardMonsterDrop(ctx, t.name || t.key || t.type || '', null, Number(g.LastDamageSourceUID || 0));
         KillEnemyAt(ctx, t.slotIndex ?? 0);
       }
     }
@@ -2542,6 +2562,16 @@ function sanitizeThLevel(value) {
   return Math.max(0, Math.floor(n));
 }
 
+const HUUN_EXECUTION_NAME = 'Huun';
+const HUUN_EXECUTION_TH_BONUS = 2;
+
+function resolveHuunExecutionDropBonusLevel(ctx, killerUID) {
+  const killer = GetActorByUID(ctx, killerUID);
+  if (!killer || killer.kind !== 'hero') return 0;
+  if (String(killer.name || '') !== HUUN_EXECUTION_NAME) return 0;
+  return HUUN_EXECUTION_TH_BONUS;
+}
+
 export function getDropRateBracket(dropRate) {
   const bps = sanitizeBps(dropRate);
   for (const threshold of TH_DROP_RATE_THRESHOLDS) {
@@ -2570,11 +2600,21 @@ export function GetDropRate(ctx, thLevel, dropRate) {
   return getDropRate(thLevel, dropRate);
 }
 
-export function AwardMonsterDrop(ctx, monsterName, tierIndex = null) {
+export function AwardMonsterDrop(ctx, monsterName, tierIndex = null, killerUID = 0) {
   const g = getGlobals(ctx);
-  const thLevel = Number(g.TreasureHunterLevel ?? g.THLevel ?? g.DebugTHLevel ?? 0);
+  const baseThLevel = Number(g.TreasureHunterLevel ?? g.THLevel ?? g.DebugTHLevel ?? 0);
+  const huunBonusLevel = resolveHuunExecutionDropBonusLevel(ctx, killerUID || GetCurrentTurn(ctx));
+  const thLevel = baseThLevel + huunBonusLevel;
   const baseDropRate = Number(g.LootDropRateBps ?? g.DropRateBps ?? 10000);
   const transformedDropRate = getDropRate(thLevel, baseDropRate);
+  g.LastHuunExecutionDropBonus = {
+    killerUID: Number(killerUID || 0),
+    baseThLevel: Number(baseThLevel || 0),
+    bonusLevel: Number(huunBonusLevel || 0),
+    effectiveThLevel: Number(thLevel || 0),
+    transformedDropRate: Number(transformedDropRate || 0),
+    monsterName: String(monsterName || ''),
+  };
   const rollsPerDeath = 4;
   const awarded = [];
   for (let i = 0; i < rollsPerDeath; i++) {
