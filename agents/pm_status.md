@@ -33,6 +33,22 @@ _Last updated: 2026-03-06_
 _Last updated: 2026-03-07_
 
 ## Completed Beads
+- ORKA-7pi (Tomes layout scaffold: map locale entry, deterministic gallery state, and runtime shell)
+
+## Active Work
+- Continue prioritized layout scaffold queue.
+
+## Next Tasks
+- ORKA-n0g (Relics scaffold) and ORKA-c1j (Vault scaffold) from current P1 readiness order.
+
+## Known Issues
+- None newly introduced in ORKA-7pi; mechanics intentionally left as scaffold-only.
+
+---
+
+_Last updated: 2026-03-07_
+
+## Completed Beads
 - ORKA-fp9 (debuff lifecycle reliability hardening)
 
 ## Active Work

@@ -331,6 +331,8 @@ const gameState = {
       moved: 0,
     },
     returnButton: { x: 14, y: 14, w: 112, h: 30 },
+    tomesLocaleButton: { x: 0, y: 0, w: 146, h: 36 },
+    tomesLocaleHit: null,
     warMeter: 0.64,
     lastRender: null,
   },
@@ -354,6 +356,45 @@ const gameState = {
   },
   heroScreen: {
     hitZones: null,
+  },
+  tomesLayout: {
+    entryPoint: 'map-locale',
+    selectedIndex: 0,
+    hitZones: null,
+    gallery: [
+      {
+        id: 'tome-cinder-codex',
+        name: 'Cinder Codex',
+        discovered: true,
+        rarity: 'Rare',
+        buffSlot: { stat: 'ATK', mode: 'flat', value: 1, cadenceTurns: 4 },
+        enemyDebuffSlot: null,
+      },
+      {
+        id: 'tome-gale-archive',
+        name: 'Gale Archive',
+        discovered: true,
+        rarity: 'Epic',
+        buffSlot: { stat: 'SPD', mode: 'flat', value: 1, cadenceTurns: 5 },
+        enemyDebuffSlot: { stat: 'CRIT', mode: 'pct', value: 0.08, cadenceTurns: 0 },
+      },
+      {
+        id: 'tome-ward-index',
+        name: 'Ward Index',
+        discovered: false,
+        rarity: 'Legendary',
+        buffSlot: { stat: 'DEF', mode: 'flat', value: 1, cadenceTurns: 6 },
+        enemyDebuffSlot: null,
+      },
+      {
+        id: 'tome-hollow-scripture',
+        name: 'Hollow Scripture',
+        discovered: false,
+        rarity: 'Epic',
+        buffSlot: { stat: 'RES', mode: 'flat', value: 1, cadenceTurns: 5 },
+        enemyDebuffSlot: { stat: 'ATK', mode: 'pct', value: 0.06, cadenceTurns: 0 },
+      },
+    ],
   },
   task015Trace: {
     storycardPlacement: [],
@@ -1911,7 +1952,7 @@ async function main(){
 
     layoutState.registerLayout({
       id: 'combat',
-      allowedTransitions: ['base', 'shop', 'intro', 'astralOverlay', 'mapLayout', 'heroLayout'],
+      allowedTransitions: ['base', 'shop', 'intro', 'astralOverlay', 'mapLayout', 'heroLayout', 'tomesLayout'],
       async onEnter({ resumeSnapshot }) {
         const hasRuntimeData =
           Array.isArray(instances) && instances.length > 0 &&
@@ -1962,10 +2003,11 @@ async function main(){
     });
     layoutState.registerLayout({
       id: 'mapLayout',
-      allowedTransitions: ['combat'],
+      allowedTransitions: ['combat', 'tomesLayout'],
       onEnter() {
         gameState.overlayVisible = false;
         gameState.mapLayout.panY = 0;
+        gameState.mapLayout.tomesLocaleHit = null;
         const drag = gameState.mapLayout.drag;
         drag.active = false;
         drag.pointerId = null;
@@ -1976,6 +2018,26 @@ async function main(){
       },
       onActive() {},
       onExit() { return null; },
+    });
+    layoutState.registerLayout({
+      id: 'tomesLayout',
+      allowedTransitions: ['mapLayout', 'combat'],
+      onEnter() {
+        gameState.overlayVisible = false;
+        gameState.tomesLayout.hitZones = null;
+        gameState.tomesLayout.selectedIndex = Math.max(
+          0,
+          Math.min(
+            Math.max(0, (gameState.tomesLayout.gallery || []).length - 1),
+            Number(gameState.tomesLayout.selectedIndex || 0),
+          ),
+        );
+      },
+      onActive() {},
+      onExit() {
+        gameState.tomesLayout.hitZones = null;
+        return null;
+      },
     });
     layoutState.registerLayout({
       id: 'heroLayout',
@@ -2520,9 +2582,135 @@ async function main(){
       ctx.fillStyle = '#111';
       ctx.font = '600 12px Arial';
       ctx.fillText('Return Combat', btn.x + 10, btn.y + 43);
+      const tomeBtn = gameState.mapLayout.tomesLocaleButton;
+      tomeBtn.x = Math.max(12, Math.round(viewWidth - tomeBtn.w - 12));
+      tomeBtn.y = Math.max(58, Math.round(viewHeight - tomeBtn.h - 18));
+      gameState.mapLayout.tomesLocaleHit = {
+        x: tomeBtn.x,
+        y: tomeBtn.y,
+        w: tomeBtn.w,
+        h: tomeBtn.h,
+      };
+      ctx.fillStyle = '#f3ddaa';
+      ctx.fillRect(tomeBtn.x, tomeBtn.y, tomeBtn.w, tomeBtn.h);
+      ctx.strokeStyle = '#8d6d2a';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(tomeBtn.x, tomeBtn.y, tomeBtn.w, tomeBtn.h);
+      ctx.fillStyle = '#2f2412';
+      ctx.font = '700 12px Arial';
+      ctx.fillText('Enter Tomes', tomeBtn.x + 26, tomeBtn.y + 22);
+      ctx.fillStyle = '#111';
+      ctx.font = '500 10px Arial';
+      ctx.fillText('Map Locale', tomeBtn.x + 26, tomeBtn.y + 33);
       ctx.fillStyle = '#ffffff';
       ctx.font = '500 14px Arial';
       ctx.fillText('Map Layout (drag to pan)', 14, viewHeight - 18);
+      return;
+    }
+    if (layoutId === 'tomesLayout') {
+      const viewWidth = canvas.width / dpr;
+      const viewHeight = canvas.height / dpr;
+      const palette = {
+        bg0: '#1f1629',
+        bg1: '#372342',
+        panel: '#f0e7d1',
+        panelEdge: '#c1b28f',
+        ink: '#2b1e12',
+        muted: '#6a5d49',
+        selected: '#ffe7a6',
+      };
+      const roundRect = (x, y, w, h, r, fill, stroke) => {
+        const radius = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + w - radius, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+        ctx.lineTo(x + w, y + h - radius);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+        ctx.lineTo(x + radius, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+        if (fill) {
+          ctx.fillStyle = fill;
+          ctx.fill();
+        }
+        if (stroke) {
+          ctx.strokeStyle = stroke;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      };
+      ctx.clearRect(0, 0, viewWidth, viewHeight);
+      const grad = ctx.createLinearGradient(0, 0, 0, viewHeight);
+      grad.addColorStop(0, palette.bg0);
+      grad.addColorStop(1, palette.bg1);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, viewWidth, viewHeight);
+
+      const panelPad = 14;
+      const panel = {
+        x: panelPad,
+        y: 16,
+        w: Math.max(260, viewWidth - panelPad * 2),
+        h: Math.max(360, viewHeight - 34),
+      };
+      roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
+
+      const mapBack = { x: panel.x + 12, y: panel.y + 12, w: 108, h: 28 };
+      const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
+      roundRect(mapBack.x, mapBack.y, mapBack.w, mapBack.h, 9, '#ece3cb', '#baa980');
+      roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#ece3cb', '#baa980');
+      ctx.fillStyle = palette.ink;
+      ctx.font = '700 11px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Back To Map', mapBack.x + mapBack.w / 2, mapBack.y + 18);
+      ctx.fillText('Back To Combat', combatBack.x + combatBack.w / 2, combatBack.y + 18);
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = palette.ink;
+      ctx.font = '700 18px Arial';
+      ctx.fillText('Tomes Gallery (Scaffold)', panel.x + 14, panel.y + 58);
+      ctx.fillStyle = palette.muted;
+      ctx.font = '500 11px Arial';
+      ctx.fillText('Discovery source: map locale. Buff and optional enemy debuff metadata only.', panel.x + 14, panel.y + 76);
+
+      const gallery = Array.isArray(gameState.tomesLayout.gallery) ? gameState.tomesLayout.gallery : [];
+      const selectedIndex = Math.max(0, Math.min(gallery.length - 1, Number(gameState.tomesLayout.selectedIndex || 0)));
+      const cardHitZones = [];
+      let cursorY = panel.y + 90;
+      const cardGap = 8;
+      for (let i = 0; i < gallery.length; i += 1) {
+        const tome = gallery[i] || {};
+        const card = { x: panel.x + 12, y: cursorY, w: panel.w - 24, h: 58 };
+        const discovered = Boolean(tome.discovered);
+        const buff = tome.buffSlot || null;
+        const debuff = tome.enemyDebuffSlot || null;
+        roundRect(card.x, card.y, card.w, card.h, 10, i === selectedIndex ? palette.selected : '#f7f1e2', '#c9b88f');
+        ctx.fillStyle = palette.ink;
+        ctx.font = '700 13px Arial';
+        ctx.fillText(discovered ? String(tome.name || 'Unknown Tome') : 'Locked Tome', card.x + 10, card.y + 20);
+        ctx.fillStyle = palette.muted;
+        ctx.font = '600 10px Arial';
+        ctx.fillText(`Rarity: ${String(tome.rarity || 'Common')}`, card.x + 10, card.y + 35);
+        const buffText = buff
+          ? `${String(buff.stat || '')} ${String(buff.mode || '')} ${Number(buff.value || 0)} / ${Number(buff.cadenceTurns || 0)}t`
+          : 'No buff slot';
+        const debuffText = debuff
+          ? `${String(debuff.stat || '')} ${String(debuff.mode || '')} ${Number(debuff.value || 0)}`
+          : 'No enemy debuff';
+        ctx.fillText(`Buff: ${buffText}`, card.x + 136, card.y + 20);
+        ctx.fillText(`Debuff: ${debuffText}`, card.x + 136, card.y + 35);
+        cardHitZones.push(card);
+        cursorY += card.h + cardGap;
+      }
+
+      gameState.tomesLayout.hitZones = {
+        mapBack,
+        combatBack,
+        cards: cardHitZones,
+      };
       return;
     }
     if (layoutId === 'heroLayout') {
@@ -5405,6 +5593,14 @@ function getStoryCardLiveLineState() {
         drawFrame();
         return;
       }
+      const tomeHit = gameState.mapLayout.tomesLocaleHit;
+      if (isPointInRect(mx, my, tomeHit)) {
+        layoutState.requestLayoutChange('tomesLayout', 'map-tomes-locale').catch((err) => {
+          console.error('[LAYOUT_PHASE1] map->tomes failed', err);
+        });
+        drawFrame();
+        return;
+      }
       const drag = gameState.mapLayout.drag;
       drag.active = true;
       drag.pointerId = ev.pointerId;
@@ -5412,6 +5608,33 @@ function getStoryCardLiveLineState() {
       drag.lastY = my;
       drag.moved = 0;
       try { canvas.setPointerCapture(ev.pointerId); } catch {}
+      drawFrame();
+      return;
+    }
+    if (activeLayoutId === 'tomesLayout') {
+      const zones = (gameState.tomesLayout && gameState.tomesLayout.hitZones) || {};
+      if (isPointInRect(mx, my, zones.mapBack)) {
+        layoutState.requestLayoutChange('mapLayout', 'tomes-back-map').catch((err) => {
+          console.error('[LAYOUT_PHASE1] tomes->map failed', err);
+        });
+        drawFrame();
+        return;
+      }
+      if (isPointInRect(mx, my, zones.combatBack)) {
+        layoutState.requestLayoutChange('combat', 'tomes-back-combat').catch((err) => {
+          console.error('[LAYOUT_PHASE1] tomes->combat failed', err);
+        });
+        drawFrame();
+        return;
+      }
+      const cards = Array.isArray(zones.cards) ? zones.cards : [];
+      for (let i = 0; i < cards.length; i += 1) {
+        if (isPointInRect(mx, my, cards[i])) {
+          gameState.tomesLayout.selectedIndex = i;
+          drawFrame();
+          return;
+        }
+      }
       drawFrame();
       return;
     }

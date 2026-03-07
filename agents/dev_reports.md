@@ -9,6 +9,12 @@
 
 ## Reports
 - (append newest report at top)
+- bead id: ORKA-7pi
+- summary of changes: Added runtime Tomes layout scaffold with deterministic gallery/buff metadata model, map-locale entry mapping, and dedicated Tomes layout shell with selectable placeholder tome cards.
+- files modified: web-runner/app.js; tests/tomesLayoutScaffoldContract.test.js
+- test evidence: `npm test -- tests/tomesLayoutScaffoldContract.test.js tests/yellowSlamSequenceContract.test.js` (4/4 pass)
+- scope confirmation: Confined to layout/state scaffold and navigation mapping only; no economy or finalized tome mechanics.
+
 - bead id: ORKA-fp9
 - summary of changes: Hardened enemy debuff lifecycle by normalizing debuff state on read, unifying apply/decay paths through a single helper, sanitizing invalid/duplicate slot data, and preserving deterministic slot eviction behavior.
 - files modified: Scripts/functionBank.js; web-runner/modules/functionBank.js; tests/debuffLifecycleReliabilityContract.test.js
@@ -56,4 +62,3 @@
 - files modified: web-runner/app.js; tests/yellowSlamSequenceContract.test.js
 - test evidence: `npm test -- tests/yellowSlamSequenceContract.test.js tests/yellowGoldFlyupContract.test.js tests/blueAstralWalletContract.test.js` (7/7 pass)
 - scope confirmation: Confined to yellow sequence pacing/animation sequencing; existing randomize behavior preserved.
-

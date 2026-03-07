@@ -14,6 +14,7 @@
 - ORKA progression is mobile-casual leaning: power should come from skills, trait passives, and booster/meta systems.
 - Avoid reintroducing classic RPG-style timed character buff/debuff stacks unless explicitly approved in bead acceptance.
 - Blue gem flow is wallet/progression oriented (Astral Flow), not direct party-stat buff application.
+- Progression-family scaffolds (tomes/relics/vault/chests/etc.) should ship as deterministic layout/state shells first, with map-locale entry mappings where menu pointers are intentionally absent.
 
 ## Bead Triage Guidance
 - Prefer: skill/passive/trait behavior beads (`ORKA-6gt`, `ORKA-2sa`, `ORKA-mo4`, `ORKA-hvj`).
