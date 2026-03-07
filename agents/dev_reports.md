@@ -33,3 +33,9 @@
 - test evidence: `npm test -- tests/huunExecutionDropBonusContract.test.js tests/runaMagicResistContract.test.js tests/falieEnmityTargetBiasContract.test.js tests/debuffLifecycleReliabilityContract.test.js` (11/11 pass)
 - scope confirmation: Confined to kill-credit-aware drop bonus behavior for Huun executions inside existing loot pipeline (no new loot systems).
 
+- bead id: ORKA-69r
+- summary of changes: Added deterministic contract coverage to lock blue->Astral wallet routing, no direct blue stat-apply gating, and Astral wallet output/state surface.
+- files modified: tests/blueAstralWalletContract.test.js
+- test evidence: `npm test -- tests/blueAstralWalletContract.test.js tests/blueBuffLifecycleContract.test.js tests/runaMagicResistContract.test.js tests/falieEnmityTargetBiasContract.test.js tests/huunExecutionDropBonusContract.test.js` (15/15 pass)
+- scope confirmation: QA closeout evidence only; no runtime behavior changes in this slice.
+

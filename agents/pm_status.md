@@ -91,3 +91,19 @@ _Last updated: 2026-03-07_
 
 ## Known Issues
 - ORKA-9ri remains on hold pending model-aligned rewrite.
+
+---
+
+_Last updated: 2026-03-07_
+
+## Completed Beads
+- ORKA-69r (QA contract lock for blue->Astral wallet and no direct blue stat apply)
+
+## Active Work
+- Continue aligned backlog slices (non-RPG timer-stack model).
+
+## Next Tasks
+- ORKA-9hl closure cleanup and/or queue governance bead cleanup.
+
+## Known Issues
+- ORKA-9ri still requires acceptance rewrite before implementation.
