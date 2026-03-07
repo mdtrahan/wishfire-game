@@ -123,3 +123,19 @@ _Last updated: 2026-03-07_
 
 ## Known Issues
 - ORKA-9ri remains held pending acceptance rewrite.
+
+---
+
+_Last updated: 2026-03-07_
+
+## Completed Beads
+- ORKA-ohb (regen debug noise contract lock)
+
+## Active Work
+- Continue queue on low-conflict, model-aligned slices.
+
+## Next Tasks
+- ORKA-y5x / ORKA-zys governance cleanup, then revisit high-priority epic slicing.
+
+## Known Issues
+- ORKA-9ri still pending rewrite for model alignment.

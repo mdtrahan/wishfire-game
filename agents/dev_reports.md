@@ -45,3 +45,9 @@
 - test evidence: `npm test -- tests/hitFlashFeedbackContract.test.js tests/blueAstralWalletContract.test.js tests/runaMagicResistContract.test.js tests/falieEnmityTargetBiasContract.test.js tests/huunExecutionDropBonusContract.test.js` (14/14 pass)
 - scope confirmation: QA lock-in only; runtime behavior already present and unchanged.
 
+- bead id: ORKA-ohb
+- summary of changes: Added guard contracts to ensure regen debug spam markers are absent from runtime app and both skill-sheet mirrors by default.
+- files modified: tests/regenDebugNoiseContract.test.js
+- test evidence: `npm test -- tests/regenDebugNoiseContract.test.js tests/hitFlashFeedbackContract.test.js tests/blueAstralWalletContract.test.js tests/runaMagicResistContract.test.js tests/falieEnmityTargetBiasContract.test.js tests/huunExecutionDropBonusContract.test.js` (16/16 pass)
+- scope confirmation: Runtime hygiene verification only; no gameplay logic changes.
+
