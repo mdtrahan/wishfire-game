@@ -17,7 +17,7 @@ test('tomes scaffold defines deterministic gallery model in runtime state', () =
 test('tomes layout is wired as map locale entry and runtime layout route', () => {
   const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
   const src = fs.readFileSync(filePath, 'utf8');
-  assert.match(src, /allowedTransitions:\s*\['combat',\s*'tomesLayout'\]/);
+  assert.match(src, /allowedTransitions:\s*\[[^\]]*'tomesLayout'[^\]]*\]/);
   assert.match(src, /id:\s*'tomesLayout'/);
   assert.match(src, /layoutState\.requestLayoutChange\('tomesLayout',\s*'map-tomes-locale'\)/);
   assert.match(src, /if \(layoutId === 'tomesLayout'\)/);

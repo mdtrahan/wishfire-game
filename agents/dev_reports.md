@@ -9,6 +9,12 @@
 
 ## Reports
 - (append newest report at top)
+- bead id: ORKA-3e4
+- summary of changes: Added runtime Artifacts layout scaffold with deterministic gallery/passive metadata model, map-locale entry mapping, and selectable Artifacts gallery shell with map/combat return routes.
+- files modified: web-runner/app.js; tests/artifactsLayoutScaffoldContract.test.js; tests/tomesLayoutScaffoldContract.test.js
+- test evidence: `npm test -- tests/artifactsLayoutScaffoldContract.test.js tests/tomesLayoutScaffoldContract.test.js tests/yellowSlamSequenceContract.test.js` (6/6 pass)
+- scope confirmation: Confined to layout/state scaffold and navigation mapping only; no economy/balance or finalized artifact mechanics.
+
 - bead id: ORKA-7pi
 - summary of changes: Added runtime Tomes layout scaffold with deterministic gallery/buff metadata model, map-locale entry mapping, and dedicated Tomes layout shell with selectable placeholder tome cards.
 - files modified: web-runner/app.js; tests/tomesLayoutScaffoldContract.test.js
