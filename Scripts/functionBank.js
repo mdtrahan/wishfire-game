@@ -1741,18 +1741,17 @@ export function AdvanceTurn(ctx) {
     }
   }
   if (currentType === 1 && currentUID) {
-    const debuffs = g.EnemyDebuffs?.[currentUID];
-    const turns = g.EnemyDebuffTurns?.[currentUID];
-    const slots = g.EnemyDebuffSlots?.[currentUID] || [];
-    if (debuffs && turns) {
-      for (const stat of [...slots]) {
-        if (turns[stat] > 0) turns[stat] -= 1;
-        if (turns[stat] <= 0) {
-          turns[stat] = 0;
-          debuffs[stat] = 0;
-          const idx = slots.indexOf(stat);
-          if (idx !== -1) slots.splice(idx, 1);
-        }
+    const debuffState = ensureEnemyDebuffState(ctx, currentUID);
+    const debuffs = debuffState.debuffs;
+    const turns = debuffState.turns;
+    const slots = debuffState.slots;
+    for (const stat of [...slots]) {
+      if (turns[stat] > 0) turns[stat] -= 1;
+      if (turns[stat] <= 0) {
+        turns[stat] = 0;
+        debuffs[stat] = 0;
+        const idx = slots.indexOf(stat);
+        if (idx !== -1) slots.splice(idx, 1);
       }
     }
   }
@@ -2065,21 +2064,47 @@ function getRandomLivingEnemy(ctx) {
   return enemies[Math.floor(Math.random() * enemies.length)];
 }
 
-function ensureEnemyDebuffRecord(ctx, enemyUID) {
+const ENEMY_DEBUFF_STATS = ['ATK', 'DEF', 'MAG', 'RES', 'SPD'];
+const ENEMY_DEBUFF_SLOT_LIMIT = 3;
+
+function sanitizeDebuffValue(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.floor(n);
+}
+
+function ensureEnemyDebuffState(ctx, enemyUID) {
   const g = getGlobals(ctx);
   if (!g.EnemyDebuffs) g.EnemyDebuffs = {};
   if (!g.EnemyDebuffSlots) g.EnemyDebuffSlots = {};
   if (!g.EnemyDebuffTurns) g.EnemyDebuffTurns = {};
-  if (!g.EnemyDebuffs[enemyUID]) {
-    g.EnemyDebuffs[enemyUID] = { ATK: 0, DEF: 0, MAG: 0, RES: 0, SPD: 0 };
+  const debuffs = g.EnemyDebuffs[enemyUID] || {};
+  const turns = g.EnemyDebuffTurns[enemyUID] || {};
+  for (const stat of ENEMY_DEBUFF_STATS) {
+    debuffs[stat] = sanitizeDebuffValue(debuffs[stat]);
+    turns[stat] = sanitizeDebuffValue(turns[stat]);
   }
-  if (!g.EnemyDebuffSlots[enemyUID]) {
-    g.EnemyDebuffSlots[enemyUID] = [];
+  const rawSlots = Array.isArray(g.EnemyDebuffSlots[enemyUID]) ? g.EnemyDebuffSlots[enemyUID] : [];
+  const slots = [];
+  for (const rawStat of rawSlots) {
+    const stat = String(rawStat || '').toUpperCase();
+    if (!ENEMY_DEBUFF_STATS.includes(stat)) continue;
+    if (debuffs[stat] <= 0 || turns[stat] <= 0) {
+      debuffs[stat] = 0;
+      turns[stat] = 0;
+      continue;
+    }
+    if (!slots.includes(stat)) slots.push(stat);
+    if (slots.length >= ENEMY_DEBUFF_SLOT_LIMIT) break;
   }
-  if (!g.EnemyDebuffTurns[enemyUID]) {
-    g.EnemyDebuffTurns[enemyUID] = { ATK: 0, DEF: 0, MAG: 0, RES: 0, SPD: 0 };
-  }
-  return g.EnemyDebuffs[enemyUID];
+  g.EnemyDebuffs[enemyUID] = debuffs;
+  g.EnemyDebuffTurns[enemyUID] = turns;
+  g.EnemyDebuffSlots[enemyUID] = slots;
+  return { debuffs, turns, slots };
+}
+
+function ensureEnemyDebuffRecord(ctx, enemyUID) {
+  return ensureEnemyDebuffState(ctx, enemyUID).debuffs;
 }
 
 export function ExecutePurpleDebuff(ctx, actorUID) {
@@ -2109,17 +2134,18 @@ export function ExecutePurpleDebuff(ctx, actorUID) {
   }
 
   LogCombat(ctx, `${hero.name || 'Hero'} tries ${debuffLabel} on ${enemy.name || 'Enemy'}! It succeeded!`);
-  const debuffs = ensureEnemyDebuffRecord(ctx, enemy.uid);
-  const debuffTurns = g.EnemyDebuffTurns[enemy.uid];
-  debuffs[stat] = (debuffs[stat] || 0) + 2;
-  if (debuffTurns) debuffTurns[stat] = 3;
-  const slots = g.EnemyDebuffSlots[enemy.uid];
+  const debuffState = ensureEnemyDebuffState(ctx, enemy.uid);
+  const debuffs = debuffState.debuffs;
+  const debuffTurns = debuffState.turns;
+  const slots = debuffState.slots;
+  debuffs[stat] = sanitizeDebuffValue(debuffs[stat]) + 2;
+  debuffTurns[stat] = 3;
   if (!slots.includes(stat)) {
-  if (slots.length >= 3) {
+    if (slots.length >= ENEMY_DEBUFF_SLOT_LIMIT) {
       const dropped = slots.shift();
       if (dropped) {
         debuffs[dropped] = 0;
-        if (debuffTurns) debuffTurns[dropped] = 0;
+        debuffTurns[dropped] = 0;
       }
     }
     slots.push(stat);
