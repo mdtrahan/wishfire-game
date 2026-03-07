@@ -33,6 +33,22 @@ _Last updated: 2026-03-06_
 _Last updated: 2026-03-07_
 
 ## Completed Beads
+- ORKA-khb (Collectibles layout scaffold: map locale entry, deterministic gallery metadata, runtime shell)
+
+## Active Work
+- Continue prioritized layout scaffold queue.
+
+## Next Tasks
+- ORKA-51g (Homestead scaffold) and ORKA-a0k (Chests scaffold).
+
+## Known Issues
+- None newly introduced in ORKA-khb; mechanics intentionally scaffold-only.
+
+---
+
+_Last updated: 2026-03-07_
+
+## Completed Beads
 - ORKA-8k4 (Mounts layout scaffold: map locale entry, deterministic gallery metadata, runtime shell)
 
 ## Active Work

@@ -337,6 +337,8 @@ const gameState = {
     artifactsLocaleHit: null,
     mountsLocaleButton: { x: 0, y: 0, w: 146, h: 36 },
     mountsLocaleHit: null,
+    collectiblesLocaleButton: { x: 0, y: 0, w: 146, h: 36 },
+    collectiblesLocaleHit: null,
     warMeter: 0.64,
     lastRender: null,
   },
@@ -479,6 +481,49 @@ const gameState = {
         siblingFamily: 'progression-gallery',
         vaultCompatibilityTier: 2,
         passiveHook: { key: 'resist_guard', mode: 'flat', value: 1, cadenceTurns: 8 },
+      },
+    ],
+  },
+  collectiblesLayout: {
+    entryPoint: 'map-locale',
+    selectedIndex: 0,
+    hitZones: null,
+    gallery: [
+      {
+        id: 'collectible-astral-seal',
+        name: 'Astral Seal',
+        discovered: true,
+        rarity: 'Rare',
+        siblingFamily: 'progression-gallery',
+        setTag: 'seal-archive',
+        passiveHook: { key: 'wallet_bonus', mode: 'pct', value: 0.04, cadenceTurns: 0 },
+      },
+      {
+        id: 'collectible-vault-shard',
+        name: 'Vault Shard',
+        discovered: true,
+        rarity: 'Epic',
+        siblingFamily: 'progression-gallery',
+        setTag: 'ward-breaker',
+        passiveHook: { key: 'ward_break_boost', mode: 'flat', value: 1, cadenceTurns: 0 },
+      },
+      {
+        id: 'collectible-orbit-emblem',
+        name: 'Orbit Emblem',
+        discovered: false,
+        rarity: 'Legendary',
+        siblingFamily: 'progression-gallery',
+        setTag: 'orbit-regalia',
+        passiveHook: { key: 'drop_weight', mode: 'pct', value: 0.05, cadenceTurns: 0 },
+      },
+      {
+        id: 'collectible-echo-trophy',
+        name: 'Echo Trophy',
+        discovered: false,
+        rarity: 'Epic',
+        siblingFamily: 'progression-gallery',
+        setTag: 'echo-line',
+        passiveHook: { key: 'chest_meter', mode: 'pct', value: 0.03, cadenceTurns: 0 },
       },
     ],
   },
@@ -2038,7 +2083,7 @@ async function main(){
 
     layoutState.registerLayout({
       id: 'combat',
-      allowedTransitions: ['base', 'shop', 'intro', 'astralOverlay', 'mapLayout', 'heroLayout', 'tomesLayout', 'artifactsLayout', 'mountsLayout'],
+      allowedTransitions: ['base', 'shop', 'intro', 'astralOverlay', 'mapLayout', 'heroLayout', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'collectiblesLayout'],
       async onEnter({ resumeSnapshot }) {
         const hasRuntimeData =
           Array.isArray(instances) && instances.length > 0 &&
@@ -2089,13 +2134,14 @@ async function main(){
     });
     layoutState.registerLayout({
       id: 'mapLayout',
-      allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout'],
+      allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'collectiblesLayout'],
       onEnter() {
         gameState.overlayVisible = false;
         gameState.mapLayout.panY = 0;
         gameState.mapLayout.tomesLocaleHit = null;
         gameState.mapLayout.artifactsLocaleHit = null;
         gameState.mapLayout.mountsLocaleHit = null;
+        gameState.mapLayout.collectiblesLocaleHit = null;
         const drag = gameState.mapLayout.drag;
         drag.active = false;
         drag.pointerId = null;
@@ -2164,6 +2210,26 @@ async function main(){
       onActive() {},
       onExit() {
         gameState.mountsLayout.hitZones = null;
+        return null;
+      },
+    });
+    layoutState.registerLayout({
+      id: 'collectiblesLayout',
+      allowedTransitions: ['mapLayout', 'combat'],
+      onEnter() {
+        gameState.overlayVisible = false;
+        gameState.collectiblesLayout.hitZones = null;
+        gameState.collectiblesLayout.selectedIndex = Math.max(
+          0,
+          Math.min(
+            Math.max(0, (gameState.collectiblesLayout.gallery || []).length - 1),
+            Number(gameState.collectiblesLayout.selectedIndex || 0),
+          ),
+        );
+      },
+      onActive() {},
+      onExit() {
+        gameState.collectiblesLayout.hitZones = null;
         return null;
       },
     });
@@ -2770,6 +2836,26 @@ async function main(){
       ctx.fillStyle = '#1f4a24';
       ctx.font = '500 10px Arial';
       ctx.fillText('Map Locale', mountsBtn.x + 34, mountsBtn.y + 33);
+      const collectiblesBtn = gameState.mapLayout.collectiblesLocaleButton;
+      collectiblesBtn.x = tomeBtn.x;
+      collectiblesBtn.y = Math.max(18, mountsBtn.y - collectiblesBtn.h - 8);
+      gameState.mapLayout.collectiblesLocaleHit = {
+        x: collectiblesBtn.x,
+        y: collectiblesBtn.y,
+        w: collectiblesBtn.w,
+        h: collectiblesBtn.h,
+      };
+      ctx.fillStyle = '#f1e0f7';
+      ctx.fillRect(collectiblesBtn.x, collectiblesBtn.y, collectiblesBtn.w, collectiblesBtn.h);
+      ctx.strokeStyle = '#8e61a4';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(collectiblesBtn.x, collectiblesBtn.y, collectiblesBtn.w, collectiblesBtn.h);
+      ctx.fillStyle = '#4a275d';
+      ctx.font = '700 12px Arial';
+      ctx.fillText('Enter Collectibles', collectiblesBtn.x + 8, collectiblesBtn.y + 22);
+      ctx.fillStyle = '#4a275d';
+      ctx.font = '500 10px Arial';
+      ctx.fillText('Map Locale', collectiblesBtn.x + 34, collectiblesBtn.y + 33);
       ctx.fillStyle = '#ffffff';
       ctx.font = '500 14px Arial';
       ctx.fillText('Map Layout (drag to pan)', 14, viewHeight - 18);
@@ -3075,6 +3161,106 @@ async function main(){
         cursorY += card.h + cardGap;
       }
       gameState.mountsLayout.hitZones = {
+        mapBack,
+        combatBack,
+        cards: cardHitZones,
+      };
+      return;
+    }
+    if (layoutId === 'collectiblesLayout') {
+      const viewWidth = canvas.width / dpr;
+      const viewHeight = canvas.height / dpr;
+      const palette = {
+        bg0: '#251532',
+        bg1: '#3b2251',
+        panel: '#f2e9f7',
+        panelEdge: '#c3a8d3',
+        ink: '#381d49',
+        muted: '#705683',
+        selected: '#ead7f5',
+      };
+      const roundRect = (x, y, w, h, r, fill, stroke) => {
+        const radius = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + w - radius, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+        ctx.lineTo(x + w, y + h - radius);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+        ctx.lineTo(x + radius, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+        if (fill) {
+          ctx.fillStyle = fill;
+          ctx.fill();
+        }
+        if (stroke) {
+          ctx.strokeStyle = stroke;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      };
+      ctx.clearRect(0, 0, viewWidth, viewHeight);
+      const grad = ctx.createLinearGradient(0, 0, 0, viewHeight);
+      grad.addColorStop(0, palette.bg0);
+      grad.addColorStop(1, palette.bg1);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, viewWidth, viewHeight);
+
+      const panelPad = 14;
+      const panel = {
+        x: panelPad,
+        y: 16,
+        w: Math.max(260, viewWidth - panelPad * 2),
+        h: Math.max(360, viewHeight - 34),
+      };
+      roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
+      const mapBack = { x: panel.x + 12, y: panel.y + 12, w: 108, h: 28 };
+      const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
+      roundRect(mapBack.x, mapBack.y, mapBack.w, mapBack.h, 9, '#eadff2', '#b796cb');
+      roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#eadff2', '#b796cb');
+      ctx.fillStyle = palette.ink;
+      ctx.font = '700 11px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Back To Map', mapBack.x + mapBack.w / 2, mapBack.y + 18);
+      ctx.fillText('Back To Combat', combatBack.x + combatBack.w / 2, combatBack.y + 18);
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = palette.ink;
+      ctx.font = '700 18px Arial';
+      ctx.fillText('Collectibles Gallery (Scaffold)', panel.x + 14, panel.y + 58);
+      ctx.fillStyle = palette.muted;
+      ctx.font = '500 11px Arial';
+      ctx.fillText('Sibling progression gallery with deterministic collection-state metadata.', panel.x + 14, panel.y + 76);
+
+      const gallery = Array.isArray(gameState.collectiblesLayout.gallery) ? gameState.collectiblesLayout.gallery : [];
+      const selectedIndex = Math.max(0, Math.min(gallery.length - 1, Number(gameState.collectiblesLayout.selectedIndex || 0)));
+      const cardHitZones = [];
+      let cursorY = panel.y + 90;
+      const cardGap = 8;
+      for (let i = 0; i < gallery.length; i += 1) {
+        const collectible = gallery[i] || {};
+        const card = { x: panel.x + 12, y: cursorY, w: panel.w - 24, h: 58 };
+        const discovered = Boolean(collectible.discovered);
+        const passive = collectible.passiveHook || null;
+        roundRect(card.x, card.y, card.w, card.h, 10, i === selectedIndex ? palette.selected : '#f7f0fb', '#ceb9da');
+        ctx.fillStyle = palette.ink;
+        ctx.font = '700 13px Arial';
+        ctx.fillText(discovered ? String(collectible.name || 'Unknown Collectible') : 'Locked Collectible', card.x + 10, card.y + 20);
+        ctx.fillStyle = palette.muted;
+        ctx.font = '600 10px Arial';
+        ctx.fillText(`Rarity: ${String(collectible.rarity || 'Common')}`, card.x + 10, card.y + 35);
+        const passiveText = passive
+          ? `${String(passive.key || '')} ${String(passive.mode || '')} ${Number(passive.value || 0)}`
+          : 'No passive hook';
+        ctx.fillText(`Passive: ${passiveText}`, card.x + 136, card.y + 20);
+        ctx.fillText(`Set: ${String(collectible.setTag || 'none')}`, card.x + 136, card.y + 35);
+        cardHitZones.push(card);
+        cursorY += card.h + cardGap;
+      }
+      gameState.collectiblesLayout.hitZones = {
         mapBack,
         combatBack,
         cards: cardHitZones,
@@ -5985,6 +6171,14 @@ function getStoryCardLiveLineState() {
         drawFrame();
         return;
       }
+      const collectiblesHit = gameState.mapLayout.collectiblesLocaleHit;
+      if (isPointInRect(mx, my, collectiblesHit)) {
+        layoutState.requestLayoutChange('collectiblesLayout', 'map-collectibles-locale').catch((err) => {
+          console.error('[LAYOUT_PHASE1] map->collectibles failed', err);
+        });
+        drawFrame();
+        return;
+      }
       const drag = gameState.mapLayout.drag;
       drag.active = true;
       drag.pointerId = ev.pointerId;
@@ -6069,6 +6263,33 @@ function getStoryCardLiveLineState() {
       for (let i = 0; i < cards.length; i += 1) {
         if (isPointInRect(mx, my, cards[i])) {
           gameState.mountsLayout.selectedIndex = i;
+          drawFrame();
+          return;
+        }
+      }
+      drawFrame();
+      return;
+    }
+    if (activeLayoutId === 'collectiblesLayout') {
+      const zones = (gameState.collectiblesLayout && gameState.collectiblesLayout.hitZones) || {};
+      if (isPointInRect(mx, my, zones.mapBack)) {
+        layoutState.requestLayoutChange('mapLayout', 'collectibles-back-map').catch((err) => {
+          console.error('[LAYOUT_PHASE1] collectibles->map failed', err);
+        });
+        drawFrame();
+        return;
+      }
+      if (isPointInRect(mx, my, zones.combatBack)) {
+        layoutState.requestLayoutChange('combat', 'collectibles-back-combat').catch((err) => {
+          console.error('[LAYOUT_PHASE1] collectibles->combat failed', err);
+        });
+        drawFrame();
+        return;
+      }
+      const cards = Array.isArray(zones.cards) ? zones.cards : [];
+      for (let i = 0; i < cards.length; i += 1) {
+        if (isPointInRect(mx, my, cards[i])) {
+          gameState.collectiblesLayout.selectedIndex = i;
           drawFrame();
           return;
         }
