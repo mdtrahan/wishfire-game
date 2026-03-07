@@ -43,3 +43,19 @@ _Last updated: 2026-03-07_
 
 ## Known Issues
 - None new in this cycle.
+
+---
+
+_Last updated: 2026-03-07_
+
+## Completed Beads
+- ORKA-6gt (Falie enmity target-bias with capped guardrail)
+
+## Active Work
+- Queue health check and next class-identity slice selection.
+
+## Next Tasks
+- Reframe ORKA-9ri to align with skill/passive model before implementation.
+
+## Known Issues
+- None new in this cycle.

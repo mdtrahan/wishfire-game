@@ -2037,6 +2037,47 @@ function getRandomLivingEnemy(ctx) {
   return enemies[Math.floor(Math.random() * enemies.length)];
 }
 
+const FALIE_ENMITY_NAME = 'Falie';
+const FALIE_ENMITY_BONUS = 0.35;
+const FALIE_ENMITY_CAP = 0.75;
+
+function pickEnemyTargetHero(ctx, enemyUID = 0) {
+  const g = getGlobals(ctx);
+  const heroes = getHeroes(ctx).filter((h) => (h?.hp ?? 0) > 0);
+  if (!heroes.length) return null;
+  const falie = heroes.find((h) => String(h?.name || '') === FALIE_ENMITY_NAME);
+  if (!falie || heroes.length <= 1) {
+    const target = randomPick(heroes) || heroes[0] || null;
+    g.LastEnemyTargetBias = {
+      enemyUID: Number(enemyUID || 0),
+      mode: 'uniform',
+      targetUID: Number(target?.uid || 0),
+      heroCount: heroes.length,
+    };
+    return target;
+  }
+  const baseChance = 1 / heroes.length;
+  const falieChance = Math.min(FALIE_ENMITY_CAP, baseChance + FALIE_ENMITY_BONUS);
+  const roll = Math.random();
+  let target = null;
+  if (roll < falieChance) {
+    target = falie;
+  } else {
+    const nonFalie = heroes.filter((h) => h.uid !== falie.uid);
+    target = randomPick(nonFalie) || falie;
+  }
+  g.LastEnemyTargetBias = {
+    enemyUID: Number(enemyUID || 0),
+    mode: 'falie_enmity_bias',
+    targetUID: Number(target?.uid || 0),
+    falieUID: Number(falie.uid || 0),
+    falieChance: Number(falieChance || 0),
+    roll: Number(roll || 0),
+    heroCount: heroes.length,
+  };
+  return target;
+}
+
 const ENEMY_DEBUFF_STATS = ['ATK', 'DEF', 'MAG', 'RES', 'SPD'];
 const ENEMY_DEBUFF_SLOT_LIMIT = 3;
 
@@ -2898,11 +2939,11 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, now + 0.5);
   } else if (skillId === 'Enemy_ATK_Single') {
     handled = true;
-    const target = randomPick(getHeroes(ctx));
+    const target = pickEnemyTargetHero(ctx, actorUID);
     if (target) Enemy_ATK_Single(ctx, actorUID, target.uid);
   } else if (skillId === 'Enemy_MAG_Single') {
     handled = true;
-    const target = randomPick(getHeroes(ctx));
+    const target = pickEnemyTargetHero(ctx, actorUID);
     if (target) Enemy_MAG_Single(ctx, actorUID, target.uid);
   } else if (skillId === 'Enemy_MAG_AOE') {
     handled = true;
@@ -3205,7 +3246,7 @@ export function Enemy_Wipe(ctx, enemyUID) {
 }
 
 export function ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID = 0) {
-  const resolvedTargetUID = targetUID || (randomPick(getHeroes(ctx))?.uid || 0);
+  const resolvedTargetUID = targetUID || (pickEnemyTargetHero(ctx, enemyUID)?.uid || 0);
   if (skillId === 'Enemy_Heal_Self') {
     Enemy_Heal_Self(ctx, enemyUID);
     return 1;
@@ -3248,7 +3289,7 @@ export function StartEnemyAction(ctx, enemyUID) {
   if (enemy.originY == null) enemy.originY = SlotY(ctx, enemy.slotIndex ?? 0);
   if (enemy.x == null) enemy.x = enemy.originX;
   if (enemy.y == null) enemy.y = enemy.originY;
-  const target = randomPick(getHeroes(ctx));
+  const target = pickEnemyTargetHero(ctx, enemyUID);
   const targetUID = target ? target.uid : 0;
   const skillId = PickEnemySkill(ctx, enemyUID);
   g.EnemyAction = {
