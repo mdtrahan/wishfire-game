@@ -33,6 +33,22 @@ _Last updated: 2026-03-06_
 _Last updated: 2026-03-07_
 
 ## Completed Beads
+- ORKA-a0k (Chests layout scaffold: mission-nav entry, deterministic tabs/progress/reward shell)
+
+## Active Work
+- Continue prioritized layout scaffold queue.
+
+## Next Tasks
+- ORKA-axd (Pets scaffold) and ORKA-c1j (Vault scaffold).
+
+## Known Issues
+- None newly introduced in ORKA-a0k; mechanics intentionally scaffold-only.
+
+---
+
+_Last updated: 2026-03-07_
+
+## Completed Beads
 - ORKA-51g (Homestead layout scaffold: map locale entry, deterministic scene metadata, runtime shell)
 
 ## Active Work

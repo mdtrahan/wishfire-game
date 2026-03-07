@@ -547,6 +547,28 @@ const gameState = {
       ],
     },
   },
+  chestsLayout: {
+    entryPoint: 'menu-nav',
+    activeTab: 'Common',
+    progress: {
+      current: 36,
+      target: 100,
+      milestoneReward: 'Tier Chest',
+    },
+    hitZones: null,
+    tabs: [
+      { id: 'Common', label: 'Common', tier: 1, chestCount: 3 },
+      { id: 'Rare', label: 'Rare', tier: 2, chestCount: 2 },
+      { id: 'Epic', label: 'Epic', tier: 3, chestCount: 1 },
+      { id: 'Legendary', label: 'Legendary', tier: 4, chestCount: 0 },
+    ],
+    rewardsByTab: {
+      Common: ['Pet Fragment x5', 'Collectible Scrap x8', 'Coins x250'],
+      Rare: ['Pet Fragment x10', 'Collectible Token x2', 'Coins x600'],
+      Epic: ['Pet Core x1', 'Collectible Token x4', 'Coins x1200'],
+      Legendary: ['Pet Core x2', 'Collectible Relic x1', 'Coins x3000'],
+    },
+  },
   task015Trace: {
     storycardPlacement: [],
     yellowQueue: [],
@@ -2103,7 +2125,7 @@ async function main(){
 
     layoutState.registerLayout({
       id: 'combat',
-      allowedTransitions: ['base', 'shop', 'intro', 'astralOverlay', 'mapLayout', 'heroLayout', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'collectiblesLayout', 'homesteadLayout'],
+      allowedTransitions: ['base', 'shop', 'intro', 'astralOverlay', 'mapLayout', 'heroLayout', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'collectiblesLayout', 'homesteadLayout', 'chestsLayout'],
       async onEnter({ resumeSnapshot }) {
         const hasRuntimeData =
           Array.isArray(instances) && instances.length > 0 &&
@@ -2275,6 +2297,24 @@ async function main(){
       },
     });
     layoutState.registerLayout({
+      id: 'chestsLayout',
+      allowedTransitions: ['combat'],
+      onEnter() {
+        gameState.overlayVisible = false;
+        gameState.chestsLayout.hitZones = null;
+        const tabs = Array.isArray(gameState.chestsLayout.tabs) ? gameState.chestsLayout.tabs : [];
+        const allowed = new Set(tabs.map((t) => String(t.id || '')));
+        if (!allowed.has(String(gameState.chestsLayout.activeTab || ''))) {
+          gameState.chestsLayout.activeTab = tabs.length ? String(tabs[0].id || 'Common') : 'Common';
+        }
+      },
+      onActive() {},
+      onExit() {
+        gameState.chestsLayout.hitZones = null;
+        return null;
+      },
+    });
+    layoutState.registerLayout({
       id: 'heroLayout',
       allowedTransitions: ['combat'],
       onEnter() {
@@ -2373,6 +2413,14 @@ async function main(){
       }
       gameState.overlayVisible = false;
       await layoutState.requestLayoutChange('heroLayout', 'nav-hero');
+      return;
+    }
+    if (label === 'Mission') {
+      if (layoutState.getActiveLayoutId() !== 'combat') {
+        return;
+      }
+      gameState.overlayVisible = false;
+      await layoutState.requestLayoutChange('chestsLayout', 'nav-chests');
       return;
     }
     gameState.overlayVisible = true;
@@ -3433,6 +3481,127 @@ async function main(){
         mapBack,
         combatBack,
         slots: slotHitZones,
+      };
+      return;
+    }
+    if (layoutId === 'chestsLayout') {
+      const viewWidth = canvas.width / dpr;
+      const viewHeight = canvas.height / dpr;
+      const palette = {
+        bg0: '#2a1f0e',
+        bg1: '#4a3820',
+        panel: '#f4ecd6',
+        panelEdge: '#c7b489',
+        ink: '#3c2a12',
+        muted: '#7b6641',
+        selected: '#f1ddad',
+      };
+      const roundRect = (x, y, w, h, r, fill, stroke) => {
+        const radius = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + w - radius, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+        ctx.lineTo(x + w, y + h - radius);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+        ctx.lineTo(x + radius, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+        if (fill) {
+          ctx.fillStyle = fill;
+          ctx.fill();
+        }
+        if (stroke) {
+          ctx.strokeStyle = stroke;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      };
+      ctx.clearRect(0, 0, viewWidth, viewHeight);
+      const grad = ctx.createLinearGradient(0, 0, 0, viewHeight);
+      grad.addColorStop(0, palette.bg0);
+      grad.addColorStop(1, palette.bg1);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, viewWidth, viewHeight);
+
+      const panelPad = 14;
+      const panel = {
+        x: panelPad,
+        y: 16,
+        w: Math.max(260, viewWidth - panelPad * 2),
+        h: Math.max(360, viewHeight - 34),
+      };
+      roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
+      const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
+      roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#efe3c4', '#b89f6f');
+      ctx.fillStyle = palette.ink;
+      ctx.font = '700 11px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Back To Combat', combatBack.x + combatBack.w / 2, combatBack.y + 18);
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = palette.ink;
+      ctx.font = '700 18px Arial';
+      ctx.fillText('Chests (Scaffold)', panel.x + 14, panel.y + 58);
+      ctx.fillStyle = palette.muted;
+      ctx.font = '500 11px Arial';
+      ctx.fillText('Tier tabs and dopamine-progress reward shell.', panel.x + 14, panel.y + 76);
+
+      const tabs = Array.isArray(gameState.chestsLayout.tabs) ? gameState.chestsLayout.tabs : [];
+      const activeTab = String(gameState.chestsLayout.activeTab || '');
+      const tabHitZones = [];
+      const tabY = panel.y + 92;
+      const tabW = Math.max(62, Math.floor((panel.w - 24 - (tabs.length - 1) * 8) / Math.max(1, tabs.length)));
+      tabs.forEach((tab, idx) => {
+        const rect = { x: panel.x + 12 + idx * (tabW + 8), y: tabY, w: tabW, h: 28 };
+        const isActive = String(tab.id || '') === activeTab;
+        roundRect(rect.x, rect.y, rect.w, rect.h, 8, isActive ? palette.selected : '#f8f1dd', '#ccb88d');
+        ctx.fillStyle = palette.ink;
+        ctx.font = '700 10px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(tab.label || tab.id || ''), rect.x + rect.w / 2, rect.y + 18);
+        tabHitZones.push({ ...rect, id: String(tab.id || '') });
+      });
+      ctx.textAlign = 'left';
+
+      const progress = gameState.chestsLayout.progress || { current: 0, target: 1, milestoneReward: 'Tier Chest' };
+      const progressWrap = { x: panel.x + 12, y: tabY + 40, w: panel.w - 24, h: 44 };
+      roundRect(progressWrap.x, progressWrap.y, progressWrap.w, progressWrap.h, 10, '#f8f1dd', '#ccb88d');
+      const meter = { x: progressWrap.x + 10, y: progressWrap.y + 24, w: progressWrap.w - 20, h: 12 };
+      const pct = Math.max(0, Math.min(1, Number(progress.current || 0) / Math.max(1, Number(progress.target || 1))));
+      ctx.fillStyle = '#e0d5bb';
+      ctx.fillRect(meter.x, meter.y, meter.w, meter.h);
+      ctx.fillStyle = '#d2a739';
+      ctx.fillRect(meter.x, meter.y, meter.w * pct, meter.h);
+      ctx.strokeStyle = '#a98a45';
+      ctx.strokeRect(meter.x, meter.y, meter.w, meter.h);
+      ctx.fillStyle = palette.ink;
+      ctx.font = '600 10px Arial';
+      ctx.fillText(
+        `Progress ${Number(progress.current || 0)}/${Number(progress.target || 0)} · Milestone: ${String(progress.milestoneReward || '')}`,
+        progressWrap.x + 10,
+        progressWrap.y + 16,
+      );
+
+      const rewards = (gameState.chestsLayout.rewardsByTab || {})[activeTab] || [];
+      const rewardHitZones = [];
+      let rewardY = progressWrap.y + progressWrap.h + 10;
+      rewards.forEach((reward, idx) => {
+        const rect = { x: panel.x + 12, y: rewardY, w: panel.w - 24, h: 36 };
+        roundRect(rect.x, rect.y, rect.w, rect.h, 8, '#fff8e8', '#d7c7a2');
+        ctx.fillStyle = palette.ink;
+        ctx.font = '600 11px Arial';
+        ctx.fillText(String(reward || `Reward ${idx + 1}`), rect.x + 10, rect.y + 22);
+        rewardHitZones.push(rect);
+        rewardY += rect.h + 8;
+      });
+
+      gameState.chestsLayout.hitZones = {
+        combatBack,
+        tabs: tabHitZones,
+        rewards: rewardHitZones,
       };
       return;
     }
@@ -6494,6 +6663,27 @@ function getStoryCardLiveLineState() {
       for (let i = 0; i < slots.length; i += 1) {
         if (isPointInRect(mx, my, slots[i])) {
           gameState.homesteadLayout.selectedSlot = i;
+          drawFrame();
+          return;
+        }
+      }
+      drawFrame();
+      return;
+    }
+    if (activeLayoutId === 'chestsLayout') {
+      const zones = (gameState.chestsLayout && gameState.chestsLayout.hitZones) || {};
+      if (isPointInRect(mx, my, zones.combatBack)) {
+        layoutState.requestLayoutChange('combat', 'chests-back-combat').catch((err) => {
+          console.error('[LAYOUT_PHASE1] chests->combat failed', err);
+        });
+        drawFrame();
+        return;
+      }
+      const tabs = Array.isArray(zones.tabs) ? zones.tabs : [];
+      for (let i = 0; i < tabs.length; i += 1) {
+        const tab = tabs[i];
+        if (isPointInRect(mx, my, tab)) {
+          gameState.chestsLayout.activeTab = String(tab.id || gameState.chestsLayout.activeTab || 'Common');
           drawFrame();
           return;
         }

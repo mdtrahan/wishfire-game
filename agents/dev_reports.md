@@ -9,6 +9,12 @@
 
 ## Reports
 - (append newest report at top)
+- bead id: ORKA-a0k
+- summary of changes: Added runtime Chests layout scaffold with deterministic tier tabs, progress bar placeholder, reward-list shell, and Mission-nav entry mapping from combat.
+- files modified: web-runner/app.js; tests/chestsLayoutScaffoldContract.test.js
+- test evidence: `npm test -- tests/chestsLayoutScaffoldContract.test.js tests/homesteadLayoutScaffoldContract.test.js tests/collectiblesLayoutScaffoldContract.test.js` (6/6 pass)
+- scope confirmation: Confined to layout/state scaffold and navigation mapping only; no drop-table/economy/balance finalization.
+
 - bead id: ORKA-51g
 - summary of changes: Added runtime Homestead layout scaffold with deterministic scene-slot/emission metadata, map-locale entry mapping, and selectable Homestead builder shell with map/combat return routes.
 - files modified: web-runner/app.js; tests/homesteadLayoutScaffoldContract.test.js
