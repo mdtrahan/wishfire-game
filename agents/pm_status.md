@@ -107,3 +107,19 @@ _Last updated: 2026-03-07_
 
 ## Known Issues
 - ORKA-9ri still requires acceptance rewrite before implementation.
+
+---
+
+_Last updated: 2026-03-07_
+
+## Completed Beads
+- ORKA-xnz (hit-flash feedback contract lock)
+
+## Active Work
+- Continuing low-conflict cleanup/hardening beads.
+
+## Next Tasks
+- ORKA-ohb (regen debug noise cleanup) as next low-risk runtime hygiene slice.
+
+## Known Issues
+- ORKA-9ri remains held pending acceptance rewrite.

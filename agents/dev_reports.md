@@ -39,3 +39,9 @@
 - test evidence: `npm test -- tests/blueAstralWalletContract.test.js tests/blueBuffLifecycleContract.test.js tests/runaMagicResistContract.test.js tests/falieEnmityTargetBiasContract.test.js tests/huunExecutionDropBonusContract.test.js` (15/15 pass)
 - scope confirmation: QA closeout evidence only; no runtime behavior changes in this slice.
 
+- bead id: ORKA-xnz
+- summary of changes: Added deterministic contract coverage for brief white hit-flash feedback on attacked combatants (damage path flash timing + renderer white-overlay behavior).
+- files modified: tests/hitFlashFeedbackContract.test.js
+- test evidence: `npm test -- tests/hitFlashFeedbackContract.test.js tests/blueAstralWalletContract.test.js tests/runaMagicResistContract.test.js tests/falieEnmityTargetBiasContract.test.js tests/huunExecutionDropBonusContract.test.js` (14/14 pass)
+- scope confirmation: QA lock-in only; runtime behavior already present and unchanged.
+
