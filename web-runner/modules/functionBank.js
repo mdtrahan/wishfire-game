@@ -1700,35 +1700,8 @@ export function AdvanceTurn(ctx) {
   const g = getGlobals(ctx);
   const currentUID = GetCurrentTurn(ctx);
   const currentType = GetCurrentType(ctx);
-  const decayPartyBuffsOnHeroAction = () => {
-    const tracked = Array.isArray(g.TrackBuffs) ? g.TrackBuffs : [-1, -1, -1, -1];
-    const defs = [
-      { typeId: 1, buffKey: 'PartyBuff_ATK', turnsKey: 'BuffTurns_ATK' },
-      { typeId: 2, buffKey: 'PartyBuff_DEF', turnsKey: 'BuffTurns_DEF' },
-      { typeId: 3, buffKey: 'PartyBuff_MAG', turnsKey: 'BuffTurns_MAG' },
-      { typeId: 4, buffKey: 'PartyBuff_RES', turnsKey: 'BuffTurns_RES' },
-    ];
-    const expiredTypes = new Set();
-    for (const def of defs) {
-      const currentTurns = Number(g[def.turnsKey] || 0);
-      const currentBuff = Number(g[def.buffKey] || 0);
-      if (currentTurns > 0) {
-        g[def.turnsKey] = currentTurns - 1;
-      }
-      if (Number(g[def.turnsKey] || 0) <= 0 || currentBuff <= 0) {
-        g[def.turnsKey] = 0;
-        g[def.buffKey] = 0;
-        expiredTypes.add(def.typeId);
-      }
-    }
-    const nextTrack = tracked.filter((typeId) => typeId !== -1 && !expiredTypes.has(typeId)).slice(0, 4);
-    while (nextTrack.length < 4) nextTrack.push(-1);
-    g.TrackBuffs = nextTrack;
-    RefreshPartyBuffUI(ctx);
-  };
   const timeMode = isTimeInitiative(ctx), beforeQueue = snapshotTurnOrderSlots(ctx), beforeIndex = Number(g.CurrentTurnIndex || 0), beforeSlot = beforeQueue[beforeIndex] || null, rolloverCandidate = beforeQueue.length > 0 && beforeIndex >= beforeQueue.length - 1;
   if (currentType === 0 && currentUID) {
-    decayPartyBuffsOnHeroAction();
     const store = ensurePowerAmpByUID(ctx);
     const entry = store[currentUID];
     if (entry) {
@@ -2889,56 +2862,55 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
   const actor = GetActorByUID(ctx, actorUID);
   const actorName = actor ? actor.name : 'Actor';
   console.log(`[SKILL] start skill=${skillId} actor=${actorName} uid=${actorUID} phase=${g.TurnPhase} busy=${g.IsPlayerBusy} canPick=${g.CanPickGems}`);
-  const buffTurns = Math.max(1, Math.min(5, Number(g.BuffDurationDefault || 5)));
   if (actor && actor.kind === 'hero' && (skillId === 'HERO_SINGLE' || skillId === 'HERO_AOE')) {
     StartHeroLunge(ctx, actorUID);
   }
 
   if (skillId === 'DEF_UP') {
     handled = true;
-    ctx.callFunction('Party_DEF_UP', buffTurns, actorUID, 0, 2);
+    ctx.callFunction('Party_DEF_UP', 0, actorUID, 0, 2);
     runTraitHooks(ctx, 'status_apply', {
       sourceUID: Number(actorUID || 0),
       targetUID: Number(actorUID || 0),
       statusType: 'buff',
       stat: 'DEF',
-      turns: Number(buffTurns || 0),
+      turns: 0,
       amount: 2,
     });
     LogCombat(ctx, `${actorName} increased the party's defense!`);
   } else if (skillId === 'ATK_UP') {
     handled = true;
-    ctx.callFunction('Party_ATK_UP', buffTurns, actorUID, 0, 2);
+    ctx.callFunction('Party_ATK_UP', 0, actorUID, 0, 2);
     runTraitHooks(ctx, 'status_apply', {
       sourceUID: Number(actorUID || 0),
       targetUID: Number(actorUID || 0),
       statusType: 'buff',
       stat: 'ATK',
-      turns: Number(buffTurns || 0),
+      turns: 0,
       amount: 2,
     });
     LogCombat(ctx, `${actorName} increased the party's attack!`);
   } else if (skillId === 'MAG_UP') {
     handled = true;
-    ctx.callFunction('Party_MAG_UP', buffTurns, actorUID, 0, 2);
+    ctx.callFunction('Party_MAG_UP', 0, actorUID, 0, 2);
     runTraitHooks(ctx, 'status_apply', {
       sourceUID: Number(actorUID || 0),
       targetUID: Number(actorUID || 0),
       statusType: 'buff',
       stat: 'MAG',
-      turns: Number(buffTurns || 0),
+      turns: 0,
       amount: 2,
     });
     LogCombat(ctx, `${actorName} increased the party's magic attack!`);
   } else if (skillId === 'RES_UP') {
     handled = true;
-    ctx.callFunction('Party_RES_UP', buffTurns, actorUID, 0, 2);
+    ctx.callFunction('Party_RES_UP', 0, actorUID, 0, 2);
     runTraitHooks(ctx, 'status_apply', {
       sourceUID: Number(actorUID || 0),
       targetUID: Number(actorUID || 0),
       statusType: 'buff',
       stat: 'RES',
-      turns: Number(buffTurns || 0),
+      turns: 0,
       amount: 2,
     });
     LogCombat(ctx, `${actorName} increased the party's magic defense!`);
