@@ -139,3 +139,19 @@ _Last updated: 2026-03-07_
 
 ## Known Issues
 - ORKA-9ri still pending rewrite for model alignment.
+
+---
+
+_Last updated: 2026-03-07_
+
+## Completed Beads
+- ORKA-6x3 (yellow per-gem slam settle sequence)
+
+## Active Work
+- Priority queue shifted toward layout scaffolds (tomes/relics/vault/chests/evolution/homestead/pets/artifacts/mounts/collectibles).
+
+## Next Tasks
+- Begin first layout scaffold implementation bead from new P1 queue.
+
+## Known Issues
+- ORKA-9ri still pending model-aligned rewrite before execution.

@@ -51,3 +51,9 @@
 - test evidence: `npm test -- tests/regenDebugNoiseContract.test.js tests/hitFlashFeedbackContract.test.js tests/blueAstralWalletContract.test.js tests/runaMagicResistContract.test.js tests/falieEnmityTargetBiasContract.test.js tests/huunExecutionDropBonusContract.test.js` (16/16 pass)
 - scope confirmation: Runtime hygiene verification only; no gameplay logic changes.
 
+- bead id: ORKA-6x3
+- summary of changes: Implemented per-gem yellow sequence settle gate so each yellow-replaced/refilled gem now completes randomize -> slam/bounce settle -> advance before next gem.
+- files modified: web-runner/app.js; tests/yellowSlamSequenceContract.test.js
+- test evidence: `npm test -- tests/yellowSlamSequenceContract.test.js tests/yellowGoldFlyupContract.test.js tests/blueAstralWalletContract.test.js` (7/7 pass)
+- scope confirmation: Confined to yellow sequence pacing/animation sequencing; existing randomize behavior preserved.
+

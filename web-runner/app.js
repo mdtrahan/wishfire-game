@@ -1141,6 +1141,8 @@ function handleSpecialGem6(gem) {
 const YELLOW_CASINO_TELEGRAPH_SEC = 0.15;
 const yellowMatchAnimationDuration = 0.4;
 const YELLOW_CASINO_SPIN_SEC = yellowMatchAnimationDuration;
+const YELLOW_CASINO_SETTLE_SEC = 0.14;
+const YELLOW_CASINO_SETTLE_BOUNCE_AMP = 0.22;
 const YELLOW_CASINO_TARGETS = YELLOW_REFILL_TARGETS;
 const YELLOW_CASINO_WALK = [YELLOW_COLOR, ...YELLOW_CASINO_TARGETS];
 
@@ -2897,6 +2899,8 @@ async function main(){
             item.frameDuration = item.sequence.length > 1
               ? item.duration / (item.sequence.length - 1)
               : item.duration;
+            item.settleStarted = false;
+            item.settleUntil = 0;
             casino.current = item;
             traceTask015YellowAnimation('yellow-sequence-item-start', {
               step: Number(casino.index),
@@ -2930,11 +2934,29 @@ async function main(){
               casino.index += 1;
               startNext();
             } else {
-              gem.color = frame;
-              gem.elementIndex = frame;
-              if (elapsed >= item.duration) {
+              if (!item.settleStarted) {
+                gem.color = frame;
+                gem.elementIndex = frame;
+              } else {
                 gem.color = item.target;
                 gem.elementIndex = item.target;
+              }
+              if (elapsed >= item.duration && !item.settleStarted) {
+                gem.color = item.target;
+                gem.elementIndex = item.target;
+                gem.bounceStart = nowTime;
+                gem.bounceDur = YELLOW_CASINO_SETTLE_SEC;
+                gem.bounceAmp = YELLOW_CASINO_SETTLE_BOUNCE_AMP;
+                item.settleStarted = true;
+                item.settleUntil = nowTime + YELLOW_CASINO_SETTLE_SEC;
+                traceTask015YellowAnimation('yellow-sequence-item-settle', {
+                  step: Number(casino.index),
+                  type: 'yellow',
+                  uid: Number(gem.uid || 0),
+                  settleSec: Number(YELLOW_CASINO_SETTLE_SEC || 0),
+                });
+              }
+              if (item.settleStarted && nowTime >= item.settleUntil) {
                 if (isGemDebugEnabled()) {
                   gemDebugLog('[COVERAGE]', countCellCoverage());
                 }
@@ -2953,9 +2975,16 @@ async function main(){
               }
             }
           } else if (item.type === 'empty') {
-            const pos = getCellWorldPos(item.cellC, item.cellR);
-            casino.ghost = { x: pos.x, y: pos.y, w: pos.w, h: pos.h, frame };
-            if (elapsed >= item.duration) {
+            if (item.settleStarted) {
+              if (nowTime >= item.settleUntil) {
+                casino.ghost = null;
+                casino.index += 1;
+                casino.current = null;
+              }
+            } else {
+              const pos = getCellWorldPos(item.cellC, item.cellR);
+              casino.ghost = { x: pos.x, y: pos.y, w: pos.w, h: pos.h, frame };
+              if (elapsed >= item.duration) {
               const step = casino.index;
               const cellR = item.cellR;
               const cellC = item.cellC;
@@ -3007,6 +3036,9 @@ async function main(){
                   Selected: 0,
                   flashUntil: 0
                 };
+                newGem.bounceStart = nowTime;
+                newGem.bounceDur = YELLOW_CASINO_SETTLE_SEC;
+                newGem.bounceAmp = YELLOW_CASINO_SETTLE_BOUNCE_AMP;
                 if (isGemDebugEnabled()) {
                   gemDebugLog('[REFILL_BEFORE]', {
                     step,
@@ -3050,9 +3082,16 @@ async function main(){
                 });
                 traceTask015YellowWrite('yellow-sequence', item, casino.index);
                 casino.ghost = null;
-                casino.index += 1;
-                casino.current = null;
+                item.settleStarted = true;
+                item.settleUntil = nowTime + YELLOW_CASINO_SETTLE_SEC;
+                traceTask015YellowAnimation('yellow-sequence-item-settle', {
+                  step: Number(casino.index),
+                  type: 'empty',
+                  uid: Number(newGem.uid || 0),
+                  settleSec: Number(YELLOW_CASINO_SETTLE_SEC || 0),
+                });
               }
+            }
             }
           }
           if (!casino.current && casino.index >= casino.queue.length) {
@@ -4218,8 +4257,10 @@ async function main(){
           if (t >= 1) {
             gem.bounceStart = null;
             gem.bounceDur = null;
+            gem.bounceAmp = null;
           } else if (t >= 0) {
-            scale = 1 + (0.12 * Math.sin(Math.PI * t));
+            const amp = Number(gem.bounceAmp ?? 0.12);
+            scale = 1 + (amp * Math.sin(Math.PI * t));
           }
         }
         const gemW = gem.width * layoutScale * scale;
