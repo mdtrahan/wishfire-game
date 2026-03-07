@@ -70,6 +70,13 @@ function ensureEntities(ctx) {
   return (ctx && ctx.state ? ctx.state.entities : state.entities);
 }
 
+function computeCombatPowerFromStats(atk, def, hp) {
+  const a = Number(atk || 0);
+  const d = Number(def || 0);
+  const h = Number(hp || 0);
+  return Math.round((a + d + (h / 10)) * 100) / 100;
+}
+
 function getGems(ctx) {
   if (ctx && typeof ctx.getGems === 'function') return ctx.getGems();
   const g = getGlobals(ctx);
@@ -2394,6 +2401,11 @@ export function SpawnEnemy(ctx, enemyData, slotIndex = 0) {
     name: enemyData.name || `Enemy_${uid}`,
     hp: Number(enemyData.HP ?? 0),
     maxHP: Number(enemyData.HP ?? enemyData.maxHP ?? 0),
+    combatPower: Number(
+      enemyData.CombatPower
+      ?? enemyData.combatPower
+      ?? computeCombatPowerFromStats(enemyData.ATK, enemyData.DEF, enemyData.HP ?? enemyData.maxHP),
+    ),
     stats: {
       ATK: Number(enemyData.ATK ?? 0),
       DEF: Number(enemyData.DEF ?? 0),

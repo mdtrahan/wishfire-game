@@ -33,6 +33,22 @@ _Last updated: 2026-03-06_
 _Last updated: 2026-03-07_
 
 ## Completed Beads
+- ORKA-dwg (Combat power index added to hero/enemy runtime arrays for gating stubs)
+
+## Active Work
+- Resume prioritized scaffold queue after user-prioritized combat-power indexing lane.
+
+## Next Tasks
+- ORKA-axd (Pets scaffold), then ORKA-c1j (Vault scaffold).
+
+## Known Issues
+- None newly introduced in ORKA-dwg; formula is deterministic and surfaced for downstream consumers.
+
+---
+
+_Last updated: 2026-03-07_
+
+## Completed Beads
 - ORKA-a0k (Chests layout scaffold: mission-nav entry, deterministic tabs/progress/reward shell)
 
 ## Active Work

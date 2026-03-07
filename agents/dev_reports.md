@@ -9,6 +9,12 @@
 
 ## Reports
 - (append newest report at top)
+- bead id: ORKA-dwg
+- summary of changes: Added deterministic combat-power indexing to hero/enemy runtime records, enriched enemy source rows with CombatPower at bootstrap, surfaced combatPower in exported runtime hero/enemy snapshots, and mirrored enemy combatPower preservation in both function-bank SpawnEnemy paths.
+- files modified: web-runner/app.js; web-runner/modules/functionBank.js; Scripts/functionBank.js; tests/combatPowerIndexContract.test.js
+- test evidence: `npm test -- tests/combatPowerIndexContract.test.js tests/chestsLayoutScaffoldContract.test.js` (5/5 pass)
+- scope confirmation: Confined to combat-power data indexing/stub surfaces for downstream gating; no combat formula behavior changes beyond adding computed field.
+
 - bead id: ORKA-a0k
 - summary of changes: Added runtime Chests layout scaffold with deterministic tier tabs, progress bar placeholder, reward-list shell, and Mission-nav entry mapping from combat.
 - files modified: web-runner/app.js; tests/chestsLayoutScaffoldContract.test.js

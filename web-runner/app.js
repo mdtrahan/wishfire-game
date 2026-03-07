@@ -649,6 +649,13 @@ const CANONICAL_HERO_ROSTER = [
   { name: 'Runa', hp: 30, maxHP: 30, ATK: 8, DEF: 8, MAG: 28, RES: 20, SPD: 11, attackType: 'magic' },
   { name: 'Kojonn', hp: 40, maxHP: 40, ATK: 12, DEF: 14, MAG: 22, RES: 18, SPD: 14, attackType: 'magic' },
 ];
+// Deterministic gate metric used for progression/access comparisons.
+function computeCombatPower(atk, def, hp) {
+  const a = Number(atk || 0);
+  const d = Number(def || 0);
+  const h = Number(hp || 0);
+  return Math.round((a + d + (h / 10)) * 100) / 100;
+}
 const HERO_STAT_KEYS = ['ATK', 'DEF', 'MAG', 'RES', 'SPD', 'HP'];
 const heroLayoutSpec = {
   artboard: { w: 360, h: 640 },
@@ -726,6 +733,7 @@ function getHeroScreenRoster() {
     heroIndex: idx,
     hp: Number(hero.hp || 0),
     maxHP: Number(hero.maxHP || hero.hp || 0),
+    combatPower: computeCombatPower(hero.ATK, hero.DEF, hero.maxHP || hero.hp),
     stats: {
       ATK: Number(hero.ATK || 0),
       DEF: Number(hero.DEF || 0),
@@ -1093,7 +1101,10 @@ function parseC2ArrayTable(c2) {
 function initEntities(enemyRows, layoutInstances) {
   assertCombatLayoutDev('initEntities');
   state.entities = [];
-  state.globals.EnemyData = enemyRows || [];
+  state.globals.EnemyData = (enemyRows || []).map((row) => ({
+    ...row,
+    CombatPower: computeCombatPower(row?.ATK, row?.DEF, row?.HP),
+  }));
   state.globals.CombatSessionId = Number(state.globals.CombatSessionId || 0) + 1;
 
   const partyHP = [];
@@ -1113,6 +1124,7 @@ function initEntities(enemyRows, layoutInstances) {
       name: v.name,
       hp,
       maxHP: partyMaxHP[i],
+      combatPower: computeCombatPower(v.ATK, v.DEF, partyMaxHP[i]),
       stats: {
         ATK: Number(v.ATK),
         DEF: Number(v.DEF),
@@ -1161,6 +1173,7 @@ function initEntities(enemyRows, layoutInstances) {
         MAG: Number(picks[i].MAG || 0),
         RES: Number(picks[i].RES || 0),
         SPD: Number(picks[i].SPD || 0),
+        CombatPower: computeCombatPower(picks[i].ATK, picks[i].DEF, picks[i].HP),
       }, i);
     }
     state.globals.InitialSpawn = 0;
@@ -7294,10 +7307,10 @@ function getStoryCardLiveLineState() {
         },
         heroes: state.entities
           .filter(e => e.kind === 'hero')
-          .map(e => ({ uid: e.uid, name: e.name, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHP })),
+          .map(e => ({ uid: e.uid, name: e.name, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHP, combatPower: Number(e.combatPower || 0) })),
         enemies: state.entities
           .filter(e => e.kind === 'enemy')
-          .map(e => ({ uid: e.uid, name: e.name, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHP, slot: e.slotIndex })),
+          .map(e => ({ uid: e.uid, name: e.name, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHP, slot: e.slotIndex, combatPower: Number(e.combatPower || 0) })),
         gems: (gameState.gems || []).map(g => ({
           uid: g.uid,
           r: g.cellR,
