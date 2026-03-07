@@ -1,6 +1,6 @@
 import { state } from './modules/state.js';
 import { createContext, callFunctionWithContext } from './modules/functionRegistry.js';
-import { CombatRuntimeGateway } from '../src/core/combatRuntimeGateway.js';
+import { CombatRuntimeGateway } from './src/core/combatRuntimeGateway.js';
 import {
   createDeferredAdvanceResolved,
   createDeferredRefillHold,
@@ -11,7 +11,17 @@ import {
   createYellowSequenceCompletion,
   createYellowSequenceGate,
   createYellowSequenceSkip,
-} from '../src/core/turnGateController.mjs';
+} from './src/core/turnGateController.mjs';
+import {
+  YELLOW_COLOR,
+  YELLOW_REFILL_TARGETS,
+  pickYellowReassignTarget,
+  pickYellowRefillTarget,
+} from './src/core/yellowRefillRules.mjs';
+import {
+  resolveCurrentHeroUID,
+  shouldRenderHeroTurnSelector,
+} from './src/core/heroSelectorRules.mjs';
 
 const out = document.getElementById('output');
 const walletOut = document.getElementById('wallet-output');
@@ -34,7 +44,6 @@ const DEBUG_LAYOUT = (() => {
   return enabled;
 })();
 const DEBUG_GEMS_QUERY = (() => {
-  if (typeof window === 'undefined') return false;
   try {
     const params = new URLSearchParams(window.location.search);
     return (
@@ -52,7 +61,6 @@ const GEM_DEBUG_LEVEL = (function () {
   return p.get('gemlog') || 'minimal';
 })();
 const STARTUP_DEBUG = (() => {
-  if (typeof window === 'undefined') return false;
   try {
     const params = new URLSearchParams(window.location.search);
     return params.has('startup_debug') || params.get('startup_debug') === 'true';
@@ -692,13 +700,137 @@ const boardGeometry = {
   gy: 365,     // top-left y
 };
 
-async function fetchJson(url){
-  try{ const r = await fetch(url); if(!r.ok) return null; return await r.json(); }
-  catch(e){ return null }
+function logFetchJsonFailure(url, category, details = {}) {
+  console.warn('[fetchJson] load failure', {
+    category,
+    url: String(url || ''),
+    ...details,
+  });
 }
 
+function getAssetPathFallbackUrl(url) {
+  try {
+    const current = new URL(String(url || ''), window.location.href);
+    if (current.pathname.startsWith('/assets/')) {
+      return new URL(`/web-runner${current.pathname}`, current.origin).toString();
+    }
+  } catch {}
+  return null;
+}
+
+const jsonFetchSessionNonce = String(Date.now());
+let jsonFetchSeq = 0;
+function withJsonCacheBust(url) {
+  try {
+    const u = new URL(String(url || ''), window.location.href);
+    u.searchParams.set('__cb', `${jsonFetchSessionNonce}-${jsonFetchSeq++}`);
+    return u.toString();
+  } catch {
+    return String(url || '');
+  }
+}
+
+async function fetchJson(url){
+  const requestUrl = String(url || '');
+  const parseResponseJson = async (res, urlForLog, categoryPrefix) => {
+    try {
+      return await res.json();
+    } catch (e) {
+      logFetchJsonFailure(urlForLog, `${categoryPrefix}_json_parse_error`, {
+        message: String(e?.message || e || 'unknown'),
+      });
+      return null;
+    }
+  };
+  const fetchWithServerHints = async (u) => {
+    const res = await fetch(u, { cache: 'no-store' });
+    const server = res.headers?.get?.('server') || '';
+    const via = res.headers?.get?.('via') || '';
+    const poweredBy = res.headers?.get?.('x-powered-by') || '';
+    return { res, hints: { server, via, poweredBy } };
+  };
+  try {
+    const primaryUrl = withJsonCacheBust(requestUrl);
+    const { res: r, hints } = await fetchWithServerHints(primaryUrl);
+    if (!r.ok) {
+      if (r.status >= 500) {
+        const retryUrl = new URL(primaryUrl, window.location.href);
+        retryUrl.searchParams.set('cb', String(Date.now()));
+        try {
+          const { res: retryRes, hints: retryHints } = await fetchWithServerHints(retryUrl.toString());
+          if (retryRes.ok) {
+            return await parseResponseJson(retryRes, retryUrl.toString(), 'retry');
+          }
+          logFetchJsonFailure(retryUrl.toString(), 'http_error_retry', {
+            status: retryRes.status,
+            statusText: retryRes.statusText || '',
+            primaryUrl: requestUrl,
+            ...retryHints,
+          });
+        } catch (retryErr) {
+          logFetchJsonFailure(retryUrl.toString(), 'network_error_retry', {
+            message: String(retryErr?.message || retryErr || 'unknown'),
+            primaryUrl: requestUrl,
+          });
+        }
+      }
+      const fallbackUrl = getAssetPathFallbackUrl(requestUrl);
+      if (fallbackUrl && fallbackUrl !== requestUrl) {
+        try {
+          const { res: fallback, hints: fallbackHints } = await fetchWithServerHints(fallbackUrl);
+          if (fallback.ok) {
+            return await parseResponseJson(fallback, fallbackUrl, 'fallback');
+          }
+          logFetchJsonFailure(fallbackUrl, 'http_error_fallback', {
+            status: fallback.status,
+            statusText: fallback.statusText || '',
+            primaryUrl: requestUrl,
+            ...fallbackHints,
+          });
+        } catch (fallbackErr) {
+          logFetchJsonFailure(fallbackUrl, 'network_error_fallback', {
+            message: String(fallbackErr?.message || fallbackErr || 'unknown'),
+            primaryUrl: requestUrl,
+          });
+        }
+      }
+      logFetchJsonFailure(requestUrl, 'http_error', {
+        status: r.status,
+        statusText: r.statusText || '',
+        ...hints,
+      });
+      return null;
+    }
+    return await parseResponseJson(r, requestUrl, 'primary');
+  } catch (e) {
+    const fallbackUrl = getAssetPathFallbackUrl(requestUrl);
+    if (fallbackUrl && fallbackUrl !== requestUrl) {
+      try {
+        const { res: fallback, hints: fallbackHints } = await fetchWithServerHints(fallbackUrl);
+        if (fallback.ok) {
+          return await parseResponseJson(fallback, fallbackUrl, 'fallback');
+        }
+        logFetchJsonFailure(fallbackUrl, 'http_error_fallback', {
+          status: fallback.status,
+          statusText: fallback.statusText || '',
+          primaryUrl: requestUrl,
+          ...fallbackHints,
+        });
+      } catch (fallbackErr) {
+        logFetchJsonFailure(fallbackUrl, 'network_error_fallback', {
+          message: String(fallbackErr?.message || fallbackErr || 'unknown'),
+          primaryUrl: requestUrl,
+        });
+      }
+    }
+    logFetchJsonFailure(requestUrl, 'network_error', { message: String(e?.message || e || 'unknown') });
+    return null;
+  }
+}
+
+const assetBaseUrl = new URL('./assets/', import.meta.url);
 function assetUrl(path){
-  return new URL(`./assets/${path}`, window.location.href).toString();
+  return new URL(String(path || ''), assetBaseUrl).toString();
 }
 
 const runtimeImageBaseUrl = assetUrl('images/');
@@ -1006,11 +1138,10 @@ function handleSpecialGem6(gem) {
   setGemArray(gameState.gems);
 }
 
-const YELLOW_COLOR = 3;
 const YELLOW_CASINO_TELEGRAPH_SEC = 0.15;
 const yellowMatchAnimationDuration = 0.4;
 const YELLOW_CASINO_SPIN_SEC = yellowMatchAnimationDuration;
-const YELLOW_CASINO_TARGETS = [0, 1, 2, 4, 5];
+const YELLOW_CASINO_TARGETS = YELLOW_REFILL_TARGETS;
 const YELLOW_CASINO_WALK = [YELLOW_COLOR, ...YELLOW_CASINO_TARGETS];
 
 function getCellWorldPos(cellC, cellR) {
@@ -1069,14 +1200,13 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0) {
       const color = gem && gem.color != null ? gem.color : (gem ? gem.elementIndex : null);
       const cellFilled = !!(gameState.grid[c] && gameState.grid[c][r]);
       if (gem && color === YELLOW_COLOR) {
-        const retargetPool = [0, 1, 2];
         queue.push({
           type: 'yellow',
           reason: 'yellow-reassign',
           uid: gem.uid,
           cellC: c,
           cellR: r,
-          target: retargetPool[Math.floor(Math.random() * retargetPool.length)],
+          target: pickYellowReassignTarget(),
           sequence: null,
           startAt: 0,
           duration: YELLOW_CASINO_SPIN_SEC,
@@ -1084,14 +1214,13 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0) {
         });
       } else if (!cellFilled) {
         const pos = getCellWorldPos(c, r);
-        const refillPool = [0, 1, 2, 4, 5];
         queue.push({
           type: 'empty',
           reason: 'yellow-refill',
           uid: 0,
           cellC: c,
           cellR: r,
-          target: refillPool[Math.floor(Math.random() * refillPool.length)],
+          target: pickYellowRefillTarget(),
           sequence: null,
           startAt: 0,
           duration: YELLOW_CASINO_SPIN_SEC,
@@ -1321,7 +1450,20 @@ function handleGemMatch(color) {
     }
   };
 
-  const startGemMergeFx = () => {
+  const getInstanceWorldCenter = (typeName) => {
+    const inst = (instances || []).find((item) => item && item.type === typeName && item.world);
+    if (!inst || !inst.world) return null;
+    const w = Number(inst.world.width || 0);
+    const h = Number(inst.world.height || 0);
+    const ox = inst.world.originX != null ? Number(inst.world.originX) : 0.5;
+    const oy = inst.world.originY != null ? Number(inst.world.originY) : 0.5;
+    return {
+      x: Number(inst.world.x || 0) + (0.5 - ox) * w,
+      y: Number(inst.world.y || 0) + (0.5 - oy) * h,
+    };
+  };
+
+  const startGemMergeFx = ({ target = null, scaleOut = true } = {}) => {
     const now = state.globals.time || 0;
     const items = (gameState.selectedGems || []).map(idx => {
       const gm = gameState.gems && gameState.gems[idx];
@@ -1334,6 +1476,8 @@ function handleGemMatch(color) {
       startAt: now,
       duration: 0.28,
       items,
+      target,
+      scaleOut: !!scaleOut,
       doneAt: null,
     };
   };
@@ -1366,6 +1510,7 @@ function handleGemMatch(color) {
     callFunctionWithContext(fnContext, 'Sub_Energy');
     g.ApplyChainToNextDamage = 0;
   } else if (color === 3) {
+    const goldTarget = getInstanceWorldCenter('Text_Gold');
     const actor = state.entities.find(e => e.uid === actorUID);
     const actorName = actor ? (actor.name || 'Hero') : 'Hero';
     const matchedYellowCount = Math.max(
@@ -1376,6 +1521,7 @@ function handleGemMatch(color) {
         return isSelected && gemColor === YELLOW_COLOR;
       }).length
     );
+    startGemMergeFx({ target: goldTarget, scaleOut: false });
     callFunctionWithContext(fnContext, 'ResolveGemAction', 3, actorUID);
     callFunctionWithContext(fnContext, 'LogCombat', `${actorName} used Wild Magic!`);
     callFunctionWithContext(fnContext, 'DestroyGem');
@@ -2916,8 +3062,7 @@ async function main(){
             const refill = gameState.refillBounce;
             const handoffPending =
               !!state.globals.DeferAdvance &&
-              !!state.globals.AdvanceAfterAction &&
-              !!state.globals.ActionOwnerUID;
+              !!state.globals.AdvanceAfterAction;
             state.globals.BoardFillActive = 0;
             const canRestorePickability =
               !handoffPending &&
@@ -4144,11 +4289,21 @@ async function main(){
       const tRaw = merge.duration > 0 ? (nowTime - merge.startAt) / merge.duration : 1;
       const t = Math.max(0, Math.min(1, tRaw));
       const e = t * t;
-      const centerX = layoutOffsetX + (layoutW * layoutScale) / 2;
-      const centerY = layoutOffsetY + (layoutH * layoutScale) / 2 - 40;
+      const fallbackCenterX = layoutOffsetX + (layoutW * layoutScale) / 2;
+      const fallbackCenterY = layoutOffsetY + (layoutH * layoutScale) / 2 - 40;
+      let centerX = fallbackCenterX;
+      let centerY = fallbackCenterY;
+      if (merge.target && Number.isFinite(merge.target.x) && Number.isFinite(merge.target.y)) {
+        const targetPos = worldToCanvas(merge.target.x, merge.target.y);
+        centerX = targetPos.x;
+        centerY = targetPos.y;
+      }
       const baseSize = boardGeometry.cellSize * layoutScale * 0.5;
       const fade = t > 0.8 ? Math.max(0, 1 - ((t - 0.8) / 0.2)) : 1;
-      const scale = t > 0.8 ? Math.max(0.05, 1 - ((t - 0.8) / 0.2)) : 1;
+      const scaleOut = merge.scaleOut !== false;
+      const scale = scaleOut
+        ? (t > 0.8 ? Math.max(0.05, 1 - ((t - 0.8) / 0.2)) : 1)
+        : 1;
       for (const item of merge.items || []) {
         const pos = worldToCanvas(item.x, item.y);
         const x = pos.x + (centerX - pos.x) * e;
@@ -4503,7 +4658,11 @@ async function main(){
         const offsets = state.globals.HeroLungeOffsetByUID || {};
         const selectorImg = heroSelectorImage || images['Selector'] || null;
         const selectorAsset = assetSizes.Selector;
-        const currentHeroUID = callFunctionWithContext(fnContext, 'GetCurrentTurn');
+        const currentHeroUID = resolveCurrentHeroUID({
+          directUID: callFunctionWithContext(fnContext, 'GetCurrentTurn'),
+          turnOrder: g.TurnOrderArray,
+          currentTurnIndex: g.CurrentTurnIndex,
+        });
         const currentHero = state.entities.find(e => e.kind === 'hero' && e.uid === currentHeroUID);
         for (let i = 0; i < heroOrder.length; i++) {
           const entry = heroOrder[i];
@@ -4582,8 +4741,13 @@ async function main(){
           }
 
           // Hero turn indicator selector (only on hero turns)
-          if (currentHero && hero && currentHero.uid === hero.uid && state.globals.TurnPhase === 0) {
-            if (state.globals.HideHeroSelector && !state.globals.CanPickGems) continue;
+          if (shouldRenderHeroTurnSelector({
+            turnPhase: state.globals.TurnPhase,
+            hideHeroSelector: state.globals.HideHeroSelector,
+            canPickGems: state.globals.CanPickGems,
+            currentHeroUID: currentHero ? currentHero.uid : 0,
+            heroUID: hero ? hero.uid : 0,
+          })) {
             if (selectorImg) {
               const t = g.time || 0;
               const pulse = Math.sin(t * 6);
