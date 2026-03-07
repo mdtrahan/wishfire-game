@@ -335,6 +335,8 @@ const gameState = {
     tomesLocaleHit: null,
     artifactsLocaleButton: { x: 0, y: 0, w: 146, h: 36 },
     artifactsLocaleHit: null,
+    mountsLocaleButton: { x: 0, y: 0, w: 146, h: 36 },
+    mountsLocaleHit: null,
     warMeter: 0.64,
     lastRender: null,
   },
@@ -434,6 +436,49 @@ const gameState = {
         rarity: 'Epic',
         passiveHook: { key: 'resist_guard', mode: 'flat', value: 1, cadenceTurns: 8 },
         visibleCombatFx: false,
+      },
+    ],
+  },
+  mountsLayout: {
+    entryPoint: 'map-locale',
+    selectedIndex: 0,
+    hitZones: null,
+    gallery: [
+      {
+        id: 'mount-ash-runner',
+        name: 'Ash Runner',
+        discovered: true,
+        rarity: 'Rare',
+        siblingFamily: 'progression-gallery',
+        vaultCompatibilityTier: 1,
+        passiveHook: { key: 'turn_speed', mode: 'flat', value: 1, cadenceTurns: 4 },
+      },
+      {
+        id: 'mount-ridge-boar',
+        name: 'Ridge Boar',
+        discovered: true,
+        rarity: 'Epic',
+        siblingFamily: 'progression-gallery',
+        vaultCompatibilityTier: 2,
+        passiveHook: { key: 'impact_guard', mode: 'flat', value: 1, cadenceTurns: 7 },
+      },
+      {
+        id: 'mount-aether-drake',
+        name: 'Aether Drake',
+        discovered: false,
+        rarity: 'Legendary',
+        siblingFamily: 'progression-gallery',
+        vaultCompatibilityTier: 3,
+        passiveHook: { key: 'opening_strike', mode: 'pct', value: 0.05, cadenceTurns: 0 },
+      },
+      {
+        id: 'mount-fog-stag',
+        name: 'Fog Stag',
+        discovered: false,
+        rarity: 'Epic',
+        siblingFamily: 'progression-gallery',
+        vaultCompatibilityTier: 2,
+        passiveHook: { key: 'resist_guard', mode: 'flat', value: 1, cadenceTurns: 8 },
       },
     ],
   },
@@ -1993,7 +2038,7 @@ async function main(){
 
     layoutState.registerLayout({
       id: 'combat',
-      allowedTransitions: ['base', 'shop', 'intro', 'astralOverlay', 'mapLayout', 'heroLayout', 'tomesLayout', 'artifactsLayout'],
+      allowedTransitions: ['base', 'shop', 'intro', 'astralOverlay', 'mapLayout', 'heroLayout', 'tomesLayout', 'artifactsLayout', 'mountsLayout'],
       async onEnter({ resumeSnapshot }) {
         const hasRuntimeData =
           Array.isArray(instances) && instances.length > 0 &&
@@ -2044,12 +2089,13 @@ async function main(){
     });
     layoutState.registerLayout({
       id: 'mapLayout',
-      allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout'],
+      allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout'],
       onEnter() {
         gameState.overlayVisible = false;
         gameState.mapLayout.panY = 0;
         gameState.mapLayout.tomesLocaleHit = null;
         gameState.mapLayout.artifactsLocaleHit = null;
+        gameState.mapLayout.mountsLocaleHit = null;
         const drag = gameState.mapLayout.drag;
         drag.active = false;
         drag.pointerId = null;
@@ -2098,6 +2144,26 @@ async function main(){
       onActive() {},
       onExit() {
         gameState.artifactsLayout.hitZones = null;
+        return null;
+      },
+    });
+    layoutState.registerLayout({
+      id: 'mountsLayout',
+      allowedTransitions: ['mapLayout', 'combat'],
+      onEnter() {
+        gameState.overlayVisible = false;
+        gameState.mountsLayout.hitZones = null;
+        gameState.mountsLayout.selectedIndex = Math.max(
+          0,
+          Math.min(
+            Math.max(0, (gameState.mountsLayout.gallery || []).length - 1),
+            Number(gameState.mountsLayout.selectedIndex || 0),
+          ),
+        );
+      },
+      onActive() {},
+      onExit() {
+        gameState.mountsLayout.hitZones = null;
         return null;
       },
     });
@@ -2684,6 +2750,26 @@ async function main(){
       ctx.fillStyle = '#17324a';
       ctx.font = '500 10px Arial';
       ctx.fillText('Map Locale', artifactBtn.x + 34, artifactBtn.y + 33);
+      const mountsBtn = gameState.mapLayout.mountsLocaleButton;
+      mountsBtn.x = tomeBtn.x;
+      mountsBtn.y = Math.max(18, artifactBtn.y - mountsBtn.h - 8);
+      gameState.mapLayout.mountsLocaleHit = {
+        x: mountsBtn.x,
+        y: mountsBtn.y,
+        w: mountsBtn.w,
+        h: mountsBtn.h,
+      };
+      ctx.fillStyle = '#d9f2da';
+      ctx.fillRect(mountsBtn.x, mountsBtn.y, mountsBtn.w, mountsBtn.h);
+      ctx.strokeStyle = '#4a8b4f';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(mountsBtn.x, mountsBtn.y, mountsBtn.w, mountsBtn.h);
+      ctx.fillStyle = '#1f4a24';
+      ctx.font = '700 12px Arial';
+      ctx.fillText('Enter Mounts', mountsBtn.x + 22, mountsBtn.y + 22);
+      ctx.fillStyle = '#1f4a24';
+      ctx.font = '500 10px Arial';
+      ctx.fillText('Map Locale', mountsBtn.x + 34, mountsBtn.y + 33);
       ctx.fillStyle = '#ffffff';
       ctx.font = '500 14px Arial';
       ctx.fillText('Map Layout (drag to pan)', 14, viewHeight - 18);
@@ -2889,6 +2975,106 @@ async function main(){
         cursorY += card.h + cardGap;
       }
       gameState.artifactsLayout.hitZones = {
+        mapBack,
+        combatBack,
+        cards: cardHitZones,
+      };
+      return;
+    }
+    if (layoutId === 'mountsLayout') {
+      const viewWidth = canvas.width / dpr;
+      const viewHeight = canvas.height / dpr;
+      const palette = {
+        bg0: '#132219',
+        bg1: '#233728',
+        panel: '#edf2e8',
+        panelEdge: '#b9c9ad',
+        ink: '#1c2f1f',
+        muted: '#5b6f5e',
+        selected: '#dff1d2',
+      };
+      const roundRect = (x, y, w, h, r, fill, stroke) => {
+        const radius = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + w - radius, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+        ctx.lineTo(x + w, y + h - radius);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+        ctx.lineTo(x + radius, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+        if (fill) {
+          ctx.fillStyle = fill;
+          ctx.fill();
+        }
+        if (stroke) {
+          ctx.strokeStyle = stroke;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      };
+      ctx.clearRect(0, 0, viewWidth, viewHeight);
+      const grad = ctx.createLinearGradient(0, 0, 0, viewHeight);
+      grad.addColorStop(0, palette.bg0);
+      grad.addColorStop(1, palette.bg1);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, viewWidth, viewHeight);
+
+      const panelPad = 14;
+      const panel = {
+        x: panelPad,
+        y: 16,
+        w: Math.max(260, viewWidth - panelPad * 2),
+        h: Math.max(360, viewHeight - 34),
+      };
+      roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
+      const mapBack = { x: panel.x + 12, y: panel.y + 12, w: 108, h: 28 };
+      const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
+      roundRect(mapBack.x, mapBack.y, mapBack.w, mapBack.h, 9, '#deebd5', '#9bb28b');
+      roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#deebd5', '#9bb28b');
+      ctx.fillStyle = palette.ink;
+      ctx.font = '700 11px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Back To Map', mapBack.x + mapBack.w / 2, mapBack.y + 18);
+      ctx.fillText('Back To Combat', combatBack.x + combatBack.w / 2, combatBack.y + 18);
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = palette.ink;
+      ctx.font = '700 18px Arial';
+      ctx.fillText('Mounts Gallery (Scaffold)', panel.x + 14, panel.y + 58);
+      ctx.fillStyle = palette.muted;
+      ctx.font = '500 11px Arial';
+      ctx.fillText('Sibling progression gallery with vault-compatibility metadata hooks.', panel.x + 14, panel.y + 76);
+
+      const gallery = Array.isArray(gameState.mountsLayout.gallery) ? gameState.mountsLayout.gallery : [];
+      const selectedIndex = Math.max(0, Math.min(gallery.length - 1, Number(gameState.mountsLayout.selectedIndex || 0)));
+      const cardHitZones = [];
+      let cursorY = panel.y + 90;
+      const cardGap = 8;
+      for (let i = 0; i < gallery.length; i += 1) {
+        const mount = gallery[i] || {};
+        const card = { x: panel.x + 12, y: cursorY, w: panel.w - 24, h: 58 };
+        const discovered = Boolean(mount.discovered);
+        const passive = mount.passiveHook || null;
+        roundRect(card.x, card.y, card.w, card.h, 10, i === selectedIndex ? palette.selected : '#f3f8ef', '#c7d8bb');
+        ctx.fillStyle = palette.ink;
+        ctx.font = '700 13px Arial';
+        ctx.fillText(discovered ? String(mount.name || 'Unknown Mount') : 'Locked Mount', card.x + 10, card.y + 20);
+        ctx.fillStyle = palette.muted;
+        ctx.font = '600 10px Arial';
+        ctx.fillText(`Rarity: ${String(mount.rarity || 'Common')}`, card.x + 10, card.y + 35);
+        const passiveText = passive
+          ? `${String(passive.key || '')} ${String(passive.mode || '')} ${Number(passive.value || 0)} / ${Number(passive.cadenceTurns || 0)}t`
+          : 'No passive hook';
+        ctx.fillText(`Passive: ${passiveText}`, card.x + 136, card.y + 20);
+        ctx.fillText(`Vault Tier: ${Number(mount.vaultCompatibilityTier || 0)}`, card.x + 136, card.y + 35);
+        cardHitZones.push(card);
+        cursorY += card.h + cardGap;
+      }
+      gameState.mountsLayout.hitZones = {
         mapBack,
         combatBack,
         cards: cardHitZones,
@@ -5791,6 +5977,14 @@ function getStoryCardLiveLineState() {
         drawFrame();
         return;
       }
+      const mountsHit = gameState.mapLayout.mountsLocaleHit;
+      if (isPointInRect(mx, my, mountsHit)) {
+        layoutState.requestLayoutChange('mountsLayout', 'map-mounts-locale').catch((err) => {
+          console.error('[LAYOUT_PHASE1] map->mounts failed', err);
+        });
+        drawFrame();
+        return;
+      }
       const drag = gameState.mapLayout.drag;
       drag.active = true;
       drag.pointerId = ev.pointerId;
@@ -5848,6 +6042,33 @@ function getStoryCardLiveLineState() {
       for (let i = 0; i < cards.length; i += 1) {
         if (isPointInRect(mx, my, cards[i])) {
           gameState.artifactsLayout.selectedIndex = i;
+          drawFrame();
+          return;
+        }
+      }
+      drawFrame();
+      return;
+    }
+    if (activeLayoutId === 'mountsLayout') {
+      const zones = (gameState.mountsLayout && gameState.mountsLayout.hitZones) || {};
+      if (isPointInRect(mx, my, zones.mapBack)) {
+        layoutState.requestLayoutChange('mapLayout', 'mounts-back-map').catch((err) => {
+          console.error('[LAYOUT_PHASE1] mounts->map failed', err);
+        });
+        drawFrame();
+        return;
+      }
+      if (isPointInRect(mx, my, zones.combatBack)) {
+        layoutState.requestLayoutChange('combat', 'mounts-back-combat').catch((err) => {
+          console.error('[LAYOUT_PHASE1] mounts->combat failed', err);
+        });
+        drawFrame();
+        return;
+      }
+      const cards = Array.isArray(zones.cards) ? zones.cards : [];
+      for (let i = 0; i < cards.length; i += 1) {
+        if (isPointInRect(mx, my, cards[i])) {
+          gameState.mountsLayout.selectedIndex = i;
           drawFrame();
           return;
         }

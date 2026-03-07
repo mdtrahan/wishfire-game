@@ -17,7 +17,7 @@ test('artifacts scaffold defines deterministic gallery model in runtime state', 
 test('artifacts layout is wired as map locale entry and runtime layout route', () => {
   const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
   const src = fs.readFileSync(filePath, 'utf8');
-  assert.match(src, /allowedTransitions:\s*\['combat',\s*'tomesLayout',\s*'artifactsLayout'\]/);
+  assert.match(src, /allowedTransitions:\s*\[[^\]]*'artifactsLayout'[^\]]*\]/);
   assert.match(src, /id:\s*'artifactsLayout'/);
   assert.match(src, /layoutState\.requestLayoutChange\('artifactsLayout',\s*'map-artifacts-locale'\)/);
   assert.match(src, /if \(layoutId === 'artifactsLayout'\)/);

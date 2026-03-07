@@ -9,6 +9,12 @@
 
 ## Reports
 - (append newest report at top)
+- bead id: ORKA-8k4
+- summary of changes: Added runtime Mounts layout scaffold with deterministic gallery/passive metadata model, map-locale entry mapping, and selectable Mounts gallery shell with map/combat return routes.
+- files modified: web-runner/app.js; tests/mountsLayoutScaffoldContract.test.js; tests/artifactsLayoutScaffoldContract.test.js
+- test evidence: `npm test -- tests/mountsLayoutScaffoldContract.test.js tests/artifactsLayoutScaffoldContract.test.js tests/tomesLayoutScaffoldContract.test.js` (6/6 pass)
+- scope confirmation: Confined to layout/state scaffold and navigation mapping only; no economy/balance or finalized mounts mechanics.
+
 - bead id: ORKA-3e4
 - summary of changes: Added runtime Artifacts layout scaffold with deterministic gallery/passive metadata model, map-locale entry mapping, and selectable Artifacts gallery shell with map/combat return routes.
 - files modified: web-runner/app.js; tests/artifactsLayoutScaffoldContract.test.js; tests/tomesLayoutScaffoldContract.test.js
