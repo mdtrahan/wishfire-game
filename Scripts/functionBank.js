@@ -94,6 +94,99 @@ function setSelectedGemIndices(ctx, arr) {
   g.SelectedGems = arr;
 }
 
+const TRAIT_HOOK_EVENTS = new Set([
+  'turn_start',
+  'action_resolve',
+  'damage_receive',
+  'enemy_death',
+  'status_apply',
+]);
+
+function ensureTraitRuntime(ctx) {
+  const g = getGlobals(ctx);
+  if (!g.TraitHooks || typeof g.TraitHooks !== 'object') g.TraitHooks = {};
+  if (!Array.isArray(g.TraitHookTrace)) g.TraitHookTrace = [];
+  if (!Number.isFinite(g.TraitHookSeq)) g.TraitHookSeq = 0;
+  return g;
+}
+
+function nextTraitHookSeq(g) {
+  g.TraitHookSeq = Number(g.TraitHookSeq || 0) + 1;
+  return g.TraitHookSeq;
+}
+
+function appendTraitHookTrace(g, eventName, payload, results = []) {
+  const cleanPayload = payload && typeof payload === 'object' ? { ...payload } : {};
+  const trace = {
+    seq: nextTraitHookSeq(g),
+    event: String(eventName || ''),
+    payload: cleanPayload,
+    results: Array.isArray(results) ? results.slice(0, 8) : [],
+    time: Number(g.time || 0),
+  };
+  g.TraitHookTrace.push(trace);
+  if (g.TraitHookTrace.length > 200) g.TraitHookTrace.shift();
+  return trace;
+}
+
+function runTraitHooks(ctx, eventName, payload = {}) {
+  const g = ensureTraitRuntime(ctx);
+  const eventKey = String(eventName || '');
+  if (!TRAIT_HOOK_EVENTS.has(eventKey)) {
+    appendTraitHookTrace(g, eventKey, payload, [{ status: 'ignored_unknown_event' }]);
+    return [];
+  }
+  const handlers = Array.isArray(g.TraitHooks[eventKey]) ? g.TraitHooks[eventKey] : [];
+  const ordered = handlers
+    .filter((entry) => entry && typeof entry.handler === 'function')
+    .slice()
+    .sort((a, b) => Number(a.seq || 0) - Number(b.seq || 0));
+  const results = [];
+  for (const entry of ordered) {
+    try {
+      const outcome = entry.handler(payload, ctx);
+      results.push({ traitId: String(entry.traitId || ''), status: 'ok', outcome: outcome ?? null });
+    } catch (err) {
+      results.push({
+        traitId: String(entry.traitId || ''),
+        status: 'error',
+        message: String(err?.message || err || 'unknown'),
+      });
+    }
+  }
+  appendTraitHookTrace(g, eventKey, payload, results);
+  return results;
+}
+
+export function RegisterTraitHook(ctx, eventName, traitId, handler) {
+  const g = ensureTraitRuntime(ctx);
+  const eventKey = String(eventName || '');
+  if (!TRAIT_HOOK_EVENTS.has(eventKey)) return false;
+  if (typeof handler !== 'function') return false;
+  const id = String(traitId || '');
+  if (!Array.isArray(g.TraitHooks[eventKey])) g.TraitHooks[eventKey] = [];
+  g.TraitHooks[eventKey] = g.TraitHooks[eventKey].filter((entry) => String(entry.traitId || '') !== id);
+  g.TraitHooks[eventKey].push({ traitId: id, handler, seq: nextTraitHookSeq(g) });
+  return true;
+}
+
+export function UnregisterTraitHook(ctx, eventName, traitId) {
+  const g = ensureTraitRuntime(ctx);
+  const eventKey = String(eventName || '');
+  if (!Array.isArray(g.TraitHooks[eventKey])) return 0;
+  const before = g.TraitHooks[eventKey].length;
+  const id = String(traitId || '');
+  g.TraitHooks[eventKey] = g.TraitHooks[eventKey].filter((entry) => String(entry.traitId || '') !== id);
+  return before - g.TraitHooks[eventKey].length;
+}
+
+export function GetTraitHookTrace(ctx, limit = 40) {
+  const g = ensureTraitRuntime(ctx);
+  const size = Math.max(0, Number(limit || 0));
+  if (!size) return [];
+  return g.TraitHookTrace.slice(-size);
+}
+
 function applyTurnGateState(g, next) {
   if (!g || !next) return;
   g.CanPickGems = next.CanPickGems;
@@ -1604,7 +1697,34 @@ export function AdvanceTurn(ctx) {
   const g = getGlobals(ctx);
   const currentUID = GetCurrentTurn(ctx);
   const currentType = GetCurrentType(ctx);
+  const decayPartyBuffsOnHeroAction = () => {
+    const tracked = Array.isArray(g.TrackBuffs) ? g.TrackBuffs : [-1, -1, -1, -1];
+    const defs = [
+      { typeId: 1, buffKey: 'PartyBuff_ATK', turnsKey: 'BuffTurns_ATK' },
+      { typeId: 2, buffKey: 'PartyBuff_DEF', turnsKey: 'BuffTurns_DEF' },
+      { typeId: 3, buffKey: 'PartyBuff_MAG', turnsKey: 'BuffTurns_MAG' },
+      { typeId: 4, buffKey: 'PartyBuff_RES', turnsKey: 'BuffTurns_RES' },
+    ];
+    const expiredTypes = new Set();
+    for (const def of defs) {
+      const currentTurns = Number(g[def.turnsKey] || 0);
+      const currentBuff = Number(g[def.buffKey] || 0);
+      if (currentTurns > 0) {
+        g[def.turnsKey] = currentTurns - 1;
+      }
+      if (Number(g[def.turnsKey] || 0) <= 0 || currentBuff <= 0) {
+        g[def.turnsKey] = 0;
+        g[def.buffKey] = 0;
+        expiredTypes.add(def.typeId);
+      }
+    }
+    const nextTrack = tracked.filter((typeId) => typeId !== -1 && !expiredTypes.has(typeId)).slice(0, 4);
+    while (nextTrack.length < 4) nextTrack.push(-1);
+    g.TrackBuffs = nextTrack;
+    RefreshPartyBuffUI(ctx);
+  };
   if (currentType === 0 && currentUID) {
+    decayPartyBuffsOnHeroAction();
     const store = ensurePowerAmpByUID(ctx);
     const entry = store[currentUID];
     if (entry) {
@@ -1787,7 +1907,16 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
 export function ApplyDamageToTarget(ctx, uid, dmg) {
   const t = GetActorByUID(ctx, uid);
   if (!t) return;
+  const beforeHP = Number(t.hp ?? 0);
   t.hp = Math.max(0, (t.hp ?? 0) - dmg);
+  const afterHP = Number(t.hp ?? 0);
+  runTraitHooks(ctx, 'damage_receive', {
+    targetUID: Number(uid || 0),
+    targetKind: String(t.kind || ''),
+    damage: Number(dmg || 0),
+    beforeHP,
+    afterHP,
+  });
   const g = getGlobals(ctx);
   const now = Number(g.time || 0);
   if (!g.HitFlashByUID || typeof g.HitFlashByUID !== 'object') {
@@ -1996,6 +2125,14 @@ export function ExecutePurpleDebuff(ctx, actorUID) {
     slots.push(stat);
   }
   LogCombat(ctx, `${enemy.name || 'Enemy'} ${stat} down! (${debuffs[stat]})`);
+  runTraitHooks(ctx, 'status_apply', {
+    sourceUID: Number(actorUID || 0),
+    targetUID: Number(enemy.uid || 0),
+    statusType: 'debuff',
+    stat: String(stat),
+    turns: Number((debuffTurns && debuffTurns[stat]) || 0),
+    amount: Number(debuffs[stat] || 0),
+  });
   g.EnemyDebuffPop = { uid: enemy.uid, stat, at: g.time || 0 };
   RebuildTurnOrderPreserveCurrent(ctx);
 }
@@ -2181,6 +2318,11 @@ export function KillEnemyAt(ctx, slotIndex) {
   const deadCell = g.EnemySlots[slotIndex] || 0;
   if (deadCell <= 0) return;
   const deadUID = deadCell - 1;
+  runTraitHooks(ctx, 'enemy_death', {
+    enemyUID: Number(deadUID || 0),
+    slotIndex: Number(slotIndex || 0),
+    killerUID: Number(currentUID || 0),
+  });
   const entities = ensureEntities(ctx);
   const idx = entities.findIndex(e => e && e.uid === deadUID);
   if (idx !== -1) entities.splice(idx, 1);
@@ -2550,8 +2692,6 @@ export function Update_Bars_And_Buffs(ctx) {
   RefreshPartyBuffUI(ctx);
 }
 
-export function DebugTest() {}
-
 export function BuildRoundGroups(ctx) {
   const g = getGlobals(ctx);
   if (isTimeInitiative(ctx)) {
@@ -2692,7 +2832,7 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
   const actor = GetActorByUID(ctx, actorUID);
   const actorName = actor ? actor.name : 'Actor';
   console.log(`[SKILL] start skill=${skillId} actor=${actorName} uid=${actorUID} phase=${g.TurnPhase} busy=${g.IsPlayerBusy} canPick=${g.CanPickGems}`);
-  const buffTurns = Math.min(12, g.BuffDurationDefault || 12);
+  const buffTurns = Math.max(1, Math.min(5, Number(g.BuffDurationDefault || 5)));
   if (actor && actor.kind === 'hero' && (skillId === 'HERO_SINGLE' || skillId === 'HERO_AOE')) {
     StartHeroLunge(ctx, actorUID);
   }
@@ -2700,18 +2840,50 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
   if (skillId === 'DEF_UP') {
     handled = true;
     ctx.callFunction('Party_DEF_UP', buffTurns, actorUID, 0, 2);
+    runTraitHooks(ctx, 'status_apply', {
+      sourceUID: Number(actorUID || 0),
+      targetUID: Number(actorUID || 0),
+      statusType: 'buff',
+      stat: 'DEF',
+      turns: Number(buffTurns || 0),
+      amount: 2,
+    });
     LogCombat(ctx, `${actorName} increased the party's defense!`);
   } else if (skillId === 'ATK_UP') {
     handled = true;
     ctx.callFunction('Party_ATK_UP', buffTurns, actorUID, 0, 2);
+    runTraitHooks(ctx, 'status_apply', {
+      sourceUID: Number(actorUID || 0),
+      targetUID: Number(actorUID || 0),
+      statusType: 'buff',
+      stat: 'ATK',
+      turns: Number(buffTurns || 0),
+      amount: 2,
+    });
     LogCombat(ctx, `${actorName} increased the party's attack!`);
   } else if (skillId === 'MAG_UP') {
     handled = true;
     ctx.callFunction('Party_MAG_UP', buffTurns, actorUID, 0, 2);
+    runTraitHooks(ctx, 'status_apply', {
+      sourceUID: Number(actorUID || 0),
+      targetUID: Number(actorUID || 0),
+      statusType: 'buff',
+      stat: 'MAG',
+      turns: Number(buffTurns || 0),
+      amount: 2,
+    });
     LogCombat(ctx, `${actorName} increased the party's magic attack!`);
   } else if (skillId === 'RES_UP') {
     handled = true;
     ctx.callFunction('Party_RES_UP', buffTurns, actorUID, 0, 2);
+    runTraitHooks(ctx, 'status_apply', {
+      sourceUID: Number(actorUID || 0),
+      targetUID: Number(actorUID || 0),
+      statusType: 'buff',
+      stat: 'RES',
+      turns: Number(buffTurns || 0),
+      amount: 2,
+    });
     LogCombat(ctx, `${actorName} increased the party's magic defense!`);
   } else if (skillId === 'HERO_SINGLE') {
     handled = true;
@@ -2746,6 +2918,12 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
   if (!handled) {
     LogCombat(ctx, `${actorName} tried skill: ${skillId} (UNKNOWN)`);
   }
+  runTraitHooks(ctx, 'action_resolve', {
+    actorUID: Number(actorUID || 0),
+    actorKind: String(actor?.kind || ''),
+    skillId: String(skillId || ''),
+    handled: !!handled,
+  });
 
   g.ActionLockUntil = (g.time || 0) + 0.6;
   if (g.ActionLockUntil && (g.time || 0) < g.ActionLockUntil) {
@@ -2868,6 +3046,12 @@ export function ProcessTurn(ctx) {
     const delta = Math.round(eff - base);
     console.log(`[TURN] idx=${g.CurrentTurnIndex} ${actor.name || uid} type=${type} spd=${Math.round(eff)}/${Math.round(base)} (+${delta})`);
   }
+  runTraitHooks(ctx, 'turn_start', {
+    actorUID: Number(uid || 0),
+    actorKind: String(actor?.kind || ''),
+    turnType: Number(type || 0),
+    turnIndex: Number(g.CurrentTurnIndex || 0),
+  });
 
   if (type === 0) {
     g.GroupResolving = 1;
