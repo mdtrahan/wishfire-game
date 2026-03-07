@@ -59,3 +59,19 @@ _Last updated: 2026-03-07_
 
 ## Known Issues
 - None new in this cycle.
+
+---
+
+_Last updated: 2026-03-07_
+
+## Completed Beads
+- ORKA-2sa (Runa magic-resist trigger vs enemy caster magic paths)
+
+## Active Work
+- Continue class identity slices aligned to skill/passive progression model.
+
+## Next Tasks
+- ORKA-mo4 (Huun execution drop bonus) or ORKA-69r QA closeout.
+
+## Known Issues
+- ORKA-9ri remains intentionally held for scope reframing to avoid RPG-style persistent debuff model drift.

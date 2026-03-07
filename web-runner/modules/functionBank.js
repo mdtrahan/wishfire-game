@@ -2062,6 +2062,10 @@ function getRandomLivingEnemy(ctx) {
 const FALIE_ENMITY_NAME = 'Falie';
 const FALIE_ENMITY_BONUS = 0.35;
 const FALIE_ENMITY_CAP = 0.75;
+const RUNA_MAGIC_RESIST_NAME = 'Runa';
+const RUNA_MAGIC_RESIST_TRIGGER_CHANCE = 0.6;
+const RUNA_MAGIC_RESIST_NULLIFY_CHANCE = 0.35;
+const RUNA_MAGIC_RESIST_REDUCE_FACTOR = 0.2;
 
 function pickEnemyTargetHero(ctx, enemyUID = 0) {
   const g = getGlobals(ctx);
@@ -2098,6 +2102,51 @@ function pickEnemyTargetHero(ctx, enemyUID = 0) {
     heroCount: heroes.length,
   };
   return target;
+}
+
+function applyRunaMagicResist(ctx, enemyUID, targetHeroUID, incomingDamage, skillId = 'Enemy_MAG_Single') {
+  const g = getGlobals(ctx);
+  const baseDamage = Math.max(0, Number(incomingDamage) || 0);
+  const target = GetActorByUID(ctx, targetHeroUID);
+  if (!target || String(target?.name || '') !== RUNA_MAGIC_RESIST_NAME) {
+    g.LastRunaMagicResist = {
+      enemyUID: Number(enemyUID || 0),
+      targetUID: Number(targetHeroUID || 0),
+      skillId: String(skillId || ''),
+      mode: 'not_runa',
+      incomingDamage: baseDamage,
+      finalDamage: baseDamage,
+    };
+    return { finalDamage: baseDamage, mode: 'not_runa' };
+  }
+  const triggerRoll = Math.random();
+  if (triggerRoll >= RUNA_MAGIC_RESIST_TRIGGER_CHANCE) {
+    g.LastRunaMagicResist = {
+      enemyUID: Number(enemyUID || 0),
+      targetUID: Number(targetHeroUID || 0),
+      skillId: String(skillId || ''),
+      mode: 'no_proc',
+      incomingDamage: baseDamage,
+      finalDamage: baseDamage,
+      triggerRoll: Number(triggerRoll || 0),
+    };
+    return { finalDamage: baseDamage, mode: 'no_proc' };
+  }
+  const nullifyRoll = Math.random();
+  const nullified = nullifyRoll < RUNA_MAGIC_RESIST_NULLIFY_CHANCE;
+  const finalDamage = nullified ? 0 : Math.max(1, Math.floor(baseDamage * RUNA_MAGIC_RESIST_REDUCE_FACTOR));
+  const mode = nullified ? 'nullify' : 'heavy_resist';
+  g.LastRunaMagicResist = {
+    enemyUID: Number(enemyUID || 0),
+    targetUID: Number(targetHeroUID || 0),
+    skillId: String(skillId || ''),
+    mode,
+    incomingDamage: baseDamage,
+    finalDamage,
+    triggerRoll: Number(triggerRoll || 0),
+    nullifyRoll: Number(nullifyRoll || 0),
+  };
+  return { finalDamage, mode };
 }
 
 const ENEMY_DEBUFF_STATS = ['ATK', 'DEF', 'MAG', 'RES', 'SPD'];
@@ -2313,10 +2362,17 @@ export function Enemy_ATK_Single(ctx, enemyUID, targetHeroUID) {
 
 export function Enemy_MAG_Single(ctx, enemyUID, targetHeroUID) {
   const dmg = CalculateDamage(ctx, enemyUID, targetHeroUID, 'magic');
-  ApplyDamageToTarget(ctx, targetHeroUID, dmg);
+  const resist = applyRunaMagicResist(ctx, enemyUID, targetHeroUID, dmg, 'Enemy_MAG_Single');
+  if (resist.finalDamage > 0) ApplyDamageToTarget(ctx, targetHeroUID, resist.finalDamage);
   const enemyName = getActorNameByUID(ctx, enemyUID);
   const heroName = getActorNameByUID(ctx, targetHeroUID);
-  LogCombat(ctx, `${enemyName} cast on ${heroName} for ${dmg}!`);
+  if (resist.mode === 'nullify') {
+    LogCombat(ctx, `${heroName} nullified ${enemyName}'s magic!`);
+  } else if (resist.mode === 'heavy_resist') {
+    LogCombat(ctx, `${heroName} heavily resisted magic! (${dmg}->${resist.finalDamage})`);
+  } else {
+    LogCombat(ctx, `${enemyName} cast on ${heroName} for ${resist.finalDamage}!`);
+  }
 }
 
 export function Enemy_Heal_Self(ctx, enemyUID) {
@@ -2981,7 +3037,8 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     g.IsAOEMatch = 1;
     for (const h of getHeroes(ctx)) {
       const dmg = CalculateDamage(ctx, actorUID, h.uid, 'magic');
-      ApplyDamageToTarget(ctx, h.uid, dmg);
+      const resist = applyRunaMagicResist(ctx, actorUID, h.uid, dmg, 'Enemy_MAG_AOE');
+      if (resist.finalDamage > 0) ApplyDamageToTarget(ctx, h.uid, resist.finalDamage);
     }
   }
 
@@ -3287,7 +3344,8 @@ export function ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID = 0) {
   if (skillId === 'Enemy_MAG_AOE') {
     for (const h of getHeroes(ctx)) {
       const dmg = CalculateDamage(ctx, enemyUID, h.uid, 'magic');
-      ApplyDamageToTarget(ctx, h.uid, dmg);
+      const resist = applyRunaMagicResist(ctx, enemyUID, h.uid, dmg, 'Enemy_MAG_AOE');
+      if (resist.finalDamage > 0) ApplyDamageToTarget(ctx, h.uid, resist.finalDamage);
     }
     return 1;
   }

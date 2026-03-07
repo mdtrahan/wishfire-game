@@ -21,3 +21,9 @@
 - test evidence: `npm test -- tests/falieEnmityTargetBiasContract.test.js tests/traitHookFrameworkContract.test.js tests/debuffLifecycleReliabilityContract.test.js` (7/7 pass)
 - scope confirmation: Confined to enemy target selection bias behavior for Falie trait and mirror parity.
 
+- bead id: ORKA-2sa
+- summary of changes: Added Runa passive magic-resist trigger against enemy magic single/AOE paths with deterministic proc/nullify trace state and guarded damage reduction/nullification outcomes.
+- files modified: web-runner/modules/functionBank.js; Scripts/functionBank.js; tests/runaMagicResistContract.test.js
+- test evidence: `npm test -- tests/runaMagicResistContract.test.js tests/falieEnmityTargetBiasContract.test.js tests/traitHookFrameworkContract.test.js tests/debuffLifecycleReliabilityContract.test.js` (10/10 pass)
+- scope confirmation: Confined to Runa defensive trait behavior for incoming enemy magic and mirror parity.
+
