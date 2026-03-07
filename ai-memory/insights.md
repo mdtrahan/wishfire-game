@@ -471,3 +471,11 @@
 
 ## 2026-02-23 (Beads issue-gated workflow)
 - Work tracking was migrated from markdown backlog into Beads, with local git hooks enforcing issue-tracked commits and active work selection (`bd ready` + active in_progress issue). This creates a hard "No issue, no work" gate and reduces unsourced execution drift.
+
+## 2026-03-07 (progression model alignment checkpoint)
+- Root mismatch discovered: active bead queue still assumes classic RPG buff/debuff lifecycle behavior in places, but product direction is mobile-casual progression where power mostly comes from baked-in skills, trait passives, and meta boosters/wallet systems.
+- Operational rule going forward: avoid adding or extending player-character timed buff stacks/timers unless a bead explicitly reframes it as booster/meta layer behavior.
+- Bead triage guideline:
+  - Keep: skill-centric and trait-hook beads that express identity through deterministic skill/passive behavior (`ORKA-6gt`, `ORKA-2sa`, `ORKA-mo4`).
+  - Rewrite before implementation: beads whose acceptance language implies persistent RPG-style buff/debuff maintenance at character stat layer (`ORKA-9ri`, `ORKA-zih`, and any residual blue-buff lifecycle wording in `ORKA-69r` artifacts).
+- Execution safety note: whenever combat scope changes, run a queue audit for terms `buff`, `debuff`, `duration`, `turns`, and `stack` to prevent reintroducing obsolete mechanics.

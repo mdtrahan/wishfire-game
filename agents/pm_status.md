@@ -27,3 +27,19 @@ _Last updated: 2026-03-06_
   - queue availability target (maintain at least 3 READY beads when possible)
   - repeated-failure decomposition requirement (>2 failed reviews)
   - scope-drift rejection and documentation in `/agents/issues.md`
+
+---
+
+_Last updated: 2026-03-07_
+
+## Completed Beads
+- ORKA-fp9 (debuff lifecycle reliability hardening)
+
+## Active Work
+- Preparing ORKA-9ri (Kojonn DoT/debuff support conversion) now that ORKA-fp9 blocker is resolved.
+
+## Next Tasks
+- Close ORKA-fp9 in Beads after commit and proceed with ORKA-9ri implementation.
+
+## Known Issues
+- None new in this cycle.
