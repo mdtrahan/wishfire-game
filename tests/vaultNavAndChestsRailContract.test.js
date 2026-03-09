@@ -16,6 +16,9 @@ test('chests layout includes top-rail retention buttons and routing hit zones', 
   const appPath = path.join(__dirname, '..', 'web-runner', 'app.js');
   const src = fs.readFileSync(appPath, 'utf8');
 
+  assert.match(src, /ctx\.fillText\('Vault', panel\.x \+ 14, panel\.y \+ 58\);/);
+  assert.match(src, /drawHeroStyleCloseControl\(ctx, close, closeWinOvalImage, palette\.ink\);/);
+  assert.match(src, /close,\s*\n\s*combatBack,\s*\n\s*retentionButtons:/);
   assert.match(src, /retentionButtons:\s*\[/);
   assert.match(src, /title:\s*'Enter Homestead'/);
   assert.match(src, /title:\s*'Enter Collectibles'/);
@@ -23,6 +26,7 @@ test('chests layout includes top-rail retention buttons and routing hit zones', 
   assert.match(src, /title:\s*'Enter Artifacts'/);
   assert.match(src, /title:\s*'Enter Tomes'/);
   assert.match(src, /retentionButtons:\s*retentionHitZones,/);
+  assert.match(src, /requestLayoutChange\('combat', 'chests-close-button'\)/);
   assert.match(src, /layoutState\.requestLayoutChange\(String\(btn\.targetLayout\),\s*`chests-\$\{String\(btn\.id \|\| 'retention'\)\}`\)/);
 });
 
@@ -47,5 +51,14 @@ test('retention gallery back routes return to vault home (chestsLayout)', () => 
   assert.match(src, /requestLayoutChange\('chestsLayout', 'mounts-back-vault'\)/);
   assert.match(src, /requestLayoutChange\('chestsLayout', 'collectibles-back-vault'\)/);
   assert.match(src, /requestLayoutChange\('chestsLayout', 'homestead-back-vault'\)/);
-  assert.match(src, /ctx\.fillText\('Back To Vault'/);
+  assert.match(src, /drawHeroStyleCloseControl\(ctx,\s*close,\s*closeWinOvalImage,\s*palette\.ink\);/);
+  assert.match(src, /isPointInRect\(mx, my, zones\.close\) \|\| isPointInRect\(mx, my, zones\.mapBack\)/);
+});
+
+test('hero-style close helper uses injected image reference (no out-of-scope global)', () => {
+  const appPath = path.join(__dirname, '..', 'web-runner', 'app.js');
+  const src = fs.readFileSync(appPath, 'utf8');
+
+  assert.match(src, /function drawHeroStyleCloseControl\(ctx, closeRect, closeOvalImage = null, ink = '#111'\)/);
+  assert.match(src, /if \(closeOvalImage\) \{\s*ctx\.drawImage\(closeOvalImage, closeRect\.x, closeRect\.y, closeRect\.w, closeRect\.h\);/s);
 });

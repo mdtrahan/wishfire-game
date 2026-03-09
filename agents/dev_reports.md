@@ -248,3 +248,9 @@
 - files modified: web-runner/app.js; tests/startupLoadingBarContract.test.js; .beads/open/ORKA-l0p.md
 - test evidence: `npm test -- tests/startupLoadingBarContract.test.js tests/startupAssetLoadPerfContract.test.js tests/layoutState.test.js` (9/9 pass); `npm test -- tests/vaultNavAndChestsRailContract.test.js` (4/4 pass)
 - scope confirmation: loading-flow sequencing and UI behavior only.
+
+- bead id: ORKA-mxc
+- summary of changes: Replaced Map layout `Return Combat` button with Hero-style circle `X` close control and routed close action to combat while preserving drag/pan interactions.
+- files modified: web-runner/app.js; tests/mapCloseControlContract.test.js; .beads/open/ORKA-mxc.md
+- test evidence: `node --test tests/mapCloseControlContract.test.js tests/vaultNavAndChestsRailContract.test.js tests/heroSkillButtonsContract.test.js` (9/9 pass)
+- scope confirmation: Confined to map close-control UI/input lane; no combat/balance logic changes.

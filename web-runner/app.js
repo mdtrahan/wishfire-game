@@ -330,7 +330,7 @@ const gameState = {
       lastY: 0,
       moved: 0,
     },
-    returnButton: { x: 14, y: 14, w: 112, h: 30 },
+    closeHit: null,
     tomesLocaleButton: { x: 0, y: 0, w: 146, h: 36 },
     tomesLocaleHit: null,
     artifactsLocaleButton: { x: 0, y: 0, w: 146, h: 36 },
@@ -898,6 +898,39 @@ function normalizeHeroSelectionIndex() {
 function isPointInRect(mx, my, rect) {
   if (!rect) return false;
   return mx >= rect.x && mx <= (rect.x + rect.w) && my >= rect.y && my <= (rect.y + rect.h);
+}
+
+function getHeroStyleCloseRect(viewWidth, viewHeight) {
+  const artW = Number(heroLayoutSpec?.artboard?.w || 360);
+  const artH = Number(heroLayoutSpec?.artboard?.h || 640);
+  const fitScale = Math.min(viewWidth / artW, viewHeight / artH);
+  const artOffsetX = (viewWidth - (artW * fitScale)) * 0.5;
+  const artOffsetY = (viewHeight - (artH * fitScale)) * 0.5;
+  const r = Number(heroLayoutSpec?.close?.r || 15) * fitScale;
+  const cx = artOffsetX + (Number(heroLayoutSpec?.close?.cx || 180) * fitScale);
+  const cy = artOffsetY + (Number(heroLayoutSpec?.close?.cy || 608) * fitScale);
+  return { x: cx - r, y: cy - r, w: r * 2, h: r * 2, r };
+}
+
+function drawHeroStyleCloseControl(ctx, closeRect, closeOvalImage = null, ink = '#111') {
+  if (!closeRect) return;
+  const cx = closeRect.x + (closeRect.w / 2);
+  const cy = closeRect.y + (closeRect.h / 2);
+  if (closeOvalImage) {
+    ctx.drawImage(closeOvalImage, closeRect.x, closeRect.y, closeRect.w, closeRect.h);
+  } else {
+    ctx.beginPath();
+    ctx.arc(cx, cy, closeRect.r || (closeRect.w / 2), 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.fillStyle = '#d9d9d9';
+    ctx.fill();
+  }
+  ctx.fillStyle = ink;
+  ctx.font = `700 ${Math.max(12, Math.round(closeRect.h * 0.55))}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('X', cx, cy + 1);
+  ctx.textBaseline = 'alphabetic';
 }
 
 function ensureTask011Audit() {
@@ -2570,6 +2603,7 @@ async function main(){
         gameState.mapLayout.mountsLocaleHit = null;
         gameState.mapLayout.collectiblesLocaleHit = null;
         gameState.mapLayout.homesteadLocaleHit = null;
+        gameState.mapLayout.closeHit = null;
         const drag = gameState.mapLayout.drag;
         drag.active = false;
         drag.pointerId = null;
@@ -3246,15 +3280,9 @@ async function main(){
       ctx.font = '600 12px Arial';
       ctx.textAlign = 'left';
       ctx.fillText(`War Meter ${Math.round(pct * 100)}%`, meterX + 6, meterY + 12);
-
-      const btn = gameState.mapLayout.returnButton;
-      ctx.fillStyle = '#f4f6f8';
-      ctx.fillRect(btn.x, btn.y + 24, btn.w, btn.h);
-      ctx.strokeStyle = '#1b1f23';
-      ctx.strokeRect(btn.x, btn.y + 24, btn.w, btn.h);
-      ctx.fillStyle = '#111';
-      ctx.font = '600 12px Arial';
-      ctx.fillText('Return Combat', btn.x + 10, btn.y + 43);
+      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
+      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, '#111');
+      gameState.mapLayout.closeHit = close;
       gameState.mapLayout.tomesLocaleHit = null;
       gameState.mapLayout.artifactsLocaleHit = null;
       gameState.mapLayout.mountsLocaleHit = null;
@@ -3316,14 +3344,13 @@ async function main(){
       };
       roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
 
-      const mapBack = { x: panel.x + 12, y: panel.y + 12, w: 108, h: 28 };
+      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
       const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
-      roundRect(mapBack.x, mapBack.y, mapBack.w, mapBack.h, 9, '#ece3cb', '#baa980');
+      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
       roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#ece3cb', '#baa980');
       ctx.fillStyle = palette.ink;
       ctx.font = '700 11px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('Back To Vault', mapBack.x + mapBack.w / 2, mapBack.y + 18);
       ctx.fillText('Back To Combat', combatBack.x + combatBack.w / 2, combatBack.y + 18);
 
       ctx.textAlign = 'left';
@@ -3365,7 +3392,7 @@ async function main(){
       }
 
       gameState.tomesLayout.hitZones = {
-        mapBack,
+        close,
         combatBack,
         cards: cardHitZones,
       };
@@ -3421,14 +3448,13 @@ async function main(){
         h: Math.max(360, viewHeight - 34),
       };
       roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
-      const mapBack = { x: panel.x + 12, y: panel.y + 12, w: 108, h: 28 };
+      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
       const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
-      roundRect(mapBack.x, mapBack.y, mapBack.w, mapBack.h, 9, '#d9e4ef', '#94a9bc');
+      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
       roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#d9e4ef', '#94a9bc');
       ctx.fillStyle = palette.ink;
       ctx.font = '700 11px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('Back To Vault', mapBack.x + mapBack.w / 2, mapBack.y + 18);
       ctx.fillText('Back To Combat', combatBack.x + combatBack.w / 2, combatBack.y + 18);
 
       ctx.textAlign = 'left';
@@ -3465,7 +3491,7 @@ async function main(){
         cursorY += card.h + cardGap;
       }
       gameState.artifactsLayout.hitZones = {
-        mapBack,
+        close,
         combatBack,
         cards: cardHitZones,
       };
@@ -3521,14 +3547,13 @@ async function main(){
         h: Math.max(360, viewHeight - 34),
       };
       roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
-      const mapBack = { x: panel.x + 12, y: panel.y + 12, w: 108, h: 28 };
+      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
       const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
-      roundRect(mapBack.x, mapBack.y, mapBack.w, mapBack.h, 9, '#deebd5', '#9bb28b');
+      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
       roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#deebd5', '#9bb28b');
       ctx.fillStyle = palette.ink;
       ctx.font = '700 11px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('Back To Vault', mapBack.x + mapBack.w / 2, mapBack.y + 18);
       ctx.fillText('Back To Combat', combatBack.x + combatBack.w / 2, combatBack.y + 18);
 
       ctx.textAlign = 'left';
@@ -3565,7 +3590,7 @@ async function main(){
         cursorY += card.h + cardGap;
       }
       gameState.mountsLayout.hitZones = {
-        mapBack,
+        close,
         combatBack,
         cards: cardHitZones,
       };
@@ -3621,14 +3646,13 @@ async function main(){
         h: Math.max(360, viewHeight - 34),
       };
       roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
-      const mapBack = { x: panel.x + 12, y: panel.y + 12, w: 108, h: 28 };
+      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
       const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
-      roundRect(mapBack.x, mapBack.y, mapBack.w, mapBack.h, 9, '#eadff2', '#b796cb');
+      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
       roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#eadff2', '#b796cb');
       ctx.fillStyle = palette.ink;
       ctx.font = '700 11px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('Back To Vault', mapBack.x + mapBack.w / 2, mapBack.y + 18);
       ctx.fillText('Back To Combat', combatBack.x + combatBack.w / 2, combatBack.y + 18);
 
       ctx.textAlign = 'left';
@@ -3665,7 +3689,7 @@ async function main(){
         cursorY += card.h + cardGap;
       }
       gameState.collectiblesLayout.hitZones = {
-        mapBack,
+        close,
         combatBack,
         cards: cardHitZones,
       };
@@ -3721,14 +3745,13 @@ async function main(){
         h: Math.max(360, viewHeight - 34),
       };
       roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
-      const mapBack = { x: panel.x + 12, y: panel.y + 12, w: 108, h: 28 };
+      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
       const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
-      roundRect(mapBack.x, mapBack.y, mapBack.w, mapBack.h, 9, '#e1ead6', '#94a985');
+      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
       roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#e1ead6', '#94a985');
       ctx.fillStyle = palette.ink;
       ctx.font = '700 11px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('Back To Vault', mapBack.x + mapBack.w / 2, mapBack.y + 18);
       ctx.fillText('Back To Combat', combatBack.x + combatBack.w / 2, combatBack.y + 18);
 
       ctx.textAlign = 'left';
@@ -3773,7 +3796,7 @@ async function main(){
         );
       });
       gameState.homesteadLayout.hitZones = {
-        mapBack,
+        close,
         combatBack,
         slots: slotHitZones,
       };
@@ -3829,6 +3852,8 @@ async function main(){
         h: Math.max(360, viewHeight - 34),
       };
       roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
+      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
+      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
       const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
       roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#efe3c4', '#b89f6f');
       ctx.fillStyle = palette.ink;
@@ -3839,7 +3864,7 @@ async function main(){
       ctx.textAlign = 'left';
       ctx.fillStyle = palette.ink;
       ctx.font = '700 18px Arial';
-      ctx.fillText('Chests (Scaffold)', panel.x + 14, panel.y + 58);
+      ctx.fillText('Vault', panel.x + 14, panel.y + 58);
       ctx.fillStyle = palette.muted;
       ctx.font = '500 11px Arial';
       ctx.fillText('Tier tabs and dopamine-progress reward shell.', panel.x + 14, panel.y + 76);
@@ -3922,6 +3947,7 @@ async function main(){
       });
 
       gameState.chestsLayout.hitZones = {
+        close,
         combatBack,
         retentionButtons: retentionHitZones,
         tabs: tabHitZones,
@@ -6997,9 +7023,8 @@ function getStoryCardLiveLineState() {
       return;
     }
     if (activeLayoutId === 'mapLayout') {
-      const btn = gameState.mapLayout.returnButton;
-      const buttonTop = btn.y + 24;
-      if (mx >= btn.x && mx <= (btn.x + btn.w) && my >= buttonTop && my <= (buttonTop + btn.h)) {
+      const close = gameState.mapLayout.closeHit;
+      if (isPointInRect(mx, my, close)) {
         const req = deriveEncounterRequestFromMapState();
         state.globals.EncounterTargetCP = Number(req.targetCP || 120);
         state.globals.EncounterLocale = String(req.locale || 'clouds');
@@ -7007,7 +7032,7 @@ function getStoryCardLiveLineState() {
         state.globals.EncounterPolicy = String(req.policy || 'mixed');
         state.globals.EncounterFaction = String(req.faction || '');
         state.globals.EncounterSeed = Number(req.seed || 1);
-        layoutState.requestLayoutChange('combat', 'map-return-button').catch((err) => {
+        layoutState.requestLayoutChange('combat', 'map-close-button').catch((err) => {
           console.error('[LAYOUT_PHASE1] map return failed', err);
         });
         drawFrame();
@@ -7025,7 +7050,7 @@ function getStoryCardLiveLineState() {
     }
     if (activeLayoutId === 'tomesLayout') {
       const zones = (gameState.tomesLayout && gameState.tomesLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.mapBack)) {
+      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
         layoutState.requestLayoutChange('chestsLayout', 'tomes-back-vault').catch((err) => {
           console.error('[LAYOUT_PHASE1] tomes->vault failed', err);
         });
@@ -7052,7 +7077,7 @@ function getStoryCardLiveLineState() {
     }
     if (activeLayoutId === 'artifactsLayout') {
       const zones = (gameState.artifactsLayout && gameState.artifactsLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.mapBack)) {
+      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
         layoutState.requestLayoutChange('chestsLayout', 'artifacts-back-vault').catch((err) => {
           console.error('[LAYOUT_PHASE1] artifacts->vault failed', err);
         });
@@ -7079,7 +7104,7 @@ function getStoryCardLiveLineState() {
     }
     if (activeLayoutId === 'mountsLayout') {
       const zones = (gameState.mountsLayout && gameState.mountsLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.mapBack)) {
+      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
         layoutState.requestLayoutChange('chestsLayout', 'mounts-back-vault').catch((err) => {
           console.error('[LAYOUT_PHASE1] mounts->vault failed', err);
         });
@@ -7106,7 +7131,7 @@ function getStoryCardLiveLineState() {
     }
     if (activeLayoutId === 'collectiblesLayout') {
       const zones = (gameState.collectiblesLayout && gameState.collectiblesLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.mapBack)) {
+      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
         layoutState.requestLayoutChange('chestsLayout', 'collectibles-back-vault').catch((err) => {
           console.error('[LAYOUT_PHASE1] collectibles->vault failed', err);
         });
@@ -7133,7 +7158,7 @@ function getStoryCardLiveLineState() {
     }
     if (activeLayoutId === 'homesteadLayout') {
       const zones = (gameState.homesteadLayout && gameState.homesteadLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.mapBack)) {
+      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
         layoutState.requestLayoutChange('chestsLayout', 'homestead-back-vault').catch((err) => {
           console.error('[LAYOUT_PHASE1] homestead->vault failed', err);
         });
@@ -7160,6 +7185,13 @@ function getStoryCardLiveLineState() {
     }
     if (activeLayoutId === 'chestsLayout') {
       const zones = (gameState.chestsLayout && gameState.chestsLayout.hitZones) || {};
+      if (isPointInRect(mx, my, zones.close)) {
+        layoutState.requestLayoutChange('combat', 'chests-close-button').catch((err) => {
+          console.error('[LAYOUT_PHASE1] chests close->combat failed', err);
+        });
+        drawFrame();
+        return;
+      }
       if (isPointInRect(mx, my, zones.combatBack)) {
         layoutState.requestLayoutChange('combat', 'chests-back-combat').catch((err) => {
           console.error('[LAYOUT_PHASE1] chests->combat failed', err);

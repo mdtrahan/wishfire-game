@@ -57,3 +57,7 @@
 ## 2026-03-08 — Layout 0 loading UX strategy
 - Keep a dedicated pre-bootstrap draw path (`drawStartupLoadingFrame`) so canvas never appears blank while assets initialize.
 - Progress should advance by deterministic stage weights (layout/object/enemy/critical/core/finalize) and explicitly resolve to 100% at runtime-ready transition.
+
+## 2026-03-08 — Vault Close-Control Regression Guard
+- Helper functions declared before runtime asset variables must not capture later block-scoped symbols directly; pass assets as explicit parameters (`drawHeroStyleCloseControl(..., closeOvalImage, ...)`) to avoid `ReferenceError` in non-hero layout draw paths.
+- When reusing Hero UI primitives across other layouts, update both draw path and hit-zone routing together; visual parity without input wiring causes partial regressions.

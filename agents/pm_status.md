@@ -516,3 +516,18 @@ _Last updated: 2026-03-08_
 
 ---
 _Last updated: 2026-03-08_
+
+## Completed Beads
+- ORKA-mxc (Map `Return Combat` replaced with Hero-style circle `X` close control)
+
+## Active Work
+- None in this lane.
+
+## Next Tasks
+- User runtime QA confirmation on Map close-control interaction and drag/pan behavior.
+
+## Known Issues
+- `bd` CLI unavailable in shell; bead state maintained directly in `.beads/` files.
+
+---
+_Last updated: 2026-03-08_
