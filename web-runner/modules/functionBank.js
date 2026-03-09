@@ -23,7 +23,7 @@ import {
   deriveBattleStartRemaining,
   deriveBattleStartRoundPartition,
 } from '../src/core/schedulerRules.mjs';
-import { shouldAutoCorrectImproperRepeat } from '../src/core/initiativeGuards.mjs';
+import { sanitizeInitiativeQueue, shouldAutoCorrectImproperRepeat } from '../src/core/initiativeGuards.mjs';
 
 const POWER_AMP_OUTCOMES = [
   { key: 'HERO_2X', multiplier: 2, chance: 0.62 },
@@ -72,11 +72,42 @@ function ensureEntities(ctx) {
   return (ctx && ctx.state ? ctx.state.entities : state.entities);
 }
 
-function computeCombatPowerFromStats(atk, def, hp) {
+function computeCombatPowerFromStats(atk, def, hp, mag = 0, res = 0, attackType = '') {
   const a = Number(atk || 0);
   const d = Number(def || 0);
   const h = Number(hp || 0);
-  return Math.round((a + d + (h / 10)) * 100) / 100;
+  const m = Number(mag || 0);
+  const r = Number(res || 0);
+  const type = String(attackType || '').toLowerCase();
+  const offense = type === 'magic'
+    ? m
+    : (type === 'melee' ? a : Math.max(a, m));
+  const mitigation = (d * 0.65) + (r * 0.35);
+  const survivability = mitigation + (h / 10);
+  return Math.ceil(offense + survivability);
+}
+
+function normalizeLocaleTags(input) {
+  if (Array.isArray(input)) {
+    const tags = input.map(v => String(v || '').trim().toLowerCase()).filter(Boolean);
+    return tags.length ? tags : ['all'];
+  }
+  const raw = String(input ?? '').trim();
+  if (!raw) return ['all'];
+  if (raw.startsWith('[') && raw.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return normalizeLocaleTags(parsed);
+    } catch (_) {
+      // no-op
+    }
+  }
+  const tags = raw
+    .split('|')
+    .flatMap(part => String(part).split(','))
+    .map(v => String(v || '').trim().toLowerCase())
+    .filter(Boolean);
+  return tags.length ? tags : ['all'];
 }
 
 function getGems(ctx) {
@@ -535,6 +566,7 @@ function makeStableHeroSkillPointId(hero) {
   if (heroName) return `hero_name:${heroName}`;
   return '';
 }
+const HERO_SKILL_SHARED_KEY = '__party_shared__';
 
 function resolveHeroSkillPointIdentity(ctx, heroRef) {
   const heroes = getAllHeroActors(ctx);
@@ -597,10 +629,11 @@ function syncHeroSkillPointLegacyUidView(ctx, store) {
   const g = getGlobals(ctx);
   const legacy = {};
   const heroes = getAllHeroActors(ctx);
+  const sharedBalance = Math.max(0, Math.floor(Number(store[HERO_SKILL_SHARED_KEY] || 0)));
   for (const hero of heroes) {
     const identity = resolveHeroSkillPointIdentity(ctx, hero);
-    if (!identity.heroId || !identity.actorUID) continue;
-    legacy[identity.actorUID] = Number(store[identity.heroId] || 0);
+    if (!identity.actorUID) continue;
+    legacy[identity.actorUID] = sharedBalance;
   }
   g.HeroSkillPointsByUID = legacy;
   return legacy;
@@ -627,6 +660,18 @@ function ensureHeroSkillPointStore(ctx) {
       }
       store[identity.heroId] += value;
     }
+  }
+  // ORKA-hvj: migrate legacy per-hero point buckets to one shared party wallet.
+  if (!Number.isFinite(Number(store[HERO_SKILL_SHARED_KEY]))) {
+    const candidates = Object.entries(store)
+      .filter(([key]) => key !== HERO_SKILL_SHARED_KEY)
+      .map(([, rawValue]) => Math.max(0, Math.floor(Number(rawValue || 0))))
+      .filter(value => Number.isFinite(value));
+    store[HERO_SKILL_SHARED_KEY] = candidates.length ? Math.max(...candidates) : 0;
+  }
+  for (const key of Object.keys(store)) {
+    if (key === HERO_SKILL_SHARED_KEY) continue;
+    delete store[key];
   }
 
   syncHeroSkillPointLegacyUidView(ctx, store);
@@ -829,13 +874,13 @@ export function GrantHeroSkillPoints(ctx, heroUID, amount, source = 'unspecified
     return { ok: false, reason: 'hero_not_found', tx };
   }
   if (!Number.isFinite(delta) || delta <= 0) {
-    const tx = buildHeroSkillPointTxn(g, identity, source, delta, Number(store[identity.heroId] || 0), 'grant', 'rejected', 'invalid_amount');
+    const tx = buildHeroSkillPointTxn(g, identity, source, delta, Number(store[HERO_SKILL_SHARED_KEY] || 0), 'grant', 'rejected', 'invalid_amount');
     appendHeroSkillPointTxn(g, tx);
     return { ok: false, reason: 'invalid_amount', tx };
   }
-  const current = Number(store[identity.heroId] || 0);
+  const current = Number(store[HERO_SKILL_SHARED_KEY] || 0);
   const next = current + delta;
-  store[identity.heroId] = next;
+  store[HERO_SKILL_SHARED_KEY] = next;
   syncHeroSkillPointLegacyUidView(ctx, store);
   const tx = buildHeroSkillPointTxn(g, identity, source, delta, next, 'grant', 'applied');
   appendHeroSkillPointTxn(g, tx);
@@ -853,18 +898,18 @@ export function SpendHeroSkillPoints(ctx, heroUID, amount, source = 'unspecified
     return { ok: false, reason: 'hero_not_found', tx };
   }
   if (!Number.isFinite(spend) || spend <= 0) {
-    const tx = buildHeroSkillPointTxn(g, identity, source, -Math.abs(spend || 0), Number(store[identity.heroId] || 0), 'spend', 'rejected', 'invalid_amount');
+    const tx = buildHeroSkillPointTxn(g, identity, source, -Math.abs(spend || 0), Number(store[HERO_SKILL_SHARED_KEY] || 0), 'spend', 'rejected', 'invalid_amount');
     appendHeroSkillPointTxn(g, tx);
     return { ok: false, reason: 'invalid_amount', tx };
   }
-  const current = Number(store[identity.heroId] || 0);
+  const current = Number(store[HERO_SKILL_SHARED_KEY] || 0);
   if (spend > current) {
     const tx = buildHeroSkillPointTxn(g, identity, source, -spend, current, 'spend', 'rejected', 'overdraft');
     appendHeroSkillPointTxn(g, tx);
     return { ok: false, reason: 'overdraft', balance: current, tx };
   }
   const next = current - spend;
-  store[identity.heroId] = next;
+  store[HERO_SKILL_SHARED_KEY] = next;
   syncHeroSkillPointLegacyUidView(ctx, store);
   const tx = buildHeroSkillPointTxn(g, identity, source, -spend, next, 'spend', 'applied');
   appendHeroSkillPointTxn(g, tx);
@@ -875,23 +920,21 @@ export function GetHeroSkillPointBalance(ctx, heroUID) {
   const store = ensureHeroSkillPointStore(ctx);
   const identity = resolveHeroSkillPointIdentity(ctx, heroUID);
   if (!identity.heroId) return 0;
-  return Number(store[identity.heroId] || 0);
+  return Number(store[HERO_SKILL_SHARED_KEY] || 0);
 }
 
 export function GetAllHeroSkillPointBalances(ctx) {
   const store = ensureHeroSkillPointStore(ctx);
   const out = {};
+  const sharedBalance = Number(store[HERO_SKILL_SHARED_KEY] || 0);
   const stableIds = getAllHeroActors(ctx)
     .sort((a, b) => Number(a.heroIndex || 0) - Number(b.heroIndex || 0))
     .map(hero => makeStableHeroSkillPointId(hero))
     .filter(id => id);
   for (const heroId of stableIds) {
-    out[heroId] = Number(store[heroId] || 0);
+    out[heroId] = sharedBalance;
   }
-  for (const key of Object.keys(store)) {
-    if (out[key] != null) continue;
-    out[key] = Number(store[key] || 0);
-  }
+  out[HERO_SKILL_SHARED_KEY] = sharedBalance;
   return out;
 }
 
@@ -905,20 +948,25 @@ export function GetHeroSkillPointLedger(ctx, limit = 60) {
 
 export function GrantHeroSkillPointsToParty(ctx, amountEach, source = 'party_reward') {
   const g = getGlobals(ctx);
+  const store = ensureHeroSkillPointStore(ctx);
   const heroes = getAllHeroActors(ctx)
     .slice()
     .sort((a, b) => Number(a.heroIndex || 0) - Number(b.heroIndex || 0));
+  const primaryUID = Number(heroes[0] && heroes[0].uid || 0);
+  const primaryGrant = primaryUID > 0
+    ? GrantHeroSkillPoints(ctx, primaryUID, amountEach, source)
+    : { ok: false, tx: null };
+  const sharedBalance = Number(store[HERO_SKILL_SHARED_KEY] || 0);
   const results = heroes.map(hero => {
-    const grant = GrantHeroSkillPoints(ctx, hero.uid, amountEach, source);
     const identity = resolveHeroSkillPointIdentity(ctx, hero.uid);
     return {
-      ok: !!grant.ok,
-      balance: Number(grant.balance || 0),
+      ok: !!primaryGrant.ok,
+      balance: sharedBalance,
       heroId: String(identity.heroId || ''),
       heroIndex: Number((identity.heroIndex) ?? -1),
       heroName: String(identity.heroName || ''),
       actorUID: Number(identity.actorUID || 0),
-      tx: grant.tx ? { ...grant.tx } : null,
+      tx: primaryGrant.tx ? { ...primaryGrant.tx } : null,
     };
   });
   const entry = {
@@ -942,6 +990,43 @@ export function GrantHeroSkillPointsToParty(ctx, amountEach, source = 'party_rew
   };
   appendHeroSkillPointRewardTrace(g, entry);
   return { ok: results.every(row => row.ok), entry, results };
+}
+
+export function SetHeroSkillPointsForParty(ctx, exactAmount = 300, source = 'party_seed_exact') {
+  const g = getGlobals(ctx);
+  const target = Math.max(0, Math.floor(Number(exactAmount || 0)));
+  const store = ensureHeroSkillPointStore(ctx);
+  const heroes = getAllHeroActors(ctx)
+    .slice()
+    .sort((a, b) => Number(a.heroIndex || 0) - Number(b.heroIndex || 0));
+  store[HERO_SKILL_SHARED_KEY] = target;
+  const results = heroes.map((hero) => {
+    const identity = resolveHeroSkillPointIdentity(ctx, hero.uid);
+    if (!identity.heroId) {
+      return { ok: false, heroId: '', heroName: String(hero.name || ''), actorUID: Number(hero.uid || 0), balance: 0 };
+    }
+    return {
+      ok: true,
+      heroId: String(identity.heroId || ''),
+      heroName: String(identity.heroName || ''),
+      actorUID: Number(identity.actorUID || 0),
+      balance: target,
+    };
+  });
+  syncHeroSkillPointLegacyUidView(ctx, store);
+  appendHeroSkillPointRewardTrace(g, {
+    kind: 'party_seed_exact',
+    source: String(source || 'party_seed_exact'),
+    amountEach: target,
+    grantsApplied: results.filter((row) => row.ok).length,
+    heroIds: results.map((row) => row.heroId),
+    actorUIDs: results.map((row) => row.actorUID),
+    time: Number(g.time || 0),
+    turn: Number(g.DebugTurnCount || 0),
+    turnSerial: Number(g.TurnSerial || 0),
+    results: results.map((row) => ({ ...row })),
+  });
+  return { ok: results.every((row) => row.ok), amountEach: target, results };
 }
 
 export function GrantTowerSkillPoints(ctx, amountEach = 1, source = 'tower_takedown') {
@@ -1036,6 +1121,57 @@ export function AttemptHeroSkillUpgrade(ctx, heroUID, skillRef, source = 'hero_s
   const trace = buildHeroSkillProgressTrace(g, pair.identity, snapshot, action, cost, 'applied', '', Number(spend.balance || 0));
   appendHeroSkillProgressTrace(g, trace);
   return { ok: true, action, cost, balance: Number(spend.balance || 0), state: snapshot, trace, spend };
+}
+
+export function AttemptHeroSkillDowngrade(ctx, heroUID, skillRef, source = 'hero_skill_downgrade') {
+  const g = getGlobals(ctx);
+  const pair = ensureHeroSkillProgressRecord(ctx, heroUID);
+  if (!pair.identity.heroId || !pair.record) {
+    const rejectedState = buildDefaultHeroSkillProgressState({ key: '', title: '', slot: -1, maxRank: 1, costs: [] });
+    const trace = buildHeroSkillProgressTrace(g, pair.identity, rejectedState, 'downgrade', 0, 'rejected', 'hero_not_found', 0);
+    appendHeroSkillProgressTrace(g, trace);
+    return { ok: false, reason: 'hero_not_found', state: null, trace };
+  }
+  const entry = resolveHeroSkillProgressEntry(pair.record, skillRef);
+  if (!entry) {
+    const rejectedState = buildDefaultHeroSkillProgressState({ key: '', title: '', slot: -1, maxRank: 1, costs: [] });
+    const trace = buildHeroSkillProgressTrace(g, pair.identity, rejectedState, 'downgrade', 0, 'rejected', 'skill_not_found', GetHeroSkillPointBalance(ctx, heroUID));
+    appendHeroSkillProgressTrace(g, trace);
+    return { ok: false, reason: 'skill_not_found', state: null, trace };
+  }
+  const state = cloneHeroSkillProgressState(entry);
+  if (state.rank <= 0) {
+    const trace = buildHeroSkillProgressTrace(g, pair.identity, state, 'downgrade', 0, 'rejected', 'min_rank_reached', GetHeroSkillPointBalance(ctx, heroUID));
+    appendHeroSkillProgressTrace(g, trace);
+    return { ok: false, reason: 'min_rank_reached', state, trace };
+  }
+  const refundIndex = Math.max(0, state.rank - 1);
+  const refund = Math.max(0, Math.floor(Number(state.costs[refundIndex] || state.lastCost || 0)));
+  if (!Number.isFinite(refund) || refund <= 0) {
+    const trace = buildHeroSkillProgressTrace(g, pair.identity, state, 'downgrade', 0, 'rejected', 'invalid_refund_config', GetHeroSkillPointBalance(ctx, heroUID));
+    appendHeroSkillProgressTrace(g, trace);
+    return { ok: false, reason: 'invalid_refund_config', state, trace };
+  }
+  const grant = GrantHeroSkillPoints(ctx, heroUID, refund, `${source}:${state.key}:refund`);
+  if (!grant.ok) {
+    const reason = String(grant.reason || 'refund_failed');
+    const trace = buildHeroSkillProgressTrace(g, pair.identity, state, 'downgrade', refund, 'rejected', reason, Number(grant.balance || GetHeroSkillPointBalance(ctx, heroUID)));
+    appendHeroSkillProgressTrace(g, trace);
+    return { ok: false, reason, state, trace, grant };
+  }
+  state.rank -= 1;
+  state.status = state.rank > 0 ? 'unlocked' : 'locked';
+  state.nextCost = state.rank >= state.maxRank
+    ? 0
+    : Math.max(0, Math.floor(Number(state.costs[state.rank] || 0)));
+  state.lastCost = state.rank > 0
+    ? Math.max(0, Math.floor(Number(state.costs[state.rank - 1] || 0)))
+    : 0;
+  pair.record[state.key] = state;
+  const snapshot = cloneHeroSkillProgressState(state);
+  const trace = buildHeroSkillProgressTrace(g, pair.identity, snapshot, 'downgrade', refund, 'applied', '', Number(grant.balance || 0));
+  appendHeroSkillProgressTrace(g, trace);
+  return { ok: true, action: 'downgrade', refund, balance: Number(grant.balance || 0), state: snapshot, trace, grant };
 }
 
 function ensureTokenWallet(ctx) {
@@ -1376,22 +1512,30 @@ function schedulerApplyRemovalCompaction(ctx, removedUID, slotIndex, currentUID)
 function setTurnOrderArrayWithAudit(ctx, nextQueue, cause, details = {}) { const g = getGlobals(ctx), audit = ensureTurnSchedulerAudit(g), beforeSlots = snapshotTurnOrderSlots(ctx), before = new Map(); for (const slot of beforeSlots) before.set(slot.uid, (before.get(slot.uid) || 0) + 1); schedulerWriteQueue(ctx, nextQueue); const afterSlots = snapshotTurnOrderSlots(ctx), after = new Map(), removedUIDs = [], addedUIDs = []; for (const slot of afterSlots) after.set(slot.uid, (after.get(slot.uid) || 0) + 1); for (const uid of new Set([...before.keys(), ...after.keys()])) { const beforeCount = before.get(uid) || 0, afterCount = after.get(uid) || 0; for (let i = 0; i < beforeCount - afterCount; i++) removedUIDs.push(uid); for (let i = 0; i < afterCount - beforeCount; i++) addedUIDs.push(uid); } let mutationSource = null; if (cause === 'explicit_extra_turn_insert' || cause === 'spawn_insertion') mutationSource = 'explicit_mechanic'; else if (removedUIDs.length > 0 && Number(audit.lastRemovalSeq || 0) > 0 && Number(audit.lastRemovalSeq || 0) >= Number(audit.seq || 0) - 2) mutationSource = 'collapse_after_future_slot_removal'; recordTurnSchedulerEvent(ctx, 'queue_mutation', { cause, beforeLength: beforeSlots.length, afterLength: afterSlots.length, removedUIDs, addedUIDs, mutationSource, queue: afterSlots, ...details }); return afterSlots; }
 function reconcileInitiativeQueue(ctx, roster, cause = 'initiative_refresh_preview', details = {}) {
   const g = getGlobals(ctx);
+  const audit = ensureTurnSchedulerAudit(g);
   const currentUID = Number(g.InitiativeCurrentUID || 0);
   const existing = Array.isArray(g.TurnOrderArray) ? g.TurnOrderArray : [];
   const rosterByUID = new Map(roster.map(r => [Number(r.uid || 0), { uid: Number(r.uid || 0), type: Number(r.type || 0), spd: Number(r.spd || 0) }]));
   const override = getInitiativeOverridePool(ctx, roster);
+  const allowExtraCarry = cause === 'explicit_extra_turn_insert' || audit?.lastQueueMutation?.source === 'explicit_mechanic';
   const nextQueue = [];
   const seenBase = new Set();
+  const seenExtra = new Set();
   for (const slot of existing) {
     const uid = Number(slot?.uid || 0);
     const live = rosterByUID.get(uid);
     if (!live) continue;
     const extra = !!slot?.extra;
-    if (!extra) {
-      if (seenBase.has(uid)) continue;
-      seenBase.add(uid);
+    if (extra) {
+      if (!allowExtraCarry) continue;
+      if (seenExtra.has(uid)) continue;
+      seenExtra.add(uid);
+      nextQueue.push({ uid, type: live.type, spd: live.spd, extra: true });
+      continue;
     }
-    nextQueue.push({ uid, type: live.type, spd: live.spd, extra });
+    if (seenBase.has(uid)) continue;
+    seenBase.add(uid);
+    nextQueue.push({ uid, type: live.type, spd: live.spd, extra: false });
   }
   const missingBase = roster.filter(r => !seenBase.has(Number(r.uid || 0))).map(r => ({
     uid: Number(r.uid || 0),
@@ -1403,8 +1547,15 @@ function reconcileInitiativeQueue(ctx, roster, cause = 'initiative_refresh_previ
     return setTurnOrderArrayWithAudit(ctx, buildFixedCycleSlots(roster, 0, override.pool || roster), cause, { ...details, trigger: details.trigger || 'reconcile_initiative_queue', overrideActive: !!override.active });
   }
   if (override.active) {
+    const seenOverrideExtra = new Set();
     const extraSlots = nextQueue
-      .filter(slot => !!slot.extra && rosterByUID.has(Number(slot.uid || 0)))
+      .filter((slot) => {
+        const uid = Number(slot?.uid || 0);
+        if (!slot?.extra || !rosterByUID.has(uid)) return false;
+        if (seenOverrideExtra.has(uid)) return false;
+        seenOverrideExtra.add(uid);
+        return true;
+      })
       .map(slot => {
         const live = rosterByUID.get(Number(slot.uid || 0));
         return { uid: live.uid, type: live.type, spd: live.spd, extra: true };
@@ -1416,7 +1567,8 @@ function reconcileInitiativeQueue(ctx, roster, cause = 'initiative_refresh_previ
     const orderedMissing = buildFixedCycleSlots(missingBase, 0);
     for (const slot of orderedMissing) nextQueue.push(slot);
   }
-  const after = setTurnOrderArrayWithAudit(ctx, nextQueue, cause, { ...details, trigger: details.trigger || 'reconcile_initiative_queue', preservedCurrentUID: currentUID, missingBaseUIDs: missingBase.map(slot => slot.uid) });
+  const sanitizedQueue = sanitizeInitiativeQueue(nextQueue, { allowExtraRepeats: allowExtraCarry || override.active });
+  const after = setTurnOrderArrayWithAudit(ctx, sanitizedQueue, cause, { ...details, trigger: details.trigger || 'reconcile_initiative_queue', preservedCurrentUID: currentUID, missingBaseUIDs: missingBase.map(slot => slot.uid) });
   const idx = after.findIndex(slot => Number(slot.uid || 0) === currentUID);
   if (idx !== -1) schedulerWriteIndex(ctx, idx);
   else if (after.length <= 0) schedulerWriteIndex(ctx, 0);
@@ -2413,7 +2565,16 @@ export function Enemy_Heal_Self(ctx, enemyUID) {
 
 export function PickNextEnemyID(ctx) {
   const g = getGlobals(ctx);
-  const pool = Array.isArray(g.EnemyData) ? g.EnemyData : [];
+  const basePool = Array.isArray(g.EnemyData) ? g.EnemyData : [];
+  const encounterNames = Array.isArray(g.EncounterPoolNames) ? g.EncounterPoolNames : [];
+  const locale = String(g.EncounterLocale || g.CurrentLocale || 'all').trim().toLowerCase();
+  const localePool = basePool.filter((row) => {
+    const tags = normalizeLocaleTags(row?.localeTags || row?.locale || row?.biomes || row?.biome || 'all');
+    return locale === 'all' || tags.includes('all') || tags.includes(locale);
+  });
+  const pool = encounterNames.length
+    ? localePool.filter(row => encounterNames.includes(String(row?.name || '')))
+    : localePool;
   if (pool.length === 0) return null;
   const idx = Math.floor(Math.random() * pool.length);
   return pool[idx] || null;
@@ -2432,7 +2593,14 @@ export function SpawnEnemy(ctx, enemyData, slotIndex = 0) {
     combatPower: Number(
       enemyData.CombatPower
       ?? enemyData.combatPower
-      ?? computeCombatPowerFromStats(enemyData.ATK, enemyData.DEF, enemyData.HP ?? enemyData.maxHP),
+      ?? computeCombatPowerFromStats(
+        enemyData.ATK,
+        enemyData.DEF,
+        enemyData.HP ?? enemyData.maxHP,
+        enemyData.MAG,
+        enemyData.RES,
+        enemyData.attackType,
+      ),
     ),
     stats: {
       ATK: Number(enemyData.ATK ?? 0),
@@ -2441,6 +2609,9 @@ export function SpawnEnemy(ctx, enemyData, slotIndex = 0) {
       RES: Number(enemyData.RES ?? 0),
       SPD: Number(enemyData.SPD ?? 0),
     },
+    faction: String(enemyData.faction || 'wishless'),
+    enemyRole: String(enemyData.enemyRole || enemyData.role || 'fodder'),
+    localeTags: normalizeLocaleTags(enemyData.localeTags || enemyData.locale || enemyData.biomes || enemyData.biome || 'all'),
     slotIndex,
     originX: SlotX(ctx, slotIndex),
     originY: SlotY(ctx, slotIndex),
