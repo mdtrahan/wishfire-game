@@ -217,6 +217,56 @@ class CombatRuntimeGateway {
       isRefillQueued: false,
     };
   }
+
+  suspend() {
+    const pre = this.validateSuspendCheckpoint();
+    this.emitCheckpointResult('pre_suspend', pre);
+    const snapshot = this.takeSnapshot();
+    this.resetGemInputState();
+    this.combatState.inputEnabled = false;
+    this.combatState.acceptEvents = false;
+    combatLog('[Combat] Suspended');
+    if (this.eventBus && typeof this.eventBus.emit === 'function') {
+      this.eventBus.emit('combat:suspended', { snapshot });
+    }
+    return snapshot;
+  }
+
+  resume(snapshot) {
+    this.combatState.acceptEvents = false;
+    this.combatState.inputEnabled = false;
+    if (snapshot && snapshot.turnState && Array.isArray(snapshot.turnState.turnQueue)) {
+      this.combatState.turnQueue = cloneJson(snapshot.turnState.turnQueue);
+      this.combatState.currentActorIndex = Number(snapshot.turnState.currentActorIndex || 0);
+    } else if (snapshot && Array.isArray(snapshot.turnQueue)) {
+      this.combatState.turnQueue = cloneJson(snapshot.turnQueue);
+      this.combatState.currentActorIndex = Number(snapshot.currentActorIndex || 0);
+    }
+    this.resetGemInputState();
+    const post = this.validateResumeCheckpoint(snapshot || null);
+    this.emitCheckpointResult('post_resume', post, {
+      expectedResumeToken: snapshot && snapshot.resumeToken ? snapshot.resumeToken : '',
+    });
+    this.combatState.inputEnabled = true;
+    this.combatState.acceptEvents = true;
+    combatLog('[Combat] Resumed');
+    if (this.eventBus && typeof this.eventBus.emit === 'function') {
+      this.eventBus.emit('combat:resumed', { snapshot: snapshot || null, checkpoint: post });
+    }
+  }
+
+  canAcceptEvents() {
+    return this.combatState.acceptEvents === true;
+  }
+
+  handleEvent(eventName, payload = {}) {
+    if (!this.canAcceptEvents()) return false;
+    if (typeof this.combatState.onEvent === 'function') {
+      this.combatState.onEvent(eventName, payload);
+    }
+    return true;
+  }
 }
 
 export { CombatRuntimeGateway };
+export default CombatRuntimeGateway;

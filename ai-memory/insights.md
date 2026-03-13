@@ -158,3 +158,8 @@
 - For AFK/idle features, split the system into two authorities: a background emission ledger and a foreground theater session. The theater should be disposable presentation; the ledger should be the only owner of reward accrual.
 - `Collect` should cash out the current unclaimed ledger and restart cadence immediately from the collection timestamp. It should not be forced to restart or preserve the visible battle scene in order to keep rewards flowing.
 - When a feature must accrue while the player is away, drive it from timestamps and cadence state, not from per-frame scene updates. Layout presence should only affect what is rendered, not whether the rewards continue to exist.
+
+## 2026-03-13 — Hot-File Commit Recovery Path
+- When a runtime checkpoint spans hot files and non-hot files, do not force a single “savepoint” commit. First split out a compliant non-hot runtime/modules/tests commit so Git history advances without violating the hook.
+- A hot-file scope declaration only helps when the changed lines live inside named function ranges. If `web-runner/app.js` includes top-level imports, constants, or game-state object edits, the hot-file hook will still reject the commit even with a scope file present.
+- For this repo, the practical recovery order is: push governance/tooling first, then commit standalone runtime modules and deterministic contracts, then tackle hot-file integration in a separate bead with explicit function ownership.
