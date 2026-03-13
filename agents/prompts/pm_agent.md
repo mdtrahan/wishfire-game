@@ -28,12 +28,25 @@ The following files are the **only approved coordination surface** unless the re
 | File | Purpose |
 |-----|------|
 | /backlog/backlog.md | Backlog items not yet converted into beads |
-| /beads/ | Active development tasks |
 | /agents/pm_status.md | Human readable project snapshot |
 | /agents/issues.md | Ambiguities, scope conflicts, blockers |
 | /agents/dev_reports.md | Development reports produced by the dev agent |
 
+Live Beads CLI state (`bd show`, `bd list`, `bd ready`) is authoritative for issue status and selection.
+Repo-side `.beads/` files may exist for local artifacts, but they are not the workflow source of truth when live `bd` is available.
+
 You must **not create alternate coordination files**.
+
+---
+
+# CODEBASE INSPECTION DEFAULT
+
+When PM review requires codebase inspection (scope checks, acceptance evidence, drift detection):
+
+- Use `jcodemunch` MCP first (`repo outline` -> `symbol search` -> `symbol retrieval`).
+- Avoid full-file brute-force reads unless symbol-level checks are insufficient.
+- Keep inspection bounded to the bead under review.
+- For documentation/spec inspections, use `jdocmunch` MCP first before broad doc reads.
 
 ---
 
@@ -41,7 +54,7 @@ You must **not create alternate coordination files**.
 
 ## Step 1 — Inspect Development State
 
-Inspect the `/beads` directory and classify each bead strictly by its declared status:
+Inspect live Beads state via `bd` and classify each bead strictly by its declared status:
 
 - todo
 - in_progress
@@ -51,7 +64,7 @@ Inspect the `/beads` directory and classify each bead strictly by its declared s
 
 Do not infer progress from repository changes.
 
-Status must come from the bead definition itself.
+Status must come from live `bd` issue state, not stale repo mirrors.
 
 ---
 

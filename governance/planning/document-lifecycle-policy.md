@@ -9,7 +9,10 @@
 - `governance/planning/backlog.md`
 - `governance/planning/milestone-definition.md`
 - `governance/planning/roadmap.md`
+- `governance/product/game-function-reference.md`
+- `governance/qa/combat-playwright-control-model.md`
 - `governance/execution/dev-directives/ACTIVE.md`
+- `governance/execution/beads-process.md`
 
 Rule:
 - One file per purpose. Update the canonical file in place.

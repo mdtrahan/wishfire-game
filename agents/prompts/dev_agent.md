@@ -26,13 +26,24 @@ Your job is to produce **small, verifiable, scoped changes**.
 
 | File | Purpose |
 |----|----|
-| /beads/ | Task definitions |
 | /agents/dev_reports.md | Implementation reports |
 | /agents/issues.md | Ambiguities, blockers, conflicts |
 
-These files form the **only approved communication surface**.
+Live Beads CLI state (`bd show`, `bd list`, `bd ready`) provides the authoritative task definition and issue status.
+These files form the approved repo-side communication surface.
 
 Do not create alternate coordination systems.
+
+---
+
+# CODE EXPLORATION DEFAULT
+
+For large files, mirrored logic, or cross-file tracing:
+
+- Use `jcodemunch` MCP first (`repo outline` -> `symbol search` -> `symbol retrieval`).
+- Fall back to broad file reads only when symbol-level retrieval is insufficient.
+- Keep retrieval scoped to the active bead; do not bulk-load unrelated code.
+- For documentation-heavy tasks, use `jdocmunch` MCP first instead of brute-reading full docs.
 
 ---
 
@@ -40,7 +51,7 @@ Do not create alternate coordination systems.
 
 ## Step 1 — Select Task
 
-Find the highest‑priority bead with status `todo`.
+Find the highest‑priority bead with status `todo`/`open` from live `bd` state.
 
 Before claiming the bead:
 

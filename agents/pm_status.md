@@ -2,6 +2,330 @@
 
 _Last updated: 2026-03-07_
 
+---
+_Last updated: 2026-03-12_
+
+## Completed Beads
+- ORKA-1ys (idle farming layout now replaces the old astral/layout-2 stub with a visual Falie/Kojonn mock battle, scripted one-by-one enemy flow, and return routes to combat or camp)
+
+## Active Work
+- None in this lane.
+
+## Next Tasks
+- Use `web-runner/src/core/idleFarmRuntime.mjs` as the evolution seam for future AFK reward scaling, subordinate identity swaps, and eventual non-placeholder idle squad presentation.
+- Keep any later combat-stat integration out of this layout unless the product direction changes; it is intentionally a timed reward facade, not real combat simulation.
+
+## Known Issues
+- Browser-runtime spot check was attempted, but Playwright MCP launch failed in this session with the existing persistent-session startup issue; contract tests and local server verification passed.
+
+---
+_Last updated: 2026-03-10_
+
+## Completed Beads
+- ORKA-r9z (Evolution Tree runtime scaffold added with seven-level ladder, research-gate placeholders, and Vault retention routing)
+
+## Active Work
+- None in this lane.
+
+## Next Tasks
+- If Vault-family progression work continues, use `evolutionLayout` as the shell for future soft-currency upgrade and research-node follow-up beads.
+
+## Known Issues
+- Browser-runtime spot check was attempted, but Playwright MCP launch failed in this session with the existing persistent-session startup issue; contract tests passed.
+
+---
+_Last updated: 2026-03-10_
+
+## Completed Beads
+- ORKA-094 (full jdocmunch repository index completed and verified)
+
+## Active Work
+- None in this lane.
+
+## Next Tasks
+- Use repo id `local/Codex-Orka` for subsequent jdocmunch retrieval calls in this session.
+
+## Known Issues
+- `jdocmunch` exposes document sections and hierarchy rather than a code-style symbol graph export.
+
+---
+_Last updated: 2026-03-10_
+
+## Completed Beads
+- ORKA-0zk (full non-incremental jcodemunch repository index completed and verified)
+
+## Active Work
+- None in this lane.
+
+## Next Tasks
+- Use repo id `local/Codex-Orka-f7dcaf91` for subsequent jcodemunch retrieval calls in this session.
+
+## Known Issues
+- The MCP surface used here verifies fresh repo/symbol inventory after indexing, but does not expose a separate user-facing “symbol graph export” command in this session.
+
+---
+_Last updated: 2026-03-10_
+
+## Completed Beads
+- ORKA-maq (repo-local Codex agent retrieval rule file added under `.codex/agent_rules.md`)
+
+## Active Work
+- None in this lane.
+
+## Next Tasks
+- Use `.codex/agent_rules.md` alongside repo AGENTS/governance guidance when future agent lanes need symbol-first code exploration.
+
+## Known Issues
+- This rule file is repo-local guidance only; it does not replace external Codex home config.
+
+---
+_Last updated: 2026-03-10_
+
+## Completed Beads
+- None in ORKA-boj; repo-side retrieval guidance and MCP indexing are in place, but the exact home-level MCP config/install path is blocked.
+
+## Active Work
+- ORKA-boj (`[CHORE] Configure MCP retrieval servers for Codex-Orka`) is blocked on sandbox/home-write limits and invalid npm package names in the task text.
+
+## Next Tasks
+- Outside this sandbox, update the real Codex home config with the correct MCP server entries and package launch commands.
+- Keep using the already-available `jcodemunch` / `jdocmunch` MCP servers in-session for retrieval work.
+
+## Known Issues
+- This session cannot write `~/.codex/config.json`.
+- `jcodemunch-mcp`, `jdocmunch-mcp`, `jcontextmunch-mcp`, and `jcodemunch` are not resolvable on npm as written in the task instructions, so the install/CLI validation steps fail with `E404`.
+
+---
+_Last updated: 2026-03-10_
+
+## Completed Beads
+- ORKA-a1k (combat QA and Playwright control model documented as canonical guidance for future QA/tutorial/spec work)
+
+## Active Work
+- None in this lane.
+
+## Next Tasks
+- Use `governance/qa/combat-playwright-control-model.md` before future combat QA or automation beads.
+- Keep future Playwright and manual QA acceptance language aligned to true hero-input windows and transition waits.
+
+## Known Issues
+- The guide reflects current runtime truth, but any future changes to turn gating, refill policy, or follow-up action UX must update the document.
+
+---
+_Last updated: 2026-03-10_
+
+## Completed Beads
+- ORKA-4m4 (balance harness energy-depletion stop contract completed and verified in bounded CDP-attached prelim runs)
+- ORKA-jwx (Power Amp lifecycle telemetry added for harness trust; bounded prelim runs now emit `power_amp_trace.json`)
+
+## Active Work
+- None in this lane.
+
+## Next Tasks
+- Open a follow-up bead for enemy overfill / respawn distortion before trusting full CP balance recommendations.
+- After that fix, rerun a larger balance sample (`BALANCE_SESSION_COUNT` in the hundreds or thousands) using the now-working CDP harness path.
+
+## Known Issues
+- Live gameplay still does not hard-stop at energy depletion; the harness must declare and enforce that boundary explicitly for balance analysis.
+- Bounded prelim runs succeed, but combat can temporarily overfill beyond the expected enemies-per-wave, which makes the current CP recommendation non-authoritative.
+
+---
+_Last updated: 2026-03-10_
+
+## Completed Beads
+- ORKA-gxn (game function reference for FAQs, tutorials, and future bead specs)
+
+## Active Work
+- None in this lane.
+
+## Next Tasks
+- Use `governance/product/game-function-reference.md` as the first product-writing reference before drafting FAQ/tutorial/spec beads.
+- Expand the reference only when live runtime behavior changes, not for speculative future design.
+
+## Known Issues
+- The reference reflects current runtime truth, but some progression layouts remain scaffold-only and should not be described as fully shipped systems.
+
+---
+_Last updated: 2026-03-10_
+
+## Completed Beads
+- ORKA-91m (`.beads` mirror contradictions removed; remaining mismatch set is `bd`-only missing mirrors, which is acceptable under live-`bd` authority)
+
+## Active Work
+- No active bead after `.beads` reconciliation closeout.
+
+## Next Tasks
+- Continue from the next ready live-`bd` bead.
+- Optionally remove stale non-issue `.beads/hot-file-lock/*.scope` artifacts in a separate cleanup lane if they are no longer needed.
+
+## Known Issues
+- Repo-side mirrors are now non-contradictory, but they are intentionally incomplete relative to live `bd`.
+
+---
+_Last updated: 2026-03-10_
+
+## Completed Beads
+- ORKA-1qo (energy session balance harness via Playwright recovered with CDP attach mode and smoke-run artifact generation)
+
+## Active Work
+- None in this lane.
+
+## Next Tasks
+- For full balance sampling, start Chrome with a debug port and run `npm run balance-harness` with `BALANCE_CDP_URL=http://127.0.0.1:9222`.
+- Review the generated `output/balance-harness/` artifacts before acting on the CP recommendation.
+
+## Known Issues
+- Direct Node Playwright browser spawn still aborts in this sandbox; the supported working path here is CDP attach to an already-running Chrome instance.
+
+---
+_Last updated: 2026-03-10_
+
+## Completed Beads
+- None in ORKA-1qo; implementation is present but the bead remains blocked.
+
+## Active Work
+- ORKA-1qo (`[CHORE] Energy session balance harness via Playwright`) is blocked on environment-level Playwright browser launch failure from the Node harness process.
+
+## Next Tasks
+- Re-run `npm run balance-harness` on a host where Playwright can launch Chrome normally, then review `output/balance-harness/` artifacts and decide whether the CP recommendation is actionable.
+
+## Known Issues
+- In this sandbox, Playwright-launched Chrome aborts before page control begins (`SIGABRT`, Crashpad/bootstrap permission errors), even when launched through the known system Chrome executable path.
+
+---
+_Last updated: 2026-03-10_
+
+## Completed Beads
+- None in ORKA-4ws inventory pass; cleanup scope has been bounded but not yet destructively applied.
+
+## Active Work
+- ORKA-4ws (cleanup inventory): live `bd` is authoritative, but repo-side `.beads/` mirrors are materially stale and the worktree remains mixed.
+
+## Next Tasks
+- Split dirty worktree by lane before deleting or rewriting any `.beads/` mirror files.
+- Reconcile mirror files only after runtime/governance/tooling edits are isolated enough to avoid accidental loss.
+
+## Known Issues
+- Mirror mismatch examples: `ORKA-7c0` (`bd=open`, mirror=`in_progress`), `ORKA-hsf`/`ORKA-mwl` mirror-only in-progress lanes, and many mirror-only open lanes absent from live `bd`.
+- Dirty worktree breakdown at inventory time: 24 mirror files, 8 governance files, 6 runtime files, 3 tests, 4 tooling files.
+
+---
+_Last updated: 2026-03-10_
+
+## Completed Beads
+- ORKA-dme (combat damage/heal numbers now use a hard pure-black offset drop shadow; contract pass + user QA pass)
+
+## Active Work
+- No additional bead claimed in this visual-fix cycle.
+
+## Next Tasks
+- Continue from the next explicitly assigned or ready bead.
+
+## Known Issues
+- None newly introduced by ORKA-dme.
+
+---
+_Last updated: 2026-03-10_
+
+## Completed Beads
+- ORKA-6nk (canonical Codex-Orka Beads process added under governance/execution)
+
+## Active Work
+- No additional bead claimed in this process-hardening cycle.
+
+## Next Tasks
+- Use `governance/execution/beads-process.md` as the canonical repo-specific Beads workflow reference.
+- Keep future Beads policy changes centralized there instead of expanding `AGENTS.md`.
+
+## Known Issues
+- `bd` read-after-write inconsistency still warrants double-read confirmation on stateful transitions.
+
+---
+_Last updated: 2026-03-10_
+
+## Completed Beads
+- ORKA-xtz (workflow policy now treats live `bd` as authoritative and documents the `~/.local/bin` PATH prerequisite)
+
+## Active Work
+- No additional bead claimed in this governance correction cycle.
+
+## Next Tasks
+- Reconcile stale repo-side `.beads/` mirrors against live `bd` state in a separate cleanup lane.
+- Split unrelated dirty hot-file work before reviewing or closing another runtime bead from this worktree.
+
+## Known Issues
+- Historical entries below still mention direct `.beads/` fallback; they remain as log history, not current policy.
+
+---
+_Last updated: 2026-03-09_
+
+## Completed Beads
+- ORKA-dzt (combat power now respects magic-primary offense and unknown-type fallback; targeted contract passes)
+
+## Active Work
+- No additional bead claimed in this cycle after ORKA-dzt closeout.
+
+## Next Tasks
+- Reconcile stale `.beads/` repo files against live `bd` state before the next PM-Dev cycle so lane selection does not drift.
+- Split unrelated dirty work in `web-runner/app.js`, `web-runner/modules/functionBank.js`, and `Scripts/functionBank.js` before reviewing another bead from this worktree.
+
+## Known Issues
+- Shell `PATH` omitted `~/.local/bin`; `bd` was installed but not resolvable until PATH repair.
+- Repo-side `.beads/` files do not currently match live `bd` issue state.
+
+---
+_Last updated: 2026-03-09_
+
+## Completed Beads
+- ORKA-cpb (doctrine metadata follow-up lane closed by contract evidence)
+
+## Active Work
+- ORKA-7c0, ORKA-hsf, ORKA-mwl remain in-progress legacy lanes.
+
+## Next Tasks
+- Continue executable lanes with explicit scope/acceptance.
+- Rewrite or decompose `null`-body open beads before assigning to dev.
+
+## Known Issues
+- `ORKA-6n7`, `ORKA-900`, `ORKA-9yo`, `ORKA-9ri`, `ORKA-c4s`, `ORKA-f0l`, `ORKA-ksw`, `ORKA-njg`, `ORKA-pv3`, `ORKA-wuh`, `ORKA-hvj.4` are open but currently non-executable due missing spec body.
+
+---
+_Last updated: 2026-03-09_
+
+## Completed Beads
+- ORKA-wbk (center-slot strongest CP assignment + full-wave KO packaged repick)
+
+## Active Work
+- In-progress legacy lanes remain: ORKA-7c0, ORKA-hsf, ORKA-mwl.
+
+## Next Tasks
+- Run runtime QA sweep for ORKA-wbk:
+  - verify center slot always strongest CP on non-solo starts,
+  - verify side slots vary run-to-run,
+  - verify full-wave KO repick follows same center rule.
+- Resolve or decompose `null`-body governance beads (`ORKA-6n7`, `ORKA-900`, `ORKA-9yo`) before attempting execution.
+
+## Known Issues
+- `bd` CLI is unavailable in this shell; bead state is being managed directly under `.beads/`.
+
+---
+_Last updated: 2026-03-09_
+
+## Completed Beads
+- ORKA-jj0 (yellow -> gold fly-up lane closed as completed; stale-open hygiene fix)
+
+## Active Work
+- Planning->implementation bridge prepared for center-slot CP placement:
+  - ORKA-wbz (plan done)
+  - ORKA-wbk (implementation open)
+
+## Next Tasks
+- Execute ORKA-wbk (center-slot strongest + random sides + solo commander mode guard).
+- Defer `ORKA-6n7`, `ORKA-900`, `ORKA-9yo` until scope is written (currently `null` bodies).
+
+## Known Issues
+- Multiple listed P1 beads remain non-executable due missing spec content (`null` definitions).
+
 ## Completed Beads
 - ORKA-jmf (yellow-match completion regression stabilized; multi-pass checks clean)
 
@@ -370,6 +694,138 @@ _Last updated: 2026-03-07_
 ---
 _Last updated: 2026-03-08_
 
+---
+_Last updated: 2026-03-10_
+
+## Completed Beads
+- ORKA-9gv (functionBank mirror parity fence for high-risk combat seams)
+
+## Active Work
+- None in this request lane.
+
+## Next Tasks
+- ORKA-x18 (quarantine repeatedly failing entity updates)
+- ORKA-l8r (guard fallback game loop against duplicate intervals)
+
+## Known Issues
+- `Scripts/functionBank.js` and `web-runner/modules/functionBank.js` still contain broader non-authoritative drift outside the curated parity fence; future mirrored combat-rule beads should either expand the fence or collapse ownership into a single source seam.
+
+---
+_Last updated: 2026-03-10_
+
+## Completed Beads
+- ORKA-x18 (entity update failures now quarantine after repeated faults with stable attribution)
+
+## Active Work
+- None in this request lane.
+
+## Next Tasks
+- ORKA-l8r (guard fallback game loop against duplicate intervals)
+- ORKA-boj (still blocked on external Codex MCP config/install path)
+
+## Known Issues
+- Entity quarantine is currently a runtime-local fence in `Scripts/entities.js`; if a future browser/runtime path starts depending on the same entity update seam, mirror or extract that behavior rather than reintroducing swallow-and-continue handling.
+
+---
+_Last updated: 2026-03-11_
+
+## Completed Beads
+- ORKA-7kt (global dev tooling modal shell with `Ctrl+Shift+P` access)
+
+## Active Work
+- None in this request lane.
+
+## Next Tasks
+- User runtime QA of the new dev modal hotkey and staged/live controls.
+- ORKA-3as (escort NPC + variable hero-count scaffold) is the natural follow-up if party-count control should drive a real gameplay seam next.
+
+## Known Issues
+- `ORKA-7kt` currently applies gold, board-color, and combat-speed live; hero/enemy count, enemy type, and reward settings are staged into globals/debug surfaces for future combat seeding rather than fully rewiring every runtime subsystem in this first shell.
+- Browser spot-check was blocked by the known Playwright MCP persistent-session startup error in this terminal session.
+
+---
+_Last updated: 2026-03-11_
+
+## Completed Beads
+- ORKA-7kt reopen follow-up (Apply now refreshes combat with staged config; reward drop input is structured)
+
+## Active Work
+- None in this request lane.
+
+## Next Tasks
+- User runtime QA on the refreshed dev-tooling modal.
+- ORKA-3as remains the next logical gameplay scaffold if variable hero count should extend into escort/NPC party behavior.
+
+## Known Issues
+- `ORKA-7kt` still caps hero count at 4 and enemy count at 6 in tooling because the current combat/layout surfaces are still authored around those bounds.
+
+## Completed Beads
+- ORKA-f0l (Layout 1 hero gem-usage counter radiator with per-hero + party color totals)
+- ORKA-c4s (persistent hero gem counter state + milestone hook surfaces for future Vault progression)
+
+## Active Work
+- None in this request lane.
+
+## Next Tasks
+- Decide which Vault-child progression shell should consume the saved gem milestone surfaces first.
+
+## Known Issues
+- Beads still shows occasional read-after-write lag; use direct `bd show <id>` confirmation after close.
+
+---
+_Last updated: 2026-03-10_
+
+## Completed Beads
+- ORKA-jdu (Vault family lock-up: Relics rename + Pets scaffold)
+- ORKA-1ol (Queue hygiene: closed obsolete Vault/Pets duplicate scaffold beads)
+- ORKA-sht (Full queue audit: closed stale duplicate/policy beads and verified no dangling in-progress work)
+- ORKA-s0v (Chimerilass heals now support crit/non-crit runtime behavior with browser multipass verification)
+
+## Active Work
+- None in this request lane.
+
+## Next Tasks
+- Hold further Vault layout work until art team delivers the next Figma layouts.
+- If/when Relics resumes, treat ORKA-n0g as future gameplay-hook work, not another scaffold/rename pass.
+
+## Known Issues
+- `bd ready` can briefly show recently closed beads even when direct `bd show <id>` already reports `CLOSED`.
+
+---
+_Last updated: 2026-03-09_
+
+## Completed Beads
+- ORKA-jj0 (reopen regression fix: frame-6 click restored to deterministic energy gain)
+- ORKA-jj0 (reopen timing fix: yellow gold total now updates at fly-up arrival, not before)
+- ORKA-3m8 (yellow completion extra-turn regression lane closed with handoff contract tests)
+
+## Active Work
+- None in this lane.
+
+## Next Tasks
+- User runtime QA on frame-6 click behavior during combat.
+
+## Known Issues
+- `bd` CLI unavailable in shell; bead state maintained directly in `.beads/` files.
+
+---
+_Last updated: 2026-03-09_
+
+## Completed Beads
+- ORKA-cpc (CP-budget encounter builder lane closed; explicit-seed + history-aware contract drift resolved)
+
+## Active Work
+- ORKA-7c0 (EPIC hero screen lane remains in progress)
+- ORKA-hsf (hero Figma compliance bug lane remains in progress)
+- ORKA-mwl (initiative extra-turn regression lane remains in progress)
+
+## Next Tasks
+- Convert one in-progress lane to review-ready state with concrete acceptance evidence (recommend ORKA-mwl first due to P0 priority).
+- Normalize stale bead status hygiene for any lane with completed implementation but missing closeout metadata.
+
+## Known Issues
+- `bd` CLI is not available in this shell session (`command not found`); bead-state operations are being applied directly in `.beads/`.
+
 ## Completed Beads
 - None newly closed this pass.
 
@@ -531,3 +987,58 @@ _Last updated: 2026-03-08_
 
 ---
 _Last updated: 2026-03-08_
+
+## Completed Beads
+- ORKA-ysp (yellow randomize+bounce timing tuned faster with preserved anticipation)
+
+## Active Work
+- None in this lane.
+
+## Next Tasks
+- User runtime QA confirmation on perceived yellow sequence pace.
+
+## Known Issues
+- `bd` CLI unavailable in shell; bead state maintained directly in `.beads/` files.
+
+---
+_Last updated: 2026-03-08_
+
+## Completed Beads
+- ORKA-4c0 (hero-screen pack asset usage check + local-first policy)
+
+## Active Work
+- None in this lane.
+
+## Next Tasks
+- Optional runtime visual QA on hero screen controls under offline/slow-network conditions.
+
+## Known Issues
+- `bd` CLI unavailable in shell; bead state maintained directly in `.beads/` files.
+
+---
+_Last updated: 2026-03-08_
+
+## Completed Beads
+- ORKA-7kt (global dev tooling modal runtime controls; QA passed for live apply, dynamic hero swaps, and duplicate hero clone identity)
+- ORKA-gsb (per-slot gem backers behind board gems with explicit rollback toggle)
+- ORKA-cmh (reopen regression fix: Chimerilass heal threshold strictness restored)
+- ORKA-1ys (idle farming combat presentation/layout complete; emission contract split to ORKA-gxd)
+- ORKA-1ys (reopened staging polish; QA passed for dramatic entry, lane positioning, and reduced damage-flash intensity)
+- ORKA-srm (idle Collect now credits shared gold/token wallet state through a single helper seam)
+- ORKA-xyu (idle emission weights rebalanced so gold owns 40 percent share and non-gold tiers retain proportional rarity)
+- ORKA-4u7 (regular combat speed no longer hydrates from stale dev-tool speed settings on boot)
+- ORKA-bmv (idle layout entry now cold-boots through Restart Run seam instead of resuming cached theater state)
+- ORKA-eh1 (idle emissions now accrue independently of the visible theater session and Collect restarts emission cadence without restarting the scene)
+
+## Active Work
+- None in this lane.
+
+## Next Tasks
+- Revisit ORKA-gxd only if user wants another runtime polish pass on emission presentation.
+- ORKA-5vf (dev panel autoplay until energy depletion) remains separate from the player-facing idle farm lane.
+
+## Known Issues
+- `bd` is available via `~/.local/bin/bd`; default shell PATH is still inconsistent, so direct path use remains safer in automation turns.
+
+---
+_Last updated: 2026-03-13_

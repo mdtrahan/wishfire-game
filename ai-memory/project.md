@@ -4,6 +4,9 @@ Purpose:
 Provide a compact retrieval map of canonical runtime behavior.
 Always consult this file before broad repo search.
 
+Companion reference:
+- `governance/product/game-function-reference.md` = product-language explanation of what the game currently does, for FAQ/tutorial/spec drafting.
+
 ---
 
 ## Canonical Runtime
@@ -87,4 +90,3 @@ Before editing:
 ## Retrieval Map (Read before grepping)
 Before searching the repo broadly, search `ai-memory/PROJECT.md`.
 If information is missing, record an "Index gap" note in `ai-memory/insights.md`.
-

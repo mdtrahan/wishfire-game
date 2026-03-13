@@ -9,6 +9,141 @@
 
 ## Reports
 - (append newest report at top)
+- bead id: ORKA-1ys
+- summary of changes: Replaced the old astral/layout-2 stub with a battle-first `idleFarmLayout` that stages a fake Falie/Kojonn idle skirmish instead of a text dashboard. The runtime now routes the existing `AstralFlow` combat nav into a 16:9 mock battle scene, drives the scripted two-hit enemy flow through the reusable module seam in `web-runner/src/core/idleFarmRuntime.mjs`, spawns enemies one-by-one with a 1.5 second delay after death, alternates leisurely hero strikes every 3 seconds, and keeps the lower strip minimal with reward/emission totals plus return controls.
+- files modified: web-runner/app.js; web-runner/src/core/idleFarmRuntime.mjs; tests/idleFarmLayoutScaffoldContract.test.js
+- test evidence:
+  - `npm test -- tests/idleFarmLayoutScaffoldContract.test.js tests/evolutionLayoutScaffoldContract.test.js` (4/4 pass)
+  - `curl -I http://127.0.0.1:8094/web-runner/index.html` returned `HTTP/1.1 200 OK`
+  - attempted Playwright runtime pass against `http://127.0.0.1:8094/web-runner/index.html`, but browser launch failed in this session with the known persistent-session Chrome error (`Opening in existing browser session`)
+- scope confirmation: confined to ORKA-1ys idle farming visual facade, routing, reward-emitter runtime seam, and deterministic contract coverage; no real combat formulas, gem-board rules, or dev-panel behavior were changed in this lane.
+
+- bead id: ORKA-r9z
+- summary of changes: Added an `evolutionLayout` scaffold to the runtime in the same Vault-family style as the existing progression shells. The new layout includes a deterministic seven-level stat ladder, future skill-research gate metadata, Vault retention routing, layout registration, render branch, and click handling for level selection/back navigation.
+- files modified: web-runner/app.js; tests/evolutionLayoutScaffoldContract.test.js; tests/vaultNavAndChestsRailContract.test.js
+- test evidence:
+  - `npm test -- tests/evolutionLayoutScaffoldContract.test.js tests/vaultNavAndChestsRailContract.test.js tests/relicsLayoutScaffoldContract.test.js tests/petsLayoutScaffoldContract.test.js tests/mountsLayoutScaffoldContract.test.js tests/homesteadLayoutScaffoldContract.test.js` (15/15 pass)
+  - attempted runtime browser pass against `http://127.0.0.1:8080/web-runner/`, but Playwright MCP launch failed in this session with the known persistent-session error (`Opening in existing browser session`)
+- scope confirmation: confined to the evolution-tree scaffold, Vault routing, and matching contract coverage; no economy, unlock logic, or balance systems were finalized.
+
+- bead id: ORKA-094
+- summary of changes: Ran a full `jdocmunch` repository index for Codex-Orka and verified that the fresh documentation section inventory and table of contents are queryable afterward.
+- files modified: none
+- test evidence:
+  - `mcp__jdocmunch__index_local(path=/Users/Mace/Wishfire/Codex-Orka, use_ai_summaries=false)` -> success
+  - indexed repo: `local/Codex-Orka`
+  - `section_count: 2486`
+  - `mcp__jdocmunch__get_toc(repo=local/Codex-Orka)` returned the repo documentation hierarchy after indexing
+- scope confirmation: retrieval-indexing only; no repo code or docs changed for this bead.
+
+- bead id: ORKA-0zk
+- summary of changes: Ran a full non-incremental `jcodemunch` repository index for Codex-Orka through the working MCP server and verified that the fresh repo/symbol inventory is queryable afterward.
+- files modified: none
+- test evidence:
+  - `mcp__jcodemunch__index_folder(path=/Users/Mace/Wishfire/Codex-Orka, incremental=false, use_ai_summaries=false)` -> success
+  - indexed repo: `local/Codex-Orka-f7dcaf91`
+  - `file_count: 107`
+  - `symbol_count: 1101`
+  - `mcp__jcodemunch__get_repo_outline(repo=local/Codex-Orka-f7dcaf91)` confirmed directory/language/symbol inventory after rebuild
+- scope confirmation: retrieval-indexing only; no repo code or docs changed for this bead.
+
+- bead id: ORKA-maq
+- summary of changes: Added a repository-local Codex agent rule file at `.codex/agent_rules.md` that defines the default jcodemunch-first code navigation policy for future agent work.
+- files modified: .codex/agent_rules.md
+- test evidence:
+  - file content audit against requested policy text
+- scope confirmation: confined to repository-local agent guidance only; no runtime, tooling, or gameplay code changed.
+
+- bead id: ORKA-boj
+- summary of changes: Added repository retrieval instructions under `.ai/retrieval_rules.md`, verified Node/npm are present, and indexed the repo through the working MCP servers already available in this session (`jcodemunch` and `jdocmunch`). Also audited the requested home-config/install path and found two blockers: this sandbox cannot write `~/.codex/config.json`, and the npm package names from the task text (`jcodemunch-mcp`, `jdocmunch-mcp`, `jcontextmunch-mcp`, `jcodemunch`) are not published as written.
+- files modified: .ai/retrieval_rules.md
+- test evidence:
+  - `node --version` -> `v25.8.0`
+  - `npm --version` -> `11.11.0`
+  - `mcp__jcodemunch__index_folder` succeeded for `/Users/Mace/Wishfire/Codex-Orka` (`repo: local/Codex-Orka-f7dcaf91`, `symbol_count: 1101`)
+  - `mcp__jcodemunch__list_repos` confirmed the repo index exists
+  - `mcp__jdocmunch__index_local` succeeded for `/Users/Mace/Wishfire/Codex-Orka`
+  - `npx jcodemunch status` failed with npm `E404`
+  - `npx jcontextmunch-mcp --help` failed with npm `E404`
+- scope confirmation: confined to retrieval-setup documentation and MCP/index verification for ORKA-boj; no game runtime code changed.
+
+- bead id: ORKA-a1k
+- summary of changes: Added a durable combat QA and Playwright control guide that captures true hero-input gating, follow-up action rules, refill/repopulation waits, false-failure versus real-lock signals, and concrete timing expectations from the live runtime. Linked it from the game function reference and registered it as canonical in document lifecycle policy; also stored the reusable timing/control heuristics in insights.
+- files modified: governance/qa/combat-playwright-control-model.md; governance/product/game-function-reference.md; governance/planning/document-lifecycle-policy.md; ai-memory/insights.md
+- test evidence:
+  - documentation audit against live timing/constants in `web-runner/app.js` and control-state seams in `web-runner/modules/functionBank.js`
+  - Beads acceptance review for ORKA-a1k against documented hero-input, enemy-action, refill, and repopulation rules
+- scope confirmation: confined to documentation and reusable QA/control guidance; no runtime gameplay or automation code was changed in this bead.
+
+- bead id: ORKA-jwx
+- summary of changes: Added read-only Power Amp lifecycle telemetry to both runtime mirrors, exposed the recent trace through `render_game_to_text`, and taught the balance harness to emit `power_amp_trace.json` plus per-session summaries. Also tightened harness action gating to require a true idle hero turn, retried pending target-selection flows, and waited through empty-board respawn windows so bounded Playwright prelim runs now complete.
+- files modified: web-runner/modules/functionBank.js; Scripts/functionBank.js; web-runner/app.js; tools/balance_harness.js; tests/balanceHarnessContract.test.js; tests/powerAmpTelemetryContract.test.js
+- test evidence:
+  - `npm test -- tests/balanceHarnessContract.test.js tests/powerAmpTelemetryContract.test.js`
+  - bounded prelim harness pass: `BALANCE_CDP_URL=http://127.0.0.1:9226 BALANCE_SESSION_COUNT=1 node tools/balance_harness.js --maxWaves 1 --outputDir /tmp/orka-balance-prelim-9226`
+  - bounded repeat pass: `BALANCE_CDP_URL=http://127.0.0.1:9226 BALANCE_SESSION_COUNT=3 node tools/balance_harness.js --maxWaves 1 --outputDir /tmp/orka-balance-prelim-3`
+- scope confirmation: confined to ORKA-jwx telemetry/trust and harness control flow; no combat damage, enemy behavior, or Power Amp gameplay rules were changed.
+
+- bead id: ORKA-4m4
+- summary of changes: Completed the harness-managed energy-depletion stop contract and verified it in live bounded runs. Session outputs now terminate deterministically on `energy <= 0`, write the stop rule into artifacts, and produce preliminary CSV/JSON/Markdown outputs under CDP-attached Chrome.
+- files modified: tools/balance_harness.js; tests/balanceHarnessContract.test.js; agents/dev_reports.md; agents/pm_status.md; ai-memory/insights.md
+- test evidence:
+  - `npm test -- tests/balanceHarnessContract.test.js`
+  - bounded prelim artifacts: `/tmp/orka-balance-prelim-9226/`; `/tmp/orka-balance-prelim-3/`
+- scope confirmation: confined to ORKA-4m4 balance-harness test contract only; the live game still does not hard-stop gameplay at energy depletion.
+
+- bead id: ORKA-4m4
+- summary of changes: Added an explicit harness-managed energy-depletion session stop contract for the balance runner. The harness now treats `energy <= configured floor` as terminal, records `end_reason` per session, and writes the test-only stop rule into JSON/Markdown outputs so future balance reads do not confuse harness termination with live gameplay enforcement.
+- files modified: tools/balance_harness.js; tests/balanceHarnessContract.test.js
+- test evidence:
+  - `npm test -- tests/balanceHarnessContract.test.js`
+  - canary rerun pending after explicit stop-rule patch
+- scope confirmation: confined to ORKA-4m4 balance-harness test contract only; no runtime gameplay stop rule was added to the game itself.
+
+- bead id: ORKA-gxn
+- summary of changes: Added a durable product-language game function reference that explains the live player loop, layout families, combat flow, gem meanings, currencies, progression surfaces, and placeholder-vs-real boundaries for FAQ/tutorial/spec writing; also linked it from the project retrieval index and registered it as canonical in document lifecycle policy.
+- files modified: governance/product/game-function-reference.md; ai-memory/project.md; governance/planning/document-lifecycle-policy.md
+- test evidence:
+  - documentation audit against live runtime seams in `web-runner/app.js` and `web-runner/modules/functionBank.js`
+  - jcodemunch outline verification on `web-runner/app.js` and `web-runner/modules/functionBank.js` to ground layout/combat/gem seam references
+- scope confirmation: confined to documentation and retrieval-map governance for ORKA-gxn; no runtime, balance, or UI behavior was changed.
+
+- bead id: ORKA-91m
+- summary of changes: Applied the actual `.beads` mirror reconciliation pass. Removed mirror-only stale issue files absent from live `bd` and moved `ORKA-7c0` back to `.beads/open/` so the mirror no longer contradicted live status. Post-cleanup mismatch inventory now shows only `bd`-only issues with no mirror files, not contradictory mirror state.
+- files modified: .beads/open/ORKA-7c0.md; removed stale `.beads/open/*.md`, `.beads/in_progress/*.md`, and `.beads/blocked/ORKA-9hl.md`; agents/dev_reports.md; agents/pm_status.md
+- test evidence: live-vs-mirror inventory via `bd list --json` + `python3` diff script; post-cleanup mismatch count reduced to `bd`-only missing mirrors (`TOTAL 14`) with no mirror contradictions
+- scope confirmation: Confined to repo-side `.beads` mirror reconciliation for ORKA-91m; runtime, tests, tooling, and governance content were not modified in this bead.
+
+- bead id: ORKA-4ws
+- summary of changes: Inventoried cleanup scope instead of performing blind destructive cleanup. Live `bd` shows `ORKA-4ws` as the only in-progress bead and 10 ready beads, while repo-side `.beads/` mirrors contain numerous stale open/in_progress entries that do not match live state. Dirty worktree is currently mixed across 24 mirror files, 8 governance files, 6 runtime files, 3 tests, and 4 tooling files.
+- files modified: agents/issues.md; agents/dev_reports.md; agents/pm_status.md
+- test evidence: inventory commands only: `bd ready`; `bd list --status=in_progress --json`; `git status --short`; `bd list --json | jq`; mirror-vs-bd diff inventory via `python3`
+- scope confirmation: Confined to reconciliation inventory and cleanup planning for ORKA-4ws; no runtime, mirror, or destructive file cleanup was applied.
+
+- bead id: ORKA-dme
+- summary of changes: Changed floating combat damage/heal text from a softened halo shadow to a hard pure-black offset drop shadow by setting black shadow color, zero blur, and explicit X/Y offsets in the combat text renderer.
+- files modified: web-runner/app.js; tests/combatTextShadowContract.test.js; agents/dev_reports.md; agents/pm_status.md
+- test evidence: `npm test -- tests/combatTextShadowContract.test.js` (1/1 pass); user QA PASS on `http://127.0.0.1:8080/web-runner/`
+- scope confirmation: Confined to combat floating-text shadow styling and a targeted contract; no animation, timing, or value logic changes.
+
+- bead id: ORKA-6nk
+- summary of changes: Added a canonical Codex-Orka Beads process doc covering live `bd` authority, executable bead criteria, dependency/readiness flow, hot-file serialization, closeout evidence, and `bd` double-read confirmation; linked it from `AGENTS.md` and registered it in document lifecycle policy.
+- files modified: governance/execution/beads-process.md; AGENTS.md; governance/planning/document-lifecycle-policy.md; agents/dev_reports.md; agents/pm_status.md
+- test evidence: targeted doc verification with `sed` and `git status` confirming the new canonical process doc and AGENTS pointer
+- scope confirmation: Confined to governance/process documentation for ORKA-6nk; no runtime, tooling, or gameplay logic changes.
+
+- bead id: ORKA-xtz
+- summary of changes: Aligned governance policy so live `bd` state is authoritative for bead selection/status, documented the shell PATH prerequisite for `~/.local/bin/bd`, and removed prompt language that treated repo-side `.beads/` mirrors as workflow authority.
+- files modified: AGENTS.md; agents/prompts/pm_agent.md; agents/prompts/dev_agent.md; agents/dev_reports.md; agents/pm_status.md
+- test evidence: targeted doc verification via `rg`/`sed` confirming updated policy text in `AGENTS.md`, `agents/prompts/pm_agent.md`, and `agents/prompts/dev_agent.md`
+- scope confirmation: Confined to workflow/governance documentation for ORKA-xtz; no runtime or gameplay code changes.
+
+- bead id: ORKA-dzt
+- summary of changes: Verified the active combat-power formula lane is implemented in the current worktree: combat power now accepts `MAG` + `attackType`, uses `MAG` for magic units, and falls back to `max(ATK, MAG)` when type is unknown; mirrored enemy spawn helpers use the same rule in both runtime mirrors.
+- files modified: ai-memory/insights.md; agents/dev_reports.md; agents/pm_status.md
+- test evidence: `npm test -- tests/combatPowerIndexContract.test.js` (3/3 pass)
+- scope confirmation: Closeout/reporting only in this cycle; no new runtime logic was added beyond the already-present ORKA-dzt implementation.
+
 - bead id: ORKA-cpc
 - summary of changes: Added caller-owned encounter request hook (`setEncounterRequest`) and map-return CP stub (`deriveEncounterRequestFromMapState`) so war-meter state can drive targetCP/policy/seed before combat entry; added policy/faction contract coverage for solver branches.
 - files modified: web-runner/app.js; tests/encounterRequestHookContract.test.js; tests/mapEncounterRequestStubContract.test.js; tests/encounterPolicyContract.test.js
@@ -254,3 +389,240 @@
 - files modified: web-runner/app.js; tests/mapCloseControlContract.test.js; .beads/open/ORKA-mxc.md
 - test evidence: `node --test tests/mapCloseControlContract.test.js tests/vaultNavAndChestsRailContract.test.js tests/heroSkillButtonsContract.test.js` (9/9 pass)
 - scope confirmation: Confined to map close-control UI/input lane; no combat/balance logic changes.
+
+- bead id: ORKA-ysp
+- summary of changes: Tuned yellow randomize+bounce cadence to complete faster while preserving per-gem anticipation and settle-gated sequencing.
+- files modified: web-runner/app.js; tests/yellowSlamSequenceContract.test.js; .beads/open/ORKA-ysp.md
+- test evidence: `node --test tests/yellowSlamSequenceContract.test.js tests/yellowMatchCompletionGuardContract.test.js tests/yellowGoldFlyupContract.test.js` (5/5 pass)
+- scope confirmation: Timing-only tune for yellow sequence; no mechanic or gating model changes.
+
+- bead id: ORKA-4c0
+- summary of changes: Audited hero-screen control asset usage and switched to local hero-pack-first loading (plus/minus/close oval) with parity remote fallbacks retained.
+- files modified: web-runner/app.js; tests/heroAssetPackUsageContract.test.js; .beads/open/ORKA-4c0.md
+- test evidence: `node --test tests/heroAssetPackUsageContract.test.js tests/heroSkillButtonsContract.test.js tests/mapCloseControlContract.test.js tests/vaultNavAndChestsRailContract.test.js` (10/10 pass)
+- scope confirmation: Asset loading policy only; no gameplay mechanics modified.
+
+- bead id: ORKA-gsb
+- summary of changes: Added per-slot gem backers behind board gems using `grid_placeholder` asset with an explicit `ORKA-gsb` feature flag and tagged begin/end block for instant rollback.
+- files modified: web-runner/app.js; tests/gemSlotBackerContract.test.js; .beads/open/ORKA-gsb.md
+- test evidence: `node --test tests/gemSlotBackerContract.test.js tests/yellowSlamSequenceContract.test.js tests/yellowMatchCompletionGuardContract.test.js` (4/4 pass)
+- scope confirmation: Rendering-layer only; gem logic/match/refill behavior unchanged.
+
+- bead id: ORKA-cmh (reopen cycle)
+- summary of changes: Fixed Chimerilass threshold regression so heal skills are impossible above 50% HP and guaranteed below/equal 50% HP; enforced at selector seam (`PickEnemySkill`) plus resolver guard.
+- files modified: web-runner/modules/functionBank.js; Scripts/functionBank.js; tests/chimerilassHealThresholdContract.test.js; .beads/open/ORKA-cmh.md
+- test evidence:
+  - `npm test -- tests/chimerilassHealThresholdContract.test.js tests/encounterPolicyContract.test.js` (3/3 pass)
+  - Playwright multipass: above 50% => 0/800 heal picks; below 50% => 800/800 heal picks
+- scope confirmation: confined to ORKA-cmh Chimerilass heal-threshold contract and verification only.
+
+- bead id: ORKA-cpc
+- summary of changes: Closed CP-budget encounter builder lane by aligning stale contract tests to current explicit-seed and history-aware builder behavior.
+- files modified: tests/encounterBudgetContract.test.js; tests/encounterRequestHookContract.test.js; .beads/open/ORKA-cpc.md
+- test evidence: `npm test -- tests/encounterBudgetContract.test.js tests/encounterPolicyContract.test.js tests/encounterRequestHookContract.test.js tests/enemyBiomeContract.test.js tests/enemyDoctrineMetadataContract.test.js` (8/8 pass)
+- scope confirmation: test-contract and bead-closeout updates only; runtime encounter logic unchanged in this cycle.
+
+- bead id: ORKA-wbk
+- summary of changes: Implemented encounter slot assignment rules so strongest CP enemy is always center on non-solo packages, with true-random side-slot placement; added full-wave KO packaged repick path while preserving normal per-slot refill behavior.
+- files modified: web-runner/app.js; web-runner/modules/functionBank.js; Scripts/functionBank.js; tests/encounterSlotAssignmentContract.test.js; .beads/open/ORKA-wbk.md
+- test evidence: `npm test -- tests/encounterSlotAssignmentContract.test.js tests/encounterBudgetContract.test.js tests/encounterPolicyContract.test.js tests/encounterRequestHookContract.test.js tests/enemyBiomeContract.test.js tests/enemyDoctrineMetadataContract.test.js` (10/10 pass)
+- scope confirmation: confined to encounter slot-assignment and repick behavior specified in ORKA-wbk; no CP retune, no war-economy features.
+
+- bead id: ORKA-cpb
+- summary of changes: Closed doctrine follow-up lane as complete based on current normalized taxonomy/default behavior and passing doctrine/locale/policy contracts.
+- files modified: .beads/open/ORKA-cpb.md
+- test evidence: `npm test -- tests/enemyDoctrineMetadataContract.test.js tests/enemyBiomeContract.test.js tests/encounterPolicyContract.test.js` (5/5 pass)
+- scope confirmation: no runtime code changes; bead closeout by acceptance evidence only.
+
+- bead id: ORKA-jj0 (reopen tuning)
+- summary of changes: Increased yellow->gold fly-up gem start size to 150% by adding `startScale` to merge FX and setting yellow call-site to `1.5`, while preserving existing timing/sequence behavior.
+- files modified: web-runner/app.js; tests/yellowGoldFlyupContract.test.js; .beads/open/ORKA-jj0.md
+- test evidence: `npm test -- tests/yellowGoldFlyupContract.test.js tests/yellowSlamSequenceContract.test.js tests/yellowMatchCompletionGuardContract.test.js` (5/5 pass)
+- scope confirmation: animation presentation tweak only; no yellow flow logic/model changes.
+
+- bead id: ORKA-jj0 (reopen regression fix)
+- summary of changes: Restored deterministic frame-6 energy reward by removing gold-or-energy branching from `handleSpecialGem6`; frame-6 click now always adds energy.
+- files modified: web-runner/app.js; tests/frame6EnergyContract.test.js; .beads/open/ORKA-jj0.md
+- test evidence: `node --test tests/frame6EnergyContract.test.js` (1/1 pass); `node --test tests/yellowGoldFlyupContract.test.js` (3/3 pass)
+- scope confirmation: confined to frame-6 reward behavior regression inside ORKA-jj0 lane.
+
+- bead id: ORKA-jj0 (reopen timing fix)
+- summary of changes: Deferred yellow gold tally mutation until fly-up merge completion so displayed Gold total updates when gems reach the label.
+- files modified: web-runner/app.js; tests/yellowGoldFlyupContract.test.js; .beads/open/ORKA-jj0.md
+- test evidence: `node --test tests/yellowGoldFlyupContract.test.js` (4/4 pass); `node --test tests/yellowSlamSequenceContract.test.js tests/yellowMatchCompletionGuardContract.test.js` (6/6 pass)
+- scope confirmation: yellow fly-up feedback timing only; no change to yellow conversion totals.
+
+- bead id: ORKA-3m8
+- summary of changes: Closed undefined yellow extra-turn bug lane with explicit acceptance and regression contracts for deferred yellow handoff semantics and single-turn-advance ordering.
+- files modified: tests/yellowTurnHandoffContract.test.js; .beads/open/ORKA-3m8.md
+- test evidence: `node --test tests/yellowTurnHandoffContract.test.js` (2/2 pass); `node --test tests/yellowGoldFlyupContract.test.js tests/yellowMatchCompletionGuardContract.test.js tests/yellowSlamSequenceContract.test.js` (7/7 pass)
+- scope confirmation: yellow handoff regression guard coverage only; no combat formula or encounter behavior changes.
+
+- bead id: ORKA-jdu
+- summary of changes: Locked the current Vault family by renaming Collectibles to Relics across runtime labels/routes, adding a Pets scaffold in the existing retention-button/gallery style, and updating vault-family contracts to the current chests-driven entry path.
+- files modified: web-runner/app.js; tests/relicsLayoutScaffoldContract.test.js; tests/petsLayoutScaffoldContract.test.js; tests/vaultNavAndChestsRailContract.test.js; tests/mountsLayoutScaffoldContract.test.js; tests/homesteadLayoutScaffoldContract.test.js
+- test evidence: `npm test -- tests/relicsLayoutScaffoldContract.test.js tests/petsLayoutScaffoldContract.test.js tests/mountsLayoutScaffoldContract.test.js tests/homesteadLayoutScaffoldContract.test.js tests/vaultNavAndChestsRailContract.test.js` (13/13 pass)
+- scope confirmation: vault-family scaffold/navigation only; no economy, combat, or art-led redesign work introduced.
+
+- bead id: ORKA-1ol
+- summary of changes: Cleaned the ready queue to binary state after Vault-family shipment by closing obsolete duplicate scaffold beads and preserving only the remaining future Relics stub.
+- files modified: none (Beads queue hygiene only)
+- test evidence: `bd show ORKA-axd` -> CLOSED; `bd show ORKA-c1j` -> CLOSED; `bd ready` no longer lists those duplicates; `bd show ORKA-n0g` remains OPEN with explicit future-stub comment.
+- scope confirmation: issue-state cleanup only; no runtime code changes.
+
+- bead id: ORKA-sht
+- summary of changes: Audited the broader Beads queue for binary cleanliness, closed stale policy/duplicate work (`ORKA-2dt` plus prior Vault-family duplicates), confirmed no lingering `in_progress` beads, and preserved only intentionally future-facing stubs.
+- files modified: none (Beads queue audit only)
+- test evidence: `bd show ORKA-2dt` -> CLOSED; `bd list --status=in_progress --json` -> []; direct reads confirm `ORKA-n0g`, `ORKA-r9z`, `ORKA-hvj`, `ORKA-7c0`, `ORKA-ao8`, `ORKA-9ri`, and `ORKA-zih` remain legitimately OPEN. `bd ready` still shows short read-after-write lag immediately after closure.
+- scope confirmation: queue-state audit only; no runtime or governance file edits beyond reporting.
+
+- bead id: ORKA-s0v
+- summary of changes: Upgraded Chimerilass heals from simple randomized values to shared-crit-semantics enemy heals with explicit crit/non-crit combat text and structured runtime heal trace across self-heal, ally-heal, and group-heal paths.
+- files modified: web-runner/modules/functionBank.js; Scripts/functionBank.js; tests/chimerilassHealCritContract.test.js
+- test evidence:
+  - `npm test -- tests/chimerilassHealCritContract.test.js tests/chimerilassHealThresholdContract.test.js` (4/4 pass)
+  - Browser multipass on `http://127.0.0.1:8080/web-runner/`: self-heal sampled `10..17` with crit and non-crit outcomes; ally-heal sampled `11..16` with ally-name combat text plus crit/non-crit outcomes; group-heal sampled `12..15` with crit/non-crit outcomes and targetCount `3`; enemy-turn runtime pass completed with `actionInProgress=0` and `enemyActionActive=false` after the heal action.
+- scope confirmation: confined to Chimerilass heal behavior and verification only; no unrelated combat lanes changed.
+
+- bead id: ORKA-f0l
+- summary of changes: Added a separate Layout 1 gem counter radiator below the existing turn log, tracking per-hero and party gem usage totals by color from successful hero-turn matches only; fixed the active-hero label path to resolve from the authoritative turn selector contract instead of falling back to the selected hero.
+- files modified: web-runner/modules/functionBank.js; Scripts/functionBank.js; web-runner/app.js; web-runner/index.html; tests/heroGemUsageCounterContract.test.js; tests/heroGemUsageRadiatorContract.test.js
+- test evidence:
+  - `npm test -- tests/heroGemUsageCounterContract.test.js tests/heroGemUsageRadiatorContract.test.js` (4/4 pass)
+  - Browser verification on `http://127.0.0.1:8080/web-runner/index.html`: radiator renders as a separate panel beneath `#output`; existing turn log remains in `#output`; live match pass recorded `Huun.GREEN += 3` and `Party.GREEN += 3`; two-gem partial selection produced no counter state before match resolution.
+  - Follow-up runtime bug fix: browser pass exposed hero label fallback to Falie after a Huun match; patched `drawGemCounterHUD()` to use `directUID + turnOrder + currentTurnIndex`, then added a contract guarding that selector call.
+  - User QA PASS recorded after runtime review.
+- scope confirmation: confined to ORKA-f0l hero gem usage telemetry and its Layout 1 radiator presentation; wallet, turn log, and unrelated combat rules were not repurposed.
+
+- bead id: ORKA-c4s
+- summary of changes: Added durable hero gem progress state keyed by stable hero identity, deterministic milestone hook surfaces with configurable thresholds, and a web-runner localStorage save/load seam for future Vault child progression layers.
+- files modified: web-runner/modules/functionBank.js; Scripts/functionBank.js; web-runner/modules/state.js; Scripts/state.js; web-runner/app.js; tests/heroGemUsageCounterContract.test.js; tests/heroGemUsagePersistenceContract.test.js
+- test evidence:
+  - `npm test -- tests/heroGemUsageCounterContract.test.js tests/heroGemUsageRadiatorContract.test.js tests/heroGemUsagePersistenceContract.test.js` (7/7 pass)
+  - Browser deterministic multipass on `http://127.0.0.1:8080/web-runner/index.html`: pass 1 injected a minimal hero roster, set thresholds to `[3,5]`, registered `Huun.GREEN += 3`, confirmed localStorage snapshot write under `orka.hero_gem_progress.v1`, and observed party/hero threshold `3` hook traces; pass 2 reloaded the page, loaded the stored snapshot back through the runtime API, and confirmed the saved per-hero totals plus milestone state survived the reload.
+  - Follow-up runtime bug fixes during verification: milestone reached-state originally failed to mark crossed thresholds, then milestone normalization was zeroing party totals on read; both were corrected in the shared function-bank seam before closeout.
+- scope confirmation: confined to ORKA-c4s gem counter persistence and deterministic milestone surfaces only; no reward balancing, unlock payouts, or unrelated combat rules were introduced.
+
+- bead id: ORKA-1qo
+- summary of changes: Added a Playwright-driven energy session balance harness CLI with two browser paths: direct Playwright launch and CDP attach to an already-running Chrome via `BALANCE_CDP_URL`/`--cdpUrl`. The harness now drives real canvas clicks, resolves pending hero attack UI by selecting an enemy and pressing the centered attack button, counts zero-HP enemies as defeated, and writes per-session/report artifacts.
+- files modified: tools/balance_harness.js; package.json; tests/balanceHarnessContract.test.js
+- test evidence:
+  - `npm test -- tests/balanceHarnessContract.test.js` (2/2 pass)
+  - Runtime seam validation on `http://127.0.0.1:8091/web-runner/index.html`: `window.render_game_to_text` present, `#view` canvas present, layout reached `storyMock`
+  - Direct Node Playwright launch against `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` still aborts in this sandbox with `SIGABRT` / Crashpad-bootstrap permission errors, so the recovery path is CDP attach rather than browser spawn
+  - Real smoke run passed via attached Chrome: `BALANCE_CDP_URL=http://127.0.0.1:9222 BALANCE_SESSION_COUNT=1 node tools/balance_harness.js --maxWaves 1 --outputDir /tmp/orka-balance-harness-smoke`
+  - Artifact verification: `/tmp/orka-balance-harness-smoke/session_results.csv`, `/tmp/orka-balance-harness-smoke/wave_distribution.json`, `/tmp/orka-balance-harness-smoke/balance_recommendations.json`, `/tmp/orka-balance-harness-smoke/balance_report.md`
+- scope confirmation: confined to the ORKA-1qo external balance-harness lane; no runtime combat logic or balance formulas were modified.
+
+- bead id: ORKA-9gv
+- summary of changes: Reduced mirrored functionBank drift at the Power Amp lifecycle seam by aligning `Scripts/functionBank.js` with the web runner’s activation telemetry semantics, then added a deterministic contract that compares curated high-risk mirrored functions across both runtime paths.
+- files modified: Scripts/functionBank.js; tests/functionBankParityContract.test.js
+- test evidence:
+  - `npm test -- tests/functionBankParityContract.test.js` (1/1 pass)
+  - Contract compares normalized source for `activatePowerAmp`, `computeCombatPowerFromStats`, `ApplyScaledCrit`, `CalculateDamage`, `ResolveGemAction`, `ExecuteEnemyJobSkill`, `StartEnemyAction`, `EnemyTurn`, `HeroTurn`, and `PickEnemySkill` across `Scripts/functionBank.js` and `web-runner/modules/functionBank.js`
+- scope confirmation: confined to mirrored functionBank parity fencing for high-risk combat/economy seams; no unrelated runtime systems were changed in this lane.
+
+- bead id: ORKA-x18
+- summary of changes: Replaced swallowed entity update failures with bounded quarantine behavior after three consecutive faults, added stable entity attribution (`uid` or derived instance key), and recorded structured diagnostics in runtime globals for later inspection.
+- files modified: Scripts/entities.js; tests/entityUpdateQuarantineContract.test.js
+- test evidence:
+  - `npm test -- tests/entityUpdateQuarantineContract.test.js` (2/2 pass)
+  - Contract proves repeated failures stop at the quarantine threshold, writes trace/quarantine records with stable keys, and resets consecutive-failure count after a successful update before the next fault.
+- scope confirmation: confined to entity lifecycle/update failure handling only; no combat rules, rendering, or game-loop ownership changes were introduced in this lane.
+
+- bead id: ORKA-7kt
+- summary of changes: Added a global developer tooling modal shell in the web runner with `Ctrl+Shift+P` hotkey access, config serialization in `state.globals`, safe live-apply controls for gold/board-color/combat-speed, and staged controls for hero count, enemy count, enemy type, and reward configuration exposed through `render_game_to_text` and `window.__codexGame`.
+- files modified: web-runner/app.js; tests/devToolingModalContract.test.js
+- test evidence:
+  - `npm test -- tests/devToolingModalContract.test.js` (1/1 pass)
+  - Contract guards the hotkey (`Ctrl+Shift+P`), modal field surface, runtime config writes, combat-speed multiplier seam, and debug-surface accessors.
+  - Browser spot-check attempt via local server on `http://127.0.0.1:8092/web-runner/index.html` was blocked by the known Playwright MCP persistent-session startup error (`Opening in existing browser session`), so closeout relies on the deterministic contract plus runtime debug-surface serialization.
+- scope confirmation: confined to the ORKA-7kt global dev-tooling modal shell in `web-runner/app.js`; no combat-rule changes or layout-specific UI rewrites were introduced.
+
+- bead id: ORKA-7kt (reopen follow-up)
+- summary of changes: Upgraded the dev tooling modal so `Apply` now refreshes combat with stored staged values, `Refresh Game` explicitly reseeds combat from the current config, hero-count changes flow into `initEntities`, forced enemy type filters the encounter pool, and reward drop selection is now a structured known-item select plus count instead of free text.
+- files modified: web-runner/app.js; tests/devToolingModalContract.test.js
+- test evidence:
+  - `npm test -- tests/devToolingModalContract.test.js` (1/1 pass)
+  - Contract now guards the refresh handler, apply+refresh button behavior, hero-count reseed seam, forced-enemy-type filtering, and structured reward-drop selection/count wiring.
+- scope confirmation: confined to ORKA-7kt modal behavior and combat reseed plumbing for staged dev controls; no unrelated gameplay/system refactors were introduced.
+
+- bead id: ORKA-7kt (final QA closeout)
+- summary of changes: Stabilized the dev tooling modal apply path for live runtime use by switching to explicit hero/enemy slot selectors, immediate board fill on dev refresh, pause-safe modal behavior, and unique cloned-hero runtime identity so duplicate heroes do not share turns or actor state.
+- files modified: web-runner/app.js; web-runner/modules/functionBank.js; Scripts/functionBank.js; tests/devToolingModalContract.test.js; tests/devHeroCloneIdentityContract.test.js
+- test evidence:
+  - `npm test -- tests/devToolingModalContract.test.js tests/devHeroCloneIdentityContract.test.js` (2/2 pass)
+  - User QA PASS: single-color board apply remains playable, dynamic hero swaps apply cleanly, and duplicate hero clones behave as separate runtime actors.
+- scope confirmation: confined to ORKA-7kt dev tooling modal runtime behavior and mirrored hero identity handling needed to support duplicate hero slots; autoplay/idle mode remains separate under ORKA-5vf.
+
+- bead id: ORKA-1ys (visual polish follow-up)
+- summary of changes: Tightened the idle farming scene into a cleaner endless mock battle by removing visible hero/enemy labels, switching enemy hit flashes to the real combat-style inverted sprite flash instead of a white-box mask, increasing enemy defeat cadence to 3 hits, and adding visible enemy attack beats so the scene reads as a slow reciprocal fight rather than a hero-only firing line.
+- files modified: web-runner/app.js; web-runner/src/core/idleFarmRuntime.mjs; tests/idleFarmLayoutScaffoldContract.test.js
+- test evidence:
+  - `npm test -- tests/idleFarmLayoutScaffoldContract.test.js tests/evolutionLayoutScaffoldContract.test.js` (4/4 pass)
+  - Contract now guards the endless idle facade configuration (`loopForever`, two visible enemy slots, 3-hit enemies, 1.5s spawn delay) and asserts the old `Enemy Approaching...` plus visible hero/enemy label text are absent from the render branch.
+- scope confirmation: confined to ORKA-1ys idle-farm presentation/rhythm polish only; no combat-system logic or dev-panel behavior was changed in this follow-up.
+
+- bead id: ORKA-1ys (closeout split)
+- summary of changes: Closed the idle-farm combat presentation lane after user-approved rhythm/staging polish and split the remaining reward/emission tuning into follow-up bead `ORKA-gxd` so the economy/display contract can proceed independently from the combat facade.
+- files modified: agents/dev_reports.md; agents/pm_status.md
+- test evidence:
+  - `bd show ORKA-1ys` -> `CLOSED`
+  - `bd show ORKA-gxd` -> `OPEN`
+- scope confirmation: no gameplay/runtime code changed in this closeout step; this only records the scope split between completed idle-combat presentation and the new emission/display follow-up.
+
+- bead id: ORKA-gxd
+- summary of changes: Replaced the idle-farm placeholder reward seam with visible timer-based emissions every ~18 seconds using a faithful adapter of the game’s tiered monster-loot logic, surfaced all loot buckets in the idle strip, removed routed-count math from the player-facing display, and wired `Collect` to credit the shared token wallet plus gold.
+- files modified: web-runner/src/core/idleFarmRuntime.mjs; web-runner/app.js; tests/idleFarmLayoutScaffoldContract.test.js
+- test evidence:
+  - `node --check web-runner/src/core/idleFarmRuntime.mjs` (pass)
+  - `npm test -- tests/idleFarmLayoutScaffoldContract.test.js` (2/2 pass)
+- scope confirmation: confined to ORKA-gxd idle-farm emission cadence, loot-bucket selection, reward ledger, and idle reward-strip display; no combat-presentation choreography changes were introduced in this lane.
+
+- bead id: ORKA-1ys (reopen staging polish)
+- summary of changes: Reopened the idle-farm combat presentation lane to stage actor entry more cinematically, with per-hero entrance timing, 1.5-second enemy arrivals after each lane hero enters, and lowered lane anchors so the two duels read more clearly before the regular idle battle loop takes over.
+- files modified: web-runner/src/core/idleFarmRuntime.mjs; web-runner/app.js
+- test evidence:
+  - `node --check web-runner/src/core/idleFarmRuntime.mjs` (pass)
+  - `npm test -- tests/idleFarmLayoutScaffoldContract.test.js` (2/2 pass)
+- scope confirmation: confined to ORKA-1ys idle-farm entry choreography and lane staging only; the reward cadence/display changes remain under ORKA-gxd.
+
+- bead id: ORKA-srm
+- summary of changes: Fixed the idle-farm Collect path by routing claimed rewards through a shared wallet-commit helper, cloning the token wallet on credit, and recording an explicit `IdleFarmLastCollect` summary so wallet/debug surfaces can confirm the claim instead of only clearing the idle ledger.
+- files modified: web-runner/src/core/idleFarmRuntime.mjs; web-runner/app.js; tests/idleFarmCollectWalletContract.test.js
+- test evidence:
+  - `node --check web-runner/src/core/idleFarmRuntime.mjs` (pass)
+  - `npm test -- tests/idleFarmCollectWalletContract.test.js tests/idleFarmLayoutScaffoldContract.test.js` (4/4 pass)
+- scope confirmation: confined to ORKA-srm idle-farm reward claim ownership and wallet credit visibility; no combat-presentation or unrelated resource systems were changed.
+
+- bead id: ORKA-xyu
+- summary of changes: Rebalanced the idle-farm loot adapter so gold now takes a fixed 40 percent share of emissions while the existing non-gold tier weights are renormalized proportionally, preserving their prior relative rarity ordering.
+- files modified: web-runner/src/core/idleFarmRuntime.mjs; tests/idleFarmLootWeightContract.test.js
+- test evidence:
+  - `node --check web-runner/src/core/idleFarmRuntime.mjs` (pass)
+  - `npm test -- tests/idleFarmCollectWalletContract.test.js tests/idleFarmLootWeightContract.test.js tests/idleFarmLayoutScaffoldContract.test.js` (5/5 pass)
+- scope confirmation: confined to ORKA-xyu idle emission weighting only; the reward collection seam from ORKA-srm and the larger ORKA-gxd idle-emission QA lane remain otherwise intact.
+
+- bead id: ORKA-4u7
+- summary of changes: Fixed the main combat speed bleed by resetting `DevCombatSpeedMultiplier` to `1` on boot instead of hydrating it from persisted dev-tool config. Explicit dev apply still sets the multiplier on purpose, but stale QA settings no longer make normal combat start at an unintended accelerated rate.
+- files modified: web-runner/app.js; tests/combatSpeedIsolationContract.test.js
+- test evidence:
+  - `npm test -- tests/combatSpeedIsolationContract.test.js` (1/1 pass)
+  - Note: `node --check web-runner/app.js` is not a valid syntax check in this repo because `web-runner/app.js` is loaded as a browser ES module and Node parses it as CommonJS without package `type: module`.
+- scope confirmation: confined to ORKA-4u7 combat-speed initialization only; no turn logic, timing rules, or combat formulas were changed.
+
+- bead id: ORKA-bmv
+- summary of changes: Fixed idle-layout entry to cold-boot through the same restart seam as the `Restart Run` button instead of preserving cached session state. This keeps the staged idle presentation deterministic on every entry while leaving the separate reward ledger intact.
+- files modified: web-runner/app.js; tests/idleFarmLayoutScaffoldContract.test.js
+- test evidence:
+  - `node --check web-runner/src/core/idleFarmRuntime.mjs` (pass)
+  - `npm test -- tests/idleFarmLayoutScaffoldContract.test.js` (2/2 pass)
+- scope confirmation: confined to ORKA-bmv idle-farm entry boot semantics only; no reward ledger math, main combat behavior, or idle presentation choreography timings were changed.
+
+- bead id: ORKA-eh1
+- summary of changes: Split idle-farm reward accrual out of the visible theater session into a dedicated background emission ledger with its own cadence state. Idle emissions now continue accruing independently once started, Collect cashes out the current ledger and immediately restarts cadence without restarting the theater, and re-entering the layout still restarts only the staged visual session.
+- files modified: web-runner/src/core/idleFarmRuntime.mjs; web-runner/app.js; tests/idleFarmCollectWalletContract.test.js
+- test evidence:
+  - `node --check web-runner/src/core/idleFarmRuntime.mjs` (pass)
+  - `npm test -- tests/idleFarmCollectWalletContract.test.js tests/idleFarmLayoutScaffoldContract.test.js tests/idleFarmLootWeightContract.test.js` (6/6 pass)
+- scope confirmation: confined to ORKA-eh1 idle emission ownership and cadence reset semantics only; no regular combat rules, idle theater choreography, or unrelated wallet systems were changed.

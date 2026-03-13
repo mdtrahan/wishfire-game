@@ -5,10 +5,14 @@
   "main": "index.js",
   "scripts": {
     "test": "node --test",
-    "serve:qa": "node tools/serve_web.js --port 8000"
+    "serve:qa": "node tools/serve_web.js --port 8000",
+    "balance-harness": "node tools/balance_harness.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "devDependencies": {
+    "playwright": "^1.58.2"
+  }
 }
