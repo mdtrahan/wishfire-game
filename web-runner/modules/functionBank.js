@@ -299,15 +299,58 @@ function isPowerAmpLifecycleDebugEnabled(source) {
   return !!(g && g.DebugPowerAmpLifecycle);
 }
 
+function ensurePowerAmpTelemetryTrace(g) {
+  if (!Array.isArray(g.PowerAmpTelemetryTrace)) g.PowerAmpTelemetryTrace = [];
+  return g.PowerAmpTelemetryTrace;
+}
+
+function getPowerAmpTelemetryIdentity(ctx, actorUID) {
+  const actor = GetActorByUID(ctx, actorUID);
+  const uid = Number(actorUID || 0);
+  const actorName = actor ? String(actor.name || '') : (uid ? String(getActorNameByUID(ctx, uid) || '') : '');
+  const heroId = actor && actor.kind === 'hero' ? makeStableHeroSkillPointId(actor) : '';
+  const heroIndex = actor && Number.isInteger(Number(actor.heroIndex)) ? Number(actor.heroIndex) : -1;
+  return {
+    uid,
+    actorKind: String(actor?.kind || ''),
+    actorName,
+    heroId,
+    heroIndex,
+  };
+}
+
+function recordPowerAmpTelemetry(ctx, phase, actorUID, extra = {}) {
+  const g = getGlobals(ctx);
+  const trace = ensurePowerAmpTelemetryTrace(g);
+  const identity = getPowerAmpTelemetryIdentity(ctx, actorUID);
+  const event = {
+    phase: String(phase || ''),
+    uid: identity.uid,
+    actorKind: identity.actorKind,
+    actorName: identity.actorName,
+    heroId: identity.heroId,
+    heroIndex: identity.heroIndex,
+    time: Number(g.time || 0),
+    turnSerial: Number(g.TurnSerial || 0),
+    turn: Number(g.DebugTurnCount || 0),
+  };
+  for (const [key, value] of Object.entries(extra || {})) {
+    if (value == null || value === '') continue;
+    event[key] = value;
+  }
+  trace.push(event);
+  if (trace.length > 200) trace.shift();
+  return event;
+}
+
 function emitPowerAmpStateLog(ctx, phase, actorUID, extra = {}) {
+  const event = recordPowerAmpTelemetry(ctx, phase, actorUID, extra);
   if (!isPowerAmpLifecycleDebugEnabled(ctx)) return;
   const g = getGlobals(ctx);
-  const uid = Number(actorUID || 0);
-  const heroName = uid ? getActorNameByUID(ctx, uid) : '';
   const parts = [
     `[POWER_AMP_STATE] phase=${phase}`,
-    uid ? `uid=${uid}` : '',
-    heroName ? `name=${heroName}` : '',
+    event.uid ? `uid=${event.uid}` : '',
+    event.actorName ? `name=${event.actorName}` : '',
     Number.isFinite(g?.TurnSerial) ? `turnSerial=${Number(g.TurnSerial)}` : '',
     Number.isFinite(g?.DebugTurnCount) ? `turn=${Number(g.DebugTurnCount)}` : '',
   ];
@@ -428,6 +471,64 @@ function traceEnemySkillDecision(ctx, enemyUID, decision) {
   }
 }
 
+function traceEnemyHealRoll(ctx, payload) {
+  const g = getGlobals(ctx);
+  if (!Array.isArray(g.EnemyHealTrace)) g.EnemyHealTrace = [];
+  g.EnemyHealTrace.push({
+    enemyUID: Number(payload.enemyUID || 0),
+    enemyName: String(payload.enemyName || ''),
+    skillId: String(payload.skillId || ''),
+    targetUID: Number(payload.targetUID || 0),
+    targetName: String(payload.targetName || ''),
+    targetScope: String(payload.targetScope || ''),
+    targetCount: Number(payload.targetCount || 0),
+    low: Number(payload.low || 0),
+    high: Number(payload.high || 0),
+    rolledBase: Number(payload.rolledBase || 0),
+    rangeRoll: Number(payload.rangeRoll || 0),
+    critRoll: Number(payload.critRoll || 0),
+    didCrit: Boolean(payload.didCrit),
+    critMultiplier: Number(payload.critMultiplier || 1),
+    finalHeal: Number(payload.finalHeal || 0),
+    time: Number(g.time || 0),
+  });
+  if (g.EnemyHealTrace.length > 120) g.EnemyHealTrace.shift();
+}
+
+function rollEnemyHealAmount(ctx, healer, {
+  skillId = 'Enemy_Heal_Self',
+  lowFloor = 1,
+  lowOffset = 0,
+  highOffset = 0,
+  critThreshold = 0.1,
+} = {}) {
+  const magTotal = Math.max(0, GetEffectiveStat(ctx, healer, 'MAG'));
+  const base = Math.max(1, Math.floor(magTotal * 0.5));
+  const low = Math.max(lowFloor, base + lowOffset);
+  const high = Math.max(low, base + highOffset);
+  const rangeRoll = Math.random();
+  const rolledBase = low + Math.floor(rangeRoll * (high - low + 1));
+  const critRoll = Math.random();
+  const crit = ApplyScaledCrit({
+    baseValue: rolledBase,
+    relevantBuffTotal: magTotal,
+    sourceType: 'ENEMY',
+    critThreshold,
+    rngRoll: critRoll,
+  });
+  return {
+    skillId,
+    low,
+    high,
+    rolledBase,
+    rangeRoll,
+    critRoll,
+    didCrit: Boolean(crit.didCrit),
+    critMultiplier: Number(crit.critMultiplier || 1),
+    finalHeal: Math.max(1, Math.floor(crit.value)),
+  };
+}
+
 export function GetPowerAmpMultiplierForActor(ctx, actorUID) {
   const store = ensurePowerAmpByUID(ctx);
   const entry = store[actorUID];
@@ -481,6 +582,7 @@ export function FinalizePowerAmpVisualClear(ctx, actorUID, lifecycleId = 0) {
     if (meta) meta.closed = true;
   }
   clearPowerAmpVisualState(g, uid);
+  emitPowerAmpStateLog(ctx, 'clear', uid, { lifecycle: Number(lifecycleId || 0) });
 }
 
 function expirePowerAmpFadeEntries(ctx) {
@@ -493,14 +595,7 @@ function expirePowerAmpFadeEntries(ctx) {
     if (!fade) continue;
     const duration = Number(fade.duration || 0.16);
     if (now < Number(fade.startAt || 0) + duration) continue;
-    if (isPowerAmpLifecycleDebugEnabled(ctx)) {
-      const actor = GetActorByUID(ctx, Number(uid || 0));
-      console.log(
-        `[POWER_AMP_STATE] phase=closed_off uid=${Number(uid || 0)} ` +
-        `name=${actor ? String(actor.name || '') : ''} turnSerial=${Number(g.TurnSerial || 0)} ` +
-        `turn=${Number(g.DebugTurnCount || 0)} lifecycle=${Number(fade.lifecycleId || 0)}`
-      );
-    }
+    emitPowerAmpStateLog(ctx, 'closed_off', Number(uid || 0), { lifecycle: Number(fade.lifecycleId || 0) });
     delete fades[uid];
     expiredCount += 1;
   }
@@ -560,9 +655,13 @@ function getAllHeroActors(ctx) {
 }
 
 function makeStableHeroSkillPointId(hero) {
+  const actorUID = Number(hero && hero.uid);
+  if (Number.isInteger(actorUID) && actorUID > 0) return `hero_actor:${actorUID}`;
+  const instanceKey = String((hero && hero.heroInstanceKey) || '').trim().toLowerCase();
+  if (instanceKey) return `hero_instance:${instanceKey}`;
   const heroIndex = Number(hero && hero.heroIndex);
   if (Number.isInteger(heroIndex) && heroIndex >= 0) return `hero:${heroIndex}`;
-  const heroName = String((hero && hero.name) || '').trim().toLowerCase();
+  const heroName = String((hero && (hero.baseHeroName || hero.name)) || '').trim().toLowerCase();
   if (heroName) return `hero_name:${heroName}`;
   return '';
 }
@@ -573,28 +672,48 @@ function resolveHeroSkillPointIdentity(ctx, heroRef) {
   const fromActor = (hero) => ({
     heroId: makeStableHeroSkillPointId(hero),
     heroIndex: Number.isInteger(Number(hero && hero.heroIndex)) ? Number(hero.heroIndex) : -1,
-    heroName: String((hero && hero.name) || ''),
+    heroName: String((hero && (hero.baseHeroName || hero.name)) || ''),
     actorUID: Number((hero && hero.uid) || 0),
   });
   const fromStableId = (heroId) => {
     const text = String(heroId || '');
+    if (text.startsWith('hero_actor:')) {
+      const uid = Number(text.slice(11));
+      const match = heroes.find(hero => Number(hero.uid) === uid) || null;
+      return {
+        heroId: text,
+        heroIndex: match && Number.isInteger(Number(match.heroIndex)) ? Number(match.heroIndex) : -1,
+        heroName: match ? String(match.baseHeroName || match.name || '') : '',
+        actorUID: match ? Number(match.uid || 0) : 0,
+      };
+    }
+    if (text.startsWith('hero_instance:')) {
+      const key = text.slice(14);
+      const match = heroes.find(hero => String(hero.heroInstanceKey || '').trim().toLowerCase() === key) || null;
+      return {
+        heroId: text,
+        heroIndex: match && Number.isInteger(Number(match.heroIndex)) ? Number(match.heroIndex) : -1,
+        heroName: match ? String(match.baseHeroName || match.name || '') : '',
+        actorUID: match ? Number(match.uid || 0) : 0,
+      };
+    }
     if (text.startsWith('hero:')) {
       const idx = Number(text.slice(5));
       const match = heroes.find(hero => Number(hero.heroIndex) === idx) || null;
       return {
         heroId: text,
         heroIndex: Number.isInteger(idx) ? idx : -1,
-        heroName: match ? String(match.name || '') : '',
+        heroName: match ? String(match.baseHeroName || match.name || '') : '',
         actorUID: match ? Number(match.uid || 0) : 0,
       };
     }
     if (text.startsWith('hero_name:')) {
       const key = text.slice(10);
-      const match = heroes.find(hero => String(hero.name || '').trim().toLowerCase() === key) || null;
+      const match = heroes.find(hero => String(hero.baseHeroName || hero.name || '').trim().toLowerCase() === key) || null;
       return {
         heroId: text,
         heroIndex: match && Number.isInteger(Number(match.heroIndex)) ? Number(match.heroIndex) : -1,
-        heroName: match ? String(match.name || '') : key,
+        heroName: match ? String(match.baseHeroName || match.name || '') : key,
         actorUID: match ? Number(match.uid || 0) : 0,
       };
     }
@@ -610,7 +729,7 @@ function resolveHeroSkillPointIdentity(ctx, heroRef) {
     const text = heroRef.trim();
     const byStableId = fromStableId(text);
     if (byStableId.heroId) return byStableId;
-    const byName = heroes.find(hero => String(hero.name || '').trim().toLowerCase() === text.toLowerCase());
+    const byName = heroes.find(hero => String(hero.baseHeroName || hero.name || '').trim().toLowerCase() === text.toLowerCase());
     if (byName) return fromActor(byName);
   }
 
@@ -1184,6 +1303,371 @@ function ensureAstralFlowWallet(ctx) {
   const g = getGlobals(ctx);
   if (!Number.isFinite(g.AstralFlowWallet)) g.AstralFlowWallet = 0;
   return g.AstralFlowWallet;
+}
+
+const HERO_GEM_USAGE_KEYS = Object.freeze(['RED', 'GREEN', 'BLUE', 'HEAL', 'YELLOW']);
+const HERO_GEM_MILESTONE_DEFAULTS = Object.freeze([1000, 5000, 10000]);
+
+function cloneGemUsageRow(input = null) {
+  const row = createGemUsageRow();
+  for (const key of HERO_GEM_USAGE_KEYS) {
+    row[key] = Math.max(0, Math.floor(Number(input && input[key]) || 0));
+  }
+  return row;
+}
+
+function sanitizeHeroGemMilestoneThresholds(thresholds) {
+  const source = Array.isArray(thresholds) ? thresholds : HERO_GEM_MILESTONE_DEFAULTS;
+  const unique = new Set();
+  for (const raw of source) {
+    const value = Math.max(0, Math.floor(Number(raw) || 0));
+    if (value > 0) unique.add(value);
+  }
+  return Array.from(unique).sort((a, b) => a - b);
+}
+
+function createHeroGemMilestoneColorState(total = 0, thresholds = HERO_GEM_MILESTONE_DEFAULTS, reached = []) {
+  const safeTotal = Math.max(0, Math.floor(Number(total) || 0));
+  const safeThresholds = sanitizeHeroGemMilestoneThresholds(thresholds);
+  const reachedSet = new Set();
+  for (const raw of Array.isArray(reached) ? reached : []) {
+    const value = Math.max(0, Math.floor(Number(raw) || 0));
+    if (value > 0 && value <= safeTotal && safeThresholds.includes(value)) reachedSet.add(value);
+  }
+  const normalizedReached = safeThresholds.filter((value) => value <= safeTotal || reachedSet.has(value));
+  return {
+    total: safeTotal,
+    reached: normalizedReached,
+    next: safeThresholds.find((value) => value > safeTotal) || 0,
+    lastReached: normalizedReached.length ? normalizedReached[normalizedReached.length - 1] : 0,
+  };
+}
+
+function createHeroGemMilestoneRecord(thresholds = HERO_GEM_MILESTONE_DEFAULTS, totals = null, existing = null) {
+  const record = {};
+  for (const key of HERO_GEM_USAGE_KEYS) {
+    const current = existing && typeof existing[key] === 'object' ? existing[key] : null;
+    record[key] = createHeroGemMilestoneColorState(
+      totals && totals[key],
+      thresholds,
+      current && current.reached,
+    );
+  }
+  return record;
+}
+
+function extractHeroGemMilestoneTotals(record = null) {
+  const totals = createGemUsageRow();
+  for (const key of HERO_GEM_USAGE_KEYS) {
+    const value = record && record[key] && typeof record[key] === 'object'
+      ? record[key].total
+      : 0;
+    totals[key] = Math.max(0, Math.floor(Number(value) || 0));
+  }
+  return totals;
+}
+
+function nextHeroGemMilestoneTraceSeq(g) {
+  const next = Math.max(0, Math.floor(Number(g.HeroGemMilestones?.traceSeq || 0))) + 1;
+  g.HeroGemMilestones.traceSeq = next;
+  return next;
+}
+
+function appendHeroGemMilestoneTrace(g, entry) {
+  const store = g.HeroGemMilestones;
+  if (!store || typeof store !== 'object') return null;
+  if (!Array.isArray(store.trace)) store.trace = [];
+  const traceEntry = {
+    seq: nextHeroGemMilestoneTraceSeq(g),
+    scope: String(entry && entry.scope || 'party'),
+    heroId: String(entry && entry.heroId || ''),
+    heroName: String(entry && entry.heroName || ''),
+    colorKey: String(entry && entry.colorKey || ''),
+    threshold: Math.max(0, Math.floor(Number(entry && entry.threshold) || 0)),
+    total: Math.max(0, Math.floor(Number(entry && entry.total) || 0)),
+  };
+  store.trace.push(traceEntry);
+  if (store.trace.length > 80) store.trace.splice(0, store.trace.length - 80);
+  return traceEntry;
+}
+
+function touchHeroGemProgressDirty(ctx) {
+  const g = getGlobals(ctx);
+  g.HeroGemProgressDirty = 1;
+  g.HeroGemProgressLastChangedAt = Number(g.time || 0);
+}
+
+function buildHeroGemUsageRecord(identity, totals = null) {
+  return {
+    heroId: String(identity && identity.heroId || ''),
+    heroName: String(identity && identity.heroName || ''),
+    heroIndex: Number.isInteger(Number(identity && identity.heroIndex)) ? Number(identity.heroIndex) : -1,
+    actorUID: Math.max(0, Math.floor(Number(identity && identity.actorUID) || 0)),
+    totals: cloneGemUsageRow(totals),
+  };
+}
+
+function migrateLegacyHeroGemUsageByName(ctx, usage) {
+  const legacy = usage && usage.byHero && typeof usage.byHero === 'object' ? usage.byHero : {};
+  if (Object.keys(usage.byHeroId || {}).length > 0) return;
+  for (const [heroName, totals] of Object.entries(legacy)) {
+    const identity = resolveHeroSkillPointIdentity(ctx, heroName);
+    const heroId = identity.heroId || `hero_name:${String(heroName || '').trim().toLowerCase()}`;
+    usage.byHeroId[heroId] = buildHeroGemUsageRecord({
+      heroId,
+      heroName: identity.heroName || String(heroName || ''),
+      heroIndex: identity.heroIndex,
+      actorUID: identity.actorUID,
+    }, totals);
+  }
+}
+
+function syncHeroGemUsageLegacyView(ctx, usage) {
+  usage.party = cloneGemUsageRow(usage.party);
+  if (!usage.byHeroId || typeof usage.byHeroId !== 'object') usage.byHeroId = {};
+  usage.byHero = {};
+  for (const [heroId, rawRecord] of Object.entries(usage.byHeroId)) {
+    const identity = resolveHeroSkillPointIdentity(ctx, heroId);
+    const record = buildHeroGemUsageRecord({
+      heroId,
+      heroName: identity.heroName || rawRecord?.heroName || '',
+      heroIndex: identity.heroIndex >= 0 ? identity.heroIndex : rawRecord?.heroIndex,
+      actorUID: identity.actorUID > 0 ? identity.actorUID : rawRecord?.actorUID,
+    }, rawRecord && rawRecord.totals);
+    usage.byHeroId[heroId] = record;
+    const heroName = record.heroName || heroId;
+    usage.byHero[heroName] = cloneGemUsageRow(record.totals);
+  }
+  return usage;
+}
+
+function ensureHeroGemUsageState(ctx) {
+  const g = getGlobals(ctx);
+  if (!g.HeroGemUsage || typeof g.HeroGemUsage !== 'object') {
+    g.HeroGemUsage = {
+      version: 1,
+      byHeroId: {},
+      byHero: {},
+      party: { RED: 0, GREEN: 0, BLUE: 0, HEAL: 0, YELLOW: 0 },
+    };
+  }
+  if (!Number.isFinite(g.HeroGemUsage.version)) g.HeroGemUsage.version = 1;
+  if (!g.HeroGemUsage.byHeroId || typeof g.HeroGemUsage.byHeroId !== 'object') g.HeroGemUsage.byHeroId = {};
+  if (!g.HeroGemUsage.byHero || typeof g.HeroGemUsage.byHero !== 'object') g.HeroGemUsage.byHero = {};
+  if (!g.HeroGemUsage.party || typeof g.HeroGemUsage.party !== 'object') {
+    g.HeroGemUsage.party = { RED: 0, GREEN: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
+  }
+  migrateLegacyHeroGemUsageByName(ctx, g.HeroGemUsage);
+  syncHeroGemUsageLegacyView(ctx, g.HeroGemUsage);
+  return g.HeroGemUsage;
+}
+
+function createGemUsageRow() {
+  return { RED: 0, GREEN: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
+}
+
+function resolveGemUsageColorKey(gemColor) {
+  if (gemColor === 0) return 'GREEN';
+  if (gemColor === 1) return 'RED';
+  if (gemColor === 2) return 'BLUE';
+  if (gemColor === 3) return 'YELLOW';
+  if (gemColor === 4) return 'HEAL';
+  return '';
+}
+
+function ensureHeroGemMilestonesState(ctx) {
+  const g = getGlobals(ctx);
+  if (!g.HeroGemMilestones || typeof g.HeroGemMilestones !== 'object') {
+    g.HeroGemMilestones = {
+      thresholds: [...HERO_GEM_MILESTONE_DEFAULTS],
+      byHeroId: {},
+      party: createHeroGemMilestoneRecord(HERO_GEM_MILESTONE_DEFAULTS),
+      trace: [],
+      traceSeq: 0,
+    };
+  }
+  const store = g.HeroGemMilestones;
+  store.thresholds = sanitizeHeroGemMilestoneThresholds(store.thresholds);
+  if (!store.byHeroId || typeof store.byHeroId !== 'object') store.byHeroId = {};
+  if (!Array.isArray(store.trace)) store.trace = [];
+  if (!Number.isFinite(store.traceSeq)) store.traceSeq = 0;
+  store.party = createHeroGemMilestoneRecord(store.thresholds, extractHeroGemMilestoneTotals(store.party), store.party);
+  for (const heroId of Object.keys(store.byHeroId)) {
+    store.byHeroId[heroId] = createHeroGemMilestoneRecord(
+      store.thresholds,
+      extractHeroGemMilestoneTotals(store.byHeroId[heroId]),
+      store.byHeroId[heroId],
+    );
+  }
+  return store;
+}
+
+function evaluateHeroGemMilestones(ctx, heroId = '', emitTrace = false) {
+  const usage = ensureHeroGemUsageState(ctx);
+  const store = ensureHeroGemMilestonesState(ctx);
+  const g = getGlobals(ctx);
+  const thresholds = store.thresholds;
+  const hits = [];
+
+  const partyPrevious = createHeroGemMilestoneRecord(thresholds, null, store.party);
+  const recordParty = createHeroGemMilestoneRecord(thresholds, usage.party, store.party);
+  store.party = recordParty;
+  for (const colorKey of HERO_GEM_USAGE_KEYS) {
+    const previous = partyPrevious[colorKey];
+    const current = recordParty[colorKey];
+    const newHits = current.reached.filter((value) => !previous.reached.includes(value));
+    for (const threshold of newHits) {
+      const traceEntry = emitTrace ? appendHeroGemMilestoneTrace(g, {
+        scope: 'party',
+        colorKey,
+        threshold,
+        total: current.total,
+      }) : null;
+      hits.push({ scope: 'party', colorKey, threshold, total: current.total, trace: traceEntry });
+    }
+  }
+
+  const heroKey = String(heroId || '');
+  if (heroKey) {
+    const heroRecord = usage.byHeroId[heroKey];
+    const previous = createHeroGemMilestoneRecord(thresholds, null, store.byHeroId[heroKey]);
+    const current = createHeroGemMilestoneRecord(thresholds, heroRecord && heroRecord.totals, store.byHeroId[heroKey]);
+    store.byHeroId[heroKey] = current;
+    for (const colorKey of HERO_GEM_USAGE_KEYS) {
+      const newHits = current[colorKey].reached.filter((value) => !previous[colorKey].reached.includes(value));
+      for (const threshold of newHits) {
+        const traceEntry = emitTrace ? appendHeroGemMilestoneTrace(g, {
+          scope: 'hero',
+          heroId: heroKey,
+          heroName: heroRecord && heroRecord.heroName,
+          colorKey,
+          threshold,
+          total: current[colorKey].total,
+        }) : null;
+        hits.push({ scope: 'hero', heroId: heroKey, colorKey, threshold, total: current[colorKey].total, trace: traceEntry });
+      }
+    }
+  }
+
+  return hits;
+}
+
+export function RegisterHeroGemUsage(ctx, actorUID, gemColor, consumedCount = 0) {
+  const hero = GetActorByUID(ctx, actorUID);
+  if (!hero || hero.kind !== 'hero') return false;
+  const colorKey = resolveGemUsageColorKey(Number(gemColor));
+  const increment = Math.max(0, Number(consumedCount) || 0);
+  if (!colorKey || increment <= 0) return false;
+  const usage = ensureHeroGemUsageState(ctx);
+  const identity = resolveHeroSkillPointIdentity(ctx, hero);
+  const heroKey = identity.heroId || `hero_name:${String(hero.name || actorUID || 'hero').trim().toLowerCase()}`;
+  if (!usage.byHeroId[heroKey] || typeof usage.byHeroId[heroKey] !== 'object') {
+    usage.byHeroId[heroKey] = buildHeroGemUsageRecord({
+      heroId: heroKey,
+      heroName: identity.heroName || String(hero.name || ''),
+      heroIndex: identity.heroIndex,
+      actorUID: identity.actorUID || actorUID,
+    });
+  }
+  const record = usage.byHeroId[heroKey];
+  record.heroName = identity.heroName || record.heroName || String(hero.name || '');
+  record.heroIndex = identity.heroIndex >= 0 ? identity.heroIndex : record.heroIndex;
+  record.actorUID = identity.actorUID > 0 ? identity.actorUID : Math.max(0, Math.floor(Number(actorUID) || 0));
+  if (!record.totals || typeof record.totals !== 'object') record.totals = createGemUsageRow();
+  if (!usage.party[colorKey]) usage.party[colorKey] = 0;
+  record.totals[colorKey] = Number(record.totals[colorKey] || 0) + increment;
+  usage.party[colorKey] = Number(usage.party[colorKey] || 0) + increment;
+  syncHeroGemUsageLegacyView(ctx, usage);
+  evaluateHeroGemMilestones(ctx, heroKey, true);
+  touchHeroGemProgressDirty(ctx);
+  return true;
+}
+
+export function GetHeroGemProgressSnapshot(ctx) {
+  const usage = ensureHeroGemUsageState(ctx);
+  const milestones = ensureHeroGemMilestonesState(ctx);
+  const byHeroId = {};
+  for (const [heroId, record] of Object.entries(usage.byHeroId || {})) {
+    byHeroId[heroId] = {
+      heroId: String(record.heroId || heroId),
+      heroName: String(record.heroName || ''),
+      heroIndex: Number.isInteger(Number(record.heroIndex)) ? Number(record.heroIndex) : -1,
+      totals: cloneGemUsageRow(record.totals),
+    };
+  }
+  return {
+    version: 1,
+    usage: {
+      byHeroId,
+      party: cloneGemUsageRow(usage.party),
+    },
+    milestones: {
+      thresholds: sanitizeHeroGemMilestoneThresholds(milestones.thresholds),
+    },
+  };
+}
+
+export function LoadHeroGemProgressSnapshot(ctx, snapshot = null) {
+  const usage = ensureHeroGemUsageState(ctx);
+  const incomingUsage = snapshot && snapshot.usage && typeof snapshot.usage === 'object'
+    ? snapshot.usage
+    : {};
+  const byHeroId = incomingUsage.byHeroId && typeof incomingUsage.byHeroId === 'object'
+    ? incomingUsage.byHeroId
+    : {};
+  usage.byHeroId = {};
+  for (const [heroId, record] of Object.entries(byHeroId)) {
+    const identity = resolveHeroSkillPointIdentity(ctx, heroId);
+    const stableHeroId = identity.heroId || String(record && record.heroId || heroId || '');
+    if (!stableHeroId) continue;
+    usage.byHeroId[stableHeroId] = buildHeroGemUsageRecord({
+      heroId: stableHeroId,
+      heroName: identity.heroName || String(record && record.heroName || ''),
+      heroIndex: identity.heroIndex >= 0 ? identity.heroIndex : Number(record && record.heroIndex),
+      actorUID: identity.actorUID,
+    }, record && record.totals);
+  }
+  usage.party = cloneGemUsageRow(incomingUsage.party);
+  syncHeroGemUsageLegacyView(ctx, usage);
+
+  const store = ensureHeroGemMilestonesState(ctx);
+  const incomingMilestones = snapshot && snapshot.milestones && typeof snapshot.milestones === 'object'
+    ? snapshot.milestones
+    : {};
+  store.thresholds = sanitizeHeroGemMilestoneThresholds(incomingMilestones.thresholds);
+  store.byHeroId = {};
+  store.party = createHeroGemMilestoneRecord(store.thresholds, usage.party);
+  store.trace = [];
+  store.traceSeq = 0;
+  for (const heroId of Object.keys(usage.byHeroId)) {
+    store.byHeroId[heroId] = createHeroGemMilestoneRecord(store.thresholds, usage.byHeroId[heroId].totals);
+  }
+
+  const g = getGlobals(ctx);
+  g.HeroGemProgressDirty = 0;
+  g.HeroGemProgressLastChangedAt = Number(g.time || 0);
+  return true;
+}
+
+export function ConfigureHeroGemMilestoneThresholds(ctx, thresholds = []) {
+  const store = ensureHeroGemMilestonesState(ctx);
+  store.thresholds = sanitizeHeroGemMilestoneThresholds(thresholds);
+  store.party = createHeroGemMilestoneRecord(store.thresholds);
+  store.byHeroId = {};
+  store.trace = [];
+  store.traceSeq = 0;
+  const usage = ensureHeroGemUsageState(ctx);
+  for (const heroId of Object.keys(usage.byHeroId)) {
+    store.byHeroId[heroId] = createHeroGemMilestoneRecord(store.thresholds, usage.byHeroId[heroId].totals);
+  }
+  store.party = createHeroGemMilestoneRecord(store.thresholds, usage.party);
+  touchHeroGemProgressDirty(ctx);
+  return [...store.thresholds];
+}
+
+export function GetHeroGemMilestones(ctx) {
+  const store = ensureHeroGemMilestonesState(ctx);
+  return JSON.parse(JSON.stringify(store));
 }
 
 function parseDropId(dropId) {
@@ -2117,7 +2601,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
       t.isAlive = false;
       if (t.kind === 'enemy') {
         AwardMonsterDrop(ctx, t.name || t.key || t.type || '', null, Number(g.LastDamageSourceUID || 0));
-        KillEnemyAt(ctx, t.slotIndex ?? 0);
+        KillEnemyByUID(ctx, t.uid, t.slotIndex ?? 0);
       }
     }
   }
@@ -2557,10 +3041,108 @@ export function Enemy_MAG_Single(ctx, enemyUID, targetHeroUID) {
 export function Enemy_Heal_Self(ctx, enemyUID) {
   const enemy = GetActorByUID(ctx, enemyUID);
   if (!enemy) return;
-  const heal = Math.max(1, Math.floor((enemy.stats?.MAG ?? enemy.MAG ?? 0) * 0.5));
+  const healInfo = rollEnemyHealAmount(ctx, enemy, {
+    skillId: 'Enemy_Heal_Self',
+    lowFloor: 6,
+    lowOffset: -3,
+    highOffset: 4,
+  });
+  const heal = healInfo.finalHeal;
   enemy.hp = Math.min(enemy.maxHP ?? enemy.hp, (enemy.hp ?? 0) + heal);
   SpawnDamageText(ctx, heal, enemy.x ?? 0, enemy.y ?? 0, 'heal', 'enemy');
-  LogCombat(ctx, `${enemy.name || 'Enemy'} healed for ${heal}!`);
+  traceEnemyHealRoll(ctx, {
+    enemyUID,
+    enemyName: String(enemy.name || 'Enemy'),
+    targetUID: Number(enemy.uid || enemyUID || 0),
+    targetName: String(enemy.name || 'Enemy'),
+    targetScope: 'self',
+    ...healInfo,
+  });
+  LogCombat(
+    ctx,
+    healInfo.didCrit
+      ? `${enemy.name || 'Enemy'} critically healed for ${heal}!`
+      : `${enemy.name || 'Enemy'} healed for ${heal}!`,
+  );
+}
+
+export function Enemy_Heal_Allies(ctx, enemyUID) {
+  const healer = GetActorByUID(ctx, enemyUID);
+  if (!healer) return;
+  const healInfo = rollEnemyHealAmount(ctx, healer, {
+    skillId: 'Enemy_Heal_Allies',
+    lowFloor: 9,
+    lowOffset: -1,
+    highOffset: 2,
+  });
+  const heal = healInfo.finalHeal;
+  const allies = getEnemies(ctx).filter((enemy) =>
+    enemy && (enemy.hp || 0) > 0,
+  );
+  if (!allies.length) {
+    Enemy_Heal_Self(ctx, enemyUID);
+    return;
+  }
+  for (const ally of allies) {
+    ally.hp = Math.min(ally.maxHP ?? ally.hp, (ally.hp ?? 0) + heal);
+    SpawnDamageText(ctx, heal, ally.x ?? 0, ally.y ?? 0, 'heal', 'enemy');
+  }
+  traceEnemyHealRoll(ctx, {
+    enemyUID,
+    enemyName: String(healer.name || 'Enemy'),
+    targetUID: 0,
+    targetName: 'allies',
+    targetScope: 'group',
+    targetCount: allies.length,
+    ...healInfo,
+  });
+  LogCombat(ctx, healInfo.didCrit ? 'Chimerilass critically heals her allies!' : 'Chimerilass heals her allies!');
+}
+
+export function Enemy_Heal_Ally(ctx, enemyUID, targetEnemyUID = 0) {
+  const healer = GetActorByUID(ctx, enemyUID);
+  if (!healer) return;
+  const candidates = getEnemies(ctx).filter((enemy) =>
+    enemy &&
+    enemy.uid !== healer.uid &&
+    (enemy.hp || 0) > 0 &&
+    (enemy.maxHP || enemy.hp || 0) > (enemy.hp || 0),
+  );
+  if (!candidates.length) {
+    Enemy_Heal_Self(ctx, enemyUID);
+    return;
+  }
+  let target = targetEnemyUID ? GetActorByUID(ctx, targetEnemyUID) : null;
+  if (!target || target.kind !== 'enemy' || target.uid === healer.uid || (target.hp || 0) <= 0) {
+    target = randomPick(candidates);
+  }
+  if (!target) {
+    Enemy_Heal_Self(ctx, enemyUID);
+    return;
+  }
+  const healInfo = rollEnemyHealAmount(ctx, healer, {
+    skillId: 'Enemy_Heal_Ally',
+    lowFloor: 5,
+    lowOffset: -2,
+    highOffset: 3,
+  });
+  const heal = healInfo.finalHeal;
+  target.hp = Math.min(target.maxHP ?? target.hp, (target.hp ?? 0) + heal);
+  SpawnDamageText(ctx, heal, target.x ?? 0, target.y ?? 0, 'heal', 'enemy');
+  traceEnemyHealRoll(ctx, {
+    enemyUID,
+    enemyName: String(healer.name || 'Enemy'),
+    targetUID: Number(target.uid || 0),
+    targetName: String(target.name || 'ally'),
+    targetScope: 'ally',
+    ...healInfo,
+  });
+  LogCombat(
+    ctx,
+    healInfo.didCrit
+      ? `Chimerilass critically heals ${target.name || 'ally'} for ${heal}!`
+      : `Chimerilass heals ${target.name || 'ally'} for ${heal}!`,
+  );
 }
 
 export function PickNextEnemyID(ctx) {
@@ -2578,6 +3160,111 @@ export function PickNextEnemyID(ctx) {
   if (pool.length === 0) return null;
   const idx = Math.floor(Math.random() * pool.length);
   return pool[idx] || null;
+}
+
+function buildWaveRespawnPlan(ctx, desiredSlots = 3) {
+  const g = getGlobals(ctx);
+  const basePool = Array.isArray(g.EnemyData) ? g.EnemyData : [];
+  const encounterNames = Array.isArray(g.EncounterPoolNames) ? g.EncounterPoolNames : [];
+  const locale = String(g.EncounterLocale || g.CurrentLocale || 'all').trim().toLowerCase();
+  const localePool = basePool.filter((row) => {
+    const tags = normalizeLocaleTags(row?.localeTags || row?.locale || row?.biomes || row?.biome || 'all');
+    return locale === 'all' || tags.includes('all') || tags.includes(locale);
+  });
+  const pool = encounterNames.length
+    ? localePool.filter(row => encounterNames.includes(String(row?.name || '')))
+    : localePool;
+  if (!pool.length) return [];
+
+  const isSoloCommander = String(g.EncounterPolicy || 'mixed').trim().toLowerCase() === 'solo_commander';
+  if (isSoloCommander) {
+    const commanders = pool.filter((row) => String(row?.enemyRole || row?.role || '').trim().toLowerCase() === 'commander');
+    const soloPool = commanders.length ? commanders : pool;
+    const pick = soloPool[Math.floor(Math.random() * soloPool.length)];
+    return [{ slotIndex: 1, row: pick }];
+  }
+
+  const targetCount = Math.max(1, Number(desiredSlots || 3));
+  const selected = [];
+  const remaining = [...pool];
+  while (selected.length < targetCount) {
+    if (remaining.length > 0) {
+      const idx = Math.floor(Math.random() * remaining.length);
+      selected.push(remaining[idx]);
+      remaining.splice(idx, 1);
+      continue;
+    }
+    selected.push(pool[Math.floor(Math.random() * pool.length)]);
+  }
+  const getCP = (row) => Number(row?.CombatPower || row?.combatPower || 0);
+  let strongestIdx = 0;
+  for (let i = 1; i < selected.length; i += 1) {
+    if (getCP(selected[i]) > getCP(selected[strongestIdx])) strongestIdx = i;
+  }
+  const strongest = selected[strongestIdx];
+  const sideRows = selected.filter((_, idx) => idx !== strongestIdx);
+  if (sideRows.length > 1 && Math.random() < 0.5) sideRows.reverse();
+
+  const plan = [{ slotIndex: 1, row: strongest }];
+  if (sideRows[0]) plan.push({ slotIndex: 0, row: sideRows[0] });
+  if (sideRows[1]) plan.push({ slotIndex: 2, row: sideRows[1] });
+  return plan;
+}
+
+function ensurePendingEnemyRespawnSlots(g, desiredSlots = 3) {
+  if (!Array.isArray(g.PendingEnemyRespawnSlots)) {
+    g.PendingEnemyRespawnSlots = Array.from({ length: Math.max(1, Number(desiredSlots || 3)) }, () => 0);
+  }
+  while (g.PendingEnemyRespawnSlots.length < desiredSlots) g.PendingEnemyRespawnSlots.push(0);
+  return g.PendingEnemyRespawnSlots;
+}
+
+function finalizeEnemyRespawnWindow(ctx) {
+  const g = getGlobals(ctx);
+  g.PendingEnemyRespawnTimerActive = 0;
+  const desiredSlots = Math.max(1, Number((Array.isArray(g.EnemySlots) && g.EnemySlots.length) ? g.EnemySlots.length : 3));
+  g.EnemySlots = g.EnemySlots || Array.from({ length: desiredSlots }, () => 0);
+  while (g.EnemySlots.length < desiredSlots) g.EnemySlots.push(0);
+  if (!Array.isArray(g.EnemyIDs)) g.EnemyIDs = Array.from({ length: desiredSlots }, () => 0);
+  while (g.EnemyIDs.length < desiredSlots) g.EnemyIDs.push(0);
+  const pending = ensurePendingEnemyRespawnSlots(g, desiredSlots);
+  const emptySlots = [];
+  for (let slotIndex = 0; slotIndex < desiredSlots; slotIndex += 1) {
+    if (Number(g.EnemySlots[slotIndex] || 0) <= 0) emptySlots.push(slotIndex);
+  }
+  if (emptySlots.length === desiredSlots) {
+    const plan = buildWaveRespawnPlan(ctx, desiredSlots);
+    for (const entry of plan) {
+      const slotIndex = Number(entry?.slotIndex || 0);
+      if (!entry || !entry.row) continue;
+      if (Number(g.EnemySlots[slotIndex] || 0) > 0) continue;
+      SpawnEnemy(ctx, entry.row, slotIndex);
+    }
+  } else {
+    for (const slotIndex of emptySlots) {
+      if (!Number(pending[slotIndex] || 0)) continue;
+      if (Number(g.EnemySlots[slotIndex] || 0) > 0) continue;
+      const pick = PickNextEnemyID(ctx);
+      if (pick) SpawnEnemy(ctx, pick, slotIndex);
+    }
+  }
+  g.PendingEnemyRespawnSlots = Array.from({ length: desiredSlots }, () => 0);
+  UpdateEnemyHPUI(ctx);
+  if (!g.RoundActive && !g.BattleStartActive) {
+    StartRound(ctx);
+    g.IsPlayerBusy = 0;
+  }
+}
+
+function scheduleEnemyRespawnWindow(ctx, slotIndex, respawnDelay) {
+  const g = getGlobals(ctx);
+  const desiredSlots = Math.max(1, Number((Array.isArray(g.EnemySlots) && g.EnemySlots.length) ? g.EnemySlots.length : 3));
+  const pending = ensurePendingEnemyRespawnSlots(g, desiredSlots);
+  const safeSlot = Math.max(0, Math.min(desiredSlots - 1, Number(slotIndex || 0)));
+  pending[safeSlot] = 1;
+  if (Number(g.PendingEnemyRespawnTimerActive || 0) === 1) return;
+  g.PendingEnemyRespawnTimerActive = 1;
+  setTimeout(() => finalizeEnemyRespawnWindow(ctx), Math.max(0, Number(respawnDelay || 0)) * 1000);
 }
 
 export function SpawnEnemy(ctx, enemyData, slotIndex = 0) {
@@ -2666,15 +3353,55 @@ export function KillEnemyAt(ctx, slotIndex) {
   }
   UpdateEnemyHPUI(ctx);
   const respawnDelay = Math.max(0.4, (g.DamageTextDurationSec || 1.35));
-  setTimeout(() => {
-    const pick = PickNextEnemyID(ctx);
-    if (pick) SpawnEnemy(ctx, pick, slotIndex);
-    UpdateEnemyHPUI(ctx);
-    if (!g.RoundActive && !g.BattleStartActive) {
-      StartRound(ctx);
-      g.IsPlayerBusy = 0;
-    }
-  }, respawnDelay * 1000);
+  scheduleEnemyRespawnWindow(ctx, slotIndex, respawnDelay);
+}
+
+function resolveEnemySlotIndex(ctx, enemyUID, fallbackSlotIndex = 0) {
+  const g = getGlobals(ctx);
+  const targetUID = Number(enemyUID || 0);
+  const preferred = Number(fallbackSlotIndex || 0);
+  if (targetUID > 0) {
+    const fromSlots = Array.isArray(g.EnemySlots)
+      ? g.EnemySlots.findIndex((cell) => Number(cell || 0) === targetUID + 1)
+      : -1;
+    if (fromSlots >= 0) return fromSlots;
+    const fromIDs = Array.isArray(g.EnemyIDs)
+      ? g.EnemyIDs.findIndex((uid) => Number(uid || 0) === targetUID)
+      : -1;
+    if (fromIDs >= 0) return fromIDs;
+  }
+  return preferred >= 0 ? preferred : 0;
+}
+
+export function KillEnemyByUID(ctx, enemyUID, fallbackSlotIndex = 0) {
+  const g = getGlobals(ctx);
+  const targetUID = Number(enemyUID || 0);
+  if (!targetUID) return;
+  const slotIndex = resolveEnemySlotIndex(ctx, targetUID, fallbackSlotIndex);
+  const deadCell = Array.isArray(g.EnemySlots) ? Number(g.EnemySlots[slotIndex] || 0) : 0;
+  if (deadCell > 0) {
+    KillEnemyAt(ctx, slotIndex);
+    return;
+  }
+  const currentUID = GetCurrentTurn(ctx);
+  runTraitHooks(ctx, 'enemy_death', {
+    enemyUID: targetUID,
+    slotIndex: Number(slotIndex || 0),
+    killerUID: Number(currentUID || 0),
+  });
+  const entities = ensureEntities(ctx);
+  const idx = entities.findIndex(e => e && e.uid === targetUID);
+  if (idx !== -1) entities.splice(idx, 1);
+  if (g.EnemyDebuffs && g.EnemyDebuffs[targetUID]) delete g.EnemyDebuffs[targetUID];
+  if (g.EnemyDebuffSlots && g.EnemyDebuffSlots[targetUID]) delete g.EnemyDebuffSlots[targetUID];
+  if (g.EnemyDebuffTurns && g.EnemyDebuffTurns[targetUID]) delete g.EnemyDebuffTurns[targetUID];
+  if (g.SelectedEnemyUID === targetUID) g.SelectedEnemyUID = 0;
+  if (Array.isArray(g.EnemySlots) && slotIndex >= 0) g.EnemySlots[slotIndex] = 0;
+  if (Array.isArray(g.EnemyIDs) && slotIndex >= 0) g.EnemyIDs[slotIndex] = 0;
+  g.IsPlayerBusy = 1;
+  UpdateEnemyHPUI(ctx);
+  const respawnDelay = Math.max(0.4, (g.DamageTextDurationSec || 1.35));
+  scheduleEnemyRespawnWindow(ctx, slotIndex, respawnDelay);
 }
 
 export function Add_Gold(ctx, amt) {
@@ -2968,6 +3695,7 @@ export function RefreshPartyBuffUI(ctx) {
 
 export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
   const g = getGlobals(ctx);
+  RegisterHeroGemUsage(ctx, actorUID, gemColor, consumedCount);
   g.HideHeroSelector = 1;
   if (gemColor === 0) {
     g.IsAOEMatch = 1;
@@ -3181,6 +3909,17 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
   let handled = false;
   const actor = GetActorByUID(ctx, actorUID);
   const actorName = actor ? actor.name : 'Actor';
+  if (actor && actor.kind === 'hero') {
+    const entry = ensurePowerAmpByUID(ctx)[actorUID];
+    const activeMultiplier = GetPowerAmpMultiplierForActor(ctx, actorUID);
+    emitPowerAmpStateLog(ctx, 'action_observed', actorUID, {
+      skillId: String(skillId || ''),
+      actionType: String(skillId || ''),
+      powerAmpState: String(entry?.state || ''),
+      powerAmpVisible: activeMultiplier > 0 ? 1 : 0,
+      powerAmpLifecycleId: Number(entry?.lifecycleId || 0),
+    });
+  }
   console.log(`[SKILL] start skill=${skillId} actor=${actorName} uid=${actorUID} phase=${g.TurnPhase} busy=${g.IsPlayerBusy} canPick=${g.CanPickGems}`);
   if (actor && actor.kind === 'hero' && (skillId === 'HERO_SINGLE' || skillId === 'HERO_AOE')) {
     StartHeroLunge(ctx, actorUID);
@@ -3295,9 +4034,57 @@ export function ResolveEnemyAction(ctx, enemyUID) {
   const roll = Math.random();
   const name = enemy.name || '';
 
-  if (!handled && name === 'Chimerilass' && enemy.hp < enemy.maxHP && roll < 0.49) {
-    ExecuteEnemySkill(ctx, enemyUID, 'Enemy_Heal_Self');
-    handled = 1;
+  if (!handled && name === 'Chimerilass') {
+    const damagedAllies = getEnemies(ctx).filter((ally) =>
+      ally &&
+      ally.uid !== enemy.uid &&
+      (ally.hp || 0) > 0 &&
+      (ally.maxHP || ally.hp || 0) > (ally.hp || 0),
+    );
+    const hp = Number(enemy.hp || 0);
+    const maxHP = Math.max(1, Number(enemy.maxHP || hp || 1));
+    const belowHalfHP = hp <= Math.floor(maxHP * 0.5);
+    if (!belowHalfHP) {
+      return 0;
+    }
+    const canGroupHeal = damagedAllies.length > 1;
+    const canAllyHeal = damagedAllies.length > 0;
+    const canSelfHeal = hp < maxHP;
+    if (belowHalfHP && (canGroupHeal || canAllyHeal || canSelfHeal)) {
+      const weighted = [];
+      if (canGroupHeal) weighted.push({ skillId: 'Enemy_Heal_Allies', weight: 20 });
+      if (canAllyHeal) weighted.push({ skillId: 'Enemy_Heal_Ally', weight: 15 });
+      if (canSelfHeal) weighted.push({ skillId: 'Enemy_Heal_Self', weight: 65 });
+      const total = weighted.reduce((sum, row) => sum + Number(row.weight || 0), 0);
+      if (total > 0) {
+        let pick = Math.random() * total;
+        let selected = weighted[weighted.length - 1];
+        for (const row of weighted) {
+          pick -= row.weight;
+          if (pick <= 0) {
+            selected = row;
+            break;
+          }
+        }
+        const allyTarget = (selected.skillId === 'Enemy_Heal_Ally') ? randomPick(damagedAllies) : null;
+        ExecuteEnemySkill(ctx, enemyUID, selected.skillId, allyTarget ? allyTarget.uid : 0);
+        handled = 1;
+      }
+    }
+    if (handled) return handled;
+    if (damagedAllies.length > 1 && Math.random() < 0.16) {
+      ExecuteEnemySkill(ctx, enemyUID, 'Enemy_Heal_Allies');
+      handled = 1;
+    }
+    if (!handled && damagedAllies.length > 0 && Math.random() < 0.10) {
+      const target = randomPick(damagedAllies);
+      ExecuteEnemySkill(ctx, enemyUID, 'Enemy_Heal_Ally', target ? target.uid : 0);
+      handled = 1;
+    }
+    if (!handled && enemy.hp < enemy.maxHP && roll < 0.49) {
+      ExecuteEnemySkill(ctx, enemyUID, 'Enemy_Heal_Self');
+      handled = 1;
+    }
   }
   if (!handled && name === 'Djinn' && roll < 0.85) {
     ExecuteEnemySkill(ctx, enemyUID, 'Enemy_MAG_Single');
@@ -3389,10 +4176,10 @@ export function ProcessTurn(ctx) {
   }).join(' | ');
   console.log(`[TURN][ORDER] idx=${g.CurrentTurnIndex} ${orderLine}`);
   if (actor) {
-    const base = Number(actor.stats?.SPD ?? actor.SPD ?? 0);
     const eff = GetEffectiveStat(ctx, actor, 'SPD');
-    const delta = Math.round(eff - base);
-    console.log(`[TURN] idx=${g.CurrentTurnIndex} ${actor.name || uid} type=${type} spd=${Math.round(eff)}/${Math.round(base)} (+${delta})`);
+    const cp = Number(actor.combatPower || actor.CombatPower || 0);
+    const cpSuffix = type === 1 ? ` CP: ${Math.round(cp)}` : '';
+    console.log(`[TURN] idx=${g.CurrentTurnIndex} ${actor.name || uid} type=${type} SPD: ${Math.round(eff)}${cpSuffix}`);
   }
   runTraitHooks(ctx, 'turn_start', {
     actorUID: Number(uid || 0),
@@ -3443,6 +4230,66 @@ export function ProcessTurn(ctx) {
 export function PickEnemySkill(ctx, enemyUID) {
   const enemy = GetActorByUID(ctx, enemyUID);
   if (!enemy) return 'Enemy_ATK_Single';
+  if (String(enemy.name || '') === 'Chimerilass') {
+    const hp = Number(enemy.hp || 0);
+    const maxHP = Math.max(1, Number(enemy.maxHP || hp || 1));
+    const belowHalfHP = hp <= Math.floor(maxHP * 0.5);
+    if (!belowHalfHP) {
+      const roll = Math.random();
+      const decision = resolveEnemySkillDecision(enemy, roll);
+      if (
+        decision.selected === 'Enemy_Heal_Self' ||
+        decision.selected === 'Enemy_Heal_Ally' ||
+        decision.selected === 'Enemy_Heal_Allies' ||
+        decision.selected === 'Enemy_Wipe'
+      ) {
+        const forced = {
+          roll,
+          selected: 'Enemy_MAG_Single',
+          branch: 'cmh_over_50_no_heal',
+          enemyName: String(enemy.name || ''),
+        };
+        traceEnemySkillDecision(ctx, enemyUID, forced);
+        return forced.selected;
+      }
+      traceEnemySkillDecision(ctx, enemyUID, decision);
+      return decision.selected;
+    }
+    if (belowHalfHP) {
+      const damagedAllies = getEnemies(ctx).filter((ally) =>
+        ally &&
+        ally.uid !== enemy.uid &&
+        (ally.hp || 0) > 0 &&
+        (ally.maxHP || ally.hp || 0) > (ally.hp || 0),
+      );
+      const canGroupHeal = damagedAllies.length > 1;
+      const canAllyHeal = damagedAllies.length > 0;
+      const canSelfHeal = hp < maxHP;
+      const weighted = [];
+      if (canGroupHeal) weighted.push({ skillId: 'Enemy_Heal_Allies', weight: 20 });
+      if (canAllyHeal) weighted.push({ skillId: 'Enemy_Heal_Ally', weight: 15 });
+      if (canSelfHeal) weighted.push({ skillId: 'Enemy_Heal_Self', weight: 65 });
+      if (weighted.length) {
+        const total = weighted.reduce((sum, row) => sum + Number(row.weight || 0), 0);
+        let pick = Math.random() * total;
+        let selected = weighted[weighted.length - 1];
+        for (const row of weighted) {
+          pick -= row.weight;
+          if (pick <= 0) {
+            selected = row;
+            break;
+          }
+        }
+        traceEnemySkillDecision(ctx, enemyUID, {
+          roll: -1,
+          selected: selected.skillId,
+          branch: 'cmh_under_50_forced_heal',
+          enemyName: String(enemy.name || ''),
+        });
+        return selected.skillId;
+      }
+    }
+  }
   const roll = Math.random();
   const decision = resolveEnemySkillDecision(enemy, roll);
   traceEnemySkillDecision(ctx, enemyUID, decision);
@@ -3558,6 +4405,14 @@ export function ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID = 0) {
   const resolvedTargetUID = targetUID || (pickEnemyTargetHero(ctx, enemyUID)?.uid || 0);
   if (skillId === 'Enemy_Heal_Self') {
     Enemy_Heal_Self(ctx, enemyUID);
+    return 1;
+  }
+  if (skillId === 'Enemy_Heal_Allies') {
+    Enemy_Heal_Allies(ctx, enemyUID);
+    return 1;
+  }
+  if (skillId === 'Enemy_Heal_Ally') {
+    Enemy_Heal_Ally(ctx, enemyUID, targetUID);
     return 1;
   }
   if (skillId === 'Enemy_MAG_Single') {
