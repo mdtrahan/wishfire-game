@@ -163,3 +163,8 @@
 - When a runtime checkpoint spans hot files and non-hot files, do not force a single “savepoint” commit. First split out a compliant non-hot runtime/modules/tests commit so Git history advances without violating the hook.
 - A hot-file scope declaration only helps when the changed lines live inside named function ranges. If `web-runner/app.js` includes top-level imports, constants, or game-state object edits, the hot-file hook will still reject the commit even with a scope file present.
 - For this repo, the practical recovery order is: push governance/tooling first, then commit standalone runtime modules and deterministic contracts, then tackle hot-file integration in a separate bead with explicit function ownership.
+
+## 2026-03-14 — Hot-File Hook Performance Must Scale With Changed Lines, Not File Size
+- A policy hook that re-scans every changed line against every function range in bash becomes operationally broken on large hot files. If the check takes tens of minutes, users will restart it, assume it is stuck, and lose trust in the workflow.
+- For hot-file validation, derive the small authoritative set first: staged changed lines plus declared functions. Then validate in a single pass over sorted function ranges. The runtime should scale with the size of the diff, not with repeated nested shell loops over the whole file.
+- If the hook is slow enough that a user has to babysit the terminal, treat that as a tooling bug, not user impatience. Fix the tool before asking for more manual retries.

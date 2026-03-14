@@ -52,29 +52,6 @@ csv_has_value() {
   return 1
 }
 
-build_function_ranges() {
-  local file="$1"
-  awk '
-    {
-      if ($0 ~ /^[[:space:]]*(export[[:space:]]+)?function[[:space:]]+[A-Za-z0-9_$]+[[:space:]]*\(/) {
-        if (name != "") {
-          print name "\t" start "\t" NR-1
-        }
-        line = $0
-        sub(/^[[:space:]]*(export[[:space:]]+)?function[[:space:]]+/, "", line)
-        name = line
-        sub(/[[:space:]]*\(.*/, "", name)
-        start = NR
-      }
-    }
-    END {
-      if (name != "") {
-        print name "\t" start "\t" NR
-      }
-    }
-  ' "$file"
-}
-
 changed_lines_for_file() {
   local file="$1"
   git diff --cached -U0 -- "$file" | awk '
@@ -90,6 +67,68 @@ changed_lines_for_file() {
       }
     }
   '
+}
+
+validate_changed_lines_for_file() {
+  local file="$1"
+  local declared_csv="$2"
+  local tmp_changed
+  tmp_changed="$(mktemp)"
+  changed_lines_for_file "$file" > "$tmp_changed"
+
+  if [[ ! -s "$tmp_changed" ]]; then
+    rm -f "$tmp_changed"
+    return 0
+  fi
+
+  python3 - "$file" "$declared_csv" "$tmp_changed" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+file_path = Path(sys.argv[1])
+declared_csv = sys.argv[2]
+changed_path = Path(sys.argv[3])
+
+declared = {part.strip() for part in declared_csv.split(",") if part.strip()}
+changed_lines = [int(line.strip()) for line in changed_path.read_text().splitlines() if line.strip()]
+changed_lines.sort()
+if not changed_lines:
+    sys.exit(0)
+
+lines = file_path.read_text().splitlines()
+pattern = re.compile(r'^\s*(?:export\s+)?function\s+([A-Za-z0-9_$]+)\s*\(')
+ranges = []
+name = None
+start = None
+for idx, line in enumerate(lines, start=1):
+    m = pattern.match(line)
+    if m:
+        if name is not None:
+            ranges.append((name, start, idx - 1))
+        name = m.group(1)
+        start = idx
+if name is not None:
+    ranges.append((name, start, len(lines)))
+
+range_idx = 0
+range_count = len(ranges)
+for ln in changed_lines:
+    while range_idx < range_count and ranges[range_idx][2] < ln:
+        range_idx += 1
+    if range_idx >= range_count or ranges[range_idx][1] > ln:
+        print(f"ERROR: {file_path}:{ln} is outside any function scope. Hot files require function-scoped edits only.", file=sys.stderr)
+        sys.exit(1)
+    fn_name = ranges[range_idx][0]
+    if fn_name not in declared:
+        print(f"ERROR: {file_path}:{ln} is inside undeclared function '{fn_name}'.", file=sys.stderr)
+        print(f"Declared for {file_path}: {declared_csv}", file=sys.stderr)
+        sys.exit(1)
+sys.exit(0)
+PY
+  local rc=$?
+  rm -f "$tmp_changed"
+  return "$rc"
 }
 
 STAGED_FILES=""
@@ -165,45 +204,7 @@ while IFS= read -r file; do
     exit 1
   fi
 
-  FN_RANGES=""
-  while IFS= read -r r; do
-    [[ -z "$r" ]] && continue
-    FN_RANGES="${FN_RANGES}${r}"$'\n'
-  done < <(build_function_ranges "$file")
-
-  CHANGED_LINES=""
-  while IFS= read -r ln; do
-    [[ -z "$ln" ]] && continue
-    CHANGED_LINES="${CHANGED_LINES}${ln}"$'\n'
-  done < <(changed_lines_for_file "$file")
-
-  while IFS= read -r ln; do
-    [[ -z "$ln" ]] && continue
-    in_fn=0
-    fn_name=""
-    while IFS= read -r row; do
-      [[ -z "$row" ]] && continue
-      name="$(printf "%s" "$row" | cut -f1)"
-      start="$(printf "%s" "$row" | cut -f2)"
-      end="$(printf "%s" "$row" | cut -f3)"
-      if [[ "$ln" -ge "$start" && "$ln" -le "$end" ]]; then
-        in_fn=1
-        fn_name="$name"
-        break
-      fi
-    done <<<"$FN_RANGES"
-
-    if [[ "$in_fn" -eq 0 ]]; then
-      echo "ERROR: ${file}:${ln} is outside any function scope. Hot files require function-scoped edits only." >&2
-      exit 1
-    fi
-
-    if ! csv_has_value "$declared_csv" "$fn_name"; then
-      echo "ERROR: ${file}:${ln} is inside undeclared function '${fn_name}'." >&2
-      echo "Declared for ${file}: ${declared_csv}" >&2
-      exit 1
-    fi
-  done <<<"$CHANGED_LINES"
+  validate_changed_lines_for_file "$file" "$declared_csv"
 done <<<"$HOT_STAGED"
 
 exit 0

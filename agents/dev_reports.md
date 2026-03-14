@@ -626,3 +626,24 @@
   - `node --check web-runner/src/core/idleFarmRuntime.mjs` (pass)
   - `npm test -- tests/idleFarmCollectWalletContract.test.js tests/idleFarmLayoutScaffoldContract.test.js tests/idleFarmLootWeightContract.test.js` (6/6 pass)
 - scope confirmation: confined to ORKA-eh1 idle emission ownership and cadence reset semantics only; no regular combat rules, idle theater choreography, or unrelated wallet systems were changed.
+- bead: ORKA-3as
+- summary of changes: Added an escort-party scaffold seam to combat bootstrap. `app.js` now supports an optional `state.globals.EscortPartyConfig`, builds a one-hero-plus-escort party layout when enabled, spawns the escort as a non-acting `kind: 'escort'` entity, stores `EscortNPCState` in globals, and renders the escort through the combat portrait roster without including it in initiative. Added a hot-file scope declaration at `.beads/hot-file-lock/ORKA-3as.scope`.
+- files modified: web-runner/app.js; tests/escortPartyScaffoldContract.test.js; .beads/hot-file-lock/ORKA-3as.scope
+- test evidence: `npm test -- tests/escortPartyScaffoldContract.test.js` (2/2 pass)
+- scope confirmation: Confined to escort-party scaffold wiring in combat bootstrap/rendering only; no encounter design, targeting, or acting escort logic was introduced.
+- bead: ORKA-l8sd
+- summary of changes: Reconciled the product model between the older permanent-roster direction and the new Hall of Heroes legacy system. The ruling is now documented in `governance/product/game-function-reference.md`: permanent party units remain valid for the active four-slot roster, while temporary event allies now resolve into Hall relic/spirit legacy rewards instead of permanent roster bodies. Also narrowed the meanings of `ORKA-d9g` and `ORKA-v2s` so future implementation beads do not conflict.
+- files modified: governance/product/game-function-reference.md
+- test evidence: Policy/documentation decision bead; no runtime test required.
+- scope confirmation: This lane only resolves product-model ownership and future bead direction. No gameplay/runtime code changed.
+- bead: ORKA-jpvp
+- summary of changes: Reprioritized the Hall of Heroes lane after product review. Marked the Hall epic and child beads as blocked/P3, recorded the prerequisite systems that must exist first, and kept the earlier product-model ruling as the active future-compatible truth.
+- files modified: agents/pm_status.md
+- test evidence: PM queue cleanup only; direct `bd show` verification on blocked Hall beads.
+- scope confirmation: This lane only changed priority/dependency status and PM tracking. No runtime or product-rule implementation changed.
+- bead: ORKA-qpff
+- summary of changes: Optimized the hot-file scope enforcement hook by replacing the quadratic bash line/function scan with a single-pass Python validator over the staged changed-line set. This preserved the same hot-file policy checks while cutting runtime on the ORKA-luo staged diff from about 28m46s to 0.01s.
+- files modified: tools/enforce_hot_file_scope.sh
+- test evidence:
+  - `/usr/bin/time -p bash tools/enforce_hot_file_scope.sh ORKA-luo` (pass; `real 0.01`)
+- scope confirmation: Confined to tooling performance only. No gameplay/runtime policy was loosened; the hook still enforces one active bead, declared hot-file scopes, and function-only edits.

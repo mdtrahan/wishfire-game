@@ -3,6 +3,62 @@
 _Last updated: 2026-03-07_
 
 ---
+_Last updated: 2026-03-13_
+
+## Completed Beads
+- ORKA-jpvp (Hall of Heroes lane reprioritized behind hero skill/live-ops prerequisites)
+
+## Active Work
+- Hall of Heroes epic (`ORKA-0x85`) and child beads are now blocked/P3.
+
+## Next Tasks
+- Do not schedule Hall implementation ahead of:
+  - final hero/character skill definitions
+  - live-ops quest framework
+  - recruit/hero content pipeline
+  - event entry/exit rules
+  - reward grant/economy contracts
+- Keep the Hall ruling as compatibility guidance only until those systems mature.
+
+## Known Issues
+- `bd ready` can lag after bulk priority/status changes; use direct `bd show` for Hall beads when verifying the blocked/P3 state.
+
+---
+_Last updated: 2026-03-13_
+
+## Completed Beads
+- ORKA-l8sd (reconciled permanent roster direction with Hall of Heroes legacy model)
+
+## Active Work
+- Hall of Heroes planning remains active under `ORKA-0x85` and its child beads.
+
+## Next Tasks
+- Treat `ORKA-d9g` as the permanent player-owned formation system only.
+- Treat `ORKA-v2s` as recruit/subordinate/world-discovery acquisition, not Hall-only legendary event heroes.
+- Use Hall beads for temporary event allies whose lasting progression is relic + Spirit rather than permanent roster ownership.
+
+## Known Issues
+- The Hall model is now product-correct, but runtime implementation beads still need to express how temporary event allies appear during scenarios without implying permanent ownership.
+
+---
+_Last updated: 2026-03-13_
+
+## Completed Beads
+- None in ORKA-3as yet; escort-party scaffold is implemented and under QA review.
+
+## Active Work
+- ORKA-3as (escort NPC party scaffold with variable hero count)
+  - Added runtime seam `EscortPartyConfig` for a one-hero-plus-escort party layout.
+  - Escort renders in combat presentation but remains a non-acting `escort` entity outside initiative.
+
+## Next Tasks
+- Runtime QA with an escort config enabled to confirm escort visibility and no escort turn ownership.
+- Keep future escort targeting/protection rules as separate follow-up scope; this bead is scaffold-only.
+
+## Known Issues
+- Current proof is deterministic contract coverage only; no browser QA has been run yet for the escort presentation path.
+
+---
 _Last updated: 2026-03-12_
 
 ## Completed Beads
@@ -1019,6 +1075,7 @@ _Last updated: 2026-03-08_
 _Last updated: 2026-03-08_
 
 ## Completed Beads
+- ORKA-qpff (hot-file scope hook runtime optimized from ~28m46s to ~0.01s on the ORKA-luo staged diff)
 - ORKA-7kt (global dev tooling modal runtime controls; QA passed for live apply, dynamic hero swaps, and duplicate hero clone identity)
 - ORKA-gsb (per-slot gem backers behind board gems with explicit rollback toggle)
 - ORKA-cmh (reopen regression fix: Chimerilass heal threshold strictness restored)
@@ -1036,6 +1093,7 @@ _Last updated: 2026-03-08_
 ## Next Tasks
 - Revisit ORKA-gxd only if user wants another runtime polish pass on emission presentation.
 - ORKA-5vf (dev panel autoplay until energy depletion) remains separate from the player-facing idle farm lane.
+- Follow ORKA-3nlw / ORKA-pmf cleanup ordering for the remaining local runtime/UI diff now that ORKA-luo is committed and the hot-file hook is no longer a time sink.
 
 ## Known Issues
 - `bd` is available via `~/.local/bin/bd`; default shell PATH is still inconsistent, so direct path use remains safer in automation turns.
