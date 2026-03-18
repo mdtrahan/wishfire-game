@@ -9,6 +9,13 @@
 
 ## Reports
 - (append newest report at top)
+- bead id: ORKA-5mt
+- summary of changes: Aligned idle-combat hit flashes with the approved full-combat black flash by replacing the idle-only white invert filter with the same black overlay treatment and lowering idle sprite flash alpha to the same neutral value used in runtime combat. Added focused contract coverage so idle and full combat cannot silently drift apart again.
+- files modified: web-runner/app.js; tests/hitFlashFeedbackContract.test.js; ai-memory/insights.md
+- test evidence:
+  - `npm test -- tests/hitFlashFeedbackContract.test.js tests/idleFarmLayoutScaffoldContract.test.js` (4/4 pass)
+- scope confirmation: confined to idle-combat hit-flash presentation parity with existing full-combat black flash behavior; no idle timing, reward, or attack logic changed in this lane.
+
 - bead id: ORKA-7kt / ORKA-1ys / ORKA-ws3p / ORKA-3as (source recovery)
 - summary of changes: Recovered `web-runner/app.js` from an unreachable local Git blob that still contained the DOM-based developer tooling modal, `AstralFlow -> idleFarmLayout` wiring, `storyMock -> town -> combat` recovery flow, and the escort-party scaffold seam. Replaced the incorrect interim canvas dev-panel reconstruction with the recovered DOM implementation and restored targeted contracts for each recovered lane.
 - files modified: web-runner/app.js; tests/devToolingModalContract.test.js; tests/idleFarmLayoutScaffoldContract.test.js; tests/townLayoutFlowContract.test.js; tests/escortPartyScaffoldContract.test.js
@@ -664,3 +671,17 @@
 - test evidence:
   - `/usr/bin/time -p bash tools/enforce_hot_file_scope.sh ORKA-luo` (pass; `real 0.01`)
 - scope confirmation: Confined to tooling performance only. No gameplay/runtime policy was loosened; the hook still enforces one active bead, declared hot-file scopes, and function-only edits.
+
+- bead id: ORKA-ysp
+- summary of changes: Tuned the yellow randomize/bounce sequence to complete faster by shortening the telegraph, per-gem spin, and settle timings while keeping the ordered per-gem settle flow intact. Also updated the adjacent yellow gold-flyup contract to match the current gold-target owner seam.
+- files modified: web-runner/app.js; tests/yellowSlamSequenceContract.test.js; tests/yellowGoldFlyupContract.test.js
+- test evidence:
+  - `npm test -- tests/yellowSlamSequenceContract.test.js tests/yellowGoldFlyupContract.test.js tests/functionBankParityContract.test.js` (5/5 pass)
+- scope confirmation: Confined to ORKA-ysp yellow sequence timing and matching contract upkeep only; no yellow mechanic rules, reward math, or turn-gate semantics were changed.
+
+- bead id: ORKA-vm7
+- summary of changes: Removed gradient/heat-mapped floating combat text colors and replaced them with fixed approved palette values. Generic damage now renders flat red, healing renders flat cyan, and Kojonn DoT damage routes through a dedicated `dot` text kind for flat purple text without changing damage math.
+- files modified: web-runner/app.js; web-runner/modules/functionBank.js; Scripts/functionBank.js; tests/damageTextPaletteContract.test.js
+- test evidence:
+  - `npm test -- tests/damageTextPaletteContract.test.js tests/hitFlashFeedbackContract.test.js tests/functionBankParityContract.test.js` (7/7 pass)
+- scope confirmation: Confined to ORKA-vm7 floating combat text palette selection and the minimal DoT text-kind payload seam only; no combat formulas, timing, or DoT lifecycle rules were changed.

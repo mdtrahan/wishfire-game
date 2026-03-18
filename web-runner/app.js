@@ -2687,10 +2687,10 @@ function handleSpecialGem6(gem) {
   setGemArray(gameState.gems);
 }
 
-const YELLOW_CASINO_TELEGRAPH_SEC = 0.0867;
-const yellowMatchAnimationDuration = 0.21675;
+const YELLOW_CASINO_TELEGRAPH_SEC = 0;
+const yellowMatchAnimationDuration = 0;
 const YELLOW_CASINO_SPIN_SEC = yellowMatchAnimationDuration;
-const YELLOW_CASINO_SETTLE_SEC = 0.07225;
+const YELLOW_CASINO_SETTLE_SEC = 0.16;
 const YELLOW_CASINO_SETTLE_BOUNCE_AMP = 0.2;
 const YELLOW_CASINO_TARGETS = YELLOW_REFILL_TARGETS;
 const YELLOW_CASINO_WALK = [YELLOW_COLOR, ...YELLOW_CASINO_TARGETS];
@@ -2717,19 +2717,6 @@ function pickYellowCasinoTarget() {
   return YELLOW_CASINO_TARGETS[idx];
 }
 
-function buildYellowCasinoSequence(targetFrame) {
-  const idx = YELLOW_CASINO_WALK.indexOf(targetFrame);
-  const seq = [];
-  seq.push(YELLOW_CASINO_WALK[0]);
-  for (let i = 1; i < YELLOW_CASINO_WALK.length; i++) {
-    seq.push(YELLOW_CASINO_WALK[i]);
-  }
-  for (let i = 0; i <= idx; i++) {
-    seq.push(YELLOW_CASINO_WALK[i]);
-  }
-  return seq;
-}
-
 function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, options = {}) {
   const opts = options && typeof options === 'object' ? options : {};
   if (state.globals.GamePhase !== 'RUNTIME') {
@@ -2744,7 +2731,6 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
     gemByCell.set(`${gm.cellR},${gm.cellC}`, gm);
   }
   const queue = [];
-  const emptyTelegraph = [];
   for (let r = 0; r < boardGeometry.rows; r++) {
     for (let c = 0; c < boardGeometry.cols; c++) {
       const key = `${r},${c}`;
@@ -2778,7 +2764,6 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
           duration: YELLOW_CASINO_SPIN_SEC,
           frameDuration: 0,
         });
-        emptyTelegraph.push(pos);
       }
     }
   }
@@ -2793,13 +2778,12 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
     hasWork: Boolean(hasWork),
   });
   casino.active = hasWork;
-  casino.phase = hasWork ? 'telegraph' : 'idle';
+  casino.phase = hasWork ? (YELLOW_CASINO_TELEGRAPH_SEC > 0 ? 'telegraph' : 'spin') : 'idle';
   casino.queue = queue;
   casino.index = 0;
   casino.current = null;
   casino.telegraphUntil = now + YELLOW_CASINO_TELEGRAPH_SEC;
   casino.ghost = null;
-  casino.emptyTelegraph = emptyTelegraph;
   casino.goldMergeTarget = opts.goldTarget && Number.isFinite(opts.goldTarget.x) && Number.isFinite(opts.goldTarget.y)
     ? { x: Number(opts.goldTarget.x), y: Number(opts.goldTarget.y) }
     : getGoldLabelTargetWorld();
@@ -5112,8 +5096,8 @@ async function main(){
           ctx.drawImage(portrait, drawX, drawY, heroW, heroH);
           if (isHit) {
             ctx.save();
-            ctx.globalAlpha = 0.4;
-            ctx.filter = 'brightness(0) invert(1)';
+            ctx.globalAlpha = 0.3;
+            ctx.filter = 'brightness(0)';
             ctx.drawImage(portrait, drawX, drawY, heroW, heroH);
             ctx.restore();
           }
@@ -5157,8 +5141,8 @@ async function main(){
             ctx.drawImage(enemySprite, drawX, drawY, enemyW, enemyH);
             if (isHit) {
               ctx.save();
-              ctx.globalAlpha = 0.4;
-              ctx.filter = 'brightness(0) invert(1)';
+              ctx.globalAlpha = 0.3;
+              ctx.filter = 'brightness(0)';
               ctx.drawImage(enemySprite, drawX, drawY, enemyW, enemyH);
               ctx.restore();
             }
@@ -6118,6 +6102,7 @@ async function main(){
               dmg = Math.max(1, Math.round(dot.damagePerFire || 1));
             }
             state.globals.NextHitFlashTone = 'purple';
+            state.globals.NextDamageTextKind = 'dot';
             callFunctionWithContext(fnContext, 'ApplyDamageToTarget', dot.targetUID, dmg);
             dot.remainingFires -= 1;
             dot.nextFireTick = (dot.nextFireTick || tickNow) + (dot.firesEveryTicks || 1);
@@ -6182,11 +6167,7 @@ async function main(){
               casino.index += 1;
               continue;
             }
-            if (!item.sequence) item.sequence = buildYellowCasinoSequence(item.target);
             item.startAt = nowTime;
-            item.frameDuration = item.sequence.length > 1
-              ? item.duration / (item.sequence.length - 1)
-              : item.duration;
             item.settleStarted = false;
             item.settleUntil = 0;
             casino.current = item;
@@ -6211,24 +6192,14 @@ async function main(){
         if (casino.current) {
           const item = casino.current;
           const elapsed = Math.max(0, nowTime - item.startAt);
-          const seq = item.sequence || [YELLOW_COLOR];
-          const frameIdx = item.frameDuration > 0
-            ? Math.min(seq.length - 1, Math.floor(elapsed / item.frameDuration))
-            : seq.length - 1;
-          const frame = seq[frameIdx];
           if (item.type === 'yellow') {
             const gem = getGemByUid(item.uid);
             if (!gem) {
               casino.index += 1;
               startNext();
             } else {
-              if (!item.settleStarted) {
-                gem.color = frame;
-                gem.elementIndex = frame;
-              } else {
-                gem.color = item.target;
-                gem.elementIndex = item.target;
-              }
+              gem.color = item.target;
+              gem.elementIndex = item.target;
               if (elapsed >= item.duration && !item.settleStarted) {
                 gem.color = item.target;
                 gem.elementIndex = item.target;
@@ -6271,7 +6242,7 @@ async function main(){
               }
             } else {
               const pos = getCellWorldPos(item.cellC, item.cellR);
-              casino.ghost = { x: pos.x, y: pos.y, w: pos.w, h: pos.h, frame };
+              casino.ghost = { x: pos.x, y: pos.y, w: pos.w, h: pos.h, frame: item.target };
               if (elapsed >= item.duration) {
               const step = casino.index;
               const cellR = item.cellR;
@@ -6679,6 +6650,7 @@ async function main(){
           const totalDotDamage = Math.max(1, Math.floor(Number(hit.dotTotalDamage || 0) || 1));
           const initialDotDamage = Math.max(1, Math.floor(totalDotDamage / totalTicks) + ((totalDotDamage % totalTicks) > 0 ? 1 : 0));
           state.globals.NextHitFlashTone = 'purple';
+          state.globals.NextDamageTextKind = 'dot';
           callFunctionWithContext(fnContext, 'ApplyDamageToTarget', hit.targetUID, initialDotDamage);
           const enemyAfterApply = callFunctionWithContext(fnContext, 'GetActorByUID', hit.targetUID);
           const remainingDotDamage = Math.max(0, totalDotDamage - initialDotDamage);
@@ -7654,22 +7626,6 @@ async function main(){
         }
       }
     }
-    if (gameState.yellowCasino && gameState.yellowCasino.phase === 'telegraph') {
-      const slots = gameState.yellowCasino.emptyTelegraph || [];
-      if (slots.length) {
-        ctx.save();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = Math.max(2, Math.round(3 * layoutScale));
-        for (const slot of slots) {
-          const pos = worldToCanvas(slot.x, slot.y);
-          const w = slot.w * layoutScale;
-          ctx.beginPath();
-          ctx.arc(pos.x, pos.y, w * 0.48, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-        ctx.restore();
-      }
-    }
     if (gameState.yellowCasino && gameState.yellowCasino.ghost) {
       const ghost = gameState.yellowCasino.ghost;
       const pos = worldToCanvas(ghost.x, ghost.y);
@@ -7993,18 +7949,6 @@ async function main(){
       if (!dmgTexts.length) return;
       ctx.save();
       ctx.textAlign = 'center';
-      const lerp = (a, b, t) => a + (b - a) * t;
-      const lerpColor = (c0, c1, t) => {
-        const r = Math.round(lerp(c0[0], c1[0], t));
-        const g = Math.round(lerp(c0[1], c1[1], t));
-        const b = Math.round(lerp(c0[2], c1[2], t));
-        return `rgb(${r}, ${g}, ${b})`;
-      };
-      const heatColor = (h, ramp) => {
-        if (h <= 0.33) return lerpColor(ramp[0], ramp[1], h / 0.33);
-        if (h <= 0.66) return lerpColor(ramp[1], ramp[2], (h - 0.33) / 0.33);
-        return lerpColor(ramp[2], ramp[3], (h - 0.66) / 0.34);
-      };
       for (const d of dmgTexts) {
         if (filterFn && !filterFn(d)) continue;
         const amount = Math.max(0, Number(d.amount) || 0);
@@ -8046,26 +7990,13 @@ async function main(){
         ctx.shadowOffsetY = Math.max(1, Math.round(2 * scale));
         ctx.globalAlpha = alpha;
         const text = d.targetKind === 'bar' ? `+${d.amount}` : String(d.amount);
-        if (d.kind === 'heal') {
-          const ramp = [
-            [255, 255, 255],
-            [184, 242, 166],
-            [120, 220, 120],
-            [120, 220, 220]
-          ];
-          ctx.fillStyle = heatColor(heat, ramp);
-        } else {
-          const ramp = [
-            [255, 255, 255],
-            [255, 235, 120],
-            [255, 170, 80],
-            [255, 80, 80]
-          ];
-          ctx.fillStyle = heatColor(heat, ramp);
-        }
-        if (d.kind === 'damage' && d.targetKind === 'hero') {
-          ctx.fillStyle = 'rgb(255, 80, 80)';
-        }
+        ctx.fillStyle = d.kind === 'heal'
+          ? '#66CCFF'
+          : d.kind === 'dot'
+            ? '#AA66FF'
+            : d.targetKind === 'hero'
+              ? '#FF4040'
+              : '#FFFFFF';
         const xOffset = d.targetKind === 'hero' ? -10 : 10;
         const pos = worldToCanvas((d.x || 0) + xOffset, (d.baseY != null ? d.baseY : (d.y || 0)) + yOffset);
         ctx.fillText(text, pos.x, pos.y);

@@ -6,14 +6,16 @@ _Last updated: 2026-03-07_
 _Last updated: 2026-03-17_
 
 ## Completed Beads
+- ORKA-5mt (idle combat hit flashes now match the approved black flash used in full combat; QA-passed)
 - ORKA-xnz (neutral hit-flash feedback retuned to black at lighter opacity and QA-passed)
 - ORKA-wuh (core trait runtime/proc framework already exists in mirrored function-bank owner seams and passes the surviving framework contract pack)
+- ORKA-ysp (yellow fill now uses regular fill cadence and bounce behavior, keeps ordered sequence, and removes preview/strobe noise)
+- ORKA-vm7 (combat text palette simplified to flat approved colors with QA-passed white enemy damage, red hero damage, cyan healing, and purple Kojonn DoT)
 
 ## Active Work
-- No implementation lane is active; PM reconciliation determined ORKA-wuh is already satisfied in source rather than blocked for new implementation.
+- None.
 
 ## Next Tasks
-- Select the next executable trait/class-identity bead that truly remains unfinished after ORKA-wuh reconciliation.
 - Clean backlog mirrors for already-redacted/obsolete beads separately from runtime work.
 
 ## Known Issues

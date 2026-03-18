@@ -2594,8 +2594,10 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
     }
   }
   if (appliedDamage > 0 && dx != null && dy != null && g.SpawnDamageText !== 0) {
-    SpawnDamageText(ctx, appliedDamage, dx, dy, 'damage', t.kind || null);
+    const damageTextKind = String(g.NextDamageTextKind || 'damage');
+    SpawnDamageText(ctx, appliedDamage, dx, dy, damageTextKind, t.kind || null);
   }
+  delete g.NextDamageTextKind;
   if (t.hp === 0) {
     if ((g.RoundActive && g.GroupResolving) || (isTimeInitiative(ctx) && g.GroupResolving)) {
       g.PendingDeaths = g.PendingDeaths || {};

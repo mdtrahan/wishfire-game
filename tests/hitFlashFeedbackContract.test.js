@@ -30,6 +30,10 @@ test('renderer applies tone-aware hit-flash overlay to attacked combatants', () 
   assert.match(src, /: 'brightness\(0\)'/);
   assert.match(src, /renderHitFlashOverlay\(\(\) => ctx\.drawImage\(sprite, drawX, drawY, enemyW, enemyH\), getHitFlashTone\(enemy\.uid\)\);/);
   assert.match(src, /renderHitFlashOverlay\(\(\) => ctx\.drawImage\(img, drawX, drawY, scaledW, scaledH\), getHitFlashTone\(hero\.uid\)\);/);
+  assert.match(src, /ctx\.globalAlpha = 0\.3;\s+ctx\.filter = 'brightness\(0\)';\s+ctx\.drawImage\(portrait, drawX, drawY, heroW, heroH\);/);
+  assert.match(src, /ctx\.globalAlpha = 0\.3;\s+ctx\.filter = 'brightness\(0\)';\s+ctx\.drawImage\(enemySprite, drawX, drawY, enemyW, enemyH\);/);
+  const idleWhiteFlashes = src.match(/ctx\.filter = 'brightness\(0\) invert\(1\)';/g) || [];
+  assert.equal(idleWhiteFlashes.length, 0, 'expected legacy white hit-flash filters to be removed from runtime render paths');
 });
 
 test('Kojonn blight paths arm purple hit-flash tone for immediate and queued ticks', () => {

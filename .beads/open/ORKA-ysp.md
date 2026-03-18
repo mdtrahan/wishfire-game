@@ -1,7 +1,7 @@
 id: ORKA-ysp
 title: [TUNE] Quicken yellow randomize+bounce flow while preserving anticipation
 priority: P1
-status: open
+status: done
 
 ## Objective
 Reduce perceived waiting time in yellow match randomize/bounce resolution while keeping satisfying anticipation.

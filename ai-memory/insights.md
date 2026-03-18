@@ -188,3 +188,4 @@
 ## 2026-03-17 — Recovery Work Must Be Saved As Soon As The User Confirms Runtime Parity
 - When rollback recovery spans several gameplay seams, checkpoint the accepted restores immediately after QA passes. Do not leave multiple recovered lanes floating only in the dirty worktree while investigating the next regression.
 - During recovery, trust present source plus focused contracts over branch labels or external app sessions. A repo can be on the right branch and still be missing the required runtime lanes in the owner file.
+- When full combat and idle combat share the same visual language, parity-check both render seams directly instead of assuming one inherits the other. Hit-flash palette changes in `renderHitFlashOverlay(...)` do not automatically update idle combat, which still owns its own sprite-overlay filter path in `web-runner/app.js`.
