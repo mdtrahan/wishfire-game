@@ -6,19 +6,19 @@ _Last updated: 2026-03-07_
 _Last updated: 2026-03-17_
 
 ## Completed Beads
-- None newly closed in this pass; source recovery is restored and awaiting runtime QA confirmation.
+- ORKA-xnz (neutral hit-flash feedback retuned to black at lighter opacity and QA-passed)
+- ORKA-wuh (core trait runtime/proc framework already exists in mirrored function-bank owner seams and passes the surviving framework contract pack)
 
 ## Active Work
-- ORKA-7kt / ORKA-1ys / ORKA-ws3p / ORKA-3as recovery verification
-  - `web-runner/app.js` has been recovered from a local unreachable Git blob containing the DOM dev tooling modal, idle-farm routing, town recovery flow, and escort scaffold.
-  - Focus is now runtime confirmation that the served game matches the recovered source-backed lane set.
+- No implementation lane is active; PM reconciliation determined ORKA-wuh is already satisfied in source rather than blocked for new implementation.
 
 ## Next Tasks
-- Runtime QA the recovered DOM dev tooling modal, idle-farm entry, town recovery, and escort scaffold.
-- Once runtime is confirmed, continue with the next missing gameplay lane from the recovery inventory instead of rebuilding these seams again.
+- Select the next executable trait/class-identity bead that truly remains unfinished after ORKA-wuh reconciliation.
+- Clean backlog mirrors for already-redacted/obsolete beads separately from runtime work.
 
 ## Known Issues
-- Browser automation remains blocked in-session by the known Chrome crashpad/bootstrap permission failure, so current proof is source recovery plus deterministic contracts and live server availability.
+- Browser automation remains blocked in-session by the known Chrome crashpad/bootstrap permission failure, so current proof is deterministic contracts and live server availability.
+- Repo-side `.beads/` mirror still lags live `bd` and should not be treated as authoritative for executable scope.
 
 ---
 _Last updated: 2026-03-13_

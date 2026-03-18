@@ -5,9 +5,10 @@
 - ORKA-hvj.5 | Hero-screen progression bindings blocked by missing product definitions (point source/reset policy/skill count/effects) | Blocks clean QA and risks speculative implementation | Clarify product contract before reopening lane
 - ORKA-yy0 | Netlify deploy/boot consistency remains tabled by product decision | Deployment confidence risk if release is requested suddenly | Reopen only when deploy hardening is re-prioritized
 - ORKA-6n7 / ORKA-900 / ORKA-9yo | `missing_spec` (`null` bead bodies) | Cannot execute mandatory closeout/hot-file-lock lanes safely without defined scope + acceptance | Add explicit objective, file/function scope, and pass/fail criteria to each bead
-- ORKA-9ri / ORKA-c4s / ORKA-f0l / ORKA-ksw / ORKA-njg / ORKA-pv3 / ORKA-wuh / ORKA-hvj.4 | `missing_spec` (`null` bead bodies) | PM cycle cannot safely assign these lanes; high queue count but low executable throughput | Rewrite each bead with concrete objective, bounded scope, acceptance, and test requirements
+- ORKA-c4s / ORKA-f0l / ORKA-ksw / ORKA-njg / ORKA-pv3 / ORKA-hvj.4 | `missing_spec` (`null` bead bodies) | PM cycle cannot safely assign these lanes; high queue count but low executable throughput | Rewrite each bead with concrete objective, bounded scope, acceptance, and test requirements
 
 ## Resolved
+- ORKA-wuh | Core trait runtime/proc framework is already present in both function-bank mirrors and validated by `tests/traitHookFrameworkContract.test.js`; bead should be treated as completed queue reconciliation, not future implementation work
 - ORKA-1qo | Node Playwright launch remained blocked in-sandbox, but the bead was recovered by adding CDP attach mode to an already-running Chrome instance and verifying a real smoke run that wrote all four balance-harness artifacts
 - ORKA-cxi | Reverted ORKA-jj0 regression commits and restored pre-flyup baseline
 - 2026-03-07: Multiple P0 beads in `.beads/open/` are underspecified (`null` body only): ORKA-6xs, ORKA-6mq, ORKA-3m8, ORKA-890, ORKA-9ng, ORKA-z0b. Cannot execute safely under Beads scope rule without acceptance/scope body.
