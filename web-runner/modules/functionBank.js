@@ -2561,10 +2561,11 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
   const g = getGlobals(ctx);
   g.LastDamageSourceUID = Number(GetCurrentTurn(ctx) || 0);
   const t = GetActorByUID(ctx, uid);
-  if (!t) return;
+  if (!t) return 0;
   const beforeHP = Number(t.hp ?? 0);
   t.hp = Math.max(0, (t.hp ?? 0) - dmg);
   const afterHP = Number(t.hp ?? 0);
+  const appliedDamage = Math.max(0, beforeHP - afterHP);
   runTraitHooks(ctx, 'damage_receive', {
     targetUID: Number(uid || 0),
     targetKind: String(t.kind || ''),
@@ -2587,8 +2588,8 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
       dy = pos.y;
     }
   }
-  if (dx != null && dy != null && g.SpawnDamageText !== 0) {
-    SpawnDamageText(ctx, dmg, dx, dy, 'damage', t.kind || null);
+  if (appliedDamage > 0 && dx != null && dy != null && g.SpawnDamageText !== 0) {
+    SpawnDamageText(ctx, appliedDamage, dx, dy, 'damage', t.kind || null);
   }
   if (t.hp === 0) {
     if ((g.RoundActive && g.GroupResolving) || (isTimeInitiative(ctx) && g.GroupResolving)) {
@@ -2607,6 +2608,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
   }
   UpdateEnemyHPUI(ctx);
   UpdateHeroHPUI(ctx);
+  return appliedDamage;
 }
 
 export function CalculateHeal(ctx, actorUID) {
@@ -3017,24 +3019,26 @@ export function HeroAttackAOE(ctx, heroUID) {
 
 export function Enemy_ATK_Single(ctx, enemyUID, targetHeroUID) {
   const dmg = CalculateDamage(ctx, enemyUID, targetHeroUID, 'melee');
-  ApplyDamageToTarget(ctx, targetHeroUID, dmg);
+  const appliedDamage = ApplyDamageToTarget(ctx, targetHeroUID, dmg);
   const enemyName = getActorNameByUID(ctx, enemyUID);
   const heroName = getActorNameByUID(ctx, targetHeroUID);
-  LogCombat(ctx, `${enemyName} hit ${heroName} for ${dmg}!`);
+  LogCombat(ctx, `${enemyName} hit ${heroName} for ${appliedDamage}!`);
 }
 
 export function Enemy_MAG_Single(ctx, enemyUID, targetHeroUID) {
   const dmg = CalculateDamage(ctx, enemyUID, targetHeroUID, 'magic');
   const resist = applyRunaMagicResist(ctx, enemyUID, targetHeroUID, dmg, 'Enemy_MAG_Single');
-  if (resist.finalDamage > 0) ApplyDamageToTarget(ctx, targetHeroUID, resist.finalDamage);
+  const appliedDamage = resist.finalDamage > 0
+    ? ApplyDamageToTarget(ctx, targetHeroUID, resist.finalDamage)
+    : 0;
   const enemyName = getActorNameByUID(ctx, enemyUID);
   const heroName = getActorNameByUID(ctx, targetHeroUID);
   if (resist.mode === 'nullify') {
     LogCombat(ctx, `${heroName} nullified ${enemyName}'s magic!`);
   } else if (resist.mode === 'heavy_resist') {
-    LogCombat(ctx, `${heroName} heavily resisted magic! (${dmg}->${resist.finalDamage})`);
+    LogCombat(ctx, `${heroName} heavily resisted magic! (${dmg}->${appliedDamage})`);
   } else {
-    LogCombat(ctx, `${enemyName} cast on ${heroName} for ${resist.finalDamage}!`);
+    LogCombat(ctx, `${enemyName} cast on ${heroName} for ${appliedDamage}!`);
   }
 }
 
@@ -4227,6 +4231,24 @@ export function ProcessTurn(ctx) {
   ProcessTurn(ctx);
 }
 
+function isBoardFullyPopulatedForEnemyMutation(ctx) {
+  const g = getGlobals(ctx);
+  const gems = getGems(ctx);
+  const rows = Math.max(1, Number(g.BoardRows || 4));
+  const cols = Math.max(1, Number(g.BoardCols || 6));
+  const expectedCount = rows * cols;
+  if (!Array.isArray(gems) || gems.length !== expectedCount) return false;
+  const occupied = new Set();
+  for (const gem of gems) {
+    const row = Number(gem?.cellR);
+    const col = Number(gem?.cellC);
+    if (!Number.isInteger(row) || !Number.isInteger(col)) return false;
+    if (row < 0 || row >= rows || col < 0 || col >= cols) return false;
+    occupied.add(`${row},${col}`);
+  }
+  return occupied.size === expectedCount;
+}
+
 export function PickEnemySkill(ctx, enemyUID) {
   const enemy = GetActorByUID(ctx, enemyUID);
   if (!enemy) return 'Enemy_ATK_Single';
@@ -4292,6 +4314,15 @@ export function PickEnemySkill(ctx, enemyUID) {
   }
   const roll = Math.random();
   const decision = resolveEnemySkillDecision(enemy, roll);
+  if (decision.selected === 'Enemy_X_Out' && !isBoardFullyPopulatedForEnemyMutation(ctx)) {
+    const forced = {
+      ...decision,
+      selected: 'Enemy_MAG_Single',
+      branch: `${String(decision.branch || 'enemy_skill')}_blocked_incomplete_board`,
+    };
+    traceEnemySkillDecision(ctx, enemyUID, forced);
+    return forced.selected;
+  }
   traceEnemySkillDecision(ctx, enemyUID, decision);
   return decision.selected;
 }
@@ -4431,6 +4462,10 @@ export function ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID = 0) {
     return Enemy_Drain_Buff(ctx, enemyUID);
   }
   if (skillId === 'Enemy_X_Out') {
+    if (!isBoardFullyPopulatedForEnemyMutation(ctx)) {
+      if (resolvedTargetUID) Enemy_MAG_Single(ctx, enemyUID, resolvedTargetUID);
+      return 1;
+    }
     return Enemy_X_Out(ctx, enemyUID);
   }
   if (skillId === 'Enemy_Wipe') {

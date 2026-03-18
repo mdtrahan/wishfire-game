@@ -168,3 +168,7 @@
 - A policy hook that re-scans every changed line against every function range in bash becomes operationally broken on large hot files. If the check takes tens of minutes, users will restart it, assume it is stuck, and lose trust in the workflow.
 - For hot-file validation, derive the small authoritative set first: staged changed lines plus declared functions. Then validate in a single pass over sorted function ranges. The runtime should scale with the size of the diff, not with repeated nested shell loops over the whole file.
 - If the hook is slow enough that a user has to babysit the terminal, treat that as a tooling bug, not user impatience. Fix the tool before asking for more manual retries.
+
+## 2026-03-17 — Runtime Recovery Must Start With Surviving Owner Seams
+- When a gameplay surface appears rolled back, inventory the live source before attempting recovery. Reports and bead notes can prove prior intent, but the current runtime owner file still decides what ships.
+- If a missing feature left behind surviving support seams or debug surfaces, restore the smallest shell on top of those seams first. A visible shell plus deterministic contract is safer than trying to recreate the entire lost feature stack in one pass.

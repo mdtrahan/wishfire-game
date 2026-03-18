@@ -3,6 +3,24 @@
 _Last updated: 2026-03-07_
 
 ---
+_Last updated: 2026-03-17_
+
+## Completed Beads
+- None newly closed in this pass; source recovery is restored and awaiting runtime QA confirmation.
+
+## Active Work
+- ORKA-7kt / ORKA-1ys / ORKA-ws3p / ORKA-3as recovery verification
+  - `web-runner/app.js` has been recovered from a local unreachable Git blob containing the DOM dev tooling modal, idle-farm routing, town recovery flow, and escort scaffold.
+  - Focus is now runtime confirmation that the served game matches the recovered source-backed lane set.
+
+## Next Tasks
+- Runtime QA the recovered DOM dev tooling modal, idle-farm entry, town recovery, and escort scaffold.
+- Once runtime is confirmed, continue with the next missing gameplay lane from the recovery inventory instead of rebuilding these seams again.
+
+## Known Issues
+- Browser automation remains blocked in-session by the known Chrome crashpad/bootstrap permission failure, so current proof is source recovery plus deterministic contracts and live server availability.
+
+---
 _Last updated: 2026-03-13_
 
 ## Completed Beads

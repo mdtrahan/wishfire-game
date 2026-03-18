@@ -2,6 +2,7 @@ import { state } from './modules/state.js';
 import { createContext, callFunctionWithContext } from './modules/functionRegistry.js';
 import { CombatRuntimeGateway } from './src/core/combatRuntimeGateway.js';
 import {
+  createEnemyTurnGateBaseline,
   createDeferredAdvanceResolved,
   createDeferredRefillHold,
   createDeferredStaleBusyRecovery,
@@ -22,8 +23,19 @@ import {
   resolveCurrentHeroUID,
   shouldRenderHeroTurnSelector,
 } from './src/core/heroSelectorRules.mjs';
+import {
+  applyIdleFarmRewardsToGlobals,
+  claimIdleFarmRewardsFromState,
+  ensureIdleFarmSessionState,
+  resetIdleFarmEmissionCadence,
+  restartIdleFarmSessionState,
+  startIdleFarmEmissionState,
+  updateIdleFarmEmissionState,
+  updateIdleFarmSessionState,
+} from './src/core/idleFarmRuntime.mjs';
 
 const out = document.getElementById('output');
+const gemCounterOut = document.getElementById('gem-counter-output');
 const walletOut = document.getElementById('wallet-output');
 const astralWalletOut = document.getElementById('astral-wallet-output');
 const canvas = document.getElementById('view');
@@ -68,6 +80,36 @@ const STARTUP_DEBUG = (() => {
     return false;
   }
 })();
+const HERO_GEM_PROGRESS_STORAGE_KEY = 'orka.hero_gem_progress.v1';
+const DEV_TOOL_HOTKEY_LABEL = 'Ctrl+Shift+P';
+const DEV_TOOL_GEM_RANDOM = -1;
+const DEV_TOOL_GEM_OPTIONS = Object.freeze([
+  { value: DEV_TOOL_GEM_RANDOM, label: 'Random' },
+  { value: 0, label: 'GREEN' },
+  { value: 1, label: 'RED' },
+  { value: 2, label: 'BLUE' },
+  { value: 3, label: 'YELLOW' },
+  { value: 4, label: 'HEAL' },
+  { value: 5, label: 'PURPLE' },
+]);
+const DEV_TOOL_REWARD_OPTIONS = Object.freeze([
+  { value: '', label: 'None' },
+  { value: 'GOLD', label: 'Gold' },
+  { value: 'ENERGY', label: 'Energy' },
+  { value: 'HEAL', label: 'Heal' },
+  { value: 'SAND', label: 'Sand' },
+  { value: 'BONE_CHIP', label: 'Bone Chip' },
+  { value: 'SLIME', label: 'Slime' },
+  { value: 'HORN', label: 'Horn' },
+  { value: 'SHELL', label: 'Shell' },
+]);
+const DEV_TOOLING_STORAGE_KEY = 'orka.dev_tooling_config.v1';
+const DEV_TOOL_EMPTY_SLOT = '';
+const DEV_TOOL_RANDOM_ENEMY_SLOT = '__RANDOM__';
+let devToolingDom = null;
+let devToolingRefreshHandler = null;
+let devToolingAutoplayHandler = null;
+let devToolingPauseSnapshot = null;
 
 function applyTurnGateGlobals(next) {
   if (!next) return;
@@ -82,6 +124,23 @@ function applyTurnGateGlobals(next) {
 function applyTurnGateIntent(createIntent, options = undefined) {
   if (typeof createIntent !== 'function') return;
   applyTurnGateGlobals(createIntent(state.globals, options));
+}
+
+function getYellowSequenceCompletionIntent(current = state.globals, options = undefined) {
+  const globals = current || state.globals || {};
+  const refill = gameState.refillBounce;
+  const handoffPending = !!globals.DeferAdvance && !!globals.AdvanceAfterAction;
+  const canRestorePickability =
+    !handoffPending &&
+    !(refill && refill.active) &&
+    state.entities.length > 0 &&
+    Number(globals.TurnPhase || 0) === 0 &&
+    Number(globals.ActionLockUntil || 0) <= Number(globals.time || 0);
+  return createYellowSequenceCompletion(globals, {
+    ...(options || {}),
+    handoffPending,
+    canRestorePickability,
+  });
 }
 const RUNTIME_FINGERPRINT = (() => {
   const source = (typeof window !== 'undefined' && window.__ORKA_RUNTIME_FINGERPRINT__)
@@ -284,7 +343,7 @@ function createHarnessLayoutState({ eventBus, inputDomains, combatRuntimeGateway
 }
 
 function getHeroUIDByIndex(idx) {
-  const hero = state.entities.find(e => e.kind === 'hero' && e.heroIndex === idx);
+  const hero = state.entities.find(e => e.kind === 'hero' && (e.heroDisplaySlot === idx || e.heroIndex === idx));
   return hero ? hero.uid : 0;
 }
 
@@ -337,8 +396,8 @@ const gameState = {
     artifactsLocaleHit: null,
     mountsLocaleButton: { x: 0, y: 0, w: 146, h: 36 },
     mountsLocaleHit: null,
-    collectiblesLocaleButton: { x: 0, y: 0, w: 146, h: 36 },
-    collectiblesLocaleHit: null,
+    relicsLocaleButton: { x: 0, y: 0, w: 146, h: 36 },
+    relicsLocaleHit: null,
     homesteadLocaleButton: { x: 0, y: 0, w: 146, h: 36 },
     homesteadLocaleHit: null,
     warMeter: 0.64,
@@ -487,13 +546,13 @@ const gameState = {
       },
     ],
   },
-  collectiblesLayout: {
+  relicsLayout: {
     entryPoint: 'map-locale',
     selectedIndex: 0,
     hitZones: null,
     gallery: [
       {
-        id: 'collectible-astral-seal',
+        id: 'relic-astral-seal',
         name: 'Astral Seal',
         discovered: true,
         rarity: 'Rare',
@@ -502,7 +561,7 @@ const gameState = {
         passiveHook: { key: 'wallet_bonus', mode: 'pct', value: 0.04, cadenceTurns: 0 },
       },
       {
-        id: 'collectible-vault-shard',
+        id: 'relic-vault-shard',
         name: 'Vault Shard',
         discovered: true,
         rarity: 'Epic',
@@ -511,7 +570,7 @@ const gameState = {
         passiveHook: { key: 'ward_break_boost', mode: 'flat', value: 1, cadenceTurns: 0 },
       },
       {
-        id: 'collectible-orbit-emblem',
+        id: 'relic-orbit-emblem',
         name: 'Orbit Emblem',
         discovered: false,
         rarity: 'Legendary',
@@ -520,7 +579,7 @@ const gameState = {
         passiveHook: { key: 'drop_weight', mode: 'pct', value: 0.05, cadenceTurns: 0 },
       },
       {
-        id: 'collectible-echo-trophy',
+        id: 'relic-echo-trophy',
         name: 'Echo Trophy',
         discovered: false,
         rarity: 'Epic',
@@ -528,6 +587,114 @@ const gameState = {
         setTag: 'echo-line',
         passiveHook: { key: 'chest_meter', mode: 'pct', value: 0.03, cadenceTurns: 0 },
       },
+    ],
+  },
+  petsLayout: {
+    entryPoint: 'map-locale',
+    selectedIndex: 0,
+    hitZones: null,
+    gallery: [
+      {
+        id: 'pet-ember-sprite',
+        name: 'Ember Sprite',
+        discovered: true,
+        rarity: 'Rare',
+        siblingFamily: 'progression-gallery',
+        milestoneSlots: 5,
+        deploymentSlots: 2,
+        passiveHook: { key: 'opening_haste', mode: 'flat', value: 1, cadenceTurns: 3 },
+      },
+      {
+        id: 'pet-mossback',
+        name: 'Mossback',
+        discovered: true,
+        rarity: 'Epic',
+        siblingFamily: 'progression-gallery',
+        milestoneSlots: 5,
+        deploymentSlots: 2,
+        passiveHook: { key: 'guard_bloom', mode: 'flat', value: 1, cadenceTurns: 5 },
+      },
+      {
+        id: 'pet-velvet-fox',
+        name: 'Velvet Fox',
+        discovered: false,
+        rarity: 'Legendary',
+        siblingFamily: 'progression-gallery',
+        milestoneSlots: 5,
+        deploymentSlots: 2,
+        passiveHook: { key: 'crit_trail', mode: 'pct', value: 0.05, cadenceTurns: 0 },
+      },
+      {
+        id: 'pet-lantern-jelly',
+        name: 'Lantern Jelly',
+        discovered: false,
+        rarity: 'Epic',
+        siblingFamily: 'progression-gallery',
+        milestoneSlots: 5,
+        deploymentSlots: 2,
+        passiveHook: { key: 'mana_drift', mode: 'flat', value: 1, cadenceTurns: 4 },
+      },
+    ],
+  },
+  idleFarmLayout: {
+    entryPoint: 'astral-flow-nav',
+    hitZones: null,
+    config: {
+      heroNames: ['Falie', 'Kojonn'],
+      loopForever: true,
+      enemySlots: 2,
+      maxVisibleEnemies: 2,
+      secondEnemyChance: 0.45,
+      hitsToKill: 3,
+      attackIntervalSec: 3,
+      enemySpawnDelaySec: 1.5,
+      rewardCadenceSec: 18,
+      goldPerCadence: 1,
+      scrapPerCadence: 1,
+    },
+    metaBonuses: {
+      goldGainPct: 0,
+      resourceGainPct: 0,
+    },
+    rewardLedger: {
+      unclaimedEnergy: 0,
+      claimedEnergyTotal: 0,
+      unclaimedTokens: {
+        SAND: 0,
+        BONE_CHIP: 0,
+        SLIME: 0,
+        HORN: 0,
+        SHELL: 0,
+      },
+      claimedTokensTotal: {
+        SAND: 0,
+        BONE_CHIP: 0,
+        SLIME: 0,
+        HORN: 0,
+        SHELL: 0,
+      },
+    },
+    emissionState: null,
+    session: null,
+  },
+  evolutionLayout: {
+    entryPoint: 'map-locale',
+    selectedLevel: 0,
+    hitZones: null,
+    ladder: [
+      { level: 1, stat: 'HP', bonusText: '+25 HP', softCurrency: 'Astral Dust', cost: 40, status: 'preview-open' },
+      { level: 2, stat: 'ATK', bonusText: '+3 ATK', softCurrency: 'Astral Dust', cost: 55, status: 'preview-open' },
+      { level: 3, stat: 'DEF', bonusText: '+3 DEF', softCurrency: 'Astral Dust', cost: 70, status: 'preview-open' },
+      { level: 4, stat: 'MAG', bonusText: '+4 MAG', softCurrency: 'Astral Dust', cost: 90, status: 'preview-open' },
+      { level: 5, stat: 'RES', bonusText: '+4 RES', softCurrency: 'Astral Dust', cost: 110, status: 'preview-open' },
+      { level: 6, stat: 'SPD', bonusText: '+2 SPD', softCurrency: 'Astral Dust', cost: 135, status: 'preview-open' },
+      { level: 7, stat: 'Core', bonusText: 'Trait lattice unlock seam', softCurrency: 'Astral Dust', cost: 165, status: 'future-capstone' },
+    ],
+    researchGates: [
+      { id: 'evo-gate-falie-aegis', hero: 'Falie', node: 'Aegis Theory', unlockLevel: 3, state: 'future-research' },
+      { id: 'evo-gate-huun-ambush', hero: 'Huun', node: 'Ambush Weave', unlockLevel: 4, state: 'future-research' },
+      { id: 'evo-gate-runa-ward', hero: 'Runa', node: 'Ward Bloom', unlockLevel: 5, state: 'future-research' },
+      { id: 'evo-gate-kojonn-blight', hero: 'Kojonn', node: 'Blight Script', unlockLevel: 6, state: 'future-research' },
     ],
   },
   homesteadLayout: {
@@ -565,16 +732,18 @@ const gameState = {
     ],
     retentionButtons: [
       { id: 'homestead', title: 'Enter Homestead', subtitle: 'Map Locale', targetLayout: 'homesteadLayout', fill: '#f4efcf', stroke: '#a08f41', text: '#5a4d17' },
-      { id: 'collectibles', title: 'Enter Collectibles', subtitle: 'Map Locale', targetLayout: 'collectiblesLayout', fill: '#f1e0f7', stroke: '#8e61a4', text: '#4a275d' },
+      { id: 'relics', title: 'Enter Relics', subtitle: 'Map Locale', targetLayout: 'relicsLayout', fill: '#f1e0f7', stroke: '#8e61a4', text: '#4a275d' },
+      { id: 'pets', title: 'Enter Pets', subtitle: 'Map Locale', targetLayout: 'petsLayout', fill: '#e7f2d5', stroke: '#7e9e54', text: '#324819' },
+      { id: 'evolution', title: 'Enter Evolution', subtitle: 'Soft Currency', targetLayout: 'evolutionLayout', fill: '#e3ecfb', stroke: '#5a79b8', text: '#20385f' },
       { id: 'mounts', title: 'Enter Mounts', subtitle: 'Map Locale', targetLayout: 'mountsLayout', fill: '#d9f2da', stroke: '#4a8b4f', text: '#1f4a24' },
       { id: 'artifacts', title: 'Enter Artifacts', subtitle: 'Map Locale', targetLayout: 'artifactsLayout', fill: '#d7e7f8', stroke: '#3c6f9f', text: '#17324a' },
       { id: 'tomes', title: 'Enter Tomes', subtitle: 'Map Locale', targetLayout: 'tomesLayout', fill: '#f3ddaa', stroke: '#8d6d2a', text: '#2f2412' },
     ],
     rewardsByTab: {
-      Common: ['Pet Fragment x5', 'Collectible Scrap x8', 'Coins x250'],
-      Rare: ['Pet Fragment x10', 'Collectible Token x2', 'Coins x600'],
-      Epic: ['Pet Core x1', 'Collectible Token x4', 'Coins x1200'],
-      Legendary: ['Pet Core x2', 'Collectible Relic x1', 'Coins x3000'],
+      Common: ['Pet Fragment x5', 'Relic Scrap x8', 'Coins x250'],
+      Rare: ['Pet Fragment x10', 'Relic Token x2', 'Coins x600'],
+      Epic: ['Pet Core x1', 'Relic Token x4', 'Coins x1200'],
+      Legendary: ['Pet Core x2', 'Ancient Relic x1', 'Coins x3000'],
     },
   },
   task015Trace: {
@@ -593,6 +762,596 @@ const gameState = {
     progress: 0,
   },
 };
+
+function createDefaultDevToolingConfig() {
+  return {
+    open: false,
+    hotkey: DEV_TOOL_HOTKEY_LABEL,
+    heroSlots: CANONICAL_HERO_ROSTER.map((hero) => String(hero.name || '')),
+    enemySlots: Array.from({ length: 3 }, () => DEV_TOOL_RANDOM_ENEMY_SLOT),
+    boardGemColor: DEV_TOOL_GEM_RANDOM,
+    goldAmount: 0,
+    combatSpeed: 1,
+    rewardDrops: '',
+    rewardCount: 1,
+    lastAppliedAt: 0,
+  };
+}
+
+function getIdleFarmRuntimeDeps(nowSec = 0) {
+  return {
+    nowSec,
+    heroSlots: ensureDevToolingConfig().heroSlots,
+    fallbackRoster: CANONICAL_HERO_ROSTER.map((hero) => String(hero?.name || '')).filter(Boolean),
+    enemyCatalog: Array.isArray(state.globals.DevToolEnemyCatalog) ? state.globals.DevToolEnemyCatalog : [],
+  };
+}
+
+function ensureIdleFarmSession(nowSec = 0) {
+  const layout = gameState.idleFarmLayout || {};
+  return ensureIdleFarmSessionState(layout, getIdleFarmRuntimeDeps(nowSec));
+}
+
+function startIdleFarmEmissions(nowSec = 0) {
+  const layout = gameState.idleFarmLayout;
+  if (!layout) return null;
+  return startIdleFarmEmissionState(layout, getIdleFarmRuntimeDeps(nowSec));
+}
+
+function updateIdleFarmEmissions(nowSec = 0) {
+  const layout = gameState.idleFarmLayout;
+  if (!layout) return null;
+  return updateIdleFarmEmissionState(layout, getIdleFarmRuntimeDeps(nowSec));
+}
+
+function updateIdleFarmSession(nowSec = 0) {
+  const layout = gameState.idleFarmLayout;
+  if (!layout) return null;
+  return updateIdleFarmSessionState(layout, getIdleFarmRuntimeDeps(nowSec));
+}
+
+function restartIdleFarmSession(nowSec = 0) {
+  const layout = gameState.idleFarmLayout;
+  if (!layout) return null;
+  return restartIdleFarmSessionState(layout, getIdleFarmRuntimeDeps(nowSec));
+}
+
+function claimIdleFarmRewards() {
+  const layout = gameState.idleFarmLayout;
+  if (!layout) return { energy: 0, tokens: {} };
+  updateIdleFarmEmissions(performance.now() / 1000);
+  const claimed = claimIdleFarmRewardsFromState(layout);
+  const applied = applyIdleFarmRewardsToGlobals(state.globals, claimed);
+  if ((applied.energy > 0) || Object.values(applied.tokens || {}).some((amount) => Number(amount || 0) > 0)) {
+    resetIdleFarmEmissionCadence(layout, getIdleFarmRuntimeDeps(performance.now() / 1000));
+  }
+  return applied;
+}
+
+function sanitizeDevToolingConfig(input = {}) {
+  const base = createDefaultDevToolingConfig();
+  const next = { ...base, ...(input && typeof input === 'object' ? input : {}) };
+  next.open = !!next.open;
+  next.hotkey = DEV_TOOL_HOTKEY_LABEL;
+  const allowedHeroNames = new Set(base.heroSlots);
+  const rawHeroSlots = Array.isArray(next.heroSlots) ? next.heroSlots : base.heroSlots;
+  next.heroSlots = Array.from({ length: 4 }, (_, idx) => {
+    const value = String(rawHeroSlots[idx] || '').trim();
+    return value && allowedHeroNames.has(value) ? value : DEV_TOOL_EMPTY_SLOT;
+  });
+  if (!next.heroSlots.some(Boolean)) next.heroSlots[0] = base.heroSlots[0];
+  const rawEnemySlots = Array.isArray(next.enemySlots) ? next.enemySlots : base.enemySlots;
+  next.enemySlots = Array.from({ length: 3 }, (_, idx) => {
+    const value = String(rawEnemySlots[idx] || '').trim();
+    return value || DEV_TOOL_EMPTY_SLOT;
+  });
+  const colorValue = Number(next.boardGemColor);
+  next.boardGemColor = DEV_TOOL_GEM_OPTIONS.some((row) => row.value === colorValue) ? colorValue : base.boardGemColor;
+  next.goldAmount = Math.max(0, Math.floor(Number(next.goldAmount || 0)));
+  next.combatSpeed = Math.max(0.25, Math.min(4, Number(next.combatSpeed || 1)));
+  const rewardDrop = String(next.rewardDrops || '').trim().toUpperCase();
+  next.rewardDrops = DEV_TOOL_REWARD_OPTIONS.some((row) => row.value === rewardDrop) ? rewardDrop : '';
+  next.rewardCount = Math.max(0, Math.min(99, Math.floor(Number(next.rewardCount || base.rewardCount))));
+  next.lastAppliedAt = Number(next.lastAppliedAt || 0);
+  return next;
+}
+
+function readPersistedDevToolingConfig() {
+  try {
+    if (typeof window === 'undefined' || !window.sessionStorage) return null;
+    const raw = window.sessionStorage.getItem(DEV_TOOLING_STORAGE_KEY);
+    if (!raw) return null;
+    return sanitizeDevToolingConfig(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+function persistDevToolingConfig(cfg) {
+  try {
+    if (typeof window === 'undefined' || !window.sessionStorage) return;
+    window.sessionStorage.setItem(DEV_TOOLING_STORAGE_KEY, JSON.stringify(sanitizeDevToolingConfig(cfg)));
+  } catch {}
+}
+
+function ensureDevToolingConfig() {
+  const persisted = readPersistedDevToolingConfig();
+  const live = (state.globals.DevToolingConfig && typeof state.globals.DevToolingConfig === 'object')
+    ? state.globals.DevToolingConfig
+    : {};
+  const next = sanitizeDevToolingConfig({
+    ...(persisted || {}),
+    ...live,
+    open: !!live.open,
+  });
+  state.globals.DevToolingConfig = next;
+  return next;
+}
+
+function getConfiguredHeroCount() {
+  return sanitizeDevToolingConfig(state.globals.DevToolingConfig || {}).heroSlots.filter(Boolean).length;
+}
+
+function getConfiguredEnemyCount() {
+  return sanitizeDevToolingConfig(state.globals.DevToolingConfig || {}).enemySlots
+    .filter((value) => String(value || '').trim() !== DEV_TOOL_EMPTY_SLOT)
+    .length;
+}
+
+function getDevToolHeroOptions() {
+  return CANONICAL_HERO_ROSTER.map((hero) => String(hero.name || '')).filter(Boolean);
+}
+
+function getDevToolEnemyOptions() {
+  const pool = Array.isArray(state.globals.DevToolEnemyCatalog) ? state.globals.DevToolEnemyCatalog : [];
+  return [...new Set(pool.map((name) => String(name || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+function getConfiguredHeroSlots() {
+  return sanitizeDevToolingConfig(state.globals.DevToolingConfig || {}).heroSlots.slice(0, 4);
+}
+
+function getConfiguredEnemySlots() {
+  return sanitizeDevToolingConfig(state.globals.DevToolingConfig || {}).enemySlots.slice(0, 3);
+}
+
+function readEscortPartyConfig() {
+  const raw = state.globals && state.globals.EscortPartyConfig;
+  if (!raw || typeof raw !== 'object' || !raw.enabled) return null;
+  const heroName = String(raw.activeHeroName || raw.heroName || '').trim();
+  const escortName = String(raw.escortName || raw.name || 'Escort').trim() || 'Escort';
+  const portraitName = String(raw.escortPortraitName || raw.portraitName || heroName || 'Falie').trim() || 'Falie';
+  const heroDisplaySlot = Math.max(0, Math.min(3, Math.floor(Number(raw.heroDisplaySlot ?? 0) || 0)));
+  let escortDisplaySlot = Math.max(0, Math.min(3, Math.floor(Number(raw.escortDisplaySlot ?? (heroDisplaySlot + 1)) || 0)));
+  if (escortDisplaySlot === heroDisplaySlot) escortDisplaySlot = Math.min(3, heroDisplaySlot + 1);
+  const hp = Math.max(1, Math.floor(Number(raw.hp || raw.maxHP || 30) || 30));
+  const maxHP = Math.max(hp, Math.floor(Number(raw.maxHP || hp) || hp));
+  return {
+    activeHeroName: heroName,
+    heroDisplaySlot,
+    escortName,
+    escortDisplaySlot,
+    portraitName,
+    hp,
+    maxHP,
+  };
+}
+
+function buildConfiguredCombatPartyMembers(configuredHeroSlots, escortConfig = null) {
+  const requestedSlots = Array.from({ length: 4 }, (_, idx) => String(configuredHeroSlots?.[idx] || '').trim());
+  const resolvedSlots = escortConfig
+    ? Array.from({ length: 4 }, () => DEV_TOOL_EMPTY_SLOT)
+    : requestedSlots.slice();
+  if (escortConfig) {
+    const heroName = String(escortConfig.activeHeroName || '').trim();
+    if (heroName) resolvedSlots[escortConfig.heroDisplaySlot] = heroName;
+  }
+  const heroCloneCounts = {};
+  const heroMembers = resolvedSlots.map((heroName, displaySlot) => {
+    const name = String(heroName || '').trim();
+    if (!name) return null;
+    const canonicalIndex = CANONICAL_HERO_ROSTER.findIndex((hero) => String(hero?.name || '') === name);
+    if (canonicalIndex === -1) return null;
+    heroCloneCounts[name] = Number(heroCloneCounts[name] || 0) + 1;
+    const cloneOrdinal = heroCloneCounts[name];
+    const cloneLabel = String.fromCharCode(64 + Math.min(26, cloneOrdinal));
+    const duplicateCount = resolvedSlots.filter((slotName) => String(slotName || '').trim() === name).length;
+    return {
+      ...CANONICAL_HERO_ROSTER[canonicalIndex],
+      canonicalIndex,
+      baseHeroName: name,
+      cloneOrdinal,
+      cloneLabel,
+      instanceName: duplicateCount > 1 ? `${name} ${cloneLabel}` : name,
+      heroInstanceKey: `${name.toLowerCase()}#${cloneOrdinal}`,
+      displaySlot,
+    };
+  });
+  const escortMember = escortConfig ? {
+    uid: 0,
+    kind: 'escort',
+    name: escortConfig.escortName,
+    baseHeroName: escortConfig.portraitName,
+    portraitName: escortConfig.portraitName,
+    hp: escortConfig.hp,
+    maxHP: escortConfig.maxHP,
+    heroDisplaySlot: escortConfig.escortDisplaySlot,
+    escortDisplaySlot: escortConfig.escortDisplaySlot,
+    nonActingEscort: true,
+    isAlive: true,
+    stats: { ATK: 0, DEF: 0, MAG: 0, RES: 0, SPD: 0 },
+    attackType: 'none',
+  } : null;
+  return {
+    heroMembers,
+    escortMember,
+    renderSlots: heroMembers
+      .map((member) => member ? { ...member, kind: 'hero', heroDisplaySlot: member.displaySlot } : null)
+      .concat(escortMember ? [escortMember] : [])
+      .filter(Boolean)
+      .sort((a, b) => Number(a.heroDisplaySlot || 0) - Number(b.heroDisplaySlot || 0)),
+  };
+}
+
+function getCombatPartyRenderRoster() {
+  return (state.entities || [])
+    .filter((entity) => entity && (entity.kind === 'hero' || entity.kind === 'escort'))
+    .sort((a, b) => Number(a.heroDisplaySlot ?? a.escortDisplaySlot ?? 0) - Number(b.heroDisplaySlot ?? b.escortDisplaySlot ?? 0))
+    .map((actor) => ({
+      name: actor.name,
+      portraitName: String(actor.baseHeroName || actor.portraitName || actor.name || ''),
+      idx: Number(actor.heroIndex || 0),
+      displaySlot: Number(actor.heroDisplaySlot ?? actor.escortDisplaySlot ?? 0),
+      uid: Number(actor.uid || 0),
+      kind: String(actor.kind || ''),
+    }));
+}
+
+function applyBoardGemColor(colorValue) {
+  const color = Number(colorValue);
+  if (!Number.isFinite(color) || color === DEV_TOOL_GEM_RANDOM) return 0;
+  if (!Array.isArray(gameState.gems)) return 0;
+  let changed = 0;
+  for (const gem of gameState.gems) {
+    if (!gem) continue;
+    gem.color = color;
+    gem.elementIndex = color;
+    changed += 1;
+  }
+  return changed;
+}
+
+function updateDevToolingStatus(message = '') {
+  if (!devToolingDom || !devToolingDom.status) return;
+  const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
+    ? layoutState.getActiveLayoutId()
+    : 'unknown';
+  const autoplayActive = !!state.globals.DevAutoplayActive;
+  if (devToolingDom.autoplay) {
+    devToolingDom.autoplay.textContent = autoplayActive ? 'Stop Idle Mode' : 'Run Idle Mode';
+  }
+  const suffix = message ? `\n${message}` : '';
+  devToolingDom.status.textContent =
+    `Hotkey: ${DEV_TOOL_HOTKEY_LABEL}\nActive Layout: ${activeLayoutId}\nIdle Mode: ${autoplayActive ? 'ACTIVE' : 'idle'}\nApply: writes live-safe values and refreshes combat for staged knobs${suffix}`;
+}
+
+function populateDevToolSlotSelect(selectEl, { choices = [], includeRandom = false, selected = '' } = {}) {
+  if (!selectEl) return;
+  const value = String(selected || '');
+  selectEl.innerHTML = '';
+  if (includeRandom) {
+    const randomOpt = document.createElement('option');
+    randomOpt.value = DEV_TOOL_RANDOM_ENEMY_SLOT;
+    randomOpt.textContent = 'Current pool/random';
+    selectEl.appendChild(randomOpt);
+  }
+  const emptyOpt = document.createElement('option');
+  emptyOpt.value = DEV_TOOL_EMPTY_SLOT;
+  emptyOpt.textContent = 'Empty slot';
+  selectEl.appendChild(emptyOpt);
+  for (const name of choices) {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    selectEl.appendChild(opt);
+  }
+  const fallback = includeRandom ? DEV_TOOL_RANDOM_ENEMY_SLOT : DEV_TOOL_EMPTY_SLOT;
+  selectEl.value = Array.from(selectEl.options).some((opt) => opt.value === value) ? value : fallback;
+}
+
+function syncDevToolingDomFromConfig() {
+  if (!devToolingDom) return;
+  const cfg = ensureDevToolingConfig();
+  const heroChoices = getDevToolHeroOptions();
+  const enemyChoices = getDevToolEnemyOptions();
+  devToolingDom.heroSlots.forEach((selectEl, idx) => {
+    populateDevToolSlotSelect(selectEl, { choices: heroChoices, includeRandom: false, selected: cfg.heroSlots[idx] || '' });
+  });
+  devToolingDom.enemySlots.forEach((selectEl, idx) => {
+    populateDevToolSlotSelect(selectEl, { choices: enemyChoices, includeRandom: true, selected: cfg.enemySlots[idx] || DEV_TOOL_RANDOM_ENEMY_SLOT });
+  });
+  devToolingDom.boardGemColor.value = String(cfg.boardGemColor);
+  devToolingDom.goldAmount.value = String(cfg.goldAmount);
+  devToolingDom.combatSpeed.value = String(cfg.combatSpeed);
+  devToolingDom.rewardDrops.value = String(cfg.rewardDrops || '');
+  devToolingDom.rewardCount.value = String(cfg.rewardCount);
+  updateDevToolingStatus();
+}
+
+function readDevToolingDomConfigPatch() {
+  if (!devToolingDom) return {};
+  return {
+    heroSlots: devToolingDom.heroSlots.map((selectEl) => String(selectEl?.value || '')),
+    enemySlots: devToolingDom.enemySlots.map((selectEl) => String(selectEl?.value || DEV_TOOL_RANDOM_ENEMY_SLOT)),
+    boardGemColor: Number(devToolingDom.boardGemColor.value || 0),
+    goldAmount: Number(devToolingDom.goldAmount.value || 0),
+    combatSpeed: Number(devToolingDom.combatSpeed.value || 1),
+    rewardDrops: String(devToolingDom.rewardDrops.value || ''),
+    rewardCount: Number(devToolingDom.rewardCount.value || 1),
+  };
+}
+
+async function applyDevToolingConfig(patch = {}, { refreshGame = false, resetGame = false, forceCombat = false } = {}) {
+  const next = sanitizeDevToolingConfig({
+    ...ensureDevToolingConfig(),
+    ...(patch && typeof patch === 'object' ? patch : {}),
+    lastAppliedAt: Number(state.globals.time || 0),
+  });
+  state.globals.DevToolingConfig = next;
+  state.globals.DevHeroSlots = [...next.heroSlots];
+  state.globals.DevHeroCount = next.heroSlots.filter(Boolean).length;
+  state.globals.DevEnemySlots = [...next.enemySlots];
+  state.globals.EncounterMaxSlots = next.enemySlots.filter((value) => String(value || '').trim() !== DEV_TOOL_EMPTY_SLOT).length;
+  state.globals.DevForcedEnemyType = '';
+  state.globals.DevForcedBoardColor = next.boardGemColor;
+  state.globals.goldTotal = next.goldAmount;
+  state.globals.DevCombatSpeedMultiplier = next.combatSpeed;
+  state.globals.DevRewardDropId = next.rewardDrops;
+  state.globals.DevRewardDrops = next.rewardDrops
+    ? Array.from({ length: next.rewardCount }, () => next.rewardDrops)
+    : [];
+  state.globals.DevRewardCount = next.rewardCount;
+  persistDevToolingConfig(next);
+  gameState.selectedHero = Math.min(gameState.selectedHero || 0, Math.max(0, next.heroSlots.filter(Boolean).length - 1));
+  gameState.selectedEnemy = Math.min(gameState.selectedEnemy || 0, Math.max(0, next.enemySlots.filter((value) => String(value || '').trim() !== DEV_TOOL_EMPTY_SLOT).length - 1));
+  const recolored = applyBoardGemColor(next.boardGemColor);
+  syncDevToolingDomFromConfig();
+  if (!resetGame && refreshGame) closeDevToolingModal({ restorePauseSnapshot: false });
+  let refreshed = false;
+  if ((refreshGame || resetGame) && typeof devToolingRefreshHandler === 'function') {
+    refreshed = !!(await devToolingRefreshHandler({ forceCombat, resetGame }));
+  }
+  if (!resetGame && !refreshGame) closeDevToolingModal({ restorePauseSnapshot: true });
+  updateDevToolingStatus(`Applied\nBoard recolor count: ${recolored}\nHero slots: ${next.heroSlots.map((value) => value || 'Empty').join(', ')}\nEnemy slots: ${next.enemySlots.map((value) => value === DEV_TOOL_RANDOM_ENEMY_SLOT ? 'Random' : (value || 'Empty')).join(', ')}\nReward: ${next.rewardDrops || 'None'} x${next.rewardCount}\n${resetGame ? 'Full game reset' : 'Combat refresh'}: ${refreshed ? 'done' : 'not needed / unavailable'}`);
+  return {
+    ...next,
+    rewardDrops: [...(state.globals.DevRewardDrops || [])],
+    boardRecolored: recolored,
+    refreshed,
+  };
+}
+
+function ensureDevToolingModal() {
+  if (devToolingDom || typeof document === 'undefined') return devToolingDom;
+  const root = document.createElement('div');
+  root.id = 'orka-dev-tooling-modal';
+  root.style.cssText = [
+    'position:fixed',
+    'inset:0',
+    'display:none',
+    'align-items:center',
+    'justify-content:center',
+    'background:rgba(0,0,0,0.58)',
+    'z-index:9999',
+    'padding:24px',
+    'box-sizing:border-box',
+  ].join(';');
+  const panel = document.createElement('div');
+  panel.style.cssText = [
+    'width:min(520px, 92vw)',
+    'max-height:88vh',
+    'overflow:auto',
+    'padding:18px',
+    'border-radius:14px',
+    'border:2px solid #1f2937',
+    'background:#f7f2e8',
+    'box-shadow:0 18px 48px rgba(0,0,0,0.4)',
+    'font:12px/1.4 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    'color:#111827',
+  ].join(';');
+  panel.innerHTML = `
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;">
+      <div>
+        <div style="font-size:18px;font-weight:800;">Dev Tooling Modal</div>
+        <div style="font-size:11px;color:#475569;">Global runtime controls. Hotkey: ${DEV_TOOL_HOTKEY_LABEL}</div>
+      </div>
+      <button type="button" data-devtool-close style="border:1px solid #334155;background:#ffffff;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Close</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;">
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="font-weight:700;">Hero Slots</div>
+        <label style="display:flex;flex-direction:column;gap:4px;">Hero Slot 1
+          <select data-devtool-hero-slot="0"></select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;">Hero Slot 2
+          <select data-devtool-hero-slot="1"></select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;">Hero Slot 3
+          <select data-devtool-hero-slot="2"></select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;">Hero Slot 4
+          <select data-devtool-hero-slot="3"></select>
+        </label>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="font-weight:700;">Enemy Slots</div>
+        <label style="display:flex;flex-direction:column;gap:4px;">Enemy Slot 1
+          <select data-devtool-enemy-slot="0"></select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;">Enemy Slot 2
+          <select data-devtool-enemy-slot="1"></select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;">Enemy Slot 3
+          <select data-devtool-enemy-slot="2"></select>
+        </label>
+      </div>
+      <label style="display:flex;flex-direction:column;gap:4px;">Board Gem Color
+        <select data-devtool-board-color>
+          ${DEV_TOOL_GEM_OPTIONS.map((row) => `<option value="${row.value}">${row.label}</option>`).join('')}
+        </select>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;">Gold Amount
+        <input data-devtool-gold-amount type="number" min="0" step="1">
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;">Combat Speed
+        <input data-devtool-combat-speed type="number" min="0.25" max="4" step="0.25">
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;">Reward Drop
+        <select data-devtool-reward-drops>
+          ${DEV_TOOL_REWARD_OPTIONS.map((row) => `<option value="${row.value}">${row.label}</option>`).join('')}
+        </select>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;">Reward Count
+        <input data-devtool-reward-count type="number" min="0" max="99" step="1">
+      </label>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button type="button" data-devtool-apply style="border:1px solid #14532d;background:#1f8f4a;color:#fff;padding:8px 12px;border-radius:8px;font-weight:800;cursor:pointer;">Apply</button>
+      <button type="button" data-devtool-refresh style="border:1px solid #475569;background:#fff;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Restart</button>
+      <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Run Idle Mode</button>
+    </div>
+    <pre data-devtool-status style="margin:14px 0 0;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff9ee;white-space:pre-wrap;"></pre>
+  `;
+  root.appendChild(panel);
+  document.body.appendChild(root);
+  const launcher = document.createElement('button');
+  launcher.type = 'button';
+  launcher.textContent = 'DEV';
+  launcher.setAttribute('aria-label', 'Open developer tooling modal');
+  launcher.style.cssText = [
+    'position:fixed',
+    'top:10px',
+    'right:10px',
+    'z-index:10000',
+    'border:1px solid #1f2937',
+    'background:#f8fafc',
+    'color:#111827',
+    'padding:6px 10px',
+    'border-radius:999px',
+    'font:700 11px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    'cursor:pointer',
+    'box-shadow:0 4px 12px rgba(0,0,0,0.18)',
+  ].join(';');
+  document.body.appendChild(launcher);
+  devToolingDom = {
+    root,
+    panel,
+    launcher,
+    close: panel.querySelector('[data-devtool-close]'),
+    apply: panel.querySelector('[data-devtool-apply]'),
+    refresh: panel.querySelector('[data-devtool-refresh]'),
+    autoplay: panel.querySelector('[data-devtool-autoplay]'),
+    heroSlots: Array.from(panel.querySelectorAll('[data-devtool-hero-slot]')),
+    enemySlots: Array.from(panel.querySelectorAll('[data-devtool-enemy-slot]')),
+    boardGemColor: panel.querySelector('[data-devtool-board-color]'),
+    goldAmount: panel.querySelector('[data-devtool-gold-amount]'),
+    combatSpeed: panel.querySelector('[data-devtool-combat-speed]'),
+    rewardDrops: panel.querySelector('[data-devtool-reward-drops]'),
+    rewardCount: panel.querySelector('[data-devtool-reward-count]'),
+    status: panel.querySelector('[data-devtool-status]'),
+  };
+  devToolingDom.launcher.addEventListener('click', () => toggleDevToolingModal(true));
+  devToolingDom.close.addEventListener('click', () => toggleDevToolingModal(false));
+  devToolingDom.refresh.addEventListener('click', () => applyDevToolingConfig(readDevToolingDomConfigPatch(), { refreshGame: true, resetGame: true, forceCombat: false }));
+  devToolingDom.apply.addEventListener('click', () => applyDevToolingConfig(readDevToolingDomConfigPatch(), { refreshGame: true, forceCombat: true }));
+  devToolingDom.autoplay.addEventListener('click', async () => {
+    if (state.globals.DevAutoplayActive) {
+      state.globals.DevAutoplayStopRequested = 1;
+      updateDevToolingStatus('Idle mode stop requested');
+      return;
+    }
+    closeDevToolingModal({ restorePauseSnapshot: false });
+    if (typeof devToolingAutoplayHandler === 'function') {
+      await devToolingAutoplayHandler();
+    }
+  });
+  root.addEventListener('click', (ev) => {
+    if (ev.target === root) toggleDevToolingModal(false);
+  });
+  syncDevToolingDomFromConfig();
+  return devToolingDom;
+}
+
+function pauseGameplayForDevTooling() {
+  if (devToolingPauseSnapshot) return;
+  devToolingPauseSnapshot = {
+    CanPickGems: Number(state.globals.CanPickGems || 0),
+    IsPlayerBusy: Number(state.globals.IsPlayerBusy || 0),
+    DeferAdvance: Number(state.globals.DeferAdvance || 0),
+    PendingSkillID: String(state.globals.PendingSkillID || ''),
+  };
+  state.globals.CanPickGems = 0;
+  state.globals.IsPlayerBusy = 1;
+  state.globals.DevToolingPaused = 1;
+}
+
+function resumeGameplayFromDevTooling() {
+  if (!devToolingPauseSnapshot) {
+    state.globals.DevToolingPaused = 0;
+    return;
+  }
+  state.globals.CanPickGems = devToolingPauseSnapshot.CanPickGems;
+  state.globals.IsPlayerBusy = devToolingPauseSnapshot.IsPlayerBusy;
+  state.globals.DeferAdvance = devToolingPauseSnapshot.DeferAdvance;
+  state.globals.PendingSkillID = devToolingPauseSnapshot.PendingSkillID;
+  state.globals.DevToolingPaused = 0;
+  devToolingPauseSnapshot = null;
+}
+
+function closeDevToolingModal({ restorePauseSnapshot = true } = {}) {
+  const cfg = ensureDevToolingConfig();
+  const root = ensureDevToolingModal()?.root;
+  cfg.open = false;
+  state.globals.DevToolingConfig = cfg;
+  if (root) root.style.display = 'none';
+  if (restorePauseSnapshot) {
+    resumeGameplayFromDevTooling();
+  } else {
+    devToolingPauseSnapshot = null;
+    state.globals.DevToolingPaused = 0;
+  }
+  return cfg;
+}
+
+function toggleDevToolingModal(nextOpen = null) {
+  const cfg = ensureDevToolingConfig();
+  const root = ensureDevToolingModal()?.root;
+  if (!root) return cfg;
+  const open = nextOpen == null ? !cfg.open : !!nextOpen;
+  cfg.open = open;
+  state.globals.DevToolingConfig = cfg;
+  root.style.display = open ? 'flex' : 'none';
+  if (open) {
+    pauseGameplayForDevTooling();
+    syncDevToolingDomFromConfig();
+    devToolingDom.heroSlots[0]?.focus();
+  } else {
+    closeDevToolingModal({ restorePauseSnapshot: true });
+  }
+  return cfg;
+}
+
+function isDevToolingHotkey(ev) {
+  if (!ev) return false;
+  const key = String(ev.key || '').toLowerCase();
+  const code = String(ev.code || '');
+  return !!((ev.ctrlKey || ev.metaKey) && ev.shiftKey && (code === 'KeyP' || key === 'p'));
+}
+
+function isEditableDomTarget(target) {
+  const tag = String(target?.tagName || '').toUpperCase();
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+}
 
 function getTask015TraceStore() {
   if (!gameState.task015Trace) {
@@ -701,6 +1460,9 @@ const FIGMA_HERO_BACK_URL = 'https://www.figma.com/api/mcp/asset/6ce3ba17-8c7d-4
 const FIGMA_HERO_CLOSE_OVAL_URL = 'https://www.figma.com/api/mcp/asset/978c0a6d-a797-4ae7-b41c-4306877ad7bd';
 const FIGMA_PLUS_URL = 'https://www.figma.com/api/mcp/asset/f978e439-2103-43fd-be9d-fcb7f5aa9d7f';
 const FIGMA_MINUS_URL = 'https://www.figma.com/api/mcp/asset/b5733d59-96b6-4f04-a5de-e4134dea9565';
+const HERO_PACK_PLUS_PATH = 'images/plus.png';
+const HERO_PACK_MINUS_PATH = 'images/minus.png';
+const HERO_PACK_CLOSE_OVAL_PATH = 'images/ui_closewin-animation 1-000.png';
 const heroLayoutSpec = {
   artboard: { w: 360, h: 640 },
   portrait: { x: 109, y: 32, w: 142, h: 92 },
@@ -768,7 +1530,7 @@ const heroLayoutSpec = {
 function getHeroScreenRoster() {
   const runtimeHeroes = (state.entities || [])
     .filter(e => e && e.kind === 'hero')
-    .sort((a, b) => Number(a.heroIndex || 0) - Number(b.heroIndex || 0));
+    .sort((a, b) => Number(a.heroDisplaySlot ?? a.heroIndex ?? 0) - Number(b.heroDisplaySlot ?? b.heroIndex ?? 0));
   if (runtimeHeroes.length) return runtimeHeroes;
   return CANONICAL_HERO_ROSTER.map((hero, idx) => ({
     uid: idx + 1,
@@ -816,6 +1578,8 @@ function getHeroStarterSkillTitle(heroName) {
 }
 
 function getHeroRoleLabel(hero) {
+  const heroName = String(hero && hero.name || '');
+  if (heroName === 'Kojonn') return 'Saboteur';
   const type = String(hero && (hero.attackType || hero.stats?.attackType) || '').toLowerCase();
   if (type === 'magic') return 'Arcanist';
   return 'Vanguard';
@@ -830,6 +1594,13 @@ function buildHeroSkillDescriptionLines(hero, skillState) {
   const nextCost = Math.max(0, Math.floor(Number(skillState && skillState.nextCost) || 0));
   const status = String(skillState && skillState.status || 'locked');
   if (key === 'skill1') {
+    if (heroName === 'Kojonn') {
+      return [
+        `Green match: blight over time on all enemies.`,
+        `Rank ${rank}/${maxRank}  Next Cost ${nextCost} SP`,
+        `Status ${status}`,
+      ];
+    }
     return [
       `${heroName}'s signature ${role.toLowerCase()} move.`,
       `Rank ${rank}/${maxRank}  Next Cost ${nextCost} SP`,
@@ -837,6 +1608,13 @@ function buildHeroSkillDescriptionLines(hero, skillState) {
     ];
   }
   if (key === 'skill2') {
+    if (heroName === 'Kojonn') {
+      return [
+        `Red match: rapid cluster burst on one target.`,
+        `Rank ${rank}/${maxRank}  Next Cost ${nextCost} SP`,
+        `Status ${status}`,
+      ];
+    }
     return [
       `Secondary lane ability for ${heroName}.`,
       `Rank ${rank}/${maxRank}  Next Cost ${nextCost} SP`,
@@ -916,14 +1694,21 @@ function drawHeroStyleCloseControl(ctx, closeRect, closeOvalImage = null, ink = 
   if (!closeRect) return;
   const cx = closeRect.x + (closeRect.w / 2);
   const cy = closeRect.y + (closeRect.h / 2);
+  const radius = closeRect.r || (closeRect.w / 2);
+  // Always establish a circular base so square source sprites cannot regress this control.
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.fillStyle = '#d9d9d9';
+  ctx.fill();
   if (closeOvalImage) {
-    ctx.drawImage(closeOvalImage, closeRect.x, closeRect.y, closeRect.w, closeRect.h);
-  } else {
+    ctx.save();
     ctx.beginPath();
-    ctx.arc(cx, cy, closeRect.r || (closeRect.w / 2), 0, Math.PI * 2);
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.closePath();
-    ctx.fillStyle = '#d9d9d9';
-    ctx.fill();
+    ctx.clip();
+    ctx.drawImage(closeOvalImage, closeRect.x, closeRect.y, closeRect.w, closeRect.h);
+    ctx.restore();
   }
   ctx.fillStyle = ink;
   ctx.font = `700 ${Math.max(12, Math.round(closeRect.h * 0.55))}px Arial`;
@@ -1029,6 +1814,19 @@ function syncPartyTotals() {
   state.globals.PartyMaxHP = gameState.partyMaxHP.reduce((a, b) => a + b, 0);
 }
 
+function restorePartyToFullHP() {
+  if (Array.isArray(gameState.partyMaxHP) && gameState.partyMaxHP.length) {
+    gameState.partyHP = gameState.partyMaxHP.map((value) => Math.max(0, Number(value || 0)));
+    syncPartyTotals();
+    return;
+  }
+  if (state.globals.PartyMaxHPByIndex && state.globals.PartyMaxHPByIndex.length) {
+    state.globals.PartyHPByIndex = [...state.globals.PartyMaxHPByIndex];
+    state.globals.PartyHP = Number(state.globals.PartyMaxHP || 0);
+    syncFromGlobals();
+  }
+}
+
 function syncFromGlobals() {
   if (state.globals.PartyHPByIndex && state.globals.PartyHPByIndex.length) {
     gameState.partyHP = [...state.globals.PartyHPByIndex];
@@ -1045,6 +1843,55 @@ function syncFromGlobals() {
   if (state.globals.Gems && Array.isArray(state.globals.Gems)) {
     gameState.gems = state.globals.Gems;
   }
+}
+
+function canUseLocalStorage() {
+  try {
+    return typeof window !== 'undefined' && !!window.localStorage;
+  } catch {
+    return false;
+  }
+}
+
+function readPersistedHeroGemProgress() {
+  if (!canUseLocalStorage()) return null;
+  try {
+    const raw = window.localStorage.getItem(HERO_GEM_PROGRESS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedHeroGemProgress(snapshot) {
+  if (!canUseLocalStorage() || !snapshot || typeof snapshot !== 'object') return false;
+  try {
+    window.localStorage.setItem(HERO_GEM_PROGRESS_STORAGE_KEY, JSON.stringify(snapshot));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function restoreHeroGemProgressFromStorage() {
+  const snapshot = readPersistedHeroGemProgress();
+  if (!snapshot) return false;
+  callFunctionWithContext(fnContext, 'LoadHeroGemProgressSnapshot', snapshot);
+  syncFromGlobals();
+  return true;
+}
+
+function persistHeroGemProgressIfDirty() {
+  if (!state.globals.HeroGemProgressDirty) return false;
+  const snapshot = callFunctionWithContext(fnContext, 'GetHeroGemProgressSnapshot');
+  const wrote = writePersistedHeroGemProgress(snapshot);
+  if (wrote) {
+    state.globals.HeroGemProgressDirty = 0;
+    state.globals.HeroGemProgressPersistedAt = Date.now();
+  }
+  return wrote;
 }
 
 function assertCombatLayoutDev(functionName) {
@@ -1287,11 +2134,65 @@ function createSeededRng(seed = 1) {
   };
 }
 
+function generateEncounterSeed() {
+  const now = Date.now() >>> 0;
+  const perfNow = Math.floor(((typeof performance !== 'undefined' && performance.now) ? performance.now() : 0) * 1000) >>> 0;
+  const rand = Math.floor(Math.random() * 0x7fffffff) >>> 0;
+  const mixed = (now ^ perfNow ^ rand) >>> 0;
+  return mixed || 1;
+}
+
 function computeEncounterTotalCP(picks) {
   return (picks || []).reduce((sum, row) => sum + Number(row?.CombatPower || row?.combatPower || 0), 0);
 }
 
-function buildEncounterByBudget({ pool, targetCP, locale = 'all', maxSlots = 3, policy = 'mixed', seed = 1, faction = '' } = {}) {
+function buildEncounterSpawnPlan(picks, { policy = 'mixed' } = {}) {
+  const rows = Array.isArray(picks) ? picks.filter(Boolean) : [];
+  if (!rows.length) return [];
+  const isSoloCommander = String(policy || '').trim().toLowerCase() === 'solo_commander';
+  if (isSoloCommander) {
+    const commanderRows = rows.filter((row) => normalizeEnemyRole(row?.enemyRole || row?.role) === 'commander');
+    const soloPool = commanderRows.length ? commanderRows : rows;
+    const pick = soloPool[Math.floor(Math.random() * soloPool.length)];
+    return [{ row: pick, slotIndex: 1 }];
+  }
+
+  const pool = [...rows];
+  const selected = [];
+  while (selected.length < Math.min(3, rows.length) && pool.length > 0) {
+    const idx = Math.floor(Math.random() * pool.length);
+    selected.push(pool[idx]);
+    pool.splice(idx, 1);
+  }
+  if (!selected.length) return [];
+  const getCP = (row) => Number(row?.CombatPower || row?.combatPower || 0);
+  let strongestIdx = 0;
+  for (let i = 1; i < selected.length; i += 1) {
+    if (getCP(selected[i]) > getCP(selected[strongestIdx])) strongestIdx = i;
+  }
+  const strongest = selected[strongestIdx];
+  const sideRows = selected.filter((_, idx) => idx !== strongestIdx);
+  if (sideRows.length > 1 && Math.random() < 0.5) sideRows.reverse();
+
+  const plan = [{ row: strongest, slotIndex: 1 }];
+  if (sideRows[0]) plan.push({ row: sideRows[0], slotIndex: 0 });
+  if (sideRows[1]) plan.push({ row: sideRows[1], slotIndex: 2 });
+  return plan;
+}
+
+function buildForcedEnemySpawnPlan(row, count) {
+  if (!row) return [];
+  const total = Math.max(0, Math.min(3, Math.floor(Number(count || 0))));
+  if (!total) return [];
+  const slotOrder = [1, 0, 2];
+  const plan = [];
+  for (let i = 0; i < total; i += 1) {
+    plan.push({ row, slotIndex: slotOrder[i] });
+  }
+  return plan;
+}
+
+function buildEncounterByBudget({ pool, targetCP, locale = 'all', maxSlots = 3, policy = 'mixed', seed = 1, faction = '', historyCounts = null } = {}) {
   const candidates = Array.isArray(pool) ? pool : [];
   const normalizedLocale = String(locale || 'all').trim().toLowerCase() || 'all';
   const rawFactionFilter = String(faction || '').trim().toLowerCase();
@@ -1322,18 +2223,26 @@ function buildEncounterByBudget({ pool, targetCP, locale = 'all', maxSlots = 3, 
   const pickBest = (source, remainingTarget, capName = '') => {
     const arr = (source || []).filter(row => row && !usedNames.has(String(row.name || '')));
     if (!arr.length) return null;
-    let best = arr[0];
-    let bestScore = Infinity;
-    for (const row of arr) {
-      const cp = Number(row?.CombatPower || row?.combatPower || 0);
-      const diff = Math.abs(remainingTarget - cp);
-      const tie = rng();
-      const score = diff + tie * 0.001;
-      if (score < bestScore) {
-        best = row;
-        bestScore = score;
-      }
+    const getSeen = (row) => Number(historyCounts && historyCounts[String(row?.name || '')] || 0);
+    const hasHistory = !!(historyCounts && typeof historyCounts === 'object');
+    let working = arr;
+    if (hasHistory) {
+      let minSeen = Infinity;
+      for (const row of arr) minSeen = Math.min(minSeen, getSeen(row));
+      const lowestSeenPool = arr.filter(row => getSeen(row) === minSeen);
+      if (lowestSeenPool.length) working = lowestSeenPool;
     }
+    const ranked = working
+      .map((row) => {
+        const cp = Number(row?.CombatPower || row?.combatPower || 0);
+        const diff = Math.abs(remainingTarget - cp);
+        return { row, diff };
+      })
+      .sort((a, b) => a.diff - b.diff);
+    const topK = ranked.slice(0, Math.max(1, Math.min(6, ranked.length)));
+    const rollPool = topK.length ? topK : ranked;
+    const pickIndex = Math.floor(rng() * rollPool.length);
+    const best = rollPool[Math.max(0, Math.min(rollPool.length - 1, pickIndex))].row;
     if (capName) reasonCodes.push(`picked_${capName}`);
     return best;
   };
@@ -1361,19 +2270,13 @@ function buildEncounterByBudget({ pool, targetCP, locale = 'all', maxSlots = 3, 
       pushPick(fodder);
     }
   } else {
-    const avgFodder = byRole.fodder.length
-      ? byRole.fodder.reduce((sum, row) => sum + Number(row?.CombatPower || row?.combatPower || 0), 0) / byRole.fodder.length
-      : 0;
-    if (byRole.commander.length && (target >= avgFodder * 1.5 || slots === 1)) {
-      pushPick(pickBest(byRole.commander, target, 'commander'));
-    }
-    if (selected.length < slots && byRole.bodyguard.length) {
-      const remaining = target - computeEncounterTotalCP(selected);
-      pushPick(pickBest(byRole.bodyguard, remaining, 'bodyguard'));
-    }
+    // Mixed policy: allow any role and balance by CP fit + underused roster entries.
     while (selected.length < slots) {
       const remaining = target - computeEncounterTotalCP(selected);
-      let pick = pickBest(byRole.fodder, remaining, 'fodder');
+      let pick = pickBest(eligible, remaining, 'mixed_any');
+      if (!pick) pick = pickBest(byRole.fodder, remaining, 'fodder');
+      if (!pick) pick = pickBest(byRole.bodyguard, remaining, 'bodyguard');
+      if (!pick) pick = pickBest(byRole.commander, remaining, 'commander');
       if (!pick) pick = pickBest(eligible, remaining, 'fallback_any');
       if (!pick) break;
       pushPick(pick);
@@ -1398,7 +2301,7 @@ function buildEncounterByBudget({ pool, targetCP, locale = 'all', maxSlots = 3, 
 function initEntities(enemyRows, layoutInstances) {
   assertCombatLayoutDev('initEntities');
   state.entities = [];
-  state.globals.EnemyData = (enemyRows || []).map((row) => ({
+  const mappedEnemyData = (enemyRows || []).map((row) => ({
     ...row,
     faction: normalizeFaction(row?.faction),
     enemyRole: normalizeEnemyRole(row?.enemyRole || row?.role),
@@ -1408,12 +2311,23 @@ function initEntities(enemyRows, layoutInstances) {
     localeTags: normalizeBiomeTags(row?.localeTags || row?.locale_tags || row?.locale || row?.biomes || row?.biome || 'all'),
     CombatPower: computeCombatPower(row?.ATK, row?.DEF, row?.HP, row?.MAG, row?.RES, row?.attackType),
   }));
+  state.globals.DevToolEnemyCatalog = [...new Set(mappedEnemyData.map((row) => String(row?.name || row?.EnemyName || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  state.globals.EnemyData = mappedEnemyData;
   state.globals.CombatSessionId = Number(state.globals.CombatSessionId || 0) + 1;
 
   const partyHP = [];
   const partyMaxHP = [];
-  for (let i = 0; i < 4; i++) {
-    const v = CANONICAL_HERO_ROSTER[i];
+  const configuredHeroSlots = getConfiguredHeroSlots();
+  const escortConfig = readEscortPartyConfig();
+  const partyMembers = buildConfiguredCombatPartyMembers(configuredHeroSlots, escortConfig);
+  const heroSlotRoster = partyMembers.heroMembers;
+  for (let i = 0; i < CANONICAL_HERO_ROSTER.length; i++) {
+    const v = heroSlotRoster[i];
+    if (!v) {
+      partyHP[i] = 0;
+      partyMaxHP[i] = 0;
+      continue;
+    }
     let maxHP = Number(v.maxHP);
     if (!Number.isFinite(maxHP) || maxHP <= 0) maxHP = 1;
     let hp = Number(v.hp);
@@ -1424,7 +2338,11 @@ function initEntities(enemyRows, layoutInstances) {
     state.entities.push({
       uid: i + 1,
       kind: 'hero',
-      name: v.name,
+      name: v.instanceName,
+      baseHeroName: v.baseHeroName,
+      heroInstanceKey: v.heroInstanceKey,
+      heroCloneOrdinal: v.cloneOrdinal,
+      heroCloneLabel: v.cloneLabel,
       hp,
       maxHP: partyMaxHP[i],
       combatPower: computeCombatPower(v.ATK, v.DEF, partyMaxHP[i], v.MAG, v.RES, v.attackType),
@@ -1435,11 +2353,31 @@ function initEntities(enemyRows, layoutInstances) {
         RES: Number(v.RES),
         SPD: Number(v.SPD),
       },
-      heroIndex: i,
+      heroIndex: Number(v.canonicalIndex || 0),
+      heroDisplaySlot: i,
       attackType: v.attackType,
       isAlive: true,
     });
     startupDebugLog(`[HP_FIX] hero=${v.name} maxHP=${maxHP}`);
+  }
+  if (partyMembers.escortMember) {
+    const escortUID = state.entities.reduce((max, entity) => Math.max(max, Number(entity?.uid || 0)), 0) + 1;
+    const escortEntity = {
+      ...partyMembers.escortMember,
+      uid: escortUID,
+    };
+    state.entities.push(escortEntity);
+    state.globals.EscortNPCState = {
+      uid: escortUID,
+      name: escortEntity.name,
+      portraitName: escortEntity.baseHeroName,
+      hp: escortEntity.hp,
+      maxHP: escortEntity.maxHP,
+      displaySlot: escortEntity.heroDisplaySlot,
+      enabled: 1,
+    };
+  } else {
+    delete state.globals.EscortNPCState;
   }
 
   gameState.partyHP = partyHP;
@@ -1467,34 +2405,96 @@ function initEntities(enemyRows, layoutInstances) {
 
   if (enemyRows && enemyRows.length) {
     state.globals.InitialSpawn = 1;
+    const rawSeed = Number(state.globals.EncounterSeed || 0);
+    const explicitSeed = Number(state.globals.EncounterSeedExplicit || 0) === 1;
+    const encounterSeed = (explicitSeed && Number.isFinite(rawSeed) && rawSeed > 0)
+      ? rawSeed
+      : generateEncounterSeed();
+    state.globals.EncounterSeed = encounterSeed;
+    state.globals.EncounterSeedExplicit = 0;
     const encounterRequest = {
-      pool: state.globals.EnemyData,
+      pool: mappedEnemyData,
       targetCP: Number(state.globals.EncounterTargetCP || 120),
       locale: String(state.globals.EncounterLocale || state.globals.CurrentLocale || 'clouds'),
       maxSlots: Number(state.globals.EncounterMaxSlots || 3),
       policy: String(state.globals.EncounterPolicy || 'mixed'),
-      seed: Number(state.globals.EncounterSeed || state.globals.CombatSessionId || 1),
+      seed: encounterSeed,
       faction: String(state.globals.EncounterFaction || ''),
+      historyCounts: (state.globals.EncounterSeenCounts && typeof state.globals.EncounterSeenCounts === 'object')
+        ? state.globals.EncounterSeenCounts
+        : {},
     };
-    const encounter = buildEncounterByBudget(encounterRequest);
+    startupDebugLog(`[ENCOUNTER] seed=${encounterSeed} targetCP=${encounterRequest.targetCP} locale=${encounterRequest.locale} policy=${encounterRequest.policy}`);
+    const configuredEnemySlots = getConfiguredEnemySlots();
+    const hasManualEnemyLayout = configuredEnemySlots.some((value) => String(value || '').trim() !== DEV_TOOL_RANDOM_ENEMY_SLOT);
+    let encounter = null;
+    let spawnPlan = [];
+    if (hasManualEnemyLayout) {
+      const randomSlotIndexes = [];
+      for (let slotIndex = 0; slotIndex < configuredEnemySlots.length; slotIndex += 1) {
+        const slotValue = String(configuredEnemySlots[slotIndex] || '').trim();
+        if (!slotValue) continue;
+        if (slotValue === DEV_TOOL_RANDOM_ENEMY_SLOT) {
+          randomSlotIndexes.push(slotIndex);
+          continue;
+        }
+        const row = mappedEnemyData.find((entry) => String(entry?.name || entry?.EnemyName || '').trim() === slotValue);
+        if (row) spawnPlan.push({ row, slotIndex });
+      }
+      if (randomSlotIndexes.length) {
+        const randomEncounter = buildEncounterByBudget({
+          ...encounterRequest,
+          maxSlots: randomSlotIndexes.length,
+        });
+        const randomRows = randomEncounter.selected || [];
+        for (let i = 0; i < Math.min(randomSlotIndexes.length, randomRows.length); i += 1) {
+          spawnPlan.push({ row: randomRows[i], slotIndex: randomSlotIndexes[i] });
+        }
+      }
+      spawnPlan.sort((a, b) => Number(a.slotIndex || 0) - Number(b.slotIndex || 0));
+      encounter = {
+        selected: spawnPlan.map((entry) => entry.row),
+        finalCP: spawnPlan.reduce((sum, entry) => sum + Number(entry?.row?.CombatPower || entry?.row?.combatPower || 0), 0),
+        targetCP: Number(encounterRequest.targetCP || 0),
+        deltaCP: 0,
+        slotsUsed: spawnPlan.length,
+        underfilled: spawnPlan.length < configuredEnemySlots.filter((value) => String(value || '').trim() !== DEV_TOOL_EMPTY_SLOT).length,
+        reasonCodes: ['manual_enemy_slots'],
+      };
+    } else {
+      encounter = buildEncounterByBudget(encounterRequest);
+      const picks = encounter.selected || [];
+      spawnPlan = buildEncounterSpawnPlan(picks, { policy: encounterRequest.policy });
+    }
     const picks = encounter.selected || [];
     state.globals.EncounterSummary = encounter;
     state.globals.EncounterPoolNames = picks.map(p => String(p?.name || '')).filter(Boolean);
-    for (let i = 0; i < picks.length; i++) {
+    const seen = (state.globals.EncounterSeenCounts && typeof state.globals.EncounterSeenCounts === 'object')
+      ? state.globals.EncounterSeenCounts
+      : {};
+    for (const pick of picks) {
+      const key = String(pick?.name || '').trim();
+      if (!key) continue;
+      seen[key] = Number(seen[key] || 0) + 1;
+    }
+    state.globals.EncounterSeenCounts = seen;
+    for (let i = 0; i < spawnPlan.length; i++) {
+      const pick = spawnPlan[i].row;
+      const slotIndex = Number(spawnPlan[i].slotIndex || 0);
       callFunctionWithContext(fnContext, 'SpawnEnemy', {
-        name: picks[i].name,
-        HP: Number(picks[i].HP || 0),
-        ATK: Number(picks[i].ATK || 0),
-        DEF: Number(picks[i].DEF || 0),
-        MAG: Number(picks[i].MAG || 0),
-        RES: Number(picks[i].RES || 0),
-        SPD: Number(picks[i].SPD || 0),
-        attackType: String(picks[i].attackType || ''),
-        faction: String(picks[i].faction || 'wishless'),
-        enemyRole: String(picks[i].enemyRole || 'fodder'),
-        localeTags: Array.isArray(picks[i].localeTags) ? picks[i].localeTags : ['all'],
-        CombatPower: computeCombatPower(picks[i].ATK, picks[i].DEF, picks[i].HP, picks[i].MAG, picks[i].RES, picks[i].attackType),
-      }, i);
+        name: pick.name,
+        HP: Number(pick.HP || 0),
+        ATK: Number(pick.ATK || 0),
+        DEF: Number(pick.DEF || 0),
+        MAG: Number(pick.MAG || 0),
+        RES: Number(pick.RES || 0),
+        SPD: Number(pick.SPD || 0),
+        attackType: String(pick.attackType || ''),
+        faction: String(pick.faction || 'wishless'),
+        enemyRole: String(pick.enemyRole || 'fodder'),
+        localeTags: Array.isArray(pick.localeTags) ? pick.localeTags : ['all'],
+        CombatPower: computeCombatPower(pick.ATK, pick.DEF, pick.HP, pick.MAG, pick.RES, pick.attackType),
+      }, slotIndex);
     }
     state.globals.InitialSpawn = 0;
   }
@@ -1511,7 +2511,7 @@ function initEntities(enemyRows, layoutInstances) {
 }
 
 // Create gem board with random colors (0-5: Hero1, Hero2, Heal, Buff, AOE, Energy)
-function createGemBoard(gridBounds = null) {
+function createGemBoard(gridBounds = null, { immediateFill = false } = {}) {
   assertCombatLayoutDev('createGemBoard');
   gameState.gems = [];
   gameState.grid = [];
@@ -1546,6 +2546,11 @@ function createGemBoard(gridBounds = null) {
   setGemArray(gameState.gems);
   state.globals.TapIndex = 0;
   startupDebugLog(`[BOARD] Created gem board: ${g.cols}x${g.rows} = ${gameState.gems.length} gems`);
+  if (immediateFill) {
+    refillGemBoard(gridBounds);
+    state.globals.BoardFillActive = 0;
+    return;
+  }
   startRefillBounce(0.31);
 }
 
@@ -1566,6 +2571,10 @@ function rebuildGridFromGems() {
 }
 
 function randomGemFrame() {
+  const forcedColor = Number(state.globals.DevForcedBoardColor);
+  if (Number.isFinite(forcedColor) && forcedColor !== DEV_TOOL_GEM_RANDOM && DEV_TOOL_GEM_OPTIONS.some((row) => row.value === forcedColor)) {
+    return forcedColor;
+  }
   const MAX_PURPLE_ON_BOARD = 3;
   const PURPLE_WEIGHT = 0.25;
   const x = Math.floor(Math.random() * 1000);
@@ -1657,21 +2666,12 @@ function handleSpecialGem6(gem) {
   const actorUID = callFunctionWithContext(fnContext, 'GetCurrentTurn') || getHeroUIDByIndex(gameState.selectedHero) || gameState.selectedHero;
   const actor = state.entities.find(e => e.uid === actorUID);
   const actorName = actor ? (actor.name || 'Hero') : 'Hero';
-  const rollReward = Math.random() < 0.5 ? 'gold' : 'energy';
-  if (rollReward === 'gold') {
-    const goldOptions = [10, 15, 20];
-    const amt = goldOptions[Math.floor(Math.random() * goldOptions.length)];
-    g.goldTotal = (g.goldTotal || 0) + amt;
-    callFunctionWithContext(fnContext, 'LogCombat', `${actorName} found ${amt} gold!`);
-    callFunctionWithContext(fnContext, 'SpawnDamageText', amt, gem.x, gem.y, 'damage');
-  } else {
-    const energyOptions = [6, 12, 15];
-    const amt = energyOptions[Math.floor(Math.random() * energyOptions.length)];
-    const next = (g.Player_Energy || 0) + amt;
-    g.Player_Energy = next;
-    callFunctionWithContext(fnContext, 'LogCombat', `${actorName} gained ${amt} energy!`);
-    callFunctionWithContext(fnContext, 'SpawnDamageText', amt, gem.x, gem.y, 'heal');
-  }
+  const energyOptions = [6, 12, 15];
+  const amt = energyOptions[Math.floor(Math.random() * energyOptions.length)];
+  const next = (g.Player_Energy || 0) + amt;
+  g.Player_Energy = next;
+  callFunctionWithContext(fnContext, 'LogCombat', `${actorName} gained ${amt} energy!`);
+  callFunctionWithContext(fnContext, 'SpawnDamageText', amt, gem.x, gem.y, 'heal');
   // Remove gem and free slot
   gameState.gems = gameState.gems.filter(gm => gm !== gem);
   gameState.selectedGems = [];
@@ -1685,11 +2685,11 @@ function handleSpecialGem6(gem) {
   setGemArray(gameState.gems);
 }
 
-const YELLOW_CASINO_TELEGRAPH_SEC = 0.15;
-const yellowMatchAnimationDuration = 0.4;
+const YELLOW_CASINO_TELEGRAPH_SEC = 0.0867;
+const yellowMatchAnimationDuration = 0.21675;
 const YELLOW_CASINO_SPIN_SEC = yellowMatchAnimationDuration;
-const YELLOW_CASINO_SETTLE_SEC = 0.14;
-const YELLOW_CASINO_SETTLE_BOUNCE_AMP = 0.22;
+const YELLOW_CASINO_SETTLE_SEC = 0.07225;
+const YELLOW_CASINO_SETTLE_BOUNCE_AMP = 0.2;
 const YELLOW_CASINO_TARGETS = YELLOW_REFILL_TARGETS;
 const YELLOW_CASINO_WALK = [YELLOW_COLOR, ...YELLOW_CASINO_TARGETS];
 
@@ -1728,7 +2728,8 @@ function buildYellowCasinoSequence(targetFrame) {
   return seq;
 }
 
-function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0) {
+function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, options = {}) {
+  const opts = options && typeof options === 'object' ? options : {};
   if (state.globals.GamePhase !== 'RUNTIME') {
     return;
   }
@@ -1783,7 +2784,7 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0) {
   const hasWork = queue.length > 0;
   const additionalYellowConsumed = queue.filter((item) => item.type === 'yellow').length;
   const totalYellowConsumed = Math.max(0, Number(initialMatchedYellowCount || 0)) + additionalYellowConsumed;
-  state.globals.goldTotal = Number(state.globals.goldTotal || 0) + totalYellowConsumed;
+  casino.pendingGoldAward = totalYellowConsumed;
   traceTask015YellowQueue(queue);
   traceTask015YellowAnimation('yellow-sequence-start', {
     queueLength: Number(queue.length),
@@ -1797,6 +2798,18 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0) {
   casino.telegraphUntil = now + YELLOW_CASINO_TELEGRAPH_SEC;
   casino.ghost = null;
   casino.emptyTelegraph = emptyTelegraph;
+  casino.goldMergeTarget = opts.goldTarget && Number.isFinite(opts.goldTarget.x) && Number.isFinite(opts.goldTarget.y)
+    ? { x: Number(opts.goldTarget.x), y: Number(opts.goldTarget.y) }
+    : getGoldLabelTargetWorld();
+  casino.goldMergeSources = Array.isArray(opts.mergeSources)
+    ? opts.mergeSources
+        .filter(Boolean)
+        .map((item) => ({
+          x: Number(item.x || 0),
+          y: Number(item.y || 0),
+          color: Number(item.color ?? item.elementIndex ?? YELLOW_COLOR),
+        }))
+    : [];
 
   for (const item of queue) {
     if (item.type !== 'yellow') continue;
@@ -1949,6 +2962,64 @@ function tryActivateRuntimePhase() {
   return true;
 }
 
+function getInstanceWorldCenter(typeName) {
+  let inst = null;
+  const hasAssetsLayout = typeof assetsLayout !== 'undefined' && assetsLayout && Array.isArray(assetsLayout.layers);
+  if (hasAssetsLayout) {
+    for (const layer of assetsLayout.layers) {
+      if (!layer || !Array.isArray(layer.instances)) continue;
+      inst = layer.instances.find((item) => item && item.type === typeName && item.world) || null;
+      if (inst) break;
+    }
+  }
+  if (!inst || !inst.world) return null;
+  const w = Number(inst.world.width || 0);
+  const h = Number(inst.world.height || 0);
+  const ox = inst.world.originX != null ? Number(inst.world.originX) : 0.5;
+  const oy = inst.world.originY != null ? Number(inst.world.originY) : 0.5;
+  return {
+    x: Number(inst.world.x || 0) + (0.5 - ox) * w,
+    y: Number(inst.world.y || 0) + (0.5 - oy) * h,
+  };
+}
+
+function getGoldLabelTargetWorld() {
+  const cached = gameState.goldLabelTargetWorld;
+  if (cached && Number.isFinite(cached.x) && Number.isFinite(cached.y)) {
+    return { x: Number(cached.x), y: Number(cached.y) };
+  }
+  return getInstanceWorldCenter('Text_Gold');
+}
+
+function startGemMergeFx({ target = null, scaleOut = true, startScale = 1, sourceItems = null } = {}) {
+  const now = state.globals.time || 0;
+  const fromExplicit = Array.isArray(sourceItems) && sourceItems.length > 0
+    ? sourceItems
+    : (gameState.selectedGems || []).map(idx => {
+        const gm = gameState.gems && gameState.gems[idx];
+        if (!gm) return null;
+        return { x: gm.x, y: gm.y, color: gm.color ?? gm.elementIndex };
+      });
+  const items = fromExplicit
+    .filter(Boolean)
+    .map((item) => ({
+      x: Number(item.x || 0),
+      y: Number(item.y || 0),
+      color: Number(item.color ?? item.elementIndex ?? 0),
+    }));
+  if (!items.length) return;
+  gameState.gemMergeFx = {
+    active: true,
+    startAt: now,
+    duration: 0.28,
+    items,
+    target,
+    scaleOut: !!scaleOut,
+    startScale: Number.isFinite(Number(startScale)) ? Math.max(0.05, Number(startScale)) : 1,
+    doneAt: null,
+  };
+}
+
 function handleGemMatch(color) {
   if (state.globals.GamePhase !== 'RUNTIME') {
     return;
@@ -1999,51 +3070,12 @@ function handleGemMatch(color) {
     }
   };
 
-  const getInstanceWorldCenter = (typeName) => {
-    let inst = null;
-    const hasAssetsLayout = typeof assetsLayout !== 'undefined' && assetsLayout && Array.isArray(assetsLayout.layers);
-    if (hasAssetsLayout) {
-      for (const layer of assetsLayout.layers) {
-        if (!layer || !Array.isArray(layer.instances)) continue;
-        inst = layer.instances.find((item) => item && item.type === typeName && item.world) || null;
-        if (inst) break;
-      }
-    }
-    if (!inst || !inst.world) return null;
-    const w = Number(inst.world.width || 0);
-    const h = Number(inst.world.height || 0);
-    const ox = inst.world.originX != null ? Number(inst.world.originX) : 0.5;
-    const oy = inst.world.originY != null ? Number(inst.world.originY) : 0.5;
-    return {
-      x: Number(inst.world.x || 0) + (0.5 - ox) * w,
-      y: Number(inst.world.y || 0) + (0.5 - oy) * h,
-    };
-  };
-
-  const startGemMergeFx = ({ target = null, scaleOut = true } = {}) => {
-    const now = state.globals.time || 0;
-    const items = (gameState.selectedGems || []).map(idx => {
-      const gm = gameState.gems && gameState.gems[idx];
-      if (!gm) return null;
-      return { x: gm.x, y: gm.y, color: gm.color ?? gm.elementIndex };
-    }).filter(Boolean);
-    if (!items.length) return;
-    gameState.gemMergeFx = {
-      active: true,
-      startAt: now,
-      duration: 0.28,
-      items,
-      target,
-      scaleOut: !!scaleOut,
-      doneAt: null,
-    };
-  };
-
   if (color === 0 || color === 1) {
+    const matchedCount = Math.max(0, Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0);
     g.TurnPhase = 1;
     callFunctionWithContext(fnContext, 'UpdateChain', color);
     g.IsAOEMatch = 0;
-    callFunctionWithContext(fnContext, 'ResolveGemAction', color, actorUID);
+    callFunctionWithContext(fnContext, 'ResolveGemAction', color, actorUID, matchedCount);
     callFunctionWithContext(fnContext, 'DestroyGem');
     callFunctionWithContext(fnContext, 'ClearMatchState');
     syncGemsFromGlobals();
@@ -2067,19 +3099,20 @@ function handleGemMatch(color) {
     callFunctionWithContext(fnContext, 'Sub_Energy');
     g.ApplyChainToNextDamage = 0;
   } else if (color === 3) {
-    const goldTarget = getInstanceWorldCenter('Text_Gold');
+    const matchedYellowCount = Math.max(0, Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0);
+    const goldTarget = getGoldLabelTargetWorld();
     const actor = state.entities.find(e => e.uid === actorUID);
     const actorName = actor ? (actor.name || 'Hero') : 'Hero';
-    const matchedYellowCount = Math.max(
-      0,
-      (gameState.gems || []).filter((gm) => {
-        const gemColor = Number(gm && (gm.color ?? gm.elementIndex));
-        const isSelected = !!(gm && (gm.selected || gm.Selected));
-        return isSelected && gemColor === YELLOW_COLOR;
-      }).length
-    );
-    startGemMergeFx({ target: goldTarget, scaleOut: false });
-    callFunctionWithContext(fnContext, 'ResolveGemAction', 3, actorUID);
+    const yellowMergeSources = (gameState.gems || [])
+      .filter((gm) => Number(gm && (gm.color ?? gm.elementIndex)) === YELLOW_COLOR)
+      .map((gm) => ({
+        cellC: Number(gm.cellC || 0),
+        cellR: Number(gm.cellR || 0),
+        x: Number(gm.x || 0),
+        y: Number(gm.y || 0),
+        color: gm.color ?? gm.elementIndex,
+      }));
+    callFunctionWithContext(fnContext, 'ResolveGemAction', 3, actorUID, matchedYellowCount);
     callFunctionWithContext(fnContext, 'LogCombat', `${actorName} used Wild Magic!`);
     callFunctionWithContext(fnContext, 'DestroyGem');
     callFunctionWithContext(fnContext, 'ClearMatchState');
@@ -2087,8 +3120,12 @@ function handleGemMatch(color) {
     clearLocalSelection();
     rebuildGridFromGems();
     callFunctionWithContext(fnContext, 'Sub_Energy');
-    startYellowCasinoSequence(actorUID, matchedYellowCount);
+    startYellowCasinoSequence(actorUID, matchedYellowCount, {
+      goldTarget,
+      mergeSources: yellowMergeSources,
+    });
   } else if (color === 4) {
+    const matchedCount = Math.max(0, Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0);
     g.MatchedColorValue = 4;
     g.IsAOEMatch = 0;
     callFunctionWithContext(fnContext, 'UpdateChain', 4);
@@ -2098,14 +3135,15 @@ function handleGemMatch(color) {
     clearLocalSelection();
     rebuildGridFromGems();
     callFunctionWithContext(fnContext, 'Sub_Energy');
-    callFunctionWithContext(fnContext, 'ResolveGemAction', 4, actorUID);
+    callFunctionWithContext(fnContext, 'ResolveGemAction', 4, actorUID, matchedCount);
   } else if (color === 5) {
+    const matchedCount = Math.max(0, Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0);
     callFunctionWithContext(fnContext, 'DestroyGem');
     callFunctionWithContext(fnContext, 'ClearMatchState');
     syncGemsFromGlobals();
     clearLocalSelection();
     rebuildGridFromGems();
-    callFunctionWithContext(fnContext, 'ResolveGemAction', 5, actorUID);
+    callFunctionWithContext(fnContext, 'ResolveGemAction', 5, actorUID, matchedCount);
   } else if (color === 6 || color === 7) {
     callFunctionWithContext(fnContext, 'DestroyGem');
     callFunctionWithContext(fnContext, 'ClearMatchState');
@@ -2309,6 +3347,60 @@ async function main(){
       gameStateRef.gridBounds = gridBounds;
     }
   }
+  async function refreshCombatSessionFromDevTooling({ forceCombat = false, resetGame = false } = {}) {
+    if (resetGame) {
+      gameState.overlayVisible = false;
+      const cfg = ensureDevToolingConfig();
+      persistDevToolingConfig({ ...cfg, open: false });
+      if (typeof window !== 'undefined' && typeof window.location?.reload === 'function') {
+        window.location.reload();
+        return true;
+      }
+      return false;
+    }
+    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
+      ? layoutState.getActiveLayoutId()
+      : null;
+    if (forceCombat && activeLayoutId && activeLayoutId !== 'combat') {
+      gameState.overlayVisible = false;
+      await layoutState.requestLayoutChange('combat', 'dev-tool-refresh');
+      return true;
+    }
+    if (!freshCombatBootstrapped || !Array.isArray(enemyRows) || !enemyRows.length) {
+      return false;
+    }
+    gameState.overlayVisible = false;
+    initEntities(enemyRows, instances);
+    restoreHeroGemProgressFromStorage();
+    assertCombatLayoutDev('StartRound');
+    callFunctionWithContext(fnContext, 'StartRound');
+    createGemBoard(gridBounds, { immediateFill: true });
+    gameState.selectedGems = [];
+    gameState.selectionLocked = false;
+    initializeStoryCardLayout('dev-tool-refresh');
+    combatSessionSeeded = true;
+    state.globals.GamePhase = 'RUNTIME';
+    state.globals.BattleStartActive = 0;
+    state.globals.BattleStartShown = 0;
+    state.globals.BattleStartClearedForSession = 1;
+    state.globals.BattleStartProcessStarted = 1;
+    state.globals.BattleStartText = '';
+    state.globals.BattleStartSessionText = '';
+    state.globals.BattleStartSessionId = Number(state.globals.CombatSessionId || 0);
+    state.globals.IsPlayerBusy = 0;
+    state.globals.PendingSkillID = '';
+    state.globals.DeferAdvance = 0;
+    state.globals.ActionInProgress = 0;
+    state.globals.PendingActor = 0;
+    if (state.globals.BoardFillActive) {
+      state.globals.CanPickGems = 0;
+    } else {
+      state.globals.CanPickGems = 1;
+    }
+    combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+    return true;
+  }
+  devToolingRefreshHandler = refreshCombatSessionFromDevTooling;
   async function loadC3ProjectAssets() {
     assertCombatLayoutDev('loadC3ProjectAssets');
     updateStartupLoadState({ active: true, phase: 'bootstrap', label: 'Loading layout data...', progress: 0.05 });
@@ -2346,6 +3438,7 @@ async function main(){
 
     const enemies = await fetchJson(assetUrl('enemies.json'));
     enemyRows = parseC2ArrayTable(enemies);
+    state.globals.DevToolEnemyCatalog = [...new Set((enemyRows || []).map((row) => String(row?.name || row?.EnemyName || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
     gameState.baseSummary = summaryText(layout, types, enemies);
     out.textContent = gameState.baseSummary + '\n\nLoading images...';
     updateStartupLoadState({ phase: 'bootstrap', label: 'Loading critical visuals...', progress: 0.3 });
@@ -2431,8 +3524,9 @@ async function main(){
         if (!key) return;
         heroCapsuleImages[key] = await loadImage(assetUrl(`images/cap_${key}.png`));
       });
-      const plusPromise = loadImage(FIGMA_PLUS_URL).then(img => img || loadImage(assetUrl('images/plus.png')));
-      const minusPromise = loadImage(FIGMA_MINUS_URL).then(img => img || loadImage(assetUrl('images/minus.png')));
+      const plusPromise = loadImage(assetUrl(HERO_PACK_PLUS_PATH)).then(img => img || loadImage(FIGMA_PLUS_URL));
+      const minusPromise = loadImage(assetUrl(HERO_PACK_MINUS_PATH)).then(img => img || loadImage(FIGMA_MINUS_URL));
+      const closePromise = loadImage(assetUrl(HERO_PACK_CLOSE_OVAL_PATH)).then(img => img || loadImage(FIGMA_HERO_CLOSE_OVAL_URL));
 
       tasks.push(
         ...heroPortraitLoads,
@@ -2444,7 +3538,7 @@ async function main(){
         (async () => { minusIconImage = await minusPromise; })(),
         (async () => { heroBackArrowImage = await loadImage(FIGMA_HERO_BACK_URL); })(),
         (async () => { heroNextArrowImage = await loadImage(FIGMA_HERO_NEXT_URL); })(),
-        (async () => { closeWinOvalImage = await loadImage(FIGMA_HERO_CLOSE_OVAL_URL); })(),
+        (async () => { closeWinOvalImage = await closePromise; })(),
       );
 
       let completed = 0;
@@ -2540,16 +3634,17 @@ async function main(){
 
     layoutState.registerLayout({
       id: 'combat',
-      allowedTransitions: ['base', 'shop', 'intro', 'astralOverlay', 'mapLayout', 'heroLayout', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'collectiblesLayout', 'homesteadLayout', 'chestsLayout'],
-      async onEnter({ resumeSnapshot }) {
+      allowedTransitions: ['base', 'shop', 'intro', 'idleFarmLayout', 'mapLayout', 'heroLayout', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'relicsLayout', 'petsLayout', 'evolutionLayout', 'homesteadLayout', 'chestsLayout', 'storyMock', 'town'],
+      async onEnter({ resumeSnapshot, payload, reason }) {
         const hasRuntimeData =
           Array.isArray(instances) && instances.length > 0 &&
           types && Object.keys(types).length > 0 &&
           Array.isArray(enemyRows) && enemyRows.length > 0;
         const needsBootstrap = !freshCombatBootstrapped || !hasRuntimeData;
-        const needsCombatSeed = !combatSessionSeeded;
+        const freshCombatStart = reason === 'town-click' || !!payload?.freshStart;
+        const needsCombatSeed = freshCombatStart || !combatSessionSeeded;
 
-        validateCombatSnapshot(resumeSnapshot || null, 'onEnter', 'x->1');
+        validateCombatSnapshot((freshCombatStart ? null : resumeSnapshot) || null, 'onEnter', 'x->1');
         console.log('[Layout] Combat activated via LayoutState');
         COMBAT_LAYOUT_READY = true;
         console.log('[LayoutGuard] Combat layout ready');
@@ -2564,9 +3659,10 @@ async function main(){
           freshCombatBootstrapped = true;
           COMBAT_BOOTSTRAP_COMPLETE = true;
         }
-        gateway.resume(resumeSnapshot || null);
+        gateway.resume(freshCombatStart ? null : (resumeSnapshot || null));
         if (needsCombatSeed) {
           initEntities(enemyRows, instances);
+          restoreHeroGemProgressFromStorage();
           assertCombatLayoutDev('StartRound');
           callFunctionWithContext(fnContext, 'StartRound');
           createGemBoard(gridBounds);
@@ -2580,6 +3676,7 @@ async function main(){
             }, 1000);
           }
         }
+        gameState.combatFailExitRequested = false;
         initializeStoryCardLayout('layout1-active');
         eventBus.emit('layout:combat:entered', { restored: Boolean(resumeSnapshot) });
       },
@@ -2587,21 +3684,21 @@ async function main(){
       onExit({ to }) {
         gameState.storyCardLayout.initialized = false;
         const snapshot = gateway.suspend();
-        const transitionLabel = to === 'astralOverlay' ? '1->2' : '1->x';
+        const transitionLabel = to === 'idleFarmLayout' ? '1->2' : '1->x';
         validateCombatSnapshot(snapshot, 'onExit', transitionLabel);
         return snapshot;
       },
     });
     layoutState.registerLayout({
       id: 'mapLayout',
-      allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'collectiblesLayout', 'homesteadLayout'],
+      allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'relicsLayout', 'petsLayout', 'homesteadLayout'],
       onEnter() {
         gameState.overlayVisible = false;
         gameState.mapLayout.panY = 0;
         gameState.mapLayout.tomesLocaleHit = null;
         gameState.mapLayout.artifactsLocaleHit = null;
         gameState.mapLayout.mountsLocaleHit = null;
-        gameState.mapLayout.collectiblesLocaleHit = null;
+        gameState.mapLayout.relicsLocaleHit = null;
         gameState.mapLayout.homesteadLocaleHit = null;
         gameState.mapLayout.closeHit = null;
         const drag = gameState.mapLayout.drag;
@@ -2676,22 +3773,62 @@ async function main(){
       },
     });
     layoutState.registerLayout({
-      id: 'collectiblesLayout',
+      id: 'relicsLayout',
       allowedTransitions: ['chestsLayout', 'combat'],
       onEnter() {
         gameState.overlayVisible = false;
-        gameState.collectiblesLayout.hitZones = null;
-        gameState.collectiblesLayout.selectedIndex = Math.max(
+        gameState.relicsLayout.hitZones = null;
+        gameState.relicsLayout.selectedIndex = Math.max(
           0,
           Math.min(
-            Math.max(0, (gameState.collectiblesLayout.gallery || []).length - 1),
-            Number(gameState.collectiblesLayout.selectedIndex || 0),
+            Math.max(0, (gameState.relicsLayout.gallery || []).length - 1),
+            Number(gameState.relicsLayout.selectedIndex || 0),
           ),
         );
       },
       onActive() {},
       onExit() {
-        gameState.collectiblesLayout.hitZones = null;
+        gameState.relicsLayout.hitZones = null;
+        return null;
+      },
+    });
+    layoutState.registerLayout({
+      id: 'petsLayout',
+      allowedTransitions: ['chestsLayout', 'combat'],
+      onEnter() {
+        gameState.overlayVisible = false;
+        gameState.petsLayout.hitZones = null;
+        gameState.petsLayout.selectedIndex = Math.max(
+          0,
+          Math.min(
+            Math.max(0, (gameState.petsLayout.gallery || []).length - 1),
+            Number(gameState.petsLayout.selectedIndex || 0),
+          ),
+        );
+      },
+      onActive() {},
+      onExit() {
+        gameState.petsLayout.hitZones = null;
+        return null;
+      },
+    });
+    layoutState.registerLayout({
+      id: 'evolutionLayout',
+      allowedTransitions: ['chestsLayout', 'combat'],
+      onEnter() {
+        gameState.overlayVisible = false;
+        gameState.evolutionLayout.hitZones = null;
+        gameState.evolutionLayout.selectedLevel = Math.max(
+          0,
+          Math.min(
+            Math.max(0, (gameState.evolutionLayout.ladder || []).length - 1),
+            Number(gameState.evolutionLayout.selectedLevel || 0),
+          ),
+        );
+      },
+      onActive() {},
+      onExit() {
+        gameState.evolutionLayout.hitZones = null;
         return null;
       },
     });
@@ -2717,7 +3854,7 @@ async function main(){
     });
     layoutState.registerLayout({
       id: 'chestsLayout',
-      allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'collectiblesLayout', 'homesteadLayout'],
+      allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'relicsLayout', 'petsLayout', 'evolutionLayout', 'homesteadLayout'],
       onEnter() {
         gameState.overlayVisible = false;
         gameState.chestsLayout.hitZones = null;
@@ -2770,16 +3907,30 @@ async function main(){
     });
     layoutState.registerLayout({
       id: 'storyMock',
-      allowedTransitions: ['combat'],
-      onEnter() {},
+      allowedTransitions: ['town'],
+      onEnter() {
+        gameState.combatFailExitRequested = false;
+      },
       onActive() {},
       onExit() { return null; },
     });
     layoutState.registerLayout({
-      id: 'astralOverlay',
+      id: 'town',
       allowedTransitions: ['combat'],
       onEnter() {
         gameState.overlayVisible = false;
+        restorePartyToFullHP();
+      },
+      onActive() {},
+      onExit() { return null; },
+    });
+    layoutState.registerLayout({
+      id: 'idleFarmLayout',
+      allowedTransitions: ['combat', 'storyMock'],
+      onEnter() {
+        gameState.overlayVisible = false;
+        startIdleFarmEmissions(performance.now() / 1000);
+        restartIdleFarmSession(performance.now() / 1000);
       },
       onActive() {},
       onExit() { return null; },
@@ -2805,6 +3956,9 @@ async function main(){
     state.globals.DebugGemsMode = params.has('debug_gems') || params.get('debug_gems') === 'true';
     window.__codexGameDevTest = !!state.globals.DevTestMode;
   }
+  state.globals.DevToolingConfig = sanitizeDevToolingConfig(state.globals.DevToolingConfig || {});
+  state.globals.DevCombatSpeedMultiplier = 1;
+  ensureDevToolingModal();
   state.globals.GamePhase = 'BOOTSTRAP';
 
   eventBus.on('nav:clicked', async ({ label }) => {
@@ -2823,7 +3977,7 @@ async function main(){
         return;
       }
       console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->2', trigger: 'astral-flow-click' });
-      await layoutState.requestLayoutChange('astralOverlay', 'nav-astral-flow');
+      await layoutState.requestLayoutChange('idleFarmLayout', 'nav-astral-flow');
       return;
     }
     if (label === 'Hero') {
@@ -2847,18 +4001,18 @@ async function main(){
   eventBus.on('layout:storyMock:click', async () => {
     if (layoutState.getActiveLayoutId() !== 'storyMock') return;
     if (!freshCombatBootstrapped) {
-      console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '0->1', trigger: 'blue-click', blocked: 'bootstrap_loading' });
+      console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '0->town', trigger: 'blue-click', blocked: 'bootstrap_loading' });
       return;
     }
-    console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '0->1', trigger: 'blue-click' });
-    await layoutState.requestLayoutChange('combat', 'story-blue-click');
+    console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '0->town', trigger: 'blue-click' });
+    await layoutState.requestLayoutChange('town', 'story-blue-click');
   });
-  eventBus.on('layout:astralOverlay:click', async () => {
-    if (layoutState.getActiveLayoutId() !== 'astralOverlay') return;
-    console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '2->1', trigger: 'red-click' });
-    await layoutState.requestLayoutChange('combat', 'overlay-red-click');
+  eventBus.on('layout:town:click', async () => {
+    if (layoutState.getActiveLayoutId() !== 'town') return;
+    restorePartyToFullHP();
+    console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: 'town->1', trigger: 'town-click' });
+    await layoutState.requestLayoutChange('combat', 'town-click', { freshStart: true });
   });
-
   if (layoutHarnessEnabled) {
     debugLayoutLog('[Harness] Enabled');
   }
@@ -2972,9 +4126,9 @@ async function main(){
   if (layoutHarnessEnabled && harnessLayoutState) {
     const combatLayout = {
       id: 'combat',
-      allowedTransitions: ['astralOverlay'],
-      onEnter({ resumeSnapshot }) {
-        const snapshot = resumeSnapshot || null;
+      allowedTransitions: ['astralOverlay', 'town'],
+      onEnter({ resumeSnapshot, payload, reason }) {
+        const snapshot = (reason === 'town-click' || !!payload?.freshStart) ? null : (resumeSnapshot || null);
         harnessCombatGateway.resume(snapshot);
         harnessEventBus.emit('layout:combat:entered', { restored: Boolean(snapshot) });
       },
@@ -2985,10 +4139,23 @@ async function main(){
     };
     const storyMockLayout = {
       id: 'storyMock',
-      allowedTransitions: ['combat'],
+      allowedTransitions: ['town'],
       onEnter() {
         gameState.overlayVisible = false;
         debugLayoutLog('[Harness] storyMock active');
+      },
+      onActive() {},
+      onExit() {
+        return null;
+      },
+    };
+    const townLayout = {
+      id: 'town',
+      allowedTransitions: ['combat'],
+      onEnter() {
+        gameState.overlayVisible = false;
+        restorePartyToFullHP();
+        debugLayoutLog('[Harness] town active');
       },
       onActive() {},
       onExit() {
@@ -3010,11 +4177,16 @@ async function main(){
 
     harnessLayoutState.registerLayout(combatLayout);
     harnessLayoutState.registerLayout(storyMockLayout);
+    harnessLayoutState.registerLayout(townLayout);
     harnessLayoutState.registerLayout(astralOverlayLayout);
-    debugLayoutLog('[Harness] Layouts registered: storyMock, astralOverlay');
+    debugLayoutLog('[Harness] Layouts registered: storyMock, town, astralOverlay');
 
     harnessEventBus.on('layout:storyMock:click', async () => {
-      await harnessLayoutState.requestLayoutChange('combat', 'storyMock-click', { source: 'storyMock' });
+      await harnessLayoutState.requestLayoutChange('town', 'storyMock-click', { source: 'storyMock' });
+    });
+    harnessEventBus.on('layout:town:click', async () => {
+      restorePartyToFullHP();
+      await harnessLayoutState.requestLayoutChange('combat', 'town-click', { source: 'town', freshStart: true });
     });
     harnessEventBus.on('nav:astral-flow', async () => {
       if (harnessLayoutState.getActiveLayoutId() !== 'combat') return;
@@ -3108,7 +4280,7 @@ async function main(){
   }
 
   function getHeroUIDByIndex(idx) {
-    const hero = state.entities.find(e => e.kind === 'hero' && e.heroIndex === idx);
+    const hero = state.entities.find(e => e.kind === 'hero' && (e.heroDisplaySlot === idx || e.heroIndex === idx));
     return hero ? hero.uid : 0;
   }
 
@@ -3286,7 +4458,7 @@ async function main(){
       gameState.mapLayout.tomesLocaleHit = null;
       gameState.mapLayout.artifactsLocaleHit = null;
       gameState.mapLayout.mountsLocaleHit = null;
-      gameState.mapLayout.collectiblesLocaleHit = null;
+      gameState.mapLayout.relicsLocaleHit = null;
       gameState.mapLayout.homesteadLocaleHit = null;
       ctx.fillStyle = '#ffffff';
       ctx.font = '500 14px Arial';
@@ -3596,7 +4768,7 @@ async function main(){
       };
       return;
     }
-    if (layoutId === 'collectiblesLayout') {
+    if (layoutId === 'relicsLayout') {
       const viewWidth = canvas.width / dpr;
       const viewHeight = canvas.height / dpr;
       const palette = {
@@ -3658,37 +4830,508 @@ async function main(){
       ctx.textAlign = 'left';
       ctx.fillStyle = palette.ink;
       ctx.font = '700 18px Arial';
-      ctx.fillText('Collectibles Gallery (Scaffold)', panel.x + 14, panel.y + 58);
+      ctx.fillText('Relics Gallery (Scaffold)', panel.x + 14, panel.y + 58);
       ctx.fillStyle = palette.muted;
       ctx.font = '500 11px Arial';
-      ctx.fillText('Sibling progression gallery with deterministic collection-state metadata.', panel.x + 14, panel.y + 76);
+      ctx.fillText('Sibling progression gallery with deterministic relic metadata hooks.', panel.x + 14, panel.y + 76);
 
-      const gallery = Array.isArray(gameState.collectiblesLayout.gallery) ? gameState.collectiblesLayout.gallery : [];
-      const selectedIndex = Math.max(0, Math.min(gallery.length - 1, Number(gameState.collectiblesLayout.selectedIndex || 0)));
+      const gallery = Array.isArray(gameState.relicsLayout.gallery) ? gameState.relicsLayout.gallery : [];
+      const selectedIndex = Math.max(0, Math.min(gallery.length - 1, Number(gameState.relicsLayout.selectedIndex || 0)));
       const cardHitZones = [];
       let cursorY = panel.y + 90;
       const cardGap = 8;
       for (let i = 0; i < gallery.length; i += 1) {
-        const collectible = gallery[i] || {};
+        const relic = gallery[i] || {};
         const card = { x: panel.x + 12, y: cursorY, w: panel.w - 24, h: 58 };
-        const discovered = Boolean(collectible.discovered);
-        const passive = collectible.passiveHook || null;
+        const discovered = Boolean(relic.discovered);
+        const passive = relic.passiveHook || null;
         roundRect(card.x, card.y, card.w, card.h, 10, i === selectedIndex ? palette.selected : '#f7f0fb', '#ceb9da');
         ctx.fillStyle = palette.ink;
         ctx.font = '700 13px Arial';
-        ctx.fillText(discovered ? String(collectible.name || 'Unknown Collectible') : 'Locked Collectible', card.x + 10, card.y + 20);
+        ctx.fillText(discovered ? String(relic.name || 'Unknown Relic') : 'Locked Relic', card.x + 10, card.y + 20);
         ctx.fillStyle = palette.muted;
         ctx.font = '600 10px Arial';
-        ctx.fillText(`Rarity: ${String(collectible.rarity || 'Common')}`, card.x + 10, card.y + 35);
+        ctx.fillText(`Rarity: ${String(relic.rarity || 'Common')}`, card.x + 10, card.y + 35);
         const passiveText = passive
           ? `${String(passive.key || '')} ${String(passive.mode || '')} ${Number(passive.value || 0)}`
           : 'No passive hook';
         ctx.fillText(`Passive: ${passiveText}`, card.x + 136, card.y + 20);
-        ctx.fillText(`Set: ${String(collectible.setTag || 'none')}`, card.x + 136, card.y + 35);
+        ctx.fillText(`Set: ${String(relic.setTag || 'none')}`, card.x + 136, card.y + 35);
         cardHitZones.push(card);
         cursorY += card.h + cardGap;
       }
-      gameState.collectiblesLayout.hitZones = {
+      gameState.relicsLayout.hitZones = {
+        close,
+        combatBack,
+        cards: cardHitZones,
+      };
+      return;
+    }
+    if (layoutId === 'petsLayout') {
+      const viewWidth = canvas.width / dpr;
+      const viewHeight = canvas.height / dpr;
+      const palette = {
+        bg0: '#152314',
+        bg1: '#314128',
+        panel: '#eef4e7',
+        panelEdge: '#b8c9a8',
+        ink: '#243119',
+        muted: '#5f7051',
+        selected: '#dcecc9',
+      };
+      const roundRect = (x, y, w, h, r, fill, stroke) => {
+        const radius = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + w - radius, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+        ctx.lineTo(x + w, y + h - radius);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+        ctx.lineTo(x + radius, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+        if (fill) {
+          ctx.fillStyle = fill;
+          ctx.fill();
+        }
+        if (stroke) {
+          ctx.strokeStyle = stroke;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      };
+      ctx.clearRect(0, 0, viewWidth, viewHeight);
+      const grad = ctx.createLinearGradient(0, 0, 0, viewHeight);
+      grad.addColorStop(0, palette.bg0);
+      grad.addColorStop(1, palette.bg1);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, viewWidth, viewHeight);
+
+      const panelPad = 14;
+      const panel = {
+        x: panelPad,
+        y: 16,
+        w: Math.max(260, viewWidth - panelPad * 2),
+        h: Math.max(360, viewHeight - 34),
+      };
+      roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
+      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
+      const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
+      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
+      roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#ddead0', '#9cb581');
+      ctx.fillStyle = palette.ink;
+      ctx.font = '700 11px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Back To Combat', combatBack.x + combatBack.w / 2, combatBack.y + 18);
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = palette.ink;
+      ctx.font = '700 18px Arial';
+      ctx.fillText('Pets Gallery (Scaffold)', panel.x + 14, panel.y + 58);
+      ctx.fillStyle = palette.muted;
+      ctx.font = '500 11px Arial';
+      ctx.fillText('Companion progression shell with stable milestone and deployment metadata.', panel.x + 14, panel.y + 76);
+
+      const gallery = Array.isArray(gameState.petsLayout.gallery) ? gameState.petsLayout.gallery : [];
+      const selectedIndex = Math.max(0, Math.min(gallery.length - 1, Number(gameState.petsLayout.selectedIndex || 0)));
+      const cardHitZones = [];
+      let cursorY = panel.y + 90;
+      const cardGap = 8;
+      for (let i = 0; i < gallery.length; i += 1) {
+        const pet = gallery[i] || {};
+        const card = { x: panel.x + 12, y: cursorY, w: panel.w - 24, h: 58 };
+        const discovered = Boolean(pet.discovered);
+        const passive = pet.passiveHook || null;
+        roundRect(card.x, card.y, card.w, card.h, 10, i === selectedIndex ? palette.selected : '#f4f8ef', '#c8d7bb');
+        ctx.fillStyle = palette.ink;
+        ctx.font = '700 13px Arial';
+        ctx.fillText(discovered ? String(pet.name || 'Unknown Pet') : 'Locked Pet', card.x + 10, card.y + 20);
+        ctx.fillStyle = palette.muted;
+        ctx.font = '600 10px Arial';
+        ctx.fillText(`Rarity: ${String(pet.rarity || 'Common')}`, card.x + 10, card.y + 35);
+        const passiveText = passive
+          ? `${String(passive.key || '')} ${String(passive.mode || '')} ${Number(passive.value || 0)} / ${Number(passive.cadenceTurns || 0)}t`
+          : 'No passive hook';
+        ctx.fillText(`Passive: ${passiveText}`, card.x + 136, card.y + 20);
+        ctx.fillText(`Milestones: ${Number(pet.milestoneSlots || 0)} · Deploy: ${Number(pet.deploymentSlots || 0)}`, card.x + 136, card.y + 35);
+        cardHitZones.push(card);
+        cursorY += card.h + cardGap;
+      }
+      gameState.petsLayout.hitZones = {
+        close,
+        combatBack,
+        cards: cardHitZones,
+      };
+      return;
+    }
+    if (layoutId === 'idleFarmLayout') {
+      const viewWidth = canvas.width / dpr;
+      const viewHeight = canvas.height / dpr;
+      const layout = gameState.idleFarmLayout || {};
+      const nowSec = performance.now() / 1000;
+      const emissionState = updateIdleFarmEmissions(nowSec) || startIdleFarmEmissions(nowSec);
+      const session = updateIdleFarmSession(nowSec) || ensureIdleFarmSession(nowSec);
+      const rewards = layout.rewardLedger || {
+        unclaimedEnergy: 0,
+        claimedEnergyTotal: 0,
+        unclaimedTokens: { SAND: 0, BONE_CHIP: 0, SLIME: 0, HORN: 0, SHELL: 0 },
+        claimedTokensTotal: { SAND: 0, BONE_CHIP: 0, SLIME: 0, HORN: 0, SHELL: 0 },
+      };
+      const palette = {
+        bg0: '#120f0d',
+        bg1: '#302117',
+        panel: '#efe2cb',
+        panelEdge: '#b99b6b',
+        ink: '#2d1d12',
+        muted: '#715642',
+        accent: '#d86d2f',
+        ally: '#8ecf78',
+        enemy: '#da7c6f',
+        battle0: '#3c2a1f',
+        battle1: '#7d5838',
+        ground: '#c39a63',
+      };
+      const roundRect = (x, y, w, h, r, fill, stroke) => {
+        const radius = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + w - radius, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+        ctx.lineTo(x + w, y + h - radius);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+        ctx.lineTo(x + radius, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+        if (fill) {
+          ctx.fillStyle = fill;
+          ctx.fill();
+        }
+        if (stroke) {
+          ctx.strokeStyle = stroke;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      };
+      ctx.clearRect(0, 0, viewWidth, viewHeight);
+      const grad = ctx.createLinearGradient(0, 0, 0, viewHeight);
+      grad.addColorStop(0, palette.bg0);
+      grad.addColorStop(1, palette.bg1);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, viewWidth, viewHeight);
+
+      const panel = { x: 14, y: 16, w: Math.max(280, viewWidth - 28), h: Math.max(360, viewHeight - 34) };
+      roundRect(panel.x, panel.y, panel.w, panel.h, 16, palette.panel, palette.panelEdge);
+
+      const restartBtn = { x: panel.x + 12, y: panel.y + 12, w: 92, h: 28 };
+      const combatBack = { x: panel.x + panel.w - 232, y: panel.y + 12, w: 108, h: 28 };
+      const baseBack = { x: panel.x + panel.w - 116, y: panel.y + 12, w: 104, h: 28 };
+      roundRect(restartBtn.x, restartBtn.y, restartBtn.w, restartBtn.h, 8, '#efe5cf', '#b89b68');
+      roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 8, '#e6dcc8', '#a78f65');
+      roundRect(baseBack.x, baseBack.y, baseBack.w, baseBack.h, 8, '#e6dcc8', '#a78f65');
+      ctx.fillStyle = palette.ink;
+      ctx.font = '700 11px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Restart Run', restartBtn.x + restartBtn.w / 2, restartBtn.y + 18);
+      ctx.fillText('To Combat', combatBack.x + combatBack.w / 2, combatBack.y + 18);
+      ctx.fillText('To Camp', baseBack.x + baseBack.w / 2, baseBack.y + 18);
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = palette.ink;
+      ctx.font = '700 20px Arial';
+      ctx.fillText('Idle War Effort', panel.x + 14, panel.y + 60);
+
+      const battleFrame = { x: panel.x + 12, y: panel.y + 88, w: panel.w - 24, h: Math.min(panel.h - 178, Math.floor((panel.w - 24) * 9 / 16)) };
+      roundRect(battleFrame.x, battleFrame.y, battleFrame.w, battleFrame.h, 14, '#1e1510', '#7c5a37');
+      const battleGrad = ctx.createLinearGradient(0, battleFrame.y, 0, battleFrame.y + battleFrame.h);
+      battleGrad.addColorStop(0, palette.battle0);
+      battleGrad.addColorStop(1, palette.battle1);
+      ctx.fillStyle = battleGrad;
+      ctx.fillRect(battleFrame.x + 2, battleFrame.y + 2, battleFrame.w - 4, battleFrame.h - 4);
+      ctx.fillStyle = palette.ground;
+      ctx.globalAlpha = 0.55;
+      ctx.fillRect(battleFrame.x + 2, battleFrame.y + battleFrame.h * 0.72, battleFrame.w - 4, battleFrame.h * 0.26);
+      ctx.globalAlpha = 1;
+
+      const heroes = Array.isArray(session.heroes) ? session.heroes : [];
+      const easeInCubic = (t) => t * t * t;
+      const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+      const easeInOutCubic = (t) =>
+        t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      const getLaneAction = (laneIndex) => {
+        const actions = Array.isArray(session.currentActions) ? session.currentActions : [];
+        const action = actions[laneIndex] || null;
+        if (!action) return { action: null, t: 0 };
+        const age = Math.max(0, nowSec - Number(action.startSec || 0));
+        const duration = Math.max(0.001, Number((action.endSec - action.startSec) || 1.05));
+        return { action, t: Math.max(0, Math.min(1, age / duration)) };
+      };
+      const heroBaseW = battleFrame.w * 0.18;
+      const heroBaseH = heroBaseW * 0.7;
+      const computeLungeOffset = (t, direction, lungeDist) => {
+        if (!(t >= 0 && t <= 1)) return 0;
+        if (t < 0.18) return -direction * 6 * easeInCubic(t / 0.18);
+        if (t < 0.62) return (-direction * 6) + (direction * (lungeDist + 6) * easeOutCubic((t - 0.18) / 0.44));
+        return direction * lungeDist * (1 - easeInOutCubic((t - 0.62) / 0.38));
+      };
+      const computeIntroOffset = (elapsedSec, direction, distance, durationSec = 1.2) => {
+        const t = Math.max(0, Math.min(1, Number(elapsedSec || 0) / Math.max(0.001, durationSec)));
+        return direction * distance * (1 - easeOutCubic(t));
+      };
+      const heroEntryTimes = Array.isArray(session.heroEnterAtSec) ? session.heroEnterAtSec : [];
+      const heroSlots = [
+        { x: battleFrame.x + battleFrame.w * 0.12, y: battleFrame.y + battleFrame.h * 0.4 - heroBaseH + heroBaseH / 3 },
+        { x: battleFrame.x + battleFrame.w * 0.18, y: battleFrame.y + battleFrame.h * 0.68 + heroBaseH / 10 },
+      ];
+      heroes.slice(0, 2).forEach((hero, idx) => {
+        const heroEnterAtSec = Number(heroEntryTimes[idx] ?? session.startedAtSec ?? nowSec);
+        if (nowSec < heroEnterAtSec) return;
+        const lane = getLaneAction(idx);
+        const currentAction = lane.action;
+        const actionT = lane.t;
+        const slot = heroSlots[idx];
+        const portrait = heroCapsuleImages[String(hero.baseName || hero.displayName || '')] || null;
+        const isStriking = !!currentAction && String(currentAction.actorSide || '') === 'hero' && Number(currentAction.heroIndex || 0) === idx;
+        const isHit = !!currentAction
+          && String(currentAction.actorSide || '') === 'enemy'
+          && Number(currentAction.heroIndex || 0) === idx
+          && actionT >= 0.28
+          && actionT <= 0.62;
+        const heroW = heroBaseW;
+        const heroH = heroBaseH;
+        const heroIntroOffset = computeIntroOffset(nowSec - heroEnterAtSec, -1, Math.max(48, heroBaseW * 0.75), 1.25);
+        const offsetX = isStriking ? computeLungeOffset(actionT, 1, 22) : 0;
+        const drawX = slot.x - heroW / 2 + heroIntroOffset + offsetX;
+        const drawY = slot.y - heroH / 2;
+        if (portrait) {
+          ctx.drawImage(portrait, drawX, drawY, heroW, heroH);
+          if (isHit) {
+            ctx.save();
+            ctx.globalAlpha = 0.4;
+            ctx.filter = 'brightness(0) invert(1)';
+            ctx.drawImage(portrait, drawX, drawY, heroW, heroH);
+            ctx.restore();
+          }
+        } else {
+          roundRect(drawX, drawY, heroW, heroH, 12, '#d7ead0', '#95b48a');
+          if (isHit) {
+            ctx.save();
+            ctx.globalAlpha = 0.32;
+            roundRect(drawX, drawY, heroW, heroH, 12, '#ffffff', '#ffffff');
+            ctx.restore();
+          }
+        }
+      });
+
+      const enemySlotsState = Array.isArray(session.enemies) ? session.enemies.slice(0, 2) : [];
+      const enemyAnchors = [
+        { x: battleFrame.x + battleFrame.w * 0.76, y: heroSlots[0].y },
+        { x: battleFrame.x + battleFrame.w * 0.81, y: heroSlots[1].y },
+      ];
+      if (enemySlotsState.length) {
+        enemySlotsState.forEach((enemy, idx) => {
+          if (!enemy || !enemy.alive) return;
+          const lane = getLaneAction(idx);
+          const currentAction = lane.action;
+          const actionT = lane.t;
+          const enemySprite = enemy ? enemySpriteImages[String(enemy.name || '').toLowerCase()] : null;
+          const anchor = enemyAnchors[idx] || enemyAnchors[enemyAnchors.length - 1];
+          const enemyW = battleFrame.w * (idx === 0 ? 0.16 : 0.14);
+          const enemyH = enemyW * 1.05;
+          const isAttacking = !!currentAction && String(currentAction.actorSide || '') === 'enemy' && String(currentAction.enemyId || '') === String(enemy.enemyId || '');
+          const isHit = !!currentAction
+            && String(currentAction.actorSide || '') === 'hero'
+            && String(currentAction.enemyId || '') === String(enemy.enemyId || '')
+            && actionT >= 0.28
+            && actionT <= 0.62;
+          const shiftX = isAttacking ? computeLungeOffset(actionT, -1, 34) : 0;
+          const enemyIntroOffset = computeIntroOffset(nowSec - Number(enemy.spawnedAtSec || nowSec), 1, Math.max(52, enemyW * 0.8), 0.95);
+          const drawX = anchor.x - enemyW / 2 + enemyIntroOffset + shiftX;
+          const drawY = anchor.y - enemyH / 2;
+          if (enemySprite) {
+            ctx.drawImage(enemySprite, drawX, drawY, enemyW, enemyH);
+            if (isHit) {
+              ctx.save();
+              ctx.globalAlpha = 0.4;
+              ctx.filter = 'brightness(0) invert(1)';
+              ctx.drawImage(enemySprite, drawX, drawY, enemyW, enemyH);
+              ctx.restore();
+            }
+          } else {
+            roundRect(drawX, drawY, enemyW, enemyH, 12, '#f0cbc3', '#b97d72');
+            if (isHit) {
+              ctx.save();
+              ctx.globalAlpha = 0.32;
+              roundRect(drawX, drawY, enemyW, enemyH, 12, '#ffffff', '#ffffff');
+              ctx.restore();
+            }
+          }
+        });
+      }
+
+      const rewardStrip = { x: panel.x + 12, y: battleFrame.y + battleFrame.h + 14, w: panel.w - 24, h: panel.h - ((battleFrame.y + battleFrame.h + 14) - panel.y) - 12 };
+      roundRect(rewardStrip.x, rewardStrip.y, rewardStrip.w, rewardStrip.h, 12, '#f7efdf', '#d2bea0');
+      const chipGap = 10;
+      const chipColumns = 3;
+      const chipW = Math.max(84, Math.floor((rewardStrip.w - 24 - chipGap * (chipColumns - 1)) / chipColumns));
+      const chipH = 34;
+      const chipY = rewardStrip.y + 14;
+      const chips = [
+        { label: 'Energy', value: Number(rewards.unclaimedEnergy || 0), fill: '#f4d38d' },
+        { label: 'Sand', value: Number(rewards.unclaimedTokens?.SAND || 0), fill: '#e9d1a8' },
+        { label: 'Bone Chips', value: Number(rewards.unclaimedTokens?.BONE_CHIP || 0), fill: '#e4d9cc' },
+        { label: 'Slime', value: Number(rewards.unclaimedTokens?.SLIME || 0), fill: '#d4ebc9' },
+        { label: 'Horn', value: Number(rewards.unclaimedTokens?.HORN || 0), fill: '#e7cfaa' },
+        { label: 'Shell', value: Number(rewards.unclaimedTokens?.SHELL || 0), fill: '#d6e3ea' },
+      ];
+      chips.forEach((chip, idx) => {
+        const col = idx % chipColumns;
+        const row = Math.floor(idx / chipColumns);
+        const rect = {
+          x: rewardStrip.x + 12 + col * (chipW + chipGap),
+          y: chipY + row * (chipH + 8),
+          w: chipW,
+          h: chipH,
+        };
+        roundRect(rect.x, rect.y, rect.w, rect.h, 10, chip.fill, '#b89b68');
+        ctx.fillStyle = palette.ink;
+        ctx.font = '700 11px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(chip.label || ''), rect.x + rect.w / 2, rect.y + 14);
+        ctx.font = '700 14px Arial';
+        ctx.fillText(String(chip.value || 0), rect.x + rect.w / 2, rect.y + 28);
+      });
+      const collectBtn = { x: rewardStrip.x + rewardStrip.w - 118, y: rewardStrip.y + rewardStrip.h - 38, w: 104, h: 24 };
+      const hasUnclaimedRewards = Number(rewards.unclaimedEnergy || 0) > 0 || Object.values(rewards.unclaimedTokens || {}).some((value) => Number(value || 0) > 0);
+      roundRect(collectBtn.x, collectBtn.y, collectBtn.w, collectBtn.h, 8, hasUnclaimedRewards ? '#f8ddb0' : '#efe5cf', '#b89b68');
+      ctx.fillStyle = palette.ink;
+      ctx.font = '700 10px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Collect', collectBtn.x + collectBtn.w / 2, collectBtn.y + 16);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = palette.muted;
+      ctx.font = '600 10px Arial';
+      const emissionElapsedSec = Math.floor(Number(emissionState?.elapsedSec || 0));
+      ctx.fillText(`Elapsed ${emissionElapsedSec}s · idle emission every ~18s`, rewardStrip.x + 12, rewardStrip.y + rewardStrip.h - 12);
+
+      gameState.idleFarmLayout.hitZones = {
+        restartBtn,
+        collectBtn,
+        combatBack,
+        baseBack,
+      };
+      drawHUD();
+      return;
+    }
+    if (layoutId === 'evolutionLayout') {
+      const viewWidth = canvas.width / dpr;
+      const viewHeight = canvas.height / dpr;
+      const palette = {
+        bg0: '#15203a',
+        bg1: '#233b64',
+        panel: '#eef3fb',
+        panelEdge: '#aec0df',
+        ink: '#233759',
+        muted: '#627999',
+        selected: '#d9e6fb',
+      };
+      const roundRect = (x, y, w, h, r, fill, stroke) => {
+        const radius = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + w - radius, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+        ctx.lineTo(x + w, y + h - radius);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+        ctx.lineTo(x + radius, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+        if (fill) {
+          ctx.fillStyle = fill;
+          ctx.fill();
+        }
+        if (stroke) {
+          ctx.strokeStyle = stroke;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      };
+      ctx.clearRect(0, 0, viewWidth, viewHeight);
+      const grad = ctx.createLinearGradient(0, 0, 0, viewHeight);
+      grad.addColorStop(0, palette.bg0);
+      grad.addColorStop(1, palette.bg1);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, viewWidth, viewHeight);
+
+      const panelPad = 14;
+      const panel = {
+        x: panelPad,
+        y: 16,
+        w: Math.max(260, viewWidth - panelPad * 2),
+        h: Math.max(360, viewHeight - 34),
+      };
+      roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
+      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
+      const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
+      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
+      roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#dde8f9', '#97add0');
+      ctx.fillStyle = palette.ink;
+      ctx.font = '700 11px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Back To Combat', combatBack.x + combatBack.w / 2, combatBack.y + 18);
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = palette.ink;
+      ctx.font = '700 18px Arial';
+      ctx.fillText('Evolution Tree (Scaffold)', panel.x + 14, panel.y + 58);
+      ctx.fillStyle = palette.muted;
+      ctx.font = '500 11px Arial';
+      ctx.fillText('Seven-step soft-currency ladder with future hero research gate seams.', panel.x + 14, panel.y + 76);
+
+      const ladder = Array.isArray(gameState.evolutionLayout.ladder) ? gameState.evolutionLayout.ladder : [];
+      const selectedLevel = Math.max(0, Math.min(ladder.length - 1, Number(gameState.evolutionLayout.selectedLevel || 0)));
+      const cardHitZones = [];
+      let cursorY = panel.y + 90;
+      const cardGap = 8;
+      for (let i = 0; i < ladder.length; i += 1) {
+        const step = ladder[i] || {};
+        const card = { x: panel.x + 12, y: cursorY, w: panel.w - 24, h: 52 };
+        roundRect(card.x, card.y, card.w, card.h, 10, i === selectedLevel ? palette.selected : '#f5f8fe', '#c1cfe4');
+        ctx.fillStyle = palette.ink;
+        ctx.font = '700 12px Arial';
+        ctx.fillText(`Lv.${Number(step.level || i + 1)} · ${String(step.stat || 'Stat')}`, card.x + 10, card.y + 18);
+        ctx.fillStyle = palette.muted;
+        ctx.font = '600 10px Arial';
+        ctx.fillText(String(step.bonusText || 'Placeholder bonus'), card.x + 10, card.y + 34);
+        ctx.fillText(
+          `${String(step.softCurrency || 'Currency')} ${Number(step.cost || 0)} · ${String(step.status || 'preview-open')}`,
+          card.x + 182,
+          card.y + 34,
+        );
+        cardHitZones.push(card);
+        cursorY += card.h + cardGap;
+      }
+
+      const gates = Array.isArray(gameState.evolutionLayout.researchGates) ? gameState.evolutionLayout.researchGates : [];
+      ctx.fillStyle = palette.ink;
+      ctx.font = '700 11px Arial';
+      ctx.fillText('Future Skill-Research Gates', panel.x + 14, cursorY + 16);
+      ctx.fillStyle = palette.muted;
+      ctx.font = '600 10px Arial';
+      gates.forEach((gate, idx) => {
+        ctx.fillText(
+          `${String(gate.hero || 'Hero')} · ${String(gate.node || 'Node')} · unlock Lv.${Number(gate.unlockLevel || 0)} · ${String(gate.state || 'future-research')}`,
+          panel.x + 14,
+          cursorY + 34 + (idx * 14),
+        );
+      });
+
+      gameState.evolutionLayout.hitZones = {
         close,
         combatBack,
         cards: cardHitZones,
@@ -4221,19 +5864,13 @@ async function main(){
         ctx.fillText(String(lines[1] || ''), bodyText.x, bodyText.line2Y);
         ctx.fillText(String(lines[2] || ''), bodyText.x, bodyText.line3Y);
       });
-      if (closeWinOvalImage) {
-        ctx.drawImage(closeWinOvalImage, closeBtn.x, closeBtn.y, closeBtn.w, closeBtn.h);
-      } else {
-        roundRect(closeBtn.x, closeBtn.y, closeBtn.w, closeBtn.h, closeRadius, '#d9d9d9', null);
-      }
-      ctx.fillStyle = '#111111';
-      ctx.font = `900 ${sf(14, 10)}px Arial Black`;
-      ctx.textAlign = 'center';
-      ctx.fillText('X', closeBtn.x + closeBtn.w / 2, closeBtn.y + closeRadius + ss(4));
+      drawHeroStyleCloseControl(ctx, closeBtn, closeWinOvalImage, '#111111');
       return;
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = layoutId === 'storyMock' ? '#1557ff' : '#d52525';
+    ctx.fillStyle = layoutId === 'storyMock'
+      ? '#1557ff'
+      : (layoutId === 'town' ? '#6d4b2f' : '#d52525');
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#ffffff';
     ctx.font = '600 18px Arial';
@@ -4242,7 +5879,9 @@ async function main(){
     const startupLoading = layoutId === 'storyMock' && !freshCombatBootstrapped;
     ctx.fillText(
       layoutId === 'storyMock'
-        ? (startupLoading ? 'Story Mock (loading...)' : 'Story Mock (tap to enter combat)')
+        ? (startupLoading ? 'Story Mock (loading...)' : 'Story Mock (tap to enter town)')
+        : layoutId === 'town'
+          ? 'Town (tap to enter combat)'
         : 'Astral Overlay (click to return to combat)',
       (canvas.width / dpr) / 2,
       (canvas.height / dpr) / 2
@@ -4274,6 +5913,11 @@ async function main(){
       ctx.font = '500 10px monospace';
       ctx.textAlign = 'left';
       ctx.fillText(RUNTIME_FINGERPRINT.label, 8, 14);
+    } else if (layoutId === 'town') {
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.font = '600 12px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Party restored. Tap to continue back into combat.', (canvas.width / dpr) / 2, (canvas.height / dpr) / 2 + 24);
     }
     ctx.textAlign = 'left';
   }
@@ -4366,18 +6010,24 @@ async function main(){
       drawStartupLoadingFrame();
       return;
     }
+    if (state.globals.DevToolingPaused) {
+      lastFrameTime = performance.now();
+      return;
+    }
 
     const now = performance.now();
-    const dt = dtOverride != null
+    const dtBase = dtOverride != null
       ? dtOverride
       : Math.min(0.05, Math.max(0.001, (now - lastFrameTime) / 1000));
+    const dt = dtOverride != null
+      ? dtBase
+      : dtBase * Math.max(0.25, Number(state.globals.DevCombatSpeedMultiplier || 1));
     lastFrameTime = now;
     if (!state.globals.time) state.globals.time = 0;
     state.globals.time += dt;
     if (state.globals.RegenTickCounter == null) state.globals.RegenTickCounter = 0;
     if (state.globals.RegenTickTimer == null) state.globals.RegenTickTimer = 0;
-    // Enemy DoT ticks removed (DoT feature disabled)
-    // Party Regen ticks (Kojonn light green effect)
+    // Party and enemy over-time ticks share one cadence owner.
     state.globals.RegenTickTimer += dt;
     while (state.globals.RegenTickTimer >= 3) {
       state.globals.RegenTickTimer -= 3;
@@ -4431,6 +6081,50 @@ async function main(){
           }
         }
         if (list.length === 0) delete state.globals.PartyRegens;
+      }
+      const enemyDots = state.globals.EnemyDamageOverTime;
+      if (enemyDots && enemyDots.length) {
+        for (let i = enemyDots.length - 1; i >= 0; i--) {
+          const dot = enemyDots[i];
+          if (!dot || dot.remainingFires <= 0) {
+            enemyDots.splice(i, 1);
+            continue;
+          }
+          if (dot.totalDamageRemaining != null && Number(dot.totalDamageRemaining || 0) <= 0) {
+            enemyDots.splice(i, 1);
+            continue;
+          }
+          const enemy = callFunctionWithContext(fnContext, 'GetActorByUID', dot.targetUID);
+          if (!enemy || Number(enemy.hp || 0) <= 0) {
+            enemyDots.splice(i, 1);
+            continue;
+          }
+          if (tickNow >= (dot.nextFireTick || 0)) {
+            let dmg = 1;
+            if (dot.totalDamageRemaining != null && dot.remainingFires > 0) {
+              const remaining = Math.max(0, Math.floor(dot.totalDamageRemaining));
+              if (remaining <= 0) {
+                enemyDots.splice(i, 1);
+                continue;
+              }
+              const fires = Math.max(1, Math.floor(dot.remainingFires));
+              const base = Math.floor(remaining / fires);
+              const extra = (remaining % fires) > 0 ? 1 : 0;
+              dmg = Math.max(1, base + extra);
+              dot.totalDamageRemaining = Math.max(0, remaining - dmg);
+            } else {
+              dmg = Math.max(1, Math.round(dot.damagePerFire || 1));
+            }
+            state.globals.NextHitFlashTone = 'purple';
+            callFunctionWithContext(fnContext, 'ApplyDamageToTarget', dot.targetUID, dmg);
+            dot.remainingFires -= 1;
+            dot.nextFireTick = (dot.nextFireTick || tickNow) + (dot.firesEveryTicks || 1);
+            if (dot.remainingFires <= 0) {
+              enemyDots.splice(i, 1);
+            }
+          }
+        }
+        if (enemyDots.length === 0) delete state.globals.EnemyDamageOverTime;
       }
     }
     if (state.globals.BattleStartActive) {
@@ -4687,6 +6381,34 @@ async function main(){
             }
           }
           if (!casino.current && casino.index >= casino.queue.length) {
+            const mergeSources = (casino.goldMergeSources || [])
+              .map((item) => {
+                if (Number.isFinite(Number(item?.cellC)) && Number.isFinite(Number(item?.cellR))) {
+                  const pos = getCellWorldPos(Number(item.cellC), Number(item.cellR));
+                  return { x: pos.x, y: pos.y, color: Number(item.color ?? YELLOW_COLOR) };
+                }
+                return {
+                  x: Number(item?.x || 0),
+                  y: Number(item?.y || 0),
+                  color: Number(item?.color ?? YELLOW_COLOR),
+                };
+              })
+              .filter((item) => Number.isFinite(item.x) && Number.isFinite(item.y));
+            const shouldPlayGoldMerge = mergeSources.length > 0;
+            if (shouldPlayGoldMerge) {
+              startGemMergeFx({
+                target: casino.goldMergeTarget || getGoldLabelTargetWorld(),
+                scaleOut: false,
+                startScale: 1.5,
+                sourceItems: mergeSources,
+              });
+              if (gameState.gemMergeFx && gameState.gemMergeFx.active) {
+                gameState.gemMergeFx.goldAward = Math.max(0, Number(casino.pendingGoldAward || 0));
+                gameState.gemMergeFx.releaseGate = {};
+                state.globals.CanPickGems = 0;
+                state.globals.IsPlayerBusy = 1;
+              }
+            }
             casino.active = false;
             casino.phase = 'idle';
             casino.ghost = null;
@@ -4701,10 +6423,13 @@ async function main(){
               state.entities.length > 0 &&
               state.globals.TurnPhase === 0 &&
               (state.globals.ActionLockUntil || 0) <= (state.globals.time || 0);
-            applyTurnGateIntent(createYellowSequenceCompletion, {
-              handoffPending,
-              canRestorePickability,
-            });
+            if (!shouldPlayGoldMerge) {
+              const pendingGoldAward = Math.max(0, Number(casino.pendingGoldAward || 0));
+              if (pendingGoldAward > 0) {
+                state.globals.goldTotal = Number(state.globals.goldTotal || 0) + pendingGoldAward;
+              }
+              applyTurnGateIntent(getYellowSequenceCompletionIntent);
+            }
             if (canRestorePickability) {
               if (isGemDebugEnabled()) {
                 gemDebugLog('[RESTORE_PICKABILITY]', {
@@ -4867,7 +6592,10 @@ async function main(){
         }
         if (!refill.current) {
           refill.active = false;
-          applyTurnGateIntent(createRefillCompleteGate);
+          const refillCompleteGate = state.globals.TurnPhase === 2
+            ? createEnemyTurnGateBaseline
+            : createRefillCompleteGate;
+          applyTurnGateIntent(refillCompleteGate);
           state.globals.BoardFillActive = 0;
           if (isGemDebugEnabled()) {
             gemDebugLog('[REFILL_COMPLETE]', {
@@ -4944,6 +6672,37 @@ async function main(){
       for (let i = pending.length - 1; i >= 0; i--) {
         const hit = pending[i];
         if (!hit || now < (hit.at || 0)) continue;
+        if (hit.effectType === 'dot_apply') {
+          const totalTicks = 8;
+          const totalDotDamage = Math.max(1, Math.floor(Number(hit.dotTotalDamage || 0) || 1));
+          const initialDotDamage = Math.max(1, Math.floor(totalDotDamage / totalTicks) + ((totalDotDamage % totalTicks) > 0 ? 1 : 0));
+          state.globals.NextHitFlashTone = 'purple';
+          callFunctionWithContext(fnContext, 'ApplyDamageToTarget', hit.targetUID, initialDotDamage);
+          const enemyAfterApply = callFunctionWithContext(fnContext, 'GetActorByUID', hit.targetUID);
+          const remainingDotDamage = Math.max(0, totalDotDamage - initialDotDamage);
+          if (enemyAfterApply && Number(enemyAfterApply.hp || 0) > 0 && remainingDotDamage > 0) {
+            callFunctionWithContext(fnContext, 'QueueEnemyDamageOverTime', hit.heroUID, hit.targetUID, remainingDotDamage, { totalTicks: totalTicks - 1, firesEveryTicks: 1, startAfterTicks: 1, effectName: 'Blight' });
+          }
+          pending.splice(i, 1);
+          continue;
+        }
+        const targetEntity = callFunctionWithContext(fnContext, 'GetActorByUID', hit.targetUID);
+        if (!targetEntity || Number(targetEntity.hp || 0) <= 0) {
+          for (let j = pending.length - 1; j >= 0; j--) {
+            const queued = pending[j];
+            if (!queued) continue;
+            if (Number(queued.targetUID || 0) !== Number(hit.targetUID || 0)) continue;
+            if (queued.effectType === 'dot_apply') continue;
+            pending.splice(j, 1);
+          }
+          continue;
+        }
+        if (hit.damageTextScatter && typeof hit.damageTextScatter === 'object') {
+          state.globals.NextDamageTextScatter = {
+            radiusX: Number(hit.damageTextScatter.radiusX || 0),
+            radiusY: Number(hit.damageTextScatter.radiusY || 0),
+          };
+        }
         const ampMult = Number(hit.powerAmpMultiplier || 0);
         const finalDmg = ampMult > 0 ? Math.max(1, Math.ceil((hit.dmg || 0) * ampMult)) : hit.dmg;
         if (state.globals.DebugPowerAmpLifecycle) {
@@ -5745,6 +7504,16 @@ async function main(){
         } else if (r.inst.type === 'Text_Gold') {
           const gold = state.globals.goldTotal ?? 0;
           text = `Gold: ${gold}`;
+          if (r.world) {
+            const w = Number(r.world.width || 0);
+            const h = Number(r.world.height || 0);
+            const ox = r.world.originX != null ? Number(r.world.originX) : 0.5;
+            const oy = r.world.originY != null ? Number(r.world.originY) : 0.5;
+            gameState.goldLabelTargetWorld = {
+              x: Number(r.world.x || 0) + (0.5 - ox) * w,
+              y: Number(r.world.y || 0) + (0.5 - oy) * h,
+            };
+          }
         } else if (r.inst.type === 'Nav_MissionText') {
           text = 'Vault';
         } else if (['track_next', 'track_nextplus1', 'track_nextplus2', 'track_nextplus3', 'track_nextplus4', 'track_nextplus5'].includes(r.inst.type)) {
@@ -5936,9 +7705,13 @@ async function main(){
       const baseSize = boardGeometry.cellSize * layoutScale * 0.5;
       const fade = t > 0.8 ? Math.max(0, 1 - ((t - 0.8) / 0.2)) : 1;
       const scaleOut = merge.scaleOut !== false;
+      const startScale = Number.isFinite(Number(merge.startScale)) ? Math.max(0.05, Number(merge.startScale)) : 1;
+      const introT = Math.max(0, Math.min(1, t / 0.35));
+      const introScale = startScale + (1 - startScale) * introT;
       const scale = scaleOut
         ? (t > 0.8 ? Math.max(0.05, 1 - ((t - 0.8) / 0.2)) : 1)
         : 1;
+      const finalScale = scale * introScale;
       for (const item of merge.items || []) {
         const pos = worldToCanvas(item.x, item.y);
         const x = pos.x + (centerX - pos.x) * e;
@@ -5946,16 +7719,25 @@ async function main(){
         const frameIndex = (item.color ?? 0) % 8;
         const gemImg = gemFrameImages[frameIndex];
         if (!gemImg) continue;
-        const w = baseSize * scale;
-        const h = baseSize * scale;
+        const w = baseSize * finalScale;
+        const h = baseSize * finalScale;
         ctx.save();
         ctx.globalAlpha = fade;
         ctx.drawImage(gemImg, x - w * 0.5, y - h * 0.5, w, h);
         ctx.restore();
       }
       if (t >= 1) {
+        const goldAward = Math.max(0, Number(merge.goldAward || 0));
+        if (goldAward > 0) {
+          state.globals.goldTotal = Number(state.globals.goldTotal || 0) + goldAward;
+          merge.goldAward = 0;
+        }
         merge.active = false;
         merge.doneAt = nowTime;
+        if (merge.releaseGate) {
+          applyTurnGateIntent(getYellowSequenceCompletionIntent, merge.releaseGate);
+          merge.releaseGate = null;
+        }
       }
     }
 
@@ -6091,13 +7873,25 @@ async function main(){
     const isHitFlashActive = (uid) => {
       const flashes = state.globals.HitFlashByUID;
       if (!uid || !flashes || typeof flashes !== 'object') return false;
-      return Number(flashes[uid] || 0) > Number(state.globals.time || 0);
+      const entry = flashes[uid];
+      if (entry && typeof entry === 'object') return Number(entry.until || 0) > Number(state.globals.time || 0);
+      return Number(entry || 0) > Number(state.globals.time || 0);
     };
 
-    const renderHitFlashOverlay = (drawSprite) => {
+    const getHitFlashTone = (uid) => {
+      const flashes = state.globals.HitFlashByUID;
+      if (!uid || !flashes || typeof flashes !== 'object') return 'white';
+      const entry = flashes[uid];
+      if (entry && typeof entry === 'object') return String(entry.tone || 'white');
+      return 'white';
+    };
+
+    const renderHitFlashOverlay = (drawSprite, tone = 'white') => {
       ctx.save();
       ctx.globalAlpha = 0.5;
-      ctx.filter = 'brightness(0) invert(1)';
+      ctx.filter = tone === 'purple'
+        ? 'brightness(0.6) sepia(1) hue-rotate(240deg) saturate(2.8)'
+        : 'brightness(0) invert(1)';
       drawSprite();
       ctx.restore();
     };
@@ -6127,13 +7921,13 @@ async function main(){
         if (sprite) {
           ctx.drawImage(sprite, drawX, drawY, enemyW, enemyH);
           if (isHitFlashActive(enemy.uid)) {
-            renderHitFlashOverlay(() => ctx.drawImage(sprite, drawX, drawY, enemyW, enemyH));
+            renderHitFlashOverlay(() => ctx.drawImage(sprite, drawX, drawY, enemyW, enemyH), getHitFlashTone(enemy.uid));
           }
         } else {
           ctx.fillStyle = '#7d2b2b';
           ctx.fillRect(drawX, drawY, enemyW, enemyH);
           if (isHitFlashActive(enemy.uid)) {
-            ctx.fillStyle = '#fff';
+            ctx.fillStyle = getHitFlashTone(enemy.uid) === 'purple' ? '#b86cff' : '#fff';
             ctx.fillRect(drawX, drawY, enemyW, enemyH);
           }
           ctx.strokeStyle = '#fff';
@@ -6244,10 +8038,10 @@ async function main(){
         const baseFont = Math.max(12, Math.round(16 * layoutScale));
         const fontSize = Math.max(8, Math.round(baseFont * scale));
         ctx.font = `bold ${fontSize}px sans-serif`;
-        ctx.shadowColor = 'rgba(30,30,30,0.8)';
-        ctx.shadowBlur = Math.max(3, 6 * scale);
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
+        ctx.shadowColor = 'rgb(0,0,0)';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = Math.max(1, Math.round(2 * scale));
+        ctx.shadowOffsetY = Math.max(1, Math.round(2 * scale));
         ctx.globalAlpha = alpha;
         const text = d.targetKind === 'bar' ? `+${d.amount}` : String(d.amount);
         if (d.kind === 'heal') {
@@ -6281,18 +8075,14 @@ async function main(){
     {
       const g = state.globals;
       const rect = g.EnemyAreaRect;
-        const heroOrder = [
-        { name: 'Falie', idx: 0 },
-        { name: 'Huun', idx: 1 },
-        { name: 'Runa', idx: 2 },
-        { name: 'Kojonn', idx: 3 },
-      ];
+      const heroOrder = getCombatPartyRenderRoster();
       if (rect) {
         const heroYOffset = 0;
         const enemySize = g.EnemySize || 40;
         const gap = 8;
         const availableH = rect.maxY - rect.minY;
-        const heroHWorld = Math.min(enemySize, (availableH - gap * 3) / 4);
+        const heroCount = Math.max(1, heroOrder.length);
+        const heroHWorld = Math.min(enemySize, (availableH - gap * Math.max(0, heroCount - 1)) / heroCount);
         const heroSpacing = heroHWorld + gap;
         const heroWByName = (img, h) => (img && img.height ? (h * (img.width / img.height)) : h);
         const baseXWorld = Math.max(heroHWorld / 2 + 12, rect.minX - enemySize * 0.9) - 90;
@@ -6309,19 +8099,19 @@ async function main(){
         const currentHero = state.entities.find(e => e.kind === 'hero' && e.uid === currentHeroUID);
         for (let i = 0; i < heroOrder.length; i++) {
           const entry = heroOrder[i];
-          const img = heroPortraitImages[entry.name];
+          const img = heroPortraitImages[entry.portraitName];
           if (!img) continue;
-          const hero = state.entities.find(e => e.kind === 'hero' && e.heroIndex === entry.idx);
+          const hero = state.entities.find(e => (e.kind === 'hero' || e.kind === 'escort') && e.uid === entry.uid);
           const hWorld = heroHWorld;
           const wWorld = heroWByName(img, hWorld);
           const yWorld = rect.minY + (hWorld / 2) + i * heroSpacing + heroYOffset;
           const baseX = baseXWorld + (i % 2 === 0 ? offsetWorld : -offsetWorld);
           const xWorld = baseX + (hero ? (offsets[hero.uid] || 0) : 0);
-          posByIndex[entry.idx] = { x: baseX, y: yWorld };
+          posByIndex[entry.displaySlot] = { x: baseX, y: yWorld };
           const pos = worldToCanvas(xWorld, yWorld);
           const w = wWorld * layoutScale;
           const h = hWorld * layoutScale;
-          const ampProjection = hero
+          const ampProjection = hero && hero.kind === 'hero'
             ? (callFunctionWithContext(fnContext, 'GetHeroPowerAmpRenderState', hero.uid) || null)
             : null;
           const ampActive = !!ampProjection?.active;
@@ -6353,7 +8143,7 @@ async function main(){
           const drawY = footY - scaledH;
           ctx.drawImage(img, drawX, drawY, scaledW, scaledH);
           if (hero && isHitFlashActive(hero.uid)) {
-            renderHitFlashOverlay(() => ctx.drawImage(img, drawX, drawY, scaledW, scaledH));
+            renderHitFlashOverlay(() => ctx.drawImage(img, drawX, drawY, scaledW, scaledH), getHitFlashTone(hero.uid));
           }
 
           if (ampActive) {
@@ -6657,8 +8447,9 @@ function getStoryCardLiveLineState() {
       const debuff = actor.kind === 'enemy' ? Number(g.EnemyDebuffs?.[actor.uid]?.SPD || 0) : 0;
       const curSpd = baseSpd - debuff;
       const extraTag = row.extra ? ' (x2)' : '';
-      const delta = actor.kind === 'enemy' && debuff > 0 ? `(-${Math.round(debuff)})` : '';
-      turnOrderLines.push(`${label} ${Math.round(curSpd)}/${Math.round(baseSpd)}${delta ? ` ${delta}` : ''}${extraTag}`);
+      const cp = Number(actor.combatPower || actor.CombatPower || 0);
+      const cpSuffix = actor.kind === 'enemy' ? ` CP: ${Math.round(cp)}` : '';
+      turnOrderLines.push(`${label} SPD: ${Math.round(curSpd)}${cpSuffix}${extraTag}`);
     }
     const lines = [
       gameState.baseSummary,
@@ -6674,8 +8465,47 @@ function getStoryCardLiveLineState() {
       ...turnOrderLines,
     ];
     out.textContent = lines.join('\n');
+    drawGemCounterHUD();
     drawWalletHUD();
     drawAstralWalletHUD();
+  }
+  function drawGemCounterHUD() {
+    if (!gemCounterOut) return;
+    const usage = state.globals.HeroGemUsage || {};
+    const byHero = usage.byHero && typeof usage.byHero === 'object' ? usage.byHero : {};
+    const party = usage.party && typeof usage.party === 'object'
+      ? usage.party
+      : { RED: 0, GREEN: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
+    const currentHeroUID = resolveCurrentHeroUID({
+      directUID: callFunctionWithContext(fnContext, 'GetCurrentTurn'),
+      turnOrder: state.globals.TurnOrderArray,
+      currentTurnIndex: state.globals.CurrentTurnIndex,
+    });
+    const currentHero = state.entities.find((entity) => entity && entity.kind === 'hero' && entity.uid === currentHeroUID)
+      || state.entities.find((entity) => entity && entity.kind === 'hero' && entity.uid === getHeroUIDByIndex(gameState.selectedHero))
+      || state.entities.find((entity) => entity && entity.kind === 'hero')
+      || null;
+    const heroName = currentHero ? String(currentHero.name || 'Hero') : 'Hero';
+    const heroTotals = byHero[heroName] && typeof byHero[heroName] === 'object'
+      ? byHero[heroName]
+      : { RED: 0, GREEN: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
+    const lines = [
+      'Gem Counter Radiator',
+      `Hero: ${heroName}`,
+      `RED:${Number(heroTotals.RED || 0)}`,
+      `GREEN:${Number(heroTotals.GREEN || 0)}`,
+      `BLUE:${Number(heroTotals.BLUE || 0)}`,
+      `HEAL:${Number(heroTotals.HEAL || 0)}`,
+      `YELLOW:${Number(heroTotals.YELLOW || 0)}`,
+      '-----',
+      'Party Totals',
+      `RED:${Number(party.RED || 0)}`,
+      `GREEN:${Number(party.GREEN || 0)}`,
+      `BLUE:${Number(party.BLUE || 0)}`,
+      `HEAL:${Number(party.HEAL || 0)}`,
+      `YELLOW:${Number(party.YELLOW || 0)}`,
+    ];
+    gemCounterOut.textContent = lines.join('\n');
   }
   function drawWalletHUD() {
     if (!walletOut) return;
@@ -6698,7 +8528,7 @@ function getStoryCardLiveLineState() {
       return;
     }
     const total = entries.reduce((sum, [, v]) => sum + (Number(v) || 0), 0);
-    const lines = ['Wallet:', `Total: ${total}`];
+    const lines = ['Wallet:', `Gold: ${Number(g.goldTotal || 0)}`, `Tokens: ${total}`];
     for (const [key, val] of entries) {
       lines.push(`${key}: ${val}`);
     }
@@ -6900,6 +8730,140 @@ function getStoryCardLiveLineState() {
       await devSleep(40);
     }
   }
+  function getDevAutoplayState() {
+    return {
+      active: !!state.globals.DevAutoplayActive,
+      stopRequested: !!state.globals.DevAutoplayStopRequested,
+      lastReason: String(state.globals.DevAutoplayLastReason || ''),
+      matchesPlayed: Number(state.globals.DevAutoplayMatchesPlayed || 0),
+      startedAt: Number(state.globals.DevAutoplayStartedAt || 0),
+      endedAt: Number(state.globals.DevAutoplayEndedAt || 0),
+    };
+  }
+  function setDevAutoplayState(patch = {}) {
+    const next = { ...getDevAutoplayState(), ...(patch && typeof patch === 'object' ? patch : {}) };
+    state.globals.DevAutoplayActive = next.active ? 1 : 0;
+    state.globals.DevAutoplayStopRequested = next.stopRequested ? 1 : 0;
+    state.globals.DevAutoplayLastReason = String(next.lastReason || '');
+    state.globals.DevAutoplayMatchesPlayed = Math.max(0, Math.floor(Number(next.matchesPlayed || 0)));
+    state.globals.DevAutoplayStartedAt = Number(next.startedAt || 0);
+    state.globals.DevAutoplayEndedAt = Number(next.endedAt || 0);
+    updateDevToolingStatus(
+      next.lastReason
+        ? `Idle mode: ${next.active ? 'running' : 'stopped'} (${next.lastReason})`
+        : `Idle mode: ${next.active ? 'running' : 'idle'}`
+    );
+    return getDevAutoplayState();
+  }
+  function isIdleAutoplayHeroWindow() {
+    return (
+      state.globals.GamePhase === 'RUNTIME' &&
+      callFunctionWithContext(fnContext, 'GetCurrentType') === 0 &&
+      state.globals.TurnPhase === 0 &&
+      state.globals.CanPickGems === true &&
+      state.globals.IsPlayerBusy === 0 &&
+      !state.globals.PendingSkillID &&
+      !state.globals.BoardFillActive &&
+      !state.globals.ActionInProgress &&
+      !state.globals.DeferAdvance &&
+      !(gameState.refillBounce && gameState.refillBounce.active) &&
+      !(gameState.yellowCasino && gameState.yellowCasino.active)
+    );
+  }
+  function findIdleAutoplayTriplets() {
+    const byColor = new Map();
+    for (const gem of (gameState.gems || [])) {
+      if (!gem) continue;
+      const color = Number(gem.color != null ? gem.color : gem.elementIndex);
+      if (!Number.isFinite(color) || color < 0 || color > 5) continue;
+      if (!byColor.has(color)) byColor.set(color, []);
+      byColor.get(color).push({ row: gem.cellR, col: gem.cellC });
+    }
+    const triplets = [];
+    for (const [, cells] of byColor.entries()) {
+      if (cells.length < 3) continue;
+      triplets.push(cells.slice(0, 3));
+    }
+    return triplets;
+  }
+  async function playIdleAutoplayTriplet(cells) {
+    if (!Array.isArray(cells) || cells.length < 3) return false;
+    clearSelectionOnly();
+    for (const cell of cells.slice(0, 3)) {
+      if (!clickGemCell(Number(cell.row || 0), Number(cell.col || 0))) return false;
+      await devSleep(24);
+    }
+    return true;
+  }
+  async function runDevAutoplayUntilDepleted() {
+    const startedAt = Number(state.globals.time || 0);
+    let matchesPlayed = 0;
+    let lastProgressSig = '';
+    let lastProgressAt = performance.now();
+    setDevAutoplayState({
+      active: true,
+      stopRequested: false,
+      lastReason: '',
+      matchesPlayed: 0,
+      startedAt,
+      endedAt: 0,
+    });
+    while (true) {
+      if (state.globals.DevAutoplayStopRequested) {
+        setDevAutoplayState({ active: false, stopRequested: false, lastReason: 'manual_stop', matchesPlayed, endedAt: Number(state.globals.time || 0) });
+        return getDevAutoplayState();
+      }
+      const energy = Math.max(0, Number(state.globals.Player_Energy || 0));
+      if (energy <= 0) {
+        setDevAutoplayState({ active: false, stopRequested: false, lastReason: 'energy_depleted', matchesPlayed, endedAt: Number(state.globals.time || 0) });
+        return getDevAutoplayState();
+      }
+      if (Math.max(0, Number(state.globals.PartyHP || 0)) <= 0) {
+        setDevAutoplayState({ active: false, stopRequested: false, lastReason: 'party_defeated', matchesPlayed, endedAt: Number(state.globals.time || 0) });
+        return getDevAutoplayState();
+      }
+      const aliveHeroes = state.entities.filter((entity) => entity && entity.kind === 'hero' && (entity.hp ?? 0) > 0).length;
+      if (!aliveHeroes) {
+        setDevAutoplayState({ active: false, stopRequested: false, lastReason: 'no_living_heroes', matchesPlayed, endedAt: Number(state.globals.time || 0) });
+        return getDevAutoplayState();
+      }
+      const progressSig = JSON.stringify({
+        energy,
+        turn: Number(state.globals.DebugTurnCount || 0),
+        phase: Number(state.globals.TurnPhase || 0),
+        canPick: Number(state.globals.CanPickGems || 0),
+        busy: Number(state.globals.IsPlayerBusy || 0),
+        boardFill: Number(state.globals.BoardFillActive || 0),
+        pending: String(state.globals.PendingSkillID || ''),
+        gems: Array.isArray(gameState.gems) ? gameState.gems.length : 0,
+        current: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0),
+      });
+      if (progressSig !== lastProgressSig) {
+        lastProgressSig = progressSig;
+        lastProgressAt = performance.now();
+      }
+      if (isIdleAutoplayHeroWindow()) {
+        const triplets = findIdleAutoplayTriplets();
+        if (!triplets.length) {
+          setDevAutoplayState({ active: false, stopRequested: false, lastReason: 'no_valid_triplet', matchesPlayed, endedAt: Number(state.globals.time || 0) });
+          return getDevAutoplayState();
+        }
+        const pick = triplets[Math.floor(Math.random() * triplets.length)];
+        const played = await playIdleAutoplayTriplet(pick);
+        if (played) {
+          matchesPlayed += 1;
+          setDevAutoplayState({ active: true, stopRequested: false, lastReason: 'running', matchesPlayed, startedAt, endedAt: 0 });
+        }
+        await devSleep(90);
+        continue;
+      }
+      if ((performance.now() - lastProgressAt) > 15000) {
+        setDevAutoplayState({ active: false, stopRequested: false, lastReason: 'stalled', matchesPlayed, endedAt: Number(state.globals.time || 0) });
+        return getDevAutoplayState();
+      }
+      await devSleep(60);
+    }
+  }
   async function runGemInteractivityDiagnostic() {
     if (!isGemDebugEnabled()) return;
     const runtimeWaitStart = performance.now();
@@ -6953,6 +8917,7 @@ function getStoryCardLiveLineState() {
     if (!readyAfterTurns) throw new Error('[DIAG] Board not playable after auto turns');
     await auditGemClickability('post-10-auto-turns');
   }
+  devToolingAutoplayHandler = runDevAutoplayUntilDepleted;
 
 
   function getEnemyHit(mx, my) {
@@ -7000,7 +8965,8 @@ function getStoryCardLiveLineState() {
       maxSlots: 3,
       policy,
       faction: String(node.faction || state.globals.EncounterFaction || '').trim().toLowerCase(),
-      seed: Number(state.globals.CombatSessionId || 1),
+      // Generate a fresh encounter seed per map->combat entry to avoid fixed repeated trios.
+      seed: generateEncounterSeed(),
     };
   }
 
@@ -7017,8 +8983,37 @@ function getStoryCardLiveLineState() {
       drawFrame();
       return;
     }
-    if (activeLayoutId === 'astralOverlay') {
-      inputDomains.emit('astralOverlay', 'layout:astralOverlay:click', { x: mx, y: my });
+    if (activeLayoutId === 'town') {
+      inputDomains.emit('town', 'layout:town:click', { x: mx, y: my });
+      drawFrame();
+      return;
+    }
+    if (activeLayoutId === 'idleFarmLayout') {
+      const zones = (gameState.idleFarmLayout && gameState.idleFarmLayout.hitZones) || {};
+      if (isPointInRect(mx, my, zones.restartBtn)) {
+        restartIdleFarmSession(performance.now() / 1000);
+        drawFrame();
+        return;
+      }
+      if (isPointInRect(mx, my, zones.collectBtn)) {
+        claimIdleFarmRewards();
+        drawFrame();
+        return;
+      }
+      if (isPointInRect(mx, my, zones.combatBack)) {
+        layoutState.requestLayoutChange('combat', 'idle-farm-back-combat').catch((err) => {
+          console.error('[LAYOUT_PHASE1] idleFarm->combat failed', err);
+        });
+        drawFrame();
+        return;
+      }
+      if (isPointInRect(mx, my, zones.baseBack)) {
+        layoutState.requestLayoutChange('storyMock', 'idle-farm-back-base').catch((err) => {
+          console.error('[LAYOUT_PHASE1] idleFarm->storyMock failed', err);
+        });
+        drawFrame();
+        return;
+      }
       drawFrame();
       return;
     }
@@ -7032,6 +9027,8 @@ function getStoryCardLiveLineState() {
         state.globals.EncounterPolicy = String(req.policy || 'mixed');
         state.globals.EncounterFaction = String(req.faction || '');
         state.globals.EncounterSeed = Number(req.seed || 1);
+        state.globals.EncounterSeedExplicit = 1;
+        // Map close is benign: return to existing combat snapshot without resetting combat state.
         layoutState.requestLayoutChange('combat', 'map-close-button').catch((err) => {
           console.error('[LAYOUT_PHASE1] map return failed', err);
         });
@@ -7129,18 +9126,18 @@ function getStoryCardLiveLineState() {
       drawFrame();
       return;
     }
-    if (activeLayoutId === 'collectiblesLayout') {
-      const zones = (gameState.collectiblesLayout && gameState.collectiblesLayout.hitZones) || {};
+    if (activeLayoutId === 'relicsLayout') {
+      const zones = (gameState.relicsLayout && gameState.relicsLayout.hitZones) || {};
       if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
-        layoutState.requestLayoutChange('chestsLayout', 'collectibles-back-vault').catch((err) => {
-          console.error('[LAYOUT_PHASE1] collectibles->vault failed', err);
+        layoutState.requestLayoutChange('chestsLayout', 'relics-back-vault').catch((err) => {
+          console.error('[LAYOUT_PHASE1] relics->vault failed', err);
         });
         drawFrame();
         return;
       }
       if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'collectibles-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] collectibles->combat failed', err);
+        layoutState.requestLayoutChange('combat', 'relics-back-combat').catch((err) => {
+          console.error('[LAYOUT_PHASE1] relics->combat failed', err);
         });
         drawFrame();
         return;
@@ -7148,7 +9145,61 @@ function getStoryCardLiveLineState() {
       const cards = Array.isArray(zones.cards) ? zones.cards : [];
       for (let i = 0; i < cards.length; i += 1) {
         if (isPointInRect(mx, my, cards[i])) {
-          gameState.collectiblesLayout.selectedIndex = i;
+          gameState.relicsLayout.selectedIndex = i;
+          drawFrame();
+          return;
+        }
+      }
+      drawFrame();
+      return;
+    }
+    if (activeLayoutId === 'petsLayout') {
+      const zones = (gameState.petsLayout && gameState.petsLayout.hitZones) || {};
+      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
+        layoutState.requestLayoutChange('chestsLayout', 'pets-back-vault').catch((err) => {
+          console.error('[LAYOUT_PHASE1] pets->vault failed', err);
+        });
+        drawFrame();
+        return;
+      }
+      if (isPointInRect(mx, my, zones.combatBack)) {
+        layoutState.requestLayoutChange('combat', 'pets-back-combat').catch((err) => {
+          console.error('[LAYOUT_PHASE1] pets->combat failed', err);
+        });
+        drawFrame();
+        return;
+      }
+      const cards = Array.isArray(zones.cards) ? zones.cards : [];
+      for (let i = 0; i < cards.length; i += 1) {
+        if (isPointInRect(mx, my, cards[i])) {
+          gameState.petsLayout.selectedIndex = i;
+          drawFrame();
+          return;
+        }
+      }
+      drawFrame();
+      return;
+    }
+    if (activeLayoutId === 'evolutionLayout') {
+      const zones = (gameState.evolutionLayout && gameState.evolutionLayout.hitZones) || {};
+      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
+        layoutState.requestLayoutChange('chestsLayout', 'evolution-back-vault').catch((err) => {
+          console.error('[LAYOUT_PHASE1] evolution->vault failed', err);
+        });
+        drawFrame();
+        return;
+      }
+      if (isPointInRect(mx, my, zones.combatBack)) {
+        layoutState.requestLayoutChange('combat', 'evolution-back-combat').catch((err) => {
+          console.error('[LAYOUT_PHASE1] evolution->combat failed', err);
+        });
+        drawFrame();
+        return;
+      }
+      const cards = Array.isArray(zones.cards) ? zones.cards : [];
+      for (let i = 0; i < cards.length; i += 1) {
+        if (isPointInRect(mx, my, cards[i])) {
+          gameState.evolutionLayout.selectedLevel = i;
           drawFrame();
           return;
         }
@@ -7267,6 +9318,11 @@ function getStoryCardLiveLineState() {
       const activeLayout = harnessLayoutState.getActiveLayoutId();
       if (activeLayout === 'storyMock') {
         harnessInputDomains.emit(activeLayout, 'layout:storyMock:click', { x: mx, y: my });
+        drawFrame();
+        return;
+      }
+      if (activeLayout === 'town') {
+        harnessInputDomains.emit(activeLayout, 'layout:town:click', { x: mx, y: my });
         drawFrame();
         return;
       }
@@ -7539,8 +9595,26 @@ function getStoryCardLiveLineState() {
     }
   }, { passive: true });
 
-  // keyboard input handling
-  window.addEventListener('keydown', (ev)=>{
+  function handleGlobalKeydown(ev) {
+    if (isDevToolingHotkey(ev)) {
+      toggleDevToolingModal();
+      ev.stopPropagation();
+      ev.preventDefault();
+      return;
+    }
+    if (ensureDevToolingConfig().open) {
+      if (ev.key === 'Escape') {
+        toggleDevToolingModal(false);
+        ev.stopPropagation();
+        ev.preventDefault();
+        return;
+      }
+      if (!isEditableDomTarget(ev.target)) {
+        ev.stopPropagation();
+        ev.preventDefault();
+        return;
+      }
+    }
     if (state.globals.DevTestMode) {
       if (ev.code === 'KeyA') {
         if (state.globals.CanPickGems && state.globals.TurnPhase === 0 && !state.globals.IsPlayerBusy) {
@@ -7551,11 +9625,14 @@ function getStoryCardLiveLineState() {
       }
     }
     if(ev.key === 'ArrowLeft') gameState.selectedHero = Math.max(0, gameState.selectedHero - 1);
-    if(ev.key === 'ArrowRight') gameState.selectedHero = Math.min(3, gameState.selectedHero + 1);
+    if(ev.key === 'ArrowRight') gameState.selectedHero = Math.min(Math.max(0, getConfiguredHeroCount() - 1), gameState.selectedHero + 1);
     if(ev.key === 'ArrowUp') gameState.selectedEnemy = Math.max(0, gameState.selectedEnemy - 1);
-    if(ev.key === 'ArrowDown') gameState.selectedEnemy = Math.min(2, gameState.selectedEnemy + 1);
+    if(ev.key === 'ArrowDown') gameState.selectedEnemy = Math.min(Math.max(0, getConfiguredEnemyCount() - 1), gameState.selectedEnemy + 1);
     if(ev.key === ' ') { gameState.playerTurn = !gameState.playerTurn; ev.preventDefault(); }
-  });
+  }
+  // keyboard input handling
+  window.addEventListener('keydown', handleGlobalKeydown, true);
+  document.addEventListener('keydown', handleGlobalKeydown, true);
 
   canvas.addEventListener('pointermove', (ev) => {
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
@@ -7596,6 +9673,10 @@ function getStoryCardLiveLineState() {
   let frameCount = 0;
   function tick(){
     frameCount++;
+    if (ensureDevToolingConfig().open) {
+      requestAnimationFrame(tick);
+      return;
+    }
     if (state.globals.GamePhase === 'BOOTSTRAP') {
       tryActivateRuntimePhase();
     }
@@ -7717,7 +9798,8 @@ function getStoryCardLiveLineState() {
           applyTurnGateIntent(createDeferredStaleBusyRecovery);
           console.log(`[TURN] cleared stale IsPlayerBusy before advance phase=${state.globals.TurnPhase} owner=${state.globals.ActionOwnerUID || 0}`);
         }
-        const blockedPhase = state.globals.IsPlayerBusy || state.globals.ActionInProgress || pendingSelect;
+        const mergeInFlight = !!(gameState.gemMergeFx && gameState.gemMergeFx.active);
+        const blockedPhase = state.globals.IsPlayerBusy || state.globals.ActionInProgress || pendingSelect || mergeInFlight;
         const ownerUID = state.globals.ActionOwnerUID || 0;
         const currentUID = callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0;
         const ownerOk = !ownerUID || ownerUID === currentUID;
@@ -7734,7 +9816,7 @@ function getStoryCardLiveLineState() {
           combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
         } else if (!state.globals._DeferBlockLogged) {
           state.globals._DeferBlockLogged = 1;
-          console.log(`[TURN] DeferAdvance blocked pendingSelect=${!!pendingSelect} IsPlayerBusy=${state.globals.IsPlayerBusy} TurnPhase=${state.globals.TurnPhase} owner=${ownerUID} cur=${currentUID} canPick=${state.globals.CanPickGems} actionInProgress=${state.globals.ActionInProgress}`);
+          console.log(`[TURN] DeferAdvance blocked pendingSelect=${!!pendingSelect} mergeInFlight=${mergeInFlight} IsPlayerBusy=${state.globals.IsPlayerBusy} TurnPhase=${state.globals.TurnPhase} owner=${ownerUID} cur=${currentUID} canPick=${state.globals.CanPickGems} actionInProgress=${state.globals.ActionInProgress}`);
         }
       }
       }
@@ -7743,6 +9825,27 @@ function getStoryCardLiveLineState() {
     }
     const currentTurnType = callFunctionWithContext(fnContext, 'GetCurrentType');
     trackTask011EnemyBoundary(currentTurnType);
+    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
+      ? layoutState.getActiveLayoutId()
+      : null;
+    if (
+      activeLayoutId === 'combat' &&
+      state.globals.GamePhase === 'RUNTIME' &&
+      !gameState.combatFailExitRequested
+    ) {
+      const energy = Number(state.globals.Player_Energy || 0);
+      const partyHp = Number(state.globals.PartyHP || 0);
+      const noLivingHeroes = state.entities.filter((entity) => entity && entity.kind === 'hero' && (entity.hp ?? 0) > 0).length <= 0;
+      if (energy < 0 || partyHp <= 0 || noLivingHeroes) {
+        gameState.combatFailExitRequested = true;
+        state.globals.CanPickGems = 0;
+        state.globals.IsPlayerBusy = 1;
+        layoutState.requestLayoutChange((partyHp <= 0 || noLivingHeroes) ? 'town' : 'storyMock', energy < 0 ? 'combat-energy-depleted' : 'combat-party-defeated').catch((err) => {
+          gameState.combatFailExitRequested = false;
+          console.error('[LAYOUT_PHASE1] combat fail gate layout transition failed', err);
+        });
+      }
+    }
     const noRefillActive = !(gameState.refillBounce && gameState.refillBounce.active);
     if (
       state.globals.GamePhase === 'RUNTIME' &&
@@ -7770,6 +9873,8 @@ function getStoryCardLiveLineState() {
     }
     // Enemy turns are started by ProcessTurn; avoid double-triggering here.
     gameState.enemyTurnKicked = state.globals.TurnPhase === 2;
+    updateIdleFarmEmissions(performance.now() / 1000);
+    persistHeroGemProgressIfDirty();
     drawFrame();
     requestAnimationFrame(tick);
   }
@@ -7814,7 +9919,28 @@ function getStoryCardLiveLineState() {
           energy: state.globals.Player_Energy || 0,
           maxEnergy: state.globals.Player_maxEnergy || 0,
           gold: state.globals.goldTotal || 0,
+          tokenWallet: state.globals.TokenWallet || {},
           astralFlowWallet: state.globals.AstralFlowWallet || 0,
+          heroGemUsage: state.globals.HeroGemUsage || null,
+          heroGemMilestones: state.globals.HeroGemMilestones || null,
+          heroGemProgressPersistedAt: state.globals.HeroGemProgressPersistedAt || 0,
+          idleFarmLastCollect: state.globals.IdleFarmLastCollect || null,
+          powerAmpTelemetry: Array.isArray(state.globals.PowerAmpTelemetryTrace)
+            ? state.globals.PowerAmpTelemetryTrace.slice(-40)
+            : [],
+        },
+        devTools: {
+          config: ensureDevToolingConfig(),
+          autoplay: getDevAutoplayState(),
+          heroSlotOptions: getDevToolHeroOptions(),
+          enemySlotOptions: getDevToolEnemyOptions(),
+          enemyTypeOptions: getDevToolEnemyOptions(),
+        },
+        idleFarm: {
+          active: layoutState && typeof layoutState.getActiveLayoutId === 'function'
+            ? layoutState.getActiveLayoutId() === 'idleFarmLayout'
+            : false,
+          state: gameState.idleFarmLayout || null,
         },
         mapLayout: {
           panX: Number(gameState.mapLayout.panX || 0),
@@ -7836,6 +9962,9 @@ function getStoryCardLiveLineState() {
         flags: {
           canPickGems: state.globals.CanPickGems,
           isPlayerBusy: state.globals.IsPlayerBusy,
+          turnPhase: state.globals.TurnPhase ?? 0,
+          deferAdvance: state.globals.DeferAdvance ?? 0,
+          actionLockUntil: state.globals.ActionLockUntil ?? 0,
           pendingSkillId: state.globals.PendingSkillID || null,
           overlayVisible: gameState.overlayVisible,
           layoutId: layoutState && typeof layoutState.getActiveLayoutId === 'function'
@@ -7912,7 +10041,12 @@ function getStoryCardLiveLineState() {
         if (req.maxSlots != null) state.globals.EncounterMaxSlots = Math.max(1, Number(req.maxSlots || 0));
         if (req.policy != null) state.globals.EncounterPolicy = String(req.policy || 'mixed').trim().toLowerCase() || 'mixed';
         if (req.faction != null) state.globals.EncounterFaction = String(req.faction || '').trim().toLowerCase();
-        if (req.seed != null) state.globals.EncounterSeed = Number(req.seed || 0);
+        if (req.seed != null) {
+          state.globals.EncounterSeed = Number(req.seed || 0);
+          state.globals.EncounterSeedExplicit = 1;
+        } else {
+          state.globals.EncounterSeedExplicit = 0;
+        }
         return {
           targetCP: Number(state.globals.EncounterTargetCP || 0),
           locale: String(state.globals.EncounterLocale || 'all'),
@@ -7938,6 +10072,28 @@ function getStoryCardLiveLineState() {
           encounterNode: gameState.mapLayout.encounterNode,
           warMeter: Number(gameState.mapLayout.warMeter || 0),
         };
+      },
+      toggleDevToolingModal(nextOpen = null) {
+        return toggleDevToolingModal(nextOpen);
+      },
+      getDevToolingState() {
+        return {
+          config: ensureDevToolingConfig(),
+          autoplay: getDevAutoplayState(),
+          heroSlotOptions: getDevToolHeroOptions(),
+          enemySlotOptions: getDevToolEnemyOptions(),
+          enemyTypeOptions: getDevToolEnemyOptions(),
+        };
+      },
+      applyDevToolingConfig(input = {}) {
+        return applyDevToolingConfig(input);
+      },
+      runDevAutoplayUntilDepleted() {
+        return runDevAutoplayUntilDepleted();
+      },
+      stopDevAutoplay() {
+        state.globals.DevAutoplayStopRequested = 1;
+        return getDevAutoplayState();
       },
       callFunction(fnName, ...args) {
         return callFunctionWithContext(fnContext, fnName, ...args);

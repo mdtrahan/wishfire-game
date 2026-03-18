@@ -9,6 +9,23 @@
 
 ## Reports
 - (append newest report at top)
+- bead id: ORKA-7kt / ORKA-1ys / ORKA-ws3p / ORKA-3as (source recovery)
+- summary of changes: Recovered `web-runner/app.js` from an unreachable local Git blob that still contained the DOM-based developer tooling modal, `AstralFlow -> idleFarmLayout` wiring, `storyMock -> town -> combat` recovery flow, and the escort-party scaffold seam. Replaced the incorrect interim canvas dev-panel reconstruction with the recovered DOM implementation and restored targeted contracts for each recovered lane.
+- files modified: web-runner/app.js; tests/devToolingModalContract.test.js; tests/idleFarmLayoutScaffoldContract.test.js; tests/townLayoutFlowContract.test.js; tests/escortPartyScaffoldContract.test.js
+- test evidence:
+  - `npm test -- tests/devToolingModalContract.test.js tests/idleFarmLayoutScaffoldContract.test.js tests/townLayoutFlowContract.test.js tests/escortPartyScaffoldContract.test.js` (4/4 pass)
+  - `curl -I http://127.0.0.1:8095/web-runner/index.html` returned `HTTP/1.1 200 OK`
+- scope confirmation: confined to source recovery of previously lost runtime lanes already documented in project reports; no new speculative dev-panel design, idle-farm behavior, town semantics, or escort rules were invented in this pass.
+
+- bead id: ORKA-7kt (recovery shell)
+- summary of changes: Restored the missing global dev tooling modal shell in `web-runner/app.js` with `Ctrl+Shift+P` / `Esc` toggle behavior, serialized config state in `state.globals.DevToolingConfig`, a minimal canvas-rendered recovery panel, and matching `render_game_to_text` / `window.__codexGame` exposure so later recovery lanes can build back on a visible debug surface.
+- files modified: web-runner/app.js; tests/devToolingModalContract.test.js; ai-memory/insights.md
+- test evidence:
+  - `npm test -- tests/devToolingModalContract.test.js` (1/1 pass)
+  - `curl -I http://127.0.0.1:8095/web-runner/index.html` returned `HTTP/1.1 200 OK`
+  - attempted Playwright runtime smoke via the local skill wrapper against `http://127.0.0.1:8095/web-runner/index.html`, but Chrome launch remains blocked in-session by the known crashpad/bootstrap permission failure (`bootstrap_check_in ... Permission denied (1100)`)
+- scope confirmation: confined to ORKA-7kt recovery of the developer tooling modal shell and debug-surface exposure in `web-runner/app.js`; no idle-farm routing, town flow, or combat-rule behavior was rebuilt in this pass.
+
 - bead id: ORKA-1ys
 - summary of changes: Replaced the old astral/layout-2 stub with a battle-first `idleFarmLayout` that stages a fake Falie/Kojonn idle skirmish instead of a text dashboard. The runtime now routes the existing `AstralFlow` combat nav into a 16:9 mock battle scene, drives the scripted two-hit enemy flow through the reusable module seam in `web-runner/src/core/idleFarmRuntime.mjs`, spawns enemies one-by-one with a 1.5 second delay after death, alternates leisurely hero strikes every 3 seconds, and keeps the lower strip minimal with reward/emission totals plus return controls.
 - files modified: web-runner/app.js; web-runner/src/core/idleFarmRuntime.mjs; tests/idleFarmLayoutScaffoldContract.test.js
