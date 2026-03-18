@@ -33,14 +33,14 @@ const POWER_AMP_OUTCOMES = [
 
 const ENEMY_SKILL_ASSIGNMENT_MAP = {
   Djinn: {
-    specialSkill: 'Enemy_Drain_Buff',
+    specialSkill: 'Enemy_Scathe',
     specialChance: 0.30,
     regularSkill: 'Enemy_MAG_Single',
     regularChance: 0.85,
     requiresDamaged: false,
   },
   Marid: {
-    specialSkill: 'Enemy_X_Out',
+    specialSkill: 'Enemy_Sweep',
     specialChance: 0.25,
     regularSkill: 'Enemy_MAG_Single',
     regularChance: 0.65,
@@ -413,7 +413,7 @@ function activatePowerAmp(ctx, actorUID) {
         emitPowerAmpStateLog(ctx, 'activation_visible', hero.uid, { mult: outcome.multiplier, mode: 'jackpot', lifecycle: lifecycleId, seeded: seeded.seeded ? 1 : 0 });
       }
     }
-    LogCombat(ctx, 'JACKPOT! All heroes get Power Amp x2!');
+    LogCombat(ctx, 'Lucky! Heroes are amped up!');
     return;
   }
   const lifecycleId = nextPowerAmpLifecycleId(g);
@@ -421,7 +421,7 @@ function activatePowerAmp(ctx, actorUID) {
   emitPowerAmpStateLog(ctx, 'activation_armed', actorUID, { mult: outcome.multiplier, mode: 'single', lifecycle: lifecycleId });
   const seeded = setPowerAmpVisual(g, actorUID, outcome.multiplier, lifecycleId);
   emitPowerAmpStateLog(ctx, 'activation_visible', actorUID, { mult: outcome.multiplier, mode: 'single', lifecycle: lifecycleId, seeded: seeded.seeded ? 1 : 0 });
-  LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} gained Power Amp x${outcome.multiplier}!`);
+  LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} armed Power Amp x${outcome.multiplier} for next turn!`);
 }
 
 function consumePowerAmpForEvent(ctx, actorUID, values) {
@@ -2577,7 +2577,12 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
   if (!g.HitFlashByUID || typeof g.HitFlashByUID !== 'object') {
     g.HitFlashByUID = {};
   }
-  g.HitFlashByUID[uid] = now + 0.14;
+  const hitFlashTone = String(g.NextHitFlashTone || 'white');
+  g.HitFlashByUID[uid] = {
+    until: now + 0.14,
+    tone: hitFlashTone,
+  };
+  delete g.NextHitFlashTone;
   let dx = t.x;
   let dy = t.y;
   if (t.kind === 'hero') {
@@ -2956,6 +2961,38 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
   const hitDelay = Math.max(0.14 + 0.32, 0.46);
   const applyAt = now + hitDelay;
   g.PendingHeroHits = g.PendingHeroHits || [];
+  const heroName = String(actor && actor.name || '');
+  const presentationProfiles = {
+    Falie: { hitCount: 4, intervalSec: 0.3, scatter: { radiusX: 10, radiusY: 8 } },
+    Huun: { hitCount: 4, intervalSec: 0.3, scatter: { radiusX: 16, radiusY: 6 } },
+    Runa: { hitCount: 4, intervalSec: 0.3, scatter: { radiusX: 14, radiusY: 12 } },
+    Kojonn: { hitCount: 4, intervalSec: 0.3, scatter: { radiusX: 22, radiusY: 16 } },
+  };
+  const presentation = presentationProfiles[heroName] || null;
+  if (presentation && presentation.hitCount > 1) {
+    const totalBurstDamage = ampMult > 0 ? Math.max(1, Math.ceil(dmg * ampMult)) : Math.max(1, dmg);
+    const base = Math.floor(totalBurstDamage / presentation.hitCount);
+    let remainder = totalBurstDamage % presentation.hitCount;
+    for (let hitIndex = 0; hitIndex < presentation.hitCount; hitIndex += 1) {
+      const shotDamage = Math.max(1, base + (remainder > 0 ? 1 : 0));
+      if (remainder > 0) remainder -= 1;
+      g.PendingHeroHits.push({
+        at: applyAt + (hitIndex * presentation.intervalSec),
+        heroUID,
+        targetUID,
+        dmg: shotDamage,
+        powerAmpMultiplier: 0,
+        powerAmpLifecycleId: ampLifecycleId,
+        consumePowerAmp: ampMult > 0 && hitIndex === 0 ? 1 : 0,
+        damageTextScatter: presentation.scatter,
+        calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
+        heroName: actorName,
+        heroType: mode,
+      });
+    }
+    LogCombat(ctx, `${actorName} hit ${target.name || '?'} for ${totalBurstDamage}!`);
+    return;
+  }
   g.PendingHeroHits.push({
     at: applyAt,
     heroUID,
@@ -2976,8 +3013,8 @@ export function HeroAttackAOE(ctx, heroUID) {
   const actorName = actor ? (actor.name || '?') : '?';
   const mode = actor && actor.attackType === 'magic' ? 'magic' : 'melee';
   const heroIndex = actor && actor.heroIndex != null ? actor.heroIndex : 0;
-  const isKojonn = heroIndex === 3;
-  const aoeName = isKojonn ? 'Burst' : (['Pummel', 'Swipe', 'Burst', 'Faze'][heroIndex] || 'AOE');
+  const isKojonn = String(actor && actor.name || '') === 'Kojonn';
+  const aoeName = isKojonn ? 'Faze' : (['Pummel', 'Swipe', 'Burst', 'Faze'][heroIndex] || 'AOE');
   let totalDamage = 0;
   const g = getGlobals(ctx);
   const ampEntry = ensurePowerAmpByUID(ctx)[heroUID];
@@ -2989,7 +3026,18 @@ export function HeroAttackAOE(ctx, heroUID) {
   }
   const enemies = getEnemies(ctx);
   const hits = [];
+  const baseKojonnDotDamage = isKojonn
+    ? Math.max(1, Math.floor(GetEffectiveStat(ctx, actor, 'MAG') * 0.75))
+    : 0;
+  const kojonnDotDamage = isKojonn
+    ? (ampMult > 0 ? Math.max(1, Math.ceil(baseKojonnDotDamage * ampMult)) : baseKojonnDotDamage)
+    : 0;
   for (const e of enemies) {
+    if (isKojonn) {
+      hits.push({ targetUID: e.uid, dotTotalDamage: kojonnDotDamage, consumePowerAmp: 0 });
+      totalDamage += kojonnDotDamage;
+      continue;
+    }
     const dmg = CalculateDamage(ctx, heroUID, e.uid, mode);
     const finalDmg = ampMult > 0 ? Math.max(1, Math.ceil(dmg * ampMult)) : dmg;
     hits.push({ targetUID: e.uid, dmg, powerAmpMultiplier: ampMult, powerAmpLifecycleId: ampLifecycleId, consumePowerAmp: 0, finalDmg });
@@ -3006,15 +3054,42 @@ export function HeroAttackAOE(ctx, heroUID) {
       heroUID,
       targetUID: hit.targetUID,
       dmg: hit.dmg,
+      dotTotalDamage: Number(hit.dotTotalDamage || 0),
       powerAmpMultiplier: hit.powerAmpMultiplier,
       powerAmpLifecycleId: hit.powerAmpLifecycleId,
       consumePowerAmp: hit.consumePowerAmp,
+      effectType: isKojonn ? 'dot_apply' : 'damage',
       calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
       heroName: actorName,
       heroType: mode,
     });
   }
-  LogCombat(ctx, `${actorName} used ${aoeName} on all enemies for ${totalDamage}!`);
+  if (isKojonn) {
+    LogCombat(ctx, `${actorName} used ${aoeName} to spread blight over time for ${totalDamage}!`);
+  } else {
+    LogCombat(ctx, `${actorName} used ${aoeName} on all enemies for ${totalDamage}!`);
+  }
+}
+
+export function QueueEnemyDamageOverTime(ctx, actorUID, enemyUID, totalDamage, options = undefined) {
+  const g = getGlobals(ctx);
+  const enemy = GetActorByUID(ctx, enemyUID);
+  const actor = GetActorByUID(ctx, actorUID);
+  if (!enemy || !actor || Number(enemy.hp || 0) <= 0) return 0;
+  const totalTicks = Math.max(1, Math.floor(Number(options?.totalTicks || 8) || 8));
+  const nowTick = Number(g.RegenTickCounter || 0);
+  if (!g.EnemyDamageOverTime) g.EnemyDamageOverTime = [];
+  g.EnemyDamageOverTime.push({
+    targetUID: Number(enemyUID || 0),
+    sourceUID: Number(actorUID || 0),
+    remainingFires: totalTicks,
+    totalDamageRemaining: Math.max(1, Math.floor(Number(totalDamage || 0) || 1)),
+    firesEveryTicks: Math.max(1, Math.floor(Number(options?.firesEveryTicks || 1) || 1)),
+    nextFireTick: nowTick + Math.max(1, Math.floor(Number(options?.startAfterTicks || 1) || 1)),
+    effectName: String(options?.effectName || 'Blight'),
+  });
+  LogCombat(ctx, `${actor.name || 'Hero'} applies ${String(options?.effectName || 'Blight')} to ${enemy.name || 'Enemy'}!`);
+  return 1;
 }
 
 export function Enemy_ATK_Single(ctx, enemyUID, targetHeroUID) {
@@ -4249,6 +4324,24 @@ function isBoardFullyPopulatedForEnemyMutation(ctx) {
   return occupied.size === expectedCount;
 }
 
+function resolveEnemyBoardLineFallbackSkill(enemy, skillId) {
+  if (skillId !== 'Enemy_Scathe' && skillId !== 'Enemy_Sweep') return skillId;
+  const name = String(enemy?.name || '');
+  const conf = ENEMY_SKILL_ASSIGNMENT_MAP[name];
+  return String(conf?.regularSkill || 'Enemy_ATK_Single');
+}
+
+function normalizeEnemyBoardLineSkillDecision(ctx, enemy, decision) {
+  const selected = String(decision?.selected || '');
+  if (selected !== 'Enemy_Scathe' && selected !== 'Enemy_Sweep') return decision;
+  if (isBoardFullyPopulatedForEnemyMutation(ctx)) return decision;
+  return {
+    ...decision,
+    selected: resolveEnemyBoardLineFallbackSkill(enemy, selected),
+    branch: `${String(decision?.branch || 'special')}_blocked_incomplete_board`,
+  };
+}
+
 export function PickEnemySkill(ctx, enemyUID) {
   const enemy = GetActorByUID(ctx, enemyUID);
   if (!enemy) return 'Enemy_ATK_Single';
@@ -4313,16 +4406,7 @@ export function PickEnemySkill(ctx, enemyUID) {
     }
   }
   const roll = Math.random();
-  const decision = resolveEnemySkillDecision(enemy, roll);
-  if (decision.selected === 'Enemy_X_Out' && !isBoardFullyPopulatedForEnemyMutation(ctx)) {
-    const forced = {
-      ...decision,
-      selected: 'Enemy_MAG_Single',
-      branch: `${String(decision.branch || 'enemy_skill')}_blocked_incomplete_board`,
-    };
-    traceEnemySkillDecision(ctx, enemyUID, forced);
-    return forced.selected;
-  }
+  const decision = normalizeEnemyBoardLineSkillDecision(ctx, enemy, resolveEnemySkillDecision(enemy, roll));
   traceEnemySkillDecision(ctx, enemyUID, decision);
   return decision.selected;
 }
@@ -4364,24 +4448,21 @@ export function Enemy_Drain_Buff(ctx, enemyUID) {
   return 1;
 }
 
-export function Enemy_X_Out(ctx, enemyUID) {
+function clearRandomGemLine(ctx, axis) {
   const g = getGlobals(ctx);
   const gems = getGems(ctx);
-  const rows = Number(g.BoardRows || 4);
-  const cols = Number(g.BoardCols || 6);
-  const diagonalSlots = new Set();
-  for (let r = 0; r < rows; r++) {
-    const cMain = r;
-    const cAnti = (cols - 1) - r;
-    if (cMain >= 0 && cMain < cols) diagonalSlots.add(`${r},${cMain}`);
-    if (cAnti >= 0 && cAnti < cols) diagonalSlots.add(`${r},${cAnti}`);
-  }
-  // Board mutation first: remove both diagonals.
+  const occupiedIndices = Array.from(new Set(
+    gems
+      .map((gem) => Number(axis === 'column' ? gem?.cellC : gem?.cellR))
+      .filter((value) => Number.isInteger(value) && value >= 0)
+  ));
+  if (!occupiedIndices.length) return { cleared: 0, lineIndex: -1 };
+  const lineIndex = occupiedIndices[Math.floor(Math.random() * occupiedIndices.length)];
   const nextGems = [];
   let consumed = 0;
   for (const gem of gems) {
-    const key = `${Number(gem?.cellR ?? -1)},${Number(gem?.cellC ?? -1)}`;
-    if (diagonalSlots.has(key)) {
+    const gemIndex = Number(axis === 'column' ? gem?.cellC : gem?.cellR);
+    if (gemIndex === lineIndex) {
       consumed += 1;
       continue;
     }
@@ -4390,8 +4471,20 @@ export function Enemy_X_Out(ctx, enemyUID) {
   setGems(ctx, nextGems);
   setSelectedGemIndices(ctx, []);
   g.TapIndex = 0;
+  return { cleared: consumed, lineIndex };
+}
+
+export function Enemy_Scathe(ctx, enemyUID) {
   const enemyName = getActorNameByUID(ctx, enemyUID);
-  LogCombat(ctx, `${enemyName} used X Out and removed ${consumed} diagonal gems.`);
+  const result = clearRandomGemLine(ctx, 'column');
+  LogCombat(ctx, `${enemyName} used Scathe and removed ${result.cleared} gems from a column.`);
+  return 1;
+}
+
+export function Enemy_Sweep(ctx, enemyUID) {
+  const enemyName = getActorNameByUID(ctx, enemyUID);
+  const result = clearRandomGemLine(ctx, 'row');
+  LogCombat(ctx, `${enemyName} used Sweep and removed ${result.cleared} gems from a row.`);
   return 1;
 }
 
@@ -4433,24 +4526,40 @@ export function Enemy_Wipe(ctx, enemyUID) {
 }
 
 export function ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID = 0) {
+  const enemy = GetActorByUID(ctx, enemyUID);
+  if (!enemy) return 0;
+  const normalizedSkillId = normalizeEnemyBoardLineSkillDecision(ctx, enemy, {
+    roll: -1,
+    selected: skillId,
+    branch: 'execute',
+    enemyName: String(enemy.name || ''),
+  }).selected;
   const resolvedTargetUID = targetUID || (pickEnemyTargetHero(ctx, enemyUID)?.uid || 0);
-  if (skillId === 'Enemy_Heal_Self') {
+  if (normalizedSkillId === 'Enemy_Heal_Self') {
     Enemy_Heal_Self(ctx, enemyUID);
     return 1;
   }
-  if (skillId === 'Enemy_Heal_Allies') {
+  if (normalizedSkillId === 'Enemy_Heal_Allies') {
     Enemy_Heal_Allies(ctx, enemyUID);
     return 1;
   }
-  if (skillId === 'Enemy_Heal_Ally') {
+  if (normalizedSkillId === 'Enemy_Heal_Ally') {
     Enemy_Heal_Ally(ctx, enemyUID, targetUID);
     return 1;
   }
-  if (skillId === 'Enemy_MAG_Single') {
+  if (normalizedSkillId === 'Enemy_Scathe') {
+    Enemy_Scathe(ctx, enemyUID);
+    return 1;
+  }
+  if (normalizedSkillId === 'Enemy_Sweep') {
+    Enemy_Sweep(ctx, enemyUID);
+    return 1;
+  }
+  if (normalizedSkillId === 'Enemy_MAG_Single') {
     if (resolvedTargetUID) Enemy_MAG_Single(ctx, enemyUID, resolvedTargetUID);
     return 1;
   }
-  if (skillId === 'Enemy_MAG_AOE') {
+  if (normalizedSkillId === 'Enemy_MAG_AOE') {
     for (const h of getHeroes(ctx)) {
       const dmg = CalculateDamage(ctx, enemyUID, h.uid, 'magic');
       const resist = applyRunaMagicResist(ctx, enemyUID, h.uid, dmg, 'Enemy_MAG_AOE');
@@ -4458,17 +4567,10 @@ export function ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID = 0) {
     }
     return 1;
   }
-  if (skillId === 'Enemy_Drain_Buff') {
+  if (normalizedSkillId === 'Enemy_Drain_Buff') {
     return Enemy_Drain_Buff(ctx, enemyUID);
   }
-  if (skillId === 'Enemy_X_Out') {
-    if (!isBoardFullyPopulatedForEnemyMutation(ctx)) {
-      if (resolvedTargetUID) Enemy_MAG_Single(ctx, enemyUID, resolvedTargetUID);
-      return 1;
-    }
-    return Enemy_X_Out(ctx, enemyUID);
-  }
-  if (skillId === 'Enemy_Wipe') {
+  if (normalizedSkillId === 'Enemy_Wipe') {
     return Enemy_Wipe(ctx, enemyUID);
   }
   if (resolvedTargetUID) {
@@ -4507,6 +4609,18 @@ export function StartEnemyAction(ctx, enemyUID) {
 export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind = null) {
   const g = getGlobals(ctx);
   g.DamageTexts = g.DamageTexts || [];
+  let drawX = x;
+  let drawY = y;
+  if (kind === 'damage' && g.NextDamageTextScatter && typeof g.NextDamageTextScatter === 'object') {
+    const scatter = g.NextDamageTextScatter;
+    const radiusX = Math.max(0, Number(scatter.radiusX || 0));
+    const radiusY = Math.max(0, Number(scatter.radiusY || 0));
+    const angle = Math.random() * Math.PI * 2;
+    const distance = Math.sqrt(Math.random());
+    drawX += Math.cos(angle) * radiusX * distance;
+    drawY += Math.sin(angle) * radiusY * distance;
+    delete g.NextDamageTextScatter;
+  }
   const defaults = kind === 'heal'
     ? { low: 5, high: 30 }
     : { low: 10, high: 80 };
@@ -4517,13 +4631,13 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
   const fadeSec = 0.45;
   g.DamageTexts.push({
     amount,
-    x,
-    y,
+    x: drawX,
+    y: drawY,
     kind,
     targetKind,
     heat,
     peakScale,
-    baseY: y,
+    baseY: drawY,
     age: 0,
     phase: 0,
     opacity: 1,

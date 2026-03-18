@@ -172,3 +172,19 @@
 ## 2026-03-17 — Runtime Recovery Must Start With Surviving Owner Seams
 - When a gameplay surface appears rolled back, inventory the live source before attempting recovery. Reports and bead notes can prove prior intent, but the current runtime owner file still decides what ships.
 - If a missing feature left behind surviving support seams or debug surfaces, restore the smallest shell on top of those seams first. A visible shell plus deterministic contract is safer than trying to recreate the entire lost feature stack in one pass.
+
+## 2026-03-17 — Tone-Aware Hit Flashes Need An Explicit Hand-Off
+- If the renderer supports colored hit flashes, the damage owner seam must write a structured flash entry, not a bare timestamp. A plain `until` number silently collapses all specialized tones back to the default even when callers correctly arm `NextHitFlashTone`.
+- For transient combat FX, treat the hand-off as a three-link chain and test all three: caller arms the tone, damage application persists `{ until, tone }`, renderer reads the tone-aware entry. Verifying only one end of that chain is not enough.
+
+## 2026-03-17 — App-Side Queues Must Match Function-Bank Exports
+- If `app.js` stages a delayed combat effect through `callFunctionWithContext(...)`, the owning helper must exist in both mirrored function-bank files. A live caller plus a missing export creates silent feature loss that can survive static UI smoke checks.
+- For hero-specialized AOE paths, contract the specialization itself, not just the shared function name. Kojonn green needed an explicit contract for `effectType: 'dot_apply'`, blight queueing, and non-generic log text; otherwise it drifted back to the generic burst lane without syntax errors.
+
+## 2026-03-17 — Guard Contracts Must Cover Skill Identity, Not Just Fallbacks
+- A blocker/fallback contract is not sufficient if the underlying special skill can silently drift back to an older implementation. The Djinn/Marid board guard stayed green while the actual mutation seam reverted from `Scathe` / `Sweep` to the older diagonal `X Out`.
+- For enemy board-mutation lanes, contract both halves: the guard decision (`only on full board, else fallback`) and the concrete mutation identity (`column` vs `row`, plus log/skill names). Otherwise the tests can certify the wrong skill.
+
+## 2026-03-17 — Recovery Work Must Be Saved As Soon As The User Confirms Runtime Parity
+- When rollback recovery spans several gameplay seams, checkpoint the accepted restores immediately after QA passes. Do not leave multiple recovered lanes floating only in the dirty worktree while investigating the next regression.
+- During recovery, trust present source plus focused contracts over branch labels or external app sessions. A repo can be on the right branch and still be missing the required runtime lanes in the owner file.

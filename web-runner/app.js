@@ -1032,7 +1032,7 @@ function updateDevToolingStatus(message = '') {
   }
   const suffix = message ? `\n${message}` : '';
   devToolingDom.status.textContent =
-    `Hotkey: ${DEV_TOOL_HOTKEY_LABEL}\nActive Layout: ${activeLayoutId}\nIdle Mode: ${autoplayActive ? 'ACTIVE' : 'idle'}\nApply: writes live-safe values and refreshes combat for staged knobs${suffix}`;
+    `Hotkey: ${DEV_TOOL_HOTKEY_LABEL}\nActive Layout: ${activeLayoutId}\nIdle Mode: ${autoplayActive ? 'ACTIVE' : 'idle'}\nApply: writes only the selected condition; no combat reset, turn advance, or loadout refresh${suffix}`;
 }
 
 function populateDevToolSlotSelect(selectEl, { choices = [], includeRandom = false, selected = '' } = {}) {
@@ -1091,7 +1091,7 @@ function readDevToolingDomConfigPatch() {
   };
 }
 
-async function applyDevToolingConfig(patch = {}, { refreshGame = false, resetGame = false, forceCombat = false } = {}) {
+async function applyDevToolingConfig(patch = {}, { closeModal = true } = {}) {
   const next = sanitizeDevToolingConfig({
     ...ensureDevToolingConfig(),
     ...(patch && typeof patch === 'object' ? patch : {}),
@@ -1116,18 +1116,20 @@ async function applyDevToolingConfig(patch = {}, { refreshGame = false, resetGam
   gameState.selectedEnemy = Math.min(gameState.selectedEnemy || 0, Math.max(0, next.enemySlots.filter((value) => String(value || '').trim() !== DEV_TOOL_EMPTY_SLOT).length - 1));
   const recolored = applyBoardGemColor(next.boardGemColor);
   syncDevToolingDomFromConfig();
-  if (!resetGame && refreshGame) closeDevToolingModal({ restorePauseSnapshot: false });
-  let refreshed = false;
-  if ((refreshGame || resetGame) && typeof devToolingRefreshHandler === 'function') {
-    refreshed = !!(await devToolingRefreshHandler({ forceCombat, resetGame }));
-  }
-  if (!resetGame && !refreshGame) closeDevToolingModal({ restorePauseSnapshot: true });
-  updateDevToolingStatus(`Applied\nBoard recolor count: ${recolored}\nHero slots: ${next.heroSlots.map((value) => value || 'Empty').join(', ')}\nEnemy slots: ${next.enemySlots.map((value) => value === DEV_TOOL_RANDOM_ENEMY_SLOT ? 'Random' : (value || 'Empty')).join(', ')}\nReward: ${next.rewardDrops || 'None'} x${next.rewardCount}\n${resetGame ? 'Full game reset' : 'Combat refresh'}: ${refreshed ? 'done' : 'not needed / unavailable'}`);
+  if (closeModal) closeDevToolingModal({ restorePauseSnapshot: true });
+  updateDevToolingStatus(
+    `Applied\n` +
+    `Board recolor count: ${recolored}\n` +
+    `Hero slots (staged): ${next.heroSlots.map((value) => value || 'Empty').join(', ')}\n` +
+    `Enemy slots (staged): ${next.enemySlots.map((value) => value === DEV_TOOL_RANDOM_ENEMY_SLOT ? 'Random' : (value || 'Empty')).join(', ')}\n` +
+    `Reward (staged): ${next.rewardDrops || 'None'} x${next.rewardCount}\n` +
+    `Combat state unchanged`
+  );
   return {
     ...next,
     rewardDrops: [...(state.globals.DevRewardDrops || [])],
     boardRecolored: recolored,
-    refreshed,
+    refreshed: false,
   };
 }
 
@@ -1217,7 +1219,7 @@ function ensureDevToolingModal() {
     </div>
     <div style="display:flex;gap:8px;margin-top:14px;">
       <button type="button" data-devtool-apply style="border:1px solid #14532d;background:#1f8f4a;color:#fff;padding:8px 12px;border-radius:8px;font-weight:800;cursor:pointer;">Apply</button>
-      <button type="button" data-devtool-refresh style="border:1px solid #475569;background:#fff;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Restart</button>
+      <button type="button" data-devtool-refresh style="border:1px solid #475569;background:#fff;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Save Staged</button>
       <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Run Idle Mode</button>
     </div>
     <pre data-devtool-status style="margin:14px 0 0;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff9ee;white-space:pre-wrap;"></pre>
@@ -1262,8 +1264,8 @@ function ensureDevToolingModal() {
   };
   devToolingDom.launcher.addEventListener('click', () => toggleDevToolingModal(true));
   devToolingDom.close.addEventListener('click', () => toggleDevToolingModal(false));
-  devToolingDom.refresh.addEventListener('click', () => applyDevToolingConfig(readDevToolingDomConfigPatch(), { refreshGame: true, resetGame: true, forceCombat: false }));
-  devToolingDom.apply.addEventListener('click', () => applyDevToolingConfig(readDevToolingDomConfigPatch(), { refreshGame: true, forceCombat: true }));
+  devToolingDom.refresh.addEventListener('click', () => applyDevToolingConfig(readDevToolingDomConfigPatch(), { closeModal: false }));
+  devToolingDom.apply.addEventListener('click', () => applyDevToolingConfig(readDevToolingDomConfigPatch(), { closeModal: true }));
   devToolingDom.autoplay.addEventListener('click', async () => {
     if (state.globals.DevAutoplayActive) {
       state.globals.DevAutoplayStopRequested = 1;

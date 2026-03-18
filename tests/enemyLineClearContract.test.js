@@ -12,8 +12,9 @@ test('Djinn/Marid line-clear skills only select on full boards in both runtime m
 
   for (const src of [runtimeSrc, scriptsSrc]) {
     assert.match(src, /function isBoardFullyPopulatedForEnemyMutation\(ctx\)/);
-    assert.match(src, /decision\.selected === 'Enemy_X_Out' && !isBoardFullyPopulatedForEnemyMutation\(ctx\)/);
-    assert.match(src, /selected: 'Enemy_MAG_Single'/);
+    assert.match(src, /function normalizeEnemyBoardLineSkillDecision\(ctx, enemy, decision\)/);
+    assert.match(src, /selected !== 'Enemy_Scathe' && selected !== 'Enemy_Sweep'/);
+    assert.match(src, /selected: resolveEnemyBoardLineFallbackSkill\(enemy, selected\),/);
     assert.match(src, /blocked_incomplete_board/);
   }
 });
@@ -23,6 +24,11 @@ test('Djinn/Marid line-clear skills fall back to single-target magic at executio
   const scriptsSrc = fs.readFileSync(scriptsPath, 'utf8');
 
   for (const src of [runtimeSrc, scriptsSrc]) {
-    assert.match(src, /if \(skillId === 'Enemy_X_Out'\) \{\s+if \(!isBoardFullyPopulatedForEnemyMutation\(ctx\)\) \{\s+if \(resolvedTargetUID\) Enemy_MAG_Single\(ctx, enemyUID, resolvedTargetUID\);\s+return 1;\s+\}\s+return Enemy_X_Out\(ctx, enemyUID\);/);
+    assert.match(src, /const normalizedSkillId = normalizeEnemyBoardLineSkillDecision\(ctx, enemy, \{/);
+    assert.match(src, /if \(normalizedSkillId === 'Enemy_Scathe'\) \{\s+Enemy_Scathe\(ctx, enemyUID\);/);
+    assert.match(src, /if \(normalizedSkillId === 'Enemy_Sweep'\) \{\s+Enemy_Sweep\(ctx, enemyUID\);/);
+    assert.match(src, /if \(normalizedSkillId === 'Enemy_MAG_Single'\) \{\s+if \(resolvedTargetUID\) Enemy_MAG_Single\(ctx, enemyUID, resolvedTargetUID\);/);
+    assert.match(src, /LogCombat\(ctx, `\$\{enemyName\} used Scathe and removed \$\{result\.cleared\} gems from a column\.`\);/);
+    assert.match(src, /LogCombat\(ctx, `\$\{enemyName\} used Sweep and removed \$\{result\.cleared\} gems from a row\.`\);/);
   }
 });
