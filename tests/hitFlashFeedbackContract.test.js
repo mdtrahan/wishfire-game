@@ -11,7 +11,7 @@ test('damage application sets brief hit-flash window in both function-bank mirro
   const runtimeSrc = read('web-runner/modules/functionBank.js');
   const scriptsSrc = read('Scripts/functionBank.js');
   for (const src of [runtimeSrc, scriptsSrc]) {
-    assert.match(src, /const hitFlashTone = String\(g\.NextHitFlashTone \|\| 'white'\);/);
+    assert.match(src, /const hitFlashTone = String\(g\.NextHitFlashTone \|\| 'black'\);/);
     assert.match(src, /g\.HitFlashByUID\[uid\] = \{/);
     assert.match(src, /until: now \+ 0\.14,/);
     assert.match(src, /tone: hitFlashTone,/);
@@ -23,9 +23,11 @@ test('renderer applies tone-aware hit-flash overlay to attacked combatants', () 
   const src = read('web-runner/app.js');
   assert.match(src, /const isHitFlashActive = \(uid\) => \{/);
   assert.match(src, /const getHitFlashTone = \(uid\) => \{/);
-  assert.match(src, /ctx\.globalAlpha = 0\.5;/);
+  assert.match(src, /ctx\.globalAlpha = tone === 'purple' \? 0\.5 : 0\.3;/);
   assert.match(src, /tone === 'purple'/);
-  assert.match(src, /ctx\.filter = 'brightness\(0\) invert\(1\)';/);
+  assert.match(src, /return 'black';/);
+  assert.match(src, /const renderHitFlashOverlay = \(drawSprite, tone = 'black'\) => \{/);
+  assert.match(src, /: 'brightness\(0\)'/);
   assert.match(src, /renderHitFlashOverlay\(\(\) => ctx\.drawImage\(sprite, drawX, drawY, enemyW, enemyH\), getHitFlashTone\(enemy\.uid\)\);/);
   assert.match(src, /renderHitFlashOverlay\(\(\) => ctx\.drawImage\(img, drawX, drawY, scaledW, scaledH\), getHitFlashTone\(hero\.uid\)\);/);
 });

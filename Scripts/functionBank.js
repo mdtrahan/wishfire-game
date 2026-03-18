@@ -2572,7 +2572,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
   if (!g.HitFlashByUID || typeof g.HitFlashByUID !== 'object') {
     g.HitFlashByUID = {};
   }
-  const hitFlashTone = String(g.NextHitFlashTone || 'white');
+  const hitFlashTone = String(g.NextHitFlashTone || 'black');
   g.HitFlashByUID[uid] = {
     until: now + 0.14,
     tone: hitFlashTone,

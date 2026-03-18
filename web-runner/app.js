@@ -7882,18 +7882,18 @@ async function main(){
 
     const getHitFlashTone = (uid) => {
       const flashes = state.globals.HitFlashByUID;
-      if (!uid || !flashes || typeof flashes !== 'object') return 'white';
+      if (!uid || !flashes || typeof flashes !== 'object') return 'black';
       const entry = flashes[uid];
-      if (entry && typeof entry === 'object') return String(entry.tone || 'white');
-      return 'white';
+      if (entry && typeof entry === 'object') return String(entry.tone || 'black');
+      return 'black';
     };
 
-    const renderHitFlashOverlay = (drawSprite, tone = 'white') => {
+    const renderHitFlashOverlay = (drawSprite, tone = 'black') => {
       ctx.save();
-      ctx.globalAlpha = 0.5;
+      ctx.globalAlpha = tone === 'purple' ? 0.5 : 0.3;
       ctx.filter = tone === 'purple'
         ? 'brightness(0.6) sepia(1) hue-rotate(240deg) saturate(2.8)'
-        : 'brightness(0) invert(1)';
+        : 'brightness(0)';
       drawSprite();
       ctx.restore();
     };
@@ -7929,7 +7929,7 @@ async function main(){
           ctx.fillStyle = '#7d2b2b';
           ctx.fillRect(drawX, drawY, enemyW, enemyH);
           if (isHitFlashActive(enemy.uid)) {
-            ctx.fillStyle = getHitFlashTone(enemy.uid) === 'purple' ? '#b86cff' : '#fff';
+            ctx.fillStyle = getHitFlashTone(enemy.uid) === 'purple' ? '#b86cff' : '#000';
             ctx.fillRect(drawX, drawY, enemyW, enemyH);
           }
           ctx.strokeStyle = '#fff';
