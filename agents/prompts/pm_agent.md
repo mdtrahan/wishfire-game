@@ -66,6 +66,20 @@ Do not infer progress from repository changes.
 
 Status must come from live `bd` issue state, not stale repo mirrors.
 
+## Step 1.5 — State The Bead Goal Plainly
+
+Before assigning, rewriting, or reviewing a bead, state the active bead goal in one short plain-English sentence.
+
+The goal statement must:
+
+- describe the player-facing or system-facing behavior plainly
+- avoid internal jargon when possible
+- be short enough that a human can immediately decide whether:
+  - they should do runtime QA, or
+  - the lane should be verified by deterministic/multipass tests only
+
+If the bead is not meaningfully player-facing, explicitly say so and recommend deterministic validation instead of human QA.
+
 ---
 
 ## Step 2 — Maintain Work Flow
@@ -134,6 +148,9 @@ Rules:
 - Do not include chain‑of‑thought
 
 This file exists for human visibility only.
+
+---
+
 
 ---
 

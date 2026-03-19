@@ -774,6 +774,8 @@ function createDefaultDevToolingConfig() {
     combatSpeed: 1,
     rewardDrops: '',
     rewardCount: 1,
+    doubleAttackHeroName: '',
+    doubleAttackChance: 1,
     lastAppliedAt: 0,
   };
 }
@@ -852,8 +854,41 @@ function sanitizeDevToolingConfig(input = {}) {
   const rewardDrop = String(next.rewardDrops || '').trim().toUpperCase();
   next.rewardDrops = DEV_TOOL_REWARD_OPTIONS.some((row) => row.value === rewardDrop) ? rewardDrop : '';
   next.rewardCount = Math.max(0, Math.min(99, Math.floor(Number(next.rewardCount || base.rewardCount))));
+  const doubleAttackHeroName = String(next.doubleAttackHeroName || '').trim();
+  next.doubleAttackHeroName = !doubleAttackHeroName || allowedHeroNames.has(doubleAttackHeroName) ? doubleAttackHeroName : '';
+  next.doubleAttackChance = 1;
   next.lastAppliedAt = Number(next.lastAppliedAt || 0);
   return next;
+}
+
+function syncConfiguredDoubleAttackHarness(cfg = ensureDevToolingConfig()) {
+  const heroNames = getDevToolHeroOptions();
+  for (const heroName of heroNames) {
+    const actor = state.entities.find((entity) => entity && entity.kind === 'hero' && String(entity.name || '') === heroName);
+    if (!actor) continue;
+    callFunctionWithContext(fnContext, 'RemoveActorExtraTurnSkill', actor.uid);
+  }
+  const holderName = String(cfg.doubleAttackHeroName || '').trim();
+  state.globals.DevDoubleAttackChance = Number(cfg.doubleAttackChance || 1);
+  if (!holderName) {
+    state.globals.DevDoubleAttackHolderName = '';
+    state.globals.DevDoubleAttackHolderUID = 0;
+    return null;
+  }
+  const actor = state.entities.find((entity) => entity && entity.kind === 'hero' && String(entity.name || '') === holderName);
+  if (!actor) {
+    state.globals.DevDoubleAttackHolderName = '';
+    state.globals.DevDoubleAttackHolderUID = 0;
+    return null;
+  }
+  callFunctionWithContext(fnContext, 'ConfigureActorExtraTurnSkill', actor.uid, {
+    chance: Number(cfg.doubleAttackChance || 1),
+    traitId: 'double_attack',
+    skillId: 'DOUBLE_ATTACK',
+  });
+  state.globals.DevDoubleAttackHolderName = holderName;
+  state.globals.DevDoubleAttackHolderUID = Number(actor.uid || 0);
+  return Number(actor.uid || 0);
 }
 
 function readPersistedDevToolingConfig() {
@@ -913,6 +948,21 @@ function getConfiguredHeroSlots() {
 
 function getConfiguredEnemySlots() {
   return sanitizeDevToolingConfig(state.globals.DevToolingConfig || {}).enemySlots.slice(0, 3);
+}
+
+function syncIdleFarmDevLoadoutConfig(cfg = ensureDevToolingConfig()) {
+  const layout = gameState.idleFarmLayout || (gameState.idleFarmLayout = {});
+  const currentConfig = (layout.config && typeof layout.config === 'object') ? layout.config : {};
+  const heroNames = Array.isArray(cfg.heroSlots) ? cfg.heroSlots.map((value) => String(value || '').trim()).filter(Boolean) : [];
+  const rawEnemySlots = Array.isArray(cfg.enemySlots) ? cfg.enemySlots.map((value) => String(value || '').trim()) : [];
+  const activeEnemySlots = rawEnemySlots.filter((value) => value !== DEV_TOOL_EMPTY_SLOT);
+  layout.config = {
+    ...currentConfig,
+    heroNames,
+    enemySlots: Math.max(1, activeEnemySlots.length || Number(currentConfig.enemySlots || 1)),
+    enemyNames: rawEnemySlots.map((value) => (value === DEV_TOOL_RANDOM_ENEMY_SLOT ? '' : value)),
+  };
+  return layout.config;
 }
 
 function readEscortPartyConfig() {
@@ -1075,6 +1125,7 @@ function syncDevToolingDomFromConfig() {
   devToolingDom.combatSpeed.value = String(cfg.combatSpeed);
   devToolingDom.rewardDrops.value = String(cfg.rewardDrops || '');
   devToolingDom.rewardCount.value = String(cfg.rewardCount);
+  populateDevToolSlotSelect(devToolingDom.doubleAttackHero, { choices: getDevToolHeroOptions(), includeRandom: false, selected: cfg.doubleAttackHeroName || DEV_TOOL_EMPTY_SLOT });
   updateDevToolingStatus();
 }
 
@@ -1088,12 +1139,14 @@ function readDevToolingDomConfigPatch() {
     combatSpeed: Number(devToolingDom.combatSpeed.value || 1),
     rewardDrops: String(devToolingDom.rewardDrops.value || ''),
     rewardCount: Number(devToolingDom.rewardCount.value || 1),
+    doubleAttackHeroName: String(devToolingDom.doubleAttackHero?.value || ''),
   };
 }
 
 async function applyDevToolingConfig(patch = {}, { closeModal = true } = {}) {
+  const prev = ensureDevToolingConfig();
   const next = sanitizeDevToolingConfig({
-    ...ensureDevToolingConfig(),
+    ...prev,
     ...(patch && typeof patch === 'object' ? patch : {}),
     lastAppliedAt: Number(state.globals.time || 0),
   });
@@ -1111,10 +1164,31 @@ async function applyDevToolingConfig(patch = {}, { closeModal = true } = {}) {
     ? Array.from({ length: next.rewardCount }, () => next.rewardDrops)
     : [];
   state.globals.DevRewardCount = next.rewardCount;
+  state.globals.DevDoubleAttackHolderName = '';
+  state.globals.DevDoubleAttackHolderUID = 0;
+  state.globals.DevDoubleAttackChance = Number(next.doubleAttackChance || 1);
   persistDevToolingConfig(next);
+  syncIdleFarmDevLoadoutConfig(next);
   gameState.selectedHero = Math.min(gameState.selectedHero || 0, Math.max(0, next.heroSlots.filter(Boolean).length - 1));
   gameState.selectedEnemy = Math.min(gameState.selectedEnemy || 0, Math.max(0, next.enemySlots.filter((value) => String(value || '').trim() !== DEV_TOOL_EMPTY_SLOT).length - 1));
   const recolored = applyBoardGemColor(next.boardGemColor);
+  const doubleAttackUID = syncConfiguredDoubleAttackHarness(next);
+  const heroSlotsChanged = JSON.stringify(prev.heroSlots || []) !== JSON.stringify(next.heroSlots || []);
+  const enemySlotsChanged = JSON.stringify(prev.enemySlots || []) !== JSON.stringify(next.enemySlots || []);
+  const loadoutChanged = heroSlotsChanged || enemySlotsChanged;
+  const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
+    ? layoutState.getActiveLayoutId()
+    : '';
+  let appliedSessionChange = 'none';
+  if (loadoutChanged) {
+    if (activeLayoutId === 'combat' && typeof devToolingRefreshHandler === 'function') {
+      await devToolingRefreshHandler({ forceCombat: false, resetGame: false });
+      appliedSessionChange = 'combat_refresh';
+    } else if (activeLayoutId === 'idleFarmLayout') {
+      restartIdleFarmSession(performance.now() / 1000);
+      appliedSessionChange = 'idle_restart';
+    }
+  }
   syncDevToolingDomFromConfig();
   if (closeModal) closeDevToolingModal({ restorePauseSnapshot: true });
   updateDevToolingStatus(
@@ -1122,13 +1196,17 @@ async function applyDevToolingConfig(patch = {}, { closeModal = true } = {}) {
     `Board recolor count: ${recolored}\n` +
     `Hero slots (staged): ${next.heroSlots.map((value) => value || 'Empty').join(', ')}\n` +
     `Enemy slots (staged): ${next.enemySlots.map((value) => value === DEV_TOOL_RANDOM_ENEMY_SLOT ? 'Random' : (value || 'Empty')).join(', ')}\n` +
+    `Double Attack: ${next.doubleAttackHeroName || 'Off'}${doubleAttackUID ? ` (uid ${doubleAttackUID})` : ''}\n` +
     `Reward (staged): ${next.rewardDrops || 'None'} x${next.rewardCount}\n` +
-    `Combat state unchanged`
+    `${loadoutChanged ? `Loadout applied: ${appliedSessionChange}` : 'Combat state unchanged'}`
   );
   return {
     ...next,
     rewardDrops: [...(state.globals.DevRewardDrops || [])],
     boardRecolored: recolored,
+    doubleAttackUID,
+    loadoutChanged,
+    appliedSessionChange,
     refreshed: false,
   };
 }
@@ -1216,6 +1294,9 @@ function ensureDevToolingModal() {
       <label style="display:flex;flex-direction:column;gap:4px;">Reward Count
         <input data-devtool-reward-count type="number" min="0" max="99" step="1">
       </label>
+      <label style="display:flex;flex-direction:column;gap:4px;">Double Attack
+        <select data-devtool-double-attack-hero></select>
+      </label>
     </div>
     <div style="display:flex;gap:8px;margin-top:14px;">
       <button type="button" data-devtool-apply style="border:1px solid #14532d;background:#1f8f4a;color:#fff;padding:8px 12px;border-radius:8px;font-weight:800;cursor:pointer;">Apply</button>
@@ -1260,6 +1341,7 @@ function ensureDevToolingModal() {
     combatSpeed: panel.querySelector('[data-devtool-combat-speed]'),
     rewardDrops: panel.querySelector('[data-devtool-reward-drops]'),
     rewardCount: panel.querySelector('[data-devtool-reward-count]'),
+    doubleAttackHero: panel.querySelector('[data-devtool-double-attack-hero]'),
     status: panel.querySelector('[data-devtool-status]'),
   };
   devToolingDom.launcher.addEventListener('click', () => toggleDevToolingModal(true));
@@ -1272,7 +1354,7 @@ function ensureDevToolingModal() {
       updateDevToolingStatus('Idle mode stop requested');
       return;
     }
-    closeDevToolingModal({ restorePauseSnapshot: false });
+    closeDevToolingModal({ restorePauseSnapshot: true });
     if (typeof devToolingAutoplayHandler === 'function') {
       await devToolingAutoplayHandler();
     }
@@ -6642,9 +6724,32 @@ async function main(){
     if (state.globals.PendingHeroHits && state.globals.PendingHeroHits.length) {
       const now = state.globals.time || 0;
       const pending = state.globals.PendingHeroHits;
+      state.globals.DoubleAttackLungeStarted = state.globals.DoubleAttackLungeStarted || {};
+      const doubleAttackBatchAnchors = state.globals.DoubleAttackBatchAnchors || (state.globals.DoubleAttackBatchAnchors = {});
       for (let i = pending.length - 1; i >= 0; i--) {
         const hit = pending[i];
+        const followUpBatchId = Number(hit.followUpBatchId || 0);
+        if (followUpBatchId > 0 && hit.followUpAwaitTextClear) {
+          if (state.globals.TextAnimating || (state.globals.HeroAction && state.globals.HeroAction.active)) continue;
+          if (!state.globals.DoubleAttackLungeStarted[followUpBatchId]) {
+            const followUpLead = 0.14 + 0.32;
+            const anchorAt = now + followUpLead;
+            for (const queued of pending) {
+              if (!queued) continue;
+              if (Number(queued.followUpBatchId || 0) !== followUpBatchId) continue;
+              queued.at = anchorAt + Number(queued.followUpOffset || 0);
+              delete queued.followUpAwaitTextClear;
+            }
+            doubleAttackBatchAnchors[followUpBatchId] = anchorAt;
+            callFunctionWithContext(fnContext, 'StartHeroLunge', hit.heroUID);
+            state.globals.DoubleAttackLungeStarted[followUpBatchId] = 1;
+          }
+        }
         if (!hit || now < (hit.at || 0)) continue;
+        if (followUpBatchId > 0 && state.globals.TextAnimating) continue;
+        if (followUpBatchId > 0 && state.globals.HeroAction && state.globals.HeroAction.active && !state.globals.DoubleAttackLungeStarted[followUpBatchId]) {
+          continue;
+        }
         if (hit.effectType === 'dot_apply') {
           const totalTicks = 8;
           const totalDotDamage = Math.max(1, Math.floor(Number(hit.dotTotalDamage || 0) || 1));
@@ -6660,12 +6765,33 @@ async function main(){
           pending.splice(i, 1);
           continue;
         }
-        const targetEntity = callFunctionWithContext(fnContext, 'GetActorByUID', hit.targetUID);
+        let targetEntity = callFunctionWithContext(fnContext, 'GetActorByUID', hit.targetUID);
+        if ((!targetEntity || Number(targetEntity.hp || 0) <= 0) && hit.retargetOnDeath) {
+          const livingEnemies = (state.entities || []).filter((entity) => entity && entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
+          const replacement = livingEnemies[0] || null;
+          if (replacement) {
+            const batchId = Number(hit.followUpBatchId || 0);
+            if (batchId > 0) {
+              for (const queued of pending) {
+                if (!queued) continue;
+                if (Number(queued.followUpBatchId || 0) !== batchId) continue;
+                queued.targetUID = Number(replacement.uid || 0);
+              }
+            } else {
+              hit.targetUID = Number(replacement.uid || 0);
+            }
+            targetEntity = replacement;
+          }
+        }
         if (!targetEntity || Number(targetEntity.hp || 0) <= 0) {
           for (let j = pending.length - 1; j >= 0; j--) {
             const queued = pending[j];
             if (!queued) continue;
-            if (Number(queued.targetUID || 0) !== Number(hit.targetUID || 0)) continue;
+            if (Number(queued.followUpBatchId || 0) > 0 && Number(hit.followUpBatchId || 0) > 0) {
+              if (Number(queued.followUpBatchId || 0) !== Number(hit.followUpBatchId || 0)) continue;
+            } else {
+              if (Number(queued.targetUID || 0) !== Number(hit.targetUID || 0)) continue;
+            }
             if (queued.effectType === 'dot_apply') continue;
             pending.splice(j, 1);
           }
@@ -6701,6 +6827,8 @@ async function main(){
       }
       if (pending.length === 0) {
         delete state.globals.PendingHeroHits;
+        delete state.globals.DoubleAttackLungeStarted;
+        delete state.globals.DoubleAttackBatchAnchors;
       }
     }
 
@@ -8422,6 +8550,12 @@ function getStoryCardLiveLineState() {
     const heroTotals = byHero[heroName] && typeof byHero[heroName] === 'object'
       ? byHero[heroName]
       : { RED: 0, GREEN: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
+    const doubleAttackHolderName = String(state.globals.DevDoubleAttackHolderName || '');
+    const doubleAttackHolderUID = Number(state.globals.DevDoubleAttackHolderUID || 0);
+    const doubleAttackChance = Number(state.globals.DevDoubleAttackChance || 0.05);
+    const doubleAttackProcs = doubleAttackHolderUID
+      ? Number(callFunctionWithContext(fnContext, 'GetActorExtraTurnProcCount', doubleAttackHolderUID) || 0)
+      : 0;
     const lines = [
       'Gem Counter Radiator',
       `Hero: ${heroName}`,
@@ -8430,6 +8564,10 @@ function getStoryCardLiveLineState() {
       `BLUE:${Number(heroTotals.BLUE || 0)}`,
       `HEAL:${Number(heroTotals.HEAL || 0)}`,
       `YELLOW:${Number(heroTotals.YELLOW || 0)}`,
+      '-----',
+      `Double Attack: ${doubleAttackHolderName || 'Off'}`,
+      `Chance: ${Math.round(doubleAttackChance * 100)}%`,
+      `Procs: ${doubleAttackProcs}`,
       '-----',
       'Party Totals',
       `RED:${Number(party.RED || 0)}`,
@@ -8703,7 +8841,14 @@ function getStoryCardLiveLineState() {
       !(gameState.yellowCasino && gameState.yellowCasino.active)
     );
   }
-  function findIdleAutoplayTriplets() {
+  const IDLE_AUTOPLAY_COLOR_PRIORITY = Object.freeze([
+    [5],
+    [4],
+    [0, 1],
+    [3],
+    [2],
+  ]);
+  function pickIdleAutoplayTriplet() {
     const byColor = new Map();
     for (const gem of (gameState.gems || [])) {
       if (!gem) continue;
@@ -8712,12 +8857,23 @@ function getStoryCardLiveLineState() {
       if (!byColor.has(color)) byColor.set(color, []);
       byColor.get(color).push({ row: gem.cellR, col: gem.cellC });
     }
-    const triplets = [];
-    for (const [, cells] of byColor.entries()) {
-      if (cells.length < 3) continue;
-      triplets.push(cells.slice(0, 3));
+    for (const tier of IDLE_AUTOPLAY_COLOR_PRIORITY) {
+      const tierChoices = tier
+        .filter((color) => Array.isArray(byColor.get(color)) && byColor.get(color).length >= 3)
+        .map((color) => byColor.get(color).slice(0, 3));
+      if (tierChoices.length) {
+        return tierChoices[Math.floor(Math.random() * tierChoices.length)];
+      }
     }
-    return triplets;
+    return null;
+  }
+  function findIdleAutoplayPrioritySinglePick() {
+    for (const gem of (gameState.gems || [])) {
+      if (!gem) continue;
+      const color = Number(gem.color != null ? gem.color : gem.elementIndex);
+      if (color === 6) return { row: gem.cellR, col: gem.cellC };
+    }
+    return null;
   }
   async function playIdleAutoplayTriplet(cells) {
     if (!Array.isArray(cells) || cells.length < 3) return false;
@@ -8726,6 +8882,25 @@ function getStoryCardLiveLineState() {
       if (!clickGemCell(Number(cell.row || 0), Number(cell.col || 0))) return false;
       await devSleep(24);
     }
+    return true;
+  }
+  function autoResolvePendingSelectionForDevIdle() {
+    if (!state.globals.DevAutoplayActive) return false;
+    if (!state.globals.PendingSkillID) return false;
+    const actorUID = Number(state.globals.PendingActor || callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
+    if (actorUID <= 0) return false;
+    const livingEnemies = state.entities.filter((entity) => entity && entity.kind === 'enemy' && (entity.hp ?? 0) > 0);
+    if (!livingEnemies.length) return false;
+    if (String(state.globals.PendingSkillID || '') === 'HERO_SINGLE') {
+      state.globals.SelectedEnemyUID = Number(livingEnemies[0].uid || 0);
+    }
+    callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
+    state.globals.PendingSkillID = '';
+    state.globals.PendingActor = 0;
+    state.globals.SelectedEnemyUID = 0;
+    callFunctionWithContext(fnContext, 'HideAttackUI');
+    state.globals.CanPickGems = false;
+    state.globals.IsPlayerBusy = 1;
     return true;
   }
   async function runDevAutoplayUntilDepleted() {
@@ -8775,13 +8950,26 @@ function getStoryCardLiveLineState() {
         lastProgressSig = progressSig;
         lastProgressAt = performance.now();
       }
+      if (autoResolvePendingSelectionForDevIdle()) {
+        await devSleep(90);
+        continue;
+      }
       if (isIdleAutoplayHeroWindow()) {
-        const triplets = findIdleAutoplayTriplets();
-        if (!triplets.length) {
+        const singlePick = findIdleAutoplayPrioritySinglePick();
+        if (singlePick) {
+          const played = clickGemCell(Number(singlePick.row || 0), Number(singlePick.col || 0));
+          if (played) {
+            matchesPlayed += 1;
+            setDevAutoplayState({ active: true, stopRequested: false, lastReason: 'running', matchesPlayed, startedAt, endedAt: 0 });
+          }
+          await devSleep(90);
+          continue;
+        }
+        const pick = pickIdleAutoplayTriplet();
+        if (!pick) {
           setDevAutoplayState({ active: false, stopRequested: false, lastReason: 'no_valid_triplet', matchesPlayed, endedAt: Number(state.globals.time || 0) });
           return getDevAutoplayState();
         }
-        const pick = triplets[Math.floor(Math.random() * triplets.length)];
         const played = await playIdleAutoplayTriplet(pick);
         if (played) {
           matchesPlayed += 1;

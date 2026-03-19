@@ -9,6 +9,113 @@
 
 ## Reports
 - (append newest report at top)
+- bead id: ORKA-daa4 (reopen 2)
+- summary of changes: Corrected Double Attack from the wrong extra-turn scheduler behavior to the intended immediate free second strike. The proc now duplicates `HERO_SINGLE` immediately without extra gem selection, and the follow-up packet retargets to another living enemy if the original target dies before the second strike lands. Dev-tool toggle and side-panel proc monitor remain intact.
+- files modified: web-runner/modules/functionBank.js; Scripts/functionBank.js; web-runner/app.js; tests/extraTurnHarnessContract.test.js; .beads/open/ORKA-daa4.md; ai-memory/insights.md; agents/dev_reports.md; agents/pm_status.md; agents/issues.md
+- test evidence:
+  - `npm test -- tests/extraTurnHarnessContract.test.js tests/doubleAttackRadiatorContract.test.js tests/devToolingModalContract.test.js tests/functionBankParityContract.test.js` (8/8 pass)
+- scope confirmation: confined to Double Attack proc semantics and the pending-hit retarget seam; no gem-spend rules, turn advancement, or unrelated combat skills changed.
+
+- bead id: ORKA-qr88
+- summary of changes: Restored dev-tool loadout application for duplicate heroes and enemies. Duplicate support already existed in the builders; the real regression was that slot edits only staged globals and idle layout still hardcoded its roster. Loadout changes now trigger the sensible active-layout rebuild path, and idle farm config consumes forced hero/enemy slot overrides including duplicates.
+- files modified: web-runner/app.js; web-runner/src/core/idleFarmRuntime.mjs; tests/devToolingModalContract.test.js; tests/devToolingLoadoutContract.test.js; ai-memory/insights.md; .beads/open/ORKA-qr88.md; agents/dev_reports.md; agents/pm_status.md; agents/issues.md
+- test evidence:
+  - `npm test -- tests/devToolingModalContract.test.js tests/devToolingLoadoutContract.test.js tests/idleAutoplaySelectionBypassContract.test.js tests/idleAutoplayPriorityGemContract.test.js tests/idleFarmLayoutScaffoldContract.test.js` (10/10 pass)
+- scope confirmation: confined to dev-tool loadout application and idle/combat loadout consumption; no manual gameplay, turn rules, or unrelated dev-tool controls changed.
+
+- bead id: ORKA-u4h (reopen 2)
+- summary of changes: Fixed the actual idle-mode startup regression after the priority patch. The dev-tool autoplay button was closing the modal without restoring the paused gameplay snapshot, which left idle mode frozen before any pick logic could run. Idle launch now restores the pause snapshot first, and the color-priority/frame-6 rules remain in place.
+- files modified: web-runner/app.js; tests/devToolingModalContract.test.js; .beads/open/ORKA-u4h.md
+- test evidence:
+  - `npm test -- tests/devToolingModalContract.test.js tests/idleAutoplaySelectionBypassContract.test.js tests/idleAutoplayPriorityGemContract.test.js` (7/7 pass)
+- scope confirmation: confined to the dev idle autoplay launch path plus the already-active idle autoplay priority lane; no manual gameplay flow changed.
+
+- bead id: ORKA-u4h (reopen)
+- summary of changes: Expanded the idle autoplay priority lane after runtime feedback. Frame-6 free energy gems now prevent the all-6 dead-board case, and the fallback triplet picker no longer chooses colors randomly; it follows the approved priority order `PURPLE -> HEAL -> GREEN/RED -> YELLOW -> BLUE`.
+- files modified: web-runner/app.js; tests/idleAutoplayPriorityGemContract.test.js; .beads/open/ORKA-u4h.md
+- test evidence:
+  - `npm test -- tests/idleAutoplaySelectionBypassContract.test.js tests/idleAutoplayPriorityGemContract.test.js` (6/6 pass)
+- scope confirmation: stayed inside the dev idle autoplay picker seam only; no manual gameplay selection or gem-effect rules changed.
+
+- bead id: ORKA-u4h
+- summary of changes: Added a dev-idle-only priority rule so autoplay clicks a frame-6 energy gem before any normal triplet because that pickup grants energy without spending the hero turn. The normal random triplet fallback remains intact when no frame-6 gem is present.
+- files modified: web-runner/app.js; tests/idleAutoplayPriorityGemContract.test.js; .beads/open/ORKA-u4h.md
+- test evidence:
+  - `npm test -- tests/idleAutoplaySelectionBypassContract.test.js tests/idleAutoplayPriorityGemContract.test.js` (2/2 pass)
+- scope confirmation: confined to the dev idle autoplay picker; manual gameplay selection and non-idle turn flow were unchanged.
+
+- bead id: ORKA-6mq
+- summary of changes: Reconciled a stale open P0 bead against the current entity owner seam. No feature code was needed because `Scripts/entities.js` already quarantines repeated entity update faults and records stable diagnostics.
+- files modified: .beads/open/ORKA-6mq.md; agents/dev_reports.md; agents/pm_status.md; agents/issues.md
+- test evidence:
+  - `npm test -- tests/entityUpdateQuarantineContract.test.js` (2/2 pass)
+- scope confirmation: verification/reconciliation only; no runtime entity logic changed in this pass.
+
+- bead id: ORKA-daa4 (reopen)
+- summary of changes: Restored the missing DOM mount for the Gem Counter Radiator so the already-implemented Double Attack holder/chance/proc readout is actually visible to QA. The control logic was already present; this pass fixed the live panel seam in `web-runner/index.html`.
+- files modified: web-runner/index.html; tests/doubleAttackRadiatorContract.test.js; .beads/open/ORKA-daa4.md
+- test evidence:
+  - `npm test -- tests/doubleAttackRadiatorContract.test.js tests/devToolingModalContract.test.js tests/extraTurnHarnessContract.test.js tests/functionBankParityContract.test.js` (7/7 pass)
+  - `curl -s http://127.0.0.1:8095/web-runner/index.html | rg -n "gem-counter-output|Gem Counter Radiator"` returned the mounted panel markup
+- scope confirmation: confined to the missing DOM mount for the already-approved Double Attack radiator; no harness logic or turn rules changed in this reopen pass.
+
+- bead id: ORKA-daa4
+- summary of changes: Added a QA-facing Double Attack dev-tool toggle and side-panel monitor. Dev tooling can now stage Off/Falie/Huun/Runa/Kojonn, apply the extra-turn harness without refreshing combat or advancing turns, and the Gem Counter Radiator shows holder, fixed 5% chance, and live proc count.
+- files modified: web-runner/app.js; web-runner/modules/functionBank.js; Scripts/functionBank.js; tests/devToolingModalContract.test.js; tests/doubleAttackRadiatorContract.test.js; tests/extraTurnHarnessContract.test.js; .beads/open/ORKA-daa4.md; ai-memory/insights.md
+- test evidence:
+  - `npm test -- tests/devToolingModalContract.test.js tests/doubleAttackRadiatorContract.test.js tests/extraTurnHarnessContract.test.js tests/functionBankParityContract.test.js` (6/6 pass)
+- scope confirmation: confined to QA/dev-tool control of the explicit extra-turn harness and its radiator readout; no combat refresh or player-facing turn rules were repurposed here.
+
+- bead id: ORKA-ju42
+- summary of changes: Added a dev-idle-only bypass for pending manual enemy selection so idle/autoplay runs no longer stall waiting for QA clicks. The bypass lives inside the dev autoplay loop and does not change normal manual gameplay targeting.
+- files modified: web-runner/app.js; tests/idleAutoplaySelectionBypassContract.test.js; .beads/open/ORKA-ju42.md; ai-memory/insights.md
+- test evidence:
+  - `npm test -- tests/idleAutoplaySelectionBypassContract.test.js` (1/1 pass)
+- scope confirmation: confined to dev autoplay selection bypass only; normal manual target selection in standard gameplay remains untouched.
+
+- bead id: ORKA-mwl
+- summary of changes: Replaced the old speed-only repeat-turn seam with an explicit per-hero extra-turn skill harness that inserts provenanced extra slots only when a configured proc chance succeeds. Verified that the harness can be removed from Falie and moved to Huun without changing scheduler behavior, and that speed alone now grants nothing.
+- files modified: web-runner/modules/functionBank.js; Scripts/functionBank.js; tests/extraTurnHarnessContract.test.js; .beads/open/ORKA-mwl.md; ai-memory/insights.md
+- test evidence:
+  - `npm test -- tests/extraTurnHarnessContract.test.js tests/functionBankParityContract.test.js tests/traitHookFrameworkContract.test.js` (6/6 pass)
+  - Live browser/runtime proof on `http://127.0.0.1:8095/web-runner/index.html`
+  - `200` no-config speed-path calls on Falie -> `0` grants
+  - `200` live Falie runs at `5%` -> `6` grants
+  - skill removed from Falie and moved to Huun; `200` live Huun runs at `5%` -> `3` grants
+  - calibration: `1000` live Falie runs -> `49` grants, `1000` live Huun runs -> `48` grants
+- scope confirmation: confined to the initiative extra-turn harness seam and mirrored scheduler logic only; no UI, balance UI, or unrelated combat rules were changed.
+
+- bead id: ORKA-c4s (browser re-verification)
+- summary of changes: Re-ran the hero gem progress lane through the live browser/runtime path instead of relying only on static contracts. Verified that runtime writes mark the seam dirty, persist exact progress into localStorage, and restore the same progress back into runtime after a real page reload.
+- files modified: .beads/open/ORKA-c4s.md
+- test evidence:
+  - Browser round-trip on `http://127.0.0.1:8095/web-runner/index.html`
+  - Wrote Huun GREEN progress to `6` with milestone thresholds `[3,5]`
+  - Confirmed `HeroGemProgressDirty` cleared and `orka.hero_gem_progress.v1` stored the snapshot
+  - Reloaded the page, re-entered runtime, and confirmed exact restore of the same Huun/party GREEN totals
+- scope confirmation: verification only; no runtime behavior, balance, or UI logic changed in this pass.
+
+- bead id: ORKA-c4s (queue reconciliation)
+- summary of changes: Restored the missing persistence contract for the already-shipped hero gem progress/milestone lane and reconciled the stale open mirror bead to done. Verified that current runtime still persists gem progress snapshots, loads them back into the mirrored function-bank seams, and exposes configurable milestone thresholds/state.
+- files modified: tests/heroGemUsagePersistenceContract.test.js; .beads/open/ORKA-c4s.md
+- test evidence:
+  - `npm test -- tests/heroGemUsageCounterContract.test.js tests/heroGemUsagePersistenceContract.test.js` (5/5 pass)
+- scope confirmation: reconciliation and contract restoration only; no runtime behavior changes were made.
+
+- bead id: ORKA-fp9 (queue reconciliation)
+- summary of changes: Verified the previously shipped debuff lifecycle hardening lane is still intact and reconciled the stale open mirror bead to done. No runtime implementation changes were required; the current mirrored function-bank seams and contract pack already satisfy the lane.
+- files modified: .beads/open/ORKA-fp9.md
+- test evidence:
+  - `npm test -- tests/debuffLifecycleReliabilityContract.test.js tests/traitHookFrameworkContract.test.js tests/blueBuffLifecycleContract.test.js` (7/7 pass)
+- scope confirmation: reconciliation only; no combat-rule or debuff-lifecycle code changed in this pass.
+
+- bead id: ORKA-3m8
+- summary of changes: Restored the missing yellow handoff regression contract pack for the previously fixed extra-turn lane. Verified that the current yellow completion and deferred-advance seams still preserve a single gameplay handoff path, a single production `AdvanceTurn` owner, and correct gold-merge release gating without changing runtime behavior.
+- files modified: tests/yellowTurnHandoffContract.test.js; .beads/open/ORKA-3m8.md; ai-memory/insights.md
+- test evidence:
+  - `npm test -- tests/yellowTurnHandoffContract.test.js tests/yellowGoldFlyupContract.test.js tests/yellowSlamSequenceContract.test.js` (9/9 pass)
+- scope confirmation: confined to restoring deterministic regression coverage and bead/insight tracking for the yellow extra-turn lane; no combat rules, animation timing, or refill logic changed.
+
 - bead id: ORKA-5mt
 - summary of changes: Aligned idle-combat hit flashes with the approved full-combat black flash by replacing the idle-only white invert filter with the same black overlay treatment and lowering idle sprite flash alpha to the same neutral value used in runtime combat. Added focused contract coverage so idle and full combat cannot silently drift apart again.
 - files modified: web-runner/app.js; tests/hitFlashFeedbackContract.test.js; ai-memory/insights.md
@@ -685,3 +792,23 @@
 - test evidence:
   - `npm test -- tests/damageTextPaletteContract.test.js tests/hitFlashFeedbackContract.test.js tests/functionBankParityContract.test.js` (7/7 pass)
 - scope confirmation: Confined to ORKA-vm7 floating combat text palette selection and the minimal DoT text-kind payload seam only; no combat formulas, timing, or DoT lifecycle rules were changed.
+
+- bead id: ORKA-i8n2
+- summary of changes: Removed the hardcoded 4-hit cluster burst from the default red single-target attack path and preserved that presentation only behind a new explicit `Incinerate` harness seam. This keeps normal red attacks as one direct strike again so Double Attack follow-ups read clearly.
+- files modified: web-runner/modules/functionBank.js; Scripts/functionBank.js; tests/heroRedAttackPresentationContract.test.js; .beads/open/ORKA-i8n2.md; ai-memory/insights.md
+- test evidence:
+  - `npm test -- tests/heroRedAttackPresentationContract.test.js tests/extraTurnHarnessContract.test.js tests/functionBankParityContract.test.js tests/doubleAttackRadiatorContract.test.js tests/devToolingModalContract.test.js` (9/9 pass)
+- scope confirmation: Confined to the red single-target presentation seam and an explicit Incinerate harness only; no AoE behavior, dev-panel controls, or Double Attack proc logic changed.
+
+- bead id: ORKA-daa4
+- summary of changes: Reworked Double Attack into a real free follow-up strike harness with repeatable per-turn proc behavior, retarget-on-death support, and event-gated presentation pacing. Final accepted behavior now waits for the first strike readout to finish before starting the second attack sequence.
+- files modified: web-runner/modules/functionBank.js; Scripts/functionBank.js; web-runner/app.js; tests/extraTurnHarnessContract.test.js; .beads/open/ORKA-daa4.md
+- test evidence:
+  - `npm test -- tests/extraTurnHarnessContract.test.js tests/doubleAttackRadiatorContract.test.js tests/devToolingModalContract.test.js tests/functionBankParityContract.test.js` (10/10 pass)
+- scope confirmation: Confined to Double Attack harness semantics, pacing, and visibility only; no unrelated turn-order mechanics or baseline attack ownership changed.
+
+- bead id: ORKA-sklg
+- summary of changes: Added a minimal reference log for explicit combat skill harnesses and moved explanatory usage notes into a separate product notes file.
+- files modified: governance/product/skill-harness-log.md; governance/product/skill-harness-notes.md
+- test evidence: Documentation/governance lane; no runtime test required.
+- scope confirmation: Logging only. No gameplay/runtime behavior changed.

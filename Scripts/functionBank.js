@@ -1958,6 +1958,19 @@ function schedulerClampIndex(ctx, queue = null) {
   return schedulerWriteIndex(ctx, Math.max(0, Math.min(current, arr.length - 1)));
 }
 
+function ensureActorExtraTurnSkillStore(g) {
+  if (!g.ActorExtraTurnSkillByUID || typeof g.ActorExtraTurnSkillByUID !== 'object') g.ActorExtraTurnSkillByUID = {};
+  return g.ActorExtraTurnSkillByUID;
+}
+function ensureActorExtraTurnProcCountStore(g) {
+  if (!g.ActorExtraTurnProcCountByUID || typeof g.ActorExtraTurnProcCountByUID !== 'object') g.ActorExtraTurnProcCountByUID = {};
+  return g.ActorExtraTurnProcCountByUID;
+}
+function ensureActorRedAttackSkillStore(g) {
+  if (!g.ActorRedAttackSkillByUID || typeof g.ActorRedAttackSkillByUID !== 'object') g.ActorRedAttackSkillByUID = {};
+  return g.ActorRedAttackSkillByUID;
+}
+
 function schedulerApplyBattleStartState(g, next = {}) {
   if (Object.prototype.hasOwnProperty.call(next, 'remaining')) g.BattleStartRemaining = next.remaining;
   if (next.reset) {
@@ -2373,6 +2386,9 @@ export function AdvanceTurn(ctx) {
   const g = getGlobals(ctx);
   const currentUID = GetCurrentTurn(ctx);
   const currentType = GetCurrentType(ctx);
+  if (currentType === 0 && currentUID && g.ExtraTurnGranted && Object.prototype.hasOwnProperty.call(g.ExtraTurnGranted, currentUID)) {
+    delete g.ExtraTurnGranted[currentUID];
+  }
   if (currentType === 0 && currentUID) {
     const store = ensurePowerAmpByUID(ctx);
     const entry = store[currentUID];
@@ -2415,24 +2431,170 @@ export function AdvanceTurn(ctx) {
 }
 
 export function TryGrantSpeedExtraTurn(ctx, actorUID) {
+  return TryGrantConfiguredExtraTurn(ctx, actorUID);
+}
+
+export function ConfigureActorExtraTurnSkill(ctx, actorUID, options = {}) {
   const g = getGlobals(ctx);
-  if (g.RoundActive) return false;
+  const uid = Number(actorUID || 0);
+  if (uid <= 0) return false;
+  const actor = GetActorByUID(ctx, uid);
+  if (!actor || actor.kind !== 'hero') return false;
+  const chance = Number(options?.chance ?? options?.procChance ?? 0);
+  if (!Number.isFinite(chance) || chance <= 0 || chance > 1) return false;
+  const store = ensureActorExtraTurnSkillStore(g);
+  const procCounts = ensureActorExtraTurnProcCountStore(g);
+  store[uid] = {
+    actorUID: uid,
+    chance,
+    traitId: String(options?.traitId || `extra_turn_skill:${uid}`),
+    skillId: String(options?.skillId || 'EXTRA_TURN_SKILL'),
+  };
+  procCounts[uid] = 0;
+  return true;
+}
+
+export function RemoveActorExtraTurnSkill(ctx, actorUID) {
+  const g = getGlobals(ctx);
+  const uid = Number(actorUID || 0);
+  const store = ensureActorExtraTurnSkillStore(g);
+  const procCounts = ensureActorExtraTurnProcCountStore(g);
+  if (!store[uid]) return false;
+  delete store[uid];
+  delete procCounts[uid];
+  if (g.ExtraTurnGranted && Object.prototype.hasOwnProperty.call(g.ExtraTurnGranted, uid)) delete g.ExtraTurnGranted[uid];
+  return true;
+}
+
+export function GetActorExtraTurnSkill(ctx, actorUID) {
+  const uid = Number(actorUID || 0);
+  const entry = ensureActorExtraTurnSkillStore(getGlobals(ctx))[uid];
+  return entry ? { ...entry } : null;
+}
+
+export function GetActorExtraTurnProcCount(ctx, actorUID) {
+  const uid = Number(actorUID || 0);
+  const counts = ensureActorExtraTurnProcCountStore(getGlobals(ctx));
+  return Number(counts[uid] || 0);
+}
+
+export function ConfigureActorRedAttackSkill(ctx, actorUID, options = {}) {
+  const g = getGlobals(ctx);
+  const uid = Number(actorUID || 0);
+  if (uid <= 0) return false;
+  const actor = GetActorByUID(ctx, uid);
+  if (!actor || actor.kind !== 'hero') return false;
+  const skillId = String(options?.skillId || '').trim();
+  if (!skillId) return false;
+  ensureActorRedAttackSkillStore(g)[uid] = { actorUID: uid, skillId };
+  return true;
+}
+
+export function RemoveActorRedAttackSkill(ctx, actorUID) {
+  const store = ensureActorRedAttackSkillStore(getGlobals(ctx));
+  const uid = Number(actorUID || 0);
+  if (!store[uid]) return false;
+  delete store[uid];
+  return true;
+}
+
+export function GetActorRedAttackSkill(ctx, actorUID) {
+  const uid = Number(actorUID || 0);
+  const entry = ensureActorRedAttackSkillStore(getGlobals(ctx))[uid];
+  return entry ? { ...entry } : null;
+}
+
+function queueConfiguredDoubleAttackFollowUp(ctx, actorUID, preferredTargetUID = 0) {
   const actor = GetActorByUID(ctx, actorUID);
+  if (!actor || actor.kind !== 'hero' || (actor.hp ?? 0) <= 0) return false;
+  const enemies = getEnemies(ctx).filter((enemy) => (enemy.hp ?? 0) > 0);
+  if (!enemies.length) return false;
+  const preferred = Number(preferredTargetUID || 0);
+  const resolvedTargetUID = enemies.some((enemy) => Number(enemy.uid || 0) === preferred)
+    ? preferred
+    : Number(enemies[0]?.uid || 0);
+  if (resolvedTargetUID <= 0) return false;
+  const g = getGlobals(ctx);
+  const now = Number(g.time || 0);
+  const beforeLen = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits.length : 0;
+  let latestExistingAt = 0;
+  if (beforeLen > 0) {
+    for (let idx = 0; idx < beforeLen; idx += 1) {
+      const hit = g.PendingHeroHits[idx];
+      if (!hit) continue;
+      if (Number(hit.heroUID || 0) !== Number(actorUID || 0)) continue;
+      const at = Number(hit.at || 0);
+      if (at > latestExistingAt) latestExistingAt = at;
+    }
+  }
+  HeroAttackSingle(ctx, actorUID, resolvedTargetUID);
+  const after = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
+  if (after.length <= beforeLen) return false;
+  const batchId = Number(g.DoubleAttackBatchSerial || 0) + 1;
+  g.DoubleAttackBatchSerial = batchId;
+  let earliestNewAt = 0;
+  for (let idx = beforeLen; idx < after.length; idx += 1) {
+    const hit = after[idx];
+    if (!hit) continue;
+    const at = Number(hit.at || 0);
+    if (at <= 0) continue;
+    if (earliestNewAt <= 0 || at < earliestNewAt) earliestNewAt = at;
+  }
+  const lungeTotal = 0.14 + 0.32 + 0.16 + 0.26;
+  const firstAttackSettledAt = latestExistingAt > 0 ? latestExistingAt : (now + lungeTotal);
+  const finalFollowUpUntil = firstAttackSettledAt + (lungeTotal * 2);
+  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), finalFollowUpUntil);
+  g.DeferAdvance = 1;
+  for (let idx = beforeLen; idx < after.length; idx += 1) {
+    const hit = after[idx];
+    if (!hit) continue;
+    hit.followUpBatchId = batchId;
+    hit.retargetOnDeath = 1;
+    hit.followUpSkillId = 'DOUBLE_ATTACK';
+    hit.followUpAwaitTextClear = 1;
+    hit.followUpOriginalAt = Number(hit.at || 0);
+    hit.followUpOffset = earliestNewAt > 0 ? Math.max(0, Number(hit.at || 0) - earliestNewAt) : 0;
+  }
+  return true;
+}
+
+export function TryGrantConfiguredExtraTurn(ctx, actorUID, forcedRoll = null, meta = null) {
+  const g = getGlobals(ctx);
+  const uid = Number(actorUID || 0);
+  const config = ensureActorExtraTurnSkillStore(g)[uid];
+  if (!config) return false;
+  if (g.RoundActive) return false;
+  const actor = GetActorByUID(ctx, uid);
   if (!actor || actor.kind !== 'hero') return false;
   if ((actor.hp ?? 0) <= 0) return false;
   if (!g.ExtraTurnGranted) g.ExtraTurnGranted = {};
-  if (g.ExtraTurnGranted[actorUID]) return false;
+  if (g.ExtraTurnGranted[uid]) return false;
   const enemies = getEnemies(ctx).filter(e => (e.hp ?? 0) > 0);
   if (!enemies.length) return false;
-  const spdSelf = GetEffectiveStat(ctx, actor, 'SPD');
-  let spdOppMax = 0;
-  for (const e of enemies) {
-    spdOppMax = Math.max(spdOppMax, GetEffectiveStat(ctx, e, 'SPD'));
+  const roll = forcedRoll == null ? Math.random() : Number(forcedRoll);
+  if (!Number.isFinite(roll) || roll < 0 || roll >= Number(config.chance || 0)) return false;
+  const actionSkillId = String(meta?.skillId || '');
+  const preferredTargetUID = Number(meta?.targetUID || 0);
+  let granted = false;
+  if (String(config.skillId || '') === 'DOUBLE_ATTACK') {
+    if (actionSkillId !== 'HERO_SINGLE') return false;
+    granted = queueConfiguredDoubleAttackFollowUp(ctx, uid, preferredTargetUID);
+  } else {
+    const spdSelf = GetEffectiveStat(ctx, actor, 'SPD');
+    schedulerInsertExplicitExtraTurn(ctx, uid, spdSelf);
+    granted = true;
   }
-  const ratio = g.SpeedDoubleRatio || 2.0;
-  if (spdSelf < spdOppMax * ratio) return false;
-  schedulerInsertExplicitExtraTurn(ctx, actorUID, spdSelf);
-  g.ExtraTurnGranted[actorUID] = true;
+  if (!granted) return false;
+  g.ExtraTurnGranted[uid] = true;
+  const procCounts = ensureActorExtraTurnProcCountStore(g);
+  procCounts[uid] = Number(procCounts[uid] || 0) + 1;
+  g.LastExtraTurnProc = {
+    actorUID: uid,
+    traitId: String(config.traitId || ''),
+    skillId: String(config.skillId || ''),
+    chance: Number(config.chance || 0),
+    roll,
+  };
   return true;
 }
 
@@ -2951,42 +3113,45 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
     const consumed = ConsumePowerAmpForActor(ctx, heroUID);
     if (consumed > 0) ampMult = consumed;
   }
+  const finalDmg = ampMult > 0 ? Math.max(1, Math.ceil(dmg * ampMult)) : Math.max(1, dmg);
   const g = getGlobals(ctx);
   const now = g.time || 0;
   const hitDelay = Math.max(0.14 + 0.32, 0.46);
   const applyAt = now + hitDelay;
   g.PendingHeroHits = g.PendingHeroHits || [];
-  const heroName = String(actor && actor.name || '');
-  const presentationProfiles = {
-    Falie: { hitCount: 4, intervalSec: 0.3, scatter: { radiusX: 10, radiusY: 8 } },
-    Huun: { hitCount: 4, intervalSec: 0.3, scatter: { radiusX: 16, radiusY: 6 } },
-    Runa: { hitCount: 4, intervalSec: 0.3, scatter: { radiusX: 14, radiusY: 12 } },
-    Kojonn: { hitCount: 4, intervalSec: 0.3, scatter: { radiusX: 22, radiusY: 16 } },
-  };
-  const presentation = presentationProfiles[heroName] || null;
-  if (presentation && presentation.hitCount > 1) {
-    const totalBurstDamage = ampMult > 0 ? Math.max(1, Math.ceil(dmg * ampMult)) : Math.max(1, dmg);
-    const base = Math.floor(totalBurstDamage / presentation.hitCount);
-    let remainder = totalBurstDamage % presentation.hitCount;
-    for (let hitIndex = 0; hitIndex < presentation.hitCount; hitIndex += 1) {
-      const shotDamage = Math.max(1, base + (remainder > 0 ? 1 : 0));
-      if (remainder > 0) remainder -= 1;
-      g.PendingHeroHits.push({
-        at: applyAt + (hitIndex * presentation.intervalSec),
-        heroUID,
-        targetUID,
-        dmg: shotDamage,
-        powerAmpMultiplier: 0,
-        powerAmpLifecycleId: ampLifecycleId,
-        consumePowerAmp: ampMult > 0 && hitIndex === 0 ? 1 : 0,
-        damageTextScatter: presentation.scatter,
-        calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
-        heroName: actorName,
-        heroType: mode,
-      });
+  const redSkillConfig = ensureActorRedAttackSkillStore(g)[Number(heroUID || 0)] || null;
+  if (String(redSkillConfig?.skillId || '') === 'INCINERATE') {
+    const heroName = String(actor && actor.name || '');
+    const presentationProfiles = {
+      Falie: { hitCount: 4, intervalSec: 0.3, scatter: { radiusX: 10, radiusY: 8 } },
+      Huun: { hitCount: 4, intervalSec: 0.3, scatter: { radiusX: 16, radiusY: 6 } },
+      Runa: { hitCount: 4, intervalSec: 0.3, scatter: { radiusX: 14, radiusY: 12 } },
+      Kojonn: { hitCount: 4, intervalSec: 0.3, scatter: { radiusX: 22, radiusY: 16 } },
+    };
+    const presentation = presentationProfiles[heroName] || null;
+    if (presentation && presentation.hitCount > 1) {
+      const totalBurstDamage = finalDmg;
+      const base = Math.floor(totalBurstDamage / presentation.hitCount);
+      let remainder = totalBurstDamage % presentation.hitCount;
+      for (let hitIndex = 0; hitIndex < presentation.hitCount; hitIndex += 1) {
+        const shotDamage = Math.max(1, base + (remainder > 0 ? 1 : 0));
+        if (remainder > 0) remainder -= 1;
+        g.PendingHeroHits.push({
+          at: applyAt + (hitIndex * presentation.intervalSec),
+          heroUID,
+          targetUID,
+          dmg: shotDamage,
+          powerAmpMultiplier: 0,
+          consumePowerAmp: ampMult > 0 && hitIndex === 0 ? 1 : 0,
+          damageTextScatter: presentation.scatter,
+          calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
+          heroName: actorName,
+          heroType: mode,
+        });
+      }
+      LogCombat(ctx, `${actorName} used Incinerate on ${target.name || '?'} for ${totalBurstDamage}!`);
+      return;
     }
-    LogCombat(ctx, `${actorName} hit ${target.name || '?'} for ${totalBurstDamage}!`);
-    return;
   }
   g.PendingHeroHits.push({
     at: applyAt,
@@ -2998,7 +3163,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
     calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
     heroName: actorName,
     heroType: mode,
-    msg: `${actorName} hit ${target.name || '?'} for ${dmg}!`,
+    msg: `${actorName} hit ${target.name || '?'} for ${finalDmg}!`,
   });
 }
 
@@ -3974,6 +4139,7 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
   const g = getGlobals(ctx);
   g.IsAOEMatch = 0;
   let handled = false;
+  let resolvedTargetUID = 0;
   const actor = GetActorByUID(ctx, actorUID);
   const actorName = actor ? actor.name : 'Actor';
   if (actor && actor.kind === 'hero') {
@@ -4045,7 +4211,10 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     const enemies = getEnemies(ctx);
     const preferred = g.SelectedEnemyUID ? GetActorByUID(ctx, g.SelectedEnemyUID) : null;
     const target = preferred && preferred.kind === 'enemy' ? preferred : enemies[0];
-    if (target) HeroAttackSingle(ctx, actorUID, target.uid);
+    if (target) {
+      resolvedTargetUID = Number(target.uid || 0);
+      HeroAttackSingle(ctx, actorUID, target.uid);
+    }
     const now = g.time || 0;
     g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, now + 0.5);
   } else if (skillId === 'HERO_AOE') {
@@ -4080,6 +4249,12 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     skillId: String(skillId || ''),
     handled: !!handled,
   });
+  if (actor?.kind === 'hero' && handled) {
+    TryGrantConfiguredExtraTurn(ctx, Number(actorUID || 0), null, {
+      skillId: String(skillId || ''),
+      targetUID: Number(resolvedTargetUID || 0),
+    });
+  }
 
   g.ActionLockUntil = (g.time || 0) + 0.6;
   if (g.ActionLockUntil && (g.time || 0) < g.ActionLockUntil) {

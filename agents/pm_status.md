@@ -6,6 +6,16 @@ _Last updated: 2026-03-07_
 _Last updated: 2026-03-17_
 
 ## Completed Beads
+- ORKA-daa4 (Double Attack now means an immediate free second single-target strike with retarget-on-death semantics, while the dev-panel toggle and side-panel proc counter remain intact)
+- ORKA-qr88 (dev-panel duplicate hero/enemy slots now apply again; loadout changes rebuild the active combat/idle session sensibly and idle layout honors dev-tool overrides)
+- ORKA-u4h (dev idle autoplay now prioritizes free frame-6 energy gems before normal triplets and uses the approved fallback triplet priority: PURPLE, HEAL, GREEN/RED, YELLOW, BLUE)
+- ORKA-6mq (entity update failures already quarantine after the configured threshold with stable diagnostics; stale open mirror reconciled to done)
+- ORKA-daa4 (dev panel can now stage Double Attack on/off for any hero without moving turn state, and the side panel mount now visibly shows holder/chance/proc count)
+- ORKA-ju42 (dev idle mode now auto-resolves pending enemy selection instead of stalling on QA-only clicks)
+- ORKA-mwl (speed-only repeat turns fenced off; explicit extra-turn skill harness now moves cleanly between heroes and long-run live proc rate calibrates at ~5%)
+- ORKA-c4s (hero gem progress persistence and milestone hook seam verified still green; stale open mirror reconciled to done and browser reload/restore path re-verified)
+- ORKA-fp9 (debuff lifecycle reliability hardening verified still green; stale open mirror reconciled to done)
+- ORKA-3m8 (yellow completion extra-turn lane closed with restored handoff regression contracts and no runtime drift found)
 - ORKA-5mt (idle combat hit flashes now match the approved black flash used in full combat; QA-passed)
 - ORKA-xnz (neutral hit-flash feedback retuned to black at lighter opacity and QA-passed)
 - ORKA-wuh (core trait runtime/proc framework already exists in mirrored function-bank owner seams and passes the surviving framework contract pack)
@@ -1120,3 +1130,18 @@ _Last updated: 2026-03-08_
 
 ---
 _Last updated: 2026-03-13_
+
+## Completed Beads
+- ORKA-i8n2 (default red single-target restored to one strike; old cluster burst isolated behind explicit Incinerate harness)
+- ORKA-daa4 (Double Attack dev-panel harness now performs a readable repeatable free second strike with retarget support)
+- ORKA-sklg (durable harness-skill product log added)
+
+## Active Work
+- None in this lane.
+
+## Next Tasks
+- Add new harness skills to the product log as they are accepted.
+- Consider enemy-facing harness assignment tooling when the next authored enemy skill lane is claimed.
+
+## Known Issues
+- `bd` CLI unavailable in shell; bead state maintained directly in `.beads/` files.

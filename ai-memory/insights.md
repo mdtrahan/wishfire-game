@@ -189,3 +189,22 @@
 - When rollback recovery spans several gameplay seams, checkpoint the accepted restores immediately after QA passes. Do not leave multiple recovered lanes floating only in the dirty worktree while investigating the next regression.
 - During recovery, trust present source plus focused contracts over branch labels or external app sessions. A repo can be on the right branch and still be missing the required runtime lanes in the owner file.
 - When full combat and idle combat share the same visual language, parity-check both render seams directly instead of assuming one inherits the other. Hit-flash palette changes in `renderHitFlashOverlay(...)` do not automatically update idle combat, which still owns its own sprite-overlay filter path in `web-runner/app.js`.
+
+## 2026-03-18 — PM Cycle Must Rewrite Soft-Blocked Beads Instead Of Stopping
+- A `null` bead body is a PM rewrite task by default, not an automatic delivery stop. If the owner seam, scope, and tests can be reconstructed safely from repo context, PM should rewrite the bead and continue the cycle into development.
+- `PMCYCLE` should return `blocked` only for hard blockers: contradictory product direction, missing dependency with no owner seam, or acceptance that cannot be inferred safely. “Missing spec” alone is not enough if the repo already provides the needed shape.
+- Every PM cycle should state the bead goal in one plain sentence so the human can immediately tell whether the lane needs runtime QA or should be closed on deterministic/multipass evidence.
+
+## 2026-03-18 — Extra Turns Must Be Proven By Provenance And By Long-Run Rate
+- Repeated turns are only trustworthy when the scheduler can point to explicit provenance. Fence off speed-only shortcuts and route every legal repeat through an explicit extra-slot insert seam.
+- For chance-based repeat-turn skills, a single `200`-run sample is enough to prove moveability and “no speed-only grants,” but not enough to prove rate stability. Pair the short sample with a larger calibration run before calling the proc rate compliant.
+
+## 2026-03-18 — Dev Tooling Must Write Conditions Without Moving Turn State
+- Dev panel toggles should only write the selected condition. If a QA toggle is meant to stage a skill harness, apply/remove it directly in the owning runtime seam and keep combat refresh, actor reload, and turn advancement out of the apply path.
+- When dev idle/autoplay is supposed to be hands-off, selection-only steps must be auto-resolved inside the dev automation loop, not by weakening normal gameplay selection rules.
+- Dev-tool loadout slots are a special case: hero/enemy slot edits are not “staged only.” They should trigger the sensible active-layout rebuild path, or QA will see valid duplicate slot config in the panel while runtime still shows the old roster and conclude the dev tool is broken.
+- If a skill is presented as a “free second attack,” do not implement it with extra-turn scheduler semantics. The owner seam must duplicate the attack immediately, preserve the original gem spend, and retarget only if the original target is gone before the follow-up lands.
+- If a presentation-heavy attack pattern makes another mechanic unreadable, move that pattern behind an explicit skill harness instead of leaving it in the default action seam.
+- If a free follow-up attack is meant to read as a real second attack, do not pre-time the second damage packet during the first action. Gate the second strike from the first strike's visible completion signal, then start a fresh lunge and schedule the second hit from that new anchor.
+- Per-actor proc latches for repeatable skill harnesses must reset at per-turn granularity, not only on encounter-wide scheduler resets. Otherwise a `100%` harness can appear correct once and then silently stop firing for the rest of combat.
+- When converting a mechanic from extra-turn semantics to free-follow-up semantics, audit three seams separately: proc latch lifetime, target/retarget logic, and presentation pacing. Partial fixes can look correct in counters while still failing visually.

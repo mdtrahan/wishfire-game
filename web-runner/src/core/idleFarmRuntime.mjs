@@ -5,16 +5,17 @@ function pickEnemyName(index, catalog) {
   return String(list[index % list.length] || `Enemy ${index + 1}`);
 }
 
-function createEnemy(slotIndex, spawnIndex, catalog, hitsToKill, nowSec = 0) {
+function createEnemy(slotIndex, spawnIndex, catalog, hitsToKill, nowSec = 0, forcedEnemyNames = []) {
   const maxHits = Math.max(2, Number(hitsToKill || 3));
   const minHits = Math.min(2, maxHits);
   const resolvedHits = minHits >= maxHits
     ? maxHits
     : (minHits + Math.floor(Math.random() * ((maxHits - minHits) + 1)));
+  const forcedName = String(forcedEnemyNames?.[slotIndex] || '').trim();
   return {
     slot: slotIndex,
     enemyId: `idle-enemy-${spawnIndex}`,
-    name: pickEnemyName(spawnIndex - 1, catalog),
+    name: forcedName || pickEnemyName(spawnIndex - 1, catalog),
     hitsRemaining: resolvedHits,
     maxHits: resolvedHits,
     spawnedAtSec: Number(nowSec || 0),
@@ -49,6 +50,7 @@ export function createIdleFarmSessionState({
   nowSec = 0,
 } = {}) {
   const forcedHeroNames = Array.isArray(config.heroNames) ? config.heroNames.filter(Boolean) : [];
+  const forcedEnemyNames = Array.isArray(config.enemyNames) ? config.enemyNames.map((name) => String(name || '').trim()) : [];
   const heroes = buildIdleFarmHeroRoster(forcedHeroNames.length ? forcedHeroNames : heroSlots, fallbackRoster);
   const enemySlots = Math.max(1, Number(config.enemySlots || 1));
   const hitsToKill = Math.max(1, Number(config.hitsToKill || 3));
@@ -75,6 +77,7 @@ export function createIdleFarmSessionState({
     currentActions: Array.from({ length: laneCount }, () => null),
     heroes,
     enemies: Array.from({ length: enemySlots }, () => null),
+    forcedEnemyNames,
     log: ['Idle farm run started.'],
   };
 }
@@ -194,6 +197,7 @@ export function ensureIdleFarmSessionState(layoutState, deps = {}) {
 export function startIdleFarmEmissionState(layoutState, deps = {}) {
   if (!layoutState || typeof layoutState !== 'object') return null;
   const config = layoutState.config || {};
+  const forcedEnemyNames = Array.isArray(config.enemyNames) ? config.enemyNames.map((name) => String(name || '').trim()) : [];
   const nowSec = Number(deps.nowSec || 0);
   if (!layoutState.emissionState) {
     layoutState.emissionState = {
@@ -319,6 +323,7 @@ export function updateIdleFarmSessionState(layoutState, deps = {}) {
       deps.enemyCatalog || [],
       config.hitsToKill,
       nowSec,
+      forcedEnemyNames,
     );
     session.nextEnemySpawnIndex += 1;
     session.laneSpawnAtSec[slotIndex] = nowSec + Math.max(0.5, Number(config.enemySpawnDelaySec || 1.5));

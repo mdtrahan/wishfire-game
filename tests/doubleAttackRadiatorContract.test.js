@@ -1,0 +1,18 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+test('gem counter radiator exposes double attack holder, chance, and proc count', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
+  assert.match(src, /Double Attack: \$\{doubleAttackHolderName \|\| 'Off'\}/);
+  assert.match(src, /Chance: \$\{Math\.round\(doubleAttackChance \* 100\)\}%/);
+  assert.match(src, /Procs: \$\{doubleAttackProcs\}/);
+  assert.match(src, /GetActorExtraTurnProcCount/);
+});
+
+test('web runner html mounts the gem counter radiator output panel', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'index.html'), 'utf8');
+  assert.match(src, /id="gem-counter-output"/);
+  assert.match(src, /Gem Counter Radiator: loading\.\.\./);
+});
