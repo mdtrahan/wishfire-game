@@ -1,13 +1,14 @@
 # Coordination Issues (Ambiguity / Drift)
 
 ## Unresolved
-- ORKA-4ws | `scope_conflict` repo-side `.beads/` mirrors no longer match live `bd` issue state | Lane selection and closeout review can drift if workers read mirror files instead of live `bd` | Treat `bd` as authoritative, stop using `.beads/` for workflow decisions, and reconcile mirror files in a separate bounded cleanup pass after mixed dirty work is isolated
+- ORKA-6opp | `missing_spec` hero-specific red single-target presentation variants lack explicit acceptance, test requirements, and scope boundaries beyond a short description | Unsafe to implement because timing/cluster/impact differences can easily drift into combat readability or harness behavior changes without a pass/fail contract | Rewrite bead with per-hero presentation expectations, explicit non-goals, required test coverage, and whether existing Incinerate/Double Attack harness seams are in or out of scope
 - ORKA-hvj.5 | Hero-screen progression bindings blocked by missing product definitions (point source/reset policy/skill count/effects) | Blocks clean QA and risks speculative implementation | Clarify product contract before reopening lane
 - ORKA-yy0 | Netlify deploy/boot consistency remains tabled by product decision | Deployment confidence risk if release is requested suddenly | Reopen only when deploy hardening is re-prioritized
 - ORKA-6n7 / ORKA-900 / ORKA-9yo | `missing_spec` (`null` bead bodies) | Cannot execute mandatory closeout/hot-file-lock lanes safely without defined scope + acceptance | Add explicit objective, file/function scope, and pass/fail criteria to each bead
 - ORKA-f0l / ORKA-ksw / ORKA-njg / ORKA-pv3 / ORKA-hvj.4 | `missing_spec` (`null` bead bodies) | PM cycle cannot safely assign these lanes; high queue count but low executable throughput | Rewrite each bead with concrete objective, bounded scope, acceptance, and test requirements
 
 ## Resolved
+- ORKA-zys | Repo-side `.beads/open` and `.beads/in_progress` mirrors were reconciled to live `bd` state, removing stale entries and adding the missing live open/in-progress cache files so local governance artifacts match the authoritative queue again.
 - ORKA-daa4 | Double Attack had been implemented as an extra-turn scheduler proc, so QA could see proc counts without an immediate visible second attack. The runtime now treats Double Attack as a same-action free follow-up strike and retargets the follow-up if the original target dies before it lands.
 - ORKA-qr88 | Duplicate heroes/enemies were still allowed in the underlying builders, but dev-tool slot edits only staged globals and idle layout still hardcoded its roster. Loadout edits now trigger the sensible active-layout rebuild path and idle layout consumes the dev-tool overrides, so duplicate slot changes visibly apply again.
 - ORKA-u4h | Dev idle autoplay was leaving free frame-6 energy pickups on the board and could deadlock on an all-6 dev board; the idle autoplay seam now clicks frame-6 first and the fallback triplet picker follows the approved priority order instead of random color choice

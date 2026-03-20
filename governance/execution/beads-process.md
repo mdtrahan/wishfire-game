@@ -59,6 +59,7 @@
   - `/agents/dev_reports.md` contains a scoped report
   - `/agents/pm_status.md` reflects the result
   - bug/regression beads update `/ai-memory/insights.md`
+- Archive historical PM/dev entries into `/agents/archive/` so active coordination files stay concise for startup and review.
 - If unrelated dirty changes remain in touched hot files, do not treat the lane as cleanly reviewable without explicitly calling out that risk.
 
 ## `bd` Write Confirmation Rule

@@ -1,9 +1,9 @@
-# ORKA-cpc to Weekly War Balance Loop
+# CP-Budget Encounter Scaffold to Weekly War Balance Loop
 
 ## Purpose
-Define what `ORKA-cpc` already delivers, what remains stubbed, and the minimum systems needed to turn CP-budget encounters into a weekly live-ops balance loop.
+Define what the current CP-budget encounter scaffold already delivers, what remains stubbed, and the minimum systems needed to turn those encounters into a weekly live-ops balance loop.
 
-## Current State (What ORKA-cpc Gives Us)
+## Current State (What The Current Scaffold Gives Us)
 - CP-budget encounter builder (`targetCP`, `maxSlots`, `policy`, `seed`, optional `faction`).
 - Deterministic reproducibility via encounter seeds.
 - Doctrine-aware composition (`enemyRole`: `fodder|bodyguard|commander`).

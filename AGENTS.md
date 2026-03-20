@@ -158,11 +158,13 @@
   - changed files
   - tests run + results
   - explicit scope confirmation
+- Historical dev handoffs belong in `/agents/archive/dev_reports_archive.md`; keep `/agents/dev_reports.md` concise and limited to current/recent review context.
 - PM review handoff must update `/agents/pm_status.md` with:
   - Completed Beads
   - Active Work
   - Next Tasks
   - Known Issues
+- Historical PM snapshots belong in `/agents/archive/pm_status_archive.md`; keep `/agents/pm_status.md` as the current snapshot only.
 - Ambiguities/blocked reasons must be recorded in `/agents/issues.md` using PM/Dev prompt categories.
 
 ## 8) Deeper Policy

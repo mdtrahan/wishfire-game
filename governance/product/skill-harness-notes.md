@@ -1,7 +1,6 @@
 # Skill Harness Notes
 
 ## Double Attack
-- Bead: `ORKA-daa4`
 - Type: follow-up strike harness
 - Current behavior:
   - duplicates `HERO_SINGLE` as a free second strike
@@ -13,7 +12,6 @@
   - should be extensible to enemies with future tooling
 
 ## Incinerate
-- Bead: `ORKA-i8n2`
 - Type: red single-target presentation harness
 - Current behavior:
   - preserves the old 4-hit clustered red burst

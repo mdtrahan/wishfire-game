@@ -1,4 +1,4 @@
 # Skill Harness Log
 
-- `Double Attack` — `ORKA-daa4`
-- `Incinerate` — `ORKA-i8n2`
+- `Double Attack` — explicit follow-up single-target strike harness
+- `Incinerate` — explicit red single-target clustered-burst presentation harness

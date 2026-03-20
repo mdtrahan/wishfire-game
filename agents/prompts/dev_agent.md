@@ -26,13 +26,15 @@ Your job is to produce **small, verifiable, scoped changes**.
 
 | File | Purpose |
 |----|----|
-| /agents/dev_reports.md | Implementation reports |
+| /agents/dev_reports.md | Current/recent implementation reports needed for active review |
+| /agents/archive/dev_reports_archive.md | Historical implementation reports; read only for targeted history lookup |
 | /agents/issues.md | Ambiguities, blockers, conflicts |
 
 Live Beads CLI state (`bd show`, `bd list`, `bd ready`) provides the authoritative task definition and issue status.
 These files form the approved repo-side communication surface.
 
-Do not create alternate coordination systems.
+Do not create coordination systems outside this set.
+Do not read archive files during normal startup unless the active bead requires historical investigation.
 
 ---
 
@@ -195,6 +197,9 @@ After successful implementation append to `/agents/dev_reports.md`:
 - results
 - limitations if any
 - confirmation scope remained within bead
+
+Keep `/agents/dev_reports.md` concise and limited to current/recent review context.
+Move superseded older reports to `/agents/archive/dev_reports_archive.md` instead of letting the active file grow indefinitely.
 
 Do not claim tests you did not run.
 

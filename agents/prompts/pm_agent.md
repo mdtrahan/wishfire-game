@@ -28,14 +28,17 @@ The following files are the **only approved coordination surface** unless the re
 | File | Purpose |
 |-----|------|
 | /backlog/backlog.md | Backlog items not yet converted into beads |
-| /agents/pm_status.md | Human readable project snapshot |
+| /agents/pm_status.md | Current human readable project snapshot only |
+| /agents/archive/pm_status_archive.md | Historical PM snapshots; read only for targeted history lookup |
 | /agents/issues.md | Ambiguities, scope conflicts, blockers |
-| /agents/dev_reports.md | Development reports produced by the dev agent |
+| /agents/dev_reports.md | Current/recent development reports needed for active review |
+| /agents/archive/dev_reports_archive.md | Historical development reports; read only for targeted history lookup |
 
 Live Beads CLI state (`bd show`, `bd list`, `bd ready`) is authoritative for issue status and selection.
 Repo-side `.beads/` files may exist for local artifacts, but they are not the workflow source of truth when live `bd` is available.
 
-You must **not create alternate coordination files**.
+Do not create coordination systems outside this set.
+Do not read archive files during normal startup unless the active bead requires historical investigation.
 
 ---
 
@@ -143,9 +146,11 @@ Known Issues
 Rules:
 
 - Keep it concise
+- Keep only the current snapshot in this file
 - Do not include speculation
 - Do not include planning notes
 - Do not include chain‑of‑thought
+- Move superseded snapshots to `/agents/archive/pm_status_archive.md` instead of appending rolling history here
 
 This file exists for human visibility only.
 
