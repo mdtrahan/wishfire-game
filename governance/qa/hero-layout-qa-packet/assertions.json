@@ -1,0 +1,30 @@
+{
+  "pass": true,
+  "checks": {
+    "replacement_path": true,
+    "arrow_loop_right_wrap": true,
+    "arrow_loop_left_wrap": true,
+    "runtime_stats_binding_source": true,
+    "portrait_swap_by_cap_name": true,
+    "starter_skill_titles": true
+  },
+  "observed": {
+    "combat_flags": {"canPickGems":false,"isPlayerBusy":1,"pendingSkillId":null,"overlayVisible":false,"layoutId":"combat","combatAcceptEvents":true},
+    "hero_open_flags": {"canPickGems":true,"isPlayerBusy":0,"pendingSkillId":null,"overlayVisible":false,"layoutId":"heroLayout","combatAcceptEvents":true},
+    "hero_sequence": ["Falie", "Huun", "Runa", "Kojonn", "Falie", "Kojonn"],
+    "runtime_heroes": [{"name":"Falie","hp":42,"maxHP":42,"ATK":18,"DEF":20,"MAG":10,"RES":18,"SPD":9},{"name":"Huun","hp":35,"maxHP":35,"ATK":22,"DEF":10,"MAG":8,"RES":12,"SPD":20},{"name":"Runa","hp":30,"maxHP":30,"ATK":8,"DEF":8,"MAG":28,"RES":20,"SPD":11},{"name":"Kojonn","hp":40,"maxHP":40,"ATK":12,"DEF":14,"MAG":22,"RES":18,"SPD":14}]
+  },
+  "expected_skill_titles": {
+    "Falie": "Pummel",
+    "Huun": "Swipe",
+    "Runa": "Burst",
+    "Kojonn": "Faze"
+  },
+  "visual_evidence": [
+    "hero-0-falie.png",
+    "hero-1-huun.png",
+    "hero-2-runa.png",
+    "hero-3-kojonn.png",
+    "hero-5-reverse-kojonn.png"
+  ]
+}

@@ -1,0 +1,3 @@
+src/core/powerAmpRules.mjs:PowerAmp deterministic rules
+web-runner/modules/functionBank.js:PowerAmp src adapter
+Scripts/functionBank.js:PowerAmp src adapter mirror

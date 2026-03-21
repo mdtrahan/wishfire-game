@@ -1,0 +1,44 @@
+{
+  "defect": "yellow completion could clear DeferAdvance at lock expiry before the main defer gate ran, skipping AdvanceTurn and leaving the acting hero in place",
+  "beforeTrace": [
+    {
+      "stage": "acting-hero",
+      "actorUID": 101,
+      "actorName": "Huun"
+    },
+    {
+      "stage": "yellow-resolve-finished-pre-fix",
+      "canRestorePickability": true,
+      "deferAdvance": 0,
+      "canPickGems": true,
+      "boardFillActive": 0
+    },
+    {
+      "stage": "after-defer-gate-pre-fix",
+      "advanceTurnCalled": false,
+      "nextActorUID": 101,
+      "nextActorName": "Huun"
+    }
+  ],
+  "afterTrace": [
+    {
+      "stage": "acting-hero",
+      "actorUID": 101,
+      "actorName": "Huun"
+    },
+    {
+      "stage": "yellow-resolve-finished-post-fix",
+      "handoffPending": true,
+      "deferAdvance": 1,
+      "canPickGems": false,
+      "boardFillActive": 0
+    },
+    {
+      "stage": "after-defer-gate-post-fix",
+      "advanceTurnCalled": true,
+      "nextActorUID": 104,
+      "nextActorName": "Falie"
+    }
+  ],
+  "verdict": "PASS"
+}

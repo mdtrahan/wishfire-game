@@ -60,15 +60,8 @@ function combatLog(message) {
   console.log(message);
 }
 
-export class CombatRuntimeGateway {
-  constructor({
-    combatState,
-    eventBus,
-    layoutState,
-    callFunctionWithContext,
-    getAuthoritativeTurnState,
-    applyAuthoritativeTurnState,
-  } = {}) {
+class CombatRuntimeGateway {
+  constructor({ combatState, eventBus, layoutState, callFunctionWithContext } = {}) {
     this.combatState = combatState || {};
     this.eventBus = eventBus || null;
     this.layoutState = layoutState || null;
@@ -311,3 +304,6 @@ export class CombatRuntimeGateway {
     return true;
   }
 }
+
+export { CombatRuntimeGateway };
+export default CombatRuntimeGateway;

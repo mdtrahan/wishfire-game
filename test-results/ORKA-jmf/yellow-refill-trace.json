@@ -1,0 +1,298 @@
+{
+  "ok": true,
+  "currentYellowTilesBefore": [
+    {
+      "cellR": 0,
+      "cellC": 3,
+      "color": 3
+    },
+    {
+      "cellR": 0,
+      "cellC": 4,
+      "color": 3
+    }
+  ],
+  "emptiedYellowSlotsBefore": [
+    {
+      "cellR": 1,
+      "cellC": 0
+    },
+    {
+      "cellR": 1,
+      "cellC": 1
+    },
+    {
+      "cellR": 1,
+      "cellC": 2
+    }
+  ],
+  "replacementsChosen": [
+    {
+      "cellR": 0,
+      "cellC": 3,
+      "type": "yellow",
+      "reason": "yellow-reassign",
+      "target": 0
+    },
+    {
+      "cellR": 0,
+      "cellC": 4,
+      "type": "yellow",
+      "reason": "yellow-reassign",
+      "target": 1
+    },
+    {
+      "cellR": 1,
+      "cellC": 0,
+      "type": "empty",
+      "reason": "yellow-refill",
+      "target": 0
+    },
+    {
+      "cellR": 1,
+      "cellC": 1,
+      "type": "empty",
+      "reason": "yellow-refill",
+      "target": 1
+    },
+    {
+      "cellR": 1,
+      "cellC": 2,
+      "type": "empty",
+      "reason": "yellow-refill",
+      "target": 5
+    }
+  ],
+  "finalBoardColors": [
+    {
+      "cellR": 0,
+      "cellC": 0,
+      "color": 0
+    },
+    {
+      "cellR": 0,
+      "cellC": 1,
+      "color": 4
+    },
+    {
+      "cellR": 0,
+      "cellC": 2,
+      "color": 1
+    },
+    {
+      "cellR": 0,
+      "cellC": 3,
+      "color": 0
+    },
+    {
+      "cellR": 0,
+      "cellC": 4,
+      "color": 1
+    },
+    {
+      "cellR": 0,
+      "cellC": 5,
+      "color": 0
+    },
+    {
+      "cellR": 1,
+      "cellC": 0,
+      "color": 0
+    },
+    {
+      "cellR": 1,
+      "cellC": 1,
+      "color": 1
+    },
+    {
+      "cellR": 1,
+      "cellC": 2,
+      "color": 5
+    },
+    {
+      "cellR": 1,
+      "cellC": 3,
+      "color": 5
+    },
+    {
+      "cellR": 1,
+      "cellC": 4,
+      "color": 2
+    },
+    {
+      "cellR": 1,
+      "cellC": 5,
+      "color": 1
+    },
+    {
+      "cellR": 2,
+      "cellC": 0,
+      "color": 1
+    },
+    {
+      "cellR": 2,
+      "cellC": 1,
+      "color": 5
+    },
+    {
+      "cellR": 2,
+      "cellC": 2,
+      "color": 2
+    },
+    {
+      "cellR": 2,
+      "cellC": 3,
+      "color": 0
+    },
+    {
+      "cellR": 2,
+      "cellC": 4,
+      "color": 4
+    },
+    {
+      "cellR": 2,
+      "cellC": 5,
+      "color": 2
+    },
+    {
+      "cellR": 3,
+      "cellC": 0,
+      "color": 2
+    },
+    {
+      "cellR": 3,
+      "cellC": 1,
+      "color": 0
+    },
+    {
+      "cellR": 3,
+      "cellC": 2,
+      "color": 4
+    },
+    {
+      "cellR": 3,
+      "cellC": 3,
+      "color": 1
+    },
+    {
+      "cellR": 3,
+      "cellC": 4,
+      "color": 5
+    },
+    {
+      "cellR": 3,
+      "cellC": 5,
+      "color": 4
+    }
+  ],
+  "validations": {
+    "yellowReassignments": [
+      {
+        "cellR": 0,
+        "cellC": 3,
+        "type": "yellow",
+        "reason": "yellow-reassign",
+        "target": 0
+      },
+      {
+        "cellR": 0,
+        "cellC": 4,
+        "type": "yellow",
+        "reason": "yellow-reassign",
+        "target": 1
+      }
+    ],
+    "emptyRefills": [
+      {
+        "cellR": 1,
+        "cellC": 0,
+        "type": "empty",
+        "reason": "yellow-refill",
+        "target": 0
+      },
+      {
+        "cellR": 1,
+        "cellC": 1,
+        "type": "empty",
+        "reason": "yellow-refill",
+        "target": 1
+      },
+      {
+        "cellR": 1,
+        "cellC": 2,
+        "type": "empty",
+        "reason": "yellow-refill",
+        "target": 5
+      }
+    ],
+    "invalidYellowReassignments": [],
+    "invalidEmptyRefills": [],
+    "unresolvedYellowAfter": []
+  },
+  "traceStore": {
+    "storycardPlacement": [],
+    "yellowQueue": [
+      {
+        "idx": 0,
+        "type": "yellow",
+        "cellR": 0,
+        "cellC": 3,
+        "reason": "yellow-reassign",
+        "uid": 4,
+        "target": 0
+      },
+      {
+        "idx": 1,
+        "type": "yellow",
+        "cellR": 0,
+        "cellC": 4,
+        "reason": "yellow-reassign",
+        "uid": 5,
+        "target": 1
+      },
+      {
+        "idx": 2,
+        "type": "empty",
+        "cellR": 1,
+        "cellC": 0,
+        "reason": "yellow-refill",
+        "uid": 0,
+        "target": 0
+      },
+      {
+        "idx": 3,
+        "type": "empty",
+        "cellR": 1,
+        "cellC": 1,
+        "reason": "yellow-refill",
+        "uid": 0,
+        "target": 1
+      },
+      {
+        "idx": 4,
+        "type": "empty",
+        "cellR": 1,
+        "cellC": 2,
+        "reason": "yellow-refill",
+        "uid": 0,
+        "target": 5
+      }
+    ],
+    "yellowRefillQueue": [],
+    "yellowWrites": [],
+    "yellowAnimation": [
+      {
+        "stage": "yellow-sequence-start",
+        "queueLength": 5,
+        "hasWork": true
+      }
+    ]
+  },
+  "flagsAfterStart": {
+    "canPickGems": false,
+    "isPlayerBusy": 1,
+    "boardFillActive": 1,
+    "actionLockUntil": 2.15,
+    "deferAdvance": 1
+  }
+}

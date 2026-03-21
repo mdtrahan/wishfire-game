@@ -26,3 +26,11 @@ if ! grep -q '"id"' /tmp/bd_precommit_inprogress.json; then
   echo "ERROR: No in-progress Beads issue found. Set one issue to in_progress before commit." >&2
   exit 1
 fi
+
+# Enforce hot-file lock + function-scope declarations.
+if [ -x "tools/enforce_hot_file_scope.sh" ]; then
+  tools/enforce_hot_file_scope.sh
+else
+  echo "ERROR: Missing executable tools/enforce_hot_file_scope.sh required by hot-file lock policy." >&2
+  exit 1
+fi

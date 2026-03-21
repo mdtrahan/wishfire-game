@@ -1,299 +1,185 @@
-# AGENTS.md --- Codex-Orka (Always-on Rules)
+# AGENTS.md --- Codex-Orka (Execution Kernel)
 
-## 0) Core Philosophy
-- Prefer retrieval over memory.
-- Read relevant project files before proposing edits.
-- Construct 3 artifacts are retired; do not infer or regenerate runtime behavior from C3 sources.
+## 0) Purpose
+- Keep always-on context minimal.
+- Use the active Beads issue from live `bd` output and the codebase as the primary source of truth.
+- Put task-specific gameplay and product rules in Beads acceptance, not here.
 
-## 1) Canonical Sources
-### Runtime (authoritative)
-- `Scripts/`
-- `web-runner/`
-- Netlify deployment behavior is canonical.
-- `main` is production branch and branch base.
+## 1) Canonical Code
+- Runtime code: `Scripts/`, `web-runner/`
+- Supporting core modules: `src/`
+- Construct 3 artifacts are retired. Do not infer or regenerate runtime behavior from legacy C3 sources.
+- Active integration branch: `codex/live`
+- Release branch: `main`
 
-### Retired Legacy
-- Construct 3 conversion artifacts were removed from this repository on 2026-02-24.
-- Retirement reference: `docs/construct3-retirement.md`.
-
-## 2) Startup Protocol (required order)
+## 2) Startup Order
 1. Read `ai-memory/context.md`
-2. Run `bd ready`
-3. Select active work and run `bd show <id>`
-4. Read `ai-memory/insights.md`
-- If conflict exists, `AGENTS.md` wins.
+2. Ensure `bd` resolves in shell. If not, repair `PATH` first: `export PATH="$HOME/.local/bin:$PATH"`
+3. Run `bd ready`
+4. Select one issue and run `bd show <id>`
+5. Read extra docs only if the issue requires them
 
-## 3) Execution Scope
-- Work only the active Beads issue selected for this lane.
-- No opportunistic refactors or “while here” extras.
+## 3) Beads Gate
+- No issue, no work.
+- Work one Beads issue at a time.
+- Creating a bead is queue management, not execution authorization.
+- If the user asks to create or “make” a bead, create it and leave it `open`/backlog-ready unless they also explicitly assign it for work, request implementation now, or trigger a cycle that selects it.
+- Before editing code:
+  1. `git checkout codex/live`
+  2. `git pull --ff-only`
+  3. ensure `bd` resolves in shell (`export PATH="$HOME/.local/bin:$PATH"` if needed)
+  4. `bd ready`
+  5. `bd show <id>`
+  6. Mark that issue `in_progress`
+- Commits must include `bd-<id>`.
+- If scope is ambiguous, stop and clarify on that issue.
+- PM/assigner must always provide the explicit Beads issue ID when assigning a lane. Do not start from title-only instructions.
+- Do not treat bead creation itself as assignment. Queue entry and lane assignment are separate acts.
 
-### 3.1 Beads Work Gating (mandatory)
-- No issue, no work. Always run `bd ready` then `bd show <id>`. Commits require `bd-<id>` in the message.
-- Use Beads (`bd`) as the source of truth for active work tracking.
-- Before any implementation work:
-  1. Run `bd ready`
-  2. Select issue and run `bd show <id>`
-  3. Mark active issue (`in_progress`) before editing code
-- Commit messages must include `bd-<id>` reference tokens to satisfy commit hook policy.
-- If hooks fail due missing Beads context, stop and fix issue selection/state before retrying commit.
+### 3.0) Macro Trigger (Hardcoded)
+- Trigger phrase: `RUN PM-DEV CYCLE`
+- Equivalent accepted aliases:
+  - `PMCYCLE`
+  - `NEXT BEAD CYCLE`
+  - `CONTINUE PM-DEV`
+- On trigger, execute this sequence in order:
+  1. PM flow (`agents/prompts/pm_agent.md`)
+  2. Dev flow (`agents/prompts/dev_agent.md`)
+  3. PM review/closure flow (`agents/prompts/pm_agent.md`)
+- If no explicit bead is currently assigned, claim the highest-priority READY bead and state its ID before edits.
 
-### Blocker Rule
-If there is no ready/selected Beads issue or scope is ambiguous:
-- Mark issue blocked in Beads and request explicit clarification on that issue.
-- Stop immediately.
+### 3.3) PM/Dev Prompt Contract (Required)
+- The authoritative role flows are:
+  - `agents/prompts/pm_agent.md`
+  - `agents/prompts/dev_agent.md`
+- These are policy, not reference notes.
+- Every bead cycle must follow:
+  1. **PM flow**: bead readiness/scope/acceptance/test requirements are validated and tracked.
+  2. **Dev flow**: implementation + phased testing + report in `/agents/dev_reports.md`.
+  3. **PM flow**: review against acceptance + evidence, then mark `done` or return to `todo/blocked`.
+- If PM/Dev prompt rules conflict with ad-hoc execution, PM/Dev prompt rules win unless user explicitly overrides.
+- Do not skip PM review semantics by directly treating code changes as completed work.
 
-## 4) Deterministic Skill Router
-Output the invocation line before proceeding.
-- Planning/spec/architecture: `$skills/feature-planning`
-- Bug/drift/regression: `$skills/debug-javascript`
-- Snapshot/JSON parity: `$skills/json-parity-auditor`
-- Multi-step orchestration: `$skills/ensemble-orchestrator`
+### 3.1) Task Boundary Enforcement (Required)
+- If a user request is **not** part of the active bead scope, do not start implementation under the current bead.
+- Required action for out-of-scope requests:
+  1. reopen current bead with scope change **or**
+  2. create a new bead and leave it queued unless execution is explicitly assigned
+  3. only claim/start it after explicit assignment or a cycle that selects it
+- “Quick fix first” outside bead scope is non-compliant.
+- If the user asks to continue and no explicit bead is assigned, claim the highest-priority READY bead and state that ID before edits.
 
-## 5) Retrieval Map
-- Consult `ai-memory/PROJECT_INDEX.md` before broad search.
-- If missing info discovered, record `Index gap:` in active Beads issue notes/comments.
-- Top-level map:
-  - `Scripts/`, `web-runner/`, `ai-memory/`, `skills/`, `test-results/`
-  - `python-app/`, `node-app/` are tooling-only unless TODO requires edits.
+### 3.2) Bead Transition Contract (Required)
+- Every lane switch must explicitly record one of:
+  - `REOPEN: <bd-id>`, or
+  - `NEW: <bd-id>`
+- Before first code edit after a lane switch, ensure live `bd` state reflects the intended status (`open`/`in_progress`).
+- Completion requires:
+  - acceptance evidence
+  - scope confirmation
+  - insights check (for bug/regression beads)
 
-### 5.1 Doc Retrieval Short-Circuit (token control)
-- For PM/worker documentation work, read canonical files first and avoid repo-wide scans unless blocked:
-  - `ai-memory/context.md`, `ai-memory/insights.md`, `ai-memory/project.md`
-  - `governance/planning/milestone-definition.md`, `governance/planning/roadmap.md`
-  - Beads issue details (`bd show <id>`) and linked acceptance/evidence artifacts
-- Treat root-level legacy duplicates (`context.md`, `todo.md`, `insights.md`) as deprecated non-canonical.
-- Completed execution plans should be moved to `governance/execution/dev-directives/archive/YYYY-MM/` to keep active directive scans small.
+## 4) Execution Rules
+- Edit the minimum files needed.
+- No opportunistic refactors or side work.
+- Resolve Git conflicts locally. Do not ask the user to resolve them.
+- If unexpected tracked changes appear, stop and ask how to proceed unless the user already authorized them.
+- Repository artifacts and Beads are the durable coordination channel.
+- PM/assigner must not implement, commit, or push worker-owned feature/refactor lanes. PM creates/issues prompts/tracking only unless the user explicitly assigns PM a separate scoped repo change.
 
-## 6) Checkpoint Protocol (after each task)
-1. Update Beads issue state/notes (`bd update`, `bd comments`, `bd close` as appropriate)
-2. Update role artifacts only when needed (for example remediation log, metrics, test artifacts).
+### 4.1) Ownership Discipline
+- Keep one ownership lane per issue: change only one of render/projection, combat rules, or lifecycle/state cleanup unless the issue explicitly authorizes a cross-boundary change.
+- For hot-file issues, define exact allowed files/functions and name forbidden adjacent systems before editing.
+- Do not write feature-owned globals outside the owning seam. If no clear owner exists yet, inventory direct read/write sites first, then extract the seam before expanding the feature.
+- If a deterministic rule must change in both `Scripts/` and `web-runner/`, move that rule into `src/` or mark the duplicate edit as temporary mirrored maintenance in the issue.
 
-### Disk Safety
-- Update each ai-memory file at most once per task.
-- No loops/repeated writes.
-- `insights.md`: decisions log only, not transcript.
-- Verbose traces belong in runtime/governance artifacts.
-- `insights.md` must contain high-impact process or product decisions only (no sync chatter, no status replay).
-- `insights.md` write authority: PM only.
-- Workers/Stability must not append to `insights.md`; route operational detail to issue comments and task artifacts.
+## 5) Containment
+- First shell command: `pwd`
+- Work only inside the repo root.
+- Run `git status` before and after execution.
+- Do not treat repo-side `.beads/` files as workflow authority when live `bd` is available; use `bd show`, `bd ready`, and `bd list` for issue state.
+- PM-authored governance/tracking files may remain dirty if they are explicitly identified as PM-authorized and out-of-scope for the active worker lane. Workers should ignore them, not stage them, and continue.
+- Do not write outside the repo unless the user explicitly authorizes it.
+- Allowed browser/runtime verification tools: `agent-browser`, `playwright`
+- Use the tool named in the active issue when specified; otherwise prefer the lightest tool that fits the task.
 
-## 7) Rendering & Assets
-- Use active runtime directories for assets.
-- No placeholder art unless explicitly requested.
-- Do not alter UI text styling/size unless requested.
+## 6) Validation
+- Use existing repo test commands when available.
+- Prefer small deterministic checks tied to the active issue.
+- Manual browser QA is valid for MVP runtime behavior.
+- Keep new instrumentation isolated and removable.
+- When a repo already owns a browser harness/CLI for the bead, treat that harness as the canonical batch path; use Playwright MCP/skill for interactive inspection or diagnosis, not as a silent replacement execution lane.
 
-## 8) Canonical Gameplay Rules
-### Turn / Combat
-- Turn order strictly SPD-sorted.
-- Speed buffs rebuild turn order while preserving current actor.
-- Speed spike rule:
-  - If `SPD_self >= SPD_fastest_opponent * SpeedDoubleRatio`, insert one extra immediate turn (heroes only unless specified).
-- Newly spawned enemies append unless spike-qualified.
-- Party uses shared HP pool.
-- Purple gem = party attack amplification (no legacy debuff behavior).
+## 6.2) Insights Discipline (Required)
+- `ai-memory/insights.md` is mandatory for reusable lessons from bug/regression work.
+- For any bead that fixes a bug, regression, or production-behavior mismatch:
+  1. Add/update at least one reusable heuristic in `ai-memory/insights.md` before marking the bead done.
+  2. Write guidance that is future-facing (diagnostic order, guardrails, seam ownership), not a raw event log.
+  3. If no reusable insight exists, explicitly state that in the bead completion note.
+- Bead completion is not valid until this check is satisfied.
 
-### Gem / Action
-- States are mutually exclusive: gem selection, target selection, nav menu, refill.
-- Refill gated during gem selection, target selection, overlays.
-- Blue gem = party buff roulette.
-- Purple gem = party attack amplification.
+## 6.1) Large Code Exploration
+- For large hot files and cross-file rule tracing, prefer `jcodemunch-mcp` when available instead of brute-force full-file reads.
+- Keep `jcodemunch` use focused on symbol retrieval and dependency tracing; do not use it as a substitute for the active Beads issue scope.
+- For external/project documentation retrieval, prefer `jdocmunch-mcp` over broad doc file reads.
+- PM and worker should both use the same exploration order for hot code:
+  1. repo outline / file tree
+  2. symbol search / file outline
+  3. exact symbol retrieval
+  4. only then fall back to broad file reads if still necessary
+- Use `jcodemunch` first when a file is large, mirrored, or known to be a hot regression surface.
 
-### Status Effect Policy (combat skills)
-- Buff transfer/consumption semantics only.
-- Allowed:
-  - remove opponent buff
-  - remove opponent buff and apply equivalent positive effect to self/allies
-  - remove opponent buff and convert to self/allies benefit (for example, heal)
-  - consume/discard buff without negative-status application
-- Forbidden:
-  - direct negative status/debuff application
-  - derived stat-down/debuff states on heroes or enemies
-- No Final-Fantasy-style negative status layer.
+## 6.3) Skill and MCP Invocation Policy (Required)
+- Skills/MCP usage is policy, not a suggestion, when triggers match:
+  - Browser/UI flow debugging -> `playwright` skill (or issue-specified browser tool)
+  - Large codebase tracing/hot files -> `jcodemunch-mcp`
+  - External/project docs retrieval -> `jdocmunch-mcp`
+  - Netlify deployment tasks -> `netlify-deploy` skill
+- If a triggered skill/MCP is unavailable, log the blocker and use the nearest compliant fallback.
+- Do not default to broad file reads when a configured MCP can answer the query directly.
+- For bug beads touching runtime behavior, include at least one runtime-path validation (browser or deterministic simulation), not just static code inspection.
+- Browser-lane ownership rule:
+  1. Use the repo-owned harness/script first when one exists for the active bead.
+  2. Use Playwright MCP/skill to inspect, reproduce, or classify failures around that harness.
+  3. Do not create a second browser-testing pipeline unless the bead explicitly authorizes a new one.
+- Failure-classification rule for browser tooling:
+  1. Separate browser startup from browser control before changing harness design.
+  2. If direct harness launch fails but MCP/CDP control succeeds, treat the blocker as launch ownership/startup, not a generic Playwright failure.
+  3. If both Playwright-owned and plain process-owned browser launch fail under the same parent context, treat it as an environment/startup boundary before tuning test logic.
 
-### UI / Modal Layering
-- Nav UI above dark field.
-- Dark field blocks gameplay but never covers nav UI.
-- Gemboard layers must not shift during nav display.
+## 6.4) Non-Compliance Recovery
+- If any of these are missed (bead gating, insights update, required skill/MCP use), stop and correct in the same cycle:
+  1. record/repair bead contract
+  2. execute missing required step
+  3. then continue feature work
 
-### Layout Container Isolation
-- Layouts are strict containers.
-- Objects owned by Layout `N` are non-present in Layout `M` (`M != N`) unless task says otherwise.
-- Globals are the only allowed cross-layout scope unless task says otherwise.
-- Do not add speculative cross-layout checks unless the active TASK requires it.
-
-## 9) Deployment & QA Safety
-- Deploys from `main` only.
-- Netlify tracks `main`.
-- Production builds must be tagged.
-- Keep combat logs intact.
-- New instrumentation must be isolated/removable.
-- Track-next group must show upcoming turns with base + boosted stats.
-- Build/lint/test commands: use repo config if defined; otherwise note absence.
-
-## 10) Agent Operating Model
-- Threads-as-agents architecture.
-- No hidden cross-thread memory assumptions.
-- Repository artifacts are the only communication channel.
-
-### 10.1 Authority Model
-- PM orchestrates priorities, dependencies, and acceptance via Beads.
-- Any available worker agent may pick ready Beads work under PM orchestration rules.
-- Stability runs in parallel for metrics only.
-- No fixed worker-count cap; worker pool is elastic.
-
-### 10.2 PM / Orchestration
-- PM never edits code.
-- PM uses Beads as the only intake/order/closure system (`bd ready`, `bd show`, dependencies, status transitions).
-- PM sets a dynamic cycle WIP target (integer, flexible), based on:
-  - truly ready/unblocked issues
-  - conflict risk (shared files/systems)
-  - QA bandwidth
-- PM classifies issues for safe parallelism:
-  - `core-mutation` (high coupling)
-  - `sidecar-hardening` (medium coupling)
-  - `isolated` (low coupling)
-- Parallel safety partition:
-  - any number of `isolated` issues may run concurrently if QA can absorb.
-  - `core-mutation` issues should be serialized per subsystem unless explicitly proven independent.
-- PM uses Beads dependencies to enforce safety, not role bottlenecks.
-
-### 10.3 Worker / Execution Authority
-Before code changes, worker must:
-1. Run `bd ready`
-2. Pick one ready issue and run `bd show <id>`
-3. Mark issue `in_progress` if not already
-4. Execute only the scoped change for that issue
-
-Worker may run `agent-browser`/runtime probes only when:
-- verifying just-implemented change
-- reproducing logged defect behavior
-- `agent-browser --help` succeeds in current run
-
-Playwright prohibition:
-- Workers must not request/suggest/generate/execute Playwright workflows.
-- Exception only with explicit PM authorization recorded in repository artifacts.
-
-Workers must not:
-- perform unscheduled exploratory implementation
-- redefine acceptance criteria or severity
-- expand scope beyond issue description/acceptance
-- add speculative cross-layout checks outside issue scope
-
-### 10.4 Severity & Review
-Severity categories:
-- BLOCKER / CRITICAL / MAJOR / MINOR
-
-Definitions:
-- BLOCKER: startup failure, core loop broken, unrecoverable lock/corruption, progression impossible.
-- CRITICAL: milestone criteria violated, deterministic behavior broken, transition flow incomplete, reproducible integrity defect.
-- MAJOR: partially functional feature, intermittent state issues, meaningful UX/control inconsistency.
-- MINOR: cosmetic or low-impact non-core defect.
-
-PM owns severity triage and closure decisions in Beads.
-
-### 10.5 Stability / Metrics
-- Stability runs on schedule only.
-- Writes only to `governance/metrics/stability-metrics.md`.
-- Reports open/reopened findings, remediation velocity, and operational signals.
-- Stability must not create or reprioritize Beads issues.
-
-#### Stability Escalation Monitoring
-If detected:
-- BLOCKER unresolved > 24h
-- CRITICAL unresolved > 1 sprint
-- reopened BLOCKER
-Then append `Escalation Trigger` section to stability metrics.
-- Stability may flag persistence but not reclassify severity.
-
-### 10.6 Communication Contract
-- No chat-to-chat agent coordination.
-- Repository artifacts only.
-- Canonical artifacts:
-  - Beads issue database (`bd`)
-  - `AGENTS.md`
-  - `governance/audit/adversarial-ledger.md` (when adversarial findings are logged)
-
-Control phrases (PM shorthand):
-- `commit check <bd-id>` is a response contract, not a shell command.
-- Required output for `commit check <bd-id>`:
+## 7) Output Contracts
+- `commit check <bd-id>`:
   - `COMMIT: YES|NO`
   - `Reason: <one line>`
   - `If YES: Commit Message: <type: summary bd-<id>>`
   - `If NO: Missing: <1-2 concrete items>`
-- `qa handoff <bd-id>` is a response contract, not a shell command.
-- Required output for `qa handoff <bd-id>`:
-  - `Test URL: <local/runtime url>`
+- `qa handoff <bd-id>`:
+  - `Test URL: <local/runtime url or artifact path>`
   - `Steps: <3 short deterministic steps>`
   - `Expected: <pass condition>`
 
-Iteration cadence rule:
-- Work in short execution packets and close them quickly:
-  - plan -> build -> review -> adapt
-- After each packet, PM must either:
-  - advance next task, or
-  - record one explicit blocker with owner.
-- No idle "awaiting request" loops while an active task is open.
+## 7.1) Role Handoff Artifacts (Required)
+- Dev completion handoff must include `/agents/dev_reports.md` entry with:
+  - bead id
+  - changed files
+  - tests run + results
+  - explicit scope confirmation
+- Historical dev handoffs belong in `/agents/archive/dev_reports_archive.md`; keep `/agents/dev_reports.md` concise and limited to current/recent review context.
+- PM review handoff must update `/agents/pm_status.md` with:
+  - Completed Beads
+  - Active Work
+  - Next Tasks
+  - Known Issues
+- Historical PM snapshots belong in `/agents/archive/pm_status_archive.md`; keep `/agents/pm_status.md` as the current snapshot only.
+- Ambiguities/blocked reasons must be recorded in `/agents/issues.md` using PM/Dev prompt categories.
 
-### 10.7 Drift Prevention
-If agent works outside role, edits unauthorized files, or expands scope without directive:
-- Halt task and log `Governance Drift:` in `ai-memory/todo.md`; PM decides whether a high-impact insight is warranted.
-
-### 10.8 Sprint Freeze
-If BLOCKER exists and is unmapped:
-- current issue lane becomes invalid.
-- worker execution halts on affected lane.
-- PM issues remediation directive.
-- Feature work cannot continue.
-- Overrides allocation ratios.
-
-### 10.9 Repository Containment (global)
-Applies to PM, workers, and Stability for any shell/browser task.
-
-Execution boundary:
-- First command must be `pwd`.
-- Execution valid only inside repo root.
-
-Pre/Post integrity:
-- Run `git status` before and after execution.
-- If file changes detected unexpectedly: abort, reject output, log `Containment Violation:` in `ai-memory/todo.md` (PM may elevate to insights if high-impact).
-
-Escalation default:
-- Denied by default.
-- If sandbox blocks execution, task fails unless PM explicitly authorizes escalation in repository artifacts.
-- No auto-escalation.
-
-Backend isolation:
-- Allowed backend: `agent-browser` CLI only.
-- Forbidden:
-  - Playwright invocation/dependency usage
-  - Playwright MCP recommendations
-  - runtime global installs
-  - writes outside repository
-  - system file edits
-  - background daemon persistence beyond session
-
-Handoff requirement:
-- Worker must confirm containment checks before execution.
-
-Playwright exception gate:
-- Hard-deny by default.
-- Exception only via explicit PM approval in repository artifacts for named task + duration.
-
-### 10.10 Governance File Change Control
-- `AGENTS.md` is a stability artifact, not a running log.
-- Edit `AGENTS.md` only when a repeated process failure is observed (same failure class at least twice).
-- Prefer surgical patches (smallest possible diff) over refactors.
-- Do not edit `AGENTS.md` more than once per sprint unless a BLOCKER/CRITICAL governance failure requires immediate correction.
-
-## 11) MVP Validation Authority
-- Manual deterministic browser QA is canonical PASS in MVP phase.
-- Node test runner results are advisory until ESM/CommonJS alignment is complete.
-- Canonical MVP validation artifact:
-  - `agent-browser` CLI validation OR
-  - manual deterministic tester-verified run.
-
-### MVP Closure Anti-Loop Rule
-- If QA/Tester reports PASS for active task, PM must issue closure verdict in next sync cycle.
-- After QA PASS, PM may keep task open only with new reproducible BLOCKER/CRITICAL evidence tied to acceptance criteria.
-- PARTIAL PASS may not hold a QA-passed task for non-critical instrumentation preference.
-- If no new BLOCKER/CRITICAL evidence is logged, PM must mark PASS and advance intake.
+## 8) Deeper Policy
+- Keep deeper process/governance rules in `governance/` and in Beads issue acceptance.
+- Repo-specific Beads workflow rules live in `governance/execution/beads-process.md`.
+- Keep this file minimal and edit it only to correct repeated workflow failures.

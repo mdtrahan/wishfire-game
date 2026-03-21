@@ -1,0 +1,1 @@
+web-runner/app.js:getHeroUIDByIndex,getHeroScreenRoster,normalizeHeroSelectionIndex,isPointInRect,prepareCombatSetupFromInstances,drawHarnessLayoutTakeover,getEnemyHit,drawFrame,tick,main

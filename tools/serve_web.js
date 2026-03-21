@@ -5,9 +5,20 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const args = process.argv.slice(2);
 let port = 8080;
+let host = '127.0.0.1';
 for(let i=0;i<args.length;i++) if(args[i]==='--port' && args[i+1]) port = +args[i+1];
+for(let i=0;i<args.length;i++) if(args[i]==='--host' && args[i+1]) host = String(args[i+1]);
 const root = process.cwd();
-const mime = {'.html':'text/html','.js':'application/javascript','.json':'application/json','.css':'text/css','.png':'image/png','.jpg':'image/jpeg','.svg':'image/svg+xml'};
+const mime = {
+  '.html':'text/html',
+  '.js':'application/javascript',
+  '.mjs':'application/javascript',
+  '.json':'application/json',
+  '.css':'text/css',
+  '.png':'image/png',
+  '.jpg':'image/jpeg',
+  '.svg':'image/svg+xml',
+};
 
 function safeGit(args, fallback = '') {
   try {
@@ -122,4 +133,4 @@ const server = http.createServer((req,res)=>{
     fs.createReadStream(fp).pipe(res);
   });
 });
-server.listen(port, '127.0.0.1', ()=>console.log('Serving', root, 'on http://127.0.0.1:'+port));
+server.listen(port, host, ()=>console.log('Serving', root, 'on http://' + host + ':' + port));

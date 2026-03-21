@@ -1,0 +1,23 @@
+{
+  "issue": "ORKA-l0z",
+  "check": "regen_debug_logs_removed",
+  "runtimeUrl": "http://127.0.0.1:8000/web-runner/",
+  "forcedRegenState": {
+    "regenTickCounter": 11,
+    "partyMaxHP": 147,
+    "partyHP": 118,
+    "partyRegens": [
+      {
+        "remainingFires": 3,
+        "totalHealRemaining": 6,
+        "firesEveryTicks": 1,
+        "nextFireTick": 12,
+        "sourceUID": 4
+      }
+    ]
+  },
+  "result": {
+    "consoleContainsRegenLogs": false,
+    "notes": "Live browser smoke after reload produced no [REGEN] console output."
+  }
+}

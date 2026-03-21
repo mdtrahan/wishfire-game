@@ -1,0 +1,8 @@
+web-runner/app.js:drawFrame
+web-runner/modules/functionBank.js:activatePowerAmp
+web-runner/modules/functionBank.js:HeroAttackSingle
+web-runner/modules/functionBank.js:HeroAttackAOE
+web-runner/modules/functionBank.js:ConsumePowerAmpForActor
+web-runner/modules/functionBank.js:ClosePowerAmpForActor
+web-runner/modules/functionBank.js:AdvanceTurn
+web-runner/modules/functionBank.js:HeroTurn

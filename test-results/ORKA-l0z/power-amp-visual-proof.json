@@ -1,0 +1,34 @@
+{
+  "visualFix": {
+    "restored": [
+      "pop-in",
+      "fade-out"
+    ],
+    "beforeScreenshot": "/Users/Mace/Wishfire/Codex-Orka/test-results/ORKA-l0z/before-power-amp-visual.png",
+    "afterActiveScreenshot": "/Users/Mace/Wishfire/Codex-Orka/test-results/ORKA-l0z/after-power-amp-active.png",
+    "afterFadeScreenshot": "/Users/Mace/Wishfire/Codex-Orka/test-results/ORKA-l0z/after-power-amp-fade.png"
+  },
+  "damageSyncCheck": {
+    "single": {
+      "queuedMultiplier": 3,
+      "finalDamage": 69,
+      "baseDamage": 23,
+      "consumed": true,
+      "fadeDuration": 0.42
+    },
+    "aoe": {
+      "hitCount": 2,
+      "queuedMultipliers": [
+        2,
+        2
+      ],
+      "consumeFlags": [
+        1,
+        0
+      ],
+      "consumed": true,
+      "fadeDuration": 0.42
+    },
+    "pass": true
+  }
+}

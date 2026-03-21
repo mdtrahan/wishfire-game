@@ -1,0 +1,3 @@
+web-runner/app.js:getHeroUIDByIndex,traceTask015YellowAnimation,computeCombatPower,getHeroScreenRoster,initEntities,prepareCombatSetupFromInstances,drawHarnessLayoutTakeover,getEnemyHit,drawFrame,tick,main
+web-runner/modules/functionBank.js:ensureEntities,computeCombatPowerFromStats,SpawnEnemy
+Scripts/functionBank.js:ensureEntities,computeCombatPowerFromStats,SpawnEnemy

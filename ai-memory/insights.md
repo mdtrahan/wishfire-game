@@ -1,473 +1,264 @@
-# Insights (High-Impact Only)
+# Insights (Canonical, Minimal)
 
-## 2026-02-20
-- QA-PASS closure lag created rework loops; governance now requires immediate Lead PASS/FAIL after QA signal to prevent duplicate implementation cycles.
-- Sprint throughput dropped when tasks were decomposed into micro-steps; execution should run in 3-step packets (build, follow-up, validate) per active TASK.
-- Planning artifacts became noisy when they mixed audit history with live execution state; keep sprint-board/backlog operational and move historical detail to audit/regression records only.
-- Scope drift risk increases when PM/Lead/Dev boundaries blur; PM remains allocation/governance only, Lead owns technical directives, Dev owns code changes.
-- Browser backend drift caused tool confusion; agent-browser policy must stay explicit and enforced before runtime validation.
+## Purpose
+- This is the only active insights log.
+- Capture only decisions that change future behavior.
+- Do not log routine execution history, file lists, or status chatter.
 
-## Operating Rule
-- Add only decisions that change future behavior, reduce cycle time, or prevent regressions. Do not log routine sync/status events.
-- Sync-and-continue executed under ACTIVE TASK-008 updated packet (data-driven assignment + decision traces + deterministic artifacts).
-- Implemented data-driven enemy skill assignment and threshold decision model in runtime path:
-  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/modules/functionBank.js`
-  - Added `ENEMY_SKILL_ASSIGNMENT_MAP`, `resolveEnemySkillDecision(...)`, and decision trace capture in `PickEnemySkill(...)`.
-  - Added `GetEnemySkillAssignmentMap()` for deterministic QA artifact extraction.
-- Mirrored assignment/decision logic to `/Users/Mace/Wishfire/Codex-Orka/Scripts/functionBank.js` for source parity.
-- Published deterministic TASK-008 artifacts under `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/`:
-  - `assignment-map.json`
-  - `decision-traces.json`
-  - `refill-turn-trace.json`
-  - `refill-sequencing-assertions.json`
-  - `layout1-skill-check.png`
-- Assertions confirm:
-  - QA coverage for Djinn/Marid/Chimerilass skill decisions.
-  - Special vs regular thresholds match expected ratio pattern.
-  - Drain Buff/X Out/Wipe runtime effects pass deterministic checks.
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/modules/functionBank.js`
-  - `/Users/Mace/Wishfire/Codex-Orka/Scripts/functionBank.js`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/assignment-map.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/decision-traces.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/refill-turn-trace.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/refill-sequencing-assertions.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/layout1-skill-check.png`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Await next explicit user request.
-- Continued TASK-008 under ACTIVE intake and finalized Lead closure artifact packaging.
-- Added `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/closure-recommendation.json` with PASS recommendation and deterministic artifact index.
-- No scope expansion and no additional runtime behavior changes in this continuation step.
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/closure-recommendation.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Await next explicit user request.
-- Applied surgical Wipe behavior adjustment per user directive:
-  - `Enemy_Wipe` now consumes only light-green gems (color 4), not all gems.
-  - Heal pool now equals `lightGreenConsumed * 4`, split deterministically across living enemies.
-- Runtime file updated:
-  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/modules/functionBank.js`
-- Source parity file updated:
-  - `/Users/Mace/Wishfire/Codex-Orka/Scripts/functionBank.js`
-- Self-validation artifacts:
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/wipe-lightgreen-check.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/wipe-lightgreen-check-seeded.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/wipe-lightgreen-assertions.json` (pass=true)
-- Next: Await next explicit user request.
-- Reopened TASK-008 closure gate due new QA regression signal: initial refill shows frame/state swap contamination with suspected yellow-path bleed into regular non-yellow refill.
-- Updated dispatch artifacts:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-008-execution-plan.md` -> closure gate set to `PARTIAL PASS (REOPENED)` with corrective packet.
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md` -> 3-step corrective Dev packet for reproduce/fix/validate.
-- Scope lock: no transition-flow edits, no unrelated gameplay logic changes; target is regular refill stability and yellow-path isolation only.
-- Next: Await Dev corrective artifact packet for Lead closure re-check.
-- Executed reopened TASK-008 corrective packet for initial refill frame/state swap contamination (yellow-path isolation).
-- Minimal corrective fix in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`:
-  - `startYellowCasinoSequence(...)` now queues only `type:'yellow'` items.
-  - Removed yellow-sequence `empty` queue entries to isolate regular refill path from yellow animation path.
-  - Lock/defer is now only applied when yellow queue has work; otherwise immediate fallback to `startRefillBounce()`.
-- Deterministic reopened artifacts published under `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/`:
-  - `reopened-repro-start.json`
-  - `reopened-repro-console.log`
-  - `reopened-repro-post.json`
-  - `reopened-repro-frame.png`
-  - `reopened-refill-trace.json`
-  - `reopened-refill-assertions.json`
-- Assertion result: PASS for non-yellow anchor, zero yellow-sequence markers after non-yellow resolve anchor, and board remains populated post-action.
-- Additional test-hook correction:
-  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` `__codexGame.selectGemByRC` now records selected gem index (runtime parity with click path) instead of UID.
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/reopened-repro-start.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/reopened-repro-console.log`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/reopened-repro-post.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/reopened-repro-frame.png`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/reopened-refill-trace.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task008/reopened-refill-assertions.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Await next explicit user request.
-- TASK-008 reopen corrective packet reviewed and closed with Lead PASS.
-- Refill regression evidence confirms non-yellow regular refill no longer triggers yellow-sequence markers after non-yellow resolve anchor.
-- Directive sync updated:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-008-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
-- Note captured: `reopened-repro-start.json` path referenced by Dev is missing, but closure evidence remained sufficient via trace/log/post-state artifacts.
+## Operating Constraints
+- Beads are the sole work authorization channel.
+- Use one lane at a time; mirror deterministic rule edits in both runtime mirrors when required.
+- When a problem appears, check this file for prior fixes before expanding scope.
 
-## 2026-02-20 (startup refill diagnostics)
-- Added startup `Layout 1` refill diagnostics in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` with no gameplay logic changes:
-  - `[LAYOUT1_REFILL_START]` logs full board array snapshot at refill start.
-  - `[LAYOUT1_REFILL_STEP]` logs board array at each refill queue step (`skip`/`occupied`/`set`).
-  - `[LAYOUT1_REFILL_FINISH]` logs final board array plus deterministic start-vs-final cell diff and `BattleStartMode` (`initiative`/`ambush`) for leakage checks.
-- Capture is scoped to first combat-layout startup refill per runtime session to keep output focused.
-- Index gap recorded: `ai-memory/PROJECT_INDEX.md` is missing; direct file discovery was used for this task.
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Await next explicit user request.
+## Product Model (Current)
+- ORKA progression is mobile-casual leaning: power should come from skills, trait passives, and booster/meta systems.
+- Avoid reintroducing classic RPG-style timed character buff/debuff stacks unless explicitly approved in bead acceptance.
+- Blue gem flow is wallet/progression oriented (Astral Flow), not direct party-stat buff application.
+- Progression-family scaffolds (tomes/relics/vault/chests/etc.) should ship as deterministic layout/state shells first, with map-locale entry mappings where menu pointers are intentionally absent.
 
-## 2026-02-20 (diagnostic cleanup after QA PASS)
-- Removed temporary startup refill diagnostics from `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`:
-  - deleted `[LAYOUT1_REFILL_START]`, `[LAYOUT1_REFILL_STEP]`, `[LAYOUT1_REFILL_FINISH]` logs
-  - deleted audit helper functions used only by those logs
-  - removed temporary refill-audit state wiring in `startRefillBounce(...)`
-- No gameplay behavior changes applied; refill/turn flow logic unchanged.
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Await next explicit user request.
+## Bead Triage Guidance
+- Prefer: skill/passive/trait behavior beads (`ORKA-6gt`, `ORKA-2sa`, `ORKA-mo4`, `ORKA-hvj`).
+- Reframe before implementation when acceptance language implies persistent timed stat stacks (`ORKA-9ri`, `ORKA-zih`, residual wording in `ORKA-69r`).
 
-## 2026-02-20 (startup log condensation)
-- Condensed startup render debug spam in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` by replacing four repeated modal/window debug lines with one deduplicated summary log:
-  - New tag: `[DEBUG_RENDER_SUMMARY]`
-  - Emits only when render/modal signature changes.
-- This is logging-only; no gameplay/UI behavior changes.
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Await next explicit user request.
+## Regression Triggers
+- Before starting combat-system beads, scan acceptance + code for: `buff`, `debuff`, `duration`, `turns`, `stack`.
+- If these imply outdated model assumptions, pause and rewrite bead scope before coding.
 
-## 2026-02-20 (startup debug efficiency pass)
-- Added startup debug gate in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`:
-  - `STARTUP_DEBUG` query flag (`?startup_debug=1`)
-  - `startupDebugLog(...)` helper
-- Routed high-volume startup diagnostics to gated logger:
-  - `[HP_FIX]`, `[LAYOUT_AUDIT]`, `[INIT]` startup chatter, per-asset `[LOAD] SUCCESS`, `[DEBUG_RENDER_SUMMARY]`, and `[FILTER]` chatter.
-- Kept warnings/errors and key non-debug runtime logs unchanged.
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Await next explicit user request.
+## 2026-03-07 Regression Note
+- Hero selector render gate must treat hero-turn as `TurnPhase === 0` (not `1`) in web-runner runtime.
+- Core runtime modules under `web-runner/src/core/` must be treated as required deployment artifacts; missing files there can silently regress previously fixed UI/turn behavior.
+- For web-runner startup regressions, verify module parity first (`heroSelectorRules`, `initiativeGuards`, `combatRuntimeGateway` lifecycle API) before broader combat debugging.
+- Yellow-match completion can regress from merge-target helper scope errors; keep target lookup dependency-free inside `handleGemMatch` (do not rely on out-of-scope locals like `instances`/`assetsLayout`).
+- When diagnosing yellow stalls, run multi-pass checks through `__codexGame.forceMatch(3)` and confirm `BoardFillActive` returns to `0` within settle window.
+- 2026-03-08: Gem matches are not a buff source. Any buff-like systems must be implemented as separate booster mechanics (free/paid), decoupled from gem-color match lifecycle.
 
-## 2026-02-20 (TASK-009 execution packet)
-- Implemented dedicated non-modal map layout routing from Nav Map in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`:
-  - Added `mapLayout` registration in LayoutState with strict `mapLayout -> combat` transition.
-  - Added `combat -> mapLayout` transition allowance.
-  - Wired `nav:clicked` Map to request `mapLayout` (instead of overlay fallback).
-- Implemented map-layout isolated interaction/render path:
-  - Added map pan/drag state under `gameState.mapLayout`.
-  - Added map-only pointer handlers (`pointerdown`/`pointermove`/`pointerup`/`pointercancel`) scoped to active `mapLayout`.
-  - Added top war-meter rendering and map takeover rendering (`4x_map` + `4X_tower`) only when active layout is `mapLayout`.
-  - Added explicit map return button path to transition back to combat.
-- Updated dev snapshot surface:
-  - `render_game_to_text()` now reports active runtime `layoutId` via `layoutState` and includes `mapLayout` pan/war fields.
-- Published TASK-009 validation artifacts:
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/assertions.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/closure-recommendation.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/map-enter.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/map-drag.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/map-return.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/transition-trace.log`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/console.log`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/map-layout.png`
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Lead closure gate review for TASK-009.
+## 2026-03-08 Figma Parity (Hero Layout)
+- For `heroLayout` visual QA, use Figma node coordinates as source of truth and render placeholders exactly (`NUM`, `Skill Title`, `Skill Title Lv.2`) until behavior beads replace them.
+- Keep icon assets wired to MCP-exported Figma URLs for arrows, plus/minus, and close oval when parity is the goal.
+- Use Playwright screenshots for side-by-side parity checks; fix drift with coordinate-level updates (not subjective spacing tweaks).
+- During parity checks, force background to pure white (`#ffffff`) to isolate color mismatches before reintroducing any tint.
+- Figma instance transforms on nav icons (e.g., `rotate-90`, mirrored variants) must be replicated in canvas draw transforms; drawing raw source PNG orientation causes obvious parity drift.
+- Hero nav arrows: treat Figma slot geometry (`24x38`) as canonical and enforce inward direction by draw-path when remote arrow assets are unreliable.
+- Minus control icon in Hero skills uses vertical mirror (`scaleY=-1`) semantics from Figma, not 180-degree rotation.
+- Hero-screen Figma parity lesson: validate nav arrow direction against frame screenshot, not naming assumptions ('back/next' can be visually opposite to expected UX convention).
+- When doing visual parity, complete full top-to-bottom audit in one pass before declaring done; partial fixes create false confidence.
+- Playwright launch failure pattern (`Opening in existing browser session`) is usually stale `playwright-mcp` + `mcp-chrome` processes. Kill stale processes first; if MCP transport dies, use CLI Playwright (`npx playwright screenshot ...`) as QA fallback until MCP restarts.
+- Initiative regression guard: sanitize time-mode turn queues before commit so duplicate non-extra hero slots cannot accumulate from queue reconciliation drift.
+- Preserve extra turns only when provenance is explicit mechanic; otherwise drop extra repeats during reconciliation.
+- For Playwright on macOS from Codex, diagnose in this order: direct browser startup, external Chrome CDP endpoint health, then Codex `connectOverCDP()` control. `MachPortRendezvous` / Crashpad permission errors prove startup is blocked inside Codex; they do not by themselves prove Automation/Accessibility is required for the CDP attach path.
+- If both Playwright-owned launch and plain Codex-owned Chrome child-process launch crash, stop tuning Playwright flags. That pattern means the direct-launch regression is broader than Playwright and should be treated as a Codex/macOS startup boundary until proven otherwise.
+- Keep the browser layers separate in writeups and debugging:
+  - `tools/balance_harness.js` is the repo-owned batch automation path.
+  - Playwright MCP / Codex Playwright skill are interactive inspection tools.
+  - Success in MCP does not prove the harness's `require('playwright').chromium.launch(...)` path is healthy, and failure in the harness launch path does not prove MCP is broken.
+- When a browser tool works in one layer and fails in another, compare ownership first:
+  - who launches Chrome
+  - whether launch is direct or CDP attach
+  - whether the failing path is a repo script or an external tool wrapper
+  Do not collapse those into a generic “Playwright is broken” conclusion.
 
-## 2026-02-20 (TASK-009 corrective visual acceptance packet)
-- Executed corrective packet from ACTIVE.md for TASK-009 in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`:
-  - removed standalone tower overlay render path from `mapLayout`
-  - set map background to art-delivered `images/map-layout.png`
-  - implemented deterministic vertical-fit map scaling (aspect ratio preserved)
-  - kept war-meter + return-to-combat behavior intact
-- Added runtime map render telemetry for deterministic validation:
-  - `gameState.mapLayout.lastRender` and `render_game_to_text().mapLayout.render`
-- Published corrective artifacts under `/Users/Mace/Wishfire/Codex-Orka/test-results/task009/`:
-  - `map-layout-corrective.png`
-  - `map-enter-corrective.json`
-  - `map-drag-corrective.json`
-  - `map-return-corrective.json`
-  - `console-corrective.log`
-  - `assertions-corrective.json` (`pass: true`)
-  - `closure-recommendation-corrective.json` (`PASS`)
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
-  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/assets/images/map-layout.png`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Lead closure gate review for TASK-009 corrective packet.
-- Reopened TASK-009 acceptance to BLOCKED due missing canonical map asset creation/distribution.
-- Forward execution freeze applied in dev directives:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-009-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
-- TASK-010 intake is frozen behind asset pipeline delivery.
-- Next: Await map asset creation/distribution package and then re-run unblock gate.
-- Map asset blocker cleared: runtime now has delivered map background asset (`images/map-layout.png`).
-- TASK-009 reopened as visual acceptance corrective packet due QA findings:
-  - remove standalone tower overlay (tower to be baked into map art)
-  - enforce vertical-fit map scaling with preserved aspect ratio
-  - keep Return Combat behavior unchanged; keep war-meter as stub
-- Updated directives:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-009-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
-- TASK-010 remains frozen behind TASK-009 corrective closeout.
-- TASK-009 corrective scope extended per QA feedback:
-  - lock pan to horizontal axis only
-  - drag must end immediately on pointer/touch end/cancel (no sticky follow)
-  - maintain viewport containment while preserving vertical-fit aspect-ratio scaling
-- Updated dispatch artifacts:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-009-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
-- TASK-010 remains frozen behind TASK-009 corrective closeout.
-- TASK-009 corrective visual acceptance packet reviewed and closed with Lead PASS.
-- Closure evidence validated from corrective artifact bundle, including horizontal-only pan, non-sticky drag-end, contained bounds, no tower overlay, and return-to-combat pass checks.
-- Directive sync updated:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-009-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
-- Intake promoted to TASK-010; freeze removed now that TASK-009 corrective gate is closed.
+## 2026-03-08 — ORKA-spt multipass QA note
+- For skill-point consumption multipass checks, reset `HeroSkillProgressByHeroId` per session/pass (or reload page) before asserting spend deltas.
+- Without progress-state reset, later passes can show all `max_rank_reached` rejects with no spend despite point reseed at 300, which is a test artifact (not overdraft behavior).
 
-## 2026-02-20 (TASK-011 Phase 1 assessment-only)
-- Executed TASK-011 Phase 1 only (no archive/delete actions), scoped strictly to `test-results/`.
-- Published assessment artifacts under `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/`:
-  - `inventory.tsv` (recursive file inventory with mtime/size/path)
-  - `age-size-summary.json` (bucketed age/size totals)
-  - `reference-scan.tsv` (repo path/basename reference counts)
-  - `candidate-matrix.tsv` (keep/archive/delete candidates with rationale)
-  - `candidate-summary.json` (action totals and byte counts)
-- Phase 1 output summary:
-  - keep: 50 files / 2,465,666 bytes
-  - archive candidates: 15 files / 244,273 bytes
-  - delete candidates: 2 files / 6,244 bytes
-- No file move/delete operations were performed; awaiting Lead review for Step 2 approval.
+## 2026-03-08 — Startup and bar rendering reliability
+- Startup load stalls were amplified by serial `await loadImage(...)` chains; switching to parallel `Promise.all` for core visuals and staged critical/deferred sprite loads improves first-ready behavior without changing gameplay paths.
+- Enemy gradient HP bars become visibly distorted when drawn with fractional sizes/positions and smoothing enabled; fix by integer snapping draw rects and disabling image smoothing only around bar draws.
 
-## 2026-02-20 (TASK-011 Step 2/3 approved cleanup executed)
-- Executed approved TASK-011 cleanup set scoped to `test-results/` only:
-  - Archived 15 approved files into `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/archive/...`
-  - Deleted only `/Users/Mace/Wishfire/Codex-Orka/test-results/.DS_Store`
-  - Preserved protected file `/Users/Mace/Wishfire/Codex-Orka/test-results/.last-run.json`
-- Published deterministic Step 2/3 artifacts:
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/approved-archive-list.txt`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/operation-log.tsv`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/rollback-manifest.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/post-cleanup-assertions.json` (`pass: true`)
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/post-inventory.txt`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task011-cleanup/closure-recommendation.json` (`PASS`)
-- Before/after state from rollback manifest:
-  - before: 67 files, 2,716,183 bytes
-  - after: 51 files, 2,465,762 bytes
-- Next: Lead closure gate review for TASK-011 cleanup packet.
-- TASK-011 Phase 1 artifact review completed; Step 2 approved with constraints.
-- Safety correction applied: `test-results/.last-run.json` reclassified as protected due governance references and excluded from delete set.
-- Approved Step 2 operations:
-  - archive 15 candidate files from task005/task007 historical subsets
-  - delete only `test-results/.DS_Store`
-  - emit deterministic rollback manifest + before/after summary
-- Updated directives:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-011-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
-- TASK-011 Step 2/3 artifacts reviewed; closure gate set to PASS.
-- Verified approved operation set was executed exactly:
-  - 15 approved files archived
-  - only `.DS_Store` deleted
-  - `.last-run.json` protected and retained
-- Updated directives:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-011-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
-- ACTIVE now in TASK-011 closure-admin hold pending PM sprint-board closeout; TASK-010 remains blocked.
-- Dispatched sprint bundle intake `TASK-012/013/014` as one ACTIVE cycle.
-- Published/updated directive artifacts:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-012-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-013-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-014-execution-plan.md`
-- Packet contract now enforces exact sequence: manifest publish -> approved deletion only -> deterministic validation+rollback with PASS/FAIL closure recommendation.
-- Constraint preserved: no gameplay/runtime logic edits.
+## 2026-03-08 — Layout 0 loading UX strategy
+- Keep a dedicated pre-bootstrap draw path (`drawStartupLoadingFrame`) so canvas never appears blank while assets initialize.
+- Progress should advance by deterministic stage weights (layout/object/enemy/critical/core/finalize) and explicitly resolve to 100% at runtime-ready transition.
 
-## 2026-02-20 (TASK-012/013/014 bundle executed)
-- Completed one-cycle bundle from ACTIVE.md:
-  - TASK-012: published deterministic manifest with explicit keep/delete rationale and reference safety checks.
-  - TASK-013: deleted only approved files from manifest (18 unused image assets under `web-runner/assets/images/`) and logged each operation.
-  - TASK-014: published post-delete validation + rollback assets and explicit PASS recommendation.
-- Bundle artifacts published under `/Users/Mace/Wishfire/Codex-Orka/test-results/task012-014-cleanup/`:
-  - `manifest.tsv`
-  - `manifest.txt`
-  - `approved-delete-list.txt`
-  - `deletion-operation-log.tsv`
-  - `post-delete-validation.json` (`pass: true`)
-  - `rollback-backup/` (backup copy for each deleted file)
-  - `before-after-summary.json`
-  - `closure-recommendation.json` (`PASS`)
-- Execution constraints respected:
-  - no runtime/gameplay logic edits
-  - deletion scope limited to approved image files
-  - deterministic rollback path preserved via `rollback-backup/` and operation log.
-- Next: Lead closure gate review for TASK-012/013/014 bundle.
+## 2026-03-08 — Vault Close-Control Regression Guard
+- Helper functions declared before runtime asset variables must not capture later block-scoped symbols directly; pass assets as explicit parameters (`drawHeroStyleCloseControl(..., closeOvalImage, ...)`) to avoid `ReferenceError` in non-hero layout draw paths.
+- When reusing Hero UI primitives across other layouts, update both draw path and hit-zone routing together; visual parity without input wiring causes partial regressions.
 
-## 2026-02-20 (TASK-012/013/014 Lead closure gate)
-- Completed Lead closure review for bundle artifacts and issued PASS at TASK-014 plan level.
-- Verified deterministic evidence:
-  - `post-delete-validation.json` reports `pass: true`
-  - `approved-delete-list.txt` contains 18 approved paths
-  - `deletion-operation-log.tsv` contains header + 18 `ok` delete operations, matching approved set
-  - `rollback-backup/` contains rollback copies for all deleted files
-- Updated directives:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-014-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
-- ACTIVE now reflects bundle execution complete at Lead gate and sets Dev to hold pending PM sprint-board completion marking and next intake packet.
-- Next: Await next explicit user request.
+## 2026-03-09 — Reusable Heuristics For Similar Bugs
+- **State-preserving UI exits**: treat layout close actions as state-preserving by default. Any close handler that mutates session-seeding, encounter selection, or board init flags should require explicit bead acceptance.
+- **Randomness diagnosis order**: when “random feels stuck,” test in this order:
+  1. seed variability
+  2. selector scoring/tie-break behavior
+  3. pool constraints (roles/locale/faction)
+  Do not stop after seed checks.
+- **Policy enforcement seam**: enforce combat behavior contracts at the seam that actually dispatches actions (`PickEnemySkill` / runtime selector), then optionally mirror in helper/resolver layers.
+- **HP-threshold contracts**: for threshold-gated behaviors (e.g., heal below 50%), add explicit positive and negative gates:
+  - required path below threshold
+  - forbidden path above threshold
+  This prevents “still damaged” logic from leaking through.
+- **AOE heal readability rule**: if players must quickly perceive threat under fast pacing, prefer equal per-target heal application over split pools unless split behavior is explicitly part of design.
+- **Outcome-table tuning workflow**: for event-style randomness (purple amp), keep probabilities in one visible table and tune only weights first; avoid adding pity/extra systems until weight tuning is proven insufficient.
+- **Mirror discipline rule**: deterministic combat rules must be edited in both runtime mirrors (`web-runner/modules/functionBank.js` and `Scripts/functionBank.js`) in the same patch cycle.
 
-## 2026-02-20 (Sync and dispatch to TASK-015)
-- Governance sync completed against sprint-board, adversarial-ledger, remediation-log, and ACTIVE.
-- No new unmapped ADV entries detected during ingestion; execution can continue under current sprint mapping.
-- ACTIVE intake advanced from closed TASK-012/013/014 bundle to TASK-015 per sprint-board.
-- Published TASK-015 execution plan with strict scope:
-  - output-only Layout 1 story-card slot
-  - mirror exact latest combat debug/action line as single live line
-  - no cache/stack; lightweight placeholder animation only
-  - no combat/transition/layout-policy refactors
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-015-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Await next explicit user request.
+## 2026-03-09 — Encounter Slotting Seam
+- **Initial vs refill seam**: center-slot strongest logic belongs at package-to-slot assignment seams, not inside per-slot respawn picker logic.
+- **Wave-clear repick guard**: when converting full-wave KO into packaged repick, add a pending gate (`WaveRepickPending`) and occupied-slot checks to prevent duplicate spawns from concurrent kill timers.
+- **Flavor-preserving randomness**: keep side-slot assignment true-random while making center deterministic; this keeps readability without making battles feel scripted.
 
-## 2026-02-20 (TASK-015 QA reopen dispatch)
-- Received QA failure report for TASK-015 partial implementation:
-  - story-card slot location incorrect
-  - dimensions incorrect
-  - placeholder flip/slot animation not visible
-- Dispatched corrective packet (no scope expansion) by tightening TASK-015 execution plan and ACTIVE Dev Next Action:
-  - enforce relational anchoring into the band between buff row and gemboard
-  - enforce gemboard-aligned width/contracted height
-  - require visible on-update animation with single-line overwrite semantics only
-  - require deterministic corrective artifacts for placement, animation, and overwrite/containment proof
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-015-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Await Dev corrective artifact packet for Lead closure review.
+## 2026-03-09 — Frame-6 Reward Determinism
+- If QA contract says a special gem should move a specific resource, avoid dual-reward random branching in the click handler (`gold|energy`) unless that randomness is explicitly in acceptance.
+- Reward determinism for special gems should be enforced at the immediate interaction seam (`handleSpecialGem*`) and protected by a dedicated contract test, so yellow-flow tuning cannot accidentally reintroduce resource ambiguity.
 
-## 2026-02-20 (TASK-015 QA FAIL regression containment dispatch)
-- QA reported additional regressions after partial TASK-015 implementation:
-  - story card initial placement incorrect
-  - card repositions only after blue-buff interaction (invalid trigger coupling)
-  - corrected state under-scaled (required width target unmet)
-  - yellow refill invariants regressed (row-wise order + yellow animation path)
-- Updated TASK-015 execution plan and ACTIVE packet to fail/reopen with sprint-blocking acceptance criteria:
-  - Story card must initialize from Layout 1 activation only (not turn/buff/gem events).
-  - Story card must be horizontally centered at approximately 95% width of viewport content band.
-  - Yellow refill order and yellow-sequence animation must be restored and proven unchanged by story-card work.
-- Required artifact set added for deterministic re-close attempt:
-  - `layout1-start.png`
-  - `layout1-post-blue-match.png`
-  - `storycard-placement-trace.json`
-  - `yellow-refill-order-trace.json`
-  - `yellow-animation-trace.json`
-  - `assertions-regression-guard.json`
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-015-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Await Dev regression-corrective artifact packet for Lead review.
+## 2026-03-09 — Animation-to-Value Synchronization
+- For resource fly-up effects, do not mutate HUD totals at sequence start; apply the total at animation completion (`t>=1`) so causality matches player perception.
+- Keep a completion fallback for no-animation branches, but preserve the same semantic moment (sequence completion) to avoid mixed feedback contracts.
 
-## 2026-02-20 (TASK-015 visual typography tuning dispatch)
-- QA reported functional PASS on TASK-015 and requested visual readability adjustment only.
-- Dispatched narrow-scope follow-up:
-  - increase story-card font size to match sample readability target
-  - no text/content expansion
-  - no card anchor/size contract changes
-  - no refill behavior or yellow-path behavior changes
-- Updated directive files:
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/TASK-015-execution-plan.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/governance/execution/dev-directives/ACTIVE.md`
-- Required closure artifacts set:
-  - `storycard-font-before-after.png`
-  - `storycard-font-assertions.json`
-- Next: Await Dev typography artifact packet for Lead closure check.
+## 2026-03-09 — Yellow Turn-Handoff Regression Guard
+- For yellow action flows, lock handoff semantics in tests at two seams:
+  - policy seam (`createYellowSequenceCompletion`) for `handoffPending` vs `canRestorePickability`
+  - runtime seam (`tick` deferred-advance block) for resolve-then-single-advance ordering
+- This prevents reintroducing “extra turn” regressions when animation or gating code is tuned.
 
-## 2026-02-20 (TASK-015 story-card single-line wiring)
-- Executed TASK-015 scope in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` only:
-  - Added single-line story-card runtime state (`gameState.storyCardLine`) with overwrite semantics.
-  - Added `getLatestCombatActionLine()` authority resolver from `state.globals.CombatActionLines[3]`.
-  - Added `getStoryCardLiveLineState()` for lightweight placeholder alpha pulse on line replacement.
-  - Updated Layout 1 combat text draw path so only `CombatAction` renders the live line; `CombatAction1/2/3` are skipped.
-  - Updated `drawHUD()` debug panel to mirror one latest action line only.
-- Deterministic artifacts published:
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/phase1-source-contract.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/phase3-validation.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/closure-recommendation.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/runtime-probe.log`
-- Closure recommendation: `PARTIAL PASS` (static contract/wiring checks pass; runtime probe blocked by local `agent-browser` daemon socket startup failure).
-- Index gap: `/Users/Mace/Wishfire/Codex-Orka/ai-memory/PROJECT_INDEX.md` is missing.
-- Files touched:
-  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/phase1-source-contract.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/phase3-validation.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/closure-recommendation.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/runtime-probe.log`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/todo.md`
-  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
-- Next: Await next explicit user request.
+## 2026-03-09 — Beads CLI Environment Check
+- If `bd` is reported as missing, verify `~/.local/bin/bd` before treating it as an installation failure; this shell can omit `~/.local/bin` from `PATH` even when Beads is installed.
+- When shell `PATH` is suspect, repair it first (`export PATH="$HOME/.local/bin:$PATH"`) and re-run `bd ready`/`bd show` before falling back to direct `.beads/` edits.
+- If `bd` state and `.beads/` file state disagree, treat live `bd` output as the workflow source of truth for active issue selection, then reconcile stale repo tracking separately.
 
-## 2026-02-20 (TASK-015 visible story-card slot placement fix)
-- Confirmed QA report: story-card slot was not visible in combat layout because `CombatAction` text was still suppressed by sidebar migration filter.
-- Updated `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` to:
-  - allow `CombatAction` through the text render filter while keeping other radiator text in sidebar,
-  - render a dedicated story-card slot band above gemboard (between buff row and board),
-  - draw the single live latest action line inside that slot with overwrite semantics and existing placeholder pulse.
-- Runtime validation artifacts:
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/runtime-slot-visible.png`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/runtime-slot-line.txt`
-- Next: Await next explicit user request.
+## 2026-03-09 — Combat Power Offense Selection
+- Combat power helpers must choose offense from role intent, not ATK by default: `attackType === 'magic'` uses `MAG`, `attackType === 'melee'` uses `ATK`, and unknown/no-type callers should fall back to `max(ATK, MAG)`.
+- When a derived stat is mirrored across runtime surfaces, lock the same helper signature and formula in both the app bootstrap path and the mirror modules so support/magic units do not drift between preview and spawned-runtime values.
 
-## 2026-02-20 (TASK-015 regression corrective packet executed)
-- Implemented TASK-015 QA-fail corrective in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js` with no scope expansion:
-  - Story-card placement is initialized on `combat` layout activation (`layout1-active`) and no longer tied to turn/buff/gem event updates.
-  - Story-card width is centered and derived at ~95% of content band width.
-  - Added deterministic trace capture for TASK-015 contracts:
-    - story-card placement trigger/bounds
-    - yellow refill queue ordering
-    - yellow-sequence animation path stages
-- Exposed runtime trace retrieval hooks:
-  - `window.__codexGame.getTask015Trace()`
-  - `window.__codexGame.resetTask015Trace()`
-- Published required corrective artifact pack:
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/layout1-start.png`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/layout1-post-blue-match.png`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-placement-trace.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/yellow-refill-order-trace.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/yellow-animation-trace.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/assertions-regression-guard.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/closure-recommendation.json`
-- Corrective assertion verdict: PASS.
-- Next: Await next explicit user request.
+## 2026-03-09 — Playwright Harness Environment Triage
+- For Node-driven Playwright harness beads, validate browser launch with the exact known executable path first before debugging harness logic. If `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` still aborts, the problem is the execution environment, not the harness flow.
+- A failure pattern of `Target page, context or browser has been closed`, `SIGABRT`, `bootstrap_check_in`, or Crashpad permission errors means the browser subprocess is dying before page control. Do not keep “fixing” gameplay automation code against that symptom.
+- When end-to-end Node Playwright is blocked, still prove the runtime seam separately: confirm the local page loads, `window.render_game_to_text` exists, and the canvas/input surface is present through the browser tool or MCP path.
+- If harness contracts pass and the browser subprocess dies at launch, first try `connectOverCDP()` against an already-running Chrome with a debug port before declaring the lane blocked. CDP attach can recover browser automation without changing game code.
+- If CDP attach is the recovery path, treat browser ownership explicitly: the harness may close the attached Chrome when it is the automation-owned instance.
+- For this combat runtime, “actionable hero turn” is not just `canPickGems=true`. Red/green gem flows can open a pending attack UI that must be finished by clicking an enemy and then the centered attack button, and defeated enemies can remain in state at `hp=0` instead of disappearing from the array.
+- For balance harness input gating, require a true idle hero state before tapping gems: `canPickGems && !isPlayerBusy && turnPhase === 0 && no pending skill`. `canPickGems` alone is not safe enough under fast automation.
+- If a session freezes with `pendingSkillId` set, inspect `SelectedEnemyUID`, `PendingHeroHits`, and hero move state before changing tap logic. A stuck `pendingSkillId` with `SelectedEnemyUID=0` means the harness must keep retrying the target-selection seam, not keep clicking gems.
+- Do not treat `livingEnemies === 0` as an immediate session-ready state. In this runtime it can mean “wave between spawns,” so the harness should wait through repopulation windows before deciding the field is actionable or exhausted.
+- If bounded harness runs succeed but the live battlefield grows past the configured enemies-per-wave, stop short of making CP balance claims. That indicates a game-side spawn/respawn distortion, not a harness-only issue.
+- If no attach path exists and the browser still cannot launch, leave the bead `BLOCKED` and record the environment blocker explicitly. Do not mark the bead done and do not rewrite game code to compensate for sandboxed browser failures.
 
-## 2026-02-20 (TASK-015 visual tuning packet)
-- Executed ACTIVE visual-tuning-only packet in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`:
-  - increased only story-card line font size in CombatAction render path,
-  - preserved story-card bounds/anchor logic,
-  - preserved latest-line overwrite semantics and refill/yellow behavior contracts.
-- Published typography closure artifacts:
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-font-before.png`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-font-after.png`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-font-before-after.png`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-font-state-after.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-font-trace-after.json`
-  - `/Users/Mace/Wishfire/Codex-Orka/test-results/task015/storycard-font-assertions.json`
-- Assertion verdict: PASS (`font-size-increased`, `card-bounds-unchanged`, `latest-overwrite-semantics-unchanged`).
-- Next: Await next explicit user request.
+## 2026-03-10 — Combat Control And QA Timing Model
+- For combat QA and browser automation, treat player control as a state contract, not a visual guess. The game is safely actionable only when `CanPickGems=1`, `IsPlayerBusy=0`, `TurnPhase=0`, and `PendingSkillID` is empty.
+- Do not classify `livingEnemies === 0` as an immediate failure. In this runtime it can be a valid repopulation window between waves or slot refill events.
+- Refill completion and action completion are different seams. A finished refill should not restore pickability on enemy turns, and an ended lunge is not the same thing as a completed turn handoff.
+- Use actual sequence timings when judging stalls: hero/enemy lunge motion is about `0.88s`, enemy post-action lock is about `0.35s`, and combat text can hold handoff for about `1.33s`. Declaring a bug earlier than those combined windows creates false positives.
+- For Playwright/player-like automation, the correct loop is: wait for true idle hero state, tap one 3-gem set, resolve any follow-up target/confirm action, then wait through text/refill/deferred advance before sending more gem input.
 
-## 2026-02-22 (Drift audit retry)
-- Retry audit still failed: ACTIVE remained regressed to TASK-015 and required TASK-020 plan was absent, so runtime deltas could not be scope-certified despite baseline/branch checks passing.
+## 2026-03-10 — Mirror Parity Fences For Hot Runtime Files
+- When a deterministic combat rule must remain mirrored across `Scripts/` and `web-runner/modules/`, do not rely on broad file diffs to judge safety. Fence parity with a curated contract that compares normalized source for only the high-risk functions that actually drive runtime behavior.
+- For mirrored telemetry/state-lifecycle seams, parity includes side effects and trace fields, not just gameplay math. If one runtime logs activation/consume/clear state with extra lifecycle metadata, the other mirror must match or debugging will diverge by environment.
+- If whole-file drift is already large, reduce risk by synchronizing one meaningful seam first and then freezing it with a deterministic contract; this is safer than forcing immediate total-file identity in a dirty worktree.
 
-## 2026-02-22 (Alignment retry PASS)
-- Restoring ACTIVE/task-plan parity before re-auditing converted drift gate from FAIL to PASS, confirming that scope compliance checks are reliable only after directive alignment is re-established.
+## 2026-03-10 — Entity Failure Quarantine
+- For always-on update loops, swallowing entity exceptions and continuing silently is worse than a bounded quarantine. Keep the loop alive, but fence the specific failing entity after a small consecutive-failure threshold.
+- Attribute entity failures with a stable key before logging or quarantining. Prefer `uid` when present; otherwise derive a repeatable fallback key from kind/name/index so later diagnostics can identify the same bad instance.
+- Consecutive-failure counters should reset on a successful update. This prevents one transient exception from poisoning an entity forever and makes quarantine mean “repeatedly broken,” not “ever failed once.”
 
-## 2026-02-22 (TASK-020 closure and intake advance)
-- QA PASS on initiative no-resurrection was converted to Lead PASS for TASK-020, and ACTIVE intake was advanced to TASK-019 (party-wide power-amp expiry leak) with strict file-lock constraints.
+## 2026-03-11 — Global Dev Tooling Modal Strategy
+- For all-layout developer controls, prefer a DOM overlay with one global hotkey over canvas-drawn debug panels. It survives layout transitions cleanly, is easier to keep testable, and avoids contaminating gameplay render order.
+- In first-pass tooling shells, separate knobs into two classes: live-safe controls (gold, board recolor, speed multipliers) and staged controls (future encounter/party/reward settings). That keeps the tool immediately useful without forcing risky rewires across unrelated systems.
+- Expose tooling state through the same runtime debug surface used by automation (`render_game_to_text` / `window.__codexGame`) so future QA and harness beads can introspect the modal configuration without depending on DOM selectors alone.
+- If a tooling control is staged rather than immediately live, give it an explicit reseed/refresh path in the same UI. A control that changes config but does not visibly affect the current session reads as broken to QA even when the state write is technically correct.
 
-## 2026-02-22 (TASK-019 authority lock)
-- Lifecycle ambiguity created reopen loops; TASK-019 is now locked to a deterministic per-hero next-own-turn state model with explicit arming, turn-start activation, and mandatory own-turn-end expiry semantics to prevent interpretation drift across Lead/Dev handoffs.
+## 2026-03-13 — Idle Reward Claim Ownership
+- When an idle/AFK reward ledger clears into shared resources, route the wallet credit through one helper seam instead of mutating `goldTotal` and `TokenWallet` ad hoc at the click site. That keeps the credit path testable and prevents the ledger from zeroing out while downstream state appears unchanged.
+- Clone the token wallet object on claim and leave an explicit `IdleFarmLastCollect` trace in globals. Fresh object identity plus a visible claim summary makes wallet/debug surfaces much less likely to look stale after a successful collect.
 
-## 2026-02-23 (Beads issue-gated workflow)
-- Work tracking was migrated from markdown backlog into Beads, with local git hooks enforcing issue-tracked commits and active work selection (`bd ready` + active in_progress issue). This creates a hard "No issue, no work" gate and reduces unsourced execution drift.
+## 2026-03-13 — Dev Speed Must Not Hydrate Main Combat By Default
+- Persisted dev-tool configuration is not the same thing as active runtime intent. For speed controls especially, do not hydrate live combat from stored dev config on boot; default the runtime back to `1x` and require an explicit apply action to opt into altered speed.
+- If a dev-only multiplier touches the main frame/update loop, fence it with a contract that proves boot-time combat stays baseline while the explicit apply path still exists. Otherwise stale QA settings can masquerade as core combat regressions.
+
+## 2026-03-13 — Idle Theater Entry Must Use Restart Semantics
+- If a layout is meant to present a deterministic staged scene on every entry, do not boot it through an `ensure...` seam. `ensure` preserves cached session state, which is correct for persistence but wrong for theater-style entry UX.
+- For idle/theater layouts that should restart visually while keeping separate reward persistence, make layout `onEnter` call the same restart seam as the explicit restart button. Keep the reward ledger outside that restart state so presentation resets do not wipe earnings.
+
+## 2026-03-13 — Idle Emissions Must Be Ledger-Owned, Not Theater-Owned
+- For AFK/idle features, split the system into two authorities: a background emission ledger and a foreground theater session. The theater should be disposable presentation; the ledger should be the only owner of reward accrual.
+- `Collect` should cash out the current unclaimed ledger and restart cadence immediately from the collection timestamp. It should not be forced to restart or preserve the visible battle scene in order to keep rewards flowing.
+- When a feature must accrue while the player is away, drive it from timestamps and cadence state, not from per-frame scene updates. Layout presence should only affect what is rendered, not whether the rewards continue to exist.
+
+## 2026-03-13 — Hot-File Commit Recovery Path
+- When a runtime checkpoint spans hot files and non-hot files, do not force a single “savepoint” commit. First split out a compliant non-hot runtime/modules/tests commit so Git history advances without violating the hook.
+- A hot-file scope declaration only helps when the changed lines live inside named function ranges. If `web-runner/app.js` includes top-level imports, constants, or game-state object edits, the hot-file hook will still reject the commit even with a scope file present.
+- For this repo, the practical recovery order is: push governance/tooling first, then commit standalone runtime modules and deterministic contracts, then tackle hot-file integration in a separate bead with explicit function ownership.
+
+## 2026-03-14 — Hot-File Hook Performance Must Scale With Changed Lines, Not File Size
+- A policy hook that re-scans every changed line against every function range in bash becomes operationally broken on large hot files. If the check takes tens of minutes, users will restart it, assume it is stuck, and lose trust in the workflow.
+- For hot-file validation, derive the small authoritative set first: staged changed lines plus declared functions. Then validate in a single pass over sorted function ranges. The runtime should scale with the size of the diff, not with repeated nested shell loops over the whole file.
+- If the hook is slow enough that a user has to babysit the terminal, treat that as a tooling bug, not user impatience. Fix the tool before asking for more manual retries.
+
+## 2026-03-17 — Runtime Recovery Must Start With Surviving Owner Seams
+- When a gameplay surface appears rolled back, inventory the live source before attempting recovery. Reports and bead notes can prove prior intent, but the current runtime owner file still decides what ships.
+- If a missing feature left behind surviving support seams or debug surfaces, restore the smallest shell on top of those seams first. A visible shell plus deterministic contract is safer than trying to recreate the entire lost feature stack in one pass.
+
+## 2026-03-17 — Tone-Aware Hit Flashes Need An Explicit Hand-Off
+- If the renderer supports colored hit flashes, the damage owner seam must write a structured flash entry, not a bare timestamp. A plain `until` number silently collapses all specialized tones back to the default even when callers correctly arm `NextHitFlashTone`.
+- For transient combat FX, treat the hand-off as a three-link chain and test all three: caller arms the tone, damage application persists `{ until, tone }`, renderer reads the tone-aware entry. Verifying only one end of that chain is not enough.
+
+## 2026-03-17 — App-Side Queues Must Match Function-Bank Exports
+- If `app.js` stages a delayed combat effect through `callFunctionWithContext(...)`, the owning helper must exist in both mirrored function-bank files. A live caller plus a missing export creates silent feature loss that can survive static UI smoke checks.
+- For hero-specialized AOE paths, contract the specialization itself, not just the shared function name. Kojonn green needed an explicit contract for `effectType: 'dot_apply'`, blight queueing, and non-generic log text; otherwise it drifted back to the generic burst lane without syntax errors.
+
+## 2026-03-17 — Guard Contracts Must Cover Skill Identity, Not Just Fallbacks
+- A blocker/fallback contract is not sufficient if the underlying special skill can silently drift back to an older implementation. The Djinn/Marid board guard stayed green while the actual mutation seam reverted from `Scathe` / `Sweep` to the older diagonal `X Out`.
+- For enemy board-mutation lanes, contract both halves: the guard decision (`only on full board, else fallback`) and the concrete mutation identity (`column` vs `row`, plus log/skill names). Otherwise the tests can certify the wrong skill.
+
+## 2026-03-17 — Recovery Work Must Be Saved As Soon As The User Confirms Runtime Parity
+- When rollback recovery spans several gameplay seams, checkpoint the accepted restores immediately after QA passes. Do not leave multiple recovered lanes floating only in the dirty worktree while investigating the next regression.
+- During recovery, trust present source plus focused contracts over branch labels or external app sessions. A repo can be on the right branch and still be missing the required runtime lanes in the owner file.
+- When full combat and idle combat share the same visual language, parity-check both render seams directly instead of assuming one inherits the other. Hit-flash palette changes in `renderHitFlashOverlay(...)` do not automatically update idle combat, which still owns its own sprite-overlay filter path in `web-runner/app.js`.
+
+## 2026-03-18 — PM Cycle Must Rewrite Soft-Blocked Beads Instead Of Stopping
+- A `null` bead body is a PM rewrite task by default, not an automatic delivery stop. If the owner seam, scope, and tests can be reconstructed safely from repo context, PM should rewrite the bead and continue the cycle into development.
+- `PMCYCLE` should return `blocked` only for hard blockers: contradictory product direction, missing dependency with no owner seam, or acceptance that cannot be inferred safely. “Missing spec” alone is not enough if the repo already provides the needed shape.
+- Every PM cycle should state the bead goal in one plain sentence so the human can immediately tell whether the lane needs runtime QA or should be closed on deterministic/multipass evidence.
+
+## 2026-03-18 — Extra Turns Must Be Proven By Provenance And By Long-Run Rate
+- Repeated turns are only trustworthy when the scheduler can point to explicit provenance. Fence off speed-only shortcuts and route every legal repeat through an explicit extra-slot insert seam.
+- For chance-based repeat-turn skills, a single `200`-run sample is enough to prove moveability and “no speed-only grants,” but not enough to prove rate stability. Pair the short sample with a larger calibration run before calling the proc rate compliant.
+
+## 2026-03-18 — Dev Tooling Must Write Conditions Without Moving Turn State
+- Dev panel toggles should only write the selected condition. If a QA toggle is meant to stage a skill harness, apply/remove it directly in the owning runtime seam and keep combat refresh, actor reload, and turn advancement out of the apply path.
+- When dev idle/autoplay is supposed to be hands-off, selection-only steps must be auto-resolved inside the dev automation loop, not by weakening normal gameplay selection rules.
+- Dev-tool loadout slots are a special case: hero/enemy slot edits are not “staged only.” They should trigger the sensible active-layout rebuild path, or QA will see valid duplicate slot config in the panel while runtime still shows the old roster and conclude the dev tool is broken.
+- If a skill is presented as a “free second attack,” do not implement it with extra-turn scheduler semantics. The owner seam must duplicate the attack immediately, preserve the original gem spend, and retarget only if the original target is gone before the follow-up lands.
+- If a presentation-heavy attack pattern makes another mechanic unreadable, move that pattern behind an explicit skill harness instead of leaving it in the default action seam.
+- If a free follow-up attack is meant to read as a real second attack, do not pre-time the second damage packet during the first action. Gate the second strike from the first strike's visible completion signal, then start a fresh lunge and schedule the second hit from that new anchor.
+- Per-actor proc latches for repeatable skill harnesses must reset at per-turn granularity, not only on encounter-wide scheduler resets. Otherwise a `100%` harness can appear correct once and then silently stop firing for the rest of combat.
+- When converting a mechanic from extra-turn semantics to free-follow-up semantics, audit three seams separately: proc latch lifetime, target/retarget logic, and presentation pacing. Partial fixes can look correct in counters while still failing visually.
+
+## 2026-03-18 — Session Update Paths Must Rehydrate Stored Config Before Respawn
+- If a layout session stores normalized config like forced hero/enemy names at creation time, the update/respawn path must read from that stored session field again before spawning new entities. Session creation alone is not enough once the update loop becomes the owner of later spawns.
+- For presentation loops with delayed respawns, add a narrow contract that proves the stored normalized config survives into the respawn callsite. Otherwise a single missing local binding can hard-crash the layout only after entry, which slips past simple boot-time checks.
+
+## 2026-03-18 — Separate Dead Server State From Source Rollback
+- If a major restored feature seems to vanish all at once, verify the served `app.js` before assuming source rollback. A stale page or dead local listener can mimic a regression even when the owner file still contains the feature markers.
+- Diagnostic order for local runtime confusion: check the live file on disk, check the asset actually served over `127.0.0.1`, then check whether anything is listening on the expected port. Do not kill the existing listener until you are ready to replace it with a persistent server process.
+
+## 2026-03-19 — UI/Runtime Resource Keys Must Share One Owner Vocabulary
+- If a player-facing layout is already rendering a resource as `Energy`, audit the runtime ledger and collect/apply helper names before adding more UI logic. Mixed keys like `unclaimedGold` in the helper and `unclaimedEnergy` in the layout create silent no-op collects that look like routing bugs instead of resource-owner bugs.
+- For fail-state exits, keep the destination rule in one explicit branch instead of encoding layout selection inside an inline ternary. Recovery-routing requirements change faster than the surrounding gate conditions, and the inline route choice becomes an easy stale-policy seam.
+
+## 2026-03-19 — Keep Encounter Candidate Pools Separate From Initial Picks
+- If later spawns are supposed to preserve biome/faction diversity, do not reuse the initial selected encounter picks as the long-lived pool. Store the full eligible candidate set separately, then let spawn planning choose from that broader pool.
+- Diagnostic order for spawn-subset regressions: check the request filter first, then check what global/runtime field caches the eligible pool, then check whether respawn helpers are reading the cached pool or only the initial picks.
+
+## 2026-03-19 — Gem Array Replacements Must Rebuild Board Occupancy Immediately
+- If gameplay code replaces the gem array through `ctx.setGems(...)`, the app-owned occupancy grid must be rebuilt in the same seam. Refill, pickability, and board-integrity checks read grid occupancy, not just the gem list.
+- Diagnostic order for board-playability regressions after enemy mutations: verify the gem array changed, then verify the occupancy grid was rebuilt from that array, then verify refill logic is scanning the rebuilt grid for zero-valued slots. A correct mutation plus a stale grid looks like refill logic is broken when the real fault is state synchronization.
+
+## 2026-03-19 — Bead Creation And Bead Execution Must Stay Separate
+- A user asking to create a bead is asking for queue management by default, not authorizing immediate implementation. Treat “make a bead” as “record this work item” unless they separately assign it or request execution now.
+- Diagnostic order for PM/dev lane confusion: check whether the user asked to create a bead, check whether they separately assigned that bead for work, then check whether a cycle selected it from the queue. Do not collapse those three acts into one.
+
+## 2026-03-19 — Enemy Turns Need Their Own Idle-Recovery Gate
+- If combat lands on an enemy turn with `TurnPhase === 2`, no active enemy action, and either leaked pickability or no deferred advance, recover in the enemy-turn seam itself. Hero-turn pickability restore and refill-complete logic are not sufficient to rescue enemy-idle stalls.
+- Enemy-action aborts must clear both ownership and progression state together. Clearing `IsPlayerBusy` alone is not enough; also release `ActionInProgress` / `ActionActorUID` and schedule a deferred advance so the turn loop can move on deterministically.
+- For harness-driven turn-stall bugs, validate in this order: deterministic gate contract first, then one attached-browser sample run, then a fresh-profile repeat run. That separates runtime deadlocks from brittle CDP/browser-session setup failures.
+
+## 2026-03-20 — Option-Denying Enemy Board Attacks Must Persist Into The Player Turn
+- If an enemy skill is supposed to cripple board choice, immediate refill is a design bug even when the board remains technically valid. A persistent partial board preserves pressure; an instant refill reduces the attack to a cosmetic reshuffle.
+- Diagnostic order for enemy line-clear behavior bugs: verify the mutation changed the gem array, verify the grid shows the missing cells, then verify refill is still owned by the normal player-side board lifecycle instead of being kicked from the enemy-action completion seam.
+- If the persistent holes are meant to survive until the player commits an action, store that as explicit runtime state. A simple pressure flag is safer than trying to infer intent from `hasEmptySlots()` alone, because normal refill holes and enemy-pressure holes need different turn-advance behavior.
+
+## 2026-03-20 — Consumable Multipliers Should Queue Final Damage, Not Recompute It Later
+- If an attack consumes a one-shot multiplier before its hit lands, queue the resolved final damage on the delayed hit packet. Recomputing from base damage later adds an avoidable drift seam between skill execution time and hit-application time.
+- For delayed-hit regressions, contract both layers: the skill builder must store immutable `finalDmg`, and the app-side resolver must prefer queued final totals before falling back to multiplier recomputation.
+
+## 2026-03-20 — Refreshing Combat Must Invalidate Paused Turn Snapshots
+- Dev-panel apply/refresh is a session reseed, not a paused-turn resume. If the modal captured `CanPickGems` / `IsPlayerBusy` / `DeferAdvance` from the old combat session, that snapshot must be discarded before the fresh session becomes live.
+- Treat combat turn transients as one owned bundle: gate flags, action ownership, pending skill selection, and enemy board-pressure state must reset together through a shared helper. Partial hand-written resets are how stale turn loops re-enter a clean session.
+- Diagnostic order for refresh-only turn bugs: compare fresh normal combat first, then inspect the dev-tool pause snapshot session identity, then verify refresh applies the shared turn baseline instead of restoring old `DeferAdvance`, `PendingSkillID`, or `ActionOwnerUID`.
