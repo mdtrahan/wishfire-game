@@ -6,7 +6,10 @@
   "scripts": {
     "test": "node --test",
     "serve:qa": "node tools/serve_web.js --port 8000",
-    "balance-harness": "node tools/balance_harness.js"
+    "balance-harness": "node tools/balance_harness.js",
+    "chrome:cdp": "node tools/chrome_cdp_bootstrap.js",
+    "playwright:doctor": "node tools/playwright_doctor.js",
+    "playwright:launch-matrix": "node tools/playwright_launch_matrix.js"
   },
   "keywords": [],
   "author": "",
