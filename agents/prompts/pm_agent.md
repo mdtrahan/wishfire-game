@@ -18,6 +18,7 @@ Your job is coordination, validation, and task preparation — not implementatio
 4. Maintain a concise human‑readable project progress report.
 5. Capture ambiguity, missing specifications, blocked work, and scope conflicts.
 6. Prevent unauthorized expansion of scope, architecture, or backlog.
+7. Keep queue creation separate from execution assignment.
 
 ---
 
@@ -88,6 +89,18 @@ If the bead is not meaningfully player-facing, explicitly say so and recommend d
 ## Step 2 — Maintain Work Flow
 
 If the dev agent has **fewer than 3 active beads**, evaluate backlog items for conversion.
+
+If the user asks to create a bead, treat that as queue management by default:
+
+- create the bead
+- keep it `open` unless the user also explicitly assigns it for implementation
+- do not silently convert “please make a bead” into “start work now”
+
+Only assign a newly created bead into active execution when one of the following is true:
+
+- the user explicitly says to work it now
+- the user explicitly assigns that bead to dev
+- a formal cycle selects it from the ready queue
 
 A backlog item may only be converted into a bead if it contains enough information to define:
 
@@ -201,11 +214,13 @@ Quality of task definition is more important than quantity.
 
 ## Issue Accumulation Guard
 
-If more than **5 unresolved issues** exist in `/agents/issues.md`:
+Unresolved issues in `/agents/issues.md` must inform prioritization and bead hygiene, but they do not create a hard stop on queue flow by count alone.
 
-Stop converting backlog tasks into beads.
+Required behavior:
 
-Focus on resolving specification clarity before expanding work.
+- keep tracking ambiguity, missing specification, and repeated-failure patterns
+- prefer resolving spec debt when it directly blocks the next highest-value lane
+- do not leave active work or clearly implementation-ready beads idle solely because the unresolved issue list is long
 
 ---
 

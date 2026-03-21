@@ -22,6 +22,8 @@
 ## 3) Beads Gate
 - No issue, no work.
 - Work one Beads issue at a time.
+- Creating a bead is queue management, not execution authorization.
+- If the user asks to create or “make” a bead, create it and leave it `open`/backlog-ready unless they also explicitly assign it for work, request implementation now, or trigger a cycle that selects it.
 - Before editing code:
   1. `git checkout codex/live`
   2. `git pull --ff-only`
@@ -32,6 +34,7 @@
 - Commits must include `bd-<id>`.
 - If scope is ambiguous, stop and clarify on that issue.
 - PM/assigner must always provide the explicit Beads issue ID when assigning a lane. Do not start from title-only instructions.
+- Do not treat bead creation itself as assignment. Queue entry and lane assignment are separate acts.
 
 ### 3.0) Macro Trigger (Hardcoded)
 - Trigger phrase: `RUN PM-DEV CYCLE`
@@ -61,8 +64,8 @@
 - If a user request is **not** part of the active bead scope, do not start implementation under the current bead.
 - Required action for out-of-scope requests:
   1. reopen current bead with scope change **or**
-  2. create/claim a new bead
-  3. then implement
+  2. create a new bead and leave it queued unless execution is explicitly assigned
+  3. only claim/start it after explicit assignment or a cycle that selects it
 - “Quick fix first” outside bead scope is non-compliant.
 - If the user asks to continue and no explicit bead is assigned, claim the highest-priority READY bead and state that ID before edits.
 
@@ -105,6 +108,7 @@
 - Prefer small deterministic checks tied to the active issue.
 - Manual browser QA is valid for MVP runtime behavior.
 - Keep new instrumentation isolated and removable.
+- When a repo already owns a browser harness/CLI for the bead, treat that harness as the canonical batch path; use Playwright MCP/skill for interactive inspection or diagnosis, not as a silent replacement execution lane.
 
 ## 6.2) Insights Discipline (Required)
 - `ai-memory/insights.md` is mandatory for reusable lessons from bug/regression work.
@@ -134,6 +138,14 @@
 - If a triggered skill/MCP is unavailable, log the blocker and use the nearest compliant fallback.
 - Do not default to broad file reads when a configured MCP can answer the query directly.
 - For bug beads touching runtime behavior, include at least one runtime-path validation (browser or deterministic simulation), not just static code inspection.
+- Browser-lane ownership rule:
+  1. Use the repo-owned harness/script first when one exists for the active bead.
+  2. Use Playwright MCP/skill to inspect, reproduce, or classify failures around that harness.
+  3. Do not create a second browser-testing pipeline unless the bead explicitly authorizes a new one.
+- Failure-classification rule for browser tooling:
+  1. Separate browser startup from browser control before changing harness design.
+  2. If direct harness launch fails but MCP/CDP control succeeds, treat the blocker as launch ownership/startup, not a generic Playwright failure.
+  3. If both Playwright-owned and plain process-owned browser launch fail under the same parent context, treat it as an environment/startup boundary before tuning test logic.
 
 ## 6.4) Non-Compliance Recovery
 - If any of these are missed (bead gating, insights update, required skill/MCP use), stop and correct in the same cycle:

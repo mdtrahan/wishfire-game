@@ -55,6 +55,14 @@ For large files, mirrored logic, or cross-file tracing:
 
 Find the highest‑priority bead with status `todo`/`open` from live `bd` state.
 
+Do not interpret newly created beads as auto-assigned.
+
+If a bead exists only because the user asked to create it, it remains a queue item unless:
+
+- the user explicitly says to implement it now
+- PM explicitly assigns it to development
+- a formal cycle selects it from the ready queue
+
 Before claiming the bead:
 
 Read it completely and identify:
@@ -227,11 +235,13 @@ Only when:
 
 ## Issue Accumulation Guard
 
-If more than **5 unresolved issues** exist in `/agents/issues.md`:
+Unresolved issues in `/agents/issues.md` must be considered during bead selection, but they do not create a hard stop on active work or ready-bead selection by count alone.
 
-Stop selecting new beads.
+Required behavior:
 
-Focus on resolving specification clarity.
+- do not start an underspecified bead just to keep moving
+- do not abandon in-progress work because unrelated unresolved issues exist
+- continue selecting clearly ready beads when scope, acceptance, and test requirements are sufficient
 
 ---
 
