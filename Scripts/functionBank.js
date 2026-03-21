@@ -228,12 +228,29 @@ export function GetTraitHookTrace(ctx, limit = 40) {
 
 function applyTurnGateState(g, next) {
   if (!g || !next) return;
-  g.CanPickGems = next.CanPickGems;
-  g.IsPlayerBusy = next.IsPlayerBusy;
-  g.DeferAdvance = next.DeferAdvance;
-  g.AdvanceAfterAction = next.AdvanceAfterAction;
-  g.ActionLockUntil = next.ActionLockUntil;
-  g.ActionOwnerUID = next.ActionOwnerUID;
+  const TURN_TRANSIENT_NUMERIC_KEYS = Object.freeze([
+    'CanPickGems',
+    'IsPlayerBusy',
+    'DeferAdvance',
+    'AdvanceAfterAction',
+    'ActionLockUntil',
+    'ActionOwnerUID',
+    'ActionInProgress',
+    'ActionActorUID',
+    'PendingActor',
+    'EnemyLineClearPressureActive',
+  ]);
+  const TURN_TRANSIENT_STRING_KEYS = Object.freeze([
+    'PendingSkillID',
+  ]);
+  for (const key of TURN_TRANSIENT_NUMERIC_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(next, key)) continue;
+    g[key] = Number(next[key] || 0);
+  }
+  for (const key of TURN_TRANSIENT_STRING_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(next, key)) continue;
+    g[key] = String(next[key] || '');
+  }
 }
 
 function applyTurnGateIntent(g, createIntent, options = undefined) {
@@ -2540,7 +2557,7 @@ function queueConfiguredDoubleAttackFollowUp(ctx, actorUID, preferredTargetUID =
     if (at <= 0) continue;
     if (earliestNewAt <= 0 || at < earliestNewAt) earliestNewAt = at;
   }
-  const lungeTotal = 0.14 + 0.32 + 0.16 + 0.26;
+  const lungeTotal = 0.14 + 0.75 + 0.16 + 0.26;
   const firstAttackSettledAt = latestExistingAt > 0 ? latestExistingAt : (now + lungeTotal);
   const finalFollowUpUntil = firstAttackSettledAt + (lungeTotal * 2);
   g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), finalFollowUpUntil);
@@ -3116,7 +3133,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
   const finalDmg = ampMult > 0 ? Math.max(1, Math.ceil(dmg * ampMult)) : Math.max(1, dmg);
   const g = getGlobals(ctx);
   const now = g.time || 0;
-  const hitDelay = Math.max(0.14 + 0.32, 0.46);
+  const hitDelay = Math.max(0.14 + 0.75 + 0.08, 0.97);
   const applyAt = now + hitDelay;
   g.PendingHeroHits = g.PendingHeroHits || [];
   const redSkillConfig = ensureActorRedAttackSkillStore(g)[Number(heroUID || 0)] || null;
@@ -3141,6 +3158,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
           heroUID,
           targetUID,
           dmg: shotDamage,
+          finalDmg: shotDamage,
           powerAmpMultiplier: 0,
           consumePowerAmp: ampMult > 0 && hitIndex === 0 ? 1 : 0,
           damageTextScatter: presentation.scatter,
@@ -3158,6 +3176,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
     heroUID,
     targetUID,
     dmg,
+    finalDmg,
     powerAmpMultiplier: ampMult,
     consumePowerAmp: ampMult > 0 ? 1 : 0,
     calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
@@ -3202,7 +3221,7 @@ export function HeroAttackAOE(ctx, heroUID) {
   }
   if (hits.length > 0 && ampMult > 0) hits[0].consumePowerAmp = 1;
   const now = g.time || 0;
-  const hitDelay = Math.max(0.14 + 0.32, 0.46);
+  const hitDelay = Math.max(0.14 + 0.75 + 0.18, 1.07);
   const applyAt = now + hitDelay;
   g.PendingHeroHits = g.PendingHeroHits || [];
   for (const hit of hits) {
@@ -3211,6 +3230,7 @@ export function HeroAttackAOE(ctx, heroUID) {
       heroUID,
       targetUID: hit.targetUID,
       dmg: hit.dmg,
+      finalDmg: Number(hit.finalDmg || 0),
       dotTotalDamage: Number(hit.dotTotalDamage || 0),
       powerAmpMultiplier: hit.powerAmpMultiplier,
       consumePowerAmp: hit.consumePowerAmp,
@@ -4155,6 +4175,7 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
   }
   console.log(`[SKILL] start skill=${skillId} actor=${actorName} uid=${actorUID} phase=${g.TurnPhase} busy=${g.IsPlayerBusy} canPick=${g.CanPickGems}`);
   if (actor && actor.kind === 'hero' && (skillId === 'HERO_SINGLE' || skillId === 'HERO_AOE')) {
+    g.NextHeroActionProfile = skillId === 'HERO_AOE' ? 'aoe' : 'single';
     StartHeroLunge(ctx, actorUID);
   }
 
@@ -4494,9 +4515,28 @@ function resolveEnemyBoardLineFallbackSkill(enemy, skillId) {
   return String(conf?.regularSkill || 'Enemy_ATK_Single');
 }
 
+const ENEMY_BOARD_PRESSURE_SKILL_HARNESSES = Object.freeze({
+  Enemy_Scathe: Object.freeze({
+    skillId: 'Enemy_Scathe',
+    axis: 'column',
+    label: 'Scathe',
+    logSuffix: 'from a column.',
+  }),
+  Enemy_Sweep: Object.freeze({
+    skillId: 'Enemy_Sweep',
+    axis: 'row',
+    label: 'Sweep',
+    logSuffix: 'from a row.',
+  }),
+});
+
+function getEnemyBoardPressureSkillHarness(skillId) {
+  return ENEMY_BOARD_PRESSURE_SKILL_HARNESSES[String(skillId || '')] || null;
+}
+
 function normalizeEnemyBoardLineSkillDecision(ctx, enemy, decision) {
   const selected = String(decision?.selected || '');
-  if (selected !== 'Enemy_Scathe' && selected !== 'Enemy_Sweep') return decision;
+  if (!getEnemyBoardPressureSkillHarness(selected)) return decision;
   if (isBoardFullyPopulatedForEnemyMutation(ctx)) return decision;
   return {
     ...decision,
@@ -4634,21 +4674,25 @@ function clearRandomGemLine(ctx, axis) {
   setGems(ctx, nextGems);
   setSelectedGemIndices(ctx, []);
   g.TapIndex = 0;
+  if (consumed > 0) g.EnemyLineClearPressureActive = 1;
   return { cleared: consumed, lineIndex };
 }
 
-export function Enemy_Scathe(ctx, enemyUID) {
+function executeEnemyBoardPressureSkill(ctx, enemyUID, skillId) {
+  const harness = getEnemyBoardPressureSkillHarness(skillId);
+  if (!harness) return 0;
   const enemyName = getActorNameByUID(ctx, enemyUID);
-  const result = clearRandomGemLine(ctx, 'column');
-  LogCombat(ctx, `${enemyName} used Scathe and removed ${result.cleared} gems from a column.`);
+  const result = clearRandomGemLine(ctx, harness.axis);
+  LogCombat(ctx, `${enemyName} used ${harness.label} and removed ${result.cleared} gems ${harness.logSuffix}`);
   return 1;
 }
 
+export function Enemy_Scathe(ctx, enemyUID) {
+  return executeEnemyBoardPressureSkill(ctx, enemyUID, 'Enemy_Scathe');
+}
+
 export function Enemy_Sweep(ctx, enemyUID) {
-  const enemyName = getActorNameByUID(ctx, enemyUID);
-  const result = clearRandomGemLine(ctx, 'row');
-  LogCombat(ctx, `${enemyName} used Sweep and removed ${result.cleared} gems from a row.`);
-  return 1;
+  return executeEnemyBoardPressureSkill(ctx, enemyUID, 'Enemy_Sweep');
 }
 
 export function Enemy_Wipe(ctx, enemyUID) {
@@ -4845,17 +4889,22 @@ export function StartHeroLunge(ctx, actorUID) {
   if (!actorUID) return;
   if (g.HeroAction && g.HeroAction.active && g.HeroAction.uid === actorUID) return;
   if (g.ActionInProgress && g.ActionActorUID && g.ActionActorUID !== actorUID) return;
+  const profile = String(g.NextHeroActionProfile || 'single');
+  delete g.NextHeroActionProfile;
   g.ActionInProgress = 1;
   g.ActionActorUID = actorUID;
   g.IsPlayerBusy = 1;
   g.CanPickGems = 0;
   g.TurnPhase = 1;
-  const totalDur = 0.14 + 0.32 + 0.16 + 0.26;
+  const totalDur = profile === 'aoe'
+    ? 0.14 + 0.75 + 0.24 + 0.42
+    : 0.14 + 0.75 + 0.16 + 0.26;
   const until = (g.time || 0) + totalDur;
   g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, until);
   g.DeferAdvance = 1;
   g.HeroAction = {
     uid: actorUID,
+    profile,
     state: 'ADVANCE',
     timer: 0,
     active: true,

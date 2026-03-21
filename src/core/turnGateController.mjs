@@ -1,4 +1,4 @@
-export function normalizeTurnGateState(current = {}) {
+export function normalizeCombatTurnTransientState(current = {}) {
   return {
     CanPickGems: Number(current.CanPickGems || 0),
     IsPlayerBusy: Number(current.IsPlayerBusy || 0),
@@ -6,7 +6,16 @@ export function normalizeTurnGateState(current = {}) {
     AdvanceAfterAction: Number(current.AdvanceAfterAction || 0),
     ActionLockUntil: Number(current.ActionLockUntil || 0),
     ActionOwnerUID: Number(current.ActionOwnerUID || 0),
+    ActionInProgress: Number(current.ActionInProgress || 0),
+    ActionActorUID: Number(current.ActionActorUID || 0),
+    PendingSkillID: String(current.PendingSkillID || ''),
+    PendingActor: Number(current.PendingActor || 0),
+    EnemyLineClearPressureActive: Number(current.EnemyLineClearPressureActive || 0),
   };
+}
+
+export function normalizeTurnGateState(current = {}) {
+  return normalizeCombatTurnTransientState(current);
 }
 
 export function createEnemyTurnGateBaseline(current = {}) {
@@ -18,6 +27,11 @@ export function createEnemyTurnGateBaseline(current = {}) {
     DeferAdvance: 0,
     AdvanceAfterAction: 0,
     ActionLockUntil: 0,
+    ActionOwnerUID: 0,
+    ActionInProgress: 0,
+    ActionActorUID: 0,
+    PendingSkillID: '',
+    PendingActor: 0,
   };
 }
 
@@ -30,6 +44,37 @@ export function createHeroTurnGateBaseline(current = {}) {
     DeferAdvance: 0,
     AdvanceAfterAction: 0,
     ActionLockUntil: 0,
+    ActionOwnerUID: 0,
+    ActionInProgress: 0,
+    ActionActorUID: 0,
+    PendingSkillID: '',
+    PendingActor: 0,
+  };
+}
+
+export function createCombatTurnRefreshBaseline(current = {}, {
+  currentTurnType = 0,
+  boardFillActive = 0,
+  boardHasEmptySlots = false,
+} = {}) {
+  const base = normalizeCombatTurnTransientState(current);
+  const heroTurnReady =
+    Number(currentTurnType || 0) === 0 &&
+    Number(boardFillActive || 0) === 0 &&
+    !boardHasEmptySlots;
+  return {
+    ...base,
+    CanPickGems: heroTurnReady ? 1 : 0,
+    IsPlayerBusy: 0,
+    DeferAdvance: 0,
+    AdvanceAfterAction: 0,
+    ActionLockUntil: 0,
+    ActionOwnerUID: 0,
+    ActionInProgress: 0,
+    ActionActorUID: 0,
+    PendingSkillID: '',
+    PendingActor: 0,
+    EnemyLineClearPressureActive: 0,
   };
 }
 
@@ -125,6 +170,25 @@ export function createDeferredStaleBusyRecovery(current = {}) {
   return {
     ...base,
     IsPlayerBusy: 0,
+  };
+}
+
+export function createEnemyTurnIdleRecovery(current = {}, { now = 0, currentTurnUID = 0 } = {}) {
+  const base = normalizeTurnGateState(current);
+  const safeNow = Number(now || 0);
+  const owner = Number(base.ActionOwnerUID || currentTurnUID || 0);
+  return {
+    ...base,
+    CanPickGems: 0,
+    IsPlayerBusy: 0,
+    DeferAdvance: 1,
+    AdvanceAfterAction: 1,
+    ActionOwnerUID: owner,
+    ActionLockUntil: Math.max(Number(base.ActionLockUntil || 0), safeNow + 0.05),
+    ActionInProgress: 0,
+    ActionActorUID: 0,
+    PendingSkillID: '',
+    PendingActor: 0,
   };
 }
 

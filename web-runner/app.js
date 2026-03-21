@@ -2,7 +2,9 @@ import { state } from './modules/state.js';
 import { createContext, callFunctionWithContext } from './modules/functionRegistry.js';
 import { CombatRuntimeGateway } from './src/core/combatRuntimeGateway.js';
 import {
+  createCombatTurnRefreshBaseline,
   createEnemyTurnGateBaseline,
+  createEnemyTurnIdleRecovery,
   createDeferredAdvanceResolved,
   createDeferredRefillHold,
   createDeferredStaleBusyRecovery,
@@ -23,6 +25,10 @@ import {
   resolveCurrentHeroUID,
   shouldRenderHeroTurnSelector,
 } from './src/core/heroSelectorRules.mjs';
+import {
+  assignHeroToPartySlot,
+  normalizePartyFormationSlots,
+} from './src/core/partyFormationRules.mjs';
 import {
   applyIdleFarmRewardsToGlobals,
   claimIdleFarmRewardsFromState,
@@ -110,15 +116,32 @@ let devToolingDom = null;
 let devToolingRefreshHandler = null;
 let devToolingAutoplayHandler = null;
 let devToolingPauseSnapshot = null;
+const TURN_TRANSIENT_NUMERIC_KEYS = Object.freeze([
+  'CanPickGems',
+  'IsPlayerBusy',
+  'DeferAdvance',
+  'AdvanceAfterAction',
+  'ActionLockUntil',
+  'ActionOwnerUID',
+  'ActionInProgress',
+  'ActionActorUID',
+  'PendingActor',
+  'EnemyLineClearPressureActive',
+]);
+const TURN_TRANSIENT_STRING_KEYS = Object.freeze([
+  'PendingSkillID',
+]);
 
 function applyTurnGateGlobals(next) {
   if (!next) return;
-  state.globals.CanPickGems = next.CanPickGems;
-  state.globals.IsPlayerBusy = next.IsPlayerBusy;
-  state.globals.DeferAdvance = next.DeferAdvance;
-  state.globals.AdvanceAfterAction = next.AdvanceAfterAction;
-  state.globals.ActionLockUntil = next.ActionLockUntil;
-  state.globals.ActionOwnerUID = next.ActionOwnerUID;
+  for (const key of TURN_TRANSIENT_NUMERIC_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(next, key)) continue;
+    state.globals[key] = Number(next[key] || 0);
+  }
+  for (const key of TURN_TRANSIENT_STRING_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(next, key)) continue;
+    state.globals[key] = String(next[key] || '');
+  }
 }
 
 function applyTurnGateIntent(createIntent, options = undefined) {
@@ -141,6 +164,33 @@ function getYellowSequenceCompletionIntent(current = state.globals, options = un
     handoffPending,
     canRestorePickability,
   });
+}
+
+function canResolveDeferredAdvance({ hasEmpty = false, enemyLineClearPressureActive = false } = {}) {
+  const refill = gameState.refillBounce;
+  const refillActive = !!(refill && refill.active);
+  const refillPending = !!hasEmpty && !refillActive && !enemyLineClearPressureActive;
+  const textHold = !!state.globals.TextAnimating;
+  const pendingSelect = state.globals.TurnPhase === 1 && !!state.globals.PendingSkillID;
+  const mergeInFlight = !!(gameState.gemMergeFx && gameState.gemMergeFx.active);
+  const staleBusy = !!state.globals.IsPlayerBusy && !state.globals.ActionInProgress && !pendingSelect;
+  const blockedPhase = !!state.globals.IsPlayerBusy || !!state.globals.ActionInProgress || !!pendingSelect || !!mergeInFlight;
+  const ownerUID = Number(state.globals.ActionOwnerUID || 0);
+  const currentUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
+  const ownerOk = !ownerUID || ownerUID === currentUID;
+  return {
+    refillActive,
+    refillPending,
+    textHold,
+    pendingSelect,
+    mergeInFlight,
+    staleBusy,
+    blockedPhase,
+    ownerUID,
+    currentUID,
+    ownerOk,
+    ok: !refillPending && !textHold && !blockedPhase && ownerOk,
+  };
 }
 const RUNTIME_FINGERPRINT = (() => {
   const source = (typeof window !== 'undefined' && window.__ORKA_RUNTIME_FINGERPRINT__)
@@ -207,6 +257,44 @@ const layoutHarnessEnabled = (() => {
 
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+const LUNGE_ANTICIPATION_SEC = 0.14;
+const LUNGE_FORWARD_SEC = 0.75;
+const LUNGE_HOLD_SEC = 0.16;
+const LUNGE_RETREAT_SEC = 0.26;
+const LUNGE_TOTAL_SEC = LUNGE_ANTICIPATION_SEC + LUNGE_FORWARD_SEC + LUNGE_HOLD_SEC + LUNGE_RETREAT_SEC;
+const LUNGE_FORWARD_DIST_PX = 200;
+const HERO_LUNGE_FORWARD_DIST_PX = LUNGE_FORWARD_DIST_PX * 0.85;
+const LUNGE_IMPACT_HANDOFF_SEC = 0.08;
+
+function evaluateCubicBezier(t, x1, y1, x2, y2) {
+  const input = Math.max(0, Math.min(1, Number(t || 0)));
+  const cubic = (p0, p1, p2, p3, value) => {
+    const inv = 1 - value;
+    return (inv ** 3 * p0)
+      + (3 * inv * inv * value * p1)
+      + (3 * inv * value * value * p2)
+      + (value ** 3 * p3);
+  };
+  const derivative = (p0, p1, p2, p3, value) => {
+    const inv = 1 - value;
+    return (3 * inv * inv * (p1 - p0))
+      + (6 * inv * value * (p2 - p1))
+      + (3 * value * value * (p3 - p2));
+  };
+  let param = input;
+  for (let i = 0; i < 6; i += 1) {
+    const xError = cubic(0, x1, x2, 1, param) - input;
+    const slope = derivative(0, x1, x2, 1, param);
+    if (Math.abs(xError) < 1e-6 || Math.abs(slope) < 1e-6) break;
+    param = Math.max(0, Math.min(1, param - (xError / slope)));
+  }
+  return cubic(0, y1, y2, 1, param);
+}
+
+function easeLungeForward(t) {
+  return evaluateCubicBezier(t, 1, 0, 0, 1);
 }
 
 function createHarnessEventBus() {
@@ -424,6 +512,8 @@ const gameState = {
   },
   heroScreen: {
     hitZones: null,
+    mode: 'details',
+    selectedPartySlot: 0,
   },
   tomesLayout: {
     entryPoint: 'map-locale',
@@ -1190,7 +1280,7 @@ async function applyDevToolingConfig(patch = {}, { closeModal = true } = {}) {
     }
   }
   syncDevToolingDomFromConfig();
-  if (closeModal) closeDevToolingModal({ restorePauseSnapshot: true });
+  if (closeModal) closeDevToolingModal({ restorePauseSnapshot: appliedSessionChange !== 'combat_refresh' });
   updateDevToolingStatus(
     `Applied\n` +
     `Board recolor count: ${recolored}\n` +
@@ -1373,10 +1463,18 @@ function pauseGameplayForDevTooling() {
     IsPlayerBusy: Number(state.globals.IsPlayerBusy || 0),
     DeferAdvance: Number(state.globals.DeferAdvance || 0),
     PendingSkillID: String(state.globals.PendingSkillID || ''),
+    CombatSessionId: Number(state.globals.CombatSessionId || 0),
+    TurnSerial: Number(state.globals.TurnSerial || 0),
   };
-  state.globals.CanPickGems = 0;
-  state.globals.IsPlayerBusy = 1;
+  applyTurnGateGlobals({
+    CanPickGems: 0,
+    IsPlayerBusy: 1,
+  });
   state.globals.DevToolingPaused = 1;
+}
+
+function clearDevToolingPauseSnapshot() {
+  devToolingPauseSnapshot = null;
 }
 
 function resumeGameplayFromDevTooling() {
@@ -1384,12 +1482,15 @@ function resumeGameplayFromDevTooling() {
     state.globals.DevToolingPaused = 0;
     return;
   }
-  state.globals.CanPickGems = devToolingPauseSnapshot.CanPickGems;
-  state.globals.IsPlayerBusy = devToolingPauseSnapshot.IsPlayerBusy;
-  state.globals.DeferAdvance = devToolingPauseSnapshot.DeferAdvance;
-  state.globals.PendingSkillID = devToolingPauseSnapshot.PendingSkillID;
+  const sameCombatSession =
+    Number(devToolingPauseSnapshot.CombatSessionId || 0) === Number(state.globals.CombatSessionId || 0);
+  const sameTurnSerial =
+    Number(devToolingPauseSnapshot.TurnSerial || 0) === Number(state.globals.TurnSerial || 0);
+  if (sameCombatSession && sameTurnSerial) {
+    applyTurnGateGlobals(devToolingPauseSnapshot);
+  }
   state.globals.DevToolingPaused = 0;
-  devToolingPauseSnapshot = null;
+  clearDevToolingPauseSnapshot();
 }
 
 function closeDevToolingModal({ restorePauseSnapshot = true } = {}) {
@@ -1405,6 +1506,68 @@ function closeDevToolingModal({ restorePauseSnapshot = true } = {}) {
     state.globals.DevToolingPaused = 0;
   }
   return cfg;
+}
+
+function resetCombatRuntimeForFreshSession(reason = 'combat-refresh', options = {}) {
+  const refill = gameState.refillBounce || (gameState.refillBounce = {});
+  refill.active = false;
+  refill.queue = [];
+  refill.index = 0;
+  refill.current = null;
+  refill.speedScale = 1;
+
+  const yellowCasino = gameState.yellowCasino || (gameState.yellowCasino = {});
+  yellowCasino.active = false;
+  yellowCasino.phase = 'idle';
+  yellowCasino.queue = [];
+  yellowCasino.index = 0;
+  yellowCasino.current = null;
+  yellowCasino.telegraphUntil = 0;
+  yellowCasino.ghost = null;
+  yellowCasino.pendingGoldAward = 0;
+
+  gameState.selectedGems = [];
+  gameState.selectionLocked = false;
+  gameState.gemMergeFx = null;
+  gameState.lastTurnPhase = null;
+  gameState.enemyTurnKicked = false;
+  gameState.buffRollTimer = 0;
+  gameState._lastBuffRollActive = 0;
+  state.globals.BoardFillActive = Number(options.boardFillActive || 0);
+  state.globals.HeroLungeOffsetByUID = {};
+  state.globals.DamageTexts = [];
+  state.globals.TextAnimEndAt = 0;
+  state.globals.TextAnimating = 0;
+  state.globals.BlueBuffSequenceActive = 0;
+  state.globals.BuffRollActive = 0;
+  state.globals.BuffRollFrame = 0;
+  state.globals.BuffRollSlot = -1;
+  state.globals.BuffRollEndsAt = 0;
+  state.globals.BuffRollApplyStat = 0;
+  state.globals.BuffRollSkillID = '';
+  state.globals.BuffRollActor = 0;
+  state.globals.BuffRollType = 0;
+  delete state.globals.HeroAction;
+  delete state.globals.EnemyAction;
+  delete state.globals.PendingHeroHits;
+  delete state.globals.DoubleAttackLungeStarted;
+  delete state.globals.DoubleAttackBatchAnchors;
+  delete state.globals.NextHeroActionProfile;
+
+  applyTurnGateGlobals(createCombatTurnRefreshBaseline(state.globals, {
+    currentTurnType: Number(options.currentTurnType || 0),
+    boardFillActive: Number(state.globals.BoardFillActive || 0),
+    boardHasEmptySlots: !!options.boardHasEmptySlots,
+  }));
+
+  clearDevToolingPauseSnapshot();
+  state.globals.DevToolingPaused = ensureDevToolingConfig().open ? 1 : 0;
+  console.log(
+    `[TURN] reset combat runtime baseline reason=${reason} ` +
+    `turnType=${Number(options.currentTurnType || 0)} ` +
+    `boardFill=${Number(state.globals.BoardFillActive || 0)} ` +
+    `hasEmpty=${options.boardHasEmptySlots ? 1 : 0}`,
+  );
 }
 
 function toggleDevToolingModal(nextOpen = null) {
@@ -1615,23 +1778,44 @@ function getHeroScreenRoster() {
   const runtimeHeroes = (state.entities || [])
     .filter(e => e && e.kind === 'hero')
     .sort((a, b) => Number(a.heroDisplaySlot ?? a.heroIndex ?? 0) - Number(b.heroDisplaySlot ?? b.heroIndex ?? 0));
-  if (runtimeHeroes.length) return runtimeHeroes;
-  return CANONICAL_HERO_ROSTER.map((hero, idx) => ({
-    uid: idx + 1,
-    kind: 'hero',
-    name: hero.name,
-    heroIndex: idx,
-    hp: Number(hero.hp || 0),
-    maxHP: Number(hero.maxHP || hero.hp || 0),
-    combatPower: computeCombatPower(hero.ATK, hero.DEF, hero.maxHP || hero.hp, hero.MAG, hero.RES, hero.attackType),
-    stats: {
-      ATK: Number(hero.ATK || 0),
-      DEF: Number(hero.DEF || 0),
-      MAG: Number(hero.MAG || 0),
-      RES: Number(hero.RES || 0),
-      SPD: Number(hero.SPD || 0),
-    },
-  }));
+  return CANONICAL_HERO_ROSTER.map((hero, idx) => {
+    const live = runtimeHeroes.find((entry) =>
+      Number(entry?.heroIndex ?? -1) === idx ||
+      String(entry?.baseHeroName || entry?.name || '') === String(hero.name || ''),
+    );
+    return {
+      uid: Number(live?.uid || (idx + 1)),
+      kind: 'hero',
+      name: String(hero.name || live?.baseHeroName || live?.name || `Hero ${idx + 1}`),
+      baseHeroName: String(hero.name || live?.baseHeroName || live?.name || `Hero ${idx + 1}`),
+      heroIndex: idx,
+      heroDisplaySlot: Number(live?.heroDisplaySlot ?? idx),
+      hp: Number(live?.hp || hero.hp || 0),
+      maxHP: Number(live?.maxHP || hero.maxHP || hero.hp || 0),
+      combatPower: Number(
+        live?.combatPower
+        || computeCombatPower(hero.ATK, hero.DEF, hero.maxHP || hero.hp, hero.MAG, hero.RES, hero.attackType)
+      ),
+      attackType: live?.attackType || hero.attackType,
+      stats: {
+        ATK: Number(live?.stats?.ATK ?? hero.ATK ?? 0),
+        DEF: Number(live?.stats?.DEF ?? hero.DEF ?? 0),
+        MAG: Number(live?.stats?.MAG ?? hero.MAG ?? 0),
+        RES: Number(live?.stats?.RES ?? hero.RES ?? 0),
+        SPD: Number(live?.stats?.SPD ?? hero.SPD ?? 0),
+      },
+    };
+  });
+}
+
+async function assignSelectedHeroToPartySlot(slotIndex = 0) {
+  const roster = getHeroScreenRoster();
+  const hero = roster[normalizeHeroSelectionIndex()] || null;
+  if (!hero) return null;
+  const currentSlots = normalizePartyFormationSlots(getConfiguredHeroSlots());
+  const nextSlots = assignHeroToPartySlot(currentSlots, hero.name, slotIndex);
+  gameState.heroScreen.selectedPartySlot = Math.max(0, Math.min(3, Math.floor(Number(slotIndex || 0))));
+  return applyDevToolingConfig({ heroSlots: nextSlots }, { closeModal: false });
 }
 
 function getHeroStatValue(hero, key) {
@@ -1883,7 +2067,10 @@ function setGemArray(arr) {
 
 const fnContext = createContext({
   getGems: () => (state.globals.Gems || gameState.gems),
-  setGems: (gems) => { setGemArray(gems); },
+  setGems: (gems) => {
+    setGemArray(gems);
+    rebuildGridFromGems();
+  },
   getSelectedGemIndices: () => gameState.selectedGems,
   setSelectedGemIndices: (arr) => {
     gameState.selectedGems = arr;
@@ -2276,6 +2463,23 @@ function buildForcedEnemySpawnPlan(row, count) {
   return plan;
 }
 
+function deriveEncounterPoolNames({ pool, locale = 'all', faction = '' } = {}) {
+  const candidates = Array.isArray(pool) ? pool : [];
+  const normalizedLocale = String(locale || 'all').trim().toLowerCase() || 'all';
+  const rawFactionFilter = String(faction || '').trim().toLowerCase();
+  const normalizedFaction = rawFactionFilter ? normalizeFaction(rawFactionFilter) : '';
+  return candidates
+    .filter((row) => {
+      const tags = normalizeBiomeTags(row?.localeTags || row?.locale || row?.biome || 'all');
+      const localeOk = normalizedLocale === 'all' || tags.includes('all') || tags.includes(normalizedLocale);
+      if (!localeOk) return false;
+      if (!normalizedFaction) return true;
+      return normalizeFaction(row?.faction) === normalizedFaction;
+    })
+    .map((row) => String(row?.name || '').trim())
+    .filter(Boolean);
+}
+
 function buildEncounterByBudget({ pool, targetCP, locale = 'all', maxSlots = 3, policy = 'mixed', seed = 1, faction = '', historyCounts = null } = {}) {
   const candidates = Array.isArray(pool) ? pool : [];
   const normalizedLocale = String(locale || 'all').trim().toLowerCase() || 'all';
@@ -2283,13 +2487,8 @@ function buildEncounterByBudget({ pool, targetCP, locale = 'all', maxSlots = 3, 
   const normalizedFaction = rawFactionFilter ? normalizeFaction(rawFactionFilter) : '';
   const rng = createSeededRng(seed);
   const reasonCodes = [];
-  const eligible = candidates.filter((row) => {
-    const tags = normalizeBiomeTags(row?.localeTags || row?.locale || row?.biome || 'all');
-    const localeOk = normalizedLocale === 'all' || tags.includes('all') || tags.includes(normalizedLocale);
-    if (!localeOk) return false;
-    if (!normalizedFaction) return true;
-    return normalizeFaction(row?.faction) === normalizedFaction;
-  });
+  const eligibleNames = new Set(deriveEncounterPoolNames({ pool: candidates, locale: normalizedLocale, faction: normalizedFaction }));
+  const eligible = candidates.filter((row) => eligibleNames.has(String(row?.name || '').trim()));
   if (!eligible.length) {
     return { selected: [], finalCP: 0, targetCP: Number(targetCP || 0), deltaCP: Number(targetCP || 0), slotsUsed: 0, underfilled: true, reasonCodes: ['no_locale_candidates'] };
   }
@@ -2552,7 +2751,13 @@ function initEntities(enemyRows, layoutInstances) {
     }
     const picks = encounter.selected || [];
     state.globals.EncounterSummary = encounter;
-    state.globals.EncounterPoolNames = picks.map(p => String(p?.name || '')).filter(Boolean);
+    state.globals.EncounterPoolNames = hasManualEnemyLayout
+      ? picks.map((pick) => String(pick?.name || '')).filter(Boolean)
+      : deriveEncounterPoolNames({
+          pool: mappedEnemyData,
+          locale: encounterRequest.locale,
+          faction: encounterRequest.faction,
+        });
     const seen = (state.globals.EncounterSeenCounts && typeof state.globals.EncounterSeenCounts === 'object')
       ? state.globals.EncounterSeenCounts
       : {};
@@ -3114,8 +3319,11 @@ function handleGemMatch(color) {
     return;
   }
   // lock input while resolving a confirmed match/action
-  state.globals.CanPickGems = false;
-  state.globals.IsPlayerBusy = 1;
+  applyTurnGateGlobals({
+    CanPickGems: 0,
+    IsPlayerBusy: 1,
+    EnemyLineClearPressureActive: 0,
+  });
 
   const actorUID = callFunctionWithContext(fnContext, 'GetCurrentTurn') || getHeroUIDByIndex(gameState.selectedHero) || gameState.selectedHero;
   beginTask011ActionCycle(color, actorUID);
@@ -3455,16 +3663,11 @@ async function main(){
     state.globals.BattleStartText = '';
     state.globals.BattleStartSessionText = '';
     state.globals.BattleStartSessionId = Number(state.globals.CombatSessionId || 0);
-    state.globals.IsPlayerBusy = 0;
-    state.globals.PendingSkillID = '';
-    state.globals.DeferAdvance = 0;
-    state.globals.ActionInProgress = 0;
-    state.globals.PendingActor = 0;
-    if (state.globals.BoardFillActive) {
-      state.globals.CanPickGems = 0;
-    } else {
-      state.globals.CanPickGems = 1;
-    }
+    resetCombatRuntimeForFreshSession('dev-tool-refresh', {
+      currentTurnType: Number(callFunctionWithContext(fnContext, 'GetCurrentType') || 0),
+      boardFillActive: Number(state.globals.BoardFillActive || 0),
+      boardHasEmptySlots: hasEmptySlots(),
+    });
     combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
     return true;
   }
@@ -5139,11 +5342,19 @@ async function main(){
       };
       const heroBaseW = battleFrame.w * 0.18;
       const heroBaseH = heroBaseW * 0.7;
-      const computeLungeOffset = (t, direction, lungeDist) => {
+      const battleMidpointX = battleFrame.x + battleFrame.w * 0.5;
+      const computeLungeOffset = (t, direction, lungeDist = LUNGE_FORWARD_DIST_PX) => {
         if (!(t >= 0 && t <= 1)) return 0;
-        if (t < 0.18) return -direction * 6 * easeInCubic(t / 0.18);
-        if (t < 0.62) return (-direction * 6) + (direction * (lungeDist + 6) * easeOutCubic((t - 0.18) / 0.44));
-        return direction * lungeDist * (1 - easeInOutCubic((t - 0.62) / 0.38));
+        const anticipationEnd = LUNGE_ANTICIPATION_SEC / LUNGE_TOTAL_SEC;
+        const forwardEnd = (LUNGE_ANTICIPATION_SEC + LUNGE_FORWARD_SEC) / LUNGE_TOTAL_SEC;
+        const holdEnd = (LUNGE_ANTICIPATION_SEC + LUNGE_FORWARD_SEC + LUNGE_HOLD_SEC) / LUNGE_TOTAL_SEC;
+        if (t < anticipationEnd) return -direction * 6 * easeInCubic(t / anticipationEnd);
+        if (t < forwardEnd) {
+          const forwardT = (t - anticipationEnd) / (forwardEnd - anticipationEnd);
+          return (-direction * 6) + (direction * (lungeDist + 6) * easeLungeForward(forwardT));
+        }
+        if (t < holdEnd) return direction * lungeDist;
+        return direction * lungeDist * (1 - easeInOutCubic((t - holdEnd) / (1 - holdEnd)));
       };
       const computeIntroOffset = (elapsedSec, direction, distance, durationSec = 1.2) => {
         const t = Math.max(0, Math.min(1, Number(elapsedSec || 0) / Math.max(0.001, durationSec)));
@@ -5166,12 +5377,13 @@ async function main(){
         const isHit = !!currentAction
           && String(currentAction.actorSide || '') === 'enemy'
           && Number(currentAction.heroIndex || 0) === idx
-          && actionT >= 0.28
-          && actionT <= 0.62;
+          && actionT >= ((LUNGE_ANTICIPATION_SEC + LUNGE_FORWARD_SEC + LUNGE_IMPACT_HANDOFF_SEC) / LUNGE_TOTAL_SEC)
+          && actionT <= ((LUNGE_ANTICIPATION_SEC + LUNGE_FORWARD_SEC + LUNGE_IMPACT_HANDOFF_SEC + 0.18) / LUNGE_TOTAL_SEC);
         const heroW = heroBaseW;
         const heroH = heroBaseH;
         const heroIntroOffset = computeIntroOffset(nowSec - heroEnterAtSec, -1, Math.max(48, heroBaseW * 0.75), 1.25);
-        const offsetX = isStriking ? computeLungeOffset(actionT, 1, 22) : 0;
+        const heroMaxLungeDist = Math.max(0, Math.min(HERO_LUNGE_FORWARD_DIST_PX, battleMidpointX - slot.x));
+        const offsetX = isStriking ? computeLungeOffset(actionT, 1, heroMaxLungeDist) : 0;
         const drawX = slot.x - heroW / 2 + heroIntroOffset + offsetX;
         const drawY = slot.y - heroH / 2;
         if (portrait) {
@@ -5213,9 +5425,10 @@ async function main(){
           const isHit = !!currentAction
             && String(currentAction.actorSide || '') === 'hero'
             && String(currentAction.enemyId || '') === String(enemy.enemyId || '')
-            && actionT >= 0.28
-            && actionT <= 0.62;
-          const shiftX = isAttacking ? computeLungeOffset(actionT, -1, 34) : 0;
+            && actionT >= ((LUNGE_ANTICIPATION_SEC + LUNGE_FORWARD_SEC + LUNGE_IMPACT_HANDOFF_SEC) / LUNGE_TOTAL_SEC)
+            && actionT <= ((LUNGE_ANTICIPATION_SEC + LUNGE_FORWARD_SEC + LUNGE_IMPACT_HANDOFF_SEC + 0.18) / LUNGE_TOTAL_SEC);
+          const enemyMaxLungeDist = Math.max(0, Math.min(LUNGE_FORWARD_DIST_PX, anchor.x - battleMidpointX));
+          const shiftX = isAttacking ? computeLungeOffset(actionT, -1, enemyMaxLungeDist) : 0;
           const enemyIntroOffset = computeIntroOffset(nowSec - Number(enemy.spawnedAtSec || nowSec), 1, Math.max(52, enemyW * 0.8), 0.95);
           const drawX = anchor.x - enemyW / 2 + enemyIntroOffset + shiftX;
           const drawY = anchor.y - enemyH / 2;
@@ -5744,10 +5957,18 @@ async function main(){
           ctx.stroke();
         }
       };
+      const heroScreenMode = gameState.heroScreen.mode === 'formation' ? 'formation' : 'details';
+      const modeToggle = mapRect({ x: 12, y: 251, w: 132, h: 24 });
+      const formationRosterCards = [];
+      const formationPartySlots = [];
+      const formationSlots = normalizePartyFormationSlots(getConfiguredHeroSlots());
       gameState.heroScreen.hitZones = {
         close: closeBtn,
         prevHero: leftArrowZone,
         nextHero: rightArrowZone,
+        modeToggle,
+        rosterCards: formationRosterCards,
+        partySlots: formationPartySlots,
         skillControls: [],
       };
 
@@ -5861,77 +6082,144 @@ async function main(){
       ctx.font = `900 ${sf(12, 8)}px Arial Black`;
       ctx.fillText(String(heroSkillPoints), skillPointsChip.x + skillPointsChip.w / 2, skillPointsTextY);
       ctx.textBaseline = 'alphabetic';
+      roundRect(modeToggle.x, modeToggle.y, modeToggle.w, modeToggle.h, ss(5), heroScreenMode === 'formation' ? '#d8f1d9' : '#f0f0f0', '#b7b7b7');
+      ctx.fillStyle = '#374151';
+      ctx.font = `900 ${sf(11, 8)}px Arial Black`;
+      ctx.textAlign = 'center';
+      ctx.fillText(heroScreenMode === 'formation' ? 'SHOW SKILLS' : 'PARTY FORMATION', modeToggle.x + modeToggle.w / 2, modeToggle.y + ss(16));
 
-      heroLayoutSpec.cards.forEach((cardSpec, idx) => {
-        const cardData = skillCards[idx] || skillCards[0];
-        const card = mapRect(cardSpec.card);
-        const titleBar = mapRect(cardSpec.titleStrip);
-        const iconTile = mapRect(cardSpec.iconTile);
-        const bodyText = {
-          x: sx(cardSpec.bodyText.x),
-          titleY: sy(cardSpec.bodyText.titleY),
-          line1Y: sy(cardSpec.bodyText.line1Y),
-          line2Y: sy(cardSpec.bodyText.line2Y),
-          line3Y: sy(cardSpec.bodyText.line3Y),
-        };
-        roundRect(card.x, card.y, card.w, card.h, ss(4.8), '#eff4f6', null);
-        ctx.save();
-        ctx.globalAlpha = 0.4;
-        roundRect(titleBar.x, titleBar.y, titleBar.w, titleBar.h, ss(5), '#a7cfdf', null);
-        ctx.restore();
-        const accent = ['#ecd23d', '#ecd23d', '#d98de5'][idx] || '#9aa7b8';
-        roundRect(iconTile.x, iconTile.y, iconTile.w, iconTile.h, ss(4.8), accent, null);
-        const minusZone = mapRect(cardSpec.controls.minus);
-        const valueZone = mapRect(cardSpec.controls.value);
-        const plusZone = mapRect(cardSpec.controls.plus);
-        gameState.heroScreen.hitZones.skillControls.push({
-          idx,
-          skillKey: `skill${idx + 1}`,
-          minus: { x: minusZone.x, y: minusZone.y, w: minusZone.w, h: minusZone.h },
-          plus: { x: plusZone.x, y: plusZone.y, w: plusZone.w, h: plusZone.h },
-        });
-        roundRect(valueZone.x, valueZone.y, valueZone.w, valueZone.h, ss(4.8), '#ffffff', null);
-        ctx.fillStyle = '#7a3b07';
-        ctx.font = `900 ${sf(9, 7)}px Arial Black`;
-        ctx.textAlign = 'center';
-        ctx.fillText(String(cardData.rankLabel || 'Lv0'), valueZone.x + valueZone.w / 2, valueZone.y + ss(14));
-        if (minusIconImage) {
-          const minusDrawX = minusZone.x;
-          const minusDrawY = minusZone.y;
-          const minusDrawW = minusZone.w;
-          const minusDrawH = minusZone.h;
-          ctx.save();
-          ctx.translate(minusDrawX + (minusDrawW / 2), minusDrawY + (minusDrawH / 2));
-          ctx.scale(1, -1);
-          ctx.drawImage(minusIconImage, -minusDrawW / 2, -minusDrawH / 2, minusDrawW, minusDrawH);
-          ctx.restore();
-        } else {
-          roundRect(minusZone.x, minusZone.y, minusZone.w, minusZone.h, ss(4.8), '#d1d1d1', null);
-          ctx.fillStyle = '#666666';
-          ctx.font = `700 ${sf(10, 7)}px Arial`;
-          ctx.textAlign = 'center';
-          ctx.fillText('-', minusZone.x + minusZone.w / 2, minusZone.y + ss(9));
-        }
-        if (plusIconImage) {
-          ctx.drawImage(plusIconImage, plusZone.x, plusZone.y, plusZone.w, plusZone.h);
-        } else {
-          roundRect(plusZone.x, plusZone.y, plusZone.w, plusZone.h, ss(4.8), '#96d02f', null);
-          ctx.fillStyle = '#666666';
-          ctx.font = `700 ${sf(10, 7)}px Arial`;
-          ctx.textAlign = 'center';
-          ctx.fillText('+', plusZone.x + plusZone.w / 2, plusZone.y + ss(9));
-        }
+      if (heroScreenMode === 'formation') {
+        const rosterCardW = ss(158);
+        const rosterCardH = ss(74);
+        const rosterStartY = sy(287);
+        const rosterGapX = ss(20);
+        const rosterGapY = ss(14);
+        const rosterOptions = getHeroScreenRoster().slice(0, 4);
         ctx.fillStyle = '#111111';
-        ctx.font = `700 ${sf(11.5, 8)}px Arial`;
+        ctx.font = `900 ${sf(12, 8)}px Arial Black`;
         ctx.textAlign = 'left';
-        ctx.fillText(String(cardData.title || `Skill ${idx + 1}`), bodyText.x, bodyText.titleY);
-        ctx.font = `700 ${sf(10.56, 7)}px Arial`;
+        ctx.fillText('AVAILABLE ROSTER', sx(12), sy(280));
+        rosterOptions.forEach((rosterHero, idx) => {
+          const row = Math.floor(idx / 2);
+          const col = idx % 2;
+          const rect = {
+            x: sx(12) + col * (rosterCardW + rosterGapX),
+            y: rosterStartY + row * (rosterCardH + rosterGapY),
+            w: rosterCardW,
+            h: rosterCardH,
+          };
+          const selected = idx === normalizeHeroSelectionIndex();
+          roundRect(rect.x, rect.y, rect.w, rect.h, ss(6), selected ? '#eef7c4' : '#eff4f6', selected ? '#93b117' : '#b8c5cd');
+          formationRosterCards.push({ ...rect, idx });
+          ctx.fillStyle = '#111111';
+          ctx.font = `900 ${sf(12, 8)}px Arial Black`;
+          ctx.fillText(String(rosterHero.name || ''), rect.x + ss(10), rect.y + ss(18));
+          ctx.font = `700 ${sf(10, 7)}px Arial`;
+          ctx.fillStyle = '#475569';
+          ctx.fillText(`ATK ${Number(rosterHero.stats?.ATK || 0)}  SPD ${Number(rosterHero.stats?.SPD || 0)}`, rect.x + ss(10), rect.y + ss(38));
+          ctx.fillText(`HP ${Number(rosterHero.maxHP || rosterHero.hp || 0)}  CP ${Math.round(Number(rosterHero.combatPower || 0))}`, rect.x + ss(10), rect.y + ss(54));
+        });
         ctx.fillStyle = '#111111';
-        const lines = Array.isArray(cardData.lines) ? cardData.lines : [];
-        ctx.fillText(String(lines[0] || ''), bodyText.x, bodyText.line1Y);
-        ctx.fillText(String(lines[1] || ''), bodyText.x, bodyText.line2Y);
-        ctx.fillText(String(lines[2] || ''), bodyText.x, bodyText.line3Y);
-      });
+        ctx.font = `900 ${sf(12, 8)}px Arial Black`;
+        ctx.fillText('ACTIVE PARTY', sx(12), sy(462));
+        ctx.font = `700 ${sf(10, 7)}px Arial`;
+        ctx.fillStyle = '#475569';
+        ctx.fillText('Select a roster hero, then tap a slot to assign or swap.', sx(12), sy(477));
+        const slotW = ss(158);
+        const slotH = ss(36);
+        const slotStartY = sy(490);
+        for (let idx = 0; idx < 4; idx += 1) {
+          const row = Math.floor(idx / 2);
+          const col = idx % 2;
+          const rect = {
+            x: sx(12) + col * (slotW + rosterGapX),
+            y: slotStartY + row * (slotH + ss(12)),
+            w: slotW,
+            h: slotH,
+          };
+          const slotHero = String(formationSlots[idx] || '').trim();
+          const selectedSlot = Number(gameState.heroScreen.selectedPartySlot || 0) === idx;
+          roundRect(rect.x, rect.y, rect.w, rect.h, ss(6), selectedSlot ? '#d8ecff' : '#fff8e8', selectedSlot ? '#3b82f6' : '#ccb88d');
+          formationPartySlots.push({ ...rect, idx });
+          ctx.fillStyle = '#111111';
+          ctx.font = `900 ${sf(11, 8)}px Arial Black`;
+          ctx.fillText(`SLOT ${idx + 1}`, rect.x + ss(10), rect.y + ss(14));
+          ctx.font = `700 ${sf(10, 7)}px Arial`;
+          ctx.fillStyle = slotHero ? '#1f2937' : '#9ca3af';
+          ctx.fillText(slotHero || 'Empty', rect.x + ss(10), rect.y + ss(28));
+        }
+      } else {
+        heroLayoutSpec.cards.forEach((cardSpec, idx) => {
+          const cardData = skillCards[idx] || skillCards[0];
+          const card = mapRect(cardSpec.card);
+          const titleBar = mapRect(cardSpec.titleStrip);
+          const iconTile = mapRect(cardSpec.iconTile);
+          const bodyText = {
+            x: sx(cardSpec.bodyText.x),
+            titleY: sy(cardSpec.bodyText.titleY),
+            line1Y: sy(cardSpec.bodyText.line1Y),
+            line2Y: sy(cardSpec.bodyText.line2Y),
+            line3Y: sy(cardSpec.bodyText.line3Y),
+          };
+          roundRect(card.x, card.y, card.w, card.h, ss(4.8), '#eff4f6', null);
+          ctx.save();
+          ctx.globalAlpha = 0.4;
+          roundRect(titleBar.x, titleBar.y, titleBar.w, titleBar.h, ss(5), '#a7cfdf', null);
+          ctx.restore();
+          const accent = ['#ecd23d', '#ecd23d', '#d98de5'][idx] || '#9aa7b8';
+          roundRect(iconTile.x, iconTile.y, iconTile.w, iconTile.h, ss(4.8), accent, null);
+          const minusZone = mapRect(cardSpec.controls.minus);
+          const valueZone = mapRect(cardSpec.controls.value);
+          const plusZone = mapRect(cardSpec.controls.plus);
+          gameState.heroScreen.hitZones.skillControls.push({
+            idx,
+            skillKey: `skill${idx + 1}`,
+            minus: { x: minusZone.x, y: minusZone.y, w: minusZone.w, h: minusZone.h },
+            plus: { x: plusZone.x, y: plusZone.y, w: plusZone.w, h: plusZone.h },
+          });
+          roundRect(valueZone.x, valueZone.y, valueZone.w, valueZone.h, ss(4.8), '#ffffff', null);
+          ctx.fillStyle = '#7a3b07';
+          ctx.font = `900 ${sf(9, 7)}px Arial Black`;
+          ctx.textAlign = 'center';
+          ctx.fillText(String(cardData.rankLabel || 'Lv0'), valueZone.x + valueZone.w / 2, valueZone.y + ss(14));
+          if (minusIconImage) {
+            const minusDrawX = minusZone.x;
+            const minusDrawY = minusZone.y;
+            const minusDrawW = minusZone.w;
+            const minusDrawH = minusZone.h;
+            ctx.save();
+            ctx.translate(minusDrawX + (minusDrawW / 2), minusDrawY + (minusDrawH / 2));
+            ctx.scale(1, -1);
+            ctx.drawImage(minusIconImage, -minusDrawW / 2, -minusDrawH / 2, minusDrawW, minusDrawH);
+            ctx.restore();
+          } else {
+            roundRect(minusZone.x, minusZone.y, minusZone.w, minusZone.h, ss(4.8), '#d1d1d1', null);
+            ctx.fillStyle = '#666666';
+            ctx.font = `700 ${sf(10, 7)}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillText('-', minusZone.x + minusZone.w / 2, minusZone.y + ss(9));
+          }
+          if (plusIconImage) {
+            ctx.drawImage(plusIconImage, plusZone.x, plusZone.y, plusZone.w, plusZone.h);
+          } else {
+            roundRect(plusZone.x, plusZone.y, plusZone.w, plusZone.h, ss(4.8), '#96d02f', null);
+            ctx.fillStyle = '#666666';
+            ctx.font = `700 ${sf(10, 7)}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillText('+', plusZone.x + plusZone.w / 2, plusZone.y + ss(9));
+          }
+          ctx.fillStyle = '#111111';
+          ctx.font = `700 ${sf(11.5, 8)}px Arial`;
+          ctx.textAlign = 'left';
+          ctx.fillText(String(cardData.title || `Skill ${idx + 1}`), bodyText.x, bodyText.titleY);
+          ctx.font = `700 ${sf(10.56, 7)}px Arial`;
+          ctx.fillStyle = '#111111';
+          const lines = Array.isArray(cardData.lines) ? cardData.lines : [];
+          ctx.fillText(String(lines[0] || ''), bodyText.x, bodyText.line1Y);
+          ctx.fillText(String(lines[1] || ''), bodyText.x, bodyText.line2Y);
+          ctx.fillText(String(lines[2] || ''), bodyText.x, bodyText.line3Y);
+        });
+      }
       drawHeroStyleCloseControl(ctx, closeBtn, closeWinOvalImage, '#111111');
       return;
     }
@@ -6732,7 +7020,7 @@ async function main(){
         if (followUpBatchId > 0 && hit.followUpAwaitTextClear) {
           if (state.globals.TextAnimating || (state.globals.HeroAction && state.globals.HeroAction.active)) continue;
           if (!state.globals.DoubleAttackLungeStarted[followUpBatchId]) {
-            const followUpLead = 0.14 + 0.32;
+            const followUpLead = LUNGE_ANTICIPATION_SEC + LUNGE_FORWARD_SEC + LUNGE_IMPACT_HANDOFF_SEC;
             const anchorAt = now + followUpLead;
             for (const queued of pending) {
               if (!queued) continue;
@@ -6803,8 +7091,11 @@ async function main(){
             radiusY: Number(hit.damageTextScatter.radiusY || 0),
           };
         }
+        const queuedFinalDmg = Number(hit.finalDmg);
         const ampMult = Number(hit.powerAmpMultiplier || 0);
-        const finalDmg = ampMult > 0 ? Math.max(1, Math.ceil((hit.dmg || 0) * ampMult)) : hit.dmg;
+        const finalDmg = Number.isFinite(queuedFinalDmg) && queuedFinalDmg > 0
+          ? Math.max(1, Math.floor(queuedFinalDmg))
+          : (ampMult > 0 ? Math.max(1, Math.ceil((hit.dmg || 0) * ampMult)) : hit.dmg);
         if (state.globals.DebugPowerAmpLifecycle) {
           const heroName = hit.heroName || 'Hero';
           const heroType = hit.heroType || 'melee';
@@ -6859,17 +7150,26 @@ async function main(){
     const animEndAt = state.globals.TextAnimEndAt || 0;
     state.globals.TextAnimating = (dmgTexts.length > 0 || (state.globals.time || 0) < animEndAt) ? 1 : 0;
     // Enemy action state machine (advance -> act -> retreat -> done)
-    const enemyAction = state.globals.EnemyAction;
+        const enemyAction = state.globals.EnemyAction;
     if (enemyAction && enemyAction.active) {
       const enemy = state.entities.find(e => e.kind === 'enemy' && e.uid === enemyAction.uid);
       if (!enemy || (enemy.hp ?? 0) <= 0) {
         enemyAction.active = false;
-        state.globals.IsPlayerBusy = 0;
+        if (state.globals.ActionActorUID === enemyAction.uid) {
+          applyTurnGateGlobals({
+            ActionInProgress: 0,
+            ActionActorUID: 0,
+          });
+        }
+        applyTurnGateIntent(createEnemyTurnIdleRecovery, {
+          now: Number(state.globals.time || 0),
+          currentTurnUID: callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0,
+        });
       } else {
-        const anticipationDur = 0.14;
-        const lungeDur = 0.32;
-        const impactHold = 0.16;
-        const retreatDur = 0.26;
+        const anticipationDur = LUNGE_ANTICIPATION_SEC;
+        const lungeDur = LUNGE_FORWARD_SEC;
+        const impactHold = LUNGE_HOLD_SEC;
+        const retreatDur = LUNGE_RETREAT_SEC;
         if (enemy.originX == null) enemy.originX = enemy.x ?? 0;
         if (enemy.originY == null) enemy.originY = enemy.y ?? 0;
         if (enemyAction.targetX == null) {
@@ -6879,22 +7179,13 @@ async function main(){
           enemyAction.targetX = targetPos ? targetPos.x : (enemy.originX - 120);
         }
         if (enemyAction.forwardX == null) {
-          const distToTarget = Math.abs((enemyAction.targetX ?? enemy.originX) - enemy.originX);
-          const lungeDist = Math.max(40, Math.min(110, distToTarget * 0.45));
-          enemyAction.forwardX = enemy.originX - lungeDist;
+          const lungeDist = LUNGE_FORWARD_DIST_PX;
+          enemyAction.forwardX = Math.max(layoutW / 2, enemy.originX - lungeDist);
         }
         if (enemyAction.anticipationX == null) {
           const dir = Math.sign((enemyAction.forwardX ?? enemy.originX) - enemy.originX) || -1;
           enemyAction.anticipationX = enemy.originX - (dir * 6);
         }
-        const moveToward = (cur, target, speed, dtSec) => {
-          if (cur === target) return cur;
-          const delta = target - cur;
-          const step = Math.sign(delta) * speed * dtSec;
-          if (Math.abs(step) >= Math.abs(delta)) return target;
-          return cur + step;
-        };
-        const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
         const easeInCubic = (t) => t * t * t;
         const easeInOutCubic = (t) =>
           t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -6913,7 +7204,7 @@ async function main(){
         } else if (enemyAction.state === 'LUNGE') {
           enemyAction.timer += dt;
           const t = Math.min(1, enemyAction.timer / Math.max(0.001, lungeDur));
-          const e = easeOutCubic(t);
+          const e = easeLungeForward(t);
           const from = enemyAction.anticipationX ?? enemy.originX;
           const to = enemyAction.forwardX ?? enemy.originX;
           enemy.x = from + (to - from) * e;
@@ -6948,13 +7239,17 @@ async function main(){
           enemyAction.active = false;
           enemy.x = enemy.originX ?? enemy.x;
           enemy.y = enemy.originY ?? enemy.y;
-          state.globals.IsPlayerBusy = 0;
+          const releaseState = {
+            IsPlayerBusy: 0,
+            ActionLockUntil: (state.globals.time || 0) + 0.35,
+            DeferAdvance: 1,
+            AdvanceAfterAction: 1,
+          };
           if (state.globals.ActionActorUID === enemyAction.uid) {
-            state.globals.ActionInProgress = 0;
-            state.globals.ActionActorUID = 0;
+            releaseState.ActionInProgress = 0;
+            releaseState.ActionActorUID = 0;
           }
-          state.globals.ActionLockUntil = (state.globals.time || 0) + 0.35;
-          state.globals.DeferAdvance = 1;
+          applyTurnGateGlobals(releaseState);
         }
       }
     }
@@ -6971,18 +7266,16 @@ async function main(){
         const targetX = layoutW / 2;
         if (heroAction.baseX == null) heroAction.baseX = baseX;
         if (heroAction.forwardX == null) {
-          const dist = Math.abs(targetX - baseX);
-          const lungeDist = Math.max(40, Math.min(110, dist * 0.45));
-          heroAction.forwardX = baseX + lungeDist;
+          heroAction.forwardX = Math.min(targetX, baseX + HERO_LUNGE_FORWARD_DIST_PX);
         }
-        const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+        const isAoeProfile = String(heroAction.profile || 'single') === 'aoe';
         const easeInCubic = (t) => t * t * t;
         const easeInOutCubic = (t) =>
           t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-        const anticipationDur = 0.14;
-        const lungeDur = 0.32;
-        const holdDur = 0.16;
-        const retreatDur = 0.26;
+        const anticipationDur = LUNGE_ANTICIPATION_SEC;
+        const lungeDur = LUNGE_FORWARD_SEC;
+        const holdDur = isAoeProfile ? 0.24 : LUNGE_HOLD_SEC;
+        const retreatDur = isAoeProfile ? 0.42 : LUNGE_RETREAT_SEC;
         if (heroAction.anticipationX == null) {
           const dir = Math.sign((heroAction.forwardX ?? baseX) - baseX) || 1;
           heroAction.anticipationX = baseX - (dir * 6);
@@ -7001,7 +7294,7 @@ async function main(){
           }
         } else if (heroAction.state === 'LUNGE') {
           const t = Math.min(1, heroAction.timer / Math.max(0.001, lungeDur));
-          const e = easeOutCubic(t);
+          const e = easeLungeForward(t);
           const from = heroAction.anticipationX ?? heroAction.baseX;
           const to = heroAction.forwardX ?? heroAction.baseX;
           x = from + (to - from) * e;
@@ -7029,20 +7322,26 @@ async function main(){
         offsets[hero.uid] = x - baseX;
         if (!heroAction.active) {
           offsets[hero.uid] = 0;
+          const releaseState = {
+            IsPlayerBusy: 0,
+          };
           if (state.globals.ActionActorUID === hero.uid) {
-            state.globals.ActionInProgress = 0;
-            state.globals.ActionActorUID = 0;
+            releaseState.ActionInProgress = 0;
+            releaseState.ActionActorUID = 0;
           }
-          state.globals.IsPlayerBusy = 0;
+          applyTurnGateGlobals(releaseState);
           console.log(`[HERO] action done uid=${hero.uid} phase=${state.globals.TurnPhase} busy=${state.globals.IsPlayerBusy} defer=${state.globals.DeferAdvance} lockUntil=${state.globals.ActionLockUntil}`);
         }
       } else {
         heroAction.active = false;
+        const releaseState = {
+          IsPlayerBusy: 0,
+        };
         if (state.globals.ActionActorUID === heroAction.uid) {
-          state.globals.ActionInProgress = 0;
-          state.globals.ActionActorUID = 0;
+          releaseState.ActionInProgress = 0;
+          releaseState.ActionActorUID = 0;
         }
-        state.globals.IsPlayerBusy = 0;
+        applyTurnGateGlobals(releaseState);
         console.log(`[HERO] action aborted uid=${heroAction.uid} phase=${state.globals.TurnPhase} busy=${state.globals.IsPlayerBusy}`);
       }
     }
@@ -9398,6 +9697,8 @@ function getStoryCardLiveLineState() {
       const zones = (gameState.heroScreen && gameState.heroScreen.hitZones) || {};
       const roster = getHeroScreenRoster();
       const selectedHero = roster[normalizeHeroSelectionIndex()] || null;
+      const rosterCards = Array.isArray(zones.rosterCards) ? zones.rosterCards : [];
+      const partySlots = Array.isArray(zones.partySlots) ? zones.partySlots : [];
       const controls = Array.isArray(zones.skillControls) ? zones.skillControls : [];
       let consumedSkillClick = false;
       if (selectedHero) {
@@ -9422,6 +9723,32 @@ function getStoryCardLiveLineState() {
         layoutState.requestLayoutChange('combat', 'hero-close-button').catch((err) => {
           console.error('[LAYOUT_PHASE1] hero return failed', err);
         });
+      } else if (isPointInRect(mx, my, zones.modeToggle)) {
+        gameState.heroScreen.mode = gameState.heroScreen.mode === 'formation' ? 'details' : 'formation';
+      } else if (gameState.heroScreen.mode === 'formation') {
+        let consumedFormationClick = false;
+        for (const card of rosterCards) {
+          if (isPointInRect(mx, my, card)) {
+            gameState.selectedHero = Math.max(0, Math.floor(Number(card.idx || 0)));
+            consumedFormationClick = true;
+            break;
+          }
+        }
+        if (!consumedFormationClick) {
+          for (const slot of partySlots) {
+            if (isPointInRect(mx, my, slot)) {
+              assignSelectedHeroToPartySlot(Number(slot.idx || 0)).catch((err) => {
+                console.error('[LAYOUT_PHASE1] formation assign failed', err);
+              });
+              consumedFormationClick = true;
+              break;
+            }
+          }
+        }
+        if (consumedFormationClick) {
+          drawFrame();
+          return;
+        }
       } else if (isPointInRect(mx, my, zones.prevHero)) {
         if (roster.length) {
           gameState.selectedHero = (normalizeHeroSelectionIndex() + roster.length - 1) % roster.length;
@@ -9810,16 +10137,17 @@ function getStoryCardLiveLineState() {
     if (heroInputActive) {
       state.globals.HideHeroSelector = 0;
     }
-    const refill = gameState.refillBounce;
-    const phaseNow = state.globals.TurnPhase;
-    const hasEmpty = hasEmptySlots();
-    const refillReady =
-      phaseNow === 0 &&
-      !state.globals.IsPlayerBusy &&
-      !state.globals.PendingSkillID &&
-      !state.globals.ActionInProgress &&
-      !state.globals.DeferAdvance &&
-      !(refill && refill.active);
+  const refill = gameState.refillBounce;
+  const phaseNow = state.globals.TurnPhase;
+  const hasEmpty = hasEmptySlots();
+  const enemyLineClearPressureActive = !!state.globals.EnemyLineClearPressureActive;
+  const refillReady =
+    phaseNow === 0 &&
+    !state.globals.IsPlayerBusy &&
+    !state.globals.PendingSkillID &&
+    !state.globals.ActionInProgress &&
+    !state.globals.DeferAdvance &&
+    !(refill && refill.active);
     if (hasEmpty && !refillReady) {
       const sig = JSON.stringify({
         phaseNow,
@@ -9851,7 +10179,8 @@ function getStoryCardLiveLineState() {
     }
     if (
       refillReady &&
-      hasEmpty
+      hasEmpty &&
+      !enemyLineClearPressureActive
     ) {
       startRefillBounce();
     }
@@ -9862,7 +10191,8 @@ function getStoryCardLiveLineState() {
       !state.globals.PendingSkillID &&
       !state.globals.ActionInProgress &&
       !state.globals.DeferAdvance &&
-      !(refill && refill.active)
+      !(refill && refill.active) &&
+      !enemyLineClearPressureActive
     ) {
       startRefillBounce();
     }
@@ -9898,48 +10228,44 @@ function getStoryCardLiveLineState() {
       state.globals.DeferAdvance &&
       (state.globals.time || 0) >= (state.globals.ActionLockUntil || 0)
     ) {
-      const refillActive = !!(gameState.refillBounce && gameState.refillBounce.active);
-      const refillPending = hasEmpty && !refillActive;
-      if (refillPending) {
+      let deferredAdvanceState = canResolveDeferredAdvance({
+        hasEmpty,
+        enemyLineClearPressureActive,
+      });
+      if (deferredAdvanceState.refillPending) {
         // Refill must complete before advancing to the next actor.
         startRefillBounce();
         applyTurnGateIntent(createDeferredRefillHold, {
           now: Number(state.globals.time || 0),
         });
-      } else {
-      if (state.globals.TextAnimating) {
+      } else if (deferredAdvanceState.textHold) {
         applyTurnGateIntent(createDeferredTextHold, {
           now: Number(state.globals.time || 0),
         });
       } else {
-        // Only block auto-advance while an action/selection is still active.
-        const pendingSelect = state.globals.TurnPhase === 1 && state.globals.PendingSkillID;
-        const staleBusy = state.globals.IsPlayerBusy && !state.globals.ActionInProgress && !pendingSelect;
-        if (staleBusy) {
+        if (deferredAdvanceState.staleBusy) {
           applyTurnGateIntent(createDeferredStaleBusyRecovery);
           console.log(`[TURN] cleared stale IsPlayerBusy before advance phase=${state.globals.TurnPhase} owner=${state.globals.ActionOwnerUID || 0}`);
+          deferredAdvanceState = canResolveDeferredAdvance({
+            hasEmpty,
+            enemyLineClearPressureActive,
+          });
         }
-        const mergeInFlight = !!(gameState.gemMergeFx && gameState.gemMergeFx.active);
-        const blockedPhase = state.globals.IsPlayerBusy || state.globals.ActionInProgress || pendingSelect || mergeInFlight;
-        const ownerUID = state.globals.ActionOwnerUID || 0;
-        const currentUID = callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0;
-        const ownerOk = !ownerUID || ownerUID === currentUID;
-        if (!blockedPhase && ownerOk) {
-          console.log(`[TURN] DeferAdvance -> AdvanceTurn owner=${ownerUID} cur=${currentUID} phase=${state.globals.TurnPhase} busy=${state.globals.IsPlayerBusy} canPick=${state.globals.CanPickGems}`);
+        if (deferredAdvanceState.ok) {
+          console.log(`[TURN] DeferAdvance -> AdvanceTurn owner=${deferredAdvanceState.ownerUID} cur=${deferredAdvanceState.currentUID} phase=${state.globals.TurnPhase} busy=${state.globals.IsPlayerBusy} canPick=${state.globals.CanPickGems}`);
           applyTurnGateIntent(createDeferredAdvanceResolved);
           callFunctionWithContext(fnContext, 'AdvanceTurn');
           combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
-        } else if (!ownerOk) {
-          if (ownerUID) {
-            callFunctionWithContext(fnContext, 'ClosePowerAmpForActor', ownerUID, 'owner_mismatch_autoclose');
+        } else if (!deferredAdvanceState.ownerOk) {
+          if (deferredAdvanceState.ownerUID) {
+            callFunctionWithContext(fnContext, 'ClosePowerAmpForActor', deferredAdvanceState.ownerUID, 'owner_mismatch_autoclose');
           }
           applyTurnGateIntent(createDeferredAdvanceResolved);
           combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
         } else if (!state.globals._DeferBlockLogged) {
           state.globals._DeferBlockLogged = 1;
-          console.log(`[TURN] DeferAdvance blocked pendingSelect=${!!pendingSelect} mergeInFlight=${mergeInFlight} IsPlayerBusy=${state.globals.IsPlayerBusy} TurnPhase=${state.globals.TurnPhase} owner=${ownerUID} cur=${currentUID} canPick=${state.globals.CanPickGems} actionInProgress=${state.globals.ActionInProgress}`);
+          console.log(`[TURN] DeferAdvance blocked pendingSelect=${!!deferredAdvanceState.pendingSelect} mergeInFlight=${deferredAdvanceState.mergeInFlight} IsPlayerBusy=${state.globals.IsPlayerBusy} TurnPhase=${state.globals.TurnPhase} owner=${deferredAdvanceState.ownerUID} cur=${deferredAdvanceState.currentUID} canPick=${state.globals.CanPickGems} actionInProgress=${state.globals.ActionInProgress}`);
         }
-      }
       }
     } else {
       state.globals._DeferBlockLogged = 0;
@@ -9961,11 +10287,27 @@ function getStoryCardLiveLineState() {
         gameState.combatFailExitRequested = true;
         state.globals.CanPickGems = 0;
         state.globals.IsPlayerBusy = 1;
-        layoutState.requestLayoutChange((partyHp <= 0 || noLivingHeroes) ? 'town' : 'storyMock', energy < 0 ? 'combat-energy-depleted' : 'combat-party-defeated').catch((err) => {
+        layoutState.requestLayoutChange('storyMock', energy < 0 ? 'combat-energy-depleted' : 'combat-party-defeated').catch((err) => {
           gameState.combatFailExitRequested = false;
           console.error('[LAYOUT_PHASE1] combat fail gate layout transition failed', err);
         });
       }
+    }
+    const currentTurnUID = callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0;
+    if (
+      state.globals.GamePhase === 'RUNTIME' &&
+      currentTurnType === 1 &&
+      state.globals.TurnPhase === 2 &&
+      !state.globals.ActionInProgress &&
+      !state.globals.IsPlayerBusy &&
+      !state.globals.PendingSkillID &&
+      (state.globals.CanPickGems === true || !state.globals.DeferAdvance)
+    ) {
+      applyTurnGateIntent(createEnemyTurnIdleRecovery, {
+        now: Number(state.globals.time || 0),
+        currentTurnUID,
+      });
+      combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
     }
     const noRefillActive = !(gameState.refillBounce && gameState.refillBounce.active);
     if (
@@ -10072,6 +10414,7 @@ function getStoryCardLiveLineState() {
           encounterRequestPreview: deriveEncounterRequestFromMapState(),
         },
         heroScreen: {
+          mode: String(gameState.heroScreen?.mode || 'details'),
           selectedHero: Number(gameState.selectedHero || 0),
           activeHeroName: (() => {
             const roster = getHeroScreenRoster();
@@ -10079,6 +10422,7 @@ function getStoryCardLiveLineState() {
             const hero = roster[idx];
             return hero ? String(hero.name || '') : '';
           })(),
+          activePartySlots: normalizePartyFormationSlots(getConfiguredHeroSlots()),
         },
         flags: {
           canPickGems: state.globals.CanPickGems,

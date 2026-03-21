@@ -92,8 +92,8 @@ function appendLog(session, text) {
 function ensureRewardLedger(layoutState) {
   if (!layoutState.rewardLedger) {
     layoutState.rewardLedger = {
-      unclaimedGold: 0,
-      claimedGoldTotal: 0,
+      unclaimedEnergy: 0,
+      claimedEnergyTotal: 0,
       unclaimedTokens: {
         [TOKEN.SAND]: 0,
         [TOKEN.BONE_CHIP]: 0,
@@ -110,6 +110,14 @@ function ensureRewardLedger(layoutState) {
       },
     };
   }
+  if (!Number.isFinite(Number(layoutState.rewardLedger.unclaimedEnergy))) {
+    layoutState.rewardLedger.unclaimedEnergy = Math.max(0, Number(layoutState.rewardLedger.unclaimedGold || 0));
+  }
+  if (!Number.isFinite(Number(layoutState.rewardLedger.claimedEnergyTotal))) {
+    layoutState.rewardLedger.claimedEnergyTotal = Math.max(0, Number(layoutState.rewardLedger.claimedGoldTotal || 0));
+  }
+  delete layoutState.rewardLedger.unclaimedGold;
+  delete layoutState.rewardLedger.claimedGoldTotal;
   if (!layoutState.rewardLedger.unclaimedTokens || typeof layoutState.rewardLedger.unclaimedTokens !== 'object') {
     layoutState.rewardLedger.unclaimedTokens = {
       [TOKEN.SAND]: 0,
@@ -239,7 +247,7 @@ export function updateIdleFarmEmissionState(layoutState, deps = {}) {
     const monsterName = pickIdleEmissionMonster(layoutState.session || null, deps.enemyCatalog || []);
     const parsed = parseIdleDropId(resolveIdleMonsterDrop(monsterName));
     if (parsed.type === 'ITEM' && parsed.id === 'GOLD') {
-      rewardLedger.unclaimedGold += Math.max(1, Math.round(Number(config.goldPerCadence || 1) * goldBonus));
+      rewardLedger.unclaimedEnergy += Math.max(1, Math.round(Number(config.goldPerCadence || 1) * goldBonus));
     } else if (parsed.type === 'TOKEN' && parsed.id) {
       const amount = Math.max(1, Math.round(1 * resourceBonus));
       rewardLedger.unclaimedTokens[parsed.id] = Number(rewardLedger.unclaimedTokens[parsed.id] || 0) + amount;
@@ -271,6 +279,10 @@ export function updateIdleFarmSessionState(layoutState, deps = {}) {
   }
   const config = layoutState.config || {};
   const heroes = Array.isArray(session.heroes) && session.heroes.length ? session.heroes : [];
+  const forcedEnemyNames = Array.isArray(session.forcedEnemyNames)
+    ? session.forcedEnemyNames.map((name) => String(name || '').trim())
+    : [];
+  session.forcedEnemyNames = forcedEnemyNames;
   session.elapsedSec = Math.max(0, nowSec - Number(session.startedAtSec || 0));
 
   const livingEnemies = () => session.enemies.filter((enemy) => enemy && enemy.alive);
@@ -438,8 +450,8 @@ export function updateIdleFarmSessionState(layoutState, deps = {}) {
 
 export function claimIdleFarmRewardsFromState(layoutState) {
   const rewardLedger = ensureRewardLedger(layoutState);
-  const gold = Math.max(0, Number(rewardLedger.unclaimedGold || 0));
-  rewardLedger.claimedGoldTotal = Number(rewardLedger.claimedGoldTotal || 0) + gold;
+  const energy = Math.max(0, Number(rewardLedger.unclaimedEnergy || 0));
+  rewardLedger.claimedEnergyTotal = Number(rewardLedger.claimedEnergyTotal || 0) + energy;
   const tokens = {};
   for (const tokenId of Object.values(TOKEN)) {
     const amt = Math.max(0, Number(rewardLedger.unclaimedTokens[tokenId] || 0));
@@ -447,17 +459,17 @@ export function claimIdleFarmRewardsFromState(layoutState) {
     rewardLedger.claimedTokensTotal[tokenId] = Number(rewardLedger.claimedTokensTotal[tokenId] || 0) + amt;
     rewardLedger.unclaimedTokens[tokenId] = 0;
   }
-  rewardLedger.unclaimedGold = 0;
-  return { gold, tokens };
+  rewardLedger.unclaimedEnergy = 0;
+  return { energy, tokens };
 }
 
 export function applyIdleFarmRewardsToGlobals(globals, claimed = {}) {
-  if (!globals || typeof globals !== 'object') return { gold: 0, tokens: {} };
-  const gold = Math.max(0, Number(claimed.gold || 0));
+  if (!globals || typeof globals !== 'object') return { energy: 0, tokens: {} };
+  const energy = Math.max(0, Number(claimed.energy || 0));
   const tokens = claimed.tokens && typeof claimed.tokens === 'object' ? claimed.tokens : {};
   const hasAnyTokens = Object.values(tokens).some((amount) => Math.max(0, Number(amount || 0)) > 0);
-  if (gold <= 0 && !hasAnyTokens) return { gold: 0, tokens: {} };
-  globals.goldTotal = Number(globals.goldTotal || 0) + gold;
+  if (energy <= 0 && !hasAnyTokens) return { energy: 0, tokens: {} };
+  globals.Player_Energy = Number(globals.Player_Energy || 0) + energy;
   const nextWallet = {
     ...((globals.TokenWallet && typeof globals.TokenWallet === 'object') ? globals.TokenWallet : {}),
   };
@@ -467,8 +479,8 @@ export function applyIdleFarmRewardsToGlobals(globals, claimed = {}) {
   }
   globals.TokenWallet = nextWallet;
   globals.IdleFarmLastCollect = {
-    gold,
+    energy,
     tokens: { ...tokens },
   };
-  return { gold, tokens: { ...tokens } };
+  return { energy, tokens: { ...tokens } };
 }

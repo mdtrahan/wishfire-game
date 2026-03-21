@@ -13,5 +13,5 @@ test('web-runner app restores town recovery routing shell', () => {
   assert.match(src, /if \(activeLayoutId === 'town'\) \{[\s\S]*?inputDomains\.emit\('town', 'layout:town:click'/);
   assert.match(src, /if \(activeLayout === 'town'\) \{[\s\S]*?harnessInputDomains\.emit\(activeLayout, 'layout:town:click'/);
   assert.match(src, /requestLayoutChange\('town', 'story-blue-click'\)/);
-  assert.match(src, /requestLayoutChange\(\(partyHp <= 0 \|\| noLivingHeroes\) \? 'town' : 'storyMock'/);
+  assert.match(src, /requestLayoutChange\('storyMock',\s*energy < 0 \? 'combat-energy-depleted' : 'combat-party-defeated'/);
 });

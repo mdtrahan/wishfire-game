@@ -22,7 +22,8 @@ for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBa
     assert.match(src, /hit\.retargetOnDeath = 1;/);
     assert.match(src, /hit\.followUpSkillId = 'DOUBLE_ATTACK';/);
     assert.match(src, /let latestExistingAt = 0;/);
-    assert.match(src, /const lungeTotal = 0\.14 \+ 0\.32 \+ 0\.16 \+ 0\.26;/);
+    assert.match(src, /const lungeTotal = 0\.14 \+ 0\.75 \+ 0\.16 \+ 0\.26;/);
+    assert.match(src, /const hitDelay = Math\.max\(0\.14 \+ 0\.75 \+ 0\.08, 0\.97\);/);
     assert.match(src, /const firstAttackSettledAt = latestExistingAt > 0 \? latestExistingAt : \(now \+ lungeTotal\);/);
     assert.match(src, /const finalFollowUpUntil = firstAttackSettledAt \+ \(lungeTotal \* 2\);/);
     assert.match(src, /g\.ActionLockUntil = Math\.max\(Number\(g\.ActionLockUntil \|\| 0\), finalFollowUpUntil\);/);
