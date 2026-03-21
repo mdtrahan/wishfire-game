@@ -4,4 +4,4 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-exec python3 "$ROOT/tools/hot_file_scope.py" enforce "$@"
+exec python3 "$ROOT/tools/hot_file_scope.py" prepare "$@"

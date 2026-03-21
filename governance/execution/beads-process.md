@@ -24,6 +24,17 @@
 9. Confirm `bd` write results.
 10. Close the bead.
 
+## Queue Creation vs Execution
+- Creating a bead is not the same as starting a lane.
+- If a user asks to create/make/add a bead, default behavior is:
+  1. create the bead
+  2. leave it `open`
+  3. do not mark `in_progress` until it is explicitly assigned or selected by the loop
+- Execution starts only when one of these is true:
+  - the user explicitly says to work that bead now
+  - PM explicitly assigns that bead
+  - the standard loop selects it as the next executable bead
+
 ## Executable Bead Criteria
 - A bead is executable only if live `bd` state includes:
   - clear objective
@@ -48,9 +59,20 @@
   - `web-runner/modules/functionBank.js`
   - `Scripts/functionBank.js`
 - For hot-file beads:
-  - declare exact allowed files/functions before editing
+  - stage the intended hot-file diff first
+  - run `tools/prepare_hot_file_commit.sh <bd-id>` to generate `.beads/hot-file-lock/<bd-id>.scope`
+  - treat `.scope` files as generated commit metadata, not hand-authored governance files
+  - generated scope may include `__MODULE__` when a reviewed hot-file diff includes top-level imports, constants, or state-shape wiring
   - do not mix unrelated runtime lanes in the same patch
   - stop if unrelated dirty work is already present and cannot be cleanly isolated
+- If active Beads state is not aligned to the commit lane:
+  - run `tools/prepare_hot_file_commit.sh <bd-id> --align-active`
+  - use the printed restore commands after commit to return live `bd` to the truthful queue state
+- If staged hot-file diffs change after preparation:
+  - rerun `tools/prepare_hot_file_commit.sh <bd-id>`
+- Hot-file enforcement now expects prepared metadata and should fail once with:
+  - one actionable prepare command when preparation is missing
+  - one batched error list when top-level or undeclared-function violations exist
 
 ## Closeout Rules
 - A bead is not ready to close unless all of the following are true:
