@@ -180,6 +180,24 @@ Playwright should model a player like this:
 - do not assume enemy removal from arrays is the only defeat signal
 - do not treat `livingEnemies = 0` as immediate permission to continue tapping
 
+## Codex Preflight
+
+When Playwright is running from Codex on macOS, separate browser startup from browser control:
+
+1. Start Chrome outside Codex with a fresh profile and `--remote-debugging-port`.
+2. Verify the CDP endpoint responds on `/json/version`.
+3. From Codex, run a minimal `connectOverCDP()` probe before any game harness run.
+4. Only if attach + page control succeed should the game harness be treated as the next blocker.
+
+Practical rule:
+- Direct `chromium.launch()` failure inside Codex is a browser-start failure until CDP attach proves otherwise.
+- Do not assume Automation/Accessibility is required for the supported path unless the CDP attach probe itself triggers that denial.
+
+Canonical ownership rule:
+- `tools/balance_harness.js` remains the repo-owned game automation pipeline.
+- Playwright MCP and the Codex Playwright skill are interactive inspection tools around that pipeline, not separate harness replacements.
+- `playwright:doctor`, `playwright:launch-matrix`, and `chrome:cdp` are diagnostics/bootstrap helpers for the same harness lane.
+
 ## Recommended Automation Rhythm
 
 For player-like automation, use this cadence:

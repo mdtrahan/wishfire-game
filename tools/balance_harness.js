@@ -5,6 +5,7 @@ const http = require('node:http');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
 const { chromium } = require('playwright');
+const { classifyPlaywrightFailure, readBool } = require('./playwright_support');
 
 const REPO_ROOT = process.cwd();
 const DEFAULTS = Object.freeze({
@@ -23,6 +24,7 @@ const DEFAULTS = Object.freeze({
   outputDir: path.join(REPO_ROOT, 'output', 'balance-harness'),
   viewport: { width: 1200, height: 900 },
   cdpUrl: '',
+  closeAttachedBrowser: false,
 });
 
 function parseArgs(argv) {
@@ -563,17 +565,13 @@ async function acquireBrowserSession(config) {
   if (cdpUrl) {
     const browser = await chromium.connectOverCDP(cdpUrl);
     const context = browser.contexts()[0] || await browser.newContext();
-    for (const existingPage of context.pages()) {
-      try {
-        await existingPage.close({ runBeforeUnload: false });
-      } catch {}
-    }
     const page = await context.newPage();
     attachConsoleTrail(page);
     return {
       browser,
       page,
       attached: true,
+      closeAttachedBrowser: !!config.closeAttachedBrowser,
       async close() {
         try {
           await page.close({ runBeforeUnload: false });
@@ -581,9 +579,11 @@ async function acquireBrowserSession(config) {
         try {
           await browser.close();
         } catch {}
-        try {
-          await closeAttachedBrowserViaCDP(cdpUrl);
-        } catch {}
+        if (config.closeAttachedBrowser) {
+          try {
+            await closeAttachedBrowserViaCDP(cdpUrl);
+          } catch {}
+        }
       },
     };
   }
@@ -737,26 +737,30 @@ function writeOutputs(config, sessions, aggregate) {
   };
 }
 
-async function main() {
-  const args = parseArgs(process.argv.slice(2));
-  const config = {
-    sessions: clampInt(args.sessions || process.env.BALANCE_SESSION_COUNT, 1, DEFAULTS.sessions),
+function buildConfig(argSource = parseArgs(process.argv.slice(2)), env = process.env) {
+  const args = Array.isArray(argSource) ? parseArgs(argSource) : (argSource || {});
+  return {
+    sessions: clampInt(args.sessions || env.BALANCE_SESSION_COUNT, 1, DEFAULTS.sessions),
     minWaves: DEFAULTS.minWaves,
-    maxWaves: clampInt(args.maxWaves || process.env.BALANCE_MAX_WAVES, DEFAULTS.minWaves, DEFAULTS.maxWaves),
-    enemiesPerWave: clampInt(args.enemiesPerWave || process.env.BALANCE_ENEMIES_PER_WAVE, 1, DEFAULTS.enemiesPerWave),
+    maxWaves: clampInt(args.maxWaves || env.BALANCE_MAX_WAVES, DEFAULTS.minWaves, DEFAULTS.maxWaves),
+    enemiesPerWave: clampInt(args.enemiesPerWave || env.BALANCE_ENEMIES_PER_WAVE, 1, DEFAULTS.enemiesPerWave),
     startingEnergy: DEFAULTS.startingEnergy,
-    energyStopFloor: readNumber(args.energyStopFloor || process.env.BALANCE_ENERGY_STOP_FLOOR, DEFAULTS.energyStopFloor),
+    energyStopFloor: readNumber(args.energyStopFloor || env.BALANCE_ENERGY_STOP_FLOOR, DEFAULTS.energyStopFloor),
     tapCost: DEFAULTS.tapCost,
-    serverHost: process.env.BALANCE_SERVER_HOST || DEFAULTS.serverHost,
-    serverPort: clampInt(args.port || process.env.BALANCE_SERVER_PORT, 1, DEFAULTS.serverPort),
-    statePollMs: clampInt(args.pollMs || process.env.BALANCE_POLL_MS, 10, DEFAULTS.statePollMs),
-    readyTimeoutMs: clampInt(args.readyTimeoutMs || process.env.BALANCE_READY_TIMEOUT_MS, 1000, DEFAULTS.readyTimeoutMs),
-    actionTimeoutMs: clampInt(args.actionTimeoutMs || process.env.BALANCE_ACTION_TIMEOUT_MS, 1000, DEFAULTS.actionTimeoutMs),
-    outputDir: path.resolve(args.outputDir || process.env.BALANCE_OUTPUT_DIR || DEFAULTS.outputDir),
+    serverHost: env.BALANCE_SERVER_HOST || DEFAULTS.serverHost,
+    serverPort: clampInt(args.port || env.BALANCE_SERVER_PORT, 1, DEFAULTS.serverPort),
+    statePollMs: clampInt(args.pollMs || env.BALANCE_POLL_MS, 10, DEFAULTS.statePollMs),
+    readyTimeoutMs: clampInt(args.readyTimeoutMs || env.BALANCE_READY_TIMEOUT_MS, 1000, DEFAULTS.readyTimeoutMs),
+    actionTimeoutMs: clampInt(args.actionTimeoutMs || env.BALANCE_ACTION_TIMEOUT_MS, 1000, DEFAULTS.actionTimeoutMs),
+    outputDir: path.resolve(args.outputDir || env.BALANCE_OUTPUT_DIR || DEFAULTS.outputDir),
     viewport: DEFAULTS.viewport,
-    cdpUrl: readText(args.cdpUrl || process.env.BALANCE_CDP_URL || DEFAULTS.cdpUrl),
+    cdpUrl: readText(args.cdpUrl || env.BALANCE_CDP_URL || DEFAULTS.cdpUrl),
+    closeAttachedBrowser: readBool(args.closeAttachedBrowser ?? env.BALANCE_CLOSE_ATTACHED_BROWSER, DEFAULTS.closeAttachedBrowser),
   };
+}
 
+async function main(argv = process.argv.slice(2), env = process.env) {
+  const config = buildConfig(argv, env);
   const serverHandle = await startServer(config);
   config.origin = serverHandle.origin;
   const browserSession = await acquireBrowserSession(config);
@@ -787,7 +791,20 @@ async function main() {
   }, null, 2));
 }
 
-main().catch((error) => {
-  console.error('[balance-harness] failed:', error);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    const failure = classifyPlaywrightFailure(error);
+    if (failure.code !== 'unknown_failure') {
+      console.error('[balance-harness] diagnostic:', failure);
+    }
+    console.error('[balance-harness] failed:', error);
+    process.exitCode = 1;
+  });
+} else {
+  module.exports = {
+    acquireBrowserSession,
+    buildConfig,
+    closeAttachedBrowserViaCDP,
+    parseArgs,
+  };
+}

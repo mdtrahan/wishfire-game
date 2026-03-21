@@ -45,6 +45,17 @@
 - Playwright launch failure pattern (`Opening in existing browser session`) is usually stale `playwright-mcp` + `mcp-chrome` processes. Kill stale processes first; if MCP transport dies, use CLI Playwright (`npx playwright screenshot ...`) as QA fallback until MCP restarts.
 - Initiative regression guard: sanitize time-mode turn queues before commit so duplicate non-extra hero slots cannot accumulate from queue reconciliation drift.
 - Preserve extra turns only when provenance is explicit mechanic; otherwise drop extra repeats during reconciliation.
+- For Playwright on macOS from Codex, diagnose in this order: direct browser startup, external Chrome CDP endpoint health, then Codex `connectOverCDP()` control. `MachPortRendezvous` / Crashpad permission errors prove startup is blocked inside Codex; they do not by themselves prove Automation/Accessibility is required for the CDP attach path.
+- If both Playwright-owned launch and plain Codex-owned Chrome child-process launch crash, stop tuning Playwright flags. That pattern means the direct-launch regression is broader than Playwright and should be treated as a Codex/macOS startup boundary until proven otherwise.
+- Keep the browser layers separate in writeups and debugging:
+  - `tools/balance_harness.js` is the repo-owned batch automation path.
+  - Playwright MCP / Codex Playwright skill are interactive inspection tools.
+  - Success in MCP does not prove the harness's `require('playwright').chromium.launch(...)` path is healthy, and failure in the harness launch path does not prove MCP is broken.
+- When a browser tool works in one layer and fails in another, compare ownership first:
+  - who launches Chrome
+  - whether launch is direct or CDP attach
+  - whether the failing path is a repo script or an external tool wrapper
+  Do not collapse those into a generic “Playwright is broken” conclusion.
 
 ## 2026-03-08 — ORKA-spt multipass QA note
 - For skill-point consumption multipass checks, reset `HeroSkillProgressByHeroId` per session/pass (or reload page) before asserting spend deltas.
@@ -208,3 +219,46 @@
 - If a free follow-up attack is meant to read as a real second attack, do not pre-time the second damage packet during the first action. Gate the second strike from the first strike's visible completion signal, then start a fresh lunge and schedule the second hit from that new anchor.
 - Per-actor proc latches for repeatable skill harnesses must reset at per-turn granularity, not only on encounter-wide scheduler resets. Otherwise a `100%` harness can appear correct once and then silently stop firing for the rest of combat.
 - When converting a mechanic from extra-turn semantics to free-follow-up semantics, audit three seams separately: proc latch lifetime, target/retarget logic, and presentation pacing. Partial fixes can look correct in counters while still failing visually.
+
+## 2026-03-18 — Session Update Paths Must Rehydrate Stored Config Before Respawn
+- If a layout session stores normalized config like forced hero/enemy names at creation time, the update/respawn path must read from that stored session field again before spawning new entities. Session creation alone is not enough once the update loop becomes the owner of later spawns.
+- For presentation loops with delayed respawns, add a narrow contract that proves the stored normalized config survives into the respawn callsite. Otherwise a single missing local binding can hard-crash the layout only after entry, which slips past simple boot-time checks.
+
+## 2026-03-18 — Separate Dead Server State From Source Rollback
+- If a major restored feature seems to vanish all at once, verify the served `app.js` before assuming source rollback. A stale page or dead local listener can mimic a regression even when the owner file still contains the feature markers.
+- Diagnostic order for local runtime confusion: check the live file on disk, check the asset actually served over `127.0.0.1`, then check whether anything is listening on the expected port. Do not kill the existing listener until you are ready to replace it with a persistent server process.
+
+## 2026-03-19 — UI/Runtime Resource Keys Must Share One Owner Vocabulary
+- If a player-facing layout is already rendering a resource as `Energy`, audit the runtime ledger and collect/apply helper names before adding more UI logic. Mixed keys like `unclaimedGold` in the helper and `unclaimedEnergy` in the layout create silent no-op collects that look like routing bugs instead of resource-owner bugs.
+- For fail-state exits, keep the destination rule in one explicit branch instead of encoding layout selection inside an inline ternary. Recovery-routing requirements change faster than the surrounding gate conditions, and the inline route choice becomes an easy stale-policy seam.
+
+## 2026-03-19 — Keep Encounter Candidate Pools Separate From Initial Picks
+- If later spawns are supposed to preserve biome/faction diversity, do not reuse the initial selected encounter picks as the long-lived pool. Store the full eligible candidate set separately, then let spawn planning choose from that broader pool.
+- Diagnostic order for spawn-subset regressions: check the request filter first, then check what global/runtime field caches the eligible pool, then check whether respawn helpers are reading the cached pool or only the initial picks.
+
+## 2026-03-19 — Gem Array Replacements Must Rebuild Board Occupancy Immediately
+- If gameplay code replaces the gem array through `ctx.setGems(...)`, the app-owned occupancy grid must be rebuilt in the same seam. Refill, pickability, and board-integrity checks read grid occupancy, not just the gem list.
+- Diagnostic order for board-playability regressions after enemy mutations: verify the gem array changed, then verify the occupancy grid was rebuilt from that array, then verify refill logic is scanning the rebuilt grid for zero-valued slots. A correct mutation plus a stale grid looks like refill logic is broken when the real fault is state synchronization.
+
+## 2026-03-19 — Bead Creation And Bead Execution Must Stay Separate
+- A user asking to create a bead is asking for queue management by default, not authorizing immediate implementation. Treat “make a bead” as “record this work item” unless they separately assign it or request execution now.
+- Diagnostic order for PM/dev lane confusion: check whether the user asked to create a bead, check whether they separately assigned that bead for work, then check whether a cycle selected it from the queue. Do not collapse those three acts into one.
+
+## 2026-03-19 — Enemy Turns Need Their Own Idle-Recovery Gate
+- If combat lands on an enemy turn with `TurnPhase === 2`, no active enemy action, and either leaked pickability or no deferred advance, recover in the enemy-turn seam itself. Hero-turn pickability restore and refill-complete logic are not sufficient to rescue enemy-idle stalls.
+- Enemy-action aborts must clear both ownership and progression state together. Clearing `IsPlayerBusy` alone is not enough; also release `ActionInProgress` / `ActionActorUID` and schedule a deferred advance so the turn loop can move on deterministically.
+- For harness-driven turn-stall bugs, validate in this order: deterministic gate contract first, then one attached-browser sample run, then a fresh-profile repeat run. That separates runtime deadlocks from brittle CDP/browser-session setup failures.
+
+## 2026-03-20 — Option-Denying Enemy Board Attacks Must Persist Into The Player Turn
+- If an enemy skill is supposed to cripple board choice, immediate refill is a design bug even when the board remains technically valid. A persistent partial board preserves pressure; an instant refill reduces the attack to a cosmetic reshuffle.
+- Diagnostic order for enemy line-clear behavior bugs: verify the mutation changed the gem array, verify the grid shows the missing cells, then verify refill is still owned by the normal player-side board lifecycle instead of being kicked from the enemy-action completion seam.
+- If the persistent holes are meant to survive until the player commits an action, store that as explicit runtime state. A simple pressure flag is safer than trying to infer intent from `hasEmptySlots()` alone, because normal refill holes and enemy-pressure holes need different turn-advance behavior.
+
+## 2026-03-20 — Consumable Multipliers Should Queue Final Damage, Not Recompute It Later
+- If an attack consumes a one-shot multiplier before its hit lands, queue the resolved final damage on the delayed hit packet. Recomputing from base damage later adds an avoidable drift seam between skill execution time and hit-application time.
+- For delayed-hit regressions, contract both layers: the skill builder must store immutable `finalDmg`, and the app-side resolver must prefer queued final totals before falling back to multiplier recomputation.
+
+## 2026-03-20 — Refreshing Combat Must Invalidate Paused Turn Snapshots
+- Dev-panel apply/refresh is a session reseed, not a paused-turn resume. If the modal captured `CanPickGems` / `IsPlayerBusy` / `DeferAdvance` from the old combat session, that snapshot must be discarded before the fresh session becomes live.
+- Treat combat turn transients as one owned bundle: gate flags, action ownership, pending skill selection, and enemy board-pressure state must reset together through a shared helper. Partial hand-written resets are how stale turn loops re-enter a clean session.
+- Diagnostic order for refresh-only turn bugs: compare fresh normal combat first, then inspect the dev-tool pause snapshot session identity, then verify refresh applies the shared turn baseline instead of restoring old `DeferAdvance`, `PendingSkillID`, or `ActionOwnerUID`.
