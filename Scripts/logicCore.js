@@ -2,15 +2,19 @@ import { getRuntime } from './runtimeAdapter.js';
 import { updateAllEntities } from './entities.js';
 
 let registered = false;
+let loopMode = null;
 let fallbackIntervalId = null;
+let runtimeTickHandler = null;
+let runtimeWithListener = null;
 let tickRuntime = null;
 let tickHandler = null;
+let fallbackIntervalId = null;
 
 export function startGameLoop() {
   const runtime = getRuntime();
   if (!runtime) {
     console.warn('startGameLoop: runtime not initialized; aborting');
-    return;
+    return false;
   }
   if (registered) return;
 
@@ -23,12 +27,17 @@ export function startGameLoop() {
     runtime.addEventListener('tick', tickHandler);
     registered = true;
     console.log('logicCore: tick listener registered');
+    return true;
   } else {
     if (fallbackIntervalId != null) return;
     console.log('logicCore: no runtime tick hook; using setInterval');
     fallbackIntervalId = setInterval(updateAllEntities, 1000 / 60);
     registered = true;
   }
+  tickRuntime = null;
+  tickHandler = null;
+  registered = false;
+  return stopped;
 }
 
 export function stopGameLoop() {

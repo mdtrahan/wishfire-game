@@ -250,3 +250,36 @@ test('queued layout requests preserve FIFO order', async () => {
     .map(e => `${e.payload.from}->${e.payload.to}`);
   assert.deepEqual(changedSequence, ['base->intro', 'intro->combat', 'combat->shop']);
 });
+
+test('core layouts allow AstralFlow transition to astralOverlay and back to combat', async () => {
+  resetLayoutStateSingletonForTests();
+
+  const eventBus = createEventBus();
+  const animationLayer = {
+    async playTransition() {
+      return undefined;
+    },
+  };
+
+  const combatState = {
+    turnQueue: [1, 2, 3],
+    currentActorIndex: 0,
+    gemInputState: { mode: 'idle', selectedGemIds: [], targetId: null, isRefillQueued: false },
+    acceptEvents: false,
+    inputEnabled: false,
+  };
+  const combatGateway = new CombatRuntimeGateway({ combatState, eventBus });
+  const layoutState = createLayoutStateSingleton({ eventBus, animationLayer, combatRuntimeGateway: combatGateway });
+  registerCoreLayouts(layoutState, { combatGateway });
+
+  await layoutState.activateInitialLayout('combat');
+  assert.equal(layoutState.getActiveLayoutId(), 'combat');
+
+  const toAstral = await layoutState.requestLayoutChange('astralOverlay', 'nav-astral-flow');
+  assert.equal(toAstral, true);
+  assert.equal(layoutState.getActiveLayoutId(), 'astralOverlay');
+
+  const backToCombat = await layoutState.requestLayoutChange('combat', 'overlay-close');
+  assert.equal(backToCombat, true);
+  assert.equal(layoutState.getActiveLayoutId(), 'combat');
+});

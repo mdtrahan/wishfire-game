@@ -254,6 +254,7 @@ function gemDebugLog(tag, payload) {
 const layoutHarnessEnabled = (() => {
   return HARNESS_MODE;
 })();
+let detachRuntimeInputListeners = null;
 
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
@@ -359,6 +360,19 @@ function createHarnessLayoutState({ eventBus, inputDomains, combatRuntimeGateway
   return {
     registerLayout(descriptor) {
       layouts.set(descriptor.id, descriptor);
+    },
+    hasLayout(layoutId) {
+      return layouts.has(layoutId);
+    },
+    canTransitionTo(targetLayoutId) {
+      const sourceLayout = activeLayoutId ? layouts.get(activeLayoutId) : null;
+      if (!layouts.has(targetLayoutId)) {
+        return { allowed: false, reason: 'target-unregistered', from: activeLayoutId, to: targetLayoutId };
+      }
+      if (sourceLayout && Array.isArray(sourceLayout.allowedTransitions) && !sourceLayout.allowedTransitions.includes(targetLayoutId)) {
+        return { allowed: false, reason: 'transition-forbidden', from: activeLayoutId, to: targetLayoutId };
+      }
+      return { allowed: true, reason: 'ok', from: activeLayoutId, to: targetLayoutId };
     },
     getActiveLayoutId() {
       return activeLayoutId;
@@ -1678,6 +1692,24 @@ const combatRuntimeGateway = new CombatRuntimeGateway({
   eventBus,
   layoutState: null,
   callFunctionWithContext,
+  getAuthoritativeTurnState() {
+    const g = (state && state.globals) ? state.globals : {};
+    return {
+      turnQueue: Array.isArray(g.TurnOrderArray) ? g.TurnOrderArray : [],
+      currentActorIndex: Number(g.CurrentTurnIndex || 0),
+      capturedAtTick: Number(g.time || 0),
+    };
+  },
+  applyAuthoritativeTurnState(turnState) {
+    const g = (state && state.globals) ? state.globals : {};
+    g.TurnOrderArray = Array.isArray(turnState.turnQueue) ? cloneJson(turnState.turnQueue) : [];
+    g.CurrentTurnIndex = Number(turnState.currentActorIndex || 0);
+    const active = g.TurnOrderArray[g.CurrentTurnIndex];
+    if (active && typeof active === 'object') {
+      if (active.uid != null) g.CurrentTurn = Number(active.uid || 0);
+      if (active.type != null) g.CurrentTurnType = Number(active.type || 0);
+    }
+  },
 });
 
 const CANONICAL_HERO_ROSTER = [
@@ -2597,6 +2629,7 @@ function initEntities(enemyRows, layoutInstances) {
   state.globals.DevToolEnemyCatalog = [...new Set(mappedEnemyData.map((row) => String(row?.name || row?.EnemyName || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   state.globals.EnemyData = mappedEnemyData;
   state.globals.CombatSessionId = Number(state.globals.CombatSessionId || 0) + 1;
+  resetBootstrapRngSession();
 
   const partyHP = [];
   const partyMaxHP = [];
@@ -2802,6 +2835,7 @@ function initEntities(enemyRows, layoutInstances) {
 // Create gem board with random colors (0-5: Hero1, Hero2, Heal, Buff, AOE, Energy)
 function createGemBoard(gridBounds = null, { immediateFill = false } = {}) {
   assertCombatLayoutDev('createGemBoard');
+  bootstrapDeterministicRefillPending = BOOTSTRAP_SEED != null;
   gameState.gems = [];
   gameState.grid = [];
   const g = boardGeometry;
@@ -2831,6 +2865,9 @@ function createGemBoard(gridBounds = null, { immediateFill = false } = {}) {
 
   gameState.selectedGems = [];
   gameState.selectionLocked = false;
+  if (gameState.bootstrapRng && gameState.bootstrapRng.enabled) {
+    gameState.bootstrapRng.gemInitRemaining = g.cols * g.rows;
+  }
   gameState.boardCreated = true;
   setGemArray(gameState.gems);
   state.globals.TapIndex = 0;
@@ -2866,7 +2903,7 @@ function randomGemFrame() {
   }
   const MAX_PURPLE_ON_BOARD = 3;
   const PURPLE_WEIGHT = 0.25;
-  const x = Math.floor(Math.random() * 1000);
+  const x = Math.floor(getGemSpawnRandom() * 1000);
   if (x === 998) return 6;
   const countPurple = () => (gameState.gems || []).reduce((n, g) => {
     const c = g && g.color != null ? g.color : (g ? g.elementIndex : null);
@@ -2875,7 +2912,7 @@ function randomGemFrame() {
   const pickByWeights = (weights) => {
     let total = 0;
     for (const w of weights) total += w;
-    let r = Math.random() * total;
+    let r = getGemSpawnRandom() * total;
     for (let i = 0; i < weights.length; i++) {
       r -= weights[i];
       if (r <= 0) return i;
@@ -2938,6 +2975,9 @@ function refillGemBoard(gridBounds = null) {
         Selected: 0,
         flashUntil: 0
       });
+      if (gameState.bootstrapRng && gameState.bootstrapRng.enabled && gameState.bootstrapRng.gemInitRemaining > 0) {
+        gameState.bootstrapRng.gemInitRemaining -= 1;
+      }
       gameState.grid[c][r] = gameState.gems[gameState.gems.length - 1].uid;
     }
   }
@@ -3000,7 +3040,7 @@ function getCellWorldPos(cellC, cellR) {
 }
 
 function pickYellowCasinoTarget() {
-  const idx = Math.floor(Math.random() * YELLOW_CASINO_TARGETS.length);
+  const idx = runtimeRandomIndex(YELLOW_CASINO_TARGETS.length);
   return YELLOW_CASINO_TARGETS[idx];
 }
 
@@ -3365,8 +3405,10 @@ function handleGemMatch(color) {
     g.MatchedColorValue = 0;
     g.IsAOEMatch = 0;
     g.SuppressChainUI = 0;
+    g.BlueGemConsumedCount = Math.max(0, Number((gameState.selectedGems || []).length));
     callFunctionWithContext(fnContext, 'UpdateChain', 2);
-    callFunctionWithContext(fnContext, 'ResolveGemAction', 2, actorUID, consumedBlue);
+    callFunctionWithContext(fnContext, 'ResolveGemAction', 2, actorUID);
+    g.BlueGemConsumedCount = 0;
     callFunctionWithContext(fnContext, 'DestroyGem');
     callFunctionWithContext(fnContext, 'ClearMatchState');
     syncGemsFromGlobals();
@@ -3922,10 +3964,13 @@ async function main(){
         if (needsBootstrap) {
           if (!hasRuntimeData) {
             console.log('[LayoutGuard] Combat bootstrap forcing asset init (missing runtime data)');
+            await beginLayout0Preload();
+            if (!layout0LoadState.ready) {
+              throw new Error('Layout 0 preload not ready; combat transition blocked');
+            }
           }
           state.globals.GamePhase = 'BOOTSTRAP';
           startupDebugLog('[INIT] Starting initialization...');
-          await loadC3ProjectAssets();
           prepareCombatSetupFromInstances(instances, gameState);
           freshCombatBootstrapped = true;
           COMBAT_BOOTSTRAP_COMPLETE = true;
@@ -4247,6 +4292,20 @@ async function main(){
         console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->2', trigger: 'astral-flow-click', blocked: 'active-layout-not-combat' });
         return;
       }
+      const transitionCheck = typeof layoutState.canTransitionTo === 'function'
+        ? layoutState.canTransitionTo('astralOverlay')
+        : { allowed: true, reason: 'unknown' };
+      if (!transitionCheck.allowed) {
+        console.log('[LAYOUT_PHASE1]', {
+          stage: 'entry',
+          transition: '1->2',
+          trigger: 'astral-flow-click',
+          blocked: transitionCheck.reason,
+          fallback: 'overlay-visible',
+        });
+        gameState.overlayVisible = true;
+        return;
+      }
       console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->2', trigger: 'astral-flow-click' });
       await layoutState.requestLayoutChange('idleFarmLayout', 'nav-astral-flow');
       return;
@@ -4297,6 +4356,11 @@ async function main(){
   let layoutOffsetX = 0;
   let layoutOffsetY = 0;
   let dpr = Math.max(1, window.devicePixelRatio || 1);
+  if (typeof detachRuntimeInputListeners === 'function') {
+    detachRuntimeInputListeners();
+    detachRuntimeInputListeners = null;
+  }
+  const runtimeListenerTeardowns = [];
 
   function resizeCanvas() {
     const pad = 16;
@@ -4315,9 +4379,11 @@ async function main(){
     layoutOffsetY = ((canvas.height / dpr) - layoutH * layoutScale) / 2;
   }
   resizeCanvas();
-  window.addEventListener('resize', () => {
+  const handleWindowResize = () => {
     resizeCanvas();
-  });
+  };
+  window.addEventListener('resize', handleWindowResize);
+  runtimeListenerTeardowns.push(() => window.removeEventListener('resize', handleWindowResize));
 
   // Map Construct world coords to canvas coords (preserve layout aspect/position)
   function worldToCanvas(wx, wy) {
@@ -8880,29 +8946,61 @@ function getStoryCardLiveLineState() {
   function drawWalletHUD() {
     if (!walletOut) return;
     const g = state.globals || {};
+    const astralFlow = Math.max(0, Number(g.AstralFlowWallet || 0));
     const wallet =
       g.TokenWallet ||
       g.tokenWallet ||
       g.WalletTokens ||
       g.walletTokens ||
       null;
+    const lines = ['Astral Wallet:', `Astral Flow: ${astralFlow}`, '', 'Wallet:'];
     if (!wallet || typeof wallet !== 'object') {
-      walletOut.textContent = 'Wallet:\n(empty)';
+      lines.push('(empty)');
+      walletOut.textContent = lines.join('\n');
       return;
     }
     const entries = Object.entries(wallet)
       .filter(([, v]) => v != null)
       .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
     if (entries.length === 0) {
-      walletOut.textContent = 'Wallet:\n(empty)';
+      lines.push('(empty)');
+      walletOut.textContent = lines.join('\n');
       return;
     }
     const total = entries.reduce((sum, [, v]) => sum + (Number(v) || 0), 0);
-    const lines = ['Wallet:', `Gold: ${Number(g.goldTotal || 0)}`, `Tokens: ${total}`];
+    lines.push(`Total: ${total}`);
     for (const [key, val] of entries) {
       lines.push(`${key}: ${val}`);
     }
-    walletOut.textContent = lines.join('\n');
+    return lines.join('\n');
+  }
+  function drawWalletHUD() {
+    if (!walletOut) return;
+    const g = state.globals || {};
+    const wallet =
+      g.TokenWallet ||
+      g.tokenWallet ||
+      g.WalletTokens ||
+      g.walletTokens ||
+      null;
+    walletOut.textContent = formatWalletText('Wallet', wallet);
+  }
+  function drawAstralWalletHUD() {
+    if (!astralWalletOut) return;
+    const g = state.globals || {};
+    const astralWallet =
+      g.AstralFlowWallet ||
+      g.astralFlowWallet ||
+      g.AstralWallet ||
+      g.astralWallet ||
+      null;
+    astralWalletOut.textContent = formatWalletText('Astral Flow Wallet', astralWallet);
+  }
+  function drawAstralWalletHUD() {
+    if (!astralWalletOut) return;
+    const g = state.globals || {};
+    const total = Math.max(0, Number(g.AstralFlowWallet || 0));
+    astralWalletOut.textContent = `Astral Flow Wallet:\nTotal: ${total}`;
   }
   function drawAstralWalletHUD() {
     if (!astralWalletOut) return;
@@ -9391,7 +9489,7 @@ function getStoryCardLiveLineState() {
   }
 
   // pointer handler for nav menu and overlay (more responsive than click)
-  canvas.addEventListener('pointerdown', (ev)=>{
+  const handlePointerDown = (ev) => {
     const rect = canvas.getBoundingClientRect();
     const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
 
@@ -10041,7 +10139,9 @@ function getStoryCardLiveLineState() {
         return;
       }
     }
-  }, { passive: true });
+  };
+  canvas.addEventListener('pointerdown', handlePointerDown, { passive: true });
+  runtimeListenerTeardowns.push(() => canvas.removeEventListener('pointerdown', handlePointerDown, { passive: true }));
 
   function handleGlobalKeydown(ev) {
     if (isDevToolingHotkey(ev)) {
@@ -10082,7 +10182,7 @@ function getStoryCardLiveLineState() {
   window.addEventListener('keydown', handleGlobalKeydown, true);
   document.addEventListener('keydown', handleGlobalKeydown, true);
 
-  canvas.addEventListener('pointermove', (ev) => {
+  const handlePointerMove = (ev) => {
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
       ? layoutState.getActiveLayoutId()
       : null;
@@ -10101,7 +10201,9 @@ function getStoryCardLiveLineState() {
     gameState.mapLayout.panX = Math.max(bounds.minX, Math.min(bounds.maxX, nextPanX));
     gameState.mapLayout.panY = 0;
     drawFrame();
-  });
+  };
+  canvas.addEventListener('pointermove', handlePointerMove);
+  runtimeListenerTeardowns.push(() => canvas.removeEventListener('pointermove', handlePointerMove));
 
   const finishMapDrag = (ev) => {
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
@@ -10116,6 +10218,15 @@ function getStoryCardLiveLineState() {
   };
   canvas.addEventListener('pointerup', finishMapDrag);
   canvas.addEventListener('pointercancel', finishMapDrag);
+  runtimeListenerTeardowns.push(() => canvas.removeEventListener('pointerup', finishMapDrag));
+  runtimeListenerTeardowns.push(() => canvas.removeEventListener('pointercancel', finishMapDrag));
+  detachRuntimeInputListeners = () => {
+    for (const teardown of runtimeListenerTeardowns.splice(0)) {
+      try {
+        teardown();
+      } catch {}
+    }
+  };
 
   // per-frame tick loop with animation cycling
   let frameCount = 0;
@@ -10197,6 +10308,10 @@ function getStoryCardLiveLineState() {
       startRefillBounce();
     }
     gameState.lastTurnPhase = phaseNow;
+    const boardFullNow = Array.isArray(gameState.gems) && gameState.gems.length === (boardGeometry.rows * boardGeometry.cols);
+    if (bootstrapDeterministicRefillPending && boardFullNow && !(gameState.refillBounce && gameState.refillBounce.active)) {
+      bootstrapDeterministicRefillPending = false;
+    }
     if (isGemDebugEnabled()) {
       const noRefillActive = !(gameState.refillBounce && gameState.refillBounce.active);
       const noSpinActive = !(gameState.yellowCasino && gameState.yellowCasino.active);
@@ -10339,6 +10454,7 @@ function getStoryCardLiveLineState() {
     updateIdleFarmEmissions(performance.now() / 1000);
     persistHeroGemProgressIfDirty();
     drawFrame();
+    drawAstralWalletHUD();
     requestAnimationFrame(tick);
   }
   tick();
@@ -10438,6 +10554,8 @@ function getStoryCardLiveLineState() {
           combatAcceptEvents: layoutHarnessEnabled && harnessCombatGateway
             ? harnessCombatGateway.canAcceptEvents()
             : true,
+          layout0Ready: !!layout0LoadState.ready,
+          layout0Failed: !!layout0LoadState.failed,
         },
         heroes: state.entities
           .filter(e => e.kind === 'hero')
