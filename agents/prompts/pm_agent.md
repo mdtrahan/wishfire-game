@@ -125,6 +125,8 @@ Return bead to `todo` or `blocked` with explicit clarification.
 
 Record failure patterns in `/agents/issues.md` if they reflect ambiguity or drift.
 
+For significant staged diffs, also confirm closeout evidence states whether `tools/prepare_commit_check.sh <bd-id>` succeeded and whether the staged diff was still the same prepared diff at review time.
+
 You approve work only when **criteria + evidence + scope compliance** are satisfied.
 
 ---

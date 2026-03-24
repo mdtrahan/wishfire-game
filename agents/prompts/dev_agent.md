@@ -200,6 +200,8 @@ Do not claim tests you did not run.
 
 Do not hide failures.
 
+For significant staged diffs, also record whether `tools/prepare_commit_check.sh <bd-id>` succeeded before closeout or commit.
+
 ---
 
 # SUBMIT FOR REVIEW

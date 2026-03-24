@@ -1,5 +1,20 @@
 # PM Status
 
+_Last updated: 2026-03-23_
+
+## Completed Beads
+- ORKA-6n7 (significant staged diffs now require fresh repo-owned commit-check metadata before commit; active tracked pre-commit hook enforces it and still defers hot-file scope validation to the hot-file lock)
+
+## Active Work
+- None.
+
+## Next Tasks
+- Rewrite `ORKA-njg` against the new commit-compliance seam so future hot-file regression packs can require artifact links without inventing a second lock path.
+
+## Known Issues
+- Existing older PM snapshots below predate the significant-diff commit guard and should not be read as the current commit-closeout policy.
+
+---
 _Last updated: 2026-03-07_
 
 ---

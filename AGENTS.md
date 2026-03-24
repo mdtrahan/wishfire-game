@@ -147,6 +147,7 @@
   - `Reason: <one line>`
   - `If YES: Commit Message: <type: summary bd-<id>>`
   - `If NO: Missing: <1-2 concrete items>`
+  - `If significant diff: Prepared: YES|NO via tools/prepare_commit_check.sh <bd-id>`
 - `qa handoff <bd-id>`:
   - `Test URL: <local/runtime url or artifact path>`
   - `Steps: <3 short deterministic steps>`

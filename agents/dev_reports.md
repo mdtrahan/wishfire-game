@@ -9,6 +9,14 @@
 
 ## Reports
 - (append newest report at top)
+- bead id: ORKA-6n7
+- summary of changes: Added a repo-owned significant-diff commit-compliance layer that writes `.beads/commit-check/<bd-id>.json`, auto-prepares hot-file scope when needed, and blocks commit through the active tracked pre-commit hook when prepared metadata is missing or stale. Also wired PM/dev closeout guidance to require explicit commit-prep evidence for significant diffs.
+- files modified: .beads/hooks/pre-commit; AGENTS.md; agents/prompts/dev_agent.md; agents/prompts/pm_agent.md; governance/execution/beads-process.md; tools/README.md; tools/commit_compliance.py; tools/enforce_commit_check.sh; tools/prepare_commit_check.sh; tools/prepare_hot_file_commit.sh; tools/test_commit_compliance.sh; agents/dev_reports.md; agents/pm_status.md
+- test evidence:
+  - `bash tools/test_commit_compliance.sh` -> PASS
+  - `bash -n .beads/hooks/pre-commit && bash -n .beads/hooks/commit-msg && bash -n tools/prepare_commit_check.sh && bash -n tools/prepare_hot_file_commit.sh && bash -n tools/enforce_commit_check.sh`
+  - `git config --get core.hooksPath` -> `.beads/hooks`
+- scope confirmation: confined to commit/closeout compliance tooling and guidance; no runtime, gameplay, or browser harness behavior changed.
 - bead id: ORKA-daa4 (reopen 2)
 - summary of changes: Corrected Double Attack from the wrong extra-turn scheduler behavior to the intended immediate free second strike. The proc now duplicates `HERO_SINGLE` immediately without extra gem selection, and the follow-up packet retargets to another living enemy if the original target dies before the second strike lands. Dev-tool toggle and side-panel proc monitor remain intact.
 - files modified: web-runner/modules/functionBank.js; Scripts/functionBank.js; web-runner/app.js; tests/extraTurnHarnessContract.test.js; .beads/open/ORKA-daa4.md; ai-memory/insights.md; agents/dev_reports.md; agents/pm_status.md; agents/issues.md

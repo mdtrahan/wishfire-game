@@ -59,6 +59,7 @@
   - `/agents/dev_reports.md` contains a scoped report
   - `/agents/pm_status.md` reflects the result
   - bug/regression beads update `/ai-memory/insights.md`
+- Significant staged diffs must have fresh commit-check metadata from `tools/prepare_commit_check.sh <bd-id>` before commit or closeout signoff.
 - If unrelated dirty changes remain in touched hot files, do not treat the lane as cleanly reviewable without explicitly calling out that risk.
 
 ## `bd` Write Confirmation Rule
@@ -75,13 +76,15 @@
 - PM:
   - shapes executable beads
   - rejects vague work
+  - confirms significant-diff commit prep when that guard applies
   - closes only with evidence
 - Dev:
   - implements one bead at a time
   - stays inside scope
+  - prepares significant staged diffs with the repo-owned commit-check helper before commit
   - reports exact tests and touched files
 - Review:
-  - checks acceptance, evidence, and scope compliance
+  - checks acceptance, evidence, scope compliance, and commit-prep evidence when required
   - rejects mixed-scope closeouts
 
 ## Anti-Patterns

@@ -27,6 +27,14 @@ if ! grep -q '"id"' /tmp/bd_precommit_inprogress.json; then
   exit 1
 fi
 
+# Enforce commit-compliance prep for significant staged diffs.
+if [ -x "tools/enforce_commit_check.sh" ]; then
+  tools/enforce_commit_check.sh
+else
+  echo "ERROR: Missing executable tools/enforce_commit_check.sh required by significant-diff commit policy." >&2
+  exit 1
+fi
+
 # Enforce hot-file lock + function-scope declarations.
 if [ -x "tools/enforce_hot_file_scope.sh" ]; then
   tools/enforce_hot_file_scope.sh
