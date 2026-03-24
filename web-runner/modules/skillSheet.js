@@ -76,6 +76,7 @@ export function ApplyPartyHeal(ctx, healAmount) {
 export function DoHeal(ctx, actorUID) {
   let heal = ctx.callFunction('CalculateHeal', actorUID);
   const g = getGlobals(ctx);
+  const healDidCrit = !!g.LastCalculatedHealCrit;
   if (g.ApplyChainToNextHeal === 1) {
     heal = Math.ceil(heal * (g.ChainMultiplier || 1));
     g.ApplyChainToNextHeal = 0;
@@ -91,7 +92,8 @@ export function DoHeal(ctx, actorUID) {
       totalHealRemaining: Math.max(1, Math.floor(heal)),
       firesEveryTicks: 1,
       nextFireTick: nowTick + 1,
-      sourceUID: actorUID
+      sourceUID: actorUID,
+      isCrit: healDidCrit
     });
     ctx.callFunction('LogCombat', `${actorName} applies Regen over time!`);
   } else {
@@ -113,7 +115,7 @@ export function DoHeal(ctx, actorUID) {
       const ratio = Math.max(0, Math.min(1, (g.PartyHP || 0) / Math.max(1, g.PartyMaxHP || 1)));
       const textX = left + barW * ratio;
       const textY = (barPos.y - barH * barPos.oy) + barH * 0.5;
-      ctx.callFunction('SpawnDamageText', totalHeal, textX, textY, 'heal', 'bar');
+      ctx.callFunction('SpawnDamageText', totalHeal, textX, textY, 'heal', 'bar', { isCrit: healDidCrit });
     }
     ctx.callFunction('LogCombat', `${actorName} heals party for ${totalHeal}`);
   }

@@ -84,6 +84,10 @@ The goal statement must:
 
 If the bead is not meaningfully player-facing, explicitly say so and recommend deterministic validation instead of human QA.
 
+This step is mandatory.
+
+If the PM flow skips the goal statement, the lane is non-compliant and must be corrected before assignment or approval continues.
+
 ---
 
 ## Step 2 — Maintain Work Flow
@@ -118,6 +122,12 @@ Instead record the problem in `/agents/issues.md`.
 
 Every bead must be implementation‑ready.
 
+If PM claims, activates, or temporarily selects a bead for triage and then does not actually hand it off for execution in that same cycle:
+
+- restore the bead to its truthful live `bd` status before ending the cycle
+- record a short note when the temporary activation could create queue confusion
+- do not leave “inspection only” or “maybe next” beads orphaned in `in_progress`
+
 ---
 
 ## Step 3 — Review Completed Work
@@ -126,10 +136,17 @@ For beads marked `review`:
 
 Validate the following:
 
-1. Acceptance criteria were satisfied.
-2. `/agents/dev_reports.md` contains a report.
-3. Tests were executed and recorded.
-4. Implementation stayed within bead scope.
+1. The bead goal was stated plainly in PM flow.
+2. Acceptance criteria were satisfied.
+3. `/agents/dev_reports.md` contains a report.
+4. Tests were executed and recorded.
+5. Implementation stayed within bead scope.
+
+If the bead used the browser discovery lane:
+
+6. The report still keeps the shipping lane as the pass/fail authority.
+7. Discovery-lane results are clearly labeled as `found more`, `found same`, or `found less`.
+8. Any promoted lesson is a repo-owned improvement, not a second workflow authority.
 
 If acceptable:
 
@@ -138,6 +155,13 @@ Mark bead as `done`.
 If not acceptable:
 
 Return bead to `todo` or `blocked` with explicit clarification.
+
+If PM review proves the bead is not actually being executed in this cycle:
+
+- close it on evidence, or
+- return it to `open`/`blocked` immediately
+
+Do not leave proof-or-close lanes active without a real owner/action path.
 
 Record failure patterns in `/agents/issues.md` if they reflect ambiguity or drift.
 
@@ -166,6 +190,14 @@ Rules:
 - Move superseded snapshots to `/agents/archive/pm_status_archive.md` instead of appending rolling history here
 
 This file exists for human visibility only.
+
+It must also truthfully reflect the currently active lane set. Do not leave a bead listed as active in `/agents/pm_status.md` after restoring it to `open`.
+
+When the browser discovery lane is used, keep PM notes concise:
+
+- whether the discovery lane added real signal
+- whether it should be repeated on similar beads
+- whether the result should be promoted into repo-owned QA docs or scripts
 
 ---
 

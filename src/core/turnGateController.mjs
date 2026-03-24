@@ -142,9 +142,10 @@ export function createRefillStartGate(current = {}) {
 
 export function createRefillCompleteGate(current = {}) {
   const base = normalizeTurnGateState(current);
+  const handoffPending = !!base.DeferAdvance && !!base.AdvanceAfterAction;
   return {
     ...base,
-    CanPickGems: 1,
+    CanPickGems: handoffPending ? 0 : 1,
     IsPlayerBusy: 0,
   };
 }

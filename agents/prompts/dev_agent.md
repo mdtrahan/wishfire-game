@@ -73,6 +73,16 @@ Read it completely and identify:
 - Scope boundaries
 - Explicit non‑goals
 
+Then restate the bead purpose in one short plain-language sentence before claiming it.
+
+That statement must:
+
+- describe the behavior being changed or verified plainly
+- avoid internal shorthand when a clearer phrase exists
+- make it obvious whether runtime QA or deterministic validation should dominate
+
+If the dev flow skips this statement, the lane is non-compliant and should be corrected before implementation continues.
+
 If requirements are unclear or contradictory:
 
 Do not claim the bead.
@@ -84,6 +94,12 @@ If implementable:
 Set status to:
 
 `in_progress`
+
+If you claim a bead and then discover execution will not actually start in this cycle:
+
+- return the bead to truthful live `bd` state before ending the cycle
+- record the reason when the temporary claim could confuse PM or the next selector
+- do not leave a claimed bead orphaned just because it looked like the next lane for a moment
 
 ---
 
@@ -127,6 +143,18 @@ Stop immediately.
 
 Record the conflict in `/agents/issues.md`.
 
+## ROLE-SHAPED SELF-CRITIQUE
+
+Before submission, run one short self-critique pass using these lenses:
+
+- planner lens: did the change stay inside the bead goal, acceptance, and non-goals
+- reviewer lens: did the change touch mirrored logic, hot-file seams, or browser authority in a way the bead did not authorize
+- QA lens: what is the most likely player-visible failure still left after the current checks
+
+Use these lenses to tighten the implementation and test plan.
+
+Do not turn them into a second workflow system.
+
 ---
 
 # MULTI‑PHASE TESTING
@@ -144,6 +172,23 @@ Run unit tests covering affected modules.
 ## Phase 3 — Feature Tests
 
 Validate functionality against bead acceptance criteria.
+
+## Discovery Lane For Browser QA
+
+When the bead is player-facing runtime work and browser diagnosis is flaky, interaction-heavy, or hard to classify:
+
+- run the normal shipping lane first when possible
+- optionally run the browser discovery lane defined in `/governance/qa/browser-discovery-lane-pilot.md`
+- keep the discovery lane bounded to one scenario for the active bead
+- treat the discovery lane as diagnostic only; it does not replace shipping-lane evidence
+
+Discovery-lane outputs should answer:
+
+- did it find more, the same, or less signal than the shipping lane
+- did it reduce time-to-understand the failure
+- did it produce a reusable checklist, pacing rule, or failure classification
+
+If the discovery lane adds noise without new signal, stop using it for that bead.
 
 ## Phase 4 — Regression Tests
 
@@ -205,6 +250,7 @@ After successful implementation append to `/agents/dev_reports.md`:
 - results
 - limitations if any
 - confirmation scope remained within bead
+- if discovery lane was used, include compare result and lightweight pilot signals
 
 Keep `/agents/dev_reports.md` concise and limited to current/recent review context.
 Move superseded older reports to `/agents/archive/dev_reports_archive.md` instead of letting the active file grow indefinitely.

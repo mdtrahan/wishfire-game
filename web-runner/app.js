@@ -39,6 +39,11 @@ import {
   updateIdleFarmEmissionState,
   updateIdleFarmSessionState,
 } from './src/core/idleFarmRuntime.mjs';
+import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
+import { createDamageNumber } from './src/core/damageNumberAnimation.mjs';
+import { createHealBloom } from './src/core/healBloomAnimation.mjs';
+import { updateHP as updateAnimatedHP } from './src/core/hpBarAnimation.mjs';
+import { createGoldCollectAnimation } from './src/core/goldCollectAnimation.mjs';
 
 const out = document.getElementById('output');
 const gemCounterOut = document.getElementById('gem-counter-output');
@@ -46,6 +51,15 @@ const walletOut = document.getElementById('wallet-output');
 const astralWalletOut = document.getElementById('astral-wallet-output');
 const canvas = document.getElementById('view');
 const ctx = canvas.getContext('2d');
+const ENEMY_DEATH_DEBUG = typeof window !== 'undefined'
+  && new URLSearchParams(window.location.search).has('enemy_death_debug');
+let damageNumberLayer = null;
+const partyHpBarAnim = {
+  front: { percent: 100, scaleY: 1 },
+  lag: { percent: 100 },
+  lastTargetPercent: 100,
+  hotOverlayUntil: 0,
+};
 const HARNESS_MODE = typeof window !== 'undefined' && window.location.search.includes('harness=true');
 const DEBUG_LAYOUT = (() => {
   let enabled = false;
@@ -169,7 +183,10 @@ function getYellowSequenceCompletionIntent(current = state.globals, options = un
 function canResolveDeferredAdvance({ hasEmpty = false, enemyLineClearPressureActive = false } = {}) {
   const refill = gameState.refillBounce;
   const refillActive = !!(refill && refill.active);
-  const refillPending = !!hasEmpty && !refillActive && !enemyLineClearPressureActive;
+  const boardFillActive = !!state.globals.BoardFillActive;
+  const refillPending =
+    boardFillActive ||
+    (!!hasEmpty && !refillActive && !enemyLineClearPressureActive);
   const textHold = !!state.globals.TextAnimating;
   const pendingSelect = state.globals.TurnPhase === 1 && !!state.globals.PendingSkillID;
   const mergeInFlight = !!(gameState.gemMergeFx && gameState.gemMergeFx.active);
@@ -180,6 +197,7 @@ function canResolveDeferredAdvance({ hasEmpty = false, enemyLineClearPressureAct
   const ownerOk = !ownerUID || ownerUID === currentUID;
   return {
     refillActive,
+    boardFillActive,
     refillPending,
     textHold,
     pendingSelect,
@@ -191,6 +209,134 @@ function canResolveDeferredAdvance({ hasEmpty = false, enemyLineClearPressureAct
     ownerOk,
     ok: !refillPending && !textHold && !blockedPhase && ownerOk,
   };
+}
+
+function hasConsumedGemActionThisTurn() {
+  const currentTurnUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
+  const currentTurnSerial = Number(state.globals.TurnSerial || 0);
+  return (
+    currentTurnUID > 0 &&
+    currentTurnSerial > 0 &&
+    Number(state.globals.LastGemActionActorUID || 0) === currentTurnUID &&
+    Number(state.globals.LastGemActionTurnSerial || 0) === currentTurnSerial
+  );
+}
+
+function isHeroGemInputWindowOpen() {
+  return (
+    state.globals.GamePhase === 'RUNTIME' &&
+    callFunctionWithContext(fnContext, 'GetCurrentType') === 0 &&
+    state.globals.TurnPhase === 0 &&
+    state.globals.CanPickGems === true &&
+    state.globals.IsPlayerBusy === 0 &&
+    !state.globals.PendingSkillID &&
+    !state.globals.BoardFillActive &&
+    !state.globals.ActionInProgress &&
+    !state.globals.DeferAdvance &&
+    !(gameState.refillBounce && gameState.refillBounce.active) &&
+    !(gameState.yellowCasino && gameState.yellowCasino.active) &&
+    !hasConsumedGemActionThisTurn()
+  );
+}
+
+function ensureDamageNumberLayer() {
+  if (damageNumberLayer || typeof document === 'undefined' || !canvas) return damageNumberLayer;
+  const layer = document.createElement('div');
+  layer.id = 'orka-damage-number-layer';
+  layer.style.position = 'fixed';
+  layer.style.pointerEvents = 'none';
+  layer.style.left = '0px';
+  layer.style.top = '0px';
+  layer.style.width = '0px';
+  layer.style.height = '0px';
+  layer.style.zIndex = '50';
+  document.body.appendChild(layer);
+  damageNumberLayer = layer;
+  return damageNumberLayer;
+}
+
+function lerpChannel(a, b, t) {
+  return Math.round(a + (b - a) * t);
+}
+
+function toRgbString(r, g, b) {
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+function getPartyHpFrontColor(ratio) {
+  const clamped = Math.max(0, Math.min(1, Number(ratio || 0)));
+  if (clamped >= 0.4) {
+    const t = Math.max(0, Math.min(1, (clamped - 0.4) / 0.6));
+    return toRgbString(
+      lerpChannel(230, 11, t),
+      lerpChannel(210, 215, t),
+      lerpChannel(60, 70, t),
+    );
+  }
+  if (clamped >= 0.1) {
+    const t = Math.max(0, Math.min(1, (clamped - 0.1) / 0.3));
+    return toRgbString(
+      lerpChannel(220, 230, t),
+      lerpChannel(48, 210, t),
+      lerpChannel(48, 60, t),
+    );
+  }
+  return '#dc3030';
+}
+
+function syncDamageNumberLayerBounds() {
+  if (!damageNumberLayer || !canvas || typeof canvas.getBoundingClientRect !== 'function') return;
+  const rect = canvas.getBoundingClientRect();
+  damageNumberLayer.style.left = `${rect.left}px`;
+  damageNumberLayer.style.top = `${rect.top}px`;
+  damageNumberLayer.style.width = `${rect.width}px`;
+  damageNumberLayer.style.height = `${rect.height}px`;
+}
+
+function spawnPendingDamageNumbers(projectToCanvas = null) {
+  const texts = state.globals.DamageTexts || [];
+  if (!texts.length || typeof projectToCanvas !== 'function') return;
+  ensureDamageNumberLayer();
+  syncDamageNumberLayerBounds();
+  gameState.healBlooms = Array.isArray(gameState.healBlooms) ? gameState.healBlooms : [];
+  for (const d of texts) {
+    if (!d || d.domSpawned) continue;
+    const xOffset = d.targetKind === 'hero' ? -10 : 10;
+    const pos = projectToCanvas((d.x || 0) + xOffset, d.baseY != null ? d.baseY : (d.y || 0));
+    const isCrit = !!d.isCrit;
+    const text = d.targetKind === 'bar'
+      ? formatDamageValue({ value: d.amount, type: 'heal', isCrit })
+      : formatDamageValue({ value: d.amount, type: d.kind === 'heal' ? 'heal' : 'damage', isCrit });
+    d.domSpawned = true;
+    d.domAnimation = createDamageNumber({
+      text,
+      x: pos.x,
+      y: pos.y,
+      kind: d.kind === 'heal' ? 'heal' : 'damage',
+      targetKind: d.targetKind || null,
+      isCrit,
+      container: damageNumberLayer,
+    });
+    if (d.kind === 'heal' && d.targetKind === 'hero' && !d.healBloomSpawned) {
+      d.healBloomSpawned = true;
+      d.healBloomAnimation = createHealBloom({
+        x: d.x,
+        y: d.baseY != null ? d.baseY : d.y,
+      });
+      gameState.healBlooms.push(d.healBloomAnimation);
+    } else if (d.kind === 'heal' && d.targetKind === 'bar' && !d.healBloomSpawned) {
+      d.healBloomSpawned = true;
+      const heroPositions = Array.isArray(state.globals.HeroIconPosByIndex) ? state.globals.HeroIconPosByIndex : [];
+      for (const pos of heroPositions) {
+        if (!pos) continue;
+        const bloom = createHealBloom({
+          x: Number(pos.x || 0),
+          y: Number(pos.y || 0),
+        });
+        if (bloom) gameState.healBlooms.push(bloom);
+      }
+    }
+  }
 }
 const RUNTIME_FINGERPRINT = (() => {
   const source = (typeof window !== 'undefined' && window.__ORKA_RUNTIME_FINGERPRINT__)
@@ -447,6 +593,108 @@ function createHarnessLayoutState({ eventBus, inputDomains, combatRuntimeGateway
 function getHeroUIDByIndex(idx) {
   const hero = state.entities.find(e => e.kind === 'hero' && (e.heroDisplaySlot === idx || e.heroIndex === idx));
   return hero ? hero.uid : 0;
+}
+
+const BOOTSTRAP_RNG_BASE_SEED = 20260223;
+let bootstrapDeterministicRefillPending = false;
+
+function createBootstrapSeededRng(seed) {
+  let stateSeed = (Number(seed) >>> 0);
+  if (!stateSeed) stateSeed = 1;
+  return () => {
+    stateSeed = ((stateSeed * 1664525) + 1013904223) >>> 0;
+    return stateSeed / 4294967296;
+  };
+}
+
+function getBootstrapDeterminismConfig() {
+  if (typeof window === 'undefined') {
+    return { enabled: false, baseSeed: BOOTSTRAP_RNG_BASE_SEED, source: 'no-window' };
+  }
+  const params = new URLSearchParams(window.location.search);
+  const explicitRandom = params.has('bootstrap_random') && params.get('bootstrap_random') !== '0';
+  if (explicitRandom) {
+    return { enabled: false, baseSeed: BOOTSTRAP_RNG_BASE_SEED, source: 'bootstrap-random' };
+  }
+  const seedRaw = params.get('bootstrap_seed');
+  const hasExplicitSeed = seedRaw != null && seedRaw !== '';
+  const explicitSeed = hasExplicitSeed ? Number(seedRaw) : NaN;
+  const devDeterministic =
+    params.has('devtest') ||
+    params.get('devtest') === 'true' ||
+    params.has('debug_gems') ||
+    params.get('debug_gems') === 'true' ||
+    params.has('bootstrap_deterministic');
+  if (!hasExplicitSeed && !devDeterministic) {
+    return { enabled: false, baseSeed: BOOTSTRAP_RNG_BASE_SEED, source: 'disabled' };
+  }
+  const baseSeed = Number.isFinite(explicitSeed)
+    ? (explicitSeed >>> 0)
+    : BOOTSTRAP_RNG_BASE_SEED;
+  return {
+    enabled: true,
+    baseSeed: baseSeed || BOOTSTRAP_RNG_BASE_SEED,
+    source: hasExplicitSeed ? 'bootstrap-seed' : 'dev-deterministic',
+  };
+}
+
+function resetBootstrapRngSession() {
+  const config = getBootstrapDeterminismConfig();
+  const sessionId = Number(state.globals.CombatSessionId || 0) >>> 0;
+  if (!config.enabled) {
+    gameState.bootstrapRng = {
+      enabled: false,
+      source: config.source,
+      seed: 0,
+      calls: 0,
+      random: Math.random,
+      gemInitRemaining: 0,
+    };
+    state.globals.BootstrapDeterministic = 0;
+    state.globals.BootstrapSeed = 0;
+    state.globals.BootstrapSeedSource = config.source;
+    return;
+  }
+  const mixedSeed = (config.baseSeed ^ ((sessionId * 2654435761) >>> 0)) >>> 0;
+  const seed = mixedSeed || config.baseSeed || BOOTSTRAP_RNG_BASE_SEED;
+  gameState.bootstrapRng = {
+    enabled: true,
+    source: config.source,
+    seed,
+    calls: 0,
+    random: createBootstrapSeededRng(seed),
+    gemInitRemaining: 0,
+  };
+  state.globals.BootstrapDeterministic = 1;
+  state.globals.BootstrapSeed = seed;
+  state.globals.BootstrapSeedSource = config.source;
+}
+
+function nextBootstrapRandom(tag = '') {
+  const runtimeRng = gameState.bootstrapRng;
+  if (!runtimeRng || !runtimeRng.enabled || typeof runtimeRng.random !== 'function') {
+    return Math.random();
+  }
+  const value = runtimeRng.random();
+  runtimeRng.calls = Number(runtimeRng.calls || 0) + 1;
+  if (runtimeRng.calls <= 6) {
+    console.log('[BOOTSTRAP_RNG]', {
+      seed: runtimeRng.seed,
+      source: runtimeRng.source,
+      call: runtimeRng.calls,
+      tag,
+      value: Number(value.toFixed(8)),
+    });
+  }
+  return value;
+}
+
+function getGemSpawnRandom() {
+  const runtimeRng = gameState.bootstrapRng;
+  if (runtimeRng && runtimeRng.enabled && Number(runtimeRng.gemInitRemaining || 0) > 0) {
+    return nextBootstrapRandom('gem-init');
+  }
+  return Math.random();
 }
 
 // simple inline game state (could import from gameLogic.js if module support added)
@@ -866,6 +1114,9 @@ const gameState = {
     progress: 0,
   },
 };
+
+state.globals = state.globals || {};
+state.globals.EnemyDeathDebug = ENEMY_DEATH_DEBUG ? 1 : 0;
 
 function createDefaultDevToolingConfig() {
   return {
@@ -1404,7 +1655,7 @@ function ensureDevToolingModal() {
     </div>
     <div style="display:flex;gap:8px;margin-top:14px;">
       <button type="button" data-devtool-apply style="border:1px solid #14532d;background:#1f8f4a;color:#fff;padding:8px 12px;border-radius:8px;font-weight:800;cursor:pointer;">Apply</button>
-      <button type="button" data-devtool-refresh style="border:1px solid #475569;background:#fff;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Save Staged</button>
+      <button type="button" data-devtool-restart style="border:1px solid #475569;background:#fff;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Restart</button>
       <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Run Idle Mode</button>
     </div>
     <pre data-devtool-status style="margin:14px 0 0;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff9ee;white-space:pre-wrap;"></pre>
@@ -1436,7 +1687,7 @@ function ensureDevToolingModal() {
     launcher,
     close: panel.querySelector('[data-devtool-close]'),
     apply: panel.querySelector('[data-devtool-apply]'),
-    refresh: panel.querySelector('[data-devtool-refresh]'),
+    restart: panel.querySelector('[data-devtool-restart]'),
     autoplay: panel.querySelector('[data-devtool-autoplay]'),
     heroSlots: Array.from(panel.querySelectorAll('[data-devtool-hero-slot]')),
     enemySlots: Array.from(panel.querySelectorAll('[data-devtool-enemy-slot]')),
@@ -1450,8 +1701,12 @@ function ensureDevToolingModal() {
   };
   devToolingDom.launcher.addEventListener('click', () => toggleDevToolingModal(true));
   devToolingDom.close.addEventListener('click', () => toggleDevToolingModal(false));
-  devToolingDom.refresh.addEventListener('click', () => applyDevToolingConfig(readDevToolingDomConfigPatch(), { closeModal: false }));
   devToolingDom.apply.addEventListener('click', () => applyDevToolingConfig(readDevToolingDomConfigPatch(), { closeModal: true }));
+  devToolingDom.restart.addEventListener('click', async () => {
+    if (typeof devToolingRefreshHandler === 'function') {
+      await devToolingRefreshHandler({ forceCombat: false, resetGame: true });
+    }
+  });
   devToolingDom.autoplay.addEventListener('click', async () => {
     if (state.globals.DevAutoplayActive) {
       state.globals.DevAutoplayStopRequested = 1;
@@ -1896,7 +2151,7 @@ function buildHeroSkillDescriptionLines(hero, skillState) {
   if (key === 'skill1') {
     if (heroName === 'Kojonn') {
       return [
-        `Green match: blight over time on all enemies.`,
+        `Green match: Faze blight over time on all enemies.`,
         `Rank ${rank}/${maxRank}  Next Cost ${nextCost} SP`,
         `Status ${status}`,
       ];
@@ -2835,7 +3090,7 @@ function initEntities(enemyRows, layoutInstances) {
 // Create gem board with random colors (0-5: Hero1, Hero2, Heal, Buff, AOE, Energy)
 function createGemBoard(gridBounds = null, { immediateFill = false } = {}) {
   assertCombatLayoutDev('createGemBoard');
-  bootstrapDeterministicRefillPending = BOOTSTRAP_SEED != null;
+  bootstrapDeterministicRefillPending = !!(gameState.bootstrapRng && gameState.bootstrapRng.enabled);
   gameState.gems = [];
   gameState.grid = [];
   const g = boardGeometry;
@@ -3222,6 +3477,7 @@ function startRefillBounce(speedScale = 1) {
     state.globals.BoardFillActive = 1;
     applyTurnGateIntent(createRefillStartGate);
   } else {
+    state.globals.BoardFillActive = 0;
     gemDebugLog('[FILL_SKIP]', { stage: 'refill-bounce-start', reason: 'not-needed' });
   }
 }
@@ -3304,7 +3560,7 @@ function getGoldLabelTargetWorld() {
   return getInstanceWorldCenter('Text_Gold');
 }
 
-function startGemMergeFx({ target = null, scaleOut = true, startScale = 1, sourceItems = null } = {}) {
+function startGemMergeFx({ target = null, scaleOut = true, startScale = 1, sourceItems = null, mode = 'default', projectToCanvas = null } = {}) {
   const now = state.globals.time || 0;
   const fromExplicit = Array.isArray(sourceItems) && sourceItems.length > 0
     ? sourceItems
@@ -3321,12 +3577,35 @@ function startGemMergeFx({ target = null, scaleOut = true, startScale = 1, sourc
       color: Number(item.color ?? item.elementIndex ?? 0),
     }));
   if (!items.length) return;
+  let animation = null;
+  if (
+    mode === 'gold_collect' &&
+    typeof projectToCanvas === 'function' &&
+    target &&
+    Number.isFinite(target.x) &&
+    Number.isFinite(target.y)
+  ) {
+    const targetPos = projectToCanvas(target.x, target.y);
+    animation = createGoldCollectAnimation({
+      items: items.map((item) => {
+        const pos = projectToCanvas(item.x, item.y);
+        return {
+          x: pos.x,
+          y: pos.y,
+          frameIndex: (item.color ?? 0) % 8,
+        };
+      }),
+      target: targetPos,
+    });
+  }
   gameState.gemMergeFx = {
     active: true,
     startAt: now,
     duration: 0.28,
     items,
     target,
+    mode,
+    animation,
     scaleOut: !!scaleOut,
     startScale: Number.isFinite(Number(startScale)) ? Math.max(0.05, Number(startScale)) : 1,
     doneAt: null,
@@ -3366,6 +3645,8 @@ function handleGemMatch(color) {
   });
 
   const actorUID = callFunctionWithContext(fnContext, 'GetCurrentTurn') || getHeroUIDByIndex(gameState.selectedHero) || gameState.selectedHero;
+  g.LastGemActionActorUID = Number(actorUID || 0);
+  g.LastGemActionTurnSerial = Number(g.TurnSerial || 0);
   beginTask011ActionCycle(color, actorUID);
 
   const clearLocalSelection = () => {
@@ -4293,7 +4574,7 @@ async function main(){
         return;
       }
       const transitionCheck = typeof layoutState.canTransitionTo === 'function'
-        ? layoutState.canTransitionTo('astralOverlay')
+        ? layoutState.canTransitionTo('idleFarmLayout')
         : { allowed: true, reason: 'unknown' };
       if (!transitionCheck.allowed) {
         console.log('[LAYOUT_PHASE1]', {
@@ -6485,15 +6766,11 @@ async function main(){
             state.globals.SuppressHeroHealText = prevHero;
             const afterHP = state.globals.PartyHP || 0;
             const actualHeal = Math.max(0, afterHP - beforeHP);
-            const barPos = state.globals.PartyHPBarPosWorld;
-            if (actualHeal > 0 && barPos && barPos.w > 0 && barPos.h > 0) {
-              const left = barPos.x - barPos.w * barPos.ox;
-              const barW = barPos.w;
-              const barH = barPos.h;
-              const ratio = Math.max(0, Math.min(1, (state.globals.PartyHP || 0) / Math.max(1, state.globals.PartyMaxHP || 1)));
-              const textX = left + barW * ratio;
-              const textY = (barPos.y - barH * barPos.oy) + barH * 0.5;
-              callFunctionWithContext(fnContext, 'SpawnDamageText', actualHeal, textX, textY, 'heal', 'bar');
+            if (actualHeal > 0) {
+              partyHpBarAnim.hotOverlayUntil = Math.max(
+                Number(partyHpBarAnim.hotOverlayUntil || 0),
+                Number(state.globals.time || 0) + 0.45,
+              );
             }
             regen.remainingFires -= 1;
             regen.nextFireTick = (regen.nextFireTick || tickNow) + (regen.firesEveryTicks || 1);
@@ -6539,7 +6816,9 @@ async function main(){
             }
             state.globals.NextHitFlashTone = 'purple';
             state.globals.NextDamageTextKind = 'dot';
-            callFunctionWithContext(fnContext, 'ApplyDamageToTarget', dot.targetUID, dmg);
+            callFunctionWithContext(fnContext, 'ApplyDamageToTarget', dot.targetUID, dmg, {
+              isCrit: !!dot.isCrit || Number(dot.powerAmpMultiplier || 0) > 0,
+            });
             dot.remainingFires -= 1;
             dot.nextFireTick = (dot.nextFireTick || tickNow) + (dot.firesEveryTicks || 1);
             if (dot.remainingFires <= 0) {
@@ -6810,6 +7089,8 @@ async function main(){
                 scaleOut: false,
                 startScale: 1.5,
                 sourceItems: mergeSources,
+                mode: 'gold_collect',
+                projectToCanvas: worldToCanvas,
               });
               if (gameState.gemMergeFx && gameState.gemMergeFx.active) {
                 gameState.gemMergeFx.goldAward = Math.max(0, Number(casino.pendingGoldAward || 0));
@@ -7110,11 +7391,21 @@ async function main(){
           const initialDotDamage = Math.max(1, Math.floor(totalDotDamage / totalTicks) + ((totalDotDamage % totalTicks) > 0 ? 1 : 0));
           state.globals.NextHitFlashTone = 'purple';
           state.globals.NextDamageTextKind = 'dot';
-          callFunctionWithContext(fnContext, 'ApplyDamageToTarget', hit.targetUID, initialDotDamage);
+          const overTimeCrit = !!hit.didCrit || Number(hit.powerAmpMultiplier || 0) > 0;
+          callFunctionWithContext(fnContext, 'ApplyDamageToTarget', hit.targetUID, initialDotDamage, {
+            isCrit: overTimeCrit,
+          });
           const enemyAfterApply = callFunctionWithContext(fnContext, 'GetActorByUID', hit.targetUID);
           const remainingDotDamage = Math.max(0, totalDotDamage - initialDotDamage);
           if (enemyAfterApply && Number(enemyAfterApply.hp || 0) > 0 && remainingDotDamage > 0) {
-            callFunctionWithContext(fnContext, 'QueueEnemyDamageOverTime', hit.heroUID, hit.targetUID, remainingDotDamage, { totalTicks: totalTicks - 1, firesEveryTicks: 1, startAfterTicks: 1, effectName: 'Blight' });
+            callFunctionWithContext(fnContext, 'QueueEnemyDamageOverTime', hit.heroUID, hit.targetUID, remainingDotDamage, {
+              totalTicks: totalTicks - 1,
+              firesEveryTicks: 1,
+              startAfterTicks: 1,
+              effectName: 'Blight',
+              isCrit: overTimeCrit,
+              powerAmpMultiplier: Number(hit.powerAmpMultiplier || 0),
+            });
           }
           pending.splice(i, 1);
           continue;
@@ -7171,7 +7462,9 @@ async function main(){
             `base=${hit.dmg} amp=${ampMult} final=${finalDmg} active=${ampMult > 0 ? 1 : 0} consume=${hit.consumePowerAmp ? 1 : 0} lifecycle=${Number(hit.powerAmpLifecycleId || 0)}`
           );
         }
-        callFunctionWithContext(fnContext, 'ApplyDamageToTarget', hit.targetUID, finalDmg);
+        callFunctionWithContext(fnContext, 'ApplyDamageToTarget', hit.targetUID, finalDmg, {
+          isCrit: !!hit.didCrit || ampMult > 0,
+        });
         if (hit.msg) {
           if (ampMult > 0) {
             const msg = String(hit.msg).replace(/ for \d+!$/, ` for ${finalDmg}!`);
@@ -7215,6 +7508,7 @@ async function main(){
     }
     const animEndAt = state.globals.TextAnimEndAt || 0;
     state.globals.TextAnimating = (dmgTexts.length > 0 || (state.globals.time || 0) < animEndAt) ? 1 : 0;
+    spawnPendingDamageNumbers(worldToCanvas);
     // Enemy action state machine (advance -> act -> retreat -> done)
         const enemyAction = state.globals.EnemyAction;
     if (enemyAction && enemyAction.active) {
@@ -8141,6 +8435,33 @@ async function main(){
     if (gameState.gemMergeFx && gameState.gemMergeFx.active) {
       const merge = gameState.gemMergeFx;
       const nowTime = state.globals.time || 0;
+      if (merge.mode === 'gold_collect' && merge.animation) {
+        const baseSize = boardGeometry.cellSize * layoutScale * 0.5;
+        for (const item of merge.animation.items || []) {
+          const gemImg = gemFrameImages[Number(item.frameIndex || 0) % 8];
+          if (!gemImg) continue;
+          const w = baseSize * Math.max(0.05, Number(item.scale || 1));
+          const h = baseSize * Math.max(0.05, Number(item.scale || 1));
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, Number(item.opacity || 0));
+          ctx.drawImage(gemImg, Number(item.x || 0) - w * 0.5, Number(item.y || 0) - h * 0.5, w, h);
+          ctx.restore();
+        }
+        const allDone = !(merge.animation.items || []).some((item) => Number(item.opacity || 0) > 0.001);
+        if (allDone) {
+          const goldAward = Math.max(0, Number(merge.goldAward || 0));
+          if (goldAward > 0) {
+            state.globals.goldTotal = Number(state.globals.goldTotal || 0) + goldAward;
+            merge.goldAward = 0;
+          }
+          merge.active = false;
+          merge.doneAt = nowTime;
+          if (merge.releaseGate) {
+            applyTurnGateIntent(getYellowSequenceCompletionIntent, merge.releaseGate);
+            merge.releaseGate = null;
+          }
+        }
+      } else {
       const tRaw = merge.duration > 0 ? (nowTime - merge.startAt) / merge.duration : 1;
       const t = Math.max(0, Math.min(1, tRaw));
       const e = t * t;
@@ -8190,6 +8511,7 @@ async function main(){
           merge.releaseGate = null;
         }
       }
+      }
     }
 
     // Party HP progress bar (use PartyHP_Bar instance)
@@ -8207,14 +8529,48 @@ async function main(){
       }
       const maxHP = Math.max(1, state.globals.PartyMaxHP || 1);
       const ratio = Math.max(0, Math.min(1, (state.globals.PartyHP || 0) / maxHP));
+      const targetPercent = ratio * 100;
+      if (Math.abs(targetPercent - Number(partyHpBarAnim.lastTargetPercent || 0)) > 0.01) {
+        updateAnimatedHP({
+          current: state.globals.PartyHP || 0,
+          max: maxHP,
+          frontBar: partyHpBarAnim.front,
+          lagBar: partyHpBarAnim.lag,
+        });
+        partyHpBarAnim.lastTargetPercent = targetPercent;
+      }
       const barX = partyBar.dx;
       const barY = partyBar.dy;
       const barW = partyBar.w;
       const barH = partyBar.h;
       ctx.fillStyle = '#0b0b0b';
       ctx.fillRect(barX, barY, barW, barH);
-      ctx.fillStyle = '#1e7bd6';
-      ctx.fillRect(barX, barY, barW * ratio, barH);
+      const lagRatio = Math.max(0, Math.min(1, Number(partyHpBarAnim.lag.percent || 0) / 100));
+      const frontRatio = Math.max(0, Math.min(1, Number(partyHpBarAnim.front.percent || 0) / 100));
+      const partyFrontColor = getPartyHpFrontColor(frontRatio);
+      if (lagRatio > 0) {
+        ctx.fillStyle = '#b7d14f';
+        ctx.fillRect(barX, barY, barW * lagRatio, barH);
+      }
+      ctx.save();
+      const partyFrontScaleY = Math.max(1, Number(partyHpBarAnim.front.scaleY || 1));
+      if (partyFrontScaleY !== 1) {
+        ctx.translate(barX + barW / 2, barY + barH / 2);
+        ctx.scale(1, partyFrontScaleY);
+        ctx.translate(-(barX + barW / 2), -(barY + barH / 2));
+      }
+      ctx.fillStyle = partyFrontColor;
+      ctx.fillRect(barX, barY, barW * frontRatio, barH);
+      ctx.restore();
+      const hotOverlayRemaining = Math.max(0, Number(partyHpBarAnim.hotOverlayUntil || 0) - Number(state.globals.time || 0));
+      if (hotOverlayRemaining > 0 && frontRatio > 0) {
+        const hotAlpha = Math.max(0, Math.min(0.28, hotOverlayRemaining / 1.6));
+        ctx.save();
+        ctx.globalAlpha = hotAlpha;
+        ctx.fillStyle = '#6BFFB0';
+        ctx.fillRect(barX, barY, barW * frontRatio, barH);
+        ctx.restore();
+      }
       ctx.strokeStyle = '#0f0f0f';
       ctx.strokeRect(barX, barY, barW, barH);
     }
@@ -8337,6 +8693,31 @@ async function main(){
       return 'black';
     };
 
+    const hasPersistentEnemyBlightOverlay = (uid) => {
+      if (!uid) return false;
+      const dots = Array.isArray(state.globals.EnemyDamageOverTime) ? state.globals.EnemyDamageOverTime : [];
+      for (const dot of dots) {
+        if (!dot) continue;
+        if (Number(dot.targetUID || 0) !== Number(uid || 0)) continue;
+        if (Number(dot.remainingFires || 0) <= 0) continue;
+        if (dot.totalDamageRemaining != null && Number(dot.totalDamageRemaining || 0) <= 0) continue;
+        if (String(dot.effectName || 'Blight') !== 'Blight') continue;
+        return true;
+      }
+      return false;
+    };
+
+    const hasPersistentHeroRegenOverlay = () => {
+      const regens = Array.isArray(state.globals.PartyRegens) ? state.globals.PartyRegens : [];
+      for (const regen of regens) {
+        if (!regen) continue;
+        if (Number(regen.remainingFires || 0) <= 0) continue;
+        if (regen.totalHealRemaining != null && Number(regen.totalHealRemaining || 0) <= 0) continue;
+        return true;
+      }
+      return false;
+    };
+
     const renderHitFlashOverlay = (drawSprite, tone = 'black') => {
       ctx.save();
       ctx.globalAlpha = tone === 'purple' ? 0.5 : 0.3;
@@ -8347,8 +8728,164 @@ async function main(){
       ctx.restore();
     };
 
+    const renderHeroRegenShimmer = (drawX, drawY, scaledW, scaledH, seed = 0) => {
+      const lineCount = 4;
+      const diamondCount = 3;
+      const shimmerNow = Number(state.globals.time || 0);
+      ctx.save();
+      for (let i = 0; i < lineCount; i++) {
+        const phase = shimmerNow * 2.8 + seed * 0.37 + i * 0.61;
+        const normalized = (Math.sin(phase) + 1) / 2;
+        const lineX = drawX + scaledW * (0.16 + i * 0.2);
+        const lineTop = drawY - scaledH * 0.04;
+        const lineHeight = scaledH * 0.92;
+        const lineWidth = Math.max(2, scaledW * 0.035);
+        ctx.globalAlpha = 0.096 + normalized * 0.216;
+        ctx.fillStyle = '#A0FE0B';
+        ctx.fillRect(lineX, lineTop, lineWidth, lineHeight);
+      }
+      for (let i = 0; i < diamondCount; i++) {
+        const cycle = (shimmerNow * 0.22 + seed * 0.09 + i * 0.31) % 1;
+        const eased = 1 - Math.pow(1 - cycle, 2);
+        const diamondX = drawX + scaledW * (0.24 + i * 0.22);
+        const diamondY = drawY + scaledH * (0.9 - eased * 0.78);
+        const diamondSize = Math.max(3, scaledW * 0.045);
+        const alpha = cycle < 0.12 ? (cycle / 0.12) * 1.12 : (1 - cycle) * 1.12;
+        if (alpha <= 0.01) continue;
+        ctx.save();
+        ctx.translate(diamondX, diamondY);
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        ctx.fillStyle = '#FFFFFF';
+        ctx.shadowColor = '#F4E96A';
+        ctx.shadowBlur = Math.max(4, scaledW * 0.08);
+        ctx.beginPath();
+        ctx.moveTo(0, -diamondSize);
+        ctx.quadraticCurveTo(diamondSize * 0.55, -diamondSize * 0.35, diamondSize, 0);
+        ctx.quadraticCurveTo(diamondSize * 0.35, diamondSize * 0.55, 0, diamondSize);
+        ctx.quadraticCurveTo(-diamondSize * 0.35, diamondSize * 0.55, -diamondSize, 0);
+        ctx.quadraticCurveTo(-diamondSize * 0.55, -diamondSize * 0.35, 0, -diamondSize);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore();
+    };
+
+    const renderEnemyBlightShimmer = (drawX, drawY, enemyW, enemyH, seed = 0) => {
+      const dotCount = 4;
+      const shimmerNow = Number(state.globals.time || 0);
+      ctx.save();
+      for (let i = 0; i < dotCount; i++) {
+        const cycle = (shimmerNow * 0.19 + seed * 0.11 + i * 0.27) % 1;
+        const eased = 1 - Math.pow(1 - cycle, 2);
+        const dotX = drawX + enemyW * (0.22 + i * 0.16);
+        const dotY = drawY + enemyH * (0.88 - eased * 0.72);
+        const dotSize = Math.max(2, enemyW * 0.054);
+        const alpha = cycle < 0.14 ? (cycle / 0.14) * 0.936 : (1 - cycle) * 1.08;
+        if (alpha <= 0.01) continue;
+        ctx.save();
+        ctx.translate(dotX, dotY);
+        ctx.globalAlpha = Math.max(0, Math.min(0.9, alpha));
+        ctx.fillStyle = '#8D37FF';
+        ctx.strokeStyle = '#4B176F';
+        ctx.lineWidth = Math.max(1, enemyW * 0.018);
+        ctx.shadowColor = '#5E1C91';
+        ctx.shadowBlur = Math.max(3, enemyW * 0.06);
+        ctx.beginPath();
+        ctx.arc(0, 0, dotSize, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+      ctx.restore();
+    };
+
+    const renderHealBlooms = () => {
+      const blooms = Array.isArray(gameState.healBlooms) ? gameState.healBlooms : [];
+      if (!blooms.length) return;
+      gameState.healBlooms = blooms.filter((bloom) => {
+        if (!bloom || bloom.complete) return false;
+        const basePos = worldToCanvas(Number(bloom.x || 0), Number(bloom.y || 0));
+        for (const particle of bloom.particles || []) {
+          if (!particle || particle.complete || Number(particle.opacity || 0) <= 0.001) continue;
+          ctx.save();
+          ctx.translate(basePos.x + Number(particle.x || 0), basePos.y + Number(particle.y || 0));
+          ctx.rotate((Number(particle.rotation || 0) * Math.PI) / 180);
+          const scale = Number(particle.scale || 1);
+          ctx.scale(scale, scale);
+          ctx.globalAlpha = Math.max(0, Math.min(1, Number(particle.opacity || 0)));
+          ctx.fillStyle = String(particle.color || '#66CCFF');
+          const size = Math.max(10, Number(particle.fontSize || 20));
+          const arm = Math.max(3, Math.round(size * 0.18));
+          const length = Math.max(10, Math.round(size * 0.68));
+          ctx.fillRect(-arm / 2, -length / 2, arm, length);
+          ctx.fillRect(-length / 2, -arm / 2, length, arm);
+          ctx.restore();
+        }
+        return !bloom.complete;
+      });
+    };
+
+    const fadeNow = Number(state.globals.time || 0);
+    state.entities = state.entities.filter((entity) => {
+      if (!entity || entity.kind !== 'enemy') return true;
+      const fadeUntil = Number(entity.deathFadeUntil || 0);
+      if (fadeUntil <= 0) return true;
+      if (fadeNow >= fadeUntil) {
+        if (Number(entity.deathFadeCleanupPending || 0) === 1) {
+          entity.deathFadeCleanupPending = 0;
+          callFunctionWithContext(fnContext, 'CompleteEnemyFadeExit', entity.uid, entity.slotIndex ?? 0);
+        }
+        return false;
+      }
+      return true;
+    });
+    if (Array.isArray(state.globals.EnemyDeathFades) && state.globals.EnemyDeathFades.length) {
+      state.globals.EnemyDeathFades = [];
+    }
+
     // Render enemies (use Enemy_Sprite animations)
-    const enemiesToDraw = state.entities.filter(e => e.kind === 'enemy' && (e.hp ?? 0) > 0);
+    const rawEnemiesToDraw = state.entities.filter((e) =>
+      e.kind === 'enemy' && ((e.hp ?? 0) > 0 || Number(e.deathFadeUntil || 0) > fadeNow)
+    );
+    const enemiesBySlot = new Map();
+    for (const enemy of rawEnemiesToDraw) {
+      const slotKey = Number(enemy.slotIndex ?? 0);
+      const incumbent = enemiesBySlot.get(slotKey);
+      if (!incumbent) {
+        enemiesBySlot.set(slotKey, enemy);
+        continue;
+      }
+      const enemyFadeUntil = Number(enemy.deathFadeUntil || 0);
+      const incumbentFadeUntil = Number(incumbent.deathFadeUntil || 0);
+      const enemyIsDying = enemyFadeUntil > fadeNow && Number(enemy.hp || 0) <= 0;
+      const incumbentIsDying = incumbentFadeUntil > fadeNow && Number(incumbent.hp || 0) <= 0;
+      if (ENEMY_DEATH_DEBUG) {
+        console.log('[ENEMY_DEATH]', 'duplicate_slot_render', {
+          slot: slotKey,
+          incumbentUID: Number(incumbent.uid || 0),
+          incomingUID: Number(enemy.uid || 0),
+          incumbentHP: Number(incumbent.hp || 0),
+          incomingHP: Number(enemy.hp || 0),
+          incumbentFadeUntil,
+          enemyFadeUntil,
+        });
+      }
+      if (enemyIsDying && !incumbentIsDying) {
+        enemiesBySlot.set(slotKey, enemy);
+        continue;
+      }
+      if (enemyIsDying === incumbentIsDying) {
+        if (enemyFadeUntil > incumbentFadeUntil) {
+          enemiesBySlot.set(slotKey, enemy);
+          continue;
+        }
+        if (enemyFadeUntil === incumbentFadeUntil && Number(enemy.uid || 0) < Number(incumbent.uid || 0)) {
+          enemiesBySlot.set(slotKey, enemy);
+        }
+      }
+    }
+    const enemiesToDraw = Array.from(enemiesBySlot.values());
     if (enemiesToDraw.length) {
       const g = state.globals;
       const barBackImg = images['Bar_Back'] || null;
@@ -8356,6 +8893,13 @@ async function main(){
       const barYellowImg = images['Bar_Yellow'] || null;
       const barQueue = [];
       for (const enemy of enemiesToDraw) {
+        const fadeUntil = Number(enemy.deathFadeUntil || 0);
+        const fadeStartedAt = Number(enemy.deathFadeStartedAt || 0);
+        const fadeDuration = Math.max(0.001, Number(enemy.deathFadeDuration || Math.max(0.6, Number(g.EnemyDeathFadeSec || 0.72))));
+        const isDying = fadeUntil > fadeNow && Number(enemy.hp || 0) <= 0;
+        const fadeAlpha = isDying
+          ? Math.max(0, 1 - ((fadeNow - fadeStartedAt) / fadeDuration))
+          : 1;
         const slotIndex = enemy.slotIndex ?? 0;
         const spacing = g.Spacing || ((g.EnemySize || 40) + (g.enemyGAP || 8));
         const x = enemy.x != null ? enemy.x : (g.X0 || 200);
@@ -8369,24 +8913,41 @@ async function main(){
         const sprite = enemySpriteImages[String(enemy.name || '').toLowerCase()];
         const drawX = pos.x - enemyW / 2;
         const drawY = pos.y - enemyH / 2;
+        ctx.save();
+        ctx.globalAlpha = fadeAlpha;
         if (sprite) {
           ctx.drawImage(sprite, drawX, drawY, enemyW, enemyH);
-          if (isHitFlashActive(enemy.uid)) {
+          if (!isDying && hasPersistentEnemyBlightOverlay(enemy.uid)) {
+            renderHitFlashOverlay(() => ctx.drawImage(sprite, drawX, drawY, enemyW, enemyH), 'purple');
+            renderEnemyBlightShimmer(drawX, drawY, enemyW, enemyH, enemy.uid);
+          }
+          if (!isDying && isHitFlashActive(enemy.uid)) {
             renderHitFlashOverlay(() => ctx.drawImage(sprite, drawX, drawY, enemyW, enemyH), getHitFlashTone(enemy.uid));
           }
         } else {
           ctx.fillStyle = '#7d2b2b';
           ctx.fillRect(drawX, drawY, enemyW, enemyH);
-          if (isHitFlashActive(enemy.uid)) {
+          if (!isDying && hasPersistentEnemyBlightOverlay(enemy.uid)) {
+            ctx.save();
+            ctx.globalAlpha = 0.35;
+            ctx.fillStyle = '#b86cff';
+            ctx.fillRect(drawX, drawY, enemyW, enemyH);
+            ctx.restore();
+            renderEnemyBlightShimmer(drawX, drawY, enemyW, enemyH, enemy.uid);
+          }
+          if (!isDying && isHitFlashActive(enemy.uid)) {
             ctx.fillStyle = getHitFlashTone(enemy.uid) === 'purple' ? '#b86cff' : '#000';
             ctx.fillRect(drawX, drawY, enemyW, enemyH);
           }
           ctx.strokeStyle = '#fff';
           ctx.strokeRect(drawX, drawY, enemyW, enemyH);
         }
+        ctx.restore();
 
         // Queue enemy HP bars to draw above all enemies
-        barQueue.push({ enemy, pos, enemyH, origH, enemyW });
+        if (!isDying && Number(enemy.hp || 0) > 0) {
+          barQueue.push({ enemy, pos, enemyH, origH, enemyW });
+        }
       }
       for (const entry of barQueue) {
         const { enemy, pos, enemyH, origH, enemyW } = entry;
@@ -8397,25 +8958,40 @@ async function main(){
         if (!barState) {
           barState = {
             baseW,
-            fillW: baseW,
-            yellowW: baseW,
+            front: { percent: 100, scaleY: 1 },
+            lag: { percent: 100 },
+            lastTargetPercent: 100,
           };
           enemyBars.set(barKey, barState);
         }
         const hpRatio = enemy.maxHP ? Math.max(0, Math.min(1, enemy.hp / enemy.maxHP)) : 0;
-        const targetW = barState.baseW * hpRatio;
-        barState.fillW = Math.max(targetW, barState.fillW - 180 * dt);
-        barState.yellowW = Math.max(targetW, barState.yellowW - 90 * dt);
+        const targetPercent = hpRatio * 100;
+        if (Math.abs(targetPercent - Number(barState.lastTargetPercent || 0)) > 0.01 || barState.baseW !== baseW) {
+          updateAnimatedHP({
+            current: enemy.hp,
+            max: enemy.maxHP,
+            frontBar: barState.front,
+            lagBar: barState.lag,
+          });
+          barState.lastTargetPercent = targetPercent;
+        }
+        barState.baseW = baseW;
 
         const drawBarW = Math.max(1, Math.round(barState.baseW));
         const drawBarH = Math.max(1, Math.round(baseH));
         const barX = Math.round(pos.x - (drawBarW / 2));
         const barY = Math.round((pos.y - enemyH / 2) - (10 * layoutScale));
-        const drawYellowW = Math.max(0, Math.round(barState.yellowW));
-        const drawFillW = Math.max(0, Math.round(barState.fillW));
+        const drawYellowW = Math.max(0, Math.round(drawBarW * (Math.max(0, Math.min(100, Number(barState.lag.percent || 0))) / 100)));
+        const drawFillW = Math.max(0, Math.round(drawBarW * (Math.max(0, Math.min(100, Number(barState.front.percent || 0))) / 100)));
 
         ctx.save();
         ctx.imageSmoothingEnabled = false;
+        const frontScaleY = Math.max(1, Number(barState.front.scaleY || 1));
+        if (frontScaleY !== 1) {
+          ctx.translate(barX + drawBarW / 2, barY + drawBarH / 2);
+          ctx.scale(1, frontScaleY);
+          ctx.translate(-(barX + drawBarW / 2), -(barY + drawBarH / 2));
+        }
         if (barBackImg) {
           ctx.drawImage(barBackImg, barX, barY, drawBarW, drawBarH);
         } else {
@@ -8439,63 +9015,10 @@ async function main(){
     }
 
     const renderDamageTexts = (filterFn) => {
-      if (!dmgTexts.length) return;
-      ctx.save();
-      ctx.textAlign = 'center';
-      for (const d of dmgTexts) {
-        if (filterFn && !filterFn(d)) continue;
-        const amount = Math.max(0, Number(d.amount) || 0);
-        const amountT = Math.min(1, amount / 100);
-        const amountScale = 0.8 + 0.45 * amountT; // 80% -> 125%
-        const rise = Math.max(0.001, d.riseInSec || 0.18);
-        const fade = Math.max(0.001, d.fadeSec || 0.45);
-        let phaseScale = 1;
-        let yOffset = 0;
-        let alpha = 1;
-        const peakScale = d.peakScale || 1.04;
-        const heat = Math.max(0, Math.min(1, d.heat || 0));
-        if (d.phase === 0) {
-          const t = Math.min(1, (d.age || 0) / rise);
-          const e = 1 - Math.pow(1 - t, 2); // easeOutQuad
-          yOffset = 6 * (1 - e);
-          alpha = Math.min(1, t / 0.6);
-          if (t <= 0.7) {
-            const u = t / 0.7;
-            const eu = 1 - Math.pow(1 - u, 2);
-            phaseScale = 0.90 + (peakScale - 0.90) * eu;
-          } else {
-            const u = (t - 0.7) / 0.3;
-            const eu = 1 - Math.pow(1 - Math.min(1, u), 2);
-            phaseScale = peakScale + (1.00 - peakScale) * eu;
-          }
-        } else if (d.phase === 2) {
-          const t = Math.min(1, (d.age || 0) / fade);
-          alpha = Math.max(0, 1 - t);
-          phaseScale = 1;
-        }
-        const scale = amountScale * phaseScale;
-        const baseFont = Math.max(12, Math.round(16 * layoutScale));
-        const fontSize = Math.max(8, Math.round(baseFont * scale));
-        ctx.font = `bold ${fontSize}px sans-serif`;
-        ctx.shadowColor = 'rgb(0,0,0)';
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = Math.max(1, Math.round(2 * scale));
-        ctx.shadowOffsetY = Math.max(1, Math.round(2 * scale));
-        ctx.globalAlpha = alpha;
-        const text = d.targetKind === 'bar' ? `+${d.amount}` : String(d.amount);
-        ctx.fillStyle = d.kind === 'heal'
-          ? '#66CCFF'
-          : d.kind === 'dot'
-            ? '#AA66FF'
-            : d.targetKind === 'hero'
-              ? '#FF4040'
-              : '#FFFFFF';
-        const xOffset = d.targetKind === 'hero' ? -10 : 10;
-        const pos = worldToCanvas((d.x || 0) + xOffset, (d.baseY != null ? d.baseY : (d.y || 0)) + yOffset);
-        ctx.fillText(text, pos.x, pos.y);
-      }
-      ctx.restore();
+      return;
     };
+
+    renderHealBlooms();
 
     // Render hero portraits (left side, saw pattern)
     {
@@ -8568,6 +9091,9 @@ async function main(){
           const drawX = pos.x - scaledW / 2;
           const drawY = footY - scaledH;
           ctx.drawImage(img, drawX, drawY, scaledW, scaledH);
+          if (hero && hasPersistentHeroRegenOverlay()) {
+            renderHeroRegenShimmer(drawX, drawY, scaledW, scaledH, hero.uid);
+          }
           if (hero && isHitFlashActive(hero.uid)) {
             renderHitFlashOverlay(() => ctx.drawImage(img, drawX, drawY, scaledW, scaledH), getHitFlashTone(hero.uid));
           }
@@ -8972,35 +9498,7 @@ function getStoryCardLiveLineState() {
     for (const [key, val] of entries) {
       lines.push(`${key}: ${val}`);
     }
-    return lines.join('\n');
-  }
-  function drawWalletHUD() {
-    if (!walletOut) return;
-    const g = state.globals || {};
-    const wallet =
-      g.TokenWallet ||
-      g.tokenWallet ||
-      g.WalletTokens ||
-      g.walletTokens ||
-      null;
-    walletOut.textContent = formatWalletText('Wallet', wallet);
-  }
-  function drawAstralWalletHUD() {
-    if (!astralWalletOut) return;
-    const g = state.globals || {};
-    const astralWallet =
-      g.AstralFlowWallet ||
-      g.astralFlowWallet ||
-      g.AstralWallet ||
-      g.astralWallet ||
-      null;
-    astralWalletOut.textContent = formatWalletText('Astral Flow Wallet', astralWallet);
-  }
-  function drawAstralWalletHUD() {
-    if (!astralWalletOut) return;
-    const g = state.globals || {};
-    const total = Math.max(0, Number(g.AstralFlowWallet || 0));
-    astralWalletOut.textContent = `Astral Flow Wallet:\nTotal: ${total}`;
+    walletOut.textContent = lines.join('\n');
   }
   function drawAstralWalletHUD() {
     if (!astralWalletOut) return;
@@ -9224,19 +9722,7 @@ function getStoryCardLiveLineState() {
     return getDevAutoplayState();
   }
   function isIdleAutoplayHeroWindow() {
-    return (
-      state.globals.GamePhase === 'RUNTIME' &&
-      callFunctionWithContext(fnContext, 'GetCurrentType') === 0 &&
-      state.globals.TurnPhase === 0 &&
-      state.globals.CanPickGems === true &&
-      state.globals.IsPlayerBusy === 0 &&
-      !state.globals.PendingSkillID &&
-      !state.globals.BoardFillActive &&
-      !state.globals.ActionInProgress &&
-      !state.globals.DeferAdvance &&
-      !(gameState.refillBounce && gameState.refillBounce.active) &&
-      !(gameState.yellowCasino && gameState.yellowCasino.active)
-    );
+    return isHeroGemInputWindowOpen();
   }
   const IDLE_AUTOPLAY_COLOR_PRIORITY = Object.freeze([
     [5],
@@ -9959,9 +10445,11 @@ function getStoryCardLiveLineState() {
         return;
       }
       const isHeroTurn = callFunctionWithContext(fnContext, 'IsHeroTurn') === true;
-      if (state.globals.CanPickGems === false || !isHeroTurn) {
+      if (!isHeroTurn || !isHeroGemInputWindowOpen()) {
         gemDebugLog('[GEM_REJECT]', {
-          reason: state.globals.CanPickGems === false ? 'reject-gate-can-pick-false' : 'reject-gate-not-hero-turn',
+          reason: !isHeroTurn
+            ? 'reject-gate-not-hero-turn'
+            : (hasConsumedGemActionThisTurn() ? 'reject-gate-turn-already-consumed' : 'reject-gate-not-idle'),
           globals: {
             CanPickGems: state.globals.CanPickGems,
             IsPlayerBusy: state.globals.IsPlayerBusy,
@@ -9970,6 +10458,9 @@ function getStoryCardLiveLineState() {
             TurnPhase: state.globals.TurnPhase,
             DeferAdvance: state.globals.DeferAdvance,
             ActionLockUntil: state.globals.ActionLockUntil,
+            LastGemActionActorUID: state.globals.LastGemActionActorUID || 0,
+            LastGemActionTurnSerial: state.globals.LastGemActionTurnSerial || 0,
+            TurnSerial: state.globals.TurnSerial || 0,
             MatchedColorValue: state.globals.MatchedColorValue,
             TapIndex: state.globals.TapIndex,
           },
@@ -10396,9 +10887,13 @@ function getStoryCardLiveLineState() {
       !gameState.combatFailExitRequested
     ) {
       const energy = Number(state.globals.Player_Energy || 0);
-      const partyHp = Number(state.globals.PartyHP || 0);
-      const noLivingHeroes = state.entities.filter((entity) => entity && entity.kind === 'hero' && (entity.hp ?? 0) > 0).length <= 0;
-      if (energy < 0 || partyHp <= 0 || noLivingHeroes) {
+      const livingHeroes = state.entities.filter((entity) => entity && entity.kind === 'hero' && (entity.hp ?? 0) > 0);
+      const livePartyHp = livingHeroes.reduce((sum, entity) => sum + Number(entity.hp || 0), 0);
+      const noLivingHeroes = livingHeroes.length <= 0;
+      if (!noLivingHeroes && Number(state.globals.PartyHP || 0) !== livePartyHp) {
+        callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
+      }
+      if (energy < 0 || livePartyHp <= 0 || noLivingHeroes) {
         gameState.combatFailExitRequested = true;
         state.globals.CanPickGems = 0;
         state.globals.IsPlayerBusy = 1;
@@ -10430,6 +10925,10 @@ function getStoryCardLiveLineState() {
       currentTurnType === 0 &&
       state.globals.TurnPhase === 0 &&
       noRefillActive &&
+      !state.globals.IsPlayerBusy &&
+      !state.globals.PendingSkillID &&
+      !state.globals.ActionInProgress &&
+      !state.globals.DeferAdvance &&
       (state.globals.CanPickGems !== true || state.globals.BoardFillActive !== 0)
     ) {
       state.globals.CanPickGems = true;
@@ -10462,6 +10961,9 @@ function getStoryCardLiveLineState() {
   // Dev-only test hooks for deterministic agent-browser CLI control
   if (typeof window !== 'undefined') {
     window.render_game_to_text = () => {
+      const layout0State = (typeof layout0LoadState !== 'undefined' && layout0LoadState)
+        ? layout0LoadState
+        : { ready: true, failed: false };
       const currentUID = callFunctionWithContext(fnContext, 'GetCurrentTurn');
       const currentActor = callFunctionWithContext(fnContext, 'GetActorByUID', currentUID);
       const turnOrderRaw = Array.isArray(state.globals.TurnOrderArray)
@@ -10554,8 +11056,8 @@ function getStoryCardLiveLineState() {
           combatAcceptEvents: layoutHarnessEnabled && harnessCombatGateway
             ? harnessCombatGateway.canAcceptEvents()
             : true,
-          layout0Ready: !!layout0LoadState.ready,
-          layout0Failed: !!layout0LoadState.failed,
+          layout0Ready: !!layout0State.ready,
+          layout0Failed: !!layout0State.failed,
         },
         heroes: state.entities
           .filter(e => e.kind === 'hero')

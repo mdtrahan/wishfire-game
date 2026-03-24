@@ -40,3 +40,34 @@ test('turn-gate apply wrapper owns extended transient fields in app runtime', ()
   assert.match(src, /for \(const key of TURN_TRANSIENT_NUMERIC_KEYS\) \{/);
   assert.match(src, /for \(const key of TURN_TRANSIENT_STRING_KEYS\) \{/);
 });
+
+test('blue heal and purple support matches enter action phase instead of staying in idle hero phase', () => {
+  const runtimeSrc = read('web-runner/modules/functionBank.js');
+  const scriptsSrc = read('Scripts/functionBank.js');
+
+  for (const src of [runtimeSrc, scriptsSrc]) {
+    assert.match(src, /if \(gemColor === 2\) \{\s*g\.TurnPhase = 1;/s);
+    assert.match(src, /if \(gemColor === 4\) \{\s*g\.TurnPhase = 1;/s);
+    assert.match(src, /if \(gemColor === 5\) \{\s*g\.TurnPhase = 1;/s);
+  }
+});
+
+test('manual and idle gem selection share a strict idle-window guard with one-action-per-turn protection', () => {
+  const src = read('web-runner/app.js');
+  assert.match(src, /function hasConsumedGemActionThisTurn\(\)/);
+  assert.match(src, /function isHeroGemInputWindowOpen\(\)/);
+  assert.match(src, /g\.LastGemActionActorUID = Number\(actorUID \|\| 0\);/);
+  assert.match(src, /g\.LastGemActionTurnSerial = Number\(g\.TurnSerial \|\| 0\);/);
+  assert.match(src, /return isHeroGemInputWindowOpen\(\);/);
+  assert.match(src, /if \(!isHeroTurn \|\| !isHeroGemInputWindowOpen\(\)\) \{/);
+  assert.match(src, /reject-gate-turn-already-consumed/);
+  assert.doesNotMatch(src, /DevForcedSupportEnemyTurnRequired/);
+});
+
+test('deferred advance stays blocked while board refill is still transient', () => {
+  const src = read('web-runner/app.js');
+  assert.match(src, /const boardFillActive = !!state\.globals\.BoardFillActive;/);
+  assert.match(src, /const refillPending =[\s\S]*boardFillActive[\s\S]*hasEmpty/s);
+  assert.match(src, /return \{[\s\S]*boardFillActive,[\s\S]*refillPending,[\s\S]*ok: !refillPending && !textHold && !blockedPhase && ownerOk,/s);
+  assert.match(src, /if \(hasWork\) \{[\s\S]*state\.globals\.BoardFillActive = 1;[\s\S]*\} else \{\s*state\.globals\.BoardFillActive = 0;/s);
+});

@@ -97,4 +97,30 @@ for (const modulePath of [
     assert.equal(enemy.PendingActor, 0);
     assert.equal(enemy.EnemyLineClearPressureActive, 1);
   });
+
+  test(`refill completion does not reopen pickability while deferred handoff is still pending in ${modulePath}`, async () => {
+    const mod = await import(modulePath);
+
+    const pendingHandoff = mod.createRefillCompleteGate({
+      CanPickGems: 0,
+      IsPlayerBusy: 1,
+      DeferAdvance: 1,
+      AdvanceAfterAction: 1,
+      ActionOwnerUID: 42,
+    });
+    assert.equal(pendingHandoff.IsPlayerBusy, 0);
+    assert.equal(pendingHandoff.CanPickGems, 0);
+    assert.equal(pendingHandoff.DeferAdvance, 1);
+    assert.equal(pendingHandoff.AdvanceAfterAction, 1);
+    assert.equal(pendingHandoff.ActionOwnerUID, 42);
+
+    const idleHero = mod.createRefillCompleteGate({
+      CanPickGems: 0,
+      IsPlayerBusy: 1,
+      DeferAdvance: 0,
+      AdvanceAfterAction: 0,
+    });
+    assert.equal(idleHero.IsPlayerBusy, 0);
+    assert.equal(idleHero.CanPickGems, 1);
+  });
 }

@@ -16,6 +16,8 @@ test('damage application sets brief hit-flash window in both function-bank mirro
     assert.match(src, /until: now \+ 0\.14,/);
     assert.match(src, /tone: hitFlashTone,/);
     assert.match(src, /delete g\.NextHitFlashTone;/);
+    assert.match(src, /const suppressText = damageTextKind === 'dot' && t\.kind === 'enemy';/);
+    assert.match(src, /if \(!suppressText\) \{\s+SpawnDamageText\(ctx, appliedDamage, dx, dy, damageTextKind, t\.kind \|\| null, \{/);
   }
 });
 
@@ -23,11 +25,25 @@ test('renderer applies tone-aware hit-flash overlay to attacked combatants', () 
   const src = read('web-runner/app.js');
   assert.match(src, /const isHitFlashActive = \(uid\) => \{/);
   assert.match(src, /const getHitFlashTone = \(uid\) => \{/);
+  assert.match(src, /const hasPersistentEnemyBlightOverlay = \(uid\) => \{/);
+  assert.match(src, /if \(Number\(dot\.targetUID \|\| 0\) !== Number\(uid \|\| 0\)\) continue;/);
+  assert.match(src, /if \(String\(dot\.effectName \|\| 'Blight'\) !== 'Blight'\) continue;/);
+  assert.match(src, /const renderEnemyBlightShimmer = \(drawX, drawY, enemyW, enemyH, seed = 0\) => \{/);
+  assert.match(src, /const dotCount = 4;/);
+  assert.match(src, /ctx\.fillStyle = '#8D37FF';/);
+  assert.match(src, /ctx\.strokeStyle = '#4B176F';/);
+  assert.match(src, /ctx\.lineWidth = Math\.max\(1, enemyW \* 0\.018\);/);
+  assert.match(src, /ctx\.shadowColor = '#5E1C91';/);
+  assert.match(src, /ctx\.globalAlpha = Math\.max\(0, Math\.min\(0\.9, alpha\)\);/);
+  assert.match(src, /ctx\.arc\(0, 0, dotSize, 0, Math\.PI \* 2\);/);
+  assert.match(src, /ctx\.stroke\(\);/);
+  assert.doesNotMatch(src, /renderEnemyBlightShimmer[\s\S]*ctx\.clip\(\);/);
   assert.match(src, /ctx\.globalAlpha = tone === 'purple' \? 0\.5 : 0\.3;/);
   assert.match(src, /tone === 'purple'/);
   assert.match(src, /return 'black';/);
   assert.match(src, /const renderHitFlashOverlay = \(drawSprite, tone = 'black'\) => \{/);
   assert.match(src, /: 'brightness\(0\)'/);
+  assert.match(src, /hasPersistentEnemyBlightOverlay\(enemy\.uid\)[\s\S]*renderHitFlashOverlay\(\(\) => ctx\.drawImage\(sprite, drawX, drawY, enemyW, enemyH\), 'purple'\);[\s\S]*renderEnemyBlightShimmer\(drawX, drawY, enemyW, enemyH, enemy\.uid\);/);
   assert.match(src, /renderHitFlashOverlay\(\(\) => ctx\.drawImage\(sprite, drawX, drawY, enemyW, enemyH\), getHitFlashTone\(enemy\.uid\)\);/);
   assert.match(src, /renderHitFlashOverlay\(\(\) => ctx\.drawImage\(img, drawX, drawY, scaledW, scaledH\), getHitFlashTone\(hero\.uid\)\);/);
   assert.match(src, /ctx\.globalAlpha = 0\.3;\s+ctx\.filter = 'brightness\(0\)';\s+ctx\.drawImage\(portrait, drawX, drawY, heroW, heroH\);/);
@@ -40,6 +56,6 @@ test('Kojonn blight paths arm purple hit-flash tone for immediate and queued tic
   const src = read('web-runner/app.js');
   const purpleHooks = src.match(/state\.globals\.NextHitFlashTone = 'purple';/g) || [];
   assert.ok(purpleHooks.length >= 2, 'expected purple hit-flash tone to be armed for both immediate blight impact and queued DoT ticks');
-  assert.match(src, /callFunctionWithContext\(fnContext, 'ApplyDamageToTarget', dot\.targetUID, dmg\);/);
-  assert.match(src, /callFunctionWithContext\(fnContext, 'ApplyDamageToTarget', hit\.targetUID, initialDotDamage\);/);
+  assert.match(src, /callFunctionWithContext\(fnContext, 'ApplyDamageToTarget', dot\.targetUID, dmg, \{\s+isCrit: !!dot\.isCrit \|\| Number\(dot\.powerAmpMultiplier \|\| 0\) > 0,/);
+  assert.match(src, /callFunctionWithContext\(fnContext, 'ApplyDamageToTarget', hit\.targetUID, initialDotDamage, \{\s+isCrit: overTimeCrit,/);
 });

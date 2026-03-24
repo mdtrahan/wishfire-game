@@ -20,3 +20,8 @@ test-results/
 # Generated per-worktree runtime metadata
 web-runner/runtime-fingerprint.js
 .worktale/
+
+# Local Codex worktrees and generated artifacts
+.codex-worktrees/
+output/
+inputs/deep-research*.md

@@ -1917,14 +1917,14 @@ function clamp(min, value, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function getLivingHeroCount(ctx) {
+  return getEntities(ctx).filter(e => e && e.kind === 'hero' && (e.hp ?? 0) > 0).length;
+}
+
 function getHeroes(ctx) {
-  const g = getGlobals(ctx);
-  const partyAlive = (g.PartyHP ?? 0) > 0;
-  return getEntities(ctx).filter(e => {
-    if (!e || e.kind !== 'hero') return false;
-    if (partyAlive) return true;
-    return (e.hp ?? 0) > 0;
-  });
+  const heroes = getEntities(ctx).filter(e => e && e.kind === 'hero');
+  const livingHeroes = heroes.filter(e => (e.hp ?? 0) > 0);
+  return livingHeroes.length ? heroes : livingHeroes;
 }
 
 function getEnemies(ctx) {
@@ -2081,7 +2081,7 @@ function getInitiativeRoster(ctx) {
   const g = getGlobals(ctx);
   const roster = [];
   const seen = new Set();
-  const partyAlive = (g.PartyHP || 0) > 0;
+  const partyAlive = getLivingHeroCount(ctx) > 0;
   if (partyAlive) {
     for (const h of getHeroes(ctx)) {
       if (seen.has(h.uid)) continue;
@@ -2850,6 +2850,7 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
     sourceType: isHeroAttacker ? 'HERO' : 'ENEMY',
     rngRoll: random01(ctx),
   });
+  g.LastCalculatedDamageCrit = Boolean(crit.didCrit);
   dmg = Math.max(1, Math.ceil(crit.value));
   let chainApplied = false;
   if (isHeroAttacker && g.ApplyChainToNextDamage === 1) {
@@ -2864,7 +2865,7 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
   return dmg;
 }
 
-export function ApplyDamageToTarget(ctx, uid, dmg) {
+export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   const g = getGlobals(ctx);
   g.LastDamageSourceUID = Number(GetCurrentTurn(ctx) || 0);
   const t = GetActorByUID(ctx, uid);
@@ -2902,12 +2903,30 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
   }
   if (appliedDamage > 0 && dx != null && dy != null && g.SpawnDamageText !== 0) {
     const damageTextKind = String(g.NextDamageTextKind || 'damage');
-    SpawnDamageText(ctx, appliedDamage, dx, dy, damageTextKind, t.kind || null);
+    const suppressText = damageTextKind === 'dot' && t.kind === 'enemy';
+    if (!suppressText) {
+      SpawnDamageText(ctx, appliedDamage, dx, dy, damageTextKind, t.kind || null, {
+        isCrit: !!options?.isCrit,
+      });
+    }
   }
   delete g.NextDamageTextKind;
-  if (t.hp === 0) {
   if (t.hp === 0 && t.isAlive !== false) {
+    if (t.kind === 'enemy' && Number(g.EnemyDeathDebug || 0) === 1) {
+      console.log('[ENEMY_DEATH]', 'hp_zero', {
+        uid: Number(t.uid || 0),
+        slot: Number(t.slotIndex || 0),
+        beforeHP,
+        afterHP,
+        damage: Number(appliedDamage || 0),
+        time: Number(g.time || 0),
+        pendingDeaths: Object.keys(g.PendingDeaths || {}).map((value) => Number(value || 0)),
+      });
+    }
     t.isAlive = false;
+    if (t.kind === 'enemy') {
+      queueEnemyDeathFade(ctx, t, t.slotIndex ?? 0);
+    }
     if ((g.RoundActive && g.GroupResolving) || (isTimeInitiative(ctx) && g.GroupResolving)) {
       g.PendingDeaths = g.PendingDeaths || {};
       g.PendingDeaths[t.uid] = {
@@ -2929,6 +2948,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
 export function CalculateHeal(ctx, actorUID) {
   const h = GetActorByUID(ctx, actorUID);
   if (!h) return 1;
+  const g = getGlobals(ctx);
   const magTotal = GetEffectiveStat(ctx, h, 'MAG');
   const baseHeal = Math.max(1, Math.floor(magTotal * 0.75));
   const sourceType = h.kind === 'hero' ? 'HERO' : 'ENEMY';
@@ -2938,6 +2958,7 @@ export function CalculateHeal(ctx, actorUID) {
     sourceType,
     rngRoll: random01(ctx),
   });
+  g.LastCalculatedHealCrit = Boolean(crit.didCrit);
   return Math.max(1, Math.floor(crit.value));
 }
 
@@ -2971,10 +2992,33 @@ export function SyncPartyHPToHeroes(ctx) {
   if (heroes.length === 0) return;
   const totalMax = sum(heroes.map(h => h.maxHP ?? 0));
   if (!totalMax) return;
-  const ratio = g.PartyMaxHP ? (g.PartyHP / g.PartyMaxHP) : 0;
-  for (const h of heroes) {
-    const maxHP = h.maxHP ?? 0;
-    h.hp = clamp(0, Math.floor(maxHP * ratio), maxHP);
+  const desiredTotal = clamp(0, Math.floor(Number(g.PartyHP || 0)), totalMax);
+  const scaled = heroes.map((h, idx) => {
+    const maxHP = Math.max(0, Number(h.maxHP ?? 0));
+    const raw = (desiredTotal * maxHP) / totalMax;
+    const base = clamp(0, Math.floor(raw), maxHP);
+    return {
+      hero: h,
+      idx,
+      maxHP,
+      base,
+      fractional: raw - Math.floor(raw),
+    };
+  });
+  let assigned = sum(scaled.map((entry) => entry.base));
+  let remaining = Math.max(0, desiredTotal - assigned);
+  scaled.sort((a, b) => {
+    if (b.fractional !== a.fractional) return b.fractional - a.fractional;
+    return a.idx - b.idx;
+  });
+  for (const entry of scaled) {
+    if (remaining <= 0) break;
+    if (entry.base >= entry.maxHP) continue;
+    entry.base += 1;
+    remaining -= 1;
+  }
+  for (const entry of scaled) {
+    entry.hero.hp = clamp(0, entry.base, entry.maxHP);
   }
   UpdateHeroHPUI(ctx);
 }
@@ -3260,6 +3304,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
   const actor = GetActorByUID(ctx, heroUID);
   const mode = actor && actor.attackType === 'magic' ? 'magic' : 'melee';
   const dmg = CalculateDamage(ctx, heroUID, targetUID, mode);
+  const didCrit = Boolean(getGlobals(ctx).LastCalculatedDamageCrit);
   const ampEntry = ensurePowerAmpByUID(ctx)[heroUID];
   const ampLifecycleId = Number(ampEntry?.lifecycleId || 0);
   let ampMult = GetPowerAmpMultiplierForActor(ctx, heroUID);
@@ -3296,7 +3341,8 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
           targetUID,
           dmg: shotDamage,
           finalDmg: shotDamage,
-          powerAmpMultiplier: 0,
+          didCrit,
+          powerAmpMultiplier: ampMult,
           powerAmpLifecycleId: ampLifecycleId,
           consumePowerAmp: ampMult > 0 && hitIndex === 0 ? 1 : 0,
           damageTextScatter: presentation.scatter,
@@ -3315,6 +3361,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
     targetUID,
     dmg,
     finalDmg,
+    didCrit,
     powerAmpMultiplier: ampMult,
     powerAmpLifecycleId: ampLifecycleId,
     consumePowerAmp: ampMult > 0 ? 1 : 0,
@@ -3351,13 +3398,20 @@ export function HeroAttackAOE(ctx, heroUID) {
     : 0;
   for (const e of enemies) {
     if (isKojonn) {
-      hits.push({ targetUID: e.uid, dotTotalDamage: kojonnDotDamage, consumePowerAmp: 0 });
+      hits.push({
+        targetUID: e.uid,
+        dotTotalDamage: kojonnDotDamage,
+        powerAmpMultiplier: ampMult,
+        powerAmpLifecycleId: ampLifecycleId,
+        consumePowerAmp: 0,
+      });
       totalDamage += kojonnDotDamage;
       continue;
     }
     const dmg = CalculateDamage(ctx, heroUID, e.uid, mode);
+    const didCrit = Boolean(getGlobals(ctx).LastCalculatedDamageCrit);
     const finalDmg = ampMult > 0 ? Math.max(1, Math.ceil(dmg * ampMult)) : dmg;
-    hits.push({ targetUID: e.uid, dmg, powerAmpMultiplier: ampMult, powerAmpLifecycleId: ampLifecycleId, consumePowerAmp: 0, finalDmg });
+    hits.push({ targetUID: e.uid, dmg, didCrit, powerAmpMultiplier: ampMult, powerAmpLifecycleId: ampLifecycleId, consumePowerAmp: 0, finalDmg });
     totalDamage += finalDmg;
   }
   if (hits.length > 0 && ampMult > 0) hits[0].consumePowerAmp = 1;
@@ -3372,6 +3426,7 @@ export function HeroAttackAOE(ctx, heroUID) {
       targetUID: hit.targetUID,
       dmg: hit.dmg,
       finalDmg: Number(hit.finalDmg || 0),
+      didCrit: !!hit.didCrit,
       dotTotalDamage: Number(hit.dotTotalDamage || 0),
       powerAmpMultiplier: hit.powerAmpMultiplier,
       powerAmpLifecycleId: hit.powerAmpLifecycleId,
@@ -3383,7 +3438,7 @@ export function HeroAttackAOE(ctx, heroUID) {
     });
   }
   if (isKojonn) {
-    LogCombat(ctx, `${actorName} used ${aoeName} to spread blight over time for ${totalDamage}!`);
+    LogCombat(ctx, `${actorName} casts Faze on enemies.`);
   } else {
     LogCombat(ctx, `${actorName} used ${aoeName} on all enemies for ${totalDamage}!`);
   }
@@ -3405,14 +3460,17 @@ export function QueueEnemyDamageOverTime(ctx, actorUID, enemyUID, totalDamage, o
     firesEveryTicks: Math.max(1, Math.floor(Number(options?.firesEveryTicks || 1) || 1)),
     nextFireTick: nowTick + Math.max(1, Math.floor(Number(options?.startAfterTicks || 1) || 1)),
     effectName: String(options?.effectName || 'Blight'),
+    isCrit: !!options?.isCrit,
+    powerAmpMultiplier: Math.max(0, Number(options?.powerAmpMultiplier || 0)),
   });
-  LogCombat(ctx, `${actor.name || 'Hero'} applies ${String(options?.effectName || 'Blight')} to ${enemy.name || 'Enemy'}!`);
+  LogCombat(ctx, `${actor.name || 'Hero'} casts Faze on ${enemy.name || 'Enemy'}!`);
   return 1;
 }
 
 export function Enemy_ATK_Single(ctx, enemyUID, targetHeroUID) {
   const dmg = CalculateDamage(ctx, enemyUID, targetHeroUID, 'melee');
-  const appliedDamage = ApplyDamageToTarget(ctx, targetHeroUID, dmg);
+  const didCrit = Boolean(getGlobals(ctx).LastCalculatedDamageCrit);
+  const appliedDamage = ApplyDamageToTarget(ctx, targetHeroUID, dmg, { isCrit: didCrit });
   const enemyName = getActorNameByUID(ctx, enemyUID);
   const heroName = getActorNameByUID(ctx, targetHeroUID);
   LogCombat(ctx, `${enemyName} hit ${heroName} for ${appliedDamage}!`);
@@ -3420,9 +3478,10 @@ export function Enemy_ATK_Single(ctx, enemyUID, targetHeroUID) {
 
 export function Enemy_MAG_Single(ctx, enemyUID, targetHeroUID) {
   const dmg = CalculateDamage(ctx, enemyUID, targetHeroUID, 'magic');
+  const didCrit = Boolean(getGlobals(ctx).LastCalculatedDamageCrit);
   const resist = applyRunaMagicResist(ctx, enemyUID, targetHeroUID, dmg, 'Enemy_MAG_Single');
   const appliedDamage = resist.finalDamage > 0
-    ? ApplyDamageToTarget(ctx, targetHeroUID, resist.finalDamage)
+    ? ApplyDamageToTarget(ctx, targetHeroUID, resist.finalDamage, { isCrit: didCrit })
     : 0;
   const enemyName = getActorNameByUID(ctx, enemyUID);
   const heroName = getActorNameByUID(ctx, targetHeroUID);
@@ -3446,7 +3505,7 @@ export function Enemy_Heal_Self(ctx, enemyUID) {
   });
   const heal = healInfo.finalHeal;
   enemy.hp = Math.min(enemy.maxHP ?? enemy.hp, (enemy.hp ?? 0) + heal);
-  SpawnDamageText(ctx, heal, enemy.x ?? 0, enemy.y ?? 0, 'heal', 'enemy');
+  SpawnDamageText(ctx, heal, enemy.x ?? 0, enemy.y ?? 0, 'heal', 'enemy', { isCrit: !!healInfo.didCrit });
   traceEnemyHealRoll(ctx, {
     enemyUID,
     enemyName: String(enemy.name || 'Enemy'),
@@ -3482,7 +3541,7 @@ export function Enemy_Heal_Allies(ctx, enemyUID) {
   }
   for (const ally of allies) {
     ally.hp = Math.min(ally.maxHP ?? ally.hp, (ally.hp ?? 0) + heal);
-    SpawnDamageText(ctx, heal, ally.x ?? 0, ally.y ?? 0, 'heal', 'enemy');
+    SpawnDamageText(ctx, heal, ally.x ?? 0, ally.y ?? 0, 'heal', 'enemy', { isCrit: !!healInfo.didCrit });
   }
   traceEnemyHealRoll(ctx, {
     enemyUID,
@@ -3525,7 +3584,7 @@ export function Enemy_Heal_Ally(ctx, enemyUID, targetEnemyUID = 0) {
   });
   const heal = healInfo.finalHeal;
   target.hp = Math.min(target.maxHP ?? target.hp, (target.hp ?? 0) + heal);
-  SpawnDamageText(ctx, heal, target.x ?? 0, target.y ?? 0, 'heal', 'enemy');
+  SpawnDamageText(ctx, heal, target.x ?? 0, target.y ?? 0, 'heal', 'enemy', { isCrit: !!healInfo.didCrit });
   traceEnemyHealRoll(ctx, {
     enemyUID,
     enemyName: String(healer.name || 'Enemy'),
@@ -3616,6 +3675,17 @@ function ensurePendingEnemyRespawnSlots(g, desiredSlots = 3) {
   return g.PendingEnemyRespawnSlots;
 }
 
+function isEnemySlotVisuallyOccupied(ctx, slotIndex = 0) {
+  const g = getGlobals(ctx);
+  const now = Number(g.time || 0);
+  return ensureEntities(ctx).some((entity) => {
+    if (!entity || entity.kind !== 'enemy') return false;
+    if (Number(entity.slotIndex || 0) !== Number(slotIndex || 0)) return false;
+    if (Number(entity.hp || 0) > 0) return true;
+    return Number(entity.deathFadeUntil || 0) > now;
+  });
+}
+
 function finalizeEnemyRespawnWindow(ctx) {
   const g = getGlobals(ctx);
   g.PendingEnemyRespawnTimerActive = 0;
@@ -3626,7 +3696,12 @@ function finalizeEnemyRespawnWindow(ctx) {
   while (g.EnemyIDs.length < desiredSlots) g.EnemyIDs.push(0);
   const pending = ensurePendingEnemyRespawnSlots(g, desiredSlots);
   const emptySlots = [];
+  let blockedSlots = 0;
   for (let slotIndex = 0; slotIndex < desiredSlots; slotIndex += 1) {
+    if (isEnemySlotVisuallyOccupied(ctx, slotIndex)) {
+      blockedSlots += 1;
+      continue;
+    }
     if (Number(g.EnemySlots[slotIndex] || 0) <= 0) emptySlots.push(slotIndex);
   }
   if (emptySlots.length === desiredSlots) {
@@ -3634,18 +3709,24 @@ function finalizeEnemyRespawnWindow(ctx) {
     for (const entry of plan) {
       const slotIndex = Number(entry?.slotIndex || 0);
       if (!entry || !entry.row) continue;
-      if (Number(g.EnemySlots[slotIndex] || 0) > 0) continue;
+      if (Number(g.EnemySlots[slotIndex] || 0) > 0 || isEnemySlotVisuallyOccupied(ctx, slotIndex)) continue;
       SpawnEnemy(ctx, entry.row, slotIndex);
     }
   } else {
     for (const slotIndex of emptySlots) {
       if (!Number(pending[slotIndex] || 0)) continue;
-      if (Number(g.EnemySlots[slotIndex] || 0) > 0) continue;
+      if (Number(g.EnemySlots[slotIndex] || 0) > 0 || isEnemySlotVisuallyOccupied(ctx, slotIndex)) continue;
       const pick = PickNextEnemyID(ctx);
       if (pick) SpawnEnemy(ctx, pick, slotIndex);
     }
   }
-  g.PendingEnemyRespawnSlots = Array.from({ length: desiredSlots }, () => 0);
+  const stillPending = pending.some((value) => Number(value || 0) > 0);
+  if (stillPending && blockedSlots > 0) {
+    g.PendingEnemyRespawnTimerActive = 1;
+    setTimeout(() => finalizeEnemyRespawnWindow(ctx), 100);
+  } else {
+    g.PendingEnemyRespawnSlots = Array.from({ length: desiredSlots }, () => 0);
+  }
   UpdateEnemyHPUI(ctx);
   if (!g.RoundActive && !g.BattleStartActive) {
     StartRound(ctx);
@@ -3666,6 +3747,7 @@ function scheduleEnemyRespawnWindow(ctx, slotIndex, respawnDelay) {
 
 export function SpawnEnemy(ctx, enemyData, slotIndex = 0) {
   if (!enemyData) return null;
+  if (isEnemySlotVisuallyOccupied(ctx, slotIndex)) return null;
   const g = getGlobals(ctx);
   const uid = nextUID(ctx);
   const enemy = {
@@ -3729,28 +3811,29 @@ export function KillEnemyAt(ctx, slotIndex) {
   const deadCell = g.EnemySlots[slotIndex] || 0;
   if (deadCell <= 0) return;
   const deadUID = deadCell - 1;
+  const entities = ensureEntities(ctx);
+  const idx = entities.findIndex(e => e && e.uid === deadUID);
+  if (idx !== -1 && Number(entities[idx].deathFadeCleanupPending || 0) === 1) return;
+  if (idx !== -1 && Number(entities[idx].deathFadeUntil || 0) > Number(g.time || 0)) return;
   runTraitHooks(ctx, 'enemy_death', {
     enemyUID: Number(deadUID || 0),
     slotIndex: Number(slotIndex || 0),
     killerUID: Number(currentUID || 0),
   });
-  const entities = ensureEntities(ctx);
-  const idx = entities.findIndex(e => e && e.uid === deadUID);
-  if (idx !== -1) entities.splice(idx, 1);
+  if (idx !== -1) queueEnemyDeathFade(ctx, entities[idx], slotIndex);
   if (g.EnemyDebuffs && g.EnemyDebuffs[deadUID]) delete g.EnemyDebuffs[deadUID];
   if (g.EnemyDebuffSlots && g.EnemyDebuffSlots[deadUID]) delete g.EnemyDebuffSlots[deadUID];
   if (g.EnemyDebuffTurns && g.EnemyDebuffTurns[deadUID]) delete g.EnemyDebuffTurns[deadUID];
   if (g.SelectedEnemyUID === deadUID) g.SelectedEnemyUID = 0;
-  g.EnemySlots[slotIndex] = 0;
-  if (Array.isArray(g.EnemyIDs)) g.EnemyIDs[slotIndex] = 0;
   g.IsPlayerBusy = 1;
   recordTurnSchedulerEvent(ctx, 'removal_commit', { cause: 'kill_enemy_at', removed: [{ uid: deadUID, kind: 'enemy', slotIndex }], currentUID });
   if (isTimeInitiative(ctx)) {
     schedulerApplyRemovalCompaction(ctx, deadUID, slotIndex, currentUID);
   }
   UpdateEnemyHPUI(ctx);
-  const respawnDelay = Math.max(0.4, (g.DamageTextDurationSec || 1.35));
-  scheduleEnemyRespawnWindow(ctx, slotIndex, respawnDelay);
+  if (idx === -1) {
+    CompleteEnemyFadeExit(ctx, deadUID, slotIndex);
+  }
 }
 
 function resolveEnemySlotIndex(ctx, enemyUID, fallbackSlotIndex = 0) {
@@ -3770,6 +3853,53 @@ function resolveEnemySlotIndex(ctx, enemyUID, fallbackSlotIndex = 0) {
   return preferred >= 0 ? preferred : 0;
 }
 
+function queueEnemyDeathFade(ctx, enemy, slotIndex = 0) {
+  const g = getGlobals(ctx);
+  if (!enemy) return;
+  if (Number(enemy.deathFadeCleanupPending || 0) === 1) return;
+  if (Number(enemy.deathFadeUntil || 0) > Number(g.time || 0)) return;
+  const startedAt = Number(g.time || 0);
+  const duration = Math.max(0.6, Number(g.EnemyDeathFadeSec || 0.72));
+  enemy.slotIndex = Number(slotIndex || enemy.slotIndex || 0);
+  enemy.deathFadeStartedAt = startedAt;
+  enemy.deathFadeDuration = duration;
+  enemy.deathFadeUntil = startedAt + duration;
+  enemy.deathFadeCleanupPending = 1;
+  enemy.isDying = 1;
+  enemy.isAlive = false;
+  if (Number(g.EnemyDeathDebug || 0) === 1) {
+    console.log('[ENEMY_DEATH]', 'fade_queued', {
+      uid: Number(enemy.uid || 0),
+      slot: Number(enemy.slotIndex || 0),
+      startedAt,
+      duration,
+      fadeUntil: Number(enemy.deathFadeUntil || 0),
+    });
+  }
+}
+
+export function CompleteEnemyFadeExit(ctx, enemyUID, fallbackSlotIndex = 0) {
+  const g = getGlobals(ctx);
+  const targetUID = Number(enemyUID || 0);
+  const slotIndex = resolveEnemySlotIndex(ctx, targetUID, fallbackSlotIndex);
+  if (Array.isArray(g.EnemySlots) && slotIndex >= 0 && Number(g.EnemySlots[slotIndex] || 0) === targetUID + 1) {
+    g.EnemySlots[slotIndex] = 0;
+  }
+  if (Array.isArray(g.EnemyIDs) && slotIndex >= 0 && Number(g.EnemyIDs[slotIndex] || 0) === targetUID) {
+    g.EnemyIDs[slotIndex] = 0;
+  }
+  if (g.SelectedEnemyUID === targetUID) g.SelectedEnemyUID = 0;
+  UpdateEnemyHPUI(ctx);
+  if (Number(g.EnemyDeathDebug || 0) === 1) {
+    console.log('[ENEMY_DEATH]', 'fade_complete', {
+      uid: targetUID,
+      slot: Number(slotIndex || 0),
+      time: Number(g.time || 0),
+    });
+  }
+  scheduleEnemyRespawnWindow(ctx, slotIndex, 0);
+}
+
 export function KillEnemyByUID(ctx, enemyUID, fallbackSlotIndex = 0) {
   const g = getGlobals(ctx);
   const targetUID = Number(enemyUID || 0);
@@ -3780,25 +3910,26 @@ export function KillEnemyByUID(ctx, enemyUID, fallbackSlotIndex = 0) {
     KillEnemyAt(ctx, slotIndex);
     return;
   }
+  const entities = ensureEntities(ctx);
+  const idx = entities.findIndex(e => e && e.uid === targetUID);
+  if (idx !== -1 && Number(entities[idx].deathFadeCleanupPending || 0) === 1) return;
+  if (idx !== -1 && Number(entities[idx].deathFadeUntil || 0) > Number(g.time || 0)) return;
   const currentUID = GetCurrentTurn(ctx);
   runTraitHooks(ctx, 'enemy_death', {
     enemyUID: targetUID,
     slotIndex: Number(slotIndex || 0),
     killerUID: Number(currentUID || 0),
   });
-  const entities = ensureEntities(ctx);
-  const idx = entities.findIndex(e => e && e.uid === targetUID);
-  if (idx !== -1) entities.splice(idx, 1);
+  if (idx !== -1) queueEnemyDeathFade(ctx, entities[idx], slotIndex);
   if (g.EnemyDebuffs && g.EnemyDebuffs[targetUID]) delete g.EnemyDebuffs[targetUID];
   if (g.EnemyDebuffSlots && g.EnemyDebuffSlots[targetUID]) delete g.EnemyDebuffSlots[targetUID];
   if (g.EnemyDebuffTurns && g.EnemyDebuffTurns[targetUID]) delete g.EnemyDebuffTurns[targetUID];
   if (g.SelectedEnemyUID === targetUID) g.SelectedEnemyUID = 0;
-  if (Array.isArray(g.EnemySlots) && slotIndex >= 0) g.EnemySlots[slotIndex] = 0;
-  if (Array.isArray(g.EnemyIDs) && slotIndex >= 0) g.EnemyIDs[slotIndex] = 0;
   g.IsPlayerBusy = 1;
   UpdateEnemyHPUI(ctx);
-  const respawnDelay = Math.max(0.4, (g.DamageTextDurationSec || 1.35));
-  scheduleEnemyRespawnWindow(ctx, slotIndex, respawnDelay);
+  if (idx === -1) {
+    CompleteEnemyFadeExit(ctx, targetUID, slotIndex);
+  }
 }
 
 export function Add_Gold(ctx, amt) {
@@ -3846,29 +3977,6 @@ export function ResolveMonsterDrop(ctx, monsterName, tierIndex = null) {
   return tiers[idx] ?? EMPTY;
 }
 
-const TH_DROP_RATE_THRESHOLDS = [2400, 1500, 1000, 500, 100, 50, 0];
-const TH_DROP_RATE_TABLE = {
-  2400: [2400, 2520, 2640, 2760, 2880, 3000, 3120, 3240, 3360, 3480, 3600],
-  1500: [1500, 1650, 1800, 1950, 2100, 2250, 2400, 2550, 2700, 2850, 3000],
-  1000: [1000, 1175, 1350, 1525, 1700, 1875, 2050, 2225, 2400, 2575, 2750],
-  500: [500, 700, 900, 1100, 1300, 1500, 1700, 1900, 2100, 2300, 2500],
-  100: [100, 220, 340, 460, 580, 700, 820, 940, 1060, 1180, 1300],
-  50: [50, 130, 210, 290, 370, 450, 530, 610, 690, 770, 850],
-  0: [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
-};
-
-function sanitizeBps(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.min(10000, Math.floor(n)));
-}
-
-function sanitizeThLevel(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.floor(n));
-}
-
 const HUUN_EXECUTION_NAME = 'Huun';
 const HUUN_EXECUTION_TH_BONUS = 2;
 
@@ -3877,26 +3985,6 @@ function resolveHuunExecutionDropBonusLevel(ctx, killerUID) {
   if (!killer || killer.kind !== 'hero') return 0;
   if (String(killer.name || '') !== HUUN_EXECUTION_NAME) return 0;
   return HUUN_EXECUTION_TH_BONUS;
-}
-
-export function getDropRateBracket(dropRate) {
-  const bps = sanitizeBps(dropRate);
-  for (const threshold of TH_DROP_RATE_THRESHOLDS) {
-    if (bps >= threshold) return threshold;
-  }
-  return 0;
-}
-
-export function getDropRate(thLevel, dropRate) {
-  const base = sanitizeBps(dropRate);
-  const level = sanitizeThLevel(thLevel);
-  const bracket = getDropRateBracket(base);
-  const row = TH_DROP_RATE_TABLE[bracket];
-  if (!Array.isArray(row) || row.length === 0) return base;
-  const idx = Math.min(level, row.length - 1);
-  const transformed = Number(row[idx]);
-  if (!Number.isFinite(transformed)) return base;
-  return sanitizeBps(transformed);
 }
 
 export function GetDropRateBracket(ctx, dropRate) {
@@ -3951,34 +4039,18 @@ export function AwardMonsterDrop(ctx, monsterName, tierIndex = null, killerUID =
     } else {
       AddToken(ctx, parsed.id, 1);
       LogCombat(ctx, `Token drop: ${parsed.id}`);
-      resolved = `TOKEN.${parsed.id}`;
+      awarded.push(parsed.id);
+      continue;
     }
-  } else if (parsed.type === 'ITEM') {
-    LogCombat(ctx, `Item drop: ${parsed.id}`);
-    resolved = `ITEM.${parsed.id}`;
+    if (parsed.type === 'ITEM') {
+      LogCombat(ctx, `Item drop: ${parsed.id}`);
+      awarded.push(parsed.id);
+      continue;
+    }
+    awarded.push('EMPTY');
   }
-
-  const trace = {
-    thLevel,
-    baseGateRateBps,
-    effectiveGateRateBps,
-    bracket: getDropRateBracket(baseGateRateBps),
-    baseGateChancePct: Number(baseGateChancePct.toFixed(4)),
-    gateChancePct,
-    gateRollPct: Number(gateRollPct.toFixed(4)),
-    gatePassed,
-    itemRollPct: weighted.itemRollPct,
-    selectedWeightPct: weighted.selectedWeightPct,
-    dropId: String(dropId),
-    resolved,
-  };
-  g.LastLootSlotTrace = [trace];
-  g.LastLootGateTrace = trace;
-  console.log(`[LOOT_TRACE] ${monsterName} ${JSON.stringify(trace)}`);
-  console.log(`[LOOT] Monster ${monsterName} awarded: ${resolved}`);
-  return resolved && resolved !== 'EMPTY'
-    ? String(resolved).replace(/^TOKEN\./, '').replace(/^ITEM\./, '')
-    : EMPTY;
+  console.log(`[LOOT] Monster ${monsterName} awarded: ${awarded.join(', ')}`);
+  return awarded.find(v => v && v !== 'EMPTY') || EMPTY;
 }
 
 export function SpendTokensOnEvent(ctx, eventId, amount) {
@@ -4128,6 +4200,7 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
     return;
   }
   if (gemColor === 2) {
+    g.TurnPhase = 1;
     g.IsAOEMatch = 0;
     LogGemIntent(ctx, 2, 'BLUE', 'Astral_Flow', '', actorUID);
     g.BuffRollApplyStat = 0;
@@ -4164,11 +4237,13 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
     return;
   }
   if (gemColor === 4) {
+    g.TurnPhase = 1;
     LogGemIntent(ctx, 4, 'LIGHTGREEN', 'Do_Heal', '', actorUID);
     ctx.callFunction('DoHeal', actorUID);
     return;
   }
   if (gemColor === 5) {
+    g.TurnPhase = 1;
     LogGemIntent(ctx, 5, 'PURPLE', 'Power_Amp', 'hero-routing', actorUID);
     activatePowerAmp(ctx, actorUID);
     g.ActionLockUntil = (g.time || 0) + 0.6;
@@ -4418,8 +4493,9 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     g.IsAOEMatch = 1;
     for (const h of getHeroes(ctx)) {
       const dmg = CalculateDamage(ctx, actorUID, h.uid, 'magic');
+      const didCrit = Boolean(getGlobals(ctx).LastCalculatedDamageCrit);
       const resist = applyRunaMagicResist(ctx, actorUID, h.uid, dmg, 'Enemy_MAG_AOE');
-      if (resist.finalDamage > 0) ApplyDamageToTarget(ctx, h.uid, resist.finalDamage);
+      if (resist.finalDamage > 0) ApplyDamageToTarget(ctx, h.uid, resist.finalDamage, { isCrit: didCrit });
     }
   }
 
@@ -4619,7 +4695,7 @@ export function ProcessTurn(ctx) {
       g.ActiveGroupIndex = g.RoundGroupIndex || 0;
     }
     const pendingGroup = g.PendingDeaths ? g.PendingDeaths[uid] : null;
-    const partyAlive = (g.PartyHP || 0) > 0;
+    const partyAlive = getLivingHeroCount(ctx) > 0;
     if (actor && (partyAlive || (g.RoundActive && pendingGroup === g.RoundGroupIndex))) {
       HeroTurn(ctx, uid);
     } else {
@@ -4931,8 +5007,9 @@ export function ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID = 0) {
   if (normalizedSkillId === 'Enemy_MAG_AOE') {
     for (const h of getHeroes(ctx)) {
       const dmg = CalculateDamage(ctx, enemyUID, h.uid, 'magic');
+      const didCrit = Boolean(getGlobals(ctx).LastCalculatedDamageCrit);
       const resist = applyRunaMagicResist(ctx, enemyUID, h.uid, dmg, 'Enemy_MAG_AOE');
-      if (resist.finalDamage > 0) ApplyDamageToTarget(ctx, h.uid, resist.finalDamage);
+      if (resist.finalDamage > 0) ApplyDamageToTarget(ctx, h.uid, resist.finalDamage, { isCrit: didCrit });
     }
     return 1;
   }
@@ -4975,7 +5052,7 @@ export function StartEnemyAction(ctx, enemyUID) {
   };
 }
 
-export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind = null) {
+export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind = null, options = undefined) {
   const g = getGlobals(ctx);
   g.DamageTexts = g.DamageTexts || [];
   let drawX = x;
@@ -5004,6 +5081,7 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
     y: drawY,
     kind,
     targetKind,
+    isCrit: !!options?.isCrit,
     heat,
     peakScale,
     baseY: drawY,

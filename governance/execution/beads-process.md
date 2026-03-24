@@ -16,13 +16,38 @@
 1. Run `bd ready`.
 2. Select the highest-priority ready bead or the explicitly assigned bead.
 3. Run `bd show <id>`.
-4. Confirm the bead is executable.
-5. Mark `in_progress`.
-6. Implement only the scoped change.
-7. Run targeted verification.
-8. Record closeout artifacts.
-9. Confirm `bd` write results.
-10. Close the bead.
+4. State the bead purpose in one short plain-language sentence.
+5. Confirm the bead is executable.
+6. Mark `in_progress`.
+7. Implement only the scoped change.
+8. Run targeted verification.
+9. Record closeout artifacts.
+10. Confirm `bd` write results.
+11. Close the bead.
+
+## Orphaned Bead Prevention Rule
+- PM cycle must not leave avoidable orphaned beads behind.
+- If a bead is claimed, set `in_progress`, or otherwise made active during a cycle, that same cycle must do one of the following before ending:
+  - execute the bead and continue normal closeout,
+  - explicitly hand it off as the active lane with matching coordination-file state, or
+  - return it to `open`/ready state with a short reason recorded.
+- Inspection-only or proof-of-close review is not enough reason to leave a bead active.
+- If a bead was touched only for triage, queue audit, or selection and no real execution started:
+  - restore truthful live `bd` status in the same cycle
+  - record why it was restored if the temporary activation could confuse the queue
+- Proof-or-close lanes follow the same rule:
+  - close them on evidence, or
+  - return them to `open`/blocked with the missing proof called out
+- Avoid carrying forward “placeholder” active beads just to remember what was looked at.
+
+## Purpose Statement Rule
+- Before execution, reassignment, or review, state the active bead purpose in one short plain-language sentence.
+- The statement must:
+  - describe the player-facing or system-facing behavior plainly
+  - avoid internal shorthand when a human-readable phrase is available
+  - be short enough to make the intended QA mode obvious
+- If the bead is not meaningfully player-facing, say that explicitly and bias toward deterministic validation.
+- Missing this statement is process non-compliance, not a cosmetic miss.
 
 ## Queue Creation vs Execution
 - Creating a bead is not the same as starting a lane.
@@ -97,13 +122,19 @@
 ## PM / Dev / Review Contract
 - PM:
   - shapes executable beads
+  - states the bead purpose plainly before assigning, rewriting, or reviewing
+  - must restore a bead to truthful queue state if it was only inspected and not actually handed off for work
   - rejects vague work
   - closes only with evidence
 - Dev:
   - implements one bead at a time
+  - restates the bead purpose plainly before claiming and implementing
+  - must not keep a claimed bead active if execution never actually starts
   - stays inside scope
   - reports exact tests and touched files
 - Review:
+  - checks that the bead purpose was stated plainly
+  - checks that PM cycle did not leave an avoidable orphaned active bead
   - checks acceptance, evidence, and scope compliance
   - rejects mixed-scope closeouts
 

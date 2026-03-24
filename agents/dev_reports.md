@@ -7,9 +7,238 @@ Active handoff file only. Historical implementation reports live in `/agents/arc
 - summary of changes:
 - files modified:
 - test evidence:
+- discovery lane comparison:
+- pilot value signals:
 - scope confirmation:
 
 ## Recent Reports
+- bead id: ORKA-6opp queue correction
+- summary of changes: Ran the PM cycle on the live ready-head feature bead and confirmed it is still not executable. The bead purpose is to give each hero a distinct red single-target attack presentation without changing damage formulas, but the current body still lacks acceptance criteria, non-goals, and test boundaries. The lane was claimed only long enough to make that correction explicit and then returned to truthful queue state.
+- files modified: `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `export PATH=\"$HOME/.local/bin:$PATH\" && bd show ORKA-6opp` (confirmed the bead body is still only a short description plus a note saying it needs spec rewrite)
+  - `rg -n "ORKA-6opp|6opp" agents/issues.md agents/pm_status.md agents/dev_reports.md` (confirmed existing coordination files already classify the bead as `missing_spec` and rewrite-only)
+  - `export PATH=\"$HOME/.local/bin:$PATH\" && bd update ORKA-6opp --status in_progress && bd update ORKA-6opp --status open` (same-cycle claim and restore so the PM cycle does not leave an orphaned false-active lane)
+- discovery lane comparison: not used on this bead
+- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (truthful queue correction)
+- scope confirmation: Confined to PM-cycle queue hygiene and coordination updates. No gameplay/runtime implementation or acceptance expansion was performed.
+
+- bead id: ORKA-39i0 proof pass
+- summary of changes: Ran a proof-or-close PM cycle on the initiative turn-loop bug. The bead is not closable. Static checks were mixed: the hero idle-window restore guard contract still passes, while the older deferred-advance regex contract no longer matches the current dirty app runtime. The decisive result came from live browser proof: blue and yellow initiative actions handed off cleanly, but a completed red `HERO_SINGLE` action returned Huun to an immediately actionable same-turn state with `TurnSerial` still `0`.
+- files modified: `agents/dev_reports.md`; `agents/pm_status.md`; `agents/issues.md`; `output/playwright/orka-39i0-runtime-proof.json`; `output/playwright/orka-39i0-runtime-proof-preferred.json`; `output/playwright/orka-39i0-runtime-proof-complete.json`
+- test evidence:
+  - `npm test -- tests/heroInitiativePickRestoreGuardContract.test.js tests/turnTransientWriteGuardContract.test.js` (`heroInitiativePickRestoreGuardContract` pass; `turnTransientWriteGuardContract` fail on the current app runtime source)
+  - discovery lane artifact: `output/playwright/orka-39i0-runtime-proof-complete.json`
+  - supporting artifacts: `output/playwright/orka-39i0-runtime-proof.json`; `output/playwright/orka-39i0-runtime-proof-preferred.json`
+  - runtime repro: in `orka-39i0-runtime-proof-complete.json`, yellow and blue initiative actions advanced from Huun to Kojonn, while red `HERO_SINGLE` executed and then returned to Huun with `CanPickGems=1`, `DeferAdvance=0`, and `TurnSerial=0`
+- discovery lane comparison: `found more` — the browser lane separated a stale static regex mismatch from the live remaining bug and localized the failure to the red single-target initiative path.
+- pilot value signals: time-to-understand failure `faster`; token cost `medium`; operator overhead `medium`; reusable output `yes`
+- scope confirmation: Confined to runtime bug proof, artifact capture, and coordination updates. No gameplay/runtime code changed in this cycle.
+
+- bead id: ORKA-j4t0
+- summary of changes: Hardened PM-cycle governance so claimed or temporarily activated beads do not get left orphaned. The shared Beads process now requires same-cycle closeout, explicit handoff, or immediate restore to truthful queue state, and both PM/dev prompts now spell out that inspection-only activation must be unwound before the cycle ends.
+- files modified: `governance/execution/beads-process.md`; `agents/prompts/pm_agent.md`; `agents/prompts/dev_agent.md`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `rg -n "Orphaned Bead Prevention Rule|inspection-only|orphaned|truthful live `bd` state|proof-or-close lanes" governance/execution/beads-process.md agents/prompts/pm_agent.md agents/prompts/dev_agent.md` (cross-file rule presence check)
+  - `export PATH=\"$HOME/.local/bin:$PATH\" && bd show ORKA-39i0 && bd show ORKA-j4t0` (live queue-state confirmation: previously inspected bead restored, governance bead active)
+- discovery lane comparison: not used on this bead
+- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (hardcoded PM-cycle queue hygiene)
+- scope confirmation: Confined to governance/process prompts and coordination updates. No gameplay/runtime or harness behavior changed.
+
+- bead id: ORKA-7w7q
+- summary of changes: Ran a multi-pass browser QA sustainability sweep through the discovery lane on the live local runtime. Three CDP-backed passes repeatedly clicked through `storyMock -> town -> combat`, then retried the combat-to-map nav until it opened, closed map via the hero-style close control, and confirmed the game returned to an actionable combat state each time.
+- files modified: `agents/dev_reports.md`; `agents/pm_status.md`; `agents/issues.md`; `output/playwright/gstack-multipass-qa-20260323.json`; `output/playwright/gstack-pass-1-map.png`; `output/playwright/gstack-pass-1-final.png`; `output/playwright/gstack-pass-2-map.png`; `output/playwright/gstack-pass-2-final.png`; `output/playwright/gstack-pass-3-map.png`; `output/playwright/gstack-pass-3-final.png`
+- test evidence:
+  - discovery lane artifact: `output/playwright/gstack-multipass-qa-20260323.json`
+  - discovery lane screenshots: `output/playwright/gstack-pass-1-map.png`, `output/playwright/gstack-pass-1-final.png`, `output/playwright/gstack-pass-2-map.png`, `output/playwright/gstack-pass-2-final.png`, `output/playwright/gstack-pass-3-map.png`, `output/playwright/gstack-pass-3-final.png`
+  - direct CDP-backed browser QA on `http://127.0.0.1:8095/web-runner/index.html` (3 passes): click `storyMock -> town -> combat`, wait for actionable combat, retry `Map` nav click until `mapLayout`, close via hero-style close control, confirm return to actionable combat
+- discovery lane comparison: `found more` — the sweep proved the current runtime is sustainable across the click-verified `storyMock`, `town`, `combat`, and `mapLayout` loop even though the shipping lane remains bottlenecked by startup ownership. It also surfaced a concrete QA gap: non-map bottom-nav hit targets are still not reliably click-classified under this browser path.
+- pilot value signals: time-to-understand failure `faster`; token cost `medium`; operator overhead `medium`; reusable output `yes`
+- scope confirmation: Confined to browser QA execution, artifacts, and coordination updates. No gameplay/runtime code or shipping-lane authority changed.
+
+- bead id: ORKA-e1n4
+- summary of changes: Hardened bead-purpose statement compliance so it is no longer advisory. The shared Beads process now requires a one-sentence plain-language bead purpose before execution/review, PM flow treats missing purpose statements as non-compliant, and dev flow now requires restating the bead purpose before claim/implementation.
+- files modified: `governance/execution/beads-process.md`; `agents/prompts/pm_agent.md`; `agents/prompts/dev_agent.md`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `rg -n "Purpose Statement Rule|state the bead purpose|non-compliant|goal was stated plainly|restate the bead purpose" governance/execution/beads-process.md agents/prompts/pm_agent.md agents/prompts/dev_agent.md` (cross-file rule presence check)
+  - `git diff --stat -- governance/execution/beads-process.md agents/prompts/pm_agent.md agents/prompts/dev_agent.md` (scoped governance diff inspection)
+- discovery lane comparison: not used on this bead
+- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (hardcoded compliance gate)
+- scope confirmation: Confined to governance/process docs and role prompts. No gameplay/runtime or queue-state behavior changed beyond the compliance rule itself.
+
+- bead id: ORKA-jz5i
+- summary of changes: Ran a queue cleanup sweep against the live open-bead list. Closed one stale-open hardening lane that had already shipped (`ORKA-9yo`), marked two P1 hardening tasks (`ORKA-6n7`, `ORKA-njg`) as rewrite-only instead of executable-ready, and clarified that `ORKA-n0g` stays open only as a future stub for later exclusive-slot/combat-accessory work.
+- files modified: `agents/dev_reports.md`; `agents/pm_status.md`; `agents/issues.md`
+- test evidence:
+  - `bd list --json | jq '[.[] | select(.status=="open" or .status=="in_progress" or .status=="blocked")] | sort_by(.priority, .created_at) | map({id,title,status,priority,issue_type,updated_at})'` (live open-queue audit)
+  - `bd show ORKA-6n7`
+  - `bd show ORKA-9yo`
+  - `bd show ORKA-njg`
+  - `bd show ORKA-n0g`
+  - `bd close ORKA-9yo --force --reason "...superseded by shipped hot-file lock tooling..."`
+- discovery lane comparison: not used on this bead
+- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (cleaner ready queue and explicit keep/rewrite/close guidance)
+- scope confirmation: Confined to queue/governance cleanup under live `bd`. No gameplay/runtime implementation or feature acceptance was changed.
+
+- bead id: ORKA-omdl
+- summary of changes: Ran the browser discovery-lane pilot on a bounded runtime QA scenario: enter combat, wait for an actionable hero turn, execute one 3-gem action, and observe post-action handoff. The canonical shipping lane was attempted first through the existing `balance-harness` CDP path, then the discovery lane ran through a direct persistent CDP browser session on the same local runtime.
+- files modified: `agents/dev_reports.md`; `agents/pm_status.md`; `agents/issues.md`
+- test evidence:
+  - `npm run chrome:cdp -- --port 9222 --startUrl http://127.0.0.1:8095/web-runner/index.html` (external Chrome CDP owner started successfully)
+  - `npm run playwright:doctor -- --only cdp --cdpUrl http://127.0.0.1:9222` (CDP attach pass)
+  - `BALANCE_CDP_URL=http://127.0.0.1:9222 npm run balance-harness -- --sessions 1 --maxWaves 1 --outputDir output/balance-harness/omdl-shipping` (shipping lane failed to produce artifacts before Chrome crashed on the known AppKit/HIServices startup boundary; output directory remained empty)
+  - discovery lane artifact: `output/playwright/omdl-discovery-lane.json`
+  - discovery lane screenshot: `output/playwright/omdl-discovery-lane.png`
+- discovery lane comparison: `found more` — the shipping lane only reconfirmed browser-ownership brittleness, while the discovery lane captured actionable runtime state, one completed hero action, post-action handoff to the next hero, and a useful console trace showing `HERO_SINGLE`, `DeferAdvance`, and `TURN` sequencing.
+- pilot value signals: time-to-understand failure `faster`; token cost `medium`; operator overhead `medium`; reusable output `yes`
+- scope confirmation: Confined to pilot QA execution and coordination artifacts for the browser discovery lane. No gameplay/runtime implementation or harness authority rules changed.
+
+- bead id: ORKA-kewj
+- summary of changes: Added a repo-owned browser discovery-lane pilot for runtime QA. The canonical harness remains the shipping lane, while a new governance packet now defines when an experimental discovery lane is allowed, how PM/dev should report it, and how to unwind it if it adds cost without signal.
+- files modified: `governance/qa/browser-discovery-lane-pilot.md`; `tools/README.md`; `governance/qa/combat-playwright-control-model.md`; `agents/prompts/dev_agent.md`; `agents/prompts/pm_agent.md`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `rg -n "browser-discovery-lane-pilot|found more|found same|found less|shipping lane|discovery lane" tools/README.md governance/qa/combat-playwright-control-model.md governance/qa/browser-discovery-lane-pilot.md agents/prompts/dev_agent.md agents/prompts/pm_agent.md agents/dev_reports.md` (cross-file terminology and reference check)
+  - `git diff --stat -- governance/qa/browser-discovery-lane-pilot.md tools/README.md governance/qa/combat-playwright-control-model.md agents/prompts/dev_agent.md agents/prompts/pm_agent.md agents/dev_reports.md` (scoped change inspection)
+- discovery lane comparison: not run on this bead; this lane established the pilot contract and reporting hooks only
+- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (repo-owned QA/governance packet)
+- scope confirmation: Confined to governance, QA documentation, and reporting prompts for the browser discovery-lane pilot. No gameplay runtime, harness pass/fail authority, or Beads ownership rules changed.
+
+- bead id: ORKA-9zlf follow-up 4
+- summary of changes: Retuned the HoT shimmer diamonds again by raising the opacity cap to `1.0` and shrinking the diamond size another 20% from the previous tuning, preserving the shimmer-line lane and timing.
+- files modified: `web-runner/app.js`; `tests/healBloomContract.test.js`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `npm test -- tests/healBloomContract.test.js` (3/3 pass)
+- scope confirmation: Confined to HoT diamond alpha cap and size only.
+- bead id: ORKA-9zlf follow-up 3
+- summary of changes: Retuned the HoT shimmer diamonds to read cleaner over heroes by increasing their opacity cap to `0.8` while shrinking their size by 20% from the previous scale.
+- files modified: `web-runner/app.js`; `tests/healBloomContract.test.js`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `npm test -- tests/healBloomContract.test.js` (3/3 pass)
+- scope confirmation: Confined to HoT diamond alpha and size only; shimmer lines, timing, and heal behavior were unchanged.
+- bead id: ORKA-apdf follow-up 6
+- summary of changes: Increased the unmasked Faze DoT particle opacity cap to 90% so the purple dots read more clearly in motion without changing masking, count, size, or timing.
+- files modified: `web-runner/app.js`; `tests/hitFlashFeedbackContract.test.js`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `npm test -- tests/hitFlashFeedbackContract.test.js` (3/3 pass)
+- scope confirmation: Confined to Faze particle alpha tuning only.
+- bead id: ORKA-cwtr
+- summary of changes: Fixed the real forced-support-board QA bug without changing forced-color persistence. Support colors still enter action phase and one-action-per-turn protection stays in place, but deferred advance now treats `BoardFillActive` as a hard block and the refill seam clears stale `BoardFillActive` when a no-work refill pass occurs. That removed both the earlier hero-loop leak and the later blue/heal/purple post-match freeze.
+- files modified: `web-runner/app.js`; `tests/devToolingTurnIntegrityContract.test.js`; `tests/turnGateRefreshBaselineContract.test.js`; `tests/heroInitiativePickRestoreGuardContract.test.js`; `ai-memory/insights.md`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `npm test -- tests/devToolingTurnIntegrityContract.test.js tests/turnGateRefreshBaselineContract.test.js tests/heroInitiativePickRestoreGuardContract.test.js` (12/12 pass)
+  - live `agent-browser` repro on `http://127.0.0.1:8096/web-runner/index.html`:
+    - forced `blue` + idle autoplay progressed to `matches=4`, `turns=6`, current actor enemy, `boardFill=0`
+    - forced `heal` + idle autoplay progressed from `matches=11 / turns=19` to `matches=12 / turns=21`
+    - forced `purple` + idle autoplay progressed to `matches=14 / turns=24`
+- scope confirmation: Confined to dev-panel forced-color turn handoff and refill gating. Forced-color persistence remains intact for QA. No combat formulas, support-color effects, or dev-panel policy were changed.
+- bead id: ORKA-l0je
+- summary of changes: Replaced the party HP bar’s hard single-color front fill with a continuous degradation color ramp. The front bar now shifts smoothly from green at healthy values to yellow at low values and red at critical values, while preserving the existing lag bar and HoT overlay behavior.
+- files modified: `web-runner/app.js`; `tests/hpBarAnimationContract.test.js`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `npm test -- tests/hpBarAnimationContract.test.js` (2/2 pass)
+- scope confirmation: Confined to party HP bar presentation only; enemy bars, heal math, and unrelated UI behavior were not changed.
+- bead id: ORKA-r6v5
+- summary of changes: Fixed fake HoT regeneration by preserving exact shared party-heal totals when syncing HP back onto individual heroes. Small regen ticks no longer disappear into per-hero floor rounding; the remainder is distributed so live hero HP actually increases.
+- files modified: `web-runner/modules/functionBank.js`; `Scripts/functionBank.js`; `tests/partyHealRoundingContract.test.js`; `ai-memory/insights.md`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `npm test -- tests/partyHealRoundingContract.test.js tests/healBloomContract.test.js` (6/6 pass)
+- scope confirmation: Confined to party-heal redistribution and its focused regression coverage; no HoT visuals or turn logic changed in this pass.
+- bead id: ORKA-9zlf follow-up 2
+- summary of changes: Increased Kojonn HoT shimmer readability by raising both the vertical line alpha and the white/yellow diamond alpha to match the stronger visibility approved for Faze particles.
+- files modified: `web-runner/app.js`; `tests/healBloomContract.test.js`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `npm test -- tests/healBloomContract.test.js` (3/3 pass)
+- scope confirmation: Confined to HoT shimmer alpha tuning only.
+- bead id: ORKA-apdf follow-up 5
+- summary of changes: Updated Kojonn’s Faze combat messaging to use the spell name instead of `blight`, and increased the shared Faze dot/stroke opacity another 20% for stronger read in combat.
+- files modified: `web-runner/app.js`; `web-runner/modules/functionBank.js`; `Scripts/functionBank.js`; `tests/damageNumberTimelineContract.test.js`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `npm test -- tests/damageNumberTimelineContract.test.js tests/hitFlashFeedbackContract.test.js` (8/8 pass)
+- scope confirmation: Confined to Faze presentation text and particle alpha only.
+- bead id: ORKA-apdf follow-up 4
+- summary of changes: Increased the Faze DoT dot radius by 20% for easier mid-combat identification while keeping the same unmasked particle path, color treatment, and opacity tuning.
+- files modified: `web-runner/app.js`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `npm test -- tests/hitFlashFeedbackContract.test.js` (3/3 pass)
+- scope confirmation: Confined to Faze particle size only.
+- bead id: ORKA-apdf follow-up 3
+- summary of changes: Increased the upward Faze DoT particle opacity so the dark purple dots read more clearly in motion without changing the masked purple enemy wash, particle count, or hero-side effects.
+- files modified: `web-runner/app.js`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `npm test -- tests/hitFlashFeedbackContract.test.js` (3/3 pass)
+- scope confirmation: Confined to the Faze particle alpha curve and cap only.
+- bead id: ORKA-39i0
+- summary of changes: Fixed an app-side hero initiative turn leak. The runtime had a fallback that restored `CanPickGems` whenever it saw a hero turn with phase 0 and no refill, even if deferred advance, action ownership, or busy state still owned the turn. The restore gate now only runs during a truly idle hero window.
+- files modified: `web-runner/app.js`; `tests/heroInitiativePickRestoreGuardContract.test.js`; `ai-memory/insights.md`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `npm test -- tests/heroInitiativePickRestoreGuardContract.test.js tests/turnTransientWriteGuardContract.test.js` (4/4 pass)
+- scope confirmation: Confined to app-side initiative pick restoration; no scheduler pointer math or function-bank turn ownership logic changed in this pass.
+- bead id: ORKA-apdf follow-up 2
+- summary of changes: Increased Faze DoT particle readability without changing the masked enemy overlay. The upward purple dots now use a darker purple fill, a darker outline, and a slightly darker glow so they read clearly against enemy art while remaining unmasked above the target.
+- files modified: `web-runner/app.js`; `tests/hitFlashFeedbackContract.test.js`; `ai-memory/insights.md`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `npm test -- tests/hitFlashFeedbackContract.test.js` (3/3 pass)
+- scope confirmation: Confined to the enemy Faze accent particles only; no HoT visuals, damage math, or purple mask ownership changed.
+- bead id: ORKA-apdf / ORKA-9zlf follow-up
+- summary of changes: Split masked status overlays from ambient particle accents. Faze keeps its masked purple enemy overlay, but the upward purple DoT dots now render above the enemy without clipping. Hero HoT shimmer lines and white/yellow diamonds likewise now render above heroes instead of being silhouette-clipped.
+- files modified: `web-runner/app.js`; `tests/hitFlashFeedbackContract.test.js`; `tests/healBloomContract.test.js`; `ai-memory/insights.md`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `npm test -- tests/hitFlashFeedbackContract.test.js tests/healBloomContract.test.js` (6/6 pass)
+- scope confirmation: Confined to the two presentation beads only; the enemy purple wash remains masked, while only the ambient particle layers changed ownership from clipped-to-actor to free-floating above the actor.
+- bead id: ORKA-apdf
+- summary of changes: Extended Kojonn Faze’s persistent enemy blight presentation with a secondary upward particle layer. Blighted enemies keep the existing purple masked overlay, and now also emit small purple dots that spawn low, float upward along the enemy height, and fade out above the sprite for clearer DoT-state symmetry with the hero HoT effect.
+- files modified: `web-runner/app.js`; `tests/hitFlashFeedbackContract.test.js`; `ai-memory/insights.md`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `npm test -- tests/hitFlashFeedbackContract.test.js tests/healBloomContract.test.js` (6/6 pass)
+- scope confirmation: Confined to enemy blight presentation only. No Faze damage math, DoT duration, enemy targeting, or hero heal visuals changed.
+
+- bead id: ORKA-9zlf
+- summary of changes: Replaced the persistent hero HoT tint overlay with a subtle vertical shimmer effect. Active party regen now draws four clipped light-green shimmer lines over each hero instead of reusing the old full-sprite color wash, which was reading as sickness rather than healing.
+- files modified: `web-runner/app.js`; `tests/healBloomContract.test.js`; `ai-memory/insights.md`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `npm test -- tests/healBloomContract.test.js tests/hpBarAnimationContract.test.js` (5/5 pass)
+- scope confirmation: Confined to persistent party HoT presentation on hero sprites only. No regen timing, heal values, bloom particles, or enemy overlay behavior changed.
+
+- bead id: ORKA-vlt8
+- summary of changes: Removed the invalid DOM-only `transformOrigin` property from the GSAP punch tween used by the canvas HP bar state objects. The front/lag easing split and `scaleY` punch behavior remain unchanged; the follow-up only silences the false plugin warning at the real combat update seam.
+- files modified: `web-runner/src/core/hpBarAnimation.mjs`; `tests/hpBarAnimationContract.test.js`; `ai-memory/insights.md`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `npm test -- tests/hpBarAnimationContract.test.js` (2/2 pass)
+  - deterministic runtime-path validation via direct module import: `node --input-type=module` calling `updateHP({ current: 60, max: 100, frontBar, lagBar })` on the same plain object shape used by canvas bars returned `seen: []` for captured warnings/errors while mutating the bar state as expected
+  - live browser reproduction path was attempted, but local browser automation is currently blocked by the existing Chrome session/cache boundary in this environment; the deterministic seam check was used instead
+- scope confirmation: Confined to the HP bar GSAP presentation seam only. No turn flow, combat timing, layout ownership, or HP semantics changed.
+
+- bead id: ORKA-bypu
+- summary of changes: Fixed the combat/layout break by removing stale aggregate `PartyHP` as the source of truth for party defeat. The app-side combat fail gate now derives defeat from live hero entities and repairs stale HUD totals via `UpdateHeroHPUI()` before exiting combat, while both mirrored function banks now use live hero counts for party-alive checks in hero roster and turn-start eligibility.
+- files modified: `web-runner/app.js`; `web-runner/modules/functionBank.js`; `Scripts/functionBank.js`; `tests/combatFailGateContract.test.js`; `ai-memory/insights.md`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `npm test -- tests/combatFailGateContract.test.js tests/healBloomContract.test.js` (5/5 pass)
+  - Playwright runtime validation at `http://127.0.0.1:8096/web-runner/index.html`: cleared layouts into combat and confirmed live runtime state via `window.render_game_to_text()` with `layoutId: "combat"` and no console errors after boot
+- scope confirmation: Confined to party-defeat/layout-exit ownership and mirrored party-alive gates. No damage formulas, turn math, layout graph, or unrelated FX logic changed.
+
+- bead id: ORKA-1g3x
+- summary of changes: Party-wide HoT now drives a persistent hero-sprite overlay for the full active regen duration. The overlay reuses the existing masked sprite-overlay seam used by enemy Faze, adds a dedicated light-green regen tone in the heal-bloom palette, and renders on heroes before transient hit flashes so party regen reads consistently without inventing a separate actor effect system.
+- files modified: `web-runner/app.js`; `tests/healBloomContract.test.js`; `ai-memory/insights.md`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `npm test -- tests/healBloomContract.test.js tests/hpBarAnimationContract.test.js` (5/5 pass)
+  - Playwright runtime smoke at `http://127.0.0.1:8096/web-runner/index.html` loaded cleanly with `0` console errors after boot
+- scope confirmation: Confined to persistent HoT presentation on hero sprites. No heal math, regen cadence, damage text, or unrelated enemy overlay behavior changed.
+
+- bead id: ORKA-gmyj
+- summary of changes: Added a reusable GSAP damage-number animation module with per-digit spans, independent timelines, staggered/randomized drift, crit pre-phase behavior, and DOM cleanup on completion. Wired the web runner damage-text path to use DOM/GSAP damage numbers instead of canvas text rendering, and paired it with the new reusable damage/heal prefix formatter from ORKA-acx5.
+- files modified: `web-runner/src/core/damageNumberAnimation.mjs`; `src/core/damageTextFormatting.mjs`; `web-runner/app.js`; `tests/damageNumberTimelineContract.test.js`; `tests/damageTextFormattingContract.test.js`; `package.json`; `package-lock.json`; `node_modules/.package-lock.json`
+- test evidence:
+  - `npm test -- tests/damageTextFormattingContract.test.js tests/damageNumberTimelineContract.test.js` (3/3 pass)
+  - Playwright runtime proof at `http://127.0.0.1:8095/web-runner/index.html`: dynamic import of `damageNumberAnimation.mjs` in the live browser produced a `.damage-number` wrapper with 4 digit spans for `-123`, and the wrapper auto-removed after timeline completion
+- scope confirmation: Confined to damage-number presentation and formatting only. No combat formulas, crit rates, or unrelated HUD logic changed.
+
+- bead id: ORKA-acx5
+- summary of changes: Added a minimal reusable `formatDamageValue({ value, type })` formatter so damage renders with `-` and healing renders with `+`, and integrated the formatter into the damage-number rendering path.
+- files modified: `src/core/damageTextFormatting.mjs`; `web-runner/app.js`; `tests/damageTextFormattingContract.test.js`
+- test evidence:
+  - `npm test -- tests/damageTextFormattingContract.test.js` (pass)
+- scope confirmation: Confined to formatting-only prefix behavior before render. No tween logic, value math, localization, or crit logic changed.
+
 - bead id: ORKA-tuin
 - summary of changes: Follow-up hardened the new hot-file prepare/enforce flow so it can handle real `web-runner/app.js` commit lanes. The original strict function-only model came from the ORKA-9yo hot-file-lock policy and was later optimized in ORKA-qpff, but repo history and `ai-memory/insights.md` already showed the blind spot: top-level imports/constants/state-shape edits in hot files were valid work yet still uncommittable. The tooling now emits an explicit `__MODULE__` scope token for reviewed module-scope edits instead of failing those diffs as impossible.
 - files modified: `tools/hot_file_scope.py`; `tools/test_hot_file_lock.sh`; `tools/README.md`; `governance/execution/beads-process.md`; `agents/dev_reports.md`; `agents/pm_status.md`
@@ -280,3 +509,180 @@ Active handoff file only. Historical implementation reports live in `/agents/arc
   - mirror-vs-live `comm` diff for `.beads/open` vs live open ids (empty after reconciliation)
   - mirror-vs-live `comm` diff for `.beads/in_progress` vs live in-progress ids (empty after reconciliation)
 - scope confirmation: Confined to mirror/governance reconciliation only. No gameplay/runtime code or product rules were changed.
+Bead ORKA-cc9q
+- changed files: web-runner/app.js; tests/devToolingModalContract.test.js
+- tests: npm test -- tests/devToolingModalContract.test.js (pass)
+- runtime validation: browser modal check attempted; blocked by unrelated `Unexpected token export` runtime syntax error on current main
+- scope: modal controls only; no gameplay rule changes
+
+Bead ORKA-bh69
+- changed files: web-runner/modules/functionBank.js; Scripts/functionBank.js; ai-memory/insights.md
+- tests: node --check web-runner/modules/functionBank.js && node --check Scripts/functionBank.js
+- scope: repaired merge-broken duplicate if guard causing misleading export syntax failure
+- runtime validation: browser boot now completes without syntax/init crash; dev modal opens in live Playwright session
+
+Bead ORKA-9vmb
+- changed files: web-runner/app.js; tests/idleFarmLayoutScaffoldContract.test.js
+- tests: npm test -- tests/idleFarmLayoutScaffoldContract.test.js tests/layoutState.test.js
+- scope: restored Astral Flow nav guard to the idleFarmLayout owner seam
+
+Bead ORKA-acx5
+- changed files: src/core/damageTextFormatting.mjs; web-runner/app.js; tests/damageTextFormattingContract.test.js
+- tests: npm test -- tests/damageTextFormattingContract.test.js (pass)
+- runtime validation: browser boot still succeeds after formatter import
+- scope: string formatting only
+
+Bead ORKA-gmyj follow-up
+- changed files: web-runner/app.js; tests/damageNumberTimelineContract.test.js; ai-memory/insights.md
+- tests: npm test -- tests/damageNumberTimelineContract.test.js (2/2 pass)
+- runtime validation: live browser no longer crashes on `worldToCanvas is not defined` after combat damage events; direct `SpawnDamageText` injection leaves console error-free
+- scope: regression fix only for the damage-number runtime seam; no combat math or animation spec changes
+
+Bead ORKA-ejmi
+- changed files: src/core/damageTextFormatting.mjs; web-runner/app.js; tests/damageTextFormattingContract.test.js; tests/damageNumberTimelineContract.test.js
+- tests: npm test -- tests/damageTextFormattingContract.test.js tests/damageNumberTimelineContract.test.js (3/3 pass)
+- runtime validation: live browser proof via `formatDamageValue({ value: 180, type: 'damage', isCrit: true })` + `createDamageNumber(...)` rendered `-180!!` with no console errors and without changing grouped wrapper motion
+- scope: presentation/text only; no crit math, proc behavior, or tween-motion contract changes
+
+Bead ORKA-ejmi follow-up
+- changed files: web-runner/modules/functionBank.js; Scripts/functionBank.js; web-runner/app.js; src/core/damageTextFormatting.mjs; tests/damageTextFormattingContract.test.js; tests/damageNumberTimelineContract.test.js; ai-memory/insights.md
+- tests: npm test -- tests/damageTextFormattingContract.test.js tests/damageNumberTimelineContract.test.js (4/4 pass)
+- runtime validation: live browser proof on `http://127.0.0.1:8095/web-runner/index.html` showed explicit provenance formatting: low-value crit damage rendered `-18!!`, high-value non-crit damage rendered `-180`, and crit heals remained `+45`; browser console stayed error-free
+- scope: replaced the bad amount-threshold heuristic with explicit crit metadata threading only; no crit math, balance tuning, or tween-motion contract changes
+
+Bead ORKA-ejmi follow-up 2
+- changed files: src/core/damageTextFormatting.mjs; web-runner/src/core/damageNumberAnimation.mjs; web-runner/modules/functionBank.js; Scripts/functionBank.js; web-runner/modules/skillSheet.js; Scripts/skillSheet.js; web-runner/app.js; tests/damageTextFormattingContract.test.js; tests/damageNumberTimelineContract.test.js; ai-memory/insights.md
+- tests: npm test -- tests/damageTextFormattingContract.test.js tests/damageNumberTimelineContract.test.js (5/5 pass)
+- runtime validation: `agent-browser open http://127.0.0.1:8095/web-runner/index.html && agent-browser wait 2000 && agent-browser errors && agent-browser close` completed cleanly; crit display seams now preserve white text color and carry crit metadata through queued hits, DoT, direct heals, and HoT ticks
+- scope: presentation follow-up only; restored white combat-text color and extended explicit crit provenance through deferred damage/heal application paths without changing tween motion or combat math
+
+Bead ORKA-ejmi follow-up 3
+- changed files: web-runner/src/core/damageNumberAnimation.mjs; tests/damageNumberTimelineContract.test.js; ai-memory/insights.md
+- tests: npm test -- tests/damageTextFormattingContract.test.js tests/damageNumberTimelineContract.test.js (5/5 pass)
+- scope: narrow regression fix only; restored blue heal text while keeping damage/crit text white and leaving the grouped GSAP motion untouched
+
+Bead ORKA-3u60
+- changed files: web-runner/modules/functionBank.js; Scripts/functionBank.js; web-runner/app.js; tests/enemyDeathFadeContract.test.js; ai-memory/insights.md
+- tests: npm test -- tests/enemyDeathFadeContract.test.js (2/2 pass)
+- runtime validation: `agent-browser open http://127.0.0.1:8095/web-runner/index.html && agent-browser wait 2500 && agent-browser errors && agent-browser close` booted cleanly with no page-error output; fade behavior itself is locked by a focused source contract rather than a scripted kill-event capture
+- scope: visual death exit only; enemy removal timing, reward timing, and respawn scheduling unchanged
+
+Bead ORKA-3u60 follow-up
+- changed files: web-runner/modules/functionBank.js; Scripts/functionBank.js; web-runner/app.js; tests/enemyDeathFadeContract.test.js; ai-memory/insights.md
+- tests: npm test -- tests/enemyDeathFadeContract.test.js (2/2 pass)
+- runtime validation: `agent-browser open http://127.0.0.1:8095/web-runner/index.html && agent-browser wait 1500 && agent-browser errors && agent-browser close` booted cleanly after replacing ghost-list fades with actor-owned dying-state fades
+- scope: death-fade sequencing only; the fix keeps the original enemy entity fading once until cleanup, which specifically addresses the pop/ghost artifact reported during instant and likely AOE kills
+
+Bead ORKA-baz4
+- changed files: web-runner/src/core/healBloomAnimation.mjs; web-runner/app.js; tests/healBloomContract.test.js
+- tests: npm test -- tests/healBloomContract.test.js tests/damageNumberTimelineContract.test.js (6/6 pass)
+- runtime validation: `agent-browser open http://127.0.0.1:8095/web-runner/index.html && agent-browser wait 2500 && agent-browser errors && agent-browser close` booted cleanly with no page-error output after the new heal-bloom import/hook
+- scope: reusable heal-bloom particle effect only; damage-number motion and heal formatting remained separate
+
+Bead ORKA-baz4 follow-up
+- changed files: web-runner/src/core/healBloomAnimation.mjs; web-runner/app.js; tests/healBloomContract.test.js; ai-memory/insights.md
+- tests: npm test -- tests/healBloomContract.test.js tests/damageNumberTimelineContract.test.js (6/6 pass)
+- runtime validation: `agent-browser open http://127.0.0.1:8095/web-runner/index.html && agent-browser wait 2500 && agent-browser errors && agent-browser close` booted cleanly after moving bloom rendering to the actor-owned canvas seam
+- scope: presentation correction only; heal bloom now renders behind hero sprites in the existing heal-blue palette and no longer attaches to bar-lane heal text
+
+Bead ORKA-baz4 follow-up 2
+- changed files: web-runner/app.js; tests/healBloomContract.test.js; ai-memory/insights.md
+- tests: npm test -- tests/healBloomContract.test.js (2/2 pass)
+- runtime validation: `agent-browser open http://127.0.0.1:8095/web-runner/index.html && agent-browser wait 2500 && agent-browser errors && agent-browser close` booted cleanly after party-heal bloom fan-out was added
+- scope: party-heal presentation correction only; bar-lane hero heals now emit one bloom per hero behind the actor while leaving heal math and other text lanes untouched
+
+Bead ORKA-baz4 follow-up 3
+- changed files: web-runner/app.js; tests/healBloomContract.test.js
+- tests: npm test -- tests/healBloomContract.test.js (2/2 pass)
+- runtime validation: `agent-browser open http://127.0.0.1:8095/web-runner/index.html && agent-browser wait 1500 && agent-browser errors && agent-browser close` booted cleanly after replacing glyph text rendering with a forced blue plus shape
+- scope: presentation-only palette correction; the bloom now renders as a solid heal-blue plus shape instead of relying on font glyph color behavior
+
+Bead ORKA-baz4 follow-up 4
+- changed files: web-runner/src/core/healBloomAnimation.mjs; tests/healBloomContract.test.js
+- tests: npm test -- tests/healBloomContract.test.js (2/2 pass)
+- runtime validation: `agent-browser open http://127.0.0.1:8095/web-runner/index.html && agent-browser wait 1200 && agent-browser errors && agent-browser close` booted cleanly after reducing bloom density
+- scope: presentation-only tuning; reduced heal bloom particle count by roughly 30% without changing motion, placement, or color behavior
+
+Bead ORKA-vlt8
+- changed files: web-runner/src/core/hpBarAnimation.mjs; web-runner/app.js; tests/hpBarAnimationContract.test.js; ai-memory/insights.md
+- tests: npm test -- tests/hpBarAnimationContract.test.js tests/healBloomContract.test.js tests/enemyDeathFadeContract.test.js (6/6 pass)
+- runtime validation: `agent-browser open http://127.0.0.1:8095/web-runner/index.html && agent-browser wait 2500 && agent-browser errors && agent-browser close` booted cleanly with no page-error output after the new HP bar animation import/adaptation
+- scope: adapted the requested fast-front / delayed-lag behavior into the existing canvas HP bar seam using GSAP-driven numeric state; no DOM HP overlay was introduced
+
+Bead ORKA-rydb
+- changed files: web-runner/src/core/goldCollectAnimation.mjs; web-runner/app.js; tests/goldCollectAnimationContract.test.js
+- tests: npm test -- tests/goldCollectAnimationContract.test.js tests/hpBarAnimationContract.test.js tests/healBloomContract.test.js (6/6 pass)
+- runtime validation: `agent-browser open http://127.0.0.1:8095/web-runner/index.html && agent-browser wait 2500 && agent-browser errors && agent-browser close` booted cleanly after the dedicated gold collect animation hook landed
+- scope: gold coin collection presentation only; the default gem merge path, wallet math, and damage/heal systems were left untouched
+
+Bead ORKA-rydb follow-up
+- changed files: web-runner/src/core/goldCollectAnimation.mjs; tests/goldCollectAnimationContract.test.js
+- tests: npm test -- tests/goldCollectAnimationContract.test.js (2/2 pass)
+- runtime validation: `agent-browser open http://127.0.0.1:8095/web-runner/index.html && agent-browser wait 1500 && agent-browser errors && agent-browser close` booted cleanly after tightening scatter spread
+- scope: presentation tuning only; reduced the outward scatter radius by 40% while leaving hover and dart phases unchanged
+
+Bead ORKA-apdf
+- changed files: web-runner/app.js; tests/hitFlashFeedbackContract.test.js; ai-memory/insights.md
+- tests: npm test -- tests/hitFlashFeedbackContract.test.js tests/goldCollectAnimationContract.test.js tests/hpBarAnimationContract.test.js tests/healBloomContract.test.js tests/enemyDeathFadeContract.test.js (11/11 pass)
+- runtime validation: `agent-browser open http://127.0.0.1:8095/web-runner/index.html && agent-browser wait 2500 && agent-browser errors && agent-browser close` booted cleanly with no page-error output after persistent blight-overlay rendering was added
+- scope: renderer-only blight persistence; no blight damage math, targeting, or slot palette rules changed
+
+Bead ORKA-rszf
+- changed files: web-runner/modules/functionBank.js; Scripts/functionBank.js; tests/hitFlashFeedbackContract.test.js; ai-memory/insights.md
+- tests: npm test -- tests/hitFlashFeedbackContract.test.js (3/3 pass)
+- runtime validation: `agent-browser open http://127.0.0.1:8095/web-runner/index.html && agent-browser wait 2500 && agent-browser errors && agent-browser close` booted cleanly after suppressing enemy blight floating text
+- scope: presentation-only cleanup for Kojonn Faze blight text; overlay persistence and DoT damage remained unchanged
+
+Bead ORKA-jx97
+- changed files: web-runner/app.js; tests/hpBarAnimationContract.test.js; ai-memory/insights.md
+- tests: npm test -- tests/hpBarAnimationContract.test.js (2/2 pass)
+- runtime validation: `agent-browser open http://127.0.0.1:8095/web-runner/index.html && agent-browser wait 1500 && agent-browser errors && agent-browser close` booted cleanly after HoT bar-text removal
+- scope: HoT presentation only; removed party-bar floating text for HoT ticks and replaced it with a subtle positive green overlay on the party HP bar, leaving burst-heal rules and heal math untouched
+## 2026-03-21 — ORKA-k21n / ORKA-mjri / ORKA-n0p7
+- Scope: fixed Power Amp crit `!!` provenance across queued/multi-hit/party-wide amp paths, removed `+/-` prefixes from damage/heal number formatting without changing color lanes, and restored Kojonn AOE presentation naming to `Faze` while keeping blight as the condition.
+- Changed files:
+  - `/Users/Mace/Wishfire/Codex-Orka/src/core/damageTextFormatting.mjs`
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/src/core/damageNumberAnimation.mjs`
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/modules/functionBank.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/Scripts/functionBank.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/damageTextFormattingContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/damageNumberTimelineContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Tests:
+  - `npm test -- tests/damageTextFormattingContract.test.js tests/damageNumberTimelineContract.test.js tests/powerAmpLifecycleContract.test.js` → pass
+  - Playwright smoke on `http://127.0.0.1:8096/web-runner/index.html` → booted cleanly
+- Scope confirmation:
+  - `ORKA-k21n`: fixed presentation provenance only; no attack logic or multipliers changed
+  - `ORKA-mjri`: removed sign prefixes from all number lanes and preserved heal/damage color ownership
+  - `ORKA-n0p7`: corrected Kojonn presentation strings to `Faze` while leaving blight condition behavior intact
+
+## 2026-03-22 — ORKA-rydb
+- Scope: remove visible snap between coin scatter and wallet pull-in by keeping the coin on a single continuous GSAP timeline with curved target steering.
+- Changed files:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/src/core/goldCollectAnimation.mjs`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/goldCollectAnimationContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Tests:
+  - `npm test -- tests/goldCollectAnimationContract.test.js` → pass
+  - Playwright smoke on `http://127.0.0.1:8096/web-runner/index.html` → booted cleanly
+- Scope confirmation:
+  - coin collect motion continuity only; no wallet logic, reward math, or damage/heal presentation changes
+
+## 2026-03-22 — ORKA-lvep
+- Scope: retune hero HP/heal presentation colors to the requested green palette without changing mechanics or non-heal color lanes.
+- Changed files:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/src/core/damageNumberAnimation.mjs`
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/src/core/healBloomAnimation.mjs`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/damageNumberTimelineContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/healBloomContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/hpBarAnimationContract.test.js`
+- Tests:
+  - `npm test -- tests/damageNumberTimelineContract.test.js tests/healBloomContract.test.js tests/hpBarAnimationContract.test.js` → pass
+  - Playwright smoke on `http://127.0.0.1:8096/web-runner/index.html` → booted cleanly
+- Scope confirmation:
+  - hero HP front fill changed to `#0BD746`
+  - progress-bar heal text changed to `#05FD1B`
+  - heal bloom particle/glow lane changed to `#A0FE0B`
+  - damage colors, enemy HP bars, and timing were left untouched

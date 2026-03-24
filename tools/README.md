@@ -12,6 +12,15 @@ Game automation in this repo has one canonical execution path:
 
 Everything else in this folder is support tooling around that harness, not a second test pipeline.
 
+## Browser Discovery Lane Pilot
+
+The repo now allows a bounded parallel browser discovery lane for qualifying runtime beads.
+
+- Shipping lane: `npm run balance-harness` and its current Playwright/CDP path remain the only pass/fail browser gate for bead completion.
+- Discovery lane: persistent browser sessions, Playwright MCP, Codex browser tools, or similar interactive inspection are allowed as an experimental diagnostic lane when browser QA is flaky or hard to classify.
+
+Use the discovery lane to improve diagnosis, not to replace the shipping lane. The pilot contract, entry criteria, reporting fields, and unwind rules live in `governance/qa/browser-discovery-lane-pilot.md`.
+
 ### Supporting tools only
 
 - `npm run playwright:doctor`
@@ -21,7 +30,7 @@ Everything else in this folder is support tooling around that harness, not a sec
 - `npm run chrome:cdp`
   Use only to bootstrap an external Chrome session for the existing CDP attach mode.
 
-The Codex Playwright skill and Playwright MCP are also support tools. They are useful for interactive browser debugging and spot checks, but they do not replace the repo-owned balance harness as the batch game-test path.
+The Codex Playwright skill, Playwright MCP, and other interactive browser tools remain support tools around the canonical harness. During the discovery-lane pilot they may run in parallel for diagnosis, but they still do not replace the repo-owned balance harness as the batch game-test path.
 
 ## Playwright Preflight
 

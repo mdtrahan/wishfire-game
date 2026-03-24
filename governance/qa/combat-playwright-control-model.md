@@ -195,8 +195,14 @@ Practical rule:
 
 Canonical ownership rule:
 - `tools/balance_harness.js` remains the repo-owned game automation pipeline.
-- Playwright MCP and the Codex Playwright skill are interactive inspection tools around that pipeline, not separate harness replacements.
+- The shipping lane uses that pipeline as the only pass/fail authority.
+- Playwright MCP, the Codex Playwright skill, and other browser tools may also run as the bounded discovery lane defined in `governance/qa/browser-discovery-lane-pilot.md`.
 - `playwright:doctor`, `playwright:launch-matrix`, and `chrome:cdp` are diagnostics/bootstrap helpers for the same harness lane.
+
+Discovery-lane rule:
+- A persistent browser session is allowed when the goal is better diagnosis, pacing insight, or failure classification for the same bead.
+- Discovery-lane runs must stay bounded to one scenario at a time and report whether they found more, the same, or less signal than the shipping lane.
+- Discovery-lane findings may improve QA docs or harness behavior later, but they do not redefine shipping evidence on the current bead.
 
 ## Recommended Automation Rhythm
 
