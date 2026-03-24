@@ -1,5 +1,20 @@
 # PM Status
 
+_Last updated: 2026-03-24_
+
+## Completed Beads
+- ORKA-njg (hot-file lanes now have a concrete repo-owned deterministic regression pack via `npm run test:hot-file-gate`, including initiative fairness audit artifacts)
+
+## Active Work
+- None.
+
+## Next Tasks
+- Keep future hot-file commit and closeout lanes pointing at `ORKA-6n7` for commit lock and `npm run test:hot-file-gate` for deterministic regression proof.
+
+## Known Issues
+- This branch carries the regression-pack policy only; broader worktree/subagent hardening still lives on separate hardening lanes and should not be inferred from this bead alone.
+
+---
 _Last updated: 2026-03-07_
 
 ---

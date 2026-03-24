@@ -51,6 +51,7 @@
   - declare exact allowed files/functions before editing
   - do not mix unrelated runtime lanes in the same patch
   - stop if unrelated dirty work is already present and cannot be cleanly isolated
+  - run `npm run test:hot-file-gate` unless the bead explicitly names a narrower or broader replacement pack
 
 ## Closeout Rules
 - A bead is not ready to close unless all of the following are true:

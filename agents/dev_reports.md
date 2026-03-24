@@ -9,6 +9,14 @@
 
 ## Reports
 - (append newest report at top)
+- bead id: ORKA-njg
+- summary of changes: Rewrote the abstract hot-file regression bead into a concrete repo-owned gate pack. Added `npm run test:hot-file-gate` to run the shipped deterministic contracts for power-amp lifecycle, yellow handoff, Huun execution drop bonus, turn-scheduler repeat guard, mirror parity, plus the existing initiative fairness audit artifact.
+- files modified: package.json; tools/run_hot_file_regression_gate.sh; tools/README.md; governance/execution/beads-process.md; agents/prompts/dev_agent.md; agents/prompts/pm_agent.md; agents/dev_reports.md; agents/pm_status.md
+- test evidence:
+  - `npm run test:hot-file-gate` -> PASS
+  - initiative audit artifact: `test-results/ORKA-oyi/initiative-fairness-audit.json`
+  - initiative audit report: `test-results/ORKA-oyi/initiative-fairness-report.md`
+- scope confirmation: confined to deterministic regression-gate tooling and its process references; no runtime, gameplay, or browser harness behavior changed.
 - bead id: ORKA-daa4 (reopen 2)
 - summary of changes: Corrected Double Attack from the wrong extra-turn scheduler behavior to the intended immediate free second strike. The proc now duplicates `HERO_SINGLE` immediately without extra gem selection, and the follow-up packet retargets to another living enemy if the original target dies before the second strike lands. Dev-tool toggle and side-panel proc monitor remain intact.
 - files modified: web-runner/modules/functionBank.js; Scripts/functionBank.js; web-runner/app.js; tests/extraTurnHarnessContract.test.js; .beads/open/ORKA-daa4.md; ai-memory/insights.md; agents/dev_reports.md; agents/pm_status.md; agents/issues.md

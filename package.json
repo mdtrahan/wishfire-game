@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "node --test",
+    "test:hot-file-gate": "bash tools/run_hot_file_regression_gate.sh",
     "serve:qa": "node tools/serve_web.js --port 8000",
     "balance-harness": "node tools/balance_harness.js"
   },
