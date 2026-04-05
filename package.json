@@ -9,7 +9,8 @@
     "balance-harness": "node tools/balance_harness.js",
     "chrome:cdp": "node tools/chrome_cdp_bootstrap.js",
     "playwright:doctor": "node tools/playwright_doctor.js",
-    "playwright:launch-matrix": "node tools/playwright_launch_matrix.js"
+    "playwright:launch-matrix": "node tools/playwright_launch_matrix.js",
+    "browser:battery": "BROWSER_BATTERY_E2E=1 node --test tests/browserBattery.spec.js"
   },
   "keywords": [],
   "author": "",

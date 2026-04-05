@@ -12,6 +12,63 @@ Active handoff file only. Historical implementation reports live in `/agents/arc
 - scope confirmation:
 
 ## Recent Reports
+- bead id: ORKA-9tny
+- summary of changes: Added a minimal browser QA battery centered on `agent-browser` CLI. The battery checks CLI reachability, then optionally boots the game against a direct or CDP-attached browser, probes `window.render_game_to_text`, and writes snapshot/screenshot/console/error artifacts under `output/playwright/browser-battery/`. Also documented the battery in governance and tools guidance.
+- files modified: `tests/browserBattery.spec.js`; `governance/qa/browser-battery-minimal.md`; `tools/README.md`; `package.json`; `ai-memory/insights.md`
+- test evidence:
+  - `node --test tests/browserBattery.spec.js` (help smoke pass, heavy browser probe skipped unless `BROWSER_BATTERY_E2E=1`)
+  - `npm run browser:battery` (pass in sandbox skip mode with clear CDP/direct-launch guidance)
+- discovery lane comparison: not used; this bead is about establishing a repeatable browser diagnostic baseline, not a gameplay interaction.
+- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (minimal browser battery + artifact layout)
+- scope confirmation: Confined to browser QA tooling, docs, and the battery entrypoint. No gameplay/runtime behavior changed.
+
+- bead id: ORKA-macy
+- summary of changes: Fixed the web-runner blue-gem resolution path so `ResolveGemAction` receives the consumed gem count, matching the red/green/yellow call shape. Also tightened the balance harness blue tally read to prefer `heroGemUsage.party.BLUE` and fall back to `astralFlowWallet` when the party tally is absent.
+- files modified: `web-runner/app.js`; `tools/balance_harness.js`; `ai-memory/insights.md`; `agents/dev_reports.md`
+- test evidence:
+  - `BALANCE_CDP_URL=http://127.0.0.1:9222 node tools/balance_harness.js --sessions 1 --maxWaves 3 --actionTimeoutMs 12000 --maxAttemptsMultiplier 1 --outputDir /tmp/orka-blue-tally-verify --analysisDate 2026-04-01`
+  - Result: harness attached, served `http://127.0.0.1:8084`, then stalled at the live runtime boundary with no session summary emitted and no `/tmp/orka-blue-tally-verify` artifacts written during the verification window.
+- discovery lane comparison: not used on this bead; the owning seam was explicit in the report and the runtime export shape confirmed the harness fallback target.
+- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (blue tally ownership rule captured in insights)
+- scope confirmation: Confined to the blue gem consumed-count handoff in `web-runner/app.js` plus a tiny harness tally-source fallback. No balance constants, drop rates, or unrelated combat logic changed.
+
+- bead id: PM governance cycle (2026-04-01) ready-head enforcement
+- summary of changes: Enforced strict non-executable ready-head policy in live Beads state. ORKA-6opp moved from `open` to `blocked` with explicit rewrite-required note; ORKA-n0g moved from `open` to `deferred` as future-stub lane requiring rewrite/decompose before reselection. No gameplay/runtime code changed.
+- files modified: `agents/issues.md`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `bd ready -n 10` (confirmed ORKA-6opp and ORKA-n0g were ready-head before enforcement)
+  - `bd show ORKA-6opp` and `bd show ORKA-n0g` (confirmed non-executable conditions: missing spec contract / explicit future-stub note)
+  - `bd update ORKA-6opp --status blocked --append-notes "...strict non-executable policy..."`
+  - `bd update ORKA-n0g --status deferred --append-notes "...future-stub ... rewrite/decompose..."`
+  - `bd ready -n 10` (verified both beads removed from ready head; ready count reduced)
+- discovery lane comparison: not used on this lane
+- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (strict queue-head enforcement pattern)
+- scope confirmation: Governance-only queue correction. No runtime feature implementation, tests, or Notion writes (closed-beads-only sync policy respected).
+
+- bead id: ORKA-5wj1
+- summary of changes: PM-DEV cycle selected ORKA-5wj1 as the first executable-looking ready lane after skipping higher-priority stub/underspecified items, then blocked it pre-implementation when acceptance/test seams proved incomplete for special-skill trigger behavior. No runtime code was changed.
+- files modified: `agents/issues.md`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `bd show ORKA-6opp` and `bd show ORKA-n0g` (confirmed queue-head lanes remain rewrite/stub, not safe execution candidates)
+  - `bd show ORKA-5wj1` (confirmed intent text exists but no explicit acceptance/test contract in bead body)
+  - `bd update ORKA-5wj1 --status in_progress` then `bd update ORKA-5wj1 --status blocked --append-notes "...pending explicit acceptance/test contract..."` (truthful lane transition and same-cycle restore from unsafe execution state)
+- discovery lane comparison: not used on this bead
+- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (queue-truthful block decision with explicit rewrite requirement)
+- scope confirmation: Confined to PM/dev coordination and Beads state hygiene. No gameplay/runtime implementation was performed.
+
+- bead id: ORKA-r43t
+- summary of changes: Synchronized live project governance into Notion and hardcoded PM-cycle policy to require tracker updates. Added file-backed entries to Wishfire Specs/Architecture/Knowledge from `AGENTS.md`, PM/Dev prompts, `beads-process`, `ai-memory/context.md`, and `ai-memory/insights.md`. Then updated process authority files so PM closeout includes mandatory Notion sync for human parallel oversight.
+- files modified: `AGENTS.md`; `agents/prompts/pm_agent.md`; `governance/execution/beads-process.md`; `agents/dev_reports.md`; `agents/pm_status.md`
+- test evidence:
+  - `rg -n "Notion Tracker Sync|Step 4.5|PM cycle must keep the Wishfire Notion tracker|sync Wishfire Notion tracker state" AGENTS.md agents/prompts/pm_agent.md governance/execution/beads-process.md` (cross-file policy presence check)
+  - Notion DB writes completed with created-page confirmations in:
+    - Specs: `3347e3368a6781589639f17f5b2d50c1`, `3347e3368a67817eae91d2a8ba896a71`, `3347e3368a6781518811c0e3e4629517`
+    - Architecture: `3347e3368a6781da8d72e897daa1a20f`, `3347e3368a6781e29ec8ffffcf4b1a2f`, `3347e3368a678182a42ae7d5fcfaffcf`
+    - Knowledge: `3347e3368a6781e8ab5ec69508109cab`, `3347e3368a6781068e0acc77c2c24ce4`, `3347e3368a67817caec9dbbb4d2f63cf`
+- discovery lane comparison: not used on this bead
+- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (policy + tracker synchronization)
+- scope confirmation: Confined to governance/prompt/process documentation and Notion project-tracker synchronization. No gameplay/runtime code changed.
+
 - bead id: ORKA-6opp queue correction
 - summary of changes: Ran the PM cycle on the live ready-head feature bead and confirmed it is still not executable. The bead purpose is to give each hero a distinct red single-target attack presentation without changing damage formulas, but the current body still lacks acceptance criteria, non-goals, and test boundaries. The lane was claimed only long enough to make that correction explicit and then returned to truthful queue state.
 - files modified: `agents/dev_reports.md`; `agents/pm_status.md`
@@ -686,3 +743,286 @@ Bead ORKA-jx97
   - progress-bar heal text changed to `#05FD1B`
   - heal bloom particle/glow lane changed to `#A0FE0B`
   - damage colors, enemy HP bars, and timing were left untouched
+
+## 2026-04-01 — ORKA-macy
+- Scope: execute the canonical multipass blue-gem balance harness against the live runtime and produce the required `output/analysis` artifacts for PM review.
+- Changed files:
+  - `/Users/Mace/Wishfire/Codex-Orka/agents/dev_reports.md`
+- Commands:
+  - `export PATH="$HOME/.local/bin:$PATH" && command -v bd && bd ready && bd show ORKA-macy`
+  - `BALANCE_CDP_URL=http://127.0.0.1:9222 npm run playwright:doctor -- --only cdp --cdpUrl http://127.0.0.1:9222`
+  - `BALANCE_CDP_URL=http://127.0.0.1:9222 BALANCE_SESSION_COUNT=20 npm run balance-harness -- --maxWaves 20 --outputDir output/analysis --analysisDate 2026-04-01`
+- Result:
+  - `bd show ORKA-macy` confirmed the bead was already `IN_PROGRESS`.
+  - CDP browser on `http://127.0.0.1:9222` was already available and `npm run playwright:doctor` returned `cdp_attach: pass`.
+  - The required 20-valid-pass harness batch did not complete. After approximately 19 minutes, the harness remained live on `http://127.0.0.1:8086/web-runner/index.html` with no root-level output artifacts written, so the command was interrupted and recorded as a blocker.
+- Artifact status:
+  - Missing: `/Users/Mace/Wishfire/Codex-Orka/output/analysis/blue-gem-multipass-raw-2026-04-01.json`
+  - Missing: `/Users/Mace/Wishfire/Codex-Orka/output/analysis/blue-gem-multipass-summary-2026-04-01.md`
+  - Existing but non-acceptance historical artifacts only under `/Users/Mace/Wishfire/Codex-Orka/output/analysis/diag/`:
+    - `/Users/Mace/Wishfire/Codex-Orka/output/analysis/diag/blue-gem-multipass-raw-2026-04-01.json`
+    - `/Users/Mace/Wishfire/Codex-Orka/output/analysis/diag/blue-gem-multipass-summary-2026-04-01.md`
+- Aggregate metrics:
+  - Unavailable for the requested 20-pass run because the exact root-level summary/raw artifacts were never generated.
+- Anomalies / failure notes:
+  - Live CDP inspection of the active harness page on `8086` showed repeated stable combat states with `layoutId=combat`, `canPickGems=true`, `isPlayerBusy=0`, `turnPhase=0`, `pendingSkillId=null`, `astralFlowWallet=0`, three living enemies, and unchanged enemy HP `[105, 95, 65]` across repeated samples while the harness failed to advance the board.
+  - The same stalled state reported gem color counts `{0: 3, 2: 5, 3: 6, 4: 8, 5: 2}`, so the board was populated rather than empty; the automation simply was not progressing the session.
+  - Because the harness never reached completion, valid-vs-failed pass counts and the required appearance/acquisition summary statistics could not be extracted for acceptance.
+- Execution retry evidence (current turn):
+  - `npm run playwright:doctor -- --only cdp --cdpUrl http://127.0.0.1:9222` passed again with `cdp_attach: pass` and reported Chrome `146.0.7680.165`.
+  - Re-ran the requested shipping-lane command exactly: `BALANCE_CDP_URL=http://127.0.0.1:9222 BALANCE_SESSION_COUNT=20 npm run balance-harness -- --maxWaves 20 --outputDir output/analysis --analysisDate 2026-04-01`.
+  - That exact command emitted a fingerprint line with stale issue metadata `issue=ORKA-b7wh`, then only produced non-acceptance diagnostic files under `/Users/Mace/Wishfire/Codex-Orka/output/analysis/diag/` at `2026-04-01 01:20:40 PDT`.
+  - The generated diagnostic raw/summary files recorded `sessions_target_valid: 1`, `valid_passes: 1`, and `failed_passes: 0` despite the requested environment setting `BALANCE_SESSION_COUNT=20`.
+  - Diagnostic-only metrics from those non-acceptance files:
+    - `blue_gem_appearance_count`: mean `27`, median `27`, min `27`, max `27`, stddev `0`
+    - `blue_gems_acquired_before_150`: mean `0`, median `0`, min `0`, max `0`, stddev `0`
+    - 95% CI for average `blue_gems_acquired_before_150`: `0` to `0` with margin `0` using `normal_approximation_z_1.96_sample_stddev`
+  - A direct config sanity check in the same worktree resolved the requested command shape correctly: `buildConfig(['--maxWaves','20','--outputDir','output/analysis','--analysisDate','2026-04-01'], process.env)` returned `sessions=20`, `outputDir=/Users/Mace/Wishfire/Codex-Orka/output/analysis`, and `cdpUrl=http://127.0.0.1:9222`.
+  - Separate direct Playwright/CDP probes succeeded for `connectOverCDP`, `newPage`, `goto`, and the story-to-combat transition, which narrowed the blocker to the harness interaction/session path rather than CDP attach or page boot.
+  - A follow-up explicit CLI probe (`node tools/balance_harness.js --sessions 2 --maxWaves 1 --outputDir /tmp/orka-macy-probe --analysisDate 2026-04-01 --cdpUrl http://127.0.0.1:9222`) remained in-flight for more than two minutes without writing any probe output files, reinforcing that the session loop is the active blocker.
+  - Current-turn reliable single-session recovery attempt:
+    - `mkdir -p /tmp/orka-macy-multipass-2026-04-01`
+    - `BALANCE_CDP_URL=http://127.0.0.1:9222 npm run playwright:doctor -- --only cdp --cdpUrl http://127.0.0.1:9222`
+    - `BALANCE_CDP_URL=http://127.0.0.1:9222 node tools/balance_harness.js --sessions 1 --maxWaves 20 --outputDir /tmp/orka-macy-multipass-2026-04-01/run-1 --analysisDate 2026-04-01`
+    - `BALANCE_CDP_URL=http://127.0.0.1:9222 node tools/balance_harness.js --sessions 1 --maxWaves 20 --outputDir /tmp/orka-macy-multipass-2026-04-01/run-2 --analysisDate 2026-04-01`
+    - `node /tmp/orka_macy_write_blocker_artifacts.js`
+  - Current-turn artifact paths:
+    - `/Users/Mace/Wishfire/Codex-Orka/output/analysis/blue-gem-multipass-raw-2026-04-01.json`
+    - `/Users/Mace/Wishfire/Codex-Orka/output/analysis/blue-gem-multipass-summary-2026-04-01.md`
+  - Current-turn aggregate metrics:
+    - valid passes: `0`
+    - failed attempts: `2`
+    - appearance stats: mean `0`, median `0`, min `0`, max `0`, stddev `0`
+    - acquired stats: mean `0`, median `0`, min `0`, max `0`, stddev `0`
+    - acquired 95% CI: `0` to `0` with margin `0`
+  - Current-turn anomalies / failure notes:
+    - CDP doctor passed before execution, so the blocker is downstream of browser attach.
+    - Attempts `run-1` and `run-2` both timed out at `180000 ms` and wrote no per-run raw or summary files under `/tmp/orka-macy-multipass-2026-04-01/`.
+    - A bounded loop script was stopped after the second identical timeout rather than continuing toward 60 attempts because the harness showed the same deterministic deadlock pattern on each single-session pass and no valid dataset was accruing.
+- Final collection addendum:
+  - Re-ran the exact requested batch command and let it progress long enough to verify live session turnover, then interrupted it because it produced no reusable root-level dataset before completion:
+    - `BALANCE_CDP_URL=http://127.0.0.1:9222 node tools/balance_harness.js --sessions 20 --maxWaves 20 --actionTimeoutMs 60000 --maxAttemptsMultiplier 2 --outputDir output/analysis --analysisDate 2026-04-01`
+  - Canonical top-up recovery path that did produce reusable runtime data:
+    - `BALANCE_CDP_URL=http://127.0.0.1:9222 node tools/balance_harness.js --sessions 1 --maxWaves 20 --actionTimeoutMs 60000 --maxAttemptsMultiplier 2 --outputDir /tmp/orka-macy-singles-2026-04-01/run-01 --analysisDate 2026-04-01`
+    - `BALANCE_CDP_URL=http://127.0.0.1:9222 node tools/balance_harness.js --sessions 1 --maxWaves 20 --actionTimeoutMs 60000 --maxAttemptsMultiplier 2 --outputDir /tmp/orka-macy-singles-2026-04-01/run-02 --analysisDate 2026-04-01`
+    - `BALANCE_CDP_URL=http://127.0.0.1:9222 node tools/balance_harness.js --sessions 1 --maxWaves 20 --actionTimeoutMs 60000 --maxAttemptsMultiplier 2 --outputDir /tmp/orka-macy-singles-2026-04-01/run-03 --analysisDate 2026-04-01`
+    - `BALANCE_CDP_URL=http://127.0.0.1:9222 node tools/balance_harness.js --sessions 1 --maxWaves 20 --actionTimeoutMs 60000 --maxAttemptsMultiplier 2 --outputDir /tmp/orka-macy-singles-2026-04-01/run-04 --analysisDate 2026-04-01`
+    - `BALANCE_CDP_URL=http://127.0.0.1:9222 node tools/balance_harness.js --sessions 1 --maxWaves 20 --actionTimeoutMs 60000 --maxAttemptsMultiplier 2 --port 8086 --outputDir /tmp/orka-macy-singles-2026-04-01/run-05 --analysisDate 2026-04-01`
+    - `BALANCE_CDP_URL=http://127.0.0.1:9222 node tools/balance_harness.js --sessions 1 --maxWaves 20 --actionTimeoutMs 60000 --maxAttemptsMultiplier 2 --port 8087 --outputDir /tmp/orka-macy-singles-2026-04-01/run-06 --analysisDate 2026-04-01`
+    - `BALANCE_CDP_URL=http://127.0.0.1:9222 node tools/balance_harness.js --sessions 1 --maxWaves 20 --actionTimeoutMs 60000 --maxAttemptsMultiplier 2 --port 8088 --outputDir /tmp/orka-macy-singles-2026-04-01/run-07 --analysisDate 2026-04-01`
+    - `BALANCE_CDP_URL=http://127.0.0.1:9222 node tools/balance_harness.js --sessions 1 --maxWaves 20 --actionTimeoutMs 60000 --maxAttemptsMultiplier 2 --port 8089 --outputDir /tmp/orka-macy-singles-2026-04-01/run-08 --analysisDate 2026-04-01`
+    - `BALANCE_CDP_URL=http://127.0.0.1:9222 node tools/balance_harness.js --sessions 1 --maxWaves 20 --actionTimeoutMs 60000 --maxAttemptsMultiplier 2 --port 8090 --outputDir /tmp/orka-macy-singles-2026-04-01/run-09 --analysisDate 2026-04-01`
+    - `BALANCE_CDP_URL=http://127.0.0.1:9222 node tools/balance_harness.js --sessions 1 --maxWaves 20 --actionTimeoutMs 60000 --maxAttemptsMultiplier 2 --port 8091 --outputDir /tmp/orka-macy-singles-2026-04-01/run-10 --analysisDate 2026-04-01`
+    - `BALANCE_CDP_URL=http://127.0.0.1:9222 node tools/balance_harness.js --sessions 1 --maxWaves 20 --actionTimeoutMs 60000 --maxAttemptsMultiplier 2 --port 8092 --outputDir /tmp/orka-macy-singles-2026-04-01/run-11 --analysisDate 2026-04-01`
+  - Merge/finalization commands:
+    - `node /tmp/orka_macy_aggregate.js /tmp/orka-macy-singles-2026-04-01 2026-04-01`
+    - `node /tmp/orka_macy_finalize.js`
+  - Final artifact paths:
+    - `/Users/Mace/Wishfire/Codex-Orka/output/analysis/blue-gem-multipass-raw-2026-04-01.json`
+    - `/Users/Mace/Wishfire/Codex-Orka/output/analysis/blue-gem-multipass-summary-2026-04-01.md`
+  - Final aggregate metrics from the merged runtime dataset:
+    - valid passes: `11`
+    - failed passes recorded: `4`
+    - `blue_gem_appearance_count`: mean `36.1818`, median `36`, min `31`, max `45`, stddev `3.9955`
+    - `blue_gems_acquired_before_150`: mean `32.1818`, median `33`, min `27`, max `36`, stddev `3.0271`
+    - 95% CI for average `blue_gems_acquired_before_150`: `30.3929` to `33.9707` with margin `1.7889` using `normal_approximation_z_1.96_sample_stddev`
+  - Final anomalies / failure notes:
+    - Added-concurrency retries beyond the proven four-tab envelope introduced `EADDRINUSE` on `127.0.0.1:8095` and a shared-browser saturation failure.
+    - After the attached Chrome drained to zero pages, subsequent attached runs failed immediately with `Unable to reach 1 valid sessions within 2 attempts` until a seed tab was recreated.
+    - Once the attached Chrome fully exited, it could not be restarted from this sandbox: `node tools/chrome_cdp_bootstrap.js --port 9222 --timeoutMs 60000` ended with `connect ECONNREFUSED 127.0.0.1:9222`, and a direct non-CDP harness launch failed with `browser_closed_before_control`.
+    - Manual Chrome startup probe showed the environment boundary explicitly via Crashpad/AppKit permission failures:
+      - `bootstrap_check_in ... Permission denied (1100)`
+      - `open .../Google/Chrome/Crashpad/settings.dat: Operation not permitted (1)`
+    - Acceptance remains unmet because collection stopped at `11/20` valid passes when the browser restart boundary eliminated the remaining canonical runtime path.
+- Scope confirmation:
+  - No runtime code, balance constants, governance markdown, or unrelated files were modified. This lane only updated analysis artifacts plus the dev handoff report.
+
+- bead id: ORKA-macy simulation override (2026-04-01)
+- summary of changes: Generated a SIMULATED blue-gem multipass dataset and markdown report for ORKA-macy using a programmatic Monte Carlo pass under the user-approved assumptions. No runtime harness or live gameplay measurement was used.
+- files modified: `output/analysis/blue-gem-multipass-raw-2026-04-01.json`; `output/analysis/blue-gem-multipass-summary-2026-04-01.md`; `agents/dev_reports.md`
+- test evidence:
+  - node <<'NODE' ... Monte Carlo simulation writing output/analysis/blue-gem-multipass-raw-2026-04-01.json and output/analysis/blue-gem-multipass-summary-2026-04-01.md ... NODE
+  - Result: 10000 simulated runs completed and artifacts overwritten successfully.
+- discovery lane comparison: not used on this lane; the request explicitly required direct simulation output without runtime harness.
+- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (parameterized economy simulation artifact)
+- scope confirmation: Confined to simulated analysis outputs and dev reporting only. No gameplay/runtime code, harness logic, or balance constants were changed.
+- simulation override note: Artifact is marked SIMULATED, not runtime measured. Command executed from repo root with Node.js.
+
+## 2026-04-01 — ORKA-zkhn
+- Scope: damage text animation only; keep all digits grouped through full lifecycle and remove split/repulsion look.
+- Changed files:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/src/core/damageNumberAnimation.mjs`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/damageNumberTimelineContract.test.js`
+- Tests:
+  - `node --test tests/damageNumberTimelineContract.test.js` → pass (5/5)
+- Scope confirmation:
+  - Kept wrapper-level movement/timing/eases intact.
+  - Replaced per-digit staggered animation with single text-node animation to preserve grouping.
+  - Did not touch gameplay logic, non-damage visuals, or global timing systems.
+
+## 2026-04-02 — ORKA-esqm
+- Scope: combat floating damage/heal text styling only; keep renderer local to combat floating text and avoid global UI font changes.
+- Changed files:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/src/core/damageNumberAnimation.mjs`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/damageTextPaletteContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/damageNumberTimelineContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Tests:
+  - `node --test tests/damageTextPaletteContract.test.js tests/damageNumberTimelineContract.test.js` → pass (10/10)
+- Scope confirmation:
+  - Replaced the single SVG text render path with a layered SVG group so outline and gradient fill stay visually separated in browser rendering.
+  - Forced `gradientUnits="userSpaceOnUse"` and `color-interpolation-filters="sRGB"` for browser robustness.
+  - Did not modify combat math, routing, or unrelated UI typography.
+
+## 2026-04-02 — ORKA-esqm follow-up
+- Scope: same bead, follow-up runtime fix for invisible combat text.
+- Changed files:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/src/core/damageNumberAnimation.mjs`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/damageTextPaletteContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/damageNumberTimelineContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Tests:
+  - `node --test tests/damageTextPaletteContract.test.js tests/damageNumberTimelineContract.test.js` → pass (10/10)
+- Scope confirmation:
+  - Removed the SVG dependency entirely and replaced it with a drawn canvas glyph so the browser cannot silently flatten the fill path.
+  - Kept combat motion and color scope intact.
+
+## 2026-04-02 — ORKA-esqm final visible fix
+- Scope: same bead, final visibility correction for the combat floating text canvas path.
+- Changed files:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/src/core/damageNumberAnimation.mjs`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/damageNumberTimelineContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Tests:
+  - `node --test tests/damageTextPaletteContract.test.js tests/damageNumberTimelineContract.test.js` → pass (10/10)
+- Scope confirmation:
+  - Appended the canvas glyph into the wrapper so the renderer actually enters the DOM before the animation begins.
+  - No combat logic, routing, or unrelated visuals changed.
+
+## 2026-04-02 — ORKA-esqm canvas CSS override
+- Scope: same bead, remove the visible white canvas box around combat text.
+- Changed files:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/src/core/damageNumberAnimation.mjs`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/damageTextPaletteContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Tests:
+  - `node --test tests/damageTextPaletteContract.test.js tests/damageNumberTimelineContract.test.js` → pass (10/10)
+- Scope confirmation:
+  - Overrode inherited global `canvas` CSS on the floating-text canvas so only the glyph is visible.
+  - Kept behavior and animation contract unchanged.
+
+## 2026-04-02 — ORKA-esqm font correction
+- Scope: same bead, reduce outline width and switch combat text to Rubik Mono One.
+- Changed files:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/src/core/damageNumberAnimation.mjs`
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/index.html`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/damageTextPaletteContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/damageNumberTimelineContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Tests:
+  - `node --test tests/damageTextPaletteContract.test.js tests/damageNumberTimelineContract.test.js` → pass (11/11)
+- Scope confirmation:
+  - Reduced black stroke one step.
+  - Switched both combat text render seams to `Rubik Mono One`.
+  - Loaded the font in the page head so canvas text can actually resolve the face instead of silently falling back.
+
+## 2026-04-02 — ORKA-esqm font-load race fix
+- Scope: same bead, stop the first combat text hit from using a fallback font before Rubik Mono One is ready.
+- Changed files:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/src/core/damageNumberAnimation.mjs`
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/damageNumberTimelineContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/damageTextPaletteContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Tests:
+  - `node --test tests/damageTextPaletteContract.test.js tests/damageNumberTimelineContract.test.js` → pass (12/12)
+- Scope confirmation:
+  - Added an explicit font readiness gate and preload path so the first hit waits for Rubik Mono One instead of painting a thin fallback face.
+  - No combat logic, palette, or unrelated UI changed.
+
+## 2026-04-03 — ORKA-esqm squish inversion
+- Scope: same bead, invert combat text squish direction so it expands over time instead of contracting over time.
+- Changed files:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/src/core/damageNumberAnimation.mjs`
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Tests:
+  - `node --test tests/damageTextPaletteContract.test.js tests/damageNumberTimelineContract.test.js` → pass (12/12)
+- Scope confirmation:
+  - Reversed the squish sign in both the live fallback renderer and the dedicated damage-number module.
+  - Kept font, palette, and motion timing otherwise unchanged.
+
+## 2026-04-03 — ORKA-esqm crit suffix removal
+- Scope: same bead, remove the `!!` crit suffix from combat damage/heal numbers only.
+- Changed files:
+  - `/Users/Mace/Wishfire/Codex-Orka/src/core/damageTextFormatting.mjs`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/damageTextFormattingContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Tests:
+  - `node --test tests/damageTextFormattingContract.test.js tests/damageNumberTimelineContract.test.js` → pass (6/6)
+- Scope confirmation:
+  - Removed the crit suffix at the shared formatter seam so combat numbers remain plain numeric text.
+  - Left crit metadata intact for color/motion and other presentation cues.
+
+## 2026-04-03 — ORKA-esqm party HP burst resize
+- Scope: reopen bead with party HP bar only; remove incremental animation and make party HP resize immediate.
+- Changed files:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/hpBarAnimationContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Tests:
+  - `node --test tests/hpBarAnimationContract.test.js tests/combatFailGateContract.test.js tests/partyDamageAccountingContract.test.js tests/partyHealRoundingContract.test.js` → pass (9/9)
+- Scope confirmation:
+  - Replaced party-path HP bar tweening with an immediate setter that updates front and lag percent directly.
+  - Left enemy HP animation and all other health paths untouched.
+
+## 2026-04-03 — ORKA-esqm party HP tiered colors
+- Scope: same bead, switch party HP front color to hard tiers only.
+- Changed files:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/hpBarAnimationContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Tests:
+  - `node --test tests/hpBarAnimationContract.test.js tests/combatFailGateContract.test.js tests/partyDamageAccountingContract.test.js tests/partyHealRoundingContract.test.js` → pass (9/9)
+- Scope confirmation:
+  - Replaced interpolated party front color logic with three plateau values: green, yellow, red.
+  - Kept party resize immediate and left enemy HP animation untouched.
+
+## 2026-04-03 — ORKA-esqm party yellow tier palette tweak
+- Scope: same bead, update only the party HP yellow plateau color constant.
+- Changed files:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/hpBarAnimationContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- Tests:
+  - `node --test tests/hpBarAnimationContract.test.js tests/combatFailGateContract.test.js tests/partyDamageAccountingContract.test.js tests/partyHealRoundingContract.test.js` → pass (9/9)
+- Scope confirmation:
+  - Changed only the yellow plateau color from `#D7C84A` to `#EBE413`.
+  - Left the tier thresholds, green/red plateaus, and immediate party resize behavior unchanged.
+
+## 2026-04-03 — ORKA-ksw hero skill trio Figma alignment
+- Scope: close the hero-screen layout bead by fixing only the three skill-node frames, their level badges, and the diamond placement math against the Figma frame.
+- Changed files:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/heroSkillButtonsContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/agents/pm_status.md`
+- Tests:
+  - `node --test tests/heroSkillButtonsContract.test.js` → pass (7/7)
+- Scope confirmation:
+  - Kept the first two skill nodes on their exact Figma anchors, centered the badge labels, and derived the diamond placement from the sibling centerline without resizing the frame.
+  - Added a reusable layout heuristic: all overlay elements must stay in the same coordinate space as their anchor group, and single-child parity fixes should be derived from neighboring anchors rather than recentering the whole group.
+
+## 2026-04-04 — ORKA-0ky2 hero skill modal from tap/click
+- Scope: implement the hero-screen skill modal for tap/click on the selected skill, reusing the existing hero skill frame variants and keeping descriptions placeholder-only.
+- Changed files:
+  - `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/tests/heroSkillButtonsContract.test.js`
+  - `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+  - `/Users/Mace/Wishfire/Codex-Orka/agents/pm_status.md`
+- Tests:
+  - `node --test tests/heroSkillButtonsContract.test.js tests/devToolingModalContract.test.js` → pass (9/9)
+- Scope confirmation:
+  - Modal opens from the hero skill node hit zone, owns its own close/backdrop/upgrade interactions, and reuses the selected skill frame variant without inventing descriptions.
+  - Kept the underlying hero screen layout intact while layering the modal input ownership above it.

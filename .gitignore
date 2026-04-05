@@ -23,5 +23,8 @@ web-runner/runtime-fingerprint.js
 
 # Local Codex worktrees and generated artifacts
 .codex-worktrees/
+.codex/agents/
+agents/checkpoints/
+driftwood.md
 output/
 inputs/deep-research*.md

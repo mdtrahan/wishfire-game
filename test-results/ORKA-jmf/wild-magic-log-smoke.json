@@ -1,9 +1,0 @@
-{
-  "actor": "Huun",
-  "latest": "Huun used Wild Magic!",
-  "storyRendered": "Huun used Wild Magic!",
-  "storyRawLatest": "Huun used Wild Magic!",
-  "storyIntentFallback": "Huun used Wild Magic!",
-  "screenshot": "test-results/ORKA-jmf/wild-magic-log-smoke.png",
-  "result": "yellow match now writes the exact Wild Magic line into CombatActionLines and the story card"
-}

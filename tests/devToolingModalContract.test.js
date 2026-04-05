@@ -15,12 +15,15 @@ test('web-runner app keeps dev tooling modal decoupled from combat reset flow', 
   assert.match(src, /devToolingDom\.launcher\.addEventListener\('click', \(\) => toggleDevToolingModal\(true\)\);/);
   assert.match(src, /Apply: writes only the selected condition; no combat reset, turn advance, or loadout refresh/);
   assert.match(src, /Restart/);
+  assert.match(src, /Reset Hero Gem Radiator/);
   assert.doesNotMatch(src, /Save Staged/);
   assert.match(src, /Double Attack/);
   assert.match(src, /data-devtool-double-attack-hero/);
+  assert.match(src, /data-devtool-reset-hero-gems/);
   assert.match(src, /devToolingDom\.apply\.addEventListener\('click', \(\) => applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ closeModal: true \}\)\);/);
   assert.match(src, /devToolingDom\.restart\.addEventListener\('click', async \(\) => \{/);
   assert.match(src, /await devToolingRefreshHandler\(\{ forceCombat: false, resetGame: true \}\);/);
+  assert.match(src, /devToolingDom\.resetHeroGems\.addEventListener\('click', \(\) => resetHeroGemCounterRadiatorProgress\(\)\);/);
   assert.match(src, /devToolingDom\.autoplay\.addEventListener\('click', async \(\) => \{/);
   assert.match(src, /closeDevToolingModal\(\{ restorePauseSnapshot: true \}\);/);
   assert.match(src, /function syncConfiguredDoubleAttackHarness\(cfg = ensureDevToolingConfig\(\)\)/);

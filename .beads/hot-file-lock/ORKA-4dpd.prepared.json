@@ -1,0 +1,93 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "appendHeroSkillPointRewardTrace",
+        "getHeroSkillProgressConfigForHero",
+        "buildDefaultHeroSkillProgressState",
+        "cloneHeroSkillProgressState",
+        "ensureHeroSkillProgressRecord",
+        "SetHeroSkillPointsForParty",
+        "getBlueGemSkillPointCarryover",
+        "resolveBlueGemConversionGrantActorUID",
+        "applyBlueGemSkillPointConversion",
+        "AttemptHeroSkillUpgrade",
+        "AttemptHeroSkillDowngrade",
+        "GetHeroGemProgressSnapshot",
+        "LoadHeroGemProgressSnapshot",
+        "ResolveGemAction"
+      ],
+      "staged_blob": "f1a83b335c04bde162d855b4283a6b9e1d796b4b"
+    },
+    "web-runner/app.js": {
+      "functions": [
+        "__MODULE__",
+        "getPartyHpFrontColor",
+        "syncPartyHpBarImmediate",
+        "getGemSpawnRandom",
+        "ensureDevToolingModal",
+        "g",
+        "isWestromSandboxEnabled",
+        "getHeroClassLabel",
+        "drawHeroStatGlyph",
+        "drawHeroSkillNode",
+        "renderHeroSkillModal",
+        "getHeroScreenRoster",
+        "runtimeHeroes",
+        "getHeroStatValue",
+        "splitBeadDescriptionLines",
+        "getBeadMappedSkillEntries",
+        "buildHeroCardSpecs",
+        "renderHeroScreenLayoutV2",
+        "artOffsetX",
+        "artOffsetY",
+        "sx",
+        "sy",
+        "ss",
+        "sf",
+        "mapRect",
+        "mapPoint",
+        "roundRect",
+        "fitTextSize",
+        "drawArrowTriangle",
+        "drawPoly",
+        "getHeroScreenSkillCards",
+        "clampHeroSkillScrollOffset",
+        "updateHeroSkillScrollOffset",
+        "clearPersistedHeroGemProgress",
+        "resetHeroGemCounterRadiatorProgress",
+        "syncGemsFromGlobals",
+        "validateCombatSnapshot",
+        "rewards",
+        "frameIndex",
+        "renderDamageTexts",
+        "squashPhase",
+        "isIdleAutoplayHeroWindow",
+        "zones",
+        "handleWheel",
+        "layout0State"
+      ],
+      "staged_blob": "0d5d8bb987e75a197015bec0cc3d99c0d46ae53f"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "appendHeroSkillPointRewardTrace",
+        "getHeroSkillProgressConfigForHero",
+        "buildDefaultHeroSkillProgressState",
+        "cloneHeroSkillProgressState",
+        "ensureHeroSkillProgressRecord",
+        "SetHeroSkillPointsForParty",
+        "getBlueGemSkillPointCarryover",
+        "resolveBlueGemConversionGrantActorUID",
+        "applyBlueGemSkillPointConversion",
+        "AttemptHeroSkillUpgrade",
+        "AttemptHeroSkillDowngrade",
+        "GetHeroGemProgressSnapshot",
+        "LoadHeroGemProgressSnapshot",
+        "ResolveGemAction"
+      ],
+      "staged_blob": "6cb667ba4349e516a11c5fb9277a419e2eff8b04"
+    }
+  },
+  "issue_id": "ORKA-4dpd"
+}

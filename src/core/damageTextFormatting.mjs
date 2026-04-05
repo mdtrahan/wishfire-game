@@ -1,4 +1,4 @@
 export function formatDamageValue({ value, type, isCrit = false }) {
   const amount = Math.max(0, Number(value) || 0);
-  return isCrit ? `${amount}!!` : `${amount}`;
+  return `${amount}`;
 }

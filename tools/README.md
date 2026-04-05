@@ -12,6 +12,19 @@ Game automation in this repo has one canonical execution path:
 
 Everything else in this folder is support tooling around that harness, not a second test pipeline.
 
+## Minimal Browser Battery
+
+Use `npm run browser:battery` when you need a small, repeatable browser QA pass that is cheaper than a full harness run.
+
+It does three things:
+
+1. Verifies `agent-browser` is installed and reachable.
+2. Boots the game, probes `window.render_game_to_text`, and saves state/snapshot artifacts.
+3. Captures a screenshot plus console/error artifacts under `output/playwright/browser-battery/`.
+
+This is artifact-first diagnostic coverage, not a replacement for bead acceptance or the shipping harness.
+For the full browser probe, provide either `BROWSER_BATTERY_CDP_URL` for an already-running Chrome session or `BROWSER_BATTERY_DIRECT=1` if you explicitly want to attempt a local launch.
+
 ## Browser Discovery Lane Pilot
 
 The repo now allows a bounded parallel browser discovery lane for qualifying runtime beads.

@@ -40,7 +40,7 @@ import {
   updateIdleFarmSessionState,
 } from './src/core/idleFarmRuntime.mjs';
 import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
-import { createDamageNumber } from './src/core/damageNumberAnimation.mjs';
+import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
 import { createHealBloom } from './src/core/healBloomAnimation.mjs';
 import { updateHP as updateAnimatedHP } from './src/core/hpBarAnimation.mjs';
 import { createGoldCollectAnimation } from './src/core/goldCollectAnimation.mjs';
@@ -54,6 +54,8 @@ const ctx = canvas.getContext('2d');
 const ENEMY_DEATH_DEBUG = typeof window !== 'undefined'
   && new URLSearchParams(window.location.search).has('enemy_death_debug');
 let damageNumberLayer = null;
+const DAMAGE_TEXT_FONT = '"Rubik Mono One", "Trebuchet MS", "Verdana", sans-serif';
+void ensureDamageTextFontReady();
 const partyHpBarAnim = {
   front: { percent: 100, scaleY: 1 },
   lag: { percent: 100 },
@@ -265,23 +267,18 @@ function toRgbString(r, g, b) {
 
 function getPartyHpFrontColor(ratio) {
   const clamped = Math.max(0, Math.min(1, Number(ratio || 0)));
-  if (clamped >= 0.4) {
-    const t = Math.max(0, Math.min(1, (clamped - 0.4) / 0.6));
-    return toRgbString(
-      lerpChannel(230, 11, t),
-      lerpChannel(210, 215, t),
-      lerpChannel(60, 70, t),
-    );
-  }
-  if (clamped >= 0.1) {
-    const t = Math.max(0, Math.min(1, (clamped - 0.1) / 0.3));
-    return toRgbString(
-      lerpChannel(220, 230, t),
-      lerpChannel(48, 210, t),
-      lerpChannel(48, 60, t),
-    );
-  }
-  return '#dc3030';
+  if (clamped >= 0.7) return '#7BCB47';
+  if (clamped >= 0.3) return '#EBE413';
+  return '#DC3030';
+}
+
+function syncPartyHpBarImmediate(current, max) {
+  const safeMax = Math.max(1, Number(max || 1));
+  const targetPercent = Math.max(0, Math.min(100, (Number(current || 0) / safeMax) * 100));
+  partyHpBarAnim.front.percent = targetPercent;
+  partyHpBarAnim.front.scaleY = 1;
+  partyHpBarAnim.lag.percent = targetPercent;
+  return targetPercent;
 }
 
 function syncDamageNumberLayerBounds() {
@@ -776,6 +773,10 @@ const gameState = {
     hitZones: null,
     mode: 'details',
     selectedPartySlot: 0,
+    selectedSkillIndex: 0,
+    skillScrollOffset: 0,
+    skillModalOpen: false,
+    skillModalSkillIndex: 0,
   },
   tomesLayout: {
     entryPoint: 'map-locale',
@@ -1656,6 +1657,7 @@ function ensureDevToolingModal() {
     <div style="display:flex;gap:8px;margin-top:14px;">
       <button type="button" data-devtool-apply style="border:1px solid #14532d;background:#1f8f4a;color:#fff;padding:8px 12px;border-radius:8px;font-weight:800;cursor:pointer;">Apply</button>
       <button type="button" data-devtool-restart style="border:1px solid #475569;background:#fff;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Restart</button>
+      <button type="button" data-devtool-reset-hero-gems style="border:1px solid #9a3412;background:#fff7ed;color:#7c2d12;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Reset Hero Gem Radiator</button>
       <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Run Idle Mode</button>
     </div>
     <pre data-devtool-status style="margin:14px 0 0;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff9ee;white-space:pre-wrap;"></pre>
@@ -1688,6 +1690,7 @@ function ensureDevToolingModal() {
     close: panel.querySelector('[data-devtool-close]'),
     apply: panel.querySelector('[data-devtool-apply]'),
     restart: panel.querySelector('[data-devtool-restart]'),
+    resetHeroGems: panel.querySelector('[data-devtool-reset-hero-gems]'),
     autoplay: panel.querySelector('[data-devtool-autoplay]'),
     heroSlots: Array.from(panel.querySelectorAll('[data-devtool-hero-slot]')),
     enemySlots: Array.from(panel.querySelectorAll('[data-devtool-enemy-slot]')),
@@ -1707,6 +1710,7 @@ function ensureDevToolingModal() {
       await devToolingRefreshHandler({ forceCombat: false, resetGame: true });
     }
   });
+  devToolingDom.resetHeroGems.addEventListener('click', () => resetHeroGemCounterRadiatorProgress());
   devToolingDom.autoplay.addEventListener('click', async () => {
     if (state.globals.DevAutoplayActive) {
       state.globals.DevAutoplayStopRequested = 1;
@@ -1973,6 +1977,34 @@ const CANONICAL_HERO_ROSTER = [
   { name: 'Runa', hp: 30, maxHP: 30, ATK: 8, DEF: 8, MAG: 28, RES: 20, SPD: 11, attackType: 'magic' },
   { name: 'Kojonn', hp: 40, maxHP: 40, ATK: 12, DEF: 14, MAG: 22, RES: 18, SPD: 14, attackType: 'magic' },
 ];
+const WESTROM_SANDBOX_HERO = {
+  name: 'Westrom',
+  hp: 38,
+  maxHP: 38,
+  ATK: 14,
+  DEF: 14,
+  MAG: 14,
+  RES: 14,
+  SPD: 14,
+  attackType: 'magic',
+};
+const HERO_CLASS_LABELS = Object.freeze({
+  falie: 'Guardian',
+  huun: 'Vanguard',
+  runa: 'Mystic',
+  kojonn: 'Arcanist',
+  westrom: 'Sandbox',
+});
+
+function isWestromSandboxEnabled() {
+  if (typeof window === 'undefined') return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('westrom_sandbox') === '1';
+  } catch {
+    return false;
+  }
+}
 // Deterministic gate metric used for progression/access comparisons.
 function computeCombatPower(atk, def, hp, mag = 0, res = 0, attackType = '') {
   const a = Number(atk || 0);
@@ -1987,6 +2019,194 @@ function computeCombatPower(atk, def, hp, mag = 0, res = 0, attackType = '') {
   const mitigation = (d * 0.65) + (r * 0.35);
   const survivability = mitigation + (h / 10);
   return Math.ceil(offense + survivability);
+}
+function getHeroClassLabel(heroName) {
+  const key = String(heroName || '').trim().toLowerCase();
+  return HERO_CLASS_LABELS[key] || 'Adventurer';
+}
+function drawHeroStatGlyph(ctx, emoji, cx, cy, scale) {
+  const glyph = String(emoji || '🧿');
+  const size = Math.max(12, Math.round(Number(scale || 1) * 22));
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `${size}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+  ctx.fillText(glyph, cx, cy + 1);
+  ctx.restore();
+}
+function drawHeroSkillNode(ctx, rect, cardData, selected, ss, sf) {
+  const shape = String(cardData?.shape || '').toLowerCase();
+  const frameFill = String(cardData?.frameFill || '#D9D9D9');
+  const frameStroke = cardData?.frameStroke === null ? null : String(cardData?.frameStroke || '');
+  const frameStrokeWidth = Math.max(0, Number(cardData?.frameStrokeWidth || 0));
+  const frameRadius = Number(cardData?.frameRadius || 8);
+  ctx.save();
+  ctx.fillStyle = frameFill;
+  if (frameStroke && frameStrokeWidth > 0) {
+    ctx.strokeStyle = frameStroke;
+    ctx.lineWidth = Math.max(1, ss(frameStrokeWidth));
+  }
+  ctx.beginPath();
+  if (shape === 'diamond') {
+    const side = Math.min(rect.w, rect.h);
+    ctx.save();
+    ctx.translate(rect.x + rect.w / 2, rect.y + rect.h / 2);
+    ctx.rotate(Math.PI / 4);
+    ctx.roundRect(-side / 2, -side / 2, side, side, Math.max(1, ss(frameRadius - 2)));
+    ctx.fill();
+    if (frameStroke && frameStrokeWidth > 0) ctx.stroke();
+    ctx.restore();
+  } else if (shape === 'circle') {
+    ctx.arc(rect.x + (rect.w / 2), rect.y + (rect.h / 2), Math.min(rect.w, rect.h) / 2, 0, Math.PI * 2);
+    ctx.fill();
+    if (frameStroke && frameStrokeWidth > 0) ctx.stroke();
+  } else {
+    ctx.roundRect(rect.x, rect.y, rect.w, rect.h, Math.max(4, ss(6)));
+    ctx.fill();
+    if (frameStroke && frameStrokeWidth > 0) ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function renderHeroSkillModal({
+  ctx,
+  heroLayoutSpecLocal,
+  heroName,
+  selectedCard,
+  selectedNode,
+  modalIndex,
+  visibleSkillCards,
+  modalRects,
+  heroSkillPoints,
+  heroSkillPointsTotal,
+  ss,
+  sf,
+  roundRect,
+  viewWidth,
+  viewHeight,
+  closeWinOvalImage,
+}) {
+  if (!ctx || !heroLayoutSpecLocal || !selectedCard || !selectedNode || !modalRects) return null;
+  const cardRect = modalRects.card;
+  const closeRect = modalRects.close;
+  const frameBase = modalRects.frame;
+  const iconRect = {
+    x: frameBase.x,
+    y: frameBase.y,
+    w: ss(Number(selectedNode.size || 44)),
+    h: ss(Number(selectedNode.size || 44)),
+  };
+  const title = String(selectedCard.title || selectedNode.title || `Skill ${modalIndex + 1}`);
+  const rank = Math.max(0, Math.floor(Number(selectedCard.rank || 0)));
+  const maxRank = Math.max(0, Math.floor(Number(selectedCard.maxRank || 0)));
+  const nextCost = Math.max(0, Math.floor(Number(selectedCard.nextCost || 0)));
+  const costs = Array.isArray(selectedCard.costs) ? selectedCard.costs : [];
+  const upcoming = [];
+  for (let i = rank; i < Math.min(maxRank, rank + 4); i += 1) {
+    upcoming.push({
+      level: i + 1,
+      cost: Math.max(0, Math.floor(Number(costs[i] || 0))),
+    });
+  }
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.46)';
+  ctx.fillRect(0, 0, viewWidth, viewHeight);
+
+  roundRect(cardRect.x, cardRect.y, cardRect.w, cardRect.h, ss(10), '#ffffff', '#d8d8d8');
+  ctx.save();
+  ctx.globalAlpha = 0.38;
+  roundRect(cardRect.x, cardRect.y, cardRect.w, ss(28), ss(10), '#d9d9d9', null);
+  ctx.restore();
+
+  ctx.fillStyle = '#111111';
+  ctx.font = `900 ${sf(20, 12)}px Arial Black`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(title, modalRects.headerPill.x, modalRects.headerPill.y + modalRects.headerPill.h / 2 + ss(1));
+
+  ctx.fillStyle = '#707070';
+  ctx.font = `700 ${sf(12, 9)}px Arial`;
+  ctx.fillText(`${getHeroClassLabel(heroName)} skill`, modalRects.classLabel.x, modalRects.classLabel.y + modalRects.classLabel.h / 2);
+
+  drawHeroSkillNode(ctx, iconRect, { ...selectedNode, shape: String(selectedNode.kind || selectedNode.shape || 'circle') }, false, ss, sf);
+
+  roundRect(modalRects.rankRow.x, modalRects.rankRow.y, modalRects.rankRow.w, modalRects.rankRow.h, ss(6), '#efefef', null);
+  ctx.fillStyle = '#737373';
+  ctx.font = `900 ${sf(11.5, 8)}px Arial Black`;
+  ctx.textAlign = 'left';
+  ctx.fillText('RANK', modalRects.rankRow.x + ss(10), modalRects.rankRow.y + modalRects.rankRow.h / 2 + ss(1));
+  ctx.fillStyle = '#f87c17';
+  ctx.textAlign = 'right';
+  ctx.fillText(`${rank}/${Math.max(1, maxRank)}`, modalRects.rankRow.x + modalRects.rankRow.w - ss(10), modalRects.rankRow.y + modalRects.rankRow.h / 2 + ss(1));
+
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  roundRect(modalRects.summaryRow.x, modalRects.summaryRow.y, modalRects.summaryRow.w, modalRects.summaryRow.h, ss(8), '#000000', null);
+  ctx.restore();
+  ctx.fillStyle = '#555555';
+  ctx.font = `700 ${sf(10.5, 8)}px Arial`;
+  ctx.textAlign = 'left';
+  ctx.fillText('UPGRADE LADDER', modalRects.summaryRow.x + ss(10), modalRects.summaryRow.y + ss(16));
+  ctx.fillStyle = '#8b8b8b';
+  ctx.font = `700 ${sf(10, 8)}px Arial`;
+  ctx.fillText(
+    nextCost > 0 ? `Next cost ${nextCost}` : 'Max rank reached',
+    modalRects.summaryRow.x + ss(10),
+    modalRects.summaryRow.y + ss(34),
+  );
+
+  ctx.fillStyle = '#737373';
+  ctx.font = `900 ${sf(11, 8)}px Arial Black`;
+  ctx.textAlign = 'left';
+  ctx.fillText('UPGRADES', modalRects.upgradeList.x, modalRects.upgradeList.y - ss(8));
+  const rowGap = ss(28);
+  const rowHeight = ss(22);
+  for (let i = 0; i < Math.min(4, upcoming.length); i += 1) {
+    const rowY = modalRects.upgradeList.y + (rowGap * i);
+    roundRect(modalRects.upgradeList.x, rowY, modalRects.upgradeList.w, rowHeight, ss(6), '#f3f3f3', '#dfdfdf');
+    ctx.fillStyle = '#555555';
+    ctx.font = `900 ${sf(10, 8)}px Arial Black`;
+    ctx.textAlign = 'left';
+    ctx.fillText(`Lv ${upcoming[i].level}`, modalRects.upgradeList.x + ss(10), rowY + (rowHeight / 2));
+    ctx.fillStyle = '#f87c17';
+    ctx.textAlign = 'right';
+    ctx.fillText(
+      upcoming[i].cost > 0 ? `${upcoming[i].cost}` : '--',
+      modalRects.upgradeList.x + modalRects.upgradeList.w - ss(10),
+      rowY + (rowHeight / 2),
+    );
+  }
+
+  const canUpgradeSelected = Boolean(selectedCard)
+    && selectedCard.actionable !== false
+    && maxRank > 0
+    && rank < maxRank;
+  roundRect(
+    modalRects.upgradeButton.x,
+    modalRects.upgradeButton.y,
+    modalRects.upgradeButton.w,
+    modalRects.upgradeButton.h,
+    ss(6),
+    canUpgradeSelected ? '#d2d2d2' : '#e4e4e4',
+    '#a9a9a9',
+  );
+  ctx.fillStyle = canUpgradeSelected ? '#555555' : '#8c8c8c';
+  ctx.font = `900 ${sf(15, 10)}px Arial Black`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Upgrade', modalRects.upgradeButton.x + (modalRects.upgradeButton.w / 2), modalRects.upgradeButton.y + (modalRects.upgradeButton.h / 2) + ss(1));
+
+  drawHeroStyleCloseControl(ctx, closeRect, closeWinOvalImage, '#111111');
+
+  const backdropRect = { x: 0, y: 0, w: viewWidth, h: viewHeight };
+  ctx.restore();
+  return {
+    backdrop: backdropRect,
+    card: cardRect,
+    close: closeRect,
+    upgradeButton: modalRects.upgradeButton,
+  };
 }
 const HERO_STAT_KEYS = ['ATK', 'DEF', 'MAG', 'RES', 'SPD', 'HP'];
 const FIGMA_HERO_NEXT_URL = 'https://www.figma.com/api/mcp/asset/dfb1bc1b-4189-4f52-9c88-1cf1e4f8029a';
@@ -2023,6 +2243,87 @@ const heroLayoutSpec = {
     row: { x: 160, y: 251, w: 190, h: 24 },
     chip: { x: 286, y: 252, w: 58, h: 20 },
   },
+  skillScrollBounds: {
+    top: 287,
+    bottom: 579,
+    left: 12,
+    width: 336,
+  },
+  heroHeader: {
+    namePill: { x: 18, y: 38, w: 190, h: 24 },
+    classLabel: { x: 24, y: 70, w: 128, h: 16 },
+  },
+  heroPortrait: { x: 69, y: 107, w: 224, h: 146 },
+  heroArrows: {
+    left: { x: 14, y: 152, w: 24, h: 38, glyphX: 26, glyphY: 171 },
+    right: { x: 320, y: 152, w: 24, h: 38, glyphX: 332, glyphY: 171 },
+  },
+  heroCP: { x: 136, y: 272, w: 88, h: 18 },
+  heroStats: {
+    bar: { x: 6, y: 306, w: 350, h: 27 },
+    items: [
+      { iconX: 27, valueX: 54, key: 'HP' },
+      { iconX: 94, valueX: 122, key: 'ATK' },
+      { iconX: 165, valueX: 190, key: 'DEF' },
+      { iconX: 233, valueX: 258, key: 'MAG' },
+      { iconX: 301, valueX: 330, key: 'RES' },
+    ],
+  },
+  heroNodes: {
+    items: [
+      {
+        x: 101,
+        y: 352,
+        kind: 'circle',
+        size: 44,
+        frameFill: '#D9D9D9',
+        frameStroke: '#FFFFFF',
+        frameStrokeWidth: 1,
+        levelBacker: { x: 132, y: 379, w: 18, h: 18, label: 'N' },
+        levelLabel: { x: 137, y: 383 },
+      },
+      {
+        x: 159,
+        y: 352,
+        kind: 'circle',
+        size: 44,
+        frameFill: '#D9D9D9',
+        frameStroke: null,
+        frameStrokeWidth: 0,
+        levelBacker: { x: 190, y: 379, w: 18, h: 18, label: 'N' },
+        levelLabel: { x: 195, y: 383 },
+      },
+      {
+        x: 222.5,
+        y: 355.615,
+        kind: 'diamond',
+        size: 36.77,
+        frameFill: '#D9D9D9',
+        frameStroke: null,
+        frameStrokeWidth: 0,
+        frameRadius: 8,
+        levelBacker: { x: 251, y: 379, w: 18, h: 18, label: 'N' },
+        levelLabel: { x: 256, y: 383 },
+      },
+    ],
+  },
+  heroSkillPoints: {
+    row: { x: 86, y: 415, w: 190, h: 24 },
+    chip: { x: 216, y: 415, w: 88, h: 24 },
+  },
+  heroSkillModal: {
+    backdropAlpha: 0.46,
+    card: { x: 32, y: 92, w: 296, h: 438 },
+    headerPill: { x: 56, y: 112, w: 168, h: 24 },
+    classLabel: { x: 56, y: 142, w: 128, h: 16 },
+    frame: { x: 56, y: 170, w: 44, h: 44 },
+    rankRow: { x: 120, y: 176, w: 154, h: 24 },
+    summaryRow: { x: 56, y: 228, w: 240, h: 56 },
+    upgradeList: { x: 56, y: 300, w: 240, h: 118 },
+    upgradeButton: { x: 104, y: 430, w: 132, h: 45 },
+    close: { cx: 304, cy: 116, r: 15 },
+  },
+  heroUpgrade: { x: 115, y: 479, w: 132, h: 45 },
   cards: [
     {
       card: { x: 12, y: 287, w: 336, h: 79.53 },
@@ -2062,10 +2363,13 @@ const heroLayoutSpec = {
 };
 
 function getHeroScreenRoster() {
+  const baseRoster = isWestromSandboxEnabled()
+    ? [...CANONICAL_HERO_ROSTER, WESTROM_SANDBOX_HERO]
+    : CANONICAL_HERO_ROSTER;
   const runtimeHeroes = (state.entities || [])
     .filter(e => e && e.kind === 'hero')
     .sort((a, b) => Number(a.heroDisplaySlot ?? a.heroIndex ?? 0) - Number(b.heroDisplaySlot ?? b.heroIndex ?? 0));
-  return CANONICAL_HERO_ROSTER.map((hero, idx) => {
+  return baseRoster.map((hero, idx) => {
     const live = runtimeHeroes.find((entry) =>
       Number(entry?.heroIndex ?? -1) === idx ||
       String(entry?.baseHeroName || entry?.name || '') === String(hero.name || ''),
@@ -2121,99 +2425,585 @@ function getHeroStatValue(hero, key) {
   return 0;
 }
 
-function getHeroStarterSkillTitle(heroName) {
-  const key = String(heroName || '');
-  const byHero = {
-    Falie: 'Pummel',
-    Huun: 'Swipe',
-    Runa: 'Burst',
-    Kojonn: 'Faze',
+const HERO_SKILL_BEAD_MAP = {
+  Falie: [
+    { beadId: 'ORKA-wec6', title: 'Block', description: 'Chance to raise block chance by 5%.', actionable: true },
+    { beadId: 'ORKA-j2d3', title: 'Protect', description: "Chance to raise an ally's DEF by 5.", actionable: true },
+    { beadId: 'ORKA-xf1q', title: 'Shell', description: "Chance to raise an ally's RES by 5.", actionable: true },
+    { beadId: 'ORKA-ysh3', title: 'Shield Bash', description: 'Chance to cut an enemy turn gauge by 25%.', actionable: true },
+    { beadId: 'ORKA-hkpx', title: 'Phalanx', description: 'Chance to raise party DEF by 3.', actionable: true },
+    { beadId: 'ORKA-05x8', title: 'Formless', description: 'Chance to trigger a random support effect.', actionable: true },
+    { beadId: 'ORKA-0yzu', title: 'Reprisal', description: 'Chance to counterattack after taking damage.', actionable: true },
+    { beadId: 'ORKA-n064', title: 'Crusade', description: 'Chance to boost party momentum on kill.', actionable: true },
+  ],
+  Huun: [
+    { beadId: 'ORKA-0uvk', title: 'Steal', description: 'Chance to steal resources from an enemy.', actionable: true },
+    { beadId: 'ORKA-fs6j', title: 'Glare', description: 'Chance to lower enemy accuracy.', actionable: true },
+    { beadId: 'ORKA-y8ye', title: 'Growth', description: "Chance to increase an ally's max HP.", actionable: true },
+    { beadId: 'ORKA-7oh3', title: 'Bell', description: 'Chance to ring a support pulse.', actionable: true },
+    { beadId: 'ORKA-b96w', title: 'RabbityHole', description: 'Chance to evade the next incoming hit.', actionable: true },
+    { beadId: 'ORKA-zhft', title: 'Scout', description: 'Chance to reveal an enemy weakness.', actionable: true },
+    { beadId: 'ORKA-nj24', title: 'Siphon HoT', description: 'Chance to siphon life and apply healing over time.', actionable: true },
+    { beadId: 'ORKA-xdwu', title: 'Trinity', description: 'Chance to trigger a tri-hit support chain.', actionable: true },
+  ],
+  Runa: [
+    { beadId: 'ORKA-zwki', title: 'Inspire', description: 'Chance to increase ally MAG.', actionable: true },
+    { beadId: 'ORKA-as8q', title: 'Aura Burn Totem', description: 'Chance to summon a burn totem that damages nearby enemies over time.', actionable: true },
+    { beadId: 'ORKA-gcij', title: 'Aura Blast Totem', description: 'Chance to summon a blast totem that bursts nearby enemies.', actionable: true },
+    { beadId: 'ORKA-r8pf', title: 'Insight', description: 'Chance to improve critical consistency.', actionable: true },
+    { beadId: 'ORKA-u6gr', title: 'Ignore', description: 'Chance to ignore enemy resistance.', actionable: true },
+    { beadId: 'ORKA-u6m6', title: 'Invert', description: 'Chance to invert one enemy buff.', actionable: true },
+    { beadId: 'ORKA-xwvc', title: 'Intensify', description: 'Chance to amplify magic outcome tier.', actionable: true },
+    { beadId: 'RUNA-slot8-pending', title: 'Rift Pulse', description: 'Chance to release a placeholder rift pulse effect.', actionable: false },
+  ],
+  Kojonn: [
+    { beadId: 'ORKA-2anc', title: 'Scrolls', description: 'Chance to increase ally MAG.', actionable: true },
+    { beadId: 'ORKA-8jr6', title: 'Weaken', description: 'Chance to reduce enemy DEF.', actionable: true },
+    { beadId: 'ORKA-elqq', title: 'Lift', description: 'Chance to raise ally SPD.', actionable: true },
+    { beadId: 'ORKA-h5k4', title: 'Step', description: 'Chance to gain extra positioning tempo.', actionable: true },
+    { beadId: 'ORKA-ivcq', title: 'Lock', description: 'Chance to lock enemy action.', actionable: true },
+    { beadId: 'ORKA-nwyi', title: 'Exchange', description: 'Chance to swap one ally and enemy state.', actionable: true },
+    { beadId: 'ORKA-uo0j', title: 'Elevate', description: 'Chance to elevate the power tier of the active effect.', actionable: true },
+    { beadId: 'ORKA-z4fs', title: 'Lucky', description: 'Chance to trigger a lucky duplicate outcome.', actionable: true },
+  ],
+  Westrom: [
+    { beadId: 'ORKA-wec6', title: 'Block', description: "Hero skill backlog item. Default targeting rule: treat as self-target unless explicitly enemy/ally-targeting in acceptance. Time-over-time duration and scaling remain TBD until later directive. Implement as unique modular function per current codebase practices. Skill intent: Chance to increase chance to block by 5%.", actionable: true },
+    { beadId: 'ORKA-j2d3', title: 'Protect', description: "Hero skill backlog item. Default targeting rule: treat as self-target unless explicitly enemy/ally-targeting in acceptance. Time-over-time duration and scaling remain TBD until later directive. Implement as unique modular function per current codebase practices. Skill intent: Chance to increase ally DEF +5 points.", actionable: true },
+    { beadId: 'ORKA-xf1q', title: 'Shell', description: "Hero skill backlog item. Default targeting rule: treat as self-target unless explicitly enemy/ally-targeting in acceptance. Time-over-time duration and scaling remain TBD until later directive. Implement as unique modular function per current codebase practices. Skill intent: Chance to increase ally RES +5 points.", actionable: true },
+    { beadId: 'ORKA-ysh3', title: 'Shield Bash', description: "Hero skill backlog item. Default targeting rule: treat as self-target unless explicitly enemy/ally-targeting in acceptance. Time-over-time duration and scaling remain TBD until later directive. Implement as unique modular function per current codebase practices. Skill intent: Chance to reduce enemy turn gauge by 25%.", actionable: true },
+    { beadId: 'ORKA-hkpx', title: 'Phalanx', description: "Hero skill backlog item. Default targeting rule: treat as self-target unless explicitly enemy/ally-targeting in acceptance. Time-over-time duration and scaling remain TBD until later directive. Implement as unique modular function per current codebase practices. Skill intent: Chance to increase party DEF by 3 points.", actionable: true },
+    { beadId: 'ORKA-05x8', title: 'Formless', description: "Hero skill backlog item. Default targeting rule: treat as self-target unless explicitly enemy/ally-targeting in acceptance. Time-over-time duration and scaling remain TBD until later directive. Implement as unique modular function per current codebase practices. Skill intent: Chance to trigger random support effect.", actionable: true },
+    { beadId: 'ORKA-0yzu', title: 'Reprisal', description: "Hero skill backlog item. Default targeting rule: treat as self-target unless explicitly enemy/ally-targeting in acceptance. Time-over-time duration and scaling remain TBD until later directive. Implement as unique modular function per current codebase practices. Skill intent: Chance to counterattack after taking damage.", actionable: true },
+    { beadId: 'ORKA-n064', title: 'Crusade', description: "Hero skill backlog item. Default targeting rule: treat as self-target unless explicitly enemy/ally-targeting in acceptance. Time-over-time duration and scaling remain TBD until later directive. Implement as unique modular function per current codebase practices. Skill intent: Chance to boost party momentum on kill.", actionable: true },
+  ],
+};
+
+function splitBeadDescriptionLines(description = '', maxChars = 46, maxLines = 3) {
+  const words = String(description || '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return ['', '', ''];
+  const lines = [];
+  let current = '';
+  for (const word of words) {
+    if (!current.length) {
+      current = word;
+      continue;
+    }
+    const next = `${current} ${word}`;
+    if (next.length <= maxChars) {
+      current = next;
+      continue;
+    }
+    lines.push(current);
+    current = word;
+    if (lines.length >= maxLines - 1) break;
+  }
+  if (lines.length < maxLines && current.length) {
+    lines.push(current);
+  }
+  while (lines.length < maxLines) lines.push('');
+  return lines.slice(0, maxLines);
+}
+
+function getBeadMappedSkillEntries(heroName) {
+  const entries = HERO_SKILL_BEAD_MAP[String(heroName || '')] || [];
+  return entries.slice(0, 8);
+}
+
+function buildHeroCardSpecs(count = 3) {
+  const baseCards = Array.isArray(heroLayoutSpec.cards) ? heroLayoutSpec.cards : [];
+  if (!baseCards.length) return [];
+  const pitch = baseCards.length > 1
+    ? Number(baseCards[1].card.y || 0) - Number(baseCards[0].card.y || 0)
+    : 93.44;
+  const template = baseCards[0];
+  const specs = [];
+  for (let i = 0; i < Math.max(0, count); i += 1) {
+    if (baseCards[i]) {
+      specs.push(baseCards[i]);
+      continue;
+    }
+    const yOffset = pitch * i;
+    specs.push({
+      card: { ...template.card, y: Number(template.card.y || 0) + yOffset },
+      titleStrip: { ...template.titleStrip, y: Number(template.titleStrip.y || 0) + yOffset },
+      iconTile: { ...template.iconTile, y: Number(template.iconTile.y || 0) + yOffset },
+      bodyText: {
+        ...template.bodyText,
+        titleY: Number(template.bodyText.titleY || 0) + yOffset,
+        line1Y: Number(template.bodyText.line1Y || 0) + yOffset,
+        line2Y: Number(template.bodyText.line2Y || 0) + yOffset,
+        line3Y: Number(template.bodyText.line3Y || 0) + yOffset,
+      },
+      controls: {
+        minus: { ...template.controls.minus, y: Number(template.controls.minus.y || 0) + yOffset },
+        value: { ...template.controls.value, y: Number(template.controls.value.y || 0) + yOffset },
+        plus: { ...template.controls.plus, y: Number(template.controls.plus.y || 0) + yOffset },
+      },
+    });
+  }
+  return specs;
+}
+
+function renderHeroScreenLayoutV2({ ctx, canvas, dpr, gameState, fnContext, closeWinOvalImage, heroPortraitImages }) {
+  const roster = getHeroScreenRoster();
+  const heroIndex = normalizeHeroSelectionIndex();
+  const hero = roster[heroIndex] || roster[0] || {
+    name: 'Hero',
+    hp: 0,
+    maxHP: 0,
+    stats: { ATK: 0, DEF: 0, MAG: 0, RES: 0, SPD: 0 },
   };
-  return byHero[key] || 'Skill 1 Placeholder';
-}
-
-function getHeroRoleLabel(hero) {
-  const heroName = String(hero && hero.name || '');
-  if (heroName === 'Kojonn') return 'Saboteur';
-  const type = String(hero && (hero.attackType || hero.stats?.attackType) || '').toLowerCase();
-  if (type === 'magic') return 'Arcanist';
-  return 'Vanguard';
-}
-
-function buildHeroSkillDescriptionLines(hero, skillState) {
-  const heroName = String(hero && hero.name || 'Hero');
-  const role = getHeroRoleLabel(hero);
-  const key = String(skillState && skillState.key || '');
-  const rank = Math.max(0, Math.floor(Number(skillState && skillState.rank) || 0));
-  const maxRank = Math.max(1, Math.floor(Number(skillState && skillState.maxRank) || 1));
-  const nextCost = Math.max(0, Math.floor(Number(skillState && skillState.nextCost) || 0));
-  const status = String(skillState && skillState.status || 'locked');
-  if (key === 'skill1') {
-    if (heroName === 'Kojonn') {
-      return [
-        `Green match: Faze blight over time on all enemies.`,
-        `Rank ${rank}/${maxRank}  Next Cost ${nextCost} SP`,
-        `Status ${status}`,
-      ];
+  gameState.heroScreen.mode = 'details';
+  const heroName = String(hero.name || 'Hero');
+  const heroUID = Number(hero && hero.uid) || getHeroUIDByIndex(Number(hero && hero.heroIndex || 0));
+  const heroSkillPoints = Math.max(0, Math.floor(Number(
+    callFunctionWithContext(fnContext, 'GetHeroSkillPointBalance', heroUID) || 0
+  )));
+  const skillCards = getHeroScreenSkillCards(hero);
+  const liveSkillStateMap = callFunctionWithContext(fnContext, 'GetAllHeroSkillStates', heroUID) || {};
+  const totalSpent = skillCards.reduce((sum, card) => {
+    const liveState = liveSkillStateMap[card.key] || null;
+    const rank = Math.max(0, Math.floor(Number((liveState && liveState.rank) ?? card.rank) || 0));
+    const costs = Array.isArray((liveState && liveState.costs) || card.costs)
+      ? ((liveState && liveState.costs) || card.costs)
+      : [];
+    for (let i = 0; i < Math.min(rank, costs.length); i += 1) {
+      sum += Math.max(0, Math.floor(Number(costs[i] || 0)));
     }
-    return [
-      `${heroName}'s signature ${role.toLowerCase()} move.`,
-      `Rank ${rank}/${maxRank}  Next Cost ${nextCost} SP`,
-      `Status ${status}`,
-    ];
-  }
-  if (key === 'skill2') {
-    if (heroName === 'Kojonn') {
-      return [
-        `Red match: rapid cluster burst on one target.`,
-        `Rank ${rank}/${maxRank}  Next Cost ${nextCost} SP`,
-        `Status ${status}`,
-      ];
+    return sum;
+  }, 0);
+  const heroSkillPointsTotal = heroSkillPoints + totalSpent;
+  const visibleSkillCount = Math.max(
+    1,
+    Number(Array.isArray(heroLayoutSpec.heroNodes?.items) ? heroLayoutSpec.heroNodes.items.length : 3),
+  );
+  const visibleSkillCards = skillCards.slice(0, visibleSkillCount);
+  const selectedSkillIndex = Math.max(
+    0,
+    Math.min(Math.max(0, visibleSkillCards.length - 1), Math.floor(Number(gameState.heroScreen.selectedSkillIndex || 0))),
+  );
+  gameState.heroScreen.selectedSkillIndex = selectedSkillIndex;
+  const viewWidth = canvas.width / dpr;
+  const viewHeight = canvas.height / dpr;
+  const artW = heroLayoutSpec.artboard.w;
+  const artH = heroLayoutSpec.artboard.h;
+  const fitScale = Math.min(viewWidth / artW, viewHeight / artH);
+  const artOffsetX = (viewWidth - (artW * fitScale)) * 0.5;
+  const artOffsetY = (viewHeight - (artH * fitScale)) * 0.5;
+  const sx = (x) => artOffsetX + (x * fitScale);
+  const sy = (y) => artOffsetY + (y * fitScale);
+  const ss = (v) => v * fitScale;
+  const sf = (v, min = 8) => Math.max(min, Math.round(v * fitScale));
+  const mapRect = (rect) => ({
+    x: sx(rect.x),
+    y: sy(rect.y),
+    w: ss(rect.w),
+    h: ss(rect.h),
+  });
+  const mapPoint = (x, y) => ({ x: sx(x), y: sy(y) });
+  const roundRect = (x, y, w, h, r, fill, stroke) => {
+    const radius = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + w - radius, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+    ctx.lineTo(x + w, y + h - radius);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+    ctx.lineTo(x + radius, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    if (fill) {
+      ctx.fillStyle = fill;
+      ctx.fill();
     }
-    return [
-      `Secondary lane ability for ${heroName}.`,
-      `Rank ${rank}/${maxRank}  Next Cost ${nextCost} SP`,
-      `Status ${status}`,
-    ];
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  };
+  const fitTextSize = (text, maxWidth, base, min = 8, weight = '700', family = 'Arial') => {
+    let size = Math.max(min, Math.round(base));
+    ctx.save();
+    while (size > min) {
+      ctx.font = `${weight} ${size}px ${family}`;
+      if (ctx.measureText(String(text || '')).width <= maxWidth) break;
+      size -= 1;
+    }
+    ctx.restore();
+    return size;
+  };
+  const closeRadius = ss(heroLayoutSpec.close.r);
+  const closeCenter = mapPoint(heroLayoutSpec.close.cx, heroLayoutSpec.close.cy);
+  const closeBtn = {
+    x: closeCenter.x - closeRadius,
+    y: closeCenter.y - closeRadius,
+    w: closeRadius * 2,
+    h: closeRadius * 2,
+  };
+  const headerPill = mapRect(heroLayoutSpec.heroHeader.namePill);
+  const classLabel = mapRect(heroLayoutSpec.heroHeader.classLabel);
+  const portraitBox = mapRect(heroLayoutSpec.heroPortrait);
+  const leftArrowZone = mapRect(heroLayoutSpec.heroArrows.left);
+  const rightArrowZone = mapRect(heroLayoutSpec.heroArrows.right);
+  const cpPill = mapRect(heroLayoutSpec.heroCP);
+  const statsSpec = heroLayoutSpec.heroStats;
+  const nodeSpec = heroLayoutSpec.heroNodes;
+  const skillPointsRow = mapRect(heroLayoutSpec.heroSkillPoints.row);
+  const skillPointsChip = mapRect(heroLayoutSpec.heroSkillPoints.chip);
+  const upgradeButton = mapRect(heroLayoutSpec.heroUpgrade);
+  const statKeys = ['HP', 'ATK', 'DEF', 'MAG', 'RES'];
+  const statIcons = ['❤️', '👊', '🛡️', '💫', '🧿'];
+  const heroPortrait = heroPortraitImages[heroName] || null;
+  const skillNodeHitZones = [];
+
+  ctx.clearRect(0, 0, viewWidth, viewHeight);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, viewWidth, viewHeight);
+
+  const drawArrowTriangle = (zone, direction) => {
+    const pad = ss(2.2);
+    const ix = zone.x + pad;
+    const iy = zone.y + pad;
+    const iw = zone.w - (pad * 2);
+    const ih = zone.h - (pad * 2);
+    const edge = ss(1.1);
+    const drawPoly = (tipLeft, fill) => {
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      if (tipLeft) {
+        ctx.moveTo(ix + iw, iy);
+        ctx.lineTo(ix, iy + (ih * 0.5));
+        ctx.lineTo(ix + iw, iy + ih);
+      } else {
+        ctx.moveTo(ix, iy);
+        ctx.lineTo(ix + iw, iy + (ih * 0.5));
+        ctx.lineTo(ix, iy + ih);
+      }
+      ctx.closePath();
+      ctx.fill();
+    };
+    drawPoly(direction === 'left', '#c9c9c9');
+    const ox = ix + edge;
+    const oy = iy + edge;
+    const ow = iw - (edge * 2);
+    const oh = ih - (edge * 2);
+    ctx.fillStyle = '#c8dd3e';
+    ctx.beginPath();
+    if (direction === 'left') {
+      ctx.moveTo(ox + ow, oy);
+      ctx.lineTo(ox, oy + (oh * 0.5));
+      ctx.lineTo(ox + ow, oy + oh);
+    } else {
+      ctx.moveTo(ox, oy);
+      ctx.lineTo(ox + ow, oy + (oh * 0.5));
+      ctx.lineTo(ox, oy + oh);
+    }
+    ctx.closePath();
+    ctx.fill();
+  };
+
+  drawArrowTriangle(leftArrowZone, 'left');
+  drawArrowTriangle(rightArrowZone, 'right');
+
+  if (heroPortrait) {
+    const maxW = portraitBox.w - ss(8);
+    const maxH = portraitBox.h - ss(8);
+    const scale = Math.min(maxW / heroPortrait.width, maxH / heroPortrait.height);
+    const drawW = heroPortrait.width * scale;
+    const drawH = heroPortrait.height * scale;
+    const drawX = portraitBox.x + (portraitBox.w - drawW) / 2;
+    const drawY = portraitBox.y + (portraitBox.h - drawH) / 2;
+    ctx.drawImage(heroPortrait, drawX, drawY, drawW, drawH);
+  } else {
+    ctx.fillStyle = '#666666';
+    ctx.font = `600 ${sf(14)}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Portrait', portraitBox.x + portraitBox.w / 2, portraitBox.y + portraitBox.h / 2);
   }
-  return [
-    `Advanced technique for ${heroName}.`,
-    `Rank ${rank}/${maxRank}  Next Cost ${nextCost} SP`,
-    `Status ${status}`,
-  ];
+
+  ctx.save();
+  ctx.globalAlpha = 0.4;
+  roundRect(headerPill.x, headerPill.y, headerPill.w, headerPill.h, ss(5), '#d9d9d9', null);
+  ctx.restore();
+  ctx.fillStyle = '#111111';
+  ctx.font = `900 ${sf(20, 12)}px Arial Black`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(heroName, headerPill.x + ss(10), headerPill.y + headerPill.h / 2 + ss(1));
+  ctx.fillStyle = '#6d6d6d';
+  ctx.font = `700 ${sf(12, 9)}px Arial`;
+  ctx.fillText(getHeroClassLabel(heroName), classLabel.x + ss(2), classLabel.y + classLabel.h / 2);
+
+  ctx.save();
+  ctx.globalAlpha = 0.92;
+  roundRect(cpPill.x, cpPill.y, cpPill.w, cpPill.h, ss(10), '#d0d0d0', null);
+  ctx.restore();
+  ctx.font = `900 ${sf(12, 9)}px Arial Black`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#737373';
+  ctx.fillText('CP', cpPill.x + ss(24), cpPill.y + cpPill.h / 2);
+  ctx.fillStyle = '#f87c17';
+  ctx.fillText(String(Math.round(Number(hero.combatPower || 0))), cpPill.x + cpPill.w - ss(20), cpPill.y + cpPill.h / 2);
+
+  const statsBar = mapRect(statsSpec.bar);
+  roundRect(statsBar.x, statsBar.y, statsBar.w, statsBar.h, ss(10), '#4a4a4a', null);
+  for (let i = 0; i < statKeys.length; i += 1) {
+    const item = statsSpec.items[i] || statsSpec.items[0];
+    if (!item) continue;
+    const iconCx = sx(item.iconX);
+    const valueCx = sx(item.valueX);
+    drawHeroStatGlyph(ctx, statIcons[i], iconCx, statsBar.y + statsBar.h / 2, Math.max(0.55, fitScale * 0.56));
+    ctx.fillStyle = '#f7f0d1';
+    ctx.font = `900 ${sf(10.5, 8)}px Arial Black`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const statValue = statKeys[i] === 'HP'
+      ? Math.max(0, Math.floor(Number(hero.hp || 0)))
+      : Math.max(0, Math.floor(Number(hero.stats?.[statKeys[i]] || hero[statKeys[i]] || 0)));
+    ctx.fillText(String(statValue), valueCx, statsBar.y + statsBar.h / 2 + ss(1));
+  }
+
+  const nodeItems = Array.isArray(nodeSpec.items) ? nodeSpec.items : [];
+  const nodeBadgeOverlays = [];
+  const modalSpec = heroLayoutSpec.heroSkillModal;
+  const modalOpen = Boolean(gameState.heroScreen.skillModalOpen);
+  const modalSkillIndex = Math.max(
+    0,
+    Math.min(Math.max(0, nodeItems.length - 1), Math.floor(Number(gameState.heroScreen.skillModalSkillIndex || selectedSkillIndex))),
+  );
+  const modalCard = visibleSkillCards[modalSkillIndex] || visibleSkillCards[0] || null;
+  const modalNode = nodeItems[modalSkillIndex] || nodeItems[0] || null;
+  let modalHitZones = null;
+  for (let idx = 0; idx < visibleSkillCards.length; idx += 1) {
+    const nodeItem = nodeItems[idx] || nodeItems[nodeItems.length - 1] || null;
+    if (!nodeItem) continue;
+    const isDiamond = nodeItem.kind === 'diamond';
+    const size = ss(nodeItem.size);
+    const rect = {
+      x: sx(nodeItem.x),
+      y: sy(nodeItem.y),
+      w: size,
+      h: size,
+    };
+    const cardData = visibleSkillCards[idx] || visibleSkillCards[0] || {};
+    const selected = idx === selectedSkillIndex;
+    drawHeroSkillNode(ctx, rect, {
+      ...cardData,
+      ...nodeItem,
+      shape: isDiamond ? 'diamond' : 'circle',
+    }, selected, ss, sf);
+    if (nodeItem.levelBacker) {
+      nodeBadgeOverlays.push({
+        backer: nodeItem.levelBacker,
+        label: nodeItem.levelLabel || null,
+      });
+    }
+    skillNodeHitZones.push({
+      idx,
+      skillKey: String(cardData.key || `skill${idx + 1}`),
+      rect,
+      actionable: cardData.actionable !== false && Number(cardData.maxRank || 0) > 0 && Number(cardData.rank || 0) < Number(cardData.maxRank || 0),
+    });
+  }
+
+  for (const overlay of nodeBadgeOverlays) {
+    const backer = overlay?.backer;
+    if (!backer) continue;
+    const backerRect = mapRect(backer);
+    ctx.save();
+    ctx.fillStyle = '#49555A';
+    ctx.beginPath();
+    ctx.arc(
+      backerRect.x + (backerRect.w / 2),
+      backerRect.y + (backerRect.h / 2),
+      Math.min(backerRect.w, backerRect.h) / 2,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `900 ${sf(10, 7)}px Arial Black`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const label = overlay?.label || null;
+    const labelX = Number(backerRect.x + (backerRect.w / 2));
+    const labelY = Number(backerRect.y + (backerRect.h / 2));
+    ctx.fillText(String(backer.label || 'N'), labelX, labelY);
+    ctx.restore();
+  }
+
+  ctx.save();
+  ctx.globalAlpha = 0.4;
+  roundRect(skillPointsRow.x, skillPointsRow.y, skillPointsRow.w, skillPointsRow.h, ss(5), '#d9d9d9', null);
+  ctx.restore();
+  ctx.fillStyle = '#737373';
+  ctx.font = `900 ${sf(12, 8)}px Arial Black`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const skillPointsTextY = skillPointsRow.y + (skillPointsRow.h / 2);
+  ctx.fillText('SKILL POINTS', skillPointsRow.x + ss(56), skillPointsTextY);
+  ctx.fillStyle = '#f87c17';
+  ctx.fillText(`${heroSkillPoints}/${heroSkillPointsTotal}`, skillPointsChip.x + skillPointsChip.w / 2, skillPointsTextY);
+
+  const selectedNode = visibleSkillCards[selectedSkillIndex] || visibleSkillCards[0] || null;
+  const canUpgradeSelected = Boolean(selectedNode)
+    && selectedNode.actionable !== false
+    && Number(selectedNode.maxRank || 0) > 0
+    && Number(selectedNode.rank || 0) < Number(selectedNode.maxRank || 0);
+  roundRect(
+    upgradeButton.x,
+    upgradeButton.y,
+    upgradeButton.w,
+    upgradeButton.h,
+    ss(6),
+    canUpgradeSelected ? '#d2d2d2' : '#e4e4e4',
+    '#a9a9a9',
+  );
+  ctx.fillStyle = canUpgradeSelected ? '#555555' : '#8c8c8c';
+  ctx.font = `900 ${sf(15, 10)}px Arial Black`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Upgrade', upgradeButton.x + upgradeButton.w / 2, upgradeButton.y + upgradeButton.h / 2 + ss(1));
+
+  if (modalOpen && modalCard && modalNode) {
+    modalHitZones = renderHeroSkillModal({
+      ctx,
+      heroLayoutSpecLocal: heroLayoutSpec,
+      heroName,
+      selectedCard: modalCard,
+      selectedNode: modalNode,
+      modalIndex: modalSkillIndex,
+      visibleSkillCards,
+      modalRects: {
+        card: mapRect(modalSpec.card),
+        headerPill: mapRect(modalSpec.headerPill),
+        classLabel: mapRect(modalSpec.classLabel),
+        frame: mapRect(modalSpec.frame),
+        rankRow: mapRect(modalSpec.rankRow),
+        summaryRow: mapRect(modalSpec.summaryRow),
+        upgradeList: mapRect(modalSpec.upgradeList),
+        upgradeButton: mapRect(modalSpec.upgradeButton),
+        close: mapRect({ x: modalSpec.close.cx - modalSpec.close.r, y: modalSpec.close.cy - modalSpec.close.r, w: modalSpec.close.r * 2, h: modalSpec.close.r * 2, r: modalSpec.close.r }),
+      },
+      heroSkillPoints,
+      heroSkillPointsTotal,
+      ss,
+      sf,
+      roundRect,
+      viewWidth,
+      viewHeight,
+      closeWinOvalImage,
+    });
+  }
+
+  gameState.heroScreen.hitZones = {
+    close: closeBtn,
+    prevHero: leftArrowZone,
+    nextHero: rightArrowZone,
+    skillNodes: skillNodeHitZones,
+    upgradeButton,
+    modal: modalHitZones,
+    skillScrollOwner: 'hero-skill-nodes',
+    selectedSkillIndex,
+  };
+
+  if (!modalOpen) drawHeroStyleCloseControl(ctx, closeBtn, closeWinOvalImage, '#111111');
 }
 
 function getHeroScreenSkillCards(hero) {
   const heroIndex = Number(hero && hero.heroIndex);
-  const fallbackSkillStates = [
-    { slot: 0, key: 'skill1', title: getHeroStarterSkillTitle(hero && hero.name), rank: 0, maxRank: 3, nextCost: 0, status: 'locked' },
-    { slot: 1, key: 'skill2', title: 'Skill 2', rank: 0, maxRank: 3, nextCost: 0, status: 'locked' },
-    { slot: 2, key: 'skill3', title: 'Skill 3', rank: 0, maxRank: 3, nextCost: 0, status: 'locked' },
-  ];
+  const sourceEntries = getBeadMappedSkillEntries(hero && hero.name);
+  const fallbackSkillStates = sourceEntries.map((entry, idx) => ({
+    slot: idx,
+    key: `skill${idx + 1}`,
+    title: String(entry.title || `Skill ${idx + 1}`),
+    beadId: String(entry.beadId || ''),
+    beadDescription: String(entry.description || ''),
+    actionable: entry.actionable !== false,
+    rank: 0,
+    maxRank: 15,
+    nextCost: 0,
+    status: entry.actionable === false ? 'pending' : 'locked',
+  }));
+  while (fallbackSkillStates.length < 8) {
+    const idx = fallbackSkillStates.length;
+    fallbackSkillStates.push({
+      slot: idx,
+      key: `skill${idx + 1}`,
+      title: `Skill ${idx + 1}`,
+      beadId: '',
+      beadDescription: '',
+      actionable: true,
+      rank: 0,
+      maxRank: 15,
+      nextCost: 0,
+      status: 'locked',
+    });
+  }
   const heroUID = Number(hero && hero.uid) || getHeroUIDByIndex(Number.isFinite(heroIndex) ? heroIndex : 0);
   const stateMap = heroUID
     ? (callFunctionWithContext(fnContext, 'GetAllHeroSkillStates', heroUID) || {})
     : {};
   const liveStates = Object.values(stateMap)
     .filter((entry) => entry && typeof entry === 'object')
-    .map((entry) => ({
-      slot: Math.max(0, Math.floor(Number(entry.slot) || 0)),
+    .map((entry, idx) => {
+      const directSlot = Math.floor(Number(entry.slot));
+      const fromKeyMatch = String(entry.key || '').match(/^skill(\d+)$/i);
+      const fromKeySlot = fromKeyMatch ? (Math.floor(Number(fromKeyMatch[1])) - 1) : NaN;
+      const slot = Number.isFinite(directSlot) && directSlot >= 0
+        ? directSlot
+        : (Number.isFinite(fromKeySlot) && fromKeySlot >= 0 ? fromKeySlot : idx);
+      return {
+      slot,
       key: String(entry.key || ''),
       title: String(entry.title || ''),
       rank: Math.max(0, Math.floor(Number(entry.rank) || 0)),
-      maxRank: Math.max(1, Math.floor(Number(entry.maxRank) || 1)),
+      maxRank: Math.max(0, Math.floor(Number(entry.maxRank) || 0)),
       nextCost: Math.max(0, Math.floor(Number(entry.nextCost) || 0)),
       status: String(entry.status || 'locked'),
-    }))
+      beadId: '',
+      beadDescription: '',
+      actionable: true,
+    };
+    })
     .sort((a, b) => a.slot - b.slot);
-  const picked = (liveStates.length ? liveStates : fallbackSkillStates).slice(0, 3);
-  while (picked.length < 3) picked.push(fallbackSkillStates[picked.length]);
-  return picked.map((skill, idx) => ({
-    ...skill,
-    title: String(skill.title || fallbackSkillStates[idx].title || `Skill ${idx + 1}`),
-    rankLabel: `Lv${Math.max(0, Math.floor(Number(skill.rank) || 0))}`,
-    lines: buildHeroSkillDescriptionLines(hero, skill),
-  }));
+  const liveBySlot = new Map();
+  for (const skill of liveStates) {
+    if (!skill || !Number.isFinite(skill.slot)) continue;
+    liveBySlot.set(skill.slot, skill);
+  }
+  return fallbackSkillStates.slice(0, 8).map((fallback, idx) => {
+    const live = liveBySlot.get(idx) || null;
+    const source = sourceEntries[idx] || fallbackSkillStates[idx] || {};
+    const beadDescription = String(source.description || (live && live.beadDescription) || fallback.beadDescription || '');
+    const skillKey = String((live && live.key) || fallback.key || `skill${idx + 1}`);
+    const sourcePending = source.actionable === false;
+    const livePending = live && (String(live.status || '') === 'pending' || Number(live.maxRank || 0) <= 0);
+    const actionable = !sourcePending && !livePending;
+    const rank = Math.max(0, Math.floor(Number((live && live.rank) ?? fallback.rank) || 0));
+    const maxRank = Math.max(0, Math.floor(Number((live && live.maxRank) ?? fallback.maxRank) || 0));
+    const status = actionable ? String((live && live.status) || fallback.status || 'locked') : 'pending';
+    return {
+      ...fallback,
+      ...(live || {}),
+      slot: idx,
+      key: skillKey,
+      rank,
+      maxRank,
+      status,
+      nextCost: Math.max(0, Math.floor(Number((live && live.nextCost) ?? fallback.nextCost) || 0)),
+      beadId: String(source.beadId || (live && live.beadId) || fallback.beadId || ''),
+      actionable,
+      title: String(source.title || (live && live.title) || fallback.title || `Skill ${idx + 1}`),
+      rankLabel: `Lv${rank}`,
+      lines: splitBeadDescriptionLines(beadDescription),
+    };
+  });
 }
 
 function normalizeHeroSelectionIndex() {
@@ -2231,6 +3021,23 @@ function normalizeHeroSelectionIndex() {
 function isPointInRect(mx, my, rect) {
   if (!rect) return false;
   return mx >= rect.x && mx <= (rect.x + rect.w) && my >= rect.y && my <= (rect.y + rect.h);
+}
+
+function clampHeroSkillScrollOffset(offset, maxOffset) {
+  const value = Number(offset || 0);
+  const max = Math.max(0, Number(maxOffset || 0));
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(max, value));
+}
+
+function updateHeroSkillScrollOffset(delta, maxOffset) {
+  const next = clampHeroSkillScrollOffset(
+    Number(gameState.heroScreen?.skillScrollOffset || 0) + Number(delta || 0),
+    maxOffset,
+  );
+  if (next === Number(gameState.heroScreen?.skillScrollOffset || 0)) return false;
+  gameState.heroScreen.skillScrollOffset = next;
+  return true;
 }
 
 function getHeroStyleCloseRect(viewWidth, viewHeight) {
@@ -2433,6 +3240,16 @@ function writePersistedHeroGemProgress(snapshot) {
   }
 }
 
+function clearPersistedHeroGemProgress() {
+  if (!canUseLocalStorage()) return false;
+  try {
+    window.localStorage.removeItem(HERO_GEM_PROGRESS_STORAGE_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function restoreHeroGemProgressFromStorage() {
   const snapshot = readPersistedHeroGemProgress();
   if (!snapshot) return false;
@@ -2450,6 +3267,14 @@ function persistHeroGemProgressIfDirty() {
     state.globals.HeroGemProgressPersistedAt = Date.now();
   }
   return wrote;
+}
+
+function resetHeroGemCounterRadiatorProgress() {
+  callFunctionWithContext(fnContext, 'LoadHeroGemProgressSnapshot', null);
+  clearPersistedHeroGemProgress();
+  syncFromGlobals();
+  drawGemCounterHUD();
+  updateDevToolingStatus('Hero gem radiator progress reset');
 }
 
 function assertCombatLayoutDev(functionName) {
@@ -2954,8 +3779,6 @@ function initEntities(enemyRows, layoutInstances) {
   gameState.partyHP = partyHP;
   gameState.partyMaxHP = partyMaxHP;
   callFunctionWithContext(fnContext, 'InitPartyHPFromHeroes');
-  // Test lane seed: deterministic party skill-point stock for upgrade-consumption QA.
-  callFunctionWithContext(fnContext, 'SetHeroSkillPointsForParty', 300, 'ORKA-spt-seed');
   state.globals.BattleStartMode = Math.random() < 0.5 ? 'ambush' : 'initiative';
   state.globals.BattleStartShown = 1;
   state.globals.BattleStartClearedForSession = 0;
@@ -3688,7 +4511,7 @@ function handleGemMatch(color) {
     g.SuppressChainUI = 0;
     g.BlueGemConsumedCount = Math.max(0, Number((gameState.selectedGems || []).length));
     callFunctionWithContext(fnContext, 'UpdateChain', 2);
-    callFunctionWithContext(fnContext, 'ResolveGemAction', 2, actorUID);
+    callFunctionWithContext(fnContext, 'ResolveGemAction', 2, actorUID, consumedBlue);
     g.BlueGemConsumedCount = 0;
     callFunctionWithContext(fnContext, 'DestroyGem');
     callFunctionWithContext(fnContext, 'ClearMatchState');
@@ -4473,6 +5296,7 @@ async function main(){
       onEnter() {
         gameState.overlayVisible = false;
         gameState.heroScreen.hitZones = null;
+        gameState.heroScreen.skillScrollOffset = 0;
         normalizeHeroSelectionIndex();
       },
       onActive() {},
@@ -6227,6 +7051,10 @@ async function main(){
       return;
     }
     if (layoutId === 'heroLayout') {
+      renderHeroScreenLayoutV2({ ctx, canvas, dpr, gameState, fnContext, closeWinOvalImage, heroPortraitImages });
+      return;
+    }
+    if (false && layoutId === 'heroLayout') {
       normalizeHeroSelectionIndex();
       const roster = getHeroScreenRoster();
       const hero = roster[gameState.selectedHero] || roster[0] || {
@@ -6306,6 +7134,13 @@ async function main(){
       };
       const heroScreenMode = gameState.heroScreen.mode === 'formation' ? 'formation' : 'details';
       const modeToggle = mapRect({ x: 12, y: 251, w: 132, h: 24 });
+      const scrollBoundsSpec = heroLayoutSpec.skillScrollBounds || {};
+      const skillScrollViewport = {
+        x: sx(Number(scrollBoundsSpec.left || 0)),
+        y: sy(Number(scrollBoundsSpec.top || 0)),
+        w: ss(Number(scrollBoundsSpec.width || 0)),
+        h: ss(Math.max(0, Number(scrollBoundsSpec.bottom || 0) - Number(scrollBoundsSpec.top || 0))),
+      };
       const formationRosterCards = [];
       const formationPartySlots = [];
       const formationSlots = normalizePartyFormationSlots(getConfiguredHeroSlots());
@@ -6317,6 +7152,9 @@ async function main(){
         rosterCards: formationRosterCards,
         partySlots: formationPartySlots,
         skillControls: [],
+        skillScrollViewport,
+        skillScrollMax: 0,
+        skillScrollOwner: 'hero-skill-cards',
       };
 
       ctx.clearRect(0, 0, viewWidth, viewHeight);
@@ -6496,7 +7334,21 @@ async function main(){
           ctx.fillText(slotHero || 'Empty', rect.x + ss(10), rect.y + ss(28));
         }
       } else {
-        heroLayoutSpec.cards.forEach((cardSpec, idx) => {
+        const cardSpecs = buildHeroCardSpecs(skillCards.length);
+        const firstCard = cardSpecs[0]?.card || null;
+        const lastCard = cardSpecs[cardSpecs.length - 1]?.card || null;
+        const contentHeight = firstCard && lastCard
+          ? ss((Number(lastCard.y || 0) + Number(lastCard.h || 0)) - Number(firstCard.y || 0))
+          : 0;
+        const skillScrollMax = Math.max(0, contentHeight - skillScrollViewport.h);
+        const activeScrollOffset = clampHeroSkillScrollOffset(gameState.heroScreen.skillScrollOffset, skillScrollMax);
+        gameState.heroScreen.skillScrollOffset = activeScrollOffset;
+        gameState.heroScreen.hitZones.skillScrollMax = skillScrollMax;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(skillScrollViewport.x, skillScrollViewport.y, skillScrollViewport.w, skillScrollViewport.h);
+        ctx.clip();
+        cardSpecs.forEach((cardSpec, idx) => {
           const cardData = skillCards[idx] || skillCards[0];
           const card = mapRect(cardSpec.card);
           const titleBar = mapRect(cardSpec.titleStrip);
@@ -6508,6 +7360,16 @@ async function main(){
             line2Y: sy(cardSpec.bodyText.line2Y),
             line3Y: sy(cardSpec.bodyText.line3Y),
           };
+          card.y -= activeScrollOffset;
+          titleBar.y -= activeScrollOffset;
+          iconTile.y -= activeScrollOffset;
+          bodyText.titleY -= activeScrollOffset;
+          bodyText.line1Y -= activeScrollOffset;
+          bodyText.line2Y -= activeScrollOffset;
+          bodyText.line3Y -= activeScrollOffset;
+          if ((card.y + card.h) < skillScrollViewport.y || card.y > (skillScrollViewport.y + skillScrollViewport.h)) {
+            return;
+          }
           roundRect(card.x, card.y, card.w, card.h, ss(4.8), '#eff4f6', null);
           ctx.save();
           ctx.globalAlpha = 0.4;
@@ -6518,54 +7380,69 @@ async function main(){
           const minusZone = mapRect(cardSpec.controls.minus);
           const valueZone = mapRect(cardSpec.controls.value);
           const plusZone = mapRect(cardSpec.controls.plus);
+          minusZone.y -= activeScrollOffset;
+          valueZone.y -= activeScrollOffset;
+          plusZone.y -= activeScrollOffset;
+          const actionable = cardData && cardData.actionable !== false;
+          const isAtMaxRank = actionable
+            && Number(cardData?.maxRank || 0) > 0
+            && Number(cardData?.rank || 0) >= Number(cardData?.maxRank || 0);
+          const controlsActive = actionable && !isAtMaxRank;
           gameState.heroScreen.hitZones.skillControls.push({
             idx,
-            skillKey: `skill${idx + 1}`,
+            skillKey: String(cardData.key || `skill${idx + 1}`),
             minus: { x: minusZone.x, y: minusZone.y, w: minusZone.w, h: minusZone.h },
             plus: { x: plusZone.x, y: plusZone.y, w: plusZone.w, h: plusZone.h },
+            actionable: controlsActive,
+            hideIconsAtMax: isAtMaxRank,
           });
           roundRect(valueZone.x, valueZone.y, valueZone.w, valueZone.h, ss(4.8), '#ffffff', null);
-          ctx.fillStyle = '#7a3b07';
+          ctx.fillStyle = actionable ? '#7a3b07' : '#8b8b8b';
           ctx.font = `900 ${sf(9, 7)}px Arial Black`;
           ctx.textAlign = 'center';
           ctx.fillText(String(cardData.rankLabel || 'Lv0'), valueZone.x + valueZone.w / 2, valueZone.y + ss(14));
-          if (minusIconImage) {
+          if (!isAtMaxRank && minusIconImage) {
             const minusDrawX = minusZone.x;
             const minusDrawY = minusZone.y;
             const minusDrawW = minusZone.w;
             const minusDrawH = minusZone.h;
             ctx.save();
+            ctx.globalAlpha = actionable ? 1 : 0.35;
             ctx.translate(minusDrawX + (minusDrawW / 2), minusDrawY + (minusDrawH / 2));
             ctx.scale(1, -1);
             ctx.drawImage(minusIconImage, -minusDrawW / 2, -minusDrawH / 2, minusDrawW, minusDrawH);
             ctx.restore();
-          } else {
-            roundRect(minusZone.x, minusZone.y, minusZone.w, minusZone.h, ss(4.8), '#d1d1d1', null);
+          } else if (!isAtMaxRank) {
+            roundRect(minusZone.x, minusZone.y, minusZone.w, minusZone.h, ss(4.8), actionable ? '#d1d1d1' : '#d9d9d9', null);
             ctx.fillStyle = '#666666';
             ctx.font = `700 ${sf(10, 7)}px Arial`;
             ctx.textAlign = 'center';
             ctx.fillText('-', minusZone.x + minusZone.w / 2, minusZone.y + ss(9));
           }
-          if (plusIconImage) {
+          if (!isAtMaxRank && plusIconImage) {
+            ctx.save();
+            ctx.globalAlpha = actionable ? 1 : 0.35;
             ctx.drawImage(plusIconImage, plusZone.x, plusZone.y, plusZone.w, plusZone.h);
-          } else {
-            roundRect(plusZone.x, plusZone.y, plusZone.w, plusZone.h, ss(4.8), '#96d02f', null);
+            ctx.restore();
+          } else if (!isAtMaxRank) {
+            roundRect(plusZone.x, plusZone.y, plusZone.w, plusZone.h, ss(4.8), actionable ? '#96d02f' : '#bed08f', null);
             ctx.fillStyle = '#666666';
             ctx.font = `700 ${sf(10, 7)}px Arial`;
             ctx.textAlign = 'center';
             ctx.fillText('+', plusZone.x + plusZone.w / 2, plusZone.y + ss(9));
           }
-          ctx.fillStyle = '#111111';
+          ctx.fillStyle = actionable ? '#111111' : '#6c6c6c';
           ctx.font = `700 ${sf(11.5, 8)}px Arial`;
           ctx.textAlign = 'left';
           ctx.fillText(String(cardData.title || `Skill ${idx + 1}`), bodyText.x, bodyText.titleY);
           ctx.font = `700 ${sf(10.56, 7)}px Arial`;
-          ctx.fillStyle = '#111111';
+          ctx.fillStyle = actionable ? '#111111' : '#6c6c6c';
           const lines = Array.isArray(cardData.lines) ? cardData.lines : [];
           ctx.fillText(String(lines[0] || ''), bodyText.x, bodyText.line1Y);
           ctx.fillText(String(lines[1] || ''), bodyText.x, bodyText.line2Y);
           ctx.fillText(String(lines[2] || ''), bodyText.x, bodyText.line3Y);
         });
+        ctx.restore();
       }
       drawHeroStyleCloseControl(ctx, closeBtn, closeWinOvalImage, '#111111');
       return;
@@ -8531,13 +9408,10 @@ async function main(){
       const ratio = Math.max(0, Math.min(1, (state.globals.PartyHP || 0) / maxHP));
       const targetPercent = ratio * 100;
       if (Math.abs(targetPercent - Number(partyHpBarAnim.lastTargetPercent || 0)) > 0.01) {
-        updateAnimatedHP({
-          current: state.globals.PartyHP || 0,
-          max: maxHP,
-          frontBar: partyHpBarAnim.front,
-          lagBar: partyHpBarAnim.lag,
-        });
-        partyHpBarAnim.lastTargetPercent = targetPercent;
+        partyHpBarAnim.lastTargetPercent = syncPartyHpBarImmediate(
+          state.globals.PartyHP || 0,
+          maxHP,
+        );
       }
       const barX = partyBar.dx;
       const barY = partyBar.dy;
@@ -9015,7 +9889,66 @@ async function main(){
     }
 
     const renderDamageTexts = (filterFn) => {
-      return;
+      if (damageNumberLayer) return;
+      if (!isDamageTextFontReady()) return;
+      const dmgTexts = state.globals.DamageTexts || [];
+      if (!dmgTexts.length) return;
+      const now = Number(state.globals.time || 0);
+      for (let i = 0; i < dmgTexts.length; i++) {
+        const d = dmgTexts[i];
+        if (!d || !filterFn(d)) continue;
+        const kind = d.kind === 'heal' ? 'heal' : 'damage';
+        const riseSec = Math.max(0.001, Number(d.riseInSec || 0.18));
+        const holdSec = Math.max(0.001, Number(d.holdSec || 0.7));
+        const fadeSec = Math.max(0.001, Number(d.fadeSec || 0.45));
+        const phase = Number(d.phase || 0);
+        const phaseAge = Number(d.age || 0);
+        let alpha = 1;
+        let riseT = 1;
+        if (phase === 0) {
+          riseT = Math.max(0, Math.min(1, phaseAge / riseSec));
+        } else if (phase === 2) {
+          alpha = Math.max(0, 1 - (phaseAge / fadeSec));
+        }
+        const riseEase = riseT * (2 - riseT);
+        const floatY = 8 + (18 * riseEase) + (phase === 2 ? 4 * Math.min(1, phaseAge / fadeSec) : 0);
+        const holdPulse = phase === 1 ? Math.sin((phaseAge / holdSec) * Math.PI * 2.4) : 0;
+        const scalePulse = 1 + holdPulse * 0.018;
+        const squashPhase = (now * 14) + (i * 0.75);
+        const squash = Math.sin(squashPhase) * 0.016 * (phase === 0 ? riseEase : 1);
+        const scaleX = scalePulse * (1 - squash);
+        const scaleY = scalePulse * (1 + squash * 0.75);
+        const xOffset = d.targetKind === 'hero' ? -10 : 10;
+        const pos = worldToCanvas((d.x || 0) + xOffset, (d.baseY != null ? d.baseY : (d.y || 0)) - floatY);
+        const text = d.targetKind === 'bar'
+          ? formatDamageValue({ value: d.amount, type: 'heal', isCrit: !!d.isCrit })
+          : formatDamageValue({ value: d.amount, type: kind, isCrit: !!d.isCrit });
+        const fontSize = Math.max(scaleFont(d.isCrit ? 26 : 22), 12);
+        const grad = ctx.createLinearGradient(0, pos.y - fontSize, 0, pos.y + fontSize * 0.2);
+        if (kind === 'heal') {
+          grad.addColorStop(0, '#86eb2e');
+          grad.addColorStop(1, '#9fdfff');
+        } else {
+          grad.addColorStop(0, '#fbfdce');
+          grad.addColorStop(1, '#f7f8d4');
+        }
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        ctx.font = `${fontSize}px ${DAMAGE_TEXT_FONT}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = Math.max(2, fontSize * 0.1);
+        ctx.strokeStyle = '#0f0f0f';
+        ctx.shadowColor = kind === 'heal' ? 'rgba(140, 255, 205, 0.22)' : 'rgba(251, 253, 206, 0.22)';
+        ctx.shadowBlur = Math.max(2, 7 * layoutScale);
+        ctx.translate(pos.x, pos.y);
+        ctx.scale(scaleX, scaleY);
+        ctx.strokeText(text, 0, 0);
+        ctx.fillStyle = grad;
+        ctx.fillText(text, 0, 0);
+        ctx.restore();
+      }
     };
 
     renderHealBlooms();
@@ -9727,9 +10660,9 @@ function getStoryCardLiveLineState() {
   const IDLE_AUTOPLAY_COLOR_PRIORITY = Object.freeze([
     [5],
     [4],
-    [0, 1],
-    [3],
     [2],
+    [3],
+    [0, 1],
   ]);
   function pickIdleAutoplayTriplet() {
     const byColor = new Map();
@@ -10281,65 +11214,61 @@ function getStoryCardLiveLineState() {
       const zones = (gameState.heroScreen && gameState.heroScreen.hitZones) || {};
       const roster = getHeroScreenRoster();
       const selectedHero = roster[normalizeHeroSelectionIndex()] || null;
-      const rosterCards = Array.isArray(zones.rosterCards) ? zones.rosterCards : [];
-      const partySlots = Array.isArray(zones.partySlots) ? zones.partySlots : [];
-      const controls = Array.isArray(zones.skillControls) ? zones.skillControls : [];
+      const skillNodes = Array.isArray(zones.skillNodes) ? zones.skillNodes : [];
+      const selectedSkillIndex = Math.max(0, Math.floor(Number(zones.selectedSkillIndex || gameState.heroScreen.selectedSkillIndex || 0)));
+      const modalZones = zones.modal || null;
       let consumedSkillClick = false;
-      if (selectedHero) {
-        for (const control of controls) {
-          if (isPointInRect(mx, my, control.plus)) {
-            callFunctionWithContext(fnContext, 'AttemptHeroSkillUpgrade', selectedHero.uid, control.skillKey, 'hero_screen_plus');
-            consumedSkillClick = true;
-            break;
-          }
-          if (isPointInRect(mx, my, control.minus)) {
-            callFunctionWithContext(fnContext, 'AttemptHeroSkillDowngrade', selectedHero.uid, control.skillKey, 'hero_screen_minus');
-            consumedSkillClick = true;
-            break;
-          }
+      if (gameState.heroScreen.skillModalOpen && modalZones) {
+        if (isPointInRect(mx, my, modalZones.close) || !isPointInRect(mx, my, modalZones.card)) {
+          gameState.heroScreen.skillModalOpen = false;
+          drawFrame();
+          return;
         }
-      }
-      if (consumedSkillClick) {
+        if (isPointInRect(mx, my, modalZones.upgradeButton)) {
+          const activeNode = skillNodes.find((node) => Number(node?.idx || -1) === Number(gameState.heroScreen.skillModalSkillIndex || 0)) || skillNodes[0] || null;
+          if (activeNode && activeNode.actionable !== false && selectedHero) {
+            callFunctionWithContext(fnContext, 'AttemptHeroSkillUpgrade', selectedHero.uid, activeNode.skillKey, 'hero_skill_modal_upgrade_button');
+          }
+          drawFrame();
+          return;
+        }
         drawFrame();
         return;
       }
       if (isPointInRect(mx, my, zones.close)) {
+        gameState.heroScreen.skillModalOpen = false;
         layoutState.requestLayoutChange('combat', 'hero-close-button').catch((err) => {
           console.error('[LAYOUT_PHASE1] hero return failed', err);
         });
-      } else if (isPointInRect(mx, my, zones.modeToggle)) {
-        gameState.heroScreen.mode = gameState.heroScreen.mode === 'formation' ? 'details' : 'formation';
-      } else if (gameState.heroScreen.mode === 'formation') {
-        let consumedFormationClick = false;
-        for (const card of rosterCards) {
-          if (isPointInRect(mx, my, card)) {
-            gameState.selectedHero = Math.max(0, Math.floor(Number(card.idx || 0)));
-            consumedFormationClick = true;
-            break;
-          }
-        }
-        if (!consumedFormationClick) {
-          for (const slot of partySlots) {
-            if (isPointInRect(mx, my, slot)) {
-              assignSelectedHeroToPartySlot(Number(slot.idx || 0)).catch((err) => {
-                console.error('[LAYOUT_PHASE1] formation assign failed', err);
-              });
-              consumedFormationClick = true;
-              break;
-            }
-          }
-        }
-        if (consumedFormationClick) {
-          drawFrame();
-          return;
-        }
       } else if (isPointInRect(mx, my, zones.prevHero)) {
         if (roster.length) {
           gameState.selectedHero = (normalizeHeroSelectionIndex() + roster.length - 1) % roster.length;
+          gameState.heroScreen.selectedSkillIndex = 0;
+          gameState.heroScreen.skillModalOpen = false;
         }
       } else if (isPointInRect(mx, my, zones.nextHero)) {
         if (roster.length) {
           gameState.selectedHero = (normalizeHeroSelectionIndex() + 1) % roster.length;
+          gameState.heroScreen.selectedSkillIndex = 0;
+          gameState.heroScreen.skillModalOpen = false;
+        }
+      } else {
+        for (const node of skillNodes) {
+          if (!node) continue;
+          if (isPointInRect(mx, my, node.rect)) {
+            gameState.heroScreen.selectedSkillIndex = Math.max(0, Math.floor(Number(node.idx || 0)));
+            gameState.heroScreen.skillModalSkillIndex = Math.max(0, Math.floor(Number(node.idx || 0)));
+            gameState.heroScreen.skillModalOpen = true;
+            consumedSkillClick = true;
+            break;
+          }
+        }
+        if (!consumedSkillClick && selectedHero && isPointInRect(mx, my, zones.upgradeButton)) {
+          const activeNode = skillNodes.find((node) => Number(node?.idx || -1) === selectedSkillIndex) || skillNodes[0] || null;
+          if (activeNode && activeNode.actionable !== false) {
+            callFunctionWithContext(fnContext, 'AttemptHeroSkillUpgrade', selectedHero.uid, activeNode.skillKey, 'hero_screen_upgrade_button');
+            consumedSkillClick = true;
+          }
         }
       }
       drawFrame();
@@ -10633,6 +11562,14 @@ function getStoryCardLiveLineState() {
   };
   canvas.addEventListener('pointerdown', handlePointerDown, { passive: true });
   runtimeListenerTeardowns.push(() => canvas.removeEventListener('pointerdown', handlePointerDown, { passive: true }));
+  const handleWheel = (ev) => {
+    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
+      ? layoutState.getActiveLayoutId()
+      : null;
+    if (activeLayoutId !== 'heroLayout') return;
+  };
+  canvas.addEventListener('wheel', handleWheel, { passive: false });
+  runtimeListenerTeardowns.push(() => canvas.removeEventListener('wheel', handleWheel, { passive: false }));
 
   function handleGlobalKeydown(ev) {
     if (isDevToolingHotkey(ev)) {
@@ -11034,6 +11971,7 @@ function getStoryCardLiveLineState() {
         heroScreen: {
           mode: String(gameState.heroScreen?.mode || 'details'),
           selectedHero: Number(gameState.selectedHero || 0),
+          selectedSkillIndex: Number(gameState.heroScreen?.selectedSkillIndex || 0),
           activeHeroName: (() => {
             const roster = getHeroScreenRoster();
             const idx = normalizeHeroSelectionIndex();

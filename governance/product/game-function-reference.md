@@ -6,7 +6,8 @@ Purpose:
 - Reduce repeated reverse-engineering of `web-runner/app.js` and `web-runner/modules/functionBank.js`.
 
 Companion reference:
-- For combat timing, QA sequencing, and Playwright/player-control rules, use [governance/qa/combat-playwright-control-model.md](/Users/Mace/Wishfire/Codex-Orka/governance/qa/combat-playwright-control-model.md).
+- For a broader game-design overview, use [governance/product/game-design-document.md](governance/product/game-design-document.md).
+- For combat timing, QA sequencing, and Playwright/player-control rules, use [governance/qa/combat-playwright-control-model.md](governance/qa/combat-playwright-control-model.md).
 
 Scope:
 - Current runtime behavior only.
@@ -32,7 +33,7 @@ This means the game is currently a:
 
 ## 2. Main Runtime Layouts
 
-The active layout router lives in [web-runner/app.js](/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js).
+The active layout router lives in [web-runner/app.js](web-runner/app.js).
 
 Current important layouts:
 
@@ -74,9 +75,9 @@ Combat currently works like this:
 
 - The party uses 4 heroes.
 - A standard encounter usually shows 3 enemies.
-- Turn order is driven by the runtime turn system in [web-runner/modules/functionBank.js](/Users/Mace/Wishfire/Codex-Orka/web-runner/modules/functionBank.js).
+- Turn order is driven by the runtime turn system in [web-runner/modules/functionBank.js](web-runner/modules/functionBank.js).
 - Hero turns and enemy turns are processed by `ProcessTurn`, `HeroTurn`, and `EnemyTurn`.
-- Enemy encounters are seeded and spawned through the combat/layout bootstrap in [web-runner/app.js](/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js).
+- Enemy encounters are seeded and spawned through the combat/layout bootstrap in [web-runner/app.js](web-runner/app.js).
 
 Practical FAQ/tutorial translation:
 - “You do not drag-swap gems.”
@@ -85,7 +86,7 @@ Practical FAQ/tutorial translation:
 
 ## 4. Gem Meaning
 
-The current gem-action mapping is defined by `ResolveGemAction` in [web-runner/modules/functionBank.js](/Users/Mace/Wishfire/Codex-Orka/web-runner/modules/functionBank.js).
+The current gem-action mapping is defined by `ResolveGemAction` in [web-runner/modules/functionBank.js](web-runner/modules/functionBank.js).
 
 Current meanings:
 
@@ -276,16 +277,16 @@ This prevents “UI shell” beads from accidentally becoming “gameplay system
 Use these as the first places to inspect:
 
 - Layout routing and runtime entry:
-  - [web-runner/app.js](/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js)
+  - [web-runner/app.js](web-runner/app.js)
 
 - Combat and gem-action rules:
-  - [web-runner/modules/functionBank.js](/Users/Mace/Wishfire/Codex-Orka/web-runner/modules/functionBank.js)
+  - [web-runner/modules/functionBank.js](web-runner/modules/functionBank.js)
 
 - Combat gateway / layout integration:
-  - [web-runner/src/core/combatRuntimeGateway.js](/Users/Mace/Wishfire/Codex-Orka/web-runner/src/core/combatRuntimeGateway.js)
+  - [web-runner/src/core/combatRuntimeGateway.js](web-runner/src/core/combatRuntimeGateway.js)
 
 - Stable project retrieval map:
-  - [ai-memory/project.md](/Users/Mace/Wishfire/Codex-Orka/ai-memory/project.md)
+  - [ai-memory/project.md](ai-memory/project.md)
 
 ## 14. Short Version
 

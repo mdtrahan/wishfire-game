@@ -25,7 +25,10 @@ const DEFAULTS = Object.freeze({
   viewport: { width: 1200, height: 900 },
   cdpUrl: '',
   closeAttachedBrowser: false,
+  analysisDate: '',
+  maxAttemptsMultiplier: 5,
 });
+const BLUE_COLOR = 2;
 
 function parseArgs(argv) {
   const out = {};
@@ -131,6 +134,59 @@ function median(values) {
   return sorted.length % 2 === 0
     ? (sorted[mid - 1] + sorted[mid]) / 2
     : sorted[mid];
+}
+
+function mean(values) {
+  if (!values.length) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function stddevSample(values) {
+  if (values.length <= 1) return 0;
+  const avg = mean(values);
+  const variance = values.reduce((sum, value) => {
+    const d = value - avg;
+    return sum + (d * d);
+  }, 0) / (values.length - 1);
+  return Math.sqrt(Math.max(0, variance));
+}
+
+function summarizeSeries(values) {
+  if (!values.length) {
+    return { mean: 0, median: 0, min: 0, max: 0, stddev: 0 };
+  }
+  return {
+    mean: Number(mean(values).toFixed(4)),
+    median: Number(median(values).toFixed(4)),
+    min: Number(Math.min(...values).toFixed(4)),
+    max: Number(Math.max(...values).toFixed(4)),
+    stddev: Number(stddevSample(values).toFixed(4)),
+  };
+}
+
+function calculate95Ci(values) {
+  if (!values.length) return { lower: 0, upper: 0, margin: 0, method: 'normal_approximation_z_1.96_sample_stddev' };
+  if (values.length === 1) {
+    const single = Number(values[0] || 0);
+    return { lower: single, upper: single, margin: 0, method: 'normal_approximation_z_1.96_sample_stddev' };
+  }
+  const avg = mean(values);
+  const sd = stddevSample(values);
+  const margin = 1.96 * (sd / Math.sqrt(values.length));
+  return {
+    lower: Number((avg - margin).toFixed(4)),
+    upper: Number((avg + margin).toFixed(4)),
+    margin: Number(margin.toFixed(4)),
+    method: 'normal_approximation_z_1.96_sample_stddev',
+  };
+}
+
+function isoDateNow() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function summarizePowerAmpTelemetry(events) {
@@ -444,22 +500,52 @@ async function resolveMatch(page, config, rng) {
   const candidate = candidates[Math.floor(rng() * candidates.length)];
   const gems = pickThree(rng, candidate.gems);
   const energyBefore = Number(state.resources?.energy || 0);
+  const stateTimeBefore = Number(state.time || 0);
   for (const gem of gems) {
     await clickCanvasWorld(page, gem.x, gem.y);
     await sleep(40);
   }
   const started = Date.now();
   let latest = state;
+  let sawSelection = false;
+  let selectionTimeAtFirstPick = stateTimeBefore;
+  let partialSelectionStartedAt = 0;
   while (Date.now() - started < config.actionTimeoutMs) {
     latest = await readRuntimeState(page);
+    const latestTime = Number(latest.time || 0);
     const energyAfter = Number(latest.resources?.energy || 0);
     const selectedCount = (latest.gems || []).filter((gem) => gem && gem.selected).length;
     const defeated = diffDefeatedEnemies(state, latest);
+    if (selectedCount >= 1) {
+      if (!sawSelection) {
+        sawSelection = true;
+        selectionTimeAtFirstPick = latestTime;
+      }
+    }
+    if (selectedCount >= 1 && selectedCount <= 2) {
+      partialSelectionStartedAt ||= Date.now();
+      if (Date.now() - partialSelectionStartedAt >= 600) {
+        await maybeClearSelectedGems(page, latest);
+        latest = await readRuntimeState(page);
+        return {
+          state: latest,
+          defeated: diffDefeatedEnemies(state, latest),
+          energyBefore,
+          energyAfter: Number(latest.resources?.energy || 0),
+          chosen: { color: candidate.color, gemIds: gems.map((gem) => gem.uid) },
+        };
+      }
+    } else {
+      partialSelectionStartedAt = 0;
+    }
+    const leftGemPickState = Boolean(state.flags?.canPickGems) && !latest.flags?.canPickGems && selectedCount === 0;
+    const completedSelectionCycle = sawSelection && selectedCount === 0 && latestTime > selectionTimeAtFirstPick;
     const progressed =
-      energyAfter !== energyBefore ||
+      energyAfter < energyBefore ||
       defeated.length > 0 ||
-      (!latest.flags?.canPickGems && selectedCount === 0) ||
-      Number(latest.time || 0) !== Number(state.time || 0);
+      Boolean(latest.flags?.pendingSkillId) ||
+      leftGemPickState ||
+      completedSelectionCycle;
     if (progressed) {
       return {
         state: latest,
@@ -493,12 +579,24 @@ async function runSession(page, config, sessionId) {
   const fightRows = [];
   const powerAmpEvents = [];
   const powerAmpEventKeys = new Set();
+  const seenBlueGemUids = new Set();
   const maxEnemyDefeats = config.maxWaves * config.enemiesPerWave;
   let endReason = 'max_waves';
+  const observeBlueGemAppearances = (runtimeState) => {
+    for (const gem of Array.isArray(runtimeState?.gems) ? runtimeState.gems : []) {
+      const color = Number(gem && gem.color);
+      const uid = Number(gem && gem.uid);
+      if (color === BLUE_COLOR && Number.isFinite(uid)) {
+        seenBlueGemUids.add(uid);
+      }
+    }
+  };
+  observeBlueGemAppearances(state);
 
   while (Number(state.resources?.energy || 0) > config.energyStopFloor && enemiesDefeated < maxEnemyDefeats) {
     if ((state.enemies || []).filter((enemy) => Number(enemy?.hp || 0) > 0).length === 0) {
       state = await waitForLivingEnemies(page, config);
+      observeBlueGemAppearances(state);
       if (Number(state.resources?.energy || 0) <= config.energyStopFloor) {
         endReason = 'energy_depleted';
         break;
@@ -506,6 +604,7 @@ async function runSession(page, config, sessionId) {
     }
     const resolution = await resolveMatch(page, config, rng);
     state = resolution.state;
+    observeBlueGemAppearances(state);
     if (Array.isArray(state.resources?.powerAmpTelemetry)) {
       for (const event of state.resources.powerAmpTelemetry) {
         const key = JSON.stringify([
@@ -548,11 +647,19 @@ async function runSession(page, config, sessionId) {
   }
 
   const wavesCompleted = Math.min(config.maxWaves, Math.floor(enemiesDefeated / config.enemiesPerWave));
+  const maxEnergy = Number(state.resources?.maxEnergy || config.startingEnergy || 0);
+  const finalEnergy = Math.max(0, Number(state.resources?.energy || 0));
+  const totalEnergyDepletedAtStop = Math.max(0, maxEnergy - finalEnergy);
+  const blueGemsAcquiredBefore150 = Math.max(0, Number(state.resources?.heroGemUsage?.party?.BLUE ?? state.resources?.astralFlowWallet ?? 0));
   return {
     sessionId,
     wavesCompleted,
     enemiesDefeated,
-    finalEnergy: Math.max(0, Number(state.resources?.energy || 0)),
+    finalEnergy,
+    maxEnergy,
+    totalEnergyDepletedAtStop,
+    blueGemAppearanceCount: seenBlueGemUids.size,
+    blueGemsAcquiredBefore150,
     endReason,
     powerAmpSummary: summarizePowerAmpTelemetry(powerAmpEvents),
     powerAmpEvents,
@@ -737,6 +844,86 @@ function writeOutputs(config, sessions, aggregate) {
   };
 }
 
+function writeBlueGemAnalysisOutputs(config, passRows) {
+  fs.mkdirSync(config.outputDir, { recursive: true });
+  const analysisDate = readText(config.analysisDate, isoDateNow());
+  const rawPath = path.join(config.outputDir, `blue-gem-multipass-raw-${analysisDate}.json`);
+  const summaryPath = path.join(config.outputDir, `blue-gem-multipass-summary-${analysisDate}.md`);
+  const validRows = passRows.filter((row) => row.run_status === 'valid');
+  const appearance = validRows.map((row) => Number(row.blue_gem_appearance_count || 0));
+  const acquired = validRows.map((row) => Number(row.blue_gems_acquired_before_150 || 0));
+  const appearanceStats = summarizeSeries(appearance);
+  const acquiredStats = summarizeSeries(acquired);
+  const acquiredCi95 = calculate95Ci(acquired);
+
+  const rawPayload = {
+    generated_at: new Date().toISOString(),
+    run_configuration: {
+      sessions_target_valid: config.sessions,
+      energy_stop_floor: config.energyStopFloor,
+      max_waves: config.maxWaves,
+      enemies_per_wave: config.enemiesPerWave,
+      stop_condition: `energy <= ${config.energyStopFloor}`,
+      blue_color_index: BLUE_COLOR,
+    },
+    counts: {
+      total_passes_attempted: passRows.length,
+      valid_passes: validRows.length,
+      failed_passes: passRows.length - validRows.length,
+    },
+    passes: passRows,
+    summary: {
+      blue_gem_appearance_count: appearanceStats,
+      blue_gems_acquired_before_150: acquiredStats,
+      blue_gems_acquired_before_150_ci95: acquiredCi95,
+    },
+  };
+  fs.writeFileSync(rawPath, JSON.stringify(rawPayload, null, 2) + '\n', 'utf8');
+
+  const summaryDoc = [
+    `# Blue Gem Multipass Summary (${analysisDate})`,
+    '',
+    '## Run Configuration',
+    `- Valid pass target: ${config.sessions}`,
+    `- Stop condition: energy <= ${config.energyStopFloor}`,
+    `- Max waves: ${config.maxWaves}`,
+    `- Enemies per wave: ${config.enemiesPerWave}`,
+    `- Blue color index: ${BLUE_COLOR}`,
+    '',
+    '## Pass Counts',
+    `- Attempted: ${passRows.length}`,
+    `- Valid: ${validRows.length}`,
+    `- Failed: ${passRows.length - validRows.length}`,
+    '',
+    '## blue_gem_appearance_count',
+    `- mean: ${appearanceStats.mean}`,
+    `- median: ${appearanceStats.median}`,
+    `- min: ${appearanceStats.min}`,
+    `- max: ${appearanceStats.max}`,
+    `- stddev: ${appearanceStats.stddev}`,
+    '',
+    '## blue_gems_acquired_before_150',
+    `- mean: ${acquiredStats.mean}`,
+    `- median: ${acquiredStats.median}`,
+    `- min: ${acquiredStats.min}`,
+    `- max: ${acquiredStats.max}`,
+    `- stddev: ${acquiredStats.stddev}`,
+    '',
+    '## 95% CI (average blue_gems_acquired_before_150)',
+    `- method: ${acquiredCi95.method}`,
+    `- lower: ${acquiredCi95.lower}`,
+    `- upper: ${acquiredCi95.upper}`,
+    `- margin: ${acquiredCi95.margin}`,
+    '',
+    '## Conclusion',
+    `Across ${validRows.length} valid passes, average blue gem acquisition before 150 energy depletion was ${acquiredStats.mean} (95% CI ${acquiredCi95.lower} to ${acquiredCi95.upper}).`,
+    '',
+  ].join('\n');
+  fs.writeFileSync(summaryPath, summaryDoc, 'utf8');
+
+  return { rawPath, summaryPath };
+}
+
 function buildConfig(argSource = parseArgs(process.argv.slice(2)), env = process.env) {
   const args = Array.isArray(argSource) ? parseArgs(argSource) : (argSource || {});
   return {
@@ -756,6 +943,8 @@ function buildConfig(argSource = parseArgs(process.argv.slice(2)), env = process
     viewport: DEFAULTS.viewport,
     cdpUrl: readText(args.cdpUrl || env.BALANCE_CDP_URL || DEFAULTS.cdpUrl),
     closeAttachedBrowser: readBool(args.closeAttachedBrowser ?? env.BALANCE_CLOSE_ATTACHED_BROWSER, DEFAULTS.closeAttachedBrowser),
+    analysisDate: readText(args.analysisDate || env.BALANCE_ANALYSIS_DATE || DEFAULTS.analysisDate),
+    maxAttemptsMultiplier: clampInt(args.maxAttemptsMultiplier || env.BALANCE_MAX_ATTEMPTS_MULTIPLIER, 1, DEFAULTS.maxAttemptsMultiplier),
   };
 }
 
@@ -766,13 +955,47 @@ async function main(argv = process.argv.slice(2), env = process.env) {
   const browserSession = await acquireBrowserSession(config);
   const page = browserSession.page;
   const sessions = [];
+  const passRows = [];
+  let validSessions = 0;
+  let attempt = 0;
+  const maxAttempts = Math.max(config.sessions, config.sessions * config.maxAttemptsMultiplier);
 
   try {
-    for (let sessionId = 1; sessionId <= config.sessions; sessionId++) {
-      const result = await runSession(page, config, sessionId);
-      sessions.push(result);
-      if (sessionId % 25 === 0 || sessionId === config.sessions) {
-        console.log(`[balance-harness] completed ${sessionId}/${config.sessions} sessions`);
+    while (validSessions < config.sessions && attempt < maxAttempts) {
+      attempt += 1;
+      try {
+        const result = await runSession(page, config, attempt);
+        validSessions += 1;
+        sessions.push(result);
+        passRows.push({
+          pass_id: attempt,
+          total_energy_depleted_at_stop: result.totalEnergyDepletedAtStop,
+          blue_gem_appearance_count: result.blueGemAppearanceCount,
+          blue_gems_acquired_before_150: result.blueGemsAcquiredBefore150,
+          run_status: 'valid',
+          failure_reason: '',
+          end_reason: result.endReason,
+          max_energy: result.maxEnergy,
+          final_energy: result.finalEnergy,
+          session_seed: 0xC0DE0000 + attempt,
+        });
+      } catch (error) {
+        passRows.push({
+          pass_id: attempt,
+          total_energy_depleted_at_stop: null,
+          blue_gem_appearance_count: null,
+          blue_gems_acquired_before_150: null,
+          run_status: 'failed',
+          failure_reason: String(error && error.message ? error.message : error),
+          end_reason: 'failed',
+          max_energy: null,
+          final_energy: null,
+          session_seed: 0xC0DE0000 + attempt,
+        });
+      }
+
+      if (attempt % 10 === 0 || validSessions === config.sessions) {
+        console.log(`[balance-harness] valid ${validSessions}/${config.sessions} (attempts ${attempt}/${maxAttempts})`);
       }
     }
   } finally {
@@ -780,14 +1003,24 @@ async function main(argv = process.argv.slice(2), env = process.env) {
     await stopServer(serverHandle);
   }
 
+  if (validSessions < config.sessions) {
+    throw new Error(`Unable to reach ${config.sessions} valid sessions within ${maxAttempts} attempts`);
+  }
+
   const aggregate = aggregateSessions(config, sessions);
   const outputs = writeOutputs(config, sessions, aggregate);
+  const blueGemOutputs = writeBlueGemAnalysisOutputs(config, passRows);
   console.log(JSON.stringify({
-    sessions: config.sessions,
+    sessions_target_valid: config.sessions,
+    attempts: passRows.length,
+    valid_sessions: validSessions,
     average_waves: aggregate.averageWaves,
     median_waves: aggregate.medianWaves,
     recommendation: aggregate.recommendation,
-    outputs,
+    outputs: {
+      ...outputs,
+      ...blueGemOutputs,
+    },
   }, null, 2));
 }
 

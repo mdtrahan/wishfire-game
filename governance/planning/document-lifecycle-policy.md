@@ -10,6 +10,7 @@
 - `governance/planning/milestone-definition.md`
 - `governance/planning/roadmap.md`
 - `governance/product/game-function-reference.md`
+- `governance/product/game-design-document.md`
 - `governance/qa/combat-playwright-control-model.md`
 - `governance/execution/dev-directives/ACTIVE.md`
 - `governance/execution/beads-process.md`

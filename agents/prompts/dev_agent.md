@@ -42,10 +42,22 @@ Do not read archive files during normal startup unless the active bead requires 
 
 For large files, mirrored logic, or cross-file tracing:
 
-- Use `jcodemunch` MCP first (`repo outline` -> `symbol search` -> `symbol retrieval`).
-- Fall back to broad file reads only when symbol-level retrieval is insufficient.
+- Use `jcodemunch` first for large/hot/mirrored/cross-file code or whenever it will materially reduce token spend.
+- For small local edits or short docs, direct reads are fine.
+- Prefer the lightest read that answers the question.
 - Keep retrieval scoped to the active bead; do not bulk-load unrelated code.
 - For documentation-heavy tasks, use `jdocmunch` MCP first instead of brute-reading full docs.
+- Apply this same hot-code order inside spawned sub-agent lanes when applicable; do not start with broad file dumps.
+- If a lane skips `jcodemunch` for an applicable task, log the blocker and fallback in `/agents/dev_reports.md`.
+
+---
+
+# SUB-AGENT ROUTING (REQUIRED)
+
+- For gameplay implementation or game-system behavior changes, use the installed `game-developer` custom agent as the primary execution path.
+- Do not emulate `game-developer` guidance in the parent lane when a real sub-agent thread can be used.
+- Keep Beads as authority: sub-agent execution must stay inside active bead scope, acceptance, and test requirements.
+- If spawning `game-developer` is unavailable, record the blocker explicitly and continue with the nearest compliant fallback.
 
 ---
 
@@ -103,14 +115,41 @@ If you claim a bead and then discover execution will not actually start in this 
 
 ---
 
-## Step 2 — Pre‑Implementation Scope Check
+## Step 2 — Pre-Implementation Scope And Resource Assessment Gate
 
-Before modifying code determine:
+Before modifying code, ensure both required assessment blocks are already recorded for the active bead and are non-ambiguous.
 
-- What the bead requires
-- What the bead explicitly does NOT require
-- Which files are likely affected
-- Which tests will be required
+Required `Scope Assessment` block:
+
+- in-scope
+- out-of-scope
+- ownership seam(s)
+- touched files/symbols
+- acceptance/test boundaries
+
+Required `Resource Assessment` block:
+
+- required sub-agent(s)
+- required MCP/tools (`jcodemunch`, `jdocmunch`, `playwright`, repo harness)
+- expected test levels
+- environment dependencies
+- rollback path
+
+Confirm bead size and execution expectation:
+
+- `S`: single-lane execution, narrow verification depth
+- `M`: one explicit handoff, medium verification depth
+- `L`: phased handoff plan, deepest verification depth with runtime-path validation when applicable
+
+Shortcut:
+
+- For `S` beads, a one-line scope/resource note is enough if the work is truly narrow.
+- For `M`/`L` beads, hot-file edits, and browser/runtime work, record the fuller blocks above before starting.
+
+Stop rule:
+
+- do not start implementation until the required assessment level is recorded and non-ambiguous
+- if the required level is ambiguous or missing, stop and return to PM clarification (`open`/`blocked`) before code edits
 
 Forbidden behaviors:
 

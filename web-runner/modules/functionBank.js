@@ -848,33 +848,88 @@ function appendHeroSkillPointRewardTrace(g, entry) {
   if (trace.length > 120) trace.shift();
 }
 
+const HERO_SKILL_TITLE_MAP = {
+  falie: [
+    'Block',
+    'Protect',
+    'Shell',
+    'Shield Bash',
+    'Phalanx',
+    'Formless',
+    'Reprisal',
+    'Crusade',
+  ],
+  huun: [
+    'Steal',
+    'Glare',
+    'Growth',
+    'Bell',
+    'RabbityHole',
+    'Scout',
+    'Siphon HoT',
+    'Trinity',
+  ],
+  runa: [
+    'Inspire',
+    'Aura Burn Totem',
+    'Aura Blast Totem',
+    'Insight',
+    'Ignore',
+    'Invert',
+    'Intensify',
+    'Mapping pending',
+  ],
+  kojonn: [
+    'Scrolls',
+    'Weaken',
+    'Lift',
+    'Step',
+    'Lock',
+    'Exchange',
+    'Elevate',
+    'Lucky',
+  ],
+};
+
+const HERO_SKILL_COST_RAMP = Object.freeze([1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8]);
+const HERO_BLUE_GEM_SKILL_POINT_CONVERSION = Object.freeze({
+  gemsPerUnit: 100,
+  pointsPerUnit: 1,
+});
+
 function getHeroSkillProgressConfigForHero(heroName) {
   const key = String(heroName || '').trim().toLowerCase();
-  const titleByHero = {
-    falie: 'Pummel',
-    huun: 'Swipe',
-    runa: 'Burst',
-    kojonn: 'Faze',
-  };
-  const skill1Title = titleByHero[key] || 'Skill 1 Placeholder';
-  return [
-    { slot: 0, key: 'skill1', title: skill1Title, maxRank: 3, costs: [2, 3, 4] },
-    { slot: 1, key: 'skill2', title: 'Skill 2 Placeholder', maxRank: 3, costs: [1, 2, 3] },
-    { slot: 2, key: 'skill3', title: 'Skill 3 Placeholder', maxRank: 3, costs: [1, 2, 3] },
-  ];
+  const titles = HERO_SKILL_TITLE_MAP[key] || [];
+  const defs = [];
+  for (let i = 0; i < 8; i += 1) {
+    const isPendingRunaSlot = key === 'runa' && i === 7;
+    defs.push({
+      slot: i,
+      key: `skill${i + 1}`,
+      title: String(titles[i] || `Skill ${i + 1}`),
+      maxRank: isPendingRunaSlot ? 0 : HERO_SKILL_COST_RAMP.length,
+      costs: isPendingRunaSlot ? [] : HERO_SKILL_COST_RAMP.slice(),
+      pending: isPendingRunaSlot,
+    });
+  }
+  return defs;
 }
 
 function buildDefaultHeroSkillProgressState(def) {
-  const maxRank = Math.max(1, Math.floor(Number(def && def.maxRank) || 1));
+  const pending = Boolean(def && def.pending);
+  const requestedMaxRank = Math.floor(Number(def && def.maxRank));
+  const maxRank = pending
+    ? 0
+    : Math.max(1, Number.isFinite(requestedMaxRank) ? requestedMaxRank : 1);
   const costs = Array.isArray(def && def.costs)
     ? def.costs.map(value => Math.max(0, Math.floor(Number(value || 0))))
     : [];
-  const nextCost = costs.length > 0 ? Number(costs[0] || 0) : 0;
+  const nextCost = pending ? 0 : (costs.length > 0 ? Number(costs[0] || 0) : 0);
   return {
     slot: Math.max(0, Math.floor(Number(def && def.slot) || 0)),
     key: String((def && def.key) || ''),
     title: String((def && def.title) || ''),
-    status: 'locked',
+    status: pending ? 'pending' : 'locked',
     rank: 0,
     maxRank,
     costs,
@@ -884,13 +939,18 @@ function buildDefaultHeroSkillProgressState(def) {
 }
 
 function cloneHeroSkillProgressState(entry) {
+  const status = String((entry && entry.status) || 'locked');
+  const requestedMaxRank = Math.floor(Number(entry && entry.maxRank));
+  const maxRank = status === 'pending'
+    ? 0
+    : Math.max(1, Number.isFinite(requestedMaxRank) ? requestedMaxRank : 1);
   return {
     slot: Math.max(0, Math.floor(Number(entry && entry.slot) || 0)),
     key: String((entry && entry.key) || ''),
     title: String((entry && entry.title) || ''),
-    status: String((entry && entry.status) || 'locked'),
+    status,
     rank: Math.max(0, Math.floor(Number(entry && entry.rank) || 0)),
-    maxRank: Math.max(1, Math.floor(Number(entry && entry.maxRank) || 1)),
+    maxRank,
     costs: Array.isArray(entry && entry.costs) ? entry.costs.map(value => Math.max(0, Math.floor(Number(value || 0)))) : [],
     nextCost: Math.max(0, Math.floor(Number(entry && entry.nextCost) || 0)),
     lastCost: Math.max(0, Math.floor(Number(entry && entry.lastCost) || 0)),
@@ -959,8 +1019,19 @@ function ensureHeroSkillProgressRecord(ctx, heroRef) {
     current.slot = Math.max(0, Math.floor(Number(def.slot || 0)));
     current.key = String(def.key || current.key || '');
     current.title = String(def.title || current.title || '');
+    if (Boolean(def.pending)) {
+      current.status = 'pending';
+      current.rank = 0;
+      current.maxRank = 0;
+      current.costs = [];
+      current.nextCost = 0;
+      current.lastCost = 0;
+      record[def.key] = current;
+      continue;
+    }
     current.maxRank = Math.max(1, Math.floor(Number(def.maxRank || current.maxRank || 1)));
     current.costs = Array.isArray(def.costs) ? def.costs.map(value => Math.max(0, Math.floor(Number(value || 0)))) : current.costs;
+    if (String(current.status || '') === 'pending') current.status = 'locked';
     current.nextCost = current.rank >= current.maxRank
       ? 0
       : Math.max(0, Math.floor(Number(current.costs[current.rank] || 0)));
@@ -1145,7 +1216,7 @@ export function GrantHeroSkillPointsToParty(ctx, amountEach, source = 'party_rew
   return { ok: results.every(row => row.ok), entry, results };
 }
 
-export function SetHeroSkillPointsForParty(ctx, exactAmount = 300, source = 'party_seed_exact') {
+export function SetHeroSkillPointsForParty(ctx, exactAmount = 0, source = 'party_seed_exact') {
   const g = getGlobals(ctx);
   const target = Math.max(0, Math.floor(Number(exactAmount || 0)));
   const store = ensureHeroSkillPointStore(ctx);
@@ -1180,6 +1251,59 @@ export function SetHeroSkillPointsForParty(ctx, exactAmount = 300, source = 'par
     results: results.map((row) => ({ ...row })),
   });
   return { ok: results.every((row) => row.ok), amountEach: target, results };
+}
+
+function getBlueGemSkillPointCarryover(g) {
+  return Math.max(0, Math.floor(Number(g && g.HeroSkillBlueGemCarryover || 0)));
+}
+
+function resolveBlueGemConversionGrantActorUID(ctx, preferredActorUID) {
+  const preferred = resolveHeroSkillPointIdentity(ctx, preferredActorUID);
+  if (preferred.heroId && Number(preferred.actorUID || 0) > 0) return Number(preferred.actorUID || 0);
+  const heroes = getAllHeroActors(ctx)
+    .slice()
+    .sort((a, b) => Number(a.heroIndex || 0) - Number(b.heroIndex || 0));
+  for (const hero of heroes) {
+    const identity = resolveHeroSkillPointIdentity(ctx, hero);
+    if (identity.heroId && Number(identity.actorUID || 0) > 0) {
+      return Number(identity.actorUID || 0);
+    }
+  }
+  return 0;
+}
+
+function applyBlueGemSkillPointConversion(ctx, actorUID, consumedBlue = 0, source = 'blue_gem_conversion') {
+  const g = getGlobals(ctx);
+  const consumed = Math.max(0, Math.floor(Number(consumedBlue || 0)));
+  const priorCarryover = getBlueGemSkillPointCarryover(g);
+  if (consumed <= 0) {
+    g.HeroSkillBlueGemCarryover = priorCarryover;
+    return { consumedBlue: 0, convertedPoints: 0, carryover: priorCarryover };
+  }
+
+  const totalBlue = priorCarryover + consumed;
+  const units = Math.floor(totalBlue / HERO_BLUE_GEM_SKILL_POINT_CONVERSION.gemsPerUnit);
+  const convertedPoints = units * HERO_BLUE_GEM_SKILL_POINT_CONVERSION.pointsPerUnit;
+  const carryover = totalBlue % HERO_BLUE_GEM_SKILL_POINT_CONVERSION.gemsPerUnit;
+
+  let grant = { ok: true, balance: GetHeroSkillPointBalance(ctx, actorUID) };
+  const grantActorUID = resolveBlueGemConversionGrantActorUID(ctx, actorUID);
+  if (convertedPoints > 0) {
+    if (grantActorUID > 0) {
+      grant = GrantHeroSkillPoints(ctx, grantActorUID, convertedPoints, `${source}:blue`);
+    } else {
+      grant = { ok: false, reason: 'hero_not_found', balance: GetHeroSkillPointBalance(ctx, actorUID) };
+    }
+  }
+  const grantApplied = convertedPoints <= 0 || !!grant.ok;
+  const nextCarryover = grantApplied ? carryover : priorCarryover;
+  g.HeroSkillBlueGemCarryover = nextCarryover;
+  return {
+    consumedBlue: consumed,
+    convertedPoints: grantApplied ? convertedPoints : 0,
+    carryover: nextCarryover,
+    grant,
+  };
 }
 
 export function GrantTowerSkillPoints(ctx, amountEach = 1, source = 'tower_takedown') {
@@ -1244,6 +1368,11 @@ export function AttemptHeroSkillUpgrade(ctx, heroUID, skillRef, source = 'hero_s
     return { ok: false, reason: 'skill_not_found', state: null, trace };
   }
   const state = cloneHeroSkillProgressState(entry);
+  if (state.status === 'pending' || state.maxRank <= 0) {
+    const trace = buildHeroSkillProgressTrace(g, pair.identity, state, 'upgrade', 0, 'rejected', 'pending_mapping', GetHeroSkillPointBalance(ctx, heroUID));
+    appendHeroSkillProgressTrace(g, trace);
+    return { ok: false, reason: 'pending_mapping', state, trace };
+  }
   if (state.rank >= state.maxRank) {
     const trace = buildHeroSkillProgressTrace(g, pair.identity, state, 'upgrade', 0, 'rejected', 'max_rank_reached', GetHeroSkillPointBalance(ctx, heroUID));
     appendHeroSkillProgressTrace(g, trace);
@@ -1293,6 +1422,11 @@ export function AttemptHeroSkillDowngrade(ctx, heroUID, skillRef, source = 'hero
     return { ok: false, reason: 'skill_not_found', state: null, trace };
   }
   const state = cloneHeroSkillProgressState(entry);
+  if (state.status === 'pending' || state.maxRank <= 0) {
+    const trace = buildHeroSkillProgressTrace(g, pair.identity, state, 'downgrade', 0, 'rejected', 'pending_mapping', GetHeroSkillPointBalance(ctx, heroUID));
+    appendHeroSkillProgressTrace(g, trace);
+    return { ok: false, reason: 'pending_mapping', state, trace };
+  }
   if (state.rank <= 0) {
     const trace = buildHeroSkillProgressTrace(g, pair.identity, state, 'downgrade', 0, 'rejected', 'min_rank_reached', GetHeroSkillPointBalance(ctx, heroUID));
     appendHeroSkillProgressTrace(g, trace);
@@ -1618,8 +1752,10 @@ export function RegisterHeroGemUsage(ctx, actorUID, gemColor, consumedCount = 0)
 }
 
 export function GetHeroGemProgressSnapshot(ctx) {
+  const g = getGlobals(ctx);
   const usage = ensureHeroGemUsageState(ctx);
   const milestones = ensureHeroGemMilestonesState(ctx);
+  const points = ensureHeroSkillPointStore(ctx);
   const byHeroId = {};
   for (const [heroId, record] of Object.entries(usage.byHeroId || {})) {
     byHeroId[heroId] = {
@@ -1638,10 +1774,15 @@ export function GetHeroGemProgressSnapshot(ctx) {
     milestones: {
       thresholds: sanitizeHeroGemMilestoneThresholds(milestones.thresholds),
     },
+    skillPointConversion: {
+      blueGemCarryover: getBlueGemSkillPointCarryover(g),
+      sharedSkillPoints: Math.max(0, Math.floor(Number(points[HERO_SKILL_SHARED_KEY] || 0))),
+    },
   };
 }
 
 export function LoadHeroGemProgressSnapshot(ctx, snapshot = null) {
+  const g = getGlobals(ctx);
   const usage = ensureHeroGemUsageState(ctx);
   const incomingUsage = snapshot && snapshot.usage && typeof snapshot.usage === 'object'
     ? snapshot.usage
@@ -1677,7 +1818,16 @@ export function LoadHeroGemProgressSnapshot(ctx, snapshot = null) {
     store.byHeroId[heroId] = createHeroGemMilestoneRecord(store.thresholds, usage.byHeroId[heroId].totals);
   }
 
-  const g = getGlobals(ctx);
+  const conversion = snapshot && snapshot.skillPointConversion && typeof snapshot.skillPointConversion === 'object'
+    ? snapshot.skillPointConversion
+    : {};
+  g.HeroSkillBlueGemCarryover = Math.max(0, Math.floor(Number(conversion.blueGemCarryover) || 0));
+  const points = ensureHeroSkillPointStore(ctx);
+  if (Object.prototype.hasOwnProperty.call(conversion, 'sharedSkillPoints')) {
+    points[HERO_SKILL_SHARED_KEY] = Math.max(0, Math.floor(Number(conversion.sharedSkillPoints) || 0));
+    syncHeroSkillPointLegacyUidView(ctx, points);
+  }
+
   g.HeroGemProgressDirty = 0;
   g.HeroGemProgressLastChangedAt = Number(g.time || 0);
   return true;
@@ -4219,9 +4369,13 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
     g.PartyBuffUI = { atk: false, def: false, mag: false, res: false };
     g.BuffFrames = [-1, -1, -1, -1];
     const consumedBlue = Math.max(0, Number(consumedCount) || 0);
+    const conversion = applyBlueGemSkillPointConversion(ctx, actorUID, consumedBlue, 'blue_match');
     const wallet = ensureAstralFlowWallet(ctx);
     g.AstralFlowWallet = wallet + consumedBlue;
-    LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} channeled ${consumedBlue} Astral Flow.`);
+    LogCombat(
+      ctx,
+      `${getActorNameByUID(ctx, actorUID)} channeled ${consumedBlue} Astral Flow.`,
+    );
     // Blue matches are turn-consuming actions: lock input and defer exactly one handoff.
     g.CanPickGems = 0;
     g.IsPlayerBusy = 0;

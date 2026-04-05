@@ -6,6 +6,7 @@ Always consult this file before broad repo search.
 
 Companion reference:
 - `governance/product/game-function-reference.md` = product-language explanation of what the game currently does, for FAQ/tutorial/spec drafting.
+- `governance/product/game-design-document.md` = higher-level game-design overview for comparing the project against other GDDs.
 
 ---
 

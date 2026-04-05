@@ -3,28 +3,36 @@ const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-test('damage number animation module uses GSAP timelines with per-digit phases', () => {
+test('damage number animation module keeps each damage value grouped as one animated text node', () => {
   const filePath = path.join(__dirname, '..', 'web-runner', 'src', 'core', 'damageNumberAnimation.mjs');
   const src = fs.readFileSync(filePath, 'utf8');
 
   assert.match(src, /import\s+\{\s*gsap\s*\}\s+from\s+'..\/..\/..\/node_modules\/gsap\/index\.js';/);
-  assert.match(src, /const chars = Array\.from\(String\(text \|\| ''\)\);/);
   assert.match(src, /const wrapperTimeline = gsap\.timeline\(\{/);
   assert.match(src, /wrapperTimeline\.to\(wrapper, \{/);
   assert.match(src, /y: '-=60'/);
   assert.match(src, /x: '\+=4'/);
-  assert.match(src, /chars\.forEach\(\(char, index\) => \{/);
-  assert.match(src, /const tl = gsap\.timeline\(\{/);
-  assert.match(src, /delay = index \* 0\.02/);
-  assert.match(src, /const initialY = random\(-2, 2\);/);
-  assert.match(src, /const initialRotation = random\(-3, 3\);/);
-  assert.doesNotMatch(src, /const driftX = random\(/);
-  assert.doesNotMatch(src, /x: initialX \+ driftX/);
+  assert.match(src, /const DAMAGE_TEXT_FONT = '"Rubik Mono One", "Trebuchet MS", "Verdana", sans-serif';/);
+  assert.match(src, /const DAMAGE_TEXT_FONT_SPEC = `28px \$\{DAMAGE_TEXT_FONT\}`;/);
+  assert.match(src, /export function ensureDamageTextFontReady\(\)/);
+  assert.match(src, /export function isDamageTextFontReady\(\)/);
+  assert.match(src, /const numberText = document\.createElement\('canvas'\);/);
+  assert.match(src, /const tl = gsap\.timeline\(\);/);
+  assert.match(src, /const ctx = numberText\.getContext\('2d'\);/);
+  assert.match(src, /ctx\.createLinearGradient\(0, 0, 0, approxHeight\);/);
+  assert.match(src, /ctx\.strokeText\(value, approxWidth \/ 2, approxHeight \/ 2 \+ 1\);/);
+  assert.match(src, /ctx\.shadowBlur = 8;/);
+  assert.match(src, /wrapper\.appendChild\(numberText\);/);
+  assert.match(src, /wrapper\.style\.opacity = '0';/);
+  assert.match(src, /if \(isDamageTextFontReady\(\)\) \{/);
+  assert.match(src, /ensureDamageTextFontReady\(\)\.then\(\(\) => \{/);
   assert.match(src, /const isHeal = String\(kind \|\| 'damage'\) === 'heal';/);
-  assert.match(src, /const isBarHeal = isHeal && String\(targetKind \|\| ''\) === 'bar';/);
-  assert.match(src, /digit\.style\.color = isHeal/);
-  assert.match(src, /\? \(isBarHeal \? '#05FD1B' : '#66CCFF'\)/);
-  assert.match(src, /: '#FFFFFF';/);
+  assert.match(src, /const gradientStops = isHeal/);
+  assert.match(src, /const fallbackColor = isHeal \? '#b9ffd7' : '#ffe59d';/);
+  assert.match(src, /const glowColor = isHeal/);
+  assert.match(src, /gsap\.set\(numberText,/);
+  assert.match(src, /tl\.fromTo\(numberText,/);
+  assert.match(src, /tl\.to\(numberText,/);
   assert.doesNotMatch(src, /rgba\(255,215,96/);
   assert.doesNotMatch(src, /filter: 'brightness\(1\.9\)'/);
   assert.match(src, /ease: 'back\.out\(1\.7\)'/);
@@ -34,13 +42,15 @@ test('damage number animation module uses GSAP timelines with per-digit phases',
   assert.match(src, /ease: 'power2\.in'/);
   assert.match(src, /ease: 'expo\.in'/);
   assert.match(src, /onComplete: cleanup/);
+  assert.doesNotMatch(src, /backgroundClip = 'text'/);
+  assert.doesNotMatch(src, /webkitTextFillColor = 'transparent'/);
 });
 
 test('app damage text path spawns DOM damage numbers instead of canvas text rendering', () => {
   const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
   const src = fs.readFileSync(filePath, 'utf8');
 
-  assert.match(src, /import\s+\{\s*createDamageNumber\s*\}\s+from\s+'\.\/src\/core\/damageNumberAnimation\.mjs';/);
+  assert.match(src, /import\s+\{\s*createDamageNumber,\s*ensureDamageTextFontReady,\s*isDamageTextFontReady\s*\}\s+from\s+'\.\/src\/core\/damageNumberAnimation\.mjs';/);
   assert.match(src, /function ensureDamageNumberLayer\(\)/);
   assert.match(src, /function spawnPendingDamageNumbers\(projectToCanvas = null\)/);
   assert.match(src, /if \(!texts\.length \|\| typeof projectToCanvas !== 'function'\) return;/);

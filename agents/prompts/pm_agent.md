@@ -37,6 +37,7 @@ The following files are the **only approved coordination surface** unless the re
 
 Live Beads CLI state (`bd show`, `bd list`, `bd ready`) is authoritative for issue status and selection.
 Repo-side `.beads/` files may exist for local artifacts, but they are not the workflow source of truth when live `bd` is available.
+Wishfire Notion tracker (`https://www.notion.so/3347e3368a6781a1acead98f06b9e173`) is the required human-facing parallel project view.
 
 Do not create coordination systems outside this set.
 Do not read archive files during normal startup unless the active bead requires historical investigation.
@@ -47,10 +48,22 @@ Do not read archive files during normal startup unless the active bead requires 
 
 When PM review requires codebase inspection (scope checks, acceptance evidence, drift detection):
 
-- Use `jcodemunch` MCP first (`repo outline` -> `symbol search` -> `symbol retrieval`).
-- Avoid full-file brute-force reads unless symbol-level checks are insufficient.
+- Use `jcodemunch` first for large/hot/mirrored/cross-file code or whenever it will materially reduce token spend.
+- For small local edits or short docs, direct reads are fine.
+- Prefer the lightest read that answers the question.
 - Keep inspection bounded to the bead under review.
 - For documentation/spec inspections, use `jdocmunch` MCP first before broad doc reads.
+- Require the same hot-code order in spawned sub-agent lanes (`search-specialist`, `debugger`, `reviewer`) when applicable.
+- If `jcodemunch` is skipped on an applicable lane, require an explicit blocker note and approved fallback reason in PM handoff.
+
+---
+
+# SUB-AGENT ASSIGNMENT ROUTING (REQUIRED)
+
+- For gameplay implementation or game-system behavior lanes, assign execution through the installed `game-developer` custom agent.
+- Do not use a generalist fallback when `game-developer` clearly matches the current bead phase.
+- Keep assignment scoped: one active bead, explicit acceptance/tests, and no cross-lane drift.
+- If `game-developer` cannot be spawned, record the blocker explicitly in coordination artifacts before fallback assignment.
 
 ---
 
@@ -128,6 +141,44 @@ If PM claims, activates, or temporarily selects a bead for triage and then does 
 - record a short note when the temporary activation could create queue confusion
 - do not leave “inspection only” or “maybe next” beads orphaned in `in_progress`
 
+## Step 2.2 — Pre-Execution Scope And Resource Assessment (Required)
+
+Before assigning a bead for implementation, PM must record both assessment blocks and confirm they are non-ambiguous.
+
+Required `Scope Assessment` block:
+
+- in-scope
+- out-of-scope
+- ownership seam(s)
+- touched files/symbols
+- acceptance/test boundaries
+
+Required `Resource Assessment` block:
+
+- required sub-agent(s)
+- required MCP/tools (`jcodemunch`, `jdocmunch`, `playwright`, repo harness)
+- expected test levels
+- environment dependencies
+- rollback path
+
+Sizing rubric (required):
+
+- `S`: single-lane execution, narrow verification depth
+- `M`: one explicit handoff, medium verification depth
+- `L`: phased handoff plan, deepest verification depth with runtime-path validation when applicable
+
+Shortcut:
+
+- For `S` beads, a one-line scope/resource note is enough if the work is truly narrow.
+- For `M`/`L` beads, hot-file edits, and browser/runtime work, record the fuller blocks above before assigning.
+
+Stop rule:
+
+- do not hand off for implementation until the required assessment level is recorded and non-ambiguous
+- if the required level is ambiguous, keep the bead in PM clarification flow (`open`/`blocked`) and do not route to dev
+
+Beads remains the workflow source of truth; do not create parallel planning trackers.
+
 ---
 
 ## Step 3 — Review Completed Work
@@ -198,6 +249,57 @@ When the browser discovery lane is used, keep PM notes concise:
 - whether the discovery lane added real signal
 - whether it should be repeated on similar beads
 - whether the result should be promoted into repo-owned QA docs or scripts
+
+---
+
+## Step 4.5 — Sync Notion Project Tracker (Required)
+
+After updating `/agents/pm_status.md`, update the Wishfire Notion tracker so humans can review active execution state in parallel to agent workflows.
+
+Notion usage map (authoritative):
+
+1. `Wishfire Product Backlog`: planning queue of bead-backed work.
+2. `Wishfire Log`: completion-only feed of closed beads (no backlog or active lanes).
+3. `Wishfire Specs`: requirements and acceptance truth.
+4. `Wishfire Architecture`: decisions, constraints, and enforcement.
+5. `Wishfire Knowledge`: reusable lessons.
+
+Minimum required sync each PM cycle:
+
+1. Backlog reflects active bead IDs and truthful status from live `bd`.
+2. New/changed requirements or clarified acceptance are reflected in Specs.
+3. New architecture constraints/decisions are reflected in Architecture.
+4. Reusable lessons from completed bug/regression work are reflected in Knowledge.
+5. Wishfire Log appends the latest completed bead entry (at minimum: Bead ID, summary, impacted systems, completion date).
+
+Backlog fill contract (required for each new or updated backlog bead row):
+
+1. `Backlog Item` contains the Bead ID (for example `ORKA-1234`).
+2. `Bead State` is explicitly set and must be one of: `Backlog`, `Active`, `Blocked`, `Done`.
+3. `Description` is plain-language and scannable.
+4. `Features Created` is outcome-focused and concise.
+5. `Priority` is set (`P1`/`P2`/`P3`/`P4`).
+6. `Owner` is set (`Human`/`Codex`/`Claude`).
+7. `Human Notes` captures operator-facing context (targeting/constraints/unknowns/TBDs).
+
+Backlog visibility check (required):
+
+1. Confirm the new/updated Bead ID appears in Notion search scoped to the backlog data source.
+2. Confirm board visibility in `Backlog Board` by aligning `Bead State` to the intended column.
+3. If the row exists but is not visible due to view grouping/filtering, correct row properties and note the correction in PM status.
+
+Wishfire Log rules (required):
+
+1. Log only completed beads (`bd` status `done`/`closed`).
+2. Do not keep `open`/`blocked`/`in_progress`/`review` beads in `Wishfire Log`.
+3. If non-completed rows are found in Log, remove them in the same PM cycle.
+4. Keep one operational log view: `Default view`, sorted by `Last Run` descending.
+
+If Notion sync fails due to tool/runtime boundary:
+
+- record the exact failure reason in `/agents/issues.md` under `dependency_block`
+- keep `/agents/pm_status.md` truthful about the sync gap
+- do not claim cycle closure as fully compliant until the tracker is updated
 
 ---
 

@@ -12,6 +12,20 @@
 - If `bd` does not resolve, repair shell `PATH` first:
   - `export PATH="$HOME/.local/bin:$PATH"`
 
+## Git Maintenance Override
+- Git maintenance/governance work is not blocked by Beads when the user explicitly asks for the Git operation itself.
+- Covered operations:
+  - commit
+  - tag
+  - push
+  - branch sync
+  - PR preparation
+  - rollback/checkpoint refs
+- Treat these as repo-maintenance lanes, not product-scope implementation lanes.
+- If a Git maintenance lane includes new product code changes, the underlying product work should still have truthful Beads ownership; the Git operation itself does not need to stop on bead mechanics.
+- Preferred behavior is hands-off completion by the agent.
+- Only fall back to user-run terminal commands when a real technical environment boundary blocks Git execution.
+
 ## Standard Loop
 1. Run `bd ready`.
 2. Select the highest-priority ready bead or the explicitly assigned bead.
@@ -24,6 +38,64 @@
 9. Record closeout artifacts.
 10. Confirm `bd` write results.
 11. Close the bead.
+
+## Sub-Agent-First Execution Rule
+- Use installed project-local sub-agents as the default execution path for bead work.
+- Do not default to a generalist lane when one installed sub-agent clearly matches the current phase.
+- Installed bench:
+  - `product-manager`
+  - `game-developer`
+  - `javascript-pro`
+  - `reviewer`
+  - `search-specialist`
+  - `debugger`
+  - `refactoring-specialist`
+- Sub-agents must reinforce Beads; they must not introduce competing ownership or workflow state.
+- Beads remains authoritative for scope, sequencing, ownership, and completion criteria.
+- Primary routing rule: choose sub-agent by bead phase and task intent, not file type alone.
+- Routing order:
+  1. Identify active bead or governance lane.
+  2. Identify current task phase.
+  3. Select best-fit sub-agent for that phase.
+  4. Select `javascript-pro` only when JavaScript code reasoning is required.
+- Keep delegation narrow and phase-bound; avoid broad multi-agent fan-out.
+- Prefer one sub-agent at a time unless a clear handoff is required by phase transition.
+
+### Selection Matrix
+- Governance/process/planning/bead framing/acceptance/readiness/sequencing/workflow clarification -> `product-manager`
+- Gameplay implementation/game-system changes -> `game-developer`
+- JavaScript-level fixes/correctness/cleanup -> `javascript-pro`
+- Code path discovery/ownership boundary lookup -> `search-specialist`
+- Bug isolation/root-cause narrowing -> `debugger`
+- Post-change correctness/regression review -> `reviewer`
+- Contained structural cleanup with no behavior change -> `refactoring-specialist`
+
+### Handoff Rules
+- Use `search-specialist` before implementation when owning code path is unclear.
+- Use `product-manager` before implementation when scope or acceptance is unclear.
+- Use `debugger` before proposing fixes when bug cause is not understood.
+- Use `reviewer` after implementation for regression/correctness checks.
+- Use `refactoring-specialist` only when bead scope explicitly permits cleanup.
+
+### Prohibited Behaviors
+- Solving a clearly specialist-fit task via generalist path.
+- Treating `javascript-pro` as default fallback for narrow tasks.
+- Sending vague requests to multiple sub-agents at once.
+- Duplicating the same analysis across agents.
+- Expanding beyond current bead scope.
+- Allowing refactors to drift outside approved cleanup scope.
+- Letting debug/review lanes redefine bead requirements.
+- Choosing agents by file extension alone.
+- Using `javascript-pro` for governance/policy edits that do not require JavaScript reasoning.
+
+### Required Task Response Contract
+- For each task response, include:
+  1. active bead or governance lane assumption
+  2. task phase
+  3. chosen sub-agent
+  4. one-sentence best-fit rationale versus other installed agents
+  5. execution through that sub-agent path
+  6. optional handoff to exactly one next sub-agent with reason
 
 ## Orphaned Bead Prevention Rule
 - PM cycle must not leave avoidable orphaned beads behind.
@@ -68,6 +140,36 @@
   - test requirement or obvious validation path
 - If any of those are missing, do not implement.
 - Rewrite, decompose, or block the bead first.
+- Ready-head enforcement:
+  - if the current ready-head bead is non-executable, do not leave it as ready-head `open` noise after that finding
+  - in the same cycle, either rewrite/decompose it into executable children or move it out of ready-head via `blocked`/`deferred` with explicit reason
+  - do not repeatedly skip the same non-executable ready-head bead across cycles
+
+## Pre-Execution Scope And Resource Assessment Gate
+- Before any implementation edit, record the required assessment level on the active bead lane context (and keep live `bd` authoritative).
+- `Scope Assessment` (required):
+  - in-scope
+  - out-of-scope
+  - ownership seam(s)
+  - touched files/symbols
+  - acceptance/test boundaries
+- `Resource Assessment` (required):
+  - required sub-agent(s)
+  - required MCP/tools (`jcodemunch`, `jdocmunch`, `playwright`, repo harness)
+  - expected test levels
+  - environment dependencies
+  - rollback path
+- Sizing rubric (required before start):
+  - `S`: single-lane execution, narrow verification depth
+  - `M`: single handoff allowed, medium verification depth
+  - `L`: phased handoffs required, deepest verification depth with runtime path validation when applicable
+- Stop rule:
+  - `S` beads may use a one-line scope/resource note if the work is truly narrow
+  - `M`/`L` beads, hot-file edits, and browser/runtime work require the fuller blocks above
+  - do not start implementation until the required assessment level is recorded and non-ambiguous
+  - if ambiguous, rewrite/decompose or return to PM clarification before code edits
+- Do not fork process authority:
+  - Beads remains source of truth for scope, ownership, status, and completion
 
 ## Size And Dependency Discipline
 - A bead should be the smallest unit that can be completed and verified in one cycle.
@@ -105,9 +207,41 @@
   - tests or validation were actually run
   - `/agents/dev_reports.md` contains a scoped report
   - `/agents/pm_status.md` reflects the result
+  - Wishfire Notion tracker reflects the updated bead state for human parallel review
   - bug/regression beads update `/ai-memory/insights.md`
 - Archive historical PM/dev entries into `/agents/archive/` so active coordination files stay concise for startup and review.
 - If unrelated dirty changes remain in touched hot files, do not treat the lane as cleanly reviewable without explicitly calling out that risk.
+
+### Notion Sync Rule (PM Cycle)
+- PM cycle must keep the Wishfire Notion tracker (`https://www.notion.so/3347e3368a6781a1acead98f06b9e173`) synchronized with live `bd` state for beads closed in that cycle.
+- Notion usage map:
+  - `Wishfire Product Backlog`: active planning queue of bead-backed work.
+  - `Wishfire Log`: completion-only ledger of closed beads.
+  - `Wishfire Specs`: requirement and acceptance source.
+  - `Wishfire Architecture`: decisions/constraints/rules and enforcement.
+  - `Wishfire Knowledge`: reusable lessons from completed work.
+- Closed-bead sync requirements (enforced):
+  - Backlog row for the closed bead reflects truthful final state.
+  - Specs capture requirement/acceptance updates tied to that closed bead, if changed.
+  - Architecture captures new constraints/rules introduced by that closed bead, if any.
+  - Knowledge captures reusable lessons from completed bug/regression lanes.
+  - Wishfire Log appends the closed bead entry.
+- Non-closed cycles:
+  - Notion updates are optional and should be skipped unless they remove drift or are explicitly requested.
+- Backlog row completeness is mandatory for each created/updated backlog bead:
+  - `Backlog Item` = Bead ID
+  - `Bead State` set explicitly as one of `Backlog`, `Active`, `Blocked`, `Done`
+  - `Description`, `Features Created`, and `Human Notes` populated for human-scannable context
+  - `Priority` and `Owner` set explicitly
+- Visibility verification is mandatory:
+  - confirm bead is queryable in backlog data source search
+  - confirm bead is visible in `Backlog Board` under the intended state column
+  - if visibility fails due to row property mismatch, correct row properties in the same cycle
+- Log hygiene is mandatory:
+  - keep only completed beads (`done`/`closed`) in `Wishfire Log`
+  - remove non-completed rows from `Wishfire Log` in the same PM cycle when detected
+  - keep one operational view for Log (`Default view`) sorted by `Last Run` descending
+- If Notion tools are unavailable, record a `dependency_block` in `/agents/issues.md` and keep PM status explicit about the gap.
 
 ## `bd` Write Confirmation Rule
 - Treat `bd` writes as unconfirmed until a second read succeeds.

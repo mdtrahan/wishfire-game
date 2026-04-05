@@ -1,45 +1,25 @@
 # Coordination Issues (Ambiguity / Drift)
 
 ## Unresolved
+- ORKA-5wj1 | `missing_spec` Astral Flow amp-bar lane has direction but still lacks executable acceptance/test contract for player prompt vs passive-chance branch and effect-end reset verification | Unsafe to implement because trigger UX, random bonus behavior, and reset timing can drift across turn-ownership seams without pass/fail checks | Rewrite bead with explicit acceptance criteria, non-goals, and deterministic/runtime validation requirements before re-selection
+- ORKA-n0g | `future_stub` relic scaffold bead is intentionally non-executable until rewritten around remaining exclusive-slot/combat-accessory hook work | Ready-head churn risk if left open without rewrite | Keep deferred until rewritten/decomposed into executable scope
 - ORKA-7w7q follow-up | `qa_gap` browser discovery proved the core `storyMock -> town -> combat -> mapLayout -> combat` loop is sustainable, but `Hero` and `Astral Flow` bottom-nav hit targets were not reliably click-verified under the same CDP QA path | Risk: broader layout-health claims would be overstated, and future UI regressions could hide in non-map nav hit-box ownership | Run a focused browser bead that classifies non-map bottom-nav hit boxes and records whether the issue is click geometry, transition gating, or layout-state ownership
 - ORKA-6opp | `missing_spec` hero-specific red single-target presentation variants lack explicit acceptance, test requirements, and scope boundaries beyond a short description | Unsafe to implement because timing/cluster/impact differences can easily drift into combat readability or harness behavior changes without a pass/fail contract | Rewrite bead with per-hero presentation expectations, explicit non-goals, required test coverage, and whether existing Incinerate/Double Attack harness seams are in or out of scope
 - ORKA-39i0 | `repeated_failure` fresh runtime proof shows the initiative turn-loop bug still exists on the red single-target path: after `HERO_SINGLE` executes, Huun can return to an immediately actionable same-turn state with `TurnSerial` still `0`, while blue/yellow initiative actions advance correctly | High player-facing combat risk and now a real executable bug lane, not stale queue noise | Fix the red attack handoff/ownership release seam, then rerun `output/playwright/orka-39i0-runtime-proof-complete.json` or equivalent end-to-end proof before closing
-- ORKA-hvj.5 | Hero-screen progression bindings blocked by missing product definitions (point source/reset policy/skill count/effects) | Blocks clean QA and risks speculative implementation | Clarify product contract before reopening lane
-- ORKA-yy0 | Netlify deploy/boot consistency remains tabled by product decision | Deployment confidence risk if release is requested suddenly | Reopen only when deploy hardening is re-prioritized
+- ORKA-yy0 | `blocked` Netlify deploy/boot consistency remains tabled by product decision | Deployment confidence risk if release is requested suddenly | Reopen only when deploy hardening is re-prioritized
 - ORKA-6n7 | `missing_spec` closeout-contract lane is still too abstract to execute safely against the shipped hot-file prepare/enforce workflow | High queue noise: it reads like ready P1 hardening even though it still needs a rewrite | Rewrite with concrete pass/fail behavior and explicit relationship to current repo-owned closeout tooling
 - ORKA-njg | `missing_spec` regression-gate lane is still too abstract to sit at the ready head now that later beads already shipped several focused regression contracts | High queue noise and likely drift if implemented from the current text | Rewrite into a concrete remaining-gap bead before selection
 - ORKA-f0l / ORKA-ksw / ORKA-pv3 / ORKA-hvj.4 | `missing_spec` (`null` bead bodies) | PM cycle cannot safely assign these lanes; high queue count but low executable throughput | Rewrite each bead with concrete objective, bounded scope, acceptance, and test requirements
 
-## Resolved
-- ORKA-9yo | Stale-open hot-file enforcement lane closed during queue cleanup. The original function-scope lock shipped earlier and was later superseded by ORKA-tuin / ORKA-tuin follow-up, which own the current repo-managed prepare/enforce workflow.
-- ORKA-omdl | Browser discovery-lane pilot produced materially better QA signal than the shipping lane on the bounded combat-entry test case. Shipping lane reconfirmed the existing Chrome/AppKit startup boundary and produced no artifact, while the discovery lane captured one completed hero action, post-action handoff state, and a useful console trace on the same local runtime. | Keep the discovery lane optional and scoped to flaky or classification-poor runtime beads; do not treat it as alternate authority.
-- ORKA-zys | Repo-side `.beads/open` and `.beads/in_progress` mirrors were reconciled to live `bd` state, removing stale entries and adding the missing live open/in-progress cache files so local governance artifacts match the authoritative queue again.
-- ORKA-daa4 | Double Attack had been implemented as an extra-turn scheduler proc, so QA could see proc counts without an immediate visible second attack. The runtime now treats Double Attack as a same-action free follow-up strike and retargets the follow-up if the original target dies before it lands.
-- ORKA-qr88 | Duplicate heroes/enemies were still allowed in the underlying builders, but dev-tool slot edits only staged globals and idle layout still hardcoded its roster. Loadout edits now trigger the sensible active-layout rebuild path and idle layout consumes the dev-tool overrides, so duplicate slot changes visibly apply again.
-- ORKA-u4h | Dev idle autoplay was leaving free frame-6 energy pickups on the board and could deadlock on an all-6 dev board; the idle autoplay seam now clicks frame-6 first and the fallback triplet picker follows the approved priority order instead of random color choice
-- ORKA-6mq | Stale open mirror reconciled after verifying the current entity owner seam; repeated entity update faults already quarantine after the threshold and write stable diagnostics instead of silently continuing invalid runtime state
-- ORKA-daa4 | QA needed a way to toggle the new explicit extra-turn harness without mutating combat state; dev tooling now stages Double Attack directly in the owner seam, and the missing Gem Counter Radiator DOM mount has been restored so holder/chance/proc count are visibly rendered
-- ORKA-ju42 | Dev idle/autoplay could stall on pending manual target selection; the bypass now lives only inside the dev autoplay loop so idle runs continue without weakening normal manual targeting
-- ORKA-mwl | Speed-only repeat-turn seam is now fenced behind explicit extra-turn skill configuration; live browser verification showed zero no-config grants and long-run 5% proc calibration stayed centered when the harness moved from Falie to Huun
-- ORKA-c4s | Stale open mirror reconciled after restoring the persistence contract pack; current runtime still persists hero gem progress snapshots and milestone threshold/state seams, and the browser reload/restore path has been re-verified
-- ORKA-fp9 | Stale open mirror reconciled after re-running the debuff lifecycle contract pack; current mirrored function-bank seams already satisfy the shipped debuff hardening lane
-- ORKA-wuh | Core trait runtime/proc framework is already present in both function-bank mirrors and validated by `tests/traitHookFrameworkContract.test.js`; bead should be treated as completed queue reconciliation, not future implementation work
-- ORKA-3m8 | Rewritten from `null` into an implementation-ready P0 bug bead targeting yellow completion handoff and deferred turn-advance gating in `web-runner/app.js`, then closed by restoring `tests/yellowTurnHandoffContract.test.js` and verifying the current seam still enforces a single gameplay handoff path
-- ORKA-mwl | Reframed from a pure speed-based extra-turn bug into an implementation-ready extra-turn chance harness bead; repeated turns now require explicit provenance instead of deterministic speed-only scheduling
-- ORKA-1qo | Node Playwright launch remained blocked in-sandbox, but the bead was recovered by adding CDP attach mode to an already-running Chrome instance and verifying a real smoke run that wrote all four balance-harness artifacts
-- ORKA-cxi | Reverted ORKA-jj0 regression commits and restored pre-flyup baseline
-- 2026-03-07: Multiple P0 beads in `.beads/open/` are underspecified (`null` body only): ORKA-6xs, ORKA-6mq, ORKA-3m8, ORKA-890, ORKA-9ng, ORKA-z0b. Cannot execute safely under Beads scope rule without acceptance/scope body.
-- 2026-03-08: Audit rule added: before reporting blockers, reconcile `.beads/open` against `agents/dev_reports.md` and existing contract tests to avoid false "blocked" claims on already-shipped beads.
-# Issues / Blockers
-
-## 2026-03-10
-- Balance harness lane: Node Playwright + CDP attach now works and bounded prelim runs complete, so browser automation is no longer the main blocker.
-- New blocker for trustworthy CP analysis: combat runtime can overfill the battlefield beyond configured `enemies_per_wave` during respawn/repopulation windows (observed 5 living/registered enemies in a 3-enemy bounded run). This distorts session depth and enemy defeat counts even when the harness itself behaves correctly.
-# Issues / Blockers
+## Current Blockers
+- ORKA-macy
+  - category: environment/tooling
+  - blocker: 20-valid-pass evidence could not be completed because the harness/runtime stalled at the launch boundary
 
 - ORKA-boj
   - category: environment/tooling
   - blocker: exact home-level MCP setup cannot be completed from this sandbox because writes to `~/.codex/config.json` are denied
   - blocker: npm package names from the task text are not published as written (`jcodemunch-mcp`, `jdocmunch-mcp`, `jcontextmunch-mcp`, `jcodemunch` all return `E404`)
   - working fallback: current session already has `jcodemunch` and `jdocmunch` MCP servers available; repo indexing completed through those servers and `.ai/retrieval_rules.md` was added
+
 - 2026-03-21 | main | runtime syntax regression after collapse/merge: browser load currently fails before UI validation with `Uncaught SyntaxError: Unexpected token 'export'`; this is outside ORKA-cc9q scope and should be queued as a separate stabilization bug before broader runtime QA.
