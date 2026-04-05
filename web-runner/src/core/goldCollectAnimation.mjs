@@ -1,4 +1,4 @@
-import { gsap } from '../../../node_modules/gsap/index.js';
+import { gsap } from './gsapShim.mjs';
 
 function random(min, max) {
   return Math.random() * (max - min) + min;

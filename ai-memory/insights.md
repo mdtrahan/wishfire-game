@@ -20,6 +20,7 @@
 - For Playwright on macOS from Codex, treat Crashpad / startup aborts as environment boundaries before tuning test logic.
 - For browser batteries, prefer attached-browser probes when launch itself is already a known boundary.
 - If Chrome aborts in HIServices/TransformProcessType during startup, treat it as a pre-control macOS launch boundary and prefer a CDP-attached browser path.
+- For browser-imported runtime dependencies, deleting `node_modules` can break the page before any canvas or loading UI appears; verify served module paths after cleanup and restore the exact import seam before chasing gameplay logic.
 - For floating-number readability, animate one value node per hit unless the bead explicitly asks for digit-level choreography.
 - For modal overlays, let the modal own input before the background layout sees the event.
 - For hot-file work, keep the patch narrow and avoid “while I am here” cleanup.

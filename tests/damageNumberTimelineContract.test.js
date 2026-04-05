@@ -7,7 +7,7 @@ test('damage number animation module keeps each damage value grouped as one anim
   const filePath = path.join(__dirname, '..', 'web-runner', 'src', 'core', 'damageNumberAnimation.mjs');
   const src = fs.readFileSync(filePath, 'utf8');
 
-  assert.match(src, /import\s+\{\s*gsap\s*\}\s+from\s+'..\/..\/..\/node_modules\/gsap\/index\.js';/);
+  assert.match(src, /import\s+\{\s*gsap\s*\}\s+from\s+'\.\/gsapShim\.mjs';/);
   assert.match(src, /const wrapperTimeline = gsap\.timeline\(\{/);
   assert.match(src, /wrapperTimeline\.to\(wrapper, \{/);
   assert.match(src, /y: '-=60'/);

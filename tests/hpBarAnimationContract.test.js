@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 
 test('hp bar animation module uses GSAP with front and lag timing split', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'hpBarAnimation.mjs'), 'utf8');
-  assert.match(src, /import\s+\{\s*gsap\s*\}\s+from\s+'..\/..\/..\/node_modules\/gsap\/index\.js';/);
+  assert.match(src, /import\s+\{\s*gsap\s*\}\s+from\s+'\.\/gsapShim\.mjs';/);
   assert.match(src, /const targetPercent = clampPercent\(\(Number\(current \|\| 0\) \/ safeMax\) \* 100\);/);
   assert.match(src, /const isDamage = targetPercent < previousLag;/);
   assert.match(src, /const lagDelay = isDamage \? 0\.15 : 0\.05;/);

@@ -12,6 +12,17 @@ Active handoff file only. Historical implementation reports live in `/agents/arc
 - scope confirmation:
 
 ## Recent Reports
+- bead id: ORKA-4dpd
+- summary of changes: Restored the browser runtime path after the migration cleanup removed the repo-local runtime dependency tree. Added a tracked GSAP compatibility shim in `web-runner/src/core/gsapShim.mjs` and repointed the animation helpers to it so the browser modules can import animation helpers again without relying on a wiped `node_modules` tree. This fixes the blank/loading startup failure by allowing the app module to load and draw.
+- files modified: `web-runner/src/core/gsapShim.mjs`; `web-runner/src/core/damageNumberAnimation.mjs`; `web-runner/src/core/healBloomAnimation.mjs`; `web-runner/src/core/goldCollectAnimation.mjs`; `web-runner/src/core/hpBarAnimation.mjs`; `tests/damageNumberTimelineContract.test.js`; `tests/hpBarAnimationContract.test.js`; `ai-memory/insights.md`; `agents/dev_reports.md`
+- test evidence:
+  - `node --input-type=module -e "import('./web-runner/src/core/damageNumberAnimation.mjs')..."` (pass)
+  - `node --input-type=module -e "Promise.all([import('./web-runner/src/core/damageNumberAnimation.mjs'), import('./web-runner/src/core/healBloomAnimation.mjs'), import('./web-runner/src/core/goldCollectAnimation.mjs'), import('./web-runner/src/core/hpBarAnimation.mjs')])..."` (pass)
+  - `curl -I http://127.0.0.1:8011/web-runner/index.html` and `curl -I http://127.0.0.1:8011/node_modules/gsap/index.js` (both 200)
+- discovery lane comparison: not used; this was a startup-path restoration rather than a gameplay-behavior search.
+- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (runtime dependency preservation heuristic)
+- scope confirmation: Confined to runtime dependency restoration for browser startup. No gameplay rules or balance logic changed.
+
 - bead id: ORKA-9tny
 - summary of changes: Added a minimal browser QA battery centered on `agent-browser` CLI. The battery checks CLI reachability, then optionally boots the game against a direct or CDP-attached browser, probes `window.render_game_to_text`, and writes snapshot/screenshot/console/error artifacts under `output/playwright/browser-battery/`. Also documented the battery in governance and tools guidance.
 - files modified: `tests/browserBattery.spec.js`; `governance/qa/browser-battery-minimal.md`; `tools/README.md`; `package.json`; `ai-memory/insights.md`

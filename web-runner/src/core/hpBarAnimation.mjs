@@ -1,4 +1,4 @@
-import { gsap } from '../../../node_modules/gsap/index.js';
+import { gsap } from './gsapShim.mjs';
 
 function clampPercent(value) {
   return Math.max(0, Math.min(100, Number(value || 0)));
