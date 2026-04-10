@@ -1,0 +1,135 @@
+{
+  "entrypoint": "AGENTS.md",
+  "generatedRoots": [
+    "docs/generated",
+    "graphify-out"
+  ],
+  "entries": [
+    {
+      "path": "AGENTS.md",
+      "role": "map",
+      "status": "active",
+      "canonical": true
+    },
+    {
+      "path": "docs/architecture/index.md",
+      "role": "architecture",
+      "status": "active",
+      "canonical": true
+    },
+    {
+      "path": "docs/product/index.md",
+      "role": "product-spec",
+      "status": "active",
+      "canonical": true
+    },
+    {
+      "path": "docs/qa/index.md",
+      "role": "qa",
+      "status": "active",
+      "canonical": true
+    },
+    {
+      "path": "docs/qa/browser-policy.md",
+      "role": "qa",
+      "status": "active",
+      "canonical": true
+    },
+    {
+      "path": "docs/qa/browser-validation.md",
+      "role": "qa",
+      "status": "active",
+      "canonical": true
+    },
+    {
+      "path": "docs/workflow/index.md",
+      "role": "workflow",
+      "status": "active",
+      "canonical": true
+    },
+    {
+      "path": "docs/references/index.md",
+      "role": "heuristic",
+      "status": "active",
+      "canonical": true
+    },
+    {
+      "path": "docs/generated/index.md",
+      "role": "generated",
+      "status": "active",
+      "canonical": true
+    },
+    {
+      "path": "docs/plans/active/harness-engineering-migration.md",
+      "role": "plan",
+      "status": "active",
+      "canonical": true
+    },
+    {
+      "path": "governance/product/game-design-document.md",
+      "role": "product-spec",
+      "status": "active",
+      "canonical": true
+    },
+    {
+      "path": "governance/product/game-function-reference.md",
+      "role": "runtime-reference",
+      "status": "active",
+      "canonical": true
+    },
+    {
+      "path": "governance/qa/browser-battery-minimal.md",
+      "role": "qa",
+      "status": "active",
+      "canonical": false
+    },
+    {
+      "path": "governance/qa/combat-playwright-control-model.md",
+      "role": "qa",
+      "status": "active",
+      "canonical": false
+    },
+    {
+      "path": "governance/execution/beads-process.md",
+      "role": "workflow",
+      "status": "active",
+      "canonical": true
+    },
+    {
+      "path": "ai-memory/context.md",
+      "role": "heuristic",
+      "status": "active",
+      "canonical": false
+    },
+    {
+      "path": "ai-memory/insights.md",
+      "role": "heuristic",
+      "status": "active",
+      "canonical": false
+    },
+    {
+      "path": "README.md",
+      "role": "map",
+      "status": "superseded",
+      "canonicalTarget": "AGENTS.md"
+    },
+    {
+      "path": "claude.md",
+      "role": "workflow",
+      "status": "superseded",
+      "canonicalTarget": "AGENTS.md"
+    },
+    {
+      "path": "ai-memory/project.md",
+      "role": "heuristic",
+      "status": "superseded",
+      "canonicalTarget": "AGENTS.md"
+    },
+    {
+      "path": "docs/backend/browser-backend-policy.md",
+      "role": "qa",
+      "status": "superseded",
+      "canonicalTarget": "docs/qa/browser-policy.md"
+    }
+  ]
+}

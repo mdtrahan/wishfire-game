@@ -1,5 +1,9 @@
 # Codex-Orka Beads Process
 
+Role: workflow
+Status: active
+Canonical index: [../../docs/workflow/index.md](../../docs/workflow/index.md)
+
 ## Purpose
 - Define the repo-specific Beads workflow for Codex-Orka.
 - Keep bead execution deterministic, auditable, and scoped.

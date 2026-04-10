@@ -1,5 +1,9 @@
 # Wishfire / Codex-Orka Game Design Document
 
+Role: product-spec
+Status: active
+Canonical index: [../../docs/product/index.md](../../docs/product/index.md)
+
 Purpose:
 - Give a single product-facing description of the game, its current feature set, and its design intent.
 - Provide a stable document to compare against other games' GDDs.

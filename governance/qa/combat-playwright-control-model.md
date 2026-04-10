@@ -1,8 +1,14 @@
-# Combat QA And Playwright Control Model
+# Combat QA Control Model
+
+Role: qa
+Status: active
+
+Canonical policy: [../../docs/qa/browser-policy.md](../../docs/qa/browser-policy.md)
+Canonical guide: [../../docs/qa/browser-validation.md](../../docs/qa/browser-validation.md)
 
 ## Purpose
 - Capture how combat actually hands control between player input, animations, enemy actions, refill, and repopulation.
-- Give human QA, Playwright runs, FAQ/tutorial writers, and future spec beads one practical control model.
+- Give human QA, browser-automation runs, FAQ/tutorial writers, and future spec beads one practical control model.
 - Prevent false bug reports caused by mistaking transition states for actionable states.
 
 ## First-Principles Model
@@ -159,9 +165,9 @@ Minimum state questions:
 - current actor UID/name/type?
 - living enemy count?
 
-## Playwright Control Rules
+## Browser Automation Control Rules
 
-Playwright should model a player like this:
+Browser automation should model a player like this:
 
 1. Wait for a true idle hero input window.
 2. Choose one valid 3-gem color set.
@@ -171,7 +177,7 @@ Playwright should model a player like this:
 6. Wait through action, refill, text, and handoff windows.
 7. Repeat only after control is truly back.
 
-### What Playwright should not do
+### What browser automation should not do
 
 - do not click gems while `IsPlayerBusy = 1`
 - do not click gems while `TurnPhase != 0`
@@ -182,7 +188,7 @@ Playwright should model a player like this:
 
 ## Codex Preflight
 
-When Playwright is running from Codex on macOS, separate browser startup from browser control:
+When browser automation is running from Codex on macOS, separate browser startup from browser control:
 
 1. Start Chrome outside Codex with a fresh profile and `--remote-debugging-port`.
 2. Verify the CDP endpoint responds on `/json/version`.
@@ -196,7 +202,7 @@ Practical rule:
 Canonical ownership rule:
 - `tools/balance_harness.js` remains the repo-owned game automation pipeline.
 - The shipping lane uses that pipeline as the only pass/fail authority.
-- Playwright MCP, the Codex Playwright skill, and other browser tools may also run as the bounded discovery lane defined in `governance/qa/browser-discovery-lane-pilot.md`.
+- Legacy Playwright naming may still appear in diagnostics and historical docs, but the canonical backend policy lives in `docs/qa/browser-policy.md`.
 - `playwright:doctor`, `playwright:launch-matrix`, and `chrome:cdp` are diagnostics/bootstrap helpers for the same harness lane.
 
 Discovery-lane rule:

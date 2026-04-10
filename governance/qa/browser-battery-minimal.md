@@ -1,5 +1,11 @@
 # Minimal Browser Battery
 
+Role: qa
+Status: active
+
+Canonical policy: [../../docs/qa/browser-policy.md](../../docs/qa/browser-policy.md)
+Canonical guide: [../../docs/qa/browser-validation.md](../../docs/qa/browser-validation.md)
+
 ## Goal
 - Give the repo one cheap, repeatable browser battery that separates startup problems, runtime handshake problems, and visual-artifact capture problems.
 - Avoid creating a second browser pipeline.
@@ -23,7 +29,7 @@
 ## Setup
 ### Services
 - `agent-browser` CLI is the default browser backend for this battery.
-- `npm run playwright:doctor` remains the startup/attach classifier when browser startup itself is suspect.
+- Transitional diagnostics may still reference `playwright:doctor` when browser startup classification is the specific problem.
 
 ### Parameters
 - `BROWSER_BATTERY_URL`

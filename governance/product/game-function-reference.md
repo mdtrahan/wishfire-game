@@ -1,5 +1,9 @@
 # Game Function Reference
 
+Role: runtime-reference
+Status: active
+Canonical index: [../../docs/product/index.md](../../docs/product/index.md)
+
 Purpose:
 - Explain what the current game actually does today.
 - Give future FAQ/tutorial/spec writers one stable place to start.

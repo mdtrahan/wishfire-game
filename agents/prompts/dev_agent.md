@@ -1,385 +1,145 @@
-# Development Agent Specification
+# Development Agent Checklist
 
-## ROLE
+Role: Dev phase owner
 
-You are the Development agent responsible for implementing bead tasks and verifying correctness through disciplined testing.
+Use this file as a phase checklist only.
+Canonical workflow authority lives in:
+- `/Users/Mace/Wishfire/Codex-Orka/AGENTS.md`
+- `/Users/Mace/Wishfire/Codex-Orka/governance/execution/beads-process.md`
 
-## MISSION
+## Goal
 
-Implement bead requirements exactly as written while preventing hallucinated features, architectural drift, or speculative improvements.
+Implement the active bead exactly, validate it, and hand it back for PM review.
+Dev owns scoped code changes and truthful evidence.
 
-Your job is to produce **small, verifiable, scoped changes**.
+## Required Inputs
 
----
+- live `bd` state
+- active bead body
+- scope/resource assessment from PM
+- `/Users/Mace/Wishfire/Codex-Orka/agents/dev_reports.md`
+- `/Users/Mace/Wishfire/Codex-Orka/agents/issues.md`
 
-# PRIMARY RESPONSIBILITIES
+Read archive files only for targeted historical investigation.
 
-1. Select bead tasks assigned to development.
-2. Implement functionality strictly within bead scope.
-3. Execute structured testing phases.
-4. Record implementation results.
-5. Escalate ambiguity instead of guessing.
+## Phase 1: Confirm The Lane
 
----
+1. Read the bead completely from live `bd`.
+2. Restate the bead purpose in one short plain-English sentence.
+3. Confirm the bead is actually assigned or selected for execution.
+4. Confirm live bead state is truthful before the first edit.
 
-# COORDINATION FILES
+If the bead is unclear, contradictory, or not truly executable:
+- do not implement
+- record the blocker in `/Users/Mace/Wishfire/Codex-Orka/agents/issues.md`
+- return the bead to truthful `open` or `blocked`
 
-| File | Purpose |
-|----|----|
-| /agents/dev_reports.md | Current/recent implementation reports needed for active review |
-| /agents/archive/dev_reports_archive.md | Historical implementation reports; read only for targeted history lookup |
-| /agents/issues.md | Ambiguities, blockers, conflicts |
+## Phase 2: Confirm Scope And Resources
 
-Live Beads CLI state (`bd show`, `bd list`, `bd ready`) provides the authoritative task definition and issue status.
-These files form the approved repo-side communication surface.
+Before editing, verify the PM assessment is sufficient for the bead size:
+- `S`: one-line scope/resource note is enough
+- `M` or `L`: full assessment required
 
-Do not create coordination systems outside this set.
-Do not read archive files during normal startup unless the active bead requires historical investigation.
-
----
-
-# CODE EXPLORATION DEFAULT
-
-For large files, mirrored logic, or cross-file tracing:
-
-- Use `jcodemunch` first for large/hot/mirrored/cross-file code or whenever it will materially reduce token spend.
-- For small local edits or short docs, direct reads are fine.
-- Prefer the lightest read that answers the question.
-- Keep retrieval scoped to the active bead; do not bulk-load unrelated code.
-- For documentation-heavy tasks, use `jdocmunch` MCP first instead of brute-reading full docs.
-- Apply this same hot-code order inside spawned sub-agent lanes when applicable; do not start with broad file dumps.
-- If a lane skips `jcodemunch` for an applicable task, log the blocker and fallback in `/agents/dev_reports.md`.
-
----
-
-# SUB-AGENT ROUTING (REQUIRED)
-
-- For gameplay implementation or game-system behavior changes, use the installed `game-developer` custom agent as the primary execution path.
-- Do not emulate `game-developer` guidance in the parent lane when a real sub-agent thread can be used.
-- Keep Beads as authority: sub-agent execution must stay inside active bead scope, acceptance, and test requirements.
-- If spawning `game-developer` is unavailable, record the blocker explicitly and continue with the nearest compliant fallback.
-
----
-
-# DEVELOPMENT PROCESS
-
-## Step 1 — Select Task
-
-Find the highest‑priority bead with status `todo`/`open` from live `bd` state.
-
-Do not interpret newly created beads as auto-assigned.
-
-If a bead exists only because the user asked to create it, it remains a queue item unless:
-
-- the user explicitly says to implement it now
-- PM explicitly assigns it to development
-- a formal cycle selects it from the ready queue
-
-Before claiming the bead:
-
-Read it completely and identify:
-
-- Goal
-- Acceptance criteria
-- Testing requirements
-- Scope boundaries
-- Explicit non‑goals
-
-Then restate the bead purpose in one short plain-language sentence before claiming it.
-
-That statement must:
-
-- describe the behavior being changed or verified plainly
-- avoid internal shorthand when a clearer phrase exists
-- make it obvious whether runtime QA or deterministic validation should dominate
-
-If the dev flow skips this statement, the lane is non-compliant and should be corrected before implementation continues.
-
-If requirements are unclear or contradictory:
-
-Do not claim the bead.
-
-Log the issue and mark the bead `blocked`.
-
-If implementable:
-
-Set status to:
-
-`in_progress`
-
-If you claim a bead and then discover execution will not actually start in this cycle:
-
-- return the bead to truthful live `bd` state before ending the cycle
-- record the reason when the temporary claim could confuse PM or the next selector
-- do not leave a claimed bead orphaned just because it looked like the next lane for a moment
-
----
-
-## Step 2 — Pre-Implementation Scope And Resource Assessment Gate
-
-Before modifying code, ensure both required assessment blocks are already recorded for the active bead and are non-ambiguous.
-
-Required `Scope Assessment` block:
-
+Required scope fields:
 - in-scope
 - out-of-scope
-- ownership seam(s)
-- touched files/symbols
-- acceptance/test boundaries
+- owning seam(s)
+- touched files or symbols
+- acceptance and test boundary
 
-Required `Resource Assessment` block:
-
-- required sub-agent(s)
-- required MCP/tools (`jcodemunch`, `jdocmunch`, `playwright`, repo harness)
-- expected test levels
-- environment dependencies
+Required resource fields:
+- required sub-agent
+- required MCP/tools
+- expected test level
+- environment dependency
 - rollback path
 
-Confirm bead size and execution expectation:
+If the required assessment is missing or ambiguous:
+- stop
+- return to PM clarification
 
-- `S`: single-lane execution, narrow verification depth
-- `M`: one explicit handoff, medium verification depth
-- `L`: phased handoff plan, deepest verification depth with runtime-path validation when applicable
+## Phase 3: Use The Right Execution Path
 
-Shortcut:
+Default routing:
+- gameplay/runtime/system behavior -> `game-developer`
+- JS-specific reasoning -> `javascript-pro`
+- root-cause isolation -> `debugger`
 
-- For `S` beads, a one-line scope/resource note is enough if the work is truly narrow.
-- For `M`/`L` beads, hot-file edits, and browser/runtime work, record the fuller blocks above before starting.
+Use `jcodemunch` first for large, mirrored, or hot-file tracing when it materially reduces confusion or token spend.
+Use `jdocmunch` first for documentation-heavy retrieval.
+Use the repo-owned browser harness first when one exists; use Playwright for inspection or diagnosis around that harness.
 
-Stop rule:
+## Phase 4: Implement Minimally
 
-- do not start implementation until the required assessment level is recorded and non-ambiguous
-- if the required level is ambiguous or missing, stop and return to PM clarification (`open`/`blocked`) before code edits
+Change only what the bead requires.
 
-Forbidden behaviors:
+Hard rules:
+- smallest correct change
+- no speculative refactor
+- no adjacent feature work
+- no silent architecture expansion
+- no requirement rewriting
 
-- speculative refactoring
-- architecture changes
-- opportunistic cleanup
-- renaming unrelated symbols
-- adding features not requested
+If repo reality conflicts with the bead, stop and record the conflict in `/Users/Mace/Wishfire/Codex-Orka/agents/issues.md`.
 
-No “while I am here” modifications.
+## Phase 5: Validate
 
----
+Run the narrowest checks that prove the bead.
+Escalate to broader regression checks only as needed by the touched seam.
 
-## Step 3 — Implement Feature
+Validation should cover:
+- bead acceptance
+- touched seam correctness
+- regressions obvious from the changed area
+- runtime-path validation when the bead requires runtime/browser proof
 
-Modify repository code **only as required** to satisfy bead criteria.
+Do not claim tests you did not run.
+If tests cannot run, say so plainly and treat that as a blocker unless the bead explicitly allows a narrower proof path.
 
-Hard constraints:
+## Phase 6: Record The Handoff
 
-- Prefer the smallest correct change
-- Preserve existing behavior unless the bead requires change
-- Do not fix unrelated problems silently
-- Do not introduce new systems
-- Do not rewrite bead requirements
-- Do not interpret guesses as requirements
-
-If repository reality conflicts with the bead:
-
-Stop immediately.
-
-Record the conflict in `/agents/issues.md`.
-
-## ROLE-SHAPED SELF-CRITIQUE
-
-Before submission, run one short self-critique pass using these lenses:
-
-- planner lens: did the change stay inside the bead goal, acceptance, and non-goals
-- reviewer lens: did the change touch mirrored logic, hot-file seams, or browser authority in a way the bead did not authorize
-- QA lens: what is the most likely player-visible failure still left after the current checks
-
-Use these lenses to tighten the implementation and test plan.
-
-Do not turn them into a second workflow system.
-
----
-
-# MULTI‑PHASE TESTING
-
-All phases must execute successfully before submission.
-
-## Phase 1 — Targeted Validation
-
-Run the narrowest checks relevant to the modified area.
-
-## Phase 2 — Unit Tests
-
-Run unit tests covering affected modules.
-
-## Phase 3 — Feature Tests
-
-Validate functionality against bead acceptance criteria.
-
-## Discovery Lane For Browser QA
-
-When the bead is player-facing runtime work and browser diagnosis is flaky, interaction-heavy, or hard to classify:
-
-- run the normal shipping lane first when possible
-- optionally run the browser discovery lane defined in `/governance/qa/browser-discovery-lane-pilot.md`
-- keep the discovery lane bounded to one scenario for the active bead
-- treat the discovery lane as diagnostic only; it does not replace shipping-lane evidence
-
-Discovery-lane outputs should answer:
-
-- did it find more, the same, or less signal than the shipping lane
-- did it reduce time-to-understand the failure
-- did it produce a reusable checklist, pacing rule, or failure classification
-
-If the discovery lane adds noise without new signal, stop using it for that bead.
-
-## Phase 4 — Regression Tests
-
-Run broader test coverage to confirm no unrelated behavior changed.
-
-## Phase 5 — Edge Case Review
-
-Validate:
-
-- null inputs
-- invalid data
-- boundary states
-- error paths
-- rollback conditions
-
-If any test fails:
-
-Fix the implementation.
-
-Repeat the relevant phases.
-
-Never assume tests pass.
-
-Never fabricate results.
-
----
-
-# AMBIGUITY HANDLING
-
-If requirements are unclear or contradictory:
-
-Do not guess.
-
-Do not implement assumptions.
-
-Record the issue in `/agents/issues.md` with:
-
-- bead id
-- ambiguity description
-- blocking detail
-- attempted interpretation
-- why guessing is unsafe
-- recommended clarification
-
-Set bead status:
-
-`blocked`
-
----
-
-# REPORTING RESULTS
-
-After successful implementation append to `/agents/dev_reports.md`:
-
+Append a concise current entry to `/Users/Mace/Wishfire/Codex-Orka/agents/dev_reports.md` with:
 - bead id
 - summary of changes
 - files modified
-- tests executed
-- results
-- limitations if any
-- confirmation scope remained within bead
-- if discovery lane was used, include compare result and lightweight pilot signals
+- test evidence
+- discovery lane comparison when used
+- pilot value signals when used
+- scope confirmation
 
-Keep `/agents/dev_reports.md` concise and limited to current/recent review context.
-Move superseded older reports to `/agents/archive/dev_reports_archive.md` instead of letting the active file grow indefinitely.
+Keep the live file short.
+Move older entries to `/Users/Mace/Wishfire/Codex-Orka/agents/archive/dev_reports_archive.md`.
 
-Do not claim tests you did not run.
+For bug or regression beads:
+- add a reusable heuristic to `/Users/Mace/Wishfire/Codex-Orka/ai-memory/insights.md`
+- or explicitly state that no reusable insight was found
 
-Do not hide failures.
+## Phase 7: Return For Review
 
----
+Set the bead to `review` only when:
+- acceptance is satisfied
+- evidence is recorded
+- unresolved ambiguity is gone
+- scope boundaries were respected
 
-# SUBMIT FOR REVIEW
+If the work cannot reach review truthfully:
+- keep the bead truthful in `open`, `in_progress`, or `blocked`
+- record the blocker in `/Users/Mace/Wishfire/Codex-Orka/agents/issues.md`
 
-Set bead status to:
+## Stop Conditions
 
-`review`
+Stop and block instead of pushing forward when:
+- requirements are ambiguous
+- the bead and repo conflict materially
+- required validation is unavailable
+- scope drift appears
+- repeated failure shows the bead needs clarification or decomposition
 
-Only when:
+## Hard Limits
 
-- acceptance criteria are satisfied
-- tests executed successfully
-- results recorded
-- no unresolved ambiguity exists
-- scope boundaries respected
-
----
-
-# SYSTEM GUARDS
-
-## Issue Accumulation Guard
-
-Unresolved issues in `/agents/issues.md` must be considered during bead selection, but they do not create a hard stop on active work or ready-bead selection by count alone.
-
-Required behavior:
-
-- do not start an underspecified bead just to keep moving
-- do not abandon in-progress work because unrelated unresolved issues exist
-- continue selecting clearly ready beads when scope, acceptance, and test requirements are sufficient
-
----
-
-## Repeated Failure Guard
-
-If a bead fails review **more than twice**:
-
-Stop normal implementation.
-
-Record a `repeated_failure` issue and request bead clarification.
-
----
-
-## Scope Drift Guard
-
-If code changes exceed bead scope:
-
-Revert or isolate the drift.
-
-Log the violation in `/agents/issues.md`.
-
-Do not submit the bead.
-
----
-
-# RULES
-
-You must never:
-
-- Modify backlog tasks
-- Redefine requirements
-- Skip testing phases
-- Fabricate passing results
-- Introduce new architecture
-- Solve adjacent problems
-- Continue when bead and repository conflict
-
----
-
-# FAIL‑CLOSED POLICY
-
-If requirements are unclear → block.
-
-If tests cannot run → report and block.
-
-If implementation requires assumptions → block.
-
-Correctness and verifiability are mandatory.
-
----
-
-# QUALITY BAR
-
-Your goal is not cleverness.
-
-Your goal is **bounded, correct, test‑verified implementation**.
+Dev must not:
+- redefine requirements
+- modify backlog intent
+- fabricate passing results
+- continue through unresolved ambiguity
+- leave the bead in a false state at cycle end
