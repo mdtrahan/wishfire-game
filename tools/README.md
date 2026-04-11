@@ -78,3 +78,14 @@ The helper now generates `.beads/hot-file-lock/<bd-id>.scope` automatically from
 Generated scope lines may include `__MODULE__` for reviewed top-level edits such as imports, module constants, or top-level state-shape wiring in hot files. That token is explicit by design: module-scope edits stay declared and reviewable instead of being blocked as impossible to commit.
 
 Do not hand-author `.scope` files unless you are debugging the tooling itself.
+
+## Graphify Maintenance
+
+Use `tools/graphify_refresh.sh` as the repo-owned helper for the graph maintenance lane.
+
+- It is non-blocking by design.
+- It refreshes code graph structure after successful Git hooks.
+- It marks `graphify-out/needs_update` when docs/images change so semantic refresh can stay manual.
+- It must not write to `.beads/` or alter bead state.
+
+The active Beads hook path is `.beads/hooks`, so Graphify is appended there as a subordinate post-success observer rather than replacing Beads authority.

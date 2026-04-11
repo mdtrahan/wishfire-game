@@ -8,42 +8,41 @@ test('damage number animation module keeps each damage value grouped as one anim
   const src = fs.readFileSync(filePath, 'utf8');
 
   assert.match(src, /import\s+\{\s*gsap\s*\}\s+from\s+'\.\/gsapShim\.mjs';/);
-  assert.match(src, /const wrapperTimeline = gsap\.timeline\(\{/);
-  assert.match(src, /wrapperTimeline\.to\(wrapper, \{/);
-  assert.match(src, /y: '-=60'/);
-  assert.match(src, /x: '\+=4'/);
   assert.match(src, /const DAMAGE_TEXT_FONT = '"Rubik Mono One", "Trebuchet MS", "Verdana", sans-serif';/);
   assert.match(src, /const DAMAGE_TEXT_FONT_SPEC = `28px \$\{DAMAGE_TEXT_FONT\}`;/);
   assert.match(src, /export function ensureDamageTextFontReady\(\)/);
   assert.match(src, /export function isDamageTextFontReady\(\)/);
   assert.match(src, /const numberText = document\.createElement\('canvas'\);/);
-  assert.match(src, /const tl = gsap\.timeline\(\);/);
+  assert.match(src, /const tl = activeTimeline = gsap\.timeline\(\{\s*onComplete: cleanup,\s*\}\);/);
   assert.match(src, /const ctx = numberText\.getContext\('2d'\);/);
+  assert.match(src, /gsap\.set\(wrapper,\s*\{[\s\S]*x: 0,[\s\S]*y: 0,[\s\S]*opacity: 0,[\s\S]*transformOrigin: 'center bottom',[\s\S]*\}\);/);
+  assert.match(src, /gsap\.set\(numberText,[\s\S]*y: 0,[\s\S]*rotation: 0,[\s\S]*scaleX: 1,[\s\S]*scaleY: 1,[\s\S]*opacity: 1,[\s\S]*\}\);/);
+  assert.match(src, /tl\.set\(wrapper,\s*\{[\s\S]*opacity: 1,[\s\S]*y: 0,[\s\S]*\}\);/);
+  assert.match(src, /tl\.to\(wrapper,\s*\{[\s\S]*y: -28,[\s\S]*duration: 0\.8,[\s\S]*ease: 'power2\.out',[\s\S]*\}, 0\);/);
+  assert.match(src, /tl\.to\(wrapper,\s*\{[\s\S]*y: -28,[\s\S]*opacity: 1,[\s\S]*duration: 0\.484,[\s\S]*ease: 'none',[\s\S]*\}\);/);
+  assert.match(src, /tl\.to\(wrapper,\s*\{[\s\S]*opacity: 0,[\s\S]*duration: 0\.16,[\s\S]*ease: 'sine\.out',[\s\S]*\}\);/);
   assert.match(src, /ctx\.createLinearGradient\(0, 0, 0, approxHeight\);/);
   assert.match(src, /ctx\.strokeText\(value, approxWidth \/ 2, approxHeight \/ 2 \+ 1\);/);
-  assert.match(src, /ctx\.shadowBlur = 8;/);
+  assert.match(src, /ctx\.fillText\(value, approxWidth \/ 2, approxHeight \/ 2 \+ 1\);/);
+  assert.match(src, /ctx\.shadowBlur = 0;/);
+  assert.match(src, /ctx\.shadowOffsetY = 0;/);
   assert.match(src, /wrapper\.appendChild\(numberText\);/);
-  assert.match(src, /wrapper\.style\.opacity = '0';/);
+  assert.match(src, /container\.appendChild\(wrapper\);[\s\S]*if \(isDamageTextFontReady\(\)\) \{/);
   assert.match(src, /if \(isDamageTextFontReady\(\)\) \{/);
   assert.match(src, /ensureDamageTextFontReady\(\)\.then\(\(\) => \{/);
   assert.match(src, /const isHeal = String\(kind \|\| 'damage'\) === 'heal';/);
   assert.match(src, /const gradientStops = isHeal/);
-  assert.match(src, /const fallbackColor = isHeal \? '#b9ffd7' : '#ffe59d';/);
-  assert.match(src, /const glowColor = isHeal/);
   assert.match(src, /gsap\.set\(numberText,/);
-  assert.match(src, /tl\.fromTo\(numberText,/);
-  assert.match(src, /tl\.to\(numberText,/);
   assert.doesNotMatch(src, /rgba\(255,215,96/);
   assert.doesNotMatch(src, /filter: 'brightness\(1\.9\)'/);
-  assert.match(src, /ease: 'back\.out\(1\.7\)'/);
   assert.match(src, /ease: 'power2\.out'/);
   assert.match(src, /ease: 'sine\.out'/);
-  assert.match(src, /ease: 'sine\.inOut'/);
-  assert.match(src, /ease: 'power2\.in'/);
-  assert.match(src, /ease: 'expo\.in'/);
   assert.match(src, /onComplete: cleanup/);
   assert.doesNotMatch(src, /backgroundClip = 'text'/);
   assert.doesNotMatch(src, /webkitTextFillColor = 'transparent'/);
+  assert.doesNotMatch(src, /ctx\.globalAlpha = 0\.7/);
+  assert.doesNotMatch(src, /random\(/);
+  assert.doesNotMatch(src, /glowColor/);
 });
 
 test('app damage text path spawns DOM damage numbers instead of canvas text rendering', () => {
@@ -58,10 +57,13 @@ test('app damage text path spawns DOM damage numbers instead of canvas text rend
   assert.match(src, /const isCrit = !!d\.isCrit;/);
   assert.match(src, /formatDamageValue\(\{ value: d\.amount, type: 'heal', isCrit \}\)/);
   assert.match(src, /formatDamageValue\(\{ value: d\.amount, type: d\.kind === 'heal' \? 'heal' : 'damage', isCrit \}\)/);
-  assert.match(src, /d\.domAnimation = createDamageNumber\(\{/);
+  assert.match(src, /const animation = createDamageNumber\(\{/);
+  assert.match(src, /if \(animation\) \{/);
+  assert.match(src, /d\.domAnimation = animation;/);
   assert.match(src, /kind: d\.kind === 'heal' \? 'heal' : 'damage',/);
   assert.match(src, /targetKind: d\.targetKind \|\| null,/);
   assert.match(src, /spawnPendingDamageNumbers\(worldToCanvas\);/);
+  assert.match(src, /if \(damageNumberLayer && \(d\.domAnimation \|\| d\.domSpawned\)\) continue;/);
 });
 
 test('mirrored function banks carry explicit crit metadata into floating text payloads', () => {

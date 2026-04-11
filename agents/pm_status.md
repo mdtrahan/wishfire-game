@@ -5,6 +5,8 @@ Active snapshot only. Historical PM snapshots live in `/agents/archive/pm_status
 _Last updated: 2026-04-09_
 
 ## Completed Beads
+- ORKA-wao (hero screen now renders masked CS/JS skill icons from the provided sprite sheet; Falie and Huun browser runtime spot checks passed)
+- ORKA-dm6 (enemy single-target skills no longer bias Falie; both mirrored function banks now pick uniformly from living heroes and are covered by a behavior test)
 - ORKA-h3x (harness-engineering repo map first cut landed with rollback checkpoint, docs indexes, compatibility shims, canonical browser policy/validation docs, and a doc contract test)
 - ORKA-dm5 (damage-number glow pass aligned to the main glyph baseline; DOM ownership now claims before canvas fallback so Falie hits no longer read as doubled)
 - ORKA-dm4 (damage text size reduced by 30% with a uniform scale-only change; tween path, rise distance, and aspect ratio preserved)

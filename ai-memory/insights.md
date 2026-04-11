@@ -33,6 +33,7 @@ Canonical map: [../AGENTS.md](../AGENTS.md)
 - When an animated overlay has an entry pose, set the hidden/compressed start state before making it visible; otherwise the first painted frame can flash the uninitialized target-point pose.
 - When a visual adjustment only asks for a size change, scale the rendered text uniformly and leave tween distance, easing, and aspect ratio untouched unless the bead explicitly changes motion.
 - When a single damage glyph looks doubled, first check whether the glow and main fill passes share the same baseline before chasing duplicate emitters.
+- For enemy single-target skills, keep hero targeting uniformly distributed across living heroes unless a bead explicitly introduces and validates a taunt or enmity mechanic.
 - For modal overlays, let the modal own input before the background layout sees the event.
 - For hot-file work, keep the patch narrow and avoid “while I am here” cleanup.
 - For bead work, keep queue creation separate from execution.

@@ -73,5 +73,36 @@ test('pm and dev prompts stay thin and defer durable policy', () => {
     assert.ok(lineCount(promptPath) <= 180, `${promptPath} exceeds prompt budget`);
     assert.match(contents, /AGENTS\.md/);
     assert.match(contents, /governance\/execution\/beads-process\.md/);
+    assert.doesNotMatch(contents, /regression review -> `reviewer`/);
+  }
+});
+
+test('AGENTS.md exposes the default subagent routing map', () => {
+  const agents = readRepoFile('AGENTS.md');
+  assert.match(agents, /## Subagent Routing/);
+  assert.match(agents, /`product-manager` \(`gpt-5\.2`\)/);
+  assert.match(agents, /`search-specialist` \(`gpt-5\.4-mini`\)/);
+  assert.match(agents, /`debugger` \(`gpt-5\.2`\)/);
+  assert.match(agents, /`game-developer` \(`gpt-5\.2`\)/);
+  assert.match(agents, /`javascript-pro` \(`gpt-5\.2`\)/);
+  assert.match(agents, /`refactoring-specialist` \(`gpt-5\.2`\)/);
+  assert.match(agents, /Use `reviewer` only as an optional escalation/);
+});
+
+test('project subagent configs use the lean default model split', () => {
+  const expectedModels = new Map([
+    ['.codex/agents/search-specialist.toml', 'gpt-5.4-mini'],
+    ['.codex/agents/product-manager.toml', 'gpt-5.2'],
+    ['.codex/agents/debugger.toml', 'gpt-5.2'],
+    ['.codex/agents/game-developer.toml', 'gpt-5.2'],
+    ['.codex/agents/javascript-pro.toml', 'gpt-5.2'],
+    ['.codex/agents/refactoring-specialist.toml', 'gpt-5.2'],
+    ['.codex/agents/reviewer.toml', 'gpt-5.2'],
+  ]);
+
+  for (const [relPath, model] of expectedModels) {
+    const contents = readRepoFile(relPath);
+    assert.match(contents, new RegExp(`model = "${model.replace('.', '\\.')}"`));
+    assert.ok(lineCount(relPath) <= 30, `${relPath} exceeds lean agent budget`);
   }
 });

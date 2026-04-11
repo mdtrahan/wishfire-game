@@ -20,7 +20,8 @@ test('damage application can route a dedicated floating-text kind through both f
 test('renderer avoids duplicate canvas floating text when dom layer is active', () => {
   const src = read('web-runner/app.js');
   assert.match(src, /const renderDamageTexts = \(filterFn\) => \{/);
-  assert.match(src, /if \(damageNumberLayer\) return;/);
+  assert.match(src, /if \(damageNumberLayer\) syncDamageNumberLayerBounds\(\);/);
+  assert.match(src, /if \(damageNumberLayer && \(d\.domAnimation \|\| d\.domSpawned\)\) continue;/);
 });
 
 test('web runner loads Rubik Mono One for combat floating text', () => {
@@ -51,13 +52,16 @@ test('dom floating numbers apply outlined gradients, glow, and squash-stretch fo
   assert.match(src, /const DAMAGE_TEXT_FONT = '"Rubik Mono One", "Trebuchet MS", "Verdana", sans-serif';/);
   assert.match(src, /numberText\.style\.background = 'transparent';/);
   assert.match(src, /numberText\.style\.border = 'none';/);
-  assert.match(src, /ctx\.fillStyle = glowColor;/);
-  assert.match(src, /ctx\.shadowColor = glowColor;/);
+  assert.match(src, /ctx\.shadowColor = 'transparent';/);
+  assert.match(src, /ctx\.shadowOffsetY = 0;/);
   assert.match(src, /ctx\.strokeStyle = '#0f0f0f';/);
   assert.match(src, /ctx\.createLinearGradient\(0, 0, 0, approxHeight\);/);
   assert.match(src, /ctx\.fillText\(value, approxWidth \/ 2, approxHeight \/ 2 \+ 1\);/);
-  assert.match(src, /tl\.fromTo\(numberText,\s*\{[\s\S]*scaleX:[\s\S]*scaleY:/);
-  assert.match(src, /tl\.to\(numberText,\s*\{[\s\S]*scaleX:[\s\S]*scaleY:/);
+  assert.match(src, /tl\.to\(wrapper,\s*\{[\s\S]*y: -28,[\s\S]*duration: 0\.8/);
+  assert.match(src, /tl\.to\(wrapper,\s*\{[\s\S]*opacity: 0,[\s\S]*duration: 0\.16/);
+  assert.doesNotMatch(src, /ctx\.globalAlpha = 0\.7/);
+  assert.doesNotMatch(src, /glowColor/);
+  assert.doesNotMatch(src, /rotation: random/);
   assert.doesNotMatch(src, /backgroundClip = 'text'/);
   assert.doesNotMatch(src, /webkitTextFillColor = 'transparent'/);
 });

@@ -60,10 +60,7 @@ If the required assessment is missing or ambiguous:
 
 ## Phase 3: Use The Right Execution Path
 
-Default routing:
-- gameplay/runtime/system behavior -> `game-developer`
-- JS-specific reasoning -> `javascript-pro`
-- root-cause isolation -> `debugger`
+Follow the subagent routing map in `/Users/Mace/Wishfire/Codex-Orka/AGENTS.md`.
 
 Use `jcodemunch` first for large, mirrored, or hot-file tracing when it materially reduces confusion or token spend.
 Use `jdocmunch` first for documentation-heavy retrieval.

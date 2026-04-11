@@ -867,6 +867,18 @@ const HERO_BLUE_GEM_SKILL_POINT_CONVERSION = Object.freeze({
   gemsPerUnit: 100,
   pointsPerUnit: 1,
 });
+const HERO_LEVEL_CAP = 99;
+const HERO_XP_EARLY_LINEAR_GROWTH = 22;
+const HERO_XP_EARLY_ACCELERATION = 1.35;
+const HERO_XP_MID_BASE_XP = 1000;
+const HERO_XP_MID_GROWTH_RATE = 6600 / 39;
+const HERO_XP_LATE_BASE_XP = 8000;
+const HERO_XP_LATE_LINEAR_GROWTH = 390;
+const HERO_XP_LATE_ACCELERATION = 42;
+const HERO_KILL_XP_DIFFICULTY_MULTIPLIERS = Object.freeze({
+  normal: 1,
+  elite: 1.5,
+});
 
 function getHeroSkillProgressConfigForHero(heroName) {
   const key = String(heroName || '').trim().toLowerCase();
@@ -1055,6 +1067,277 @@ function buildHeroSkillPointTxn(g, identity, source, delta, balanceAfter, kind, 
     time: Number(g.time || 0),
     turn: Number(g.DebugTurnCount || 0),
     turnSerial: Number(g.TurnSerial || 0),
+  };
+}
+
+export function GetHeroXPToNextLevel(level) {
+  const currentLevel = Math.max(1, Math.min(HERO_LEVEL_CAP, Math.floor(Number(level || 1))));
+  if (currentLevel >= HERO_LEVEL_CAP) return 0;
+  if (currentLevel <= 20) {
+    const step = currentLevel - 1;
+    return Math.max(1, Math.round(50 + (HERO_XP_EARLY_LINEAR_GROWTH * step) + (HERO_XP_EARLY_ACCELERATION * step * step)));
+  }
+  if (currentLevel <= 60) {
+    return Math.max(1, Math.round(HERO_XP_MID_BASE_XP + ((currentLevel - 21) * HERO_XP_MID_GROWTH_RATE)));
+  }
+  const step = currentLevel - 61;
+  return Math.max(1, Math.round(HERO_XP_LATE_BASE_XP + (HERO_XP_LATE_LINEAR_GROWTH * step) + (HERO_XP_LATE_ACCELERATION * step * step)));
+}
+
+function getHeroXPTotalForLevelStart(level) {
+  const targetLevel = Math.max(1, Math.min(HERO_LEVEL_CAP, Math.floor(Number(level || 1))));
+  let total = 0;
+  for (let currentLevel = 1; currentLevel < targetLevel; currentLevel += 1) {
+    total += GetHeroXPToNextLevel(currentLevel);
+  }
+  return total;
+}
+
+function sanitizeHeroXPDifficulty(difficulty) {
+  const key = String(difficulty || 'normal').trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(HERO_KILL_XP_DIFFICULTY_MULTIPLIERS, key) ? key : 'normal';
+}
+
+export function GetHeroKillXPRewardForLevel(level, difficulty = 'normal') {
+  const currentLevel = Math.max(1, Math.min(HERO_LEVEL_CAP, Math.floor(Number(level || 1))));
+  const difficultyKey = sanitizeHeroXPDifficulty(difficulty);
+  const multiplier = Number(HERO_KILL_XP_DIFFICULTY_MULTIPLIERS[difficultyKey] || 1);
+  const baseXP = 8 + (currentLevel * 2);
+  return Math.max(1, Math.round(baseXP * multiplier));
+}
+
+function buildDefaultHeroXPState() {
+  return {
+    level: 1,
+    xp: 0,
+    totalXP: 0,
+    xpToNext: GetHeroXPToNextLevel(1),
+  };
+}
+
+function cloneHeroXPState(entry) {
+  return {
+    level: Math.max(1, Math.min(HERO_LEVEL_CAP, Math.floor(Number(entry && entry.level) || 1))),
+    xp: Math.max(0, Math.floor(Number(entry && entry.xp) || 0)),
+    totalXP: Math.max(0, Math.floor(Number(entry && entry.totalXP) || 0)),
+    xpToNext: Math.max(0, Math.floor(Number(entry && entry.xpToNext) || 0)),
+  };
+}
+
+function syncHeroXPLegacyViews(ctx, store) {
+  const g = getGlobals(ctx);
+  const xpByUID = {};
+  const levelByUID = {};
+  const totalXPByUID = {};
+  for (const hero of getAllHeroActors(ctx)) {
+    const identity = resolveHeroSkillPointIdentity(ctx, hero);
+    if (!identity.heroId || !identity.actorUID) continue;
+    const record = store[identity.heroId] || buildDefaultHeroXPState();
+    hero.heroLevel = Number(record.level || 1);
+    hero.heroXP = Number(record.xp || 0);
+    hero.heroXPToNext = Number(record.xpToNext || 0);
+    hero.heroTotalXP = Number(record.totalXP || 0);
+    xpByUID[identity.actorUID] = Number(record.xp || 0);
+    levelByUID[identity.actorUID] = Number(record.level || 1);
+    totalXPByUID[identity.actorUID] = Number(record.totalXP || 0);
+  }
+  g.HeroXPByUID = xpByUID;
+  g.HeroLevelByUID = levelByUID;
+  g.HeroTotalXPByUID = totalXPByUID;
+}
+
+function ensureHeroXPStore(ctx) {
+  const g = getGlobals(ctx);
+  if (!g.HeroXPByHeroId || typeof g.HeroXPByHeroId !== 'object') {
+    g.HeroXPByHeroId = {};
+  }
+  if (!Array.isArray(g.HeroXPLedger)) g.HeroXPLedger = [];
+  if (!Number.isFinite(g.HeroXPLedgerSeq)) g.HeroXPLedgerSeq = 0;
+  const store = g.HeroXPByHeroId;
+  for (const hero of getAllHeroActors(ctx)) {
+    const identity = resolveHeroSkillPointIdentity(ctx, hero);
+    if (!identity.heroId) continue;
+    if (!store[identity.heroId] || typeof store[identity.heroId] !== 'object') {
+      store[identity.heroId] = buildDefaultHeroXPState();
+      continue;
+    }
+    const current = cloneHeroXPState(store[identity.heroId]);
+    current.level = Math.max(1, Math.min(HERO_LEVEL_CAP, current.level));
+    if (current.level >= HERO_LEVEL_CAP) {
+      current.level = HERO_LEVEL_CAP;
+      current.xp = 0;
+      current.xpToNext = 0;
+      current.totalXP = Math.max(getHeroXPTotalForLevelStart(HERO_LEVEL_CAP), current.totalXP);
+    } else {
+      current.xpToNext = GetHeroXPToNextLevel(current.level);
+      current.xp = Math.max(0, Math.min(current.xp, Math.max(0, current.xpToNext - 1)));
+      current.totalXP = Math.max(getHeroXPTotalForLevelStart(current.level) + current.xp, current.totalXP);
+    }
+    store[identity.heroId] = current;
+  }
+  syncHeroXPLegacyViews(ctx, store);
+  return store;
+}
+
+function nextHeroXPLedgerSeq(g) {
+  g.HeroXPLedgerSeq = Number(g.HeroXPLedgerSeq || 0) + 1;
+  return g.HeroXPLedgerSeq;
+}
+
+function appendHeroXPLedger(g, entry) {
+  const ledger = Array.isArray(g.HeroXPLedger) ? g.HeroXPLedger : (g.HeroXPLedger = []);
+  ledger.push(entry);
+  if (ledger.length > 240) ledger.shift();
+}
+
+function buildHeroXPTxn(g, identity, state, source, appliedXP, levelsGained, difficulty, status, reason = '') {
+  return {
+    seq: nextHeroXPLedgerSeq(g),
+    who: String((identity && identity.heroId) || ''),
+    heroId: String((identity && identity.heroId) || ''),
+    heroIndex: Number((identity && identity.heroIndex) ?? -1),
+    heroName: String((identity && identity.heroName) || ''),
+    actorUID: Number((identity && identity.actorUID) || 0),
+    source: String(source || 'unknown'),
+    appliedXP: Math.max(0, Math.floor(Number(appliedXP || 0))),
+    levelsGained: Math.max(0, Math.floor(Number(levelsGained || 0))),
+    difficulty: sanitizeHeroXPDifficulty(difficulty),
+    status: String(status || 'unknown'),
+    reason: String(reason || ''),
+    levelAfter: Math.max(1, Math.floor(Number(state && state.level) || 1)),
+    xpAfter: Math.max(0, Math.floor(Number(state && state.xp) || 0)),
+    xpToNextAfter: Math.max(0, Math.floor(Number(state && state.xpToNext) || 0)),
+    totalXPAfter: Math.max(0, Math.floor(Number(state && state.totalXP) || 0)),
+    time: Number(g.time || 0),
+    turn: Number(g.DebugTurnCount || 0),
+    turnSerial: Number(g.TurnSerial || 0),
+  };
+}
+
+function ensureHeroXPRecord(ctx, heroRef) {
+  const store = ensureHeroXPStore(ctx);
+  const identity = resolveHeroSkillPointIdentity(ctx, heroRef);
+  if (!identity.heroId) return { identity, record: null };
+  if (!store[identity.heroId] || typeof store[identity.heroId] !== 'object') {
+    store[identity.heroId] = buildDefaultHeroXPState();
+  }
+  return { identity, record: store[identity.heroId] };
+}
+
+export function GetHeroXPState(ctx, heroRef) {
+  const pair = ensureHeroXPRecord(ctx, heroRef);
+  if (!pair.identity.heroId || !pair.record) return null;
+  return cloneHeroXPState(pair.record);
+}
+
+export function GrantHeroXP(ctx, heroRef, amount, source = 'unspecified', options = undefined) {
+  const g = getGlobals(ctx);
+  const delta = Math.max(0, Math.floor(Number(amount || 0)));
+  const difficulty = sanitizeHeroXPDifficulty(options && options.difficulty);
+  const pair = ensureHeroXPRecord(ctx, heroRef);
+  if (!pair.identity.heroId || !pair.record) {
+    const tx = buildHeroXPTxn(g, pair.identity, buildDefaultHeroXPState(), source, 0, 0, difficulty, 'rejected', 'hero_not_found');
+    appendHeroXPLedger(g, tx);
+    return { ok: false, reason: 'hero_not_found', tx };
+  }
+  if (!Number.isFinite(delta) || delta <= 0) {
+    const tx = buildHeroXPTxn(g, pair.identity, pair.record, source, 0, 0, difficulty, 'rejected', 'invalid_amount');
+    appendHeroXPLedger(g, tx);
+    return { ok: false, reason: 'invalid_amount', tx };
+  }
+  const state = pair.record;
+  if (state.level >= HERO_LEVEL_CAP) {
+    state.level = HERO_LEVEL_CAP;
+    state.xp = 0;
+    state.xpToNext = 0;
+    state.totalXP = Math.max(getHeroXPTotalForLevelStart(HERO_LEVEL_CAP), Number(state.totalXP || 0));
+    syncHeroXPLegacyViews(ctx, ensureHeroXPStore(ctx));
+    const tx = buildHeroXPTxn(g, pair.identity, state, source, 0, 0, difficulty, 'rejected', 'level_cap_reached');
+    appendHeroXPLedger(g, tx);
+    return { ok: false, reason: 'level_cap_reached', tx };
+  }
+  let appliedXP = 0;
+  let levelsGained = 0;
+  let remaining = delta;
+  while (remaining > 0 && state.level < HERO_LEVEL_CAP) {
+    const xpToNext = GetHeroXPToNextLevel(state.level);
+    const xpNeeded = Math.max(0, xpToNext - state.xp);
+    const spend = Math.min(remaining, xpNeeded);
+    state.xp += spend;
+    state.totalXP += spend;
+    appliedXP += spend;
+    remaining -= spend;
+    if (state.xp >= xpToNext) {
+      state.level += 1;
+      levelsGained += 1;
+      if (state.level >= HERO_LEVEL_CAP) {
+        state.level = HERO_LEVEL_CAP;
+        state.xp = 0;
+        state.xpToNext = 0;
+        remaining = 0;
+        break;
+      }
+      state.xp = 0;
+      state.xpToNext = GetHeroXPToNextLevel(state.level);
+    }
+  }
+  if (state.level < HERO_LEVEL_CAP) {
+    state.xpToNext = GetHeroXPToNextLevel(state.level);
+  } else {
+    state.xp = 0;
+    state.xpToNext = 0;
+  }
+  syncHeroXPLegacyViews(ctx, ensureHeroXPStore(ctx));
+  const tx = buildHeroXPTxn(g, pair.identity, state, source, appliedXP, levelsGained, difficulty, 'applied');
+  appendHeroXPLedger(g, tx);
+  return { ok: true, state: cloneHeroXPState(state), tx };
+}
+
+export function GetHeroKillXPReward(ctx, heroRef, difficulty = 'normal') {
+  const pair = ensureHeroXPRecord(ctx, heroRef);
+  const level = pair.record ? Number(pair.record.level || 1) : 1;
+  return GetHeroKillXPRewardForLevel(level, difficulty);
+}
+
+export function SimulateHeroLevelingProgress(options = {}) {
+  const killsPerMinute = Math.max(0.0001, Number(options.killsPerMinute || 10));
+  const sessionLengthMinutes = Math.max(0, Number(options.sessionLengthMinutes || 10));
+  const difficulty = sanitizeHeroXPDifficulty(options.difficulty || 'normal');
+  const rows = [];
+  let totalXP = 0;
+  for (let level = 1; level <= HERO_LEVEL_CAP; level += 1) {
+    const xpToNext = GetHeroXPToNextLevel(level);
+    const xpPerKill = GetHeroKillXPRewardForLevel(level, difficulty);
+    const killsRequired = xpToNext > 0 ? xpToNext / xpPerKill : 0;
+    const timeToLevelMinutes = killsRequired / killsPerMinute;
+    rows.push({
+      level,
+      xpToNext,
+      totalXP,
+      xpPerKill,
+      killsRequired,
+      timeToLevelMinutes,
+    });
+    totalXP += xpToNext;
+  }
+  const sumTimeThroughLevel = (targetLevel) => rows
+    .filter((row) => row.level < Math.max(1, Math.min(HERO_LEVEL_CAP, Number(targetLevel || 1))))
+    .reduce((sum, row) => sum + row.timeToLevelMinutes, 0);
+  return {
+    parameters: {
+      early_growth_rate: HERO_XP_EARLY_ACCELERATION,
+      mid_growth_rate: HERO_XP_MID_GROWTH_RATE,
+      late_growth_rate: HERO_XP_LATE_ACCELERATION,
+      kills_per_minute: killsPerMinute,
+      session_length_minutes: sessionLengthMinutes,
+      difficulty,
+    },
+    rows,
+    summary: {
+      totalTimeToLevel20: sumTimeThroughLevel(20),
+      totalTimeToLevel60: sumTimeThroughLevel(60),
+      totalTimeToLevel99: sumTimeThroughLevel(99),
+    },
   };
 }
 
@@ -3228,9 +3511,6 @@ function getRandomLivingEnemy(ctx) {
   return enemies[randomIndex(ctx, enemies.length)];
 }
 
-const FALIE_ENMITY_NAME = 'Falie';
-const FALIE_ENMITY_BONUS = 0.35;
-const FALIE_ENMITY_CAP = 0.75;
 const RUNA_MAGIC_RESIST_NAME = 'Runa';
 const RUNA_MAGIC_RESIST_TRIGGER_CHANCE = 0.6;
 const RUNA_MAGIC_RESIST_NULLIFY_CHANCE = 0.35;
@@ -3240,34 +3520,11 @@ function pickEnemyTargetHero(ctx, enemyUID = 0) {
   const g = getGlobals(ctx);
   const heroes = getHeroes(ctx).filter((h) => (h?.hp ?? 0) > 0);
   if (!heroes.length) return null;
-  const falie = heroes.find((h) => String(h?.name || '') === FALIE_ENMITY_NAME);
-  if (!falie || heroes.length <= 1) {
-    const target = randomPick(heroes) || heroes[0] || null;
-    g.LastEnemyTargetBias = {
-      enemyUID: Number(enemyUID || 0),
-      mode: 'uniform',
-      targetUID: Number(target?.uid || 0),
-      heroCount: heroes.length,
-    };
-    return target;
-  }
-  const baseChance = 1 / heroes.length;
-  const falieChance = Math.min(FALIE_ENMITY_CAP, baseChance + FALIE_ENMITY_BONUS);
-  const roll = Math.random();
-  let target = null;
-  if (roll < falieChance) {
-    target = falie;
-  } else {
-    const nonFalie = heroes.filter((h) => h.uid !== falie.uid);
-    target = randomPick(nonFalie) || falie;
-  }
+  const target = randomPick(ctx, heroes) || heroes[0] || null;
   g.LastEnemyTargetBias = {
     enemyUID: Number(enemyUID || 0),
-    mode: 'falie_enmity_bias',
+    mode: 'uniform',
     targetUID: Number(target?.uid || 0),
-    falieUID: Number(falie.uid || 0),
-    falieChance: Number(falieChance || 0),
-    roll: Number(roll || 0),
     heroCount: heroes.length,
   };
   return target;
@@ -4122,13 +4379,21 @@ export function GetDropRate(ctx, thLevel, dropRate) {
 
 export function AwardMonsterDrop(ctx, monsterName, tierIndex = null, killerUID = 0) {
   const g = getGlobals(ctx);
+  const awardKillerUID = Number(killerUID || GetCurrentTurn(ctx) || 0);
+  const killXP = GetHeroKillXPReward(ctx, awardKillerUID, 'normal');
+  if (killXP > 0) {
+    GrantHeroXP(ctx, awardKillerUID, killXP, 'enemy_kill', {
+      difficulty: 'normal',
+      monsterName,
+    });
+  }
   const baseThLevel = Number(g.TreasureHunterLevel ?? g.THLevel ?? g.DebugTHLevel ?? 0);
-  const huunBonusLevel = resolveHuunExecutionDropBonusLevel(ctx, killerUID || GetCurrentTurn(ctx));
+  const huunBonusLevel = resolveHuunExecutionDropBonusLevel(ctx, awardKillerUID);
   const thLevel = baseThLevel + huunBonusLevel;
   const baseDropRate = Number(g.LootDropRateBps ?? g.DropRateBps ?? 10000);
   const transformedDropRate = getDropRate(thLevel, baseDropRate);
   g.LastHuunExecutionDropBonus = {
-    killerUID: Number(killerUID || 0),
+    killerUID: awardKillerUID,
     baseThLevel: Number(baseThLevel || 0),
     bonusLevel: Number(huunBonusLevel || 0),
     effectiveThLevel: Number(thLevel || 0),

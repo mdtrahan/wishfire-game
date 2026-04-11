@@ -30,6 +30,10 @@ import {
   normalizePartyFormationSlots,
 } from './src/core/partyFormationRules.mjs';
 import {
+  getHeroSkillPresentationEntries,
+  HERO_SKILL_SPRITE_SHEET_PATH,
+} from './src/core/heroSkillPresentation.mjs';
+import {
   applyIdleFarmRewardsToGlobals,
   claimIdleFarmRewardsFromState,
   ensureIdleFarmSessionState,
@@ -298,14 +302,14 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
   gameState.healBlooms = Array.isArray(gameState.healBlooms) ? gameState.healBlooms : [];
   for (const d of texts) {
     if (!d || d.domSpawned) continue;
+    d.domSpawned = true;
     const xOffset = d.targetKind === 'hero' ? -10 : 10;
     const pos = projectToCanvas((d.x || 0) + xOffset, d.baseY != null ? d.baseY : (d.y || 0));
     const isCrit = !!d.isCrit;
     const text = d.targetKind === 'bar'
       ? formatDamageValue({ value: d.amount, type: 'heal', isCrit })
       : formatDamageValue({ value: d.amount, type: d.kind === 'heal' ? 'heal' : 'damage', isCrit });
-    d.domSpawned = true;
-    d.domAnimation = createDamageNumber({
+    const animation = createDamageNumber({
       text,
       x: pos.x,
       y: pos.y,
@@ -314,6 +318,12 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
       isCrit,
       container: damageNumberLayer,
     });
+    if (animation) {
+      d.domAnimation = animation;
+    } else {
+      d.domSpawned = false;
+      d.domAnimation = null;
+    }
     if (d.kind === 'heal' && d.targetKind === 'hero' && !d.healBloomSpawned) {
       d.healBloomSpawned = true;
       d.healBloomAnimation = createHealBloom({
@@ -2034,12 +2044,13 @@ function drawHeroStatGlyph(ctx, emoji, cx, cy, scale) {
   ctx.fillText(glyph, cx, cy + 1);
   ctx.restore();
 }
-function drawHeroSkillNode(ctx, rect, cardData, selected, ss, sf) {
+function drawHeroSkillNode(ctx, rect, cardData, selected, ss, sf, spriteSheetImage = null) {
   const shape = String(cardData?.shape || '').toLowerCase();
   const frameFill = String(cardData?.frameFill || '#D9D9D9');
   const frameStroke = cardData?.frameStroke === null ? null : String(cardData?.frameStroke || '');
   const frameStrokeWidth = Math.max(0, Number(cardData?.frameStrokeWidth || 0));
   const frameRadius = Number(cardData?.frameRadius || 8);
+  const crop = cardData?.spriteCrop;
   ctx.save();
   ctx.fillStyle = frameFill;
   if (frameStroke && frameStrokeWidth > 0) {
@@ -2065,6 +2076,36 @@ function drawHeroSkillNode(ctx, rect, cardData, selected, ss, sf) {
     ctx.fill();
     if (frameStroke && frameStrokeWidth > 0) ctx.stroke();
   }
+
+  if (
+    spriteSheetImage
+    && crop
+    && Number.isFinite(crop.x)
+    && Number.isFinite(crop.y)
+    && Number.isFinite(crop.w)
+    && Number.isFinite(crop.h)
+  ) {
+    const inset = Math.max(1, Math.min(rect.w, rect.h) * (shape === 'diamond' ? 0.08 : 0.06));
+    const innerRect = {
+      x: rect.x + inset,
+      y: rect.y + inset,
+      w: rect.w - (inset * 2),
+      h: rect.h - (inset * 2),
+    };
+    ctx.save();
+    ctx.beginPath();
+    if (shape === 'diamond') {
+      traceDiamondShapePath(ctx, innerRect);
+    } else if (shape === 'circle') {
+      ctx.arc(innerRect.x + (innerRect.w / 2), innerRect.y + (innerRect.h / 2), Math.min(innerRect.w, innerRect.h) / 2, 0, Math.PI * 2);
+      ctx.closePath();
+    } else {
+      ctx.roundRect(innerRect.x, innerRect.y, innerRect.w, innerRect.h, Math.max(3, ss(4)));
+    }
+    ctx.clip();
+    ctx.drawImage(spriteSheetImage, crop.x, crop.y, crop.w, crop.h, innerRect.x, innerRect.y, innerRect.w, innerRect.h);
+    ctx.restore();
+  }
   ctx.restore();
 }
 
@@ -2079,6 +2120,7 @@ function renderHeroSkillModal({
   modalRects,
   heroSkillPoints,
   heroSkillPointsTotal,
+  heroSkillSpriteSheetImage,
   ss,
   sf,
   roundRect,
@@ -2129,7 +2171,7 @@ function renderHeroSkillModal({
   ctx.font = `700 ${sf(12, 9)}px Arial`;
   ctx.fillText(`${getHeroClassLabel(heroName)} skill`, modalRects.classLabel.x, modalRects.classLabel.y + modalRects.classLabel.h / 2);
 
-  drawHeroSkillNode(ctx, iconRect, { ...selectedNode, shape: String(selectedNode.kind || selectedNode.shape || 'circle') }, false, ss, sf);
+  drawHeroSkillNode(ctx, iconRect, { ...selectedNode, shape: String(selectedNode.kind || selectedNode.shape || 'circle') }, false, ss, sf, heroSkillSpriteSheetImage);
 
   roundRect(modalRects.rankRow.x, modalRects.rankRow.y, modalRects.rankRow.w, modalRects.rankRow.h, ss(6), '#efefef', null);
   ctx.fillStyle = '#737373';
@@ -2425,59 +2467,6 @@ function getHeroStatValue(hero, key) {
   return 0;
 }
 
-const HERO_SKILL_BEAD_MAP = {
-  Falie: [
-    { beadId: 'ORKA-wec6', title: 'Block', description: 'Chance to raise block chance by 5%.', actionable: true },
-    { beadId: 'ORKA-j2d3', title: 'Protect', description: "Chance to raise an ally's DEF by 5.", actionable: true },
-    { beadId: 'ORKA-xf1q', title: 'Shell', description: "Chance to raise an ally's RES by 5.", actionable: true },
-    { beadId: 'ORKA-ysh3', title: 'Shield Bash', description: 'Chance to cut an enemy turn gauge by 25%.', actionable: true },
-    { beadId: 'ORKA-hkpx', title: 'Phalanx', description: 'Chance to raise party DEF by 3.', actionable: true },
-    { beadId: 'ORKA-05x8', title: 'Formless', description: 'Chance to trigger a random support effect.', actionable: true },
-    { beadId: 'ORKA-0yzu', title: 'Reprisal', description: 'Chance to counterattack after taking damage.', actionable: true },
-    { beadId: 'ORKA-n064', title: 'Crusade', description: 'Chance to boost party momentum on kill.', actionable: true },
-  ],
-  Huun: [
-    { beadId: 'ORKA-0uvk', title: 'Steal', description: 'Chance to steal resources from an enemy.', actionable: true },
-    { beadId: 'ORKA-fs6j', title: 'Glare', description: 'Chance to lower enemy accuracy.', actionable: true },
-    { beadId: 'ORKA-y8ye', title: 'Growth', description: "Chance to increase an ally's max HP.", actionable: true },
-    { beadId: 'ORKA-7oh3', title: 'Bell', description: 'Chance to ring a support pulse.', actionable: true },
-    { beadId: 'ORKA-b96w', title: 'RabbityHole', description: 'Chance to evade the next incoming hit.', actionable: true },
-    { beadId: 'ORKA-zhft', title: 'Scout', description: 'Chance to reveal an enemy weakness.', actionable: true },
-    { beadId: 'ORKA-nj24', title: 'Siphon HoT', description: 'Chance to siphon life and apply healing over time.', actionable: true },
-    { beadId: 'ORKA-xdwu', title: 'Trinity', description: 'Chance to trigger a tri-hit support chain.', actionable: true },
-  ],
-  Runa: [
-    { beadId: 'ORKA-zwki', title: 'Inspire', description: 'Chance to increase ally MAG.', actionable: true },
-    { beadId: 'ORKA-as8q', title: 'Aura Burn Totem', description: 'Chance to summon a burn totem that damages nearby enemies over time.', actionable: true },
-    { beadId: 'ORKA-gcij', title: 'Aura Blast Totem', description: 'Chance to summon a blast totem that bursts nearby enemies.', actionable: true },
-    { beadId: 'ORKA-r8pf', title: 'Insight', description: 'Chance to improve critical consistency.', actionable: true },
-    { beadId: 'ORKA-u6gr', title: 'Ignore', description: 'Chance to ignore enemy resistance.', actionable: true },
-    { beadId: 'ORKA-u6m6', title: 'Invert', description: 'Chance to invert one enemy buff.', actionable: true },
-    { beadId: 'ORKA-xwvc', title: 'Intensify', description: 'Chance to amplify magic outcome tier.', actionable: true },
-    { beadId: 'RUNA-slot8-pending', title: 'Rift Pulse', description: 'Chance to release a placeholder rift pulse effect.', actionable: false },
-  ],
-  Kojonn: [
-    { beadId: 'ORKA-2anc', title: 'Scrolls', description: 'Chance to increase ally MAG.', actionable: true },
-    { beadId: 'ORKA-8jr6', title: 'Weaken', description: 'Chance to reduce enemy DEF.', actionable: true },
-    { beadId: 'ORKA-elqq', title: 'Lift', description: 'Chance to raise ally SPD.', actionable: true },
-    { beadId: 'ORKA-h5k4', title: 'Step', description: 'Chance to gain extra positioning tempo.', actionable: true },
-    { beadId: 'ORKA-ivcq', title: 'Lock', description: 'Chance to lock enemy action.', actionable: true },
-    { beadId: 'ORKA-nwyi', title: 'Exchange', description: 'Chance to swap one ally and enemy state.', actionable: true },
-    { beadId: 'ORKA-uo0j', title: 'Elevate', description: 'Chance to elevate the power tier of the active effect.', actionable: true },
-    { beadId: 'ORKA-z4fs', title: 'Lucky', description: 'Chance to trigger a lucky duplicate outcome.', actionable: true },
-  ],
-  Westrom: [
-    { beadId: 'ORKA-wec6', title: 'Block', description: "Hero skill backlog item. Default targeting rule: treat as self-target unless explicitly enemy/ally-targeting in acceptance. Time-over-time duration and scaling remain TBD until later directive. Implement as unique modular function per current codebase practices. Skill intent: Chance to increase chance to block by 5%.", actionable: true },
-    { beadId: 'ORKA-j2d3', title: 'Protect', description: "Hero skill backlog item. Default targeting rule: treat as self-target unless explicitly enemy/ally-targeting in acceptance. Time-over-time duration and scaling remain TBD until later directive. Implement as unique modular function per current codebase practices. Skill intent: Chance to increase ally DEF +5 points.", actionable: true },
-    { beadId: 'ORKA-xf1q', title: 'Shell', description: "Hero skill backlog item. Default targeting rule: treat as self-target unless explicitly enemy/ally-targeting in acceptance. Time-over-time duration and scaling remain TBD until later directive. Implement as unique modular function per current codebase practices. Skill intent: Chance to increase ally RES +5 points.", actionable: true },
-    { beadId: 'ORKA-ysh3', title: 'Shield Bash', description: "Hero skill backlog item. Default targeting rule: treat as self-target unless explicitly enemy/ally-targeting in acceptance. Time-over-time duration and scaling remain TBD until later directive. Implement as unique modular function per current codebase practices. Skill intent: Chance to reduce enemy turn gauge by 25%.", actionable: true },
-    { beadId: 'ORKA-hkpx', title: 'Phalanx', description: "Hero skill backlog item. Default targeting rule: treat as self-target unless explicitly enemy/ally-targeting in acceptance. Time-over-time duration and scaling remain TBD until later directive. Implement as unique modular function per current codebase practices. Skill intent: Chance to increase party DEF by 3 points.", actionable: true },
-    { beadId: 'ORKA-05x8', title: 'Formless', description: "Hero skill backlog item. Default targeting rule: treat as self-target unless explicitly enemy/ally-targeting in acceptance. Time-over-time duration and scaling remain TBD until later directive. Implement as unique modular function per current codebase practices. Skill intent: Chance to trigger random support effect.", actionable: true },
-    { beadId: 'ORKA-0yzu', title: 'Reprisal', description: "Hero skill backlog item. Default targeting rule: treat as self-target unless explicitly enemy/ally-targeting in acceptance. Time-over-time duration and scaling remain TBD until later directive. Implement as unique modular function per current codebase practices. Skill intent: Chance to counterattack after taking damage.", actionable: true },
-    { beadId: 'ORKA-n064', title: 'Crusade', description: "Hero skill backlog item. Default targeting rule: treat as self-target unless explicitly enemy/ally-targeting in acceptance. Time-over-time duration and scaling remain TBD until later directive. Implement as unique modular function per current codebase practices. Skill intent: Chance to boost party momentum on kill.", actionable: true },
-  ],
-};
-
 function splitBeadDescriptionLines(description = '', maxChars = 46, maxLines = 3) {
   const words = String(description || '').trim().split(/\s+/).filter(Boolean);
   if (!words.length) return ['', '', ''];
@@ -2505,8 +2494,93 @@ function splitBeadDescriptionLines(description = '', maxChars = 46, maxLines = 3
 }
 
 function getBeadMappedSkillEntries(heroName) {
-  const entries = HERO_SKILL_BEAD_MAP[String(heroName || '')] || [];
-  return entries.slice(0, 8);
+  return getHeroSkillPresentationEntries(heroName).slice(0, 3);
+}
+
+function traceDiamondShapePath(ctx, rect) {
+  const cx = rect.x + (rect.w / 2);
+  const cy = rect.y + (rect.h / 2);
+  ctx.moveTo(cx, rect.y);
+  ctx.lineTo(rect.x + rect.w, cy);
+  ctx.lineTo(cx, rect.y + rect.h);
+  ctx.lineTo(rect.x, cy);
+  ctx.closePath();
+}
+
+function drawHeroSkillIconTile(ctx, tileRect, cardData, spriteSheetImage = null) {
+  const shape = String(cardData?.iconShape || 'circle');
+  const isDiamond = shape === 'diamond';
+  const inset = Math.max(1, Math.min(tileRect.w, tileRect.h) * 0.06);
+  const innerRect = {
+    x: tileRect.x + inset,
+    y: tileRect.y + inset,
+    w: tileRect.w - (inset * 2),
+    h: tileRect.h - (inset * 2),
+  };
+  const accentFill = isDiamond ? '#b6862c' : '#8fc7f6';
+  const accentStroke = isDiamond ? '#f7dd8f' : '#d7efff';
+
+  ctx.save();
+  ctx.beginPath();
+  if (isDiamond) {
+    traceDiamondShapePath(ctx, innerRect);
+  } else {
+    ctx.arc(innerRect.x + (innerRect.w / 2), innerRect.y + (innerRect.h / 2), Math.min(innerRect.w, innerRect.h) / 2, 0, Math.PI * 2);
+    ctx.closePath();
+  }
+  ctx.fillStyle = accentFill;
+  ctx.fill();
+
+  const crop = cardData?.spriteCrop;
+  if (
+    spriteSheetImage
+    && crop
+    && Number.isFinite(crop.x)
+    && Number.isFinite(crop.y)
+    && Number.isFinite(crop.w)
+    && Number.isFinite(crop.h)
+  ) {
+    ctx.save();
+    ctx.beginPath();
+    if (isDiamond) {
+      traceDiamondShapePath(ctx, innerRect);
+    } else {
+      ctx.arc(innerRect.x + (innerRect.w / 2), innerRect.y + (innerRect.h / 2), Math.min(innerRect.w, innerRect.h) / 2, 0, Math.PI * 2);
+      ctx.closePath();
+    }
+    ctx.clip();
+    ctx.drawImage(
+      spriteSheetImage,
+      crop.x,
+      crop.y,
+      crop.w,
+      crop.h,
+      innerRect.x,
+      innerRect.y,
+      innerRect.w,
+      innerRect.h,
+    );
+    ctx.restore();
+  } else {
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.font = `900 ${Math.max(9, Math.round(innerRect.h * 0.34))}px Arial Black`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(cardData?.title || '?').charAt(0), innerRect.x + (innerRect.w / 2), innerRect.y + (innerRect.h / 2) + 1);
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  ctx.beginPath();
+  if (isDiamond) {
+    traceDiamondShapePath(ctx, innerRect);
+  } else {
+    ctx.arc(innerRect.x + (innerRect.w / 2), innerRect.y + (innerRect.h / 2), Math.min(innerRect.w, innerRect.h) / 2, 0, Math.PI * 2);
+    ctx.closePath();
+  }
+  ctx.lineWidth = Math.max(1.5, Math.min(innerRect.w, innerRect.h) * 0.06);
+  ctx.strokeStyle = accentStroke;
+  ctx.stroke();
+  ctx.restore();
 }
 
 function buildHeroCardSpecs(count = 3) {
@@ -2544,7 +2618,7 @@ function buildHeroCardSpecs(count = 3) {
   return specs;
 }
 
-function renderHeroScreenLayoutV2({ ctx, canvas, dpr, gameState, fnContext, closeWinOvalImage, heroPortraitImages }) {
+function renderHeroScreenLayoutV2({ ctx, canvas, dpr, gameState, fnContext, closeWinOvalImage, heroPortraitImages, heroSkillSpriteSheetImage }) {
   const roster = getHeroScreenRoster();
   const heroIndex = normalizeHeroSelectionIndex();
   const hero = roster[heroIndex] || roster[0] || {
@@ -2796,7 +2870,7 @@ function renderHeroScreenLayoutV2({ ctx, canvas, dpr, gameState, fnContext, clos
       ...cardData,
       ...nodeItem,
       shape: isDiamond ? 'diamond' : 'circle',
-    }, selected, ss, sf);
+    }, selected, ss, sf, heroSkillSpriteSheetImage);
     if (nodeItem.levelBacker) {
       nodeBadgeOverlays.push({
         backer: nodeItem.levelBacker,
@@ -2892,6 +2966,7 @@ function renderHeroScreenLayoutV2({ ctx, canvas, dpr, gameState, fnContext, clos
       },
       heroSkillPoints,
       heroSkillPointsTotal,
+      heroSkillSpriteSheetImage,
       ss,
       sf,
       roundRect,
@@ -2924,13 +2999,16 @@ function getHeroScreenSkillCards(hero) {
     title: String(entry.title || `Skill ${idx + 1}`),
     beadId: String(entry.beadId || ''),
     beadDescription: String(entry.description || ''),
+    badge: String(entry.badge || (idx === 2 ? 'JS' : 'CS')),
+    iconShape: String(entry.iconShape || (idx === 2 ? 'diamond' : 'circle')),
+    spriteCrop: entry.spriteCrop || null,
     actionable: entry.actionable !== false,
     rank: 0,
     maxRank: 15,
     nextCost: 0,
     status: entry.actionable === false ? 'pending' : 'locked',
   }));
-  while (fallbackSkillStates.length < 8) {
+  while (fallbackSkillStates.length < 3) {
     const idx = fallbackSkillStates.length;
     fallbackSkillStates.push({
       slot: idx,
@@ -2938,6 +3016,9 @@ function getHeroScreenSkillCards(hero) {
       title: `Skill ${idx + 1}`,
       beadId: '',
       beadDescription: '',
+      badge: idx === 2 ? 'JS' : 'CS',
+      iconShape: idx === 2 ? 'diamond' : 'circle',
+      spriteCrop: null,
       actionable: true,
       rank: 0,
       maxRank: 15,
@@ -2977,7 +3058,7 @@ function getHeroScreenSkillCards(hero) {
     if (!skill || !Number.isFinite(skill.slot)) continue;
     liveBySlot.set(skill.slot, skill);
   }
-  return fallbackSkillStates.slice(0, 8).map((fallback, idx) => {
+  return fallbackSkillStates.slice(0, 3).map((fallback, idx) => {
     const live = liveBySlot.get(idx) || null;
     const source = sourceEntries[idx] || fallbackSkillStates[idx] || {};
     const beadDescription = String(source.description || (live && live.beadDescription) || fallback.beadDescription || '');
@@ -2998,6 +3079,9 @@ function getHeroScreenSkillCards(hero) {
       status,
       nextCost: Math.max(0, Math.floor(Number((live && live.nextCost) ?? fallback.nextCost) || 0)),
       beadId: String(source.beadId || (live && live.beadId) || fallback.beadId || ''),
+      badge: String(source.badge || fallback.badge || (idx === 2 ? 'JS' : 'CS')),
+      iconShape: String(source.iconShape || fallback.iconShape || (idx === 2 ? 'diamond' : 'circle')),
+      spriteCrop: source.spriteCrop || fallback.spriteCrop || null,
       actionable,
       title: String(source.title || (live && live.title) || fallback.title || `Skill ${idx + 1}`),
       rankLabel: `Lv${rank}`,
@@ -4727,6 +4811,7 @@ async function main(){
   let debuffIconImages = {};
   let mapBackgroundImage = null;
   let heroCapsuleImages = {};
+  let heroSkillSpriteSheetImage = null;
   let plusIconImage = null;
   let minusIconImage = null;
   let heroBackArrowImage = null;
@@ -4869,6 +4954,7 @@ async function main(){
     debuffIconImages = {};
     mapBackgroundImage = null;
     heroCapsuleImages = {};
+    heroSkillSpriteSheetImage = null;
     plusIconImage = null;
     minusIconImage = null;
     heroBackArrowImage = null;
@@ -4944,6 +5030,7 @@ async function main(){
       const plusPromise = loadImage(assetUrl(HERO_PACK_PLUS_PATH)).then(img => img || loadImage(FIGMA_PLUS_URL));
       const minusPromise = loadImage(assetUrl(HERO_PACK_MINUS_PATH)).then(img => img || loadImage(FIGMA_MINUS_URL));
       const closePromise = loadImage(assetUrl(HERO_PACK_CLOSE_OVAL_PATH)).then(img => img || loadImage(FIGMA_HERO_CLOSE_OVAL_URL));
+      const heroSkillSheetPromise = loadImage(assetUrl(HERO_SKILL_SPRITE_SHEET_PATH));
 
       tasks.push(
         ...heroPortraitLoads,
@@ -4956,6 +5043,7 @@ async function main(){
         (async () => { heroBackArrowImage = await loadImage(FIGMA_HERO_BACK_URL); })(),
         (async () => { heroNextArrowImage = await loadImage(FIGMA_HERO_NEXT_URL); })(),
         (async () => { closeWinOvalImage = await closePromise; })(),
+        (async () => { heroSkillSpriteSheetImage = await heroSkillSheetPromise; })(),
       );
 
       let completed = 0;
@@ -7051,7 +7139,7 @@ async function main(){
       return;
     }
     if (layoutId === 'heroLayout') {
-      renderHeroScreenLayoutV2({ ctx, canvas, dpr, gameState, fnContext, closeWinOvalImage, heroPortraitImages });
+      renderHeroScreenLayoutV2({ ctx, canvas, dpr, gameState, fnContext, closeWinOvalImage, heroPortraitImages, heroSkillSpriteSheetImage });
       return;
     }
     if (false && layoutId === 'heroLayout') {
@@ -7375,8 +7463,7 @@ async function main(){
           ctx.globalAlpha = 0.4;
           roundRect(titleBar.x, titleBar.y, titleBar.w, titleBar.h, ss(5), '#a7cfdf', null);
           ctx.restore();
-          const accent = ['#ecd23d', '#ecd23d', '#d98de5'][idx] || '#9aa7b8';
-          roundRect(iconTile.x, iconTile.y, iconTile.w, iconTile.h, ss(4.8), accent, null);
+          drawHeroSkillIconTile(ctx, iconTile, cardData, heroSkillSpriteSheetImage);
           const minusZone = mapRect(cardSpec.controls.minus);
           const valueZone = mapRect(cardSpec.controls.value);
           const plusZone = mapRect(cardSpec.controls.plus);
@@ -7435,9 +7522,14 @@ async function main(){
           ctx.font = `700 ${sf(11.5, 8)}px Arial`;
           ctx.textAlign = 'left';
           ctx.fillText(String(cardData.title || `Skill ${idx + 1}`), bodyText.x, bodyText.titleY);
+          ctx.textAlign = 'right';
+          ctx.fillStyle = String(cardData.badge || '') === 'JS' ? '#7a3b07' : '#4b5563';
+          ctx.font = `900 ${sf(8.5, 6)}px Arial Black`;
+          ctx.fillText(String(cardData.badge || ''), card.x + card.w - ss(10), bodyText.titleY);
           ctx.font = `700 ${sf(10.56, 7)}px Arial`;
           ctx.fillStyle = actionable ? '#111111' : '#6c6c6c';
           const lines = Array.isArray(cardData.lines) ? cardData.lines : [];
+          ctx.textAlign = 'left';
           ctx.fillText(String(lines[0] || ''), bodyText.x, bodyText.line1Y);
           ctx.fillText(String(lines[1] || ''), bodyText.x, bodyText.line2Y);
           ctx.fillText(String(lines[2] || ''), bodyText.x, bodyText.line3Y);
@@ -9889,14 +9981,15 @@ async function main(){
     }
 
     const renderDamageTexts = (filterFn) => {
-      if (damageNumberLayer) return;
       if (!isDamageTextFontReady()) return;
       const dmgTexts = state.globals.DamageTexts || [];
       if (!dmgTexts.length) return;
+      if (damageNumberLayer) syncDamageNumberLayerBounds();
       const now = Number(state.globals.time || 0);
       for (let i = 0; i < dmgTexts.length; i++) {
         const d = dmgTexts[i];
         if (!d || !filterFn(d)) continue;
+        if (damageNumberLayer && (d.domAnimation || d.domSpawned)) continue;
         const kind = d.kind === 'heal' ? 'heal' : 'damage';
         const riseSec = Math.max(0.001, Number(d.riseInSec || 0.18));
         const holdSec = Math.max(0.001, Number(d.holdSec || 0.7));

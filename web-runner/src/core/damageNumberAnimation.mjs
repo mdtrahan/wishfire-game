@@ -1,10 +1,5 @@
 import { gsap } from './gsapShim.mjs';
 
-function random(min, max) {
-  return Math.random() * (max - min) + min;
-}
-
-let damageNumberSeq = 0;
 const DAMAGE_TEXT_FONT = '"Rubik Mono One", "Trebuchet MS", "Verdana", sans-serif';
 const DAMAGE_TEXT_FONT_SPEC = `28px ${DAMAGE_TEXT_FONT}`;
 let damageTextFontPromise = null;
@@ -66,44 +61,19 @@ export function createDamageNumber({
   gsap.set(wrapper, {
     x: 0,
     y: 0,
+    opacity: 0,
     transformOrigin: 'center bottom',
   });
 
   const isHeal = String(kind || 'damage') === 'heal';
-  const fallbackColor = isHeal ? '#b9ffd7' : '#ffe59d';
   const gradientStops = isHeal
     ? ['#86eb2e', '#9fdfff']
     : ['#fbfdce', '#f7f8d4'];
-  const glowColor = isHeal
-    ? 'rgba(140, 255, 205, 0.38)'
-    : 'rgba(251, 253, 206, 0.28)';
-  const seq = ++damageNumberSeq;
-
   const timelines = [];
 
   const cleanup = () => {
     if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
   };
-
-  const wrapperTimeline = gsap.timeline({
-    onComplete: cleanup,
-  });
-
-  wrapperTimeline.to(wrapper, {
-    y: '-=60',
-    duration: 0.8,
-    ease: 'power2.out',
-  });
-
-  wrapperTimeline.to(wrapper, {
-    x: '+=4',
-    duration: 0.6,
-    ease: 'sine.inOut',
-    yoyo: true,
-    repeat: 1,
-  }, 0.26);
-
-  timelines.push(wrapperTimeline);
 
   const value = String(text || '');
   const fontSize = 28;
@@ -129,20 +99,6 @@ export function createDamageNumber({
   const drawGlyph = () => {
     if (!ctx) return;
     ctx.clearRect(0, 0, approxWidth, approxHeight);
-    ctx.save();
-    ctx.font = `${fontSize}px ${DAMAGE_TEXT_FONT}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    ctx.fillStyle = glowColor;
-    ctx.globalAlpha = 0.7;
-    ctx.shadowColor = glowColor;
-    ctx.shadowBlur = 8;
-    ctx.shadowOffsetY = 2;
-    ctx.fillText(value, approxWidth / 2, approxHeight / 2 + 3);
-    ctx.restore();
-
     const gradient = ctx.createLinearGradient(0, 0, 0, approxHeight);
     gradient.addColorStop(0, gradientStops[0]);
     gradient.addColorStop(1, gradientStops[1]);
@@ -156,6 +112,8 @@ export function createDamageNumber({
     ctx.strokeStyle = '#0f0f0f';
     ctx.lineWidth = 5;
     ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
     ctx.strokeText(value, approxWidth / 2, approxHeight / 2 + 1);
     ctx.fillStyle = gradient;
     ctx.fillText(value, approxWidth / 2, approxHeight / 2 + 1);
@@ -163,82 +121,53 @@ export function createDamageNumber({
   };
   wrapper.appendChild(numberText);
 
-  const impactScale = isCrit ? 1.35 : 1.25;
-
   let started = false;
   let killed = false;
+  let activeTimeline = null;
   const startAnimation = () => {
     if (started || killed) return;
     started = true;
     drawGlyph();
-    wrapper.style.opacity = '1';
     gsap.set(numberText, {
-      y: random(-2, 2),
-      rotation: random(-3, 3),
+      y: 0,
+      rotation: 0,
       transformOrigin: 'center bottom',
-    });
-
-    const tl = gsap.timeline();
-
-    if (isCrit) {
-      tl.fromTo(numberText, {
-        scaleX: 0.45,
-        scaleY: 0.32,
-        opacity: 0,
-      }, {
-        scaleX: 0.82,
-        scaleY: 0.62,
-        opacity: 1,
-        duration: 0.06,
-        ease: 'expo.in',
-      });
-    }
-
-    tl.fromTo(numberText, {
-      scaleX: 0.62,
-      scaleY: 0.5,
-      opacity: 0,
-    }, {
-      scaleX: impactScale * 1.09,
-      scaleY: impactScale * 0.87,
+      scaleX: 1,
+      scaleY: 1,
       opacity: 1,
-      duration: 0.12,
-      ease: 'back.out(1.7)',
     });
 
-    tl.to(numberText, {
-      scaleX: 0.97,
-      scaleY: 1.02,
-      duration: 0.1,
+    const tl = activeTimeline = gsap.timeline({
+      onComplete: cleanup,
+    });
+    timelines.push(tl);
+
+    tl.set(wrapper, {
+      opacity: 1,
+      y: 0,
+    });
+
+    tl.to(wrapper, {
+      y: -28,
+      duration: 0.8,
       ease: 'power2.out',
+    }, 0);
+
+    tl.to(wrapper, {
+      y: -28,
+      opacity: 1,
+      duration: 0.484,
+      ease: 'none',
     });
 
-    tl.to(numberText, {
-      scaleX: 1.03,
-      scaleY: 1.06,
-      duration: 0.04,
+    tl.to(wrapper, {
+      opacity: 0,
+      duration: 0.16,
       ease: 'sine.out',
     });
-
-    tl.to(numberText, {
-      scaleX: 1.06,
-      scaleY: 1.12,
-      duration: 0.44,
-      ease: 'sine.inOut',
-    }, '<');
-
-    tl.to(numberText, {
-      scaleX: 1.14,
-      scaleY: 1.2,
-      opacity: 0,
-      duration: 0.3,
-      ease: 'power2.in',
-    });
-
-    timelines.push(tl);
   };
 
-  wrapper.style.opacity = '0';
+  container.appendChild(wrapper);
   if (isDamageTextFontReady()) {
     startAnimation();
   } else {
@@ -246,8 +175,6 @@ export function createDamageNumber({
       if (!killed) startAnimation();
     });
   }
-
-  container.appendChild(wrapper);
   return {
     wrapper,
     timelines,

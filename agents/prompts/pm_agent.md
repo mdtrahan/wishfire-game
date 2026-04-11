@@ -72,11 +72,7 @@ Do not hand off to dev until the required assessment is non-ambiguous.
 
 ## Phase 4: Dev Routing
 
-Default routing:
-- gameplay/runtime/system behavior -> `game-developer`
-- root-cause isolation -> `debugger`
-- narrow codebase ownership lookup -> `search-specialist`
-- regression review -> `reviewer`
+Follow the subagent routing map in `/Users/Mace/Wishfire/Codex-Orka/AGENTS.md`.
 
 Use the smallest specialist that fits the phase.
 Do not route a bead that is still missing scope or acceptance.

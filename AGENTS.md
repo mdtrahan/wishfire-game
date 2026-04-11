@@ -48,6 +48,17 @@ ai-memory/
 - Gameplay mirrors: `Scripts/functionBank.js`, `web-runner/modules/functionBank.js`
 - Runtime integration/render seam: `web-runner/app.js`
 
+## Subagent Routing
+
+- `product-manager` (`gpt-5.2`): PM scope, acceptance, sequencing
+- `search-specialist` (`gpt-5.4-mini`): codebase search and ownership lookup
+- `debugger` (`gpt-5.2`): root-cause isolation and failure mapping
+- `game-developer` (`gpt-5.2`): gameplay, runtime, and render-loop implementation
+- `javascript-pro` (`gpt-5.2`): JavaScript runtime, async, and module issues
+- `refactoring-specialist` (`gpt-5.2`): behavior-preserving structural cleanup
+
+Use `reviewer` only as an optional escalation for large or risky diffs. Normal closure uses the main orchestrator, deterministic tests, and human QA.
+
 ## Canonical Docs
 
 - Architecture map: [docs/architecture/index.md](docs/architecture/index.md)

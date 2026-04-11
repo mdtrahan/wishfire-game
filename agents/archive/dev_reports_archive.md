@@ -9,6 +9,15 @@
 
 ## Reports
 - (append newest report at top)
+- bead id: ORKA-h9q
+- summary of changes: Added a mirrored hero leveling system with a deterministic Lv1-99 XP curve, per-hero XP state, kill-based XP awards wired into the enemy-death / AwardMonsterDrop seam, and a validation simulation for pacing bands.
+- files modified: `Scripts/functionBank.js`; `web-runner/modules/functionBank.js`; `tests/heroLevelingContract.test.js`; `.beads/blocked/ORKA-h9q.md`
+- test evidence:
+  - `node --test tests/heroLevelingContract.test.js tests/huunExecutionDropBonusContract.test.js` -> 7 passed, 0 failed
+- discovery lane comparison: not used on this bead
+- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (deterministic progression helper + kill-award seam)
+- scope confirmation: Confined to mirrored combat/progression runtime helpers and a focused validation test. No UI or governance files were changed for this bead.
+
 - bead id: ORKA-4dpd
 - summary of changes: Restored the browser runtime path after the migration cleanup removed the repo-local runtime dependency tree. Added a tracked GSAP compatibility shim in `web-runner/src/core/gsapShim.mjs` and repointed the animation helpers to it so the browser modules can import animation helpers again without relying on a wiped `node_modules` tree. This fixes the blank/loading startup failure by allowing the app module to load and draw.
 - files modified: `web-runner/src/core/gsapShim.mjs`; `web-runner/src/core/damageNumberAnimation.mjs`; `web-runner/src/core/healBloomAnimation.mjs`; `web-runner/src/core/goldCollectAnimation.mjs`; `web-runner/src/core/hpBarAnimation.mjs`; `tests/damageNumberTimelineContract.test.js`; `tests/hpBarAnimationContract.test.js`; `ai-memory/insights.md`; `agents/dev_reports.md`
@@ -1856,3 +1865,32 @@ Bead ORKA-jx97
   - mirror-vs-live `comm` diff for `.beads/open` vs live open ids (empty after reconciliation)
   - mirror-vs-live `comm` diff for `.beads/in_progress` vs live in-progress ids (empty after reconciliation)
 - scope confirmation: Confined to mirror/governance reconciliation only. No gameplay/runtime code or product rules were changed.
+
+- bead id: ORKA-wao
+- summary of changes: Replaced the old placeholder hero-skill presentation map with a three-skill CS/JS dataset per hero, loaded the provided skill icon sprite sheet, and rendered masked circle/diamond node art directly into the live hero-screen skill frames and modal path.
+- files modified: `web-runner/app.js`; `web-runner/src/core/heroSkillPresentation.mjs`; `tests/heroSkillPresentationContract.test.js`; `.beads/blocked/ORKA-wao.md`
+- test evidence:
+  - `node --test tests/heroSkillPresentationContract.test.js` -> 2 passed, 0 failed
+  - browser runtime: `agent-browser` on `http://127.0.0.1:8000/web-runner/index.html` -> Falie hero screen shows Block / Shield Bash / Bounce masked node icons; Huun hero screen shows Steal / Lift / Assault masked node icons
+- discovery lane comparison: `debugger` was unnecessary; this was a presentation/data-lane change in the hero-screen render seam with one real runtime bug found by browser QA (sprite-sheet scope leak) and fixed in the same cycle
+- pilot value signals: token cost `low`; operator overhead `medium`; reusable output `yes` (sprite-sheet crop metadata + masked circle/diamond node renderer)
+- scope confirmation: Confined to hero-screen presentation data and rendering. No skill wiring, proc logic, combat math, or progression behavior changed.
+
+- bead id: ORKA-dmg
+- summary of changes: Hardened combat damage numbers so the canvas fallback is no longer globally suppressed by the DOM overlay layer before an individual DOM animation is confirmed. The renderer now keeps per-entry fallback available, and the overlay bounds are re-synced during render.
+- files modified: `web-runner/app.js`; `tests/damageNumberTimelineContract.test.js`; `tests/damageTextPaletteContract.test.js`; `ai-memory/insights.md`; `progress.md`; `.beads/in_progress/ORKA-dmg.md`
+- test evidence:
+  - `node --test tests/damageNumberTimelineContract.test.js tests/damageTextPaletteContract.test.js tests/damageTextFormattingContract.test.js` -> 13 passed, 0 failed
+  - `node --test tests/hitFlashFeedbackContract.test.js` -> 3 passed, 0 failed
+- discovery lane comparison: not used on this bead
+- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (per-entry fallback guard for overlay-owned combat text)
+- scope confirmation: Confined to combat damage-text rendering fallback hardening and contract updates. No combat math, damage formulas, or balance logic changed.
+
+- bead id: ORKA-h9q
+- summary of changes: Added a mirrored hero leveling system with a deterministic Lv1-99 XP curve, per-hero XP state, kill-based XP awards wired into the enemy-death / AwardMonsterDrop seam, and a validation simulation for pacing bands.
+- files modified: `Scripts/functionBank.js`; `web-runner/modules/functionBank.js`; `tests/heroLevelingContract.test.js`; `.beads/blocked/ORKA-h9q.md`
+- test evidence:
+  - `node --test tests/heroLevelingContract.test.js tests/huunExecutionDropBonusContract.test.js` -> 7 passed, 0 failed
+- discovery lane comparison: not used on this bead
+- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (deterministic progression helper + kill-award seam)
+- scope confirmation: Confined to mirrored combat/progression runtime helpers and a focused validation test. No UI or governance files were changed for this bead.

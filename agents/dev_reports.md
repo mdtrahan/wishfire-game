@@ -12,6 +12,25 @@ Active handoff file only. Keep only the current review window here; move older e
 - scope confirmation:
 
 ## Recent Reports
+- bead id: ORKA-wao
+- summary of changes: Replaced the old placeholder hero-skill presentation map with a three-skill CS/JS dataset per hero, loaded the provided skill icon sprite sheet, and rendered masked circle/diamond node art directly into the live hero-screen skill frames and modal path.
+- files modified: `web-runner/app.js`; `web-runner/src/core/heroSkillPresentation.mjs`; `tests/heroSkillPresentationContract.test.js`; `.beads/blocked/ORKA-wao.md`
+- test evidence:
+  - `node --test tests/heroSkillPresentationContract.test.js` -> 2 passed, 0 failed
+  - browser runtime: `agent-browser` on `http://127.0.0.1:8000/web-runner/index.html` -> Falie hero screen shows Block / Shield Bash / Bounce masked node icons; Huun hero screen shows Steal / Lift / Assault masked node icons
+- discovery lane comparison: `debugger` was unnecessary; this was a presentation/data-lane change in the hero-screen render seam with one real runtime bug found by browser QA (sprite-sheet scope leak) and fixed in the same cycle
+- pilot value signals: token cost `low`; operator overhead `medium`; reusable output `yes` (sprite-sheet crop metadata + masked circle/diamond node renderer)
+- scope confirmation: Confined to hero-screen presentation data and rendering. No skill wiring, proc logic, combat math, or progression behavior changed.
+
+- bead id: ORKA-dm6
+- summary of changes: Removed the hardcoded Falie enmity bias from enemy single-target selection in both mirrored function banks. Enemy attacks now pick uniformly from living heroes unless a bead explicitly adds a validated taunt/enmity mechanic.
+- files modified: `web-runner/modules/functionBank.js`; `Scripts/functionBank.js`; `tests/falieEnmityTargetBiasContract.test.js`; `ai-memory/insights.md`; `.beads/blocked/ORKA-dm6.md`
+- test evidence:
+  - `node --test tests/falieEnmityTargetBiasContract.test.js tests/huunExecutionDropBonusContract.test.js` -> 6 passed, 0 failed
+- discovery lane comparison: `debugger` isolated the failure to an explicit Falie-targeting rule in both function-bank mirrors rather than a render or runtime-projection bug
+- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (uniform living-hero target-selection rule + mirrored-contract behavior test)
+- scope confirmation: Confined to enemy single-target hero selection in the mirrored function banks and its contract coverage. No enemy damage formulas, skill rates, or hero stats changed.
+
 - bead id: ORKA-h3x
 - summary of changes: Replaced the overloaded repo instruction file with a thin repo map, added canonical docs indexes under `docs/`, converted `README.md`, `claude.md`, `ai-memory/project.md`, and the old browser backend policy into short compatibility shims, created a migration plan artifact with rollback anchors, added a doc contract test to keep the new map thin and singular, and then refined `AGENTS.md` toward a more literal repo-shape tree so the front door answers “what is here and where do I go next?” before any deeper routing prose.
 - files modified: `AGENTS.md`; `README.md`; `claude.md`; `ai-memory/project.md`; `docs/architecture/index.md`; `docs/product/index.md`; `docs/qa/index.md`; `docs/qa/browser-policy.md`; `docs/qa/browser-validation.md`; `docs/workflow/index.md`; `docs/references/index.md`; `docs/generated/index.md`; `docs/plans/active/harness-engineering-migration.md`; `docs/knowledge-registry.json`; `docs/backend/browser-backend-policy.md`; `governance/qa/browser-battery-minimal.md`; `governance/qa/combat-playwright-control-model.md`; `governance/product/game-design-document.md`; `governance/product/game-function-reference.md`; `governance/execution/beads-process.md`; `ai-memory/context.md`; `ai-memory/insights.md`; `tests/harnessDocsContract.test.js`; `output/checkpoints/harness-migration-pre-20260409.md`; `.beads/blocked/ORKA-h3x.md`
@@ -63,22 +82,3 @@ Active handoff file only. Keep only the current review window here; move older e
 - discovery lane comparison: not used on this bead
 - pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (shared interpolation shim behavior test)
 - scope confirmation: Confined to the shared animation shim and its behavior coverage. No combat formulas, enemy AI, or UI layout changes were made.
-
-- bead id: ORKA-dmg
-- summary of changes: Hardened combat damage numbers so the canvas fallback is no longer globally suppressed by the DOM overlay layer before an individual DOM animation is confirmed. The renderer now keeps per-entry fallback available, and the overlay bounds are re-synced during render.
-- files modified: `web-runner/app.js`; `tests/damageNumberTimelineContract.test.js`; `tests/damageTextPaletteContract.test.js`; `ai-memory/insights.md`; `progress.md`; `.beads/in_progress/ORKA-dmg.md`
-- test evidence:
-  - `node --test tests/damageNumberTimelineContract.test.js tests/damageTextPaletteContract.test.js tests/damageTextFormattingContract.test.js` -> 13 passed, 0 failed
-  - `node --test tests/hitFlashFeedbackContract.test.js` -> 3 passed, 0 failed
-- discovery lane comparison: not used on this bead
-- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (per-entry fallback guard for overlay-owned combat text)
-- scope confirmation: Confined to combat damage-text rendering fallback hardening and contract updates. No combat math, damage formulas, or balance logic changed.
-
-- bead id: ORKA-h9q
-- summary of changes: Added a mirrored hero leveling system with a deterministic Lv1-99 XP curve, per-hero XP state, kill-based XP awards wired into the enemy-death / AwardMonsterDrop seam, and a validation simulation for pacing bands.
-- files modified: `Scripts/functionBank.js`; `web-runner/modules/functionBank.js`; `tests/heroLevelingContract.test.js`; `.beads/blocked/ORKA-h9q.md`
-- test evidence:
-  - `node --test tests/heroLevelingContract.test.js tests/huunExecutionDropBonusContract.test.js` -> 7 passed, 0 failed
-- discovery lane comparison: not used on this bead
-- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (deterministic progression helper + kill-award seam)
-- scope confirmation: Confined to mirrored combat/progression runtime helpers and a focused validation test. No UI or governance files were changed for this bead.
