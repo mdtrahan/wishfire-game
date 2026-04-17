@@ -3,6 +3,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const { loadBoardData, loadIssueDetail } = require('./beads_board_data');
 const args = process.argv.slice(2);
 let port = 8080;
 let host = '127.0.0.1';
@@ -22,7 +23,12 @@ const mime = {
 
 function safeGit(args, fallback = '') {
   try {
-    return String(execFileSync('git', args, { cwd: root, encoding: 'utf8' })).trim();
+    return String(execFileSync('git', args, {
+      cwd: root,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: 1200,
+    })).trim();
   } catch {
     return fallback;
   }
@@ -30,7 +36,12 @@ function safeGit(args, fallback = '') {
 
 function safeExec(bin, args, fallback = '') {
   try {
-    return String(execFileSync(bin, args, { cwd: root, encoding: 'utf8' })).trim();
+    return String(execFileSync(bin, args, {
+      cwd: root,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: 1200,
+    })).trim();
   } catch {
     return fallback;
   }
@@ -119,14 +130,43 @@ function writeRuntimeFingerprint() {
 
 writeRuntimeFingerprint();
 
-const server = http.createServer((req,res)=>{
+const server = http.createServer(async (req,res)=>{
   let url = decodeURIComponent(req.url.split('?')[0]);
   if(url === '/') url = '/web-runner/index.html';
+
+  if (url === '/__beads/board.json') {
+    const payload = JSON.stringify(await loadBoardData(), null, 2);
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.end(payload);
+    return;
+  }
+  if (url.startsWith('/__beads/issue/') && url.endsWith('.json')) {
+    const id = path.basename(url, '.json');
+    const payload = JSON.stringify(await loadIssueDetail(id), null, 2);
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.end(payload);
+    return;
+  }
   const fp = path.normalize(path.join(root, url));
   if(!fp.startsWith(root)) { res.statusCode = 403; res.end('Forbidden'); return; }
   fs.stat(fp, (err,st)=>{
     if(err){ res.statusCode=404; res.end('Not found'); return; }
-    if(st.isDirectory()){ res.statusCode=301; res.setHeader('Location','/web-runner/index.html'); res.end(); return; }
+    if(st.isDirectory()){
+      const indexPath = path.join(fp, 'index.html');
+      fs.stat(indexPath, (indexErr, indexStat) => {
+        if (!indexErr && indexStat.isFile()) {
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          fs.createReadStream(indexPath).pipe(res);
+          return;
+        }
+        res.statusCode=301;
+        res.setHeader('Location','/web-runner/index.html');
+        res.end();
+      });
+      return;
+    }
     const ext = path.extname(fp);
     const ct = mime[ext] || 'application/octet-stream';
     res.setHeader('Content-Type', ct + (ct.startsWith('text/')?'; charset=utf-8':''));

@@ -1,8 +1,8 @@
 {
   "database": "dolt",
-  "jsonl_export": "interactions.jsonl",
   "backend": "dolt",
   "dolt_mode": "server",
-  "dolt_server_port": 3306,
-  "dolt_database": "beads_ORKA"
+  "dolt_server_port": 3396,
+  "dolt_database": "beads_ORKA",
+  "project_id": "ed5bb202-76d3-4704-b237-eb8c04a098ae"
 }

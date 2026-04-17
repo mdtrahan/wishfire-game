@@ -1,113 +1,98 @@
-# Codex-Orka Repo Map
+# Codex-Orka Agent Router
 
-Role: map
+Role: execution-router
 Status: canonical
 
-## Purpose
+## Scope
 
-- Keep startup context small.
-- Show what is here and where to go next.
-- Treat repo-local knowledge as the system of record.
-
-## What This Repo Is
-
-- Runtime game code lives in `Scripts/`, `web-runner/`, and `src/`.
-- `Construct 3` artifacts are retired and are not runtime truth.
+- This file defines execution rules for agent work.
+- Runtime authority: `Scripts/`, `web-runner/`, and `src/`.
+- `Construct 3` is retired; reference only as retirement context, never as operational source of truth.
 - Default integration branch: `codex/live`
 - Current release branch: `main`
+- ALWAYS prefer value over process bloat.
 
-## Repo Shape
+## Retrieval Order
 
-```text
-AGENTS.md
-docs/
-  architecture/   top-level domain and seam map
-  product/        design intent and runtime behavior reference
-  qa/             browser policy, validation guides, control models
-  workflow/       process and coordination authority
-  plans/          active and completed execution plans
-  references/     stable external or tooling references
-agents/
-  pm_status.md    current PM snapshot
-  dev_reports.md  recent dev handoffs only
-  issues.md       active blockers and ambiguities
-governance/
-  execution/      Beads workflow authority
-ai-memory/
-  context.md      compact retrieval/startup support
-  insights.md     reusable heuristics from bug and regression work
-```
+1. Open [docs/product/index.md](docs/product/index.md) and [docs/qa/index.md](docs/qa/index.md) for runtime behavior and validation intent.
+2. Open [docs/architecture/index.md](docs/architecture/index.md) for seam ownership.
+3. For workflow/process questions, open [docs/workflow/index.md](docs/workflow/index.md) and [governance/execution/beads-process.md](governance/execution/beads-process.md).
+4. Use `jcodemunch` first on hot or large files, then open the smallest owning seam before broad reads.
 
-## Architecture Seams
+## Hot Surfaces + Retrieval Rules
 
-- Combat orchestration: `src/core/combatRuntimeGateway.js`
-- Layout routing: `src/core/layoutState.js`
-- Input ownership: `src/core/inputDomains.js`
-- Turn gating: `src/core/turnGateController.mjs`
-- Shared deterministic rules: `src/core/`
-- Gameplay mirrors: `Scripts/functionBank.js`, `web-runner/modules/functionBank.js`
-- Runtime integration/render seam: `web-runner/app.js`
+- Highest blast radius: `web-runner/app.js`.
+- High-risk mirrors: `Scripts/functionBank.js` and `web-runner/modules/functionBank.js`.
+- Prefer seam files first:
+  - `src/core/turnGateController.mjs`
+  - `src/core/layoutState.js`
+  - `src/core/inputDomains.js`
+  - `web-runner/src/core/combatRuntimeGateway.js`
+- Use `rtk` for noisy shell output when available: `rtk git status`, `rtk git diff`, `rtk grep`, `rtk test`.
+- If the owning seam explains the behavior, do not open or edit a larger hot surface.
 
-## Subagent Routing
+## Karpathy-Lite Execution Gate (A-M-P)
 
-- `product-manager` (`gpt-5.2`): PM scope, acceptance, sequencing
-- `search-specialist` (`gpt-5.4-mini`): codebase search and ownership lookup
-- `debugger` (`gpt-5.2`): root-cause isolation and failure mapping
-- `game-developer` (`gpt-5.2`): gameplay, runtime, and render-loop implementation
-- `javascript-pro` (`gpt-5.2`): JavaScript runtime, async, and module issues
-- `refactoring-specialist` (`gpt-5.2`): behavior-preserving structural cleanup
+Apply this gate for high-blast-radius runtime edits and all bug/regression fixes.
 
-Use `reviewer` only as an optional escalation for large or risky diffs. Normal closure uses the main orchestrator, deterministic tests, and human QA.
+Before editing:
+- A (Assumptions): list unknowns and the exact validation step for each.
+- M (Minimality): define the smallest patch boundary (files/symbols) and explicit non-goals.
+- P (Proof): define the concrete test/repro command and expected pass signal.
 
-## Canonical Docs
+Stop rules:
+- If scope expands beyond boundary, split the expansion into follow-up work.
+- If proof cannot be produced, do not mark the task complete.
 
-- Architecture map: [docs/architecture/index.md](docs/architecture/index.md)
-- Product docs: [docs/product/index.md](docs/product/index.md)
-- QA docs: [docs/qa/index.md](docs/qa/index.md)
-- Workflow docs: [docs/workflow/index.md](docs/workflow/index.md)
+## Skill Routing (Minimal, Runtime-Only)
+
+Use exactly one primary skill per task unless the user explicitly asks for alternatives.
+
+- Trigger: bug/regression in JavaScript runtime behavior.
+  - Primary skill: `debug-javascript`
+  - Evidence: one root cause and failing->passing repro proof.
+
+- Trigger: browser/runtime behavior validation or UI flow verification.
+  - Primary skill: `webapp-testing`
+  - Evidence: reproducible Playwright check with a clear pass signal.
+
+- Trigger: feature planning that touches multiple seams or has ambiguous scope.
+  - Primary skill: `feature-planning`
+  - Evidence: ordered plan with dependencies, testing strategy, and explicit non-goals.
+  - Constraint: planning pass does not edit code.
+
+- Trigger: user requests options, trade-off analysis, or "best approach" selection.
+  - Primary skill: `ensemble-orchestrator`
+  - Evidence: 3 materially different options, rubric scoring, and a justified winner.
+
+Fallback:
+- If no trigger matches, use seam-first workflow in this file.
+- `javascript-typescript` is reference-only and not a default routing target.
+
+## Subagent Escalation
+
+- `search-specialist`: ownership lookup and fast codebase search.
+- `debugger`: deep root-cause isolation.
+- `game-developer`: gameplay/runtime/render-loop implementation.
+- `refactoring-specialist`: behavior-preserving structural cleanup.
+- `reviewer`: optional escalation for large or risky diffs only.
+
+## Done Criteria
+
+- Proof artifact exists and matches the expected pass signal.
+- Change stays within declared minimal boundary, or expansion is split and documented.
+- No Construct 3 operational dependency or source-of-truth claim is introduced.
+- Validation surfaces are consulted as needed:
+  - `tests/`
+  - [docs/qa/browser-validation.md](docs/qa/browser-validation.md)
+  - [docs/qa/browser-policy.md](docs/qa/browser-policy.md)
+
+## Operational Links
+
+- Architecture: [docs/architecture/index.md](docs/architecture/index.md)
+- Product: [docs/product/index.md](docs/product/index.md)
+- QA: [docs/qa/index.md](docs/qa/index.md)
+- Workflow: [docs/workflow/index.md](docs/workflow/index.md)
 - References: [docs/references/index.md](docs/references/index.md)
-- Plans: `docs/plans/active/` and `docs/plans/completed/`
-
-## What To Do Next
-
-### Combat or turn-flow issue
-
-1. [docs/product/index.md](docs/product/index.md)
-2. [docs/qa/index.md](docs/qa/index.md)
-3. `src/core/turnGateController.mjs` or `src/core/combatRuntimeGateway.js`
-4. only then the mirrored function bank or `web-runner/app.js`
-
-### Progression or economy task
-
-1. [docs/product/index.md](docs/product/index.md)
-2. relevant domain spec from the product index
-3. shared progression seam or mirrored function bank
-
-### UI or layout bug
-
-1. [docs/product/index.md](docs/product/index.md)
-2. [docs/qa/browser-validation.md](docs/qa/browser-validation.md)
-3. `src/core/layoutState.js`
-4. `web-runner/app.js`
-
-### Workflow or Beads question
-
-1. [docs/workflow/index.md](docs/workflow/index.md)
-2. live status artifacts under `agents/`
-
-## Validation Surfaces
-
-- Contract tests under `tests/`
-- Browser validation guide: [docs/qa/browser-validation.md](docs/qa/browser-validation.md)
-- Browser backend policy: [docs/qa/browser-policy.md](docs/qa/browser-policy.md)
-
-## Live Workflow State
-
-- Blockers and unresolved issues: [agents/issues.md](agents/issues.md)
-- Current PM snapshot: [agents/pm_status.md](agents/pm_status.md)
-- Recent dev handoffs: [agents/dev_reports.md](agents/dev_reports.md)
-- Workflow authority: [governance/execution/beads-process.md](governance/execution/beads-process.md)
-
-## Compatibility Notes
-
-- [README.md](README.md), [claude.md](claude.md), and [ai-memory/project.md](ai-memory/project.md) are compatibility shims, not alternate repo maps.
+- Refactor vectors: [docs/references/refactor-vectors.md](docs/references/refactor-vectors.md)
+- Live status: [agents/issues.md](agents/issues.md), [agents/pm_status.md](agents/pm_status.md), [agents/dev_reports.md](agents/dev_reports.md)

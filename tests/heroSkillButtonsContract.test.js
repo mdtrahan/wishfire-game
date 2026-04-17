@@ -123,7 +123,19 @@ test('hero skill modal opens from skill taps and reuses the selected skill frame
   assert.match(src, /const modalZones = zones\.modal \|\| null;/);
   assert.match(src, /if \(gameState\.heroScreen\.skillModalOpen && modalZones\) \{/);
   assert.match(src, /if \(isPointInRect\(mx, my, modalZones\.close\) \|\| !isPointInRect\(mx, my, modalZones\.card\)\) \{/);
-  assert.match(src, /drawHeroSkillNode\(ctx, iconRect, \{ \.\.\.selectedNode, shape: String\(selectedNode\.kind \|\| selectedNode\.shape \|\| 'circle'\) \}, false, ss, sf\);/);
+  assert.match(src, /drawHeroSkillNode\(ctx, iconRect, \{ \.\.\.selectedNode, shape: String\(selectedNode\.kind \|\| selectedNode\.shape \|\| 'circle'\) \}, false, ss, sf, heroSkillSpriteSheetImage\);/);
+  assert.match(src, /const skillDescription = String\(selectedCard\.description \|\| selectedNode\.description \|\| ''\)\.trim\(\);/);
+  assert.match(src, /const summaryWords = skillDescription\.split\(\/\\s\+\/\)\.filter\(Boolean\);/);
+  assert.match(src, /ctx\.textBaseline = 'top';/);
+  assert.doesNotMatch(src, /fillText\('UPGRADE LADDER'/);
   assert.match(src, /fillText\('UPGRADES'/);
   assert.match(src, /fillText\('Upgrade'/);
+});
+
+test('hero skill card builder carries a description field through to the modal card data', () => {
+  const appPath = path.join(__dirname, '..', 'web-runner', 'app.js');
+  const src = fs.readFileSync(appPath, 'utf8');
+
+  assert.match(src, /const beadDescription = String\(source\.description \|\| \(live && live\.beadDescription\) \|\| fallback\.beadDescription \|\| ''\);/);
+  assert.match(src, /description: beadDescription,/);
 });

@@ -73,12 +73,11 @@ Active handoff file only. Keep only the current review window here; move older e
 - pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (entry-pose contract + transform composition behavior test)
 - scope confirmation: Confined to the shared animation shim and the damage-number entry pose. No combat formulas, enemy AI, or UI layout changes were made.
 
-- bead id: ORKA-dm2
-- summary of changes: Fixed the shared GSAP shim so combat damage text can stay mounted long enough to render and enemy HP bars interpolate instead of snapping. The shim now interpolates numeric state over time, and the damage-number / enemy-bar callers use that behavior unchanged.
-- files modified: `web-runner/src/core/gsapShim.mjs`; `tests/animationShimBehavior.test.js`; `ai-memory/insights.md`; `agents/dev_reports.md`
+- bead id: ORKA-ksw
+- summary of changes: Replaced the hero-skill modal placeholder text with the actual per-skill usefulness description sourced from the hero skill presentation data, so players can evaluate upgrade value without guessing.
+- files modified: `web-runner/app.js`; `web-runner/src/core/heroSkillPresentation.mjs`; `tests/heroSkillButtonsContract.test.js`
 - test evidence:
-  - `node --test tests/animationShimBehavior.test.js tests/damageNumberTimelineContract.test.js tests/damageTextPaletteContract.test.js tests/hpBarAnimationContract.test.js` -> 16 passed, 0 failed
-  - `node --check web-runner/src/core/gsapShim.mjs && node --check tests/animationShimBehavior.test.js` -> pass
-- discovery lane comparison: not used on this bead
-- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (shared interpolation shim behavior test)
-- scope confirmation: Confined to the shared animation shim and its behavior coverage. No combat formulas, enemy AI, or UI layout changes were made.
+  - `node --test tests/heroSkillButtonsContract.test.js tests/heroSkillPresentationContract.test.js` -> 10 passed, 0 failed
+- discovery lane comparison: no specialist sub-agent needed; the issue was a narrow hero-screen render defect because the description data already existed and the modal was hardcoding a placeholder.
+- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (modal summary now bound to skill description data; regression guard prevents placeholder reintroduction)
+- scope confirmation: Confined to hero-screen modal copy rendering and one description grammar correction. No skill wiring, balance, proc logic, or upgrade economy changed.

@@ -451,6 +451,72 @@ function easeLungeForward(t) {
   return evaluateCubicBezier(t, 1, 0, 0, 1);
 }
 
+const HERO_SELECTOR_BOUNCE_POINTS = Object.freeze([
+  [0, 0],
+  [0.041, 0.307],
+  [0.083, 0.578],
+  [0.125, 0.809],
+  [0.147, 0.914],
+  [0.169, 1.01],
+  [0.191, 1.096],
+  [0.214, 1.175],
+  [0.237, 1.246],
+  [0.26, 1.307],
+  [0.284, 1.361],
+  [0.308, 1.406],
+  [0.333, 1.444],
+  [0.358, 1.473],
+  [0.378, 1.491],
+  [0.398, 1.503],
+  [0.419, 1.511],
+  [0.44, 1.514],
+  [0.462, 1.513],
+  [0.485, 1.507],
+  [0.508, 1.496],
+  [0.532, 1.48],
+  [0.553, 1.463],
+  [0.575, 1.443],
+  [0.623, 1.389],
+  [0.671, 1.328],
+  [0.795, 1.158],
+  [0.831, 1.114],
+  [0.864, 1.077],
+  [0.901, 1.043],
+  [0.936, 1.019],
+  [0.953, 1.01],
+  [0.969, 1.005],
+  [0.985, 1.001],
+  [1, 1],
+]);
+const HERO_SELECTOR_BOUNCE_DURATION_SEC = 1.02;
+
+function sampleLinearPoints(points, t) {
+  const input = Math.max(0, Math.min(1, Number(t || 0)));
+  for (let i = 1; i < points.length; i += 1) {
+    const [x1, y1] = points[i - 1];
+    const [x2, y2] = points[i];
+    if (input <= x2) {
+      const span = Math.max(1e-6, x2 - x1);
+      const alpha = Math.max(0, Math.min(1, (input - x1) / span));
+      return y1 + ((y2 - y1) * alpha);
+    }
+  }
+  return points[points.length - 1][1];
+}
+
+function getHeroSelectorBounceScale(elapsedSec) {
+  const t = Math.max(0, Math.min(1, Number(elapsedSec || 0) / HERO_SELECTOR_BOUNCE_DURATION_SEC));
+  return sampleLinearPoints(HERO_SELECTOR_BOUNCE_POINTS, t);
+}
+
+function getHeroSelectorAttentionScale(elapsedSec, timeSec) {
+  const elapsed = Number(elapsedSec || 0);
+  if (elapsed < HERO_SELECTOR_BOUNCE_DURATION_SEC) return 1;
+  const settleT = elapsed - HERO_SELECTOR_BOUNCE_DURATION_SEC;
+  const amplitude = 0.02 * Math.exp(-settleT / 1.8);
+  return 1 + (amplitude * Math.sin(Number(timeSec || 0) * 4.5));
+}
+
 function createHarnessEventBus() {
   const listeners = new Map();
   const events = [];
@@ -2044,6 +2110,120 @@ function drawHeroStatGlyph(ctx, emoji, cx, cy, scale) {
   ctx.fillText(glyph, cx, cy + 1);
   ctx.restore();
 }
+
+const heroSkillSpriteFocusCache = new WeakMap();
+const heroSkillSpriteFocusCanvas = (() => {
+  if (typeof OffscreenCanvas !== 'undefined') {
+    try {
+      return new OffscreenCanvas(1, 1);
+    } catch {}
+  }
+  if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+    try {
+      const el = document.createElement('canvas');
+      el.width = 1;
+      el.height = 1;
+      return el;
+    } catch {}
+  }
+  return null;
+})();
+
+function resolveHeroSkillSpriteFocus(spriteSheetImage, crop) {
+  if (!spriteSheetImage || !crop) return { x: 0.5, y: 0.5 };
+  const cacheKey = `${Math.round(crop.x)}:${Math.round(crop.y)}:${Math.round(crop.w)}:${Math.round(crop.h)}`;
+  let imageCache = heroSkillSpriteFocusCache.get(spriteSheetImage);
+  if (!imageCache) {
+    imageCache = new Map();
+    heroSkillSpriteFocusCache.set(spriteSheetImage, imageCache);
+  } else if (imageCache.has(cacheKey)) {
+    return imageCache.get(cacheKey);
+  }
+  if (!heroSkillSpriteFocusCanvas) {
+    const fallback = { x: 0.5, y: 0.5 };
+    imageCache.set(cacheKey, fallback);
+    return fallback;
+  }
+  const sampleW = Math.max(8, Math.min(128, Math.floor(Number(crop.w) || 0)));
+  const sampleH = Math.max(8, Math.min(128, Math.floor(Number(crop.h) || 0)));
+  heroSkillSpriteFocusCanvas.width = sampleW;
+  heroSkillSpriteFocusCanvas.height = sampleH;
+  const sampleCtx = heroSkillSpriteFocusCanvas.getContext('2d', { willReadFrequently: true });
+  if (!sampleCtx) {
+    const fallback = { x: 0.5, y: 0.5 };
+    imageCache.set(cacheKey, fallback);
+    return fallback;
+  }
+  sampleCtx.clearRect(0, 0, sampleW, sampleH);
+  sampleCtx.drawImage(
+    spriteSheetImage,
+    crop.x,
+    crop.y,
+    crop.w,
+    crop.h,
+    0,
+    0,
+    sampleW,
+    sampleH,
+  );
+  let alphaData = null;
+  try {
+    alphaData = sampleCtx.getImageData(0, 0, sampleW, sampleH).data;
+  } catch {
+    const fallback = { x: 0.5, y: 0.5 };
+    imageCache.set(cacheKey, fallback);
+    return fallback;
+  }
+  let minX = sampleW;
+  let minY = sampleH;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < sampleH; y += 1) {
+    for (let x = 0; x < sampleW; x += 1) {
+      const a = alphaData[((y * sampleW) + x) * 4 + 3];
+      if (a < 8) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  if (maxX < minX || maxY < minY) {
+    const fallback = { x: 0.5, y: 0.5 };
+    imageCache.set(cacheKey, fallback);
+    return fallback;
+  }
+  const focus = {
+    x: (minX + maxX + 1) / (sampleW * 2),
+    y: (minY + maxY + 1) / (sampleH * 2),
+  };
+  imageCache.set(cacheKey, focus);
+  return focus;
+}
+
+function drawHeroSkillSpriteMasked(ctx, spriteSheetImage, crop, innerRect) {
+  const focus = resolveHeroSkillSpriteFocus(spriteSheetImage, crop);
+  const shiftX = (0.5 - Number(focus.x || 0.5)) * innerRect.w;
+  const shiftY = (0.5 - Number(focus.y || 0.5)) * innerRect.h;
+  const scaleX = 1 + (Math.abs(0.5 - Number(focus.x || 0.5)) * 2);
+  const scaleY = 1 + (Math.abs(0.5 - Number(focus.y || 0.5)) * 2);
+  const drawW = innerRect.w * scaleX;
+  const drawH = innerRect.h * scaleY;
+  const drawX = innerRect.x - ((drawW - innerRect.w) * 0.5) + shiftX;
+  const drawY = innerRect.y - ((drawH - innerRect.h) * 0.5) + shiftY;
+  ctx.drawImage(
+    spriteSheetImage,
+    crop.x,
+    crop.y,
+    crop.w,
+    crop.h,
+    drawX,
+    drawY,
+    drawW,
+    drawH,
+  );
+}
+
 function drawHeroSkillNode(ctx, rect, cardData, selected, ss, sf, spriteSheetImage = null) {
   const shape = String(cardData?.shape || '').toLowerCase();
   const frameFill = String(cardData?.frameFill || '#D9D9D9');
@@ -2103,7 +2283,7 @@ function drawHeroSkillNode(ctx, rect, cardData, selected, ss, sf, spriteSheetIma
       ctx.roundRect(innerRect.x, innerRect.y, innerRect.w, innerRect.h, Math.max(3, ss(4)));
     }
     ctx.clip();
-    ctx.drawImage(spriteSheetImage, crop.x, crop.y, crop.w, crop.h, innerRect.x, innerRect.y, innerRect.w, innerRect.h);
+    drawHeroSkillSpriteMasked(ctx, spriteSheetImage, crop, innerRect);
     ctx.restore();
   }
   ctx.restore();
@@ -2186,17 +2366,36 @@ function renderHeroSkillModal({
   ctx.globalAlpha = 0.12;
   roundRect(modalRects.summaryRow.x, modalRects.summaryRow.y, modalRects.summaryRow.w, modalRects.summaryRow.h, ss(8), '#000000', null);
   ctx.restore();
+  const skillDescription = String(selectedCard.description || selectedNode.description || '').trim();
+  const summaryWords = skillDescription.split(/\s+/).filter(Boolean);
+  const summaryLines = [];
+  let summaryCurrent = '';
+  for (const word of summaryWords) {
+    const candidate = summaryCurrent ? `${summaryCurrent} ${word}` : word;
+    if (!summaryCurrent || ctx.measureText(candidate).width <= modalRects.summaryRow.w - ss(20)) {
+      summaryCurrent = candidate;
+      continue;
+    }
+    summaryLines.push(summaryCurrent);
+    summaryCurrent = word;
+    if (summaryLines.length === 1) break;
+  }
+  if (summaryLines.length < 2 && summaryCurrent) {
+    const usedWords = summaryLines.join(' ').split(/\s+/).filter(Boolean).length;
+    const summaryRemainder = summaryWords.slice(usedWords).join(' ');
+    summaryLines.push(summaryRemainder || summaryCurrent);
+  }
+  while (summaryLines.length && ctx.measureText(summaryLines[summaryLines.length - 1]).width > modalRects.summaryRow.w - ss(20) && summaryLines[summaryLines.length - 1].length > 1) {
+    summaryLines[summaryLines.length - 1] = `${summaryLines[summaryLines.length - 1].slice(0, -2).trimEnd()}…`;
+  }
   ctx.fillStyle = '#555555';
   ctx.font = `700 ${sf(10.5, 8)}px Arial`;
   ctx.textAlign = 'left';
-  ctx.fillText('UPGRADE LADDER', modalRects.summaryRow.x + ss(10), modalRects.summaryRow.y + ss(16));
-  ctx.fillStyle = '#8b8b8b';
-  ctx.font = `700 ${sf(10, 8)}px Arial`;
-  ctx.fillText(
-    nextCost > 0 ? `Next cost ${nextCost}` : 'Max rank reached',
-    modalRects.summaryRow.x + ss(10),
-    modalRects.summaryRow.y + ss(34),
-  );
+  ctx.textBaseline = 'top';
+  for (let i = 0; i < Math.min(2, summaryLines.length); i += 1) {
+    ctx.fillText(summaryLines[i], modalRects.summaryRow.x + ss(10), modalRects.summaryRow.y + ss(10) + (ss(15) * i));
+  }
+  ctx.textBaseline = 'middle';
 
   ctx.fillStyle = '#737373';
   ctx.font = `900 ${sf(11, 8)}px Arial Black`;
@@ -2549,17 +2748,7 @@ function drawHeroSkillIconTile(ctx, tileRect, cardData, spriteSheetImage = null)
       ctx.closePath();
     }
     ctx.clip();
-    ctx.drawImage(
-      spriteSheetImage,
-      crop.x,
-      crop.y,
-      crop.w,
-      crop.h,
-      innerRect.x,
-      innerRect.y,
-      innerRect.w,
-      innerRect.h,
-    );
+    drawHeroSkillSpriteMasked(ctx, spriteSheetImage, crop, innerRect);
     ctx.restore();
   } else {
     ctx.fillStyle = 'rgba(255,255,255,0.92)';
@@ -3074,6 +3263,7 @@ function getHeroScreenSkillCards(hero) {
       ...(live || {}),
       slot: idx,
       key: skillKey,
+      description: beadDescription,
       rank,
       maxRank,
       status,
@@ -4691,18 +4881,28 @@ function makeImagePath(typeName, animName){
   return assetUrl(`images/${t}-${a}-000.png`);
 }
 
-async function loadImage(url){
+async function loadImage(url, { timeoutMs = 5000 } = {}){
   return new Promise((res)=>{
     const img = new Image();
-    img.onload = ()=>res(img);
-    img.onerror = ()=>res(null);
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      res(value);
+    };
+    const timer = timeoutMs > 0
+      ? setTimeout(() => finish(null), timeoutMs)
+      : null;
+    img.onload = ()=>finish(img);
+    img.onerror = ()=>finish(null);
     img.src = resolveRuntimeImageUrl(url);
   });
 }
 
 async function main(){
   const HARNESS_MODE = window.location.search.includes('harness=true');
-  if (HARNESS_MODE) {
+  if (HARNESS_MODE && window.__ORKA_USE_LEGACY_HARNESS__ === true) {
     console.log('[Harness] Enabled');
     console.log('[Harness] Boot override BEFORE C3 init');
 
@@ -4848,7 +5048,6 @@ async function main(){
     return bounds;
   };
   function prepareCombatSetupFromInstances(layoutInstances, gameStateRef) {
-    assertCombatLayoutDev('prepareCombatSetupFromInstances');
     gridBounds = calculateGridBounds(layoutInstances);
     if (gameStateRef && gridBounds) {
       gameStateRef.gridBounds = gridBounds;
@@ -4904,7 +5103,6 @@ async function main(){
   }
   devToolingRefreshHandler = refreshCombatSessionFromDevTooling;
   async function loadC3ProjectAssets() {
-    assertCombatLayoutDev('loadC3ProjectAssets');
     updateStartupLoadState({ active: true, phase: 'bootstrap', label: 'Loading layout data...', progress: 0.05 });
     runtimeLayouts = await fetchJson(assetUrl('layouts.json')) || {};
     layout = runtimeLayouts.layout || { name: 'runtime-fallback', layers: [] };
@@ -5653,94 +5851,6 @@ async function main(){
     return true;
   }
 
-  if (layoutHarnessEnabled && harnessLayoutState) {
-    const combatLayout = {
-      id: 'combat',
-      allowedTransitions: ['astralOverlay', 'town'],
-      onEnter({ resumeSnapshot, payload, reason }) {
-        const snapshot = (reason === 'town-click' || !!payload?.freshStart) ? null : (resumeSnapshot || null);
-        harnessCombatGateway.resume(snapshot);
-        harnessEventBus.emit('layout:combat:entered', { restored: Boolean(snapshot) });
-      },
-      onActive() {},
-      onExit() {
-        return harnessCombatGateway.suspend();
-      },
-    };
-    const storyMockLayout = {
-      id: 'storyMock',
-      allowedTransitions: ['town'],
-      onEnter() {
-        gameState.overlayVisible = false;
-        debugLayoutLog('[Harness] storyMock active');
-      },
-      onActive() {},
-      onExit() {
-        return null;
-      },
-    };
-    const townLayout = {
-      id: 'town',
-      allowedTransitions: ['combat'],
-      onEnter() {
-        gameState.overlayVisible = false;
-        restorePartyToFullHP();
-        debugLayoutLog('[Harness] town active');
-      },
-      onActive() {},
-      onExit() {
-        return null;
-      },
-    };
-    const astralOverlayLayout = {
-      id: 'astralOverlay',
-      allowedTransitions: ['combat'],
-      onEnter() {
-        gameState.overlayVisible = false;
-        console.log('[Harness] astralOverlay active');
-      },
-      onActive() {},
-      onExit() {
-        return null;
-      },
-    };
-
-    harnessLayoutState.registerLayout(combatLayout);
-    harnessLayoutState.registerLayout(storyMockLayout);
-    harnessLayoutState.registerLayout(townLayout);
-    harnessLayoutState.registerLayout(astralOverlayLayout);
-    debugLayoutLog('[Harness] Layouts registered: storyMock, town, astralOverlay');
-
-    harnessEventBus.on('layout:storyMock:click', async () => {
-      await harnessLayoutState.requestLayoutChange('town', 'storyMock-click', { source: 'storyMock' });
-    });
-    harnessEventBus.on('layout:town:click', async () => {
-      restorePartyToFullHP();
-      await harnessLayoutState.requestLayoutChange('combat', 'town-click', { source: 'town', freshStart: true });
-    });
-    harnessEventBus.on('nav:astral-flow', async () => {
-      if (harnessLayoutState.getActiveLayoutId() !== 'combat') return;
-      if (!harnessCombatGateway.canAcceptEvents()) return;
-      console.log('[Harness] Requesting astralOverlay');
-      await harnessLayoutState.requestLayoutChange('astralOverlay', 'astral-flow-nav');
-    });
-    harnessEventBus.on('layout:astralOverlay:click', async () => {
-      await harnessLayoutState.requestLayoutChange('combat', 'astralOverlay-click', { source: 'astralOverlay' });
-    });
-
-    await harnessLayoutState.activateInitialLayout('storyMock');
-
-    if (typeof window !== 'undefined') {
-      window.__layoutHarness = {
-        enabled: true,
-        eventBus: harnessEventBus,
-        inputDomains: harnessInputDomains,
-        layoutState: harnessLayoutState,
-        combatRuntimeGateway: harnessCombatGateway,
-      };
-    }
-  }
-
   function getSpriteOrigin(typeName) {
     const t = types[typeName];
     const frame = t && t.animations && t.animations.items && t.animations.items[0] &&
@@ -5844,7 +5954,7 @@ async function main(){
   let lastFrameTime = performance.now();
   const buffIconFrames = { buffIcon1: 0, buffIcon2: 0, buffIcon3: 0, buffIcon4: 0 };
   let lastRenderDebugSignature = '';
-  let rendered = [];
+  var rendered = [];
   function rebuildRenderedCache() {
     const nextRendered = [];
     for (let i = 0; i < Math.min(instances.length, 500); i++) {
@@ -7671,8 +7781,8 @@ async function main(){
       drawHarnessLayoutTakeover(activeRuntimeLayout);
       return;
     }
-    if (layoutHarnessEnabled && harnessLayoutState) {
-      const activeLayout = harnessLayoutState.getActiveLayoutId();
+    if (layoutHarnessEnabled && layoutState) {
+      const activeLayout = layoutState.getActiveLayoutId();
       if (activeLayout && activeLayout !== 'combat') {
         drawHarnessLayoutTakeover(activeLayout);
         return;
@@ -10072,6 +10182,32 @@ async function main(){
           currentTurnIndex: g.CurrentTurnIndex,
         });
         const currentHero = state.entities.find(e => e.kind === 'hero' && e.uid === currentHeroUID);
+        if (!gameState.heroTurnSelectorFx || typeof gameState.heroTurnSelectorFx !== 'object') {
+          gameState.heroTurnSelectorFx = {
+            activeUID: 0,
+            visible: false,
+            startedAt: 0,
+          };
+        }
+        const selectorFx = gameState.heroTurnSelectorFx;
+        const selectorVisible = shouldRenderHeroTurnSelector({
+          turnPhase: state.globals.TurnPhase,
+          hideHeroSelector: state.globals.HideHeroSelector,
+          canPickGems: state.globals.CanPickGems,
+          currentHeroUID,
+          heroUID: currentHeroUID,
+        });
+        if (selectorVisible) {
+          const nextUID = Number(currentHeroUID || 0);
+          if (!selectorFx.visible || selectorFx.activeUID !== nextUID) {
+            selectorFx.activeUID = nextUID;
+            selectorFx.visible = true;
+            selectorFx.startedAt = Number(g.time || 0);
+          }
+        } else {
+          selectorFx.visible = false;
+          selectorFx.activeUID = 0;
+        }
         for (let i = 0; i < heroOrder.length; i++) {
           const entry = heroOrder[i];
           const img = heroPortraitImages[entry.portraitName];
@@ -10160,11 +10296,11 @@ async function main(){
             heroUID: hero ? hero.uid : 0,
           })) {
             if (selectorImg) {
-              const t = g.time || 0;
-              const pulse = Math.sin(t * 6);
-              const selScale = 1 + 0.035 * pulse;
               const controlScale = Math.max(0.7, Math.min(layoutScale, 1));
-              const bob = 2.2 * controlScale * pulse;
+              const selectorElapsed = Math.max(0, Number(g.time || 0) - Number(selectorFx.startedAt || 0));
+              const entranceScale = getHeroSelectorBounceScale(selectorElapsed);
+              const attentionScale = getHeroSelectorAttentionScale(selectorElapsed, g.time || 0);
+              const selScale = entranceScale * attentionScale;
               const rawSelW = (selectorAsset ? selectorAsset.width : selectorImg.width) * controlScale * selScale;
               const rawSelH = (selectorAsset ? selectorAsset.height : selectorImg.height) * controlScale * selScale;
               const selW = Math.max(12, Math.min(46, rawSelW));
@@ -10172,7 +10308,7 @@ async function main(){
               const selOx = selectorAsset ? selectorAsset.originX : 0.5;
               const selOy = selectorAsset ? selectorAsset.originY : 0.5;
               const targetX = pos.x;
-              const targetY = pos.y - scaledH / 2 - (10 * layoutScale) + bob;
+              const targetY = pos.y - scaledH / 2 - (10 * layoutScale);
               ctx.drawImage(selectorImg, targetX - selW * selOx, targetY - selH * selOy, selW, selH);
             }
           }
@@ -11368,20 +11504,20 @@ function getStoryCardLiveLineState() {
       return;
     }
 
-    if (layoutHarnessEnabled && harnessLayoutState && harnessInputDomains) {
-      const activeLayout = harnessLayoutState.getActiveLayoutId();
+    if (layoutHarnessEnabled && layoutState && inputDomains) {
+      const activeLayout = layoutState.getActiveLayoutId();
       if (activeLayout === 'storyMock') {
-        harnessInputDomains.emit(activeLayout, 'layout:storyMock:click', { x: mx, y: my });
+        inputDomains.emit(activeLayout, 'layout:storyMock:click', { x: mx, y: my });
         drawFrame();
         return;
       }
       if (activeLayout === 'town') {
-        harnessInputDomains.emit(activeLayout, 'layout:town:click', { x: mx, y: my });
+        inputDomains.emit(activeLayout, 'layout:town:click', { x: mx, y: my });
         drawFrame();
         return;
       }
       if (activeLayout === 'astralOverlay') {
-        harnessInputDomains.emit(activeLayout, 'layout:astralOverlay:click', { x: mx, y: my });
+        inputDomains.emit(activeLayout, 'layout:astralOverlay:click', { x: mx, y: my });
         drawFrame();
         return;
       }
@@ -12083,9 +12219,9 @@ function getStoryCardLiveLineState() {
           overlayVisible: gameState.overlayVisible,
           layoutId: layoutState && typeof layoutState.getActiveLayoutId === 'function'
             ? layoutState.getActiveLayoutId()
-            : (layoutHarnessEnabled && harnessLayoutState ? harnessLayoutState.getActiveLayoutId() : 'combat'),
-          combatAcceptEvents: layoutHarnessEnabled && harnessCombatGateway
-            ? harnessCombatGateway.canAcceptEvents()
+            : 'combat',
+          combatAcceptEvents: layoutHarnessEnabled && combatRuntimeGateway
+            ? combatRuntimeGateway.canAcceptEvents()
             : true,
           layout0Ready: !!layout0State.ready,
           layout0Failed: !!layout0State.failed,

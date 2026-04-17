@@ -7,7 +7,7 @@
 
 ## Authority
 - Live `bd` state remains the only task authority.
-- `agents/prompts/pm_agent.md` and `agents/prompts/dev_agent.md` remain the only role authority.
+- `AGENTS.md` and `governance/execution/beads-process.md` remain the only active routing/workflow authority.
 - `npm run balance-harness` remains the shipping browser lane and pass/fail gate for bead completion.
 - The discovery lane is an optional diagnostic lane. It does not redefine pass, close beads, or create alternate status tracking.
 

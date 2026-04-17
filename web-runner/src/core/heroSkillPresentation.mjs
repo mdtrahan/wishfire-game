@@ -39,7 +39,7 @@ export const HERO_SKILL_PRESENTATION = Object.freeze({
   Falie: Object.freeze([
     circleSkill('Block', 'Chance to receive damage for ally', 0, 0),
     circleSkill('Shield Bash', 'Chance to counterattack an attacker', 0, 2),
-    diamondSkill('Bounce', 'Chance reflect damage to attacker', 0, 3),
+    diamondSkill('Bounce', 'Chance to reflect damage to attacker', 0, 3),
   ]),
   Huun: Object.freeze([
     circleSkill('Steal', 'Chance to convert damage into Astral Flow', 1, 0),

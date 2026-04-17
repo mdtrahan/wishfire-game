@@ -54,6 +54,12 @@
       "canonical": true
     },
     {
+      "path": "docs/references/refactor-vectors.md",
+      "role": "heuristic",
+      "status": "active",
+      "canonical": false
+    },
+    {
       "path": "docs/generated/index.md",
       "role": "generated",
       "status": "active",

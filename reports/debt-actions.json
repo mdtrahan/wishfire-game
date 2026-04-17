@@ -1,0 +1,125 @@
+{
+  "summary": {
+    "total_issues": 9,
+    "high_confidence": 6
+  },
+  "actions": [
+    {
+      "id": "TD-20260412-001",
+      "file": "web-runner/app.js",
+      "type": "files_over_500_lines_duplicate_logic",
+      "action": "refactor",
+      "confidence": "high",
+      "reason": "12k-line runtime shell mixes boot, render, layout, and combat wiring, amplifying regression blast radius.",
+      "risk": "high",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API"
+      ]
+    },
+    {
+      "id": "TD-20260412-002",
+      "file": "web-runner/modules/functionBank.js",
+      "type": "duplicate_logic_large_file",
+      "action": "merge",
+      "confidence": "high",
+      "reason": "Mirrors Scripts/functionBank.js and duplicates gameplay rule paths that drift over time.",
+      "risk": "high",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API"
+      ]
+    },
+    {
+      "id": "TD-20260412-003",
+      "file": "Scripts/functionBank.js",
+      "type": "duplicate_logic_large_file",
+      "action": "merge",
+      "confidence": "high",
+      "reason": "Mirrors web-runner/modules/functionBank.js and should be consolidated behind shared deterministic seams.",
+      "risk": "high",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API"
+      ]
+    },
+    {
+      "id": "TD-20260412-004",
+      "file": "tools/balance_harness.js",
+      "type": "files_over_500_lines",
+      "action": "refactor",
+      "confidence": "high",
+      "reason": "Single large harness file reduces test maintainability and obscures scenario ownership.",
+      "risk": "medium",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API"
+      ]
+    },
+    {
+      "id": "TD-20260412-005",
+      "file": "web-runner/gameLogic.js",
+      "type": "unused_file_dead_exports",
+      "action": "delete",
+      "confidence": "high",
+      "reason": "No active imports in live runtime paths; appears to be orphaned fallback-era logic.",
+      "risk": "low",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API"
+      ]
+    },
+    {
+      "id": "TD-20260412-006",
+      "file": "Scripts/legacy but partially working/scripts/main.js",
+      "type": "dead_legacy_entrypoint",
+      "action": "delete",
+      "confidence": "high",
+      "reason": "Legacy entrypoint is not referenced by current runtime and only links legacy siblings.",
+      "risk": "low",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API"
+      ]
+    },
+    {
+      "id": "TD-20260412-007",
+      "file": "Scripts/legacy but partially working/scripts/CombatLogic.js",
+      "type": "unused_file",
+      "action": "delete",
+      "confidence": "medium",
+      "reason": "Likely orphaned with the legacy subtree; validate no offline/manual tooling still imports it.",
+      "risk": "medium",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API"
+      ]
+    },
+    {
+      "id": "TD-20260412-008",
+      "file": "Scripts/legacy but partially working/scripts/EventHandlers.js",
+      "type": "unused_file",
+      "action": "delete",
+      "confidence": "medium",
+      "reason": "Likely orphaned with the legacy subtree; validate no offline/manual tooling still imports it.",
+      "risk": "medium",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API"
+      ]
+    },
+    {
+      "id": "TD-20260412-009",
+      "file": "package.json",
+      "type": "unused_dependency",
+      "action": "remove_dependency",
+      "confidence": "medium",
+      "reason": "No live source imports of gsap remain, but stale tests/docs referencing node_modules paths require validation before removal.",
+      "risk": "medium",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API"
+      ]
+    }
+  ]
+}

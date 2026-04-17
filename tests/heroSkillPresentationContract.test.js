@@ -29,6 +29,7 @@ test('hero skill presentation data defines three skills per hero with CS/JS slot
 
   const falie = presentation.getHeroSkillPresentationEntries('Falie');
   assert.equal(falie[0].title, 'Block');
+  assert.equal(falie[0].description, 'Chance to receive damage for ally');
   assert.equal(falie[1].title, 'Shield Bash');
   assert.equal(falie[2].title, 'Bounce');
 

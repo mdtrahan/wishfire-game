@@ -18,6 +18,16 @@
 - pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (deterministic progression helper + kill-award seam)
 - scope confirmation: Confined to mirrored combat/progression runtime helpers and a focused validation test. No UI or governance files were changed for this bead.
 
+- bead id: ORKA-dm2
+- summary of changes: Fixed the shared GSAP shim so combat damage text can stay mounted long enough to render and enemy HP bars interpolate instead of snapping. The shim now interpolates numeric state over time, and the damage-number / enemy-bar callers use that behavior unchanged.
+- files modified: `web-runner/src/core/gsapShim.mjs`; `tests/animationShimBehavior.test.js`; `ai-memory/insights.md`; `agents/dev_reports.md`
+- test evidence:
+  - `node --test tests/animationShimBehavior.test.js tests/damageNumberTimelineContract.test.js tests/damageTextPaletteContract.test.js tests/hpBarAnimationContract.test.js` -> 16 passed, 0 failed
+  - `node --check web-runner/src/core/gsapShim.mjs && node --check tests/animationShimBehavior.test.js` -> pass
+- discovery lane comparison: not used on this bead
+- pilot value signals: token cost `low`; operator overhead `low`; reusable output `yes` (shared interpolation shim behavior test)
+- scope confirmation: Confined to the shared animation shim and its behavior coverage. No combat formulas, enemy AI, or UI layout changes were made.
+
 - bead id: ORKA-4dpd
 - summary of changes: Restored the browser runtime path after the migration cleanup removed the repo-local runtime dependency tree. Added a tracked GSAP compatibility shim in `web-runner/src/core/gsapShim.mjs` and repointed the animation helpers to it so the browser modules can import animation helpers again without relying on a wiped `node_modules` tree. This fixes the blank/loading startup failure by allowing the app module to load and draw.
 - files modified: `web-runner/src/core/gsapShim.mjs`; `web-runner/src/core/damageNumberAnimation.mjs`; `web-runner/src/core/healBloomAnimation.mjs`; `web-runner/src/core/goldCollectAnimation.mjs`; `web-runner/src/core/hpBarAnimation.mjs`; `tests/damageNumberTimelineContract.test.js`; `tests/hpBarAnimationContract.test.js`; `ai-memory/insights.md`; `agents/dev_reports.md`

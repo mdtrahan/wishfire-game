@@ -1,0 +1,182 @@
+# Codex-Orka Repo Map
+
+Role: map
+Status: canonical
+
+## Purpose
+
+- Keep startup context small.
+- Show what is here and where to go next.
+- Treat repo-local knowledge as the system of record.
+
+## What This Repo Is
+
+- Runtime game code lives in `Scripts/`, `web-runner/`, and `src/`.
+- `Construct 3` artifacts are retired and are not runtime truth.
+- Default integration branch: `codex/live`
+- Current release branch: `main`
+
+## Repo Shape
+
+```text
+AGENTS.md
+docs/
+  architecture/   top-level domain and seam map
+  product/        design intent and runtime behavior reference
+  qa/             browser policy, validation guides, control models
+  workflow/       process and coordination authority
+  plans/          active and completed execution plans
+  references/     stable external or tooling references
+reports/          debt analysis and structured refactor vectors
+agents/
+  pm_status.md    current PM snapshot
+  dev_reports.md  recent dev handoffs only
+  issues.md       active blockers and ambiguities
+governance/
+  execution/      Beads workflow authority
+ai-memory/
+  context.md      compact retrieval/startup support
+  insights.md     reusable heuristics from bug and regression work
+```
+
+## Architecture Seams
+
+- Combat orchestration: live browser runtime `web-runner/src/core/combatRuntimeGateway.js`; compatibility/audit seam `src/core/combatRuntimeGateway.js`
+- Layout routing: `src/core/layoutState.js`
+- Input ownership: `src/core/inputDomains.js`
+- Turn gating: `src/core/turnGateController.mjs`
+- Shared deterministic rules: `src/core/`
+- Gameplay mirrors: `Scripts/functionBank.js`, `web-runner/modules/functionBank.js`
+- Runtime integration/render seam: `web-runner/app.js`
+
+## Hazard Markers
+
+- `web-runner/app.js`: highest-blast-radius runtime file; use `jcodemunch` first and open only when the owning seam does not explain the behavior.
+- `Scripts/functionBank.js` and `web-runner/modules/functionBank.js`: large mirrored gameplay files; use `jcodemunch` first and read `src/core/` rules before touching either mirror.
+- Refactor strategy and cleanup sequencing live in [docs/references/refactor-vectors.md](docs/references/refactor-vectors.md), not in this map.
+
+## Subagent Routing
+
+- `product-manager` (`gpt-5.2`): PM scope, acceptance, sequencing
+- `search-specialist` (`gpt-5.4-mini`): codebase search and ownership lookup
+- `debugger` (`gpt-5.2`): root-cause isolation and failure mapping
+- `game-developer` (`gpt-5.2`): gameplay, runtime, and render-loop implementation
+- `javascript-pro` (`gpt-5.2`): JavaScript runtime, async, and module issues
+- `refactoring-specialist` (`gpt-5.2`): behavior-preserving structural cleanup
+
+Use `reviewer` only as an optional escalation for large or risky diffs. Normal closure uses the main orchestrator, deterministic tests, and human QA.
+
+## Code Retrieval Rule
+
+- For large or hot code surfaces, use `jcodemunch` first.
+- Use the repo map first for workflow, product, QA, and domain orientation.
+- Default `jcodemunch` targets:
+  - `web-runner/app.js`
+  - `web-runner/modules/functionBank.js`
+  - `Scripts/functionBank.js`
+  - other large mirrored or high-blast-radius files
+- Use broad file reads only after `jcodemunch` fails to answer the ownership or symbol question.
+
+## Karpathy-Lite Execution Gate (A-M-P)
+
+Condition: ALWAYS prefer value over process bloat.
+Apply this gate only for high-blast-radius runtime edits and bug/regression fixes.
+
+Before editing:
+- A (Assumptions): list unknowns and the exact validation step for each.
+- M (Minimality): define smallest patch boundary (files/symbols) and explicit non-goals.
+- P (Proof): define the concrete test/repro command and expected pass signal.
+
+Stop rules:
+- If scope expands beyond boundary, pause and split into a follow-up change.
+- If proof cannot be produced, do not mark the task complete.
+
+## Skill Routing (Minimal, Runtime-Only)
+
+Condition: ALWAYS add value, avoid process bloat.
+Construct 3 may be referenced only as retirement context; never as runtime source of truth.
+
+Use exactly one primary skill per task unless the user explicitly asks for alternatives.
+
+- Trigger: bug/regression in JavaScript runtime behavior.
+  Primary skill: `debug-javascript`
+  Evidence required: single root cause, minimal fix, failing->passing repro proof.
+
+- Trigger: browser/runtime behavior validation or UI flow verification.
+  Primary skill: `webapp-testing`
+  Evidence required: reproducible Playwright check and clear pass signal (screenshot/log only when needed).
+
+- Trigger: feature planning that touches multiple seams or has ambiguous scope.
+  Primary skill: `feature-planning`
+  Evidence required: ordered implementation plan with dependencies, test strategy, and explicit non-goals.
+  Constraint: planning pass does not edit code.
+
+- Trigger: user requests options, trade-off analysis, or "best approach" selection.
+  Primary skill: `ensemble-orchestrator`
+  Evidence required: 3 materially different options, rubric scoring, and justified winner.
+
+Fallback:
+- If no trigger matches, use standard seam-first workflow in this file.
+- `javascript-typescript` is reference-only and not a default routing target.
+
+## Shell Output Rule
+
+- Use `rtk` for noisy shell outputs when available.
+- Good defaults: `rtk git status`, `rtk git diff`, `rtk grep`, `rtk read`, and `rtk test`.
+- `rtk` compresses command output; it does not replace `jcodemunch` for large-code understanding.
+
+## Canonical Docs
+
+- Architecture map: [docs/architecture/index.md](docs/architecture/index.md)
+- Product docs: [docs/product/index.md](docs/product/index.md)
+- QA docs: [docs/qa/index.md](docs/qa/index.md)
+- Workflow docs: [docs/workflow/index.md](docs/workflow/index.md)
+- References: [docs/references/index.md](docs/references/index.md)
+- Refactor vectors and cleanup order: [docs/references/refactor-vectors.md](docs/references/refactor-vectors.md)
+- Plans: `docs/plans/active/` and `docs/plans/completed/`
+
+## What To Do Next
+
+### Combat or turn-flow issue
+
+1. [docs/product/index.md](docs/product/index.md)
+2. [docs/qa/index.md](docs/qa/index.md)
+3. `jcodemunch` for seam ownership and symbol lookup in `src/core/turnGateController.mjs`, `web-runner/src/core/combatRuntimeGateway.js`, and mirrored function banks
+4. then open the smallest owning seam file
+5. open `web-runner/app.js` only when the owning seam does not explain the behavior
+
+### Progression or economy task
+
+1. [docs/product/index.md](docs/product/index.md)
+2. relevant domain spec from the product index
+3. `jcodemunch` for shared progression seam or mirrored function bank ownership before broad reads
+
+### UI or layout bug
+
+1. [docs/product/index.md](docs/product/index.md)
+2. [docs/qa/browser-validation.md](docs/qa/browser-validation.md)
+3. `jcodemunch` for `src/core/layoutState.js` or the owning runtime symbol in `web-runner/app.js`
+4. open the smallest owning file or symbol surface
+5. treat layout/combat/input overlap in `web-runner/app.js` as a refactor priority zone, not a first-read default
+
+### Workflow or Beads question
+
+1. [docs/workflow/index.md](docs/workflow/index.md)
+2. live status artifacts under `agents/`
+
+## Validation Surfaces
+
+- Contract tests under `tests/`
+- Browser validation guide: [docs/qa/browser-validation.md](docs/qa/browser-validation.md)
+- Browser backend policy: [docs/qa/browser-policy.md](docs/qa/browser-policy.md)
+
+## Live Workflow State
+
+- Blockers and unresolved issues: [agents/issues.md](agents/issues.md)
+- Current PM snapshot: [agents/pm_status.md](agents/pm_status.md)
+- Recent dev handoffs: [agents/dev_reports.md](agents/dev_reports.md)
+- Workflow authority: [governance/execution/beads-process.md](governance/execution/beads-process.md)
+
+## Compatibility Notes
+
+- [README.md](README.md), [claude.md](claude.md), and [ai-memory/project.md](ai-memory/project.md) are compatibility shims, not alternate repo maps.

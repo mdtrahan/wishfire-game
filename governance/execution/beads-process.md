@@ -15,6 +15,9 @@ Canonical index: [../../docs/workflow/index.md](../../docs/workflow/index.md)
 - Repo-side `.beads/` files may exist as local artifacts, but they are not workflow-authoritative when live `bd` is available.
 - If `bd` does not resolve, repair shell `PATH` first:
   - `export PATH="$HOME/.local/bin:$PATH"`
+- If live `bd` is unhealthy, repair the local backend before treating workflow as blocked:
+  - `npm run beads:ready`
+- Repo tooling that depends on Beads visibility should attempt backend repair first and only fall back to the repo-local `.beads/` mirror for read-only visibility when live `bd` still cannot start.
 
 ## Git Maintenance Override
 - Git maintenance/governance work is not blocked by Beads when the user explicitly asks for the Git operation itself.

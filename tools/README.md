@@ -12,6 +12,18 @@ Game automation in this repo has one canonical execution path:
 
 Everything else in this folder is support tooling around that harness, not a second test pipeline.
 
+## Standup Board
+
+Use `npm run standup` to print a short Beads lane summary and open the local kanban board.
+
+- The board is read-only in v1.
+- It attempts to repair the local Beads/Dolt backend before reading state.
+- If live `bd` is still unavailable, it falls back to the repo-local `.beads/` mirror so standup visibility does not hard-stop.
+- It reads live Beads state and splits `open` work into `Backlog` vs `Open` using `bd ready --json` when the backend is healthy.
+- It shows temporary execution roles, not persistent agent identities.
+
+Use `npm run beads:ready` when you want to repair or verify the local Beads backend explicitly before workflow writes.
+
 ## Minimal Browser Battery
 
 Use `npm run browser:battery` when you need a small, repeatable browser QA pass that is cheaper than a full harness run.

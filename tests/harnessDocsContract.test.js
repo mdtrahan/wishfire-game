@@ -66,27 +66,51 @@ test('active dev handoff file stays small and recent', () => {
   );
 });
 
-test('pm and dev prompts stay thin and defer durable policy', () => {
-  const promptPaths = ['agents/prompts/pm_agent.md', 'agents/prompts/dev_agent.md'];
-  for (const promptPath of promptPaths) {
-    const contents = readRepoFile(promptPath);
-    assert.ok(lineCount(promptPath) <= 180, `${promptPath} exceeds prompt budget`);
-    assert.match(contents, /AGENTS\.md/);
-    assert.match(contents, /governance\/execution\/beads-process\.md/);
-    assert.doesNotMatch(contents, /regression review -> `reviewer`/);
+test('pm and dev prompt files are removed from the active repo surface', () => {
+  const removedPaths = ['agents/prompts/pm_agent.md', 'agents/prompts/dev_agent.md'];
+  for (const removedPath of removedPaths) {
+    const entry = registry.entries.find((candidate) => candidate.path === removedPath);
+    assert.equal(entry, undefined, `${removedPath} should not remain in the registry`);
+    assert.equal(fs.existsSync(path.join(repoRoot, removedPath)), false, `${removedPath} should be removed`);
   }
 });
 
-test('AGENTS.md exposes the default subagent routing map', () => {
+test('AGENTS.md exposes the default subagent escalation map', () => {
   const agents = readRepoFile('AGENTS.md');
-  assert.match(agents, /## Subagent Routing/);
-  assert.match(agents, /`product-manager` \(`gpt-5\.2`\)/);
-  assert.match(agents, /`search-specialist` \(`gpt-5\.4-mini`\)/);
-  assert.match(agents, /`debugger` \(`gpt-5\.2`\)/);
-  assert.match(agents, /`game-developer` \(`gpt-5\.2`\)/);
-  assert.match(agents, /`javascript-pro` \(`gpt-5\.2`\)/);
-  assert.match(agents, /`refactoring-specialist` \(`gpt-5\.2`\)/);
-  assert.match(agents, /Use `reviewer` only as an optional escalation/);
+  assert.match(agents, /## Subagent Escalation/);
+  assert.match(agents, /`search-specialist`: ownership lookup and fast codebase search\./);
+  assert.match(agents, /`debugger`: deep root-cause isolation\./);
+  assert.match(agents, /`game-developer`: gameplay\/runtime\/render-loop implementation\./);
+  assert.match(agents, /`refactoring-specialist`: behavior-preserving structural cleanup\./);
+  assert.match(agents, /`reviewer`: optional escalation for large or risky diffs only\./);
+});
+
+test('AGENTS.md makes jcodemunch the first path for large or hot code surfaces', () => {
+  const agents = readRepoFile('AGENTS.md');
+  assert.match(agents, /## Retrieval Order/);
+  assert.match(agents, /Use `jcodemunch` first on hot or large files, then open the smallest owning seam before broad reads\./);
+  assert.match(agents, /`web-runner\/app\.js`/);
+  assert.match(agents, /`web-runner\/modules\/functionBank\.js`/);
+  assert.match(agents, /`Scripts\/functionBank\.js`/);
+});
+
+test('AGENTS.md routes noisy shell output through rtk without replacing jcodemunch', () => {
+  const agents = readRepoFile('AGENTS.md');
+  assert.match(agents, /## Hot Surfaces \+ Retrieval Rules/);
+  assert.match(agents, /Use `rtk` for noisy shell output when available:/);
+  assert.match(agents, /`rtk git status`/);
+  assert.match(agents, /`rtk git diff`/);
+  assert.match(agents, /`rtk grep`/);
+  assert.match(agents, /`rtk test`/);
+  assert.match(agents, /If the owning seam explains the behavior, do not open or edit a larger hot surface\./);
+});
+
+test('AGENTS.md stays map-like by pushing strategy into the refactor vectors reference', () => {
+  const agents = readRepoFile('AGENTS.md');
+  assert.doesNotMatch(agents, /## Refactor Vectors/);
+  assert.doesNotMatch(agents, /## Safe Cleanup Order/);
+  assert.match(agents, /## Operational Links/);
+  assert.match(agents, /docs\/references\/refactor-vectors\.md/);
 });
 
 test('project subagent configs use the lean default model split', () => {

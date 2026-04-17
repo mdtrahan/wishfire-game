@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Codex-Orka Standup Board</title>
+  <link rel="stylesheet" href="/beads-board/styles.css">
+</head>
+<body data-theme="light">
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">Standup</div>
+      <h1>Beads Board</h1>
+      <p class="subhead">Visual lane state from live Beads data.</p>
+    </div>
+    <div class="topbar-actions">
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle light and dark mode">Dark Mode</button>
+      <div class="metrics" id="metrics"></div>
+    </div>
+  </header>
+  <main class="dashboard">
+    <section class="detail detail-wide" id="detail">
+      <div class="detail-empty">Select a bead card to inspect details.</div>
+    </section>
+    <section class="board-shell">
+      <section class="board" id="board"></section>
+    </section>
+  </main>
+  <script type="module" src="/beads-board/app.js"></script>
+</body>
+</html>
