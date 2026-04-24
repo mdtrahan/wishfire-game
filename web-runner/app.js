@@ -650,6 +650,40 @@ const gameState = {
       },
     ],
   },
+  collectiblesLayout: {
+    entryPoint: 'map-locale',
+    selectedIndex: 0,
+    hitZones: null,
+    gallery: [
+      {
+        id: 'collectible-astral-seal',
+        name: 'Astral Seal',
+        discovered: true,
+        rarity: 'Rare',
+        siblingFamily: 'progression-gallery',
+        setTag: 'seal-archive',
+        passiveHook: { key: 'wallet_bonus', mode: 'pct', value: 0.04, cadenceTurns: 0 },
+      },
+      {
+        id: 'collectible-vault-shard',
+        name: 'Vault Shard',
+        discovered: true,
+        rarity: 'Epic',
+        siblingFamily: 'progression-gallery',
+        setTag: 'ward-breaker',
+        passiveHook: { key: 'ward_break_boost', mode: 'flat', value: 1, cadenceTurns: 0 },
+      },
+      {
+        id: 'collectible-orbit-emblem',
+        name: 'Orbit Emblem',
+        discovered: false,
+        rarity: 'Legendary',
+        siblingFamily: 'progression-gallery',
+        setTag: 'orbit-regalia',
+        passiveHook: { key: 'drop_weight', mode: 'pct', value: 0.05, cadenceTurns: 0 },
+      },
+    ],
+  },
   relicsLayout: {
     entryPoint: 'map-locale',
     selectedIndex: 0,
@@ -836,6 +870,7 @@ const gameState = {
     ],
     retentionButtons: [
       { id: 'homestead', title: 'Enter Homestead', subtitle: 'Map Locale', targetLayout: 'homesteadLayout', fill: '#f4efcf', stroke: '#a08f41', text: '#5a4d17' },
+      { id: 'collectibles', title: 'Enter Collectibles', subtitle: 'Map Locale', targetLayout: 'collectiblesLayout', fill: '#f1e0f7', stroke: '#8e61a4', text: '#4a275d' },
       { id: 'relics', title: 'Enter Relics', subtitle: 'Map Locale', targetLayout: 'relicsLayout', fill: '#f1e0f7', stroke: '#8e61a4', text: '#4a275d' },
       { id: 'pets', title: 'Enter Pets', subtitle: 'Map Locale', targetLayout: 'petsLayout', fill: '#e7f2d5', stroke: '#7e9e54', text: '#324819' },
       { id: 'evolution', title: 'Enter Evolution', subtitle: 'Soft Currency', targetLayout: 'evolutionLayout', fill: '#e3ecfb', stroke: '#5a79b8', text: '#20385f' },
@@ -1719,19 +1754,11 @@ const CANONICAL_HERO_ROSTER = [
   { name: 'Kojonn', hp: 40, maxHP: 40, ATK: 12, DEF: 14, MAG: 22, RES: 18, SPD: 14, attackType: 'magic' },
 ];
 // Deterministic gate metric used for progression/access comparisons.
-function computeCombatPower(atk, def, hp, mag = 0, res = 0, attackType = '') {
+function computeCombatPower(atk, def, hp) {
   const a = Number(atk || 0);
   const d = Number(def || 0);
   const h = Number(hp || 0);
-  const m = Number(mag || 0);
-  const r = Number(res || 0);
-  const type = String(attackType || '').toLowerCase();
-  const offense = type === 'magic'
-    ? m
-    : (type === 'melee' ? a : Math.max(a, m));
-  const mitigation = (d * 0.65) + (r * 0.35);
-  const survivability = mitigation + (h / 10);
-  return Math.ceil(offense + survivability);
+  return Math.round((a + d + (h / 10)) * 100) / 100;
 }
 const HERO_STAT_KEYS = ['ATK', 'DEF', 'MAG', 'RES', 'SPD', 'HP'];
 const FIGMA_HERO_NEXT_URL = 'https://www.figma.com/api/mcp/asset/dfb1bc1b-4189-4f52-9c88-1cf1e4f8029a';
@@ -1826,7 +1853,7 @@ function getHeroScreenRoster() {
       maxHP: Number(live?.maxHP || hero.maxHP || hero.hp || 0),
       combatPower: Number(
         live?.combatPower
-        || computeCombatPower(hero.ATK, hero.DEF, hero.maxHP || hero.hp, hero.MAG, hero.RES, hero.attackType)
+        || computeCombatPower(hero.ATK, hero.DEF, hero.maxHP || hero.hp)
       ),
       attackType: live?.attackType || hero.attackType,
       stats: {
@@ -2002,13 +2029,7 @@ function drawHeroStyleCloseControl(ctx, closeRect, closeOvalImage = null, ink = 
   ctx.fillStyle = '#d9d9d9';
   ctx.fill();
   if (closeOvalImage) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.clip();
     ctx.drawImage(closeOvalImage, closeRect.x, closeRect.y, closeRect.w, closeRect.h);
-    ctx.restore();
   }
   ctx.fillStyle = ink;
   ctx.font = `700 ${Math.max(12, Math.round(closeRect.h * 0.55))}px Arial`;
@@ -2016,6 +2037,15 @@ function drawHeroStyleCloseControl(ctx, closeRect, closeOvalImage = null, ink = 
   ctx.textBaseline = 'middle';
   ctx.fillText('X', cx, cy + 1);
   ctx.textBaseline = 'alphabetic';
+}
+
+function requestMapLocaleLayout(layoutId) {
+  if (layoutId === 'tomesLayout') return layoutState.requestLayoutChange('tomesLayout', 'map-tomes-locale');
+  if (layoutId === 'artifactsLayout') return layoutState.requestLayoutChange('artifactsLayout', 'map-artifacts-locale');
+  if (layoutId === 'mountsLayout') return layoutState.requestLayoutChange('mountsLayout', 'map-mounts-locale');
+  if (layoutId === 'collectiblesLayout') return layoutState.requestLayoutChange('collectiblesLayout', 'map-collectibles-locale');
+  if (layoutId === 'homesteadLayout') return layoutState.requestLayoutChange('homesteadLayout', 'map-homestead-locale');
+  return Promise.resolve(false);
 }
 
 function ensureTask011Audit() {
@@ -2616,7 +2646,7 @@ function buildEncounterByBudget({ pool, targetCP, locale = 'all', maxSlots = 3, 
 function initEntities(enemyRows, layoutInstances) {
   assertCombatLayoutDev('initEntities');
   state.entities = [];
-  const mappedEnemyData = (enemyRows || []).map((row) => ({
+  state.globals.EnemyData = (enemyRows || []).map((row) => ({
     ...row,
     faction: normalizeFaction(row?.faction),
     enemyRole: normalizeEnemyRole(row?.enemyRole || row?.role),
@@ -2624,10 +2654,9 @@ function initEntities(enemyRows, layoutInstances) {
     biome: String(row?.biome || row?.biomes || 'all').trim().toLowerCase() || 'all',
     biomeTags: normalizeBiomeTags(row?.biomes || row?.biome || 'all'),
     localeTags: normalizeBiomeTags(row?.localeTags || row?.locale_tags || row?.locale || row?.biomes || row?.biome || 'all'),
-    CombatPower: computeCombatPower(row?.ATK, row?.DEF, row?.HP, row?.MAG, row?.RES, row?.attackType),
+    CombatPower: computeCombatPower(row?.ATK, row?.DEF, row?.HP),
   }));
-  state.globals.DevToolEnemyCatalog = [...new Set(mappedEnemyData.map((row) => String(row?.name || row?.EnemyName || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  state.globals.EnemyData = mappedEnemyData;
+  state.globals.DevToolEnemyCatalog = [...new Set(state.globals.EnemyData.map((row) => String(row?.name || row?.EnemyName || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   state.globals.CombatSessionId = Number(state.globals.CombatSessionId || 0) + 1;
   resetBootstrapRngSession();
 
@@ -2661,7 +2690,7 @@ function initEntities(enemyRows, layoutInstances) {
       heroCloneLabel: v.cloneLabel,
       hp,
       maxHP: partyMaxHP[i],
-      combatPower: computeCombatPower(v.ATK, v.DEF, partyMaxHP[i], v.MAG, v.RES, v.attackType),
+      combatPower: computeCombatPower(v.ATK, v.DEF, partyMaxHP[i]),
       stats: {
         ATK: Number(v.ATK),
         DEF: Number(v.DEF),
@@ -2815,7 +2844,7 @@ function initEntities(enemyRows, layoutInstances) {
         faction: String(pick.faction || 'wishless'),
         enemyRole: String(pick.enemyRole || 'fodder'),
         localeTags: Array.isArray(pick.localeTags) ? pick.localeTags : ['all'],
-        CombatPower: computeCombatPower(pick.ATK, pick.DEF, pick.HP, pick.MAG, pick.RES, pick.attackType),
+        CombatPower: computeCombatPower(pick.ATK, pick.DEF, pick.HP),
       }, slotIndex);
     }
     state.globals.InitialSpawn = 0;
@@ -4007,13 +4036,14 @@ async function main(){
     });
     layoutState.registerLayout({
       id: 'mapLayout',
-      allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'relicsLayout', 'petsLayout', 'homesteadLayout'],
+      allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'collectiblesLayout', 'relicsLayout', 'petsLayout', 'homesteadLayout'],
       onEnter() {
         gameState.overlayVisible = false;
         gameState.mapLayout.panY = 0;
         gameState.mapLayout.tomesLocaleHit = null;
         gameState.mapLayout.artifactsLocaleHit = null;
         gameState.mapLayout.mountsLocaleHit = null;
+        gameState.mapLayout.collectiblesLocaleHit = null;
         gameState.mapLayout.relicsLocaleHit = null;
         gameState.mapLayout.homesteadLocaleHit = null;
         gameState.mapLayout.closeHit = null;
@@ -4085,6 +4115,26 @@ async function main(){
       onActive() {},
       onExit() {
         gameState.mountsLayout.hitZones = null;
+        return null;
+      },
+    });
+    layoutState.registerLayout({
+      id: 'collectiblesLayout',
+      allowedTransitions: ['chestsLayout', 'combat'],
+      onEnter() {
+        gameState.overlayVisible = false;
+        gameState.collectiblesLayout.hitZones = null;
+        gameState.collectiblesLayout.selectedIndex = Math.max(
+          0,
+          Math.min(
+            Math.max(0, (gameState.collectiblesLayout.gallery || []).length - 1),
+            Number(gameState.collectiblesLayout.selectedIndex || 0),
+          ),
+        );
+      },
+      onActive() {},
+      onExit() {
+        gameState.collectiblesLayout.hitZones = null;
         return null;
       },
     });
@@ -4170,7 +4220,7 @@ async function main(){
     });
     layoutState.registerLayout({
       id: 'chestsLayout',
-      allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'relicsLayout', 'petsLayout', 'evolutionLayout', 'homesteadLayout'],
+      allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'collectiblesLayout', 'relicsLayout', 'petsLayout', 'evolutionLayout', 'homesteadLayout'],
       onEnter() {
         gameState.overlayVisible = false;
         gameState.chestsLayout.hitZones = null;
@@ -4796,6 +4846,7 @@ async function main(){
       gameState.mapLayout.artifactsLocaleHit = null;
       gameState.mapLayout.mountsLocaleHit = null;
       gameState.mapLayout.relicsLocaleHit = null;
+      gameState.mapLayout.collectiblesLocaleHit = null;
       gameState.mapLayout.homesteadLocaleHit = null;
       ctx.fillStyle = '#ffffff';
       ctx.font = '500 14px Arial';
@@ -5099,6 +5150,94 @@ async function main(){
         cursorY += card.h + cardGap;
       }
       gameState.mountsLayout.hitZones = {
+        close,
+        combatBack,
+        cards: cardHitZones,
+      };
+      return;
+    }
+    if (layoutId === 'collectiblesLayout') {
+      const viewWidth = canvas.width / dpr;
+      const viewHeight = canvas.height / dpr;
+      const palette = {
+        bg0: '#21182a',
+        bg1: '#35233f',
+        panel: '#efe7f4',
+        panelEdge: '#bea8f0',
+        ink: '#291936',
+        muted: '#675274',
+        selected: '#ecd8fb',
+      };
+      const roundRect = (x, y, w, h, r, fill, stroke) => {
+        const radius = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + w - radius, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+        ctx.lineTo(x + w, y + h - radius);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+        ctx.lineTo(x + radius, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+        if (fill) {
+          ctx.fillStyle = fill;
+          ctx.fill();
+        }
+        if (stroke) {
+          ctx.strokeStyle = stroke;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      };
+      ctx.clearRect(0, 0, viewWidth, viewHeight);
+      const grad = ctx.createLinearGradient(0, 0, 0, viewHeight);
+      grad.addColorStop(0, palette.bg0);
+      grad.addColorStop(1, palette.bg1);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, viewWidth, viewHeight);
+      const panelPad = 14;
+      const panel = {
+        x: panelPad,
+        y: 16,
+        w: Math.max(260, viewWidth - panelPad * 2),
+        h: Math.max(360, viewHeight - 34),
+      };
+      roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
+      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
+      const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
+      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
+      roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#eadff0', '#b59ac4');
+      ctx.fillStyle = palette.ink;
+      ctx.font = '700 11px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Back To Combat', combatBack.x + combatBack.w / 2, combatBack.y + 18);
+      ctx.textAlign = 'left';
+      ctx.font = '700 18px Arial';
+      ctx.fillText('Collectibles Gallery (Scaffold)', panel.x + 14, panel.y + 58);
+      ctx.fillStyle = palette.muted;
+      ctx.font = '500 11px Arial';
+      ctx.fillText('Progression-gallery collectibles retained through the Vault rail.', panel.x + 14, panel.y + 76);
+      const gallery = Array.isArray(gameState.collectiblesLayout.gallery) ? gameState.collectiblesLayout.gallery : [];
+      const selectedIndex = Math.max(0, Math.min(gallery.length - 1, Number(gameState.collectiblesLayout.selectedIndex || 0)));
+      const cardHitZones = [];
+      let cursorY = panel.y + 90;
+      const cardGap = 8;
+      for (let i = 0; i < gallery.length; i += 1) {
+        const item = gallery[i] || {};
+        const card = { x: panel.x + 12, y: cursorY, w: panel.w - 24, h: 58 };
+        roundRect(card.x, card.y, card.w, card.h, 10, i === selectedIndex ? palette.selected : '#f8f1fb', '#d7c2df');
+        ctx.fillStyle = palette.ink;
+        ctx.font = '700 13px Arial';
+        ctx.fillText(item.discovered ? String(item.name || 'Unknown Collectible') : 'Locked Collectible', card.x + 10, card.y + 20);
+        ctx.fillStyle = palette.muted;
+        ctx.font = '600 10px Arial';
+        ctx.fillText(`Set: ${String(item.setTag || 'none')}`, card.x + 10, card.y + 35);
+        cardHitZones.push(card);
+        cursorY += card.h + cardGap;
+      }
+      gameState.collectiblesLayout.hitZones = {
         close,
         combatBack,
         cards: cardHitZones,
@@ -9637,6 +9776,33 @@ function getStoryCardLiveLineState() {
       for (let i = 0; i < cards.length; i += 1) {
         if (isPointInRect(mx, my, cards[i])) {
           gameState.mountsLayout.selectedIndex = i;
+          drawFrame();
+          return;
+        }
+      }
+      drawFrame();
+      return;
+    }
+    if (activeLayoutId === 'collectiblesLayout') {
+      const zones = (gameState.collectiblesLayout && gameState.collectiblesLayout.hitZones) || {};
+      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
+        layoutState.requestLayoutChange('chestsLayout', 'collectibles-back-vault').catch((err) => {
+          console.error('[LAYOUT_PHASE1] collectibles->vault failed', err);
+        });
+        drawFrame();
+        return;
+      }
+      if (isPointInRect(mx, my, zones.combatBack)) {
+        layoutState.requestLayoutChange('combat', 'collectibles-back-combat').catch((err) => {
+          console.error('[LAYOUT_PHASE1] collectibles->combat failed', err);
+        });
+        drawFrame();
+        return;
+      }
+      const cards = Array.isArray(zones.cards) ? zones.cards : [];
+      for (let i = 0; i < cards.length; i += 1) {
+        if (isPointInRect(mx, my, cards[i])) {
+          gameState.collectiblesLayout.selectedIndex = i;
           drawFrame();
           return;
         }
