@@ -61,7 +61,14 @@ function combatLog(message) {
 }
 
 class CombatRuntimeGateway {
-  constructor({ combatState, eventBus, layoutState, callFunctionWithContext } = {}) {
+  constructor({
+    combatState,
+    eventBus,
+    layoutState,
+    callFunctionWithContext,
+    getAuthoritativeTurnState,
+    applyAuthoritativeTurnState,
+  } = {}) {
     this.combatState = combatState || {};
     this.eventBus = eventBus || null;
     this.layoutState = layoutState || null;

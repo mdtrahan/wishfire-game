@@ -89,19 +89,11 @@ function ensureEntities(ctx) {
   return (ctx && ctx.state ? ctx.state.entities : state.entities);
 }
 
-function computeCombatPowerFromStats(atk, def, hp, mag = 0, res = 0, attackType = '') {
+function computeCombatPowerFromStats(atk, def, hp) {
   const a = Number(atk || 0);
   const d = Number(def || 0);
   const h = Number(hp || 0);
-  const m = Number(mag || 0);
-  const r = Number(res || 0);
-  const type = String(attackType || '').toLowerCase();
-  const offense = type === 'magic'
-    ? m
-    : (type === 'melee' ? a : Math.max(a, m));
-  const mitigation = (d * 0.65) + (r * 0.35);
-  const survivability = mitigation + (h / 10);
-  return Math.ceil(offense + survivability);
+  return Math.round((a + d + (h / 10)) * 100) / 100;
 }
 
 function normalizeLocaleTags(input) {
@@ -2873,6 +2865,15 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
   t.hp = Math.max(0, (t.hp ?? 0) - dmg);
   const afterHP = Number(t.hp ?? 0);
   const appliedDamage = Math.max(0, beforeHP - afterHP);
+  if (t.kind === 'hero' && appliedDamage > 0) {
+    const idx = Number(t.heroIndex ?? 0);
+    if (Array.isArray(g.PartyHPByIndex)) {
+      g.PartyHPByIndex[idx] = Math.max(0, Number(g.PartyHPByIndex[idx] ?? beforeHP) - appliedDamage);
+      g.PartyHP = sum(g.PartyHPByIndex || []);
+    } else {
+      g.PartyHP = Math.max(0, Number(g.PartyHP ?? beforeHP) - appliedDamage);
+    }
+  }
   runTraitHooks(ctx, 'damage_receive', {
     targetUID: Number(uid || 0),
     targetKind: String(t.kind || ''),
@@ -2905,7 +2906,6 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
     SpawnDamageText(ctx, appliedDamage, dx, dy, damageTextKind, t.kind || null);
   }
   delete g.NextDamageTextKind;
-  if (t.hp === 0) {
   if (t.hp === 0 && t.isAlive !== false) {
     t.isAlive = false;
     if ((g.RoundActive && g.GroupResolving) || (isTimeInitiative(ctx) && g.GroupResolving)) {
@@ -3314,8 +3314,8 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
     heroUID,
     targetUID,
     dmg,
-    finalDmg,
     powerAmpMultiplier: ampMult,
+    finalDmg,
     powerAmpLifecycleId: ampLifecycleId,
     consumePowerAmp: ampMult > 0 ? 1 : 0,
     calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
@@ -3948,37 +3948,29 @@ export function AwardMonsterDrop(ctx, monsterName, tierIndex = null, killerUID =
           continue;
         }
       }
-    } else {
       AddToken(ctx, parsed.id, 1);
       LogCombat(ctx, `Token drop: ${parsed.id}`);
-      resolved = `TOKEN.${parsed.id}`;
+      awarded.push(parsed.id);
+    } else if (parsed.type === 'ITEM') {
+      LogCombat(ctx, `Item drop: ${parsed.id}`);
+      awarded.push(parsed.id);
+    } else {
+      awarded.push('EMPTY');
     }
-  } else if (parsed.type === 'ITEM') {
-    LogCombat(ctx, `Item drop: ${parsed.id}`);
-    resolved = `ITEM.${parsed.id}`;
   }
-
+  const resolved = awarded.find((entry) => entry && entry !== 'EMPTY') || EMPTY;
   const trace = {
     thLevel,
-    baseGateRateBps,
-    effectiveGateRateBps,
-    bracket: getDropRateBracket(baseGateRateBps),
-    baseGateChancePct: Number(baseGateChancePct.toFixed(4)),
-    gateChancePct,
-    gateRollPct: Number(gateRollPct.toFixed(4)),
-    gatePassed,
-    itemRollPct: weighted.itemRollPct,
-    selectedWeightPct: weighted.selectedWeightPct,
-    dropId: String(dropId),
+    baseDropRate,
+    transformedDropRate,
+    awarded: awarded.slice(),
     resolved,
   };
   g.LastLootSlotTrace = [trace];
   g.LastLootGateTrace = trace;
   console.log(`[LOOT_TRACE] ${monsterName} ${JSON.stringify(trace)}`);
   console.log(`[LOOT] Monster ${monsterName} awarded: ${resolved}`);
-  return resolved && resolved !== 'EMPTY'
-    ? String(resolved).replace(/^TOKEN\./, '').replace(/^ITEM\./, '')
-    : EMPTY;
+  return resolved;
 }
 
 export function SpendTokensOnEvent(ctx, eventId, amount) {
@@ -4012,6 +4004,7 @@ export function SpendTokensOnEvent(ctx, eventId, amount) {
   }
   return true;
 }
+
 
 export function GetChainMultiplier(ctx, chainNum) {
   if (chainNum <= 1) return 1.0;
@@ -5031,8 +5024,7 @@ export function StartBuffRoll(ctx) {
   g.BuffRollEndsAt = 0;
   RegisterPartyBuffSlot(ctx, buffType);
   RefreshPartyBuffUI(ctx);
-  const shouldApplyStatBuff = Number(g.BuffRollApplyStat || 0) === 1;
-  if (g.BuffRollSkillID && shouldApplyStatBuff) {
+  if (g.BuffRollApplyStat === 1 && g.BuffRollSkillID) {
     ExecuteSkill(ctx, g.BuffRollSkillID, g.BuffRollActor, 0);
   }
   g.BuffRollSkillID = '';

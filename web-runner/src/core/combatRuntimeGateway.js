@@ -48,11 +48,24 @@ function combatLog(message) {
 }
 
 class CombatRuntimeGateway {
-  constructor({ combatState, eventBus, layoutState, callFunctionWithContext } = {}) {
+  constructor({
+    combatState,
+    eventBus,
+    layoutState,
+    callFunctionWithContext,
+    getAuthoritativeTurnState,
+    applyAuthoritativeTurnState,
+  } = {}) {
     this.combatState = combatState || {};
     this.eventBus = eventBus || null;
     this.layoutState = layoutState || null;
     this.callFunctionWithContext = callFunctionWithContext || null;
+    this.getAuthoritativeTurnStateAdapter = typeof getAuthoritativeTurnState === 'function'
+      ? getAuthoritativeTurnState
+      : null;
+    this.applyAuthoritativeTurnStateAdapter = typeof applyAuthoritativeTurnState === 'function'
+      ? applyAuthoritativeTurnState
+      : null;
   }
 
   setLayoutState(layoutState) {
@@ -103,6 +116,17 @@ class CombatRuntimeGateway {
   }
 
   getAuthoritativeTurnState() {
+    if (this.getAuthoritativeTurnStateAdapter) {
+      const turnState = this.getAuthoritativeTurnStateAdapter() || {};
+      const normalized = {
+        turnQueue: cloneJson(turnState.turnQueue || []),
+        currentActorIndex: Number(turnState.currentActorIndex || 0),
+        capturedAtTick: Number(turnState.capturedAtTick || 0),
+      };
+      this.combatState.turnQueue = cloneJson(normalized.turnQueue);
+      this.combatState.currentActorIndex = Number(normalized.currentActorIndex || 0);
+      return normalized;
+    }
     const turnQueue = cloneJson(this.combatState.turnQueue || []);
     const currentActorIndex = Number(this.combatState.currentActorIndex || 0);
     const capturedAtTick = Number(this.combatState.tickCount || this.combatState.turnTick || 0);
@@ -235,12 +259,26 @@ class CombatRuntimeGateway {
   resume(snapshot) {
     this.combatState.acceptEvents = false;
     this.combatState.inputEnabled = false;
+    let restoredTurnState = null;
     if (snapshot && snapshot.turnState && Array.isArray(snapshot.turnState.turnQueue)) {
-      this.combatState.turnQueue = cloneJson(snapshot.turnState.turnQueue);
-      this.combatState.currentActorIndex = Number(snapshot.turnState.currentActorIndex || 0);
+      restoredTurnState = {
+        turnQueue: cloneJson(snapshot.turnState.turnQueue),
+        currentActorIndex: Number(snapshot.turnState.currentActorIndex || 0),
+        capturedAtTick: Number(snapshot.turnState.capturedAtTick || snapshot.capturedAtTick || 0),
+      };
     } else if (snapshot && Array.isArray(snapshot.turnQueue)) {
-      this.combatState.turnQueue = cloneJson(snapshot.turnQueue);
-      this.combatState.currentActorIndex = Number(snapshot.currentActorIndex || 0);
+      restoredTurnState = {
+        turnQueue: cloneJson(snapshot.turnQueue),
+        currentActorIndex: Number(snapshot.currentActorIndex || 0),
+        capturedAtTick: Number(snapshot.capturedAtTick || 0),
+      };
+    }
+    if (restoredTurnState) {
+      if (this.applyAuthoritativeTurnStateAdapter) {
+        this.applyAuthoritativeTurnStateAdapter(cloneJson(restoredTurnState));
+      }
+      this.combatState.turnQueue = cloneJson(restoredTurnState.turnQueue);
+      this.combatState.currentActorIndex = Number(restoredTurnState.currentActorIndex || 0);
     }
     this.resetGemInputState();
     const post = this.validateResumeCheckpoint(snapshot || null);
