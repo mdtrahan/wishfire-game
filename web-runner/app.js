@@ -49,6 +49,7 @@ import * as inputHandling from './systems/inputHandling.js';
 import * as renderSystem from './systems/renderSystem.js';
 import * as renderHUD from './systems/renderHUD.js';
 import * as renderHeroScreen from './systems/renderHeroScreen.js';
+import * as renderMap from './systems/renderMap.js';
 import * as helpers from './utils/helpers.js';
 import * as mapLayoutState from './state/mapLayoutState.js';
 import * as uiState from './state/uiState.js';
@@ -4952,74 +4953,30 @@ async function main(){
     if (layoutId === 'mapLayout') {
       const viewWidth = canvas.width / dpr;
       const viewHeight = canvas.height / dpr;
-      const panX = Number(mapLayoutState.getMapLayoutState().panX || 0);
       mapLayoutState.setMapPanY(0);
-      ctx.clearRect(0, 0, viewWidth, viewHeight);
-      ctx.fillStyle = '#1f2d3d';
-      ctx.fillRect(0, 0, viewWidth, viewHeight);
-
-      const drawParallax = (img, scale, alpha) => {
-        if (!img) return;
-        const w = img.width * scale;
-        const h = img.height * scale;
-        const halfSpillX = Math.max(0, (w - viewWidth) / 2);
-        const minPanX = -halfSpillX;
-        const maxPanX = halfSpillX;
-        mapLayoutState.setMapLayoutBounds({ minX: minPanX, maxX: maxPanX });
-        const clampedPanX = Math.max(minPanX, Math.min(maxPanX, panX));
-        mapLayoutState.setMapPanX(clampedPanX);
-        const x = ((viewWidth - w) / 2) + clampedPanX;
-        const y = 0;
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.drawImage(img, x, y, w, h);
-        ctx.restore();
-        mapLayoutState.setMapLayoutField('lastRender', {
-          fitMode: 'vertical',
+      const mapRenderResult = renderMap.renderMap(
+        ctx,
+        gameState,
+        uiState.getUIState(),
+        mapLayoutState.getMapLayoutState(),
+        {
           viewWidth,
           viewHeight,
-          drawW: w,
-          drawH: h,
-          drawX: x,
-          drawY: y,
-          panX: clampedPanX,
-          panY: 0,
-          panBounds: { minX: minPanX, maxX: maxPanX },
-          towerOverlayRendered: false,
-        });
-      };
-      const verticalFitScale = mapBackgroundImage ? (viewHeight / mapBackgroundImage.height) : 1;
-      drawParallax(mapBackgroundImage, verticalFitScale, 0.95);
-
-      const meterPad = 14;
-      const meterW = Math.max(180, viewWidth - (meterPad * 2));
-      const meterH = 16;
-      const meterX = meterPad;
-      const meterY = 14;
-      const pct = Math.max(0, Math.min(1, Number(mapLayoutState.getMapLayoutState().warMeter || 0)));
-      ctx.fillStyle = '#0f1722';
-      ctx.fillRect(meterX, meterY, meterW, meterH);
-      ctx.fillStyle = '#cf3d2e';
-      ctx.fillRect(meterX + 2, meterY + 2, Math.max(0, (meterW - 4) * pct), meterH - 4);
-      ctx.strokeStyle = '#d6dbe3';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(meterX, meterY, meterW, meterH);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '600 12px Arial';
-      ctx.textAlign = 'left';
-      ctx.fillText(`War Meter ${Math.round(pct * 100)}%`, meterX + 6, meterY + 12);
-      const close = renderSystem.getHeroStyleCloseRect(viewWidth, viewHeight, heroLayoutSpec);
-      renderSystem.drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, '#111');
-      mapLayoutState.setMapLayoutField('closeHit', close);
-      mapLayoutState.setMapLayoutField('tomesLocaleHit', null);
-      mapLayoutState.setMapLayoutField('artifactsLocaleHit', null);
-      mapLayoutState.setMapLayoutField('mountsLocaleHit', null);
-      mapLayoutState.setMapLayoutField('relicsLocaleHit', null);
-      mapLayoutState.setMapLayoutField('collectiblesLocaleHit', null);
-      mapLayoutState.setMapLayoutField('homesteadLocaleHit', null);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '500 14px Arial';
-      ctx.fillText('Map Layout (drag to pan)', 14, viewHeight - 18);
+          mapBackgroundImage,
+          heroLayoutSpec,
+          closeWinOvalImage,
+        },
+      );
+      mapLayoutState.setMapLayoutBounds(mapRenderResult.panBounds);
+      mapLayoutState.setMapPanX(mapRenderResult.clampedPanX);
+      mapLayoutState.setMapLayoutField('lastRender', mapRenderResult.lastRender);
+      mapLayoutState.setMapLayoutField('closeHit', mapRenderResult.closeHit);
+      mapLayoutState.setMapLayoutField('tomesLocaleHit', mapRenderResult.localeHits.tomesLocaleHit);
+      mapLayoutState.setMapLayoutField('artifactsLocaleHit', mapRenderResult.localeHits.artifactsLocaleHit);
+      mapLayoutState.setMapLayoutField('mountsLocaleHit', mapRenderResult.localeHits.mountsLocaleHit);
+      mapLayoutState.setMapLayoutField('relicsLocaleHit', mapRenderResult.localeHits.relicsLocaleHit);
+      mapLayoutState.setMapLayoutField('collectiblesLocaleHit', mapRenderResult.localeHits.collectiblesLocaleHit);
+      mapLayoutState.setMapLayoutField('homesteadLocaleHit', mapRenderResult.localeHits.homesteadLocaleHit);
       return;
     }
     if (layoutId === 'tomesLayout') {

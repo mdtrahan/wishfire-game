@@ -3846,29 +3846,6 @@ export function ResolveMonsterDrop(ctx, monsterName, tierIndex = null) {
   return tiers[idx] ?? EMPTY;
 }
 
-const TH_DROP_RATE_THRESHOLDS = [2400, 1500, 1000, 500, 100, 50, 0];
-const TH_DROP_RATE_TABLE = {
-  2400: [2400, 2520, 2640, 2760, 2880, 3000, 3120, 3240, 3360, 3480, 3600],
-  1500: [1500, 1650, 1800, 1950, 2100, 2250, 2400, 2550, 2700, 2850, 3000],
-  1000: [1000, 1175, 1350, 1525, 1700, 1875, 2050, 2225, 2400, 2575, 2750],
-  500: [500, 700, 900, 1100, 1300, 1500, 1700, 1900, 2100, 2300, 2500],
-  100: [100, 220, 340, 460, 580, 700, 820, 940, 1060, 1180, 1300],
-  50: [50, 130, 210, 290, 370, 450, 530, 610, 690, 770, 850],
-  0: [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
-};
-
-function sanitizeBps(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.min(10000, Math.floor(n)));
-}
-
-function sanitizeThLevel(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.floor(n));
-}
-
 const HUUN_EXECUTION_NAME = 'Huun';
 const HUUN_EXECUTION_TH_BONUS = 2;
 
@@ -3877,34 +3854,6 @@ function resolveHuunExecutionDropBonusLevel(ctx, killerUID) {
   if (!killer || killer.kind !== 'hero') return 0;
   if (String(killer.name || '') !== HUUN_EXECUTION_NAME) return 0;
   return HUUN_EXECUTION_TH_BONUS;
-}
-
-export function getDropRateBracket(dropRate) {
-  const bps = sanitizeBps(dropRate);
-  for (const threshold of TH_DROP_RATE_THRESHOLDS) {
-    if (bps >= threshold) return threshold;
-  }
-  return 0;
-}
-
-export function getDropRate(thLevel, dropRate) {
-  const base = sanitizeBps(dropRate);
-  const level = sanitizeThLevel(thLevel);
-  const bracket = getDropRateBracket(base);
-  const row = TH_DROP_RATE_TABLE[bracket];
-  if (!Array.isArray(row) || row.length === 0) return base;
-  const idx = Math.min(level, row.length - 1);
-  const transformed = Number(row[idx]);
-  if (!Number.isFinite(transformed)) return base;
-  return sanitizeBps(transformed);
-}
-
-export function GetDropRateBracket(ctx, dropRate) {
-  return getDropRateBracket(dropRate);
-}
-
-export function GetDropRate(ctx, thLevel, dropRate) {
-  return getDropRate(thLevel, dropRate);
 }
 
 export function AwardMonsterDrop(ctx, monsterName, tierIndex = null, killerUID = 0) {
