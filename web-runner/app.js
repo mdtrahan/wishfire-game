@@ -42,6 +42,15 @@ import {
 import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
 import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
 import { createHealBloom } from './src/core/healBloomAnimation.mjs';
+import * as heroGemProgressStorage from './systems/heroGemProgressStorage.js';
+import * as runtimeDebugLogging from './systems/runtimeDebugLogging.js';
+import * as animationMath from './systems/animationMath.js';
+import * as inputHandling from './systems/inputHandling.js';
+import * as renderSystem from './systems/renderSystem.js';
+import * as renderHUD from './systems/renderHUD.js';
+import * as helpers from './utils/helpers.js';
+import * as mapLayoutState from './state/mapLayoutState.js';
+import * as uiState from './state/uiState.js';
 
 const out = document.getElementById('output');
 const gemCounterOut = document.getElementById('gem-counter-output');
@@ -104,7 +113,11 @@ const STARTUP_DEBUG = (() => {
     return false;
   }
 })();
-const HERO_GEM_PROGRESS_STORAGE_KEY = 'orka.hero_gem_progress.v1';
+if (typeof window !== 'undefined') {
+  window.DEBUG_LAYOUT = DEBUG_LAYOUT;
+  window.STARTUP_DEBUG = STARTUP_DEBUG;
+  window.DEBUG_GEMS_QUERY = DEBUG_GEMS_QUERY;
+}
 const DEV_TOOL_HOTKEY_LABEL = 'Ctrl+Shift+P';
 const DEV_TOOL_GEM_RANDOM = -1;
 const DEV_TOOL_GEM_OPTIONS = Object.freeze([
@@ -314,84 +327,10 @@ if (!RUNTIME_FINGERPRINT.orka69rReady) {
   console.warn('[RUNTIME_CONTRACT] ORKA-69r not present in this build (69R:MISSING).');
 }
 
-function debugLayoutLog(message) {
-  if (!DEBUG_LAYOUT) return;
-  console.log(message);
-}
-function startupDebugLog(...args) {
-  if (!STARTUP_DEBUG) return;
-  console.log(...args);
-}
-function isGemDebugEnabled() {
-  if (DEBUG_GEMS_QUERY) return true;
-  if (state && state.globals && state.globals.DevTestMode === true) return true;
-  if (state && state.globals && state.globals.DebugGemsMode === true) return true;
-  try {
-    const hook = typeof window !== 'undefined' ? window.__codexGame : null;
-    if (hook && hook.globals && hook.globals.DevTestMode === true) return true;
-    if (hook && hook.globals && hook.globals.DebugGemsMode === true) return true;
-  } catch {}
-  return false;
-}
-function gemDebugLog(tag, payload) {
-  if (!isGemDebugEnabled()) return;
-
-  const allowedTags = new Set([
-    '[TURN_RESTORE_PICK]',
-    '[GEM_REJECT]',
-    '[REFILL_STUCK]',
-    '[GATE_STUCK_CANPICK]'
-  ]);
-  if (!allowedTags.has(tag)) return;
-
-  console.log(tag, payload);
-}
 const layoutHarnessEnabled = (() => {
   return HARNESS_MODE;
 })();
 let detachRuntimeInputListeners = null;
-
-function cloneJson(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
-const LUNGE_ANTICIPATION_SEC = 0.14;
-const LUNGE_FORWARD_SEC = 0.75;
-const LUNGE_HOLD_SEC = 0.16;
-const LUNGE_RETREAT_SEC = 0.26;
-const LUNGE_TOTAL_SEC = LUNGE_ANTICIPATION_SEC + LUNGE_FORWARD_SEC + LUNGE_HOLD_SEC + LUNGE_RETREAT_SEC;
-const LUNGE_FORWARD_DIST_PX = 200;
-const HERO_LUNGE_FORWARD_DIST_PX = LUNGE_FORWARD_DIST_PX * 0.85;
-const LUNGE_IMPACT_HANDOFF_SEC = 0.08;
-
-function evaluateCubicBezier(t, x1, y1, x2, y2) {
-  const input = Math.max(0, Math.min(1, Number(t || 0)));
-  const cubic = (p0, p1, p2, p3, value) => {
-    const inv = 1 - value;
-    return (inv ** 3 * p0)
-      + (3 * inv * inv * value * p1)
-      + (3 * inv * value * value * p2)
-      + (value ** 3 * p3);
-  };
-  const derivative = (p0, p1, p2, p3, value) => {
-    const inv = 1 - value;
-    return (3 * inv * inv * (p1 - p0))
-      + (6 * inv * value * (p2 - p1))
-      + (3 * value * value * (p3 - p2));
-  };
-  let param = input;
-  for (let i = 0; i < 6; i += 1) {
-    const xError = cubic(0, x1, x2, 1, param) - input;
-    const slope = derivative(0, x1, x2, 1, param);
-    if (Math.abs(xError) < 1e-6 || Math.abs(slope) < 1e-6) break;
-    param = Math.max(0, Math.min(1, param - (xError / slope)));
-  }
-  return cubic(0, y1, y2, 1, param);
-}
-
-function easeLungeForward(t) {
-  return evaluateCubicBezier(t, 1, 0, 0, 1);
-}
 
 function createHarnessEventBus() {
   const listeners = new Map();
@@ -429,17 +368,17 @@ class HarnessInputDomainManager {
 
   lock() {
     this.locked = true;
-    debugLayoutLog('[Input] Locked');
+    runtimeDebugLogging.debugLayoutLog('[Input] Locked');
   }
 
   unlock() {
     this.locked = false;
-    debugLayoutLog('[Input] Unlocked');
+    runtimeDebugLogging.debugLayoutLog('[Input] Unlocked');
   }
 
   emit(domain, eventName, payload = {}) {
     const allowed = !this.locked && !!domain && domain === this.activeDomain;
-    debugLayoutLog(`[Input] Emit → domain:${domain} event:${eventName} allowed:${allowed} active:${this.activeDomain}`);
+    runtimeDebugLogging.debugLayoutLog(`[Input] Emit → domain:${domain} event:${eventName} allowed:${allowed} active:${this.activeDomain}`);
     if (!allowed) return false;
     this.eventBus.emit(eventName, { ...payload, domain });
     return true;
@@ -480,7 +419,7 @@ function createHarnessLayoutState({ eventBus, inputDomains, combatRuntimeGateway
       if (!targetLayout) throw new Error(`Missing layout: ${layoutId}`);
       activeLayoutId = layoutId;
       inputDomains.setActiveDomain(layoutId);
-      debugLayoutLog(`[Layout] Initial activation → ${layoutId}`);
+      runtimeDebugLogging.debugLayoutLog(`[Layout] Initial activation → ${layoutId}`);
       const context = {
         eventBus,
         payload,
@@ -493,7 +432,7 @@ function createHarnessLayoutState({ eventBus, inputDomains, combatRuntimeGateway
       if (typeof targetLayout.onActive === 'function') await targetLayout.onActive(context);
     },
     async requestLayoutChange(targetLayoutId, reason = 'harness-request', payload = {}) {
-      debugLayoutLog(`[Layout] Request → from:${activeLayoutId} to:${targetLayoutId} reason:${reason}`);
+      runtimeDebugLogging.debugLayoutLog(`[Layout] Request → from:${activeLayoutId} to:${targetLayoutId} reason:${reason}`);
       if (isTransitioning) return false;
       if (activeLayoutId === targetLayoutId) return false;
       const sourceLayout = activeLayoutId ? layouts.get(activeLayoutId) : null;
@@ -501,7 +440,7 @@ function createHarnessLayoutState({ eventBus, inputDomains, combatRuntimeGateway
       if (!targetLayout) return false;
       if (sourceLayout && Array.isArray(sourceLayout.allowedTransitions)) {
         if (!sourceLayout.allowedTransitions.includes(targetLayoutId)) {
-          debugLayoutLog(`[Layout] Invalid transition → from:${activeLayoutId} to:${targetLayoutId}`);
+          runtimeDebugLogging.debugLayoutLog(`[Layout] Invalid transition → from:${activeLayoutId} to:${targetLayoutId}`);
           return false;
         }
       }
@@ -529,7 +468,7 @@ function createHarnessLayoutState({ eventBus, inputDomains, combatRuntimeGateway
         if (typeof targetLayout.onEnter === 'function') await targetLayout.onEnter(enterContext);
         if (typeof targetLayout.onActive === 'function') await targetLayout.onActive(enterContext);
         eventBus.emit('layout:changed', { from, to: targetLayoutId, reason });
-        debugLayoutLog(`[Layout] Active → ${targetLayoutId}`);
+        runtimeDebugLogging.debugLayoutLog(`[Layout] Active → ${targetLayoutId}`);
         return true;
       } finally {
         isTransitioning = false;
@@ -554,7 +493,6 @@ const gameState = {
   enemyHP: [50, 60, 55],
   enemyMaxHP: [50, 60, 55],
   // Overlay state - NavMenu opens overlay window
-  overlayVisible: false,
   // Gem board state
   gems: [], // array of gem objects {cellC, cellR, color, x, y}
   selectedGems: [], // indices of selected gems
@@ -580,32 +518,6 @@ const gameState = {
     current: null,
     telegraphUntil: 0,
   },
-  mapLayout: {
-    panX: 0,
-    panY: 0,
-    panBounds: { minX: 0, maxX: 0 },
-    drag: {
-      active: false,
-      pointerId: null,
-      lastX: 0,
-      lastY: 0,
-      moved: 0,
-    },
-    closeHit: null,
-    tomesLocaleButton: { x: 0, y: 0, w: 146, h: 36 },
-    tomesLocaleHit: null,
-    artifactsLocaleButton: { x: 0, y: 0, w: 146, h: 36 },
-    artifactsLocaleHit: null,
-    mountsLocaleButton: { x: 0, y: 0, w: 146, h: 36 },
-    mountsLocaleHit: null,
-    relicsLocaleButton: { x: 0, y: 0, w: 146, h: 36 },
-    relicsLocaleHit: null,
-    homesteadLocaleButton: { x: 0, y: 0, w: 146, h: 36 },
-    homesteadLocaleHit: null,
-    warMeter: 0.64,
-    encounterNode: { id: 'clouds-alpha', locale: 'clouds', faction: 'wishless' },
-    lastRender: null,
-  },
   refillBounce: {
     active: false,
     queue: [],
@@ -623,11 +535,6 @@ const gameState = {
     h: 0,
     initialized: false,
     trigger: '',
-  },
-  heroScreen: {
-    hitZones: null,
-    mode: 'details',
-    selectedPartySlot: 0,
   },
   tomesLayout: {
     entryPoint: 'map-locale',
@@ -1837,7 +1744,7 @@ const combatRuntimeGateway = new CombatRuntimeGateway({
   },
   applyAuthoritativeTurnState(turnState) {
     const g = (state && state.globals) ? state.globals : {};
-    g.TurnOrderArray = Array.isArray(turnState.turnQueue) ? cloneJson(turnState.turnQueue) : [];
+    g.TurnOrderArray = Array.isArray(turnState.turnQueue) ? helpers.cloneJson(turnState.turnQueue) : [];
     g.CurrentTurnIndex = Number(turnState.currentActorIndex || 0);
     const active = g.TurnOrderArray[g.CurrentTurnIndex];
     if (active && typeof active === 'object') {
@@ -2050,7 +1957,7 @@ async function assignSelectedHeroToPartySlot(slotIndex = 0) {
   if (!hero) return null;
   const currentSlots = normalizePartyFormationSlots(getConfiguredHeroSlots());
   const nextSlots = assignHeroToPartySlot(currentSlots, hero.name, slotIndex);
-  gameState.heroScreen.selectedPartySlot = Math.max(0, Math.min(3, Math.floor(Number(slotIndex || 0))));
+  uiState.setUIStateField('heroScreenSelectedPartySlot', Math.max(0, Math.min(3, Math.floor(Number(slotIndex || 0)))));
   return applyDevToolingConfig({ heroSlots: nextSlots }, { closeModal: false });
 }
 
@@ -2279,70 +2186,9 @@ function isPointInRect(mx, my, rect) {
   return mx >= rect.x && mx <= (rect.x + rect.w) && my >= rect.y && my <= (rect.y + rect.h);
 }
 
-function getHeroStyleCloseRect(viewWidth, viewHeight) {
-  const artW = Number(heroLayoutSpec?.artboard?.w || 360);
-  const artH = Number(heroLayoutSpec?.artboard?.h || 640);
-  const fitScale = Math.min(viewWidth / artW, viewHeight / artH);
-  const artOffsetX = (viewWidth - (artW * fitScale)) * 0.5;
-  const artOffsetY = (viewHeight - (artH * fitScale)) * 0.5;
-  const r = Number(heroLayoutSpec?.close?.r || 15) * fitScale;
-  const cx = artOffsetX + (Number(heroLayoutSpec?.close?.cx || 180) * fitScale);
-  const cy = artOffsetY + (Number(heroLayoutSpec?.close?.cy || 608) * fitScale);
-  return { x: cx - r, y: cy - r, w: r * 2, h: r * 2, r };
-}
-
-function drawHeroStyleCloseControl(ctx, closeRect, closeOvalImage = null, ink = '#111') {
-  if (!closeRect) return;
-  const cx = closeRect.x + (closeRect.w / 2);
-  const cy = closeRect.y + (closeRect.h / 2);
-  const radius = closeRect.r || (closeRect.w / 2);
-  // Always establish a circular base so square source sprites cannot regress this control.
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.closePath();
-  ctx.fillStyle = '#d9d9d9';
-  ctx.fill();
-  if (closeOvalImage) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.clip();
-    ctx.drawImage(closeOvalImage, closeRect.x, closeRect.y, closeRect.w, closeRect.h);
-    ctx.restore();
-  }
-  ctx.fillStyle = ink;
-  ctx.font = `700 ${Math.max(12, Math.round(closeRect.h * 0.55))}px Arial`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('X', cx, cy + 1);
-  ctx.textBaseline = 'alphabetic';
-}
-
 function getHeroClassLabel(heroName) {
   const key = String(heroName || '').trim().toLowerCase();
   return HERO_CLASS_LABELS[key] || 'Adventurer';
-}
-
-function drawHeroStatGlyph(ctx, emoji, cx, cy, scale) {
-  const glyph = String(emoji || 'O');
-  const size = Math.max(12, Math.round(Number(scale || 1) * 22));
-  ctx.save();
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.font = `${size}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
-  ctx.fillText(glyph, cx, cy + 1);
-  ctx.restore();
-}
-
-function traceDiamondShapePath(ctx, rect) {
-  const cx = rect.x + (rect.w / 2);
-  const cy = rect.y + (rect.h / 2);
-  ctx.moveTo(cx, rect.y);
-  ctx.lineTo(rect.x + rect.w, cy);
-  ctx.lineTo(cx, rect.y + rect.h);
-  ctx.lineTo(rect.x, cy);
-  ctx.closePath();
 }
 
 const heroSkillSpriteFocusCache = new WeakMap();
@@ -2488,7 +2334,7 @@ function drawHeroSkillNode(ctx, rect, cardData, selected, ss, sf, spriteSheetIma
     ctx.save();
     ctx.beginPath();
     if (shape === 'diamond') {
-      traceDiamondShapePath(ctx, innerRect);
+      renderSystem.traceDiamondShapePath(ctx, innerRect);
     } else if (shape === 'circle') {
       ctx.arc(innerRect.x + (innerRect.w / 2), innerRect.y + (innerRect.h / 2), Math.min(innerRect.w, innerRect.h) / 2, 0, Math.PI * 2);
       ctx.closePath();
@@ -2502,7 +2348,7 @@ function drawHeroSkillNode(ctx, rect, cardData, selected, ss, sf, spriteSheetIma
     ctx.save();
     ctx.beginPath();
     if (shape === 'diamond') {
-      traceDiamondShapePath(ctx, innerRect);
+      renderSystem.traceDiamondShapePath(ctx, innerRect);
     } else if (shape === 'circle') {
       ctx.arc(innerRect.x + (innerRect.w / 2), innerRect.y + (innerRect.h / 2), Math.min(innerRect.w, innerRect.h) / 2, 0, Math.PI * 2);
       ctx.closePath();
@@ -2524,7 +2370,7 @@ function drawHeroSkillNode(ctx, rect, cardData, selected, ss, sf, spriteSheetIma
     ctx.lineWidth = Math.max(2, ss(2));
     ctx.beginPath();
     if (shape === 'diamond') {
-      traceDiamondShapePath(ctx, { x: rect.x - ss(2), y: rect.y - ss(2), w: rect.w + ss(4), h: rect.h + ss(4) });
+      renderSystem.traceDiamondShapePath(ctx, { x: rect.x - ss(2), y: rect.y - ss(2), w: rect.w + ss(4), h: rect.h + ss(4) });
     } else {
       ctx.arc(rect.x + (rect.w / 2), rect.y + (rect.h / 2), (Math.min(rect.w, rect.h) / 2) + ss(2), 0, Math.PI * 2);
       ctx.closePath();
@@ -2679,7 +2525,7 @@ function renderHeroSkillModal({
   ctx.textBaseline = 'middle';
   ctx.fillText('Upgrade', modalRects.upgradeButton.x + (modalRects.upgradeButton.w / 2), modalRects.upgradeButton.y + (modalRects.upgradeButton.h / 2) + ss(1));
 
-  drawHeroStyleCloseControl(ctx, closeRect, closeWinOvalImage, '#111111');
+  renderSystem.drawHeroStyleCloseControl(ctx, closeRect, closeWinOvalImage, '#111111');
   ctx.restore();
   return {
     backdrop: { x: 0, y: 0, w: viewWidth, h: viewHeight },
@@ -2698,7 +2544,7 @@ function renderHeroScreenLayoutV2({ ctx, canvas, dpr, gameState, fnContext, clos
     maxHP: 0,
     stats: { ATK: 0, DEF: 0, MAG: 0, RES: 0, SPD: 0 },
   };
-  gameState.heroScreen.mode = 'details';
+  uiState.setUIStateField('heroScreenMode', 'details');
   const heroName = String(hero.name || 'Hero');
   const heroUID = Number(hero && hero.uid) || getHeroUIDByIndex(Number(hero && hero.heroIndex || 0));
   const heroSkillPoints = Math.max(0, Math.floor(Number(callFunctionWithContext(fnContext, 'GetHeroSkillPointBalance', heroUID) || 0)));
@@ -2713,8 +2559,8 @@ function renderHeroScreenLayoutV2({ ctx, canvas, dpr, gameState, fnContext, clos
   }, 0);
   const heroSkillPointsTotal = heroSkillPoints + totalSpent;
   const visibleSkillCards = skillCards.slice(0, Math.max(1, heroLayoutSpec.heroNodes.items.length));
-  const selectedSkillIndex = Math.max(0, Math.min(Math.max(0, visibleSkillCards.length - 1), Math.floor(Number(gameState.heroScreen.selectedSkillIndex || 0))));
-  gameState.heroScreen.selectedSkillIndex = selectedSkillIndex;
+  const selectedSkillIndex = Math.max(0, Math.min(Math.max(0, visibleSkillCards.length - 1), Math.floor(Number(uiState.getUIState().heroScreenSelectedSkillIndex || 0))));
+  uiState.setUIStateField('heroScreenSelectedSkillIndex', selectedSkillIndex);
   const viewWidth = canvas.width / dpr;
   const viewHeight = canvas.height / dpr;
   const artW = heroLayoutSpec.artboard.w;
@@ -2862,7 +2708,7 @@ function renderHeroScreenLayoutV2({ ctx, canvas, dpr, gameState, fnContext, clos
     if (!item) continue;
     const iconCx = sx(item.iconX);
     const valueCx = sx(item.valueX);
-    drawHeroStatGlyph(ctx, statIcons[i], iconCx, statsBar.y + statsBar.h / 2, Math.max(0.55, fitScale * 0.56));
+    renderSystem.drawHeroStatGlyph(ctx, statIcons[i], iconCx, statsBar.y + statsBar.h / 2, Math.max(0.55, fitScale * 0.56));
     ctx.fillStyle = '#f87c17';
     ctx.font = `900 ${sf(10.5, 8)}px Arial Black`;
     const statValue = statKeys[i] === 'HP'
@@ -2871,8 +2717,8 @@ function renderHeroScreenLayoutV2({ ctx, canvas, dpr, gameState, fnContext, clos
     ctx.fillText(String(statValue), valueCx, statsBar.y + statsBar.h / 2 + ss(1));
   }
 
-  const modalOpen = Boolean(gameState.heroScreen.skillModalOpen);
-  const modalSkillIndex = Math.max(0, Math.min(Math.max(0, heroLayoutSpec.heroNodes.items.length - 1), Math.floor(Number(gameState.heroScreen.skillModalSkillIndex || selectedSkillIndex))));
+  const modalOpen = Boolean(uiState.getUIState().heroScreenSkillModalOpen);
+  const modalSkillIndex = Math.max(0, Math.min(Math.max(0, heroLayoutSpec.heroNodes.items.length - 1), Math.floor(Number(uiState.getUIState().heroScreenSkillModalSkillIndex || selectedSkillIndex))));
   const modalCard = visibleSkillCards[modalSkillIndex] || visibleSkillCards[0] || null;
   const modalNode = heroLayoutSpec.heroNodes.items[modalSkillIndex] || heroLayoutSpec.heroNodes.items[0] || null;
   let modalHitZones = null;
@@ -2965,7 +2811,7 @@ function renderHeroScreenLayoutV2({ ctx, canvas, dpr, gameState, fnContext, clos
     });
   }
 
-  gameState.heroScreen.hitZones = {
+  uiState.setUIStateField('heroScreenHitZones', {
     close: closeBtn,
     prevHero: leftArrowZone,
     nextHero: rightArrowZone,
@@ -2973,9 +2819,9 @@ function renderHeroScreenLayoutV2({ ctx, canvas, dpr, gameState, fnContext, clos
     upgradeButton,
     modal: modalHitZones,
     selectedSkillIndex,
-  };
+  });
 
-  if (!modalOpen) drawHeroStyleCloseControl(ctx, closeBtn, closeWinOvalImage, '#111111');
+  if (!modalOpen) renderSystem.drawHeroStyleCloseControl(ctx, closeBtn, closeWinOvalImage, '#111111');
 }
 
 function requestMapLocaleLayout(layoutId) {
@@ -3115,55 +2961,6 @@ function syncFromGlobals() {
   if (state.globals.Gems && Array.isArray(state.globals.Gems)) {
     gameState.gems = state.globals.Gems;
   }
-}
-
-function canUseLocalStorage() {
-  try {
-    return typeof window !== 'undefined' && !!window.localStorage;
-  } catch {
-    return false;
-  }
-}
-
-function readPersistedHeroGemProgress() {
-  if (!canUseLocalStorage()) return null;
-  try {
-    const raw = window.localStorage.getItem(HERO_GEM_PROGRESS_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-function writePersistedHeroGemProgress(snapshot) {
-  if (!canUseLocalStorage() || !snapshot || typeof snapshot !== 'object') return false;
-  try {
-    window.localStorage.setItem(HERO_GEM_PROGRESS_STORAGE_KEY, JSON.stringify(snapshot));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function restoreHeroGemProgressFromStorage() {
-  const snapshot = readPersistedHeroGemProgress();
-  if (!snapshot) return false;
-  callFunctionWithContext(fnContext, 'LoadHeroGemProgressSnapshot', snapshot);
-  syncFromGlobals();
-  return true;
-}
-
-function persistHeroGemProgressIfDirty() {
-  if (!state.globals.HeroGemProgressDirty) return false;
-  const snapshot = callFunctionWithContext(fnContext, 'GetHeroGemProgressSnapshot');
-  const wrote = writePersistedHeroGemProgress(snapshot);
-  if (wrote) {
-    state.globals.HeroGemProgressDirty = 0;
-    state.globals.HeroGemProgressPersistedAt = Date.now();
-  }
-  return wrote;
 }
 
 function assertCombatLayoutDev(functionName) {
@@ -3669,7 +3466,7 @@ function initEntities(enemyRows, layoutInstances) {
       attackType: v.attackType,
       isAlive: true,
     });
-    startupDebugLog(`[HP_FIX] hero=${v.name} maxHP=${maxHP}`);
+    runtimeDebugLogging.startupDebugLog(`[HP_FIX] hero=${v.name} maxHP=${maxHP}`);
   }
   if (partyMembers.escortMember) {
     const escortUID = state.entities.reduce((max, entity) => Math.max(max, Number(entity?.uid || 0)), 0) + 1;
@@ -3735,7 +3532,7 @@ function initEntities(enemyRows, layoutInstances) {
         ? state.globals.EncounterSeenCounts
         : {},
     };
-    startupDebugLog(`[ENCOUNTER] seed=${encounterSeed} targetCP=${encounterRequest.targetCP} locale=${encounterRequest.locale} policy=${encounterRequest.policy}`);
+    runtimeDebugLogging.startupDebugLog(`[ENCOUNTER] seed=${encounterSeed} targetCP=${encounterRequest.targetCP} locale=${encounterRequest.locale} policy=${encounterRequest.policy}`);
     const configuredEnemySlots = getConfiguredEnemySlots();
     const hasManualEnemyLayout = configuredEnemySlots.some((value) => String(value || '').trim() !== DEV_TOOL_RANDOM_ENEMY_SLOT);
     let encounter = null;
@@ -3848,7 +3645,7 @@ function createGemBoard(gridBounds = null, { immediateFill = false } = {}) {
     const gridHeight = gridBounds.maxY - gridBounds.minY;
     startX = gridBounds.minX + (gridWidth - boardWidth) / 2;
     startY = gridBounds.minY + (gridHeight - boardHeight) / 2;
-    startupDebugLog(`[BOARD] Centered within grid bounds: (${startX.toFixed(1)}, ${startY.toFixed(1)})`);
+    runtimeDebugLogging.startupDebugLog(`[BOARD] Centered within grid bounds: (${startX.toFixed(1)}, ${startY.toFixed(1)})`);
   }
   
   for (let c = 0; c < g.cols; c++) {
@@ -3866,7 +3663,7 @@ function createGemBoard(gridBounds = null, { immediateFill = false } = {}) {
   gameState.boardCreated = true;
   setGemArray(gameState.gems);
   state.globals.TapIndex = 0;
-  startupDebugLog(`[BOARD] Created gem board: ${g.cols}x${g.rows} = ${gameState.gems.length} gems`);
+  runtimeDebugLogging.startupDebugLog(`[BOARD] Created gem board: ${g.cols}x${g.rows} = ${gameState.gems.length} gems`);
   if (immediateFill) {
     refillGemBoard(gridBounds);
     state.globals.BoardFillActive = 0;
@@ -3935,7 +3732,7 @@ function refillGemBoard(gridBounds = null) {
     if (hasEmpty) break;
   }
   if (!hasEmpty) {
-    startupDebugLog('[BOARD] Refill skipped (board full)');
+    runtimeDebugLogging.startupDebugLog('[BOARD] Refill skipped (board full)');
     return false;
   }
   const boardWidth = g.cols * g.cellSize + (g.cols - 1) * g.gap;
@@ -3981,7 +3778,7 @@ function refillGemBoard(gridBounds = null) {
   gameState.selectionLocked = false;
   setGemArray(gameState.gems);
   state.globals.TapIndex = 0;
-  startupDebugLog('[BOARD] Refilled missing gems');
+  runtimeDebugLogging.startupDebugLog('[BOARD] Refilled missing gems');
   return true;
 }
 
@@ -4125,7 +3922,7 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
     if (gm) gm.flashUntil = now + YELLOW_CASINO_TELEGRAPH_SEC;
   }
 
-  gemDebugLog('[FILL_GATE]', {
+  runtimeDebugLogging.gemDebugLog('[FILL_GATE]', {
     stage: 'yellow-sequence-start',
     queueLength: queue.length,
     emptyCount: 0,
@@ -4140,8 +3937,8 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
       MatchedColorValue: state.globals.MatchedColorValue,
       TapIndex: state.globals.TapIndex,
     },
-  });
-  gemDebugLog('[FILL_CANDIDATES]', queue.map((item, idx) => ({
+  }, state);
+  runtimeDebugLogging.gemDebugLog('[FILL_CANDIDATES]', queue.map((item, idx) => ({
     idx,
     reason: item.reason,
     type: item.type,
@@ -4149,7 +3946,7 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
     cellC: item.cellC,
     target: item.target,
     uid: item.uid || 0,
-  })));
+  })), state);
 
   if (hasWork) {
     const totalDuration = YELLOW_CASINO_TELEGRAPH_SEC + (queue.length * YELLOW_CASINO_SPIN_SEC);
@@ -4187,7 +3984,7 @@ function startRefillBounce(speedScale = 1) {
     cellC: Number(slot.cellC || 0),
     reason: String(slot.reason || ''),
   }));
-  gemDebugLog('[FILL_GATE]', {
+  runtimeDebugLogging.gemDebugLog('[FILL_GATE]', {
     stage: 'refill-bounce-start',
     hasWork,
     emptyCount: emptySlots.length,
@@ -4202,13 +3999,13 @@ function startRefillBounce(speedScale = 1) {
       MatchedColorValue: state.globals.MatchedColorValue,
       TapIndex: state.globals.TapIndex,
     },
-  });
-  gemDebugLog('[FILL_CANDIDATES]', emptySlots.map((slot, idx) => ({
+  }, state);
+  runtimeDebugLogging.gemDebugLog('[FILL_CANDIDATES]', emptySlots.map((slot, idx) => ({
     idx,
     reason: slot.reason,
     cellR: slot.cellR,
     cellC: slot.cellC,
-  })));
+  })), state);
   refill.active = hasWork;
   refill.queue = emptySlots;
   refill.index = 0;
@@ -4217,7 +4014,7 @@ function startRefillBounce(speedScale = 1) {
     state.globals.BoardFillActive = 1;
     applyTurnGateIntent(createRefillStartGate);
   } else {
-    gemDebugLog('[FILL_SKIP]', { stage: 'refill-bounce-start', reason: 'not-needed' });
+    runtimeDebugLogging.gemDebugLog('[FILL_SKIP]', { stage: 'refill-bounce-start', reason: 'not-needed' }, state);
   }
 }
 
@@ -4486,7 +4283,7 @@ function tryGetInstances(layout){
   const instances = layout.layers
     .filter(layer => layer && Array.isArray(layer.instances))
     .flatMap(layer => layer.instances);
-  startupDebugLog('[LAYOUT_AUDIT] flattenedInstanceCount', instances.length);
+  runtimeDebugLogging.startupDebugLog('[LAYOUT_AUDIT] flattenedInstanceCount', instances.length);
   return instances;
 }
 
@@ -4559,7 +4356,7 @@ async function main(){
         id: 'storyMock',
         allowedTransitions: ['combat'],
         onEnter() {
-          gameState.overlayVisible = false;
+          uiState.setUIStateField('overlayVisible', false);
         },
         onActive() {},
         onExit() { return null; },
@@ -4568,7 +4365,7 @@ async function main(){
         id: 'astralOverlay',
         allowedTransitions: ['combat'],
         onEnter() {
-          gameState.overlayVisible = false;
+          uiState.setUIStateField('overlayVisible', false);
           console.log('[Harness] astralOverlay active');
         },
         onActive() {},
@@ -4651,7 +4448,7 @@ async function main(){
     }
     const bounds = { minX, maxX, minY, maxY };
     gameState.gridBounds = bounds;
-    startupDebugLog(`[BOARD] Grid bounds calculated: (${minX.toFixed(1)}, ${minY.toFixed(1)}) to (${maxX.toFixed(1)}, ${maxY.toFixed(1)})`);
+    runtimeDebugLogging.startupDebugLog(`[BOARD] Grid bounds calculated: (${minX.toFixed(1)}, ${minY.toFixed(1)}) to (${maxX.toFixed(1)}, ${maxY.toFixed(1)})`);
     return bounds;
   };
   function prepareCombatSetupFromInstances(layoutInstances, gameStateRef) {
@@ -4663,7 +4460,7 @@ async function main(){
   }
   async function refreshCombatSessionFromDevTooling({ forceCombat = false, resetGame = false } = {}) {
     if (resetGame) {
-      gameState.overlayVisible = false;
+      uiState.setUIStateField('overlayVisible', false);
       const cfg = ensureDevToolingConfig();
       persistDevToolingConfig({ ...cfg, open: false });
       if (typeof window !== 'undefined' && typeof window.location?.reload === 'function') {
@@ -4676,16 +4473,16 @@ async function main(){
       ? layoutState.getActiveLayoutId()
       : null;
     if (forceCombat && activeLayoutId && activeLayoutId !== 'combat') {
-      gameState.overlayVisible = false;
+      uiState.setUIStateField('overlayVisible', false);
       await layoutState.requestLayoutChange('combat', 'dev-tool-refresh');
       return true;
     }
     if (!freshCombatBootstrapped || !Array.isArray(enemyRows) || !enemyRows.length) {
       return false;
     }
-    gameState.overlayVisible = false;
+    uiState.setUIStateField('overlayVisible', false);
     initEntities(enemyRows, instances);
-    restoreHeroGemProgressFromStorage();
+    heroGemProgressStorage.restoreHeroGemProgressFromStorage({ callFunctionWithContext, fnContext, syncFromGlobals });
     assertCombatLayoutDev('StartRound');
     callFunctionWithContext(fnContext, 'StartRound');
     createGemBoard(gridBounds, { immediateFill: true });
@@ -4715,22 +4512,22 @@ async function main(){
     updateStartupLoadState({ active: true, phase: 'bootstrap', label: 'Loading layout data...', progress: 0.05 });
     runtimeLayouts = await fetchJson(assetUrl('layouts.json')) || {};
     layout = runtimeLayouts.layout || { name: 'runtime-fallback', layers: [] };
-    startupDebugLog('[LAYOUT_AUDIT] topLevelKeys', Object.keys(layout || {}));
-    startupDebugLog('[INIT] Layout loaded');
+    runtimeDebugLogging.startupDebugLog('[LAYOUT_AUDIT] topLevelKeys', Object.keys(layout || {}));
+    runtimeDebugLogging.startupDebugLog('[INIT] Layout loaded');
     assetsLayout = runtimeLayouts.assetsLayout || null;
 
     const project = runtimeLayouts.project || { viewportWidth: 360, viewportHeight: 640 };
     viewW = project && project.viewportWidth ? project.viewportWidth : 360;
     viewH = project && project.viewportHeight ? project.viewportHeight : 640;
-    startupDebugLog('[INIT] Project viewport:', viewW, 'x', viewH);
+    runtimeDebugLogging.startupDebugLog('[INIT] Project viewport:', viewW, 'x', viewH);
     updateStartupLoadState({ phase: 'bootstrap', label: 'Preparing object types...', progress: 0.16 });
 
     instances = tryGetInstances(layout);
-    startupDebugLog('[LAYOUT_AUDIT] instanceCount', Array.isArray(instances) ? instances.length : 0);
+    runtimeDebugLogging.startupDebugLog('[LAYOUT_AUDIT] instanceCount', Array.isArray(instances) ? instances.length : 0);
     const gemInstanceCount = Array.isArray(instances)
       ? instances.filter(i => i && i.type === 'Gem').length
       : 0;
-    startupDebugLog('[LAYOUT_AUDIT] gemInstanceCount', gemInstanceCount);
+    runtimeDebugLogging.startupDebugLog('[LAYOUT_AUDIT] gemInstanceCount', gemInstanceCount);
     const typesNeeded = Array.from(new Set(instances.map(i=>i.type)));
     ['Enemy_Sprite', 'Bar_Fill', 'Bar_Yellow', 'Bar_Back', 'PartyHP_Bar', 'Gem', 'AttackButton', 'Selector'].forEach(t => {
       if (!typesNeeded.includes(t)) typesNeeded.push(t);
@@ -4742,7 +4539,7 @@ async function main(){
       const data = allTypes[t];
       if (data) types[t] = data;
     }
-    startupDebugLog('[INIT] Loaded', Object.keys(types).length, 'object types');
+    runtimeDebugLogging.startupDebugLog('[INIT] Loaded', Object.keys(types).length, 'object types');
     updateStartupLoadState({ phase: 'bootstrap', label: 'Loading encounter data...', progress: 0.24 });
 
     const enemies = await fetchJson(assetUrl('enemies.json'));
@@ -4789,7 +4586,7 @@ async function main(){
           images[t] = img;
           loadedCount++;
           if (['UI_NavCloseButton', 'UI_NavCloseX', 'UI_CloseWin'].includes(t)) {
-            startupDebugLog(`[LOAD] SUCCESS: ${t} loaded from ${meta.imgPath}`);
+            runtimeDebugLogging.startupDebugLog(`[LOAD] SUCCESS: ${t} loaded from ${meta.imgPath}`);
           }
           return { type: t, ok: true };
         }
@@ -4879,7 +4676,7 @@ async function main(){
           const img = await loadImage(imgPath);
           if (img) enemySpriteImages[String(animName).toLowerCase()] = img;
         }
-        startupDebugLog('[LOAD] Enemy_Sprite animations loaded:', Object.keys(enemySpriteImages).length);
+        runtimeDebugLogging.startupDebugLog('[LOAD] Enemy_Sprite animations loaded:', Object.keys(enemySpriteImages).length);
       }
       for (let i = 1; i <= 4; i++) {
         const key = `buffIcon${i}`;
@@ -4915,7 +4712,7 @@ async function main(){
 
     rebuildRenderedCache();
     updateStartupLoadState({ phase: 'bootstrap', label: 'Ready', progress: 0.98 });
-    startupDebugLog('[INIT] Processing instances...');
+    runtimeDebugLogging.startupDebugLog('[INIT] Processing instances...');
   }
   function ensureStartupPreload() {
     if (startupPreloadPromise) return startupPreloadPromise;
@@ -4975,7 +4772,7 @@ async function main(){
             }
           }
           state.globals.GamePhase = 'BOOTSTRAP';
-          startupDebugLog('[INIT] Starting initialization...');
+          runtimeDebugLogging.startupDebugLog('[INIT] Starting initialization...');
           prepareCombatSetupFromInstances(instances, gameState);
           freshCombatBootstrapped = true;
           COMBAT_BOOTSTRAP_COMPLETE = true;
@@ -4983,13 +4780,13 @@ async function main(){
         gateway.resume(freshCombatStart ? null : (resumeSnapshot || null));
         if (needsCombatSeed) {
           initEntities(enemyRows, instances);
-          restoreHeroGemProgressFromStorage();
+          heroGemProgressStorage.restoreHeroGemProgressFromStorage({ callFunctionWithContext, fnContext, syncFromGlobals });
           assertCombatLayoutDev('StartRound');
           callFunctionWithContext(fnContext, 'StartRound');
           createGemBoard(gridBounds);
           combatSessionSeeded = true;
           updateStartupLoadState({ active: false, phase: 'runtime', label: 'Ready', progress: 1 });
-          if (isGemDebugEnabled()) {
+          if (runtimeDebugLogging.isGemDebugEnabled(state)) {
             setTimeout(() => {
               runGemInteractivityDiagnostic().catch((err) => {
                 console.error('[DIAG] Gem interactivity diagnostic failed:', err);
@@ -5014,21 +4811,22 @@ async function main(){
       id: 'mapLayout',
       allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'collectiblesLayout', 'relicsLayout', 'petsLayout', 'homesteadLayout'],
       onEnter() {
-        gameState.overlayVisible = false;
-        gameState.mapLayout.panY = 0;
-        gameState.mapLayout.tomesLocaleHit = null;
-        gameState.mapLayout.artifactsLocaleHit = null;
-        gameState.mapLayout.mountsLocaleHit = null;
-        gameState.mapLayout.collectiblesLocaleHit = null;
-        gameState.mapLayout.relicsLocaleHit = null;
-        gameState.mapLayout.homesteadLocaleHit = null;
-        gameState.mapLayout.closeHit = null;
-        const drag = gameState.mapLayout.drag;
-        drag.active = false;
-        drag.pointerId = null;
-        drag.lastX = 0;
-        drag.lastY = 0;
-        drag.moved = 0;
+        uiState.setUIStateField('overlayVisible', false);
+        mapLayoutState.setMapPanY(0);
+        mapLayoutState.setMapLayoutField('tomesLocaleHit', null);
+        mapLayoutState.setMapLayoutField('artifactsLocaleHit', null);
+        mapLayoutState.setMapLayoutField('mountsLocaleHit', null);
+        mapLayoutState.setMapLayoutField('collectiblesLocaleHit', null);
+        mapLayoutState.setMapLayoutField('relicsLocaleHit', null);
+        mapLayoutState.setMapLayoutField('homesteadLocaleHit', null);
+        mapLayoutState.setMapLayoutField('closeHit', null);
+        mapLayoutState.setMapDragState({
+          active: false,
+          pointerId: null,
+          lastX: 0,
+          lastY: 0,
+          moved: 0,
+        });
         console.log('[LAYOUT_PHASE1]', { stage: 'onEnter', transition: '1->map', trigger: 'map-click' });
       },
       onActive() {},
@@ -5038,7 +4836,7 @@ async function main(){
       id: 'tomesLayout',
       allowedTransitions: ['chestsLayout', 'combat'],
       onEnter() {
-        gameState.overlayVisible = false;
+        uiState.setUIStateField('overlayVisible', false);
         gameState.tomesLayout.hitZones = null;
         gameState.tomesLayout.selectedIndex = Math.max(
           0,
@@ -5058,7 +4856,7 @@ async function main(){
       id: 'artifactsLayout',
       allowedTransitions: ['chestsLayout', 'combat'],
       onEnter() {
-        gameState.overlayVisible = false;
+        uiState.setUIStateField('overlayVisible', false);
         gameState.artifactsLayout.hitZones = null;
         gameState.artifactsLayout.selectedIndex = Math.max(
           0,
@@ -5078,7 +4876,7 @@ async function main(){
       id: 'mountsLayout',
       allowedTransitions: ['chestsLayout', 'combat'],
       onEnter() {
-        gameState.overlayVisible = false;
+        uiState.setUIStateField('overlayVisible', false);
         gameState.mountsLayout.hitZones = null;
         gameState.mountsLayout.selectedIndex = Math.max(
           0,
@@ -5098,7 +4896,7 @@ async function main(){
       id: 'collectiblesLayout',
       allowedTransitions: ['chestsLayout', 'combat'],
       onEnter() {
-        gameState.overlayVisible = false;
+        uiState.setUIStateField('overlayVisible', false);
         gameState.collectiblesLayout.hitZones = null;
         gameState.collectiblesLayout.selectedIndex = Math.max(
           0,
@@ -5118,7 +4916,7 @@ async function main(){
       id: 'relicsLayout',
       allowedTransitions: ['chestsLayout', 'combat'],
       onEnter() {
-        gameState.overlayVisible = false;
+        uiState.setUIStateField('overlayVisible', false);
         gameState.relicsLayout.hitZones = null;
         gameState.relicsLayout.selectedIndex = Math.max(
           0,
@@ -5138,7 +4936,7 @@ async function main(){
       id: 'petsLayout',
       allowedTransitions: ['chestsLayout', 'combat'],
       onEnter() {
-        gameState.overlayVisible = false;
+        uiState.setUIStateField('overlayVisible', false);
         gameState.petsLayout.hitZones = null;
         gameState.petsLayout.selectedIndex = Math.max(
           0,
@@ -5158,7 +4956,7 @@ async function main(){
       id: 'evolutionLayout',
       allowedTransitions: ['chestsLayout', 'combat'],
       onEnter() {
-        gameState.overlayVisible = false;
+        uiState.setUIStateField('overlayVisible', false);
         gameState.evolutionLayout.hitZones = null;
         gameState.evolutionLayout.selectedLevel = Math.max(
           0,
@@ -5178,7 +4976,7 @@ async function main(){
       id: 'homesteadLayout',
       allowedTransitions: ['chestsLayout', 'combat'],
       onEnter() {
-        gameState.overlayVisible = false;
+        uiState.setUIStateField('overlayVisible', false);
         gameState.homesteadLayout.hitZones = null;
         gameState.homesteadLayout.selectedSlot = Math.max(
           0,
@@ -5198,7 +4996,7 @@ async function main(){
       id: 'chestsLayout',
       allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'collectiblesLayout', 'relicsLayout', 'petsLayout', 'evolutionLayout', 'homesteadLayout'],
       onEnter() {
-        gameState.overlayVisible = false;
+        uiState.setUIStateField('overlayVisible', false);
         gameState.chestsLayout.hitZones = null;
         const tabs = Array.isArray(gameState.chestsLayout.tabs) ? gameState.chestsLayout.tabs : [];
         const allowed = new Set(tabs.map((t) => String(t.id || '')));
@@ -5216,13 +5014,13 @@ async function main(){
       id: 'heroLayout',
       allowedTransitions: ['combat'],
       onEnter() {
-        gameState.overlayVisible = false;
-        gameState.heroScreen.hitZones = null;
+        uiState.setUIStateField('overlayVisible', false);
+        uiState.setUIStateField('heroScreenHitZones', null);
         normalizeHeroSelectionIndex();
       },
       onActive() {},
       onExit() {
-        gameState.heroScreen.hitZones = null;
+        uiState.setUIStateField('heroScreenHitZones', null);
         return null;
       },
     });
@@ -5260,7 +5058,7 @@ async function main(){
       id: 'town',
       allowedTransitions: ['combat'],
       onEnter() {
-        gameState.overlayVisible = false;
+        uiState.setUIStateField('overlayVisible', false);
         restorePartyToFullHP();
       },
       onActive() {},
@@ -5270,7 +5068,7 @@ async function main(){
       id: 'idleFarmLayout',
       allowedTransitions: ['combat', 'storyMock'],
       onEnter() {
-        gameState.overlayVisible = false;
+        uiState.setUIStateField('overlayVisible', false);
         startIdleFarmEmissions(performance.now() / 1000);
         restartIdleFarmSession(performance.now() / 1000);
       },
@@ -5329,7 +5127,7 @@ async function main(){
           blocked: transitionCheck.reason,
           fallback: 'overlay-visible',
         });
-        gameState.overlayVisible = true;
+        uiState.setUIStateField('overlayVisible', true);
         return;
       }
       console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->2', trigger: 'astral-flow-click' });
@@ -5340,7 +5138,7 @@ async function main(){
       if (layoutState.getActiveLayoutId() !== 'combat') {
         return;
       }
-      gameState.overlayVisible = false;
+      uiState.setUIStateField('overlayVisible', false);
       await layoutState.requestLayoutChange('heroLayout', 'nav-hero');
       return;
     }
@@ -5348,11 +5146,11 @@ async function main(){
       if (layoutState.getActiveLayoutId() !== 'combat') {
         return;
       }
-      gameState.overlayVisible = false;
+      uiState.setUIStateField('overlayVisible', false);
       await layoutState.requestLayoutChange('chestsLayout', 'nav-chests');
       return;
     }
-    gameState.overlayVisible = true;
+    uiState.setUIStateField('overlayVisible', true);
   });
   eventBus.on('layout:storyMock:click', async () => {
     if (layoutState.getActiveLayoutId() !== 'storyMock') return;
@@ -5370,7 +5168,7 @@ async function main(){
     await layoutState.requestLayoutChange('combat', 'town-click', { freshStart: true });
   });
   if (layoutHarnessEnabled) {
-    debugLayoutLog('[Harness] Enabled');
+    runtimeDebugLogging.debugLayoutLog('[Harness] Enabled');
   }
 
   await layoutState.activateInitialLayout('storyMock');
@@ -5504,8 +5302,8 @@ async function main(){
       id: 'storyMock',
       allowedTransitions: ['town'],
       onEnter() {
-        gameState.overlayVisible = false;
-        debugLayoutLog('[Harness] storyMock active');
+        uiState.setUIStateField('overlayVisible', false);
+        runtimeDebugLogging.debugLayoutLog('[Harness] storyMock active');
       },
       onActive() {},
       onExit() {
@@ -5516,9 +5314,9 @@ async function main(){
       id: 'town',
       allowedTransitions: ['combat'],
       onEnter() {
-        gameState.overlayVisible = false;
+        uiState.setUIStateField('overlayVisible', false);
         restorePartyToFullHP();
-        debugLayoutLog('[Harness] town active');
+        runtimeDebugLogging.debugLayoutLog('[Harness] town active');
       },
       onActive() {},
       onExit() {
@@ -5529,7 +5327,7 @@ async function main(){
       id: 'astralOverlay',
       allowedTransitions: ['combat'],
       onEnter() {
-        gameState.overlayVisible = false;
+        uiState.setUIStateField('overlayVisible', false);
         console.log('[Harness] astralOverlay active');
       },
       onActive() {},
@@ -5542,7 +5340,7 @@ async function main(){
     harnessLayoutState.registerLayout(storyMockLayout);
     harnessLayoutState.registerLayout(townLayout);
     harnessLayoutState.registerLayout(astralOverlayLayout);
-    debugLayoutLog('[Harness] Layouts registered: storyMock, town, astralOverlay');
+    runtimeDebugLogging.debugLayoutLog('[Harness] Layouts registered: storyMock, town, astralOverlay');
 
     harnessEventBus.on('layout:storyMock:click', async () => {
       await harnessLayoutState.requestLayoutChange('town', 'storyMock-click', { source: 'storyMock' });
@@ -5716,7 +5514,7 @@ async function main(){
     const debugSig = `${windowPopupItems.length}:${modalObjects.length}:${baseRendered.length}:${modalSummary}:${popupSummary}`;
     if (debugSig !== lastRenderDebugSignature) {
       lastRenderDebugSignature = debugSig;
-      startupDebugLog('[DEBUG_RENDER_SUMMARY]', {
+      runtimeDebugLogging.startupDebugLog('[DEBUG_RENDER_SUMMARY]', {
         popupCount: windowPopupItems.length,
         modalCount: modalObjects.length,
         renderedCount: baseRendered.length,
@@ -5759,8 +5557,8 @@ async function main(){
     if (layoutId === 'mapLayout') {
       const viewWidth = canvas.width / dpr;
       const viewHeight = canvas.height / dpr;
-      const panX = Number(gameState.mapLayout.panX || 0);
-      gameState.mapLayout.panY = 0;
+      const panX = Number(mapLayoutState.getMapLayoutState().panX || 0);
+      mapLayoutState.setMapPanY(0);
       ctx.clearRect(0, 0, viewWidth, viewHeight);
       ctx.fillStyle = '#1f2d3d';
       ctx.fillRect(0, 0, viewWidth, viewHeight);
@@ -5772,16 +5570,16 @@ async function main(){
         const halfSpillX = Math.max(0, (w - viewWidth) / 2);
         const minPanX = -halfSpillX;
         const maxPanX = halfSpillX;
-        gameState.mapLayout.panBounds = { minX: minPanX, maxX: maxPanX };
+        mapLayoutState.setMapLayoutBounds({ minX: minPanX, maxX: maxPanX });
         const clampedPanX = Math.max(minPanX, Math.min(maxPanX, panX));
-        gameState.mapLayout.panX = clampedPanX;
+        mapLayoutState.setMapPanX(clampedPanX);
         const x = ((viewWidth - w) / 2) + clampedPanX;
         const y = 0;
         ctx.save();
         ctx.globalAlpha = alpha;
         ctx.drawImage(img, x, y, w, h);
         ctx.restore();
-        gameState.mapLayout.lastRender = {
+        mapLayoutState.setMapLayoutField('lastRender', {
           fitMode: 'vertical',
           viewWidth,
           viewHeight,
@@ -5793,7 +5591,7 @@ async function main(){
           panY: 0,
           panBounds: { minX: minPanX, maxX: maxPanX },
           towerOverlayRendered: false,
-        };
+        });
       };
       const verticalFitScale = mapBackgroundImage ? (viewHeight / mapBackgroundImage.height) : 1;
       drawParallax(mapBackgroundImage, verticalFitScale, 0.95);
@@ -5803,7 +5601,7 @@ async function main(){
       const meterH = 16;
       const meterX = meterPad;
       const meterY = 14;
-      const pct = Math.max(0, Math.min(1, Number(gameState.mapLayout.warMeter || 0)));
+      const pct = Math.max(0, Math.min(1, Number(mapLayoutState.getMapLayoutState().warMeter || 0)));
       ctx.fillStyle = '#0f1722';
       ctx.fillRect(meterX, meterY, meterW, meterH);
       ctx.fillStyle = '#cf3d2e';
@@ -5815,15 +5613,15 @@ async function main(){
       ctx.font = '600 12px Arial';
       ctx.textAlign = 'left';
       ctx.fillText(`War Meter ${Math.round(pct * 100)}%`, meterX + 6, meterY + 12);
-      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
-      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, '#111');
-      gameState.mapLayout.closeHit = close;
-      gameState.mapLayout.tomesLocaleHit = null;
-      gameState.mapLayout.artifactsLocaleHit = null;
-      gameState.mapLayout.mountsLocaleHit = null;
-      gameState.mapLayout.relicsLocaleHit = null;
-      gameState.mapLayout.collectiblesLocaleHit = null;
-      gameState.mapLayout.homesteadLocaleHit = null;
+      const close = renderSystem.getHeroStyleCloseRect(viewWidth, viewHeight, heroLayoutSpec);
+      renderSystem.drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, '#111');
+      mapLayoutState.setMapLayoutField('closeHit', close);
+      mapLayoutState.setMapLayoutField('tomesLocaleHit', null);
+      mapLayoutState.setMapLayoutField('artifactsLocaleHit', null);
+      mapLayoutState.setMapLayoutField('mountsLocaleHit', null);
+      mapLayoutState.setMapLayoutField('relicsLocaleHit', null);
+      mapLayoutState.setMapLayoutField('collectiblesLocaleHit', null);
+      mapLayoutState.setMapLayoutField('homesteadLocaleHit', null);
       ctx.fillStyle = '#ffffff';
       ctx.font = '500 14px Arial';
       ctx.fillText('Map Layout (drag to pan)', 14, viewHeight - 18);
@@ -5880,9 +5678,9 @@ async function main(){
       };
       roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
 
-      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
+      const close = renderSystem.getHeroStyleCloseRect(viewWidth, viewHeight, heroLayoutSpec);
       const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
-      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
+      renderSystem.drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
       roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#ece3cb', '#baa980');
       ctx.fillStyle = palette.ink;
       ctx.font = '700 11px Arial';
@@ -5984,9 +5782,9 @@ async function main(){
         h: Math.max(360, viewHeight - 34),
       };
       roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
-      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
+      const close = renderSystem.getHeroStyleCloseRect(viewWidth, viewHeight, heroLayoutSpec);
       const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
-      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
+      renderSystem.drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
       roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#d9e4ef', '#94a9bc');
       ctx.fillStyle = palette.ink;
       ctx.font = '700 11px Arial';
@@ -6083,9 +5881,9 @@ async function main(){
         h: Math.max(360, viewHeight - 34),
       };
       roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
-      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
+      const close = renderSystem.getHeroStyleCloseRect(viewWidth, viewHeight, heroLayoutSpec);
       const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
-      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
+      renderSystem.drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
       roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#deebd5', '#9bb28b');
       ctx.fillStyle = palette.ink;
       ctx.font = '700 11px Arial';
@@ -6181,9 +5979,9 @@ async function main(){
         h: Math.max(360, viewHeight - 34),
       };
       roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
-      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
+      const close = renderSystem.getHeroStyleCloseRect(viewWidth, viewHeight, heroLayoutSpec);
       const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
-      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
+      renderSystem.drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
       roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#eadff0', '#b59ac4');
       ctx.fillStyle = palette.ink;
       ctx.font = '700 11px Arial';
@@ -6270,9 +6068,9 @@ async function main(){
         h: Math.max(360, viewHeight - 34),
       };
       roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
-      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
+      const close = renderSystem.getHeroStyleCloseRect(viewWidth, viewHeight, heroLayoutSpec);
       const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
-      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
+      renderSystem.drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
       roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#eadff2', '#b796cb');
       ctx.fillStyle = palette.ink;
       ctx.font = '700 11px Arial';
@@ -6369,9 +6167,9 @@ async function main(){
         h: Math.max(360, viewHeight - 34),
       };
       roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
-      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
+      const close = renderSystem.getHeroStyleCloseRect(viewWidth, viewHeight, heroLayoutSpec);
       const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
-      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
+      renderSystem.drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
       roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#ddead0', '#9cb581');
       ctx.fillStyle = palette.ink;
       ctx.font = '700 11px Arial';
@@ -6524,15 +6322,15 @@ async function main(){
       const heroBaseW = battleFrame.w * 0.18;
       const heroBaseH = heroBaseW * 0.7;
       const battleMidpointX = battleFrame.x + battleFrame.w * 0.5;
-      const computeLungeOffset = (t, direction, lungeDist = LUNGE_FORWARD_DIST_PX) => {
+      const computeLungeOffset = (t, direction, lungeDist = animationMath.LUNGE_FORWARD_DIST_PX) => {
         if (!(t >= 0 && t <= 1)) return 0;
-        const anticipationEnd = LUNGE_ANTICIPATION_SEC / LUNGE_TOTAL_SEC;
-        const forwardEnd = (LUNGE_ANTICIPATION_SEC + LUNGE_FORWARD_SEC) / LUNGE_TOTAL_SEC;
-        const holdEnd = (LUNGE_ANTICIPATION_SEC + LUNGE_FORWARD_SEC + LUNGE_HOLD_SEC) / LUNGE_TOTAL_SEC;
+        const anticipationEnd = animationMath.LUNGE_ANTICIPATION_SEC / animationMath.LUNGE_TOTAL_SEC;
+        const forwardEnd = (animationMath.LUNGE_ANTICIPATION_SEC + animationMath.LUNGE_FORWARD_SEC) / animationMath.LUNGE_TOTAL_SEC;
+        const holdEnd = (animationMath.LUNGE_ANTICIPATION_SEC + animationMath.LUNGE_FORWARD_SEC + animationMath.LUNGE_HOLD_SEC) / animationMath.LUNGE_TOTAL_SEC;
         if (t < anticipationEnd) return -direction * 6 * easeInCubic(t / anticipationEnd);
         if (t < forwardEnd) {
           const forwardT = (t - anticipationEnd) / (forwardEnd - anticipationEnd);
-          return (-direction * 6) + (direction * (lungeDist + 6) * easeLungeForward(forwardT));
+          return (-direction * 6) + (direction * (lungeDist + 6) * animationMath.easeLungeForward(forwardT));
         }
         if (t < holdEnd) return direction * lungeDist;
         return direction * lungeDist * (1 - easeInOutCubic((t - holdEnd) / (1 - holdEnd)));
@@ -6558,12 +6356,12 @@ async function main(){
         const isHit = !!currentAction
           && String(currentAction.actorSide || '') === 'enemy'
           && Number(currentAction.heroIndex || 0) === idx
-          && actionT >= ((LUNGE_ANTICIPATION_SEC + LUNGE_FORWARD_SEC + LUNGE_IMPACT_HANDOFF_SEC) / LUNGE_TOTAL_SEC)
-          && actionT <= ((LUNGE_ANTICIPATION_SEC + LUNGE_FORWARD_SEC + LUNGE_IMPACT_HANDOFF_SEC + 0.18) / LUNGE_TOTAL_SEC);
+          && actionT >= ((animationMath.LUNGE_ANTICIPATION_SEC + animationMath.LUNGE_FORWARD_SEC + animationMath.LUNGE_IMPACT_HANDOFF_SEC) / animationMath.LUNGE_TOTAL_SEC)
+          && actionT <= ((animationMath.LUNGE_ANTICIPATION_SEC + animationMath.LUNGE_FORWARD_SEC + animationMath.LUNGE_IMPACT_HANDOFF_SEC + 0.18) / animationMath.LUNGE_TOTAL_SEC);
         const heroW = heroBaseW;
         const heroH = heroBaseH;
         const heroIntroOffset = computeIntroOffset(nowSec - heroEnterAtSec, -1, Math.max(48, heroBaseW * 0.75), 1.25);
-        const heroMaxLungeDist = Math.max(0, Math.min(HERO_LUNGE_FORWARD_DIST_PX, battleMidpointX - slot.x));
+        const heroMaxLungeDist = Math.max(0, Math.min(animationMath.HERO_LUNGE_FORWARD_DIST_PX, battleMidpointX - slot.x));
         const offsetX = isStriking ? computeLungeOffset(actionT, 1, heroMaxLungeDist) : 0;
         const drawX = slot.x - heroW / 2 + heroIntroOffset + offsetX;
         const drawY = slot.y - heroH / 2;
@@ -6606,9 +6404,9 @@ async function main(){
           const isHit = !!currentAction
             && String(currentAction.actorSide || '') === 'hero'
             && String(currentAction.enemyId || '') === String(enemy.enemyId || '')
-            && actionT >= ((LUNGE_ANTICIPATION_SEC + LUNGE_FORWARD_SEC + LUNGE_IMPACT_HANDOFF_SEC) / LUNGE_TOTAL_SEC)
-            && actionT <= ((LUNGE_ANTICIPATION_SEC + LUNGE_FORWARD_SEC + LUNGE_IMPACT_HANDOFF_SEC + 0.18) / LUNGE_TOTAL_SEC);
-          const enemyMaxLungeDist = Math.max(0, Math.min(LUNGE_FORWARD_DIST_PX, anchor.x - battleMidpointX));
+            && actionT >= ((animationMath.LUNGE_ANTICIPATION_SEC + animationMath.LUNGE_FORWARD_SEC + animationMath.LUNGE_IMPACT_HANDOFF_SEC) / animationMath.LUNGE_TOTAL_SEC)
+            && actionT <= ((animationMath.LUNGE_ANTICIPATION_SEC + animationMath.LUNGE_FORWARD_SEC + animationMath.LUNGE_IMPACT_HANDOFF_SEC + 0.18) / animationMath.LUNGE_TOTAL_SEC);
+          const enemyMaxLungeDist = Math.max(0, Math.min(animationMath.LUNGE_FORWARD_DIST_PX, anchor.x - battleMidpointX));
           const shiftX = isAttacking ? computeLungeOffset(actionT, -1, enemyMaxLungeDist) : 0;
           const enemyIntroOffset = computeIntroOffset(nowSec - Number(enemy.spawnedAtSec || nowSec), 1, Math.max(52, enemyW * 0.8), 0.95);
           const drawX = anchor.x - enemyW / 2 + enemyIntroOffset + shiftX;
@@ -6738,9 +6536,9 @@ async function main(){
         h: Math.max(360, viewHeight - 34),
       };
       roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
-      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
+      const close = renderSystem.getHeroStyleCloseRect(viewWidth, viewHeight, heroLayoutSpec);
       const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
-      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
+      renderSystem.drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
       roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#dde8f9', '#97add0');
       ctx.fillStyle = palette.ink;
       ctx.font = '700 11px Arial';
@@ -6850,9 +6648,9 @@ async function main(){
         h: Math.max(360, viewHeight - 34),
       };
       roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
-      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
+      const close = renderSystem.getHeroStyleCloseRect(viewWidth, viewHeight, heroLayoutSpec);
       const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
-      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
+      renderSystem.drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
       roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#e1ead6', '#94a985');
       ctx.fillStyle = palette.ink;
       ctx.font = '700 11px Arial';
@@ -6957,8 +6755,8 @@ async function main(){
         h: Math.max(360, viewHeight - 34),
       };
       roundRect(panel.x, panel.y, panel.w, panel.h, 14, palette.panel, palette.panelEdge);
-      const close = getHeroStyleCloseRect(viewWidth, viewHeight);
-      drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
+      const close = renderSystem.getHeroStyleCloseRect(viewWidth, viewHeight, heroLayoutSpec);
+      renderSystem.drawHeroStyleCloseControl(ctx, close, closeWinOvalImage, palette.ink);
       const combatBack = { x: panel.x + panel.w - 120, y: panel.y + 12, w: 108, h: 28 };
       roundRect(combatBack.x, combatBack.y, combatBack.w, combatBack.h, 9, '#efe3c4', '#b89f6f');
       ctx.fillStyle = palette.ink;
@@ -7380,16 +7178,16 @@ async function main(){
             const item = casino.queue[casino.index];
             const gem = item.type === 'yellow' ? getGemByUid(item.uid) : null;
             if (item.type === 'yellow' && !gem) {
-              gemDebugLog('[FILL_SKIP]', {
+              runtimeDebugLogging.gemDebugLog('[FILL_SKIP]', {
                 stage: 'yellow-sequence',
                 step: casino.index,
                 cellR: item.cellR,
                 cellC: item.cellC,
                 reason: 'missing-yellow-gem',
                 tag: item.reason || item.type,
-              });
-              if (isGemDebugEnabled()) {
-                gemDebugLog('[COVERAGE]', countCellCoverage());
+              }, state);
+              if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+                runtimeDebugLogging.gemDebugLog('[COVERAGE]', countCellCoverage(), state);
               }
               casino.index += 1;
               continue;
@@ -7443,10 +7241,10 @@ async function main(){
                 });
               }
               if (item.settleStarted && nowTime >= item.settleUntil) {
-                if (isGemDebugEnabled()) {
-                  gemDebugLog('[COVERAGE]', countCellCoverage());
+                if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+                  runtimeDebugLogging.gemDebugLog('[COVERAGE]', countCellCoverage(), state);
                 }
-                gemDebugLog('[FILL]', {
+                runtimeDebugLogging.gemDebugLog('[FILL]', {
                   stage: 'yellow-sequence',
                   step: casino.index,
                   cellR: item.cellR,
@@ -7454,7 +7252,7 @@ async function main(){
                   reason: item.reason || 'yellow-reassign',
                   assignedColor: item.target,
                   assignedUid: gem.uid,
-                });
+                }, state);
                 traceTask015YellowWrite('yellow-sequence', item, casino.index);
                 casino.index += 1;
                 casino.current = null;
@@ -7488,19 +7286,19 @@ async function main(){
                   previousUid,
                   newUid: previousUid,
                 });
-                gemDebugLog('[FILL_SKIP]', {
+                runtimeDebugLogging.gemDebugLog('[FILL_SKIP]', {
                   stage: 'yellow-sequence',
                   step,
                   cellR,
                   cellC,
-                  reason: slotFilled ? (!gameState.grid[cellC] ? 'missing-column' : 'not-empty') : 'occupied-slot',
+                  reason: slotFilled ? (!gameState.grid[cellC] ? 'missing-column' : 'not-empty', state) : 'occupied-slot',
                   tag: item.reason || 'empty',
-                });
+                }, state);
                 if (occupiedGem && gameState.grid[cellC]) {
                   gameState.grid[cellC][cellR] = occupiedGem.uid;
                 }
-                if (isGemDebugEnabled()) {
-                  gemDebugLog('[COVERAGE]', countCellCoverage());
+                if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+                  runtimeDebugLogging.gemDebugLog('[COVERAGE]', countCellCoverage(), state);
                 }
                 casino.ghost = null;
                 casino.index += 1;
@@ -7525,22 +7323,22 @@ async function main(){
                 newGem.bounceStart = nowTime;
                 newGem.bounceDur = YELLOW_CASINO_SETTLE_SEC;
                 newGem.bounceAmp = YELLOW_CASINO_SETTLE_BOUNCE_AMP;
-                if (isGemDebugEnabled()) {
-                  gemDebugLog('[REFILL_BEFORE]', {
+                if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+                  runtimeDebugLogging.gemDebugLog('[REFILL_BEFORE]', {
                     step,
                     cellR,
                     cellC,
                     gemCount: gameState.gems.length
-                  });
+                  }, state);
                 }
                 gameState.gems.push(newGem);
-                if (isGemDebugEnabled()) {
-                  gemDebugLog('[REFILL_AFTER]', {
+                if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+                  runtimeDebugLogging.gemDebugLog('[REFILL_AFTER]', {
                     step,
                     cellR,
                     cellC,
                     gemCount: gameState.gems.length
-                  });
+                  }, state);
                 }
                 if (gameState.grid[item.cellC]) gameState.grid[item.cellC][item.cellR] = newGem.uid;
                 recordTask011RefillWriteEvent({
@@ -7554,10 +7352,10 @@ async function main(){
                   newUid: newGem.uid,
                 });
                 setGemArray(gameState.gems);
-                if (isGemDebugEnabled()) {
-                  gemDebugLog('[COVERAGE]', countCellCoverage());
+                if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+                  runtimeDebugLogging.gemDebugLog('[COVERAGE]', countCellCoverage(), state);
                 }
-                gemDebugLog('[FILL]', {
+                runtimeDebugLogging.gemDebugLog('[FILL]', {
                   stage: 'yellow-sequence',
                   step: casino.index,
                   cellR: item.cellR,
@@ -7565,7 +7363,7 @@ async function main(){
                   reason: item.reason || 'empty',
                   assignedColor: item.target,
                   assignedUid: newGem.uid,
-                });
+                }, state);
                 traceTask015YellowWrite('yellow-sequence', item, casino.index);
                 casino.ghost = null;
                 item.settleStarted = true;
@@ -7631,8 +7429,8 @@ async function main(){
               applyTurnGateIntent(getYellowSequenceCompletionIntent);
             }
             if (canRestorePickability) {
-              if (isGemDebugEnabled()) {
-                gemDebugLog('[RESTORE_PICKABILITY]', {
+              if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+                runtimeDebugLogging.gemDebugLog('[RESTORE_PICKABILITY]', {
                   globals: {
                     BoardFillActive: state.globals.BoardFillActive,
                     CanPickGems: state.globals.CanPickGems,
@@ -7643,11 +7441,11 @@ async function main(){
                     TurnPhase: state.globals.TurnPhase,
                     time: state.globals.time,
                   },
-                });
+                }, state);
               }
             }
-            if (isGemDebugEnabled()) {
-              gemDebugLog('[REFILL_COMPLETE]', {
+            if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+              runtimeDebugLogging.gemDebugLog('[REFILL_COMPLETE]', {
                 stage: 'yellow-sequence-finished',
                 globals: {
                   BoardFillActive: state.globals.BoardFillActive,
@@ -7658,7 +7456,7 @@ async function main(){
                   PendingSkillID: state.globals.PendingSkillID || '',
                   TurnPhase: state.globals.TurnPhase,
                 },
-              });
+              }, state);
               const integrity = assertBoardIntegrity('yellow-sequence-finished');
               if (!integrity.ok) {
                 throw new Error('[BOARD_INTEGRITY_FAIL] yellow-sequence-finished');
@@ -7681,16 +7479,16 @@ async function main(){
         while (refill.index < refill.queue.length) {
           const slot = refill.queue[refill.index];
           if (!gameState.grid[slot.cellC] || gameState.grid[slot.cellC][slot.cellR] !== 0) {
-            gemDebugLog('[FILL_SKIP]', {
+            runtimeDebugLogging.gemDebugLog('[FILL_SKIP]', {
               stage: 'refill-bounce',
               step: refill.index,
               cellR: slot.cellR,
               cellC: slot.cellC,
               reason: !gameState.grid[slot.cellC] ? 'missing-column' : 'not-needed',
               tag: slot.reason || 'empty',
-            });
-            if (isGemDebugEnabled()) {
-              gemDebugLog('[COVERAGE]', countCellCoverage());
+            }, state);
+            if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+              runtimeDebugLogging.gemDebugLog('[COVERAGE]', countCellCoverage(), state);
             }
             refill.index += 1;
             continue;
@@ -7711,17 +7509,17 @@ async function main(){
               previousUid,
               newUid: previousUid,
             });
-            gemDebugLog('[FILL_SKIP]', {
+            runtimeDebugLogging.gemDebugLog('[FILL_SKIP]', {
               stage: 'refill-bounce',
               step,
               cellR,
               cellC,
               reason: 'occupied-slot',
               tag: slot.reason || 'empty',
-            });
+            }, state);
             if (gameState.grid[cellC]) gameState.grid[cellC][cellR] = occupiedGem.uid;
-            if (isGemDebugEnabled()) {
-              gemDebugLog('[COVERAGE]', countCellCoverage());
+            if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+              runtimeDebugLogging.gemDebugLog('[COVERAGE]', countCellCoverage(), state);
             }
             refill.index += 1;
             continue;
@@ -7746,22 +7544,22 @@ async function main(){
             bounceStart: nowTime,
             bounceDur,
           };
-          if (isGemDebugEnabled()) {
-            gemDebugLog('[REFILL_BEFORE]', {
+          if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+            runtimeDebugLogging.gemDebugLog('[REFILL_BEFORE]', {
               step,
               cellR,
               cellC,
               gemCount: gameState.gems.length
-            });
+            }, state);
           }
           gameState.gems.push(newGem);
-          if (isGemDebugEnabled()) {
-            gemDebugLog('[REFILL_AFTER]', {
+          if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+            runtimeDebugLogging.gemDebugLog('[REFILL_AFTER]', {
               step,
               cellR,
               cellC,
               gemCount: gameState.gems.length
-            });
+            }, state);
           }
           gameState.grid[slot.cellC][slot.cellR] = newGem.uid;
           recordTask011RefillWriteEvent({
@@ -7775,10 +7573,10 @@ async function main(){
             newUid: newGem.uid,
           });
           setGemArray(gameState.gems);
-          if (isGemDebugEnabled()) {
-            gemDebugLog('[COVERAGE]', countCellCoverage());
+          if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+            runtimeDebugLogging.gemDebugLog('[COVERAGE]', countCellCoverage(), state);
           }
-          gemDebugLog('[FILL]', {
+          runtimeDebugLogging.gemDebugLog('[FILL]', {
             stage: 'refill-bounce',
             step: refill.index,
             cellR: slot.cellR,
@@ -7786,7 +7584,7 @@ async function main(){
             reason: slot.reason || 'empty',
             assignedColor: color,
             assignedUid: newGem.uid,
-          });
+          }, state);
           refill.current = { doneAt: nowTime + bounceDur };
           break;
         }
@@ -7797,8 +7595,8 @@ async function main(){
             : createRefillCompleteGate;
           applyTurnGateIntent(refillCompleteGate);
           state.globals.BoardFillActive = 0;
-          if (isGemDebugEnabled()) {
-            gemDebugLog('[REFILL_COMPLETE]', {
+          if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+            runtimeDebugLogging.gemDebugLog('[REFILL_COMPLETE]', {
               stage: 'refill-bounce-finished',
               globals: {
                 BoardFillActive: state.globals.BoardFillActive,
@@ -7809,13 +7607,13 @@ async function main(){
                 PendingSkillID: state.globals.PendingSkillID || '',
                 TurnPhase: state.globals.TurnPhase,
               },
-            });
+            }, state);
             const integrity = assertBoardIntegrity('refill-bounce-finished');
             if (!integrity.ok) {
               throw new Error('[BOARD_INTEGRITY_FAIL] refill-bounce-finished');
             }
           }
-          if (isGemDebugEnabled()) {
+          if (runtimeDebugLogging.isGemDebugEnabled(state)) {
             const queueDone = !Array.isArray(refill.queue) || refill.index >= refill.queue.length;
             const noSpinActive = !(gameState.yellowCasino && gameState.yellowCasino.active);
             if (queueDone && noSpinActive && state.globals.BoardFillActive !== 0) {
@@ -7828,7 +7626,7 @@ async function main(){
               });
             }
           }
-          if (isGemDebugEnabled()) {
+          if (runtimeDebugLogging.isGemDebugEnabled(state)) {
             const noSpinActive = !(gameState.yellowCasino && gameState.yellowCasino.active);
             const queueDone = !Array.isArray(refill.queue) || refill.index >= refill.queue.length;
             const shouldValidate =
@@ -7846,7 +7644,7 @@ async function main(){
                 globals: getGemGateSnapshot(),
               });
               state.globals.CanPickGems = true;
-              gemDebugLog('[GATE_STUCK_AFTER_REFILL]', { corrected: true, globals: getGemGateSnapshot() });
+              runtimeDebugLogging.gemDebugLog('[GATE_STUCK_AFTER_REFILL]', { corrected: true, globals: getGemGateSnapshot() }, state);
             }
           }
           if (state.globals.TurnPhase === 2 && !state.globals.ActionInProgress) {
@@ -7877,7 +7675,7 @@ async function main(){
         if (followUpBatchId > 0 && hit.followUpAwaitTextClear) {
           if (state.globals.TextAnimating || (state.globals.HeroAction && state.globals.HeroAction.active)) continue;
           if (!state.globals.DoubleAttackLungeStarted[followUpBatchId]) {
-            const followUpLead = LUNGE_ANTICIPATION_SEC + LUNGE_FORWARD_SEC + LUNGE_IMPACT_HANDOFF_SEC;
+            const followUpLead = animationMath.LUNGE_ANTICIPATION_SEC + animationMath.LUNGE_FORWARD_SEC + animationMath.LUNGE_IMPACT_HANDOFF_SEC;
             const anchorAt = now + followUpLead;
             for (const queued of pending) {
               if (!queued) continue;
@@ -8034,10 +7832,10 @@ async function main(){
           currentTurnUID: callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0,
         });
       } else {
-        const anticipationDur = LUNGE_ANTICIPATION_SEC;
-        const lungeDur = LUNGE_FORWARD_SEC;
-        const impactHold = LUNGE_HOLD_SEC;
-        const retreatDur = LUNGE_RETREAT_SEC;
+        const anticipationDur = animationMath.LUNGE_ANTICIPATION_SEC;
+        const lungeDur = animationMath.LUNGE_FORWARD_SEC;
+        const impactHold = animationMath.LUNGE_HOLD_SEC;
+        const retreatDur = animationMath.LUNGE_RETREAT_SEC;
         if (enemy.originX == null) enemy.originX = enemy.x ?? 0;
         if (enemy.originY == null) enemy.originY = enemy.y ?? 0;
         if (enemyAction.targetX == null) {
@@ -8047,7 +7845,7 @@ async function main(){
           enemyAction.targetX = targetPos ? targetPos.x : (enemy.originX - 120);
         }
         if (enemyAction.forwardX == null) {
-          const lungeDist = LUNGE_FORWARD_DIST_PX;
+          const lungeDist = animationMath.LUNGE_FORWARD_DIST_PX;
           enemyAction.forwardX = Math.max(layoutW / 2, enemy.originX - lungeDist);
         }
         if (enemyAction.anticipationX == null) {
@@ -8072,7 +7870,7 @@ async function main(){
         } else if (enemyAction.state === 'LUNGE') {
           enemyAction.timer += dt;
           const t = Math.min(1, enemyAction.timer / Math.max(0.001, lungeDur));
-          const e = easeLungeForward(t);
+          const e = animationMath.easeLungeForward(t);
           const from = enemyAction.anticipationX ?? enemy.originX;
           const to = enemyAction.forwardX ?? enemy.originX;
           enemy.x = from + (to - from) * e;
@@ -8134,16 +7932,16 @@ async function main(){
         const targetX = layoutW / 2;
         if (heroAction.baseX == null) heroAction.baseX = baseX;
         if (heroAction.forwardX == null) {
-          heroAction.forwardX = Math.min(targetX, baseX + HERO_LUNGE_FORWARD_DIST_PX);
+          heroAction.forwardX = Math.min(targetX, baseX + animationMath.HERO_LUNGE_FORWARD_DIST_PX);
         }
         const isAoeProfile = String(heroAction.profile || 'single') === 'aoe';
         const easeInCubic = (t) => t * t * t;
         const easeInOutCubic = (t) =>
           t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-        const anticipationDur = LUNGE_ANTICIPATION_SEC;
-        const lungeDur = LUNGE_FORWARD_SEC;
-        const holdDur = isAoeProfile ? 0.24 : LUNGE_HOLD_SEC;
-        const retreatDur = isAoeProfile ? 0.42 : LUNGE_RETREAT_SEC;
+        const anticipationDur = animationMath.LUNGE_ANTICIPATION_SEC;
+        const lungeDur = animationMath.LUNGE_FORWARD_SEC;
+        const holdDur = isAoeProfile ? 0.24 : animationMath.LUNGE_HOLD_SEC;
+        const retreatDur = isAoeProfile ? 0.42 : animationMath.LUNGE_RETREAT_SEC;
         if (heroAction.anticipationX == null) {
           const dir = Math.sign((heroAction.forwardX ?? baseX) - baseX) || 1;
           heroAction.anticipationX = baseX - (dir * 6);
@@ -8162,7 +7960,7 @@ async function main(){
           }
         } else if (heroAction.state === 'LUNGE') {
           const t = Math.min(1, heroAction.timer / Math.max(0.001, lungeDur));
-          const e = easeLungeForward(t);
+          const e = animationMath.easeLungeForward(t);
           const from = heroAction.anticipationX ?? heroAction.baseX;
           const to = heroAction.forwardX ?? heroAction.baseX;
           x = from + (to - from) * e;
@@ -8251,7 +8049,7 @@ async function main(){
         return false;
       }
       // Hide overlay elements when overlay is not visible
-      if(!gameState.overlayVisible && overlayElements.has(r.inst.type)){
+      if(!uiState.getUIState().overlayVisible && overlayElements.has(r.inst.type)){
         return false;
       }
       if(buffIcons.has(r.inst.type)) {
@@ -8289,9 +8087,9 @@ async function main(){
     });
     
     // Debug: Log filter results
-    if (gameState.overlayVisible !== lastOverlayState) {
-      startupDebugLog(`[FILTER] overlayVisible=${gameState.overlayVisible}, filteredRendered=${filteredRendered.length} items`);
-      lastOverlayState = gameState.overlayVisible;
+    if (uiState.getUIState().overlayVisible !== lastOverlayState) {
+      runtimeDebugLogging.startupDebugLog(`[FILTER] overlayVisible=${uiState.getUIState().overlayVisible}, filteredRendered=${filteredRendered.length} items`);
+      lastOverlayState = uiState.getUIState().overlayVisible;
     }
     
     ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -8357,11 +8155,11 @@ async function main(){
     const closeBtnRender = modalRendered.find(r => r.inst.type === 'UI_NavCloseButton');
     const closeXRender = modalRendered.find(r => r.inst.type === 'UI_NavCloseX');
     const navBacker = filteredRendered.find(r => r.uid === NAV_BACKER_UID) || null;
-    const navTopRendered = gameState.overlayVisible ? filteredRendered.filter(r => navTopTypes.has(r.inst.type)) : [];
+    const navTopRendered = uiState.getUIState().overlayVisible ? filteredRendered.filter(r => navTopTypes.has(r.inst.type)) : [];
 
     const nonModalRendered = filteredRendered.filter(r =>
       !isModalObject(r.inst.type) &&
-      !(gameState.overlayVisible && (navTopTypes.has(r.inst.type) || (navBacker && r.uid === navBacker.uid)))
+      !(uiState.getUIState().overlayVisible && (navTopTypes.has(r.inst.type) || (navBacker && r.uid === navBacker.uid)))
     );
     const closeBtnCenter = closeBtnRender ? { x: closeBtnRender.dx + closeBtnRender.w / 2, y: closeBtnRender.dy + closeBtnRender.h / 2 } : null;
     const boardW = boardGeometry.cols * boardGeometry.cellSize + (boardGeometry.cols - 1) * boardGeometry.gap;
@@ -9693,13 +9491,13 @@ async function main(){
     }
     
     // Draw semi-transparent overlay when modal is visible (behind modal, on top of gameplay)
-    if (gameState.overlayVisible) {
+    if (uiState.getUIState().overlayVisible) {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
     // Draw modal/nav stack in strict order
-    if (gameState.overlayVisible) {
+    if (uiState.getUIState().overlayVisible) {
       if (modalPlane) drawBasicItem(modalPlane);
       if (closeBtnRender) drawBasicItem(closeBtnRender);
       if (closeXRender) drawBasicItem(closeXRender);
@@ -9841,184 +9639,28 @@ function getStoryCardLiveLineState() {
     return { actor: '', rest: line };
   }
 
-  function drawHUD(){
-    if (!gameState.baseSummary) return;
-    const g = state.globals || {};
-    const combatLogLines = [getLatestCombatActionLine()];
-    const chainNum = Math.max(0, Number(g.ChainNumber || 0));
-    const suppressChain = !!g.SuppressChainUI;
-    const chainHideAt = Number(g.ChainUIHideAt || 0);
-    const chainVisible = chainNum >= 2 && !suppressChain && (chainHideAt === 0 || Number(g.time || 0) <= chainHideAt);
-    const actorIntent = typeof g.ActorIntent === 'string' && g.ActorIntent.trim() ? g.ActorIntent.trim() : 'Combat intent log';
-    const order = Array.isArray(g.TurnOrderArray) ? g.TurnOrderArray : [];
-    const count = order.length;
-    const baseIndex = Number(g.CurrentTurnIndex || 0);
-    const turnOrderLines = [];
-    for (let offset = 0; offset < Math.min(6, count); offset++) {
-      const idx = (baseIndex + offset) % count;
-      const row = order[idx];
-      if (!row) continue;
-      const actor = state.entities.find(e => e.uid === row.uid);
-      if (!actor) continue;
-      const label = actor.name || '?';
-      const baseSpd = Number(actor.stats?.SPD ?? actor.SPD ?? 0);
-      const debuff = actor.kind === 'enemy' ? Number(g.EnemyDebuffs?.[actor.uid]?.SPD || 0) : 0;
-      const curSpd = baseSpd - debuff;
-      const extraTag = row.extra ? ' (x2)' : '';
-      const cp = Number(actor.combatPower || actor.CombatPower || 0);
-      const cpSuffix = actor.kind === 'enemy' ? ` CP: ${Math.round(cp)}` : '';
-      turnOrderLines.push(`${label} SPD: ${Math.round(curSpd)}${cpSuffix}${extraTag}`);
-    }
-    const lines = [
-      gameState.baseSummary,
-      '',
-      `TurnPhase: ${state.globals.TurnPhase}`,
-      `Board: ${gameState.boardCreated ? gameState.gems.length + ' gems' : 'waiting'}`,
-      `Overlay: ${gameState.overlayVisible ? 'OPEN' : 'closed'}`,
-      '',
-      actorIntent,
-      ...combatLogLines,
-      ...(chainVisible ? [`Chain x${chainNum}`] : []),
-      '',
-      ...turnOrderLines,
-    ];
-    out.textContent = lines.join('\n');
-    drawGemCounterHUD();
-    drawWalletHUD();
-    drawAstralWalletHUD();
-  }
-  function drawGemCounterHUD() {
-    if (!gemCounterOut) return;
-    const usage = state.globals.HeroGemUsage || {};
-    const byHero = usage.byHero && typeof usage.byHero === 'object' ? usage.byHero : {};
-    const party = usage.party && typeof usage.party === 'object'
-      ? usage.party
-      : { RED: 0, GREEN: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
-    const currentHeroUID = resolveCurrentHeroUID({
-      directUID: callFunctionWithContext(fnContext, 'GetCurrentTurn'),
-      turnOrder: state.globals.TurnOrderArray,
-      currentTurnIndex: state.globals.CurrentTurnIndex,
+  function drawHUD() {
+    renderHUD.drawHUD({
+      out,
+      gemCounterOut,
+      walletOut,
+      astralWalletOut,
+      stateGlobals: state.globals,
+      stateEntities: state.entities,
+      gameState,
+      uiState: uiState.getUIState(),
+      getLatestCombatActionLine,
+      resolveCurrentHeroUID,
+      callFunctionWithContext,
+      fnContext,
+      getHeroUIDByIndex,
     });
-    const currentHero = state.entities.find((entity) => entity && entity.kind === 'hero' && entity.uid === currentHeroUID)
-      || state.entities.find((entity) => entity && entity.kind === 'hero' && entity.uid === getHeroUIDByIndex(gameState.selectedHero))
-      || state.entities.find((entity) => entity && entity.kind === 'hero')
-      || null;
-    const heroName = currentHero ? String(currentHero.name || 'Hero') : 'Hero';
-    const heroTotals = byHero[heroName] && typeof byHero[heroName] === 'object'
-      ? byHero[heroName]
-      : { RED: 0, GREEN: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
-    const doubleAttackHolderName = String(state.globals.DevDoubleAttackHolderName || '');
-    const doubleAttackHolderUID = Number(state.globals.DevDoubleAttackHolderUID || 0);
-    const doubleAttackChance = Number(state.globals.DevDoubleAttackChance || 0.05);
-    const doubleAttackProcs = doubleAttackHolderUID
-      ? Number(callFunctionWithContext(fnContext, 'GetActorExtraTurnProcCount', doubleAttackHolderUID) || 0)
-      : 0;
-    const lines = [
-      'Gem Counter Radiator',
-      `Hero: ${heroName}`,
-      `RED:${Number(heroTotals.RED || 0)}`,
-      `GREEN:${Number(heroTotals.GREEN || 0)}`,
-      `BLUE:${Number(heroTotals.BLUE || 0)}`,
-      `HEAL:${Number(heroTotals.HEAL || 0)}`,
-      `YELLOW:${Number(heroTotals.YELLOW || 0)}`,
-      '-----',
-      `Double Attack: ${doubleAttackHolderName || 'Off'}`,
-      `Chance: ${Math.round(doubleAttackChance * 100)}%`,
-      `Procs: ${doubleAttackProcs}`,
-      '-----',
-      'Party Totals',
-      `RED:${Number(party.RED || 0)}`,
-      `GREEN:${Number(party.GREEN || 0)}`,
-      `BLUE:${Number(party.BLUE || 0)}`,
-      `HEAL:${Number(party.HEAL || 0)}`,
-      `YELLOW:${Number(party.YELLOW || 0)}`,
-    ];
-    gemCounterOut.textContent = lines.join('\n');
-  }
-  function formatWalletText(label, wallet) {
-    const lines = [`${label}:`];
-    if (!wallet || typeof wallet !== 'object') {
-      lines.push('(empty)');
-      return lines.join('\n');
-    }
-    const entries = Object.entries(wallet)
-      .filter(([, v]) => v != null)
-      .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
-    if (entries.length === 0) {
-      lines.push('(empty)');
-      return lines.join('\n');
-    }
-    const total = entries.reduce((sum, [, v]) => sum + (Number(v) || 0), 0);
-    lines.push(`Total: ${total}`);
-    for (const [key, val] of entries) {
-      lines.push(`${key}: ${val}`);
-    }
-    return lines.join('\n');
-  }
-  function drawWalletHUD() {
-    if (!walletOut) return;
-    const g = state.globals || {};
-    const astralFlow = Math.max(0, Number(g.AstralFlowWallet || 0));
-    const wallet =
-      g.TokenWallet ||
-      g.tokenWallet ||
-      g.WalletTokens ||
-      g.walletTokens ||
-      null;
-    const lines = ['Astral Wallet:', `Astral Flow: ${astralFlow}`, '', 'Wallet:'];
-    if (!wallet || typeof wallet !== 'object') {
-      lines.push('(empty)');
-      walletOut.textContent = lines.join('\n');
-      return;
-    }
-    const entries = Object.entries(wallet)
-      .filter(([, v]) => v != null)
-      .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
-    if (entries.length === 0) {
-      lines.push('(empty)');
-      walletOut.textContent = lines.join('\n');
-      return;
-    }
-    const total = entries.reduce((sum, [, v]) => sum + (Number(v) || 0), 0);
-    lines.push(`Total: ${total}`);
-    for (const [key, val] of entries) {
-      lines.push(`${key}: ${val}`);
-    }
-    return lines.join('\n');
-  }
-  function drawWalletHUD() {
-    if (!walletOut) return;
-    const g = state.globals || {};
-    const wallet =
-      g.TokenWallet ||
-      g.tokenWallet ||
-      g.WalletTokens ||
-      g.walletTokens ||
-      null;
-    walletOut.textContent = formatWalletText('Wallet', wallet);
   }
   function drawAstralWalletHUD() {
-    if (!astralWalletOut) return;
-    const g = state.globals || {};
-    const astralWallet =
-      g.AstralFlowWallet ||
-      g.astralFlowWallet ||
-      g.AstralWallet ||
-      g.astralWallet ||
-      null;
-    astralWalletOut.textContent = formatWalletText('Astral Flow Wallet', astralWallet);
-  }
-  function drawAstralWalletHUD() {
-    if (!astralWalletOut) return;
-    const g = state.globals || {};
-    const total = Math.max(0, Number(g.AstralFlowWallet || 0));
-    astralWalletOut.textContent = `Astral Flow Wallet:\nTotal: ${total}`;
-  }
-  function drawAstralWalletHUD() {
-    if (!astralWalletOut) return;
-    const g = state.globals || {};
-    const total = Math.max(0, Number(g.AstralFlowWallet || 0));
-    astralWalletOut.textContent = `Astral Flow Wallet:\nTotal: ${total}`;
+    renderHUD.drawAstralWalletHUD({
+      astralWalletOut,
+      stateGlobals: state.globals,
+    });
   }
   drawFrame(); // initial render
   drawAstralWalletHUD();
@@ -10137,7 +9779,7 @@ function getStoryCardLiveLineState() {
     return result;
   }
   async function auditGemClickability(reasonTag) {
-    if (!isGemDebugEnabled()) return;
+    if (!runtimeDebugLogging.isGemDebugEnabled(state)) return;
     const rows = [];
     const inertCells = [];
     for (let row = 0; row < boardGeometry.rows; row++) {
@@ -10196,13 +9838,13 @@ function getStoryCardLiveLineState() {
         }
       }
     }
-    gemDebugLog('[GEM_AUDIT]', { reasonTag, rows });
+    runtimeDebugLogging.gemDebugLog('[GEM_AUDIT]', { reasonTag, rows }, state);
     if (inertCells.length > 0) {
       throw new Error(`[DIAG] Inert gem cells detected at ${reasonTag}: ${inertCells.length}`);
     }
   }
   async function autoPlayTurnsDev(turnCount) {
-    if (!isGemDebugEnabled()) return;
+    if (!runtimeDebugLogging.isGemDebugEnabled(state)) return;
     if (state.globals.GamePhase !== 'RUNTIME') return;
     for (let i = 0; i < turnCount; i++) {
       callFunctionWithContext(fnContext, 'AdvanceTurn');
@@ -10395,7 +10037,7 @@ function getStoryCardLiveLineState() {
     }
   }
   async function runGemInteractivityDiagnostic() {
-    if (!isGemDebugEnabled()) return;
+    if (!runtimeDebugLogging.isGemDebugEnabled(state)) return;
     const runtimeWaitStart = performance.now();
     while (state.globals.GamePhase !== 'RUNTIME' && (performance.now() - runtimeWaitStart) < 15000) {
       await devSleep(50);
@@ -10430,9 +10072,9 @@ function getStoryCardLiveLineState() {
 
     forceDeterministicBoard();
     clearSelectionOnly();
-    gemDebugLog('[FILL_GATE]', { stage: 'forced-yellow-before', globals: getGemGateSnapshot() });
+    runtimeDebugLogging.gemDebugLog('[FILL_GATE]', { stage: 'forced-yellow-before', globals: getGemGateSnapshot() }, state);
     setControlledGates();
-    gemDebugLog('[FILL_GATE]', { stage: 'forced-yellow-after', globals: getGemGateSnapshot() });
+    runtimeDebugLogging.gemDebugLog('[FILL_GATE]', { stage: 'forced-yellow-after', globals: getGemGateSnapshot() }, state);
     clickGemCell(0, 0);
     await devSleep(20);
     clickGemCell(0, 1);
@@ -10475,8 +10117,8 @@ function getStoryCardLiveLineState() {
   }
 
   function deriveEncounterRequestFromMapState() {
-    const war = Math.max(0, Math.min(1, Number(gameState.mapLayout?.warMeter || 0)));
-    const node = gameState.mapLayout?.encounterNode || {};
+    const war = Math.max(0, Math.min(1, Number(mapLayoutState.getMapLayoutState().warMeter || 0)));
+    const node = mapLayoutState.getMapLayoutState().encounterNode || {};
     const targetCP = Math.round(90 + (war * 60));
     const policy = war >= 0.85
       ? 'solo_commander'
@@ -10499,6 +10141,12 @@ function getStoryCardLiveLineState() {
       seed: generateEncounterSeed(),
     };
   }
+  const handleMapDragStart = inputHandling.attachMapDragStartHandler({
+    layoutState,
+    gameState,
+    canvas,
+    drawFrame,
+  });
 
   // pointer handler for nav menu and overlay (more responsive than click)
   const handlePointerDown = (ev) => {
@@ -10548,7 +10196,7 @@ function getStoryCardLiveLineState() {
       return;
     }
     if (activeLayoutId === 'mapLayout') {
-      const close = gameState.mapLayout.closeHit;
+      const close = mapLayoutState.getMapLayoutState().closeHit;
       if (isPointInRect(mx, my, close)) {
         const req = deriveEncounterRequestFromMapState();
         state.globals.EncounterTargetCP = Number(req.targetCP || 120);
@@ -10565,15 +10213,7 @@ function getStoryCardLiveLineState() {
         drawFrame();
         return;
       }
-      const drag = gameState.mapLayout.drag;
-      drag.active = true;
-      drag.pointerId = ev.pointerId;
-      drag.lastX = mx;
-      drag.lastY = my;
-      drag.moved = 0;
-      try { canvas.setPointerCapture(ev.pointerId); } catch {}
-      drawFrame();
-      return;
+      if (handleMapDragStart(ev, { mx, my })) return;
     }
     if (activeLayoutId === 'tomesLayout') {
       const zones = (gameState.tomesLayout && gameState.tomesLayout.hitZones) || {};
@@ -10831,21 +10471,21 @@ function getStoryCardLiveLineState() {
       return;
     }
     if (activeLayoutId === 'heroLayout') {
-      const zones = (gameState.heroScreen && gameState.heroScreen.hitZones) || {};
+      const zones = uiState.getUIState().heroScreenHitZones || {};
       const roster = getHeroScreenRoster();
       const selectedHero = roster[normalizeHeroSelectionIndex()] || null;
       const skillNodes = Array.isArray(zones.skillNodes) ? zones.skillNodes : [];
-      const selectedSkillIndex = Math.max(0, Math.floor(Number(zones.selectedSkillIndex || gameState.heroScreen.selectedSkillIndex || 0)));
+      const selectedSkillIndex = Math.max(0, Math.floor(Number(zones.selectedSkillIndex || uiState.getUIState().heroScreenSelectedSkillIndex || 0)));
       const modalZones = zones.modal || null;
       let consumedSkillClick = false;
-      if (gameState.heroScreen.skillModalOpen && modalZones) {
+      if (uiState.getUIState().heroScreenSkillModalOpen && modalZones) {
         if (isPointInRect(mx, my, modalZones.close) || !isPointInRect(mx, my, modalZones.card)) {
-          gameState.heroScreen.skillModalOpen = false;
+          uiState.setUIStateField('heroScreenSkillModalOpen', false);
           drawFrame();
           return;
         }
         if (isPointInRect(mx, my, modalZones.upgradeButton)) {
-          const activeNode = skillNodes.find((node) => Number(node?.idx || -1) === Number(gameState.heroScreen.skillModalSkillIndex || 0)) || skillNodes[0] || null;
+          const activeNode = skillNodes.find((node) => Number(node?.idx || -1) === Number(uiState.getUIState().heroScreenSkillModalSkillIndex || 0)) || skillNodes[0] || null;
           if (activeNode && activeNode.actionable !== false && selectedHero) {
             callFunctionWithContext(fnContext, 'AttemptHeroSkillUpgrade', selectedHero.uid, activeNode.skillKey, 'hero_skill_modal_upgrade_button');
           }
@@ -10856,7 +10496,7 @@ function getStoryCardLiveLineState() {
         return;
       }
       if (isPointInRect(mx, my, zones.close)) {
-        gameState.heroScreen.skillModalOpen = false;
+        uiState.setUIStateField('heroScreenSkillModalOpen', false);
         const closeHeroLayout = () => layoutState.requestLayoutChange('combat', 'hero-close-button').catch((err) => {
           console.error('[LAYOUT_PHASE1] hero return failed', err);
         });
@@ -10870,22 +10510,22 @@ function getStoryCardLiveLineState() {
       } else if (isPointInRect(mx, my, zones.prevHero)) {
         if (roster.length) {
           gameState.selectedHero = (normalizeHeroSelectionIndex() + roster.length - 1) % roster.length;
-          gameState.heroScreen.selectedSkillIndex = 0;
-          gameState.heroScreen.skillModalOpen = false;
+          uiState.setUIStateField('heroScreenSelectedSkillIndex', 0);
+          uiState.setUIStateField('heroScreenSkillModalOpen', false);
         }
       } else if (isPointInRect(mx, my, zones.nextHero)) {
         if (roster.length) {
           gameState.selectedHero = (normalizeHeroSelectionIndex() + 1) % roster.length;
-          gameState.heroScreen.selectedSkillIndex = 0;
-          gameState.heroScreen.skillModalOpen = false;
+          uiState.setUIStateField('heroScreenSelectedSkillIndex', 0);
+          uiState.setUIStateField('heroScreenSkillModalOpen', false);
         }
       } else {
         for (const node of skillNodes) {
           if (!node) continue;
           if (isPointInRect(mx, my, node.rect)) {
-            gameState.heroScreen.selectedSkillIndex = Math.max(0, Math.floor(Number(node.idx || 0)));
-            gameState.heroScreen.skillModalSkillIndex = Math.max(0, Math.floor(Number(node.idx || 0)));
-            gameState.heroScreen.skillModalOpen = true;
+            uiState.setUIStateField('heroScreenSelectedSkillIndex', Math.max(0, Math.floor(Number(node.idx || 0))));
+            uiState.setUIStateField('heroScreenSkillModalSkillIndex', Math.max(0, Math.floor(Number(node.idx || 0))));
+            uiState.setUIStateField('heroScreenSkillModalOpen', true);
             consumedSkillClick = true;
             break;
           }
@@ -11010,7 +10650,7 @@ function getStoryCardLiveLineState() {
     }
 
     // Pending hero attack: click an enemy to execute
-    if (!gameState.overlayVisible && state.globals.PendingSkillID) {
+    if (!uiState.getUIState().overlayVisible && state.globals.PendingSkillID) {
       const btn = getAttackButtonBounds();
       if (mx >= btn.dx && mx <= btn.dx + btn.w && my >= btn.dy && my <= btn.dy + btn.h) {
         const actorUID = state.globals.PendingActor || getHeroUIDByIndex(gameState.selectedHero);
@@ -11033,13 +10673,13 @@ function getStoryCardLiveLineState() {
     }
     
     // Check for gem clicks (only if board is created and overlay is not visible)
-    if (gameState.boardCreated && gameState.gems && !gameState.overlayVisible) {
+    if (gameState.boardCreated && gameState.gems && !uiState.getUIState().overlayVisible) {
       if (state.globals.GamePhase !== 'RUNTIME') {
         return;
       }
       const isHeroTurn = callFunctionWithContext(fnContext, 'IsHeroTurn') === true;
       if (state.globals.CanPickGems === false || !isHeroTurn) {
-        gemDebugLog('[GEM_REJECT]', {
+        runtimeDebugLogging.gemDebugLog('[GEM_REJECT]', {
           reason: state.globals.CanPickGems === false ? 'reject-gate-can-pick-false' : 'reject-gate-not-hero-turn',
           globals: {
             CanPickGems: state.globals.CanPickGems,
@@ -11052,7 +10692,7 @@ function getStoryCardLiveLineState() {
             MatchedColorValue: state.globals.MatchedColorValue,
             TapIndex: state.globals.TapIndex,
           },
-        });
+        }, state);
         return;
       }
       for (let i = 0; i < gameState.gems.length; i++) {
@@ -11066,7 +10706,7 @@ function getStoryCardLiveLineState() {
         const dist = Math.sqrt(dx * dx + dy * dy);
         
         if (dist < gemRadius) {
-          gemDebugLog('[GEM_ENTRY]', {
+          runtimeDebugLogging.gemDebugLog('[GEM_ENTRY]', {
             cellR: gem.cellR,
             cellC: gem.cellC,
             uid: gem.uid,
@@ -11083,7 +10723,7 @@ function getStoryCardLiveLineState() {
               MatchedColorValue: state.globals.MatchedColorValue,
               TapIndex: state.globals.TapIndex,
             },
-          });
+          }, state);
           if (gem.color == null && gem.elementIndex != null) {
             gem.color = gem.elementIndex;
           }
@@ -11095,7 +10735,7 @@ function getStoryCardLiveLineState() {
             gameState.selectionLocked = false;
           }
           if (gameState.selectionLocked || gameState.selectedGems.length >= 3) {
-            gemDebugLog('[GEM_REJECT]', {
+            runtimeDebugLogging.gemDebugLog('[GEM_REJECT]', {
               reason: gameState.selectionLocked ? 'reject-selection-locked' : 'reject-selection-cap-reached',
               row: gem.cellR,
               col: gem.cellC,
@@ -11111,7 +10751,7 @@ function getStoryCardLiveLineState() {
                 MatchedColorValue: state.globals.MatchedColorValue,
                 TapIndex: state.globals.TapIndex,
               },
-            });
+            }, state);
             return;
           }
           
@@ -11122,7 +10762,7 @@ function getStoryCardLiveLineState() {
             gem.Selected = 0;
           } else {
             if (gameState.selectedGems.length >= 3) {
-              gemDebugLog('[GEM_REJECT]', {
+              runtimeDebugLogging.gemDebugLog('[GEM_REJECT]', {
                 reason: 'reject-selection-cap-guard',
                 row: gem.cellR,
                 col: gem.cellC,
@@ -11138,7 +10778,7 @@ function getStoryCardLiveLineState() {
                   MatchedColorValue: state.globals.MatchedColorValue,
                   TapIndex: state.globals.TapIndex,
                 },
-              });
+              }, state);
               return;
             }
             gem.selected = true;
@@ -11197,14 +10837,14 @@ function getStoryCardLiveLineState() {
     
     // Check for rendered element clicks (close button, etc)
     // First check modal objects if overlay is visible
-    if (gameState.overlayVisible) {
+    if (uiState.getUIState().overlayVisible) {
       const isModalObject = (type) => ['UI_CloseWin', 'UI_NavCloseButton', 'UI_NavCloseX'].includes(type);
       const modalObjs = rendered.filter(r => isModalObject(r.inst.type));
       for(const r of modalObjs){
         if(mx >= r.dx && mx <= r.dx + r.w && my >= r.dy && my <= r.dy + r.h){
           // Close button or surrounding button clicked - hide overlay
           if(r.inst.type === 'UI_NavCloseX' || r.inst.type === 'UI_NavCloseButton'){
-            gameState.overlayVisible = false;
+            uiState.setUIStateField('overlayVisible', false);
             drawFrame();
             return;
           }
@@ -11261,44 +10901,13 @@ function getStoryCardLiveLineState() {
   window.addEventListener('keydown', handleGlobalKeydown, true);
   document.addEventListener('keydown', handleGlobalKeydown, true);
 
-  const handlePointerMove = (ev) => {
-    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
-      ? layoutState.getActiveLayoutId()
-      : null;
-    if (activeLayoutId !== 'mapLayout') return;
-    const drag = gameState.mapLayout.drag;
-    if (!drag.active || drag.pointerId !== ev.pointerId) return;
-    const rect = canvas.getBoundingClientRect();
-    const mx = ev.clientX - rect.left;
-    const my = ev.clientY - rect.top;
-    const dx = mx - drag.lastX;
-    drag.lastX = mx;
-    drag.lastY = my;
-    drag.moved += Math.abs(dx);
-    const bounds = gameState.mapLayout.panBounds || { minX: 0, maxX: 0 };
-    const nextPanX = gameState.mapLayout.panX + dx;
-    gameState.mapLayout.panX = Math.max(bounds.minX, Math.min(bounds.maxX, nextPanX));
-    gameState.mapLayout.panY = 0;
-    drawFrame();
-  };
-  canvas.addEventListener('pointermove', handlePointerMove);
-  runtimeListenerTeardowns.push(() => canvas.removeEventListener('pointermove', handlePointerMove));
-
-  const finishMapDrag = (ev) => {
-    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
-      ? layoutState.getActiveLayoutId()
-      : null;
-    if (activeLayoutId !== 'mapLayout') return;
-    const drag = gameState.mapLayout.drag;
-    if (!drag.active || drag.pointerId !== ev.pointerId) return;
-    drag.active = false;
-    drag.pointerId = null;
-    try { canvas.releasePointerCapture(ev.pointerId); } catch {}
-  };
-  canvas.addEventListener('pointerup', finishMapDrag);
-  canvas.addEventListener('pointercancel', finishMapDrag);
-  runtimeListenerTeardowns.push(() => canvas.removeEventListener('pointerup', finishMapDrag));
-  runtimeListenerTeardowns.push(() => canvas.removeEventListener('pointercancel', finishMapDrag));
+  inputHandling.attachMapDragInputHandlers({
+    canvas,
+    runtimeListenerTeardowns,
+    layoutState,
+    gameState,
+    drawFrame,
+  });
   detachRuntimeInputListeners = () => {
     for (const teardown of runtimeListenerTeardowns.splice(0)) {
       try {
@@ -11349,7 +10958,7 @@ function getStoryCardLiveLineState() {
       });
       if (gameState._lastRefillBlockSig !== sig) {
         gameState._lastRefillBlockSig = sig;
-        gemDebugLog('[FILL_SKIP]', {
+        runtimeDebugLogging.gemDebugLog('[FILL_SKIP]', {
           stage: 'tick-refill-gate',
           reason: 'gate',
           hasEmpty,
@@ -11364,7 +10973,7 @@ function getStoryCardLiveLineState() {
             MatchedColorValue: state.globals.MatchedColorValue,
             TapIndex: state.globals.TapIndex,
           },
-        });
+        }, state);
       }
     }
     if (
@@ -11391,7 +11000,7 @@ function getStoryCardLiveLineState() {
     if (bootstrapDeterministicRefillPending && boardFullNow && !(gameState.refillBounce && gameState.refillBounce.active)) {
       bootstrapDeterministicRefillPending = false;
     }
-    if (isGemDebugEnabled()) {
+    if (runtimeDebugLogging.isGemDebugEnabled(state)) {
       const noRefillActive = !(gameState.refillBounce && gameState.refillBounce.active);
       const noSpinActive = !(gameState.yellowCasino && gameState.yellowCasino.active);
       const boardFull = Array.isArray(gameState.gems) && gameState.gems.length === 24;
@@ -11513,8 +11122,8 @@ function getStoryCardLiveLineState() {
     ) {
       state.globals.CanPickGems = true;
       state.globals.BoardFillActive = 0;
-      if (isGemDebugEnabled()) {
-        gemDebugLog('[TURN_RESTORE_PICK]', {
+      if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+        runtimeDebugLogging.gemDebugLog('[TURN_RESTORE_PICK]', {
           globals: {
             BoardFillActive: state.globals.BoardFillActive,
             CanPickGems: state.globals.CanPickGems,
@@ -11525,13 +11134,13 @@ function getStoryCardLiveLineState() {
             TurnPhase: state.globals.TurnPhase,
             time: state.globals.time,
           },
-        });
+        }, state);
       }
     }
     // Enemy turns are started by ProcessTurn; avoid double-triggering here.
     gameState.enemyTurnKicked = state.globals.TurnPhase === 2;
     updateIdleFarmEmissions(performance.now() / 1000);
-    persistHeroGemProgressIfDirty();
+    heroGemProgressStorage.persistHeroGemProgressIfDirty({ stateGlobals: state.globals, callFunctionWithContext, fnContext });
     drawFrame();
     drawAstralWalletHUD();
     requestAnimationFrame(tick);
@@ -11601,17 +11210,17 @@ function getStoryCardLiveLineState() {
           state: gameState.idleFarmLayout || null,
         },
         mapLayout: {
-          panX: Number(gameState.mapLayout.panX || 0),
-          panY: Number(gameState.mapLayout.panY || 0),
-          warMeter: Number(gameState.mapLayout.warMeter || 0),
-          encounterNode: gameState.mapLayout.encounterNode || null,
-          render: gameState.mapLayout.lastRender || null,
+          panX: Number(mapLayoutState.getMapLayoutState().panX || 0),
+          panY: Number(mapLayoutState.getMapLayoutState().panY || 0),
+          warMeter: Number(mapLayoutState.getMapLayoutState().warMeter || 0),
+          encounterNode: mapLayoutState.getMapLayoutState().encounterNode || null,
+          render: mapLayoutState.getMapLayoutState().lastRender || null,
           encounterRequestPreview: deriveEncounterRequestFromMapState(),
         },
         heroScreen: {
-          mode: String(gameState.heroScreen?.mode || 'details'),
+          mode: String(uiState.getUIState().heroScreenMode || 'details'),
           selectedHero: Number(gameState.selectedHero || 0),
-          selectedSkillIndex: Number(gameState.heroScreen?.selectedSkillIndex || 0),
+          selectedSkillIndex: Number(uiState.getUIState().heroScreenSelectedSkillIndex || 0),
           activeHeroName: (() => {
             const roster = getHeroScreenRoster();
             const idx = normalizeHeroSelectionIndex();
@@ -11627,7 +11236,7 @@ function getStoryCardLiveLineState() {
           deferAdvance: state.globals.DeferAdvance ?? 0,
           actionLockUntil: state.globals.ActionLockUntil ?? 0,
           pendingSkillId: state.globals.PendingSkillID || null,
-          overlayVisible: gameState.overlayVisible,
+          overlayVisible: uiState.getUIState().overlayVisible,
           layoutId: layoutState && typeof layoutState.getActiveLayoutId === 'function'
             ? layoutState.getActiveLayoutId()
             : (layoutHarnessEnabled && harnessLayoutState ? harnessLayoutState.getActiveLayoutId() : 'combat'),
@@ -11721,19 +11330,19 @@ function getStoryCardLiveLineState() {
       },
       setMapEncounterNode(input = {}) {
         const node = input && typeof input === 'object' ? input : {};
-        const prev = gameState.mapLayout.encounterNode || {};
+        const prev = mapLayoutState.getMapLayoutState().encounterNode || {};
         const next = {
           id: String(node.id || prev.id || 'clouds-alpha'),
           locale: String(node.locale || prev.locale || 'clouds').trim().toLowerCase() || 'clouds',
           faction: String(node.faction || prev.faction || 'wishless').trim().toLowerCase() || 'wishless',
         };
-        gameState.mapLayout.encounterNode = next;
+        mapLayoutState.setMapLayoutField('encounterNode', next);
         if (node.warMeter != null) {
-          gameState.mapLayout.warMeter = Math.max(0, Math.min(1, Number(node.warMeter || 0)));
+          mapLayoutState.setMapLayoutField('warMeter', Math.max(0, Math.min(1, Number(node.warMeter || 0))));
         }
         return {
-          encounterNode: gameState.mapLayout.encounterNode,
-          warMeter: Number(gameState.mapLayout.warMeter || 0),
+          encounterNode: mapLayoutState.getMapLayoutState().encounterNode,
+          warMeter: Number(mapLayoutState.getMapLayoutState().warMeter || 0),
         };
       },
       toggleDevToolingModal(nextOpen = null) {
