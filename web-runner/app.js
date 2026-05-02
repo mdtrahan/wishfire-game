@@ -5206,6 +5206,9 @@ async function main(){
     if (result && result.presentationPatches) {
       Object.assign(state.globals, result.presentationPatches);
     }
+    if (result && result.visualControlPatches) {
+      Object.assign(state.globals, result.visualControlPatches);
+    }
     if (typeof runtimeScope.lastFrameTime === 'number') {
       lastFrameTime = runtimeScope.lastFrameTime;
     }
