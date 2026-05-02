@@ -5197,6 +5197,15 @@ async function main(){
       getHitFlashTone: () => 'black',
     };
     const result = renderRuntime.renderRuntime(runtimeScope);
+    if (result && result.overlayData) {
+      state.globals.LastCombatOverlayData = result.overlayData;
+    }
+    if (result && result.visualFlags) {
+      state.globals.LastCombatVisualFlags = result.visualFlags;
+    }
+    if (result && result.presentationPatches) {
+      Object.assign(state.globals, result.presentationPatches);
+    }
     if (typeof runtimeScope.lastFrameTime === 'number') {
       lastFrameTime = runtimeScope.lastFrameTime;
     }
