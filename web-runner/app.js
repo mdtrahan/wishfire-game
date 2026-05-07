@@ -5127,7 +5127,14 @@ async function main(){
       getCombatPartyRenderRoster,
       getAttackButtonBounds,
       getYellowSequenceCompletionIntent,
+      createEnemyTurnGateBaseline,
+      createEnemyTurnIdleRecovery,
+      createRefillCompleteGate,
+      applyTurnGateGlobals,
       applyTurnGateIntent,
+      YELLOW_COLOR,
+      YELLOW_CASINO_SETTLE_SEC,
+      YELLOW_CASINO_SETTLE_BOUNCE_AMP,
       startGemMergeFx,
       getGoldLabelTargetWorld,
       getCellWorldPos,
@@ -5158,6 +5165,7 @@ async function main(){
       heroSelectorImage,
       heroCapsuleImages,
       enemySpriteImages,
+      gemFrameImages,
       buffIconFrameImages: (typeof buffIconFrameImages !== 'undefined' ? buffIconFrameImages : {}),
       buffIconFrames: (typeof buffIconFrames !== 'undefined' ? buffIconFrames : {}),
       buffIcons: (typeof buffIcons !== 'undefined' ? buffIcons : new Set()),
@@ -5174,6 +5182,7 @@ async function main(){
       assetSizes,
       DAMAGE_TEXT_FONT,
       damageNumberLayer,
+      enemyBars,
       drawHUD,
       drawHarnessLayoutTakeover,
       drawStartupLoadingFrame,
@@ -5189,8 +5198,11 @@ async function main(){
       fnContext,
       COMBAT_BOOTSTRAP_COMPLETE,
       lastFrameTime,
+      lastOverlayState,
       performance,
       syncDamageNumberLayerBounds,
+      spawnPendingDamageNumbers,
+      randomGemFrame,
       hasPersistentEnemyBlightOverlay: () => false,
       hasPersistentHeroRegenOverlay: () => false,
       isHitFlashActive: () => false,
@@ -5211,6 +5223,9 @@ async function main(){
     }
     if (typeof runtimeScope.lastFrameTime === 'number') {
       lastFrameTime = runtimeScope.lastFrameTime;
+    }
+    if (runtimeScope.lastOverlayState !== undefined) {
+      lastOverlayState = runtimeScope.lastOverlayState;
     }
     return result;
   }
