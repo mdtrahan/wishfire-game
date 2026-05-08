@@ -219,6 +219,10 @@
 - If combat log, Astral Flow wallet, and BLUE radiator totals all stay at zero together, treat that as an upstream resolution-input bug first, not three separate HUD defects.
 - When converting a mechanic from extra-turn semantics to free-follow-up semantics, audit three seams separately: proc latch lifetime, target/retarget logic, and presentation pacing. Partial fixes can look correct in counters while still failing visually.
 
+## 2026-05-07 — Layout Suppression Rules Need Preserved Ownership Metadata
+- If a combat UI element is removed by layer/type rules, verify that the flattened runtime instances still carry `layerName` and `layerIndex` before changing draw filters. Suppression hooks against `BoardBG` or other layer owners silently fail when layout flattening strips that metadata.
+- For legacy layout cleanup, debug in this order: identify the exact instance types and layer owners from the source layout, confirm those fields survive into the runtime `instances` list, then apply the narrow suppression rule at the owner seam. Do not assume a failed visual removal means the rule is wrong before checking whether the ownership metadata survived flattening.
+
 ## 2026-03-18 — Session Update Paths Must Rehydrate Stored Config Before Respawn
 - If a layout session stores normalized config like forced hero/enemy names at creation time, the update/respawn path must read from that stored session field again before spawning new entities. Session creation alone is not enough once the update loop becomes the owner of later spawns.
 - For presentation loops with delayed respawns, add a narrow contract that proves the stored normalized config survives into the respawn callsite. Otherwise a single missing local binding can hard-crash the layout only after entry, which slips past simple boot-time checks.
