@@ -78,9 +78,11 @@ export function deriveBattleStartConsume(remaining = {}, uid = 0) {
 
 export function deriveBattleStartRoundPartition(withInit = [], startMode = '') {
   const next = Array.isArray(withInit) ? withInit.map(actor => ({ ...actor })) : [];
-  const heroes = next.filter(a => Number(a?.type || 0) === 0).sort((a, b) => Number(b?.init || 0) - Number(a?.init || 0));
-  const enemies = next.filter(a => Number(a?.type || 0) === 1).sort((a, b) => Number(b?.init || 0) - Number(a?.init || 0));
+  const sortByBattleStartInit = (a, b) => (Number(b?.init || 0) - Number(a?.init || 0))
+    || compareSchedulerSlots(a, b);
+  const heroes = next.filter(a => Number(a?.type || 0) === 0).sort(sortByBattleStartInit);
+  const enemies = next.filter(a => Number(a?.type || 0) === 1).sort(sortByBattleStartInit);
   return String(startMode || '') === 'ambush'
     ? enemies.concat(heroes)
-    : heroes.concat(enemies);
+    : next.sort(sortByBattleStartInit);
 }

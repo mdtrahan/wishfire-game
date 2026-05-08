@@ -4681,6 +4681,10 @@ async function main(){
           return p.y - (h * oy) + h;
         })()
       : 0;
+    const hpBarHeight = hpBarInstance ? Number(hpBarInstance.world.height || 0) * layoutScale : 0;
+    const ampBarBottom = hpBarBottom
+      ? hpBarBottom + hpBarHeight + Math.max(4, Math.round(hpBarHeight * 0.55))
+      : 0;
     const buffTypes = new Set(['buffIcon1', 'buffIcon2', 'buffIcon3', 'buffIcon4']);
     const buffInstances = (instances || []).filter(ins => ins && buffTypes.has(ins.type) && ins.world);
     const layoutAnchorBottom = buffInstances.length
@@ -4690,7 +4694,7 @@ async function main(){
           const oy = Number(ins.world.originY != null ? ins.world.originY : 0.5);
           return p.y - (h * oy) + h;
         }))
-      : (hpBarBottom || (viewTop + Math.max(240, Math.round(250 * layoutScale))));
+      : (ampBarBottom || hpBarBottom || (viewTop + Math.max(240, Math.round(250 * layoutScale))));
 
     const grid = gameState.gridBounds || {
       minX: boardGeometry.gx,
@@ -5260,6 +5264,9 @@ async function main(){
 
   function getLatestCombatActionLine() {
     const g = state.globals || {};
+    const pinnedLine = typeof g.CombatActionPinnedLine === 'string' ? g.CombatActionPinnedLine.trim() : '';
+    const pinnedUntil = Number(g.CombatActionPinnedUntil || 0);
+    if (pinnedLine && pinnedUntil > Number(g.time || 0)) return pinnedLine;
     const lines = Array.isArray(g.CombatActionLines) ? g.CombatActionLines : [];
     const latest = lines[3];
     return (typeof latest === 'string' && latest.trim()) ? latest.trim() : '';

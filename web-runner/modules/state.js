@@ -26,6 +26,9 @@ export const state = {
     Player_maxEnergy: 150,
     goldTotal: 0,
     AstralFlowWallet: 0,
+    AstralFlowAmpPoints: 0,
+    AstralFlowAmpMax: 18,
+    AstralFlowAmpReady: 0,
     HeroGemUsage: {
       version: 1,
       byHeroId: {},
@@ -141,6 +144,8 @@ export const state = {
     PartyBuffSlots: [],
     BuffText: '',
     CombatActionLines: ['', '', '', ''],
+    CombatActionPinnedLine: '',
+    CombatActionPinnedUntil: 0,
     BlueBuffSequenceActive: 0,
     PowerAmpActive: 0,
     PowerAmpUID: 0,
