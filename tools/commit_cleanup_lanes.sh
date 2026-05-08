@@ -133,9 +133,7 @@ elif ! has_worktree_changes_for_paths \
   tools/hot_file_scope.py \
   tools/prepare_hot_file_commit.sh \
   tools/README.md \
-  governance/execution/beads-process.md \
-  agents/dev_reports.md \
-  agents/pm_status.md; then
+  governance/execution/beads-process.md; then
   echo "[3/3] Hot-file tooling lane under ORKA-tuin (no pending tooling changes, skipping)"
 else
   echo "[3/3] Hot-file tooling lane under ORKA-tuin"
@@ -147,9 +145,7 @@ else
     tools/hot_file_scope.py \
     tools/prepare_hot_file_commit.sh \
     tools/README.md \
-    governance/execution/beads-process.md \
-    agents/dev_reports.md \
-    agents/pm_status.md
+    governance/execution/beads-process.md
   git commit -m "chore(tooling): automate hot-file commit preparation bd-ORKA-tuin"
   git push origin "$BRANCH"
   bd update ORKA-tuin --status done >/dev/null

@@ -201,11 +201,6 @@
 - During recovery, trust present source plus focused contracts over branch labels or external app sessions. A repo can be on the right branch and still be missing the required runtime lanes in the owner file.
 - When full combat and idle combat share the same visual language, parity-check both render seams directly instead of assuming one inherits the other. Hit-flash palette changes in `renderHitFlashOverlay(...)` do not automatically update idle combat, which still owns its own sprite-overlay filter path in `web-runner/app.js`.
 
-## 2026-03-18 — PM Cycle Must Rewrite Soft-Blocked Beads Instead Of Stopping
-- A `null` bead body is a PM rewrite task by default, not an automatic delivery stop. If the owner seam, scope, and tests can be reconstructed safely from repo context, PM should rewrite the bead and continue the cycle into development.
-- `PMCYCLE` should return `blocked` only for hard blockers: contradictory product direction, missing dependency with no owner seam, or acceptance that cannot be inferred safely. “Missing spec” alone is not enough if the repo already provides the needed shape.
-- Every PM cycle should state the bead goal in one plain sentence so the human can immediately tell whether the lane needs runtime QA or should be closed on deterministic/multipass evidence.
-
 ## 2026-03-18 — Extra Turns Must Be Proven By Provenance And By Long-Run Rate
 - Repeated turns are only trustworthy when the scheduler can point to explicit provenance. Fence off speed-only shortcuts and route every legal repeat through an explicit extra-slot insert seam.
 - For chance-based repeat-turn skills, a single `200`-run sample is enough to prove moveability and “no speed-only grants,” but not enough to prove rate stability. Pair the short sample with a larger calibration run before calling the proc rate compliant.
@@ -218,6 +213,10 @@
 - If a presentation-heavy attack pattern makes another mechanic unreadable, move that pattern behind an explicit skill harness instead of leaving it in the default action seam.
 - If a free follow-up attack is meant to read as a real second attack, do not pre-time the second damage packet during the first action. Gate the second strike from the first strike's visible completion signal, then start a fresh lunge and schedule the second hit from that new anchor.
 - Per-actor proc latches for repeatable skill harnesses must reset at per-turn granularity, not only on encounter-wide scheduler resets. Otherwise a `100%` harness can appear correct once and then silently stop firing for the rest of combat.
+
+## 2026-05-07 — Blue Gem Accounting Must Carry Count And Hero Ownership Together
+- For blue gem / Astral Flow bugs, verify the full accounting chain instead of only the wallet write: selected-gem count must be passed into `ResolveGemAction(...)`, and the actor UID used for gem usage must resolve to a hero owner, not an enemy turn actor fallback.
+- If combat log, Astral Flow wallet, and BLUE radiator totals all stay at zero together, treat that as an upstream resolution-input bug first, not three separate HUD defects.
 - When converting a mechanic from extra-turn semantics to free-follow-up semantics, audit three seams separately: proc latch lifetime, target/retarget logic, and presentation pacing. Partial fixes can look correct in counters while still failing visually.
 
 ## 2026-03-18 — Session Update Paths Must Rehydrate Stored Config Before Respawn
@@ -242,7 +241,7 @@
 
 ## 2026-03-19 — Bead Creation And Bead Execution Must Stay Separate
 - A user asking to create a bead is asking for queue management by default, not authorizing immediate implementation. Treat “make a bead” as “record this work item” unless they separately assign it or request execution now.
-- Diagnostic order for PM/dev lane confusion: check whether the user asked to create a bead, check whether they separately assigned that bead for work, then check whether a cycle selected it from the queue. Do not collapse those three acts into one.
+- Diagnostic order for lane confusion: check whether the user asked to create a bead, check whether they separately assigned that bead for work, then check whether the normal bead-selection loop chose it. Do not collapse those three acts into one.
 
 ## 2026-03-19 — Enemy Turns Need Their Own Idle-Recovery Gate
 - If combat lands on an enemy turn with `TurnPhase === 2`, no active enemy action, and either leaked pickability or no deferred advance, recover in the enemy-turn seam itself. Hero-turn pickability restore and refill-complete logic are not sufficient to rescue enemy-idle stalls.
