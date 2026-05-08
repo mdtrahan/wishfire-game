@@ -78,10 +78,7 @@
 - A bead is not ready to close unless all of the following are true:
   - acceptance criteria are satisfied
   - tests or validation were actually run
-  - `/agents/dev_reports.md` contains a scoped report
-  - `/agents/pm_status.md` reflects the result
   - bug/regression beads update `/ai-memory/insights.md`
-- Archive historical PM/dev entries into `/agents/archive/` so active coordination files stay concise for startup and review.
 - If unrelated dirty changes remain in touched hot files, do not treat the lane as cleanly reviewable without explicitly calling out that risk.
 
 ## `bd` Write Confirmation Rule
@@ -93,19 +90,6 @@
   - stop stateful lane transitions
   - record the inconsistency in coordination artifacts if it affects execution
   - do not assume the first follow-up read is canonical
-
-## PM / Dev / Review Contract
-- PM:
-  - shapes executable beads
-  - rejects vague work
-  - closes only with evidence
-- Dev:
-  - implements one bead at a time
-  - stays inside scope
-  - reports exact tests and touched files
-- Review:
-  - checks acceptance, evidence, and scope compliance
-  - rejects mixed-scope closeouts
 
 ## Anti-Patterns
 - Starting work from stale `.beads/` mirrors instead of live `bd`
