@@ -51,6 +51,7 @@ import * as renderHUD from './systems/renderHUD.js';
 import * as renderHeroScreen from './systems/renderHeroScreen.js';
 import * as renderMap from './systems/renderMap.js';
 import * as renderBoard from './systems/renderBoard.js';
+import * as gemVisuals from './systems/gemVisuals.js';
 import * as renderCombatRuntime from './systems/renderCombatRuntime.js';
 import * as renderTomes from './systems/renderTomes.js';
 import * as renderArtifacts from './systems/renderArtifacts.js';
@@ -3842,6 +3843,8 @@ async function main(){
   let heroSkillIconsBySlot = [];
   let heroSelectorImage = null;
   let gemFrameImages = [];
+  let superGemFrameImages = [];
+  let superGemRainbowImage = null;
   let buffIconFrameImages = {};
   let debuffIconImages = {};
   let mapBackgroundImage = null;
@@ -3985,6 +3988,8 @@ async function main(){
     heroSkillIconsBySlot = [];
     heroSelectorImage = null;
     gemFrameImages = [];
+    superGemFrameImages = [];
+    superGemRainbowImage = null;
     buffIconFrameImages = {};
     debuffIconImages = {};
     mapBackgroundImage = null;
@@ -4058,11 +4063,12 @@ async function main(){
       ].map(async (imgPath, idx) => {
         heroSkillIconsBySlot[idx] = await loadImage(assetUrl(imgPath));
       });
-      const gemLoads = Array.from({ length: 8 }, (_, i) => i).map(async (i) => {
-        const imgPath = assetUrl(`images/gem-animation 1-${String(i).padStart(3, '0')}.png`);
-        const img = await loadImage(imgPath);
-        if (img) gemFrameImages[i] = img;
-      });
+      const gemVisualLoads = (async () => {
+        const loadedGemVisuals = await gemVisuals.loadGemVisuals({ assetUrl, loadImage });
+        gemFrameImages = loadedGemVisuals.gemFrameImages;
+        superGemFrameImages = loadedGemVisuals.superGemFrameImages;
+        superGemRainbowImage = loadedGemVisuals.superGemRainbowImage;
+      })();
       const heroCapsuleLoads = CANONICAL_HERO_ROSTER.map(async (hero) => {
         const key = String(hero.name || '');
         if (!key) return;
@@ -4075,8 +4081,8 @@ async function main(){
       tasks.push(
         ...heroPortraitLoads,
         ...heroSkillIconLoads,
-        ...gemLoads,
         ...heroCapsuleLoads,
+        gemVisualLoads,
         (async () => { heroSelectorImage = await loadImage(assetUrl('images/h_selector-animation 1-000.png')); })(),
         (async () => { mapBackgroundImage = await loadImage(assetUrl('images/map-layout.png')); })(),
         (async () => { plusIconImage = await plusPromise; })(),
@@ -5198,6 +5204,8 @@ async function main(){
       heroCapsuleImages,
       enemySpriteImages,
       gemFrameImages,
+      superGemFrameImages,
+      superGemRainbowImage,
       buffIconFrameImages: (typeof buffIconFrameImages !== 'undefined' ? buffIconFrameImages : {}),
       buffIconFrames: (typeof buffIconFrames !== 'undefined' ? buffIconFrames : {}),
       buffIcons: (typeof buffIcons !== 'undefined' ? buffIcons : new Set()),
