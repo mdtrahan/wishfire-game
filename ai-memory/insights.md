@@ -269,3 +269,7 @@
 - Dev-panel apply/refresh is a session reseed, not a paused-turn resume. If the modal captured `CanPickGems` / `IsPlayerBusy` / `DeferAdvance` from the old combat session, that snapshot must be discarded before the fresh session becomes live.
 - Treat combat turn transients as one owned bundle: gate flags, action ownership, pending skill selection, and enemy board-pressure state must reset together through a shared helper. Partial hand-written resets are how stale turn loops re-enter a clean session.
 - Diagnostic order for refresh-only turn bugs: compare fresh normal combat first, then inspect the dev-tool pause snapshot session identity, then verify refresh applies the shared turn baseline instead of restoring old `DeferAdvance`, `PendingSkillID`, or `ActionOwnerUID`.
+
+## 2026-05-08 — Dev Autoplay Color Priority Should Encode Real Preference Tiers Only
+- If QA automation is supposed to sample several gem colors fairly, keep those colors in one shared priority tier instead of expressing a fake total order. Pushing one color to the bottom of the array silently biases long autoplay runs and makes balance checks look worse than the underlying runtime behavior.
+- Diagnostic order for autoplay color-bias reports: verify the single-pick exception list first, then inspect the triplet priority tiers, then confirm same-tier selection is the only place randomness is applied. Do not tune downstream balance numbers before checking whether the dev automation itself is skewing picks.

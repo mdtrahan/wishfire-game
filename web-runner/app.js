@@ -5642,9 +5642,7 @@ function getStoryCardLiveLineState() {
   const IDLE_AUTOPLAY_COLOR_PRIORITY = Object.freeze([
     [5],
     [4],
-    [0, 1],
-    [3],
-    [2],
+    [0, 1, 2, 3],
   ]);
   function pickIdleAutoplayTriplet() {
     const byColor = new Map();
