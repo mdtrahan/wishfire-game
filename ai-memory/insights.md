@@ -232,6 +232,10 @@
 - If a player-facing layout is already rendering a resource as `Energy`, audit the runtime ledger and collect/apply helper names before adding more UI logic. Mixed keys like `unclaimedGold` in the helper and `unclaimedEnergy` in the layout create silent no-op collects that look like routing bugs instead of resource-owner bugs.
 - For fail-state exits, keep the destination rule in one explicit branch instead of encoding layout selection inside an inline ternary. Recovery-routing requirements change faster than the surrounding gate conditions, and the inline route choice becomes an easy stale-policy seam.
 
+## 2026-05-07 — Layout Suppression Rules Need Preserved Ownership Metadata
+- If a combat UI element is removed by layer/type rules, verify that the flattened runtime instances still carry `layerName` and `layerIndex` before changing draw filters. Suppression hooks against `BoardBG` or other layer owners silently fail when layout flattening strips that metadata.
+- For legacy layout cleanup, debug in this order: identify the exact instance types and layer owners from the source layout, confirm those fields survive into the runtime `instances` list, then apply the narrow suppression rule at the owner seam. Do not assume a failed visual removal means the rule is wrong before checking whether the ownership metadata survived flattening.
+
 ## 2026-03-19 — Keep Encounter Candidate Pools Separate From Initial Picks
 - If later spawns are supposed to preserve biome/faction diversity, do not reuse the initial selected encounter picks as the long-lived pool. Store the full eligible candidate set separately, then let spawn planning choose from that broader pool.
 - Diagnostic order for spawn-subset regressions: check the request filter first, then check what global/runtime field caches the eligible pool, then check whether respawn helpers are reading the cached pool or only the initial picks.

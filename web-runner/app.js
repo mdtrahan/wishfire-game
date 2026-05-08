@@ -3691,11 +3691,26 @@ function handleGemMatch(color) {
 
 function tryGetInstances(layout){
   if (!layout || !Array.isArray(layout.layers)) return [];
-  const instances = layout.layers
-    .filter(layer => layer && Array.isArray(layer.instances))
-    .flatMap(layer => layer.instances);
+  const instances = layout.layers.flatMap((layer, layerIndex) => {
+    if (!layer || !Array.isArray(layer.instances)) return [];
+    return layer.instances.map((instance) => ({
+      ...instance,
+      layerIndex,
+      layerName: layer.name || 'Unknown',
+    }));
+  });
   runtimeDebugLogging.startupDebugLog('[LAYOUT_AUDIT] flattenedInstanceCount', instances.length);
   return instances;
+}
+
+function shouldSuppressCombatLayoutInstance(instance) {
+  if (!instance || typeof instance.type !== 'string') return false;
+  return (instance.layerName === 'BoardBG' && instance.type === 'Sprite5')
+    || instance.type === 'BuffText'
+    || instance.type === 'buffIcon1'
+    || instance.type === 'buffIcon2'
+    || instance.type === 'buffIcon3'
+    || instance.type === 'buffIcon4';
 }
 
 function makeImagePath(typeName, animName){
@@ -3933,7 +3948,7 @@ async function main(){
     runtimeDebugLogging.startupDebugLog('[INIT] Project viewport:', viewW, 'x', viewH);
     updateStartupLoadState({ phase: 'bootstrap', label: 'Preparing object types...', progress: 0.16 });
 
-    instances = tryGetInstances(layout);
+    instances = tryGetInstances(layout).filter((instance) => !shouldSuppressCombatLayoutInstance(instance));
     runtimeDebugLogging.startupDebugLog('[LAYOUT_AUDIT] instanceCount', Array.isArray(instances) ? instances.length : 0);
     const gemInstanceCount = Array.isArray(instances)
       ? instances.filter(i => i && i.type === 'Gem').length
@@ -4653,16 +4668,25 @@ async function main(){
     const contentBandWidth = viewWidth * 0.95;
     const slotX = viewLeft + (viewWidth - contentBandWidth) * 0.5;
 
+    const hpBarInstance = (instances || []).find(ins => ins && ins.type === 'PartyHP_Bar' && ins.world);
+    const hpBarBottom = hpBarInstance
+      ? (() => {
+          const p = worldToCanvas(hpBarInstance.world.x || 0, hpBarInstance.world.y || 0);
+          const h = Number(hpBarInstance.world.height || 0) * layoutScale;
+          const oy = Number(hpBarInstance.world.originY != null ? hpBarInstance.world.originY : 0);
+          return p.y - (h * oy) + h;
+        })()
+      : 0;
     const buffTypes = new Set(['buffIcon1', 'buffIcon2', 'buffIcon3', 'buffIcon4']);
     const buffInstances = (instances || []).filter(ins => ins && buffTypes.has(ins.type) && ins.world);
-    const buffBottom = buffInstances.length
+    const layoutAnchorBottom = buffInstances.length
       ? Math.max(...buffInstances.map(ins => {
           const p = worldToCanvas(ins.world.x || 0, ins.world.y || 0);
           const h = Number(ins.world.height || 0) * layoutScale;
           const oy = Number(ins.world.originY != null ? ins.world.originY : 0.5);
           return p.y - (h * oy) + h;
         }))
-      : (viewTop + Math.max(240, Math.round(250 * layoutScale)));
+      : (hpBarBottom || (viewTop + Math.max(240, Math.round(250 * layoutScale))));
 
     const grid = gameState.gridBounds || {
       minX: boardGeometry.gx,
@@ -4673,7 +4697,7 @@ async function main(){
     const gridTop = layoutOffsetY + Number(grid.minY || 0) * layoutScale;
     const topMargin = Math.max(8, Math.round(10 * layoutScale));
     const bottomMargin = Math.max(8, Math.round(10 * layoutScale));
-    const slotY = buffBottom + topMargin;
+    const slotY = layoutAnchorBottom + topMargin;
     const rawH = gridTop - bottomMargin - slotY;
     const slotH = Math.max(Math.round(34 * layoutScale), Math.min(Math.round(58 * layoutScale), rawH));
     const adjustedY = rawH >= Math.round(24 * layoutScale)
