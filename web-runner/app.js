@@ -3568,7 +3568,11 @@ function handleGemMatch(color) {
     EnemyLineClearPressureActive: 0,
   });
 
-  const actorUID = callFunctionWithContext(fnContext, 'GetCurrentTurn') || getHeroUIDByIndex(gameState.selectedHero) || gameState.selectedHero;
+  const currentTurnUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
+  const currentTurnActor = currentTurnUID > 0 ? callFunctionWithContext(fnContext, 'GetActorByUID', currentTurnUID) : null;
+  const actorUID = currentTurnActor && currentTurnActor.kind === 'hero'
+    ? currentTurnUID
+    : (getHeroUIDByIndex(gameState.selectedHero) || gameState.selectedHero || currentTurnUID);
   beginTask011ActionCycle(color, actorUID);
 
   const clearLocalSelection = () => {
@@ -3610,7 +3614,7 @@ function handleGemMatch(color) {
     g.SuppressChainUI = 0;
     g.BlueGemConsumedCount = Math.max(0, Number((gameState.selectedGems || []).length));
     callFunctionWithContext(fnContext, 'UpdateChain', 2);
-    callFunctionWithContext(fnContext, 'ResolveGemAction', 2, actorUID);
+    callFunctionWithContext(fnContext, 'ResolveGemAction', 2, actorUID, consumedBlue);
     g.BlueGemConsumedCount = 0;
     callFunctionWithContext(fnContext, 'DestroyGem');
     callFunctionWithContext(fnContext, 'ClearMatchState');
