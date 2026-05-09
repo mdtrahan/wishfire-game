@@ -51,6 +51,7 @@ import * as renderHUD from './systems/renderHUD.js';
 import * as renderHeroScreen from './systems/renderHeroScreen.js';
 import * as renderMap from './systems/renderMap.js';
 import * as renderBoard from './systems/renderBoard.js';
+import * as devToolingControls from './systems/devToolingControls.js';
 import * as gemVisuals from './systems/gemVisuals.js';
 import * as renderCombatRuntime from './systems/renderCombatRuntime.js';
 import * as renderTomes from './systems/renderTomes.js';
@@ -1242,7 +1243,7 @@ function updateDevToolingStatus(message = '') {
     : 'unknown';
   const autoplayActive = !!state.globals.DevAutoplayActive;
   if (devToolingDom.autoplay) {
-    devToolingDom.autoplay.textContent = autoplayActive ? 'Stop Idle Mode' : 'Run Idle Mode';
+    devToolingDom.autoplay.textContent = devToolingControls.getAutoplayButtonLabel(autoplayActive);
   }
   const suffix = message ? `\n${message}` : '';
   devToolingDom.status.textContent =
@@ -1465,7 +1466,8 @@ function ensureDevToolingModal() {
     <div style="display:flex;gap:8px;margin-top:14px;">
       <button type="button" data-devtool-apply style="border:1px solid #14532d;background:#1f8f4a;color:#fff;padding:8px 12px;border-radius:8px;font-weight:800;cursor:pointer;">Apply</button>
       <button type="button" data-devtool-refresh style="border:1px solid #475569;background:#fff;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Save Staged</button>
-      <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Run Idle Mode</button>
+      <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">AutoPlay</button>
+      <button type="button" data-devtool-restart style="border:1px solid #92400e;background:#fff7ed;color:#9a3412;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Restart</button>
     </div>
     <pre data-devtool-status style="margin:14px 0 0;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff9ee;white-space:pre-wrap;"></pre>
   `;
@@ -1497,6 +1499,7 @@ function ensureDevToolingModal() {
     close: panel.querySelector('[data-devtool-close]'),
     apply: panel.querySelector('[data-devtool-apply]'),
     refresh: panel.querySelector('[data-devtool-refresh]'),
+    restart: panel.querySelector('[data-devtool-restart]'),
     autoplay: panel.querySelector('[data-devtool-autoplay]'),
     heroSlots: Array.from(panel.querySelectorAll('[data-devtool-hero-slot]')),
     enemySlots: Array.from(panel.querySelectorAll('[data-devtool-enemy-slot]')),
@@ -1512,10 +1515,15 @@ function ensureDevToolingModal() {
   devToolingDom.close.addEventListener('click', () => toggleDevToolingModal(false));
   devToolingDom.refresh.addEventListener('click', () => applyDevToolingConfig(readDevToolingDomConfigPatch(), { closeModal: false }));
   devToolingDom.apply.addEventListener('click', () => applyDevToolingConfig(readDevToolingDomConfigPatch(), { closeModal: true }));
+  devToolingDom.restart.addEventListener('click', async () => devToolingControls.handleRestartClick({
+    closeDevToolingModal,
+    devToolingRefreshHandler,
+    updateDevToolingStatus,
+  }));
   devToolingDom.autoplay.addEventListener('click', async () => {
     if (state.globals.DevAutoplayActive) {
       state.globals.DevAutoplayStopRequested = 1;
-      updateDevToolingStatus('Idle mode stop requested');
+      updateDevToolingStatus('AutoPlay stop requested');
       return;
     }
     closeDevToolingModal({ restorePauseSnapshot: true });
@@ -3894,8 +3902,9 @@ async function main(){
   async function refreshCombatSessionFromDevTooling({ forceCombat = false, resetGame = false } = {}) {
     if (resetGame) {
       uiState.setUIStateField('overlayVisible', false);
-      const cfg = ensureDevToolingConfig();
-      persistDevToolingConfig({ ...cfg, open: false });
+      const resetCfg = createDefaultDevToolingConfig();
+      state.globals.DevToolingConfig = resetCfg;
+      persistDevToolingConfig({ ...resetCfg, open: false });
       if (typeof window !== 'undefined' && typeof window.location?.reload === 'function') {
         window.location.reload();
         return true;
