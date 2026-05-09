@@ -53,6 +53,21 @@ Before completion:
 - confirm final scope
 - perform insights review for bug/regression beads
 
+## 3.1) Git workflow
+
+For all non-trivial work, create and use a dedicated Git worktree tied to the active bead/feature branch.
+
+Do not perform feature development, refactors, migrations, or multi-file edits inside the main worktree.
+
+Before making changes, verify:
+- active bead/task
+- current branch
+- current worktree path 
+- prefer naming prefix 'wt-*'
+- target base branch
+
+If no dedicated worktree exists for the feature branch, create one before proceeding.
+
 ## 4) Execution Rules
 - Edit the minimum files required.
 - Avoid opportunistic refactors and unrelated changes.
