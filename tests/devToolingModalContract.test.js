@@ -15,10 +15,12 @@ test('web-runner app keeps dev tooling modal decoupled from combat reset flow', 
   assert.match(src, /devToolingDom\.launcher\.addEventListener\('click', \(\) => toggleDevToolingModal\(true\)\);/);
   assert.match(src, /Apply: writes only the selected condition; no combat reset, turn advance, or loadout refresh/);
   assert.match(src, /Save Staged/);
+  assert.match(src, /data-devtool-restart/);
   assert.match(src, /Double Attack/);
   assert.match(src, /data-devtool-double-attack-hero/);
   assert.match(src, /devToolingDom\.apply\.addEventListener\('click', \(\) => applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ closeModal: true \}\)\);/);
   assert.match(src, /devToolingDom\.refresh\.addEventListener\('click', \(\) => applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ closeModal: false \}\)\);/);
+  assert.match(src, /devToolingDom\.restart\.addEventListener\('click', async \(\) => devToolingControls\.handleRestartClick\(\{/);
   assert.match(src, /devToolingDom\.autoplay\.addEventListener\('click', async \(\) => \{/);
   assert.match(src, /closeDevToolingModal\(\{ restorePauseSnapshot: true \}\);/);
   assert.match(src, /function syncConfiguredDoubleAttackHarness\(cfg = ensureDevToolingConfig\(\)\)/);
@@ -32,7 +34,22 @@ test('web-runner app keeps dev tooling modal decoupled from combat reset flow', 
   assert.match(src, /Combat state unchanged/);
   assert.match(src, /config: ensureDevToolingConfig\(\)/);
   assert.match(src, /async function applyDevToolingConfig\(patch = \{\}, \{ closeModal = true \} = \{\}\)/);
+  assert.match(src, /const resetCfg = createDefaultDevToolingConfig\(\);/);
+  assert.match(src, /state\.globals\.DevToolingConfig = resetCfg;/);
+  assert.match(src, /persistDevToolingConfig\(\{ \.\.\.resetCfg, open: false \}\);/);
   assert.doesNotMatch(src, /applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ refreshGame:/);
   assert.doesNotMatch(src, /applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ resetGame:/);
   assert.match(src, /Double Attack: \$\{next\.doubleAttackHeroName \|\| 'Off'\}/);
+});
+
+test('dev tooling restart helper owns restart button labels and reset delegation', () => {
+  const filePath = path.join(__dirname, '..', 'web-runner', 'systems', 'devToolingControls.js');
+  const src = fs.readFileSync(filePath, 'utf8');
+
+  assert.match(src, /export function getAutoplayButtonLabel\(autoplayActive\)/);
+  assert.match(src, /return autoplayActive \? 'Stop AutoPlay' : 'AutoPlay';/);
+  assert.match(src, /export async function handleRestartClick\(\{/);
+  assert.match(src, /closeDevToolingModal\(\{ restorePauseSnapshot: true \}\);/);
+  assert.match(src, /const restarted = await devToolingRefreshHandler\(\{ resetGame: true \}\);/);
+  assert.match(src, /updateDevToolingStatus\('Game restart unavailable'\);/);
 });

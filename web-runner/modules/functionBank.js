@@ -450,6 +450,20 @@ function activatePowerAmp(ctx, actorUID) {
   LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} armed Power Amp x${outcome.multiplier} for next turn!`);
 }
 
+export function ArmPowerAmpFixed(ctx, actorUID, multiplier = 2) {
+  const g = getGlobals(ctx);
+  const store = ensurePowerAmpByUID(ctx);
+  const mult = Math.max(1, Math.floor(Number(multiplier || 1)));
+  const grantTurn = Number(g.DebugTurnCount || 0);
+  const grantTurnSerial = Number(g.TurnSerial || 0);
+  const lifecycleId = nextPowerAmpLifecycleId(g);
+  store[actorUID] = createPowerAmpArmedEntry(mult, grantTurn, grantTurnSerial, lifecycleId);
+  emitPowerAmpStateLog(ctx, 'activation_armed', actorUID, { mult, mode: 'fixed', lifecycle: lifecycleId });
+  const seeded = setPowerAmpVisual(g, actorUID, mult, lifecycleId);
+  emitPowerAmpStateLog(ctx, 'activation_visible', actorUID, { mult, mode: 'fixed', lifecycle: lifecycleId, seeded: seeded.seeded ? 1 : 0 });
+  LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} armed Power Amp x${mult} for next turn!`);
+}
+
 function consumePowerAmpForEvent(ctx, actorUID, values) {
   const g = getGlobals(ctx);
   const store = ensurePowerAmpByUID(ctx);
@@ -1329,6 +1343,32 @@ function ensureAstralFlowWallet(ctx) {
   const g = getGlobals(ctx);
   if (!Number.isFinite(g.AstralFlowWallet)) g.AstralFlowWallet = 0;
   return g.AstralFlowWallet;
+}
+
+function ensureAstralFlowAmpState(ctx) {
+  const g = getGlobals(ctx);
+  if (!Number.isFinite(g.AstralFlowAmpPoints)) g.AstralFlowAmpPoints = 0;
+  if (!Number.isFinite(g.AstralFlowAmpMax) || Number(g.AstralFlowAmpMax) <= 0) g.AstralFlowAmpMax = 18;
+  if (!Number.isFinite(g.AstralFlowAmpReady)) g.AstralFlowAmpReady = 0;
+  return g;
+}
+
+function shouldResetAstralFlowAmpOnHeroTurn(g) {
+  if (!Number(g.AstralFlowAmpReady || 0)) return false;
+  const ampMax = Math.max(1, Number(g.AstralFlowAmpMax || 18));
+  if (Math.max(0, Number(g.AstralFlowAmpPoints || 0)) < ampMax) return false;
+  return Number(g.time || 0) >= Number(g.CombatActionPinnedUntil || 0);
+}
+
+function recoverStaleActionInProgress(g, currentUID = 0) {
+  const ownerUID = Number(g.ActionActorUID || 0);
+  if (!Number(g.ActionInProgress || 0) || !ownerUID || ownerUID === Number(currentUID || 0)) return false;
+  const heroActive = !!(g.HeroAction && g.HeroAction.active && Number(g.HeroAction.uid || 0) === ownerUID);
+  const enemyActive = !!(g.EnemyAction && g.EnemyAction.active && Number(g.EnemyAction.uid || 0) === ownerUID);
+  if (heroActive || enemyActive) return false;
+  g.ActionInProgress = 0;
+  g.ActionActorUID = 0;
+  return true;
 }
 
 const HERO_GEM_USAGE_KEYS = Object.freeze(['RED', 'GREEN', 'BLUE', 'HEAL', 'YELLOW']);
@@ -2989,6 +3029,15 @@ export function UpdatePartyHPBar(ctx) {
   g.PartyHPBar = { max: g.PartyMaxHP, value: g.PartyHP };
 }
 
+export function UpdateAstralFlowAmpBar(ctx) {
+  const g = ensureAstralFlowAmpState(ctx);
+  g.AstralFlowAmpBar = {
+    max: Math.max(1, Number(g.AstralFlowAmpMax || 18)),
+    value: Math.max(0, Number(g.AstralFlowAmpPoints || 0)),
+    ready: Number(g.AstralFlowAmpReady || 0),
+  };
+}
+
 export function Sub_Energy(ctx) {
   const g = getGlobals(ctx);
   g.Player_Energy = (g.Player_Energy || 0) - 3;
@@ -4021,6 +4070,7 @@ export function RefreshSelectors(ctx) {
 
 export function Update_Bars(ctx) {
   UpdatePartyHPBar(ctx);
+  UpdateAstralFlowAmpBar(ctx);
   UpdatePartyHPText(ctx);
 }
 
@@ -4091,6 +4141,19 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
     const wallet = ensureAstralFlowWallet(ctx);
     g.AstralFlowWallet = wallet + consumedBlue;
     LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} channeled ${consumedBlue} Astral Flow.`);
+    ensureAstralFlowAmpState(ctx);
+    if (consumedBlue >= 3 && !g.AstralFlowAmpReady) {
+      const currentAmp = Math.max(0, Number(g.AstralFlowAmpPoints || 0));
+      const ampMax = Math.max(1, Number(g.AstralFlowAmpMax || 18));
+      const nextAmp = Math.min(ampMax, currentAmp + consumedBlue);
+      g.AstralFlowAmpPoints = nextAmp;
+      if (nextAmp >= ampMax) {
+        g.AstralFlowAmpReady = 1;
+        LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} gained Astral Flow!`);
+        g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, (g.time || 0) + 4);
+      }
+    }
+    UpdateAstralFlowAmpBar(ctx);
     // Blue matches are turn-consuming actions: lock input and defer exactly one handoff.
     g.CanPickGems = 0;
     g.IsPlayerBusy = 0;
@@ -4243,13 +4306,29 @@ export function SortTurnOrder(ctx) {
 
 export function LogCombat(ctx, text) {
   const g = getGlobals(ctx);
+  const value = String(text || '');
+  if (!value) return;
+  const now = Number(g.time || 0);
+  const pinnedLine = typeof g.CombatActionPinnedLine === 'string' ? g.CombatActionPinnedLine : '';
+  const pinUntil = Number(g.CombatActionPinnedUntil || 0);
+  if (pinUntil > now && pinnedLine && value !== pinnedLine) {
+    logLine(ctx, value);
+    return;
+  }
   const lines = g.CombatActionLines || ['', '', '', ''];
   lines[0] = lines[1];
   lines[1] = lines[2];
   lines[2] = lines[3];
-  lines[3] = String(text || '');
+  lines[3] = value;
   g.CombatActionLines = lines;
-  logLine(ctx, text);
+  if (/Astral Flow(?:!|\.)$/.test(value)) {
+    g.CombatActionPinnedLine = String(value || '');
+    g.CombatActionPinnedUntil = Math.max(pinUntil, now + 4);
+  } else if (pinUntil <= now) {
+    g.CombatActionPinnedLine = '';
+    g.CombatActionPinnedUntil = 0;
+  }
+  logLine(ctx, value);
 }
 
 export function LogGemIntent(ctx, frame, colorName, intentKey, extra, actorUID) {
@@ -4492,9 +4571,17 @@ export function EnemyTurn(ctx, enemyUID) {
 export function HeroTurn(ctx, heroUID) {
   const g = getGlobals(ctx);
   const store = ensurePowerAmpByUID(ctx);
+  ensureAstralFlowAmpState(ctx);
   g.TurnPhase = 0;
   applyTurnGateIntent(g, createHeroTurnGateBaseline);
   g.HideHeroSelector = 0;
+  if (shouldResetAstralFlowAmpOnHeroTurn(g)) {
+    g.AstralFlowAmpPoints = 0;
+    g.AstralFlowAmpReady = 0;
+    g.CombatActionPinnedLine = '';
+    g.CombatActionPinnedUntil = 0;
+  }
+  UpdateAstralFlowAmpBar(ctx);
   if (heroUID) g.CurrentHeroUID = heroUID;
   if (heroUID && store[heroUID]) {
     const entry = store[heroUID];
@@ -4521,6 +4608,7 @@ export function ProcessTurn(ctx) {
   const actor = GetActorByUID(ctx, uid);
   const g = getGlobals(ctx);
   if (g.BoardFillActive) return;
+  recoverStaleActionInProgress(g, uid);
   if (g.ActionInProgress && g.ActionActorUID && g.ActionActorUID !== uid) return;
   if (g.IsPlayerBusy && g.TurnPhase === 1) return;
   g.DebugTurnCount = (g.DebugTurnCount || 0) + 1;

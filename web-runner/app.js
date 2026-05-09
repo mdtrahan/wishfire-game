@@ -39,6 +39,15 @@ import {
   updateIdleFarmEmissionState,
   updateIdleFarmSessionState,
 } from './src/core/idleFarmRuntime.mjs';
+import {
+  getSuperGemAtCanvasPoint,
+  getSuperGemAtCell,
+  resetSuperGemBoardState,
+  resolveSuperGemDecomposition,
+  settleSuperGemShapes,
+  spendSuperGem,
+  syncSuperGemShapes,
+} from './src/core/superGemBoardState.mjs';
 import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
 import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
 import { createHealBloom } from './src/core/healBloomAnimation.mjs';
@@ -51,6 +60,8 @@ import * as renderHUD from './systems/renderHUD.js';
 import * as renderHeroScreen from './systems/renderHeroScreen.js';
 import * as renderMap from './systems/renderMap.js';
 import * as renderBoard from './systems/renderBoard.js';
+import * as devToolingControls from './systems/devToolingControls.js';
+import * as gemVisuals from './systems/gemVisuals.js';
 import * as renderCombatRuntime from './systems/renderCombatRuntime.js';
 import * as renderTomes from './systems/renderTomes.js';
 import * as renderArtifacts from './systems/renderArtifacts.js';
@@ -65,6 +76,7 @@ import * as renderChests from './systems/renderChests.js';
 import * as renderHarnessFallback from './systems/renderHarnessFallback.js';
 import * as renderOverlays from './systems/renderOverlays.js';
 import * as renderRuntime from './systems/renderRuntime.js';
+import * as superGemRuntime from './systems/superGemRuntime.js';
 import * as helpers from './utils/helpers.js';
 import * as mapLayoutState from './state/mapLayoutState.js';
 import * as uiState from './state/uiState.js';
@@ -541,6 +553,10 @@ const gameState = {
     index: 0,
     current: null,
   },
+  superGems: [],
+  superGemCellMap: new Map(),
+  superGemSignature: '',
+  nextSuperGemId: 1,
   storyCardLine: {
     text: '',
     animUntil: 0,
@@ -1241,7 +1257,7 @@ function updateDevToolingStatus(message = '') {
     : 'unknown';
   const autoplayActive = !!state.globals.DevAutoplayActive;
   if (devToolingDom.autoplay) {
-    devToolingDom.autoplay.textContent = autoplayActive ? 'Stop Idle Mode' : 'Run Idle Mode';
+    devToolingDom.autoplay.textContent = devToolingControls.getAutoplayButtonLabel(autoplayActive);
   }
   const suffix = message ? `\n${message}` : '';
   devToolingDom.status.textContent =
@@ -1464,7 +1480,8 @@ function ensureDevToolingModal() {
     <div style="display:flex;gap:8px;margin-top:14px;">
       <button type="button" data-devtool-apply style="border:1px solid #14532d;background:#1f8f4a;color:#fff;padding:8px 12px;border-radius:8px;font-weight:800;cursor:pointer;">Apply</button>
       <button type="button" data-devtool-refresh style="border:1px solid #475569;background:#fff;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Save Staged</button>
-      <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Run Idle Mode</button>
+      <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">AutoPlay</button>
+      <button type="button" data-devtool-restart style="border:1px solid #92400e;background:#fff7ed;color:#9a3412;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Restart</button>
     </div>
     <pre data-devtool-status style="margin:14px 0 0;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff9ee;white-space:pre-wrap;"></pre>
   `;
@@ -1496,6 +1513,7 @@ function ensureDevToolingModal() {
     close: panel.querySelector('[data-devtool-close]'),
     apply: panel.querySelector('[data-devtool-apply]'),
     refresh: panel.querySelector('[data-devtool-refresh]'),
+    restart: panel.querySelector('[data-devtool-restart]'),
     autoplay: panel.querySelector('[data-devtool-autoplay]'),
     heroSlots: Array.from(panel.querySelectorAll('[data-devtool-hero-slot]')),
     enemySlots: Array.from(panel.querySelectorAll('[data-devtool-enemy-slot]')),
@@ -1511,10 +1529,15 @@ function ensureDevToolingModal() {
   devToolingDom.close.addEventListener('click', () => toggleDevToolingModal(false));
   devToolingDom.refresh.addEventListener('click', () => applyDevToolingConfig(readDevToolingDomConfigPatch(), { closeModal: false }));
   devToolingDom.apply.addEventListener('click', () => applyDevToolingConfig(readDevToolingDomConfigPatch(), { closeModal: true }));
+  devToolingDom.restart.addEventListener('click', async () => devToolingControls.handleRestartClick({
+    closeDevToolingModal,
+    devToolingRefreshHandler,
+    updateDevToolingStatus,
+  }));
   devToolingDom.autoplay.addEventListener('click', async () => {
     if (state.globals.DevAutoplayActive) {
       state.globals.DevAutoplayStopRequested = 1;
-      updateDevToolingStatus('Idle mode stop requested');
+      updateDevToolingStatus('AutoPlay stop requested');
       return;
     }
     closeDevToolingModal({ restorePauseSnapshot: true });
@@ -3041,6 +3064,7 @@ function createGemBoard(gridBounds = null, { immediateFill = false } = {}) {
   bootstrapDeterministicRefillPending = BOOTSTRAP_SEED != null;
   gameState.gems = [];
   gameState.grid = [];
+  resetSuperGemBoardState(gameState);
   const g = boardGeometry;
   
   // Calculate board dimensions
@@ -3077,6 +3101,7 @@ function createGemBoard(gridBounds = null, { immediateFill = false } = {}) {
   runtimeDebugLogging.startupDebugLog(`[BOARD] Created gem board: ${g.cols}x${g.rows} = ${gameState.gems.length} gems`);
   if (immediateFill) {
     refillGemBoard(gridBounds);
+    settleSuperGemShapes({ gameState, state, boardGeometry, reason: 'immediate-fill' });
     state.globals.BoardFillActive = 0;
     return;
   }
@@ -3134,6 +3159,7 @@ function randomGemFrame() {
 
 function refillGemBoard(gridBounds = null) {
   const g = boardGeometry;
+  resolveSuperGemDecomposition({ gameState, state, reason: 'refill-gem-board' });
   rebuildGridFromGems();
   let hasEmpty = false;
   for (let c = 0; c < g.cols; c++) {
@@ -3188,6 +3214,7 @@ function refillGemBoard(gridBounds = null) {
   gameState.selectedGems = [];
   gameState.selectionLocked = false;
   setGemArray(gameState.gems);
+  settleSuperGemShapes({ gameState, state, boardGeometry, reason: 'refill-gem-board' });
   state.globals.TapIndex = 0;
   runtimeDebugLogging.startupDebugLog('[BOARD] Refilled missing gems');
   return true;
@@ -3375,6 +3402,7 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
 }
 
 function startRefillBounce(speedScale = 1) {
+  resolveSuperGemDecomposition({ gameState, state, reason: 'pre-refill' });
   const refill = gameState.refillBounce || (gameState.refillBounce = {});
   refill.speedScale = speedScale;
   const emptySlots = [];
@@ -3568,7 +3596,11 @@ function handleGemMatch(color) {
     EnemyLineClearPressureActive: 0,
   });
 
-  const actorUID = callFunctionWithContext(fnContext, 'GetCurrentTurn') || getHeroUIDByIndex(gameState.selectedHero) || gameState.selectedHero;
+  const currentTurnUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
+  const currentTurnActor = currentTurnUID > 0 ? callFunctionWithContext(fnContext, 'GetActorByUID', currentTurnUID) : null;
+  const actorUID = currentTurnActor && currentTurnActor.kind === 'hero'
+    ? currentTurnUID
+    : (getHeroUIDByIndex(gameState.selectedHero) || gameState.selectedHero || currentTurnUID);
   beginTask011ActionCycle(color, actorUID);
 
   const clearLocalSelection = () => {
@@ -3610,7 +3642,7 @@ function handleGemMatch(color) {
     g.SuppressChainUI = 0;
     g.BlueGemConsumedCount = Math.max(0, Number((gameState.selectedGems || []).length));
     callFunctionWithContext(fnContext, 'UpdateChain', 2);
-    callFunctionWithContext(fnContext, 'ResolveGemAction', 2, actorUID);
+    callFunctionWithContext(fnContext, 'ResolveGemAction', 2, actorUID, consumedBlue);
     g.BlueGemConsumedCount = 0;
     callFunctionWithContext(fnContext, 'DestroyGem');
     callFunctionWithContext(fnContext, 'ClearMatchState');
@@ -3691,11 +3723,26 @@ function handleGemMatch(color) {
 
 function tryGetInstances(layout){
   if (!layout || !Array.isArray(layout.layers)) return [];
-  const instances = layout.layers
-    .filter(layer => layer && Array.isArray(layer.instances))
-    .flatMap(layer => layer.instances);
+  const instances = layout.layers.flatMap((layer, layerIndex) => {
+    if (!layer || !Array.isArray(layer.instances)) return [];
+    return layer.instances.map((instance) => ({
+      ...instance,
+      layerIndex,
+      layerName: layer.name || 'Unknown',
+    }));
+  });
   runtimeDebugLogging.startupDebugLog('[LAYOUT_AUDIT] flattenedInstanceCount', instances.length);
   return instances;
+}
+
+function shouldSuppressCombatLayoutInstance(instance) {
+  if (!instance || typeof instance.type !== 'string') return false;
+  return (instance.layerName === 'BoardBG' && instance.type === 'Sprite5')
+    || instance.type === 'BuffText'
+    || instance.type === 'buffIcon1'
+    || instance.type === 'buffIcon2'
+    || instance.type === 'buffIcon3'
+    || instance.type === 'buffIcon4';
 }
 
 function makeImagePath(typeName, animName){
@@ -3823,6 +3870,8 @@ async function main(){
   let heroSkillIconsBySlot = [];
   let heroSelectorImage = null;
   let gemFrameImages = [];
+  let superGemFrameImages = [];
+  let superGemRainbowImage = null;
   let buffIconFrameImages = {};
   let debuffIconImages = {};
   let mapBackgroundImage = null;
@@ -3872,8 +3921,9 @@ async function main(){
   async function refreshCombatSessionFromDevTooling({ forceCombat = false, resetGame = false } = {}) {
     if (resetGame) {
       uiState.setUIStateField('overlayVisible', false);
-      const cfg = ensureDevToolingConfig();
-      persistDevToolingConfig({ ...cfg, open: false });
+      const resetCfg = createDefaultDevToolingConfig();
+      state.globals.DevToolingConfig = resetCfg;
+      persistDevToolingConfig({ ...resetCfg, open: false });
       if (typeof window !== 'undefined' && typeof window.location?.reload === 'function') {
         window.location.reload();
         return true;
@@ -3933,7 +3983,7 @@ async function main(){
     runtimeDebugLogging.startupDebugLog('[INIT] Project viewport:', viewW, 'x', viewH);
     updateStartupLoadState({ phase: 'bootstrap', label: 'Preparing object types...', progress: 0.16 });
 
-    instances = tryGetInstances(layout);
+    instances = tryGetInstances(layout).filter((instance) => !shouldSuppressCombatLayoutInstance(instance));
     runtimeDebugLogging.startupDebugLog('[LAYOUT_AUDIT] instanceCount', Array.isArray(instances) ? instances.length : 0);
     const gemInstanceCount = Array.isArray(instances)
       ? instances.filter(i => i && i.type === 'Gem').length
@@ -3966,6 +4016,8 @@ async function main(){
     heroSkillIconsBySlot = [];
     heroSelectorImage = null;
     gemFrameImages = [];
+    superGemFrameImages = [];
+    superGemRainbowImage = null;
     buffIconFrameImages = {};
     debuffIconImages = {};
     mapBackgroundImage = null;
@@ -4039,11 +4091,12 @@ async function main(){
       ].map(async (imgPath, idx) => {
         heroSkillIconsBySlot[idx] = await loadImage(assetUrl(imgPath));
       });
-      const gemLoads = Array.from({ length: 8 }, (_, i) => i).map(async (i) => {
-        const imgPath = assetUrl(`images/gem-animation 1-${String(i).padStart(3, '0')}.png`);
-        const img = await loadImage(imgPath);
-        if (img) gemFrameImages[i] = img;
-      });
+      const gemVisualLoads = (async () => {
+        const loadedGemVisuals = await gemVisuals.loadGemVisuals({ assetUrl, loadImage });
+        gemFrameImages = loadedGemVisuals.gemFrameImages;
+        superGemFrameImages = loadedGemVisuals.superGemFrameImages;
+        superGemRainbowImage = loadedGemVisuals.superGemRainbowImage;
+      })();
       const heroCapsuleLoads = CANONICAL_HERO_ROSTER.map(async (hero) => {
         const key = String(hero.name || '');
         if (!key) return;
@@ -4056,8 +4109,8 @@ async function main(){
       tasks.push(
         ...heroPortraitLoads,
         ...heroSkillIconLoads,
-        ...gemLoads,
         ...heroCapsuleLoads,
+        gemVisualLoads,
         (async () => { heroSelectorImage = await loadImage(assetUrl('images/h_selector-animation 1-000.png')); })(),
         (async () => { mapBackgroundImage = await loadImage(assetUrl('images/map-layout.png')); })(),
         (async () => { plusIconImage = await plusPromise; })(),
@@ -4653,16 +4706,29 @@ async function main(){
     const contentBandWidth = viewWidth * 0.95;
     const slotX = viewLeft + (viewWidth - contentBandWidth) * 0.5;
 
+    const hpBarInstance = (instances || []).find(ins => ins && ins.type === 'PartyHP_Bar' && ins.world);
+    const hpBarBottom = hpBarInstance
+      ? (() => {
+          const p = worldToCanvas(hpBarInstance.world.x || 0, hpBarInstance.world.y || 0);
+          const h = Number(hpBarInstance.world.height || 0) * layoutScale;
+          const oy = Number(hpBarInstance.world.originY != null ? hpBarInstance.world.originY : 0);
+          return p.y - (h * oy) + h;
+        })()
+      : 0;
+    const hpBarHeight = hpBarInstance ? Number(hpBarInstance.world.height || 0) * layoutScale : 0;
+    const ampBarBottom = hpBarBottom
+      ? hpBarBottom + hpBarHeight + Math.max(4, Math.round(hpBarHeight * 0.55))
+      : 0;
     const buffTypes = new Set(['buffIcon1', 'buffIcon2', 'buffIcon3', 'buffIcon4']);
     const buffInstances = (instances || []).filter(ins => ins && buffTypes.has(ins.type) && ins.world);
-    const buffBottom = buffInstances.length
+    const layoutAnchorBottom = buffInstances.length
       ? Math.max(...buffInstances.map(ins => {
           const p = worldToCanvas(ins.world.x || 0, ins.world.y || 0);
           const h = Number(ins.world.height || 0) * layoutScale;
           const oy = Number(ins.world.originY != null ? ins.world.originY : 0.5);
           return p.y - (h * oy) + h;
         }))
-      : (viewTop + Math.max(240, Math.round(250 * layoutScale)));
+      : (ampBarBottom || hpBarBottom || (viewTop + Math.max(240, Math.round(250 * layoutScale))));
 
     const grid = gameState.gridBounds || {
       minX: boardGeometry.gx,
@@ -4673,7 +4739,7 @@ async function main(){
     const gridTop = layoutOffsetY + Number(grid.minY || 0) * layoutScale;
     const topMargin = Math.max(8, Math.round(10 * layoutScale));
     const bottomMargin = Math.max(8, Math.round(10 * layoutScale));
-    const slotY = buffBottom + topMargin;
+    const slotY = layoutAnchorBottom + topMargin;
     const rawH = gridTop - bottomMargin - slotY;
     const slotH = Math.max(Math.round(34 * layoutScale), Math.min(Math.round(58 * layoutScale), rawH));
     const adjustedY = rawH >= Math.round(24 * layoutScale)
@@ -5092,6 +5158,7 @@ async function main(){
   }
 
   function drawFrame(dtOverride){
+    syncSuperGemShapes({ gameState, state, boardGeometry, reason: 'draw-frame' });
     const runtimeScope = {
       dtOverride,
       state,
@@ -5166,6 +5233,8 @@ async function main(){
       heroCapsuleImages,
       enemySpriteImages,
       gemFrameImages,
+      superGemFrameImages,
+      superGemRainbowImage,
       buffIconFrameImages: (typeof buffIconFrameImages !== 'undefined' ? buffIconFrameImages : {}),
       buffIconFrames: (typeof buffIconFrames !== 'undefined' ? buffIconFrames : {}),
       buffIcons: (typeof buffIcons !== 'undefined' ? buffIcons : new Set()),
@@ -5232,6 +5301,9 @@ async function main(){
 
   function getLatestCombatActionLine() {
     const g = state.globals || {};
+    const pinnedLine = typeof g.CombatActionPinnedLine === 'string' ? g.CombatActionPinnedLine.trim() : '';
+    const pinnedUntil = Number(g.CombatActionPinnedUntil || 0);
+    if (pinnedLine && pinnedUntil > Number(g.time || 0)) return pinnedLine;
     const lines = Array.isArray(g.CombatActionLines) ? g.CombatActionLines : [];
     const latest = lines[3];
     return (typeof latest === 'string' && latest.trim()) ? latest.trim() : '';
@@ -5607,9 +5679,7 @@ function getStoryCardLiveLineState() {
   const IDLE_AUTOPLAY_COLOR_PRIORITY = Object.freeze([
     [5],
     [4],
-    [0, 1],
-    [3],
-    [2],
+    [0, 1, 2, 3],
   ]);
   function pickIdleAutoplayTriplet() {
     const byColor = new Map();
@@ -5657,7 +5727,14 @@ function getStoryCardLiveLineState() {
     if (String(state.globals.PendingSkillID || '') === 'HERO_SINGLE') {
       state.globals.SelectedEnemyUID = Number(livingEnemies[0].uid || 0);
     }
-    callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
+    const resolvedPendingSuperGem = superGemRuntime.executePendingSuperGemAction({
+      state,
+      callFunctionWithContext,
+      fnContext,
+    });
+    if (!resolvedPendingSuperGem) {
+      callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
+    }
     state.globals.PendingSkillID = '';
     state.globals.PendingActor = 0;
     state.globals.SelectedEnemyUID = 0;
@@ -6366,7 +6443,14 @@ function getStoryCardLiveLineState() {
       const btn = getAttackButtonBounds();
       if (mx >= btn.dx && mx <= btn.dx + btn.w && my >= btn.dy && my <= btn.dy + btn.h) {
         const actorUID = state.globals.PendingActor || getHeroUIDByIndex(gameState.selectedHero);
-        callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
+        const resolvedPendingSuperGem = superGemRuntime.executePendingSuperGemAction({
+          state,
+          callFunctionWithContext,
+          fnContext,
+        });
+        if (!resolvedPendingSuperGem) {
+          callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
+        }
         state.globals.PendingSkillID = '';
         state.globals.PendingActor = 0;
         state.globals.SelectedEnemyUID = 0;
@@ -6407,6 +6491,34 @@ function getStoryCardLiveLineState() {
         }, state);
         return;
       }
+      const tappedSuperGem = getSuperGemAtCanvasPoint({
+        gameState,
+        mx,
+        my,
+        boardGeometry,
+        layoutScale,
+        worldToCanvas,
+      });
+      if (tappedSuperGem) {
+        spendSuperGem({
+          superGem: tappedSuperGem,
+          gameState,
+          state,
+          reason: 'tap-surface',
+          callFunctionWithContext,
+          fnContext,
+          getHeroUIDByIndex,
+          beginTask011ActionCycle,
+          startGemMergeFx,
+          getGoldLabelTargetWorld,
+          setGemArray,
+          startRefillBounce,
+          activateSuperGemEffect: superGemRuntime.activateSuperGemEffect,
+          superGemCost: superGemRuntime.SUPER_GEM_COST,
+        });
+        drawFrame();
+        return;
+      }
       for (let i = 0; i < gameState.gems.length; i++) {
         const gem = gameState.gems[i];
         const pos = worldToCanvas(gem.x, gem.y);
@@ -6438,6 +6550,27 @@ function getStoryCardLiveLineState() {
           }, state);
           if (gem.color == null && gem.elementIndex != null) {
             gem.color = gem.elementIndex;
+          }
+          const tappedSuperGem = getSuperGemAtCell(gameState, gem.cellR, gem.cellC);
+          if (tappedSuperGem) {
+            spendSuperGem({
+              superGem: tappedSuperGem,
+              gameState,
+              state,
+              reason: 'tap-footprint',
+              callFunctionWithContext,
+              fnContext,
+              getHeroUIDByIndex,
+              beginTask011ActionCycle,
+              startGemMergeFx,
+              getGoldLabelTargetWorld,
+              setGemArray,
+              startRefillBounce,
+              activateSuperGemEffect: superGemRuntime.activateSuperGemEffect,
+              superGemCost: superGemRuntime.SUPER_GEM_COST,
+            });
+            drawFrame();
+            return;
           }
           if (gem.color === 6) {
             handleSpecialGem6(gem);

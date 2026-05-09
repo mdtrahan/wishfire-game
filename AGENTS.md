@@ -22,86 +22,124 @@
 ## 3) Beads Gate
 - No issue, no work.
 - Work one Beads issue at a time.
-- Creating a bead is queue management, not execution authorization.
-- If the user asks to create or “make” a bead, create it and leave it `open`/backlog-ready unless they also explicitly assign it for work, request implementation now, or trigger a cycle that selects it.
-- Before editing code:
-  1. `git checkout codex/live`
-  2. `git pull --ff-only`
-  3. ensure `bd` resolves in shell (`export PATH="$HOME/.local/bin:$PATH"` if needed)
-  4. `bd ready`
-  5. `bd show <id>`
-  6. Mark that issue `in_progress`
+- Creating a bead does not authorize implementation.
+- Queue entry and lane assignment are separate acts.
 - Commits must include `bd-<id>`.
-- If scope is ambiguous, stop and clarify on that issue.
-- PM/assigner must always provide the explicit Beads issue ID when assigning a lane. Do not start from title-only instructions.
-- Do not treat bead creation itself as assignment. Queue entry and lane assignment are separate acts.
 
-### 3.0) Macro Trigger (Hardcoded)
-- Trigger phrase: `RUN PM-DEV CYCLE`
-- Equivalent accepted aliases:
-  - `PMCYCLE`
-  - `NEXT BEAD CYCLE`
-  - `CONTINUE PM-DEV`
-- On trigger, execute this sequence in order:
-  1. PM flow (`agents/prompts/pm_agent.md`)
-  2. Dev flow (`agents/prompts/dev_agent.md`)
-  3. PM review/closure flow (`agents/prompts/pm_agent.md`)
-- If no explicit bead is currently assigned, claim the highest-priority READY bead and state its ID before edits.
+Before editing:
+1. `git checkout codex/live`
+2. `git pull --ff-only`
+3. ensure `bd` resolves
+4. `bd ready`
+5. `bd show <id>`
+6. mark issue `in_progress`
 
-### 3.3) PM/Dev Prompt Contract (Required)
-- The authoritative role flows are:
-  - `agents/prompts/pm_agent.md`
-  - `agents/prompts/dev_agent.md`
-- These are policy, not reference notes.
-- Every bead cycle must follow:
-  1. **PM flow**: bead readiness/scope/acceptance/test requirements are validated and tracked.
-  2. **Dev flow**: implementation + phased testing + report in `/agents/dev_reports.md`.
-  3. **PM flow**: review against acceptance + evidence, then mark `done` or return to `todo/blocked`.
-- If PM/Dev prompt rules conflict with ad-hoc execution, PM/Dev prompt rules win unless user explicitly overrides.
-- Do not skip PM review semantics by directly treating code changes as completed work.
+If scope is ambiguous or outside the active bead:
+- stop and clarify
+- reopen the bead, or
+- create a new queued bead
 
-### 3.1) Task Boundary Enforcement (Required)
-- If a user request is **not** part of the active bead scope, do not start implementation under the current bead.
-- Required action for out-of-scope requests:
-  1. reopen current bead with scope change **or**
-  2. create a new bead and leave it queued unless execution is explicitly assigned
-  3. only claim/start it after explicit assignment or a cycle that selects it
-- “Quick fix first” outside bead scope is non-compliant.
-- If the user asks to continue and no explicit bead is assigned, claim the highest-priority READY bead and state that ID before edits.
+Do not implement out-of-scope quick fixes.
 
-### 3.2) Bead Transition Contract (Required)
-- Every lane switch must explicitly record one of:
-  - `REOPEN: <bd-id>`, or
-  - `NEW: <bd-id>`
-- Before first code edit after a lane switch, ensure live `bd` state reflects the intended status (`open`/`in_progress`).
-- Completion requires:
-  - acceptance evidence
-  - scope confirmation
-  - insights check (for bug/regression beads)
+Every lane switch must record:
+- `REOPEN: <bd-id>`
+- or `NEW: <bd-id>`
+
+Before editing after a lane switch:
+- ensure live `bd` state matches intended status
+
+Before completion:
+- confirm acceptance criteria
+- confirm final scope
+- perform insights review for bug/regression beads
+
+## 3.1) Git workflow
+
+For all non-trivial work, create and use a dedicated Git worktree tied to the active bead/feature branch.
+
+Do not perform feature development, refactors, migrations, or multi-file edits inside the main worktree.
+
+Before making changes, verify:
+- active bead/task
+- current branch
+- current worktree path 
+- prefer naming prefix 'wt-*'
+- target base branch
+
+If no dedicated worktree exists for the feature branch, create one before proceeding.
 
 ## 4) Execution Rules
-- Edit the minimum files needed.
-- No opportunistic refactors or side work.
-- Resolve Git conflicts locally. Do not ask the user to resolve them.
-- If unexpected tracked changes appear, stop and ask how to proceed unless the user already authorized them.
-- Repository artifacts and Beads are the durable coordination channel.
-- PM/assigner must not implement, commit, or push worker-owned feature/refactor lanes. PM creates/issues prompts/tracking only unless the user explicitly assigns PM a separate scoped repo change.
+- Edit the minimum files required.
+- Avoid opportunistic refactors and unrelated changes.
+- Resolve Git conflicts locally.
+- If unexpected tracked changes appear, stop unless already authorized.
+- Use repository artifacts and Beads as the coordination source of truth.
 
 ### 4.1) Ownership Discipline
-- Keep one ownership lane per issue: change only one of render/projection, combat rules, or lifecycle/state cleanup unless the issue explicitly authorizes a cross-boundary change.
-- For hot-file issues, define exact allowed files/functions and name forbidden adjacent systems before editing.
-- Do not write feature-owned globals outside the owning seam. If no clear owner exists yet, inventory direct read/write sites first, then extract the seam before expanding the feature.
-- If a deterministic rule must change in both `Scripts/` and `web-runner/`, move that rule into `src/` or mark the duplicate edit as temporary mirrored maintenance in the issue.
+- Keep one ownership lane per issue unless explicitly authorized.
+- Define allowed files/systems before editing hot paths.
+- Avoid cross-system globals and mirrored logic when possible.
+- Move shared deterministic rules into `src/` when practical.
+
+## 4.2) Command Output Discipline
+Cap all potentially large output.
+
+Preferred patterns:
+- COMMAND 2>&1 | head -c 4000
+- COMMAND 2>&1 | tail -c 4000
+
+
+Prefer:
+* `rg -l`
+* `rg -n -m`
+* focused diffs
+* targeted logs
+
+Avoid:
+* recursive repo dumps
+* unbounded output
+* full test suites without justification
+
+## 4.3) Decision Escalation Discipline
+Stop and ask before proceeding when:
+- requirements conflict
+- acceptance criteria are unclear
+- multiple architectural paths are equally valid
+- a change affects cross-system ownership
+- security, persistence, deployment, or schema behavior may change
+- unexpected repo state appears without prior authorization
+
+Do not silently choose major product or architecture decisions.
+Prefer narrow implementation over inferred intent.
+
+## 4.4) Subagent Discipline
+Use subagents only when they save context, save time, or improve review quality.
+
+Good uses:
+- repo exploration
+- scoped implementation
+- QA/review
+- docs/API checks
+
+Avoid subagents for trivial work the main agent can finish faster.
+
+Subagent reports must include:
+- findings
+- files inspected
+- files changed, if any
+- validation run, if any
+- risks or uncertainty
+
+The main agent owns final judgment and integration.
 
 ## 5) Containment
 - First shell command: `pwd`
 - Work only inside the repo root.
 - Run `git status` before and after execution.
 - Do not treat repo-side `.beads/` files as workflow authority when live `bd` is available; use `bd show`, `bd ready`, and `bd list` for issue state.
-- PM-authored governance/tracking files may remain dirty if they are explicitly identified as PM-authorized and out-of-scope for the active worker lane. Workers should ignore them, not stage them, and continue.
 - Do not write outside the repo unless the user explicitly authorizes it.
-- Allowed browser/runtime verification tools: `agent-browser`, `playwright`
-- Use the tool named in the active issue when specified; otherwise prefer the lightest tool that fits the task.
+- Prefer the built-in `@browser` tool before external browser automation.
+- Escalate to `playwright`, `agent-browser` only when additional automation, inspection, or control is required.
 
 ## 6) Validation
 - Use existing repo test commands when available.
@@ -110,48 +148,26 @@
 - Keep new instrumentation isolated and removable.
 - When a repo already owns a browser harness/CLI for the bead, treat that harness as the canonical batch path; use Playwright MCP/skill for interactive inspection or diagnosis, not as a silent replacement execution lane.
 
-## 6.2) Insights Discipline (Required)
+## 6.1) Large Code Exploration
+For large files, hot paths, mirrored systems, or cross-file tracing, use `jcodemunch-mcp` before broad file reads.
+
+Required exploration order:
+1. repo outline
+2. symbol search
+3. exact symbol retrieval
+4. targeted file reads only if still necessary
+
+Use `jdocmunch-mcp` for external/project docs when available.
+
+Do not default to full-file reads for large or known hot-path files when MCP tooling can answer the query directly.
+
+## 6.2) Insights Discipline
 - `ai-memory/insights.md` is mandatory for reusable lessons from bug/regression work.
 - For any bead that fixes a bug, regression, or production-behavior mismatch:
   1. Add/update at least one reusable heuristic in `ai-memory/insights.md` before marking the bead done.
   2. Write guidance that is future-facing (diagnostic order, guardrails, seam ownership), not a raw event log.
   3. If no reusable insight exists, explicitly state that in the bead completion note.
 - Bead completion is not valid until this check is satisfied.
-
-## 6.1) Large Code Exploration
-- For large hot files and cross-file rule tracing, prefer `jcodemunch-mcp` when available instead of brute-force full-file reads.
-- Keep `jcodemunch` use focused on symbol retrieval and dependency tracing; do not use it as a substitute for the active Beads issue scope.
-- For external/project documentation retrieval, prefer `jdocmunch-mcp` over broad doc file reads.
-- PM and worker should both use the same exploration order for hot code:
-  1. repo outline / file tree
-  2. symbol search / file outline
-  3. exact symbol retrieval
-  4. only then fall back to broad file reads if still necessary
-- Use `jcodemunch` first when a file is large, mirrored, or known to be a hot regression surface.
-
-## 6.3) Skill and MCP Invocation Policy (Required)
-- Skills/MCP usage is policy, not a suggestion, when triggers match:
-  - Browser/UI flow debugging -> `playwright` skill (or issue-specified browser tool)
-  - Large codebase tracing/hot files -> `jcodemunch-mcp`
-  - External/project docs retrieval -> `jdocmunch-mcp`
-  - Netlify deployment tasks -> `netlify-deploy` skill
-- If a triggered skill/MCP is unavailable, log the blocker and use the nearest compliant fallback.
-- Do not default to broad file reads when a configured MCP can answer the query directly.
-- For bug beads touching runtime behavior, include at least one runtime-path validation (browser or deterministic simulation), not just static code inspection.
-- Browser-lane ownership rule:
-  1. Use the repo-owned harness/script first when one exists for the active bead.
-  2. Use Playwright MCP/skill to inspect, reproduce, or classify failures around that harness.
-  3. Do not create a second browser-testing pipeline unless the bead explicitly authorizes a new one.
-- Failure-classification rule for browser tooling:
-  1. Separate browser startup from browser control before changing harness design.
-  2. If direct harness launch fails but MCP/CDP control succeeds, treat the blocker as launch ownership/startup, not a generic Playwright failure.
-  3. If both Playwright-owned and plain process-owned browser launch fail under the same parent context, treat it as an environment/startup boundary before tuning test logic.
-
-## 6.4) Non-Compliance Recovery
-- If any of these are missed (bead gating, insights update, required skill/MCP use), stop and correct in the same cycle:
-  1. record/repair bead contract
-  2. execute missing required step
-  3. then continue feature work
 
 ## 7) Output Contracts
 - `commit check <bd-id>`:
@@ -163,21 +179,6 @@
   - `Test URL: <local/runtime url or artifact path>`
   - `Steps: <3 short deterministic steps>`
   - `Expected: <pass condition>`
-
-## 7.1) Role Handoff Artifacts (Required)
-- Dev completion handoff must include `/agents/dev_reports.md` entry with:
-  - bead id
-  - changed files
-  - tests run + results
-  - explicit scope confirmation
-- Historical dev handoffs belong in `/agents/archive/dev_reports_archive.md`; keep `/agents/dev_reports.md` concise and limited to current/recent review context.
-- PM review handoff must update `/agents/pm_status.md` with:
-  - Completed Beads
-  - Active Work
-  - Next Tasks
-  - Known Issues
-- Historical PM snapshots belong in `/agents/archive/pm_status_archive.md`; keep `/agents/pm_status.md` as the current snapshot only.
-- Ambiguities/blocked reasons must be recorded in `/agents/issues.md` using PM/Dev prompt categories.
 
 ## 8) Deeper Policy
 - Keep deeper process/governance rules in `governance/` and in Beads issue acceptance.

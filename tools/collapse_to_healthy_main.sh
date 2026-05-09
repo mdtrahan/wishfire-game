@@ -31,8 +31,6 @@ bd update ORKA-b7wh --status in_progress >/dev/null
 echo "[collapse] commit umbrella branch-recovery tooling/docs under ORKA-b7wh"
 stage_if_present \
   AGENTS.md \
-  agents/prompts/dev_agent.md \
-  agents/prompts/pm_agent.md \
   tools/archive_git_state.sh \
   tools/collapse_to_healthy_main.sh \
   tools/commit_cleanup_lanes.sh

@@ -201,11 +201,6 @@
 - During recovery, trust present source plus focused contracts over branch labels or external app sessions. A repo can be on the right branch and still be missing the required runtime lanes in the owner file.
 - When full combat and idle combat share the same visual language, parity-check both render seams directly instead of assuming one inherits the other. Hit-flash palette changes in `renderHitFlashOverlay(...)` do not automatically update idle combat, which still owns its own sprite-overlay filter path in `web-runner/app.js`.
 
-## 2026-03-18 — PM Cycle Must Rewrite Soft-Blocked Beads Instead Of Stopping
-- A `null` bead body is a PM rewrite task by default, not an automatic delivery stop. If the owner seam, scope, and tests can be reconstructed safely from repo context, PM should rewrite the bead and continue the cycle into development.
-- `PMCYCLE` should return `blocked` only for hard blockers: contradictory product direction, missing dependency with no owner seam, or acceptance that cannot be inferred safely. “Missing spec” alone is not enough if the repo already provides the needed shape.
-- Every PM cycle should state the bead goal in one plain sentence so the human can immediately tell whether the lane needs runtime QA or should be closed on deterministic/multipass evidence.
-
 ## 2026-03-18 — Extra Turns Must Be Proven By Provenance And By Long-Run Rate
 - Repeated turns are only trustworthy when the scheduler can point to explicit provenance. Fence off speed-only shortcuts and route every legal repeat through an explicit extra-slot insert seam.
 - For chance-based repeat-turn skills, a single `200`-run sample is enough to prove moveability and “no speed-only grants,” but not enough to prove rate stability. Pair the short sample with a larger calibration run before calling the proc rate compliant.
@@ -218,7 +213,15 @@
 - If a presentation-heavy attack pattern makes another mechanic unreadable, move that pattern behind an explicit skill harness instead of leaving it in the default action seam.
 - If a free follow-up attack is meant to read as a real second attack, do not pre-time the second damage packet during the first action. Gate the second strike from the first strike's visible completion signal, then start a fresh lunge and schedule the second hit from that new anchor.
 - Per-actor proc latches for repeatable skill harnesses must reset at per-turn granularity, not only on encounter-wide scheduler resets. Otherwise a `100%` harness can appear correct once and then silently stop firing for the rest of combat.
+
+## 2026-05-07 — Blue Gem Accounting Must Carry Count And Hero Ownership Together
+- For blue gem / Astral Flow bugs, verify the full accounting chain instead of only the wallet write: selected-gem count must be passed into `ResolveGemAction(...)`, and the actor UID used for gem usage must resolve to a hero owner, not an enemy turn actor fallback.
+- If combat log, Astral Flow wallet, and BLUE radiator totals all stay at zero together, treat that as an upstream resolution-input bug first, not three separate HUD defects.
 - When converting a mechanic from extra-turn semantics to free-follow-up semantics, audit three seams separately: proc latch lifetime, target/retarget logic, and presentation pacing. Partial fixes can look correct in counters while still failing visually.
+
+## 2026-05-07 — Layout Suppression Rules Need Preserved Ownership Metadata
+- If a combat UI element is removed by layer/type rules, verify that the flattened runtime instances still carry `layerName` and `layerIndex` before changing draw filters. Suppression hooks against `BoardBG` or other layer owners silently fail when layout flattening strips that metadata.
+- For legacy layout cleanup, debug in this order: identify the exact instance types and layer owners from the source layout, confirm those fields survive into the runtime `instances` list, then apply the narrow suppression rule at the owner seam. Do not assume a failed visual removal means the rule is wrong before checking whether the ownership metadata survived flattening.
 
 ## 2026-03-18 — Session Update Paths Must Rehydrate Stored Config Before Respawn
 - If a layout session stores normalized config like forced hero/enemy names at creation time, the update/respawn path must read from that stored session field again before spawning new entities. Session creation alone is not enough once the update loop becomes the owner of later spawns.
@@ -232,6 +235,10 @@
 - If a player-facing layout is already rendering a resource as `Energy`, audit the runtime ledger and collect/apply helper names before adding more UI logic. Mixed keys like `unclaimedGold` in the helper and `unclaimedEnergy` in the layout create silent no-op collects that look like routing bugs instead of resource-owner bugs.
 - For fail-state exits, keep the destination rule in one explicit branch instead of encoding layout selection inside an inline ternary. Recovery-routing requirements change faster than the surrounding gate conditions, and the inline route choice becomes an easy stale-policy seam.
 
+## 2026-05-07 — Layout Suppression Rules Need Preserved Ownership Metadata
+- If a combat UI element is removed by layer/type rules, verify that the flattened runtime instances still carry `layerName` and `layerIndex` before changing draw filters. Suppression hooks against `BoardBG` or other layer owners silently fail when layout flattening strips that metadata.
+- For legacy layout cleanup, debug in this order: identify the exact instance types and layer owners from the source layout, confirm those fields survive into the runtime `instances` list, then apply the narrow suppression rule at the owner seam. Do not assume a failed visual removal means the rule is wrong before checking whether the ownership metadata survived flattening.
+
 ## 2026-03-19 — Keep Encounter Candidate Pools Separate From Initial Picks
 - If later spawns are supposed to preserve biome/faction diversity, do not reuse the initial selected encounter picks as the long-lived pool. Store the full eligible candidate set separately, then let spawn planning choose from that broader pool.
 - Diagnostic order for spawn-subset regressions: check the request filter first, then check what global/runtime field caches the eligible pool, then check whether respawn helpers are reading the cached pool or only the initial picks.
@@ -242,7 +249,7 @@
 
 ## 2026-03-19 — Bead Creation And Bead Execution Must Stay Separate
 - A user asking to create a bead is asking for queue management by default, not authorizing immediate implementation. Treat “make a bead” as “record this work item” unless they separately assign it or request execution now.
-- Diagnostic order for PM/dev lane confusion: check whether the user asked to create a bead, check whether they separately assigned that bead for work, then check whether a cycle selected it from the queue. Do not collapse those three acts into one.
+- Diagnostic order for lane confusion: check whether the user asked to create a bead, check whether they separately assigned that bead for work, then check whether the normal bead-selection loop chose it. Do not collapse those three acts into one.
 
 ## 2026-03-19 — Enemy Turns Need Their Own Idle-Recovery Gate
 - If combat lands on an enemy turn with `TurnPhase === 2`, no active enemy action, and either leaked pickability or no deferred advance, recover in the enemy-turn seam itself. Hero-turn pickability restore and refill-complete logic are not sufficient to rescue enemy-idle stalls.
@@ -262,3 +269,7 @@
 - Dev-panel apply/refresh is a session reseed, not a paused-turn resume. If the modal captured `CanPickGems` / `IsPlayerBusy` / `DeferAdvance` from the old combat session, that snapshot must be discarded before the fresh session becomes live.
 - Treat combat turn transients as one owned bundle: gate flags, action ownership, pending skill selection, and enemy board-pressure state must reset together through a shared helper. Partial hand-written resets are how stale turn loops re-enter a clean session.
 - Diagnostic order for refresh-only turn bugs: compare fresh normal combat first, then inspect the dev-tool pause snapshot session identity, then verify refresh applies the shared turn baseline instead of restoring old `DeferAdvance`, `PendingSkillID`, or `ActionOwnerUID`.
+
+## 2026-05-08 — Dev Autoplay Color Priority Should Encode Real Preference Tiers Only
+- If QA automation is supposed to sample several gem colors fairly, keep those colors in one shared priority tier instead of expressing a fake total order. Pushing one color to the bottom of the array silently biases long autoplay runs and makes balance checks look worse than the underlying runtime behavior.
+- Diagnostic order for autoplay color-bias reports: verify the single-pick exception list first, then inspect the triplet priority tiers, then confirm same-tier selection is the only place randomness is applied. Do not tune downstream balance numbers before checking whether the dev automation itself is skewing picks.
