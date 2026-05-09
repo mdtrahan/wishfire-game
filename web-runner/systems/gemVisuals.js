@@ -32,17 +32,25 @@ export async function loadGemVisuals({ assetUrl, loadImage }) {
 
   await Promise.all([
     ...Array.from({ length: 6 }, (_, i) => i).map(async (i) => {
-      const primary = await loadImage(assetUrl(GEM_ASSET_BY_COLOR[i]));
+      const primaryUrl = assetUrl(GEM_ASSET_BY_COLOR[i]);
+      const primary = await loadImage(primaryUrl);
       if (primary) {
         gemFrameImages[i] = primary;
         return;
       }
-      const fallback = await loadImage(assetUrl(LEGACY_GEM_BY_COLOR[i]));
+      const fallbackUrl = assetUrl(LEGACY_GEM_BY_COLOR[i]);
+      const fallback = await loadImage(fallbackUrl);
       if (fallback) gemFrameImages[i] = fallback;
     }),
     ...Array.from({ length: 6 }, (_, i) => i).map(async (i) => {
-      const img = await loadImage(assetUrl(SUPER_GEM_ASSET_BY_COLOR[i]));
-      if (img) superGemFrameImages[i] = img;
+      const imagePath = SUPER_GEM_ASSET_BY_COLOR[i];
+      const resolvedUrl = assetUrl(imagePath);
+      const img = await loadImage(resolvedUrl);
+      if (img) {
+        superGemFrameImages[i] = img;
+      } else {
+        console.warn('[SUPER_GEM_LOAD_FAIL]', { color: i, path: imagePath, url: resolvedUrl });
+      }
     }),
     (async () => {
       superGemRainbowImage = await loadImage(assetUrl('gems/super_rainbow.png'));

@@ -39,6 +39,15 @@ import {
   updateIdleFarmEmissionState,
   updateIdleFarmSessionState,
 } from './src/core/idleFarmRuntime.mjs';
+import {
+  getSuperGemAtCanvasPoint,
+  getSuperGemAtCell,
+  resetSuperGemBoardState,
+  resolveSuperGemDecomposition,
+  settleSuperGemShapes,
+  spendSuperGem,
+  syncSuperGemShapes,
+} from './src/core/superGemBoardState.mjs';
 import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
 import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
 import { createHealBloom } from './src/core/healBloomAnimation.mjs';
@@ -66,6 +75,7 @@ import * as renderChests from './systems/renderChests.js';
 import * as renderHarnessFallback from './systems/renderHarnessFallback.js';
 import * as renderOverlays from './systems/renderOverlays.js';
 import * as renderRuntime from './systems/renderRuntime.js';
+import * as superGemRuntime from './systems/superGemRuntime.js';
 import * as helpers from './utils/helpers.js';
 import * as mapLayoutState from './state/mapLayoutState.js';
 import * as uiState from './state/uiState.js';
@@ -542,6 +552,10 @@ const gameState = {
     index: 0,
     current: null,
   },
+  superGems: [],
+  superGemCellMap: new Map(),
+  superGemSignature: '',
+  nextSuperGemId: 1,
   storyCardLine: {
     text: '',
     animUntil: 0,
@@ -3042,6 +3056,7 @@ function createGemBoard(gridBounds = null, { immediateFill = false } = {}) {
   bootstrapDeterministicRefillPending = BOOTSTRAP_SEED != null;
   gameState.gems = [];
   gameState.grid = [];
+  resetSuperGemBoardState(gameState);
   const g = boardGeometry;
   
   // Calculate board dimensions
@@ -3078,6 +3093,7 @@ function createGemBoard(gridBounds = null, { immediateFill = false } = {}) {
   runtimeDebugLogging.startupDebugLog(`[BOARD] Created gem board: ${g.cols}x${g.rows} = ${gameState.gems.length} gems`);
   if (immediateFill) {
     refillGemBoard(gridBounds);
+    settleSuperGemShapes({ gameState, state, boardGeometry, reason: 'immediate-fill' });
     state.globals.BoardFillActive = 0;
     return;
   }
@@ -3135,6 +3151,7 @@ function randomGemFrame() {
 
 function refillGemBoard(gridBounds = null) {
   const g = boardGeometry;
+  resolveSuperGemDecomposition({ gameState, state, reason: 'refill-gem-board' });
   rebuildGridFromGems();
   let hasEmpty = false;
   for (let c = 0; c < g.cols; c++) {
@@ -3189,6 +3206,7 @@ function refillGemBoard(gridBounds = null) {
   gameState.selectedGems = [];
   gameState.selectionLocked = false;
   setGemArray(gameState.gems);
+  settleSuperGemShapes({ gameState, state, boardGeometry, reason: 'refill-gem-board' });
   state.globals.TapIndex = 0;
   runtimeDebugLogging.startupDebugLog('[BOARD] Refilled missing gems');
   return true;
@@ -3376,6 +3394,7 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
 }
 
 function startRefillBounce(speedScale = 1) {
+  resolveSuperGemDecomposition({ gameState, state, reason: 'pre-refill' });
   const refill = gameState.refillBounce || (gameState.refillBounce = {});
   refill.speedScale = speedScale;
   const emptySlots = [];
@@ -5130,6 +5149,7 @@ async function main(){
   }
 
   function drawFrame(dtOverride){
+    syncSuperGemShapes({ gameState, state, boardGeometry, reason: 'draw-frame' });
     const runtimeScope = {
       dtOverride,
       state,
@@ -5698,7 +5718,14 @@ function getStoryCardLiveLineState() {
     if (String(state.globals.PendingSkillID || '') === 'HERO_SINGLE') {
       state.globals.SelectedEnemyUID = Number(livingEnemies[0].uid || 0);
     }
-    callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
+    const resolvedPendingSuperGem = superGemRuntime.executePendingSuperGemAction({
+      state,
+      callFunctionWithContext,
+      fnContext,
+    });
+    if (!resolvedPendingSuperGem) {
+      callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
+    }
     state.globals.PendingSkillID = '';
     state.globals.PendingActor = 0;
     state.globals.SelectedEnemyUID = 0;
@@ -6407,7 +6434,14 @@ function getStoryCardLiveLineState() {
       const btn = getAttackButtonBounds();
       if (mx >= btn.dx && mx <= btn.dx + btn.w && my >= btn.dy && my <= btn.dy + btn.h) {
         const actorUID = state.globals.PendingActor || getHeroUIDByIndex(gameState.selectedHero);
-        callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
+        const resolvedPendingSuperGem = superGemRuntime.executePendingSuperGemAction({
+          state,
+          callFunctionWithContext,
+          fnContext,
+        });
+        if (!resolvedPendingSuperGem) {
+          callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
+        }
         state.globals.PendingSkillID = '';
         state.globals.PendingActor = 0;
         state.globals.SelectedEnemyUID = 0;
@@ -6448,6 +6482,34 @@ function getStoryCardLiveLineState() {
         }, state);
         return;
       }
+      const tappedSuperGem = getSuperGemAtCanvasPoint({
+        gameState,
+        mx,
+        my,
+        boardGeometry,
+        layoutScale,
+        worldToCanvas,
+      });
+      if (tappedSuperGem) {
+        spendSuperGem({
+          superGem: tappedSuperGem,
+          gameState,
+          state,
+          reason: 'tap-surface',
+          callFunctionWithContext,
+          fnContext,
+          getHeroUIDByIndex,
+          beginTask011ActionCycle,
+          startGemMergeFx,
+          getGoldLabelTargetWorld,
+          setGemArray,
+          startRefillBounce,
+          activateSuperGemEffect: superGemRuntime.activateSuperGemEffect,
+          superGemCost: superGemRuntime.SUPER_GEM_COST,
+        });
+        drawFrame();
+        return;
+      }
       for (let i = 0; i < gameState.gems.length; i++) {
         const gem = gameState.gems[i];
         const pos = worldToCanvas(gem.x, gem.y);
@@ -6479,6 +6541,27 @@ function getStoryCardLiveLineState() {
           }, state);
           if (gem.color == null && gem.elementIndex != null) {
             gem.color = gem.elementIndex;
+          }
+          const tappedSuperGem = getSuperGemAtCell(gameState, gem.cellR, gem.cellC);
+          if (tappedSuperGem) {
+            spendSuperGem({
+              superGem: tappedSuperGem,
+              gameState,
+              state,
+              reason: 'tap-footprint',
+              callFunctionWithContext,
+              fnContext,
+              getHeroUIDByIndex,
+              beginTask011ActionCycle,
+              startGemMergeFx,
+              getGoldLabelTargetWorld,
+              setGemArray,
+              startRefillBounce,
+              activateSuperGemEffect: superGemRuntime.activateSuperGemEffect,
+              superGemCost: superGemRuntime.SUPER_GEM_COST,
+            });
+            drawFrame();
+            return;
           }
           if (gem.color === 6) {
             handleSpecialGem6(gem);

@@ -450,6 +450,20 @@ function activatePowerAmp(ctx, actorUID) {
   LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} armed Power Amp x${outcome.multiplier} for next turn!`);
 }
 
+export function ArmPowerAmpFixed(ctx, actorUID, multiplier = 2) {
+  const g = getGlobals(ctx);
+  const store = ensurePowerAmpByUID(ctx);
+  const mult = Math.max(1, Math.floor(Number(multiplier || 1)));
+  const grantTurn = Number(g.DebugTurnCount || 0);
+  const grantTurnSerial = Number(g.TurnSerial || 0);
+  const lifecycleId = nextPowerAmpLifecycleId(g);
+  store[actorUID] = createPowerAmpArmedEntry(mult, grantTurn, grantTurnSerial, lifecycleId);
+  emitPowerAmpStateLog(ctx, 'activation_armed', actorUID, { mult, mode: 'fixed', lifecycle: lifecycleId });
+  const seeded = setPowerAmpVisual(g, actorUID, mult, lifecycleId);
+  emitPowerAmpStateLog(ctx, 'activation_visible', actorUID, { mult, mode: 'fixed', lifecycle: lifecycleId, seeded: seeded.seeded ? 1 : 0 });
+  LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} armed Power Amp x${mult} for next turn!`);
+}
+
 function consumePowerAmpForEvent(ctx, actorUID, values) {
   const g = getGlobals(ctx);
   const store = ensurePowerAmpByUID(ctx);
@@ -4126,6 +4140,7 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
     const consumedBlue = Math.max(0, Number(consumedCount) || 0);
     const wallet = ensureAstralFlowWallet(ctx);
     g.AstralFlowWallet = wallet + consumedBlue;
+    LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} channeled ${consumedBlue} Astral Flow.`);
     ensureAstralFlowAmpState(ctx);
     if (consumedBlue >= 3 && !g.AstralFlowAmpReady) {
       const currentAmp = Math.max(0, Number(g.AstralFlowAmpPoints || 0));
@@ -4306,7 +4321,7 @@ export function LogCombat(ctx, text) {
   lines[2] = lines[3];
   lines[3] = value;
   g.CombatActionLines = lines;
-  if (/ gained Astral Flow!$/.test(value)) {
+  if (/Astral Flow(?:!|\.)$/.test(value)) {
     g.CombatActionPinnedLine = String(value || '');
     g.CombatActionPinnedUntil = Math.max(pinUntil, now + 4);
   } else if (pinUntil <= now) {
