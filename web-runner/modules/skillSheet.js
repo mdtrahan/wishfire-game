@@ -73,9 +73,13 @@ export function ApplyPartyHeal(ctx, healAmount) {
   }
 }
 
-export function DoHeal(ctx, actorUID) {
+export function DoHeal(ctx, actorUID, potencyMultiplier = 1) {
   let heal = ctx.callFunction('CalculateHeal', actorUID);
   const g = getGlobals(ctx);
+  const potency = Math.max(1, Number(potencyMultiplier || 1));
+  if (potency > 1) {
+    heal = Math.max(1, Math.ceil(heal * potency));
+  }
   if (g.ApplyChainToNextHeal === 1) {
     heal = Math.ceil(heal * (g.ChainMultiplier || 1));
     g.ApplyChainToNextHeal = 0;
