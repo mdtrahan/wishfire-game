@@ -1590,7 +1590,7 @@ function ensureDevToolingModal() {
     const currentActor = state.entities.find(actor => Number(actor?.uid || 0) === currentUID) || null;
     const fallbackHero = state.entities.find(actor => actor?.kind === 'hero' && Number(actor?.hp || 0) > 0) || null;
     const sourceUID = currentActor?.kind === 'hero' ? currentUID : Number(fallbackHero?.uid || 0);
-    const result = callFunctionWithContext(fnContext, 'TryPartyDestiny', { forcedRollPct: 0, sourceUID, allowNoDamage: true });
+    const result = callFunctionWithContext(fnContext, 'TriggerPartyDestinyDev', sourceUID);
     updateDevToolingStatus(`Destiny: ${result?.reason || (result?.success ? 'success' : 'no-op')}`);
   });
   devToolingDom.clearSessionSkills.addEventListener('click', () => {

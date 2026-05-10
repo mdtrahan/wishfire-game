@@ -1693,7 +1693,36 @@ export function TryPartyDestiny(ctx, options = undefined) {
   const heal = applyPartyDestinyActorHeal(ctx, sourceUID, requestedHeal);
   g.LastPartyDestiny = { success: true, reason: heal.appliedHeal > 0 ? 'healed' : 'hp_full', sourceUID, targetUID: Number(opts.targetUID || 0), roll, requestedHeal, ...heal };
   if (heal.appliedHeal > 0) LogCombat(ctx, `Destiny restores ${heal.appliedHeal} HP to ${source.name || 'the hero'}.`);
+  else LogCombat(ctx, `Destiny is ready, but ${source.name || 'the hero'} is already at full HP.`);
   return { ok: true, success: true, reason: g.LastPartyDestiny.reason, sourceUID, targetUID: Number(opts.targetUID || 0), roll, requestedHeal, ...heal };
+}
+
+export function TriggerPartyDestinyDev(ctx, sourceUID = 0) {
+  const g = ensureSkillProcRuntime(ctx);
+  ensureSkillDraughtState(ctx);
+  const source = GetActorByUID(ctx, sourceUID) || getHeroes(ctx).find(hero => Number(hero?.hp || 0) > 0) || null;
+  if (!source) return { ok: false, success: false, reason: 'source_not_found', appliedHeal: 0 };
+  if (!Array.isArray(g.SessionSkillsByHeroUID[HERO_SKILL_SHARED_KEY])) g.SessionSkillsByHeroUID[HERO_SKILL_SHARED_KEY] = [];
+  const hasDestiny = g.SessionSkillsByHeroUID[HERO_SKILL_SHARED_KEY].some(entry =>
+    String((entry && (entry.id || entry.key || entry.definitionId)) || '').trim().toLowerCase() === 'party_destiny'
+  );
+  if (!hasDestiny) {
+    g.SessionSkillsByHeroUID[HERO_SKILL_SHARED_KEY].push({
+      id: 'party_destiny',
+      key: 'party_destiny',
+      title: 'Destiny',
+      description: 'Restore health when a hero hits an enemy.',
+      owner: 'Party',
+      selectedAt: Number(g.time || 0),
+      source: 'dev_trigger',
+    });
+  }
+  return TryPartyDestiny(ctx, {
+    forcedRollPct: 0,
+    sourceUID: Number(source.uid || 0),
+    allowNoDamage: true,
+    eventName: 'dev_trigger',
+  });
 }
 
 export function GetSkillProcTrace(ctx, limit = 40) {

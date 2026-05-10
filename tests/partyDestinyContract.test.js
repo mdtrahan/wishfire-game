@@ -22,6 +22,7 @@ module.exports = {
   IsPartySessionSkillActive,
   RollPartySkillProc,
   TryPartyDestiny,
+  TriggerPartyDestinyDev,
   ApplyDamageToTarget,
   GetSkillProcTrace,
 };`;
@@ -106,6 +107,7 @@ test('Destiny payload is mirrored and party scoped', () => {
     assert.match(src, /export function IsPartySessionSkillActive\(/);
     assert.match(src, /export function RollPartySkillProc\(/);
     assert.match(src, /export function TryPartyDestiny\(/);
+    assert.match(src, /export function TriggerPartyDestinyDev\(/);
     assert.match(src, /id: 'party_destiny'[\s\S]*payloadImplemented: true/);
     assert.match(src, /TryPartyDestiny\(ctx, \{[\s\S]*eventName: 'hit_enemy'/);
     assert.doesNotMatch(src, /TryPartyDestiny\(ctx, \{ eventName: 'valid_match'/);
@@ -127,6 +129,21 @@ test('draught can force-select Destiny into the shared party session bucket', ()
   assert.equal(ctx.state.globals.AstralFlowAmpPoints, 0);
   assert.equal(ctx.state.globals.AstralFlowAmpReady, 0);
   assert.equal(mod.IsPartySessionSkillActive(ctx, 'party_destiny'), true);
+});
+
+test('Destiny dev trigger activates session skill and forces visible heal path', () => {
+  const mod = loadModule(runtimePath);
+  const ctx = makeContext({ active: false });
+  ctx.state.entities[0].hp = 50;
+  ctx.state.globals.PartyHPByIndex = [50];
+  ctx.state.globals.PartyHP = 50;
+
+  const result = mod.TriggerPartyDestinyDev(ctx, 100);
+  assert.equal(result.success, true);
+  assert.equal(result.reason, 'healed');
+  assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__[0].id, 'party_destiny');
+  assert.equal(ctx.state.entities[0].hp, 60);
+  assert.match(ctx.state.globals.CombatLog.join('\n'), /Destiny restores 10 HP to Falie\./);
 });
 
 test('Destiny locked and miss cases trace without healing', () => {
@@ -189,6 +206,6 @@ test('Destiny resolves from enemy damage receive seam after hero hit', () => {
 test('dev panel exposes Destiny trigger without inlining effect logic', () => {
   const appSrc = fs.readFileSync(appPath, 'utf8');
   assert.match(appSrc, /data-devtool-trigger-destiny/);
-  assert.match(appSrc, /TryPartyDestiny/);
+  assert.match(appSrc, /TriggerPartyDestinyDev/);
   assert.doesNotMatch(appSrc, /ApplyPartyHeal/);
 });
