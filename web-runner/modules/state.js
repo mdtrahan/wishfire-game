@@ -37,6 +37,10 @@ export const state = {
     SessionSkillsByHeroUID: {},
     SkillDraughtTrace: [],
     SkillDraughtTraceSeq: 0,
+    HeroTempSkillStateByUID: {},
+    SessionSkillPassivesByHeroUID: {},
+    SkillProcTrace: [],
+    SkillProcTraceSeq: 0,
     HeroGemUsage: {
       version: 1,
       byHeroId: {},

@@ -1443,6 +1443,191 @@ export function GetHeroSkillProgressTrace(ctx, limit = 40) {
   return trace.slice(-max).map(row => ({ ...row }));
 }
 
+function ensureSkillProcRuntime(ctx) {
+  const g = getGlobals(ctx);
+  if (!g.HeroTempSkillStateByUID || typeof g.HeroTempSkillStateByUID !== 'object') g.HeroTempSkillStateByUID = {};
+  if (!g.SessionSkillPassivesByHeroUID || typeof g.SessionSkillPassivesByHeroUID !== 'object') g.SessionSkillPassivesByHeroUID = {};
+  if (!Array.isArray(g.SkillProcTrace)) g.SkillProcTrace = [];
+  if (!Number.isFinite(g.SkillProcTraceSeq)) g.SkillProcTraceSeq = 0;
+  return g;
+}
+
+function normalizeSkillProcId(skillRef) {
+  if (skillRef && typeof skillRef === 'object') {
+    return String(skillRef.id || skillRef.key || skillRef.definitionId || '').trim();
+  }
+  return String(skillRef || '').trim();
+}
+
+function appendSkillProcTrace(g, entry) {
+  g.SkillProcTraceSeq = Math.max(0, Math.floor(Number(g.SkillProcTraceSeq || 0))) + 1;
+  const trace = {
+    seq: g.SkillProcTraceSeq,
+    at: Number(g.time || 0),
+    turn: Number(g.DebugTurnCount || 0),
+    turnSerial: Number(g.TurnSerial || 0),
+    ...entry,
+  };
+  g.SkillProcTrace.push(trace);
+  if (g.SkillProcTrace.length > 120) g.SkillProcTrace.splice(0, g.SkillProcTrace.length - 120);
+  return trace;
+}
+
+export function IsHeroSessionSkillActive(ctx, heroUID, skillRef) {
+  const g = ensureSkillDraughtState(ctx);
+  const skillId = normalizeSkillProcId(skillRef).toLowerCase();
+  if (!skillId) return false;
+  const bucket = g.SessionSkillsByHeroUID[String(Number(heroUID || 0))] || g.SessionSkillsByHeroUID[String(heroUID || '')] || [];
+  if (!Array.isArray(bucket)) return false;
+  return bucket.some(entry => {
+    const id = String((entry && (entry.id || entry.key || entry.definitionId)) || '').trim().toLowerCase();
+    return id === skillId;
+  });
+}
+
+export function GetHeroSkillGrowthValue(ctx, heroUID, skillRef, fallback = 0) {
+  const skillId = normalizeSkillProcId(skillRef);
+  const definition = GetSkillDefinition(ctx, skillRef) || GetSkillDefinition(ctx, skillId);
+  if (!definition) return Number(fallback || 0);
+  const progress = GetHeroSkillState(ctx, heroUID, skillId);
+  const sessionActive = IsHeroSessionSkillActive(ctx, heroUID, skillId);
+  const rank = Math.max(0, Math.floor(Number(progress && progress.rank || 0)), sessionActive ? 1 : 0);
+  if (rank <= 0) return Number(fallback || 0);
+  const growth = Array.isArray(definition.growth) ? definition.growth : [];
+  const value = Number(growth[Math.min(growth.length - 1, rank - 1)]);
+  return Number.isFinite(value) ? value : Number(fallback || 0);
+}
+
+export function RollHeroSkillProc(ctx, heroUID, skillRef, fallbackChancePct = 0, eventName = '') {
+  const g = ensureSkillProcRuntime(ctx);
+  const skillId = normalizeSkillProcId(skillRef);
+  const definition = GetSkillDefinition(ctx, skillId);
+  if (!definition) {
+    const trace = appendSkillProcTrace(g, {
+      eventName: String(eventName || ''),
+      heroUID: Number(heroUID || 0),
+      skillId,
+      success: false,
+      reason: 'skill_not_found',
+      rollPct: 0,
+      chancePct: 0,
+      rank: 0,
+    });
+    return { ok: false, success: false, reason: 'skill_not_found', trace };
+  }
+  const progress = GetHeroSkillState(ctx, heroUID, skillId);
+  const sessionActive = IsHeroSessionSkillActive(ctx, heroUID, skillId);
+  const rank = Math.max(0, Math.floor(Number(progress && progress.rank || 0)), sessionActive ? 1 : 0);
+  if (rank <= 0) {
+    const trace = appendSkillProcTrace(g, {
+      eventName: String(eventName || ''),
+      heroUID: Number(heroUID || 0),
+      skillId,
+      skillTitle: String(definition.title || ''),
+      success: false,
+      reason: 'skill_locked',
+      rollPct: 0,
+      chancePct: 0,
+      rank,
+    });
+    return { ok: false, success: false, reason: 'skill_locked', trace };
+  }
+  const growthChance = GetHeroSkillGrowthValue(ctx, heroUID, skillId, fallbackChancePct);
+  const chancePct = Math.max(0, Math.min(100, Number(growthChance || fallbackChancePct || 0)));
+  const rollPct = Math.floor(random01(ctx) * 10000) / 100;
+  const success = rollPct <= chancePct;
+  const trace = appendSkillProcTrace(g, {
+    eventName: String(eventName || ''),
+    heroUID: Number(heroUID || 0),
+    skillId,
+    skillTitle: String(definition.title || ''),
+    success,
+    reason: success ? 'proc_success' : 'proc_miss',
+    rollPct,
+    chancePct,
+    rank,
+    sessionActive,
+  });
+  return { ok: true, success, reason: trace.reason, rollPct, chancePct, rank, trace };
+}
+
+export function GetSkillProcTrace(ctx, limit = 40) {
+  const g = ensureSkillProcRuntime(ctx);
+  const max = Math.max(1, Math.floor(Number(limit || 40)));
+  return g.SkillProcTrace.slice(-max).map(row => ({ ...row }));
+}
+
+export function SetHeroTempSkillState(ctx, heroUID, key, value, expiresAt = 0) {
+  const g = ensureSkillProcRuntime(ctx);
+  const uidKey = String(Number(heroUID || 0));
+  if (!g.HeroTempSkillStateByUID[uidKey] || typeof g.HeroTempSkillStateByUID[uidKey] !== 'object') {
+    g.HeroTempSkillStateByUID[uidKey] = {};
+  }
+  const stateKey = String(key || '');
+  if (!stateKey) return { ok: false, reason: 'invalid_key' };
+  g.HeroTempSkillStateByUID[uidKey][stateKey] = {
+    value,
+    expiresAt: Number(expiresAt || 0),
+    setAt: Number(g.time || 0),
+  };
+  return { ok: true, heroUID: Number(heroUID || 0), key: stateKey, entry: { ...g.HeroTempSkillStateByUID[uidKey][stateKey] } };
+}
+
+export function GetHeroTempSkillState(ctx, heroUID, key) {
+  const g = ensureSkillProcRuntime(ctx);
+  const bucket = g.HeroTempSkillStateByUID[String(Number(heroUID || 0))] || {};
+  const entry = bucket[String(key || '')] || null;
+  if (!entry) return null;
+  const expiresAt = Number(entry.expiresAt || 0);
+  if (expiresAt > 0 && expiresAt <= Number(g.time || 0)) {
+    delete bucket[String(key || '')];
+    return null;
+  }
+  return { ...entry };
+}
+
+export function ExpireHeroTempSkillState(ctx) {
+  const g = ensureSkillProcRuntime(ctx);
+  let expired = 0;
+  const now = Number(g.time || 0);
+  for (const bucket of Object.values(g.HeroTempSkillStateByUID)) {
+    if (!bucket || typeof bucket !== 'object') continue;
+    for (const [key, entry] of Object.entries(bucket)) {
+      const expiresAt = Number(entry && entry.expiresAt || 0);
+      if (expiresAt > 0 && expiresAt <= now) {
+        delete bucket[key];
+        expired += 1;
+      }
+    }
+  }
+  return { ok: true, expired };
+}
+
+export function AddSessionPassive(ctx, heroUID, passiveKey, amount = 0, sourceSkillId = '') {
+  const g = ensureSkillProcRuntime(ctx);
+  const uidKey = String(Number(heroUID || 0));
+  if (!g.SessionSkillPassivesByHeroUID[uidKey] || typeof g.SessionSkillPassivesByHeroUID[uidKey] !== 'object') {
+    g.SessionSkillPassivesByHeroUID[uidKey] = {};
+  }
+  const key = String(passiveKey || '');
+  if (!key) return { ok: false, reason: 'invalid_key' };
+  if (!Array.isArray(g.SessionSkillPassivesByHeroUID[uidKey][key])) g.SessionSkillPassivesByHeroUID[uidKey][key] = [];
+  const entry = {
+    amount: Number(amount || 0),
+    sourceSkillId: String(sourceSkillId || ''),
+    addedAt: Number(g.time || 0),
+  };
+  g.SessionSkillPassivesByHeroUID[uidKey][key].push(entry);
+  return { ok: true, heroUID: Number(heroUID || 0), key, total: GetSessionPassiveTotal(ctx, heroUID, key), entry: { ...entry } };
+}
+
+export function GetSessionPassiveTotal(ctx, heroUID, passiveKey) {
+  const g = ensureSkillProcRuntime(ctx);
+  const bucket = g.SessionSkillPassivesByHeroUID[String(Number(heroUID || 0))] || {};
+  const entries = Array.isArray(bucket[String(passiveKey || '')]) ? bucket[String(passiveKey || '')] : [];
+  return entries.reduce((total, entry) => total + Number(entry && entry.amount || 0), 0);
+}
+
 export function AttemptHeroSkillUpgrade(ctx, heroUID, skillRef, source = 'hero_skill_upgrade') {
   const g = getGlobals(ctx);
   const pair = ensureHeroSkillProgressRecord(ctx, heroUID);
