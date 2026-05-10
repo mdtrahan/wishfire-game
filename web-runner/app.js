@@ -1416,15 +1416,15 @@ function ensureDevToolingModal() {
     'justify-content:center',
     'background:rgba(0,0,0,0.58)',
     'z-index:9999',
-    'padding:12px',
+    'padding:16px',
     'box-sizing:border-box',
   ].join(';');
   const panel = document.createElement('div');
   panel.style.cssText = [
-    'width:min(460px, calc(100vw - 24px))',
+    'width:min(520px, calc(100vw - 32px))',
     'max-height:88vh',
     'overflow:auto',
-    'padding:16px',
+    'padding:18px',
     'border-radius:14px',
     'border:2px solid #1f2937',
     'background:#f7f2e8',
@@ -1434,8 +1434,12 @@ function ensureDevToolingModal() {
   ].join(';');
   panel.innerHTML = `
     <style>
+      #orka-dev-tooling-modal * { box-sizing:border-box; }
       #orka-dev-tooling-modal input,
       #orka-dev-tooling-modal select { width:100%; box-sizing:border-box; }
+      @media (max-width: 560px) {
+        #orka-dev-tooling-modal [data-devtool-control-grid] { grid-template-columns:1fr !important; }
+      }
     </style>
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;">
       <div>
@@ -1443,7 +1447,7 @@ function ensureDevToolingModal() {
       </div>
       <button type="button" data-devtool-close style="border:1px solid #334155;background:#ffffff;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Close</button>
     </div>
-    <div style="display:grid;grid-template-columns:1fr;gap:10px;">
+    <div data-devtool-control-grid style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;">
       <div style="display:flex;flex-direction:column;gap:4px;">
         <div style="font-weight:700;">Hero Slots</div>
         <label style="display:flex;flex-direction:column;gap:4px;">Hero Slot 1
@@ -1493,7 +1497,7 @@ function ensureDevToolingModal() {
       <label style="display:flex;flex-direction:column;gap:4px;">Double Attack
         <select data-devtool-double-attack-hero></select>
       </label>
-      <label style="display:flex;flex-direction:column;gap:4px;">Draught Anchor UID
+      <label style="display:flex;flex-direction:column;gap:4px;">Skill Draught Hero UID
         <input data-devtool-skill-hero type="number" min="0" step="1">
       </label>
       <label style="display:flex;flex-direction:column;gap:4px;">Skill Draught Skill ID

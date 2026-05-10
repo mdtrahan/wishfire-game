@@ -36,7 +36,10 @@ test('web-runner app keeps dev tooling modal decoupled from combat reset flow', 
   assert.match(src, /Save Staged/);
   assert.match(src, /data-devtool-restart/);
   assert.match(src, /Double Attack/);
-  assert.match(src, /Draught Anchor UID/);
+  assert.match(src, /Skill Draught Hero UID/);
+  assert.match(src, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(src, /data-devtool-control-grid/);
+  assert.match(src, /flex-wrap:wrap/);
   assert.match(src, /data-devtool-double-attack-hero/);
   assert.match(src, /devToolingDom\.apply\.addEventListener\('click', \(\) => applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ closeModal: true \}\)\);/);
   assert.match(src, /devToolingDom\.refresh\.addEventListener\('click', \(\) => applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ closeModal: false \}\)\);/);
