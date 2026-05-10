@@ -707,6 +707,103 @@ function makeStableHeroSkillPointId(hero) {
 }
 const HERO_SKILL_SHARED_KEY = '__party_shared__';
 
+const HERO_SKILL_COSTS_BY_RISK = Object.freeze({
+  LOW: [1, 2, 3, 4],
+  MED: [2, 3, 4, 5],
+  HIGH: [3, 4, 5, 6],
+});
+
+const HERO_SKILL_DEFINITIONS = Object.freeze([
+  { id: 'falie_ward_bash', owner: 'Falie', slot: 0, title: 'Ward Bash', cardText: 'Counterattack with a ward strike after taking a hit.', risk: 'LOW', growth: [6, 6, 7, 8], procPattern: 'On defend', payloadImplemented: false },
+  { id: 'falie_cover_block', owner: 'Falie', slot: 1, title: 'Cover / Block', cardText: 'Step in and take a hit for an ally.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On ally hit', payloadImplemented: false },
+  { id: 'falie_reprisal_bounce', owner: 'Falie', slot: 2, title: 'Reprisal / Bounce', cardText: 'Reflect part of the damage back to the attacker.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On defend', payloadImplemented: false },
+  { id: 'falie_phalanx', owner: 'Falie', slot: 3, title: 'Phalanx', cardText: 'Cut down a portion of heavy incoming damage.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On heavy hit taken', payloadImplemented: false },
+  { id: 'huun_bell', owner: 'Huun', slot: 0, title: 'Bell', cardText: 'Slam one enemy with a much stronger finishing hit.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On combo finisher', payloadImplemented: false },
+  { id: 'huun_glare', owner: 'Huun', slot: 1, title: 'Glare', cardText: 'Push an enemy back in the turn order.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On attack', payloadImplemented: false },
+  { id: 'huun_trinity', owner: 'Huun', slot: 2, title: 'Trinity', cardText: 'Unleash a burst of repeated attacks.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On combo finisher', payloadImplemented: false },
+  { id: 'huun_growth', owner: 'Huun', slot: 3, title: 'Growth', cardText: 'Turn dealt damage into Astral Flow.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On damage dealt', payloadImplemented: false },
+  { id: 'runa_aura_totem_blast', owner: 'Runa', slot: 0, title: 'Aura Totem: Blast', cardText: 'Summon a totem that deals melee damage over time.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On attack', payloadImplemented: false },
+  { id: 'runa_aura_totem_burn', owner: 'Runa', slot: 1, title: 'Aura Totem: Burn', cardText: 'Summon a totem that deals magic damage over time.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On attack', payloadImplemented: false },
+  { id: 'runa_invert', owner: 'Runa', slot: 2, title: 'Invert', cardText: "Switch an enemy's physical attack and magic resistance.", risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On special trigger', payloadImplemented: false },
+  { id: 'runa_intensify', owner: 'Runa', slot: 3, title: 'Intensify', cardText: 'Double the payoff of red fire matches.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On red fire match', payloadImplemented: false },
+  { id: 'kojonn_lock', owner: 'Kojonn', slot: 0, title: 'Lock', cardText: 'Use a gem action without paying its cost.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On gem use', payloadImplemented: false },
+  { id: 'kojonn_lift', owner: 'Kojonn', slot: 1, title: 'Lift', cardText: "Greatly increase an ally's physical damage.", risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On ally attack', payloadImplemented: false },
+  { id: 'kojonn_step', owner: 'Kojonn', slot: 2, title: 'Step', cardText: 'Move an ally forward in the turn order.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On ally action', payloadImplemented: false },
+  { id: 'kojonn_elevate', owner: 'Kojonn', slot: 3, title: 'Elevate', cardText: 'Raise an ally effect power to the next tier.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On special trigger', payloadImplemented: false },
+]);
+
+const PARTY_SKILL_DEFINITIONS = Object.freeze([
+  { id: 'party_fresh_start', owner: 'Party', slot: 0, title: 'Fresh Start', cardText: 'Start combat with a small burst of power.', risk: 'LOW', growth: [6, 6, 7, 8], procPattern: 'On battle start', payloadImplemented: false },
+  { id: 'party_second_chance', owner: 'Party', slot: 1, title: 'Second Chance', cardText: 'Reroll part of a weak board into a better setup.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On weak board state', payloadImplemented: false },
+  { id: 'party_momentum', owner: 'Party', slot: 2, title: 'Momentum', cardText: 'Carry one strong turn into the next.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On combo finisher', payloadImplemented: false },
+  { id: 'party_guard_rail', owner: 'Party', slot: 3, title: 'Guard Rail', cardText: 'Reduce the impact of a dangerous hit.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On heavy hit taken', payloadImplemented: false },
+  { id: 'party_blue_spark', owner: 'Party', slot: 4, title: 'Blue Spark', cardText: 'Turn blue water gains into a bonus for the whole party.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On blue water match', payloadImplemented: false },
+  { id: 'party_weaken', owner: 'Party', slot: 5, title: 'Weaken', cardText: 'Lower enemy defense so your hits land harder.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On special hit', payloadImplemented: false },
+  { id: 'party_destiny', owner: 'Party', slot: 6, title: 'Destiny', cardText: 'Restore health whenever you make a match.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On match', payloadImplemented: false },
+  { id: 'party_hot_streak', owner: 'Party', slot: 7, title: 'Hot Streak', cardText: 'Build up a better payoff with consecutive matches.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On consecutive matches', payloadImplemented: false },
+  { id: 'party_last_push', owner: 'Party', slot: 8, title: 'Last Push', cardText: 'Gain a brief comeback burst when the party nears defeat.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On low party HP', payloadImplemented: false },
+  { id: 'party_chain_pop', owner: 'Party', slot: 9, title: 'Chain Pop', cardText: 'Trigger an extra board effect from a match.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On match', payloadImplemented: false },
+]);
+
+function cloneSkillDefinition(def) {
+  return {
+    id: String(def.id || ''),
+    owner: String(def.owner || ''),
+    slot: Math.max(0, Math.floor(Number(def.slot) || 0)),
+    title: String(def.title || ''),
+    cardText: String(def.cardText || ''),
+    risk: String(def.risk || 'MED'),
+    growth: Array.isArray(def.growth) ? def.growth.map(value => Math.max(0, Number(value) || 0)) : [],
+    procPattern: String(def.procPattern || ''),
+    payloadImplemented: def.payloadImplemented === true,
+  };
+}
+
+function getHeroSkillDefinitionsForOwner(heroName) {
+  const key = String(heroName || '').trim().toLowerCase();
+  return HERO_SKILL_DEFINITIONS
+    .filter(def => String(def.owner || '').trim().toLowerCase() === key)
+    .sort((a, b) => Number(a.slot || 0) - Number(b.slot || 0));
+}
+
+function getSkillDefinitionById(skillId) {
+  const key = String(skillId || '').trim().toLowerCase();
+  return HERO_SKILL_DEFINITIONS.concat(PARTY_SKILL_DEFINITIONS)
+    .find(def => String(def.id || '').toLowerCase() === key) || null;
+}
+
+export function GetHeroSkillDefinitions(ctx, heroName = '') {
+  const defs = heroName
+    ? getHeroSkillDefinitionsForOwner(heroName)
+    : HERO_SKILL_DEFINITIONS.slice();
+  return defs.map(cloneSkillDefinition);
+}
+
+export function GetPartySkillDefinitions() {
+  return PARTY_SKILL_DEFINITIONS.map(cloneSkillDefinition);
+}
+
+export function GetSkillDefinition(ctx, skillId) {
+  const def = getSkillDefinitionById(skillId);
+  return def ? cloneSkillDefinition(def) : null;
+}
+
+export function GetHeroSkillDefinitionCardsForHero(ctx, heroName) {
+  return getHeroSkillDefinitionsForOwner(heroName).map((def) => {
+    const clean = cloneSkillDefinition(def);
+    return {
+      ...clean,
+      key: clean.id,
+      description: clean.cardText,
+      badge: clean.risk === 'HIGH' ? 'HR' : (clean.risk === 'LOW' ? 'LR' : 'MR'),
+      iconShape: clean.risk === 'HIGH' ? 'diamond' : 'circle',
+      actionable: true,
+      maxRank: clean.growth.length || 1,
+      costs: HERO_SKILL_COSTS_BY_RISK[clean.risk] || HERO_SKILL_COSTS_BY_RISK.MED,
+    };
+  });
+}
+
 function resolveHeroSkillPointIdentity(ctx, heroRef) {
   const heroes = getAllHeroActors(ctx);
   const fromActor = (hero) => ({
@@ -855,19 +952,19 @@ function appendHeroSkillPointRewardTrace(g, entry) {
 }
 
 function getHeroSkillProgressConfigForHero(heroName) {
-  const key = String(heroName || '').trim().toLowerCase();
-  const titleByHero = {
-    falie: 'Pummel',
-    huun: 'Swipe',
-    runa: 'Burst',
-    kojonn: 'Faze',
-  };
-  const skill1Title = titleByHero[key] || 'Skill 1 Placeholder';
-  return [
-    { slot: 0, key: 'skill1', title: skill1Title, maxRank: 3, costs: [2, 3, 4] },
-    { slot: 1, key: 'skill2', title: 'Skill 2 Placeholder', maxRank: 3, costs: [1, 2, 3] },
-    { slot: 2, key: 'skill3', title: 'Skill 3 Placeholder', maxRank: 3, costs: [1, 2, 3] },
-  ];
+  return getHeroSkillDefinitionsForOwner(heroName).map((def) => ({
+    slot: Math.max(0, Math.floor(Number(def.slot) || 0)),
+    key: String(def.id || ''),
+    definitionId: String(def.id || ''),
+    title: String(def.title || ''),
+    cardText: String(def.cardText || ''),
+    risk: String(def.risk || 'MED'),
+    growth: Array.isArray(def.growth) ? def.growth.slice() : [],
+    procPattern: String(def.procPattern || ''),
+    payloadImplemented: def.payloadImplemented === true,
+    maxRank: Array.isArray(def.growth) ? def.growth.length : 1,
+    costs: HERO_SKILL_COSTS_BY_RISK[def.risk] || HERO_SKILL_COSTS_BY_RISK.MED,
+  }));
 }
 
 function buildDefaultHeroSkillProgressState(def) {
@@ -879,7 +976,13 @@ function buildDefaultHeroSkillProgressState(def) {
   return {
     slot: Math.max(0, Math.floor(Number(def && def.slot) || 0)),
     key: String((def && def.key) || ''),
+    definitionId: String((def && def.definitionId) || (def && def.key) || ''),
     title: String((def && def.title) || ''),
+    cardText: String((def && def.cardText) || ''),
+    risk: String((def && def.risk) || ''),
+    growth: Array.isArray(def && def.growth) ? def.growth.map(value => Math.max(0, Number(value) || 0)) : [],
+    procPattern: String((def && def.procPattern) || ''),
+    payloadImplemented: def && def.payloadImplemented === true,
     status: 'locked',
     rank: 0,
     maxRank,
@@ -893,7 +996,13 @@ function cloneHeroSkillProgressState(entry) {
   return {
     slot: Math.max(0, Math.floor(Number(entry && entry.slot) || 0)),
     key: String((entry && entry.key) || ''),
+    definitionId: String((entry && entry.definitionId) || (entry && entry.key) || ''),
     title: String((entry && entry.title) || ''),
+    cardText: String((entry && entry.cardText) || ''),
+    risk: String((entry && entry.risk) || ''),
+    growth: Array.isArray(entry && entry.growth) ? entry.growth.map(value => Math.max(0, Number(value) || 0)) : [],
+    procPattern: String((entry && entry.procPattern) || ''),
+    payloadImplemented: entry && entry.payloadImplemented === true,
     status: String((entry && entry.status) || 'locked'),
     rank: Math.max(0, Math.floor(Number(entry && entry.rank) || 0)),
     maxRank: Math.max(1, Math.floor(Number(entry && entry.maxRank) || 1)),
@@ -964,7 +1073,13 @@ function ensureHeroSkillProgressRecord(ctx, heroRef) {
     const current = cloneHeroSkillProgressState(record[def.key]);
     current.slot = Math.max(0, Math.floor(Number(def.slot || 0)));
     current.key = String(def.key || current.key || '');
+    current.definitionId = String(def.definitionId || current.definitionId || current.key || '');
     current.title = String(def.title || current.title || '');
+    current.cardText = String(def.cardText || current.cardText || '');
+    current.risk = String(def.risk || current.risk || '');
+    current.growth = Array.isArray(def.growth) ? def.growth.map(value => Math.max(0, Number(value) || 0)) : current.growth;
+    current.procPattern = String(def.procPattern || current.procPattern || '');
+    current.payloadImplemented = def.payloadImplemented === true;
     current.maxRank = Math.max(1, Math.floor(Number(def.maxRank || current.maxRank || 1)));
     current.costs = Array.isArray(def.costs) ? def.costs.map(value => Math.max(0, Math.floor(Number(value || 0)))) : current.costs;
     current.nextCost = current.rank >= current.maxRank
