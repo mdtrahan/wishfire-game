@@ -2900,6 +2900,7 @@ function initEntities(enemyRows, layoutInstances) {
   const mappedEnemyData = state.globals.EnemyData;
   state.globals.DevToolEnemyCatalog = [...new Set(state.globals.EnemyData.map((row) => String(row?.name || row?.EnemyName || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   state.globals.CombatSessionId = Number(state.globals.CombatSessionId || 0) + 1;
+  callFunctionWithContext(fnContext, 'ClearSessionSkillDraught');
   resetBootstrapRngSession();
 
   const partyHP = [];

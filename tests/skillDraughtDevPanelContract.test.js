@@ -71,6 +71,15 @@ test('dev panel wires mandatory draught controls', () => {
   assert.match(appSrc, /getSkillDraughtDevSummary/);
 });
 
+test('fresh combat session clears selected session skills without touching progression', () => {
+  const appSrc = fs.readFileSync(appPath, 'utf8');
+  const initSrc = extractFunctionSource(appSrc, 'initEntities');
+  assert.match(initSrc, /state\.globals\.CombatSessionId = Number\(state\.globals\.CombatSessionId \|\| 0\) \+ 1;/);
+  assert.match(initSrc, /callFunctionWithContext\(fnContext, 'ClearSessionSkillDraught'\);/);
+  assert.doesNotMatch(initSrc, /HeroSkillProgressByHeroId = \{\}/);
+  assert.doesNotMatch(initSrc, /HeroSkillPointsByHeroId = \{\}/);
+});
+
 test('draught render uses dimmed combat background and exactly three horizontal cards', () => {
   const appSrc = fs.readFileSync(appPath, 'utf8');
   const renderSrc = fs.readFileSync(renderOverlayPath, 'utf8');
