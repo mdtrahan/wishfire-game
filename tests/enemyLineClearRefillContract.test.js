@@ -80,6 +80,10 @@ test('app startRefillBounce queues missing cells after a line-clear style gem re
     createContext(spec) { return spec; },
     getTask015TraceStore() { return {}; },
     gemDebugLog() {},
+    runtimeDebugLogging: {
+      gemDebugLog() {},
+    },
+    resolveSuperGemDecomposition() {},
     applyTurnGateIntent() {},
     createRefillStartGate() { return {}; },
   };

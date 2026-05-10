@@ -273,3 +273,7 @@
 ## 2026-05-08 — Dev Autoplay Color Priority Should Encode Real Preference Tiers Only
 - If QA automation is supposed to sample several gem colors fairly, keep those colors in one shared priority tier instead of expressing a fake total order. Pushing one color to the bottom of the array silently biases long autoplay runs and makes balance checks look worse than the underlying runtime behavior.
 - Diagnostic order for autoplay color-bias reports: verify the single-pick exception list first, then inspect the triplet priority tiers, then confirm same-tier selection is the only place randomness is applied. Do not tune downstream balance numbers before checking whether the dev automation itself is skewing picks.
+
+## 2026-05-10 — Gem Spawn Tweens Need Matching Timebases
+- If a visual tween is stamped in game seconds, the renderer must evaluate it against game time, not `performance.now()`. A valid `bounceStart`/`bounceDur` pair will still look like a pop-in if render time is thousands of seconds ahead of the tween clock.
+- Diagnostic order for gem pop-in regressions: verify new gems carry appearance metadata, verify the render scale reads the same clock as that metadata, then tune curve magnitude/duration only after the timebase is correct.
