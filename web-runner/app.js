@@ -1435,6 +1435,20 @@ function ensureDevToolingModal() {
   panel.innerHTML = `
     <style>
       #orka-dev-tooling-modal * { box-sizing:border-box; }
+      #orka-dev-tooling-modal button {
+        appearance:none;
+        -webkit-appearance:none;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        min-height:36px;
+        line-height:1;
+        white-space:nowrap;
+        text-align:center;
+        user-select:none;
+        pointer-events:auto;
+        text-decoration:none;
+      }
       #orka-dev-tooling-modal input,
       #orka-dev-tooling-modal select { width:100%; box-sizing:border-box; }
       @media (max-width: 560px) {
@@ -1504,7 +1518,7 @@ function ensureDevToolingModal() {
         <input data-devtool-skill-id type="text" placeholder="optional">
       </label>
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
+    <div data-devtool-button-row style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px;">
       <button type="button" data-devtool-apply style="border:1px solid #14532d;background:#1f8f4a;color:#fff;padding:8px 12px;border-radius:8px;font-weight:800;cursor:pointer;">Apply</button>
       <button type="button" data-devtool-refresh style="border:1px solid #475569;background:#fff;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Save Staged</button>
       <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">AutoPlay</button>

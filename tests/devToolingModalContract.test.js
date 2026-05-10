@@ -39,6 +39,13 @@ test('web-runner app keeps dev tooling modal decoupled from combat reset flow', 
   assert.match(src, /Skill Draught Hero UID/);
   assert.match(src, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(src, /data-devtool-control-grid/);
+  assert.match(src, /#orka-dev-tooling-modal button \{/);
+  assert.match(src, /appearance:none/);
+  assert.match(src, /display:inline-flex/);
+  assert.match(src, /white-space:nowrap/);
+  assert.match(src, /user-select:none/);
+  assert.match(src, /data-devtool-button-row/);
+  assert.match(src, /align-items:center/);
   assert.match(src, /flex-wrap:wrap/);
   assert.match(src, /data-devtool-double-attack-hero/);
   assert.match(src, /devToolingDom\.apply\.addEventListener\('click', \(\) => applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ closeModal: true \}\)\);/);
