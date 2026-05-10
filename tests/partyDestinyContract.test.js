@@ -162,7 +162,7 @@ test('Destiny activation copy stays player-facing when healing is not needed', (
   const result = mod.TriggerPartyDestinyDev(ctx, 100);
   assert.equal(result.success, true);
   assert.equal(result.reason, 'hp_full');
-  assert.match(ctx.state.globals.CombatLog.join('\n'), /Destiny is active\. Attacks can restore HP\./);
+  assert.match(ctx.state.globals.CombatLog.join('\n'), /Chance to restore HP when attacking enemies activated!/);
   assert.doesNotMatch(ctx.state.globals.CombatLog.join('\n'), /already at full HP/);
 });
 

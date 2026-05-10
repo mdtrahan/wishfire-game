@@ -1695,7 +1695,7 @@ export function TryPartyDestiny(ctx, options = undefined) {
   const heal = applyPartyDestinyActorHeal(ctx, sourceUID, requestedHeal);
   g.LastPartyDestiny = { success: true, reason: heal.appliedHeal > 0 ? 'healed' : 'hp_full', sourceUID, targetUID: Number(opts.targetUID || 0), roll, requestedHeal, ...heal };
   if (heal.appliedHeal > 0) LogCombat(ctx, `Destiny restores ${heal.appliedHeal} HP to ${source.name || 'the hero'}.`);
-  else LogCombat(ctx, 'Destiny is active. Attacks can restore HP.');
+  else LogCombat(ctx, 'Chance to restore HP when attacking enemies activated!');
   return { ok: true, success: true, reason: g.LastPartyDestiny.reason, sourceUID, targetUID: Number(opts.targetUID || 0), roll, requestedHeal, ...heal };
 }
 
