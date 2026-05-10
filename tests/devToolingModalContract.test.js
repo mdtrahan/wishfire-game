@@ -3,6 +3,24 @@ const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+function extractFunctionSource(src, name) {
+  const marker = `function ${name}(`;
+  const start = src.indexOf(marker);
+  assert.notEqual(start, -1, `missing ${name}`);
+  const braceStart = src.indexOf('{', start);
+  assert.notEqual(braceStart, -1, `missing body for ${name}`);
+  let depth = 0;
+  for (let i = braceStart; i < src.length; i += 1) {
+    const ch = src[i];
+    if (ch === '{') depth += 1;
+    if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) return src.slice(start, i + 1);
+    }
+  }
+  assert.fail(`unterminated ${name}`);
+}
+
 test('web-runner app keeps dev tooling modal decoupled from combat reset flow', () => {
   const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
   const src = fs.readFileSync(filePath, 'utf8');
@@ -52,4 +70,40 @@ test('dev tooling restart helper owns restart button labels and reset delegation
   assert.match(src, /closeDevToolingModal\(\{ restorePauseSnapshot: true \}\);/);
   assert.match(src, /const restarted = await devToolingRefreshHandler\(\{ resetGame: true \}\);/);
   assert.match(src, /updateDevToolingStatus\('Game restart unavailable'\);/);
+});
+
+test('startup preload can prepare combat assets while story mock is active', () => {
+  const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
+  const src = fs.readFileSync(filePath, 'utf8');
+  const preloadSrc = extractFunctionSource(src, 'loadC3ProjectAssets');
+  const prepareSrc = extractFunctionSource(src, 'prepareCombatSetupFromInstances');
+
+  assert.doesNotMatch(preloadSrc, /assertCombatLayoutDev\('loadC3ProjectAssets'\)/);
+  assert.doesNotMatch(prepareSrc, /assertCombatLayoutDev\('prepareCombatSetupFromInstances'\)/);
+  assert.match(src, /assertCombatLayoutDev\('initEntities'\)/);
+  assert.match(src, /assertCombatLayoutDev\('createGemBoard'\)/);
+  assert.match(src, /assertCombatLayoutDev\('StartRound'\)/);
+});
+
+test('runtime render scope includes board integrity helper used by extracted runtime', () => {
+  const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
+  const runtimePath = path.join(__dirname, '..', 'web-runner', 'systems', 'renderRuntime.js');
+  const appSrc = fs.readFileSync(filePath, 'utf8');
+  const runtimeSrc = fs.readFileSync(runtimePath, 'utf8');
+  const drawFrameSrc = extractFunctionSource(appSrc, 'drawFrame');
+
+  assert.match(runtimeSrc, /assertBoardIntegrity\(/);
+  assert.match(drawFrameSrc, /const runtimeScope = \{/);
+  assert.match(drawFrameSrc, /assertBoardIntegrity,/);
+});
+
+test('runtime render scope includes gem gate snapshot helper used by extracted runtime', () => {
+  const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
+  const runtimePath = path.join(__dirname, '..', 'web-runner', 'systems', 'renderRuntime.js');
+  const appSrc = fs.readFileSync(filePath, 'utf8');
+  const runtimeSrc = fs.readFileSync(runtimePath, 'utf8');
+  const drawFrameSrc = extractFunctionSource(appSrc, 'drawFrame');
+
+  assert.match(runtimeSrc, /getGemGateSnapshot\(/);
+  assert.match(drawFrameSrc, /getGemGateSnapshot,/);
 });

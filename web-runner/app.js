@@ -75,6 +75,7 @@ import * as renderHomestead from './systems/renderHomestead.js';
 import * as renderChests from './systems/renderChests.js';
 import * as renderHarnessFallback from './systems/renderHarnessFallback.js';
 import * as renderOverlays from './systems/renderOverlays.js';
+import * as renderSkillDraught from './systems/renderSkillDraughtOverlay.js';
 import * as renderRuntime from './systems/renderRuntime.js';
 import * as superGemRuntime from './systems/superGemRuntime.js';
 import * as helpers from './utils/helpers.js';
@@ -1259,9 +1260,18 @@ function updateDevToolingStatus(message = '') {
   if (devToolingDom.autoplay) {
     devToolingDom.autoplay.textContent = devToolingControls.getAutoplayButtonLabel(autoplayActive);
   }
+  const skillDraught = getSkillDraughtDevSummary();
   const suffix = message ? `\n${message}` : '';
   devToolingDom.status.textContent =
-    `Hotkey: ${DEV_TOOL_HOTKEY_LABEL}\nActive Layout: ${activeLayoutId}\nIdle Mode: ${autoplayActive ? 'ACTIVE' : 'idle'}\nApply: writes only the selected condition; no combat reset, turn advance, or loadout refresh${suffix}`;
+    `Hotkey: ${DEV_TOOL_HOTKEY_LABEL}\nActive Layout: ${activeLayoutId}\nIdle Mode: ${autoplayActive ? 'ACTIVE' : 'idle'}\nSkill Draught: ${skillDraught}\nApply: writes only the selected condition; no combat reset, turn advance, or loadout refresh${suffix}`;
+}
+
+function getSkillDraughtDevSummary() {
+  const draught = callFunctionWithContext(fnContext, 'GetSkillDraughtState') || {};
+  const sessionSkills = draught.sessionSkillsByHeroUID || {};
+  const learnedCount = Object.values(sessionSkills).reduce((total, row) => total + (Array.isArray(row) ? row.length : 0), 0);
+  const open = Number(draught.open || 0) ? 'open' : 'closed';
+  return `${open}, hero ${Number(draught.heroUID || 0)}, candidates ${(draught.candidates || []).length}, session ${learnedCount}`;
 }
 
 function populateDevToolSlotSelect(selectEl, { choices = [], includeRandom = false, selected = '' } = {}) {
@@ -1305,6 +1315,9 @@ function syncDevToolingDomFromConfig() {
   devToolingDom.rewardDrops.value = String(cfg.rewardDrops || '');
   devToolingDom.rewardCount.value = String(cfg.rewardCount);
   populateDevToolSlotSelect(devToolingDom.doubleAttackHero, { choices: getDevToolHeroOptions(), includeRandom: false, selected: cfg.doubleAttackHeroName || DEV_TOOL_EMPTY_SLOT });
+  if (devToolingDom.skillHero && !devToolingDom.skillHero.value) {
+    devToolingDom.skillHero.value = String(callFunctionWithContext(fnContext, 'GetCurrentTurn') || '');
+  }
   updateDevToolingStatus();
 }
 
@@ -1476,12 +1489,20 @@ function ensureDevToolingModal() {
       <label style="display:flex;flex-direction:column;gap:4px;">Double Attack
         <select data-devtool-double-attack-hero></select>
       </label>
+      <label style="display:flex;flex-direction:column;gap:4px;">Skill Draught Hero UID
+        <input data-devtool-skill-hero type="number" min="0" step="1">
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;">Skill Draught Skill ID
+        <input data-devtool-skill-id type="text" placeholder="optional">
+      </label>
     </div>
     <div style="display:flex;gap:8px;margin-top:14px;">
       <button type="button" data-devtool-apply style="border:1px solid #14532d;background:#1f8f4a;color:#fff;padding:8px 12px;border-radius:8px;font-weight:800;cursor:pointer;">Apply</button>
       <button type="button" data-devtool-refresh style="border:1px solid #475569;background:#fff;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Save Staged</button>
       <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">AutoPlay</button>
       <button type="button" data-devtool-restart style="border:1px solid #92400e;background:#fff7ed;color:#9a3412;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Restart</button>
+      <button type="button" data-devtool-force-skill-draught style="border:1px solid #4c1d95;background:#f5f3ff;color:#4c1d95;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Force Draught</button>
+      <button type="button" data-devtool-clear-session-skills style="border:1px solid #7f1d1d;background:#fef2f2;color:#7f1d1d;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Clear Skills</button>
     </div>
     <pre data-devtool-status style="margin:14px 0 0;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff9ee;white-space:pre-wrap;"></pre>
   `;
@@ -1523,6 +1544,10 @@ function ensureDevToolingModal() {
     rewardDrops: panel.querySelector('[data-devtool-reward-drops]'),
     rewardCount: panel.querySelector('[data-devtool-reward-count]'),
     doubleAttackHero: panel.querySelector('[data-devtool-double-attack-hero]'),
+    skillHero: panel.querySelector('[data-devtool-skill-hero]'),
+    skillId: panel.querySelector('[data-devtool-skill-id]'),
+    forceSkillDraught: panel.querySelector('[data-devtool-force-skill-draught]'),
+    clearSessionSkills: panel.querySelector('[data-devtool-clear-session-skills]'),
     status: panel.querySelector('[data-devtool-status]'),
   };
   devToolingDom.launcher.addEventListener('click', () => toggleDevToolingModal(true));
@@ -1544,6 +1569,16 @@ function ensureDevToolingModal() {
     if (typeof devToolingAutoplayHandler === 'function') {
       await devToolingAutoplayHandler();
     }
+  });
+  devToolingDom.forceSkillDraught.addEventListener('click', () => {
+    const heroUID = Number(devToolingDom.skillHero?.value || callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
+    const skillId = String(devToolingDom.skillId?.value || '').trim();
+    callFunctionWithContext(fnContext, 'ForceAstralFlowSkillDraught', heroUID, skillId);
+    closeDevToolingModal({ restorePauseSnapshot: true });
+  });
+  devToolingDom.clearSessionSkills.addEventListener('click', () => {
+    callFunctionWithContext(fnContext, 'ClearSessionSkillDraught');
+    updateDevToolingStatus('Session skill draught cleared');
   });
   root.addEventListener('click', (ev) => {
     if (ev.target === root) toggleDevToolingModal(false);
@@ -2224,6 +2259,16 @@ function normalizeHeroSelectionIndex() {
 function isPointInRect(mx, my, rect) {
   if (!rect) return false;
   return mx >= rect.x && mx <= (rect.x + rect.w) && my >= rect.y && my <= (rect.y + rect.h);
+}
+
+function renderSkillDraughtOverlay(ctx, canvas, pixelRatio = 1) {
+  renderSkillDraught.renderSkillDraughtOverlay({
+    ctx,
+    canvas,
+    dpr: pixelRatio,
+    state,
+    draught: callFunctionWithContext(fnContext, 'GetSkillDraughtState') || {},
+  });
 }
 
 function getHeroClassLabel(heroName) {
@@ -3912,7 +3957,6 @@ async function main(){
     return bounds;
   };
   function prepareCombatSetupFromInstances(layoutInstances, gameStateRef) {
-    assertCombatLayoutDev('prepareCombatSetupFromInstances');
     gridBounds = calculateGridBounds(layoutInstances);
     if (gameStateRef && gridBounds) {
       gameStateRef.gridBounds = gridBounds;
@@ -3969,7 +4013,6 @@ async function main(){
   }
   devToolingRefreshHandler = refreshCombatSessionFromDevTooling;
   async function loadC3ProjectAssets() {
-    assertCombatLayoutDev('loadC3ProjectAssets');
     updateStartupLoadState({ active: true, phase: 'bootstrap', label: 'Loading layout data...', progress: 0.05 });
     runtimeLayouts = await fetchJson(assetUrl('layouts.json')) || {};
     layout = runtimeLayouts.layout || { name: 'runtime-fallback', layers: [] };
@@ -5272,6 +5315,8 @@ async function main(){
       syncDamageNumberLayerBounds,
       spawnPendingDamageNumbers,
       randomGemFrame,
+      assertBoardIntegrity,
+      getGemGateSnapshot,
       hasPersistentEnemyBlightOverlay: () => false,
       hasPersistentHeroRegenOverlay: () => false,
       isHitFlashActive: () => false,
@@ -5290,6 +5335,7 @@ async function main(){
     if (result && result.visualControlPatches) {
       Object.assign(state.globals, result.visualControlPatches);
     }
+    renderSkillDraughtOverlay(ctx, canvas, dpr);
     if (typeof runtimeScope.lastFrameTime === 'number') {
       lastFrameTime = runtimeScope.lastFrameTime;
     }
@@ -5941,6 +5987,16 @@ function getStoryCardLiveLineState() {
   const handlePointerDown = (ev) => {
     const rect = canvas.getBoundingClientRect();
     const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
+
+    if (Number(state.globals.SkillDraughtOpen || 0)) {
+      const zones = Array.isArray(state.globals.SkillDraughtHitZones) ? state.globals.SkillDraughtHitZones : [];
+      const hit = zones.find((zone) => isPointInRect(mx, my, zone));
+      if (hit) {
+        callFunctionWithContext(fnContext, 'SelectSkillDraughtCard', Number(hit.index || 0));
+        drawFrame();
+      }
+      return;
+    }
 
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
       ? layoutState.getActiveLayoutId()

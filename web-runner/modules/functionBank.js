@@ -804,6 +804,144 @@ export function GetHeroSkillDefinitionCardsForHero(ctx, heroName) {
   });
 }
 
+function ensureSkillDraughtState(ctx) {
+  const g = getGlobals(ctx);
+  if (!Number.isFinite(g.SkillDraughtOpen)) g.SkillDraughtOpen = 0;
+  if (!Number.isFinite(g.SkillDraughtHeroUID)) g.SkillDraughtHeroUID = 0;
+  if (!Array.isArray(g.SkillDraughtCandidates)) g.SkillDraughtCandidates = [];
+  if (!Array.isArray(g.SkillDraughtHitZones)) g.SkillDraughtHitZones = [];
+  if (typeof g.SkillDraughtSelectedSkillId !== 'string') g.SkillDraughtSelectedSkillId = '';
+  if (!g.SessionSkillsByHeroUID || typeof g.SessionSkillsByHeroUID !== 'object') g.SessionSkillsByHeroUID = {};
+  if (!Array.isArray(g.SkillDraughtTrace)) g.SkillDraughtTrace = [];
+  if (!Number.isFinite(g.SkillDraughtTraceSeq)) g.SkillDraughtTraceSeq = 0;
+  return g;
+}
+
+function makeSkillDraughtCandidate(def, index = 0) {
+  const clean = cloneSkillDefinition(def);
+  return {
+    index: Math.max(0, Math.floor(Number(index) || 0)),
+    id: clean.id,
+    key: clean.id,
+    owner: clean.owner,
+    slot: clean.slot,
+    title: clean.title,
+    name: clean.title,
+    description: clean.cardText,
+    cardText: clean.cardText,
+    risk: clean.risk,
+    payloadImplemented: clean.payloadImplemented,
+  };
+}
+
+function appendSkillDraughtTrace(g, action, payload = {}) {
+  g.SkillDraughtTraceSeq = Math.max(0, Math.floor(Number(g.SkillDraughtTraceSeq || 0))) + 1;
+  g.SkillDraughtTrace.push({
+    seq: g.SkillDraughtTraceSeq,
+    action,
+    at: Number(g.time || 0),
+    ...payload,
+  });
+  if (g.SkillDraughtTrace.length > 80) g.SkillDraughtTrace.splice(0, g.SkillDraughtTrace.length - 80);
+}
+
+function buildSkillDraughtCandidates(ctx, heroUID, forcedSkillId = '') {
+  const actor = GetActorByUID(ctx, heroUID);
+  const heroName = actor ? String(actor.baseHeroName || actor.name || '') : '';
+  const forced = GetSkillDefinition(ctx, forcedSkillId);
+  const defs = GetHeroSkillDefinitions(ctx, heroName);
+  let ordered = defs.slice();
+  if (forced && (!heroName || String(forced.owner || '').toLowerCase() === heroName.toLowerCase())) {
+    ordered = [forced].concat(defs.filter(def => String(def.id) !== String(forced.id)));
+  }
+  return ordered.slice(0, 3).map((def, index) => makeSkillDraughtCandidate(def, index));
+}
+
+export function GetSkillDraughtState(ctx) {
+  const g = ensureSkillDraughtState(ctx);
+  return {
+    open: Number(g.SkillDraughtOpen || 0),
+    heroUID: Number(g.SkillDraughtHeroUID || 0),
+    candidates: g.SkillDraughtCandidates.map(candidate => ({ ...candidate })),
+    selectedSkillId: String(g.SkillDraughtSelectedSkillId || ''),
+    sessionSkillsByHeroUID: JSON.parse(JSON.stringify(g.SessionSkillsByHeroUID || {})),
+  };
+}
+
+export function OpenSkillDraughtForHero(ctx, heroUID, forcedSkillId = '') {
+  const g = ensureSkillDraughtState(ctx);
+  const uid = Number(heroUID || 0);
+  const actor = GetActorByUID(ctx, uid);
+  if (!actor) {
+    appendSkillDraughtTrace(g, 'open_rejected', { heroUID: uid, reason: 'hero_not_found' });
+    return { ok: false, reason: 'hero_not_found', candidates: [] };
+  }
+  const candidates = buildSkillDraughtCandidates(ctx, uid, forcedSkillId);
+  if (!candidates.length) {
+    appendSkillDraughtTrace(g, 'open_rejected', { heroUID: uid, reason: 'no_candidates' });
+    return { ok: false, reason: 'no_candidates', candidates: [] };
+  }
+  g.SkillDraughtOpen = 1;
+  g.SkillDraughtHeroUID = uid;
+  g.SkillDraughtCandidates = candidates;
+  g.SkillDraughtHitZones = [];
+  g.SkillDraughtSelectedSkillId = '';
+  appendSkillDraughtTrace(g, 'open', { heroUID: uid, candidateIds: candidates.map(candidate => candidate.id) });
+  LogCombat(ctx, `${getActorNameByUID(ctx, uid)} found new skills.`);
+  return { ok: true, heroUID: uid, candidates: candidates.map(candidate => ({ ...candidate })) };
+}
+
+export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
+  const g = ensureSkillDraughtState(ctx);
+  if (!Number(g.SkillDraughtOpen || 0)) return { ok: false, reason: 'draught_closed' };
+  const index = Math.max(0, Math.floor(Number(candidateIndex) || 0));
+  const candidate = g.SkillDraughtCandidates.find(row => Number(row.index) === index) || g.SkillDraughtCandidates[index] || null;
+  if (!candidate) return { ok: false, reason: 'candidate_not_found' };
+  const uid = Number(g.SkillDraughtHeroUID || 0);
+  const key = String(uid || 0);
+  if (!Array.isArray(g.SessionSkillsByHeroUID[key])) g.SessionSkillsByHeroUID[key] = [];
+  const sessionSkill = {
+    id: String(candidate.id || ''),
+    key: String(candidate.key || candidate.id || ''),
+    title: String(candidate.title || candidate.name || ''),
+    description: String(candidate.description || candidate.cardText || ''),
+    owner: String(candidate.owner || ''),
+    selectedAt: Number(g.time || 0),
+  };
+  g.SessionSkillsByHeroUID[key].push(sessionSkill);
+  g.SkillDraughtSelectedSkillId = sessionSkill.id;
+  g.SkillDraughtOpen = 0;
+  g.SkillDraughtCandidates = [];
+  g.SkillDraughtHitZones = [];
+  g.AstralFlowAmpPoints = 0;
+  g.AstralFlowAmpReady = 0;
+  UpdateAstralFlowAmpBar(ctx);
+  appendSkillDraughtTrace(g, 'select', { heroUID: uid, skillId: sessionSkill.id });
+  LogCombat(ctx, `${getActorNameByUID(ctx, uid)} learned ${sessionSkill.title} for this session.`);
+  return { ok: true, heroUID: uid, skill: { ...sessionSkill } };
+}
+
+export function ClearSessionSkillDraught(ctx) {
+  const g = ensureSkillDraughtState(ctx);
+  g.SkillDraughtOpen = 0;
+  g.SkillDraughtHeroUID = 0;
+  g.SkillDraughtCandidates = [];
+  g.SkillDraughtHitZones = [];
+  g.SkillDraughtSelectedSkillId = '';
+  g.SessionSkillsByHeroUID = {};
+  appendSkillDraughtTrace(g, 'clear', {});
+  return { ok: true };
+}
+
+export function ForceAstralFlowSkillDraught(ctx, heroUID, forcedSkillId = '') {
+  const g = ensureAstralFlowAmpState(ctx);
+  const ampMax = Math.max(1, Number(g.AstralFlowAmpMax || 18));
+  g.AstralFlowAmpPoints = ampMax;
+  g.AstralFlowAmpReady = 1;
+  UpdateAstralFlowAmpBar(ctx);
+  return OpenSkillDraughtForHero(ctx, heroUID, forcedSkillId);
+}
+
 function resolveHeroSkillPointIdentity(ctx, heroRef) {
   const heroes = getAllHeroActors(ctx);
   const fromActor = (hero) => ({
@@ -1469,6 +1607,7 @@ function ensureAstralFlowAmpState(ctx) {
 }
 
 function shouldResetAstralFlowAmpOnHeroTurn(g) {
+  if (Number(g.SkillDraughtOpen || 0)) return false;
   if (!Number(g.AstralFlowAmpReady || 0)) return false;
   const ampMax = Math.max(1, Number(g.AstralFlowAmpMax || 18));
   if (Math.max(0, Number(g.AstralFlowAmpPoints || 0)) < ampMax) return false;
@@ -4264,6 +4403,7 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
       g.AstralFlowAmpPoints = nextAmp;
       if (nextAmp >= ampMax) {
         g.AstralFlowAmpReady = 1;
+        OpenSkillDraughtForHero(ctx, actorUID);
         LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} gained Astral Flow!`);
         g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, (g.time || 0) + 4);
       }
@@ -4436,7 +4576,7 @@ export function LogCombat(ctx, text) {
   lines[2] = lines[3];
   lines[3] = value;
   g.CombatActionLines = lines;
-  if (/Astral Flow(?:!|\.)$/.test(value)) {
+  if (/ gained Astral Flow!$/.test(value)) {
     g.CombatActionPinnedLine = String(value || '');
     g.CombatActionPinnedUntil = Math.max(pinUntil, now + 4);
   } else if (pinUntil <= now) {
