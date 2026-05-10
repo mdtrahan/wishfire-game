@@ -22,7 +22,7 @@ module.exports = {
   IsPartySessionSkillActive,
   RollPartySkillProc,
   TryPartyDestiny,
-  ResolveGemAction,
+  ApplyDamageToTarget,
   GetSkillProcTrace,
 };`;
   const context = {
@@ -50,11 +50,25 @@ function makeContext({ active = false } = {}) {
     y: 10,
     stats: { ATK: 4, DEF: 0, MAG: 2, RES: 0, SPD: 1 },
   };
+  const enemy = {
+    uid: 200,
+    kind: 'enemy',
+    name: 'Marid',
+    hp: 100,
+    maxHP: 100,
+    x: 20,
+    y: 20,
+    stats: { ATK: 4, DEF: 0, MAG: 2, RES: 0, SPD: 1 },
+  };
   const globals = {
     time: 0,
     RuntimeRandom: () => 0.99,
-    PartyHP: 50,
+    PartyHP: 100,
     PartyMaxHP: 100,
+    PartyHPByIndex: [100],
+    PartyMaxHPByIndex: [100],
+    TurnOrderArray: [{ uid: 100, type: 0, spd: 1 }, { uid: 200, type: 1, spd: 1 }],
+    CurrentTurnIndex: 0,
     CombatLog: [],
     CombatActionLines: ['', '', '', ''],
     SkillDraughtOpen: 0,
@@ -74,14 +88,12 @@ function makeContext({ active = false } = {}) {
     AstralFlowAmpReady: 1,
   };
   const ctx = {
-    state: { globals, entities: [hero] },
+    state: { globals, entities: [hero, enemy] },
     callFunction(name, ...args) {
-      if (name === 'ApplyPartyHeal') {
-        const amount = Math.max(0, Math.floor(Number(args[0] || 0)));
-        globals.PartyHP = Math.min(globals.PartyMaxHP, globals.PartyHP + amount);
-        return globals.PartyHP;
-      }
       if (name === 'UpdateAstralFlowAmpBar') return undefined;
+      if (name === 'UpdateHeroHPUI') return undefined;
+      if (name === 'UpdatePartyHPText') return undefined;
+      if (name === 'UpdatePartyHPBar') return undefined;
       return undefined;
     },
   };
@@ -95,7 +107,8 @@ test('Destiny payload is mirrored and party scoped', () => {
     assert.match(src, /export function RollPartySkillProc\(/);
     assert.match(src, /export function TryPartyDestiny\(/);
     assert.match(src, /id: 'party_destiny'[\s\S]*payloadImplemented: true/);
-    assert.match(src, /TryPartyDestiny\(ctx, \{ eventName: 'valid_match'/);
+    assert.match(src, /TryPartyDestiny\(ctx, \{[\s\S]*eventName: 'hit_enemy'/);
+    assert.doesNotMatch(src, /TryPartyDestiny\(ctx, \{ eventName: 'valid_match'/);
   }
 });
 
@@ -120,34 +133,57 @@ test('Destiny locked and miss cases trace without healing', () => {
   const mod = loadModule(runtimePath);
 
   const lockedCtx = makeContext({ active: false });
-  const locked = mod.TryPartyDestiny(lockedCtx, { forcedRollPct: 0, healAmount: 10 });
+  lockedCtx.state.entities[0].hp = 50;
+  lockedCtx.state.globals.PartyHPByIndex = [50];
+  const locked = mod.TryPartyDestiny(lockedCtx, { sourceUID: 100, targetUID: 200, appliedDamage: 1, forcedRollPct: 0 });
   assert.equal(locked.success, false);
   assert.equal(locked.reason, 'skill_locked');
-  assert.equal(lockedCtx.state.globals.PartyHP, 50);
+  assert.equal(lockedCtx.state.entities[0].hp, 50);
   assert.equal(mod.GetSkillProcTrace(lockedCtx, 1)[0].reason, 'skill_locked');
 
   const missCtx = makeContext({ active: true });
-  const miss = mod.TryPartyDestiny(missCtx, { forcedRollPct: 99, healAmount: 10 });
+  missCtx.state.entities[0].hp = 50;
+  missCtx.state.globals.PartyHPByIndex = [50];
+  const miss = mod.TryPartyDestiny(missCtx, { sourceUID: 100, targetUID: 200, appliedDamage: 1, forcedRollPct: 99 });
   assert.equal(miss.success, false);
   assert.equal(miss.reason, 'proc_miss');
-  assert.equal(missCtx.state.globals.PartyHP, 50);
+  assert.equal(missCtx.state.entities[0].hp, 50);
   assert.equal(mod.GetSkillProcTrace(missCtx, 1)[0].reason, 'proc_miss');
 });
 
-test('Destiny deterministic success heals party HP and records party trace', () => {
+test('Destiny deterministic success heals the hitting hero for 10 percent max HP', () => {
   const mod = loadModule(runtimePath);
   const ctx = makeContext({ active: true });
+  ctx.state.entities[0].hp = 50;
+  ctx.state.globals.PartyHPByIndex = [50];
+  ctx.state.globals.PartyHP = 50;
 
-  const result = mod.TryPartyDestiny(ctx, { forcedRollPct: 0, healAmount: 12 });
+  const result = mod.TryPartyDestiny(ctx, { sourceUID: 100, targetUID: 200, appliedDamage: 1, forcedRollPct: 0 });
   assert.equal(result.success, true);
   assert.equal(result.reason, 'healed');
-  assert.equal(result.appliedHeal, 12);
-  assert.equal(ctx.state.globals.PartyHP, 62);
+  assert.equal(result.appliedHeal, 10);
+  assert.equal(ctx.state.entities[0].hp, 60);
+  assert.equal(ctx.state.globals.PartyHPByIndex[0], 60);
 
   const trace = mod.GetSkillProcTrace(ctx, 1)[0];
   assert.equal(trace.scope, 'party');
   assert.equal(trace.skillId, 'party_destiny');
   assert.equal(trace.success, true);
+});
+
+test('Destiny resolves from enemy damage receive seam after hero hit', () => {
+  const mod = loadModule(runtimePath);
+  const ctx = makeContext({ active: true });
+  ctx.state.entities[0].hp = 40;
+  ctx.state.globals.PartyHPByIndex = [40];
+  ctx.state.globals.PartyHP = 40;
+  ctx.state.globals.RuntimeRandom = () => 0;
+
+  const appliedDamage = mod.ApplyDamageToTarget(ctx, 200, 5);
+  assert.equal(appliedDamage, 5);
+  assert.equal(ctx.state.entities[1].hp, 95);
+  assert.equal(ctx.state.entities[0].hp, 50);
+  assert.equal(ctx.state.globals.LastPartyDestiny.reason, 'healed');
 });
 
 test('dev panel exposes Destiny trigger without inlining effect logic', () => {

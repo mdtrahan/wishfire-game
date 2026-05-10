@@ -1586,7 +1586,11 @@ function ensureDevToolingModal() {
     closeDevToolingModal({ restorePauseSnapshot: true });
   });
   devToolingDom.triggerDestiny.addEventListener('click', () => {
-    const result = callFunctionWithContext(fnContext, 'TryPartyDestiny', { forcedRollPct: 0 });
+    const currentUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
+    const currentActor = state.entities.find(actor => Number(actor?.uid || 0) === currentUID) || null;
+    const fallbackHero = state.entities.find(actor => actor?.kind === 'hero' && Number(actor?.hp || 0) > 0) || null;
+    const sourceUID = currentActor?.kind === 'hero' ? currentUID : Number(fallbackHero?.uid || 0);
+    const result = callFunctionWithContext(fnContext, 'TryPartyDestiny', { forcedRollPct: 0, sourceUID, allowNoDamage: true });
     updateDevToolingStatus(`Destiny: ${result?.reason || (result?.success ? 'success' : 'no-op')}`);
   });
   devToolingDom.clearSessionSkills.addEventListener('click', () => {

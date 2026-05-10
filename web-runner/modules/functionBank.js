@@ -1673,26 +1673,48 @@ export function RollPartySkillProc(ctx, skillRef, fallbackChancePct = 0, eventNa
   return { ok: true, success, reason: trace.reason, rollPct, chancePct, rank, trace };
 }
 
-function applyPartyDestinyHeal(ctx, healAmount) {
+function applyPartyDestinyActorHeal(ctx, actorUID, healAmount) {
   const g = getGlobals(ctx);
-  const before = Math.max(0, Number(g.PartyHP || 0));
-  const maxHP = Math.max(before, Number(g.PartyMaxHP || g.PartyHPMax || 0));
+  const actor = GetActorByUID(ctx, actorUID);
+  if (!actor || actor.kind !== 'hero') return { before: 0, after: 0, appliedHeal: 0, reason: 'source_not_hero' };
+  const before = Math.max(0, Number(actor.hp || 0));
+  const maxHP = Math.max(before, Number(actor.maxHP || actor.MaxHP || 0));
   const desired = Math.min(maxHP, before + Math.max(0, Math.floor(Number(healAmount || 0))));
   if (desired <= before) return { before, after: before, appliedHeal: 0 };
-  if (ctx && typeof ctx.callFunction === 'function') {
-    try {
-      ctx.callFunction('ApplyPartyHeal', desired - before);
-    } catch (err) {
-      g.LastPartyDestinyHealError = String(err && err.message || err || '');
-    }
+  actor.hp = desired;
+  const idx = Number(actor.heroIndex ?? -1);
+  if (Array.isArray(g.PartyHPByIndex) && idx >= 0) {
+    const beforeSlot = Math.max(0, Number(g.PartyHPByIndex[idx] ?? before));
+    const maxSlot = Array.isArray(g.PartyMaxHPByIndex) ? Number(g.PartyMaxHPByIndex[idx] ?? maxHP) : maxHP;
+    g.PartyHPByIndex[idx] = Math.min(Math.max(beforeSlot, maxSlot), beforeSlot + (desired - before));
+    g.PartyHP = sum(g.PartyHPByIndex || []);
   }
-  g.PartyHP = Math.min(maxHP, Math.max(desired, Number(g.PartyHP || 0)));
-  return { before, after: Number(g.PartyHP || 0), appliedHeal: Math.max(0, Number(g.PartyHP || 0) - before) };
+  if (ctx && typeof ctx.callFunction === 'function') {
+    try { ctx.callFunction('UpdateHeroHPUI'); } catch (_) {}
+    try { ctx.callFunction('UpdatePartyHPText'); } catch (_) {}
+    try { ctx.callFunction('UpdatePartyHPBar'); } catch (_) {}
+  }
+  return { before, after: Number(actor.hp || 0), appliedHeal: Math.max(0, Number(actor.hp || 0) - before) };
 }
 
 export function TryPartyDestiny(ctx, options = undefined) {
   const g = ensureSkillProcRuntime(ctx);
   const opts = options && typeof options === 'object' ? options : {};
+  const sourceUID = Number(opts.sourceUID || opts.actorUID || GetCurrentTurn(ctx) || 0);
+  const target = GetActorByUID(ctx, Number(opts.targetUID || 0));
+  const source = GetActorByUID(ctx, sourceUID);
+  if (!source || source.kind !== 'hero') {
+    g.LastPartyDestiny = { success: false, reason: 'source_not_hero', sourceUID };
+    return { ok: false, success: false, reason: 'source_not_hero', sourceUID, appliedHeal: 0 };
+  }
+  if (target && target.kind !== 'enemy') {
+    g.LastPartyDestiny = { success: false, reason: 'target_not_enemy', sourceUID, targetUID: Number(target.uid || 0) };
+    return { ok: false, success: false, reason: 'target_not_enemy', sourceUID, targetUID: Number(target.uid || 0), appliedHeal: 0 };
+  }
+  if (Number(opts.appliedDamage || 0) <= 0 && !opts.allowNoDamage) {
+    g.LastPartyDestiny = { success: false, reason: 'no_applied_damage', sourceUID, targetUID: Number(opts.targetUID || 0) };
+    return { ok: false, success: false, reason: 'no_applied_damage', sourceUID, targetUID: Number(opts.targetUID || 0), appliedHeal: 0 };
+  }
   const forcedRoll = Number(opts.forcedRollPct);
   const previousRandom = g.RuntimeRandom;
   if (Number.isFinite(forcedRoll)) {
@@ -1700,21 +1722,21 @@ export function TryPartyDestiny(ctx, options = undefined) {
   }
   let roll;
   try {
-    roll = RollPartySkillProc(ctx, 'party_destiny', 0, opts.eventName || 'valid_match');
+    roll = RollPartySkillProc(ctx, 'party_destiny', 0, opts.eventName || 'hit_enemy');
   } finally {
     if (Number.isFinite(forcedRoll)) g.RuntimeRandom = previousRandom;
   }
   if (!roll.success) {
-    g.LastPartyDestiny = { success: false, reason: roll.reason, roll };
-    return { ok: roll.ok, success: false, reason: roll.reason, roll, appliedHeal: 0 };
+    g.LastPartyDestiny = { success: false, reason: roll.reason, sourceUID, targetUID: Number(opts.targetUID || 0), roll };
+    return { ok: roll.ok, success: false, reason: roll.reason, sourceUID, targetUID: Number(opts.targetUID || 0), roll, appliedHeal: 0 };
   }
-  const maxHP = Math.max(0, Number(g.PartyMaxHP || g.PartyHPMax || 0));
-  const defaultHeal = Math.max(1, Math.ceil(maxHP * 0.04));
+  const maxHP = Math.max(0, Number(source.maxHP || source.MaxHP || 0));
+  const defaultHeal = Math.max(1, Math.ceil(maxHP * 0.10));
   const requestedHeal = Math.max(1, Math.floor(Number(opts.healAmount || defaultHeal)));
-  const heal = applyPartyDestinyHeal(ctx, requestedHeal);
-  g.LastPartyDestiny = { success: true, reason: heal.appliedHeal > 0 ? 'healed' : 'hp_full', roll, requestedHeal, ...heal };
-  if (heal.appliedHeal > 0) LogCombat(ctx, `Destiny restores ${heal.appliedHeal} party HP.`);
-  return { ok: true, success: true, reason: g.LastPartyDestiny.reason, roll, requestedHeal, ...heal };
+  const heal = applyPartyDestinyActorHeal(ctx, sourceUID, requestedHeal);
+  g.LastPartyDestiny = { success: true, reason: heal.appliedHeal > 0 ? 'healed' : 'hp_full', sourceUID, targetUID: Number(opts.targetUID || 0), roll, requestedHeal, ...heal };
+  if (heal.appliedHeal > 0) LogCombat(ctx, `Destiny restores ${heal.appliedHeal} HP to ${source.name || 'the hero'}.`);
+  return { ok: true, success: true, reason: g.LastPartyDestiny.reason, sourceUID, targetUID: Number(opts.targetUID || 0), roll, requestedHeal, ...heal };
 }
 
 export function GetSkillProcTrace(ctx, limit = 40) {
@@ -3479,10 +3501,20 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
   runTraitHooks(ctx, 'damage_receive', {
     targetUID: Number(uid || 0),
     targetKind: String(t.kind || ''),
+    sourceUID: Number(g.LastDamageSourceUID || 0),
     damage: Number(dmg || 0),
+    appliedDamage,
     beforeHP,
     afterHP,
   });
+  if (t.kind === 'enemy' && appliedDamage > 0) {
+    TryPartyDestiny(ctx, {
+      eventName: 'hit_enemy',
+      sourceUID: Number(g.LastDamageSourceUID || 0),
+      targetUID: Number(uid || 0),
+      appliedDamage,
+    });
+  }
   const now = Number(g.time || 0);
   if (!g.HitFlashByUID || typeof g.HitFlashByUID !== 'object') {
     g.HitFlashByUID = {};
@@ -4664,7 +4696,6 @@ export function RefreshPartyBuffUI(ctx) {
 export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
   const g = getGlobals(ctx);
   RegisterHeroGemUsage(ctx, actorUID, gemColor, consumedCount);
-  TryPartyDestiny(ctx, { eventName: 'valid_match', actorUID, gemColor, consumedCount });
   g.HideHeroSelector = 1;
   if (gemColor === 0) {
     g.IsAOEMatch = 1;
