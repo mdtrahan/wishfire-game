@@ -110,6 +110,7 @@ test('draught can force-select Destiny into the shared party session bucket', ()
   const selected = mod.SelectSkillDraughtCard(ctx, 0);
   assert.equal(selected.ok, true);
   assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__[0].id, 'party_destiny');
+  assert.match(ctx.state.globals.CombatLog.join('\n'), /The party gained Destiny for this session\./);
   assert.equal(ctx.state.globals.AstralFlowAmpPoints, 0);
   assert.equal(ctx.state.globals.AstralFlowAmpReady, 0);
   assert.equal(mod.IsPartySessionSkillActive(ctx, 'party_destiny'), true);

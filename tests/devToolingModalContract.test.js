@@ -31,10 +31,12 @@ test('web-runner app keeps dev tooling modal decoupled from combat reset flow', 
   assert.match(src, /function ensureDevToolingConfig\(\)/);
   assert.match(src, /window\.addEventListener\('keydown', handleGlobalKeydown, true\);/);
   assert.match(src, /devToolingDom\.launcher\.addEventListener\('click', \(\) => toggleDevToolingModal\(true\)\);/);
-  assert.match(src, /Apply: writes only the selected condition; no combat reset, turn advance, or loadout refresh/);
+  assert.doesNotMatch(src, /data-devtool-status/);
+  assert.doesNotMatch(src, /Global runtime controls\. Hotkey:/);
   assert.match(src, /Save Staged/);
   assert.match(src, /data-devtool-restart/);
   assert.match(src, /Double Attack/);
+  assert.match(src, /Draught Anchor UID/);
   assert.match(src, /data-devtool-double-attack-hero/);
   assert.match(src, /devToolingDom\.apply\.addEventListener\('click', \(\) => applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ closeModal: true \}\)\);/);
   assert.match(src, /devToolingDom\.refresh\.addEventListener\('click', \(\) => applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ closeModal: false \}\)\);/);

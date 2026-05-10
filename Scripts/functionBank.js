@@ -842,7 +842,7 @@ export function OpenSkillDraughtForHero(ctx, heroUID, forcedSkillId = '') {
   g.SkillDraughtHitZones = [];
   g.SkillDraughtSelectedSkillId = '';
   appendSkillDraughtTrace(g, 'open', { heroUID: uid, candidateIds: candidates.map(candidate => candidate.id) });
-  LogCombat(ctx, `${getActorNameByUID(ctx, uid)} found new skills.`);
+  LogCombat(ctx, 'The party found new session skills.');
   return { ok: true, heroUID: uid, candidates: candidates.map(candidate => ({ ...candidate })) };
 }
 
@@ -871,8 +871,11 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
   g.AstralFlowAmpPoints = 0;
   g.AstralFlowAmpReady = 0;
   UpdateAstralFlowAmpBar(ctx);
-  appendSkillDraughtTrace(g, 'select', { heroUID: uid, skillId: sessionSkill.id });
-  LogCombat(ctx, `${getActorNameByUID(ctx, uid)} learned ${sessionSkill.title} for this session.`);
+  const scope = String(sessionSkill.owner || '').toLowerCase() === 'party' ? 'party' : 'hero';
+  appendSkillDraughtTrace(g, 'select', { heroUID: uid, skillId: sessionSkill.id, scope });
+  LogCombat(ctx, scope === 'party'
+    ? `The party gained ${sessionSkill.title} for this session.`
+    : `${getActorNameByUID(ctx, uid)} learned ${sessionSkill.title} for this session.`);
   return { ok: true, heroUID: uid, skill: { ...sessionSkill } };
 }
 

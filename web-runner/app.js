@@ -1252,14 +1252,15 @@ function applyBoardGemColor(colorValue) {
 }
 
 function updateDevToolingStatus(message = '') {
-  if (!devToolingDom || !devToolingDom.status) return;
-  const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
-    ? layoutState.getActiveLayoutId()
-    : 'unknown';
+  if (!devToolingDom) return;
   const autoplayActive = !!state.globals.DevAutoplayActive;
   if (devToolingDom.autoplay) {
     devToolingDom.autoplay.textContent = devToolingControls.getAutoplayButtonLabel(autoplayActive);
   }
+  if (!devToolingDom.status) return;
+  const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
+    ? layoutState.getActiveLayoutId()
+    : 'unknown';
   const skillDraught = getSkillDraughtDevSummary();
   const suffix = message ? `\n${message}` : '';
   devToolingDom.status.textContent =
@@ -1415,15 +1416,15 @@ function ensureDevToolingModal() {
     'justify-content:center',
     'background:rgba(0,0,0,0.58)',
     'z-index:9999',
-    'padding:24px',
+    'padding:12px',
     'box-sizing:border-box',
   ].join(';');
   const panel = document.createElement('div');
   panel.style.cssText = [
-    'width:min(520px, 92vw)',
+    'width:min(460px, calc(100vw - 24px))',
     'max-height:88vh',
     'overflow:auto',
-    'padding:18px',
+    'padding:16px',
     'border-radius:14px',
     'border:2px solid #1f2937',
     'background:#f7f2e8',
@@ -1432,14 +1433,17 @@ function ensureDevToolingModal() {
     'color:#111827',
   ].join(';');
   panel.innerHTML = `
+    <style>
+      #orka-dev-tooling-modal input,
+      #orka-dev-tooling-modal select { width:100%; box-sizing:border-box; }
+    </style>
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;">
       <div>
         <div style="font-size:18px;font-weight:800;">Dev Tooling Modal</div>
-        <div style="font-size:11px;color:#475569;">Global runtime controls. Hotkey: ${DEV_TOOL_HOTKEY_LABEL}</div>
       </div>
       <button type="button" data-devtool-close style="border:1px solid #334155;background:#ffffff;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Close</button>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;">
+    <div style="display:grid;grid-template-columns:1fr;gap:10px;">
       <div style="display:flex;flex-direction:column;gap:4px;">
         <div style="font-weight:700;">Hero Slots</div>
         <label style="display:flex;flex-direction:column;gap:4px;">Hero Slot 1
@@ -1489,14 +1493,14 @@ function ensureDevToolingModal() {
       <label style="display:flex;flex-direction:column;gap:4px;">Double Attack
         <select data-devtool-double-attack-hero></select>
       </label>
-      <label style="display:flex;flex-direction:column;gap:4px;">Skill Draught Hero UID
+      <label style="display:flex;flex-direction:column;gap:4px;">Draught Anchor UID
         <input data-devtool-skill-hero type="number" min="0" step="1">
       </label>
       <label style="display:flex;flex-direction:column;gap:4px;">Skill Draught Skill ID
         <input data-devtool-skill-id type="text" placeholder="optional">
       </label>
     </div>
-    <div style="display:flex;gap:8px;margin-top:14px;">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
       <button type="button" data-devtool-apply style="border:1px solid #14532d;background:#1f8f4a;color:#fff;padding:8px 12px;border-radius:8px;font-weight:800;cursor:pointer;">Apply</button>
       <button type="button" data-devtool-refresh style="border:1px solid #475569;background:#fff;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Save Staged</button>
       <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">AutoPlay</button>
@@ -1505,7 +1509,6 @@ function ensureDevToolingModal() {
       <button type="button" data-devtool-trigger-destiny style="border:1px solid #365314;background:#f7fee7;color:#365314;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Trigger Destiny</button>
       <button type="button" data-devtool-clear-session-skills style="border:1px solid #7f1d1d;background:#fef2f2;color:#7f1d1d;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Clear Skills</button>
     </div>
-    <pre data-devtool-status style="margin:14px 0 0;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff9ee;white-space:pre-wrap;"></pre>
   `;
   root.appendChild(panel);
   document.body.appendChild(root);
@@ -1550,7 +1553,7 @@ function ensureDevToolingModal() {
     forceSkillDraught: panel.querySelector('[data-devtool-force-skill-draught]'),
     triggerDestiny: panel.querySelector('[data-devtool-trigger-destiny]'),
     clearSessionSkills: panel.querySelector('[data-devtool-clear-session-skills]'),
-    status: panel.querySelector('[data-devtool-status]'),
+    status: null,
   };
   devToolingDom.launcher.addEventListener('click', () => toggleDevToolingModal(true));
   devToolingDom.close.addEventListener('click', () => toggleDevToolingModal(false));
