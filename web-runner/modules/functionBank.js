@@ -739,7 +739,7 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: 'party_guard_rail', owner: 'Party', slot: 3, title: 'Guard Rail', cardText: 'Reduce the impact of a dangerous hit.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On heavy hit taken', payloadImplemented: false },
   { id: 'party_blue_spark', owner: 'Party', slot: 4, title: 'Blue Spark', cardText: 'Turn blue water gains into a bonus for the whole party.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On blue water match', payloadImplemented: false },
   { id: 'party_weaken', owner: 'Party', slot: 5, title: 'Weaken', cardText: 'Lower enemy defense so your hits land harder.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On special hit', payloadImplemented: false },
-  { id: 'party_destiny', owner: 'Party', slot: 6, title: 'Destiny', cardText: 'Restore health whenever you make a match.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On match', payloadImplemented: false },
+  { id: 'party_destiny', owner: 'Party', slot: 6, title: 'Destiny', cardText: 'Restore health whenever you make a match.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On match', payloadImplemented: true },
   { id: 'party_hot_streak', owner: 'Party', slot: 7, title: 'Hot Streak', cardText: 'Build up a better payoff with consecutive matches.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On consecutive matches', payloadImplemented: false },
   { id: 'party_last_push', owner: 'Party', slot: 8, title: 'Last Push', cardText: 'Gain a brief comeback burst when the party nears defeat.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On low party HP', payloadImplemented: false },
   { id: 'party_chain_pop', owner: 'Party', slot: 9, title: 'Chain Pop', cardText: 'Trigger an extra board effect from a match.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On match', payloadImplemented: false },
@@ -846,12 +846,10 @@ function appendSkillDraughtTrace(g, action, payload = {}) {
 }
 
 function buildSkillDraughtCandidates(ctx, heroUID, forcedSkillId = '') {
-  const actor = GetActorByUID(ctx, heroUID);
-  const heroName = actor ? String(actor.baseHeroName || actor.name || '') : '';
   const forced = GetSkillDefinition(ctx, forcedSkillId);
-  const defs = GetHeroSkillDefinitions(ctx, heroName);
+  const defs = GetPartySkillDefinitions();
   let ordered = defs.slice();
-  if (forced && (!heroName || String(forced.owner || '').toLowerCase() === heroName.toLowerCase())) {
+  if (forced && String(forced.owner || '').toLowerCase() === 'party') {
     ordered = [forced].concat(defs.filter(def => String(def.id) !== String(forced.id)));
   }
   return ordered.slice(0, 3).map((def, index) => makeSkillDraughtCandidate(def, index));
@@ -898,7 +896,7 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
   const candidate = g.SkillDraughtCandidates.find(row => Number(row.index) === index) || g.SkillDraughtCandidates[index] || null;
   if (!candidate) return { ok: false, reason: 'candidate_not_found' };
   const uid = Number(g.SkillDraughtHeroUID || 0);
-  const key = String(uid || 0);
+  const key = String(candidate.owner || '').toLowerCase() === 'party' ? HERO_SKILL_SHARED_KEY : String(uid || 0);
   if (!Array.isArray(g.SessionSkillsByHeroUID[key])) g.SessionSkillsByHeroUID[key] = [];
   const sessionSkill = {
     id: String(candidate.id || ''),
@@ -1528,6 +1526,18 @@ export function IsHeroSessionSkillActive(ctx, heroUID, skillRef) {
   });
 }
 
+export function IsPartySessionSkillActive(ctx, skillRef) {
+  const g = ensureSkillDraughtState(ctx);
+  const skillId = normalizeSkillProcId(skillRef).toLowerCase();
+  if (!skillId) return false;
+  const bucket = g.SessionSkillsByHeroUID[HERO_SKILL_SHARED_KEY] || [];
+  if (!Array.isArray(bucket)) return false;
+  return bucket.some(entry => {
+    const id = String((entry && (entry.id || entry.key || entry.definitionId)) || '').trim().toLowerCase();
+    return id === skillId;
+  });
+}
+
 export function GetHeroSkillGrowthValue(ctx, heroUID, skillRef, fallback = 0) {
   const skillId = normalizeSkillProcId(skillRef);
   const definition = GetSkillDefinition(ctx, skillRef) || GetSkillDefinition(ctx, skillId);
@@ -1592,6 +1602,116 @@ export function RollHeroSkillProc(ctx, heroUID, skillRef, fallbackChancePct = 0,
     sessionActive,
   });
   return { ok: true, success, reason: trace.reason, rollPct, chancePct, rank, trace };
+}
+
+export function GetPartySkillGrowthValue(ctx, skillRef, fallback = 0) {
+  const skillId = normalizeSkillProcId(skillRef);
+  const definition = GetSkillDefinition(ctx, skillId);
+  if (!definition || String(definition.owner || '').toLowerCase() !== 'party') return Number(fallback || 0);
+  const rank = IsPartySessionSkillActive(ctx, skillId) ? 1 : 0;
+  if (rank <= 0) return Number(fallback || 0);
+  const growth = Array.isArray(definition.growth) ? definition.growth : [];
+  const value = Number(growth[Math.min(growth.length - 1, rank - 1)]);
+  return Number.isFinite(value) ? value : Number(fallback || 0);
+}
+
+export function RollPartySkillProc(ctx, skillRef, fallbackChancePct = 0, eventName = '') {
+  const g = ensureSkillProcRuntime(ctx);
+  const skillId = normalizeSkillProcId(skillRef);
+  const definition = GetSkillDefinition(ctx, skillId);
+  if (!definition || String(definition.owner || '').toLowerCase() !== 'party') {
+    const trace = appendSkillProcTrace(g, {
+      eventName: String(eventName || ''),
+      scope: 'party',
+      heroUID: 0,
+      skillId,
+      success: false,
+      reason: 'skill_not_found',
+      rollPct: 0,
+      chancePct: 0,
+      rank: 0,
+    });
+    return { ok: false, success: false, reason: 'skill_not_found', trace };
+  }
+  const sessionActive = IsPartySessionSkillActive(ctx, skillId);
+  const rank = sessionActive ? 1 : 0;
+  if (rank <= 0) {
+    const trace = appendSkillProcTrace(g, {
+      eventName: String(eventName || ''),
+      scope: 'party',
+      heroUID: 0,
+      skillId,
+      skillTitle: String(definition.title || ''),
+      success: false,
+      reason: 'skill_locked',
+      rollPct: 0,
+      chancePct: 0,
+      rank,
+    });
+    return { ok: false, success: false, reason: 'skill_locked', trace };
+  }
+  const growthChance = GetPartySkillGrowthValue(ctx, skillId, fallbackChancePct);
+  const chancePct = Math.max(0, Math.min(100, Number(growthChance || fallbackChancePct || 0)));
+  const rollPct = Math.floor(random01(ctx) * 10000) / 100;
+  const success = rollPct <= chancePct;
+  const trace = appendSkillProcTrace(g, {
+    eventName: String(eventName || ''),
+    scope: 'party',
+    heroUID: 0,
+    skillId,
+    skillTitle: String(definition.title || ''),
+    success,
+    reason: success ? 'proc_success' : 'proc_miss',
+    rollPct,
+    chancePct,
+    rank,
+    sessionActive,
+  });
+  return { ok: true, success, reason: trace.reason, rollPct, chancePct, rank, trace };
+}
+
+function applyPartyDestinyHeal(ctx, healAmount) {
+  const g = getGlobals(ctx);
+  const before = Math.max(0, Number(g.PartyHP || 0));
+  const maxHP = Math.max(before, Number(g.PartyMaxHP || g.PartyHPMax || 0));
+  const desired = Math.min(maxHP, before + Math.max(0, Math.floor(Number(healAmount || 0))));
+  if (desired <= before) return { before, after: before, appliedHeal: 0 };
+  if (ctx && typeof ctx.callFunction === 'function') {
+    try {
+      ctx.callFunction('ApplyPartyHeal', desired - before);
+    } catch (err) {
+      g.LastPartyDestinyHealError = String(err && err.message || err || '');
+    }
+  }
+  g.PartyHP = Math.min(maxHP, Math.max(desired, Number(g.PartyHP || 0)));
+  return { before, after: Number(g.PartyHP || 0), appliedHeal: Math.max(0, Number(g.PartyHP || 0) - before) };
+}
+
+export function TryPartyDestiny(ctx, options = undefined) {
+  const g = ensureSkillProcRuntime(ctx);
+  const opts = options && typeof options === 'object' ? options : {};
+  const forcedRoll = Number(opts.forcedRollPct);
+  const previousRandom = g.RuntimeRandom;
+  if (Number.isFinite(forcedRoll)) {
+    g.RuntimeRandom = () => Math.max(0, Math.min(0.9999, forcedRoll / 100));
+  }
+  let roll;
+  try {
+    roll = RollPartySkillProc(ctx, 'party_destiny', 0, opts.eventName || 'valid_match');
+  } finally {
+    if (Number.isFinite(forcedRoll)) g.RuntimeRandom = previousRandom;
+  }
+  if (!roll.success) {
+    g.LastPartyDestiny = { success: false, reason: roll.reason, roll };
+    return { ok: roll.ok, success: false, reason: roll.reason, roll, appliedHeal: 0 };
+  }
+  const maxHP = Math.max(0, Number(g.PartyMaxHP || g.PartyHPMax || 0));
+  const defaultHeal = Math.max(1, Math.ceil(maxHP * 0.04));
+  const requestedHeal = Math.max(1, Math.floor(Number(opts.healAmount || defaultHeal)));
+  const heal = applyPartyDestinyHeal(ctx, requestedHeal);
+  g.LastPartyDestiny = { success: true, reason: heal.appliedHeal > 0 ? 'healed' : 'hp_full', roll, requestedHeal, ...heal };
+  if (heal.appliedHeal > 0) LogCombat(ctx, `Destiny restores ${heal.appliedHeal} party HP.`);
+  return { ok: true, success: true, reason: g.LastPartyDestiny.reason, roll, requestedHeal, ...heal };
 }
 
 export function GetSkillProcTrace(ctx, limit = 40) {
@@ -4541,6 +4661,7 @@ export function RefreshPartyBuffUI(ctx) {
 export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
   const g = getGlobals(ctx);
   RegisterHeroGemUsage(ctx, actorUID, gemColor, consumedCount);
+  TryPartyDestiny(ctx, { eventName: 'valid_match', actorUID, gemColor, consumedCount });
   g.HideHeroSelector = 1;
   if (gemColor === 0) {
     g.IsAOEMatch = 1;

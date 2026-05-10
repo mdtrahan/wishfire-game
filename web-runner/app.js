@@ -1502,6 +1502,7 @@ function ensureDevToolingModal() {
       <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">AutoPlay</button>
       <button type="button" data-devtool-restart style="border:1px solid #92400e;background:#fff7ed;color:#9a3412;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Restart</button>
       <button type="button" data-devtool-force-skill-draught style="border:1px solid #4c1d95;background:#f5f3ff;color:#4c1d95;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Force Draught</button>
+      <button type="button" data-devtool-trigger-destiny style="border:1px solid #365314;background:#f7fee7;color:#365314;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Trigger Destiny</button>
       <button type="button" data-devtool-clear-session-skills style="border:1px solid #7f1d1d;background:#fef2f2;color:#7f1d1d;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Clear Skills</button>
     </div>
     <pre data-devtool-status style="margin:14px 0 0;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff9ee;white-space:pre-wrap;"></pre>
@@ -1547,6 +1548,7 @@ function ensureDevToolingModal() {
     skillHero: panel.querySelector('[data-devtool-skill-hero]'),
     skillId: panel.querySelector('[data-devtool-skill-id]'),
     forceSkillDraught: panel.querySelector('[data-devtool-force-skill-draught]'),
+    triggerDestiny: panel.querySelector('[data-devtool-trigger-destiny]'),
     clearSessionSkills: panel.querySelector('[data-devtool-clear-session-skills]'),
     status: panel.querySelector('[data-devtool-status]'),
   };
@@ -1575,6 +1577,10 @@ function ensureDevToolingModal() {
     const skillId = String(devToolingDom.skillId?.value || '').trim();
     callFunctionWithContext(fnContext, 'ForceAstralFlowSkillDraught', heroUID, skillId);
     closeDevToolingModal({ restorePauseSnapshot: true });
+  });
+  devToolingDom.triggerDestiny.addEventListener('click', () => {
+    const result = callFunctionWithContext(fnContext, 'TryPartyDestiny', { forcedRollPct: 0 });
+    updateDevToolingStatus(`Destiny: ${result?.reason || (result?.success ? 'success' : 'no-op')}`);
   });
   devToolingDom.clearSessionSkills.addEventListener('click', () => {
     callFunctionWithContext(fnContext, 'ClearSessionSkillDraught');
