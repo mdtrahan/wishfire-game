@@ -1605,7 +1605,10 @@ function ensureDevToolingModal() {
     const fallbackHero = state.entities.find(actor => actor?.kind === 'hero' && Number(actor?.hp || 0) > 0) || null;
     const sourceUID = currentActor?.kind === 'hero' ? currentUID : Number(fallbackHero?.uid || 0);
     const result = callFunctionWithContext(fnContext, 'TriggerPartyDestinyDev', sourceUID);
-    updateDevToolingStatus(`Destiny: ${result?.reason || (result?.success ? 'success' : 'no-op')}`);
+    if (!result?.success) {
+      callFunctionWithContext(fnContext, 'LogCombat', `Destiny dev trigger failed: ${result?.reason || 'no-op'}.`);
+    }
+    closeDevToolingModal({ restorePauseSnapshot: true });
   });
   devToolingDom.clearSessionSkills.addEventListener('click', () => {
     callFunctionWithContext(fnContext, 'ClearSessionSkillDraught');
@@ -6018,7 +6021,12 @@ function getStoryCardLiveLineState() {
   // pointer handler for nav menu and overlay (more responsive than click)
   const handlePointerDown = (ev) => {
     const rect = canvas.getBoundingClientRect();
-    const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
+    const logicalW = canvas.width / Math.max(1, dpr || 1);
+    const logicalH = canvas.height / Math.max(1, dpr || 1);
+    const scaleX = rect.width > 0 ? logicalW / rect.width : 1;
+    const scaleY = rect.height > 0 ? logicalH / rect.height : 1;
+    const mx = (ev.clientX - rect.left) * scaleX;
+    const my = (ev.clientY - rect.top) * scaleY;
 
     if (Number(state.globals.SkillDraughtOpen || 0)) {
       const zones = Array.isArray(state.globals.SkillDraughtHitZones) ? state.globals.SkillDraughtHitZones : [];

@@ -873,6 +873,8 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
   UpdateAstralFlowAmpBar(ctx);
   const scope = String(sessionSkill.owner || '').toLowerCase() === 'party' ? 'party' : 'hero';
   appendSkillDraughtTrace(g, 'select', { heroUID: uid, skillId: sessionSkill.id, scope });
+  g.CombatActionPinnedLine = '';
+  g.CombatActionPinnedUntil = 0;
   LogCombat(ctx, scope === 'party'
     ? `The party gained ${sessionSkill.title} for this session.`
     : `${getActorNameByUID(ctx, uid)} learned ${sessionSkill.title} for this session.`);

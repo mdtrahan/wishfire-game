@@ -85,6 +85,9 @@ test('draught render uses dimmed combat background and exactly three horizontal 
   const renderSrc = fs.readFileSync(renderOverlayPath, 'utf8');
   assert.match(appSrc, /renderSkillDraughtOverlay/);
   assert.match(appSrc, /renderSkillDraught\.renderSkillDraughtOverlay/);
+  assert.match(appSrc, /const logicalW = canvas\.width \/ Math\.max\(1, dpr \|\| 1\);/);
+  assert.match(appSrc, /const scaleX = rect\.width > 0 \? logicalW \/ rect\.width : 1;/);
+  assert.match(appSrc, /const mx = \(ev\.clientX - rect\.left\) \* scaleX;/);
   assert.match(renderSrc, /rgba\(0, 0, 0, 0\.58\)/);
   assert.match(renderSrc, /Choose a Skill/);
   assert.match(renderSrc, /SkillDraughtHitZones/);

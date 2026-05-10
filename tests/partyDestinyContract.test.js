@@ -121,11 +121,16 @@ test('draught can force-select Destiny into the shared party session bucket', ()
   const opened = mod.ForceAstralFlowSkillDraught(ctx, 100, 'party_destiny');
   assert.equal(opened.ok, true);
   assert.equal(opened.candidates[0].id, 'party_destiny');
+  ctx.state.globals.CombatActionPinnedLine = 'Falie gained Astral Flow!';
+  ctx.state.globals.CombatActionPinnedUntil = 4;
 
   const selected = mod.SelectSkillDraughtCard(ctx, 0);
   assert.equal(selected.ok, true);
   assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__[0].id, 'party_destiny');
   assert.match(ctx.state.globals.CombatLog.join('\n'), /The party gained Destiny for this session\./);
+  assert.equal(ctx.state.globals.CombatActionPinnedLine, '');
+  assert.equal(ctx.state.globals.CombatActionPinnedUntil, 0);
+  assert.equal(ctx.state.globals.CombatActionLines[3], 'The party gained Destiny for this session.');
   assert.equal(ctx.state.globals.AstralFlowAmpPoints, 0);
   assert.equal(ctx.state.globals.AstralFlowAmpReady, 0);
   assert.equal(mod.IsPartySessionSkillActive(ctx, 'party_destiny'), true);
@@ -207,5 +212,7 @@ test('dev panel exposes Destiny trigger without inlining effect logic', () => {
   const appSrc = fs.readFileSync(appPath, 'utf8');
   assert.match(appSrc, /data-devtool-trigger-destiny/);
   assert.match(appSrc, /TriggerPartyDestinyDev/);
+  assert.match(appSrc, /Destiny dev trigger failed:/);
+  assert.match(appSrc, /closeDevToolingModal\(\{ restorePauseSnapshot: true \}\);/);
   assert.doesNotMatch(appSrc, /ApplyPartyHeal/);
 });
