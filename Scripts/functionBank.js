@@ -696,7 +696,7 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: 'party_guard_rail', owner: 'Party', slot: 3, title: 'Guard Rail', cardText: 'Reduce the impact of a dangerous hit.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On heavy hit taken', payloadImplemented: false },
   { id: 'party_blue_spark', owner: 'Party', slot: 4, title: 'Blue Spark', cardText: 'Turn blue water gains into a bonus for the whole party.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On blue water match', payloadImplemented: false },
   { id: 'party_weaken', owner: 'Party', slot: 5, title: 'Weaken', cardText: 'Lower enemy defense so your hits land harder.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On special hit', payloadImplemented: false },
-  { id: 'party_destiny', owner: 'Party', slot: 6, title: 'Destiny', cardText: 'Restore health whenever you make a match.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On match', payloadImplemented: true },
+  { id: 'party_destiny', owner: 'Party', slot: 6, title: 'Destiny', cardText: 'Small chance to restore HP when attacking enemies.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On hit', payloadImplemented: true },
   { id: 'party_hot_streak', owner: 'Party', slot: 7, title: 'Hot Streak', cardText: 'Build up a better payoff with consecutive matches.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On consecutive matches', payloadImplemented: false },
   { id: 'party_last_push', owner: 'Party', slot: 8, title: 'Last Push', cardText: 'Gain a brief comeback burst when the party nears defeat.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On low party HP', payloadImplemented: false },
   { id: 'party_chain_pop', owner: 'Party', slot: 9, title: 'Chain Pop', cardText: 'Trigger an extra board effect from a match.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On match', payloadImplemented: false },
@@ -1695,7 +1695,7 @@ export function TryPartyDestiny(ctx, options = undefined) {
   const heal = applyPartyDestinyActorHeal(ctx, sourceUID, requestedHeal);
   g.LastPartyDestiny = { success: true, reason: heal.appliedHeal > 0 ? 'healed' : 'hp_full', sourceUID, targetUID: Number(opts.targetUID || 0), roll, requestedHeal, ...heal };
   if (heal.appliedHeal > 0) LogCombat(ctx, `Destiny restores ${heal.appliedHeal} HP to ${source.name || 'the hero'}.`);
-  else LogCombat(ctx, `Destiny is ready, but ${source.name || 'the hero'} is already at full HP.`);
+  else LogCombat(ctx, 'Destiny is active. Attacks can restore HP.');
   return { ok: true, success: true, reason: g.LastPartyDestiny.reason, sourceUID, targetUID: Number(opts.targetUID || 0), roll, requestedHeal, ...heal };
 }
 
@@ -1713,7 +1713,7 @@ export function TriggerPartyDestinyDev(ctx, sourceUID = 0) {
       id: 'party_destiny',
       key: 'party_destiny',
       title: 'Destiny',
-      description: 'Restore health when a hero hits an enemy.',
+      description: 'Attacks can restore HP.',
       owner: 'Party',
       selectedAt: Number(g.time || 0),
       source: 'dev_trigger',

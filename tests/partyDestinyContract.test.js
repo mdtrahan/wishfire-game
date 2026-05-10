@@ -109,8 +109,12 @@ test('Destiny payload is mirrored and party scoped', () => {
     assert.match(src, /export function TryPartyDestiny\(/);
     assert.match(src, /export function TriggerPartyDestinyDev\(/);
     assert.match(src, /id: 'party_destiny'[\s\S]*payloadImplemented: true/);
+    assert.match(src, /Small chance to restore HP when attacking enemies\./);
+    assert.match(src, /procPattern: 'On hit'/);
     assert.match(src, /TryPartyDestiny\(ctx, \{[\s\S]*eventName: 'hit_enemy'/);
     assert.doesNotMatch(src, /TryPartyDestiny\(ctx, \{ eventName: 'valid_match'/);
+    assert.doesNotMatch(src, /Restore health whenever you make a match\./);
+    assert.doesNotMatch(src, /already at full HP/);
   }
 });
 
@@ -149,6 +153,17 @@ test('Destiny dev trigger activates session skill and forces visible heal path',
   assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__[0].id, 'party_destiny');
   assert.equal(ctx.state.entities[0].hp, 60);
   assert.match(ctx.state.globals.CombatLog.join('\n'), /Destiny restores 10 HP to Falie\./);
+});
+
+test('Destiny activation copy stays player-facing when healing is not needed', () => {
+  const mod = loadModule(runtimePath);
+  const ctx = makeContext({ active: false });
+
+  const result = mod.TriggerPartyDestinyDev(ctx, 100);
+  assert.equal(result.success, true);
+  assert.equal(result.reason, 'hp_full');
+  assert.match(ctx.state.globals.CombatLog.join('\n'), /Destiny is active\. Attacks can restore HP\./);
+  assert.doesNotMatch(ctx.state.globals.CombatLog.join('\n'), /already at full HP/);
 });
 
 test('Destiny locked and miss cases trace without healing', () => {
