@@ -189,6 +189,12 @@ export function spendSuperGem({
   gameState.superGems = (gameState.superGems || []).filter((sg) => sg.id !== superGem.id);
   gameState.superGemSignature = getSuperGemSignature(gameState.superGems || []);
   rebuildSuperGemCellMap(gameState);
+  const refillDeferred = !!(
+    state.globals.PendingSkillID ||
+    state.globals.PendingSuperGemAction ||
+    state.globals.DeferAdvance ||
+    Number(state.globals.ActionLockUntil || 0) > Number(state.globals.time || 0)
+  );
   state.globals.LastSuperGemSpend = {
     id: String(superGem.id),
     type: String(superGem.type || ''),
@@ -197,11 +203,14 @@ export function spendSuperGem({
     reason: String(reason || 'tap'),
     energyBefore: beforeEnergy,
     energyAfter: afterEnergy,
+    refillDeferred,
   };
   gameState.selectedGems = [];
   gameState.selectionLocked = false;
   state.globals.TapIndex = 0;
   setGemArray(gameState.gems);
-  startRefillBounce(0.31);
+  if (!refillDeferred) {
+    startRefillBounce(0.31);
+  }
   return true;
 }

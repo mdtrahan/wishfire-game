@@ -5836,6 +5836,12 @@ function getStoryCardLiveLineState() {
     [4],
     [0, 1, 2, 3],
   ]);
+  const IDLE_AUTOPLAY_SUPER_GEM_COLOR_PRIORITY = Object.freeze([
+    [0, 1],
+    [2, 3],
+    [5],
+  ]);
+  const IDLE_AUTOPLAY_SKILL_DRAUGHT_HOLD_MS = 1400;
   function pickIdleAutoplayTriplet() {
     const byColor = new Map();
     for (const gem of (gameState.gems || [])) {
@@ -5860,6 +5866,20 @@ function getStoryCardLiveLineState() {
       if (!gem) continue;
       const color = Number(gem.color != null ? gem.color : gem.elementIndex);
       if (color === 6) return { row: gem.cellR, col: gem.cellC };
+    }
+    return null;
+  }
+  function findIdleAutoplayPrioritySuperGemPick() {
+    const superGems = Array.isArray(gameState.superGems) ? gameState.superGems : [];
+    if (!superGems.length) return null;
+    for (const tier of IDLE_AUTOPLAY_SUPER_GEM_COLOR_PRIORITY) {
+      for (const superGem of superGems) {
+        const color = Number(superGem && superGem.baseColor);
+        const cells = Array.isArray(superGem && superGem.cells) ? superGem.cells : [];
+        if (!tier.includes(color) || !cells.length) continue;
+        const cell = cells[0];
+        return { row: Number(cell.r || 0), col: Number(cell.c || 0) };
+      }
     }
     return null;
   }
@@ -5897,6 +5917,26 @@ function getStoryCardLiveLineState() {
     state.globals.CanPickGems = false;
     state.globals.IsPlayerBusy = 1;
     return true;
+  }
+  function autoResolveSkillDraughtForDevIdle() {
+    if (!state.globals.DevAutoplayActive) return false;
+    if (!Number(state.globals.SkillDraughtOpen || 0)) {
+      state.globals.DevAutoplaySkillDraughtSeenAt = 0;
+      return false;
+    }
+    const candidates = Array.isArray(state.globals.SkillDraughtCandidates) ? state.globals.SkillDraughtCandidates : [];
+    if (!candidates.length) return false;
+    const now = performance.now();
+    const seenAt = Number(state.globals.DevAutoplaySkillDraughtSeenAt || 0);
+    if (!seenAt) {
+      state.globals.DevAutoplaySkillDraughtSeenAt = now;
+      return true;
+    }
+    if (now - seenAt < IDLE_AUTOPLAY_SKILL_DRAUGHT_HOLD_MS) return true;
+    const randomIndex = Math.floor(Math.random() * candidates.length);
+    const result = callFunctionWithContext(fnContext, 'SelectSkillDraughtCard', randomIndex);
+    state.globals.DevAutoplaySkillDraughtSeenAt = 0;
+    return !!(result && result.ok);
   }
   async function runDevAutoplayUntilDepleted() {
     const startedAt = Number(state.globals.time || 0);
@@ -5938,6 +5978,7 @@ function getStoryCardLiveLineState() {
         busy: Number(state.globals.IsPlayerBusy || 0),
         boardFill: Number(state.globals.BoardFillActive || 0),
         pending: String(state.globals.PendingSkillID || ''),
+        skillDraughtOpen: Number(state.globals.SkillDraughtOpen || 0),
         gems: Array.isArray(gameState.gems) ? gameState.gems.length : 0,
         current: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0),
       });
@@ -5949,10 +5990,24 @@ function getStoryCardLiveLineState() {
         await devSleep(90);
         continue;
       }
+      if (autoResolveSkillDraughtForDevIdle()) {
+        await devSleep(90);
+        continue;
+      }
       if (isIdleAutoplayHeroWindow()) {
         const singlePick = findIdleAutoplayPrioritySinglePick();
         if (singlePick) {
           const played = clickGemCell(Number(singlePick.row || 0), Number(singlePick.col || 0));
+          if (played) {
+            matchesPlayed += 1;
+            setDevAutoplayState({ active: true, stopRequested: false, lastReason: 'running', matchesPlayed, startedAt, endedAt: 0 });
+          }
+          await devSleep(90);
+          continue;
+        }
+        const superGemPick = findIdleAutoplayPrioritySuperGemPick();
+        if (superGemPick) {
+          const played = clickGemCell(Number(superGemPick.row || 0), Number(superGemPick.col || 0));
           if (played) {
             matchesPlayed += 1;
             setDevAutoplayState({ active: true, stopRequested: false, lastReason: 'running', matchesPlayed, startedAt, endedAt: 0 });

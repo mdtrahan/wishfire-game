@@ -299,3 +299,11 @@
 - Diagnostic order for HoT/DoT recovery: verify the skill payload shape first, then verify the app-side cadence owner, then verify visual overlays. A correct shimmer can mask a wrong healing cadence.
 - For DoT packages, also contract the first-hit resolver. The initial impact decides total tick count and queued cadence, so a correct queue helper can still ship the wrong behavior if the delayed-hit resolver keeps old timer-based defaults.
 - Actor-turn DoTs must be owned by the afflicted actor's turn-start seam, not a frame loop or global turn watcher. Hero turns and other enemies' turns can advance global serials, but they must not spend another enemy's DoT counter.
+
+## 2026-05-11 — Supergem Spend Must Reserve Match Pacing
+- Supergem activation removes a larger footprint, but it is still a player match action. Do not start refill immediately if activation opened target selection, queued a pending supergem attack, or reserved a deferred action handoff.
+- Diagnostic order for supergem interaction bugs: verify idle QA can actually click a supergem, then verify spend removes the footprint, then verify refill waits behind pending activation and hit timing instead of colliding with the match presentation.
+
+## 2026-05-11 — Autoplay Must Clear Non-Combat Choice Modals
+- Idle combat autoplay needs bypass handlers for modal choice screens that are not the behavior under test. If a modal such as skill draw can stay open without changing turn, energy, pending skill, or gem counts, the progress watchdog will eventually classify a healthy run as stalled.
+- For random QA bypasses, select from the modal's live candidate list rather than hard-coding a card index. That keeps the harness moving while still sampling the temporary choice surface.
