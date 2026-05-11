@@ -4100,7 +4100,19 @@ export function QueueEnemyDamageOverTime(ctx, actorUID, enemyUID, totalDamage, o
   if (!enemy || !actor || Number(enemy.hp || 0) <= 0) return 0;
   const totalTicks = Math.max(1, Math.floor(Number(options?.totalTicks || 8) || 8));
   const nowTick = Number(g.RegenTickCounter || 0);
+  const nowTurnSerial = Number(g.TurnSerial || 0);
+  const effectName = String(options?.effectName || 'Blight');
+  const cadence = String(options?.cadence || 'tick');
   if (!g.EnemyDamageOverTime) g.EnemyDamageOverTime = [];
+  // Reapplying same DoT source/effect on same target resets the package.
+  for (let i = g.EnemyDamageOverTime.length - 1; i >= 0; i--) {
+    const existing = g.EnemyDamageOverTime[i];
+    if (!existing) continue;
+    if (Number(existing.targetUID || 0) !== Number(enemyUID || 0)) continue;
+    if (Number(existing.sourceUID || 0) !== Number(actorUID || 0)) continue;
+    if (String(existing.effectName || 'Blight') !== effectName) continue;
+    g.EnemyDamageOverTime.splice(i, 1);
+  }
   g.EnemyDamageOverTime.push({
     targetUID: Number(enemyUID || 0),
     sourceUID: Number(actorUID || 0),
@@ -4108,10 +4120,73 @@ export function QueueEnemyDamageOverTime(ctx, actorUID, enemyUID, totalDamage, o
     totalDamageRemaining: Math.max(1, Math.floor(Number(totalDamage || 0) || 1)),
     firesEveryTicks: Math.max(1, Math.floor(Number(options?.firesEveryTicks || 1) || 1)),
     nextFireTick: nowTick + Math.max(1, Math.floor(Number(options?.startAfterTicks || 1) || 1)),
-    effectName: String(options?.effectName || 'Blight'),
+    cadence,
+    firesEveryTurns: Math.max(1, Math.floor(Number(options?.firesEveryTurns || 1) || 1)),
+    nextFireTurnSerial: nowTurnSerial + Math.max(1, Math.floor(Number(options?.startAfterTurns || 1) || 1)),
+    lastProcessedTurnSerial: nowTurnSerial,
+    effectName,
   });
-  LogCombat(ctx, `${actor.name || 'Hero'} applies ${String(options?.effectName || 'Blight')} to ${enemy.name || 'Enemy'}!`);
+  LogCombat(ctx, `${actor.name || 'Hero'} applies ${effectName} to ${enemy.name || 'Enemy'}!`);
   return 1;
+}
+
+export function ProcessEnemyTurnDamageOverTime(ctx, enemyUID) {
+  const g = getGlobals(ctx);
+  const targetUID = Number(enemyUID || 0);
+  if (!targetUID || !Array.isArray(g.EnemyDamageOverTime) || g.EnemyDamageOverTime.length === 0) return 0;
+  const enemyDots = g.EnemyDamageOverTime;
+  const currentTurnSerial = Number(g.TurnSerial || 0);
+  let applied = 0;
+  for (let i = enemyDots.length - 1; i >= 0; i--) {
+    const dot = enemyDots[i];
+    if (!dot || Number(dot.remainingFires || 0) <= 0) {
+      enemyDots.splice(i, 1);
+      continue;
+    }
+    if (String(dot.cadence || 'tick') !== 'turn') continue;
+    if (Number(dot.targetUID || 0) !== targetUID) continue;
+    if (dot.totalDamageRemaining != null && Number(dot.totalDamageRemaining || 0) <= 0) {
+      enemyDots.splice(i, 1);
+      continue;
+    }
+    const enemy = GetActorByUID(ctx, targetUID);
+    if (!enemy || Number(enemy.hp || 0) <= 0) {
+      enemyDots.splice(i, 1);
+      continue;
+    }
+    const gateTurn = Number(dot.nextFireTurnSerial || 0);
+    if (currentTurnSerial < gateTurn) continue;
+    if (Number(dot.lastProcessedTurnSerial || 0) >= currentTurnSerial) continue;
+    let dmg = 1;
+    if (dot.totalDamageRemaining != null && Number(dot.remainingFires || 0) > 0) {
+      const remaining = Math.max(0, Math.floor(dot.totalDamageRemaining));
+      if (remaining <= 0) {
+        enemyDots.splice(i, 1);
+        continue;
+      }
+      const fires = Math.max(1, Math.floor(dot.remainingFires));
+      const base = Math.floor(remaining / fires);
+      const extra = (remaining % fires) > 0 ? 1 : 0;
+      dmg = Math.max(1, base + extra);
+      dot.totalDamageRemaining = Math.max(0, remaining - dmg);
+    } else {
+      dmg = Math.max(1, Math.round(dot.damagePerFire || 1));
+    }
+    g.NextHitFlashTone = 'purple';
+    g.NextDamageTextKind = 'dot';
+    ApplyDamageToTarget(ctx, targetUID, dmg, {
+      isCrit: !!dot.isCrit || Number(dot.powerAmpMultiplier || 0) > 0,
+    });
+    applied += 1;
+    dot.remainingFires -= 1;
+    dot.lastProcessedTurnSerial = currentTurnSerial;
+    dot.nextFireTurnSerial = gateTurn + Math.max(1, Math.floor(Number(dot.firesEveryTurns || 1) || 1));
+    if (dot.remainingFires <= 0) {
+      enemyDots.splice(i, 1);
+    }
+  }
+  if (enemyDots.length === 0) delete g.EnemyDamageOverTime;
+  return applied;
 }
 
 export function Enemy_ATK_Single(ctx, enemyUID, targetHeroUID) {
@@ -5215,14 +5290,22 @@ export function EnemyAttack(ctx, enemyUID) {
 
 export function EnemyTurn(ctx, enemyUID) {
   const g = getGlobals(ctx);
+  const activeEnemyUID = Number(enemyUID || GetCurrentTurn(ctx) || 0);
   g.TurnPhase = 2;
   applyTurnGateIntent(g, createEnemyTurnGateBaseline);
-  if (!enemyUID) {
+  if (!activeEnemyUID) {
     AdvanceTurn(ctx);
     ProcessTurn(ctx);
     return;
   }
-  StartEnemyAction(ctx, enemyUID);
+  ProcessEnemyTurnDamageOverTime(ctx, activeEnemyUID);
+  const enemy = GetActorByUID(ctx, activeEnemyUID);
+  if (!enemy || Number(enemy.hp || 0) <= 0) {
+    AdvanceTurn(ctx);
+    ProcessTurn(ctx);
+    return;
+  }
+  StartEnemyAction(ctx, activeEnemyUID);
 }
 
 export function HeroTurn(ctx, heroUID) {

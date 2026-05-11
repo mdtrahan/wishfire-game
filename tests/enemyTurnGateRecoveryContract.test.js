@@ -32,15 +32,11 @@ test('enemy-turn idle recovery gate keeps enemy turns non-pickable while schedul
   }
 });
 
-test('app enemy-action abort and leaked enemy-idle state both route through the shared recovery gate', () => {
+test('app enemy-action abort routes through recovery while leaked live enemy-idle restarts the active enemy', () => {
   const src = read('web-runner/app.js');
   assert.match(src, /createEnemyTurnIdleRecovery/);
   assert.match(
     src,
-    /if \(!enemy \|\| \(enemy\.hp \?\? 0\) <= 0\) \{[\s\S]*?applyTurnGateIntent\(createEnemyTurnIdleRecovery, \{[\s\S]*?currentTurnUID: callFunctionWithContext\(fnContext, 'GetCurrentTurn'\) \|\| 0,[\s\S]*?\}\);[\s\S]*?\}/,
-  );
-  assert.match(
-    src,
-    /currentTurnType === 1[\s\S]*state\.globals\.TurnPhase === 2[\s\S]*!state\.globals\.ActionInProgress[\s\S]*!state\.globals\.IsPlayerBusy[\s\S]*\(state\.globals\.CanPickGems === true \|\| !state\.globals\.DeferAdvance\)[\s\S]*applyTurnGateIntent\(createEnemyTurnIdleRecovery, \{[\s\S]*currentTurnUID,[\s\S]*\}\);[\s\S]*combatRuntimeGateway\.runCombatStep\(fnContext, 'ProcessTurn'\);/,
+    /currentTurnType === 1[\s\S]*state\.globals\.TurnPhase === 2[\s\S]*!state\.globals\.ActionInProgress[\s\S]*!state\.globals\.IsPlayerBusy[\s\S]*\(state\.globals\.CanPickGems === true \|\| !state\.globals\.DeferAdvance\)[\s\S]*const currentEnemy = currentTurnUID[\s\S]*applyTurnGateIntent\(createEnemyTurnGateBaseline\);[\s\S]*callFunctionWithContext\(fnContext, 'EnemyTurn', currentTurnUID\);[\s\S]*applyTurnGateIntent\(createEnemyTurnIdleRecovery, \{[\s\S]*currentTurnUID,[\s\S]*\}\);[\s\S]*combatRuntimeGateway\.runCombatStep\(fnContext, 'ProcessTurn'\);/,
   );
 });

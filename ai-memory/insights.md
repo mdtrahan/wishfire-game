@@ -297,3 +297,5 @@
 ## 2026-05-11 — HoT Cadence Must Be Explicit
 - If a status effect is turn-based, store an explicit `cadence: 'turn'` plus turn-serial gates on its queued payload. Reusing timer-tick fields for a turn-based effect makes later merges silently convert combat semantics back to wall-clock behavior.
 - Diagnostic order for HoT/DoT recovery: verify the skill payload shape first, then verify the app-side cadence owner, then verify visual overlays. A correct shimmer can mask a wrong healing cadence.
+- For DoT packages, also contract the first-hit resolver. The initial impact decides total tick count and queued cadence, so a correct queue helper can still ship the wrong behavior if the delayed-hit resolver keeps old timer-based defaults.
+- Actor-turn DoTs must be owned by the afflicted actor's turn-start seam, not a frame loop or global turn watcher. Hero turns and other enemies' turns can advance global serials, but they must not spend another enemy's DoT counter.

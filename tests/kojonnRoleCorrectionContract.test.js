@@ -20,7 +20,7 @@ test('Kojonn green AOE uses blight-over-time packets instead of generic burst da
     assert.match(src, /used \$\{aoeName\} to spread blight over time for \$\{totalDamage\}!/);
     assert.match(src, /export function QueueEnemyDamageOverTime\(ctx, actorUID, enemyUID, totalDamage, options = undefined\) \{/);
     assert.match(src, /g\.EnemyDamageOverTime\.push\(\{/);
-    assert.match(src, /effectName: String\(options\?\.effectName \|\| 'Blight'\),/);
+    assert.match(src, /const effectName = String\(options\?\.effectName \|\| 'Blight'\);/);
+    assert.match(src, /effectName,/);
   }
 });
-

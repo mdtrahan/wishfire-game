@@ -7121,11 +7121,21 @@ function getStoryCardLiveLineState() {
       !state.globals.PendingSkillID &&
       (state.globals.CanPickGems === true || !state.globals.DeferAdvance)
     ) {
-      applyTurnGateIntent(createEnemyTurnIdleRecovery, {
-        now: Number(state.globals.time || 0),
-        currentTurnUID,
-      });
-      combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+      const currentEnemy = currentTurnUID
+        ? callFunctionWithContext(fnContext, 'GetActorByUID', currentTurnUID)
+        : null;
+      const refillActive = !!(gameState.refillBounce && gameState.refillBounce.active);
+      if (currentEnemy && currentEnemy.kind === 'enemy' && Number(currentEnemy.hp || 0) > 0 && !hasEmpty && !refillActive) {
+        applyTurnGateIntent(createEnemyTurnGateBaseline);
+        state.globals.BoardFillActive = 0;
+        callFunctionWithContext(fnContext, 'EnemyTurn', currentTurnUID);
+      } else {
+        applyTurnGateIntent(createEnemyTurnIdleRecovery, {
+          now: Number(state.globals.time || 0),
+          currentTurnUID,
+        });
+        combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+      }
     }
     const noRefillActive = !(gameState.refillBounce && gameState.refillBounce.active);
     if (
