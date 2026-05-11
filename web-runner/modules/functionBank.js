@@ -1548,6 +1548,23 @@ export function IsPartySessionSkillActive(ctx, skillRef) {
   });
 }
 
+function logPartyDestinyQa(ctx, eventName, data = {}) {
+  const g = getGlobals(ctx);
+  try {
+    console.log('[DESTINY_QA]', {
+      event: String(eventName || ''),
+      checks: Number(g.PartyDestinyAttempts || 0),
+      procs: Number(g.PartyDestinyProcs || 0),
+      heals: Number(g.PartyDestinyHeals || 0),
+      misses: Number(g.PartyDestinyMisses || 0),
+      last: String(g.PartyDestinyLastResult || ''),
+      turnPhase: Number(g.TurnPhase || 0),
+      currentTurn: Number(GetCurrentTurn(ctx) || 0),
+      ...data,
+    });
+  } catch (_) {}
+}
+
 export function GetHeroSkillGrowthValue(ctx, heroUID, skillRef, fallback = 0) {
   const skillId = normalizeSkillProcId(skillRef);
   const definition = GetSkillDefinition(ctx, skillRef) || GetSkillDefinition(ctx, skillId);
@@ -1736,6 +1753,16 @@ export function TryPartyDestiny(ctx, options = undefined) {
   if (roll.ok) {
     g.PartyDestinyAttempts = Math.max(0, Math.floor(Number(g.PartyDestinyAttempts || 0))) + 1;
   }
+  logPartyDestinyQa(ctx, 'roll_resolved', {
+    sourceUID,
+    targetUID: Number(opts.targetUID || 0),
+    appliedDamage: Number(opts.appliedDamage || 0),
+    rollOk: !!roll.ok,
+    rollSuccess: !!roll.success,
+    reason: String(roll.reason || ''),
+    chancePct: Number(roll.chancePct || 0),
+    rollPct: Number(roll.rollPct || 0),
+  });
   if (!roll.success) {
     if (roll.reason === 'proc_miss') g.PartyDestinyMisses = Math.max(0, Math.floor(Number(g.PartyDestinyMisses || 0))) + 1;
     g.PartyDestinyLastResult = String(roll.reason || 'no_proc');
@@ -1788,6 +1815,7 @@ export function TriggerPartyDestinyDev(ctx, sourceUID = 0) {
     appliedHeal: 0,
   };
   LogCombat(ctx, 'Chance to restore HP when attacking enemies activated!');
+  logPartyDestinyQa(ctx, 'activated', { sourceUID: Number(source.uid || 0) });
   return { ok: true, success: true, reason: 'activated', sourceUID: Number(source.uid || 0), appliedHeal: 0 };
 }
 
@@ -3560,6 +3588,13 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
     afterHP,
   });
   if (t.kind === 'enemy' && appliedDamage > 0) {
+    if (IsPartySessionSkillActive(ctx, 'party_destiny')) {
+      logPartyDestinyQa(ctx, 'enemy_hit_hook', {
+        sourceUID: Number(g.LastDamageSourceUID || 0),
+        targetUID: Number(uid || 0),
+        appliedDamage,
+      });
+    }
     TryPartyDestiny(ctx, {
       eventName: 'hit_enemy',
       sourceUID: Number(g.LastDamageSourceUID || 0),
