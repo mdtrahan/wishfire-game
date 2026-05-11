@@ -140,7 +140,7 @@ test('draught can force-select Destiny into the shared party session bucket', ()
   assert.equal(mod.IsPartySessionSkillActive(ctx, 'party_destiny'), true);
 });
 
-test('Destiny dev trigger activates session skill and forces visible heal path', () => {
+test('Destiny dev trigger activates session skill without rolling or healing', () => {
   const mod = loadModule(runtimePath);
   const ctx = makeContext({ active: false });
   ctx.state.entities[0].hp = 50;
@@ -149,27 +149,29 @@ test('Destiny dev trigger activates session skill and forces visible heal path',
 
   const result = mod.TriggerPartyDestinyDev(ctx, 100);
   assert.equal(result.success, true);
-  assert.equal(result.reason, 'healed');
+  assert.equal(result.reason, 'activated');
   assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__[0].id, 'party_destiny');
-  assert.equal(ctx.state.entities[0].hp, 60);
-  assert.equal(ctx.state.globals.PartyDestinyAttempts, 1);
-  assert.equal(ctx.state.globals.PartyDestinyProcs, 1);
-  assert.equal(ctx.state.globals.PartyDestinyHeals, 1);
-  assert.equal(ctx.state.globals.PartyDestinyLastResult, 'healed');
-  assert.match(ctx.state.globals.CombatLog.join('\n'), /Destiny restores 10 HP to Falie\./);
+  assert.equal(ctx.state.entities[0].hp, 50);
+  assert.equal(ctx.state.globals.PartyDestinyAttempts, 0);
+  assert.equal(ctx.state.globals.PartyDestinyProcs, 0);
+  assert.equal(ctx.state.globals.PartyDestinyHeals, 0);
+  assert.equal(ctx.state.globals.PartyDestinyMisses, 0);
+  assert.equal(ctx.state.globals.PartyDestinyLastResult, 'activated');
+  assert.match(ctx.state.globals.CombatLog.join('\n'), /Chance to restore HP when attacking enemies activated!/);
+  assert.doesNotMatch(ctx.state.globals.CombatLog.join('\n'), /Destiny restores/);
 });
 
-test('Destiny activation copy stays player-facing when healing is not needed', () => {
+test('Destiny dev activation stays player-facing at full HP without a proc', () => {
   const mod = loadModule(runtimePath);
   const ctx = makeContext({ active: false });
 
   const result = mod.TriggerPartyDestinyDev(ctx, 100);
   assert.equal(result.success, true);
-  assert.equal(result.reason, 'hp_full');
-  assert.equal(ctx.state.globals.PartyDestinyAttempts, 1);
-  assert.equal(ctx.state.globals.PartyDestinyProcs, 1);
+  assert.equal(result.reason, 'activated');
+  assert.equal(ctx.state.globals.PartyDestinyAttempts, 0);
+  assert.equal(ctx.state.globals.PartyDestinyProcs, 0);
   assert.equal(ctx.state.globals.PartyDestinyHeals, 0);
-  assert.equal(ctx.state.globals.PartyDestinyLastResult, 'hp_full');
+  assert.equal(ctx.state.globals.PartyDestinyLastResult, 'activated');
   assert.match(ctx.state.globals.CombatLog.join('\n'), /Chance to restore HP when attacking enemies activated!/);
   assert.doesNotMatch(ctx.state.globals.CombatLog.join('\n'), /already at full HP/);
 });
@@ -184,6 +186,8 @@ test('Destiny locked and miss cases trace without healing', () => {
   assert.equal(locked.success, false);
   assert.equal(locked.reason, 'skill_locked');
   assert.equal(lockedCtx.state.entities[0].hp, 50);
+  assert.equal(lockedCtx.state.globals.PartyDestinyAttempts, 0);
+  assert.equal(lockedCtx.state.globals.PartyDestinyProcs, 0);
   assert.equal(mod.GetSkillProcTrace(lockedCtx, 1)[0].reason, 'skill_locked');
 
   const missCtx = makeContext({ active: true });
@@ -232,6 +236,9 @@ test('Destiny resolves from enemy damage receive seam after hero hit', () => {
   assert.equal(appliedDamage, 5);
   assert.equal(ctx.state.entities[1].hp, 95);
   assert.equal(ctx.state.entities[0].hp, 50);
+  assert.equal(ctx.state.globals.PartyDestinyAttempts, 1);
+  assert.equal(ctx.state.globals.PartyDestinyProcs, 1);
+  assert.equal(ctx.state.globals.PartyDestinyHeals, 1);
   assert.equal(ctx.state.globals.LastPartyDestiny.reason, 'healed');
 });
 

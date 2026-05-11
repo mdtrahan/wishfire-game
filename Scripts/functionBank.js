@@ -1679,7 +1679,6 @@ export function TryPartyDestiny(ctx, options = undefined) {
     g.LastPartyDestiny = { success: false, reason: 'no_applied_damage', sourceUID, targetUID: Number(opts.targetUID || 0) };
     return { ok: false, success: false, reason: 'no_applied_damage', sourceUID, targetUID: Number(opts.targetUID || 0), appliedHeal: 0 };
   }
-  g.PartyDestinyAttempts = Math.max(0, Math.floor(Number(g.PartyDestinyAttempts || 0))) + 1;
   const forcedRoll = Number(opts.forcedRollPct);
   const previousRandom = g.RuntimeRandom;
   if (Number.isFinite(forcedRoll)) {
@@ -1690,6 +1689,9 @@ export function TryPartyDestiny(ctx, options = undefined) {
     roll = RollPartySkillProc(ctx, 'party_destiny', 0, opts.eventName || 'hit_enemy');
   } finally {
     if (Number.isFinite(forcedRoll)) g.RuntimeRandom = previousRandom;
+  }
+  if (roll.ok) {
+    g.PartyDestinyAttempts = Math.max(0, Math.floor(Number(g.PartyDestinyAttempts || 0))) + 1;
   }
   if (!roll.success) {
     if (roll.reason === 'proc_miss') g.PartyDestinyMisses = Math.max(0, Math.floor(Number(g.PartyDestinyMisses || 0))) + 1;
@@ -1730,12 +1732,20 @@ export function TriggerPartyDestinyDev(ctx, sourceUID = 0) {
       source: 'dev_trigger',
     });
   }
-  return TryPartyDestiny(ctx, {
-    forcedRollPct: 0,
+  g.PartyDestinyAttempts = 0;
+  g.PartyDestinyProcs = 0;
+  g.PartyDestinyHeals = 0;
+  g.PartyDestinyMisses = 0;
+  g.PartyDestinyLastResult = 'activated';
+  g.LastPartyDestiny = {
+    success: false,
+    reason: 'activated',
     sourceUID: Number(source.uid || 0),
-    allowNoDamage: true,
-    eventName: 'dev_trigger',
-  });
+    targetUID: 0,
+    appliedHeal: 0,
+  };
+  LogCombat(ctx, 'Chance to restore HP when attacking enemies activated!');
+  return { ok: true, success: true, reason: 'activated', sourceUID: Number(source.uid || 0), appliedHeal: 0 };
 }
 
 export function GetSkillProcTrace(ctx, limit = 40) {
