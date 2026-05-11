@@ -288,3 +288,8 @@
 ## 2026-05-10 — Gem Spawn Tweens Need Matching Timebases
 - If a visual tween is stamped in game seconds, the renderer must evaluate it against game time, not `performance.now()`. A valid `bounceStart`/`bounceDur` pair will still look like a pop-in if render time is thousands of seconds ahead of the tween clock.
 - Diagnostic order for gem pop-in regressions: verify new gems carry appearance metadata, verify the render scale reads the same clock as that metadata, then tune curve magnitude/duration only after the timebase is correct.
+
+## 2026-05-11 — Enemy Target Bias Must Be Identity-Owned
+- Default enemy target selection should be uniform over living heroes; never encode hero-specific aggro as a global enemy picker rule.
+- Enemy target preferences belong on the enemy identity data (`targetPreference` / targeting policy fields) and should route through one shared deterministic rule helper before the action seam receives a target.
+- Diagnostic order for targeting-bias reports: check whether the random picker is actually being called with the expected `(ctx, list)` shape, then check for hard-coded hero exceptions, then check identity policy data.

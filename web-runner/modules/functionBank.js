@@ -24,6 +24,7 @@ import {
   deriveBattleStartRoundPartition,
 } from '../src/core/schedulerRules.mjs';
 import { sanitizeInitiativeQueue, shouldAutoCorrectImproperRepeat } from '../src/core/initiativeGuards.mjs';
+import { pickEnemyTargetHeroFromRoster } from '../src/core/enemyTargetingRules.mjs';
 
 const POWER_AMP_OUTCOMES = [
   { key: 'HERO_2X', multiplier: 2, chance: 0.62 },
@@ -3770,9 +3771,6 @@ function getRandomLivingEnemy(ctx) {
   return enemies[randomIndex(ctx, enemies.length)];
 }
 
-const FALIE_ENMITY_NAME = 'Falie';
-const FALIE_ENMITY_BONUS = 0.35;
-const FALIE_ENMITY_CAP = 0.75;
 const RUNA_MAGIC_RESIST_NAME = 'Runa';
 const RUNA_MAGIC_RESIST_TRIGGER_CHANCE = 0.6;
 const RUNA_MAGIC_RESIST_NULLIFY_CHANCE = 0.35;
@@ -3780,38 +3778,14 @@ const RUNA_MAGIC_RESIST_REDUCE_FACTOR = 0.2;
 
 function pickEnemyTargetHero(ctx, enemyUID = 0) {
   const g = getGlobals(ctx);
-  const heroes = getHeroes(ctx).filter((h) => (h?.hp ?? 0) > 0);
-  if (!heroes.length) return null;
-  const falie = heroes.find((h) => String(h?.name || '') === FALIE_ENMITY_NAME);
-  if (!falie || heroes.length <= 1) {
-    const target = randomPick(heroes) || heroes[0] || null;
-    g.LastEnemyTargetBias = {
-      enemyUID: Number(enemyUID || 0),
-      mode: 'uniform',
-      targetUID: Number(target?.uid || 0),
-      heroCount: heroes.length,
-    };
-    return target;
-  }
-  const baseChance = 1 / heroes.length;
-  const falieChance = Math.min(FALIE_ENMITY_CAP, baseChance + FALIE_ENMITY_BONUS);
-  const roll = Math.random();
-  let target = null;
-  if (roll < falieChance) {
-    target = falie;
-  } else {
-    const nonFalie = heroes.filter((h) => h.uid !== falie.uid);
-    target = randomPick(nonFalie) || falie;
-  }
-  g.LastEnemyTargetBias = {
-    enemyUID: Number(enemyUID || 0),
-    mode: 'falie_enmity_bias',
-    targetUID: Number(target?.uid || 0),
-    falieUID: Number(falie.uid || 0),
-    falieChance: Number(falieChance || 0),
-    roll: Number(roll || 0),
-    heroCount: heroes.length,
-  };
+  const enemy = GetActorByUID(ctx, enemyUID);
+  const result = pickEnemyTargetHeroFromRoster({
+    enemy,
+    heroes: getHeroes(ctx),
+    rng: getRandomSource(ctx),
+  });
+  g.LastEnemyTargetBias = result.trace;
+  const target = result.target;
   return target;
 }
 
@@ -4425,6 +4399,7 @@ export function SpawnEnemy(ctx, enemyData, slotIndex = 0) {
     },
     faction: String(enemyData.faction || 'wishless'),
     enemyRole: String(enemyData.enemyRole || enemyData.role || 'fodder'),
+    targetPreference: enemyData.targetPreference || enemyData.targetingPreference || enemyData.targetingPolicy || enemyData.targetPolicy || '',
     localeTags: normalizeLocaleTags(enemyData.localeTags || enemyData.locale || enemyData.biomes || enemyData.biome || 'all'),
     slotIndex,
     originX: SlotX(ctx, slotIndex),
