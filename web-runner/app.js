@@ -4007,19 +4007,9 @@ async function main(){
       const resetCfg = createDefaultDevToolingConfig();
       state.globals.DevToolingConfig = resetCfg;
       persistDevToolingConfig({ ...resetCfg, open: false });
-      const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
-        ? layoutState.getActiveLayoutId()
-        : null;
-      if (activeLayoutId === 'storyMock') return true;
-      if (layoutState && typeof layoutState.requestLayoutChange === 'function') {
-        const restartedToStory = await layoutState.requestLayoutChange('storyMock', 'dev-tool-restart');
-        if (restartedToStory) return true;
-        if (activeLayoutId && activeLayoutId !== 'combat') {
-          const restartedToCombat = await layoutState.requestLayoutChange('combat', 'dev-tool-restart-hop', { freshStart: true });
-          if (restartedToCombat) {
-            return layoutState.requestLayoutChange('storyMock', 'dev-tool-restart');
-          }
-        }
+      if (typeof window !== 'undefined' && typeof window.location?.reload === 'function') {
+        window.location.reload();
+        return true;
       }
       return false;
     }
