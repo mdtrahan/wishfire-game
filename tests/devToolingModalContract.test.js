@@ -67,6 +67,8 @@ test('web-runner app keeps dev tooling modal decoupled from combat reset flow', 
   assert.match(src, /const resetCfg = createDefaultDevToolingConfig\(\);/);
   assert.match(src, /state\.globals\.DevToolingConfig = resetCfg;/);
   assert.match(src, /persistDevToolingConfig\(\{ \.\.\.resetCfg, open: false \}\);/);
+  assert.match(src, /forceCombat = true;/);
+  assert.doesNotMatch(src, /window\.location\.reload\(\)/);
   assert.doesNotMatch(src, /applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ refreshGame:/);
   assert.doesNotMatch(src, /applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ resetGame:/);
   assert.match(src, /Double Attack: \$\{next\.doubleAttackHeroName \|\| 'Off'\}/);
@@ -82,6 +84,8 @@ test('dev tooling restart helper owns restart button labels and reset delegation
   assert.match(src, /closeDevToolingModal\(\{ restorePauseSnapshot: true \}\);/);
   assert.match(src, /const restarted = await devToolingRefreshHandler\(\{ resetGame: true \}\);/);
   assert.match(src, /updateDevToolingStatus\('Game restart unavailable'\);/);
+  const appSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
+  assert.doesNotMatch(appSrc, /window\.location\.reload\(\)/);
 });
 
 test('startup preload can prepare combat assets while story mock is active', () => {

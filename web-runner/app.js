@@ -4007,11 +4007,7 @@ async function main(){
       const resetCfg = createDefaultDevToolingConfig();
       state.globals.DevToolingConfig = resetCfg;
       persistDevToolingConfig({ ...resetCfg, open: false });
-      if (typeof window !== 'undefined' && typeof window.location?.reload === 'function') {
-        window.location.reload();
-        return true;
-      }
-      return false;
+      forceCombat = true;
     }
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
       ? layoutState.getActiveLayoutId()
