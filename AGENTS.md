@@ -66,6 +66,14 @@ Do not:
 - Stop on unexpected tracked changes unless authorized.
 - Resolve conflicts locally.
 
+`web-runner/app.js`:
+- Orchestration-only; keep it thin.
+- Use it as pointer/composition wiring, not feature storage.
+- Do not add business logic, utilities, feature state, or large implementations.
+- Extend contextual modules or create dedicated modules for new features.
+- Wire new modules through minimal `web-runner/app.js` changes.
+- Treat `web-runner/app.js` growth as architectural debt.
+
 ## 4.1) Ownership
 - One ownership lane per bead unless authorized.
 - Prefer deterministic shared logic in `src/`.
@@ -117,6 +125,7 @@ Report:
 - Use existing repo test commands.
 - Prefer focused deterministic validation.
 - Manual browser QA is acceptable for runtime behavior.
+- For local `web-runner` visual/manual QA, use `@Browser` / the Codex in-app browser first. Use standalone Playwright, Chrome, or `agent-browser` only if Browser is unavailable, the user asks for another surface, or the check requires unsupported Browser capability.
 
 ## 6.1) Retrieval
 For code-location, ownership, dependency, or call-path questions, first use `jcodemunch-mcp`.
@@ -137,6 +146,9 @@ Bug/regression beads must update:
 - `ai-memory/insights.md`
 
 Use reusable heuristics, not event logs.
+
+## 6.3) Skills
+- Use `$bead-worktree-lifecycle` for `new bead`, bead-scoped worktree creation, QA PASS cleanup, safe merge, worktree removal, and merged branch deletion.
 
 ## 7) Output Contracts
 `commit check <bd-id>`:

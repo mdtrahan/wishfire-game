@@ -153,6 +153,16 @@ What the system already supports:
 - hero role messaging surfaces
 - gem-usage tracking by hero
 
+Reference-only notes:
+- hero and party skills: `governance/product/hero-and-party-skills.md`
+- hero and party skill pseudocode: `governance/product/hero-and-party-skill-pseudocode.md`
+- Vault progression: `governance/product/vault-progression.md`
+
+Implementation-start rule:
+- When coding hero, party, Vault, or affinity skills, start from `governance/product/hero-and-party-skill-pseudocode.md`.
+- Use `governance/product/hero-and-party-skills.md` for design intent and player-facing definition.
+- Land runtime implementation into the existing combat seams such as `web-runner/modules/functionBank.js`, `web-runner/modules/skillSheet.js`, and `web-runner/modules/state.js`.
+
 What is important for specs:
 - Hero identity is not only visual.
 - Several systems now key progression by stable hero identity, not temporary actor UID alone.
