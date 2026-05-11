@@ -1,5 +1,10 @@
 # Skill Harness Notes
 
+## Proc QA
+- Reference: `governance/product/skill-proc-qa-guide.md`
+- Rule: activation is not a proc; Browser/AutoPlay side-panel evidence is the final proof for proc behavior.
+- Debug shape: counters must distinguish checks, procs, misses, and payload results.
+
 ## Double Attack
 - Type: follow-up strike harness
 - Current behavior:
