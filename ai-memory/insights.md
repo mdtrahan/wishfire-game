@@ -293,3 +293,7 @@
 - Default enemy target selection should be uniform over living heroes; never encode hero-specific aggro as a global enemy picker rule.
 - Enemy target preferences belong on the enemy identity data (`targetPreference` / targeting policy fields) and should route through one shared deterministic rule helper before the action seam receives a target.
 - Diagnostic order for targeting-bias reports: check whether the random picker is actually being called with the expected `(ctx, list)` shape, then check for hard-coded hero exceptions, then check identity policy data.
+
+## 2026-05-11 — HoT Cadence Must Be Explicit
+- If a status effect is turn-based, store an explicit `cadence: 'turn'` plus turn-serial gates on its queued payload. Reusing timer-tick fields for a turn-based effect makes later merges silently convert combat semantics back to wall-clock behavior.
+- Diagnostic order for HoT/DoT recovery: verify the skill payload shape first, then verify the app-side cadence owner, then verify visual overlays. A correct shimmer can mask a wrong healing cadence.

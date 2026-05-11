@@ -5239,8 +5239,78 @@ async function main(){
     });
   }
 
+  function processTurnCadencePartyRegens() {
+    const currentTurnSerial = Number(state.globals.TurnSerial || 0);
+    if (currentTurnSerial <= Number(gameState._lastPartyRegenTurnSerial || 0)) return;
+    const regens = state.globals.PartyRegens;
+    if (!Array.isArray(regens) || regens.length === 0) {
+      gameState._lastPartyRegenTurnSerial = currentTurnSerial;
+      return;
+    }
+    for (let i = regens.length - 1; i >= 0; i--) {
+      const regen = regens[i];
+      if (!regen || Number(regen.remainingFires || 0) <= 0) {
+        regens.splice(i, 1);
+        continue;
+      }
+      if (String(regen.cadence || 'tick') !== 'turn') continue;
+      if (regen.totalHealRemaining != null && Number(regen.totalHealRemaining || 0) <= 0) {
+        regens.splice(i, 1);
+        continue;
+      }
+      const gateTurn = Number(regen.nextFireTurnSerial || 0);
+      if (currentTurnSerial < gateTurn) continue;
+      if (currentTurnSerial <= Number(regen.appliedOnTurnSerial || 0)) continue;
+      if (Number(regen.lastProcessedTurnSerial || 0) >= currentTurnSerial) continue;
+      let heal = 1;
+      if (regen.totalHealRemaining != null && Number(regen.remainingFires || 0) > 0) {
+        const remaining = Math.max(0, Math.floor(regen.totalHealRemaining));
+        if (remaining <= 0) {
+          regens.splice(i, 1);
+          continue;
+        }
+        const fires = Math.max(1, Math.floor(regen.remainingFires));
+        const base = Math.floor(remaining / fires);
+        const remainder = remaining % fires;
+        heal = Math.max(1, base + (fires === 1 ? remainder : 0));
+        regen.totalHealRemaining = Math.max(0, remaining - heal);
+      } else {
+        heal = Math.max(1, Math.round(regen.healPerFire || 1));
+      }
+      const beforeHP = state.globals.PartyHP || 0;
+      const prev = state.globals.SpawnDamageText;
+      const prevHero = state.globals.SuppressHeroHealText;
+      state.globals.SpawnDamageText = 0;
+      state.globals.SuppressHeroHealText = 1;
+      callFunctionWithContext(fnContext, 'ApplyPartyHeal', heal);
+      state.globals.SpawnDamageText = prev;
+      state.globals.SuppressHeroHealText = prevHero;
+      const afterHP = state.globals.PartyHP || 0;
+      const actualHeal = Math.max(0, afterHP - beforeHP);
+      const barPos = state.globals.PartyHPBarPosWorld;
+      if (actualHeal > 0 && barPos && barPos.w > 0 && barPos.h > 0) {
+        const left = barPos.x - barPos.w * barPos.ox;
+        const barW = barPos.w;
+        const barH = barPos.h;
+        const ratio = Math.max(0, Math.min(1, (state.globals.PartyHP || 0) / Math.max(1, state.globals.PartyMaxHP || 1)));
+        const textX = left + barW * ratio;
+        const textY = (barPos.y - barH * barPos.oy) + barH * 0.5;
+        callFunctionWithContext(fnContext, 'SpawnDamageText', actualHeal, textX, textY, 'heal', 'bar');
+      }
+      regen.remainingFires -= 1;
+      regen.lastProcessedTurnSerial = currentTurnSerial;
+      regen.nextFireTurnSerial = gateTurn + Math.max(1, Math.floor(Number(regen.firesEveryTurns || 1) || 1));
+      if (regen.remainingFires <= 0) {
+        regens.splice(i, 1);
+      }
+    }
+    if (regens.length === 0) delete state.globals.PartyRegens;
+    gameState._lastPartyRegenTurnSerial = currentTurnSerial;
+  }
+
   function drawFrame(dtOverride){
     syncSuperGemShapes({ gameState, state, boardGeometry, reason: 'draw-frame' });
+    processTurnCadencePartyRegens();
     const runtimeScope = {
       dtOverride,
       state,
