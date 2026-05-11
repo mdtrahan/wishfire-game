@@ -67,7 +67,8 @@ test('web-runner app keeps dev tooling modal decoupled from combat reset flow', 
   assert.match(src, /const resetCfg = createDefaultDevToolingConfig\(\);/);
   assert.match(src, /state\.globals\.DevToolingConfig = resetCfg;/);
   assert.match(src, /persistDevToolingConfig\(\{ \.\.\.resetCfg, open: false \}\);/);
-  assert.match(src, /forceCombat = true;/);
+  assert.match(src, /requestLayoutChange\('storyMock', 'dev-tool-restart'\)/);
+  assert.doesNotMatch(src, /forceCombat = true;/);
   assert.doesNotMatch(src, /window\.location\.reload\(\)/);
   assert.doesNotMatch(src, /applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ refreshGame:/);
   assert.doesNotMatch(src, /applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ resetGame:/);
