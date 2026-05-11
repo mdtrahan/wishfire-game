@@ -74,6 +74,11 @@ function drawGemCounterHUD({
   const doubleAttackProcs = doubleAttackHolderUID
     ? Number(callFunctionWithContext(fnContext, 'GetActorExtraTurnProcCount', doubleAttackHolderUID) || 0)
     : 0;
+  const destinyAttempts = Math.max(0, Math.floor(Number(g.PartyDestinyAttempts || 0)));
+  const destinyProcs = Math.max(0, Math.floor(Number(g.PartyDestinyProcs || 0)));
+  const destinyHeals = Math.max(0, Math.floor(Number(g.PartyDestinyHeals || 0)));
+  const destinyMisses = Math.max(0, Math.floor(Number(g.PartyDestinyMisses || 0)));
+  const destinyLast = String(g.PartyDestinyLastResult || 'none');
   const lines = [
     'Gem Counter Radiator',
     `Hero: ${heroName}`,
@@ -86,6 +91,13 @@ function drawGemCounterHUD({
     `Double Attack: ${doubleAttackHolderName || 'Off'}`,
     `Chance: ${Math.round(doubleAttackChance * 100)}%`,
     `Procs: ${doubleAttackProcs}`,
+    '-----',
+    'Destiny',
+    `Checks:${destinyAttempts}`,
+    `Procs:${destinyProcs}`,
+    `Heals:${destinyHeals}`,
+    `Misses:${destinyMisses}`,
+    `Last:${destinyLast}`,
     '-----',
     'Party Totals',
     `RED:${Number(party.RED || 0)}`,

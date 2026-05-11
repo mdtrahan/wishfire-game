@@ -1452,6 +1452,11 @@ function ensureSkillProcRuntime(ctx) {
   if (!g.SessionSkillPassivesByHeroUID || typeof g.SessionSkillPassivesByHeroUID !== 'object') g.SessionSkillPassivesByHeroUID = {};
   if (!Array.isArray(g.SkillProcTrace)) g.SkillProcTrace = [];
   if (!Number.isFinite(g.SkillProcTraceSeq)) g.SkillProcTraceSeq = 0;
+  if (!Number.isFinite(g.PartyDestinyAttempts)) g.PartyDestinyAttempts = 0;
+  if (!Number.isFinite(g.PartyDestinyProcs)) g.PartyDestinyProcs = 0;
+  if (!Number.isFinite(g.PartyDestinyHeals)) g.PartyDestinyHeals = 0;
+  if (!Number.isFinite(g.PartyDestinyMisses)) g.PartyDestinyMisses = 0;
+  if (typeof g.PartyDestinyLastResult !== 'string') g.PartyDestinyLastResult = '';
   return g;
 }
 
@@ -1674,6 +1679,7 @@ export function TryPartyDestiny(ctx, options = undefined) {
     g.LastPartyDestiny = { success: false, reason: 'no_applied_damage', sourceUID, targetUID: Number(opts.targetUID || 0) };
     return { ok: false, success: false, reason: 'no_applied_damage', sourceUID, targetUID: Number(opts.targetUID || 0), appliedHeal: 0 };
   }
+  g.PartyDestinyAttempts = Math.max(0, Math.floor(Number(g.PartyDestinyAttempts || 0))) + 1;
   const forcedRoll = Number(opts.forcedRollPct);
   const previousRandom = g.RuntimeRandom;
   if (Number.isFinite(forcedRoll)) {
@@ -1686,14 +1692,19 @@ export function TryPartyDestiny(ctx, options = undefined) {
     if (Number.isFinite(forcedRoll)) g.RuntimeRandom = previousRandom;
   }
   if (!roll.success) {
+    if (roll.reason === 'proc_miss') g.PartyDestinyMisses = Math.max(0, Math.floor(Number(g.PartyDestinyMisses || 0))) + 1;
+    g.PartyDestinyLastResult = String(roll.reason || 'no_proc');
     g.LastPartyDestiny = { success: false, reason: roll.reason, sourceUID, targetUID: Number(opts.targetUID || 0), roll };
     return { ok: roll.ok, success: false, reason: roll.reason, sourceUID, targetUID: Number(opts.targetUID || 0), roll, appliedHeal: 0 };
   }
+  g.PartyDestinyProcs = Math.max(0, Math.floor(Number(g.PartyDestinyProcs || 0))) + 1;
   const maxHP = Math.max(0, Number(source.maxHP || source.MaxHP || 0));
   const defaultHeal = Math.max(1, Math.ceil(maxHP * 0.10));
   const requestedHeal = Math.max(1, Math.floor(Number(opts.healAmount || defaultHeal)));
   const heal = applyPartyDestinyActorHeal(ctx, sourceUID, requestedHeal);
+  if (heal.appliedHeal > 0) g.PartyDestinyHeals = Math.max(0, Math.floor(Number(g.PartyDestinyHeals || 0))) + 1;
   g.LastPartyDestiny = { success: true, reason: heal.appliedHeal > 0 ? 'healed' : 'hp_full', sourceUID, targetUID: Number(opts.targetUID || 0), roll, requestedHeal, ...heal };
+  g.PartyDestinyLastResult = String(g.LastPartyDestiny.reason || 'proc_success');
   if (heal.appliedHeal > 0) LogCombat(ctx, `Destiny restores ${heal.appliedHeal} HP to ${source.name || 'the hero'}.`);
   else LogCombat(ctx, 'Chance to restore HP when attacking enemies activated!');
   return { ok: true, success: true, reason: g.LastPartyDestiny.reason, sourceUID, targetUID: Number(opts.targetUID || 0), roll, requestedHeal, ...heal };

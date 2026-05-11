@@ -152,6 +152,10 @@ test('Destiny dev trigger activates session skill and forces visible heal path',
   assert.equal(result.reason, 'healed');
   assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__[0].id, 'party_destiny');
   assert.equal(ctx.state.entities[0].hp, 60);
+  assert.equal(ctx.state.globals.PartyDestinyAttempts, 1);
+  assert.equal(ctx.state.globals.PartyDestinyProcs, 1);
+  assert.equal(ctx.state.globals.PartyDestinyHeals, 1);
+  assert.equal(ctx.state.globals.PartyDestinyLastResult, 'healed');
   assert.match(ctx.state.globals.CombatLog.join('\n'), /Destiny restores 10 HP to Falie\./);
 });
 
@@ -162,6 +166,10 @@ test('Destiny activation copy stays player-facing when healing is not needed', (
   const result = mod.TriggerPartyDestinyDev(ctx, 100);
   assert.equal(result.success, true);
   assert.equal(result.reason, 'hp_full');
+  assert.equal(ctx.state.globals.PartyDestinyAttempts, 1);
+  assert.equal(ctx.state.globals.PartyDestinyProcs, 1);
+  assert.equal(ctx.state.globals.PartyDestinyHeals, 0);
+  assert.equal(ctx.state.globals.PartyDestinyLastResult, 'hp_full');
   assert.match(ctx.state.globals.CombatLog.join('\n'), /Chance to restore HP when attacking enemies activated!/);
   assert.doesNotMatch(ctx.state.globals.CombatLog.join('\n'), /already at full HP/);
 });
@@ -185,6 +193,10 @@ test('Destiny locked and miss cases trace without healing', () => {
   assert.equal(miss.success, false);
   assert.equal(miss.reason, 'proc_miss');
   assert.equal(missCtx.state.entities[0].hp, 50);
+  assert.equal(missCtx.state.globals.PartyDestinyAttempts, 1);
+  assert.equal(missCtx.state.globals.PartyDestinyMisses, 1);
+  assert.equal(missCtx.state.globals.PartyDestinyProcs, 0);
+  assert.equal(missCtx.state.globals.PartyDestinyLastResult, 'proc_miss');
   assert.equal(mod.GetSkillProcTrace(missCtx, 1)[0].reason, 'proc_miss');
 });
 
