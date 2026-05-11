@@ -1600,10 +1600,14 @@ function ensureDevToolingModal() {
     closeDevToolingModal({ restorePauseSnapshot: true });
   });
   devToolingDom.triggerDestiny.addEventListener('click', () => {
+    const requestedUID = Number(devToolingDom.skillHero?.value || 0);
+    const requestedActor = state.entities.find(actor => Number(actor?.uid || 0) === requestedUID) || null;
     const currentUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
     const currentActor = state.entities.find(actor => Number(actor?.uid || 0) === currentUID) || null;
     const fallbackHero = state.entities.find(actor => actor?.kind === 'hero' && Number(actor?.hp || 0) > 0) || null;
-    const sourceUID = currentActor?.kind === 'hero' ? currentUID : Number(fallbackHero?.uid || 0);
+    const sourceUID = requestedActor?.kind === 'hero'
+      ? requestedUID
+      : (currentActor?.kind === 'hero' ? currentUID : Number(fallbackHero?.uid || 0));
     const result = callFunctionWithContext(fnContext, 'TriggerPartyDestinyDev', sourceUID);
     if (!result?.success) {
       callFunctionWithContext(fnContext, 'LogCombat', `Destiny dev trigger failed: ${result?.reason || 'no-op'}.`);

@@ -239,6 +239,9 @@ test('dev panel exposes Destiny trigger without inlining effect logic', () => {
   const appSrc = fs.readFileSync(appPath, 'utf8');
   assert.match(appSrc, /data-devtool-trigger-destiny/);
   assert.match(appSrc, /TriggerPartyDestinyDev/);
+  assert.match(appSrc, /const requestedUID = Number\(devToolingDom\.skillHero\?\.value \|\| 0\);/);
+  assert.match(appSrc, /const requestedActor = state\.entities\.find\(actor => Number\(actor\?\.uid \|\| 0\) === requestedUID\) \|\| null;/);
+  assert.match(appSrc, /const sourceUID = requestedActor\?\.kind === 'hero'/);
   assert.match(appSrc, /Destiny dev trigger failed:/);
   assert.match(appSrc, /closeDevToolingModal\(\{ restorePauseSnapshot: true \}\);/);
   assert.doesNotMatch(appSrc, /ApplyPartyHeal/);
