@@ -30,7 +30,7 @@ Recommended flow:
 
 1. Reload to a fresh game.
 2. Enter combat.
-3. Activate the skill through the dev panel or draught modal.
+3. Activate the skill through the dev panel or draw modal.
 4. Confirm side-panel counters remain zero immediately after activation.
 5. Use AutoPlay when hand-clicking valid combat moves is ambiguous.
 6. Sample the side panel over time until checks, misses, or procs appear.

@@ -118,7 +118,7 @@ test('Destiny payload is mirrored and party scoped', () => {
   }
 });
 
-test('draught can force-select Destiny into the shared party session bucket', () => {
+test('draw can force-select Destiny into the shared party session bucket', () => {
   const mod = loadModule(runtimePath);
   const ctx = makeContext();
 

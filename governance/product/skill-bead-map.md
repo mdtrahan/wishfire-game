@@ -13,7 +13,7 @@ Purpose: map existing visible skill beads to the new canonical hero, party, and 
 
 | Bead | Existing title | Canonical target | Recommendation |
 | --- | --- | --- | --- |
-| `ORKA-ivcq` | `[SKILL] KOJONN - Lock` | `kojonn_lock` | Keep as the Kojonn Lock implementation bead, but update acceptance to depend on session draught/proc helpers and require dev-panel QA. |
+| `ORKA-ivcq` | `[SKILL] KOJONN - Lock` | `kojonn_lock` | Keep as the Kojonn Lock implementation bead, but update acceptance to depend on session draw/proc helpers and require dev-panel QA. |
 | `ORKA-elqq` | `[SKILL] KOJONN - Lift` | `kojonn_lift` | Keep as the Kojonn Lift implementation bead, with session-only activation and dev-panel proc test coverage. |
 | `ORKA-h5k4` | `[SKILL] KOJONN - Step` | `kojonn_step` | Keep, but treat as high-risk turn-order work and sequence after simpler payloads. |
 | `ORKA-uo0j` | `[SKILL] KOJONN - Elevate` | `kojonn_elevate` | Keep, but sequence late because amp escalation compounds with Astral Flow and power-amp state. |

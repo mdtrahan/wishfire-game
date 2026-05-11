@@ -29,7 +29,7 @@ function extractFunctionSource(src, name) {
   assert.fail(`unterminated ${name}`);
 }
 
-test('skill draught state is session-only and resettable', () => {
+test('skill draw state is session-only and resettable', () => {
   const stateSrc = fs.readFileSync(statePath, 'utf8');
   assert.match(stateSrc, /SkillDraughtOpen: 0,/);
   assert.match(stateSrc, /SkillDraughtCandidates: \[\],/);
@@ -37,7 +37,7 @@ test('skill draught state is session-only and resettable', () => {
   assert.doesNotMatch(stateSrc, /PermanentSkillsByHeroUID/);
 });
 
-test('runtime exposes draught open/select/clear helpers for one skill test path', () => {
+test('runtime exposes draw open/select/clear helpers for one skill test path', () => {
   const runtimeSrc = fs.readFileSync(runtimePath, 'utf8');
   const scriptsSrc = fs.readFileSync(scriptsPath, 'utf8');
   for (const src of [runtimeSrc, scriptsSrc]) {
@@ -51,7 +51,7 @@ test('runtime exposes draught open/select/clear helpers for one skill test path'
   }
 });
 
-test('blue meter full opens draught once instead of resetting on hero turn', () => {
+test('blue meter full opens draw once instead of resetting on hero turn', () => {
   const runtimeSrc = fs.readFileSync(runtimePath, 'utf8');
   const resolveSrc = extractFunctionSource(runtimeSrc, 'ResolveGemAction');
   assert.match(resolveSrc, /OpenSkillDraughtForHero\(ctx, actorUID\);/);
@@ -60,7 +60,7 @@ test('blue meter full opens draught once instead of resetting on hero turn', () 
   assert.match(shouldResetSrc, /if \(Number\(g\.SkillDraughtOpen \|\| 0\)\) return false;/);
 });
 
-test('dev panel wires mandatory draught controls', () => {
+test('dev panel wires mandatory draw controls', () => {
   const appSrc = fs.readFileSync(appPath, 'utf8');
   assert.match(appSrc, /data-devtool-skill-hero/);
   assert.match(appSrc, /data-devtool-skill-id/);
@@ -80,7 +80,7 @@ test('fresh combat session clears selected session skills without touching progr
   assert.doesNotMatch(initSrc, /HeroSkillPointsByHeroId = \{\}/);
 });
 
-test('draught render uses dimmed combat background and exactly three horizontal cards', () => {
+test('draw render uses dimmed combat background and exactly three horizontal cards', () => {
   const appSrc = fs.readFileSync(appPath, 'utf8');
   const renderSrc = fs.readFileSync(renderOverlayPath, 'utf8');
   assert.match(appSrc, /renderSkillDraughtOverlay/);

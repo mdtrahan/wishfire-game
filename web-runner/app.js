@@ -1264,7 +1264,7 @@ function updateDevToolingStatus(message = '') {
   const skillDraught = getSkillDraughtDevSummary();
   const suffix = message ? `\n${message}` : '';
   devToolingDom.status.textContent =
-    `Hotkey: ${DEV_TOOL_HOTKEY_LABEL}\nActive Layout: ${activeLayoutId}\nIdle Mode: ${autoplayActive ? 'ACTIVE' : 'idle'}\nSkill Draught: ${skillDraught}\nApply: writes only the selected condition; no combat reset, turn advance, or loadout refresh${suffix}`;
+    `Hotkey: ${DEV_TOOL_HOTKEY_LABEL}\nActive Layout: ${activeLayoutId}\nIdle Mode: ${autoplayActive ? 'ACTIVE' : 'idle'}\nSkill Draw: ${skillDraught}\nApply: writes only the selected condition; no combat reset, turn advance, or loadout refresh${suffix}`;
 }
 
 function getSkillDraughtDevSummary() {
@@ -1511,10 +1511,10 @@ function ensureDevToolingModal() {
       <label style="display:flex;flex-direction:column;gap:4px;">Double Attack
         <select data-devtool-double-attack-hero></select>
       </label>
-      <label style="display:flex;flex-direction:column;gap:4px;">Skill Draught Hero UID
+      <label style="display:flex;flex-direction:column;gap:4px;">Skill Draw Hero UID
         <input data-devtool-skill-hero type="number" min="0" step="1">
       </label>
-      <label style="display:flex;flex-direction:column;gap:4px;">Skill Draught Skill ID
+      <label style="display:flex;flex-direction:column;gap:4px;">Skill Draw Skill ID
         <input data-devtool-skill-id type="text" placeholder="optional">
       </label>
     </div>
@@ -1523,7 +1523,7 @@ function ensureDevToolingModal() {
       <button type="button" data-devtool-refresh style="border:1px solid #475569;background:#fff;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Save Staged</button>
       <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">AutoPlay</button>
       <button type="button" data-devtool-restart style="border:1px solid #92400e;background:#fff7ed;color:#9a3412;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Restart</button>
-      <button type="button" data-devtool-force-skill-draught style="border:1px solid #4c1d95;background:#f5f3ff;color:#4c1d95;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Force Draught</button>
+      <button type="button" data-devtool-force-skill-draught style="border:1px solid #4c1d95;background:#f5f3ff;color:#4c1d95;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Force Draw</button>
       <button type="button" data-devtool-trigger-destiny style="border:1px solid #365314;background:#f7fee7;color:#365314;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Trigger Destiny</button>
       <button type="button" data-devtool-clear-session-skills style="border:1px solid #7f1d1d;background:#fef2f2;color:#7f1d1d;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Clear Skills</button>
     </div>
@@ -1616,7 +1616,7 @@ function ensureDevToolingModal() {
   });
   devToolingDom.clearSessionSkills.addEventListener('click', () => {
     callFunctionWithContext(fnContext, 'ClearSessionSkillDraught');
-    updateDevToolingStatus('Session skill draught cleared');
+    updateDevToolingStatus('Session skill draw cleared');
   });
   root.addEventListener('click', (ev) => {
     if (ev.target === root) toggleDevToolingModal(false);
