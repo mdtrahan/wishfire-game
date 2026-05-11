@@ -9,6 +9,19 @@ Doc sources:
 
 Purpose: map existing visible skill beads to the new canonical hero, party, and Vault/relic skill IDs before creating individual implementation beads.
 
+## Skill Bead Acceptance
+
+Every hero or party skill implementation bead must start from a clear skill definition before runtime edits:
+
+- canonical skill ID and owner
+- trigger and eligibility rules
+- roll chance, if chance-based
+- payload result
+- debug counters and side-panel readout
+- Browser/AutoPlay proof path
+
+Each bead should add or update focused contracts at the activation, eligibility, roll, and payload seams before implementation. Dev-panel controls may assign, activate, clear, or configure QA state; side-panel readouts should remain informational and must not mutate skill state.
+
 ## Existing Bead Mapping
 
 | Bead | Existing title | Canonical target | Recommendation |

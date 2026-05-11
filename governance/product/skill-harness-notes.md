@@ -3,7 +3,10 @@
 ## Proc QA
 - Reference: `governance/product/skill-proc-qa-guide.md`
 - Rule: activation is not a proc; Browser/AutoPlay side-panel evidence is the final proof for proc behavior.
+- TDD gate: define skill ID, owner, trigger, eligibility, roll, payload, counters, and Browser proof path before runtime edits.
+- Required contracts: activation, eligibility rejection, roll accounting, and payload result.
 - Debug shape: counters must distinguish checks, procs, misses, and payload results.
+- UI split: dev-panel controls mutate QA state; side-panel readouts only report state.
 
 ## Double Attack
 - Type: follow-up strike harness

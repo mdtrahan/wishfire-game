@@ -10,6 +10,21 @@ Activation equips or enables a session skill. It must not increment proc counter
 
 For attack-triggered skills, the roll must happen only after the combat event that owns the trigger occurs. For Destiny, that means a hero must hit an enemy for positive applied damage before the skill can check or proc.
 
+## Spec-First TDD Gate
+
+Do not code a hero or party skill until the skill definition is clear enough to test.
+
+Each implementation bead should name the skill ID, owner, trigger, eligibility rules, roll chance, payload, counters, and visible proof path before runtime edits begin. If any of those are unknown, update the product skill definition or bead acceptance first.
+
+Write focused contracts before implementation at these seams:
+
+- activation: equipping or selecting the skill creates session state without executing the payload
+- eligibility: locked, inactive, wrong-target, no-damage, activation-only, and other rejected events do not count as checks
+- roll: eligible events increment checks and split successful procs from misses
+- payload: successful procs apply the exact heal, damage, buff, debuff, guard, or board effect expected for that skill
+
+The first contract should fail for the missing behavior before runtime code is added. Browser/AutoPlay proof is still required for acceptance because seam tests can pass while live player actions never reach the combat hook.
+
 ## Required QA Shape
 
 Every proc skill should expose a small debug surface with at least:
@@ -21,6 +36,13 @@ Every proc skill should expose a small debug surface with at least:
 - `Last`: the latest proc-state reason
 
 Do not count locked, inactive, missing, activation-only, no-damage, or wrong-target cases as `Checks`.
+
+Keep dev-panel controls and side-panel readouts separate:
+
+- dev panel: starts, clears, assigns, or configures QA state
+- side panel: reports state and counters only
+
+Do not make a side-panel readout mutate skill state, and do not treat a dev-panel activation button as evidence that the proc payload executed.
 
 ## Browser Verification
 

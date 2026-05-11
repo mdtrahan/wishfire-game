@@ -225,6 +225,11 @@
 - Proc debug counters should distinguish eligible `Checks`, successful `Procs`, failed `Misses`, and payload results such as `Heals`; locked, inactive, wrong-target, no-damage, and activation-only cases should not increment `Checks`.
 - When a proc path is uncertain, instrument activation, combat-event hook, and roll-resolution seams with a stable console prefix before changing gameplay math.
 
+## 2026-05-11 — Skill Beads Need Spec-First Contracts Before Runtime Edits
+- For hero and party skills, require a clear definition of skill ID, owner, trigger, eligibility, roll, payload, counters, and Browser proof path before implementation starts.
+- Test the activation, eligibility, roll, and payload seams before coding the runtime change; a helper-only test is not enough if the live combat event can miss the hook.
+- Keep dev-panel controls as mutation surfaces and side-panel readouts as informational surfaces. Mixing those roles turns QA evidence into another gameplay side effect.
+
 ## 2026-05-07 — Layout Suppression Rules Need Preserved Ownership Metadata
 - If a combat UI element is removed by layer/type rules, verify that the flattened runtime instances still carry `layerName` and `layerIndex` before changing draw filters. Suppression hooks against `BoardBG` or other layer owners silently fail when layout flattening strips that metadata.
 - For legacy layout cleanup, debug in this order: identify the exact instance types and layer owners from the source layout, confirm those fields survive into the runtime `instances` list, then apply the narrow suppression rule at the owner seam. Do not assume a failed visual removal means the rule is wrong before checking whether the ownership metadata survived flattening.
