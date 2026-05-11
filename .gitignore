@@ -13,6 +13,8 @@ playwright-*.png
 /_backup*
 /src/data/
 .DS_Store
+.swp
+*.swp
 
 # Local validation artifacts
 test-results/
