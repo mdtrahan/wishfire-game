@@ -32,14 +32,14 @@ function createHealContext({ partyHP = 40, partyMaxHP = 100 } = {}) {
   return { ctx, calls };
 }
 
-test('healing gems restore 10 percent of party max HP per consumed healing gem', () => {
+test('healing gem matches restore 10 percent of party max HP total', () => {
   const DoHeal = loadDoHeal('web-runner/modules/skillSheet.js');
   const { ctx, calls } = createHealContext({ partyHP: 40, partyMaxHP: 100 });
 
-  DoHeal(ctx, 4, 1, 3);
+  DoHeal(ctx, 4);
 
-  assert.equal(ctx.globals.PartyHP, 70);
-  assert.ok(calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 30));
+  assert.equal(ctx.globals.PartyHP, 50);
+  assert.ok(calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 10));
   assert.ok(calls.every(call => call.name !== 'CalculateHeal'));
 });
 
@@ -52,10 +52,12 @@ test('healing gems respect the current HP cap', () => {
   assert.equal(ctx.globals.PartyHP, 100);
 });
 
-test('healing gem count is passed from both ResolveGemAction mirrors', () => {
+test('healing gem resolution does not multiply by consumed gem count', () => {
   const runtimeSrc = fs.readFileSync('web-runner/modules/functionBank.js', 'utf8');
   const scriptsSrc = fs.readFileSync('Scripts/functionBank.js', 'utf8');
 
-  assert.match(runtimeSrc, /ctx\.callFunction\('DoHeal', actorUID, 1, consumedCount\);/);
-  assert.match(scriptsSrc, /ctx\.callFunction\('DoHeal', actorUID, 1, consumedCount\);/);
+  assert.match(runtimeSrc, /ctx\.callFunction\('DoHeal', actorUID\);/);
+  assert.match(scriptsSrc, /ctx\.callFunction\('DoHeal', actorUID\);/);
+  assert.doesNotMatch(runtimeSrc, /DoHeal', actorUID, 1, consumedCount/);
+  assert.doesNotMatch(scriptsSrc, /DoHeal', actorUID, 1, consumedCount/);
 });

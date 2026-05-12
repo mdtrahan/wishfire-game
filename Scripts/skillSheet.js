@@ -73,10 +73,9 @@ export function ApplyPartyHeal(ctx, healAmount) {
   }
 }
 
-export function DoHeal(ctx, actorUID, potencyMultiplier = 1, healingGemCount = 1) {
+export function DoHeal(ctx, actorUID, potencyMultiplier = 1) {
   const g = getGlobals(ctx);
-  const gemCount = Math.max(1, Math.floor(Number(healingGemCount || 1)));
-  let heal = Math.max(1, Math.ceil((g.PartyMaxHP || 0) * 0.10)) * gemCount;
+  let heal = Math.max(1, Math.ceil((g.PartyMaxHP || 0) * 0.10));
   const potency = Math.max(1, Number(potencyMultiplier || 1));
   if (potency > 1) {
     heal = Math.max(1, Math.ceil(heal * potency));

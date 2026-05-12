@@ -4883,7 +4883,7 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
   }
   if (gemColor === 4) {
     LogGemIntent(ctx, 4, 'LIGHTGREEN', 'Do_Heal', '', actorUID);
-    ctx.callFunction('DoHeal', actorUID, 1, consumedCount);
+    ctx.callFunction('DoHeal', actorUID);
     return;
   }
   if (gemColor === 5) {
