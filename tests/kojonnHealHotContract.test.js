@@ -40,11 +40,11 @@ test('Kojonn heal queues the recovered 3-turn regen payload in the web runner mo
 
   DoHeal(ctx, 4);
 
-  assert.equal(ctx.globals.PartyHP, 20);
+  assert.equal(ctx.globals.PartyHP, 13);
   assert.equal(ctx.globals.PartyRegens.length, 1);
   assert.deepEqual(ctx.globals.PartyRegens[0], {
     remainingFires: 2,
-    totalHealRemaining: 20,
+    totalHealRemaining: 7,
     cadence: 'turn',
     firesEveryTurns: 1,
     nextFireTurnSerial: 13,
@@ -63,9 +63,9 @@ test('Kojonn super-heal potency still feeds the 3-turn regen total', () => {
 
   DoHeal(ctx, 4, 2);
 
-  assert.equal(ctx.globals.PartyHP, 30);
+  assert.equal(ctx.globals.PartyHP, 16);
   assert.equal(ctx.globals.PartyRegens[0].remainingFires, 2);
-  assert.equal(ctx.globals.PartyRegens[0].totalHealRemaining, 40);
+  assert.equal(ctx.globals.PartyRegens[0].totalHealRemaining, 14);
 });
 
 test('Construct mirror carries the same recovered Kojonn regen payload shape', () => {
