@@ -87,3 +87,75 @@ test('supergem spend reserves refill until the pending activation pacing can com
   assert.equal(refillCalls, 0);
   assert.equal(state.globals.LastSuperGemSpend.refillDeferred, true);
 });
+
+test('supergem spend clears all matching-color gems and flies non-supergem matches into its center', async () => {
+  const mod = await import('../web-runner/src/core/superGemBoardState.mjs');
+  const state = {
+    globals: {
+      GamePhase: 'RUNTIME',
+      Player_Energy: 10,
+      CanPickGems: true,
+      PendingSkillID: '',
+      DeferAdvance: 0,
+      time: 12,
+    },
+  };
+  const gameState = {
+    selectedHero: 0,
+    selectedGems: [{ uid: 1 }],
+    selectionLocked: true,
+    superGems: [
+      { id: 'sg-blue', type: 'uniform', baseColor: 2, size: 2, cells: [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 1, c: 0 }, { r: 1, c: 1 }] },
+    ],
+    superGemCellMap: new Map([['0,0', 'sg-blue'], ['0,1', 'sg-blue'], ['1,0', 'sg-blue'], ['1,1', 'sg-blue']]),
+    gems: [
+      { uid: 1, cellR: 0, cellC: 0, color: 2, x: 10, y: 10 },
+      { uid: 2, cellR: 0, cellC: 1, color: 2, x: 20, y: 10 },
+      { uid: 3, cellR: 1, cellC: 0, color: 2, x: 10, y: 20 },
+      { uid: 4, cellR: 1, cellC: 1, color: 2, x: 20, y: 20 },
+      { uid: 5, cellR: 2, cellC: 0, color: 2, x: 10, y: 30 },
+      { uid: 6, cellR: 2, cellC: 1, color: 4, x: 20, y: 30 },
+      { uid: 7, cellR: 3, cellC: 2, elementIndex: 2, x: 30, y: 40 },
+    ],
+    grid: [
+      [1, 3, 5, 0],
+      [2, 4, 6, 0],
+      [0, 0, 0, 7],
+    ],
+  };
+  let refillCalls = 0;
+  let mergeFx = null;
+  const spent = mod.spendSuperGem({
+    superGem: gameState.superGems[0],
+    gameState,
+    state,
+    reason: 'contract',
+    callFunctionWithContext: (_ctx, name) => {
+      if (name === 'GetCurrentTurn') return 101;
+      if (name === 'GetActorByUID') return { uid: 101, kind: 'hero' };
+      return 0;
+    },
+    fnContext: {},
+    getHeroUIDByIndex: () => 101,
+    beginTask011ActionCycle: () => {},
+    startGemMergeFx: (args) => { mergeFx = args; },
+    getGoldLabelTargetWorld: () => null,
+    setGemArray: () => {},
+    startRefillBounce: () => { refillCalls += 1; },
+    activateSuperGemEffect: () => true,
+    superGemCost: 4,
+  });
+  assert.equal(spent, true);
+  assert.equal(refillCalls, 1);
+  assert.deepEqual(gameState.gems.map((gem) => gem.uid), [6]);
+  assert.equal(gameState.grid[0][0], 0);
+  assert.equal(gameState.grid[1][2], 6);
+  assert.equal(gameState.grid[2][3], 0);
+  assert.deepEqual(mergeFx.target, { x: 15, y: 15 });
+  assert.equal(mergeFx.scaleOut, false);
+  assert.deepEqual(mergeFx.sourceItems, [
+    { x: 10, y: 30, color: 2 },
+    { x: 30, y: 40, color: 2 },
+  ]);
+  assert.equal(state.globals.LastSuperGemSpend.clearedGemCount, 6);
+});

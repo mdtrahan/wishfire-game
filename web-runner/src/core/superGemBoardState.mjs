@@ -35,6 +35,56 @@ function buildSuperGemSourceItems(superGem, gems = []) {
     }));
 }
 
+function getGemColor(gem) {
+  return Number(gem?.color ?? gem?.elementIndex);
+}
+
+function getCellKey(cellR, cellC) {
+  return `${Number(cellR)},${Number(cellC)}`;
+}
+
+function getSuperGemCenterWorld(superGem, gems = []) {
+  const sourceItems = buildSuperGemSourceItems(superGem, gems);
+  if (!sourceItems.length) return null;
+  const total = sourceItems.reduce((acc, item) => ({
+    x: acc.x + Number(item.x || 0),
+    y: acc.y + Number(item.y || 0),
+  }), { x: 0, y: 0 });
+  return {
+    x: total.x / sourceItems.length,
+    y: total.y / sourceItems.length,
+  };
+}
+
+function buildSuperGemColorClear({ superGem, gems = [] }) {
+  const color = Number(superGem?.baseColor);
+  if (!Number.isFinite(color)) return { clearKeys: new Set(), flyItems: [], center: null };
+  const superGemCellKeys = new Set(
+    (Array.isArray(superGem?.cells) ? superGem.cells : [])
+      .map((cell) => getCellKey(cell.r, cell.c)),
+  );
+  const clearKeys = new Set();
+  const flyItems = [];
+  for (const gem of gems || []) {
+    if (!gem) continue;
+    const key = getCellKey(gem.cellR, gem.cellC);
+    if (getGemColor(gem) !== color) continue;
+    clearKeys.add(key);
+    if (!superGemCellKeys.has(key)) {
+      flyItems.push({
+        x: Number(gem.x || 0),
+        y: Number(gem.y || 0),
+        color,
+      });
+    }
+  }
+  return {
+    clearKeys,
+    flyItems,
+    center: getSuperGemCenterWorld(superGem, gems),
+  };
+}
+
 export function resetSuperGemBoardState(gameState) {
   gameState.superGems = [];
   gameState.superGemCellMap = new Map();
@@ -181,10 +231,25 @@ export function spendSuperGem({
   const beforeEnergy = Number(state.globals.Player_Energy || 0);
   const afterEnergy = Math.max(0, beforeEnergy - Number(superGemCost || 0));
   state.globals.Player_Energy = afterEnergy;
-  const cellSet = new Set(cells.map((cell) => `${cell.r},${cell.c}`));
-  gameState.gems = (gameState.gems || []).filter((gem) => gem && !cellSet.has(`${gem.cellR},${gem.cellC}`));
-  for (const cell of cells) {
-    if (gameState.grid[cell.c]) gameState.grid[cell.c][cell.r] = 0;
+  const colorClear = buildSuperGemColorClear({ superGem, gems: gameState.gems || [] });
+  if (
+    colorClear.flyItems.length &&
+    colorClear.center &&
+    typeof startGemMergeFx === 'function'
+  ) {
+    startGemMergeFx({
+      target: colorClear.center,
+      scaleOut: false,
+      sourceItems: colorClear.flyItems,
+    });
+  }
+  gameState.gems = (gameState.gems || [])
+    .filter((gem) => gem && !colorClear.clearKeys.has(getCellKey(gem.cellR, gem.cellC)));
+  for (const key of colorClear.clearKeys) {
+    const [rRaw, cRaw] = key.split(',');
+    const r = Number(rRaw);
+    const c = Number(cRaw);
+    if (gameState.grid[c]) gameState.grid[c][r] = 0;
   }
   gameState.superGems = (gameState.superGems || []).filter((sg) => sg.id !== superGem.id);
   gameState.superGemSignature = getSuperGemSignature(gameState.superGems || []);
@@ -203,6 +268,7 @@ export function spendSuperGem({
     reason: String(reason || 'tap'),
     energyBefore: beforeEnergy,
     energyAfter: afterEnergy,
+    clearedGemCount: colorClear.clearKeys.size,
     refillDeferred,
   };
   gameState.selectedGems = [];
