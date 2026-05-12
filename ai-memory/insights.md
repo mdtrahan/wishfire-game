@@ -307,3 +307,7 @@
 ## 2026-05-11 — Autoplay Must Clear Non-Combat Choice Modals
 - Idle combat autoplay needs bypass handlers for modal choice screens that are not the behavior under test. If a modal such as skill draw can stay open without changing turn, energy, pending skill, or gem counts, the progress watchdog will eventually classify a healthy run as stalled.
 - For random QA bypasses, select from the modal's live candidate list rather than hard-coding a card index. That keeps the harness moving while still sampling the temporary choice surface.
+
+## 2026-05-11 — Canvas Pixel Overlays Must Re-anchor On Resize
+- If a combat HUD overlay stores computed canvas-pixel bounds, browser resize must recompute those bounds after `layoutScale` and layout offsets change. Redrawing with stale pixel coordinates makes otherwise-correct combat log and story-card windows drift relative to the game field.
+- Diagnostic order for resize drift: verify whether the overlay stores world coordinates or canvas pixels, then verify the resize handler refreshes the derived bounds, then inspect CSS/DOM reflow only after the canvas-owned placement is current.

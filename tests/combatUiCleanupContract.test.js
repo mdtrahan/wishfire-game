@@ -22,8 +22,13 @@ test('combat story card layout anchors to the HP bar when buff placeholders are 
   assert.match(appSrc, /const hpBarInstance = \(instances \|\| \[\]\)\.find\(ins => ins && ins\.type === 'PartyHP_Bar' && ins\.world\);/);
   assert.match(appSrc, /const hpBarBottom = hpBarInstance/);
   assert.match(appSrc, /const layoutAnchorBottom = buffInstances\.length/);
-  assert.match(appSrc, /: \(hpBarBottom \|\| \(viewTop \+ Math\.max\(240, Math\.round\(250 \* layoutScale\)\)\)\);/);
+  assert.match(appSrc, /: \(ampBarBottom \|\| hpBarBottom \|\| \(viewTop \+ Math\.max\(240, Math\.round\(250 \* layoutScale\)\)\)\);/);
   assert.match(appSrc, /const slotY = layoutAnchorBottom \+ topMargin;/);
+});
+
+test('combat story card layout is recomputed after browser resize', () => {
+  const appSrc = read('web-runner/app.js');
+  assert.match(appSrc, /const handleWindowResize = \(\) => \{[\s\S]*resizeCanvas\(\);[\s\S]*initializeStoryCardLayout\('window-resize'\);[\s\S]*if \(typeof drawFrame === 'function'\) drawFrame\(\);[\s\S]*\};/);
 });
 
 test('combat renderer removes the four buff slot boxes from combat entirely', () => {

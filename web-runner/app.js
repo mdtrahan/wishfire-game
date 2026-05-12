@@ -4751,6 +4751,8 @@ async function main(){
   resizeCanvas();
   const handleWindowResize = () => {
     resizeCanvas();
+    initializeStoryCardLayout('window-resize');
+    if (typeof drawFrame === 'function') drawFrame();
   };
   window.addEventListener('resize', handleWindowResize);
   runtimeListenerTeardowns.push(() => window.removeEventListener('resize', handleWindowResize));
