@@ -33,6 +33,10 @@ function buildNormalHitLog(heroName, targetName, finalDmg) {
   return `${heroName} hit ${targetName || '?'} for ${finalDmg}!`;
 }
 
+function buildKojonnBlightLog(heroName, targetName, waveIndex, dotTotalDamage) {
+  return `${heroName} seeded blight wave ${waveIndex} on ${targetName || '?'} for ${dotTotalDamage}!`;
+}
+
 function splitDamageAcrossHits(totalDamage, hitCount) {
   const total = Math.max(1, Math.floor(Number(totalDamage || 0) || 1));
   const count = Math.max(1, Math.floor(Number(hitCount || 1) || 1));
@@ -108,6 +112,68 @@ function queueClusterSingleHits({
   return true;
 }
 
+function queueKojonnClusterBlightAoe({
+  state,
+  callFunctionWithContext,
+  fnContext,
+  actorUID,
+  hitCount,
+}) {
+  const actor = callFunctionWithContext(fnContext, 'GetActorByUID', actorUID);
+  if (!actor) return false;
+  const enemies = (state.entities || []).filter((entity) => entity && entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
+  if (!enemies.length) return false;
+  let ampMult = Number(callFunctionWithContext(fnContext, 'GetPowerAmpMultiplierForActor', actorUID) || 0);
+  if (ampMult > 0) {
+    const consumed = Number(callFunctionWithContext(fnContext, 'ConsumePowerAmpForActor', actorUID) || 0);
+    if (consumed > 0) ampMult = consumed;
+  }
+  const ampState = state.globals.PowerAmpByUID || {};
+  const ampEntry = ampState[actorUID];
+  const ampLifecycleId = Number(ampEntry && ampEntry.lifecycleId || 0);
+  const baseDotDamage = Math.max(1, Math.floor(Number(callFunctionWithContext(fnContext, 'GetEffectiveStat', actor, 'MAG') || actor.MAG || 0) * 0.75));
+  const dotTotalDamage = ampMult > 0 ? Math.max(1, Math.ceil(baseDotDamage * ampMult)) : baseDotDamage;
+  state.globals.NextHeroActionProfile = 'aoe';
+  callFunctionWithContext(fnContext, 'StartHeroLunge', actorUID);
+  state.globals.PendingHeroHits = state.globals.PendingHeroHits || [];
+  const now = Number(state.globals.time || 0);
+  const applyAt = now + SUPER_GEM_AOE_HIT_DELAY;
+  const heroName = getActorName(callFunctionWithContext, fnContext, actorUID);
+  const batchId = getNextSuperGemBatchId(state);
+  let firstHit = true;
+  for (let wave = 0; wave < hitCount; wave += 1) {
+    for (const enemy of enemies) {
+      state.globals.PendingHeroHits.push({
+        at: applyAt + (wave * SUPER_GEM_HIT_INTERVAL),
+        heroUID: actorUID,
+        targetUID: Number(enemy.uid || 0),
+        dmg: 0,
+        finalDmg: 0,
+        dotTotalDamage,
+        powerAmpMultiplier: firstHit ? ampMult : 0,
+        powerAmpLifecycleId: ampLifecycleId,
+        consumePowerAmp: ampMult > 0 && firstHit ? 1 : 0,
+        effectType: 'dot_apply',
+        effectName: `Blight Wave ${wave + 1}`,
+        calcPath: 'magicCalc',
+        heroName,
+        heroType: 'magic',
+        superGemClusterBatchId: batchId,
+        msg: buildKojonnBlightLog(heroName, String(enemy.name || '?'), wave + 1, dotTotalDamage),
+      });
+      firstHit = false;
+    }
+  }
+  state.globals.ActionLockUntil = Math.max(
+    Number(state.globals.ActionLockUntil || 0),
+    applyAt + ((hitCount - 1) * SUPER_GEM_HIT_INTERVAL) + 0.42,
+  );
+  state.globals.DeferAdvance = 1;
+  state.globals.AdvanceAfterAction = 1;
+  state.globals.ActionOwnerUID = actorUID;
+  return true;
+}
+
 function queueClusterAoeHits({
   state,
   callFunctionWithContext,
@@ -119,6 +185,15 @@ function queueClusterAoeHits({
   if (!actor) return false;
   const enemies = (state.entities || []).filter((entity) => entity && entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
   if (!enemies.length) return false;
+  if (String(actor.name || '') === 'Kojonn') {
+    return queueKojonnClusterBlightAoe({
+      state,
+      callFunctionWithContext,
+      fnContext,
+      actorUID,
+      hitCount,
+    });
+  }
   const mode = actor.attackType === 'magic' ? 'magic' : 'melee';
   let ampMult = Number(callFunctionWithContext(fnContext, 'GetPowerAmpMultiplierForActor', actorUID) || 0);
   if (ampMult > 0) {
@@ -195,7 +270,7 @@ export function armPendingSuperGemAttack({
   const color = Number(superGem.baseColor);
   if (color !== 0 && color !== 1) return false;
   const rng = getRuntimeRandom(state);
-  const hitCount = randomIntInclusive(2, 4, rng);
+  const hitCount = randomIntInclusive(3, 5, rng);
   state.globals.PendingSkillID = color === 1 ? 'HERO_SINGLE' : 'HERO_AOE';
   state.globals.PendingActor = Number(actorUID || 0);
   state.globals.PendingSuperGemAction = {

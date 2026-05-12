@@ -30,11 +30,15 @@ test('app wires super gem hooks for settle, spend, and decomposition', () => {
   assert.match(renderBoardSrc, /import \{ getSuperGemRenderImage, getSuperGemRenderRect \} from '\.\.\/src\/core\/superGemRender\.mjs';/);
   assert.match(renderRuntimeSrc, /renderBoard\.renderBoard\(ctx, gameState, uiState\.getUIState\(\), animationMath, \{\\n      boardGeometry,\\n      worldToCanvas,\\n      layoutScale,\\n      gemFrameImages,\\n      superGemFrameImages,\\n      superGemRainbowImage,\\n      now,/);
   assert.match(runtimeSrc, /const SUPER_GEM_COST = 4;/);
-  assert.match(runtimeSrc, /randomIntInclusive\(2, 4, rng\)/);
+  assert.match(runtimeSrc, /randomIntInclusive\(3, 5, rng\)/);
   assert.match(runtimeSrc, /randomIntInclusive\(4, 6, rng\)/);
   assert.match(runtimeSrc, /randomIntInclusive\(8, 16, rng\)/);
   assert.match(runtimeSrc, /superGemClusterVisualOnly/);
   assert.match(runtimeSrc, /superGemClusterApplyTotalOnHit/);
+  assert.match(runtimeSrc, /function queueKojonnClusterBlightAoe\(/);
+  assert.match(runtimeSrc, /effectType: 'dot_apply'/);
+  assert.match(runtimeSrc, /effectName: `Blight Wave \$\{wave \+ 1\}`/);
+  assert.match(renderRuntimeSrc, /effectName: String\(hit\.effectName \|\| 'Blight'\)/);
   assert.match(runtimeSrc, /export function armPendingSuperGemAttack\(/);
   assert.match(runtimeSrc, /export function executePendingSuperGemAction\(/);
   assert.match(runtimeSrc, /PendingSuperGemAction/);
