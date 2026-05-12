@@ -1089,6 +1089,32 @@ function persistDevToolingConfig(cfg) {
   } catch {}
 }
 
+function clearPersistedDevToolingConfig() {
+  try {
+    if (typeof window === 'undefined' || !window.sessionStorage) return;
+    window.sessionStorage.removeItem(DEV_TOOLING_STORAGE_KEY);
+  } catch {}
+}
+
+function hardRestartRuntimeFromDevTooling() {
+  if (typeof window === 'undefined' || !window.location) return false;
+  clearPersistedDevToolingConfig();
+  try {
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.search = '';
+    cleanUrl.hash = '';
+    if (window.location.href !== cleanUrl.href && typeof window.location.replace === 'function') {
+      window.location.replace(cleanUrl.href);
+      return true;
+    }
+  } catch {}
+  if (typeof window.location.reload === 'function') {
+    window.location.reload();
+    return true;
+  }
+  return false;
+}
+
 function ensureDevToolingConfig() {
   const persisted = readPersistedDevToolingConfig();
   const live = (state.globals.DevToolingConfig && typeof state.globals.DevToolingConfig === 'object')
@@ -4006,12 +4032,7 @@ async function main(){
       uiState.setUIStateField('overlayVisible', false);
       const resetCfg = createDefaultDevToolingConfig();
       state.globals.DevToolingConfig = resetCfg;
-      persistDevToolingConfig({ ...resetCfg, open: false });
-      if (typeof window !== 'undefined' && typeof window.location?.reload === 'function') {
-        window.location.reload();
-        return true;
-      }
-      return false;
+      return hardRestartRuntimeFromDevTooling();
     }
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
       ? layoutState.getActiveLayoutId()

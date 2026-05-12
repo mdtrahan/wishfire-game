@@ -207,6 +207,7 @@
 
 ## 2026-03-18 — Dev Tooling Must Write Conditions Without Moving Turn State
 - Dev panel toggles should only write the selected condition. If a QA toggle is meant to stage a skill harness, apply/remove it directly in the owning runtime seam and keep combat refresh, actor reload, and turn advancement out of the apply path.
+- Global dev-panel Restart is an exception: it must be a layout-agnostic hard runtime restart, not a combat refresh, modal close, or layout transition. Clear transient dev-tool session config and force a clean app boot before any active-layout-specific refresh logic can run.
 - When dev idle/autoplay is supposed to be hands-off, selection-only steps must be auto-resolved inside the dev automation loop, not by weakening normal gameplay selection rules.
 - Dev-tool loadout slots are a special case: hero/enemy slot edits are not “staged only.” They should trigger the sensible active-layout rebuild path, or QA will see valid duplicate slot config in the panel while runtime still shows the old roster and conclude the dev tool is broken.
 - If a skill is presented as a “free second attack,” do not implement it with extra-turn scheduler semantics. The owner seam must duplicate the attack immediately, preserve the original gem spend, and retarget only if the original target is gone before the follow-up lands.

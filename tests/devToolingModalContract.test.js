@@ -7,7 +7,23 @@ function extractFunctionSource(src, name) {
   const marker = `function ${name}(`;
   const start = src.indexOf(marker);
   assert.notEqual(start, -1, `missing ${name}`);
-  const braceStart = src.indexOf('{', start);
+  const paramsStart = src.indexOf('(', start);
+  assert.notEqual(paramsStart, -1, `missing params for ${name}`);
+  let parenDepth = 0;
+  let paramsEnd = -1;
+  for (let i = paramsStart; i < src.length; i += 1) {
+    const ch = src[i];
+    if (ch === '(') parenDepth += 1;
+    if (ch === ')') {
+      parenDepth -= 1;
+      if (parenDepth === 0) {
+        paramsEnd = i;
+        break;
+      }
+    }
+  }
+  assert.notEqual(paramsEnd, -1, `unterminated params for ${name}`);
+  const braceStart = src.indexOf('{', paramsEnd);
   assert.notEqual(braceStart, -1, `missing body for ${name}`);
   let depth = 0;
   for (let i = braceStart; i < src.length; i += 1) {
@@ -21,7 +37,7 @@ function extractFunctionSource(src, name) {
   assert.fail(`unterminated ${name}`);
 }
 
-test('web-runner app keeps dev tooling modal decoupled from combat reset flow', () => {
+test('web-runner app keeps dev tooling restart as a layout-agnostic hard reset', () => {
   const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
   const src = fs.readFileSync(filePath, 'utf8');
 
@@ -66,13 +82,30 @@ test('web-runner app keeps dev tooling modal decoupled from combat reset flow', 
   assert.match(src, /async function applyDevToolingConfig\(patch = \{\}, \{ closeModal = true \} = \{\}\)/);
   assert.match(src, /const resetCfg = createDefaultDevToolingConfig\(\);/);
   assert.match(src, /state\.globals\.DevToolingConfig = resetCfg;/);
-  assert.match(src, /persistDevToolingConfig\(\{ \.\.\.resetCfg, open: false \}\);/);
+  assert.match(src, /function clearPersistedDevToolingConfig\(\)/);
+  assert.match(src, /window\.sessionStorage\.removeItem\(DEV_TOOLING_STORAGE_KEY\);/);
+  assert.match(src, /function hardRestartRuntimeFromDevTooling\(\)/);
+  assert.match(src, /cleanUrl\.search = '';/);
+  assert.match(src, /cleanUrl\.hash = '';/);
+  assert.match(src, /window\.location\.replace\(cleanUrl\.href\);/);
   assert.match(src, /window\.location\.reload\(\)/);
   assert.doesNotMatch(src, /requestLayoutChange\('storyMock', 'dev-tool-restart'\)/);
   assert.doesNotMatch(src, /forceCombat = true;/);
+  assert.doesNotMatch(src, /persistDevToolingConfig\(\{ \.\.\.resetCfg, open: false \}\);/);
   assert.doesNotMatch(src, /applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ refreshGame:/);
   assert.doesNotMatch(src, /applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ resetGame:/);
   assert.match(src, /Double Attack: \$\{next\.doubleAttackHeroName \|\| 'Off'\}/);
+
+  const resetBlock = extractFunctionSource(src, 'refreshCombatSessionFromDevTooling');
+  assert.match(resetBlock, /if \(resetGame\) \{[\s\S]*return hardRestartRuntimeFromDevTooling\(\);[\s\S]*\}/);
+  assert.ok(
+    resetBlock.indexOf('return hardRestartRuntimeFromDevTooling();') < resetBlock.indexOf('const activeLayoutId'),
+    'resetGame must hard-restart before layout-specific refresh logic',
+  );
+  assert.ok(
+    resetBlock.indexOf('return hardRestartRuntimeFromDevTooling();') < resetBlock.indexOf('requestLayoutChange'),
+    'resetGame must hard-restart before layout change logic',
+  );
 });
 
 test('dev tooling restart helper owns restart button labels and reset delegation', () => {
