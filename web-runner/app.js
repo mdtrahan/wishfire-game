@@ -5,6 +5,7 @@ import {
   createCombatTurnRefreshBaseline,
   createEnemyTurnGateBaseline,
   createEnemyTurnIdleRecovery,
+  createEnemyTurnRetryHold,
   createDeferredAdvanceResolved,
   createDeferredRefillHold,
   createDeferredStaleBusyRecovery,
@@ -7203,10 +7204,16 @@ function getStoryCardLiveLineState() {
         ? callFunctionWithContext(fnContext, 'GetActorByUID', currentTurnUID)
         : null;
       const refillActive = !!(gameState.refillBounce && gameState.refillBounce.active);
-      if (currentEnemy && currentEnemy.kind === 'enemy' && Number(currentEnemy.hp || 0) > 0 && !hasEmpty && !refillActive) {
+      const liveCurrentEnemy = currentEnemy && currentEnemy.kind === 'enemy' && Number(currentEnemy.hp || 0) > 0;
+      if (liveCurrentEnemy && !hasEmpty && !refillActive) {
         applyTurnGateIntent(createEnemyTurnGateBaseline);
         state.globals.BoardFillActive = 0;
         callFunctionWithContext(fnContext, 'EnemyTurn', currentTurnUID);
+      } else if (liveCurrentEnemy) {
+        applyTurnGateIntent(createEnemyTurnRetryHold, {
+          currentTurnUID,
+        });
+        console.log(`[TURN] enemy retry hold uid=${currentTurnUID} hasEmpty=${hasEmpty} refillActive=${refillActive} idx=${state.globals.CurrentTurnIndex || 0}`);
       } else {
         applyTurnGateIntent(createEnemyTurnIdleRecovery, {
           now: Number(state.globals.time || 0),

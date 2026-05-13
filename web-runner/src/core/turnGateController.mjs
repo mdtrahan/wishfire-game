@@ -35,6 +35,23 @@ export function createEnemyTurnGateBaseline(current = {}) {
   };
 }
 
+export function createEnemyTurnRetryHold(current = {}, { currentTurnUID = 0 } = {}) {
+  const base = normalizeTurnGateState(current);
+  return {
+    ...base,
+    CanPickGems: 0,
+    IsPlayerBusy: 0,
+    DeferAdvance: 0,
+    AdvanceAfterAction: 0,
+    ActionLockUntil: 0,
+    ActionOwnerUID: Number(currentTurnUID || 0),
+    ActionInProgress: 0,
+    ActionActorUID: 0,
+    PendingSkillID: '',
+    PendingActor: 0,
+  };
+}
+
 export function createHeroTurnGateBaseline(current = {}) {
   const base = normalizeTurnGateState(current);
   return {
