@@ -79,12 +79,13 @@ export function DoHeal(ctx, actorUID, potencyMultiplier = 1) {
   let heal = Math.max(1, Math.ceil(partyMaxHP * 7 / 100));
   const potency = Math.max(1, Number(potencyMultiplier || 1));
   if (potency > 1) {
-    const criticalHealMin = 32;
-    const criticalHealMax = 42;
+    const criticalHealMinPct = 32;
+    const criticalHealMaxPct = 42;
     const rng = typeof g.RuntimeRandom === 'function' ? g.RuntimeRandom : Math.random;
     const rawRoll = Number(rng());
     const roll = Number.isFinite(rawRoll) && rawRoll >= 0 && rawRoll < 1 ? rawRoll : Math.random();
-    heal = criticalHealMin + Math.floor(roll * (criticalHealMax - criticalHealMin + 1));
+    const criticalHealPercent = criticalHealMinPct + Math.floor(roll * (criticalHealMaxPct - criticalHealMinPct + 1));
+    heal = Math.max(1, Math.ceil(partyMaxHP * criticalHealPercent / 100));
     if (g.ApplyChainToNextHeal === 1) g.ApplyChainToNextHeal = 0;
   } else if (g.ApplyChainToNextHeal === 1) {
     heal = Math.ceil(heal * (g.ChainMultiplier || 1));

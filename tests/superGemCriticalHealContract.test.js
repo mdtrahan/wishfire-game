@@ -52,7 +52,7 @@ function createHealContext({
   return { ctx, calls };
 }
 
-test('super-gem critical heal rolls within the tightened 32 to 42 HP band', () => {
+test('super-gem critical heal rolls within the tightened 32 to 42 percent party max HP band', () => {
   const DoHeal = loadDoHeal('web-runner/modules/skillSheet.js');
   const low = createHealContext({ partyHP: 10, partyMaxHP: 147, runtimeRandom: () => 0 });
   const high = createHealContext({ partyHP: 10, partyMaxHP: 147, runtimeRandom: () => 0.999 });
@@ -60,11 +60,11 @@ test('super-gem critical heal rolls within the tightened 32 to 42 HP band', () =
   DoHeal(low.ctx, 4, 6);
   DoHeal(high.ctx, 4, 6);
 
-  assert.equal(low.ctx.globals.PartyHP, 42);
-  assert.equal(high.ctx.globals.PartyHP, 52);
-  assert.ok(low.calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 32));
-  assert.ok(high.calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 42));
-  assert.ok(high.calls.some(call => call.name === 'LogCombat' && /critically heals party for 42/.test(String(call.args[0]))));
+  assert.equal(low.ctx.globals.PartyHP, 58);
+  assert.equal(high.ctx.globals.PartyHP, 72);
+  assert.ok(low.calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 48));
+  assert.ok(high.calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 62));
+  assert.ok(high.calls.some(call => call.name === 'LogCombat' && /critically heals party for 62/.test(String(call.args[0]))));
 });
 
 test('super-gem critical heal respects the current HP cap', () => {
@@ -76,7 +76,7 @@ test('super-gem critical heal respects the current HP cap', () => {
   assert.equal(ctx.globals.PartyHP, 147);
 });
 
-test('super-gem critical heal is not amplified beyond 42 by chain math', () => {
+test('super-gem critical heal is not amplified beyond the rolled percent by chain math', () => {
   const DoHeal = loadDoHeal('web-runner/modules/skillSheet.js');
   const { ctx, calls } = createHealContext({
     partyHP: 10,
@@ -87,8 +87,8 @@ test('super-gem critical heal is not amplified beyond 42 by chain math', () => {
 
   DoHeal(ctx, 4, 6);
 
-  assert.equal(ctx.globals.PartyHP, 52);
-  assert.ok(calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 42));
+  assert.equal(ctx.globals.PartyHP, 72);
+  assert.ok(calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 62));
   assert.equal(ctx.globals.ApplyChainToNextHeal, 0);
 });
 
