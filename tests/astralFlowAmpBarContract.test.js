@@ -84,13 +84,21 @@ test('combat renderer keeps HP green and draws a blue Astral Flow amp bar beneat
   assert.match(runtimeSrc, /ctx\.fillRect\(ampX, ampY, ampW \* ampRatio, barH\);/);
 });
 
-test('battle-start ordering merges both teams by initiative instead of front-loading all heroes', async () => {
+test('battle-start ordering only promotes the first priority actor before normal initiative resumes', async () => {
   const scheduler = await import(pathToFileURL(path.join(__dirname, '..', 'src', 'core', 'schedulerRules.mjs')).href);
-  const order = scheduler.deriveBattleStartRoundPartition([
+  const heroStartOrder = scheduler.deriveBattleStartRoundPartition([
+    { uid: 1, type: 0, spd: 10, init: 12 },
+    { uid: 2, type: 0, spd: 8, init: 9 },
+    { uid: 3, type: 1, spd: 7, init: 14 },
+    { uid: 4, type: 1, spd: 6, init: 11 },
+  ], '').map(actor => Number(actor.uid || 0));
+  const enemyStartOrder = scheduler.deriveBattleStartRoundPartition([
     { uid: 1, type: 0, spd: 10, init: 12 },
     { uid: 2, type: 0, spd: 8, init: 9 },
     { uid: 3, type: 1, spd: 7, init: 11 },
     { uid: 4, type: 1, spd: 6, init: 8 },
-  ], '').map(actor => Number(actor.uid || 0));
-  assert.deepEqual(order, [1, 3, 2, 4]);
+  ], 'ambush').map(actor => Number(actor.uid || 0));
+
+  assert.deepEqual(heroStartOrder, [1, 3, 4, 2]);
+  assert.deepEqual(enemyStartOrder, [3, 1, 2, 4]);
 });

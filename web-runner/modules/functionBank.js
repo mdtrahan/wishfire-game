@@ -4999,8 +4999,7 @@ export function BuildRoundGroups(ctx) {
       continue;
     }
     const last = groups[groups.length - 1];
-    const boundary = startModeApplied && lastType !== actor.type;
-    if (!boundary && Math.abs(last.init - actor.init) <= tol) {
+    if (Math.abs(last.init - actor.init) <= tol) {
       last.members.push(actor);
     } else {
       groups.push({ init: actor.init, members: [actor] });

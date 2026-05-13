@@ -80,9 +80,11 @@ export function deriveBattleStartRoundPartition(withInit = [], startMode = '') {
   const next = Array.isArray(withInit) ? withInit.map(actor => ({ ...actor })) : [];
   const sortByBattleStartInit = (a, b) => (Number(b?.init || 0) - Number(a?.init || 0))
     || compareSchedulerSlots(a, b);
-  const heroes = next.filter(a => Number(a?.type || 0) === 0).sort(sortByBattleStartInit);
-  const enemies = next.filter(a => Number(a?.type || 0) === 1).sort(sortByBattleStartInit);
-  return String(startMode || '') === 'ambush'
-    ? enemies.concat(heroes)
-    : next.sort(sortByBattleStartInit);
+  const ordered = next.sort(sortByBattleStartInit);
+  const priorityType = String(startMode || '') === 'ambush' ? 1 : 0;
+  const priorityIndex = ordered.findIndex(actor => Number(actor?.type || 0) === priorityType);
+  if (priorityIndex <= 0) return ordered;
+  const [priorityActor] = ordered.splice(priorityIndex, 1);
+  ordered.unshift(priorityActor);
+  return ordered;
 }
