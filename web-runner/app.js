@@ -255,6 +255,49 @@ function canResolveDeferredAdvance({ hasEmpty = false, enemyLineClearPressureAct
   };
 }
 
+function isHitFlashActive(uid) {
+  const flashes = state.globals.HitFlashByUID;
+  if (!uid || !flashes || typeof flashes !== 'object') return false;
+  const entry = flashes[uid];
+  if (entry && typeof entry === 'object') {
+    return Number(entry.until || 0) > Number(state.globals.time || 0);
+  }
+  return Number(entry || 0) > Number(state.globals.time || 0);
+}
+
+function getHitFlashTone(uid) {
+  const flashes = state.globals.HitFlashByUID;
+  if (!uid || !flashes || typeof flashes !== 'object') return 'black';
+  const entry = flashes[uid];
+  if (entry && typeof entry === 'object') return String(entry.tone || 'black');
+  return 'black';
+}
+
+function hasPersistentEnemyBlightOverlay(uid) {
+  if (!uid) return false;
+  const dots = Array.isArray(state.globals.EnemyDamageOverTime) ? state.globals.EnemyDamageOverTime : [];
+  for (const dot of dots) {
+    if (!dot) continue;
+    if (Number(dot.targetUID || 0) !== Number(uid || 0)) continue;
+    if (Number(dot.remainingFires || 0) <= 0) continue;
+    if (dot.totalDamageRemaining != null && Number(dot.totalDamageRemaining || 0) <= 0) continue;
+    if (!String(dot.effectName || 'Blight').startsWith('Blight')) continue;
+    return true;
+  }
+  return false;
+}
+
+function hasPersistentHeroRegenOverlay() {
+  const regens = Array.isArray(state.globals.PartyRegens) ? state.globals.PartyRegens : [];
+  for (const regen of regens) {
+    if (!regen) continue;
+    if (Number(regen.remainingFires || 0) <= 0) continue;
+    if (regen.totalHealRemaining != null && Number(regen.totalHealRemaining || 0) <= 0) continue;
+    return true;
+  }
+  return false;
+}
+
 function ensureDamageNumberLayer() {
   if (damageNumberLayer || typeof document === 'undefined' || !canvas) return damageNumberLayer;
   const layer = document.createElement('div');
@@ -5450,10 +5493,10 @@ async function main(){
       randomGemFrame,
       assertBoardIntegrity,
       getGemGateSnapshot,
-      hasPersistentEnemyBlightOverlay: () => false,
-      hasPersistentHeroRegenOverlay: () => false,
-      isHitFlashActive: () => false,
-      getHitFlashTone: () => 'black',
+      hasPersistentEnemyBlightOverlay,
+      hasPersistentHeroRegenOverlay,
+      isHitFlashActive,
+      getHitFlashTone,
     };
     const result = renderRuntime.renderRuntime(runtimeScope);
     if (result && result.overlayData) {
