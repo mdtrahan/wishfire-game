@@ -7,8 +7,9 @@ test('super-heal routes through DoHeal with explicit potency multiplier', () => 
   const runtimeSrc = fs.readFileSync('web-runner/systems/superGemRuntime.js', 'utf8');
   assert.match(skillSheetSrc, /export function DoHeal\(ctx, actorUID, potencyMultiplier = 1\)/);
   assert.match(skillSheetSrc, /const potency = Math\.max\(1, Number\(potencyMultiplier \|\| 1\)\);/);
-  assert.match(skillSheetSrc, /const criticalHealCap = Math\.max\(1, Math\.ceil\(partyMaxHP \* 40 \/ 100\)\);/);
-  assert.match(skillSheetSrc, /if \(potency > 1\) \{\s*heal = Math\.min\(criticalHealCap, Math\.max\(1, Math\.ceil\(heal \* potency\)\)\);\s*\}/s);
+  assert.match(skillSheetSrc, /const criticalHealMin = 32;/);
+  assert.match(skillSheetSrc, /const criticalHealMax = 42;/);
+  assert.match(skillSheetSrc, /heal = criticalHealMin \+ Math\.floor\(roll \* \(criticalHealMax - criticalHealMin \+ 1\)\);/);
   assert.match(runtimeSrc, /const SUPER_GEM_HEAL_POTENCY = 6;/);
   assert.match(runtimeSrc, /callFunctionWithContext\(fnContext, 'DoHeal', actorUID, SUPER_GEM_HEAL_POTENCY\);/);
 });

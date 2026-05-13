@@ -9,11 +9,12 @@ function loadDoHeal(relPath) {
   return Function(`${src}; return DoHeal;`)();
 }
 
-function createKojonnHealContext({ heal = 30, potency = 1 } = {}) {
+function createKojonnHealContext({ heal = 30, potency = 1, runtimeRandom = () => 0 } = {}) {
   const calls = [];
   const globals = {
     PartyHP: 10,
     PartyMaxHP: 100,
+    RuntimeRandom: runtimeRandom,
     TurnSerial: 12,
     PartyHPBarPosWorld: { x: 100, y: 20, w: 80, h: 12, ox: 0, oy: 0 },
   };
@@ -57,15 +58,15 @@ test('Kojonn heal queues the recovered 3-turn regen payload in the web runner mo
   assert.ok(calls.some(call => call.name === 'LogCombat' && call.args[0] === 'Kojonn applies 3-turn Regen!'));
 });
 
-test('Kojonn super-heal potency still feeds the 3-turn regen total', () => {
+test('Kojonn super-heal uses the tightened critical regen total', () => {
   const DoHeal = loadDoHeal('web-runner/modules/skillSheet.js');
-  const { ctx } = createKojonnHealContext({ heal: 30 });
+  const { ctx } = createKojonnHealContext({ heal: 30, runtimeRandom: () => 0.999 });
 
   DoHeal(ctx, 4, 2);
 
-  assert.equal(ctx.globals.PartyHP, 14);
+  assert.equal(ctx.globals.PartyHP, 24);
   assert.equal(ctx.globals.PartyRegens[0].remainingFires, 2);
-  assert.equal(ctx.globals.PartyRegens[0].totalHealRemaining, 10);
+  assert.equal(ctx.globals.PartyRegens[0].totalHealRemaining, 28);
 });
 
 test('Construct mirror carries the same recovered Kojonn regen payload shape', () => {

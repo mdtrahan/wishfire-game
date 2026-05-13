@@ -21,11 +21,20 @@ function loadSuperGemRuntime() {
   return context.module.exports;
 }
 
-function createHealContext({ partyHP = 10, partyMaxHP = 100, actorName = 'Falie' } = {}) {
+function createHealContext({
+  partyHP = 10,
+  partyMaxHP = 100,
+  actorName = 'Falie',
+  runtimeRandom = () => 0,
+  chainMultiplier = 1,
+} = {}) {
   const calls = [];
   const globals = {
     PartyHP: partyHP,
     PartyMaxHP: partyMaxHP,
+    RuntimeRandom: runtimeRandom,
+    ApplyChainToNextHeal: chainMultiplier > 1 ? 1 : 0,
+    ChainMultiplier: chainMultiplier,
     PartyHPBarPosWorld: { x: 100, y: 20, w: 80, h: 12, ox: 0, oy: 0 },
   };
   const ctx = {
@@ -43,24 +52,44 @@ function createHealContext({ partyHP = 10, partyMaxHP = 100, actorName = 'Falie'
   return { ctx, calls };
 }
 
-test('super-gem critical heal can reach but not exceed 40 percent of party max HP', () => {
+test('super-gem critical heal rolls within the tightened 32 to 42 HP band', () => {
   const DoHeal = loadDoHeal('web-runner/modules/skillSheet.js');
-  const { ctx, calls } = createHealContext({ partyHP: 10, partyMaxHP: 100 });
+  const low = createHealContext({ partyHP: 10, partyMaxHP: 147, runtimeRandom: () => 0 });
+  const high = createHealContext({ partyHP: 10, partyMaxHP: 147, runtimeRandom: () => 0.999 });
 
-  DoHeal(ctx, 4, 6);
+  DoHeal(low.ctx, 4, 6);
+  DoHeal(high.ctx, 4, 6);
 
-  assert.equal(ctx.globals.PartyHP, 50);
-  assert.ok(calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 40));
-  assert.ok(calls.some(call => call.name === 'LogCombat' && /critically heals party for 40/.test(String(call.args[0]))));
+  assert.equal(low.ctx.globals.PartyHP, 42);
+  assert.equal(high.ctx.globals.PartyHP, 52);
+  assert.ok(low.calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 32));
+  assert.ok(high.calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 42));
+  assert.ok(high.calls.some(call => call.name === 'LogCombat' && /critically heals party for 42/.test(String(call.args[0]))));
 });
 
 test('super-gem critical heal respects the current HP cap', () => {
   const DoHeal = loadDoHeal('web-runner/modules/skillSheet.js');
-  const { ctx } = createHealContext({ partyHP: 75, partyMaxHP: 100 });
+  const { ctx } = createHealContext({ partyHP: 130, partyMaxHP: 147, runtimeRandom: () => 0.999 });
 
   DoHeal(ctx, 4, 6);
 
-  assert.equal(ctx.globals.PartyHP, 100);
+  assert.equal(ctx.globals.PartyHP, 147);
+});
+
+test('super-gem critical heal is not amplified beyond 42 by chain math', () => {
+  const DoHeal = loadDoHeal('web-runner/modules/skillSheet.js');
+  const { ctx, calls } = createHealContext({
+    partyHP: 10,
+    partyMaxHP: 147,
+    runtimeRandom: () => 0.999,
+    chainMultiplier: 2,
+  });
+
+  DoHeal(ctx, 4, 6);
+
+  assert.equal(ctx.globals.PartyHP, 52);
+  assert.ok(calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 42));
+  assert.equal(ctx.globals.ApplyChainToNextHeal, 0);
 });
 
 test('heal super-gem activation routes to critical DoHeal and consumes turn pacing', () => {
