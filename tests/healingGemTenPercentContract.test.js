@@ -32,14 +32,14 @@ function createHealContext({ partyHP = 40, partyMaxHP = 100 } = {}) {
   return { ctx, calls };
 }
 
-test('healing gem matches restore 10 percent of party max HP total', () => {
+test('healing gem matches restore 7 percent of party max HP total', () => {
   const DoHeal = loadDoHeal('web-runner/modules/skillSheet.js');
   const { ctx, calls } = createHealContext({ partyHP: 40, partyMaxHP: 100 });
 
   DoHeal(ctx, 4);
 
-  assert.equal(ctx.globals.PartyHP, 50);
-  assert.ok(calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 10));
+  assert.equal(ctx.globals.PartyHP, 47);
+  assert.ok(calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 7));
   assert.ok(calls.every(call => call.name !== 'CalculateHeal'));
 });
 
