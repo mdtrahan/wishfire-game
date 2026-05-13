@@ -75,10 +75,12 @@ export function ApplyPartyHeal(ctx, healAmount) {
 
 export function DoHeal(ctx, actorUID, potencyMultiplier = 1) {
   const g = getGlobals(ctx);
-  let heal = Math.max(1, Math.ceil(Math.max(0, Number(g.PartyMaxHP || 0)) * 7 / 100));
+  const partyMaxHP = Math.max(0, Number(g.PartyMaxHP || 0));
+  let heal = Math.max(1, Math.ceil(partyMaxHP * 7 / 100));
+  const criticalHealCap = Math.max(1, Math.ceil(partyMaxHP * 40 / 100));
   const potency = Math.max(1, Number(potencyMultiplier || 1));
   if (potency > 1) {
-    heal = Math.max(1, Math.ceil(heal * potency));
+    heal = Math.min(criticalHealCap, Math.max(1, Math.ceil(heal * potency)));
   }
   if (g.ApplyChainToNextHeal === 1) {
     heal = Math.ceil(heal * (g.ChainMultiplier || 1));
@@ -133,7 +135,7 @@ export function DoHeal(ctx, actorUID, potencyMultiplier = 1) {
       const textY = (barPos.y - barH * barPos.oy) + barH * 0.5;
       ctx.callFunction('SpawnDamageText', appliedInitialHeal, textX, textY, 'heal', 'bar');
     }
-    ctx.callFunction('LogCombat', `${actorName} applies 3-turn Regen!`);
+    ctx.callFunction('LogCombat', potency > 1 ? `${actorName} applies critical 3-turn Regen!` : `${actorName} applies 3-turn Regen!`);
   } else {
     const beforeHP = g.PartyHP || 0;
     const prevSpawn = g.SpawnDamageText;
@@ -155,7 +157,7 @@ export function DoHeal(ctx, actorUID, potencyMultiplier = 1) {
       const textY = (barPos.y - barH * barPos.oy) + barH * 0.5;
       ctx.callFunction('SpawnDamageText', totalHeal, textX, textY, 'heal', 'bar');
     }
-    ctx.callFunction('LogCombat', `${actorName} heals party for ${totalHeal}`);
+    ctx.callFunction('LogCombat', potency > 1 ? `${actorName} critically heals party for ${totalHeal}` : `${actorName} heals party for ${totalHeal}`);
   }
   g.ActionLockUntil = (g.time || 0) + (g.DamageTextDurationSec || 1.35);
   g.DeferAdvance = 1;

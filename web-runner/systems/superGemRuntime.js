@@ -1,4 +1,5 @@
 const SUPER_GEM_COST = 4;
+const SUPER_GEM_HEAL_POTENCY = 6;
 const SUPER_GEM_SINGLE_HIT_DELAY = 0.97;
 const SUPER_GEM_AOE_HIT_DELAY = 1.07;
 const SUPER_GEM_HIT_INTERVAL = 0.2;
@@ -375,7 +376,13 @@ export function activateSuperGemEffect({
     state.globals.AdvanceAfterAction = 1;
     return true;
   }
-  if (color === 4) return false;
+  if (color === 4) {
+    if (typeof startGemMergeFx === 'function') {
+      startGemMergeFx({ sourceItems });
+    }
+    callFunctionWithContext(fnContext, 'DoHeal', actorUID, SUPER_GEM_HEAL_POTENCY);
+    return true;
+  }
   if (color === 5) {
     callFunctionWithContext(fnContext, 'ArmPowerAmpFixed', actorUID, 5);
     state.globals.ActionLockUntil = Math.max(Number(state.globals.ActionLockUntil || 0), Number(state.globals.time || 0) + 0.6);
