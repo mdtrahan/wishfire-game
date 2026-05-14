@@ -313,3 +313,7 @@
 ## 2026-05-11 — Canvas Pixel Overlays Must Re-anchor On Resize
 - If a combat HUD overlay stores computed canvas-pixel bounds, browser resize must recompute those bounds after `layoutScale` and layout offsets change. Redrawing with stale pixel coordinates makes otherwise-correct combat log and story-card windows drift relative to the game field.
 - Diagnostic order for resize drift: verify whether the overlay stores world coordinates or canvas pixels, then verify the resize handler refreshes the derived bounds, then inspect CSS/DOM reflow only after the canvas-owned placement is current.
+
+## 2026-05-14 — Pending Special Attacks Need Normal Target Fallbacks
+- If a special attack reuses a normal targeted skill surface, its pending resolver must preserve the normal skill's default-target fallback. Otherwise confirming without an explicit target can silently fall back to the normal skill and skip the special payload.
+- Diagnostic order for intermittent targeted-supergem misses: verify the pending action object survives spend, verify resolver target selection when `SelectedEnemyUID` is empty, then verify dev autoplay clears pending action state instead of falling through to normal `ExecuteSkill`.

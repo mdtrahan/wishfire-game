@@ -136,6 +136,15 @@ function queueClusterSingleHits({
   return true;
 }
 
+function getDefaultSingleTargetUID(state) {
+  const target = (state?.entities || []).find((entity) => (
+    entity &&
+    entity.kind === 'enemy' &&
+    Number(entity.hp || 0) > 0
+  ));
+  return Number(target?.uid || 0);
+}
+
 function queueKojonnClusterBlightAoe({
   state,
   callFunctionWithContext,
@@ -326,7 +335,7 @@ export function executePendingSuperGemAction({
   const hitCount = Math.max(1, Number(pending.hitCount || 1));
   let activated = false;
   if (color === 1) {
-    const targetUID = Number(state.globals.SelectedEnemyUID || 0);
+    const targetUID = Number(state.globals.SelectedEnemyUID || 0) || getDefaultSingleTargetUID(state);
     if (!(targetUID > 0)) return false;
     activated = queueClusterSingleHits({
       state,

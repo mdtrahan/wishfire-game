@@ -153,6 +153,19 @@ test('non-Falie red super-gem still executes the single-target cluster attack co
   assert.equal(context.state.globals.NextHeroActionProfile, 'single');
 });
 
+test('non-Falie red super-gem cluster falls back to the first living enemy when no target is preselected', () => {
+  const runtime = loadSuperGemRuntime();
+  const context = createSuperGemContext('Huun');
+  context.state.globals.SelectedEnemyUID = 0;
+
+  assert.equal(activateRedSuperGem(runtime, context), true);
+  assert.equal(runtime.executePendingSuperGemAction(context), true);
+  assert.equal(context.state.globals.PendingSuperGemAction, null);
+  assert.equal(context.state.globals.PendingHeroHits.length, 3);
+  assert.equal(context.state.globals.PendingHeroHits.every(hit => hit.targetUID === 200), true);
+  assert.equal(context.state.globals.NextHeroActionProfile, 'single');
+});
+
 function makeDamageContext() {
   const hero = {
     uid: 100,
