@@ -3552,13 +3552,39 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
   return dmg;
 }
 
+function absorbPartyTempHPShield(g, dmg) {
+  const incoming = Math.max(0, Number(dmg || 0));
+  const shieldBefore = Math.max(0, Number(g.PartyTempHPShield || 0));
+  const absorbed = Math.min(shieldBefore, incoming);
+  if (absorbed <= 0) {
+    g.LastPartyTempHPShieldAbsorbed = 0;
+    return { damageAfterShield: incoming, absorbed: 0 };
+  }
+  const shieldAfter = Math.max(0, shieldBefore - absorbed);
+  g.PartyTempHPShield = shieldAfter;
+  g.LastPartyTempHPShieldAbsorbed = absorbed;
+  if (shieldAfter <= 0) {
+    g.PartyTempHPShieldStacks = 0;
+    g.PartyTempHPShieldRatio = 0;
+    g.PartyTempHPShieldMax = 0;
+  }
+  return { damageAfterShield: Math.max(0, incoming - absorbed), absorbed };
+}
+
 export function ApplyDamageToTarget(ctx, uid, dmg) {
   const g = getGlobals(ctx);
   g.LastDamageSourceUID = Number(GetCurrentTurn(ctx) || 0);
   const t = GetActorByUID(ctx, uid);
   if (!t) return 0;
   const beforeHP = Number(t.hp ?? 0);
-  t.hp = Math.max(0, (t.hp ?? 0) - dmg);
+  let damageToHP = Math.max(0, Number(dmg || 0));
+  let shieldAbsorbed = 0;
+  if (t.kind === 'hero') {
+    const shieldResult = absorbPartyTempHPShield(g, damageToHP);
+    damageToHP = shieldResult.damageAfterShield;
+    shieldAbsorbed = shieldResult.absorbed;
+  }
+  t.hp = Math.max(0, (t.hp ?? 0) - damageToHP);
   const afterHP = Number(t.hp ?? 0);
   const appliedDamage = Math.max(0, beforeHP - afterHP);
   if (t.kind === 'hero' && appliedDamage > 0) {
@@ -3576,6 +3602,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
     sourceUID: Number(g.LastDamageSourceUID || 0),
     damage: Number(dmg || 0),
     appliedDamage,
+    shieldAbsorbed,
     beforeHP,
     afterHP,
   });
@@ -3929,9 +3956,12 @@ export function ApplyDamage(ctx, targetUID, dmg) {
 }
 
 export function ApplyPartyDamage(ctx, dmg) {
+  const g = getGlobals(ctx);
+  const shieldResult = absorbPartyTempHPShield(g, dmg);
+  const damageToHP = shieldResult.damageAfterShield;
   const heroes = getHeroes(ctx);
   for (const h of heroes) {
-    h.hp = Math.max(0, (h.hp ?? 0) - dmg);
+    h.hp = Math.max(0, (h.hp ?? 0) - damageToHP);
     if (h.hp === 0) h.isAlive = false;
   }
   UpdateHeroHPUI(ctx);

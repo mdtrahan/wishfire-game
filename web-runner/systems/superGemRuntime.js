@@ -3,6 +3,8 @@ const SUPER_GEM_HEAL_POTENCY = 6;
 const SUPER_GEM_SINGLE_HIT_DELAY = 0.97;
 const SUPER_GEM_AOE_HIT_DELAY = 1.07;
 const SUPER_GEM_HIT_INTERVAL = 0.2;
+const FALIE_RED_SUPER_GEM_SHIELD_RATIOS = Object.freeze([0, 0.18, 0.26, 0.34, 0.42, 0.5]);
+const FALIE_RED_SUPER_GEM_SHIELD_COLOR = '#6CCBEE';
 
 function getRuntimeRandom(state) {
   const fn = state && state.globals && typeof state.globals.RuntimeRandom === 'function'
@@ -28,6 +30,27 @@ function getNextSuperGemBatchId(state) {
   const next = Math.max(1, Number(state?.globals?.NextSuperGemBatchId || 1));
   state.globals.NextSuperGemBatchId = next + 1;
   return next;
+}
+
+function getFalieRedSuperGemShieldRatio(stackCount) {
+  const clamped = Math.max(0, Math.min(5, Math.floor(Number(stackCount || 0))));
+  return FALIE_RED_SUPER_GEM_SHIELD_RATIOS[clamped] || 0;
+}
+
+function grantFalieRedSuperGemPartyShield(state) {
+  if (!state?.globals) return false;
+  const g = state.globals;
+  const nextStacks = Math.max(1, Math.min(5, Math.floor(Number(g.PartyTempHPShieldStacks || 0)) + 1));
+  const ratio = getFalieRedSuperGemShieldRatio(nextStacks);
+  const maxHP = Math.max(1, Number(g.PartyMaxHP || 1));
+  const shieldHP = Math.max(0, Math.round(maxHP * ratio));
+  g.PartyTempHPShieldStacks = nextStacks;
+  g.PartyTempHPShieldRatio = ratio;
+  g.PartyTempHPShieldMax = shieldHP;
+  g.PartyTempHPShield = Math.max(Number(g.PartyTempHPShield || 0), shieldHP);
+  g.PartyTempHPShieldColor = FALIE_RED_SUPER_GEM_SHIELD_COLOR;
+  g.PartyTempHPShieldSource = 'falie_red_super_gem';
+  return g.PartyTempHPShield > 0;
 }
 
 function buildNormalHitLog(heroName, targetName, finalDmg) {
@@ -323,6 +346,12 @@ export function executePendingSuperGemAction({
     });
   }
   if (!activated) return false;
+  if (color === 1) {
+    const actor = callFunctionWithContext(fnContext, 'GetActorByUID', actorUID);
+    if (String(actor && actor.name || '') === 'Falie') {
+      grantFalieRedSuperGemPartyShield(state);
+    }
+  }
   clearPendingSuperGemAction(state);
   return true;
 }
