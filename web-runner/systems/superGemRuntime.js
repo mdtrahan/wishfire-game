@@ -346,12 +346,6 @@ export function executePendingSuperGemAction({
     });
   }
   if (!activated) return false;
-  if (color === 1) {
-    const actor = callFunctionWithContext(fnContext, 'GetActorByUID', actorUID);
-    if (String(actor && actor.name || '') === 'Falie') {
-      grantFalieRedSuperGemPartyShield(state);
-    }
-  }
   clearPendingSuperGemAction(state);
   return true;
 }
@@ -373,7 +367,14 @@ export function activateSuperGemEffect({
   if (!(actorUID > 0)) return false;
   state.globals.HideHeroSelector = color === 1 ? 0 : 1;
   if (color === 1) {
-    return armPendingSuperGemAttack({ superGem, actorUID, state });
+    const armed = armPendingSuperGemAttack({ superGem, actorUID, state });
+    if (armed) {
+      const actor = callFunctionWithContext(fnContext, 'GetActorByUID', actorUID);
+      if (String(actor && actor.name || '') === 'Falie') {
+        grantFalieRedSuperGemPartyShield(state);
+      }
+    }
+    return armed;
   }
   if (color === 0) {
     return armPendingSuperGemAttack({ superGem, actorUID, state });
