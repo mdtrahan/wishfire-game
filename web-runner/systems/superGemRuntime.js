@@ -367,14 +367,18 @@ export function activateSuperGemEffect({
   if (!(actorUID > 0)) return false;
   state.globals.HideHeroSelector = color === 1 ? 0 : 1;
   if (color === 1) {
-    const armed = armPendingSuperGemAttack({ superGem, actorUID, state });
-    if (armed) {
-      const actor = callFunctionWithContext(fnContext, 'GetActorByUID', actorUID);
-      if (String(actor && actor.name || '') === 'Falie') {
-        grantFalieRedSuperGemPartyShield(state);
-      }
+    const actor = callFunctionWithContext(fnContext, 'GetActorByUID', actorUID);
+    if (String(actor && actor.name || '') === 'Falie') {
+      grantFalieRedSuperGemPartyShield(state);
+      state.globals.CanPickGems = 0;
+      state.globals.IsPlayerBusy = 0;
+      state.globals.ActionOwnerUID = actorUID;
+      state.globals.ActionLockUntil = Math.max(Number(state.globals.ActionLockUntil || 0), Number(state.globals.time || 0) + 0.32);
+      state.globals.DeferAdvance = 1;
+      state.globals.AdvanceAfterAction = 1;
+      return true;
     }
-    return armed;
+    return armPendingSuperGemAttack({ superGem, actorUID, state });
   }
   if (color === 0) {
     return armPendingSuperGemAttack({ superGem, actorUID, state });

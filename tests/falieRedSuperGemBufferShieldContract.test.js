@@ -98,7 +98,7 @@ function activateRedSuperGem(runtime, context) {
   });
 }
 
-test('Falie red super-gem use grants party tempHP shield immediately at exact scaling and cap', () => {
+test('Falie red super-gem use grants party tempHP shield immediately without arming the red attack path', () => {
   const runtime = loadSuperGemRuntime();
   const context = createSuperGemContext('Falie');
   const expected = [
@@ -111,13 +111,15 @@ test('Falie red super-gem use grants party tempHP shield immediately at exact sc
 
   for (const step of expected) {
     assert.equal(activateRedSuperGem(runtime, context), true);
-    assert.equal(context.state.globals.PendingSkillID, 'HERO_SINGLE');
-    assert.equal(context.state.globals.PendingSuperGemAction.color, 1);
+    assert.equal(context.state.globals.PendingSkillID || '', '');
+    assert.equal(context.state.globals.PendingSuperGemAction || null, null);
     assert.equal(context.state.globals.PartyTempHPShieldStacks, step.stacks);
     assert.equal(context.state.globals.PartyTempHPShield, step.shield);
     assert.equal(context.state.globals.PartyTempHPShieldRatio, step.ratio);
     assert.equal(context.state.globals.PartyTempHPShieldColor, '#6CCBEE');
     assert.equal(context.state.globals.PartyHP, 200);
+    assert.equal(context.state.globals.DeferAdvance, 1);
+    assert.equal(context.state.globals.AdvanceAfterAction, 1);
   }
 });
 
@@ -132,15 +134,16 @@ test('red super-gem shield is Falie-only', () => {
   assert.equal(context.state.globals.PartyTempHPShieldStacks || 0, 0);
 });
 
-test('red super-gem still executes the single-target cluster attack contract', () => {
+test('non-Falie red super-gem still executes the single-target cluster attack contract', () => {
   const runtime = loadSuperGemRuntime();
-  const context = createSuperGemContext('Falie');
+  const context = createSuperGemContext('Huun');
 
   assert.equal(activateRedSuperGem(runtime, context), true);
   assert.equal(context.state.globals.PendingSkillID, 'HERO_SINGLE');
   assert.equal(context.state.globals.PendingSuperGemAction.kind, 'super_gem_attack');
   assert.equal(context.state.globals.PendingSuperGemAction.color, 1);
   assert.equal(context.state.globals.PendingSuperGemAction.actorUID, 4);
+  assert.equal(context.state.globals.PartyTempHPShield || 0, 0);
 
   assert.equal(runtime.executePendingSuperGemAction(context), true);
   assert.equal(context.state.globals.PendingSuperGemAction, null);
