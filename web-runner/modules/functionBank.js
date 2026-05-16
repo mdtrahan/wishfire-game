@@ -5980,6 +5980,7 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
   const textKind = String(kind || 'damage');
   const canvasAnchored = targetKind === 'energy' ? 1 : 0;
   const damageFloatAngleDeg = textKind === 'damage' ? (Math.random() * 30) - 15 : 0;
+  const partyMaxHP = Math.max(0, Number(g.PartyMaxHP || 0));
   let drawX = x;
   let drawY = y;
   if (textKind === 'damage' && g.NextDamageTextScatter && typeof g.NextDamageTextScatter === 'object') {
@@ -6002,6 +6003,7 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
   const fadeSec = 0.45;
   g.DamageTexts.push({
     amount,
+    partyMaxHP,
     x: drawX,
     y: drawY,
     kind: textKind,

@@ -81,7 +81,7 @@ test('dom floating numbers apply outlined gradients, glow, and squash-stretch fo
   assert.doesNotMatch(src, /webkitTextFillColor = 'transparent'/);
 });
 
-test('damage floating text disperses upward and weak hits render at half size', () => {
+test('damage floating text disperses upward and damage tiers scale by amount', () => {
   const animationSrc = read('web-runner/src/core/damageNumberAnimation.mjs');
   const appSrc = read('web-runner/app.js');
   const renderSrc = read('web-runner/systems/renderRuntime.js');
@@ -90,14 +90,20 @@ test('damage floating text disperses upward and weak hits render at half size', 
 
   for (const src of [runtimeSrc, scriptsSrc]) {
     assert.match(src, /const damageFloatAngleDeg = textKind === 'damage'\s*\?\s*\(Math\.random\(\) \* 30\) - 15\s*:\s*0;/);
+    assert.match(src, /const partyMaxHP = Math\.max\(0, Number\(g\.PartyMaxHP \|\| 0\)\);/);
+    assert.match(src, /partyMaxHP,/);
     assert.match(src, /floatAngleDeg: damageFloatAngleDeg,/);
   }
 
   assert.match(appSrc, /amount: d\.amount,/);
+  assert.match(appSrc, /partyMaxHP: d\.partyMaxHP,/);
   assert.match(appSrc, /floatAngleDeg: d\.floatAngleDeg,/);
-  assert.match(animationSrc, /amount,\s*\n\s*floatAngleDeg = 0,/);
+  assert.match(animationSrc, /partyMaxHP = 0,/);
+  assert.match(animationSrc, /amount,\s*\n\s*partyMaxHP = 0,\s*\n\s*floatAngleDeg = 0,/);
   assert.match(animationSrc, /const isWeakDamage = normalizedKind === 'damage' && Number\(amount\) < 10;/);
-  assert.match(animationSrc, /const fontSize = isWeakDamage \? 14 : 28;/);
+  assert.match(animationSrc, /const isLargeDamage = normalizedKind === 'damage'\s*\n\s*&& Number\(partyMaxHP\) > 0\s*\n\s*&& Number\(amount\) > Number\(partyMaxHP\) \* 0\.5;/);
+  assert.match(animationSrc, /const damageFontSize = 28;/);
+  assert.match(animationSrc, /const fontSize = isWeakDamage\s*\n\s*\? damageFontSize \* 0\.75\s*\n\s*: \(isLargeDamage \? damageFontSize \* 1\.2 : damageFontSize\);/);
   assert.match(animationSrc, /const clampedAngleDeg = normalizedKind === 'damage'\s*\?\s*Math\.max\(-15, Math\.min\(15, Number\(floatAngleDeg \|\| 0\)\)\)\s*:\s*0;/);
   assert.match(animationSrc, /const floatX = Math\.sin\(floatAngleRad\) \* floatDistance;/);
   assert.match(animationSrc, /const floatY = -Math\.cos\(floatAngleRad\) \* floatDistance;/);
@@ -105,7 +111,7 @@ test('damage floating text disperses upward and weak hits render at half size', 
   assert.match(renderSrc, /const floatAngleDeg = kind === 'damage'\\n\s*\?\s*Math\.max\(-15, Math\.min\(15, Number\(d\.floatAngleDeg \|\| 0\)\)\)\\n\s*:\s*0;/);
   assert.match(renderSrc, /const floatX = Math\.sin\(floatAngleRad\) \* floatDistance;/);
   assert.match(renderSrc, /const floatVertical = Math\.cos\(floatAngleRad\) \* floatDistance;/);
-  assert.match(renderSrc, /const fontBaseSize = kind === 'damage' && Number\(d\.amount\) < 10 \? 11 : \(d\.isCrit \? 26 : 22\);\\n\s*const fontSize = Math\.max\(scaleFont\(fontBaseSize\), 12\);/);
+  assert.match(renderSrc, /const isWeakDamage = kind === 'damage' && Number\(d\.amount\) < 10;\\n\s*const isLargeDamage = kind === 'damage' && Number\(d\.partyMaxHP\) > 0 && Number\(d\.amount\) > Number\(d\.partyMaxHP\) \* 0\.5;\\n\s*const fontBaseSize = isWeakDamage \? 22 \* 0\.75 : \(isLargeDamage \? 22 \* 1\.2 : \(d\.isCrit \? 26 : 22\)\);\\n\s*const fontSize = isWeakDamage \? scaleFont\(fontBaseSize\) : Math\.max\(scaleFont\(fontBaseSize\), 12\);/);
 });
 
 test('Kojonn dot paths explicitly arm dot floating-text kind before damage application', () => {

@@ -411,6 +411,7 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
     const animation = createDamageNumber({
       text,
       amount: d.amount,
+      partyMaxHP: d.partyMaxHP,
       x: pos.x,
       y: pos.y,
       kind: isEnergyText ? 'energy' : (d.kind === 'heal' ? 'heal' : (d.kind === 'ward' ? 'ward' : 'damage')),
