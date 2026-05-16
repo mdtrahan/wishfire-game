@@ -50,6 +50,7 @@ import {
   syncSuperGemShapes,
 } from './src/core/superGemBoardState.mjs';
 import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
+import { deriveDamageFloatFrameOffset } from '../src/core/damageFloatVector.mjs';
 import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
 import { createHealBloom } from './src/core/healBloomAnimation.mjs';
 import * as heroGemProgressStorage from './systems/heroGemProgressStorage.js';
@@ -416,6 +417,11 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
       targetKind: d.targetKind || null,
       isCrit,
       container: damageNumberLayer,
+      angleDeg: Number(d.floatAngleDeg || 0),
+      floatVector: {
+        x: Number(d.floatVectorX || 0),
+        y: Number(d.floatVectorY || 0),
+      },
     });
     if (animation) {
       d.domAnimation = animation;
@@ -4744,6 +4750,8 @@ async function main(){
     const params = new URLSearchParams(window.location.search);
     state.globals.DevTestMode = params.has('devtest') || params.get('devtest') === 'true';
     state.globals.DebugGemsMode = params.has('debug_gems') || params.get('debug_gems') === 'true';
+    state.globals.DebugDamageFloatVectors =
+      params.has('damage_float_debug') || params.get('damage_float_debug') === 'true';
     window.__codexGameDevTest = !!state.globals.DevTestMode;
   }
   state.globals.DevToolingConfig = sanitizeDevToolingConfig(state.globals.DevToolingConfig || {});
@@ -5543,6 +5551,7 @@ async function main(){
       hasPersistentHeroRegenOverlay,
       isHitFlashActive,
       getHitFlashTone,
+      deriveDamageFloatFrameOffset,
     };
     const result = renderRuntime.renderRuntime(runtimeScope);
     if (result && result.overlayData) {
@@ -7429,6 +7438,36 @@ function getStoryCardLiveLineState() {
         enemies: state.entities
           .filter(e => e.kind === 'enemy')
           .map(e => ({ uid: e.uid, name: e.name, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHP, slot: e.slotIndex, combatPower: Number(e.combatPower || 0) })),
+        damageTexts: (state.globals.DamageTexts || []).map(d => {
+          const riseSec = Math.max(0.001, Number(d.riseInSec || 0.18));
+          const phase = Number(d.phase || 0);
+          const phaseAge = Number(d.age || 0);
+          let progress = 1;
+          if (phase === 0) {
+            const riseT = Math.max(0, Math.min(1, phaseAge / riseSec));
+            progress = riseT * (2 - riseT);
+          }
+          const offset = deriveDamageFloatFrameOffset(d, progress);
+          const baseX = Number(d.baseX != null ? d.baseX : (d.x || 0));
+          const baseY = Number(d.baseY != null ? d.baseY : (d.y || 0));
+          return {
+            amount: d.amount,
+            kind: d.kind,
+            targetKind: d.targetKind || null,
+            baseX,
+            baseY,
+            x: Number(d.x || 0),
+            y: Number(d.y || 0),
+            displayX: baseX + offset.x,
+            displayY: baseY + offset.y,
+            floatAngleDeg: Number(d.floatAngleDeg || 0),
+            floatVectorX: Number(d.floatVectorX || 0),
+            floatVectorY: Number(d.floatVectorY || 0),
+            phase,
+            age: phaseAge,
+            domSpawned: !!d.domSpawned,
+          };
+        }),
         gems: (gameState.gems || []).map(g => ({
           uid: g.uid,
           r: g.cellR,

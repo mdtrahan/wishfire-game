@@ -1,4 +1,9 @@
 import { gsap } from './gsapShim.mjs';
+import {
+  DAMAGE_FLOAT_DEFAULT_TRAVEL,
+  DAMAGE_FLOAT_ENERGY_TRAVEL,
+  deriveDamageFloatVector,
+} from './damageFloatVector.mjs';
 
 const DAMAGE_TEXT_FONT = '"Rubik Mono One", "Trebuchet MS", "Verdana", sans-serif';
 const DAMAGE_TEXT_FONT_SPEC = `28px ${DAMAGE_TEXT_FONT}`;
@@ -41,6 +46,8 @@ export function createDamageNumber({
   targetKind = null,
   isCrit = false,
   container,
+  angleDeg = 0,
+  floatVector = null,
 }) {
   if (!container || typeof document === 'undefined') return null;
 
@@ -69,6 +76,19 @@ export function createDamageNumber({
   const normalizedKind = String(kind || 'damage');
   const isHeal = normalizedKind === 'heal';
   const isEnergy = normalizedKind === 'energy';
+  const fallbackVector = deriveDamageFloatVector({
+    angleDeg,
+    travel: isEnergy ? DAMAGE_FLOAT_ENERGY_TRAVEL : DAMAGE_FLOAT_DEFAULT_TRAVEL,
+  });
+  const floatX = Number.isFinite(Number(floatVector && floatVector.x))
+    ? Number(floatVector.x)
+    : fallbackVector.x;
+  const floatY = Number.isFinite(Number(floatVector && floatVector.y))
+    ? Number(floatVector.y)
+    : fallbackVector.y;
+  wrapper.dataset.floatAngleDeg = String(Number.isFinite(Number(angleDeg)) ? Number(angleDeg) : 0);
+  wrapper.dataset.floatVectorX = String(floatX);
+  wrapper.dataset.floatVectorY = String(floatY);
   const gradientStops = isEnergy
     ? [ENERGY_TEXT_COLOR, ENERGY_TEXT_COLOR]
     : (isHeal
@@ -152,15 +172,15 @@ export function createDamageNumber({
       y: 0,
     });
 
-    const floatY = isEnergy ? -32.2 : -28;
-
     tl.to(wrapper, {
+      x: floatX,
       y: floatY,
       duration: 0.8,
       ease: 'power2.out',
     }, 0);
 
     tl.to(wrapper, {
+      x: floatX,
       y: floatY,
       opacity: 1,
       duration: 0.484,

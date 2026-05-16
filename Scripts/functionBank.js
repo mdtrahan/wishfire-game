@@ -26,6 +26,13 @@ import {
   nextTeamPhaseType,
 } from '../src/core/schedulerRules.mjs';
 import { pickEnemyTargetHeroFromRoster } from '../src/core/enemyTargetingRules.mjs';
+import {
+  DAMAGE_FLOAT_DEFAULT_TRAVEL,
+  DAMAGE_FLOAT_ENERGY_TRAVEL,
+  DAMAGE_FLOAT_MAX_ANGLE_DEG,
+  deriveDamageFloatVector,
+  pickDamageFloatAngleDeg,
+} from '../src/core/damageFloatVector.mjs';
 
 const POWER_AMP_OUTCOMES = [
   { key: 'HERO_2X', multiplier: 2, chance: 0.62 },
@@ -5872,6 +5879,31 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
     drawY += Math.sin(angle) * radiusY * distance;
     delete g.NextDamageTextScatter;
   }
+  const isDamageLikeText = textKind !== 'heal' && textKind !== 'energy';
+  const floatMaxAngleDeg = Math.max(0, Math.min(45, Number(g.DamageTextMaxAngleDeg ?? DAMAGE_FLOAT_MAX_ANGLE_DEG)));
+  let floatAngleDeg = 0;
+  if (isDamageLikeText) {
+    g.DamageFloatSpawnSeq = (Number(g.DamageFloatSpawnSeq || 0) + 1);
+    floatAngleDeg = pickDamageFloatAngleDeg({
+      random: getRandomSource(ctx),
+      maxAbsAngleDeg: floatMaxAngleDeg,
+      sequence: g.DamageFloatSpawnSeq,
+    });
+  }
+  const floatTravel = textKind === 'energy' ? DAMAGE_FLOAT_ENERGY_TRAVEL : DAMAGE_FLOAT_DEFAULT_TRAVEL;
+  const floatVector = deriveDamageFloatVector({
+    angleDeg: floatAngleDeg,
+    travel: floatTravel,
+    maxAbsAngleDeg: floatMaxAngleDeg,
+  });
+  if (g.DebugDamageFloatVectors && typeof console !== 'undefined' && typeof console.log === 'function') {
+    console.log(
+      `[DAMAGE_FLOAT] amount=${amount} kind=${textKind} target=${targetKind || ''} ` +
+      `baseX=${Number(drawX || 0).toFixed(2)} baseY=${Number(drawY || 0).toFixed(2)} ` +
+      `angleDeg=${Number(floatVector.angleDeg || 0).toFixed(2)} ` +
+      `vectorX=${Number(floatVector.x || 0).toFixed(2)} vectorY=${Number(floatVector.y || 0).toFixed(2)}`
+    );
+  }
   const defaults = textKind === 'heal' || textKind === 'energy'
     ? { low: 5, high: 30 }
     : { low: 10, high: 80 };
@@ -5889,7 +5921,13 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
     canvasAnchored,
     heat,
     peakScale,
+    baseX: drawX,
     baseY: drawY,
+    floatAngleDeg: floatVector.angleDeg,
+    floatVectorX: floatVector.x,
+    floatVectorY: floatVector.y,
+    floatTravel: floatVector.travel,
+    floatMaxAngleDeg,
     age: 0,
     phase: 0,
     opacity: 1,

@@ -71,7 +71,8 @@ test('dom floating numbers apply outlined gradients, glow, and squash-stretch fo
   assert.match(src, /ctx\.strokeStyle = '#0f0f0f';/);
   assert.match(src, /ctx\.createLinearGradient\(0, 0, 0, approxHeight\);/);
   assert.match(src, /ctx\.fillText\(value, approxWidth \/ 2, approxHeight \/ 2 \+ 1\);/);
-  assert.match(src, /const floatY = isEnergy \? -32\.2 : -28;/);
+  assert.match(src, /travel: isEnergy \? DAMAGE_FLOAT_ENERGY_TRAVEL : DAMAGE_FLOAT_DEFAULT_TRAVEL,/);
+  assert.match(src, /const floatY = Number\.isFinite\(Number\(floatVector && floatVector\.y\)\)/);
   assert.match(src, /tl\.to\(wrapper,\s*\{[\s\S]*y: floatY,[\s\S]*duration: 0\.8/);
   assert.match(src, /tl\.to\(wrapper,\s*\{[\s\S]*opacity: 0,[\s\S]*duration: 0\.16/);
   assert.doesNotMatch(src, /ctx\.globalAlpha = 0\.7/);
