@@ -3611,6 +3611,90 @@ function absorbPartyTempHPShield(g, dmg) {
   return { damageAfterShield: Math.max(0, incoming - absorbed), absorbed };
 }
 
+const FALIE_WARD_BARRIER_FADE_OUT_SEC = 0.28;
+const FALIE_WARD_BARRIER_HIT_PULSE_SEC = 0.18;
+const FALIE_WARD_BARRIER_OFFSET_WORLD_X = 22;
+
+function markPartyWardBarrierHit(ctx, hero, absorbed) {
+  const g = getGlobals(ctx);
+  const uid = Number(hero?.uid || 0);
+  if (!(uid > 0) || absorbed <= 0) return;
+  const now = Number(g.time || 0);
+  const visuals = g.PartyWardBarrierVisualsByUID && typeof g.PartyWardBarrierVisualsByUID === 'object'
+    ? g.PartyWardBarrierVisualsByUID
+    : {};
+  const visual = visuals[uid] && typeof visuals[uid] === 'object' ? visuals[uid] : {
+    uid,
+    source: 'falie_red_super_gem',
+    state: 'active',
+    fadeInStartedAt: now,
+    fadeInDuration: 0.001,
+    fadeOutDuration: FALIE_WARD_BARRIER_FADE_OUT_SEC,
+    baseAlpha: Number(g.PartyWardBarrierBaseAlpha || 0.82),
+  };
+  visual.hitUntil = now + FALIE_WARD_BARRIER_HIT_PULSE_SEC;
+  visual.lastAbsorbed = Math.max(0, Number(absorbed || 0));
+  visuals[uid] = visual;
+  g.PartyWardBarrierVisualsByUID = visuals;
+  g.LastPartyWardBarrierHitUID = uid;
+  g.LastPartyWardBarrierAbsorbed = Math.max(0, Number(absorbed || 0));
+}
+
+function getPartyWardBarrierDamageTextPos(g, hero, fallbackX, fallbackY) {
+  const uid = Number(hero?.uid || 0);
+  const byUID = g.PartyWardBarrierPosByUID && typeof g.PartyWardBarrierPosByUID === 'object'
+    ? g.PartyWardBarrierPosByUID
+    : null;
+  const pos = byUID && byUID[uid];
+  if (pos && Number.isFinite(Number(pos.x)) && Number.isFinite(Number(pos.y))) {
+    return { x: Number(pos.x), y: Number(pos.y) };
+  }
+  const idx = Number(hero?.heroIndex ?? 0);
+  const heroPos = Array.isArray(g.HeroIconPosByIndex) ? g.HeroIconPosByIndex[idx] : null;
+  if (heroPos && Number.isFinite(Number(heroPos.x)) && Number.isFinite(Number(heroPos.y))) {
+    return {
+      x: Number(heroPos.x) + Number(g.PartyWardBarrierOffsetWorldX || FALIE_WARD_BARRIER_OFFSET_WORLD_X),
+      y: Number(heroPos.y),
+    };
+  }
+  return {
+    x: Number(fallbackX || 0) + Number(g.PartyWardBarrierOffsetWorldX || FALIE_WARD_BARRIER_OFFSET_WORLD_X),
+    y: Number(fallbackY || 0),
+  };
+}
+
+function startPartyWardBarrierFadeOut(ctx) {
+  const g = getGlobals(ctx);
+  const visuals = g.PartyWardBarrierVisualsByUID && typeof g.PartyWardBarrierVisualsByUID === 'object'
+    ? g.PartyWardBarrierVisualsByUID
+    : null;
+  if (!visuals) return 0;
+  const now = Number(g.time || 0);
+  const until = now + FALIE_WARD_BARRIER_FADE_OUT_SEC;
+  let touched = false;
+  for (const key of Object.keys(visuals)) {
+    const visual = visuals[key];
+    if (!visual || typeof visual !== 'object') {
+      delete visuals[key];
+      continue;
+    }
+    if (String(visual.state || '') !== 'fadeOut') {
+      visual.state = 'fadeOut';
+      visual.fadeOutStartedAt = now;
+    }
+    visual.fadeOutDuration = FALIE_WARD_BARRIER_FADE_OUT_SEC;
+    visual.fadeOutUntil = until;
+    touched = true;
+  }
+  if (!touched) return 0;
+  g.PartyWardBarrierActive = 0;
+  g.PartyWardBarrierFadeOutUntil = Math.max(Number(g.PartyWardBarrierFadeOutUntil || 0), until);
+  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), until);
+  g.DeferAdvance = 1;
+  g.AdvanceAfterAction = 1;
+  return until;
+}
+
 export function ApplyDamageToTarget(ctx, uid, dmg) {
   const g = getGlobals(ctx);
   g.LastDamageSourceUID = Number(GetCurrentTurn(ctx) || 0);
@@ -3623,6 +3707,12 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
     const shieldResult = absorbPartyTempHPShield(g, damageToHP);
     damageToHP = shieldResult.damageAfterShield;
     shieldAbsorbed = shieldResult.absorbed;
+    if (shieldAbsorbed > 0) {
+      markPartyWardBarrierHit(ctx, t, shieldAbsorbed);
+      if (Number(g.PartyTempHPShield || 0) <= 0) {
+        startPartyWardBarrierFadeOut(ctx);
+      }
+    }
   }
   t.hp = Math.max(0, (t.hp ?? 0) - damageToHP);
   const afterHP = Number(t.hp ?? 0);
@@ -3662,14 +3752,17 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
     });
   }
   const now = Number(g.time || 0);
-  if (!g.HitFlashByUID || typeof g.HitFlashByUID !== 'object') {
-    g.HitFlashByUID = {};
+  const shouldFlashTarget = !(t.kind === 'hero' && shieldAbsorbed > 0 && appliedDamage <= 0);
+  if (shouldFlashTarget) {
+    if (!g.HitFlashByUID || typeof g.HitFlashByUID !== 'object') {
+      g.HitFlashByUID = {};
+    }
+    const hitFlashTone = String(g.NextHitFlashTone || 'black');
+    g.HitFlashByUID[uid] = {
+      until: now + 0.14,
+      tone: hitFlashTone,
+    };
   }
-  const hitFlashTone = String(g.NextHitFlashTone || 'black');
-  g.HitFlashByUID[uid] = {
-    until: now + 0.14,
-    tone: hitFlashTone,
-  };
   delete g.NextHitFlashTone;
   let dx = t.x;
   let dy = t.y;
@@ -3680,6 +3773,10 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
       dx = pos.x;
       dy = pos.y;
     }
+  }
+  if (shieldAbsorbed > 0 && g.SpawnDamageText !== 0) {
+    const wardTextPos = getPartyWardBarrierDamageTextPos(g, t, dx, dy);
+    SpawnDamageText(ctx, shieldAbsorbed, wardTextPos.x, wardTextPos.y, 'ward', 'ward');
   }
   if (appliedDamage > 0 && dx != null && dy != null && g.SpawnDamageText !== 0) {
     const damageTextKind = String(g.NextDamageTextKind || 'damage');
@@ -4050,6 +4147,9 @@ export function ApplyPartyDamage(ctx, dmg) {
   const g = getGlobals(ctx);
   const shieldResult = absorbPartyTempHPShield(g, dmg);
   const damageToHP = shieldResult.damageAfterShield;
+  if (shieldResult.absorbed > 0 && Number(g.PartyTempHPShield || 0) <= 0) {
+    startPartyWardBarrierFadeOut(ctx);
+  }
   const heroes = getHeroes(ctx);
   for (const h of heroes) {
     h.hp = Math.max(0, (h.hp ?? 0) - damageToHP);
@@ -5860,6 +5960,7 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
   g.DamageTexts = g.DamageTexts || [];
   const textKind = String(kind || 'damage');
   const canvasAnchored = targetKind === 'energy' ? 1 : 0;
+  const damageFloatAngleDeg = textKind === 'damage' ? (Math.random() * 30) - 15 : 0;
   let drawX = x;
   let drawY = y;
   if (textKind === 'damage' && g.NextDamageTextScatter && typeof g.NextDamageTextScatter === 'object') {
@@ -5889,6 +5990,7 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
     canvasAnchored,
     heat,
     peakScale,
+    floatAngleDeg: damageFloatAngleDeg,
     baseY: drawY,
     age: 0,
     phase: 0,

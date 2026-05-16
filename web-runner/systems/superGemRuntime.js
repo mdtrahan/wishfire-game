@@ -7,6 +7,13 @@ const KOJONN_TAINTED_GROUND_DURATION_HERO_TEAM_TURNS = 3;
 const KOJONN_TAINTED_GROUND_DAMAGE_SCALE = 0.5;
 const FALIE_RED_SUPER_GEM_SHIELD_RATIOS = Object.freeze([0, 0.18, 0.26, 0.34, 0.42, 0.5]);
 const FALIE_RED_SUPER_GEM_SHIELD_COLOR = '#6CCBEE';
+const FALIE_WARD_BARRIER_ASSET_PATH = 'images/falie_ward_84x62.png';
+const FALIE_WARD_BARRIER_FADE_IN_SEC = 0.12;
+const FALIE_WARD_BARRIER_FADE_OUT_SEC = 0.28;
+const FALIE_WARD_BARRIER_BASE_ALPHA = 0.82;
+const FALIE_WARD_BARRIER_OFFSET_WORLD_X = 22;
+const FALIE_WARD_BARRIER_WIDTH = 84;
+const FALIE_WARD_BARRIER_HEIGHT = 62;
 
 function getRuntimeRandom(state) {
   const fn = state && state.globals && typeof state.globals.RuntimeRandom === 'function'
@@ -39,6 +46,53 @@ function getFalieRedSuperGemShieldRatio(stackCount) {
   return FALIE_RED_SUPER_GEM_SHIELD_RATIOS[clamped] || 0;
 }
 
+function getWardEligibleHeroes(state) {
+  return (state?.entities || [])
+    .filter(entity => entity && (entity.kind === 'hero' || entity.kind === 'escort'))
+    .sort((a, b) => Number(a.heroIndex ?? 0) - Number(b.heroIndex ?? 0));
+}
+
+function refreshFalieWardBarrierVisuals(state) {
+  if (!state?.globals) return false;
+  const g = state.globals;
+  const now = Number(g.time || 0);
+  const heroes = getWardEligibleHeroes(state);
+  if (!heroes.length) return false;
+  const visuals = g.PartyWardBarrierVisualsByUID && typeof g.PartyWardBarrierVisualsByUID === 'object'
+    ? g.PartyWardBarrierVisualsByUID
+    : {};
+  const liveUIDs = new Set();
+  for (const hero of heroes) {
+    const uid = Number(hero.uid || 0);
+    if (!(uid > 0)) continue;
+    liveUIDs.add(String(uid));
+    const existing = visuals[uid] && typeof visuals[uid] === 'object' ? visuals[uid] : {};
+    visuals[uid] = {
+      uid,
+      source: 'falie_red_super_gem',
+      state: 'fadeIn',
+      fadeInStartedAt: now,
+      fadeInDuration: FALIE_WARD_BARRIER_FADE_IN_SEC,
+      fadeOutDuration: FALIE_WARD_BARRIER_FADE_OUT_SEC,
+      baseAlpha: FALIE_WARD_BARRIER_BASE_ALPHA,
+      hitUntil: Number(existing.hitUntil || 0),
+      refreshCount: Math.max(1, Number(existing.refreshCount || 0) + 1),
+    };
+  }
+  for (const key of Object.keys(visuals)) {
+    if (!liveUIDs.has(String(key))) delete visuals[key];
+  }
+  g.PartyWardBarrierVisualsByUID = visuals;
+  g.PartyWardBarrierActive = 1;
+  g.PartyWardBarrierAssetPath = FALIE_WARD_BARRIER_ASSET_PATH;
+  g.PartyWardBarrierOffsetWorldX = FALIE_WARD_BARRIER_OFFSET_WORLD_X;
+  g.PartyWardBarrierWidth = FALIE_WARD_BARRIER_WIDTH;
+  g.PartyWardBarrierHeight = FALIE_WARD_BARRIER_HEIGHT;
+  g.PartyWardBarrierBaseAlpha = FALIE_WARD_BARRIER_BASE_ALPHA;
+  g.PartyWardBarrierFadeOutUntil = 0;
+  return true;
+}
+
 function grantFalieRedSuperGemPartyShield(state) {
   if (!state?.globals) return false;
   const g = state.globals;
@@ -52,6 +106,9 @@ function grantFalieRedSuperGemPartyShield(state) {
   g.PartyTempHPShield = Math.max(Number(g.PartyTempHPShield || 0), shieldHP);
   g.PartyTempHPShieldColor = FALIE_RED_SUPER_GEM_SHIELD_COLOR;
   g.PartyTempHPShieldSource = 'falie_red_super_gem';
+  if (g.PartyTempHPShield > 0) {
+    refreshFalieWardBarrierVisuals(state);
+  }
   return g.PartyTempHPShield > 0;
 }
 

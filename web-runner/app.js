@@ -397,7 +397,7 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
   for (const d of texts) {
     if (!d || d.domSpawned) continue;
     d.domSpawned = true;
-    const xOffset = d.targetKind === 'hero' ? -10 : (d.canvasAnchored ? 0 : 10);
+    const xOffset = d.targetKind === 'hero' ? -10 : (d.targetKind === 'ward' ? 0 : (d.canvasAnchored ? 0 : 10));
     const pos = d.canvasAnchored
       ? { x: Number(d.x || 0) + xOffset, y: Number(d.baseY != null ? d.baseY : (d.y || 0)) }
       : projectToCanvas((d.x || 0) + xOffset, d.baseY != null ? d.baseY : (d.y || 0));
@@ -407,14 +407,16 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
       ? `+${formatDamageValue({ value: d.amount, type: 'heal', isCrit })}`
       : (d.targetKind === 'bar'
         ? formatDamageValue({ value: d.amount, type: 'heal', isCrit })
-        : formatDamageValue({ value: d.amount, type: d.kind === 'heal' ? 'heal' : 'damage', isCrit }));
+        : formatDamageValue({ value: d.amount, type: d.kind === 'heal' ? 'heal' : (d.kind === 'ward' ? 'ward' : 'damage'), isCrit }));
     const animation = createDamageNumber({
       text,
+      amount: d.amount,
       x: pos.x,
       y: pos.y,
-      kind: isEnergyText ? 'energy' : (d.kind === 'heal' ? 'heal' : 'damage'),
+      kind: isEnergyText ? 'energy' : (d.kind === 'heal' ? 'heal' : (d.kind === 'ward' ? 'ward' : 'damage')),
       targetKind: d.targetKind || null,
       isCrit,
+      floatAngleDeg: d.floatAngleDeg,
       container: damageNumberLayer,
     });
     if (animation) {
@@ -4060,6 +4062,7 @@ async function main(){
   let images = {};
   let enemySpriteImages = {};
   let heroPortraitImages = {};
+  let wardBarrierImage = null;
   let heroSkillIconsBySlot = [];
   let heroSelectorImage = null;
   let gemFrameImages = [];
@@ -4199,6 +4202,7 @@ async function main(){
     images = {};
     enemySpriteImages = {};
     heroPortraitImages = {};
+    wardBarrierImage = null;
     heroSkillIconsBySlot = [];
     heroSelectorImage = null;
     gemFrameImages = [];
@@ -4270,6 +4274,9 @@ async function main(){
       const heroPortraitLoads = ['Falie', 'Huun', 'Runa', 'Kojonn'].map(async (heroName) => {
         heroPortraitImages[heroName] = await loadImage(assetUrl(`images/cap_${heroName}.png`));
       });
+      const wardBarrierLoad = (async () => {
+        wardBarrierImage = await loadImage(assetUrl('images/falie_ward_84x62.png'));
+      })();
       const heroSkillIconLoads = [
         'images/bufficon1-animation 1-000.png',
         'images/bufficon2-animation 1-000.png',
@@ -4294,6 +4301,7 @@ async function main(){
 
       tasks.push(
         ...heroPortraitLoads,
+        wardBarrierLoad,
         ...heroSkillIconLoads,
         ...heroCapsuleLoads,
         gemVisualLoads,
@@ -5491,6 +5499,7 @@ async function main(){
       heroLayoutSpec,
       closeWinOvalImage,
       heroPortraitImages,
+      wardBarrierImage,
       heroSkillIconsBySlot,
       heroSelectorImage,
       heroCapsuleImages,
