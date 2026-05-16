@@ -24,9 +24,15 @@ test('renderer applies tone-aware hit-flash overlay to attacked combatants', () 
   const renderRuntimeSrc = read('web-runner/systems/renderRuntime.js');
   assert.match(src, /function isHitFlashActive\(uid\) \{/);
   assert.match(src, /function getHitFlashTone\(uid\) \{/);
+  assert.match(src, /function isActiveTaintedGroundZone\(zone\) \{/);
+  assert.match(src, /function enemyOccupiesTaintedGroundZone\(enemy, zone\) \{/);
   assert.match(src, /function hasPersistentEnemyBlightOverlay\(uid\) \{/);
   assert.match(src, /if \(Number\(dot\.targetUID \|\| 0\) !== Number\(uid \|\| 0\)\) continue;/);
   assert.match(src, /if \(!String\(dot\.effectName \|\| 'Blight'\)\.startsWith\('Blight'\)\) continue;/);
+  assert.match(src, /if \(hasPersistentEnemyTaintedGroundOverlay\(uid\)\) return true;/);
+  assert.match(src, /if \(!isActiveTaintedGroundZone\(zone\)\) continue;/);
+  assert.match(src, /if \(!enemyOccupiesTaintedGroundZone\(enemy, zone\)\) continue;/);
+  assert.match(src, /const anchorX = Number\(zone\.anchorWorldX\);/);
   assert.match(renderRuntimeSrc, /if \(!String\(dot\.effectName \|\| 'Blight'\)\.startsWith\('Blight'\)\) continue;/);
   assert.match(src, /hasPersistentEnemyBlightOverlay,\s+hasPersistentHeroRegenOverlay,\s+isHitFlashActive,\s+getHitFlashTone,/s);
   assert.doesNotMatch(src, /hasPersistentEnemyBlightOverlay:\s*\(\) => false/);
@@ -34,6 +40,9 @@ test('renderer applies tone-aware hit-flash overlay to attacked combatants', () 
   assert.doesNotMatch(src, /isHitFlashActive:\s*\(\) => false/);
   assert.doesNotMatch(src, /getHitFlashTone:\s*\(\) => 'black'/);
   assert.match(renderRuntimeSrc, /const renderEnemyBlightShimmer = \(drawX, drawY, enemyW, enemyH, seed = 0\) => \{/);
+  assert.match(renderRuntimeSrc, /const taintedGroundFieldOverlays = typeof getPersistentTaintedGroundOverlays === 'function' \? getPersistentTaintedGroundOverlays\(\) : \[\];/);
+  assert.match(renderRuntimeSrc, /const enemyStandsInRenderedTaintedGround = \(enemy\) => \{/);
+  assert.match(renderRuntimeSrc, /hasPersistentEnemyBlightOverlay\(enemy\.uid\) \|\| enemyStandsInRenderedTaintedGround\(enemy\)/);
   assert.match(renderRuntimeSrc, /const dotCount = 4;/);
   assert.match(renderRuntimeSrc, /ctx\.fillStyle = '#8D37FF';/);
   assert.match(renderRuntimeSrc, /ctx\.strokeStyle = '#4B176F';/);

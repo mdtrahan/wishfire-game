@@ -19,9 +19,11 @@ import {
 import { sanitizeInitiativeQueue } from '../src/core/initiativeGuards.mjs';
 import {
   createBattleStartResetState,
+  buildTeamPhaseSlots,
   deriveBattleStartConsume,
   deriveBattleStartRemaining,
   deriveBattleStartRoundPartition,
+  nextTeamPhaseType,
 } from '../src/core/schedulerRules.mjs';
 import { pickEnemyTargetHeroFromRoster } from '../src/core/enemyTargetingRules.mjs';
 
@@ -2727,8 +2729,7 @@ export function RefreshEnemyPositions(ctx) {
 }
 
 function isTimeInitiative(ctx) {
-  const g = getGlobals(ctx);
-  return g.InitiativeMode === 'time';
+  return false;
 }
 
 function getInitiativeRoster(ctx) {
@@ -3194,6 +3195,7 @@ export function ProcessCurrentTurn(ctx) {
       g.RoundGroupIndex = (g.RoundGroupIndex || 0) + 1;
       if (g.RoundGroupIndex >= groups.length) {
         g.RoundActive = 0;
+        g.TeamPhaseType = nextTeamPhaseType(Number(g.TeamPhaseType || 0));
         StartRound(ctx);
       }
     }
@@ -3219,10 +3221,48 @@ export function ProcessCurrentTurn(ctx) {
   g.TurnPhase = type === 0 ? 0 : 2;
 }
 
+function getCurrentHeroTeamTurnUIDs(ctx) {
+  const g = getGlobals(ctx);
+  const queue = Array.isArray(g.TurnOrderArray) ? g.TurnOrderArray : [];
+  const queuedHeroes = queue
+    .filter((slot) => Number(slot?.type || 0) === 0)
+    .map((slot) => Number(slot?.uid || 0))
+    .filter((uid) => {
+      const actor = uid ? GetActorByUID(ctx, uid) : null;
+      return actor && actor.kind === 'hero' && Number(actor.hp ?? 1) > 0;
+    });
+  if (queuedHeroes.length > 0) return Array.from(new Set(queuedHeroes));
+  return getHeroes(ctx)
+    .filter((hero) => hero && Number(hero.hp ?? 1) > 0)
+    .map((hero) => Number(hero.uid || 0))
+    .filter((uid) => uid > 0);
+}
+
+function recordHeroTeamTurnProgress(ctx, currentUID, currentType) {
+  if (Number(currentType || 0) !== 0 || !(Number(currentUID || 0) > 0)) return;
+  const g = getGlobals(ctx);
+  const heroUIDs = getCurrentHeroTeamTurnUIDs(ctx);
+  if (!heroUIDs.length) return;
+  const rosterKey = heroUIDs.join('|');
+  if (String(g.HeroTeamTurnRosterKey || '') !== rosterKey) {
+    g.HeroTeamTurnRosterKey = rosterKey;
+    g.HeroTeamTurnSeenByUID = {};
+  }
+  if (!g.HeroTeamTurnSeenByUID || typeof g.HeroTeamTurnSeenByUID !== 'object') {
+    g.HeroTeamTurnSeenByUID = {};
+  }
+  g.HeroTeamTurnSeenByUID[Number(currentUID || 0)] = true;
+  const complete = heroUIDs.every((uid) => g.HeroTeamTurnSeenByUID[uid]);
+  if (!complete) return;
+  g.HeroTeamTurnSerial = Number(g.HeroTeamTurnSerial || 0) + 1;
+  g.HeroTeamTurnSeenByUID = {};
+}
+
 export function AdvanceTurn(ctx) {
   const g = getGlobals(ctx);
   const currentUID = GetCurrentTurn(ctx);
   const currentType = GetCurrentType(ctx);
+  recordHeroTeamTurnProgress(ctx, currentUID, currentType);
   if (currentType === 0 && currentUID && g.ExtraTurnGranted && Object.prototype.hasOwnProperty.call(g.ExtraTurnGranted, currentUID)) {
     delete g.ExtraTurnGranted[currentUID];
   }
@@ -3552,13 +3592,39 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
   return dmg;
 }
 
+function absorbPartyTempHPShield(g, dmg) {
+  const incoming = Math.max(0, Number(dmg || 0));
+  const shieldBefore = Math.max(0, Number(g.PartyTempHPShield || 0));
+  const absorbed = Math.min(shieldBefore, incoming);
+  if (absorbed <= 0) {
+    g.LastPartyTempHPShieldAbsorbed = 0;
+    return { damageAfterShield: incoming, absorbed: 0 };
+  }
+  const shieldAfter = Math.max(0, shieldBefore - absorbed);
+  g.PartyTempHPShield = shieldAfter;
+  g.LastPartyTempHPShieldAbsorbed = absorbed;
+  if (shieldAfter <= 0) {
+    g.PartyTempHPShieldStacks = 0;
+    g.PartyTempHPShieldRatio = 0;
+    g.PartyTempHPShieldMax = 0;
+  }
+  return { damageAfterShield: Math.max(0, incoming - absorbed), absorbed };
+}
+
 export function ApplyDamageToTarget(ctx, uid, dmg) {
   const g = getGlobals(ctx);
   g.LastDamageSourceUID = Number(GetCurrentTurn(ctx) || 0);
   const t = GetActorByUID(ctx, uid);
   if (!t) return 0;
   const beforeHP = Number(t.hp ?? 0);
-  t.hp = Math.max(0, (t.hp ?? 0) - dmg);
+  let damageToHP = Math.max(0, Number(dmg || 0));
+  let shieldAbsorbed = 0;
+  if (t.kind === 'hero') {
+    const shieldResult = absorbPartyTempHPShield(g, damageToHP);
+    damageToHP = shieldResult.damageAfterShield;
+    shieldAbsorbed = shieldResult.absorbed;
+  }
+  t.hp = Math.max(0, (t.hp ?? 0) - damageToHP);
   const afterHP = Number(t.hp ?? 0);
   const appliedDamage = Math.max(0, beforeHP - afterHP);
   if (t.kind === 'hero' && appliedDamage > 0) {
@@ -3576,6 +3642,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
     sourceUID: Number(g.LastDamageSourceUID || 0),
     damage: Number(dmg || 0),
     appliedDamage,
+    shieldAbsorbed,
     beforeHP,
     afterHP,
   });
@@ -3711,9 +3778,11 @@ export function UpdateAstralFlowAmpBar(ctx) {
   };
 }
 
-export function Sub_Energy(ctx) {
+export function Sub_Energy(ctx, amount = 3) {
   const g = getGlobals(ctx);
-  g.Player_Energy = (g.Player_Energy || 0) - 3;
+  const rawCost = Math.floor(Number(amount ?? 3));
+  const cost = Number.isFinite(rawCost) ? Math.max(0, rawCost) : 0;
+  g.Player_Energy = (g.Player_Energy || 0) - cost;
   // Yellow recolor path can bypass skill defer wiring; ensure deterministic turn handoff.
   if (Number(g.MatchedColorValue || -1) === 3) {
     applyTurnGateIntent(g, createYellowSafetyNet, {
@@ -3734,6 +3803,55 @@ export function Add_Energy(ctx) {
   g.Player_Energy = (g.Player_Energy || 0) + add;
   const actorName = getActorNameByUID(ctx, GetCurrentTurn(ctx));
   LogCombat(ctx, `${actorName} grabbed ${add} magic orbs!`);
+}
+
+export function GrantPurpleMatchEnergy(ctx, actorUID, consumedCount = 0) {
+  const g = getGlobals(ctx);
+  const energyOptions = [6, 12, 15];
+  const amt = energyOptions[randomIndex(ctx, energyOptions.length)] || energyOptions[0];
+  g.Player_Energy = (g.Player_Energy || 0) + amt;
+  const actorName = getActorNameByUID(ctx, actorUID);
+  g.LastPurpleEnergyGain = {
+    actorUID: Number(actorUID || 0),
+    consumedCount: Math.max(0, Number(consumedCount || 0)),
+    amount: amt,
+  };
+  LogCombat(ctx, `${actorName} gained ${amt} energy!`);
+  const energyText = g.EnergyReadoutTextCanvas;
+  if (
+    energyText &&
+    Number.isFinite(Number(energyText.x)) &&
+    Number.isFinite(Number(energyText.y))
+  ) {
+    SpawnDamageText(ctx, amt, Number(energyText.x), Number(energyText.y), 'energy', 'energy');
+  }
+  return amt;
+}
+
+export function GrantPurpleSuperGemEnergy(ctx, actorUID) {
+  const g = getGlobals(ctx);
+  const energyOptions = [6, 12, 15];
+  const regularMaxEnergy = Math.max(...energyOptions);
+  const amt = regularMaxEnergy + randomIndex(ctx, regularMaxEnergy + 1);
+  g.Player_Energy = (g.Player_Energy || 0) + amt;
+  const actorName = getActorNameByUID(ctx, actorUID);
+  g.LastPurpleEnergyGain = {
+    actorUID: Number(actorUID || 0),
+    consumedCount: 1,
+    amount: amt,
+    source: 'supergem',
+    regularMaxEnergy,
+  };
+  LogCombat(ctx, `${actorName} gained ${amt} energy!`);
+  const energyText = g.EnergyReadoutTextCanvas;
+  if (
+    energyText &&
+    Number.isFinite(Number(energyText.x)) &&
+    Number.isFinite(Number(energyText.y))
+  ) {
+    SpawnDamageText(ctx, amt, Number(energyText.x), Number(energyText.y), 'energy', 'energy');
+  }
+  return amt;
 }
 
 export function AddGoldToPlayer(ctx, amt) {
@@ -3929,9 +4047,12 @@ export function ApplyDamage(ctx, targetUID, dmg) {
 }
 
 export function ApplyPartyDamage(ctx, dmg) {
+  const g = getGlobals(ctx);
+  const shieldResult = absorbPartyTempHPShield(g, dmg);
+  const damageToHP = shieldResult.damageAfterShield;
   const heroes = getHeroes(ctx);
   for (const h of heroes) {
-    h.hp = Math.max(0, (h.hp ?? 0) - dmg);
+    h.hp = Math.max(0, (h.hp ?? 0) - damageToHP);
     if (h.hp === 0) h.isAlive = false;
   }
   UpdateHeroHPUI(ctx);
@@ -4055,7 +4176,7 @@ export function HeroAttackAOE(ctx, heroUID) {
   const applyAt = now + hitDelay;
   g.PendingHeroHits = g.PendingHeroHits || [];
   for (const hit of hits) {
-    g.PendingHeroHits.push({
+    const packet = {
       at: applyAt,
       heroUID,
       targetUID: hit.targetUID,
@@ -4065,16 +4186,30 @@ export function HeroAttackAOE(ctx, heroUID) {
       powerAmpMultiplier: hit.powerAmpMultiplier,
       consumePowerAmp: hit.consumePowerAmp,
       effectType: isKojonn ? 'dot_apply' : 'damage',
-      calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
+      calcPath: isKojonn ? 'fazeDot' : (mode === 'magic' ? 'magicCalc' : 'meleeCalc'),
       heroName: actorName,
       heroType: mode,
-    });
+    };
+    if (isKojonn) {
+      packet.effectName = 'Blight';
+      packet.actionName = 'Faze';
+    }
+    g.PendingHeroHits.push(packet);
   }
   if (isKojonn) {
     LogCombat(ctx, `${actorName} used ${aoeName} to spread blight over time for ${totalDamage}!`);
   } else {
     LogCombat(ctx, `${actorName} used ${aoeName} on all enemies for ${totalDamage}!`);
   }
+}
+
+function getTaintedGroundSlotIndex(enemy) {
+  if (!enemy) return -1;
+  const direct = Number(enemy.slotIndex);
+  if (Number.isFinite(direct) && direct >= 0) return Math.floor(direct);
+  const y = Number(enemy.y);
+  if (Number.isFinite(y)) return Math.floor(y);
+  return Number(enemy.uid || 0);
 }
 
 export function QueueEnemyDamageOverTime(ctx, actorUID, enemyUID, totalDamage, options = undefined) {
@@ -4087,6 +4222,7 @@ export function QueueEnemyDamageOverTime(ctx, actorUID, enemyUID, totalDamage, o
   const nowTurnSerial = Number(g.TurnSerial || 0);
   const effectName = String(options?.effectName || 'Blight');
   const cadence = String(options?.cadence || 'tick');
+  const taintedGroundZoneId = String(options?.taintedGroundZoneId || '');
   if (!g.EnemyDamageOverTime) g.EnemyDamageOverTime = [];
   // Reapplying same DoT source/effect on same target resets the package.
   for (let i = g.EnemyDamageOverTime.length - 1; i >= 0; i--) {
@@ -4095,6 +4231,7 @@ export function QueueEnemyDamageOverTime(ctx, actorUID, enemyUID, totalDamage, o
     if (Number(existing.targetUID || 0) !== Number(enemyUID || 0)) continue;
     if (Number(existing.sourceUID || 0) !== Number(actorUID || 0)) continue;
     if (String(existing.effectName || 'Blight') !== effectName) continue;
+    if (String(existing.taintedGroundZoneId || '') !== taintedGroundZoneId) continue;
     g.EnemyDamageOverTime.splice(i, 1);
   }
   g.EnemyDamageOverTime.push({
@@ -4109,6 +4246,7 @@ export function QueueEnemyDamageOverTime(ctx, actorUID, enemyUID, totalDamage, o
     nextFireTurnSerial: nowTurnSerial + Math.max(1, Math.floor(Number(options?.startAfterTurns || 1) || 1)),
     lastProcessedTurnSerial: nowTurnSerial,
     effectName,
+    taintedGroundZoneId,
   });
   LogCombat(ctx, `${actor.name || 'Hero'} applies ${effectName} to ${enemy.name || 'Enemy'}!`);
   return 1;
@@ -4887,14 +5025,26 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
     return;
   }
   if (gemColor === 5) {
-    LogGemIntent(ctx, 5, 'PURPLE', 'Power_Amp', 'hero-routing', actorUID);
-    activatePowerAmp(ctx, actorUID);
-    g.ActionLockUntil = (g.time || 0) + 0.6;
+    LogGemIntent(ctx, 5, 'PURPLE', 'Energy_Gain', 'hero-routing', actorUID);
+    GrantPurpleMatchEnergy(ctx, actorUID, consumedCount);
+    g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, (g.time || 0) + 0.32, g.TextAnimEndAt || 0);
     g.DeferAdvance = 1;
     g.AdvanceAfterAction = 1;
     g.ActionOwnerUID = actorUID;
     return;
   }
+}
+
+export function ResolvePurpleSuperGemEnergyAction(ctx, actorUID) {
+  const g = getGlobals(ctx);
+  RegisterHeroGemUsage(ctx, actorUID, 5, 1);
+  g.HideHeroSelector = 1;
+  LogGemIntent(ctx, 5, 'PURPLE', 'Energy_Gain_Super', 'supergem-routing', actorUID);
+  GrantPurpleSuperGemEnergy(ctx, actorUID);
+  g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, (g.time || 0) + 0.32, g.TextAnimEndAt || 0);
+  g.DeferAdvance = 1;
+  g.AdvanceAfterAction = 1;
+  g.ActionOwnerUID = actorUID;
 }
 
 export function Update_Bars_And_Buffs(ctx) {
@@ -4904,6 +5054,7 @@ export function Update_Bars_And_Buffs(ctx) {
 
 export function BuildRoundGroups(ctx) {
   const g = getGlobals(ctx);
+  if (!Number.isFinite(Number(g.TeamPhaseType))) g.TeamPhaseType = 0;
   if (isTimeInitiative(ctx)) {
     const roster = getInitiativeRoster(ctx);
     if (!roster.length) {
@@ -4933,7 +5084,7 @@ export function BuildRoundGroups(ctx) {
     if ((h.hp ?? 0) > 0) {
       if (seen.has(h.uid)) continue;
       const spd = GetEffectiveStat(ctx, h, 'SPD');
-      roster.push({ uid: h.uid, type: 0, spd });
+      roster.push({ ...h, uid: h.uid, type: 0, spd });
       seen.add(h.uid);
     }
   }
@@ -4941,7 +5092,7 @@ export function BuildRoundGroups(ctx) {
     if ((e.hp ?? 0) > 0) {
       if (seen.has(e.uid)) continue;
       const spd = GetEffectiveStat(ctx, e, 'SPD');
-      roster.push({ uid: e.uid, type: 1, spd });
+      roster.push({ ...e, uid: e.uid, type: 1, spd });
       seen.add(e.uid);
     }
   }
@@ -4955,43 +5106,20 @@ export function BuildRoundGroups(ctx) {
     schedulerClearQueue(ctx);
     return;
   }
-  const jitter = g.RoundJitter ?? 0;
-  const tol = g.UnisonTolerance ?? 0.5;
-  const withInit = roster.map(r => ({
-    ...r,
-    init: r.spd + ((random01(ctx) * 2 - 1) * jitter)
-  }));
-  const startMode = g.BattleStartMode;
-  const startModeApplied = Boolean(startMode && !g.BattleStartResolved);
-  if (startModeApplied) {
-    const ordered = deriveBattleStartRoundPartition(withInit, startMode);
-    withInit.length = 0;
-    withInit.push(...ordered);
-    schedulerApplyBattleStartState(g, { reset: true });
-  } else {
-    withInit.sort((a, b) => b.init - a.init);
+  const requestedType = Number.isFinite(Number(g.TeamPhaseType)) ? Number(g.TeamPhaseType || 0) : 0;
+  let phaseType = requestedType === 1 ? 1 : 0;
+  let members = buildTeamPhaseSlots(roster, phaseType);
+  if (!members.length) {
+    phaseType = nextTeamPhaseType(phaseType);
+    members = buildTeamPhaseSlots(roster, phaseType);
   }
-  const groups = [];
-  let lastType = null;
-  for (const actor of withInit) {
-    if (!groups.length) {
-      groups.push({ init: actor.init, members: [actor] });
-      lastType = actor.type;
-      continue;
-    }
-    const last = groups[groups.length - 1];
-    if (Math.abs(last.init - actor.init) <= tol) {
-      last.members.push(actor);
-    } else {
-      groups.push({ init: actor.init, members: [actor] });
-    }
-    lastType = actor.type;
-  }
-  g.RoundRoster = withInit;
+  const groups = members.length ? [{ init: 0, type: phaseType, members }] : [];
+  g.TeamPhaseType = phaseType;
+  g.RoundRoster = roster;
   g.RoundGroups = groups;
   g.RoundGroupIndex = 0;
   g.RoundMemberIndex = 0;
-  g.RoundActive = 1;
+  g.RoundActive = groups.length ? 1 : 0;
   g.PendingDeaths = {};
   g.GroupResolving = 0;
   g.ActiveGroupIndex = 0;
@@ -5070,7 +5198,9 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
   }
   console.log(`[SKILL] start skill=${skillId} actor=${actorName} uid=${actorUID} phase=${g.TurnPhase} busy=${g.IsPlayerBusy} canPick=${g.CanPickGems}`);
   if (actor && actor.kind === 'hero' && (skillId === 'HERO_SINGLE' || skillId === 'HERO_AOE')) {
-    g.NextHeroActionProfile = skillId === 'HERO_AOE' ? 'aoe' : 'single';
+    g.NextHeroActionProfile = skillId === 'HERO_AOE'
+      ? (String(actor.name || '') === 'Kojonn' ? 'faze' : 'aoe')
+      : 'single';
     StartHeroLunge(ctx, actorUID);
   }
 
@@ -5728,9 +5858,11 @@ export function StartEnemyAction(ctx, enemyUID) {
 export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind = null) {
   const g = getGlobals(ctx);
   g.DamageTexts = g.DamageTexts || [];
+  const textKind = String(kind || 'damage');
+  const canvasAnchored = targetKind === 'energy' ? 1 : 0;
   let drawX = x;
   let drawY = y;
-  if (kind === 'damage' && g.NextDamageTextScatter && typeof g.NextDamageTextScatter === 'object') {
+  if (textKind === 'damage' && g.NextDamageTextScatter && typeof g.NextDamageTextScatter === 'object') {
     const scatter = g.NextDamageTextScatter;
     const radiusX = Math.max(0, Number(scatter.radiusX || 0));
     const radiusY = Math.max(0, Number(scatter.radiusY || 0));
@@ -5740,10 +5872,10 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
     drawY += Math.sin(angle) * radiusY * distance;
     delete g.NextDamageTextScatter;
   }
-  const defaults = kind === 'heal'
+  const defaults = textKind === 'heal' || textKind === 'energy'
     ? { low: 5, high: 30 }
     : { low: 10, high: 80 };
-  const heat = computeHeat(g, kind, amount, defaults);
+  const heat = computeHeat(g, textKind, amount, defaults);
   const peakScale = 1.02 + (1.10 - 1.02) * heat;
   const riseInSec = 0.18;
   const holdSec = 0.7;
@@ -5752,8 +5884,9 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
     amount,
     x: drawX,
     y: drawY,
-    kind,
+    kind: textKind,
     targetKind,
+    canvasAnchored,
     heat,
     peakScale,
     baseY: drawY,

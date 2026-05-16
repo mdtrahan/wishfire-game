@@ -273,6 +273,34 @@ function getHitFlashTone(uid) {
   return 'black';
 }
 
+function isActiveTaintedGroundZone(zone) {
+  if (!zone) return false;
+  if (String(zone.effectName || '') !== 'TaintedGround') return false;
+  if (String(zone.visual || '') !== 'blight_disc') return false;
+  const now = Number(state.globals.time || 0);
+  if (now < Number(zone.visualStartsAt || zone.activeAt || 0)) return false;
+  const fadeStartedAt = zone.fadeStartedAt == null ? null : Number(zone.fadeStartedAt || 0);
+  if (fadeStartedAt == null) return true;
+  return (now - fadeStartedAt) < 0.75;
+}
+
+function enemyOccupiesTaintedGroundZone(enemy, zone) {
+  if (!enemy || !zone) return false;
+  const enemySlotIndex = Number(enemy.slotIndex);
+  if (Number.isFinite(enemySlotIndex) && enemySlotIndex === Number(zone.slotIndex || 0)) return true;
+  const enemyX = Number(enemy.x);
+  const enemyY = Number(enemy.y);
+  const anchorX = Number(zone.anchorWorldX);
+  const anchorY = Number(zone.anchorWorldY);
+  if (!Number.isFinite(enemyX) || !Number.isFinite(enemyY) || !Number.isFinite(anchorX) || !Number.isFinite(anchorY)) {
+    return false;
+  }
+  const spacing = Number(state.globals.Spacing || ((state.globals.EnemySize || 40) + (state.globals.enemyGAP || 8)) || 48);
+  const dx = Math.abs(enemyX - anchorX);
+  const dy = Math.abs(enemyY - anchorY);
+  return dx <= Math.max(16, spacing * 0.75) && dy <= Math.max(16, spacing * 0.75);
+}
+
 function hasPersistentEnemyBlightOverlay(uid) {
   if (!uid) return false;
   const dots = Array.isArray(state.globals.EnemyDamageOverTime) ? state.globals.EnemyDamageOverTime : [];
@@ -284,7 +312,44 @@ function hasPersistentEnemyBlightOverlay(uid) {
     if (!String(dot.effectName || 'Blight').startsWith('Blight')) continue;
     return true;
   }
+  if (hasPersistentEnemyTaintedGroundOverlay(uid)) return true;
   return false;
+}
+
+function hasPersistentEnemyTaintedGroundOverlay(uid) {
+  if (!uid) return false;
+  const enemy = state.entities.find((entity) => Number(entity && entity.uid || 0) === Number(uid || 0));
+  if (!enemy) return false;
+  const zones = Array.isArray(state.globals.TaintedGroundZones) ? state.globals.TaintedGroundZones : [];
+  for (const zone of zones) {
+    if (!isActiveTaintedGroundZone(zone)) continue;
+    if (!enemyOccupiesTaintedGroundZone(enemy, zone)) continue;
+    return true;
+  }
+  return false;
+}
+
+function getPersistentTaintedGroundOverlays() {
+  const zones = Array.isArray(state.globals.TaintedGroundZones) ? state.globals.TaintedGroundZones : [];
+  const now = Number(state.globals.time || 0);
+  const overlays = [];
+  for (const zone of zones) {
+    if (!isActiveTaintedGroundZone(zone)) continue;
+    const fadeStartedAt = zone.fadeStartedAt == null ? null : Number(zone.fadeStartedAt || 0);
+    const fadeAlpha = fadeStartedAt == null
+      ? 1
+      : Math.max(0, Math.min(1, 1 - ((now - fadeStartedAt) / 0.75)));
+    if (fadeAlpha <= 0) continue;
+    overlays.push({
+      id: String(zone.id || ''),
+      slotIndex: Number(zone.slotIndex || 0),
+      anchorWorldX: Number(zone.anchorWorldX),
+      anchorWorldY: Number(zone.anchorWorldY),
+      seed: Number(zone.sourceUID || 0) + Number(zone.slotIndex || 0) * 17,
+      alpha: fadeAlpha,
+    });
+  }
+  return overlays;
 }
 
 function hasPersistentHeroRegenOverlay() {
@@ -332,17 +397,22 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
   for (const d of texts) {
     if (!d || d.domSpawned) continue;
     d.domSpawned = true;
-    const xOffset = d.targetKind === 'hero' ? -10 : 10;
-    const pos = projectToCanvas((d.x || 0) + xOffset, d.baseY != null ? d.baseY : (d.y || 0));
+    const xOffset = d.targetKind === 'hero' ? -10 : (d.canvasAnchored ? 0 : 10);
+    const pos = d.canvasAnchored
+      ? { x: Number(d.x || 0) + xOffset, y: Number(d.baseY != null ? d.baseY : (d.y || 0)) }
+      : projectToCanvas((d.x || 0) + xOffset, d.baseY != null ? d.baseY : (d.y || 0));
     const isCrit = !!d.isCrit;
-    const text = d.targetKind === 'bar'
-      ? formatDamageValue({ value: d.amount, type: 'heal', isCrit })
-      : formatDamageValue({ value: d.amount, type: d.kind === 'heal' ? 'heal' : 'damage', isCrit });
+    const isEnergyText = d.targetKind === 'energy' || d.kind === 'energy';
+    const text = isEnergyText
+      ? `+${formatDamageValue({ value: d.amount, type: 'heal', isCrit })}`
+      : (d.targetKind === 'bar'
+        ? formatDamageValue({ value: d.amount, type: 'heal', isCrit })
+        : formatDamageValue({ value: d.amount, type: d.kind === 'heal' ? 'heal' : 'damage', isCrit }));
     const animation = createDamageNumber({
       text,
       x: pos.x,
       y: pos.y,
-      kind: d.kind === 'heal' ? 'heal' : 'damage',
+      kind: isEnergyText ? 'energy' : (d.kind === 'heal' ? 'heal' : 'damage'),
       targetKind: d.targetKind || null,
       isCrit,
       container: damageNumberLayer,
@@ -3081,12 +3151,12 @@ function initEntities(enemyRows, layoutInstances) {
   callFunctionWithContext(fnContext, 'InitPartyHPFromHeroes');
   // Test lane seed: deterministic party skill-point stock for upgrade-consumption QA.
   callFunctionWithContext(fnContext, 'SetHeroSkillPointsForParty', 300, 'ORKA-spt-seed');
-  state.globals.BattleStartMode = Math.random() < 0.5 ? 'ambush' : 'initiative';
+  state.globals.BattleStartMode = 'heroes';
+  state.globals.BattleStartResolved = 1;
+  state.globals.TeamPhaseType = 0;
   state.globals.BattleStartShown = 1;
   state.globals.BattleStartClearedForSession = 0;
-  const msg = state.globals.BattleStartMode === 'ambush'
-    ? 'Ambushed by enemy team!'
-    : 'Heroes surprised the enemies!';
+  const msg = 'Heroes take the initiative!';
   state.globals.BattleStartText = msg;
   state.globals.BattleStartSessionText = msg;
   state.globals.BattleStartSessionId = Number(state.globals.CombatSessionId || 0);
@@ -3212,7 +3282,7 @@ function initEntities(enemyRows, layoutInstances) {
   }
 }
 
-// Create gem board with random colors (0-5: Hero1, Hero2, Heal, Buff, AOE, Energy)
+// Create gem board with random colors (0-5: green, red, blue, yellow, heal, purple energy).
 function createGemBoard(gridBounds = null, { immediateFill = false } = {}) {
   assertCombatLayoutDev('createGemBoard');
   bootstrapDeterministicRefillPending = BOOTSTRAP_SEED != null;
@@ -3285,8 +3355,6 @@ function randomGemFrame() {
   }
   const MAX_PURPLE_ON_BOARD = 3;
   const PURPLE_WEIGHT = 0.25;
-  const x = Math.floor(getGemSpawnRandom() * 1000);
-  if (x === 998) return 6;
   const countPurple = () => (gameState.gems || []).reduce((n, g) => {
     const c = g && g.color != null ? g.color : (g ? g.elementIndex : null);
     return n + (c === 5 ? 1 : 0);
@@ -3372,30 +3440,6 @@ function refillGemBoard(gridBounds = null) {
   state.globals.TapIndex = 0;
   runtimeDebugLogging.startupDebugLog('[BOARD] Refilled missing gems');
   return true;
-}
-
-function handleSpecialGem6(gem) {
-  const g = state.globals;
-  const actorUID = callFunctionWithContext(fnContext, 'GetCurrentTurn') || getHeroUIDByIndex(gameState.selectedHero) || gameState.selectedHero;
-  const actor = state.entities.find(e => e.uid === actorUID);
-  const actorName = actor ? (actor.name || 'Hero') : 'Hero';
-  const energyOptions = [6, 12, 15];
-  const amt = energyOptions[Math.floor(Math.random() * energyOptions.length)];
-  const next = (g.Player_Energy || 0) + amt;
-  g.Player_Energy = next;
-  callFunctionWithContext(fnContext, 'LogCombat', `${actorName} gained ${amt} energy!`);
-  callFunctionWithContext(fnContext, 'SpawnDamageText', amt, gem.x, gem.y, 'heal');
-  // Remove gem and free slot
-  gameState.gems = gameState.gems.filter(gm => gm !== gem);
-  gameState.selectedGems = [];
-  gameState.selectionLocked = false;
-  for (const gm of gameState.gems) {
-    gm.selected = false;
-    gm.Selected = 0;
-  }
-  state.globals.TapIndex = 0;
-  rebuildGridFromGems();
-  setGemArray(gameState.gems);
 }
 
 const YELLOW_CASINO_TELEGRAPH_SEC = 0;
@@ -3851,12 +3895,7 @@ function handleGemMatch(color) {
     clearLocalSelection();
     rebuildGridFromGems();
     callFunctionWithContext(fnContext, 'ResolveGemAction', 5, actorUID, matchedCount);
-  } else if (color === 6 || color === 7) {
-    callFunctionWithContext(fnContext, 'DestroyGem');
-    callFunctionWithContext(fnContext, 'ClearMatchState');
-    syncGemsFromGlobals();
-    clearLocalSelection();
-    rebuildGridFromGems();
+    callFunctionWithContext(fnContext, 'Sub_Energy', 1);
   }
 
   console.log(
@@ -5378,6 +5417,11 @@ async function main(){
   function drawFrame(dtOverride){
     syncSuperGemShapes({ gameState, state, boardGeometry, reason: 'draw-frame' });
     processTurnCadencePartyRegens();
+    superGemRuntime.syncTaintedGroundZones({
+      state,
+      callFunctionWithContext,
+      fnContext,
+    });
     const runtimeScope = {
       dtOverride,
       state,
@@ -5493,6 +5537,8 @@ async function main(){
       randomGemFrame,
       assertBoardIntegrity,
       getGemGateSnapshot,
+      getPersistentTaintedGroundOverlays,
+      hasPersistentEnemyTaintedGroundOverlay,
       hasPersistentEnemyBlightOverlay,
       hasPersistentHeroRegenOverlay,
       isHitFlashActive,
@@ -5928,14 +5974,6 @@ function getStoryCardLiveLineState() {
     }
     return null;
   }
-  function findIdleAutoplayPrioritySinglePick() {
-    for (const gem of (gameState.gems || [])) {
-      if (!gem) continue;
-      const color = Number(gem.color != null ? gem.color : gem.elementIndex);
-      if (color === 6) return { row: gem.cellR, col: gem.cellC };
-    }
-    return null;
-  }
   function findIdleAutoplayPrioritySuperGemPick() {
     const superGems = Array.isArray(gameState.superGems) ? gameState.superGems : [];
     if (!superGems.length) return null;
@@ -6062,16 +6100,6 @@ function getStoryCardLiveLineState() {
         continue;
       }
       if (isIdleAutoplayHeroWindow()) {
-        const singlePick = findIdleAutoplayPrioritySinglePick();
-        if (singlePick) {
-          const played = clickGemCell(Number(singlePick.row || 0), Number(singlePick.col || 0));
-          if (played) {
-            matchesPlayed += 1;
-            setDevAutoplayState({ active: true, stopRequested: false, lastReason: 'running', matchesPlayed, startedAt, endedAt: 0 });
-          }
-          await devSleep(90);
-          continue;
-        }
         const superGemPick = findIdleAutoplayPrioritySuperGemPick();
         if (superGemPick) {
           const played = clickGemCell(Number(superGemPick.row || 0), Number(superGemPick.col || 0));
@@ -6862,10 +6890,6 @@ function getStoryCardLiveLineState() {
               superGemCost: superGemRuntime.SUPER_GEM_COST,
             });
             drawFrame();
-            return;
-          }
-          if (gem.color === 6) {
-            handleSpecialGem6(gem);
             return;
           }
           if (gameState.selectionLocked && gameState.selectedGems.length < 3) {

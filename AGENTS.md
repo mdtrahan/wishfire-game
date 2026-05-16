@@ -16,48 +16,54 @@
 2. Ensure `bd` resolves
 3. Run `bd ready`
 4. Verify `bd list`
-5. Run `bd show <id>`
+5. Run `bd show <id>` once a bead is selected or assigned
 
 ## 3) Beads Gate
-- No issue, no work.
-- One bead at a time.
+- No implementation work without a bead.
+- One active implementation bead per agent run.
 - Commits must include `bd-<id>`.
 
-New bead requests should automatically create:
-- a bead-scoped branch
-- a dedicated worktree
-- an isolated implementation lane
+Default implementation flow:
+- create or select the bead
+- create a bead-scoped branch/worktree before marking `in_progress`
+- cap active bead worktrees at 5; close, merge, or clean up before opening more
+- use Beads for task tracking, checkpoints, recovery, and rollback
+- make periodic commits for historical safety
+
+Minor actions may stay in the active workspace:
+- read-only review, policy analysis, bead creation, and bead triage
+- spelling fixes, small reference `.md` additions, metadata/doc touch-ups
+- tiny policy wording edits with no runtime behavior change
+
+Minor exemption does not apply when touching runtime code, hot files, package/build/deploy config, overlapping dirty paths, or multi-agent write work.
 
 Before editing:
-- confirm active bead
-- confirm bead-scoped worktree + branch
-- confirm clean git status
-- mark bead `in_progress`
+- confirm active bead unless the action is minor-exempt
+- inspect git status; confirm touched paths are clean or explicitly owned
+- confirm bead worktree or minor exemption
+- mark implementation beads `in_progress`
 
 If scope changes:
 - stop and clarify
 - reopen bead, or
 - create a new bead
 
+For gameplay/content bead creation:
+- check `governance/product/player-living-guide.md` for player-facing drift
+- if the bead conflicts with the guide, ask the user for direction before implementing
+
 Do not implement out-of-scope fixes.
 
-## 3.1) Bead Worktree Workflow
-- One worktree per bead.
+## 3.1) Worktree Discipline
 - Git is transport; Beads is workflow authority.
-
-Naming:
-- worktree: `wt-<bd-id>-<slug>`
-- branch: `bead/<bd-id>-<slug>`
-
-Branch lifecycle:
-- create for one bead only
-- merge by PR only
-- delete after merge confirmation
-- keep rollback as tags, not branches
+- One implementation bead gets one bead-scoped worktree unless a minor exemption applies.
+- Include the bead id in the branch and worktree names.
+- Use `$bead-worktree-lifecycle` for intentional worktree creation and cleanup.
+- Stop and ask before exceeding 5 active bead worktrees.
 
 Do not:
-- develop in the main worktree
-- mix multiple beads in one worktree
+- run implementation beads in the active workspace without minor exemption or explicit override
+- mix multiple implementation beads in one worktree
 - merge without validation + rollback checkpoint
 
 ## 4) Execution Rules
@@ -99,6 +105,7 @@ Stop and ask when:
 - architecture impact is significant
 - persistence/deployment/schema behavior changes
 - repo state is unexpected
+- worktree cap or ownership is unclear
 
 ## 4.4) Subagents
 Use subagents only when they improve:
@@ -148,7 +155,7 @@ Bug/regression beads must update:
 Use reusable heuristics, not event logs.
 
 ## 6.3) Skills
-- Use `$bead-worktree-lifecycle` for `new bead`, bead-scoped worktree creation, QA PASS cleanup, safe merge, worktree removal, and merged branch deletion.
+- Use `$bead-worktree-lifecycle` for bead-scoped worktree creation, QA PASS cleanup, safe merge, worktree removal, and merged branch deletion.
 
 ## 7) Output Contracts
 `commit check <bd-id>`:

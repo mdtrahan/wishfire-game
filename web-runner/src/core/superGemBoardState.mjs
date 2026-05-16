@@ -215,6 +215,7 @@ export function spendSuperGem({
     : (getHeroUIDByIndex(gameState.selectedHero) || gameState.selectedHero || currentTurnUID);
   if (!(actorUID > 0)) return false;
   const sourceItems = buildSuperGemSourceItems(superGem, gameState.gems || []);
+  const colorClear = buildSuperGemColorClear({ superGem, gems: gameState.gems || [] });
   beginTask011ActionCycle(Number(superGem.baseColor), actorUID);
   const activated = activateSuperGemEffect({
     superGem,
@@ -224,14 +225,15 @@ export function spendSuperGem({
     callFunctionWithContext,
     fnContext,
     sourceItems,
+    consumedColorGemCount: colorClear.clearKeys.size,
     startGemMergeFx,
     getGoldLabelTargetWorld,
   });
   if (!activated) return false;
+  const resolvedSuperGemCost = Number(superGem?.baseColor) === 5 ? 1 : Number(superGemCost || 0);
   const beforeEnergy = Number(state.globals.Player_Energy || 0);
-  const afterEnergy = Math.max(0, beforeEnergy - Number(superGemCost || 0));
+  const afterEnergy = Math.max(0, beforeEnergy - resolvedSuperGemCost);
   state.globals.Player_Energy = afterEnergy;
-  const colorClear = buildSuperGemColorClear({ superGem, gems: gameState.gems || [] });
   if (
     colorClear.flyItems.length &&
     colorClear.center &&
@@ -264,7 +266,7 @@ export function spendSuperGem({
     id: String(superGem.id),
     type: String(superGem.type || ''),
     size: Number(superGem.size || 0),
-    area: Number(superGemCost || 0),
+    area: resolvedSuperGemCost,
     reason: String(reason || 'tap'),
     energyBefore: beforeEnergy,
     energyAfter: afterEnergy,

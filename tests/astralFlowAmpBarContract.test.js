@@ -2,7 +2,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { pathToFileURL } = require('node:url');
 
 function read(relPath) {
   return fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
@@ -84,21 +83,9 @@ test('combat renderer keeps HP green and draws a blue Astral Flow amp bar beneat
   assert.match(runtimeSrc, /ctx\.fillRect\(ampX, ampY, ampW \* ampRatio, barH\);/);
 });
 
-test('battle-start ordering only promotes the first priority actor before normal initiative resumes', async () => {
-  const scheduler = await import(pathToFileURL(path.join(__dirname, '..', 'src', 'core', 'schedulerRules.mjs')).href);
-  const heroStartOrder = scheduler.deriveBattleStartRoundPartition([
-    { uid: 1, type: 0, spd: 10, init: 12 },
-    { uid: 2, type: 0, spd: 8, init: 9 },
-    { uid: 3, type: 1, spd: 7, init: 14 },
-    { uid: 4, type: 1, spd: 6, init: 11 },
-  ], '').map(actor => Number(actor.uid || 0));
-  const enemyStartOrder = scheduler.deriveBattleStartRoundPartition([
-    { uid: 1, type: 0, spd: 10, init: 12 },
-    { uid: 2, type: 0, spd: 8, init: 9 },
-    { uid: 3, type: 1, spd: 7, init: 11 },
-    { uid: 4, type: 1, spd: 6, init: 8 },
-  ], 'ambush').map(actor => Number(actor.uid || 0));
-
-  assert.deepEqual(heroStartOrder, [1, 3, 4, 2]);
-  assert.deepEqual(enemyStartOrder, [3, 1, 2, 4]);
+test('battle start messaging is always hero-first and does not roll enemy-first initiative', () => {
+  const appSrc = read('web-runner/app.js');
+  assert.doesNotMatch(appSrc, /BattleStartMode = Math\.random\(\) < 0\.5 \? 'ambush' : 'initiative';/);
+  assert.match(appSrc, /state\.globals\.BattleStartMode = 'heroes';/);
+  assert.match(appSrc, /Heroes take the initiative!/);
 });

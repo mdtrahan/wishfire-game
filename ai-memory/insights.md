@@ -285,7 +285,7 @@
 
 ## 2026-05-08 — Dev Autoplay Color Priority Should Encode Real Preference Tiers Only
 - If QA automation is supposed to sample several gem colors fairly, keep those colors in one shared priority tier instead of expressing a fake total order. Pushing one color to the bottom of the array silently biases long autoplay runs and makes balance checks look worse than the underlying runtime behavior.
-- Diagnostic order for autoplay color-bias reports: verify the single-pick exception list first, then inspect the triplet priority tiers, then confirm same-tier selection is the only place randomness is applied. Do not tune downstream balance numbers before checking whether the dev automation itself is skewing picks.
+- Diagnostic order for autoplay color-bias reports: verify any autoplay bypass or pick-before-triplet rules first, then inspect the triplet priority tiers, then confirm same-tier selection is the only place randomness is applied. Do not tune downstream balance numbers before checking whether the dev automation itself is skewing picks.
 
 ## 2026-05-10 — Gem Spawn Tweens Need Matching Timebases
 - If a visual tween is stamped in game seconds, the renderer must evaluate it against game time, not `performance.now()`. A valid `bounceStart`/`bounceDur` pair will still look like a pop-in if render time is thousands of seconds ahead of the tween clock.
@@ -313,3 +313,34 @@
 ## 2026-05-11 — Canvas Pixel Overlays Must Re-anchor On Resize
 - If a combat HUD overlay stores computed canvas-pixel bounds, browser resize must recompute those bounds after `layoutScale` and layout offsets change. Redrawing with stale pixel coordinates makes otherwise-correct combat log and story-card windows drift relative to the game field.
 - Diagnostic order for resize drift: verify whether the overlay stores world coordinates or canvas pixels, then verify the resize handler refreshes the derived bounds, then inspect CSS/DOM reflow only after the canvas-owned placement is current.
+
+## 2026-05-13 — Team-Turn Effects Need Team-Owned Counters
+- If an effect duration is expressed in hero team turns, do not derive it from total combatant `TurnSerial` or full turn-queue length. Enemy turns and small-party encounters will skew the duration.
+- Store an explicit hero-team-turn serial that advances only after the live hero side completes a pass, then anchor field expiry to that serial. The field can still remember hero-team size for QA/debug, but size is not the clock.
+
+## 2026-05-14 — Strategy Turns Are Team Phases, Not Global Queues
+- If combat is strategy-game-style, phase ownership must alternate by team regardless of team size. Do not let global speed sorting weave heroes and enemies together or let enemy count shrink/expand spill one side into the other side's phase.
+- Speed sorting belongs only inside the active team phase. Battle start should initialize the first phase, not create enemy-first starts or extra priority turns.
+
+## 2026-05-14 — Field Effects Must Own Their Own Visual And DoT Timers
+- Slot/field effects should render from field-zone state, not from the current living unit in that slot. Unit death, entry, or direct status expiry must not pop the field visual unless the field's own timer expired.
+- If a field and a direct status both express the same visible debuff, keep their queued DoT packages in separate ownership buckets. Reapplying direct Faze can reset direct Faze, and reapplying SG Faze can refresh SG-owned field blight, but neither path should silently delete or renew the other's timer.
+- A multi-slot field application needs one shared expiry contract. DoT application to a unit standing in a field may use the field id for ownership cleanup, but it must not renew an individual puddle slot or the field will drift slot-by-slot.
+- If a field visually represents an infection, units standing in that active field must show the infection visual even after that field's damage packet has spent its ticks. Damage cadence and visual occupation are separate contracts.
+- When a field is the stronger expression of the same debuff, it owns the overlapping visual/status window. Direct same-debuff packets applied before or during the field should be absorbed for covered units, so they cannot reassert the unit visual after the field dissipates; a fresh direct application after the field is gone may start its own visual again.
+
+## 2026-05-16 — Hero Signature Actions Need Identity Beyond Shared Skill Slots
+- Shared slots like `HERO_AOE` are routing conveniences, not player-facing action identity. If a hero-specific action such as Kojonn's Faze rides the shared green path, keep an explicit action/profile marker on the queued packet so later presentation work cannot collapse it back into the common AOE expression.
+- For hero-signature regressions, contract both the payload semantics and the expression identity: DoT packets can be correct while the lunge/profile/presentation marker is still generic.
+
+## 2026-05-16 — Supergem Hero Identity Must Use The Runtime Current-Hero Seam
+- If supergem activation receives both a spender actor and a current hero signal, hero-specific supergem effects should resolve from the runtime current-hero seam first, then fall back to the passed actor. The passed actor can be stale during board spend plumbing, while `CurrentHeroUID` is the hero-turn owner set by the combat turn seam.
+- For hero-specific supergem regressions that fall back to generic resource collection, contract the mismatch case directly: non-Huun actor plus current Huun should still queue Huun's action packet, lunge, and combat log instead of only awarding gold.
+
+## 2026-05-16 — Closed Beads Still Need Main-Line Presence Checks
+- Before treating a closed gameplay bead as stable, verify its owner commit is reachable from current `main` and that its contract test exists in the active tree. A closed bead in an unmerged lane is not implemented behavior for the shipped runtime.
+- For silent feature regressions after merge cleanup, compare Bead intent against current code first, then check commit ancestry. Missing state keys, renderer markers, and focused tests together usually mean the feature was never incorporated, not that a small branch condition drifted.
+
+## 2026-05-16 — HUD Readout Popups Need Canvas Anchors
+- If a floating number is supposed to appear over a HUD readout, anchor it to the rendered canvas coordinate for that readout. Reusing the text object's world coordinate can project to an unrelated stage position when the HUD layout overrides the draw position.
+- Timing gates should wait on the popup's own text-animation completion signal. For resource-gain paths, max the action lock against `TextAnimEndAt` instead of replacing it with a fixed short delay after spawning the text.

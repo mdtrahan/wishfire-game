@@ -31,7 +31,7 @@ Rules reference:
 - SPD-sorted turn order
 - Speed spike rule
 - Shared HP pool
-- Purple gem = party attack amplification
+- Purple gem = combat Energy restoration
 
 ---
 

@@ -2,6 +2,7 @@ import { gsap } from './gsapShim.mjs';
 
 const DAMAGE_TEXT_FONT = '"Rubik Mono One", "Trebuchet MS", "Verdana", sans-serif';
 const DAMAGE_TEXT_FONT_SPEC = `28px ${DAMAGE_TEXT_FONT}`;
+const ENERGY_TEXT_COLOR = '#D87DFF';
 let damageTextFontPromise = null;
 let damageTextFontReady = false;
 
@@ -65,10 +66,14 @@ export function createDamageNumber({
     transformOrigin: 'center bottom',
   });
 
-  const isHeal = String(kind || 'damage') === 'heal';
-  const gradientStops = isHeal
-    ? ['#86eb2e', '#9fdfff']
-    : ['#fbfdce', '#f7f8d4'];
+  const normalizedKind = String(kind || 'damage');
+  const isHeal = normalizedKind === 'heal';
+  const isEnergy = normalizedKind === 'energy';
+  const gradientStops = isEnergy
+    ? [ENERGY_TEXT_COLOR, ENERGY_TEXT_COLOR]
+    : (isHeal
+        ? ['#86eb2e', '#9fdfff']
+        : ['#fbfdce', '#f7f8d4']);
   const timelines = [];
 
   const cleanup = () => {
@@ -147,14 +152,16 @@ export function createDamageNumber({
       y: 0,
     });
 
+    const floatY = isEnergy ? -32.2 : -28;
+
     tl.to(wrapper, {
-      y: -28,
+      y: floatY,
       duration: 0.8,
       ease: 'power2.out',
     }, 0);
 
     tl.to(wrapper, {
-      y: -28,
+      y: floatY,
       opacity: 1,
       duration: 0.484,
       ease: 'none',

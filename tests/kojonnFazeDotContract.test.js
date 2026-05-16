@@ -27,6 +27,14 @@ test('Kojonn Blight queue payload supports turn cadence and source-target reset 
     assert.match(src, /firesEveryTurns: Math\.max\(1, Math\.floor\(Number\(options\?\.firesEveryTurns \|\| 1\) \|\| 1\)\),/);
     assert.match(src, /nextFireTurnSerial: nowTurnSerial \+ Math\.max\(1, Math\.floor\(Number\(options\?\.startAfterTurns \|\| 1\) \|\| 1\)\),/);
     assert.match(src, /lastProcessedTurnSerial: nowTurnSerial,/);
+    assert.match(src, /const taintedGroundZoneId = String\(options\?\.taintedGroundZoneId \|\| ''\);/);
+    assert.match(src, /taintedGroundZoneId,/);
+    assert.match(src, /if \(String\(existing\.taintedGroundZoneId \|\| ''\) !== taintedGroundZoneId\) continue;/);
+    assert.doesNotMatch(src, /findRenewableTaintedGroundZone/);
+    assert.doesNotMatch(src, /taintedGroundRenewalZone/);
+    assert.match(src, /function recordHeroTeamTurnProgress\(ctx, currentUID, currentType\) \{/);
+    assert.match(src, /g\.HeroTeamTurnSerial = Number\(g\.HeroTeamTurnSerial \|\| 0\) \+ 1;/);
+    assert.match(src, /recordHeroTeamTurnProgress\(ctx, currentUID, currentType\);/);
   }
 });
 

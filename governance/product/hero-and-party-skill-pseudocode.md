@@ -274,6 +274,30 @@ function Skill_Huun_Growth(ctx, huunUID, dealtDamage) {
 }
 ```
 
+### Yellow Supergem: Goldstrike
+
+```js
+function Skill_Huun_YellowSupergemGoldstrike(ctx, huunUID, selectedEnemyUID, consumedYellowGemCount) {
+  if (!IsActiveHero(ctx, huunUID)) return false;
+  if (!WasYellowSupergemSpent(ctx)) return false;
+  const bankedGoldBeforeAward = GetBankedGold(ctx);
+  const boardGold = Math.max(0, consumedYellowGemCount);
+  const baseDamage = Math.max(1, bankedGoldBeforeAward + boardGold);
+  const roll = RollInclusive(ctx, 0, 100);
+  AwardGold(ctx, boardGold);
+  if (roll === 100) {
+    QueueHuunGoldstrikeAoe(ctx, huunUID, 100);
+    LogCombat(ctx, 'Huun hit a perfect goldstrike.');
+    return true;
+  }
+  const targetUID = selectedEnemyUID || PickDefaultEnemyTarget(ctx);
+  const finalDamage = roll <= 50 ? baseDamage : baseDamage * 3;
+  QueueHuunGoldstrikeSingle(ctx, huunUID, targetUID, finalDamage);
+  LogCombat(ctx, `Huun rolled ${roll} for Goldstrike.`);
+  return true;
+}
+```
+
 ## Runa
 
 ```js

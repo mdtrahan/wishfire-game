@@ -1,4 +1,26 @@
-# Turn-State Invariants (Pre-Execution Spec for TASK-004)
+# Turn-State Invariants
+
+## Canonical Turn System
+
+As of `ORKA-zps4`, combat uses a strict strategy-game team-phase model.
+
+- Heroes always receive the opening phase.
+- Phase ownership alternates by locked team blocks: `Heroes -> Enemies -> Heroes -> Enemies`.
+- Team size does not affect phase ownership or sequencing.
+- A phase belongs entirely to the active team until all living, able-to-act actors on that team have completed their actions.
+- Speed may sort actors only inside the active team phase.
+- Do not use enemy-first initiative, ambush opening, or Final Fantasy X-style woven global speed queues for normal combat.
+- Dead, stopped, paralyzed, stunned, disabled, or otherwise unable actors are excluded from the active phase queue.
+
+Canonical implementation and validation:
+- Bead: `ORKA-zps4` (`[BUG] Replace battle initiative with strict Heroes/Enemies team phases`)
+- Runtime owner: `web-runner/modules/functionBank.js`
+- Shared scheduler rules: `src/core/schedulerRules.mjs` and `web-runner/src/core/schedulerRules.mjs`
+- Contract: `tests/teamPhaseSchedulerContract.test.js`
+
+The older queue-oriented suspend/resume invariant notes below are historical context for layout transition safety. They must not be read as permission to reintroduce a cross-team global initiative queue.
+
+## Historical Suspend/Resume Notes
 
 Scope: deterministic turn-state and suspend/resume validation only.
 Out of scope: transition contract enforcement, layout registration policy changes, atomic transition queue refactors.

@@ -4,42 +4,6 @@ const vm = require('node:vm');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-test('dev idle autoplay prioritizes frame-6 single-pick energy gems before triplets', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
-  const match = src.match(/function findIdleAutoplayPrioritySinglePick\(\) \{[\s\S]*?\n  \}/);
-  assert.ok(match, 'priority single-pick helper should exist');
-  const script = `${match[0]}; findIdleAutoplayPrioritySinglePick();`;
-  const result = vm.runInNewContext(script, {
-    gameState: {
-      gems: [
-        { cellR: 2, cellC: 1, color: 4 },
-        { cellR: 0, cellC: 3, color: 6 },
-        { cellR: 1, cellC: 1, color: 2 },
-      ],
-    },
-    Number,
-  });
-  assert.equal(JSON.stringify(result), JSON.stringify({ row: 0, col: 3 }));
-});
-
-test('dev idle autoplay falls back to triplets when no frame-6 pickup exists', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
-  const match = src.match(/function findIdleAutoplayPrioritySinglePick\(\) \{[\s\S]*?\n  \}/);
-  assert.ok(match, 'priority single-pick helper should exist');
-  const script = `${match[0]}; findIdleAutoplayPrioritySinglePick();`;
-  const result = vm.runInNewContext(script, {
-    gameState: {
-      gems: [
-        { cellR: 2, cellC: 1, color: 4 },
-        { cellR: 0, cellC: 3, color: 3 },
-        { cellR: 1, cellC: 1, color: 2 },
-      ],
-    },
-    Number,
-  });
-  assert.equal(result, null);
-});
-
 test('dev idle autoplay prefers purple, then heal, then balances red-green-blue-yellow equally', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
   const priorityConst = src.match(/const IDLE_AUTOPLAY_COLOR_PRIORITY = Object\.freeze\(\[[\s\S]*?\]\);/);
@@ -137,10 +101,11 @@ test('dev idle autoplay treats red, green, blue, and yellow as equal-priority tr
   assert.equal(JSON.stringify(yellowResult), JSON.stringify([{ row: 3, col: 0 }, { row: 3, col: 1 }, { row: 3, col: 2 }]));
 });
 
-test('dev idle autoplay checks priority pickup before the triplet picker in the hero window', () => {
+test('dev idle autoplay checks purple supergem pickup before the triplet picker in the hero window', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
-  assert.match(src, /const singlePick = findIdleAutoplayPrioritySinglePick\(\);/);
-  assert.match(src, /if \(singlePick\) \{/);
-  assert.match(src, /const played = clickGemCell\(Number\(singlePick\.row \|\| 0\), Number\(singlePick\.col \|\| 0\)\);/);
+  assert.doesNotMatch(src, /findIdleAutoplayPrioritySinglePick/);
+  assert.match(src, /const superGemPick = findIdleAutoplayPrioritySuperGemPick\(\);/);
+  assert.match(src, /if \(superGemPick\) \{/);
+  assert.match(src, /const played = clickGemCell\(Number\(superGemPick\.row \|\| 0\), Number\(superGemPick\.col \|\| 0\)\);/);
   assert.match(src, /const pick = pickIdleAutoplayTriplet\(\);/);
 });

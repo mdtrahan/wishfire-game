@@ -109,8 +109,8 @@ Current meanings:
   - Healing action.
 
 - Purple (`gemColor === 5`)
-  - Power Amp activation.
-  - This is an attack amplification / offensive boost path.
+  - Combat Energy gain.
+  - This is a primary resource-recovery path during combat.
 
 Critical tutorial rule:
 - A valid match is “any 3 gems of the same color.”
@@ -128,7 +128,7 @@ Important player-facing rules:
   2. confirm via the centered attack button
 
 - Blue resolves into wallet/progression flow and turn handoff timing.
-- Purple resolves into Power Amp state.
+- Purple resolves into Energy gain and turn handoff timing.
 - Yellow has its own special sequence behavior.
 
 This matters for:
@@ -254,7 +254,7 @@ Use these rules when drafting player-facing text:
 
 - Say “tap 3 gems of the same color,” not “make a line” or “swap gems.”
 - Describe blue as Astral Flow / wallet progress, not a standard temporary stat buff.
-- Describe purple as Power Amp / damage amplification.
+- Describe purple as Energy restoration.
 - Explain that some gem matches require a follow-up target/attack confirmation.
 - Treat the Vault as a family of progression rooms, not one single inventory page.
 - Do not promise unfinished child-layout features as if they already have full gameplay.

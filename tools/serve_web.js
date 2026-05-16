@@ -15,6 +15,7 @@ const mime = {
   '.mjs':'application/javascript',
   '.json':'application/json',
   '.css':'text/css',
+  '.md':'text/markdown',
   '.png':'image/png',
   '.jpg':'image/jpeg',
   '.svg':'image/svg+xml',

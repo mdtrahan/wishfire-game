@@ -17,7 +17,12 @@ Those upgrades deepen the hero's built-in affinity effect rather than adding a n
 ## Falie - Tank
 
 Hero Promise: Redirect pressure, survive the worst of it, and punish enemies for overcommitting.
-Affinity: Increases party health.
+Affinity Color: Red
+Affinity Promise: Red matches make Falie harder to break and more dangerous to pressure.
+Suggested passive shapes:
+- Red match slightly reduces incoming damage for a short time.
+- Red match slightly improves retaliation effects.
+- Red match briefly strengthens ally-cover behavior.
 Archetype: `ROOK` | Latent potential vs forced destiny.
 
 1. `Ward Bash`: Chance to randomly counterattack enemy
@@ -56,7 +61,12 @@ Vault Lean: `Crusade`, `Protect`, `Shell`, `Formless`
 ## Huun - Melee DPS
 
 Hero Promise: Burst hard, exploit momentum, and turn fast play into kill pressure.
-Affinity: Increases gold gain.
+Affinity Color: Yellow
+Affinity Promise: Yellow matches turn Huun’s opportunism into stronger payoff.
+Suggested passive shapes:
+- Yellow match slightly improves the next attack.
+- Yellow match slightly increases burst/finisher output.
+- Yellow match slightly improves gold payout or reward conversion.
 Archetype: `KING` | Optimization under decay and constant risk calculus.
 
 1. `Bell`: Chance for Swipe to deal 2x damage to 1 enemy
@@ -92,10 +102,22 @@ Live Draw Core: `Bell`, `Glare`, `Trinity`, `Growth`
 Sharpen: Keep burst, turn disruption, and Astral Flow momentum separate so one lane does not eat the others.
 Vault Lean: `Rabbithole`, `Consume`, `Scout`, `Steal`
 
+Yellow Supergem: `Goldstrike`
+- Trigger: Huun is the active hero and the player spends a yellow supergem.
+- Payload: Huun converts the consumed yellow board value into a single-enemy strike.
+- Damage basis: `current banked gold before award + yellow gems consumed by the supergem action`.
+- Roll table: `0-50` deals base damage; `51-99` deals base damage x3; exact `100` deals 100 damage to all enemies.
+- Example: bank `15g` plus `10` consumed yellow gems deals `25` on a low roll, `75` on a high roll, or `100` to all enemies on a perfect roll.
+
 ## Runa - Magic DPS
 
 Hero Promise: Warp the rules of combat through spell pressure, conversion, and persistent magic effects.
-Affinity: Increases magic power.
+Affinity Color: Blue
+Affinity Promise: Blue matches deepen Runa’s spell flow and magical pressure.
+Suggested passive shapes:
+- Blue match slightly improves spell-linked effects.
+- Blue match slightly strengthens totems or magic pressure.
+- Blue match slightly improves blue-result efficiency without accelerating draw too much.
 Archetype: `KNIGHT` | Chaotic breakthroughs and narrative pivots.
 
 1. `Aura Totem: Blast`: Chance to drop a destructible melee DoT totem at 1/10 sec
@@ -134,7 +156,12 @@ Vault Lean: `Inspire`, `Ignore`, `Insight`
 ## Kojonn - Support
 
 Hero Promise: Rig the flow of battle by reshaping resources, boosting allies, and forcing favorable timing.
-Affinity: Increases ally power.
+Affinity Color: Green
+Affinity Promise: Green matches improve Kojonn’s setup and support shaping.
+Suggested passive shapes:
+- Green match slightly improves ally support effects.
+- Green match slightly strengthens control/setup outcomes.
+- Green match slightly improves board shaping or buff quality.
 Archetype: `PAWN` | Inevitability arc and transformation payoff.
 
 1. `Lock`: Chance to use gems at no cost

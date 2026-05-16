@@ -104,6 +104,9 @@ test('Kojonn green AOE multiplies blight totals when power amp is active in both
     assert.equal(amped.pending.length, 3, `${relPath} should queue one blight packet per enemy when amped`);
     assert.ok(base.pending.every((hit) => hit.effectType === 'dot_apply'), `${relPath} should queue dot_apply packets`);
     assert.ok(amped.pending.every((hit) => hit.effectType === 'dot_apply'), `${relPath} should keep dot_apply packets when amped`);
+    assert.ok(base.pending.every((hit) => hit.effectName === 'Blight'), `${relPath} should name regular Faze packets as Blight`);
+    assert.ok(base.pending.every((hit) => hit.actionName === 'Faze'), `${relPath} should preserve Faze action identity`);
+    assert.ok(base.pending.every((hit) => hit.calcPath === 'fazeDot'), `${relPath} should not label Faze packets as generic magic AOE`);
     assert.ok(base.pending.every((hit) => hit.dotTotalDamage === 16), `${relPath} should queue base blight total from MAG`);
     assert.ok(amped.pending.every((hit) => hit.dotTotalDamage === 48), `${relPath} should triple blight total when amp is active`);
     assert.equal(base.logs[0], 'Kojonn used Faze to spread blight over time for 48!');
@@ -112,4 +115,3 @@ test('Kojonn green AOE multiplies blight totals when power amp is active in both
     assert.equal(amped.consumeCalls, 1, `${relPath} should consume amp once for the whole AOE cast`);
   }
 });
-
