@@ -26,7 +26,6 @@ import {
   nextTeamPhaseType,
 } from '../src/core/schedulerRules.mjs';
 import { pickEnemyTargetHeroFromRoster } from '../src/core/enemyTargetingRules.mjs';
-
 const POWER_AMP_OUTCOMES = [
   { key: 'HERO_2X', multiplier: 2, chance: 0.62 },
   { key: 'HERO_3X', multiplier: 3, chance: 0.34 },
@@ -56,6 +55,63 @@ const ENEMY_SKILL_ASSIGNMENT_MAP = {
     requiresDamaged: true,
   },
 };
+
+const DAMAGE_FLOAT_MAX_ANGLE_DEG = 30;
+const DAMAGE_FLOAT_DEFAULT_TRAVEL = 28;
+const DAMAGE_FLOAT_ENERGY_TRAVEL = 32.2;
+const DAMAGE_FLOAT_CENTER_DEADZONE_FRACTION = 0.15;
+const DAMAGE_FLOAT_SEQUENCE_STRIDE = 0.6180339887498949;
+
+function cleanDamageFloatNumber(value) {
+  return Object.is(value, -0) ? 0 : value;
+}
+
+function wrapDamageFloatUnit(value) {
+  return value - Math.floor(value);
+}
+
+function normalizeDamageFloatAngleDeg(angleDeg = 0, maxAbsAngleDeg = DAMAGE_FLOAT_MAX_ANGLE_DEG) {
+  const maxAbs = Math.max(0, Number.isFinite(Number(maxAbsAngleDeg)) ? Number(maxAbsAngleDeg) : DAMAGE_FLOAT_MAX_ANGLE_DEG);
+  const angle = Number.isFinite(Number(angleDeg)) ? Number(angleDeg) : 0;
+  return Math.max(-maxAbs, Math.min(maxAbs, angle));
+}
+
+function pickDamageFloatAngleDeg({
+  random = Math.random,
+  maxAbsAngleDeg = DAMAGE_FLOAT_MAX_ANGLE_DEG,
+  centerDeadzoneFraction = DAMAGE_FLOAT_CENTER_DEADZONE_FRACTION,
+  sequence = 0,
+} = {}) {
+  const maxAbs = Math.max(0, Number.isFinite(Number(maxAbsAngleDeg)) ? Number(maxAbsAngleDeg) : DAMAGE_FLOAT_MAX_ANGLE_DEG);
+  if (maxAbs === 0) return 0;
+  const raw = typeof random === 'function' ? Number(random()) : 0.5;
+  const rawUnit = Number.isFinite(raw) && raw >= 0 && raw < 1 ? raw : 0.5;
+  const seq = Math.max(0, Number.isFinite(Number(sequence)) ? Number(sequence) : 0);
+  const unit = seq > 0 ? wrapDamageFloatUnit(rawUnit + (seq * DAMAGE_FLOAT_SEQUENCE_STRIDE)) : rawUnit;
+  const deadzone = Math.max(0, Math.min(1, Number(centerDeadzoneFraction || 0)));
+  const minAbs = maxAbs * deadzone;
+  const side = unit < 0.5 ? -1 : 1;
+  const sideUnit = unit < 0.5 ? 1 - (unit * 2) : (unit - 0.5) * 2;
+  return normalizeDamageFloatAngleDeg(side * (minAbs + (sideUnit * (maxAbs - minAbs))), maxAbs);
+}
+
+function deriveDamageFloatVector({
+  angleDeg = 0,
+  travel = DAMAGE_FLOAT_DEFAULT_TRAVEL,
+  maxAbsAngleDeg = DAMAGE_FLOAT_MAX_ANGLE_DEG,
+} = {}) {
+  const normalizedAngleDeg = normalizeDamageFloatAngleDeg(angleDeg, maxAbsAngleDeg);
+  const distance = Math.max(0, Number.isFinite(Number(travel)) ? Number(travel) : DAMAGE_FLOAT_DEFAULT_TRAVEL);
+  const radians = normalizedAngleDeg * (Math.PI / 180);
+  const x = cleanDamageFloatNumber(Math.sin(radians) * distance);
+  const y = cleanDamageFloatNumber(-Math.cos(radians) * distance);
+  return {
+    angleDeg: normalizedAngleDeg,
+    x,
+    y: y > 0 ? -Math.abs(y) : y,
+    travel: distance,
+  };
+}
 
 function getGlobals(ctx) {
   return (ctx && ctx.state ? ctx.state.globals : state.globals);
@@ -5960,7 +6016,6 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
   g.DamageTexts = g.DamageTexts || [];
   const textKind = String(kind || 'damage');
   const canvasAnchored = targetKind === 'energy' ? 1 : 0;
-  const damageFloatAngleDeg = textKind === 'damage' ? (Math.random() * 30) - 15 : 0;
   const partyMaxHP = Math.max(0, Number(g.PartyMaxHP || 0));
   let drawX = x;
   let drawY = y;
@@ -5973,6 +6028,31 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
     drawX += Math.cos(angle) * radiusX * distance;
     drawY += Math.sin(angle) * radiusY * distance;
     delete g.NextDamageTextScatter;
+  }
+  const isDamageLikeText = textKind !== 'heal' && textKind !== 'energy';
+  const floatMaxAngleDeg = Math.max(0, Math.min(45, Number(g.DamageTextMaxAngleDeg ?? DAMAGE_FLOAT_MAX_ANGLE_DEG)));
+  let floatAngleDeg = 0;
+  if (isDamageLikeText) {
+    g.DamageFloatSpawnSeq = (Number(g.DamageFloatSpawnSeq || 0) + 1);
+    floatAngleDeg = pickDamageFloatAngleDeg({
+      random: getRandomSource(ctx),
+      maxAbsAngleDeg: floatMaxAngleDeg,
+      sequence: g.DamageFloatSpawnSeq,
+    });
+  }
+  const floatTravel = textKind === 'energy' ? DAMAGE_FLOAT_ENERGY_TRAVEL : DAMAGE_FLOAT_DEFAULT_TRAVEL;
+  const floatVector = deriveDamageFloatVector({
+    angleDeg: floatAngleDeg,
+    travel: floatTravel,
+    maxAbsAngleDeg: floatMaxAngleDeg,
+  });
+  if (g.DebugDamageFloatVectors && typeof console !== 'undefined' && typeof console.log === 'function') {
+    console.log(
+      `[DAMAGE_FLOAT] amount=${amount} kind=${textKind} target=${targetKind || ''} ` +
+      `baseX=${Number(drawX || 0).toFixed(2)} baseY=${Number(drawY || 0).toFixed(2)} ` +
+      `angleDeg=${Number(floatVector.angleDeg || 0).toFixed(2)} ` +
+      `vectorX=${Number(floatVector.x || 0).toFixed(2)} vectorY=${Number(floatVector.y || 0).toFixed(2)}`
+    );
   }
   const defaults = textKind === 'heal' || textKind === 'energy'
     ? { low: 5, high: 30 }
@@ -5992,8 +6072,13 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
     canvasAnchored,
     heat,
     peakScale,
-    floatAngleDeg: damageFloatAngleDeg,
+    baseX: drawX,
     baseY: drawY,
+    floatAngleDeg: floatVector.angleDeg,
+    floatVectorX: floatVector.x,
+    floatVectorY: floatVector.y,
+    floatTravel: floatVector.travel,
+    floatMaxAngleDeg,
     age: 0,
     phase: 0,
     opacity: 1,

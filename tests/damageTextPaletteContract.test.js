@@ -71,8 +71,10 @@ test('dom floating numbers apply outlined gradients, glow, and squash-stretch fo
   assert.match(src, /ctx\.strokeStyle = '#0f0f0f';/);
   assert.match(src, /ctx\.createLinearGradient\(0, 0, 0, approxHeight\);/);
   assert.match(src, /ctx\.fillText\(value, approxWidth \/ 2, approxHeight \/ 2 \+ 1\);/);
-  assert.match(src, /const floatDistance = isEnergy \? 32\.2 : 28;/);
-  assert.match(src, /tl\.to\(wrapper,\s*\{[\s\S]*x: floatX,[\s\S]*y: floatY,[\s\S]*duration: 0\.8/);
+  assert.match(src, /travel: isEnergy \? DAMAGE_FLOAT_ENERGY_TRAVEL : DAMAGE_FLOAT_DEFAULT_TRAVEL,/);
+  assert.match(src, /const floatY = Number\.isFinite\(Number\(floatVector && floatVector\.y\)\)/);
+  assert.match(src, /const isWard = normalizedKind === 'ward';/);
+  assert.match(src, /tl\.to\(wrapper,\s*\{[\s\S]*y: floatY,[\s\S]*duration: 0\.8/);
   assert.match(src, /tl\.to\(wrapper,\s*\{[\s\S]*opacity: 0,[\s\S]*duration: 0\.16/);
   assert.doesNotMatch(src, /ctx\.globalAlpha = 0\.7/);
   assert.doesNotMatch(src, /glowColor/);
@@ -89,28 +91,29 @@ test('damage floating text disperses upward and damage tiers scale by amount', (
   const scriptsSrc = read('Scripts/functionBank.js');
 
   for (const src of [runtimeSrc, scriptsSrc]) {
-    assert.match(src, /const damageFloatAngleDeg = textKind === 'damage'\s*\?\s*\(Math\.random\(\) \* 30\) - 15\s*:\s*0;/);
     assert.match(src, /const partyMaxHP = Math\.max\(0, Number\(g\.PartyMaxHP \|\| 0\)\);/);
     assert.match(src, /partyMaxHP,/);
-    assert.match(src, /floatAngleDeg: damageFloatAngleDeg,/);
+    assert.match(src, /baseX: drawX,/);
+    assert.match(src, /floatAngleDeg: floatVector\.angleDeg,/);
   }
 
   assert.match(appSrc, /amount: d\.amount,/);
   assert.match(appSrc, /partyMaxHP: d\.partyMaxHP,/);
   assert.match(appSrc, /floatAngleDeg: d\.floatAngleDeg,/);
   assert.match(animationSrc, /partyMaxHP = 0,/);
-  assert.match(animationSrc, /amount,\s*\n\s*partyMaxHP = 0,\s*\n\s*floatAngleDeg = 0,/);
+  assert.match(animationSrc, /amount,\s*\n\s*partyMaxHP = 0,/);
+  assert.match(animationSrc, /angleDeg = 0,/);
   assert.match(animationSrc, /const isWeakDamage = normalizedKind === 'damage' && Number\(amount\) < 10;/);
   assert.match(animationSrc, /const isLargeDamage = normalizedKind === 'damage'\s*\n\s*&& Number\(partyMaxHP\) > 0\s*\n\s*&& Number\(amount\) > Number\(partyMaxHP\) \* 0\.5;/);
   assert.match(animationSrc, /const damageFontSize = 28;/);
   assert.match(animationSrc, /const fontSize = isWeakDamage\s*\n\s*\? damageFontSize \* 0\.75\s*\n\s*: \(isLargeDamage \? damageFontSize \* 1\.2 : damageFontSize\);/);
-  assert.match(animationSrc, /const clampedAngleDeg = normalizedKind === 'damage'\s*\?\s*Math\.max\(-15, Math\.min\(15, Number\(floatAngleDeg \|\| 0\)\)\)\s*:\s*0;/);
-  assert.match(animationSrc, /const floatX = Math\.sin\(floatAngleRad\) \* floatDistance;/);
-  assert.match(animationSrc, /const floatY = -Math\.cos\(floatAngleRad\) \* floatDistance;/);
+  assert.match(animationSrc, /const fallbackVector = deriveDamageFloatVector\(\{/);
+  assert.match(animationSrc, /const floatX = Number\.isFinite\(Number\(floatVector && floatVector\.x\)\)/);
+  assert.match(animationSrc, /const floatY = Number\.isFinite\(Number\(floatVector && floatVector\.y\)\)/);
 
-  assert.match(renderSrc, /const floatAngleDeg = kind === 'damage'\\n\s*\?\s*Math\.max\(-15, Math\.min\(15, Number\(d\.floatAngleDeg \|\| 0\)\)\)\\n\s*:\s*0;/);
-  assert.match(renderSrc, /const floatX = Math\.sin\(floatAngleRad\) \* floatDistance;/);
-  assert.match(renderSrc, /const floatVertical = Math\.cos\(floatAngleRad\) \* floatDistance;/);
+  assert.match(renderSrc, /const floatOffset = deriveDamageFloatFrameOffset\(d, floatProgress\);/);
+  assert.match(renderSrc, /baseX \+ xOffset \+ floatOffset\.x/);
+  assert.match(renderSrc, /baseY \+ floatOffset\.y/);
   assert.match(renderSrc, /const isWeakDamage = kind === 'damage' && Number\(d\.amount\) < 10;\\n\s*const isLargeDamage = kind === 'damage' && Number\(d\.partyMaxHP\) > 0 && Number\(d\.amount\) > Number\(d\.partyMaxHP\) \* 0\.5;\\n\s*const fontBaseSize = isWeakDamage \? 22 \* 0\.75 : \(isLargeDamage \? 22 \* 1\.2 : \(d\.isCrit \? 26 : 22\)\);\\n\s*const fontSize = isWeakDamage \? scaleFont\(fontBaseSize\) : Math\.max\(scaleFont\(fontBaseSize\), 12\);/);
 });
 

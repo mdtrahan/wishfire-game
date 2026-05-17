@@ -344,3 +344,7 @@
 ## 2026-05-16 — HUD Readout Popups Need Canvas Anchors
 - If a floating number is supposed to appear over a HUD readout, anchor it to the rendered canvas coordinate for that readout. Reusing the text object's world coordinate can project to an unrelated stage position when the HUD layout overrides the draw position.
 - Timing gates should wait on the popup's own text-animation completion signal. For resource-gain paths, max the action lock against `TextAnimEndAt` instead of replacing it with a fixed short delay after spawning the text.
+
+## 2026-05-16 — Batched Visual Randomness Needs Per-Instance Decorrelation
+- If several damage texts spawn from one action, randomize at the text-instance seam, not only at the action or packet seam. A repeated or deterministic RNG value can make a whole AoE read as one shared vector unless each spawned text also carries a sequence/salt into the variation picker.
+- For visual-randomness QA, test both normal RNG and fixed-RNG runs. Fixed-RNG proof catches accidental batch coupling while normal runs catch distribution and readability issues.
