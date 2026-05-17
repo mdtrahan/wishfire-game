@@ -21,6 +21,7 @@ test-results/
 
 # Generated per-worktree runtime metadata
 web-runner/runtime-fingerprint.js
+.worktrees/
 .worktale/
 .DS_Store
 .DS_Store
