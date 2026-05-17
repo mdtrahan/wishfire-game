@@ -35,6 +35,9 @@ export function isDamageTextFontReady() {
 
 export function createDamageNumber({
   text,
+  amount,
+  partyMaxHP = 0,
+  floatAngleDeg = 0,
   x,
   y,
   kind = 'damage',
@@ -69,11 +72,14 @@ export function createDamageNumber({
   const normalizedKind = String(kind || 'damage');
   const isHeal = normalizedKind === 'heal';
   const isEnergy = normalizedKind === 'energy';
+  const isWard = normalizedKind === 'ward';
   const gradientStops = isEnergy
     ? [ENERGY_TEXT_COLOR, ENERGY_TEXT_COLOR]
+    : (isWard
+        ? ['#FFD1EB', '#FF94CC']
     : (isHeal
         ? ['#86eb2e', '#9fdfff']
-        : ['#fbfdce', '#f7f8d4']);
+        : ['#fbfdce', '#f7f8d4']));
   const timelines = [];
 
   const cleanup = () => {
@@ -81,7 +87,14 @@ export function createDamageNumber({
   };
 
   const value = String(text || '');
-  const fontSize = 28;
+  const isWeakDamage = normalizedKind === 'damage' && Number(amount) < 10;
+  const isLargeDamage = normalizedKind === 'damage'
+    && Number(partyMaxHP) > 0
+    && Number(amount) > Number(partyMaxHP) * 0.5;
+  const damageFontSize = 28;
+  const fontSize = isWeakDamage
+    ? damageFontSize * 0.75
+    : (isLargeDamage ? damageFontSize * 1.2 : damageFontSize);
   const approxWidth = Math.max(72, Math.ceil(value.length * 24 + 40));
   const approxHeight = 72;
   const numberText = document.createElement('canvas');
@@ -152,15 +165,23 @@ export function createDamageNumber({
       y: 0,
     });
 
-    const floatY = isEnergy ? -32.2 : -28;
+    const floatDistance = isEnergy ? 32.2 : 28;
+    const clampedAngleDeg = normalizedKind === 'damage'
+      ? Math.max(-15, Math.min(15, Number(floatAngleDeg || 0)))
+      : 0;
+    const floatAngleRad = (clampedAngleDeg * Math.PI) / 180;
+    const floatX = Math.sin(floatAngleRad) * floatDistance;
+    const floatY = -Math.cos(floatAngleRad) * floatDistance;
 
     tl.to(wrapper, {
+      x: floatX,
       y: floatY,
       duration: 0.8,
       ease: 'power2.out',
     }, 0);
 
     tl.to(wrapper, {
+      x: floatX,
       y: floatY,
       opacity: 1,
       duration: 0.484,

@@ -43,7 +43,7 @@ module.exports = {
 }
 
 function createSuperGemContext(actorName = 'Falie') {
-  const actor = { uid: 4, kind: 'hero', name: actorName, attackType: 'melee' };
+  const actor = { uid: 4, kind: 'hero', name: actorName, attackType: 'melee', heroIndex: 0 };
   const enemy = { uid: 200, kind: 'enemy', name: 'Wisp', hp: 100, maxHP: 100 };
   const state = {
     globals: {
@@ -110,6 +110,34 @@ test('Falie red super-gem use grants party tempHP shield immediately without arm
     assert.equal(context.state.globals.DeferAdvance, 1);
     assert.equal(context.state.globals.AdvanceAfterAction, 1);
   }
+});
+
+test('Falie Ward creates one refreshed barrier visual per hero', () => {
+  const runtime = loadSuperGemRuntime();
+  const context = createSuperGemContext('Falie');
+  context.state.entities.splice(
+    1,
+    0,
+    { uid: 5, kind: 'hero', name: 'Huun', heroIndex: 1, hp: 100, maxHP: 100 },
+    { uid: 6, kind: 'hero', name: 'Runa', heroIndex: 2, hp: 100, maxHP: 100 },
+    { uid: 7, kind: 'hero', name: 'Kojonn', heroIndex: 3, hp: 100, maxHP: 100 },
+  );
+
+  assert.equal(activateRedSuperGem(runtime, context), true);
+  const firstVisuals = context.state.globals.PartyWardBarrierVisualsByUID;
+  assert.deepEqual(Object.keys(firstVisuals).sort(), ['4', '5', '6', '7']);
+  assert.equal(context.state.globals.PartyWardBarrierAssetPath, 'images/falie_ward_84x62.png');
+  assert.equal(context.state.globals.PartyWardBarrierOffsetWorldX, 22);
+  assert.equal(context.state.globals.PartyWardBarrierWidth, 84);
+  assert.equal(context.state.globals.PartyWardBarrierHeight, 62);
+  assert.equal(firstVisuals[4].state, 'fadeIn');
+  assert.equal(firstVisuals[4].refreshCount, 1);
+
+  assert.equal(activateRedSuperGem(runtime, context), true);
+  const refreshedVisuals = context.state.globals.PartyWardBarrierVisualsByUID;
+  assert.strictEqual(refreshedVisuals, firstVisuals);
+  assert.deepEqual(Object.keys(refreshedVisuals).sort(), ['4', '5', '6', '7']);
+  assert.equal(refreshedVisuals[4].refreshCount, 2);
 });
 
 test('red super-gem shield is Falie-only', () => {
@@ -213,6 +241,74 @@ test('party tempHP shield absorbs enemy damage before true party HP in both runt
   assertShieldAbsorbsDamageBeforePartyHp(path.join(repoRoot, 'Scripts', 'functionBank.js'));
 });
 
+function assertShieldDamageTargetsWard(modulePath) {
+  const { ApplyDamageToTarget } = loadFunctionBank(modulePath);
+  const ctx = makeDamageContext();
+  const hero = ctx.state.entities[0];
+  ctx.state.globals.SpawnDamageText = 1;
+  ctx.state.globals.PartyWardBarrierPosByUID = {
+    [hero.uid]: { x: 32, y: 10 },
+  };
+  ctx.state.globals.PartyWardBarrierVisualsByUID = {
+    [hero.uid]: {
+      uid: hero.uid,
+      state: 'active',
+      baseAlpha: 0.82,
+      fadeOutDuration: 0.28,
+    },
+  };
+
+  assert.equal(ApplyDamageToTarget(ctx, hero.uid, 30), 0);
+  assert.equal(hero.hp, 100);
+  assert.equal(ctx.state.globals.PartyTempHPShield, 12);
+  assert.equal(ctx.state.globals.DamageTexts.length, 1);
+  assert.equal(ctx.state.globals.DamageTexts[0].kind, 'ward');
+  assert.equal(ctx.state.globals.DamageTexts[0].targetKind, 'ward');
+  assert.equal(ctx.state.globals.DamageTexts[0].amount, 30);
+  assert.equal(ctx.state.globals.DamageTexts[0].x, 32);
+  assert.equal(ctx.state.globals.DamageTexts[0].y, 10);
+  assert.ok(!ctx.state.globals.HitFlashByUID || !ctx.state.globals.HitFlashByUID[hero.uid]);
+  assert.equal(ctx.state.globals.PartyWardBarrierVisualsByUID[hero.uid].lastAbsorbed, 30);
+}
+
+test('absorbed hero damage spawns soft Ward floating text over the barrier in both mirrors', () => {
+  assertShieldDamageTargetsWard(path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js'));
+  assertShieldDamageTargetsWard(path.join(repoRoot, 'Scripts', 'functionBank.js'));
+});
+
+function assertShieldDepletionFadesWardBeforeAdvancing(modulePath) {
+  const { ApplyDamageToTarget } = loadFunctionBank(modulePath);
+  const ctx = makeDamageContext();
+  const hero = ctx.state.entities[0];
+  ctx.state.globals.time = 2;
+  ctx.state.globals.SpawnDamageText = 1;
+  ctx.state.globals.PartyTempHPShield = 12;
+  ctx.state.globals.PartyWardBarrierVisualsByUID = {
+    [hero.uid]: {
+      uid: hero.uid,
+      state: 'active',
+      baseAlpha: 0.82,
+      fadeOutDuration: 0.28,
+    },
+  };
+
+  assert.equal(ApplyDamageToTarget(ctx, hero.uid, 20), 8);
+  assert.equal(ctx.state.globals.PartyTempHPShield, 0);
+  assert.equal(ctx.state.globals.PartyWardBarrierVisualsByUID[hero.uid].state, 'fadeOut');
+  assert.equal(ctx.state.globals.PartyWardBarrierVisualsByUID[hero.uid].fadeOutStartedAt, 2);
+  assert.ok(Math.abs(ctx.state.globals.PartyWardBarrierFadeOutUntil - 2.28) < 1e-9);
+  assert.ok(Math.abs(ctx.state.globals.ActionLockUntil - 2.28) < 1e-9);
+  assert.equal(ctx.state.globals.DeferAdvance, 1);
+  assert.equal(ctx.state.globals.AdvanceAfterAction, 1);
+  assert.equal(ctx.state.globals.DamageTexts.some(text => text.kind === 'ward' && text.amount === 12), true);
+  assert.equal(ctx.state.globals.DamageTexts.some(text => text.kind === 'damage' && text.targetKind === 'hero' && text.amount === 8), true);
+}
+
+test('depleting Falie Ward starts a fade-out gate before combat advances in both mirrors', () => {
+  assertShieldDepletionFadesWardBeforeAdvancing(path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js'));
+  assertShieldDepletionFadesWardBeforeAdvancing(path.join(repoRoot, 'Scripts', 'functionBank.js'));
+});
+
 test('party shield render expression is light blue and right-edge aligned over the PartyHP bar', () => {
   const source = fs.readFileSync(path.join(repoRoot, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
 
@@ -221,4 +317,19 @@ test('party shield render expression is light blue and right-edge aligned over t
   assert.match(source, /PartyTempHPShieldBarCanvas/);
   assert.match(source, /barX \+ barW - shieldW/);
   assert.match(source, /fillRect\(barX \+ barW - shieldW, barY, shieldW, barH\)/);
+});
+
+test('Ward barrier asset is loaded and rendered from the game assets path', () => {
+  const appSource = fs.readFileSync(path.join(repoRoot, 'web-runner', 'app.js'), 'utf8');
+  const renderSource = fs.readFileSync(path.join(repoRoot, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
+  const assetPath = path.join(repoRoot, 'web-runner', 'assets', 'images', 'falie_ward_84x62.png');
+
+  assert.equal(fs.existsSync(assetPath), true);
+  assert.match(appSource, /wardBarrierImage = await loadImage\(assetUrl\('images\/falie_ward_84x62\.png'\)\);/);
+  assert.match(appSource, /wardBarrierImage,/);
+  assert.match(renderSource, /PartyWardBarrierVisualsByUID/);
+  assert.match(renderSource, /wardBarrierImage/);
+  assert.match(renderSource, /PartyWardBarrierPosByUID/);
+  assert.match(renderSource, /PartyWardBarrierTextCanvasByUID/);
+  assert.match(renderSource, /drawImage\(wardBarrierImage/);
 });
