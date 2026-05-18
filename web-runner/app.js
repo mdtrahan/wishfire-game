@@ -77,7 +77,9 @@ import * as helpers from './utils/helpers.js';
 import * as mapLayoutState from './state/mapLayoutState.js';
 import * as uiState from './state/uiState.js';
 import { createInitialGameState } from './state/gameState.js';
+import { CANONICAL_HERO_ROSTER, FIGMA_HERO_BACK_URL, FIGMA_HERO_CLOSE_OVAL_URL, FIGMA_HERO_NEXT_URL, FIGMA_MINUS_URL, FIGMA_PLUS_URL, HERO_CLASS_LABELS, HERO_PACK_CLOSE_OVAL_PATH, HERO_PACK_MINUS_PATH, HERO_PACK_PLUS_PATH, HERO_STAT_KEYS, heroLayoutSpec } from './state/heroScreenConfig.js';
 import { createHarnessEventBus, createHarnessLayoutState, HarnessInputDomainManager } from './state/harnessLayoutState.js';
+import { createRuntimeEnvironment, createRuntimeFingerprint, exposeRuntimeDebugFlags } from './state/runtimeEnvironment.js';
 import * as task015TraceState from './state/task015TraceState.js';
 
 const out = document.getElementById('output');
@@ -89,63 +91,16 @@ const ctx = canvas.getContext('2d');
 let damageNumberLayer = null;
 const DAMAGE_TEXT_FONT = '"Rubik Mono One", "Trebuchet MS", "Verdana", sans-serif';
 void ensureDamageTextFontReady();
-const HARNESS_MODE = typeof window !== 'undefined' && window.location.search.includes('harness=true');
-const DEBUG_LAYOUT = (() => {
-  let enabled = false;
-  try {
-    if (typeof process !== 'undefined' && process && process.env && process.env.DEBUG_LAYOUT === 'true') {
-      enabled = true;
-    }
-  } catch {}
-  try {
-    if (typeof window !== 'undefined' && window && window.DEBUG_LAYOUT === true) {
-      enabled = true;
-    }
-  } catch {}
-  return enabled;
-})();
-const DEBUG_GEMS_QUERY = (() => {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    return (
-      params.has('devtest') ||
-      params.get('devtest') === 'true' ||
-      params.has('debug_gems') ||
-      params.get('debug_gems') === 'true'
-    );
-  } catch {
-    return false;
-  }
-})();
-const GEM_DEBUG_LEVEL = (function () {
-  const p = new URLSearchParams(window.location.search);
-  return p.get('gemlog') || 'minimal';
-})();
-const BOOTSTRAP_SEED = (() => {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const raw = params.get('bootstrap_seed') || params.get('gem_seed');
-    if (raw == null || raw === '') return null;
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-})();
+const {
+  HARNESS_MODE,
+  DEBUG_LAYOUT,
+  DEBUG_GEMS_QUERY,
+  GEM_DEBUG_LEVEL,
+  BOOTSTRAP_SEED,
+  STARTUP_DEBUG,
+} = createRuntimeEnvironment();
 let bootstrapDeterministicRefillPending = false;
-const STARTUP_DEBUG = (() => {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    return params.has('startup_debug') || params.get('startup_debug') === 'true';
-  } catch {
-    return false;
-  }
-})();
-if (typeof window !== 'undefined') {
-  window.DEBUG_LAYOUT = DEBUG_LAYOUT;
-  window.STARTUP_DEBUG = STARTUP_DEBUG;
-  window.DEBUG_GEMS_QUERY = DEBUG_GEMS_QUERY;
-}
+exposeRuntimeDebugFlags({ DEBUG_LAYOUT, STARTUP_DEBUG, DEBUG_GEMS_QUERY });
 const DEV_TOOL_HOTKEY_LABEL = 'Ctrl+Shift+P';
 const DEV_TOOL_GEM_RANDOM = -1;
 const DEV_TOOL_GEM_OPTIONS = Object.freeze([
@@ -529,28 +484,7 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
     }
   }
 }
-const RUNTIME_FINGERPRINT = (() => {
-  const source = (typeof window !== 'undefined' && window.__ORKA_RUNTIME_FINGERPRINT__)
-    ? window.__ORKA_RUNTIME_FINGERPRINT__
-    : {};
-  const params = (typeof window !== 'undefined')
-    ? new URLSearchParams(window.location.search)
-    : null;
-  const qaTaskOverride = params
-    ? (params.get('qa_task') || params.get('task') || '').trim()
-    : '';
-  const worktree = source.worktree || 'unknown-worktree';
-  const branch = source.branch || 'unknown-branch';
-  const issueId = qaTaskOverride || source.issueId || 'ORKA-UNKNOWN';
-  const orka69rReady = Boolean(source.contracts && source.contracts.ORKA69R_READY);
-  return {
-    worktree,
-    branch,
-    issueId,
-    orka69rReady,
-    label: `WT:${worktree} BR:${branch} TASK:${issueId} 69R:${orka69rReady ? 'READY' : 'MISSING'}`,
-  };
-})();
+const RUNTIME_FINGERPRINT = createRuntimeFingerprint();
 console.info(`[RUNTIME_FINGERPRINT] ${RUNTIME_FINGERPRINT.label}`);
 if (!RUNTIME_FINGERPRINT.orka69rReady) {
   console.warn('[RUNTIME_CONTRACT] ORKA-69r not present in this build (69R:MISSING).');
@@ -1435,168 +1369,12 @@ const combatRuntimeGateway = new CombatRuntimeGateway({
   },
 });
 
-const CANONICAL_HERO_ROSTER = [
-  { name: 'Falie', hp: 42, maxHP: 42, ATK: 18, DEF: 20, MAG: 10, RES: 18, SPD: 9, attackType: 'melee' },
-  { name: 'Huun', hp: 35, maxHP: 35, ATK: 22, DEF: 10, MAG: 8, RES: 12, SPD: 20, attackType: 'melee' },
-  { name: 'Runa', hp: 30, maxHP: 30, ATK: 8, DEF: 8, MAG: 28, RES: 20, SPD: 11, attackType: 'magic' },
-  { name: 'Kojonn', hp: 40, maxHP: 40, ATK: 12, DEF: 14, MAG: 22, RES: 18, SPD: 14, attackType: 'magic' },
-];
-const HERO_CLASS_LABELS = Object.freeze({
-  falie: 'Guardian',
-  huun: 'Vanguard',
-  runa: 'Mystic',
-  kojonn: 'Arcanist',
-});
-// Deterministic gate metric used for progression/access comparisons.
 function computeCombatPower(atk, def, hp) {
   const a = Number(atk || 0);
   const d = Number(def || 0);
   const h = Number(hp || 0);
   return Math.round((a + d + (h / 10)) * 100) / 100;
 }
-const HERO_STAT_KEYS = ['ATK', 'DEF', 'MAG', 'RES', 'SPD', 'HP'];
-const FIGMA_HERO_NEXT_URL = 'https://www.figma.com/api/mcp/asset/dfb1bc1b-4189-4f52-9c88-1cf1e4f8029a';
-const FIGMA_HERO_BACK_URL = 'https://www.figma.com/api/mcp/asset/6ce3ba17-8c7d-4a3e-bc8e-194b9b4947d9';
-const FIGMA_HERO_CLOSE_OVAL_URL = 'https://www.figma.com/api/mcp/asset/978c0a6d-a797-4ae7-b41c-4306877ad7bd';
-const FIGMA_PLUS_URL = 'https://www.figma.com/api/mcp/asset/f978e439-2103-43fd-be9d-fcb7f5aa9d7f';
-const FIGMA_MINUS_URL = 'https://www.figma.com/api/mcp/asset/b5733d59-96b6-4f04-a5de-e4134dea9565';
-const HERO_PACK_PLUS_PATH = 'images/plus.png';
-const HERO_PACK_MINUS_PATH = 'images/minus.png';
-const HERO_PACK_CLOSE_OVAL_PATH = 'images/ui_navclosebutton-animation 1-000.png';
-const heroLayoutSpec = {
-  artboard: { w: 360, h: 640 },
-  portrait: { x: 109, y: 32, w: 142, h: 92 },
-  arrows: {
-    left: { x: 22, y: 78, w: 24, h: 38, glyphX: 34, glyphY: 97 },
-    right: { x: 322, y: 78, w: 24, h: 38, glyphX: 334, glyphY: 97 },
-  },
-  namePill: { x: 85, y: 134, w: 190, h: 24 },
-  stats: {
-    labelsTop: 168,
-    valuesTop: 190,
-    labelH: 14,
-    valueH: 44,
-    cells: [
-      { x: 16, w: 50 },
-      { x: 72, w: 50 },
-      { x: 128, w: 50 },
-      { x: 184, w: 50 },
-      { x: 240, w: 50 },
-      { x: 296, w: 50 },
-    ],
-  },
-  skillPoints: {
-    row: { x: 160, y: 251, w: 190, h: 24 },
-    chip: { x: 286, y: 252, w: 58, h: 20 },
-  },
-  heroHeader: {
-    namePill: { x: 18, y: 38, w: 190, h: 24 },
-    classLabel: { x: 24, y: 70, w: 128, h: 16 },
-  },
-  heroPortrait: { x: 69, y: 107, w: 224, h: 146 },
-  heroArrows: {
-    left: { x: 14, y: 152, w: 24, h: 38, glyphX: 26, glyphY: 171 },
-    right: { x: 320, y: 152, w: 24, h: 38, glyphX: 332, glyphY: 171 },
-  },
-  heroCP: { x: 136, y: 272, w: 88, h: 18 },
-  heroStats: {
-    bar: { x: 6, y: 306, w: 350, h: 27 },
-    items: [
-      { iconX: 27, valueX: 54, key: 'HP' },
-      { iconX: 94, valueX: 122, key: 'ATK' },
-      { iconX: 165, valueX: 190, key: 'DEF' },
-      { iconX: 233, valueX: 258, key: 'MAG' },
-      { iconX: 301, valueX: 330, key: 'RES' },
-    ],
-  },
-  heroNodes: {
-    items: [
-      {
-        x: 101,
-        y: 352,
-        kind: 'circle',
-        size: 44,
-        frameFill: '#D9D9D9',
-        frameStroke: '#FFFFFF',
-        frameStrokeWidth: 1,
-        levelBacker: { x: 132, y: 379, w: 18, h: 18, label: 'N' },
-      },
-      {
-        x: 159,
-        y: 352,
-        kind: 'circle',
-        size: 44,
-        frameFill: '#D9D9D9',
-        frameStroke: null,
-        frameStrokeWidth: 0,
-        levelBacker: { x: 190, y: 379, w: 18, h: 18, label: 'N' },
-      },
-      {
-        x: 222.5,
-        y: 355.615,
-        kind: 'diamond',
-        size: 36.77,
-        frameFill: '#D9D9D9',
-        frameStroke: null,
-        frameStrokeWidth: 0,
-        frameRadius: 8,
-        levelBacker: { x: 251, y: 379, w: 18, h: 18, label: 'N' },
-      },
-    ],
-  },
-  heroSkillPoints: {
-    row: { x: 86, y: 415, w: 190, h: 24 },
-    chip: { x: 216, y: 415, w: 88, h: 24 },
-  },
-  heroSkillModal: {
-    card: { x: 32, y: 92, w: 296, h: 438 },
-    headerPill: { x: 56, y: 112, w: 168, h: 24 },
-    classLabel: { x: 56, y: 142, w: 128, h: 16 },
-    frame: { x: 56, y: 170, w: 44, h: 44 },
-    rankRow: { x: 120, y: 176, w: 154, h: 24 },
-    summaryRow: { x: 56, y: 228, w: 240, h: 56 },
-    upgradeList: { x: 56, y: 300, w: 240, h: 118 },
-    upgradeButton: { x: 104, y: 430, w: 152, h: 56 },
-    close: { cx: 180, cy: 507, r: 15 },
-  },
-  heroUpgrade: { x: 118, y: 494, w: 124, h: 42 },
-  cards: [
-    {
-      card: { x: 12, y: 287, w: 336, h: 79.53 },
-      titleStrip: { x: 60, y: 295, w: 182, h: 13 },
-      iconTile: { x: 18.96, y: 308.87, w: 37.775, h: 37.775 },
-      bodyText: { x: 65.68, titleY: 306.5, line1Y: 324.5, line2Y: 336.5, line3Y: 348.5 },
-      controls: {
-        minus: { x: 249.59, y: 316.73, w: 22.773, h: 23.954 },
-        value: { x: 277, y: 316, w: 35.787, h: 20.876 },
-        plus: { x: 317.18, y: 312.85, w: 22.039, h: 23.676 },
-      },
-    },
-    {
-      card: { x: 12, y: 380.44, w: 336, h: 79.53 },
-      titleStrip: { x: 60, y: 389, w: 182, h: 13 },
-      iconTile: { x: 18.96, y: 402.31, w: 37.775, h: 37.775 },
-      bodyText: { x: 65.68, titleY: 400.5, line1Y: 418.5, line2Y: 430.5, line3Y: 442.5 },
-      controls: {
-        minus: { x: 249.59, y: 410.17, w: 22.773, h: 23.954 },
-        value: { x: 277, y: 409, w: 35.787, h: 20.876 },
-        plus: { x: 317.18, y: 406.29, w: 22.039, h: 23.676 },
-      },
-    },
-    {
-      card: { x: 12, y: 473.89, w: 336, h: 79.53 },
-      titleStrip: { x: 60, y: 482, w: 182, h: 13 },
-      iconTile: { x: 18.96, y: 495.76, w: 37.775, h: 37.775 },
-      bodyText: { x: 65.68, titleY: 493.5, line1Y: 511.5, line2Y: 523.5, line3Y: 535.5 },
-      controls: {
-        minus: { x: 249.59, y: 503.61, w: 22.773, h: 23.954 },
-        value: { x: 277, y: 503, w: 35.787, h: 20.876 },
-        plus: { x: 317.18, y: 499.73, w: 22.039, h: 23.676 },
-      },
-    },
-  ],
-  close: { cx: 180, cy: 608, r: 15 },
-};
 
 function getHeroScreenRoster() {
   const runtimeHeroes = (state.entities || [])
