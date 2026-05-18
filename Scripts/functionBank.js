@@ -12,6 +12,7 @@ import {
   normalizePowerAmpLifecycleMeta,
 } from '../src/core/powerAmpRules.mjs';
 import {
+  createEnemyRosterRefillHold,
   createEnemyTurnGateBaseline,
   createHeroTurnGateBaseline,
   createYellowSafetyNet,
@@ -26,6 +27,7 @@ import {
   nextTeamPhaseType,
 } from '../src/core/schedulerRules.mjs';
 import { pickEnemyTargetHeroFromRoster } from '../src/core/enemyTargetingRules.mjs';
+import { getEnemyRosterStability } from '../src/core/enemyRosterStability.mjs';
 const POWER_AMP_OUTCOMES = [
   { key: 'HERO_2X', multiplier: 2, chance: 0.62 },
   { key: 'HERO_3X', multiplier: 3, chance: 0.34 },
@@ -324,6 +326,29 @@ function applyTurnGateState(g, next) {
 function applyTurnGateIntent(g, createIntent, options = undefined) {
   if (!g || typeof createIntent !== 'function') return;
   applyTurnGateState(g, createIntent(g, options));
+}
+
+export function GetEnemyRosterStability(ctx) {
+  const g = getGlobals(ctx);
+  return getEnemyRosterStability({
+    enemySlots: Array.isArray(g.EnemySlots) ? g.EnemySlots : [],
+    enemyIds: Array.isArray(g.EnemyIDs) ? g.EnemyIDs : [],
+    pendingRespawnSlots: Array.isArray(g.PendingEnemyRespawnSlots) ? g.PendingEnemyRespawnSlots : [],
+    pendingRespawnTimerActive: Number(g.PendingEnemyRespawnTimerActive || 0),
+    entities: getEntities(ctx),
+  });
+}
+
+function holdForEnemyRosterRefill(ctx, options = {}) {
+  const stability = GetEnemyRosterStability(ctx);
+  if (stability.stable) return false;
+  const g = getGlobals(ctx);
+  applyTurnGateIntent(g, createEnemyRosterRefillHold, {
+    now: Number(g.time || 0),
+    currentTurnUID: GetCurrentTurn(ctx),
+    preservePendingSkill: Boolean(options.preservePendingSkill),
+  });
+  return true;
 }
 
 function ensurePowerAmpByUID(ctx) {
@@ -2042,13 +2067,33 @@ function shouldResetAstralFlowAmpOnHeroTurn(g) {
 
 function recoverStaleActionInProgress(g, currentUID = 0) {
   const ownerUID = Number(g.ActionActorUID || 0);
-  if (!Number(g.ActionInProgress || 0) || !ownerUID || ownerUID === Number(currentUID || 0)) return false;
+  if (!Number(g.ActionInProgress || 0) || !ownerUID) return false;
   const heroActive = !!(g.HeroAction && g.HeroAction.active && Number(g.HeroAction.uid || 0) === ownerUID);
   const enemyActive = !!(g.EnemyAction && g.EnemyAction.active && Number(g.EnemyAction.uid || 0) === ownerUID);
   if (heroActive || enemyActive) return false;
+  if (Number(g.ActionLockUntil || 0) > Number(g.time || 0)) return false;
   g.ActionInProgress = 0;
   g.ActionActorUID = 0;
   return true;
+}
+
+function logActionGateBlock(g, tag, payload = {}) {
+  if (!g || !(g.DevTestMode === true || g.DebugGemsMode === true)) return;
+  const sig = JSON.stringify({
+    tag,
+    turnPhase: Number(g.TurnPhase || 0),
+    isPlayerBusy: Number(g.IsPlayerBusy || 0),
+    actionInProgress: Number(g.ActionInProgress || 0),
+    actionActorUID: Number(g.ActionActorUID || 0),
+    actionOwnerUID: Number(g.ActionOwnerUID || 0),
+    deferAdvance: Number(g.DeferAdvance || 0),
+    pendingSkillID: String(g.PendingSkillID || ''),
+    actionLockUntil: Number(g.ActionLockUntil || 0),
+    time: Number(g.time || 0),
+  });
+  if (g._LastActionGateBlockSig === sig) return;
+  g._LastActionGateBlockSig = sig;
+  console.log(tag, payload);
 }
 
 const HERO_GEM_USAGE_KEYS = Object.freeze(['RED', 'GREEN', 'BLUE', 'HEAL', 'YELLOW']);
@@ -3120,6 +3165,26 @@ function resolvePendingDeathsForInitiative(ctx) {
   g.GroupResolving = 0;
 }
 
+function resolvePendingEnemyDeaths(ctx) {
+  const g = getGlobals(ctx);
+  const pending = g.PendingDeaths || {};
+  for (const uidStr of Object.keys(pending)) {
+    const pendingMeta = pending[uidStr];
+    const uid = Number(uidStr);
+    const actor = GetActorByUID(ctx, uid);
+    if (!actor || actor.kind !== 'enemy') continue;
+    const killerUID = Number(
+      (pendingMeta && typeof pendingMeta === 'object' && pendingMeta.killerUID != null)
+        ? pendingMeta.killerUID
+        : (g.LastDamageSourceUID || GetCurrentTurn(ctx) || 0)
+    );
+    AwardMonsterDrop(ctx, actor.name || actor.key || actor.type || '', null, killerUID);
+    KillEnemyAt(ctx, actor.slotIndex ?? 0);
+    delete pending[uidStr];
+  }
+  g.PendingDeaths = pending;
+}
+
 export function BuildTurnOrder(ctx) {
   const g = getGlobals(ctx);
   if (isTimeInitiative(ctx)) {
@@ -3247,6 +3312,7 @@ export function ProcessCurrentTurn(ctx) {
         delete pending[uidStr];
       }
       g.GroupResolving = 0;
+      if (holdForEnemyRosterRefill(ctx)) return;
       g.RoundMemberIndex = 0;
       g.RoundGroupIndex = (g.RoundGroupIndex || 0) + 1;
       if (g.RoundGroupIndex >= groups.length) {
@@ -3354,12 +3420,15 @@ export function AdvanceTurn(ctx) {
     }
   }
   g.TurnSerial = Number(g.TurnSerial || 0) + 1;
+  resolvePendingEnemyDeaths(ctx);
   if (isTimeInitiative(ctx)) {
     resolvePendingDeathsForInitiative(ctx);
+    if (holdForEnemyRosterRefill(ctx)) return;
     selectNextInitiativeActor(ctx);
     ProcessCurrentTurn(ctx);
     return;
   }
+  if (holdForEnemyRosterRefill(ctx)) return;
   ProcessCurrentTurn(ctx);
 }
 
@@ -4673,9 +4742,39 @@ function ensurePendingEnemyRespawnSlots(g, desiredSlots = 3) {
   return g.PendingEnemyRespawnSlots;
 }
 
+function markEnemyRespawnPending(ctx, slotIndex) {
+  const g = getGlobals(ctx);
+  const desiredSlots = Math.max(1, Number((Array.isArray(g.EnemySlots) && g.EnemySlots.length) ? g.EnemySlots.length : 3));
+  const pending = ensurePendingEnemyRespawnSlots(g, desiredSlots);
+  const safeSlot = Math.max(0, Math.min(desiredSlots - 1, Number(slotIndex || 0)));
+  pending[safeSlot] = 1;
+  return safeSlot;
+}
+
+function clearEnemyRespawnPendingForFilledSlot(ctx, slotIndex, enemyUID) {
+  const g = getGlobals(ctx);
+  const desiredSlots = Math.max(1, Number((Array.isArray(g.EnemySlots) && g.EnemySlots.length) ? g.EnemySlots.length : 3));
+  const safeSlot = Math.max(0, Math.min(desiredSlots - 1, Number(slotIndex || 0)));
+  const uid = Number(enemyUID || 0);
+  const entity = uid ? GetActorByUID(ctx, uid) : null;
+  const slotOk = Number(g.EnemySlots?.[safeSlot] || 0) === uid + 1;
+  const idOk = Number(g.EnemyIDs?.[safeSlot] || 0) === uid;
+  const entityOk = entity && entity.kind === 'enemy' && Number(entity.slotIndex ?? -1) === safeSlot;
+  if (!slotOk || !idOk || !entityOk) return false;
+  const pending = ensurePendingEnemyRespawnSlots(g, desiredSlots);
+  pending[safeSlot] = 0;
+  return true;
+}
+
+function rescheduleEnemyRespawnWindowRetry(ctx) {
+  const g = getGlobals(ctx);
+  if (Number(g.PendingEnemyRespawnTimerActive || 0) === 1) return;
+  g.PendingEnemyRespawnTimerActive = 1;
+  setTimeout(() => finalizeEnemyRespawnWindow(ctx), 50);
+}
+
 function finalizeEnemyRespawnWindow(ctx) {
   const g = getGlobals(ctx);
-  g.PendingEnemyRespawnTimerActive = 0;
   const desiredSlots = Math.max(1, Number((Array.isArray(g.EnemySlots) && g.EnemySlots.length) ? g.EnemySlots.length : 3));
   g.EnemySlots = g.EnemySlots || Array.from({ length: desiredSlots }, () => 0);
   while (g.EnemySlots.length < desiredSlots) g.EnemySlots.push(0);
@@ -4702,7 +4801,21 @@ function finalizeEnemyRespawnWindow(ctx) {
       if (pick) SpawnEnemy(ctx, pick, slotIndex);
     }
   }
-  g.PendingEnemyRespawnSlots = Array.from({ length: desiredSlots }, () => 0);
+  g.PendingEnemyRespawnTimerActive = 0;
+  const stability = GetEnemyRosterStability(ctx);
+  const problemSlots = new Set([
+    ...stability.missingSlots,
+    ...stability.deadSlots,
+    ...stability.mismatchedSlots,
+  ]);
+  if (problemSlots.size > 0) {
+    for (const slotIndex of problemSlots) {
+      if (slotIndex >= 0 && slotIndex < desiredSlots) pending[slotIndex] = 1;
+    }
+    rescheduleEnemyRespawnWindowRetry(ctx);
+    UpdateEnemyHPUI(ctx);
+    return;
+  }
   UpdateEnemyHPUI(ctx);
   if (!g.RoundActive && !g.BattleStartActive) {
     StartRound(ctx);
@@ -4712,10 +4825,7 @@ function finalizeEnemyRespawnWindow(ctx) {
 
 function scheduleEnemyRespawnWindow(ctx, slotIndex, respawnDelay) {
   const g = getGlobals(ctx);
-  const desiredSlots = Math.max(1, Number((Array.isArray(g.EnemySlots) && g.EnemySlots.length) ? g.EnemySlots.length : 3));
-  const pending = ensurePendingEnemyRespawnSlots(g, desiredSlots);
-  const safeSlot = Math.max(0, Math.min(desiredSlots - 1, Number(slotIndex || 0)));
-  pending[safeSlot] = 1;
+  markEnemyRespawnPending(ctx, slotIndex);
   if (Number(g.PendingEnemyRespawnTimerActive || 0) === 1) return;
   g.PendingEnemyRespawnTimerActive = 1;
   setTimeout(() => finalizeEnemyRespawnWindow(ctx), Math.max(0, Number(respawnDelay || 0)) * 1000);
@@ -4766,6 +4876,7 @@ export function SpawnEnemy(ctx, enemyData, slotIndex = 0) {
   g.EnemyIDs[slotIndex] = enemy.uid;
   g.EnemySlots = g.EnemySlots || [];
   g.EnemySlots[slotIndex] = enemy.uid + 1;
+  clearEnemyRespawnPendingForFilledSlot(ctx, slotIndex, enemy.uid);
   if (!g.InitialSpawn) {
     g.NewSpawnUIDs = g.NewSpawnUIDs || {};
     g.NewSpawnUIDs[enemy.uid] = true;
@@ -4801,6 +4912,7 @@ export function KillEnemyAt(ctx, slotIndex) {
   if (g.SelectedEnemyUID === deadUID) g.SelectedEnemyUID = 0;
   g.EnemySlots[slotIndex] = 0;
   if (Array.isArray(g.EnemyIDs)) g.EnemyIDs[slotIndex] = 0;
+  markEnemyRespawnPending(ctx, slotIndex);
   g.IsPlayerBusy = 1;
   schedulerApplyRemovalCompaction(ctx, deadUID);
   UpdateEnemyHPUI(ctx);
@@ -4850,6 +4962,7 @@ export function KillEnemyByUID(ctx, enemyUID, fallbackSlotIndex = 0) {
   if (g.SelectedEnemyUID === targetUID) g.SelectedEnemyUID = 0;
   if (Array.isArray(g.EnemySlots) && slotIndex >= 0) g.EnemySlots[slotIndex] = 0;
   if (Array.isArray(g.EnemyIDs) && slotIndex >= 0) g.EnemyIDs[slotIndex] = 0;
+  markEnemyRespawnPending(ctx, slotIndex);
   g.IsPlayerBusy = 1;
   UpdateEnemyHPUI(ctx);
   const respawnDelay = Math.max(0.4, (g.DamageTextDurationSec || 1.35));
@@ -5357,7 +5470,22 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     g.NextHeroActionProfile = skillId === 'HERO_AOE'
       ? (String(actor.name || '') === 'Kojonn' ? 'faze' : 'aoe')
       : 'single';
-    StartHeroLunge(ctx, actorUID);
+    const lungeStarted = StartHeroLunge(ctx, actorUID);
+    if (lungeStarted === 0 || lungeStarted === false) {
+      logActionGateBlock(g, '[ACTION_HANDOFF_REFUSED]', {
+        source: 'ExecuteSkill',
+        skillId,
+        actorUID,
+        turnPhase: Number(g.TurnPhase || 0),
+        isPlayerBusy: Number(g.IsPlayerBusy || 0),
+        actionInProgress: Number(g.ActionInProgress || 0),
+        actionActorUID: Number(g.ActionActorUID || 0),
+        deferAdvance: Number(g.DeferAdvance || 0),
+        actionLockUntil: Number(g.ActionLockUntil || 0),
+        time: Number(g.time || 0),
+      });
+      return;
+    }
   }
 
   if (skillId === 'DEF_UP') {
@@ -5614,9 +5742,35 @@ export function ProcessTurn(ctx) {
   const actor = GetActorByUID(ctx, uid);
   const g = getGlobals(ctx);
   if (g.BoardFillActive) return;
+  resolvePendingEnemyDeaths(ctx);
+  if (holdForEnemyRosterRefill(ctx)) return;
   recoverStaleActionInProgress(g, uid);
-  if (g.ActionInProgress && g.ActionActorUID && g.ActionActorUID !== uid) return;
-  if (g.IsPlayerBusy && g.TurnPhase === 1) return;
+  if (g.ActionInProgress) {
+    logActionGateBlock(g, '[ACTION_GATE_BLOCK]', {
+      source: 'ProcessTurn',
+      reason: 'action-in-progress',
+      uid,
+      actionActorUID: Number(g.ActionActorUID || 0),
+      actionOwnerUID: Number(g.ActionOwnerUID || 0),
+      turnPhase: Number(g.TurnPhase || 0),
+      actionLockUntil: Number(g.ActionLockUntil || 0),
+      time: Number(g.time || 0),
+    });
+    return;
+  }
+  if (g.IsPlayerBusy && g.TurnPhase === 1) {
+    logActionGateBlock(g, '[ACTION_GATE_BLOCK]', {
+      source: 'ProcessTurn',
+      reason: 'busy-action-phase',
+      uid,
+      pendingSkillID: String(g.PendingSkillID || ''),
+      deferAdvance: Number(g.DeferAdvance || 0),
+      actionOwnerUID: Number(g.ActionOwnerUID || 0),
+      actionLockUntil: Number(g.ActionLockUntil || 0),
+      time: Number(g.time || 0),
+    });
+    return;
+  }
   g.DebugTurnCount = (g.DebugTurnCount || 0) + 1;
   console.log(`[DEBUG] matches=${g.DebugMatchCount || 0} turns=${g.DebugTurnCount}`);
   const flatRaw = isTimeInitiative(ctx)
@@ -5663,6 +5817,7 @@ export function ProcessTurn(ctx) {
         console.log(`[TURN] skip hero uid=${uid} partyHP=${g.PartyHP || 0}`);
       }
       AdvanceTurn(ctx);
+      if (holdForEnemyRosterRefill(ctx)) return;
       ProcessTurn(ctx);
     }
     return;
@@ -5679,12 +5834,14 @@ export function ProcessTurn(ctx) {
       EnemyTurn(ctx, uid);
     } else {
       AdvanceTurn(ctx);
+      if (holdForEnemyRosterRefill(ctx)) return;
       ProcessTurn(ctx);
     }
     return;
   }
 
   AdvanceTurn(ctx);
+  if (holdForEnemyRosterRefill(ctx)) return;
   ProcessTurn(ctx);
 }
 
@@ -6120,9 +6277,31 @@ export function StartBuffRoll(ctx) {
 
 export function StartHeroLunge(ctx, actorUID) {
   const g = getGlobals(ctx);
-  if (!actorUID) return;
-  if (g.HeroAction && g.HeroAction.active && g.HeroAction.uid === actorUID) return;
-  if (g.ActionInProgress && g.ActionActorUID && g.ActionActorUID !== actorUID) return;
+  if (!actorUID) {
+    delete g.NextHeroActionProfile;
+    return 0;
+  }
+  const currentTurnUID = Number(GetCurrentTurn(ctx) || 0);
+  if (currentTurnUID && Number(actorUID || 0) !== currentTurnUID) {
+    logActionGateBlock(g, '[ACTION_HANDOFF_REFUSED]', {
+      source: 'StartHeroLunge',
+      reason: 'actor-not-current-turn',
+      actorUID: Number(actorUID || 0),
+      currentTurnUID,
+      turnPhase: Number(g.TurnPhase || 0),
+    });
+    delete g.NextHeroActionProfile;
+    return 0;
+  }
+  recoverStaleActionInProgress(g, actorUID);
+  if (g.HeroAction && g.HeroAction.active) {
+    delete g.NextHeroActionProfile;
+    return 0;
+  }
+  if (g.ActionInProgress && g.ActionActorUID) {
+    delete g.NextHeroActionProfile;
+    return 0;
+  }
   const profile = String(g.NextHeroActionProfile || 'single');
   delete g.NextHeroActionProfile;
   g.ActionInProgress = 1;
@@ -6146,6 +6325,7 @@ export function StartHeroLunge(ctx, actorUID) {
     forwardX: null,
     anticipationX: null,
   };
+  return 1;
 }
 
 export function ShowBuffProgress(ctx) {

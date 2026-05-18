@@ -124,6 +124,9 @@ export const state = {
     // Enemy/turn order arrays
     EnemyArray: [],
     EnemyIDs: [],
+    EnemySlots: [],
+    PendingEnemyRespawnSlots: [],
+    PendingEnemyRespawnTimerActive: 0,
     EnemyKeyList: [],
     TurnOrderArray: [],
     TrackBuffs: [],

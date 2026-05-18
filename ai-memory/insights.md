@@ -348,3 +348,24 @@
 ## 2026-05-16 — Batched Visual Randomness Needs Per-Instance Decorrelation
 - If several damage texts spawn from one action, randomize at the text-instance seam, not only at the action or packet seam. A repeated or deterministic RNG value can make a whole AoE read as one shared vector unless each spawned text also carries a sequence/salt into the variation picker.
 - For visual-randomness QA, test both normal RNG and fixed-RNG runs. Fixed-RNG proof catches accidental batch coupling while normal runs catch distribution and readability issues.
+
+## 2026-05-17 — Death Refills Must Be Scheduler Gates
+- Treat enemy death resolution, required-slot refill, slot occupancy, and target validity as one roster-stability contract before any next action can be claimed.
+- A side-turn boundary is too late for backup arrival if the prior turn killed an enemy. The completion seam that observes death must either finish refill or hold the scheduler behind an explicit refill-pending gate.
+- For softlocks where a hero waits on a missing target or enemies act with absent allies, trace every death-producing path first, then verify the shared next-action gate rejects dead targets, empty required slots, duplicate slot occupants, and pending refill state.
+- Roster-refill holds may preserve a visible attack selection, but an already-owned deferred action must clear stale pending target fields while keeping only the deferred advance ownership.
+- Pending death entries are not yet refill work. The action-completion seam must commit pending enemy deaths into killed slots before asking the roster-stability gate to hold, or the gate blocks the only path that schedules backup.
+
+## 2026-05-17 — Action Starts Must Claim The Handoff Gate Before Queuing Damage
+- Damage packets, lunge presentation, and deferred turn ownership are one action contract. If the lunge/action gate refuses to start, the caller must not queue damage, consume a supergem, or reserve `DeferAdvance`.
+- The scheduler must not re-enter while any action is in progress, even if the active action belongs to the current turn owner. Same-owner reentry is still reentry and can mutate target-selection state into an unplayable phase.
+- For hero-action softlocks, inspect the meta-state first: `PendingSkillID`, `ActionInProgress`, `ActionActorUID`, `HeroAction`/`EnemyAction`, `ActionOwnerUID`, and `DeferAdvance` must describe the same owner and phase. Individual hero edge cases usually fall out of that broken symmetry.
+
+## 2026-05-17 — Deferred Handoffs Must Survive Blocking Gates
+- A deferred turn-advance token is not spent until `AdvanceTurn()` has actually moved the scheduler or intentionally finished the handoff. If a refill/death gate keeps the same owner and phase, preserve the owned defer so the handoff can resume after the gate clears.
+- Refill-complete gates may release visual/busy state, but they must not restore player input while `TurnPhase` is still resolving. `CanPickGems` is an idle hero-phase privilege, not a generic "no animation is running" flag.
+- Actor identity for special actions must come from the scheduler owner at the action seam. Stale convenience fields like `CurrentHeroUID` can assist display or fallback routing, but they must not be allowed to claim an action for a non-current actor.
+
+## 2026-05-17 — QA Autoplay Must Not Spend Resource Turns As Combat Turns
+- When investigating turn-order failures through dev autoplay, separate scheduler ownership from the action chosen by the harness. A valid resource-only hero turn can look like a skipped hero if it has no console-visible combat line.
+- Combat QA autoplay should not spend non-combat resource-only picks while enemies are alive unless the tested hero turns that resource into combat pressure.

@@ -137,6 +137,64 @@ function splitDamageAcrossHits(totalDamage, hitCount) {
   });
 }
 
+function isActionHandoffDebugEnabled(state) {
+  return !!(state?.globals?.DevTestMode === true || state?.globals?.DebugGemsMode === true);
+}
+
+function logActionHandoff(state, tag, payload) {
+  if (!isActionHandoffDebugEnabled(state)) return;
+  console.log(tag, payload);
+}
+
+function beginQueuedHeroAction({
+  state,
+  callFunctionWithContext,
+  fnContext,
+  actorUID,
+  profile,
+}) {
+  const before = {
+    actorUID,
+    profile,
+    turnPhase: Number(state.globals.TurnPhase || 0),
+    canPickGems: state.globals.CanPickGems,
+    isPlayerBusy: Number(state.globals.IsPlayerBusy || 0),
+    actionInProgress: Number(state.globals.ActionInProgress || 0),
+    actionActorUID: Number(state.globals.ActionActorUID || 0),
+    deferAdvance: Number(state.globals.DeferAdvance || 0),
+    pendingSkillID: String(state.globals.PendingSkillID || ''),
+  };
+  state.globals.NextHeroActionProfile = profile;
+  const lungeStarted = callFunctionWithContext(fnContext, 'StartHeroLunge', actorUID);
+  logActionHandoff(state, '[ACTION_HANDOFF_CLAIM]', {
+    ...before,
+    lungeStarted,
+    afterTurnPhase: Number(state.globals.TurnPhase || 0),
+    afterActionInProgress: Number(state.globals.ActionInProgress || 0),
+    afterActionActorUID: Number(state.globals.ActionActorUID || 0),
+    afterDeferAdvance: Number(state.globals.DeferAdvance || 0),
+    actionLockUntil: Number(state.globals.ActionLockUntil || 0),
+    time: Number(state.globals.time || 0),
+  });
+  if (lungeStarted === 0 || lungeStarted === false) {
+    delete state.globals.NextHeroActionProfile;
+    logActionHandoff(state, '[ACTION_HANDOFF_REFUSED]', {
+      source: 'supergem',
+      actorUID,
+      profile,
+      lungeStarted,
+      actionInProgress: Number(state.globals.ActionInProgress || 0),
+      actionActorUID: Number(state.globals.ActionActorUID || 0),
+      heroActionActive: !!(state.globals.HeroAction && state.globals.HeroAction.active),
+      enemyActionActive: !!(state.globals.EnemyAction && state.globals.EnemyAction.active),
+      actionLockUntil: Number(state.globals.ActionLockUntil || 0),
+      time: Number(state.globals.time || 0),
+    });
+    return false;
+  }
+  return true;
+}
+
 function queueClusterSingleHits({
   state,
   callFunctionWithContext,
@@ -159,8 +217,13 @@ function queueClusterSingleHits({
   const ampState = state.globals.PowerAmpByUID || {};
   const ampEntry = ampState[actorUID];
   const ampLifecycleId = Number(ampEntry && ampEntry.lifecycleId || 0);
-  state.globals.NextHeroActionProfile = 'single';
-  callFunctionWithContext(fnContext, 'StartHeroLunge', actorUID);
+  if (!beginQueuedHeroAction({
+    state,
+    callFunctionWithContext,
+    fnContext,
+    actorUID,
+    profile: 'single',
+  })) return false;
   state.globals.PendingHeroHits = state.globals.PendingHeroHits || [];
   const now = Number(state.globals.time || 0);
   const applyAt = now + SUPER_GEM_SINGLE_HIT_DELAY;
@@ -219,11 +282,6 @@ function resolveHuunGoldstrikeActorUID({
   fnContext,
   actorUID,
 }) {
-  const currentHeroUID = Number(state?.globals?.CurrentHeroUID || 0);
-  if (currentHeroUID > 0) {
-    const currentHero = callFunctionWithContext(fnContext, 'GetActorByUID', currentHeroUID);
-    if (isHuunActor(currentHero)) return currentHeroUID;
-  }
   const actor = callFunctionWithContext(fnContext, 'GetActorByUID', actorUID);
   return isHuunActor(actor) ? Number(actorUID || 0) : 0;
 }
@@ -254,8 +312,13 @@ function queueHuunYellowGoldstrike({
     : null;
   const targets = isJackpot ? enemies : [selectedTarget || enemies[0]];
   if (!targets.length) return false;
-  state.globals.NextHeroActionProfile = isJackpot ? 'aoe' : 'single';
-  callFunctionWithContext(fnContext, 'StartHeroLunge', actorUID);
+  if (!beginQueuedHeroAction({
+    state,
+    callFunctionWithContext,
+    fnContext,
+    actorUID,
+    profile: isJackpot ? 'aoe' : 'single',
+  })) return false;
   state.globals.PendingHeroHits = state.globals.PendingHeroHits || [];
   const now = Number(state.globals.time || 0);
   const applyAt = now + (isJackpot ? SUPER_GEM_AOE_HIT_DELAY : SUPER_GEM_SINGLE_HIT_DELAY);
@@ -489,8 +552,13 @@ function queueKojonnTaintedGroundAoe({
   const baseDotDamage = Math.max(1, Math.floor(Number(callFunctionWithContext(fnContext, 'GetEffectiveStat', actor, 'MAG') || actor.MAG || 0) * 0.75));
   const tunedDotDamage = Math.max(1, Math.floor(baseDotDamage * KOJONN_TAINTED_GROUND_DAMAGE_SCALE));
   const dotTotalDamage = ampMult > 0 ? Math.max(1, Math.ceil(tunedDotDamage * ampMult)) : tunedDotDamage;
-  state.globals.NextHeroActionProfile = 'aoe';
-  callFunctionWithContext(fnContext, 'StartHeroLunge', actorUID);
+  if (!beginQueuedHeroAction({
+    state,
+    callFunctionWithContext,
+    fnContext,
+    actorUID,
+    profile: 'aoe',
+  })) return false;
   state.globals.PendingHeroHits = state.globals.PendingHeroHits || [];
   const now = Number(state.globals.time || 0);
   const applyAt = now + SUPER_GEM_AOE_HIT_DELAY;
@@ -564,8 +632,13 @@ function queueClusterAoeHits({
   const ampState = state.globals.PowerAmpByUID || {};
   const ampEntry = ampState[actorUID];
   const ampLifecycleId = Number(ampEntry && ampEntry.lifecycleId || 0);
-  state.globals.NextHeroActionProfile = 'aoe';
-  callFunctionWithContext(fnContext, 'StartHeroLunge', actorUID);
+  if (!beginQueuedHeroAction({
+    state,
+    callFunctionWithContext,
+    fnContext,
+    actorUID,
+    profile: 'aoe',
+  })) return false;
   state.globals.PendingHeroHits = state.globals.PendingHeroHits || [];
   const now = Number(state.globals.time || 0);
   const applyAt = now + SUPER_GEM_AOE_HIT_DELAY;
@@ -729,6 +802,16 @@ export function executePendingSuperGemAction({
   if (!(actorUID > 0)) return false;
   const color = Number(pending.color);
   const hitCount = Math.max(1, Number(pending.hitCount || 1));
+  logActionHandoff(state, '[PENDING_SUPERGEM_EXEC]', {
+    actorUID,
+    color,
+    hitCount,
+    selectedEnemyUID: Number(state.globals.SelectedEnemyUID || 0),
+    turnPhase: Number(state.globals.TurnPhase || 0),
+    pendingSkillID: String(state.globals.PendingSkillID || ''),
+    actionInProgress: Number(state.globals.ActionInProgress || 0),
+    deferAdvance: Number(state.globals.DeferAdvance || 0),
+  });
   let activated = false;
   if (color === 1) {
     const targetUID = Number(state.globals.SelectedEnemyUID || 0) || getDefaultSingleTargetUID(state);
@@ -750,8 +833,32 @@ export function executePendingSuperGemAction({
       hitCount,
     });
   }
-  if (!activated) return false;
+  if (!activated) {
+    logActionHandoff(state, '[PENDING_SUPERGEM_REJECT]', {
+      actorUID,
+      color,
+      hitCount,
+      pendingStillArmed: !!state.globals.PendingSuperGemAction,
+      pendingSkillID: String(state.globals.PendingSkillID || ''),
+      actionInProgress: Number(state.globals.ActionInProgress || 0),
+      actionActorUID: Number(state.globals.ActionActorUID || 0),
+      deferAdvance: Number(state.globals.DeferAdvance || 0),
+      turnPhase: Number(state.globals.TurnPhase || 0),
+    });
+    return false;
+  }
   clearPendingSuperGemAction(state);
+  logActionHandoff(state, '[PENDING_SUPERGEM_RESOLVED]', {
+    actorUID,
+    color,
+    hitCount,
+    pendingSkillID: String(state.globals.PendingSkillID || ''),
+    pendingHeroHits: Array.isArray(state.globals.PendingHeroHits) ? state.globals.PendingHeroHits.length : 0,
+    actionInProgress: Number(state.globals.ActionInProgress || 0),
+    actionActorUID: Number(state.globals.ActionActorUID || 0),
+    deferAdvance: Number(state.globals.DeferAdvance || 0),
+    turnPhase: Number(state.globals.TurnPhase || 0),
+  });
   return true;
 }
 

@@ -3,11 +3,13 @@ import { createContext, callFunctionWithContext } from './modules/functionRegist
 import { CombatRuntimeGateway } from './src/core/combatRuntimeGateway.js';
 import {
   createCombatTurnRefreshBaseline,
+  createEnemyRosterRefillHold,
   createEnemyTurnGateBaseline,
   createEnemyTurnIdleRecovery,
   createEnemyTurnRetryHold,
   createDeferredAdvanceResolved,
   createDeferredRefillHold,
+  createDeferredStaleActionRecovery,
   createDeferredStaleBusyRecovery,
   createDeferredTextHold,
   createRefillCompleteGate,
@@ -212,6 +214,60 @@ function applyTurnGateIntent(createIntent, options = undefined) {
   applyTurnGateGlobals(createIntent(state.globals, options));
 }
 
+function getActionHandoffSnapshot() {
+  const currentUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
+  const currentType = Number(callFunctionWithContext(fnContext, 'GetCurrentType') || -1);
+  return {
+    currentUID,
+    currentType,
+    turnPhase: Number(state.globals.TurnPhase || 0),
+    canPickGems: state.globals.CanPickGems,
+    isPlayerBusy: Number(state.globals.IsPlayerBusy || 0),
+    pendingSkillID: String(state.globals.PendingSkillID || ''),
+    pendingActor: Number(state.globals.PendingActor || 0),
+    pendingSuperGem: !!state.globals.PendingSuperGemAction,
+    selectedEnemyUID: Number(state.globals.SelectedEnemyUID || 0),
+    actionInProgress: Number(state.globals.ActionInProgress || 0),
+    actionActorUID: Number(state.globals.ActionActorUID || 0),
+    actionOwnerUID: Number(state.globals.ActionOwnerUID || 0),
+    deferAdvance: Number(state.globals.DeferAdvance || 0),
+    advanceAfterAction: Number(state.globals.AdvanceAfterAction || 0),
+    actionLockUntil: Number(state.globals.ActionLockUntil || 0),
+    time: Number(state.globals.time || 0),
+    heroActionActive: !!(state.globals.HeroAction && state.globals.HeroAction.active),
+    enemyActionActive: !!(state.globals.EnemyAction && state.globals.EnemyAction.active),
+    pendingHeroHits: Array.isArray(state.globals.PendingHeroHits) ? state.globals.PendingHeroHits.length : 0,
+    livingEnemies: state.entities.filter((entity) => entity && entity.kind === 'enemy' && (entity.hp ?? 0) > 0).length,
+  };
+}
+
+function logActionHandoffDebug(tag, payload = {}) {
+  runtimeDebugLogging.gemDebugLog(tag, {
+    ...payload,
+    snapshot: getActionHandoffSnapshot(),
+  }, state);
+}
+
+function getEnemyRosterStabilitySnapshot() {
+  try {
+    return callFunctionWithContext(fnContext, 'GetEnemyRosterStability') || { stable: true, pending: false };
+  } catch (_) {
+    return { stable: true, pending: false };
+  }
+}
+
+function hasPendingEnemyDeathResolution() {
+  const pending = state.globals.PendingDeaths;
+  if (!pending || typeof pending !== 'object') return false;
+  for (const uidStr of Object.keys(pending)) {
+    const uid = Number(uidStr);
+    if (!(uid > 0)) continue;
+    const actor = state.entities.find((entity) => Number(entity?.uid || 0) === uid);
+    if (actor && actor.kind === 'enemy') return true;
+  }
+  return false;
+}
+
 function getYellowSequenceCompletionIntent(current = state.globals, options = undefined) {
   const globals = current || state.globals || {};
   const refill = gameState.refillBounce;
@@ -232,12 +288,33 @@ function getYellowSequenceCompletionIntent(current = state.globals, options = un
 function canResolveDeferredAdvance({ hasEmpty = false, enemyLineClearPressureActive = false } = {}) {
   const refill = gameState.refillBounce;
   const refillActive = !!(refill && refill.active);
+  const rosterStability = getEnemyRosterStabilitySnapshot();
+  const pendingEnemyDeathResolution = hasPendingEnemyDeathResolution();
   const refillPending = !!hasEmpty && !refillActive && !enemyLineClearPressureActive;
   const textHold = !!state.globals.TextAnimating;
   const pendingSelect = state.globals.TurnPhase === 1 && !!state.globals.PendingSkillID;
   const mergeInFlight = !!(gameState.gemMergeFx && gameState.gemMergeFx.active);
+  const actionActorUID = Number(state.globals.ActionActorUID || 0);
+  const heroActionActive = !!(
+    state.globals.HeroAction &&
+    state.globals.HeroAction.active &&
+    Number(state.globals.HeroAction.uid || 0) === actionActorUID
+  );
+  const enemyActionActive = !!(
+    state.globals.EnemyAction &&
+    state.globals.EnemyAction.active &&
+    Number(state.globals.EnemyAction.uid || 0) === actionActorUID
+  );
+  const actionLockActive = Number(state.globals.ActionLockUntil || 0) > Number(state.globals.time || 0);
+  const staleActionInProgress = !!state.globals.ActionInProgress &&
+    !heroActionActive &&
+    !enemyActionActive &&
+    !actionLockActive;
   const staleBusy = !!state.globals.IsPlayerBusy && !state.globals.ActionInProgress && !pendingSelect;
-  const blockedPhase = !!state.globals.IsPlayerBusy || !!state.globals.ActionInProgress || !!pendingSelect || !!mergeInFlight;
+  const blockedPhase = !!state.globals.IsPlayerBusy ||
+    (!!state.globals.ActionInProgress && !staleActionInProgress) ||
+    !!pendingSelect ||
+    !!mergeInFlight;
   const ownerUID = Number(state.globals.ActionOwnerUID || 0);
   const currentUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
   const ownerOk = !ownerUID || ownerUID === currentUID;
@@ -247,12 +324,17 @@ function canResolveDeferredAdvance({ hasEmpty = false, enemyLineClearPressureAct
     textHold,
     pendingSelect,
     mergeInFlight,
+    heroActionActive,
+    enemyActionActive,
+    staleActionInProgress,
     staleBusy,
     blockedPhase,
     ownerUID,
     currentUID,
     ownerOk,
-    ok: !refillPending && !textHold && !blockedPhase && ownerOk,
+    enemyRosterStability: rosterStability,
+    pendingEnemyDeathResolution,
+    ok: (rosterStability.stable || pendingEnemyDeathResolution) && !refillPending && !textHold && !blockedPhase && ownerOk,
   };
 }
 
@@ -5974,6 +6056,23 @@ function getStoryCardLiveLineState() {
     [5],
   ]);
   const IDLE_AUTOPLAY_SKILL_DRAUGHT_HOLD_MS = 1400;
+  function getCurrentIdleAutoplayHeroName() {
+    if (typeof callFunctionWithContext !== 'function') return '';
+    const uid = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
+    if (!(uid > 0)) return '';
+    const actor = callFunctionWithContext(fnContext, 'GetActorByUID', uid);
+    return String(actor?.name || '');
+  }
+  function hasLivingEnemiesForIdleAutoplay() {
+    if (typeof state === 'undefined' || !Array.isArray(state.entities)) return false;
+    return state.entities.some((entity) => entity && entity.kind === 'enemy' && Number(entity.hp ?? 0) > 0);
+  }
+  function isIdleAutoplayResourceOnlyColor(color) {
+    const safeColor = Number(color);
+    if (safeColor !== 3) return false;
+    if (!hasLivingEnemiesForIdleAutoplay()) return false;
+    return getCurrentIdleAutoplayHeroName() !== 'Huun';
+  }
   function pickIdleAutoplayTriplet() {
     const byColor = new Map();
     for (const gem of (gameState.gems || [])) {
@@ -5985,7 +6084,7 @@ function getStoryCardLiveLineState() {
     }
     for (const tier of IDLE_AUTOPLAY_COLOR_PRIORITY) {
       const tierChoices = tier
-        .filter((color) => Array.isArray(byColor.get(color)) && byColor.get(color).length >= 3)
+        .filter((color) => !isIdleAutoplayResourceOnlyColor(color) && Array.isArray(byColor.get(color)) && byColor.get(color).length >= 3)
         .map((color) => byColor.get(color).slice(0, 3));
       if (tierChoices.length) {
         return tierChoices[Math.floor(Math.random() * tierChoices.length)];
@@ -6001,6 +6100,7 @@ function getStoryCardLiveLineState() {
         const color = Number(superGem && superGem.baseColor);
         const cells = Array.isArray(superGem && superGem.cells) ? superGem.cells : [];
         if (!tier.includes(color) || !cells.length) continue;
+        if (isIdleAutoplayResourceOnlyColor(color)) continue;
         const cell = cells[0];
         return { row: Number(cell.r || 0), col: Number(cell.c || 0) };
       }
@@ -6023,6 +6123,11 @@ function getStoryCardLiveLineState() {
     if (actorUID <= 0) return false;
     const livingEnemies = state.entities.filter((entity) => entity && entity.kind === 'enemy' && (entity.hp ?? 0) > 0);
     if (!livingEnemies.length) return false;
+    logActionHandoffDebug('[DEV_AUTOPLAY_RESOLVE]', {
+      stage: 'before',
+      actorUID,
+      livingEnemies: livingEnemies.length,
+    });
     if (String(state.globals.PendingSkillID || '') === 'HERO_SINGLE') {
       state.globals.SelectedEnemyUID = Number(livingEnemies[0].uid || 0);
     }
@@ -6031,15 +6136,28 @@ function getStoryCardLiveLineState() {
       callFunctionWithContext,
       fnContext,
     });
+    let executeSkillResult = null;
     if (!resolvedPendingSuperGem) {
-      callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
+      executeSkillResult = callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
     }
+    logActionHandoffDebug('[DEV_AUTOPLAY_RESOLVE]', {
+      stage: 'after-action-attempt-before-clear',
+      actorUID,
+      resolvedPendingSuperGem,
+      executeSkillResult,
+    });
     state.globals.PendingSkillID = '';
     state.globals.PendingActor = 0;
     state.globals.SelectedEnemyUID = 0;
     callFunctionWithContext(fnContext, 'HideAttackUI');
     state.globals.CanPickGems = false;
     state.globals.IsPlayerBusy = 1;
+    logActionHandoffDebug('[DEV_AUTOPLAY_RESOLVE]', {
+      stage: 'after-clear',
+      actorUID,
+      resolvedPendingSuperGem,
+      executeSkillResult,
+    });
     return true;
   }
   function autoResolveSkillDraughtForDevIdle() {
@@ -6781,21 +6899,51 @@ function getStoryCardLiveLineState() {
     if (!uiState.getUIState().overlayVisible && state.globals.PendingSkillID) {
       const btn = getAttackButtonBounds();
       if (mx >= btn.dx && mx <= btn.dx + btn.w && my >= btn.dy && my <= btn.dy + btn.h) {
+        const enemyRosterStability = getEnemyRosterStabilitySnapshot();
+        if (!enemyRosterStability.stable) {
+          applyTurnGateIntent(createEnemyRosterRefillHold, {
+            now: Number(state.globals.time || 0),
+            currentTurnUID: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0),
+            preservePendingSkill: true,
+          });
+          drawFrame();
+          return;
+        }
         const actorUID = state.globals.PendingActor || getHeroUIDByIndex(gameState.selectedHero);
+        logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
+          stage: 'before',
+          source: 'manual-button',
+          actorUID,
+        });
         const resolvedPendingSuperGem = superGemRuntime.executePendingSuperGemAction({
           state,
           callFunctionWithContext,
           fnContext,
         });
+        let executeSkillResult = null;
         if (!resolvedPendingSuperGem) {
-          callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
+          executeSkillResult = callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
         }
+        logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
+          stage: 'after-action-attempt-before-clear',
+          source: 'manual-button',
+          actorUID,
+          resolvedPendingSuperGem,
+          executeSkillResult,
+        });
         state.globals.PendingSkillID = '';
         state.globals.PendingActor = 0;
         state.globals.SelectedEnemyUID = 0;
         callFunctionWithContext(fnContext, 'HideAttackUI');
         state.globals.CanPickGems = false;
         state.globals.IsPlayerBusy = 1;
+        logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
+          stage: 'after-clear',
+          source: 'manual-button',
+          actorUID,
+          resolvedPendingSuperGem,
+          executeSkillResult,
+        });
         drawFrame();
         return;
       }
@@ -7205,7 +7353,28 @@ function getStoryCardLiveLineState() {
           });
         }
       }
+      const parkedActionPhase = (
+        state.globals.GamePhase === 'RUNTIME' &&
+        state.globals.TurnPhase === 1 &&
+        boardFull &&
+        noRefillActive &&
+        noSpinActive
+      );
+      if (parkedActionPhase) {
+        const snapshot = getActionHandoffSnapshot();
+        const { time: _time, actionLockUntil: _actionLockUntil, ...dedupeSnapshot } = snapshot;
+        const sig = JSON.stringify(dedupeSnapshot);
+        if (gameState._turnPhase1StuckSig !== sig) {
+          gameState._turnPhase1StuckSig = sig;
+          runtimeDebugLogging.gemDebugLog('[TURNPHASE1_STUCK]', {
+            reason: 'turnphase-one-parked-with-board-full',
+            snapshot,
+            enemyRosterStability: getEnemyRosterStabilitySnapshot(),
+          }, state);
+        }
+      }
     }
+    const enemyRosterStability = getEnemyRosterStabilitySnapshot();
     if (
       state.globals.GamePhase === 'RUNTIME' &&
       state.globals.DeferAdvance &&
@@ -7215,7 +7384,15 @@ function getStoryCardLiveLineState() {
         hasEmpty,
         enemyLineClearPressureActive,
       });
-      if (deferredAdvanceState.refillPending) {
+      if (
+        !deferredAdvanceState.enemyRosterStability.stable &&
+        !deferredAdvanceState.pendingEnemyDeathResolution
+      ) {
+        applyTurnGateIntent(createEnemyRosterRefillHold, {
+          now: Number(state.globals.time || 0),
+          currentTurnUID: deferredAdvanceState.currentUID,
+        });
+      } else if (deferredAdvanceState.refillPending) {
         // Refill must complete before advancing to the next actor.
         startRefillBounce();
         applyTurnGateIntent(createDeferredRefillHold, {
@@ -7226,6 +7403,14 @@ function getStoryCardLiveLineState() {
           now: Number(state.globals.time || 0),
         });
       } else {
+        if (deferredAdvanceState.staleActionInProgress) {
+          applyTurnGateIntent(createDeferredStaleActionRecovery);
+          console.log(`[TURN] cleared stale ActionInProgress before advance phase=${state.globals.TurnPhase} owner=${state.globals.ActionOwnerUID || 0} actionActor=${state.globals.ActionActorUID || 0}`);
+          deferredAdvanceState = canResolveDeferredAdvance({
+            hasEmpty,
+            enemyLineClearPressureActive,
+          });
+        }
         if (deferredAdvanceState.staleBusy) {
           applyTurnGateIntent(createDeferredStaleBusyRecovery);
           console.log(`[TURN] cleared stale IsPlayerBusy before advance phase=${state.globals.TurnPhase} owner=${state.globals.ActionOwnerUID || 0}`);
@@ -7236,9 +7421,32 @@ function getStoryCardLiveLineState() {
         }
         if (deferredAdvanceState.ok) {
           console.log(`[TURN] DeferAdvance -> AdvanceTurn owner=${deferredAdvanceState.ownerUID} cur=${deferredAdvanceState.currentUID} phase=${state.globals.TurnPhase} busy=${state.globals.IsPlayerBusy} canPick=${state.globals.CanPickGems}`);
-          applyTurnGateIntent(createDeferredAdvanceResolved);
+          const beforeAdvanceUID = deferredAdvanceState.currentUID;
+          const beforeAdvancePhase = Number(state.globals.TurnPhase || 0);
           callFunctionWithContext(fnContext, 'AdvanceTurn');
-          combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+          const afterAdvanceUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
+          const afterAdvancePhase = Number(state.globals.TurnPhase || 0);
+          const postAdvanceRosterStability = getEnemyRosterStabilitySnapshot();
+          const rosterHoldKeptDeferredAdvance = (
+            !postAdvanceRosterStability.stable &&
+            !!state.globals.DeferAdvance &&
+            afterAdvanceUID === beforeAdvanceUID &&
+            afterAdvancePhase === beforeAdvancePhase
+          );
+          if (!rosterHoldKeptDeferredAdvance) {
+            applyTurnGateIntent(createDeferredAdvanceResolved);
+            combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+          } else if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+            runtimeDebugLogging.gemDebugLog('[TURN_DEFER_PRESERVED]', {
+              reason: 'advance-held-for-enemy-roster-refill',
+              beforeAdvanceUID,
+              afterAdvanceUID,
+              beforeAdvancePhase,
+              afterAdvancePhase,
+              roster: postAdvanceRosterStability,
+              snapshot: getActionHandoffSnapshot(),
+            }, state);
+          }
         } else if (!deferredAdvanceState.ownerOk) {
           if (deferredAdvanceState.ownerUID) {
             callFunctionWithContext(fnContext, 'ClosePowerAmpForActor', deferredAdvanceState.ownerUID, 'owner_mismatch_autoclose');
@@ -7292,13 +7500,27 @@ function getStoryCardLiveLineState() {
       const refillActive = !!(gameState.refillBounce && gameState.refillBounce.active);
       const liveCurrentEnemy = currentEnemy && currentEnemy.kind === 'enemy' && Number(currentEnemy.hp || 0) > 0;
       if (liveCurrentEnemy && !hasEmpty && !refillActive) {
-        applyTurnGateIntent(createEnemyTurnGateBaseline);
-        state.globals.BoardFillActive = 0;
-        callFunctionWithContext(fnContext, 'EnemyTurn', currentTurnUID);
+        if (!enemyRosterStability.stable) {
+          applyTurnGateIntent(createEnemyRosterRefillHold, {
+            now: Number(state.globals.time || 0),
+            currentTurnUID,
+          });
+        } else {
+          applyTurnGateIntent(createEnemyTurnGateBaseline);
+          state.globals.BoardFillActive = 0;
+          callFunctionWithContext(fnContext, 'EnemyTurn', currentTurnUID);
+        }
       } else if (liveCurrentEnemy) {
-        applyTurnGateIntent(createEnemyTurnRetryHold, {
-          currentTurnUID,
-        });
+        if (!enemyRosterStability.stable) {
+          applyTurnGateIntent(createEnemyRosterRefillHold, {
+            now: Number(state.globals.time || 0),
+            currentTurnUID,
+          });
+        } else {
+          applyTurnGateIntent(createEnemyTurnRetryHold, {
+            currentTurnUID,
+          });
+        }
         console.log(`[TURN] enemy retry hold uid=${currentTurnUID} hasEmpty=${hasEmpty} refillActive=${refillActive} idx=${state.globals.CurrentTurnIndex || 0}`);
       } else {
         applyTurnGateIntent(createEnemyTurnIdleRecovery, {
@@ -7314,6 +7536,7 @@ function getStoryCardLiveLineState() {
       currentTurnType === 0 &&
       state.globals.TurnPhase === 0 &&
       noRefillActive &&
+      enemyRosterStability.stable &&
       (state.globals.CanPickGems !== true || state.globals.BoardFillActive !== 0)
     ) {
       state.globals.CanPickGems = true;

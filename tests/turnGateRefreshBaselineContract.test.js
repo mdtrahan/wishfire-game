@@ -97,4 +97,23 @@ for (const modulePath of [
     assert.equal(enemy.PendingActor, 0);
     assert.equal(enemy.EnemyLineClearPressureActive, 1);
   });
+
+  test(`refill completion restores input only for idle hero phase in ${modulePath}`, async () => {
+    const mod = await import(modulePath);
+    const idleHero = mod.createRefillCompleteGate({
+      CanPickGems: 0,
+      IsPlayerBusy: 1,
+      TurnPhase: 0,
+    });
+    assert.equal(idleHero.CanPickGems, 1);
+    assert.equal(idleHero.IsPlayerBusy, 0);
+
+    const actionPhase = mod.createRefillCompleteGate({
+      CanPickGems: 0,
+      IsPlayerBusy: 1,
+      TurnPhase: 1,
+    });
+    assert.equal(actionPhase.CanPickGems, 0);
+    assert.equal(actionPhase.IsPlayerBusy, 0);
+  });
 }

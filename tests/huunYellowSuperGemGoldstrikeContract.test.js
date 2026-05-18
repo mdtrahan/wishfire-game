@@ -73,7 +73,7 @@ test('Huun yellow super-gem low roll deals banked gold plus consumed yellow boar
   assert.ok(calls.some((call) => call.name === 'LogCombat' && /Huun rolled 30/.test(String(call.args[0]))));
 });
 
-test('Huun yellow super-gem uses current Huun hero even when spender actor is stale', () => {
+test('Huun yellow super-gem cannot be stolen by a stale CurrentHeroUID', () => {
   const { activateSuperGemEffect } = loadSuperGemRuntime();
   const falie = { uid: 1, name: 'Falie', kind: 'hero', attackType: 'melee' };
   const huun = { uid: 2, name: 'Huun', kind: 'hero', attackType: 'melee' };
@@ -83,7 +83,7 @@ test('Huun yellow super-gem uses current Huun hero even when spender actor is st
       time: 8,
       goldTotal: 15,
       CurrentHeroUID: huun.uid,
-      RuntimeRandom: () => 0.30,
+      RuntimeRandom: () => 0,
     },
     entities: [falie, huun, enemy],
   };
@@ -98,7 +98,7 @@ test('Huun yellow super-gem uses current Huun hero even when spender actor is st
       if (name === 'GetActorByUID') return state.entities.find((entity) => Number(entity.uid) === Number(args[0])) || null;
       if (name === 'StartHeroLunge') return true;
       if (name === 'LogCombat') return undefined;
-      if (name === 'CalculateDamage') throw new Error('yellow supergem gold path should not calculate combat damage');
+      if (name === 'CalculateDamage') throw new Error('non-Huun yellow supergem should not calculate combat damage');
       return 0;
     },
     fnContext: {},
@@ -109,15 +109,11 @@ test('Huun yellow super-gem uses current Huun hero even when spender actor is st
   });
 
   assert.equal(activated, true);
-  assert.equal(state.globals.goldTotal, 25);
-  assert.equal(state.globals.PendingHeroHits.length, 1);
-  assert.equal(state.globals.PendingHeroHits[0].heroUID, huun.uid);
-  assert.equal(state.globals.PendingHeroHits[0].targetUID, enemy.uid);
-  assert.equal(state.globals.PendingHeroHits[0].finalDmg, 25);
-  assert.equal(state.globals.LastHuunYellowSuperGemGoldstrike.branch, 'low');
-  assert.equal(state.globals.ActionOwnerUID, huun.uid);
-  assert.ok(calls.some((call) => call.name === 'StartHeroLunge' && Number(call.args[0]) === huun.uid));
-  assert.ok(calls.some((call) => call.name === 'LogCombat' && /Huun rolled 30/.test(String(call.args[0]))));
+  assert.equal(state.globals.goldTotal, 23);
+  assert.equal(state.globals.PendingHeroHits, undefined);
+  assert.equal(state.globals.LastHuunYellowSuperGemGoldstrike, undefined);
+  assert.ok(!calls.some((call) => call.name === 'StartHeroLunge'));
+  assert.ok(calls.some((call) => call.name === 'LogCombat' && /Falie found 8 gold/.test(String(call.args[0]))));
 });
 
 test('Huun yellow super-gem high roll triples bank plus consumed yellow board value', () => {

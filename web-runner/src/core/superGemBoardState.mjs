@@ -85,6 +85,19 @@ function buildSuperGemColorClear({ superGem, gems = [] }) {
   };
 }
 
+function canStartSuperGemSpend(globals = {}) {
+  return (
+    globals.GamePhase === 'RUNTIME' &&
+    Number(globals.TurnPhase || 0) === 0 &&
+    globals.CanPickGems === true &&
+    !globals.PendingSkillID &&
+    !globals.PendingSuperGemAction &&
+    !globals.DeferAdvance &&
+    !globals.ActionInProgress &&
+    !globals.IsPlayerBusy
+  );
+}
+
 export function resetSuperGemBoardState(gameState) {
   gameState.superGems = [];
   gameState.superGemCellMap = new Map();
@@ -207,7 +220,7 @@ export function spendSuperGem({
   if (!superGem) return false;
   const cells = Array.isArray(superGem.cells) ? superGem.cells : [];
   if (!cells.length) return false;
-  if (state.globals.GamePhase !== 'RUNTIME') return false;
+  if (!canStartSuperGemSpend(state.globals || {})) return false;
   const currentTurnUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
   const currentTurnActor = currentTurnUID > 0 ? callFunctionWithContext(fnContext, 'GetActorByUID', currentTurnUID) : null;
   const actorUID = currentTurnActor && currentTurnActor.kind === 'hero'

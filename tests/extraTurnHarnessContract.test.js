@@ -7,6 +7,13 @@ function read(relPath) {
   return fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
 }
 
+function readRuntimeSources() {
+  return [
+    read('web-runner/app.js'),
+    read('web-runner/systems/renderRuntime.js').replace(/\\n/g, '\n'),
+  ].join('\n');
+}
+
 for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
   test(`configured follow-up attack harness exists in ${relPath}`, () => {
     const src = read(relPath);
@@ -50,8 +57,8 @@ for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBa
 }
 
 test('pending hero hit executor retargets double-attack follow-up packets when the first target is dead', () => {
-  const src = read('web-runner/app.js');
-  assert.match(src, /state\.globals\.DoubleAttackLungeStarted = state\.globals\.DoubleAttackLungeStarted \|\| \{\};/);
+  const src = readRuntimeSources();
+  assert.match(src, /(state\.globals|visualControlPatches)\.DoubleAttackLungeStarted = state\.globals\.DoubleAttackLungeStarted \|\| \{\};/);
   assert.match(src, /if \(followUpBatchId > 0 && hit\.followUpAwaitTextClear\) \{/);
   assert.match(src, /if \(state\.globals\.TextAnimating \|\| \(state\.globals\.HeroAction && state\.globals\.HeroAction\.active\)\) continue;/);
   assert.match(src, /queued\.at = anchorAt \+ Number\(queued\.followUpOffset \|\| 0\);/);

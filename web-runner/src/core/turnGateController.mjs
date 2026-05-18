@@ -52,6 +52,30 @@ export function createEnemyTurnRetryHold(current = {}, { currentTurnUID = 0 } = 
   };
 }
 
+export function createEnemyRosterRefillHold(current = {}, {
+  now = 0,
+  currentTurnUID = 0,
+  preservePendingSkill = false,
+} = {}) {
+  const base = normalizeTurnGateState(current);
+  const safeNow = Number(now || 0);
+  const hasOwnedDeferred = Boolean(base.DeferAdvance && base.AdvanceAfterAction && base.ActionOwnerUID);
+  const keepPendingSkill = Boolean(preservePendingSkill && !hasOwnedDeferred);
+  return {
+    ...base,
+    CanPickGems: 0,
+    IsPlayerBusy: keepPendingSkill ? base.IsPlayerBusy : 0,
+    DeferAdvance: hasOwnedDeferred ? 1 : 0,
+    AdvanceAfterAction: hasOwnedDeferred ? 1 : 0,
+    ActionLockUntil: Math.max(Number(base.ActionLockUntil || 0), safeNow + 0.05),
+    ActionOwnerUID: hasOwnedDeferred ? Number(base.ActionOwnerUID || currentTurnUID || 0) : 0,
+    ActionInProgress: keepPendingSkill ? Number(base.ActionInProgress || 0) : 0,
+    ActionActorUID: keepPendingSkill ? Number(base.ActionActorUID || 0) : 0,
+    PendingSkillID: keepPendingSkill ? String(base.PendingSkillID || '') : '',
+    PendingActor: keepPendingSkill ? Number(base.PendingActor || 0) : 0,
+  };
+}
+
 export function createHeroTurnGateBaseline(current = {}) {
   const base = normalizeTurnGateState(current);
   return {
@@ -159,9 +183,10 @@ export function createRefillStartGate(current = {}) {
 
 export function createRefillCompleteGate(current = {}) {
   const base = normalizeTurnGateState(current);
+  const canRestorePickability = Number(current.TurnPhase || 0) === 0;
   return {
     ...base,
-    CanPickGems: 1,
+    CanPickGems: canRestorePickability ? 1 : 0,
     IsPlayerBusy: 0,
   };
 }
@@ -187,6 +212,16 @@ export function createDeferredStaleBusyRecovery(current = {}) {
   return {
     ...base,
     IsPlayerBusy: 0,
+  };
+}
+
+export function createDeferredStaleActionRecovery(current = {}) {
+  const base = normalizeTurnGateState(current);
+  return {
+    ...base,
+    IsPlayerBusy: 0,
+    ActionInProgress: 0,
+    ActionActorUID: 0,
   };
 }
 
