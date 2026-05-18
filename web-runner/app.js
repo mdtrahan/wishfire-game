@@ -33,16 +33,6 @@ import {
   normalizePartyFormationSlots,
 } from './src/core/partyFormationRules.mjs';
 import {
-  applyIdleFarmRewardsToGlobals,
-  claimIdleFarmRewardsFromState,
-  ensureIdleFarmSessionState,
-  resetIdleFarmEmissionCadence,
-  restartIdleFarmSessionState,
-  startIdleFarmEmissionState,
-  updateIdleFarmEmissionState,
-  updateIdleFarmSessionState,
-} from './src/core/idleFarmRuntime.mjs';
-import {
   getSuperGemAtCanvasPoint,
   getSuperGemAtCell,
   resetSuperGemBoardState,
@@ -82,6 +72,7 @@ import * as renderOverlays from './systems/renderOverlays.js';
 import * as renderSkillDraught from './systems/renderSkillDraughtOverlay.js';
 import * as renderRuntime from './systems/renderRuntime.js';
 import * as superGemRuntime from './systems/superGemRuntime.js';
+import { createIdleFarmAppRuntime } from './systems/idleFarmAppRuntime.js';
 import * as helpers from './utils/helpers.js';
 import * as mapLayoutState from './state/mapLayoutState.js';
 import * as uiState from './state/uiState.js';
@@ -594,55 +585,20 @@ function createDefaultDevToolingConfig() {
   };
 }
 
-function getIdleFarmRuntimeDeps(nowSec = 0) {
-  return {
-    nowSec,
-    heroSlots: ensureDevToolingConfig().heroSlots,
-    fallbackRoster: CANONICAL_HERO_ROSTER.map((hero) => String(hero?.name || '')).filter(Boolean),
-    enemyCatalog: Array.isArray(state.globals.DevToolEnemyCatalog) ? state.globals.DevToolEnemyCatalog : [],
-  };
-}
-
-function ensureIdleFarmSession(nowSec = 0) {
-  const layout = gameState.idleFarmLayout || {};
-  return ensureIdleFarmSessionState(layout, getIdleFarmRuntimeDeps(nowSec));
-}
-
-function startIdleFarmEmissions(nowSec = 0) {
-  const layout = gameState.idleFarmLayout;
-  if (!layout) return null;
-  return startIdleFarmEmissionState(layout, getIdleFarmRuntimeDeps(nowSec));
-}
-
-function updateIdleFarmEmissions(nowSec = 0) {
-  const layout = gameState.idleFarmLayout;
-  if (!layout) return null;
-  return updateIdleFarmEmissionState(layout, getIdleFarmRuntimeDeps(nowSec));
-}
-
-function updateIdleFarmSession(nowSec = 0) {
-  const layout = gameState.idleFarmLayout;
-  if (!layout) return null;
-  return updateIdleFarmSessionState(layout, getIdleFarmRuntimeDeps(nowSec));
-}
-
-function restartIdleFarmSession(nowSec = 0) {
-  const layout = gameState.idleFarmLayout;
-  if (!layout) return null;
-  return restartIdleFarmSessionState(layout, getIdleFarmRuntimeDeps(nowSec));
-}
-
-function claimIdleFarmRewards() {
-  const layout = gameState.idleFarmLayout;
-  if (!layout) return { energy: 0, tokens: {} };
-  updateIdleFarmEmissions(performance.now() / 1000);
-  const claimed = claimIdleFarmRewardsFromState(layout);
-  const applied = applyIdleFarmRewardsToGlobals(state.globals, claimed);
-  if ((applied.energy > 0) || Object.values(applied.tokens || {}).some((amount) => Number(amount || 0) > 0)) {
-    resetIdleFarmEmissionCadence(layout, getIdleFarmRuntimeDeps(performance.now() / 1000));
-  }
-  return applied;
-}
+const {
+  ensureIdleFarmSession,
+  startIdleFarmEmissions,
+  updateIdleFarmEmissions,
+  updateIdleFarmSession,
+  restartIdleFarmSession,
+  claimIdleFarmRewards,
+} = createIdleFarmAppRuntime({
+  gameState,
+  state,
+  getDevToolingConfig: ensureDevToolingConfig,
+  getFallbackRoster: () => CANONICAL_HERO_ROSTER.map((hero) => String(hero?.name || '')).filter(Boolean),
+  getNowSec: () => performance.now() / 1000,
+});
 
 function sanitizeDevToolingConfig(input = {}) {
   const base = createDefaultDevToolingConfig();
