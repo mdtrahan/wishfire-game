@@ -87,6 +87,7 @@ import * as mapLayoutState from './state/mapLayoutState.js';
 import * as uiState from './state/uiState.js';
 import { createInitialGameState } from './state/gameState.js';
 import { createHarnessEventBus, createHarnessLayoutState, HarnessInputDomainManager } from './state/harnessLayoutState.js';
+import * as task015TraceState from './state/task015TraceState.js';
 
 const out = document.getElementById('output');
 const gemCounterOut = document.getElementById('gem-counter-output');
@@ -1429,71 +1430,23 @@ function isEditableDomTarget(target) {
 }
 
 function getTask015TraceStore() {
-  if (!gameState.task015Trace) {
-    gameState.task015Trace = {
-      storycardPlacement: [],
-      yellowQueue: [],
-      yellowRefillQueue: [],
-      yellowWrites: [],
-      yellowAnimation: [],
-    };
-  }
-  return gameState.task015Trace;
+  return task015TraceState.getTask015TraceStore(gameState);
 }
 
 function updateStartupLoadState(patch = {}) {
-  const prev = gameState.startupLoad && typeof gameState.startupLoad === 'object'
-    ? gameState.startupLoad
-    : { active: true, phase: 'boot', label: 'Booting runtime...', progress: 0 };
-  const nextProgress = Math.max(0, Math.min(1, Number(
-    Object.prototype.hasOwnProperty.call(patch, 'progress')
-      ? patch.progress
-      : prev.progress
-  ) || 0));
-  gameState.startupLoad = {
-    ...prev,
-    ...patch,
-    progress: nextProgress,
-  };
-  return gameState.startupLoad;
+  return task015TraceState.updateStartupLoadState(gameState, patch);
 }
 
 function traceTask015YellowQueue(queue) {
-  const store = getTask015TraceStore();
-  store.yellowQueue = (queue || []).map((item, idx) => ({
-    idx: Number(idx),
-    type: String(item.type || ''),
-    cellR: Number(item.cellR || 0),
-    cellC: Number(item.cellC || 0),
-    reason: String(item.reason || ''),
-    uid: Number(item.uid || 0),
-    target: Number(item.target || 0),
-  }));
+  task015TraceState.traceTask015YellowQueue(gameState, queue);
 }
 
 function traceTask015YellowWrite(source, item, step) {
-  const store = getTask015TraceStore();
-  store.yellowWrites.push({
-    source: String(source || ''),
-    step: Number(step || 0),
-    cellR: Number(item.cellR || 0),
-    cellC: Number(item.cellC || 0),
-    type: String(item.type || ''),
-    target: Number(item.target || 0),
-    assignedColor: Number(item.target || 0),
-    time: Number(state.globals.time || 0),
-  });
-  if (store.yellowWrites.length > 120) store.yellowWrites.shift();
+  task015TraceState.traceTask015YellowWrite({ gameState, state, source, item, step });
 }
 
 function traceTask015YellowAnimation(stage, payload = {}) {
-  const store = getTask015TraceStore();
-  store.yellowAnimation.push({
-    stage: String(stage || ''),
-    time: Number(state.globals.time || 0),
-    ...payload,
-  });
-  if (store.yellowAnimation.length > 200) store.yellowAnimation.shift();
+  task015TraceState.traceTask015YellowAnimation({ gameState, state, stage, payload });
 }
 let COMBAT_LAYOUT_READY = false;
 let COMBAT_BOOTSTRAP_COMPLETE = false;
