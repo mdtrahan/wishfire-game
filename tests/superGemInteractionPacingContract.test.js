@@ -1,98 +1,36 @@
-const fs = require('node:fs');
 const path = require('node:path');
-const vm = require('node:vm');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-test('dev idle autoplay prefers attack supergems before resource and purple supergems', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
-  const priorityConst = src.match(/const IDLE_AUTOPLAY_SUPER_GEM_COLOR_PRIORITY = Object\.freeze\(\[[\s\S]*?\]\);/);
-  const currentHeroFn = src.match(/function getCurrentIdleAutoplayHeroName\(\) \{[\s\S]*?\n  \}/);
-  const livingEnemyFn = src.match(/function hasLivingEnemiesForIdleAutoplay\(\) \{[\s\S]*?\n  \}/);
-  const resourceOnlyFn = src.match(/function isIdleAutoplayResourceOnlyColor\(color\) \{[\s\S]*?\n  \}/);
-  const fn = src.match(/function findIdleAutoplayPrioritySuperGemPick\(\) \{[\s\S]*?\n  \}/);
-  assert.ok(priorityConst, 'supergem priority should have its own combat-QA tiers');
-  assert.ok(currentHeroFn, 'current hero helper should exist');
-  assert.ok(livingEnemyFn, 'living enemy helper should exist');
-  assert.ok(resourceOnlyFn, 'resource-only color helper should exist');
-  assert.ok(fn, 'idle autoplay should expose a supergem picker');
-  const script = [
-    priorityConst[0],
-    currentHeroFn[0],
-    livingEnemyFn[0],
-    resourceOnlyFn[0],
-    fn[0],
-    'findIdleAutoplayPrioritySuperGemPick();',
-  ].join('\n');
-  const result = vm.runInNewContext(script, {
-    gameState: {
-      superGems: [
-        { id: 'blue-super', baseColor: 2, cells: [{ r: 1, c: 2 }, { r: 1, c: 3 }, { r: 2, c: 2 }, { r: 2, c: 3 }] },
-        { id: 'red-super', baseColor: 1, cells: [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 1, c: 0 }, { r: 1, c: 1 }] },
-        { id: 'purple-super', baseColor: 5, cells: [{ r: 3, c: 0 }, { r: 3, c: 1 }, { r: 4, c: 0 }, { r: 4, c: 1 }] },
-      ],
-    },
-    callFunctionWithContext: () => null,
-    fnContext: {},
-    state: { entities: [] },
-    Number,
-    Array,
-    String,
-  });
+const idleAutoplayPriorityModule = path.join(__dirname, '..', 'web-runner', 'src', 'core', 'idleAutoplayPriority.mjs');
+
+test('dev idle autoplay prefers attack supergems before resource and purple supergems', async () => {
+  const { pickIdleAutoplaySuperGem } = await import(idleAutoplayPriorityModule);
+  const result = pickIdleAutoplaySuperGem([
+    { id: 'blue-super', baseColor: 2, cells: [{ r: 1, c: 2 }, { r: 1, c: 3 }, { r: 2, c: 2 }, { r: 2, c: 3 }] },
+    { id: 'red-super', baseColor: 1, cells: [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 1, c: 0 }, { r: 1, c: 1 }] },
+    { id: 'purple-super', baseColor: 5, cells: [{ r: 3, c: 0 }, { r: 3, c: 1 }, { r: 4, c: 0 }, { r: 4, c: 1 }] },
+  ], { heroName: 'Falie', partyHpRatio: 0.7 });
+
   assert.equal(JSON.stringify(result), JSON.stringify({ row: 0, col: 0 }));
 });
 
-test('dev idle autoplay does not burn non-Huun combat turns on yellow-only resource supergems', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
-  const priorityConst = src.match(/const IDLE_AUTOPLAY_SUPER_GEM_COLOR_PRIORITY = Object\.freeze\(\[[\s\S]*?\]\);/);
-  const currentHeroFn = src.match(/function getCurrentIdleAutoplayHeroName\(\) \{[\s\S]*?\n  \}/);
-  const livingEnemyFn = src.match(/function hasLivingEnemiesForIdleAutoplay\(\) \{[\s\S]*?\n  \}/);
-  const resourceOnlyFn = src.match(/function isIdleAutoplayResourceOnlyColor\(color\) \{[\s\S]*?\n  \}/);
-  const pickerFn = src.match(/function findIdleAutoplayPrioritySuperGemPick\(\) \{[\s\S]*?\n  \}/);
-  assert.ok(priorityConst, 'supergem priority should exist');
-  assert.ok(currentHeroFn, 'current hero helper should exist');
-  assert.ok(livingEnemyFn, 'living enemy helper should exist');
-  assert.ok(resourceOnlyFn, 'resource-only color helper should exist');
-  assert.ok(pickerFn, 'idle autoplay should expose a supergem picker');
-  const script = [
-    priorityConst[0],
-    currentHeroFn[0],
-    livingEnemyFn[0],
-    resourceOnlyFn[0],
-    pickerFn[0],
-    'findIdleAutoplayPrioritySuperGemPick();',
-  ].join('\n');
-  const baseContext = {
-    gameState: {
-      superGems: [
-        { id: 'yellow-super', baseColor: 3, cells: [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 1, c: 0 }, { r: 1, c: 1 }] },
-      ],
-    },
-    state: {
-      entities: [{ uid: 10, kind: 'enemy', hp: 12 }],
-    },
-    Number,
-    Array,
-    String,
-  };
-  const nonHuunResult = vm.runInNewContext(script, {
-    ...baseContext,
-    callFunctionWithContext: (_ctx, name, uid) => {
-      if (name === 'GetCurrentTurn') return 4;
-      if (name === 'GetActorByUID' && uid === 4) return { uid: 4, kind: 'hero', name: 'Kojonn' };
-      return null;
-    },
-    fnContext: {},
+test('dev idle autoplay does not burn non-Huun combat turns on yellow-only resource supergems', async () => {
+  const { pickIdleAutoplaySuperGem } = await import(idleAutoplayPriorityModule);
+  const superGems = [
+    { id: 'yellow-super', baseColor: 3, cells: [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 1, c: 0 }, { r: 1, c: 1 }] },
+  ];
+  const nonHuunResult = pickIdleAutoplaySuperGem(superGems, {
+    heroName: 'Kojonn',
+    partyHpRatio: 0.7,
+    hasLivingEnemies: true,
   });
-  const huunResult = vm.runInNewContext(script, {
-    ...baseContext,
-    callFunctionWithContext: (_ctx, name, uid) => {
-      if (name === 'GetCurrentTurn') return 2;
-      if (name === 'GetActorByUID' && uid === 2) return { uid: 2, kind: 'hero', name: 'Huun' };
-      return null;
-    },
-    fnContext: {},
+  const huunResult = pickIdleAutoplaySuperGem(superGems, {
+    heroName: 'Huun',
+    partyHpRatio: 0.7,
+    hasLivingEnemies: true,
   });
+
   assert.equal(nonHuunResult, null);
   assert.equal(JSON.stringify(huunResult), JSON.stringify({ row: 0, col: 0 }));
 });
