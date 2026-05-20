@@ -93,7 +93,7 @@ const astralWalletOut = document.getElementById('astral-wallet-output');
 const canvas = document.getElementById('view');
 const ctx = canvas.getContext('2d');
 let damageNumberLayer = null;
-const DAMAGE_TEXT_FONT = '"Rubik Mono One", "Trebuchet MS", "Verdana", sans-serif';
+const DAMAGE_TEXT_FONT = '"Denk One", "Trebuchet MS", "Verdana", sans-serif';
 void ensureDamageTextFontReady();
 const HARNESS_MODE = typeof window !== 'undefined' && window.location.search.includes('harness=true');
 const DEBUG_LAYOUT = (() => {

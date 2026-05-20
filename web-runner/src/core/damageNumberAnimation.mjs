@@ -5,7 +5,7 @@ import {
   deriveDamageFloatVector,
 } from './damageFloatVector.mjs';
 
-const DAMAGE_TEXT_FONT = '"Rubik Mono One", "Trebuchet MS", "Verdana", sans-serif';
+const DAMAGE_TEXT_FONT = '"Denk One", "Trebuchet MS", "Verdana", sans-serif';
 const DAMAGE_TEXT_FONT_SPEC = `28px ${DAMAGE_TEXT_FONT}`;
 const ENERGY_TEXT_COLOR = '#D87DFF';
 let damageTextFontPromise = null;

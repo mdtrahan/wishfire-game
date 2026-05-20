@@ -24,9 +24,12 @@ test('renderer avoids duplicate canvas floating text when dom layer is active', 
   assert.match(src, /if \(damageNumberLayer && \(d\.domAnimation \|\| d\.domSpawned\)\) continue;/);
 });
 
-test('web runner loads Rubik Mono One for combat floating text', () => {
+test('web runner loads Denk One locally for combat floating text', () => {
   const src = read('web-runner/index.html');
-  assert.match(src, /fonts\.googleapis\.com\/css2\?family=Rubik\+Mono\+One&display=swap/);
+  assert.match(src, /font-family:"Denk One";/);
+  assert.match(src, /src:url\("\.\/assets\/fonts\/DenkOne-Regular\.ttf"\) format\("truetype"\);/);
+  assert.doesNotMatch(src, /fonts\.googleapis\.com/);
+  assert.doesNotMatch(src, /fonts\.gstatic\.com/);
 });
 
 test('app preloads the combat text font before rendering damage numbers', () => {
@@ -63,7 +66,7 @@ test('dom floating numbers apply outlined gradients, glow, and squash-stretch fo
   assert.match(src, /#f7f8d4/);
   assert.match(src, /const numberText = document\.createElement\('canvas'\);/);
   assert.match(src, /const ctx = numberText\.getContext\('2d'\);/);
-  assert.match(src, /const DAMAGE_TEXT_FONT = '"Rubik Mono One", "Trebuchet MS", "Verdana", sans-serif';/);
+  assert.match(src, /const DAMAGE_TEXT_FONT = '"Denk One", "Trebuchet MS", "Verdana", sans-serif';/);
   assert.match(src, /numberText\.style\.background = 'transparent';/);
   assert.match(src, /numberText\.style\.border = 'none';/);
   assert.match(src, /ctx\.shadowColor = 'transparent';/);
