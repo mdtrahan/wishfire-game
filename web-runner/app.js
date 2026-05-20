@@ -41,6 +41,11 @@ import {
   updateIdleFarmSessionState,
 } from './src/core/idleFarmRuntime.mjs';
 import {
+  pickIdleAutoplaySuperGem,
+  pickIdleAutoplayTriplet,
+  resolveIdleAutoplayPartyHpRatio,
+} from './src/core/idleAutoplayPriority.mjs';
+import {
   getSuperGemAtCanvasPoint,
   getSuperGemAtCell,
   resetSuperGemBoardState,
@@ -5963,49 +5968,27 @@ function getStoryCardLiveLineState() {
       !(gameState.yellowCasino && gameState.yellowCasino.active)
     );
   }
-  const IDLE_AUTOPLAY_COLOR_PRIORITY = Object.freeze([
-    [5],
-    [4],
-    [0, 1, 2, 3],
-  ]);
-  const IDLE_AUTOPLAY_SUPER_GEM_COLOR_PRIORITY = Object.freeze([
-    [0, 1],
-    [2, 3],
-    [5],
-  ]);
   const IDLE_AUTOPLAY_SKILL_DRAUGHT_HOLD_MS = 1400;
-  function pickIdleAutoplayTriplet() {
-    const byColor = new Map();
-    for (const gem of (gameState.gems || [])) {
-      if (!gem) continue;
-      const color = Number(gem.color != null ? gem.color : gem.elementIndex);
-      if (!Number.isFinite(color) || color < 0 || color > 5) continue;
-      if (!byColor.has(color)) byColor.set(color, []);
-      byColor.get(color).push({ row: gem.cellR, col: gem.cellC });
-    }
-    for (const tier of IDLE_AUTOPLAY_COLOR_PRIORITY) {
-      const tierChoices = tier
-        .filter((color) => Array.isArray(byColor.get(color)) && byColor.get(color).length >= 3)
-        .map((color) => byColor.get(color).slice(0, 3));
-      if (tierChoices.length) {
-        return tierChoices[Math.floor(Math.random() * tierChoices.length)];
-      }
-    }
-    return null;
-  }
-  function findIdleAutoplayPrioritySuperGemPick() {
-    const superGems = Array.isArray(gameState.superGems) ? gameState.superGems : [];
-    if (!superGems.length) return null;
-    for (const tier of IDLE_AUTOPLAY_SUPER_GEM_COLOR_PRIORITY) {
-      for (const superGem of superGems) {
-        const color = Number(superGem && superGem.baseColor);
-        const cells = Array.isArray(superGem && superGem.cells) ? superGem.cells : [];
-        if (!tier.includes(color) || !cells.length) continue;
-        const cell = cells[0];
-        return { row: Number(cell.r || 0), col: Number(cell.c || 0) };
-      }
-    }
-    return null;
+  function getIdleAutoplayPriorityContext() {
+    const currentHeroUID = resolveCurrentHeroUID({
+      directUID: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || state.globals.CurrentHeroUID || 0),
+      turnOrder: state.globals.TurnOrderArray,
+      currentTurnIndex: state.globals.CurrentTurnIndex,
+    });
+    const currentHero = state.entities.find((entity) => (
+      entity &&
+      entity.kind === 'hero' &&
+      Number(entity.uid || 0) === currentHeroUID
+    ));
+    return {
+      heroName: currentHero ? String(currentHero.name || currentHero.baseHeroName || '') : '',
+      partyHpRatio: resolveIdleAutoplayPartyHpRatio({
+        partyHP: state.globals.PartyHP,
+        partyMaxHP: state.globals.PartyMaxHP,
+        partyHPByIndex: state.globals.PartyHPByIndex || gameState.partyHP,
+        partyMaxHPByIndex: state.globals.PartyMaxHPByIndex || gameState.partyMaxHP,
+      }),
+    };
   }
   async function playIdleAutoplayTriplet(cells) {
     if (!Array.isArray(cells) || cells.length < 3) return false;
@@ -6119,7 +6102,7 @@ function getStoryCardLiveLineState() {
         continue;
       }
       if (isIdleAutoplayHeroWindow()) {
-        const superGemPick = findIdleAutoplayPrioritySuperGemPick();
+        const superGemPick = pickIdleAutoplaySuperGem(gameState.superGems, getIdleAutoplayPriorityContext());
         if (superGemPick) {
           const played = clickGemCell(Number(superGemPick.row || 0), Number(superGemPick.col || 0));
           if (played) {
@@ -6129,7 +6112,7 @@ function getStoryCardLiveLineState() {
           await devSleep(90);
           continue;
         }
-        const pick = pickIdleAutoplayTriplet();
+        const pick = pickIdleAutoplayTriplet(gameState.gems, getIdleAutoplayPriorityContext());
         if (!pick) {
           setDevAutoplayState({ active: false, stopRequested: false, lastReason: 'no_valid_triplet', matchesPlayed, endedAt: Number(state.globals.time || 0) });
           return getDevAutoplayState();
