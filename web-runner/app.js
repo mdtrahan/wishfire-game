@@ -82,6 +82,10 @@ import * as renderOverlays from './systems/renderOverlays.js';
 import * as renderSkillDraught from './systems/renderSkillDraughtOverlay.js';
 import * as renderRuntime from './systems/renderRuntime.js';
 import * as superGemRuntime from './systems/superGemRuntime.js';
+import {
+  addAppViewportResizeListener,
+  resizeCanvasToContainedViewport,
+} from './systems/appShellViewport.js';
 import * as helpers from './utils/helpers.js';
 import * as mapLayoutState from './state/mapLayoutState.js';
 import * as uiState from './state/uiState.js';
@@ -4936,20 +4940,14 @@ async function main(){
   const runtimeListenerTeardowns = [];
 
   function resizeCanvas() {
-    const pad = 16;
-    const h = Math.max(320, window.innerHeight - pad);
-    const w = Math.round(h * (layoutW / layoutH));
-    dpr = Math.max(1, window.devicePixelRatio || 1);
-    canvas.style.height = `${h}px`;
-    canvas.style.width = `${w}px`;
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
-    canvas.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
-    const scaleX = (canvas.width / dpr) / layoutW;
-    const scaleY = (canvas.height / dpr) / layoutH;
-    layoutScale = Math.min(scaleX, scaleY);
-    layoutOffsetX = ((canvas.width / dpr) - layoutW * layoutScale) / 2;
-    layoutOffsetY = ((canvas.height / dpr) - layoutH * layoutScale) / 2;
+    const metrics = resizeCanvasToContainedViewport({ canvas, layoutW, layoutH });
+    dpr = metrics.dpr;
+    layoutScale = metrics.layoutScale;
+    layoutOffsetX = metrics.layoutOffsetX;
+    layoutOffsetY = metrics.layoutOffsetY;
+    if (typeof window !== 'undefined') {
+      window.__orkaAppViewport = metrics;
+    }
   }
   resizeCanvas();
   const handleWindowResize = () => {
@@ -4957,8 +4955,7 @@ async function main(){
     initializeStoryCardLayout('window-resize');
     if (typeof drawFrame === 'function') drawFrame();
   };
-  window.addEventListener('resize', handleWindowResize);
-  runtimeListenerTeardowns.push(() => window.removeEventListener('resize', handleWindowResize));
+  runtimeListenerTeardowns.push(addAppViewportResizeListener(handleWindowResize));
 
   // Map Construct world coords to canvas coords (preserve layout aspect/position)
   function worldToCanvas(wx, wy) {
