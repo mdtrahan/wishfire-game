@@ -3748,6 +3748,82 @@ function absorbPartyTempHPShield(g, dmg) {
 const FALIE_WARD_BARRIER_FADE_OUT_SEC = 0.28;
 const FALIE_WARD_BARRIER_HIT_PULSE_SEC = 0.18;
 const FALIE_WARD_BARRIER_OFFSET_WORLD_X = 22;
+const FALIE_WARD_SUSTAIN_RATIO = 0.18;
+const FALIE_RED_SUPER_GEM_SHIELD_COLOR = '#6CCBEE';
+const FALIE_WARD_BARRIER_ASSET_PATH = 'images/falie_ward_84x62.png';
+const FALIE_WARD_BARRIER_FADE_IN_SEC = 0.12;
+const FALIE_WARD_BARRIER_BASE_ALPHA = 0.82;
+const FALIE_WARD_BARRIER_WIDTH = 84;
+const FALIE_WARD_BARRIER_HEIGHT = 62;
+
+function refreshFalieWardBarrierVisuals(ctx) {
+  const g = getGlobals(ctx);
+  const now = Number(g.time || 0);
+  const heroes = getHeroes(ctx);
+  if (!heroes.length) return false;
+  const visuals = g.PartyWardBarrierVisualsByUID && typeof g.PartyWardBarrierVisualsByUID === 'object'
+    ? g.PartyWardBarrierVisualsByUID
+    : {};
+  const liveUIDs = new Set();
+  for (const hero of heroes) {
+    const uid = Number(hero.uid || 0);
+    if (!(uid > 0)) continue;
+    liveUIDs.add(String(uid));
+    const existing = visuals[uid] && typeof visuals[uid] === 'object' ? visuals[uid] : {};
+    visuals[uid] = {
+      uid,
+      source: 'falie_red_sustain',
+      state: 'fadeIn',
+      fadeInStartedAt: now,
+      fadeInDuration: FALIE_WARD_BARRIER_FADE_IN_SEC,
+      fadeOutDuration: FALIE_WARD_BARRIER_FADE_OUT_SEC,
+      baseAlpha: FALIE_WARD_BARRIER_BASE_ALPHA,
+      hitUntil: Number(existing.hitUntil || 0),
+      refreshCount: Math.max(1, Number(existing.refreshCount || 0) + 1),
+    };
+  }
+  for (const key of Object.keys(visuals)) {
+    if (!liveUIDs.has(String(key))) delete visuals[key];
+  }
+  g.PartyWardBarrierVisualsByUID = visuals;
+  g.PartyWardBarrierActive = 1;
+  g.PartyWardBarrierAssetPath = FALIE_WARD_BARRIER_ASSET_PATH;
+  g.PartyWardBarrierOffsetWorldX = FALIE_WARD_BARRIER_OFFSET_WORLD_X;
+  g.PartyWardBarrierWidth = FALIE_WARD_BARRIER_WIDTH;
+  g.PartyWardBarrierHeight = FALIE_WARD_BARRIER_HEIGHT;
+  g.PartyWardBarrierBaseAlpha = FALIE_WARD_BARRIER_BASE_ALPHA;
+  g.PartyWardBarrierFadeOutUntil = 0;
+  return true;
+}
+
+function sustainActiveFalieWardFromRedAttack(ctx, actorUID) {
+  const actor = GetActorByUID(ctx, actorUID);
+  if (String(actor && actor.name || '') !== 'Falie') return false;
+  const g = getGlobals(ctx);
+  const before = Math.max(0, Number(g.PartyTempHPShield || 0));
+  if (before <= 0) return false;
+  const maxHP = Math.max(1, Number(g.PartyMaxHP || 1));
+  const sustainHP = Math.max(1, Math.round(maxHP * FALIE_WARD_SUSTAIN_RATIO));
+  const after = Math.min(maxHP, before + sustainHP);
+  const unitHP = Math.max(1, Math.round(maxHP * FALIE_WARD_SUSTAIN_RATIO));
+  const ratio = Math.max(0, Math.min(1, after / maxHP));
+  g.PartyTempHPShield = after;
+  g.PartyTempHPShieldStacks = Math.max(1, Math.ceil(after / unitHP));
+  g.PartyTempHPShieldRatio = ratio;
+  g.PartyTempHPShieldMax = maxHP;
+  g.PartyTempHPShieldColor = FALIE_RED_SUPER_GEM_SHIELD_COLOR;
+  g.PartyTempHPShieldSource = 'falie_red_sustain';
+  g.LastFalieWardSustain = {
+    source: 'falie_red_sustain',
+    before,
+    after,
+    added: Math.max(0, after - before),
+    multiplier: 1,
+    ratio,
+  };
+  refreshFalieWardBarrierVisuals(ctx);
+  return true;
+}
 
 function markPartyWardBarrierHit(ctx, hero, absorbed) {
   const g = getGlobals(ctx);
@@ -5563,6 +5639,7 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     if (target) {
       resolvedTargetUID = Number(target.uid || 0);
       HeroAttackSingle(ctx, actorUID, target.uid);
+      sustainActiveFalieWardFromRedAttack(ctx, actorUID);
     }
     const now = g.time || 0;
     g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, now + 0.5);

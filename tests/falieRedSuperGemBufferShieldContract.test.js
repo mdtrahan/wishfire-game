@@ -29,6 +29,7 @@ function loadFunctionBank(modulePath) {
 
 module.exports = {
   ApplyDamageToTarget,
+  ExecuteSkill,
 };`;
   const context = {
     console,
@@ -87,29 +88,103 @@ function activateRedSuperGem(runtime, context) {
   });
 }
 
-test('Falie red super-gem use grants party tempHP shield immediately without arming the red attack path', () => {
+test('Falie red super-gem creates then sustains party ward without arming the red attack path', () => {
   const runtime = loadSuperGemRuntime();
   const context = createSuperGemContext('Falie');
   const expected = [
-    { stacks: 1, shield: 36, ratio: 0.18 },
-    { stacks: 2, shield: 52, ratio: 0.26 },
-    { stacks: 3, shield: 68, ratio: 0.34 },
-    { stacks: 4, shield: 84, ratio: 0.42 },
-    { stacks: 5, shield: 100, ratio: 0.5 },
+    { shield: 36, ratio: 0.18 },
+    { shield: 108, ratio: 0.54 },
+    { shield: 180, ratio: 0.9 },
+    { shield: 200, ratio: 1 },
   ];
 
   for (const step of expected) {
     assert.equal(activateRedSuperGem(runtime, context), true);
     assert.equal(context.state.globals.PendingSkillID || '', '');
     assert.equal(context.state.globals.PendingSuperGemAction || null, null);
-    assert.equal(context.state.globals.PartyTempHPShieldStacks, step.stacks);
     assert.equal(context.state.globals.PartyTempHPShield, step.shield);
     assert.equal(context.state.globals.PartyTempHPShieldRatio, step.ratio);
+    assert.equal(context.state.globals.PartyTempHPShieldMax, 200);
     assert.equal(context.state.globals.PartyTempHPShieldColor, '#6CCBEE');
     assert.equal(context.state.globals.PartyHP, 200);
     assert.equal(context.state.globals.DeferAdvance, 1);
     assert.equal(context.state.globals.AdvanceAfterAction, 1);
   }
+});
+
+function makeFalieRedAttackContext(modulePath, { shield = 36, maxHP = 200 } = {}) {
+  const { ExecuteSkill } = loadFunctionBank(modulePath);
+  const hero = {
+    uid: 4,
+    kind: 'hero',
+    name: 'Falie',
+    heroIndex: 0,
+    attackType: 'melee',
+    hp: maxHP,
+    maxHP,
+    stats: { ATK: 50, DEF: 10, MAG: 10, RES: 10, SPD: 10 },
+  };
+  const enemy = {
+    uid: 200,
+    kind: 'enemy',
+    name: 'Wisp',
+    hp: 120,
+    maxHP: 120,
+    stats: { ATK: 10, DEF: 5, MAG: 10, RES: 5, SPD: 5 },
+  };
+  const ctx = {
+    state: {
+      globals: {
+        time: 2,
+        PartyHP: maxHP,
+        PartyMaxHP: maxHP,
+        PartyHPByIndex: [maxHP],
+        PartyMaxHPByIndex: [maxHP],
+        PartyTempHPShield: shield,
+        PartyTempHPShieldRatio: shield / maxHP,
+        PartyTempHPShieldMax: shield > 0 ? maxHP : 0,
+        PowerAmpByUID: {},
+        RuntimeRandom: () => 0,
+        SelectedEnemyUID: enemy.uid,
+        TurnPhase: 0,
+      },
+      entities: [hero, enemy],
+    },
+  };
+  return { ExecuteSkill, ctx, hero, enemy };
+}
+
+function assertFalieRedAttackSustainsActiveWard(modulePath) {
+  const { ExecuteSkill, ctx, hero } = makeFalieRedAttackContext(modulePath, { shield: 36 });
+
+  ExecuteSkill(ctx, 'HERO_SINGLE', hero.uid);
+
+  assert.equal(ctx.state.globals.PartyTempHPShield, 72);
+  assert.equal(ctx.state.globals.PartyTempHPShieldRatio, 0.36);
+  assert.equal(ctx.state.globals.PartyTempHPShieldMax, 200);
+  assert.equal(ctx.state.globals.PartyTempHPShieldSource, 'falie_red_sustain');
+  assert.equal(ctx.state.globals.PendingHeroHits.length, 1);
+}
+
+test('Falie ordinary red attack sustains an active ward in both runtime mirrors', () => {
+  assertFalieRedAttackSustainsActiveWard(path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js'));
+  assertFalieRedAttackSustainsActiveWard(path.join(repoRoot, 'Scripts', 'functionBank.js'));
+});
+
+function assertFalieRedAttackDoesNotRecreateBrokenWard(modulePath) {
+  const { ExecuteSkill, ctx, hero } = makeFalieRedAttackContext(modulePath, { shield: 0 });
+
+  ExecuteSkill(ctx, 'HERO_SINGLE', hero.uid);
+
+  assert.equal(ctx.state.globals.PartyTempHPShield || 0, 0);
+  assert.equal(ctx.state.globals.PartyTempHPShieldRatio || 0, 0);
+  assert.equal(ctx.state.globals.PartyTempHPShieldMax || 0, 0);
+  assert.equal(ctx.state.globals.PendingHeroHits.length, 1);
+}
+
+test('Falie ordinary red attack cannot recreate a broken ward in both runtime mirrors', () => {
+  assertFalieRedAttackDoesNotRecreateBrokenWard(path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js'));
+  assertFalieRedAttackDoesNotRecreateBrokenWard(path.join(repoRoot, 'Scripts', 'functionBank.js'));
 });
 
 test('Falie Ward creates one refreshed barrier visual per hero', () => {
@@ -314,6 +389,7 @@ test('party shield render expression is light blue and right-edge aligned over t
 
   assert.match(source, /#6CCBEE/);
   assert.match(source, /PartyTempHPShield/);
+  assert.match(source, /Math\.min\(1, shieldValue \/ maxHP\)/);
   assert.match(source, /PartyTempHPShieldBarCanvas/);
   assert.match(source, /barX \+ barW - shieldW/);
   assert.match(source, /fillRect\(barX \+ barW - shieldW, barY, shieldW, barH\)/);

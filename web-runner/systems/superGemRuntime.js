@@ -5,7 +5,8 @@ const SUPER_GEM_AOE_HIT_DELAY = 1.07;
 const SUPER_GEM_HIT_INTERVAL = 0.2;
 const KOJONN_TAINTED_GROUND_DURATION_HERO_TEAM_TURNS = 3;
 const KOJONN_TAINTED_GROUND_DAMAGE_SCALE = 0.5;
-const FALIE_RED_SUPER_GEM_SHIELD_RATIOS = Object.freeze([0, 0.18, 0.26, 0.34, 0.42, 0.5]);
+const FALIE_WARD_SUSTAIN_RATIO = 0.18;
+const FALIE_WARD_SUPER_GEM_SUSTAIN_MULTIPLIER = 2;
 const FALIE_RED_SUPER_GEM_SHIELD_COLOR = '#6CCBEE';
 const FALIE_WARD_BARRIER_ASSET_PATH = 'images/falie_ward_84x62.png';
 const FALIE_WARD_BARRIER_FADE_IN_SEC = 0.12;
@@ -39,11 +40,6 @@ function getNextSuperGemBatchId(state) {
   const next = Math.max(1, Number(state?.globals?.NextSuperGemBatchId || 1));
   state.globals.NextSuperGemBatchId = next + 1;
   return next;
-}
-
-function getFalieRedSuperGemShieldRatio(stackCount) {
-  const clamped = Math.max(0, Math.min(5, Math.floor(Number(stackCount || 0))));
-  return FALIE_RED_SUPER_GEM_SHIELD_RATIOS[clamped] || 0;
 }
 
 function getWardEligibleHeroes(state) {
@@ -93,23 +89,45 @@ function refreshFalieWardBarrierVisuals(state) {
   return true;
 }
 
-function grantFalieRedSuperGemPartyShield(state) {
+function applyFalieWardSustain(state, { multiplier = 1, allowCreate = false, source = 'falie_red_sustain' } = {}) {
   if (!state?.globals) return false;
   const g = state.globals;
-  const nextStacks = Math.max(1, Math.min(5, Math.floor(Number(g.PartyTempHPShieldStacks || 0)) + 1));
-  const ratio = getFalieRedSuperGemShieldRatio(nextStacks);
   const maxHP = Math.max(1, Number(g.PartyMaxHP || 1));
-  const shieldHP = Math.max(0, Math.round(maxHP * ratio));
-  g.PartyTempHPShieldStacks = nextStacks;
+  const before = Math.max(0, Number(g.PartyTempHPShield || 0));
+  if (before <= 0 && !allowCreate) return false;
+  const sustainMultiplier = Math.max(1, Number(multiplier || 1));
+  const sustainHP = Math.max(1, Math.round(maxHP * FALIE_WARD_SUSTAIN_RATIO * sustainMultiplier));
+  const after = Math.min(maxHP, before + sustainHP);
+  const ratio = Math.max(0, Math.min(1, after / maxHP));
+  const unitHP = Math.max(1, Math.round(maxHP * FALIE_WARD_SUSTAIN_RATIO));
+  g.PartyTempHPShield = after;
+  g.PartyTempHPShieldStacks = Math.max(1, Math.ceil(after / unitHP));
   g.PartyTempHPShieldRatio = ratio;
-  g.PartyTempHPShieldMax = shieldHP;
-  g.PartyTempHPShield = Math.max(Number(g.PartyTempHPShield || 0), shieldHP);
+  g.PartyTempHPShieldMax = maxHP;
   g.PartyTempHPShieldColor = FALIE_RED_SUPER_GEM_SHIELD_COLOR;
-  g.PartyTempHPShieldSource = 'falie_red_super_gem';
+  g.PartyTempHPShieldSource = source;
+  g.LastFalieWardSustain = {
+    source,
+    before,
+    after,
+    added: Math.max(0, after - before),
+    multiplier: sustainMultiplier,
+    ratio,
+  };
   if (g.PartyTempHPShield > 0) {
     refreshFalieWardBarrierVisuals(state);
   }
   return g.PartyTempHPShield > 0;
+}
+
+function grantFalieRedSuperGemPartyShield(state) {
+  const g = state?.globals;
+  const active = Math.max(0, Number(g?.PartyTempHPShield || 0)) > 0;
+  return applyFalieWardSustain(state, {
+    multiplier: active ? FALIE_WARD_SUPER_GEM_SUSTAIN_MULTIPLIER : 1,
+    allowCreate: true,
+    source: active ? 'falie_red_super_gem_sustain' : 'falie_red_super_gem',
+  });
 }
 
 function buildNormalHitLog(heroName, targetName, finalDmg) {
