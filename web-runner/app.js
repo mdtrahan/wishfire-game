@@ -2126,6 +2126,11 @@ function computeCombatPower(atk, def, hp) {
   const h = Number(hp || 0);
   return Math.round((a + d + (h / 10)) * 100) / 100;
 }
+function resolveEnemyEncounterCombatPower(row) {
+  const explicit = Number(row?.EncounterCP ?? row?.encounterCP ?? row?.CombatPower ?? row?.combatPower);
+  if (Number.isFinite(explicit) && explicit > 0) return Math.round(explicit * 100) / 100;
+  return computeCombatPower(row?.ATK, row?.DEF, row?.HP);
+}
 const HERO_STAT_KEYS = ['ATK', 'DEF', 'MAG', 'RES', 'SPD', 'HP'];
 const FIGMA_HERO_NEXT_URL = 'https://www.figma.com/api/mcp/asset/dfb1bc1b-4189-4f52-9c88-1cf1e4f8029a';
 const FIGMA_HERO_BACK_URL = 'https://www.figma.com/api/mcp/asset/6ce3ba17-8c7d-4a3e-bc8e-194b9b4947d9';
@@ -3173,7 +3178,7 @@ function initEntities(enemyRows, layoutInstances) {
     biome: String(row?.biome || row?.biomes || 'all').trim().toLowerCase() || 'all',
     biomeTags: normalizeBiomeTags(row?.biomes || row?.biome || 'all'),
     localeTags: normalizeBiomeTags(row?.localeTags || row?.locale_tags || row?.locale || row?.biomes || row?.biome || 'all'),
-    CombatPower: computeCombatPower(row?.ATK, row?.DEF, row?.HP),
+    CombatPower: resolveEnemyEncounterCombatPower(row),
   }));
   const mappedEnemyData = state.globals.EnemyData;
   state.globals.DevToolEnemyCatalog = [...new Set(state.globals.EnemyData.map((row) => String(row?.name || row?.EnemyName || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
@@ -3365,7 +3370,7 @@ function initEntities(enemyRows, layoutInstances) {
         faction: String(pick.faction || 'wishless'),
         enemyRole: String(pick.enemyRole || 'fodder'),
         localeTags: Array.isArray(pick.localeTags) ? pick.localeTags : ['all'],
-        CombatPower: computeCombatPower(pick.ATK, pick.DEF, pick.HP),
+        CombatPower: Number(pick.CombatPower || pick.combatPower || resolveEnemyEncounterCombatPower(pick)),
       }, slotIndex);
     }
     state.globals.InitialSpawn = 0;
