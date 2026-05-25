@@ -36,6 +36,23 @@ function getActorName(callFunctionWithContext, fnContext, actorUID) {
   return String(actor && actor.name || 'Hero');
 }
 
+function clearBlueGemBuffPresentationState(globals) {
+  globals.BuffRollApplyStat = 0;
+  globals.BuffRollSkillID = '';
+  globals.BuffRollActor = 0;
+  globals.BuffRollType = 0;
+  globals.BlueBuffSequenceActive = 0;
+  globals.BuffRollActive = 0;
+  globals.BuffRollDoneAt = 0;
+  globals.BuffIconPopType = -1;
+  globals.BuffIconPopAt = 0;
+  globals.BuffIconPopStacking = 0;
+  globals.TrackBuffs = [-1, -1, -1, -1];
+  globals.PartyBuffSlots = [];
+  globals.PartyBuffUI = { atk: false, def: false, mag: false, res: false };
+  globals.BuffFrames = [-1, -1, -1, -1];
+}
+
 function getNextSuperGemBatchId(state) {
   const next = Math.max(1, Number(state?.globals?.NextSuperGemBatchId || 1));
   state.globals.NextSuperGemBatchId = next + 1;
@@ -919,7 +936,17 @@ export function activateSuperGemEffect({
       startGemMergeFx({ sourceItems });
     }
     const consumedBlue = randomIntInclusive(4, 6, rng);
-    callFunctionWithContext(fnContext, 'ResolveGemAction', 2, actorUID, consumedBlue);
+    callFunctionWithContext(fnContext, 'RegisterHeroGemUsage', actorUID, 2, consumedBlue);
+    callFunctionWithContext(fnContext, 'LogGemIntent', 2, 'BLUE', 'Skill_Draught', 'supergem-routing', actorUID);
+    state.globals.IsAOEMatch = 0;
+    clearBlueGemBuffPresentationState(state.globals);
+    callFunctionWithContext(fnContext, 'OpenSkillDraughtForHero', actorUID);
+    state.globals.CanPickGems = 0;
+    state.globals.IsPlayerBusy = 0;
+    state.globals.ActionOwnerUID = actorUID;
+    state.globals.ActionLockUntil = Math.max(Number(state.globals.ActionLockUntil || 0), Number(state.globals.time || 0) + 0.32);
+    state.globals.DeferAdvance = 1;
+    state.globals.AdvanceAfterAction = 1;
     return true;
   }
   if (color === 3) {
