@@ -78,6 +78,8 @@ export function DoHeal(ctx, actorUID, potencyMultiplier = 1) {
   const partyMaxHP = Math.max(0, Number(g.PartyMaxHP || 0));
   let heal = Math.max(1, Math.ceil(partyMaxHP * 7 / 100));
   const potency = Math.max(1, Number(potencyMultiplier || 1));
+  const actor = ctx.callFunction('GetActorByUID', actorUID);
+  const actorName = actor && actor.name ? actor.name : '?';
   if (potency > 1) {
     const criticalHealMinPct = 32;
     const criticalHealMaxPct = 42;
@@ -91,79 +93,27 @@ export function DoHeal(ctx, actorUID, potencyMultiplier = 1) {
     heal = Math.ceil(heal * (g.ChainMultiplier || 1));
     g.ApplyChainToNextHeal = 0;
   }
-  const actor = ctx.callFunction('GetActorByUID', actorUID);
-  const actorName = actor && actor.name ? actor.name : '?';
-  if (actor && actor.name === 'Kojonn') {
-    const totalTicks = 3;
-    const turnSerialNow = Number(g.TurnSerial || 0);
-    const totalHeal = Math.max(1, Math.floor(heal));
-    const initialHeal = Math.max(1, Math.floor(totalHeal / totalTicks));
-    const remainingHeal = Math.max(0, totalHeal - initialHeal);
-    const beforeHP = g.PartyHP || 0;
-    const prevSpawn = g.SpawnDamageText;
-    const prevHero = g.SuppressHeroHealText;
-    g.SpawnDamageText = 0;
-    g.SuppressHeroHealText = 1;
-    ctx.callFunction('ApplyPartyHeal', initialHeal);
-    g.SpawnDamageText = prevSpawn;
-    g.SuppressHeroHealText = prevHero;
-    const afterHP = g.PartyHP || 0;
-    const appliedInitialHeal = Math.max(0, afterHP - beforeHP);
-    if (!g.PartyRegens) g.PartyRegens = [];
-    for (let i = g.PartyRegens.length - 1; i >= 0; i--) {
-      const existing = g.PartyRegens[i];
-      if (!existing) continue;
-      if (Number(existing.sourceUID || 0) !== Number(actorUID || 0)) continue;
-      if (String(existing.effectName || '') !== 'KojonnRegen') continue;
-      g.PartyRegens.splice(i, 1);
-    }
-    if (remainingHeal > 0) {
-      g.PartyRegens.push({
-        remainingFires: totalTicks - 1,
-        totalHealRemaining: remainingHeal,
-        cadence: 'turn',
-        firesEveryTurns: 1,
-        nextFireTurnSerial: turnSerialNow + 1,
-        appliedOnTurnSerial: turnSerialNow,
-        sourceUID: actorUID,
-        effectName: 'KojonnRegen',
-        nextFireTick: Number.MAX_SAFE_INTEGER,
-      });
-    }
-    const barPos = g.PartyHPBarPosWorld;
-    if (appliedInitialHeal > 0 && barPos && barPos.w > 0 && barPos.h > 0) {
-      const left = barPos.x - barPos.w * barPos.ox;
-      const barW = barPos.w;
-      const barH = barPos.h;
-      const ratio = Math.max(0, Math.min(1, (g.PartyHP || 0) / Math.max(1, g.PartyMaxHP || 1)));
-      const textX = left + barW * ratio;
-      const textY = (barPos.y - barH * barPos.oy) + barH * 0.5;
-      ctx.callFunction('SpawnDamageText', appliedInitialHeal, textX, textY, 'heal', 'bar');
-    }
-    ctx.callFunction('LogCombat', potency > 1 ? `${actorName} applies critical 3-turn Regen!` : `${actorName} applies 3-turn Regen!`);
-  } else {
-    const beforeHP = g.PartyHP || 0;
-    const prevSpawn = g.SpawnDamageText;
-    const prevHero = g.SuppressHeroHealText;
-    g.SpawnDamageText = 0;
-    g.SuppressHeroHealText = 1;
-    ctx.callFunction('ApplyPartyHeal', heal);
-    g.SpawnDamageText = prevSpawn;
-    g.SuppressHeroHealText = prevHero;
-    const afterHP = g.PartyHP || 0;
-    const totalHeal = Math.max(0, afterHP - beforeHP);
-    const barPos = g.PartyHPBarPosWorld;
-    if (totalHeal > 0 && barPos && barPos.w > 0 && barPos.h > 0) {
-      const left = barPos.x - barPos.w * barPos.ox;
-      const barW = barPos.w;
-      const barH = barPos.h;
-      const ratio = Math.max(0, Math.min(1, (g.PartyHP || 0) / Math.max(1, g.PartyMaxHP || 1)));
-      const textX = left + barW * ratio;
-      const textY = (barPos.y - barH * barPos.oy) + barH * 0.5;
-      ctx.callFunction('SpawnDamageText', totalHeal, textX, textY, 'heal', 'bar');
-    }
-    ctx.callFunction('LogCombat', potency > 1 ? `${actorName} critically heals party for ${totalHeal}` : `${actorName} heals party for ${totalHeal}`);
+  const beforeHP = g.PartyHP || 0;
+  const prevSpawn = g.SpawnDamageText;
+  const prevHero = g.SuppressHeroHealText;
+  g.SpawnDamageText = 0;
+  g.SuppressHeroHealText = 1;
+  ctx.callFunction('ApplyPartyHeal', heal);
+  g.SpawnDamageText = prevSpawn;
+  g.SuppressHeroHealText = prevHero;
+  const afterHP = g.PartyHP || 0;
+  const totalHeal = Math.max(0, afterHP - beforeHP);
+  const barPos = g.PartyHPBarPosWorld;
+  if (totalHeal > 0 && barPos && barPos.w > 0 && barPos.h > 0) {
+    const left = barPos.x - barPos.w * barPos.ox;
+    const barW = barPos.w;
+    const barH = barPos.h;
+    const ratio = Math.max(0, Math.min(1, (g.PartyHP || 0) / Math.max(1, g.PartyMaxHP || 1)));
+    const textX = left + barW * ratio;
+    const textY = (barPos.y - barH * barPos.oy) + barH * 0.5;
+    ctx.callFunction('SpawnDamageText', totalHeal, textX, textY, 'heal', 'bar');
   }
+  ctx.callFunction('LogCombat', potency > 1 ? `${actorName} used Magic Fruit!` : `${actorName} heals party for ${totalHeal}`);
   g.ActionLockUntil = (g.time || 0) + (g.DamageTextDurationSec || 1.35);
   g.DeferAdvance = 1;
   g.AdvanceAfterAction = 1;

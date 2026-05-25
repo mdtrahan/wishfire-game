@@ -9,7 +9,7 @@ function loadDoHeal(relPath) {
   return Function(`${src}; return DoHeal;`)();
 }
 
-function createKojonnHealContext({ heal = 30, potency = 1, runtimeRandom = () => 0 } = {}) {
+function createKojonnHealContext({ runtimeRandom = () => 0 } = {}) {
   const calls = [];
   const globals = {
     PartyHP: 10,
@@ -23,7 +23,6 @@ function createKojonnHealContext({ heal = 30, potency = 1, runtimeRandom = () =>
     globals,
     callFunction(name, ...args) {
       calls.push({ name, args });
-      if (name === 'CalculateHeal') return heal;
       if (name === 'GetActorByUID') return { uid: args[0], name: 'Kojonn' };
       if (name === 'ApplyPartyHeal') {
         globals.PartyHP = Math.min(globals.PartyMaxHP, globals.PartyHP + Number(args[0] || 0));
@@ -32,52 +31,41 @@ function createKojonnHealContext({ heal = 30, potency = 1, runtimeRandom = () =>
       return undefined;
     },
   };
-  return { ctx, calls, potency };
+  return { ctx, calls };
 }
 
-test('Kojonn heal queues the recovered 3-turn regen payload in the web runner module', () => {
-  const DoHeal = loadDoHeal('web-runner/modules/skillSheet.js');
-  const { ctx, calls } = createKojonnHealContext({ heal: 30 });
+test('Kojonn normal heal-gem potency uses the shared regular heal path without regen in either mirror', () => {
+  for (const relPath of ['web-runner/modules/skillSheet.js', 'Scripts/skillSheet.js']) {
+    const DoHeal = loadDoHeal(relPath);
+    const { ctx, calls } = createKojonnHealContext();
 
-  DoHeal(ctx, 4);
+    DoHeal(ctx, 4);
 
-  assert.equal(ctx.globals.PartyHP, 12);
-  assert.equal(ctx.globals.PartyRegens.length, 1);
-  assert.deepEqual(ctx.globals.PartyRegens[0], {
-    remainingFires: 2,
-    totalHealRemaining: 5,
-    cadence: 'turn',
-    firesEveryTurns: 1,
-    nextFireTurnSerial: 13,
-    appliedOnTurnSerial: 12,
-    sourceUID: 4,
-    effectName: 'KojonnRegen',
-    nextFireTick: Number.MAX_SAFE_INTEGER,
-  });
-  assert.ok(calls.some(call => call.name === 'SpawnDamageText' && call.args[3] === 'heal' && call.args[4] === 'bar'));
-  assert.ok(calls.some(call => call.name === 'LogCombat' && call.args[0] === 'Kojonn applies 3-turn Regen!'));
+    assert.equal(ctx.globals.PartyHP, 17, `${relPath} should restore the regular 7 percent heal`);
+    assert.deepEqual(ctx.globals.PartyRegens || [], [], `${relPath} should not queue Kojonn regen`);
+    assert.ok(calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 7), `${relPath} should use shared ApplyPartyHeal`);
+    assert.ok(calls.some(call => call.name === 'SpawnDamageText' && call.args[0] === 7 && call.args[3] === 'heal' && call.args[4] === 'bar'), `${relPath} should use shared heal text`);
+    assert.ok(calls.some(call => call.name === 'LogCombat' && call.args[0] === 'Kojonn heals party for 7'), `${relPath} should use shared regular heal copy`);
+    assert.ok(calls.every(call => !/Regen/.test(String(call.args[0] || ''))), `${relPath} should not log regen`);
+    assert.equal(ctx.globals.DeferAdvance, 1, `${relPath} should still consume action pacing`);
+    assert.equal(ctx.globals.AdvanceAfterAction, 1, `${relPath} should still advance after the action`);
+    assert.equal(ctx.globals.ActionOwnerUID, 4, `${relPath} should preserve action ownership`);
+  }
 });
 
-test('Kojonn super-heal uses the tightened critical regen total', () => {
-  const DoHeal = loadDoHeal('web-runner/modules/skillSheet.js');
-  const { ctx } = createKojonnHealContext({ heal: 30, runtimeRandom: () => 0.999 });
+test('Kojonn heal supergem uses the shared critical heal path in either mirror', () => {
+  for (const relPath of ['web-runner/modules/skillSheet.js', 'Scripts/skillSheet.js']) {
+    const DoHeal = loadDoHeal(relPath);
+    const { ctx, calls } = createKojonnHealContext({ runtimeRandom: () => 0.999 });
 
-  DoHeal(ctx, 4, 2);
+    DoHeal(ctx, 4, 6);
 
-  assert.equal(ctx.globals.PartyHP, 24);
-  assert.equal(ctx.globals.PartyRegens[0].remainingFires, 2);
-  assert.equal(ctx.globals.PartyRegens[0].totalHealRemaining, 28);
-});
-
-test('Construct mirror carries the same recovered Kojonn regen payload shape', () => {
-  const src = fs.readFileSync('Scripts/skillSheet.js', 'utf8');
-
-  assert.match(src, /const totalTicks = 3;/);
-  assert.match(src, /effectName: 'KojonnRegen'/);
-  assert.match(src, /cadence: 'turn'/);
-  assert.match(src, /nextFireTick: Number\.MAX_SAFE_INTEGER/);
-  assert.doesNotMatch(src, /const totalTicks = 8;/);
-  assert.doesNotMatch(src, /applies Regen over time/);
+    assert.equal(ctx.globals.PartyHP, 52, `${relPath} should restore the shared 42 percent critical heal`);
+    assert.deepEqual(ctx.globals.PartyRegens || [], [], `${relPath} should not queue Kojonn regen`);
+    assert.ok(calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 42), `${relPath} should use shared ApplyPartyHeal`);
+    assert.ok(calls.some(call => call.name === 'SpawnDamageText' && call.args[0] === 42 && call.args[3] === 'heal' && call.args[4] === 'bar'), `${relPath} should use shared heal text`);
+    assert.ok(calls.some(call => call.name === 'LogCombat' && call.args[0] === 'Kojonn used Magic Fruit!'), `${relPath} should use Magic Fruit super-heal copy`);
+  }
 });
 
 test('app processes turn-cadence party regens outside the timer tick lane', () => {

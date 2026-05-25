@@ -64,7 +64,7 @@ test('super-gem critical heal rolls within the tightened 32 to 42 percent party 
   assert.equal(high.ctx.globals.PartyHP, 72);
   assert.ok(low.calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 48));
   assert.ok(high.calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 62));
-  assert.ok(high.calls.some(call => call.name === 'LogCombat' && /critically heals party for 62/.test(String(call.args[0]))));
+  assert.ok(high.calls.some(call => call.name === 'LogCombat' && call.args[0] === 'Falie used Magic Fruit!'));
 });
 
 test('super-gem critical heal respects the current HP cap', () => {

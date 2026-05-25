@@ -24,6 +24,7 @@
 - Before starting combat-system beads, scan acceptance + code for: `buff`, `debuff`, `duration`, `turns`, `stack`.
 - If these imply outdated model assumptions, pause and rewrite bead scope before coding.
 - When render extraction moves visual helpers behind a dependency scope, verify app-to-renderer predicates are live state readers rather than false stubs; status overlays keyed by effect names should accept stable prefixes such as `Blight*`.
+- When removing a hero-specific heal expression, route that hero through the shared heal body; do not replace the special branch with a guard that still consumes action pacing but skips `ApplyPartyHeal`.
 
 ## 2026-03-07 Regression Note
 - Hero selector render gate must treat hero-turn as `TurnPhase === 0` (not `1`) in web-runner runtime.
