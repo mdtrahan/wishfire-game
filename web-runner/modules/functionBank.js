@@ -827,6 +827,7 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: 'party_hot_streak', owner: 'Party', slot: 7, title: 'Hot Streak', cardText: 'Build up a better payoff with consecutive matches.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On consecutive matches', payloadImplemented: false },
   { id: 'party_last_push', owner: 'Party', slot: 8, title: 'Last Push', cardText: 'Gain a brief comeback burst when the party nears defeat.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On low party HP', payloadImplemented: false },
   { id: 'party_chain_pop', owner: 'Party', slot: 9, title: 'Chain Pop', cardText: 'Trigger an extra board effect from a match.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On match', payloadImplemented: false },
+  { id: 'party_magic_fruit', owner: 'Party', slot: 10, title: 'Magic Fruit', cardText: 'Heals party for 40% of max HP', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true },
 ]);
 
 function cloneSkillDefinition(def) {
@@ -935,8 +936,22 @@ function buildSkillDraughtCandidates(ctx, heroUID, forcedSkillId = '') {
   let ordered = defs.slice();
   if (forced && String(forced.owner || '').toLowerCase() === 'party') {
     ordered = [forced].concat(defs.filter(def => String(def.id) !== String(forced.id)));
+  } else {
+    const magicFruit = defs.find(def => String(def.id) === 'party_magic_fruit');
+    if (magicFruit) {
+      const withoutMagicFruit = ordered.filter(def => String(def.id) !== 'party_magic_fruit');
+      ordered = withoutMagicFruit.slice(0, 2).concat(magicFruit, withoutMagicFruit.slice(2));
+    }
   }
   return ordered.slice(0, 3).map((def, index) => makeSkillDraughtCandidate(def, index));
+}
+
+function activateMagicFruitSkill(ctx) {
+  const g = getGlobals(ctx);
+  const partyMaxHP = Math.max(0, Number(g.PartyMaxHP || 0));
+  const healAmount = Math.max(1, Math.ceil(partyMaxHP * 40 / 100));
+  ctx.callFunction('ApplyPartyHeal', healAmount);
+  return healAmount;
 }
 
 export function GetSkillDraughtState(ctx) {
@@ -998,6 +1013,7 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
   g.AstralFlowAmpPoints = 0;
   g.AstralFlowAmpReady = 0;
   UpdateAstralFlowAmpBar(ctx);
+  if (sessionSkill.id === 'party_magic_fruit') activateMagicFruitSkill(ctx);
   const scope = String(sessionSkill.owner || '').toLowerCase() === 'party' ? 'party' : 'hero';
   appendSkillDraughtTrace(g, 'select', { heroUID: uid, skillId: sessionSkill.id, scope });
   g.CombatActionPinnedLine = '';
