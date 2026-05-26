@@ -87,7 +87,11 @@ test('combat renderer uses HP text roll state only for PartyHP_text presentation
   assert.match(renderSrc, /maxHp: max,/);
   assert.match(renderSrc, /now: state\.globals\.time \|\| 0,/);
   assert.match(renderSrc, /text = hpTextRoll\.text;/);
-  assert.match(renderSrc, /const ratio = Math\.max\(0, Math\.min\(1, \(state\.globals\.PartyHP \|\| 0\) \/ maxHP\)\);/);
+  assert.match(renderSrc, /const hpBarRoll = updateHpTextRollState\(gameState\.partyHpTextRoll, \{/);
+  assert.match(renderSrc, /currentHp: state\.globals\.PartyHP \|\| 0,/);
+  assert.match(renderSrc, /maxHp: maxHP,/);
+  assert.match(renderSrc, /const ratio = Math\.max\(0, Math\.min\(1, hpBarRoll\.displayHp \/ maxHP\)\);/);
+  assert.doesNotMatch(renderSrc, /const ratio = Math\.max\(0, Math\.min\(1, \(state\.globals\.PartyHP \|\| 0\) \/ maxHP\)\);/);
 
   assert.doesNotMatch(functionBankSrc, /hpTextRoll|HP_TEXT_ROLL|updateHpTextRollState/);
   assert.doesNotMatch(scriptsFunctionBankSrc, /hpTextRoll|HP_TEXT_ROLL|updateHpTextRollState/);
