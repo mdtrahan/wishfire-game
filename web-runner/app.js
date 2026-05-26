@@ -12,6 +12,7 @@ import {
   createDeferredStaleActionRecovery,
   createDeferredStaleBusyRecovery,
   createDeferredTextHold,
+  derivePresentationTurnBarrier,
   createRefillCompleteGate,
   createRefillStartGate,
   createYellowSequenceCompletion,
@@ -128,6 +129,14 @@ const DEBUG_GEMS_QUERY = (() => {
       params.has('debug_gems') ||
       params.get('debug_gems') === 'true'
     );
+  } catch {
+    return false;
+  }
+})();
+const GEM_INTERACTIVITY_DIAGNOSTIC_QUERY = (() => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('gemdiag') === 'true';
   } catch {
     return false;
   }
@@ -294,26 +303,29 @@ function getYellowSequenceCompletionIntent(current = state.globals, options = un
   });
 }
 
+function getPresentationTurnBarrier({ hasEmpty = false, enemyLineClearPressureActive = false } = {}) {
+  return derivePresentationTurnBarrier({
+    globals: state.globals,
+    refillBounce: gameState.refillBounce,
+    yellowCasino: gameState.yellowCasino,
+    gemMergeFx: gameState.gemMergeFx,
+    boardHasEmptySlots: hasEmpty,
+    enemyLineClearPressureActive,
+  });
+}
+
 function canResolveDeferredAdvance({ hasEmpty = false, enemyLineClearPressureActive = false } = {}) {
-  const refill = gameState.refillBounce;
-  const refillActive = !!(refill && refill.active);
+  const presentationBarrier = getPresentationTurnBarrier({ hasEmpty, enemyLineClearPressureActive });
+  const refillActive = presentationBarrier.lanes.refillBounce;
   const rosterStability = getEnemyRosterStabilitySnapshot();
   const pendingEnemyDeathResolution = hasPendingEnemyDeathResolution();
-  const refillPending = !!hasEmpty && !refillActive && !enemyLineClearPressureActive;
-  const textHold = !!state.globals.TextAnimating;
+  const refillPending = presentationBarrier.refillPending && presentationBarrier.canStartRefill;
+  const textHold = presentationBarrier.lanes.textAnimating;
   const pendingSelect = state.globals.TurnPhase === 1 && !!state.globals.PendingSkillID;
-  const mergeInFlight = !!(gameState.gemMergeFx && gameState.gemMergeFx.active);
+  const mergeInFlight = presentationBarrier.lanes.gemMerge;
   const actionActorUID = Number(state.globals.ActionActorUID || 0);
-  const heroActionActive = !!(
-    state.globals.HeroAction &&
-    state.globals.HeroAction.active &&
-    Number(state.globals.HeroAction.uid || 0) === actionActorUID
-  );
-  const enemyActionActive = !!(
-    state.globals.EnemyAction &&
-    state.globals.EnemyAction.active &&
-    Number(state.globals.EnemyAction.uid || 0) === actionActorUID
-  );
+  const heroActionActive = presentationBarrier.lanes.heroAction;
+  const enemyActionActive = presentationBarrier.lanes.enemyAction;
   const actionLockActive = Number(state.globals.ActionLockUntil || 0) > Number(state.globals.time || 0);
   const staleActionInProgress = !!state.globals.ActionInProgress &&
     !heroActionActive &&
@@ -323,7 +335,7 @@ function canResolveDeferredAdvance({ hasEmpty = false, enemyLineClearPressureAct
   const blockedPhase = !!state.globals.IsPlayerBusy ||
     (!!state.globals.ActionInProgress && !staleActionInProgress) ||
     !!pendingSelect ||
-    !!mergeInFlight;
+    !presentationBarrier.canAdvanceTurn;
   const ownerUID = Number(state.globals.ActionOwnerUID || 0);
   const currentUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
   const ownerOk = !ownerUID || ownerUID === currentUID;
@@ -338,6 +350,7 @@ function canResolveDeferredAdvance({ hasEmpty = false, enemyLineClearPressureAct
     staleActionInProgress,
     staleBusy,
     blockedPhase,
+    presentationBarrier,
     ownerUID,
     currentUID,
     ownerOk,
@@ -4013,7 +4026,11 @@ function handleGemMatch(color) {
   if (!gameState.boardCreated) {
     combatRuntimeGateway.runCombatBoardInit(createGemBoard, gameState.gridBounds);
   }
-  if (state.globals.TurnPhase === 2) {
+  const immediateEnemyTurnBarrier = getPresentationTurnBarrier({
+    hasEmpty: hasEmptySlots(),
+    enemyLineClearPressureActive: !!state.globals.EnemyLineClearPressureActive,
+  });
+  if (state.globals.TurnPhase === 2 && immediateEnemyTurnBarrier.canClaimCombatAction) {
     callFunctionWithContext(fnContext, 'EnemyTurn');
   }
   syncFromGlobals();
@@ -4547,7 +4564,7 @@ async function main(){
           createGemBoard(gridBounds);
           combatSessionSeeded = true;
           updateStartupLoadState({ active: false, phase: 'runtime', label: 'Ready', progress: 1 });
-          if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+          if (runtimeDebugLogging.isGemDebugEnabled(state) && GEM_INTERACTIVITY_DIAGNOSTIC_QUERY) {
             setTimeout(() => {
               runGemInteractivityDiagnostic().catch((err) => {
                 console.error('[DIAG] Gem interactivity diagnostic failed:', err);
@@ -5935,7 +5952,8 @@ function getStoryCardLiveLineState() {
     const gemsLength = gems.length;
     const ok = missingCells.length === 0 && duplicates.length === 0;
     const result = { ok, missingCells, duplicates, gemsLength };
-    console.error('[BOARD_INTEGRITY]', { reasonTag, gemsLength, missingCells, duplicates });
+    const boardIntegrityLog = ok ? console.log : console.error;
+    boardIntegrityLog('[BOARD_INTEGRITY]', { reasonTag, gemsLength, missingCells, duplicates });
     return result;
   }
   async function auditGemClickability(reasonTag) {
@@ -6096,6 +6114,11 @@ function getStoryCardLiveLineState() {
   function autoResolvePendingSelectionForDevIdle() {
     if (!state.globals.DevAutoplayActive) return false;
     if (!state.globals.PendingSkillID) return false;
+    const presentationBarrier = getPresentationTurnBarrier({
+      hasEmpty: hasEmptySlots(),
+      enemyLineClearPressureActive: !!state.globals.EnemyLineClearPressureActive,
+    });
+    if (!presentationBarrier.canClaimCombatAction) return false;
     const actorUID = Number(state.globals.PendingActor || callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
     if (actorUID <= 0) return false;
     const livingEnemies = state.entities.filter((entity) => entity && entity.kind === 'enemy' && (entity.hp ?? 0) > 0);
@@ -6886,6 +6909,14 @@ function getStoryCardLiveLineState() {
           drawFrame();
           return;
         }
+        const presentationBarrier = getPresentationTurnBarrier({
+          hasEmpty: hasEmptySlots(),
+          enemyLineClearPressureActive: !!state.globals.EnemyLineClearPressureActive,
+        });
+        if (!presentationBarrier.canClaimCombatAction) {
+          drawFrame();
+          return;
+        }
         const actorUID = state.globals.PendingActor || getHeroUIDByIndex(gameState.selectedHero);
         logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
           stage: 'before',
@@ -7245,12 +7276,17 @@ function getStoryCardLiveLineState() {
   const phaseNow = state.globals.TurnPhase;
   const hasEmpty = hasEmptySlots();
   const enemyLineClearPressureActive = !!state.globals.EnemyLineClearPressureActive;
+  const refillStartBarrier = getPresentationTurnBarrier({
+    hasEmpty,
+    enemyLineClearPressureActive,
+  });
   const refillReady =
     phaseNow === 0 &&
     !state.globals.IsPlayerBusy &&
     !state.globals.PendingSkillID &&
     !state.globals.ActionInProgress &&
     !state.globals.DeferAdvance &&
+    refillStartBarrier.canStartRefill &&
     !(refill && refill.active);
     if (hasEmpty && !refillReady) {
       const sig = JSON.stringify({
@@ -7260,6 +7296,7 @@ function getStoryCardLiveLineState() {
         ActionInProgress: state.globals.ActionInProgress,
         DeferAdvance: state.globals.DeferAdvance,
         refillActive: !!(refill && refill.active),
+        blockingLane: refillStartBarrier.firstBlockingLane,
       });
       if (gameState._lastRefillBlockSig !== sig) {
         gameState._lastRefillBlockSig = sig;
@@ -7295,6 +7332,7 @@ function getStoryCardLiveLineState() {
       !state.globals.PendingSkillID &&
       !state.globals.ActionInProgress &&
       !state.globals.DeferAdvance &&
+      refillStartBarrier.canStartRefill &&
       !(refill && refill.active) &&
       !enemyLineClearPressureActive
     ) {
@@ -7424,7 +7462,11 @@ function getStoryCardLiveLineState() {
               snapshot: getActionHandoffSnapshot(),
             }, state);
           }
-        } else if (!deferredAdvanceState.ownerOk) {
+        } else if (
+          !deferredAdvanceState.ownerOk &&
+          !deferredAdvanceState.blockedPhase &&
+          deferredAdvanceState.presentationBarrier.canAdvanceTurn
+        ) {
           if (deferredAdvanceState.ownerUID) {
             callFunctionWithContext(fnContext, 'ClosePowerAmpForActor', deferredAdvanceState.ownerUID, 'owner_mismatch_autoclose');
           }
@@ -7475,8 +7517,12 @@ function getStoryCardLiveLineState() {
         ? callFunctionWithContext(fnContext, 'GetActorByUID', currentTurnUID)
         : null;
       const refillActive = !!(gameState.refillBounce && gameState.refillBounce.active);
+      const actionClaimBarrier = getPresentationTurnBarrier({
+        hasEmpty,
+        enemyLineClearPressureActive,
+      });
       const liveCurrentEnemy = currentEnemy && currentEnemy.kind === 'enemy' && Number(currentEnemy.hp || 0) > 0;
-      if (liveCurrentEnemy && !hasEmpty && !refillActive) {
+      if (liveCurrentEnemy && !hasEmpty && !refillActive && actionClaimBarrier.canClaimCombatAction) {
         if (!enemyRosterStability.stable) {
           applyTurnGateIntent(createEnemyRosterRefillHold, {
             now: Number(state.globals.time || 0),
@@ -7499,20 +7545,33 @@ function getStoryCardLiveLineState() {
           });
         }
         console.log(`[TURN] enemy retry hold uid=${currentTurnUID} hasEmpty=${hasEmpty} refillActive=${refillActive} idx=${state.globals.CurrentTurnIndex || 0}`);
-      } else {
+      } else if (actionClaimBarrier.canClaimCombatAction) {
         applyTurnGateIntent(createEnemyTurnIdleRecovery, {
           now: Number(state.globals.time || 0),
           currentTurnUID,
         });
         combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+      } else if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+        runtimeDebugLogging.gemDebugLog('[TURN_ENEMY_IDLE_RECOVERY_HELD]', {
+          reason: 'presentation-barrier',
+          currentTurnUID,
+          blockingLane: actionClaimBarrier.firstBlockingLane,
+          hasEmpty,
+          refillActive,
+        }, state);
       }
     }
     const noRefillActive = !(gameState.refillBounce && gameState.refillBounce.active);
+    const heroInputBarrier = getPresentationTurnBarrier({
+      hasEmpty: hasEmptySlots(),
+      enemyLineClearPressureActive: !!state.globals.EnemyLineClearPressureActive,
+    });
     if (
       state.globals.GamePhase === 'RUNTIME' &&
       currentTurnType === 0 &&
       state.globals.TurnPhase === 0 &&
       noRefillActive &&
+      heroInputBarrier.canRestoreHeroInput &&
       enemyRosterStability.stable &&
       (state.globals.CanPickGems !== true || state.globals.BoardFillActive !== 0)
     ) {

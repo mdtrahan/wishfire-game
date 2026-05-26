@@ -370,3 +370,7 @@
 ## 2026-05-17 — QA Autoplay Must Not Spend Resource Turns As Combat Turns
 - When investigating turn-order failures through dev autoplay, separate scheduler ownership from the action chosen by the harness. A valid resource-only hero turn can look like a skipped hero if it has no console-visible combat line.
 - Combat QA autoplay should not spend non-combat resource-only picks while enemies are alive unless the tested hero turns that resource into combat pressure.
+
+## 2026-05-26 — Presentation Lanes Need One Shared Barrier
+- Refill, gem merge/collection, yellow conversion, floating text, hero/enemy action, action locks, and pending hit packets are one presentation barrier. Turn advance, refill start, action claim, and input restore should ask that barrier instead of racing local boolean checks.
+- If a visual overlap bug looks like a refill issue, first check whether the refill path can start while another presentation lane is active. The fix should serialize the existing lanes, not create a second scheduler.

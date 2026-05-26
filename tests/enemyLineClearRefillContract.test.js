@@ -47,7 +47,8 @@ test('app refill loop keeps enemy line-clear empties until a player action clear
   assert.match(src, /const enemyLineClearPressureActive = !!state\.globals\.EnemyLineClearPressureActive;/);
   assert.match(src, /if \(\s*refillReady &&\s*hasEmpty &&\s*!enemyLineClearPressureActive\s*\)\s*\{\s*startRefillBounce\(\);/s);
   assert.match(src, /function canResolveDeferredAdvance\(\{ hasEmpty = false, enemyLineClearPressureActive = false \} = \{\}\)/);
-  assert.match(src, /const refillPending = !!hasEmpty && !refillActive && !enemyLineClearPressureActive;/);
+  assert.match(src, /const presentationBarrier = getPresentationTurnBarrier\(\{ hasEmpty, enemyLineClearPressureActive \}\);/);
+  assert.match(src, /const refillPending = presentationBarrier\.refillPending && presentationBarrier\.canStartRefill;/);
   assert.match(src, /if \(deferredAdvanceState\.refillPending\) \{\s*\/\/ Refill must complete before advancing to the next actor\.\s*startRefillBounce\(\);/s);
   assert.doesNotMatch(src, /if \(enemyAction\.state === 'DONE'\) \{[\s\S]*if \(hasEmptySlots\(\) && !\(gameState\.refillBounce && gameState\.refillBounce\.active\)\) \{[\s\S]*startRefillBounce\(\);/s);
 });

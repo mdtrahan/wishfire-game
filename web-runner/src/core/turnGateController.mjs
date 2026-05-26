@@ -18,6 +18,67 @@ export function normalizeTurnGateState(current = {}) {
   return normalizeCombatTurnTransientState(current);
 }
 
+export function derivePresentationTurnBarrier({
+  globals = {},
+  refillBounce = null,
+  yellowCasino = null,
+  gemMergeFx = null,
+  boardHasEmptySlots = false,
+  enemyLineClearPressureActive = false,
+} = {}) {
+  const now = Number(globals.time || 0);
+  const pendingHeroHits = Array.isArray(globals.PendingHeroHits)
+    ? globals.PendingHeroHits.length > 0
+    : !!globals.PendingHeroHits;
+  const lanes = {
+    boardFill: Number(globals.BoardFillActive || 0) > 0,
+    refillBounce: !!(refillBounce && refillBounce.active),
+    yellowCasino: !!(yellowCasino && yellowCasino.active),
+    gemMerge: !!(gemMergeFx && gemMergeFx.active),
+    textAnimating: !!globals.TextAnimating || Number(globals.TextAnimEndAt || 0) > now,
+    heroAction: !!(globals.HeroAction && globals.HeroAction.active),
+    enemyAction: !!(globals.EnemyAction && globals.EnemyAction.active),
+    pendingHeroHits,
+    actionLock: Number(globals.ActionLockUntil || 0) > now,
+    actionInProgress: !!globals.ActionInProgress,
+  };
+  const orderedLaneNames = [
+    ['board-fill', lanes.boardFill],
+    ['refill-bounce', lanes.refillBounce],
+    ['yellow-casino', lanes.yellowCasino],
+    ['gem-merge', lanes.gemMerge],
+    ['text-animation', lanes.textAnimating],
+    ['hero-action', lanes.heroAction],
+    ['enemy-action', lanes.enemyAction],
+    ['pending-hero-hits', lanes.pendingHeroHits],
+    ['action-lock', lanes.actionLock],
+    ['action-in-progress', lanes.actionInProgress],
+  ];
+  const activePresentationLane = orderedLaneNames.find(([, active]) => active)?.[0] || null;
+  const refillPending = !!boardHasEmptySlots && !lanes.refillBounce && !enemyLineClearPressureActive;
+  const firstBlockingLane = activePresentationLane || (refillPending ? 'refill-pending' : null);
+  const presentationBlocked = !!activePresentationLane;
+  return {
+    lanes,
+    refillPending,
+    blockingLane: firstBlockingLane,
+    firstBlockingLane,
+    canStartRefill: !presentationBlocked,
+    canAdvanceTurn: !presentationBlocked && !refillPending,
+    canClaimCombatAction: !presentationBlocked && !refillPending && !globals.DeferAdvance,
+    canRestoreHeroInput: (
+      !presentationBlocked &&
+      !refillPending &&
+      !globals.DeferAdvance &&
+      !globals.PendingSkillID &&
+      !globals.PendingSuperGemAction &&
+      !globals.IsPlayerBusy &&
+      !globals.ActionInProgress &&
+      Number(globals.TurnPhase || 0) === 0
+    ),
+  };
+}
+
 export function createEnemyTurnGateBaseline(current = {}) {
   const base = normalizeTurnGateState(current);
   return {

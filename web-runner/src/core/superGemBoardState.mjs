@@ -5,6 +5,7 @@ import {
   detectSuperGemClusters,
 } from './superGemRules.mjs';
 import { getSuperGemRenderRect } from './superGemRender.mjs';
+import { derivePresentationTurnBarrier } from './turnGateController.mjs';
 
 function rebuildSuperGemCellMap(gameState) {
   gameState.superGemCellMap = buildSuperGemCellMap(gameState.superGems || []);
@@ -85,7 +86,23 @@ function buildSuperGemColorClear({ superGem, gems = [] }) {
   };
 }
 
-function canStartSuperGemSpend(globals = {}) {
+function hasSuperGemBoardEmptySlots(gameState = {}) {
+  return Array.isArray(gameState.grid) && gameState.grid.some((col) => (
+    Array.isArray(col) && col.some((uid) => Number(uid || 0) <= 0)
+  ));
+}
+
+function canStartSuperGemSpend(globals = {}, gameState = {}) {
+  const boardHasEmptySlots = hasSuperGemBoardEmptySlots(gameState);
+  if (boardHasEmptySlots) return false;
+  const barrier = derivePresentationTurnBarrier({
+    globals,
+    refillBounce: gameState.refillBounce,
+    yellowCasino: gameState.yellowCasino,
+    gemMergeFx: gameState.gemMergeFx,
+    boardHasEmptySlots,
+    enemyLineClearPressureActive: false,
+  });
   return (
     globals.GamePhase === 'RUNTIME' &&
     Number(globals.TurnPhase || 0) === 0 &&
@@ -94,7 +111,8 @@ function canStartSuperGemSpend(globals = {}) {
     !globals.PendingSuperGemAction &&
     !globals.DeferAdvance &&
     !globals.ActionInProgress &&
-    !globals.IsPlayerBusy
+    !globals.IsPlayerBusy &&
+    barrier.canClaimCombatAction
   );
 }
 
@@ -220,7 +238,7 @@ export function spendSuperGem({
   if (!superGem) return false;
   const cells = Array.isArray(superGem.cells) ? superGem.cells : [];
   if (!cells.length) return false;
-  if (!canStartSuperGemSpend(state.globals || {})) return false;
+  if (!canStartSuperGemSpend(state.globals || {}, gameState)) return false;
   const currentTurnUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
   const currentTurnActor = currentTurnUID > 0 ? callFunctionWithContext(fnContext, 'GetActorByUID', currentTurnUID) : null;
   const actorUID = currentTurnActor && currentTurnActor.kind === 'hero'
@@ -269,11 +287,19 @@ export function spendSuperGem({
   gameState.superGems = (gameState.superGems || []).filter((sg) => sg.id !== superGem.id);
   gameState.superGemSignature = getSuperGemSignature(gameState.superGems || []);
   rebuildSuperGemCellMap(gameState);
+  const presentationBarrier = derivePresentationTurnBarrier({
+    globals: state.globals || {},
+    refillBounce: gameState.refillBounce,
+    yellowCasino: gameState.yellowCasino,
+    gemMergeFx: gameState.gemMergeFx || (colorClear.flyItems.length ? { active: true } : null),
+    boardHasEmptySlots: colorClear.clearKeys.size > 0,
+  });
   const refillDeferred = !!(
     state.globals.PendingSkillID ||
     state.globals.PendingSuperGemAction ||
     state.globals.DeferAdvance ||
-    Number(state.globals.ActionLockUntil || 0) > Number(state.globals.time || 0)
+    Number(state.globals.ActionLockUntil || 0) > Number(state.globals.time || 0) ||
+    !presentationBarrier.canStartRefill
   );
   state.globals.LastSuperGemSpend = {
     id: String(superGem.id),

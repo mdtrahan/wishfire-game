@@ -116,4 +116,70 @@ for (const modulePath of [
     assert.equal(actionPhase.CanPickGems, 0);
     assert.equal(actionPhase.IsPlayerBusy, 0);
   });
+
+  test(`presentation barrier serializes refill, turn advance, action claim, and input restore in ${modulePath}`, async () => {
+    const mod = await import(modulePath);
+
+    const refillPending = mod.derivePresentationTurnBarrier({
+      globals: { time: 10, TurnPhase: 0 },
+      boardHasEmptySlots: true,
+    });
+    assert.equal(refillPending.canStartRefill, true);
+    assert.equal(refillPending.canAdvanceTurn, false);
+    assert.equal(refillPending.canClaimCombatAction, false);
+    assert.equal(refillPending.canRestoreHeroInput, false);
+    assert.equal(refillPending.blockingLane, 'refill-pending');
+    assert.equal(refillPending.firstBlockingLane, 'refill-pending');
+
+    const mergeHold = mod.derivePresentationTurnBarrier({
+      globals: { time: 10, TurnPhase: 0 },
+      gemMergeFx: { active: true },
+      boardHasEmptySlots: true,
+    });
+    assert.equal(mergeHold.canStartRefill, false);
+    assert.equal(mergeHold.canAdvanceTurn, false);
+    assert.equal(mergeHold.canClaimCombatAction, false);
+    assert.equal(mergeHold.firstBlockingLane, 'gem-merge');
+
+    const yellowHold = mod.derivePresentationTurnBarrier({
+      globals: { time: 10, TurnPhase: 0 },
+      yellowCasino: { active: true },
+    });
+    assert.equal(yellowHold.canStartRefill, false);
+    assert.equal(yellowHold.canAdvanceTurn, false);
+    assert.equal(yellowHold.firstBlockingLane, 'yellow-casino');
+
+    const textEndHold = mod.derivePresentationTurnBarrier({
+      globals: { time: 10, TurnPhase: 0, TextAnimEndAt: 11.5 },
+    });
+    assert.equal(textEndHold.canStartRefill, false);
+    assert.equal(textEndHold.canAdvanceTurn, false);
+    assert.equal(textEndHold.canClaimCombatAction, false);
+    assert.equal(textEndHold.firstBlockingLane, 'text-animation');
+
+    const actionHold = mod.derivePresentationTurnBarrier({
+      globals: {
+        time: 10,
+        TurnPhase: 1,
+        ActionInProgress: 1,
+        ActionLockUntil: 11,
+        HeroAction: { active: true, uid: 7 },
+        PendingHeroHits: [{ uid: 101, amount: 8 }],
+      },
+    });
+    assert.equal(actionHold.canStartRefill, false);
+    assert.equal(actionHold.canAdvanceTurn, false);
+    assert.equal(actionHold.canClaimCombatAction, false);
+    assert.equal(actionHold.firstBlockingLane, 'hero-action');
+    assert.equal(actionHold.lanes.pendingHeroHits, true);
+
+    const idleHero = mod.derivePresentationTurnBarrier({
+      globals: { time: 10, TurnPhase: 0 },
+    });
+    assert.equal(idleHero.canStartRefill, true);
+    assert.equal(idleHero.canAdvanceTurn, true);
+    assert.equal(idleHero.canClaimCombatAction, true);
+    assert.equal(idleHero.canRestoreHeroInput, true);
+    assert.equal(idleHero.firstBlockingLane, null);
+  });
 }

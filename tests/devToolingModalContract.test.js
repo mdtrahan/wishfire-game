@@ -157,3 +157,19 @@ test('runtime render scope includes gem gate snapshot helper used by extracted r
   assert.match(runtimeSrc, /getGemGateSnapshot\(/);
   assert.match(drawFrameSrc, /getGemGateSnapshot,/);
 });
+
+test('debug gem diagnostics do not mutate timing samples unless explicitly requested', () => {
+  const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
+  const runtimePath = path.join(__dirname, '..', 'web-runner', 'systems', 'renderRuntime.js');
+  const appSrc = fs.readFileSync(filePath, 'utf8');
+  const runtimeSrc = fs.readFileSync(runtimePath, 'utf8');
+
+  assert.match(appSrc, /const GEM_INTERACTIVITY_DIAGNOSTIC_QUERY = \(\(\) => \{/);
+  assert.match(appSrc, /return params\.get\('gemdiag'\) === 'true';/);
+  assert.doesNotMatch(appSrc, /params\.has\('gemdiag'\)/);
+  assert.match(appSrc, /runtimeDebugLogging\.isGemDebugEnabled\(state\) && GEM_INTERACTIVITY_DIAGNOSTIC_QUERY/);
+  assert.match(appSrc, /const boardIntegrityLog = ok \? console\.log : console\.error;/);
+  assert.match(runtimeSrc, /state\.globals\.IsPlayerBusy === 0 &&\\n\s+!state\.globals\.DeferAdvance &&\\n\s+!state\.globals\.AdvanceAfterAction;/);
+  assert.doesNotMatch(runtimeSrc, /GATE_STUCK_AFTER_REFILL[\s\S]*state\.globals\.CanPickGems = true;/);
+  assert.doesNotMatch(runtimeSrc, /console\.error\('\[GATE_STUCK_AFTER_REFILL\]'/);
+});

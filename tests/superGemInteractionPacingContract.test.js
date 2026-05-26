@@ -62,9 +62,9 @@ test('supergem spend reserves refill until the pending activation pacing can com
       { uid: 5, cellR: 2, cellC: 2, color: 2, x: 30, y: 30 },
     ],
     grid: [
-      [1, 3, 0],
-      [2, 4, 0],
-      [0, 0, 5],
+      [1, 3, 6],
+      [2, 4, 7],
+      [8, 9, 5],
     ],
   };
   let refillCalls = 0;
@@ -98,6 +98,80 @@ test('supergem spend reserves refill until the pending activation pacing can com
   assert.equal(state.globals.LastSuperGemSpend.refillDeferred, true);
 });
 
+test('supergem spend refuses to start during active presentation lanes', async () => {
+  const mod = await import('../web-runner/src/core/superGemBoardState.mjs');
+  const baseGameState = (lane = {}) => ({
+    selectedHero: 0,
+    selectedGems: [],
+    selectionLocked: false,
+    superGems: [
+      { id: 'sg-red', type: 'uniform', baseColor: 1, size: 2, cells: [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 1, c: 0 }, { r: 1, c: 1 }] },
+    ],
+    superGemCellMap: new Map([['0,0', 'sg-red'], ['0,1', 'sg-red'], ['1,0', 'sg-red'], ['1,1', 'sg-red']]),
+    gems: [
+      { uid: 1, cellR: 0, cellC: 0, color: 1, x: 10, y: 10 },
+      { uid: 2, cellR: 0, cellC: 1, color: 1, x: 20, y: 10 },
+      { uid: 3, cellR: 1, cellC: 0, color: 1, x: 10, y: 20 },
+      { uid: 4, cellR: 1, cellC: 1, color: 1, x: 20, y: 20 },
+    ],
+    grid: [
+      [1, 3],
+      [2, 4],
+    ],
+    ...lane,
+  });
+  const callFunctionWithContext = (_ctx, name) => {
+    if (name === 'GetCurrentTurn') return 101;
+    if (name === 'GetActorByUID') return { uid: 101, kind: 'hero' };
+    return 0;
+  };
+  for (const lane of [
+    { refillBounce: { active: true } },
+    { yellowCasino: { active: true } },
+    { gemMergeFx: { active: true } },
+    { grid: [[1, 0], [2, 4]] },
+    { grid: [[1, 0], [2, 4]], globals: { EnemyLineClearPressureActive: 1 } },
+  ]) {
+    const { globals: extraGlobals = {}, ...gameStateLane } = lane;
+    const state = {
+      globals: {
+        GamePhase: 'RUNTIME',
+        Player_Energy: 10,
+        CanPickGems: true,
+        PendingSkillID: '',
+        DeferAdvance: 0,
+        TurnPhase: 0,
+        ...extraGlobals,
+      },
+    };
+    const gameState = baseGameState(gameStateLane);
+    let activated = 0;
+    const spent = mod.spendSuperGem({
+      superGem: gameState.superGems[0],
+      gameState,
+      state,
+      reason: 'contract',
+      callFunctionWithContext,
+      fnContext: {},
+      getHeroUIDByIndex: () => 101,
+      beginTask011ActionCycle: () => {},
+      startGemMergeFx: () => {},
+      getGoldLabelTargetWorld: () => null,
+      setGemArray: () => {},
+      startRefillBounce: () => {},
+      activateSuperGemEffect: () => {
+        activated += 1;
+        return true;
+      },
+      superGemCost: 4,
+    });
+    assert.equal(spent, false, JSON.stringify(lane));
+    assert.equal(activated, 0, JSON.stringify(lane));
+    assert.equal(state.globals.Player_Energy, 10, JSON.stringify(lane));
+    assert.equal(gameState.gems.length, 4, JSON.stringify(lane));
+  }
+});
+
 test('supergem spend clears all matching-color gems and flies non-supergem matches into its center', async () => {
   const mod = await import('../web-runner/src/core/superGemBoardState.mjs');
   const state = {
@@ -128,9 +202,9 @@ test('supergem spend clears all matching-color gems and flies non-supergem match
       { uid: 7, cellR: 3, cellC: 2, elementIndex: 2, x: 30, y: 40 },
     ],
     grid: [
-      [1, 3, 5, 0],
-      [2, 4, 6, 0],
-      [0, 0, 0, 7],
+      [1, 3, 5, 8],
+      [2, 4, 6, 9],
+      [10, 11, 12, 7],
     ],
   };
   let refillCalls = 0;
@@ -148,7 +222,10 @@ test('supergem spend clears all matching-color gems and flies non-supergem match
     fnContext: {},
     getHeroUIDByIndex: () => 101,
     beginTask011ActionCycle: () => {},
-    startGemMergeFx: (args) => { mergeFx = args; },
+    startGemMergeFx: (args) => {
+      mergeFx = args;
+      gameState.gemMergeFx = { active: true };
+    },
     getGoldLabelTargetWorld: () => null,
     setGemArray: () => {},
     startRefillBounce: () => { refillCalls += 1; },
@@ -156,7 +233,7 @@ test('supergem spend clears all matching-color gems and flies non-supergem match
     superGemCost: 4,
   });
   assert.equal(spent, true);
-  assert.equal(refillCalls, 1);
+  assert.equal(refillCalls, 0);
   assert.deepEqual(gameState.gems.map((gem) => gem.uid), [6]);
   assert.equal(gameState.grid[0][0], 0);
   assert.equal(gameState.grid[1][2], 6);
