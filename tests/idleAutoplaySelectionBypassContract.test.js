@@ -8,6 +8,7 @@ test('dev idle mode auto-resolves pending hero target selection instead of stall
   assert.match(src, /function autoResolvePendingSelectionForDevIdle\(\)/);
   assert.match(src, /if \(!state\.globals\.DevAutoplayActive\) return false;/);
   assert.match(src, /if \(!state\.globals\.PendingSkillID\) return false;/);
+  assert.match(src, /if \(!presentationBarrier\.canResolvePendingTargetAction\) return false;/);
   assert.match(src, /if \(String\(state\.globals\.PendingSkillID \|\| ''\) === 'HERO_SINGLE'\) \{/);
   assert.match(src, /callFunctionWithContext\(fnContext, 'ExecuteSkill', state\.globals\.PendingSkillID, actorUID\);/);
   assert.match(src, /if \(autoResolvePendingSelectionForDevIdle\(\)\) \{/);

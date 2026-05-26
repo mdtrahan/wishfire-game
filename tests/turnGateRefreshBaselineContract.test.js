@@ -127,9 +127,42 @@ for (const modulePath of [
     assert.equal(refillPending.canStartRefill, true);
     assert.equal(refillPending.canAdvanceTurn, false);
     assert.equal(refillPending.canClaimCombatAction, false);
+    assert.equal(refillPending.canResolvePendingTargetAction, false);
     assert.equal(refillPending.canRestoreHeroInput, false);
     assert.equal(refillPending.blockingLane, 'refill-pending');
     assert.equal(refillPending.firstBlockingLane, 'refill-pending');
+
+    const pendingTarget = mod.derivePresentationTurnBarrier({
+      globals: {
+        time: 10,
+        TurnPhase: 1,
+        PendingSkillID: 'HERO_SINGLE',
+        PendingActor: 2,
+        IsPlayerBusy: 1,
+      },
+      boardHasEmptySlots: true,
+    });
+    assert.equal(pendingTarget.canStartRefill, true);
+    assert.equal(pendingTarget.canAdvanceTurn, false);
+    assert.equal(pendingTarget.canClaimCombatAction, false);
+    assert.equal(pendingTarget.canResolvePendingTargetAction, true);
+    assert.equal(pendingTarget.firstBlockingLane, 'refill-pending');
+
+    const pendingSuperGemTarget = mod.derivePresentationTurnBarrier({
+      globals: {
+        time: 10,
+        TurnPhase: 0,
+        PendingSkillID: 'HERO_SINGLE',
+        PendingSuperGemAction: { color: 1, actorUID: 2 },
+        IsPlayerBusy: 1,
+      },
+      boardHasEmptySlots: true,
+    });
+    assert.equal(pendingSuperGemTarget.canStartRefill, true);
+    assert.equal(pendingSuperGemTarget.canAdvanceTurn, false);
+    assert.equal(pendingSuperGemTarget.canClaimCombatAction, false);
+    assert.equal(pendingSuperGemTarget.canResolvePendingTargetAction, true);
+    assert.equal(pendingSuperGemTarget.firstBlockingLane, 'refill-pending');
 
     const mergeHold = mod.derivePresentationTurnBarrier({
       globals: { time: 10, TurnPhase: 0 },
@@ -139,6 +172,7 @@ for (const modulePath of [
     assert.equal(mergeHold.canStartRefill, false);
     assert.equal(mergeHold.canAdvanceTurn, false);
     assert.equal(mergeHold.canClaimCombatAction, false);
+    assert.equal(mergeHold.canResolvePendingTargetAction, false);
     assert.equal(mergeHold.firstBlockingLane, 'gem-merge');
 
     const yellowHold = mod.derivePresentationTurnBarrier({

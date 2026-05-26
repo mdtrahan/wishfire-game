@@ -6118,7 +6118,7 @@ function getStoryCardLiveLineState() {
       hasEmpty: hasEmptySlots(),
       enemyLineClearPressureActive: !!state.globals.EnemyLineClearPressureActive,
     });
-    if (!presentationBarrier.canClaimCombatAction) return false;
+    if (!presentationBarrier.canResolvePendingTargetAction) return false;
     const actorUID = Number(state.globals.PendingActor || callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
     if (actorUID <= 0) return false;
     const livingEnemies = state.entities.filter((entity) => entity && entity.kind === 'enemy' && (entity.hp ?? 0) > 0);
@@ -6913,7 +6913,7 @@ function getStoryCardLiveLineState() {
           hasEmpty: hasEmptySlots(),
           enemyLineClearPressureActive: !!state.globals.EnemyLineClearPressureActive,
         });
-        if (!presentationBarrier.canClaimCombatAction) {
+        if (!presentationBarrier.canResolvePendingTargetAction) {
           drawFrame();
           return;
         }

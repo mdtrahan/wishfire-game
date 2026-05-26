@@ -374,3 +374,7 @@
 ## 2026-05-26 — Presentation Lanes Need One Shared Barrier
 - Refill, gem merge/collection, yellow conversion, floating text, hero/enemy action, action locks, and pending hit packets are one presentation barrier. Turn advance, refill start, action claim, and input restore should ask that barrier instead of racing local boolean checks.
 - If a visual overlap bug looks like a refill issue, first check whether the refill path can start while another presentation lane is active. The fix should serialize the existing lanes, not create a second scheduler.
+
+## 2026-05-26 — Pending Target Resolution Is Not A New Action Claim
+- A red/green target picker created by the current gem match must resolve before refill, even when the match already left empty board slots. `refill-pending` blocks new action claims, turn advance, input restore, and refill completion; it must not block the already-pending target button that will finish the current action.
+- For target-selection regressions, validate both normal match and pending supergem action shapes. `PendingSkillID` plus `TurnPhase === 1` or `PendingSuperGemAction` should be allowed through only when no real presentation lane is active and `DeferAdvance` is clear.

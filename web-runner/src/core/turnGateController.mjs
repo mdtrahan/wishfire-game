@@ -58,6 +58,10 @@ export function derivePresentationTurnBarrier({
   const refillPending = !!boardHasEmptySlots && !lanes.refillBounce && !enemyLineClearPressureActive;
   const firstBlockingLane = activePresentationLane || (refillPending ? 'refill-pending' : null);
   const presentationBlocked = !!activePresentationLane;
+  const pendingTargetAction = !!globals.PendingSkillID && (
+    Number(globals.TurnPhase || 0) === 1 ||
+    !!globals.PendingSuperGemAction
+  );
   return {
     lanes,
     refillPending,
@@ -66,6 +70,7 @@ export function derivePresentationTurnBarrier({
     canStartRefill: !presentationBlocked,
     canAdvanceTurn: !presentationBlocked && !refillPending,
     canClaimCombatAction: !presentationBlocked && !refillPending && !globals.DeferAdvance,
+    canResolvePendingTargetAction: pendingTargetAction && !presentationBlocked && !globals.DeferAdvance,
     canRestoreHeroInput: (
       !presentationBlocked &&
       !refillPending &&
