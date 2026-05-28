@@ -1,0 +1,17 @@
+[build]
+  publish = "."
+
+[[redirects]]
+  from = "/"
+  to = "/web-runner/"
+  status = 301
+
+[[redirects]]
+  from = "/web-runner"
+  to = "/web-runner/"
+  status = 301
+
+[[redirects]]
+  from = "/favicon.ico"
+  to = "/web-runner/assets/images/gem-animation%201-000.png"
+  status = 302

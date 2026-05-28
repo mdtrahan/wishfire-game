@@ -1,0 +1,21 @@
+{
+  "name": "codex-orka",
+  "version": "1.0.0",
+  "description": "This repository contains process docs (ATLAS/GOTCHA). The workspace has been initialized with a minimal GOTCHA layout and a sample deterministic tool.",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test",
+    "serve:qa": "node tools/serve_web.js --port 8000",
+    "balance-harness": "node tools/balance_harness.js",
+    "chrome:cdp": "node tools/chrome_cdp_bootstrap.js",
+    "playwright:doctor": "node tools/playwright_doctor.js",
+    "playwright:launch-matrix": "node tools/playwright_launch_matrix.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "playwright": "^1.58.2"
+  }
+}
