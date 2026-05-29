@@ -1,0 +1,6 @@
+name,totalDamageRemaining,remainingFires,damagePerFire,hasTotalDamageRemaining,nextFireTurnSerial,firesEveryTurns,expectedDamage,expectedTotalDamageRemaining,expectedRemainingFires,expectedNextFireTurnSerial
+blight_first_of_three,16,3,0,1,8,1,6,10,2,9
+blight_even_split,8,2,0,1,12,1,4,4,1,13
+blight_final_tick,4,1,0,1,14,1,4,0,0,15
+fallback_damage_per_fire,0,3,2.4,0,20,2,2,0,2,22
+fractional_total_floor,7.9,3,0,1,25,3,3,4,2,28

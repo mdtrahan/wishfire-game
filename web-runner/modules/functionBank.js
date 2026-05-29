@@ -3819,6 +3819,39 @@ function maybeShadowTurnSummary(ctx, source) {
   return snapshot.jsCode;
 }
 
+function maybeShadowEnemyDotTick(ctx, payload = {}) {
+  const g = getGlobals(ctx);
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const enemyDotTickShadowHook = root && typeof root.__ORKA_ENEMY_DOT_TICK_SHADOW__ === 'function'
+    ? root.__ORKA_ENEMY_DOT_TICK_SHADOW__
+    : null;
+  const snapshot = {
+    source: String(payload.source || 'unknown'),
+    totalDamageRemaining: Number(payload.totalDamageRemaining || 0),
+    remainingFires: Number(payload.remainingFires || 0),
+    damagePerFire: Number(payload.damagePerFire || 0),
+    hasTotalDamageRemaining: Number(payload.hasTotalDamageRemaining || 0),
+    nextFireTurnSerial: Number(payload.nextFireTurnSerial || 0),
+    firesEveryTurns: Number(payload.firesEveryTurns || 1),
+    jsDamage: Number(payload.jsDamage || 0),
+    jsTotalDamageRemaining: Number(payload.jsTotalDamageRemaining || 0),
+    jsRemainingFires: Number(payload.jsRemainingFires || 0),
+    jsNextFireTurnSerial: Number(payload.jsNextFireTurnSerial || 0),
+  };
+  g.LastEnemyDotTickShadow = snapshot;
+  if (typeof enemyDotTickShadowHook === 'function') {
+    try {
+      enemyDotTickShadowHook({
+        ...snapshot,
+        jsValue: snapshot.jsDamage,
+      });
+    } catch (err) {
+      g.LastEnemyDotTickShadowError = String(err?.message || err || 'unknown');
+    }
+  }
+  return snapshot.jsDamage;
+}
+
 export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
   const g = getGlobals(ctx);
   const atk = GetActorByUID(ctx, attackerUID);
@@ -4759,6 +4792,13 @@ export function ProcessEnemyTurnDamageOverTime(ctx, enemyUID) {
     const gateTurn = Number(dot.nextFireTurnSerial || 0);
     if (currentTurnSerial < gateTurn) continue;
     if (Number(dot.lastProcessedTurnSerial || 0) >= currentTurnSerial) continue;
+    const hasTotalDamageRemaining = dot.totalDamageRemaining != null ? 1 : 0;
+    const totalDamageRemainingBefore = hasTotalDamageRemaining
+      ? Number(dot.totalDamageRemaining || 0)
+      : 0;
+    const remainingFiresBefore = Number(dot.remainingFires || 0);
+    const damagePerFireBefore = Number(dot.damagePerFire || 0);
+    const firesEveryTurnsBefore = Number(dot.firesEveryTurns || 1);
     let dmg = 1;
     if (dot.totalDamageRemaining != null && Number(dot.remainingFires || 0) > 0) {
       const remaining = Math.max(0, Math.floor(dot.totalDamageRemaining));
@@ -4783,6 +4823,19 @@ export function ProcessEnemyTurnDamageOverTime(ctx, enemyUID) {
     dot.remainingFires -= 1;
     dot.lastProcessedTurnSerial = currentTurnSerial;
     dot.nextFireTurnSerial = gateTurn + Math.max(1, Math.floor(Number(dot.firesEveryTurns || 1) || 1));
+    maybeShadowEnemyDotTick(ctx, {
+      source: 'functionBank.ProcessEnemyTurnDamageOverTime',
+      totalDamageRemaining: totalDamageRemainingBefore,
+      remainingFires: remainingFiresBefore,
+      damagePerFire: damagePerFireBefore,
+      hasTotalDamageRemaining,
+      nextFireTurnSerial: gateTurn,
+      firesEveryTurns: firesEveryTurnsBefore,
+      jsDamage: dmg,
+      jsTotalDamageRemaining: hasTotalDamageRemaining ? Number(dot.totalDamageRemaining || 0) : 0,
+      jsRemainingFires: Number(dot.remainingFires || 0),
+      jsNextFireTurnSerial: Number(dot.nextFireTurnSerial || 0),
+    });
     if (dot.remainingFires <= 0) {
       enemyDots.splice(i, 1);
     }

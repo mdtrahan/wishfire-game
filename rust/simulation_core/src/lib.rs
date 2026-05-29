@@ -97,6 +97,52 @@ pub fn single_hit_after_hp(target_hp: f64, incoming_damage: f64, shield: f64) ->
     (before_hp - damage_to_hp).max(0.0)
 }
 
+pub fn enemy_dot_tick_damage(
+    total_damage_remaining: f64,
+    remaining_fires: f64,
+    damage_per_fire: f64,
+    has_total_damage_remaining: f64,
+) -> f64 {
+    let fires = number_or_zero(remaining_fires).floor().max(1.0);
+    if number_or_zero(has_total_damage_remaining) == 1.0 {
+        let remaining = number_or_zero(total_damage_remaining).floor().max(0.0);
+        let base = (remaining / fires).floor();
+        let extra = if remaining % fires > 0.0 { 1.0 } else { 0.0 };
+        (base + extra).max(1.0)
+    } else {
+        let raw = number_or_zero(damage_per_fire);
+        let fallback = if raw != 0.0 { raw } else { 1.0 };
+        round_like_js(fallback).max(1.0)
+    }
+}
+
+pub fn enemy_dot_tick_total_remaining(
+    total_damage_remaining: f64,
+    remaining_fires: f64,
+    damage_per_fire: f64,
+    has_total_damage_remaining: f64,
+) -> f64 {
+    if number_or_zero(has_total_damage_remaining) != 1.0 {
+        return 0.0;
+    }
+    let remaining = number_or_zero(total_damage_remaining).floor().max(0.0);
+    let damage = enemy_dot_tick_damage(
+        total_damage_remaining,
+        remaining_fires,
+        damage_per_fire,
+        has_total_damage_remaining,
+    );
+    (remaining - damage).max(0.0)
+}
+
+pub fn enemy_dot_tick_remaining_fires(remaining_fires: f64) -> f64 {
+    (number_or_zero(remaining_fires).floor() - 1.0).max(0.0)
+}
+
+pub fn enemy_dot_tick_next_turn(next_fire_turn_serial: f64, fires_every_turns: f64) -> f64 {
+    number_or_zero(next_fire_turn_serial) + number_or_zero(fires_every_turns).floor().max(1.0)
+}
+
 fn combatant_count(value: f64) -> usize {
     number_or_zero(value).floor().clamp(0.0, 4.0) as usize
 }
@@ -211,6 +257,49 @@ pub extern "C" fn turn_summary_code_shadow(
     )
 }
 
+#[no_mangle]
+pub extern "C" fn enemy_dot_tick_damage_shadow(
+    total_damage_remaining: f64,
+    remaining_fires: f64,
+    damage_per_fire: f64,
+    has_total_damage_remaining: f64,
+) -> f64 {
+    enemy_dot_tick_damage(
+        total_damage_remaining,
+        remaining_fires,
+        damage_per_fire,
+        has_total_damage_remaining,
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_dot_tick_total_remaining_shadow(
+    total_damage_remaining: f64,
+    remaining_fires: f64,
+    damage_per_fire: f64,
+    has_total_damage_remaining: f64,
+) -> f64 {
+    enemy_dot_tick_total_remaining(
+        total_damage_remaining,
+        remaining_fires,
+        damage_per_fire,
+        has_total_damage_remaining,
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_dot_tick_remaining_fires_shadow(remaining_fires: f64) -> f64 {
+    enemy_dot_tick_remaining_fires(remaining_fires)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_dot_tick_next_turn_shadow(
+    next_fire_turn_serial: f64,
+    fires_every_turns: f64,
+) -> f64 {
+    enemy_dot_tick_next_turn(next_fire_turn_serial, fires_every_turns)
+}
+
 #[cfg(test)]
 mod single_hit_resolution_tests {
     use super::*;
@@ -311,6 +400,53 @@ mod single_hit_resolution_tests {
                     enemy_hp[3],
                 ),
                 expected
+            );
+        }
+    }
+
+    #[test]
+    fn mirrors_current_enemy_dot_tick_cases() {
+        let cases = [
+            (16.0, 3.0, 0.0, 1.0, 8.0, 1.0, 6.0, 10.0, 2.0, 9.0),
+            (8.0, 2.0, 0.0, 1.0, 12.0, 1.0, 4.0, 4.0, 1.0, 13.0),
+            (4.0, 1.0, 0.0, 1.0, 14.0, 1.0, 4.0, 0.0, 0.0, 15.0),
+            (0.0, 3.0, 2.4, 0.0, 20.0, 2.0, 2.0, 0.0, 2.0, 22.0),
+            (7.9, 3.0, 0.0, 1.0, 25.0, 3.0, 3.0, 4.0, 2.0, 28.0),
+        ];
+
+        for (
+            total_remaining,
+            remaining_fires,
+            damage_per_fire,
+            has_total,
+            next_turn,
+            every_turns,
+            expected_damage,
+            expected_total_remaining,
+            expected_remaining_fires,
+            expected_next_turn,
+        ) in cases
+        {
+            assert_eq!(
+                enemy_dot_tick_damage(total_remaining, remaining_fires, damage_per_fire, has_total,),
+                expected_damage
+            );
+            assert_eq!(
+                enemy_dot_tick_total_remaining(
+                    total_remaining,
+                    remaining_fires,
+                    damage_per_fire,
+                    has_total,
+                ),
+                expected_total_remaining
+            );
+            assert_eq!(
+                enemy_dot_tick_remaining_fires(remaining_fires),
+                expected_remaining_fires
+            );
+            assert_eq!(
+                enemy_dot_tick_next_turn(next_turn, every_turns),
+                expected_next_turn
             );
         }
     }

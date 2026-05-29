@@ -8,6 +8,7 @@ function getShadowState() {
       mismatches: [],
       singleHitChecks: 0,
       turnSummaryChecks: 0,
+      enemyDotTickChecks: 0,
     };
   }
   if (!window[SHADOW_STATE_KEY]) {
@@ -16,9 +17,11 @@ function getShadowState() {
       mismatches: [],
       singleHitChecks: 0,
       turnSummaryChecks: 0,
+      enemyDotTickChecks: 0,
       lastCheck: null,
       lastSingleHitCheck: null,
       lastTurnSummaryCheck: null,
+      lastEnemyDotTickCheck: null,
       exports: null,
     };
   }
@@ -37,6 +40,9 @@ function updateShadowDomMarker(shadow) {
   document.documentElement.dataset.simCoreShadowTurnSummaryChecks = String(
     Number(shadow?.turnSummaryChecks || 0),
   );
+  document.documentElement.dataset.simCoreShadowEnemyDotTickChecks = String(
+    Number(shadow?.enemyDotTickChecks || 0),
+  );
 }
 
 function hasRequiredExports(exports) {
@@ -44,7 +50,11 @@ function hasRequiredExports(exports) {
     && typeof exports?.single_hit_damage_shadow === 'function'
     && typeof exports?.single_hit_applied_damage_shadow === 'function'
     && typeof exports?.single_hit_after_hp_shadow === 'function'
-    && typeof exports?.turn_summary_code_shadow === 'function';
+    && typeof exports?.turn_summary_code_shadow === 'function'
+    && typeof exports?.enemy_dot_tick_damage_shadow === 'function'
+    && typeof exports?.enemy_dot_tick_total_remaining_shadow === 'function'
+    && typeof exports?.enemy_dot_tick_remaining_fires_shadow === 'function'
+    && typeof exports?.enemy_dot_tick_next_turn_shadow === 'function';
 }
 
 async function instantiateWasm(wasmUrl) {
@@ -67,6 +77,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
   if (typeof window !== 'undefined') {
     window.__ORKA_SINGLE_HIT_SHADOW__ = shadowSingleHitResolution;
     window.__ORKA_TURN_SUMMARY_SHADOW__ = shadowTurnSummary;
+    window.__ORKA_ENEMY_DOT_TICK_SHADOW__ = shadowEnemyDotTick;
   }
   if (shadow.status === 'ready' || shadow.status === 'loading') return shadow.readyPromise || null;
   if (typeof window === 'undefined' || typeof WebAssembly === 'undefined' || typeof fetch !== 'function') {
@@ -226,6 +237,73 @@ export function shadowSingleHitResolution({
     shadow.mismatches.push(shadow.lastSingleHitCheck);
     if (shadow.mismatches.length > 20) shadow.mismatches.shift();
     console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastSingleHitCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return jsValue;
+}
+
+export function shadowEnemyDotTick({
+  source = 'unknown',
+  totalDamageRemaining = 0,
+  remainingFires = 0,
+  damagePerFire = 0,
+  hasTotalDamageRemaining = 0,
+  nextFireTurnSerial = 0,
+  firesEveryTurns = 1,
+  jsDamage = 0,
+  jsTotalDamageRemaining = 0,
+  jsRemainingFires = 0,
+  jsNextFireTurnSerial = 0,
+  jsValue = 0,
+} = {}) {
+  const shadow = getShadowState();
+  if (shadow.status !== 'ready' || !hasRequiredExports(shadow.exports)) return jsValue;
+  const rustDamage = Number(shadow.exports.enemy_dot_tick_damage_shadow(
+    Number(totalDamageRemaining || 0),
+    Number(remainingFires || 0),
+    Number(damagePerFire || 0),
+    Number(hasTotalDamageRemaining || 0),
+  ));
+  const rustTotalDamageRemaining = Number(shadow.exports.enemy_dot_tick_total_remaining_shadow(
+    Number(totalDamageRemaining || 0),
+    Number(remainingFires || 0),
+    Number(damagePerFire || 0),
+    Number(hasTotalDamageRemaining || 0),
+  ));
+  const rustRemainingFires = Number(shadow.exports.enemy_dot_tick_remaining_fires_shadow(
+    Number(remainingFires || 0),
+  ));
+  const rustNextFireTurnSerial = Number(shadow.exports.enemy_dot_tick_next_turn_shadow(
+    Number(nextFireTurnSerial || 0),
+    Number(firesEveryTurns || 1),
+  ));
+  shadow.enemyDotTickChecks = Number(shadow.enemyDotTickChecks || 0) + 1;
+  shadow.lastEnemyDotTickCheck = {
+    source,
+    totalDamageRemaining: Number(totalDamageRemaining || 0),
+    remainingFires: Number(remainingFires || 0),
+    damagePerFire: Number(damagePerFire || 0),
+    hasTotalDamageRemaining: Number(hasTotalDamageRemaining || 0),
+    nextFireTurnSerial: Number(nextFireTurnSerial || 0),
+    firesEveryTurns: Number(firesEveryTurns || 1),
+    jsDamage: Number(jsDamage || 0),
+    rustDamage,
+    jsTotalDamageRemaining: Number(jsTotalDamageRemaining || 0),
+    rustTotalDamageRemaining,
+    jsRemainingFires: Number(jsRemainingFires || 0),
+    rustRemainingFires,
+    jsNextFireTurnSerial: Number(jsNextFireTurnSerial || 0),
+    rustNextFireTurnSerial,
+  };
+  if (
+    Math.abs(rustDamage - Number(jsDamage || 0)) > 0.000001
+    || Math.abs(rustTotalDamageRemaining - Number(jsTotalDamageRemaining || 0)) > 0.000001
+    || Math.abs(rustRemainingFires - Number(jsRemainingFires || 0)) > 0.000001
+    || Math.abs(rustNextFireTurnSerial - Number(jsNextFireTurnSerial || 0)) > 0.000001
+  ) {
+    shadow.mismatches.push(shadow.lastEnemyDotTickCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastEnemyDotTickCheck);
   }
   updateShadowDomMarker(shadow);
   return jsValue;
