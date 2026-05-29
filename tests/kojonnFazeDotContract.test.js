@@ -23,9 +23,11 @@ test('Kojonn Blight queue payload supports turn cadence and source-target reset 
     assert.match(src, /const cadence = String\(options\?\.cadence \|\| 'tick'\);/);
     assert.match(src, /Reapplying same DoT source\/effect on same target resets the package\./);
     assert.match(src, /g\.EnemyDamageOverTime\.splice\(i, 1\);/);
+    assert.match(src, /function maybeResolveEnemyDotPacketOwner\(ctx, payload = \{\}\) \{/);
+    assert.match(src, /const ownerPacket = maybeResolveEnemyDotPacketOwner\(ctx, \{/);
     assert.match(src, /cadence,/);
-    assert.match(src, /firesEveryTurns: Math\.max\(1, Math\.floor\(Number\(options\?\.firesEveryTurns \|\| 1\) \|\| 1\)\),/);
-    assert.match(src, /nextFireTurnSerial: nowTurnSerial \+ Math\.max\(1, Math\.floor\(Number\(options\?\.startAfterTurns \|\| 1\) \|\| 1\)\),/);
+    assert.match(src, /firesEveryTurns: positiveFloorOrOne\(requestedFiresEveryTurns\),/);
+    assert.match(src, /nextFireTurnSerial: nowTurnSerial \+ positiveFloorOrOne\(requestedStartAfterTurns\),/);
     assert.match(src, /lastProcessedTurnSerial: nowTurnSerial,/);
     assert.match(src, /const taintedGroundZoneId = String\(options\?\.taintedGroundZoneId \|\| ''\);/);
     assert.match(src, /taintedGroundZoneId,/);
