@@ -9,11 +9,13 @@ function getShadowState() {
       singleHitChecks: 0,
       singleHitOwnerChecks: 0,
       turnSummaryChecks: 0,
+      turnSummaryOwnerChecks: 0,
       enemyDotTickChecks: 0,
       enemyDotTickOwnerChecks: 0,
       seededRngChecks: 0,
       seededRngOwnerChecks: 0,
       singleHitOwnerSmokeRan: false,
+      turnSummaryOwnerSmokeRan: false,
       enemyDotTickOwnerSmokeRan: false,
     };
   }
@@ -24,16 +26,19 @@ function getShadowState() {
       singleHitChecks: 0,
       singleHitOwnerChecks: 0,
       turnSummaryChecks: 0,
+      turnSummaryOwnerChecks: 0,
       enemyDotTickChecks: 0,
       enemyDotTickOwnerChecks: 0,
       seededRngChecks: 0,
       seededRngOwnerChecks: 0,
       singleHitOwnerSmokeRan: false,
+      turnSummaryOwnerSmokeRan: false,
       enemyDotTickOwnerSmokeRan: false,
       lastCheck: null,
       lastSingleHitCheck: null,
       lastSingleHitOwnerCheck: null,
       lastTurnSummaryCheck: null,
+      lastTurnSummaryOwnerCheck: null,
       lastEnemyDotTickCheck: null,
       lastEnemyDotTickOwnerCheck: null,
       lastSeededRngCheck: null,
@@ -61,6 +66,12 @@ function updateShadowDomMarker(shadow) {
   );
   document.documentElement.dataset.simCoreShadowTurnSummaryChecks = String(
     Number(shadow?.turnSummaryChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowTurnSummaryOwnerChecks = String(
+    Number(shadow?.turnSummaryOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowTurnSummaryOwner = String(
+    shadow?.lastTurnSummaryOwnerCheck?.owner || '',
   );
   document.documentElement.dataset.simCoreShadowEnemyDotTickChecks = String(
     Number(shadow?.enemyDotTickChecks || 0),
@@ -101,11 +112,15 @@ function hasEnemyDotTickExports(exports) {
     && typeof exports?.enemy_dot_tick_next_turn_shadow === 'function';
 }
 
+function hasTurnSummaryExports(exports) {
+  return typeof exports?.turn_summary_code_shadow === 'function';
+}
+
 function hasRequiredExports(exports) {
   return typeof exports?.combat_power_shadow === 'function'
     && hasSeededRngExports(exports)
     && hasSingleHitExports(exports)
-    && typeof exports?.turn_summary_code_shadow === 'function'
+    && hasTurnSummaryExports(exports)
     && hasEnemyDotTickExports(exports);
 }
 
@@ -163,12 +178,26 @@ function runEnemyDotTickOwnerStartupCheck(shadow) {
   });
 }
 
+function runTurnSummaryOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.turnSummaryOwnerSmokeRan) return;
+  shadow.turnSummaryOwnerSmokeRan = true;
+  createSimulationCoreTurnSummaryResolution({
+    source: 'simulationCore.startup.turnSummaryOwner',
+    heroCount: 4,
+    heroHp: [10, 12, 8, 6],
+    enemyCount: 3,
+    enemyHp: [0, 0, 0, 0],
+    jsCode: 400301,
+  });
+}
+
 export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = {}) {
   const shadow = getShadowState();
   if (typeof window !== 'undefined') {
     window.__ORKA_SINGLE_HIT_SHADOW__ = shadowSingleHitResolution;
     window.__ORKA_SINGLE_HIT_OWNER__ = createSimulationCoreSingleHitResolution;
     window.__ORKA_TURN_SUMMARY_SHADOW__ = shadowTurnSummary;
+    window.__ORKA_TURN_SUMMARY_OWNER__ = createSimulationCoreTurnSummaryResolution;
     window.__ORKA_ENEMY_DOT_TICK_SHADOW__ = shadowEnemyDotTick;
     window.__ORKA_ENEMY_DOT_TICK_OWNER__ = createSimulationCoreEnemyDotTickResolution;
     window.__ORKA_SEEDED_RNG_SHADOW__ = shadowSeededRng;
@@ -188,6 +217,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
       shadow.status = hasRequiredExports(shadow.exports) ? 'ready' : 'missing-export';
       if (shadow.status === 'ready') {
         runSingleHitOwnerStartupCheck(shadow);
+        runTurnSummaryOwnerStartupCheck(shadow);
         runEnemyDotTickOwnerStartupCheck(shadow);
       }
       updateShadowDomMarker(shadow);
@@ -374,6 +404,70 @@ export function shadowTurnSummary({
   }
   updateShadowDomMarker(shadow);
   return jsValue;
+}
+
+export function createSimulationCoreTurnSummaryResolution({
+  source = 'unknown',
+  heroCount = 0,
+  heroHp = [],
+  enemyCount = 0,
+  enemyHp = [],
+  jsCode = 0,
+} = {}, { exportsOverride = null } = {}) {
+  const shadow = getShadowState();
+  const heroes = Array.isArray(heroHp) ? heroHp : [];
+  const enemies = Array.isArray(enemyHp) ? enemyHp : [];
+  const normalized = {
+    source,
+    heroCount: Number(heroCount || 0),
+    heroHp: [0, 1, 2, 3].map((index) => Number(heroes[index] || 0)),
+    enemyCount: Number(enemyCount || 0),
+    enemyHp: [0, 1, 2, 3].map((index) => Number(enemies[index] || 0)),
+    jsCode: Number(jsCode || 0),
+  };
+  const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+  if (!hasTurnSummaryExports(exports)) {
+    shadow.turnSummaryOwnerChecks = Number(shadow.turnSummaryOwnerChecks || 0) + 1;
+    shadow.lastTurnSummaryOwnerCheck = {
+      ...normalized,
+      owner: 'fallback',
+      code: normalized.jsCode,
+    };
+    updateShadowDomMarker(shadow);
+    return {
+      owner: 'fallback',
+      code: normalized.jsCode,
+    };
+  }
+
+  const rustCode = Number(exports.turn_summary_code_shadow(
+    normalized.heroCount,
+    normalized.heroHp[0],
+    normalized.heroHp[1],
+    normalized.heroHp[2],
+    normalized.heroHp[3],
+    normalized.enemyCount,
+    normalized.enemyHp[0],
+    normalized.enemyHp[1],
+    normalized.enemyHp[2],
+    normalized.enemyHp[3],
+  ));
+  shadow.turnSummaryOwnerChecks = Number(shadow.turnSummaryOwnerChecks || 0) + 1;
+  shadow.lastTurnSummaryOwnerCheck = {
+    ...normalized,
+    owner: 'rust',
+    code: rustCode,
+  };
+  if (!exportsOverride && Math.abs(rustCode - normalized.jsCode) > 0.000001) {
+    shadow.mismatches.push(shadow.lastTurnSummaryOwnerCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastTurnSummaryOwnerCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return {
+    owner: 'rust',
+    code: rustCode,
+  };
 }
 
 export function createSimulationCoreSingleHitResolution({

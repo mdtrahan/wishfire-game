@@ -3832,6 +3832,35 @@ function collectTurnSummaryShadowSnapshot(ctx) {
   return { ...snapshot, ...turnSummaryCodeFromSnapshot(snapshot) };
 }
 
+function maybeResolveTurnSummaryOwner(ctx, source, snapshot) {
+  const g = getGlobals(ctx);
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const turnSummaryOwnerHook = root && typeof root.__ORKA_TURN_SUMMARY_OWNER__ === 'function'
+    ? root.__ORKA_TURN_SUMMARY_OWNER__
+    : null;
+  if (typeof turnSummaryOwnerHook !== 'function') return null;
+  try {
+    const result = turnSummaryOwnerHook({
+      source: String(source || 'unknown'),
+      heroCount: Number(snapshot.heroCount || 0),
+      heroHp: Array.isArray(snapshot.heroHp) ? snapshot.heroHp : [],
+      enemyCount: Number(snapshot.enemyCount || 0),
+      enemyHp: Array.isArray(snapshot.enemyHp) ? snapshot.enemyHp : [],
+      jsCode: Number(snapshot.jsCode || 0),
+    });
+    const code = Number(result?.code);
+    if (!Number.isFinite(code)) return null;
+    g.LastTurnSummaryOwner = {
+      owner: String(result?.owner || 'rust'),
+      code,
+    };
+    return g.LastTurnSummaryOwner;
+  } catch (err) {
+    g.LastTurnSummaryOwnerError = String(err?.message || err || 'unknown');
+    return null;
+  }
+}
+
 function maybeShadowTurnSummary(ctx, source) {
   const g = getGlobals(ctx);
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
@@ -3854,6 +3883,8 @@ function maybeShadowTurnSummary(ctx, source) {
       g.LastTurnSummaryShadowError = String(err?.message || err || 'unknown');
     }
   }
+  const owner = maybeResolveTurnSummaryOwner(ctx, source, snapshot);
+  if (owner) return owner.code;
   return snapshot.jsCode;
 }
 
