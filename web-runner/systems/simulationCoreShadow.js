@@ -13,12 +13,14 @@ function getShadowState() {
       turnSummaryOwnerChecks: 0,
       enemyDotTickChecks: 0,
       enemyDotTickOwnerChecks: 0,
+      enemyDebuffDecayOwnerChecks: 0,
       seededRngChecks: 0,
       seededRngOwnerChecks: 0,
       singleHitOwnerSmokeRan: false,
       partyDamageOwnerSmokeRan: false,
       turnSummaryOwnerSmokeRan: false,
       enemyDotTickOwnerSmokeRan: false,
+      enemyDebuffDecayOwnerSmokeRan: false,
     };
   }
   if (!window[SHADOW_STATE_KEY]) {
@@ -32,12 +34,14 @@ function getShadowState() {
       turnSummaryOwnerChecks: 0,
       enemyDotTickChecks: 0,
       enemyDotTickOwnerChecks: 0,
+      enemyDebuffDecayOwnerChecks: 0,
       seededRngChecks: 0,
       seededRngOwnerChecks: 0,
       singleHitOwnerSmokeRan: false,
       partyDamageOwnerSmokeRan: false,
       turnSummaryOwnerSmokeRan: false,
       enemyDotTickOwnerSmokeRan: false,
+      enemyDebuffDecayOwnerSmokeRan: false,
       lastCheck: null,
       lastSingleHitCheck: null,
       lastSingleHitOwnerCheck: null,
@@ -46,6 +50,7 @@ function getShadowState() {
       lastTurnSummaryOwnerCheck: null,
       lastEnemyDotTickCheck: null,
       lastEnemyDotTickOwnerCheck: null,
+      lastEnemyDebuffDecayOwnerCheck: null,
       lastSeededRngCheck: null,
       lastSeededRngOwnerCheck: null,
       exports: null,
@@ -93,6 +98,12 @@ function updateShadowDomMarker(shadow) {
   document.documentElement.dataset.simCoreShadowEnemyDotTickOwner = String(
     shadow?.lastEnemyDotTickOwnerCheck?.owner || '',
   );
+  document.documentElement.dataset.simCoreShadowEnemyDebuffDecayOwnerChecks = String(
+    Number(shadow?.enemyDebuffDecayOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowEnemyDebuffDecayOwner = String(
+    shadow?.lastEnemyDebuffDecayOwnerCheck?.owner || '',
+  );
   document.documentElement.dataset.simCoreShadowSeededRngChecks = String(
     Number(shadow?.seededRngChecks || 0),
   );
@@ -131,6 +142,12 @@ function hasEnemyDotTickExports(exports) {
     && typeof exports?.enemy_dot_tick_next_turn_shadow === 'function';
 }
 
+function hasEnemyDebuffDecayExports(exports) {
+  return typeof exports?.enemy_debuff_turns_after_tick_shadow === 'function'
+    && typeof exports?.enemy_debuff_amount_after_tick_shadow === 'function'
+    && typeof exports?.enemy_debuff_active_after_tick_shadow === 'function';
+}
+
 function hasTurnSummaryExports(exports) {
   return typeof exports?.turn_summary_code_shadow === 'function';
 }
@@ -141,7 +158,8 @@ function hasRequiredExports(exports) {
     && hasSingleHitExports(exports)
     && hasPartyDamageExports(exports)
     && hasTurnSummaryExports(exports)
-    && hasEnemyDotTickExports(exports);
+    && hasEnemyDotTickExports(exports)
+    && hasEnemyDebuffDecayExports(exports);
 }
 
 async function instantiateWasm(wasmUrl) {
@@ -215,6 +233,20 @@ function runEnemyDotTickOwnerStartupCheck(shadow) {
   });
 }
 
+function runEnemyDebuffDecayOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.enemyDebuffDecayOwnerSmokeRan) return;
+  shadow.enemyDebuffDecayOwnerSmokeRan = true;
+  createSimulationCoreEnemyDebuffDecayResolution({
+    source: 'simulationCore.startup.enemyDebuffDecayOwner',
+    stat: 'ATK',
+    amountBefore: 4,
+    turnsBefore: 3,
+    jsAmountAfter: 4,
+    jsTurnsAfter: 2,
+    jsActive: 1,
+  });
+}
+
 function runTurnSummaryOwnerStartupCheck(shadow) {
   if (!shadow || shadow.turnSummaryOwnerSmokeRan) return;
   shadow.turnSummaryOwnerSmokeRan = true;
@@ -238,6 +270,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_TURN_SUMMARY_OWNER__ = createSimulationCoreTurnSummaryResolution;
     window.__ORKA_ENEMY_DOT_TICK_SHADOW__ = shadowEnemyDotTick;
     window.__ORKA_ENEMY_DOT_TICK_OWNER__ = createSimulationCoreEnemyDotTickResolution;
+    window.__ORKA_ENEMY_DEBUFF_DECAY_OWNER__ = createSimulationCoreEnemyDebuffDecayResolution;
     window.__ORKA_SEEDED_RNG_SHADOW__ = shadowSeededRng;
     window.__ORKA_SEEDED_RNG_OWNER__ = createSimulationCoreSeededRng;
   }
@@ -258,6 +291,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
         runPartyDamageOwnerStartupCheck(shadow);
         runTurnSummaryOwnerStartupCheck(shadow);
         runEnemyDotTickOwnerStartupCheck(shadow);
+        runEnemyDebuffDecayOwnerStartupCheck(shadow);
       }
       updateShadowDomMarker(shadow);
       return shadow;
@@ -818,6 +852,84 @@ export function createSimulationCoreEnemyDotTickResolution({
     totalDamageRemaining: rustTotalDamageRemaining,
     remainingFires: rustRemainingFires,
     nextFireTurnSerial: rustNextFireTurnSerial,
+  };
+}
+
+export function createSimulationCoreEnemyDebuffDecayResolution({
+  source = 'unknown',
+  stat = '',
+  amountBefore = 0,
+  turnsBefore = 0,
+  jsAmountAfter = 0,
+  jsTurnsAfter = 0,
+  jsActive = 0,
+} = {}, { exportsOverride = null } = {}) {
+  const shadow = getShadowState();
+  const normalized = {
+    source,
+    stat: String(stat || '').toUpperCase(),
+    amountBefore: Number(amountBefore || 0),
+    turnsBefore: Number(turnsBefore || 0),
+    jsAmountAfter: Number(jsAmountAfter || 0),
+    jsTurnsAfter: Number(jsTurnsAfter || 0),
+    jsActive: Number(jsActive || 0),
+  };
+  const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+  if (!hasEnemyDebuffDecayExports(exports)) {
+    shadow.enemyDebuffDecayOwnerChecks = Number(shadow.enemyDebuffDecayOwnerChecks || 0) + 1;
+    shadow.lastEnemyDebuffDecayOwnerCheck = {
+      ...normalized,
+      owner: 'fallback',
+      amountAfter: normalized.jsAmountAfter,
+      turnsAfter: normalized.jsTurnsAfter,
+      active: normalized.jsActive,
+    };
+    updateShadowDomMarker(shadow);
+    return {
+      owner: 'fallback',
+      amountAfter: normalized.jsAmountAfter,
+      turnsAfter: normalized.jsTurnsAfter,
+      active: normalized.jsActive,
+    };
+  }
+
+  const rustTurnsAfter = Number(exports.enemy_debuff_turns_after_tick_shadow(
+    normalized.turnsBefore,
+  ));
+  const rustAmountAfter = Number(exports.enemy_debuff_amount_after_tick_shadow(
+    normalized.amountBefore,
+    rustTurnsAfter,
+  ));
+  const rustActive = Number(exports.enemy_debuff_active_after_tick_shadow(
+    rustAmountAfter,
+    rustTurnsAfter,
+  ));
+  shadow.enemyDebuffDecayOwnerChecks = Number(shadow.enemyDebuffDecayOwnerChecks || 0) + 1;
+  shadow.lastEnemyDebuffDecayOwnerCheck = {
+    ...normalized,
+    owner: 'rust',
+    amountAfter: rustAmountAfter,
+    turnsAfter: rustTurnsAfter,
+    active: rustActive,
+  };
+  if (
+    !exportsOverride
+    && (
+      Math.abs(rustAmountAfter - normalized.jsAmountAfter) > 0.000001
+      || Math.abs(rustTurnsAfter - normalized.jsTurnsAfter) > 0.000001
+      || Math.abs(rustActive - normalized.jsActive) > 0.000001
+    )
+  ) {
+    shadow.mismatches.push(shadow.lastEnemyDebuffDecayOwnerCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastEnemyDebuffDecayOwnerCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return {
+    owner: 'rust',
+    amountAfter: rustAmountAfter,
+    turnsAfter: rustTurnsAfter,
+    active: rustActive,
   };
 }
 

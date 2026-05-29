@@ -22,6 +22,14 @@ fn round_like_js(value: f64) -> f64 {
     }
 }
 
+fn positive_floor_or_zero(value: f64) -> f64 {
+    if value.is_finite() && value > 0.0 {
+        value.floor()
+    } else {
+        0.0
+    }
+}
+
 pub fn combat_power(atk: f64, def: f64, hp: f64) -> f64 {
     let a = number_or_zero(atk);
     let d = number_or_zero(def);
@@ -235,6 +243,31 @@ pub fn enemy_dot_tick_next_turn(next_fire_turn_serial: f64, fires_every_turns: f
     number_or_zero(next_fire_turn_serial) + number_or_zero(fires_every_turns).floor().max(1.0)
 }
 
+pub fn enemy_debuff_turns_after_tick(turns_before: f64) -> f64 {
+    let turns = positive_floor_or_zero(turns_before);
+    if turns > 0.0 {
+        (turns - 1.0).max(0.0)
+    } else {
+        0.0
+    }
+}
+
+pub fn enemy_debuff_amount_after_tick(amount_before: f64, turns_after: f64) -> f64 {
+    if positive_floor_or_zero(turns_after) <= 0.0 {
+        0.0
+    } else {
+        positive_floor_or_zero(amount_before)
+    }
+}
+
+pub fn enemy_debuff_active_after_tick(amount_after: f64, turns_after: f64) -> f64 {
+    if positive_floor_or_zero(amount_after) > 0.0 && positive_floor_or_zero(turns_after) > 0.0 {
+        1.0
+    } else {
+        0.0
+    }
+}
+
 fn combatant_count(value: f64) -> usize {
     number_or_zero(value).floor().clamp(0.0, 4.0) as usize
 }
@@ -338,10 +371,7 @@ pub extern "C" fn party_damage_shield_after_shadow(incoming_damage: f64, shield:
 }
 
 #[no_mangle]
-pub extern "C" fn party_damage_hero_after_hp_shadow(
-    hero_hp: f64,
-    damage_after_shield: f64,
-) -> f64 {
+pub extern "C" fn party_damage_hero_after_hp_shadow(hero_hp: f64, damage_after_shield: f64) -> f64 {
     party_damage_hero_after_hp(hero_hp, damage_after_shield)
 }
 
@@ -434,6 +464,27 @@ pub extern "C" fn enemy_dot_tick_next_turn_shadow(
     enemy_dot_tick_next_turn(next_fire_turn_serial, fires_every_turns)
 }
 
+#[no_mangle]
+pub extern "C" fn enemy_debuff_turns_after_tick_shadow(turns_before: f64) -> f64 {
+    enemy_debuff_turns_after_tick(turns_before)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_debuff_amount_after_tick_shadow(
+    amount_before: f64,
+    turns_after: f64,
+) -> f64 {
+    enemy_debuff_amount_after_tick(amount_before, turns_after)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_debuff_active_after_tick_shadow(
+    amount_after: f64,
+    turns_after: f64,
+) -> f64 {
+    enemy_debuff_active_after_tick(amount_after, turns_after)
+}
+
 #[cfg(test)]
 mod single_hit_resolution_tests {
     use super::*;
@@ -482,12 +533,41 @@ mod single_hit_resolution_tests {
     #[test]
     fn mirrors_current_party_damage_accounting_cases() {
         let cases = [
-            (12.0, 5.0, [20.0, 16.0, 12.0, 8.0], 5.0, 7.0, 0.0, [13.0, 9.0, 5.0, 1.0], 28.0),
-            (4.0, 10.0, [20.0, 16.0, 12.0, 8.0], 4.0, 0.0, 6.0, [20.0, 16.0, 12.0, 8.0], 56.0),
-            (40.0, 0.0, [9.0, 6.0, 3.0, 1.0], 0.0, 40.0, 0.0, [0.0, 0.0, 0.0, 0.0], 0.0),
+            (
+                12.0,
+                5.0,
+                [20.0, 16.0, 12.0, 8.0],
+                5.0,
+                7.0,
+                0.0,
+                [13.0, 9.0, 5.0, 1.0],
+                28.0,
+            ),
+            (
+                4.0,
+                10.0,
+                [20.0, 16.0, 12.0, 8.0],
+                4.0,
+                0.0,
+                6.0,
+                [20.0, 16.0, 12.0, 8.0],
+                56.0,
+            ),
+            (
+                40.0,
+                0.0,
+                [9.0, 6.0, 3.0, 1.0],
+                0.0,
+                40.0,
+                0.0,
+                [0.0, 0.0, 0.0, 0.0],
+                0.0,
+            ),
         ];
 
-        for (incoming, shield, hp, absorbed, after_shield, shield_after, expected_hp, party_hp) in cases {
+        for (incoming, shield, hp, absorbed, after_shield, shield_after, expected_hp, party_hp) in
+            cases
+        {
             assert_eq!(party_damage_absorbed(incoming, shield), absorbed);
             assert_eq!(party_damage_after_shield(incoming, shield), after_shield);
             assert_eq!(party_damage_shield_after(incoming, shield), shield_after);
@@ -606,6 +686,29 @@ mod single_hit_resolution_tests {
             assert_eq!(
                 enemy_dot_tick_next_turn(next_turn, every_turns),
                 expected_next_turn
+            );
+        }
+    }
+
+    #[test]
+    fn mirrors_current_enemy_debuff_duration_decay_cases() {
+        let cases = [
+            (4.0, 3.0, 2.0, 4.0, 1.0),
+            (4.0, 1.0, 0.0, 0.0, 0.0),
+            (0.0, 3.0, 2.0, 0.0, 0.0),
+            (-2.0, 3.0, 2.0, 0.0, 0.0),
+            (2.0, f64::NAN, 0.0, 0.0, 0.0),
+        ];
+
+        for (amount_before, turns_before, expected_turns, expected_amount, expected_active) in cases
+        {
+            let turns_after = enemy_debuff_turns_after_tick(turns_before);
+            let amount_after = enemy_debuff_amount_after_tick(amount_before, turns_after);
+            assert_eq!(turns_after, expected_turns);
+            assert_eq!(amount_after, expected_amount);
+            assert_eq!(
+                enemy_debuff_active_after_tick(amount_after, turns_after),
+                expected_active
             );
         }
     }

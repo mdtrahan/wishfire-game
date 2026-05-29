@@ -3421,19 +3421,7 @@ export function AdvanceTurn(ctx) {
     }
   }
   if (currentType === 1 && currentUID) {
-    const debuffState = ensureEnemyDebuffState(ctx, currentUID);
-    const debuffs = debuffState.debuffs;
-    const turns = debuffState.turns;
-    const slots = debuffState.slots;
-    for (const stat of [...slots]) {
-      if (turns[stat] > 0) turns[stat] -= 1;
-      if (turns[stat] <= 0) {
-        turns[stat] = 0;
-        debuffs[stat] = 0;
-        const idx = slots.indexOf(stat);
-        if (idx !== -1) slots.splice(idx, 1);
-      }
-    }
+    decayEnemyDebuffsForTurn(ctx, currentUID);
   }
   g.TurnSerial = Number(g.TurnSerial || 0) + 1;
   resolvePendingEnemyDeaths(ctx);
@@ -3965,6 +3953,43 @@ function maybeResolveEnemyDotTickOwner(ctx, payload = {}) {
     return g.LastEnemyDotTickOwner;
   } catch (err) {
     g.LastEnemyDotTickOwnerError = String(err?.message || err || 'unknown');
+    return null;
+  }
+}
+
+function maybeResolveEnemyDebuffDecayOwner(ctx, payload = {}) {
+  const g = getGlobals(ctx);
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const enemyDebuffDecayOwnerHook = root && typeof root.__ORKA_ENEMY_DEBUFF_DECAY_OWNER__ === 'function'
+    ? root.__ORKA_ENEMY_DEBUFF_DECAY_OWNER__
+    : null;
+  if (typeof enemyDebuffDecayOwnerHook !== 'function') return null;
+  const snapshot = {
+    source: String(payload.source || 'unknown'),
+    stat: String(payload.stat || '').toUpperCase(),
+    amountBefore: sanitizeDebuffValue(payload.amountBefore),
+    turnsBefore: sanitizeDebuffValue(payload.turnsBefore),
+    jsAmountAfter: sanitizeDebuffValue(payload.jsAmountAfter),
+    jsTurnsAfter: sanitizeDebuffValue(payload.jsTurnsAfter),
+    jsActive: Number(payload.jsActive || 0) > 0 ? 1 : 0,
+  };
+  try {
+    const result = enemyDebuffDecayOwnerHook(snapshot);
+    const amountAfter = sanitizeDebuffValue(result?.amountAfter);
+    const turnsAfter = sanitizeDebuffValue(result?.turnsAfter);
+    const active = Number(result?.active || 0) > 0 ? 1 : 0;
+    g.LastEnemyDebuffDecayOwner = {
+      owner: String(result?.owner || 'rust'),
+      stat: snapshot.stat,
+      amountBefore: snapshot.amountBefore,
+      turnsBefore: snapshot.turnsBefore,
+      amountAfter,
+      turnsAfter,
+      active,
+    };
+    return g.LastEnemyDebuffDecayOwner;
+  } catch (err) {
+    g.LastEnemyDebuffDecayOwnerError = String(err?.message || err || 'unknown');
     return null;
   }
 }
@@ -4642,6 +4667,41 @@ function ensureEnemyDebuffState(ctx, enemyUID) {
 
 function ensureEnemyDebuffRecord(ctx, enemyUID) {
   return ensureEnemyDebuffState(ctx, enemyUID).debuffs;
+}
+
+function decayEnemyDebuffsForTurn(ctx, enemyUID) {
+  const debuffState = ensureEnemyDebuffState(ctx, enemyUID);
+  const debuffs = debuffState.debuffs;
+  const turns = debuffState.turns;
+  const slots = debuffState.slots;
+  for (const stat of [...slots]) {
+    const amountBefore = sanitizeDebuffValue(debuffs[stat]);
+    const turnsBefore = sanitizeDebuffValue(turns[stat]);
+    const jsTurnsAfter = turnsBefore > 0 ? Math.max(0, turnsBefore - 1) : 0;
+    const jsAmountAfter = jsTurnsAfter > 0 ? amountBefore : 0;
+    const jsActive = jsAmountAfter > 0 && jsTurnsAfter > 0 ? 1 : 0;
+    const owner = maybeResolveEnemyDebuffDecayOwner(ctx, {
+      source: 'functionBank.AdvanceTurn',
+      stat,
+      amountBefore,
+      turnsBefore,
+      jsAmountAfter,
+      jsTurnsAfter,
+      jsActive,
+    });
+    const amountAfter = owner ? sanitizeDebuffValue(owner.amountAfter) : jsAmountAfter;
+    const turnsAfter = owner ? sanitizeDebuffValue(owner.turnsAfter) : jsTurnsAfter;
+    const active = owner ? Number(owner.active || 0) > 0 : jsActive > 0;
+    turns[stat] = turnsAfter;
+    debuffs[stat] = amountAfter;
+    if (!active || amountAfter <= 0 || turnsAfter <= 0) {
+      turns[stat] = 0;
+      debuffs[stat] = 0;
+      const idx = slots.indexOf(stat);
+      if (idx !== -1) slots.splice(idx, 1);
+    }
+  }
+  return debuffState;
 }
 
 export function ExecutePurpleDebuff(ctx, actorUID) {
