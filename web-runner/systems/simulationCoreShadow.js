@@ -7,10 +7,12 @@ function getShadowState() {
       status: 'unavailable',
       mismatches: [],
       singleHitChecks: 0,
+      singleHitOwnerChecks: 0,
       turnSummaryChecks: 0,
       enemyDotTickChecks: 0,
       seededRngChecks: 0,
       seededRngOwnerChecks: 0,
+      singleHitOwnerSmokeRan: false,
     };
   }
   if (!window[SHADOW_STATE_KEY]) {
@@ -18,12 +20,15 @@ function getShadowState() {
       status: 'idle',
       mismatches: [],
       singleHitChecks: 0,
+      singleHitOwnerChecks: 0,
       turnSummaryChecks: 0,
       enemyDotTickChecks: 0,
       seededRngChecks: 0,
       seededRngOwnerChecks: 0,
+      singleHitOwnerSmokeRan: false,
       lastCheck: null,
       lastSingleHitCheck: null,
+      lastSingleHitOwnerCheck: null,
       lastTurnSummaryCheck: null,
       lastEnemyDotTickCheck: null,
       lastSeededRngCheck: null,
@@ -42,6 +47,12 @@ function updateShadowDomMarker(shadow) {
   );
   document.documentElement.dataset.simCoreShadowSingleHitChecks = String(
     Number(shadow?.singleHitChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowSingleHitOwnerChecks = String(
+    Number(shadow?.singleHitOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowSingleHitOwner = String(
+    shadow?.lastSingleHitOwnerCheck?.owner || '',
   );
   document.documentElement.dataset.simCoreShadowTurnSummaryChecks = String(
     Number(shadow?.turnSummaryChecks || 0),
@@ -66,12 +77,16 @@ function hasSeededRngExports(exports) {
     && typeof exports?.seeded_rng_index_shadow === 'function';
 }
 
+function hasSingleHitExports(exports) {
+  return typeof exports?.single_hit_damage_shadow === 'function'
+    && typeof exports?.single_hit_applied_damage_shadow === 'function'
+    && typeof exports?.single_hit_after_hp_shadow === 'function';
+}
+
 function hasRequiredExports(exports) {
   return typeof exports?.combat_power_shadow === 'function'
     && hasSeededRngExports(exports)
-    && typeof exports?.single_hit_damage_shadow === 'function'
-    && typeof exports?.single_hit_applied_damage_shadow === 'function'
-    && typeof exports?.single_hit_after_hp_shadow === 'function'
+    && hasSingleHitExports(exports)
     && typeof exports?.turn_summary_code_shadow === 'function'
     && typeof exports?.enemy_dot_tick_damage_shadow === 'function'
     && typeof exports?.enemy_dot_tick_total_remaining_shadow === 'function'
@@ -94,10 +109,32 @@ async function instantiateWasm(wasmUrl) {
   return result.instance;
 }
 
+function runSingleHitOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.singleHitOwnerSmokeRan) return;
+  shadow.singleHitOwnerSmokeRan = true;
+  createSimulationCoreSingleHitResolution({
+    source: 'simulationCore.startup.singleHitOwner',
+    power: 18,
+    resist: 12,
+    roll01: 0.5,
+    critRoll01: 0.9,
+    sourceIsHero: 1,
+    heroAoe: 0,
+    chainActive: 0,
+    chainMultiplier: 1,
+    targetHp: 40,
+    shield: 0,
+    jsDamage: 14,
+    jsAppliedDamage: 14,
+    jsAfterHp: 26,
+  });
+}
+
 export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = {}) {
   const shadow = getShadowState();
   if (typeof window !== 'undefined') {
     window.__ORKA_SINGLE_HIT_SHADOW__ = shadowSingleHitResolution;
+    window.__ORKA_SINGLE_HIT_OWNER__ = createSimulationCoreSingleHitResolution;
     window.__ORKA_TURN_SUMMARY_SHADOW__ = shadowTurnSummary;
     window.__ORKA_ENEMY_DOT_TICK_SHADOW__ = shadowEnemyDotTick;
     window.__ORKA_SEEDED_RNG_SHADOW__ = shadowSeededRng;
@@ -115,6 +152,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     .then((instance) => {
       shadow.exports = instance.exports;
       shadow.status = hasRequiredExports(shadow.exports) ? 'ready' : 'missing-export';
+      if (shadow.status === 'ready') runSingleHitOwnerStartupCheck(shadow);
       updateShadowDomMarker(shadow);
       return shadow;
     })
@@ -301,6 +339,107 @@ export function shadowTurnSummary({
   return jsValue;
 }
 
+export function createSimulationCoreSingleHitResolution({
+  source = 'unknown',
+  power = 0,
+  resist = 0,
+  roll01 = 0,
+  critRoll01 = 0,
+  sourceIsHero = 0,
+  heroAoe = 0,
+  chainActive = 0,
+  chainMultiplier = 1,
+  targetHp = 0,
+  shield = 0,
+  jsDamage = 0,
+  jsAppliedDamage = 0,
+  jsAfterHp = 0,
+} = {}, { exportsOverride = null } = {}) {
+  const shadow = getShadowState();
+  const normalized = {
+    source,
+    power: Number(power || 0),
+    resist: Number(resist || 0),
+    roll01: Number(roll01 || 0),
+    critRoll01: Number(critRoll01 || 0),
+    sourceIsHero: Number(sourceIsHero || 0),
+    heroAoe: Number(heroAoe || 0),
+    chainActive: Number(chainActive || 0),
+    chainMultiplier: Number(chainMultiplier || 1),
+    targetHp: Number(targetHp || 0),
+    shield: Number(shield || 0),
+    jsDamage: Number(jsDamage || 0),
+    jsAppliedDamage: Number(jsAppliedDamage || 0),
+    jsAfterHp: Number(jsAfterHp || 0),
+  };
+  const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+  if (!hasSingleHitExports(exports)) {
+    shadow.singleHitOwnerChecks = Number(shadow.singleHitOwnerChecks || 0) + 1;
+    shadow.lastSingleHitOwnerCheck = {
+      ...normalized,
+      owner: 'fallback',
+      damage: normalized.jsDamage,
+      appliedDamage: normalized.jsAppliedDamage,
+      afterHp: normalized.jsAfterHp,
+    };
+    updateShadowDomMarker(shadow);
+    return {
+      owner: 'fallback',
+      damage: normalized.jsDamage,
+      appliedDamage: normalized.jsAppliedDamage,
+      afterHp: normalized.jsAfterHp,
+    };
+  }
+
+  const rustDamage = Number(exports.single_hit_damage_shadow(
+    normalized.power,
+    normalized.resist,
+    normalized.roll01,
+    normalized.critRoll01,
+    normalized.sourceIsHero,
+    normalized.heroAoe,
+    normalized.chainActive,
+    normalized.chainMultiplier,
+  ));
+  const rustAppliedDamage = Number(exports.single_hit_applied_damage_shadow(
+    normalized.targetHp,
+    rustDamage,
+    normalized.shield,
+  ));
+  const rustAfterHp = Number(exports.single_hit_after_hp_shadow(
+    normalized.targetHp,
+    rustDamage,
+    normalized.shield,
+  ));
+  shadow.singleHitOwnerChecks = Number(shadow.singleHitOwnerChecks || 0) + 1;
+  shadow.lastSingleHitOwnerCheck = {
+    ...normalized,
+    owner: 'rust',
+    damage: rustDamage,
+    appliedDamage: rustAppliedDamage,
+    afterHp: rustAfterHp,
+  };
+  if (
+    !exportsOverride
+    && (
+      Math.abs(rustDamage - normalized.jsDamage) > 0.000001
+      || Math.abs(rustAppliedDamage - normalized.jsAppliedDamage) > 0.000001
+      || Math.abs(rustAfterHp - normalized.jsAfterHp) > 0.000001
+    )
+  ) {
+    shadow.mismatches.push(shadow.lastSingleHitOwnerCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastSingleHitOwnerCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return {
+    owner: 'rust',
+    damage: rustDamage,
+    appliedDamage: rustAppliedDamage,
+    afterHp: rustAfterHp,
+  };
+}
+
 export function shadowSingleHitResolution({
   source = 'unknown',
   power = 0,
@@ -319,7 +458,7 @@ export function shadowSingleHitResolution({
   jsValue = 0,
 } = {}) {
   const shadow = getShadowState();
-  if (shadow.status !== 'ready' || !hasRequiredExports(shadow.exports)) return jsValue;
+  if (shadow.status !== 'ready' || !hasSingleHitExports(shadow.exports)) return jsValue;
   const rustDamage = Number(shadow.exports.single_hit_damage_shadow(
     Number(power || 0),
     Number(resist || 0),

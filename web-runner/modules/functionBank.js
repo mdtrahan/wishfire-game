@@ -3749,6 +3749,53 @@ function maybeShadowSingleHitResolution(ctx, target, incomingDamage, beforeHP, a
   }
 }
 
+function maybeResolveSingleHitOwner(ctx, target, beforeHP, shieldBefore, jsDamage, jsAppliedDamage, jsAfterHp) {
+  const g = getGlobals(ctx);
+  const meta = g.LastSingleHitDamageShadow;
+  if (!meta || Number(meta.targetUID || 0) !== Number(target?.uid || 0)) return null;
+  const normalizedJsDamage = Math.max(0, Number(jsDamage || 0));
+  if (Number(meta.jsDamage || 0) !== normalizedJsDamage) return null;
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const singleHitOwnerHook = root && typeof root.__ORKA_SINGLE_HIT_OWNER__ === 'function'
+    ? root.__ORKA_SINGLE_HIT_OWNER__
+    : null;
+  if (typeof singleHitOwnerHook !== 'function') return null;
+  try {
+    const result = singleHitOwnerHook({
+      source: 'functionBank.ApplyDamageToTarget',
+      power: Number(meta.power || 0),
+      resist: Number(meta.resist || 0),
+      roll01: Number(meta.roll01 || 0),
+      critRoll01: Number(meta.critRoll01 || 0),
+      sourceIsHero: Number(meta.sourceIsHero || 0),
+      heroAoe: Number(meta.heroAoe || 0),
+      chainActive: Number(meta.chainActive || 0),
+      chainMultiplier: Number(meta.chainMultiplier || 1),
+      targetHp: Number(beforeHP || 0),
+      shield: Number(shieldBefore || 0),
+      jsDamage: normalizedJsDamage,
+      jsAppliedDamage: Number(jsAppliedDamage || 0),
+      jsAfterHp: Number(jsAfterHp || 0),
+    });
+    const damage = Number(result?.damage);
+    const appliedDamage = Number(result?.appliedDamage);
+    const afterHp = Number(result?.afterHp);
+    if (!Number.isFinite(damage) || !Number.isFinite(appliedDamage) || !Number.isFinite(afterHp)) {
+      return null;
+    }
+    g.LastSingleHitOwner = {
+      owner: String(result?.owner || 'rust'),
+      damage,
+      appliedDamage,
+      afterHp,
+    };
+    return g.LastSingleHitOwner;
+  } catch (err) {
+    g.LastSingleHitOwnerError = String(err?.message || err || 'unknown');
+    return null;
+  }
+}
+
 function turnSummaryAliveCount(count, hpValues) {
   return hpValues
     .slice(0, Math.max(0, Math.min(4, Math.floor(Number(count || 0)))))
@@ -4103,7 +4150,24 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
   const t = GetActorByUID(ctx, uid);
   if (!t) return 0;
   const beforeHP = Number(t.hp ?? 0);
-  const incomingDamage = Math.max(0, Number(dmg || 0));
+  let incomingDamage = Math.max(0, Number(dmg || 0));
+  const shieldBefore = t.kind === 'hero' ? Math.max(0, Number(g.PartyTempHPShield || 0)) : 0;
+  const jsShieldAbsorbed = t.kind === 'hero' ? Math.min(shieldBefore, incomingDamage) : 0;
+  const jsDamageToHP = Math.max(0, incomingDamage - jsShieldAbsorbed);
+  const jsAfterHp = Math.max(0, beforeHP - jsDamageToHP);
+  const jsAppliedDamage = Math.max(0, beforeHP - jsAfterHp);
+  const ownedHit = maybeResolveSingleHitOwner(
+    ctx,
+    t,
+    beforeHP,
+    shieldBefore,
+    incomingDamage,
+    jsAppliedDamage,
+    jsAfterHp,
+  );
+  if (ownedHit && String(ownedHit.owner || '') === 'rust') {
+    incomingDamage = Math.max(0, Number(ownedHit.damage || 0));
+  }
   let damageToHP = incomingDamage;
   let shieldAbsorbed = 0;
   if (t.kind === 'hero') {
@@ -4117,7 +4181,11 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
       }
     }
   }
-  t.hp = Math.max(0, (t.hp ?? 0) - damageToHP);
+  if (ownedHit && String(ownedHit.owner || '') === 'rust') {
+    t.hp = Math.max(0, Number(ownedHit.afterHp || 0));
+  } else {
+    t.hp = Math.max(0, (t.hp ?? 0) - damageToHP);
+  }
   const afterHP = Number(t.hp ?? 0);
   const appliedDamage = Math.max(0, beforeHP - afterHP);
   maybeShadowSingleHitResolution(ctx, t, incomingDamage, beforeHP, appliedDamage, afterHP, shieldAbsorbed);
