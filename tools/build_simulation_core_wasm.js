@@ -52,4 +52,5 @@ const source = path.join(
 );
 const destination = path.join(root, 'web-runner', 'assets', 'simulation_core.wasm');
 fs.copyFileSync(source, destination);
+fs.chmodSync(destination, 0o644);
 console.log(`Wrote ${path.relative(root, destination)}`);

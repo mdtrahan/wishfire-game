@@ -97,6 +97,52 @@ pub fn single_hit_after_hp(target_hp: f64, incoming_damage: f64, shield: f64) ->
     (before_hp - damage_to_hp).max(0.0)
 }
 
+fn combatant_count(value: f64) -> usize {
+    number_or_zero(value).floor().clamp(0.0, 4.0) as usize
+}
+
+fn side_alive_count(count: f64, hp0: f64, hp1: f64, hp2: f64, hp3: f64) -> f64 {
+    let values = [hp0, hp1, hp2, hp3];
+    values
+        .iter()
+        .take(combatant_count(count))
+        .filter(|hp| number_or_zero(**hp) > 0.0)
+        .count() as f64
+}
+
+pub fn turn_summary_code(
+    hero_count: f64,
+    hero0_hp: f64,
+    hero1_hp: f64,
+    hero2_hp: f64,
+    hero3_hp: f64,
+    enemy_count: f64,
+    enemy0_hp: f64,
+    enemy1_hp: f64,
+    enemy2_hp: f64,
+    enemy3_hp: f64,
+) -> f64 {
+    let hero_count = combatant_count(hero_count) as f64;
+    let enemy_count = combatant_count(enemy_count) as f64;
+    let hero_alive = side_alive_count(hero_count, hero0_hp, hero1_hp, hero2_hp, hero3_hp);
+    let enemy_alive = side_alive_count(enemy_count, enemy0_hp, enemy1_hp, enemy2_hp, enemy3_hp);
+    let hero_defeated = (hero_count - hero_alive).max(0.0);
+    let enemy_defeated = (enemy_count - enemy_alive).max(0.0);
+    let party_defeated = if hero_count > 0.0 && hero_alive == 0.0 {
+        1.0
+    } else {
+        0.0
+    };
+    let enemies_defeated = if enemy_alive == 0.0 { 1.0 } else { 0.0 };
+
+    (hero_alive * 100000.0)
+        + (hero_defeated * 10000.0)
+        + (enemy_alive * 1000.0)
+        + (enemy_defeated * 100.0)
+        + (party_defeated * 10.0)
+        + enemies_defeated
+}
+
 #[no_mangle]
 pub extern "C" fn single_hit_damage_shadow(
     power: f64,
@@ -136,6 +182,33 @@ pub extern "C" fn single_hit_after_hp_shadow(
     shield: f64,
 ) -> f64 {
     single_hit_after_hp(target_hp, incoming_damage, shield)
+}
+
+#[no_mangle]
+pub extern "C" fn turn_summary_code_shadow(
+    hero_count: f64,
+    hero0_hp: f64,
+    hero1_hp: f64,
+    hero2_hp: f64,
+    hero3_hp: f64,
+    enemy_count: f64,
+    enemy0_hp: f64,
+    enemy1_hp: f64,
+    enemy2_hp: f64,
+    enemy3_hp: f64,
+) -> f64 {
+    turn_summary_code(
+        hero_count,
+        hero0_hp,
+        hero1_hp,
+        hero2_hp,
+        hero3_hp,
+        enemy_count,
+        enemy0_hp,
+        enemy1_hp,
+        enemy2_hp,
+        enemy3_hp,
+    )
 }
 
 #[cfg(test)]
@@ -180,6 +253,65 @@ mod single_hit_resolution_tests {
             assert_eq!(rust_damage, damage);
             assert_eq!(single_hit_applied_damage(hp, rust_damage, shield), applied);
             assert_eq!(single_hit_after_hp(hp, rust_damage, shield), after_hp);
+        }
+    }
+
+    #[test]
+    fn mirrors_current_turn_summary_cases() {
+        let cases = [
+            (
+                4.0,
+                [35.0, 28.0, 32.0, 30.0],
+                3.0,
+                [18.0, 22.0, 16.0, 0.0],
+                403000.0,
+            ),
+            (
+                4.0,
+                [0.0, 28.0, 32.0, 30.0],
+                3.0,
+                [0.0, 22.0, 16.0, 0.0],
+                312100.0,
+            ),
+            (
+                4.0,
+                [0.0, 0.0, 0.0, 0.0],
+                2.0,
+                [9.0, 0.0, 0.0, 0.0],
+                41110.0,
+            ),
+            (
+                4.0,
+                [10.0, 12.0, 8.0, 6.0],
+                3.0,
+                [0.0, 0.0, 0.0, 0.0],
+                400301.0,
+            ),
+            (
+                4.0,
+                [10.0, 12.0, 8.0, 6.0],
+                0.0,
+                [0.0, 0.0, 0.0, 0.0],
+                400001.0,
+            ),
+        ];
+
+        for (hero_count, hero_hp, enemy_count, enemy_hp, expected) in cases {
+            assert_eq!(
+                turn_summary_code(
+                    hero_count,
+                    hero_hp[0],
+                    hero_hp[1],
+                    hero_hp[2],
+                    hero_hp[3],
+                    enemy_count,
+                    enemy_hp[0],
+                    enemy_hp[1],
+                    enemy_hp[2],
+                    enemy_hp[3],
+                ),
+                expected
+            );
         }
     }
 }

@@ -7,6 +7,7 @@ function getShadowState() {
       status: 'unavailable',
       mismatches: [],
       singleHitChecks: 0,
+      turnSummaryChecks: 0,
     };
   }
   if (!window[SHADOW_STATE_KEY]) {
@@ -14,8 +15,10 @@ function getShadowState() {
       status: 'idle',
       mismatches: [],
       singleHitChecks: 0,
+      turnSummaryChecks: 0,
       lastCheck: null,
       lastSingleHitCheck: null,
+      lastTurnSummaryCheck: null,
       exports: null,
     };
   }
@@ -31,13 +34,17 @@ function updateShadowDomMarker(shadow) {
   document.documentElement.dataset.simCoreShadowSingleHitChecks = String(
     Number(shadow?.singleHitChecks || 0),
   );
+  document.documentElement.dataset.simCoreShadowTurnSummaryChecks = String(
+    Number(shadow?.turnSummaryChecks || 0),
+  );
 }
 
 function hasRequiredExports(exports) {
   return typeof exports?.combat_power_shadow === 'function'
     && typeof exports?.single_hit_damage_shadow === 'function'
     && typeof exports?.single_hit_applied_damage_shadow === 'function'
-    && typeof exports?.single_hit_after_hp_shadow === 'function';
+    && typeof exports?.single_hit_after_hp_shadow === 'function'
+    && typeof exports?.turn_summary_code_shadow === 'function';
 }
 
 async function instantiateWasm(wasmUrl) {
@@ -59,6 +66,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
   const shadow = getShadowState();
   if (typeof window !== 'undefined') {
     window.__ORKA_SINGLE_HIT_SHADOW__ = shadowSingleHitResolution;
+    window.__ORKA_TURN_SUMMARY_SHADOW__ = shadowTurnSummary;
   }
   if (shadow.status === 'ready' || shadow.status === 'loading') return shadow.readyPromise || null;
   if (typeof window === 'undefined' || typeof WebAssembly === 'undefined' || typeof fetch !== 'function') {
@@ -100,6 +108,52 @@ export function shadowCombatPower({ source = 'unknown', atk = 0, def = 0, hp = 0
     shadow.mismatches.push(shadow.lastCheck);
     if (shadow.mismatches.length > 20) shadow.mismatches.shift();
     console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return jsValue;
+}
+
+export function shadowTurnSummary({
+  source = 'unknown',
+  heroCount = 0,
+  heroHp = [],
+  enemyCount = 0,
+  enemyHp = [],
+  jsCode = 0,
+  jsValue = 0,
+} = {}) {
+  const shadow = getShadowState();
+  if (shadow.status !== 'ready' || !hasRequiredExports(shadow.exports)) return jsValue;
+  const heroes = Array.isArray(heroHp) ? heroHp : [];
+  const enemies = Array.isArray(enemyHp) ? enemyHp : [];
+  const heroValues = [0, 1, 2, 3].map((index) => Number(heroes[index] || 0));
+  const enemyValues = [0, 1, 2, 3].map((index) => Number(enemies[index] || 0));
+  const rustCode = Number(shadow.exports.turn_summary_code_shadow(
+    Number(heroCount || 0),
+    heroValues[0],
+    heroValues[1],
+    heroValues[2],
+    heroValues[3],
+    Number(enemyCount || 0),
+    enemyValues[0],
+    enemyValues[1],
+    enemyValues[2],
+    enemyValues[3],
+  ));
+  shadow.turnSummaryChecks = Number(shadow.turnSummaryChecks || 0) + 1;
+  shadow.lastTurnSummaryCheck = {
+    source,
+    heroCount: Number(heroCount || 0),
+    heroHp: heroValues,
+    enemyCount: Number(enemyCount || 0),
+    enemyHp: enemyValues,
+    jsCode: Number(jsCode || 0),
+    rustCode,
+  };
+  if (Math.abs(rustCode - Number(jsCode || 0)) > 0.000001) {
+    shadow.mismatches.push(shadow.lastTurnSummaryCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastTurnSummaryCheck);
   }
   updateShadowDomMarker(shadow);
   return jsValue;

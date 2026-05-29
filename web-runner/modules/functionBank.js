@@ -3749,6 +3749,76 @@ function maybeShadowSingleHitResolution(ctx, target, incomingDamage, beforeHP, a
   }
 }
 
+function turnSummaryAliveCount(count, hpValues) {
+  return hpValues
+    .slice(0, Math.max(0, Math.min(4, Math.floor(Number(count || 0)))))
+    .filter((hp) => Number(hp || 0) > 0)
+    .length;
+}
+
+function turnSummaryCodeFromSnapshot(snapshot) {
+  const heroCount = Math.max(0, Math.min(4, Math.floor(Number(snapshot.heroCount || 0))));
+  const enemyCount = Math.max(0, Math.min(4, Math.floor(Number(snapshot.enemyCount || 0))));
+  const heroAlive = turnSummaryAliveCount(heroCount, snapshot.heroHp || []);
+  const enemyAlive = turnSummaryAliveCount(enemyCount, snapshot.enemyHp || []);
+  const heroDefeated = Math.max(0, heroCount - heroAlive);
+  const enemyDefeated = Math.max(0, enemyCount - enemyAlive);
+  const partyDefeated = heroCount > 0 && heroAlive === 0 ? 1 : 0;
+  const enemiesDefeated = enemyAlive === 0 ? 1 : 0;
+  return {
+    heroAlive,
+    heroDefeated,
+    enemyAlive,
+    enemyDefeated,
+    partyDefeated,
+    enemiesDefeated,
+    jsCode: (heroAlive * 100000)
+      + (heroDefeated * 10000)
+      + (enemyAlive * 1000)
+      + (enemyDefeated * 100)
+      + (partyDefeated * 10)
+      + enemiesDefeated,
+  };
+}
+
+function collectTurnSummaryShadowSnapshot(ctx) {
+  const entities = getEntities(ctx);
+  const heroes = entities.filter((entity) => entity && entity.kind === 'hero').slice(0, 4);
+  const enemies = entities.filter((entity) => entity && entity.kind === 'enemy').slice(0, 4);
+  const snapshot = {
+    heroCount: heroes.length,
+    heroHp: [0, 1, 2, 3].map((index) => Number(heroes[index]?.hp || 0)),
+    enemyCount: enemies.length,
+    enemyHp: [0, 1, 2, 3].map((index) => Number(enemies[index]?.hp || 0)),
+  };
+  return { ...snapshot, ...turnSummaryCodeFromSnapshot(snapshot) };
+}
+
+function maybeShadowTurnSummary(ctx, source) {
+  const g = getGlobals(ctx);
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const turnSummaryShadowHook = root && typeof root.__ORKA_TURN_SUMMARY_SHADOW__ === 'function'
+    ? root.__ORKA_TURN_SUMMARY_SHADOW__
+    : null;
+  const snapshot = collectTurnSummaryShadowSnapshot(ctx);
+  g.LastTurnSummaryShadow = {
+    source: String(source || 'unknown'),
+    ...snapshot,
+  };
+  if (typeof turnSummaryShadowHook === 'function') {
+    try {
+      turnSummaryShadowHook({
+        source: String(source || 'unknown'),
+        ...snapshot,
+        jsValue: snapshot.jsCode,
+      });
+    } catch (err) {
+      g.LastTurnSummaryShadowError = String(err?.message || err || 'unknown');
+    }
+  }
+  return snapshot.jsCode;
+}
+
 export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
   const g = getGlobals(ctx);
   const atk = GetActorByUID(ctx, attackerUID);
@@ -4101,6 +4171,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
   }
   UpdateEnemyHPUI(ctx);
   UpdateHeroHPUI(ctx);
+  maybeShadowTurnSummary(ctx, 'functionBank.ApplyDamageToTarget');
   return appliedDamage;
 }
 
@@ -4457,6 +4528,7 @@ export function ApplyPartyDamage(ctx, dmg) {
     if (h.hp === 0) h.isAlive = false;
   }
   UpdateHeroHPUI(ctx);
+  maybeShadowTurnSummary(ctx, 'functionBank.ApplyPartyDamage');
 }
 
 export function MeleeCalc(ctx, attackerUID, targetUID) {
