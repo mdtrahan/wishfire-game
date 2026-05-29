@@ -1,0 +1,10 @@
+name,cadenceIsTurn,dotTargetUID,targetUID,remainingFires,hasTotalDamageRemaining,totalDamageRemaining,targetAlive,currentTurnSerial,nextFireTurnSerial,lastProcessedTurnSerial,expectedAction
+expired_fires_remove,1,200,200,0,1,12,1,10,10,9,1
+tick_cadence_keep,0,200,200,3,1,12,1,10,10,9,0
+different_target_keep,1,201,200,3,1,12,1,10,10,9,0
+empty_total_remove,1,200,200,3,1,0,1,10,10,9,1
+dead_target_remove,1,200,200,3,1,12,0,10,10,9,1
+future_gate_keep,1,200,200,3,1,12,1,9,10,8,0
+already_processed_keep,1,200,200,3,1,12,1,10,10,10,0
+eligible_process,1,200,200,3,1,12,1,10,10,9,2
+flat_damage_process,1,200,200,2,0,0,1,11,11,10,2

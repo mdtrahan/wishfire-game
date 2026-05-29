@@ -3966,6 +3966,58 @@ function maybeResolveEnemyDotTickOwner(ctx, payload = {}) {
   }
 }
 
+function computeEnemyDotLifecycleAction(payload = {}) {
+  if (Number(payload.remainingFires || 0) <= 0) return 1;
+  if (Number(payload.cadenceIsTurn || 0) !== 1) return 0;
+  if (Number(payload.dotTargetUID || 0) !== Number(payload.targetUID || 0)) return 0;
+  if (
+    Number(payload.hasTotalDamageRemaining || 0) === 1
+    && Number(payload.totalDamageRemaining || 0) <= 0
+  ) {
+    return 1;
+  }
+  if (Number(payload.targetAlive || 0) !== 1) return 1;
+  if (Number(payload.currentTurnSerial || 0) < Number(payload.nextFireTurnSerial || 0)) return 0;
+  if (Number(payload.lastProcessedTurnSerial || 0) >= Number(payload.currentTurnSerial || 0)) return 0;
+  return 2;
+}
+
+function maybeResolveEnemyDotLifecycleOwner(ctx, payload = {}) {
+  const g = getGlobals(ctx);
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const enemyDotLifecycleOwnerHook = root && typeof root.__ORKA_ENEMY_DOT_LIFECYCLE_OWNER__ === 'function'
+    ? root.__ORKA_ENEMY_DOT_LIFECYCLE_OWNER__
+    : null;
+  if (typeof enemyDotLifecycleOwnerHook !== 'function') return null;
+  const snapshot = {
+    source: String(payload.source || 'unknown'),
+    cadenceIsTurn: Number(payload.cadenceIsTurn || 0),
+    dotTargetUID: Number(payload.dotTargetUID || 0),
+    targetUID: Number(payload.targetUID || 0),
+    remainingFires: Number(payload.remainingFires || 0),
+    hasTotalDamageRemaining: Number(payload.hasTotalDamageRemaining || 0),
+    totalDamageRemaining: Number(payload.totalDamageRemaining || 0),
+    targetAlive: Number(payload.targetAlive || 0),
+    currentTurnSerial: Number(payload.currentTurnSerial || 0),
+    nextFireTurnSerial: Number(payload.nextFireTurnSerial || 0),
+    lastProcessedTurnSerial: Number(payload.lastProcessedTurnSerial || 0),
+    jsAction: Number(payload.jsAction || 0),
+  };
+  try {
+    const result = enemyDotLifecycleOwnerHook(snapshot);
+    const action = Number(result?.action);
+    if (!Number.isFinite(action)) return null;
+    g.LastEnemyDotLifecycleOwner = {
+      owner: String(result?.owner || 'rust'),
+      action,
+    };
+    return g.LastEnemyDotLifecycleOwner;
+  } catch (err) {
+    g.LastEnemyDotLifecycleOwnerError = String(err?.message || err || 'unknown');
+    return null;
+  }
+}
+
 function maybeResolveEnemyDebuffDecayOwner(ctx, payload = {}) {
   const g = getGlobals(ctx);
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
@@ -5066,29 +5118,43 @@ export function ProcessEnemyTurnDamageOverTime(ctx, enemyUID) {
   let applied = 0;
   for (let i = enemyDots.length - 1; i >= 0; i--) {
     const dot = enemyDots[i];
-    if (!dot || Number(dot.remainingFires || 0) <= 0) {
-      enemyDots.splice(i, 1);
-      continue;
-    }
-    if (String(dot.cadence || 'tick') !== 'turn') continue;
-    if (Number(dot.targetUID || 0) !== targetUID) continue;
-    if (dot.totalDamageRemaining != null && Number(dot.totalDamageRemaining || 0) <= 0) {
+    if (!dot) {
       enemyDots.splice(i, 1);
       continue;
     }
     const enemy = GetActorByUID(ctx, targetUID);
-    if (!enemy || Number(enemy.hp || 0) <= 0) {
-      enemyDots.splice(i, 1);
-      continue;
-    }
     const gateTurn = Number(dot.nextFireTurnSerial || 0);
-    if (currentTurnSerial < gateTurn) continue;
-    if (Number(dot.lastProcessedTurnSerial || 0) >= currentTurnSerial) continue;
     const hasTotalDamageRemaining = dot.totalDamageRemaining != null ? 1 : 0;
     const totalDamageRemainingBefore = hasTotalDamageRemaining
       ? Number(dot.totalDamageRemaining || 0)
       : 0;
     const remainingFiresBefore = Number(dot.remainingFires || 0);
+    const lifecyclePayload = {
+      source: 'functionBank.ProcessEnemyTurnDamageOverTime',
+      cadenceIsTurn: String(dot.cadence || 'tick') === 'turn' ? 1 : 0,
+      dotTargetUID: Number(dot.targetUID || 0),
+      targetUID,
+      remainingFires: remainingFiresBefore,
+      hasTotalDamageRemaining,
+      totalDamageRemaining: totalDamageRemainingBefore,
+      targetAlive: enemy && Number(enemy.hp || 0) > 0 ? 1 : 0,
+      currentTurnSerial,
+      nextFireTurnSerial: gateTurn,
+      lastProcessedTurnSerial: Number(dot.lastProcessedTurnSerial || 0),
+    };
+    const jsLifecycleAction = computeEnemyDotLifecycleAction(lifecyclePayload);
+    const ownedLifecycle = maybeResolveEnemyDotLifecycleOwner(ctx, {
+      ...lifecyclePayload,
+      jsAction: jsLifecycleAction,
+    });
+    const lifecycleAction = ownedLifecycle && String(ownedLifecycle.owner || '') === 'rust'
+      ? Number(ownedLifecycle.action)
+      : jsLifecycleAction;
+    if (lifecycleAction === 1) {
+      enemyDots.splice(i, 1);
+      continue;
+    }
+    if (lifecycleAction !== 2) continue;
     const damagePerFireBefore = Number(dot.damagePerFire || 0);
     const firesEveryTurnsBefore = Number(dot.firesEveryTurns || 1);
     let dmg = 1;

@@ -43,7 +43,10 @@ test('turn-cadence Blight only fires on the afflicted enemy turn in both mirrors
     const src = read(relPath);
     assert.match(src, /export function ProcessEnemyTurnDamageOverTime\(ctx, enemyUID\) \{/);
     assert.match(src, /const targetUID = Number\(enemyUID \|\| 0\);/);
-    assert.match(src, /if \(Number\(dot\.targetUID \|\| 0\) !== targetUID\) continue;/);
+    assert.match(src, /dotTargetUID: Number\(dot\.targetUID \|\| 0\),/);
+    assert.match(src, /targetUID,/);
+    assert.match(src, /const jsLifecycleAction = computeEnemyDotLifecycleAction\(lifecyclePayload\);/);
+    assert.match(src, /const ownedLifecycle = maybeResolveEnemyDotLifecycleOwner\(ctx, \{/);
     assert.match(src, /g\.NextDamageTextKind = 'dot';/);
     assert.match(src, /g\.NextHitFlashTone = 'purple';/);
     assert.match(src, /const activeEnemyUID = Number\(enemyUID \|\| GetCurrentTurn\(ctx\) \|\| 0\);/);

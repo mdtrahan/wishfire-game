@@ -243,6 +243,44 @@ pub fn enemy_dot_tick_next_turn(next_fire_turn_serial: f64, fires_every_turns: f
     number_or_zero(next_fire_turn_serial) + number_or_zero(fires_every_turns).floor().max(1.0)
 }
 
+pub fn enemy_dot_lifecycle_action(
+    cadence_is_turn: f64,
+    dot_target_uid: f64,
+    target_uid: f64,
+    remaining_fires: f64,
+    has_total_damage_remaining: f64,
+    total_damage_remaining: f64,
+    target_alive: f64,
+    current_turn_serial: f64,
+    next_fire_turn_serial: f64,
+    last_processed_turn_serial: f64,
+) -> f64 {
+    if number_or_zero(remaining_fires) <= 0.0 {
+        return 1.0;
+    }
+    if number_or_zero(cadence_is_turn) != 1.0 {
+        return 0.0;
+    }
+    if number_or_zero(dot_target_uid) != number_or_zero(target_uid) {
+        return 0.0;
+    }
+    if number_or_zero(has_total_damage_remaining) == 1.0
+        && number_or_zero(total_damage_remaining) <= 0.0
+    {
+        return 1.0;
+    }
+    if number_or_zero(target_alive) != 1.0 {
+        return 1.0;
+    }
+    if number_or_zero(current_turn_serial) < number_or_zero(next_fire_turn_serial) {
+        return 0.0;
+    }
+    if number_or_zero(last_processed_turn_serial) >= number_or_zero(current_turn_serial) {
+        return 0.0;
+    }
+    2.0
+}
+
 pub fn enemy_debuff_turns_after_tick(turns_before: f64) -> f64 {
     let turns = positive_floor_or_zero(turns_before);
     if turns > 0.0 {
@@ -462,6 +500,33 @@ pub extern "C" fn enemy_dot_tick_next_turn_shadow(
     fires_every_turns: f64,
 ) -> f64 {
     enemy_dot_tick_next_turn(next_fire_turn_serial, fires_every_turns)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_dot_lifecycle_action_shadow(
+    cadence_is_turn: f64,
+    dot_target_uid: f64,
+    target_uid: f64,
+    remaining_fires: f64,
+    has_total_damage_remaining: f64,
+    total_damage_remaining: f64,
+    target_alive: f64,
+    current_turn_serial: f64,
+    next_fire_turn_serial: f64,
+    last_processed_turn_serial: f64,
+) -> f64 {
+    enemy_dot_lifecycle_action(
+        cadence_is_turn,
+        dot_target_uid,
+        target_uid,
+        remaining_fires,
+        has_total_damage_remaining,
+        total_damage_remaining,
+        target_alive,
+        current_turn_serial,
+        next_fire_turn_serial,
+        last_processed_turn_serial,
+    )
 }
 
 #[no_mangle]
@@ -686,6 +751,54 @@ mod single_hit_resolution_tests {
             assert_eq!(
                 enemy_dot_tick_next_turn(next_turn, every_turns),
                 expected_next_turn
+            );
+        }
+    }
+
+    #[test]
+    fn mirrors_current_enemy_dot_lifecycle_cases() {
+        let cases = [
+            (1.0, 200.0, 200.0, 0.0, 1.0, 12.0, 1.0, 10.0, 10.0, 9.0, 1.0),
+            (0.0, 200.0, 200.0, 3.0, 1.0, 12.0, 1.0, 10.0, 10.0, 9.0, 0.0),
+            (1.0, 201.0, 200.0, 3.0, 1.0, 12.0, 1.0, 10.0, 10.0, 9.0, 0.0),
+            (1.0, 200.0, 200.0, 3.0, 1.0, 0.0, 1.0, 10.0, 10.0, 9.0, 1.0),
+            (1.0, 200.0, 200.0, 3.0, 1.0, 12.0, 0.0, 10.0, 10.0, 9.0, 1.0),
+            (1.0, 200.0, 200.0, 3.0, 1.0, 12.0, 1.0, 9.0, 10.0, 8.0, 0.0),
+            (
+                1.0, 200.0, 200.0, 3.0, 1.0, 12.0, 1.0, 10.0, 10.0, 10.0, 0.0,
+            ),
+            (1.0, 200.0, 200.0, 3.0, 1.0, 12.0, 1.0, 10.0, 10.0, 9.0, 2.0),
+            (1.0, 200.0, 200.0, 2.0, 0.0, 0.0, 1.0, 11.0, 11.0, 10.0, 2.0),
+        ];
+
+        for (
+            cadence_is_turn,
+            dot_target_uid,
+            target_uid,
+            remaining_fires,
+            has_total,
+            total_remaining,
+            target_alive,
+            current_turn,
+            next_turn,
+            last_processed,
+            expected,
+        ) in cases
+        {
+            assert_eq!(
+                enemy_dot_lifecycle_action(
+                    cadence_is_turn,
+                    dot_target_uid,
+                    target_uid,
+                    remaining_fires,
+                    has_total,
+                    total_remaining,
+                    target_alive,
+                    current_turn,
+                    next_turn,
+                    last_processed,
+                ),
+                expected
             );
         }
     }
