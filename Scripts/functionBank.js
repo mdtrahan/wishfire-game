@@ -3685,6 +3685,61 @@ export function ApplyScaledCrit({
   };
 }
 
+function recordSingleHitDamageShadow(ctx, payload) {
+  const g = getGlobals(ctx);
+  g.LastSingleHitDamageShadow = {
+    source: String(payload.source || 'CalculateDamage'),
+    attackerUID: Number(payload.attackerUID || 0),
+    targetUID: Number(payload.targetUID || 0),
+    mode: String(payload.mode || ''),
+    power: Number(payload.power || 0),
+    resist: Number(payload.resist || 0),
+    roll01: Number(payload.roll01 || 0),
+    critRoll01: Number(payload.critRoll01 || 0),
+    sourceIsHero: Number(payload.sourceIsHero || 0),
+    heroAoe: Number(payload.heroAoe || 0),
+    chainActive: Number(payload.chainActive || 0),
+    chainMultiplier: Number(payload.chainMultiplier || 1),
+    jsDamage: Number(payload.jsDamage || 0),
+  };
+  return g.LastSingleHitDamageShadow;
+}
+
+function maybeShadowSingleHitResolution(ctx, target, incomingDamage, beforeHP, appliedDamage, afterHP, shieldAbsorbed) {
+  const g = getGlobals(ctx);
+  const meta = g.LastSingleHitDamageShadow;
+  if (!meta || Number(meta.targetUID || 0) !== Number(target?.uid || 0)) return;
+  const jsDamage = Math.max(0, Number(incomingDamage || 0));
+  if (Number(meta.jsDamage || 0) !== jsDamage) return;
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const singleHitShadowHook = root && typeof root.__ORKA_SINGLE_HIT_SHADOW__ === 'function'
+    ? root.__ORKA_SINGLE_HIT_SHADOW__
+    : null;
+  if (typeof singleHitShadowHook === 'function') {
+    try {
+      singleHitShadowHook({
+        source: 'functionBank.ApplyDamageToTarget',
+        power: Number(meta.power || 0),
+        resist: Number(meta.resist || 0),
+        roll01: Number(meta.roll01 || 0),
+        critRoll01: Number(meta.critRoll01 || 0),
+        sourceIsHero: Number(meta.sourceIsHero || 0),
+        heroAoe: Number(meta.heroAoe || 0),
+        chainActive: Number(meta.chainActive || 0),
+        chainMultiplier: Number(meta.chainMultiplier || 1),
+        targetHp: Number(beforeHP || 0),
+        shield: Number(shieldAbsorbed || 0),
+        jsDamage,
+        jsAppliedDamage: Number(appliedDamage || 0),
+        jsAfterHp: Number(afterHP || 0),
+        jsValue: jsDamage,
+      });
+    } catch (err) {
+      g.LastSingleHitDamageShadowError = String(err?.message || err || 'unknown');
+    }
+  }
+}
+
 export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
   const g = getGlobals(ctx);
   const atk = GetActorByUID(ctx, attackerUID);
@@ -3700,7 +3755,8 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
   const resist = isMagic
     ? (isHeroDefender ? GetEffectiveStat(ctx, tgt, 'RES') : GetEffectiveStat(ctx, tgt, 'RES'))
     : (isHeroDefender ? GetEffectiveStat(ctx, tgt, 'DEF') : GetEffectiveStat(ctx, tgt, 'DEF'));
-  const roll = 0.8 + random01(ctx) * 0.4;
+  const roll01 = random01(ctx);
+  const roll = 0.8 + roll01 * 0.4;
   let dmg = 0;
   if (isHeroAttacker) {
     if (g.IsAOEMatch === 1) {
@@ -3713,19 +3769,36 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
   }
   dmg = Math.max(1, dmg);
   const baseDmg = dmg;
+  const critRoll01 = random01(ctx);
   const crit = ApplyScaledCrit({
     baseValue: dmg,
     relevantBuffTotal: isMagic ? power : power,
     sourceType: isHeroAttacker ? 'HERO' : 'ENEMY',
-    rngRoll: random01(ctx),
+    rngRoll: critRoll01,
   });
   dmg = Math.max(1, Math.ceil(crit.value));
   let chainApplied = false;
-  if (isHeroAttacker && g.ApplyChainToNextDamage === 1) {
-    dmg = Math.ceil(dmg * (g.ChainMultiplier || 1));
+  const chainActive = isHeroAttacker && g.ApplyChainToNextDamage === 1;
+  const chainMultiplier = Number(g.ChainMultiplier || 1);
+  if (chainActive) {
+    dmg = Math.ceil(dmg * chainMultiplier);
     g.ApplyChainToNextDamage = 0;
     chainApplied = true;
   }
+  recordSingleHitDamageShadow(ctx, {
+    attackerUID,
+    targetUID,
+    mode,
+    power,
+    resist,
+    roll01,
+    critRoll01,
+    sourceIsHero: isHeroAttacker ? 1 : 0,
+    heroAoe: g.IsAOEMatch === 1 ? 1 : 0,
+    chainActive: chainActive ? 1 : 0,
+    chainMultiplier,
+    jsDamage: dmg,
+  });
   console.log(
     `[DMG_AUDIT] attackerType=${isHeroAttacker ? 'H' : 'E'} base=${baseDmg} final=${dmg} target=${tgt.name || tgt.uid || 'unknown'}`
   );
@@ -3918,7 +3991,8 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
   const t = GetActorByUID(ctx, uid);
   if (!t) return 0;
   const beforeHP = Number(t.hp ?? 0);
-  let damageToHP = Math.max(0, Number(dmg || 0));
+  const incomingDamage = Math.max(0, Number(dmg || 0));
+  let damageToHP = incomingDamage;
   let shieldAbsorbed = 0;
   if (t.kind === 'hero') {
     const shieldResult = absorbPartyTempHPShield(g, damageToHP);
@@ -3934,6 +4008,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg) {
   t.hp = Math.max(0, (t.hp ?? 0) - damageToHP);
   const afterHP = Number(t.hp ?? 0);
   const appliedDamage = Math.max(0, beforeHP - afterHP);
+  maybeShadowSingleHitResolution(ctx, t, incomingDamage, beforeHP, appliedDamage, afterHP, shieldAbsorbed);
   if (t.kind === 'hero' && appliedDamage > 0) {
     const idx = Number(t.heroIndex ?? 0);
     if (Array.isArray(g.PartyHPByIndex)) {

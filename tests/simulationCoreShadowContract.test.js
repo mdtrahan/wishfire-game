@@ -20,6 +20,7 @@ test('simulation core shadow mode is wired as observe-only browser support', () 
 
   assert.match(shadowSrc, /window\.__ORKA_SIMULATION_CORE_SHADOW__/);
   assert.match(shadowSrc, /dataset\.simCoreShadowStatus/);
+  assert.match(shadowSrc, /dataset\.simCoreShadowSingleHitChecks/);
   assert.match(shadowSrc, /WebAssembly\.instantiateStreaming|WebAssembly\.instantiate/);
   assert.match(shadowSrc, /Math\.abs\(rustValue - jsValue\) > 0\.000001/);
   assert.match(shadowSrc, /return jsValue;/);
@@ -32,6 +33,7 @@ test('simulation core can be built as a static wasm asset', () => {
 
   assert.match(cargoSrc, /crate-type = \["cdylib", "rlib"\]/);
   assert.match(rustSrc, /extern "C" fn combat_power_shadow/);
+  assert.match(rustSrc, /extern "C" fn single_hit_damage_shadow/);
   assert.match(serveSrc, /'\.wasm':'application\/wasm'/);
 });
 
@@ -39,5 +41,6 @@ test('static simulation core wasm exposes the combat power shadow export', async
   const bytes = fs.readFileSync(wasmPath);
   const result = await WebAssembly.instantiate(bytes, {});
   assert.equal(typeof result.instance.exports.combat_power_shadow, 'function');
+  assert.equal(typeof result.instance.exports.single_hit_damage_shadow, 'function');
   assert.equal(result.instance.exports.combat_power_shadow(10, 5, 100), 25);
 });
