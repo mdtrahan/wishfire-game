@@ -10,9 +10,11 @@ function getShadowState() {
       singleHitOwnerChecks: 0,
       turnSummaryChecks: 0,
       enemyDotTickChecks: 0,
+      enemyDotTickOwnerChecks: 0,
       seededRngChecks: 0,
       seededRngOwnerChecks: 0,
       singleHitOwnerSmokeRan: false,
+      enemyDotTickOwnerSmokeRan: false,
     };
   }
   if (!window[SHADOW_STATE_KEY]) {
@@ -23,14 +25,17 @@ function getShadowState() {
       singleHitOwnerChecks: 0,
       turnSummaryChecks: 0,
       enemyDotTickChecks: 0,
+      enemyDotTickOwnerChecks: 0,
       seededRngChecks: 0,
       seededRngOwnerChecks: 0,
       singleHitOwnerSmokeRan: false,
+      enemyDotTickOwnerSmokeRan: false,
       lastCheck: null,
       lastSingleHitCheck: null,
       lastSingleHitOwnerCheck: null,
       lastTurnSummaryCheck: null,
       lastEnemyDotTickCheck: null,
+      lastEnemyDotTickOwnerCheck: null,
       lastSeededRngCheck: null,
       lastSeededRngOwnerCheck: null,
       exports: null,
@@ -60,6 +65,12 @@ function updateShadowDomMarker(shadow) {
   document.documentElement.dataset.simCoreShadowEnemyDotTickChecks = String(
     Number(shadow?.enemyDotTickChecks || 0),
   );
+  document.documentElement.dataset.simCoreShadowEnemyDotTickOwnerChecks = String(
+    Number(shadow?.enemyDotTickOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowEnemyDotTickOwner = String(
+    shadow?.lastEnemyDotTickOwnerCheck?.owner || '',
+  );
   document.documentElement.dataset.simCoreShadowSeededRngChecks = String(
     Number(shadow?.seededRngChecks || 0),
   );
@@ -83,15 +94,19 @@ function hasSingleHitExports(exports) {
     && typeof exports?.single_hit_after_hp_shadow === 'function';
 }
 
+function hasEnemyDotTickExports(exports) {
+  return typeof exports?.enemy_dot_tick_damage_shadow === 'function'
+    && typeof exports?.enemy_dot_tick_total_remaining_shadow === 'function'
+    && typeof exports?.enemy_dot_tick_remaining_fires_shadow === 'function'
+    && typeof exports?.enemy_dot_tick_next_turn_shadow === 'function';
+}
+
 function hasRequiredExports(exports) {
   return typeof exports?.combat_power_shadow === 'function'
     && hasSeededRngExports(exports)
     && hasSingleHitExports(exports)
     && typeof exports?.turn_summary_code_shadow === 'function'
-    && typeof exports?.enemy_dot_tick_damage_shadow === 'function'
-    && typeof exports?.enemy_dot_tick_total_remaining_shadow === 'function'
-    && typeof exports?.enemy_dot_tick_remaining_fires_shadow === 'function'
-    && typeof exports?.enemy_dot_tick_next_turn_shadow === 'function';
+    && hasEnemyDotTickExports(exports);
 }
 
 async function instantiateWasm(wasmUrl) {
@@ -130,6 +145,24 @@ function runSingleHitOwnerStartupCheck(shadow) {
   });
 }
 
+function runEnemyDotTickOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.enemyDotTickOwnerSmokeRan) return;
+  shadow.enemyDotTickOwnerSmokeRan = true;
+  createSimulationCoreEnemyDotTickResolution({
+    source: 'simulationCore.startup.enemyDotTickOwner',
+    totalDamageRemaining: 30,
+    remainingFires: 3,
+    damagePerFire: 0,
+    hasTotalDamageRemaining: 1,
+    nextFireTurnSerial: 10,
+    firesEveryTurns: 2,
+    jsDamage: 10,
+    jsTotalDamageRemaining: 20,
+    jsRemainingFires: 2,
+    jsNextFireTurnSerial: 12,
+  });
+}
+
 export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = {}) {
   const shadow = getShadowState();
   if (typeof window !== 'undefined') {
@@ -137,6 +170,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_SINGLE_HIT_OWNER__ = createSimulationCoreSingleHitResolution;
     window.__ORKA_TURN_SUMMARY_SHADOW__ = shadowTurnSummary;
     window.__ORKA_ENEMY_DOT_TICK_SHADOW__ = shadowEnemyDotTick;
+    window.__ORKA_ENEMY_DOT_TICK_OWNER__ = createSimulationCoreEnemyDotTickResolution;
     window.__ORKA_SEEDED_RNG_SHADOW__ = shadowSeededRng;
     window.__ORKA_SEEDED_RNG_OWNER__ = createSimulationCoreSeededRng;
   }
@@ -152,7 +186,10 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     .then((instance) => {
       shadow.exports = instance.exports;
       shadow.status = hasRequiredExports(shadow.exports) ? 'ready' : 'missing-export';
-      if (shadow.status === 'ready') runSingleHitOwnerStartupCheck(shadow);
+      if (shadow.status === 'ready') {
+        runSingleHitOwnerStartupCheck(shadow);
+        runEnemyDotTickOwnerStartupCheck(shadow);
+      }
       updateShadowDomMarker(shadow);
       return shadow;
     })
@@ -440,6 +477,105 @@ export function createSimulationCoreSingleHitResolution({
   };
 }
 
+export function createSimulationCoreEnemyDotTickResolution({
+  source = 'unknown',
+  totalDamageRemaining = 0,
+  remainingFires = 0,
+  damagePerFire = 0,
+  hasTotalDamageRemaining = 0,
+  nextFireTurnSerial = 0,
+  firesEveryTurns = 1,
+  jsDamage = 0,
+  jsTotalDamageRemaining = 0,
+  jsRemainingFires = 0,
+  jsNextFireTurnSerial = 0,
+} = {}, { exportsOverride = null } = {}) {
+  const shadow = getShadowState();
+  const normalized = {
+    source,
+    totalDamageRemaining: Number(totalDamageRemaining || 0),
+    remainingFires: Number(remainingFires || 0),
+    damagePerFire: Number(damagePerFire || 0),
+    hasTotalDamageRemaining: Number(hasTotalDamageRemaining || 0),
+    nextFireTurnSerial: Number(nextFireTurnSerial || 0),
+    firesEveryTurns: Number(firesEveryTurns || 1),
+    jsDamage: Number(jsDamage || 0),
+    jsTotalDamageRemaining: Number(jsTotalDamageRemaining || 0),
+    jsRemainingFires: Number(jsRemainingFires || 0),
+    jsNextFireTurnSerial: Number(jsNextFireTurnSerial || 0),
+  };
+  const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+  if (!hasEnemyDotTickExports(exports)) {
+    shadow.enemyDotTickOwnerChecks = Number(shadow.enemyDotTickOwnerChecks || 0) + 1;
+    shadow.lastEnemyDotTickOwnerCheck = {
+      ...normalized,
+      owner: 'fallback',
+      damage: normalized.jsDamage,
+      totalDamageRemaining: normalized.jsTotalDamageRemaining,
+      remainingFires: normalized.jsRemainingFires,
+      nextFireTurnSerial: normalized.jsNextFireTurnSerial,
+    };
+    updateShadowDomMarker(shadow);
+    return {
+      owner: 'fallback',
+      damage: normalized.jsDamage,
+      totalDamageRemaining: normalized.jsTotalDamageRemaining,
+      remainingFires: normalized.jsRemainingFires,
+      nextFireTurnSerial: normalized.jsNextFireTurnSerial,
+    };
+  }
+
+  const rustDamage = Number(exports.enemy_dot_tick_damage_shadow(
+    normalized.totalDamageRemaining,
+    normalized.remainingFires,
+    normalized.damagePerFire,
+    normalized.hasTotalDamageRemaining,
+  ));
+  const rustTotalDamageRemaining = Number(exports.enemy_dot_tick_total_remaining_shadow(
+    normalized.totalDamageRemaining,
+    normalized.remainingFires,
+    normalized.damagePerFire,
+    normalized.hasTotalDamageRemaining,
+  ));
+  const rustRemainingFires = Number(exports.enemy_dot_tick_remaining_fires_shadow(
+    normalized.remainingFires,
+  ));
+  const rustNextFireTurnSerial = Number(exports.enemy_dot_tick_next_turn_shadow(
+    normalized.nextFireTurnSerial,
+    normalized.firesEveryTurns,
+  ));
+  shadow.enemyDotTickOwnerChecks = Number(shadow.enemyDotTickOwnerChecks || 0) + 1;
+  shadow.lastEnemyDotTickOwnerCheck = {
+    ...normalized,
+    owner: 'rust',
+    damage: rustDamage,
+    totalDamageRemaining: rustTotalDamageRemaining,
+    remainingFires: rustRemainingFires,
+    nextFireTurnSerial: rustNextFireTurnSerial,
+  };
+  if (
+    !exportsOverride
+    && (
+      Math.abs(rustDamage - normalized.jsDamage) > 0.000001
+      || Math.abs(rustTotalDamageRemaining - normalized.jsTotalDamageRemaining) > 0.000001
+      || Math.abs(rustRemainingFires - normalized.jsRemainingFires) > 0.000001
+      || Math.abs(rustNextFireTurnSerial - normalized.jsNextFireTurnSerial) > 0.000001
+    )
+  ) {
+    shadow.mismatches.push(shadow.lastEnemyDotTickOwnerCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastEnemyDotTickOwnerCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return {
+    owner: 'rust',
+    damage: rustDamage,
+    totalDamageRemaining: rustTotalDamageRemaining,
+    remainingFires: rustRemainingFires,
+    nextFireTurnSerial: rustNextFireTurnSerial,
+  };
+}
+
 export function shadowSingleHitResolution({
   source = 'unknown',
   power = 0,
@@ -527,7 +663,7 @@ export function shadowEnemyDotTick({
   jsValue = 0,
 } = {}) {
   const shadow = getShadowState();
-  if (shadow.status !== 'ready' || !hasRequiredExports(shadow.exports)) return jsValue;
+  if (shadow.status !== 'ready' || !hasEnemyDotTickExports(shadow.exports)) return jsValue;
   const rustDamage = Number(shadow.exports.enemy_dot_tick_damage_shadow(
     Number(totalDamageRemaining || 0),
     Number(remainingFires || 0),

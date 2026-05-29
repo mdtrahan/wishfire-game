@@ -3890,6 +3890,54 @@ function maybeShadowEnemyDotTick(ctx, payload = {}) {
   return snapshot.jsDamage;
 }
 
+function maybeResolveEnemyDotTickOwner(ctx, payload = {}) {
+  const g = getGlobals(ctx);
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const enemyDotTickOwnerHook = root && typeof root.__ORKA_ENEMY_DOT_TICK_OWNER__ === 'function'
+    ? root.__ORKA_ENEMY_DOT_TICK_OWNER__
+    : null;
+  if (typeof enemyDotTickOwnerHook !== 'function') return null;
+  const snapshot = {
+    source: String(payload.source || 'unknown'),
+    totalDamageRemaining: Number(payload.totalDamageRemaining || 0),
+    remainingFires: Number(payload.remainingFires || 0),
+    damagePerFire: Number(payload.damagePerFire || 0),
+    hasTotalDamageRemaining: Number(payload.hasTotalDamageRemaining || 0),
+    nextFireTurnSerial: Number(payload.nextFireTurnSerial || 0),
+    firesEveryTurns: Number(payload.firesEveryTurns || 1),
+    jsDamage: Number(payload.jsDamage || 0),
+    jsTotalDamageRemaining: Number(payload.jsTotalDamageRemaining || 0),
+    jsRemainingFires: Number(payload.jsRemainingFires || 0),
+    jsNextFireTurnSerial: Number(payload.jsNextFireTurnSerial || 0),
+  };
+  try {
+    const result = enemyDotTickOwnerHook(snapshot);
+    const damage = Number(result?.damage);
+    const totalDamageRemaining = Number(result?.totalDamageRemaining);
+    const remainingFires = Number(result?.remainingFires);
+    const nextFireTurnSerial = Number(result?.nextFireTurnSerial);
+    if (
+      !Number.isFinite(damage)
+      || !Number.isFinite(totalDamageRemaining)
+      || !Number.isFinite(remainingFires)
+      || !Number.isFinite(nextFireTurnSerial)
+    ) {
+      return null;
+    }
+    g.LastEnemyDotTickOwner = {
+      owner: String(result?.owner || 'rust'),
+      damage,
+      totalDamageRemaining,
+      remainingFires,
+      nextFireTurnSerial,
+    };
+    return g.LastEnemyDotTickOwner;
+  } catch (err) {
+    g.LastEnemyDotTickOwnerError = String(err?.message || err || 'unknown');
+    return null;
+  }
+}
+
 export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
   const g = getGlobals(ctx);
   const atk = GetActorByUID(ctx, attackerUID);
@@ -4852,6 +4900,7 @@ export function ProcessEnemyTurnDamageOverTime(ctx, enemyUID) {
     const damagePerFireBefore = Number(dot.damagePerFire || 0);
     const firesEveryTurnsBefore = Number(dot.firesEveryTurns || 1);
     let dmg = 1;
+    let jsTotalDamageRemaining = totalDamageRemainingBefore;
     if (dot.totalDamageRemaining != null && Number(dot.remainingFires || 0) > 0) {
       const remaining = Math.max(0, Math.floor(dot.totalDamageRemaining));
       if (remaining <= 0) {
@@ -4862,9 +4911,38 @@ export function ProcessEnemyTurnDamageOverTime(ctx, enemyUID) {
       const base = Math.floor(remaining / fires);
       const extra = (remaining % fires) > 0 ? 1 : 0;
       dmg = Math.max(1, base + extra);
-      dot.totalDamageRemaining = Math.max(0, remaining - dmg);
+      jsTotalDamageRemaining = Math.max(0, remaining - dmg);
     } else {
       dmg = Math.max(1, Math.round(dot.damagePerFire || 1));
+      jsTotalDamageRemaining = 0;
+    }
+    const jsRemainingFires = Math.max(0, remainingFiresBefore - 1);
+    const jsNextFireTurnSerial = gateTurn + Math.max(1, Math.floor(Number(dot.firesEveryTurns || 1) || 1));
+    const jsDamage = dmg;
+    const ownedTick = maybeResolveEnemyDotTickOwner(ctx, {
+      source: 'functionBank.ProcessEnemyTurnDamageOverTime',
+      totalDamageRemaining: totalDamageRemainingBefore,
+      remainingFires: remainingFiresBefore,
+      damagePerFire: damagePerFireBefore,
+      hasTotalDamageRemaining,
+      nextFireTurnSerial: gateTurn,
+      firesEveryTurns: firesEveryTurnsBefore,
+      jsDamage,
+      jsTotalDamageRemaining,
+      jsRemainingFires,
+      jsNextFireTurnSerial,
+    });
+    if (ownedTick && String(ownedTick.owner || '') === 'rust') {
+      dmg = Math.max(0, Number(ownedTick.damage || 0));
+      if (hasTotalDamageRemaining) {
+        dot.totalDamageRemaining = Math.max(0, Math.floor(Number(ownedTick.totalDamageRemaining || 0)));
+      }
+      dot.remainingFires = Math.max(0, Math.floor(Number(ownedTick.remainingFires || 0)));
+      dot.nextFireTurnSerial = Number(ownedTick.nextFireTurnSerial || 0);
+    } else {
+      if (hasTotalDamageRemaining) dot.totalDamageRemaining = jsTotalDamageRemaining;
+      dot.remainingFires = jsRemainingFires;
+      dot.nextFireTurnSerial = jsNextFireTurnSerial;
     }
     g.NextHitFlashTone = 'purple';
     g.NextDamageTextKind = 'dot';
@@ -4872,9 +4950,7 @@ export function ProcessEnemyTurnDamageOverTime(ctx, enemyUID) {
       isCrit: !!dot.isCrit || Number(dot.powerAmpMultiplier || 0) > 0,
     });
     applied += 1;
-    dot.remainingFires -= 1;
     dot.lastProcessedTurnSerial = currentTurnSerial;
-    dot.nextFireTurnSerial = gateTurn + Math.max(1, Math.floor(Number(dot.firesEveryTurns || 1) || 1));
     maybeShadowEnemyDotTick(ctx, {
       source: 'functionBank.ProcessEnemyTurnDamageOverTime',
       totalDamageRemaining: totalDamageRemainingBefore,
@@ -4883,10 +4959,10 @@ export function ProcessEnemyTurnDamageOverTime(ctx, enemyUID) {
       hasTotalDamageRemaining,
       nextFireTurnSerial: gateTurn,
       firesEveryTurns: firesEveryTurnsBefore,
-      jsDamage: dmg,
-      jsTotalDamageRemaining: hasTotalDamageRemaining ? Number(dot.totalDamageRemaining || 0) : 0,
-      jsRemainingFires: Number(dot.remainingFires || 0),
-      jsNextFireTurnSerial: Number(dot.nextFireTurnSerial || 0),
+      jsDamage,
+      jsTotalDamageRemaining: hasTotalDamageRemaining ? jsTotalDamageRemaining : 0,
+      jsRemainingFires,
+      jsNextFireTurnSerial,
     });
     if (dot.remainingFires <= 0) {
       enemyDots.splice(i, 1);
