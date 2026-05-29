@@ -89,6 +89,10 @@ import * as renderSkillDraught from './systems/renderSkillDraughtOverlay.js';
 import * as renderRuntime from './systems/renderRuntime.js';
 import * as superGemRuntime from './systems/superGemRuntime.js';
 import {
+  initializeSimulationCoreShadow,
+  shadowCombatPower,
+} from './systems/simulationCoreShadow.js';
+import {
   addAppViewportResizeListener,
   resizeCanvasToContainedViewport,
 } from './systems/appShellViewport.js';
@@ -105,6 +109,7 @@ const ctx = canvas.getContext('2d');
 let damageNumberLayer = null;
 const DAMAGE_TEXT_FONT = '"Bungee", "Trebuchet MS", "Verdana", sans-serif';
 void ensureDamageTextFontReady();
+initializeSimulationCoreShadow();
 const HARNESS_MODE = typeof window !== 'undefined' && window.location.search.includes('harness=true');
 const DEBUG_LAYOUT = (() => {
   let enabled = false;
@@ -2137,7 +2142,14 @@ function computeCombatPower(atk, def, hp) {
   const a = Number(atk || 0);
   const d = Number(def || 0);
   const h = Number(hp || 0);
-  return Math.round((a + d + (h / 10)) * 100) / 100;
+  const result = Math.round((a + d + (h / 10)) * 100) / 100;
+  return shadowCombatPower({
+    source: 'app.computeCombatPower',
+    atk: a,
+    def: d,
+    hp: h,
+    jsValue: result,
+  });
 }
 function resolveEnemyEncounterCombatPower(row) {
   const explicit = Number(row?.EncounterCP ?? row?.encounterCP ?? row?.CombatPower ?? row?.combatPower);

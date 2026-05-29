@@ -21,3 +21,8 @@ pub fn combat_power(atk: f64, def: f64, hp: f64) -> f64 {
 
     round_like_js((a + d + (h / 10.0)) * 100.0) / 100.0
 }
+
+#[no_mangle]
+pub extern "C" fn combat_power_shadow(atk: f64, def: f64, hp: f64) -> f64 {
+    combat_power(atk, def, hp)
+}
