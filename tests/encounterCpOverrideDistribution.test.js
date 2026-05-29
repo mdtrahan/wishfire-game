@@ -13,6 +13,14 @@ function extractFunction(src, name) {
 function loadEncounterHelpers() {
   const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
   const snippet = [
+    `function createSimulationCoreSeededRng(seed = 1) {
+  let state = Number(seed || 1) >>> 0;
+  if (!state) state = 1;
+  return () => {
+    state = (1664525 * state + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}`,
     extractFunction(src, 'computeCombatPower'),
     extractFunction(src, 'resolveEnemyEncounterCombatPower'),
     extractFunction(src, 'normalizeBiomeTags'),

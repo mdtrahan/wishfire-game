@@ -10,6 +10,7 @@ function getShadowState() {
       turnSummaryChecks: 0,
       enemyDotTickChecks: 0,
       seededRngChecks: 0,
+      seededRngOwnerChecks: 0,
     };
   }
   if (!window[SHADOW_STATE_KEY]) {
@@ -20,11 +21,13 @@ function getShadowState() {
       turnSummaryChecks: 0,
       enemyDotTickChecks: 0,
       seededRngChecks: 0,
+      seededRngOwnerChecks: 0,
       lastCheck: null,
       lastSingleHitCheck: null,
       lastTurnSummaryCheck: null,
       lastEnemyDotTickCheck: null,
       lastSeededRngCheck: null,
+      lastSeededRngOwnerCheck: null,
       exports: null,
     };
   }
@@ -49,13 +52,23 @@ function updateShadowDomMarker(shadow) {
   document.documentElement.dataset.simCoreShadowSeededRngChecks = String(
     Number(shadow?.seededRngChecks || 0),
   );
+  document.documentElement.dataset.simCoreShadowSeededRngOwnerChecks = String(
+    Number(shadow?.seededRngOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowSeededRngOwner = String(
+    shadow?.lastSeededRngOwnerCheck?.owner || '',
+  );
+}
+
+function hasSeededRngExports(exports) {
+  return typeof exports?.seeded_rng_next_state_shadow === 'function'
+    && typeof exports?.seeded_rng_next_value_shadow === 'function'
+    && typeof exports?.seeded_rng_index_shadow === 'function';
 }
 
 function hasRequiredExports(exports) {
   return typeof exports?.combat_power_shadow === 'function'
-    && typeof exports?.seeded_rng_next_state_shadow === 'function'
-    && typeof exports?.seeded_rng_next_value_shadow === 'function'
-    && typeof exports?.seeded_rng_index_shadow === 'function'
+    && hasSeededRngExports(exports)
     && typeof exports?.single_hit_damage_shadow === 'function'
     && typeof exports?.single_hit_applied_damage_shadow === 'function'
     && typeof exports?.single_hit_after_hp_shadow === 'function'
@@ -88,6 +101,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_TURN_SUMMARY_SHADOW__ = shadowTurnSummary;
     window.__ORKA_ENEMY_DOT_TICK_SHADOW__ = shadowEnemyDotTick;
     window.__ORKA_SEEDED_RNG_SHADOW__ = shadowSeededRng;
+    window.__ORKA_SEEDED_RNG_OWNER__ = createSimulationCoreSeededRng;
   }
   if (shadow.status === 'ready' || shadow.status === 'loading') return shadow.readyPromise || null;
   if (typeof window === 'undefined' || typeof WebAssembly === 'undefined' || typeof fetch !== 'function') {
@@ -111,6 +125,66 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
       return shadow;
     });
   return shadow.readyPromise;
+}
+
+function normalizeSeed(seed = 1) {
+  const normalized = Number(seed || 1) >>> 0;
+  return normalized || 1;
+}
+
+function createSeededRngFallback(seed = 1) {
+  let state = normalizeSeed(seed);
+  return () => {
+    state = (1664525 * state + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
+export function createSimulationCoreSeededRng(seed = 1, {
+  source = 'simulationCore.seededRng',
+  exportsOverride = null,
+} = {}) {
+  const normalizedSeed = normalizeSeed(seed);
+  const fallback = createSeededRngFallback(normalizedSeed);
+  let draws = 0;
+  return () => {
+    draws += 1;
+    const fallbackValue = fallback();
+    const shadow = getShadowState();
+    const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+    if (!hasSeededRngExports(exports)) {
+      shadow.seededRngOwnerChecks = Number(shadow.seededRngOwnerChecks || 0) + 1;
+      shadow.lastSeededRngOwnerCheck = {
+        source,
+        owner: 'fallback',
+        seed: normalizedSeed,
+        draws,
+        value: fallbackValue,
+      };
+      updateShadowDomMarker(shadow);
+      return fallbackValue;
+    }
+
+    const rustState = Number(exports.seeded_rng_next_state_shadow(normalizedSeed, draws));
+    const rustValue = Number(exports.seeded_rng_next_value_shadow(normalizedSeed, draws));
+    shadow.seededRngOwnerChecks = Number(shadow.seededRngOwnerChecks || 0) + 1;
+    shadow.lastSeededRngOwnerCheck = {
+      source,
+      owner: 'rust',
+      seed: normalizedSeed,
+      draws,
+      fallbackValue,
+      rustState,
+      rustValue,
+    };
+    if (Math.abs(rustValue - fallbackValue) > 0.000001 && !exportsOverride) {
+      shadow.mismatches.push(shadow.lastSeededRngOwnerCheck);
+      if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+      console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastSeededRngOwnerCheck);
+    }
+    updateShadowDomMarker(shadow);
+    return rustValue;
+  };
 }
 
 export function shadowCombatPower({ source = 'unknown', atk = 0, def = 0, hp = 0, jsValue = 0 } = {}) {
@@ -144,7 +218,7 @@ export function shadowSeededRng({
   jsIndex = 0,
 } = {}) {
   const shadow = getShadowState();
-  if (shadow.status !== 'ready' || !hasRequiredExports(shadow.exports)) return jsValue;
+  if (shadow.status !== 'ready' || !hasSeededRngExports(shadow.exports)) return jsValue;
   const normalizedSeed = Number(seed || 0);
   const normalizedDraws = Number(draws || 0);
   const normalizedSize = Number(size || 0);

@@ -30,7 +30,15 @@ function extractFunction(src, name) {
 
 function loadCreateSeededRng() {
   const src = fs.readFileSync(appPath, 'utf8');
-  const script = `${extractFunction(src, 'createSeededRng')}
+  const script = `function createSimulationCoreSeededRng(seed = 1) {
+  let state = Number(seed || 1) >>> 0;
+  if (!state) state = 1;
+  return () => {
+    state = (1664525 * state + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+${extractFunction(src, 'createSeededRng')}
 module.exports = { createSeededRng };`;
   const context = {
     module: { exports: {} },

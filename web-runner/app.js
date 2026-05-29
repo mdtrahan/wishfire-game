@@ -89,6 +89,7 @@ import * as renderSkillDraught from './systems/renderSkillDraughtOverlay.js';
 import * as renderRuntime from './systems/renderRuntime.js';
 import * as superGemRuntime from './systems/superGemRuntime.js';
 import {
+  createSimulationCoreSeededRng,
   initializeSimulationCoreShadow,
   shadowCombatPower,
   shadowSeededRng,
@@ -2986,12 +2987,7 @@ function normalizeFaction(input) {
 }
 
 function createSeededRng(seed = 1) {
-  let state = Number(seed || 1) >>> 0;
-  if (!state) state = 1;
-  return () => {
-    state = (1664525 * state + 1013904223) >>> 0;
-    return state / 4294967296;
-  };
+  return createSimulationCoreSeededRng(seed, { source: 'app.createSeededRng' });
 }
 
 function runSeededRngShadowStartupChecks() {
