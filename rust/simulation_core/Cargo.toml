@@ -1,0 +1,9 @@
+[package]
+name = "simulation_core"
+version = "0.1.0"
+edition = "2021"
+description = "Tiny Rust pilot for deterministic Orka simulation formulas."
+publish = false
+
+[lib]
+path = "src/lib.rs"

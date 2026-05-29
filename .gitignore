@@ -18,6 +18,7 @@ playwright-*.png
 
 # Local validation artifacts
 test-results/
+rust/**/target/
 
 # Generated per-worktree runtime metadata
 web-runner/runtime-fingerprint.js
