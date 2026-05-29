@@ -9,6 +9,7 @@ function getShadowState() {
       singleHitChecks: 0,
       turnSummaryChecks: 0,
       enemyDotTickChecks: 0,
+      seededRngChecks: 0,
     };
   }
   if (!window[SHADOW_STATE_KEY]) {
@@ -18,10 +19,12 @@ function getShadowState() {
       singleHitChecks: 0,
       turnSummaryChecks: 0,
       enemyDotTickChecks: 0,
+      seededRngChecks: 0,
       lastCheck: null,
       lastSingleHitCheck: null,
       lastTurnSummaryCheck: null,
       lastEnemyDotTickCheck: null,
+      lastSeededRngCheck: null,
       exports: null,
     };
   }
@@ -43,10 +46,16 @@ function updateShadowDomMarker(shadow) {
   document.documentElement.dataset.simCoreShadowEnemyDotTickChecks = String(
     Number(shadow?.enemyDotTickChecks || 0),
   );
+  document.documentElement.dataset.simCoreShadowSeededRngChecks = String(
+    Number(shadow?.seededRngChecks || 0),
+  );
 }
 
 function hasRequiredExports(exports) {
   return typeof exports?.combat_power_shadow === 'function'
+    && typeof exports?.seeded_rng_next_state_shadow === 'function'
+    && typeof exports?.seeded_rng_next_value_shadow === 'function'
+    && typeof exports?.seeded_rng_index_shadow === 'function'
     && typeof exports?.single_hit_damage_shadow === 'function'
     && typeof exports?.single_hit_applied_damage_shadow === 'function'
     && typeof exports?.single_hit_after_hp_shadow === 'function'
@@ -78,6 +87,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_SINGLE_HIT_SHADOW__ = shadowSingleHitResolution;
     window.__ORKA_TURN_SUMMARY_SHADOW__ = shadowTurnSummary;
     window.__ORKA_ENEMY_DOT_TICK_SHADOW__ = shadowEnemyDotTick;
+    window.__ORKA_SEEDED_RNG_SHADOW__ = shadowSeededRng;
   }
   if (shadow.status === 'ready' || shadow.status === 'loading') return shadow.readyPromise || null;
   if (typeof window === 'undefined' || typeof WebAssembly === 'undefined' || typeof fetch !== 'function') {
@@ -119,6 +129,53 @@ export function shadowCombatPower({ source = 'unknown', atk = 0, def = 0, hp = 0
     shadow.mismatches.push(shadow.lastCheck);
     if (shadow.mismatches.length > 20) shadow.mismatches.shift();
     console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return jsValue;
+}
+
+export function shadowSeededRng({
+  source = 'unknown',
+  seed = 1,
+  draws = 1,
+  size = 1,
+  jsState = 0,
+  jsValue = 0,
+  jsIndex = 0,
+} = {}) {
+  const shadow = getShadowState();
+  if (shadow.status !== 'ready' || !hasRequiredExports(shadow.exports)) return jsValue;
+  const normalizedSeed = Number(seed || 0);
+  const normalizedDraws = Number(draws || 0);
+  const normalizedSize = Number(size || 0);
+  const rustState = Number(shadow.exports.seeded_rng_next_state_shadow(normalizedSeed, normalizedDraws));
+  const rustValue = Number(shadow.exports.seeded_rng_next_value_shadow(normalizedSeed, normalizedDraws));
+  const rustIndex = Number(shadow.exports.seeded_rng_index_shadow(
+    normalizedSeed,
+    normalizedDraws,
+    normalizedSize,
+  ));
+  shadow.seededRngChecks = Number(shadow.seededRngChecks || 0) + 1;
+  shadow.lastSeededRngCheck = {
+    source,
+    seed: normalizedSeed,
+    draws: normalizedDraws,
+    size: normalizedSize,
+    jsState: Number(jsState || 0),
+    rustState,
+    jsValue: Number(jsValue || 0),
+    rustValue,
+    jsIndex: Number(jsIndex || 0),
+    rustIndex,
+  };
+  if (
+    Math.abs(rustState - Number(jsState || 0)) > 0.000001
+    || Math.abs(rustValue - Number(jsValue || 0)) > 0.000001
+    || Math.abs(rustIndex - Number(jsIndex || 0)) > 0.000001
+  ) {
+    shadow.mismatches.push(shadow.lastSeededRngCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastSeededRngCheck);
   }
   updateShadowDomMarker(shadow);
   return jsValue;

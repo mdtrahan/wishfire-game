@@ -91,6 +91,7 @@ import * as superGemRuntime from './systems/superGemRuntime.js';
 import {
   initializeSimulationCoreShadow,
   shadowCombatPower,
+  shadowSeededRng,
 } from './systems/simulationCoreShadow.js';
 import {
   addAppViewportResizeListener,
@@ -109,7 +110,10 @@ const ctx = canvas.getContext('2d');
 let damageNumberLayer = null;
 const DAMAGE_TEXT_FONT = '"Bungee", "Trebuchet MS", "Verdana", sans-serif';
 void ensureDamageTextFontReady();
-initializeSimulationCoreShadow();
+const simulationCoreShadowReady = initializeSimulationCoreShadow();
+if (simulationCoreShadowReady && typeof simulationCoreShadowReady.then === 'function') {
+  void simulationCoreShadowReady.then(() => runSeededRngShadowStartupChecks());
+}
 const HARNESS_MODE = typeof window !== 'undefined' && window.location.search.includes('harness=true');
 const DEBUG_LAYOUT = (() => {
   let enabled = false;
@@ -2988,6 +2992,32 @@ function createSeededRng(seed = 1) {
     state = (1664525 * state + 1013904223) >>> 0;
     return state / 4294967296;
   };
+}
+
+function runSeededRngShadowStartupChecks() {
+  const cases = [
+    [1, 1, 6],
+    [1, 2, 6],
+    [123456789, 1, 10],
+    [123456789, 3, 10],
+    [0, 1, 6],
+    [4294967295, 1, 10],
+    [987654321, 5, 3],
+  ];
+  for (const [seed, draws, size] of cases) {
+    const rng = createSeededRng(seed);
+    let value = 0;
+    for (let i = 0; i < draws; i += 1) value = rng();
+    shadowSeededRng({
+      source: 'app.createSeededRng',
+      seed,
+      draws,
+      size,
+      jsState: Math.round(value * 4294967296),
+      jsValue: value,
+      jsIndex: Math.floor(value * size),
+    });
+  }
 }
 
 function getGemSpawnRandom() {
