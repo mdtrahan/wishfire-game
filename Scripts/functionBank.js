@@ -4112,6 +4112,47 @@ function maybeResolveEnemyDebuffDecayOwner(ctx, payload = {}) {
   }
 }
 
+function maybeResolveEnemyDebuffApplyOwner(ctx, payload = {}) {
+  const g = getGlobals(ctx);
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const enemyDebuffApplyOwnerHook = root && typeof root.__ORKA_ENEMY_DEBUFF_APPLY_OWNER__ === 'function'
+    ? root.__ORKA_ENEMY_DEBUFF_APPLY_OWNER__
+    : null;
+  if (typeof enemyDebuffApplyOwnerHook !== 'function') return null;
+  const snapshot = {
+    source: String(payload.source || 'unknown'),
+    stat: String(payload.stat || '').toUpperCase(),
+    amountBefore: sanitizeDebuffValue(payload.amountBefore),
+    turnsBefore: sanitizeDebuffValue(payload.turnsBefore),
+    addAmount: sanitizeDebuffValue(payload.addAmount),
+    durationTurns: sanitizeDebuffValue(payload.durationTurns),
+    jsAmountAfter: sanitizeDebuffValue(payload.jsAmountAfter),
+    jsTurnsAfter: sanitizeDebuffValue(payload.jsTurnsAfter),
+    jsActive: Number(payload.jsActive || 0) > 0 ? 1 : 0,
+  };
+  try {
+    const result = enemyDebuffApplyOwnerHook(snapshot);
+    const amountAfter = sanitizeDebuffValue(result?.amountAfter);
+    const turnsAfter = sanitizeDebuffValue(result?.turnsAfter);
+    const active = Number(result?.active || 0) > 0 ? 1 : 0;
+    g.LastEnemyDebuffApplyOwner = {
+      owner: String(result?.owner || 'rust'),
+      stat: snapshot.stat,
+      amountBefore: snapshot.amountBefore,
+      turnsBefore: snapshot.turnsBefore,
+      addAmount: snapshot.addAmount,
+      durationTurns: snapshot.durationTurns,
+      amountAfter,
+      turnsAfter,
+      active,
+    };
+    return g.LastEnemyDebuffApplyOwner;
+  } catch (err) {
+    g.LastEnemyDebuffApplyOwnerError = String(err?.message || err || 'unknown');
+    return null;
+  }
+}
+
 export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
   const g = getGlobals(ctx);
   const atk = GetActorByUID(ctx, attackerUID);
@@ -4853,9 +4894,35 @@ export function ExecutePurpleDebuff(ctx, actorUID) {
   const debuffs = debuffState.debuffs;
   const debuffTurns = debuffState.turns;
   const slots = debuffState.slots;
-  debuffs[stat] = sanitizeDebuffValue(debuffs[stat]) + 2;
-  debuffTurns[stat] = 3;
-  if (!slots.includes(stat)) {
+  const amountBefore = sanitizeDebuffValue(debuffs[stat]);
+  const turnsBefore = sanitizeDebuffValue(debuffTurns[stat]);
+  const addAmount = 2;
+  const durationTurns = 3;
+  const jsAmountAfter = amountBefore + addAmount;
+  const jsTurnsAfter = durationTurns;
+  const jsActive = jsAmountAfter > 0 && jsTurnsAfter > 0 ? 1 : 0;
+  const owner = maybeResolveEnemyDebuffApplyOwner(ctx, {
+    source: 'functionBank.ExecutePurpleDebuff',
+    stat,
+    amountBefore,
+    turnsBefore,
+    addAmount,
+    durationTurns,
+    jsAmountAfter,
+    jsTurnsAfter,
+    jsActive,
+  });
+  const amountAfter = owner ? sanitizeDebuffValue(owner.amountAfter) : jsAmountAfter;
+  const turnsAfter = owner ? sanitizeDebuffValue(owner.turnsAfter) : jsTurnsAfter;
+  const active = owner ? Number(owner.active || 0) > 0 : jsActive > 0;
+  debuffs[stat] = amountAfter;
+  debuffTurns[stat] = turnsAfter;
+  if (!active || amountAfter <= 0 || turnsAfter <= 0) {
+    debuffs[stat] = 0;
+    debuffTurns[stat] = 0;
+    const idx = slots.indexOf(stat);
+    if (idx !== -1) slots.splice(idx, 1);
+  } else if (!slots.includes(stat)) {
     if (slots.length >= ENEMY_DEBUFF_SLOT_LIMIT) {
       const dropped = slots.shift();
       if (dropped) {

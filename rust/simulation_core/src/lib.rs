@@ -351,6 +351,22 @@ pub fn enemy_debuff_active_after_tick(amount_after: f64, turns_after: f64) -> f6
     }
 }
 
+pub fn enemy_debuff_apply_amount_after(amount_before: f64, add_amount: f64) -> f64 {
+    positive_floor_or_zero(amount_before) + positive_floor_or_zero(add_amount)
+}
+
+pub fn enemy_debuff_apply_turns_after(duration_turns: f64) -> f64 {
+    positive_floor_or_zero(duration_turns)
+}
+
+pub fn enemy_debuff_apply_active(amount_after: f64, turns_after: f64) -> f64 {
+    if positive_floor_or_zero(amount_after) > 0.0 && positive_floor_or_zero(turns_after) > 0.0 {
+        1.0
+    } else {
+        0.0
+    }
+}
+
 fn combatant_count(value: f64) -> usize {
     number_or_zero(value).floor().clamp(0.0, 4.0) as usize
 }
@@ -644,6 +660,24 @@ pub extern "C" fn enemy_debuff_active_after_tick_shadow(
     turns_after: f64,
 ) -> f64 {
     enemy_debuff_active_after_tick(amount_after, turns_after)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_debuff_apply_amount_after_shadow(
+    amount_before: f64,
+    add_amount: f64,
+) -> f64 {
+    enemy_debuff_apply_amount_after(amount_before, add_amount)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_debuff_apply_turns_after_shadow(duration_turns: f64) -> f64 {
+    enemy_debuff_apply_turns_after(duration_turns)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_debuff_apply_active_shadow(amount_after: f64, turns_after: f64) -> f64 {
+    enemy_debuff_apply_active(amount_after, turns_after)
 }
 
 #[cfg(test)]
@@ -997,6 +1031,37 @@ mod single_hit_resolution_tests {
             assert_eq!(amount_after, expected_amount);
             assert_eq!(
                 enemy_debuff_active_after_tick(amount_after, turns_after),
+                expected_active
+            );
+        }
+    }
+
+    #[test]
+    fn mirrors_current_enemy_debuff_apply_cases() {
+        let cases = [
+            (0.0, 2.0, 3.0, 2.0, 3.0, 1.0),
+            (4.0, 2.0, 3.0, 6.0, 3.0, 1.0),
+            (2.8, 2.2, 3.9, 4.0, 3.0, 1.0),
+            (-2.0, 2.0, 3.0, 2.0, 3.0, 1.0),
+            (4.0, 0.0, 3.0, 4.0, 3.0, 1.0),
+            (4.0, 2.0, 0.0, 6.0, 0.0, 0.0),
+        ];
+
+        for (
+            amount_before,
+            add_amount,
+            duration_turns,
+            expected_amount,
+            expected_turns,
+            expected_active,
+        ) in cases
+        {
+            let amount_after = enemy_debuff_apply_amount_after(amount_before, add_amount);
+            let turns_after = enemy_debuff_apply_turns_after(duration_turns);
+            assert_eq!(amount_after, expected_amount);
+            assert_eq!(turns_after, expected_turns);
+            assert_eq!(
+                enemy_debuff_apply_active(amount_after, turns_after),
                 expected_active
             );
         }

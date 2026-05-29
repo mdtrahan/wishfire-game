@@ -1,0 +1,7 @@
+name,amountBefore,addAmount,durationTurns,expectedAmountAfter,expectedTurnsAfter,expectedActive
+fresh_apply,0,2,3,2,3,1
+stack_existing,4,2,3,6,3,1
+floor_values,2.8,2.2,3.9,4,3,1
+invalid_existing,-2,2,3,2,3,1
+zero_add_keeps_existing,4,0,3,4,3,1
+zero_duration_inactive,4,2,0,6,0,0
