@@ -11,6 +11,7 @@ function getShadowState() {
       partyDamageOwnerChecks: 0,
       turnSummaryChecks: 0,
       turnSummaryOwnerChecks: 0,
+      enemyDotPacketOwnerChecks: 0,
       enemyDotTickChecks: 0,
       enemyDotTickOwnerChecks: 0,
       enemyDotLifecycleOwnerChecks: 0,
@@ -20,6 +21,7 @@ function getShadowState() {
       singleHitOwnerSmokeRan: false,
       partyDamageOwnerSmokeRan: false,
       turnSummaryOwnerSmokeRan: false,
+      enemyDotPacketOwnerSmokeRan: false,
       enemyDotTickOwnerSmokeRan: false,
       enemyDotLifecycleOwnerSmokeRan: false,
       enemyDebuffDecayOwnerSmokeRan: false,
@@ -34,6 +36,7 @@ function getShadowState() {
       partyDamageOwnerChecks: 0,
       turnSummaryChecks: 0,
       turnSummaryOwnerChecks: 0,
+      enemyDotPacketOwnerChecks: 0,
       enemyDotTickChecks: 0,
       enemyDotTickOwnerChecks: 0,
       enemyDotLifecycleOwnerChecks: 0,
@@ -43,6 +46,7 @@ function getShadowState() {
       singleHitOwnerSmokeRan: false,
       partyDamageOwnerSmokeRan: false,
       turnSummaryOwnerSmokeRan: false,
+      enemyDotPacketOwnerSmokeRan: false,
       enemyDotTickOwnerSmokeRan: false,
       enemyDotLifecycleOwnerSmokeRan: false,
       enemyDebuffDecayOwnerSmokeRan: false,
@@ -52,6 +56,7 @@ function getShadowState() {
       lastPartyDamageOwnerCheck: null,
       lastTurnSummaryCheck: null,
       lastTurnSummaryOwnerCheck: null,
+      lastEnemyDotPacketOwnerCheck: null,
       lastEnemyDotTickCheck: null,
       lastEnemyDotTickOwnerCheck: null,
       lastEnemyDotLifecycleOwnerCheck: null,
@@ -93,6 +98,12 @@ function updateShadowDomMarker(shadow) {
   );
   document.documentElement.dataset.simCoreShadowTurnSummaryOwner = String(
     shadow?.lastTurnSummaryOwnerCheck?.owner || '',
+  );
+  document.documentElement.dataset.simCoreShadowEnemyDotPacketOwnerChecks = String(
+    Number(shadow?.enemyDotPacketOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowEnemyDotPacketOwner = String(
+    shadow?.lastEnemyDotPacketOwnerCheck?.owner || '',
   );
   document.documentElement.dataset.simCoreShadowEnemyDotTickChecks = String(
     Number(shadow?.enemyDotTickChecks || 0),
@@ -153,6 +164,18 @@ function hasEnemyDotTickExports(exports) {
     && typeof exports?.enemy_dot_tick_next_turn_shadow === 'function';
 }
 
+function hasEnemyDotPacketExports(exports) {
+  return typeof exports?.enemy_dot_packet_target_uid_shadow === 'function'
+    && typeof exports?.enemy_dot_packet_source_uid_shadow === 'function'
+    && typeof exports?.enemy_dot_packet_remaining_fires_shadow === 'function'
+    && typeof exports?.enemy_dot_packet_total_damage_remaining_shadow === 'function'
+    && typeof exports?.enemy_dot_packet_fires_every_ticks_shadow === 'function'
+    && typeof exports?.enemy_dot_packet_next_fire_tick_shadow === 'function'
+    && typeof exports?.enemy_dot_packet_fires_every_turns_shadow === 'function'
+    && typeof exports?.enemy_dot_packet_next_fire_turn_serial_shadow === 'function'
+    && typeof exports?.enemy_dot_packet_last_processed_turn_serial_shadow === 'function';
+}
+
 function hasEnemyDotLifecycleExports(exports) {
   return typeof exports?.enemy_dot_lifecycle_action_shadow === 'function';
 }
@@ -173,6 +196,7 @@ function hasRequiredExports(exports) {
     && hasSingleHitExports(exports)
     && hasPartyDamageExports(exports)
     && hasTurnSummaryExports(exports)
+    && hasEnemyDotPacketExports(exports)
     && hasEnemyDotTickExports(exports)
     && hasEnemyDotLifecycleExports(exports)
     && hasEnemyDebuffDecayExports(exports);
@@ -249,6 +273,36 @@ function runEnemyDotTickOwnerStartupCheck(shadow) {
   });
 }
 
+function runEnemyDotPacketOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.enemyDotPacketOwnerSmokeRan) return;
+  shadow.enemyDotPacketOwnerSmokeRan = true;
+  createSimulationCoreEnemyDotPacketResolution({
+    source: 'simulationCore.startup.enemyDotPacketOwner',
+    actorUID: 100,
+    enemyUID: 200,
+    totalDamage: 25,
+    totalTicks: 3,
+    nowTick: 4,
+    nowTurnSerial: 20,
+    firesEveryTicks: 1,
+    startAfterTicks: 1,
+    firesEveryTurns: 2,
+    startAfterTurns: 3,
+    cadence: 'turn',
+    effectName: 'Blight',
+    taintedGroundZoneId: '',
+    jsTargetUID: 200,
+    jsSourceUID: 100,
+    jsRemainingFires: 3,
+    jsTotalDamageRemaining: 25,
+    jsFiresEveryTicks: 1,
+    jsNextFireTick: 5,
+    jsFiresEveryTurns: 2,
+    jsNextFireTurnSerial: 23,
+    jsLastProcessedTurnSerial: 20,
+  });
+}
+
 function runEnemyDotLifecycleOwnerStartupCheck(shadow) {
   if (!shadow || shadow.enemyDotLifecycleOwnerSmokeRan) return;
   shadow.enemyDotLifecycleOwnerSmokeRan = true;
@@ -303,6 +357,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_PARTY_DAMAGE_OWNER__ = createSimulationCorePartyDamageResolution;
     window.__ORKA_TURN_SUMMARY_SHADOW__ = shadowTurnSummary;
     window.__ORKA_TURN_SUMMARY_OWNER__ = createSimulationCoreTurnSummaryResolution;
+    window.__ORKA_ENEMY_DOT_PACKET_OWNER__ = createSimulationCoreEnemyDotPacketResolution;
     window.__ORKA_ENEMY_DOT_TICK_SHADOW__ = shadowEnemyDotTick;
     window.__ORKA_ENEMY_DOT_TICK_OWNER__ = createSimulationCoreEnemyDotTickResolution;
     window.__ORKA_ENEMY_DOT_LIFECYCLE_OWNER__ = createSimulationCoreEnemyDotLifecycleResolution;
@@ -326,6 +381,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
         runSingleHitOwnerStartupCheck(shadow);
         runPartyDamageOwnerStartupCheck(shadow);
         runTurnSummaryOwnerStartupCheck(shadow);
+        runEnemyDotPacketOwnerStartupCheck(shadow);
         runEnemyDotTickOwnerStartupCheck(shadow);
         runEnemyDotLifecycleOwnerStartupCheck(shadow);
         runEnemyDebuffDecayOwnerStartupCheck(shadow);
@@ -791,6 +847,133 @@ export function createSimulationCoreSingleHitResolution({
     appliedDamage: rustAppliedDamage,
     afterHp: rustAfterHp,
   };
+}
+
+export function createSimulationCoreEnemyDotPacketResolution({
+  source = 'unknown',
+  actorUID = 0,
+  enemyUID = 0,
+  totalDamage = 0,
+  totalTicks = 1,
+  nowTick = 0,
+  nowTurnSerial = 0,
+  firesEveryTicks = 1,
+  startAfterTicks = 1,
+  firesEveryTurns = 1,
+  startAfterTurns = 1,
+  cadence = '',
+  effectName = '',
+  taintedGroundZoneId = '',
+  jsTargetUID = 0,
+  jsSourceUID = 0,
+  jsRemainingFires = 0,
+  jsTotalDamageRemaining = 0,
+  jsFiresEveryTicks = 0,
+  jsNextFireTick = 0,
+  jsFiresEveryTurns = 0,
+  jsNextFireTurnSerial = 0,
+  jsLastProcessedTurnSerial = 0,
+} = {}, { exportsOverride = null } = {}) {
+  const shadow = getShadowState();
+  const normalized = {
+    source,
+    actorUID: Number(actorUID || 0),
+    enemyUID: Number(enemyUID || 0),
+    totalDamage: Number(totalDamage || 0),
+    totalTicks: Number(totalTicks || 0),
+    nowTick: Number(nowTick || 0),
+    nowTurnSerial: Number(nowTurnSerial || 0),
+    firesEveryTicks: Number(firesEveryTicks || 0),
+    startAfterTicks: Number(startAfterTicks || 0),
+    firesEveryTurns: Number(firesEveryTurns || 0),
+    startAfterTurns: Number(startAfterTurns || 0),
+    cadence: String(cadence || ''),
+    effectName: String(effectName || ''),
+    taintedGroundZoneId: String(taintedGroundZoneId || ''),
+    jsTargetUID: Number(jsTargetUID || 0),
+    jsSourceUID: Number(jsSourceUID || 0),
+    jsRemainingFires: Number(jsRemainingFires || 0),
+    jsTotalDamageRemaining: Number(jsTotalDamageRemaining || 0),
+    jsFiresEveryTicks: Number(jsFiresEveryTicks || 0),
+    jsNextFireTick: Number(jsNextFireTick || 0),
+    jsFiresEveryTurns: Number(jsFiresEveryTurns || 0),
+    jsNextFireTurnSerial: Number(jsNextFireTurnSerial || 0),
+    jsLastProcessedTurnSerial: Number(jsLastProcessedTurnSerial || 0),
+  };
+  const fallback = {
+    owner: 'fallback',
+    targetUID: normalized.jsTargetUID,
+    sourceUID: normalized.jsSourceUID,
+    remainingFires: normalized.jsRemainingFires,
+    totalDamageRemaining: normalized.jsTotalDamageRemaining,
+    firesEveryTicks: normalized.jsFiresEveryTicks,
+    nextFireTick: normalized.jsNextFireTick,
+    firesEveryTurns: normalized.jsFiresEveryTurns,
+    nextFireTurnSerial: normalized.jsNextFireTurnSerial,
+    lastProcessedTurnSerial: normalized.jsLastProcessedTurnSerial,
+    cadence: normalized.cadence,
+    effectName: normalized.effectName,
+    taintedGroundZoneId: normalized.taintedGroundZoneId,
+  };
+  const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+  if (!hasEnemyDotPacketExports(exports)) {
+    shadow.enemyDotPacketOwnerChecks = Number(shadow.enemyDotPacketOwnerChecks || 0) + 1;
+    shadow.lastEnemyDotPacketOwnerCheck = {
+      ...normalized,
+      ...fallback,
+    };
+    updateShadowDomMarker(shadow);
+    return fallback;
+  }
+
+  const rustPacket = {
+    owner: 'rust',
+    targetUID: Number(exports.enemy_dot_packet_target_uid_shadow(normalized.enemyUID)),
+    sourceUID: Number(exports.enemy_dot_packet_source_uid_shadow(normalized.actorUID)),
+    remainingFires: Number(exports.enemy_dot_packet_remaining_fires_shadow(normalized.totalTicks)),
+    totalDamageRemaining: Number(exports.enemy_dot_packet_total_damage_remaining_shadow(normalized.totalDamage)),
+    firesEveryTicks: Number(exports.enemy_dot_packet_fires_every_ticks_shadow(normalized.firesEveryTicks)),
+    nextFireTick: Number(exports.enemy_dot_packet_next_fire_tick_shadow(
+      normalized.nowTick,
+      normalized.startAfterTicks,
+    )),
+    firesEveryTurns: Number(exports.enemy_dot_packet_fires_every_turns_shadow(normalized.firesEveryTurns)),
+    nextFireTurnSerial: Number(exports.enemy_dot_packet_next_fire_turn_serial_shadow(
+      normalized.nowTurnSerial,
+      normalized.startAfterTurns,
+    )),
+    lastProcessedTurnSerial: Number(
+      exports.enemy_dot_packet_last_processed_turn_serial_shadow(normalized.nowTurnSerial),
+    ),
+    cadence: normalized.cadence,
+    effectName: normalized.effectName,
+    taintedGroundZoneId: normalized.taintedGroundZoneId,
+  };
+  shadow.enemyDotPacketOwnerChecks = Number(shadow.enemyDotPacketOwnerChecks || 0) + 1;
+  shadow.lastEnemyDotPacketOwnerCheck = {
+    ...normalized,
+    ...rustPacket,
+  };
+  if (
+    !exportsOverride
+    && (
+      Math.abs(rustPacket.targetUID - normalized.jsTargetUID) > 0.000001
+      || Math.abs(rustPacket.sourceUID - normalized.jsSourceUID) > 0.000001
+      || Math.abs(rustPacket.remainingFires - normalized.jsRemainingFires) > 0.000001
+      || Math.abs(rustPacket.totalDamageRemaining - normalized.jsTotalDamageRemaining) > 0.000001
+      || Math.abs(rustPacket.firesEveryTicks - normalized.jsFiresEveryTicks) > 0.000001
+      || Math.abs(rustPacket.nextFireTick - normalized.jsNextFireTick) > 0.000001
+      || Math.abs(rustPacket.firesEveryTurns - normalized.jsFiresEveryTurns) > 0.000001
+      || Math.abs(rustPacket.nextFireTurnSerial - normalized.jsNextFireTurnSerial) > 0.000001
+      || Math.abs(rustPacket.lastProcessedTurnSerial - normalized.jsLastProcessedTurnSerial) > 0.000001
+    )
+  ) {
+    shadow.mismatches.push(shadow.lastEnemyDotPacketOwnerCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastEnemyDotPacketOwnerCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return rustPacket;
 }
 
 export function createSimulationCoreEnemyDotTickResolution({

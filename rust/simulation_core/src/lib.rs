@@ -30,6 +30,15 @@ fn positive_floor_or_zero(value: f64) -> f64 {
     }
 }
 
+fn positive_floor_or_one(value: f64) -> f64 {
+    let normalized = if value.is_finite() && value != 0.0 {
+        value
+    } else {
+        1.0
+    };
+    normalized.floor().max(1.0)
+}
+
 pub fn combat_power(atk: f64, def: f64, hp: f64) -> f64 {
     let a = number_or_zero(atk);
     let d = number_or_zero(def);
@@ -241,6 +250,42 @@ pub fn enemy_dot_tick_remaining_fires(remaining_fires: f64) -> f64 {
 
 pub fn enemy_dot_tick_next_turn(next_fire_turn_serial: f64, fires_every_turns: f64) -> f64 {
     number_or_zero(next_fire_turn_serial) + number_or_zero(fires_every_turns).floor().max(1.0)
+}
+
+pub fn enemy_dot_packet_target_uid(enemy_uid: f64) -> f64 {
+    number_or_zero(enemy_uid)
+}
+
+pub fn enemy_dot_packet_source_uid(actor_uid: f64) -> f64 {
+    number_or_zero(actor_uid)
+}
+
+pub fn enemy_dot_packet_remaining_fires(total_ticks: f64) -> f64 {
+    positive_floor_or_one(total_ticks)
+}
+
+pub fn enemy_dot_packet_total_damage_remaining(total_damage: f64) -> f64 {
+    positive_floor_or_one(total_damage)
+}
+
+pub fn enemy_dot_packet_fires_every_ticks(fires_every_ticks: f64) -> f64 {
+    positive_floor_or_one(fires_every_ticks)
+}
+
+pub fn enemy_dot_packet_next_fire_tick(now_tick: f64, start_after_ticks: f64) -> f64 {
+    number_or_zero(now_tick) + positive_floor_or_one(start_after_ticks)
+}
+
+pub fn enemy_dot_packet_fires_every_turns(fires_every_turns: f64) -> f64 {
+    positive_floor_or_one(fires_every_turns)
+}
+
+pub fn enemy_dot_packet_next_fire_turn_serial(now_turn_serial: f64, start_after_turns: f64) -> f64 {
+    number_or_zero(now_turn_serial) + positive_floor_or_one(start_after_turns)
+}
+
+pub fn enemy_dot_packet_last_processed_turn_serial(now_turn_serial: f64) -> f64 {
+    number_or_zero(now_turn_serial)
 }
 
 pub fn enemy_dot_lifecycle_action(
@@ -500,6 +545,57 @@ pub extern "C" fn enemy_dot_tick_next_turn_shadow(
     fires_every_turns: f64,
 ) -> f64 {
     enemy_dot_tick_next_turn(next_fire_turn_serial, fires_every_turns)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_dot_packet_target_uid_shadow(enemy_uid: f64) -> f64 {
+    enemy_dot_packet_target_uid(enemy_uid)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_dot_packet_source_uid_shadow(actor_uid: f64) -> f64 {
+    enemy_dot_packet_source_uid(actor_uid)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_dot_packet_remaining_fires_shadow(total_ticks: f64) -> f64 {
+    enemy_dot_packet_remaining_fires(total_ticks)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_dot_packet_total_damage_remaining_shadow(total_damage: f64) -> f64 {
+    enemy_dot_packet_total_damage_remaining(total_damage)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_dot_packet_fires_every_ticks_shadow(fires_every_ticks: f64) -> f64 {
+    enemy_dot_packet_fires_every_ticks(fires_every_ticks)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_dot_packet_next_fire_tick_shadow(
+    now_tick: f64,
+    start_after_ticks: f64,
+) -> f64 {
+    enemy_dot_packet_next_fire_tick(now_tick, start_after_ticks)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_dot_packet_fires_every_turns_shadow(fires_every_turns: f64) -> f64 {
+    enemy_dot_packet_fires_every_turns(fires_every_turns)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_dot_packet_next_fire_turn_serial_shadow(
+    now_turn_serial: f64,
+    start_after_turns: f64,
+) -> f64 {
+    enemy_dot_packet_next_fire_turn_serial(now_turn_serial, start_after_turns)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_dot_packet_last_processed_turn_serial_shadow(now_turn_serial: f64) -> f64 {
+    enemy_dot_packet_last_processed_turn_serial(now_turn_serial)
 }
 
 #[no_mangle]
@@ -799,6 +895,86 @@ mod single_hit_resolution_tests {
                     last_processed,
                 ),
                 expected
+            );
+        }
+    }
+
+    #[test]
+    fn mirrors_current_enemy_dot_packet_cases() {
+        let cases = [
+            (
+                100.0, 200.0, 16.0, 8.0, 40.0, 12.0, 1.0, 1.0, 1.0, 1.0, 200.0, 100.0, 8.0, 16.0,
+                1.0, 41.0, 1.0, 13.0, 12.0,
+            ),
+            (
+                101.0, 201.0, 25.9, 3.8, 4.0, 20.0, 2.8, 5.2, 2.4, 3.9, 201.0, 101.0, 3.0, 25.0,
+                2.0, 9.0, 2.0, 23.0, 20.0,
+            ),
+            (
+                102.0, 202.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 202.0, 102.0, 1.0, 1.0, 1.0,
+                1.0, 1.0, 1.0, 0.0,
+            ),
+            (
+                -3.0, -9.0, -12.0, -4.0, 7.0, 8.0, -1.0, -2.0, -3.0, -4.0, -9.0, -3.0, 1.0, 1.0,
+                1.0, 8.0, 1.0, 9.0, 8.0,
+            ),
+            (
+                100.8, 200.9, 7.9, 2.9, 10.5, 11.5, 1.9, 2.1, 3.7, 4.2, 200.9, 100.8, 2.0, 7.0,
+                1.0, 12.5, 3.0, 15.5, 11.5,
+            ),
+        ];
+
+        for (
+            actor_uid,
+            enemy_uid,
+            total_damage,
+            total_ticks,
+            now_tick,
+            now_turn,
+            fires_every_ticks,
+            start_after_ticks,
+            fires_every_turns,
+            start_after_turns,
+            expected_target_uid,
+            expected_source_uid,
+            expected_remaining_fires,
+            expected_total_damage,
+            expected_fires_every_ticks,
+            expected_next_fire_tick,
+            expected_fires_every_turns,
+            expected_next_fire_turn,
+            expected_last_processed_turn,
+        ) in cases
+        {
+            assert_eq!(enemy_dot_packet_target_uid(enemy_uid), expected_target_uid);
+            assert_eq!(enemy_dot_packet_source_uid(actor_uid), expected_source_uid);
+            assert_eq!(
+                enemy_dot_packet_remaining_fires(total_ticks),
+                expected_remaining_fires
+            );
+            assert_eq!(
+                enemy_dot_packet_total_damage_remaining(total_damage),
+                expected_total_damage
+            );
+            assert_eq!(
+                enemy_dot_packet_fires_every_ticks(fires_every_ticks),
+                expected_fires_every_ticks
+            );
+            assert_eq!(
+                enemy_dot_packet_next_fire_tick(now_tick, start_after_ticks),
+                expected_next_fire_tick
+            );
+            assert_eq!(
+                enemy_dot_packet_fires_every_turns(fires_every_turns),
+                expected_fires_every_turns
+            );
+            assert_eq!(
+                enemy_dot_packet_next_fire_turn_serial(now_turn, start_after_turns),
+                expected_next_fire_turn
+            );
+            assert_eq!(
+                enemy_dot_packet_last_processed_turn_serial(now_turn),
+                expected_last_processed_turn
             );
         }
     }

@@ -4018,6 +4018,72 @@ function maybeResolveEnemyDotLifecycleOwner(ctx, payload = {}) {
   }
 }
 
+function positiveFloorOrOne(value) {
+  return Math.max(1, Math.floor(Number(value || 1) || 1));
+}
+
+function maybeResolveEnemyDotPacketOwner(ctx, payload = {}) {
+  const g = getGlobals(ctx);
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const enemyDotPacketOwnerHook = root && typeof root.__ORKA_ENEMY_DOT_PACKET_OWNER__ === 'function'
+    ? root.__ORKA_ENEMY_DOT_PACKET_OWNER__
+    : null;
+  if (typeof enemyDotPacketOwnerHook !== 'function') return null;
+  const snapshot = {
+    source: String(payload.source || 'unknown'),
+    actorUID: Number(payload.actorUID || 0),
+    enemyUID: Number(payload.enemyUID || 0),
+    totalDamage: Number(payload.totalDamage || 0),
+    totalTicks: Number(payload.totalTicks || 0),
+    nowTick: Number(payload.nowTick || 0),
+    nowTurnSerial: Number(payload.nowTurnSerial || 0),
+    firesEveryTicks: Number(payload.firesEveryTicks || 0),
+    startAfterTicks: Number(payload.startAfterTicks || 0),
+    firesEveryTurns: Number(payload.firesEveryTurns || 0),
+    startAfterTurns: Number(payload.startAfterTurns || 0),
+    cadence: String(payload.cadence || ''),
+    effectName: String(payload.effectName || ''),
+    taintedGroundZoneId: String(payload.taintedGroundZoneId || ''),
+    jsTargetUID: Number(payload.jsTargetUID || 0),
+    jsSourceUID: Number(payload.jsSourceUID || 0),
+    jsRemainingFires: Number(payload.jsRemainingFires || 0),
+    jsTotalDamageRemaining: Number(payload.jsTotalDamageRemaining || 0),
+    jsFiresEveryTicks: Number(payload.jsFiresEveryTicks || 0),
+    jsNextFireTick: Number(payload.jsNextFireTick || 0),
+    jsFiresEveryTurns: Number(payload.jsFiresEveryTurns || 0),
+    jsNextFireTurnSerial: Number(payload.jsNextFireTurnSerial || 0),
+    jsLastProcessedTurnSerial: Number(payload.jsLastProcessedTurnSerial || 0),
+  };
+  try {
+    const result = enemyDotPacketOwnerHook(snapshot);
+    const packet = {
+      targetUID: Number(result?.targetUID),
+      sourceUID: Number(result?.sourceUID),
+      remainingFires: Number(result?.remainingFires),
+      totalDamageRemaining: Number(result?.totalDamageRemaining),
+      firesEveryTicks: Number(result?.firesEveryTicks),
+      nextFireTick: Number(result?.nextFireTick),
+      firesEveryTurns: Number(result?.firesEveryTurns),
+      nextFireTurnSerial: Number(result?.nextFireTurnSerial),
+      lastProcessedTurnSerial: Number(result?.lastProcessedTurnSerial),
+      cadence: snapshot.cadence,
+      effectName: snapshot.effectName,
+      taintedGroundZoneId: snapshot.taintedGroundZoneId,
+    };
+    if (Object.values(packet).some((value) => typeof value === 'number' && !Number.isFinite(value))) {
+      return null;
+    }
+    g.LastEnemyDotPacketOwner = {
+      owner: String(result?.owner || 'rust'),
+      ...packet,
+    };
+    return g.LastEnemyDotPacketOwner;
+  } catch (err) {
+    g.LastEnemyDotPacketOwnerError = String(err?.message || err || 'unknown');
+    return null;
+  }
+}
+
 function maybeResolveEnemyDebuffDecayOwner(ctx, payload = {}) {
   const g = getGlobals(ctx);
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
@@ -5074,7 +5140,12 @@ export function QueueEnemyDamageOverTime(ctx, actorUID, enemyUID, totalDamage, o
   const enemy = GetActorByUID(ctx, enemyUID);
   const actor = GetActorByUID(ctx, actorUID);
   if (!enemy || !actor || Number(enemy.hp || 0) <= 0) return 0;
-  const totalTicks = Math.max(1, Math.floor(Number(options?.totalTicks || 8) || 8));
+  const requestedTotalTicks = options?.totalTicks || 8;
+  const requestedFiresEveryTicks = options?.firesEveryTicks || 1;
+  const requestedStartAfterTicks = options?.startAfterTicks || 1;
+  const requestedFiresEveryTurns = options?.firesEveryTurns || 1;
+  const requestedStartAfterTurns = options?.startAfterTurns || 1;
+  const totalTicks = positiveFloorOrOne(requestedTotalTicks);
   const nowTick = Number(g.RegenTickCounter || 0);
   const nowTurnSerial = Number(g.TurnSerial || 0);
   const effectName = String(options?.effectName || 'Blight');
@@ -5091,19 +5162,59 @@ export function QueueEnemyDamageOverTime(ctx, actorUID, enemyUID, totalDamage, o
     if (String(existing.taintedGroundZoneId || '') !== taintedGroundZoneId) continue;
     g.EnemyDamageOverTime.splice(i, 1);
   }
-  g.EnemyDamageOverTime.push({
+  const jsPacket = {
     targetUID: Number(enemyUID || 0),
     sourceUID: Number(actorUID || 0),
     remainingFires: totalTicks,
-    totalDamageRemaining: Math.max(1, Math.floor(Number(totalDamage || 0) || 1)),
-    firesEveryTicks: Math.max(1, Math.floor(Number(options?.firesEveryTicks || 1) || 1)),
-    nextFireTick: nowTick + Math.max(1, Math.floor(Number(options?.startAfterTicks || 1) || 1)),
+    totalDamageRemaining: positiveFloorOrOne(totalDamage || 0),
+    firesEveryTicks: positiveFloorOrOne(requestedFiresEveryTicks),
+    nextFireTick: nowTick + positiveFloorOrOne(requestedStartAfterTicks),
     cadence,
-    firesEveryTurns: Math.max(1, Math.floor(Number(options?.firesEveryTurns || 1) || 1)),
-    nextFireTurnSerial: nowTurnSerial + Math.max(1, Math.floor(Number(options?.startAfterTurns || 1) || 1)),
+    firesEveryTurns: positiveFloorOrOne(requestedFiresEveryTurns),
+    nextFireTurnSerial: nowTurnSerial + positiveFloorOrOne(requestedStartAfterTurns),
     lastProcessedTurnSerial: nowTurnSerial,
     effectName,
     taintedGroundZoneId,
+  };
+  const ownerPacket = maybeResolveEnemyDotPacketOwner(ctx, {
+    source: 'functionBank.QueueEnemyDamageOverTime',
+    actorUID,
+    enemyUID,
+    totalDamage,
+    totalTicks: requestedTotalTicks,
+    nowTick,
+    nowTurnSerial,
+    firesEveryTicks: requestedFiresEveryTicks,
+    startAfterTicks: requestedStartAfterTicks,
+    firesEveryTurns: requestedFiresEveryTurns,
+    startAfterTurns: requestedStartAfterTurns,
+    cadence,
+    effectName,
+    taintedGroundZoneId,
+    jsTargetUID: jsPacket.targetUID,
+    jsSourceUID: jsPacket.sourceUID,
+    jsRemainingFires: jsPacket.remainingFires,
+    jsTotalDamageRemaining: jsPacket.totalDamageRemaining,
+    jsFiresEveryTicks: jsPacket.firesEveryTicks,
+    jsNextFireTick: jsPacket.nextFireTick,
+    jsFiresEveryTurns: jsPacket.firesEveryTurns,
+    jsNextFireTurnSerial: jsPacket.nextFireTurnSerial,
+    jsLastProcessedTurnSerial: jsPacket.lastProcessedTurnSerial,
+  });
+  const packet = ownerPacket || jsPacket;
+  g.EnemyDamageOverTime.push({
+    targetUID: Number(packet.targetUID || 0),
+    sourceUID: Number(packet.sourceUID || 0),
+    remainingFires: Number(packet.remainingFires || 0),
+    totalDamageRemaining: Number(packet.totalDamageRemaining || 0),
+    firesEveryTicks: Number(packet.firesEveryTicks || 0),
+    nextFireTick: Number(packet.nextFireTick || 0),
+    cadence: String(packet.cadence || cadence),
+    firesEveryTurns: Number(packet.firesEveryTurns || 0),
+    nextFireTurnSerial: Number(packet.nextFireTurnSerial || 0),
+    lastProcessedTurnSerial: Number(packet.lastProcessedTurnSerial || 0),
+    effectName: String(packet.effectName || effectName),
+    taintedGroundZoneId: String(packet.taintedGroundZoneId || taintedGroundZoneId),
   });
   LogCombat(ctx, `${actor.name || 'Hero'} applies ${effectName} to ${enemy.name || 'Enemy'}!`);
   return 1;
