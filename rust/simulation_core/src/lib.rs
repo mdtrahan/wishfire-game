@@ -151,6 +151,44 @@ pub fn single_hit_after_hp(target_hp: f64, incoming_damage: f64, shield: f64) ->
     (before_hp - damage_to_hp).max(0.0)
 }
 
+pub fn party_damage_absorbed(incoming_damage: f64, shield: f64) -> f64 {
+    let incoming = number_or_zero(incoming_damage).max(0.0);
+    let shield = number_or_zero(shield).max(0.0);
+    shield.min(incoming)
+}
+
+pub fn party_damage_after_shield(incoming_damage: f64, shield: f64) -> f64 {
+    let incoming = number_or_zero(incoming_damage).max(0.0);
+    (incoming - party_damage_absorbed(incoming_damage, shield)).max(0.0)
+}
+
+pub fn party_damage_shield_after(incoming_damage: f64, shield: f64) -> f64 {
+    let shield = number_or_zero(shield).max(0.0);
+    (shield - party_damage_absorbed(incoming_damage, shield)).max(0.0)
+}
+
+pub fn party_damage_hero_after_hp(hero_hp: f64, damage_after_shield: f64) -> f64 {
+    let before_hp = number_or_zero(hero_hp).max(0.0);
+    let damage = number_or_zero(damage_after_shield).max(0.0);
+    (before_hp - damage).max(0.0)
+}
+
+pub fn party_damage_party_hp_after(
+    hero_count: f64,
+    hero0_hp: f64,
+    hero1_hp: f64,
+    hero2_hp: f64,
+    hero3_hp: f64,
+    damage_after_shield: f64,
+) -> f64 {
+    let values = [hero0_hp, hero1_hp, hero2_hp, hero3_hp];
+    values
+        .iter()
+        .take(combatant_count(hero_count))
+        .map(|hp| party_damage_hero_after_hp(*hp, damage_after_shield))
+        .sum()
+}
+
 pub fn enemy_dot_tick_damage(
     total_damage_remaining: f64,
     remaining_fires: f64,
@@ -285,6 +323,48 @@ pub extern "C" fn single_hit_after_hp_shadow(
 }
 
 #[no_mangle]
+pub extern "C" fn party_damage_absorbed_shadow(incoming_damage: f64, shield: f64) -> f64 {
+    party_damage_absorbed(incoming_damage, shield)
+}
+
+#[no_mangle]
+pub extern "C" fn party_damage_after_shield_shadow(incoming_damage: f64, shield: f64) -> f64 {
+    party_damage_after_shield(incoming_damage, shield)
+}
+
+#[no_mangle]
+pub extern "C" fn party_damage_shield_after_shadow(incoming_damage: f64, shield: f64) -> f64 {
+    party_damage_shield_after(incoming_damage, shield)
+}
+
+#[no_mangle]
+pub extern "C" fn party_damage_hero_after_hp_shadow(
+    hero_hp: f64,
+    damage_after_shield: f64,
+) -> f64 {
+    party_damage_hero_after_hp(hero_hp, damage_after_shield)
+}
+
+#[no_mangle]
+pub extern "C" fn party_damage_party_hp_after_shadow(
+    hero_count: f64,
+    hero0_hp: f64,
+    hero1_hp: f64,
+    hero2_hp: f64,
+    hero3_hp: f64,
+    damage_after_shield: f64,
+) -> f64 {
+    party_damage_party_hp_after(
+        hero_count,
+        hero0_hp,
+        hero1_hp,
+        hero2_hp,
+        hero3_hp,
+        damage_after_shield,
+    )
+}
+
+#[no_mangle]
 pub extern "C" fn turn_summary_code_shadow(
     hero_count: f64,
     hero0_hp: f64,
@@ -396,6 +476,31 @@ mod single_hit_resolution_tests {
             assert_eq!(rust_damage, damage);
             assert_eq!(single_hit_applied_damage(hp, rust_damage, shield), applied);
             assert_eq!(single_hit_after_hp(hp, rust_damage, shield), after_hp);
+        }
+    }
+
+    #[test]
+    fn mirrors_current_party_damage_accounting_cases() {
+        let cases = [
+            (12.0, 5.0, [20.0, 16.0, 12.0, 8.0], 5.0, 7.0, 0.0, [13.0, 9.0, 5.0, 1.0], 28.0),
+            (4.0, 10.0, [20.0, 16.0, 12.0, 8.0], 4.0, 0.0, 6.0, [20.0, 16.0, 12.0, 8.0], 56.0),
+            (40.0, 0.0, [9.0, 6.0, 3.0, 1.0], 0.0, 40.0, 0.0, [0.0, 0.0, 0.0, 0.0], 0.0),
+        ];
+
+        for (incoming, shield, hp, absorbed, after_shield, shield_after, expected_hp, party_hp) in cases {
+            assert_eq!(party_damage_absorbed(incoming, shield), absorbed);
+            assert_eq!(party_damage_after_shield(incoming, shield), after_shield);
+            assert_eq!(party_damage_shield_after(incoming, shield), shield_after);
+            for index in 0..4 {
+                assert_eq!(
+                    party_damage_hero_after_hp(hp[index], after_shield),
+                    expected_hp[index]
+                );
+            }
+            assert_eq!(
+                party_damage_party_hp_after(4.0, hp[0], hp[1], hp[2], hp[3], after_shield),
+                party_hp
+            );
         }
     }
 

@@ -4036,14 +4036,32 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
 }
 
 function absorbPartyTempHPShield(g, dmg) {
+  const result = computePartyTempHPShieldAbsorption(g, dmg);
+  return applyPartyTempHPShieldAbsorptionResult(g, result);
+}
+
+function computePartyTempHPShieldAbsorption(g, dmg) {
   const incoming = Math.max(0, Number(dmg || 0));
   const shieldBefore = Math.max(0, Number(g.PartyTempHPShield || 0));
   const absorbed = Math.min(shieldBefore, incoming);
+  const shieldAfter = Math.max(0, shieldBefore - absorbed);
+  return {
+    incoming,
+    shieldBefore,
+    damageAfterShield: Math.max(0, incoming - absorbed),
+    absorbed,
+    shieldAfter,
+  };
+}
+
+function applyPartyTempHPShieldAbsorptionResult(g, result = {}) {
+  const absorbed = Math.max(0, Number(result.absorbed || 0));
+  const shieldAfter = Math.max(0, Number(result.shieldAfter || 0));
+  const damageAfterShield = Math.max(0, Number(result.damageAfterShield || 0));
   if (absorbed <= 0) {
     g.LastPartyTempHPShieldAbsorbed = 0;
-    return { damageAfterShield: incoming, absorbed: 0 };
+    return { damageAfterShield, absorbed: 0, shieldAfter };
   }
-  const shieldAfter = Math.max(0, shieldBefore - absorbed);
   g.PartyTempHPShield = shieldAfter;
   g.LastPartyTempHPShieldAbsorbed = absorbed;
   if (shieldAfter <= 0) {
@@ -4051,7 +4069,7 @@ function absorbPartyTempHPShield(g, dmg) {
     g.PartyTempHPShieldRatio = 0;
     g.PartyTempHPShieldMax = 0;
   }
-  return { damageAfterShield: Math.max(0, incoming - absorbed), absorbed };
+  return { damageAfterShield, absorbed, shieldAfter };
 }
 
 const FALIE_WARD_BARRIER_FADE_OUT_SEC = 0.28;
@@ -4686,16 +4704,83 @@ export function ApplyDamage(ctx, targetUID, dmg) {
   ApplyDamageToTarget(ctx, targetUID, dmg);
 }
 
+function collectPartyDamageOwnerSnapshot(ctx, dmg) {
+  const g = getGlobals(ctx);
+  const heroes = getHeroes(ctx).slice(0, 4);
+  const shieldResult = computePartyTempHPShieldAbsorption(g, dmg);
+  const heroHp = [0, 1, 2, 3].map((index) => Number(heroes[index]?.hp || 0));
+  const jsHeroHp = heroHp.map((hp, index) =>
+    index < heroes.length ? Math.max(0, hp - shieldResult.damageAfterShield) : 0
+  );
+  return {
+    source: 'functionBank.ApplyPartyDamage',
+    incomingDamage: Number(shieldResult.incoming || 0),
+    shield: Number(shieldResult.shieldBefore || 0),
+    heroCount: heroes.length,
+    heroHp,
+    jsAbsorbed: Number(shieldResult.absorbed || 0),
+    jsDamageAfterShield: Number(shieldResult.damageAfterShield || 0),
+    jsShieldAfter: Number(shieldResult.shieldAfter || 0),
+    jsHeroHp,
+    jsPartyHp: sum(jsHeroHp.slice(0, heroes.length)),
+  };
+}
+
+function maybeResolvePartyDamageOwner(ctx, snapshot) {
+  const g = getGlobals(ctx);
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const partyDamageOwnerHook = root && typeof root.__ORKA_PARTY_DAMAGE_OWNER__ === 'function'
+    ? root.__ORKA_PARTY_DAMAGE_OWNER__
+    : null;
+  if (typeof partyDamageOwnerHook !== 'function') return null;
+  try {
+    const result = partyDamageOwnerHook(snapshot);
+    const heroCount = Math.max(0, Math.min(4, Math.floor(Number(snapshot.heroCount || 0))));
+    const heroHp = Array.isArray(result?.heroHp)
+      ? [0, 1, 2, 3].map((index) => Number(result.heroHp[index] || 0))
+      : [];
+    if (heroHp.slice(0, heroCount).some((hp) => !Number.isFinite(hp))) return null;
+    const owner = {
+      owner: String(result?.owner || 'rust'),
+      absorbed: Number(result?.absorbed),
+      damageAfterShield: Number(result?.damageAfterShield),
+      shieldAfter: Number(result?.shieldAfter),
+      heroHp,
+      partyHp: Number(result?.partyHp),
+    };
+    if (
+      !Number.isFinite(owner.absorbed)
+      || !Number.isFinite(owner.damageAfterShield)
+      || !Number.isFinite(owner.shieldAfter)
+      || !Number.isFinite(owner.partyHp)
+    ) {
+      return null;
+    }
+    g.LastPartyDamageOwner = owner;
+    return owner;
+  } catch (err) {
+    g.LastPartyDamageOwnerError = String(err?.message || err || 'unknown');
+    return null;
+  }
+}
+
 export function ApplyPartyDamage(ctx, dmg) {
   const g = getGlobals(ctx);
-  const shieldResult = absorbPartyTempHPShield(g, dmg);
-  const damageToHP = shieldResult.damageAfterShield;
+  const snapshot = collectPartyDamageOwnerSnapshot(ctx, dmg);
+  const ownerResult = maybeResolvePartyDamageOwner(ctx, snapshot);
+  const shieldResult = applyPartyTempHPShieldAbsorptionResult(g, ownerResult || {
+    absorbed: snapshot.jsAbsorbed,
+    damageAfterShield: snapshot.jsDamageAfterShield,
+    shieldAfter: snapshot.jsShieldAfter,
+  });
   if (shieldResult.absorbed > 0 && Number(g.PartyTempHPShield || 0) <= 0) {
     startPartyWardBarrierFadeOut(ctx);
   }
   const heroes = getHeroes(ctx);
-  for (const h of heroes) {
-    h.hp = Math.max(0, (h.hp ?? 0) - damageToHP);
+  const nextHeroHp = ownerResult ? ownerResult.heroHp : snapshot.jsHeroHp;
+  for (let index = 0; index < heroes.length; index += 1) {
+    const h = heroes[index];
+    h.hp = Math.max(0, Number(nextHeroHp[index] ?? h.hp ?? 0));
     if (h.hp === 0) h.isAlive = false;
   }
   UpdateHeroHPUI(ctx);
