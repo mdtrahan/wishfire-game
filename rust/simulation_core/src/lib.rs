@@ -395,6 +395,54 @@ pub fn enemy_job_skill_return_value(action_code: f64) -> f64 {
     }
 }
 
+pub fn start_enemy_action_active(enemy_exists: f64) -> f64 {
+    if number_or_zero(enemy_exists) == 1.0 {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+pub fn start_enemy_action_state_code(enemy_exists: f64) -> f64 {
+    if start_enemy_action_active(enemy_exists) == 1.0 {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+pub fn start_enemy_action_uid(enemy_exists: f64, enemy_uid: f64) -> f64 {
+    if start_enemy_action_active(enemy_exists) == 1.0 {
+        positive_floor_or_zero(enemy_uid)
+    } else {
+        0.0
+    }
+}
+
+pub fn start_enemy_action_target_uid(enemy_exists: f64, target_uid: f64) -> f64 {
+    if start_enemy_action_active(enemy_exists) == 1.0 {
+        positive_floor_or_zero(target_uid)
+    } else {
+        0.0
+    }
+}
+
+pub fn start_enemy_action_skill_code(enemy_exists: f64, skill_code: f64) -> f64 {
+    if start_enemy_action_active(enemy_exists) == 1.0 {
+        enemy_job_skill_code(skill_code)
+    } else {
+        -1.0
+    }
+}
+
+pub fn start_enemy_action_forward_x(enemy_exists: f64, origin_x: f64) -> f64 {
+    if start_enemy_action_active(enemy_exists) == 1.0 {
+        number_or_zero(origin_x) - 55.0
+    } else {
+        0.0
+    }
+}
+
 #[derive(Clone, Copy)]
 struct EnemyTargetHero {
     uid: f64,
@@ -1252,6 +1300,36 @@ pub extern "C" fn enemy_job_skill_action_code_shadow(
 #[no_mangle]
 pub extern "C" fn enemy_job_skill_return_value_shadow(action_code: f64) -> f64 {
     enemy_job_skill_return_value(action_code)
+}
+
+#[no_mangle]
+pub extern "C" fn start_enemy_action_active_shadow(enemy_exists: f64) -> f64 {
+    start_enemy_action_active(enemy_exists)
+}
+
+#[no_mangle]
+pub extern "C" fn start_enemy_action_state_code_shadow(enemy_exists: f64) -> f64 {
+    start_enemy_action_state_code(enemy_exists)
+}
+
+#[no_mangle]
+pub extern "C" fn start_enemy_action_uid_shadow(enemy_exists: f64, enemy_uid: f64) -> f64 {
+    start_enemy_action_uid(enemy_exists, enemy_uid)
+}
+
+#[no_mangle]
+pub extern "C" fn start_enemy_action_target_uid_shadow(enemy_exists: f64, target_uid: f64) -> f64 {
+    start_enemy_action_target_uid(enemy_exists, target_uid)
+}
+
+#[no_mangle]
+pub extern "C" fn start_enemy_action_skill_code_shadow(enemy_exists: f64, skill_code: f64) -> f64 {
+    start_enemy_action_skill_code(enemy_exists, skill_code)
+}
+
+#[no_mangle]
+pub extern "C" fn start_enemy_action_forward_x_shadow(enemy_exists: f64, origin_x: f64) -> f64 {
+    start_enemy_action_forward_x(enemy_exists, origin_x)
 }
 
 #[no_mangle]
@@ -3192,6 +3270,58 @@ mod single_hit_resolution_tests {
             assert_eq!(resolved, expected_resolved);
             assert_eq!(enemy_job_skill_ally_target_uid(target), expected_ally);
             assert_eq!(enemy_job_skill_return_value(action), expected_return);
+        }
+    }
+
+    #[test]
+    fn mirrors_current_start_enemy_action_packet_cases() {
+        let cases = [
+            // exists, uid, target, skill, origin_x, active, state, out_uid, out_target, out_skill, forward_x
+            (0.0, 12.0, 101.0, 2.0, 300.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0),
+            (
+                1.0, 12.0, 101.0, 2.0, 300.0, 1.0, 1.0, 12.0, 101.0, 2.0, 245.0,
+            ),
+            (1.0, 13.0, 0.0, 0.0, 215.5, 1.0, 1.0, 13.0, 0.0, 0.0, 160.5),
+            (
+                1.0, 14.0, 202.0, 1.0, -10.0, 1.0, 1.0, 14.0, 202.0, 1.0, -65.0,
+            ),
+            (
+                1.0, 15.0, 303.0, -1.0, 55.0, 1.0, 1.0, 15.0, 303.0, -1.0, 0.0,
+            ),
+        ];
+
+        for (
+            enemy_exists,
+            enemy_uid,
+            target_uid,
+            skill_code,
+            origin_x,
+            expected_active,
+            expected_state,
+            expected_uid,
+            expected_target,
+            expected_skill,
+            expected_forward_x,
+        ) in cases
+        {
+            assert_eq!(start_enemy_action_active(enemy_exists), expected_active);
+            assert_eq!(start_enemy_action_state_code(enemy_exists), expected_state);
+            assert_eq!(
+                start_enemy_action_uid(enemy_exists, enemy_uid),
+                expected_uid
+            );
+            assert_eq!(
+                start_enemy_action_target_uid(enemy_exists, target_uid),
+                expected_target
+            );
+            assert_eq!(
+                start_enemy_action_skill_code(enemy_exists, skill_code),
+                expected_skill
+            );
+            assert_eq!(
+                start_enemy_action_forward_x(enemy_exists, origin_x),
+                expected_forward_x
+            );
         }
     }
 

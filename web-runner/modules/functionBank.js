@@ -36,6 +36,7 @@ import { resolveTurnPhaseAssignment } from '../src/core/turnPhaseAssignmentRules
 import { resolveTurnOrderGroupProjection } from '../src/core/turnOrderGroupRules.mjs';
 import { resolveEnemySkillChoice } from '../src/core/enemySkillChoiceRules.mjs';
 import { resolveEnemyJobSkill as importedResolveEnemyJobSkill } from '../src/core/enemyJobSkillRules.mjs';
+import { resolveStartEnemyAction as importedResolveStartEnemyAction } from '../src/core/startEnemyActionRules.mjs';
 import { sanitizeInitiativeQueue, shouldAutoCorrectImproperRepeat } from '../src/core/initiativeGuards.mjs';
 import {
   pickEnemyTargetHeroFromRoster,
@@ -6808,6 +6809,67 @@ function resolveEnemyJobSkillCompat(payload) {
   return { ...jsDecision, jsDecision };
 }
 
+function startEnemyActionStateFromCode(code = 0) {
+  return Number(code || 0) === 1 ? 'ADVANCE' : '';
+}
+
+function buildStartEnemyActionFallbackDecision(payload, owner = 'fallback') {
+  const active = Number(payload?.enemyExists || 0) ? 1 : 0;
+  const skillCode = payload?.skillCode == null
+    ? enemyJobSkillCodeFromId(payload?.skillId)
+    : enemyJobSkillNormalizeCode(payload.skillCode);
+  const stateCode = active ? 1 : 0;
+  const resolvedSkillCode = active ? skillCode : ENEMY_JOB_SKILL_UNKNOWN;
+  return {
+    owner,
+    active,
+    uid: active ? enemyJobSkillNonNegativeInt(payload?.enemyUID) : 0,
+    stateCode,
+    state: startEnemyActionStateFromCode(stateCode),
+    timer: 0,
+    actionApplied: 0,
+    targetUID: active ? enemyJobSkillNonNegativeInt(payload?.targetUID) : 0,
+    skillCode: resolvedSkillCode,
+    skillId: enemyJobSkillIdFromCode(resolvedSkillCode, String(payload?.skillId || 'Enemy_Unknown')),
+    forwardX: active ? enemyJobSkillNumberOr(payload?.originX, 0) - 55 : 0,
+  };
+}
+
+function resolveStartEnemyActionCompat(payload) {
+  if (typeof importedResolveStartEnemyAction === 'function') {
+    return importedResolveStartEnemyAction(payload);
+  }
+  const jsDecision = buildStartEnemyActionFallbackDecision(payload);
+  if (typeof payload?.ownerHook === 'function') {
+    try {
+      const result = payload.ownerHook({
+        ...payload,
+        skillCode: jsDecision.skillCode,
+        jsActive: jsDecision.active,
+        jsStateCode: jsDecision.stateCode,
+        jsTargetUID: jsDecision.targetUID,
+        jsSkillCode: jsDecision.skillCode,
+        jsForwardX: jsDecision.forwardX,
+      });
+      if (Number.isFinite(Number(result?.active))) {
+        const stateCode = Number(result?.stateCode ?? jsDecision.stateCode);
+        const skillCode = Number(result?.skillCode ?? jsDecision.skillCode);
+        return {
+          ...jsDecision,
+          ...result,
+          owner: String(result?.owner || 'rust'),
+          state: startEnemyActionStateFromCode(stateCode),
+          skillId: enemyJobSkillIdFromCode(skillCode, jsDecision.skillId),
+          jsDecision,
+        };
+      }
+    } catch (_) {
+      // Local fallback remains authoritative if the owner hook is unavailable.
+    }
+  }
+  return { ...jsDecision, jsDecision };
+}
+
 export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
   const g = getGlobals(ctx);
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
@@ -7817,15 +7879,36 @@ export function StartEnemyAction(ctx, enemyUID) {
   const target = pickEnemyTargetHero(ctx, enemyUID);
   const targetUID = target ? target.uid : 0;
   const skillId = PickEnemySkill(ctx, enemyUID);
-  g.EnemyAction = {
-    active: true,
-    uid: enemyUID,
-    state: 'ADVANCE',
-    timer: 0,
-    actionApplied: false,
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const decision = resolveStartEnemyActionCompat({
+    source: 'functionBank.StartEnemyAction',
+    enemyExists: 1,
+    enemyUID,
     targetUID,
     skillId,
-    forwardX: (enemy.originX ?? enemy.x ?? 0) - 55,
+    originX: enemy.originX ?? enemy.x ?? 0,
+    ownerHook: root && typeof root.__ORKA_START_ENEMY_ACTION_OWNER__ === 'function'
+      ? root.__ORKA_START_ENEMY_ACTION_OWNER__
+      : null,
+  });
+  g.LastStartEnemyActionOwner = {
+    owner: String(decision.owner || 'fallback'),
+    source: 'functionBank.StartEnemyAction',
+    targetUID: Number(decision.targetUID || 0),
+    skillId: String(decision.skillId || ''),
+    jsTargetUID: Number(decision.jsDecision?.targetUID ?? decision.targetUID ?? 0),
+    jsSkillCode: Number(decision.jsDecision?.skillCode ?? decision.skillCode ?? -1),
+  };
+  if (!Number(decision.active || 0)) return;
+  g.EnemyAction = {
+    active: true,
+    uid: Number(decision.uid || enemyUID || 0),
+    state: String(decision.state || 'ADVANCE'),
+    timer: Number(decision.timer || 0),
+    actionApplied: Number(decision.actionApplied || 0) === 1,
+    targetUID: Number(decision.targetUID || 0),
+    skillId: String(decision.skillId || skillId || ''),
+    forwardX: Number(decision.forwardX ?? ((enemy.originX ?? enemy.x ?? 0) - 55)),
   };
 }
 
