@@ -17,6 +17,6 @@ test('web-runner app restores town recovery routing shell', () => {
   assert.match(src, /gameState\.substate = 'Neutral';/);
   assert.match(src, /gameState\.isTurnResolving = false;/);
   assert.match(src, /requestLayoutChange\('storyMock', layoutReason\)/);
-  assert.match(src, /requestCombatFailureExit\(energy < 0 \? 'energy_depleted' : 'party_defeated'\)/);
+  assert.match(src, /const outcome = resolveMainRuntimeCombatOutcome\(\{ energy, partyHp, livingHeroes \}\);/);
   assert.match(src, /requestCombatFailureExit\(outcome\.reason\)/);
 });

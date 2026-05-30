@@ -6219,16 +6219,37 @@ function getStoryCardLiveLineState() {
     state.globals.DevAutoplaySkillDraughtSeenAt = 0;
     return !!(result && result.ok);
   }
-  function resolveDevAutoplayCombatOutcome({ energy = 0, partyHp = 0, livingHeroes = 0 } = {}) {
+  function resolveCombatOutcomeWithOwner({
+    source = 'app.combatOutcome',
+    energy = 0,
+    partyHp = 0,
+    livingHeroes = 0,
+  } = {}) {
     const root = typeof globalThis !== 'undefined' ? globalThis : null;
     return resolveCombatOutcome({
-      source: 'app.runDevAutoplayUntilDepleted',
+      source,
       energy,
       partyHp,
       livingHeroes,
       ownerHook: root && typeof root.__ORKA_COMBAT_OUTCOME_OWNER__ === 'function'
         ? root.__ORKA_COMBAT_OUTCOME_OWNER__
         : null,
+    });
+  }
+  function resolveDevAutoplayCombatOutcome({ energy = 0, partyHp = 0, livingHeroes = 0 } = {}) {
+    return resolveCombatOutcomeWithOwner({
+      source: 'app.runDevAutoplayUntilDepleted',
+      energy,
+      partyHp,
+      livingHeroes,
+    });
+  }
+  function resolveMainRuntimeCombatOutcome({ energy = 0, partyHp = 0, livingHeroes = 0 } = {}) {
+    return resolveCombatOutcomeWithOwner({
+      source: 'app.mainRuntimeCombatOutcome',
+      energy: Number(energy || 0) < 0 ? 0 : 1,
+      partyHp,
+      livingHeroes,
     });
   }
   function getDevAutoplayProgressSig() {
@@ -7572,9 +7593,10 @@ function getStoryCardLiveLineState() {
     ) {
       const energy = Number(state.globals.Player_Energy || 0);
       const partyHp = Number(state.globals.PartyHP || 0);
-      const noLivingHeroes = state.entities.filter((entity) => entity && entity.kind === 'hero' && (entity.hp ?? 0) > 0).length <= 0;
-      if (energy < 0 || partyHp <= 0 || noLivingHeroes) {
-        requestCombatFailureExit(energy < 0 ? 'energy_depleted' : 'party_defeated');
+      const livingHeroes = state.entities.filter((entity) => entity && entity.kind === 'hero' && (entity.hp ?? 0) > 0).length;
+      const outcome = resolveMainRuntimeCombatOutcome({ energy, partyHp, livingHeroes });
+      if (Number(outcome.code || 0) !== 0) {
+        requestCombatFailureExit(outcome.reason);
       }
     }
     const currentTurnUID = callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0;
