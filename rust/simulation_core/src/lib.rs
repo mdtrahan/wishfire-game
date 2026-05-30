@@ -262,9 +262,12 @@ fn enemy_skill_choice_pair(
             }
             return decision;
         }
-        if let Some(decision) =
-            enemy_skill_chimerilass_heal_choice(hp_value, max_value, damaged_allies_count, heal_roll)
-        {
+        if let Some(decision) = enemy_skill_chimerilass_heal_choice(
+            hp_value,
+            max_value,
+            damaged_allies_count,
+            heal_roll,
+        ) {
             return decision;
         }
     }
@@ -354,7 +357,11 @@ fn enemy_target_hero(
         max_hp: number_or_zero(max_hp).max(1.0),
         atk: number_or_zero(atk),
         slot: number_or_zero(slot),
-        role_code: if number_or_zero(role_code) == 1.0 { 1.0 } else { 0.0 },
+        role_code: if number_or_zero(role_code) == 1.0 {
+            1.0
+        } else {
+            0.0
+        },
     })
 }
 
@@ -377,7 +384,9 @@ fn enemy_target_roll_index_for_size(roll: f64, size: usize) -> f64 {
         return 0.0;
     }
     let max_index = (size - 1) as f64;
-    (clamp_roll(roll) * size as f64).floor().clamp(0.0, max_index)
+    (clamp_roll(roll) * size as f64)
+        .floor()
+        .clamp(0.0, max_index)
 }
 
 fn enemy_target_hp_ratio(hero: EnemyTargetHero) -> f64 {
@@ -833,6 +842,174 @@ pub fn round_pointer_advance_code(group_complete: f64, round_complete: f64) -> f
     }
 }
 
+pub fn gem_action_route_code(gem_color: f64) -> f64 {
+    let color = if gem_color.is_finite() {
+        gem_color.floor()
+    } else {
+        -1.0
+    };
+    if (0.0..=5.0).contains(&color) {
+        color
+    } else {
+        -1.0
+    }
+}
+
+pub fn gem_action_pending_skill_code(route_code: f64) -> f64 {
+    if number_or_zero(route_code) == 0.0 {
+        1.0
+    } else if number_or_zero(route_code) == 1.0 {
+        2.0
+    } else {
+        0.0
+    }
+}
+
+pub fn gem_action_set_aoe(route_code: f64) -> f64 {
+    let route = number_or_zero(route_code);
+    if route == 0.0 || route == 1.0 || route == 2.0 {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+pub fn gem_action_is_aoe(route_code: f64) -> f64 {
+    if number_or_zero(route_code) == 0.0 {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+pub fn gem_action_show_attack_ui(route_code: f64) -> f64 {
+    let route = number_or_zero(route_code);
+    if route == 0.0 || route == 1.0 {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+pub fn gem_action_call_code(route_code: f64) -> f64 {
+    if number_or_zero(route_code) == 4.0 {
+        1.0
+    } else if number_or_zero(route_code) == 5.0 {
+        2.0
+    } else {
+        0.0
+    }
+}
+
+pub fn gem_action_consumes_turn(route_code: f64) -> f64 {
+    let route = number_or_zero(route_code);
+    if route == 2.0 || route == 5.0 {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+pub fn gem_action_consumed_count(consumed_count: f64) -> f64 {
+    positive_floor_or_zero(consumed_count)
+}
+
+pub fn gem_action_blue_wallet_after(current_wallet: f64, consumed_count: f64) -> f64 {
+    number_or_zero(current_wallet).max(0.0) + gem_action_consumed_count(consumed_count)
+}
+
+pub fn gem_action_blue_open_draught(
+    consumed_count: f64,
+    current_amp_points: f64,
+    amp_max: f64,
+    amp_ready: f64,
+) -> f64 {
+    let consumed = gem_action_consumed_count(consumed_count);
+    if consumed < 3.0 || number_or_zero(amp_ready) == 1.0 {
+        return 0.0;
+    }
+    let current = number_or_zero(current_amp_points).max(0.0);
+    let max_points = positive_floor_or_one(amp_max);
+    if (current + consumed).min(max_points) >= max_points {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+pub fn gem_action_blue_amp_points_after(
+    consumed_count: f64,
+    current_amp_points: f64,
+    amp_max: f64,
+    amp_ready: f64,
+) -> f64 {
+    let current = number_or_zero(current_amp_points).max(0.0);
+    let consumed = gem_action_consumed_count(consumed_count);
+    if consumed < 3.0 || number_or_zero(amp_ready) == 1.0 {
+        return current;
+    }
+    (current + consumed).min(positive_floor_or_one(amp_max))
+}
+
+pub fn gem_action_blue_amp_ready_after(
+    consumed_count: f64,
+    current_amp_points: f64,
+    amp_max: f64,
+    amp_ready: f64,
+) -> f64 {
+    if number_or_zero(amp_ready) == 1.0
+        || gem_action_blue_open_draught(consumed_count, current_amp_points, amp_max, amp_ready)
+            == 1.0
+    {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+pub fn gem_action_action_lock_until(
+    route_code: f64,
+    current_lock_until: f64,
+    time: f64,
+    text_anim_end_at: f64,
+    blue_open_draught: f64,
+) -> f64 {
+    let route = number_or_zero(route_code);
+    let current = if current_lock_until.is_finite() {
+        current_lock_until
+    } else {
+        0.0
+    };
+    let now = if time.is_finite() { time } else { 0.0 };
+    if route == 2.0 {
+        let mut next = current.max(now + 0.32);
+        if number_or_zero(blue_open_draught) == 1.0 {
+            next = next.max(now + 4.0);
+        }
+        next
+    } else if route == 5.0 {
+        let text_end = if text_anim_end_at.is_finite() {
+            text_anim_end_at
+        } else {
+            0.0
+        };
+        current.max(now + 0.32).max(text_end)
+    } else {
+        current
+    }
+}
+
+pub fn gem_action_purple_energy_amount(roll: f64) -> f64 {
+    let index = (unit_interval_or_half(roll) * 3.0).floor();
+    if index <= 0.0 {
+        6.0
+    } else if index == 1.0 {
+        12.0
+    } else {
+        15.0
+    }
+}
+
 fn js_to_uint32(value: f64) -> u32 {
     if !value.is_finite() {
         return 0;
@@ -1230,6 +1407,106 @@ pub extern "C" fn round_pointer_advance_code_shadow(
     round_complete: f64,
 ) -> f64 {
     round_pointer_advance_code(group_complete, round_complete)
+}
+
+#[no_mangle]
+pub extern "C" fn gem_action_route_code_shadow(gem_color: f64) -> f64 {
+    gem_action_route_code(gem_color)
+}
+
+#[no_mangle]
+pub extern "C" fn gem_action_pending_skill_code_shadow(route_code: f64) -> f64 {
+    gem_action_pending_skill_code(route_code)
+}
+
+#[no_mangle]
+pub extern "C" fn gem_action_set_aoe_shadow(route_code: f64) -> f64 {
+    gem_action_set_aoe(route_code)
+}
+
+#[no_mangle]
+pub extern "C" fn gem_action_is_aoe_shadow(route_code: f64) -> f64 {
+    gem_action_is_aoe(route_code)
+}
+
+#[no_mangle]
+pub extern "C" fn gem_action_show_attack_ui_shadow(route_code: f64) -> f64 {
+    gem_action_show_attack_ui(route_code)
+}
+
+#[no_mangle]
+pub extern "C" fn gem_action_call_code_shadow(route_code: f64) -> f64 {
+    gem_action_call_code(route_code)
+}
+
+#[no_mangle]
+pub extern "C" fn gem_action_consumes_turn_shadow(route_code: f64) -> f64 {
+    gem_action_consumes_turn(route_code)
+}
+
+#[no_mangle]
+pub extern "C" fn gem_action_consumed_count_shadow(consumed_count: f64) -> f64 {
+    gem_action_consumed_count(consumed_count)
+}
+
+#[no_mangle]
+pub extern "C" fn gem_action_blue_wallet_after_shadow(
+    current_wallet: f64,
+    consumed_count: f64,
+) -> f64 {
+    gem_action_blue_wallet_after(current_wallet, consumed_count)
+}
+
+#[no_mangle]
+pub extern "C" fn gem_action_blue_amp_points_after_shadow(
+    consumed_count: f64,
+    current_amp_points: f64,
+    amp_max: f64,
+    amp_ready: f64,
+) -> f64 {
+    gem_action_blue_amp_points_after(consumed_count, current_amp_points, amp_max, amp_ready)
+}
+
+#[no_mangle]
+pub extern "C" fn gem_action_blue_amp_ready_after_shadow(
+    consumed_count: f64,
+    current_amp_points: f64,
+    amp_max: f64,
+    amp_ready: f64,
+) -> f64 {
+    gem_action_blue_amp_ready_after(consumed_count, current_amp_points, amp_max, amp_ready)
+}
+
+#[no_mangle]
+pub extern "C" fn gem_action_blue_open_draught_shadow(
+    consumed_count: f64,
+    current_amp_points: f64,
+    amp_max: f64,
+    amp_ready: f64,
+) -> f64 {
+    gem_action_blue_open_draught(consumed_count, current_amp_points, amp_max, amp_ready)
+}
+
+#[no_mangle]
+pub extern "C" fn gem_action_action_lock_until_shadow(
+    route_code: f64,
+    current_lock_until: f64,
+    time: f64,
+    text_anim_end_at: f64,
+    blue_open_draught: f64,
+) -> f64 {
+    gem_action_action_lock_until(
+        route_code,
+        current_lock_until,
+        time,
+        text_anim_end_at,
+        blue_open_draught,
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn gem_action_purple_energy_amount_shadow(roll: f64) -> f64 {
+    gem_action_purple_energy_amount(roll)
 }
 
 #[no_mangle]
@@ -2701,12 +2978,7 @@ mod single_hit_resolution_tests {
 
     #[test]
     fn mirrors_current_turn_phase_assignment_cases() {
-        let cases = [
-            (0.0, 0.0),
-            (1.0, 2.0),
-            (2.0, 2.0),
-            (-1.0, 2.0),
-        ];
+        let cases = [(0.0, 0.0), (1.0, 2.0), (2.0, 2.0), (-1.0, 2.0)];
 
         for (turn_type, expected_phase) in cases {
             assert_eq!(turn_phase_from_type(turn_type), expected_phase);
@@ -2946,6 +3218,107 @@ mod single_hit_resolution_tests {
                 round_pointer_advance_code(group_complete, round_complete),
                 expected_code
             );
+        }
+    }
+
+    #[test]
+    fn mirrors_current_gem_action_cases() {
+        let cases = [
+            // color, consumed, wallet, amp, max, ready, time, lock, text, roll,
+            // route, pending, set_aoe, is_aoe, show_ui, call, consumes, wallet_after,
+            // amp_after, ready_after, open, lock_after, purple_amount
+            (
+                0.0, 4.0, 7.0, 5.0, 18.0, 0.0, 10.0, 0.0, 0.0, 0.5, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0,
+                0.0, 11.0, 9.0, 0.0, 0.0, 0.0, 12.0,
+            ),
+            (
+                1.0, 4.0, 7.0, 5.0, 18.0, 0.0, 10.0, 0.0, 0.0, 0.5, 1.0, 2.0, 1.0, 0.0, 1.0, 0.0,
+                0.0, 11.0, 9.0, 0.0, 0.0, 0.0, 12.0,
+            ),
+            (
+                2.0, 2.0, 7.0, 5.0, 18.0, 0.0, 10.0, 0.0, 0.0, 0.5, 2.0, 0.0, 1.0, 0.0, 0.0, 0.0,
+                1.0, 9.0, 5.0, 0.0, 0.0, 10.32, 12.0,
+            ),
+            (
+                2.0, 5.0, 7.0, 16.0, 18.0, 0.0, 10.0, 0.0, 0.0, 0.5, 2.0, 0.0, 1.0, 0.0, 0.0, 0.0,
+                1.0, 12.0, 18.0, 1.0, 1.0, 14.0, 12.0,
+            ),
+            (
+                2.0, 5.0, 7.0, 16.0, 18.0, 1.0, 10.0, 0.0, 0.0, 0.5, 2.0, 0.0, 1.0, 0.0, 0.0, 0.0,
+                1.0, 12.0, 16.0, 1.0, 0.0, 10.32, 12.0,
+            ),
+            (
+                3.0, 4.0, 7.0, 5.0, 18.0, 0.0, 10.0, 0.0, 0.0, 0.5, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                0.0, 11.0, 9.0, 0.0, 0.0, 0.0, 12.0,
+            ),
+            (
+                4.0, 4.0, 7.0, 5.0, 18.0, 0.0, 10.0, 0.0, 0.0, 0.5, 4.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+                0.0, 11.0, 9.0, 0.0, 0.0, 0.0, 12.0,
+            ),
+            (
+                5.0, 4.0, 7.0, 5.0, 18.0, 0.0, 10.0, 3.0, 11.0, 0.1, 5.0, 0.0, 0.0, 0.0, 0.0, 2.0,
+                1.0, 11.0, 9.0, 0.0, 0.0, 11.0, 6.0,
+            ),
+            (
+                5.0, 4.0, 7.0, 5.0, 18.0, 0.0, 10.0, 3.0, 0.0, 0.95, 5.0, 0.0, 0.0, 0.0, 0.0, 2.0,
+                1.0, 11.0, 9.0, 0.0, 0.0, 10.32, 15.0,
+            ),
+            (
+                9.0, 4.0, 7.0, 5.0, 18.0, 0.0, 10.0, 3.0, 11.0, 0.5, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                0.0, 11.0, 9.0, 0.0, 0.0, 3.0, 12.0,
+            ),
+        ];
+
+        for (
+            color,
+            consumed,
+            wallet,
+            amp,
+            max,
+            ready,
+            time,
+            lock,
+            text,
+            roll,
+            route,
+            pending,
+            set_aoe,
+            is_aoe,
+            show_ui,
+            call,
+            consumes,
+            wallet_after,
+            amp_after,
+            ready_after,
+            open,
+            lock_after,
+            purple_amount,
+        ) in cases
+        {
+            let actual_route = gem_action_route_code(color);
+            let actual_open = gem_action_blue_open_draught(consumed, amp, max, ready);
+            assert_eq!(actual_route, route);
+            assert_eq!(gem_action_pending_skill_code(actual_route), pending);
+            assert_eq!(gem_action_set_aoe(actual_route), set_aoe);
+            assert_eq!(gem_action_is_aoe(actual_route), is_aoe);
+            assert_eq!(gem_action_show_attack_ui(actual_route), show_ui);
+            assert_eq!(gem_action_call_code(actual_route), call);
+            assert_eq!(gem_action_consumes_turn(actual_route), consumes);
+            assert_eq!(gem_action_blue_wallet_after(wallet, consumed), wallet_after);
+            assert_eq!(
+                gem_action_blue_amp_points_after(consumed, amp, max, ready),
+                amp_after
+            );
+            assert_eq!(
+                gem_action_blue_amp_ready_after(consumed, amp, max, ready),
+                ready_after
+            );
+            assert_eq!(actual_open, open);
+            assert_eq!(
+                gem_action_action_lock_until(actual_route, lock, time, text, actual_open),
+                lock_after
+            );
+            assert_eq!(gem_action_purple_energy_amount(roll), purple_amount);
         }
     }
 }

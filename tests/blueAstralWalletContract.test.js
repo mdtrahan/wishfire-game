@@ -21,8 +21,10 @@ function loadSuperGemRuntime() {
 test('blue resolve increments Astral Flow wallet in runtime function bank', () => {
   const src = read('web-runner/modules/functionBank.js');
   assert.match(src, /function ensureAstralFlowWallet\(ctx\)/);
-  assert.match(src, /const consumedBlue = Math\.max\(0, Number\(consumedCount\) \|\| 0\);/);
-  assert.match(src, /g\.AstralFlowWallet = wallet \+ consumedBlue;/);
+  assert.match(src, /resolveGemActionCompat/);
+  assert.match(src, /__ORKA_GEM_ACTION_OWNER__/);
+  assert.match(src, /const consumedBlue = Math\.max\(0, Number\(decision\.consumedCount \|\| 0\)\);/);
+  assert.match(src, /g\.AstralFlowWallet = Number\(decision\.blueWalletAfter \|\| 0\);/);
 });
 
 test('blue match forwards consumed gem count into runtime resolution', () => {

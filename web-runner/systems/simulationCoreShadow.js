@@ -28,6 +28,7 @@ function getShadowState() {
       runaMagicResistOwnerChecks: 0,
       turnOrderGroupOwnerChecks: 0,
       roundPointerAdvanceOwnerChecks: 0,
+      gemActionOwnerChecks: 0,
       seededRngChecks: 0,
       seededRngOwnerChecks: 0,
       singleHitOwnerSmokeRan: false,
@@ -49,6 +50,7 @@ function getShadowState() {
       runaMagicResistOwnerSmokeRan: false,
       turnOrderGroupOwnerSmokeRan: false,
       roundPointerAdvanceOwnerSmokeRan: false,
+      gemActionOwnerSmokeRan: false,
     };
   }
   if (!window[SHADOW_STATE_KEY]) {
@@ -77,6 +79,7 @@ function getShadowState() {
       runaMagicResistOwnerChecks: 0,
       turnOrderGroupOwnerChecks: 0,
       roundPointerAdvanceOwnerChecks: 0,
+      gemActionOwnerChecks: 0,
       seededRngChecks: 0,
       seededRngOwnerChecks: 0,
       singleHitOwnerSmokeRan: false,
@@ -98,6 +101,7 @@ function getShadowState() {
       runaMagicResistOwnerSmokeRan: false,
       turnOrderGroupOwnerSmokeRan: false,
       roundPointerAdvanceOwnerSmokeRan: false,
+      gemActionOwnerSmokeRan: false,
       lastCheck: null,
       lastSingleHitCheck: null,
       lastSingleHitOwnerCheck: null,
@@ -121,6 +125,7 @@ function getShadowState() {
       lastRunaMagicResistOwnerCheck: null,
       lastTurnOrderGroupOwnerCheck: null,
       lastRoundPointerAdvanceOwnerCheck: null,
+      lastGemActionOwnerCheck: null,
       lastSeededRngCheck: null,
       lastSeededRngOwnerCheck: null,
       exports: null,
@@ -258,6 +263,12 @@ function updateShadowDomMarker(shadow) {
   document.documentElement.dataset.simCoreShadowRoundPointerAdvanceOwner = String(
     shadow?.lastRoundPointerAdvanceOwnerCheck?.owner || '',
   );
+  document.documentElement.dataset.simCoreShadowGemActionOwnerChecks = String(
+    Number(shadow?.gemActionOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowGemActionOwner = String(
+    shadow?.lastGemActionOwnerCheck?.owner || '',
+  );
   document.documentElement.dataset.simCoreShadowSeededRngChecks = String(
     Number(shadow?.seededRngChecks || 0),
   );
@@ -381,6 +392,23 @@ function hasRoundPointerAdvanceExports(exports) {
     && typeof exports?.round_pointer_advance_code_shadow === 'function';
 }
 
+function hasGemActionExports(exports) {
+  return typeof exports?.gem_action_route_code_shadow === 'function'
+    && typeof exports?.gem_action_pending_skill_code_shadow === 'function'
+    && typeof exports?.gem_action_set_aoe_shadow === 'function'
+    && typeof exports?.gem_action_is_aoe_shadow === 'function'
+    && typeof exports?.gem_action_show_attack_ui_shadow === 'function'
+    && typeof exports?.gem_action_call_code_shadow === 'function'
+    && typeof exports?.gem_action_consumes_turn_shadow === 'function'
+    && typeof exports?.gem_action_consumed_count_shadow === 'function'
+    && typeof exports?.gem_action_blue_wallet_after_shadow === 'function'
+    && typeof exports?.gem_action_blue_amp_points_after_shadow === 'function'
+    && typeof exports?.gem_action_blue_amp_ready_after_shadow === 'function'
+    && typeof exports?.gem_action_blue_open_draught_shadow === 'function'
+    && typeof exports?.gem_action_action_lock_until_shadow === 'function'
+    && typeof exports?.gem_action_purple_energy_amount_shadow === 'function';
+}
+
 function hasTurnSummaryExports(exports) {
   return typeof exports?.turn_summary_code_shadow === 'function';
 }
@@ -405,7 +433,8 @@ function hasRequiredExports(exports) {
     && hasEnemyTargetExports(exports)
     && hasRunaMagicResistExports(exports)
     && hasTurnOrderGroupExports(exports)
-    && hasRoundPointerAdvanceExports(exports);
+    && hasRoundPointerAdvanceExports(exports)
+    && hasGemActionExports(exports);
 }
 
 async function instantiateWasm(wasmUrl) {
@@ -764,6 +793,38 @@ function runRoundPointerAdvanceOwnerStartupCheck(shadow) {
   });
 }
 
+function runGemActionOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.gemActionOwnerSmokeRan) return;
+  shadow.gemActionOwnerSmokeRan = true;
+  createSimulationCoreGemActionResolution({
+    source: 'simulationCore.startup.gemActionOwner',
+    gemColor: 2,
+    consumedCount: 5,
+    astralFlowWallet: 7,
+    astralFlowAmpPoints: 16,
+    astralFlowAmpMax: 18,
+    astralFlowAmpReady: 0,
+    time: 10,
+    actionLockUntil: 0,
+    textAnimEndAt: 0,
+    purpleRoll01: 0.5,
+    jsRouteCode: 2,
+    jsPendingSkillCode: 0,
+    jsSetIsAoe: 1,
+    jsIsAoe: 0,
+    jsShowAttackUi: 0,
+    jsCallCode: 0,
+    jsConsumesTurn: 1,
+    jsConsumedCount: 5,
+    jsBlueWalletAfter: 12,
+    jsBlueAmpPointsAfter: 18,
+    jsBlueAmpReadyAfter: 1,
+    jsBlueOpenDraught: 1,
+    jsActionLockUntil: 14,
+    jsPurpleEnergyAmount: 12,
+  });
+}
+
 function runTurnSummaryOwnerStartupCheck(shadow) {
   if (!shadow || shadow.turnSummaryOwnerSmokeRan) return;
   shadow.turnSummaryOwnerSmokeRan = true;
@@ -802,6 +863,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_RUNA_MAGIC_RESIST_OWNER__ = createSimulationCoreRunaMagicResistResolution;
     window.__ORKA_TURN_ORDER_GROUP_OWNER__ = createSimulationCoreTurnOrderGroupProjection;
     window.__ORKA_ROUND_POINTER_ADVANCE_OWNER__ = createSimulationCoreRoundPointerAdvanceResolution;
+    window.__ORKA_GEM_ACTION_OWNER__ = createSimulationCoreGemActionResolution;
     window.__ORKA_SEEDED_RNG_SHADOW__ = shadowSeededRng;
     window.__ORKA_SEEDED_RNG_OWNER__ = createSimulationCoreSeededRng;
   }
@@ -837,6 +899,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
         runRunaMagicResistOwnerStartupCheck(shadow);
         runTurnOrderGroupOwnerStartupCheck(shadow);
         runRoundPointerAdvanceOwnerStartupCheck(shadow);
+        runGemActionOwnerStartupCheck(shadow);
       }
       updateShadowDomMarker(shadow);
       return shadow;
@@ -1495,6 +1558,180 @@ export function createSimulationCoreRoundPointerAdvanceResolution({
   }
   updateShadowDomMarker(shadow);
   return { owner: 'rust', code, nextMemberIndex, groupComplete, nextGroupIndex, roundComplete, nextTeamPhaseType };
+}
+
+export function createSimulationCoreGemActionResolution({
+  source = 'unknown',
+  gemColor = -1,
+  consumedCount = 0,
+  astralFlowWallet = 0,
+  astralFlowAmpPoints = 0,
+  astralFlowAmpMax = 18,
+  astralFlowAmpReady = 0,
+  time = 0,
+  actionLockUntil = 0,
+  textAnimEndAt = 0,
+  purpleRoll01 = 0.5,
+  jsRouteCode = -1,
+  jsPendingSkillCode = 0,
+  jsSetIsAoe = 0,
+  jsIsAoe = 0,
+  jsShowAttackUi = 0,
+  jsCallCode = 0,
+  jsConsumesTurn = 0,
+  jsConsumedCount = 0,
+  jsBlueWalletAfter = 0,
+  jsBlueAmpPointsAfter = 0,
+  jsBlueAmpReadyAfter = 0,
+  jsBlueOpenDraught = 0,
+  jsActionLockUntil = 0,
+  jsPurpleEnergyAmount = 0,
+} = {}, {
+  exportsOverride = null,
+} = {}) {
+  const shadow = getShadowState();
+  const normalized = {
+    source,
+    gemColor: Number(gemColor || 0),
+    consumedCount: Math.max(0, Math.floor(Number(consumedCount || 0))),
+    astralFlowWallet: Number(astralFlowWallet || 0),
+    astralFlowAmpPoints: Number(astralFlowAmpPoints || 0),
+    astralFlowAmpMax: Math.max(1, Math.floor(Number(astralFlowAmpMax || 18))),
+    astralFlowAmpReady: Number(astralFlowAmpReady || 0) ? 1 : 0,
+    time: Number(time || 0),
+    actionLockUntil: Number(actionLockUntil || 0),
+    textAnimEndAt: Number(textAnimEndAt || 0),
+    purpleRoll01: Number.isFinite(Number(purpleRoll01)) ? Number(purpleRoll01) : 0.5,
+    jsRouteCode: Number(jsRouteCode || 0),
+    jsPendingSkillCode: Number(jsPendingSkillCode || 0),
+    jsSetIsAoe: Number(jsSetIsAoe || 0) ? 1 : 0,
+    jsIsAoe: Number(jsIsAoe || 0) ? 1 : 0,
+    jsShowAttackUi: Number(jsShowAttackUi || 0) ? 1 : 0,
+    jsCallCode: Number(jsCallCode || 0),
+    jsConsumesTurn: Number(jsConsumesTurn || 0) ? 1 : 0,
+    jsConsumedCount: Number(jsConsumedCount || 0),
+    jsBlueWalletAfter: Number(jsBlueWalletAfter || 0),
+    jsBlueAmpPointsAfter: Number(jsBlueAmpPointsAfter || 0),
+    jsBlueAmpReadyAfter: Number(jsBlueAmpReadyAfter || 0) ? 1 : 0,
+    jsBlueOpenDraught: Number(jsBlueOpenDraught || 0) ? 1 : 0,
+    jsActionLockUntil: Number(jsActionLockUntil || 0),
+    jsPurpleEnergyAmount: Number(jsPurpleEnergyAmount || 0),
+  };
+  const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+  if (!hasGemActionExports(exports)) {
+    shadow.gemActionOwnerChecks = Number(shadow.gemActionOwnerChecks || 0) + 1;
+    shadow.lastGemActionOwnerCheck = {
+      ...normalized,
+      owner: 'fallback',
+      routeCode: normalized.jsRouteCode,
+      pendingSkillCode: normalized.jsPendingSkillCode,
+      setIsAoe: normalized.jsSetIsAoe,
+      isAoe: normalized.jsIsAoe,
+      showAttackUi: normalized.jsShowAttackUi,
+      callCode: normalized.jsCallCode,
+      consumesTurn: normalized.jsConsumesTurn,
+      consumedCount: normalized.jsConsumedCount,
+      blueWalletAfter: normalized.jsBlueWalletAfter,
+      blueAmpPointsAfter: normalized.jsBlueAmpPointsAfter,
+      blueAmpReadyAfter: normalized.jsBlueAmpReadyAfter,
+      blueOpenDraught: normalized.jsBlueOpenDraught,
+      actionLockUntil: normalized.jsActionLockUntil,
+      purpleEnergyAmount: normalized.jsPurpleEnergyAmount,
+    };
+    updateShadowDomMarker(shadow);
+    return {
+      owner: 'fallback',
+      routeCode: normalized.jsRouteCode,
+      pendingSkillCode: normalized.jsPendingSkillCode,
+      setIsAoe: normalized.jsSetIsAoe,
+      isAoe: normalized.jsIsAoe,
+      showAttackUi: normalized.jsShowAttackUi,
+      callCode: normalized.jsCallCode,
+      consumesTurn: normalized.jsConsumesTurn,
+      consumedCount: normalized.jsConsumedCount,
+      blueWalletAfter: normalized.jsBlueWalletAfter,
+      blueAmpPointsAfter: normalized.jsBlueAmpPointsAfter,
+      blueAmpReadyAfter: normalized.jsBlueAmpReadyAfter,
+      blueOpenDraught: normalized.jsBlueOpenDraught,
+      actionLockUntil: normalized.jsActionLockUntil,
+      purpleEnergyAmount: normalized.jsPurpleEnergyAmount,
+    };
+  }
+
+  const routeCode = Number(exports.gem_action_route_code_shadow(normalized.gemColor));
+  const blueOpenDraught = Number(exports.gem_action_blue_open_draught_shadow(
+    normalized.consumedCount,
+    normalized.astralFlowAmpPoints,
+    normalized.astralFlowAmpMax,
+    normalized.astralFlowAmpReady,
+  ));
+  const result = {
+    owner: 'rust',
+    routeCode,
+    pendingSkillCode: Number(exports.gem_action_pending_skill_code_shadow(routeCode)),
+    setIsAoe: Number(exports.gem_action_set_aoe_shadow(routeCode)),
+    isAoe: Number(exports.gem_action_is_aoe_shadow(routeCode)),
+    showAttackUi: Number(exports.gem_action_show_attack_ui_shadow(routeCode)),
+    callCode: Number(exports.gem_action_call_code_shadow(routeCode)),
+    consumesTurn: Number(exports.gem_action_consumes_turn_shadow(routeCode)),
+    consumedCount: Number(exports.gem_action_consumed_count_shadow(normalized.consumedCount)),
+    blueWalletAfter: Number(exports.gem_action_blue_wallet_after_shadow(
+      normalized.astralFlowWallet,
+      normalized.consumedCount,
+    )),
+    blueAmpPointsAfter: Number(exports.gem_action_blue_amp_points_after_shadow(
+      normalized.consumedCount,
+      normalized.astralFlowAmpPoints,
+      normalized.astralFlowAmpMax,
+      normalized.astralFlowAmpReady,
+    )),
+    blueAmpReadyAfter: Number(exports.gem_action_blue_amp_ready_after_shadow(
+      normalized.consumedCount,
+      normalized.astralFlowAmpPoints,
+      normalized.astralFlowAmpMax,
+      normalized.astralFlowAmpReady,
+    )),
+    blueOpenDraught,
+    actionLockUntil: Number(exports.gem_action_action_lock_until_shadow(
+      routeCode,
+      normalized.actionLockUntil,
+      normalized.time,
+      normalized.textAnimEndAt,
+      blueOpenDraught,
+    )),
+    purpleEnergyAmount: Number(exports.gem_action_purple_energy_amount_shadow(normalized.purpleRoll01)),
+  };
+
+  shadow.gemActionOwnerChecks = Number(shadow.gemActionOwnerChecks || 0) + 1;
+  shadow.lastGemActionOwnerCheck = {
+    ...normalized,
+    ...result,
+  };
+  if (
+    !exportsOverride
+    && (
+      result.routeCode !== normalized.jsRouteCode
+      || result.pendingSkillCode !== normalized.jsPendingSkillCode
+      || result.setIsAoe !== normalized.jsSetIsAoe
+      || result.isAoe !== normalized.jsIsAoe
+      || result.showAttackUi !== normalized.jsShowAttackUi
+      || result.callCode !== normalized.jsCallCode
+      || result.consumesTurn !== normalized.jsConsumesTurn
+      || result.consumedCount !== normalized.jsConsumedCount
+      || result.blueWalletAfter !== normalized.jsBlueWalletAfter
+      || result.blueAmpPointsAfter !== normalized.jsBlueAmpPointsAfter
+      || result.blueAmpReadyAfter !== normalized.jsBlueAmpReadyAfter
+      || result.blueOpenDraught !== normalized.jsBlueOpenDraught
+      || Math.abs(result.actionLockUntil - normalized.jsActionLockUntil) > 0.000001
+      || result.purpleEnergyAmount !== normalized.jsPurpleEnergyAmount
+    )
+  ) {
+    shadow.mismatches.push(shadow.lastGemActionOwnerCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastGemActionOwnerCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return result;
 }
 
 export function createSimulationCoreSeededRng(seed = 1, {

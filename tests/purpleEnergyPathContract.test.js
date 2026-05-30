@@ -66,12 +66,12 @@ for (const filePath of MIRRORED_FUNCTION_BANKS) {
     assert.match(grantSrc, /SpawnDamageText\(ctx, amt, Number\(energyText\.x\), Number\(energyText\.y\), 'energy', 'energy'\);/);
 
     const resolveSrc = extractFunctionSource(src, 'ResolveGemAction');
-    const purpleBranch = resolveSrc.match(/if \(gemColor === 5\) \{[\s\S]*?\n  \}/);
-    assert.ok(purpleBranch, 'ResolveGemAction should have a purple branch');
-    assert.match(purpleBranch[0], /LogGemIntent\(ctx, 5, 'PURPLE', 'Energy_Gain', 'hero-routing', actorUID\);/);
-    assert.match(purpleBranch[0], /GrantPurpleMatchEnergy\(ctx, actorUID, consumedCount\);/);
-    assert.match(purpleBranch[0], /g\.ActionLockUntil = Math\.max\(g\.ActionLockUntil \|\| 0, \(g\.time \|\| 0\) \+ 0\.32, g\.TextAnimEndAt \|\| 0\);/);
-    assert.doesNotMatch(purpleBranch[0], /activatePowerAmp\(ctx, actorUID\);/);
+    assert.match(resolveSrc, /resolveGemActionCompat/);
+    assert.match(resolveSrc, /__ORKA_GEM_ACTION_OWNER__/);
+    assert.match(resolveSrc, /GEM_ACTION_CALL_PURPLE_MATCH_ENERGY/);
+    assert.match(resolveSrc, /GrantPurpleMatchEnergy\(ctx, actorUID, consumedCount, decision\.purpleEnergyAmount\);/);
+    assert.match(resolveSrc, /g\.ActionLockUntil = Number\(decision\.actionLockUntil \|\| 0\);/);
+    assert.doesNotMatch(resolveSrc, /activatePowerAmp\(ctx, actorUID\);/);
 
     const spawnSrc = extractFunctionSource(src, 'SpawnDamageText');
     assert.match(spawnSrc, /const canvasAnchored = targetKind === 'energy' \? 1 : 0;/);

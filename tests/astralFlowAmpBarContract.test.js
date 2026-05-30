@@ -19,16 +19,19 @@ test('combat state seeds Astral Flow amp progress and combat-log pin fields', ()
 for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
   test(`blue resolve only fills the Astral Flow amp from matched blue sets of 3+ in ${relPath}`, () => {
     const src = read(relPath);
-    assert.match(src, /const consumedBlue = Math\.max\(0, Number\(consumedCount\) \|\| 0\);/);
-    assert.match(src, /if \(consumedBlue >= 3 && !g\.AstralFlowAmpReady\) \{/);
-    assert.match(src, /const currentAmp = Math\.max\(0, Number\(g\.AstralFlowAmpPoints \|\| 0\)\);/);
-    assert.match(src, /const ampMax = Math\.max\(1, Number\(g\.AstralFlowAmpMax \|\| 18\)\);/);
-    assert.match(src, /const nextAmp = Math\.min\(ampMax, currentAmp \+ consumedBlue\);/);
-    assert.match(src, /g\.AstralFlowAmpPoints = nextAmp;/);
-    assert.match(src, /if \(nextAmp >= ampMax\) \{/);
-    assert.match(src, /g\.AstralFlowAmpReady = 1;/);
+    assert.match(src, /resolveGemActionCompat/);
+    assert.match(src, /__ORKA_GEM_ACTION_OWNER__/);
+    assert.match(src, /const shouldChargeAmp = consumed >= 3 && !ampReady;/);
+    assert.match(src, /const currentAmp = Math\.max\(0, gemActionNumberOr\(payload\.astralFlowAmpPoints, 0\)\);/);
+    assert.match(src, /const ampMax = Math\.max\(1, Math\.floor\(gemActionNumberOr\(payload\.astralFlowAmpMax, 18\) \|\| 18\)\);/);
+    assert.match(src, /const blueAmpPointsAfter = shouldChargeAmp \? Math\.min\(ampMax, currentAmp \+ consumed\) : currentAmp;/);
+    assert.match(src, /const blueOpenDraught = shouldChargeAmp && blueAmpPointsAfter >= ampMax \? 1 : 0;/);
+    assert.match(src, /const consumedBlue = Math\.max\(0, Number\(decision\.consumedCount \|\| 0\)\);/);
+    assert.match(src, /g\.AstralFlowAmpPoints = Number\(decision\.blueAmpPointsAfter \|\| 0\);/);
+    assert.match(src, /g\.AstralFlowAmpReady = Number\(decision\.blueAmpReadyAfter \|\| 0\) \? 1 : 0;/);
+    assert.match(src, /if \(Number\(decision\.blueOpenDraught \|\| 0\) === 1\) \{/);
     assert.match(src, /LogCombat\(ctx, `\$\{getActorNameByUID\(ctx, actorUID\)\} gained Astral Flow!`\);/);
-    assert.match(src, /g\.ActionLockUntil = Math\.max\(g\.ActionLockUntil \|\| 0, \(g\.time \|\| 0\) \+ 4\);/);
+    assert.match(src, /g\.ActionLockUntil = Number\(decision\.actionLockUntil \|\| 0\);/);
   });
 
   test(`hero turn start only clears a full Astral Flow amp after the pinned read window expires in ${relPath}`, () => {
@@ -56,7 +59,7 @@ for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBa
     assert.match(src, /const heroActive = !!\(g\.HeroAction && g\.HeroAction\.active && Number\(g\.HeroAction\.uid \|\| 0\) === ownerUID\);/);
     assert.match(src, /const enemyActive = !!\(g\.EnemyAction && g\.EnemyAction\.active && Number\(g\.EnemyAction\.uid \|\| 0\) === ownerUID\);/);
     assert.match(src, /g\.ActionInProgress = 0;[\s\S]*g\.ActionActorUID = 0;/s);
-    assert.match(src, /export function ProcessTurn\(ctx\) \{[\s\S]*recoverStaleActionInProgress\(g, uid\);[\s\S]*if \(g\.ActionInProgress && g\.ActionActorUID && g\.ActionActorUID !== uid\) return;/s);
+    assert.match(src, /export function ProcessTurn\(ctx\) \{[\s\S]*recoverStaleActionInProgress\(g, uid\);[\s\S]*if \(g\.ActionInProgress\) \{[\s\S]*reason: 'action-in-progress'[\s\S]*return;[\s\S]*\}/s);
   });
 }
 

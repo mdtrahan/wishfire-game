@@ -54,8 +54,10 @@ test('runtime exposes draw open/select/clear helpers for one skill test path', (
 test('blue meter full opens draw once instead of resetting on hero turn', () => {
   const runtimeSrc = fs.readFileSync(runtimePath, 'utf8');
   const resolveSrc = extractFunctionSource(runtimeSrc, 'ResolveGemAction');
+  assert.match(resolveSrc, /resolveGemActionCompat/);
+  assert.match(resolveSrc, /__ORKA_GEM_ACTION_OWNER__/);
   assert.match(resolveSrc, /OpenSkillDraughtForHero\(ctx, actorUID\);/);
-  assert.match(resolveSrc, /if \(nextAmp >= ampMax\) \{/);
+  assert.match(resolveSrc, /if \(Number\(decision\.blueOpenDraught \|\| 0\) === 1\) \{/);
   const shouldResetSrc = extractFunctionSource(runtimeSrc, 'shouldResetAstralFlowAmpOnHeroTurn');
   assert.match(shouldResetSrc, /if \(Number\(g\.SkillDraughtOpen \|\| 0\)\) return false;/);
 });

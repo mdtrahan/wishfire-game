@@ -41,6 +41,7 @@ import {
   resolveEnemyTargetHero,
 } from '../src/core/enemyTargetingRules.mjs';
 import { calculateDamageFromJs as importedCalculateDamageFromJs } from '../src/core/calculateDamageRules.mjs';
+import { resolveGemAction as importedResolveGemAction } from '../src/core/gemActionRules.mjs';
 import { resolveRunaMagicResist as importedResolveRunaMagicResist } from '../src/core/runaMagicResistRules.mjs';
 import { getEnemyRosterStability } from '../src/core/enemyRosterStability.mjs';
 const POWER_AMP_OUTCOMES = [
@@ -4845,10 +4846,13 @@ export function Add_Energy(ctx) {
   LogCombat(ctx, `${actorName} grabbed ${add} magic orbs!`);
 }
 
-export function GrantPurpleMatchEnergy(ctx, actorUID, consumedCount = 0) {
+export function GrantPurpleMatchEnergy(ctx, actorUID, consumedCount = 0, forcedAmount = null) {
   const g = getGlobals(ctx);
   const energyOptions = [6, 12, 15];
-  const amt = energyOptions[randomIndex(ctx, energyOptions.length)] || energyOptions[0];
+  const forced = Number(forcedAmount);
+  const amt = Number.isFinite(forced) && forced > 0
+    ? Math.floor(forced)
+    : (energyOptions[randomIndex(ctx, energyOptions.length)] || energyOptions[0]);
   g.Player_Energy = (g.Player_Energy || 0) + amt;
   const actorName = getActorNameByUID(ctx, actorUID);
   g.LastPurpleEnergyGain = {
@@ -6529,29 +6533,177 @@ export function RefreshPartyBuffUI(ctx) {
   ];
 }
 
+const GEM_ACTION_GREEN_ATTACK = 0;
+const GEM_ACTION_RED_ATTACK = 1;
+const GEM_ACTION_BLUE_ASTRAL = 2;
+const GEM_ACTION_YELLOW_CASINO = 3;
+const GEM_ACTION_HEAL = 4;
+const GEM_ACTION_PURPLE_ENERGY = 5;
+const GEM_ACTION_CALL_DO_HEAL = 1;
+const GEM_ACTION_CALL_PURPLE_MATCH_ENERGY = 2;
+
+function gemActionNumberOr(value, fallback = 0) {
+  const normalized = Number(value);
+  return Number.isFinite(normalized) ? normalized : fallback;
+}
+
+function gemActionRouteCodeFallback(gemColor) {
+  const color = Math.floor(gemActionNumberOr(gemColor, -1));
+  return color >= 0 && color <= 5 ? color : -1;
+}
+
+function gemActionIntentMetaFallback(routeCode) {
+  if (routeCode === GEM_ACTION_GREEN_ATTACK) return { frame: 0, colorName: 'GREEN', intentKey: 'HERO_AOE', extra: '' };
+  if (routeCode === GEM_ACTION_RED_ATTACK) return { frame: 1, colorName: 'RED', intentKey: 'HERO_SINGLE', extra: '' };
+  if (routeCode === GEM_ACTION_BLUE_ASTRAL) return { frame: 2, colorName: 'BLUE', intentKey: 'Astral_Flow', extra: '' };
+  if (routeCode === GEM_ACTION_YELLOW_CASINO) return { frame: 3, colorName: 'YELLOW', intentKey: 'Casino_Recolor', extra: '' };
+  if (routeCode === GEM_ACTION_HEAL) return { frame: 4, colorName: 'LIGHTGREEN', intentKey: 'Do_Heal', extra: '' };
+  if (routeCode === GEM_ACTION_PURPLE_ENERGY) return { frame: 5, colorName: 'PURPLE', intentKey: 'Energy_Gain', extra: 'hero-routing' };
+  return { frame: -1, colorName: '', intentKey: '', extra: '' };
+}
+
+function buildGemActionFallbackDecision(payload = {}, owner = 'fallback') {
+  const routeCode = gemActionRouteCodeFallback(payload.gemColor);
+  const consumed = Math.max(0, Math.floor(gemActionNumberOr(payload.consumedCount, 0)));
+  const wallet = Math.max(0, gemActionNumberOr(payload.astralFlowWallet, 0));
+  const currentAmp = Math.max(0, gemActionNumberOr(payload.astralFlowAmpPoints, 0));
+  const ampMax = Math.max(1, Math.floor(gemActionNumberOr(payload.astralFlowAmpMax, 18) || 18));
+  const ampReady = Number(payload.astralFlowAmpReady || 0) === 1 ? 1 : 0;
+  const shouldChargeAmp = consumed >= 3 && !ampReady;
+  const blueAmpPointsAfter = shouldChargeAmp ? Math.min(ampMax, currentAmp + consumed) : currentAmp;
+  const blueOpenDraught = shouldChargeAmp && blueAmpPointsAfter >= ampMax ? 1 : 0;
+  const now = gemActionNumberOr(payload.time, 0);
+  const currentLock = gemActionNumberOr(payload.actionLockUntil, 0);
+  let actionLockUntil = currentLock;
+  if (routeCode === GEM_ACTION_BLUE_ASTRAL) {
+    actionLockUntil = Math.max(currentLock, now + 0.32, blueOpenDraught ? now + 4 : currentLock);
+  } else if (routeCode === GEM_ACTION_PURPLE_ENERGY) {
+    actionLockUntil = Math.max(currentLock, now + 0.32, gemActionNumberOr(payload.textAnimEndAt, 0));
+  }
+  const intent = gemActionIntentMetaFallback(routeCode);
+  const pendingSkillCode = routeCode === GEM_ACTION_GREEN_ATTACK ? 1 : (routeCode === GEM_ACTION_RED_ATTACK ? 2 : 0);
+  const purpleRoll = Number.isFinite(Number(payload.purpleRoll01)) ? Number(payload.purpleRoll01) : 0.5;
+  const purpleEnergyOptions = [6, 12, 15];
+  const purpleEnergyAmount = purpleEnergyOptions[Math.floor(Math.max(0, Math.min(0.999999, purpleRoll)) * purpleEnergyOptions.length)] || 6;
+  return {
+    owner,
+    routeCode,
+    consumedCount: consumed,
+    hideHeroSelector: 1,
+    pendingSkillCode,
+    pendingSkillId: pendingSkillCode === 1 ? 'HERO_AOE' : (pendingSkillCode === 2 ? 'HERO_SINGLE' : ''),
+    setIsAoe: routeCode === GEM_ACTION_GREEN_ATTACK || routeCode === GEM_ACTION_RED_ATTACK || routeCode === GEM_ACTION_BLUE_ASTRAL ? 1 : 0,
+    isAoe: routeCode === GEM_ACTION_GREEN_ATTACK ? 1 : 0,
+    showAttackUi: routeCode === GEM_ACTION_GREEN_ATTACK || routeCode === GEM_ACTION_RED_ATTACK ? 1 : 0,
+    callCode: routeCode === GEM_ACTION_HEAL ? GEM_ACTION_CALL_DO_HEAL : (routeCode === GEM_ACTION_PURPLE_ENERGY ? GEM_ACTION_CALL_PURPLE_MATCH_ENERGY : 0),
+    consumesTurn: routeCode === GEM_ACTION_BLUE_ASTRAL || routeCode === GEM_ACTION_PURPLE_ENERGY ? 1 : 0,
+    intentFrame: intent.frame,
+    intentColorName: intent.colorName,
+    intentKey: intent.intentKey,
+    intentExtra: intent.extra,
+    blueWalletAfter: wallet + consumed,
+    blueAmpPointsAfter,
+    blueAmpReadyAfter: ampReady || blueOpenDraught ? 1 : 0,
+    blueOpenDraught,
+    blueBuffReset: routeCode === GEM_ACTION_BLUE_ASTRAL ? 1 : 0,
+    logBlueChannel: routeCode === GEM_ACTION_BLUE_ASTRAL ? 1 : 0,
+    logAstralFlowGained: routeCode === GEM_ACTION_BLUE_ASTRAL && blueOpenDraught ? 1 : 0,
+    purpleEnergyAmount,
+    actionLockUntil,
+    deferAdvance: routeCode === GEM_ACTION_BLUE_ASTRAL || routeCode === GEM_ACTION_PURPLE_ENERGY ? 1 : 0,
+    advanceAfterAction: routeCode === GEM_ACTION_BLUE_ASTRAL || routeCode === GEM_ACTION_PURPLE_ENERGY ? 1 : 0,
+  };
+}
+
+function resolveGemActionCompat(payload) {
+  if (typeof importedResolveGemAction === 'function') {
+    return importedResolveGemAction(payload);
+  }
+  const jsDecision = buildGemActionFallbackDecision(payload);
+  if (typeof payload?.ownerHook === 'function') {
+    try {
+      const result = payload.ownerHook({
+        ...payload,
+        jsRouteCode: jsDecision.routeCode,
+        jsPendingSkillCode: jsDecision.pendingSkillCode,
+        jsSetIsAoe: jsDecision.setIsAoe,
+        jsIsAoe: jsDecision.isAoe,
+        jsShowAttackUi: jsDecision.showAttackUi,
+        jsCallCode: jsDecision.callCode,
+        jsConsumesTurn: jsDecision.consumesTurn,
+        jsConsumedCount: jsDecision.consumedCount,
+        jsBlueWalletAfter: jsDecision.blueWalletAfter,
+        jsBlueAmpPointsAfter: jsDecision.blueAmpPointsAfter,
+        jsBlueAmpReadyAfter: jsDecision.blueAmpReadyAfter,
+        jsBlueOpenDraught: jsDecision.blueOpenDraught,
+        jsActionLockUntil: jsDecision.actionLockUntil,
+        jsPurpleEnergyAmount: jsDecision.purpleEnergyAmount,
+      });
+      if (Number.isFinite(Number(result?.routeCode))) {
+        const ownerDecision = buildGemActionFallbackDecision({ ...payload, gemColor: Number(result.routeCode) }, String(result?.owner || 'rust'));
+        return {
+          ...ownerDecision,
+          ...result,
+          owner: String(result?.owner || 'rust'),
+          jsDecision,
+        };
+      }
+    } catch (_) {
+      // Local fallback remains authoritative if the owner hook is unavailable.
+    }
+  }
+  return { ...jsDecision, jsDecision };
+}
+
 export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
   const g = getGlobals(ctx);
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const color = Number(gemColor);
+  const purpleRoll01 = color === GEM_ACTION_PURPLE_ENERGY ? random01(ctx) : 0.5;
+  const decision = resolveGemActionCompat({
+    source: 'functionBank.ResolveGemAction',
+    gemColor: color,
+    consumedCount,
+    astralFlowWallet: Number(g.AstralFlowWallet || 0),
+    astralFlowAmpPoints: Number(g.AstralFlowAmpPoints || 0),
+    astralFlowAmpMax: Number(g.AstralFlowAmpMax || 18),
+    astralFlowAmpReady: Number(g.AstralFlowAmpReady || 0),
+    time: Number(g.time || 0),
+    actionLockUntil: Number(g.ActionLockUntil || 0),
+    textAnimEndAt: Number(g.TextAnimEndAt || 0),
+    purpleRoll01,
+    ownerHook: root && typeof root.__ORKA_GEM_ACTION_OWNER__ === 'function'
+      ? root.__ORKA_GEM_ACTION_OWNER__
+      : null,
+  });
+  g.LastGemActionOwner = {
+    owner: String(decision.owner || 'fallback'),
+    source: 'functionBank.ResolveGemAction',
+    routeCode: Number(decision.routeCode || 0),
+    jsRouteCode: Number(decision.jsDecision?.routeCode ?? decision.routeCode ?? 0),
+  };
   RegisterHeroGemUsage(ctx, actorUID, gemColor, consumedCount);
-  g.HideHeroSelector = 1;
-  if (gemColor === 0) {
-    g.IsAOEMatch = 1;
-    LogGemIntent(ctx, 0, 'GREEN', 'HERO_AOE', '', actorUID);
-    g.PendingSkillID = 'HERO_AOE';
+  if (Number(decision.hideHeroSelector || 0) === 1) g.HideHeroSelector = 1;
+  if (Number(decision.setIsAoe || 0) === 1) g.IsAOEMatch = Number(decision.isAoe || 0) === 1 ? 1 : 0;
+  if (Number(decision.intentFrame || -1) >= 0) {
+    LogGemIntent(
+      ctx,
+      Number(decision.intentFrame || 0),
+      String(decision.intentColorName || ''),
+      String(decision.intentKey || ''),
+      String(decision.intentExtra || ''),
+      actorUID,
+    );
+  }
+  if (decision.pendingSkillId) {
+    g.PendingSkillID = String(decision.pendingSkillId);
     g.PendingActor = actorUID;
+  }
+  if (Number(decision.showAttackUi || 0) === 1) {
     ShowAttackUI(ctx);
     return;
   }
-  if (gemColor === 1) {
-    g.PendingSkillID = 'HERO_SINGLE';
-    g.PendingActor = actorUID;
-    g.IsAOEMatch = 0;
-    LogGemIntent(ctx, 1, 'RED', 'HERO_SINGLE', '', actorUID);
-    ShowAttackUI(ctx);
-    return;
-  }
-  if (gemColor === 2) {
-    g.IsAOEMatch = 0;
-    LogGemIntent(ctx, 2, 'BLUE', 'Astral_Flow', '', actorUID);
+  if (Number(decision.routeCode || 0) === GEM_ACTION_BLUE_ASTRAL) {
     g.BuffRollApplyStat = 0;
     g.BuffRollSkillID = '';
     g.BuffRollActor = 0;
@@ -6567,22 +6719,16 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
     g.PartyBuffSlots = [];
     g.PartyBuffUI = { atk: false, def: false, mag: false, res: false };
     g.BuffFrames = [-1, -1, -1, -1];
-    const consumedBlue = Math.max(0, Number(consumedCount) || 0);
-    const wallet = ensureAstralFlowWallet(ctx);
-    g.AstralFlowWallet = wallet + consumedBlue;
+    const consumedBlue = Math.max(0, Number(decision.consumedCount || 0));
+    ensureAstralFlowWallet(ctx);
+    g.AstralFlowWallet = Number(decision.blueWalletAfter || 0);
     LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} channeled ${consumedBlue} Astral Flow.`);
     ensureAstralFlowAmpState(ctx);
-    if (consumedBlue >= 3 && !g.AstralFlowAmpReady) {
-      const currentAmp = Math.max(0, Number(g.AstralFlowAmpPoints || 0));
-      const ampMax = Math.max(1, Number(g.AstralFlowAmpMax || 18));
-      const nextAmp = Math.min(ampMax, currentAmp + consumedBlue);
-      g.AstralFlowAmpPoints = nextAmp;
-      if (nextAmp >= ampMax) {
-        g.AstralFlowAmpReady = 1;
-        OpenSkillDraughtForHero(ctx, actorUID);
-        LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} gained Astral Flow!`);
-        g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, (g.time || 0) + 4);
-      }
+    g.AstralFlowAmpPoints = Number(decision.blueAmpPointsAfter || 0);
+    g.AstralFlowAmpReady = Number(decision.blueAmpReadyAfter || 0) ? 1 : 0;
+    if (Number(decision.blueOpenDraught || 0) === 1) {
+      OpenSkillDraughtForHero(ctx, actorUID);
+      LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} gained Astral Flow!`);
     }
     UpdateAstralFlowAmpBar(ctx);
     // Blue matches are turn-consuming actions: lock input and defer exactly one handoff.
@@ -6590,24 +6736,18 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
     g.IsPlayerBusy = 0;
     g.ActionOwnerUID = actorUID;
     // Keep handoff behind blue merge/fly-up completion (app blue merge duration is 0.28s).
-    g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, (g.time || 0) + 0.32);
+    g.ActionLockUntil = Number(decision.actionLockUntil || 0);
     g.DeferAdvance = 1;
     g.AdvanceAfterAction = 1;
     return;
   }
-  if (gemColor === 3) {
-    LogGemIntent(ctx, 3, 'YELLOW', 'Casino_Recolor', '', actorUID);
-    return;
-  }
-  if (gemColor === 4) {
-    LogGemIntent(ctx, 4, 'LIGHTGREEN', 'Do_Heal', '', actorUID);
+  if (Number(decision.callCode || 0) === GEM_ACTION_CALL_DO_HEAL) {
     ctx.callFunction('DoHeal', actorUID);
     return;
   }
-  if (gemColor === 5) {
-    LogGemIntent(ctx, 5, 'PURPLE', 'Energy_Gain', 'hero-routing', actorUID);
-    GrantPurpleMatchEnergy(ctx, actorUID, consumedCount);
-    g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, (g.time || 0) + 0.32, g.TextAnimEndAt || 0);
+  if (Number(decision.callCode || 0) === GEM_ACTION_CALL_PURPLE_MATCH_ENERGY) {
+    GrantPurpleMatchEnergy(ctx, actorUID, consumedCount, decision.purpleEnergyAmount);
+    g.ActionLockUntil = Number(decision.actionLockUntil || 0);
     g.DeferAdvance = 1;
     g.AdvanceAfterAction = 1;
     g.ActionOwnerUID = actorUID;
