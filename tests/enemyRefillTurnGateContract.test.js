@@ -240,7 +240,7 @@ test('function banks wire roster stability and gate scheduler mutation before ad
 
     const processCurrentTurn = extractFunctionSource(src, 'ProcessCurrentTurn');
     assert.ok(
-      lineIndex(processCurrentTurn, 'holdForEnemyRosterRefill') < lineIndex(processCurrentTurn, 'g.RoundGroupIndex = (g.RoundGroupIndex || 0) + 1'),
+      lineIndex(processCurrentTurn, 'holdForEnemyRosterRefill') < lineIndex(processCurrentTurn, 'g.RoundGroupIndex = Number(pointerAdvance.nextGroupIndex || 0)'),
       `${relPath} ProcessCurrentTurn must gate before group advance`,
     );
 

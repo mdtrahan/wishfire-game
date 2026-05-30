@@ -64,7 +64,8 @@ test('runtime mirrors build team phases instead of mixed global speed queues', (
     assert.match(src, /buildTeamPhaseSlots/);
     assert.match(src, /nextTeamPhaseType/);
     assert.match(src, /g\.TeamPhaseType = 0;/);
-    assert.match(src, /g\.TeamPhaseType = nextTeamPhaseType\(Number\(g\.TeamPhaseType \|\| 0\)\);/);
+    assert.match(src, /resolveRoundPointerAdvance/);
+    assert.match(src, /g\.TeamPhaseType = Number\(pointerAdvance\.nextTeamPhaseType \|\| 0\);/);
     assert.doesNotMatch(src, /deriveBattleStartRoundPartition\(withInit, startMode\)/);
   }
 });

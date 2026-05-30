@@ -217,6 +217,54 @@ pub fn turn_order_compare_slots(
     0.0
 }
 
+pub fn round_pointer_next_member_index(round_member_index: f64) -> f64 {
+    positive_floor_or_zero(round_member_index) + 1.0
+}
+
+pub fn round_pointer_group_complete(next_member_index: f64, group_member_count: f64) -> f64 {
+    if positive_floor_or_zero(next_member_index) >= positive_floor_or_zero(group_member_count) {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+pub fn round_pointer_next_group_index(round_group_index: f64) -> f64 {
+    positive_floor_or_zero(round_group_index) + 1.0
+}
+
+pub fn round_pointer_round_complete(
+    next_group_index: f64,
+    group_count: f64,
+    group_complete: f64,
+) -> f64 {
+    if number_or_zero(group_complete) == 1.0
+        && positive_floor_or_zero(next_group_index) >= positive_floor_or_zero(group_count)
+    {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+pub fn round_pointer_next_team_phase_type(team_phase_type: f64) -> f64 {
+    if number_or_zero(team_phase_type) == 1.0 {
+        0.0
+    } else {
+        1.0
+    }
+}
+
+pub fn round_pointer_advance_code(group_complete: f64, round_complete: f64) -> f64 {
+    if number_or_zero(round_complete) == 1.0 {
+        2.0
+    } else if number_or_zero(group_complete) == 1.0 {
+        1.0
+    } else {
+        0.0
+    }
+}
+
 fn js_to_uint32(value: f64) -> u32 {
     if !value.is_finite() {
         return 0;
@@ -350,6 +398,46 @@ pub extern "C" fn turn_order_compare_slots_shadow(
     b_spd: f64,
 ) -> f64 {
     turn_order_compare_slots(a_uid, a_type, a_spd, b_uid, b_type, b_spd)
+}
+
+#[no_mangle]
+pub extern "C" fn round_pointer_next_member_index_shadow(round_member_index: f64) -> f64 {
+    round_pointer_next_member_index(round_member_index)
+}
+
+#[no_mangle]
+pub extern "C" fn round_pointer_group_complete_shadow(
+    next_member_index: f64,
+    group_member_count: f64,
+) -> f64 {
+    round_pointer_group_complete(next_member_index, group_member_count)
+}
+
+#[no_mangle]
+pub extern "C" fn round_pointer_next_group_index_shadow(round_group_index: f64) -> f64 {
+    round_pointer_next_group_index(round_group_index)
+}
+
+#[no_mangle]
+pub extern "C" fn round_pointer_round_complete_shadow(
+    next_group_index: f64,
+    group_count: f64,
+    group_complete: f64,
+) -> f64 {
+    round_pointer_round_complete(next_group_index, group_count, group_complete)
+}
+
+#[no_mangle]
+pub extern "C" fn round_pointer_next_team_phase_type_shadow(team_phase_type: f64) -> f64 {
+    round_pointer_next_team_phase_type(team_phase_type)
+}
+
+#[no_mangle]
+pub extern "C" fn round_pointer_advance_code_shadow(
+    group_complete: f64,
+    round_complete: f64,
+) -> f64 {
+    round_pointer_advance_code(group_complete, round_complete)
 }
 
 #[no_mangle]
@@ -1731,5 +1819,52 @@ mod single_hit_resolution_tests {
             turn_order_compare_slots(101.0, 1.0, 18.0, 2.0, 0.0, 18.0),
             1.0
         );
+    }
+
+    #[test]
+    fn mirrors_current_round_pointer_advance_cases() {
+        let cases = [
+            // member_index, group_member_count, group_index, group_count,
+            // team_phase, expected_member, expected_group_complete,
+            // expected_group_index, expected_round_complete, expected_phase, expected_code
+            (0.0, 4.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0),
+            (2.0, 4.0, 0.0, 1.0, 0.0, 3.0, 0.0, 1.0, 0.0, 1.0, 0.0),
+            (3.0, 4.0, 0.0, 1.0, 0.0, 4.0, 1.0, 1.0, 1.0, 1.0, 2.0),
+            (1.0, 2.0, 0.0, 2.0, 1.0, 2.0, 1.0, 1.0, 0.0, 0.0, 1.0),
+            (0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0),
+        ];
+
+        for (
+            member_index,
+            group_member_count,
+            group_index,
+            group_count,
+            team_phase,
+            expected_member,
+            expected_group_complete,
+            expected_group_index,
+            expected_round_complete,
+            expected_phase,
+            expected_code,
+        ) in cases
+        {
+            let next_member = round_pointer_next_member_index(member_index);
+            let group_complete = round_pointer_group_complete(next_member, group_member_count);
+            let next_group = round_pointer_next_group_index(group_index);
+            let round_complete =
+                round_pointer_round_complete(next_group, group_count, group_complete);
+            assert_eq!(next_member, expected_member);
+            assert_eq!(group_complete, expected_group_complete);
+            assert_eq!(next_group, expected_group_index);
+            assert_eq!(round_complete, expected_round_complete);
+            assert_eq!(
+                round_pointer_next_team_phase_type(team_phase),
+                expected_phase
+            );
+            assert_eq!(
+                round_pointer_advance_code(group_complete, round_complete),
+                expected_code
+            );
+        }
     }
 }

@@ -31,6 +31,7 @@ import {
   deriveBattleStartRoundPartition,
   nextTeamPhaseType,
 } from '../src/core/schedulerRules.mjs';
+import { resolveRoundPointerAdvance } from '../src/core/roundPointerAdvanceRules.mjs';
 import { resolveTurnOrderGroupProjection } from '../src/core/turnOrderGroupRules.mjs';
 import { sanitizeInitiativeQueue, shouldAutoCorrectImproperRepeat } from '../src/core/initiativeGuards.mjs';
 import { pickEnemyTargetHeroFromRoster } from '../src/core/enemyTargetingRules.mjs';
@@ -3296,8 +3297,26 @@ export function ProcessCurrentTurn(ctx) {
   if (g.RoundActive && Array.isArray(g.RoundGroups) && g.RoundGroups.length) {
     const groups = g.RoundGroups;
     const group = groups[g.RoundGroupIndex] || { members: [] };
-    g.RoundMemberIndex = (g.RoundMemberIndex || 0) + 1;
-    if (g.RoundMemberIndex >= (group.members || []).length) {
+    const root = typeof globalThis !== 'undefined' ? globalThis : null;
+    const pointerAdvance = resolveRoundPointerAdvance({
+      source: 'functionBank.ProcessCurrentTurn',
+      roundMemberIndex: Number(g.RoundMemberIndex || 0),
+      groupMemberCount: (group.members || []).length,
+      roundGroupIndex: Number(g.RoundGroupIndex || 0),
+      groupCount: groups.length,
+      teamPhaseType: Number(g.TeamPhaseType || 0),
+      ownerHook: root && typeof root.__ORKA_ROUND_POINTER_ADVANCE_OWNER__ === 'function'
+        ? root.__ORKA_ROUND_POINTER_ADVANCE_OWNER__
+        : null,
+    });
+    g.LastRoundPointerAdvanceOwner = {
+      owner: String(pointerAdvance.owner || 'fallback'),
+      source: 'functionBank.ProcessCurrentTurn',
+      code: Number(pointerAdvance.code || 0),
+      jsCode: Number(pointerAdvance.jsDecision?.code ?? pointerAdvance.code ?? 0),
+    };
+    g.RoundMemberIndex = Number(pointerAdvance.nextMemberIndex || 0);
+    if (Number(pointerAdvance.groupComplete || 0) === 1) {
       // end of group: resolve pending deaths for this group
       const pending = g.PendingDeaths || {};
       const resolvedGroup = g.RoundGroupIndex || 0;
@@ -3326,10 +3345,10 @@ export function ProcessCurrentTurn(ctx) {
       g.GroupResolving = 0;
       if (holdForEnemyRosterRefill(ctx)) return;
       g.RoundMemberIndex = 0;
-      g.RoundGroupIndex = (g.RoundGroupIndex || 0) + 1;
-      if (g.RoundGroupIndex >= groups.length) {
+      g.RoundGroupIndex = Number(pointerAdvance.nextGroupIndex || 0);
+      if (Number(pointerAdvance.roundComplete || 0) === 1) {
         g.RoundActive = 0;
-        g.TeamPhaseType = nextTeamPhaseType(Number(g.TeamPhaseType || 0));
+        g.TeamPhaseType = Number(pointerAdvance.nextTeamPhaseType || 0);
         StartRound(ctx);
       }
     }

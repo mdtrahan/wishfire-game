@@ -22,6 +22,7 @@ function getShadowState() {
       combatOutcomeOwnerChecks: 0,
       turnActorEligibilityOwnerChecks: 0,
       turnOrderGroupOwnerChecks: 0,
+      roundPointerAdvanceOwnerChecks: 0,
       seededRngChecks: 0,
       seededRngOwnerChecks: 0,
       singleHitOwnerSmokeRan: false,
@@ -37,6 +38,7 @@ function getShadowState() {
       combatOutcomeOwnerSmokeRan: false,
       turnActorEligibilityOwnerSmokeRan: false,
       turnOrderGroupOwnerSmokeRan: false,
+      roundPointerAdvanceOwnerSmokeRan: false,
     };
   }
   if (!window[SHADOW_STATE_KEY]) {
@@ -59,6 +61,7 @@ function getShadowState() {
       combatOutcomeOwnerChecks: 0,
       turnActorEligibilityOwnerChecks: 0,
       turnOrderGroupOwnerChecks: 0,
+      roundPointerAdvanceOwnerChecks: 0,
       seededRngChecks: 0,
       seededRngOwnerChecks: 0,
       singleHitOwnerSmokeRan: false,
@@ -74,6 +77,7 @@ function getShadowState() {
       combatOutcomeOwnerSmokeRan: false,
       turnActorEligibilityOwnerSmokeRan: false,
       turnOrderGroupOwnerSmokeRan: false,
+      roundPointerAdvanceOwnerSmokeRan: false,
       lastCheck: null,
       lastSingleHitCheck: null,
       lastSingleHitOwnerCheck: null,
@@ -91,6 +95,7 @@ function getShadowState() {
       lastCombatOutcomeOwnerCheck: null,
       lastTurnActorEligibilityOwnerCheck: null,
       lastTurnOrderGroupOwnerCheck: null,
+      lastRoundPointerAdvanceOwnerCheck: null,
       lastSeededRngCheck: null,
       lastSeededRngOwnerCheck: null,
       exports: null,
@@ -192,6 +197,12 @@ function updateShadowDomMarker(shadow) {
   document.documentElement.dataset.simCoreShadowTurnOrderGroupOwner = String(
     shadow?.lastTurnOrderGroupOwnerCheck?.owner || '',
   );
+  document.documentElement.dataset.simCoreShadowRoundPointerAdvanceOwnerChecks = String(
+    Number(shadow?.roundPointerAdvanceOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowRoundPointerAdvanceOwner = String(
+    shadow?.lastRoundPointerAdvanceOwnerCheck?.owner || '',
+  );
   document.documentElement.dataset.simCoreShadowSeededRngChecks = String(
     Number(shadow?.seededRngChecks || 0),
   );
@@ -282,6 +293,15 @@ function hasTurnOrderGroupExports(exports) {
     && typeof exports?.turn_order_compare_slots_shadow === 'function';
 }
 
+function hasRoundPointerAdvanceExports(exports) {
+  return typeof exports?.round_pointer_next_member_index_shadow === 'function'
+    && typeof exports?.round_pointer_group_complete_shadow === 'function'
+    && typeof exports?.round_pointer_next_group_index_shadow === 'function'
+    && typeof exports?.round_pointer_round_complete_shadow === 'function'
+    && typeof exports?.round_pointer_next_team_phase_type_shadow === 'function'
+    && typeof exports?.round_pointer_advance_code_shadow === 'function';
+}
+
 function hasTurnSummaryExports(exports) {
   return typeof exports?.turn_summary_code_shadow === 'function';
 }
@@ -301,7 +321,8 @@ function hasRequiredExports(exports) {
     && hasEffectiveStatExports(exports)
     && hasCombatOutcomeExports(exports)
     && hasTurnActorEligibilityExports(exports)
-    && hasTurnOrderGroupExports(exports);
+    && hasTurnOrderGroupExports(exports)
+    && hasRoundPointerAdvanceExports(exports);
 }
 
 async function instantiateWasm(wasmUrl) {
@@ -564,6 +585,25 @@ function runTurnOrderGroupOwnerStartupCheck(shadow) {
   });
 }
 
+function runRoundPointerAdvanceOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.roundPointerAdvanceOwnerSmokeRan) return;
+  shadow.roundPointerAdvanceOwnerSmokeRan = true;
+  createSimulationCoreRoundPointerAdvanceResolution({
+    source: 'simulationCore.startup.roundPointerAdvanceOwner',
+    roundMemberIndex: 3,
+    groupMemberCount: 4,
+    roundGroupIndex: 0,
+    groupCount: 1,
+    teamPhaseType: 0,
+    jsCode: 2,
+    jsNextMemberIndex: 4,
+    jsGroupComplete: 1,
+    jsNextGroupIndex: 1,
+    jsRoundComplete: 1,
+    jsNextTeamPhaseType: 1,
+  });
+}
+
 function runTurnSummaryOwnerStartupCheck(shadow) {
   if (!shadow || shadow.turnSummaryOwnerSmokeRan) return;
   shadow.turnSummaryOwnerSmokeRan = true;
@@ -596,6 +636,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_COMBAT_OUTCOME_OWNER__ = createSimulationCoreCombatOutcomeResolution;
     window.__ORKA_TURN_ACTOR_ELIGIBILITY_OWNER__ = createSimulationCoreTurnActorEligibilityResolution;
     window.__ORKA_TURN_ORDER_GROUP_OWNER__ = createSimulationCoreTurnOrderGroupProjection;
+    window.__ORKA_ROUND_POINTER_ADVANCE_OWNER__ = createSimulationCoreRoundPointerAdvanceResolution;
     window.__ORKA_SEEDED_RNG_SHADOW__ = shadowSeededRng;
     window.__ORKA_SEEDED_RNG_OWNER__ = createSimulationCoreSeededRng;
   }
@@ -625,6 +666,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
         runCombatOutcomeOwnerStartupCheck(shadow);
         runTurnActorEligibilityOwnerStartupCheck(shadow);
         runTurnOrderGroupOwnerStartupCheck(shadow);
+        runRoundPointerAdvanceOwnerStartupCheck(shadow);
       }
       updateShadowDomMarker(shadow);
       return shadow;
@@ -963,6 +1005,103 @@ export function createSimulationCoreTurnOrderGroupProjection({
   }
   updateShadowDomMarker(shadow);
   return { owner: 'rust', phaseType, members };
+}
+
+export function createSimulationCoreRoundPointerAdvanceResolution({
+  source = 'unknown',
+  roundMemberIndex = 0,
+  groupMemberCount = 0,
+  roundGroupIndex = 0,
+  groupCount = 0,
+  teamPhaseType = 0,
+  jsCode = 0,
+  jsNextMemberIndex = 0,
+  jsGroupComplete = 0,
+  jsNextGroupIndex = 0,
+  jsRoundComplete = 0,
+  jsNextTeamPhaseType = 0,
+} = {}, {
+  exportsOverride = null,
+} = {}) {
+  const shadow = getShadowState();
+  const normalized = {
+    source,
+    roundMemberIndex: Math.max(0, Math.trunc(Number(roundMemberIndex || 0))),
+    groupMemberCount: Math.max(0, Math.trunc(Number(groupMemberCount || 0))),
+    roundGroupIndex: Math.max(0, Math.trunc(Number(roundGroupIndex || 0))),
+    groupCount: Math.max(0, Math.trunc(Number(groupCount || 0))),
+    teamPhaseType: Number(teamPhaseType || 0) === 1 ? 1 : 0,
+    jsCode: Number(jsCode || 0),
+    jsNextMemberIndex: Number(jsNextMemberIndex || 0),
+    jsGroupComplete: Number(jsGroupComplete || 0) ? 1 : 0,
+    jsNextGroupIndex: Number(jsNextGroupIndex || 0),
+    jsRoundComplete: Number(jsRoundComplete || 0) ? 1 : 0,
+    jsNextTeamPhaseType: Number(jsNextTeamPhaseType || 0) === 1 ? 1 : 0,
+  };
+  const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+  if (!hasRoundPointerAdvanceExports(exports)) {
+    shadow.roundPointerAdvanceOwnerChecks = Number(shadow.roundPointerAdvanceOwnerChecks || 0) + 1;
+    shadow.lastRoundPointerAdvanceOwnerCheck = {
+      ...normalized,
+      owner: 'fallback',
+      code: normalized.jsCode,
+      nextMemberIndex: normalized.jsNextMemberIndex,
+      groupComplete: normalized.jsGroupComplete,
+      nextGroupIndex: normalized.jsNextGroupIndex,
+      roundComplete: normalized.jsRoundComplete,
+      nextTeamPhaseType: normalized.jsNextTeamPhaseType,
+    };
+    updateShadowDomMarker(shadow);
+    return {
+      owner: 'fallback',
+      code: normalized.jsCode,
+      nextMemberIndex: normalized.jsNextMemberIndex,
+      groupComplete: normalized.jsGroupComplete,
+      nextGroupIndex: normalized.jsNextGroupIndex,
+      roundComplete: normalized.jsRoundComplete,
+      nextTeamPhaseType: normalized.jsNextTeamPhaseType,
+    };
+  }
+
+  const nextMemberIndex = Number(exports.round_pointer_next_member_index_shadow(normalized.roundMemberIndex));
+  const groupComplete = Number(exports.round_pointer_group_complete_shadow(nextMemberIndex, normalized.groupMemberCount));
+  const nextGroupIndex = Number(exports.round_pointer_next_group_index_shadow(normalized.roundGroupIndex));
+  const roundComplete = Number(exports.round_pointer_round_complete_shadow(
+    nextGroupIndex,
+    normalized.groupCount,
+    groupComplete,
+  ));
+  const nextTeamPhaseType = Number(exports.round_pointer_next_team_phase_type_shadow(normalized.teamPhaseType));
+  const code = Number(exports.round_pointer_advance_code_shadow(groupComplete, roundComplete));
+
+  shadow.roundPointerAdvanceOwnerChecks = Number(shadow.roundPointerAdvanceOwnerChecks || 0) + 1;
+  shadow.lastRoundPointerAdvanceOwnerCheck = {
+    ...normalized,
+    owner: 'rust',
+    code,
+    nextMemberIndex,
+    groupComplete,
+    nextGroupIndex,
+    roundComplete,
+    nextTeamPhaseType,
+  };
+  if (
+    !exportsOverride
+    && (
+      code !== normalized.jsCode
+      || nextMemberIndex !== normalized.jsNextMemberIndex
+      || groupComplete !== normalized.jsGroupComplete
+      || nextGroupIndex !== normalized.jsNextGroupIndex
+      || roundComplete !== normalized.jsRoundComplete
+      || nextTeamPhaseType !== normalized.jsNextTeamPhaseType
+    )
+  ) {
+    shadow.mismatches.push(shadow.lastRoundPointerAdvanceOwnerCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastRoundPointerAdvanceOwnerCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return { owner: 'rust', code, nextMemberIndex, groupComplete, nextGroupIndex, roundComplete, nextTeamPhaseType };
 }
 
 export function createSimulationCoreSeededRng(seed = 1, {
