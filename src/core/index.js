@@ -6,6 +6,7 @@ const {
 } = require('./layoutState');
 const { InputDomainManager } = require('./inputDomains');
 const { CombatRuntimeGateway } = require('./combatRuntimeGateway.cjs');
+const simulationCorePacket = require('./simulationCorePacket.cjs');
 
 module.exports = {
   LayoutStateController,
@@ -14,4 +15,5 @@ module.exports = {
   resetLayoutStateSingletonForTests,
   InputDomainManager,
   CombatRuntimeGateway,
+  ...simulationCorePacket,
 };

@@ -1,3 +1,9 @@
+import {
+  createSimulationCoreRequest,
+  createSimulationCoreResponse,
+  normalizeSimulationRngState,
+} from './simulationCorePacket.js';
+
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -98,6 +104,7 @@ class CombatRuntimeGateway {
     getAuthoritativeTurnState,
     applyAuthoritativeTurnState,
     combatSnapshotOwner,
+    getDeterministicRngState,
   } = {}) {
     this.combatState = combatState || {};
     this.eventBus = eventBus || null;
@@ -111,6 +118,9 @@ class CombatRuntimeGateway {
       : null;
     this.combatSnapshotOwner = typeof combatSnapshotOwner === 'function'
       ? combatSnapshotOwner
+      : null;
+    this.getDeterministicRngStateAdapter = typeof getDeterministicRngState === 'function'
+      ? getDeterministicRngState
       : null;
   }
 
@@ -181,6 +191,49 @@ class CombatRuntimeGateway {
       currentActorIndex,
       capturedAtTick,
     };
+  }
+
+  getDeterministicRngState() {
+    if (this.getDeterministicRngStateAdapter) {
+      return normalizeSimulationRngState(this.getDeterministicRngStateAdapter() || {});
+    }
+    return normalizeSimulationRngState(this.combatState && this.combatState.rngState ? this.combatState.rngState : {});
+  }
+
+  createSimulationCoreRequest(action = {}, context = {}, turnStateOverride = null) {
+    const turnState = turnStateOverride || this.getAuthoritativeTurnState();
+    const request = createSimulationCoreRequest({
+      gameState: {
+        turnState: cloneJson(turnState),
+      },
+      action,
+      rngState: this.getDeterministicRngState(),
+      context,
+    });
+    this.combatState.lastSimulationCoreRequest = cloneJson(request);
+    return request;
+  }
+
+  applySimulationCoreResponse(response = {}) {
+    const normalized = createSimulationCoreResponse(response);
+    const turnState = normalized.nextGameState && normalized.nextGameState.turnState
+      ? normalized.nextGameState.turnState
+      : null;
+    if (turnState && Array.isArray(turnState.turnQueue)) {
+      if (this.applyAuthoritativeTurnStateAdapter) {
+        this.applyAuthoritativeTurnStateAdapter(cloneJson(turnState));
+      }
+      this.combatState.turnQueue = cloneJson(turnState.turnQueue);
+      this.combatState.currentActorIndex = Number(turnState.currentActorIndex || 0);
+    }
+    this.combatState.lastSimulationCoreResponse = cloneJson(normalized);
+    if (this.eventBus && typeof this.eventBus.emit === 'function') {
+      this.eventBus.emit('combat:simulation-response', { response: normalized });
+      for (const event of normalized.events) {
+        this.eventBus.emit('combat:simulation-event', { event, response: normalized });
+      }
+    }
+    return normalized;
   }
 
   getCheckpointDefinitions() {
@@ -286,10 +339,16 @@ class CombatRuntimeGateway {
   takeSnapshot() {
     const turnState = this.getAuthoritativeTurnState();
     const resumeToken = makeResumeToken(turnState.turnQueue, turnState.currentActorIndex, turnState.capturedAtTick);
+    const simulationCoreRequest = this.createSimulationCoreRequest(
+      { type: 'gateway.snapshot', source: 'CombatRuntimeGateway.takeSnapshot' },
+      { checkpointId: CHECKPOINT_IDS.SNAPSHOT_EMIT },
+      turnState,
+    );
     const snapshot = {
       snapshotVersion: SNAPSHOT_VERSION,
       capturedAtTick: turnState.capturedAtTick,
       turnState,
+      simulationCoreRequest,
       resumeToken,
       turnQueue: cloneJson(turnState.turnQueue),
       currentActorIndex: Number(turnState.currentActorIndex || 0),

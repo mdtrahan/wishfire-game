@@ -2130,6 +2130,16 @@ const combatRuntimeGateway = new CombatRuntimeGateway({
       if (active.type != null) g.CurrentTurnType = Number(active.type || 0);
     }
   },
+  getDeterministicRngState() {
+    const g = (state && state.globals) ? state.globals : {};
+    return {
+      RuntimeRandomSeed: Number(g.RuntimeRandomSeed || 0),
+      RuntimeRandomDraws: Number(g.RuntimeRandomDraws || 0),
+      RuntimeRandomOwner: String(g.RuntimeRandomOwner || ''),
+      RuntimeRandomReason: String(g.RuntimeRandomReason || ''),
+      RuntimeRandomLastValue: Number(g.RuntimeRandomLastValue || 0),
+    };
+  },
 });
 
 const CANONICAL_HERO_ROSTER = [
