@@ -1,0 +1,7 @@
+name,slotCount,slot0Index,slot1Index,slot2Index,appliedStatIndex,active,expectedAction,expectedDropSlotIndex,expectedAppendSlotIndex
+already_present_active,1,0,-1,-1,0,1,0,-1,-1
+append_when_space,2,0,1,-1,2,1,1,-1,2
+drop_first_when_full,3,0,1,2,4,1,2,0,4
+remove_present_inactive,2,0,1,-1,1,0,3,1,-1
+inactive_absent_noop,2,0,1,-1,4,0,0,-1,-1
+invalid_applied_noop,2,0,1,-1,-1,1,0,-1,-1

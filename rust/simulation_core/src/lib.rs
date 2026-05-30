@@ -367,6 +367,127 @@ pub fn enemy_debuff_apply_active(amount_after: f64, turns_after: f64) -> f64 {
     }
 }
 
+fn normalized_debuff_stat_index(value: f64) -> f64 {
+    if !value.is_finite() {
+        return -1.0;
+    }
+    let index = value.floor();
+    if (0.0..=4.0).contains(&index) {
+        index
+    } else {
+        -1.0
+    }
+}
+
+fn normalized_debuff_slot_count(value: f64) -> usize {
+    if !value.is_finite() {
+        return 0;
+    }
+    value.floor().clamp(0.0, 3.0) as usize
+}
+
+fn normalized_debuff_slots(slot_count: f64, slot0: f64, slot1: f64, slot2: f64) -> Vec<f64> {
+    let raw = [
+        normalized_debuff_stat_index(slot0),
+        normalized_debuff_stat_index(slot1),
+        normalized_debuff_stat_index(slot2),
+    ];
+    raw.iter()
+        .take(normalized_debuff_slot_count(slot_count))
+        .copied()
+        .filter(|index| *index >= 0.0)
+        .collect()
+}
+
+fn enemy_debuff_slot_transition(
+    slot_count: f64,
+    slot0_index: f64,
+    slot1_index: f64,
+    slot2_index: f64,
+    applied_stat_index: f64,
+    active: f64,
+) -> (f64, f64, f64) {
+    let applied = normalized_debuff_stat_index(applied_stat_index);
+    if applied < 0.0 {
+        return (0.0, -1.0, -1.0);
+    }
+
+    let slots = normalized_debuff_slots(slot_count, slot0_index, slot1_index, slot2_index);
+    let contains_applied = slots.iter().any(|index| *index == applied);
+    if number_or_zero(active) <= 0.0 {
+        return if contains_applied {
+            (3.0, applied, -1.0)
+        } else {
+            (0.0, -1.0, -1.0)
+        };
+    }
+
+    if contains_applied {
+        return (0.0, -1.0, -1.0);
+    }
+    if slots.len() >= 3 {
+        return (2.0, slots[0], applied);
+    }
+    (1.0, -1.0, applied)
+}
+
+pub fn enemy_debuff_slot_transition_action(
+    slot_count: f64,
+    slot0_index: f64,
+    slot1_index: f64,
+    slot2_index: f64,
+    applied_stat_index: f64,
+    active: f64,
+) -> f64 {
+    enemy_debuff_slot_transition(
+        slot_count,
+        slot0_index,
+        slot1_index,
+        slot2_index,
+        applied_stat_index,
+        active,
+    )
+    .0
+}
+
+pub fn enemy_debuff_slot_transition_drop_slot_index(
+    slot_count: f64,
+    slot0_index: f64,
+    slot1_index: f64,
+    slot2_index: f64,
+    applied_stat_index: f64,
+    active: f64,
+) -> f64 {
+    enemy_debuff_slot_transition(
+        slot_count,
+        slot0_index,
+        slot1_index,
+        slot2_index,
+        applied_stat_index,
+        active,
+    )
+    .1
+}
+
+pub fn enemy_debuff_slot_transition_append_slot_index(
+    slot_count: f64,
+    slot0_index: f64,
+    slot1_index: f64,
+    slot2_index: f64,
+    applied_stat_index: f64,
+    active: f64,
+) -> f64 {
+    enemy_debuff_slot_transition(
+        slot_count,
+        slot0_index,
+        slot1_index,
+        slot2_index,
+        applied_stat_index,
+        active,
+    )
+    .2
+}
+
 fn combatant_count(value: f64) -> usize {
     number_or_zero(value).floor().clamp(0.0, 4.0) as usize
 }
@@ -678,6 +799,63 @@ pub extern "C" fn enemy_debuff_apply_turns_after_shadow(duration_turns: f64) -> 
 #[no_mangle]
 pub extern "C" fn enemy_debuff_apply_active_shadow(amount_after: f64, turns_after: f64) -> f64 {
     enemy_debuff_apply_active(amount_after, turns_after)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_debuff_slot_transition_action_shadow(
+    slot_count: f64,
+    slot0_index: f64,
+    slot1_index: f64,
+    slot2_index: f64,
+    applied_stat_index: f64,
+    active: f64,
+) -> f64 {
+    enemy_debuff_slot_transition_action(
+        slot_count,
+        slot0_index,
+        slot1_index,
+        slot2_index,
+        applied_stat_index,
+        active,
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_debuff_slot_transition_drop_slot_index_shadow(
+    slot_count: f64,
+    slot0_index: f64,
+    slot1_index: f64,
+    slot2_index: f64,
+    applied_stat_index: f64,
+    active: f64,
+) -> f64 {
+    enemy_debuff_slot_transition_drop_slot_index(
+        slot_count,
+        slot0_index,
+        slot1_index,
+        slot2_index,
+        applied_stat_index,
+        active,
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_debuff_slot_transition_append_slot_index_shadow(
+    slot_count: f64,
+    slot0_index: f64,
+    slot1_index: f64,
+    slot2_index: f64,
+    applied_stat_index: f64,
+    active: f64,
+) -> f64 {
+    enemy_debuff_slot_transition_append_slot_index(
+        slot_count,
+        slot0_index,
+        slot1_index,
+        slot2_index,
+        applied_stat_index,
+        active,
+    )
 }
 
 #[cfg(test)]
@@ -1063,6 +1241,50 @@ mod single_hit_resolution_tests {
             assert_eq!(
                 enemy_debuff_apply_active(amount_after, turns_after),
                 expected_active
+            );
+        }
+    }
+
+    #[test]
+    fn mirrors_current_enemy_debuff_slot_transition_cases() {
+        let cases = [
+            (1.0, 0.0, -1.0, -1.0, 0.0, 1.0, 0.0, -1.0, -1.0),
+            (2.0, 0.0, 1.0, -1.0, 2.0, 1.0, 1.0, -1.0, 2.0),
+            (3.0, 0.0, 1.0, 2.0, 4.0, 1.0, 2.0, 0.0, 4.0),
+            (2.0, 0.0, 1.0, -1.0, 1.0, 0.0, 3.0, 1.0, -1.0),
+            (2.0, 0.0, 1.0, -1.0, 4.0, 0.0, 0.0, -1.0, -1.0),
+            (2.0, 0.0, 1.0, -1.0, -1.0, 1.0, 0.0, -1.0, -1.0),
+        ];
+
+        for (
+            slot_count,
+            slot0,
+            slot1,
+            slot2,
+            applied,
+            active,
+            expected_action,
+            expected_drop,
+            expected_append,
+        ) in cases
+        {
+            assert_eq!(
+                enemy_debuff_slot_transition_action(
+                    slot_count, slot0, slot1, slot2, applied, active,
+                ),
+                expected_action
+            );
+            assert_eq!(
+                enemy_debuff_slot_transition_drop_slot_index(
+                    slot_count, slot0, slot1, slot2, applied, active,
+                ),
+                expected_drop
+            );
+            assert_eq!(
+                enemy_debuff_slot_transition_append_slot_index(
+                    slot_count, slot0, slot1, slot2, applied, active,
+                ),
+                expected_append
             );
         }
     }

@@ -17,6 +17,7 @@ function getShadowState() {
       enemyDotLifecycleOwnerChecks: 0,
       enemyDebuffDecayOwnerChecks: 0,
       enemyDebuffApplyOwnerChecks: 0,
+      enemyDebuffSlotOwnerChecks: 0,
       seededRngChecks: 0,
       seededRngOwnerChecks: 0,
       singleHitOwnerSmokeRan: false,
@@ -27,6 +28,7 @@ function getShadowState() {
       enemyDotLifecycleOwnerSmokeRan: false,
       enemyDebuffDecayOwnerSmokeRan: false,
       enemyDebuffApplyOwnerSmokeRan: false,
+      enemyDebuffSlotOwnerSmokeRan: false,
     };
   }
   if (!window[SHADOW_STATE_KEY]) {
@@ -44,6 +46,7 @@ function getShadowState() {
       enemyDotLifecycleOwnerChecks: 0,
       enemyDebuffDecayOwnerChecks: 0,
       enemyDebuffApplyOwnerChecks: 0,
+      enemyDebuffSlotOwnerChecks: 0,
       seededRngChecks: 0,
       seededRngOwnerChecks: 0,
       singleHitOwnerSmokeRan: false,
@@ -54,6 +57,7 @@ function getShadowState() {
       enemyDotLifecycleOwnerSmokeRan: false,
       enemyDebuffDecayOwnerSmokeRan: false,
       enemyDebuffApplyOwnerSmokeRan: false,
+      enemyDebuffSlotOwnerSmokeRan: false,
       lastCheck: null,
       lastSingleHitCheck: null,
       lastSingleHitOwnerCheck: null,
@@ -66,6 +70,7 @@ function getShadowState() {
       lastEnemyDotLifecycleOwnerCheck: null,
       lastEnemyDebuffDecayOwnerCheck: null,
       lastEnemyDebuffApplyOwnerCheck: null,
+      lastEnemyDebuffSlotOwnerCheck: null,
       lastSeededRngCheck: null,
       lastSeededRngOwnerCheck: null,
       exports: null,
@@ -137,6 +142,12 @@ function updateShadowDomMarker(shadow) {
   document.documentElement.dataset.simCoreShadowEnemyDebuffApplyOwner = String(
     shadow?.lastEnemyDebuffApplyOwnerCheck?.owner || '',
   );
+  document.documentElement.dataset.simCoreShadowEnemyDebuffSlotOwnerChecks = String(
+    Number(shadow?.enemyDebuffSlotOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowEnemyDebuffSlotOwner = String(
+    shadow?.lastEnemyDebuffSlotOwnerCheck?.owner || '',
+  );
   document.documentElement.dataset.simCoreShadowSeededRngChecks = String(
     Number(shadow?.seededRngChecks || 0),
   );
@@ -203,6 +214,12 @@ function hasEnemyDebuffApplyExports(exports) {
     && typeof exports?.enemy_debuff_apply_active_shadow === 'function';
 }
 
+function hasEnemyDebuffSlotExports(exports) {
+  return typeof exports?.enemy_debuff_slot_transition_action_shadow === 'function'
+    && typeof exports?.enemy_debuff_slot_transition_drop_slot_index_shadow === 'function'
+    && typeof exports?.enemy_debuff_slot_transition_append_slot_index_shadow === 'function';
+}
+
 function hasTurnSummaryExports(exports) {
   return typeof exports?.turn_summary_code_shadow === 'function';
 }
@@ -217,7 +234,8 @@ function hasRequiredExports(exports) {
     && hasEnemyDotTickExports(exports)
     && hasEnemyDotLifecycleExports(exports)
     && hasEnemyDebuffDecayExports(exports)
-    && hasEnemyDebuffApplyExports(exports);
+    && hasEnemyDebuffApplyExports(exports)
+    && hasEnemyDebuffSlotExports(exports);
 }
 
 async function instantiateWasm(wasmUrl) {
@@ -370,6 +388,24 @@ function runEnemyDebuffApplyOwnerStartupCheck(shadow) {
   });
 }
 
+function runEnemyDebuffSlotOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.enemyDebuffSlotOwnerSmokeRan) return;
+  shadow.enemyDebuffSlotOwnerSmokeRan = true;
+  createSimulationCoreEnemyDebuffSlotTransition({
+    source: 'simulationCore.startup.enemyDebuffSlotOwner',
+    stat: 'SPD',
+    statIndex: 4,
+    active: 1,
+    slotCount: 3,
+    slot0Index: 0,
+    slot1Index: 1,
+    slot2Index: 2,
+    jsAction: 2,
+    jsDropSlotIndex: 0,
+    jsAppendSlotIndex: 4,
+  });
+}
+
 function runTurnSummaryOwnerStartupCheck(shadow) {
   if (!shadow || shadow.turnSummaryOwnerSmokeRan) return;
   shadow.turnSummaryOwnerSmokeRan = true;
@@ -397,6 +433,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_ENEMY_DOT_LIFECYCLE_OWNER__ = createSimulationCoreEnemyDotLifecycleResolution;
     window.__ORKA_ENEMY_DEBUFF_DECAY_OWNER__ = createSimulationCoreEnemyDebuffDecayResolution;
     window.__ORKA_ENEMY_DEBUFF_APPLY_OWNER__ = createSimulationCoreEnemyDebuffApplyResolution;
+    window.__ORKA_ENEMY_DEBUFF_SLOT_OWNER__ = createSimulationCoreEnemyDebuffSlotTransition;
     window.__ORKA_SEEDED_RNG_SHADOW__ = shadowSeededRng;
     window.__ORKA_SEEDED_RNG_OWNER__ = createSimulationCoreSeededRng;
   }
@@ -421,6 +458,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
         runEnemyDotLifecycleOwnerStartupCheck(shadow);
         runEnemyDebuffDecayOwnerStartupCheck(shadow);
         runEnemyDebuffApplyOwnerStartupCheck(shadow);
+        runEnemyDebuffSlotOwnerStartupCheck(shadow);
       }
       updateShadowDomMarker(shadow);
       return shadow;
@@ -1264,6 +1302,92 @@ export function createSimulationCoreEnemyDebuffApplyResolution({
     amountAfter: rustAmountAfter,
     turnsAfter: rustTurnsAfter,
     active: rustActive,
+  };
+}
+
+export function createSimulationCoreEnemyDebuffSlotTransition({
+  source = 'unknown',
+  stat = '',
+  statIndex = -1,
+  active = 0,
+  slotCount = 0,
+  slot0Index = -1,
+  slot1Index = -1,
+  slot2Index = -1,
+  jsAction = 0,
+  jsDropSlotIndex = -1,
+  jsAppendSlotIndex = -1,
+} = {}, { exportsOverride = null } = {}) {
+  const shadow = getShadowState();
+  const normalized = {
+    source,
+    stat: String(stat || '').toUpperCase(),
+    statIndex: Number(statIndex ?? -1),
+    active: Number(active || 0),
+    slotCount: Number(slotCount || 0),
+    slot0Index: Number(slot0Index ?? -1),
+    slot1Index: Number(slot1Index ?? -1),
+    slot2Index: Number(slot2Index ?? -1),
+    jsAction: Number(jsAction || 0),
+    jsDropSlotIndex: Number(jsDropSlotIndex ?? -1),
+    jsAppendSlotIndex: Number(jsAppendSlotIndex ?? -1),
+  };
+  const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+  if (!hasEnemyDebuffSlotExports(exports)) {
+    shadow.enemyDebuffSlotOwnerChecks = Number(shadow.enemyDebuffSlotOwnerChecks || 0) + 1;
+    shadow.lastEnemyDebuffSlotOwnerCheck = {
+      ...normalized,
+      owner: 'fallback',
+      action: normalized.jsAction,
+      dropSlotIndex: normalized.jsDropSlotIndex,
+      appendSlotIndex: normalized.jsAppendSlotIndex,
+    };
+    updateShadowDomMarker(shadow);
+    return {
+      owner: 'fallback',
+      action: normalized.jsAction,
+      dropSlotIndex: normalized.jsDropSlotIndex,
+      appendSlotIndex: normalized.jsAppendSlotIndex,
+    };
+  }
+
+  const args = [
+    normalized.slotCount,
+    normalized.slot0Index,
+    normalized.slot1Index,
+    normalized.slot2Index,
+    normalized.statIndex,
+    normalized.active,
+  ];
+  const rustAction = Number(exports.enemy_debuff_slot_transition_action_shadow(...args));
+  const rustDropSlotIndex = Number(exports.enemy_debuff_slot_transition_drop_slot_index_shadow(...args));
+  const rustAppendSlotIndex = Number(exports.enemy_debuff_slot_transition_append_slot_index_shadow(...args));
+  shadow.enemyDebuffSlotOwnerChecks = Number(shadow.enemyDebuffSlotOwnerChecks || 0) + 1;
+  shadow.lastEnemyDebuffSlotOwnerCheck = {
+    ...normalized,
+    owner: 'rust',
+    action: rustAction,
+    dropSlotIndex: rustDropSlotIndex,
+    appendSlotIndex: rustAppendSlotIndex,
+  };
+  if (
+    !exportsOverride
+    && (
+      Math.abs(rustAction - normalized.jsAction) > 0.000001
+      || Math.abs(rustDropSlotIndex - normalized.jsDropSlotIndex) > 0.000001
+      || Math.abs(rustAppendSlotIndex - normalized.jsAppendSlotIndex) > 0.000001
+    )
+  ) {
+    shadow.mismatches.push(shadow.lastEnemyDebuffSlotOwnerCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastEnemyDebuffSlotOwnerCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return {
+    owner: 'rust',
+    action: rustAction,
+    dropSlotIndex: rustDropSlotIndex,
+    appendSlotIndex: rustAppendSlotIndex,
   };
 }
 

@@ -4796,6 +4796,10 @@ function applyRunaMagicResist(ctx, enemyUID, targetHeroUID, incomingDamage, skil
 
 const ENEMY_DEBUFF_STATS = ['ATK', 'DEF', 'MAG', 'RES', 'SPD'];
 const ENEMY_DEBUFF_SLOT_LIMIT = 3;
+const ENEMY_DEBUFF_SLOT_KEEP = 0;
+const ENEMY_DEBUFF_SLOT_APPEND = 1;
+const ENEMY_DEBUFF_SLOT_DROP_APPEND = 2;
+const ENEMY_DEBUFF_SLOT_REMOVE = 3;
 
 function sanitizeDebuffValue(value) {
   const n = Number(value);
@@ -4837,6 +4841,168 @@ function ensureEnemyDebuffRecord(ctx, enemyUID) {
   return ensureEnemyDebuffState(ctx, enemyUID).debuffs;
 }
 
+function enemyDebuffStatIndex(stat) {
+  return ENEMY_DEBUFF_STATS.indexOf(String(stat || '').toUpperCase());
+}
+
+function enemyDebuffStatFromIndex(index) {
+  const normalized = Math.floor(Number(index));
+  return Number.isFinite(normalized) && normalized >= 0 && normalized < ENEMY_DEBUFF_STATS.length
+    ? ENEMY_DEBUFF_STATS[normalized]
+    : '';
+}
+
+function normalizeEnemyDebuffSlotIndex(value) {
+  const normalized = Math.floor(Number(value));
+  return Number.isFinite(normalized) && normalized >= 0 && normalized < ENEMY_DEBUFF_STATS.length
+    ? normalized
+    : -1;
+}
+
+function normalizeEnemyDebuffSlotCount(value) {
+  const normalized = Math.floor(Number(value));
+  if (!Number.isFinite(normalized)) return 0;
+  return Math.max(0, Math.min(ENEMY_DEBUFF_SLOT_LIMIT, normalized));
+}
+
+function normalizeEnemyDebuffSlotAction(value) {
+  const normalized = Math.floor(Number(value));
+  return [
+    ENEMY_DEBUFF_SLOT_KEEP,
+    ENEMY_DEBUFF_SLOT_APPEND,
+    ENEMY_DEBUFF_SLOT_DROP_APPEND,
+    ENEMY_DEBUFF_SLOT_REMOVE,
+  ].includes(normalized) ? normalized : ENEMY_DEBUFF_SLOT_KEEP;
+}
+
+function enemyDebuffSlotSnapshot(slots) {
+  const slotIndices = [0, 1, 2].map((index) => enemyDebuffStatIndex(slots[index]));
+  return {
+    slotCount: normalizeEnemyDebuffSlotCount(Array.isArray(slots) ? slots.length : 0),
+    slot0Index: normalizeEnemyDebuffSlotIndex(slotIndices[0]),
+    slot1Index: normalizeEnemyDebuffSlotIndex(slotIndices[1]),
+    slot2Index: normalizeEnemyDebuffSlotIndex(slotIndices[2]),
+  };
+}
+
+function createEnemyDebuffSlotDecision(slots, stat, active) {
+  const statName = String(stat || '').toUpperCase();
+  const statIndex = enemyDebuffStatIndex(statName);
+  if (statIndex < 0) {
+    return {
+      action: ENEMY_DEBUFF_SLOT_KEEP,
+      dropSlotIndex: -1,
+      appendSlotIndex: -1,
+    };
+  }
+  if (!active) {
+    return slots.includes(statName)
+      ? {
+        action: ENEMY_DEBUFF_SLOT_REMOVE,
+        dropSlotIndex: statIndex,
+        appendSlotIndex: -1,
+      }
+      : {
+        action: ENEMY_DEBUFF_SLOT_KEEP,
+        dropSlotIndex: -1,
+        appendSlotIndex: -1,
+      };
+  }
+  if (slots.includes(statName)) {
+    return {
+      action: ENEMY_DEBUFF_SLOT_KEEP,
+      dropSlotIndex: -1,
+      appendSlotIndex: -1,
+    };
+  }
+  if (slots.length >= ENEMY_DEBUFF_SLOT_LIMIT) {
+    return {
+      action: ENEMY_DEBUFF_SLOT_DROP_APPEND,
+      dropSlotIndex: enemyDebuffStatIndex(slots[0]),
+      appendSlotIndex: statIndex,
+    };
+  }
+  return {
+    action: ENEMY_DEBUFF_SLOT_APPEND,
+    dropSlotIndex: -1,
+    appendSlotIndex: statIndex,
+  };
+}
+
+function maybeResolveEnemyDebuffSlotOwner(ctx, payload = {}) {
+  const g = getGlobals(ctx);
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const enemyDebuffSlotOwnerHook = root && typeof root.__ORKA_ENEMY_DEBUFF_SLOT_OWNER__ === 'function'
+    ? root.__ORKA_ENEMY_DEBUFF_SLOT_OWNER__
+    : null;
+  if (typeof enemyDebuffSlotOwnerHook !== 'function') return null;
+  const snapshot = {
+    source: String(payload.source || 'unknown'),
+    stat: String(payload.stat || '').toUpperCase(),
+    statIndex: normalizeEnemyDebuffSlotIndex(payload.statIndex),
+    active: Number(payload.active || 0) > 0 ? 1 : 0,
+    slotCount: normalizeEnemyDebuffSlotCount(payload.slotCount),
+    slot0Index: normalizeEnemyDebuffSlotIndex(payload.slot0Index),
+    slot1Index: normalizeEnemyDebuffSlotIndex(payload.slot1Index),
+    slot2Index: normalizeEnemyDebuffSlotIndex(payload.slot2Index),
+    jsAction: normalizeEnemyDebuffSlotAction(payload.jsAction),
+    jsDropSlotIndex: normalizeEnemyDebuffSlotIndex(payload.jsDropSlotIndex),
+    jsAppendSlotIndex: normalizeEnemyDebuffSlotIndex(payload.jsAppendSlotIndex),
+  };
+  try {
+    const result = enemyDebuffSlotOwnerHook(snapshot);
+    const action = normalizeEnemyDebuffSlotAction(result?.action);
+    const dropSlotIndex = normalizeEnemyDebuffSlotIndex(result?.dropSlotIndex);
+    const appendSlotIndex = normalizeEnemyDebuffSlotIndex(result?.appendSlotIndex);
+    g.LastEnemyDebuffSlotOwner = {
+      owner: String(result?.owner || 'rust'),
+      stat: snapshot.stat,
+      statIndex: snapshot.statIndex,
+      active: snapshot.active,
+      slotCount: snapshot.slotCount,
+      slot0Index: snapshot.slot0Index,
+      slot1Index: snapshot.slot1Index,
+      slot2Index: snapshot.slot2Index,
+      action,
+      dropSlotIndex,
+      appendSlotIndex,
+    };
+    return g.LastEnemyDebuffSlotOwner;
+  } catch (err) {
+    g.LastEnemyDebuffSlotOwnerError = String(err?.message || err || 'unknown');
+    return null;
+  }
+}
+
+function removeEnemyDebuffSlot(debuffs, turns, slots, statIndex) {
+  const stat = enemyDebuffStatFromIndex(statIndex);
+  if (!stat) return;
+  debuffs[stat] = 0;
+  turns[stat] = 0;
+  const idx = slots.indexOf(stat);
+  if (idx !== -1) slots.splice(idx, 1);
+}
+
+function applyEnemyDebuffSlotDecision({ debuffs, turns, slots, stat, decision }) {
+  const statName = String(stat || '').toUpperCase();
+  const statIndex = enemyDebuffStatIndex(statName);
+  const action = normalizeEnemyDebuffSlotAction(decision?.action);
+  const dropSlotIndex = normalizeEnemyDebuffSlotIndex(decision?.dropSlotIndex);
+  const appendSlotIndex = normalizeEnemyDebuffSlotIndex(decision?.appendSlotIndex);
+
+  if (action === ENEMY_DEBUFF_SLOT_REMOVE) {
+    removeEnemyDebuffSlot(debuffs, turns, slots, dropSlotIndex >= 0 ? dropSlotIndex : statIndex);
+    return;
+  }
+  if (action === ENEMY_DEBUFF_SLOT_DROP_APPEND) {
+    removeEnemyDebuffSlot(debuffs, turns, slots, dropSlotIndex);
+  }
+  if (action === ENEMY_DEBUFF_SLOT_APPEND || action === ENEMY_DEBUFF_SLOT_DROP_APPEND) {
+    const appendStat = enemyDebuffStatFromIndex(appendSlotIndex);
+    if (appendStat && appendStat === statName && !slots.includes(appendStat)) slots.push(appendStat);
+  }
+}
+
 function decayEnemyDebuffsForTurn(ctx, enemyUID) {
   const debuffState = ensureEnemyDebuffState(ctx, enemyUID);
   const debuffs = debuffState.debuffs;
@@ -4862,12 +5028,30 @@ function decayEnemyDebuffsForTurn(ctx, enemyUID) {
     const active = owner ? Number(owner.active || 0) > 0 : jsActive > 0;
     turns[stat] = turnsAfter;
     debuffs[stat] = amountAfter;
-    if (!active || amountAfter <= 0 || turnsAfter <= 0) {
+    const slotActive = active && amountAfter > 0 && turnsAfter > 0;
+    if (!slotActive) {
       turns[stat] = 0;
       debuffs[stat] = 0;
-      const idx = slots.indexOf(stat);
-      if (idx !== -1) slots.splice(idx, 1);
     }
+    const slotSnapshot = enemyDebuffSlotSnapshot(slots);
+    const jsSlotDecision = createEnemyDebuffSlotDecision(slots, stat, slotActive);
+    const slotOwner = maybeResolveEnemyDebuffSlotOwner(ctx, {
+      source: 'functionBank.decayEnemyDebuffsForTurn',
+      stat,
+      statIndex: enemyDebuffStatIndex(stat),
+      active: slotActive ? 1 : 0,
+      ...slotSnapshot,
+      jsAction: jsSlotDecision.action,
+      jsDropSlotIndex: jsSlotDecision.dropSlotIndex,
+      jsAppendSlotIndex: jsSlotDecision.appendSlotIndex,
+    });
+    applyEnemyDebuffSlotDecision({
+      debuffs,
+      turns,
+      slots,
+      stat,
+      decision: slotOwner || jsSlotDecision,
+    });
   }
   return debuffState;
 }
@@ -4926,21 +5110,30 @@ export function ExecutePurpleDebuff(ctx, actorUID) {
   const active = owner ? Number(owner.active || 0) > 0 : jsActive > 0;
   debuffs[stat] = amountAfter;
   debuffTurns[stat] = turnsAfter;
-  if (!active || amountAfter <= 0 || turnsAfter <= 0) {
+  const slotActive = active && amountAfter > 0 && turnsAfter > 0;
+  if (!slotActive) {
     debuffs[stat] = 0;
     debuffTurns[stat] = 0;
-    const idx = slots.indexOf(stat);
-    if (idx !== -1) slots.splice(idx, 1);
-  } else if (!slots.includes(stat)) {
-    if (slots.length >= ENEMY_DEBUFF_SLOT_LIMIT) {
-      const dropped = slots.shift();
-      if (dropped) {
-        debuffs[dropped] = 0;
-        debuffTurns[dropped] = 0;
-      }
-    }
-    slots.push(stat);
   }
+  const slotSnapshot = enemyDebuffSlotSnapshot(slots);
+  const jsSlotDecision = createEnemyDebuffSlotDecision(slots, stat, slotActive);
+  const slotOwner = maybeResolveEnemyDebuffSlotOwner(ctx, {
+    source: 'functionBank.ExecutePurpleDebuff',
+    stat,
+    statIndex: enemyDebuffStatIndex(stat),
+    active: slotActive ? 1 : 0,
+    ...slotSnapshot,
+    jsAction: jsSlotDecision.action,
+    jsDropSlotIndex: jsSlotDecision.dropSlotIndex,
+    jsAppendSlotIndex: jsSlotDecision.appendSlotIndex,
+  });
+  applyEnemyDebuffSlotDecision({
+    debuffs,
+    turns: debuffTurns,
+    slots,
+    stat,
+    decision: slotOwner || jsSlotDecision,
+  });
   LogCombat(ctx, `${enemy.name || 'Enemy'} ${stat} down! (${debuffs[stat]})`);
   runTraitHooks(ctx, 'status_apply', {
     sourceUID: Number(actorUID || 0),
