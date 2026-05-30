@@ -61,6 +61,7 @@ import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
 import { deriveDamageFloatFrameOffset } from '../src/core/damageFloatVector.mjs';
 import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
 import { createHealBloom } from './src/core/healBloomAnimation.mjs';
+import { resolveCombatOutcome } from './src/core/combatOutcomeRules.mjs';
 import * as heroGemProgressStorage from './systems/heroGemProgressStorage.js';
 import * as runtimeDebugLogging from './systems/runtimeDebugLogging.js';
 import * as animationMath from './systems/animationMath.js';
@@ -6218,6 +6219,18 @@ function getStoryCardLiveLineState() {
     state.globals.DevAutoplaySkillDraughtSeenAt = 0;
     return !!(result && result.ok);
   }
+  function resolveDevAutoplayCombatOutcome({ energy = 0, partyHp = 0, livingHeroes = 0 } = {}) {
+    const root = typeof globalThis !== 'undefined' ? globalThis : null;
+    return resolveCombatOutcome({
+      source: 'app.runDevAutoplayUntilDepleted',
+      energy,
+      partyHp,
+      livingHeroes,
+      ownerHook: root && typeof root.__ORKA_COMBAT_OUTCOME_OWNER__ === 'function'
+        ? root.__ORKA_COMBAT_OUTCOME_OWNER__
+        : null,
+    });
+  }
   async function runDevAutoplayUntilDepleted() {
     const startedAt = Number(state.globals.time || 0);
     let matchesPlayed = 0;
@@ -6237,17 +6250,11 @@ function getStoryCardLiveLineState() {
         return getDevAutoplayState();
       }
       const energy = Math.max(0, Number(state.globals.Player_Energy || 0));
-      if (energy <= 0) {
-        setDevAutoplayState({ active: false, stopRequested: false, lastReason: 'energy_depleted', matchesPlayed, endedAt: Number(state.globals.time || 0) });
-        return getDevAutoplayState();
-      }
-      if (Math.max(0, Number(state.globals.PartyHP || 0)) <= 0) {
-        setDevAutoplayState({ active: false, stopRequested: false, lastReason: 'party_defeated', matchesPlayed, endedAt: Number(state.globals.time || 0) });
-        return getDevAutoplayState();
-      }
+      const partyHp = Math.max(0, Number(state.globals.PartyHP || 0));
       const aliveHeroes = state.entities.filter((entity) => entity && entity.kind === 'hero' && (entity.hp ?? 0) > 0).length;
-      if (!aliveHeroes) {
-        setDevAutoplayState({ active: false, stopRequested: false, lastReason: 'no_living_heroes', matchesPlayed, endedAt: Number(state.globals.time || 0) });
+      const outcome = resolveDevAutoplayCombatOutcome({ energy, partyHp, livingHeroes: aliveHeroes });
+      if (outcome.reason) {
+        setDevAutoplayState({ active: false, stopRequested: false, lastReason: outcome.reason, matchesPlayed, endedAt: Number(state.globals.time || 0) });
         return getDevAutoplayState();
       }
       const progressSig = JSON.stringify({

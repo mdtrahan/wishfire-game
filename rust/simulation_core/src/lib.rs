@@ -64,6 +64,19 @@ pub fn effective_stat_value(
     value.max(0.0)
 }
 
+pub fn combat_outcome_code(energy: f64, party_hp: f64, living_heroes: f64) -> f64 {
+    if number_or_zero(energy) <= 0.0 {
+        return 1.0;
+    }
+    if number_or_zero(party_hp) <= 0.0 {
+        return 2.0;
+    }
+    if number_or_zero(living_heroes) <= 0.0 {
+        return 3.0;
+    }
+    0.0
+}
+
 fn js_to_uint32(value: f64) -> u32 {
     if !value.is_finite() {
         return 0;
@@ -117,6 +130,15 @@ pub extern "C" fn effective_stat_value_shadow(
     is_enemy: f64,
 ) -> f64 {
     effective_stat_value(base, party_buff, enemy_debuff, is_hero, is_enemy)
+}
+
+#[no_mangle]
+pub extern "C" fn combat_outcome_code_shadow(
+    energy: f64,
+    party_hp: f64,
+    living_heroes: f64,
+) -> f64 {
+    combat_outcome_code(energy, party_hp, living_heroes)
 }
 
 #[no_mangle]
@@ -1366,6 +1388,27 @@ mod single_hit_resolution_tests {
         for (base, party_buff, enemy_debuff, is_hero, is_enemy, expected) in cases {
             assert_eq!(
                 effective_stat_value(base, party_buff, enemy_debuff, is_hero, is_enemy),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn mirrors_current_combat_outcome_cases() {
+        let cases = [
+            (10.0, 40.0, 4.0, 0.0),
+            (0.0, 40.0, 4.0, 1.0),
+            (-1.0, 40.0, 4.0, 1.0),
+            (10.0, 0.0, 4.0, 2.0),
+            (10.0, -3.0, 4.0, 2.0),
+            (10.0, 12.0, 0.0, 3.0),
+            (0.0, 0.0, 0.0, 1.0),
+            (5.0, 0.0, 0.0, 2.0),
+        ];
+
+        for (energy, party_hp, living_heroes, expected) in cases {
+            assert_eq!(
+                combat_outcome_code(energy, party_hp, living_heroes),
                 expected
             );
         }
