@@ -1,0 +1,15 @@
+name,skillId,enemyName,boardReady,targetUID,fallbackTargetUID,expectedSkillCode,expectedKindCode,expectedNormalizedSkillCode,expectedActionCode,expectedResolvedTargetUID,expectedAllyTargetUID,expectedReturnValue
+direct_attack,Enemy_ATK_Single,Gobloc,1,10,11,0,0,0,1,10,10,1
+direct_magic,Enemy_MAG_Single,Djinn,1,0,12,2,1,2,2,12,0,1
+magic_no_target,Enemy_MAG_Single,Djinn,1,0,0,2,1,2,2,0,0,1
+heal_self,Enemy_Heal_Self,Chimerilass,1,0,11,5,3,5,4,11,0,1
+heal_allies,Enemy_Heal_Allies,Chimerilass,1,0,11,7,3,7,5,11,0,1
+heal_ally,Enemy_Heal_Ally,Chimerilass,1,33,11,6,3,6,6,33,33,1
+scathe_full,Enemy_Scathe,Djinn,1,0,11,1,1,1,7,11,0,1
+scathe_blocked_djinn,Enemy_Scathe,Djinn,0,0,11,1,1,2,2,11,0,1
+sweep_full,Enemy_Sweep,Marid,1,0,11,3,2,3,8,11,0,1
+magic_aoe,Enemy_MAG_AOE,Gobloc,1,0,11,8,0,8,3,11,0,1
+drain_buff,Enemy_Drain_Buff,Gobloc,1,0,11,9,0,9,9,11,0,1
+wipe,Enemy_Wipe,Chimerilass,1,0,11,4,3,4,10,11,0,1
+unknown_with_target,Enemy_Unknown,Gobloc,1,0,11,-1,0,-1,1,11,0,1
+unknown_no_target,Enemy_Unknown,Gobloc,1,0,0,-1,0,-1,0,0,0,0

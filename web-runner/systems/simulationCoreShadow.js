@@ -24,6 +24,7 @@ function getShadowState() {
       turnActorEligibilityOwnerChecks: 0,
       turnPhaseAssignmentOwnerChecks: 0,
       enemySkillChoiceOwnerChecks: 0,
+      enemyJobSkillOwnerChecks: 0,
       enemyTargetOwnerChecks: 0,
       runaMagicResistOwnerChecks: 0,
       turnOrderGroupOwnerChecks: 0,
@@ -46,6 +47,7 @@ function getShadowState() {
       turnActorEligibilityOwnerSmokeRan: false,
       turnPhaseAssignmentOwnerSmokeRan: false,
       enemySkillChoiceOwnerSmokeRan: false,
+      enemyJobSkillOwnerSmokeRan: false,
       enemyTargetOwnerSmokeRan: false,
       runaMagicResistOwnerSmokeRan: false,
       turnOrderGroupOwnerSmokeRan: false,
@@ -75,6 +77,7 @@ function getShadowState() {
       turnActorEligibilityOwnerChecks: 0,
       turnPhaseAssignmentOwnerChecks: 0,
       enemySkillChoiceOwnerChecks: 0,
+      enemyJobSkillOwnerChecks: 0,
       enemyTargetOwnerChecks: 0,
       runaMagicResistOwnerChecks: 0,
       turnOrderGroupOwnerChecks: 0,
@@ -97,6 +100,7 @@ function getShadowState() {
       turnActorEligibilityOwnerSmokeRan: false,
       turnPhaseAssignmentOwnerSmokeRan: false,
       enemySkillChoiceOwnerSmokeRan: false,
+      enemyJobSkillOwnerSmokeRan: false,
       enemyTargetOwnerSmokeRan: false,
       runaMagicResistOwnerSmokeRan: false,
       turnOrderGroupOwnerSmokeRan: false,
@@ -121,6 +125,7 @@ function getShadowState() {
       lastTurnActorEligibilityOwnerCheck: null,
       lastTurnPhaseAssignmentOwnerCheck: null,
       lastEnemySkillChoiceOwnerCheck: null,
+      lastEnemyJobSkillOwnerCheck: null,
       lastEnemyTargetOwnerCheck: null,
       lastRunaMagicResistOwnerCheck: null,
       lastTurnOrderGroupOwnerCheck: null,
@@ -238,6 +243,12 @@ function updateShadowDomMarker(shadow) {
   );
   document.documentElement.dataset.simCoreShadowEnemySkillChoiceOwner = String(
     shadow?.lastEnemySkillChoiceOwnerCheck?.owner || '',
+  );
+  document.documentElement.dataset.simCoreShadowEnemyJobSkillOwnerChecks = String(
+    Number(shadow?.enemyJobSkillOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowEnemyJobSkillOwner = String(
+    shadow?.lastEnemyJobSkillOwnerCheck?.owner || '',
   );
   document.documentElement.dataset.simCoreShadowEnemyTargetOwnerChecks = String(
     Number(shadow?.enemyTargetOwnerChecks || 0),
@@ -366,6 +377,14 @@ function hasEnemySkillChoiceExports(exports) {
     && typeof exports?.enemy_skill_choice_branch_code_shadow === 'function';
 }
 
+function hasEnemyJobSkillExports(exports) {
+  return typeof exports?.enemy_job_skill_normalized_code_shadow === 'function'
+    && typeof exports?.enemy_job_skill_resolved_target_uid_shadow === 'function'
+    && typeof exports?.enemy_job_skill_ally_target_uid_shadow === 'function'
+    && typeof exports?.enemy_job_skill_action_code_shadow === 'function'
+    && typeof exports?.enemy_job_skill_return_value_shadow === 'function';
+}
+
 function hasEnemyTargetExports(exports) {
   return typeof exports?.enemy_target_selected_uid_shadow === 'function'
     && typeof exports?.enemy_target_mode_code_shadow === 'function'
@@ -430,6 +449,7 @@ function hasRequiredExports(exports) {
     && hasTurnActorEligibilityExports(exports)
     && hasTurnPhaseAssignmentExports(exports)
     && hasEnemySkillChoiceExports(exports)
+    && hasEnemyJobSkillExports(exports)
     && hasEnemyTargetExports(exports)
     && hasRunaMagicResistExports(exports)
     && hasTurnOrderGroupExports(exports)
@@ -722,6 +742,24 @@ function runEnemySkillChoiceOwnerStartupCheck(shadow) {
   });
 }
 
+function runEnemyJobSkillOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.enemyJobSkillOwnerSmokeRan) return;
+  shadow.enemyJobSkillOwnerSmokeRan = true;
+  createSimulationCoreEnemyJobSkillResolution({
+    source: 'simulationCore.startup.enemyJobSkillOwner',
+    skillCode: 1,
+    enemyKindCode: 1,
+    boardReady: 0,
+    targetUID: 0,
+    fallbackTargetUID: 12,
+    jsNormalizedSkillCode: 2,
+    jsActionCode: 2,
+    jsResolvedTargetUID: 12,
+    jsAllyTargetUID: 0,
+    jsReturnValue: 1,
+  });
+}
+
 function runEnemyTargetOwnerStartupCheck(shadow) {
   if (!shadow || shadow.enemyTargetOwnerSmokeRan) return;
   shadow.enemyTargetOwnerSmokeRan = true;
@@ -859,6 +897,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_TURN_ACTOR_ELIGIBILITY_OWNER__ = createSimulationCoreTurnActorEligibilityResolution;
     window.__ORKA_TURN_PHASE_ASSIGNMENT_OWNER__ = createSimulationCoreTurnPhaseAssignmentResolution;
     window.__ORKA_ENEMY_SKILL_CHOICE_OWNER__ = createSimulationCoreEnemySkillChoiceResolution;
+    window.__ORKA_ENEMY_JOB_SKILL_OWNER__ = createSimulationCoreEnemyJobSkillResolution;
     window.__ORKA_ENEMY_TARGET_OWNER__ = createSimulationCoreEnemyTargetResolution;
     window.__ORKA_RUNA_MAGIC_RESIST_OWNER__ = createSimulationCoreRunaMagicResistResolution;
     window.__ORKA_TURN_ORDER_GROUP_OWNER__ = createSimulationCoreTurnOrderGroupProjection;
@@ -895,6 +934,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
         runTurnActorEligibilityOwnerStartupCheck(shadow);
         runTurnPhaseAssignmentOwnerStartupCheck(shadow);
         runEnemySkillChoiceOwnerStartupCheck(shadow);
+        runEnemyJobSkillOwnerStartupCheck(shadow);
         runEnemyTargetOwnerStartupCheck(shadow);
         runRunaMagicResistOwnerStartupCheck(shadow);
         runTurnOrderGroupOwnerStartupCheck(shadow);
@@ -1217,6 +1257,106 @@ export function createSimulationCoreEnemySkillChoiceResolution({
   }
   updateShadowDomMarker(shadow);
   return { owner: 'rust', selectedCode, branchCode };
+}
+
+export function createSimulationCoreEnemyJobSkillResolution({
+  source = 'unknown',
+  skillCode = -1,
+  enemyKindCode = 0,
+  boardReady = 1,
+  targetUID = 0,
+  fallbackTargetUID = 0,
+  jsNormalizedSkillCode = -1,
+  jsActionCode = 0,
+  jsResolvedTargetUID = 0,
+  jsAllyTargetUID = 0,
+  jsReturnValue = 0,
+} = {}, {
+  exportsOverride = null,
+} = {}) {
+  const shadow = getShadowState();
+  const normalized = {
+    source,
+    skillCode: Math.trunc(Number(skillCode ?? -1)),
+    enemyKindCode: Math.max(0, Math.trunc(Number(enemyKindCode || 0))),
+    boardReady: Number(boardReady || 0) === 1 ? 1 : 0,
+    targetUID: Math.max(0, Math.trunc(Number(targetUID || 0))),
+    fallbackTargetUID: Math.max(0, Math.trunc(Number(fallbackTargetUID || 0))),
+    jsNormalizedSkillCode: Math.trunc(Number(jsNormalizedSkillCode ?? -1)),
+    jsActionCode: Math.max(0, Math.trunc(Number(jsActionCode || 0))),
+    jsResolvedTargetUID: Math.max(0, Math.trunc(Number(jsResolvedTargetUID || 0))),
+    jsAllyTargetUID: Math.max(0, Math.trunc(Number(jsAllyTargetUID || 0))),
+    jsReturnValue: Math.max(0, Math.trunc(Number(jsReturnValue || 0))),
+  };
+  const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+  if (!hasEnemyJobSkillExports(exports)) {
+    shadow.enemyJobSkillOwnerChecks = Number(shadow.enemyJobSkillOwnerChecks || 0) + 1;
+    shadow.lastEnemyJobSkillOwnerCheck = {
+      ...normalized,
+      owner: 'fallback',
+      normalizedSkillCode: normalized.jsNormalizedSkillCode,
+      actionCode: normalized.jsActionCode,
+      resolvedTargetUID: normalized.jsResolvedTargetUID,
+      allyTargetUID: normalized.jsAllyTargetUID,
+      returnValue: normalized.jsReturnValue,
+    };
+    updateShadowDomMarker(shadow);
+    return {
+      owner: 'fallback',
+      normalizedSkillCode: normalized.jsNormalizedSkillCode,
+      actionCode: normalized.jsActionCode,
+      resolvedTargetUID: normalized.jsResolvedTargetUID,
+      allyTargetUID: normalized.jsAllyTargetUID,
+      returnValue: normalized.jsReturnValue,
+    };
+  }
+
+  const normalizedSkillCode = Number(exports.enemy_job_skill_normalized_code_shadow(
+    normalized.skillCode,
+    normalized.enemyKindCode,
+    normalized.boardReady,
+  ));
+  const resolvedTargetUID = Number(exports.enemy_job_skill_resolved_target_uid_shadow(
+    normalized.targetUID,
+    normalized.fallbackTargetUID,
+  ));
+  const allyTargetUID = Number(exports.enemy_job_skill_ally_target_uid_shadow(
+    normalized.targetUID,
+  ));
+  const actionCode = Number(exports.enemy_job_skill_action_code_shadow(
+    normalizedSkillCode,
+    resolvedTargetUID,
+  ));
+  const returnValue = Number(exports.enemy_job_skill_return_value_shadow(actionCode));
+  const result = {
+    owner: 'rust',
+    normalizedSkillCode,
+    actionCode,
+    resolvedTargetUID,
+    allyTargetUID,
+    returnValue,
+  };
+  shadow.enemyJobSkillOwnerChecks = Number(shadow.enemyJobSkillOwnerChecks || 0) + 1;
+  shadow.lastEnemyJobSkillOwnerCheck = {
+    ...normalized,
+    ...result,
+  };
+  if (
+    !exportsOverride
+    && (
+      result.normalizedSkillCode !== normalized.jsNormalizedSkillCode
+      || result.actionCode !== normalized.jsActionCode
+      || result.resolvedTargetUID !== normalized.jsResolvedTargetUID
+      || result.allyTargetUID !== normalized.jsAllyTargetUID
+      || result.returnValue !== normalized.jsReturnValue
+    )
+  ) {
+    shadow.mismatches.push(shadow.lastEnemyJobSkillOwnerCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastEnemyJobSkillOwnerCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return result;
 }
 
 function normalizeEnemyTargetHeroes(heroes = []) {

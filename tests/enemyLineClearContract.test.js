@@ -28,10 +28,11 @@ test('Djinn/Marid line-clear skills fall back to single-target magic at executio
   const scriptsSrc = fs.readFileSync(scriptsPath, 'utf8');
 
   for (const src of [runtimeSrc, scriptsSrc]) {
-    assert.match(src, /const normalizedSkillId = normalizeEnemyBoardLineSkillDecision\(ctx, enemy, \{/);
-    assert.match(src, /if \(normalizedSkillId === 'Enemy_Scathe'\) \{\s+Enemy_Scathe\(ctx, enemyUID\);/);
-    assert.match(src, /if \(normalizedSkillId === 'Enemy_Sweep'\) \{\s+Enemy_Sweep\(ctx, enemyUID\);/);
-    assert.match(src, /if \(normalizedSkillId === 'Enemy_MAG_Single'\) \{\s+if \(resolvedTargetUID\) Enemy_MAG_Single\(ctx, enemyUID, resolvedTargetUID\);/);
+    assert.match(src, /const decision = resolveEnemyJobSkillCompat\(\{/);
+    assert.match(src, /__ORKA_ENEMY_JOB_SKILL_OWNER__/);
+    assert.match(src, /if \(actionCode === ENEMY_JOB_ACTION_SCATHE\) \{\s+Enemy_Scathe\(ctx, enemyUID\);/);
+    assert.match(src, /if \(actionCode === ENEMY_JOB_ACTION_SWEEP\) \{\s+Enemy_Sweep\(ctx, enemyUID\);/);
+    assert.match(src, /if \(actionCode === ENEMY_JOB_ACTION_MAGIC_SINGLE\) \{\s+if \(resolvedTargetUID\) Enemy_MAG_Single\(ctx, enemyUID, resolvedTargetUID\);/);
     assert.match(src, /function executeEnemyBoardPressureSkill\(ctx, enemyUID, skillId\)/);
     assert.match(src, /const harness = getEnemyBoardPressureSkillHarness\(skillId\);/);
     assert.match(src, /const result = clearRandomGemLine\(ctx, harness\.axis\);/);

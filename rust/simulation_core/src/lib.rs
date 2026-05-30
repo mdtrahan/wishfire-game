@@ -318,6 +318,83 @@ pub fn enemy_skill_choice_branch_code(
     .1
 }
 
+fn enemy_job_skill_code(value: f64) -> f64 {
+    match number_or_zero(value).floor() as i32 {
+        -1 => -1.0,
+        0 => 0.0,
+        1 => 1.0,
+        2 => 2.0,
+        3 => 3.0,
+        4 => 4.0,
+        5 => 5.0,
+        6 => 6.0,
+        7 => 7.0,
+        8 => 8.0,
+        9 => 9.0,
+        _ => -1.0,
+    }
+}
+
+pub fn enemy_job_skill_normalized_code(skill_code: f64, kind_code: f64, board_ready: f64) -> f64 {
+    let code = enemy_job_skill_code(skill_code);
+    if number_or_zero(board_ready) == 1.0 {
+        return code;
+    }
+    if code != 1.0 && code != 3.0 {
+        return code;
+    }
+    enemy_regular_skill_code(kind_code)
+}
+
+pub fn enemy_job_skill_resolved_target_uid(target_uid: f64, fallback_target_uid: f64) -> f64 {
+    let direct = positive_floor_or_zero(target_uid);
+    if direct > 0.0 {
+        direct
+    } else {
+        positive_floor_or_zero(fallback_target_uid)
+    }
+}
+
+pub fn enemy_job_skill_ally_target_uid(target_uid: f64) -> f64 {
+    positive_floor_or_zero(target_uid)
+}
+
+pub fn enemy_job_skill_action_code(normalized_skill_code: f64, resolved_target_uid: f64) -> f64 {
+    match enemy_job_skill_code(normalized_skill_code) as i32 {
+        1 => 7.0,
+        2 => 2.0,
+        3 => 8.0,
+        4 => 10.0,
+        5 => 4.0,
+        6 => 6.0,
+        7 => 5.0,
+        8 => 3.0,
+        9 => 9.0,
+        0 => {
+            if positive_floor_or_zero(resolved_target_uid) > 0.0 {
+                1.0
+            } else {
+                0.0
+            }
+        }
+        _ => {
+            if positive_floor_or_zero(resolved_target_uid) > 0.0 {
+                1.0
+            } else {
+                0.0
+            }
+        }
+    }
+}
+
+pub fn enemy_job_skill_return_value(action_code: f64) -> f64 {
+    if number_or_zero(action_code) == 0.0 {
+        0.0
+    } else {
+        1.0
+    }
+}
+
 #[derive(Clone, Copy)]
 struct EnemyTargetHero {
     uid: f64,
@@ -1140,6 +1217,41 @@ pub extern "C" fn enemy_skill_choice_branch_code_shadow(
         roll,
         heal_roll,
     )
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_job_skill_normalized_code_shadow(
+    skill_code: f64,
+    kind_code: f64,
+    board_ready: f64,
+) -> f64 {
+    enemy_job_skill_normalized_code(skill_code, kind_code, board_ready)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_job_skill_resolved_target_uid_shadow(
+    target_uid: f64,
+    fallback_target_uid: f64,
+) -> f64 {
+    enemy_job_skill_resolved_target_uid(target_uid, fallback_target_uid)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_job_skill_ally_target_uid_shadow(target_uid: f64) -> f64 {
+    enemy_job_skill_ally_target_uid(target_uid)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_job_skill_action_code_shadow(
+    normalized_skill_code: f64,
+    resolved_target_uid: f64,
+) -> f64 {
+    enemy_job_skill_action_code(normalized_skill_code, resolved_target_uid)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_job_skill_return_value_shadow(action_code: f64) -> f64 {
+    enemy_job_skill_return_value(action_code)
 }
 
 #[no_mangle]
@@ -3036,6 +3148,50 @@ mod single_hit_resolution_tests {
                 ),
                 expected_branch
             );
+        }
+    }
+
+    #[test]
+    fn mirrors_current_enemy_job_skill_packet_cases() {
+        let cases = [
+            // skill, kind, board_ready, target, fallback, normalized, action, resolved, ally, return
+            (0.0, 0.0, 1.0, 10.0, 11.0, 0.0, 1.0, 10.0, 10.0, 1.0),
+            (2.0, 1.0, 1.0, 0.0, 12.0, 2.0, 2.0, 12.0, 0.0, 1.0),
+            (2.0, 1.0, 1.0, 0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 1.0),
+            (5.0, 3.0, 1.0, 0.0, 11.0, 5.0, 4.0, 11.0, 0.0, 1.0),
+            (7.0, 3.0, 1.0, 0.0, 11.0, 7.0, 5.0, 11.0, 0.0, 1.0),
+            (6.0, 3.0, 1.0, 33.0, 11.0, 6.0, 6.0, 33.0, 33.0, 1.0),
+            (1.0, 1.0, 1.0, 0.0, 11.0, 1.0, 7.0, 11.0, 0.0, 1.0),
+            (1.0, 1.0, 0.0, 0.0, 11.0, 2.0, 2.0, 11.0, 0.0, 1.0),
+            (3.0, 2.0, 1.0, 0.0, 11.0, 3.0, 8.0, 11.0, 0.0, 1.0),
+            (8.0, 0.0, 1.0, 0.0, 11.0, 8.0, 3.0, 11.0, 0.0, 1.0),
+            (9.0, 0.0, 1.0, 0.0, 11.0, 9.0, 9.0, 11.0, 0.0, 1.0),
+            (4.0, 3.0, 1.0, 0.0, 11.0, 4.0, 10.0, 11.0, 0.0, 1.0),
+            (-1.0, 0.0, 1.0, 0.0, 11.0, -1.0, 1.0, 11.0, 0.0, 1.0),
+            (-1.0, 0.0, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0),
+        ];
+
+        for (
+            skill,
+            kind,
+            board_ready,
+            target,
+            fallback,
+            expected_normalized,
+            expected_action,
+            expected_resolved,
+            expected_ally,
+            expected_return,
+        ) in cases
+        {
+            let normalized = enemy_job_skill_normalized_code(skill, kind, board_ready);
+            let resolved = enemy_job_skill_resolved_target_uid(target, fallback);
+            let action = enemy_job_skill_action_code(normalized, resolved);
+            assert_eq!(normalized, expected_normalized);
+            assert_eq!(action, expected_action);
+            assert_eq!(resolved, expected_resolved);
+            assert_eq!(enemy_job_skill_ally_target_uid(target), expected_ally);
+            assert_eq!(enemy_job_skill_return_value(action), expected_return);
         }
     }
 

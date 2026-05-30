@@ -35,6 +35,7 @@ import { resolveRoundPointerAdvance } from '../src/core/roundPointerAdvanceRules
 import { resolveTurnPhaseAssignment } from '../src/core/turnPhaseAssignmentRules.mjs';
 import { resolveTurnOrderGroupProjection } from '../src/core/turnOrderGroupRules.mjs';
 import { resolveEnemySkillChoice } from '../src/core/enemySkillChoiceRules.mjs';
+import { resolveEnemyJobSkill as importedResolveEnemyJobSkill } from '../src/core/enemyJobSkillRules.mjs';
 import {
   pickEnemyTargetHeroFromRoster,
   resolveEnemyTargetHero,
@@ -6636,6 +6637,158 @@ function resolveGemActionCompat(payload) {
   return { ...jsDecision, jsDecision };
 }
 
+const ENEMY_JOB_SKILL_UNKNOWN = -1;
+const ENEMY_JOB_SKILL_CODES = Object.freeze({
+  Enemy_ATK_Single: 0,
+  Enemy_Scathe: 1,
+  Enemy_MAG_Single: 2,
+  Enemy_Sweep: 3,
+  Enemy_Wipe: 4,
+  Enemy_Heal_Self: 5,
+  Enemy_Heal_Ally: 6,
+  Enemy_Heal_Allies: 7,
+  Enemy_MAG_AOE: 8,
+  Enemy_Drain_Buff: 9,
+});
+const ENEMY_JOB_SKILL_IDS = Object.freeze([
+  'Enemy_ATK_Single',
+  'Enemy_Scathe',
+  'Enemy_MAG_Single',
+  'Enemy_Sweep',
+  'Enemy_Wipe',
+  'Enemy_Heal_Self',
+  'Enemy_Heal_Ally',
+  'Enemy_Heal_Allies',
+  'Enemy_MAG_AOE',
+  'Enemy_Drain_Buff',
+]);
+const ENEMY_JOB_ACTION_NOOP = 0;
+const ENEMY_JOB_ACTION_ATTACK_SINGLE = 1;
+const ENEMY_JOB_ACTION_MAGIC_SINGLE = 2;
+const ENEMY_JOB_ACTION_MAGIC_AOE = 3;
+const ENEMY_JOB_ACTION_HEAL_SELF = 4;
+const ENEMY_JOB_ACTION_HEAL_ALLIES = 5;
+const ENEMY_JOB_ACTION_HEAL_ALLY = 6;
+const ENEMY_JOB_ACTION_SCATHE = 7;
+const ENEMY_JOB_ACTION_SWEEP = 8;
+const ENEMY_JOB_ACTION_DRAIN_BUFF = 9;
+const ENEMY_JOB_ACTION_WIPE = 10;
+
+function enemyJobSkillNumberOr(value, fallback = 0) {
+  const normalized = Number(value);
+  return Number.isFinite(normalized) ? normalized : fallback;
+}
+
+function enemyJobSkillNonNegativeInt(value) {
+  return Math.max(0, Math.floor(enemyJobSkillNumberOr(value, 0)));
+}
+
+function enemyJobSkillKindCode(enemyName = '', enemyKindCode = null) {
+  if (enemyKindCode != null) return Math.max(0, Math.trunc(enemyJobSkillNumberOr(enemyKindCode, 0)));
+  const name = String(enemyName || '');
+  if (name === 'Djinn') return 1;
+  if (name === 'Marid') return 2;
+  if (name === 'Chimerilass') return 3;
+  return 0;
+}
+
+function enemyJobSkillCodeFromId(skillId = '') {
+  const key = String(skillId || '');
+  return Object.prototype.hasOwnProperty.call(ENEMY_JOB_SKILL_CODES, key)
+    ? ENEMY_JOB_SKILL_CODES[key]
+    : ENEMY_JOB_SKILL_UNKNOWN;
+}
+
+function enemyJobSkillIdFromCode(code, fallback = 'Enemy_Unknown') {
+  return ENEMY_JOB_SKILL_IDS[Math.trunc(enemyJobSkillNumberOr(code, ENEMY_JOB_SKILL_UNKNOWN))] || fallback;
+}
+
+function enemyJobSkillNormalizeCode(code) {
+  const normalized = Math.trunc(enemyJobSkillNumberOr(code, ENEMY_JOB_SKILL_UNKNOWN));
+  return normalized >= 0 && normalized < ENEMY_JOB_SKILL_IDS.length ? normalized : ENEMY_JOB_SKILL_UNKNOWN;
+}
+
+function enemyJobSkillRegularForKind(kindCode) {
+  if (kindCode === 1 || kindCode === 2) return ENEMY_JOB_SKILL_CODES.Enemy_MAG_Single;
+  if (kindCode === 3) return ENEMY_JOB_SKILL_CODES.Enemy_Heal_Self;
+  return ENEMY_JOB_SKILL_CODES.Enemy_ATK_Single;
+}
+
+function enemyJobSkillActionCode(normalizedSkillCode, resolvedTargetUID) {
+  const code = enemyJobSkillNormalizeCode(normalizedSkillCode);
+  if (code === ENEMY_JOB_SKILL_CODES.Enemy_Heal_Self) return ENEMY_JOB_ACTION_HEAL_SELF;
+  if (code === ENEMY_JOB_SKILL_CODES.Enemy_Heal_Allies) return ENEMY_JOB_ACTION_HEAL_ALLIES;
+  if (code === ENEMY_JOB_SKILL_CODES.Enemy_Heal_Ally) return ENEMY_JOB_ACTION_HEAL_ALLY;
+  if (code === ENEMY_JOB_SKILL_CODES.Enemy_Scathe) return ENEMY_JOB_ACTION_SCATHE;
+  if (code === ENEMY_JOB_SKILL_CODES.Enemy_Sweep) return ENEMY_JOB_ACTION_SWEEP;
+  if (code === ENEMY_JOB_SKILL_CODES.Enemy_MAG_Single) return ENEMY_JOB_ACTION_MAGIC_SINGLE;
+  if (code === ENEMY_JOB_SKILL_CODES.Enemy_MAG_AOE) return ENEMY_JOB_ACTION_MAGIC_AOE;
+  if (code === ENEMY_JOB_SKILL_CODES.Enemy_Drain_Buff) return ENEMY_JOB_ACTION_DRAIN_BUFF;
+  if (code === ENEMY_JOB_SKILL_CODES.Enemy_Wipe) return ENEMY_JOB_ACTION_WIPE;
+  return enemyJobSkillNonNegativeInt(resolvedTargetUID) > 0
+    ? ENEMY_JOB_ACTION_ATTACK_SINGLE
+    : ENEMY_JOB_ACTION_NOOP;
+}
+
+function buildEnemyJobSkillFallbackDecision(payload, owner = 'fallback') {
+  const skillCode = payload?.skillCode == null
+    ? enemyJobSkillCodeFromId(payload?.skillId)
+    : enemyJobSkillNormalizeCode(payload.skillCode);
+  const enemyKindCode = enemyJobSkillKindCode(payload?.enemyName, payload?.enemyKindCode);
+  const normalizedSkillCode = Number(payload?.boardReady || 0) !== 1
+    && (skillCode === ENEMY_JOB_SKILL_CODES.Enemy_Scathe || skillCode === ENEMY_JOB_SKILL_CODES.Enemy_Sweep)
+    ? enemyJobSkillRegularForKind(enemyKindCode)
+    : skillCode;
+  const targetUID = enemyJobSkillNonNegativeInt(payload?.targetUID);
+  const resolvedTargetUID = targetUID || enemyJobSkillNonNegativeInt(payload?.fallbackTargetUID);
+  const actionCode = enemyJobSkillActionCode(normalizedSkillCode, resolvedTargetUID);
+  return {
+    owner,
+    enemyKindCode,
+    skillId: String(payload?.skillId || ''),
+    skillCode,
+    normalizedSkillCode,
+    normalizedSkillId: enemyJobSkillIdFromCode(normalizedSkillCode, String(payload?.skillId || 'Enemy_Unknown')),
+    actionCode,
+    resolvedTargetUID,
+    allyTargetUID: targetUID,
+    returnValue: actionCode === ENEMY_JOB_ACTION_NOOP ? 0 : 1,
+  };
+}
+
+function resolveEnemyJobSkillCompat(payload) {
+  if (typeof importedResolveEnemyJobSkill === 'function') {
+    return importedResolveEnemyJobSkill(payload);
+  }
+  const jsDecision = buildEnemyJobSkillFallbackDecision(payload);
+  if (typeof payload?.ownerHook === 'function') {
+    try {
+      const result = payload.ownerHook({
+        ...payload,
+        skillCode: jsDecision.skillCode,
+        enemyKindCode: jsDecision.enemyKindCode,
+        jsNormalizedSkillCode: jsDecision.normalizedSkillCode,
+        jsActionCode: jsDecision.actionCode,
+        jsResolvedTargetUID: jsDecision.resolvedTargetUID,
+        jsAllyTargetUID: jsDecision.allyTargetUID,
+        jsReturnValue: jsDecision.returnValue,
+      });
+      if (Number.isFinite(Number(result?.actionCode))) {
+        return {
+          ...jsDecision,
+          ...result,
+          owner: String(result?.owner || 'rust'),
+          normalizedSkillId: enemyJobSkillIdFromCode(result?.normalizedSkillCode, jsDecision.normalizedSkillId),
+          jsDecision,
+        };
+      }
+    } catch (_) {
+      // Local fallback remains authoritative if the owner hook is unavailable.
+    }
+  }
+  return { ...jsDecision, jsDecision };
+}
+
 export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
   const g = getGlobals(ctx);
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
@@ -7561,56 +7714,74 @@ export function Enemy_Wipe(ctx, enemyUID) {
 export function ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID = 0) {
   const enemy = GetActorByUID(ctx, enemyUID);
   if (!enemy) return 0;
-  const normalizedSkillId = normalizeEnemyBoardLineSkillDecision(ctx, enemy, {
-    roll: -1,
-    selected: skillId,
-    branch: 'execute',
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const fallbackTarget = targetUID ? null : pickEnemyTargetHero(ctx, enemyUID);
+  const decision = resolveEnemyJobSkillCompat({
+    source: 'functionBank.ExecuteEnemyJobSkill',
+    skillId,
     enemyName: String(enemy.name || ''),
-  }).selected;
-  const resolvedTargetUID = targetUID || (pickEnemyTargetHero(ctx, enemyUID)?.uid || 0);
-  if (normalizedSkillId === 'Enemy_Heal_Self') {
+    boardReady: isBoardFullyPopulatedForEnemyMutation(ctx) ? 1 : 0,
+    targetUID,
+    fallbackTargetUID: fallbackTarget ? fallbackTarget.uid : 0,
+    ownerHook: root && typeof root.__ORKA_ENEMY_JOB_SKILL_OWNER__ === 'function'
+      ? root.__ORKA_ENEMY_JOB_SKILL_OWNER__
+      : null,
+  });
+  const g = getGlobals(ctx);
+  g.LastEnemyJobSkillOwner = {
+    owner: String(decision.owner || 'fallback'),
+    source: 'functionBank.ExecuteEnemyJobSkill',
+    skillId: String(skillId || ''),
+    normalizedSkillId: String(decision.normalizedSkillId || ''),
+    actionCode: Number(decision.actionCode || 0),
+    jsActionCode: Number(decision.jsDecision?.actionCode ?? decision.actionCode ?? 0),
+  };
+  const actionCode = Number(decision.actionCode || 0);
+  const resultValue = Number(decision.returnValue || 0);
+  const resolvedTargetUID = Number(decision.resolvedTargetUID || 0);
+  if (actionCode === ENEMY_JOB_ACTION_HEAL_SELF) {
     Enemy_Heal_Self(ctx, enemyUID);
-    return 1;
+    return resultValue || 1;
   }
-  if (normalizedSkillId === 'Enemy_Heal_Allies') {
+  if (actionCode === ENEMY_JOB_ACTION_HEAL_ALLIES) {
     Enemy_Heal_Allies(ctx, enemyUID);
-    return 1;
+    return resultValue || 1;
   }
-  if (normalizedSkillId === 'Enemy_Heal_Ally') {
-    Enemy_Heal_Ally(ctx, enemyUID, targetUID);
-    return 1;
+  if (actionCode === ENEMY_JOB_ACTION_HEAL_ALLY) {
+    Enemy_Heal_Ally(ctx, enemyUID, Number(decision.allyTargetUID || 0));
+    return resultValue || 1;
   }
-  if (normalizedSkillId === 'Enemy_Scathe') {
+  if (actionCode === ENEMY_JOB_ACTION_SCATHE) {
     Enemy_Scathe(ctx, enemyUID);
-    return 1;
+    return resultValue || 1;
   }
-  if (normalizedSkillId === 'Enemy_Sweep') {
+  if (actionCode === ENEMY_JOB_ACTION_SWEEP) {
     Enemy_Sweep(ctx, enemyUID);
-    return 1;
+    return resultValue || 1;
   }
-  if (normalizedSkillId === 'Enemy_MAG_Single') {
+  if (actionCode === ENEMY_JOB_ACTION_MAGIC_SINGLE) {
     if (resolvedTargetUID) Enemy_MAG_Single(ctx, enemyUID, resolvedTargetUID);
-    return 1;
+    return resultValue || 1;
   }
-  if (normalizedSkillId === 'Enemy_MAG_AOE') {
+  if (actionCode === ENEMY_JOB_ACTION_MAGIC_AOE) {
     for (const h of getHeroes(ctx)) {
       const dmg = CalculateDamage(ctx, enemyUID, h.uid, 'magic');
       const resist = applyRunaMagicResist(ctx, enemyUID, h.uid, dmg, 'Enemy_MAG_AOE');
       if (resist.finalDamage > 0) ApplyDamageToTarget(ctx, h.uid, resist.finalDamage);
     }
-    return 1;
+    return resultValue || 1;
   }
-  if (normalizedSkillId === 'Enemy_Drain_Buff') {
+  if (actionCode === ENEMY_JOB_ACTION_DRAIN_BUFF) {
     return Enemy_Drain_Buff(ctx, enemyUID);
   }
-  if (normalizedSkillId === 'Enemy_Wipe') {
+  if (actionCode === ENEMY_JOB_ACTION_WIPE) {
     return Enemy_Wipe(ctx, enemyUID);
   }
-  if (resolvedTargetUID) {
+  if (actionCode === ENEMY_JOB_ACTION_ATTACK_SINGLE && resolvedTargetUID) {
     Enemy_ATK_Single(ctx, enemyUID, resolvedTargetUID);
-    return 1;
+    return resultValue || 1;
   }
-  return 0;
+  return resultValue;
 }
 
 export function StartEnemyAction(ctx, enemyUID) {
