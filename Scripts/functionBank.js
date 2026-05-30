@@ -31,6 +31,7 @@ import {
   deriveBattleStartRoundPartition,
   nextTeamPhaseType,
 } from '../src/core/schedulerRules.mjs';
+import { resolveTurnOrderGroupProjection } from '../src/core/turnOrderGroupRules.mjs';
 import { pickEnemyTargetHeroFromRoster } from '../src/core/enemyTargetingRules.mjs';
 import { getEnemyRosterStability } from '../src/core/enemyRosterStability.mjs';
 const POWER_AMP_OUTCOMES = [
@@ -6479,13 +6480,26 @@ export function BuildRoundGroups(ctx) {
     return;
   }
   const requestedType = Number.isFinite(Number(g.TeamPhaseType)) ? Number(g.TeamPhaseType || 0) : 0;
-  let phaseType = requestedType === 1 ? 1 : 0;
-  let members = buildTeamPhaseSlots(roster, phaseType);
-  if (!members.length) {
-    phaseType = nextTeamPhaseType(phaseType);
-    members = buildTeamPhaseSlots(roster, phaseType);
-  }
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const projection = resolveTurnOrderGroupProjection({
+    source: 'functionBank.BuildRoundGroups',
+    roster,
+    requestedPhaseType: requestedType,
+    ownerHook: root && typeof root.__ORKA_TURN_ORDER_GROUP_OWNER__ === 'function'
+      ? root.__ORKA_TURN_ORDER_GROUP_OWNER__
+      : null,
+  });
+  const phaseType = Number(projection.phaseType || 0) === 1 ? 1 : 0;
+  const members = Array.isArray(projection.members) ? projection.members : [];
   const groups = members.length ? [{ init: 0, type: phaseType, members }] : [];
+  g.LastTurnOrderGroupOwner = {
+    owner: String(projection.owner || 'fallback'),
+    source: 'functionBank.BuildRoundGroups',
+    phaseType,
+    jsPhaseType: Number(projection.jsPhaseType ?? phaseType),
+    memberCount: members.length,
+    jsMemberCount: Array.isArray(projection.jsMembers) ? projection.jsMembers.length : members.length,
+  };
   g.TeamPhaseType = phaseType;
   g.RoundRoster = roster;
   g.RoundGroups = groups;

@@ -21,6 +21,7 @@ function getShadowState() {
       effectiveStatOwnerChecks: 0,
       combatOutcomeOwnerChecks: 0,
       turnActorEligibilityOwnerChecks: 0,
+      turnOrderGroupOwnerChecks: 0,
       seededRngChecks: 0,
       seededRngOwnerChecks: 0,
       singleHitOwnerSmokeRan: false,
@@ -35,6 +36,7 @@ function getShadowState() {
       effectiveStatOwnerSmokeRan: false,
       combatOutcomeOwnerSmokeRan: false,
       turnActorEligibilityOwnerSmokeRan: false,
+      turnOrderGroupOwnerSmokeRan: false,
     };
   }
   if (!window[SHADOW_STATE_KEY]) {
@@ -56,6 +58,7 @@ function getShadowState() {
       effectiveStatOwnerChecks: 0,
       combatOutcomeOwnerChecks: 0,
       turnActorEligibilityOwnerChecks: 0,
+      turnOrderGroupOwnerChecks: 0,
       seededRngChecks: 0,
       seededRngOwnerChecks: 0,
       singleHitOwnerSmokeRan: false,
@@ -70,6 +73,7 @@ function getShadowState() {
       effectiveStatOwnerSmokeRan: false,
       combatOutcomeOwnerSmokeRan: false,
       turnActorEligibilityOwnerSmokeRan: false,
+      turnOrderGroupOwnerSmokeRan: false,
       lastCheck: null,
       lastSingleHitCheck: null,
       lastSingleHitOwnerCheck: null,
@@ -86,6 +90,7 @@ function getShadowState() {
       lastEffectiveStatOwnerCheck: null,
       lastCombatOutcomeOwnerCheck: null,
       lastTurnActorEligibilityOwnerCheck: null,
+      lastTurnOrderGroupOwnerCheck: null,
       lastSeededRngCheck: null,
       lastSeededRngOwnerCheck: null,
       exports: null,
@@ -181,6 +186,12 @@ function updateShadowDomMarker(shadow) {
   document.documentElement.dataset.simCoreShadowTurnActorEligibilityOwner = String(
     shadow?.lastTurnActorEligibilityOwnerCheck?.owner || '',
   );
+  document.documentElement.dataset.simCoreShadowTurnOrderGroupOwnerChecks = String(
+    Number(shadow?.turnOrderGroupOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowTurnOrderGroupOwner = String(
+    shadow?.lastTurnOrderGroupOwnerCheck?.owner || '',
+  );
   document.documentElement.dataset.simCoreShadowSeededRngChecks = String(
     Number(shadow?.seededRngChecks || 0),
   );
@@ -265,6 +276,12 @@ function hasTurnActorEligibilityExports(exports) {
   return typeof exports?.turn_actor_eligibility_code_shadow === 'function';
 }
 
+function hasTurnOrderGroupExports(exports) {
+  return typeof exports?.turn_order_actor_in_phase_shadow === 'function'
+    && typeof exports?.turn_order_phase_type_shadow === 'function'
+    && typeof exports?.turn_order_compare_slots_shadow === 'function';
+}
+
 function hasTurnSummaryExports(exports) {
   return typeof exports?.turn_summary_code_shadow === 'function';
 }
@@ -283,7 +300,8 @@ function hasRequiredExports(exports) {
     && hasEnemyDebuffSlotExports(exports)
     && hasEffectiveStatExports(exports)
     && hasCombatOutcomeExports(exports)
-    && hasTurnActorEligibilityExports(exports);
+    && hasTurnActorEligibilityExports(exports)
+    && hasTurnOrderGroupExports(exports);
 }
 
 async function instantiateWasm(wasmUrl) {
@@ -527,6 +545,25 @@ function runTurnActorEligibilityOwnerStartupCheck(shadow) {
   });
 }
 
+function runTurnOrderGroupOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.turnOrderGroupOwnerSmokeRan) return;
+  shadow.turnOrderGroupOwnerSmokeRan = true;
+  createSimulationCoreTurnOrderGroupProjection({
+    source: 'simulationCore.startup.turnOrderGroupOwner',
+    requestedPhaseType: 0,
+    roster: [
+      { uid: 1, type: 0, spd: 11, hp: 40, isAlive: 1, ableToAct: 1 },
+      { uid: 2, type: 0, spd: 20, hp: 35, isAlive: 1, ableToAct: 1 },
+      { uid: 101, type: 1, spd: 18, hp: 20, isAlive: 1, ableToAct: 1 },
+    ],
+    jsPhaseType: 0,
+    jsMembers: [
+      { uid: 2, type: 0, spd: 20 },
+      { uid: 1, type: 0, spd: 11 },
+    ],
+  });
+}
+
 function runTurnSummaryOwnerStartupCheck(shadow) {
   if (!shadow || shadow.turnSummaryOwnerSmokeRan) return;
   shadow.turnSummaryOwnerSmokeRan = true;
@@ -558,6 +595,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_EFFECTIVE_STAT_OWNER__ = createSimulationCoreEffectiveStatResolution;
     window.__ORKA_COMBAT_OUTCOME_OWNER__ = createSimulationCoreCombatOutcomeResolution;
     window.__ORKA_TURN_ACTOR_ELIGIBILITY_OWNER__ = createSimulationCoreTurnActorEligibilityResolution;
+    window.__ORKA_TURN_ORDER_GROUP_OWNER__ = createSimulationCoreTurnOrderGroupProjection;
     window.__ORKA_SEEDED_RNG_SHADOW__ = shadowSeededRng;
     window.__ORKA_SEEDED_RNG_OWNER__ = createSimulationCoreSeededRng;
   }
@@ -586,6 +624,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
         runEffectiveStatOwnerStartupCheck(shadow);
         runCombatOutcomeOwnerStartupCheck(shadow);
         runTurnActorEligibilityOwnerStartupCheck(shadow);
+        runTurnOrderGroupOwnerStartupCheck(shadow);
       }
       updateShadowDomMarker(shadow);
       return shadow;
@@ -779,6 +818,151 @@ export function createSimulationCoreTurnActorEligibilityResolution({
   }
   updateShadowDomMarker(shadow);
   return { owner: 'rust', code: rustCode };
+}
+
+function normalizeTurnOrderGroupPhaseType(value = 0) {
+  return Number(value || 0) === 1 ? 1 : 0;
+}
+
+function normalizeTurnOrderGroupRoster(roster = []) {
+  if (!Array.isArray(roster)) return [];
+  return roster
+    .map(actor => ({
+      uid: Number(actor?.uid || 0),
+      type: normalizeTurnOrderGroupPhaseType(actor?.type),
+      spd: Number(actor?.spd || 0),
+      extra: !!actor?.extra,
+      hp: Number.isNaN(Number(actor?.hp)) ? 1 : Number(actor?.hp ?? 1),
+      isAlive: Number(actor?.isAlive ?? 1) ? 1 : 0,
+      ableToAct: Number(actor?.ableToAct ?? 1) ? 1 : 0,
+      disabled: Number(actor?.disabled || 0) ? 1 : 0,
+      stunned: Number(actor?.stunned || 0) ? 1 : 0,
+      stopped: Number(actor?.stopped || 0) ? 1 : 0,
+      paralyzed: Number(actor?.paralyzed || 0) ? 1 : 0,
+      statusBlocked: Number(actor?.statusBlocked || 0) ? 1 : 0,
+    }))
+    .filter(actor => actor.uid > 0);
+}
+
+function normalizeTurnOrderGroupMembers(members = []) {
+  if (!Array.isArray(members)) return [];
+  return members
+    .map(member => ({
+      uid: Number(member?.uid || 0),
+      type: normalizeTurnOrderGroupPhaseType(member?.type),
+      spd: Number(member?.spd || 0),
+      extra: !!member?.extra,
+    }))
+    .filter(member => member.uid > 0);
+}
+
+function turnOrderMembersMatch(a = [], b = []) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (Number(a[i]?.uid || 0) !== Number(b[i]?.uid || 0)) return false;
+    if (Number(a[i]?.type || 0) !== Number(b[i]?.type || 0)) return false;
+    if (Number(a[i]?.spd || 0) !== Number(b[i]?.spd || 0)) return false;
+  }
+  return true;
+}
+
+function rustTurnOrderActorInPhase(exports, actor, phaseType) {
+  return Number(exports.turn_order_actor_in_phase_shadow(
+    actor.type,
+    phaseType,
+    actor.uid,
+    actor.hp,
+    actor.isAlive,
+    actor.ableToAct,
+    actor.disabled,
+    actor.stunned,
+    actor.stopped,
+    actor.paralyzed,
+    actor.statusBlocked,
+  ));
+}
+
+export function createSimulationCoreTurnOrderGroupProjection({
+  source = 'unknown',
+  requestedPhaseType = 0,
+  roster = [],
+  jsPhaseType = 0,
+  jsMembers = [],
+} = {}, {
+  exportsOverride = null,
+} = {}) {
+  const shadow = getShadowState();
+  const normalized = {
+    source,
+    requestedPhaseType: normalizeTurnOrderGroupPhaseType(requestedPhaseType),
+    roster: normalizeTurnOrderGroupRoster(roster),
+    jsPhaseType: normalizeTurnOrderGroupPhaseType(jsPhaseType),
+    jsMembers: normalizeTurnOrderGroupMembers(jsMembers),
+  };
+  const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+  if (!hasTurnOrderGroupExports(exports)) {
+    shadow.turnOrderGroupOwnerChecks = Number(shadow.turnOrderGroupOwnerChecks || 0) + 1;
+    shadow.lastTurnOrderGroupOwnerCheck = {
+      ...normalized,
+      owner: 'fallback',
+      phaseType: normalized.jsPhaseType,
+      members: normalized.jsMembers,
+    };
+    updateShadowDomMarker(shadow);
+    return { owner: 'fallback', phaseType: normalized.jsPhaseType, members: normalized.jsMembers };
+  }
+
+  const requestedCount = normalized.roster.reduce((total, actor) => (
+    total + rustTurnOrderActorInPhase(exports, actor, normalized.requestedPhaseType)
+  ), 0);
+  const alternatePhaseType = normalized.requestedPhaseType === 1 ? 0 : 1;
+  const alternateCount = normalized.roster.reduce((total, actor) => (
+    total + rustTurnOrderActorInPhase(exports, actor, alternatePhaseType)
+  ), 0);
+  const phaseType = normalizeTurnOrderGroupPhaseType(exports.turn_order_phase_type_shadow(
+    normalized.requestedPhaseType,
+    requestedCount,
+    alternateCount,
+  ));
+  const members = normalized.roster
+    .filter(actor => rustTurnOrderActorInPhase(exports, actor, phaseType) === 1)
+    .map(actor => ({
+      uid: actor.uid,
+      type: actor.type,
+      spd: actor.spd,
+      extra: actor.extra,
+    }))
+    .sort((a, b) => Number(exports.turn_order_compare_slots_shadow(
+      a.uid,
+      a.type,
+      a.spd,
+      b.uid,
+      b.type,
+      b.spd,
+    )));
+
+  shadow.turnOrderGroupOwnerChecks = Number(shadow.turnOrderGroupOwnerChecks || 0) + 1;
+  shadow.lastTurnOrderGroupOwnerCheck = {
+    ...normalized,
+    owner: 'rust',
+    phaseType,
+    members,
+    requestedCount,
+    alternateCount,
+  };
+  if (
+    !exportsOverride
+    && (
+      phaseType !== normalized.jsPhaseType
+      || !turnOrderMembersMatch(members, normalized.jsMembers)
+    )
+  ) {
+    shadow.mismatches.push(shadow.lastTurnOrderGroupOwnerCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastTurnOrderGroupOwnerCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return { owner: 'rust', phaseType, members };
 }
 
 export function createSimulationCoreSeededRng(seed = 1, {

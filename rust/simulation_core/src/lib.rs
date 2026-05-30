@@ -114,6 +114,109 @@ pub fn turn_actor_eligibility_code(
     0.0
 }
 
+pub fn turn_order_actor_in_phase(
+    actor_type: f64,
+    phase_type: f64,
+    uid: f64,
+    hp: f64,
+    is_alive: f64,
+    able_to_act: f64,
+    disabled: f64,
+    stunned: f64,
+    stopped: f64,
+    paralyzed: f64,
+    status_blocked: f64,
+) -> f64 {
+    let phase = if number_or_zero(phase_type) == 1.0 {
+        1.0
+    } else {
+        0.0
+    };
+    let actor_phase = if number_or_zero(actor_type) == 1.0 {
+        1.0
+    } else {
+        0.0
+    };
+    let hp_value = if hp.is_nan() { 1.0 } else { hp };
+
+    if number_or_zero(uid) <= 0.0 {
+        return 0.0;
+    }
+    if actor_phase != phase {
+        return 0.0;
+    }
+    if hp_value <= 0.0 {
+        return 0.0;
+    }
+    if number_or_zero(is_alive) != 1.0 || number_or_zero(able_to_act) != 1.0 {
+        return 0.0;
+    }
+    if number_or_zero(disabled) == 1.0
+        || number_or_zero(stunned) == 1.0
+        || number_or_zero(stopped) == 1.0
+        || number_or_zero(paralyzed) == 1.0
+        || number_or_zero(status_blocked) == 1.0
+    {
+        return 0.0;
+    }
+
+    1.0
+}
+
+pub fn turn_order_phase_type(
+    requested_phase_type: f64,
+    requested_count: f64,
+    _alternate_count: f64,
+) -> f64 {
+    let requested = if number_or_zero(requested_phase_type) == 1.0 {
+        1.0
+    } else {
+        0.0
+    };
+    if number_or_zero(requested_count) > 0.0 {
+        requested
+    } else if requested == 1.0 {
+        0.0
+    } else {
+        1.0
+    }
+}
+
+pub fn turn_order_compare_slots(
+    a_uid: f64,
+    a_type: f64,
+    a_spd: f64,
+    b_uid: f64,
+    b_type: f64,
+    b_spd: f64,
+) -> f64 {
+    let spd_diff = number_or_zero(b_spd) - number_or_zero(a_spd);
+    if spd_diff < 0.0 {
+        return -1.0;
+    }
+    if spd_diff > 0.0 {
+        return 1.0;
+    }
+
+    let type_diff = number_or_zero(a_type) - number_or_zero(b_type);
+    if type_diff < 0.0 {
+        return -1.0;
+    }
+    if type_diff > 0.0 {
+        return 1.0;
+    }
+
+    let uid_diff = number_or_zero(a_uid) - number_or_zero(b_uid);
+    if uid_diff < 0.0 {
+        return -1.0;
+    }
+    if uid_diff > 0.0 {
+        return 1.0;
+    }
+
+    0.0
+}
+
 fn js_to_uint32(value: f64) -> u32 {
     if !value.is_finite() {
         return 0;
@@ -197,6 +300,56 @@ pub extern "C" fn turn_actor_eligibility_code_shadow(
         pending_group_matches,
         blue_buff_sequence_active,
     )
+}
+
+#[no_mangle]
+pub extern "C" fn turn_order_actor_in_phase_shadow(
+    actor_type: f64,
+    phase_type: f64,
+    uid: f64,
+    hp: f64,
+    is_alive: f64,
+    able_to_act: f64,
+    disabled: f64,
+    stunned: f64,
+    stopped: f64,
+    paralyzed: f64,
+    status_blocked: f64,
+) -> f64 {
+    turn_order_actor_in_phase(
+        actor_type,
+        phase_type,
+        uid,
+        hp,
+        is_alive,
+        able_to_act,
+        disabled,
+        stunned,
+        stopped,
+        paralyzed,
+        status_blocked,
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn turn_order_phase_type_shadow(
+    requested_phase_type: f64,
+    requested_count: f64,
+    alternate_count: f64,
+) -> f64 {
+    turn_order_phase_type(requested_phase_type, requested_count, alternate_count)
+}
+
+#[no_mangle]
+pub extern "C" fn turn_order_compare_slots_shadow(
+    a_uid: f64,
+    a_type: f64,
+    a_spd: f64,
+    b_uid: f64,
+    b_type: f64,
+    b_spd: f64,
+) -> f64 {
+    turn_order_compare_slots(a_uid, a_type, a_spd, b_uid, b_type, b_spd)
 }
 
 #[no_mangle]
@@ -1511,5 +1664,72 @@ mod single_hit_resolution_tests {
                 expected
             );
         }
+    }
+
+    #[test]
+    fn mirrors_current_turn_order_group_cases() {
+        let actor_cases = [
+            // actor_type, phase_type, uid, hp, is_alive, able_to_act, disabled,
+            // stunned, stopped, paralyzed, status_blocked, expected
+            (0.0, 0.0, 1.0, 40.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0),
+            (0.0, 1.0, 1.0, 40.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+            (
+                1.0, 1.0, 101.0, 20.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+            ),
+            (1.0, 1.0, 101.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+            (0.0, 0.0, 2.0, 35.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0),
+            (0.0, 0.0, 3.0, 35.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+            (0.0, 0.0, 4.0, 35.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+            (0.0, 0.0, 5.0, 35.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0),
+        ];
+
+        for (
+            actor_type,
+            phase_type,
+            uid,
+            hp,
+            is_alive,
+            able_to_act,
+            disabled,
+            stunned,
+            stopped,
+            paralyzed,
+            status_blocked,
+            expected,
+        ) in actor_cases
+        {
+            assert_eq!(
+                turn_order_actor_in_phase(
+                    actor_type,
+                    phase_type,
+                    uid,
+                    hp,
+                    is_alive,
+                    able_to_act,
+                    disabled,
+                    stunned,
+                    stopped,
+                    paralyzed,
+                    status_blocked,
+                ),
+                expected
+            );
+        }
+
+        assert_eq!(turn_order_phase_type(0.0, 3.0, 2.0), 0.0);
+        assert_eq!(turn_order_phase_type(0.0, 0.0, 2.0), 1.0);
+        assert_eq!(turn_order_phase_type(1.0, 0.0, 3.0), 0.0);
+        assert_eq!(
+            turn_order_compare_slots(2.0, 0.0, 20.0, 1.0, 0.0, 11.0),
+            -1.0
+        );
+        assert_eq!(
+            turn_order_compare_slots(5.0, 0.0, 10.0, 4.0, 0.0, 10.0),
+            1.0
+        );
+        assert_eq!(
+            turn_order_compare_slots(101.0, 1.0, 18.0, 2.0, 0.0, 18.0),
+            1.0
+        );
     }
 }
