@@ -26,6 +26,7 @@ function getShadowState() {
       enemySkillChoiceOwnerChecks: 0,
       enemyJobSkillOwnerChecks: 0,
       startEnemyActionOwnerChecks: 0,
+      enemyTurnFlowOwnerChecks: 0,
       enemyTargetOwnerChecks: 0,
       runaMagicResistOwnerChecks: 0,
       turnOrderGroupOwnerChecks: 0,
@@ -50,6 +51,7 @@ function getShadowState() {
       enemySkillChoiceOwnerSmokeRan: false,
       enemyJobSkillOwnerSmokeRan: false,
       startEnemyActionOwnerSmokeRan: false,
+      enemyTurnFlowOwnerSmokeRan: false,
       enemyTargetOwnerSmokeRan: false,
       runaMagicResistOwnerSmokeRan: false,
       turnOrderGroupOwnerSmokeRan: false,
@@ -81,6 +83,7 @@ function getShadowState() {
       enemySkillChoiceOwnerChecks: 0,
       enemyJobSkillOwnerChecks: 0,
       startEnemyActionOwnerChecks: 0,
+      enemyTurnFlowOwnerChecks: 0,
       enemyTargetOwnerChecks: 0,
       runaMagicResistOwnerChecks: 0,
       turnOrderGroupOwnerChecks: 0,
@@ -105,6 +108,7 @@ function getShadowState() {
       enemySkillChoiceOwnerSmokeRan: false,
       enemyJobSkillOwnerSmokeRan: false,
       startEnemyActionOwnerSmokeRan: false,
+      enemyTurnFlowOwnerSmokeRan: false,
       enemyTargetOwnerSmokeRan: false,
       runaMagicResistOwnerSmokeRan: false,
       turnOrderGroupOwnerSmokeRan: false,
@@ -131,6 +135,7 @@ function getShadowState() {
       lastEnemySkillChoiceOwnerCheck: null,
       lastEnemyJobSkillOwnerCheck: null,
       lastStartEnemyActionOwnerCheck: null,
+      lastEnemyTurnFlowOwnerCheck: null,
       lastEnemyTargetOwnerCheck: null,
       lastRunaMagicResistOwnerCheck: null,
       lastTurnOrderGroupOwnerCheck: null,
@@ -260,6 +265,12 @@ function updateShadowDomMarker(shadow) {
   );
   document.documentElement.dataset.simCoreShadowStartEnemyActionOwner = String(
     shadow?.lastStartEnemyActionOwnerCheck?.owner || '',
+  );
+  document.documentElement.dataset.simCoreShadowEnemyTurnFlowOwnerChecks = String(
+    Number(shadow?.enemyTurnFlowOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowEnemyTurnFlowOwner = String(
+    shadow?.lastEnemyTurnFlowOwnerCheck?.owner || '',
   );
   document.documentElement.dataset.simCoreShadowEnemyTargetOwnerChecks = String(
     Number(shadow?.enemyTargetOwnerChecks || 0),
@@ -405,6 +416,14 @@ function hasStartEnemyActionExports(exports) {
     && typeof exports?.start_enemy_action_forward_x_shadow === 'function';
 }
 
+function hasEnemyTurnFlowExports(exports) {
+  return typeof exports?.enemy_turn_flow_active_uid_shadow === 'function'
+    && typeof exports?.enemy_turn_flow_turn_phase_shadow === 'function'
+    && typeof exports?.enemy_turn_flow_action_code_shadow === 'function'
+    && typeof exports?.enemy_turn_flow_should_advance_shadow === 'function'
+    && typeof exports?.enemy_turn_flow_should_start_action_shadow === 'function';
+}
+
 function hasEnemyTargetExports(exports) {
   return typeof exports?.enemy_target_selected_uid_shadow === 'function'
     && typeof exports?.enemy_target_mode_code_shadow === 'function'
@@ -471,6 +490,7 @@ function hasRequiredExports(exports) {
     && hasEnemySkillChoiceExports(exports)
     && hasEnemyJobSkillExports(exports)
     && hasStartEnemyActionExports(exports)
+    && hasEnemyTurnFlowExports(exports)
     && hasEnemyTargetExports(exports)
     && hasRunaMagicResistExports(exports)
     && hasTurnOrderGroupExports(exports)
@@ -799,6 +819,20 @@ function runStartEnemyActionOwnerStartupCheck(shadow) {
   });
 }
 
+function runEnemyTurnFlowOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.enemyTurnFlowOwnerSmokeRan) return;
+  shadow.enemyTurnFlowOwnerSmokeRan = true;
+  createSimulationCoreEnemyTurnFlowResolution({
+    source: 'simulationCore.startup.enemyTurnFlowOwner',
+    activeEnemyUID: 12,
+    enemyExists: 1,
+    enemyHp: 20,
+    jsTurnPhase: 2,
+    jsActionCode: 2,
+    jsActiveEnemyUID: 12,
+  });
+}
+
 function runEnemyTargetOwnerStartupCheck(shadow) {
   if (!shadow || shadow.enemyTargetOwnerSmokeRan) return;
   shadow.enemyTargetOwnerSmokeRan = true;
@@ -938,6 +972,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_ENEMY_SKILL_CHOICE_OWNER__ = createSimulationCoreEnemySkillChoiceResolution;
     window.__ORKA_ENEMY_JOB_SKILL_OWNER__ = createSimulationCoreEnemyJobSkillResolution;
     window.__ORKA_START_ENEMY_ACTION_OWNER__ = createSimulationCoreStartEnemyActionResolution;
+    window.__ORKA_ENEMY_TURN_FLOW_OWNER__ = createSimulationCoreEnemyTurnFlowResolution;
     window.__ORKA_ENEMY_TARGET_OWNER__ = createSimulationCoreEnemyTargetResolution;
     window.__ORKA_RUNA_MAGIC_RESIST_OWNER__ = createSimulationCoreRunaMagicResistResolution;
     window.__ORKA_TURN_ORDER_GROUP_OWNER__ = createSimulationCoreTurnOrderGroupProjection;
@@ -976,6 +1011,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
         runEnemySkillChoiceOwnerStartupCheck(shadow);
         runEnemyJobSkillOwnerStartupCheck(shadow);
         runStartEnemyActionOwnerStartupCheck(shadow);
+        runEnemyTurnFlowOwnerStartupCheck(shadow);
         runEnemyTargetOwnerStartupCheck(shadow);
         runRunaMagicResistOwnerStartupCheck(shadow);
         runTurnOrderGroupOwnerStartupCheck(shadow);
@@ -1486,6 +1522,82 @@ export function createSimulationCoreStartEnemyActionResolution({
     shadow.mismatches.push(shadow.lastStartEnemyActionOwnerCheck);
     if (shadow.mismatches.length > 20) shadow.mismatches.shift();
     console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastStartEnemyActionOwnerCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return result;
+}
+
+export function createSimulationCoreEnemyTurnFlowResolution({
+  source = 'unknown',
+  activeEnemyUID = 0,
+  enemyExists = 0,
+  enemyHp = 0,
+  jsTurnPhase = 2,
+  jsActionCode = 1,
+  jsActiveEnemyUID = 0,
+} = {}, {
+  exportsOverride = null,
+} = {}) {
+  const shadow = getShadowState();
+  const normalized = {
+    source,
+    activeEnemyUID: Math.max(0, Math.trunc(Number(activeEnemyUID || 0))),
+    enemyExists: Number(enemyExists || 0) ? 1 : 0,
+    enemyHp: Number(enemyHp || 0),
+    jsTurnPhase: Math.trunc(Number(jsTurnPhase || 2)),
+    jsActionCode: Math.max(0, Math.trunc(Number(jsActionCode || 0))),
+    jsActiveEnemyUID: Math.max(0, Math.trunc(Number(jsActiveEnemyUID || 0))),
+  };
+  const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+  if (!hasEnemyTurnFlowExports(exports)) {
+    shadow.enemyTurnFlowOwnerChecks = Number(shadow.enemyTurnFlowOwnerChecks || 0) + 1;
+    shadow.lastEnemyTurnFlowOwnerCheck = {
+      ...normalized,
+      owner: 'fallback',
+      turnPhase: normalized.jsTurnPhase,
+      actionCode: normalized.jsActionCode,
+      activeEnemyUID: normalized.jsActiveEnemyUID,
+    };
+    updateShadowDomMarker(shadow);
+    return {
+      owner: 'fallback',
+      turnPhase: normalized.jsTurnPhase,
+      actionCode: normalized.jsActionCode,
+      activeEnemyUID: normalized.jsActiveEnemyUID,
+      shouldAdvance: normalized.jsActionCode === 1 ? 1 : 0,
+      shouldStartAction: normalized.jsActionCode === 2 ? 1 : 0,
+    };
+  }
+
+  const actionCode = Number(exports.enemy_turn_flow_action_code_shadow(
+    normalized.activeEnemyUID,
+    normalized.enemyExists,
+    normalized.enemyHp,
+  ));
+  const result = {
+    owner: 'rust',
+    activeEnemyUID: Number(exports.enemy_turn_flow_active_uid_shadow(normalized.activeEnemyUID)),
+    turnPhase: Number(exports.enemy_turn_flow_turn_phase_shadow()),
+    actionCode,
+    shouldAdvance: Number(exports.enemy_turn_flow_should_advance_shadow(actionCode)),
+    shouldStartAction: Number(exports.enemy_turn_flow_should_start_action_shadow(actionCode)),
+  };
+  shadow.enemyTurnFlowOwnerChecks = Number(shadow.enemyTurnFlowOwnerChecks || 0) + 1;
+  shadow.lastEnemyTurnFlowOwnerCheck = {
+    ...normalized,
+    ...result,
+  };
+  if (
+    !exportsOverride
+    && (
+      result.turnPhase !== normalized.jsTurnPhase
+      || result.actionCode !== normalized.jsActionCode
+      || result.activeEnemyUID !== normalized.jsActiveEnemyUID
+    )
+  ) {
+    shadow.mismatches.push(shadow.lastEnemyTurnFlowOwnerCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastEnemyTurnFlowOwnerCheck);
   }
   updateShadowDomMarker(shadow);
   return result;

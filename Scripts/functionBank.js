@@ -37,6 +37,7 @@ import { resolveTurnOrderGroupProjection } from '../src/core/turnOrderGroupRules
 import { resolveEnemySkillChoice } from '../src/core/enemySkillChoiceRules.mjs';
 import { resolveEnemyJobSkill as importedResolveEnemyJobSkill } from '../src/core/enemyJobSkillRules.mjs';
 import { resolveStartEnemyAction as importedResolveStartEnemyAction } from '../src/core/startEnemyActionRules.mjs';
+import { resolveEnemyTurnFlow as importedResolveEnemyTurnFlow } from '../src/core/enemyTurnFlowRules.mjs';
 import {
   pickEnemyTargetHeroFromRoster,
   resolveEnemyTargetHero,
@@ -6851,6 +6852,56 @@ function resolveStartEnemyActionCompat(payload) {
   return { ...jsDecision, jsDecision };
 }
 
+const ENEMY_TURN_FLOW_ADVANCE = 1;
+const ENEMY_TURN_FLOW_START_ACTION = 2;
+
+function buildEnemyTurnFlowFallbackDecision(payload, owner = 'fallback') {
+  const activeEnemyUID = enemyJobSkillNonNegativeInt(payload?.activeEnemyUID);
+  const canStart = activeEnemyUID > 0
+    && Number(payload?.enemyExists || 0) === 1
+    && enemyJobSkillNumberOr(payload?.enemyHp, 0) > 0;
+  const actionCode = canStart ? ENEMY_TURN_FLOW_START_ACTION : ENEMY_TURN_FLOW_ADVANCE;
+  return {
+    owner,
+    activeEnemyUID,
+    turnPhase: 2,
+    actionCode,
+    shouldAdvance: actionCode === ENEMY_TURN_FLOW_ADVANCE ? 1 : 0,
+    shouldStartAction: actionCode === ENEMY_TURN_FLOW_START_ACTION ? 1 : 0,
+  };
+}
+
+function resolveEnemyTurnFlowCompat(payload) {
+  if (typeof importedResolveEnemyTurnFlow === 'function') {
+    return importedResolveEnemyTurnFlow(payload);
+  }
+  const jsDecision = buildEnemyTurnFlowFallbackDecision(payload);
+  if (typeof payload?.ownerHook === 'function') {
+    try {
+      const result = payload.ownerHook({
+        ...payload,
+        jsTurnPhase: jsDecision.turnPhase,
+        jsActionCode: jsDecision.actionCode,
+        jsActiveEnemyUID: jsDecision.activeEnemyUID,
+      });
+      if (Number.isFinite(Number(result?.actionCode))) {
+        const actionCode = Number(result?.actionCode || 0);
+        return {
+          ...jsDecision,
+          ...result,
+          owner: String(result?.owner || 'rust'),
+          shouldAdvance: actionCode === ENEMY_TURN_FLOW_ADVANCE ? 1 : 0,
+          shouldStartAction: actionCode === ENEMY_TURN_FLOW_START_ACTION ? 1 : 0,
+          jsDecision,
+        };
+      }
+    } catch (_) {
+      // Local fallback remains authoritative if the owner hook is unavailable.
+    }
+  }
+  return { ...jsDecision, jsDecision };
+}
+
 export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
   const g = getGlobals(ctx);
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
@@ -7343,24 +7394,58 @@ export function EnemyAttack(ctx, enemyUID) {
   return 1;
 }
 
+function recordEnemyTurnFlowOwner(g, decision, source) {
+  g.LastEnemyTurnFlowOwner = {
+    owner: String(decision.owner || 'fallback'),
+    source: String(source || 'unknown'),
+    actionCode: Number(decision.actionCode || 0),
+    activeEnemyUID: Number(decision.activeEnemyUID || 0),
+    jsActionCode: Number(decision.jsDecision?.actionCode ?? decision.actionCode ?? 0),
+  };
+}
+
 export function EnemyTurn(ctx, enemyUID) {
   const g = getGlobals(ctx);
   const activeEnemyUID = Number(enemyUID || GetCurrentTurn(ctx) || 0);
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const ownerHook = root && typeof root.__ORKA_ENEMY_TURN_FLOW_OWNER__ === 'function'
+    ? root.__ORKA_ENEMY_TURN_FLOW_OWNER__
+    : null;
   g.TurnPhase = 2;
   applyTurnGateIntent(g, createEnemyTurnGateBaseline);
   if (!activeEnemyUID) {
+    const noActorDecision = resolveEnemyTurnFlowCompat({
+      source: 'functionBank.EnemyTurn.noActor',
+      activeEnemyUID,
+      enemyExists: 0,
+      enemyHp: 0,
+      ownerHook,
+    });
+    g.TurnPhase = Number(noActorDecision.turnPhase || 2);
+    recordEnemyTurnFlowOwner(g, noActorDecision, 'functionBank.EnemyTurn.noActor');
     AdvanceTurn(ctx);
     ProcessTurn(ctx);
     return;
   }
   ProcessEnemyTurnDamageOverTime(ctx, activeEnemyUID);
   const enemy = GetActorByUID(ctx, activeEnemyUID);
-  if (!enemy || Number(enemy.hp || 0) <= 0) {
+  const decision = resolveEnemyTurnFlowCompat({
+    source: 'functionBank.EnemyTurn.afterDot',
+    activeEnemyUID,
+    enemyExists: enemy ? 1 : 0,
+    enemyHp: Number(enemy?.hp || 0),
+    ownerHook,
+  });
+  g.TurnPhase = Number(decision.turnPhase || 2);
+  recordEnemyTurnFlowOwner(g, decision, 'functionBank.EnemyTurn.afterDot');
+  if (Number(decision.shouldAdvance || 0) === 1) {
     AdvanceTurn(ctx);
     ProcessTurn(ctx);
     return;
   }
-  StartEnemyAction(ctx, activeEnemyUID);
+  if (Number(decision.shouldStartAction || 0) === 1) {
+    StartEnemyAction(ctx, activeEnemyUID);
+  }
 }
 
 export function HeroTurn(ctx, heroUID) {

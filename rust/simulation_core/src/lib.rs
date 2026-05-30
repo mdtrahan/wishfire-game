@@ -443,6 +443,41 @@ pub fn start_enemy_action_forward_x(enemy_exists: f64, origin_x: f64) -> f64 {
     }
 }
 
+pub fn enemy_turn_flow_active_uid(active_enemy_uid: f64) -> f64 {
+    positive_floor_or_zero(active_enemy_uid)
+}
+
+pub fn enemy_turn_flow_turn_phase() -> f64 {
+    2.0
+}
+
+pub fn enemy_turn_flow_action_code(active_enemy_uid: f64, enemy_exists: f64, enemy_hp: f64) -> f64 {
+    let uid = enemy_turn_flow_active_uid(active_enemy_uid);
+    if uid <= 0.0 {
+        return 1.0;
+    }
+    if number_or_zero(enemy_exists) != 1.0 || number_or_zero(enemy_hp) <= 0.0 {
+        return 1.0;
+    }
+    2.0
+}
+
+pub fn enemy_turn_flow_should_advance(action_code: f64) -> f64 {
+    if number_or_zero(action_code) == 1.0 {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+pub fn enemy_turn_flow_should_start_action(action_code: f64) -> f64 {
+    if number_or_zero(action_code) == 2.0 {
+        1.0
+    } else {
+        0.0
+    }
+}
+
 #[derive(Clone, Copy)]
 struct EnemyTargetHero {
     uid: f64,
@@ -1330,6 +1365,35 @@ pub extern "C" fn start_enemy_action_skill_code_shadow(enemy_exists: f64, skill_
 #[no_mangle]
 pub extern "C" fn start_enemy_action_forward_x_shadow(enemy_exists: f64, origin_x: f64) -> f64 {
     start_enemy_action_forward_x(enemy_exists, origin_x)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_turn_flow_active_uid_shadow(active_enemy_uid: f64) -> f64 {
+    enemy_turn_flow_active_uid(active_enemy_uid)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_turn_flow_turn_phase_shadow() -> f64 {
+    enemy_turn_flow_turn_phase()
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_turn_flow_action_code_shadow(
+    active_enemy_uid: f64,
+    enemy_exists: f64,
+    enemy_hp: f64,
+) -> f64 {
+    enemy_turn_flow_action_code(active_enemy_uid, enemy_exists, enemy_hp)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_turn_flow_should_advance_shadow(action_code: f64) -> f64 {
+    enemy_turn_flow_should_advance(action_code)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_turn_flow_should_start_action_shadow(action_code: f64) -> f64 {
+    enemy_turn_flow_should_start_action(action_code)
 }
 
 #[no_mangle]
@@ -3322,6 +3386,36 @@ mod single_hit_resolution_tests {
                 start_enemy_action_forward_x(enemy_exists, origin_x),
                 expected_forward_x
             );
+        }
+    }
+
+    #[test]
+    fn mirrors_current_enemy_turn_flow_cases() {
+        let cases = [
+            // active_uid, enemy_exists, hp, expected_uid, expected_action, advance, start
+            (0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0),
+            (12.0, 0.0, 10.0, 12.0, 1.0, 1.0, 0.0),
+            (12.0, 1.0, 0.0, 12.0, 1.0, 1.0, 0.0),
+            (12.0, 1.0, -2.0, 12.0, 1.0, 1.0, 0.0),
+            (12.0, 1.0, 20.0, 12.0, 2.0, 0.0, 1.0),
+        ];
+
+        for (
+            active_uid,
+            enemy_exists,
+            enemy_hp,
+            expected_uid,
+            expected_action,
+            expected_advance,
+            expected_start,
+        ) in cases
+        {
+            let action = enemy_turn_flow_action_code(active_uid, enemy_exists, enemy_hp);
+            assert_eq!(enemy_turn_flow_active_uid(active_uid), expected_uid);
+            assert_eq!(enemy_turn_flow_turn_phase(), 2.0);
+            assert_eq!(action, expected_action);
+            assert_eq!(enemy_turn_flow_should_advance(action), expected_advance);
+            assert_eq!(enemy_turn_flow_should_start_action(action), expected_start);
         }
     }
 
