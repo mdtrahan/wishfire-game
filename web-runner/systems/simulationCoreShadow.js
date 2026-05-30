@@ -27,6 +27,7 @@ function getShadowState() {
       enemyJobSkillOwnerChecks: 0,
       startEnemyActionOwnerChecks: 0,
       enemyTurnFlowOwnerChecks: 0,
+      heroTurnEntryOwnerChecks: 0,
       enemyTargetOwnerChecks: 0,
       runaMagicResistOwnerChecks: 0,
       turnOrderGroupOwnerChecks: 0,
@@ -52,6 +53,7 @@ function getShadowState() {
       enemyJobSkillOwnerSmokeRan: false,
       startEnemyActionOwnerSmokeRan: false,
       enemyTurnFlowOwnerSmokeRan: false,
+      heroTurnEntryOwnerSmokeRan: false,
       enemyTargetOwnerSmokeRan: false,
       runaMagicResistOwnerSmokeRan: false,
       turnOrderGroupOwnerSmokeRan: false,
@@ -84,6 +86,7 @@ function getShadowState() {
       enemyJobSkillOwnerChecks: 0,
       startEnemyActionOwnerChecks: 0,
       enemyTurnFlowOwnerChecks: 0,
+      heroTurnEntryOwnerChecks: 0,
       enemyTargetOwnerChecks: 0,
       runaMagicResistOwnerChecks: 0,
       turnOrderGroupOwnerChecks: 0,
@@ -109,6 +112,7 @@ function getShadowState() {
       enemyJobSkillOwnerSmokeRan: false,
       startEnemyActionOwnerSmokeRan: false,
       enemyTurnFlowOwnerSmokeRan: false,
+      heroTurnEntryOwnerSmokeRan: false,
       enemyTargetOwnerSmokeRan: false,
       runaMagicResistOwnerSmokeRan: false,
       turnOrderGroupOwnerSmokeRan: false,
@@ -136,6 +140,7 @@ function getShadowState() {
       lastEnemyJobSkillOwnerCheck: null,
       lastStartEnemyActionOwnerCheck: null,
       lastEnemyTurnFlowOwnerCheck: null,
+      lastHeroTurnEntryOwnerCheck: null,
       lastEnemyTargetOwnerCheck: null,
       lastRunaMagicResistOwnerCheck: null,
       lastTurnOrderGroupOwnerCheck: null,
@@ -271,6 +276,12 @@ function updateShadowDomMarker(shadow) {
   );
   document.documentElement.dataset.simCoreShadowEnemyTurnFlowOwner = String(
     shadow?.lastEnemyTurnFlowOwnerCheck?.owner || '',
+  );
+  document.documentElement.dataset.simCoreShadowHeroTurnEntryOwnerChecks = String(
+    Number(shadow?.heroTurnEntryOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowHeroTurnEntryOwner = String(
+    shadow?.lastHeroTurnEntryOwnerCheck?.owner || '',
   );
   document.documentElement.dataset.simCoreShadowEnemyTargetOwnerChecks = String(
     Number(shadow?.enemyTargetOwnerChecks || 0),
@@ -424,6 +435,17 @@ function hasEnemyTurnFlowExports(exports) {
     && typeof exports?.enemy_turn_flow_should_start_action_shadow === 'function';
 }
 
+function hasHeroTurnEntryExports(exports) {
+  return typeof exports?.hero_turn_entry_turn_phase_shadow === 'function'
+    && typeof exports?.hero_turn_entry_hide_hero_selector_shadow === 'function'
+    && typeof exports?.hero_turn_entry_accept_hero_uid_shadow === 'function'
+    && typeof exports?.hero_turn_entry_current_hero_uid_after_shadow === 'function'
+    && typeof exports?.hero_turn_entry_should_reset_astral_flow_shadow === 'function'
+    && typeof exports?.hero_turn_entry_amp_points_after_shadow === 'function'
+    && typeof exports?.hero_turn_entry_amp_ready_after_shadow === 'function'
+    && typeof exports?.hero_turn_entry_clear_pinned_action_shadow === 'function';
+}
+
 function hasEnemyTargetExports(exports) {
   return typeof exports?.enemy_target_selected_uid_shadow === 'function'
     && typeof exports?.enemy_target_mode_code_shadow === 'function'
@@ -491,6 +513,7 @@ function hasRequiredExports(exports) {
     && hasEnemyJobSkillExports(exports)
     && hasStartEnemyActionExports(exports)
     && hasEnemyTurnFlowExports(exports)
+    && hasHeroTurnEntryExports(exports)
     && hasEnemyTargetExports(exports)
     && hasRunaMagicResistExports(exports)
     && hasTurnOrderGroupExports(exports)
@@ -833,6 +856,30 @@ function runEnemyTurnFlowOwnerStartupCheck(shadow) {
   });
 }
 
+function runHeroTurnEntryOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.heroTurnEntryOwnerSmokeRan) return;
+  shadow.heroTurnEntryOwnerSmokeRan = true;
+  createSimulationCoreHeroTurnEntryResolution({
+    source: 'simulationCore.startup.heroTurnEntryOwner',
+    heroUID: 101,
+    currentHeroUIDBefore: 77,
+    skillDraughtOpen: 0,
+    astralFlowAmpPoints: 18,
+    astralFlowAmpMax: 18,
+    astralFlowAmpReady: 1,
+    time: 15,
+    combatActionPinnedUntil: 14,
+    jsTurnPhase: 0,
+    jsHideHeroSelector: 0,
+    jsAcceptHeroUID: 1,
+    jsCurrentHeroUIDAfter: 101,
+    jsShouldResetAstralFlowAmp: 1,
+    jsAstralFlowAmpPointsAfter: 0,
+    jsAstralFlowAmpReadyAfter: 0,
+    jsClearCombatActionPinned: 1,
+  });
+}
+
 function runEnemyTargetOwnerStartupCheck(shadow) {
   if (!shadow || shadow.enemyTargetOwnerSmokeRan) return;
   shadow.enemyTargetOwnerSmokeRan = true;
@@ -973,6 +1020,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_ENEMY_JOB_SKILL_OWNER__ = createSimulationCoreEnemyJobSkillResolution;
     window.__ORKA_START_ENEMY_ACTION_OWNER__ = createSimulationCoreStartEnemyActionResolution;
     window.__ORKA_ENEMY_TURN_FLOW_OWNER__ = createSimulationCoreEnemyTurnFlowResolution;
+    window.__ORKA_HERO_TURN_ENTRY_OWNER__ = createSimulationCoreHeroTurnEntryResolution;
     window.__ORKA_ENEMY_TARGET_OWNER__ = createSimulationCoreEnemyTargetResolution;
     window.__ORKA_RUNA_MAGIC_RESIST_OWNER__ = createSimulationCoreRunaMagicResistResolution;
     window.__ORKA_TURN_ORDER_GROUP_OWNER__ = createSimulationCoreTurnOrderGroupProjection;
@@ -1012,6 +1060,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
         runEnemyJobSkillOwnerStartupCheck(shadow);
         runStartEnemyActionOwnerStartupCheck(shadow);
         runEnemyTurnFlowOwnerStartupCheck(shadow);
+        runHeroTurnEntryOwnerStartupCheck(shadow);
         runEnemyTargetOwnerStartupCheck(shadow);
         runRunaMagicResistOwnerStartupCheck(shadow);
         runTurnOrderGroupOwnerStartupCheck(shadow);
@@ -1598,6 +1647,138 @@ export function createSimulationCoreEnemyTurnFlowResolution({
     shadow.mismatches.push(shadow.lastEnemyTurnFlowOwnerCheck);
     if (shadow.mismatches.length > 20) shadow.mismatches.shift();
     console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastEnemyTurnFlowOwnerCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return result;
+}
+
+export function createSimulationCoreHeroTurnEntryResolution({
+  source = 'unknown',
+  heroUID = 0,
+  currentHeroUIDBefore = 0,
+  skillDraughtOpen = 0,
+  astralFlowAmpPoints = 0,
+  astralFlowAmpMax = 18,
+  astralFlowAmpReady = 0,
+  time = 0,
+  combatActionPinnedUntil = 0,
+  jsTurnPhase = 0,
+  jsHideHeroSelector = 0,
+  jsAcceptHeroUID = 0,
+  jsCurrentHeroUIDAfter = 0,
+  jsShouldResetAstralFlowAmp = 0,
+  jsAstralFlowAmpPointsAfter = 0,
+  jsAstralFlowAmpReadyAfter = 0,
+  jsClearCombatActionPinned = 0,
+} = {}, {
+  exportsOverride = null,
+} = {}) {
+  const shadow = getShadowState();
+  const normalized = {
+    source,
+    heroUID: Math.max(0, Math.trunc(Number(heroUID || 0))),
+    currentHeroUIDBefore: Math.max(0, Math.trunc(Number(currentHeroUIDBefore || 0))),
+    skillDraughtOpen: Number(skillDraughtOpen || 0) ? 1 : 0,
+    astralFlowAmpPoints: Math.max(0, Number(astralFlowAmpPoints || 0)),
+    astralFlowAmpMax: Math.max(1, Number(astralFlowAmpMax || 18)),
+    astralFlowAmpReady: Number(astralFlowAmpReady || 0) ? 1 : 0,
+    time: Number(time || 0),
+    combatActionPinnedUntil: Number(combatActionPinnedUntil || 0),
+    jsTurnPhase: Math.trunc(Number(jsTurnPhase || 0)),
+    jsHideHeroSelector: Number(jsHideHeroSelector || 0) ? 1 : 0,
+    jsAcceptHeroUID: Number(jsAcceptHeroUID || 0) ? 1 : 0,
+    jsCurrentHeroUIDAfter: Math.max(0, Math.trunc(Number(jsCurrentHeroUIDAfter || 0))),
+    jsShouldResetAstralFlowAmp: Number(jsShouldResetAstralFlowAmp || 0) ? 1 : 0,
+    jsAstralFlowAmpPointsAfter: Math.max(0, Number(jsAstralFlowAmpPointsAfter || 0)),
+    jsAstralFlowAmpReadyAfter: Number(jsAstralFlowAmpReadyAfter || 0) ? 1 : 0,
+    jsClearCombatActionPinned: Number(jsClearCombatActionPinned || 0) ? 1 : 0,
+  };
+  const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+  if (!hasHeroTurnEntryExports(exports)) {
+    shadow.heroTurnEntryOwnerChecks = Number(shadow.heroTurnEntryOwnerChecks || 0) + 1;
+    shadow.lastHeroTurnEntryOwnerCheck = {
+      ...normalized,
+      owner: 'fallback',
+      turnPhase: normalized.jsTurnPhase,
+      hideHeroSelector: normalized.jsHideHeroSelector,
+      acceptHeroUID: normalized.jsAcceptHeroUID,
+      currentHeroUIDAfter: normalized.jsCurrentHeroUIDAfter,
+      shouldResetAstralFlowAmp: normalized.jsShouldResetAstralFlowAmp,
+      astralFlowAmpPointsAfter: normalized.jsAstralFlowAmpPointsAfter,
+      astralFlowAmpReadyAfter: normalized.jsAstralFlowAmpReadyAfter,
+      clearCombatActionPinned: normalized.jsClearCombatActionPinned,
+    };
+    updateShadowDomMarker(shadow);
+    return {
+      owner: 'fallback',
+      turnPhase: normalized.jsTurnPhase,
+      hideHeroSelector: normalized.jsHideHeroSelector,
+      acceptHeroUID: normalized.jsAcceptHeroUID,
+      currentHeroUIDAfter: normalized.jsCurrentHeroUIDAfter,
+      shouldResetAstralFlowAmp: normalized.jsShouldResetAstralFlowAmp,
+      astralFlowAmpPointsAfter: normalized.jsAstralFlowAmpPointsAfter,
+      astralFlowAmpReadyAfter: normalized.jsAstralFlowAmpReadyAfter,
+      clearCombatActionPinned: normalized.jsClearCombatActionPinned,
+    };
+  }
+
+  const shouldReset = Number(exports.hero_turn_entry_should_reset_astral_flow_shadow(
+    normalized.skillDraughtOpen,
+    normalized.astralFlowAmpReady,
+    normalized.astralFlowAmpPoints,
+    normalized.astralFlowAmpMax,
+    normalized.time,
+    normalized.combatActionPinnedUntil,
+  ));
+  const result = {
+    owner: 'rust',
+    turnPhase: Number(exports.hero_turn_entry_turn_phase_shadow()),
+    hideHeroSelector: Number(exports.hero_turn_entry_hide_hero_selector_shadow()),
+    acceptHeroUID: Number(exports.hero_turn_entry_accept_hero_uid_shadow(normalized.heroUID)),
+    currentHeroUIDAfter: Number(exports.hero_turn_entry_current_hero_uid_after_shadow(
+      normalized.heroUID,
+      normalized.currentHeroUIDBefore,
+    )),
+    shouldResetAstralFlowAmp: shouldReset,
+    astralFlowAmpPointsAfter: Number(exports.hero_turn_entry_amp_points_after_shadow(
+      normalized.skillDraughtOpen,
+      normalized.astralFlowAmpReady,
+      normalized.astralFlowAmpPoints,
+      normalized.astralFlowAmpMax,
+      normalized.time,
+      normalized.combatActionPinnedUntil,
+    )),
+    astralFlowAmpReadyAfter: Number(exports.hero_turn_entry_amp_ready_after_shadow(
+      normalized.skillDraughtOpen,
+      normalized.astralFlowAmpReady,
+      normalized.astralFlowAmpPoints,
+      normalized.astralFlowAmpMax,
+      normalized.time,
+      normalized.combatActionPinnedUntil,
+    )),
+    clearCombatActionPinned: Number(exports.hero_turn_entry_clear_pinned_action_shadow(shouldReset)),
+  };
+  shadow.heroTurnEntryOwnerChecks = Number(shadow.heroTurnEntryOwnerChecks || 0) + 1;
+  shadow.lastHeroTurnEntryOwnerCheck = {
+    ...normalized,
+    ...result,
+  };
+  if (
+    !exportsOverride
+    && (
+      result.turnPhase !== normalized.jsTurnPhase
+      || result.hideHeroSelector !== normalized.jsHideHeroSelector
+      || result.acceptHeroUID !== normalized.jsAcceptHeroUID
+      || result.currentHeroUIDAfter !== normalized.jsCurrentHeroUIDAfter
+      || result.shouldResetAstralFlowAmp !== normalized.jsShouldResetAstralFlowAmp
+      || Math.abs(result.astralFlowAmpPointsAfter - normalized.jsAstralFlowAmpPointsAfter) > 0.000001
+      || result.astralFlowAmpReadyAfter !== normalized.jsAstralFlowAmpReadyAfter
+      || result.clearCombatActionPinned !== normalized.jsClearCombatActionPinned
+    )
+  ) {
+    shadow.mismatches.push(shadow.lastHeroTurnEntryOwnerCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastHeroTurnEntryOwnerCheck);
   }
   updateShadowDomMarker(shadow);
   return result;

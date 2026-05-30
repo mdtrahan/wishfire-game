@@ -40,7 +40,7 @@ for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBa
     assert.match(src, /if \(!Number\(g\.AstralFlowAmpReady \|\| 0\)\) return false;/);
     assert.match(src, /if \(Math\.max\(0, Number\(g\.AstralFlowAmpPoints \|\| 0\)\) < ampMax\) return false;/);
     assert.match(src, /return Number\(g\.time \|\| 0\) >= Number\(g\.CombatActionPinnedUntil \|\| 0\);/);
-    assert.match(src, /export function HeroTurn\(ctx, heroUID\) \{[\s\S]*if \(shouldResetAstralFlowAmpOnHeroTurn\(g\)\) \{[\s\S]*g\.AstralFlowAmpPoints = 0;[\s\S]*g\.AstralFlowAmpReady = 0;[\s\S]*g\.CombatActionPinnedLine = '';[\s\S]*g\.CombatActionPinnedUntil = 0;[\s\S]*\}[\s\S]*UpdateAstralFlowAmpBar\(ctx\);/s);
+    assert.match(src, /export function HeroTurn\(ctx, heroUID\) \{[\s\S]*resolveHeroTurnEntryCompat\(\{[\s\S]*__ORKA_HERO_TURN_ENTRY_OWNER__[\s\S]*if \(Number\(decision\.shouldResetAstralFlowAmp \|\| 0\) === 1\) \{[\s\S]*g\.AstralFlowAmpPoints = Number\(decision\.astralFlowAmpPointsAfter \|\| 0\);[\s\S]*g\.AstralFlowAmpReady = Number\(decision\.astralFlowAmpReadyAfter \|\| 0\) \? 1 : 0;[\s\S]*if \(Number\(decision\.clearCombatActionPinned \|\| 0\) === 1\) \{[\s\S]*g\.CombatActionPinnedLine = '';[\s\S]*g\.CombatActionPinnedUntil = 0;[\s\S]*\}[\s\S]*\}[\s\S]*UpdateAstralFlowAmpBar\(ctx\);/s);
   });
 
   test(`combat logging can pin the active line for Astral Flow read time in ${relPath}`, () => {

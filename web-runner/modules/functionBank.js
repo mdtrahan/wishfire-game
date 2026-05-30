@@ -38,6 +38,7 @@ import { resolveEnemySkillChoice } from '../src/core/enemySkillChoiceRules.mjs';
 import { resolveEnemyJobSkill as importedResolveEnemyJobSkill } from '../src/core/enemyJobSkillRules.mjs';
 import { resolveStartEnemyAction as importedResolveStartEnemyAction } from '../src/core/startEnemyActionRules.mjs';
 import { resolveEnemyTurnFlow as importedResolveEnemyTurnFlow } from '../src/core/enemyTurnFlowRules.mjs';
+import { resolveHeroTurnEntry as importedResolveHeroTurnEntry } from '../src/core/heroTurnEntryRules.mjs';
 import { sanitizeInitiativeQueue, shouldAutoCorrectImproperRepeat } from '../src/core/initiativeGuards.mjs';
 import {
   pickEnemyTargetHeroFromRoster,
@@ -6921,6 +6922,65 @@ function resolveEnemyTurnFlowCompat(payload) {
   return { ...jsDecision, jsDecision };
 }
 
+function heroTurnEntryShouldResetAstralFlow(payload) {
+  if (Number(payload?.skillDraughtOpen || 0)) return 0;
+  if (!Number(payload?.astralFlowAmpReady || 0)) return 0;
+  const ampMax = Math.max(1, enemyJobSkillNumberOr(payload?.astralFlowAmpMax || 18, 18));
+  if (Math.max(0, enemyJobSkillNumberOr(payload?.astralFlowAmpPoints, 0)) < ampMax) return 0;
+  return enemyJobSkillNumberOr(payload?.time, 0) >= enemyJobSkillNumberOr(payload?.combatActionPinnedUntil, 0) ? 1 : 0;
+}
+
+function buildHeroTurnEntryFallbackDecision(payload, owner = 'fallback') {
+  const heroUID = enemyJobSkillNonNegativeInt(payload?.heroUID);
+  const currentHeroUIDBefore = enemyJobSkillNonNegativeInt(payload?.currentHeroUIDBefore);
+  const acceptHeroUID = heroUID > 0 ? 1 : 0;
+  const shouldReset = heroTurnEntryShouldResetAstralFlow(payload);
+  return {
+    owner,
+    turnPhase: 0,
+    hideHeroSelector: 0,
+    acceptHeroUID,
+    currentHeroUIDAfter: acceptHeroUID ? heroUID : currentHeroUIDBefore,
+    shouldResetAstralFlowAmp: shouldReset,
+    astralFlowAmpPointsAfter: shouldReset ? 0 : Math.max(0, enemyJobSkillNumberOr(payload?.astralFlowAmpPoints, 0)),
+    astralFlowAmpReadyAfter: shouldReset ? 0 : (Number(payload?.astralFlowAmpReady || 0) ? 1 : 0),
+    clearCombatActionPinned: shouldReset,
+  };
+}
+
+function resolveHeroTurnEntryCompat(payload) {
+  if (typeof importedResolveHeroTurnEntry === 'function') {
+    return importedResolveHeroTurnEntry(payload);
+  }
+  const jsDecision = buildHeroTurnEntryFallbackDecision(payload);
+  if (typeof payload?.ownerHook === 'function') {
+    try {
+      const result = payload.ownerHook({
+        ...payload,
+        jsTurnPhase: jsDecision.turnPhase,
+        jsHideHeroSelector: jsDecision.hideHeroSelector,
+        jsAcceptHeroUID: jsDecision.acceptHeroUID,
+        jsCurrentHeroUIDAfter: jsDecision.currentHeroUIDAfter,
+        jsShouldResetAstralFlowAmp: jsDecision.shouldResetAstralFlowAmp,
+        jsAstralFlowAmpPointsAfter: jsDecision.astralFlowAmpPointsAfter,
+        jsAstralFlowAmpReadyAfter: jsDecision.astralFlowAmpReadyAfter,
+        jsClearCombatActionPinned: jsDecision.clearCombatActionPinned,
+      });
+      if (Number.isFinite(Number(result?.turnPhase))) {
+        return {
+          ...jsDecision,
+          ...result,
+          owner: String(result?.owner || 'rust'),
+          jsDecision,
+        };
+      }
+    } catch (_) {
+      // Local fallback remains authoritative if the owner hook is unavailable.
+    }
+  }
+  return { ...jsDecision, jsDecision };
+}
+
 export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
   const g = getGlobals(ctx);
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
@@ -7467,23 +7527,55 @@ export function EnemyTurn(ctx, enemyUID) {
   }
 }
 
+function recordHeroTurnEntryOwner(g, decision, source) {
+  g.LastHeroTurnEntryOwner = {
+    owner: String(decision.owner || 'fallback'),
+    source: String(source || 'unknown'),
+    turnPhase: Number(decision.turnPhase || 0),
+    hideHeroSelector: Number(decision.hideHeroSelector || 0),
+    acceptHeroUID: Number(decision.acceptHeroUID || 0),
+    currentHeroUIDAfter: Number(decision.currentHeroUIDAfter || 0),
+    shouldResetAstralFlowAmp: Number(decision.shouldResetAstralFlowAmp || 0),
+    jsShouldResetAstralFlowAmp: Number(decision.jsDecision?.shouldResetAstralFlowAmp ?? decision.shouldResetAstralFlowAmp ?? 0),
+  };
+}
+
 export function HeroTurn(ctx, heroUID) {
   const g = getGlobals(ctx);
   const store = ensurePowerAmpByUID(ctx);
   ensureAstralFlowAmpState(ctx);
-  g.TurnPhase = 0;
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const decision = resolveHeroTurnEntryCompat({
+    source: 'functionBank.HeroTurn.entry',
+    heroUID,
+    currentHeroUIDBefore: Number(g.CurrentHeroUID || 0),
+    skillDraughtOpen: Number(g.SkillDraughtOpen || 0),
+    astralFlowAmpPoints: Number(g.AstralFlowAmpPoints || 0),
+    astralFlowAmpMax: Number(g.AstralFlowAmpMax || 18),
+    astralFlowAmpReady: Number(g.AstralFlowAmpReady || 0),
+    time: Number(g.time || 0),
+    combatActionPinnedUntil: Number(g.CombatActionPinnedUntil || 0),
+    ownerHook: root && typeof root.__ORKA_HERO_TURN_ENTRY_OWNER__ === 'function'
+      ? root.__ORKA_HERO_TURN_ENTRY_OWNER__
+      : null,
+  });
+  recordHeroTurnEntryOwner(g, decision, 'functionBank.HeroTurn.entry');
+  g.TurnPhase = Number(decision.turnPhase || 0);
   applyTurnGateIntent(g, createHeroTurnGateBaseline);
-  g.HideHeroSelector = 0;
-  if (shouldResetAstralFlowAmpOnHeroTurn(g)) {
-    g.AstralFlowAmpPoints = 0;
-    g.AstralFlowAmpReady = 0;
-    g.CombatActionPinnedLine = '';
-    g.CombatActionPinnedUntil = 0;
+  g.HideHeroSelector = Number(decision.hideHeroSelector || 0);
+  if (Number(decision.shouldResetAstralFlowAmp || 0) === 1) {
+    g.AstralFlowAmpPoints = Number(decision.astralFlowAmpPointsAfter || 0);
+    g.AstralFlowAmpReady = Number(decision.astralFlowAmpReadyAfter || 0) ? 1 : 0;
+    if (Number(decision.clearCombatActionPinned || 0) === 1) {
+      g.CombatActionPinnedLine = '';
+      g.CombatActionPinnedUntil = 0;
+    }
   }
   UpdateAstralFlowAmpBar(ctx);
-  if (heroUID) g.CurrentHeroUID = heroUID;
-  if (heroUID && store[heroUID]) {
-    const entry = store[heroUID];
+  const activeHeroUID = Number(decision.acceptHeroUID || 0) === 1 ? Number(decision.currentHeroUIDAfter || 0) : 0;
+  if (activeHeroUID) g.CurrentHeroUID = activeHeroUID;
+  if (activeHeroUID && store[activeHeroUID]) {
+    const entry = store[activeHeroUID];
     const turnNow = Number(g.DebugTurnCount || 0);
     const turnSerialNow = Number(g.TurnSerial || 0);
     if (
@@ -7491,11 +7583,11 @@ export function HeroTurn(ctx, heroUID) {
       turnSerialNow > Number(entry.armedAtTurnSerial || 0)
     ) {
       const next = derivePowerAmpActivationEntry(entry, turnNow, turnSerialNow);
-      store[heroUID] = next.entry;
+      store[activeHeroUID] = next.entry;
       const activeEntry = next.entry;
       if (activeEntry && activeEntry.mult > 0) {
-        const seeded = setPowerAmpVisual(g, heroUID, activeEntry.mult, activeEntry.lifecycleId);
-        emitPowerAmpStateLog(ctx, 'activation_on', heroUID, { mult: activeEntry.mult, lifecycle: Number(activeEntry.lifecycleId || 0), seeded: seeded.seeded ? 1 : 0 });
+        const seeded = setPowerAmpVisual(g, activeHeroUID, activeEntry.mult, activeEntry.lifecycleId);
+        emitPowerAmpStateLog(ctx, 'activation_on', activeHeroUID, { mult: activeEntry.mult, lifecycle: Number(activeEntry.lifecycleId || 0), seeded: seeded.seeded ? 1 : 0 });
       }
     }
   }

@@ -478,6 +478,112 @@ pub fn enemy_turn_flow_should_start_action(action_code: f64) -> f64 {
     }
 }
 
+pub fn hero_turn_entry_turn_phase() -> f64 {
+    0.0
+}
+
+pub fn hero_turn_entry_hide_hero_selector() -> f64 {
+    0.0
+}
+
+pub fn hero_turn_entry_accept_hero_uid(hero_uid: f64) -> f64 {
+    if positive_floor_or_zero(hero_uid) > 0.0 {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+pub fn hero_turn_entry_current_hero_uid_after(hero_uid: f64, current_hero_uid_before: f64) -> f64 {
+    if hero_turn_entry_accept_hero_uid(hero_uid) == 1.0 {
+        positive_floor_or_zero(hero_uid)
+    } else {
+        positive_floor_or_zero(current_hero_uid_before)
+    }
+}
+
+pub fn hero_turn_entry_should_reset_astral_flow(
+    skill_draught_open: f64,
+    amp_ready: f64,
+    amp_points: f64,
+    amp_max: f64,
+    time: f64,
+    pinned_until: f64,
+) -> f64 {
+    if number_or_zero(skill_draught_open) != 0.0 {
+        return 0.0;
+    }
+    if number_or_zero(amp_ready) == 0.0 {
+        return 0.0;
+    }
+    let max_input = number_or_zero(amp_max);
+    let max_value = if max_input == 0.0 { 18.0 } else { max_input }.max(1.0);
+    if number_or_zero(amp_points).max(0.0) < max_value {
+        return 0.0;
+    }
+    if number_or_zero(time) >= number_or_zero(pinned_until) {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+pub fn hero_turn_entry_amp_points_after(
+    skill_draught_open: f64,
+    amp_ready: f64,
+    amp_points: f64,
+    amp_max: f64,
+    time: f64,
+    pinned_until: f64,
+) -> f64 {
+    if hero_turn_entry_should_reset_astral_flow(
+        skill_draught_open,
+        amp_ready,
+        amp_points,
+        amp_max,
+        time,
+        pinned_until,
+    ) == 1.0
+    {
+        0.0
+    } else {
+        number_or_zero(amp_points).max(0.0)
+    }
+}
+
+pub fn hero_turn_entry_amp_ready_after(
+    skill_draught_open: f64,
+    amp_ready: f64,
+    amp_points: f64,
+    amp_max: f64,
+    time: f64,
+    pinned_until: f64,
+) -> f64 {
+    if hero_turn_entry_should_reset_astral_flow(
+        skill_draught_open,
+        amp_ready,
+        amp_points,
+        amp_max,
+        time,
+        pinned_until,
+    ) == 1.0
+    {
+        0.0
+    } else if number_or_zero(amp_ready) != 0.0 {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+pub fn hero_turn_entry_clear_pinned_action(should_reset: f64) -> f64 {
+    if number_or_zero(should_reset) != 0.0 {
+        1.0
+    } else {
+        0.0
+    }
+}
+
 #[derive(Clone, Copy)]
 struct EnemyTargetHero {
     uid: f64,
@@ -1394,6 +1500,91 @@ pub extern "C" fn enemy_turn_flow_should_advance_shadow(action_code: f64) -> f64
 #[no_mangle]
 pub extern "C" fn enemy_turn_flow_should_start_action_shadow(action_code: f64) -> f64 {
     enemy_turn_flow_should_start_action(action_code)
+}
+
+#[no_mangle]
+pub extern "C" fn hero_turn_entry_turn_phase_shadow() -> f64 {
+    hero_turn_entry_turn_phase()
+}
+
+#[no_mangle]
+pub extern "C" fn hero_turn_entry_hide_hero_selector_shadow() -> f64 {
+    hero_turn_entry_hide_hero_selector()
+}
+
+#[no_mangle]
+pub extern "C" fn hero_turn_entry_accept_hero_uid_shadow(hero_uid: f64) -> f64 {
+    hero_turn_entry_accept_hero_uid(hero_uid)
+}
+
+#[no_mangle]
+pub extern "C" fn hero_turn_entry_current_hero_uid_after_shadow(
+    hero_uid: f64,
+    current_hero_uid_before: f64,
+) -> f64 {
+    hero_turn_entry_current_hero_uid_after(hero_uid, current_hero_uid_before)
+}
+
+#[no_mangle]
+pub extern "C" fn hero_turn_entry_should_reset_astral_flow_shadow(
+    skill_draught_open: f64,
+    amp_ready: f64,
+    amp_points: f64,
+    amp_max: f64,
+    time: f64,
+    pinned_until: f64,
+) -> f64 {
+    hero_turn_entry_should_reset_astral_flow(
+        skill_draught_open,
+        amp_ready,
+        amp_points,
+        amp_max,
+        time,
+        pinned_until,
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn hero_turn_entry_amp_points_after_shadow(
+    skill_draught_open: f64,
+    amp_ready: f64,
+    amp_points: f64,
+    amp_max: f64,
+    time: f64,
+    pinned_until: f64,
+) -> f64 {
+    hero_turn_entry_amp_points_after(
+        skill_draught_open,
+        amp_ready,
+        amp_points,
+        amp_max,
+        time,
+        pinned_until,
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn hero_turn_entry_amp_ready_after_shadow(
+    skill_draught_open: f64,
+    amp_ready: f64,
+    amp_points: f64,
+    amp_max: f64,
+    time: f64,
+    pinned_until: f64,
+) -> f64 {
+    hero_turn_entry_amp_ready_after(
+        skill_draught_open,
+        amp_ready,
+        amp_points,
+        amp_max,
+        time,
+        pinned_until,
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn hero_turn_entry_clear_pinned_action_shadow(should_reset: f64) -> f64 {
+    hero_turn_entry_clear_pinned_action(should_reset)
 }
 
 #[no_mangle]
@@ -3416,6 +3607,89 @@ mod single_hit_resolution_tests {
             assert_eq!(action, expected_action);
             assert_eq!(enemy_turn_flow_should_advance(action), expected_advance);
             assert_eq!(enemy_turn_flow_should_start_action(action), expected_start);
+        }
+    }
+
+    #[test]
+    fn mirrors_current_hero_turn_entry_cases() {
+        let cases = [
+            // hero_uid, current_before, draught_open, amp_points, amp_max, ready, time, pinned, accept, current_after, reset, points_after, ready_after, clear
+            (
+                0.0, 77.0, 0.0, 0.0, 18.0, 0.0, 0.0, 0.0, 0.0, 77.0, 0.0, 0.0, 0.0, 0.0,
+            ),
+            (
+                101.0, 77.0, 0.0, 7.0, 18.0, 0.0, 10.0, 0.0, 1.0, 101.0, 0.0, 7.0, 0.0, 0.0,
+            ),
+            (
+                101.0, 77.0, 0.0, 18.0, 18.0, 1.0, 15.0, 14.0, 1.0, 101.0, 1.0, 0.0, 0.0, 1.0,
+            ),
+            (
+                101.0, 77.0, 0.0, 18.0, 18.0, 1.0, 12.0, 14.0, 1.0, 101.0, 0.0, 18.0, 1.0, 0.0,
+            ),
+            (
+                101.0, 77.0, 1.0, 18.0, 18.0, 1.0, 15.0, 14.0, 1.0, 101.0, 0.0, 18.0, 1.0, 0.0,
+            ),
+            (
+                101.0, 77.0, 0.0, 18.0, 0.0, 1.0, 15.0, 14.0, 1.0, 101.0, 1.0, 0.0, 0.0, 1.0,
+            ),
+        ];
+
+        for (
+            hero_uid,
+            current_before,
+            draught_open,
+            amp_points,
+            amp_max,
+            ready,
+            time,
+            pinned,
+            expected_accept,
+            expected_current_after,
+            expected_reset,
+            expected_points_after,
+            expected_ready_after,
+            expected_clear,
+        ) in cases
+        {
+            let reset = hero_turn_entry_should_reset_astral_flow(
+                draught_open,
+                ready,
+                amp_points,
+                amp_max,
+                time,
+                pinned,
+            );
+            assert_eq!(hero_turn_entry_turn_phase(), 0.0);
+            assert_eq!(hero_turn_entry_hide_hero_selector(), 0.0);
+            assert_eq!(hero_turn_entry_accept_hero_uid(hero_uid), expected_accept);
+            assert_eq!(
+                hero_turn_entry_current_hero_uid_after(hero_uid, current_before),
+                expected_current_after
+            );
+            assert_eq!(reset, expected_reset);
+            assert_eq!(
+                hero_turn_entry_amp_points_after(
+                    draught_open,
+                    ready,
+                    amp_points,
+                    amp_max,
+                    time,
+                    pinned,
+                ),
+                expected_points_after
+            );
+            assert_eq!(
+                hero_turn_entry_amp_ready_after(
+                    draught_open,
+                    ready,
+                    amp_points,
+                    amp_max,
+                    time,
+                    pinned,
+                ),
+                expected_ready_after
+            );
+            assert_eq!(hero_turn_entry_clear_pinned_action(reset), expected_clear);
         }
     }
 
