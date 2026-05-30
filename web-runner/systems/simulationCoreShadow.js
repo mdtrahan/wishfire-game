@@ -10,6 +10,8 @@ function getShadowState() {
       singleHitOwnerChecks: 0,
       calculateDamageOwnerChecks: 0,
       partyDamageOwnerChecks: 0,
+      partyRegenTickOwnerChecks: 0,
+      partyRegenLifecycleOwnerChecks: 0,
       turnSummaryChecks: 0,
       turnSummaryOwnerChecks: 0,
       enemyDotPacketOwnerChecks: 0,
@@ -38,6 +40,8 @@ function getShadowState() {
       singleHitOwnerSmokeRan: false,
       calculateDamageOwnerSmokeRan: false,
       partyDamageOwnerSmokeRan: false,
+      partyRegenTickOwnerSmokeRan: false,
+      partyRegenLifecycleOwnerSmokeRan: false,
       turnSummaryOwnerSmokeRan: false,
       enemyDotPacketOwnerSmokeRan: false,
       enemyDotTickOwnerSmokeRan: false,
@@ -69,6 +73,8 @@ function getShadowState() {
       singleHitOwnerChecks: 0,
       calculateDamageOwnerChecks: 0,
       partyDamageOwnerChecks: 0,
+      partyRegenTickOwnerChecks: 0,
+      partyRegenLifecycleOwnerChecks: 0,
       turnSummaryChecks: 0,
       turnSummaryOwnerChecks: 0,
       enemyDotPacketOwnerChecks: 0,
@@ -97,6 +103,8 @@ function getShadowState() {
       singleHitOwnerSmokeRan: false,
       calculateDamageOwnerSmokeRan: false,
       partyDamageOwnerSmokeRan: false,
+      partyRegenTickOwnerSmokeRan: false,
+      partyRegenLifecycleOwnerSmokeRan: false,
       turnSummaryOwnerSmokeRan: false,
       enemyDotPacketOwnerSmokeRan: false,
       enemyDotTickOwnerSmokeRan: false,
@@ -123,6 +131,8 @@ function getShadowState() {
       lastSingleHitOwnerCheck: null,
       lastCalculateDamageOwnerCheck: null,
       lastPartyDamageOwnerCheck: null,
+      lastPartyRegenTickOwnerCheck: null,
+      lastPartyRegenLifecycleOwnerCheck: null,
       lastTurnSummaryCheck: null,
       lastTurnSummaryOwnerCheck: null,
       lastEnemyDotPacketOwnerCheck: null,
@@ -180,6 +190,18 @@ function updateShadowDomMarker(shadow) {
   );
   document.documentElement.dataset.simCoreShadowPartyDamageOwner = String(
     shadow?.lastPartyDamageOwnerCheck?.owner || '',
+  );
+  document.documentElement.dataset.simCoreShadowPartyRegenTickOwnerChecks = String(
+    Number(shadow?.partyRegenTickOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowPartyRegenTickOwner = String(
+    shadow?.lastPartyRegenTickOwnerCheck?.owner || '',
+  );
+  document.documentElement.dataset.simCoreShadowPartyRegenLifecycleOwnerChecks = String(
+    Number(shadow?.partyRegenLifecycleOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowPartyRegenLifecycleOwner = String(
+    shadow?.lastPartyRegenLifecycleOwnerCheck?.owner || '',
   );
   document.documentElement.dataset.simCoreShadowTurnSummaryChecks = String(
     Number(shadow?.turnSummaryChecks || 0),
@@ -348,6 +370,17 @@ function hasPartyDamageExports(exports) {
     && typeof exports?.party_damage_party_hp_after_shadow === 'function';
 }
 
+function hasPartyRegenTickExports(exports) {
+  return typeof exports?.party_regen_tick_heal_shadow === 'function'
+    && typeof exports?.party_regen_tick_total_remaining_shadow === 'function'
+    && typeof exports?.party_regen_tick_remaining_fires_shadow === 'function'
+    && typeof exports?.party_regen_tick_next_serial_shadow === 'function';
+}
+
+function hasPartyRegenLifecycleExports(exports) {
+  return typeof exports?.party_regen_lifecycle_action_shadow === 'function';
+}
+
 function hasEnemyDotTickExports(exports) {
   return typeof exports?.enemy_dot_tick_damage_shadow === 'function'
     && typeof exports?.enemy_dot_tick_total_remaining_shadow === 'function'
@@ -498,6 +531,8 @@ function hasRequiredExports(exports) {
     && hasSeededRngExports(exports)
     && hasSingleHitExports(exports)
     && hasPartyDamageExports(exports)
+    && hasPartyRegenTickExports(exports)
+    && hasPartyRegenLifecycleExports(exports)
     && hasTurnSummaryExports(exports)
     && hasEnemyDotPacketExports(exports)
     && hasEnemyDotTickExports(exports)
@@ -588,6 +623,41 @@ function runPartyDamageOwnerStartupCheck(shadow) {
     jsShieldAfter: 0,
     jsHeroHp: [13, 9, 5, 1],
     jsPartyHp: 28,
+  });
+}
+
+function runPartyRegenLifecycleOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.partyRegenLifecycleOwnerSmokeRan) return;
+  shadow.partyRegenLifecycleOwnerSmokeRan = true;
+  createSimulationCorePartyRegenLifecycleResolution({
+    source: 'simulationCore.startup.partyRegenLifecycleOwner',
+    remainingFires: 3,
+    hasTotalHealRemaining: 1,
+    totalHealRemaining: 10,
+    currentSerial: 10,
+    nextFireSerial: 10,
+    appliedOnSerial: 0,
+    lastProcessedSerial: 9,
+    jsAction: 2,
+  });
+}
+
+function runPartyRegenTickOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.partyRegenTickOwnerSmokeRan) return;
+  shadow.partyRegenTickOwnerSmokeRan = true;
+  createSimulationCorePartyRegenTickResolution({
+    source: 'simulationCore.startup.partyRegenTickOwner',
+    totalHealRemaining: 10,
+    remainingFires: 3,
+    healPerFire: 0,
+    hasTotalHealRemaining: 1,
+    nextFireSerial: 10,
+    firesEvery: 2,
+    distributionMode: 1,
+    jsHeal: 3,
+    jsTotalHealRemaining: 7,
+    jsRemainingFires: 2,
+    jsNextFireSerial: 12,
   });
 }
 
@@ -1003,6 +1073,8 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_SINGLE_HIT_OWNER__ = createSimulationCoreSingleHitResolution;
     window.__ORKA_CALCULATE_DAMAGE_OWNER__ = createSimulationCoreCalculateDamageResolution;
     window.__ORKA_PARTY_DAMAGE_OWNER__ = createSimulationCorePartyDamageResolution;
+    window.__ORKA_PARTY_REGEN_LIFECYCLE_OWNER__ = createSimulationCorePartyRegenLifecycleResolution;
+    window.__ORKA_PARTY_REGEN_TICK_OWNER__ = createSimulationCorePartyRegenTickResolution;
     window.__ORKA_TURN_SUMMARY_SHADOW__ = shadowTurnSummary;
     window.__ORKA_TURN_SUMMARY_OWNER__ = createSimulationCoreTurnSummaryResolution;
     window.__ORKA_ENEMY_DOT_PACKET_OWNER__ = createSimulationCoreEnemyDotPacketResolution;
@@ -1045,6 +1117,8 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
         runSingleHitOwnerStartupCheck(shadow);
         runCalculateDamageOwnerStartupCheck(shadow);
         runPartyDamageOwnerStartupCheck(shadow);
+        runPartyRegenLifecycleOwnerStartupCheck(shadow);
+        runPartyRegenTickOwnerStartupCheck(shadow);
         runTurnSummaryOwnerStartupCheck(shadow);
         runEnemyDotPacketOwnerStartupCheck(shadow);
         runEnemyDotTickOwnerStartupCheck(shadow);
@@ -2631,6 +2705,166 @@ export function createSimulationCorePartyDamageResolution({
     shieldAfter: rustShieldAfter,
     heroHp: rustHeroHp,
     partyHp: rustPartyHp,
+  };
+}
+
+export function createSimulationCorePartyRegenLifecycleResolution({
+  source = 'unknown',
+  remainingFires = 0,
+  hasTotalHealRemaining = 0,
+  totalHealRemaining = 0,
+  currentSerial = 0,
+  nextFireSerial = 0,
+  appliedOnSerial = 0,
+  lastProcessedSerial = 0,
+  jsAction = 0,
+} = {}, { exportsOverride = null } = {}) {
+  const shadow = getShadowState();
+  const normalized = {
+    source,
+    remainingFires: Number(remainingFires || 0),
+    hasTotalHealRemaining: Number(hasTotalHealRemaining || 0),
+    totalHealRemaining: Number(totalHealRemaining || 0),
+    currentSerial: Number(currentSerial || 0),
+    nextFireSerial: Number(nextFireSerial || 0),
+    appliedOnSerial: Number(appliedOnSerial || 0),
+    lastProcessedSerial: Number(lastProcessedSerial || 0),
+    jsAction: Number(jsAction || 0),
+  };
+  const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+  if (!hasPartyRegenLifecycleExports(exports)) {
+    shadow.partyRegenLifecycleOwnerChecks = Number(shadow.partyRegenLifecycleOwnerChecks || 0) + 1;
+    shadow.lastPartyRegenLifecycleOwnerCheck = {
+      ...normalized,
+      owner: 'fallback',
+      action: normalized.jsAction,
+    };
+    updateShadowDomMarker(shadow);
+    return { owner: 'fallback', action: normalized.jsAction };
+  }
+  const action = Number(exports.party_regen_lifecycle_action_shadow(
+    normalized.remainingFires,
+    normalized.hasTotalHealRemaining,
+    normalized.totalHealRemaining,
+    normalized.currentSerial,
+    normalized.nextFireSerial,
+    normalized.appliedOnSerial,
+    normalized.lastProcessedSerial,
+  ));
+  shadow.partyRegenLifecycleOwnerChecks = Number(shadow.partyRegenLifecycleOwnerChecks || 0) + 1;
+  shadow.lastPartyRegenLifecycleOwnerCheck = {
+    ...normalized,
+    owner: 'rust',
+    action,
+  };
+  if (!exportsOverride && Math.abs(action - normalized.jsAction) > 0.000001) {
+    shadow.mismatches.push(shadow.lastPartyRegenLifecycleOwnerCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastPartyRegenLifecycleOwnerCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return { owner: 'rust', action };
+}
+
+export function createSimulationCorePartyRegenTickResolution({
+  source = 'unknown',
+  totalHealRemaining = 0,
+  remainingFires = 0,
+  healPerFire = 0,
+  hasTotalHealRemaining = 0,
+  nextFireSerial = 0,
+  firesEvery = 1,
+  distributionMode = 0,
+  jsHeal = 0,
+  jsTotalHealRemaining = 0,
+  jsRemainingFires = 0,
+  jsNextFireSerial = 0,
+} = {}, { exportsOverride = null } = {}) {
+  const shadow = getShadowState();
+  const normalized = {
+    source,
+    totalHealRemaining: Number(totalHealRemaining || 0),
+    remainingFires: Number(remainingFires || 0),
+    healPerFire: Number(healPerFire || 0),
+    hasTotalHealRemaining: Number(hasTotalHealRemaining || 0),
+    nextFireSerial: Number(nextFireSerial || 0),
+    firesEvery: Number(firesEvery || 1),
+    distributionMode: Number(distributionMode || 0),
+    jsHeal: Number(jsHeal || 0),
+    jsTotalHealRemaining: Number(jsTotalHealRemaining || 0),
+    jsRemainingFires: Number(jsRemainingFires || 0),
+    jsNextFireSerial: Number(jsNextFireSerial || 0),
+  };
+  const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+  if (!hasPartyRegenTickExports(exports)) {
+    shadow.partyRegenTickOwnerChecks = Number(shadow.partyRegenTickOwnerChecks || 0) + 1;
+    shadow.lastPartyRegenTickOwnerCheck = {
+      ...normalized,
+      owner: 'fallback',
+      heal: normalized.jsHeal,
+      totalHealRemaining: normalized.jsTotalHealRemaining,
+      remainingFires: normalized.jsRemainingFires,
+      nextFireSerial: normalized.jsNextFireSerial,
+    };
+    updateShadowDomMarker(shadow);
+    return {
+      owner: 'fallback',
+      heal: normalized.jsHeal,
+      totalHealRemaining: normalized.jsTotalHealRemaining,
+      remainingFires: normalized.jsRemainingFires,
+      nextFireSerial: normalized.jsNextFireSerial,
+    };
+  }
+  const rustHeal = Number(exports.party_regen_tick_heal_shadow(
+    normalized.totalHealRemaining,
+    normalized.remainingFires,
+    normalized.healPerFire,
+    normalized.hasTotalHealRemaining,
+    normalized.distributionMode,
+  ));
+  const rustTotalHealRemaining = Number(exports.party_regen_tick_total_remaining_shadow(
+    normalized.totalHealRemaining,
+    normalized.remainingFires,
+    normalized.healPerFire,
+    normalized.hasTotalHealRemaining,
+    normalized.distributionMode,
+  ));
+  const rustRemainingFires = Number(exports.party_regen_tick_remaining_fires_shadow(
+    normalized.remainingFires,
+  ));
+  const rustNextFireSerial = Number(exports.party_regen_tick_next_serial_shadow(
+    normalized.nextFireSerial,
+    normalized.firesEvery,
+  ));
+  shadow.partyRegenTickOwnerChecks = Number(shadow.partyRegenTickOwnerChecks || 0) + 1;
+  shadow.lastPartyRegenTickOwnerCheck = {
+    ...normalized,
+    owner: 'rust',
+    heal: rustHeal,
+    totalHealRemaining: rustTotalHealRemaining,
+    remainingFires: rustRemainingFires,
+    nextFireSerial: rustNextFireSerial,
+  };
+  if (
+    !exportsOverride
+    && (
+      Math.abs(rustHeal - normalized.jsHeal) > 0.000001
+      || Math.abs(rustTotalHealRemaining - normalized.jsTotalHealRemaining) > 0.000001
+      || Math.abs(rustRemainingFires - normalized.jsRemainingFires) > 0.000001
+      || Math.abs(rustNextFireSerial - normalized.jsNextFireSerial) > 0.000001
+    )
+  ) {
+    shadow.mismatches.push(shadow.lastPartyRegenTickOwnerCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastPartyRegenTickOwnerCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return {
+    owner: 'rust',
+    heal: rustHeal,
+    totalHealRemaining: rustTotalHealRemaining,
+    remainingFires: rustRemainingFires,
+    nextFireSerial: rustNextFireSerial,
   };
 }
 

@@ -2230,6 +2230,91 @@ pub fn enemy_dot_lifecycle_action(
     2.0
 }
 
+pub fn party_regen_lifecycle_action(
+    remaining_fires: f64,
+    has_total_heal_remaining: f64,
+    total_heal_remaining: f64,
+    current_serial: f64,
+    next_fire_serial: f64,
+    applied_on_serial: f64,
+    last_processed_serial: f64,
+) -> f64 {
+    if number_or_zero(remaining_fires) <= 0.0 {
+        return 1.0;
+    }
+    if number_or_zero(has_total_heal_remaining) == 1.0
+        && number_or_zero(total_heal_remaining) <= 0.0
+    {
+        return 1.0;
+    }
+    if number_or_zero(current_serial) < number_or_zero(next_fire_serial) {
+        return 0.0;
+    }
+    if number_or_zero(current_serial) <= number_or_zero(applied_on_serial) {
+        return 0.0;
+    }
+    if number_or_zero(last_processed_serial) >= number_or_zero(current_serial) {
+        return 0.0;
+    }
+    2.0
+}
+
+pub fn party_regen_tick_heal(
+    total_heal_remaining: f64,
+    remaining_fires: f64,
+    heal_per_fire: f64,
+    has_total_heal_remaining: f64,
+    distribution_mode: f64,
+) -> f64 {
+    let fires = number_or_zero(remaining_fires).floor().max(1.0);
+    if number_or_zero(has_total_heal_remaining) == 1.0 {
+        let remaining = number_or_zero(total_heal_remaining).floor().max(0.0);
+        let base = (remaining / fires).floor();
+        let remainder = remaining % fires;
+        let extra = if number_or_zero(distribution_mode) == 1.0 {
+            if fires == 1.0 { remainder } else { 0.0 }
+        } else if remainder > 0.0 {
+            1.0
+        } else {
+            0.0
+        };
+        (base + extra).max(1.0)
+    } else {
+        let raw = number_or_zero(heal_per_fire);
+        let fallback = if raw != 0.0 { raw } else { 1.0 };
+        round_like_js(fallback).max(1.0)
+    }
+}
+
+pub fn party_regen_tick_total_remaining(
+    total_heal_remaining: f64,
+    remaining_fires: f64,
+    heal_per_fire: f64,
+    has_total_heal_remaining: f64,
+    distribution_mode: f64,
+) -> f64 {
+    if number_or_zero(has_total_heal_remaining) != 1.0 {
+        return 0.0;
+    }
+    let remaining = number_or_zero(total_heal_remaining).floor().max(0.0);
+    let heal = party_regen_tick_heal(
+        total_heal_remaining,
+        remaining_fires,
+        heal_per_fire,
+        has_total_heal_remaining,
+        distribution_mode,
+    );
+    (remaining - heal).max(0.0)
+}
+
+pub fn party_regen_tick_remaining_fires(remaining_fires: f64) -> f64 {
+    (number_or_zero(remaining_fires).floor() - 1.0).max(0.0)
+}
+
+pub fn party_regen_tick_next_serial(next_fire_serial: f64, fires_every: f64) -> f64 {
+    number_or_zero(next_fire_serial) + number_or_zero(fires_every).floor().max(1.0)
+}
+
 pub fn enemy_debuff_turns_after_tick(turns_before: f64) -> f64 {
     let turns = positive_floor_or_zero(turns_before);
     if turns > 0.0 {
@@ -2687,6 +2772,74 @@ pub extern "C" fn enemy_dot_lifecycle_action_shadow(
 }
 
 #[no_mangle]
+pub extern "C" fn party_regen_lifecycle_action_shadow(
+    remaining_fires: f64,
+    has_total_heal_remaining: f64,
+    total_heal_remaining: f64,
+    current_serial: f64,
+    next_fire_serial: f64,
+    applied_on_serial: f64,
+    last_processed_serial: f64,
+) -> f64 {
+    party_regen_lifecycle_action(
+        remaining_fires,
+        has_total_heal_remaining,
+        total_heal_remaining,
+        current_serial,
+        next_fire_serial,
+        applied_on_serial,
+        last_processed_serial,
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn party_regen_tick_heal_shadow(
+    total_heal_remaining: f64,
+    remaining_fires: f64,
+    heal_per_fire: f64,
+    has_total_heal_remaining: f64,
+    distribution_mode: f64,
+) -> f64 {
+    party_regen_tick_heal(
+        total_heal_remaining,
+        remaining_fires,
+        heal_per_fire,
+        has_total_heal_remaining,
+        distribution_mode,
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn party_regen_tick_total_remaining_shadow(
+    total_heal_remaining: f64,
+    remaining_fires: f64,
+    heal_per_fire: f64,
+    has_total_heal_remaining: f64,
+    distribution_mode: f64,
+) -> f64 {
+    party_regen_tick_total_remaining(
+        total_heal_remaining,
+        remaining_fires,
+        heal_per_fire,
+        has_total_heal_remaining,
+        distribution_mode,
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn party_regen_tick_remaining_fires_shadow(remaining_fires: f64) -> f64 {
+    party_regen_tick_remaining_fires(remaining_fires)
+}
+
+#[no_mangle]
+pub extern "C" fn party_regen_tick_next_serial_shadow(
+    next_fire_serial: f64,
+    fires_every: f64,
+) -> f64 {
+    party_regen_tick_next_serial(next_fire_serial, fires_every)
+}
+
+#[no_mangle]
 pub extern "C" fn enemy_debuff_turns_after_tick_shadow(turns_before: f64) -> f64 {
     enemy_debuff_turns_after_tick(turns_before)
 }
@@ -3056,6 +3209,100 @@ mod single_hit_resolution_tests {
                     last_processed,
                 ),
                 expected
+            );
+        }
+    }
+
+    #[test]
+    fn mirrors_current_party_regen_lifecycle_cases() {
+        let cases = [
+            (0.0, 1.0, 10.0, 10.0, 10.0, 0.0, 0.0, 1.0),
+            (2.0, 1.0, 0.0, 10.0, 10.0, 0.0, 0.0, 1.0),
+            (2.0, 1.0, 10.0, 9.0, 10.0, 0.0, 0.0, 0.0),
+            (2.0, 1.0, 10.0, 10.0, 10.0, 10.0, 0.0, 0.0),
+            (2.0, 1.0, 10.0, 10.0, 10.0, 0.0, 10.0, 0.0),
+            (3.0, 1.0, 10.0, 10.0, 10.0, 0.0, 9.0, 2.0),
+            (3.0, 0.0, 0.0, 10.0, 10.0, 0.0, 9.0, 2.0),
+        ];
+
+        for (
+            remaining_fires,
+            has_total,
+            total_remaining,
+            current_serial,
+            next_serial,
+            applied_on,
+            last_processed,
+            expected,
+        ) in cases
+        {
+            assert_eq!(
+                party_regen_lifecycle_action(
+                    remaining_fires,
+                    has_total,
+                    total_remaining,
+                    current_serial,
+                    next_serial,
+                    applied_on,
+                    last_processed,
+                ),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn mirrors_current_party_regen_tick_cases() {
+        let cases = [
+            (10.0, 3.0, 0.0, 1.0, 10.0, 2.0, 1.0, 3.0, 7.0, 2.0, 12.0),
+            (4.0, 1.0, 0.0, 1.0, 12.0, 2.0, 1.0, 4.0, 0.0, 0.0, 14.0),
+            (10.0, 3.0, 0.0, 1.0, 5.0, 1.0, 0.0, 4.0, 6.0, 2.0, 6.0),
+            (0.0, 2.0, 2.6, 0.0, 8.0, 3.0, 1.0, 3.0, 0.0, 1.0, 11.0),
+            (0.0, 2.0, 0.0, 0.0, 4.0, 0.0, 0.0, 1.0, 0.0, 1.0, 5.0),
+            (7.9, 3.9, 0.0, 1.0, 2.5, 2.7, 0.0, 3.0, 4.0, 2.0, 4.5),
+        ];
+
+        for (
+            total_remaining,
+            remaining_fires,
+            heal_per_fire,
+            has_total,
+            next_serial,
+            fires_every,
+            distribution_mode,
+            expected_heal,
+            expected_total_remaining,
+            expected_remaining_fires,
+            expected_next_serial,
+        ) in cases
+        {
+            assert_eq!(
+                party_regen_tick_heal(
+                    total_remaining,
+                    remaining_fires,
+                    heal_per_fire,
+                    has_total,
+                    distribution_mode,
+                ),
+                expected_heal
+            );
+            assert_eq!(
+                party_regen_tick_total_remaining(
+                    total_remaining,
+                    remaining_fires,
+                    heal_per_fire,
+                    has_total,
+                    distribution_mode,
+                ),
+                expected_total_remaining
+            );
+            assert_eq!(
+                party_regen_tick_remaining_fires(remaining_fires),
+                expected_remaining_fires
+            );
+            assert_eq!(
+                party_regen_tick_next_serial(next_serial, fires_every),
+                expected_next_serial
             );
         }
     }

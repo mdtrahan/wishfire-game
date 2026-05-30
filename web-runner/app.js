@@ -5507,6 +5507,75 @@ async function main(){
     });
   }
 
+  function computePartyRegenLifecycleAction(payload = {}) {
+    if (Number(payload.remainingFires || 0) <= 0) return 1;
+    if (
+      Number(payload.hasTotalHealRemaining || 0) === 1
+      && Number(payload.totalHealRemaining || 0) <= 0
+    ) {
+      return 1;
+    }
+    if (Number(payload.currentSerial || 0) < Number(payload.nextFireSerial || 0)) return 0;
+    if (Number(payload.currentSerial || 0) <= Number(payload.appliedOnSerial || 0)) return 0;
+    if (Number(payload.lastProcessedSerial || 0) >= Number(payload.currentSerial || 0)) return 0;
+    return 2;
+  }
+
+  function maybeResolvePartyRegenLifecycleOwner(payload = {}) {
+    const root = typeof globalThis !== 'undefined' ? globalThis : null;
+    const hook = root && typeof root.__ORKA_PARTY_REGEN_LIFECYCLE_OWNER__ === 'function'
+      ? root.__ORKA_PARTY_REGEN_LIFECYCLE_OWNER__
+      : null;
+    if (typeof hook !== 'function') return null;
+    try {
+      const result = hook(payload);
+      const action = Number(result?.action);
+      if (!Number.isFinite(action)) return null;
+      state.globals.LastPartyRegenLifecycleOwner = {
+        owner: String(result?.owner || 'rust'),
+        action,
+      };
+      return state.globals.LastPartyRegenLifecycleOwner;
+    } catch (err) {
+      state.globals.LastPartyRegenLifecycleOwnerError = String(err?.message || err || 'unknown');
+      return null;
+    }
+  }
+
+  function maybeResolvePartyRegenTickOwner(payload = {}) {
+    const root = typeof globalThis !== 'undefined' ? globalThis : null;
+    const hook = root && typeof root.__ORKA_PARTY_REGEN_TICK_OWNER__ === 'function'
+      ? root.__ORKA_PARTY_REGEN_TICK_OWNER__
+      : null;
+    if (typeof hook !== 'function') return null;
+    try {
+      const result = hook(payload);
+      const heal = Number(result?.heal);
+      const totalHealRemaining = Number(result?.totalHealRemaining);
+      const remainingFires = Number(result?.remainingFires);
+      const nextFireSerial = Number(result?.nextFireSerial);
+      if (
+        !Number.isFinite(heal)
+        || !Number.isFinite(totalHealRemaining)
+        || !Number.isFinite(remainingFires)
+        || !Number.isFinite(nextFireSerial)
+      ) {
+        return null;
+      }
+      state.globals.LastPartyRegenTickOwner = {
+        owner: String(result?.owner || 'rust'),
+        heal,
+        totalHealRemaining,
+        remainingFires,
+        nextFireSerial,
+      };
+      return state.globals.LastPartyRegenTickOwner;
+    } catch (err) {
+      state.globals.LastPartyRegenTickOwnerError = String(err?.message || err || 'unknown');
+      return null;
+    }
+  }
+
   function processTurnCadencePartyRegens() {
     const currentTurnSerial = Number(state.globals.TurnSerial || 0);
     if (currentTurnSerial <= Number(gameState._lastPartyRegenTurnSerial || 0)) return;
@@ -5522,29 +5591,78 @@ async function main(){
         continue;
       }
       if (String(regen.cadence || 'tick') !== 'turn') continue;
-      if (regen.totalHealRemaining != null && Number(regen.totalHealRemaining || 0) <= 0) {
+      const hasTotalHealRemaining = regen.totalHealRemaining != null ? 1 : 0;
+      const totalHealRemainingBefore = hasTotalHealRemaining
+        ? Number(regen.totalHealRemaining || 0)
+        : 0;
+      const remainingFiresBefore = Number(regen.remainingFires || 0);
+      const gateTurn = Number(regen.nextFireTurnSerial || 0);
+      const lifecyclePayload = {
+        source: 'app.processTurnCadencePartyRegens',
+        remainingFires: remainingFiresBefore,
+        hasTotalHealRemaining,
+        totalHealRemaining: totalHealRemainingBefore,
+        currentSerial: currentTurnSerial,
+        nextFireSerial: gateTurn,
+        appliedOnSerial: Number(regen.appliedOnTurnSerial || 0),
+        lastProcessedSerial: Number(regen.lastProcessedTurnSerial || 0),
+      };
+      const jsLifecycleAction = computePartyRegenLifecycleAction(lifecyclePayload);
+      const ownedLifecycle = maybeResolvePartyRegenLifecycleOwner({
+        ...lifecyclePayload,
+        jsAction: jsLifecycleAction,
+      });
+      const lifecycleAction = ownedLifecycle && String(ownedLifecycle.owner || '') === 'rust'
+        ? Number(ownedLifecycle.action)
+        : jsLifecycleAction;
+      if (lifecycleAction === 1) {
         regens.splice(i, 1);
         continue;
       }
-      const gateTurn = Number(regen.nextFireTurnSerial || 0);
-      if (currentTurnSerial < gateTurn) continue;
-      if (currentTurnSerial <= Number(regen.appliedOnTurnSerial || 0)) continue;
-      if (Number(regen.lastProcessedTurnSerial || 0) >= currentTurnSerial) continue;
+      if (lifecycleAction !== 2) continue;
+
       let heal = 1;
-      if (regen.totalHealRemaining != null && Number(regen.remainingFires || 0) > 0) {
-        const remaining = Math.max(0, Math.floor(regen.totalHealRemaining));
-        if (remaining <= 0) {
-          regens.splice(i, 1);
-          continue;
-        }
-        const fires = Math.max(1, Math.floor(regen.remainingFires));
+      let jsTotalHealRemaining = totalHealRemainingBefore;
+      if (hasTotalHealRemaining && remainingFiresBefore > 0) {
+        const remaining = Math.max(0, Math.floor(totalHealRemainingBefore));
+        const fires = Math.max(1, Math.floor(remainingFiresBefore));
         const base = Math.floor(remaining / fires);
         const remainder = remaining % fires;
         heal = Math.max(1, base + (fires === 1 ? remainder : 0));
-        regen.totalHealRemaining = Math.max(0, remaining - heal);
+        jsTotalHealRemaining = Math.max(0, remaining - heal);
       } else {
         heal = Math.max(1, Math.round(regen.healPerFire || 1));
+        jsTotalHealRemaining = 0;
       }
+      const jsRemainingFires = Math.max(0, Math.floor(remainingFiresBefore) - 1);
+      const jsNextFireSerial = gateTurn + Math.max(1, Math.floor(Number(regen.firesEveryTurns || 1) || 1));
+      const ownedTick = maybeResolvePartyRegenTickOwner({
+        source: 'app.processTurnCadencePartyRegens',
+        totalHealRemaining: totalHealRemainingBefore,
+        remainingFires: remainingFiresBefore,
+        healPerFire: Number(regen.healPerFire || 0),
+        hasTotalHealRemaining,
+        nextFireSerial: gateTurn,
+        firesEvery: Number(regen.firesEveryTurns || 1),
+        distributionMode: 1,
+        jsHeal: heal,
+        jsTotalHealRemaining,
+        jsRemainingFires,
+        jsNextFireSerial,
+      });
+      if (ownedTick && String(ownedTick.owner || '') === 'rust') {
+        heal = Math.max(0, Number(ownedTick.heal || 0));
+        if (hasTotalHealRemaining) {
+          regen.totalHealRemaining = Math.max(0, Math.floor(Number(ownedTick.totalHealRemaining || 0)));
+        }
+        regen.remainingFires = Math.max(0, Math.floor(Number(ownedTick.remainingFires || 0)));
+        regen.nextFireTurnSerial = Number(ownedTick.nextFireSerial || 0);
+      } else {
+        if (hasTotalHealRemaining) regen.totalHealRemaining = jsTotalHealRemaining;
+        regen.remainingFires = jsRemainingFires;
+        regen.nextFireTurnSerial = jsNextFireSerial;
+      }
+
       const beforeHP = state.globals.PartyHP || 0;
       const prev = state.globals.SpawnDamageText;
       const prevHero = state.globals.SuppressHeroHealText;
@@ -5565,9 +5683,7 @@ async function main(){
         const textY = (barPos.y - barH * barPos.oy) + barH * 0.5;
         callFunctionWithContext(fnContext, 'SpawnDamageText', actualHeal, textX, textY, 'heal', 'bar');
       }
-      regen.remainingFires -= 1;
       regen.lastProcessedTurnSerial = currentTurnSerial;
-      regen.nextFireTurnSerial = gateTurn + Math.max(1, Math.floor(Number(regen.firesEveryTurns || 1) || 1));
       if (regen.remainingFires <= 0) {
         regens.splice(i, 1);
       }

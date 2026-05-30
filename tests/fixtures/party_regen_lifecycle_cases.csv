@@ -1,0 +1,8 @@
+name,remainingFires,hasTotalHealRemaining,totalHealRemaining,currentSerial,nextFireSerial,appliedOnSerial,lastProcessedSerial,expectedAction
+remove_no_fires,0,1,10,10,10,0,0,1
+remove_no_heal,2,1,0,10,10,0,0,1
+wait_before_gate,2,1,10,9,10,0,0,0
+wait_applied_same_turn,2,1,10,10,10,10,0,0
+wait_processed_turn,2,1,10,10,10,0,10,0
+ready_total,3,1,10,10,10,0,9,2
+ready_flat,3,0,0,10,10,0,9,2

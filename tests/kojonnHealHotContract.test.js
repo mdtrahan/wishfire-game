@@ -73,7 +73,12 @@ test('app processes turn-cadence party regens outside the timer tick lane', () =
 
   assert.match(src, /function processTurnCadencePartyRegens\(\) \{/);
   assert.match(src, /String\(regen\.cadence \|\| 'tick'\) !== 'turn'/);
-  assert.match(src, /currentTurnSerial <= Number\(regen\.appliedOnTurnSerial \|\| 0\)/);
-  assert.match(src, /regen\.nextFireTurnSerial = gateTurn \+ Math\.max\(1, Math\.floor\(Number\(regen\.firesEveryTurns \|\| 1\) \|\| 1\)\);/);
+  assert.match(src, /appliedOnSerial: Number\(regen\.appliedOnTurnSerial \|\| 0\)/);
+  assert.match(src, /maybeResolvePartyRegenLifecycleOwner/);
+  assert.match(src, /__ORKA_PARTY_REGEN_LIFECYCLE_OWNER__/);
+  assert.match(src, /maybeResolvePartyRegenTickOwner/);
+  assert.match(src, /__ORKA_PARTY_REGEN_TICK_OWNER__/);
+  assert.match(src, /const jsNextFireSerial = gateTurn \+ Math\.max\(1, Math\.floor\(Number\(regen\.firesEveryTurns \|\| 1\) \|\| 1\)\);/);
+  assert.match(src, /regen\.nextFireTurnSerial = Number\(ownedTick\.nextFireSerial \|\| 0\);/);
   assert.match(src, /syncSuperGemShapes\(\{ gameState, state, boardGeometry, reason: 'draw-frame' \}\);\n    processTurnCadencePartyRegens\(\);/);
 });
