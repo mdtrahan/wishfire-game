@@ -146,8 +146,11 @@ function getRandomSource(ctx) {
 }
 
 function random01(ctx) {
+  const g = getGlobals(ctx);
+  const hasRuntimeRandom = !!(g && typeof g.RuntimeRandom === 'function');
   const value = Number(getRandomSource(ctx)());
   if (Number.isFinite(value) && value >= 0 && value < 1) return value;
+  if (hasRuntimeRandom) return 0;
   return Math.random();
 }
 
@@ -8095,14 +8098,15 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
   const textKind = String(kind || 'damage');
   const canvasAnchored = targetKind === 'energy' ? 1 : 0;
   const partyMaxHP = Math.max(0, Number(g.PartyMaxHP || 0));
+  const presentationRandom = Math.random;
   let drawX = x;
   let drawY = y;
   if (textKind === 'damage' && g.NextDamageTextScatter && typeof g.NextDamageTextScatter === 'object') {
     const scatter = g.NextDamageTextScatter;
     const radiusX = Math.max(0, Number(scatter.radiusX || 0));
     const radiusY = Math.max(0, Number(scatter.radiusY || 0));
-    const angle = Math.random() * Math.PI * 2;
-    const distance = Math.sqrt(Math.random());
+    const angle = presentationRandom() * Math.PI * 2;
+    const distance = Math.sqrt(presentationRandom());
     drawX += Math.cos(angle) * radiusX * distance;
     drawY += Math.sin(angle) * radiusY * distance;
     delete g.NextDamageTextScatter;
@@ -8113,7 +8117,7 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
   if (isDamageLikeText) {
     g.DamageFloatSpawnSeq = (Number(g.DamageFloatSpawnSeq || 0) + 1);
     floatAngleDeg = pickDamageFloatAngleDeg({
-      random: getRandomSource(ctx),
+      random: presentationRandom,
       maxAbsAngleDeg: floatMaxAngleDeg,
       sequence: g.DamageFloatSpawnSeq,
     });

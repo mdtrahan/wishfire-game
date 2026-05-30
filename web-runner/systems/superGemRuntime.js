@@ -26,8 +26,11 @@ function getRuntimeRandom(state) {
 function randomIntInclusive(min, max, rng) {
   const lower = Math.min(min, max);
   const upper = Math.max(min, max);
-  const roll = Number((rng || Math.random)());
-  const unit = Number.isFinite(roll) && roll >= 0 && roll < 1 ? roll : Math.random();
+  const hasRuntimeRandom = typeof rng === 'function';
+  const roll = Number((hasRuntimeRandom ? rng : Math.random)());
+  const unit = Number.isFinite(roll) && roll >= 0 && roll < 1
+    ? roll
+    : (hasRuntimeRandom ? 0 : Math.random());
   return lower + Math.floor(unit * (upper - lower + 1));
 }
 

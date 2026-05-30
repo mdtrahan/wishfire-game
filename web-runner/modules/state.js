@@ -137,6 +137,11 @@ export const state = {
     InitiativeMaxLoops: 500,
     BattleStartRemaining: {},
     BattleStartResolved: 0,
+    RuntimeRandomSeed: 0,
+    RuntimeRandomDraws: 0,
+    RuntimeRandomOwner: '',
+    RuntimeRandomReason: '',
+    RuntimeRandomLastValue: 0,
 
     // Enemy/turn order arrays
     EnemyArray: [],

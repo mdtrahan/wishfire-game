@@ -168,6 +168,7 @@ const BOOTSTRAP_SEED = (() => {
   }
 })();
 let bootstrapDeterministicRefillPending = false;
+const COMBAT_RUNTIME_RNG_SALT = 0x9e3779b9;
 const STARTUP_DEBUG = (() => {
   try {
     const params = new URLSearchParams(window.location.search);
@@ -2991,6 +2992,46 @@ function createSeededRng(seed = 1) {
   return createSimulationCoreSeededRng(seed, { source: 'app.createSeededRng' });
 }
 
+function normalizeRuntimeRngSeed(seed = 1) {
+  const raw = Number(seed);
+  const normalized = Number.isFinite(raw) ? (Math.floor(raw) >>> 0) : 1;
+  return normalized || 1;
+}
+
+function deriveCombatRuntimeRngSeed(encounterSeed = 1) {
+  const base = normalizeRuntimeRngSeed(encounterSeed);
+  return ((base ^ COMBAT_RUNTIME_RNG_SALT) >>> 0) || 1;
+}
+
+function createCombatRuntimeRandom(seed = 1, options = {}) {
+  const normalizedSeed = normalizeRuntimeRngSeed(seed);
+  const source = String(options.source || 'app.combatRuntimeRng');
+  const next = createSimulationCoreSeededRng(normalizedSeed, { source });
+  let draws = 0;
+  return function runtimeRandom() {
+    draws += 1;
+    const rawValue = Number(next());
+    const value = Number.isFinite(rawValue) && rawValue >= 0 && rawValue < 1 ? rawValue : 0;
+    state.globals.RuntimeRandomDraws = draws;
+    state.globals.RuntimeRandomLastValue = value;
+    state.globals.RuntimeRandomOwner = 'rust';
+    return value;
+  };
+}
+
+function installCombatRuntimeRandom(seed = 1, reason = 'combat-session') {
+  const normalizedSeed = normalizeRuntimeRngSeed(seed);
+  state.globals.RuntimeRandomSeed = normalizedSeed;
+  state.globals.RuntimeRandomDraws = 0;
+  state.globals.RuntimeRandomOwner = 'rust';
+  state.globals.RuntimeRandomReason = String(reason || 'combat-session');
+  state.globals.RuntimeRandomLastValue = 0;
+  state.globals.RuntimeRandom = createCombatRuntimeRandom(normalizedSeed, {
+    source: 'app.combatRuntimeRng',
+  });
+  return state.globals.RuntimeRandom;
+}
+
 function runSeededRngShadowStartupChecks() {
   const cases = [
     [1, 1, 6],
@@ -3335,6 +3376,7 @@ function initEntities(enemyRows, layoutInstances) {
       : generateEncounterSeed();
     state.globals.EncounterSeed = encounterSeed;
     state.globals.EncounterSeedExplicit = 0;
+    installCombatRuntimeRandom(deriveCombatRuntimeRngSeed(encounterSeed), 'initEntities');
     const encounterRequest = {
       pool: mappedEnemyData,
       targetCP: Number(state.globals.EncounterTargetCP || 120),
