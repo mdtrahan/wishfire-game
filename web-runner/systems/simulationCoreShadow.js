@@ -9,6 +9,7 @@ function getShadowState() {
       singleHitChecks: 0,
       singleHitOwnerChecks: 0,
       calculateDamageOwnerChecks: 0,
+      combatSnapshotOwnerChecks: 0,
       partyDamageOwnerChecks: 0,
       partyRegenTickOwnerChecks: 0,
       partyRegenLifecycleOwnerChecks: 0,
@@ -39,6 +40,7 @@ function getShadowState() {
       seededRngOwnerChecks: 0,
       singleHitOwnerSmokeRan: false,
       calculateDamageOwnerSmokeRan: false,
+      combatSnapshotOwnerSmokeRan: false,
       partyDamageOwnerSmokeRan: false,
       partyRegenTickOwnerSmokeRan: false,
       partyRegenLifecycleOwnerSmokeRan: false,
@@ -72,6 +74,7 @@ function getShadowState() {
       singleHitChecks: 0,
       singleHitOwnerChecks: 0,
       calculateDamageOwnerChecks: 0,
+      combatSnapshotOwnerChecks: 0,
       partyDamageOwnerChecks: 0,
       partyRegenTickOwnerChecks: 0,
       partyRegenLifecycleOwnerChecks: 0,
@@ -102,6 +105,7 @@ function getShadowState() {
       seededRngOwnerChecks: 0,
       singleHitOwnerSmokeRan: false,
       calculateDamageOwnerSmokeRan: false,
+      combatSnapshotOwnerSmokeRan: false,
       partyDamageOwnerSmokeRan: false,
       partyRegenTickOwnerSmokeRan: false,
       partyRegenLifecycleOwnerSmokeRan: false,
@@ -130,6 +134,7 @@ function getShadowState() {
       lastSingleHitCheck: null,
       lastSingleHitOwnerCheck: null,
       lastCalculateDamageOwnerCheck: null,
+      lastCombatSnapshotOwnerCheck: null,
       lastPartyDamageOwnerCheck: null,
       lastPartyRegenTickOwnerCheck: null,
       lastPartyRegenLifecycleOwnerCheck: null,
@@ -184,6 +189,12 @@ function updateShadowDomMarker(shadow) {
   );
   document.documentElement.dataset.simCoreShadowCalculateDamageOwner = String(
     shadow?.lastCalculateDamageOwnerCheck?.owner || '',
+  );
+  document.documentElement.dataset.simCoreShadowCombatSnapshotOwnerChecks = String(
+    Number(shadow?.combatSnapshotOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowCombatSnapshotOwner = String(
+    shadow?.lastCombatSnapshotOwnerCheck?.owner || '',
   );
   document.documentElement.dataset.simCoreShadowPartyDamageOwnerChecks = String(
     Number(shadow?.partyDamageOwnerChecks || 0),
@@ -430,6 +441,12 @@ function hasCombatOutcomeExports(exports) {
   return typeof exports?.combat_outcome_code_shadow === 'function';
 }
 
+function hasCombatSnapshotExports(exports) {
+  return typeof exports?.combat_snapshot_index_failure_code_shadow === 'function'
+    && typeof exports?.combat_snapshot_schema_valid_shadow === 'function'
+    && typeof exports?.combat_snapshot_resume_token_valid_shadow === 'function';
+}
+
 function hasTurnActorEligibilityExports(exports) {
   return typeof exports?.turn_actor_eligibility_code_shadow === 'function';
 }
@@ -542,6 +559,7 @@ function hasRequiredExports(exports) {
     && hasEnemyDebuffSlotExports(exports)
     && hasEffectiveStatExports(exports)
     && hasCombatOutcomeExports(exports)
+    && hasCombatSnapshotExports(exports)
     && hasTurnActorEligibilityExports(exports)
     && hasTurnPhaseAssignmentExports(exports)
     && hasEnemySkillChoiceExports(exports)
@@ -606,6 +624,27 @@ function runCalculateDamageOwnerStartupCheck(shadow) {
     chainActive: 0,
     chainMultiplier: 1,
     jsDamage: 27,
+  });
+}
+
+function runCombatSnapshotOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.combatSnapshotOwnerSmokeRan) return;
+  shadow.combatSnapshotOwnerSmokeRan = true;
+  createSimulationCoreCombatSnapshotResolution({
+    source: 'simulationCore.startup.combatSnapshotOwner',
+    checkpointId: 'CHK_POST_RESUME',
+    snapshotVersion: 1,
+    hasTurnState: 1,
+    turnQueueIsArray: 1,
+    turnQueueLength: 2,
+    currentActorIndex: 1,
+    hasResumeToken: 1,
+    hasExpectedToken: 1,
+    capturedAtTick: 77,
+    expectedCapturedAtTick: 77,
+    expectedTurnQueueLength: 2,
+    expectedCurrentActorIndex: 1,
+    jsFailures: [],
   });
 }
 
@@ -1072,6 +1111,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_SINGLE_HIT_SHADOW__ = shadowSingleHitResolution;
     window.__ORKA_SINGLE_HIT_OWNER__ = createSimulationCoreSingleHitResolution;
     window.__ORKA_CALCULATE_DAMAGE_OWNER__ = createSimulationCoreCalculateDamageResolution;
+    window.__ORKA_COMBAT_SNAPSHOT_OWNER__ = createSimulationCoreCombatSnapshotResolution;
     window.__ORKA_PARTY_DAMAGE_OWNER__ = createSimulationCorePartyDamageResolution;
     window.__ORKA_PARTY_REGEN_LIFECYCLE_OWNER__ = createSimulationCorePartyRegenLifecycleResolution;
     window.__ORKA_PARTY_REGEN_TICK_OWNER__ = createSimulationCorePartyRegenTickResolution;
@@ -1116,6 +1156,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
       if (shadow.status === 'ready') {
         runSingleHitOwnerStartupCheck(shadow);
         runCalculateDamageOwnerStartupCheck(shadow);
+        runCombatSnapshotOwnerStartupCheck(shadow);
         runPartyDamageOwnerStartupCheck(shadow);
         runPartyRegenLifecycleOwnerStartupCheck(shadow);
         runPartyRegenTickOwnerStartupCheck(shadow);
@@ -1164,6 +1205,136 @@ function createSeededRngFallback(seed = 1) {
     state = (1664525 * state + 1013904223) >>> 0;
     return state / 4294967296;
   };
+}
+
+const COMBAT_SNAPSHOT_FAILURE_IDS = Object.freeze({
+  INDEX_NOT_ARRAY: 'E_TURN_QUEUE_NOT_ARRAY',
+  INDEX_OUT_OF_RANGE: 'E_CURRENT_INDEX_OUT_OF_RANGE',
+  INDEX_INVALID_EMPTY: 'E_CURRENT_INDEX_INVALID_WITH_EMPTY_QUEUE',
+  SCHEMA_INVALID: 'E_SNAPSHOT_SCHEMA_INVALID',
+  RESUME_TOKEN_MISMATCH: 'E_RESUME_TOKEN_MISMATCH',
+});
+
+function combatSnapshotIndexFailureFromCode(code) {
+  switch (Number(code || 0)) {
+    case 1:
+      return COMBAT_SNAPSHOT_FAILURE_IDS.INDEX_NOT_ARRAY;
+    case 2:
+      return COMBAT_SNAPSHOT_FAILURE_IDS.INDEX_OUT_OF_RANGE;
+    case 3:
+      return COMBAT_SNAPSHOT_FAILURE_IDS.INDEX_INVALID_EMPTY;
+    default:
+      return '';
+  }
+}
+
+function normalizeCombatSnapshotFailures(failures) {
+  return Array.isArray(failures) ? failures.map(String) : [];
+}
+
+function recordCombatSnapshotOwnerCheck(shadow, check) {
+  if (!shadow) return check;
+  shadow.combatSnapshotOwnerChecks = Number(shadow.combatSnapshotOwnerChecks || 0) + 1;
+  shadow.lastCombatSnapshotOwnerCheck = check;
+  updateShadowDomMarker(shadow);
+  return check;
+}
+
+export function createSimulationCoreCombatSnapshotResolution({
+  source = 'unknown',
+  checkpointId = '',
+  snapshotVersion = 1,
+  hasTurnState = 1,
+  turnQueueIsArray = 1,
+  turnQueueLength = 0,
+  currentActorIndex = 0,
+  hasResumeToken = 0,
+  hasExpectedToken = 0,
+  capturedAtTick = 0,
+  expectedCapturedAtTick = 0,
+  expectedTurnQueueLength = 0,
+  expectedCurrentActorIndex = 0,
+  jsFailures = [],
+} = {}, {
+  exportsOverride = null,
+} = {}) {
+  const shadow = getShadowState();
+  const exports = exportsOverride || shadow.exports;
+  const normalized = {
+    source,
+    checkpointId: String(checkpointId || ''),
+    snapshotVersion: Number(snapshotVersion || 0),
+    hasTurnState: Number(hasTurnState || 0),
+    turnQueueIsArray: Number(turnQueueIsArray || 0),
+    turnQueueLength: Number(turnQueueLength || 0),
+    currentActorIndex: Number(currentActorIndex || 0),
+    hasResumeToken: Number(hasResumeToken || 0),
+    hasExpectedToken: Number(hasExpectedToken || 0),
+    capturedAtTick: Number(capturedAtTick || 0),
+    expectedCapturedAtTick: Number(expectedCapturedAtTick || 0),
+    expectedTurnQueueLength: Number(expectedTurnQueueLength || 0),
+    expectedCurrentActorIndex: Number(expectedCurrentActorIndex || 0),
+    jsFailures: normalizeCombatSnapshotFailures(jsFailures),
+  };
+
+  if (!hasCombatSnapshotExports(exports)) {
+    return recordCombatSnapshotOwnerCheck(shadow, {
+      ...normalized,
+      owner: 'js',
+      failures: normalized.jsFailures,
+    });
+  }
+
+  const failures = [];
+  if (normalized.checkpointId === 'CHK_PRE_SUSPEND' || normalized.checkpointId === 'CHK_POST_RESUME') {
+    const indexFailure = combatSnapshotIndexFailureFromCode(exports.combat_snapshot_index_failure_code_shadow(
+      normalized.turnQueueIsArray,
+      normalized.turnQueueLength,
+      normalized.currentActorIndex,
+    ));
+    if (indexFailure) failures.push(indexFailure);
+  }
+
+  if (normalized.checkpointId === 'CHK_SNAPSHOT_EMIT') {
+    const schemaValid = Number(exports.combat_snapshot_schema_valid_shadow(
+      normalized.snapshotVersion,
+      normalized.hasTurnState,
+      normalized.turnQueueIsArray,
+      normalized.turnQueueLength,
+      normalized.currentActorIndex,
+      normalized.hasResumeToken,
+    ));
+    if (schemaValid !== 1) failures.push(COMBAT_SNAPSHOT_FAILURE_IDS.SCHEMA_INVALID);
+  }
+
+  if (normalized.checkpointId === 'CHK_POST_RESUME') {
+    const resumeTokenValid = Number(exports.combat_snapshot_resume_token_valid_shadow(
+      normalized.hasExpectedToken,
+      normalized.capturedAtTick,
+      normalized.turnQueueLength,
+      normalized.currentActorIndex,
+      normalized.expectedCapturedAtTick,
+      normalized.expectedTurnQueueLength,
+      normalized.expectedCurrentActorIndex,
+    ));
+    if (resumeTokenValid !== 1) failures.push(COMBAT_SNAPSHOT_FAILURE_IDS.RESUME_TOKEN_MISMATCH);
+  }
+
+  const check = {
+    ...normalized,
+    owner: 'rust',
+    failures,
+  };
+  if (JSON.stringify(normalized.jsFailures) !== JSON.stringify(failures)) {
+    shadow.mismatches.push({
+      type: 'combatSnapshotOwner',
+      source,
+      checkpointId: normalized.checkpointId,
+      jsFailures: normalized.jsFailures,
+      rustFailures: failures,
+    });
+  }
+  return recordCombatSnapshotOwnerCheck(shadow, check);
 }
 
 export function createSimulationCoreEffectiveStatResolution({

@@ -47,6 +47,84 @@ pub fn combat_power(atk: f64, def: f64, hp: f64) -> f64 {
     round_like_js((a + d + (h / 10.0)) * 100.0) / 100.0
 }
 
+fn finite_integer(value: f64) -> bool {
+    value.is_finite() && value.fract() == 0.0
+}
+
+pub fn combat_snapshot_index_failure_code(
+    turn_queue_is_array: f64,
+    turn_queue_length: f64,
+    current_actor_index: f64,
+) -> f64 {
+    if number_or_zero(turn_queue_is_array) != 1.0 {
+        return 1.0;
+    }
+    let len = positive_floor_or_zero(turn_queue_length);
+    let index = current_actor_index;
+    if len == 0.0 {
+        if finite_integer(index) && index == 0.0 {
+            return 0.0;
+        }
+        return 3.0;
+    }
+    if !finite_integer(index) || index < 0.0 || index >= len {
+        return 2.0;
+    }
+    0.0
+}
+
+pub fn combat_snapshot_schema_valid(
+    snapshot_version: f64,
+    has_turn_state: f64,
+    turn_queue_is_array: f64,
+    turn_queue_length: f64,
+    current_actor_index: f64,
+    has_resume_token: f64,
+) -> f64 {
+    if number_or_zero(snapshot_version) != 1.0 {
+        return 0.0;
+    }
+    if number_or_zero(has_turn_state) != 1.0 {
+        return 0.0;
+    }
+    if number_or_zero(has_resume_token) != 1.0 {
+        return 0.0;
+    }
+    if number_or_zero(turn_queue_is_array) != 1.0 {
+        return 0.0;
+    }
+    let _ = turn_queue_length;
+    if !finite_integer(current_actor_index) {
+        return 0.0;
+    }
+    1.0
+}
+
+pub fn combat_snapshot_resume_token_valid(
+    has_expected_token: f64,
+    captured_at_tick: f64,
+    turn_queue_length: f64,
+    current_actor_index: f64,
+    expected_captured_at_tick: f64,
+    expected_turn_queue_length: f64,
+    expected_current_actor_index: f64,
+) -> f64 {
+    if number_or_zero(has_expected_token) != 1.0 {
+        return 1.0;
+    }
+    if number_or_zero(captured_at_tick) != number_or_zero(expected_captured_at_tick) {
+        return 0.0;
+    }
+    if positive_floor_or_zero(turn_queue_length) != positive_floor_or_zero(expected_turn_queue_length)
+    {
+        return 0.0;
+    }
+    if number_or_zero(current_actor_index) != number_or_zero(expected_current_actor_index) {
+        return 0.0;
+    }
+    1.0
+}
+
 pub fn effective_stat_value(
     base: f64,
     party_buff: f64,
@@ -1338,6 +1416,55 @@ pub extern "C" fn combat_outcome_code_shadow(
     living_heroes: f64,
 ) -> f64 {
     combat_outcome_code(energy, party_hp, living_heroes)
+}
+
+#[no_mangle]
+pub extern "C" fn combat_snapshot_index_failure_code_shadow(
+    turn_queue_is_array: f64,
+    turn_queue_length: f64,
+    current_actor_index: f64,
+) -> f64 {
+    combat_snapshot_index_failure_code(turn_queue_is_array, turn_queue_length, current_actor_index)
+}
+
+#[no_mangle]
+pub extern "C" fn combat_snapshot_schema_valid_shadow(
+    snapshot_version: f64,
+    has_turn_state: f64,
+    turn_queue_is_array: f64,
+    turn_queue_length: f64,
+    current_actor_index: f64,
+    has_resume_token: f64,
+) -> f64 {
+    combat_snapshot_schema_valid(
+        snapshot_version,
+        has_turn_state,
+        turn_queue_is_array,
+        turn_queue_length,
+        current_actor_index,
+        has_resume_token,
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn combat_snapshot_resume_token_valid_shadow(
+    has_expected_token: f64,
+    captured_at_tick: f64,
+    turn_queue_length: f64,
+    current_actor_index: f64,
+    expected_captured_at_tick: f64,
+    expected_turn_queue_length: f64,
+    expected_current_actor_index: f64,
+) -> f64 {
+    combat_snapshot_resume_token_valid(
+        has_expected_token,
+        captured_at_tick,
+        turn_queue_length,
+        current_actor_index,
+        expected_captured_at_tick,
+        expected_turn_queue_length,
+        expected_current_actor_index,
+    )
 }
 
 #[no_mangle]
@@ -3556,6 +3683,63 @@ mod single_hit_resolution_tests {
             assert_eq!(
                 combat_outcome_code(energy, party_hp, living_heroes),
                 expected
+            );
+        }
+    }
+
+    #[test]
+    fn mirrors_current_combat_snapshot_gate_cases() {
+        let cases = [
+            // is_array, len, index, version, has_state, has_token, has_expected,
+            // captured, expected_captured, expected_len, expected_index,
+            // index_failure, schema_valid, resume_valid
+            (1.0, 3.0, 1.0, 1.0, 1.0, 1.0, 0.0, 12.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0),
+            (0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 12.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0),
+            (1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 12.0, 0.0, 0.0, 0.0, 3.0, 1.0, 1.0),
+            (1.0, 2.0, 0.5, 1.0, 1.0, 1.0, 0.0, 12.0, 0.0, 0.0, 0.0, 2.0, 0.0, 1.0),
+            (1.0, 2.0, 2.0, 1.0, 1.0, 1.0, 0.0, 12.0, 0.0, 0.0, 0.0, 2.0, 1.0, 1.0),
+            (1.0, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 77.0, 77.0, 2.0, 1.0, 0.0, 1.0, 1.0),
+            (1.0, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 77.0, 76.0, 2.0, 1.0, 0.0, 1.0, 0.0),
+            (1.0, 2.0, 1.0, 2.0, 1.0, 1.0, 0.0, 22.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0),
+            (1.0, 2.0, 1.0, 1.0, 1.0, 0.0, 0.0, 22.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0),
+        ];
+
+        for (
+            is_array,
+            len,
+            index,
+            version,
+            has_state,
+            has_token,
+            has_expected,
+            captured,
+            expected_captured,
+            expected_len,
+            expected_index,
+            expected_index_failure,
+            expected_schema_valid,
+            expected_resume_valid,
+        ) in cases
+        {
+            assert_eq!(
+                combat_snapshot_index_failure_code(is_array, len, index),
+                expected_index_failure
+            );
+            assert_eq!(
+                combat_snapshot_schema_valid(version, has_state, is_array, len, index, has_token),
+                expected_schema_valid
+            );
+            assert_eq!(
+                combat_snapshot_resume_token_valid(
+                    has_expected,
+                    captured,
+                    len,
+                    index,
+                    expected_captured,
+                    expected_len,
+                    expected_index,
+                ),
+                expected_resume_valid
             );
         }
     }
