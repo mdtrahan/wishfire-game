@@ -23,6 +23,7 @@ function getShadowState() {
       turnActorEligibilityOwnerChecks: 0,
       turnPhaseAssignmentOwnerChecks: 0,
       enemySkillChoiceOwnerChecks: 0,
+      enemyTargetOwnerChecks: 0,
       turnOrderGroupOwnerChecks: 0,
       roundPointerAdvanceOwnerChecks: 0,
       seededRngChecks: 0,
@@ -41,6 +42,7 @@ function getShadowState() {
       turnActorEligibilityOwnerSmokeRan: false,
       turnPhaseAssignmentOwnerSmokeRan: false,
       enemySkillChoiceOwnerSmokeRan: false,
+      enemyTargetOwnerSmokeRan: false,
       turnOrderGroupOwnerSmokeRan: false,
       roundPointerAdvanceOwnerSmokeRan: false,
     };
@@ -66,6 +68,7 @@ function getShadowState() {
       turnActorEligibilityOwnerChecks: 0,
       turnPhaseAssignmentOwnerChecks: 0,
       enemySkillChoiceOwnerChecks: 0,
+      enemyTargetOwnerChecks: 0,
       turnOrderGroupOwnerChecks: 0,
       roundPointerAdvanceOwnerChecks: 0,
       seededRngChecks: 0,
@@ -84,6 +87,7 @@ function getShadowState() {
       turnActorEligibilityOwnerSmokeRan: false,
       turnPhaseAssignmentOwnerSmokeRan: false,
       enemySkillChoiceOwnerSmokeRan: false,
+      enemyTargetOwnerSmokeRan: false,
       turnOrderGroupOwnerSmokeRan: false,
       roundPointerAdvanceOwnerSmokeRan: false,
       lastCheck: null,
@@ -104,6 +108,7 @@ function getShadowState() {
       lastTurnActorEligibilityOwnerCheck: null,
       lastTurnPhaseAssignmentOwnerCheck: null,
       lastEnemySkillChoiceOwnerCheck: null,
+      lastEnemyTargetOwnerCheck: null,
       lastTurnOrderGroupOwnerCheck: null,
       lastRoundPointerAdvanceOwnerCheck: null,
       lastSeededRngCheck: null,
@@ -213,6 +218,12 @@ function updateShadowDomMarker(shadow) {
   document.documentElement.dataset.simCoreShadowEnemySkillChoiceOwner = String(
     shadow?.lastEnemySkillChoiceOwnerCheck?.owner || '',
   );
+  document.documentElement.dataset.simCoreShadowEnemyTargetOwnerChecks = String(
+    Number(shadow?.enemyTargetOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowEnemyTargetOwner = String(
+    shadow?.lastEnemyTargetOwnerCheck?.owner || '',
+  );
   document.documentElement.dataset.simCoreShadowTurnOrderGroupOwnerChecks = String(
     Number(shadow?.turnOrderGroupOwnerChecks || 0),
   );
@@ -318,6 +329,12 @@ function hasEnemySkillChoiceExports(exports) {
     && typeof exports?.enemy_skill_choice_branch_code_shadow === 'function';
 }
 
+function hasEnemyTargetExports(exports) {
+  return typeof exports?.enemy_target_selected_uid_shadow === 'function'
+    && typeof exports?.enemy_target_mode_code_shadow === 'function'
+    && typeof exports?.enemy_target_roll_index_shadow === 'function';
+}
+
 function hasTurnOrderGroupExports(exports) {
   return typeof exports?.turn_order_actor_in_phase_shadow === 'function'
     && typeof exports?.turn_order_phase_type_shadow === 'function'
@@ -354,6 +371,7 @@ function hasRequiredExports(exports) {
     && hasTurnActorEligibilityExports(exports)
     && hasTurnPhaseAssignmentExports(exports)
     && hasEnemySkillChoiceExports(exports)
+    && hasEnemyTargetExports(exports)
     && hasTurnOrderGroupExports(exports)
     && hasRoundPointerAdvanceExports(exports);
 }
@@ -626,6 +644,25 @@ function runEnemySkillChoiceOwnerStartupCheck(shadow) {
   });
 }
 
+function runEnemyTargetOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.enemyTargetOwnerSmokeRan) return;
+  shadow.enemyTargetOwnerSmokeRan = true;
+  createSimulationCoreEnemyTargetResolution({
+    source: 'simulationCore.startup.enemyTargetOwner',
+    preferenceCode: 0,
+    roll: 0.9,
+    heroes: [
+      { uid: 11, hp: 40, maxHP: 40, atk: 5, slot: 0, roleCode: 0 },
+      { uid: 22, hp: 9, maxHP: 35, atk: 12, slot: 1, roleCode: 0 },
+      { uid: 33, hp: 30, maxHP: 30, atk: 8, slot: 2, roleCode: 1 },
+      { uid: 44, hp: 40, maxHP: 40, atk: 3, slot: 3, roleCode: 0 },
+    ],
+    jsTargetUID: 44,
+    jsModeCode: 1,
+    jsRollIndex: 3,
+  });
+}
+
 function runTurnOrderGroupOwnerStartupCheck(shadow) {
   if (!shadow || shadow.turnOrderGroupOwnerSmokeRan) return;
   shadow.turnOrderGroupOwnerSmokeRan = true;
@@ -697,6 +734,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_TURN_ACTOR_ELIGIBILITY_OWNER__ = createSimulationCoreTurnActorEligibilityResolution;
     window.__ORKA_TURN_PHASE_ASSIGNMENT_OWNER__ = createSimulationCoreTurnPhaseAssignmentResolution;
     window.__ORKA_ENEMY_SKILL_CHOICE_OWNER__ = createSimulationCoreEnemySkillChoiceResolution;
+    window.__ORKA_ENEMY_TARGET_OWNER__ = createSimulationCoreEnemyTargetResolution;
     window.__ORKA_TURN_ORDER_GROUP_OWNER__ = createSimulationCoreTurnOrderGroupProjection;
     window.__ORKA_ROUND_POINTER_ADVANCE_OWNER__ = createSimulationCoreRoundPointerAdvanceResolution;
     window.__ORKA_SEEDED_RNG_SHADOW__ = shadowSeededRng;
@@ -729,6 +767,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
         runTurnActorEligibilityOwnerStartupCheck(shadow);
         runTurnPhaseAssignmentOwnerStartupCheck(shadow);
         runEnemySkillChoiceOwnerStartupCheck(shadow);
+        runEnemyTargetOwnerStartupCheck(shadow);
         runTurnOrderGroupOwnerStartupCheck(shadow);
         runRoundPointerAdvanceOwnerStartupCheck(shadow);
       }
@@ -1048,6 +1087,105 @@ export function createSimulationCoreEnemySkillChoiceResolution({
   }
   updateShadowDomMarker(shadow);
   return { owner: 'rust', selectedCode, branchCode };
+}
+
+function normalizeEnemyTargetHeroes(heroes = []) {
+  const source = Array.isArray(heroes) ? heroes : [];
+  return Array.from({ length: 4 }, (_, index) => {
+    const hero = source[index] || {};
+    const hp = Math.max(0, Number(hero?.hp || 0));
+    return {
+      uid: Math.max(0, Math.trunc(Number(hero?.uid || 0))),
+      hp,
+      maxHP: Math.max(1, Number(hero?.maxHP ?? hp ?? 1)),
+      atk: Number(hero?.atk ?? hero?.stats?.ATK ?? 0),
+      slot: Number(hero?.slot ?? hero?.slotIndex ?? hero?.displaySlot ?? index),
+      roleCode: Number(hero?.roleCode || 0) === 1 ? 1 : 0,
+    };
+  });
+}
+
+function flattenEnemyTargetHeroes(heroes = []) {
+  return normalizeEnemyTargetHeroes(heroes).flatMap((hero) => [
+    hero.uid,
+    hero.hp,
+    hero.maxHP,
+    hero.atk,
+    hero.slot,
+    hero.roleCode,
+  ]);
+}
+
+export function createSimulationCoreEnemyTargetResolution({
+  source = 'unknown',
+  preferenceCode = 0,
+  roll = 0,
+  heroes = [],
+  jsTargetUID = 0,
+  jsModeCode = 0,
+  jsRollIndex = 0,
+} = {}, {
+  exportsOverride = null,
+} = {}) {
+  const shadow = getShadowState();
+  const normalized = {
+    source,
+    preferenceCode: Math.max(0, Math.trunc(Number(preferenceCode || 0))),
+    roll: Number(roll || 0),
+    heroes: normalizeEnemyTargetHeroes(heroes),
+    jsTargetUID: Number(jsTargetUID || 0),
+    jsModeCode: Number(jsModeCode || 0),
+    jsRollIndex: Number(jsRollIndex || 0),
+  };
+  const args = [
+    normalized.preferenceCode,
+    normalized.roll,
+    ...flattenEnemyTargetHeroes(normalized.heroes),
+  ];
+  const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+  if (!hasEnemyTargetExports(exports)) {
+    shadow.enemyTargetOwnerChecks = Number(shadow.enemyTargetOwnerChecks || 0) + 1;
+    shadow.lastEnemyTargetOwnerCheck = {
+      ...normalized,
+      owner: 'fallback',
+      targetUID: normalized.jsTargetUID,
+      modeCode: normalized.jsModeCode,
+      rollIndex: normalized.jsRollIndex,
+    };
+    updateShadowDomMarker(shadow);
+    return {
+      owner: 'fallback',
+      targetUID: normalized.jsTargetUID,
+      modeCode: normalized.jsModeCode,
+      rollIndex: normalized.jsRollIndex,
+    };
+  }
+
+  const targetUID = Number(exports.enemy_target_selected_uid_shadow(...args));
+  const modeCode = Number(exports.enemy_target_mode_code_shadow(...args));
+  const rollIndex = Number(exports.enemy_target_roll_index_shadow(...args));
+  shadow.enemyTargetOwnerChecks = Number(shadow.enemyTargetOwnerChecks || 0) + 1;
+  shadow.lastEnemyTargetOwnerCheck = {
+    ...normalized,
+    owner: 'rust',
+    targetUID,
+    modeCode,
+    rollIndex,
+  };
+  if (
+    !exportsOverride
+    && (
+      targetUID !== normalized.jsTargetUID
+      || modeCode !== normalized.jsModeCode
+      || rollIndex !== normalized.jsRollIndex
+    )
+  ) {
+    shadow.mismatches.push(shadow.lastEnemyTargetOwnerCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastEnemyTargetOwnerCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return { owner: 'rust', targetUID, modeCode, rollIndex };
 }
 
 function normalizeTurnOrderGroupPhaseType(value = 0) {

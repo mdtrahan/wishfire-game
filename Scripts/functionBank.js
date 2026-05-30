@@ -35,7 +35,10 @@ import { resolveRoundPointerAdvance } from '../src/core/roundPointerAdvanceRules
 import { resolveTurnPhaseAssignment } from '../src/core/turnPhaseAssignmentRules.mjs';
 import { resolveTurnOrderGroupProjection } from '../src/core/turnOrderGroupRules.mjs';
 import { resolveEnemySkillChoice } from '../src/core/enemySkillChoiceRules.mjs';
-import { pickEnemyTargetHeroFromRoster } from '../src/core/enemyTargetingRules.mjs';
+import {
+  pickEnemyTargetHeroFromRoster,
+  resolveEnemyTargetHero,
+} from '../src/core/enemyTargetingRules.mjs';
 import { getEnemyRosterStability } from '../src/core/enemyRosterStability.mjs';
 const POWER_AMP_OUTCOMES = [
   { key: 'HERO_2X', multiplier: 2, chance: 0.62 },
@@ -4826,10 +4829,14 @@ const RUNA_MAGIC_RESIST_REDUCE_FACTOR = 0.2;
 function pickEnemyTargetHero(ctx, enemyUID = 0) {
   const g = getGlobals(ctx);
   const enemy = GetActorByUID(ctx, enemyUID);
-  const result = pickEnemyTargetHeroFromRoster({
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const result = resolveEnemyTargetHero({
     enemy,
     heroes: getHeroes(ctx),
     rng: getRandomSource(ctx),
+    ownerHook: root && typeof root.__ORKA_ENEMY_TARGET_OWNER__ === 'function'
+      ? root.__ORKA_ENEMY_TARGET_OWNER__
+      : null,
   });
   g.LastEnemyTargetBias = result.trace;
   const target = result.target;

@@ -315,6 +315,373 @@ pub fn enemy_skill_choice_branch_code(
     .1
 }
 
+#[derive(Clone, Copy)]
+struct EnemyTargetHero {
+    uid: f64,
+    hp: f64,
+    max_hp: f64,
+    atk: f64,
+    slot: f64,
+    role_code: f64,
+}
+
+fn enemy_target_preference_code(value: f64) -> f64 {
+    match number_or_zero(value).floor() as i32 {
+        1 => 1.0,
+        2 => 2.0,
+        3 => 3.0,
+        4 => 4.0,
+        _ => 0.0,
+    }
+}
+
+fn enemy_target_hero(
+    uid: f64,
+    hp: f64,
+    max_hp: f64,
+    atk: f64,
+    slot: f64,
+    role_code: f64,
+) -> Option<EnemyTargetHero> {
+    let normalized_uid = positive_floor_or_zero(uid);
+    let normalized_hp = number_or_zero(hp);
+    if normalized_uid <= 0.0 || normalized_hp <= 0.0 {
+        return None;
+    }
+    Some(EnemyTargetHero {
+        uid: normalized_uid,
+        hp: normalized_hp,
+        max_hp: number_or_zero(max_hp).max(1.0),
+        atk: number_or_zero(atk),
+        slot: number_or_zero(slot),
+        role_code: if number_or_zero(role_code) == 1.0 { 1.0 } else { 0.0 },
+    })
+}
+
+fn enemy_target_push_hero(
+    heroes: &mut Vec<EnemyTargetHero>,
+    uid: f64,
+    hp: f64,
+    max_hp: f64,
+    atk: f64,
+    slot: f64,
+    role_code: f64,
+) {
+    if let Some(hero) = enemy_target_hero(uid, hp, max_hp, atk, slot, role_code) {
+        heroes.push(hero);
+    }
+}
+
+fn enemy_target_roll_index_for_size(roll: f64, size: usize) -> f64 {
+    if size == 0 {
+        return 0.0;
+    }
+    let max_index = (size - 1) as f64;
+    (clamp_roll(roll) * size as f64).floor().clamp(0.0, max_index)
+}
+
+fn enemy_target_hp_ratio(hero: EnemyTargetHero) -> f64 {
+    hero.hp.max(0.0) / hero.max_hp.max(1.0)
+}
+
+fn enemy_target_choice_from_heroes(
+    preference_code: f64,
+    roll: f64,
+    heroes: &[EnemyTargetHero],
+) -> (f64, f64, f64) {
+    if heroes.is_empty() {
+        return (0.0, 0.0, 0.0);
+    }
+
+    let preference = enemy_target_preference_code(preference_code);
+    if preference == 1.0 {
+        let mut best = heroes[0];
+        for hero in heroes.iter().copied().skip(1) {
+            let hero_ratio = enemy_target_hp_ratio(hero);
+            let best_ratio = enemy_target_hp_ratio(best);
+            if hero_ratio < best_ratio || (hero_ratio == best_ratio && hero.uid < best.uid) {
+                best = hero;
+            }
+        }
+        return (best.uid, 2.0, 0.0);
+    }
+    if preference == 2.0 {
+        let mut best = heroes[0];
+        for hero in heroes.iter().copied().skip(1) {
+            if hero.atk > best.atk || (hero.atk == best.atk && hero.uid < best.uid) {
+                best = hero;
+            }
+        }
+        return (best.uid, 2.0, 0.0);
+    }
+    if preference == 3.0 {
+        let mut best = heroes[0];
+        for hero in heroes.iter().copied().skip(1) {
+            if hero.slot < best.slot {
+                best = hero;
+            }
+        }
+        return (best.uid, 2.0, 0.0);
+    }
+    if preference == 4.0 {
+        if let Some(hero) = heroes.iter().copied().find(|hero| hero.role_code == 1.0) {
+            return (hero.uid, 2.0, 0.0);
+        }
+    }
+
+    let roll_index = enemy_target_roll_index_for_size(roll, heroes.len());
+    let target = heroes
+        .get(roll_index as usize)
+        .copied()
+        .unwrap_or(heroes[0]);
+    (target.uid, 1.0, roll_index)
+}
+
+fn enemy_target_choice_pair(
+    preference_code: f64,
+    roll: f64,
+    hero0_uid: f64,
+    hero0_hp: f64,
+    hero0_max_hp: f64,
+    hero0_atk: f64,
+    hero0_slot: f64,
+    hero0_role_code: f64,
+    hero1_uid: f64,
+    hero1_hp: f64,
+    hero1_max_hp: f64,
+    hero1_atk: f64,
+    hero1_slot: f64,
+    hero1_role_code: f64,
+    hero2_uid: f64,
+    hero2_hp: f64,
+    hero2_max_hp: f64,
+    hero2_atk: f64,
+    hero2_slot: f64,
+    hero2_role_code: f64,
+    hero3_uid: f64,
+    hero3_hp: f64,
+    hero3_max_hp: f64,
+    hero3_atk: f64,
+    hero3_slot: f64,
+    hero3_role_code: f64,
+) -> (f64, f64, f64) {
+    let mut heroes = Vec::with_capacity(4);
+    enemy_target_push_hero(
+        &mut heroes,
+        hero0_uid,
+        hero0_hp,
+        hero0_max_hp,
+        hero0_atk,
+        hero0_slot,
+        hero0_role_code,
+    );
+    enemy_target_push_hero(
+        &mut heroes,
+        hero1_uid,
+        hero1_hp,
+        hero1_max_hp,
+        hero1_atk,
+        hero1_slot,
+        hero1_role_code,
+    );
+    enemy_target_push_hero(
+        &mut heroes,
+        hero2_uid,
+        hero2_hp,
+        hero2_max_hp,
+        hero2_atk,
+        hero2_slot,
+        hero2_role_code,
+    );
+    enemy_target_push_hero(
+        &mut heroes,
+        hero3_uid,
+        hero3_hp,
+        hero3_max_hp,
+        hero3_atk,
+        hero3_slot,
+        hero3_role_code,
+    );
+    enemy_target_choice_from_heroes(preference_code, roll, &heroes)
+}
+
+pub fn enemy_target_selected_uid(
+    preference_code: f64,
+    roll: f64,
+    hero0_uid: f64,
+    hero0_hp: f64,
+    hero0_max_hp: f64,
+    hero0_atk: f64,
+    hero0_slot: f64,
+    hero0_role_code: f64,
+    hero1_uid: f64,
+    hero1_hp: f64,
+    hero1_max_hp: f64,
+    hero1_atk: f64,
+    hero1_slot: f64,
+    hero1_role_code: f64,
+    hero2_uid: f64,
+    hero2_hp: f64,
+    hero2_max_hp: f64,
+    hero2_atk: f64,
+    hero2_slot: f64,
+    hero2_role_code: f64,
+    hero3_uid: f64,
+    hero3_hp: f64,
+    hero3_max_hp: f64,
+    hero3_atk: f64,
+    hero3_slot: f64,
+    hero3_role_code: f64,
+) -> f64 {
+    enemy_target_choice_pair(
+        preference_code,
+        roll,
+        hero0_uid,
+        hero0_hp,
+        hero0_max_hp,
+        hero0_atk,
+        hero0_slot,
+        hero0_role_code,
+        hero1_uid,
+        hero1_hp,
+        hero1_max_hp,
+        hero1_atk,
+        hero1_slot,
+        hero1_role_code,
+        hero2_uid,
+        hero2_hp,
+        hero2_max_hp,
+        hero2_atk,
+        hero2_slot,
+        hero2_role_code,
+        hero3_uid,
+        hero3_hp,
+        hero3_max_hp,
+        hero3_atk,
+        hero3_slot,
+        hero3_role_code,
+    )
+    .0
+}
+
+pub fn enemy_target_mode_code(
+    preference_code: f64,
+    roll: f64,
+    hero0_uid: f64,
+    hero0_hp: f64,
+    hero0_max_hp: f64,
+    hero0_atk: f64,
+    hero0_slot: f64,
+    hero0_role_code: f64,
+    hero1_uid: f64,
+    hero1_hp: f64,
+    hero1_max_hp: f64,
+    hero1_atk: f64,
+    hero1_slot: f64,
+    hero1_role_code: f64,
+    hero2_uid: f64,
+    hero2_hp: f64,
+    hero2_max_hp: f64,
+    hero2_atk: f64,
+    hero2_slot: f64,
+    hero2_role_code: f64,
+    hero3_uid: f64,
+    hero3_hp: f64,
+    hero3_max_hp: f64,
+    hero3_atk: f64,
+    hero3_slot: f64,
+    hero3_role_code: f64,
+) -> f64 {
+    enemy_target_choice_pair(
+        preference_code,
+        roll,
+        hero0_uid,
+        hero0_hp,
+        hero0_max_hp,
+        hero0_atk,
+        hero0_slot,
+        hero0_role_code,
+        hero1_uid,
+        hero1_hp,
+        hero1_max_hp,
+        hero1_atk,
+        hero1_slot,
+        hero1_role_code,
+        hero2_uid,
+        hero2_hp,
+        hero2_max_hp,
+        hero2_atk,
+        hero2_slot,
+        hero2_role_code,
+        hero3_uid,
+        hero3_hp,
+        hero3_max_hp,
+        hero3_atk,
+        hero3_slot,
+        hero3_role_code,
+    )
+    .1
+}
+
+pub fn enemy_target_roll_index(
+    preference_code: f64,
+    roll: f64,
+    hero0_uid: f64,
+    hero0_hp: f64,
+    hero0_max_hp: f64,
+    hero0_atk: f64,
+    hero0_slot: f64,
+    hero0_role_code: f64,
+    hero1_uid: f64,
+    hero1_hp: f64,
+    hero1_max_hp: f64,
+    hero1_atk: f64,
+    hero1_slot: f64,
+    hero1_role_code: f64,
+    hero2_uid: f64,
+    hero2_hp: f64,
+    hero2_max_hp: f64,
+    hero2_atk: f64,
+    hero2_slot: f64,
+    hero2_role_code: f64,
+    hero3_uid: f64,
+    hero3_hp: f64,
+    hero3_max_hp: f64,
+    hero3_atk: f64,
+    hero3_slot: f64,
+    hero3_role_code: f64,
+) -> f64 {
+    enemy_target_choice_pair(
+        preference_code,
+        roll,
+        hero0_uid,
+        hero0_hp,
+        hero0_max_hp,
+        hero0_atk,
+        hero0_slot,
+        hero0_role_code,
+        hero1_uid,
+        hero1_hp,
+        hero1_max_hp,
+        hero1_atk,
+        hero1_slot,
+        hero1_role_code,
+        hero2_uid,
+        hero2_hp,
+        hero2_max_hp,
+        hero2_atk,
+        hero2_slot,
+        hero2_role_code,
+        hero3_uid,
+        hero3_hp,
+        hero3_max_hp,
+        hero3_atk,
+        hero3_slot,
+        hero3_role_code,
+    )
+    .2
+}
+
 pub fn turn_order_actor_in_phase(
     actor_type: f64,
     phase_type: f64,
@@ -595,6 +962,183 @@ pub extern "C" fn enemy_skill_choice_branch_code_shadow(
         board_ready,
         roll,
         heal_roll,
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_target_selected_uid_shadow(
+    preference_code: f64,
+    roll: f64,
+    hero0_uid: f64,
+    hero0_hp: f64,
+    hero0_max_hp: f64,
+    hero0_atk: f64,
+    hero0_slot: f64,
+    hero0_role_code: f64,
+    hero1_uid: f64,
+    hero1_hp: f64,
+    hero1_max_hp: f64,
+    hero1_atk: f64,
+    hero1_slot: f64,
+    hero1_role_code: f64,
+    hero2_uid: f64,
+    hero2_hp: f64,
+    hero2_max_hp: f64,
+    hero2_atk: f64,
+    hero2_slot: f64,
+    hero2_role_code: f64,
+    hero3_uid: f64,
+    hero3_hp: f64,
+    hero3_max_hp: f64,
+    hero3_atk: f64,
+    hero3_slot: f64,
+    hero3_role_code: f64,
+) -> f64 {
+    enemy_target_selected_uid(
+        preference_code,
+        roll,
+        hero0_uid,
+        hero0_hp,
+        hero0_max_hp,
+        hero0_atk,
+        hero0_slot,
+        hero0_role_code,
+        hero1_uid,
+        hero1_hp,
+        hero1_max_hp,
+        hero1_atk,
+        hero1_slot,
+        hero1_role_code,
+        hero2_uid,
+        hero2_hp,
+        hero2_max_hp,
+        hero2_atk,
+        hero2_slot,
+        hero2_role_code,
+        hero3_uid,
+        hero3_hp,
+        hero3_max_hp,
+        hero3_atk,
+        hero3_slot,
+        hero3_role_code,
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_target_mode_code_shadow(
+    preference_code: f64,
+    roll: f64,
+    hero0_uid: f64,
+    hero0_hp: f64,
+    hero0_max_hp: f64,
+    hero0_atk: f64,
+    hero0_slot: f64,
+    hero0_role_code: f64,
+    hero1_uid: f64,
+    hero1_hp: f64,
+    hero1_max_hp: f64,
+    hero1_atk: f64,
+    hero1_slot: f64,
+    hero1_role_code: f64,
+    hero2_uid: f64,
+    hero2_hp: f64,
+    hero2_max_hp: f64,
+    hero2_atk: f64,
+    hero2_slot: f64,
+    hero2_role_code: f64,
+    hero3_uid: f64,
+    hero3_hp: f64,
+    hero3_max_hp: f64,
+    hero3_atk: f64,
+    hero3_slot: f64,
+    hero3_role_code: f64,
+) -> f64 {
+    enemy_target_mode_code(
+        preference_code,
+        roll,
+        hero0_uid,
+        hero0_hp,
+        hero0_max_hp,
+        hero0_atk,
+        hero0_slot,
+        hero0_role_code,
+        hero1_uid,
+        hero1_hp,
+        hero1_max_hp,
+        hero1_atk,
+        hero1_slot,
+        hero1_role_code,
+        hero2_uid,
+        hero2_hp,
+        hero2_max_hp,
+        hero2_atk,
+        hero2_slot,
+        hero2_role_code,
+        hero3_uid,
+        hero3_hp,
+        hero3_max_hp,
+        hero3_atk,
+        hero3_slot,
+        hero3_role_code,
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_target_roll_index_shadow(
+    preference_code: f64,
+    roll: f64,
+    hero0_uid: f64,
+    hero0_hp: f64,
+    hero0_max_hp: f64,
+    hero0_atk: f64,
+    hero0_slot: f64,
+    hero0_role_code: f64,
+    hero1_uid: f64,
+    hero1_hp: f64,
+    hero1_max_hp: f64,
+    hero1_atk: f64,
+    hero1_slot: f64,
+    hero1_role_code: f64,
+    hero2_uid: f64,
+    hero2_hp: f64,
+    hero2_max_hp: f64,
+    hero2_atk: f64,
+    hero2_slot: f64,
+    hero2_role_code: f64,
+    hero3_uid: f64,
+    hero3_hp: f64,
+    hero3_max_hp: f64,
+    hero3_atk: f64,
+    hero3_slot: f64,
+    hero3_role_code: f64,
+) -> f64 {
+    enemy_target_roll_index(
+        preference_code,
+        roll,
+        hero0_uid,
+        hero0_hp,
+        hero0_max_hp,
+        hero0_atk,
+        hero0_slot,
+        hero0_role_code,
+        hero1_uid,
+        hero1_hp,
+        hero1_max_hp,
+        hero1_atk,
+        hero1_slot,
+        hero1_role_code,
+        hero2_uid,
+        hero2_hp,
+        hero2_max_hp,
+        hero2_atk,
+        hero2_slot,
+        hero2_role_code,
+        hero3_uid,
+        hero3_hp,
+        hero3_max_hp,
+        hero3_atk,
+        hero3_slot,
+        hero3_role_code,
     )
 }
 
@@ -2135,6 +2679,141 @@ mod single_hit_resolution_tests {
                 expected_branch
             );
         }
+    }
+
+    #[test]
+    fn mirrors_current_enemy_target_selection_cases() {
+        fn assert_target(
+            preference: f64,
+            roll: f64,
+            heroes: [(f64, f64, f64, f64, f64, f64); 4],
+            expected_uid: f64,
+            expected_mode: f64,
+            expected_roll_index: f64,
+        ) {
+            assert_eq!(
+                enemy_target_selected_uid(
+                    preference,
+                    roll,
+                    heroes[0].0,
+                    heroes[0].1,
+                    heroes[0].2,
+                    heroes[0].3,
+                    heroes[0].4,
+                    heroes[0].5,
+                    heroes[1].0,
+                    heroes[1].1,
+                    heroes[1].2,
+                    heroes[1].3,
+                    heroes[1].4,
+                    heroes[1].5,
+                    heroes[2].0,
+                    heroes[2].1,
+                    heroes[2].2,
+                    heroes[2].3,
+                    heroes[2].4,
+                    heroes[2].5,
+                    heroes[3].0,
+                    heroes[3].1,
+                    heroes[3].2,
+                    heroes[3].3,
+                    heroes[3].4,
+                    heroes[3].5,
+                ),
+                expected_uid
+            );
+            assert_eq!(
+                enemy_target_mode_code(
+                    preference,
+                    roll,
+                    heroes[0].0,
+                    heroes[0].1,
+                    heroes[0].2,
+                    heroes[0].3,
+                    heroes[0].4,
+                    heroes[0].5,
+                    heroes[1].0,
+                    heroes[1].1,
+                    heroes[1].2,
+                    heroes[1].3,
+                    heroes[1].4,
+                    heroes[1].5,
+                    heroes[2].0,
+                    heroes[2].1,
+                    heroes[2].2,
+                    heroes[2].3,
+                    heroes[2].4,
+                    heroes[2].5,
+                    heroes[3].0,
+                    heroes[3].1,
+                    heroes[3].2,
+                    heroes[3].3,
+                    heroes[3].4,
+                    heroes[3].5,
+                ),
+                expected_mode
+            );
+            assert_eq!(
+                enemy_target_roll_index(
+                    preference,
+                    roll,
+                    heroes[0].0,
+                    heroes[0].1,
+                    heroes[0].2,
+                    heroes[0].3,
+                    heroes[0].4,
+                    heroes[0].5,
+                    heroes[1].0,
+                    heroes[1].1,
+                    heroes[1].2,
+                    heroes[1].3,
+                    heroes[1].4,
+                    heroes[1].5,
+                    heroes[2].0,
+                    heroes[2].1,
+                    heroes[2].2,
+                    heroes[2].3,
+                    heroes[2].4,
+                    heroes[2].5,
+                    heroes[3].0,
+                    heroes[3].1,
+                    heroes[3].2,
+                    heroes[3].3,
+                    heroes[3].4,
+                    heroes[3].5,
+                ),
+                expected_roll_index
+            );
+        }
+
+        let base = [
+            (11.0, 40.0, 40.0, 5.0, 0.0, 0.0),
+            (22.0, 9.0, 35.0, 12.0, 1.0, 0.0),
+            (33.0, 30.0, 30.0, 8.0, 2.0, 1.0),
+            (44.0, 40.0, 40.0, 3.0, 3.0, 0.0),
+        ];
+
+        assert_target(0.0, 0.01, base, 11.0, 1.0, 0.0);
+        assert_target(0.0, 0.90, base, 44.0, 1.0, 3.0);
+        assert_target(0.0, 0.999_999_999, base, 44.0, 1.0, 3.0);
+        assert_target(1.0, 0.99, base, 22.0, 2.0, 0.0);
+        assert_target(2.0, 0.99, base, 22.0, 2.0, 0.0);
+        assert_target(3.0, 0.99, base, 11.0, 2.0, 0.0);
+        assert_target(4.0, 0.99, base, 33.0, 2.0, 0.0);
+        assert_target(
+            0.0,
+            0.01,
+            [
+                (11.0, 0.0, 40.0, 5.0, 0.0, 0.0),
+                (22.0, 9.0, 35.0, 12.0, 1.0, 0.0),
+                (0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                (0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+            ],
+            22.0,
+            1.0,
+            0.0,
+        );
+        assert_target(0.0, 0.5, [(0.0, 0.0, 0.0, 0.0, 0.0, 0.0); 4], 0.0, 0.0, 0.0);
     }
 
     #[test]
