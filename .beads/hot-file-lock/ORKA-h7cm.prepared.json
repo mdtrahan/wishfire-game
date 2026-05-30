@@ -1,0 +1,21 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "__MODULE__",
+        "resolveProcessTurnActorEligibility",
+        "partyAlive"
+      ],
+      "staged_blob": "0ef3327d518c0d87d1f63305000fa5e6d10ad86e"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "__MODULE__",
+        "resolveProcessTurnActorEligibility",
+        "partyAlive"
+      ],
+      "staged_blob": "58be7f60d6f0572416a7f7b73038077d07197f31"
+    }
+  },
+  "issue_id": "ORKA-h7cm"
+}

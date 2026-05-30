@@ -20,6 +20,7 @@ function getShadowState() {
       enemyDebuffSlotOwnerChecks: 0,
       effectiveStatOwnerChecks: 0,
       combatOutcomeOwnerChecks: 0,
+      turnActorEligibilityOwnerChecks: 0,
       seededRngChecks: 0,
       seededRngOwnerChecks: 0,
       singleHitOwnerSmokeRan: false,
@@ -33,6 +34,7 @@ function getShadowState() {
       enemyDebuffSlotOwnerSmokeRan: false,
       effectiveStatOwnerSmokeRan: false,
       combatOutcomeOwnerSmokeRan: false,
+      turnActorEligibilityOwnerSmokeRan: false,
     };
   }
   if (!window[SHADOW_STATE_KEY]) {
@@ -53,6 +55,7 @@ function getShadowState() {
       enemyDebuffSlotOwnerChecks: 0,
       effectiveStatOwnerChecks: 0,
       combatOutcomeOwnerChecks: 0,
+      turnActorEligibilityOwnerChecks: 0,
       seededRngChecks: 0,
       seededRngOwnerChecks: 0,
       singleHitOwnerSmokeRan: false,
@@ -66,6 +69,7 @@ function getShadowState() {
       enemyDebuffSlotOwnerSmokeRan: false,
       effectiveStatOwnerSmokeRan: false,
       combatOutcomeOwnerSmokeRan: false,
+      turnActorEligibilityOwnerSmokeRan: false,
       lastCheck: null,
       lastSingleHitCheck: null,
       lastSingleHitOwnerCheck: null,
@@ -81,6 +85,7 @@ function getShadowState() {
       lastEnemyDebuffSlotOwnerCheck: null,
       lastEffectiveStatOwnerCheck: null,
       lastCombatOutcomeOwnerCheck: null,
+      lastTurnActorEligibilityOwnerCheck: null,
       lastSeededRngCheck: null,
       lastSeededRngOwnerCheck: null,
       exports: null,
@@ -170,6 +175,12 @@ function updateShadowDomMarker(shadow) {
   document.documentElement.dataset.simCoreShadowCombatOutcomeOwner = String(
     shadow?.lastCombatOutcomeOwnerCheck?.owner || '',
   );
+  document.documentElement.dataset.simCoreShadowTurnActorEligibilityOwnerChecks = String(
+    Number(shadow?.turnActorEligibilityOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowTurnActorEligibilityOwner = String(
+    shadow?.lastTurnActorEligibilityOwnerCheck?.owner || '',
+  );
   document.documentElement.dataset.simCoreShadowSeededRngChecks = String(
     Number(shadow?.seededRngChecks || 0),
   );
@@ -250,6 +261,10 @@ function hasCombatOutcomeExports(exports) {
   return typeof exports?.combat_outcome_code_shadow === 'function';
 }
 
+function hasTurnActorEligibilityExports(exports) {
+  return typeof exports?.turn_actor_eligibility_code_shadow === 'function';
+}
+
 function hasTurnSummaryExports(exports) {
   return typeof exports?.turn_summary_code_shadow === 'function';
 }
@@ -267,7 +282,8 @@ function hasRequiredExports(exports) {
     && hasEnemyDebuffApplyExports(exports)
     && hasEnemyDebuffSlotExports(exports)
     && hasEffectiveStatExports(exports)
-    && hasCombatOutcomeExports(exports);
+    && hasCombatOutcomeExports(exports)
+    && hasTurnActorEligibilityExports(exports);
 }
 
 async function instantiateWasm(wasmUrl) {
@@ -484,6 +500,33 @@ function runCombatOutcomeOwnerStartupCheck(shadow) {
   });
 }
 
+function runTurnActorEligibilityOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.turnActorEligibilityOwnerSmokeRan) return;
+  shadow.turnActorEligibilityOwnerSmokeRan = true;
+  createSimulationCoreTurnActorEligibilityResolution({
+    source: 'simulationCore.startup.turnActorEligibilityOwner.hero',
+    turnType: 0,
+    actorExists: 1,
+    actorHp: 10,
+    partyHp: 40,
+    roundActive: 0,
+    pendingGroupMatches: 0,
+    blueBuffSequenceActive: 0,
+    jsCode: 1,
+  });
+  createSimulationCoreTurnActorEligibilityResolution({
+    source: 'simulationCore.startup.turnActorEligibilityOwner.enemyHold',
+    turnType: 1,
+    actorExists: 1,
+    actorHp: 12,
+    partyHp: 40,
+    roundActive: 0,
+    pendingGroupMatches: 0,
+    blueBuffSequenceActive: 1,
+    jsCode: 2,
+  });
+}
+
 function runTurnSummaryOwnerStartupCheck(shadow) {
   if (!shadow || shadow.turnSummaryOwnerSmokeRan) return;
   shadow.turnSummaryOwnerSmokeRan = true;
@@ -514,6 +557,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_ENEMY_DEBUFF_SLOT_OWNER__ = createSimulationCoreEnemyDebuffSlotTransition;
     window.__ORKA_EFFECTIVE_STAT_OWNER__ = createSimulationCoreEffectiveStatResolution;
     window.__ORKA_COMBAT_OUTCOME_OWNER__ = createSimulationCoreCombatOutcomeResolution;
+    window.__ORKA_TURN_ACTOR_ELIGIBILITY_OWNER__ = createSimulationCoreTurnActorEligibilityResolution;
     window.__ORKA_SEEDED_RNG_SHADOW__ = shadowSeededRng;
     window.__ORKA_SEEDED_RNG_OWNER__ = createSimulationCoreSeededRng;
   }
@@ -541,6 +585,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
         runEnemyDebuffSlotOwnerStartupCheck(shadow);
         runEffectiveStatOwnerStartupCheck(shadow);
         runCombatOutcomeOwnerStartupCheck(shadow);
+        runTurnActorEligibilityOwnerStartupCheck(shadow);
       }
       updateShadowDomMarker(shadow);
       return shadow;
@@ -670,6 +715,67 @@ export function createSimulationCoreCombatOutcomeResolution({
     shadow.mismatches.push(shadow.lastCombatOutcomeOwnerCheck);
     if (shadow.mismatches.length > 20) shadow.mismatches.shift();
     console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastCombatOutcomeOwnerCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return { owner: 'rust', code: rustCode };
+}
+
+export function createSimulationCoreTurnActorEligibilityResolution({
+  source = 'unknown',
+  turnType = -1,
+  actorExists = 0,
+  actorHp = 0,
+  partyHp = 0,
+  roundActive = 0,
+  pendingGroupMatches = 0,
+  blueBuffSequenceActive = 0,
+  jsCode = 0,
+} = {}, {
+  exportsOverride = null,
+} = {}) {
+  const shadow = getShadowState();
+  const normalized = {
+    source,
+    turnType: Number(turnType || 0),
+    actorExists: Number(actorExists || 0),
+    actorHp: Number(actorHp || 0),
+    partyHp: Number(partyHp || 0),
+    roundActive: Number(roundActive || 0),
+    pendingGroupMatches: Number(pendingGroupMatches || 0),
+    blueBuffSequenceActive: Number(blueBuffSequenceActive || 0),
+    jsCode: Number(jsCode || 0),
+  };
+  const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+  if (!hasTurnActorEligibilityExports(exports)) {
+    shadow.turnActorEligibilityOwnerChecks = Number(shadow.turnActorEligibilityOwnerChecks || 0) + 1;
+    shadow.lastTurnActorEligibilityOwnerCheck = {
+      ...normalized,
+      owner: 'fallback',
+      code: normalized.jsCode,
+    };
+    updateShadowDomMarker(shadow);
+    return { owner: 'fallback', code: normalized.jsCode };
+  }
+
+  const rustCode = Number(exports.turn_actor_eligibility_code_shadow(
+    normalized.turnType,
+    normalized.actorExists,
+    normalized.actorHp,
+    normalized.partyHp,
+    normalized.roundActive,
+    normalized.pendingGroupMatches,
+    normalized.blueBuffSequenceActive,
+  ));
+  shadow.turnActorEligibilityOwnerChecks = Number(shadow.turnActorEligibilityOwnerChecks || 0) + 1;
+  shadow.lastTurnActorEligibilityOwnerCheck = {
+    ...normalized,
+    owner: 'rust',
+    code: rustCode,
+  };
+  if (!exportsOverride && Math.abs(rustCode - normalized.jsCode) > 0.000001) {
+    shadow.mismatches.push(shadow.lastTurnActorEligibilityOwnerCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastTurnActorEligibilityOwnerCheck);
   }
   updateShadowDomMarker(shadow);
   return { owner: 'rust', code: rustCode };

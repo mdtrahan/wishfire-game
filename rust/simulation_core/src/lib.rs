@@ -77,6 +77,43 @@ pub fn combat_outcome_code(energy: f64, party_hp: f64, living_heroes: f64) -> f6
     0.0
 }
 
+pub fn turn_actor_eligibility_code(
+    turn_type: f64,
+    actor_exists: f64,
+    actor_hp: f64,
+    party_hp: f64,
+    round_active: f64,
+    pending_group_matches: f64,
+    blue_buff_sequence_active: f64,
+) -> f64 {
+    let is_round_pending =
+        number_or_zero(round_active) == 1.0 && number_or_zero(pending_group_matches) == 1.0;
+
+    if number_or_zero(turn_type) == 0.0 {
+        if number_or_zero(actor_exists) != 1.0 {
+            return 0.0;
+        }
+        if number_or_zero(party_hp) > 0.0 || is_round_pending {
+            return 1.0;
+        }
+        return 0.0;
+    }
+
+    if number_or_zero(turn_type) == 1.0 {
+        if number_or_zero(blue_buff_sequence_active) == 1.0 {
+            return 2.0;
+        }
+        if number_or_zero(actor_exists) != 1.0 {
+            return 0.0;
+        }
+        if number_or_zero(actor_hp) > 0.0 || is_round_pending {
+            return 1.0;
+        }
+    }
+
+    0.0
+}
+
 fn js_to_uint32(value: f64) -> u32 {
     if !value.is_finite() {
         return 0;
@@ -139,6 +176,27 @@ pub extern "C" fn combat_outcome_code_shadow(
     living_heroes: f64,
 ) -> f64 {
     combat_outcome_code(energy, party_hp, living_heroes)
+}
+
+#[no_mangle]
+pub extern "C" fn turn_actor_eligibility_code_shadow(
+    turn_type: f64,
+    actor_exists: f64,
+    actor_hp: f64,
+    party_hp: f64,
+    round_active: f64,
+    pending_group_matches: f64,
+    blue_buff_sequence_active: f64,
+) -> f64 {
+    turn_actor_eligibility_code(
+        turn_type,
+        actor_exists,
+        actor_hp,
+        party_hp,
+        round_active,
+        pending_group_matches,
+        blue_buff_sequence_active,
+    )
 }
 
 #[no_mangle]
@@ -1409,6 +1467,47 @@ mod single_hit_resolution_tests {
         for (energy, party_hp, living_heroes, expected) in cases {
             assert_eq!(
                 combat_outcome_code(energy, party_hp, living_heroes),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn mirrors_current_turn_actor_eligibility_cases() {
+        let cases = [
+            (0.0, 0.0, 0.0, 40.0, 0.0, 0.0, 0.0, 0.0),
+            (0.0, 1.0, 10.0, 40.0, 0.0, 0.0, 0.0, 1.0),
+            (0.0, 1.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+            (0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0),
+            (1.0, 0.0, 0.0, 40.0, 0.0, 0.0, 0.0, 0.0),
+            (1.0, 1.0, 12.0, 40.0, 0.0, 0.0, 0.0, 1.0),
+            (1.0, 1.0, 0.0, 40.0, 0.0, 0.0, 0.0, 0.0),
+            (1.0, 1.0, 0.0, 40.0, 1.0, 1.0, 0.0, 1.0),
+            (1.0, 1.0, 12.0, 40.0, 0.0, 0.0, 1.0, 2.0),
+            (2.0, 1.0, 12.0, 40.0, 0.0, 0.0, 0.0, 0.0),
+        ];
+
+        for (
+            turn_type,
+            actor_exists,
+            actor_hp,
+            party_hp,
+            round_active,
+            pending_group_matches,
+            blue_buff_sequence_active,
+            expected,
+        ) in cases
+        {
+            assert_eq!(
+                turn_actor_eligibility_code(
+                    turn_type,
+                    actor_exists,
+                    actor_hp,
+                    party_hp,
+                    round_active,
+                    pending_group_matches,
+                    blue_buff_sequence_active,
+                ),
                 expected
             );
         }

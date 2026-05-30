@@ -17,6 +17,11 @@ import {
   createHeroTurnGateBaseline,
   createYellowSafetyNet,
 } from '../src/core/turnGateController.mjs';
+import {
+  TURN_ACTOR_ELIGIBILITY_ACT,
+  TURN_ACTOR_ELIGIBILITY_HOLD,
+  resolveTurnActorEligibility,
+} from '../src/core/turnActorEligibilityRules.mjs';
 import { sanitizeInitiativeQueue } from '../src/core/initiativeGuards.mjs';
 import {
   createBattleStartResetState,
@@ -6835,6 +6840,40 @@ export function HeroTurn(ctx, heroUID) {
   }
 }
 
+function resolveProcessTurnActorEligibility(ctx, {
+  source = 'functionBank.ProcessTurn',
+  turnType = -1,
+  actor = null,
+  partyHp = 0,
+  roundActive = 0,
+  pendingGroup = null,
+  roundGroupIndex = 0,
+  blueBuffSequenceActive = 0,
+} = {}) {
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const result = resolveTurnActorEligibility({
+    source,
+    turnType: Number(turnType || 0),
+    actorExists: actor ? 1 : 0,
+    actorHp: Number(actor?.hp ?? 0),
+    partyHp: Number(partyHp || 0),
+    roundActive: Number(roundActive || 0) ? 1 : 0,
+    pendingGroupMatches: Number(roundActive || 0) && pendingGroup === roundGroupIndex ? 1 : 0,
+    blueBuffSequenceActive: Number(blueBuffSequenceActive || 0) ? 1 : 0,
+    ownerHook: root && typeof root.__ORKA_TURN_ACTOR_ELIGIBILITY_OWNER__ === 'function'
+      ? root.__ORKA_TURN_ACTOR_ELIGIBILITY_OWNER__
+      : null,
+  });
+  const g = getGlobals(ctx);
+  g.LastTurnActorEligibilityOwner = {
+    owner: String(result.owner || 'fallback'),
+    source: String(source || 'unknown'),
+    code: Number(result.code || 0),
+    jsCode: Number(result.jsCode || 0),
+  };
+  return result;
+}
+
 export function ProcessTurn(ctx) {
   const type = GetCurrentType(ctx);
   const uid = GetCurrentTurn(ctx);
@@ -6909,7 +6948,17 @@ export function ProcessTurn(ctx) {
     }
     const pendingGroup = g.PendingDeaths ? g.PendingDeaths[uid] : null;
     const partyAlive = (g.PartyHP || 0) > 0;
-    if (actor && (partyAlive || (g.RoundActive && pendingGroup === g.RoundGroupIndex))) {
+    const heroEligibility = resolveProcessTurnActorEligibility(ctx, {
+      source: 'functionBank.ProcessTurn.hero',
+      turnType: type,
+      actor,
+      partyHp: Number(g.PartyHP || 0),
+      roundActive: Number(g.RoundActive || 0),
+      pendingGroup,
+      roundGroupIndex: g.RoundGroupIndex,
+      blueBuffSequenceActive: 0,
+    });
+    if (heroEligibility.code === TURN_ACTOR_ELIGIBILITY_ACT) {
       HeroTurn(ctx, uid);
     } else {
       if (actor && !partyAlive) {
@@ -6928,8 +6977,18 @@ export function ProcessTurn(ctx) {
       g.ActiveGroupIndex = g.RoundGroupIndex || 0;
     }
     const pendingGroup = g.PendingDeaths ? g.PendingDeaths[uid] : null;
-    if (g.BlueBuffSequenceActive) return;
-    if (actor && ((actor.hp ?? 0) > 0 || (g.RoundActive && pendingGroup === g.RoundGroupIndex))) {
+    const enemyEligibility = resolveProcessTurnActorEligibility(ctx, {
+      source: 'functionBank.ProcessTurn.enemy',
+      turnType: type,
+      actor,
+      partyHp: Number(g.PartyHP || 0),
+      roundActive: Number(g.RoundActive || 0),
+      pendingGroup,
+      roundGroupIndex: g.RoundGroupIndex,
+      blueBuffSequenceActive: Number(g.BlueBuffSequenceActive || 0),
+    });
+    if (enemyEligibility.code === TURN_ACTOR_ELIGIBILITY_HOLD) return;
+    if (enemyEligibility.code === TURN_ACTOR_ELIGIBILITY_ACT) {
       EnemyTurn(ctx, uid);
     } else {
       AdvanceTurn(ctx);
