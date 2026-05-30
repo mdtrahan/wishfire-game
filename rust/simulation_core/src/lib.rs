@@ -47,6 +47,23 @@ pub fn combat_power(atk: f64, def: f64, hp: f64) -> f64 {
     round_like_js((a + d + (h / 10.0)) * 100.0) / 100.0
 }
 
+pub fn effective_stat_value(
+    base: f64,
+    party_buff: f64,
+    enemy_debuff: f64,
+    is_hero: f64,
+    is_enemy: f64,
+) -> f64 {
+    let mut value = number_or_zero(base);
+    if number_or_zero(is_hero) == 1.0 {
+        value += number_or_zero(party_buff);
+    } else if number_or_zero(is_enemy) == 1.0 {
+        value -= number_or_zero(enemy_debuff);
+    }
+
+    value.max(0.0)
+}
+
 fn js_to_uint32(value: f64) -> u32 {
     if !value.is_finite() {
         return 0;
@@ -89,6 +106,17 @@ pub fn seeded_rng_index(seed: f64, draws: f64, size: f64) -> f64 {
 #[no_mangle]
 pub extern "C" fn combat_power_shadow(atk: f64, def: f64, hp: f64) -> f64 {
     combat_power(atk, def, hp)
+}
+
+#[no_mangle]
+pub extern "C" fn effective_stat_value_shadow(
+    base: f64,
+    party_buff: f64,
+    enemy_debuff: f64,
+    is_hero: f64,
+    is_enemy: f64,
+) -> f64 {
+    effective_stat_value(base, party_buff, enemy_debuff, is_hero, is_enemy)
 }
 
 #[no_mangle]
@@ -1319,6 +1347,27 @@ mod single_hit_resolution_tests {
             assert_eq!(seeded_rng_next_state(seed, draws), expected_state);
             assert!((seeded_rng_next_value(seed, draws) - expected_value).abs() < 0.000000000001);
             assert_eq!(seeded_rng_index(seed, draws, size), expected_index);
+        }
+    }
+
+    #[test]
+    fn mirrors_current_effective_stat_cases() {
+        let cases = [
+            (10.0, 0.0, 0.0, 1.0, 0.0, 10.0),
+            (10.0, 3.0, 0.0, 1.0, 0.0, 13.0),
+            (-2.0, 5.0, 0.0, 1.0, 0.0, 3.0),
+            (2.0, -5.0, 0.0, 1.0, 0.0, 0.0),
+            (10.0, 0.0, 4.0, 0.0, 1.0, 6.0),
+            (3.0, 0.0, 9.0, 0.0, 1.0, 0.0),
+            (10.0, 0.0, 2.5, 0.0, 1.0, 7.5),
+            (7.0, 4.0, 3.0, 0.0, 0.0, 7.0),
+        ];
+
+        for (base, party_buff, enemy_debuff, is_hero, is_enemy, expected) in cases {
+            assert_eq!(
+                effective_stat_value(base, party_buff, enemy_debuff, is_hero, is_enemy),
+                expected
+            );
         }
     }
 }

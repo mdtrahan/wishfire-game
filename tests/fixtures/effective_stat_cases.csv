@@ -1,0 +1,10 @@
+name,base,partyBuff,enemyDebuff,isHero,isEnemy,expectedValue
+hero_no_buff,10,0,0,1,0,10
+hero_party_buff,10,3,0,1,0,13
+hero_negative_base_with_buff,-2,5,0,1,0,3
+hero_negative_total_clamps,2,-5,0,1,0,0
+enemy_no_debuff,10,0,0,0,1,10
+enemy_debuff,10,0,4,0,1,6
+enemy_debuff_clamps,3,0,9,0,1,0
+enemy_fractional_debuff,10,0,2.5,0,1,7.5
+neutral_actor_ignores_adjustments,7,4,3,0,0,7

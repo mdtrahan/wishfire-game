@@ -1,0 +1,120 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const vm = require('node:vm');
+
+const runtimeFunctionBankPath = path.join(__dirname, '..', 'web-runner', 'modules', 'functionBank.js');
+const scriptsFunctionBankPath = path.join(__dirname, '..', 'Scripts', 'functionBank.js');
+const shadowModulePath = path.join(__dirname, '..', 'web-runner', 'systems', 'simulationCoreShadow.js');
+
+function loadFunctionBank(modulePath, effectiveStatOwner) {
+  const original = fs.readFileSync(modulePath, 'utf8');
+  const transformed = `${original
+    .replace(/^import[\s\S]*?from\s+['"][^'"]+['"];\n/gm, '')
+    .replace(/\bexport\s+/g, '')}
+
+module.exports = {
+  GetEffectiveStat,
+};`;
+  const calls = [];
+  const context = {
+    console: {
+      log() {},
+      warn() {},
+      error() {},
+    },
+    Math,
+    module: { exports: {} },
+    exports: {},
+    state: { globals: {}, entities: [] },
+    __ORKA_EFFECTIVE_STAT_OWNER__: (payload) => {
+      calls.push(payload);
+      return effectiveStatOwner(payload);
+    },
+  };
+  vm.createContext(context);
+  new vm.Script(transformed, { filename: modulePath }).runInContext(context);
+  return { mod: context.module.exports, calls };
+}
+
+function makeContext() {
+  const hero = {
+    uid: 100,
+    kind: 'hero',
+    name: 'Kojonn',
+    hp: 40,
+    stats: {
+      ATK: 10,
+      DEF: 10,
+      MAG: 10,
+      SPD: 10,
+      RES: 10,
+    },
+  };
+  const enemy = {
+    uid: 200,
+    kind: 'enemy',
+    name: 'Marid',
+    hp: 100,
+    stats: {
+      ATK: 6,
+      DEF: 10,
+      MAG: 6,
+      SPD: 6,
+      RES: 6,
+    },
+  };
+  return {
+    state: {
+      globals: {
+        PartyBuff_ATK: 3,
+        PartyBuff_DEF: 0,
+        PartyBuff_MAG: 0,
+        PartyBuff_SPD: 0,
+        PartyBuff_RES: 0,
+        EnemyDebuffs: {
+          200: { DEF: 4 },
+        },
+      },
+      entities: [hero, enemy],
+    },
+  };
+}
+
+test('simulation core module exposes a Rust-owned effective stat marker', () => {
+  const shadowSrc = fs.readFileSync(shadowModulePath, 'utf8');
+
+  assert.match(shadowSrc, /window\.__ORKA_EFFECTIVE_STAT_OWNER__/);
+  assert.match(shadowSrc, /export function createSimulationCoreEffectiveStatResolution/);
+  assert.match(shadowSrc, /simulationCore\.startup\.effectiveStatOwner/);
+  assert.match(shadowSrc, /effectiveStatOwnerChecks/);
+  assert.match(shadowSrc, /dataset\.simCoreShadowEffectiveStatOwner/);
+});
+
+test('effective stat follows Rust owner when Rust and JS disagree', () => {
+  for (const modulePath of [runtimeFunctionBankPath, scriptsFunctionBankPath]) {
+    const { mod, calls } = loadFunctionBank(modulePath, (payload) => ({
+      owner: 'rust',
+      value: payload.isHero ? 77 : 5,
+    }));
+    const ctx = makeContext();
+    const [hero, enemy] = ctx.state.entities;
+
+    assert.equal(mod.GetEffectiveStat(ctx, hero, 'ATK'), 77, `${modulePath} hero Rust-owned value`);
+    assert.equal(mod.GetEffectiveStat(ctx, enemy, 'DEF'), 5, `${modulePath} enemy Rust-owned value`);
+
+    assert.equal(calls[0].stat, 'ATK', `${modulePath} submitted hero stat`);
+    assert.equal(calls[0].base, 10, `${modulePath} submitted hero base`);
+    assert.equal(calls[0].partyBuff, 3, `${modulePath} submitted hero buff`);
+    assert.equal(calls[0].enemyDebuff, 0, `${modulePath} submitted hero debuff`);
+    assert.equal(calls[0].jsValue, 13, `${modulePath} submitted hero JS value`);
+    assert.equal(calls[1].stat, 'DEF', `${modulePath} submitted enemy stat`);
+    assert.equal(calls[1].base, 10, `${modulePath} submitted enemy base`);
+    assert.equal(calls[1].partyBuff, 0, `${modulePath} submitted enemy buff`);
+    assert.equal(calls[1].enemyDebuff, 4, `${modulePath} submitted enemy debuff`);
+    assert.equal(calls[1].jsValue, 6, `${modulePath} submitted enemy JS value`);
+    assert.equal(ctx.state.globals.LastEffectiveStatOwner.owner, 'rust');
+    assert.equal(ctx.state.globals.LastEffectiveStatOwner.value, 5);
+  }
+});

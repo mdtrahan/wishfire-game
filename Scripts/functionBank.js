@@ -3616,25 +3616,74 @@ export function IsEnemyTurn(ctx) {
   return GetCurrentType(ctx) === 1;
 }
 
+function partyBuffForStat(g, stat) {
+  if (!g) return 0;
+  if (stat === 'ATK') return g.PartyBuff_ATK || 0;
+  if (stat === 'DEF') return g.PartyBuff_DEF || 0;
+  if (stat === 'SPD') return g.PartyBuff_SPD || 0;
+  if (stat === 'MAG') return g.PartyBuff_MAG || 0;
+  if (stat === 'RES') return g.PartyBuff_RES || 0;
+  return 0;
+}
+
+function maybeResolveEffectiveStatOwner(ctx, payload) {
+  const g = getGlobals(ctx);
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const effectiveStatOwnerHook = root && typeof root.__ORKA_EFFECTIVE_STAT_OWNER__ === 'function'
+    ? root.__ORKA_EFFECTIVE_STAT_OWNER__
+    : null;
+  if (typeof effectiveStatOwnerHook !== 'function') return null;
+  try {
+    const result = effectiveStatOwnerHook(payload);
+    const value = Number(result?.value);
+    if (!Number.isFinite(value)) return null;
+    if (g) {
+      g.LastEffectiveStatOwner = {
+        owner: String(result?.owner || 'rust'),
+        source: String(payload.source || 'functionBank.GetEffectiveStat'),
+        stat: String(payload.stat || ''),
+        actorKind: String(payload.actorKind || ''),
+        value,
+      };
+    }
+    return g?.LastEffectiveStatOwner || { owner: String(result?.owner || 'rust'), value };
+  } catch (err) {
+    if (g) g.LastEffectiveStatOwnerError = String(err?.message || err || 'unknown');
+    return null;
+  }
+}
+
 export function GetEffectiveStat(ctx, inst, stat) {
   if (!inst) return 0;
   const g = getGlobals(ctx);
-  let base = Number(inst.stats?.[stat] ?? inst[stat] ?? 0);
+  const actorKind = String(inst.kind || '');
+  const base = Number(inst.stats?.[stat] ?? inst[stat] ?? 0);
+  const partyBuff = actorKind === 'hero' ? partyBuffForStat(g, stat) : 0;
+  const debuffs = actorKind === 'enemy' ? g?.EnemyDebuffs?.[inst.uid] : null;
+  const enemyDebuff = debuffs && debuffs[stat] ? debuffs[stat] : 0;
+  let jsValue = base;
 
-  if (inst.kind === 'hero') {
-    if (stat === 'ATK') base += g.PartyBuff_ATK || 0;
-    if (stat === 'DEF') base += g.PartyBuff_DEF || 0;
-    if (stat === 'SPD') base += g.PartyBuff_SPD || 0;
-    if (stat === 'MAG') base += g.PartyBuff_MAG || 0;
-    if (stat === 'RES') base += g.PartyBuff_RES || 0;
-  } else if (inst.kind === 'enemy') {
-    const debuffs = g.EnemyDebuffs?.[inst.uid];
-    if (debuffs && debuffs[stat]) {
-      base -= debuffs[stat];
-    }
+  if (actorKind === 'hero') {
+    jsValue += partyBuff;
+  } else if (actorKind === 'enemy') {
+    jsValue -= enemyDebuff;
   }
 
-  return Math.max(0, base);
+  jsValue = Math.max(0, jsValue);
+  const owner = maybeResolveEffectiveStatOwner(ctx, {
+    source: 'functionBank.GetEffectiveStat',
+    uid: Number(inst.uid || 0),
+    stat: String(stat || ''),
+    actorKind,
+    base: Number(base || 0),
+    partyBuff: Number(partyBuff || 0),
+    enemyDebuff: Number(enemyDebuff || 0),
+    isHero: actorKind === 'hero' ? 1 : 0,
+    isEnemy: actorKind === 'enemy' ? 1 : 0,
+    jsValue: Number(jsValue || 0),
+  });
+
+  return owner ? owner.value : jsValue;
 }
 
 export function GetBaseStat(ctx, inst, stat) {
