@@ -42,6 +42,13 @@ test('turn order group resolver follows Rust owner when Rust and JS disagree', a
   assert.deepEqual(projection.jsMembers.map(member => member.uid), [2, 1]);
 });
 
+test('turn order group shadow adapter preserves JS boolean-only alive semantics', () => {
+  const shadowSrc = fs.readFileSync(shadowPath, 'utf8');
+
+  assert.match(shadowSrc, /isAlive: actor\?\.isAlive === false \? 0 : 1/);
+  assert.match(shadowSrc, /ableToAct: actor\?\.ableToAct === false \? 0 : 1/);
+});
+
 test('BuildRoundGroups routes team-phase projection through Rust-owned resolver', () => {
   for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
     const src = fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');

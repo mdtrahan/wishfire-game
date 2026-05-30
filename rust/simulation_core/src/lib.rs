@@ -114,6 +114,14 @@ pub fn turn_actor_eligibility_code(
     0.0
 }
 
+pub fn turn_phase_from_type(turn_type: f64) -> f64 {
+    if number_or_zero(turn_type) == 0.0 {
+        0.0
+    } else {
+        2.0
+    }
+}
+
 pub fn turn_order_actor_in_phase(
     actor_type: f64,
     phase_type: f64,
@@ -348,6 +356,11 @@ pub extern "C" fn turn_actor_eligibility_code_shadow(
         pending_group_matches,
         blue_buff_sequence_active,
     )
+}
+
+#[no_mangle]
+pub extern "C" fn turn_phase_from_type_shadow(turn_type: f64) -> f64 {
+    turn_phase_from_type(turn_type)
 }
 
 #[no_mangle]
@@ -1819,6 +1832,20 @@ mod single_hit_resolution_tests {
             turn_order_compare_slots(101.0, 1.0, 18.0, 2.0, 0.0, 18.0),
             1.0
         );
+    }
+
+    #[test]
+    fn mirrors_current_turn_phase_assignment_cases() {
+        let cases = [
+            (0.0, 0.0),
+            (1.0, 2.0),
+            (2.0, 2.0),
+            (-1.0, 2.0),
+        ];
+
+        for (turn_type, expected_phase) in cases {
+            assert_eq!(turn_phase_from_type(turn_type), expected_phase);
+        }
     }
 
     #[test]

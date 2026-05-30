@@ -32,6 +32,7 @@ import {
   nextTeamPhaseType,
 } from '../src/core/schedulerRules.mjs';
 import { resolveRoundPointerAdvance } from '../src/core/roundPointerAdvanceRules.mjs';
+import { resolveTurnPhaseAssignment } from '../src/core/turnPhaseAssignmentRules.mjs';
 import { resolveTurnOrderGroupProjection } from '../src/core/turnOrderGroupRules.mjs';
 import { pickEnemyTargetHeroFromRoster } from '../src/core/enemyTargetingRules.mjs';
 import { getEnemyRosterStability } from '../src/core/enemyRosterStability.mjs';
@@ -3295,13 +3296,34 @@ export function GetCurrentType(ctx) {
   return row ? row.type : 0;
 }
 
+function resolveCurrentTurnPhase(ctx, source) {
+  const g = getGlobals(ctx);
+  const turnType = GetCurrentType(ctx);
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const phaseAssignment = resolveTurnPhaseAssignment({
+    source,
+    turnType,
+    ownerHook: root && typeof root.__ORKA_TURN_PHASE_ASSIGNMENT_OWNER__ === 'function'
+      ? root.__ORKA_TURN_PHASE_ASSIGNMENT_OWNER__
+      : null,
+  });
+  g.LastTurnPhaseAssignmentOwner = {
+    owner: String(phaseAssignment.owner || 'fallback'),
+    source,
+    turnTypeCode: Number(phaseAssignment.turnTypeCode || 0),
+    turnPhase: Number(phaseAssignment.turnPhase || 0),
+    jsTurnPhase: Number(phaseAssignment.jsDecision?.turnPhase ?? phaseAssignment.turnPhase ?? 0),
+  };
+  return Number(phaseAssignment.turnPhase || 0);
+}
+
 export function ProcessCurrentTurn(ctx) {
   const g = getGlobals(ctx);
   if (isTimeInitiative(ctx)) {
     const curUID = g.InitiativeCurrentUID || 0;
     const idx = (g.TurnOrderArray || []).findIndex(a => a.uid === curUID);
     schedulerWriteIndex(ctx, idx !== -1 ? idx : 0);
-    g.TurnPhase = GetCurrentType(ctx) === 0 ? 0 : 2;
+    g.TurnPhase = resolveCurrentTurnPhase(ctx, 'functionBank.ProcessCurrentTurn.timeInitiative');
     return;
   }
   if (g.RoundActive && Array.isArray(g.RoundGroups) && g.RoundGroups.length) {
@@ -3380,8 +3402,7 @@ export function ProcessCurrentTurn(ctx) {
     }
   }
 
-  const type = GetCurrentType(ctx);
-  g.TurnPhase = type === 0 ? 0 : 2;
+  g.TurnPhase = resolveCurrentTurnPhase(ctx, 'functionBank.ProcessCurrentTurn');
 }
 
 function getCurrentHeroTeamTurnUIDs(ctx) {

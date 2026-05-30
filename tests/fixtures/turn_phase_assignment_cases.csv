@@ -1,0 +1,6 @@
+name,turnTypeCode,expectedTurnPhase
+hero,0,0
+enemy,1,2
+enemy_alt,2,2
+negative,-1,2
+blank_defaults,0,0

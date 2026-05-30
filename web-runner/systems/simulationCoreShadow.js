@@ -21,6 +21,7 @@ function getShadowState() {
       effectiveStatOwnerChecks: 0,
       combatOutcomeOwnerChecks: 0,
       turnActorEligibilityOwnerChecks: 0,
+      turnPhaseAssignmentOwnerChecks: 0,
       turnOrderGroupOwnerChecks: 0,
       roundPointerAdvanceOwnerChecks: 0,
       seededRngChecks: 0,
@@ -37,6 +38,7 @@ function getShadowState() {
       effectiveStatOwnerSmokeRan: false,
       combatOutcomeOwnerSmokeRan: false,
       turnActorEligibilityOwnerSmokeRan: false,
+      turnPhaseAssignmentOwnerSmokeRan: false,
       turnOrderGroupOwnerSmokeRan: false,
       roundPointerAdvanceOwnerSmokeRan: false,
     };
@@ -60,6 +62,7 @@ function getShadowState() {
       effectiveStatOwnerChecks: 0,
       combatOutcomeOwnerChecks: 0,
       turnActorEligibilityOwnerChecks: 0,
+      turnPhaseAssignmentOwnerChecks: 0,
       turnOrderGroupOwnerChecks: 0,
       roundPointerAdvanceOwnerChecks: 0,
       seededRngChecks: 0,
@@ -76,6 +79,7 @@ function getShadowState() {
       effectiveStatOwnerSmokeRan: false,
       combatOutcomeOwnerSmokeRan: false,
       turnActorEligibilityOwnerSmokeRan: false,
+      turnPhaseAssignmentOwnerSmokeRan: false,
       turnOrderGroupOwnerSmokeRan: false,
       roundPointerAdvanceOwnerSmokeRan: false,
       lastCheck: null,
@@ -94,6 +98,7 @@ function getShadowState() {
       lastEffectiveStatOwnerCheck: null,
       lastCombatOutcomeOwnerCheck: null,
       lastTurnActorEligibilityOwnerCheck: null,
+      lastTurnPhaseAssignmentOwnerCheck: null,
       lastTurnOrderGroupOwnerCheck: null,
       lastRoundPointerAdvanceOwnerCheck: null,
       lastSeededRngCheck: null,
@@ -191,6 +196,12 @@ function updateShadowDomMarker(shadow) {
   document.documentElement.dataset.simCoreShadowTurnActorEligibilityOwner = String(
     shadow?.lastTurnActorEligibilityOwnerCheck?.owner || '',
   );
+  document.documentElement.dataset.simCoreShadowTurnPhaseAssignmentOwnerChecks = String(
+    Number(shadow?.turnPhaseAssignmentOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowTurnPhaseAssignmentOwner = String(
+    shadow?.lastTurnPhaseAssignmentOwnerCheck?.owner || '',
+  );
   document.documentElement.dataset.simCoreShadowTurnOrderGroupOwnerChecks = String(
     Number(shadow?.turnOrderGroupOwnerChecks || 0),
   );
@@ -287,6 +298,10 @@ function hasTurnActorEligibilityExports(exports) {
   return typeof exports?.turn_actor_eligibility_code_shadow === 'function';
 }
 
+function hasTurnPhaseAssignmentExports(exports) {
+  return typeof exports?.turn_phase_from_type_shadow === 'function';
+}
+
 function hasTurnOrderGroupExports(exports) {
   return typeof exports?.turn_order_actor_in_phase_shadow === 'function'
     && typeof exports?.turn_order_phase_type_shadow === 'function'
@@ -321,6 +336,7 @@ function hasRequiredExports(exports) {
     && hasEffectiveStatExports(exports)
     && hasCombatOutcomeExports(exports)
     && hasTurnActorEligibilityExports(exports)
+    && hasTurnPhaseAssignmentExports(exports)
     && hasTurnOrderGroupExports(exports)
     && hasRoundPointerAdvanceExports(exports);
 }
@@ -566,6 +582,16 @@ function runTurnActorEligibilityOwnerStartupCheck(shadow) {
   });
 }
 
+function runTurnPhaseAssignmentOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.turnPhaseAssignmentOwnerSmokeRan) return;
+  shadow.turnPhaseAssignmentOwnerSmokeRan = true;
+  createSimulationCoreTurnPhaseAssignmentResolution({
+    source: 'simulationCore.startup.turnPhaseAssignmentOwner',
+    turnTypeCode: 1,
+    jsTurnPhase: 2,
+  });
+}
+
 function runTurnOrderGroupOwnerStartupCheck(shadow) {
   if (!shadow || shadow.turnOrderGroupOwnerSmokeRan) return;
   shadow.turnOrderGroupOwnerSmokeRan = true;
@@ -635,6 +661,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_EFFECTIVE_STAT_OWNER__ = createSimulationCoreEffectiveStatResolution;
     window.__ORKA_COMBAT_OUTCOME_OWNER__ = createSimulationCoreCombatOutcomeResolution;
     window.__ORKA_TURN_ACTOR_ELIGIBILITY_OWNER__ = createSimulationCoreTurnActorEligibilityResolution;
+    window.__ORKA_TURN_PHASE_ASSIGNMENT_OWNER__ = createSimulationCoreTurnPhaseAssignmentResolution;
     window.__ORKA_TURN_ORDER_GROUP_OWNER__ = createSimulationCoreTurnOrderGroupProjection;
     window.__ORKA_ROUND_POINTER_ADVANCE_OWNER__ = createSimulationCoreRoundPointerAdvanceResolution;
     window.__ORKA_SEEDED_RNG_SHADOW__ = shadowSeededRng;
@@ -665,6 +692,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
         runEffectiveStatOwnerStartupCheck(shadow);
         runCombatOutcomeOwnerStartupCheck(shadow);
         runTurnActorEligibilityOwnerStartupCheck(shadow);
+        runTurnPhaseAssignmentOwnerStartupCheck(shadow);
         runTurnOrderGroupOwnerStartupCheck(shadow);
         runRoundPointerAdvanceOwnerStartupCheck(shadow);
       }
@@ -862,6 +890,47 @@ export function createSimulationCoreTurnActorEligibilityResolution({
   return { owner: 'rust', code: rustCode };
 }
 
+export function createSimulationCoreTurnPhaseAssignmentResolution({
+  source = 'unknown',
+  turnTypeCode = 0,
+  jsTurnPhase = 0,
+} = {}, {
+  exportsOverride = null,
+} = {}) {
+  const shadow = getShadowState();
+  const normalized = {
+    source,
+    turnTypeCode: Number(turnTypeCode || 0) === 0 ? 0 : 1,
+    jsTurnPhase: Number(jsTurnPhase || 0),
+  };
+  const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+  if (!hasTurnPhaseAssignmentExports(exports)) {
+    shadow.turnPhaseAssignmentOwnerChecks = Number(shadow.turnPhaseAssignmentOwnerChecks || 0) + 1;
+    shadow.lastTurnPhaseAssignmentOwnerCheck = {
+      ...normalized,
+      owner: 'fallback',
+      turnPhase: normalized.jsTurnPhase,
+    };
+    updateShadowDomMarker(shadow);
+    return { owner: 'fallback', turnPhase: normalized.jsTurnPhase };
+  }
+
+  const turnPhase = Number(exports.turn_phase_from_type_shadow(normalized.turnTypeCode));
+  shadow.turnPhaseAssignmentOwnerChecks = Number(shadow.turnPhaseAssignmentOwnerChecks || 0) + 1;
+  shadow.lastTurnPhaseAssignmentOwnerCheck = {
+    ...normalized,
+    owner: 'rust',
+    turnPhase,
+  };
+  if (!exportsOverride && turnPhase !== normalized.jsTurnPhase) {
+    shadow.mismatches.push(shadow.lastTurnPhaseAssignmentOwnerCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastTurnPhaseAssignmentOwnerCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return { owner: 'rust', turnPhase };
+}
+
 function normalizeTurnOrderGroupPhaseType(value = 0) {
   return Number(value || 0) === 1 ? 1 : 0;
 }
@@ -875,8 +944,8 @@ function normalizeTurnOrderGroupRoster(roster = []) {
       spd: Number(actor?.spd || 0),
       extra: !!actor?.extra,
       hp: Number.isNaN(Number(actor?.hp)) ? 1 : Number(actor?.hp ?? 1),
-      isAlive: Number(actor?.isAlive ?? 1) ? 1 : 0,
-      ableToAct: Number(actor?.ableToAct ?? 1) ? 1 : 0,
+      isAlive: actor?.isAlive === false ? 0 : 1,
+      ableToAct: actor?.ableToAct === false ? 0 : 1,
       disabled: Number(actor?.disabled || 0) ? 1 : 0,
       stunned: Number(actor?.stunned || 0) ? 1 : 0,
       stopped: Number(actor?.stopped || 0) ? 1 : 0,
