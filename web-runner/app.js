@@ -61,7 +61,7 @@ import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
 import { deriveDamageFloatFrameOffset } from '../src/core/damageFloatVector.mjs';
 import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
 import { createHealBloom } from './src/core/healBloomAnimation.mjs';
-import { resolveCombatOutcome } from './src/core/combatOutcomeRules.mjs';
+import { createCombatOutcomeSimulationPacket } from './src/core/combatOutcomeRules.mjs';
 import * as heroGemProgressStorage from './systems/heroGemProgressStorage.js';
 import * as runtimeDebugLogging from './systems/runtimeDebugLogging.js';
 import * as animationMath from './systems/animationMath.js';
@@ -6394,7 +6394,7 @@ function getStoryCardLiveLineState() {
     livingHeroes = 0,
   } = {}) {
     const root = typeof globalThis !== 'undefined' ? globalThis : null;
-    return resolveCombatOutcome({
+    const packet = createCombatOutcomeSimulationPacket({
       source,
       energy,
       partyHp,
@@ -6402,7 +6402,21 @@ function getStoryCardLiveLineState() {
       ownerHook: root && typeof root.__ORKA_COMBAT_OUTCOME_OWNER__ === 'function'
         ? root.__ORKA_COMBAT_OUTCOME_OWNER__
         : null,
+      requestFactory(action, context) {
+        return combatRuntimeGateway.createSimulationCoreRequest(action, context);
+      },
+      responseApplier(response) {
+        return combatRuntimeGateway.applySimulationCoreResponse(response);
+      },
     });
+    state.globals.LastCombatOutcomePacket = {
+      owner: String(packet.owner || ''),
+      code: Number(packet.code || 0),
+      reason: String(packet.reason || ''),
+      result: String(packet.simulationCoreResponse?.result || ''),
+      source: String(source || ''),
+    };
+    return packet;
   }
   function resolveDevAutoplayCombatOutcome({ energy = 0, partyHp = 0, livingHeroes = 0 } = {}) {
     return resolveCombatOutcomeWithOwner({
