@@ -40,6 +40,7 @@ import {
   pickEnemyTargetHeroFromRoster,
   resolveEnemyTargetHero,
 } from '../src/core/enemyTargetingRules.mjs';
+import { resolveRunaMagicResist } from '../src/core/runaMagicResistRules.mjs';
 import { getEnemyRosterStability } from '../src/core/enemyRosterStability.mjs';
 const POWER_AMP_OUTCOMES = [
   { key: 'HERO_2X', multiplier: 2, chance: 0.62 },
@@ -4856,45 +4857,30 @@ function applyRunaMagicResist(ctx, enemyUID, targetHeroUID, incomingDamage, skil
   const g = getGlobals(ctx);
   const baseDamage = Math.max(0, Number(incomingDamage) || 0);
   const target = GetActorByUID(ctx, targetHeroUID);
-  if (!target || String(target?.name || '') !== RUNA_MAGIC_RESIST_NAME) {
-    g.LastRunaMagicResist = {
-      enemyUID: Number(enemyUID || 0),
-      targetUID: Number(targetHeroUID || 0),
-      skillId: String(skillId || ''),
-      mode: 'not_runa',
-      incomingDamage: baseDamage,
-      finalDamage: baseDamage,
-    };
-    return { finalDamage: baseDamage, mode: 'not_runa' };
-  }
-  const triggerRoll = Math.random();
-  if (triggerRoll >= RUNA_MAGIC_RESIST_TRIGGER_CHANCE) {
-    g.LastRunaMagicResist = {
-      enemyUID: Number(enemyUID || 0),
-      targetUID: Number(targetHeroUID || 0),
-      skillId: String(skillId || ''),
-      mode: 'no_proc',
-      incomingDamage: baseDamage,
-      finalDamage: baseDamage,
-      triggerRoll: Number(triggerRoll || 0),
-    };
-    return { finalDamage: baseDamage, mode: 'no_proc' };
-  }
-  const nullifyRoll = Math.random();
-  const nullified = nullifyRoll < RUNA_MAGIC_RESIST_NULLIFY_CHANCE;
-  const finalDamage = nullified ? 0 : Math.max(1, Math.floor(baseDamage * RUNA_MAGIC_RESIST_REDUCE_FACTOR));
-  const mode = nullified ? 'nullify' : 'heavy_resist';
-  g.LastRunaMagicResist = {
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const decision = resolveRunaMagicResist({
+    targetIsRuna: target && String(target?.name || '') === RUNA_MAGIC_RESIST_NAME ? 1 : 0,
+    incomingDamage: baseDamage,
+    rollSource: Math.random,
+    ownerHook: root && typeof root.__ORKA_RUNA_MAGIC_RESIST_OWNER__ === 'function'
+      ? root.__ORKA_RUNA_MAGIC_RESIST_OWNER__
+      : null,
+  });
+  const trace = {
     enemyUID: Number(enemyUID || 0),
     targetUID: Number(targetHeroUID || 0),
     skillId: String(skillId || ''),
-    mode,
+    mode: String(decision.mode || 'not_runa'),
+    owner: String(decision.owner || 'fallback'),
     incomingDamage: baseDamage,
-    finalDamage,
-    triggerRoll: Number(triggerRoll || 0),
-    nullifyRoll: Number(nullifyRoll || 0),
+    finalDamage: Number(decision.finalDamage || 0),
+    jsMode: String(decision.jsDecision?.mode || decision.mode || 'not_runa'),
+    jsFinalDamage: Number(decision.jsDecision?.finalDamage ?? decision.finalDamage ?? 0),
   };
-  return { finalDamage, mode };
+  if (decision.triggerRoll != null) trace.triggerRoll = Number(decision.triggerRoll || 0);
+  if (decision.nullifyRoll != null) trace.nullifyRoll = Number(decision.nullifyRoll || 0);
+  g.LastRunaMagicResist = trace;
+  return { finalDamage: trace.finalDamage, mode: trace.mode };
 }
 
 const ENEMY_DEBUFF_STATS = ['ATK', 'DEF', 'MAG', 'RES', 'SPD'];

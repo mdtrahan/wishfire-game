@@ -1347,6 +1347,47 @@ pub fn party_damage_party_hp_after(
         .sum()
 }
 
+fn runa_magic_resist_base_damage(incoming_damage: f64) -> f64 {
+    number_or_zero(incoming_damage).max(0.0)
+}
+
+fn runa_magic_resist_pair(
+    target_is_runa: f64,
+    incoming_damage: f64,
+    trigger_roll: f64,
+    nullify_roll: f64,
+) -> (f64, f64) {
+    let base_damage = runa_magic_resist_base_damage(incoming_damage);
+    if number_or_zero(target_is_runa) != 1.0 {
+        return (base_damage, 0.0);
+    }
+    if number_or_zero(trigger_roll) >= 0.6 {
+        return (base_damage, 1.0);
+    }
+    if number_or_zero(nullify_roll) < 0.35 {
+        return (0.0, 2.0);
+    }
+    ((base_damage * 0.2).floor().max(1.0), 3.0)
+}
+
+pub fn runa_magic_resist_final_damage(
+    target_is_runa: f64,
+    incoming_damage: f64,
+    trigger_roll: f64,
+    nullify_roll: f64,
+) -> f64 {
+    runa_magic_resist_pair(target_is_runa, incoming_damage, trigger_roll, nullify_roll).0
+}
+
+pub fn runa_magic_resist_mode_code(
+    target_is_runa: f64,
+    incoming_damage: f64,
+    trigger_roll: f64,
+    nullify_roll: f64,
+) -> f64 {
+    runa_magic_resist_pair(target_is_runa, incoming_damage, trigger_roll, nullify_roll).1
+}
+
 pub fn enemy_dot_tick_damage(
     total_damage_remaining: f64,
     remaining_fires: f64,
@@ -1756,6 +1797,26 @@ pub extern "C" fn party_damage_party_hp_after_shadow(
 }
 
 #[no_mangle]
+pub extern "C" fn runa_magic_resist_final_damage_shadow(
+    target_is_runa: f64,
+    incoming_damage: f64,
+    trigger_roll: f64,
+    nullify_roll: f64,
+) -> f64 {
+    runa_magic_resist_final_damage(target_is_runa, incoming_damage, trigger_roll, nullify_roll)
+}
+
+#[no_mangle]
+pub extern "C" fn runa_magic_resist_mode_code_shadow(
+    target_is_runa: f64,
+    incoming_damage: f64,
+    trigger_roll: f64,
+    nullify_roll: f64,
+) -> f64 {
+    runa_magic_resist_mode_code(target_is_runa, incoming_damage, trigger_roll, nullify_roll)
+}
+
+#[no_mangle]
 pub extern "C" fn turn_summary_code_shadow(
     hero_count: f64,
     hero0_hp: f64,
@@ -2094,6 +2155,31 @@ mod single_hit_resolution_tests {
             assert_eq!(
                 party_damage_party_hp_after(4.0, hp[0], hp[1], hp[2], hp[3], after_shield),
                 party_hp
+            );
+        }
+    }
+
+    #[test]
+    fn mirrors_current_runa_magic_resist_cases() {
+        let cases = [
+            // target_is_runa, incoming, trigger_roll, nullify_roll, expected_damage, expected_mode
+            (0.0, 10.0, 0.0, 0.0, 10.0, 0.0),
+            (1.0, 10.0, 0.6, 0.0, 10.0, 1.0),
+            (1.0, 10.0, 0.59, 0.34, 0.0, 2.0),
+            (1.0, 10.0, 0.1, 0.35, 2.0, 3.0),
+            (1.0, 8.0, 0.1, 0.35, 1.0, 3.0),
+            (1.0, 0.0, 0.1, 0.35, 1.0, 3.0),
+            (0.0, -5.0, 0.0, 0.0, 0.0, 0.0),
+        ];
+
+        for (target_is_runa, incoming, trigger, nullify, expected_damage, expected_mode) in cases {
+            assert_eq!(
+                runa_magic_resist_final_damage(target_is_runa, incoming, trigger, nullify),
+                expected_damage
+            );
+            assert_eq!(
+                runa_magic_resist_mode_code(target_is_runa, incoming, trigger, nullify),
+                expected_mode
             );
         }
     }

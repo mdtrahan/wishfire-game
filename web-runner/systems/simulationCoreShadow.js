@@ -24,6 +24,7 @@ function getShadowState() {
       turnPhaseAssignmentOwnerChecks: 0,
       enemySkillChoiceOwnerChecks: 0,
       enemyTargetOwnerChecks: 0,
+      runaMagicResistOwnerChecks: 0,
       turnOrderGroupOwnerChecks: 0,
       roundPointerAdvanceOwnerChecks: 0,
       seededRngChecks: 0,
@@ -43,6 +44,7 @@ function getShadowState() {
       turnPhaseAssignmentOwnerSmokeRan: false,
       enemySkillChoiceOwnerSmokeRan: false,
       enemyTargetOwnerSmokeRan: false,
+      runaMagicResistOwnerSmokeRan: false,
       turnOrderGroupOwnerSmokeRan: false,
       roundPointerAdvanceOwnerSmokeRan: false,
     };
@@ -69,6 +71,7 @@ function getShadowState() {
       turnPhaseAssignmentOwnerChecks: 0,
       enemySkillChoiceOwnerChecks: 0,
       enemyTargetOwnerChecks: 0,
+      runaMagicResistOwnerChecks: 0,
       turnOrderGroupOwnerChecks: 0,
       roundPointerAdvanceOwnerChecks: 0,
       seededRngChecks: 0,
@@ -88,6 +91,7 @@ function getShadowState() {
       turnPhaseAssignmentOwnerSmokeRan: false,
       enemySkillChoiceOwnerSmokeRan: false,
       enemyTargetOwnerSmokeRan: false,
+      runaMagicResistOwnerSmokeRan: false,
       turnOrderGroupOwnerSmokeRan: false,
       roundPointerAdvanceOwnerSmokeRan: false,
       lastCheck: null,
@@ -109,6 +113,7 @@ function getShadowState() {
       lastTurnPhaseAssignmentOwnerCheck: null,
       lastEnemySkillChoiceOwnerCheck: null,
       lastEnemyTargetOwnerCheck: null,
+      lastRunaMagicResistOwnerCheck: null,
       lastTurnOrderGroupOwnerCheck: null,
       lastRoundPointerAdvanceOwnerCheck: null,
       lastSeededRngCheck: null,
@@ -224,6 +229,12 @@ function updateShadowDomMarker(shadow) {
   document.documentElement.dataset.simCoreShadowEnemyTargetOwner = String(
     shadow?.lastEnemyTargetOwnerCheck?.owner || '',
   );
+  document.documentElement.dataset.simCoreShadowRunaMagicResistOwnerChecks = String(
+    Number(shadow?.runaMagicResistOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowRunaMagicResistOwner = String(
+    shadow?.lastRunaMagicResistOwnerCheck?.owner || '',
+  );
   document.documentElement.dataset.simCoreShadowTurnOrderGroupOwnerChecks = String(
     Number(shadow?.turnOrderGroupOwnerChecks || 0),
   );
@@ -335,6 +346,11 @@ function hasEnemyTargetExports(exports) {
     && typeof exports?.enemy_target_roll_index_shadow === 'function';
 }
 
+function hasRunaMagicResistExports(exports) {
+  return typeof exports?.runa_magic_resist_final_damage_shadow === 'function'
+    && typeof exports?.runa_magic_resist_mode_code_shadow === 'function';
+}
+
 function hasTurnOrderGroupExports(exports) {
   return typeof exports?.turn_order_actor_in_phase_shadow === 'function'
     && typeof exports?.turn_order_phase_type_shadow === 'function'
@@ -372,6 +388,7 @@ function hasRequiredExports(exports) {
     && hasTurnPhaseAssignmentExports(exports)
     && hasEnemySkillChoiceExports(exports)
     && hasEnemyTargetExports(exports)
+    && hasRunaMagicResistExports(exports)
     && hasTurnOrderGroupExports(exports)
     && hasRoundPointerAdvanceExports(exports);
 }
@@ -682,6 +699,20 @@ function runTurnOrderGroupOwnerStartupCheck(shadow) {
   });
 }
 
+function runRunaMagicResistOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.runaMagicResistOwnerSmokeRan) return;
+  shadow.runaMagicResistOwnerSmokeRan = true;
+  createSimulationCoreRunaMagicResistResolution({
+    source: 'simulationCore.startup.runaMagicResistOwner',
+    targetIsRuna: 1,
+    incomingDamage: 10,
+    triggerRoll: 0.1,
+    nullifyRoll: 0.35,
+    jsFinalDamage: 2,
+    jsModeCode: 3,
+  });
+}
+
 function runRoundPointerAdvanceOwnerStartupCheck(shadow) {
   if (!shadow || shadow.roundPointerAdvanceOwnerSmokeRan) return;
   shadow.roundPointerAdvanceOwnerSmokeRan = true;
@@ -735,6 +766,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_TURN_PHASE_ASSIGNMENT_OWNER__ = createSimulationCoreTurnPhaseAssignmentResolution;
     window.__ORKA_ENEMY_SKILL_CHOICE_OWNER__ = createSimulationCoreEnemySkillChoiceResolution;
     window.__ORKA_ENEMY_TARGET_OWNER__ = createSimulationCoreEnemyTargetResolution;
+    window.__ORKA_RUNA_MAGIC_RESIST_OWNER__ = createSimulationCoreRunaMagicResistResolution;
     window.__ORKA_TURN_ORDER_GROUP_OWNER__ = createSimulationCoreTurnOrderGroupProjection;
     window.__ORKA_ROUND_POINTER_ADVANCE_OWNER__ = createSimulationCoreRoundPointerAdvanceResolution;
     window.__ORKA_SEEDED_RNG_SHADOW__ = shadowSeededRng;
@@ -768,6 +800,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
         runTurnPhaseAssignmentOwnerStartupCheck(shadow);
         runEnemySkillChoiceOwnerStartupCheck(shadow);
         runEnemyTargetOwnerStartupCheck(shadow);
+        runRunaMagicResistOwnerStartupCheck(shadow);
         runTurnOrderGroupOwnerStartupCheck(shadow);
         runRoundPointerAdvanceOwnerStartupCheck(shadow);
       }
@@ -1701,6 +1734,77 @@ export function createSimulationCorePartyDamageResolution({
     heroHp: rustHeroHp,
     partyHp: rustPartyHp,
   };
+}
+
+export function createSimulationCoreRunaMagicResistResolution({
+  source = 'unknown',
+  targetIsRuna = 0,
+  incomingDamage = 0,
+  triggerRoll = 0,
+  nullifyRoll = 0,
+  jsFinalDamage = 0,
+  jsModeCode = 0,
+} = {}, { exportsOverride = null } = {}) {
+  const shadow = getShadowState();
+  const normalized = {
+    source,
+    targetIsRuna: Number(targetIsRuna || 0) === 1 ? 1 : 0,
+    incomingDamage: Number(incomingDamage || 0),
+    triggerRoll: Number(triggerRoll || 0),
+    nullifyRoll: Number(nullifyRoll || 0),
+    jsFinalDamage: Number(jsFinalDamage || 0),
+    jsModeCode: Number(jsModeCode || 0),
+  };
+  const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+  if (!hasRunaMagicResistExports(exports)) {
+    shadow.runaMagicResistOwnerChecks = Number(shadow.runaMagicResistOwnerChecks || 0) + 1;
+    shadow.lastRunaMagicResistOwnerCheck = {
+      ...normalized,
+      owner: 'fallback',
+      finalDamage: normalized.jsFinalDamage,
+      modeCode: normalized.jsModeCode,
+    };
+    updateShadowDomMarker(shadow);
+    return {
+      owner: 'fallback',
+      finalDamage: normalized.jsFinalDamage,
+      modeCode: normalized.jsModeCode,
+    };
+  }
+
+  const finalDamage = Number(exports.runa_magic_resist_final_damage_shadow(
+    normalized.targetIsRuna,
+    normalized.incomingDamage,
+    normalized.triggerRoll,
+    normalized.nullifyRoll,
+  ));
+  const modeCode = Number(exports.runa_magic_resist_mode_code_shadow(
+    normalized.targetIsRuna,
+    normalized.incomingDamage,
+    normalized.triggerRoll,
+    normalized.nullifyRoll,
+  ));
+
+  shadow.runaMagicResistOwnerChecks = Number(shadow.runaMagicResistOwnerChecks || 0) + 1;
+  shadow.lastRunaMagicResistOwnerCheck = {
+    ...normalized,
+    owner: 'rust',
+    finalDamage,
+    modeCode,
+  };
+  if (
+    !exportsOverride
+    && (
+      Math.abs(finalDamage - normalized.jsFinalDamage) > 0.000001
+      || Math.abs(modeCode - normalized.jsModeCode) > 0.000001
+    )
+  ) {
+    shadow.mismatches.push(shadow.lastRunaMagicResistOwnerCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastRunaMagicResistOwnerCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return { owner: 'rust', finalDamage, modeCode };
 }
 
 export function createSimulationCoreTurnSummaryResolution({
