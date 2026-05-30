@@ -1,2 +1,1 @@
-Scripts/functionBank.js:__MODULE__,resolveProcessTurnActorEligibility,partyAlive
-web-runner/modules/functionBank.js:__MODULE__,resolveProcessTurnActorEligibility,partyAlive
+web-runner/app.js:getDevAutoplayProgressSig,requestCombatFailureExit,rosterHoldKeptDeferredAdvance

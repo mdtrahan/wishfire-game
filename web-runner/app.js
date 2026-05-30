@@ -6231,6 +6231,50 @@ function getStoryCardLiveLineState() {
         : null,
     });
   }
+  function getDevAutoplayProgressSig() {
+    return JSON.stringify({
+      energy: Math.max(0, Number(state.globals.Player_Energy || 0)),
+      turn: Number(state.globals.DebugTurnCount || 0),
+      phase: Number(state.globals.TurnPhase || 0),
+      canPick: Number(state.globals.CanPickGems || 0),
+      busy: Number(state.globals.IsPlayerBusy || 0),
+      boardFill: Number(state.globals.BoardFillActive || 0),
+      pending: String(state.globals.PendingSkillID || ''),
+      skillDraughtOpen: Number(state.globals.SkillDraughtOpen || 0),
+      gems: Array.isArray(gameState.gems) ? gameState.gems.length : 0,
+      current: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0),
+    });
+  }
+  function requestCombatFailureExit(reason = 'party_defeated') {
+    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
+      ? layoutState.getActiveLayoutId()
+      : null;
+    if (
+      activeLayoutId !== 'combat' ||
+      state.globals.GamePhase !== 'RUNTIME' ||
+      gameState.combatFailExitRequested
+    ) {
+      return false;
+    }
+    const normalizedReason = String(reason || '');
+    const layoutReason = normalizedReason === 'energy_depleted' || normalizedReason === 'combat-energy-depleted'
+      ? 'combat-energy-depleted'
+      : 'combat-party-defeated';
+    gameState.combatFailExitRequested = true;
+    state.globals.CanPickGems = 0;
+    state.globals.IsPlayerBusy = 1;
+    state.globals.ActionInProgress = 0;
+    state.globals.DeferAdvance = 0;
+    gameState.substate = 'Neutral';
+    gameState.isTurnResolving = false;
+    gameState.isSpikeProcessing = false;
+    gameState.areEffectsAnimating = false;
+    layoutState.requestLayoutChange('storyMock', layoutReason).catch((err) => {
+      gameState.combatFailExitRequested = false;
+      console.error('[LAYOUT_PHASE1] combat fail gate layout transition failed', err);
+    });
+    return true;
+  }
   async function runDevAutoplayUntilDepleted() {
     const startedAt = Number(state.globals.time || 0);
     let matchesPlayed = 0;
@@ -6255,20 +6299,10 @@ function getStoryCardLiveLineState() {
       const outcome = resolveDevAutoplayCombatOutcome({ energy, partyHp, livingHeroes: aliveHeroes });
       if (outcome.reason) {
         setDevAutoplayState({ active: false, stopRequested: false, lastReason: outcome.reason, matchesPlayed, endedAt: Number(state.globals.time || 0) });
+        requestCombatFailureExit(outcome.reason);
         return getDevAutoplayState();
       }
-      const progressSig = JSON.stringify({
-        energy,
-        turn: Number(state.globals.DebugTurnCount || 0),
-        phase: Number(state.globals.TurnPhase || 0),
-        canPick: Number(state.globals.CanPickGems || 0),
-        busy: Number(state.globals.IsPlayerBusy || 0),
-        boardFill: Number(state.globals.BoardFillActive || 0),
-        pending: String(state.globals.PendingSkillID || ''),
-        skillDraughtOpen: Number(state.globals.SkillDraughtOpen || 0),
-        gems: Array.isArray(gameState.gems) ? gameState.gems.length : 0,
-        current: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0),
-      });
+      const progressSig = getDevAutoplayProgressSig();
       if (progressSig !== lastProgressSig) {
         lastProgressSig = progressSig;
         lastProgressAt = performance.now();
@@ -6284,13 +6318,14 @@ function getStoryCardLiveLineState() {
       if (isIdleAutoplayHeroWindow()) {
         const superGemPick = pickIdleAutoplaySuperGem(gameState.superGems, getIdleAutoplayPriorityContext());
         if (superGemPick) {
+          const beforeSuperGemProgressSig = getDevAutoplayProgressSig();
           const played = clickGemCell(Number(superGemPick.row || 0), Number(superGemPick.col || 0));
-          if (played) {
+          await devSleep(90);
+          if (played && getDevAutoplayProgressSig() !== beforeSuperGemProgressSig) {
             matchesPlayed += 1;
             setDevAutoplayState({ active: true, stopRequested: false, lastReason: 'running', matchesPlayed, startedAt, endedAt: 0 });
+            continue;
           }
-          await devSleep(90);
-          continue;
         }
         const pick = pickIdleAutoplayTriplet(gameState.gems, getIdleAutoplayPriorityContext());
         if (!pick) {
@@ -7539,13 +7574,7 @@ function getStoryCardLiveLineState() {
       const partyHp = Number(state.globals.PartyHP || 0);
       const noLivingHeroes = state.entities.filter((entity) => entity && entity.kind === 'hero' && (entity.hp ?? 0) > 0).length <= 0;
       if (energy < 0 || partyHp <= 0 || noLivingHeroes) {
-        gameState.combatFailExitRequested = true;
-        state.globals.CanPickGems = 0;
-        state.globals.IsPlayerBusy = 1;
-        layoutState.requestLayoutChange('storyMock', energy < 0 ? 'combat-energy-depleted' : 'combat-party-defeated').catch((err) => {
-          gameState.combatFailExitRequested = false;
-          console.error('[LAYOUT_PHASE1] combat fail gate layout transition failed', err);
-        });
+        requestCombatFailureExit(energy < 0 ? 'energy_depleted' : 'party_defeated');
       }
     }
     const currentTurnUID = callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0;

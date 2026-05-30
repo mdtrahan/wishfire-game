@@ -84,4 +84,6 @@ test('dev idle autoplay runtime delegates priority through the core module', () 
   assert.match(src, /hasLivingEnemiesForIdleAutoplay\(\)/);
   assert.match(src, /pickIdleAutoplayTriplet\(gameState\.gems, getIdleAutoplayPriorityContext\(\)\)/);
   assert.match(src, /pickIdleAutoplaySuperGem\(gameState\.superGems, getIdleAutoplayPriorityContext\(\)\)/);
+  assert.match(src, /const beforeSuperGemProgressSig = getDevAutoplayProgressSig\(\);/);
+  assert.match(src, /played && getDevAutoplayProgressSig\(\) !== beforeSuperGemProgressSig/);
 });
