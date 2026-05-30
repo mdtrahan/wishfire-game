@@ -34,6 +34,7 @@ import {
 import { resolveRoundPointerAdvance } from '../src/core/roundPointerAdvanceRules.mjs';
 import { resolveTurnPhaseAssignment } from '../src/core/turnPhaseAssignmentRules.mjs';
 import { resolveTurnOrderGroupProjection } from '../src/core/turnOrderGroupRules.mjs';
+import { resolveEnemySkillChoice } from '../src/core/enemySkillChoiceRules.mjs';
 import { sanitizeInitiativeQueue, shouldAutoCorrectImproperRepeat } from '../src/core/initiativeGuards.mjs';
 import { pickEnemyTargetHeroFromRoster } from '../src/core/enemyTargetingRules.mjs';
 import { getEnemyRosterStability } from '../src/core/enemyRosterStability.mjs';
@@ -7134,68 +7135,39 @@ function normalizeEnemyBoardLineSkillDecision(ctx, enemy, decision) {
 export function PickEnemySkill(ctx, enemyUID) {
   const enemy = GetActorByUID(ctx, enemyUID);
   if (!enemy) return 'Enemy_ATK_Single';
-  if (String(enemy.name || '') === 'Chimerilass') {
-    const hp = Number(enemy.hp || 0);
-    const maxHP = Math.max(1, Number(enemy.maxHP || hp || 1));
-    const belowHalfHP = hp <= Math.floor(maxHP * 0.5);
-    if (!belowHalfHP) {
-      const roll = Math.random();
-      const decision = resolveEnemySkillDecision(enemy, roll);
-      if (
-        decision.selected === 'Enemy_Heal_Self' ||
-        decision.selected === 'Enemy_Heal_Ally' ||
-        decision.selected === 'Enemy_Heal_Allies' ||
-        decision.selected === 'Enemy_Wipe'
-      ) {
-        const forced = {
-          roll,
-          selected: 'Enemy_MAG_Single',
-          branch: 'cmh_over_50_no_heal',
-          enemyName: String(enemy.name || ''),
-        };
-        traceEnemySkillDecision(ctx, enemyUID, forced);
-        return forced.selected;
-      }
-      traceEnemySkillDecision(ctx, enemyUID, decision);
-      return decision.selected;
-    }
-    if (belowHalfHP) {
-      const damagedAllies = getEnemies(ctx).filter((ally) =>
-        ally &&
-        ally.uid !== enemy.uid &&
-        (ally.hp || 0) > 0 &&
-        (ally.maxHP || ally.hp || 0) > (ally.hp || 0),
-      );
-      const canGroupHeal = damagedAllies.length > 1;
-      const canAllyHeal = damagedAllies.length > 0;
-      const canSelfHeal = hp < maxHP;
-      const weighted = [];
-      if (canGroupHeal) weighted.push({ skillId: 'Enemy_Heal_Allies', weight: 20 });
-      if (canAllyHeal) weighted.push({ skillId: 'Enemy_Heal_Ally', weight: 15 });
-      if (canSelfHeal) weighted.push({ skillId: 'Enemy_Heal_Self', weight: 65 });
-      if (weighted.length) {
-        const total = weighted.reduce((sum, row) => sum + Number(row.weight || 0), 0);
-        let pick = Math.random() * total;
-        let selected = weighted[weighted.length - 1];
-        for (const row of weighted) {
-          pick -= row.weight;
-          if (pick <= 0) {
-            selected = row;
-            break;
-          }
-        }
-        traceEnemySkillDecision(ctx, enemyUID, {
-          roll: -1,
-          selected: selected.skillId,
-          branch: 'cmh_under_50_forced_heal',
-          enemyName: String(enemy.name || ''),
-        });
-        return selected.skillId;
-      }
-    }
-  }
-  const roll = Math.random();
-  const decision = normalizeEnemyBoardLineSkillDecision(ctx, enemy, resolveEnemySkillDecision(enemy, roll));
+  const hp = Number(enemy.hp || 0);
+  const maxHP = Math.max(1, Number(enemy.maxHP || hp || 1));
+  const damagedAlliesCount = getEnemies(ctx).filter((ally) =>
+    ally &&
+    ally.uid !== enemy.uid &&
+    (ally.hp || 0) > 0 &&
+    (ally.maxHP || ally.hp || 0) > (ally.hp || 0),
+  ).length;
+  const shouldUseHealRoll = String(enemy.name || '') === 'Chimerilass'
+    && hp <= Math.floor(maxHP * 0.5)
+    && (damagedAlliesCount > 0 || hp < maxHP);
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const decision = resolveEnemySkillChoice({
+    enemyName: String(enemy.name || ''),
+    hp,
+    maxHP,
+    damagedAlliesCount,
+    boardReady: isBoardFullyPopulatedForEnemyMutation(ctx) ? 1 : 0,
+    roll: shouldUseHealRoll ? -1 : Math.random(),
+    healRoll: shouldUseHealRoll ? Math.random() : 0,
+    ownerHook: root && typeof root.__ORKA_ENEMY_SKILL_CHOICE_OWNER__ === 'function'
+      ? root.__ORKA_ENEMY_SKILL_CHOICE_OWNER__
+      : null,
+  });
+  const g = getGlobals(ctx);
+  g.LastEnemySkillChoiceOwner = {
+    owner: String(decision.owner || 'fallback'),
+    enemyName: String(enemy.name || ''),
+    selected: String(decision.selected || 'Enemy_ATK_Single'),
+    branch: String(decision.branch || 'fallback'),
+    jsSelected: String(decision.jsDecision?.selected || decision.selected || 'Enemy_ATK_Single'),
+    jsBranch: String(decision.jsDecision?.branch || decision.branch || 'fallback'),
+  };
   traceEnemySkillDecision(ctx, enemyUID, decision);
   return decision.selected;
 }

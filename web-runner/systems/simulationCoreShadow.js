@@ -22,6 +22,7 @@ function getShadowState() {
       combatOutcomeOwnerChecks: 0,
       turnActorEligibilityOwnerChecks: 0,
       turnPhaseAssignmentOwnerChecks: 0,
+      enemySkillChoiceOwnerChecks: 0,
       turnOrderGroupOwnerChecks: 0,
       roundPointerAdvanceOwnerChecks: 0,
       seededRngChecks: 0,
@@ -39,6 +40,7 @@ function getShadowState() {
       combatOutcomeOwnerSmokeRan: false,
       turnActorEligibilityOwnerSmokeRan: false,
       turnPhaseAssignmentOwnerSmokeRan: false,
+      enemySkillChoiceOwnerSmokeRan: false,
       turnOrderGroupOwnerSmokeRan: false,
       roundPointerAdvanceOwnerSmokeRan: false,
     };
@@ -63,6 +65,7 @@ function getShadowState() {
       combatOutcomeOwnerChecks: 0,
       turnActorEligibilityOwnerChecks: 0,
       turnPhaseAssignmentOwnerChecks: 0,
+      enemySkillChoiceOwnerChecks: 0,
       turnOrderGroupOwnerChecks: 0,
       roundPointerAdvanceOwnerChecks: 0,
       seededRngChecks: 0,
@@ -80,6 +83,7 @@ function getShadowState() {
       combatOutcomeOwnerSmokeRan: false,
       turnActorEligibilityOwnerSmokeRan: false,
       turnPhaseAssignmentOwnerSmokeRan: false,
+      enemySkillChoiceOwnerSmokeRan: false,
       turnOrderGroupOwnerSmokeRan: false,
       roundPointerAdvanceOwnerSmokeRan: false,
       lastCheck: null,
@@ -99,6 +103,7 @@ function getShadowState() {
       lastCombatOutcomeOwnerCheck: null,
       lastTurnActorEligibilityOwnerCheck: null,
       lastTurnPhaseAssignmentOwnerCheck: null,
+      lastEnemySkillChoiceOwnerCheck: null,
       lastTurnOrderGroupOwnerCheck: null,
       lastRoundPointerAdvanceOwnerCheck: null,
       lastSeededRngCheck: null,
@@ -202,6 +207,12 @@ function updateShadowDomMarker(shadow) {
   document.documentElement.dataset.simCoreShadowTurnPhaseAssignmentOwner = String(
     shadow?.lastTurnPhaseAssignmentOwnerCheck?.owner || '',
   );
+  document.documentElement.dataset.simCoreShadowEnemySkillChoiceOwnerChecks = String(
+    Number(shadow?.enemySkillChoiceOwnerChecks || 0),
+  );
+  document.documentElement.dataset.simCoreShadowEnemySkillChoiceOwner = String(
+    shadow?.lastEnemySkillChoiceOwnerCheck?.owner || '',
+  );
   document.documentElement.dataset.simCoreShadowTurnOrderGroupOwnerChecks = String(
     Number(shadow?.turnOrderGroupOwnerChecks || 0),
   );
@@ -302,6 +313,11 @@ function hasTurnPhaseAssignmentExports(exports) {
   return typeof exports?.turn_phase_from_type_shadow === 'function';
 }
 
+function hasEnemySkillChoiceExports(exports) {
+  return typeof exports?.enemy_skill_choice_selected_code_shadow === 'function'
+    && typeof exports?.enemy_skill_choice_branch_code_shadow === 'function';
+}
+
 function hasTurnOrderGroupExports(exports) {
   return typeof exports?.turn_order_actor_in_phase_shadow === 'function'
     && typeof exports?.turn_order_phase_type_shadow === 'function'
@@ -337,6 +353,7 @@ function hasRequiredExports(exports) {
     && hasCombatOutcomeExports(exports)
     && hasTurnActorEligibilityExports(exports)
     && hasTurnPhaseAssignmentExports(exports)
+    && hasEnemySkillChoiceExports(exports)
     && hasTurnOrderGroupExports(exports)
     && hasRoundPointerAdvanceExports(exports);
 }
@@ -592,6 +609,23 @@ function runTurnPhaseAssignmentOwnerStartupCheck(shadow) {
   });
 }
 
+function runEnemySkillChoiceOwnerStartupCheck(shadow) {
+  if (!shadow || shadow.enemySkillChoiceOwnerSmokeRan) return;
+  shadow.enemySkillChoiceOwnerSmokeRan = true;
+  createSimulationCoreEnemySkillChoiceResolution({
+    source: 'simulationCore.startup.enemySkillChoiceOwner',
+    enemyKindCode: 1,
+    hp: 20,
+    maxHP: 20,
+    damagedAlliesCount: 0,
+    boardReady: 1,
+    roll: 0.1,
+    healRoll: 0,
+    jsSelectedCode: 1,
+    jsBranchCode: 1,
+  });
+}
+
 function runTurnOrderGroupOwnerStartupCheck(shadow) {
   if (!shadow || shadow.turnOrderGroupOwnerSmokeRan) return;
   shadow.turnOrderGroupOwnerSmokeRan = true;
@@ -662,6 +696,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
     window.__ORKA_COMBAT_OUTCOME_OWNER__ = createSimulationCoreCombatOutcomeResolution;
     window.__ORKA_TURN_ACTOR_ELIGIBILITY_OWNER__ = createSimulationCoreTurnActorEligibilityResolution;
     window.__ORKA_TURN_PHASE_ASSIGNMENT_OWNER__ = createSimulationCoreTurnPhaseAssignmentResolution;
+    window.__ORKA_ENEMY_SKILL_CHOICE_OWNER__ = createSimulationCoreEnemySkillChoiceResolution;
     window.__ORKA_TURN_ORDER_GROUP_OWNER__ = createSimulationCoreTurnOrderGroupProjection;
     window.__ORKA_ROUND_POINTER_ADVANCE_OWNER__ = createSimulationCoreRoundPointerAdvanceResolution;
     window.__ORKA_SEEDED_RNG_SHADOW__ = shadowSeededRng;
@@ -693,6 +728,7 @@ export function initializeSimulationCoreShadow({ wasmUrl = DEFAULT_WASM_URL } = 
         runCombatOutcomeOwnerStartupCheck(shadow);
         runTurnActorEligibilityOwnerStartupCheck(shadow);
         runTurnPhaseAssignmentOwnerStartupCheck(shadow);
+        runEnemySkillChoiceOwnerStartupCheck(shadow);
         runTurnOrderGroupOwnerStartupCheck(shadow);
         runRoundPointerAdvanceOwnerStartupCheck(shadow);
       }
@@ -929,6 +965,89 @@ export function createSimulationCoreTurnPhaseAssignmentResolution({
   }
   updateShadowDomMarker(shadow);
   return { owner: 'rust', turnPhase };
+}
+
+export function createSimulationCoreEnemySkillChoiceResolution({
+  source = 'unknown',
+  enemyKindCode = 0,
+  hp = 0,
+  maxHP = 1,
+  damagedAlliesCount = 0,
+  boardReady = 1,
+  roll = 0,
+  healRoll = 0,
+  jsSelectedCode = 0,
+  jsBranchCode = 0,
+} = {}, {
+  exportsOverride = null,
+} = {}) {
+  const shadow = getShadowState();
+  const hpValue = Number(hp || 0);
+  const maxValue = Math.max(1, Number(maxHP || hpValue || 1));
+  const normalized = {
+    source,
+    enemyKindCode: Math.max(0, Math.trunc(Number(enemyKindCode || 0))),
+    hp: hpValue,
+    maxHP: maxValue,
+    damagedAlliesCount: Math.max(0, Math.trunc(Number(damagedAlliesCount || 0))),
+    boardReady: Number(boardReady || 0) === 1 ? 1 : 0,
+    roll: Number(roll || 0),
+    healRoll: Number(healRoll || 0),
+    jsSelectedCode: Number(jsSelectedCode || 0),
+    jsBranchCode: Number(jsBranchCode || 0),
+  };
+  const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
+  if (!hasEnemySkillChoiceExports(exports)) {
+    shadow.enemySkillChoiceOwnerChecks = Number(shadow.enemySkillChoiceOwnerChecks || 0) + 1;
+    shadow.lastEnemySkillChoiceOwnerCheck = {
+      ...normalized,
+      owner: 'fallback',
+      selectedCode: normalized.jsSelectedCode,
+      branchCode: normalized.jsBranchCode,
+    };
+    updateShadowDomMarker(shadow);
+    return {
+      owner: 'fallback',
+      selectedCode: normalized.jsSelectedCode,
+      branchCode: normalized.jsBranchCode,
+    };
+  }
+
+  const selectedCode = Number(exports.enemy_skill_choice_selected_code_shadow(
+    normalized.enemyKindCode,
+    normalized.hp,
+    normalized.maxHP,
+    normalized.damagedAlliesCount,
+    normalized.boardReady,
+    normalized.roll,
+    normalized.healRoll,
+  ));
+  const branchCode = Number(exports.enemy_skill_choice_branch_code_shadow(
+    normalized.enemyKindCode,
+    normalized.hp,
+    normalized.maxHP,
+    normalized.damagedAlliesCount,
+    normalized.boardReady,
+    normalized.roll,
+    normalized.healRoll,
+  ));
+  shadow.enemySkillChoiceOwnerChecks = Number(shadow.enemySkillChoiceOwnerChecks || 0) + 1;
+  shadow.lastEnemySkillChoiceOwnerCheck = {
+    ...normalized,
+    owner: 'rust',
+    selectedCode,
+    branchCode,
+  };
+  if (
+    !exportsOverride
+    && (selectedCode !== normalized.jsSelectedCode || branchCode !== normalized.jsBranchCode)
+  ) {
+    shadow.mismatches.push(shadow.lastEnemySkillChoiceOwnerCheck);
+    if (shadow.mismatches.length > 20) shadow.mismatches.shift();
+    console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastEnemySkillChoiceOwnerCheck);
+  }
+  updateShadowDomMarker(shadow);
+  return { owner: 'rust', selectedCode, branchCode };
 }
 
 function normalizeTurnOrderGroupPhaseType(value = 0) {

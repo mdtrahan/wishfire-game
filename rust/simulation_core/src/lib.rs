@@ -122,6 +122,199 @@ pub fn turn_phase_from_type(turn_type: f64) -> f64 {
     }
 }
 
+fn enemy_kind_code(value: f64) -> f64 {
+    match number_or_zero(value).floor() as i32 {
+        1 => 1.0,
+        2 => 2.0,
+        3 => 3.0,
+        _ => 0.0,
+    }
+}
+
+fn clamp_roll(value: f64) -> f64 {
+    number_or_zero(value).clamp(0.0, 0.999_999_999)
+}
+
+fn enemy_skill_base_choice(kind_code: f64, hp: f64, max_hp: f64, roll: f64) -> (f64, f64) {
+    let hp_value = number_or_zero(hp);
+    let max_value = number_or_zero(max_hp);
+    let is_damaged = hp_value < max_value;
+    let roll_value = clamp_roll(roll);
+    match enemy_kind_code(kind_code) {
+        1.0 => {
+            if roll_value < 0.30 {
+                (1.0, 1.0)
+            } else if roll_value < 0.85 {
+                (2.0, 2.0)
+            } else {
+                (0.0, 0.0)
+            }
+        }
+        2.0 => {
+            if roll_value < 0.25 {
+                (3.0, 1.0)
+            } else if roll_value < 0.65 {
+                (2.0, 2.0)
+            } else {
+                (0.0, 0.0)
+            }
+        }
+        3.0 => {
+            if is_damaged && roll_value < 0.20 {
+                (4.0, 1.0)
+            } else if is_damaged && roll_value < 0.49 {
+                (5.0, 2.0)
+            } else {
+                (0.0, 0.0)
+            }
+        }
+        _ => (0.0, 0.0),
+    }
+}
+
+fn enemy_regular_skill_code(kind_code: f64) -> f64 {
+    match enemy_kind_code(kind_code) {
+        1.0 | 2.0 => 2.0,
+        3.0 => 5.0,
+        _ => 0.0,
+    }
+}
+
+fn enemy_skill_apply_board_fallback(
+    kind_code: f64,
+    board_ready: f64,
+    selected_code: f64,
+    branch_code: f64,
+) -> (f64, f64) {
+    if number_or_zero(board_ready) == 1.0 {
+        return (selected_code, branch_code);
+    }
+    if selected_code != 1.0 && selected_code != 3.0 {
+        return (selected_code, branch_code);
+    }
+    let blocked_branch = if branch_code == 1.0 { 5.0 } else { 6.0 };
+    (enemy_regular_skill_code(kind_code), blocked_branch)
+}
+
+fn enemy_skill_chimerilass_heal_choice(
+    hp: f64,
+    max_hp: f64,
+    damaged_allies_count: f64,
+    heal_roll: f64,
+) -> Option<(f64, f64)> {
+    let damaged = positive_floor_or_zero(damaged_allies_count);
+    let mut weighted: [(f64, f64); 3] = [(0.0, 0.0); 3];
+    let mut count = 0usize;
+    if damaged > 1.0 {
+        weighted[count] = (7.0, 20.0);
+        count += 1;
+    }
+    if damaged > 0.0 {
+        weighted[count] = (6.0, 15.0);
+        count += 1;
+    }
+    if number_or_zero(hp) < number_or_zero(max_hp) {
+        weighted[count] = (5.0, 65.0);
+        count += 1;
+    }
+    if count == 0 {
+        return None;
+    }
+    let total: f64 = weighted[..count].iter().map(|(_, weight)| *weight).sum();
+    let mut pick = clamp_roll(heal_roll) * total;
+    let mut selected = weighted[count - 1].0;
+    for (skill_code, weight) in weighted[..count].iter() {
+        pick -= *weight;
+        if pick <= 0.0 {
+            selected = *skill_code;
+            break;
+        }
+    }
+    Some((selected, 4.0))
+}
+
+fn enemy_skill_choice_pair(
+    kind_code: f64,
+    hp: f64,
+    max_hp: f64,
+    damaged_allies_count: f64,
+    board_ready: f64,
+    roll: f64,
+    heal_roll: f64,
+) -> (f64, f64) {
+    let kind = enemy_kind_code(kind_code);
+    let hp_value = number_or_zero(hp);
+    let max_input = if max_hp.is_finite() {
+        max_hp
+    } else if hp_value != 0.0 {
+        hp_value
+    } else {
+        1.0
+    };
+    let max_value = max_input.max(1.0);
+    let below_half_hp = hp_value <= (max_value * 0.5).floor();
+
+    if kind == 3.0 {
+        if !below_half_hp {
+            let decision = enemy_skill_base_choice(kind, hp_value, max_value, roll);
+            if decision.0 == 5.0 || decision.0 == 6.0 || decision.0 == 7.0 || decision.0 == 4.0 {
+                return (2.0, 3.0);
+            }
+            return decision;
+        }
+        if let Some(decision) =
+            enemy_skill_chimerilass_heal_choice(hp_value, max_value, damaged_allies_count, heal_roll)
+        {
+            return decision;
+        }
+    }
+
+    let decision = enemy_skill_base_choice(kind, hp_value, max_value, roll);
+    enemy_skill_apply_board_fallback(kind, board_ready, decision.0, decision.1)
+}
+
+pub fn enemy_skill_choice_selected_code(
+    kind_code: f64,
+    hp: f64,
+    max_hp: f64,
+    damaged_allies_count: f64,
+    board_ready: f64,
+    roll: f64,
+    heal_roll: f64,
+) -> f64 {
+    enemy_skill_choice_pair(
+        kind_code,
+        hp,
+        max_hp,
+        damaged_allies_count,
+        board_ready,
+        roll,
+        heal_roll,
+    )
+    .0
+}
+
+pub fn enemy_skill_choice_branch_code(
+    kind_code: f64,
+    hp: f64,
+    max_hp: f64,
+    damaged_allies_count: f64,
+    board_ready: f64,
+    roll: f64,
+    heal_roll: f64,
+) -> f64 {
+    enemy_skill_choice_pair(
+        kind_code,
+        hp,
+        max_hp,
+        damaged_allies_count,
+        board_ready,
+        roll,
+        heal_roll,
+    )
+    .1
+}
+
 pub fn turn_order_actor_in_phase(
     actor_type: f64,
     phase_type: f64,
@@ -361,6 +554,48 @@ pub extern "C" fn turn_actor_eligibility_code_shadow(
 #[no_mangle]
 pub extern "C" fn turn_phase_from_type_shadow(turn_type: f64) -> f64 {
     turn_phase_from_type(turn_type)
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_skill_choice_selected_code_shadow(
+    kind_code: f64,
+    hp: f64,
+    max_hp: f64,
+    damaged_allies_count: f64,
+    board_ready: f64,
+    roll: f64,
+    heal_roll: f64,
+) -> f64 {
+    enemy_skill_choice_selected_code(
+        kind_code,
+        hp,
+        max_hp,
+        damaged_allies_count,
+        board_ready,
+        roll,
+        heal_roll,
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn enemy_skill_choice_branch_code_shadow(
+    kind_code: f64,
+    hp: f64,
+    max_hp: f64,
+    damaged_allies_count: f64,
+    board_ready: f64,
+    roll: f64,
+    heal_roll: f64,
+) -> f64 {
+    enemy_skill_choice_branch_code(
+        kind_code,
+        hp,
+        max_hp,
+        damaged_allies_count,
+        board_ready,
+        roll,
+        heal_roll,
+    )
 }
 
 #[no_mangle]
@@ -1845,6 +2080,60 @@ mod single_hit_resolution_tests {
 
         for (turn_type, expected_phase) in cases {
             assert_eq!(turn_phase_from_type(turn_type), expected_phase);
+        }
+    }
+
+    #[test]
+    fn mirrors_current_enemy_skill_choice_cases() {
+        let cases = [
+            // kind, hp, max, damaged_allies, board_ready, roll, heal_roll, selected, branch
+            (0.0, 10.0, 20.0, 0.0, 1.0, 0.1, 0.0, 0.0, 0.0),
+            (1.0, 20.0, 20.0, 0.0, 1.0, 0.1, 0.0, 1.0, 1.0),
+            (1.0, 20.0, 20.0, 0.0, 1.0, 0.5, 0.0, 2.0, 2.0),
+            (1.0, 20.0, 20.0, 0.0, 1.0, 0.9, 0.0, 0.0, 0.0),
+            (2.0, 20.0, 20.0, 0.0, 0.0, 0.1, 0.0, 2.0, 5.0),
+            (3.0, 80.0, 100.0, 0.0, 1.0, 0.1, 0.0, 2.0, 3.0),
+            (3.0, 40.0, 100.0, 2.0, 1.0, -1.0, 0.1, 7.0, 4.0),
+            (3.0, 40.0, 100.0, 1.0, 1.0, -1.0, 0.1, 6.0, 4.0),
+            (3.0, 40.0, 100.0, 0.0, 1.0, -1.0, 0.1, 5.0, 4.0),
+        ];
+
+        for (
+            kind,
+            hp,
+            max_hp,
+            damaged_allies,
+            board_ready,
+            roll,
+            heal_roll,
+            expected_selected,
+            expected_branch,
+        ) in cases
+        {
+            assert_eq!(
+                enemy_skill_choice_selected_code(
+                    kind,
+                    hp,
+                    max_hp,
+                    damaged_allies,
+                    board_ready,
+                    roll,
+                    heal_roll,
+                ),
+                expected_selected
+            );
+            assert_eq!(
+                enemy_skill_choice_branch_code(
+                    kind,
+                    hp,
+                    max_hp,
+                    damaged_allies,
+                    board_ready,
+                    roll,
+                    heal_roll,
+                ),
+                expected_branch
+            );
         }
     }
 

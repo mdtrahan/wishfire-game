@@ -1,0 +1,10 @@
+name,enemyName,hp,maxHP,damagedAlliesCount,boardReady,roll,healRoll,expectedSelected,expectedBranch
+unknown_fallback,Unknown,10,20,0,1,0.10,0,Enemy_ATK_Single,fallback
+djinn_special,Djinn,20,20,0,1,0.10,0,Enemy_Scathe,special
+djinn_regular,Djinn,20,20,0,1,0.50,0,Enemy_MAG_Single,regular
+djinn_fallback,Djinn,20,20,0,1,0.90,0,Enemy_ATK_Single,fallback
+marid_special_board_blocked,Marid,20,20,0,0,0.10,0,Enemy_MAG_Single,special_blocked_incomplete_board
+chimerilass_over_half_guard,Chimerilass,80,100,0,1,0.10,0,Enemy_MAG_Single,cmh_over_50_no_heal
+chimerilass_under_half_group,Chimerilass,40,100,2,1,-1,0.10,Enemy_Heal_Allies,cmh_under_50_forced_heal
+chimerilass_under_half_ally,Chimerilass,40,100,1,1,-1,0.10,Enemy_Heal_Ally,cmh_under_50_forced_heal
+chimerilass_under_half_self,Chimerilass,40,100,0,1,-1,0.10,Enemy_Heal_Self,cmh_under_50_forced_heal
