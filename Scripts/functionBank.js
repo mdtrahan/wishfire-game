@@ -39,7 +39,8 @@ import {
   pickEnemyTargetHeroFromRoster,
   resolveEnemyTargetHero,
 } from '../src/core/enemyTargetingRules.mjs';
-import { resolveRunaMagicResist } from '../src/core/runaMagicResistRules.mjs';
+import { calculateDamageFromJs as importedCalculateDamageFromJs } from '../src/core/calculateDamageRules.mjs';
+import { resolveRunaMagicResist as importedResolveRunaMagicResist } from '../src/core/runaMagicResistRules.mjs';
 import { getEnemyRosterStability } from '../src/core/enemyRosterStability.mjs';
 const POWER_AMP_OUTCOMES = [
   { key: 'HERO_2X', multiplier: 2, chance: 0.62 },
@@ -3773,6 +3774,52 @@ export function ApplyScaledCrit({
   };
 }
 
+function calculateDamageFromJsFallback({
+  power = 0,
+  resist = 0,
+  roll01 = 0.5,
+  critRoll01 = 0.5,
+  sourceIsHero = 0,
+  heroAoe = 0,
+  chainActive = 0,
+  chainMultiplier = 1,
+} = {}) {
+  const powerValue = Number(power || 0);
+  const resistValue = Number(resist || 0);
+  const isHero = Number(sourceIsHero || 0) === 1;
+  const roll = 0.8 + Number(roll01 || 0) * 0.4;
+  const rawDamage = isHero && Number(heroAoe || 0) !== 1
+    ? (powerValue - (resistValue * 0.35)) * roll
+    : (powerValue - resistValue / 2) * roll;
+  const baseDamage = Math.max(1, Math.ceil(rawDamage));
+  const crit = ApplyScaledCrit({
+    baseValue: baseDamage,
+    relevantBuffTotal: powerValue,
+    sourceType: isHero ? 'HERO' : 'ENEMY',
+    rngRoll: critRoll01,
+  });
+  const postCritDamage = Math.max(1, Math.ceil(crit.value));
+  const multiplier = Number(chainMultiplier || 1);
+  const damage = isHero && Number(chainActive || 0) === 1
+    ? Math.max(1, Math.ceil(postCritDamage * multiplier))
+    : postCritDamage;
+  return {
+    damage,
+    baseDamage,
+    postCritDamage,
+    didCrit: crit.didCrit,
+    critMultiplier: crit.critMultiplier,
+    roll,
+  };
+}
+
+function resolveCalculateDamageFromJs(payload) {
+  if (typeof importedCalculateDamageFromJs === 'function') {
+    return importedCalculateDamageFromJs(payload);
+  }
+  return calculateDamageFromJsFallback(payload);
+}
+
 function recordSingleHitDamageShadow(ctx, payload) {
   const g = getGlobals(ctx);
   g.LastSingleHitDamageShadow = {
@@ -4253,6 +4300,41 @@ function maybeResolveEnemyDebuffApplyOwner(ctx, payload = {}) {
   }
 }
 
+function maybeResolveCalculateDamageOwner(ctx, payload) {
+  const g = getGlobals(ctx);
+  const root = typeof globalThis !== 'undefined' ? globalThis : null;
+  const calculateDamageOwnerHook = root && typeof root.__ORKA_CALCULATE_DAMAGE_OWNER__ === 'function'
+    ? root.__ORKA_CALCULATE_DAMAGE_OWNER__
+    : null;
+  if (typeof calculateDamageOwnerHook !== 'function') return null;
+  try {
+    const result = calculateDamageOwnerHook(payload);
+    const damage = Number(result?.damage);
+    if (!Number.isFinite(damage)) return null;
+    g.LastCalculateDamageOwner = {
+      owner: String(result?.owner || 'rust'),
+      source: String(payload.source || 'functionBank.CalculateDamage'),
+      attackerUID: Number(payload.attackerUID || 0),
+      targetUID: Number(payload.targetUID || 0),
+      mode: String(payload.mode || ''),
+      power: Number(payload.power || 0),
+      resist: Number(payload.resist || 0),
+      roll01: Number(payload.roll01 || 0),
+      critRoll01: Number(payload.critRoll01 || 0),
+      sourceIsHero: Number(payload.sourceIsHero || 0),
+      heroAoe: Number(payload.heroAoe || 0),
+      chainActive: Number(payload.chainActive || 0),
+      chainMultiplier: Number(payload.chainMultiplier || 1),
+      jsDamage: Number(payload.jsDamage || 0),
+      damage,
+    };
+    return g.LastCalculateDamageOwner;
+  } catch (err) {
+    g.LastCalculateDamageOwnerError = String(err?.message || err || 'unknown');
+    return null;
+  }
+}
+
 export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
   const g = getGlobals(ctx);
   const atk = GetActorByUID(ctx, attackerUID);
@@ -4269,35 +4351,42 @@ export function CalculateDamage(ctx, attackerUID, targetUID, mode) {
     ? (isHeroDefender ? GetEffectiveStat(ctx, tgt, 'RES') : GetEffectiveStat(ctx, tgt, 'RES'))
     : (isHeroDefender ? GetEffectiveStat(ctx, tgt, 'DEF') : GetEffectiveStat(ctx, tgt, 'DEF'));
   const roll01 = random01(ctx);
-  const roll = 0.8 + roll01 * 0.4;
-  let dmg = 0;
-  if (isHeroAttacker) {
-    if (g.IsAOEMatch === 1) {
-      dmg = Math.ceil((power - resist / 2) * roll);
-    } else {
-      dmg = Math.ceil((power - (resist * 0.35)) * roll);
-    }
-  } else {
-    dmg = Math.ceil((power - resist / 2) * roll);
-  }
-  dmg = Math.max(1, dmg);
-  const baseDmg = dmg;
   const critRoll01 = random01(ctx);
-  const crit = ApplyScaledCrit({
-    baseValue: dmg,
-    relevantBuffTotal: isMagic ? power : power,
-    sourceType: isHeroAttacker ? 'HERO' : 'ENEMY',
-    rngRoll: critRoll01,
-  });
-  dmg = Math.max(1, Math.ceil(crit.value));
-  let chainApplied = false;
   const chainActive = isHeroAttacker && g.ApplyChainToNextDamage === 1;
   const chainMultiplier = Number(g.ChainMultiplier || 1);
+  const jsDecision = resolveCalculateDamageFromJs({
+    power,
+    resist,
+    roll01,
+    critRoll01,
+    sourceIsHero: isHeroAttacker ? 1 : 0,
+    heroAoe: g.IsAOEMatch === 1 ? 1 : 0,
+    chainActive: chainActive ? 1 : 0,
+    chainMultiplier,
+  });
+  const baseDmg = Number(jsDecision.baseDamage || 0);
+  let dmg = Number(jsDecision.damage || 0);
+  let chainApplied = false;
   if (chainActive) {
-    dmg = Math.ceil(dmg * chainMultiplier);
     g.ApplyChainToNextDamage = 0;
     chainApplied = true;
   }
+  const owner = maybeResolveCalculateDamageOwner(ctx, {
+    source: 'functionBank.CalculateDamage',
+    attackerUID,
+    targetUID,
+    mode,
+    power,
+    resist,
+    roll01,
+    critRoll01,
+    sourceIsHero: isHeroAttacker ? 1 : 0,
+    heroAoe: g.IsAOEMatch === 1 ? 1 : 0,
+    chainActive: chainActive ? 1 : 0,
+    chainMultiplier,
+    jsDamage: Number(jsDecision.damage || 0),
+  });
+  if (owner) dmg = Number(owner.damage || 0);
   recordSingleHitDamageShadow(ctx, {
     attackerUID,
     targetUID,
@@ -4827,6 +4916,71 @@ const RUNA_MAGIC_RESIST_TRIGGER_CHANCE = 0.6;
 const RUNA_MAGIC_RESIST_NULLIFY_CHANCE = 0.35;
 const RUNA_MAGIC_RESIST_REDUCE_FACTOR = 0.2;
 
+function resolveRunaMagicResistFallback({
+  targetIsRuna = 0,
+  incomingDamage = 0,
+  rollSource = Math.random,
+  ownerHook = null,
+} = {}) {
+  const baseDamage = Math.max(0, Number(incomingDamage) || 0);
+  const jsDecision = (() => {
+    if (Number(targetIsRuna || 0) !== 1) {
+      return { owner: 'fallback', mode: 'not_runa', modeCode: 0, finalDamage: baseDamage, incomingDamage: baseDamage };
+    }
+    const triggerRoll = Number(typeof rollSource === 'function' ? rollSource() : 0);
+    if (triggerRoll >= RUNA_MAGIC_RESIST_TRIGGER_CHANCE) {
+      return { owner: 'fallback', mode: 'no_proc', modeCode: 1, finalDamage: baseDamage, incomingDamage: baseDamage, triggerRoll };
+    }
+    const nullifyRoll = Number(typeof rollSource === 'function' ? rollSource() : 0);
+    const nullified = nullifyRoll < RUNA_MAGIC_RESIST_NULLIFY_CHANCE;
+    const mode = nullified ? 'nullify' : 'heavy_resist';
+    return {
+      owner: 'fallback',
+      mode,
+      modeCode: nullified ? 2 : 3,
+      finalDamage: nullified ? 0 : Math.max(1, Math.floor(baseDamage * RUNA_MAGIC_RESIST_REDUCE_FACTOR)),
+      incomingDamage: baseDamage,
+      triggerRoll,
+      nullifyRoll,
+    };
+  })();
+  if (typeof ownerHook === 'function') {
+    try {
+      const result = ownerHook({
+        targetIsRuna: Number(targetIsRuna || 0) === 1 ? 1 : 0,
+        incomingDamage: jsDecision.incomingDamage,
+        triggerRoll: Number(jsDecision.triggerRoll || 0),
+        nullifyRoll: Number(jsDecision.nullifyRoll || 0),
+        jsFinalDamage: jsDecision.finalDamage,
+        jsModeCode: jsDecision.modeCode,
+      });
+      const finalDamage = Number(result?.finalDamage);
+      const modeCode = Number(result?.modeCode);
+      const modes = ['not_runa', 'no_proc', 'nullify', 'heavy_resist'];
+      if (Number.isFinite(finalDamage) && Number.isFinite(modeCode)) {
+        return {
+          owner: String(result?.owner || 'rust'),
+          mode: modes[Math.max(0, Math.trunc(modeCode))] || 'not_runa',
+          modeCode,
+          finalDamage,
+          incomingDamage: jsDecision.incomingDamage,
+          triggerRoll: jsDecision.triggerRoll,
+          nullifyRoll: jsDecision.nullifyRoll,
+          jsDecision,
+        };
+      }
+    } catch {}
+  }
+  return { ...jsDecision, jsDecision };
+}
+
+function resolveRunaMagicResistCompat(payload) {
+  if (typeof importedResolveRunaMagicResist === 'function') {
+    return importedResolveRunaMagicResist(payload);
+  }
+  return resolveRunaMagicResistFallback(payload);
+}
+
 function pickEnemyTargetHero(ctx, enemyUID = 0) {
   const g = getGlobals(ctx);
   const enemy = GetActorByUID(ctx, enemyUID);
@@ -4849,7 +5003,7 @@ function applyRunaMagicResist(ctx, enemyUID, targetHeroUID, incomingDamage, skil
   const baseDamage = Math.max(0, Number(incomingDamage) || 0);
   const target = GetActorByUID(ctx, targetHeroUID);
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
-  const decision = resolveRunaMagicResist({
+  const decision = resolveRunaMagicResistCompat({
     targetIsRuna: target && String(target?.name || '') === RUNA_MAGIC_RESIST_NAME ? 1 : 0,
     incomingDamage: baseDamage,
     rollSource: Math.random,
