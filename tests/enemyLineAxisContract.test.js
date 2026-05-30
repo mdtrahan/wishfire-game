@@ -51,6 +51,7 @@ function buildLineClearFns(src) {
     'setSelectedGemIndices',
     'getActorNameByUID',
     'LogCombat',
+    'randomIndex',
     `${harnessStoreSrc[0]}
      const getEnemyBoardPressureSkillHarness = ${getHarnessSrc};
      const clearRandomGemLine = ${clearRandomGemLineSrc};
@@ -63,7 +64,12 @@ function buildLineClearFns(src) {
 }
 
 function makeSandbox() {
-  const ctx = { globals: {}, gems: [] };
+  const ctx = {
+    globals: {
+      RuntimeRandom: () => 0.4,
+    },
+    gems: [],
+  };
   const baseGems = [
     { uid: 1, cellC: 0, cellR: 0 },
     { uid: 2, cellC: 1, cellR: 0 },
@@ -85,58 +91,53 @@ for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBa
     const src = read(relPath);
     const sandbox = makeSandbox();
     const factory = buildLineClearFns(src);
-    const originals = { random: Math.random };
-    try {
-      const { Enemy_Scathe, Enemy_Sweep } = factory(
-        (ctx) => ctx.globals,
-        (ctx) => ctx.gems,
-        (ctx, gems) => { ctx.gems = gems; },
-        () => {},
-        (_ctx, uid) => (uid === 100 ? 'Djinn' : 'Marid'),
-        (ctx, msg) => ctx.logs.push(String(msg)),
-      );
+    const { Enemy_Scathe, Enemy_Sweep } = factory(
+      (ctx) => ctx.globals,
+      (ctx) => ctx.gems,
+      (ctx, gems) => { ctx.gems = gems; },
+      () => {},
+      (_ctx, uid) => (uid === 100 ? 'Djinn' : 'Marid'),
+      (ctx, msg) => ctx.logs.push(String(msg)),
+      (ctx, size) => Math.floor(Number(ctx.globals.RuntimeRandom()) * size),
+    );
 
-      Math.random = () => 0.4; // choose middle occupied line on 3x3 board
-      const scatheResult = Enemy_Scathe(sandbox, 100);
-      assert.equal(scatheResult, 1);
-      assert.deepEqual(
-        sandbox.gems.map((gem) => [gem.cellC, gem.cellR]),
-        [
-          [0, 0], [2, 0],
-          [0, 1], [2, 1],
-          [0, 2], [2, 2],
-        ],
-      );
-      assert.equal(sandbox.globals.EnemyLineClearPressureActive, 1);
-      assert.equal(sandbox.logs[0], 'Djinn used Scathe and removed 3 gems from a column.');
+    const scatheResult = Enemy_Scathe(sandbox, 100);
+    assert.equal(scatheResult, 1);
+    assert.deepEqual(
+      sandbox.gems.map((gem) => [gem.cellC, gem.cellR]),
+      [
+        [0, 0], [2, 0],
+        [0, 1], [2, 1],
+        [0, 2], [2, 2],
+      ],
+    );
+    assert.equal(sandbox.globals.EnemyLineClearPressureActive, 1);
+    assert.equal(sandbox.logs[0], 'Djinn used Scathe and removed 3 gems from a column.');
 
-      sandbox.gems = [
-        { uid: 1, cellC: 0, cellR: 0 },
-        { uid: 2, cellC: 1, cellR: 0 },
-        { uid: 3, cellC: 2, cellR: 0 },
-        { uid: 4, cellC: 0, cellR: 1 },
-        { uid: 5, cellC: 1, cellR: 1 },
-        { uid: 6, cellC: 2, cellR: 1 },
-        { uid: 7, cellC: 0, cellR: 2 },
-        { uid: 8, cellC: 1, cellR: 2 },
-        { uid: 9, cellC: 2, cellR: 2 },
-      ];
-      sandbox.logs.length = 0;
-      delete sandbox.globals.EnemyLineClearPressureActive;
+    sandbox.gems = [
+      { uid: 1, cellC: 0, cellR: 0 },
+      { uid: 2, cellC: 1, cellR: 0 },
+      { uid: 3, cellC: 2, cellR: 0 },
+      { uid: 4, cellC: 0, cellR: 1 },
+      { uid: 5, cellC: 1, cellR: 1 },
+      { uid: 6, cellC: 2, cellR: 1 },
+      { uid: 7, cellC: 0, cellR: 2 },
+      { uid: 8, cellC: 1, cellR: 2 },
+      { uid: 9, cellC: 2, cellR: 2 },
+    ];
+    sandbox.logs.length = 0;
+    delete sandbox.globals.EnemyLineClearPressureActive;
 
-      const sweepResult = Enemy_Sweep(sandbox, 101);
-      assert.equal(sweepResult, 1);
-      assert.deepEqual(
-        sandbox.gems.map((gem) => [gem.cellC, gem.cellR]),
-        [
-          [0, 0], [1, 0], [2, 0],
-          [0, 2], [1, 2], [2, 2],
-        ],
-      );
-      assert.equal(sandbox.globals.EnemyLineClearPressureActive, 1);
-      assert.equal(sandbox.logs[0], 'Marid used Sweep and removed 3 gems from a row.');
-    } finally {
-      Math.random = originals.random;
-    }
+    const sweepResult = Enemy_Sweep(sandbox, 101);
+    assert.equal(sweepResult, 1);
+    assert.deepEqual(
+      sandbox.gems.map((gem) => [gem.cellC, gem.cellR]),
+      [
+        [0, 0], [1, 0], [2, 0],
+        [0, 2], [1, 2], [2, 2],
+      ],
+    );
+    assert.equal(sandbox.globals.EnemyLineClearPressureActive, 1);
+    assert.equal(sandbox.logs[0], 'Marid used Sweep and removed 3 gems from a row.');
   });
 }

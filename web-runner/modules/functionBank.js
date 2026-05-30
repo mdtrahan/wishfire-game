@@ -649,9 +649,9 @@ function rollEnemyHealAmount(ctx, healer, {
   const base = Math.max(1, Math.floor(magTotal * 0.5));
   const low = Math.max(lowFloor, base + lowOffset);
   const high = Math.max(low, base + highOffset);
-  const rangeRoll = Math.random();
+  const rangeRoll = random01(ctx);
   const rolledBase = low + Math.floor(rangeRoll * (high - low + 1));
-  const critRoll = Math.random();
+  const critRoll = random01(ctx);
   const crit = ApplyScaledCrit({
     baseValue: rolledBase,
     relevantBuffTotal: magTotal,
@@ -5023,7 +5023,7 @@ function applyRunaMagicResist(ctx, enemyUID, targetHeroUID, incomingDamage, skil
   const decision = resolveRunaMagicResistCompat({
     targetIsRuna: target && String(target?.name || '') === RUNA_MAGIC_RESIST_NAME ? 1 : 0,
     incomingDamage: baseDamage,
-    rollSource: Math.random,
+    rollSource: getRandomSource(ctx),
     ownerHook: root && typeof root.__ORKA_RUNA_MAGIC_RESIST_OWNER__ === 'function'
       ? root.__ORKA_RUNA_MAGIC_RESIST_OWNER__
       : null,
@@ -5953,7 +5953,7 @@ export function Enemy_Heal_Ally(ctx, enemyUID, targetEnemyUID = 0) {
   }
   let target = targetEnemyUID ? GetActorByUID(ctx, targetEnemyUID) : null;
   if (!target || target.kind !== 'enemy' || target.uid === healer.uid || (target.hp || 0) <= 0) {
-    target = randomPick(candidates);
+    target = randomPick(ctx, candidates);
   }
   if (!target) {
     Enemy_Heal_Self(ctx, enemyUID);
@@ -6019,7 +6019,7 @@ function buildWaveRespawnPlan(ctx, desiredSlots = 3) {
   if (isSoloCommander) {
     const commanders = pool.filter((row) => String(row?.enemyRole || row?.role || '').trim().toLowerCase() === 'commander');
     const soloPool = commanders.length ? commanders : pool;
-    const pick = soloPool[Math.floor(Math.random() * soloPool.length)];
+    const pick = soloPool[randomIndex(ctx, soloPool.length)];
     return [{ slotIndex: 1, row: pick }];
   }
 
@@ -6028,12 +6028,12 @@ function buildWaveRespawnPlan(ctx, desiredSlots = 3) {
   const remaining = [...pool];
   while (selected.length < targetCount) {
     if (remaining.length > 0) {
-      const idx = Math.floor(Math.random() * remaining.length);
+      const idx = randomIndex(ctx, remaining.length);
       selected.push(remaining[idx]);
       remaining.splice(idx, 1);
       continue;
     }
-    selected.push(pool[Math.floor(Math.random() * pool.length)]);
+    selected.push(pool[randomIndex(ctx, pool.length)]);
   }
   const getCP = (row) => Number(row?.CombatPower || row?.combatPower || 0);
   let strongestIdx = 0;
@@ -6042,7 +6042,7 @@ function buildWaveRespawnPlan(ctx, desiredSlots = 3) {
   }
   const strongest = selected[strongestIdx];
   const sideRows = selected.filter((_, idx) => idx !== strongestIdx);
-  if (sideRows.length > 1 && Math.random() < 0.5) sideRows.reverse();
+  if (sideRows.length > 1 && random01(ctx) < 0.5) sideRows.reverse();
 
   const plan = [{ slotIndex: 1, row: strongest }];
   if (sideRows[0]) plan.push({ slotIndex: 0, row: sideRows[0] });
@@ -7420,7 +7420,7 @@ export function ResolveEnemyAction(ctx, enemyUID) {
       if (canSelfHeal) weighted.push({ skillId: 'Enemy_Heal_Self', weight: 65 });
       const total = weighted.reduce((sum, row) => sum + Number(row.weight || 0), 0);
       if (total > 0) {
-        let pick = Math.random() * total;
+        let pick = random01(ctx) * total;
         let selected = weighted[weighted.length - 1];
         for (const row of weighted) {
           pick -= row.weight;
@@ -7429,18 +7429,18 @@ export function ResolveEnemyAction(ctx, enemyUID) {
             break;
           }
         }
-        const allyTarget = (selected.skillId === 'Enemy_Heal_Ally') ? randomPick(damagedAllies) : null;
+        const allyTarget = (selected.skillId === 'Enemy_Heal_Ally') ? randomPick(ctx, damagedAllies) : null;
         ExecuteEnemySkill(ctx, enemyUID, selected.skillId, allyTarget ? allyTarget.uid : 0);
         handled = 1;
       }
     }
     if (handled) return handled;
-    if (damagedAllies.length > 1 && Math.random() < 0.16) {
+    if (damagedAllies.length > 1 && random01(ctx) < 0.16) {
       ExecuteEnemySkill(ctx, enemyUID, 'Enemy_Heal_Allies');
       handled = 1;
     }
-    if (!handled && damagedAllies.length > 0 && Math.random() < 0.10) {
-      const target = randomPick(damagedAllies);
+    if (!handled && damagedAllies.length > 0 && random01(ctx) < 0.10) {
+      const target = randomPick(ctx, damagedAllies);
       ExecuteEnemySkill(ctx, enemyUID, 'Enemy_Heal_Ally', target ? target.uid : 0);
       handled = 1;
     }
@@ -7832,8 +7832,8 @@ export function PickEnemySkill(ctx, enemyUID) {
     maxHP,
     damagedAlliesCount,
     boardReady: isBoardFullyPopulatedForEnemyMutation(ctx) ? 1 : 0,
-    roll: shouldUseHealRoll ? -1 : Math.random(),
-    healRoll: shouldUseHealRoll ? Math.random() : 0,
+    roll: shouldUseHealRoll ? -1 : random01(ctx),
+    healRoll: shouldUseHealRoll ? random01(ctx) : 0,
     ownerHook: root && typeof root.__ORKA_ENEMY_SKILL_CHOICE_OWNER__ === 'function'
       ? root.__ORKA_ENEMY_SKILL_CHOICE_OWNER__
       : null,
@@ -7897,7 +7897,7 @@ function clearRandomGemLine(ctx, axis) {
       .filter((value) => Number.isInteger(value) && value >= 0)
   ));
   if (!occupiedIndices.length) return { cleared: 0, lineIndex: -1 };
-  const lineIndex = occupiedIndices[Math.floor(Math.random() * occupiedIndices.length)];
+  const lineIndex = occupiedIndices[randomIndex(ctx, occupiedIndices.length)];
   const nextGems = [];
   let consumed = 0;
   for (const gem of gems) {
