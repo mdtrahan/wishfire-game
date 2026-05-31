@@ -10,12 +10,17 @@ export function normalizeCombatTurnTransientState(current = {}) {
     ActionActorUID: Number(current.ActionActorUID || 0),
     PendingSkillID: String(current.PendingSkillID || ''),
     PendingActor: Number(current.PendingActor || 0),
+    PendingSuperGemAction: current.PendingSuperGemAction || null,
     EnemyLineClearPressureActive: Number(current.EnemyLineClearPressureActive || 0),
   };
 }
 
 export function normalizeTurnGateState(current = {}) {
   return normalizeCombatTurnTransientState(current);
+}
+
+export function isCanPickGemsReady(value) {
+  return Number(value) === 1;
 }
 
 export function derivePresentationTurnBarrier({
@@ -98,6 +103,7 @@ export function createEnemyTurnGateBaseline(current = {}) {
     ActionActorUID: 0,
     PendingSkillID: '',
     PendingActor: 0,
+    PendingSuperGemAction: null,
   };
 }
 
@@ -115,6 +121,7 @@ export function createEnemyTurnRetryHold(current = {}, { currentTurnUID = 0 } = 
     ActionActorUID: 0,
     PendingSkillID: '',
     PendingActor: 0,
+    PendingSuperGemAction: null,
   };
 }
 
@@ -139,6 +146,7 @@ export function createEnemyRosterRefillHold(current = {}, {
     ActionActorUID: keepPendingSkill ? Number(base.ActionActorUID || 0) : 0,
     PendingSkillID: keepPendingSkill ? String(base.PendingSkillID || '') : '',
     PendingActor: keepPendingSkill ? Number(base.PendingActor || 0) : 0,
+    PendingSuperGemAction: keepPendingSkill ? base.PendingSuperGemAction || null : null,
   };
 }
 
@@ -156,6 +164,7 @@ export function createHeroTurnGateBaseline(current = {}) {
     ActionActorUID: 0,
     PendingSkillID: '',
     PendingActor: 0,
+    PendingSuperGemAction: null,
   };
 }
 
@@ -181,6 +190,7 @@ export function createCombatTurnRefreshBaseline(current = {}, {
     ActionActorUID: 0,
     PendingSkillID: '',
     PendingActor: 0,
+    PendingSuperGemAction: null,
     EnemyLineClearPressureActive: 0,
   };
 }
@@ -307,6 +317,7 @@ export function createEnemyTurnIdleRecovery(current = {}, { now = 0, currentTurn
     ActionActorUID: 0,
     PendingSkillID: '',
     PendingActor: 0,
+    PendingSuperGemAction: null,
   };
 }
 

@@ -18,6 +18,7 @@ import {
   createYellowSequenceCompletion,
   createYellowSequenceGate,
   createYellowSequenceSkip,
+  isCanPickGemsReady,
 } from './src/core/turnGateController.mjs';
 import {
   YELLOW_COLOR,
@@ -57,6 +58,7 @@ import {
   spendSuperGem,
   syncSuperGemShapes,
 } from './src/core/superGemBoardState.mjs';
+import { resolvePendingSuperGemHandoff } from './src/core/pendingSuperGemHandoff.mjs';
 import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
 import { deriveDamageFloatFrameOffset } from '../src/core/damageFloatVector.mjs';
 import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
@@ -214,6 +216,9 @@ const TURN_TRANSIENT_NUMERIC_KEYS = Object.freeze([
 const TURN_TRANSIENT_STRING_KEYS = Object.freeze([
   'PendingSkillID',
 ]);
+const TURN_TRANSIENT_OBJECT_KEYS = Object.freeze([
+  'PendingSuperGemAction',
+]);
 
 function applyTurnGateGlobals(next) {
   if (!next) return;
@@ -224,6 +229,10 @@ function applyTurnGateGlobals(next) {
   for (const key of TURN_TRANSIENT_STRING_KEYS) {
     if (!Object.prototype.hasOwnProperty.call(next, key)) continue;
     state.globals[key] = String(next[key] || '');
+  }
+  for (const key of TURN_TRANSIENT_OBJECT_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(next, key)) continue;
+    state.globals[key] = next[key] || null;
   }
 }
 
@@ -264,6 +273,21 @@ function logActionHandoffDebug(tag, payload = {}) {
     ...payload,
     snapshot: getActionHandoffSnapshot(),
   }, state);
+}
+
+function resolvePendingTargetHandoff({ actorUID, source }) {
+  return resolvePendingSuperGemHandoff({
+    globals: state.globals,
+    actorUID,
+    source,
+    executePendingSuperGemAction: () => superGemRuntime.executePendingSuperGemAction({
+      state,
+      callFunctionWithContext,
+      fnContext,
+    }),
+    executeSkill: (skillID, uid) => callFunctionWithContext(fnContext, 'ExecuteSkill', skillID, uid),
+    hideAttackUI: () => callFunctionWithContext(fnContext, 'HideAttackUI'),
+  });
 }
 
 function getEnemyRosterStabilitySnapshot() {
@@ -5917,7 +5941,7 @@ function getStoryCardLiveLineState() {
     while (performance.now() - start < timeoutMs) {
       const ready = (
         state.globals.BoardFillActive === 0 &&
-        state.globals.CanPickGems === true &&
+        isCanPickGemsReady(state.globals.CanPickGems) &&
         Array.isArray(gameState.gems) &&
         gameState.gems.length === 24
       );
@@ -6060,7 +6084,7 @@ function getStoryCardLiveLineState() {
       state.globals.GamePhase === 'RUNTIME' &&
       callFunctionWithContext(fnContext, 'GetCurrentType') === 0 &&
       state.globals.TurnPhase === 0 &&
-      state.globals.CanPickGems === true &&
+      isCanPickGemsReady(state.globals.CanPickGems) &&
       state.globals.IsPlayerBusy === 0 &&
       !state.globals.PendingSkillID &&
       !state.globals.BoardFillActive &&
@@ -6094,6 +6118,7 @@ function getStoryCardLiveLineState() {
     return {
       heroName: getCurrentIdleAutoplayHeroName(),
       hasLivingEnemies: hasLivingEnemiesForIdleAutoplay(),
+      forcedBoardColor: Number(state.globals.DevForcedBoardColor),
       partyHpRatio: resolveIdleAutoplayPartyHpRatio({
         partyHP: state.globals.PartyHP,
         partyMaxHP: state.globals.PartyMaxHP,
@@ -6131,32 +6156,28 @@ function getStoryCardLiveLineState() {
     if (String(state.globals.PendingSkillID || '') === 'HERO_SINGLE') {
       state.globals.SelectedEnemyUID = Number(livingEnemies[0].uid || 0);
     }
-    const resolvedPendingSuperGem = superGemRuntime.executePendingSuperGemAction({
-      state,
-      callFunctionWithContext,
-      fnContext,
+    const handoff = resolvePendingTargetHandoff({
+      actorUID,
+      source: 'dev-autoplay',
     });
-    let executeSkillResult = null;
-    if (!resolvedPendingSuperGem) {
-      executeSkillResult = callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
-    }
+    const {
+      resolvedPendingSuperGem,
+      executeSkillResult,
+      recoveredRejectedPendingSuperGem,
+    } = handoff;
     logActionHandoffDebug('[DEV_AUTOPLAY_RESOLVE]', {
       stage: 'after-action-attempt-before-clear',
       actorUID,
       resolvedPendingSuperGem,
       executeSkillResult,
+      recoveredRejectedPendingSuperGem,
     });
-    state.globals.PendingSkillID = '';
-    state.globals.PendingActor = 0;
-    state.globals.SelectedEnemyUID = 0;
-    callFunctionWithContext(fnContext, 'HideAttackUI');
-    state.globals.CanPickGems = false;
-    state.globals.IsPlayerBusy = 1;
     logActionHandoffDebug('[DEV_AUTOPLAY_RESOLVE]', {
       stage: 'after-clear',
       actorUID,
       resolvedPendingSuperGem,
       executeSkillResult,
+      recoveredRejectedPendingSuperGem,
     });
     return true;
   }
@@ -6846,7 +6867,7 @@ function getStoryCardLiveLineState() {
     });
     if (navHit) {
       const labelName = labelMap[navHit.inst.type] || '';
-      const navBlockedBySelection = gameState.selectedGems.length > 0 || gameState.selectionLocked || state.globals.CanPickGems === false;
+      const navBlockedBySelection = gameState.selectedGems.length > 0 || gameState.selectionLocked || !isCanPickGemsReady(state.globals.CanPickGems);
       if (labelName === 'AstralFlow' || labelName === 'Hero' || !navBlockedBySelection) {
         inputDomains.emit(
           layoutState.getActiveLayoutId(),
@@ -6883,7 +6904,7 @@ function getStoryCardLiveLineState() {
         return !best || distance < best.distance ? { ...slot, distance } : best;
       }, null);
       const labelName = navSlot ? navSlot.label : '';
-      const navBlockedBySelection = gameState.selectedGems.length > 0 || gameState.selectionLocked || state.globals.CanPickGems === false;
+      const navBlockedBySelection = gameState.selectedGems.length > 0 || gameState.selectionLocked || !isCanPickGemsReady(state.globals.CanPickGems);
       if (labelName && (labelName === 'AstralFlow' || labelName === 'Hero' || !navBlockedBySelection)) {
         inputDomains.emit(
           layoutState.getActiveLayoutId(),
@@ -6923,34 +6944,30 @@ function getStoryCardLiveLineState() {
           source: 'manual-button',
           actorUID,
         });
-        const resolvedPendingSuperGem = superGemRuntime.executePendingSuperGemAction({
-          state,
-          callFunctionWithContext,
-          fnContext,
+        const handoff = resolvePendingTargetHandoff({
+          actorUID,
+          source: 'manual-button',
         });
-        let executeSkillResult = null;
-        if (!resolvedPendingSuperGem) {
-          executeSkillResult = callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
-        }
+        const {
+          resolvedPendingSuperGem,
+          executeSkillResult,
+          recoveredRejectedPendingSuperGem,
+        } = handoff;
         logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
           stage: 'after-action-attempt-before-clear',
           source: 'manual-button',
           actorUID,
           resolvedPendingSuperGem,
           executeSkillResult,
+          recoveredRejectedPendingSuperGem,
         });
-        state.globals.PendingSkillID = '';
-        state.globals.PendingActor = 0;
-        state.globals.SelectedEnemyUID = 0;
-        callFunctionWithContext(fnContext, 'HideAttackUI');
-        state.globals.CanPickGems = false;
-        state.globals.IsPlayerBusy = 1;
         logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
           stage: 'after-clear',
           source: 'manual-button',
           actorUID,
           resolvedPendingSuperGem,
           executeSkillResult,
+          recoveredRejectedPendingSuperGem,
         });
         drawFrame();
         return;
@@ -6969,9 +6986,9 @@ function getStoryCardLiveLineState() {
         return;
       }
       const isHeroTurn = callFunctionWithContext(fnContext, 'IsHeroTurn') === true;
-      if (state.globals.CanPickGems === false || !isHeroTurn) {
+      if (!isCanPickGemsReady(state.globals.CanPickGems) || !isHeroTurn) {
         runtimeDebugLogging.gemDebugLog('[GEM_REJECT]', {
-          reason: state.globals.CanPickGems === false ? 'reject-gate-can-pick-false' : 'reject-gate-not-hero-turn',
+          reason: !isCanPickGemsReady(state.globals.CanPickGems) ? 'reject-gate-can-pick-false' : 'reject-gate-not-hero-turn',
           globals: {
             CanPickGems: state.globals.CanPickGems,
             IsPlayerBusy: state.globals.IsPlayerBusy,
@@ -7348,7 +7365,7 @@ function getStoryCardLiveLineState() {
       const noSpinActive = !(gameState.yellowCasino && gameState.yellowCasino.active);
       const boardFull = Array.isArray(gameState.gems) && gameState.gems.length === 24;
       const idlePhase = state.globals.TurnPhase === 0;
-      if (noRefillActive && noSpinActive && boardFull && idlePhase && state.globals.CanPickGems === false) {
+      if (noRefillActive && noSpinActive && boardFull && idlePhase && !isCanPickGemsReady(state.globals.CanPickGems)) {
         const sig = JSON.stringify({
           boardFull,
           TurnPhase: state.globals.TurnPhase,
@@ -7511,7 +7528,7 @@ function getStoryCardLiveLineState() {
       !state.globals.ActionInProgress &&
       !state.globals.IsPlayerBusy &&
       !state.globals.PendingSkillID &&
-      (state.globals.CanPickGems === true || !state.globals.DeferAdvance)
+      (isCanPickGemsReady(state.globals.CanPickGems) || !state.globals.DeferAdvance)
     ) {
       const currentEnemy = currentTurnUID
         ? callFunctionWithContext(fnContext, 'GetActorByUID', currentTurnUID)
@@ -7573,7 +7590,7 @@ function getStoryCardLiveLineState() {
       noRefillActive &&
       heroInputBarrier.canRestoreHeroInput &&
       enemyRosterStability.stable &&
-      (state.globals.CanPickGems !== true || state.globals.BoardFillActive !== 0)
+      (!isCanPickGemsReady(state.globals.CanPickGems) || state.globals.BoardFillActive !== 0)
     ) {
       state.globals.CanPickGems = true;
       state.globals.BoardFillActive = 0;

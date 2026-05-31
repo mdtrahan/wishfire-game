@@ -1,8 +1,46 @@
 const path = require('node:path');
+const fs = require('node:fs');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const idleAutoplayPriorityModule = path.join(__dirname, '..', 'web-runner', 'src', 'core', 'idleAutoplayPriority.mjs');
+
+function makeFullColorBoard(color) {
+  const gems = [];
+  const grid = Array.from({ length: 6 }, () => Array.from({ length: 4 }, () => 0));
+  let uid = 1;
+  for (let r = 0; r < 4; r += 1) {
+    for (let c = 0; c < 6; c += 1) {
+      gems.push({
+        uid,
+        cellR: r,
+        cellC: c,
+        color,
+        elementIndex: color,
+        x: 10 + c * 10,
+        y: 10 + r * 10,
+      });
+      grid[c][r] = uid;
+      uid += 1;
+    }
+  }
+  const superGem = {
+    id: `sg-${color}`,
+    type: 'uniform',
+    baseColor: color,
+    size: 2,
+    cells: [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 1, c: 0 }, { r: 1, c: 1 }],
+  };
+  return {
+    selectedHero: 0,
+    selectedGems: [],
+    selectionLocked: false,
+    superGems: [superGem],
+    superGemCellMap: new Map(superGem.cells.map((cell) => [`${cell.r},${cell.c}`, superGem.id])),
+    gems,
+    grid,
+  };
+}
 
 test('dev idle autoplay prefers attack supergems before resource and purple supergems', async () => {
   const { pickIdleAutoplaySuperGem } = await import(idleAutoplayPriorityModule);
@@ -245,4 +283,72 @@ test('supergem spend clears all matching-color gems and flies non-supergem match
     { x: 30, y: 40, color: 2 },
   ]);
   assert.equal(state.globals.LastSuperGemSpend.clearedGemCount, 6);
+});
+
+test('one-color full-board supergem spends accept numeric hero input readiness for every gem color', async () => {
+  const mod = await import('../web-runner/src/core/superGemBoardState.mjs');
+  for (const color of [0, 1, 2, 3, 4, 5]) {
+    const state = {
+      globals: {
+        GamePhase: 'RUNTIME',
+        Player_Energy: 10,
+        CanPickGems: 1,
+        PendingSkillID: '',
+        DeferAdvance: 0,
+        TurnPhase: 0,
+        time: 3,
+      },
+    };
+    const gameState = makeFullColorBoard(color);
+    let activated = 0;
+    let refillCalls = 0;
+    let mergeCalls = 0;
+    const spent = mod.spendSuperGem({
+      superGem: gameState.superGems[0],
+      gameState,
+      state,
+      reason: 'numeric-can-pick-contract',
+      callFunctionWithContext: (_ctx, name) => {
+        if (name === 'GetCurrentTurn') return 101;
+        if (name === 'GetActorByUID') return { uid: 101, kind: 'hero' };
+        return 0;
+      },
+      fnContext: {},
+      getHeroUIDByIndex: () => 101,
+      beginTask011ActionCycle: () => {},
+      startGemMergeFx: () => {
+        mergeCalls += 1;
+        gameState.gemMergeFx = { active: true };
+      },
+      getGoldLabelTargetWorld: () => null,
+      setGemArray: () => {},
+      startRefillBounce: () => { refillCalls += 1; },
+      activateSuperGemEffect: () => {
+        activated += 1;
+        return true;
+      },
+      superGemCost: 4,
+    });
+
+    assert.equal(spent, true, `color ${color} should spend with CanPickGems=1`);
+    assert.equal(activated, 1, `color ${color} should activate exactly once`);
+    assert.equal(refillCalls, 0, `color ${color} should defer refill while merge presentation is active`);
+    assert.equal(mergeCalls, 1, `color ${color} should merge non-footprint color gems into the supergem center`);
+    assert.equal(gameState.gems.length, 0, `color ${color} should clear the one-color board`);
+    assert.equal(state.globals.LastSuperGemSpend.clearedGemCount, 24);
+    assert.equal(state.globals.Player_Energy, color === 5 ? 9 : 6);
+    assert.equal(state.globals.LastSuperGemSpend.refillDeferred, true);
+  }
+});
+
+test('runtime input gates interpret CanPickGems numerically without changing presentation barriers', () => {
+  const appSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
+  const boardStateSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'superGemBoardState.mjs'), 'utf8');
+
+  assert.match(appSrc, /isCanPickGemsReady/);
+  assert.match(appSrc, /!isCanPickGemsReady\(state\.globals\.CanPickGems\) \|\| !isHeroTurn/);
+  assert.match(appSrc, /isCanPickGemsReady\(state\.globals\.CanPickGems\)/);
+  assert.match(boardStateSrc, /isCanPickGemsReady\(globals\.CanPickGems\)/);
+  assert.doesNotMatch(appSrc, /state\.globals\.CanPickGems === true/);
+  assert.doesNotMatch(boardStateSrc, /globals\.CanPickGems === true/);
 });

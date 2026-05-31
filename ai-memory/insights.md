@@ -370,6 +370,7 @@
 ## 2026-05-17 — QA Autoplay Must Not Spend Resource Turns As Combat Turns
 - When investigating turn-order failures through dev autoplay, separate scheduler ownership from the action chosen by the harness. A valid resource-only hero turn can look like a skipped hero if it has no console-visible combat line.
 - Combat QA autoplay should not spend non-combat resource-only picks while enemies are alive unless the tested hero turns that resource into combat pressure.
+- Dev-forced one-color boards are an exception for the autoplay harness only. If the dev panel forces a color, the harness must be allowed to spend that color so it can keep exercising the scheduler; normal autoplay priority and real player input should keep their combat-resource rules.
 
 ## 2026-05-26 — Presentation Lanes Need One Shared Barrier
 - Refill, gem merge/collection, yellow conversion, floating text, hero/enemy action, action locks, and pending hit packets are one presentation barrier. Turn advance, refill start, action claim, and input restore should ask that barrier instead of racing local boolean checks.
@@ -378,3 +379,11 @@
 ## 2026-05-26 — Pending Target Resolution Is Not A New Action Claim
 - A red/green target picker created by the current gem match must resolve before refill, even when the match already left empty board slots. `refill-pending` blocks new action claims, turn advance, input restore, and refill completion; it must not block the already-pending target button that will finish the current action.
 - For target-selection regressions, validate both normal match and pending supergem action shapes. `PendingSkillID` plus `TurnPhase === 1` or `PendingSuperGemAction` should be allowed through only when no real presentation lane is active and `DeferAdvance` is clear.
+
+## 2026-05-26 - Pending Supergem Handoffs Must Be Atomic
+- A rejected pending supergem action must clear `PendingSuperGemAction`, `PendingSkillID`, selected target state, UI attack prompts, busy flags, and deferred-advance ownership together. Leaving any one of those fields stale can trap the board between target selection and refill.
+- Resolve pending target clicks through one shared helper for manual and dev-autoplay paths. Otherwise QA-only selection helpers can recover from a modal state that the real player path cannot, or vice versa.
+
+## 2026-05-26 - Gem Input Gates Must Normalize Numeric Flags
+- `CanPickGems` is stored as both numeric and boolean-like values across runtime seams. Input and supergem spend gates should ask one shared readiness predicate instead of strict boolean comparisons, or one-color dev boards can look idle while supergem clicks are rejected.
+- Normalize only at input-readiness seams. Presentation barriers, pending action gates, and turn ownership must remain separate so failed supergem spends cannot fall through into normal gem selection.

@@ -63,7 +63,8 @@ function pushTier(tiers, colors) {
   if (unique.length) tiers.push(Object.freeze(unique));
 }
 
-function isExcludedIdleAutoplayColor(color, { heroName = '', hasLivingEnemies = false } = {}) {
+function isExcludedIdleAutoplayColor(color, { heroName = '', hasLivingEnemies = false, forcedBoardColor = null } = {}) {
+  if (normalizeColor(forcedBoardColor) === color) return false;
   return color === COLOR_GOLD && !!hasLivingEnemies && normalizeHeroName(heroName) !== 'huun';
 }
 
