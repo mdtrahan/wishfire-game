@@ -52,6 +52,14 @@ import {
 import { createSingleHitSimulationPacket } from '../src/core/singleHitRules.mjs';
 import { createPartyDamageSimulationPacket } from '../src/core/partyDamageRules.mjs';
 import { createEffectiveStatSimulationPacket } from '../src/core/effectiveStatRules.mjs';
+import {
+  createEnemyDebuffApplySimulationPacket,
+  createEnemyDebuffDecaySimulationPacket,
+  createEnemyDebuffSlotSimulationPacket,
+  createEnemyDotLifecycleSimulationPacket,
+  createEnemyDotPacketSimulationPacket,
+  createEnemyDotTickSimulationPacket,
+} from '../src/core/statusEffectRules.mjs';
 import { resolveGemAction as importedResolveGemAction } from '../src/core/gemActionRules.mjs';
 import {
   resolveRunaMagicResist as importedResolveRunaMagicResist,
@@ -4146,7 +4154,10 @@ function maybeResolveEnemyDotTickOwner(ctx, payload = {}) {
     jsNextFireTurnSerial: Number(payload.jsNextFireTurnSerial || 0),
   };
   try {
-    const result = enemyDotTickOwnerHook(snapshot);
+    const result = createEnemyDotTickSimulationPacket({
+      ...snapshot,
+      ownerHook: enemyDotTickOwnerHook,
+    });
     const damage = Number(result?.damage);
     const totalDamageRemaining = Number(result?.totalDamageRemaining);
     const remainingFires = Number(result?.remainingFires);
@@ -4165,6 +4176,12 @@ function maybeResolveEnemyDotTickOwner(ctx, payload = {}) {
       totalDamageRemaining,
       remainingFires,
       nextFireTurnSerial,
+    };
+    g.LastEnemyDotTickPacket = {
+      owner: String(result?.owner || 'rust'),
+      result: String(result?.simulationCoreResponse?.result || ''),
+      actionType: String(result?.simulationCoreRequest?.action?.type || ''),
+      source: snapshot.source,
     };
     return g.LastEnemyDotTickOwner;
   } catch (err) {
@@ -4211,12 +4228,21 @@ function maybeResolveEnemyDotLifecycleOwner(ctx, payload = {}) {
     jsAction: Number(payload.jsAction || 0),
   };
   try {
-    const result = enemyDotLifecycleOwnerHook(snapshot);
+    const result = createEnemyDotLifecycleSimulationPacket({
+      ...snapshot,
+      ownerHook: enemyDotLifecycleOwnerHook,
+    });
     const action = Number(result?.action);
     if (!Number.isFinite(action)) return null;
     g.LastEnemyDotLifecycleOwner = {
       owner: String(result?.owner || 'rust'),
       action,
+    };
+    g.LastEnemyDotLifecyclePacket = {
+      owner: String(result?.owner || 'rust'),
+      result: String(result?.simulationCoreResponse?.result || ''),
+      actionType: String(result?.simulationCoreRequest?.action?.type || ''),
+      source: snapshot.source,
     };
     return g.LastEnemyDotLifecycleOwner;
   } catch (err) {
@@ -4262,7 +4288,10 @@ function maybeResolveEnemyDotPacketOwner(ctx, payload = {}) {
     jsLastProcessedTurnSerial: Number(payload.jsLastProcessedTurnSerial || 0),
   };
   try {
-    const result = enemyDotPacketOwnerHook(snapshot);
+    const result = createEnemyDotPacketSimulationPacket({
+      ...snapshot,
+      ownerHook: enemyDotPacketOwnerHook,
+    });
     const packet = {
       targetUID: Number(result?.targetUID),
       sourceUID: Number(result?.sourceUID),
@@ -4283,6 +4312,12 @@ function maybeResolveEnemyDotPacketOwner(ctx, payload = {}) {
     g.LastEnemyDotPacketOwner = {
       owner: String(result?.owner || 'rust'),
       ...packet,
+    };
+    g.LastEnemyDotApplicationPacket = {
+      owner: String(result?.owner || 'rust'),
+      result: String(result?.simulationCoreResponse?.result || ''),
+      actionType: String(result?.simulationCoreRequest?.action?.type || ''),
+      source: snapshot.source,
     };
     return g.LastEnemyDotPacketOwner;
   } catch (err) {
@@ -4308,7 +4343,10 @@ function maybeResolveEnemyDebuffDecayOwner(ctx, payload = {}) {
     jsActive: Number(payload.jsActive || 0) > 0 ? 1 : 0,
   };
   try {
-    const result = enemyDebuffDecayOwnerHook(snapshot);
+    const result = createEnemyDebuffDecaySimulationPacket({
+      ...snapshot,
+      ownerHook: enemyDebuffDecayOwnerHook,
+    });
     const amountAfter = sanitizeDebuffValue(result?.amountAfter);
     const turnsAfter = sanitizeDebuffValue(result?.turnsAfter);
     const active = Number(result?.active || 0) > 0 ? 1 : 0;
@@ -4320,6 +4358,12 @@ function maybeResolveEnemyDebuffDecayOwner(ctx, payload = {}) {
       amountAfter,
       turnsAfter,
       active,
+    };
+    g.LastEnemyDebuffDecayPacket = {
+      owner: String(result?.owner || 'rust'),
+      result: String(result?.simulationCoreResponse?.result || ''),
+      actionType: String(result?.simulationCoreRequest?.action?.type || ''),
+      source: snapshot.source,
     };
     return g.LastEnemyDebuffDecayOwner;
   } catch (err) {
@@ -4347,7 +4391,10 @@ function maybeResolveEnemyDebuffApplyOwner(ctx, payload = {}) {
     jsActive: Number(payload.jsActive || 0) > 0 ? 1 : 0,
   };
   try {
-    const result = enemyDebuffApplyOwnerHook(snapshot);
+    const result = createEnemyDebuffApplySimulationPacket({
+      ...snapshot,
+      ownerHook: enemyDebuffApplyOwnerHook,
+    });
     const amountAfter = sanitizeDebuffValue(result?.amountAfter);
     const turnsAfter = sanitizeDebuffValue(result?.turnsAfter);
     const active = Number(result?.active || 0) > 0 ? 1 : 0;
@@ -4361,6 +4408,12 @@ function maybeResolveEnemyDebuffApplyOwner(ctx, payload = {}) {
       amountAfter,
       turnsAfter,
       active,
+    };
+    g.LastEnemyDebuffApplyPacket = {
+      owner: String(result?.owner || 'rust'),
+      result: String(result?.simulationCoreResponse?.result || ''),
+      actionType: String(result?.simulationCoreRequest?.action?.type || ''),
+      source: snapshot.source,
     };
     return g.LastEnemyDebuffApplyOwner;
   } catch (err) {
@@ -5295,7 +5348,10 @@ function maybeResolveEnemyDebuffSlotOwner(ctx, payload = {}) {
     jsAppendSlotIndex: normalizeEnemyDebuffSlotIndex(payload.jsAppendSlotIndex),
   };
   try {
-    const result = enemyDebuffSlotOwnerHook(snapshot);
+    const result = createEnemyDebuffSlotSimulationPacket({
+      ...snapshot,
+      ownerHook: enemyDebuffSlotOwnerHook,
+    });
     const action = normalizeEnemyDebuffSlotAction(result?.action);
     const dropSlotIndex = normalizeEnemyDebuffSlotIndex(result?.dropSlotIndex);
     const appendSlotIndex = normalizeEnemyDebuffSlotIndex(result?.appendSlotIndex);
@@ -5311,6 +5367,12 @@ function maybeResolveEnemyDebuffSlotOwner(ctx, payload = {}) {
       action,
       dropSlotIndex,
       appendSlotIndex,
+    };
+    g.LastEnemyDebuffSlotPacket = {
+      owner: String(result?.owner || 'rust'),
+      result: String(result?.simulationCoreResponse?.result || ''),
+      actionType: String(result?.simulationCoreRequest?.action?.type || ''),
+      source: snapshot.source,
     };
     return g.LastEnemyDebuffSlotOwner;
   } catch (err) {

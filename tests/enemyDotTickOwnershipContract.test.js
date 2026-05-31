@@ -27,6 +27,20 @@ module.exports = {
     module: { exports: {} },
     exports: {},
     state: { globals: {}, entities: [] },
+    createEnemyDotTickSimulationPacket: (payload) => {
+      const { ownerHook, ...submitted } = payload;
+      const result = ownerHook(submitted);
+      return {
+        ...result,
+        simulationCoreRequest: {
+          action: { type: 'status.enemyDotTick' },
+        },
+        simulationCoreResponse: {
+          result: 'enemy_dot_tick',
+          diagnostics: submitted,
+        },
+      };
+    },
     __ORKA_ENEMY_DOT_TICK_OWNER__: () => ({
       owner: 'rust',
       damage: 7,
@@ -100,5 +114,7 @@ test('enemy DoT tick follows Rust owner when Rust and JS disagree', () => {
     assert.equal(dot.nextFireTurnSerial, 17, `${modulePath} Rust-owned next-fire turn`);
     assert.equal(ctx.state.globals.LastEnemyDotTickOwner.owner, 'rust');
     assert.equal(ctx.state.globals.LastEnemyDotTickOwner.damage, 7);
+    assert.equal(ctx.state.globals.LastEnemyDotTickPacket.owner, 'rust');
+    assert.equal(ctx.state.globals.LastEnemyDotTickPacket.actionType, 'status.enemyDotTick');
   }
 });

@@ -27,6 +27,20 @@ module.exports = {
     module: { exports: {} },
     exports: {},
     state: { globals: {}, entities: [] },
+    createEnemyDotPacketSimulationPacket: (payload) => {
+      const { ownerHook, ...submitted } = payload;
+      const result = ownerHook(submitted);
+      return {
+        ...result,
+        simulationCoreRequest: {
+          action: { type: 'status.enemyDotPacket' },
+        },
+        simulationCoreResponse: {
+          result: 'enemy_dot_packet',
+          diagnostics: submitted,
+        },
+      };
+    },
     __ORKA_ENEMY_DOT_PACKET_OWNER__: packetOwner,
   };
   vm.createContext(context);
@@ -120,5 +134,7 @@ test('enemy DoT queue packet follows Rust owner when Rust and JS disagree', () =
     assert.equal(dot.taintedGroundZoneId, 'zone-a', `${modulePath} JS zone field preserved`);
     assert.equal(ctx.state.globals.LastEnemyDotPacketOwner.owner, 'rust');
     assert.equal(ctx.state.globals.LastEnemyDotPacketOwner.totalDamageRemaining, 77);
+    assert.equal(ctx.state.globals.LastEnemyDotApplicationPacket.owner, 'rust');
+    assert.equal(ctx.state.globals.LastEnemyDotApplicationPacket.actionType, 'status.enemyDotPacket');
   }
 });

@@ -28,6 +28,20 @@ module.exports = {
     module: { exports: {} },
     exports: {},
     state: { globals: {}, entities: [] },
+    createEnemyDebuffApplySimulationPacket: (payload) => {
+      const { ownerHook, ...submitted } = payload;
+      const result = ownerHook(submitted);
+      return {
+        ...result,
+        simulationCoreRequest: {
+          action: { type: 'status.enemyDebuffApply' },
+        },
+        simulationCoreResponse: {
+          result: 'enemy_debuff_apply',
+          diagnostics: submitted,
+        },
+      };
+    },
     __ORKA_ENEMY_DEBUFF_APPLY_OWNER__: (payload) => {
       calls.push(payload);
       return applyOwner(payload);
@@ -121,5 +135,7 @@ test('enemy debuff apply follows Rust owner when Rust and JS disagree', () => {
     assert.equal(g.LastEnemyDebuffApplyOwner.owner, 'rust');
     assert.equal(g.LastEnemyDebuffApplyOwner.amountAfter, 11);
     assert.equal(g.LastEnemyDebuffApplyOwner.turnsAfter, 9);
+    assert.equal(g.LastEnemyDebuffApplyPacket.owner, 'rust');
+    assert.equal(g.LastEnemyDebuffApplyPacket.actionType, 'status.enemyDebuffApply');
   }
 });

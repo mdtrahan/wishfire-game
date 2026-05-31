@@ -35,7 +35,10 @@ export function renderRuntime(deps) {
               : null;
             if (typeof hook === 'function') {
               try {
-                const result = hook({
+                const packetFactory = typeof createPartyRegenTickSimulationPacket === 'function'
+                  ? createPartyRegenTickSimulationPacket
+                  : null;
+                const tickPayload = {
                   source: 'renderRuntime.partyRegenTick',
                   totalHealRemaining: totalHealRemainingBefore,
                   remainingFires: remainingFiresBefore,
@@ -48,7 +51,10 @@ export function renderRuntime(deps) {
                   jsTotalHealRemaining,
                   jsRemainingFires,
                   jsNextFireSerial,
-                });
+                };
+                const result = packetFactory
+                  ? packetFactory({ ...tickPayload, ownerHook: hook })
+                  : hook(tickPayload);
                 const ownedHeal = Number(result?.heal);
                 const ownedTotalHealRemaining = Number(result?.totalHealRemaining);
                 const ownedRemainingFires = Number(result?.remainingFires);
@@ -62,6 +68,12 @@ export function renderRuntime(deps) {
                     nextFireSerial: ownedNextFireSerial,
                   };
                   state.globals.LastPartyRegenTickOwner = ownedTick;
+                  state.globals.LastPartyRegenTickPacket = {
+                    owner: String(result?.owner || 'rust'),
+                    result: String(result?.simulationCoreResponse?.result || ''),
+                    actionType: String(result?.simulationCoreRequest?.action?.type || ''),
+                    source: 'renderRuntime.partyRegenTick',
+                  };
                 }
               } catch (err) {
                 state.globals.LastPartyRegenTickOwnerError = String(err?.message || err || 'unknown');

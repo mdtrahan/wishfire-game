@@ -30,6 +30,20 @@ module.exports = {
     module: { exports: {} },
     exports: {},
     state: { globals: {}, entities: [] },
+    createEnemyDebuffDecaySimulationPacket: (payload) => {
+      const { ownerHook, ...submitted } = payload;
+      const result = ownerHook(submitted);
+      return {
+        ...result,
+        simulationCoreRequest: {
+          action: { type: 'status.enemyDebuffDecay' },
+        },
+        simulationCoreResponse: {
+          result: 'enemy_debuff_decay',
+          diagnostics: submitted,
+        },
+      };
+    },
     __ORKA_ENEMY_DEBUFF_DECAY_OWNER__: (payload) => {
       calls.push(payload);
       if (payload.stat === 'ATK') {
@@ -135,5 +149,7 @@ test('enemy debuff duration decay follows Rust owner when Rust and JS disagree',
     assert.equal(g.EnemyDebuffTurns[200].DEF, 0, `${modulePath} Rust-owned expired DEF turns`);
     assert.deepEqual(Array.from(g.EnemyDebuffSlots[200]), ['ATK'], `${modulePath} expired slot removed`);
     assert.equal(g.LastEnemyDebuffDecayOwner.owner, 'rust');
+    assert.equal(g.LastEnemyDebuffDecayPacket.owner, 'rust');
+    assert.equal(g.LastEnemyDebuffDecayPacket.actionType, 'status.enemyDebuffDecay');
   }
 });

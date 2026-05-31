@@ -76,12 +76,18 @@ test('browser party regen cadence routes deterministic tick state through Rust o
   const renderRuntimeSrc = fs.readFileSync(renderRuntimePath, 'utf8');
 
   assert.match(appSrc, /__ORKA_PARTY_REGEN_TICK_OWNER__/);
+  assert.match(appSrc, /createPartyRegenLifecycleSimulationPacket/);
+  assert.match(appSrc, /createPartyRegenTickSimulationPacket/);
   assert.match(appSrc, /LastPartyRegenTickOwner/);
+  assert.match(appSrc, /LastPartyRegenLifecyclePacket/);
+  assert.match(appSrc, /LastPartyRegenTickPacket/);
   assert.match(appSrc, /ownedTick[\s\S]*owner[\s\S]*rust/);
   assert.match(appSrc, /regen\.totalHealRemaining = Math\.max\(0, Math\.floor\(Number\(ownedTick\.totalHealRemaining/);
   assert.match(appSrc, /regen\.remainingFires = Math\.max\(0, Math\.floor\(Number\(ownedTick\.remainingFires/);
   assert.match(appSrc, /regen\.nextFireTurnSerial = Number\(ownedTick\.nextFireSerial/);
 
   assert.match(renderRuntimeSrc, /__ORKA_PARTY_REGEN_TICK_OWNER__/);
+  assert.match(renderRuntimeSrc, /createPartyRegenTickSimulationPacket/);
+  assert.match(renderRuntimeSrc, /LastPartyRegenTickPacket/);
   assert.match(renderRuntimeSrc, /regen\.nextFireTick = Number\(ownedTick\.nextFireSerial/);
 });

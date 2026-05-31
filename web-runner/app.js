@@ -62,6 +62,10 @@ import { deriveDamageFloatFrameOffset } from '../src/core/damageFloatVector.mjs'
 import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
 import { createHealBloom } from './src/core/healBloomAnimation.mjs';
 import { createCombatOutcomeSimulationPacket } from './src/core/combatOutcomeRules.mjs';
+import {
+  createPartyRegenLifecycleSimulationPacket,
+  createPartyRegenTickSimulationPacket,
+} from './src/core/statusEffectRules.mjs';
 import * as heroGemProgressStorage from './systems/heroGemProgressStorage.js';
 import * as runtimeDebugLogging from './systems/runtimeDebugLogging.js';
 import * as animationMath from './systems/animationMath.js';
@@ -5580,12 +5584,21 @@ async function main(){
       : null;
     if (typeof hook !== 'function') return null;
     try {
-      const result = hook(payload);
+      const result = createPartyRegenLifecycleSimulationPacket({
+        ...payload,
+        ownerHook: hook,
+      });
       const action = Number(result?.action);
       if (!Number.isFinite(action)) return null;
       state.globals.LastPartyRegenLifecycleOwner = {
         owner: String(result?.owner || 'rust'),
         action,
+      };
+      state.globals.LastPartyRegenLifecyclePacket = {
+        owner: String(result?.owner || 'rust'),
+        result: String(result?.simulationCoreResponse?.result || ''),
+        actionType: String(result?.simulationCoreRequest?.action?.type || ''),
+        source: String(payload.source || 'unknown'),
       };
       return state.globals.LastPartyRegenLifecycleOwner;
     } catch (err) {
@@ -5601,7 +5614,10 @@ async function main(){
       : null;
     if (typeof hook !== 'function') return null;
     try {
-      const result = hook(payload);
+      const result = createPartyRegenTickSimulationPacket({
+        ...payload,
+        ownerHook: hook,
+      });
       const heal = Number(result?.heal);
       const totalHealRemaining = Number(result?.totalHealRemaining);
       const remainingFires = Number(result?.remainingFires);
@@ -5620,6 +5636,12 @@ async function main(){
         totalHealRemaining,
         remainingFires,
         nextFireSerial,
+      };
+      state.globals.LastPartyRegenTickPacket = {
+        owner: String(result?.owner || 'rust'),
+        result: String(result?.simulationCoreResponse?.result || ''),
+        actionType: String(result?.simulationCoreRequest?.action?.type || ''),
+        source: String(payload.source || 'unknown'),
       };
       return state.globals.LastPartyRegenTickOwner;
     } catch (err) {
@@ -5830,6 +5852,7 @@ async function main(){
       superGemFrameImages,
       superGemRainbowImage,
       buffIconFrameImages: (typeof buffIconFrameImages !== 'undefined' ? buffIconFrameImages : {}),
+      debuffIconImages: (typeof debuffIconImages !== 'undefined' ? debuffIconImages : {}),
       buffIconFrames: (typeof buffIconFrames !== 'undefined' ? buffIconFrames : {}),
       buffIcons: (typeof buffIcons !== 'undefined' ? buffIcons : new Set()),
       layerColors: (typeof layerColors !== 'undefined' ? layerColors : {}),
@@ -5875,6 +5898,7 @@ async function main(){
       isHitFlashActive,
       getHitFlashTone,
       deriveDamageFloatFrameOffset,
+      createPartyRegenTickSimulationPacket,
     };
     const result = renderRuntime.renderRuntime(runtimeScope);
     if (result && result.overlayData) {

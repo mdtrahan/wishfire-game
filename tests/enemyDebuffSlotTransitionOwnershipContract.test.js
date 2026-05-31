@@ -30,6 +30,34 @@ module.exports = {
     module: { exports: {} },
     exports: {},
     state: { globals: {}, entities: [] },
+    createEnemyDebuffApplySimulationPacket: (payload) => {
+      const { ownerHook, ...submitted } = payload;
+      const result = ownerHook(submitted);
+      return {
+        ...result,
+        simulationCoreRequest: {
+          action: { type: 'status.enemyDebuffApply' },
+        },
+        simulationCoreResponse: {
+          result: 'enemy_debuff_apply',
+          diagnostics: submitted,
+        },
+      };
+    },
+    createEnemyDebuffSlotSimulationPacket: (payload) => {
+      const { ownerHook, ...submitted } = payload;
+      const result = ownerHook(submitted);
+      return {
+        ...result,
+        simulationCoreRequest: {
+          action: { type: 'status.enemyDebuffSlot' },
+        },
+        simulationCoreResponse: {
+          result: 'enemy_debuff_slot',
+          diagnostics: submitted,
+        },
+      };
+    },
     __ORKA_ENEMY_DEBUFF_APPLY_OWNER__: (payload) => {
       applyCalls.push(payload);
       return applyOwner(payload);
@@ -156,5 +184,7 @@ test('enemy debuff slot transition follows Rust owner when Rust and JS disagree'
     assert.equal(g.LastEnemyDebuffSlotOwner.action, 2);
     assert.equal(g.LastEnemyDebuffSlotOwner.dropSlotIndex, 1);
     assert.equal(g.LastEnemyDebuffSlotOwner.appendSlotIndex, 4);
+    assert.equal(g.LastEnemyDebuffSlotPacket.owner, 'rust');
+    assert.equal(g.LastEnemyDebuffSlotPacket.actionType, 'status.enemyDebuffSlot');
   }
 });

@@ -27,6 +27,34 @@ module.exports = {
     module: { exports: {} },
     exports: {},
     state: { globals: {}, entities: [] },
+    createEnemyDotLifecycleSimulationPacket: (payload) => {
+      const { ownerHook, ...submitted } = payload;
+      const result = ownerHook(submitted);
+      return {
+        ...result,
+        simulationCoreRequest: {
+          action: { type: 'status.enemyDotLifecycle' },
+        },
+        simulationCoreResponse: {
+          result: 'enemy_dot_lifecycle',
+          diagnostics: submitted,
+        },
+      };
+    },
+    createEnemyDotTickSimulationPacket: (payload) => {
+      const { ownerHook, ...submitted } = payload;
+      const result = ownerHook(submitted);
+      return {
+        ...result,
+        simulationCoreRequest: {
+          action: { type: 'status.enemyDotTick' },
+        },
+        simulationCoreResponse: {
+          result: 'enemy_dot_tick',
+          diagnostics: submitted,
+        },
+      };
+    },
     __ORKA_ENEMY_DOT_LIFECYCLE_OWNER__: lifecycleOwner,
     __ORKA_ENEMY_DOT_TICK_OWNER__: () => ({
       owner: 'rust',
@@ -101,6 +129,8 @@ test('enemy DoT lifecycle follows Rust owner process decision when JS would skip
     assert.equal(dot.nextFireTurnSerial, 17, `${modulePath} Rust-owned tick next turn`);
     assert.equal(ctx.state.globals.LastEnemyDotLifecycleOwner.owner, 'rust');
     assert.equal(ctx.state.globals.LastEnemyDotLifecycleOwner.action, 2);
+    assert.equal(ctx.state.globals.LastEnemyDotLifecyclePacket.owner, 'rust');
+    assert.equal(ctx.state.globals.LastEnemyDotLifecyclePacket.actionType, 'status.enemyDotLifecycle');
   }
 });
 
@@ -115,5 +145,7 @@ test('enemy DoT lifecycle follows Rust owner remove decision when JS would keep'
     assert.equal(ctx.state.globals.EnemyDamageOverTime, undefined, `${modulePath} Rust-owned lifecycle removes`);
     assert.equal(ctx.state.globals.LastEnemyDotLifecycleOwner.owner, 'rust');
     assert.equal(ctx.state.globals.LastEnemyDotLifecycleOwner.action, 1);
+    assert.equal(ctx.state.globals.LastEnemyDotLifecyclePacket.owner, 'rust');
+    assert.equal(ctx.state.globals.LastEnemyDotLifecyclePacket.actionType, 'status.enemyDotLifecycle');
   }
 });
