@@ -34,7 +34,7 @@ import {
 import { createRoundPointerAdvanceSimulationPacket } from '../src/core/roundPointerAdvanceRules.mjs';
 import { createTurnSummarySimulationPacket } from '../src/core/turnSummaryRules.mjs';
 import { createTurnPhaseAssignmentSimulationPacket } from '../src/core/turnPhaseAssignmentRules.mjs';
-import { resolveTurnOrderGroupProjection } from '../src/core/turnOrderGroupRules.mjs';
+import { createTurnOrderGroupSimulationPacket } from '../src/core/turnOrderGroupRules.mjs';
 import { resolveEnemySkillChoice } from '../src/core/enemySkillChoiceRules.mjs';
 import { resolveEnemyJobSkill as importedResolveEnemyJobSkill } from '../src/core/enemyJobSkillRules.mjs';
 import { resolveStartEnemyAction as importedResolveStartEnemyAction } from '../src/core/startEnemyActionRules.mjs';
@@ -7180,7 +7180,7 @@ export function BuildRoundGroups(ctx) {
   }
   const requestedType = Number.isFinite(Number(g.TeamPhaseType)) ? Number(g.TeamPhaseType || 0) : 0;
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
-  const projection = resolveTurnOrderGroupProjection({
+  const projection = createTurnOrderGroupSimulationPacket({
     source: 'functionBank.BuildRoundGroups',
     roster,
     requestedPhaseType: requestedType,
@@ -7198,6 +7198,13 @@ export function BuildRoundGroups(ctx) {
     jsPhaseType: Number(projection.jsPhaseType ?? phaseType),
     memberCount: members.length,
     jsMemberCount: Array.isArray(projection.jsMembers) ? projection.jsMembers.length : members.length,
+    result: String(projection.simulationCoreResponse?.result || ''),
+  };
+  g.LastTurnOrderGroupPacket = {
+    owner: String(projection.owner || 'fallback'),
+    result: String(projection.simulationCoreResponse?.result || ''),
+    actionType: String(projection.simulationCoreRequest?.action?.type || ''),
+    source: 'functionBank.BuildRoundGroups',
   };
   g.TeamPhaseType = phaseType;
   g.RoundRoster = roster;
