@@ -790,6 +790,17 @@ function makeStableHeroSkillPointId(hero) {
   return '';
 }
 const HERO_SKILL_SHARED_KEY = '__party_shared__';
+const PARTY_MAGIC_FRUIT_ID = 'party_magic_fruit';
+const PARTY_CRIMSON_WARD_ID = 'party_crimson_ward';
+const PARTY_SKILL_DRAUGHT_POOL_IDS = Object.freeze([
+  'party_fresh_start',
+  'party_second_chance',
+  'party_momentum',
+  PARTY_MAGIC_FRUIT_ID,
+  PARTY_CRIMSON_WARD_ID,
+]);
+const CRIMSON_WARD_PROC_CHANCE_PCT = 50;
+const CRIMSON_WARD_SELECTION_CURRENT_HP_PCT = 20;
 
 const HERO_SKILL_COSTS_BY_RISK = Object.freeze({
   LOW: [1, 2, 3, 4],
@@ -828,6 +839,7 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: 'party_last_push', owner: 'Party', slot: 8, title: 'Last Push', cardText: 'Gain a brief comeback burst when the party nears defeat.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On low party HP', payloadImplemented: false },
   { id: 'party_chain_pop', owner: 'Party', slot: 9, title: 'Chain Pop', cardText: 'Trigger an extra board effect from a match.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On match', payloadImplemented: false },
   { id: 'party_magic_fruit', owner: 'Party', slot: 10, title: 'Magic Fruit', cardText: 'Heals party for 40% of max HP', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true },
+  { id: 'party_crimson_ward', owner: 'Party', slot: 11, title: 'Crimson Ward', cardText: 'Chance for a magical ward to shield damage when matching red gems.', risk: 'MED', growth: [50, 50, 50, 50], procPattern: 'On red match', payloadImplemented: true },
 ]);
 
 function cloneSkillDefinition(def) {
@@ -930,18 +942,34 @@ function appendSkillDraughtTrace(g, action, payload = {}) {
   if (g.SkillDraughtTrace.length > 80) g.SkillDraughtTrace.splice(0, g.SkillDraughtTrace.length - 80);
 }
 
+function getSkillDraughtPoolDefinitions() {
+  const defsById = new Map(GetPartySkillDefinitions().map(def => [String(def.id), def]));
+  return PARTY_SKILL_DRAUGHT_POOL_IDS
+    .map(id => defsById.get(String(id)))
+    .filter(Boolean);
+}
+
+function sampleSkillDraughtDefinitions(ctx, defs, count = 3) {
+  const pool = Array.isArray(defs) ? defs.slice() : [];
+  const drawCount = Math.max(0, Math.min(pool.length, Math.floor(Number(count || 0))));
+  for (let index = 0; index < drawCount; index += 1) {
+    const pick = index + randomIndex(ctx, pool.length - index);
+    const tmp = pool[index];
+    pool[index] = pool[pick];
+    pool[pick] = tmp;
+  }
+  return pool.slice(0, drawCount);
+}
+
 function buildSkillDraughtCandidates(ctx, heroUID, forcedSkillId = '') {
   const forced = GetSkillDefinition(ctx, forcedSkillId);
-  const defs = GetPartySkillDefinitions();
-  let ordered = defs.slice();
+  const pool = getSkillDraughtPoolDefinitions();
+  let ordered = [];
   if (forced && String(forced.owner || '').toLowerCase() === 'party') {
-    ordered = [forced].concat(defs.filter(def => String(def.id) !== String(forced.id)));
+    const rest = pool.filter(def => String(def.id) !== String(forced.id));
+    ordered = [forced].concat(sampleSkillDraughtDefinitions(ctx, rest, 2));
   } else {
-    const magicFruit = defs.find(def => String(def.id) === 'party_magic_fruit');
-    if (magicFruit) {
-      const withoutMagicFruit = ordered.filter(def => String(def.id) !== 'party_magic_fruit');
-      ordered = withoutMagicFruit.slice(0, 2).concat(magicFruit, withoutMagicFruit.slice(2));
-    }
+    ordered = sampleSkillDraughtDefinitions(ctx, pool, 3);
   }
   return ordered.slice(0, 3).map((def, index) => makeSkillDraughtCandidate(def, index));
 }
@@ -952,6 +980,58 @@ function activateMagicFruitSkill(ctx) {
   const healAmount = Math.max(1, Math.ceil(partyMaxHP * 40 / 100));
   ctx.callFunction('ApplyPartyHeal', healAmount);
   return healAmount;
+}
+
+function activateCrimsonWardSelectionBoost(ctx) {
+  const g = getGlobals(ctx);
+  const before = Math.max(0, Number(g.PartyTempHPShield || 0));
+  if (before <= 0) {
+    g.LastPartyCrimsonWardSelectionBoost = {
+      success: false,
+      reason: 'no_active_ward',
+      before,
+      after: before,
+      added: 0,
+    };
+    return g.LastPartyCrimsonWardSelectionBoost;
+  }
+  const currentHP = Math.max(0, Number(g.PartyHP || 0));
+  if (currentHP <= 0) {
+    g.LastPartyCrimsonWardSelectionBoost = {
+      success: false,
+      reason: 'no_current_hp',
+      before,
+      after: before,
+      added: 0,
+    };
+    return g.LastPartyCrimsonWardSelectionBoost;
+  }
+  const maxHP = Math.max(1, Number(g.PartyMaxHP || 1));
+  const boost = Math.max(1, Math.ceil(currentHP * CRIMSON_WARD_SELECTION_CURRENT_HP_PCT / 100));
+  const after = Math.min(maxHP, before + boost);
+  const added = Math.max(0, after - before);
+  const ratio = Math.max(0, Math.min(1, after / maxHP));
+  g.PartyTempHPShield = after;
+  g.PartyTempHPShieldStacks = after > 0 ? 1 : 0;
+  g.PartyTempHPShieldRatio = ratio;
+  g.PartyTempHPShieldMax = maxHP;
+  g.PartyTempHPShieldColor = FALIE_RED_SUPER_GEM_SHIELD_COLOR;
+  g.PartyTempHPShieldAlpha = FALIE_WARD_BARRIER_BASE_ALPHA;
+  g.PartyTempHPShieldSource = 'party_crimson_ward_selection';
+  g.LastPartyCrimsonWardSelectionBoost = {
+    success: added > 0,
+    reason: added > 0 ? 'boosted' : 'cap_reached',
+    source: 'crimson_ward_selection',
+    before,
+    after,
+    added,
+    currentHP,
+    boost,
+    ratio,
+    capHit: before + boost > maxHP,
+  };
+  if (after > 0) refreshCrimsonWardBarrierVisuals(ctx);
+  return g.LastPartyCrimsonWardSelectionBoost;
 }
 
 export function GetSkillDraughtState(ctx) {
@@ -1013,7 +1093,8 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
   g.AstralFlowAmpPoints = 0;
   g.AstralFlowAmpReady = 0;
   UpdateAstralFlowAmpBar(ctx);
-  if (sessionSkill.id === 'party_magic_fruit') activateMagicFruitSkill(ctx);
+  if (sessionSkill.id === PARTY_MAGIC_FRUIT_ID) activateMagicFruitSkill(ctx);
+  if (sessionSkill.id === PARTY_CRIMSON_WARD_ID) activateCrimsonWardSelectionBoost(ctx);
   const scope = String(sessionSkill.owner || '').toLowerCase() === 'party' ? 'party' : 'hero';
   appendSkillDraughtTrace(g, 'select', { heroUID: uid, skillId: sessionSkill.id, scope });
   g.CombatActionPinnedLine = '';
@@ -1600,6 +1681,11 @@ function ensureSkillProcRuntime(ctx) {
   if (!Number.isFinite(g.PartyDestinyHeals)) g.PartyDestinyHeals = 0;
   if (!Number.isFinite(g.PartyDestinyMisses)) g.PartyDestinyMisses = 0;
   if (typeof g.PartyDestinyLastResult !== 'string') g.PartyDestinyLastResult = '';
+  if (!Number.isFinite(g.PartyCrimsonWardAttempts)) g.PartyCrimsonWardAttempts = 0;
+  if (!Number.isFinite(g.PartyCrimsonWardProcs)) g.PartyCrimsonWardProcs = 0;
+  if (!Number.isFinite(g.PartyCrimsonWardMisses)) g.PartyCrimsonWardMisses = 0;
+  if (!Number.isFinite(g.PartyCrimsonWardShieldedHP)) g.PartyCrimsonWardShieldedHP = 0;
+  if (typeof g.PartyCrimsonWardLastResult !== 'string') g.PartyCrimsonWardLastResult = '';
   return g;
 }
 
@@ -3764,15 +3850,14 @@ function absorbPartyTempHPShield(g, dmg) {
 const FALIE_WARD_BARRIER_FADE_OUT_SEC = 0.28;
 const FALIE_WARD_BARRIER_HIT_PULSE_SEC = 0.18;
 const FALIE_WARD_BARRIER_OFFSET_WORLD_X = 22;
-const FALIE_WARD_SUSTAIN_RATIO = 0.18;
 const FALIE_RED_SUPER_GEM_SHIELD_COLOR = '#6CCBEE';
 const FALIE_WARD_BARRIER_ASSET_PATH = 'images/falie_ward_84x62.png';
 const FALIE_WARD_BARRIER_FADE_IN_SEC = 0.12;
-const FALIE_WARD_BARRIER_BASE_ALPHA = 0.82;
+const FALIE_WARD_BARRIER_BASE_ALPHA = 0.85;
 const FALIE_WARD_BARRIER_WIDTH = 84;
 const FALIE_WARD_BARRIER_HEIGHT = 62;
 
-function refreshFalieWardBarrierVisuals(ctx) {
+function refreshPartyWardBarrierVisuals(ctx, source = 'party_crimson_ward') {
   const g = getGlobals(ctx);
   const now = Number(g.time || 0);
   const heroes = getHeroes(ctx);
@@ -3788,7 +3873,7 @@ function refreshFalieWardBarrierVisuals(ctx) {
     const existing = visuals[uid] && typeof visuals[uid] === 'object' ? visuals[uid] : {};
     visuals[uid] = {
       uid,
-      source: 'falie_red_sustain',
+      source: String(source || 'party_crimson_ward'),
       state: 'fadeIn',
       fadeInStartedAt: now,
       fadeInDuration: FALIE_WARD_BARRIER_FADE_IN_SEC,
@@ -3812,33 +3897,292 @@ function refreshFalieWardBarrierVisuals(ctx) {
   return true;
 }
 
-function sustainActiveFalieWardFromRedAttack(ctx, actorUID) {
-  const actor = GetActorByUID(ctx, actorUID);
-  if (String(actor && actor.name || '') !== 'Falie') return false;
+function refreshCrimsonWardBarrierVisuals(ctx) {
+  return refreshPartyWardBarrierVisuals(ctx, 'party_crimson_ward');
+}
+
+function logCrimsonWardQa(ctx, payload = {}) {
   const g = getGlobals(ctx);
-  const before = Math.max(0, Number(g.PartyTempHPShield || 0));
-  if (before <= 0) return false;
+  if (g.CrimsonWardQALog !== true && g.DebugGemsMode !== true && g.DevTestMode !== true) return;
+  try {
+    console.log('[CRIMSON_WARD_QA]', {
+      attempts: Number(g.PartyCrimsonWardAttempts || 0),
+      procs: Number(g.PartyCrimsonWardProcs || 0),
+      misses: Number(g.PartyCrimsonWardMisses || 0),
+      last: String(g.PartyCrimsonWardLastResult || ''),
+      ...payload,
+    });
+  } catch (_) {}
+}
+
+export function TryPartyCrimsonWard(ctx, options = undefined) {
+  const g = ensureSkillProcRuntime(ctx);
+  const opts = options && typeof options === 'object' ? options : {};
+  const sourceUID = Number(opts.sourceUID || opts.actorUID || GetCurrentTurn(ctx) || 0);
+  const source = GetActorByUID(ctx, sourceUID);
+  const totalDamage = Math.max(0, Math.floor(Number(opts.totalDamage || opts.damage || 0)));
+  const sourceName = String(opts.source || 'red_match');
+  if (!source || source.kind !== 'hero') {
+    g.PartyCrimsonWardLastResult = 'source_not_hero';
+    g.LastPartyCrimsonWard = { success: false, reason: 'source_not_hero', sourceUID, totalDamage, source: sourceName };
+    return { ok: false, success: false, reason: 'source_not_hero', sourceUID, totalDamage };
+  }
+  if (totalDamage <= 0) {
+    g.PartyCrimsonWardLastResult = 'no_damage';
+    g.LastPartyCrimsonWard = { success: false, reason: 'no_damage', sourceUID, totalDamage, source: sourceName };
+    return { ok: false, success: false, reason: 'no_damage', sourceUID, totalDamage };
+  }
+  const forcedRoll = Number(opts.forcedRollPct);
+  const previousRandom = g.RuntimeRandom;
+  if (Number.isFinite(forcedRoll)) {
+    g.RuntimeRandom = () => Math.max(0, Math.min(0.9999, forcedRoll / 100));
+  }
+  let roll;
+  try {
+    roll = RollPartySkillProc(ctx, PARTY_CRIMSON_WARD_ID, CRIMSON_WARD_PROC_CHANCE_PCT, opts.eventName || sourceName);
+  } finally {
+    if (Number.isFinite(forcedRoll)) g.RuntimeRandom = previousRandom;
+  }
+  if (roll.ok) {
+    g.PartyCrimsonWardAttempts = Math.max(0, Math.floor(Number(g.PartyCrimsonWardAttempts || 0))) + 1;
+  }
+  if (!roll.success) {
+    if (roll.reason === 'proc_miss') {
+      g.PartyCrimsonWardMisses = Math.max(0, Math.floor(Number(g.PartyCrimsonWardMisses || 0))) + 1;
+    }
+    g.PartyCrimsonWardLastResult = String(roll.reason || 'no_proc');
+    g.LastPartyCrimsonWard = { success: false, reason: roll.reason, sourceUID, totalDamage, source: sourceName, roll };
+    logCrimsonWardQa(ctx, {
+      source: sourceName,
+      hero: String(source.name || ''),
+      result: String(roll.reason || 'no_proc'),
+      chancePct: Number(roll.chancePct || 0),
+      rollPct: Number(roll.rollPct || 0),
+      damage: totalDamage,
+      beforeShield: Math.max(0, Number(g.PartyTempHPShield || 0)),
+      afterShield: Math.max(0, Number(g.PartyTempHPShield || 0)),
+      capHit: false,
+    });
+    return { ok: roll.ok, success: false, reason: roll.reason, sourceUID, totalDamage, source: sourceName, roll, shielded: 0 };
+  }
   const maxHP = Math.max(1, Number(g.PartyMaxHP || 1));
-  const sustainHP = Math.max(1, Math.round(maxHP * FALIE_WARD_SUSTAIN_RATIO));
-  const after = Math.min(maxHP, before + sustainHP);
-  const unitHP = Math.max(1, Math.round(maxHP * FALIE_WARD_SUSTAIN_RATIO));
+  const before = Math.max(0, Number(g.PartyTempHPShield || 0));
+  const after = Math.min(maxHP, before + totalDamage);
+  const added = Math.max(0, after - before);
   const ratio = Math.max(0, Math.min(1, after / maxHP));
   g.PartyTempHPShield = after;
-  g.PartyTempHPShieldStacks = Math.max(1, Math.ceil(after / unitHP));
+  g.PartyTempHPShieldStacks = after > 0 ? 1 : 0;
   g.PartyTempHPShieldRatio = ratio;
   g.PartyTempHPShieldMax = maxHP;
   g.PartyTempHPShieldColor = FALIE_RED_SUPER_GEM_SHIELD_COLOR;
-  g.PartyTempHPShieldSource = 'falie_red_sustain';
-  g.LastFalieWardSustain = {
-    source: 'falie_red_sustain',
+  g.PartyTempHPShieldAlpha = FALIE_WARD_BARRIER_BASE_ALPHA;
+  g.PartyTempHPShieldSource = `party_crimson_ward_${sourceName}`;
+  g.PartyCrimsonWardProcs = Math.max(0, Math.floor(Number(g.PartyCrimsonWardProcs || 0))) + 1;
+  g.PartyCrimsonWardShieldedHP = Math.max(0, Math.floor(Number(g.PartyCrimsonWardShieldedHP || 0))) + added;
+  g.PartyCrimsonWardLastResult = 'shielded';
+  g.LastPartyCrimsonWard = {
+    success: true,
+    reason: 'shielded',
+    sourceUID,
+    heroName: String(source.name || ''),
+    source: sourceName,
+    totalDamage,
     before,
     after,
-    added: Math.max(0, after - before),
-    multiplier: 1,
+    added,
     ratio,
+    capHit: after >= maxHP && before + totalDamage > maxHP,
+    roll,
   };
-  refreshFalieWardBarrierVisuals(ctx);
+  if (after > 0) refreshCrimsonWardBarrierVisuals(ctx);
+  logCrimsonWardQa(ctx, {
+    source: sourceName,
+    hero: String(source.name || ''),
+    result: 'proc_success',
+    chancePct: Number(roll.chancePct || 0),
+    rollPct: Number(roll.rollPct || 0),
+    damage: totalDamage,
+    beforeShield: before,
+    afterShield: after,
+    capHit: Boolean(g.LastPartyCrimsonWard.capHit),
+  });
+  return { ok: true, success: true, reason: 'shielded', sourceUID, totalDamage, source: sourceName, roll, before, after, added, shielded: added };
+}
+
+const GEM_ACTION_COLOR_NAMES = Object.freeze({
+  0: 'GREEN',
+  1: 'RED',
+  2: 'BLUE',
+  3: 'YELLOW',
+  4: 'LIGHTGREEN',
+  5: 'PURPLE',
+});
+
+function getGemActionColorName(color) {
+  const key = Math.floor(Number(color));
+  return GEM_ACTION_COLOR_NAMES[key] || `COLOR_${key}`;
+}
+
+function makeSkillReactionEvent({
+  type = 'hero_attack_damage',
+  phase = 'post_hit',
+  source = 'gem_match',
+  color = -1,
+  colorName = '',
+  actorUID = 0,
+  targetUID = 0,
+  skillId = '',
+  eventName = '',
+  amountType = 'damage',
+} = {}) {
+  const normalizedColor = Math.floor(Number(color));
+  const normalizedColorName = String(colorName || getGemActionColorName(normalizedColor));
+  return {
+    type: String(type || 'hero_attack_damage'),
+    phase: String(phase || 'post_hit'),
+    source: String(source || 'gem_match'),
+    color: normalizedColor,
+    colorName: normalizedColorName,
+    actorUID: Number(actorUID || 0),
+    targetUID: Number(targetUID || 0),
+    skillId: String(skillId || ''),
+    eventName: String(eventName || `${normalizedColorName.toLowerCase()}_${String(source || 'gem_match') === 'supergem' ? 'supergem' : 'match'}`),
+    amountType: String(amountType || 'damage'),
+  };
+}
+
+function makeGemActionEvent(gemColor, actorUID, consumedCount, skillId, eventName) {
+  const color = Math.floor(Number(gemColor));
+  const colorName = getGemActionColorName(color);
+  return {
+    ...makeSkillReactionEvent({
+      source: 'gem_match',
+      color,
+      colorName,
+      actorUID,
+      skillId,
+      eventName: eventName || `${colorName.toLowerCase()}_match`,
+    }),
+    consumedCount: Math.max(0, Math.floor(Number(consumedCount || 0))),
+  };
+}
+
+function recordGemActionEvent(ctx, gemColor, actorUID, consumedCount, skillId, eventName) {
+  const g = getGlobals(ctx);
+  const event = makeGemActionEvent(gemColor, actorUID, consumedCount, skillId, eventName);
+  g.LastGemActionEvent = event;
+  return event;
+}
+
+function armPendingGemActionEvent(ctx, gemColor, actorUID, consumedCount, skillId, eventName) {
+  const g = getGlobals(ctx);
+  const event = recordGemActionEvent(ctx, gemColor, actorUID, consumedCount, skillId, eventName);
+  g.PendingGemActionEvent = event;
+  return event;
+}
+
+function consumePendingGemActionEvent(ctx, skillId, actorUID) {
+  const g = getGlobals(ctx);
+  const event = g.PendingGemActionEvent && typeof g.PendingGemActionEvent === 'object'
+    ? g.PendingGemActionEvent
+    : null;
+  if (!event) return null;
+  if (String(event.skillId || '') !== String(skillId || '')) {
+    delete g.PendingGemActionEvent;
+    return null;
+  }
+  if (Number(event.actorUID || 0) > 0 && Number(event.actorUID || 0) !== Number(actorUID || 0)) {
+    delete g.PendingGemActionEvent;
+    return null;
+  }
+  delete g.PendingGemActionEvent;
+  return makeSkillReactionEvent({
+    ...event,
+    skillId: String(skillId || event.skillId || ''),
+    actorUID: Number(actorUID || event.actorUID || 0),
+  });
+}
+
+function attachSkillReactionEventToQueuedHeroAttack(ctx, startIndex, actorUID, targetUID, attack, event) {
+  const g = getGlobals(ctx);
+  if (!event || typeof event !== 'object') return false;
+  const pending = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
+  const totalDamage = Math.max(0, Math.floor(Number(attack && attack.totalDamage || 0)));
+  if (totalDamage <= 0) return false;
+  let lastIndex = -1;
+  for (let idx = Math.max(0, Number(startIndex || 0)); idx < pending.length; idx += 1) {
+    const hit = pending[idx];
+    if (!hit) continue;
+    if (Number(hit.heroUID || 0) !== Number(actorUID || 0)) continue;
+    if (Number(targetUID || 0) > 0 && Number(hit.targetUID || 0) !== Number(targetUID || 0)) continue;
+    if (String(hit.effectType || 'damage') !== 'damage') continue;
+    lastIndex = idx;
+  }
+  if (lastIndex < 0) return false;
+  pending[lastIndex].skillReactionEvent = makeSkillReactionEvent({
+    ...event,
+    actorUID: Number(actorUID || event.actorUID || 0),
+    targetUID: Number(targetUID || event.targetUID || 0),
+    type: 'hero_attack_damage',
+    phase: 'post_hit',
+    amountType: 'damage',
+  });
   return true;
+}
+
+function normalizeCombatReactionEvent(event) {
+  const source = event && typeof event === 'object' ? event : {};
+  const totalDamage = Math.max(0, Math.floor(Number(
+    source.totalDamage || source.damage || source.amount || source.finalDmg || source.dmg || 0
+  )));
+  return {
+    ...makeSkillReactionEvent(source),
+    totalDamage,
+  };
+}
+
+function isCrimsonWardReactionEvent(ctx, event) {
+  if (!event || event.type !== 'hero_attack_damage') return false;
+  if (event.phase !== 'post_hit') return false;
+  if (event.amountType !== 'damage') return false;
+  if (String(event.source || '') !== 'gem_match') return false;
+  if (String(event.eventName || '') !== 'red_match') return false;
+  if (Number(event.color) !== 1) return false;
+  if (Math.max(0, Number(event.totalDamage || 0)) <= 0) return false;
+  const actor = GetActorByUID(ctx, Number(event.actorUID || 0));
+  return !!actor && actor.kind === 'hero';
+}
+
+export function DispatchSkillCardReactionsForCombatEvent(ctx, event) {
+  const g = ensureSkillProcRuntime(ctx);
+  const fact = normalizeCombatReactionEvent(event);
+  const reactions = [];
+  if (
+    IsPartySessionSkillActive(ctx, PARTY_CRIMSON_WARD_ID) &&
+    isCrimsonWardReactionEvent(ctx, fact)
+  ) {
+    const result = TryPartyCrimsonWard(ctx, {
+      sourceUID: Number(fact.actorUID || 0),
+      totalDamage: Number(fact.totalDamage || 0),
+      source: String(fact.eventName || fact.source || 'red_match'),
+      eventName: String(fact.eventName || fact.source || 'red_match'),
+    });
+    reactions.push({ skillId: PARTY_CRIMSON_WARD_ID, result });
+  }
+  const success = reactions.some(reaction => reaction && reaction.result && reaction.result.success);
+  g.LastSkillCardReactionEvent = fact;
+  g.LastSkillCardReactionResult = {
+    success,
+    reason: reactions.length ? 'resolved' : 'no_reactions',
+    reactions,
+  };
+  return {
+    ok: true,
+    success,
+    reason: reactions.length ? 'resolved' : 'no_reactions',
+    event: fact,
+    reactions,
+  };
 }
 
 function markPartyWardBarrierHit(ctx, hero, absorbed) {
@@ -3851,12 +4195,12 @@ function markPartyWardBarrierHit(ctx, hero, absorbed) {
     : {};
   const visual = visuals[uid] && typeof visuals[uid] === 'object' ? visuals[uid] : {
     uid,
-    source: 'falie_red_super_gem',
+    source: 'party_crimson_ward',
     state: 'active',
     fadeInStartedAt: now,
     fadeInDuration: 0.001,
     fadeOutDuration: FALIE_WARD_BARRIER_FADE_OUT_SEC,
-    baseAlpha: Number(g.PartyWardBarrierBaseAlpha || 0.82),
+    baseAlpha: Number(g.PartyWardBarrierBaseAlpha || 0.85),
   };
   visual.hitUntil = now + FALIE_WARD_BARRIER_HIT_PULSE_SEC;
   visual.lastAbsorbed = Math.max(0, Number(absorbed || 0));
@@ -4397,7 +4741,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
   const target = GetActorByUID(ctx, targetUID);
   if (!target) {
     LogCombat(ctx, `${actorName} had no target`);
-    return;
+    return { ok: false, totalDamage: 0, reason: 'target_not_found' };
   }
   const actor = GetActorByUID(ctx, heroUID);
   const mode = actor && actor.attackType === 'magic' ? 'magic' : 'melee';
@@ -4448,7 +4792,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
         });
       }
       LogCombat(ctx, `${actorName} used Incinerate on ${target.name || '?'} for ${totalBurstDamage}!`);
-      return;
+      return { ok: true, totalDamage: totalBurstDamage, targetUID: Number(targetUID || 0), hitCount: presentation.hitCount };
     }
   }
   g.PendingHeroHits.push({
@@ -4465,6 +4809,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
     heroType: mode,
     msg: `${actorName} hit ${target.name || '?'} for ${finalDmg}!`,
   });
+  return { ok: true, totalDamage: finalDmg, targetUID: Number(targetUID || 0), hitCount: 1 };
 }
 
 export function HeroAttackAOE(ctx, heroUID) {
@@ -5332,12 +5677,14 @@ export function RefreshPartyBuffUI(ctx) {
 export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
   const g = getGlobals(ctx);
   RegisterHeroGemUsage(ctx, actorUID, gemColor, consumedCount);
+  recordGemActionEvent(ctx, gemColor, actorUID, consumedCount, '', '');
   g.HideHeroSelector = 1;
   if (gemColor === 0) {
     g.IsAOEMatch = 1;
     LogGemIntent(ctx, 0, 'GREEN', 'HERO_AOE', '', actorUID);
     g.PendingSkillID = 'HERO_AOE';
     g.PendingActor = actorUID;
+    armPendingGemActionEvent(ctx, 0, actorUID, consumedCount, 'HERO_AOE', 'green_match');
     ShowAttackUI(ctx);
     return;
   }
@@ -5346,6 +5693,7 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
     g.PendingActor = actorUID;
     g.IsAOEMatch = 0;
     LogGemIntent(ctx, 1, 'RED', 'HERO_SINGLE', '', actorUID);
+    armPendingGemActionEvent(ctx, 1, actorUID, consumedCount, 'HERO_SINGLE', 'red_match');
     ShowAttackUI(ctx);
     return;
   }
@@ -5654,13 +6002,16 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     const target = preferred && preferred.kind === 'enemy' ? preferred : enemies[0];
     if (target) {
       resolvedTargetUID = Number(target.uid || 0);
-      HeroAttackSingle(ctx, actorUID, target.uid);
-      sustainActiveFalieWardFromRedAttack(ctx, actorUID);
+      const pendingStartIndex = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits.length : 0;
+      const skillReactionEvent = consumePendingGemActionEvent(ctx, 'HERO_SINGLE', actorUID);
+      const redAttack = HeroAttackSingle(ctx, actorUID, target.uid);
+      attachSkillReactionEventToQueuedHeroAttack(ctx, pendingStartIndex, actorUID, target.uid, redAttack, skillReactionEvent);
     }
     const now = g.time || 0;
     g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, now + 0.5);
   } else if (skillId === 'HERO_AOE') {
     handled = true;
+    consumePendingGemActionEvent(ctx, 'HERO_AOE', actorUID);
     HeroAttackAOE(ctx, actorUID);
     const now = g.time || 0;
     g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, now + 0.5);

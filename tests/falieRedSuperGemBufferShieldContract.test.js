@@ -88,28 +88,20 @@ function activateRedSuperGem(runtime, context) {
   });
 }
 
-test('Falie red super-gem creates then sustains party ward without arming the red attack path', () => {
+test('Falie red super-gem now arms the standard red attack path without creating ward', () => {
   const runtime = loadSuperGemRuntime();
   const context = createSuperGemContext('Falie');
-  const expected = [
-    { shield: 36, ratio: 0.18 },
-    { shield: 108, ratio: 0.54 },
-    { shield: 180, ratio: 0.9 },
-    { shield: 200, ratio: 1 },
-  ];
 
-  for (const step of expected) {
-    assert.equal(activateRedSuperGem(runtime, context), true);
-    assert.equal(context.state.globals.PendingSkillID || '', '');
-    assert.equal(context.state.globals.PendingSuperGemAction || null, null);
-    assert.equal(context.state.globals.PartyTempHPShield, step.shield);
-    assert.equal(context.state.globals.PartyTempHPShieldRatio, step.ratio);
-    assert.equal(context.state.globals.PartyTempHPShieldMax, 200);
-    assert.equal(context.state.globals.PartyTempHPShieldColor, '#6CCBEE');
-    assert.equal(context.state.globals.PartyHP, 200);
-    assert.equal(context.state.globals.DeferAdvance, 1);
-    assert.equal(context.state.globals.AdvanceAfterAction, 1);
-  }
+  assert.equal(activateRedSuperGem(runtime, context), true);
+  assert.equal(context.state.globals.PendingSkillID, 'HERO_SINGLE');
+  assert.equal(context.state.globals.PendingSuperGemAction.kind, 'super_gem_attack');
+  assert.equal(context.state.globals.PendingSuperGemAction.color, 1);
+  assert.equal(context.state.globals.PendingSuperGemAction.actorUID, 4);
+  assert.equal(context.state.globals.PendingSuperGemAction.autoResolve, 1);
+  assert.equal(context.state.globals.PartyTempHPShield || 0, 0);
+  assert.equal(context.state.globals.PartyTempHPShieldRatio || 0, 0);
+  assert.equal(context.state.globals.PartyTempHPShieldMax || 0, 0);
+  assert.equal(context.state.globals.PartyHP, 200);
 });
 
 function makeFalieRedAttackContext(modulePath, { shield = 36, maxHP = 200 } = {}) {
@@ -154,21 +146,21 @@ function makeFalieRedAttackContext(modulePath, { shield = 36, maxHP = 200 } = {}
   return { ExecuteSkill, ctx, hero, enemy };
 }
 
-function assertFalieRedAttackSustainsActiveWard(modulePath) {
+function assertFalieRedAttackDoesNotSustainActiveWard(modulePath) {
   const { ExecuteSkill, ctx, hero } = makeFalieRedAttackContext(modulePath, { shield: 36 });
 
   ExecuteSkill(ctx, 'HERO_SINGLE', hero.uid);
 
-  assert.equal(ctx.state.globals.PartyTempHPShield, 72);
-  assert.equal(ctx.state.globals.PartyTempHPShieldRatio, 0.36);
+  assert.equal(ctx.state.globals.PartyTempHPShield, 36);
+  assert.equal(ctx.state.globals.PartyTempHPShieldRatio, 0.18);
   assert.equal(ctx.state.globals.PartyTempHPShieldMax, 200);
-  assert.equal(ctx.state.globals.PartyTempHPShieldSource, 'falie_red_sustain');
+  assert.notEqual(ctx.state.globals.PartyTempHPShieldSource, 'falie_red_sustain');
   assert.equal(ctx.state.globals.PendingHeroHits.length, 1);
 }
 
-test('Falie ordinary red attack sustains an active ward in both runtime mirrors', () => {
-  assertFalieRedAttackSustainsActiveWard(path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js'));
-  assertFalieRedAttackSustainsActiveWard(path.join(repoRoot, 'Scripts', 'functionBank.js'));
+test('Falie ordinary red attack no longer has special ward sustain in both runtime mirrors', () => {
+  assertFalieRedAttackDoesNotSustainActiveWard(path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js'));
+  assertFalieRedAttackDoesNotSustainActiveWard(path.join(repoRoot, 'Scripts', 'functionBank.js'));
 });
 
 function assertFalieRedAttackDoesNotRecreateBrokenWard(modulePath) {
@@ -187,7 +179,7 @@ test('Falie ordinary red attack cannot recreate a broken ward in both runtime mi
   assertFalieRedAttackDoesNotRecreateBrokenWard(path.join(repoRoot, 'Scripts', 'functionBank.js'));
 });
 
-test('Falie Ward creates one refreshed barrier visual per hero', () => {
+test('Falie red super-gem no longer creates barrier visuals by itself', () => {
   const runtime = loadSuperGemRuntime();
   const context = createSuperGemContext('Falie');
   context.state.entities.splice(
@@ -199,29 +191,21 @@ test('Falie Ward creates one refreshed barrier visual per hero', () => {
   );
 
   assert.equal(activateRedSuperGem(runtime, context), true);
-  const firstVisuals = context.state.globals.PartyWardBarrierVisualsByUID;
-  assert.deepEqual(Object.keys(firstVisuals).sort(), ['4', '5', '6', '7']);
-  assert.equal(context.state.globals.PartyWardBarrierAssetPath, 'images/falie_ward_84x62.png');
-  assert.equal(context.state.globals.PartyWardBarrierOffsetWorldX, 22);
-  assert.equal(context.state.globals.PartyWardBarrierWidth, 84);
-  assert.equal(context.state.globals.PartyWardBarrierHeight, 62);
-  assert.equal(firstVisuals[4].state, 'fadeIn');
-  assert.equal(firstVisuals[4].refreshCount, 1);
-
-  assert.equal(activateRedSuperGem(runtime, context), true);
-  const refreshedVisuals = context.state.globals.PartyWardBarrierVisualsByUID;
-  assert.strictEqual(refreshedVisuals, firstVisuals);
-  assert.deepEqual(Object.keys(refreshedVisuals).sort(), ['4', '5', '6', '7']);
-  assert.equal(refreshedVisuals[4].refreshCount, 2);
+  assert.equal(context.state.globals.PendingSkillID, 'HERO_SINGLE');
+  assert.equal(context.state.globals.PendingSuperGemAction.kind, 'super_gem_attack');
+  assert.equal(context.state.globals.PendingSuperGemAction.autoResolve, 1);
+  assert.equal(context.state.globals.PartyWardBarrierVisualsByUID || null, null);
+  assert.equal(context.state.globals.PartyWardBarrierActive || 0, 0);
 });
 
-test('red super-gem shield is Falie-only', () => {
+test('red super-gem standard attack path is not Falie-only', () => {
   const runtime = loadSuperGemRuntime();
   const context = createSuperGemContext('Kojonn');
 
   assert.equal(activateRedSuperGem(runtime, context), true);
   assert.equal(context.state.globals.PendingSkillID, 'HERO_SINGLE');
   assert.equal(context.state.globals.PendingSuperGemAction.color, 1);
+  assert.equal(context.state.globals.PendingSuperGemAction.autoResolve, 1);
   assert.equal(context.state.globals.PartyTempHPShield || 0, 0);
   assert.equal(context.state.globals.PartyTempHPShieldStacks || 0, 0);
 });
@@ -328,7 +312,7 @@ function assertShieldDamageTargetsWard(modulePath) {
     [hero.uid]: {
       uid: hero.uid,
       state: 'active',
-      baseAlpha: 0.82,
+      baseAlpha: 0.85,
       fadeOutDuration: 0.28,
     },
   };
@@ -362,7 +346,7 @@ function assertShieldDepletionFadesWardBeforeAdvancing(modulePath) {
     [hero.uid]: {
       uid: hero.uid,
       state: 'active',
-      baseAlpha: 0.82,
+      baseAlpha: 0.85,
       fadeOutDuration: 0.28,
     },
   };

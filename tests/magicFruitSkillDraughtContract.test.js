@@ -32,7 +32,9 @@ module.exports = {
   return context.module.exports;
 }
 
-function makeContext() {
+function makeContext(randomValues = [0]) {
+  const rolls = Array.isArray(randomValues) && randomValues.length ? randomValues.slice() : [0];
+  let rollIndex = 0;
   const hero = {
     uid: 100,
     kind: 'hero',
@@ -65,6 +67,11 @@ function makeContext() {
     AstralFlowAmpPoints: 18,
     AstralFlowAmpMax: 18,
     AstralFlowAmpReady: 1,
+    RuntimeRandom: () => {
+      const value = rolls[Math.min(rollIndex, rolls.length - 1)];
+      rollIndex += 1;
+      return value;
+    },
   };
   const ctx = {
     state: { globals, entities: [hero] },
@@ -108,8 +115,9 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
     const partyIds = Array.from(mod.GetPartySkillDefinitions(), skill => skill.id);
     assert.deepEqual(partyIds.slice(0, expectedExistingPartyIds.length), expectedExistingPartyIds);
     assert.equal(partyIds[expectedExistingPartyIds.length], 'party_magic_fruit');
+    assert.equal(partyIds[expectedExistingPartyIds.length + 1], 'party_crimson_ward');
 
-    const { ctx: defaultCtx } = makeContext();
+    const { ctx: defaultCtx } = makeContext([0.75, 0, 0]);
     const defaultOpened = mod.ForceAstralFlowSkillDraught(defaultCtx, 100);
     assert.equal(defaultOpened.ok, true);
     const defaultMagicFruit = defaultOpened.candidates.find(candidate => candidate.id === 'party_magic_fruit');

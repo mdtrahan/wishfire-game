@@ -5,16 +5,6 @@ const SUPER_GEM_AOE_HIT_DELAY = 1.07;
 const SUPER_GEM_HIT_INTERVAL = 0.2;
 const KOJONN_TAINTED_GROUND_DURATION_HERO_TEAM_TURNS = 3;
 const KOJONN_TAINTED_GROUND_DAMAGE_SCALE = 0.5;
-const FALIE_WARD_SUSTAIN_RATIO = 0.18;
-const FALIE_WARD_SUPER_GEM_SUSTAIN_MULTIPLIER = 2;
-const FALIE_RED_SUPER_GEM_SHIELD_COLOR = '#6CCBEE';
-const FALIE_WARD_BARRIER_ASSET_PATH = 'images/falie_ward_84x62.png';
-const FALIE_WARD_BARRIER_FADE_IN_SEC = 0.12;
-const FALIE_WARD_BARRIER_FADE_OUT_SEC = 0.28;
-const FALIE_WARD_BARRIER_BASE_ALPHA = 0.82;
-const FALIE_WARD_BARRIER_OFFSET_WORLD_X = 22;
-const FALIE_WARD_BARRIER_WIDTH = 84;
-const FALIE_WARD_BARRIER_HEIGHT = 62;
 
 function getRuntimeRandom(state) {
   const fn = state && state.globals && typeof state.globals.RuntimeRandom === 'function'
@@ -57,94 +47,6 @@ function getNextSuperGemBatchId(state) {
   const next = Math.max(1, Number(state?.globals?.NextSuperGemBatchId || 1));
   state.globals.NextSuperGemBatchId = next + 1;
   return next;
-}
-
-function getWardEligibleHeroes(state) {
-  return (state?.entities || [])
-    .filter(entity => entity && (entity.kind === 'hero' || entity.kind === 'escort'))
-    .sort((a, b) => Number(a.heroIndex ?? 0) - Number(b.heroIndex ?? 0));
-}
-
-function refreshFalieWardBarrierVisuals(state) {
-  if (!state?.globals) return false;
-  const g = state.globals;
-  const now = Number(g.time || 0);
-  const heroes = getWardEligibleHeroes(state);
-  if (!heroes.length) return false;
-  const visuals = g.PartyWardBarrierVisualsByUID && typeof g.PartyWardBarrierVisualsByUID === 'object'
-    ? g.PartyWardBarrierVisualsByUID
-    : {};
-  const liveUIDs = new Set();
-  for (const hero of heroes) {
-    const uid = Number(hero.uid || 0);
-    if (!(uid > 0)) continue;
-    liveUIDs.add(String(uid));
-    const existing = visuals[uid] && typeof visuals[uid] === 'object' ? visuals[uid] : {};
-    visuals[uid] = {
-      uid,
-      source: 'falie_red_super_gem',
-      state: 'fadeIn',
-      fadeInStartedAt: now,
-      fadeInDuration: FALIE_WARD_BARRIER_FADE_IN_SEC,
-      fadeOutDuration: FALIE_WARD_BARRIER_FADE_OUT_SEC,
-      baseAlpha: FALIE_WARD_BARRIER_BASE_ALPHA,
-      hitUntil: Number(existing.hitUntil || 0),
-      refreshCount: Math.max(1, Number(existing.refreshCount || 0) + 1),
-    };
-  }
-  for (const key of Object.keys(visuals)) {
-    if (!liveUIDs.has(String(key))) delete visuals[key];
-  }
-  g.PartyWardBarrierVisualsByUID = visuals;
-  g.PartyWardBarrierActive = 1;
-  g.PartyWardBarrierAssetPath = FALIE_WARD_BARRIER_ASSET_PATH;
-  g.PartyWardBarrierOffsetWorldX = FALIE_WARD_BARRIER_OFFSET_WORLD_X;
-  g.PartyWardBarrierWidth = FALIE_WARD_BARRIER_WIDTH;
-  g.PartyWardBarrierHeight = FALIE_WARD_BARRIER_HEIGHT;
-  g.PartyWardBarrierBaseAlpha = FALIE_WARD_BARRIER_BASE_ALPHA;
-  g.PartyWardBarrierFadeOutUntil = 0;
-  return true;
-}
-
-function applyFalieWardSustain(state, { multiplier = 1, allowCreate = false, source = 'falie_red_sustain' } = {}) {
-  if (!state?.globals) return false;
-  const g = state.globals;
-  const maxHP = Math.max(1, Number(g.PartyMaxHP || 1));
-  const before = Math.max(0, Number(g.PartyTempHPShield || 0));
-  if (before <= 0 && !allowCreate) return false;
-  const sustainMultiplier = Math.max(1, Number(multiplier || 1));
-  const sustainHP = Math.max(1, Math.round(maxHP * FALIE_WARD_SUSTAIN_RATIO * sustainMultiplier));
-  const after = Math.min(maxHP, before + sustainHP);
-  const ratio = Math.max(0, Math.min(1, after / maxHP));
-  const unitHP = Math.max(1, Math.round(maxHP * FALIE_WARD_SUSTAIN_RATIO));
-  g.PartyTempHPShield = after;
-  g.PartyTempHPShieldStacks = Math.max(1, Math.ceil(after / unitHP));
-  g.PartyTempHPShieldRatio = ratio;
-  g.PartyTempHPShieldMax = maxHP;
-  g.PartyTempHPShieldColor = FALIE_RED_SUPER_GEM_SHIELD_COLOR;
-  g.PartyTempHPShieldSource = source;
-  g.LastFalieWardSustain = {
-    source,
-    before,
-    after,
-    added: Math.max(0, after - before),
-    multiplier: sustainMultiplier,
-    ratio,
-  };
-  if (g.PartyTempHPShield > 0) {
-    refreshFalieWardBarrierVisuals(state);
-  }
-  return g.PartyTempHPShield > 0;
-}
-
-function grantFalieRedSuperGemPartyShield(state) {
-  const g = state?.globals;
-  const active = Math.max(0, Number(g?.PartyTempHPShield || 0)) > 0;
-  return applyFalieWardSustain(state, {
-    multiplier: active ? FALIE_WARD_SUPER_GEM_SUSTAIN_MULTIPLIER : 1,
-    allowCreate: true,
-    source: active ? 'falie_red_super_gem_sustain' : 'falie_red_super_gem',
-  });
 }
 
 function buildNormalHitLog(heroName, targetName, finalDmg) {
@@ -237,6 +139,7 @@ function queueClusterSingleHits({
   actorUID,
   targetUID,
   hitCount,
+  color = 1,
 }) {
   const actor = callFunctionWithContext(fnContext, 'GetActorByUID', actorUID);
   const target = callFunctionWithContext(fnContext, 'GetActorByUID', targetUID);
@@ -815,6 +718,7 @@ export function armPendingSuperGemAttack({
     color,
     hitCount,
     actorUID: Number(actorUID || 0),
+    autoResolve: color === 1 ? 1 : 0,
   };
   state.globals.HideHeroSelector = 1;
   state.globals.CanPickGems = false;
@@ -858,6 +762,7 @@ export function executePendingSuperGemAction({
       actorUID,
       targetUID,
       hitCount,
+      color,
     });
   } else if (color === 0) {
     activated = queueClusterAoeHits({
@@ -915,17 +820,6 @@ export function activateSuperGemEffect({
   if (!(actorUID > 0)) return false;
   state.globals.HideHeroSelector = color === 1 ? 0 : 1;
   if (color === 1) {
-    const actor = callFunctionWithContext(fnContext, 'GetActorByUID', actorUID);
-    if (String(actor && actor.name || '') === 'Falie') {
-      grantFalieRedSuperGemPartyShield(state);
-      state.globals.CanPickGems = 0;
-      state.globals.IsPlayerBusy = 0;
-      state.globals.ActionOwnerUID = actorUID;
-      state.globals.ActionLockUntil = Math.max(Number(state.globals.ActionLockUntil || 0), Number(state.globals.time || 0) + 0.32);
-      state.globals.DeferAdvance = 1;
-      state.globals.AdvanceAfterAction = 1;
-      return true;
-    }
     return armPendingSuperGemAttack({ superGem, actorUID, state });
   }
   if (color === 0) {

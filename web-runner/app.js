@@ -6160,6 +6160,55 @@ function getStoryCardLiveLineState() {
     });
     return true;
   }
+  function autoResolvePendingSuperGemAction() {
+    const pending = state.globals.PendingSuperGemAction || null;
+    if (!pending || pending.kind !== 'super_gem_attack') return false;
+    if (Number(pending.color) !== 1) return false;
+    if (Number(pending.autoResolve || 0) !== 1) return false;
+    if (!state.globals.PendingSkillID) return false;
+    const presentationBarrier = getPresentationTurnBarrier({
+      hasEmpty: hasEmptySlots(),
+      enemyLineClearPressureActive: !!state.globals.EnemyLineClearPressureActive,
+    });
+    if (!presentationBarrier.canResolvePendingTargetAction) return false;
+    const actorUID = Number(state.globals.PendingActor || pending.actorUID || callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
+    if (!(actorUID > 0)) return false;
+    const livingEnemies = state.entities.filter((entity) => entity && entity.kind === 'enemy' && (entity.hp ?? 0) > 0);
+    if (!livingEnemies.length) return false;
+    if (String(state.globals.PendingSkillID || '') === 'HERO_SINGLE' && !(Number(state.globals.SelectedEnemyUID || 0) > 0)) {
+      state.globals.SelectedEnemyUID = Number(livingEnemies[0].uid || 0);
+    }
+    logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
+      stage: 'before',
+      source: 'auto-supergem',
+      actorUID,
+    });
+    const resolvedPendingSuperGem = superGemRuntime.executePendingSuperGemAction({
+      state,
+      callFunctionWithContext,
+      fnContext,
+    });
+    if (!resolvedPendingSuperGem) return false;
+    logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
+      stage: 'after-action-attempt-before-clear',
+      source: 'auto-supergem',
+      actorUID,
+      resolvedPendingSuperGem,
+    });
+    state.globals.PendingSkillID = '';
+    state.globals.PendingActor = 0;
+    state.globals.SelectedEnemyUID = 0;
+    callFunctionWithContext(fnContext, 'HideAttackUI');
+    state.globals.CanPickGems = false;
+    state.globals.IsPlayerBusy = 1;
+    logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
+      stage: 'after-clear',
+      source: 'auto-supergem',
+      actorUID,
+      resolvedPendingSuperGem,
+    });
+    return true;
+  }
   function autoResolveSkillDraughtForDevIdle() {
     if (!state.globals.DevAutoplayActive) return false;
     if (!Number(state.globals.SkillDraughtOpen || 0)) {
@@ -7280,6 +7329,7 @@ function getStoryCardLiveLineState() {
     hasEmpty,
     enemyLineClearPressureActive,
   });
+  autoResolvePendingSuperGemAction();
   const refillReady =
     phaseNow === 0 &&
     !state.globals.IsPlayerBusy &&

@@ -90,6 +90,7 @@
 - **AOE heal readability rule**: if players must quickly perceive threat under fast pacing, prefer equal per-target heal application over split pools unless split behavior is explicitly part of design.
 - **Outcome-table tuning workflow**: for event-style randomness (purple amp), keep probabilities in one visible table and tune only weights first; avoid adding pity/extra systems until weight tuning is proven insufficient.
 - **Mirror discipline rule**: deterministic combat rules must be edited in both runtime mirrors (`web-runner/modules/functionBank.js` and `Scripts/functionBank.js`) in the same patch cycle.
+- **Delayed-hit proc timing**: attack-triggered effects that are shown as impact reactions should ride `PendingHeroHits` metadata and fire from the hit resolver after `ApplyDamageToTarget`, not at the skill queueing seam.
 
 ## 2026-03-09 — Encounter Slotting Seam
 - **Initial vs refill seam**: center-slot strongest logic belongs at package-to-slot assignment seams, not inside per-slot respawn picker logic.
@@ -378,3 +379,7 @@
 ## 2026-05-26 — Pending Target Resolution Is Not A New Action Claim
 - A red/green target picker created by the current gem match must resolve before refill, even when the match already left empty board slots. `refill-pending` blocks new action claims, turn advance, input restore, and refill completion; it must not block the already-pending target button that will finish the current action.
 - For target-selection regressions, validate both normal match and pending supergem action shapes. `PendingSkillID` plus `TurnPhase === 1` or `PendingSuperGemAction` should be allowed through only when no real presentation lane is active and `DeferAdvance` is clear.
+
+## 2026-05-27 — Skill Cards Listen To Combat Facts
+- Gem and supergem paths should emit neutral combat facts, such as source color, action source, actor, target, phase, and applied damage. They should not carry skill-specific trigger names or call card payloads directly.
+- Reactive skill-card payloads belong in the skill-card dispatcher at the post-hit seam, after the base combat action has applied. This keeps normal gem behavior stable while preserving the roguelite feeling that active cards are watching for matching conditions.
