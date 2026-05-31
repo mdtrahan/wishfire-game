@@ -49,8 +49,14 @@ import {
   calculateDamageFromJs as importedCalculateDamageFromJs,
   createCalculateDamageSimulationPacket,
 } from '../src/core/calculateDamageRules.mjs';
+import { createSingleHitSimulationPacket } from '../src/core/singleHitRules.mjs';
+import { createPartyDamageSimulationPacket } from '../src/core/partyDamageRules.mjs';
+import { createEffectiveStatSimulationPacket } from '../src/core/effectiveStatRules.mjs';
 import { resolveGemAction as importedResolveGemAction } from '../src/core/gemActionRules.mjs';
-import { resolveRunaMagicResist as importedResolveRunaMagicResist } from '../src/core/runaMagicResistRules.mjs';
+import {
+  resolveRunaMagicResist as importedResolveRunaMagicResist,
+  createRunaMagicResistSimulationPacket,
+} from '../src/core/runaMagicResistRules.mjs';
 import { getEnemyRosterStability } from '../src/core/enemyRosterStability.mjs';
 const POWER_AMP_OUTCOMES = [
   { key: 'HERO_2X', multiplier: 2, chance: 0.62 },
@@ -3721,7 +3727,10 @@ function maybeResolveEffectiveStatOwner(ctx, payload) {
     : null;
   if (typeof effectiveStatOwnerHook !== 'function') return null;
   try {
-    const result = effectiveStatOwnerHook(payload);
+    const result = createEffectiveStatSimulationPacket({
+      ...payload,
+      ownerHook: effectiveStatOwnerHook,
+    });
     const value = Number(result?.value);
     if (!Number.isFinite(value)) return null;
     if (g) {
@@ -3730,7 +3739,14 @@ function maybeResolveEffectiveStatOwner(ctx, payload) {
         source: String(payload.source || 'functionBank.GetEffectiveStat'),
         stat: String(payload.stat || ''),
         actorKind: String(payload.actorKind || ''),
+        jsValue: Number(result?.simulationCoreResponse?.diagnostics?.jsValue ?? payload.jsValue ?? value),
         value,
+      };
+      g.LastEffectiveStatPacket = {
+        owner: String(result?.owner || 'rust'),
+        result: String(result?.simulationCoreResponse?.result || ''),
+        actionType: String(result?.simulationCoreRequest?.action?.type || ''),
+        source: String(payload.source || 'functionBank.GetEffectiveStat'),
       };
     }
     return g?.LastEffectiveStatOwner || { owner: String(result?.owner || 'rust'), value };
@@ -3922,8 +3938,11 @@ function maybeResolveSingleHitOwner(ctx, target, beforeHP, shieldBefore, jsDamag
     : null;
   if (typeof singleHitOwnerHook !== 'function') return null;
   try {
-    const result = singleHitOwnerHook({
+    const result = createSingleHitSimulationPacket({
       source: 'functionBank.ApplyDamageToTarget',
+      attackerUID: Number(meta.attackerUID || 0),
+      targetUID: Number(target?.uid || 0),
+      mode: String(meta.mode || ''),
       power: Number(meta.power || 0),
       resist: Number(meta.resist || 0),
       roll01: Number(meta.roll01 || 0),
@@ -3937,6 +3956,7 @@ function maybeResolveSingleHitOwner(ctx, target, beforeHP, shieldBefore, jsDamag
       jsDamage: normalizedJsDamage,
       jsAppliedDamage: Number(jsAppliedDamage || 0),
       jsAfterHp: Number(jsAfterHp || 0),
+      ownerHook: singleHitOwnerHook,
     });
     const damage = Number(result?.damage);
     const appliedDamage = Number(result?.appliedDamage);
@@ -3949,6 +3969,12 @@ function maybeResolveSingleHitOwner(ctx, target, beforeHP, shieldBefore, jsDamag
       damage,
       appliedDamage,
       afterHp,
+    };
+    g.LastSingleHitPacket = {
+      owner: String(result?.owner || 'rust'),
+      result: String(result?.simulationCoreResponse?.result || ''),
+      actionType: String(result?.simulationCoreRequest?.action?.type || ''),
+      source: 'functionBank.ApplyDamageToTarget',
     };
     return g.LastSingleHitOwner;
   } catch (err) {
@@ -5059,14 +5085,35 @@ function applyRunaMagicResist(ctx, enemyUID, targetHeroUID, incomingDamage, skil
   const baseDamage = Math.max(0, Number(incomingDamage) || 0);
   const target = GetActorByUID(ctx, targetHeroUID);
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
-  const decision = resolveRunaMagicResistCompat({
+  const runaMagicResistOwnerHook = root && typeof root.__ORKA_RUNA_MAGIC_RESIST_OWNER__ === 'function'
+    ? root.__ORKA_RUNA_MAGIC_RESIST_OWNER__
+    : null;
+  const payload = {
+    source: 'functionBank.applyRunaMagicResist',
+    enemyUID,
+    targetUID: targetHeroUID,
+    skillId,
     targetIsRuna: target && String(target?.name || '') === RUNA_MAGIC_RESIST_NAME ? 1 : 0,
     incomingDamage: baseDamage,
     rollSource: getRandomSource(ctx),
-    ownerHook: root && typeof root.__ORKA_RUNA_MAGIC_RESIST_OWNER__ === 'function'
-      ? root.__ORKA_RUNA_MAGIC_RESIST_OWNER__
-      : null,
-  });
+  };
+  let decision = null;
+  if (typeof runaMagicResistOwnerHook === 'function') {
+    try {
+      decision = createRunaMagicResistSimulationPacket({
+        ...payload,
+        ownerHook: runaMagicResistOwnerHook,
+      });
+    } catch (err) {
+      g.LastRunaMagicResistOwnerError = String(err?.message || err || 'unknown');
+    }
+  }
+  if (!decision) {
+    decision = resolveRunaMagicResistCompat({
+      ...payload,
+      ownerHook: runaMagicResistOwnerHook,
+    });
+  }
   const trace = {
     enemyUID: Number(enemyUID || 0),
     targetUID: Number(targetHeroUID || 0),
@@ -5081,6 +5128,14 @@ function applyRunaMagicResist(ctx, enemyUID, targetHeroUID, incomingDamage, skil
   if (decision.triggerRoll != null) trace.triggerRoll = Number(decision.triggerRoll || 0);
   if (decision.nullifyRoll != null) trace.nullifyRoll = Number(decision.nullifyRoll || 0);
   g.LastRunaMagicResist = trace;
+  if (decision?.simulationCoreRequest && decision?.simulationCoreResponse) {
+    g.LastRunaMagicResistPacket = {
+      owner: String(decision.owner || 'rust'),
+      result: String(decision.simulationCoreResponse.result || ''),
+      actionType: String(decision.simulationCoreRequest.action?.type || ''),
+      source: 'functionBank.applyRunaMagicResist',
+    };
+  }
   return { finalDamage: trace.finalDamage, mode: trace.mode };
 }
 
@@ -5471,7 +5526,10 @@ function maybeResolvePartyDamageOwner(ctx, snapshot) {
     : null;
   if (typeof partyDamageOwnerHook !== 'function') return null;
   try {
-    const result = partyDamageOwnerHook(snapshot);
+    const result = createPartyDamageSimulationPacket({
+      ...snapshot,
+      ownerHook: partyDamageOwnerHook,
+    });
     const heroCount = Math.max(0, Math.min(4, Math.floor(Number(snapshot.heroCount || 0))));
     const heroHp = Array.isArray(result?.heroHp)
       ? [0, 1, 2, 3].map((index) => Number(result.heroHp[index] || 0))
@@ -5494,6 +5552,12 @@ function maybeResolvePartyDamageOwner(ctx, snapshot) {
       return null;
     }
     g.LastPartyDamageOwner = owner;
+    g.LastPartyDamagePacket = {
+      owner: String(result?.owner || 'rust'),
+      result: String(result?.simulationCoreResponse?.result || ''),
+      actionType: String(result?.simulationCoreRequest?.action?.type || ''),
+      source: String(snapshot.source || 'functionBank.ApplyPartyDamage'),
+    };
     return owner;
   } catch (err) {
     g.LastPartyDamageOwnerError = String(err?.message || err || 'unknown');

@@ -16,9 +16,52 @@ export const RUNA_MAGIC_RESIST_MODE_IDS = Object.freeze([
   'heavy_resist',
 ]);
 
+const SIMULATION_CORE_CONTRACT_VERSION = 1;
+const SIMULATION_CORE_BASELINE_ID = 'main@5364ede23e3160fadb1a6ac9bf940c57bdd15f87';
+
 function numberOr(value, fallback = 0) {
   const normalized = Number(value);
   return Number.isFinite(normalized) ? normalized : fallback;
+}
+
+function clonePacketJson(value, fallback) {
+  const source = value == null ? fallback : value;
+  const json = JSON.stringify(source);
+  if (typeof json !== 'string') return fallback;
+  return JSON.parse(json);
+}
+
+function createFallbackSimulationCoreRequest({
+  gameState = {},
+  action = {},
+  rngState = {},
+  context = {},
+} = {}) {
+  return {
+    contractVersion: SIMULATION_CORE_CONTRACT_VERSION,
+    baselineId: SIMULATION_CORE_BASELINE_ID,
+    gameState: clonePacketJson(gameState, {}),
+    action: clonePacketJson(action, { type: 'unknown' }),
+    rngState: clonePacketJson(rngState, {}),
+    context: clonePacketJson(context, {}),
+  };
+}
+
+function createFallbackSimulationCoreResponse({
+  nextGameState = {},
+  events = [],
+  rngState = {},
+  result = 'continue',
+  diagnostics = {},
+} = {}) {
+  return {
+    contractVersion: SIMULATION_CORE_CONTRACT_VERSION,
+    nextGameState: clonePacketJson(nextGameState, {}),
+    events: Array.isArray(events) ? clonePacketJson(events, []) : [],
+    rngState: clonePacketJson(rngState, {}),
+    result: String(result || 'continue'),
+    diagnostics: clonePacketJson(diagnostics, {}),
+  };
 }
 
 function readRoll(rollSource = Math.random, fallback = 0) {
@@ -124,5 +167,129 @@ export function resolveRunaMagicResist({
   return {
     ...jsDecision,
     jsDecision,
+  };
+}
+
+function normalizeRunaMagicResistInput({
+  source = 'unknown',
+  enemyUID = 0,
+  targetUID = 0,
+  skillId = '',
+  targetIsRuna = 0,
+  incomingDamage = 0,
+  triggerRoll = null,
+  nullifyRoll = null,
+  rollSource = Math.random,
+} = {}) {
+  const jsDecision = runaMagicResistFromJs({
+    targetIsRuna,
+    incomingDamage,
+    triggerRoll,
+    nullifyRoll,
+    rollSource,
+  });
+  return {
+    source: String(source || 'unknown'),
+    enemyUID: numberOr(enemyUID, 0),
+    targetUID: numberOr(targetUID, 0),
+    skillId: String(skillId || ''),
+    targetIsRuna: Number(targetIsRuna || 0) === 1 ? 1 : 0,
+    incomingDamage: Math.max(0, numberOr(incomingDamage, 0)),
+    triggerRoll: numberOr(jsDecision.triggerRoll, 0),
+    nullifyRoll: numberOr(jsDecision.nullifyRoll, 0),
+    jsFinalDamage: numberOr(jsDecision.finalDamage, 0),
+    jsModeCode: numberOr(jsDecision.modeCode, 0),
+    jsDecision,
+  };
+}
+
+export function createRunaMagicResistSimulationPacket({
+  ownerHook = null,
+  requestFactory = null,
+  responseApplier = null,
+  rngState = {},
+  gameState = {},
+  context = {},
+  ...input
+} = {}) {
+  const normalized = normalizeRunaMagicResistInput(input);
+  const action = {
+    type: 'combat.runaMagicResist',
+    source: normalized.source,
+    enemyUID: normalized.enemyUID,
+    targetUID: normalized.targetUID,
+    skillId: normalized.skillId,
+    targetIsRuna: normalized.targetIsRuna,
+    incomingDamage: normalized.incomingDamage,
+    triggerRoll: normalized.triggerRoll,
+    nullifyRoll: normalized.nullifyRoll,
+    jsFinalDamage: normalized.jsFinalDamage,
+    jsModeCode: normalized.jsModeCode,
+  };
+  const requestContext = {
+    ruleFamily: 'runaMagicResist',
+    owner: 'rust',
+    ...context,
+  };
+  const request = typeof requestFactory === 'function'
+    ? requestFactory(action, requestContext)
+    : createFallbackSimulationCoreRequest({
+      gameState,
+      action,
+      rngState,
+      context: requestContext,
+    });
+  let rollIndex = 0;
+  const deterministicRollSource = () => {
+    const rolls = [normalized.triggerRoll, normalized.nullifyRoll];
+    const value = rolls[Math.min(rollIndex, rolls.length - 1)];
+    rollIndex += 1;
+    return value;
+  };
+  const decision = resolveRunaMagicResist({
+    targetIsRuna: normalized.targetIsRuna,
+    incomingDamage: normalized.incomingDamage,
+    rollSource: deterministicRollSource,
+    ownerHook,
+  });
+  decision.triggerRoll = normalized.triggerRoll;
+  decision.nullifyRoll = normalized.nullifyRoll;
+  decision.jsDecision = normalized.jsDecision;
+  const sourceGameState = request && request.gameState ? request.gameState : gameState;
+  const nextGameState = {
+    ...clonePacketJson(sourceGameState, {}),
+    combat: {
+      ...clonePacketJson(sourceGameState?.combat, {}),
+      lastRunaMagicResist: {
+        enemyUID: normalized.enemyUID,
+        targetUID: normalized.targetUID,
+        skillId: normalized.skillId,
+        owner: String(decision.owner || 'fallback'),
+        mode: String(decision.mode || 'not_runa'),
+        finalDamage: Number(decision.finalDamage || 0),
+      },
+    },
+  };
+  const response = createFallbackSimulationCoreResponse({
+    nextGameState,
+    events: [],
+    rngState: request && request.rngState ? request.rngState : rngState,
+    result: 'magic_resist',
+    diagnostics: {
+      ruleFamily: 'runaMagicResist',
+      owner: decision.owner,
+      ...action,
+      mode: String(decision.mode || 'not_runa'),
+      modeCode: Number(decision.modeCode || 0),
+      finalDamage: Number(decision.finalDamage || 0),
+    },
+  });
+  const appliedResponse = typeof responseApplier === 'function'
+    ? responseApplier(response)
+    : response;
+  return {
+    ...decision,
+    simulationCoreRequest: request,
+    simulationCoreResponse: appliedResponse,
   };
 }

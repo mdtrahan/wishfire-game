@@ -3,10 +3,12 @@ const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
+const { pathToFileURL } = require('node:url');
 
 const runtimeFunctionBankPath = path.join(__dirname, '..', 'web-runner', 'modules', 'functionBank.js');
 const scriptsFunctionBankPath = path.join(__dirname, '..', 'Scripts', 'functionBank.js');
 const shadowModulePath = path.join(__dirname, '..', 'web-runner', 'systems', 'simulationCoreShadow.js');
+const rulesPath = path.join(__dirname, '..', 'web-runner', 'src', 'core', 'effectiveStatRules.mjs');
 
 function loadFunctionBank(modulePath, effectiveStatOwner) {
   const original = fs.readFileSync(modulePath, 'utf8');
@@ -28,6 +30,23 @@ module.exports = {
     module: { exports: {} },
     exports: {},
     state: { globals: {}, entities: [] },
+    createEffectiveStatSimulationPacket: (payload) => {
+      const { ownerHook, ...submitted } = payload;
+      const result = ownerHook(submitted);
+      return {
+        owner: result.owner,
+        value: result.value,
+        simulationCoreRequest: {
+          action: { type: 'combat.effectiveStat' },
+        },
+        simulationCoreResponse: {
+          result: 'effective_stat',
+          diagnostics: {
+            jsValue: submitted.jsValue,
+          },
+        },
+      };
+    },
     __ORKA_EFFECTIVE_STAT_OWNER__: (payload) => {
       calls.push(payload);
       return effectiveStatOwner(payload);
@@ -92,6 +111,35 @@ test('simulation core module exposes a Rust-owned effective stat marker', () => 
   assert.match(shadowSrc, /dataset\.simCoreShadowEffectiveStatOwner/);
 });
 
+test('effective stat packet follows Rust owner when Rust and JS disagree', async () => {
+  const { createEffectiveStatSimulationPacket } = await import(pathToFileURL(rulesPath));
+  const packet = createEffectiveStatSimulationPacket({
+    source: 'test.packetizedEffectiveStat',
+    uid: 100,
+    stat: 'ATK',
+    actorKind: 'hero',
+    base: 10,
+    partyBuff: 3,
+    enemyDebuff: 0,
+    isHero: 1,
+    isEnemy: 0,
+    ownerHook: (payload) => ({
+      owner: 'rust',
+      value: Number(payload.jsValue || 0) + 9,
+    }),
+  });
+
+  assert.equal(packet.owner, 'rust');
+  assert.equal(packet.value, 22);
+  assert.equal(packet.simulationCoreRequest.action.type, 'combat.effectiveStat');
+  assert.equal(packet.simulationCoreRequest.context.ruleFamily, 'effectiveStat');
+  assert.equal(packet.simulationCoreResponse.result, 'effective_stat');
+  assert.equal(packet.simulationCoreResponse.diagnostics.jsValue, 13);
+  assert.equal(packet.simulationCoreResponse.nextGameState.combat.lastEffectiveStat.value, 22);
+  assert.deepEqual(JSON.parse(JSON.stringify(packet.simulationCoreRequest)), packet.simulationCoreRequest);
+  assert.deepEqual(JSON.parse(JSON.stringify(packet.simulationCoreResponse)), packet.simulationCoreResponse);
+});
+
 test('effective stat follows Rust owner when Rust and JS disagree', () => {
   for (const modulePath of [runtimeFunctionBankPath, scriptsFunctionBankPath]) {
     const { mod, calls } = loadFunctionBank(modulePath, (payload) => ({
@@ -116,5 +164,7 @@ test('effective stat follows Rust owner when Rust and JS disagree', () => {
     assert.equal(calls[1].jsValue, 6, `${modulePath} submitted enemy JS value`);
     assert.equal(ctx.state.globals.LastEffectiveStatOwner.owner, 'rust');
     assert.equal(ctx.state.globals.LastEffectiveStatOwner.value, 5);
+    assert.equal(ctx.state.globals.LastEffectiveStatPacket.owner, 'rust');
+    assert.equal(ctx.state.globals.LastEffectiveStatPacket.actionType, 'combat.effectiveStat');
   }
 });

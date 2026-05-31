@@ -3,10 +3,12 @@ const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
+const { pathToFileURL } = require('node:url');
 
 const runtimeFunctionBankPath = path.join(__dirname, '..', 'web-runner', 'modules', 'functionBank.js');
 const scriptsFunctionBankPath = path.join(__dirname, '..', 'Scripts', 'functionBank.js');
 const shadowModulePath = path.join(__dirname, '..', 'web-runner', 'systems', 'simulationCoreShadow.js');
+const rulesPath = path.join(__dirname, '..', 'web-runner', 'src', 'core', 'singleHitRules.mjs');
 
 function loadFunctionBank(modulePath) {
   const original = fs.readFileSync(modulePath, 'utf8');
@@ -24,6 +26,20 @@ module.exports = {
     module: { exports: {} },
     exports: {},
     state: { globals: {}, entities: [] },
+    createSingleHitSimulationPacket: (payload) => {
+      const { ownerHook, ...submitted } = payload;
+      const result = ownerHook(submitted);
+      return {
+        ...result,
+        simulationCoreRequest: {
+          action: { type: 'combat.singleHit' },
+        },
+        simulationCoreResponse: {
+          result: 'single_hit',
+          diagnostics: submitted,
+        },
+      };
+    },
     __ORKA_SINGLE_HIT_OWNER__: ({ targetHp }) => ({
       owner: 'rust',
       damage: 19,
@@ -114,6 +130,46 @@ test('simulation core module exposes a Rust-owned single-hit transaction marker'
   assert.match(shadowSrc, /dataset\.simCoreShadowSingleHitOwner/);
 });
 
+test('single-hit packet follows Rust owner when Rust and JS disagree', async () => {
+  const { createSingleHitSimulationPacket } = await import(pathToFileURL(rulesPath));
+  const packet = createSingleHitSimulationPacket({
+    source: 'test.packetizedSingleHit',
+    attackerUID: 200,
+    targetUID: 100,
+    mode: 'melee',
+    power: 30,
+    resist: 0,
+    roll01: 0.5,
+    critRoll01: 0.9,
+    sourceIsHero: 0,
+    heroAoe: 0,
+    chainActive: 0,
+    chainMultiplier: 1,
+    targetHp: 40,
+    shield: 0,
+    jsDamage: 30,
+    jsAppliedDamage: 30,
+    jsAfterHp: 10,
+    ownerHook: () => ({
+      owner: 'rust',
+      damage: 19,
+      appliedDamage: 7,
+      afterHp: 33,
+    }),
+  });
+
+  assert.equal(packet.owner, 'rust');
+  assert.equal(packet.damage, 19);
+  assert.equal(packet.appliedDamage, 7);
+  assert.equal(packet.afterHp, 33);
+  assert.equal(packet.simulationCoreRequest.action.type, 'combat.singleHit');
+  assert.equal(packet.simulationCoreRequest.context.ruleFamily, 'singleHit');
+  assert.equal(packet.simulationCoreResponse.result, 'single_hit');
+  assert.equal(packet.simulationCoreResponse.nextGameState.combat.lastSingleHit.afterHp, 33);
+  assert.deepEqual(JSON.parse(JSON.stringify(packet.simulationCoreRequest)), packet.simulationCoreRequest);
+  assert.deepEqual(JSON.parse(JSON.stringify(packet.simulationCoreResponse)), packet.simulationCoreResponse);
+});
+
 test('single-hit ApplyDamageToTarget follows Rust owner when Rust and JS disagree', () => {
   for (const modulePath of [runtimeFunctionBankPath, scriptsFunctionBankPath]) {
     const mod = loadFunctionBank(modulePath);
@@ -129,5 +185,7 @@ test('single-hit ApplyDamageToTarget follows Rust owner when Rust and JS disagre
     assert.equal(ctx.state.globals.PartyHP, 33, `${modulePath} party HP`);
     assert.equal(ctx.state.globals.LastSingleHitOwner.owner, 'rust');
     assert.equal(ctx.state.globals.LastSingleHitOwner.damage, 19);
+    assert.equal(ctx.state.globals.LastSingleHitPacket.owner, 'rust');
+    assert.equal(ctx.state.globals.LastSingleHitPacket.actionType, 'combat.singleHit');
   }
 });
