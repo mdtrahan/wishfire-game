@@ -45,7 +45,10 @@ import {
   pickEnemyTargetHeroFromRoster,
   resolveEnemyTargetHero,
 } from '../src/core/enemyTargetingRules.mjs';
-import { calculateDamageFromJs as importedCalculateDamageFromJs } from '../src/core/calculateDamageRules.mjs';
+import {
+  calculateDamageFromJs as importedCalculateDamageFromJs,
+  createCalculateDamageSimulationPacket,
+} from '../src/core/calculateDamageRules.mjs';
 import { resolveGemAction as importedResolveGemAction } from '../src/core/gemActionRules.mjs';
 import { resolveRunaMagicResist as importedResolveRunaMagicResist } from '../src/core/runaMagicResistRules.mjs';
 import { getEnemyRosterStability } from '../src/core/enemyRosterStability.mjs';
@@ -4348,7 +4351,10 @@ function maybeResolveCalculateDamageOwner(ctx, payload) {
     : null;
   if (typeof calculateDamageOwnerHook !== 'function') return null;
   try {
-    const result = calculateDamageOwnerHook(payload);
+    const result = createCalculateDamageSimulationPacket({
+      ...payload,
+      ownerHook: calculateDamageOwnerHook,
+    });
     const damage = Number(result?.damage);
     if (!Number.isFinite(damage)) return null;
     g.LastCalculateDamageOwner = {
@@ -4365,8 +4371,15 @@ function maybeResolveCalculateDamageOwner(ctx, payload) {
       heroAoe: Number(payload.heroAoe || 0),
       chainActive: Number(payload.chainActive || 0),
       chainMultiplier: Number(payload.chainMultiplier || 1),
-      jsDamage: Number(payload.jsDamage || 0),
+      jsDamage: Number(result?.simulationCoreResponse?.diagnostics?.jsDamage ?? payload.jsDamage ?? 0),
       damage,
+      result: String(result?.simulationCoreResponse?.result || ''),
+    };
+    g.LastCalculateDamagePacket = {
+      owner: String(result?.owner || 'rust'),
+      result: String(result?.simulationCoreResponse?.result || ''),
+      actionType: String(result?.simulationCoreRequest?.action?.type || ''),
+      source: String(payload.source || 'functionBank.CalculateDamage'),
     };
     return g.LastCalculateDamageOwner;
   } catch (err) {
