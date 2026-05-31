@@ -32,7 +32,7 @@ import {
   nextTeamPhaseType,
 } from '../src/core/schedulerRules.mjs';
 import { createRoundPointerAdvanceSimulationPacket } from '../src/core/roundPointerAdvanceRules.mjs';
-import { resolveTurnPhaseAssignment } from '../src/core/turnPhaseAssignmentRules.mjs';
+import { createTurnPhaseAssignmentSimulationPacket } from '../src/core/turnPhaseAssignmentRules.mjs';
 import { resolveTurnOrderGroupProjection } from '../src/core/turnOrderGroupRules.mjs';
 import { resolveEnemySkillChoice } from '../src/core/enemySkillChoiceRules.mjs';
 import { resolveEnemyJobSkill as importedResolveEnemyJobSkill } from '../src/core/enemyJobSkillRules.mjs';
@@ -3314,7 +3314,7 @@ function resolveCurrentTurnPhase(ctx, source) {
   const g = getGlobals(ctx);
   const turnType = GetCurrentType(ctx);
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
-  const phaseAssignment = resolveTurnPhaseAssignment({
+  const phaseAssignment = createTurnPhaseAssignmentSimulationPacket({
     source,
     turnType,
     ownerHook: root && typeof root.__ORKA_TURN_PHASE_ASSIGNMENT_OWNER__ === 'function'
@@ -3327,6 +3327,13 @@ function resolveCurrentTurnPhase(ctx, source) {
     turnTypeCode: Number(phaseAssignment.turnTypeCode || 0),
     turnPhase: Number(phaseAssignment.turnPhase || 0),
     jsTurnPhase: Number(phaseAssignment.jsDecision?.turnPhase ?? phaseAssignment.turnPhase ?? 0),
+    result: String(phaseAssignment.simulationCoreResponse?.result || ''),
+  };
+  g.LastTurnPhaseAssignmentPacket = {
+    owner: String(phaseAssignment.owner || 'fallback'),
+    result: String(phaseAssignment.simulationCoreResponse?.result || ''),
+    actionType: String(phaseAssignment.simulationCoreRequest?.action?.type || ''),
+    source,
   };
   return Number(phaseAssignment.turnPhase || 0);
 }
