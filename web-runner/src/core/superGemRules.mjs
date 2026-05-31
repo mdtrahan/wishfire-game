@@ -1,4 +1,4 @@
-const SUPER_GEM_COLORS = new Set([0, 1, 2, 3, 5]);
+const SUPER_GEM_COLORS = new Set([0, 1, 2, 3, 4, 5]);
 
 function keyOf(r, c) {
   return `${r},${c}`;
@@ -93,7 +93,7 @@ export function buildSuperGemCellMap(superGems = []) {
 }
 
 export function pickRainbowColor(rng = Math.random) {
-  const palette = [0, 1, 2, 3, 5];
+  const palette = [0, 1, 2, 3, 4, 5];
   const idx = Math.floor((Number(rng()) || 0) * palette.length) % palette.length;
   return palette[idx];
 }

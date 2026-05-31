@@ -33,6 +33,45 @@ export function buildFixedCycleSlots(roster = [], currentUID = 0, selectionPool 
   return idx > 0 ? cycle.slice(idx).concat(cycle.slice(0, idx)) : cycle;
 }
 
+export function nextTeamPhaseType(currentType = 0) {
+  return Number(currentType || 0) === 0 ? 1 : 0;
+}
+
+export function isAbleToActSlot(actor = {}) {
+  if (!actor || typeof actor !== 'object') return false;
+  if (Number(actor.hp ?? actor.HP ?? 1) <= 0) return false;
+  if (actor.isAlive === false) return false;
+  if (actor.ableToAct === false) return false;
+  if (actor.disabled || actor.stunned || actor.stopped || actor.paralyzed) return false;
+  const statusValues = [
+    actor.status,
+    actor.state,
+    ...(Array.isArray(actor.statuses) ? actor.statuses : []),
+    ...(Array.isArray(actor.statusEffects) ? actor.statusEffects : []),
+  ].map(value => String(value || '').toLowerCase());
+  return !statusValues.some(value => (
+    value === 'dead'
+    || value === 'disabled'
+    || value === 'stopped'
+    || value === 'paralyzed'
+    || value === 'stunned'
+  ));
+}
+
+export function buildTeamPhaseSlots(roster = [], teamType = 0) {
+  return (Array.isArray(roster) ? roster : [])
+    .filter(actor => Number(actor?.type || 0) === Number(teamType || 0))
+    .filter(isAbleToActSlot)
+    .map(actor => ({
+      uid: Number(actor?.uid || 0),
+      type: Number(actor?.type || 0),
+      spd: Number(actor?.spd || actor?.SPD || actor?.stats?.SPD || 0),
+      extra: !!actor?.extra,
+    }))
+    .filter(actor => actor.uid > 0)
+    .sort(compareSchedulerSlots);
+}
+
 export function deriveBattleStartRemaining({
   remaining = {},
   roster = [],
@@ -80,9 +119,11 @@ export function deriveBattleStartRoundPartition(withInit = [], startMode = '') {
   const next = Array.isArray(withInit) ? withInit.map(actor => ({ ...actor })) : [];
   const sortByBattleStartInit = (a, b) => (Number(b?.init || 0) - Number(a?.init || 0))
     || compareSchedulerSlots(a, b);
-  const heroes = next.filter(a => Number(a?.type || 0) === 0).sort(sortByBattleStartInit);
-  const enemies = next.filter(a => Number(a?.type || 0) === 1).sort(sortByBattleStartInit);
-  return String(startMode || '') === 'ambush'
-    ? enemies.concat(heroes)
-    : next.sort(sortByBattleStartInit);
+  const ordered = next.sort(sortByBattleStartInit);
+  const priorityType = String(startMode || '') === 'ambush' ? 1 : 0;
+  const priorityIndex = ordered.findIndex(actor => Number(actor?.type || 0) === priorityType);
+  if (priorityIndex <= 0) return ordered;
+  const [priorityActor] = ordered.splice(priorityIndex, 1);
+  ordered.unshift(priorityActor);
+  return ordered;
 }

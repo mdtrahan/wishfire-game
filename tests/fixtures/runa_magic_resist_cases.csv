@@ -1,0 +1,8 @@
+name,targetIsRuna,incomingDamage,triggerRoll,nullifyRoll,expectedFinalDamage,expectedMode
+not_runa,0,10,0,0,10,not_runa
+no_proc_threshold,1,10,0.6,0,10,no_proc
+nullify_under_threshold,1,10,0.59,0.34,0,nullify
+heavy_resist_threshold,1,10,0.1,0.35,2,heavy_resist
+heavy_resist_floor,1,8,0.1,0.35,1,heavy_resist
+zero_damage_heavy_resist_baseline,1,0,0.1,0.35,1,heavy_resist
+negative_not_runa,0,-5,0,0,0,not_runa

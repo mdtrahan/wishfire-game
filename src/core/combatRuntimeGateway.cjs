@@ -1,3 +1,9 @@
+const {
+  createSimulationCoreRequest,
+  createSimulationCoreResponse,
+  normalizeSimulationRngState,
+} = require('./simulationCorePacket.cjs');
+
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -25,6 +31,48 @@ function hasValidCurrentIndex(turnQueue, currentActorIndex) {
 
 function makeResumeToken(turnQueue, currentActorIndex, capturedAtTick) {
   return `${capturedAtTick}:${turnQueue.length}:${currentActorIndex}`;
+}
+
+function parseResumeToken(value) {
+  if (typeof value !== 'string' || value.length === 0) {
+    return { valid: false, capturedAtTick: 0, turnQueueLength: 0, currentActorIndex: 0 };
+  }
+  const parts = value.split(':');
+  if (parts.length !== 3) {
+    return { valid: false, capturedAtTick: 0, turnQueueLength: 0, currentActorIndex: 0 };
+  }
+  const capturedAtTick = Number(parts[0]);
+  const turnQueueLength = Number(parts[1]);
+  const currentActorIndex = Number(parts[2]);
+  const valid = Number.isFinite(capturedAtTick) &&
+    Number.isFinite(turnQueueLength) &&
+    Number.isFinite(currentActorIndex);
+  return { valid, capturedAtTick, turnQueueLength, currentActorIndex };
+}
+
+function makeCheckpointResult(checkpointId, failures, owner = 'js') {
+  const normalizedFailures = Array.isArray(failures) ? failures.map(String) : [];
+  return {
+    checkpointId,
+    pass: normalizedFailures.length === 0,
+    failures: normalizedFailures,
+    owner,
+  };
+}
+
+function normalizeSnapshotIndex(value) {
+  return Number.isInteger(value) ? value : 0.5;
+}
+
+function getGlobalCombatSnapshotOwner() {
+  try {
+    const root = typeof globalThis !== 'undefined' ? globalThis : null;
+    return root && typeof root.__ORKA_COMBAT_SNAPSHOT_OWNER__ === 'function'
+      ? root.__ORKA_COMBAT_SNAPSHOT_OWNER__
+      : null;
+  } catch (_) {
+    return null;
+  }
 }
 
 const DEBUG_LAYOUT = (() => {
@@ -55,6 +103,8 @@ class CombatRuntimeGateway {
     callFunctionWithContext,
     getAuthoritativeTurnState,
     applyAuthoritativeTurnState,
+    combatSnapshotOwner,
+    getDeterministicRngState,
   } = {}) {
     this.combatState = combatState || {};
     this.eventBus = eventBus || null;
@@ -65,6 +115,12 @@ class CombatRuntimeGateway {
       : null;
     this.applyAuthoritativeTurnStateAdapter = typeof applyAuthoritativeTurnState === 'function'
       ? applyAuthoritativeTurnState
+      : null;
+    this.combatSnapshotOwner = typeof combatSnapshotOwner === 'function'
+      ? combatSnapshotOwner
+      : null;
+    this.getDeterministicRngStateAdapter = typeof getDeterministicRngState === 'function'
+      ? getDeterministicRngState
       : null;
   }
 
@@ -137,6 +193,49 @@ class CombatRuntimeGateway {
     };
   }
 
+  getDeterministicRngState() {
+    if (this.getDeterministicRngStateAdapter) {
+      return normalizeSimulationRngState(this.getDeterministicRngStateAdapter() || {});
+    }
+    return normalizeSimulationRngState(this.combatState && this.combatState.rngState ? this.combatState.rngState : {});
+  }
+
+  createSimulationCoreRequest(action = {}, context = {}, turnStateOverride = null) {
+    const turnState = turnStateOverride || this.getAuthoritativeTurnState();
+    const request = createSimulationCoreRequest({
+      gameState: {
+        turnState: cloneJson(turnState),
+      },
+      action,
+      rngState: this.getDeterministicRngState(),
+      context,
+    });
+    this.combatState.lastSimulationCoreRequest = cloneJson(request);
+    return request;
+  }
+
+  applySimulationCoreResponse(response = {}) {
+    const normalized = createSimulationCoreResponse(response);
+    const turnState = normalized.nextGameState && normalized.nextGameState.turnState
+      ? normalized.nextGameState.turnState
+      : null;
+    if (turnState && Array.isArray(turnState.turnQueue)) {
+      if (this.applyAuthoritativeTurnStateAdapter) {
+        this.applyAuthoritativeTurnStateAdapter(cloneJson(turnState));
+      }
+      this.combatState.turnQueue = cloneJson(turnState.turnQueue);
+      this.combatState.currentActorIndex = Number(turnState.currentActorIndex || 0);
+    }
+    this.combatState.lastSimulationCoreResponse = cloneJson(normalized);
+    if (this.eventBus && typeof this.eventBus.emit === 'function') {
+      this.eventBus.emit('combat:simulation-response', { response: normalized });
+      for (const event of normalized.events) {
+        this.eventBus.emit('combat:simulation-event', { event, response: normalized });
+      }
+    }
+    return normalized;
+  }
+
   getCheckpointDefinitions() {
     return {
       ids: CHECKPOINT_IDS,
@@ -159,7 +258,11 @@ class CombatRuntimeGateway {
     }
   }
 
-  evaluateCheckpoint(checkpointId, payload = {}) {
+  resolveCombatSnapshotOwner() {
+    return this.combatSnapshotOwner || getGlobalCombatSnapshotOwner();
+  }
+
+  evaluateCheckpointJsFailures(checkpointId, payload = {}) {
     const failures = [];
     if (checkpointId === CHECKPOINT_IDS.PRE_SUSPEND || checkpointId === CHECKPOINT_IDS.POST_RESUME) {
       const { turnQueue, currentActorIndex } = payload;
@@ -187,20 +290,65 @@ class CombatRuntimeGateway {
         if (computed !== expectedResumeToken) failures.push(FAILURE_IDS.E_RESUME_TOKEN_MISMATCH);
       }
     }
+    return failures;
+  }
+
+  createCombatSnapshotOwnerPayload(checkpointId, payload = {}, jsFailures = []) {
+    const isSnapshotEmit = checkpointId === CHECKPOINT_IDS.SNAPSHOT_EMIT;
+    const snap = isSnapshotEmit ? (payload.snapshot || {}) : {};
+    const turnState = isSnapshotEmit ? (snap.turnState || {}) : payload;
+    const turnQueue = turnState.turnQueue;
+    const expectedResumeToken = checkpointId === CHECKPOINT_IDS.POST_RESUME
+      ? String(payload.expectedResumeToken || '')
+      : '';
+    const expected = parseResumeToken(expectedResumeToken);
     return {
+      source: 'CombatRuntimeGateway.evaluateCheckpoint',
       checkpointId,
-      pass: failures.length === 0,
-      failures,
+      snapshotVersion: isSnapshotEmit ? Number(snap.snapshotVersion || 0) : SNAPSHOT_VERSION,
+      hasTurnState: isSnapshotEmit && snap.turnState ? 1 : (isSnapshotEmit ? 0 : 1),
+      turnQueueIsArray: Array.isArray(turnQueue) ? 1 : 0,
+      turnQueueLength: Array.isArray(turnQueue) ? turnQueue.length : 0,
+      currentActorIndex: normalizeSnapshotIndex(turnState.currentActorIndex),
+      hasResumeToken: isSnapshotEmit && typeof snap.resumeToken === 'string' && snap.resumeToken.length > 0 ? 1 : 0,
+      hasExpectedToken: expected.valid ? 1 : 0,
+      capturedAtTick: Number(turnState.capturedAtTick || snap.capturedAtTick || 0),
+      expectedCapturedAtTick: Number(expected.capturedAtTick || 0),
+      expectedTurnQueueLength: Number(expected.turnQueueLength || 0),
+      expectedCurrentActorIndex: Number(expected.currentActorIndex || 0),
+      jsFailures: [...jsFailures],
     };
+  }
+
+  evaluateCheckpoint(checkpointId, payload = {}) {
+    const jsFailures = this.evaluateCheckpointJsFailures(checkpointId, payload);
+    const owner = this.resolveCombatSnapshotOwner();
+    if (typeof owner === 'function') {
+      try {
+        const ownerResult = owner(this.createCombatSnapshotOwnerPayload(checkpointId, payload, jsFailures));
+        if (ownerResult && String(ownerResult.owner || '') === 'rust' && Array.isArray(ownerResult.failures)) {
+          return makeCheckpointResult(checkpointId, ownerResult.failures, 'rust');
+        }
+      } catch (err) {
+        this.combatState.lastCombatSnapshotOwnerError = String(err && err.message ? err.message : err || 'unknown');
+      }
+    }
+    return makeCheckpointResult(checkpointId, jsFailures);
   }
 
   takeSnapshot() {
     const turnState = this.getAuthoritativeTurnState();
     const resumeToken = makeResumeToken(turnState.turnQueue, turnState.currentActorIndex, turnState.capturedAtTick);
+    const simulationCoreRequest = this.createSimulationCoreRequest(
+      { type: 'gateway.snapshot', source: 'CombatRuntimeGateway.takeSnapshot' },
+      { checkpointId: CHECKPOINT_IDS.SNAPSHOT_EMIT },
+      turnState,
+    );
     const snapshot = {
       snapshotVersion: SNAPSHOT_VERSION,
       capturedAtTick: turnState.capturedAtTick,
       turnState,
+      simulationCoreRequest,
       resumeToken,
       turnQueue: cloneJson(turnState.turnQueue),
       currentActorIndex: Number(turnState.currentActorIndex || 0),

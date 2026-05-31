@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "node --test",
+    "rust:build-wasm": "node tools/build_simulation_core_wasm.js",
     "serve:qa": "node tools/serve_web.js --port 8000",
     "balance-harness": "node tools/balance_harness.js",
     "chrome:cdp": "node tools/chrome_cdp_bootstrap.js",

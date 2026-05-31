@@ -7,10 +7,12 @@ test('runtime app defines deterministic combat power helper and bootstraps hero/
   const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
   const src = fs.readFileSync(filePath, 'utf8');
   assert.match(src, /function computeCombatPower\(atk, def, hp\)/);
-  assert.match(src, /return Math\.round\(\(a \+ d \+ \(h \/ 10\)\) \* 100\) \/ 100;/);
+  assert.match(src, /const result = Math\.round\(\(a \+ d \+ \(h \/ 10\)\) \* 100\) \/ 100;/);
+  assert.match(src, /return shadowCombatPower\(\{[\s\S]*jsValue: result[\s\S]*\}\);/);
+  assert.match(src, /function resolveEnemyEncounterCombatPower\(row\)/);
   assert.match(src, /combatPower: computeCombatPower\(v\.ATK, v\.DEF, partyMaxHP\[i\]\)/);
   assert.match(src, /state\.globals\.EnemyData = \(enemyRows \|\| \[\]\)\.map\(\(row\) => \(\{/);
-  assert.match(src, /CombatPower: computeCombatPower\(row\?\.ATK, row\?\.DEF, row\?\.HP\)/);
+  assert.match(src, /CombatPower: resolveEnemyEncounterCombatPower\(row\)/);
 });
 
 test('runtime snapshot surfaces combatPower for heroes and enemies', () => {

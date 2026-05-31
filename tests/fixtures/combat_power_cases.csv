@@ -1,0 +1,6 @@
+name,atk,def,hp,expected
+zeroes,0,0,0,0
+basic_party_member,10,5,100,25
+fractional_hp,12.5,3.25,87.6,24.51
+rounds_to_two_decimals,1.111,2.222,33.333,6.67
+negative_values,-2,1,10,0

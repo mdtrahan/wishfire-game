@@ -14,7 +14,9 @@ const mime = {
   '.js':'application/javascript',
   '.mjs':'application/javascript',
   '.json':'application/json',
+  '.wasm':'application/wasm',
   '.css':'text/css',
+  '.md':'text/markdown',
   '.png':'image/png',
   '.jpg':'image/jpeg',
   '.svg':'image/svg+xml',
@@ -121,7 +123,12 @@ writeRuntimeFingerprint();
 
 const server = http.createServer((req,res)=>{
   let url = decodeURIComponent(req.url.split('?')[0]);
-  if(url === '/') url = '/web-runner/index.html';
+  if(url === '/') {
+    res.statusCode = 302;
+    res.setHeader('Location', '/web-runner/index.html');
+    res.end();
+    return;
+  }
   const fp = path.normalize(path.join(root, url));
   if(!fp.startsWith(root)) { res.statusCode = 403; res.end('Forbidden'); return; }
   fs.stat(fp, (err,st)=>{

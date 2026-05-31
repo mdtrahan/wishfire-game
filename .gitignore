@@ -13,12 +13,16 @@ playwright-*.png
 /_backup*
 /src/data/
 .DS_Store
+.swp
+*.swp
 
 # Local validation artifacts
 test-results/
+rust/**/target/
 
 # Generated per-worktree runtime metadata
 web-runner/runtime-fingerprint.js
+.worktrees/
 .worktale/
 .DS_Store
 .DS_Store

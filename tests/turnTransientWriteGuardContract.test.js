@@ -24,10 +24,15 @@ for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBa
 test('deferred advance gate is centralized in app runtime', () => {
   const src = read('web-runner/app.js');
   assert.match(src, /function canResolveDeferredAdvance\(\{ hasEmpty = false, enemyLineClearPressureActive = false \} = \{\}\)/);
-  assert.match(src, /const refillPending = !!hasEmpty && !refillActive && !enemyLineClearPressureActive;/);
-  assert.match(src, /const textHold = !!state\.globals\.TextAnimating;/);
+  assert.match(src, /function getPresentationTurnBarrier\(\{ hasEmpty = false, enemyLineClearPressureActive = false \} = \{\}\)/);
+  assert.match(src, /derivePresentationTurnBarrier\(\{/);
+  assert.match(src, /const refillPending = presentationBarrier\.refillPending && presentationBarrier\.canStartRefill;/);
+  assert.match(src, /const textHold = presentationBarrier\.lanes\.textAnimating;/);
   assert.match(src, /const pendingSelect = state\.globals\.TurnPhase === 1 && !!state\.globals\.PendingSkillID;/);
-  assert.match(src, /const mergeInFlight = !!\(gameState\.gemMergeFx && gameState\.gemMergeFx\.active\);/);
+  assert.match(src, /const mergeInFlight = presentationBarrier\.lanes\.gemMerge;/);
   assert.match(src, /const ownerOk = !ownerUID \|\| ownerUID === currentUID;/);
   assert.match(src, /let deferredAdvanceState = canResolveDeferredAdvance\(\{/);
+  assert.match(src, /!deferredAdvanceState\.ownerOk &&\s*!deferredAdvanceState\.blockedPhase &&\s*deferredAdvanceState\.presentationBarrier\.canAdvanceTurn/s);
+  assert.match(src, /const immediateEnemyTurnBarrier = getPresentationTurnBarrier\(\{/);
+  assert.match(src, /state\.globals\.TurnPhase === 2 && immediateEnemyTurnBarrier\.canClaimCombatAction/);
 });

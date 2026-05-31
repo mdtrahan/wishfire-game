@@ -1,0 +1,6 @@
+name,heroCount,hero0Hp,hero1Hp,hero2Hp,hero3Hp,enemyCount,enemy0Hp,enemy1Hp,enemy2Hp,enemy3Hp,expectedCode
+all_alive,4,35,28,32,30,3,18,22,16,0,403000
+one_hero_down_enemy_down,4,0,28,32,30,3,0,22,16,0,312100
+party_defeated,4,0,0,0,0,2,9,0,0,0,41110
+enemies_defeated,4,10,12,8,6,3,0,0,0,0,400301
+empty_enemy_roster_after_cleanup,4,10,12,8,6,0,0,0,0,0,400001

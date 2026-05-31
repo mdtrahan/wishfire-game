@@ -1,0 +1,12 @@
+{
+  "hot_files": {
+    "web-runner/app.js": {
+      "functions": [
+        "__MODULE__",
+        "runSeededRngShadowStartupChecks"
+      ],
+      "staged_blob": "172cb26978b43e19c7243f0b707cd37bc420b797"
+    }
+  },
+  "issue_id": "ORKA-w65p"
+}

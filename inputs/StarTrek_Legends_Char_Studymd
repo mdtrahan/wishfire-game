@@ -1,0 +1,583 @@
+
+Captain Picard
+Widely considered one of the greatest captains in Starfleet history. Renowned as a tactician, thinker and diplomat, Captain Picard strives to uphold the ideals of the Federation, no matter the challenges he faces.
+Role:  Command
+
+Bridge stations: Captain, Conn
+
+Tags: Human, Starfleet, Captain
+9%
+ Glancing Chance
+10%
+ Glancing Damage
+5%
+ Crit Chance
+122%
+ Crit Damage
+12%
+ Resolve
+
+Statistic	Base Value (Rank 1, Level 1)	Max Value (Rank 9, Level 99)
+ Health	25	3289.4
+ Defense	1.2	105.75
+ Attack	5.8	627.67
+ Tech	10.5	1492.77
+ Speed	12.5	12.5
+Engage (Bridge Skill) - Level 1 (passive)
+Starfleet gain +5% Resolve.
+Effects: Resolve if Starfleet (5%) (Passive) (1x)
+
+Target: 1 Alive Caster (single) Cooldown: 0 (0 start)
+
+
+Phaser Attack - Level 1
+Deal 100% Damage
+Effects: 100% Damage (1 hit) (1x)
+
+Target: 1 Alive Enemies (single) Cooldown: 0 (0 start)
+
+
+Phaser Attack - Level 2
+Deal 150% Damage
+Effects: 100% Damage (1 hit) (1.5x)
+
+Target: 1 Alive Enemies (single) Cooldown: 0 (0 start)
+
+
+Make it So - Level 1
+Command Attack. Attack Up and Crit Chance Up on that ally for 3 turns.
+Effects: Command (1x), Attack Up (1x), Crit Chance Up (1x)
+
+Target: 1 Alive Allies (single) Cooldown: 3 (0 start)
+
+
+Make it So - Level 2
+Command Attack. Major Attack Up and Major Crit Chance Up on that ally for 3 turns.
+Effects: Command (1x), Attack Up (Major) (1x), Crit Chance Up (Major) (1x)
+
+Target: 1 Alive Allies (single) Cooldown: 3 (0 start)
+
+
+Starfleet Duty - Level 1
++1 Morale and Minor Defense Up to all allies for 3 turns.
+Effects: Morale Up (1x), Defense Up (Minor) (1x)
+
+Target: All Alive Allies (multiple) Cooldown: 3 (1 start)
+
+
+Starfleet Duty - Level 2
++1 Morale and Defense Up to all allies for 3 turns.
+Effects: Morale Up (1x), Defense Up (1x)
+
+Target: All Alive Allies (multiple) Cooldown: 3 (1 start)
+
+
+Picard Maneuver - Level 1
+Cleanse, Minor Tech Up, and Minor Shield for all allies for 3 turns.
+Effects: Shield (1x), Tech Up (Minor) (1x), Cleanse (1x)
+
+Target: All Alive Allies (multiple) Cooldown: 4 (2 start)
+
+
+Picard Maneuver - Level 2
+Cleanse, Tech Up, and Shield for all allies for 3 turns.
+Effects: Shield (Major) (1x), Tech Up (1x), Cleanse (1x)
+
+Target: All Alive Allies (multiple) Cooldown: 4 (2 start)
+
+Quips
+BattleCry Together we can prevail!
+
+BattleCry Engage!
+
+Reaction_Retort (BattleCry) This isn't a negotiation.
+
+Insult Strong words, but I've dealt with your sort before!
+
+Reaction_Respond (Special_TeamAssist) Well done!
+
+Idle I could be drinking earl grey instead...
+
+Wounded That's not going to stop us!
+
+Thank Thank you. I didn't realize the wound was that deep.
+
+Special_TeamAssist Phasers on stun. Fire!
+
+Special_TeamAssist As though I'm fighting alongside my own reflection.
+
+Reinforce Beaming down to your location.
+
+Inspired Things are only impossible until they are not!
+
+Demoralized Retreat might be necessary.
+
+Official DiscordOfficial ForumsOfficial Game FAQsThis project's GitHub
+Note: Assets and some text elements like names and descriptions are owned by Tilting Point or their licensors. This project is not associated with nor endorsed by Tilting Point, Emerald City Games, or ViacomCBS.
+
+Star Trek: Legends Wiki - Captain Picard
+
+---
+
+Spock
+Easily the most famed Vulcan in Starfleet history, Commander Spock is renowned for his logic, his thoughtfulness, and his firm friendship with Enterprise crewmates Captain Kirk and Dr. McCoy.
+Role:  Science
+
+Bridge stations: Science, Medical, Operations
+
+Tags: Human, Vulcan, Starfleet
+10%
+ Glancing Chance
+11%
+ Glancing Damage
+6%
+ Crit Chance
+118%
+ Crit Damage
+10%
+ Resolve
+
+Statistic	Base Value (Rank 1, Level 1)	Max Value (Rank 9, Level 99)
+ Health	20	2631.52
+ Defense	1.35	118.97
+ Attack	6.4	692.6
+ Tech	12.75	1812.65
+ Speed	11	11
+Mental Fortitude (Bridge Skill) - Level 1 (passive)
+Gain +10% Resistance vs Purge.
+Effects: Resistance vs Purge (10%) (Passive) (1x)
+
+Target: 1 Alive Caster (single) Cooldown: 0 (0 start)
+
+
+Phaser - Level 1
+Deal 100% Damage and 10% Chance to Attack Down for 1 turn.
+Effects: 100% Damage (1 hit) (1x), Attack Down (10% Chance) (1 Turn) (1x)
+
+Target: 1 Alive Enemies (single) Cooldown: 0 (0 start)
+
+
+Phaser - Level 2
+Deal 125% Damage and 25% Chance to Attack Down for 1 turn.
+Effects: 100% Damage (1 hit) (1.25x), Attack Down (25% Chance) (1 Turn) (1x)
+
+Target: 1 Alive Enemies (single) Cooldown: 0 (0 start)
+
+
+Tricorder Wide Scan - Level 1
+Scan to 2 random enemies.
+Effects: Scan (1x)
+
+Target: 3 Alive Enemies (multiple random) Cooldown: 3 (0 start)
+
+
+Tricorder Wide Scan - Level 2
+Scan to all enemies.
+Effects: Scan (1x)
+
+Target: All Alive Enemies (multiple) Cooldown: 3 (0 start)
+
+
+Vulcan Nerve Pinch - Level 1
+Stun for 3 turns and -1 Morale (Ignores Cover).
+Effects: Stun (ignore cover) (1x), Morale Down (1x)
+
+Target: 1 Alive Enemies (single) Cooldown: 3 (1 start)
+
+
+Vulcan Nerve Pinch - Level 2
+Stun for 3 turns and -2 Morale (Ignores Cover).
+Effects: Stun (ignore cover) (1x), Morale Down (2) (1x)
+
+Target: 1 Alive Enemies (single) Cooldown: 3 (1 start)
+
+
+Mind Meld - Level 1
+-1 Morale to 1 enemy. +1 Morale on self.
+Effects: Morale Down (1x)
+
+Caster effect: Morale Up (caster) (1x)
+
+Target: 1 Alive Enemies (single) Cooldown: 4 (2 start)
+
+
+Mind Meld - Level 2
+-2 Morale to 1 enemy. +2 Morale on self.
+Effects: Morale Down (2) (1x)
+
+Caster effect: Morale Up (caster) (2) (1x)
+
+Target: 1 Alive Enemies (single) Cooldown: 4 (2 start)
+
+Quips
+BattleCry It appears that they intend to attack us.
+
+BattleCry Violence is regrettable.
+
+Reaction_Retort (BattleCry) Such attempts to goad me during combat are highly illogical.
+
+Insult It is highly illogical that you continue to fight in face of our superior skill.
+
+Reaction_ChimeIn (Insult) Even I know "lunkhead" isn't the most pointed of human insults, Mr. Data.
+
+Reaction_ChimeIn (Insult) It is for them, Doctor.
+
+Idle I fail to understand the nature of this reality we find ourselves in. Yet... it intrigues me.
+
+Wounded I am wounded, but not incapacitated.
+
+Thank That was... appreciated.
+
+Thank Thank you, Doctor McCoy.
+
+Special_TeamAssist A synchronized attack would be logical.
+
+Reinforce Beaming down to your location.
+
+Inspired I believe the outcome of this will be... satisfactory.
+
+Demoralized Our situation is becoming untenable.
+
+Official DiscordOfficial ForumsOfficial Game FAQsThis project's GitHub
+Note: Assets and some text elements like names and descriptions are owned by Tilting Point or their licensors. This project is not associated with nor endorsed by Tilting Point, Emerald City Games, or ViacomCBS.
+
+Star Trek: Legends Wiki - Spock
+
+---
+
+The Gorn
+An alien species first encountered by Captain Kirk and the Enterprise. Their reptilian physiology grants incredible strength and endurance: the Gorn are widely considered one of the most physically powerful of the known races.
+Role:  Security
+
+Bridge stations: Captain, Tactical, Operations
+
+Tags: Gorn
+5%
+ Glancing Chance
+21%
+ Glancing Damage
+6%
+ Crit Chance
+144%
+ Crit Damage
+4%
+ Resolve
+
+Statistic	Base Value (Rank 1, Level 1)	Max Value (Rank 9, Level 99)
+ Health	35	4605.17
+ Defense	1.79	158.63
+ Attack	9.4	1017.26
+ Tech	0	0
+ Speed	5	5
+Ambush Assault (Bridge Skill) - Level 1 (passive)
+Gain +3% Defense.
+Effects: Defense (3%) (Passive) (1x)
+
+Target: 1 Alive Caster (single) Cooldown: 0 (0 start)
+
+
+Smash - Level 1
+Deal 100% Damage (25% Chance to Wound).
+Effects: 100% Damage (1 hit) (1x), Wound (25% Chance) (1x)
+
+Target: 1 Alive Enemies (single) Cooldown: 0 (0 start)
+
+
+Smash - Level 2
+Deal 150% Damage (50% Chance to Wound).
+Effects: 100% Damage (1 hit) (1.5x), Wound (50% Chance) (1x)
+
+Target: 1 Alive Enemies (single) Cooldown: 0 (0 start)
+
+
+Charge - Level 1
+Deal 200% Damage and 50% Chance -1 Morale.
+Effects: 100% Damage (1 hit) (2x), Morale Down (50% Chance) (1x)
+
+Target: 1 Alive Enemies (single) Cooldown: 3 (0 start)
+
+
+Charge - Level 2
+Deal 300% Damage and -1 Morale.
+Effects: 100% Damage (1 hit) (3x), Morale Down (1x)
+
+Target: 1 Alive Enemies (single) Cooldown: 3 (0 start)
+
+
+Boulder Toss - Level 1
+Deal 400% Damage and 50% Chance to Stun for 3 turns.
+Effects: 100% Damage (1 hit, double to cover) (4x), Stun (50% Chance) (1x)
+
+Target: 1 Alive Enemies (single) Cooldown: 4 (2 start)
+
+
+Boulder Toss - Level 2
+Deal 500% Damage and Stun for 3 turns.
+Effects: 100% Damage (1 hit, double to cover) (5x), Stun (1x)
+
+Target: 1 Alive Enemies (single) Cooldown: 4 (2 start)
+
+Quips
+BattleCry RARRRAGGGHHHHH!!!!!!!
+
+BattleCry GRARGGHHHHHHSSSS!!!!
+
+Reaction_Retort (BattleCry) HAHAAHHHHHAAA!!!!
+
+Insult GRAGGGHHH!!! HEHEEHHHH!!!!
+
+Reaction_Respond (Special_TeamAssist) SNARGGHHH!!!!
+
+Idle RARRGGHH *crackle* Ah! That's better. The Universal translator was on the fritz again. So inconvenient.
+
+Wounded HSSSSSSS!!!!!!
+
+Thank GRATTCHARRRR!!!
+
+Special_TeamAssist HSSSSHHHH!!!
+
+Reinforce ROARRRRRR!!!!
+
+Inspired HEKHEKEHHHKKKK!!!
+
+Demoralized CHHROARRRRRRR.....
+
+Official DiscordOfficial ForumsOfficial Game FAQsThis project's GitHub
+Note: Assets and some text elements like names and descriptions are owned by Tilting Point or their licensors. This project is not associated with nor endorsed by Tilting Point, Emerald City Games, or ViacomCBS.
+
+Star Trek: Legends Wiki - The Gorn
+---
+
+Montgomery Scott
+Chief Engineer of the U.S.S. Enterprise under Captain Kirk and famous for (in no particular order) his genius, his love of whiskey, and his proud Celtic heritage.
+Role:  Engineering
+
+Bridge stations: FirstOfficer, Conn, Engineering
+
+Tags: Human, Starfleet
+4%
+ Glancing Chance
+18%
+ Glancing Damage
+6%
+ Crit Chance
+126%
+ Crit Damage
+10%
+ Resolve
+
+Statistic	Base Value (Rank 1, Level 1)	Max Value (Rank 9, Level 99)
+ Health	22.5	2960.46
+ Defense	1.95	171.85
+ Attack	5.8	627.67
+ Tech	13.5	1919.28
+ Speed	7.25	7.25
+Miracle Worker (Bridge Skill) - Level 1 (passive)
+Starfleet gain +5% Tech.
+Effects: Tech if Starfleet (5%) (Passive) (1x)
+
+Target: 1 Alive Caster (single) Cooldown: 0 (0 start)
+
+
+Phaser Beam - Level 1
+Deal 100% Damage and 10% Chance for Tech Down for 1 turn.
+Effects: 100% Damage (1 hit) (1x), Tech Down (10% Chance) (1 Turn) (1x)
+
+Target: 1 Alive Enemies (single) Cooldown: 0 (0 start)
+
+
+Phaser Beam - Level 2
+Deal 125% Damage and 25% Chance for Tech Down for 1 turn.
+Effects: 100% Damage (1 hit) (1.25x), Tech Down (25% Chance) (1 Turn) (1x)
+
+Target: 1 Alive Enemies (single) Cooldown: 0 (0 start)
+
+
+Buy More Time - Level 1
+Deal 150% Tech Damage and Minor Tech Down to all enemies for 3 turns.
+Effects: 100% Damage (1 hit) (1x), Tech Down (Minor) (1x)
+
+Target: All Alive Enemies (multiple) Cooldown: 3 (0 start)
+
+
+Buy More Time - Level 2
+Deal 250% Tech Damage and Tech Down to all enemies for 3 turns.
+Effects: 100% Damage (1 hit) (1.5x), Tech Down (1x)
+
+Target: All Alive Enemies (multiple) Cooldown: 3 (0 start)
+
+
+Everything She’s Got - Level 1
+Cleanse and +1 Morale to all allies for 3 turns.
+Effects: Cleanse (1x), Morale Up (1x)
+
+Target: All Alive Allies (multiple) Cooldown: 3 (1 start)
+
+
+Everything She’s Got - Level 2
+Cleanse and +2 Morale to all allies for 3 turns.
+Effects: Cleanse (1x), Morale Up (2) (1x)
+
+Target: All Alive Allies (multiple) Cooldown: 3 (1 start)
+
+
+Emergency Repairs - Level 1
+Red Alert, Tech Up, and Shield to all allies for 3 turns.
+Effects: Red Alert (1x), Shield (1x), Tech Up (1x)
+
+Target: All Alive Allies (multiple) Cooldown: 4 (2 start)
+
+
+Emergency Repairs - Level 2
+Red Alert, Major Tech Up, and Major Shield to all allies for 3 turns.
+Effects: Red Alert (1x), Shield (Major) (1x), Tech Up (Major) (1x)
+
+Target: All Alive Allies (multiple) Cooldown: 4 (2 start)
+
+Quips
+BattleCry Ach, Commander. There's nae need to drag this out. Just crank the dial on the phasers up a wee notch.
+
+BattleCry Ye talkin' ta me? Aye? Y'come over here 'n say tha'!
+
+Reaction_Retort (BattleCry) Ach, ahm shakin' in mae wee booties! Honest!
+
+Insult Oh, sore are we? Gonna run home to yer ma?
+
+Reaction_Respond (Special_TeamAssist) That's no bad!
+
+Idle Ah've been away from mah engines for too long. Poor wee thing will be missin' me!
+
+Wounded Oh, that was a right dirty trick!
+
+Thank Ach, that's me feelin' right as rain!
+
+Special_TeamAssist I'll always be here for you!
+
+Reinforce Beaming down t' yeh location.
+
+Inspired Yer a right inspirational speaker, y'know that?
+
+Demoralized I cannae take more o' this!
+
+Official DiscordOfficial ForumsOfficial Game FAQsThis project's GitHub
+Note: Assets and some text elements like names and descriptions are owned by Tilting Point or their licensors. This project is not associated with nor endorsed by Tilting Point, Emerald City Games, or ViacomCBS.
+
+Star Trek: Legends Wiki - Montgomery Scott
+---
+
+Phlox
+Arguably one of the greatest doctors in Starfleet history. Phlox is a Denobulan, an alien race eager to learn more about their new human neighbours. A xenobiologist without peer.
+Role:  Medical
+
+Bridge stations: Medical, Science
+
+Tags: Denobulan, Starfleet
+7%
+ Glancing Chance
+17%
+ Glancing Damage
+5%
+ Crit Chance
+130%
+ Crit Damage
+8%
+ Resolve
+
+Statistic	Base Value (Rank 1, Level 1)	Max Value (Rank 9, Level 99)
+ Health	22.5	2960.46
+ Defense	1.5	132.19
+ Attack	6.1	660.13
+ Tech	12.75	1812.65
+ Speed	9.5	9.5
+Endosian Slugs (Bridge Skill) - Level 1 (passive)
+Gain +10% Resistance vs Assimilation.
+Effects: Resistance vs Assimilation (10%) (Passive) (1x)
+
+Target: 1 Alive Caster (single) Cooldown: 0 (0 start)
+
+
+Osmotic Eel - Level 1
+Minor Regeneration 1 ally for 1 turn.
+Effects: Regenerate Tech (Minor) (1x)
+
+Target: 1 Alive Allies (single) Cooldown: 0 (0 start)
+
+
+Osmotic Eel - Level 2
+Minor Regeneration 1 ally for 2 turns.
+Effects: Regenerate Tech (1x)
+
+Target: 1 Alive Allies (single) Cooldown: 0 (0 start)
+
+
+Omicron Radiation - Level 1
+Deal 100% Tech Damage and 50% Chance to Purge.
+Effects: 100% Tech Damage (1 hit) (1x), Purge (50% Chance) (1x)
+
+Target: 1 Alive Enemies (single) Cooldown: 3 (0 start)
+
+
+Omicron Radiation - Level 2
+Deal 150% Tech Damage and Purge.
+Effects: 100% Tech Damage (1 hit) (1.5x), Purge (1x)
+
+Target: 1 Alive Enemies (single) Cooldown: 3 (0 start)
+
+
+Denobulan Smile - Level 1
+Minor Heal and 50% Chance +1 Morale to 1 ally.
+Effects: Heal (Minor) (1x), Morale Up (50% Chance) (1x)
+
+Target: 1 Alive Allies (single) Cooldown: 3 (1 start)
+
+
+Denobulan Smile - Level 2
+Heal and +1 Morale to 1 ally.
+Effects: Heal (1x), Morale Up (1x)
+
+Target: 1 Alive Allies (single) Cooldown: 3 (1 start)
+
+
+Lyssarian Larva - Level 1
+Cleanse and +50% Resistance vs Assimilation, Stun, and Wound to 1 ally for 3 turns.
+Effects: Cleanse (1x), Triple 50% Resist (1x)
+
+Target: 1 Alive Allies (single) Cooldown: 4 (2 start)
+
+
+Lyssarian Larva - Level 2
+Cleanse and Immunity vs Assimilation, Stun, and Wound to 1 ally for 3 turns.
+Effects: Cleanse (1x), Triple Immune (1x)
+
+Target: 1 Alive Allies (single) Cooldown: 4 (2 start)
+
+Quips
+BattleCry Oh ho! Combat! Such a barbaric custom.
+
+BattleCry Fascinating! I believe they're actually going to attack us.
+
+Reaction_Retort (BattleCry) Boasting, eh? My people abandoned that customs centuries ago.
+
+Insult If you ask nicely, I might bandage you up. Might.
+
+Reaction_Respond (Special_TeamAssist) You never told me you were so accomplished!
+
+Idle I must admit, I wasn't planning to stay this long, but the opportunity to observe so many species gathered together in this place has proven irresistible.
+
+Wounded And now I'm bleeding... I knew I should have packed more medical supplies!
+
+Thank From one doctor to another... that was fine work.
+
+Special_TeamAssist I must admit, this is an exhilarating experience!
+
+Reinforce I heard you needed a hand? That's the right earth phase isn't it?
+
+Inspired Well! Things are looking up!
+
+Demoralized Far be it from me to provide medical advice but I believe the words 'flee' apply to this situation.
+
+Official DiscordOfficial ForumsOfficial Game FAQsThis project's GitHub
+Note: Assets and some text elements like names and descriptions are owned by Tilting Point or their licensors. This project is not associated with nor endorsed by Tilting Point, Emerald City Games, or ViacomCBS.
+
+Star Trek: Legends Wiki - Phlox
+

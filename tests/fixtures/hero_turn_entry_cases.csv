@@ -1,0 +1,7 @@
+name,heroUID,currentHeroUIDBefore,skillDraughtOpen,astralFlowAmpPoints,astralFlowAmpMax,astralFlowAmpReady,time,combatActionPinnedUntil,expectedTurnPhase,expectedHideHeroSelector,expectedAcceptHeroUID,expectedCurrentHeroUIDAfter,expectedShouldResetAstralFlowAmp,expectedAstralFlowAmpPointsAfter,expectedAstralFlowAmpReadyAfter,expectedClearCombatActionPinned
+missing_hero_uid_preserves_current,0,77,0,0,18,0,0,0,0,0,0,77,0,0,0,0
+live_hero_uid,101,77,0,7,18,0,10,0,0,0,1,101,0,7,0,0
+full_amp_ready_resets_after_read_window,101,77,0,18,18,1,15,14,0,0,1,101,1,0,0,1
+full_amp_waits_for_pinned_read_window,101,77,0,18,18,1,12,14,0,0,1,101,0,18,1,0
+full_amp_waits_for_skill_draught_overlay,101,77,1,18,18,1,15,14,0,0,1,101,0,18,1,0
+max_zero_defaults_to_18,101,77,0,18,0,1,15,14,0,0,1,101,1,0,0,1

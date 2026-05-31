@@ -8,16 +8,20 @@ function read(relPath) {
 }
 
 test('hero gem progress persistence seam exists in app runtime', () => {
-  const src = read('web-runner/app.js');
-  assert.match(src, /const HERO_GEM_PROGRESS_STORAGE_KEY = 'orka\.hero_gem_progress\.v1';/);
-  assert.match(src, /function readPersistedHeroGemProgress\(\)/);
-  assert.match(src, /window\.localStorage\.getItem\(HERO_GEM_PROGRESS_STORAGE_KEY\)/);
-  assert.match(src, /function writePersistedHeroGemProgress\(snapshot\)/);
-  assert.match(src, /window\.localStorage\.setItem\(HERO_GEM_PROGRESS_STORAGE_KEY, JSON\.stringify\(snapshot\)\)/);
-  assert.match(src, /function restoreHeroGemProgressFromStorage\(\)/);
-  assert.match(src, /callFunctionWithContext\(fnContext, 'LoadHeroGemProgressSnapshot', snapshot\);/);
-  assert.match(src, /function persistHeroGemProgressIfDirty\(\)/);
-  assert.match(src, /callFunctionWithContext\(fnContext, 'GetHeroGemProgressSnapshot'\);/);
+  const appSrc = read('web-runner/app.js');
+  const storageSrc = read('web-runner/systems/heroGemProgressStorage.js');
+  assert.match(appSrc, /import \* as heroGemProgressStorage from '\.\/systems\/heroGemProgressStorage\.js';/);
+  assert.match(appSrc, /heroGemProgressStorage\.restoreHeroGemProgressFromStorage/);
+  assert.match(appSrc, /heroGemProgressStorage\.persistHeroGemProgressIfDirty/);
+  assert.match(storageSrc, /const HERO_GEM_PROGRESS_STORAGE_KEY = 'orka\.hero_gem_progress\.v1';/);
+  assert.match(storageSrc, /function readPersistedHeroGemProgress\(\)/);
+  assert.match(storageSrc, /window\.localStorage\.getItem\(HERO_GEM_PROGRESS_STORAGE_KEY\)/);
+  assert.match(storageSrc, /export function writePersistedHeroGemProgress\(snapshot\)/);
+  assert.match(storageSrc, /window\.localStorage\.setItem\(HERO_GEM_PROGRESS_STORAGE_KEY, JSON\.stringify\(snapshot\)\)/);
+  assert.match(storageSrc, /export function restoreHeroGemProgressFromStorage/);
+  assert.match(storageSrc, /callFunctionWithContext\(fnContext, 'LoadHeroGemProgressSnapshot', snapshot\);/);
+  assert.match(storageSrc, /export function persistHeroGemProgressIfDirty/);
+  assert.match(storageSrc, /callFunctionWithContext\(fnContext, 'GetHeroGemProgressSnapshot'\);/);
 });
 
 for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {

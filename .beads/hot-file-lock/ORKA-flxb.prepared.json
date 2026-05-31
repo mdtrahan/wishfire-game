@@ -1,0 +1,41 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "applyRunaMagicResist",
+        "enemyDebuffStatIndex",
+        "enemyDebuffStatFromIndex",
+        "normalizeEnemyDebuffSlotIndex",
+        "normalizeEnemyDebuffSlotCount",
+        "normalizeEnemyDebuffSlotAction",
+        "enemyDebuffSlotSnapshot",
+        "createEnemyDebuffSlotDecision",
+        "maybeResolveEnemyDebuffSlotOwner",
+        "removeEnemyDebuffSlot",
+        "applyEnemyDebuffSlotDecision",
+        "decayEnemyDebuffsForTurn",
+        "ExecutePurpleDebuff"
+      ],
+      "staged_blob": "c1d8b448360db56ebcba26160ae5b0bc6434e944"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "applyRunaMagicResist",
+        "enemyDebuffStatIndex",
+        "enemyDebuffStatFromIndex",
+        "normalizeEnemyDebuffSlotIndex",
+        "normalizeEnemyDebuffSlotCount",
+        "normalizeEnemyDebuffSlotAction",
+        "enemyDebuffSlotSnapshot",
+        "createEnemyDebuffSlotDecision",
+        "maybeResolveEnemyDebuffSlotOwner",
+        "removeEnemyDebuffSlot",
+        "applyEnemyDebuffSlotDecision",
+        "decayEnemyDebuffsForTurn",
+        "ExecutePurpleDebuff"
+      ],
+      "staged_blob": "6ff3da0d16690e214d5ac2cc2794a725d3dc5d3a"
+    }
+  },
+  "issue_id": "ORKA-flxb"
+}

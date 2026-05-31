@@ -1,146 +1,89 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const vm = require('node:vm');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-test('dev idle autoplay prioritizes frame-6 single-pick energy gems before triplets', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
-  const match = src.match(/function findIdleAutoplayPrioritySinglePick\(\) \{[\s\S]*?\n  \}/);
-  assert.ok(match, 'priority single-pick helper should exist');
-  const script = `${match[0]}; findIdleAutoplayPrioritySinglePick();`;
-  const result = vm.runInNewContext(script, {
-    gameState: {
-      gems: [
-        { cellR: 2, cellC: 1, color: 4 },
-        { cellR: 0, cellC: 3, color: 6 },
-        { cellR: 1, cellC: 1, color: 2 },
-      ],
-    },
-    Number,
-  });
-  assert.equal(JSON.stringify(result), JSON.stringify({ row: 0, col: 3 }));
+const modulePath = path.join(__dirname, '..', 'web-runner', 'src', 'core', 'idleAutoplayPriority.mjs');
+
+function triplet(color, row) {
+  return [
+    { cellR: row, cellC: 0, color },
+    { cellR: row, cellC: 1, color },
+    { cellR: row, cellC: 2, color },
+  ];
+}
+
+function superGem(baseColor, row, col = 0) {
+  return { baseColor, cells: [{ r: row, c: col }] };
+}
+
+function pickedTriplet(row) {
+  return [{ row, col: 0 }, { row, col: 1 }, { row, col: 2 }];
+}
+
+test('dev idle autoplay picks each hero preferred color when party HP is stable', async () => {
+  const { pickIdleAutoplayTriplet } = await import(modulePath);
+  const board = [
+    ...triplet(0, 0),
+    ...triplet(1, 1),
+    ...triplet(2, 2),
+    ...triplet(3, 3),
+  ];
+
+  assert.deepEqual(pickIdleAutoplayTriplet(board, { heroName: 'Falie', partyHpRatio: 0.7 }), pickedTriplet(1));
+  assert.deepEqual(pickIdleAutoplayTriplet(board, { heroName: 'Huun', partyHpRatio: 0.7 }), pickedTriplet(3));
+  assert.deepEqual(pickIdleAutoplayTriplet(board, { heroName: 'Runa', partyHpRatio: 0.7 }), pickedTriplet(2));
+  assert.deepEqual(pickIdleAutoplayTriplet(board, { heroName: 'Kojonn', partyHpRatio: 0.7 }), pickedTriplet(0));
 });
 
-test('dev idle autoplay falls back to triplets when no frame-6 pickup exists', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
-  const match = src.match(/function findIdleAutoplayPrioritySinglePick\(\) \{[\s\S]*?\n  \}/);
-  assert.ok(match, 'priority single-pick helper should exist');
-  const script = `${match[0]}; findIdleAutoplayPrioritySinglePick();`;
-  const result = vm.runInNewContext(script, {
-    gameState: {
-      gems: [
-        { cellR: 2, cellC: 1, color: 4 },
-        { cellR: 0, cellC: 3, color: 3 },
-        { cellR: 1, cellC: 1, color: 2 },
-      ],
-    },
-    Number,
-  });
-  assert.equal(result, null);
+test('dev idle autoplay HP thresholds override or suppress heal triplets', async () => {
+  const { pickIdleAutoplayTriplet } = await import(modulePath);
+  const board = [
+    ...triplet(1, 0),
+    ...triplet(4, 1),
+  ];
+
+  assert.deepEqual(pickIdleAutoplayTriplet(board, { heroName: 'Falie', partyHpRatio: 0.59 }), pickedTriplet(1));
+  assert.deepEqual(pickIdleAutoplayTriplet(board, { heroName: 'Falie', partyHpRatio: 0.81 }), pickedTriplet(0));
 });
 
-test('dev idle autoplay prefers purple, then heal, then balances red-green-blue-yellow equally', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
-  const priorityConst = src.match(/const IDLE_AUTOPLAY_COLOR_PRIORITY = Object\.freeze\(\[[\s\S]*?\]\);/);
-  const fn = src.match(/function pickIdleAutoplayTriplet\(\) \{[\s\S]*?\n  \}/);
-  assert.ok(priorityConst, 'triplet priority constant should exist');
-  assert.ok(fn, 'triplet priority picker should exist');
-  const script = `${priorityConst[0]}\n${fn[0]}\npickIdleAutoplayTriplet();`;
-  const result = vm.runInNewContext(script, {
-    gameState: {
-      gems: [
-        { cellR: 0, cellC: 0, color: 2 }, { cellR: 0, cellC: 1, color: 2 }, { cellR: 0, cellC: 2, color: 2 },
-        { cellR: 1, cellC: 0, color: 3 }, { cellR: 1, cellC: 1, color: 3 }, { cellR: 1, cellC: 2, color: 3 },
-        { cellR: 2, cellC: 0, color: 5 }, { cellR: 2, cellC: 1, color: 5 }, { cellR: 2, cellC: 2, color: 5 },
-      ],
-    },
-    Math: Object.assign(Object.create(Math), { random: () => 0 }),
-    Number,
-    Array,
-    Object,
-    Map,
-  });
-  assert.equal(JSON.stringify(result), JSON.stringify([{ row: 2, col: 0 }, { row: 2, col: 1 }, { row: 2, col: 2 }]));
+test('dev idle autoplay keeps gold/yellow resource-only unless Huun is active while enemies are living', async () => {
+  const { pickIdleAutoplaySuperGem, pickIdleAutoplayTriplet } = await import(modulePath);
+  const board = [
+    ...triplet(3, 0),
+    ...triplet(0, 1),
+  ];
+  const superGems = [
+    superGem(3, 0),
+    superGem(0, 1),
+  ];
+
+  assert.deepEqual(pickIdleAutoplayTriplet(board, { heroName: 'Runa', partyHpRatio: 0.7, hasLivingEnemies: true }), pickedTriplet(1));
+  assert.deepEqual(pickIdleAutoplayTriplet(board, { heroName: 'Huun', partyHpRatio: 0.7, hasLivingEnemies: true }), pickedTriplet(0));
+  assert.deepEqual(pickIdleAutoplaySuperGem(superGems, { heroName: 'Runa', partyHpRatio: 0.7, hasLivingEnemies: true }), { row: 1, col: 0 });
+  assert.deepEqual(pickIdleAutoplaySuperGem(superGems, { heroName: 'Huun', partyHpRatio: 0.7, hasLivingEnemies: true }), { row: 0, col: 0 });
 });
 
-test('dev idle autoplay treats red, green, blue, and yellow as equal-priority triplet colors', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
-  const priorityConst = src.match(/const IDLE_AUTOPLAY_COLOR_PRIORITY = Object\.freeze\(\[[\s\S]*?\]\);/);
-  const fn = src.match(/function pickIdleAutoplayTriplet\(\) \{[\s\S]*?\n  \}/);
-  assert.ok(priorityConst, 'triplet priority constant should exist');
-  assert.ok(fn, 'triplet priority picker should exist');
-  const script = `${priorityConst[0]}\n${fn[0]}\npickIdleAutoplayTriplet();`;
-  const greenResult = vm.runInNewContext(script, {
-    gameState: {
-      gems: [
-        { cellR: 0, cellC: 0, color: 0 }, { cellR: 0, cellC: 1, color: 0 }, { cellR: 0, cellC: 2, color: 0 },
-        { cellR: 1, cellC: 0, color: 1 }, { cellR: 1, cellC: 1, color: 1 }, { cellR: 1, cellC: 2, color: 1 },
-        { cellR: 2, cellC: 0, color: 2 }, { cellR: 2, cellC: 1, color: 2 }, { cellR: 2, cellC: 2, color: 2 },
-        { cellR: 3, cellC: 0, color: 3 }, { cellR: 3, cellC: 1, color: 3 }, { cellR: 3, cellC: 2, color: 3 },
-      ],
-    },
-    Math: Object.assign(Object.create(Math), { random: () => 0 }),
-    Number,
-    Array,
-    Object,
-    Map,
-  });
-  const redResult = vm.runInNewContext(script, {
-    gameState: {
-      gems: [
-        { cellR: 0, cellC: 0, color: 0 }, { cellR: 0, cellC: 1, color: 0 }, { cellR: 0, cellC: 2, color: 0 },
-        { cellR: 1, cellC: 0, color: 1 }, { cellR: 1, cellC: 1, color: 1 }, { cellR: 1, cellC: 2, color: 1 },
-        { cellR: 2, cellC: 0, color: 2 }, { cellR: 2, cellC: 1, color: 2 }, { cellR: 2, cellC: 2, color: 2 },
-        { cellR: 3, cellC: 0, color: 3 }, { cellR: 3, cellC: 1, color: 3 }, { cellR: 3, cellC: 2, color: 3 },
-      ],
-    },
-    Math: Object.assign(Object.create(Math), { random: () => 0.26 }),
-    Number,
-    Array,
-    Object,
-    Map,
-  });
-  const blueResult = vm.runInNewContext(script, {
-    gameState: {
-      gems: [
-        { cellR: 0, cellC: 0, color: 0 }, { cellR: 0, cellC: 1, color: 0 }, { cellR: 0, cellC: 2, color: 0 },
-        { cellR: 1, cellC: 0, color: 1 }, { cellR: 1, cellC: 1, color: 1 }, { cellR: 1, cellC: 2, color: 1 },
-        { cellR: 2, cellC: 0, color: 2 }, { cellR: 2, cellC: 1, color: 2 }, { cellR: 2, cellC: 2, color: 2 },
-        { cellR: 3, cellC: 0, color: 3 }, { cellR: 3, cellC: 1, color: 3 }, { cellR: 3, cellC: 2, color: 3 },
-      ],
-    },
-    Math: Object.assign(Object.create(Math), { random: () => 0.51 }),
-    Number,
-    Array,
-    Object,
-    Map,
-  });
-  const yellowResult = vm.runInNewContext(script, {
-    gameState: {
-      gems: [
-        { cellR: 0, cellC: 0, color: 0 }, { cellR: 0, cellC: 1, color: 0 }, { cellR: 0, cellC: 2, color: 0 },
-        { cellR: 1, cellC: 0, color: 1 }, { cellR: 1, cellC: 1, color: 1 }, { cellR: 1, cellC: 2, color: 1 },
-        { cellR: 2, cellC: 0, color: 2 }, { cellR: 2, cellC: 1, color: 2 }, { cellR: 2, cellC: 2, color: 2 },
-        { cellR: 3, cellC: 0, color: 3 }, { cellR: 3, cellC: 1, color: 3 }, { cellR: 3, cellC: 2, color: 3 },
-      ],
-    },
-    Math: Object.assign(Object.create(Math), { random: () => 0.99 }),
-    Number,
-    Array,
-    Object,
-    Map,
-  });
-  assert.equal(JSON.stringify(greenResult), JSON.stringify([{ row: 0, col: 0 }, { row: 0, col: 1 }, { row: 0, col: 2 }]));
-  assert.equal(JSON.stringify(redResult), JSON.stringify([{ row: 1, col: 0 }, { row: 1, col: 1 }, { row: 1, col: 2 }]));
-  assert.equal(JSON.stringify(blueResult), JSON.stringify([{ row: 2, col: 0 }, { row: 2, col: 1 }, { row: 2, col: 2 }]));
-  assert.equal(JSON.stringify(yellowResult), JSON.stringify([{ row: 3, col: 0 }, { row: 3, col: 1 }, { row: 3, col: 2 }]));
+test('dev idle autoplay always takes an available heal supergem below 40 percent HP', async () => {
+  const { pickIdleAutoplaySuperGem } = await import(modulePath);
+  const superGems = [
+    superGem(1, 0),
+    superGem(4, 2),
+    superGem(5, 3),
+  ];
+
+  assert.deepEqual(
+    pickIdleAutoplaySuperGem(superGems, { heroName: 'Falie', partyHpRatio: 0.39 }),
+    { row: 2, col: 0 },
+  );
 });
 
-test('dev idle autoplay checks priority pickup before the triplet picker in the hero window', () => {
+test('dev idle autoplay runtime delegates priority through the core module', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
-  assert.match(src, /const singlePick = findIdleAutoplayPrioritySinglePick\(\);/);
-  assert.match(src, /if \(singlePick\) \{/);
-  assert.match(src, /const played = clickGemCell\(Number\(singlePick\.row \|\| 0\), Number\(singlePick\.col \|\| 0\)\);/);
-  assert.match(src, /const pick = pickIdleAutoplayTriplet\(\);/);
+  assert.match(src, /from '\.\/src\/core\/idleAutoplayPriority\.mjs';/);
+  assert.match(src, /hasLivingEnemiesForIdleAutoplay\(\)/);
+  assert.match(src, /pickIdleAutoplayTriplet\(gameState\.gems, getIdleAutoplayPriorityContext\(\)\)/);
+  assert.match(src, /pickIdleAutoplaySuperGem\(gameState\.superGems, getIdleAutoplayPriorityContext\(\)\)/);
+  assert.match(src, /const beforeSuperGemProgressSig = getDevAutoplayProgressSig\(\);/);
+  assert.match(src, /played && getDevAutoplayProgressSig\(\) !== beforeSuperGemProgressSig/);
 });

@@ -26,14 +26,36 @@
 
 ## Queue Creation vs Execution
 - Creating a bead is not the same as starting a lane.
+- Read-only review, policy analysis, and bead creation are not implementation lanes by default.
 - If a user asks to create/make/add a bead, default behavior is:
   1. create the bead
   2. leave it `open`
   3. do not mark `in_progress` until it is explicitly assigned or selected by the loop
+- For gameplay/content beads, check `governance/product/player-living-guide.md` during creation. If the requested bead conflicts with the guide's player-facing description, pause and ask the user whether to update the guide, adjust the bead, or treat the conflict as intentional.
 - Execution starts only when one of these is true:
   - the user explicitly says to work that bead now
   - PM explicitly assigns that bead
   - the standard loop selects it as the next executable bead
+
+## Workspace And Isolation Policy
+- Default implementation uses a bead-scoped branch/worktree.
+- Active workspace work is allowed only for minor actions.
+- Beads are the primary unit of task isolation, checkpointing, recovery, and rollback.
+- Include the bead id in both branch and worktree names.
+- Cap active bead worktrees at 5.
+- If 5 active bead worktrees already exist, close, merge, or clean up before opening another, or ask for explicit user override.
+
+Minor actions may stay in the active workspace:
+- read-only review, policy analysis, bead creation, and bead triage
+- spelling fixes, small reference `.md` additions, metadata/doc touch-ups
+- tiny policy wording edits with no runtime behavior change
+
+Minor exemption does not apply to:
+- runtime code
+- hot files
+- package, build, deploy, persistence, or data-model changes
+- overlapping dirty paths
+- multi-agent write work
 
 ## Executable Bead Criteria
 - A bead is executable only if live `bd` state includes:
@@ -94,6 +116,9 @@
 ## Anti-Patterns
 - Starting work from stale `.beads/` mirrors instead of live `bd`
 - Treating a null/underspecified bead as executable
-- Mixing multiple hot-file lanes in one dirty worktree without isolation
+- Running implementation beads in the active workspace without minor exemption or explicit override
+- Opening more than 5 active bead worktrees without cleanup or explicit override
+- Mixing multiple implementation beads in one worktree
+- Mixing multiple hot-file lanes in one dirty workspace without explicit recovery plan
 - Closing a bead based on code presence alone without targeted validation
 - Trusting a single immediate `bd` read after a write when the tool has shown inconsistency

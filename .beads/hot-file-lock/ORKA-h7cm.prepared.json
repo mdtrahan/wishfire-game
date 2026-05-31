@@ -1,0 +1,13 @@
+{
+  "hot_files": {
+    "web-runner/app.js": {
+      "functions": [
+        "getDevAutoplayProgressSig",
+        "requestCombatFailureExit",
+        "rosterHoldKeptDeferredAdvance"
+      ],
+      "staged_blob": "001aa8f25ba25707b0eccafb01c940d1a3523063"
+    }
+  },
+  "issue_id": "ORKA-h7cm"
+}

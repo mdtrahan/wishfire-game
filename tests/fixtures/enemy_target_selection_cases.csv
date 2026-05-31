@@ -1,0 +1,10 @@
+name,preference,roll,hero0Uid,hero0Hp,hero0MaxHp,hero0Atk,hero0Slot,hero0Role,hero1Uid,hero1Hp,hero1MaxHp,hero1Atk,hero1Slot,hero1Role,hero2Uid,hero2Hp,hero2MaxHp,hero2Atk,hero2Slot,hero2Role,hero3Uid,hero3Hp,hero3MaxHp,hero3Atk,hero3Slot,hero3Role,expectedTargetUid,expectedMode,expectedRollIndex
+default_first,none,0.01,11,40,40,5,0,0,22,9,35,12,1,0,33,30,30,8,2,1,44,40,40,3,3,0,11,uniform,0
+default_fourth,none,0.90,11,40,40,5,0,0,22,9,35,12,1,0,33,30,30,8,2,1,44,40,40,3,3,0,44,uniform,3
+default_edge_high,none,0.999999999,11,40,40,5,0,0,22,9,35,12,1,0,33,30,30,8,2,1,44,40,40,3,3,0,44,uniform,3
+dead_filter,none,0.01,11,0,40,5,0,0,22,9,35,12,1,0,0,0,0,0,0,0,0,0,0,0,0,0,22,uniform,0
+low_hp,low_hp,0.99,11,40,40,5,0,0,22,9,35,12,1,0,33,30,30,8,2,1,44,40,40,3,3,0,22,identity_preference,0
+highest_atk,highest_atk,0.99,11,40,40,5,0,0,22,9,35,12,1,0,33,30,30,8,2,1,44,40,40,3,3,0,22,identity_preference,0
+frontline,frontline,0.99,11,40,40,5,0,0,22,9,35,12,1,0,33,30,30,8,2,1,44,40,40,3,3,0,11,identity_preference,0
+healer,healer,0.99,11,40,40,5,0,0,22,9,35,12,1,0,33,30,30,8,2,1,44,40,40,3,3,0,33,identity_preference,0
+no_living,none,0.50,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,none,0

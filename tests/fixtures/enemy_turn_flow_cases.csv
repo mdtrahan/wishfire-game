@@ -1,0 +1,6 @@
+name,activeEnemyUID,enemyExists,enemyHp,expectedActiveEnemyUID,expectedTurnPhase,expectedActionCode,expectedShouldAdvance,expectedShouldStartAction
+no_active_enemy,0,0,0,0,2,1,1,0
+actor_missing,12,0,10,12,2,1,1,0
+actor_dead_after_dot,12,1,0,12,2,1,1,0
+actor_negative_hp_after_dot,12,1,-2,12,2,1,1,0
+actor_alive_after_dot,12,1,20,12,2,2,0,1

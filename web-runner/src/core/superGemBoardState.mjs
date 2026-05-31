@@ -5,6 +5,7 @@ import {
   detectSuperGemClusters,
 } from './superGemRules.mjs';
 import { getSuperGemRenderRect } from './superGemRender.mjs';
+import { derivePresentationTurnBarrier } from './turnGateController.mjs';
 
 function rebuildSuperGemCellMap(gameState) {
   gameState.superGemCellMap = buildSuperGemCellMap(gameState.superGems || []);
@@ -33,6 +34,86 @@ function buildSuperGemSourceItems(superGem, gems = []) {
       y: Number(gem.y || 0),
       color: Number(gem.color ?? gem.elementIndex ?? superGem.baseColor ?? 0),
     }));
+}
+
+function getGemColor(gem) {
+  return Number(gem?.color ?? gem?.elementIndex);
+}
+
+function getCellKey(cellR, cellC) {
+  return `${Number(cellR)},${Number(cellC)}`;
+}
+
+function getSuperGemCenterWorld(superGem, gems = []) {
+  const sourceItems = buildSuperGemSourceItems(superGem, gems);
+  if (!sourceItems.length) return null;
+  const total = sourceItems.reduce((acc, item) => ({
+    x: acc.x + Number(item.x || 0),
+    y: acc.y + Number(item.y || 0),
+  }), { x: 0, y: 0 });
+  return {
+    x: total.x / sourceItems.length,
+    y: total.y / sourceItems.length,
+  };
+}
+
+function buildSuperGemColorClear({ superGem, gems = [] }) {
+  const color = Number(superGem?.baseColor);
+  if (!Number.isFinite(color)) return { clearKeys: new Set(), flyItems: [], center: null };
+  const superGemCellKeys = new Set(
+    (Array.isArray(superGem?.cells) ? superGem.cells : [])
+      .map((cell) => getCellKey(cell.r, cell.c)),
+  );
+  const clearKeys = new Set();
+  const flyItems = [];
+  for (const gem of gems || []) {
+    if (!gem) continue;
+    const key = getCellKey(gem.cellR, gem.cellC);
+    if (getGemColor(gem) !== color) continue;
+    clearKeys.add(key);
+    if (!superGemCellKeys.has(key)) {
+      flyItems.push({
+        x: Number(gem.x || 0),
+        y: Number(gem.y || 0),
+        color,
+      });
+    }
+  }
+  return {
+    clearKeys,
+    flyItems,
+    center: getSuperGemCenterWorld(superGem, gems),
+  };
+}
+
+function hasSuperGemBoardEmptySlots(gameState = {}) {
+  return Array.isArray(gameState.grid) && gameState.grid.some((col) => (
+    Array.isArray(col) && col.some((uid) => Number(uid || 0) <= 0)
+  ));
+}
+
+function canStartSuperGemSpend(globals = {}, gameState = {}) {
+  const boardHasEmptySlots = hasSuperGemBoardEmptySlots(gameState);
+  if (boardHasEmptySlots) return false;
+  const barrier = derivePresentationTurnBarrier({
+    globals,
+    refillBounce: gameState.refillBounce,
+    yellowCasino: gameState.yellowCasino,
+    gemMergeFx: gameState.gemMergeFx,
+    boardHasEmptySlots,
+    enemyLineClearPressureActive: false,
+  });
+  return (
+    globals.GamePhase === 'RUNTIME' &&
+    Number(globals.TurnPhase || 0) === 0 &&
+    globals.CanPickGems === true &&
+    !globals.PendingSkillID &&
+    !globals.PendingSuperGemAction &&
+    !globals.DeferAdvance &&
+    !globals.ActionInProgress &&
+    !globals.IsPlayerBusy &&
+    barrier.canClaimCombatAction
+  );
 }
 
 export function resetSuperGemBoardState(gameState) {
@@ -157,7 +238,7 @@ export function spendSuperGem({
   if (!superGem) return false;
   const cells = Array.isArray(superGem.cells) ? superGem.cells : [];
   if (!cells.length) return false;
-  if (state.globals.GamePhase !== 'RUNTIME') return false;
+  if (!canStartSuperGemSpend(state.globals || {}, gameState)) return false;
   const currentTurnUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
   const currentTurnActor = currentTurnUID > 0 ? callFunctionWithContext(fnContext, 'GetActorByUID', currentTurnUID) : null;
   const actorUID = currentTurnActor && currentTurnActor.kind === 'hero'
@@ -165,6 +246,7 @@ export function spendSuperGem({
     : (getHeroUIDByIndex(gameState.selectedHero) || gameState.selectedHero || currentTurnUID);
   if (!(actorUID > 0)) return false;
   const sourceItems = buildSuperGemSourceItems(superGem, gameState.gems || []);
+  const colorClear = buildSuperGemColorClear({ superGem, gems: gameState.gems || [] });
   beginTask011ActionCycle(Number(superGem.baseColor), actorUID);
   const activated = activateSuperGemEffect({
     superGem,
@@ -174,34 +256,68 @@ export function spendSuperGem({
     callFunctionWithContext,
     fnContext,
     sourceItems,
+    consumedColorGemCount: colorClear.clearKeys.size,
     startGemMergeFx,
     getGoldLabelTargetWorld,
   });
   if (!activated) return false;
+  const resolvedSuperGemCost = Number(superGem?.baseColor) === 5 ? 1 : Number(superGemCost || 0);
   const beforeEnergy = Number(state.globals.Player_Energy || 0);
-  const afterEnergy = Math.max(0, beforeEnergy - Number(superGemCost || 0));
+  const afterEnergy = Math.max(0, beforeEnergy - resolvedSuperGemCost);
   state.globals.Player_Energy = afterEnergy;
-  const cellSet = new Set(cells.map((cell) => `${cell.r},${cell.c}`));
-  gameState.gems = (gameState.gems || []).filter((gem) => gem && !cellSet.has(`${gem.cellR},${gem.cellC}`));
-  for (const cell of cells) {
-    if (gameState.grid[cell.c]) gameState.grid[cell.c][cell.r] = 0;
+  if (
+    colorClear.flyItems.length &&
+    colorClear.center &&
+    typeof startGemMergeFx === 'function'
+  ) {
+    startGemMergeFx({
+      target: colorClear.center,
+      scaleOut: false,
+      sourceItems: colorClear.flyItems,
+    });
+  }
+  gameState.gems = (gameState.gems || [])
+    .filter((gem) => gem && !colorClear.clearKeys.has(getCellKey(gem.cellR, gem.cellC)));
+  for (const key of colorClear.clearKeys) {
+    const [rRaw, cRaw] = key.split(',');
+    const r = Number(rRaw);
+    const c = Number(cRaw);
+    if (gameState.grid[c]) gameState.grid[c][r] = 0;
   }
   gameState.superGems = (gameState.superGems || []).filter((sg) => sg.id !== superGem.id);
   gameState.superGemSignature = getSuperGemSignature(gameState.superGems || []);
   rebuildSuperGemCellMap(gameState);
+  const presentationBarrier = derivePresentationTurnBarrier({
+    globals: state.globals || {},
+    refillBounce: gameState.refillBounce,
+    yellowCasino: gameState.yellowCasino,
+    gemMergeFx: gameState.gemMergeFx || (colorClear.flyItems.length ? { active: true } : null),
+    boardHasEmptySlots: colorClear.clearKeys.size > 0,
+  });
+  const refillDeferred = !!(
+    state.globals.PendingSkillID ||
+    state.globals.PendingSuperGemAction ||
+    state.globals.DeferAdvance ||
+    Number(state.globals.ActionLockUntil || 0) > Number(state.globals.time || 0) ||
+    !presentationBarrier.canStartRefill
+  );
   state.globals.LastSuperGemSpend = {
     id: String(superGem.id),
     type: String(superGem.type || ''),
     size: Number(superGem.size || 0),
-    area: Number(superGemCost || 0),
+    area: resolvedSuperGemCost,
     reason: String(reason || 'tap'),
     energyBefore: beforeEnergy,
     energyAfter: afterEnergy,
+    clearedGemCount: colorClear.clearKeys.size,
+    refillDeferred,
   };
   gameState.selectedGems = [];
   gameState.selectionLocked = false;
   state.globals.TapIndex = 0;
   setGemArray(gameState.gems);
-  startRefillBounce(0.31);
+  if (!refillDeferred) {
+    startRefillBounce(0.31);
+  }
   return true;
 }

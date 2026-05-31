@@ -1,0 +1,6 @@
+name,enemyExists,enemyUID,targetUID,skillId,originX,expectedActive,expectedStateCode,expectedUid,expectedTargetUID,expectedSkillCode,expectedForwardX
+missing_enemy,0,12,101,Enemy_MAG_Single,300,0,0,0,0,-1,0
+direct_magic,1,12,101,Enemy_MAG_Single,300,1,1,12,101,2,245
+fallback_attack_no_target,1,13,0,Enemy_ATK_Single,215.5,1,1,13,0,0,160.5
+board_pressure_skill,1,14,202,Enemy_Scathe,-10,1,1,14,202,1,-65
+unknown_skill,1,15,303,Enemy_Unknown,55,1,1,15,303,-1,0

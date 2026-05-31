@@ -7,6 +7,13 @@ function read(relPath) {
   return fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
 }
 
+function readYellowRuntimeSources() {
+  return [
+    read('web-runner/app.js'),
+    read('web-runner/systems/renderRuntime.js').replace(/\\n/g, '\n'),
+  ].join('\n');
+}
+
 test('yellow completion handoff preserves a single deferred advance until the real release point', async () => {
   const runtimeTurnGate = await import(path.join('file://', __dirname, '..', 'web-runner', 'src', 'core', 'turnGateController.mjs'));
   const sharedTurnGate = await import(path.join('file://', __dirname, '..', 'src', 'core', 'turnGateController.mjs'));
@@ -50,7 +57,7 @@ test('yellow completion handoff preserves a single deferred advance until the re
 });
 
 test('yellow completion source keeps a single release path for gold-merge and non-merge resolution', () => {
-  const src = read('web-runner/app.js');
+  const src = readYellowRuntimeSources();
   assert.match(src, /if \(!shouldPlayGoldMerge\) \{[\s\S]*applyTurnGateIntent\(getYellowSequenceCompletionIntent\);[\s\S]*\}/);
   assert.match(src, /if \(merge\.releaseGate\) \{\s*applyTurnGateIntent\(getYellowSequenceCompletionIntent, merge\.releaseGate\);\s*merge\.releaseGate = null;\s*\}/);
   const immediateCompletionCalls = src.match(/applyTurnGateIntent\(getYellowSequenceCompletionIntent\);/g) || [];
@@ -60,7 +67,7 @@ test('yellow completion source keeps a single release path for gold-merge and no
 });
 
 test('deferred advance loop owns the single AdvanceTurn call after yellow completion', () => {
-  const src = read('web-runner/app.js');
+  const src = readYellowRuntimeSources();
   assert.match(src, /if \(\s*state\.globals\.GamePhase === 'RUNTIME'[\s\S]*state\.globals\.DeferAdvance[\s\S]*callFunctionWithContext\(fnContext, 'AdvanceTurn'\);/);
   const gameplayAdvance = src.match(/console\.log\(`\[TURN\] DeferAdvance -> AdvanceTurn[\s\S]*?callFunctionWithContext\(fnContext, 'AdvanceTurn'\);/);
   assert.ok(gameplayAdvance, 'expected deferred gameplay handoff to remain the production AdvanceTurn path');

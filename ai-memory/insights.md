@@ -23,6 +23,8 @@
 ## Regression Triggers
 - Before starting combat-system beads, scan acceptance + code for: `buff`, `debuff`, `duration`, `turns`, `stack`.
 - If these imply outdated model assumptions, pause and rewrite bead scope before coding.
+- When render extraction moves visual helpers behind a dependency scope, verify app-to-renderer predicates are live state readers rather than false stubs; status overlays keyed by effect names should accept stable prefixes such as `Blight*`.
+- When removing a hero-specific heal expression, route that hero through the shared heal body; do not replace the special branch with a guard that still consumes action pacing but skips `ApplyPartyHeal`.
 
 ## 2026-03-07 Regression Note
 - Hero selector render gate must treat hero-turn as `TurnPhase === 0` (not `1`) in web-runner runtime.
@@ -207,7 +209,10 @@
 
 ## 2026-03-18 — Dev Tooling Must Write Conditions Without Moving Turn State
 - Dev panel toggles should only write the selected condition. If a QA toggle is meant to stage a skill harness, apply/remove it directly in the owning runtime seam and keep combat refresh, actor reload, and turn advancement out of the apply path.
+- Global dev-panel Restart is an exception: it must be a layout-agnostic hard runtime restart, not a combat refresh, modal close, or layout transition. Clear transient dev-tool session config and force a clean app boot before any active-layout-specific refresh logic can run.
 - When dev idle/autoplay is supposed to be hands-off, selection-only steps must be auto-resolved inside the dev automation loop, not by weakening normal gameplay selection rules.
+- Dev autoplay progress must be tied to authoritative state changes, not just dispatched click events. A no-op supergem click can otherwise reset stall detection forever while combat appears frozen.
+- When automated combat reaches defeat or energy exhaustion, route it through the same combat-failure exit as normal runtime and clear any atomic combat gate first; otherwise the layout transition can be queued behind the frozen state it is trying to leave.
 - Dev-tool loadout slots are a special case: hero/enemy slot edits are not “staged only.” They should trigger the sensible active-layout rebuild path, or QA will see valid duplicate slot config in the panel while runtime still shows the old roster and conclude the dev tool is broken.
 - If a skill is presented as a “free second attack,” do not implement it with extra-turn scheduler semantics. The owner seam must duplicate the attack immediately, preserve the original gem spend, and retarget only if the original target is gone before the follow-up lands.
 - If a presentation-heavy attack pattern makes another mechanic unreadable, move that pattern behind an explicit skill harness instead of leaving it in the default action seam.
@@ -218,6 +223,17 @@
 - For blue gem / Astral Flow bugs, verify the full accounting chain instead of only the wallet write: selected-gem count must be passed into `ResolveGemAction(...)`, and the actor UID used for gem usage must resolve to a hero owner, not an enemy turn actor fallback.
 - If combat log, Astral Flow wallet, and BLUE radiator totals all stay at zero together, treat that as an upstream resolution-input bug first, not three separate HUD defects.
 - When converting a mechanic from extra-turn semantics to free-follow-up semantics, audit three seams separately: proc latch lifetime, target/retarget logic, and presentation pacing. Partial fixes can look correct in counters while still failing visually.
+
+## 2026-05-11 — Proc QA Must Separate Activation From Execution
+- For session proc skills, activation must not count as a proc check or payload execution unless the skill explicitly has an activation effect.
+- Browser/AutoPlay side-panel evidence is the acceptance proof for proc behavior; internal helper tests can pass while live player actions never reach the combat-event hook.
+- Proc debug counters should distinguish eligible `Checks`, successful `Procs`, failed `Misses`, and payload results such as `Heals`; locked, inactive, wrong-target, no-damage, and activation-only cases should not increment `Checks`.
+- When a proc path is uncertain, instrument activation, combat-event hook, and roll-resolution seams with a stable console prefix before changing gameplay math.
+
+## 2026-05-11 — Skill Beads Need Spec-First Contracts Before Runtime Edits
+- For hero and party skills, require a clear definition of skill ID, owner, trigger, eligibility, roll, payload, counters, and Browser proof path before implementation starts.
+- Test the activation, eligibility, roll, and payload seams before coding the runtime change; a helper-only test is not enough if the live combat event can miss the hook.
+- Keep dev-panel controls as mutation surfaces and side-panel readouts as informational surfaces. Mixing those roles turns QA evidence into another gameplay side effect.
 
 ## 2026-05-07 — Layout Suppression Rules Need Preserved Ownership Metadata
 - If a combat UI element is removed by layer/type rules, verify that the flattened runtime instances still carry `layerName` and `layerIndex` before changing draw filters. Suppression hooks against `BoardBG` or other layer owners silently fail when layout flattening strips that metadata.
@@ -272,4 +288,95 @@
 
 ## 2026-05-08 — Dev Autoplay Color Priority Should Encode Real Preference Tiers Only
 - If QA automation is supposed to sample several gem colors fairly, keep those colors in one shared priority tier instead of expressing a fake total order. Pushing one color to the bottom of the array silently biases long autoplay runs and makes balance checks look worse than the underlying runtime behavior.
-- Diagnostic order for autoplay color-bias reports: verify the single-pick exception list first, then inspect the triplet priority tiers, then confirm same-tier selection is the only place randomness is applied. Do not tune downstream balance numbers before checking whether the dev automation itself is skewing picks.
+- Diagnostic order for autoplay color-bias reports: verify any autoplay bypass or pick-before-triplet rules first, then inspect the triplet priority tiers, then confirm same-tier selection is the only place randomness is applied. Do not tune downstream balance numbers before checking whether the dev automation itself is skewing picks.
+
+## 2026-05-10 — Gem Spawn Tweens Need Matching Timebases
+- If a visual tween is stamped in game seconds, the renderer must evaluate it against game time, not `performance.now()`. A valid `bounceStart`/`bounceDur` pair will still look like a pop-in if render time is thousands of seconds ahead of the tween clock.
+- Diagnostic order for gem pop-in regressions: verify new gems carry appearance metadata, verify the render scale reads the same clock as that metadata, then tune curve magnitude/duration only after the timebase is correct.
+
+## 2026-05-11 — Enemy Target Bias Must Be Identity-Owned
+- Default enemy target selection should be uniform over living heroes; never encode hero-specific aggro as a global enemy picker rule.
+- Enemy target preferences belong on the enemy identity data (`targetPreference` / targeting policy fields) and should route through one shared deterministic rule helper before the action seam receives a target.
+- Diagnostic order for targeting-bias reports: check whether the random picker is actually being called with the expected `(ctx, list)` shape, then check for hard-coded hero exceptions, then check identity policy data.
+
+## 2026-05-11 — HoT Cadence Must Be Explicit
+- If a status effect is turn-based, store an explicit `cadence: 'turn'` plus turn-serial gates on its queued payload. Reusing timer-tick fields for a turn-based effect makes later merges silently convert combat semantics back to wall-clock behavior.
+- Diagnostic order for HoT/DoT recovery: verify the skill payload shape first, then verify the app-side cadence owner, then verify visual overlays. A correct shimmer can mask a wrong healing cadence.
+- For DoT packages, also contract the first-hit resolver. The initial impact decides total tick count and queued cadence, so a correct queue helper can still ship the wrong behavior if the delayed-hit resolver keeps old timer-based defaults.
+- Actor-turn DoTs must be owned by the afflicted actor's turn-start seam, not a frame loop or global turn watcher. Hero turns and other enemies' turns can advance global serials, but they must not spend another enemy's DoT counter.
+
+## 2026-05-11 — Supergem Spend Must Reserve Match Pacing
+- Supergem activation removes a larger footprint, but it is still a player match action. Do not start refill immediately if activation opened target selection, queued a pending supergem attack, or reserved a deferred action handoff.
+- Diagnostic order for supergem interaction bugs: verify idle QA can actually click a supergem, then verify spend removes the footprint, then verify refill waits behind pending activation and hit timing instead of colliding with the match presentation.
+
+## 2026-05-11 — Autoplay Must Clear Non-Combat Choice Modals
+- Idle combat autoplay needs bypass handlers for modal choice screens that are not the behavior under test. If a modal such as skill draw can stay open without changing turn, energy, pending skill, or gem counts, the progress watchdog will eventually classify a healthy run as stalled.
+- For random QA bypasses, select from the modal's live candidate list rather than hard-coding a card index. That keeps the harness moving while still sampling the temporary choice surface.
+
+## 2026-05-11 — Canvas Pixel Overlays Must Re-anchor On Resize
+- If a combat HUD overlay stores computed canvas-pixel bounds, browser resize must recompute those bounds after `layoutScale` and layout offsets change. Redrawing with stale pixel coordinates makes otherwise-correct combat log and story-card windows drift relative to the game field.
+- Diagnostic order for resize drift: verify whether the overlay stores world coordinates or canvas pixels, then verify the resize handler refreshes the derived bounds, then inspect CSS/DOM reflow only after the canvas-owned placement is current.
+
+## 2026-05-13 — Team-Turn Effects Need Team-Owned Counters
+- If an effect duration is expressed in hero team turns, do not derive it from total combatant `TurnSerial` or full turn-queue length. Enemy turns and small-party encounters will skew the duration.
+- Store an explicit hero-team-turn serial that advances only after the live hero side completes a pass, then anchor field expiry to that serial. The field can still remember hero-team size for QA/debug, but size is not the clock.
+
+## 2026-05-14 — Strategy Turns Are Team Phases, Not Global Queues
+- If combat is strategy-game-style, phase ownership must alternate by team regardless of team size. Do not let global speed sorting weave heroes and enemies together or let enemy count shrink/expand spill one side into the other side's phase.
+- Speed sorting belongs only inside the active team phase. Battle start should initialize the first phase, not create enemy-first starts or extra priority turns.
+
+## 2026-05-14 — Field Effects Must Own Their Own Visual And DoT Timers
+- Slot/field effects should render from field-zone state, not from the current living unit in that slot. Unit death, entry, or direct status expiry must not pop the field visual unless the field's own timer expired.
+- If a field and a direct status both express the same visible debuff, keep their queued DoT packages in separate ownership buckets. Reapplying direct Faze can reset direct Faze, and reapplying SG Faze can refresh SG-owned field blight, but neither path should silently delete or renew the other's timer.
+- A multi-slot field application needs one shared expiry contract. DoT application to a unit standing in a field may use the field id for ownership cleanup, but it must not renew an individual puddle slot or the field will drift slot-by-slot.
+- If a field visually represents an infection, units standing in that active field must show the infection visual even after that field's damage packet has spent its ticks. Damage cadence and visual occupation are separate contracts.
+- When a field is the stronger expression of the same debuff, it owns the overlapping visual/status window. Direct same-debuff packets applied before or during the field should be absorbed for covered units, so they cannot reassert the unit visual after the field dissipates; a fresh direct application after the field is gone may start its own visual again.
+
+## 2026-05-16 — Hero Signature Actions Need Identity Beyond Shared Skill Slots
+- Shared slots like `HERO_AOE` are routing conveniences, not player-facing action identity. If a hero-specific action such as Kojonn's Faze rides the shared green path, keep an explicit action/profile marker on the queued packet so later presentation work cannot collapse it back into the common AOE expression.
+- For hero-signature regressions, contract both the payload semantics and the expression identity: DoT packets can be correct while the lunge/profile/presentation marker is still generic.
+
+## 2026-05-16 — Supergem Hero Identity Must Use The Runtime Current-Hero Seam
+- If supergem activation receives both a spender actor and a current hero signal, hero-specific supergem effects should resolve from the runtime current-hero seam first, then fall back to the passed actor. The passed actor can be stale during board spend plumbing, while `CurrentHeroUID` is the hero-turn owner set by the combat turn seam.
+- For hero-specific supergem regressions that fall back to generic resource collection, contract the mismatch case directly: non-Huun actor plus current Huun should still queue Huun's action packet, lunge, and combat log instead of only awarding gold.
+
+## 2026-05-16 — Closed Beads Still Need Main-Line Presence Checks
+- Before treating a closed gameplay bead as stable, verify its owner commit is reachable from current `main` and that its contract test exists in the active tree. A closed bead in an unmerged lane is not implemented behavior for the shipped runtime.
+- For silent feature regressions after merge cleanup, compare Bead intent against current code first, then check commit ancestry. Missing state keys, renderer markers, and focused tests together usually mean the feature was never incorporated, not that a small branch condition drifted.
+
+## 2026-05-16 — HUD Readout Popups Need Canvas Anchors
+- If a floating number is supposed to appear over a HUD readout, anchor it to the rendered canvas coordinate for that readout. Reusing the text object's world coordinate can project to an unrelated stage position when the HUD layout overrides the draw position.
+- Timing gates should wait on the popup's own text-animation completion signal. For resource-gain paths, max the action lock against `TextAnimEndAt` instead of replacing it with a fixed short delay after spawning the text.
+
+## 2026-05-16 — Batched Visual Randomness Needs Per-Instance Decorrelation
+- If several damage texts spawn from one action, randomize at the text-instance seam, not only at the action or packet seam. A repeated or deterministic RNG value can make a whole AoE read as one shared vector unless each spawned text also carries a sequence/salt into the variation picker.
+- For visual-randomness QA, test both normal RNG and fixed-RNG runs. Fixed-RNG proof catches accidental batch coupling while normal runs catch distribution and readability issues.
+
+## 2026-05-17 — Death Refills Must Be Scheduler Gates
+- Treat enemy death resolution, required-slot refill, slot occupancy, and target validity as one roster-stability contract before any next action can be claimed.
+- A side-turn boundary is too late for backup arrival if the prior turn killed an enemy. The completion seam that observes death must either finish refill or hold the scheduler behind an explicit refill-pending gate.
+- For softlocks where a hero waits on a missing target or enemies act with absent allies, trace every death-producing path first, then verify the shared next-action gate rejects dead targets, empty required slots, duplicate slot occupants, and pending refill state.
+- Roster-refill holds may preserve a visible attack selection, but an already-owned deferred action must clear stale pending target fields while keeping only the deferred advance ownership.
+- Pending death entries are not yet refill work. The action-completion seam must commit pending enemy deaths into killed slots before asking the roster-stability gate to hold, or the gate blocks the only path that schedules backup.
+
+## 2026-05-17 — Action Starts Must Claim The Handoff Gate Before Queuing Damage
+- Damage packets, lunge presentation, and deferred turn ownership are one action contract. If the lunge/action gate refuses to start, the caller must not queue damage, consume a supergem, or reserve `DeferAdvance`.
+- The scheduler must not re-enter while any action is in progress, even if the active action belongs to the current turn owner. Same-owner reentry is still reentry and can mutate target-selection state into an unplayable phase.
+- For hero-action softlocks, inspect the meta-state first: `PendingSkillID`, `ActionInProgress`, `ActionActorUID`, `HeroAction`/`EnemyAction`, `ActionOwnerUID`, and `DeferAdvance` must describe the same owner and phase. Individual hero edge cases usually fall out of that broken symmetry.
+
+## 2026-05-17 — Deferred Handoffs Must Survive Blocking Gates
+- A deferred turn-advance token is not spent until `AdvanceTurn()` has actually moved the scheduler or intentionally finished the handoff. If a refill/death gate keeps the same owner and phase, preserve the owned defer so the handoff can resume after the gate clears.
+- Refill-complete gates may release visual/busy state, but they must not restore player input while `TurnPhase` is still resolving. `CanPickGems` is an idle hero-phase privilege, not a generic "no animation is running" flag.
+- Actor identity for special actions must come from the scheduler owner at the action seam. Stale convenience fields like `CurrentHeroUID` can assist display or fallback routing, but they must not be allowed to claim an action for a non-current actor.
+
+## 2026-05-17 — QA Autoplay Must Not Spend Resource Turns As Combat Turns
+- When investigating turn-order failures through dev autoplay, separate scheduler ownership from the action chosen by the harness. A valid resource-only hero turn can look like a skipped hero if it has no console-visible combat line.
+- Combat QA autoplay should not spend non-combat resource-only picks while enemies are alive unless the tested hero turns that resource into combat pressure.
+
+## 2026-05-26 — Presentation Lanes Need One Shared Barrier
+- Refill, gem merge/collection, yellow conversion, floating text, hero/enemy action, action locks, and pending hit packets are one presentation barrier. Turn advance, refill start, action claim, and input restore should ask that barrier instead of racing local boolean checks.
+- If a visual overlap bug looks like a refill issue, first check whether the refill path can start while another presentation lane is active. The fix should serialize the existing lanes, not create a second scheduler.
+
+## 2026-05-26 — Pending Target Resolution Is Not A New Action Claim
+- A red/green target picker created by the current gem match must resolve before refill, even when the match already left empty board slots. `refill-pending` blocks new action claims, turn advance, input restore, and refill completion; it must not block the already-pending target button that will finish the current action.
+- For target-selection regressions, validate both normal match and pending supergem action shapes. `PendingSkillID` plus `TurnPhase === 1` or `PendingSuperGemAction` should be allowed through only when no real presentation lane is active and `DeferAdvance` is clear.

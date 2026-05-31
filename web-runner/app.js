@@ -3,12 +3,16 @@ import { createContext, callFunctionWithContext } from './modules/functionRegist
 import { CombatRuntimeGateway } from './src/core/combatRuntimeGateway.js';
 import {
   createCombatTurnRefreshBaseline,
+  createEnemyRosterRefillHold,
   createEnemyTurnGateBaseline,
   createEnemyTurnIdleRecovery,
+  createEnemyTurnRetryHold,
   createDeferredAdvanceResolved,
   createDeferredRefillHold,
+  createDeferredStaleActionRecovery,
   createDeferredStaleBusyRecovery,
   createDeferredTextHold,
+  derivePresentationTurnBarrier,
   createRefillCompleteGate,
   createRefillStartGate,
   createYellowSequenceCompletion,
@@ -40,6 +44,11 @@ import {
   updateIdleFarmSessionState,
 } from './src/core/idleFarmRuntime.mjs';
 import {
+  pickIdleAutoplaySuperGem,
+  pickIdleAutoplayTriplet,
+  resolveIdleAutoplayPartyHpRatio,
+} from './src/core/idleAutoplayPriority.mjs';
+import {
   getSuperGemAtCanvasPoint,
   getSuperGemAtCell,
   resetSuperGemBoardState,
@@ -49,8 +58,14 @@ import {
   syncSuperGemShapes,
 } from './src/core/superGemBoardState.mjs';
 import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
+import { deriveDamageFloatFrameOffset } from '../src/core/damageFloatVector.mjs';
 import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
 import { createHealBloom } from './src/core/healBloomAnimation.mjs';
+import { createCombatOutcomeSimulationPacket } from './src/core/combatOutcomeRules.mjs';
+import {
+  createPartyRegenLifecycleSimulationPacket,
+  createPartyRegenTickSimulationPacket,
+} from './src/core/statusEffectRules.mjs';
 import * as heroGemProgressStorage from './systems/heroGemProgressStorage.js';
 import * as runtimeDebugLogging from './systems/runtimeDebugLogging.js';
 import * as animationMath from './systems/animationMath.js';
@@ -75,8 +90,19 @@ import * as renderHomestead from './systems/renderHomestead.js';
 import * as renderChests from './systems/renderChests.js';
 import * as renderHarnessFallback from './systems/renderHarnessFallback.js';
 import * as renderOverlays from './systems/renderOverlays.js';
+import * as renderSkillDraught from './systems/renderSkillDraughtOverlay.js';
 import * as renderRuntime from './systems/renderRuntime.js';
 import * as superGemRuntime from './systems/superGemRuntime.js';
+import {
+  createSimulationCoreSeededRng,
+  initializeSimulationCoreShadow,
+  shadowCombatPower,
+  shadowSeededRng,
+} from './systems/simulationCoreShadow.js';
+import {
+  addAppViewportResizeListener,
+  resizeCanvasToContainedViewport,
+} from './systems/appShellViewport.js';
 import * as helpers from './utils/helpers.js';
 import * as mapLayoutState from './state/mapLayoutState.js';
 import * as uiState from './state/uiState.js';
@@ -88,8 +114,12 @@ const astralWalletOut = document.getElementById('astral-wallet-output');
 const canvas = document.getElementById('view');
 const ctx = canvas.getContext('2d');
 let damageNumberLayer = null;
-const DAMAGE_TEXT_FONT = '"Rubik Mono One", "Trebuchet MS", "Verdana", sans-serif';
+const DAMAGE_TEXT_FONT = '"Bungee", "Trebuchet MS", "Verdana", sans-serif';
 void ensureDamageTextFontReady();
+const simulationCoreShadowReady = initializeSimulationCoreShadow();
+if (simulationCoreShadowReady && typeof simulationCoreShadowReady.then === 'function') {
+  void simulationCoreShadowReady.then(() => runSeededRngShadowStartupChecks());
+}
 const HARNESS_MODE = typeof window !== 'undefined' && window.location.search.includes('harness=true');
 const DEBUG_LAYOUT = (() => {
   let enabled = false;
@@ -118,6 +148,14 @@ const DEBUG_GEMS_QUERY = (() => {
     return false;
   }
 })();
+const GEM_INTERACTIVITY_DIAGNOSTIC_QUERY = (() => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('gemdiag') === 'true';
+  } catch {
+    return false;
+  }
+})();
 const GEM_DEBUG_LEVEL = (function () {
   const p = new URLSearchParams(window.location.search);
   return p.get('gemlog') || 'minimal';
@@ -134,6 +172,7 @@ const BOOTSTRAP_SEED = (() => {
   }
 })();
 let bootstrapDeterministicRefillPending = false;
+const COMBAT_RUNTIME_RNG_SALT = 0x9e3779b9;
 const STARTUP_DEBUG = (() => {
   try {
     const params = new URLSearchParams(window.location.search);
@@ -209,6 +248,60 @@ function applyTurnGateIntent(createIntent, options = undefined) {
   applyTurnGateGlobals(createIntent(state.globals, options));
 }
 
+function getActionHandoffSnapshot() {
+  const currentUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
+  const currentType = Number(callFunctionWithContext(fnContext, 'GetCurrentType') || -1);
+  return {
+    currentUID,
+    currentType,
+    turnPhase: Number(state.globals.TurnPhase || 0),
+    canPickGems: state.globals.CanPickGems,
+    isPlayerBusy: Number(state.globals.IsPlayerBusy || 0),
+    pendingSkillID: String(state.globals.PendingSkillID || ''),
+    pendingActor: Number(state.globals.PendingActor || 0),
+    pendingSuperGem: !!state.globals.PendingSuperGemAction,
+    selectedEnemyUID: Number(state.globals.SelectedEnemyUID || 0),
+    actionInProgress: Number(state.globals.ActionInProgress || 0),
+    actionActorUID: Number(state.globals.ActionActorUID || 0),
+    actionOwnerUID: Number(state.globals.ActionOwnerUID || 0),
+    deferAdvance: Number(state.globals.DeferAdvance || 0),
+    advanceAfterAction: Number(state.globals.AdvanceAfterAction || 0),
+    actionLockUntil: Number(state.globals.ActionLockUntil || 0),
+    time: Number(state.globals.time || 0),
+    heroActionActive: !!(state.globals.HeroAction && state.globals.HeroAction.active),
+    enemyActionActive: !!(state.globals.EnemyAction && state.globals.EnemyAction.active),
+    pendingHeroHits: Array.isArray(state.globals.PendingHeroHits) ? state.globals.PendingHeroHits.length : 0,
+    livingEnemies: state.entities.filter((entity) => entity && entity.kind === 'enemy' && (entity.hp ?? 0) > 0).length,
+  };
+}
+
+function logActionHandoffDebug(tag, payload = {}) {
+  runtimeDebugLogging.gemDebugLog(tag, {
+    ...payload,
+    snapshot: getActionHandoffSnapshot(),
+  }, state);
+}
+
+function getEnemyRosterStabilitySnapshot() {
+  try {
+    return callFunctionWithContext(fnContext, 'GetEnemyRosterStability') || { stable: true, pending: false };
+  } catch (_) {
+    return { stable: true, pending: false };
+  }
+}
+
+function hasPendingEnemyDeathResolution() {
+  const pending = state.globals.PendingDeaths;
+  if (!pending || typeof pending !== 'object') return false;
+  for (const uidStr of Object.keys(pending)) {
+    const uid = Number(uidStr);
+    if (!(uid > 0)) continue;
+    const actor = state.entities.find((entity) => Number(entity?.uid || 0) === uid);
+    if (actor && actor.kind === 'enemy') return true;
+  }
+  return false;
+}
+
 function getYellowSequenceCompletionIntent(current = state.globals, options = undefined) {
   const globals = current || state.globals || {};
   const refill = gameState.refillBounce;
@@ -226,15 +319,39 @@ function getYellowSequenceCompletionIntent(current = state.globals, options = un
   });
 }
 
+function getPresentationTurnBarrier({ hasEmpty = false, enemyLineClearPressureActive = false } = {}) {
+  return derivePresentationTurnBarrier({
+    globals: state.globals,
+    refillBounce: gameState.refillBounce,
+    yellowCasino: gameState.yellowCasino,
+    gemMergeFx: gameState.gemMergeFx,
+    boardHasEmptySlots: hasEmpty,
+    enemyLineClearPressureActive,
+  });
+}
+
 function canResolveDeferredAdvance({ hasEmpty = false, enemyLineClearPressureActive = false } = {}) {
-  const refill = gameState.refillBounce;
-  const refillActive = !!(refill && refill.active);
-  const refillPending = !!hasEmpty && !refillActive && !enemyLineClearPressureActive;
-  const textHold = !!state.globals.TextAnimating;
+  const presentationBarrier = getPresentationTurnBarrier({ hasEmpty, enemyLineClearPressureActive });
+  const refillActive = presentationBarrier.lanes.refillBounce;
+  const rosterStability = getEnemyRosterStabilitySnapshot();
+  const pendingEnemyDeathResolution = hasPendingEnemyDeathResolution();
+  const refillPending = presentationBarrier.refillPending && presentationBarrier.canStartRefill;
+  const textHold = presentationBarrier.lanes.textAnimating;
   const pendingSelect = state.globals.TurnPhase === 1 && !!state.globals.PendingSkillID;
-  const mergeInFlight = !!(gameState.gemMergeFx && gameState.gemMergeFx.active);
+  const mergeInFlight = presentationBarrier.lanes.gemMerge;
+  const actionActorUID = Number(state.globals.ActionActorUID || 0);
+  const heroActionActive = presentationBarrier.lanes.heroAction;
+  const enemyActionActive = presentationBarrier.lanes.enemyAction;
+  const actionLockActive = Number(state.globals.ActionLockUntil || 0) > Number(state.globals.time || 0);
+  const staleActionInProgress = !!state.globals.ActionInProgress &&
+    !heroActionActive &&
+    !enemyActionActive &&
+    !actionLockActive;
   const staleBusy = !!state.globals.IsPlayerBusy && !state.globals.ActionInProgress && !pendingSelect;
-  const blockedPhase = !!state.globals.IsPlayerBusy || !!state.globals.ActionInProgress || !!pendingSelect || !!mergeInFlight;
+  const blockedPhase = !!state.globals.IsPlayerBusy ||
+    (!!state.globals.ActionInProgress && !staleActionInProgress) ||
+    !!pendingSelect ||
+    !presentationBarrier.canAdvanceTurn;
   const ownerUID = Number(state.globals.ActionOwnerUID || 0);
   const currentUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
   const ownerOk = !ownerUID || ownerUID === currentUID;
@@ -244,13 +361,127 @@ function canResolveDeferredAdvance({ hasEmpty = false, enemyLineClearPressureAct
     textHold,
     pendingSelect,
     mergeInFlight,
+    heroActionActive,
+    enemyActionActive,
+    staleActionInProgress,
     staleBusy,
     blockedPhase,
+    presentationBarrier,
     ownerUID,
     currentUID,
     ownerOk,
-    ok: !refillPending && !textHold && !blockedPhase && ownerOk,
+    enemyRosterStability: rosterStability,
+    pendingEnemyDeathResolution,
+    ok: (rosterStability.stable || pendingEnemyDeathResolution) && !refillPending && !textHold && !blockedPhase && ownerOk,
   };
+}
+
+function isHitFlashActive(uid) {
+  const flashes = state.globals.HitFlashByUID;
+  if (!uid || !flashes || typeof flashes !== 'object') return false;
+  const entry = flashes[uid];
+  if (entry && typeof entry === 'object') {
+    return Number(entry.until || 0) > Number(state.globals.time || 0);
+  }
+  return Number(entry || 0) > Number(state.globals.time || 0);
+}
+
+function getHitFlashTone(uid) {
+  const flashes = state.globals.HitFlashByUID;
+  if (!uid || !flashes || typeof flashes !== 'object') return 'black';
+  const entry = flashes[uid];
+  if (entry && typeof entry === 'object') return String(entry.tone || 'black');
+  return 'black';
+}
+
+function isActiveTaintedGroundZone(zone) {
+  if (!zone) return false;
+  if (String(zone.effectName || '') !== 'TaintedGround') return false;
+  if (String(zone.visual || '') !== 'blight_disc') return false;
+  const now = Number(state.globals.time || 0);
+  if (now < Number(zone.visualStartsAt || zone.activeAt || 0)) return false;
+  const fadeStartedAt = zone.fadeStartedAt == null ? null : Number(zone.fadeStartedAt || 0);
+  if (fadeStartedAt == null) return true;
+  return (now - fadeStartedAt) < 0.75;
+}
+
+function enemyOccupiesTaintedGroundZone(enemy, zone) {
+  if (!enemy || !zone) return false;
+  const enemySlotIndex = Number(enemy.slotIndex);
+  if (Number.isFinite(enemySlotIndex) && enemySlotIndex === Number(zone.slotIndex || 0)) return true;
+  const enemyX = Number(enemy.x);
+  const enemyY = Number(enemy.y);
+  const anchorX = Number(zone.anchorWorldX);
+  const anchorY = Number(zone.anchorWorldY);
+  if (!Number.isFinite(enemyX) || !Number.isFinite(enemyY) || !Number.isFinite(anchorX) || !Number.isFinite(anchorY)) {
+    return false;
+  }
+  const spacing = Number(state.globals.Spacing || ((state.globals.EnemySize || 40) + (state.globals.enemyGAP || 8)) || 48);
+  const dx = Math.abs(enemyX - anchorX);
+  const dy = Math.abs(enemyY - anchorY);
+  return dx <= Math.max(16, spacing * 0.75) && dy <= Math.max(16, spacing * 0.75);
+}
+
+function hasPersistentEnemyBlightOverlay(uid) {
+  if (!uid) return false;
+  const dots = Array.isArray(state.globals.EnemyDamageOverTime) ? state.globals.EnemyDamageOverTime : [];
+  for (const dot of dots) {
+    if (!dot) continue;
+    if (Number(dot.targetUID || 0) !== Number(uid || 0)) continue;
+    if (Number(dot.remainingFires || 0) <= 0) continue;
+    if (dot.totalDamageRemaining != null && Number(dot.totalDamageRemaining || 0) <= 0) continue;
+    if (!String(dot.effectName || 'Blight').startsWith('Blight')) continue;
+    return true;
+  }
+  if (hasPersistentEnemyTaintedGroundOverlay(uid)) return true;
+  return false;
+}
+
+function hasPersistentEnemyTaintedGroundOverlay(uid) {
+  if (!uid) return false;
+  const enemy = state.entities.find((entity) => Number(entity && entity.uid || 0) === Number(uid || 0));
+  if (!enemy) return false;
+  const zones = Array.isArray(state.globals.TaintedGroundZones) ? state.globals.TaintedGroundZones : [];
+  for (const zone of zones) {
+    if (!isActiveTaintedGroundZone(zone)) continue;
+    if (!enemyOccupiesTaintedGroundZone(enemy, zone)) continue;
+    return true;
+  }
+  return false;
+}
+
+function getPersistentTaintedGroundOverlays() {
+  const zones = Array.isArray(state.globals.TaintedGroundZones) ? state.globals.TaintedGroundZones : [];
+  const now = Number(state.globals.time || 0);
+  const overlays = [];
+  for (const zone of zones) {
+    if (!isActiveTaintedGroundZone(zone)) continue;
+    const fadeStartedAt = zone.fadeStartedAt == null ? null : Number(zone.fadeStartedAt || 0);
+    const fadeAlpha = fadeStartedAt == null
+      ? 1
+      : Math.max(0, Math.min(1, 1 - ((now - fadeStartedAt) / 0.75)));
+    if (fadeAlpha <= 0) continue;
+    overlays.push({
+      id: String(zone.id || ''),
+      slotIndex: Number(zone.slotIndex || 0),
+      anchorWorldX: Number(zone.anchorWorldX),
+      anchorWorldY: Number(zone.anchorWorldY),
+      seed: Number(zone.sourceUID || 0) + Number(zone.slotIndex || 0) * 17,
+      alpha: fadeAlpha,
+    });
+  }
+  return overlays;
+}
+
+function hasPersistentHeroRegenOverlay() {
+  const regens = Array.isArray(state.globals.PartyRegens) ? state.globals.PartyRegens : [];
+  for (const regen of regens) {
+    if (!regen) continue;
+    if (Number(regen.remainingFires || 0) <= 0) continue;
+    if (regen.totalHealRemaining != null && Number(regen.totalHealRemaining || 0) <= 0) continue;
+    return true;
+  }
+  return false;
 }
 
 function ensureDamageNumberLayer() {
@@ -287,20 +518,33 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
   for (const d of texts) {
     if (!d || d.domSpawned) continue;
     d.domSpawned = true;
-    const xOffset = d.targetKind === 'hero' ? -10 : 10;
-    const pos = projectToCanvas((d.x || 0) + xOffset, d.baseY != null ? d.baseY : (d.y || 0));
+    const xOffset = d.targetKind === 'hero' ? -10 : (d.targetKind === 'ward' ? 0 : (d.canvasAnchored ? 0 : 10));
+    const pos = d.canvasAnchored
+      ? { x: Number(d.x || 0) + xOffset, y: Number(d.baseY != null ? d.baseY : (d.y || 0)) }
+      : projectToCanvas((d.x || 0) + xOffset, d.baseY != null ? d.baseY : (d.y || 0));
     const isCrit = !!d.isCrit;
-    const text = d.targetKind === 'bar'
-      ? formatDamageValue({ value: d.amount, type: 'heal', isCrit })
-      : formatDamageValue({ value: d.amount, type: d.kind === 'heal' ? 'heal' : 'damage', isCrit });
+    const isEnergyText = d.targetKind === 'energy' || d.kind === 'energy';
+    const text = isEnergyText
+      ? `+${formatDamageValue({ value: d.amount, type: 'heal', isCrit })}`
+      : (d.targetKind === 'bar'
+        ? formatDamageValue({ value: d.amount, type: 'heal', isCrit })
+        : formatDamageValue({ value: d.amount, type: d.kind === 'heal' ? 'heal' : (d.kind === 'ward' ? 'ward' : 'damage'), isCrit }));
     const animation = createDamageNumber({
       text,
+      amount: d.amount,
+      partyMaxHP: d.partyMaxHP,
       x: pos.x,
       y: pos.y,
-      kind: d.kind === 'heal' ? 'heal' : 'damage',
+      kind: isEnergyText ? 'energy' : (d.kind === 'heal' ? 'heal' : (d.kind === 'ward' ? 'ward' : 'damage')),
       targetKind: d.targetKind || null,
       isCrit,
+      floatAngleDeg: d.floatAngleDeg,
       container: damageNumberLayer,
+      angleDeg: Number(d.floatAngleDeg || 0),
+      floatVector: {
+        x: Number(d.floatVectorX || 0),
+        y: Number(d.floatVectorY || 0),
+      },
     });
     if (animation) {
       d.domAnimation = animation;
@@ -1088,6 +1332,32 @@ function persistDevToolingConfig(cfg) {
   } catch {}
 }
 
+function clearPersistedDevToolingConfig() {
+  try {
+    if (typeof window === 'undefined' || !window.sessionStorage) return;
+    window.sessionStorage.removeItem(DEV_TOOLING_STORAGE_KEY);
+  } catch {}
+}
+
+function hardRestartRuntimeFromDevTooling() {
+  if (typeof window === 'undefined' || !window.location) return false;
+  clearPersistedDevToolingConfig();
+  try {
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.search = '';
+    cleanUrl.hash = '';
+    if (window.location.href !== cleanUrl.href && typeof window.location.replace === 'function') {
+      window.location.replace(cleanUrl.href);
+      return true;
+    }
+  } catch {}
+  if (typeof window.location.reload === 'function') {
+    window.location.reload();
+    return true;
+  }
+  return false;
+}
+
 function ensureDevToolingConfig() {
   const persisted = readPersistedDevToolingConfig();
   const live = (state.globals.DevToolingConfig && typeof state.globals.DevToolingConfig === 'object')
@@ -1251,17 +1521,27 @@ function applyBoardGemColor(colorValue) {
 }
 
 function updateDevToolingStatus(message = '') {
-  if (!devToolingDom || !devToolingDom.status) return;
-  const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
-    ? layoutState.getActiveLayoutId()
-    : 'unknown';
+  if (!devToolingDom) return;
   const autoplayActive = !!state.globals.DevAutoplayActive;
   if (devToolingDom.autoplay) {
     devToolingDom.autoplay.textContent = devToolingControls.getAutoplayButtonLabel(autoplayActive);
   }
+  if (!devToolingDom.status) return;
+  const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
+    ? layoutState.getActiveLayoutId()
+    : 'unknown';
+  const skillDraught = getSkillDraughtDevSummary();
   const suffix = message ? `\n${message}` : '';
   devToolingDom.status.textContent =
-    `Hotkey: ${DEV_TOOL_HOTKEY_LABEL}\nActive Layout: ${activeLayoutId}\nIdle Mode: ${autoplayActive ? 'ACTIVE' : 'idle'}\nApply: writes only the selected condition; no combat reset, turn advance, or loadout refresh${suffix}`;
+    `Hotkey: ${DEV_TOOL_HOTKEY_LABEL}\nActive Layout: ${activeLayoutId}\nIdle Mode: ${autoplayActive ? 'ACTIVE' : 'idle'}\nSkill Draw: ${skillDraught}\nApply: writes only the selected condition; no combat reset, turn advance, or loadout refresh${suffix}`;
+}
+
+function getSkillDraughtDevSummary() {
+  const draught = callFunctionWithContext(fnContext, 'GetSkillDraughtState') || {};
+  const sessionSkills = draught.sessionSkillsByHeroUID || {};
+  const learnedCount = Object.values(sessionSkills).reduce((total, row) => total + (Array.isArray(row) ? row.length : 0), 0);
+  const open = Number(draught.open || 0) ? 'open' : 'closed';
+  return `${open}, hero ${Number(draught.heroUID || 0)}, candidates ${(draught.candidates || []).length}, session ${learnedCount}`;
 }
 
 function populateDevToolSlotSelect(selectEl, { choices = [], includeRandom = false, selected = '' } = {}) {
@@ -1305,6 +1585,9 @@ function syncDevToolingDomFromConfig() {
   devToolingDom.rewardDrops.value = String(cfg.rewardDrops || '');
   devToolingDom.rewardCount.value = String(cfg.rewardCount);
   populateDevToolSlotSelect(devToolingDom.doubleAttackHero, { choices: getDevToolHeroOptions(), includeRandom: false, selected: cfg.doubleAttackHeroName || DEV_TOOL_EMPTY_SLOT });
+  if (devToolingDom.skillHero && !devToolingDom.skillHero.value) {
+    devToolingDom.skillHero.value = String(callFunctionWithContext(fnContext, 'GetCurrentTurn') || '');
+  }
   updateDevToolingStatus();
 }
 
@@ -1402,12 +1685,12 @@ function ensureDevToolingModal() {
     'justify-content:center',
     'background:rgba(0,0,0,0.58)',
     'z-index:9999',
-    'padding:24px',
+    'padding:16px',
     'box-sizing:border-box',
   ].join(';');
   const panel = document.createElement('div');
   panel.style.cssText = [
-    'width:min(520px, 92vw)',
+    'width:min(520px, calc(100vw - 32px))',
     'max-height:88vh',
     'overflow:auto',
     'padding:18px',
@@ -1419,14 +1702,35 @@ function ensureDevToolingModal() {
     'color:#111827',
   ].join(';');
   panel.innerHTML = `
+    <style>
+      #orka-dev-tooling-modal * { box-sizing:border-box; }
+      #orka-dev-tooling-modal button {
+        appearance:none;
+        -webkit-appearance:none;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        min-height:36px;
+        line-height:1;
+        white-space:nowrap;
+        text-align:center;
+        user-select:none;
+        pointer-events:auto;
+        text-decoration:none;
+      }
+      #orka-dev-tooling-modal input,
+      #orka-dev-tooling-modal select { width:100%; box-sizing:border-box; }
+      @media (max-width: 560px) {
+        #orka-dev-tooling-modal [data-devtool-control-grid] { grid-template-columns:1fr !important; }
+      }
+    </style>
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;">
       <div>
         <div style="font-size:18px;font-weight:800;">Dev Tooling Modal</div>
-        <div style="font-size:11px;color:#475569;">Global runtime controls. Hotkey: ${DEV_TOOL_HOTKEY_LABEL}</div>
       </div>
       <button type="button" data-devtool-close style="border:1px solid #334155;background:#ffffff;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Close</button>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;">
+    <div data-devtool-control-grid style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;">
       <div style="display:flex;flex-direction:column;gap:4px;">
         <div style="font-weight:700;">Hero Slots</div>
         <label style="display:flex;flex-direction:column;gap:4px;">Hero Slot 1
@@ -1476,14 +1780,22 @@ function ensureDevToolingModal() {
       <label style="display:flex;flex-direction:column;gap:4px;">Double Attack
         <select data-devtool-double-attack-hero></select>
       </label>
+      <label style="display:flex;flex-direction:column;gap:4px;">Skill Draw Hero UID
+        <input data-devtool-skill-hero type="number" min="0" step="1">
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;">Skill Draw Skill ID
+        <input data-devtool-skill-id type="text" placeholder="optional">
+      </label>
     </div>
-    <div style="display:flex;gap:8px;margin-top:14px;">
+    <div data-devtool-button-row style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px;">
       <button type="button" data-devtool-apply style="border:1px solid #14532d;background:#1f8f4a;color:#fff;padding:8px 12px;border-radius:8px;font-weight:800;cursor:pointer;">Apply</button>
       <button type="button" data-devtool-refresh style="border:1px solid #475569;background:#fff;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Save Staged</button>
       <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">AutoPlay</button>
       <button type="button" data-devtool-restart style="border:1px solid #92400e;background:#fff7ed;color:#9a3412;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Restart</button>
+      <button type="button" data-devtool-force-skill-draught style="border:1px solid #4c1d95;background:#f5f3ff;color:#4c1d95;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Force Draw</button>
+      <button type="button" data-devtool-trigger-destiny style="border:1px solid #365314;background:#f7fee7;color:#365314;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Trigger Destiny</button>
+      <button type="button" data-devtool-clear-session-skills style="border:1px solid #7f1d1d;background:#fef2f2;color:#7f1d1d;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Clear Skills</button>
     </div>
-    <pre data-devtool-status style="margin:14px 0 0;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff9ee;white-space:pre-wrap;"></pre>
   `;
   root.appendChild(panel);
   document.body.appendChild(root);
@@ -1523,7 +1835,12 @@ function ensureDevToolingModal() {
     rewardDrops: panel.querySelector('[data-devtool-reward-drops]'),
     rewardCount: panel.querySelector('[data-devtool-reward-count]'),
     doubleAttackHero: panel.querySelector('[data-devtool-double-attack-hero]'),
-    status: panel.querySelector('[data-devtool-status]'),
+    skillHero: panel.querySelector('[data-devtool-skill-hero]'),
+    skillId: panel.querySelector('[data-devtool-skill-id]'),
+    forceSkillDraught: panel.querySelector('[data-devtool-force-skill-draught]'),
+    triggerDestiny: panel.querySelector('[data-devtool-trigger-destiny]'),
+    clearSessionSkills: panel.querySelector('[data-devtool-clear-session-skills]'),
+    status: null,
   };
   devToolingDom.launcher.addEventListener('click', () => toggleDevToolingModal(true));
   devToolingDom.close.addEventListener('click', () => toggleDevToolingModal(false));
@@ -1544,6 +1861,31 @@ function ensureDevToolingModal() {
     if (typeof devToolingAutoplayHandler === 'function') {
       await devToolingAutoplayHandler();
     }
+  });
+  devToolingDom.forceSkillDraught.addEventListener('click', () => {
+    const heroUID = Number(devToolingDom.skillHero?.value || callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
+    const skillId = String(devToolingDom.skillId?.value || '').trim();
+    callFunctionWithContext(fnContext, 'ForceAstralFlowSkillDraught', heroUID, skillId);
+    closeDevToolingModal({ restorePauseSnapshot: true });
+  });
+  devToolingDom.triggerDestiny.addEventListener('click', () => {
+    const requestedUID = Number(devToolingDom.skillHero?.value || 0);
+    const requestedActor = state.entities.find(actor => Number(actor?.uid || 0) === requestedUID) || null;
+    const currentUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
+    const currentActor = state.entities.find(actor => Number(actor?.uid || 0) === currentUID) || null;
+    const fallbackHero = state.entities.find(actor => actor?.kind === 'hero' && Number(actor?.hp || 0) > 0) || null;
+    const sourceUID = requestedActor?.kind === 'hero'
+      ? requestedUID
+      : (currentActor?.kind === 'hero' ? currentUID : Number(fallbackHero?.uid || 0));
+    const result = callFunctionWithContext(fnContext, 'TriggerPartyDestinyDev', sourceUID);
+    if (!result?.success) {
+      callFunctionWithContext(fnContext, 'LogCombat', `Destiny dev trigger failed: ${result?.reason || 'no-op'}.`);
+    }
+    closeDevToolingModal({ restorePauseSnapshot: true });
+  });
+  devToolingDom.clearSessionSkills.addEventListener('click', () => {
+    callFunctionWithContext(fnContext, 'ClearSessionSkillDraught');
+    updateDevToolingStatus('Session skill draw cleared');
   });
   root.addEventListener('click', (ev) => {
     if (ev.target === root) toggleDevToolingModal(false);
@@ -1792,6 +2134,16 @@ const combatRuntimeGateway = new CombatRuntimeGateway({
       if (active.type != null) g.CurrentTurnType = Number(active.type || 0);
     }
   },
+  getDeterministicRngState() {
+    const g = (state && state.globals) ? state.globals : {};
+    return {
+      RuntimeRandomSeed: Number(g.RuntimeRandomSeed || 0),
+      RuntimeRandomDraws: Number(g.RuntimeRandomDraws || 0),
+      RuntimeRandomOwner: String(g.RuntimeRandomOwner || ''),
+      RuntimeRandomReason: String(g.RuntimeRandomReason || ''),
+      RuntimeRandomLastValue: Number(g.RuntimeRandomLastValue || 0),
+    };
+  },
 });
 
 const CANONICAL_HERO_ROSTER = [
@@ -1811,7 +2163,19 @@ function computeCombatPower(atk, def, hp) {
   const a = Number(atk || 0);
   const d = Number(def || 0);
   const h = Number(hp || 0);
-  return Math.round((a + d + (h / 10)) * 100) / 100;
+  const result = Math.round((a + d + (h / 10)) * 100) / 100;
+  return shadowCombatPower({
+    source: 'app.computeCombatPower',
+    atk: a,
+    def: d,
+    hp: h,
+    jsValue: result,
+  });
+}
+function resolveEnemyEncounterCombatPower(row) {
+  const explicit = Number(row?.EncounterCP ?? row?.encounterCP ?? row?.CombatPower ?? row?.combatPower);
+  if (Number.isFinite(explicit) && explicit > 0) return Math.round(explicit * 100) / 100;
+  return computeCombatPower(row?.ATK, row?.DEF, row?.HP);
 }
 const HERO_STAT_KEYS = ['ATK', 'DEF', 'MAG', 'RES', 'SPD', 'HP'];
 const FIGMA_HERO_NEXT_URL = 'https://www.figma.com/api/mcp/asset/dfb1bc1b-4189-4f52-9c88-1cf1e4f8029a';
@@ -2226,6 +2590,16 @@ function isPointInRect(mx, my, rect) {
   return mx >= rect.x && mx <= (rect.x + rect.w) && my >= rect.y && my <= (rect.y + rect.h);
 }
 
+function renderSkillDraughtOverlay(ctx, canvas, pixelRatio = 1) {
+  renderSkillDraught.renderSkillDraughtOverlay({
+    ctx,
+    canvas,
+    dpr: pixelRatio,
+    state,
+    draught: callFunctionWithContext(fnContext, 'GetSkillDraughtState') || {},
+  });
+}
+
 function getHeroClassLabel(heroName) {
   const key = String(heroName || '').trim().toLowerCase();
   return HERO_CLASS_LABELS[key] || 'Adventurer';
@@ -2629,12 +3003,73 @@ function normalizeFaction(input) {
 }
 
 function createSeededRng(seed = 1) {
-  let state = Number(seed || 1) >>> 0;
-  if (!state) state = 1;
-  return () => {
-    state = (1664525 * state + 1013904223) >>> 0;
-    return state / 4294967296;
+  return createSimulationCoreSeededRng(seed, { source: 'app.createSeededRng' });
+}
+
+function normalizeRuntimeRngSeed(seed = 1) {
+  const raw = Number(seed);
+  const normalized = Number.isFinite(raw) ? (Math.floor(raw) >>> 0) : 1;
+  return normalized || 1;
+}
+
+function deriveCombatRuntimeRngSeed(encounterSeed = 1) {
+  const base = normalizeRuntimeRngSeed(encounterSeed);
+  return ((base ^ COMBAT_RUNTIME_RNG_SALT) >>> 0) || 1;
+}
+
+function createCombatRuntimeRandom(seed = 1, options = {}) {
+  const normalizedSeed = normalizeRuntimeRngSeed(seed);
+  const source = String(options.source || 'app.combatRuntimeRng');
+  const next = createSimulationCoreSeededRng(normalizedSeed, { source });
+  let draws = 0;
+  return function runtimeRandom() {
+    draws += 1;
+    const rawValue = Number(next());
+    const value = Number.isFinite(rawValue) && rawValue >= 0 && rawValue < 1 ? rawValue : 0;
+    state.globals.RuntimeRandomDraws = draws;
+    state.globals.RuntimeRandomLastValue = value;
+    state.globals.RuntimeRandomOwner = 'rust';
+    return value;
   };
+}
+
+function installCombatRuntimeRandom(seed = 1, reason = 'combat-session') {
+  const normalizedSeed = normalizeRuntimeRngSeed(seed);
+  state.globals.RuntimeRandomSeed = normalizedSeed;
+  state.globals.RuntimeRandomDraws = 0;
+  state.globals.RuntimeRandomOwner = 'rust';
+  state.globals.RuntimeRandomReason = String(reason || 'combat-session');
+  state.globals.RuntimeRandomLastValue = 0;
+  state.globals.RuntimeRandom = createCombatRuntimeRandom(normalizedSeed, {
+    source: 'app.combatRuntimeRng',
+  });
+  return state.globals.RuntimeRandom;
+}
+
+function runSeededRngShadowStartupChecks() {
+  const cases = [
+    [1, 1, 6],
+    [1, 2, 6],
+    [123456789, 1, 10],
+    [123456789, 3, 10],
+    [0, 1, 6],
+    [4294967295, 1, 10],
+    [987654321, 5, 3],
+  ];
+  for (const [seed, draws, size] of cases) {
+    const rng = createSeededRng(seed);
+    let value = 0;
+    for (let i = 0; i < draws; i += 1) value = rng();
+    shadowSeededRng({
+      source: 'app.createSeededRng',
+      seed,
+      draws,
+      size,
+      jsState: Math.round(value * 4294967296),
+      jsValue: value,
+      jsIndex: Math.floor(value * size),
+    });
+  }
 }
 
 function getGemSpawnRandom() {
@@ -2850,11 +3285,12 @@ function initEntities(enemyRows, layoutInstances) {
     biome: String(row?.biome || row?.biomes || 'all').trim().toLowerCase() || 'all',
     biomeTags: normalizeBiomeTags(row?.biomes || row?.biome || 'all'),
     localeTags: normalizeBiomeTags(row?.localeTags || row?.locale_tags || row?.locale || row?.biomes || row?.biome || 'all'),
-    CombatPower: computeCombatPower(row?.ATK, row?.DEF, row?.HP),
+    CombatPower: resolveEnemyEncounterCombatPower(row),
   }));
   const mappedEnemyData = state.globals.EnemyData;
   state.globals.DevToolEnemyCatalog = [...new Set(state.globals.EnemyData.map((row) => String(row?.name || row?.EnemyName || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   state.globals.CombatSessionId = Number(state.globals.CombatSessionId || 0) + 1;
+  callFunctionWithContext(fnContext, 'ClearSessionSkillDraught');
   resetBootstrapRngSession();
 
   const partyHP = [];
@@ -2927,12 +3363,12 @@ function initEntities(enemyRows, layoutInstances) {
   callFunctionWithContext(fnContext, 'InitPartyHPFromHeroes');
   // Test lane seed: deterministic party skill-point stock for upgrade-consumption QA.
   callFunctionWithContext(fnContext, 'SetHeroSkillPointsForParty', 300, 'ORKA-spt-seed');
-  state.globals.BattleStartMode = Math.random() < 0.5 ? 'ambush' : 'initiative';
+  state.globals.BattleStartMode = 'heroes';
+  state.globals.BattleStartResolved = 1;
+  state.globals.TeamPhaseType = 0;
   state.globals.BattleStartShown = 1;
   state.globals.BattleStartClearedForSession = 0;
-  const msg = state.globals.BattleStartMode === 'ambush'
-    ? 'Ambushed by enemy team!'
-    : 'Heroes surprised the enemies!';
+  const msg = 'Heroes take the initiative!';
   state.globals.BattleStartText = msg;
   state.globals.BattleStartSessionText = msg;
   state.globals.BattleStartSessionId = Number(state.globals.CombatSessionId || 0);
@@ -2954,6 +3390,7 @@ function initEntities(enemyRows, layoutInstances) {
       : generateEncounterSeed();
     state.globals.EncounterSeed = encounterSeed;
     state.globals.EncounterSeedExplicit = 0;
+    installCombatRuntimeRandom(deriveCombatRuntimeRngSeed(encounterSeed), 'initEntities');
     const encounterRequest = {
       pool: mappedEnemyData,
       targetCP: Number(state.globals.EncounterTargetCP || 120),
@@ -3041,7 +3478,7 @@ function initEntities(enemyRows, layoutInstances) {
         faction: String(pick.faction || 'wishless'),
         enemyRole: String(pick.enemyRole || 'fodder'),
         localeTags: Array.isArray(pick.localeTags) ? pick.localeTags : ['all'],
-        CombatPower: computeCombatPower(pick.ATK, pick.DEF, pick.HP),
+        CombatPower: Number(pick.CombatPower || pick.combatPower || resolveEnemyEncounterCombatPower(pick)),
       }, slotIndex);
     }
     state.globals.InitialSpawn = 0;
@@ -3058,7 +3495,7 @@ function initEntities(enemyRows, layoutInstances) {
   }
 }
 
-// Create gem board with random colors (0-5: Hero1, Hero2, Heal, Buff, AOE, Energy)
+// Create gem board with random colors (0-5: green, red, blue, yellow, heal, purple energy).
 function createGemBoard(gridBounds = null, { immediateFill = false } = {}) {
   assertCombatLayoutDev('createGemBoard');
   bootstrapDeterministicRefillPending = BOOTSTRAP_SEED != null;
@@ -3131,8 +3568,6 @@ function randomGemFrame() {
   }
   const MAX_PURPLE_ON_BOARD = 3;
   const PURPLE_WEIGHT = 0.25;
-  const x = Math.floor(getGemSpawnRandom() * 1000);
-  if (x === 998) return 6;
   const countPurple = () => (gameState.gems || []).reduce((n, g) => {
     const c = g && g.color != null ? g.color : (g ? g.elementIndex : null);
     return n + (c === 5 ? 1 : 0);
@@ -3218,30 +3653,6 @@ function refillGemBoard(gridBounds = null) {
   state.globals.TapIndex = 0;
   runtimeDebugLogging.startupDebugLog('[BOARD] Refilled missing gems');
   return true;
-}
-
-function handleSpecialGem6(gem) {
-  const g = state.globals;
-  const actorUID = callFunctionWithContext(fnContext, 'GetCurrentTurn') || getHeroUIDByIndex(gameState.selectedHero) || gameState.selectedHero;
-  const actor = state.entities.find(e => e.uid === actorUID);
-  const actorName = actor ? (actor.name || 'Hero') : 'Hero';
-  const energyOptions = [6, 12, 15];
-  const amt = energyOptions[Math.floor(Math.random() * energyOptions.length)];
-  const next = (g.Player_Energy || 0) + amt;
-  g.Player_Energy = next;
-  callFunctionWithContext(fnContext, 'LogCombat', `${actorName} gained ${amt} energy!`);
-  callFunctionWithContext(fnContext, 'SpawnDamageText', amt, gem.x, gem.y, 'heal');
-  // Remove gem and free slot
-  gameState.gems = gameState.gems.filter(gm => gm !== gem);
-  gameState.selectedGems = [];
-  gameState.selectionLocked = false;
-  for (const gm of gameState.gems) {
-    gm.selected = false;
-    gm.Selected = 0;
-  }
-  state.globals.TapIndex = 0;
-  rebuildGridFromGems();
-  setGemArray(gameState.gems);
 }
 
 const YELLOW_CASINO_TELEGRAPH_SEC = 0;
@@ -3697,12 +4108,7 @@ function handleGemMatch(color) {
     clearLocalSelection();
     rebuildGridFromGems();
     callFunctionWithContext(fnContext, 'ResolveGemAction', 5, actorUID, matchedCount);
-  } else if (color === 6 || color === 7) {
-    callFunctionWithContext(fnContext, 'DestroyGem');
-    callFunctionWithContext(fnContext, 'ClearMatchState');
-    syncGemsFromGlobals();
-    clearLocalSelection();
-    rebuildGridFromGems();
+    callFunctionWithContext(fnContext, 'Sub_Energy', 1);
   }
 
   console.log(
@@ -3715,7 +4121,11 @@ function handleGemMatch(color) {
   if (!gameState.boardCreated) {
     combatRuntimeGateway.runCombatBoardInit(createGemBoard, gameState.gridBounds);
   }
-  if (state.globals.TurnPhase === 2) {
+  const immediateEnemyTurnBarrier = getPresentationTurnBarrier({
+    hasEmpty: hasEmptySlots(),
+    enemyLineClearPressureActive: !!state.globals.EnemyLineClearPressureActive,
+  });
+  if (state.globals.TurnPhase === 2 && immediateEnemyTurnBarrier.canClaimCombatAction) {
     callFunctionWithContext(fnContext, 'EnemyTurn');
   }
   syncFromGlobals();
@@ -3867,6 +4277,7 @@ async function main(){
   let images = {};
   let enemySpriteImages = {};
   let heroPortraitImages = {};
+  let wardBarrierImage = null;
   let heroSkillIconsBySlot = [];
   let heroSelectorImage = null;
   let gemFrameImages = [];
@@ -3912,7 +4323,6 @@ async function main(){
     return bounds;
   };
   function prepareCombatSetupFromInstances(layoutInstances, gameStateRef) {
-    assertCombatLayoutDev('prepareCombatSetupFromInstances');
     gridBounds = calculateGridBounds(layoutInstances);
     if (gameStateRef && gridBounds) {
       gameStateRef.gridBounds = gridBounds;
@@ -3923,12 +4333,7 @@ async function main(){
       uiState.setUIStateField('overlayVisible', false);
       const resetCfg = createDefaultDevToolingConfig();
       state.globals.DevToolingConfig = resetCfg;
-      persistDevToolingConfig({ ...resetCfg, open: false });
-      if (typeof window !== 'undefined' && typeof window.location?.reload === 'function') {
-        window.location.reload();
-        return true;
-      }
-      return false;
+      return hardRestartRuntimeFromDevTooling();
     }
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
       ? layoutState.getActiveLayoutId()
@@ -3969,7 +4374,6 @@ async function main(){
   }
   devToolingRefreshHandler = refreshCombatSessionFromDevTooling;
   async function loadC3ProjectAssets() {
-    assertCombatLayoutDev('loadC3ProjectAssets');
     updateStartupLoadState({ active: true, phase: 'bootstrap', label: 'Loading layout data...', progress: 0.05 });
     runtimeLayouts = await fetchJson(assetUrl('layouts.json')) || {};
     layout = runtimeLayouts.layout || { name: 'runtime-fallback', layers: [] };
@@ -4013,6 +4417,7 @@ async function main(){
     images = {};
     enemySpriteImages = {};
     heroPortraitImages = {};
+    wardBarrierImage = null;
     heroSkillIconsBySlot = [];
     heroSelectorImage = null;
     gemFrameImages = [];
@@ -4084,6 +4489,9 @@ async function main(){
       const heroPortraitLoads = ['Falie', 'Huun', 'Runa', 'Kojonn'].map(async (heroName) => {
         heroPortraitImages[heroName] = await loadImage(assetUrl(`images/cap_${heroName}.png`));
       });
+      const wardBarrierLoad = (async () => {
+        wardBarrierImage = await loadImage(assetUrl('images/falie_ward_84x62.png'));
+      })();
       const heroSkillIconLoads = [
         'images/bufficon1-animation 1-000.png',
         'images/bufficon2-animation 1-000.png',
@@ -4108,6 +4516,7 @@ async function main(){
 
       tasks.push(
         ...heroPortraitLoads,
+        wardBarrierLoad,
         ...heroSkillIconLoads,
         ...heroCapsuleLoads,
         gemVisualLoads,
@@ -4250,7 +4659,7 @@ async function main(){
           createGemBoard(gridBounds);
           combatSessionSeeded = true;
           updateStartupLoadState({ active: false, phase: 'runtime', label: 'Ready', progress: 1 });
-          if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+          if (runtimeDebugLogging.isGemDebugEnabled(state) && GEM_INTERACTIVITY_DIAGNOSTIC_QUERY) {
             setTimeout(() => {
               runGemInteractivityDiagnostic().catch((err) => {
                 console.error('[DIAG] Gem interactivity diagnostic failed:', err);
@@ -4558,6 +4967,8 @@ async function main(){
     const params = new URLSearchParams(window.location.search);
     state.globals.DevTestMode = params.has('devtest') || params.get('devtest') === 'true';
     state.globals.DebugGemsMode = params.has('debug_gems') || params.get('debug_gems') === 'true';
+    state.globals.DebugDamageFloatVectors =
+      params.has('damage_float_debug') || params.get('damage_float_debug') === 'true';
     window.__codexGameDevTest = !!state.globals.DevTestMode;
   }
   state.globals.DevToolingConfig = sanitizeDevToolingConfig(state.globals.DevToolingConfig || {});
@@ -4651,27 +5062,22 @@ async function main(){
   const runtimeListenerTeardowns = [];
 
   function resizeCanvas() {
-    const pad = 16;
-    const h = Math.max(320, window.innerHeight - pad);
-    const w = Math.round(h * (layoutW / layoutH));
-    dpr = Math.max(1, window.devicePixelRatio || 1);
-    canvas.style.height = `${h}px`;
-    canvas.style.width = `${w}px`;
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
-    canvas.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
-    const scaleX = (canvas.width / dpr) / layoutW;
-    const scaleY = (canvas.height / dpr) / layoutH;
-    layoutScale = Math.min(scaleX, scaleY);
-    layoutOffsetX = ((canvas.width / dpr) - layoutW * layoutScale) / 2;
-    layoutOffsetY = ((canvas.height / dpr) - layoutH * layoutScale) / 2;
+    const metrics = resizeCanvasToContainedViewport({ canvas, layoutW, layoutH });
+    dpr = metrics.dpr;
+    layoutScale = metrics.layoutScale;
+    layoutOffsetX = metrics.layoutOffsetX;
+    layoutOffsetY = metrics.layoutOffsetY;
+    if (typeof window !== 'undefined') {
+      window.__orkaAppViewport = metrics;
+    }
   }
   resizeCanvas();
   const handleWindowResize = () => {
     resizeCanvas();
+    initializeStoryCardLayout('window-resize');
+    if (typeof drawFrame === 'function') drawFrame();
   };
-  window.addEventListener('resize', handleWindowResize);
-  runtimeListenerTeardowns.push(() => window.removeEventListener('resize', handleWindowResize));
+  runtimeListenerTeardowns.push(addAppViewportResizeListener(handleWindowResize));
 
   // Map Construct world coords to canvas coords (preserve layout aspect/position)
   function worldToCanvas(wx, wy) {
@@ -5157,8 +5563,217 @@ async function main(){
     });
   }
 
+  function computePartyRegenLifecycleAction(payload = {}) {
+    if (Number(payload.remainingFires || 0) <= 0) return 1;
+    if (
+      Number(payload.hasTotalHealRemaining || 0) === 1
+      && Number(payload.totalHealRemaining || 0) <= 0
+    ) {
+      return 1;
+    }
+    if (Number(payload.currentSerial || 0) < Number(payload.nextFireSerial || 0)) return 0;
+    if (Number(payload.currentSerial || 0) <= Number(payload.appliedOnSerial || 0)) return 0;
+    if (Number(payload.lastProcessedSerial || 0) >= Number(payload.currentSerial || 0)) return 0;
+    return 2;
+  }
+
+  function maybeResolvePartyRegenLifecycleOwner(payload = {}) {
+    const root = typeof globalThis !== 'undefined' ? globalThis : null;
+    const hook = root && typeof root.__ORKA_PARTY_REGEN_LIFECYCLE_OWNER__ === 'function'
+      ? root.__ORKA_PARTY_REGEN_LIFECYCLE_OWNER__
+      : null;
+    if (typeof hook !== 'function') return null;
+    try {
+      const result = createPartyRegenLifecycleSimulationPacket({
+        ...payload,
+        ownerHook: hook,
+      });
+      const action = Number(result?.action);
+      if (!Number.isFinite(action)) return null;
+      state.globals.LastPartyRegenLifecycleOwner = {
+        owner: String(result?.owner || 'rust'),
+        action,
+      };
+      state.globals.LastPartyRegenLifecyclePacket = {
+        owner: String(result?.owner || 'rust'),
+        result: String(result?.simulationCoreResponse?.result || ''),
+        actionType: String(result?.simulationCoreRequest?.action?.type || ''),
+        source: String(payload.source || 'unknown'),
+      };
+      return state.globals.LastPartyRegenLifecycleOwner;
+    } catch (err) {
+      state.globals.LastPartyRegenLifecycleOwnerError = String(err?.message || err || 'unknown');
+      return null;
+    }
+  }
+
+  function maybeResolvePartyRegenTickOwner(payload = {}) {
+    const root = typeof globalThis !== 'undefined' ? globalThis : null;
+    const hook = root && typeof root.__ORKA_PARTY_REGEN_TICK_OWNER__ === 'function'
+      ? root.__ORKA_PARTY_REGEN_TICK_OWNER__
+      : null;
+    if (typeof hook !== 'function') return null;
+    try {
+      const result = createPartyRegenTickSimulationPacket({
+        ...payload,
+        ownerHook: hook,
+      });
+      const heal = Number(result?.heal);
+      const totalHealRemaining = Number(result?.totalHealRemaining);
+      const remainingFires = Number(result?.remainingFires);
+      const nextFireSerial = Number(result?.nextFireSerial);
+      if (
+        !Number.isFinite(heal)
+        || !Number.isFinite(totalHealRemaining)
+        || !Number.isFinite(remainingFires)
+        || !Number.isFinite(nextFireSerial)
+      ) {
+        return null;
+      }
+      state.globals.LastPartyRegenTickOwner = {
+        owner: String(result?.owner || 'rust'),
+        heal,
+        totalHealRemaining,
+        remainingFires,
+        nextFireSerial,
+      };
+      state.globals.LastPartyRegenTickPacket = {
+        owner: String(result?.owner || 'rust'),
+        result: String(result?.simulationCoreResponse?.result || ''),
+        actionType: String(result?.simulationCoreRequest?.action?.type || ''),
+        source: String(payload.source || 'unknown'),
+      };
+      return state.globals.LastPartyRegenTickOwner;
+    } catch (err) {
+      state.globals.LastPartyRegenTickOwnerError = String(err?.message || err || 'unknown');
+      return null;
+    }
+  }
+
+  function processTurnCadencePartyRegens() {
+    const currentTurnSerial = Number(state.globals.TurnSerial || 0);
+    if (currentTurnSerial <= Number(gameState._lastPartyRegenTurnSerial || 0)) return;
+    const regens = state.globals.PartyRegens;
+    if (!Array.isArray(regens) || regens.length === 0) {
+      gameState._lastPartyRegenTurnSerial = currentTurnSerial;
+      return;
+    }
+    for (let i = regens.length - 1; i >= 0; i--) {
+      const regen = regens[i];
+      if (!regen || Number(regen.remainingFires || 0) <= 0) {
+        regens.splice(i, 1);
+        continue;
+      }
+      if (String(regen.cadence || 'tick') !== 'turn') continue;
+      const hasTotalHealRemaining = regen.totalHealRemaining != null ? 1 : 0;
+      const totalHealRemainingBefore = hasTotalHealRemaining
+        ? Number(regen.totalHealRemaining || 0)
+        : 0;
+      const remainingFiresBefore = Number(regen.remainingFires || 0);
+      const gateTurn = Number(regen.nextFireTurnSerial || 0);
+      const lifecyclePayload = {
+        source: 'app.processTurnCadencePartyRegens',
+        remainingFires: remainingFiresBefore,
+        hasTotalHealRemaining,
+        totalHealRemaining: totalHealRemainingBefore,
+        currentSerial: currentTurnSerial,
+        nextFireSerial: gateTurn,
+        appliedOnSerial: Number(regen.appliedOnTurnSerial || 0),
+        lastProcessedSerial: Number(regen.lastProcessedTurnSerial || 0),
+      };
+      const jsLifecycleAction = computePartyRegenLifecycleAction(lifecyclePayload);
+      const ownedLifecycle = maybeResolvePartyRegenLifecycleOwner({
+        ...lifecyclePayload,
+        jsAction: jsLifecycleAction,
+      });
+      const lifecycleAction = ownedLifecycle && String(ownedLifecycle.owner || '') === 'rust'
+        ? Number(ownedLifecycle.action)
+        : jsLifecycleAction;
+      if (lifecycleAction === 1) {
+        regens.splice(i, 1);
+        continue;
+      }
+      if (lifecycleAction !== 2) continue;
+
+      let heal = 1;
+      let jsTotalHealRemaining = totalHealRemainingBefore;
+      if (hasTotalHealRemaining && remainingFiresBefore > 0) {
+        const remaining = Math.max(0, Math.floor(totalHealRemainingBefore));
+        const fires = Math.max(1, Math.floor(remainingFiresBefore));
+        const base = Math.floor(remaining / fires);
+        const remainder = remaining % fires;
+        heal = Math.max(1, base + (fires === 1 ? remainder : 0));
+        jsTotalHealRemaining = Math.max(0, remaining - heal);
+      } else {
+        heal = Math.max(1, Math.round(regen.healPerFire || 1));
+        jsTotalHealRemaining = 0;
+      }
+      const jsRemainingFires = Math.max(0, Math.floor(remainingFiresBefore) - 1);
+      const jsNextFireSerial = gateTurn + Math.max(1, Math.floor(Number(regen.firesEveryTurns || 1) || 1));
+      const ownedTick = maybeResolvePartyRegenTickOwner({
+        source: 'app.processTurnCadencePartyRegens',
+        totalHealRemaining: totalHealRemainingBefore,
+        remainingFires: remainingFiresBefore,
+        healPerFire: Number(regen.healPerFire || 0),
+        hasTotalHealRemaining,
+        nextFireSerial: gateTurn,
+        firesEvery: Number(regen.firesEveryTurns || 1),
+        distributionMode: 1,
+        jsHeal: heal,
+        jsTotalHealRemaining,
+        jsRemainingFires,
+        jsNextFireSerial,
+      });
+      if (ownedTick && String(ownedTick.owner || '') === 'rust') {
+        heal = Math.max(0, Number(ownedTick.heal || 0));
+        if (hasTotalHealRemaining) {
+          regen.totalHealRemaining = Math.max(0, Math.floor(Number(ownedTick.totalHealRemaining || 0)));
+        }
+        regen.remainingFires = Math.max(0, Math.floor(Number(ownedTick.remainingFires || 0)));
+        regen.nextFireTurnSerial = Number(ownedTick.nextFireSerial || 0);
+      } else {
+        if (hasTotalHealRemaining) regen.totalHealRemaining = jsTotalHealRemaining;
+        regen.remainingFires = jsRemainingFires;
+        regen.nextFireTurnSerial = jsNextFireSerial;
+      }
+
+      const beforeHP = state.globals.PartyHP || 0;
+      const prev = state.globals.SpawnDamageText;
+      const prevHero = state.globals.SuppressHeroHealText;
+      state.globals.SpawnDamageText = 0;
+      state.globals.SuppressHeroHealText = 1;
+      callFunctionWithContext(fnContext, 'ApplyPartyHeal', heal);
+      state.globals.SpawnDamageText = prev;
+      state.globals.SuppressHeroHealText = prevHero;
+      const afterHP = state.globals.PartyHP || 0;
+      const actualHeal = Math.max(0, afterHP - beforeHP);
+      const barPos = state.globals.PartyHPBarPosWorld;
+      if (actualHeal > 0 && barPos && barPos.w > 0 && barPos.h > 0) {
+        const left = barPos.x - barPos.w * barPos.ox;
+        const barW = barPos.w;
+        const barH = barPos.h;
+        const ratio = Math.max(0, Math.min(1, (state.globals.PartyHP || 0) / Math.max(1, state.globals.PartyMaxHP || 1)));
+        const textX = left + barW * ratio;
+        const textY = (barPos.y - barH * barPos.oy) + barH * 0.5;
+        callFunctionWithContext(fnContext, 'SpawnDamageText', actualHeal, textX, textY, 'heal', 'bar');
+      }
+      regen.lastProcessedTurnSerial = currentTurnSerial;
+      if (regen.remainingFires <= 0) {
+        regens.splice(i, 1);
+      }
+    }
+    if (regens.length === 0) delete state.globals.PartyRegens;
+    gameState._lastPartyRegenTurnSerial = currentTurnSerial;
+  }
+
   function drawFrame(dtOverride){
     syncSuperGemShapes({ gameState, state, boardGeometry, reason: 'draw-frame' });
+    processTurnCadencePartyRegens();
+    superGemRuntime.syncTaintedGroundZones({
+      state,
+      callFunctionWithContext,
+      fnContext,
+    });
     const runtimeScope = {
       dtOverride,
       state,
@@ -5228,6 +5843,7 @@ async function main(){
       heroLayoutSpec,
       closeWinOvalImage,
       heroPortraitImages,
+      wardBarrierImage,
       heroSkillIconsBySlot,
       heroSelectorImage,
       heroCapsuleImages,
@@ -5236,6 +5852,7 @@ async function main(){
       superGemFrameImages,
       superGemRainbowImage,
       buffIconFrameImages: (typeof buffIconFrameImages !== 'undefined' ? buffIconFrameImages : {}),
+      debuffIconImages: (typeof debuffIconImages !== 'undefined' ? debuffIconImages : {}),
       buffIconFrames: (typeof buffIconFrames !== 'undefined' ? buffIconFrames : {}),
       buffIcons: (typeof buffIcons !== 'undefined' ? buffIcons : new Set()),
       layerColors: (typeof layerColors !== 'undefined' ? layerColors : {}),
@@ -5272,10 +5889,16 @@ async function main(){
       syncDamageNumberLayerBounds,
       spawnPendingDamageNumbers,
       randomGemFrame,
-      hasPersistentEnemyBlightOverlay: () => false,
-      hasPersistentHeroRegenOverlay: () => false,
-      isHitFlashActive: () => false,
-      getHitFlashTone: () => 'black',
+      assertBoardIntegrity,
+      getGemGateSnapshot,
+      getPersistentTaintedGroundOverlays,
+      hasPersistentEnemyTaintedGroundOverlay,
+      hasPersistentEnemyBlightOverlay,
+      hasPersistentHeroRegenOverlay,
+      isHitFlashActive,
+      getHitFlashTone,
+      deriveDamageFloatFrameOffset,
+      createPartyRegenTickSimulationPacket,
     };
     const result = renderRuntime.renderRuntime(runtimeScope);
     if (result && result.overlayData) {
@@ -5290,6 +5913,7 @@ async function main(){
     if (result && result.visualControlPatches) {
       Object.assign(state.globals, result.visualControlPatches);
     }
+    renderSkillDraughtOverlay(ctx, canvas, dpr);
     if (typeof runtimeScope.lastFrameTime === 'number') {
       lastFrameTime = runtimeScope.lastFrameTime;
     }
@@ -5559,7 +6183,8 @@ function getStoryCardLiveLineState() {
     const gemsLength = gems.length;
     const ok = missingCells.length === 0 && duplicates.length === 0;
     const result = { ok, missingCells, duplicates, gemsLength };
-    console.error('[BOARD_INTEGRITY]', { reasonTag, gemsLength, missingCells, duplicates });
+    const boardIntegrityLog = ok ? console.log : console.error;
+    boardIntegrityLog('[BOARD_INTEGRITY]', { reasonTag, gemsLength, missingCells, duplicates });
     return result;
   }
   async function auditGemClickability(reasonTag) {
@@ -5676,37 +6301,37 @@ function getStoryCardLiveLineState() {
       !(gameState.yellowCasino && gameState.yellowCasino.active)
     );
   }
-  const IDLE_AUTOPLAY_COLOR_PRIORITY = Object.freeze([
-    [5],
-    [4],
-    [0, 1, 2, 3],
-  ]);
-  function pickIdleAutoplayTriplet() {
-    const byColor = new Map();
-    for (const gem of (gameState.gems || [])) {
-      if (!gem) continue;
-      const color = Number(gem.color != null ? gem.color : gem.elementIndex);
-      if (!Number.isFinite(color) || color < 0 || color > 5) continue;
-      if (!byColor.has(color)) byColor.set(color, []);
-      byColor.get(color).push({ row: gem.cellR, col: gem.cellC });
-    }
-    for (const tier of IDLE_AUTOPLAY_COLOR_PRIORITY) {
-      const tierChoices = tier
-        .filter((color) => Array.isArray(byColor.get(color)) && byColor.get(color).length >= 3)
-        .map((color) => byColor.get(color).slice(0, 3));
-      if (tierChoices.length) {
-        return tierChoices[Math.floor(Math.random() * tierChoices.length)];
-      }
-    }
-    return null;
+  const IDLE_AUTOPLAY_SKILL_DRAUGHT_HOLD_MS = 1400;
+  function getCurrentIdleAutoplayHeroName() {
+    const uid = resolveCurrentHeroUID({
+      directUID: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || state.globals.CurrentHeroUID || 0),
+      turnOrder: state.globals.TurnOrderArray,
+      currentTurnIndex: state.globals.CurrentTurnIndex,
+    });
+    if (!(uid > 0)) return '';
+    const actor = callFunctionWithContext(fnContext, 'GetActorByUID', uid);
+    const entity = state.entities.find((entry) => (
+      entry &&
+      entry.kind === 'hero' &&
+      Number(entry.uid || 0) === uid
+    ));
+    return String(actor?.name || entity?.name || entity?.baseHeroName || '');
   }
-  function findIdleAutoplayPrioritySinglePick() {
-    for (const gem of (gameState.gems || [])) {
-      if (!gem) continue;
-      const color = Number(gem.color != null ? gem.color : gem.elementIndex);
-      if (color === 6) return { row: gem.cellR, col: gem.cellC };
-    }
-    return null;
+  function hasLivingEnemiesForIdleAutoplay() {
+    if (typeof state === 'undefined' || !Array.isArray(state.entities)) return false;
+    return state.entities.some((entity) => entity && entity.kind === 'enemy' && Number(entity.hp ?? 0) > 0);
+  }
+  function getIdleAutoplayPriorityContext() {
+    return {
+      heroName: getCurrentIdleAutoplayHeroName(),
+      hasLivingEnemies: hasLivingEnemiesForIdleAutoplay(),
+      partyHpRatio: resolveIdleAutoplayPartyHpRatio({
+        partyHP: state.globals.PartyHP,
+        partyMaxHP: state.globals.PartyMaxHP,
+        partyHPByIndex: state.globals.PartyHPByIndex || gameState.partyHP,
+        partyMaxHPByIndex: state.globals.PartyMaxHPByIndex || gameState.partyMaxHP,
+      }),
+    };
   }
   async function playIdleAutoplayTriplet(cells) {
     if (!Array.isArray(cells) || cells.length < 3) return false;
@@ -5720,10 +6345,20 @@ function getStoryCardLiveLineState() {
   function autoResolvePendingSelectionForDevIdle() {
     if (!state.globals.DevAutoplayActive) return false;
     if (!state.globals.PendingSkillID) return false;
+    const presentationBarrier = getPresentationTurnBarrier({
+      hasEmpty: hasEmptySlots(),
+      enemyLineClearPressureActive: !!state.globals.EnemyLineClearPressureActive,
+    });
+    if (!presentationBarrier.canResolvePendingTargetAction) return false;
     const actorUID = Number(state.globals.PendingActor || callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
     if (actorUID <= 0) return false;
     const livingEnemies = state.entities.filter((entity) => entity && entity.kind === 'enemy' && (entity.hp ?? 0) > 0);
     if (!livingEnemies.length) return false;
+    logActionHandoffDebug('[DEV_AUTOPLAY_RESOLVE]', {
+      stage: 'before',
+      actorUID,
+      livingEnemies: livingEnemies.length,
+    });
     if (String(state.globals.PendingSkillID || '') === 'HERO_SINGLE') {
       state.globals.SelectedEnemyUID = Number(livingEnemies[0].uid || 0);
     }
@@ -5732,15 +6367,139 @@ function getStoryCardLiveLineState() {
       callFunctionWithContext,
       fnContext,
     });
+    let executeSkillResult = null;
     if (!resolvedPendingSuperGem) {
-      callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
+      executeSkillResult = callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
     }
+    logActionHandoffDebug('[DEV_AUTOPLAY_RESOLVE]', {
+      stage: 'after-action-attempt-before-clear',
+      actorUID,
+      resolvedPendingSuperGem,
+      executeSkillResult,
+    });
     state.globals.PendingSkillID = '';
     state.globals.PendingActor = 0;
     state.globals.SelectedEnemyUID = 0;
     callFunctionWithContext(fnContext, 'HideAttackUI');
     state.globals.CanPickGems = false;
     state.globals.IsPlayerBusy = 1;
+    logActionHandoffDebug('[DEV_AUTOPLAY_RESOLVE]', {
+      stage: 'after-clear',
+      actorUID,
+      resolvedPendingSuperGem,
+      executeSkillResult,
+    });
+    return true;
+  }
+  function autoResolveSkillDraughtForDevIdle() {
+    if (!state.globals.DevAutoplayActive) return false;
+    if (!Number(state.globals.SkillDraughtOpen || 0)) {
+      state.globals.DevAutoplaySkillDraughtSeenAt = 0;
+      return false;
+    }
+    const candidates = Array.isArray(state.globals.SkillDraughtCandidates) ? state.globals.SkillDraughtCandidates : [];
+    if (!candidates.length) return false;
+    const now = performance.now();
+    const seenAt = Number(state.globals.DevAutoplaySkillDraughtSeenAt || 0);
+    if (!seenAt) {
+      state.globals.DevAutoplaySkillDraughtSeenAt = now;
+      return true;
+    }
+    if (now - seenAt < IDLE_AUTOPLAY_SKILL_DRAUGHT_HOLD_MS) return true;
+    const randomIndex = Math.floor(Math.random() * candidates.length);
+    const result = callFunctionWithContext(fnContext, 'SelectSkillDraughtCard', randomIndex);
+    state.globals.DevAutoplaySkillDraughtSeenAt = 0;
+    return !!(result && result.ok);
+  }
+  function resolveCombatOutcomeWithOwner({
+    source = 'app.combatOutcome',
+    energy = 0,
+    partyHp = 0,
+    livingHeroes = 0,
+  } = {}) {
+    const root = typeof globalThis !== 'undefined' ? globalThis : null;
+    const packet = createCombatOutcomeSimulationPacket({
+      source,
+      energy,
+      partyHp,
+      livingHeroes,
+      ownerHook: root && typeof root.__ORKA_COMBAT_OUTCOME_OWNER__ === 'function'
+        ? root.__ORKA_COMBAT_OUTCOME_OWNER__
+        : null,
+      requestFactory(action, context) {
+        return combatRuntimeGateway.createSimulationCoreRequest(action, context);
+      },
+      responseApplier(response) {
+        return combatRuntimeGateway.applySimulationCoreResponse(response);
+      },
+    });
+    state.globals.LastCombatOutcomePacket = {
+      owner: String(packet.owner || ''),
+      code: Number(packet.code || 0),
+      reason: String(packet.reason || ''),
+      result: String(packet.simulationCoreResponse?.result || ''),
+      source: String(source || ''),
+    };
+    return packet;
+  }
+  function resolveDevAutoplayCombatOutcome({ energy = 0, partyHp = 0, livingHeroes = 0 } = {}) {
+    return resolveCombatOutcomeWithOwner({
+      source: 'app.runDevAutoplayUntilDepleted',
+      energy,
+      partyHp,
+      livingHeroes,
+    });
+  }
+  function resolveMainRuntimeCombatOutcome({ energy = 0, partyHp = 0, livingHeroes = 0 } = {}) {
+    return resolveCombatOutcomeWithOwner({
+      source: 'app.mainRuntimeCombatOutcome',
+      energy: Number(energy || 0) < 0 ? 0 : 1,
+      partyHp,
+      livingHeroes,
+    });
+  }
+  function getDevAutoplayProgressSig() {
+    return JSON.stringify({
+      energy: Math.max(0, Number(state.globals.Player_Energy || 0)),
+      turn: Number(state.globals.DebugTurnCount || 0),
+      phase: Number(state.globals.TurnPhase || 0),
+      canPick: Number(state.globals.CanPickGems || 0),
+      busy: Number(state.globals.IsPlayerBusy || 0),
+      boardFill: Number(state.globals.BoardFillActive || 0),
+      pending: String(state.globals.PendingSkillID || ''),
+      skillDraughtOpen: Number(state.globals.SkillDraughtOpen || 0),
+      gems: Array.isArray(gameState.gems) ? gameState.gems.length : 0,
+      current: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0),
+    });
+  }
+  function requestCombatFailureExit(reason = 'party_defeated') {
+    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
+      ? layoutState.getActiveLayoutId()
+      : null;
+    if (
+      activeLayoutId !== 'combat' ||
+      state.globals.GamePhase !== 'RUNTIME' ||
+      gameState.combatFailExitRequested
+    ) {
+      return false;
+    }
+    const normalizedReason = String(reason || '');
+    const layoutReason = normalizedReason === 'energy_depleted' || normalizedReason === 'combat-energy-depleted'
+      ? 'combat-energy-depleted'
+      : 'combat-party-defeated';
+    gameState.combatFailExitRequested = true;
+    state.globals.CanPickGems = 0;
+    state.globals.IsPlayerBusy = 1;
+    state.globals.ActionInProgress = 0;
+    state.globals.DeferAdvance = 0;
+    gameState.substate = 'Neutral';
+    gameState.isTurnResolving = false;
+    gameState.isSpikeProcessing = false;
+    gameState.areEffectsAnimating = false;
+    layoutState.requestLayoutChange('storyMock', layoutReason).catch((err) => {
+      gameState.combatFailExitRequested = false;
+      console.error('[LAYOUT_PHASE1] combat fail gate layout transition failed', err);
+    });
     return true;
   }
   async function runDevAutoplayUntilDepleted() {
@@ -5762,30 +6521,15 @@ function getStoryCardLiveLineState() {
         return getDevAutoplayState();
       }
       const energy = Math.max(0, Number(state.globals.Player_Energy || 0));
-      if (energy <= 0) {
-        setDevAutoplayState({ active: false, stopRequested: false, lastReason: 'energy_depleted', matchesPlayed, endedAt: Number(state.globals.time || 0) });
-        return getDevAutoplayState();
-      }
-      if (Math.max(0, Number(state.globals.PartyHP || 0)) <= 0) {
-        setDevAutoplayState({ active: false, stopRequested: false, lastReason: 'party_defeated', matchesPlayed, endedAt: Number(state.globals.time || 0) });
-        return getDevAutoplayState();
-      }
+      const partyHp = Math.max(0, Number(state.globals.PartyHP || 0));
       const aliveHeroes = state.entities.filter((entity) => entity && entity.kind === 'hero' && (entity.hp ?? 0) > 0).length;
-      if (!aliveHeroes) {
-        setDevAutoplayState({ active: false, stopRequested: false, lastReason: 'no_living_heroes', matchesPlayed, endedAt: Number(state.globals.time || 0) });
+      const outcome = resolveDevAutoplayCombatOutcome({ energy, partyHp, livingHeroes: aliveHeroes });
+      if (outcome.reason) {
+        setDevAutoplayState({ active: false, stopRequested: false, lastReason: outcome.reason, matchesPlayed, endedAt: Number(state.globals.time || 0) });
+        requestCombatFailureExit(outcome.reason);
         return getDevAutoplayState();
       }
-      const progressSig = JSON.stringify({
-        energy,
-        turn: Number(state.globals.DebugTurnCount || 0),
-        phase: Number(state.globals.TurnPhase || 0),
-        canPick: Number(state.globals.CanPickGems || 0),
-        busy: Number(state.globals.IsPlayerBusy || 0),
-        boardFill: Number(state.globals.BoardFillActive || 0),
-        pending: String(state.globals.PendingSkillID || ''),
-        gems: Array.isArray(gameState.gems) ? gameState.gems.length : 0,
-        current: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0),
-      });
+      const progressSig = getDevAutoplayProgressSig();
       if (progressSig !== lastProgressSig) {
         lastProgressSig = progressSig;
         lastProgressAt = performance.now();
@@ -5794,18 +6538,23 @@ function getStoryCardLiveLineState() {
         await devSleep(90);
         continue;
       }
+      if (autoResolveSkillDraughtForDevIdle()) {
+        await devSleep(90);
+        continue;
+      }
       if (isIdleAutoplayHeroWindow()) {
-        const singlePick = findIdleAutoplayPrioritySinglePick();
-        if (singlePick) {
-          const played = clickGemCell(Number(singlePick.row || 0), Number(singlePick.col || 0));
-          if (played) {
+        const superGemPick = pickIdleAutoplaySuperGem(gameState.superGems, getIdleAutoplayPriorityContext());
+        if (superGemPick) {
+          const beforeSuperGemProgressSig = getDevAutoplayProgressSig();
+          const played = clickGemCell(Number(superGemPick.row || 0), Number(superGemPick.col || 0));
+          await devSleep(90);
+          if (played && getDevAutoplayProgressSig() !== beforeSuperGemProgressSig) {
             matchesPlayed += 1;
             setDevAutoplayState({ active: true, stopRequested: false, lastReason: 'running', matchesPlayed, startedAt, endedAt: 0 });
+            continue;
           }
-          await devSleep(90);
-          continue;
         }
-        const pick = pickIdleAutoplayTriplet();
+        const pick = pickIdleAutoplayTriplet(gameState.gems, getIdleAutoplayPriorityContext());
         if (!pick) {
           setDevAutoplayState({ active: false, stopRequested: false, lastReason: 'no_valid_triplet', matchesPlayed, endedAt: Number(state.globals.time || 0) });
           return getDevAutoplayState();
@@ -5940,7 +6689,22 @@ function getStoryCardLiveLineState() {
   // pointer handler for nav menu and overlay (more responsive than click)
   const handlePointerDown = (ev) => {
     const rect = canvas.getBoundingClientRect();
-    const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
+    const logicalW = canvas.width / Math.max(1, dpr || 1);
+    const logicalH = canvas.height / Math.max(1, dpr || 1);
+    const scaleX = rect.width > 0 ? logicalW / rect.width : 1;
+    const scaleY = rect.height > 0 ? logicalH / rect.height : 1;
+    const mx = (ev.clientX - rect.left) * scaleX;
+    const my = (ev.clientY - rect.top) * scaleY;
+
+    if (Number(state.globals.SkillDraughtOpen || 0)) {
+      const zones = Array.isArray(state.globals.SkillDraughtHitZones) ? state.globals.SkillDraughtHitZones : [];
+      const hit = zones.find((zone) => isPointInRect(mx, my, zone));
+      if (hit) {
+        callFunctionWithContext(fnContext, 'SelectSkillDraughtCard', Number(hit.index || 0));
+        drawFrame();
+      }
+      return;
+    }
 
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
       ? layoutState.getActiveLayoutId()
@@ -6442,21 +7206,59 @@ function getStoryCardLiveLineState() {
     if (!uiState.getUIState().overlayVisible && state.globals.PendingSkillID) {
       const btn = getAttackButtonBounds();
       if (mx >= btn.dx && mx <= btn.dx + btn.w && my >= btn.dy && my <= btn.dy + btn.h) {
+        const enemyRosterStability = getEnemyRosterStabilitySnapshot();
+        if (!enemyRosterStability.stable) {
+          applyTurnGateIntent(createEnemyRosterRefillHold, {
+            now: Number(state.globals.time || 0),
+            currentTurnUID: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0),
+            preservePendingSkill: true,
+          });
+          drawFrame();
+          return;
+        }
+        const presentationBarrier = getPresentationTurnBarrier({
+          hasEmpty: hasEmptySlots(),
+          enemyLineClearPressureActive: !!state.globals.EnemyLineClearPressureActive,
+        });
+        if (!presentationBarrier.canResolvePendingTargetAction) {
+          drawFrame();
+          return;
+        }
         const actorUID = state.globals.PendingActor || getHeroUIDByIndex(gameState.selectedHero);
+        logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
+          stage: 'before',
+          source: 'manual-button',
+          actorUID,
+        });
         const resolvedPendingSuperGem = superGemRuntime.executePendingSuperGemAction({
           state,
           callFunctionWithContext,
           fnContext,
         });
+        let executeSkillResult = null;
         if (!resolvedPendingSuperGem) {
-          callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
+          executeSkillResult = callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
         }
+        logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
+          stage: 'after-action-attempt-before-clear',
+          source: 'manual-button',
+          actorUID,
+          resolvedPendingSuperGem,
+          executeSkillResult,
+        });
         state.globals.PendingSkillID = '';
         state.globals.PendingActor = 0;
         state.globals.SelectedEnemyUID = 0;
         callFunctionWithContext(fnContext, 'HideAttackUI');
         state.globals.CanPickGems = false;
         state.globals.IsPlayerBusy = 1;
+        logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
+          stage: 'after-clear',
+          source: 'manual-button',
+          actorUID,
+          resolvedPendingSuperGem,
+          executeSkillResult,
+        });
         drawFrame();
         return;
       }
@@ -6570,10 +7372,6 @@ function getStoryCardLiveLineState() {
               superGemCost: superGemRuntime.SUPER_GEM_COST,
             });
             drawFrame();
-            return;
-          }
-          if (gem.color === 6) {
-            handleSpecialGem6(gem);
             return;
           }
           if (gameState.selectionLocked && gameState.selectedGems.length < 3) {
@@ -6785,12 +7583,17 @@ function getStoryCardLiveLineState() {
   const phaseNow = state.globals.TurnPhase;
   const hasEmpty = hasEmptySlots();
   const enemyLineClearPressureActive = !!state.globals.EnemyLineClearPressureActive;
+  const refillStartBarrier = getPresentationTurnBarrier({
+    hasEmpty,
+    enemyLineClearPressureActive,
+  });
   const refillReady =
     phaseNow === 0 &&
     !state.globals.IsPlayerBusy &&
     !state.globals.PendingSkillID &&
     !state.globals.ActionInProgress &&
     !state.globals.DeferAdvance &&
+    refillStartBarrier.canStartRefill &&
     !(refill && refill.active);
     if (hasEmpty && !refillReady) {
       const sig = JSON.stringify({
@@ -6800,6 +7603,7 @@ function getStoryCardLiveLineState() {
         ActionInProgress: state.globals.ActionInProgress,
         DeferAdvance: state.globals.DeferAdvance,
         refillActive: !!(refill && refill.active),
+        blockingLane: refillStartBarrier.firstBlockingLane,
       });
       if (gameState._lastRefillBlockSig !== sig) {
         gameState._lastRefillBlockSig = sig;
@@ -6835,6 +7639,7 @@ function getStoryCardLiveLineState() {
       !state.globals.PendingSkillID &&
       !state.globals.ActionInProgress &&
       !state.globals.DeferAdvance &&
+      refillStartBarrier.canStartRefill &&
       !(refill && refill.active) &&
       !enemyLineClearPressureActive
     ) {
@@ -6870,7 +7675,28 @@ function getStoryCardLiveLineState() {
           });
         }
       }
+      const parkedActionPhase = (
+        state.globals.GamePhase === 'RUNTIME' &&
+        state.globals.TurnPhase === 1 &&
+        boardFull &&
+        noRefillActive &&
+        noSpinActive
+      );
+      if (parkedActionPhase) {
+        const snapshot = getActionHandoffSnapshot();
+        const { time: _time, actionLockUntil: _actionLockUntil, ...dedupeSnapshot } = snapshot;
+        const sig = JSON.stringify(dedupeSnapshot);
+        if (gameState._turnPhase1StuckSig !== sig) {
+          gameState._turnPhase1StuckSig = sig;
+          runtimeDebugLogging.gemDebugLog('[TURNPHASE1_STUCK]', {
+            reason: 'turnphase-one-parked-with-board-full',
+            snapshot,
+            enemyRosterStability: getEnemyRosterStabilitySnapshot(),
+          }, state);
+        }
+      }
     }
+    const enemyRosterStability = getEnemyRosterStabilitySnapshot();
     if (
       state.globals.GamePhase === 'RUNTIME' &&
       state.globals.DeferAdvance &&
@@ -6880,7 +7706,15 @@ function getStoryCardLiveLineState() {
         hasEmpty,
         enemyLineClearPressureActive,
       });
-      if (deferredAdvanceState.refillPending) {
+      if (
+        !deferredAdvanceState.enemyRosterStability.stable &&
+        !deferredAdvanceState.pendingEnemyDeathResolution
+      ) {
+        applyTurnGateIntent(createEnemyRosterRefillHold, {
+          now: Number(state.globals.time || 0),
+          currentTurnUID: deferredAdvanceState.currentUID,
+        });
+      } else if (deferredAdvanceState.refillPending) {
         // Refill must complete before advancing to the next actor.
         startRefillBounce();
         applyTurnGateIntent(createDeferredRefillHold, {
@@ -6891,6 +7725,14 @@ function getStoryCardLiveLineState() {
           now: Number(state.globals.time || 0),
         });
       } else {
+        if (deferredAdvanceState.staleActionInProgress) {
+          applyTurnGateIntent(createDeferredStaleActionRecovery);
+          console.log(`[TURN] cleared stale ActionInProgress before advance phase=${state.globals.TurnPhase} owner=${state.globals.ActionOwnerUID || 0} actionActor=${state.globals.ActionActorUID || 0}`);
+          deferredAdvanceState = canResolveDeferredAdvance({
+            hasEmpty,
+            enemyLineClearPressureActive,
+          });
+        }
         if (deferredAdvanceState.staleBusy) {
           applyTurnGateIntent(createDeferredStaleBusyRecovery);
           console.log(`[TURN] cleared stale IsPlayerBusy before advance phase=${state.globals.TurnPhase} owner=${state.globals.ActionOwnerUID || 0}`);
@@ -6901,10 +7743,37 @@ function getStoryCardLiveLineState() {
         }
         if (deferredAdvanceState.ok) {
           console.log(`[TURN] DeferAdvance -> AdvanceTurn owner=${deferredAdvanceState.ownerUID} cur=${deferredAdvanceState.currentUID} phase=${state.globals.TurnPhase} busy=${state.globals.IsPlayerBusy} canPick=${state.globals.CanPickGems}`);
-          applyTurnGateIntent(createDeferredAdvanceResolved);
+          const beforeAdvanceUID = deferredAdvanceState.currentUID;
+          const beforeAdvancePhase = Number(state.globals.TurnPhase || 0);
           callFunctionWithContext(fnContext, 'AdvanceTurn');
-          combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
-        } else if (!deferredAdvanceState.ownerOk) {
+          const afterAdvanceUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
+          const afterAdvancePhase = Number(state.globals.TurnPhase || 0);
+          const postAdvanceRosterStability = getEnemyRosterStabilitySnapshot();
+          const rosterHoldKeptDeferredAdvance = (
+            !postAdvanceRosterStability.stable &&
+            !!state.globals.DeferAdvance &&
+            afterAdvanceUID === beforeAdvanceUID &&
+            afterAdvancePhase === beforeAdvancePhase
+          );
+          if (!rosterHoldKeptDeferredAdvance) {
+            applyTurnGateIntent(createDeferredAdvanceResolved);
+            combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+          } else if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+            runtimeDebugLogging.gemDebugLog('[TURN_DEFER_PRESERVED]', {
+              reason: 'advance-held-for-enemy-roster-refill',
+              beforeAdvanceUID,
+              afterAdvanceUID,
+              beforeAdvancePhase,
+              afterAdvancePhase,
+              roster: postAdvanceRosterStability,
+              snapshot: getActionHandoffSnapshot(),
+            }, state);
+          }
+        } else if (
+          !deferredAdvanceState.ownerOk &&
+          !deferredAdvanceState.blockedPhase &&
+          deferredAdvanceState.presentationBarrier.canAdvanceTurn
+        ) {
           if (deferredAdvanceState.ownerUID) {
             callFunctionWithContext(fnContext, 'ClosePowerAmpForActor', deferredAdvanceState.ownerUID, 'owner_mismatch_autoclose');
           }
@@ -6930,15 +7799,10 @@ function getStoryCardLiveLineState() {
     ) {
       const energy = Number(state.globals.Player_Energy || 0);
       const partyHp = Number(state.globals.PartyHP || 0);
-      const noLivingHeroes = state.entities.filter((entity) => entity && entity.kind === 'hero' && (entity.hp ?? 0) > 0).length <= 0;
-      if (energy < 0 || partyHp <= 0 || noLivingHeroes) {
-        gameState.combatFailExitRequested = true;
-        state.globals.CanPickGems = 0;
-        state.globals.IsPlayerBusy = 1;
-        layoutState.requestLayoutChange('storyMock', energy < 0 ? 'combat-energy-depleted' : 'combat-party-defeated').catch((err) => {
-          gameState.combatFailExitRequested = false;
-          console.error('[LAYOUT_PHASE1] combat fail gate layout transition failed', err);
-        });
+      const livingHeroes = state.entities.filter((entity) => entity && entity.kind === 'hero' && (entity.hp ?? 0) > 0).length;
+      const outcome = resolveMainRuntimeCombatOutcome({ energy, partyHp, livingHeroes });
+      if (Number(outcome.code || 0) !== 0) {
+        requestCombatFailureExit(outcome.reason);
       }
     }
     const currentTurnUID = callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0;
@@ -6951,18 +7815,66 @@ function getStoryCardLiveLineState() {
       !state.globals.PendingSkillID &&
       (state.globals.CanPickGems === true || !state.globals.DeferAdvance)
     ) {
-      applyTurnGateIntent(createEnemyTurnIdleRecovery, {
-        now: Number(state.globals.time || 0),
-        currentTurnUID,
+      const currentEnemy = currentTurnUID
+        ? callFunctionWithContext(fnContext, 'GetActorByUID', currentTurnUID)
+        : null;
+      const refillActive = !!(gameState.refillBounce && gameState.refillBounce.active);
+      const actionClaimBarrier = getPresentationTurnBarrier({
+        hasEmpty,
+        enemyLineClearPressureActive,
       });
-      combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+      const liveCurrentEnemy = currentEnemy && currentEnemy.kind === 'enemy' && Number(currentEnemy.hp || 0) > 0;
+      if (liveCurrentEnemy && !hasEmpty && !refillActive && actionClaimBarrier.canClaimCombatAction) {
+        if (!enemyRosterStability.stable) {
+          applyTurnGateIntent(createEnemyRosterRefillHold, {
+            now: Number(state.globals.time || 0),
+            currentTurnUID,
+          });
+        } else {
+          applyTurnGateIntent(createEnemyTurnGateBaseline);
+          state.globals.BoardFillActive = 0;
+          callFunctionWithContext(fnContext, 'EnemyTurn', currentTurnUID);
+        }
+      } else if (liveCurrentEnemy) {
+        if (!enemyRosterStability.stable) {
+          applyTurnGateIntent(createEnemyRosterRefillHold, {
+            now: Number(state.globals.time || 0),
+            currentTurnUID,
+          });
+        } else {
+          applyTurnGateIntent(createEnemyTurnRetryHold, {
+            currentTurnUID,
+          });
+        }
+        console.log(`[TURN] enemy retry hold uid=${currentTurnUID} hasEmpty=${hasEmpty} refillActive=${refillActive} idx=${state.globals.CurrentTurnIndex || 0}`);
+      } else if (actionClaimBarrier.canClaimCombatAction) {
+        applyTurnGateIntent(createEnemyTurnIdleRecovery, {
+          now: Number(state.globals.time || 0),
+          currentTurnUID,
+        });
+        combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+      } else if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+        runtimeDebugLogging.gemDebugLog('[TURN_ENEMY_IDLE_RECOVERY_HELD]', {
+          reason: 'presentation-barrier',
+          currentTurnUID,
+          blockingLane: actionClaimBarrier.firstBlockingLane,
+          hasEmpty,
+          refillActive,
+        }, state);
+      }
     }
     const noRefillActive = !(gameState.refillBounce && gameState.refillBounce.active);
+    const heroInputBarrier = getPresentationTurnBarrier({
+      hasEmpty: hasEmptySlots(),
+      enemyLineClearPressureActive: !!state.globals.EnemyLineClearPressureActive,
+    });
     if (
       state.globals.GamePhase === 'RUNTIME' &&
       currentTurnType === 0 &&
       state.globals.TurnPhase === 0 &&
       noRefillActive &&
+      heroInputBarrier.canRestoreHeroInput &&
+      enemyRosterStability.stable &&
       (state.globals.CanPickGems !== true || state.globals.BoardFillActive !== 0)
     ) {
       state.globals.CanPickGems = true;
@@ -7097,6 +8009,36 @@ function getStoryCardLiveLineState() {
         enemies: state.entities
           .filter(e => e.kind === 'enemy')
           .map(e => ({ uid: e.uid, name: e.name, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHP, slot: e.slotIndex, combatPower: Number(e.combatPower || 0) })),
+        damageTexts: (state.globals.DamageTexts || []).map(d => {
+          const riseSec = Math.max(0.001, Number(d.riseInSec || 0.18));
+          const phase = Number(d.phase || 0);
+          const phaseAge = Number(d.age || 0);
+          let progress = 1;
+          if (phase === 0) {
+            const riseT = Math.max(0, Math.min(1, phaseAge / riseSec));
+            progress = riseT * (2 - riseT);
+          }
+          const offset = deriveDamageFloatFrameOffset(d, progress);
+          const baseX = Number(d.baseX != null ? d.baseX : (d.x || 0));
+          const baseY = Number(d.baseY != null ? d.baseY : (d.y || 0));
+          return {
+            amount: d.amount,
+            kind: d.kind,
+            targetKind: d.targetKind || null,
+            baseX,
+            baseY,
+            x: Number(d.x || 0),
+            y: Number(d.y || 0),
+            displayX: baseX + offset.x,
+            displayY: baseY + offset.y,
+            floatAngleDeg: Number(d.floatAngleDeg || 0),
+            floatVectorX: Number(d.floatVectorX || 0),
+            floatVectorY: Number(d.floatVectorY || 0),
+            phase,
+            age: phaseAge,
+            domSpawned: !!d.domSpawned,
+          };
+        }),
         gems: (gameState.gems || []).map(g => ({
           uid: g.uid,
           r: g.cellR,

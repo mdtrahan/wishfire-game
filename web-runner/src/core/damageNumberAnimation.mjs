@@ -1,7 +1,13 @@
 import { gsap } from './gsapShim.mjs';
+import {
+  DAMAGE_FLOAT_DEFAULT_TRAVEL,
+  DAMAGE_FLOAT_ENERGY_TRAVEL,
+  deriveDamageFloatVector,
+} from './damageFloatVector.mjs';
 
-const DAMAGE_TEXT_FONT = '"Rubik Mono One", "Trebuchet MS", "Verdana", sans-serif';
+const DAMAGE_TEXT_FONT = '"Bungee", "Trebuchet MS", "Verdana", sans-serif';
 const DAMAGE_TEXT_FONT_SPEC = `28px ${DAMAGE_TEXT_FONT}`;
+const ENERGY_TEXT_COLOR = '#D87DFF';
 let damageTextFontPromise = null;
 let damageTextFontReady = false;
 
@@ -34,12 +40,17 @@ export function isDamageTextFontReady() {
 
 export function createDamageNumber({
   text,
+  amount,
+  partyMaxHP = 0,
+  floatAngleDeg = 0,
   x,
   y,
   kind = 'damage',
   targetKind = null,
   isCrit = false,
   container,
+  angleDeg = 0,
+  floatVector = null,
 }) {
   if (!container || typeof document === 'undefined') return null;
 
@@ -65,10 +76,30 @@ export function createDamageNumber({
     transformOrigin: 'center bottom',
   });
 
-  const isHeal = String(kind || 'damage') === 'heal';
-  const gradientStops = isHeal
-    ? ['#86eb2e', '#9fdfff']
-    : ['#fbfdce', '#f7f8d4'];
+  const normalizedKind = String(kind || 'damage');
+  const isHeal = normalizedKind === 'heal';
+  const isEnergy = normalizedKind === 'energy';
+  const isWard = normalizedKind === 'ward';
+  const fallbackVector = deriveDamageFloatVector({
+    angleDeg,
+    travel: isEnergy ? DAMAGE_FLOAT_ENERGY_TRAVEL : DAMAGE_FLOAT_DEFAULT_TRAVEL,
+  });
+  const floatX = Number.isFinite(Number(floatVector && floatVector.x))
+    ? Number(floatVector.x)
+    : fallbackVector.x;
+  const floatY = Number.isFinite(Number(floatVector && floatVector.y))
+    ? Number(floatVector.y)
+    : fallbackVector.y;
+  wrapper.dataset.floatAngleDeg = String(Number.isFinite(Number(angleDeg)) ? Number(angleDeg) : 0);
+  wrapper.dataset.floatVectorX = String(floatX);
+  wrapper.dataset.floatVectorY = String(floatY);
+  const gradientStops = isEnergy
+    ? [ENERGY_TEXT_COLOR, ENERGY_TEXT_COLOR]
+    : (isWard
+        ? ['#FFD1EB', '#FF94CC']
+    : (isHeal
+        ? ['#86eb2e', '#9fdfff']
+        : ['#fbfdce', '#f7f8d4']));
   const timelines = [];
 
   const cleanup = () => {
@@ -76,7 +107,14 @@ export function createDamageNumber({
   };
 
   const value = String(text || '');
-  const fontSize = 28;
+  const isWeakDamage = normalizedKind === 'damage' && Number(amount) < 10;
+  const isLargeDamage = normalizedKind === 'damage'
+    && Number(partyMaxHP) > 0
+    && Number(amount) > Number(partyMaxHP) * 0.5;
+  const damageFontSize = 28;
+  const fontSize = isWeakDamage
+    ? damageFontSize * 0.75
+    : (isLargeDamage ? damageFontSize * 1.2 : damageFontSize);
   const approxWidth = Math.max(72, Math.ceil(value.length * 24 + 40));
   const approxHeight = 72;
   const numberText = document.createElement('canvas');
@@ -148,13 +186,15 @@ export function createDamageNumber({
     });
 
     tl.to(wrapper, {
-      y: -28,
+      x: floatX,
+      y: floatY,
       duration: 0.8,
       ease: 'power2.out',
     }, 0);
 
     tl.to(wrapper, {
-      y: -28,
+      x: floatX,
+      y: floatY,
       opacity: 1,
       duration: 0.484,
       ease: 'none',

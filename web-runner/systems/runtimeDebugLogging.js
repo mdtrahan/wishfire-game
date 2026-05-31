@@ -27,7 +27,16 @@ export function gemDebugLog(tag, payload, state) {
     '[TURN_RESTORE_PICK]',
     '[GEM_REJECT]',
     '[REFILL_STUCK]',
-    '[GATE_STUCK_CANPICK]'
+    '[GATE_STUCK_CANPICK]',
+    '[ACTION_HANDOFF_CLAIM]',
+    '[ACTION_HANDOFF_REFUSED]',
+    '[PENDING_ATTACK_RESOLVE]',
+    '[PENDING_SUPERGEM_EXEC]',
+    '[PENDING_SUPERGEM_REJECT]',
+    '[PENDING_SUPERGEM_RESOLVED]',
+    '[DEV_AUTOPLAY_RESOLVE]',
+    '[TURNPHASE1_STUCK]',
+    '[TURN_DEFER_PRESERVED]',
   ]);
   if (!allowedTags.has(tag)) return;
 

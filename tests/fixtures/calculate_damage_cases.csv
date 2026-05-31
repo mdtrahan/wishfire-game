@@ -1,0 +1,8 @@
+name,power,resist,roll01,critRoll01,sourceIsHero,heroAoe,chainActive,chainMultiplier,expectedDamage,expectedBaseDamage
+hero_single_no_crit,30,10,0.5,0.9,1,0,0,1,27,27
+hero_aoe_no_crit,30,10,0.5,0.9,1,1,0,1,25,25
+enemy_no_crit,30,10,0.5,0.9,0,0,0,1,25,25
+hero_single_crit_threshold,30,10,0.5,0.1,1,0,0,1,81,27
+enemy_crit_threshold,30,10,0.5,0.1,0,0,0,1,30,25
+hero_chain_multiplier,30,10,0.5,0.9,1,0,1,2.5,68,27
+damage_floor,1,100,0.5,0.9,1,0,0,1,1,1

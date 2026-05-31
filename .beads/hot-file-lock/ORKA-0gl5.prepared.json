@@ -1,0 +1,12 @@
+{
+  "hot_files": {
+    "web-runner/app.js": {
+      "functions": [
+        "__MODULE__",
+        "createSeededRng"
+      ],
+      "staged_blob": "f57f612991044c3ea780290529d54d932e8852e2"
+    }
+  },
+  "issue_id": "ORKA-0gl5"
+}

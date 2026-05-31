@@ -7,6 +7,21 @@ function read(relPath) {
   return fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
 }
 
+function extractFunctionSource(src, signature) {
+  const start = src.indexOf(signature);
+  assert.notEqual(start, -1, `expected ${signature}`);
+  const bodyStart = src.indexOf('{', start + signature.length);
+  assert.notEqual(bodyStart, -1, `expected ${signature} body`);
+  let depth = 0;
+  for (let idx = bodyStart; idx < src.length; idx += 1) {
+    const ch = src[idx];
+    if (ch === '{') depth += 1;
+    if (ch === '}') depth -= 1;
+    if (depth === 0) return src.slice(start, idx + 1);
+  }
+  assert.fail(`expected ${signature} to close`);
+}
+
 test('dev tooling refresh uses the shared combat turn refresh baseline and invalidates stale pause snapshots', () => {
   const src = read('web-runner/app.js');
 
@@ -22,10 +37,9 @@ test('dev tooling refresh uses the shared combat turn refresh baseline and inval
   assert.match(src, /if \(sameCombatSession && sameTurnSerial\) \{\s*applyTurnGateGlobals\(devToolingPauseSnapshot\);/s);
   assert.match(src, /if \(closeModal\) closeDevToolingModal\(\{ restorePauseSnapshot: appliedSessionChange !== 'combat_refresh' \}\);/);
 
-  const refreshBlock = src.match(/async function refreshCombatSessionFromDevTooling[\s\S]*?return true;\n  }/);
-  assert.ok(refreshBlock, 'expected dev tooling refresh function');
-  assert.match(refreshBlock[0], /resetCombatRuntimeForFreshSession\('dev-tool-refresh', \{[\s\S]*boardHasEmptySlots: hasEmptySlots\(\),[\s\S]*\}\);/);
-  assert.doesNotMatch(refreshBlock[0], /state\.globals\.(IsPlayerBusy|PendingSkillID|DeferAdvance|ActionInProgress|PendingActor|CanPickGems)\s*=/);
+  const refreshBlock = extractFunctionSource(src, 'async function refreshCombatSessionFromDevTooling({ forceCombat = false, resetGame = false } = {})');
+  assert.match(refreshBlock, /resetCombatRuntimeForFreshSession\('dev-tool-refresh', \{[\s\S]*boardHasEmptySlots: hasEmptySlots\(\),[\s\S]*\}\);/);
+  assert.doesNotMatch(refreshBlock, /state\.globals\.(IsPlayerBusy|PendingSkillID|DeferAdvance|ActionInProgress|PendingActor|CanPickGems)\s*=/);
 });
 
 test('turn-gate apply wrapper owns extended transient fields in app runtime', () => {

@@ -18,6 +18,72 @@ export function normalizeTurnGateState(current = {}) {
   return normalizeCombatTurnTransientState(current);
 }
 
+export function derivePresentationTurnBarrier({
+  globals = {},
+  refillBounce = null,
+  yellowCasino = null,
+  gemMergeFx = null,
+  boardHasEmptySlots = false,
+  enemyLineClearPressureActive = false,
+} = {}) {
+  const now = Number(globals.time || 0);
+  const pendingHeroHits = Array.isArray(globals.PendingHeroHits)
+    ? globals.PendingHeroHits.length > 0
+    : !!globals.PendingHeroHits;
+  const lanes = {
+    boardFill: Number(globals.BoardFillActive || 0) > 0,
+    refillBounce: !!(refillBounce && refillBounce.active),
+    yellowCasino: !!(yellowCasino && yellowCasino.active),
+    gemMerge: !!(gemMergeFx && gemMergeFx.active),
+    textAnimating: !!globals.TextAnimating || Number(globals.TextAnimEndAt || 0) > now,
+    heroAction: !!(globals.HeroAction && globals.HeroAction.active),
+    enemyAction: !!(globals.EnemyAction && globals.EnemyAction.active),
+    pendingHeroHits,
+    actionLock: Number(globals.ActionLockUntil || 0) > now,
+    actionInProgress: !!globals.ActionInProgress,
+  };
+  const orderedLaneNames = [
+    ['board-fill', lanes.boardFill],
+    ['refill-bounce', lanes.refillBounce],
+    ['yellow-casino', lanes.yellowCasino],
+    ['gem-merge', lanes.gemMerge],
+    ['text-animation', lanes.textAnimating],
+    ['hero-action', lanes.heroAction],
+    ['enemy-action', lanes.enemyAction],
+    ['pending-hero-hits', lanes.pendingHeroHits],
+    ['action-lock', lanes.actionLock],
+    ['action-in-progress', lanes.actionInProgress],
+  ];
+  const activePresentationLane = orderedLaneNames.find(([, active]) => active)?.[0] || null;
+  const refillPending = !!boardHasEmptySlots && !lanes.refillBounce && !enemyLineClearPressureActive;
+  const firstBlockingLane = activePresentationLane || (refillPending ? 'refill-pending' : null);
+  const presentationBlocked = !!activePresentationLane;
+  const pendingTargetAction = !!globals.PendingSkillID && (
+    Number(globals.TurnPhase || 0) === 1 ||
+    !!globals.PendingSuperGemAction
+  );
+  return {
+    lanes,
+    refillPending,
+    blockingLane: firstBlockingLane,
+    firstBlockingLane,
+    canStartRefill: !presentationBlocked,
+    canAdvanceTurn: !presentationBlocked && !refillPending,
+    canClaimCombatAction: !presentationBlocked && !refillPending && !globals.DeferAdvance,
+    canResolvePendingTargetAction: pendingTargetAction && !presentationBlocked && !globals.DeferAdvance,
+    canRestoreHeroInput: (
+      !presentationBlocked &&
+      !refillPending &&
+      !globals.DeferAdvance &&
+      !globals.PendingSkillID &&
+      !globals.PendingSuperGemAction &&
+      !globals.IsPlayerBusy &&
+      !globals.ActionInProgress &&
+      Number(globals.TurnPhase || 0) === 0
+    ),
+  };
+}
+
 export function createEnemyTurnGateBaseline(current = {}) {
   const base = normalizeTurnGateState(current);
   return {
@@ -32,6 +98,47 @@ export function createEnemyTurnGateBaseline(current = {}) {
     ActionActorUID: 0,
     PendingSkillID: '',
     PendingActor: 0,
+  };
+}
+
+export function createEnemyTurnRetryHold(current = {}, { currentTurnUID = 0 } = {}) {
+  const base = normalizeTurnGateState(current);
+  return {
+    ...base,
+    CanPickGems: 0,
+    IsPlayerBusy: 0,
+    DeferAdvance: 0,
+    AdvanceAfterAction: 0,
+    ActionLockUntil: 0,
+    ActionOwnerUID: Number(currentTurnUID || 0),
+    ActionInProgress: 0,
+    ActionActorUID: 0,
+    PendingSkillID: '',
+    PendingActor: 0,
+  };
+}
+
+export function createEnemyRosterRefillHold(current = {}, {
+  now = 0,
+  currentTurnUID = 0,
+  preservePendingSkill = false,
+} = {}) {
+  const base = normalizeTurnGateState(current);
+  const safeNow = Number(now || 0);
+  const hasOwnedDeferred = Boolean(base.DeferAdvance && base.AdvanceAfterAction && base.ActionOwnerUID);
+  const keepPendingSkill = Boolean(preservePendingSkill && !hasOwnedDeferred);
+  return {
+    ...base,
+    CanPickGems: 0,
+    IsPlayerBusy: keepPendingSkill ? base.IsPlayerBusy : 0,
+    DeferAdvance: hasOwnedDeferred ? 1 : 0,
+    AdvanceAfterAction: hasOwnedDeferred ? 1 : 0,
+    ActionLockUntil: Math.max(Number(base.ActionLockUntil || 0), safeNow + 0.05),
+    ActionOwnerUID: hasOwnedDeferred ? Number(base.ActionOwnerUID || currentTurnUID || 0) : 0,
+    ActionInProgress: keepPendingSkill ? Number(base.ActionInProgress || 0) : 0,
+    ActionActorUID: keepPendingSkill ? Number(base.ActionActorUID || 0) : 0,
+    PendingSkillID: keepPendingSkill ? String(base.PendingSkillID || '') : '',
+    PendingActor: keepPendingSkill ? Number(base.PendingActor || 0) : 0,
   };
 }
 
@@ -142,9 +249,10 @@ export function createRefillStartGate(current = {}) {
 
 export function createRefillCompleteGate(current = {}) {
   const base = normalizeTurnGateState(current);
+  const canRestorePickability = Number(current.TurnPhase || 0) === 0;
   return {
     ...base,
-    CanPickGems: 1,
+    CanPickGems: canRestorePickability ? 1 : 0,
     IsPlayerBusy: 0,
   };
 }
@@ -170,6 +278,16 @@ export function createDeferredStaleBusyRecovery(current = {}) {
   return {
     ...base,
     IsPlayerBusy: 0,
+  };
+}
+
+export function createDeferredStaleActionRecovery(current = {}) {
+  const base = normalizeTurnGateState(current);
+  return {
+    ...base,
+    IsPlayerBusy: 0,
+    ActionInProgress: 0,
+    ActionActorUID: 0,
   };
 }
 

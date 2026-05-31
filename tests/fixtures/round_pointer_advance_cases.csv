@@ -1,0 +1,6 @@
+name,roundMemberIndex,groupMemberCount,roundGroupIndex,groupCount,teamPhaseType,expectedCode,expectedNextMemberIndex,expectedGroupComplete,expectedNextGroupIndex,expectedRoundComplete,expectedNextTeamPhaseType
+next_member,0,4,0,1,0,0,1,0,1,0,1
+middle_member,2,4,0,1,0,0,3,0,1,0,1
+complete_single_group_round,3,4,0,1,0,2,4,1,1,1,1
+complete_group_not_round,1,2,0,2,1,1,2,1,1,0,0
+empty_group_completes_round,0,0,0,1,0,2,1,1,1,1,1
