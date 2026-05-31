@@ -32,6 +32,7 @@ import {
   nextTeamPhaseType,
 } from '../src/core/schedulerRules.mjs';
 import { createRoundPointerAdvanceSimulationPacket } from '../src/core/roundPointerAdvanceRules.mjs';
+import { createTurnSummarySimulationPacket } from '../src/core/turnSummaryRules.mjs';
 import { createTurnPhaseAssignmentSimulationPacket } from '../src/core/turnPhaseAssignmentRules.mjs';
 import { resolveTurnOrderGroupProjection } from '../src/core/turnOrderGroupRules.mjs';
 import { resolveEnemySkillChoice } from '../src/core/enemySkillChoiceRules.mjs';
@@ -4006,19 +4007,27 @@ function maybeResolveTurnSummaryOwner(ctx, source, snapshot) {
     : null;
   if (typeof turnSummaryOwnerHook !== 'function') return null;
   try {
-    const result = turnSummaryOwnerHook({
+    const summary = createTurnSummarySimulationPacket({
       source: String(source || 'unknown'),
       heroCount: Number(snapshot.heroCount || 0),
       heroHp: Array.isArray(snapshot.heroHp) ? snapshot.heroHp : [],
       enemyCount: Number(snapshot.enemyCount || 0),
       enemyHp: Array.isArray(snapshot.enemyHp) ? snapshot.enemyHp : [],
-      jsCode: Number(snapshot.jsCode || 0),
+      ownerHook: turnSummaryOwnerHook,
     });
-    const code = Number(result?.code);
+    const code = Number(summary?.code);
     if (!Number.isFinite(code)) return null;
     g.LastTurnSummaryOwner = {
-      owner: String(result?.owner || 'rust'),
+      owner: String(summary?.owner || 'rust'),
       code,
+      jsCode: Number(summary?.simulationCoreResponse?.diagnostics?.jsCode ?? snapshot.jsCode ?? code),
+      result: String(summary?.simulationCoreResponse?.result || ''),
+    };
+    g.LastTurnSummaryPacket = {
+      owner: String(summary?.owner || 'rust'),
+      result: String(summary?.simulationCoreResponse?.result || ''),
+      actionType: String(summary?.simulationCoreRequest?.action?.type || ''),
+      source: String(source || 'unknown'),
     };
     return g.LastTurnSummaryOwner;
   } catch (err) {
