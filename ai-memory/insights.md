@@ -380,3 +380,7 @@
 ## 2026-05-26 — Pending Target Resolution Is Not A New Action Claim
 - A red/green target picker created by the current gem match must resolve before refill, even when the match already left empty board slots. `refill-pending` blocks new action claims, turn advance, input restore, and refill completion; it must not block the already-pending target button that will finish the current action.
 - For target-selection regressions, validate both normal match and pending supergem action shapes. `PendingSkillID` plus `TurnPhase === 1` or `PendingSuperGemAction` should be allowed through only when no real presentation lane is active and `DeferAdvance` is clear.
+
+## 2026-05-31 — Supergem And Skill-Card Effects Must Stay In Separate Seams
+- Supergem activations and skill-card selections are separate trigger seams. If a supergem path directly grants a skill-owned effect, regressions will silently re-couple unrelated systems.
+- For supergem/skill crossovers, contract both negative and positive paths: assert the supergem does **not** open/select skills or grant the skill effect, and assert the same effect still appears through skill-card selection.

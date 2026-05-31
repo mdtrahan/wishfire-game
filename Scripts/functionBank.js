@@ -825,6 +825,7 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: 'party_last_push', owner: 'Party', slot: 8, title: 'Last Push', cardText: 'Gain a brief comeback burst when the party nears defeat.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On low party HP', payloadImplemented: false },
   { id: 'party_chain_pop', owner: 'Party', slot: 9, title: 'Chain Pop', cardText: 'Trigger an extra board effect from a match.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On match', payloadImplemented: false },
   { id: 'party_magic_fruit', owner: 'Party', slot: 10, title: 'Magic Fruit', cardText: 'Heals party for 40% of max HP', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true },
+  { id: 'party_crimson_ward', owner: 'Party', slot: 11, title: 'Crimson Ward', cardText: 'Grant a temporary party ward before true HP is damaged.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true },
 ]);
 
 function cloneSkillDefinition(def) {
@@ -1011,6 +1012,7 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
   g.AstralFlowAmpReady = 0;
   UpdateAstralFlowAmpBar(ctx);
   if (sessionSkill.id === 'party_magic_fruit') activateMagicFruitSkill(ctx);
+  if (sessionSkill.id === 'party_crimson_ward') activateCrimsonWardSkill(ctx);
   const scope = String(sessionSkill.owner || '').toLowerCase() === 'party' ? 'party' : 'hero';
   appendSkillDraughtTrace(g, 'select', { heroUID: uid, skillId: sessionSkill.id, scope });
   g.CombatActionPinnedLine = '';
@@ -4568,18 +4570,18 @@ function applyPartyTempHPShieldAbsorptionResult(g, result = {}) {
   return { damageAfterShield, absorbed, shieldAfter };
 }
 
-const FALIE_WARD_BARRIER_FADE_OUT_SEC = 0.28;
-const FALIE_WARD_BARRIER_HIT_PULSE_SEC = 0.18;
-const FALIE_WARD_BARRIER_OFFSET_WORLD_X = 22;
-const FALIE_WARD_SUSTAIN_RATIO = 0.18;
-const FALIE_RED_SUPER_GEM_SHIELD_COLOR = '#6CCBEE';
-const FALIE_WARD_BARRIER_ASSET_PATH = 'images/falie_ward_84x62.png';
-const FALIE_WARD_BARRIER_FADE_IN_SEC = 0.12;
-const FALIE_WARD_BARRIER_BASE_ALPHA = 0.82;
-const FALIE_WARD_BARRIER_WIDTH = 84;
-const FALIE_WARD_BARRIER_HEIGHT = 62;
+const CRIMSON_WARD_BARRIER_FADE_OUT_SEC = 0.28;
+const CRIMSON_WARD_BARRIER_HIT_PULSE_SEC = 0.18;
+const CRIMSON_WARD_BARRIER_OFFSET_WORLD_X = 22;
+const CRIMSON_WARD_RATIO = 0.18;
+const CRIMSON_WARD_SHIELD_COLOR = '#6CCBEE';
+const CRIMSON_WARD_BARRIER_ASSET_PATH = 'images/falie_ward_84x62.png';
+const CRIMSON_WARD_BARRIER_FADE_IN_SEC = 0.12;
+const CRIMSON_WARD_BARRIER_BASE_ALPHA = 0.82;
+const CRIMSON_WARD_BARRIER_WIDTH = 84;
+const CRIMSON_WARD_BARRIER_HEIGHT = 62;
 
-function refreshFalieWardBarrierVisuals(ctx) {
+function refreshCrimsonWardBarrierVisuals(ctx) {
   const g = getGlobals(ctx);
   const now = Number(g.time || 0);
   const heroes = getHeroes(ctx);
@@ -4595,12 +4597,12 @@ function refreshFalieWardBarrierVisuals(ctx) {
     const existing = visuals[uid] && typeof visuals[uid] === 'object' ? visuals[uid] : {};
     visuals[uid] = {
       uid,
-      source: 'falie_red_sustain',
+      source: 'party_crimson_ward',
       state: 'fadeIn',
       fadeInStartedAt: now,
-      fadeInDuration: FALIE_WARD_BARRIER_FADE_IN_SEC,
-      fadeOutDuration: FALIE_WARD_BARRIER_FADE_OUT_SEC,
-      baseAlpha: FALIE_WARD_BARRIER_BASE_ALPHA,
+      fadeInDuration: CRIMSON_WARD_BARRIER_FADE_IN_SEC,
+      fadeOutDuration: CRIMSON_WARD_BARRIER_FADE_OUT_SEC,
+      baseAlpha: CRIMSON_WARD_BARRIER_BASE_ALPHA,
       hitUntil: Number(existing.hitUntil || 0),
       refreshCount: Math.max(1, Number(existing.refreshCount || 0) + 1),
     };
@@ -4610,41 +4612,36 @@ function refreshFalieWardBarrierVisuals(ctx) {
   }
   g.PartyWardBarrierVisualsByUID = visuals;
   g.PartyWardBarrierActive = 1;
-  g.PartyWardBarrierAssetPath = FALIE_WARD_BARRIER_ASSET_PATH;
-  g.PartyWardBarrierOffsetWorldX = FALIE_WARD_BARRIER_OFFSET_WORLD_X;
-  g.PartyWardBarrierWidth = FALIE_WARD_BARRIER_WIDTH;
-  g.PartyWardBarrierHeight = FALIE_WARD_BARRIER_HEIGHT;
-  g.PartyWardBarrierBaseAlpha = FALIE_WARD_BARRIER_BASE_ALPHA;
+  g.PartyWardBarrierAssetPath = CRIMSON_WARD_BARRIER_ASSET_PATH;
+  g.PartyWardBarrierOffsetWorldX = CRIMSON_WARD_BARRIER_OFFSET_WORLD_X;
+  g.PartyWardBarrierWidth = CRIMSON_WARD_BARRIER_WIDTH;
+  g.PartyWardBarrierHeight = CRIMSON_WARD_BARRIER_HEIGHT;
+  g.PartyWardBarrierBaseAlpha = CRIMSON_WARD_BARRIER_BASE_ALPHA;
   g.PartyWardBarrierFadeOutUntil = 0;
   return true;
 }
 
-function sustainActiveFalieWardFromRedAttack(ctx, actorUID) {
-  const actor = GetActorByUID(ctx, actorUID);
-  if (String(actor && actor.name || '') !== 'Falie') return false;
+function activateCrimsonWardSkill(ctx) {
   const g = getGlobals(ctx);
   const before = Math.max(0, Number(g.PartyTempHPShield || 0));
-  if (before <= 0) return false;
   const maxHP = Math.max(1, Number(g.PartyMaxHP || 1));
-  const sustainHP = Math.max(1, Math.round(maxHP * FALIE_WARD_SUSTAIN_RATIO));
-  const after = Math.min(maxHP, before + sustainHP);
-  const unitHP = Math.max(1, Math.round(maxHP * FALIE_WARD_SUSTAIN_RATIO));
+  const wardHP = Math.max(1, Math.round(maxHP * CRIMSON_WARD_RATIO));
+  const after = Math.min(maxHP, before + wardHP);
   const ratio = Math.max(0, Math.min(1, after / maxHP));
   g.PartyTempHPShield = after;
-  g.PartyTempHPShieldStacks = Math.max(1, Math.ceil(after / unitHP));
+  g.PartyTempHPShieldStacks = Math.max(1, Math.ceil(after / wardHP));
   g.PartyTempHPShieldRatio = ratio;
   g.PartyTempHPShieldMax = maxHP;
-  g.PartyTempHPShieldColor = FALIE_RED_SUPER_GEM_SHIELD_COLOR;
-  g.PartyTempHPShieldSource = 'falie_red_sustain';
-  g.LastFalieWardSustain = {
-    source: 'falie_red_sustain',
+  g.PartyTempHPShieldColor = CRIMSON_WARD_SHIELD_COLOR;
+  g.PartyTempHPShieldSource = 'party_crimson_ward';
+  g.LastCrimsonWard = {
+    source: 'party_crimson_ward',
     before,
     after,
     added: Math.max(0, after - before),
-    multiplier: 1,
     ratio,
   };
-  refreshFalieWardBarrierVisuals(ctx);
+  refreshCrimsonWardBarrierVisuals(ctx);
   return true;
 }
 
@@ -4658,14 +4655,14 @@ function markPartyWardBarrierHit(ctx, hero, absorbed) {
     : {};
   const visual = visuals[uid] && typeof visuals[uid] === 'object' ? visuals[uid] : {
     uid,
-    source: 'falie_red_super_gem',
+    source: 'party_crimson_ward',
     state: 'active',
     fadeInStartedAt: now,
     fadeInDuration: 0.001,
-    fadeOutDuration: FALIE_WARD_BARRIER_FADE_OUT_SEC,
+    fadeOutDuration: CRIMSON_WARD_BARRIER_FADE_OUT_SEC,
     baseAlpha: Number(g.PartyWardBarrierBaseAlpha || 0.82),
   };
-  visual.hitUntil = now + FALIE_WARD_BARRIER_HIT_PULSE_SEC;
+  visual.hitUntil = now + CRIMSON_WARD_BARRIER_HIT_PULSE_SEC;
   visual.lastAbsorbed = Math.max(0, Number(absorbed || 0));
   visuals[uid] = visual;
   g.PartyWardBarrierVisualsByUID = visuals;
@@ -4686,12 +4683,12 @@ function getPartyWardBarrierDamageTextPos(g, hero, fallbackX, fallbackY) {
   const heroPos = Array.isArray(g.HeroIconPosByIndex) ? g.HeroIconPosByIndex[idx] : null;
   if (heroPos && Number.isFinite(Number(heroPos.x)) && Number.isFinite(Number(heroPos.y))) {
     return {
-      x: Number(heroPos.x) + Number(g.PartyWardBarrierOffsetWorldX || FALIE_WARD_BARRIER_OFFSET_WORLD_X),
+      x: Number(heroPos.x) + Number(g.PartyWardBarrierOffsetWorldX || CRIMSON_WARD_BARRIER_OFFSET_WORLD_X),
       y: Number(heroPos.y),
     };
   }
   return {
-    x: Number(fallbackX || 0) + Number(g.PartyWardBarrierOffsetWorldX || FALIE_WARD_BARRIER_OFFSET_WORLD_X),
+    x: Number(fallbackX || 0) + Number(g.PartyWardBarrierOffsetWorldX || CRIMSON_WARD_BARRIER_OFFSET_WORLD_X),
     y: Number(fallbackY || 0),
   };
 }
@@ -4703,7 +4700,7 @@ function startPartyWardBarrierFadeOut(ctx) {
     : null;
   if (!visuals) return 0;
   const now = Number(g.time || 0);
-  const until = now + FALIE_WARD_BARRIER_FADE_OUT_SEC;
+  const until = now + CRIMSON_WARD_BARRIER_FADE_OUT_SEC;
   let touched = false;
   for (const key of Object.keys(visuals)) {
     const visual = visuals[key];
@@ -4715,7 +4712,7 @@ function startPartyWardBarrierFadeOut(ctx) {
       visual.state = 'fadeOut';
       visual.fadeOutStartedAt = now;
     }
-    visual.fadeOutDuration = FALIE_WARD_BARRIER_FADE_OUT_SEC;
+    visual.fadeOutDuration = CRIMSON_WARD_BARRIER_FADE_OUT_SEC;
     visual.fadeOutUntil = until;
     touched = true;
   }
@@ -7487,7 +7484,6 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     if (target) {
       resolvedTargetUID = Number(target.uid || 0);
       HeroAttackSingle(ctx, actorUID, target.uid);
-      sustainActiveFalieWardFromRedAttack(ctx, actorUID);
     }
     const now = g.time || 0;
     g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, now + 0.5);
