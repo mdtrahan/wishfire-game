@@ -1,3 +1,5 @@
+import { normalizeGameStateEnvelope } from './gameStateEnvelopeRules.mjs';
+
 const SIMULATION_CORE_CONTRACT_VERSION = 1;
 const SIMULATION_CORE_BASELINE_ID = 'main@5364ede23e3160fadb1a6ac9bf940c57bdd15f87';
 
@@ -70,7 +72,7 @@ function createSimulationCoreRequest({
   return {
     contractVersion: numberOrZero(contractVersion) || SIMULATION_CORE_CONTRACT_VERSION,
     baselineId: String(baselineId || SIMULATION_CORE_BASELINE_ID),
-    gameState: clonePacketJson(gameState, {}),
+    gameState: normalizeGameStateEnvelope(gameState),
     action: normalizeSimulationAction(action),
     rngState: normalizeSimulationRngState(rngState),
     context: normalizeSimulationContext(context),
@@ -87,7 +89,7 @@ function createSimulationCoreResponse({
 } = {}) {
   return {
     contractVersion: numberOrZero(contractVersion) || SIMULATION_CORE_CONTRACT_VERSION,
-    nextGameState: clonePacketJson(nextGameState, {}),
+    nextGameState: normalizeGameStateEnvelope(nextGameState),
     events: normalizeSimulationEvents(events),
     rngState: normalizeSimulationRngState(rngState),
     result: String(result || 'continue'),
@@ -100,6 +102,7 @@ export {
   SIMULATION_CORE_CONTRACT_VERSION,
   createSimulationCoreRequest,
   createSimulationCoreResponse,
+  normalizeGameStateEnvelope,
   normalizeSimulationContext,
   normalizeSimulationRngState,
 };

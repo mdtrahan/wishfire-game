@@ -7,6 +7,7 @@ const {
 const { InputDomainManager } = require('./inputDomains');
 const { CombatRuntimeGateway } = require('./combatRuntimeGateway.cjs');
 const simulationCorePacket = require('./simulationCorePacket.cjs');
+const gameStateEnvelopeRules = require('./gameStateEnvelopeRules.cjs');
 
 module.exports = {
   LayoutStateController,
@@ -16,4 +17,5 @@ module.exports = {
   InputDomainManager,
   CombatRuntimeGateway,
   ...simulationCorePacket,
+  ...gameStateEnvelopeRules,
 };

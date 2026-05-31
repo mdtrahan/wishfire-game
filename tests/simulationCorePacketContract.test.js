@@ -46,7 +46,7 @@ test('SimulationCore packet builders expose the contract request/response shape'
   assert.equal(SIMULATION_CORE_BASELINE_ID, 'main@5364ede23e3160fadb1a6ac9bf940c57bdd15f87');
   assert.equal(request.contractVersion, 1);
   assert.equal(request.baselineId, SIMULATION_CORE_BASELINE_ID);
-  assert.deepEqual(request.gameState.turnState.turnQueue, [{ uid: 101, type: 0 }]);
+  assert.deepEqual(request.gameState.turnState.turnQueue, [{ uid: 101, type: 0, name: '', spd: 0 }]);
   assert.deepEqual(request.rngState, {
     seed: 123,
     draws: 7,
@@ -66,8 +66,8 @@ test('SimulationCore packet builders expose the contract request/response shape'
 
   sourceGameState.turnState.turnQueue[0].uid = 999;
   sourceGameState.nested.hp = 1;
-  assert.deepEqual(request.gameState.turnState.turnQueue, [{ uid: 101, type: 0 }]);
-  assert.equal(request.gameState.nested.hp, 44);
+  assert.deepEqual(request.gameState.turnState.turnQueue, [{ uid: 101, type: 0, name: '', spd: 0 }]);
+  assert.equal(request.gameState.nested, undefined);
 
   const response = createSimulationCoreResponse({
     nextGameState: { turnState: { turnQueue: [{ uid: 202, type: 1 }], currentActorIndex: 0, capturedAtTick: 18 } },
@@ -122,7 +122,7 @@ test('CombatRuntimeGateway creates and applies SimulationCore packets without re
   const snapshot = gateway.takeSnapshot();
 
   assert.equal(snapshot.simulationCoreRequest.contractVersion, 1);
-  assert.deepEqual(snapshot.simulationCoreRequest.gameState.turnState.turnQueue, [{ uid: 101, type: 0 }]);
+  assert.deepEqual(snapshot.simulationCoreRequest.gameState.turnState.turnQueue, [{ uid: 101, type: 0, name: '', spd: 0 }]);
   assert.equal(snapshot.simulationCoreRequest.rngState.seed, 321);
   assert.equal(snapshot.simulationCoreRequest.context.checkpointId, 'CHK_SNAPSHOT_EMIT');
 
@@ -140,7 +140,7 @@ test('CombatRuntimeGateway creates and applies SimulationCore packets without re
     diagnostics: { owner: 'rust' },
   });
 
-  assert.deepEqual(authority.turnQueue, [{ uid: 202, type: 1 }]);
+  assert.deepEqual(authority.turnQueue, [{ uid: 202, type: 1, name: '', spd: 0 }]);
   assert.equal(gateway.combatState.lastSimulationCoreResponse.result, 'continue');
   assert.equal(response.rngState.draws, 5);
   assert.ok(emitted.some((event) => event.name === 'combat:simulation-response'));
