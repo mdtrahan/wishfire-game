@@ -1,3 +1,5 @@
+import { createSeededRngSimulationPacket } from '../src/core/seededRngRules.mjs';
+
 const DEFAULT_WASM_URL = './assets/simulation_core.wasm';
 const SHADOW_STATE_KEY = '__ORKA_SIMULATION_CORE_SHADOW__';
 
@@ -38,6 +40,8 @@ function getShadowState() {
       gemActionOwnerChecks: 0,
       seededRngChecks: 0,
       seededRngOwnerChecks: 0,
+      lastSeededRngPacket: null,
+      lastSeededRngOwnerPacket: null,
       singleHitOwnerSmokeRan: false,
       calculateDamageOwnerSmokeRan: false,
       combatSnapshotOwnerSmokeRan: false,
@@ -163,6 +167,8 @@ function getShadowState() {
       lastGemActionOwnerCheck: null,
       lastSeededRngCheck: null,
       lastSeededRngOwnerCheck: null,
+      lastSeededRngPacket: null,
+      lastSeededRngOwnerPacket: null,
       exports: null,
     };
   }
@@ -354,6 +360,12 @@ function updateShadowDomMarker(shadow) {
   );
   document.documentElement.dataset.simCoreShadowSeededRngOwner = String(
     shadow?.lastSeededRngOwnerCheck?.owner || '',
+  );
+  document.documentElement.dataset.simCoreShadowSeededRngPacketOwner = String(
+    shadow?.lastSeededRngOwnerPacket?.owner || '',
+  );
+  document.documentElement.dataset.simCoreShadowSeededRngPacketAction = String(
+    shadow?.lastSeededRngOwnerPacket?.actionType || '',
   );
 }
 
@@ -2557,13 +2569,34 @@ export function createSimulationCoreSeededRng(seed = 1, {
     const shadow = getShadowState();
     const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
     if (!hasSeededRngExports(exports)) {
+      const packet = createSeededRngSimulationPacket({
+        source,
+        seed: normalizedSeed,
+        draws,
+        size: 1,
+        jsValue: fallbackValue,
+        ownerHook: () => ({
+          owner: 'fallback',
+          state: 0,
+          value: fallbackValue,
+          index: 0,
+        }),
+      });
       shadow.seededRngOwnerChecks = Number(shadow.seededRngOwnerChecks || 0) + 1;
       shadow.lastSeededRngOwnerCheck = {
         source,
-        owner: 'fallback',
+        owner: packet.owner,
         seed: normalizedSeed,
         draws,
-        value: fallbackValue,
+        value: packet.value,
+        simulationCoreRequest: packet.simulationCoreRequest,
+        simulationCoreResponse: packet.simulationCoreResponse,
+      };
+      shadow.lastSeededRngOwnerPacket = {
+        owner: packet.owner,
+        result: packet.simulationCoreResponse.result,
+        actionType: packet.simulationCoreRequest.action.type,
+        source,
       };
       updateShadowDomMarker(shadow);
       return fallbackValue;
@@ -2571,23 +2604,46 @@ export function createSimulationCoreSeededRng(seed = 1, {
 
     const rustState = Number(exports.seeded_rng_next_state_shadow(normalizedSeed, draws));
     const rustValue = Number(exports.seeded_rng_next_value_shadow(normalizedSeed, draws));
+    const rustIndex = Number(exports.seeded_rng_index_shadow(normalizedSeed, draws, 1));
+    const packet = createSeededRngSimulationPacket({
+      source,
+      seed: normalizedSeed,
+      draws,
+      size: 1,
+      jsValue: fallbackValue,
+      ownerHook: () => ({
+        owner: 'rust',
+        state: rustState,
+        value: rustValue,
+        index: rustIndex,
+      }),
+    });
     shadow.seededRngOwnerChecks = Number(shadow.seededRngOwnerChecks || 0) + 1;
     shadow.lastSeededRngOwnerCheck = {
       source,
-      owner: 'rust',
+      owner: packet.owner,
       seed: normalizedSeed,
       draws,
       fallbackValue,
-      rustState,
-      rustValue,
+      rustState: packet.state,
+      rustValue: packet.value,
+      rustIndex: packet.index,
+      simulationCoreRequest: packet.simulationCoreRequest,
+      simulationCoreResponse: packet.simulationCoreResponse,
     };
-    if (Math.abs(rustValue - fallbackValue) > 0.000001 && !exportsOverride) {
+    shadow.lastSeededRngOwnerPacket = {
+      owner: packet.owner,
+      result: packet.simulationCoreResponse.result,
+      actionType: packet.simulationCoreRequest.action.type,
+      source,
+    };
+    if (Math.abs(packet.value - fallbackValue) > 0.000001 && !exportsOverride) {
       shadow.mismatches.push(shadow.lastSeededRngOwnerCheck);
       if (shadow.mismatches.length > 20) shadow.mismatches.shift();
       console.warn('[SIM_CORE_SHADOW_MISMATCH]', shadow.lastSeededRngOwnerCheck);
     }
     updateShadowDomMarker(shadow);
-    return rustValue;
+    return packet.value;
   };
 }
 
@@ -2633,6 +2689,21 @@ export function shadowSeededRng({
     normalizedDraws,
     normalizedSize,
   ));
+  const packet = createSeededRngSimulationPacket({
+    source,
+    seed: normalizedSeed,
+    draws: normalizedDraws,
+    size: normalizedSize,
+    jsState,
+    jsValue,
+    jsIndex,
+    ownerHook: () => ({
+      owner: 'rust',
+      state: rustState,
+      value: rustValue,
+      index: rustIndex,
+    }),
+  });
   shadow.seededRngChecks = Number(shadow.seededRngChecks || 0) + 1;
   shadow.lastSeededRngCheck = {
     source,
@@ -2642,14 +2713,22 @@ export function shadowSeededRng({
     jsState: Number(jsState || 0),
     rustState,
     jsValue: Number(jsValue || 0),
-    rustValue,
+    rustValue: packet.value,
     jsIndex: Number(jsIndex || 0),
-    rustIndex,
+    rustIndex: packet.index,
+    simulationCoreRequest: packet.simulationCoreRequest,
+    simulationCoreResponse: packet.simulationCoreResponse,
+  };
+  shadow.lastSeededRngPacket = {
+    owner: packet.owner,
+    result: packet.simulationCoreResponse.result,
+    actionType: packet.simulationCoreRequest.action.type,
+    source,
   };
   if (
     Math.abs(rustState - Number(jsState || 0)) > 0.000001
-    || Math.abs(rustValue - Number(jsValue || 0)) > 0.000001
-    || Math.abs(rustIndex - Number(jsIndex || 0)) > 0.000001
+    || Math.abs(packet.value - Number(jsValue || 0)) > 0.000001
+    || Math.abs(packet.index - Number(jsIndex || 0)) > 0.000001
   ) {
     shadow.mismatches.push(shadow.lastSeededRngCheck);
     if (shadow.mismatches.length > 20) shadow.mismatches.shift();

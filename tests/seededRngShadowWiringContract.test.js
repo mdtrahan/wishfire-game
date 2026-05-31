@@ -13,6 +13,7 @@ test('simulation core module exposes seeded RNG parity checks and ownership adap
   assert.match(shadowSrc, /window\.__ORKA_SEEDED_RNG_OWNER__/);
   assert.match(shadowSrc, /export function shadowSeededRng/);
   assert.match(shadowSrc, /export function createSimulationCoreSeededRng/);
+  assert.match(shadowSrc, /createSeededRngSimulationPacket/);
   assert.match(shadowSrc, /seeded_rng_next_state_shadow/);
   assert.match(shadowSrc, /seeded_rng_next_value_shadow/);
   assert.match(shadowSrc, /seeded_rng_index_shadow/);
@@ -21,8 +22,10 @@ test('simulation core module exposes seeded RNG parity checks and ownership adap
   assert.match(shadowSrc, /dataset\.simCoreShadowSeededRngChecks/);
   assert.match(shadowSrc, /dataset\.simCoreShadowSeededRngOwnerChecks/);
   assert.match(shadowSrc, /dataset\.simCoreShadowSeededRngOwner/);
+  assert.match(shadowSrc, /dataset\.simCoreShadowSeededRngPacketAction/);
+  assert.match(shadowSrc, /lastSeededRngOwnerPacket/);
   assert.match(shadowSrc, /return jsValue;/);
-  assert.match(shadowSrc, /return rustValue;/);
+  assert.match(shadowSrc, /return packet\.value;/);
 });
 
 test('app submits seeded RNG fixture facts and delegates runtime RNG decisions to Rust owner', () => {

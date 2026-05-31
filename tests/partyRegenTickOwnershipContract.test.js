@@ -10,7 +10,9 @@ const shadowModulePath = path.join(__dirname, '..', 'web-runner', 'systems', 'si
 
 function loadShadowModule() {
   const original = fs.readFileSync(shadowModulePath, 'utf8');
-  const transformed = `${original.replace(/\bexport\s+/g, '')}
+  const transformed = `${original
+    .replace(/^import[\s\S]*?from\s+['"][^'"]+['"];\n/gm, '')
+    .replace(/\bexport\s+/g, '')}
 
 module.exports = {
   createSimulationCorePartyRegenTickResolution,
