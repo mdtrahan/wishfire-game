@@ -82,6 +82,18 @@ function makeContext() {
   return { ctx, calls };
 }
 
+function installSequenceRandom(ctx, values) {
+  let index = 0;
+  const draws = [];
+  ctx.state.globals.RuntimeRandom = () => {
+    const value = Number(values[Math.min(index, values.length - 1)] ?? 0);
+    index += 1;
+    draws.push(value);
+    return value;
+  };
+  return draws;
+}
+
 test('Magic Fruit is a mirrored party draw option that heals once through ApplyPartyHeal', () => {
   const expectedExistingPartyIds = [
     'party_fresh_start',
@@ -110,6 +122,7 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
     assert.equal(partyIds[expectedExistingPartyIds.length], 'party_magic_fruit');
 
     const { ctx: defaultCtx } = makeContext();
+    installSequenceRandom(defaultCtx, [0.84, 0, 0]);
     const defaultOpened = mod.ForceAstralFlowSkillDraught(defaultCtx, 100);
     assert.equal(defaultOpened.ok, true);
     const defaultMagicFruit = defaultOpened.candidates.find(candidate => candidate.id === 'party_magic_fruit');
@@ -147,5 +160,25 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
     assert.equal(selectedAgain.reason, 'draught_closed');
     assert.equal(calls.filter(call => call.name === 'ApplyPartyHeal').length, 1);
     assert.equal(ctx.state.globals.PartyHP, 51);
+  }
+});
+
+test('normal party skill draught samples the full party pool through RuntimeRandom', () => {
+  for (const modulePath of [runtimePath, scriptsPath]) {
+    const mod = loadModule(modulePath);
+    const { ctx } = makeContext();
+    const draws = installSequenceRandom(ctx, [0.999, 0, 0]);
+
+    const opened = mod.ForceAstralFlowSkillDraught(ctx, 100);
+
+    assert.equal(opened.ok, true);
+    assert.ok(draws.length >= 1, 'normal skill draw should consume RuntimeRandom');
+    assert.equal(opened.candidates.length, 3);
+    assert.equal(new Set(opened.candidates.map(candidate => candidate.id)).size, 3);
+    assert.equal(opened.candidates[0].id, 'party_crimson_ward');
+    assert.ok(
+      opened.candidates.some(candidate => candidate.id === 'party_crimson_ward'),
+      'Crimson Ward should be reachable from the normal random draw'
+    );
   }
 });

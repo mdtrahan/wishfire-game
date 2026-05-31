@@ -971,20 +971,29 @@ function appendSkillDraughtTrace(g, action, payload = {}) {
   if (g.SkillDraughtTrace.length > 80) g.SkillDraughtTrace.splice(0, g.SkillDraughtTrace.length - 80);
 }
 
+function sampleSkillDraughtDefinitions(ctx, defs, count) {
+  const remaining = Array.isArray(defs) ? defs.slice() : [];
+  const picked = [];
+  while (picked.length < count && remaining.length) {
+    const index = randomIndex(ctx, remaining.length);
+    const [def] = remaining.splice(index, 1);
+    if (def) picked.push(def);
+  }
+  return picked;
+}
+
 function buildSkillDraughtCandidates(ctx, heroUID, forcedSkillId = '') {
   const forced = GetSkillDefinition(ctx, forcedSkillId);
   const defs = GetPartySkillDefinitions();
-  let ordered = defs.slice();
+  let ordered = [];
   if (forced && String(forced.owner || '').toLowerCase() === 'party') {
-    ordered = [forced].concat(defs.filter(def => String(def.id) !== String(forced.id)));
+    ordered = [forced].concat(
+      sampleSkillDraughtDefinitions(ctx, defs.filter(def => String(def.id) !== String(forced.id)), 2)
+    );
   } else {
-    const magicFruit = defs.find(def => String(def.id) === 'party_magic_fruit');
-    if (magicFruit) {
-      const withoutMagicFruit = ordered.filter(def => String(def.id) !== 'party_magic_fruit');
-      ordered = withoutMagicFruit.slice(0, 2).concat(magicFruit, withoutMagicFruit.slice(2));
-    }
+    ordered = sampleSkillDraughtDefinitions(ctx, defs, 3);
   }
-  return ordered.slice(0, 3).map((def, index) => makeSkillDraughtCandidate(def, index));
+  return ordered.map((def, index) => makeSkillDraughtCandidate(def, index));
 }
 
 function activateMagicFruitSkill(ctx) {

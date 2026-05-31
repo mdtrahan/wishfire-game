@@ -7,6 +7,7 @@ Falie was granting or sustaining party ward (Crimson Ward behavior) from the red
 - Red supergem is a single-target cluster attack.
 - Red supergem is not a skill trigger.
 - Crimson Ward belongs to skill-card selection flow.
+- Normal skill-card selection offers randomized party skills from the full party pool; Crimson Ward must be reachable there without hero linkage or supergem coupling.
 - Crimson Ward is party-scoped and not linked to any hero identity.
 
 ## Required Runtime Contract
@@ -27,3 +28,4 @@ Falie was granting or sustaining party ward (Crimson Ward behavior) from the red
   - Falie red supergem does not trigger Crimson Ward.
   - Red supergem remains single-target cluster behavior.
   - Crimson Ward still activates via skill-card selection flow.
+  - Normal skill draught consumes runtime RNG and can surface Crimson Ward from the full party pool.

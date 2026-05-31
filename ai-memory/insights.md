@@ -90,6 +90,7 @@
 - **AOE heal readability rule**: if players must quickly perceive threat under fast pacing, prefer equal per-target heal application over split pools unless split behavior is explicitly part of design.
 - **Outcome-table tuning workflow**: for event-style randomness (purple amp), keep probabilities in one visible table and tune only weights first; avoid adding pity/extra systems until weight tuning is proven insufficient.
 - **Mirror discipline rule**: deterministic combat rules must be edited in both runtime mirrors (`web-runner/modules/functionBank.js` and `Scripts/functionBank.js`) in the same patch cycle.
+- **Random draw reachability rule**: gameplay card draws must sample from the full eligible pool, not the first entries in registry order. If QA or acceptance requires a later skill such as Crimson Ward to be playable, add a deterministic RNG contract proving that normal draw can reach it without forced hooks.
 
 ## 2026-03-09 — Encounter Slotting Seam
 - **Initial vs refill seam**: center-slot strongest logic belongs at package-to-slot assignment seams, not inside per-slot respawn picker logic.
