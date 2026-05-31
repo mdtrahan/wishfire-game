@@ -93,13 +93,21 @@ No files were removed because this pass found no content that was confirmed gene
 - Full `npm test` is not used as the consolidation merge gate because no production code branch was merged in this pass and the final Rust audit already records legacy non-Rust/static-test failures outside the accepted Rust boundary.
 
 ## Remote Push Confirmation
-- Pending at report creation time. Push should include:
-  - `main`
+- Backup/archive refs pushed to `origin`:
   - `backup/pre-consolidation-20260531-100509`
-  - archive branches created in this pass
+  - `archive/ORKA-crwd-crimson-ward-wip-20260531-100509`
+  - `archive/ORKA-jecl-supergem-lock-plan-wip-20260531-100509`
+  - `archive/ORKA-idfa-app-shell-extraction-20260531-100509`
+  - `archive/ORKA-rrxj.9-autoplay-priority-alt-20260531-100509`
+  - `archive/ORKA-v4mh-simulation-core-contract-20260531-100509`
+  - `rollback/pre-consolidation-report-merge-20260531-101854`
+- Direct `main` push was rejected by GitHub repository rules: changes must land through a pull request.
+- Consolidation PR: `https://github.com/mdtrahan/wishfire-game/pull/21`
+- PR #21 merged to remote `main` at `2026-05-31T17:24:10Z`.
+- Remote merge commit: `90b9807a4f06ea60b2494ce594b796d8320bbd6c`.
 
 ## Decision Summary
 - Preserve by default: done.
 - Merge selectively: no side branch qualified.
 - Archive valuable work without polluting production: done.
-- Keep `main` stable and representative of current production: done, subject to final push.
+- Keep `main` stable and representative of current production: done.
