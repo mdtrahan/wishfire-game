@@ -385,3 +385,7 @@
 ## 2026-05-31 — Supergem And Skill-Card Effects Must Stay In Separate Seams
 - Supergem activations and skill-card selections are separate trigger seams. If a supergem path directly grants a skill-owned effect, regressions will silently re-couple unrelated systems.
 - For supergem/skill crossovers, contract both negative and positive paths: assert the supergem does **not** open/select skills or grant the skill effect, and assert the same effect still appears through skill-card selection.
+
+## 2026-05-31 — Hero Match Routes Must Not Own Skill-Card Identity
+- If a named ability is moved into skill-card draw, remove that identity from gem-match logs, profiles, and direct payload branches. A generic match that still says the old ability name will be indistinguishable from a live skill trigger in QA.
+- For ability separation bugs, test both sides of the boundary: the old match route must stay generic, and the new card route must own the renamed payload and presentation state.

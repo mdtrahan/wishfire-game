@@ -167,7 +167,7 @@ test('normal party skill draught samples the full party pool through RuntimeRand
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const { ctx } = makeContext();
-    const draws = installSequenceRandom(ctx, [0.999, 0, 0]);
+    const draws = installSequenceRandom(ctx, [0.9, 0, 0]);
 
     const opened = mod.ForceAstralFlowSkillDraught(ctx, 100);
 

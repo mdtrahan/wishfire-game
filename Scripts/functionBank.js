@@ -826,7 +826,11 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: 'party_chain_pop', owner: 'Party', slot: 9, title: 'Chain Pop', cardText: 'Trigger an extra board effect from a match.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On match', payloadImplemented: false },
   { id: 'party_magic_fruit', owner: 'Party', slot: 10, title: 'Magic Fruit', cardText: 'Heals party for 40% of max HP', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true },
   { id: 'party_crimson_ward', owner: 'Party', slot: 11, title: 'Crimson Ward', cardText: 'Grant a temporary party ward before true HP is damaged.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true },
+  { id: 'party_faze', owner: 'Party', slot: 12, title: 'Faze', cardText: 'Blights the field, poisoning enemies for the remainder of the session.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On selection', payloadImplemented: true },
 ]);
+
+const FAZE_TAINTED_GROUND_DURATION_HERO_TEAM_TURNS = 3;
+const FAZE_TAINTED_GROUND_DAMAGE_SCALE = 0.5;
 
 function cloneSkillDefinition(def) {
   return {
@@ -961,6 +965,151 @@ function activateMagicFruitSkill(ctx) {
   return healAmount;
 }
 
+function getFazeHeroTeamTurnSpan(ctx) {
+  const g = getGlobals(ctx);
+  if (Array.isArray(g.TurnOrderArray) && g.TurnOrderArray.length > 0) {
+    const heroSlots = g.TurnOrderArray.filter(slot => Number(slot?.type || 0) === 0);
+    if (heroSlots.length > 0) return heroSlots.length;
+  }
+  if (Array.isArray(g.RoundRoster) && g.RoundRoster.length > 0) {
+    const heroSlots = g.RoundRoster.filter(slot => Number(slot?.type || 0) === 0);
+    if (heroSlots.length > 0) return heroSlots.length;
+  }
+  const aliveHeroes = getEntities(ctx).filter(entity => (
+    entity
+    && entity.kind === 'hero'
+    && Number(entity.hp ?? 1) > 0
+  ));
+  return Math.max(1, aliveHeroes.length || 1);
+}
+
+function getFazeHeroTeamTurnSerial(ctx) {
+  const explicit = Number(getGlobals(ctx).HeroTeamTurnSerial);
+  if (Number.isFinite(explicit) && explicit >= 0) return Math.floor(explicit);
+  return 0;
+}
+
+function getNextFazeTaintedGroundZoneId(ctx) {
+  const g = getGlobals(ctx);
+  const next = Math.max(1, Number(g.NextTaintedGroundZoneId || 1));
+  g.NextTaintedGroundZoneId = next + 1;
+  return `tg-${next}`;
+}
+
+function ensureFazeTaintedGroundZones(ctx) {
+  const g = getGlobals(ctx);
+  if (!Array.isArray(g.TaintedGroundZones)) g.TaintedGroundZones = [];
+  return g.TaintedGroundZones;
+}
+
+function refreshFazeTaintedGroundZone(ctx, sourceUID, enemy, dotTotalDamage, startsAt) {
+  const g = getGlobals(ctx);
+  const zones = ensureFazeTaintedGroundZones(ctx);
+  const slotIndex = getTaintedGroundSlotIndex(enemy);
+  const enemyX = Number(enemy?.x);
+  const enemyY = Number(enemy?.y);
+  const anchorWorldX = Number.isFinite(enemyX) ? enemyX : null;
+  const anchorWorldY = Number.isFinite(enemyY) ? enemyY : null;
+  const nowTurnSerial = Number(g.TurnSerial || 0);
+  const heroTeamTurnSpan = getFazeHeroTeamTurnSpan(ctx);
+  const nowHeroTeamTurnSerial = getFazeHeroTeamTurnSerial(ctx);
+  const totalHeroTeamTurns = FAZE_TAINTED_GROUND_DURATION_HERO_TEAM_TURNS;
+  for (let i = zones.length - 1; i >= 0; i -= 1) {
+    const zone = zones[i];
+    if (!zone) continue;
+    if (Number(zone.sourceUID || 0) !== Number(sourceUID || 0)) continue;
+    if (Number(zone.slotIndex || 0) !== slotIndex) continue;
+    zone.targetUID = Number(enemy?.uid || 0);
+    if (!Number.isFinite(Number(zone.anchorWorldX)) && anchorWorldX != null) zone.anchorWorldX = anchorWorldX;
+    if (!Number.isFinite(Number(zone.anchorWorldY)) && anchorWorldY != null) zone.anchorWorldY = anchorWorldY;
+    zone.remainingTurns = totalHeroTeamTurns;
+    zone.durationHeroTeamTurns = totalHeroTeamTurns;
+    zone.heroTeamTurnSpan = heroTeamTurnSpan;
+    zone.createdTurnSerial = nowTurnSerial;
+    zone.lastSeenTurnSerial = nowTurnSerial;
+    zone.createdHeroTeamTurnSerial = nowHeroTeamTurnSerial;
+    zone.expiresAtHeroTeamTurnSerial = nowHeroTeamTurnSerial + totalHeroTeamTurns;
+    zone.lastSeenHeroTeamTurnSerial = nowHeroTeamTurnSerial;
+    zone.visualStartsAt = Number(startsAt || 0);
+    zone.activeAt = Number(startsAt || 0);
+    zone.fadeStartedAt = null;
+    zone.dotTotalDamage = Math.max(1, Math.floor(Number(dotTotalDamage || 1) || 1));
+    zone.appliedUIDs = { [Number(enemy?.uid || 0)]: true };
+    zone.effectName = 'TaintedGround';
+    zone.visual = 'blight_disc';
+    return zone;
+  }
+  const zone = {
+    id: getNextFazeTaintedGroundZoneId(ctx),
+    sourceUID: Number(sourceUID || 0),
+    slotIndex,
+    targetUID: Number(enemy?.uid || 0),
+    anchorWorldX,
+    anchorWorldY,
+    remainingTurns: totalHeroTeamTurns,
+    durationHeroTeamTurns: totalHeroTeamTurns,
+    heroTeamTurnSpan,
+    createdTurnSerial: nowTurnSerial,
+    lastSeenTurnSerial: nowTurnSerial,
+    createdHeroTeamTurnSerial: nowHeroTeamTurnSerial,
+    expiresAtHeroTeamTurnSerial: nowHeroTeamTurnSerial + totalHeroTeamTurns,
+    lastSeenHeroTeamTurnSerial: nowHeroTeamTurnSerial,
+    visualStartsAt: Number(startsAt || 0),
+    activeAt: Number(startsAt || 0),
+    dotTotalDamage: Math.max(1, Math.floor(Number(dotTotalDamage || 1) || 1)),
+    appliedUIDs: { [Number(enemy?.uid || 0)]: true },
+    effectName: 'TaintedGround',
+    visual: 'blight_disc',
+  };
+  zones.push(zone);
+  return zone;
+}
+
+function activateFazeSkill(ctx, actorUID) {
+  const g = getGlobals(ctx);
+  const heroUID = Number(actorUID || 0);
+  const actor = GetActorByUID(ctx, heroUID);
+  if (!actor) return 0;
+  const enemies = getEnemies(ctx).filter(enemy => Number(enemy?.hp || 0) > 0);
+  if (!enemies.length) return 0;
+  const actorName = String(actor.name || '?');
+  const baseDotDamage = Math.max(1, Math.floor(GetEffectiveStat(ctx, actor, 'MAG') * 0.75));
+  const dotTotalDamage = Math.max(1, Math.floor(baseDotDamage * FAZE_TAINTED_GROUND_DAMAGE_SCALE));
+  const totalDamage = dotTotalDamage * enemies.length;
+  const now = Number(g.time || 0);
+  const hitDelay = Math.max(0.14 + 0.75 + 0.18, 1.07);
+  const applyAt = now + hitDelay;
+  g.PendingHeroHits = g.PendingHeroHits || [];
+  for (const enemy of enemies) {
+    const zone = refreshFazeTaintedGroundZone(ctx, heroUID, enemy, dotTotalDamage, applyAt);
+    g.PendingHeroHits.push({
+      at: applyAt,
+      heroUID,
+      targetUID: Number(enemy.uid || 0),
+      dmg: 0,
+      finalDmg: 0,
+      dotTotalDamage,
+      powerAmpMultiplier: 0,
+      consumePowerAmp: 0,
+      effectType: 'dot_apply',
+      effectName: 'Blight',
+      actionName: 'Faze',
+      calcPath: 'magicCalc',
+      heroName: actorName,
+      heroType: 'magic',
+      taintedGroundZoneId: zone.id,
+      taintedGroundSlotIndex: zone.slotIndex,
+      msg: `${actorName} corrupted ${String(enemy.name || '?')}'s ground with blight for ${dotTotalDamage}!`,
+    });
+  }
+  LogCombat(ctx, `${actorName} used Faze to blight the field for ${totalDamage}!`);
+  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), applyAt + 0.42);
+  g.DeferAdvance = 1;
+  g.AdvanceAfterAction = 1;
+  g.ActionOwnerUID = heroUID;
+  return totalDamage;
+}
+
 export function GetSkillDraughtState(ctx) {
   const g = ensureSkillDraughtState(ctx);
   return {
@@ -1022,6 +1171,7 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
   UpdateAstralFlowAmpBar(ctx);
   if (sessionSkill.id === 'party_magic_fruit') activateMagicFruitSkill(ctx);
   if (sessionSkill.id === 'party_crimson_ward') activateCrimsonWardSkill(ctx);
+  if (sessionSkill.id === 'party_faze') activateFazeSkill(ctx, uid);
   const scope = String(sessionSkill.owner || '').toLowerCase() === 'party' ? 'party' : 'hero';
   appendSkillDraughtTrace(g, 'select', { heroUID: uid, skillId: sessionSkill.id, scope });
   g.CombatActionPinnedLine = '';
@@ -5731,8 +5881,7 @@ export function HeroAttackAOE(ctx, heroUID) {
   const actorName = actor ? (actor.name || '?') : '?';
   const mode = actor && actor.attackType === 'magic' ? 'magic' : 'melee';
   const heroIndex = actor && actor.heroIndex != null ? actor.heroIndex : 0;
-  const isKojonn = String(actor && actor.name || '') === 'Kojonn';
-  const aoeName = isKojonn ? 'Faze' : (['Pummel', 'Swipe', 'Burst', 'Faze'][heroIndex] || 'AOE');
+  const aoeName = ['Pummel', 'Swipe', 'Burst', 'AOE'][heroIndex] || 'AOE';
   let totalDamage = 0;
   const g = getGlobals(ctx);
   let ampMult = GetPowerAmpMultiplierForActor(ctx, heroUID);
@@ -5742,18 +5891,7 @@ export function HeroAttackAOE(ctx, heroUID) {
   }
   const enemies = getEnemies(ctx);
   const hits = [];
-  const baseKojonnDotDamage = isKojonn
-    ? Math.max(1, Math.floor(GetEffectiveStat(ctx, actor, 'MAG') * 0.75))
-    : 0;
-  const kojonnDotDamage = isKojonn
-    ? (ampMult > 0 ? Math.max(1, Math.ceil(baseKojonnDotDamage * ampMult)) : baseKojonnDotDamage)
-    : 0;
   for (const e of enemies) {
-    if (isKojonn) {
-      hits.push({ targetUID: e.uid, dotTotalDamage: kojonnDotDamage, consumePowerAmp: 0 });
-      totalDamage += kojonnDotDamage;
-      continue;
-    }
     const dmg = CalculateDamage(ctx, heroUID, e.uid, mode);
     const finalDmg = ampMult > 0 ? Math.max(1, Math.ceil(dmg * ampMult)) : dmg;
     hits.push({ targetUID: e.uid, dmg, powerAmpMultiplier: ampMult, consumePowerAmp: 0, finalDmg });
@@ -5771,25 +5909,16 @@ export function HeroAttackAOE(ctx, heroUID) {
       targetUID: hit.targetUID,
       dmg: hit.dmg,
       finalDmg: Number(hit.finalDmg || 0),
-      dotTotalDamage: Number(hit.dotTotalDamage || 0),
       powerAmpMultiplier: hit.powerAmpMultiplier,
       consumePowerAmp: hit.consumePowerAmp,
-      effectType: isKojonn ? 'dot_apply' : 'damage',
-      calcPath: isKojonn ? 'fazeDot' : (mode === 'magic' ? 'magicCalc' : 'meleeCalc'),
+      effectType: 'damage',
+      calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
       heroName: actorName,
       heroType: mode,
     };
-    if (isKojonn) {
-      packet.effectName = 'Blight';
-      packet.actionName = 'Faze';
-    }
     g.PendingHeroHits.push(packet);
   }
-  if (isKojonn) {
-    LogCombat(ctx, `${actorName} used ${aoeName} to spread blight over time for ${totalDamage}!`);
-  } else {
-    LogCombat(ctx, `${actorName} used ${aoeName} on all enemies for ${totalDamage}!`);
-  }
+  LogCombat(ctx, `${actorName} used ${aoeName} on all enemies for ${totalDamage}!`);
 }
 
 function getTaintedGroundSlotIndex(enemy) {
@@ -7416,9 +7545,7 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
   }
   console.log(`[SKILL] start skill=${skillId} actor=${actorName} uid=${actorUID} phase=${g.TurnPhase} busy=${g.IsPlayerBusy} canPick=${g.CanPickGems}`);
   if (actor && actor.kind === 'hero' && (skillId === 'HERO_SINGLE' || skillId === 'HERO_AOE')) {
-    g.NextHeroActionProfile = skillId === 'HERO_AOE'
-      ? (String(actor.name || '') === 'Kojonn' ? 'faze' : 'aoe')
-      : 'single';
+    g.NextHeroActionProfile = skillId === 'HERO_AOE' ? 'aoe' : 'single';
     const lungeStarted = StartHeroLunge(ctx, actorUID);
     if (lungeStarted === 0 || lungeStarted === false) {
       logActionGateBlock(g, '[ACTION_HANDOFF_REFUSED]', {

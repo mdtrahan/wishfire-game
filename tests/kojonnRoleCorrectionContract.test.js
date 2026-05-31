@@ -86,17 +86,16 @@ function runHeroAoeProfileCase(src, actor) {
   return { profileAtLunge, aoeCalled };
 }
 
-test('Kojonn green AOE uses blight-over-time packets instead of generic burst damage in both mirrors', () => {
+test('Kojonn green AOE now uses the shared generic AOE path in both mirrors', () => {
   const runtimeSrc = read('web-runner/modules/functionBank.js');
   const scriptsSrc = read('Scripts/functionBank.js');
 
   for (const src of [runtimeSrc, scriptsSrc]) {
-    assert.match(src, /const isKojonn = String\(actor && actor\.name \|\| ''\) === 'Kojonn';/);
-    assert.match(src, /const aoeName = isKojonn \? 'Faze' :/);
-    assert.match(src, /const baseKojonnDotDamage = isKojonn/);
-    assert.match(src, /dotTotalDamage: Number\(hit\.dotTotalDamage \|\| 0\),/);
-    assert.match(src, /effectType: isKojonn \? 'dot_apply' : 'damage',/);
-    assert.match(src, /used \$\{aoeName\} to spread blight over time for \$\{totalDamage\}!/);
+    assert.doesNotMatch(src, /const isKojonn = String\(actor && actor\.name \|\| ''\) === 'Kojonn';/);
+    assert.doesNotMatch(src, /dotTotalDamage: Number\(hit\.dotTotalDamage \|\| 0\),/);
+    assert.doesNotMatch(src, /\['Pummel', 'Swipe', 'Burst', 'Faze'\]/);
+    assert.match(src, /effectType: 'damage',/);
+    assert.match(src, /used \$\{aoeName\} on all enemies for \$\{totalDamage\}!/);
     assert.match(src, /export function QueueEnemyDamageOverTime\(ctx, actorUID, enemyUID, totalDamage, options = undefined\) \{/);
     assert.match(src, /g\.EnemyDamageOverTime\.push\(\{/);
     assert.match(src, /const effectName = String\(options\?\.effectName \|\| 'Blight'\);/);
@@ -104,14 +103,14 @@ test('Kojonn green AOE uses blight-over-time packets instead of generic burst da
   }
 });
 
-test('Kojonn regular green match keeps a Faze expression profile instead of common AOE', () => {
+test('Kojonn regular green match uses common AOE presentation profile', () => {
   for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
     const src = read(relPath);
     const kojonn = runHeroAoeProfileCase(src, { uid: 4, name: 'Kojonn', kind: 'hero' });
     const falie = runHeroAoeProfileCase(src, { uid: 1, name: 'Falie', kind: 'hero' });
 
     assert.equal(kojonn.aoeCalled, true, `${relPath} should still resolve through the green AOE skill`);
-    assert.equal(kojonn.profileAtLunge, 'faze', `${relPath} should tag Kojonn green as Faze expression`);
+    assert.equal(kojonn.profileAtLunge, 'aoe', `${relPath} should keep Kojonn green on common AOE profile`);
     assert.equal(falie.profileAtLunge, 'aoe', `${relPath} should keep non-Kojonn green on the common AOE profile`);
   }
 });
