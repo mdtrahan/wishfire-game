@@ -31,7 +31,7 @@ import {
   deriveBattleStartRoundPartition,
   nextTeamPhaseType,
 } from '../src/core/schedulerRules.mjs';
-import { resolveRoundPointerAdvance } from '../src/core/roundPointerAdvanceRules.mjs';
+import { createRoundPointerAdvanceSimulationPacket } from '../src/core/roundPointerAdvanceRules.mjs';
 import { resolveTurnPhaseAssignment } from '../src/core/turnPhaseAssignmentRules.mjs';
 import { resolveTurnOrderGroupProjection } from '../src/core/turnOrderGroupRules.mjs';
 import { resolveEnemySkillChoice } from '../src/core/enemySkillChoiceRules.mjs';
@@ -3334,7 +3334,7 @@ export function ProcessCurrentTurn(ctx) {
     const groups = g.RoundGroups;
     const group = groups[g.RoundGroupIndex] || { members: [] };
     const root = typeof globalThis !== 'undefined' ? globalThis : null;
-    const pointerAdvance = resolveRoundPointerAdvance({
+    const pointerAdvance = createRoundPointerAdvanceSimulationPacket({
       source: 'functionBank.ProcessCurrentTurn',
       roundMemberIndex: Number(g.RoundMemberIndex || 0),
       groupMemberCount: (group.members || []).length,
@@ -3350,6 +3350,13 @@ export function ProcessCurrentTurn(ctx) {
       source: 'functionBank.ProcessCurrentTurn',
       code: Number(pointerAdvance.code || 0),
       jsCode: Number(pointerAdvance.jsDecision?.code ?? pointerAdvance.code ?? 0),
+      result: String(pointerAdvance.simulationCoreResponse?.result || ''),
+    };
+    g.LastRoundPointerAdvancePacket = {
+      owner: String(pointerAdvance.owner || 'fallback'),
+      result: String(pointerAdvance.simulationCoreResponse?.result || ''),
+      actionType: String(pointerAdvance.simulationCoreRequest?.action?.type || ''),
+      source: 'functionBank.ProcessCurrentTurn',
     };
     g.RoundMemberIndex = Number(pointerAdvance.nextMemberIndex || 0);
     if (Number(pointerAdvance.groupComplete || 0) === 1) {
