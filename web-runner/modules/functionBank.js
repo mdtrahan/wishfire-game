@@ -20,7 +20,7 @@ import {
 import {
   TURN_ACTOR_ELIGIBILITY_ACT,
   TURN_ACTOR_ELIGIBILITY_HOLD,
-  resolveTurnActorEligibility,
+  createTurnActorEligibilitySimulationPacket,
 } from '../src/core/turnActorEligibilityRules.mjs';
 import {
   buildFixedCycleSlots,
@@ -7621,18 +7621,32 @@ function resolveProcessTurnActorEligibility(ctx, {
   blueBuffSequenceActive = 0,
 } = {}) {
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
-  const result = resolveTurnActorEligibility({
+  const actorExists = actor ? 1 : 0;
+  const actorHp = Number(actor?.hp ?? 0);
+  const normalizedPendingGroupMatches = Number(roundActive || 0) && pendingGroup === roundGroupIndex ? 1 : 0;
+  const result = createTurnActorEligibilitySimulationPacket({
     source,
     turnType: Number(turnType || 0),
-    actorExists: actor ? 1 : 0,
-    actorHp: Number(actor?.hp ?? 0),
+    actorExists,
+    actorHp,
     partyHp: Number(partyHp || 0),
     roundActive: Number(roundActive || 0) ? 1 : 0,
-    pendingGroupMatches: Number(roundActive || 0) && pendingGroup === roundGroupIndex ? 1 : 0,
+    pendingGroupMatches: normalizedPendingGroupMatches,
     blueBuffSequenceActive: Number(blueBuffSequenceActive || 0) ? 1 : 0,
     ownerHook: root && typeof root.__ORKA_TURN_ACTOR_ELIGIBILITY_OWNER__ === 'function'
       ? root.__ORKA_TURN_ACTOR_ELIGIBILITY_OWNER__
       : null,
+    gameState: {
+      turnState: {
+        turnType: Number(turnType || 0),
+        actorExists,
+        actorHp,
+        partyHp: Number(partyHp || 0),
+        roundActive: Number(roundActive || 0) ? 1 : 0,
+        pendingGroupMatches: normalizedPendingGroupMatches,
+        blueBuffSequenceActive: Number(blueBuffSequenceActive || 0) ? 1 : 0,
+      },
+    },
   });
   const g = getGlobals(ctx);
   g.LastTurnActorEligibilityOwner = {
@@ -7640,6 +7654,13 @@ function resolveProcessTurnActorEligibility(ctx, {
     source: String(source || 'unknown'),
     code: Number(result.code || 0),
     jsCode: Number(result.jsCode || 0),
+    result: String(result.simulationCoreResponse?.result || ''),
+  };
+  g.LastTurnActorEligibilityPacket = {
+    owner: String(result.owner || 'fallback'),
+    result: String(result.simulationCoreResponse?.result || ''),
+    actionType: String(result.simulationCoreRequest?.action?.type || ''),
+    source: String(source || 'unknown'),
   };
   return result;
 }
