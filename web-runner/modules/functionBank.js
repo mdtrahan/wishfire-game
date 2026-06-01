@@ -879,6 +879,7 @@ const PARTY_SKILL_DRAW_EXCLUDED_IDS = Object.freeze(new Set([
   'party_guard_rail',
   'party_weaken',
   'party_last_push',
+  'party_chain_pop',
 ]));
 
 const FAZE_TAINTED_GROUND_DURATION_HERO_TEAM_TURNS = 3;

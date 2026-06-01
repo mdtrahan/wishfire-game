@@ -167,7 +167,7 @@ test('normal party skill draught samples the full party pool through RuntimeRand
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const { ctx } = makeContext();
-    const draws = installSequenceRandom(ctx, [0.85, 0, 0]);
+    const draws = installSequenceRandom(ctx, [0.7, 0, 0]);
 
     const opened = mod.ForceAstralFlowSkillDraught(ctx, 100);
 
@@ -191,6 +191,7 @@ test('normal party skill draught excludes removed stubs from random and forced c
     { id: 'party_guard_rail', title: 'Guard Rail', randomValues: [0.25, 0, 0] },
     { id: 'party_weaken', title: 'Weaken', randomValues: [0.4, 0, 0] },
     { id: 'party_last_push', title: 'Last Push', randomValues: [0.65, 0, 0] },
+    { id: 'party_chain_pop', title: 'Chain Pop', randomValues: [0.7, 0, 0] },
   ];
 
   for (const modulePath of [runtimePath, scriptsPath]) {
