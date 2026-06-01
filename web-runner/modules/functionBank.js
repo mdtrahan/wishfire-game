@@ -872,6 +872,10 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: 'party_faze', owner: 'Party', slot: 12, title: 'Faze', cardText: 'Blights the field, poisoning enemies for the remainder of the session.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On selection', payloadImplemented: true },
 ]);
 
+const PARTY_SKILL_DRAW_EXCLUDED_IDS = Object.freeze(new Set([
+  'party_momentum',
+]));
+
 const FAZE_TAINTED_GROUND_DURATION_HERO_TEAM_TURNS = 3;
 const FAZE_TAINTED_GROUND_DAMAGE_SCALE = 0.5;
 
@@ -900,6 +904,12 @@ function getSkillDefinitionById(skillId) {
   const key = String(skillId || '').trim().toLowerCase();
   return HERO_SKILL_DEFINITIONS.concat(PARTY_SKILL_DEFINITIONS)
     .find(def => String(def.id || '').toLowerCase() === key) || null;
+}
+
+function getPartySkillDrawDefinitions() {
+  return PARTY_SKILL_DEFINITIONS.filter(def => (
+    !PARTY_SKILL_DRAW_EXCLUDED_IDS.has(String(def.id || '').toLowerCase())
+  ));
 }
 
 export function GetHeroSkillDefinitions(ctx, heroName = '') {
@@ -987,8 +997,9 @@ function sampleSkillDraughtDefinitions(ctx, defs, count) {
 }
 
 function buildSkillDraughtCandidates(ctx, heroUID, forcedSkillId = '') {
-  const forced = GetSkillDefinition(ctx, forcedSkillId);
-  const defs = GetPartySkillDefinitions();
+  const defs = getPartySkillDrawDefinitions();
+  const forcedKey = String(forcedSkillId || '').trim().toLowerCase();
+  const forced = defs.find(def => String(def.id || '').toLowerCase() === forcedKey) || null;
   let ordered = [];
   if (forced && String(forced.owner || '').toLowerCase() === 'party') {
     ordered = [forced].concat(
