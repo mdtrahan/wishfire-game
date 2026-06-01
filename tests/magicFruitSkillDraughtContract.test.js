@@ -190,6 +190,7 @@ test('normal party skill draught excludes removed stubs from random and forced c
     { id: 'party_momentum', title: 'Momentum', randomValues: [0.2, 0, 0] },
     { id: 'party_guard_rail', title: 'Guard Rail', randomValues: [0.25, 0, 0] },
     { id: 'party_weaken', title: 'Weaken', randomValues: [0.4, 0, 0] },
+    { id: 'party_last_push', title: 'Last Push', randomValues: [0.65, 0, 0] },
   ];
 
   for (const modulePath of [runtimePath, scriptsPath]) {
