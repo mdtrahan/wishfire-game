@@ -188,3 +188,4 @@
 {"id":"int-ac65d37a","kind":"field_change","created_at":"2026-06-01T14:18:05.369378Z","actor":"mdtrahan","issue_id":"ORKA-0ku6","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}
 {"id":"int-524793c3","kind":"field_change","created_at":"2026-06-01T14:20:44.314383Z","actor":"mdtrahan","issue_id":"ORKA-xp56","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}
 {"id":"int-4b0a3ce1","kind":"field_change","created_at":"2026-06-01T14:22:13.431581Z","actor":"mdtrahan","issue_id":"ORKA-k51t","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}
+{"id":"int-a1a5258c","kind":"field_change","created_at":"2026-06-01T14:23:36.980231Z","actor":"mdtrahan","issue_id":"ORKA-cuuy","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}

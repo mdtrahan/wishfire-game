@@ -122,7 +122,7 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
     assert.equal(partyIds[expectedExistingPartyIds.length], 'party_magic_fruit');
 
     const { ctx: defaultCtx } = makeContext();
-    installSequenceRandom(defaultCtx, [0.75, 0, 0]);
+    installSequenceRandom(defaultCtx, [0.65, 0, 0]);
     const defaultOpened = mod.ForceAstralFlowSkillDraught(defaultCtx, 100);
     assert.equal(defaultOpened.ok, true);
     const defaultMagicFruit = defaultOpened.candidates.find(candidate => candidate.id === 'party_magic_fruit');
@@ -189,6 +189,7 @@ test('normal party skill draught excludes removed stubs from random and forced c
     { id: 'party_second_chance', title: 'Second Chance', randomValues: [0.1, 0, 0] },
     { id: 'party_momentum', title: 'Momentum', randomValues: [0.2, 0, 0] },
     { id: 'party_guard_rail', title: 'Guard Rail', randomValues: [0.25, 0, 0] },
+    { id: 'party_weaken', title: 'Weaken', randomValues: [0.4, 0, 0] },
   ];
 
   for (const modulePath of [runtimePath, scriptsPath]) {
