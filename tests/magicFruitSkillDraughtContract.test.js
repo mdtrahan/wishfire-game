@@ -183,33 +183,41 @@ test('normal party skill draught samples the full party pool through RuntimeRand
   }
 });
 
-test('normal party skill draught excludes Fresh Start from random and forced card draws', () => {
+test('normal party skill draught excludes removed stubs from random and forced card draws', () => {
+  const removedStubCases = [
+    { id: 'party_fresh_start', title: 'Fresh Start', randomValues: [0, 0, 0] },
+    { id: 'party_second_chance', title: 'Second Chance', randomValues: [0.1, 0, 0] },
+  ];
+
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
-    const { ctx } = makeContext();
-    installSequenceRandom(ctx, [0, 0, 0]);
 
-    const opened = mod.ForceAstralFlowSkillDraught(ctx, 100);
+    for (const removed of removedStubCases) {
+      const { ctx } = makeContext();
+      installSequenceRandom(ctx, removed.randomValues);
 
-    assert.equal(opened.ok, true);
-    assert.equal(opened.candidates.length, 3);
-    assert.equal(
-      opened.candidates.some(candidate => candidate.id === 'party_fresh_start'),
-      false,
-      'Fresh Start should not be reachable through normal party skill draw',
-    );
+      const opened = mod.ForceAstralFlowSkillDraught(ctx, 100);
 
-    const { ctx: forcedCtx } = makeContext();
-    installSequenceRandom(forcedCtx, [0, 0, 0]);
+      assert.equal(opened.ok, true);
+      assert.equal(opened.candidates.length, 3);
+      assert.equal(
+        opened.candidates.some(candidate => candidate.id === removed.id),
+        false,
+        `${removed.title} should not be reachable through normal party skill draw`,
+      );
 
-    const forcedOpened = mod.ForceAstralFlowSkillDraught(forcedCtx, 100, 'party_fresh_start');
+      const { ctx: forcedCtx } = makeContext();
+      installSequenceRandom(forcedCtx, [0, 0, 0]);
 
-    assert.equal(forcedOpened.ok, true);
-    assert.equal(forcedOpened.candidates.length, 3);
-    assert.equal(
-      forcedOpened.candidates.some(candidate => candidate.id === 'party_fresh_start'),
-      false,
-      'Fresh Start should not be reachable through forced party skill draw',
-    );
+      const forcedOpened = mod.ForceAstralFlowSkillDraught(forcedCtx, 100, removed.id);
+
+      assert.equal(forcedOpened.ok, true);
+      assert.equal(forcedOpened.candidates.length, 3);
+      assert.equal(
+        forcedOpened.candidates.some(candidate => candidate.id === removed.id),
+        false,
+        `${removed.title} should not be reachable through forced party skill draw`,
+      );
+    }
   }
 });
