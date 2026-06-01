@@ -122,7 +122,7 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
     assert.equal(partyIds[expectedExistingPartyIds.length], 'party_magic_fruit');
 
     const { ctx: defaultCtx } = makeContext();
-    installSequenceRandom(defaultCtx, [0.84, 0, 0]);
+    installSequenceRandom(defaultCtx, [0.75, 0, 0]);
     const defaultOpened = mod.ForceAstralFlowSkillDraught(defaultCtx, 100);
     assert.equal(defaultOpened.ok, true);
     const defaultMagicFruit = defaultOpened.candidates.find(candidate => candidate.id === 'party_magic_fruit');
@@ -179,6 +179,37 @@ test('normal party skill draught samples the full party pool through RuntimeRand
     assert.ok(
       opened.candidates.some(candidate => candidate.id === 'party_crimson_ward'),
       'Crimson Ward should be reachable from the normal random draw'
+    );
+  }
+});
+
+test('normal party skill draught excludes Guard Rail from random and forced card draws', () => {
+  for (const modulePath of [runtimePath, scriptsPath]) {
+    const mod = loadModule(modulePath);
+    const { ctx } = makeContext();
+    installSequenceRandom(ctx, [0.25, 0, 0]);
+
+    const opened = mod.ForceAstralFlowSkillDraught(ctx, 100);
+
+    assert.equal(opened.ok, true);
+    assert.equal(opened.candidates.length, 3);
+    assert.equal(
+      opened.candidates.some(candidate => candidate.id === 'party_guard_rail'),
+      false,
+      'Guard Rail should not be reachable through normal party skill draw',
+    );
+
+    const { ctx: forcedCtx } = makeContext();
+    installSequenceRandom(forcedCtx, [0, 0, 0]);
+
+    const forcedOpened = mod.ForceAstralFlowSkillDraught(forcedCtx, 100, 'party_guard_rail');
+
+    assert.equal(forcedOpened.ok, true);
+    assert.equal(forcedOpened.candidates.length, 3);
+    assert.equal(
+      forcedOpened.candidates.some(candidate => candidate.id === 'party_guard_rail'),
+      false,
+      'Guard Rail should not be reachable through forced party skill draw',
     );
   }
 });
