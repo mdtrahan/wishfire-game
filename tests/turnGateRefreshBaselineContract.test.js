@@ -8,6 +8,11 @@ for (const modulePath of [
 ]) {
   test(`refresh baseline clears transient combat turn state in ${modulePath}`, async () => {
     const mod = await import(modulePath);
+    assert.equal(mod.isCanPickGemsReady(1), true);
+    assert.equal(mod.isCanPickGemsReady(true), true);
+    assert.equal(mod.isCanPickGemsReady(0), false);
+    assert.equal(mod.isCanPickGemsReady(false), false);
+
     const normalized = mod.normalizeCombatTurnTransientState({
       CanPickGems: '1',
       IsPlayerBusy: 1,
@@ -190,6 +195,36 @@ for (const modulePath of [
     assert.equal(textEndHold.canAdvanceTurn, false);
     assert.equal(textEndHold.canClaimCombatAction, false);
     assert.equal(textEndHold.firstBlockingLane, 'text-animation');
+
+    const skillDraughtHold = mod.derivePresentationTurnBarrier({
+      globals: { time: 10, TurnPhase: 0, SkillDraughtOpen: 1 },
+      boardHasEmptySlots: true,
+    });
+    assert.equal(skillDraughtHold.canStartRefill, false);
+    assert.equal(skillDraughtHold.canAdvanceTurn, false);
+    assert.equal(skillDraughtHold.canClaimCombatAction, false);
+    assert.equal(skillDraughtHold.canResolvePendingTargetAction, false);
+    assert.equal(skillDraughtHold.canRestoreHeroInput, false);
+    assert.equal(skillDraughtHold.firstBlockingLane, 'skill-draught');
+
+    const pendingSkillDraught = mod.derivePresentationTurnBarrier({
+      globals: { time: 10, TurnPhase: 0, SkillDraughtPendingOpen: 1 },
+      boardHasEmptySlots: true,
+    });
+    assert.equal(pendingSkillDraught.lanes.skillDraughtPending, true);
+    assert.equal(pendingSkillDraught.canClaimSkillDraught, true);
+    assert.equal(pendingSkillDraught.canStartRefill, false);
+    assert.equal(pendingSkillDraught.canAdvanceTurn, false);
+    assert.equal(pendingSkillDraught.canClaimCombatAction, false);
+    assert.equal(pendingSkillDraught.canRestoreHeroInput, false);
+    assert.equal(pendingSkillDraught.firstBlockingLane, 'skill-draught-pending');
+
+    const pendingSkillDraughtDuringAnimation = mod.derivePresentationTurnBarrier({
+      globals: { time: 10, TurnPhase: 0, SkillDraughtPendingOpen: 1, TextAnimEndAt: 11 },
+      boardHasEmptySlots: true,
+    });
+    assert.equal(pendingSkillDraughtDuringAnimation.canClaimSkillDraught, false);
+    assert.equal(pendingSkillDraughtDuringAnimation.firstBlockingLane, 'text-animation');
 
     const actionHold = mod.derivePresentationTurnBarrier({
       globals: {

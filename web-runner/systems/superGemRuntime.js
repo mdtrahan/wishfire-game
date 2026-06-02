@@ -820,7 +820,7 @@ export function activateSuperGemEffect({
       if (typeof startGemMergeFx === 'function') {
         startGemMergeFx({ sourceItems });
       }
-      callFunctionWithContext(fnContext, 'OpenSkillDraughtForHero', actorUID, 'party_faze');
+      callFunctionWithContext(fnContext, 'QueueSkillDraughtForHero', actorUID, 'party_faze');
       state.globals.IsAOEMatch = 0;
       state.globals.CanPickGems = 0;
       state.globals.IsPlayerBusy = 0;
@@ -841,7 +841,7 @@ export function activateSuperGemEffect({
     callFunctionWithContext(fnContext, 'LogGemIntent', 2, 'BLUE', 'Skill_Draught', 'supergem-routing', actorUID);
     state.globals.IsAOEMatch = 0;
     clearBlueGemBuffPresentationState(state.globals);
-    callFunctionWithContext(fnContext, 'OpenSkillDraughtForHero', actorUID);
+    callFunctionWithContext(fnContext, 'QueueSkillDraughtForHero', actorUID);
     state.globals.CanPickGems = 0;
     state.globals.IsPlayerBusy = 0;
     state.globals.ActionOwnerUID = actorUID;

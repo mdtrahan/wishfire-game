@@ -954,6 +954,9 @@ function ensureSkillDraughtState(ctx) {
   const g = getGlobals(ctx);
   if (!Number.isFinite(g.SkillDraughtOpen)) g.SkillDraughtOpen = 0;
   if (!Number.isFinite(g.SkillDraughtHeroUID)) g.SkillDraughtHeroUID = 0;
+  if (!Number.isFinite(g.SkillDraughtPendingOpen)) g.SkillDraughtPendingOpen = 0;
+  if (!Number.isFinite(g.SkillDraughtPendingHeroUID)) g.SkillDraughtPendingHeroUID = 0;
+  if (typeof g.SkillDraughtPendingForcedSkillId !== 'string') g.SkillDraughtPendingForcedSkillId = '';
   if (!Array.isArray(g.SkillDraughtCandidates)) g.SkillDraughtCandidates = [];
   if (!Array.isArray(g.SkillDraughtHitZones)) g.SkillDraughtHitZones = [];
   if (typeof g.SkillDraughtSelectedSkillId !== 'string') g.SkillDraughtSelectedSkillId = '';
@@ -1175,6 +1178,9 @@ export function GetSkillDraughtState(ctx) {
   return {
     open: Number(g.SkillDraughtOpen || 0),
     heroUID: Number(g.SkillDraughtHeroUID || 0),
+    pendingOpen: Number(g.SkillDraughtPendingOpen || 0),
+    pendingHeroUID: Number(g.SkillDraughtPendingHeroUID || 0),
+    pendingForcedSkillId: String(g.SkillDraughtPendingForcedSkillId || ''),
     candidates: g.SkillDraughtCandidates.map(candidate => ({ ...candidate })),
     selectedSkillId: String(g.SkillDraughtSelectedSkillId || ''),
     sessionSkillsByHeroUID: JSON.parse(JSON.stringify(g.SessionSkillsByHeroUID || {})),
@@ -1196,12 +1202,45 @@ export function OpenSkillDraughtForHero(ctx, heroUID, forcedSkillId = '') {
   }
   g.SkillDraughtOpen = 1;
   g.SkillDraughtHeroUID = uid;
+  g.SkillDraughtPendingOpen = 0;
+  g.SkillDraughtPendingHeroUID = 0;
+  g.SkillDraughtPendingForcedSkillId = '';
   g.SkillDraughtCandidates = candidates;
   g.SkillDraughtHitZones = [];
   g.SkillDraughtSelectedSkillId = '';
   appendSkillDraughtTrace(g, 'open', { heroUID: uid, candidateIds: candidates.map(candidate => candidate.id) });
   LogCombat(ctx, 'The party found new skills.');
   return { ok: true, heroUID: uid, candidates: candidates.map(candidate => ({ ...candidate })) };
+}
+
+export function QueueSkillDraughtForHero(ctx, heroUID, forcedSkillId = '') {
+  const g = ensureSkillDraughtState(ctx);
+  const uid = Number(heroUID || 0);
+  const actor = GetActorByUID(ctx, uid);
+  if (!actor) {
+    appendSkillDraughtTrace(g, 'queue_rejected', { heroUID: uid, reason: 'hero_not_found' });
+    return { ok: false, reason: 'hero_not_found' };
+  }
+  g.SkillDraughtPendingOpen = 1;
+  g.SkillDraughtPendingHeroUID = uid;
+  g.SkillDraughtPendingForcedSkillId = String(forcedSkillId || '');
+  appendSkillDraughtTrace(g, 'queue', { heroUID: uid, forcedSkillId: g.SkillDraughtPendingForcedSkillId });
+  return { ok: true, heroUID: uid, pendingOpen: 1 };
+}
+
+export function ClaimPendingSkillDraught(ctx) {
+  const g = ensureSkillDraughtState(ctx);
+  if (Number(g.SkillDraughtOpen || 0)) return { ok: false, reason: 'draught_open' };
+  if (!Number(g.SkillDraughtPendingOpen || 0)) return { ok: false, reason: 'no_pending_draught' };
+  const uid = Number(g.SkillDraughtPendingHeroUID || 0);
+  const forcedSkillId = String(g.SkillDraughtPendingForcedSkillId || '');
+  const result = OpenSkillDraughtForHero(ctx, uid, forcedSkillId);
+  if (result && result.ok) return { ...result, claimed: true };
+  g.SkillDraughtPendingOpen = 0;
+  g.SkillDraughtPendingHeroUID = 0;
+  g.SkillDraughtPendingForcedSkillId = '';
+  appendSkillDraughtTrace(g, 'claim_rejected', { heroUID: uid, reason: String(result?.reason || 'open_failed') });
+  return result || { ok: false, reason: 'open_failed' };
 }
 
 export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
@@ -1246,6 +1285,9 @@ export function ClearSessionSkillDraught(ctx) {
   const g = ensureSkillDraughtState(ctx);
   g.SkillDraughtOpen = 0;
   g.SkillDraughtHeroUID = 0;
+  g.SkillDraughtPendingOpen = 0;
+  g.SkillDraughtPendingHeroUID = 0;
+  g.SkillDraughtPendingForcedSkillId = '';
   g.SkillDraughtCandidates = [];
   g.SkillDraughtHitZones = [];
   g.SkillDraughtSelectedSkillId = '';
@@ -7370,7 +7412,7 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
     g.AstralFlowAmpPoints = Number(decision.blueAmpPointsAfter || 0);
     g.AstralFlowAmpReady = Number(decision.blueAmpReadyAfter || 0) ? 1 : 0;
     if (Number(decision.blueOpenDraught || 0) === 1) {
-      OpenSkillDraughtForHero(ctx, actorUID);
+      QueueSkillDraughtForHero(ctx, actorUID);
       LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} gained Astral Flow!`);
     }
     UpdateAstralFlowAmpBar(ctx);
@@ -7806,6 +7848,7 @@ function recordEnemyTurnFlowOwner(g, decision, source) {
 
 export function EnemyTurn(ctx, enemyUID) {
   const g = getGlobals(ctx);
+  if (Number(g.SkillDraughtOpen || 0)) return;
   const activeEnemyUID = Number(enemyUID || GetCurrentTurn(ctx) || 0);
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
   const ownerHook = root && typeof root.__ORKA_ENEMY_TURN_FLOW_OWNER__ === 'function'
@@ -7974,6 +8017,7 @@ export function ProcessTurn(ctx) {
   const uid = GetCurrentTurn(ctx);
   const actor = GetActorByUID(ctx, uid);
   const g = getGlobals(ctx);
+  if (Number(g.SkillDraughtOpen || 0)) return;
   if (g.BoardFillActive) return;
   resolvePendingEnemyDeaths(ctx);
   if (holdForEnemyRosterRefill(ctx)) return;

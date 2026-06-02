@@ -389,3 +389,8 @@
 ## 2026-05-31 — Hero Match Routes Must Not Own Skill-Card Identity
 - If a named ability is moved into skill-card draw, remove that identity from gem-match logs, profiles, and direct payload branches. A generic match that still says the old ability name will be indistinguishable from a live skill trigger in QA.
 - For ability separation bugs, test both sides of the boundary: the old match route must stay generic, and the new card route must own the renamed payload and presentation state.
+
+## 2026-06-02 — Skill Draw Modals Need A Checkpoint Gate
+- Skill draw eligibility may be discovered during a hero action, but the modal should spawn only at a hero-turn checkpoint after merge, refill, action locks, pending hits, and target selection are clear.
+- Treat an open skill draw as a presentation barrier lane. It should block refill, enemy action claims, deferred turn advance, and input restore until selection closes the modal.
+- Treat a pending skill draw as a handoff barrier, not a presentation lane. It must block refill and turn advance while still allowing the checkpoint claim once presentation lanes are clear.

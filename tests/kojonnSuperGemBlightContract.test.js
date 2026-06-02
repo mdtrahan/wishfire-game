@@ -28,12 +28,12 @@ test('Kojonn green super-gem opens a forced Faze skill draw without immediate bl
   const callFunctionWithContext = (_ctx, name, ...args) => {
     calls.push({ name, args });
     if (name === 'GetActorByUID') return actor.uid === args[0] ? actor : null;
-    if (name === 'OpenSkillDraughtForHero') {
-      state.globals.SkillDraughtOpen = 1;
-      state.globals.SkillDraughtHeroUID = args[0];
-      state.globals.SkillDraughtForcedSkillId = args[1];
-      return { ok: true };
-    }
+      if (name === 'QueueSkillDraughtForHero') {
+        state.globals.SkillDraughtPendingOpen = 1;
+        state.globals.SkillDraughtPendingHeroUID = args[0];
+        state.globals.SkillDraughtPendingForcedSkillId = args[1];
+        return { ok: true };
+      }
     if (name === 'StartHeroLunge') throw new Error('Kojonn green super-gem should not launch immediate Faze');
     if (name === 'CalculateDamage') throw new Error('Kojonn green super-gem should not use generic AOE damage directly');
     return 0;
@@ -52,10 +52,12 @@ test('Kojonn green super-gem opens a forced Faze skill draw without immediate bl
   });
 
   assert.equal(activated, true);
-  assert.deepEqual(calls.filter(call => call.name === 'OpenSkillDraughtForHero').map(call => call.args), [[4, 'party_faze']]);
-  assert.equal(state.globals.SkillDraughtOpen, 1);
-  assert.equal(state.globals.SkillDraughtHeroUID, 4);
-  assert.equal(state.globals.SkillDraughtForcedSkillId, 'party_faze');
+  assert.deepEqual(calls.filter(call => call.name === 'QueueSkillDraughtForHero').map(call => call.args), [[4, 'party_faze']]);
+  assert.equal(calls.some(call => call.name === 'OpenSkillDraughtForHero'), false);
+  assert.equal(state.globals.SkillDraughtOpen || 0, 0);
+  assert.equal(state.globals.SkillDraughtPendingOpen, 1);
+  assert.equal(state.globals.SkillDraughtPendingHeroUID, 4);
+  assert.equal(state.globals.SkillDraughtPendingForcedSkillId, 'party_faze');
   assert.equal(Array.isArray(state.globals.PendingHeroHits), false);
   assert.equal(Array.isArray(state.globals.TaintedGroundZones), false);
   assert.equal(state.globals.IsAOEMatch, 0);
