@@ -6939,7 +6939,7 @@ function buildGemActionFallbackDecision(payload = {}, owner = 'fallback') {
   const currentLock = gemActionNumberOr(payload.actionLockUntil, 0);
   let actionLockUntil = currentLock;
   if (routeCode === GEM_ACTION_BLUE_ASTRAL) {
-    actionLockUntil = Math.max(currentLock, now + 0.32, blueOpenDraught ? now + 4 : currentLock);
+    actionLockUntil = Math.max(currentLock, now + 0.32);
   } else if (routeCode === GEM_ACTION_PURPLE_ENERGY) {
     actionLockUntil = Math.max(currentLock, now + 0.32, gemActionNumberOr(payload.textAnimEndAt, 0));
   }

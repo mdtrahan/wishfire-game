@@ -394,3 +394,7 @@
 - Skill draw eligibility may be discovered during a hero action, but the modal should spawn only at a hero-turn checkpoint after merge, refill, action locks, pending hits, and target selection are clear.
 - Treat an open skill draw as a presentation barrier lane. It should block refill, enemy action claims, deferred turn advance, and input restore until selection closes the modal.
 - Treat a pending skill draw as a handoff barrier, not a presentation lane. It must block refill and turn advance while still allowing the checkpoint claim once presentation lanes are clear.
+
+## 2026-06-02 — Modal Handoffs Must Not Borrow Read-Time Locks
+- Combat message read time and action-lock time are separate contracts. If a modal claim gate waits on `ActionLockUntil`, do not extend that lock only to keep a combat line readable; pin the text through its own presentation state.
+- For meter-threshold modal bugs, check the queued flag, the action lock, and the checkpoint claim gate together. A full meter with `SkillDraughtPendingOpen=1` can still look broken if the claim is hidden behind a decorative read-time lock.

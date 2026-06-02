@@ -103,7 +103,7 @@ export function gemActionFromJs({
   const currentLock = numberOr(actionLockUntil, 0);
   let resolvedActionLockUntil = currentLock;
   if (routeCode === GEM_ACTION_BLUE_ASTRAL) {
-    resolvedActionLockUntil = Math.max(currentLock, now + 0.32, blueOpenDraught ? now + 4 : currentLock);
+    resolvedActionLockUntil = Math.max(currentLock, now + 0.32);
   } else if (routeCode === GEM_ACTION_PURPLE_ENERGY) {
     resolvedActionLockUntil = Math.max(currentLock, now + 0.32, numberOr(textAnimEndAt, 0));
   }
