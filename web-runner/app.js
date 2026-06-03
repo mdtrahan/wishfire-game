@@ -251,7 +251,7 @@ function applyTurnGateIntent(createIntent, options = undefined) {
 
 function getActionHandoffSnapshot() {
   const currentUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
-  const currentType = Number(callFunctionWithContext(fnContext, 'GetCurrentType') || -1);
+  const currentType = Number(callFunctionWithContext(fnContext, 'GetCurrentType') ?? -1);
   return {
     currentUID,
     currentType,
@@ -380,7 +380,7 @@ function canResolveDeferredAdvance({ hasEmpty = false, enemyLineClearPressureAct
 function canClaimPendingSkillDraught({ hasEmpty = false, enemyLineClearPressureActive = false } = {}) {
   if (!Number(state.globals.SkillDraughtPendingOpen || 0)) return false;
   if (Number(state.globals.SkillDraughtOpen || 0)) return false;
-  const currentTurnType = Number(callFunctionWithContext(fnContext, 'GetCurrentType') || -1);
+  const currentTurnType = Number(callFunctionWithContext(fnContext, 'GetCurrentType') ?? -1);
   if (currentTurnType !== 0) return false;
   if (!state.globals.DeferAdvance || !state.globals.AdvanceAfterAction) return false;
   if (Number(state.globals.ActionLockUntil || 0) > Number(state.globals.time || 0)) return false;

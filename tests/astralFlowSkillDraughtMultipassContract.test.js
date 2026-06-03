@@ -63,6 +63,18 @@ function claimReadyGlobals({ time, actionLockUntil, heroUID = 42 }) {
   };
 }
 
+test('app skill draught claim gate preserves hero turn type zero', () => {
+  const appSrc = read('web-runner/app.js');
+  assert.match(
+    appSrc,
+    /const currentTurnType = Number\(callFunctionWithContext\(fnContext, 'GetCurrentType'\) \?\? -1\);/,
+  );
+  assert.doesNotMatch(
+    appSrc,
+    /currentTurnType = Number\(callFunctionWithContext\(fnContext, 'GetCurrentType'\) \|\| -1\);/,
+  );
+});
+
 for (const core of corePairs) {
   test(`full Astral Flow blue merges claim the draw after the short handoff in ${core.name}`, async () => {
     const { gemActionFromJs } = await import(pathToFileURL(core.rulesPath));
