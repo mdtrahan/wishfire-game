@@ -13,6 +13,7 @@ import {
   createDeferredStaleBusyRecovery,
   createDeferredTextHold,
   derivePresentationTurnBarrier,
+  isCanPickGemsReady,
   createRefillCompleteGate,
   createRefillStartGate,
   createYellowSequenceCompletion,
@@ -250,7 +251,7 @@ function applyTurnGateIntent(createIntent, options = undefined) {
 
 function getActionHandoffSnapshot() {
   const currentUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
-  const currentType = Number(callFunctionWithContext(fnContext, 'GetCurrentType') || -1);
+  const currentType = Number(callFunctionWithContext(fnContext, 'GetCurrentType') ?? -1);
   return {
     currentUID,
     currentType,
@@ -374,6 +375,24 @@ function canResolveDeferredAdvance({ hasEmpty = false, enemyLineClearPressureAct
     pendingEnemyDeathResolution,
     ok: (rosterStability.stable || pendingEnemyDeathResolution) && !refillPending && !textHold && !blockedPhase && ownerOk,
   };
+}
+
+function canClaimPendingSkillDraught({ hasEmpty = false, enemyLineClearPressureActive = false } = {}) {
+  if (!Number(state.globals.SkillDraughtPendingOpen || 0)) return false;
+  if (Number(state.globals.SkillDraughtOpen || 0)) return false;
+  const currentTurnType = Number(callFunctionWithContext(fnContext, 'GetCurrentType') ?? -1);
+  if (currentTurnType !== 0) return false;
+  if (!state.globals.DeferAdvance || !state.globals.AdvanceAfterAction) return false;
+  if (Number(state.globals.ActionLockUntil || 0) > Number(state.globals.time || 0)) return false;
+  if (state.globals.IsPlayerBusy || state.globals.ActionInProgress || state.globals.PendingSkillID) return false;
+  const pendingBarrier = getPresentationTurnBarrier({ hasEmpty, enemyLineClearPressureActive });
+  return pendingBarrier.canClaimSkillDraught;
+}
+
+function claimPendingSkillDraughtAtHeroCheckpoint({ hasEmpty = false, enemyLineClearPressureActive = false } = {}) {
+  if (!canClaimPendingSkillDraught({ hasEmpty, enemyLineClearPressureActive })) return false;
+  const result = callFunctionWithContext(fnContext, 'ClaimPendingSkillDraught');
+  return !!(result && result.ok);
 }
 
 function isHitFlashActive(uid) {
@@ -6148,7 +6167,7 @@ function getStoryCardLiveLineState() {
     while (performance.now() - start < timeoutMs) {
       const ready = (
         state.globals.BoardFillActive === 0 &&
-        state.globals.CanPickGems === true &&
+        isCanPickGemsReady(state.globals.CanPickGems) &&
         Array.isArray(gameState.gems) &&
         gameState.gems.length === 24
       );
@@ -6291,7 +6310,7 @@ function getStoryCardLiveLineState() {
       state.globals.GamePhase === 'RUNTIME' &&
       callFunctionWithContext(fnContext, 'GetCurrentType') === 0 &&
       state.globals.TurnPhase === 0 &&
-      state.globals.CanPickGems === true &&
+      isCanPickGemsReady(state.globals.CanPickGems) &&
       state.globals.IsPlayerBusy === 0 &&
       !state.globals.PendingSkillID &&
       !state.globals.BoardFillActive &&
@@ -7153,7 +7172,7 @@ function getStoryCardLiveLineState() {
     });
     if (navHit) {
       const labelName = labelMap[navHit.inst.type] || '';
-      const navBlockedBySelection = gameState.selectedGems.length > 0 || gameState.selectionLocked || state.globals.CanPickGems === false;
+      const navBlockedBySelection = gameState.selectedGems.length > 0 || gameState.selectionLocked || !isCanPickGemsReady(state.globals.CanPickGems);
       if (labelName === 'AstralFlow' || labelName === 'Hero' || !navBlockedBySelection) {
         inputDomains.emit(
           layoutState.getActiveLayoutId(),
@@ -7190,7 +7209,7 @@ function getStoryCardLiveLineState() {
         return !best || distance < best.distance ? { ...slot, distance } : best;
       }, null);
       const labelName = navSlot ? navSlot.label : '';
-      const navBlockedBySelection = gameState.selectedGems.length > 0 || gameState.selectionLocked || state.globals.CanPickGems === false;
+      const navBlockedBySelection = gameState.selectedGems.length > 0 || gameState.selectionLocked || !isCanPickGemsReady(state.globals.CanPickGems);
       if (labelName && (labelName === 'AstralFlow' || labelName === 'Hero' || !navBlockedBySelection)) {
         inputDomains.emit(
           layoutState.getActiveLayoutId(),
@@ -7276,9 +7295,9 @@ function getStoryCardLiveLineState() {
         return;
       }
       const isHeroTurn = callFunctionWithContext(fnContext, 'IsHeroTurn') === true;
-      if (state.globals.CanPickGems === false || !isHeroTurn) {
+      if (!isCanPickGemsReady(state.globals.CanPickGems) || !isHeroTurn) {
         runtimeDebugLogging.gemDebugLog('[GEM_REJECT]', {
-          reason: state.globals.CanPickGems === false ? 'reject-gate-can-pick-false' : 'reject-gate-not-hero-turn',
+          reason: !isCanPickGemsReady(state.globals.CanPickGems) ? 'reject-gate-can-pick-false' : 'reject-gate-not-hero-turn',
           globals: {
             CanPickGems: state.globals.CanPickGems,
             IsPlayerBusy: state.globals.IsPlayerBusy,
@@ -7579,22 +7598,33 @@ function getStoryCardLiveLineState() {
     if (heroInputActive) {
       state.globals.HideHeroSelector = 0;
     }
-  const refill = gameState.refillBounce;
-  const phaseNow = state.globals.TurnPhase;
-  const hasEmpty = hasEmptySlots();
-  const enemyLineClearPressureActive = !!state.globals.EnemyLineClearPressureActive;
-  const refillStartBarrier = getPresentationTurnBarrier({
-    hasEmpty,
-    enemyLineClearPressureActive,
-  });
-  const refillReady =
-    phaseNow === 0 &&
-    !state.globals.IsPlayerBusy &&
-    !state.globals.PendingSkillID &&
-    !state.globals.ActionInProgress &&
-    !state.globals.DeferAdvance &&
-    refillStartBarrier.canStartRefill &&
-    !(refill && refill.active);
+    const refill = gameState.refillBounce;
+    const phaseNow = state.globals.TurnPhase;
+    const hasEmpty = hasEmptySlots();
+    const enemyLineClearPressureActive = !!state.globals.EnemyLineClearPressureActive;
+    const refillStartBarrier = getPresentationTurnBarrier({
+      hasEmpty,
+      enemyLineClearPressureActive,
+    });
+    const pendingSkillDraughtClaimed = claimPendingSkillDraughtAtHeroCheckpoint({
+      hasEmpty,
+      enemyLineClearPressureActive,
+    });
+    if (pendingSkillDraughtClaimed) {
+      runtimeDebugLogging.gemDebugLog('[SKILL_DRAUGHT_CLAIM]', {
+        reason: 'hero-end-checkpoint-before-refill',
+        heroUID: Number(state.globals.SkillDraughtHeroUID || 0),
+      }, state);
+    }
+    const refillReady =
+      phaseNow === 0 &&
+      !state.globals.IsPlayerBusy &&
+      !state.globals.PendingSkillID &&
+      !state.globals.ActionInProgress &&
+      !state.globals.DeferAdvance &&
+      !pendingSkillDraughtClaimed &&
+      refillStartBarrier.canStartRefill &&
+      !(refill && refill.active);
     if (hasEmpty && !refillReady) {
       const sig = JSON.stringify({
         phaseNow,
@@ -7655,7 +7685,7 @@ function getStoryCardLiveLineState() {
       const noSpinActive = !(gameState.yellowCasino && gameState.yellowCasino.active);
       const boardFull = Array.isArray(gameState.gems) && gameState.gems.length === 24;
       const idlePhase = state.globals.TurnPhase === 0;
-      if (noRefillActive && noSpinActive && boardFull && idlePhase && state.globals.CanPickGems === false) {
+      if (noRefillActive && noSpinActive && boardFull && idlePhase && !isCanPickGemsReady(state.globals.CanPickGems)) {
         const sig = JSON.stringify({
           boardFull,
           TurnPhase: state.globals.TurnPhase,
@@ -7813,7 +7843,7 @@ function getStoryCardLiveLineState() {
       !state.globals.ActionInProgress &&
       !state.globals.IsPlayerBusy &&
       !state.globals.PendingSkillID &&
-      (state.globals.CanPickGems === true || !state.globals.DeferAdvance)
+      (isCanPickGemsReady(state.globals.CanPickGems) || !state.globals.DeferAdvance)
     ) {
       const currentEnemy = currentTurnUID
         ? callFunctionWithContext(fnContext, 'GetActorByUID', currentTurnUID)
@@ -7875,7 +7905,7 @@ function getStoryCardLiveLineState() {
       noRefillActive &&
       heroInputBarrier.canRestoreHeroInput &&
       enemyRosterStability.stable &&
-      (state.globals.CanPickGems !== true || state.globals.BoardFillActive !== 0)
+      (!isCanPickGemsReady(state.globals.CanPickGems) || state.globals.BoardFillActive !== 0)
     ) {
       state.globals.CanPickGems = true;
       state.globals.BoardFillActive = 0;

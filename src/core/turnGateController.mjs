@@ -18,6 +18,10 @@ export function normalizeTurnGateState(current = {}) {
   return normalizeCombatTurnTransientState(current);
 }
 
+export function isCanPickGemsReady(value) {
+  return Number(value) === 1;
+}
+
 export function derivePresentationTurnBarrier({
   globals = {},
   refillBounce = null,
@@ -38,10 +42,13 @@ export function derivePresentationTurnBarrier({
     textAnimating: !!globals.TextAnimating || Number(globals.TextAnimEndAt || 0) > now,
     heroAction: !!(globals.HeroAction && globals.HeroAction.active),
     enemyAction: !!(globals.EnemyAction && globals.EnemyAction.active),
+    skillDraught: Number(globals.SkillDraughtOpen || 0) > 0,
+    skillDraughtPending: Number(globals.SkillDraughtPendingOpen || 0) > 0,
     pendingHeroHits,
     actionLock: Number(globals.ActionLockUntil || 0) > now,
     actionInProgress: !!globals.ActionInProgress,
   };
+  const skillDraughtPending = lanes.skillDraughtPending;
   const orderedLaneNames = [
     ['board-fill', lanes.boardFill],
     ['refill-bounce', lanes.refillBounce],
@@ -50,13 +57,14 @@ export function derivePresentationTurnBarrier({
     ['text-animation', lanes.textAnimating],
     ['hero-action', lanes.heroAction],
     ['enemy-action', lanes.enemyAction],
+    ['skill-draught', lanes.skillDraught],
     ['pending-hero-hits', lanes.pendingHeroHits],
     ['action-lock', lanes.actionLock],
     ['action-in-progress', lanes.actionInProgress],
   ];
   const activePresentationLane = orderedLaneNames.find(([, active]) => active)?.[0] || null;
   const refillPending = !!boardHasEmptySlots && !lanes.refillBounce && !enemyLineClearPressureActive;
-  const firstBlockingLane = activePresentationLane || (refillPending ? 'refill-pending' : null);
+  const firstBlockingLane = activePresentationLane || (skillDraughtPending ? 'skill-draught-pending' : (refillPending ? 'refill-pending' : null));
   const presentationBlocked = !!activePresentationLane;
   const pendingTargetAction = !!globals.PendingSkillID && (
     Number(globals.TurnPhase || 0) === 1 ||
@@ -67,12 +75,14 @@ export function derivePresentationTurnBarrier({
     refillPending,
     blockingLane: firstBlockingLane,
     firstBlockingLane,
-    canStartRefill: !presentationBlocked,
-    canAdvanceTurn: !presentationBlocked && !refillPending,
-    canClaimCombatAction: !presentationBlocked && !refillPending && !globals.DeferAdvance,
+    canClaimSkillDraught: skillDraughtPending && !presentationBlocked,
+    canStartRefill: !presentationBlocked && !skillDraughtPending,
+    canAdvanceTurn: !presentationBlocked && !skillDraughtPending && !refillPending,
+    canClaimCombatAction: !presentationBlocked && !skillDraughtPending && !refillPending && !globals.DeferAdvance,
     canResolvePendingTargetAction: pendingTargetAction && !presentationBlocked && !globals.DeferAdvance,
     canRestoreHeroInput: (
       !presentationBlocked &&
+      !skillDraughtPending &&
       !refillPending &&
       !globals.DeferAdvance &&
       !globals.PendingSkillID &&

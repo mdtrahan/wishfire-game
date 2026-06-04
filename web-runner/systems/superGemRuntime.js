@@ -815,21 +815,6 @@ export function activateSuperGemEffect({
     return armPendingSuperGemAttack({ superGem, actorUID, state });
   }
   if (color === 0) {
-    const actor = callFunctionWithContext(fnContext, 'GetActorByUID', actorUID);
-    if (String(actor?.name || '') === 'Kojonn') {
-      if (typeof startGemMergeFx === 'function') {
-        startGemMergeFx({ sourceItems });
-      }
-      callFunctionWithContext(fnContext, 'OpenSkillDraughtForHero', actorUID, 'party_faze');
-      state.globals.IsAOEMatch = 0;
-      state.globals.CanPickGems = 0;
-      state.globals.IsPlayerBusy = 0;
-      state.globals.ActionOwnerUID = actorUID;
-      state.globals.ActionLockUntil = Math.max(Number(state.globals.ActionLockUntil || 0), Number(state.globals.time || 0) + 0.32);
-      state.globals.DeferAdvance = 1;
-      state.globals.AdvanceAfterAction = 1;
-      return true;
-    }
     return armPendingSuperGemAttack({ superGem, actorUID, state });
   }
   if (color === 2) {
@@ -841,7 +826,7 @@ export function activateSuperGemEffect({
     callFunctionWithContext(fnContext, 'LogGemIntent', 2, 'BLUE', 'Skill_Draught', 'supergem-routing', actorUID);
     state.globals.IsAOEMatch = 0;
     clearBlueGemBuffPresentationState(state.globals);
-    callFunctionWithContext(fnContext, 'OpenSkillDraughtForHero', actorUID);
+    callFunctionWithContext(fnContext, 'QueueSkillDraughtForHero', actorUID);
     state.globals.CanPickGems = 0;
     state.globals.IsPlayerBusy = 0;
     state.globals.ActionOwnerUID = actorUID;

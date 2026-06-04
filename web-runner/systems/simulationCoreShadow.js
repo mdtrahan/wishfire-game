@@ -1099,7 +1099,7 @@ function runGemActionOwnerStartupCheck(shadow) {
     jsBlueAmpPointsAfter: 18,
     jsBlueAmpReadyAfter: 1,
     jsBlueOpenDraught: 1,
-    jsActionLockUntil: 14,
+    jsActionLockUntil: 10.32,
     jsPurpleEnergyAmount: 12,
   });
 }
