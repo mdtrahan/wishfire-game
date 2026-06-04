@@ -399,3 +399,4 @@
 - Combat message read time and action-lock time are separate contracts. If a modal claim gate waits on `ActionLockUntil`, do not extend that lock only to keep a combat line readable; pin the text through its own presentation state.
 - For meter-threshold modal bugs, check the queued flag, the action lock, and the checkpoint claim gate together. A full meter with `SkillDraughtPendingOpen=1` can still look broken if the claim is hidden behind a decorative read-time lock.
 - Hero turn type is `0`; never default `GetCurrentType()` with `||` in hero-only gates. Use nullish fallback so a valid hero turn does not become `-1` and strand pending Astral Flow modals.
+- Skill-card draw trigger ownership is blue-only: regular blue opens draw only through full Astral Flow, and blue supergem opens draw directly. Green/red/yellow/purple paths must not call `QueueSkillDraughtForHero`, even when they relate to implemented skills such as Faze.

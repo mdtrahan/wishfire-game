@@ -14,26 +14,21 @@ function loadSuperGemRuntime() {
   return context.module.exports;
 }
 
-test('Kojonn green super-gem opens a forced Faze skill draw without immediate blight payload', () => {
+test('Kojonn green super-gem arms normal AOE and does not trigger skill draw', () => {
   const { activateSuperGemEffect } = loadSuperGemRuntime();
   const actor = { uid: 4, name: 'Kojonn', kind: 'hero', attackType: 'magic', MAG: 22 };
   const state = {
     globals: {
       time: 10,
+      RuntimeRandom: () => 0,
     },
     entities: [actor],
   };
   const calls = [];
-  let mergeFx = null;
   const callFunctionWithContext = (_ctx, name, ...args) => {
     calls.push({ name, args });
     if (name === 'GetActorByUID') return actor.uid === args[0] ? actor : null;
-      if (name === 'QueueSkillDraughtForHero') {
-        state.globals.SkillDraughtPendingOpen = 1;
-        state.globals.SkillDraughtPendingHeroUID = args[0];
-        state.globals.SkillDraughtPendingForcedSkillId = args[1];
-        return { ok: true };
-      }
+    if (name === 'QueueSkillDraughtForHero') throw new Error('green super-gem must not trigger skill draw');
     if (name === 'StartHeroLunge') throw new Error('Kojonn green super-gem should not launch immediate Faze');
     if (name === 'CalculateDamage') throw new Error('Kojonn green super-gem should not use generic AOE damage directly');
     return 0;
@@ -47,27 +42,28 @@ test('Kojonn green super-gem opens a forced Faze skill draw without immediate bl
     callFunctionWithContext,
     fnContext: {},
     sourceItems: [{ id: 'green-sg' }],
-    startGemMergeFx: (payload) => { mergeFx = payload; },
+    startGemMergeFx: () => { throw new Error('pending green super-gem action should not merge in runtime resolver'); },
     getGoldLabelTargetWorld: () => null,
   });
 
   assert.equal(activated, true);
-  assert.deepEqual(calls.filter(call => call.name === 'QueueSkillDraughtForHero').map(call => call.args), [[4, 'party_faze']]);
+  assert.deepEqual(calls.filter(call => call.name === 'QueueSkillDraughtForHero').map(call => call.args), []);
   assert.equal(calls.some(call => call.name === 'OpenSkillDraughtForHero'), false);
   assert.equal(state.globals.SkillDraughtOpen || 0, 0);
-  assert.equal(state.globals.SkillDraughtPendingOpen, 1);
-  assert.equal(state.globals.SkillDraughtPendingHeroUID, 4);
-  assert.equal(state.globals.SkillDraughtPendingForcedSkillId, 'party_faze');
+  assert.equal(state.globals.SkillDraughtPendingOpen || 0, 0);
+  assert.equal(state.globals.SkillDraughtPendingHeroUID || 0, 0);
+  assert.equal(state.globals.SkillDraughtPendingForcedSkillId || '', '');
+  assert.equal(state.globals.PendingSkillID, 'HERO_AOE');
+  assert.equal(state.globals.PendingActor, 4);
+  assert.equal(state.globals.PendingSuperGemAction.kind, 'super_gem_attack');
+  assert.equal(state.globals.PendingSuperGemAction.color, 0);
+  assert.equal(state.globals.PendingSuperGemAction.actorUID, 4);
+  assert.equal(state.globals.PendingSuperGemAction.hitCount, 3);
   assert.equal(Array.isArray(state.globals.PendingHeroHits), false);
   assert.equal(Array.isArray(state.globals.TaintedGroundZones), false);
-  assert.equal(state.globals.IsAOEMatch, 0);
-  assert.equal(state.globals.CanPickGems, 0);
-  assert.equal(state.globals.IsPlayerBusy, 0);
-  assert.equal(state.globals.ActionOwnerUID, 4);
-  assert.equal(state.globals.ActionLockUntil, 10.32);
-  assert.equal(state.globals.DeferAdvance, 1);
-  assert.equal(state.globals.AdvanceAfterAction, 1);
-  assert.equal(JSON.stringify(mergeFx), JSON.stringify({ sourceItems: [{ id: 'green-sg' }] }));
+  assert.equal(state.globals.CanPickGems, false);
+  assert.equal(state.globals.DeferAdvance || 0, 0);
+  assert.equal(state.globals.AdvanceAfterAction || 0, 0);
 });
 
 test('Kojonn tainted ground absorbs direct Blight for enemies standing in field slots', () => {
