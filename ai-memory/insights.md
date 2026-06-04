@@ -389,3 +389,7 @@
 ## 2026-05-31 — Hero Match Routes Must Not Own Skill-Card Identity
 - If a named ability is moved into skill-card draw, remove that identity from gem-match logs, profiles, and direct payload branches. A generic match that still says the old ability name will be indistinguishable from a live skill trigger in QA.
 - For ability separation bugs, test both sides of the boundary: the old match route must stay generic, and the new card route must own the renamed payload and presentation state.
+
+## 2026-06-04 — Party Draw Cleanup Must Audit Every Unimplemented Party Stub
+- When removing party skill stubs from skill-card draw, audit the full `PARTY_SKILL_DEFINITIONS` list for `payloadImplemented: false`, not only the originally reported slot numbers.
+- Keep canonical definitions intact for planning/reference, but contract both normal random draws and forced QA draws so unimplemented party cards cannot leak into the playable draw modal.
