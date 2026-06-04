@@ -839,6 +839,13 @@ const PARTY_SKILL_DRAW_EXCLUDED_IDS = Object.freeze(new Set([
   'party_chain_pop',
 ]));
 
+const SKILL_DRAW_ALLOWED_CALL_IDS = Object.freeze([
+  'party_crimson_ward',
+  'party_magic_fruit',
+  'party_destiny',
+]);
+const SKILL_DRAW_ALLOWED_CALL_ID_SET = Object.freeze(new Set(SKILL_DRAW_ALLOWED_CALL_IDS));
+
 const FAZE_TAINTED_GROUND_DURATION_HERO_TEAM_TURNS = 3;
 const FAZE_TAINTED_GROUND_DAMAGE_SCALE = 0.5;
 
@@ -917,8 +924,110 @@ function ensureSkillDraughtState(ctx) {
   if (!g.SessionSkillsByHeroUID || typeof g.SessionSkillsByHeroUID !== 'object') g.SessionSkillsByHeroUID = {};
   if (!Array.isArray(g.SkillDraughtTrace)) g.SkillDraughtTrace = [];
   if (!Number.isFinite(g.SkillDraughtTraceSeq)) g.SkillDraughtTraceSeq = 0;
+  ensureSkillDrawDebugCounters(g);
   return g;
 }
+
+function ensureSkillDrawDebugCounters(g) {
+  if (!g.SkillDrawCalls || typeof g.SkillDrawCalls !== 'object' || Array.isArray(g.SkillDrawCalls)) {
+    g.SkillDrawCalls = {};
+  }
+  for (const id of SKILL_DRAW_ALLOWED_CALL_IDS) {
+    const count = Number(g.SkillDrawCalls[id] || 0);
+    g.SkillDrawCalls[id] = Number.isFinite(count) && count >= 0 ? Math.floor(count) : 0;
+  }
+  const unexpectedCalls = Number(g.SkillDrawUnexpectedCalls || 0);
+  g.SkillDrawUnexpectedCalls = Number.isFinite(unexpectedCalls) && unexpectedCalls >= 0
+    ? Math.floor(unexpectedCalls)
+    : 0;
+  if (!Array.isArray(g.SkillDrawUnexpectedSkillIds)) g.SkillDrawUnexpectedSkillIds = [];
+  if (!Array.isArray(g.SkillDrawCallTrace)) g.SkillDrawCallTrace = [];
+  if (!Number.isFinite(g.SkillDrawCallTraceSeq)) g.SkillDrawCallTraceSeq = 0;
+  if (typeof g.SkillDrawLastCallId !== 'string') g.SkillDrawLastCallId = '';
+  if (!Number.isFinite(g.SkillDrawLastCallAllowed)) g.SkillDrawLastCallAllowed = 0;
+  return g.SkillDrawCalls;
+}
+
+function makeEmptySkillDrawDebugSnapshot() {
+  return {
+    calls: SKILL_DRAW_ALLOWED_CALL_IDS.reduce((out, id) => {
+      out[id] = 0;
+      return out;
+    }, {}),
+    unexpectedCalls: 0,
+    unexpectedSkillIds: [],
+    lastCallId: '',
+    lastCallAllowed: 0,
+  };
+}
+
+function publishSkillDrawDebugSnapshot(snapshot) {
+  try {
+    if (typeof globalThis !== 'undefined') {
+      const encoded = JSON.stringify(snapshot);
+      globalThis.__orkaSkillDrawDebug = JSON.parse(encoded);
+      globalThis.SkillDrawCalls = JSON.parse(JSON.stringify(snapshot.calls || {}));
+      globalThis.SkillDrawUnexpectedCalls = Number(snapshot.unexpectedCalls || 0);
+      const root = globalThis.document?.documentElement;
+      if (root && typeof root.setAttribute === 'function') {
+        root.setAttribute('data-skill-draw-debug', encoded);
+        root.setAttribute('data-skill-draw-unexpected-calls', String(Number(snapshot.unexpectedCalls || 0)));
+        root.setAttribute('data-skill-draw-last-call-id', String(snapshot.lastCallId || ''));
+        root.setAttribute('data-skill-draw-last-call-allowed', String(Number(snapshot.lastCallAllowed || 0)));
+      }
+    }
+  } catch (_err) {
+    // Debug publishing must never affect combat flow.
+  }
+  return snapshot;
+}
+
+function snapshotSkillDrawDebugCounters(g) {
+  const calls = ensureSkillDrawDebugCounters(g);
+  const snapshot = {
+    calls: SKILL_DRAW_ALLOWED_CALL_IDS.reduce((out, id) => {
+      out[id] = Number(calls[id] || 0);
+      return out;
+    }, {}),
+    unexpectedCalls: Number(g.SkillDrawUnexpectedCalls || 0),
+    unexpectedSkillIds: g.SkillDrawUnexpectedSkillIds.map(id => String(id || '')),
+    lastCallId: String(g.SkillDrawLastCallId || ''),
+    lastCallAllowed: Number(g.SkillDrawLastCallAllowed || 0),
+  };
+  return publishSkillDrawDebugSnapshot(snapshot);
+}
+
+function recordSkillDrawCall(g, sessionSkill) {
+  const calls = ensureSkillDrawDebugCounters(g);
+  const skillId = String(sessionSkill?.id || '').trim().toLowerCase();
+  const allowed = SKILL_DRAW_ALLOWED_CALL_ID_SET.has(skillId);
+  if (allowed) {
+    calls[skillId] = Math.max(0, Math.floor(Number(calls[skillId] || 0))) + 1;
+  } else {
+    g.SkillDrawUnexpectedCalls = Math.max(0, Math.floor(Number(g.SkillDrawUnexpectedCalls || 0))) + 1;
+    g.SkillDrawUnexpectedSkillIds.push(skillId);
+    if (g.SkillDrawUnexpectedSkillIds.length > 80) {
+      g.SkillDrawUnexpectedSkillIds.splice(0, g.SkillDrawUnexpectedSkillIds.length - 80);
+    }
+  }
+  g.SkillDrawLastCallId = skillId;
+  g.SkillDrawLastCallAllowed = allowed ? 1 : 0;
+  g.SkillDrawCallTraceSeq = Math.max(0, Math.floor(Number(g.SkillDrawCallTraceSeq || 0))) + 1;
+  g.SkillDrawCallTrace.push({
+    seq: g.SkillDrawCallTraceSeq,
+    at: Number(g.time || 0),
+    skillId,
+    title: String(sessionSkill?.title || ''),
+    allowed: allowed ? 1 : 0,
+  });
+  if (g.SkillDrawCallTrace.length > 80) {
+    g.SkillDrawCallTrace.splice(0, g.SkillDrawCallTrace.length - 80);
+  }
+  snapshotSkillDrawDebugCounters(g);
+  return { skillId, allowed: allowed ? 1 : 0 };
+}
+
+publishSkillDrawDebugSnapshot(makeEmptySkillDrawDebugSnapshot());
 
 function makeSkillDraughtCandidate(def, index = 0) {
   const clean = cloneSkillDefinition(def);
@@ -1135,6 +1244,7 @@ export function GetSkillDraughtState(ctx) {
     candidates: g.SkillDraughtCandidates.map(candidate => ({ ...candidate })),
     selectedSkillId: String(g.SkillDraughtSelectedSkillId || ''),
     sessionSkillsByHeroUID: JSON.parse(JSON.stringify(g.SessionSkillsByHeroUID || {})),
+    skillDrawDebug: snapshotSkillDrawDebugCounters(g),
   };
 }
 
@@ -1179,6 +1289,7 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
     selectedAt: Number(g.time || 0),
   };
   g.SessionSkillsByHeroUID[key].push(sessionSkill);
+  const skillDrawCounter = recordSkillDrawCall(g, sessionSkill);
   g.SkillDraughtSelectedSkillId = sessionSkill.id;
   g.SkillDraughtOpen = 0;
   g.SkillDraughtCandidates = [];
@@ -1190,7 +1301,12 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
   if (sessionSkill.id === 'party_crimson_ward') activateCrimsonWardSkill(ctx);
   if (sessionSkill.id === 'party_faze') activateFazeSkill(ctx, uid);
   const scope = String(sessionSkill.owner || '').toLowerCase() === 'party' ? 'party' : 'hero';
-  appendSkillDraughtTrace(g, 'select', { heroUID: uid, skillId: sessionSkill.id, scope });
+  appendSkillDraughtTrace(g, 'select', {
+    heroUID: uid,
+    skillId: sessionSkill.id,
+    scope,
+    skillDrawAllowed: skillDrawCounter.allowed,
+  });
   g.CombatActionPinnedLine = '';
   g.CombatActionPinnedUntil = 0;
   LogCombat(ctx, scope === 'party'
