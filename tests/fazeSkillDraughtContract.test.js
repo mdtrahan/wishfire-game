@@ -134,21 +134,6 @@ test('Faze is a mirrored party draw option that owns the tainted-ground payload'
     assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.calcPath === 'magicCalc'));
     assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.dotTotalDamage === 15));
     assert.ok(ctx.state.globals.PendingHeroHits.every(hit => String(hit.taintedGroundZoneId || '').startsWith('tg-')));
-    assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.suppressDamageText === 1));
-    assert.ok(ctx.state.globals.PendingHeroHits.every(hit => String(hit.damageTextBatchId || '').startsWith('faze-')));
-    assert.equal(new Set(ctx.state.globals.PendingHeroHits.map(hit => hit.damageTextBatchId)).size, 1);
-    const aggregateTextHits = ctx.state.globals.PendingHeroHits.filter(hit => Number(hit.damageTextAmount || 0) > 0);
-    assert.equal(aggregateTextHits.length, 1);
-    assert.equal(aggregateTextHits[0].damageTextAmount, 10);
-    assert.equal(aggregateTextHits[0].damageTextKind, 'dot');
-    assert.equal(aggregateTextHits[0].damageTextTargetKind, 'enemy');
-    assert.equal(aggregateTextHits[0].damageTextX, 241);
-    assert.equal(aggregateTextHits[0].damageTextY, 116);
-
-    const renderRuntimeSrc = fs.readFileSync(path.join(repoRoot, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
-    assert.match(renderRuntimeSrc, /hit\.suppressDamageText/);
-    assert.match(renderRuntimeSrc, /hit\.damageTextAmount/);
-    assert.match(renderRuntimeSrc, /SpawnDamageText', aggregateDamageTextAmount/);
 
     assert.equal(ctx.state.globals.TaintedGroundZones.length, 2);
     assert.equal(

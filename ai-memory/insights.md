@@ -404,7 +404,3 @@
 ## 2026-06-04 — Party Draw Cleanup Must Audit Every Unimplemented Party Stub
 - When removing party skill stubs from skill-card draw, audit the full `PARTY_SKILL_DEFINITIONS` list for `payloadImplemented: false`, not only the originally reported slot numbers.
 - Keep canonical definitions intact for planning/reference, but contract both normal random draws and forced QA draws so unimplemented party cards cannot leak into the playable draw modal.
-
-## 2026-06-04 — Multi-Target Skill Text Should Batch Without Collapsing Effects
-- When a skill applies one effect to multiple targets, keep one gameplay packet per target and add explicit presentation metadata for the single aggregate floating text.
-- Do not fix stacked damage labels by merging gameplay targets; suppress per-target text at the delayed-hit seam and let one packet own the combined text amount.

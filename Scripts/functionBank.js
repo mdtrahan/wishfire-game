@@ -1210,16 +1210,8 @@ function activateFazeSkill(ctx, actorUID) {
   const now = Number(g.time || 0);
   const hitDelay = Math.max(0.14 + 0.75 + 0.18, 1.07);
   const applyAt = now + hitDelay;
-  const totalTicks = 3;
-  const initialDotDamage = Math.max(1, Math.floor(dotTotalDamage / totalTicks) + ((dotTotalDamage % totalTicks) > 0 ? 1 : 0));
-  const aggregateDamageTextAmount = initialDotDamage * enemies.length;
-  const aggregateDamageTextX = enemies.reduce((sumX, enemy) => sumX + Number(enemy?.x || 0), 0) / enemies.length;
-  const aggregateDamageTextY = enemies.reduce((sumY, enemy) => sumY + Number(enemy?.y || 0), 0) / enemies.length;
-  const damageTextBatchId = `faze-${heroUID}-${Math.max(0, Math.floor(Number(g.SkillDraughtTraceSeq || 0)))}-${Math.max(0, Math.floor(now * 1000))}`;
   g.PendingHeroHits = g.PendingHeroHits || [];
-  for (let enemyIndex = 0; enemyIndex < enemies.length; enemyIndex += 1) {
-    const enemy = enemies[enemyIndex];
-    const ownsAggregateDamageText = enemyIndex === enemies.length - 1;
+  for (const enemy of enemies) {
     const zone = refreshFazeTaintedGroundZone(ctx, heroUID, enemy, dotTotalDamage, applyAt);
     g.PendingHeroHits.push({
       at: applyAt,
@@ -1236,13 +1228,6 @@ function activateFazeSkill(ctx, actorUID) {
       calcPath: 'magicCalc',
       heroName: actorName,
       heroType: 'magic',
-      suppressDamageText: 1,
-      damageTextBatchId,
-      damageTextAmount: ownsAggregateDamageText ? aggregateDamageTextAmount : 0,
-      damageTextX: aggregateDamageTextX,
-      damageTextY: aggregateDamageTextY,
-      damageTextKind: 'dot',
-      damageTextTargetKind: 'enemy',
       taintedGroundZoneId: zone.id,
       taintedGroundSlotIndex: zone.slotIndex,
       msg: `${actorName} corrupted ${String(enemy.name || '?')}'s ground with blight for ${dotTotalDamage}!`,
