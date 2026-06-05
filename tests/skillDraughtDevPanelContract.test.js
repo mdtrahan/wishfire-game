@@ -73,6 +73,20 @@ test('dev panel wires mandatory draw controls', () => {
   assert.match(appSrc, /getSkillDraughtDevSummary/);
 });
 
+test('dev panel 2 output appends skill draw debug counters', () => {
+  const hudSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'renderHUD.js'), 'utf8');
+  assert.match(hudSrc, /function formatSkillDrawDebugText\(stateGlobals\)/);
+  assert.match(hudSrc, /SkillDrawCalls\.party_crimson_ward/);
+  assert.match(hudSrc, /SkillDrawCalls\.party_magic_fruit/);
+  assert.match(hudSrc, /SkillDrawCalls\.party_destiny/);
+  assert.match(hudSrc, /SkillDrawUnexpectedCalls/);
+  assert.match(hudSrc, /out\.textContent = lines\.concat\(formatSkillDrawDebugText\(g\)\)\.join\('\\n'\);/);
+
+  const appSrc = fs.readFileSync(appPath, 'utf8');
+  assert.match(appSrc, /renderHUD\.withSkillDrawDebugText\(gameState\.baseSummary \+ '\\n\\nLoading images\.\.\.', state\.globals\)/);
+  assert.match(appSrc, /renderHUD\.withSkillDrawDebugText\(`🎮 Puzzle RPG\\n\\n✓ Game loaded\\n\$\{rendered\.length\} total objects loaded`, state\.globals\)/);
+});
+
 test('fresh combat session clears selected session skills without touching progression', () => {
   const appSrc = fs.readFileSync(appPath, 'utf8');
   const initSrc = extractFunctionSource(appSrc, 'initEntities');

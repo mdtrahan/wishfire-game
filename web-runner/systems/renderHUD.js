@@ -19,6 +19,34 @@ function formatWalletText(label, wallet) {
   return lines.join('\n');
 }
 
+function formatSkillDrawDebugText(stateGlobals) {
+  const g = stateGlobals || {};
+  const calls = g.SkillDrawCalls && typeof g.SkillDrawCalls === 'object' && !Array.isArray(g.SkillDrawCalls)
+    ? g.SkillDrawCalls
+    : {};
+  const count = (id) => {
+    const value = Number(calls[id] || 0);
+    return Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
+  };
+  const unexpectedCalls = Number(g.SkillDrawUnexpectedCalls || 0);
+  const unexpectedIds = Array.isArray(g.SkillDrawUnexpectedSkillIds)
+    ? g.SkillDrawUnexpectedSkillIds.map(id => String(id || '')).filter(Boolean)
+    : [];
+  return [
+    '',
+    'Skill Draw Debug',
+    `SkillDrawCalls.party_crimson_ward: ${count('party_crimson_ward')}`,
+    `SkillDrawCalls.party_magic_fruit: ${count('party_magic_fruit')}`,
+    `SkillDrawCalls.party_destiny: ${count('party_destiny')}`,
+    `SkillDrawUnexpectedCalls: ${Number.isFinite(unexpectedCalls) && unexpectedCalls >= 0 ? Math.floor(unexpectedCalls) : 0}`,
+    `SkillDrawUnexpectedSkillIds: ${unexpectedIds.length ? unexpectedIds.join(',') : '(none)'}`,
+  ];
+}
+
+export function withSkillDrawDebugText(text, stateGlobals) {
+  return [String(text || '')].concat(formatSkillDrawDebugText(stateGlobals)).join('\n');
+}
+
 function drawWalletHUD({ walletOut, stateGlobals }) {
   if (!walletOut) return;
   const g = stateGlobals || {};
@@ -164,7 +192,7 @@ export function drawHUD({
     '',
     ...turnOrderLines,
   ];
-  out.textContent = lines.join('\n');
+  out.textContent = lines.concat(formatSkillDrawDebugText(g)).join('\n');
 
   drawGemCounterHUD({
     gemCounterOut,
