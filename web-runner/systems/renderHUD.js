@@ -29,17 +29,14 @@ function formatSkillDrawDebugText(stateGlobals) {
     return Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
   };
   const unexpectedCalls = Number(g.SkillDrawUnexpectedCalls || 0);
-  const unexpectedIds = Array.isArray(g.SkillDrawUnexpectedSkillIds)
-    ? g.SkillDrawUnexpectedSkillIds.map(id => String(id || '')).filter(Boolean)
-    : [];
   return [
     '',
     'Skill Draw Debug',
     `SkillDrawCalls.party_crimson_ward: ${count('party_crimson_ward')}`,
     `SkillDrawCalls.party_magic_fruit: ${count('party_magic_fruit')}`,
     `SkillDrawCalls.party_destiny: ${count('party_destiny')}`,
+    `SkillDrawCalls.party_faze: ${count('party_faze')}`,
     `SkillDrawUnexpectedCalls: ${Number.isFinite(unexpectedCalls) && unexpectedCalls >= 0 ? Math.floor(unexpectedCalls) : 0}`,
-    `SkillDrawUnexpectedSkillIds: ${unexpectedIds.length ? unexpectedIds.join(',') : '(none)'}`,
   ];
 }
 

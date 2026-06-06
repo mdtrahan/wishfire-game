@@ -843,6 +843,7 @@ const SKILL_DRAW_ALLOWED_CALL_IDS = Object.freeze([
   'party_crimson_ward',
   'party_magic_fruit',
   'party_destiny',
+  'party_faze',
 ]);
 const SKILL_DRAW_ALLOWED_CALL_ID_SET = Object.freeze(new Set(SKILL_DRAW_ALLOWED_CALL_IDS));
 
@@ -940,11 +941,6 @@ function ensureSkillDrawDebugCounters(g) {
   g.SkillDrawUnexpectedCalls = Number.isFinite(unexpectedCalls) && unexpectedCalls >= 0
     ? Math.floor(unexpectedCalls)
     : 0;
-  if (!Array.isArray(g.SkillDrawUnexpectedSkillIds)) g.SkillDrawUnexpectedSkillIds = [];
-  if (!Array.isArray(g.SkillDrawCallTrace)) g.SkillDrawCallTrace = [];
-  if (!Number.isFinite(g.SkillDrawCallTraceSeq)) g.SkillDrawCallTraceSeq = 0;
-  if (typeof g.SkillDrawLastCallId !== 'string') g.SkillDrawLastCallId = '';
-  if (!Number.isFinite(g.SkillDrawLastCallAllowed)) g.SkillDrawLastCallAllowed = 0;
   return g.SkillDrawCalls;
 }
 
@@ -955,9 +951,6 @@ function makeEmptySkillDrawDebugSnapshot() {
       return out;
     }, {}),
     unexpectedCalls: 0,
-    unexpectedSkillIds: [],
-    lastCallId: '',
-    lastCallAllowed: 0,
   };
 }
 
@@ -972,8 +965,6 @@ function publishSkillDrawDebugSnapshot(snapshot) {
       if (root && typeof root.setAttribute === 'function') {
         root.setAttribute('data-skill-draw-debug', encoded);
         root.setAttribute('data-skill-draw-unexpected-calls', String(Number(snapshot.unexpectedCalls || 0)));
-        root.setAttribute('data-skill-draw-last-call-id', String(snapshot.lastCallId || ''));
-        root.setAttribute('data-skill-draw-last-call-allowed', String(Number(snapshot.lastCallAllowed || 0)));
       }
     }
   } catch (_err) {
@@ -990,9 +981,6 @@ function snapshotSkillDrawDebugCounters(g) {
       return out;
     }, {}),
     unexpectedCalls: Number(g.SkillDrawUnexpectedCalls || 0),
-    unexpectedSkillIds: g.SkillDrawUnexpectedSkillIds.map(id => String(id || '')),
-    lastCallId: String(g.SkillDrawLastCallId || ''),
-    lastCallAllowed: Number(g.SkillDrawLastCallAllowed || 0),
   };
   return publishSkillDrawDebugSnapshot(snapshot);
 }
@@ -1005,26 +993,9 @@ function recordSkillDrawCall(g, sessionSkill) {
     calls[skillId] = Math.max(0, Math.floor(Number(calls[skillId] || 0))) + 1;
   } else {
     g.SkillDrawUnexpectedCalls = Math.max(0, Math.floor(Number(g.SkillDrawUnexpectedCalls || 0))) + 1;
-    g.SkillDrawUnexpectedSkillIds.push(skillId);
-    if (g.SkillDrawUnexpectedSkillIds.length > 80) {
-      g.SkillDrawUnexpectedSkillIds.splice(0, g.SkillDrawUnexpectedSkillIds.length - 80);
-    }
-  }
-  g.SkillDrawLastCallId = skillId;
-  g.SkillDrawLastCallAllowed = allowed ? 1 : 0;
-  g.SkillDrawCallTraceSeq = Math.max(0, Math.floor(Number(g.SkillDrawCallTraceSeq || 0))) + 1;
-  g.SkillDrawCallTrace.push({
-    seq: g.SkillDrawCallTraceSeq,
-    at: Number(g.time || 0),
-    skillId,
-    title: String(sessionSkill?.title || ''),
-    allowed: allowed ? 1 : 0,
-  });
-  if (g.SkillDrawCallTrace.length > 80) {
-    g.SkillDrawCallTrace.splice(0, g.SkillDrawCallTrace.length - 80);
   }
   snapshotSkillDrawDebugCounters(g);
-  return { skillId, allowed: allowed ? 1 : 0 };
+  return { allowed: allowed ? 1 : 0 };
 }
 
 publishSkillDrawDebugSnapshot(makeEmptySkillDrawDebugSnapshot());
