@@ -8,6 +8,7 @@
 ## 1) Canonical Code
 - Runtime: `Scripts/`, `web-runner/`
 - Core modules: `src/`
+- Ability system map: `governance/product/abilities.html` for skills, abilities, supergems, affinity, Vault/relic taxonomy, function shapes, lifetimes, and drift.
 - Legacy Construct 3 artifacts are retired.
 - Primary branch: `main`
 

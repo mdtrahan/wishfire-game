@@ -1,0 +1,88 @@
+{
+  "summary": {
+    "total_issues": 5,
+    "high_confidence": 4
+  },
+  "actions": [
+    {
+      "id": "debt-2026-06-01-red-test-suite",
+      "file": "tests/",
+      "type": "failing_test_suite",
+      "action": "refactor",
+      "confidence": "high",
+      "reason": "The full test suite is red with 36 failures clustered across routing, visual contracts, function-bank parity, hero/party skill behavior, and yellow sequence timing.",
+      "risk": "high",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API",
+        "create or select a dedicated stabilization bead",
+        "group failures by ownership seam before patching",
+        "do not hide behavioral regressions with source-string-only test edits"
+      ]
+    },
+    {
+      "id": "debt-2026-06-01-simulation-shadow-hotspot",
+      "file": "web-runner/systems/simulationCoreShadow.js",
+      "type": "migration_hotspot",
+      "action": "refactor",
+      "confidence": "high",
+      "reason": "The JS shadow runtime is 4040 lines and concentrates packet ownership, parity checks, and startup coupling.",
+      "risk": "high",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API",
+        "preserve Rust/JS parity behavior",
+        "split only after the red suite is stabilized",
+        "move packet-specific adapters into smaller modules"
+      ]
+    },
+    {
+      "id": "debt-2026-06-01-app-hot-file",
+      "file": "web-runner/app.js",
+      "type": "hot_file",
+      "action": "refactor",
+      "confidence": "high",
+      "reason": "The app shell is 8218 lines and remains coupled to direct source-string contract tests across routing, rendering, turn gating, dev tooling, and animation.",
+      "risk": "high",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API",
+        "extract only bead-owned seams",
+        "prioritize routing, visual loader, and yellow sequence orchestration helpers",
+        "keep web-runner/app.js orchestration-only"
+      ]
+    },
+    {
+      "id": "debt-2026-06-01-function-bank-mirrors",
+      "file": "Scripts/functionBank.js",
+      "type": "duplicate_logic",
+      "action": "merge",
+      "confidence": "high",
+      "reason": "The mirrored function banks are 8459 and 8478 lines and current failures include mirror/parity behavior.",
+      "risk": "high",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API",
+        "sync with web-runner/modules/functionBank.js",
+        "move deterministic decisions under shared core modules",
+        "avoid direct mirror edits outside parity-owned beads"
+      ]
+    },
+    {
+      "id": "debt-2026-06-01-rust-lib-hot-file",
+      "file": "rust/simulation_core/src/lib.rs",
+      "type": "hot_file",
+      "action": "refactor",
+      "confidence": "medium",
+      "reason": "The Rust simulation core boundary is useful but now sits in one 4527-line library file.",
+      "risk": "medium",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API",
+        "wait until current test suite is green",
+        "split by owner domain",
+        "preserve exported WASM contract names"
+      ]
+    }
+  ]
+}
