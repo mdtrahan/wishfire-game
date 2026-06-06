@@ -169,14 +169,19 @@
       const close = document.querySelector('[data-dev2-close]');
       function setDiagnosticsOpen(open) {
         if (!panel || !toggle) return;
-        panel.hidden = !open;
-        panel.setAttribute('aria-hidden', String(!open));
-        toggle.setAttribute('aria-expanded', String(open));
-        if (open) {
+        const nextOpen = !!open;
+        const changed = diagnosticsOpen() !== nextOpen;
+        panel.hidden = !nextOpen;
+        panel.setAttribute('aria-hidden', String(!nextOpen));
+        toggle.setAttribute('aria-expanded', String(nextOpen));
+        if (nextOpen) {
           const closeButton = panel.querySelector('[data-dev2-close]');
           if (closeButton) closeButton.focus();
         } else {
           toggle.focus();
+        }
+        if (changed) {
+          window.dispatchEvent(new CustomEvent('orka:dev2-diagnostics-open-change', { detail: { open } }));
         }
       }
       function diagnosticsOpen() {

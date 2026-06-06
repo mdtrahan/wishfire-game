@@ -393,3 +393,7 @@
 ## 2026-06-04 — Party Draw Cleanup Must Audit Every Unimplemented Party Stub
 - When removing party skill stubs from skill-card draw, audit the full `PARTY_SKILL_DEFINITIONS` list for `payloadImplemented: false`, not only the originally reported slot numbers.
 - Keep canonical definitions intact for planning/reference, but contract both normal random draws and forced QA draws so unimplemented party cards cannot leak into the playable draw modal.
+
+## 2026-06-06 — Debug Counters Must Live At The Measured Event Seam
+- If a QA counter is meant to track card appearances, increment it when the draw candidate list is created, not when the player selects or applies a card. A downstream application seam will undercount visible choices and make unsupported card appearances look lower than what QA can see.
+- For pause-to-inspect debug surfaces, opening the panel must freeze gameplay through the same turn-gate pause owner as the primary dev panel, or the act of reading the panel can pollute the state being measured.

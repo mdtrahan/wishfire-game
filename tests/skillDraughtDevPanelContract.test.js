@@ -7,6 +7,7 @@ const runtimePath = path.join(__dirname, '..', 'web-runner', 'modules', 'functio
 const scriptsPath = path.join(__dirname, '..', 'Scripts', 'functionBank.js');
 const statePath = path.join(__dirname, '..', 'web-runner', 'modules', 'state.js');
 const appPath = path.join(__dirname, '..', 'web-runner', 'app.js');
+const indexPath = path.join(__dirname, '..', 'web-runner', 'index.html');
 const renderOverlayPath = path.join(__dirname, '..', 'web-runner', 'systems', 'renderSkillDraughtOverlay.js');
 
 function extractFunctionSource(src, name) {
@@ -71,6 +72,33 @@ test('dev panel wires mandatory draw controls', () => {
   assert.match(appSrc, /ForceAstralFlowSkillDraught/);
   assert.match(appSrc, /ClearSessionSkillDraught/);
   assert.match(appSrc, /getSkillDraughtDevSummary/);
+});
+
+test('dev panel 2 output appends skill draw debug counters', () => {
+  const hudSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'renderHUD.js'), 'utf8');
+  assert.match(hudSrc, /function formatSkillDrawDebugText\(stateGlobals\)/);
+  assert.match(hudSrc, /SkillDrawCalls\.party_crimson_ward/);
+  assert.match(hudSrc, /SkillDrawCalls\.party_magic_fruit/);
+  assert.match(hudSrc, /SkillDrawCalls\.party_destiny/);
+  assert.match(hudSrc, /SkillDrawCalls\.party_faze/);
+  assert.match(hudSrc, /SkillDrawUnexpectedCalls/);
+  assert.match(hudSrc, /out\.textContent = lines\.concat\(formatSkillDrawDebugText\(g\)\)\.join\('\\n'\);/);
+
+  const appSrc = fs.readFileSync(appPath, 'utf8');
+  assert.match(appSrc, /renderHUD\.withSkillDrawDebugText\(gameState\.baseSummary \+ '\\n\\nLoading images\.\.\.', state\.globals\)/);
+  assert.match(appSrc, /renderHUD\.withSkillDrawDebugText\(`🎮 Puzzle RPG\\n\\n✓ Game loaded\\n\$\{rendered\.length\} total objects loaded`, state\.globals\)/);
+});
+
+test('dev panel 2 mirrors dev panel pause while open', () => {
+  const indexSrc = fs.readFileSync(indexPath, 'utf8');
+  assert.match(indexSrc, /new CustomEvent\('orka:dev2-diagnostics-open-change'/);
+  assert.match(indexSrc, /detail: \{ open \}/);
+
+  const appSrc = fs.readFileSync(appPath, 'utf8');
+  assert.match(appSrc, /function isDev2DiagnosticsOpen\(\)/);
+  assert.match(appSrc, /window\.addEventListener\('orka:dev2-diagnostics-open-change'/);
+  assert.match(appSrc, /if \(open\) \{\s*pauseGameplayForDevTooling\(\);/s);
+  assert.match(appSrc, /if \(isDev2DiagnosticsOpen\(\)\) \{\s*state\.globals\.DevToolingPaused = 1;/s);
 });
 
 test('fresh combat session clears selected session skills without touching progression', () => {

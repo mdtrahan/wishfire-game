@@ -883,6 +883,14 @@ const PARTY_SKILL_DRAW_EXCLUDED_IDS = Object.freeze(new Set([
   'party_chain_pop',
 ]));
 
+const SKILL_DRAW_ALLOWED_CALL_IDS = Object.freeze([
+  'party_crimson_ward',
+  'party_magic_fruit',
+  'party_destiny',
+  'party_faze',
+]);
+const SKILL_DRAW_ALLOWED_CALL_ID_SET = Object.freeze(new Set(SKILL_DRAW_ALLOWED_CALL_IDS));
+
 const FAZE_TAINTED_GROUND_DURATION_HERO_TEAM_TURNS = 3;
 const FAZE_TAINTED_GROUND_DAMAGE_SCALE = 0.5;
 
@@ -961,8 +969,84 @@ function ensureSkillDraughtState(ctx) {
   if (!g.SessionSkillsByHeroUID || typeof g.SessionSkillsByHeroUID !== 'object') g.SessionSkillsByHeroUID = {};
   if (!Array.isArray(g.SkillDraughtTrace)) g.SkillDraughtTrace = [];
   if (!Number.isFinite(g.SkillDraughtTraceSeq)) g.SkillDraughtTraceSeq = 0;
+  ensureSkillDrawDebugCounters(g);
   return g;
 }
+
+function ensureSkillDrawDebugCounters(g) {
+  if (!g.SkillDrawCalls || typeof g.SkillDrawCalls !== 'object' || Array.isArray(g.SkillDrawCalls)) {
+    g.SkillDrawCalls = {};
+  }
+  for (const id of SKILL_DRAW_ALLOWED_CALL_IDS) {
+    const count = Number(g.SkillDrawCalls[id] || 0);
+    g.SkillDrawCalls[id] = Number.isFinite(count) && count >= 0 ? Math.floor(count) : 0;
+  }
+  const unexpectedCalls = Number(g.SkillDrawUnexpectedCalls || 0);
+  g.SkillDrawUnexpectedCalls = Number.isFinite(unexpectedCalls) && unexpectedCalls >= 0
+    ? Math.floor(unexpectedCalls)
+    : 0;
+  return g.SkillDrawCalls;
+}
+
+function makeEmptySkillDrawDebugSnapshot() {
+  return {
+    calls: SKILL_DRAW_ALLOWED_CALL_IDS.reduce((out, id) => {
+      out[id] = 0;
+      return out;
+    }, {}),
+    unexpectedCalls: 0,
+  };
+}
+
+function publishSkillDrawDebugSnapshot(snapshot) {
+  try {
+    if (typeof globalThis !== 'undefined') {
+      const encoded = JSON.stringify(snapshot);
+      globalThis.__orkaSkillDrawDebug = JSON.parse(encoded);
+      globalThis.SkillDrawCalls = JSON.parse(JSON.stringify(snapshot.calls || {}));
+      globalThis.SkillDrawUnexpectedCalls = Number(snapshot.unexpectedCalls || 0);
+      const root = globalThis.document?.documentElement;
+      if (root && typeof root.setAttribute === 'function') {
+        root.setAttribute('data-skill-draw-debug', encoded);
+        root.setAttribute('data-skill-draw-unexpected-calls', String(Number(snapshot.unexpectedCalls || 0)));
+      }
+    }
+  } catch (_err) {
+    // Debug publishing must never affect combat flow.
+  }
+  return snapshot;
+}
+
+function snapshotSkillDrawDebugCounters(g) {
+  const calls = ensureSkillDrawDebugCounters(g);
+  const snapshot = {
+    calls: SKILL_DRAW_ALLOWED_CALL_IDS.reduce((out, id) => {
+      out[id] = Number(calls[id] || 0);
+      return out;
+    }, {}),
+    unexpectedCalls: Number(g.SkillDrawUnexpectedCalls || 0),
+  };
+  return publishSkillDrawDebugSnapshot(snapshot);
+}
+
+function isAllowedSkillDrawCallId(skillId) {
+  return SKILL_DRAW_ALLOWED_CALL_ID_SET.has(String(skillId || '').trim().toLowerCase());
+}
+
+function recordSkillDrawAppearances(g, candidates) {
+  const calls = ensureSkillDrawDebugCounters(g);
+  for (const candidate of Array.isArray(candidates) ? candidates : []) {
+    const skillId = String(candidate?.id || '').trim().toLowerCase();
+    if (isAllowedSkillDrawCallId(skillId)) {
+      calls[skillId] = Math.max(0, Math.floor(Number(calls[skillId] || 0))) + 1;
+    } else {
+      g.SkillDrawUnexpectedCalls = Math.max(0, Math.floor(Number(g.SkillDrawUnexpectedCalls || 0))) + 1;
+    }
+  }
+  snapshotSkillDrawDebugCounters(g);
+}
+
+publishSkillDrawDebugSnapshot(makeEmptySkillDrawDebugSnapshot());
 
 function makeSkillDraughtCandidate(def, index = 0) {
   const clean = cloneSkillDefinition(def);
@@ -1179,6 +1263,7 @@ export function GetSkillDraughtState(ctx) {
     candidates: g.SkillDraughtCandidates.map(candidate => ({ ...candidate })),
     selectedSkillId: String(g.SkillDraughtSelectedSkillId || ''),
     sessionSkillsByHeroUID: JSON.parse(JSON.stringify(g.SessionSkillsByHeroUID || {})),
+    skillDrawDebug: snapshotSkillDrawDebugCounters(g),
   };
 }
 
@@ -1200,6 +1285,7 @@ export function OpenSkillDraughtForHero(ctx, heroUID, forcedSkillId = '') {
   g.SkillDraughtCandidates = candidates;
   g.SkillDraughtHitZones = [];
   g.SkillDraughtSelectedSkillId = '';
+  recordSkillDrawAppearances(g, candidates);
   appendSkillDraughtTrace(g, 'open', { heroUID: uid, candidateIds: candidates.map(candidate => candidate.id) });
   LogCombat(ctx, 'The party found new skills.');
   return { ok: true, heroUID: uid, candidates: candidates.map(candidate => ({ ...candidate })) };
@@ -1234,7 +1320,12 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
   if (sessionSkill.id === 'party_crimson_ward') activateCrimsonWardSkill(ctx);
   if (sessionSkill.id === 'party_faze') activateFazeSkill(ctx, uid);
   const scope = String(sessionSkill.owner || '').toLowerCase() === 'party' ? 'party' : 'hero';
-  appendSkillDraughtTrace(g, 'select', { heroUID: uid, skillId: sessionSkill.id, scope });
+  appendSkillDraughtTrace(g, 'select', {
+    heroUID: uid,
+    skillId: sessionSkill.id,
+    scope,
+    skillDrawAllowed: isAllowedSkillDrawCallId(sessionSkill.id) ? 1 : 0,
+  });
   g.CombatActionPinnedLine = '';
   g.CombatActionPinnedUntil = 0;
   LogCombat(ctx, scope === 'party'
