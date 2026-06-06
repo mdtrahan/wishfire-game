@@ -872,24 +872,15 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: 'party_faze', owner: 'Party', slot: 12, title: 'Faze', cardText: 'Blights the field, poisoning enemies for the remainder of the session.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On selection', payloadImplemented: true },
 ]);
 
-const PARTY_SKILL_DRAW_EXCLUDED_IDS = Object.freeze(new Set([
-  'party_fresh_start',
-  'party_second_chance',
-  'party_momentum',
-  'party_guard_rail',
-  'party_weaken',
-  'party_hot_streak',
-  'party_last_push',
-  'party_chain_pop',
-]));
-
-const SKILL_DRAW_ALLOWED_CALL_IDS = Object.freeze([
+const PARTY_SKILL_DRAW_ALLOWED_IDS = Object.freeze([
   'party_crimson_ward',
   'party_magic_fruit',
   'party_destiny',
   'party_faze',
 ]);
-const SKILL_DRAW_ALLOWED_CALL_ID_SET = Object.freeze(new Set(SKILL_DRAW_ALLOWED_CALL_IDS));
+const PARTY_SKILL_DRAW_ALLOWED_ID_SET = Object.freeze(new Set(PARTY_SKILL_DRAW_ALLOWED_IDS));
+const SKILL_DRAW_ALLOWED_CALL_IDS = PARTY_SKILL_DRAW_ALLOWED_IDS;
+const SKILL_DRAW_ALLOWED_CALL_ID_SET = PARTY_SKILL_DRAW_ALLOWED_ID_SET;
 
 const FAZE_TAINTED_GROUND_DURATION_HERO_TEAM_TURNS = 3;
 const FAZE_TAINTED_GROUND_DAMAGE_SCALE = 0.5;
@@ -923,7 +914,7 @@ function getSkillDefinitionById(skillId) {
 
 function getPartySkillDrawDefinitions() {
   return PARTY_SKILL_DEFINITIONS.filter(def => (
-    !PARTY_SKILL_DRAW_EXCLUDED_IDS.has(String(def.id || '').toLowerCase())
+    PARTY_SKILL_DRAW_ALLOWED_ID_SET.has(String(def.id || '').toLowerCase())
   ));
 }
 

@@ -7,6 +7,12 @@ const vm = require('node:vm');
 const repoRoot = path.join(__dirname, '..');
 const runtimePath = path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js');
 const scriptsPath = path.join(repoRoot, 'Scripts', 'functionBank.js');
+const legalPartyDrawIds = [
+  'party_crimson_ward',
+  'party_magic_fruit',
+  'party_destiny',
+  'party_faze',
+];
 
 function loadModule(modulePath) {
   const original = fs.readFileSync(modulePath, 'utf8');
@@ -183,47 +189,50 @@ test('normal party skill draught samples the full party pool through RuntimeRand
   }
 });
 
-test('normal party skill draught excludes removed stubs from random and forced card draws', () => {
-  const removedStubCases = [
-    { id: 'party_fresh_start', title: 'Fresh Start', randomValues: [0, 0, 0] },
-    { id: 'party_second_chance', title: 'Second Chance', randomValues: [0.1, 0, 0] },
-    { id: 'party_momentum', title: 'Momentum', randomValues: [0.2, 0, 0] },
-    { id: 'party_guard_rail', title: 'Guard Rail', randomValues: [0.25, 0, 0] },
-    { id: 'party_weaken', title: 'Weaken', randomValues: [0.4, 0, 0] },
-    { id: 'party_hot_streak', title: 'Hot Streak', randomValues: [0.4, 0, 0] },
-    { id: 'party_last_push', title: 'Last Push', randomValues: [0.65, 0, 0] },
-    { id: 'party_chain_pop', title: 'Chain Pop', randomValues: [0.7, 0, 0] },
-  ];
-
+test('normal party skill draught uses only the active party draw allowlist', () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
+    const legalIdSet = new Set(legalPartyDrawIds);
+    const nonLegalPartyIds = mod.GetPartySkillDefinitions()
+      .map(def => def.id)
+      .filter(id => !legalIdSet.has(id));
 
-    for (const removed of removedStubCases) {
+    assert.ok(nonLegalPartyIds.includes('party_blue_spark'));
+    assert.ok(nonLegalPartyIds.includes('party_hot_streak'));
+
+    const observedLegalIds = new Set();
+    for (const randomValues of [[0, 0, 0], [0.34, 0, 0], [0.67, 0, 0], [0.99, 0, 0]]) {
       const { ctx } = makeContext();
-      installSequenceRandom(ctx, removed.randomValues);
+      installSequenceRandom(ctx, randomValues);
 
       const opened = mod.ForceAstralFlowSkillDraught(ctx, 100);
 
       assert.equal(opened.ok, true);
       assert.equal(opened.candidates.length, 3);
-      assert.equal(
-        opened.candidates.some(candidate => candidate.id === removed.id),
-        false,
-        `${removed.title} should not be reachable through normal party skill draw`,
-      );
+      for (const candidate of opened.candidates) {
+        assert.ok(legalIdSet.has(candidate.id), `${candidate.id} must be in the active party draw allowlist`);
+        observedLegalIds.add(candidate.id);
+      }
+    }
 
+    assert.deepEqual(
+      Array.from(observedLegalIds).sort(),
+      legalPartyDrawIds.slice().sort(),
+      'deterministic random samples should prove every active party draw id is reachable',
+    );
+
+    for (const id of nonLegalPartyIds) {
       const { ctx: forcedCtx } = makeContext();
       installSequenceRandom(forcedCtx, [0, 0, 0]);
 
-      const forcedOpened = mod.ForceAstralFlowSkillDraught(forcedCtx, 100, removed.id);
+      const forcedOpened = mod.ForceAstralFlowSkillDraught(forcedCtx, 100, id);
 
       assert.equal(forcedOpened.ok, true);
       assert.equal(forcedOpened.candidates.length, 3);
-      assert.equal(
-        forcedOpened.candidates.some(candidate => candidate.id === removed.id),
-        false,
-        `${removed.title} should not be reachable through forced party skill draw`,
-      );
+      assert.equal(forcedOpened.candidates.some(candidate => candidate.id === id), false);
+      for (const candidate of forcedOpened.candidates) {
+        assert.ok(legalIdSet.has(candidate.id), `${candidate.id} must be in the active party draw allowlist`);
+      }
     }
   }
 });
