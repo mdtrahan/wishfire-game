@@ -16,6 +16,26 @@ test('combat state seeds Astral Flow amp progress and combat-log pin fields', ()
   assert.match(stateSrc, /CombatActionPinnedUntil: 0,/);
 });
 
+test('ready Astral Flow draw only locks for blue merge handoff, not combat text read time', async () => {
+  for (const relPath of ['src/core/gemActionRules.mjs', 'web-runner/src/core/gemActionRules.mjs']) {
+    const mod = await import(path.join('file://', __dirname, '..', relPath));
+    const decision = mod.gemActionFromJs({
+      gemColor: 2,
+      consumedCount: 3,
+      astralFlowWallet: 114,
+      astralFlowAmpPoints: 15,
+      astralFlowAmpMax: 18,
+      astralFlowAmpReady: 0,
+      time: 20,
+      actionLockUntil: 0,
+    });
+
+    assert.equal(decision.blueOpenDraught, 1, relPath);
+    assert.equal(decision.blueAmpReadyAfter, 1, relPath);
+    assert.equal(decision.actionLockUntil, 20.32, relPath);
+  }
+});
+
 for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
   test(`blue resolve only fills the Astral Flow amp from matched blue sets of 3+ in ${relPath}`, () => {
     const src = read(relPath);

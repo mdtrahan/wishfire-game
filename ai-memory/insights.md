@@ -397,3 +397,14 @@
 ## 2026-06-06 — Debug Counters Must Live At The Measured Event Seam
 - If a QA counter is meant to track card appearances, increment it when the draw candidate list is created, not when the player selects or applies a card. A downstream application seam will undercount visible choices and make unsupported card appearances look lower than what QA can see.
 - For pause-to-inspect debug surfaces, opening the panel must freeze gameplay through the same turn-gate pause owner as the primary dev panel, or the act of reading the panel can pollute the state being measured.
+
+## 2026-06-02 — Skill Draw Modals Need A Checkpoint Gate
+- Skill draw eligibility may be discovered during a hero action, but the modal should spawn only at a hero-turn checkpoint after merge, refill, action locks, pending hits, and target selection are clear.
+- Treat an open skill draw as a presentation barrier lane. It should block refill, enemy action claims, deferred turn advance, and input restore until selection closes the modal.
+- Treat a pending skill draw as a handoff barrier, not a presentation lane. It must block refill and turn advance while still allowing the checkpoint claim once presentation lanes are clear.
+
+## 2026-06-02 — Modal Handoffs Must Not Borrow Read-Time Locks
+- Combat message read time and action-lock time are separate contracts. If a modal claim gate waits on `ActionLockUntil`, do not extend that lock only to keep a combat line readable; pin the text through its own presentation state.
+- For meter-threshold modal bugs, check the queued flag, the action lock, and the checkpoint claim gate together. A full meter with `SkillDraughtPendingOpen=1` can still look broken if the claim is hidden behind a decorative read-time lock.
+- Hero turn type is `0`; never default `GetCurrentType()` with `||` in hero-only gates. Use nullish fallback so a valid hero turn does not become `-1` and strand pending Astral Flow modals.
+- Skill-card draw trigger ownership is blue-only: regular blue opens draw only through full Astral Flow, and blue supergem opens draw directly. Green/red/yellow/purple paths must not call `QueueSkillDraughtForHero`, even when they relate to implemented skills such as Faze.

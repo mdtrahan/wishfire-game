@@ -57,10 +57,26 @@ test('blue meter full opens draw once instead of resetting on hero turn', () => 
   const resolveSrc = extractFunctionSource(runtimeSrc, 'ResolveGemAction');
   assert.match(resolveSrc, /resolveGemActionCompat/);
   assert.match(resolveSrc, /__ORKA_GEM_ACTION_OWNER__/);
-  assert.match(resolveSrc, /OpenSkillDraughtForHero\(ctx, actorUID\);/);
+  assert.match(resolveSrc, /QueueSkillDraughtForHero\(ctx, actorUID\);/);
+  assert.doesNotMatch(resolveSrc, /OpenSkillDraughtForHero\(ctx, actorUID\);/);
   assert.match(resolveSrc, /if \(Number\(decision\.blueOpenDraught \|\| 0\) === 1\) \{/);
   const shouldResetSrc = extractFunctionSource(runtimeSrc, 'shouldResetAstralFlowAmpOnHeroTurn');
   assert.match(shouldResetSrc, /if \(Number\(g\.SkillDraughtOpen \|\| 0\)\) return false;/);
+});
+
+test('app claims pending skill draw only at the hero end-of-turn checkpoint', () => {
+  const appSrc = fs.readFileSync(appPath, 'utf8');
+  assert.match(appSrc, /function canClaimPendingSkillDraught\(/);
+  assert.match(appSrc, /currentTurnType === 0/);
+  assert.match(appSrc, /pendingBarrier\.canClaimSkillDraught/);
+  assert.doesNotMatch(appSrc, /pendingHeroUID > 0 && pendingHeroUID !== currentUID/);
+  assert.match(appSrc, /callFunctionWithContext\(fnContext, 'ClaimPendingSkillDraught'\);/);
+  const claimIndex = appSrc.indexOf('const pendingSkillDraughtClaimed = claimPendingSkillDraughtAtHeroCheckpoint');
+  const refillReadyIndex = appSrc.indexOf('const refillReady =');
+  assert.ok(claimIndex > -1, 'pending skill draw should claim inside the tick loop');
+  assert.ok(refillReadyIndex > -1, 'refill gate should still exist');
+  assert.ok(claimIndex < refillReadyIndex, 'pending skill draw must claim before refill can start');
+  assert.match(appSrc, /!pendingSkillDraughtClaimed &&[\s\S]*refillStartBarrier\.canStartRefill/);
 });
 
 test('dev panel wires mandatory draw controls', () => {

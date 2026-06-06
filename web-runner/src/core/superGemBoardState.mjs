@@ -5,7 +5,10 @@ import {
   detectSuperGemClusters,
 } from './superGemRules.mjs';
 import { getSuperGemRenderRect } from './superGemRender.mjs';
-import { derivePresentationTurnBarrier } from './turnGateController.mjs';
+import {
+  derivePresentationTurnBarrier,
+  isCanPickGemsReady,
+} from './turnGateController.mjs';
 
 function rebuildSuperGemCellMap(gameState) {
   gameState.superGemCellMap = buildSuperGemCellMap(gameState.superGems || []);
@@ -106,7 +109,7 @@ function canStartSuperGemSpend(globals = {}, gameState = {}) {
   return (
     globals.GamePhase === 'RUNTIME' &&
     Number(globals.TurnPhase || 0) === 0 &&
-    globals.CanPickGems === true &&
+    isCanPickGemsReady(globals.CanPickGems) &&
     !globals.PendingSkillID &&
     !globals.PendingSuperGemAction &&
     !globals.DeferAdvance &&

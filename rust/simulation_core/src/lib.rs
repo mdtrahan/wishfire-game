@@ -1316,7 +1316,7 @@ pub fn gem_action_action_lock_until(
     current_lock_until: f64,
     time: f64,
     text_anim_end_at: f64,
-    blue_open_draught: f64,
+    _blue_open_draught: f64,
 ) -> f64 {
     let route = number_or_zero(route_code);
     let current = if current_lock_until.is_finite() {
@@ -1326,11 +1326,7 @@ pub fn gem_action_action_lock_until(
     };
     let now = if time.is_finite() { time } else { 0.0 };
     if route == 2.0 {
-        let mut next = current.max(now + 0.32);
-        if number_or_zero(blue_open_draught) == 1.0 {
-            next = next.max(now + 4.0);
-        }
-        next
+        current.max(now + 0.32)
     } else if route == 5.0 {
         let text_end = if text_anim_end_at.is_finite() {
             text_anim_end_at
@@ -4444,7 +4440,7 @@ mod single_hit_resolution_tests {
             ),
             (
                 2.0, 5.0, 7.0, 16.0, 18.0, 0.0, 10.0, 0.0, 0.0, 0.5, 2.0, 0.0, 1.0, 0.0, 0.0, 0.0,
-                1.0, 12.0, 18.0, 1.0, 1.0, 14.0, 12.0,
+                1.0, 12.0, 18.0, 1.0, 1.0, 10.32, 12.0,
             ),
             (
                 2.0, 5.0, 7.0, 16.0, 18.0, 1.0, 10.0, 0.0, 0.0, 0.5, 2.0, 0.0, 1.0, 0.0, 0.0, 0.0,
