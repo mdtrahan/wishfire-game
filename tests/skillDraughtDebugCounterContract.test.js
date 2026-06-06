@@ -92,14 +92,29 @@ function makeContext() {
   return ctx;
 }
 
-function selectForcedSkill(mod, ctx, skillId) {
+function setRuntimeRandomSequence(ctx, values) {
+  let index = 0;
+  ctx.state.globals.RuntimeRandom = () => {
+    const fallback = values.length ? values[values.length - 1] : 0;
+    const value = index < values.length ? values[index] : fallback;
+    index += 1;
+    return value;
+  };
+}
+
+function openForcedSkillDraw(mod, ctx, skillId) {
   const opened = mod.ForceAstralFlowSkillDraught(ctx, 100, skillId);
   assert.equal(opened.ok, true);
   assert.equal(opened.candidates[0].id, skillId);
+  return opened;
+}
+
+function selectForcedSkill(mod, ctx, skillId) {
+  const opened = openForcedSkillDraw(mod, ctx, skillId);
   const selected = mod.SelectSkillDraughtCard(ctx, 0);
   assert.equal(selected.ok, true);
   assert.equal(selected.skill.id, skillId);
-  return selected;
+  return { opened, selected };
 }
 
 function selectInjectedSkill(mod, ctx, skillId) {
@@ -127,7 +142,7 @@ function domDebug(mod) {
   return JSON.parse(mod.__context.document.documentElement.getAttribute('data-skill-draw-debug'));
 }
 
-test('skill draw debug counters track allowed calls and flag unexpected selections', () => {
+test('skill draw debug counters track card appearances, not selected/used skills', () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const ctx = makeContext();
@@ -149,17 +164,20 @@ test('skill draw debug counters track allowed calls and flag unexpected selectio
     assert.deepEqual(plain(mod.__context.__orkaSkillDrawDebug), emptyDebug);
     assert.deepEqual(domDebug(mod), emptyDebug);
 
-    selectForcedSkill(mod, ctx, 'party_magic_fruit');
-    selectForcedSkill(mod, ctx, 'party_destiny');
-    selectForcedSkill(mod, ctx, 'party_crimson_ward');
-    selectForcedSkill(mod, ctx, 'party_faze');
+    setRuntimeRandomSequence(ctx, [0.2, 0.5]);
+    const openedAllowed = openForcedSkillDraw(mod, ctx, 'party_magic_fruit');
+    assert.deepEqual(plain(openedAllowed.candidates.map(candidate => candidate.id)), [
+      'party_magic_fruit',
+      'party_destiny',
+      'party_crimson_ward',
+    ]);
 
     const allowedState = plain(mod.GetSkillDraughtState(ctx).skillDrawDebug);
     assert.deepEqual(allowedState.calls, {
       party_crimson_ward: 1,
       party_magic_fruit: 1,
       party_destiny: 1,
-      party_faze: 1,
+      party_faze: 0,
     });
     assert.equal(allowedState.unexpectedCalls, 0);
     assert.deepEqual(plain(mod.__context.__orkaSkillDrawDebug), allowedState);
@@ -169,14 +187,25 @@ test('skill draw debug counters track allowed calls and flag unexpected selectio
     assert.deepEqual(plain(ctx.state.globals.SkillDrawCalls), allowedState.calls);
     assert.equal(ctx.state.globals.SkillDrawUnexpectedCalls, 0);
 
+    const selectedAllowed = mod.SelectSkillDraughtCard(ctx, 0);
+    assert.equal(selectedAllowed.ok, true);
+    assert.equal(selectedAllowed.skill.id, 'party_magic_fruit');
+    assert.deepEqual(plain(mod.GetSkillDraughtState(ctx).skillDrawDebug), allowedState);
+
     const unexpectedCtx = makeContext();
-    selectInjectedSkill(mod, unexpectedCtx, 'non_registered_skill');
+    setRuntimeRandomSequence(unexpectedCtx, [0, 0]);
+    const openedUnexpected = openForcedSkillDraw(mod, unexpectedCtx, 'party_magic_fruit');
+    assert.deepEqual(plain(openedUnexpected.candidates.map(candidate => candidate.id)), [
+      'party_magic_fruit',
+      'party_blue_spark',
+      'party_destiny',
+    ]);
     const unexpectedState = plain(mod.GetSkillDraughtState(unexpectedCtx).skillDrawDebug);
 
     assert.deepEqual(unexpectedState.calls, {
       party_crimson_ward: 0,
-      party_magic_fruit: 0,
-      party_destiny: 0,
+      party_magic_fruit: 1,
+      party_destiny: 1,
       party_faze: 0,
     });
     assert.equal(unexpectedState.unexpectedCalls, 1);
@@ -184,5 +213,9 @@ test('skill draw debug counters track allowed calls and flag unexpected selectio
     assert.deepEqual(domDebug(mod), unexpectedState);
     assert.equal(mod.__context.document.documentElement.getAttribute('data-skill-draw-unexpected-calls'), '1');
     assert.equal(unexpectedCtx.state.globals.SkillDrawUnexpectedCalls, 1);
+
+    const injectedCtx = makeContext();
+    selectInjectedSkill(mod, injectedCtx, 'non_registered_skill');
+    assert.deepEqual(plain(mod.GetSkillDraughtState(injectedCtx).skillDrawDebug), emptyDebug);
   }
 });

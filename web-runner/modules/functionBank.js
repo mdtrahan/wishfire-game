@@ -1028,17 +1028,21 @@ function snapshotSkillDrawDebugCounters(g) {
   return publishSkillDrawDebugSnapshot(snapshot);
 }
 
-function recordSkillDrawCall(g, sessionSkill) {
+function isAllowedSkillDrawCallId(skillId) {
+  return SKILL_DRAW_ALLOWED_CALL_ID_SET.has(String(skillId || '').trim().toLowerCase());
+}
+
+function recordSkillDrawAppearances(g, candidates) {
   const calls = ensureSkillDrawDebugCounters(g);
-  const skillId = String(sessionSkill?.id || '').trim().toLowerCase();
-  const allowed = SKILL_DRAW_ALLOWED_CALL_ID_SET.has(skillId);
-  if (allowed) {
-    calls[skillId] = Math.max(0, Math.floor(Number(calls[skillId] || 0))) + 1;
-  } else {
-    g.SkillDrawUnexpectedCalls = Math.max(0, Math.floor(Number(g.SkillDrawUnexpectedCalls || 0))) + 1;
+  for (const candidate of Array.isArray(candidates) ? candidates : []) {
+    const skillId = String(candidate?.id || '').trim().toLowerCase();
+    if (isAllowedSkillDrawCallId(skillId)) {
+      calls[skillId] = Math.max(0, Math.floor(Number(calls[skillId] || 0))) + 1;
+    } else {
+      g.SkillDrawUnexpectedCalls = Math.max(0, Math.floor(Number(g.SkillDrawUnexpectedCalls || 0))) + 1;
+    }
   }
   snapshotSkillDrawDebugCounters(g);
-  return { allowed: allowed ? 1 : 0 };
 }
 
 publishSkillDrawDebugSnapshot(makeEmptySkillDrawDebugSnapshot());
@@ -1280,6 +1284,7 @@ export function OpenSkillDraughtForHero(ctx, heroUID, forcedSkillId = '') {
   g.SkillDraughtCandidates = candidates;
   g.SkillDraughtHitZones = [];
   g.SkillDraughtSelectedSkillId = '';
+  recordSkillDrawAppearances(g, candidates);
   appendSkillDraughtTrace(g, 'open', { heroUID: uid, candidateIds: candidates.map(candidate => candidate.id) });
   LogCombat(ctx, 'The party found new skills.');
   return { ok: true, heroUID: uid, candidates: candidates.map(candidate => ({ ...candidate })) };
@@ -1303,7 +1308,6 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
     selectedAt: Number(g.time || 0),
   };
   g.SessionSkillsByHeroUID[key].push(sessionSkill);
-  const skillDrawCounter = recordSkillDrawCall(g, sessionSkill);
   g.SkillDraughtSelectedSkillId = sessionSkill.id;
   g.SkillDraughtOpen = 0;
   g.SkillDraughtCandidates = [];
@@ -1319,7 +1323,7 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
     heroUID: uid,
     skillId: sessionSkill.id,
     scope,
-    skillDrawAllowed: skillDrawCounter.allowed,
+    skillDrawAllowed: isAllowedSkillDrawCallId(sessionSkill.id) ? 1 : 0,
   });
   g.CombatActionPinnedLine = '';
   g.CombatActionPinnedUntil = 0;

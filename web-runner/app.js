@@ -1911,6 +1911,11 @@ function pauseGameplayForDevTooling() {
   state.globals.DevToolingPaused = 1;
 }
 
+function isDev2DiagnosticsOpen() {
+  const panel = document.getElementById('dev2-diagnostics');
+  return !!panel && !panel.hidden;
+}
+
 function clearDevToolingPauseSnapshot() {
   devToolingPauseSnapshot = null;
 }
@@ -1938,7 +1943,11 @@ function closeDevToolingModal({ restorePauseSnapshot = true } = {}) {
   state.globals.DevToolingConfig = cfg;
   if (root) root.style.display = 'none';
   if (restorePauseSnapshot) {
-    resumeGameplayFromDevTooling();
+    if (isDev2DiagnosticsOpen()) {
+      state.globals.DevToolingPaused = 1;
+    } else {
+      resumeGameplayFromDevTooling();
+    }
   } else {
     devToolingPauseSnapshot = null;
     state.globals.DevToolingPaused = 0;
@@ -1999,7 +2008,7 @@ function resetCombatRuntimeForFreshSession(reason = 'combat-refresh', options = 
   }));
 
   clearDevToolingPauseSnapshot();
-  state.globals.DevToolingPaused = ensureDevToolingConfig().open ? 1 : 0;
+  state.globals.DevToolingPaused = (ensureDevToolingConfig().open || isDev2DiagnosticsOpen()) ? 1 : 0;
   console.log(
     `[TURN] reset combat runtime baseline reason=${reason} ` +
     `turnType=${Number(options.currentTurnType || 0)} ` +
@@ -2024,6 +2033,20 @@ function toggleDevToolingModal(nextOpen = null) {
     closeDevToolingModal({ restorePauseSnapshot: true });
   }
   return cfg;
+}
+
+window.addEventListener('orka:dev2-diagnostics-open-change', (ev) => {
+  const open = !!ev?.detail?.open;
+  if (open) {
+    pauseGameplayForDevTooling();
+    return;
+  }
+  if (!ensureDevToolingConfig().open) {
+    resumeGameplayFromDevTooling();
+  }
+});
+if (isDev2DiagnosticsOpen()) {
+  pauseGameplayForDevTooling();
 }
 
 function isDevToolingHotkey(ev) {

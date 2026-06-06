@@ -389,3 +389,7 @@
 ## 2026-05-31 — Hero Match Routes Must Not Own Skill-Card Identity
 - If a named ability is moved into skill-card draw, remove that identity from gem-match logs, profiles, and direct payload branches. A generic match that still says the old ability name will be indistinguishable from a live skill trigger in QA.
 - For ability separation bugs, test both sides of the boundary: the old match route must stay generic, and the new card route must own the renamed payload and presentation state.
+
+## 2026-06-06 — Debug Counters Must Live At The Measured Event Seam
+- If a QA counter is meant to track card appearances, increment it when the draw candidate list is created, not when the player selects or applies a card. A downstream application seam will undercount visible choices and make unsupported card appearances look lower than what QA can see.
+- For pause-to-inspect debug surfaces, opening the panel must freeze gameplay through the same turn-gate pause owner as the primary dev panel, or the act of reading the panel can pollute the state being measured.

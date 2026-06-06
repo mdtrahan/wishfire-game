@@ -244,12 +244,17 @@ test('Destiny resolves from enemy damage receive seam after hero hit', () => {
 
 test('dev panel exposes Destiny trigger without inlining effect logic', () => {
   const appSrc = fs.readFileSync(appPath, 'utf8');
+  const destinyTriggerStart = appSrc.indexOf('devToolingDom.triggerDestiny.addEventListener');
+  const destinyTriggerEnd = appSrc.indexOf('devToolingDom.clearSessionSkills.addEventListener', destinyTriggerStart);
+  assert.notEqual(destinyTriggerStart, -1);
+  assert.notEqual(destinyTriggerEnd, -1);
+  const destinyTriggerSrc = appSrc.slice(destinyTriggerStart, destinyTriggerEnd);
   assert.match(appSrc, /data-devtool-trigger-destiny/);
-  assert.match(appSrc, /TriggerPartyDestinyDev/);
-  assert.match(appSrc, /const requestedUID = Number\(devToolingDom\.skillHero\?\.value \|\| 0\);/);
-  assert.match(appSrc, /const requestedActor = state\.entities\.find\(actor => Number\(actor\?\.uid \|\| 0\) === requestedUID\) \|\| null;/);
-  assert.match(appSrc, /const sourceUID = requestedActor\?\.kind === 'hero'/);
-  assert.match(appSrc, /Destiny dev trigger failed:/);
-  assert.match(appSrc, /closeDevToolingModal\(\{ restorePauseSnapshot: true \}\);/);
-  assert.doesNotMatch(appSrc, /ApplyPartyHeal/);
+  assert.match(destinyTriggerSrc, /TriggerPartyDestinyDev/);
+  assert.match(destinyTriggerSrc, /const requestedUID = Number\(devToolingDom\.skillHero\?\.value \|\| 0\);/);
+  assert.match(destinyTriggerSrc, /const requestedActor = state\.entities\.find\(actor => Number\(actor\?\.uid \|\| 0\) === requestedUID\) \|\| null;/);
+  assert.match(destinyTriggerSrc, /const sourceUID = requestedActor\?\.kind === 'hero'/);
+  assert.match(destinyTriggerSrc, /Destiny dev trigger failed:/);
+  assert.match(destinyTriggerSrc, /closeDevToolingModal\(\{ restorePauseSnapshot: true \}\);/);
+  assert.doesNotMatch(destinyTriggerSrc, /ApplyPartyHeal/);
 });
