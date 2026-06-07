@@ -86,11 +86,15 @@ function runHeroAoeProfileCase(src, actor) {
   return { profileAtLunge, aoeCalled };
 }
 
-test('Kojonn green AOE now uses the shared generic AOE path in both mirrors', () => {
+test('retired green route no longer maps gems to HERO_AOE in both mirrors', () => {
   const runtimeSrc = read('web-runner/modules/functionBank.js');
   const scriptsSrc = read('Scripts/functionBank.js');
 
   for (const src of [runtimeSrc, scriptsSrc]) {
+    assert.doesNotMatch(src, /GEM_ACTION_GREEN_ATTACK/);
+    assert.doesNotMatch(src, /color >= 0 && color <= 5/);
+    assert.doesNotMatch(src, /routeCode === 0 \? 1/);
+    assert.doesNotMatch(src, /colorName: 'GREEN', intentKey: 'HERO_AOE'/);
     assert.doesNotMatch(src, /const isKojonn = String\(actor && actor\.name \|\| ''\) === 'Kojonn';/);
     assert.doesNotMatch(src, /dotTotalDamage: Number\(hit\.dotTotalDamage \|\| 0\),/);
     assert.doesNotMatch(src, /\['Pummel', 'Swipe', 'Burst', 'Faze'\]/);
@@ -103,14 +107,14 @@ test('Kojonn green AOE now uses the shared generic AOE path in both mirrors', ()
   }
 });
 
-test('Kojonn regular green match uses common AOE presentation profile', () => {
+test('direct HERO_AOE calls use common AOE presentation profile', () => {
   for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
     const src = read(relPath);
     const kojonn = runHeroAoeProfileCase(src, { uid: 4, name: 'Kojonn', kind: 'hero' });
     const falie = runHeroAoeProfileCase(src, { uid: 1, name: 'Falie', kind: 'hero' });
 
-    assert.equal(kojonn.aoeCalled, true, `${relPath} should still resolve through the green AOE skill`);
-    assert.equal(kojonn.profileAtLunge, 'aoe', `${relPath} should keep Kojonn green on common AOE profile`);
-    assert.equal(falie.profileAtLunge, 'aoe', `${relPath} should keep non-Kojonn green on the common AOE profile`);
+    assert.equal(kojonn.aoeCalled, true, `${relPath} should still resolve direct AOE skill calls`);
+    assert.equal(kojonn.profileAtLunge, 'aoe', `${relPath} should keep Kojonn on common AOE profile`);
+    assert.equal(falie.profileAtLunge, 'aoe', `${relPath} should keep non-Kojonn on the common AOE profile`);
   }
 });

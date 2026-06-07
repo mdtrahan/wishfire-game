@@ -7112,7 +7112,6 @@ export function RefreshPartyBuffUI(ctx) {
   ];
 }
 
-const GEM_ACTION_GREEN_ATTACK = 0;
 const GEM_ACTION_RED_ATTACK = 1;
 const GEM_ACTION_BLUE_ASTRAL = 2;
 const GEM_ACTION_YELLOW_CASINO = 3;
@@ -7128,11 +7127,10 @@ function gemActionNumberOr(value, fallback = 0) {
 
 function gemActionRouteCodeFallback(gemColor) {
   const color = Math.floor(gemActionNumberOr(gemColor, -1));
-  return color >= 0 && color <= 5 ? color : -1;
+  return color >= 1 && color <= 5 ? color : -1;
 }
 
 function gemActionIntentMetaFallback(routeCode) {
-  if (routeCode === GEM_ACTION_GREEN_ATTACK) return { frame: 0, colorName: 'GREEN', intentKey: 'HERO_AOE', extra: '' };
   if (routeCode === GEM_ACTION_RED_ATTACK) return { frame: 1, colorName: 'RED', intentKey: 'HERO_SINGLE', extra: '' };
   if (routeCode === GEM_ACTION_BLUE_ASTRAL) return { frame: 2, colorName: 'BLUE', intentKey: 'Astral_Flow', extra: '' };
   if (routeCode === GEM_ACTION_YELLOW_CASINO) return { frame: 3, colorName: 'YELLOW', intentKey: 'Casino_Recolor', extra: '' };
@@ -7160,7 +7158,7 @@ function buildGemActionFallbackDecision(payload = {}, owner = 'fallback') {
     actionLockUntil = Math.max(currentLock, now + 0.32, gemActionNumberOr(payload.textAnimEndAt, 0));
   }
   const intent = gemActionIntentMetaFallback(routeCode);
-  const pendingSkillCode = routeCode === GEM_ACTION_GREEN_ATTACK ? 1 : (routeCode === GEM_ACTION_RED_ATTACK ? 2 : 0);
+  const pendingSkillCode = routeCode === GEM_ACTION_RED_ATTACK ? 2 : 0;
   const purpleRoll = Number.isFinite(Number(payload.purpleRoll01)) ? Number(payload.purpleRoll01) : 0.5;
   const purpleEnergyOptions = [6, 12, 15];
   const purpleEnergyAmount = purpleEnergyOptions[Math.floor(Math.max(0, Math.min(0.999999, purpleRoll)) * purpleEnergyOptions.length)] || 6;
@@ -7171,9 +7169,9 @@ function buildGemActionFallbackDecision(payload = {}, owner = 'fallback') {
     hideHeroSelector: 1,
     pendingSkillCode,
     pendingSkillId: pendingSkillCode === 1 ? 'HERO_AOE' : (pendingSkillCode === 2 ? 'HERO_SINGLE' : ''),
-    setIsAoe: routeCode === GEM_ACTION_GREEN_ATTACK || routeCode === GEM_ACTION_RED_ATTACK || routeCode === GEM_ACTION_BLUE_ASTRAL ? 1 : 0,
-    isAoe: routeCode === GEM_ACTION_GREEN_ATTACK ? 1 : 0,
-    showAttackUi: routeCode === GEM_ACTION_GREEN_ATTACK || routeCode === GEM_ACTION_RED_ATTACK ? 1 : 0,
+    setIsAoe: routeCode === GEM_ACTION_RED_ATTACK || routeCode === GEM_ACTION_BLUE_ASTRAL ? 1 : 0,
+    isAoe: 0,
+    showAttackUi: routeCode === GEM_ACTION_RED_ATTACK ? 1 : 0,
     callCode: routeCode === GEM_ACTION_HEAL ? GEM_ACTION_CALL_DO_HEAL : (routeCode === GEM_ACTION_PURPLE_ENERGY ? GEM_ACTION_CALL_PURPLE_MATCH_ENERGY : 0),
     consumesTurn: routeCode === GEM_ACTION_BLUE_ASTRAL || routeCode === GEM_ACTION_PURPLE_ENERGY ? 1 : 0,
     intentFrame: intent.frame,

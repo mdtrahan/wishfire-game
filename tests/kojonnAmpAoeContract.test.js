@@ -92,7 +92,7 @@ function runKojonnAoeCase(src, ampMult) {
   };
 }
 
-test('Kojonn green AOE uses shared direct-damage packets in both mirrors', () => {
+test('Kojonn direct AOE uses shared direct-damage packets in both mirrors', () => {
   for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
     const src = read(relPath);
     const base = runKojonnAoeCase(src, 0);
