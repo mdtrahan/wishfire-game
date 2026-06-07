@@ -22,6 +22,14 @@ test('green color zero no longer forms or activates a super gem', () => {
   assert.match(runtimeSrc, /if \(color === 0\) return false;/);
 });
 
+test('green color zero no longer has gem or supergem visual assets', () => {
+  const visualSrc = read('web-runner/systems/gemVisuals.js');
+  assert.match(visualSrc, /const ACTIVE_GEM_COLORS = Object\.freeze\(\[1, 2, 3, 4, 5\]\);/);
+  assert.doesNotMatch(visualSrc, /0:\s*'gems\/green_gem\.png'/);
+  assert.doesNotMatch(visualSrc, /0:\s*'images\/gem-animation 1-000\.png'/);
+  assert.doesNotMatch(visualSrc, /0:\s*'gems\/super_green\.png'/);
+});
+
 test('gem action routing treats green color zero as retired legacy input', () => {
   const srcCore = read('src/core/gemActionRules.mjs');
   const runnerCore = read('web-runner/src/core/gemActionRules.mjs');

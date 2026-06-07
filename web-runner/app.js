@@ -2493,7 +2493,7 @@ function buildHeroSkillDescriptionLines(hero, skillState) {
   if (key === 'skill1') {
     if (heroName === 'Kojonn') {
       return [
-        `Green match: blight over time on all enemies.`,
+        `Faze: blight over time on all enemies.`,
         `Rank ${rank}/${maxRank}  Next Cost ${nextCost} SP`,
         `Status ${status}`,
       ];
@@ -3577,7 +3577,7 @@ function initEntities(enemyRows, layoutInstances) {
   }
 }
 
-// Create gem board with random colors (0-5: green, red, blue, yellow, heal, purple energy).
+// Create gem board with active colors (1-5: red, blue, yellow, heal, purple energy).
 function createGemBoard(gridBounds = null, { immediateFill = false } = {}) {
   assertCombatLayoutDev('createGemBoard');
   bootstrapDeterministicRefillPending = BOOTSTRAP_SEED != null;

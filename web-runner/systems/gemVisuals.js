@@ -1,5 +1,4 @@
 const GEM_ASSET_BY_COLOR = {
-  0: 'gems/green_gem.png',
   1: 'gems/red_gem.png',
   2: 'gems/blue_gem.png',
   3: 'gems/coin.png',
@@ -8,13 +7,14 @@ const GEM_ASSET_BY_COLOR = {
 };
 
 const LEGACY_GEM_BY_COLOR = {
-  0: 'images/gem-animation 1-000.png',
   1: 'images/gem-animation 1-001.png',
   2: 'images/gem-animation 1-002.png',
   3: 'images/gem-animation 1-003.png',
   4: 'images/gem-animation 1-004.png',
   5: 'images/gem-animation 1-005.png',
 };
+
+const ACTIVE_GEM_COLORS = Object.freeze([1, 2, 3, 4, 5]);
 
 const SUPER_GEM_ASSET_BY_COLOR = {
   1: 'gems/super-red.png',
@@ -30,7 +30,7 @@ export async function loadGemVisuals({ assetUrl, loadImage }) {
   let superGemRainbowImage = null;
 
   await Promise.all([
-    ...Array.from({ length: 6 }, (_, i) => i).map(async (i) => {
+    ...ACTIVE_GEM_COLORS.map(async (i) => {
       const primaryUrl = assetUrl(GEM_ASSET_BY_COLOR[i]);
       const primary = await loadImage(primaryUrl);
       if (primary) {
@@ -41,7 +41,7 @@ export async function loadGemVisuals({ assetUrl, loadImage }) {
       const fallback = await loadImage(fallbackUrl);
       if (fallback) gemFrameImages[i] = fallback;
     }),
-    ...Array.from({ length: 6 }, (_, i) => i).map(async (i) => {
+    ...ACTIVE_GEM_COLORS.map(async (i) => {
       const imagePath = SUPER_GEM_ASSET_BY_COLOR[i];
       if (!imagePath) return;
       const resolvedUrl = assetUrl(imagePath);

@@ -6,7 +6,7 @@ This is a guide on the game Wishfire. It explains what is here, how to play, and
 
 Wishfire is a puzzle battle game. Your heroes fight by choosing gem colors.
 
-On your turn, choose any three gems of the same color. They do not need to touch or form a line. Each color gives your party a different kind of move. Sometimes you will also choose which enemy to hit.
+On your turn, choose any three gems of the same active color. They do not need to touch or form a line. Each active color gives your party a different kind of move. Sometimes you will also choose which enemy to hit.
 
 Supergems are bigger, rarer gems. Matching them can unlock a hero's special skill.
 
@@ -18,14 +18,13 @@ Match gems to trigger hero skills. Each color behaves differently.
 
 ### Matching Gems
 
-- Green gems trigger an attack that hits all enemies in combat.
 - Red gems trigger an attack focused on one enemy.
 - Blue gems fill your Astral Flow meter.
 - Yellow gems gather gold for yellow skills.
 - Light green gems recover party health.
 - Purple gems restore Energy.
 
-Supergems can unlock special hero skills. Falie can turn red into Temporary Shield. Huun can turn yellow into Goldstrike. Kojonn can turn green into Faze.
+Supergems can unlock special hero skills. Falie can turn red into Temporary Shield. Huun can turn yellow into Goldstrike. Kojonn's Faze is not triggered by a green gem or green supergem.
 
 ## The Cast
 
