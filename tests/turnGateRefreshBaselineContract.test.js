@@ -24,6 +24,7 @@ for (const modulePath of [
       ActionActorUID: '77',
       PendingSkillID: 'HERO_SINGLE',
       PendingActor: '77',
+      PendingSuperGemAction: { kind: 'super_gem_attack', color: 1, actorUID: 77 },
       EnemyLineClearPressureActive: '1',
     });
 
@@ -32,6 +33,7 @@ for (const modulePath of [
     assert.equal(normalized.ActionActorUID, 77);
     assert.equal(normalized.PendingSkillID, 'HERO_SINGLE');
     assert.equal(normalized.PendingActor, 77);
+    assert.deepEqual(normalized.PendingSuperGemAction, { kind: 'super_gem_attack', color: 1, actorUID: 77 });
     assert.equal(normalized.EnemyLineClearPressureActive, 1);
 
     const heroReady = mod.createCombatTurnRefreshBaseline(normalized, {
@@ -49,6 +51,7 @@ for (const modulePath of [
     assert.equal(heroReady.ActionActorUID, 0);
     assert.equal(heroReady.PendingSkillID, '');
     assert.equal(heroReady.PendingActor, 0);
+    assert.equal(heroReady.PendingSuperGemAction, null);
     assert.equal(heroReady.EnemyLineClearPressureActive, 0);
 
     const enemyReady = mod.createCombatTurnRefreshBaseline(normalized, {
@@ -79,6 +82,7 @@ for (const modulePath of [
       ActionActorUID: 55,
       PendingSkillID: 'HERO_AOE',
       PendingActor: 55,
+      PendingSuperGemAction: { kind: 'super_gem_attack', color: 0, actorUID: 55 },
       EnemyLineClearPressureActive: 1,
     };
 
@@ -90,6 +94,7 @@ for (const modulePath of [
     assert.equal(hero.ActionActorUID, 0);
     assert.equal(hero.PendingSkillID, '');
     assert.equal(hero.PendingActor, 0);
+    assert.equal(hero.PendingSuperGemAction, null);
     assert.equal(hero.EnemyLineClearPressureActive, 1);
 
     const enemy = mod.createEnemyTurnGateBaseline(dirty);
@@ -100,6 +105,7 @@ for (const modulePath of [
     assert.equal(enemy.ActionActorUID, 0);
     assert.equal(enemy.PendingSkillID, '');
     assert.equal(enemy.PendingActor, 0);
+    assert.equal(enemy.PendingSuperGemAction, null);
     assert.equal(enemy.EnemyLineClearPressureActive, 1);
   });
 

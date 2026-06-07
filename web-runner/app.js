@@ -58,6 +58,7 @@ import {
   spendSuperGem,
   syncSuperGemShapes,
 } from './src/core/superGemBoardState.mjs';
+import { resolvePendingSuperGemHandoff } from './src/core/pendingSuperGemHandoff.mjs';
 import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
 import { deriveDamageFloatFrameOffset } from '../src/core/damageFloatVector.mjs';
 import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
@@ -231,6 +232,9 @@ const TURN_TRANSIENT_NUMERIC_KEYS = Object.freeze([
 const TURN_TRANSIENT_STRING_KEYS = Object.freeze([
   'PendingSkillID',
 ]);
+const TURN_TRANSIENT_OBJECT_KEYS = Object.freeze([
+  'PendingSuperGemAction',
+]);
 
 function applyTurnGateGlobals(next) {
   if (!next) return;
@@ -241,6 +245,10 @@ function applyTurnGateGlobals(next) {
   for (const key of TURN_TRANSIENT_STRING_KEYS) {
     if (!Object.prototype.hasOwnProperty.call(next, key)) continue;
     state.globals[key] = String(next[key] || '');
+  }
+  for (const key of TURN_TRANSIENT_OBJECT_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(next, key)) continue;
+    state.globals[key] = next[key] || null;
   }
 }
 
@@ -281,6 +289,26 @@ function logActionHandoffDebug(tag, payload = {}) {
     ...payload,
     snapshot: getActionHandoffSnapshot(),
   }, state);
+}
+
+function resolvePendingTargetHandoff({ actorUID, source }) {
+  return resolvePendingSuperGemHandoff({
+    globals: state.globals,
+    actorUID,
+    source,
+    executePendingSuperGemAction: () => superGemRuntime.executePendingSuperGemAction({
+      state,
+      callFunctionWithContext,
+      fnContext,
+    }),
+    executeSkill: (skillID, resolvedActorUID) => callFunctionWithContext(
+      fnContext,
+      'ExecuteSkill',
+      skillID,
+      resolvedActorUID,
+    ),
+    hideAttackUI: () => callFunctionWithContext(fnContext, 'HideAttackUI'),
+  });
 }
 
 function getEnemyRosterStabilitySnapshot() {
@@ -6379,6 +6407,7 @@ function getStoryCardLiveLineState() {
     return {
       heroName: getCurrentIdleAutoplayHeroName(),
       hasLivingEnemies: hasLivingEnemiesForIdleAutoplay(),
+      forcedBoardColor: Number(state.globals.DevForcedBoardColor),
       partyHpRatio: resolveIdleAutoplayPartyHpRatio({
         partyHP: state.globals.PartyHP,
         partyMaxHP: state.globals.PartyMaxHP,
@@ -6416,32 +6445,28 @@ function getStoryCardLiveLineState() {
     if (String(state.globals.PendingSkillID || '') === 'HERO_SINGLE') {
       state.globals.SelectedEnemyUID = Number(livingEnemies[0].uid || 0);
     }
-    const resolvedPendingSuperGem = superGemRuntime.executePendingSuperGemAction({
-      state,
-      callFunctionWithContext,
-      fnContext,
+    const handoff = resolvePendingTargetHandoff({
+      actorUID,
+      source: 'dev-autoplay',
     });
-    let executeSkillResult = null;
-    if (!resolvedPendingSuperGem) {
-      executeSkillResult = callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
-    }
+    const {
+      resolvedPendingSuperGem,
+      executeSkillResult,
+      recoveredRejectedPendingSuperGem,
+    } = handoff;
     logActionHandoffDebug('[DEV_AUTOPLAY_RESOLVE]', {
       stage: 'after-action-attempt-before-clear',
       actorUID,
       resolvedPendingSuperGem,
       executeSkillResult,
+      recoveredRejectedPendingSuperGem,
     });
-    state.globals.PendingSkillID = '';
-    state.globals.PendingActor = 0;
-    state.globals.SelectedEnemyUID = 0;
-    callFunctionWithContext(fnContext, 'HideAttackUI');
-    state.globals.CanPickGems = false;
-    state.globals.IsPlayerBusy = 1;
     logActionHandoffDebug('[DEV_AUTOPLAY_RESOLVE]', {
       stage: 'after-clear',
       actorUID,
       resolvedPendingSuperGem,
       executeSkillResult,
+      recoveredRejectedPendingSuperGem,
     });
     return true;
   }
@@ -7285,34 +7310,30 @@ function getStoryCardLiveLineState() {
           source: 'manual-button',
           actorUID,
         });
-        const resolvedPendingSuperGem = superGemRuntime.executePendingSuperGemAction({
-          state,
-          callFunctionWithContext,
-          fnContext,
+        const handoff = resolvePendingTargetHandoff({
+          actorUID,
+          source: 'manual-button',
         });
-        let executeSkillResult = null;
-        if (!resolvedPendingSuperGem) {
-          executeSkillResult = callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
-        }
+        const {
+          resolvedPendingSuperGem,
+          executeSkillResult,
+          recoveredRejectedPendingSuperGem,
+        } = handoff;
         logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
           stage: 'after-action-attempt-before-clear',
           source: 'manual-button',
           actorUID,
           resolvedPendingSuperGem,
           executeSkillResult,
+          recoveredRejectedPendingSuperGem,
         });
-        state.globals.PendingSkillID = '';
-        state.globals.PendingActor = 0;
-        state.globals.SelectedEnemyUID = 0;
-        callFunctionWithContext(fnContext, 'HideAttackUI');
-        state.globals.CanPickGems = false;
-        state.globals.IsPlayerBusy = 1;
         logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
           stage: 'after-clear',
           source: 'manual-button',
           actorUID,
           resolvedPendingSuperGem,
           executeSkillResult,
+          recoveredRejectedPendingSuperGem,
         });
         drawFrame();
         return;

@@ -218,6 +218,10 @@
 - If a skill is presented as a “free second attack,” do not implement it with extra-turn scheduler semantics. The owner seam must duplicate the attack immediately, preserve the original gem spend, and retarget only if the original target is gone before the follow-up lands.
 - If a presentation-heavy attack pattern makes another mechanic unreadable, move that pattern behind an explicit skill harness instead of leaving it in the default action seam.
 - If a free follow-up attack is meant to read as a real second attack, do not pre-time the second damage packet during the first action. Gate the second strike from the first strike's visible completion signal, then start a fresh lunge and schedule the second hit from that new anchor.
+
+## 2026-06-07 — Pending Supergem Target Rejections Need Full Handoff Recovery
+- When a pending supergem target action rejects, clear the pending supergem action, pending skill/actor, selected target, and busy/defer ownership together. Falling back into normal `ExecuteSkill` from that rejected state can strand combat between target selection and refill.
+- Dev one-color boards are harness state, not normal autoplay intent. When the board is forced to one color, autoplay may spend that forced color so scheduler recovery can be tested without waiting for a natural board.
 - Per-actor proc latches for repeatable skill harnesses must reset at per-turn granularity, not only on encounter-wide scheduler resets. Otherwise a `100%` harness can appear correct once and then silently stop firing for the rest of combat.
 
 ## 2026-05-07 — Blue Gem Accounting Must Carry Count And Hero Ownership Together
