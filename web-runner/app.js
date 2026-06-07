@@ -192,13 +192,13 @@ const DEV_TOOL_HOTKEY_LABEL = 'Ctrl+Shift+P';
 const DEV_TOOL_GEM_RANDOM = -1;
 const DEV_TOOL_GEM_OPTIONS = Object.freeze([
   { value: DEV_TOOL_GEM_RANDOM, label: 'Random' },
-  { value: 0, label: 'GREEN' },
   { value: 1, label: 'RED' },
   { value: 2, label: 'BLUE' },
   { value: 3, label: 'YELLOW' },
   { value: 4, label: 'HEAL' },
   { value: 5, label: 'PURPLE' },
 ]);
+const GEM_SPAWN_COLORS = Object.freeze([1, 2, 3, 4, 5]);
 const DEV_TOOL_REWARD_OPTIONS = Object.freeze([
   { value: '', label: 'None' },
   { value: 'GOLD', label: 'Gold' },
@@ -3654,21 +3654,27 @@ function randomGemFrame() {
     const c = g && g.color != null ? g.color : (g ? g.elementIndex : null);
     return n + (c === 5 ? 1 : 0);
   }, 0);
-  const pickByWeights = (weights) => {
+  const pickByWeightedColors = (entries) => {
     let total = 0;
-    for (const w of weights) total += w;
+    for (const entry of entries) total += entry.weight;
     let r = getGemSpawnRandom() * total;
-    for (let i = 0; i < weights.length; i++) {
-      r -= weights[i];
-      if (r <= 0) return i;
+    for (const entry of entries) {
+      r -= entry.weight;
+      if (r <= 0) return entry.color;
     }
-    return 0;
+    return entries[0] ? entries[0].color : 1;
   };
-  // Colors 0-4 standard, 5 purple jackpot.
-  const weights = [1, 1, 1, 1, 1, PURPLE_WEIGHT];
-  let frame = pickByWeights(weights);
+  const spawnWeights = GEM_SPAWN_COLORS.map((color) => ({
+    color,
+    weight: color === 5 ? PURPLE_WEIGHT : 1,
+  }));
+  let frame = pickByWeightedColors(spawnWeights);
   if (frame === 5 && countPurple() >= MAX_PURPLE_ON_BOARD) {
-    frame = pickByWeights([1, 1, 1, 1, 1]);
+    frame = pickByWeightedColors(
+      GEM_SPAWN_COLORS
+        .filter((color) => color !== 5)
+        .map((color) => ({ color, weight: 1 })),
+    );
   }
   return frame;
 }
@@ -6664,7 +6670,7 @@ function getStoryCardLiveLineState() {
       if (!Array.isArray(gameState.gems)) return;
       for (const gem of gameState.gems) {
         if (!gem) continue;
-        let forcedColor = (gem.cellR + gem.cellC) % 2 === 0 ? 0 : 1;
+        let forcedColor = (gem.cellR + gem.cellC) % 2 === 0 ? 1 : 2;
         if (gem.cellR === 0 && gem.cellC >= 0 && gem.cellC <= 2) forcedColor = 3;
         gem.color = forcedColor;
         gem.elementIndex = forcedColor;
