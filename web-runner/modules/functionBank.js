@@ -863,13 +863,13 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: 'party_guard_rail', owner: 'Party', slot: 3, title: 'Guard Rail', cardText: 'Reduce the impact of a dangerous hit.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On heavy hit taken', payloadImplemented: false },
   { id: 'party_blue_spark', owner: 'Party', slot: 4, title: 'Blue Spark', cardText: 'Turn blue water gains into a bonus for the whole party.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On blue water match', payloadImplemented: false },
   { id: 'party_weaken', owner: 'Party', slot: 5, title: 'Weaken', cardText: 'Lower enemy defense so your hits land harder.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On special hit', payloadImplemented: false },
-  { id: 'party_destiny', owner: 'Party', slot: 6, title: 'Destiny', cardText: 'Attacks have a chance to restore 2.5% health on impact.', risk: 'MED', growth: [32, 32, 32, 32], procPattern: 'On hit', payloadImplemented: true },
+  { id: 'party_destiny', owner: 'Party', slot: 6, title: 'Destiny', cardText: 'Attacks have a chance to restore 2.5% health on impact.', risk: 'MED', growth: [32, 32, 32, 32], procPattern: 'On hit', payloadImplemented: true, drawClass: 'one_off', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'reject_after_selected' }, trigger: { event: 'hit_enemy', eligibility: 'active_party_skill_positive_hero_damage' }, effect: { kind: 'proc_heal', procChancePct: 32, healPctPartyMax: 2.5 }, qa: { proof: 'PartyDestinyAttempts/Procs/Heals/Misses and SkillDraughtTrace' } },
   { id: 'party_hot_streak', owner: 'Party', slot: 7, title: 'Hot Streak', cardText: 'Build up a better payoff with consecutive matches.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On consecutive matches', payloadImplemented: false },
   { id: 'party_last_push', owner: 'Party', slot: 8, title: 'Last Push', cardText: 'Gain a brief comeback burst when the party nears defeat.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On low party HP', payloadImplemented: false },
   { id: 'party_chain_pop', owner: 'Party', slot: 9, title: 'Chain Pop', cardText: 'Trigger an extra board effect from a match.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On match', payloadImplemented: false },
-  { id: 'party_magic_fruit', owner: 'Party', slot: 10, title: 'Magic Fruit', cardText: 'Heals party for 40% of max HP', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true },
-  { id: 'party_crimson_ward', owner: 'Party', slot: 11, title: 'Crimson Ward', cardText: 'Grant a temporary party ward before true HP is damaged.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true },
-  { id: 'party_faze', owner: 'Party', slot: 12, title: 'Faze', cardText: 'Blights the field, poisoning enemies for the remainder of the session.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On selection', payloadImplemented: true },
+  { id: 'party_magic_fruit', owner: 'Party', slot: 10, title: 'Magic Fruit', cardText: 'Heals party for 40% of max HP', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'party_heal', healPctPartyMax: 40 }, qa: { proof: 'ApplyPartyHeal once per selection' } },
+  { id: 'party_crimson_ward', owner: 'Party', slot: 11, title: 'Crimson Ward', cardText: 'Grant a temporary party ward before true HP is damaged.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'party_temp_hp_shield', shieldPctPartyMax: 18, stacking: 'refresh_capped_shield' }, qa: { proof: 'PartyTempHPShield and ward visuals refresh' } },
+  { id: 'party_faze', owner: 'Party', slot: 12, title: 'Faze', cardText: 'Blights the field, poisoning enemies for the remainder of the session.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'field_refresh', status: 'tainted_ground' }, qa: { proof: 'TaintedGroundZones and PendingHeroHits refresh' } },
 ]);
 
 const PARTY_SKILL_DRAW_ALLOWED_IDS = Object.freeze([
@@ -881,12 +881,25 @@ const PARTY_SKILL_DRAW_ALLOWED_IDS = Object.freeze([
 const PARTY_SKILL_DRAW_ALLOWED_ID_SET = Object.freeze(new Set(PARTY_SKILL_DRAW_ALLOWED_IDS));
 const SKILL_DRAW_ALLOWED_CALL_IDS = PARTY_SKILL_DRAW_ALLOWED_IDS;
 const SKILL_DRAW_ALLOWED_CALL_ID_SET = PARTY_SKILL_DRAW_ALLOWED_ID_SET;
+const SKILL_DRAW_CLASSES = Object.freeze(['one_off', 'tiered', 'repeatable']);
+const SKILL_DRAW_CLASS_SET = Object.freeze(new Set(SKILL_DRAW_CLASSES));
 
 const FAZE_TAINTED_GROUND_DURATION_HERO_TEAM_TURNS = 3;
 const FAZE_TAINTED_GROUND_DAMAGE_SCALE = 0.5;
 
+function cloneSkillMetadata(value) {
+  if (Array.isArray(value)) return value.map(item => cloneSkillMetadata(item));
+  if (value && typeof value === 'object') {
+    return Object.keys(value).reduce((out, key) => {
+      out[key] = cloneSkillMetadata(value[key]);
+      return out;
+    }, {});
+  }
+  return value;
+}
+
 function cloneSkillDefinition(def) {
-  return {
+  const clean = {
     id: String(def.id || ''),
     owner: String(def.owner || ''),
     slot: Math.max(0, Math.floor(Number(def.slot) || 0)),
@@ -897,6 +910,12 @@ function cloneSkillDefinition(def) {
     procPattern: String(def.procPattern || ''),
     payloadImplemented: def.payloadImplemented === true,
   };
+  const drawClass = String(def.drawClass || '').trim();
+  if (SKILL_DRAW_CLASS_SET.has(drawClass)) clean.drawClass = drawClass;
+  for (const key of ['selection', 'trigger', 'effect', 'qa']) {
+    if (def[key] && typeof def[key] === 'object') clean[key] = cloneSkillMetadata(def[key]);
+  }
+  return clean;
 }
 
 function getHeroSkillDefinitionsForOwner(heroName) {
@@ -961,6 +980,8 @@ function ensureSkillDraughtState(ctx) {
   if (!Array.isArray(g.SkillDraughtHitZones)) g.SkillDraughtHitZones = [];
   if (typeof g.SkillDraughtSelectedSkillId !== 'string') g.SkillDraughtSelectedSkillId = '';
   if (!g.SessionSkillsByHeroUID || typeof g.SessionSkillsByHeroUID !== 'object') g.SessionSkillsByHeroUID = {};
+  if (!g.SkillDraughtOneOffExposureBySkillId || typeof g.SkillDraughtOneOffExposureBySkillId !== 'object' || Array.isArray(g.SkillDraughtOneOffExposureBySkillId)) g.SkillDraughtOneOffExposureBySkillId = {};
+  if (typeof g.SkillDraughtLastForcedSkillSuppressedReason !== 'string') g.SkillDraughtLastForcedSkillSuppressedReason = '';
   if (!Array.isArray(g.SkillDraughtTrace)) g.SkillDraughtTrace = [];
   if (!Number.isFinite(g.SkillDraughtTraceSeq)) g.SkillDraughtTraceSeq = 0;
   ensureSkillDrawDebugCounters(g);
@@ -1042,9 +1063,68 @@ function recordSkillDrawAppearances(g, candidates) {
 
 publishSkillDrawDebugSnapshot(makeEmptySkillDrawDebugSnapshot());
 
+function getSkillSessionEntryId(entry) {
+  return String((entry && (entry.id || entry.key || entry.definitionId)) || '').trim().toLowerCase();
+}
+
+function countSessionSkillSelections(bucket, skillId) {
+  const key = String(skillId || '').trim().toLowerCase();
+  if (!Array.isArray(bucket) || !key) return 0;
+  return bucket.reduce((count, entry) => count + (getSkillSessionEntryId(entry) === key ? 1 : 0), 0);
+}
+
+function getSkillSessionBucketKey(def, heroUID) {
+  const selectionBucket = String(def?.selection?.sessionBucket || '').trim();
+  if (selectionBucket) return selectionBucket;
+  return String(def?.owner || '').toLowerCase() === 'party' ? HERO_SKILL_SHARED_KEY : String(Number(heroUID || 0));
+}
+
+function getOneOffSkillSuppressionReason(g, def, heroUID) {
+  const skillId = String(def?.id || '').trim().toLowerCase();
+  if (!skillId || String(def?.drawClass || '') !== 'one_off') return '';
+  const bucketKey = getSkillSessionBucketKey(def, heroUID);
+  const bucket = Array.isArray(g.SessionSkillsByHeroUID?.[bucketKey]) ? g.SessionSkillsByHeroUID[bucketKey] : [];
+  if (countSessionSkillSelections(bucket, skillId) > 0) return 'one_off_already_selected';
+  if (Number(g.SkillDraughtOneOffExposureBySkillId?.[skillId] || 0) > 0) return 'one_off_already_exposed';
+  return '';
+}
+
+function markOneOffSkillDrawExposures(g, candidates) {
+  if (!g.SkillDraughtOneOffExposureBySkillId || typeof g.SkillDraughtOneOffExposureBySkillId !== 'object') {
+    g.SkillDraughtOneOffExposureBySkillId = {};
+  }
+  for (const candidate of Array.isArray(candidates) ? candidates : []) {
+    const skillId = String(candidate?.id || '').trim().toLowerCase();
+    if (skillId && String(candidate?.drawClass || '') === 'one_off') {
+      g.SkillDraughtOneOffExposureBySkillId[skillId] = 1;
+    }
+  }
+}
+
+function makeSessionSkillRecord(candidate, def, bucketKey, selectionCount, source, selectedAt) {
+  const skillId = String(candidate?.id || def?.id || '');
+  const drawClass = String(def?.drawClass || candidate?.drawClass || '');
+  const selection = (def && def.selection) || (candidate && candidate.selection) || {};
+  return {
+    id: skillId,
+    key: String(candidate?.key || skillId),
+    definitionId: skillId,
+    title: String(candidate?.title || candidate?.name || def?.title || ''),
+    description: String(candidate?.description || candidate?.cardText || def?.cardText || ''),
+    owner: String(candidate?.owner || def?.owner || ''),
+    drawClass,
+    sessionBucket: String(bucketKey || ''),
+    duplicatePolicy: String(selection.duplicatePolicy || (drawClass === 'one_off' ? 'reject_after_selected' : 'allow_repeat')),
+    selectionCount: Math.max(1, Math.floor(Number(selectionCount || 1))),
+    rank: drawClass === 'tiered' ? Math.max(1, Math.floor(Number(selectionCount || 1))) : 0,
+    selectedAt: Number(selectedAt || 0),
+    source: String(source || 'skill_draught'),
+  };
+}
+
 function makeSkillDraughtCandidate(def, index = 0) {
   const clean = cloneSkillDefinition(def);
-  return {
+  const candidate = {
     index: Math.max(0, Math.floor(Number(index) || 0)),
     id: clean.id,
     key: clean.id,
@@ -1057,6 +1137,10 @@ function makeSkillDraughtCandidate(def, index = 0) {
     risk: clean.risk,
     payloadImplemented: clean.payloadImplemented,
   };
+  for (const key of ['drawClass', 'selection', 'trigger', 'effect', 'qa']) {
+    if (clean[key] != null) candidate[key] = cloneSkillMetadata(clean[key]);
+  }
+  return candidate;
 }
 
 function appendSkillDraughtTrace(g, action, payload = {}) {
@@ -1082,9 +1166,17 @@ function sampleSkillDraughtDefinitions(ctx, defs, count) {
 }
 
 function buildSkillDraughtCandidates(ctx, heroUID, forcedSkillId = '') {
-  const defs = getPartySkillDrawDefinitions();
+  const g = ensureSkillDraughtState(ctx);
+  const allDefs = getPartySkillDrawDefinitions();
   const forcedKey = String(forcedSkillId || '').trim().toLowerCase();
-  const forced = defs.find(def => String(def.id || '').toLowerCase() === forcedKey) || null;
+  const forcedDef = allDefs.find(def => String(def.id || '').toLowerCase() === forcedKey) || null;
+  const forcedSkillSuppressedReason = forcedDef
+    ? getOneOffSkillSuppressionReason(g, forcedDef, heroUID)
+    : '';
+  const defs = allDefs.filter(def => !getOneOffSkillSuppressionReason(g, def, heroUID));
+  const forced = forcedSkillSuppressedReason
+    ? null
+    : defs.find(def => String(def.id || '').toLowerCase() === forcedKey) || null;
   let ordered = [];
   if (forced && String(forced.owner || '').toLowerCase() === 'party') {
     ordered = [forced].concat(
@@ -1093,7 +1185,11 @@ function buildSkillDraughtCandidates(ctx, heroUID, forcedSkillId = '') {
   } else {
     ordered = sampleSkillDraughtDefinitions(ctx, defs, 3);
   }
-  return ordered.map((def, index) => makeSkillDraughtCandidate(def, index));
+  return {
+    candidates: ordered.map((def, index) => makeSkillDraughtCandidate(def, index)),
+    forcedSkillId: forcedKey,
+    forcedSkillSuppressedReason,
+  };
 }
 
 function activateMagicFruitSkill(ctx) {
@@ -1260,6 +1356,8 @@ export function GetSkillDraughtState(ctx) {
     candidates: g.SkillDraughtCandidates.map(candidate => ({ ...candidate })),
     selectedSkillId: String(g.SkillDraughtSelectedSkillId || ''),
     sessionSkillsByHeroUID: JSON.parse(JSON.stringify(g.SessionSkillsByHeroUID || {})),
+    oneOffExposureBySkillId: JSON.parse(JSON.stringify(g.SkillDraughtOneOffExposureBySkillId || {})),
+    lastForcedSkillSuppressedReason: String(g.SkillDraughtLastForcedSkillSuppressedReason || ''),
     skillDrawDebug: snapshotSkillDrawDebugCounters(g),
   };
 }
@@ -1272,10 +1370,18 @@ export function OpenSkillDraughtForHero(ctx, heroUID, forcedSkillId = '') {
     appendSkillDraughtTrace(g, 'open_rejected', { heroUID: uid, reason: 'hero_not_found' });
     return { ok: false, reason: 'hero_not_found', candidates: [] };
   }
-  const candidates = buildSkillDraughtCandidates(ctx, uid, forcedSkillId);
+  const drawResult = buildSkillDraughtCandidates(ctx, uid, forcedSkillId);
+  const candidates = Array.isArray(drawResult?.candidates) ? drawResult.candidates : [];
+  const forcedSkillSuppressedReason = String(drawResult?.forcedSkillSuppressedReason || '');
+  g.SkillDraughtLastForcedSkillSuppressedReason = forcedSkillSuppressedReason;
   if (!candidates.length) {
-    appendSkillDraughtTrace(g, 'open_rejected', { heroUID: uid, reason: 'no_candidates' });
-    return { ok: false, reason: 'no_candidates', candidates: [] };
+    appendSkillDraughtTrace(g, 'open_rejected', {
+      heroUID: uid,
+      reason: 'no_drawable_candidates',
+      forcedSkillId: String(drawResult?.forcedSkillId || ''),
+      forcedSkillSuppressedReason,
+    });
+    return { ok: false, reason: 'no_drawable_candidates', candidates: [], forcedSkillSuppressedReason };
   }
   g.SkillDraughtOpen = 1;
   g.SkillDraughtHeroUID = uid;
@@ -1285,10 +1391,16 @@ export function OpenSkillDraughtForHero(ctx, heroUID, forcedSkillId = '') {
   g.SkillDraughtCandidates = candidates;
   g.SkillDraughtHitZones = [];
   g.SkillDraughtSelectedSkillId = '';
+  markOneOffSkillDrawExposures(g, candidates);
   recordSkillDrawAppearances(g, candidates);
-  appendSkillDraughtTrace(g, 'open', { heroUID: uid, candidateIds: candidates.map(candidate => candidate.id) });
+  appendSkillDraughtTrace(g, 'open', {
+    heroUID: uid,
+    forcedSkillId: String(drawResult?.forcedSkillId || ''),
+    forcedSkillSuppressedReason,
+    candidateIds: candidates.map(candidate => candidate.id),
+  });
   LogCombat(ctx, 'The party found new skills.');
-  return { ok: true, heroUID: uid, candidates: candidates.map(candidate => ({ ...candidate })) };
+  return { ok: true, heroUID: uid, forcedSkillSuppressedReason, candidates: candidates.map(candidate => ({ ...candidate })) };
 }
 
 export function QueueSkillDraughtForHero(ctx, heroUID, forcedSkillId = '') {
@@ -1328,16 +1440,27 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
   const candidate = g.SkillDraughtCandidates.find(row => Number(row.index) === index) || g.SkillDraughtCandidates[index] || null;
   if (!candidate) return { ok: false, reason: 'candidate_not_found' };
   const uid = Number(g.SkillDraughtHeroUID || 0);
-  const key = String(candidate.owner || '').toLowerCase() === 'party' ? HERO_SKILL_SHARED_KEY : String(uid || 0);
+  const def = getSkillDefinitionById(candidate.id) || candidate;
+  const key = getSkillSessionBucketKey(def, uid);
   if (!Array.isArray(g.SessionSkillsByHeroUID[key])) g.SessionSkillsByHeroUID[key] = [];
-  const sessionSkill = {
-    id: String(candidate.id || ''),
-    key: String(candidate.key || candidate.id || ''),
-    title: String(candidate.title || candidate.name || ''),
-    description: String(candidate.description || candidate.cardText || ''),
-    owner: String(candidate.owner || ''),
-    selectedAt: Number(g.time || 0),
-  };
+  const skillId = String(candidate.id || def?.id || '').trim().toLowerCase();
+  const existingSelections = countSessionSkillSelections(g.SessionSkillsByHeroUID[key], skillId);
+  if (String(def?.drawClass || candidate?.drawClass || '') === 'one_off' && existingSelections > 0) {
+    appendSkillDraughtTrace(g, 'select_rejected', {
+      heroUID: uid,
+      skillId,
+      reason: 'one_off_already_selected',
+    });
+    return { ok: false, reason: 'one_off_already_selected', skillId };
+  }
+  const sessionSkill = makeSessionSkillRecord(
+    candidate,
+    def,
+    key,
+    existingSelections + 1,
+    'skill_draught',
+    Number(g.time || 0),
+  );
   g.SessionSkillsByHeroUID[key].push(sessionSkill);
   g.SkillDraughtSelectedSkillId = sessionSkill.id;
   g.SkillDraughtOpen = 0;
@@ -1375,6 +1498,8 @@ export function ClearSessionSkillDraught(ctx) {
   g.SkillDraughtHitZones = [];
   g.SkillDraughtSelectedSkillId = '';
   g.SessionSkillsByHeroUID = {};
+  g.SkillDraughtOneOffExposureBySkillId = {};
+  g.SkillDraughtLastForcedSkillSuppressedReason = '';
   appendSkillDraughtTrace(g, 'clear', {});
   return { ok: true };
 }
@@ -2236,15 +2361,22 @@ export function TriggerPartyDestinyDev(ctx, sourceUID = 0) {
     String((entry && (entry.id || entry.key || entry.definitionId)) || '').trim().toLowerCase() === 'party_destiny'
   );
   if (!hasDestiny) {
-    g.SessionSkillsByHeroUID[HERO_SKILL_SHARED_KEY].push({
-      id: 'party_destiny',
-      key: 'party_destiny',
-      title: 'Destiny',
-      description: 'Attacks can restore HP.',
-      owner: 'Party',
-      selectedAt: Number(g.time || 0),
-      source: 'dev_trigger',
-    });
+    const destinyDef = getSkillDefinitionById('party_destiny');
+    g.SessionSkillsByHeroUID[HERO_SKILL_SHARED_KEY].push(makeSessionSkillRecord(
+      {
+        id: 'party_destiny',
+        key: 'party_destiny',
+        title: 'Destiny',
+        description: 'Attacks can restore HP.',
+        owner: 'Party',
+      },
+      destinyDef,
+      HERO_SKILL_SHARED_KEY,
+      1,
+      'dev_trigger',
+      Number(g.time || 0),
+    ));
+    g.SkillDraughtOneOffExposureBySkillId.party_destiny = 1;
   }
   g.PartyDestinyAttempts = 0;
   g.PartyDestinyProcs = 0;

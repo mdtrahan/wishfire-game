@@ -38,6 +38,8 @@ export const state = {
     SkillDraughtHitZones: [],
     SkillDraughtSelectedSkillId: '',
     SessionSkillsByHeroUID: {},
+    SkillDraughtOneOffExposureBySkillId: {},
+    SkillDraughtLastForcedSkillSuppressedReason: '',
     SkillDraughtTrace: [],
     SkillDraughtTraceSeq: 0,
     HeroTempSkillStateByUID: {},

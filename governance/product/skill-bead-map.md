@@ -14,13 +14,17 @@ Purpose: map existing visible skill beads to the new canonical hero, party, and 
 Every hero or party skill implementation bead must start from a clear skill definition before runtime edits:
 
 - canonical skill ID and owner
+- skill-card draw class: `one_off`, `tiered`, or `repeatable`
 - trigger and eligibility rules
 - roll chance, if chance-based
 - payload result
+- redraw behavior after selection
 - debug counters and side-panel readout
 - Browser/AutoPlay proof path
 
-Each bead should add or update focused contracts at the activation, eligibility, roll, and payload seams before implementation. Dev-panel controls may assign, activate, clear, or configure QA state; side-panel readouts should remain informational and must not mutate skill state.
+Each bead should add or update focused contracts at the draw-filtering, activation, eligibility, roll, and payload seams before implementation. Dev-panel controls may assign, activate, clear, or configure QA state; side-panel readouts should remain informational and must not mutate skill state.
+
+Use the draw-class guide in `governance/product/hero-and-party-skills.md` to decide whether a selected skill disappears from the draw pool, stacks additively, or remains repeatable without persistent duplicate power.
 
 ## Existing Bead Mapping
 

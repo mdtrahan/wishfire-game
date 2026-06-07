@@ -17,6 +17,8 @@ function loadModule(modulePath) {
 
 module.exports = {
   ForceAstralFlowSkillDraught,
+  GetPartySkillDefinitions,
+  GetSkillDefinition,
   GetSkillDraughtState,
   SelectSkillDraughtCard,
   IsPartySessionSkillActive,
@@ -139,6 +141,57 @@ test('draw can force-select Destiny into the shared party session bucket', () =>
   assert.equal(ctx.state.globals.AstralFlowAmpPoints, 0);
   assert.equal(ctx.state.globals.AstralFlowAmpReady, 0);
   assert.equal(mod.IsPartySessionSkillActive(ctx, 'party_destiny'), true);
+});
+
+test('Destiny one-off draw is spent after exposure and forced draws fall back to eligible skills', () => {
+  for (const modulePath of [runtimePath, scriptsPath]) {
+    const mod = loadModule(modulePath);
+    const registryDestiny = mod.GetSkillDefinition(null, 'party_destiny');
+    assert.equal(registryDestiny.drawClass, 'one_off');
+    assert.equal(registryDestiny.selection.duplicatePolicy, 'reject_after_selected');
+
+    const exposureCtx = makeContext();
+    exposureCtx.state.globals.RuntimeRandom = () => 0;
+    const firstExposure = mod.ForceAstralFlowSkillDraught(exposureCtx, 100, 'party_destiny');
+    assert.equal(firstExposure.ok, true);
+    assert.equal(firstExposure.candidates[0].id, 'party_destiny');
+    assert.equal(exposureCtx.state.globals.SkillDraughtOneOffExposureBySkillId.party_destiny, 1);
+
+    exposureCtx.state.globals.SkillDraughtOpen = 0;
+    exposureCtx.state.globals.SkillDraughtCandidates = [];
+    const afterExposure = mod.ForceAstralFlowSkillDraught(exposureCtx, 100, 'party_destiny');
+    assert.equal(afterExposure.ok, true);
+    assert.equal(afterExposure.forcedSkillSuppressedReason, 'one_off_already_exposed');
+    assert.equal(afterExposure.candidates.some(candidate => candidate.id === 'party_destiny'), false);
+    assert.ok(afterExposure.candidates.length > 0);
+    assert.ok(afterExposure.candidates.length <= 3);
+
+    const selectedCtx = makeContext();
+    const opened = mod.ForceAstralFlowSkillDraught(selectedCtx, 100, 'party_destiny');
+    assert.equal(opened.ok, true);
+    const selected = mod.SelectSkillDraughtCard(selectedCtx, 0);
+    assert.equal(selected.ok, true);
+    assert.equal(selected.skill.id, 'party_destiny');
+    assert.equal(selected.skill.drawClass, 'one_off');
+    assert.equal(selected.skill.sessionBucket, '__party_shared__');
+    assert.equal(selected.skill.duplicatePolicy, 'reject_after_selected');
+    assert.equal(selected.skill.selectionCount, 1);
+
+    const forcedAfterSelection = mod.ForceAstralFlowSkillDraught(selectedCtx, 100, 'party_destiny');
+    assert.equal(forcedAfterSelection.ok, true);
+    assert.equal(forcedAfterSelection.forcedSkillSuppressedReason, 'one_off_already_selected');
+    assert.equal(forcedAfterSelection.candidates.some(candidate => candidate.id === 'party_destiny'), false);
+    assert.ok(forcedAfterSelection.candidates.length > 0);
+    assert.ok(forcedAfterSelection.candidates.length <= 3);
+    assert.equal(mod.GetSkillDefinition(null, 'party_destiny').id, 'party_destiny');
+
+    const trace = selectedCtx.state.globals.SkillDraughtTrace;
+    assert.equal(trace.some(entry => (
+      entry.action === 'open'
+      && entry.forcedSkillId === 'party_destiny'
+      && entry.forcedSkillSuppressedReason === 'one_off_already_selected'
+    )), true);
+  }
 });
 
 test('Destiny dev trigger activates session skill without rolling or healing', () => {

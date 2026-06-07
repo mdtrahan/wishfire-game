@@ -148,6 +148,9 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
     const selected = mod.SelectSkillDraughtCard(ctx, 0);
     assert.equal(selected.ok, true);
     assert.equal(selected.skill.id, 'party_magic_fruit');
+    assert.equal(selected.skill.drawClass, 'repeatable');
+    assert.equal(selected.skill.duplicatePolicy, 'allow_repeat');
+    assert.equal(selected.skill.selectionCount, 1);
     assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__[0].id, 'party_magic_fruit');
     assert.equal(ctx.state.globals.PartyHP, 51);
     assert.equal(ctx.state.entities[0].hp, 51);
@@ -166,6 +169,18 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
     assert.equal(selectedAgain.reason, 'draught_closed');
     assert.equal(calls.filter(call => call.name === 'ApplyPartyHeal').length, 1);
     assert.equal(ctx.state.globals.PartyHP, 51);
+
+    const openedRepeat = mod.ForceAstralFlowSkillDraught(ctx, 100, 'party_magic_fruit');
+    assert.equal(openedRepeat.ok, true);
+    assert.equal(openedRepeat.candidates[0].id, 'party_magic_fruit');
+    const selectedRepeat = mod.SelectSkillDraughtCard(ctx, 0);
+    assert.equal(selectedRepeat.ok, true);
+    assert.equal(selectedRepeat.skill.id, 'party_magic_fruit');
+    assert.equal(selectedRepeat.skill.drawClass, 'repeatable');
+    assert.equal(selectedRepeat.skill.selectionCount, 2);
+    assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__.length, 2);
+    assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__[1].rank, 0);
+    assert.equal(calls.filter(call => call.name === 'ApplyPartyHeal').length, 2);
   }
 });
 
