@@ -1529,13 +1529,25 @@ function applyBoardGemColor(colorValue) {
   const color = Number(colorValue);
   if (!Number.isFinite(color) || color === DEV_TOOL_GEM_RANDOM) return 0;
   if (!Array.isArray(gameState.gems)) return 0;
+  resetSuperGemBoardState(gameState);
+  superGemRuntime.clearPendingSuperGemAction(state);
+  gameState.selectedGems = [];
+  gameState.selectionLocked = false;
+  gameState.gemMergeFx = null;
+  state.globals.BoardFillActive = 0;
+  state.globals.TapIndex = 0;
   let changed = 0;
   for (const gem of gameState.gems) {
     if (!gem) continue;
     gem.color = color;
     gem.elementIndex = color;
+    gem.selected = false;
+    gem.Selected = 0;
+    gem.flashUntil = 0;
     changed += 1;
   }
+  setGemArray(gameState.gems);
+  rebuildGridFromGems();
   return changed;
 }
 

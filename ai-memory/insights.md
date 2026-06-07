@@ -402,6 +402,10 @@
 - Top-level layout navigation such as Map and Vault must stay reachable when gem-pick gates, selected gems, or selection locks are active. Those gates own combat board actions, not escape or inspection routes.
 - For nav click regressions, validate both the exact text hit zones and the fallback nav band under a polluted combat state so selected-gem state and scaled canvas coordinates do not hide the real gate.
 
+## 2026-06-07 — Dev Board Overrides Must Reset Board-Owned State
+- A Dev Panel board-color override is a QA board reset, not only a visual recolor. It must clear selected gems, supergem overlays/cell maps, pending supergem actions, merge effects, and board-fill flags before handing control back to autoplay.
+- If autoplay freezes after a forced board color, inspect whether the visible board and board-owned runtime state diverged. A visually recolored board can still be logically old if supergem or selection state survived the override.
+
 ## 2026-06-02 — Skill Draw Modals Need A Checkpoint Gate
 - Skill draw eligibility may be discovered during a hero action, but the modal should spawn only at a hero-turn checkpoint after merge, refill, action locks, pending hits, and target selection are clear.
 - Treat an open skill draw as a presentation barrier lane. It should block refill, enemy action claims, deferred turn advance, and input restore until selection closes the modal.
