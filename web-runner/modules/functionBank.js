@@ -2631,7 +2631,7 @@ function logActionGateBlock(g, tag, payload = {}) {
   console.log(tag, payload);
 }
 
-const HERO_GEM_USAGE_KEYS = Object.freeze(['RED', 'GREEN', 'BLUE', 'HEAL', 'YELLOW']);
+const HERO_GEM_USAGE_KEYS = Object.freeze(['RED', 'BLUE', 'HEAL', 'YELLOW']);
 const HERO_GEM_MILESTONE_DEFAULTS = Object.freeze([1000, 5000, 10000]);
 
 function cloneGemUsageRow(input = null) {
@@ -2774,14 +2774,14 @@ function ensureHeroGemUsageState(ctx) {
       version: 1,
       byHeroId: {},
       byHero: {},
-      party: { RED: 0, GREEN: 0, BLUE: 0, HEAL: 0, YELLOW: 0 },
+      party: createGemUsageRow(),
     };
   }
   if (!Number.isFinite(g.HeroGemUsage.version)) g.HeroGemUsage.version = 1;
   if (!g.HeroGemUsage.byHeroId || typeof g.HeroGemUsage.byHeroId !== 'object') g.HeroGemUsage.byHeroId = {};
   if (!g.HeroGemUsage.byHero || typeof g.HeroGemUsage.byHero !== 'object') g.HeroGemUsage.byHero = {};
   if (!g.HeroGemUsage.party || typeof g.HeroGemUsage.party !== 'object') {
-    g.HeroGemUsage.party = { RED: 0, GREEN: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
+    g.HeroGemUsage.party = createGemUsageRow();
   }
   migrateLegacyHeroGemUsageByName(ctx, g.HeroGemUsage);
   syncHeroGemUsageLegacyView(ctx, g.HeroGemUsage);
@@ -2789,11 +2789,10 @@ function ensureHeroGemUsageState(ctx) {
 }
 
 function createGemUsageRow() {
-  return { RED: 0, GREEN: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
+  return { RED: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
 }
 
 function resolveGemUsageColorKey(gemColor) {
-  if (gemColor === 0) return 'GREEN';
   if (gemColor === 1) return 'RED';
   if (gemColor === 2) return 'BLUE';
   if (gemColor === 3) return 'YELLOW';

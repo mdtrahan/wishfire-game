@@ -79,7 +79,7 @@ function drawGemCounterHUD({
   const byHero = usage.byHero && typeof usage.byHero === 'object' ? usage.byHero : {};
   const party = usage.party && typeof usage.party === 'object'
     ? usage.party
-    : { RED: 0, GREEN: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
+    : { RED: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
   const currentHeroUID = resolveCurrentHeroUID({
     directUID: callFunctionWithContext(fnContext, 'GetCurrentTurn'),
     turnOrder: g.TurnOrderArray,
@@ -92,7 +92,7 @@ function drawGemCounterHUD({
   const heroName = currentHero ? String(currentHero.name || 'Hero') : 'Hero';
   const heroTotals = byHero[heroName] && typeof byHero[heroName] === 'object'
     ? byHero[heroName]
-    : { RED: 0, GREEN: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
+    : { RED: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
   const doubleAttackHolderName = String(g.DevDoubleAttackHolderName || '');
   const doubleAttackHolderUID = Number(g.DevDoubleAttackHolderUID || 0);
   const doubleAttackChance = Number(g.DevDoubleAttackChance || 0.05);
@@ -108,7 +108,6 @@ function drawGemCounterHUD({
     'Gem Counter Radiator',
     `Hero: ${heroName}`,
     `RED:${Number(heroTotals.RED || 0)}`,
-    `GREEN:${Number(heroTotals.GREEN || 0)}`,
     `BLUE:${Number(heroTotals.BLUE || 0)}`,
     `HEAL:${Number(heroTotals.HEAL || 0)}`,
     `YELLOW:${Number(heroTotals.YELLOW || 0)}`,
@@ -126,7 +125,6 @@ function drawGemCounterHUD({
     '-----',
     'Party Totals',
     `RED:${Number(party.RED || 0)}`,
-    `GREEN:${Number(party.GREEN || 0)}`,
     `BLUE:${Number(party.BLUE || 0)}`,
     `HEAL:${Number(party.HEAL || 0)}`,
     `YELLOW:${Number(party.YELLOW || 0)}`,

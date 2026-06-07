@@ -29,7 +29,7 @@ export const state = {
       version: 1,
       byHeroId: {},
       byHero: {},
-      party: { RED: 0, GREEN: 0, BLUE: 0, HEAL: 0, YELLOW: 0 },
+      party: { RED: 0, BLUE: 0, HEAL: 0, YELLOW: 0 },
     },
     HeroGemMilestones: {
       thresholds: [1000, 5000, 10000],
