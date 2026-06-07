@@ -702,10 +702,10 @@ export function armPendingSuperGemAttack({
 }) {
   if (!superGem || !state || !state.globals || !(actorUID > 0)) return false;
   const color = Number(superGem.baseColor);
-  if (color !== 0 && color !== 1) return false;
+  if (color !== 1) return false;
   const rng = getRuntimeRandom(state);
   const hitCount = randomIntInclusive(3, 5, rng);
-  state.globals.PendingSkillID = color === 1 ? 'HERO_SINGLE' : 'HERO_AOE';
+  state.globals.PendingSkillID = 'HERO_SINGLE';
   state.globals.PendingActor = Number(actorUID || 0);
   state.globals.PendingSuperGemAction = {
     kind: 'super_gem_attack',
@@ -756,14 +756,6 @@ export function executePendingSuperGemAction({
       targetUID,
       hitCount,
     });
-  } else if (color === 0) {
-    activated = queueClusterAoeHits({
-      state,
-      callFunctionWithContext,
-      fnContext,
-      actorUID,
-      hitCount,
-    });
   }
   if (!activated) {
     logActionHandoff(state, '[PENDING_SUPERGEM_REJECT]', {
@@ -809,12 +801,10 @@ export function activateSuperGemEffect({
   if (!superGem || !state || !state.globals) return false;
   const rng = getRuntimeRandom(state);
   const color = Number(superGem.baseColor);
+  if (color === 0) return false;
   if (!(actorUID > 0)) return false;
   state.globals.HideHeroSelector = color === 1 ? 0 : 1;
   if (color === 1) {
-    return armPendingSuperGemAttack({ superGem, actorUID, state });
-  }
-  if (color === 0) {
     return armPendingSuperGemAttack({ superGem, actorUID, state });
   }
   if (color === 2) {

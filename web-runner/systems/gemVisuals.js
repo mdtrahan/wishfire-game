@@ -17,7 +17,6 @@ const LEGACY_GEM_BY_COLOR = {
 };
 
 const SUPER_GEM_ASSET_BY_COLOR = {
-  0: 'gems/super_green.png',
   1: 'gems/super-red.png',
   2: 'gems/super_blue.png',
   3: 'gems/super_coin.png',
@@ -44,6 +43,7 @@ export async function loadGemVisuals({ assetUrl, loadImage }) {
     }),
     ...Array.from({ length: 6 }, (_, i) => i).map(async (i) => {
       const imagePath = SUPER_GEM_ASSET_BY_COLOR[i];
+      if (!imagePath) return;
       const resolvedUrl = assetUrl(imagePath);
       const img = await loadImage(resolvedUrl);
       if (img) {

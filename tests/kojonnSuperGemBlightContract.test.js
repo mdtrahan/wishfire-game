@@ -14,29 +14,23 @@ function loadSuperGemRuntime() {
   return context.module.exports;
 }
 
-test('Kojonn green super-gem arms normal AOE and does not trigger skill draw', () => {
+test('retired green super-gem stale state fails closed without arming pending AOE', () => {
   const { activateSuperGemEffect } = loadSuperGemRuntime();
-  const actor = { uid: 4, name: 'Kojonn', kind: 'hero', attackType: 'magic', MAG: 22 };
   const state = {
     globals: {
       time: 10,
       RuntimeRandom: () => 0,
     },
-    entities: [actor],
   };
   const calls = [];
   const callFunctionWithContext = (_ctx, name, ...args) => {
     calls.push({ name, args });
-    if (name === 'GetActorByUID') return actor.uid === args[0] ? actor : null;
-    if (name === 'QueueSkillDraughtForHero') throw new Error('green super-gem must not trigger skill draw');
-    if (name === 'StartHeroLunge') throw new Error('Kojonn green super-gem should not launch immediate Faze');
-    if (name === 'CalculateDamage') throw new Error('Kojonn green super-gem should not use generic AOE damage directly');
     return 0;
   };
 
   const activated = activateSuperGemEffect({
     superGem: { baseColor: 0 },
-    actorUID: actor.uid,
+    actorUID: 4,
     selectedEnemyUID: 0,
     state,
     callFunctionWithContext,
@@ -46,24 +40,13 @@ test('Kojonn green super-gem arms normal AOE and does not trigger skill draw', (
     getGoldLabelTargetWorld: () => null,
   });
 
-  assert.equal(activated, true);
-  assert.deepEqual(calls.filter(call => call.name === 'QueueSkillDraughtForHero').map(call => call.args), []);
-  assert.equal(calls.some(call => call.name === 'OpenSkillDraughtForHero'), false);
-  assert.equal(state.globals.SkillDraughtOpen || 0, 0);
-  assert.equal(state.globals.SkillDraughtPendingOpen || 0, 0);
-  assert.equal(state.globals.SkillDraughtPendingHeroUID || 0, 0);
-  assert.equal(state.globals.SkillDraughtPendingForcedSkillId || '', '');
-  assert.equal(state.globals.PendingSkillID, 'HERO_AOE');
-  assert.equal(state.globals.PendingActor, 4);
-  assert.equal(state.globals.PendingSuperGemAction.kind, 'super_gem_attack');
-  assert.equal(state.globals.PendingSuperGemAction.color, 0);
-  assert.equal(state.globals.PendingSuperGemAction.actorUID, 4);
-  assert.equal(state.globals.PendingSuperGemAction.hitCount, 3);
-  assert.equal(Array.isArray(state.globals.PendingHeroHits), false);
-  assert.equal(Array.isArray(state.globals.TaintedGroundZones), false);
-  assert.equal(state.globals.CanPickGems, false);
-  assert.equal(state.globals.DeferAdvance || 0, 0);
-  assert.equal(state.globals.AdvanceAfterAction || 0, 0);
+  assert.equal(activated, false);
+  assert.equal(state.globals.PendingSkillID || '', '');
+  assert.equal(state.globals.PendingActor || 0, 0);
+  assert.equal(state.globals.PendingSuperGemAction || null, null);
+  assert.equal(state.globals.HideHeroSelector || 0, 0);
+  assert.equal(state.globals.CanPickGems || 0, 0);
+  assert.deepEqual(calls, []);
 });
 
 test('Kojonn tainted ground absorbs direct Blight for enemies standing in field slots', () => {
