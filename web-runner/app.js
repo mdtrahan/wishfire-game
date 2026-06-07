@@ -7185,6 +7185,7 @@ function getStoryCardLiveLineState() {
       Nav_AstralFlowText: 'AstralFlow',
       Nav_HomeText: 'Home',
     };
+    const navAlwaysAllowedLabels = new Set(['AstralFlow', 'Hero', 'Map', 'Vault']);
     const navHit = navLabelItems.find((r) => {
       const pos = worldToCanvas(r.world.x || 0, r.world.y || 0);
       const w = Math.max(40, (r.world.width || 60) * layoutScale);
@@ -7196,7 +7197,7 @@ function getStoryCardLiveLineState() {
     if (navHit) {
       const labelName = labelMap[navHit.inst.type] || '';
       const navBlockedBySelection = gameState.selectedGems.length > 0 || gameState.selectionLocked || !isCanPickGemsReady(state.globals.CanPickGems);
-      if (labelName === 'AstralFlow' || labelName === 'Hero' || !navBlockedBySelection) {
+      if (navAlwaysAllowedLabels.has(labelName) || !navBlockedBySelection) {
         inputDomains.emit(
           layoutState.getActiveLayoutId(),
           'nav:clicked',
@@ -7233,7 +7234,7 @@ function getStoryCardLiveLineState() {
       }, null);
       const labelName = navSlot ? navSlot.label : '';
       const navBlockedBySelection = gameState.selectedGems.length > 0 || gameState.selectionLocked || !isCanPickGemsReady(state.globals.CanPickGems);
-      if (labelName && (labelName === 'AstralFlow' || labelName === 'Hero' || !navBlockedBySelection)) {
+      if (labelName && (navAlwaysAllowedLabels.has(labelName) || !navBlockedBySelection)) {
         inputDomains.emit(
           layoutState.getActiveLayoutId(),
           'nav:clicked',
