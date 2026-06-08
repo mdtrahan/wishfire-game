@@ -1,5 +1,5 @@
 export const YELLOW_COLOR = 3;
-export const YELLOW_REFILL_TARGETS = [0, 1, 2, 4];
+export const YELLOW_REFILL_TARGETS = [1, 2, 5];
 
 function pickFromTargets(rng = Math.random) {
   const targets = YELLOW_REFILL_TARGETS;

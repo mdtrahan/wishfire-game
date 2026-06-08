@@ -72,7 +72,7 @@ test('dev idle autoplay does not burn non-Huun combat turns on yellow-only resou
   assert.equal(JSON.stringify(huunResult), JSON.stringify({ row: 0, col: 0 }));
 });
 
-test('supergem spend reserves refill until the pending activation pacing can complete', async () => {
+test('supergem spend starts board refill immediately even when activation pacing is pending', async () => {
   const mod = await import('../web-runner/src/core/superGemBoardState.mjs');
   const state = {
     globals: {
@@ -104,7 +104,7 @@ test('supergem spend reserves refill until the pending activation pacing can com
       [8, 9, 5],
     ],
   };
-  let refillCalls = 0;
+  const events = [];
   const spent = mod.spendSuperGem({
     superGem: gameState.superGems[0],
     gameState,
@@ -120,8 +120,18 @@ test('supergem spend reserves refill until the pending activation pacing can com
     beginTask011ActionCycle: () => {},
     startGemMergeFx: () => {},
     getGoldLabelTargetWorld: () => null,
-    setGemArray: () => {},
-    startRefillBounce: () => { refillCalls += 1; },
+    setGemArray: () => {
+      events.push({
+        type: 'setGemArray',
+        missing: gameState.grid.flat().filter((uid) => Number(uid || 0) === 0).length,
+      });
+    },
+    startRefillBounce: () => {
+      events.push({
+        type: 'startRefillBounce',
+        missing: gameState.grid.flat().filter((uid) => Number(uid || 0) === 0).length,
+      });
+    },
     activateSuperGemEffect: () => {
       state.globals.PendingSkillID = 'HERO_SINGLE';
       state.globals.PendingActor = 101;
@@ -131,7 +141,9 @@ test('supergem spend reserves refill until the pending activation pacing can com
     superGemCost: 4,
   });
   assert.equal(spent, true);
-  assert.equal(refillCalls, 0);
+  assert.deepEqual(events.map((event) => event.type), ['setGemArray', 'startRefillBounce']);
+  assert.equal(events[0].missing > 0, true);
+  assert.equal(events[1].missing > 0, true);
   assert.equal(state.globals.LastSuperGemSpend.refillDeferred, true);
 });
 
@@ -270,7 +282,7 @@ test('supergem spend clears all matching-color gems and flies non-supergem match
     superGemCost: 4,
   });
   assert.equal(spent, true);
-  assert.equal(refillCalls, 0);
+  assert.equal(refillCalls, 1);
   assert.deepEqual(gameState.gems.map((gem) => gem.uid), [6]);
   assert.equal(gameState.grid[0][0], 0);
   assert.equal(gameState.grid[1][2], 6);
@@ -284,9 +296,9 @@ test('supergem spend clears all matching-color gems and flies non-supergem match
   assert.equal(state.globals.LastSuperGemSpend.clearedGemCount, 6);
 });
 
-test('one-color full-board supergem spends accept numeric hero input readiness for every gem color', async () => {
+test('one-color full-board supergem spends accept numeric hero input readiness for active gem colors', async () => {
   const mod = await import('../web-runner/src/core/superGemBoardState.mjs');
-  for (const color of [0, 1, 2, 3, 4, 5]) {
+  for (const color of [1, 2, 3, 5]) {
     const state = {
       globals: {
         GamePhase: 'RUNTIME',
@@ -331,12 +343,61 @@ test('one-color full-board supergem spends accept numeric hero input readiness f
 
     assert.equal(spent, true, `color ${color} should spend with CanPickGems=1`);
     assert.equal(activated, 1, `color ${color} should activate exactly once`);
-    assert.equal(refillCalls, 0, `color ${color} should defer refill while merge presentation is active`);
+    assert.equal(refillCalls, 1, `color ${color} should start refill immediately`);
     assert.equal(mergeCalls, 1, `color ${color} should merge non-footprint color gems into the supergem center`);
     assert.equal(gameState.gems.length, 0, `color ${color} should clear the one-color board`);
     assert.equal(state.globals.LastSuperGemSpend.clearedGemCount, 24);
     assert.equal(state.globals.Player_Energy, color === 5 ? 9 : 6);
     assert.equal(state.globals.LastSuperGemSpend.refillDeferred, true);
+  }
+});
+
+test('retired green supergems are refused even if stale board state supplies them', async () => {
+  const mod = await import('../web-runner/src/core/superGemBoardState.mjs');
+  for (const color of [0, 4]) {
+    const state = {
+      globals: {
+        GamePhase: 'RUNTIME',
+        Player_Energy: 10,
+        CanPickGems: 1,
+        PendingSkillID: '',
+        DeferAdvance: 0,
+        TurnPhase: 0,
+        time: 3,
+      },
+    };
+    const gameState = makeFullColorBoard(color);
+    let activated = 0;
+    let refillCalls = 0;
+    const spent = mod.spendSuperGem({
+      superGem: gameState.superGems[0],
+      gameState,
+      state,
+      reason: 'retired-green-contract',
+      callFunctionWithContext: (_ctx, name) => {
+        if (name === 'GetCurrentTurn') return 101;
+        if (name === 'GetActorByUID') return { uid: 101, kind: 'hero' };
+        return 0;
+      },
+      fnContext: {},
+      getHeroUIDByIndex: () => 101,
+      beginTask011ActionCycle: () => {},
+      startGemMergeFx: () => {},
+      getGoldLabelTargetWorld: () => null,
+      setGemArray: () => {},
+      startRefillBounce: () => { refillCalls += 1; },
+      activateSuperGemEffect: () => {
+        activated += 1;
+        return true;
+      },
+      superGemCost: 4,
+    });
+
+    assert.equal(spent, false, `color ${color} should be retired`);
+    assert.equal(activated, 0, `color ${color} should not activate`);
+    assert.equal(refillCalls, 0, `color ${color} should not refill`);
+    assert.equal(gameState.gems.length, 24, `color ${color} board should stay untouched`);
+    assert.equal(state.globals.Player_Energy, 10, `color ${color} should not spend energy`);
   }
 });
 

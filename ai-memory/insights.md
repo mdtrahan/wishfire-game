@@ -421,3 +421,7 @@
 - For meter-threshold modal bugs, check the queued flag, the action lock, and the checkpoint claim gate together. A full meter with `SkillDraughtPendingOpen=1` can still look broken if the claim is hidden behind a decorative read-time lock.
 - Hero turn type is `0`; never default `GetCurrentType()` with `||` in hero-only gates. Use nullish fallback so a valid hero turn does not become `-1` and strand pending Astral Flow modals.
 - Skill-card draw trigger ownership is blue-only: regular blue opens draw only through full Astral Flow, and blue supergem opens draw directly. Green/red/yellow/purple paths must not call `QueueSkillDraughtForHero`, even when they relate to implemented skills such as Faze.
+
+## 2026-06-08 — Retired Board Colors Need Spawn, Supergem, And Stale-State Guards
+- Removing a board color is not only a spawn-list change. Retire it from forced board options, refill target palettes, active visual preload lists, supergem detection palettes, and stale supergem spend guards together.
+- Supergem spends may defer turn/action presentation, but the board refill lane must be claimed in the same call that clears gem cells. A deferred action handoff must not leave frame-zero empty board slots without refill ownership.

@@ -41,9 +41,9 @@ test('3x3 same-color square does not become a super gem', async () => {
   assert.equal(clusters[0].area, 4);
 });
 
-test('red blue yellow heal and purple 2x2 squares become super gems', async () => {
+test('red blue yellow and purple 2x2 squares become super gems', async () => {
   const mod = await loadRules();
-  const allowedColors = [1, 2, 3, 4, 5];
+  const allowedColors = [1, 2, 3, 5];
   for (const color of allowedColors) {
     const gems = [
       makeGem(0, 0, color),
@@ -61,15 +61,17 @@ test('red blue yellow heal and purple 2x2 squares become super gems', async () =
 
 test('retired green 2x2 squares do not become super gems', async () => {
   const mod = await loadRules();
-  const gems = [
-    makeGem(0, 0, 0),
-    makeGem(0, 1, 0),
-    makeGem(1, 0, 0),
-    makeGem(1, 1, 0),
-  ];
-  const grid = mod.buildColorGrid(gems, 2, 2);
-  const clusters = mod.detectSuperGemClusters(grid, 2, 2);
-  assert.equal(clusters.length, 0);
+  for (const retiredColor of [0, 4]) {
+    const gems = [
+      makeGem(0, 0, retiredColor),
+      makeGem(0, 1, retiredColor),
+      makeGem(1, 0, retiredColor),
+      makeGem(1, 1, retiredColor),
+    ];
+    const grid = mod.buildColorGrid(gems, 2, 2);
+    const clusters = mod.detectSuperGemClusters(grid, 2, 2);
+    assert.equal(clusters.length, 0, `color ${retiredColor} should be retired`);
+  }
 });
 
 test('non-super colors do not form super gems', async () => {

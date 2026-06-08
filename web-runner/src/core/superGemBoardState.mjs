@@ -3,6 +3,7 @@ import {
   buildSuperGemCellMap,
   decomposeSuperGem,
   detectSuperGemClusters,
+  isRainbowFamilyColor,
 } from './superGemRules.mjs';
 import { getSuperGemRenderRect } from './superGemRender.mjs';
 import {
@@ -241,6 +242,7 @@ export function spendSuperGem({
   if (!superGem) return false;
   const cells = Array.isArray(superGem.cells) ? superGem.cells : [];
   if (!cells.length) return false;
+  if (!isRainbowFamilyColor(superGem.baseColor)) return false;
   if (!canStartSuperGemSpend(state.globals || {}, gameState)) return false;
   const currentTurnUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
   const currentTurnActor = currentTurnUID > 0 ? callFunctionWithContext(fnContext, 'GetActorByUID', currentTurnUID) : null;
@@ -319,7 +321,7 @@ export function spendSuperGem({
   gameState.selectionLocked = false;
   state.globals.TapIndex = 0;
   setGemArray(gameState.gems);
-  if (!refillDeferred) {
+  if (colorClear.clearKeys.size > 0 && !(gameState.refillBounce && gameState.refillBounce.active)) {
     startRefillBounce(0.31);
   }
   return true;

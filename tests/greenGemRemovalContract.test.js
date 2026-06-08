@@ -7,27 +7,36 @@ function read(relPath) {
   return fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
 }
 
-test('runtime board spawning and dev forced board options do not create active green gems', () => {
+test('runtime board spawning, yellow refill, and dev forced board options do not create active green gems', () => {
   const src = read('web-runner/app.js');
   assert.doesNotMatch(src, /\{\s*value:\s*0,\s*label:\s*'GREEN'\s*\}/);
-  assert.match(src, /const GEM_SPAWN_COLORS = Object\.freeze\(\[1, 2, 3, 4, 5\]\);/);
+  assert.doesNotMatch(src, /\{\s*value:\s*4,\s*label:\s*'HEAL'\s*\}/);
+  assert.match(src, /const GEM_SPAWN_COLORS = Object\.freeze\(\[1, 2, 3, 5\]\);/);
   assert.doesNotMatch(src, /const weights = \[1, 1, 1, 1, 1, PURPLE_WEIGHT\];/);
+
+  const yellowSrc = read('web-runner/src/core/yellowRefillRules.mjs');
+  assert.match(yellowSrc, /YELLOW_REFILL_TARGETS = \[1, 2, 5\]/);
+  assert.doesNotMatch(yellowSrc, /YELLOW_REFILL_TARGETS = \[[^\]]*(?:0|4)[^\]]*\]/);
 });
 
-test('green color zero no longer forms or activates a super gem', () => {
+test('green colors no longer form active super gems', () => {
   const rulesSrc = read('web-runner/src/core/superGemRules.mjs');
   const runtimeSrc = read('web-runner/systems/superGemRuntime.js');
   assert.doesNotMatch(rulesSrc, /SUPER_GEM_COLORS = new Set\(\[0, 1, 2, 3, 4, 5\]\)/);
-  assert.match(rulesSrc, /SUPER_GEM_COLORS = new Set\(\[1, 2, 3, 4, 5\]\)/);
+  assert.match(rulesSrc, /SUPER_GEM_COLORS = new Set\(\[1, 2, 3, 5\]\)/);
+  assert.match(rulesSrc, /const palette = \[1, 2, 3, 5\];/);
   assert.match(runtimeSrc, /if \(color === 0\) return false;/);
 });
 
-test('green color zero no longer has gem or supergem visual assets', () => {
+test('green colors no longer have active gem or supergem visual assets', () => {
   const visualSrc = read('web-runner/systems/gemVisuals.js');
-  assert.match(visualSrc, /const ACTIVE_GEM_COLORS = Object\.freeze\(\[1, 2, 3, 4, 5\]\);/);
+  assert.match(visualSrc, /const ACTIVE_GEM_COLORS = Object\.freeze\(\[1, 2, 3, 5\]\);/);
   assert.doesNotMatch(visualSrc, /0:\s*'gems\/green_gem\.png'/);
   assert.doesNotMatch(visualSrc, /0:\s*'images\/gem-animation 1-000\.png'/);
   assert.doesNotMatch(visualSrc, /0:\s*'gems\/super_green\.png'/);
+  assert.doesNotMatch(visualSrc, /4:\s*'gems\/heal_gem\.png'/);
+  assert.doesNotMatch(visualSrc, /4:\s*'images\/gem-animation 1-004\.png'/);
+  assert.doesNotMatch(visualSrc, /4:\s*'gems\/super_heal\.png'/);
 });
 
 test('gem action routing treats green color zero as retired legacy input', () => {
