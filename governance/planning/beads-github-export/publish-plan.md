@@ -8,33 +8,34 @@ Beads remains source of truth. Publish GitHub records as visibility mirrors only
 
 | Gate | State | Evidence |
 | --- | --- | --- |
-| Remote baseline | blocked | Sync local main to GitHub before opening Bead branch PRs. |
+| Remote baseline | complete | PR #123 merged the 46 local `main` commits into GitHub `main`; export branch is merged with current `origin/main`. |
 | Issue creation | complete | All 99 visible non-closed Beads in the manifest are published as GitHub Issues #23 through #121. |
-| Project item operations | prepared | Manifest contains 99 Project item operations with the public-safe Project fields. Apply still needs Project V2 access. |
+| Project item operations | prepared | Manifest contains 99 Project item operations with the public-safe Project fields. Apply still needs an existing Project owner/number. |
 | Review packet artifacts | complete | Generated 36 public-safe review packets, one for each draft PR candidate, under `governance/bead-reviews/`. |
-| Draft PR review surface | partial | ORKA-7ff6 has clean draft PR #122; remaining Bead-lane PRs require pushed branches/review artifacts and remote main parity. |
+| Draft PR review surface | partial | ORKA-7ff6 has draft PR #122; remaining Bead-lane PRs require branch pushes or review decisions. |
 
 ## GitHub Access Notes
 
-- Local `gh auth status` currently reports an invalid token for `mdtrahan`, so the publisher cannot apply writes from local CLI until auth is repaired.
-- GitHub connector read access confirmed recent repository PRs are closed/merged; no current open PR collision was found through the connector read.
+- Local `gh auth status` is valid for `mdtrahan` and includes Project scope.
+- GitHub `main` is caught up with the committed local `main` history through merged PR #123.
 - The first connector write rejected detailed Bead bodies as too much non-public workspace data; `github-publish-manifest.json` is now public-safe and omits detailed scope, acceptance criteria, changed-file paths, worktree paths, and raw Beads internals.
-- GitHub connector issue creation completed all issue mirrors, but no GitHub Project V2 write tool is available in this session.
-- GitHub connector draft PR creation completed ORKA-7ff6 as #122 from a clean branch based on `origin/main`, avoiding the 35 local-only `main` commits.
-- `tools/publish_beads_github_visibility.py` now has a Project V2 path that can add existing mirror Issues to a Project and set the configured fields once `gh` auth and the Project number are available.
+- GitHub issue creation completed all 99 public-safe issue mirrors.
+- No open `mdtrahan` user Project currently exists; Project insertion remains prepared but unapplied until an existing board is provided or a new board is explicitly approved.
+- GitHub draft PR creation completed ORKA-7ff6 as #122.
+- `tools/publish_beads_github_visibility.py` now has a Project V2 path that can add existing mirror Issues to a Project and set the configured fields once the Project owner and number are available.
 - `tools/generate_bead_review_packets.py` generated public-safe review packets for all 36 draft PR candidates; `--review-required-only` still reproduces the 32 no-branch subset.
 
 ## Remote Baseline
 
-- `main` is `35` commits ahead of `origin/main`.
-- `origin/main` is `0` commits ahead of `main`.
-- Do not open Bead branch PRs while local main is ahead of GitHub main; those PRs would include unrelated baseline commits.
+- `main` and `origin/main` are aligned after merged PR #123.
+- The ORKA-7ff6 export branch has been merged with current `origin/main`.
+- Future Bead branch PRs no longer need to carry the former local-only baseline.
 
 ## Publish Phases
 
 1. Create or update GitHub Issues for all visible non-closed Beads from the public-safe `github-publish-manifest.json`. Completed; see `published-issue-mapping.md`.
-2. Add those Issues to the team Project and expose the listed project fields. Operations prepared; apply is gated on Project V2 write access and Project number.
-3. Sync local `main` to GitHub through the protected-branch PR process.
+2. Add those Issues to the team Project and expose the listed project fields. Operations prepared; apply is gated on an existing Project owner/number.
+3. Sync local `main` to GitHub through the protected-branch PR process. Completed by PR #123.
 4. Push selected Bead branches or create tracked review artifacts. Review artifacts completed for all 36 draft PR candidates, including branch-backed Beads; see `governance/bead-reviews/INDEX.md`.
 5. Open draft PRs for active, blocked, QA-ready, or review-worthy Beads. Started with ORKA-7ff6 clean draft PR #122; other lanes remain gated.
 
@@ -52,7 +53,7 @@ Dry-run all Project item operations:
 python3 tools/publish_beads_github_visibility.py --manifest governance/planning/beads-github-export/github-publish-manifest.json
 ```
 
-Apply after `gh auth status` passes and the team Project number is known:
+Apply after the team provides an existing Project owner and Project number:
 
 ```sh
 python3 tools/publish_beads_github_visibility.py --manifest governance/planning/beads-github-export/github-publish-manifest.json --apply --skip-issues --project-owner mdtrahan --project-owner-type user --project-number <project-number>

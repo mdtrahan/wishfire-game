@@ -13,7 +13,12 @@ Beads remains source of truth. GitHub Project V2 is a visibility board only.
 
 ## Apply Gate
 
-Project writes are not applied in this session because local `gh` auth is invalid and no connector Project V2 write tool is available.
+Project writes are prepared but not applied.
+
+- Local `gh` auth has Project scope.
+- No open `mdtrahan` user Project currently exists for this repository.
+- Do not create a new Project as part of this export without explicit user approval.
+- Apply requires an existing GitHub Project URL or Project number and owner.
 
 ## Dry Run
 
@@ -23,7 +28,7 @@ python3 tools/publish_beads_github_visibility.py --manifest governance/planning/
 
 ## Apply
 
-Run only after `gh auth status` passes and the team Project number is confirmed:
+Run only after the team provides an existing Project owner and Project number:
 
 ```sh
 python3 tools/publish_beads_github_visibility.py --manifest governance/planning/beads-github-export/github-publish-manifest.json --apply --skip-issues --project-owner mdtrahan --project-owner-type user --project-number <project-number>
