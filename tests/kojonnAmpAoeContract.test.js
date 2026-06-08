@@ -79,10 +79,8 @@ function runKojonnAoeCase(src, ampMult) {
       return ampMult;
     },
     getEnemies: () => enemies,
-    GetEffectiveStat: (_ctx, unit, stat) => (stat === 'MAG' ? Number(unit.MAG || 0) : 0),
-    CalculateDamage: () => {
-      throw new Error('generic damage path should not run for Kojonn green AOE');
-    },
+    GetEffectiveStat: () => 0,
+    CalculateDamage: () => 16,
     LogCombat: (_ctx, msg) => logs.push(String(msg)),
   });
 
@@ -94,24 +92,22 @@ function runKojonnAoeCase(src, ampMult) {
   };
 }
 
-test('Kojonn green AOE multiplies blight totals when power amp is active in both mirrors', () => {
+test('Kojonn direct AOE uses shared direct-damage packets in both mirrors', () => {
   for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
     const src = read(relPath);
     const base = runKojonnAoeCase(src, 0);
     const amped = runKojonnAoeCase(src, 3);
 
-    assert.equal(base.pending.length, 3, `${relPath} should queue one blight packet per enemy`);
-    assert.equal(amped.pending.length, 3, `${relPath} should queue one blight packet per enemy when amped`);
-    assert.ok(base.pending.every((hit) => hit.effectType === 'dot_apply'), `${relPath} should queue dot_apply packets`);
-    assert.ok(amped.pending.every((hit) => hit.effectType === 'dot_apply'), `${relPath} should keep dot_apply packets when amped`);
-    assert.ok(base.pending.every((hit) => hit.effectName === 'Blight'), `${relPath} should name regular Faze packets as Blight`);
-    assert.ok(base.pending.every((hit) => hit.actionName === 'Faze'), `${relPath} should preserve Faze action identity`);
-    assert.ok(base.pending.every((hit) => hit.calcPath === 'fazeDot'), `${relPath} should not label Faze packets as generic magic AOE`);
-    assert.ok(base.pending.every((hit) => hit.dotTotalDamage === 16), `${relPath} should queue base blight total from MAG`);
-    assert.ok(amped.pending.every((hit) => hit.dotTotalDamage === 48), `${relPath} should triple blight total when amp is active`);
-    assert.equal(base.logs[0], 'Kojonn used Faze to spread blight over time for 48!');
-    assert.equal(amped.logs[0], 'Kojonn used Faze to spread blight over time for 144!');
-    assert.equal(base.consumeCalls, 0, `${relPath} should not consume amp when no amp is active`);
-    assert.equal(amped.consumeCalls, 1, `${relPath} should consume amp once for the whole AOE cast`);
+    assert.equal(base.pending.length, 3, `${relPath} should queue one packet per enemy`);
+    assert.equal(amped.pending.length, 3, `${relPath} should queue one packet per enemy when amped`);
+    assert.ok(base.pending.every((hit) => hit.effectType === 'damage'), `${relPath} should emit direct damage packets`);
+    assert.ok(amped.pending.every((hit) => hit.effectType === 'damage'), `${relPath} should keep direct damage packets when amped`);
+    assert.ok(base.pending.every((hit) => hit.calcPath === 'magicCalc'), `${relPath} should use generic magic calc path`);
+    assert.ok(base.pending.every((hit) => Number(hit.finalDmg) === 16), `${relPath} should keep base per-target damage`);
+    assert.ok(amped.pending.every((hit) => Number(hit.finalDmg) === 48), `${relPath} should apply amp per target`);
+    assert.equal(base.logs[0], 'Kojonn used AOE on all enemies for 48!');
+    assert.equal(amped.logs[0], 'Kojonn used AOE on all enemies for 144!');
+    assert.equal(base.consumeCalls, 0, `${relPath} should not consume amp when none is active`);
+    assert.equal(amped.consumeCalls, 1, `${relPath} should consume amp once for the cast`);
   }
 });

@@ -25,7 +25,7 @@ test('combat lunge motion uses a later impact handoff instead of overlapping lun
   assert.match(idleFarmSrc, /actionT >= \(\(animationMath\.LUNGE_ANTICIPATION_SEC \+ animationMath\.LUNGE_FORWARD_SEC \+ animationMath\.LUNGE_IMPACT_HANDOFF_SEC\) \/ animationMath\.LUNGE_TOTAL_SEC\)/);
 });
 
-test('green AOE hero lunge profile gets extra hold and retreat breathing room', () => {
+test('direct AOE hero lunge profile gets extra hold and retreat breathing room', () => {
   const renderRuntimeSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
   const runtimeSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'modules', 'functionBank.js'), 'utf8');
   const scriptsSrc = fs.readFileSync(path.join(__dirname, '..', 'Scripts', 'functionBank.js'), 'utf8');
@@ -35,7 +35,7 @@ test('green AOE hero lunge profile gets extra hold and retreat breathing room', 
   assert.match(renderRuntimeSrc, /const retreatDur = isAoeProfile \? 0\.42 : animationMath\.LUNGE_RETREAT_SEC;/);
 
   for (const src of [runtimeSrc, scriptsSrc]) {
-    assert.match(src, /g\.NextHeroActionProfile = skillId === 'HERO_AOE'\s+\? \(String\(actor\.name \|\| ''\) === 'Kojonn' \? 'faze' : 'aoe'\)\s+: 'single';/s);
+    assert.match(src, /g\.NextHeroActionProfile = skillId === 'HERO_AOE' \? 'aoe' : 'single';/);
     assert.match(src, /const profile = String\(g\.NextHeroActionProfile \|\| 'single'\);/);
     assert.match(src, /const totalDur = profile === 'aoe'\s+\? 0\.14 \+ 0\.75 \+ 0\.24 \+ 0\.42\s+: 0\.14 \+ 0\.75 \+ 0\.16 \+ 0\.26;/s);
     assert.match(src, /const hitDelay = Math\.max\(0\.14 \+ 0\.75 \+ 0\.18, 1\.07\);/);

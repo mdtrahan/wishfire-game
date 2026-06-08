@@ -1,0 +1,168 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const vm = require('node:vm');
+
+const repoRoot = path.join(__dirname, '..');
+const runtimePath = path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js');
+const scriptsPath = path.join(repoRoot, 'Scripts', 'functionBank.js');
+
+function loadModule(modulePath) {
+  const original = fs.readFileSync(modulePath, 'utf8');
+  const transformed = `${original
+    .replace(/^import[\s\S]*?from\s+['"][^'"]+['"];\n/gm, '')
+    .replace(/\bexport\s+/g, '')}
+
+module.exports = {
+  ForceAstralFlowSkillDraught,
+  GetPartySkillDefinitions,
+  GetSkillDraughtState,
+  SelectSkillDraughtCard,
+};`;
+  const context = {
+    console,
+    Math,
+    module: { exports: {} },
+    exports: {},
+    state: { globals: {}, entities: [] },
+  };
+  vm.createContext(context);
+  new vm.Script(transformed, { filename: modulePath }).runInContext(context);
+  return context.module.exports;
+}
+
+function makeContext() {
+  const hero = {
+    uid: 100,
+    kind: 'hero',
+    name: 'Kojonn',
+    baseHeroName: 'Kojonn',
+    heroIndex: 3,
+    attackType: 'magic',
+    hp: 50,
+    maxHP: 50,
+    stats: { ATK: 4, DEF: 0, MAG: 40, RES: 0, SPD: 1 },
+  };
+  const enemies = [
+    { uid: 201, kind: 'enemy', name: 'Djinn', hp: 60, slotIndex: 0, x: 240, y: 88 },
+    { uid: 202, kind: 'enemy', name: 'Marid', hp: 60, slotIndex: 1, x: 242, y: 144 },
+  ];
+  const calls = [];
+  const globals = {
+    time: 5,
+    TurnSerial: 12,
+    HeroTeamTurnSerial: 4,
+    TurnOrderArray: [
+      { uid: 100, type: 0 },
+      { uid: 201, type: 1 },
+      { uid: 202, type: 1 },
+    ],
+    CombatLog: [],
+    CombatActionLines: ['', '', '', ''],
+    SkillDraughtOpen: 0,
+    SkillDraughtHeroUID: 0,
+    SkillDraughtCandidates: [],
+    SkillDraughtHitZones: [],
+    SkillDraughtSelectedSkillId: '',
+    SessionSkillsByHeroUID: {},
+    SkillDraughtTrace: [],
+    SkillDraughtTraceSeq: 0,
+    AstralFlowAmpPoints: 18,
+    AstralFlowAmpMax: 18,
+    AstralFlowAmpReady: 1,
+    PendingHeroHits: [],
+  };
+  const ctx = {
+    state: { globals, entities: [hero, ...enemies] },
+    callFunction(name, ...args) {
+      calls.push({ name, args });
+      return undefined;
+    },
+  };
+  return { ctx, calls };
+}
+
+test('Faze is a mirrored party draw option that owns the tainted-ground payload', () => {
+  const expectedExistingPartyIds = [
+    'party_fresh_start',
+    'party_second_chance',
+    'party_momentum',
+    'party_guard_rail',
+    'party_blue_spark',
+    'party_weaken',
+    'party_destiny',
+    'party_hot_streak',
+    'party_last_push',
+    'party_chain_pop',
+    'party_magic_fruit',
+    'party_crimson_ward',
+  ];
+
+  for (const filePath of [runtimePath, scriptsPath]) {
+    const src = fs.readFileSync(filePath, 'utf8');
+    assert.match(src, /id: 'party_faze'[\s\S]*title: 'Faze'/);
+    assert.match(src, /cardText: 'Blights the field, poisoning enemies for the remainder of the session\.'/);
+    assert.match(src, /payloadImplemented: true/);
+    assert.match(src, /function activateFazeSkill\(ctx, actorUID\)/);
+  }
+
+  for (const modulePath of [runtimePath, scriptsPath]) {
+    const mod = loadModule(modulePath);
+    const partyIds = Array.from(mod.GetPartySkillDefinitions(), skill => skill.id);
+    assert.deepEqual(partyIds.slice(0, expectedExistingPartyIds.length), expectedExistingPartyIds);
+    assert.equal(partyIds[expectedExistingPartyIds.length], 'party_faze');
+
+    const { ctx, calls } = makeContext();
+    const opened = mod.ForceAstralFlowSkillDraught(ctx, 100, 'party_faze');
+    assert.equal(opened.ok, true);
+    assert.equal(opened.candidates[0].id, 'party_faze');
+    assert.equal(opened.candidates[0].title, 'Faze');
+    assert.equal(opened.candidates[0].cardText, 'Blights the field, poisoning enemies for the remainder of the session.');
+    assert.equal(opened.candidates[0].description, 'Blights the field, poisoning enemies for the remainder of the session.');
+
+    const selected = mod.SelectSkillDraughtCard(ctx, 0);
+    assert.equal(selected.ok, true);
+    assert.equal(selected.skill.id, 'party_faze');
+    assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__[0].id, 'party_faze');
+    assert.equal(calls.some(call => call.name === 'ApplyPartyHeal'), false);
+
+    assert.equal(ctx.state.globals.PendingHeroHits.length, 2);
+    assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.effectType === 'dot_apply'));
+    assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.effectName === 'Blight'));
+    assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.actionName === 'Faze'));
+    assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.calcPath === 'magicCalc'));
+    assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.dotTotalDamage === 15));
+    assert.ok(ctx.state.globals.PendingHeroHits.every(hit => String(hit.taintedGroundZoneId || '').startsWith('tg-')));
+
+    assert.equal(ctx.state.globals.TaintedGroundZones.length, 2);
+    assert.equal(
+      JSON.stringify(ctx.state.globals.TaintedGroundZones.map(zone => ({
+        slotIndex: zone.slotIndex,
+        sourceUID: zone.sourceUID,
+        remainingTurns: zone.remainingTurns,
+        durationHeroTeamTurns: zone.durationHeroTeamTurns,
+        heroTeamTurnSpan: zone.heroTeamTurnSpan,
+        createdHeroTeamTurnSerial: zone.createdHeroTeamTurnSerial,
+        expiresAtHeroTeamTurnSerial: zone.expiresAtHeroTeamTurnSerial,
+        dotTotalDamage: zone.dotTotalDamage,
+        effectName: zone.effectName,
+        visual: zone.visual,
+        visualStartsAt: zone.visualStartsAt,
+      }))),
+      JSON.stringify([
+        { slotIndex: 0, sourceUID: 100, remainingTurns: 3, durationHeroTeamTurns: 3, heroTeamTurnSpan: 1, createdHeroTeamTurnSerial: 4, expiresAtHeroTeamTurnSerial: 7, dotTotalDamage: 15, effectName: 'TaintedGround', visual: 'blight_disc', visualStartsAt: 6.07 },
+        { slotIndex: 1, sourceUID: 100, remainingTurns: 3, durationHeroTeamTurns: 3, heroTeamTurnSpan: 1, createdHeroTeamTurnSerial: 4, expiresAtHeroTeamTurnSerial: 7, dotTotalDamage: 15, effectName: 'TaintedGround', visual: 'blight_disc', visualStartsAt: 6.07 },
+      ]),
+    );
+
+    assert.match(ctx.state.globals.CombatLog.join('\n'), /Kojonn used Faze to blight the field for 30!/);
+    assert.equal(ctx.state.globals.ActionOwnerUID, 100);
+    assert.equal(ctx.state.globals.DeferAdvance, 1);
+    assert.equal(ctx.state.globals.AdvanceAfterAction, 1);
+
+    const stateAfterSelect = mod.GetSkillDraughtState(ctx);
+    assert.equal(stateAfterSelect.open, 0);
+    assert.equal(stateAfterSelect.candidates.length, 0);
+  }
+});

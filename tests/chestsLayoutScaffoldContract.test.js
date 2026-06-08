@@ -19,6 +19,6 @@ test('chests layout is wired to mission nav and runtime route', () => {
   const src = fs.readFileSync(filePath, 'utf8');
   assert.match(src, /id:\s*'chestsLayout'/);
   assert.match(src, /layoutState\.requestLayoutChange\('chestsLayout',\s*'nav-chests'\)/);
-  assert.match(src, /if \(layoutId === 'chestsLayout'\)/);
+  assert.match(src, /case 'chestsLayout':/);
   assert.match(src, /if \(activeLayoutId === 'chestsLayout'\)/);
 });

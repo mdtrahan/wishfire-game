@@ -19,6 +19,31 @@ function formatWalletText(label, wallet) {
   return lines.join('\n');
 }
 
+function formatSkillDrawDebugText(stateGlobals) {
+  const g = stateGlobals || {};
+  const calls = g.SkillDrawCalls && typeof g.SkillDrawCalls === 'object' && !Array.isArray(g.SkillDrawCalls)
+    ? g.SkillDrawCalls
+    : {};
+  const count = (id) => {
+    const value = Number(calls[id] || 0);
+    return Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
+  };
+  const unexpectedCalls = Number(g.SkillDrawUnexpectedCalls || 0);
+  return [
+    '',
+    'Skill Draw Debug',
+    `SkillDrawCalls.party_crimson_ward: ${count('party_crimson_ward')}`,
+    `SkillDrawCalls.party_magic_fruit: ${count('party_magic_fruit')}`,
+    `SkillDrawCalls.party_destiny: ${count('party_destiny')}`,
+    `SkillDrawCalls.party_faze: ${count('party_faze')}`,
+    `SkillDrawUnexpectedCalls: ${Number.isFinite(unexpectedCalls) && unexpectedCalls >= 0 ? Math.floor(unexpectedCalls) : 0}`,
+  ];
+}
+
+export function withSkillDrawDebugText(text, stateGlobals) {
+  return [String(text || '')].concat(formatSkillDrawDebugText(stateGlobals)).join('\n');
+}
+
 function drawWalletHUD({ walletOut, stateGlobals }) {
   if (!walletOut) return;
   const g = stateGlobals || {};
@@ -54,7 +79,7 @@ function drawGemCounterHUD({
   const byHero = usage.byHero && typeof usage.byHero === 'object' ? usage.byHero : {};
   const party = usage.party && typeof usage.party === 'object'
     ? usage.party
-    : { RED: 0, GREEN: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
+    : { RED: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
   const currentHeroUID = resolveCurrentHeroUID({
     directUID: callFunctionWithContext(fnContext, 'GetCurrentTurn'),
     turnOrder: g.TurnOrderArray,
@@ -67,7 +92,7 @@ function drawGemCounterHUD({
   const heroName = currentHero ? String(currentHero.name || 'Hero') : 'Hero';
   const heroTotals = byHero[heroName] && typeof byHero[heroName] === 'object'
     ? byHero[heroName]
-    : { RED: 0, GREEN: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
+    : { RED: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
   const doubleAttackHolderName = String(g.DevDoubleAttackHolderName || '');
   const doubleAttackHolderUID = Number(g.DevDoubleAttackHolderUID || 0);
   const doubleAttackChance = Number(g.DevDoubleAttackChance || 0.05);
@@ -83,7 +108,6 @@ function drawGemCounterHUD({
     'Gem Counter Radiator',
     `Hero: ${heroName}`,
     `RED:${Number(heroTotals.RED || 0)}`,
-    `GREEN:${Number(heroTotals.GREEN || 0)}`,
     `BLUE:${Number(heroTotals.BLUE || 0)}`,
     `HEAL:${Number(heroTotals.HEAL || 0)}`,
     `YELLOW:${Number(heroTotals.YELLOW || 0)}`,
@@ -101,7 +125,6 @@ function drawGemCounterHUD({
     '-----',
     'Party Totals',
     `RED:${Number(party.RED || 0)}`,
-    `GREEN:${Number(party.GREEN || 0)}`,
     `BLUE:${Number(party.BLUE || 0)}`,
     `HEAL:${Number(party.HEAL || 0)}`,
     `YELLOW:${Number(party.YELLOW || 0)}`,
@@ -164,7 +187,7 @@ export function drawHUD({
     '',
     ...turnOrderLines,
   ];
-  out.textContent = lines.join('\n');
+  out.textContent = lines.concat(formatSkillDrawDebugText(g)).join('\n');
 
   drawGemCounterHUD({
     gemCounterOut,

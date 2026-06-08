@@ -7,6 +7,7 @@ const runtimePath = path.join(__dirname, '..', 'web-runner', 'modules', 'functio
 const scriptsPath = path.join(__dirname, '..', 'Scripts', 'functionBank.js');
 const statePath = path.join(__dirname, '..', 'web-runner', 'modules', 'state.js');
 const appPath = path.join(__dirname, '..', 'web-runner', 'app.js');
+const indexPath = path.join(__dirname, '..', 'web-runner', 'index.html');
 const renderOverlayPath = path.join(__dirname, '..', 'web-runner', 'systems', 'renderSkillDraughtOverlay.js');
 
 function extractFunctionSource(src, name) {
@@ -56,10 +57,26 @@ test('blue meter full opens draw once instead of resetting on hero turn', () => 
   const resolveSrc = extractFunctionSource(runtimeSrc, 'ResolveGemAction');
   assert.match(resolveSrc, /resolveGemActionCompat/);
   assert.match(resolveSrc, /__ORKA_GEM_ACTION_OWNER__/);
-  assert.match(resolveSrc, /OpenSkillDraughtForHero\(ctx, actorUID\);/);
+  assert.match(resolveSrc, /QueueSkillDraughtForHero\(ctx, actorUID\);/);
+  assert.doesNotMatch(resolveSrc, /OpenSkillDraughtForHero\(ctx, actorUID\);/);
   assert.match(resolveSrc, /if \(Number\(decision\.blueOpenDraught \|\| 0\) === 1\) \{/);
   const shouldResetSrc = extractFunctionSource(runtimeSrc, 'shouldResetAstralFlowAmpOnHeroTurn');
   assert.match(shouldResetSrc, /if \(Number\(g\.SkillDraughtOpen \|\| 0\)\) return false;/);
+});
+
+test('app claims pending skill draw only at the hero end-of-turn checkpoint', () => {
+  const appSrc = fs.readFileSync(appPath, 'utf8');
+  assert.match(appSrc, /function canClaimPendingSkillDraught\(/);
+  assert.match(appSrc, /currentTurnType === 0/);
+  assert.match(appSrc, /pendingBarrier\.canClaimSkillDraught/);
+  assert.doesNotMatch(appSrc, /pendingHeroUID > 0 && pendingHeroUID !== currentUID/);
+  assert.match(appSrc, /callFunctionWithContext\(fnContext, 'ClaimPendingSkillDraught'\);/);
+  const claimIndex = appSrc.indexOf('const pendingSkillDraughtClaimed = claimPendingSkillDraughtAtHeroCheckpoint');
+  const refillReadyIndex = appSrc.indexOf('const refillReady =');
+  assert.ok(claimIndex > -1, 'pending skill draw should claim inside the tick loop');
+  assert.ok(refillReadyIndex > -1, 'refill gate should still exist');
+  assert.ok(claimIndex < refillReadyIndex, 'pending skill draw must claim before refill can start');
+  assert.match(appSrc, /!pendingSkillDraughtClaimed &&[\s\S]*refillStartBarrier\.canStartRefill/);
 });
 
 test('dev panel wires mandatory draw controls', () => {
@@ -71,6 +88,33 @@ test('dev panel wires mandatory draw controls', () => {
   assert.match(appSrc, /ForceAstralFlowSkillDraught/);
   assert.match(appSrc, /ClearSessionSkillDraught/);
   assert.match(appSrc, /getSkillDraughtDevSummary/);
+});
+
+test('dev panel 2 output appends skill draw debug counters', () => {
+  const hudSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'renderHUD.js'), 'utf8');
+  assert.match(hudSrc, /function formatSkillDrawDebugText\(stateGlobals\)/);
+  assert.match(hudSrc, /SkillDrawCalls\.party_crimson_ward/);
+  assert.match(hudSrc, /SkillDrawCalls\.party_magic_fruit/);
+  assert.match(hudSrc, /SkillDrawCalls\.party_destiny/);
+  assert.match(hudSrc, /SkillDrawCalls\.party_faze/);
+  assert.match(hudSrc, /SkillDrawUnexpectedCalls/);
+  assert.match(hudSrc, /out\.textContent = lines\.concat\(formatSkillDrawDebugText\(g\)\)\.join\('\\n'\);/);
+
+  const appSrc = fs.readFileSync(appPath, 'utf8');
+  assert.match(appSrc, /renderHUD\.withSkillDrawDebugText\(gameState\.baseSummary \+ '\\n\\nLoading images\.\.\.', state\.globals\)/);
+  assert.match(appSrc, /renderHUD\.withSkillDrawDebugText\(`🎮 Puzzle RPG\\n\\n✓ Game loaded\\n\$\{rendered\.length\} total objects loaded`, state\.globals\)/);
+});
+
+test('dev panel 2 mirrors dev panel pause while open', () => {
+  const indexSrc = fs.readFileSync(indexPath, 'utf8');
+  assert.match(indexSrc, /new CustomEvent\('orka:dev2-diagnostics-open-change'/);
+  assert.match(indexSrc, /detail: \{ open \}/);
+
+  const appSrc = fs.readFileSync(appPath, 'utf8');
+  assert.match(appSrc, /function isDev2DiagnosticsOpen\(\)/);
+  assert.match(appSrc, /window\.addEventListener\('orka:dev2-diagnostics-open-change'/);
+  assert.match(appSrc, /if \(open\) \{\s*pauseGameplayForDevTooling\(\);/s);
+  assert.match(appSrc, /if \(isDev2DiagnosticsOpen\(\)\) \{\s*state\.globals\.DevToolingPaused = 1;/s);
 });
 
 test('fresh combat session clears selected session skills without touching progression', () => {

@@ -29,7 +29,7 @@ test('dev tooling refresh uses the shared combat turn refresh baseline and inval
   assert.match(src, /function clearDevToolingPauseSnapshot\(\)/);
   assert.match(src, /function resetCombatRuntimeForFreshSession\(reason = 'combat-refresh', options = \{\}\)/);
   assert.match(src, /applyTurnGateGlobals\(createCombatTurnRefreshBaseline\(state\.globals, \{/);
-  assert.match(src, /clearDevToolingPauseSnapshot\(\);[\s\S]*state\.globals\.DevToolingPaused = ensureDevToolingConfig\(\)\.open \? 1 : 0;/);
+  assert.match(src, /clearDevToolingPauseSnapshot\(\);[\s\S]*state\.globals\.DevToolingPaused = \(ensureDevToolingConfig\(\)\.open \|\| isDev2DiagnosticsOpen\(\)\) \? 1 : 0;/);
   assert.match(src, /CombatSessionId: Number\(state\.globals\.CombatSessionId \|\| 0\),/);
   assert.match(src, /TurnSerial: Number\(state\.globals\.TurnSerial \|\| 0\),/);
   assert.match(src, /const sameCombatSession =[\s\S]*CombatSessionId/s);

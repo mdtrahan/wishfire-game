@@ -16,9 +16,16 @@ Do not code a hero or party skill until the skill definition is clear enough to 
 
 Each implementation bead should name the skill ID, owner, trigger, eligibility rules, roll chance, payload, counters, and visible proof path before runtime edits begin. If any of those are unknown, update the product skill definition or bead acceptance first.
 
+Each live skill-card bead must also name its draw class from `governance/product/hero-and-party-skills.md`:
+
+- `one_off`: exposing or selecting the card removes that skill from future draw candidates for the combat session.
+- `tiered`: selecting the card can repeat and must increase only the declared additive rank, stack, value, duration, or capped tier.
+- `repeatable`: selecting the card can repeat and fires the same payload once without persistent duplicate power.
+
 Write focused contracts before implementation at these seams:
 
 - activation: equipping or selecting the skill creates session state without executing the payload
+- draw filtering: the candidate pool changes according to the skill's draw class after selection
 - eligibility: locked, inactive, wrong-target, no-damage, activation-only, and other rejected events do not count as checks
 - roll: eligible events increment checks and split successful procs from misses
 - payload: successful procs apply the exact heal, damage, buff, debuff, guard, or board effect expected for that skill
@@ -84,6 +91,15 @@ This prevents false conclusions from visual-only testing. If the side panel does
 ## Destiny Baseline
 
 Destiny is the first reference implementation for this pattern.
+
+Draw class: `one_off`.
+
+Expected draw behavior:
+
+- Destiny can appear while it has not already been exposed or selected for the current combat session.
+- Selecting Destiny activates the session skill.
+- After exposure or selection, Destiny must not appear again in normal skill-card draw candidates for that session.
+- Forced QA paths should suppress Destiny after it is already exposed or active, fill with other real eligible skills when available, and record `one_off_already_exposed` or `one_off_already_selected` without removing Destiny from the canonical party skill registry.
 
 Expected activation state:
 

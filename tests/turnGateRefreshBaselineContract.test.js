@@ -8,6 +8,11 @@ for (const modulePath of [
 ]) {
   test(`refresh baseline clears transient combat turn state in ${modulePath}`, async () => {
     const mod = await import(modulePath);
+    assert.equal(mod.isCanPickGemsReady(1), true);
+    assert.equal(mod.isCanPickGemsReady(true), true);
+    assert.equal(mod.isCanPickGemsReady(0), false);
+    assert.equal(mod.isCanPickGemsReady(false), false);
+
     const normalized = mod.normalizeCombatTurnTransientState({
       CanPickGems: '1',
       IsPlayerBusy: 1,
@@ -19,6 +24,7 @@ for (const modulePath of [
       ActionActorUID: '77',
       PendingSkillID: 'HERO_SINGLE',
       PendingActor: '77',
+      PendingSuperGemAction: { kind: 'super_gem_attack', color: 1, actorUID: 77 },
       EnemyLineClearPressureActive: '1',
     });
 
@@ -27,6 +33,7 @@ for (const modulePath of [
     assert.equal(normalized.ActionActorUID, 77);
     assert.equal(normalized.PendingSkillID, 'HERO_SINGLE');
     assert.equal(normalized.PendingActor, 77);
+    assert.deepEqual(normalized.PendingSuperGemAction, { kind: 'super_gem_attack', color: 1, actorUID: 77 });
     assert.equal(normalized.EnemyLineClearPressureActive, 1);
 
     const heroReady = mod.createCombatTurnRefreshBaseline(normalized, {
@@ -44,6 +51,7 @@ for (const modulePath of [
     assert.equal(heroReady.ActionActorUID, 0);
     assert.equal(heroReady.PendingSkillID, '');
     assert.equal(heroReady.PendingActor, 0);
+    assert.equal(heroReady.PendingSuperGemAction, null);
     assert.equal(heroReady.EnemyLineClearPressureActive, 0);
 
     const enemyReady = mod.createCombatTurnRefreshBaseline(normalized, {
@@ -74,6 +82,7 @@ for (const modulePath of [
       ActionActorUID: 55,
       PendingSkillID: 'HERO_AOE',
       PendingActor: 55,
+      PendingSuperGemAction: { kind: 'super_gem_attack', color: 0, actorUID: 55 },
       EnemyLineClearPressureActive: 1,
     };
 
@@ -85,6 +94,7 @@ for (const modulePath of [
     assert.equal(hero.ActionActorUID, 0);
     assert.equal(hero.PendingSkillID, '');
     assert.equal(hero.PendingActor, 0);
+    assert.equal(hero.PendingSuperGemAction, null);
     assert.equal(hero.EnemyLineClearPressureActive, 1);
 
     const enemy = mod.createEnemyTurnGateBaseline(dirty);
@@ -95,6 +105,7 @@ for (const modulePath of [
     assert.equal(enemy.ActionActorUID, 0);
     assert.equal(enemy.PendingSkillID, '');
     assert.equal(enemy.PendingActor, 0);
+    assert.equal(enemy.PendingSuperGemAction, null);
     assert.equal(enemy.EnemyLineClearPressureActive, 1);
   });
 
@@ -107,6 +118,17 @@ for (const modulePath of [
     });
     assert.equal(idleHero.CanPickGems, 1);
     assert.equal(idleHero.IsPlayerBusy, 0);
+
+    const deferredHero = mod.createRefillCompleteGate({
+      CanPickGems: 0,
+      IsPlayerBusy: 1,
+      TurnPhase: 0,
+      DeferAdvance: 1,
+      AdvanceAfterAction: 1,
+    });
+    assert.equal(deferredHero.CanPickGems, 0);
+    assert.equal(deferredHero.IsPlayerBusy, 0);
+    assert.equal(deferredHero.DeferAdvance, 1);
 
     const actionPhase = mod.createRefillCompleteGate({
       CanPickGems: 0,
@@ -190,6 +212,36 @@ for (const modulePath of [
     assert.equal(textEndHold.canAdvanceTurn, false);
     assert.equal(textEndHold.canClaimCombatAction, false);
     assert.equal(textEndHold.firstBlockingLane, 'text-animation');
+
+    const skillDraughtHold = mod.derivePresentationTurnBarrier({
+      globals: { time: 10, TurnPhase: 0, SkillDraughtOpen: 1 },
+      boardHasEmptySlots: true,
+    });
+    assert.equal(skillDraughtHold.canStartRefill, false);
+    assert.equal(skillDraughtHold.canAdvanceTurn, false);
+    assert.equal(skillDraughtHold.canClaimCombatAction, false);
+    assert.equal(skillDraughtHold.canResolvePendingTargetAction, false);
+    assert.equal(skillDraughtHold.canRestoreHeroInput, false);
+    assert.equal(skillDraughtHold.firstBlockingLane, 'skill-draught');
+
+    const pendingSkillDraught = mod.derivePresentationTurnBarrier({
+      globals: { time: 10, TurnPhase: 0, SkillDraughtPendingOpen: 1 },
+      boardHasEmptySlots: true,
+    });
+    assert.equal(pendingSkillDraught.lanes.skillDraughtPending, true);
+    assert.equal(pendingSkillDraught.canClaimSkillDraught, true);
+    assert.equal(pendingSkillDraught.canStartRefill, false);
+    assert.equal(pendingSkillDraught.canAdvanceTurn, false);
+    assert.equal(pendingSkillDraught.canClaimCombatAction, false);
+    assert.equal(pendingSkillDraught.canRestoreHeroInput, false);
+    assert.equal(pendingSkillDraught.firstBlockingLane, 'skill-draught-pending');
+
+    const pendingSkillDraughtDuringAnimation = mod.derivePresentationTurnBarrier({
+      globals: { time: 10, TurnPhase: 0, SkillDraughtPendingOpen: 1, TextAnimEndAt: 11 },
+      boardHasEmptySlots: true,
+    });
+    assert.equal(pendingSkillDraughtDuringAnimation.canClaimSkillDraught, false);
+    assert.equal(pendingSkillDraughtDuringAnimation.firstBlockingLane, 'text-animation');
 
     const actionHold = mod.derivePresentationTurnBarrier({
       globals: {

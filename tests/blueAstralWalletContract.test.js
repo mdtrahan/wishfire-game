@@ -58,9 +58,9 @@ test('blue supergem opens one skill draw without resolving Astral Flow', () => {
         state.globals.AstralFlowWallet += Number(args[2] || 0);
         state.globals.AstralFlowAmpPoints += Number(args[2] || 0);
       }
-      if (name === 'OpenSkillDraughtForHero') {
-        state.globals.SkillDraughtOpen = 1;
-        state.globals.SkillDraughtHeroUID = args[0];
+      if (name === 'QueueSkillDraughtForHero') {
+        state.globals.SkillDraughtPendingOpen = 1;
+        state.globals.SkillDraughtPendingHeroUID = args[0];
         return { ok: true };
       }
       return undefined;
@@ -75,13 +75,15 @@ test('blue supergem opens one skill draw without resolving Astral Flow', () => {
   assert.equal(activated, true);
   assert.equal(mergeFx.sourceItems, sourceItems);
   assert.equal(Object.keys(mergeFx).length, 1);
-  assert.deepEqual(calls.filter(call => call.name === 'OpenSkillDraughtForHero').map(call => call.args), [[42]]);
+  assert.deepEqual(calls.filter(call => call.name === 'QueueSkillDraughtForHero').map(call => call.args), [[42]]);
+  assert.equal(calls.some(call => call.name === 'OpenSkillDraughtForHero'), false);
   assert.equal(calls.some(call => call.name === 'ResolveGemAction'), false);
   assert.equal(state.globals.AstralFlowWallet, 7);
   assert.equal(state.globals.AstralFlowAmpPoints, 11);
   assert.equal(state.globals.AstralFlowAmpReady, 0);
-  assert.equal(state.globals.SkillDraughtOpen, 1);
-  assert.equal(state.globals.SkillDraughtHeroUID, 42);
+  assert.equal(state.globals.SkillDraughtOpen || 0, 0);
+  assert.equal(state.globals.SkillDraughtPendingOpen, 1);
+  assert.equal(state.globals.SkillDraughtPendingHeroUID, 42);
   assert.equal(state.globals.CanPickGems, 0);
   assert.equal(state.globals.IsPlayerBusy, 0);
   assert.equal(state.globals.ActionOwnerUID, 42);

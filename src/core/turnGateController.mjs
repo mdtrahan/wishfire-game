@@ -10,12 +10,17 @@ export function normalizeCombatTurnTransientState(current = {}) {
     ActionActorUID: Number(current.ActionActorUID || 0),
     PendingSkillID: String(current.PendingSkillID || ''),
     PendingActor: Number(current.PendingActor || 0),
+    PendingSuperGemAction: current.PendingSuperGemAction || null,
     EnemyLineClearPressureActive: Number(current.EnemyLineClearPressureActive || 0),
   };
 }
 
 export function normalizeTurnGateState(current = {}) {
   return normalizeCombatTurnTransientState(current);
+}
+
+export function isCanPickGemsReady(value) {
+  return Number(value) === 1;
 }
 
 export function derivePresentationTurnBarrier({
@@ -38,10 +43,13 @@ export function derivePresentationTurnBarrier({
     textAnimating: !!globals.TextAnimating || Number(globals.TextAnimEndAt || 0) > now,
     heroAction: !!(globals.HeroAction && globals.HeroAction.active),
     enemyAction: !!(globals.EnemyAction && globals.EnemyAction.active),
+    skillDraught: Number(globals.SkillDraughtOpen || 0) > 0,
+    skillDraughtPending: Number(globals.SkillDraughtPendingOpen || 0) > 0,
     pendingHeroHits,
     actionLock: Number(globals.ActionLockUntil || 0) > now,
     actionInProgress: !!globals.ActionInProgress,
   };
+  const skillDraughtPending = lanes.skillDraughtPending;
   const orderedLaneNames = [
     ['board-fill', lanes.boardFill],
     ['refill-bounce', lanes.refillBounce],
@@ -50,13 +58,14 @@ export function derivePresentationTurnBarrier({
     ['text-animation', lanes.textAnimating],
     ['hero-action', lanes.heroAction],
     ['enemy-action', lanes.enemyAction],
+    ['skill-draught', lanes.skillDraught],
     ['pending-hero-hits', lanes.pendingHeroHits],
     ['action-lock', lanes.actionLock],
     ['action-in-progress', lanes.actionInProgress],
   ];
   const activePresentationLane = orderedLaneNames.find(([, active]) => active)?.[0] || null;
   const refillPending = !!boardHasEmptySlots && !lanes.refillBounce && !enemyLineClearPressureActive;
-  const firstBlockingLane = activePresentationLane || (refillPending ? 'refill-pending' : null);
+  const firstBlockingLane = activePresentationLane || (skillDraughtPending ? 'skill-draught-pending' : (refillPending ? 'refill-pending' : null));
   const presentationBlocked = !!activePresentationLane;
   const pendingTargetAction = !!globals.PendingSkillID && (
     Number(globals.TurnPhase || 0) === 1 ||
@@ -67,12 +76,14 @@ export function derivePresentationTurnBarrier({
     refillPending,
     blockingLane: firstBlockingLane,
     firstBlockingLane,
-    canStartRefill: !presentationBlocked,
-    canAdvanceTurn: !presentationBlocked && !refillPending,
-    canClaimCombatAction: !presentationBlocked && !refillPending && !globals.DeferAdvance,
+    canClaimSkillDraught: skillDraughtPending && !presentationBlocked,
+    canStartRefill: !presentationBlocked && !skillDraughtPending,
+    canAdvanceTurn: !presentationBlocked && !skillDraughtPending && !refillPending,
+    canClaimCombatAction: !presentationBlocked && !skillDraughtPending && !refillPending && !globals.DeferAdvance,
     canResolvePendingTargetAction: pendingTargetAction && !presentationBlocked && !globals.DeferAdvance,
     canRestoreHeroInput: (
       !presentationBlocked &&
+      !skillDraughtPending &&
       !refillPending &&
       !globals.DeferAdvance &&
       !globals.PendingSkillID &&
@@ -98,6 +109,7 @@ export function createEnemyTurnGateBaseline(current = {}) {
     ActionActorUID: 0,
     PendingSkillID: '',
     PendingActor: 0,
+    PendingSuperGemAction: null,
   };
 }
 
@@ -115,6 +127,7 @@ export function createEnemyTurnRetryHold(current = {}, { currentTurnUID = 0 } = 
     ActionActorUID: 0,
     PendingSkillID: '',
     PendingActor: 0,
+    PendingSuperGemAction: null,
   };
 }
 
@@ -139,6 +152,7 @@ export function createEnemyRosterRefillHold(current = {}, {
     ActionActorUID: keepPendingSkill ? Number(base.ActionActorUID || 0) : 0,
     PendingSkillID: keepPendingSkill ? String(base.PendingSkillID || '') : '',
     PendingActor: keepPendingSkill ? Number(base.PendingActor || 0) : 0,
+    PendingSuperGemAction: keepPendingSkill ? base.PendingSuperGemAction || null : null,
   };
 }
 
@@ -156,6 +170,7 @@ export function createHeroTurnGateBaseline(current = {}) {
     ActionActorUID: 0,
     PendingSkillID: '',
     PendingActor: 0,
+    PendingSuperGemAction: null,
   };
 }
 
@@ -181,6 +196,7 @@ export function createCombatTurnRefreshBaseline(current = {}, {
     ActionActorUID: 0,
     PendingSkillID: '',
     PendingActor: 0,
+    PendingSuperGemAction: null,
     EnemyLineClearPressureActive: 0,
   };
 }
@@ -249,7 +265,7 @@ export function createRefillStartGate(current = {}) {
 
 export function createRefillCompleteGate(current = {}) {
   const base = normalizeTurnGateState(current);
-  const canRestorePickability = Number(current.TurnPhase || 0) === 0;
+  const canRestorePickability = Number(current.TurnPhase || 0) === 0 && !Number(current.DeferAdvance || 0);
   return {
     ...base,
     CanPickGems: canRestorePickability ? 1 : 0,
@@ -307,6 +323,7 @@ export function createEnemyTurnIdleRecovery(current = {}, { now = 0, currentTurn
     ActionActorUID: 0,
     PendingSkillID: '',
     PendingActor: 0,
+    PendingSuperGemAction: null,
   };
 }
 

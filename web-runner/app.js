@@ -13,8 +13,10 @@ import {
   createDeferredStaleBusyRecovery,
   createDeferredTextHold,
   derivePresentationTurnBarrier,
+  isCanPickGemsReady,
   createRefillCompleteGate,
   createRefillStartGate,
+  createYellowSafetyNet,
   createYellowSequenceCompletion,
   createYellowSequenceGate,
   createYellowSequenceSkip,
@@ -23,7 +25,6 @@ import {
   YELLOW_COLOR,
   YELLOW_REFILL_TARGETS,
   pickYellowReassignTarget,
-  pickYellowRefillTarget,
 } from './src/core/yellowRefillRules.mjs';
 import {
   resolveCurrentHeroUID,
@@ -57,6 +58,7 @@ import {
   spendSuperGem,
   syncSuperGemShapes,
 } from './src/core/superGemBoardState.mjs';
+import { resolvePendingSuperGemHandoff } from './src/core/pendingSuperGemHandoff.mjs';
 import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
 import { deriveDamageFloatFrameOffset } from '../src/core/damageFloatVector.mjs';
 import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
@@ -190,13 +192,13 @@ const DEV_TOOL_HOTKEY_LABEL = 'Ctrl+Shift+P';
 const DEV_TOOL_GEM_RANDOM = -1;
 const DEV_TOOL_GEM_OPTIONS = Object.freeze([
   { value: DEV_TOOL_GEM_RANDOM, label: 'Random' },
-  { value: 0, label: 'GREEN' },
   { value: 1, label: 'RED' },
   { value: 2, label: 'BLUE' },
   { value: 3, label: 'YELLOW' },
   { value: 4, label: 'HEAL' },
   { value: 5, label: 'PURPLE' },
 ]);
+const GEM_SPAWN_COLORS = Object.freeze([1, 2, 3, 4, 5]);
 const DEV_TOOL_REWARD_OPTIONS = Object.freeze([
   { value: '', label: 'None' },
   { value: 'GOLD', label: 'Gold' },
@@ -230,6 +232,9 @@ const TURN_TRANSIENT_NUMERIC_KEYS = Object.freeze([
 const TURN_TRANSIENT_STRING_KEYS = Object.freeze([
   'PendingSkillID',
 ]);
+const TURN_TRANSIENT_OBJECT_KEYS = Object.freeze([
+  'PendingSuperGemAction',
+]);
 
 function applyTurnGateGlobals(next) {
   if (!next) return;
@@ -241,6 +246,10 @@ function applyTurnGateGlobals(next) {
     if (!Object.prototype.hasOwnProperty.call(next, key)) continue;
     state.globals[key] = String(next[key] || '');
   }
+  for (const key of TURN_TRANSIENT_OBJECT_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(next, key)) continue;
+    state.globals[key] = next[key] || null;
+  }
 }
 
 function applyTurnGateIntent(createIntent, options = undefined) {
@@ -250,7 +259,7 @@ function applyTurnGateIntent(createIntent, options = undefined) {
 
 function getActionHandoffSnapshot() {
   const currentUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
-  const currentType = Number(callFunctionWithContext(fnContext, 'GetCurrentType') || -1);
+  const currentType = Number(callFunctionWithContext(fnContext, 'GetCurrentType') ?? -1);
   return {
     currentUID,
     currentType,
@@ -280,6 +289,26 @@ function logActionHandoffDebug(tag, payload = {}) {
     ...payload,
     snapshot: getActionHandoffSnapshot(),
   }, state);
+}
+
+function resolvePendingTargetHandoff({ actorUID, source }) {
+  return resolvePendingSuperGemHandoff({
+    globals: state.globals,
+    actorUID,
+    source,
+    executePendingSuperGemAction: () => superGemRuntime.executePendingSuperGemAction({
+      state,
+      callFunctionWithContext,
+      fnContext,
+    }),
+    executeSkill: (skillID, resolvedActorUID) => callFunctionWithContext(
+      fnContext,
+      'ExecuteSkill',
+      skillID,
+      resolvedActorUID,
+    ),
+    hideAttackUI: () => callFunctionWithContext(fnContext, 'HideAttackUI'),
+  });
 }
 
 function getEnemyRosterStabilitySnapshot() {
@@ -374,6 +403,24 @@ function canResolveDeferredAdvance({ hasEmpty = false, enemyLineClearPressureAct
     pendingEnemyDeathResolution,
     ok: (rosterStability.stable || pendingEnemyDeathResolution) && !refillPending && !textHold && !blockedPhase && ownerOk,
   };
+}
+
+function canClaimPendingSkillDraught({ hasEmpty = false, enemyLineClearPressureActive = false } = {}) {
+  if (!Number(state.globals.SkillDraughtPendingOpen || 0)) return false;
+  if (Number(state.globals.SkillDraughtOpen || 0)) return false;
+  const currentTurnType = Number(callFunctionWithContext(fnContext, 'GetCurrentType') ?? -1);
+  if (currentTurnType !== 0) return false;
+  if (!state.globals.DeferAdvance || !state.globals.AdvanceAfterAction) return false;
+  if (Number(state.globals.ActionLockUntil || 0) > Number(state.globals.time || 0)) return false;
+  if (state.globals.IsPlayerBusy || state.globals.ActionInProgress || state.globals.PendingSkillID) return false;
+  const pendingBarrier = getPresentationTurnBarrier({ hasEmpty, enemyLineClearPressureActive });
+  return pendingBarrier.canClaimSkillDraught;
+}
+
+function claimPendingSkillDraughtAtHeroCheckpoint({ hasEmpty = false, enemyLineClearPressureActive = false } = {}) {
+  if (!canClaimPendingSkillDraught({ hasEmpty, enemyLineClearPressureActive })) return false;
+  const result = callFunctionWithContext(fnContext, 'ClaimPendingSkillDraught');
+  return !!(result && result.ok);
 }
 
 function isHitFlashActive(uid) {
@@ -1510,13 +1557,25 @@ function applyBoardGemColor(colorValue) {
   const color = Number(colorValue);
   if (!Number.isFinite(color) || color === DEV_TOOL_GEM_RANDOM) return 0;
   if (!Array.isArray(gameState.gems)) return 0;
+  resetSuperGemBoardState(gameState);
+  superGemRuntime.clearPendingSuperGemAction(state);
+  gameState.selectedGems = [];
+  gameState.selectionLocked = false;
+  gameState.gemMergeFx = null;
+  state.globals.BoardFillActive = 0;
+  state.globals.TapIndex = 0;
   let changed = 0;
   for (const gem of gameState.gems) {
     if (!gem) continue;
     gem.color = color;
     gem.elementIndex = color;
+    gem.selected = false;
+    gem.Selected = 0;
+    gem.flashUntil = 0;
     changed += 1;
   }
+  setGemArray(gameState.gems);
+  rebuildGridFromGems();
   return changed;
 }
 
@@ -1911,6 +1970,11 @@ function pauseGameplayForDevTooling() {
   state.globals.DevToolingPaused = 1;
 }
 
+function isDev2DiagnosticsOpen() {
+  const panel = document.getElementById('dev2-diagnostics');
+  return !!panel && !panel.hidden;
+}
+
 function clearDevToolingPauseSnapshot() {
   devToolingPauseSnapshot = null;
 }
@@ -1938,7 +2002,11 @@ function closeDevToolingModal({ restorePauseSnapshot = true } = {}) {
   state.globals.DevToolingConfig = cfg;
   if (root) root.style.display = 'none';
   if (restorePauseSnapshot) {
-    resumeGameplayFromDevTooling();
+    if (isDev2DiagnosticsOpen()) {
+      state.globals.DevToolingPaused = 1;
+    } else {
+      resumeGameplayFromDevTooling();
+    }
   } else {
     devToolingPauseSnapshot = null;
     state.globals.DevToolingPaused = 0;
@@ -1999,7 +2067,7 @@ function resetCombatRuntimeForFreshSession(reason = 'combat-refresh', options = 
   }));
 
   clearDevToolingPauseSnapshot();
-  state.globals.DevToolingPaused = ensureDevToolingConfig().open ? 1 : 0;
+  state.globals.DevToolingPaused = (ensureDevToolingConfig().open || isDev2DiagnosticsOpen()) ? 1 : 0;
   console.log(
     `[TURN] reset combat runtime baseline reason=${reason} ` +
     `turnType=${Number(options.currentTurnType || 0)} ` +
@@ -2024,6 +2092,20 @@ function toggleDevToolingModal(nextOpen = null) {
     closeDevToolingModal({ restorePauseSnapshot: true });
   }
   return cfg;
+}
+
+window.addEventListener('orka:dev2-diagnostics-open-change', (ev) => {
+  const open = !!ev?.detail?.open;
+  if (open) {
+    pauseGameplayForDevTooling();
+    return;
+  }
+  if (!ensureDevToolingConfig().open) {
+    resumeGameplayFromDevTooling();
+  }
+});
+if (isDev2DiagnosticsOpen()) {
+  pauseGameplayForDevTooling();
 }
 
 function isDevToolingHotkey(ev) {
@@ -2411,7 +2493,7 @@ function buildHeroSkillDescriptionLines(hero, skillState) {
   if (key === 'skill1') {
     if (heroName === 'Kojonn') {
       return [
-        `Green match: blight over time on all enemies.`,
+        `Faze: blight over time on all enemies.`,
         `Rank ${rank}/${maxRank}  Next Cost ${nextCost} SP`,
         `Status ${status}`,
       ];
@@ -3495,7 +3577,7 @@ function initEntities(enemyRows, layoutInstances) {
   }
 }
 
-// Create gem board with random colors (0-5: green, red, blue, yellow, heal, purple energy).
+// Create gem board with active colors (1-5: red, blue, yellow, heal, purple energy).
 function createGemBoard(gridBounds = null, { immediateFill = false } = {}) {
   assertCombatLayoutDev('createGemBoard');
   bootstrapDeterministicRefillPending = BOOTSTRAP_SEED != null;
@@ -3572,21 +3654,27 @@ function randomGemFrame() {
     const c = g && g.color != null ? g.color : (g ? g.elementIndex : null);
     return n + (c === 5 ? 1 : 0);
   }, 0);
-  const pickByWeights = (weights) => {
+  const pickByWeightedColors = (entries) => {
     let total = 0;
-    for (const w of weights) total += w;
+    for (const entry of entries) total += entry.weight;
     let r = getGemSpawnRandom() * total;
-    for (let i = 0; i < weights.length; i++) {
-      r -= weights[i];
-      if (r <= 0) return i;
+    for (const entry of entries) {
+      r -= entry.weight;
+      if (r <= 0) return entry.color;
     }
-    return 0;
+    return entries[0] ? entries[0].color : 1;
   };
-  // Colors 0-4 standard, 5 purple jackpot.
-  const weights = [1, 1, 1, 1, 1, PURPLE_WEIGHT];
-  let frame = pickByWeights(weights);
+  const spawnWeights = GEM_SPAWN_COLORS.map((color) => ({
+    color,
+    weight: color === 5 ? PURPLE_WEIGHT : 1,
+  }));
+  let frame = pickByWeightedColors(spawnWeights);
   if (frame === 5 && countPurple() >= MAX_PURPLE_ON_BOARD) {
-    frame = pickByWeights([1, 1, 1, 1, 1]);
+    frame = pickByWeightedColors(
+      GEM_SPAWN_COLORS
+        .filter((color) => color !== 5)
+        .map((color) => ({ color, weight: 1 })),
+    );
   }
   return frame;
 }
@@ -3704,7 +3792,6 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
       const key = `${r},${c}`;
       const gem = gemByCell.get(key) || null;
       const color = gem && gem.color != null ? gem.color : (gem ? gem.elementIndex : null);
-      const cellFilled = !!(gameState.grid[c] && gameState.grid[c][r]);
       if (gem && color === YELLOW_COLOR) {
         queue.push({
           type: 'yellow',
@@ -3713,20 +3800,6 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
           cellC: c,
           cellR: r,
           target: pickYellowReassignTarget(),
-          sequence: null,
-          startAt: 0,
-          duration: YELLOW_CASINO_SPIN_SEC,
-          frameDuration: 0,
-        });
-      } else if (!cellFilled) {
-        const pos = getCellWorldPos(c, r);
-        queue.push({
-          type: 'empty',
-          reason: 'yellow-refill',
-          uid: 0,
-          cellC: c,
-          cellR: r,
-          target: pickYellowRefillTarget(),
           sequence: null,
           startAt: 0,
           duration: YELLOW_CASINO_SPIN_SEC,
@@ -3807,7 +3880,14 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
     state.globals.BoardFillActive = 1;
   } else {
     traceTask015YellowAnimation('yellow-sequence-skip', { reason: 'no-yellow-slots' });
-    state.globals.BoardFillActive = 0;
+    const pendingGoldAward = Math.max(0, Number(casino.pendingGoldAward || 0));
+    if (pendingGoldAward > 0) {
+      state.globals.goldTotal = Number(state.globals.goldTotal || 0) + pendingGoldAward;
+      casino.pendingGoldAward = 0;
+    }
+    if (!(gameState.refillBounce && gameState.refillBounce.active)) {
+      state.globals.BoardFillActive = 0;
+    }
     applyTurnGateIntent(createYellowSequenceSkip);
   }
 }
@@ -4031,6 +4111,12 @@ function handleGemMatch(color) {
       gameState.gems = state.globals.Gems;
     }
   };
+  const rebuildGridAndStartMatchRefill = () => {
+    rebuildGridFromGems();
+    if (hasEmptySlots() && !(gameState.refillBounce && gameState.refillBounce.active)) {
+      startRefillBounce();
+    }
+  };
 
   if (color === 0 || color === 1) {
     const matchedCount = Math.max(0, Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0);
@@ -4042,7 +4128,7 @@ function handleGemMatch(color) {
     callFunctionWithContext(fnContext, 'ClearMatchState');
     syncGemsFromGlobals();
     clearLocalSelection();
-    rebuildGridFromGems();
+    rebuildGridAndStartMatchRefill();
     callFunctionWithContext(fnContext, 'Sub_Energy');
     g.ApplyChainToNextDamage = g.ChainNumber >= 2 ? 1 : 0;
   } else if (color === 2) {
@@ -4059,7 +4145,7 @@ function handleGemMatch(color) {
     callFunctionWithContext(fnContext, 'ClearMatchState');
     syncGemsFromGlobals();
     clearLocalSelection();
-    rebuildGridFromGems();
+    rebuildGridAndStartMatchRefill();
     callFunctionWithContext(fnContext, 'Sub_Energy');
     g.ApplyChainToNextDamage = 0;
   } else if (color === 3) {
@@ -4082,12 +4168,18 @@ function handleGemMatch(color) {
     callFunctionWithContext(fnContext, 'ClearMatchState');
     syncGemsFromGlobals();
     clearLocalSelection();
-    rebuildGridFromGems();
+    rebuildGridAndStartMatchRefill();
     callFunctionWithContext(fnContext, 'Sub_Energy');
     startYellowCasinoSequence(actorUID, matchedYellowCount, {
       goldTarget,
       mergeSources: yellowMergeSources,
     });
+    if (!(gameState.yellowCasino && gameState.yellowCasino.active)) {
+      applyTurnGateIntent(createYellowSafetyNet, {
+        now: Number(state.globals.time || 0),
+        currentTurnUID: actorUID,
+      });
+    }
   } else if (color === 4) {
     const matchedCount = Math.max(0, Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0);
     g.MatchedColorValue = 4;
@@ -4097,7 +4189,7 @@ function handleGemMatch(color) {
     callFunctionWithContext(fnContext, 'ClearMatchState');
     syncGemsFromGlobals();
     clearLocalSelection();
-    rebuildGridFromGems();
+    rebuildGridAndStartMatchRefill();
     callFunctionWithContext(fnContext, 'Sub_Energy');
     callFunctionWithContext(fnContext, 'ResolveGemAction', 4, actorUID, matchedCount);
   } else if (color === 5) {
@@ -4106,7 +4198,7 @@ function handleGemMatch(color) {
     callFunctionWithContext(fnContext, 'ClearMatchState');
     syncGemsFromGlobals();
     clearLocalSelection();
-    rebuildGridFromGems();
+    rebuildGridAndStartMatchRefill();
     callFunctionWithContext(fnContext, 'ResolveGemAction', 5, actorUID, matchedCount);
     callFunctionWithContext(fnContext, 'Sub_Energy', 1);
   }
@@ -4411,7 +4503,7 @@ async function main(){
     enemyRows = parseC2ArrayTable(enemies);
     state.globals.DevToolEnemyCatalog = [...new Set((enemyRows || []).map((row) => String(row?.name || row?.EnemyName || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
     gameState.baseSummary = summaryText(layout, types, enemies);
-    out.textContent = gameState.baseSummary + '\n\nLoading images...';
+    out.textContent = renderHUD.withSkillDrawDebugText(gameState.baseSummary + '\n\nLoading images...', state.globals);
     updateStartupLoadState({ phase: 'bootstrap', label: 'Loading critical visuals...', progress: 0.3 });
 
     images = {};
@@ -5429,7 +5521,7 @@ async function main(){
       callFunctionWithContext(fnContext, 'RefreshEnemyPositions');
     }
 
-    out.textContent = `🎮 Puzzle RPG\n\n✓ Game loaded\n${rendered.length} total objects loaded`;
+    out.textContent = renderHUD.withSkillDrawDebugText(`🎮 Puzzle RPG\n\n✓ Game loaded\n${rendered.length} total objects loaded`, state.globals);
   }
   rebuildRenderedCache();
 
@@ -6148,7 +6240,7 @@ function getStoryCardLiveLineState() {
     while (performance.now() - start < timeoutMs) {
       const ready = (
         state.globals.BoardFillActive === 0 &&
-        state.globals.CanPickGems === true &&
+        isCanPickGemsReady(state.globals.CanPickGems) &&
         Array.isArray(gameState.gems) &&
         gameState.gems.length === 24
       );
@@ -6291,7 +6383,7 @@ function getStoryCardLiveLineState() {
       state.globals.GamePhase === 'RUNTIME' &&
       callFunctionWithContext(fnContext, 'GetCurrentType') === 0 &&
       state.globals.TurnPhase === 0 &&
-      state.globals.CanPickGems === true &&
+      isCanPickGemsReady(state.globals.CanPickGems) &&
       state.globals.IsPlayerBusy === 0 &&
       !state.globals.PendingSkillID &&
       !state.globals.BoardFillActive &&
@@ -6325,6 +6417,7 @@ function getStoryCardLiveLineState() {
     return {
       heroName: getCurrentIdleAutoplayHeroName(),
       hasLivingEnemies: hasLivingEnemiesForIdleAutoplay(),
+      forcedBoardColor: Number(state.globals.DevForcedBoardColor),
       partyHpRatio: resolveIdleAutoplayPartyHpRatio({
         partyHP: state.globals.PartyHP,
         partyMaxHP: state.globals.PartyMaxHP,
@@ -6362,32 +6455,28 @@ function getStoryCardLiveLineState() {
     if (String(state.globals.PendingSkillID || '') === 'HERO_SINGLE') {
       state.globals.SelectedEnemyUID = Number(livingEnemies[0].uid || 0);
     }
-    const resolvedPendingSuperGem = superGemRuntime.executePendingSuperGemAction({
-      state,
-      callFunctionWithContext,
-      fnContext,
+    const handoff = resolvePendingTargetHandoff({
+      actorUID,
+      source: 'dev-autoplay',
     });
-    let executeSkillResult = null;
-    if (!resolvedPendingSuperGem) {
-      executeSkillResult = callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
-    }
+    const {
+      resolvedPendingSuperGem,
+      executeSkillResult,
+      recoveredRejectedPendingSuperGem,
+    } = handoff;
     logActionHandoffDebug('[DEV_AUTOPLAY_RESOLVE]', {
       stage: 'after-action-attempt-before-clear',
       actorUID,
       resolvedPendingSuperGem,
       executeSkillResult,
+      recoveredRejectedPendingSuperGem,
     });
-    state.globals.PendingSkillID = '';
-    state.globals.PendingActor = 0;
-    state.globals.SelectedEnemyUID = 0;
-    callFunctionWithContext(fnContext, 'HideAttackUI');
-    state.globals.CanPickGems = false;
-    state.globals.IsPlayerBusy = 1;
     logActionHandoffDebug('[DEV_AUTOPLAY_RESOLVE]', {
       stage: 'after-clear',
       actorUID,
       resolvedPendingSuperGem,
       executeSkillResult,
+      recoveredRejectedPendingSuperGem,
     });
     return true;
   }
@@ -6585,7 +6674,7 @@ function getStoryCardLiveLineState() {
       if (!Array.isArray(gameState.gems)) return;
       for (const gem of gameState.gems) {
         if (!gem) continue;
-        let forcedColor = (gem.cellR + gem.cellC) % 2 === 0 ? 0 : 1;
+        let forcedColor = (gem.cellR + gem.cellC) % 2 === 0 ? 1 : 2;
         if (gem.cellR === 0 && gem.cellC >= 0 && gem.cellC <= 2) forcedColor = 3;
         gem.color = forcedColor;
         gem.elementIndex = forcedColor;
@@ -7143,6 +7232,7 @@ function getStoryCardLiveLineState() {
       Nav_AstralFlowText: 'AstralFlow',
       Nav_HomeText: 'Home',
     };
+    const navAlwaysAllowedLabels = new Set(['AstralFlow', 'Hero', 'Map', 'Vault']);
     const navHit = navLabelItems.find((r) => {
       const pos = worldToCanvas(r.world.x || 0, r.world.y || 0);
       const w = Math.max(40, (r.world.width || 60) * layoutScale);
@@ -7153,8 +7243,8 @@ function getStoryCardLiveLineState() {
     });
     if (navHit) {
       const labelName = labelMap[navHit.inst.type] || '';
-      const navBlockedBySelection = gameState.selectedGems.length > 0 || gameState.selectionLocked || state.globals.CanPickGems === false;
-      if (labelName === 'AstralFlow' || labelName === 'Hero' || !navBlockedBySelection) {
+      const navBlockedBySelection = gameState.selectedGems.length > 0 || gameState.selectionLocked || !isCanPickGemsReady(state.globals.CanPickGems);
+      if (navAlwaysAllowedLabels.has(labelName) || !navBlockedBySelection) {
         inputDomains.emit(
           layoutState.getActiveLayoutId(),
           'nav:clicked',
@@ -7190,8 +7280,8 @@ function getStoryCardLiveLineState() {
         return !best || distance < best.distance ? { ...slot, distance } : best;
       }, null);
       const labelName = navSlot ? navSlot.label : '';
-      const navBlockedBySelection = gameState.selectedGems.length > 0 || gameState.selectionLocked || state.globals.CanPickGems === false;
-      if (labelName && (labelName === 'AstralFlow' || labelName === 'Hero' || !navBlockedBySelection)) {
+      const navBlockedBySelection = gameState.selectedGems.length > 0 || gameState.selectionLocked || !isCanPickGemsReady(state.globals.CanPickGems);
+      if (labelName && (navAlwaysAllowedLabels.has(labelName) || !navBlockedBySelection)) {
         inputDomains.emit(
           layoutState.getActiveLayoutId(),
           'nav:clicked',
@@ -7230,34 +7320,30 @@ function getStoryCardLiveLineState() {
           source: 'manual-button',
           actorUID,
         });
-        const resolvedPendingSuperGem = superGemRuntime.executePendingSuperGemAction({
-          state,
-          callFunctionWithContext,
-          fnContext,
+        const handoff = resolvePendingTargetHandoff({
+          actorUID,
+          source: 'manual-button',
         });
-        let executeSkillResult = null;
-        if (!resolvedPendingSuperGem) {
-          executeSkillResult = callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID, actorUID);
-        }
+        const {
+          resolvedPendingSuperGem,
+          executeSkillResult,
+          recoveredRejectedPendingSuperGem,
+        } = handoff;
         logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
           stage: 'after-action-attempt-before-clear',
           source: 'manual-button',
           actorUID,
           resolvedPendingSuperGem,
           executeSkillResult,
+          recoveredRejectedPendingSuperGem,
         });
-        state.globals.PendingSkillID = '';
-        state.globals.PendingActor = 0;
-        state.globals.SelectedEnemyUID = 0;
-        callFunctionWithContext(fnContext, 'HideAttackUI');
-        state.globals.CanPickGems = false;
-        state.globals.IsPlayerBusy = 1;
         logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
           stage: 'after-clear',
           source: 'manual-button',
           actorUID,
           resolvedPendingSuperGem,
           executeSkillResult,
+          recoveredRejectedPendingSuperGem,
         });
         drawFrame();
         return;
@@ -7276,9 +7362,9 @@ function getStoryCardLiveLineState() {
         return;
       }
       const isHeroTurn = callFunctionWithContext(fnContext, 'IsHeroTurn') === true;
-      if (state.globals.CanPickGems === false || !isHeroTurn) {
+      if (!isCanPickGemsReady(state.globals.CanPickGems) || !isHeroTurn) {
         runtimeDebugLogging.gemDebugLog('[GEM_REJECT]', {
-          reason: state.globals.CanPickGems === false ? 'reject-gate-can-pick-false' : 'reject-gate-not-hero-turn',
+          reason: !isCanPickGemsReady(state.globals.CanPickGems) ? 'reject-gate-can-pick-false' : 'reject-gate-not-hero-turn',
           globals: {
             CanPickGems: state.globals.CanPickGems,
             IsPlayerBusy: state.globals.IsPlayerBusy,
@@ -7579,22 +7665,32 @@ function getStoryCardLiveLineState() {
     if (heroInputActive) {
       state.globals.HideHeroSelector = 0;
     }
-  const refill = gameState.refillBounce;
-  const phaseNow = state.globals.TurnPhase;
-  const hasEmpty = hasEmptySlots();
-  const enemyLineClearPressureActive = !!state.globals.EnemyLineClearPressureActive;
-  const refillStartBarrier = getPresentationTurnBarrier({
-    hasEmpty,
-    enemyLineClearPressureActive,
-  });
-  const refillReady =
-    phaseNow === 0 &&
-    !state.globals.IsPlayerBusy &&
-    !state.globals.PendingSkillID &&
-    !state.globals.ActionInProgress &&
-    !state.globals.DeferAdvance &&
-    refillStartBarrier.canStartRefill &&
-    !(refill && refill.active);
+    const refill = gameState.refillBounce;
+    const phaseNow = state.globals.TurnPhase;
+    const hasEmpty = hasEmptySlots();
+    const enemyLineClearPressureActive = !!state.globals.EnemyLineClearPressureActive;
+    const refillStartBarrier = getPresentationTurnBarrier({
+      hasEmpty,
+      enemyLineClearPressureActive,
+    });
+    const pendingSkillDraughtClaimed = claimPendingSkillDraughtAtHeroCheckpoint({
+      hasEmpty,
+      enemyLineClearPressureActive,
+    });
+    if (pendingSkillDraughtClaimed) {
+      runtimeDebugLogging.gemDebugLog('[SKILL_DRAUGHT_CLAIM]', {
+        reason: 'hero-end-checkpoint-before-refill',
+        heroUID: Number(state.globals.SkillDraughtHeroUID || 0),
+      }, state);
+    }
+    const refillReady =
+      phaseNow === 0 &&
+      !state.globals.IsPlayerBusy &&
+      !state.globals.PendingSkillID &&
+      !state.globals.ActionInProgress &&
+      !pendingSkillDraughtClaimed &&
+      refillStartBarrier.canStartRefill &&
+      !(refill && refill.active);
     if (hasEmpty && !refillReady) {
       const sig = JSON.stringify({
         phaseNow,
@@ -7655,7 +7751,15 @@ function getStoryCardLiveLineState() {
       const noSpinActive = !(gameState.yellowCasino && gameState.yellowCasino.active);
       const boardFull = Array.isArray(gameState.gems) && gameState.gems.length === 24;
       const idlePhase = state.globals.TurnPhase === 0;
-      if (noRefillActive && noSpinActive && boardFull && idlePhase && state.globals.CanPickGems === false) {
+      if (
+        noRefillActive &&
+        noSpinActive &&
+        boardFull &&
+        idlePhase &&
+        !state.globals.DeferAdvance &&
+        (state.globals.ActionLockUntil || 0) <= (state.globals.time || 0) &&
+        !isCanPickGemsReady(state.globals.CanPickGems)
+      ) {
         const sig = JSON.stringify({
           boardFull,
           TurnPhase: state.globals.TurnPhase,
@@ -7813,7 +7917,7 @@ function getStoryCardLiveLineState() {
       !state.globals.ActionInProgress &&
       !state.globals.IsPlayerBusy &&
       !state.globals.PendingSkillID &&
-      (state.globals.CanPickGems === true || !state.globals.DeferAdvance)
+      (isCanPickGemsReady(state.globals.CanPickGems) || !state.globals.DeferAdvance)
     ) {
       const currentEnemy = currentTurnUID
         ? callFunctionWithContext(fnContext, 'GetActorByUID', currentTurnUID)
@@ -7875,7 +7979,7 @@ function getStoryCardLiveLineState() {
       noRefillActive &&
       heroInputBarrier.canRestoreHeroInput &&
       enemyRosterStability.stable &&
-      (state.globals.CanPickGems !== true || state.globals.BoardFillActive !== 0)
+      (!isCanPickGemsReady(state.globals.CanPickGems) || state.globals.BoardFillActive !== 0)
     ) {
       state.globals.CanPickGems = true;
       state.globals.BoardFillActive = 0;

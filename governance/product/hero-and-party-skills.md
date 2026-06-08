@@ -14,6 +14,29 @@ Affinity exists to strengthen each hero's identity outside of live skill draws.
 Players increase Affinity through relics and related progression rewards.
 Those upgrades deepen the hero's built-in affinity effect rather than adding a new combat subsystem.
 
+## Skill Card Draw Classes
+
+Every live skill-card definition must declare one runtime draw class. The class tells designers, QA, and implementation whether the card should stay in the draw pool after selection, whether selecting it can increase future power, and what repeated appearances mean to the player.
+
+Use the class as the first decision when assigning a new skill, tuning its performance, and writing runtime draw tests.
+
+| Class | Draw behavior | Runtime meaning | Example |
+| --- | --- | --- | --- |
+| `one_off` | Can appear once per combat session. After the card is exposed or selected, remove it from normal and forced draw candidates for that session. | Selection enables a session effect or unlocks a rule once. Duplicate entries should not be possible through normal draw. Dev/test activation should be idempotent. | `party_destiny` |
+| `tiered` | Can continue appearing after selection. | Each selection increases a rank, stack, shield value, chance, duration, or other additive value. The skill must define its stacking formula and cap. | Future ranked skills |
+| `repeatable` | Can continue appearing after selection. | Each selection fires the payload once. It does not add a persistent duplicate rank, multiplier, or bonus unless the skill also defines a separate tiered state. | `party_magic_fruit` |
+
+Required definition fields for live draw skills:
+
+- canonical skill ID and owner
+- draw class: `one_off`, `tiered`, or `repeatable`
+- trigger and eligibility
+- selection behavior: activate, stack, or fire-and-clear
+- redraw behavior after selection
+- proof cue: counter, state entry, visual, trace, or deterministic contract
+
+Class rules prevent duplicate ambiguity. If an exposed or selected skill should disappear from the skill-card draw for the rest of the session, it is `one_off`. If repeated selection should improve the skill, it is `tiered`. If repeated selection should simply run the same payload again, it is `repeatable`.
+
 ## Falie - Tank
 
 Hero Promise: Redirect pressure, survive the worst of it, and punish enemies for overcommitting.
@@ -243,13 +266,14 @@ Party Promise: Smooth the run, create short burst windows, and rescue weak state
    - Growth: `4% / 4% / 5% / 5% (18%)`
    - Proc Pattern: On special hit.
    - Short Session: `Keep in draw.`
-7. `Destiny`: Chance for gem match to heal
-   - Card Text: Restore health whenever you make a match.
+7. `Destiny`: Chance for hero attacks to heal the source hero
+   - Card Text: Attacks have a chance to restore 2.5% health on impact.
+   - Draw Class: `one_off`
    - Risk: `MED`
    - Note: Can erase attrition if always on.
-   - Growth: `4% / 4% / 5% / 5% (18%)`
-   - Proc Pattern: On match.
-   - Short Session: `Keep in draw.`
+   - Growth: `32% proc chance`
+   - Proc Pattern: On hero hit against an enemy with positive applied damage.
+   - Short Session: `Remove from draw once exposed or selected.`
 8. `Hot Streak`: Chance for consecutive matches to increase reward or effect slightly
    - Card Text: Build up a better payoff with consecutive matches.
    - Risk: `MED`
@@ -272,7 +296,7 @@ Party Promise: Smooth the run, create short burst windows, and rescue weak state
    - Proc Pattern: On match.
    - Short Session: `Keep in draw.`
 
-Live Draw Core: `Fresh Start`, `Second Chance`, `Momentum`, `Guard Rail`, `Weaken`, `Destiny`, `Last Push`, `Chain Pop`
+Active Runtime Draw Pool: `party_crimson_ward`, `party_magic_fruit`, `party_destiny`, `party_faze`
 Sharpen: Favor board rescue, short bursts, and comeback windows over passive smoothing.
 Vault Lean: `Lucky Break`, `Clean Slate`
 

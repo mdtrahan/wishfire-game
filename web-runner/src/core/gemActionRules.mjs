@@ -1,5 +1,4 @@
 export const GEM_ACTION_UNKNOWN = -1;
-export const GEM_ACTION_GREEN_ATTACK = 0;
 export const GEM_ACTION_RED_ATTACK = 1;
 export const GEM_ACTION_BLUE_ASTRAL = 2;
 export const GEM_ACTION_YELLOW_CASINO = 3;
@@ -35,12 +34,11 @@ function oneOrMoreInt(value) {
 
 export function gemActionRouteCode(gemColor = GEM_ACTION_UNKNOWN) {
   const color = Math.floor(numberOr(gemColor, GEM_ACTION_UNKNOWN));
-  return color >= 0 && color <= 5 ? color : GEM_ACTION_UNKNOWN;
+  return color >= 1 && color <= 5 ? color : GEM_ACTION_UNKNOWN;
 }
 
 export function gemActionPendingSkillCode(routeCode = GEM_ACTION_UNKNOWN) {
   const route = Number(routeCode);
-  if (route === GEM_ACTION_GREEN_ATTACK) return GEM_ACTION_PENDING_HERO_AOE;
   if (route === GEM_ACTION_RED_ATTACK) return GEM_ACTION_PENDING_HERO_SINGLE;
   return GEM_ACTION_PENDING_NONE;
 }
@@ -61,7 +59,6 @@ export function gemActionCallCode(routeCode = GEM_ACTION_UNKNOWN) {
 
 export function gemActionIntentMeta(routeCode = GEM_ACTION_UNKNOWN) {
   const route = Number(routeCode);
-  if (route === GEM_ACTION_GREEN_ATTACK) return { frame: 0, colorName: 'GREEN', intentKey: 'HERO_AOE', extra: '' };
   if (route === GEM_ACTION_RED_ATTACK) return { frame: 1, colorName: 'RED', intentKey: 'HERO_SINGLE', extra: '' };
   if (route === GEM_ACTION_BLUE_ASTRAL) return { frame: 2, colorName: 'BLUE', intentKey: 'Astral_Flow', extra: '' };
   if (route === GEM_ACTION_YELLOW_CASINO) return { frame: 3, colorName: 'YELLOW', intentKey: 'Casino_Recolor', extra: '' };
@@ -103,7 +100,7 @@ export function gemActionFromJs({
   const currentLock = numberOr(actionLockUntil, 0);
   let resolvedActionLockUntil = currentLock;
   if (routeCode === GEM_ACTION_BLUE_ASTRAL) {
-    resolvedActionLockUntil = Math.max(currentLock, now + 0.32, blueOpenDraught ? now + 4 : currentLock);
+    resolvedActionLockUntil = Math.max(currentLock, now + 0.32);
   } else if (routeCode === GEM_ACTION_PURPLE_ENERGY) {
     resolvedActionLockUntil = Math.max(currentLock, now + 0.32, numberOr(textAnimEndAt, 0));
   }
@@ -118,9 +115,9 @@ export function gemActionFromJs({
     hideHeroSelector: 1,
     pendingSkillCode,
     pendingSkillId: gemActionPendingSkillId(pendingSkillCode),
-    setIsAoe: routeCode === GEM_ACTION_GREEN_ATTACK || routeCode === GEM_ACTION_RED_ATTACK || routeCode === GEM_ACTION_BLUE_ASTRAL ? 1 : 0,
-    isAoe: routeCode === GEM_ACTION_GREEN_ATTACK ? 1 : 0,
-    showAttackUi: routeCode === GEM_ACTION_GREEN_ATTACK || routeCode === GEM_ACTION_RED_ATTACK ? 1 : 0,
+    setIsAoe: routeCode === GEM_ACTION_RED_ATTACK || routeCode === GEM_ACTION_BLUE_ASTRAL ? 1 : 0,
+    isAoe: 0,
+    showAttackUi: routeCode === GEM_ACTION_RED_ATTACK ? 1 : 0,
     callCode,
     consumesTurn: routeCode === GEM_ACTION_BLUE_ASTRAL || routeCode === GEM_ACTION_PURPLE_ENERGY ? 1 : 0,
     intentFrame: intent.frame,
@@ -143,7 +140,7 @@ export function gemActionFromJs({
 
 function ownerDecisionFromResult(result, jsDecision) {
   const routeCode = gemActionRouteCode(result?.routeCode);
-  const pendingSkillCode = Math.max(0, Math.floor(numberOr(result?.pendingSkillCode, gemActionPendingSkillCode(routeCode))));
+  const pendingSkillCode = gemActionPendingSkillCode(routeCode);
   const intent = gemActionIntentMeta(routeCode);
   return {
     ...jsDecision,
@@ -152,11 +149,11 @@ function ownerDecisionFromResult(result, jsDecision) {
     consumedCount: nonNegativeInt(result?.consumedCount ?? jsDecision.consumedCount),
     pendingSkillCode,
     pendingSkillId: gemActionPendingSkillId(pendingSkillCode),
-    setIsAoe: Number(result?.setIsAoe || 0) ? 1 : 0,
-    isAoe: Number(result?.isAoe || 0) ? 1 : 0,
-    showAttackUi: Number(result?.showAttackUi || 0) ? 1 : 0,
-    callCode: Math.max(0, Math.floor(numberOr(result?.callCode, gemActionCallCode(routeCode)))),
-    consumesTurn: Number(result?.consumesTurn || 0) ? 1 : 0,
+    setIsAoe: routeCode === GEM_ACTION_RED_ATTACK || routeCode === GEM_ACTION_BLUE_ASTRAL ? 1 : 0,
+    isAoe: 0,
+    showAttackUi: routeCode === GEM_ACTION_RED_ATTACK ? 1 : 0,
+    callCode: gemActionCallCode(routeCode),
+    consumesTurn: routeCode === GEM_ACTION_BLUE_ASTRAL || routeCode === GEM_ACTION_PURPLE_ENERGY ? 1 : 0,
     intentFrame: intent.frame,
     intentColorName: intent.colorName,
     intentKey: intent.intentKey,
