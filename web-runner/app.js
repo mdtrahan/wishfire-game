@@ -195,9 +195,10 @@ const DEV_TOOL_GEM_OPTIONS = Object.freeze([
   { value: 1, label: 'RED' },
   { value: 2, label: 'BLUE' },
   { value: 3, label: 'YELLOW' },
+  { value: 4, label: 'HEAL' },
   { value: 5, label: 'PURPLE' },
 ]);
-const GEM_SPAWN_COLORS = Object.freeze([1, 2, 3, 5]);
+const GEM_SPAWN_COLORS = Object.freeze([1, 2, 3, 4, 5]);
 const DEV_TOOL_REWARD_OPTIONS = Object.freeze([
   { value: '', label: 'None' },
   { value: 'GOLD', label: 'Gold' },

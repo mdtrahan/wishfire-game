@@ -298,7 +298,7 @@ test('supergem spend clears all matching-color gems and flies non-supergem match
 
 test('one-color full-board supergem spends accept numeric hero input readiness for active gem colors', async () => {
   const mod = await import('../web-runner/src/core/superGemBoardState.mjs');
-  for (const color of [1, 2, 3, 5]) {
+  for (const color of [1, 2, 3, 4, 5]) {
     const state = {
       globals: {
         GamePhase: 'RUNTIME',
@@ -352,53 +352,52 @@ test('one-color full-board supergem spends accept numeric hero input readiness f
   }
 });
 
-test('retired green supergems are refused even if stale board state supplies them', async () => {
+test('retired frame-zero green supergems are refused even if stale board state supplies them', async () => {
   const mod = await import('../web-runner/src/core/superGemBoardState.mjs');
-  for (const color of [0, 4]) {
-    const state = {
-      globals: {
-        GamePhase: 'RUNTIME',
-        Player_Energy: 10,
-        CanPickGems: 1,
-        PendingSkillID: '',
-        DeferAdvance: 0,
-        TurnPhase: 0,
-        time: 3,
-      },
-    };
-    const gameState = makeFullColorBoard(color);
-    let activated = 0;
-    let refillCalls = 0;
-    const spent = mod.spendSuperGem({
-      superGem: gameState.superGems[0],
-      gameState,
-      state,
-      reason: 'retired-green-contract',
-      callFunctionWithContext: (_ctx, name) => {
-        if (name === 'GetCurrentTurn') return 101;
-        if (name === 'GetActorByUID') return { uid: 101, kind: 'hero' };
-        return 0;
-      },
-      fnContext: {},
-      getHeroUIDByIndex: () => 101,
-      beginTask011ActionCycle: () => {},
-      startGemMergeFx: () => {},
-      getGoldLabelTargetWorld: () => null,
-      setGemArray: () => {},
-      startRefillBounce: () => { refillCalls += 1; },
-      activateSuperGemEffect: () => {
-        activated += 1;
-        return true;
-      },
-      superGemCost: 4,
-    });
+  const color = 0;
+  const state = {
+    globals: {
+      GamePhase: 'RUNTIME',
+      Player_Energy: 10,
+      CanPickGems: 1,
+      PendingSkillID: '',
+      DeferAdvance: 0,
+      TurnPhase: 0,
+      time: 3,
+    },
+  };
+  const gameState = makeFullColorBoard(color);
+  let activated = 0;
+  let refillCalls = 0;
+  const spent = mod.spendSuperGem({
+    superGem: gameState.superGems[0],
+    gameState,
+    state,
+    reason: 'retired-green-contract',
+    callFunctionWithContext: (_ctx, name) => {
+      if (name === 'GetCurrentTurn') return 101;
+      if (name === 'GetActorByUID') return { uid: 101, kind: 'hero' };
+      return 0;
+    },
+    fnContext: {},
+    getHeroUIDByIndex: () => 101,
+    beginTask011ActionCycle: () => {},
+    startGemMergeFx: () => {},
+    getGoldLabelTargetWorld: () => null,
+    setGemArray: () => {},
+    startRefillBounce: () => { refillCalls += 1; },
+    activateSuperGemEffect: () => {
+      activated += 1;
+      return true;
+    },
+    superGemCost: 4,
+  });
 
-    assert.equal(spent, false, `color ${color} should be retired`);
-    assert.equal(activated, 0, `color ${color} should not activate`);
-    assert.equal(refillCalls, 0, `color ${color} should not refill`);
-    assert.equal(gameState.gems.length, 24, `color ${color} board should stay untouched`);
-    assert.equal(state.globals.Player_Energy, 10, `color ${color} should not spend energy`);
-  }
+  assert.equal(spent, false, `color ${color} should be retired`);
+  assert.equal(activated, 0, `color ${color} should not activate`);
+  assert.equal(refillCalls, 0, `color ${color} should not refill`);
+  assert.equal(gameState.gems.length, 24, `color ${color} board should stay untouched`);
+  assert.equal(state.globals.Player_Energy, 10, `color ${color} should not spend energy`);
 });
 
 test('runtime input gates interpret CanPickGems numerically without changing presentation barriers', () => {
