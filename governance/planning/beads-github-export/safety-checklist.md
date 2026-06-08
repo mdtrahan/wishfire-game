@@ -1,0 +1,33 @@
+# Beads to GitHub Export Safety Checklist
+
+Use this before creating or updating GitHub Issues, Project items, or draft PRs from Beads.
+
+## Before Export
+- Run `bd list --json --limit 0` from the target repo.
+- Confirm the Bead export lane is active and scoped.
+- Confirm local Git status and preserve unrelated dirty files.
+- Confirm no runtime/gameplay files will be edited by the export pass.
+
+## Data Rules
+- Export Bead ID, title, status, priority, type, labels, parent, blockers, blocks, branch, worktree, and sanitized acceptance criteria.
+- Do not export `.beads` credentials, backup files, database internals, raw comments, raw notes, or private local metadata.
+- Redact local user paths before publishing text to GitHub.
+- Keep Beads as source of truth for status.
+
+## GitHub Surface Rules
+- Use one GitHub Issue or Project item per visible non-closed Bead.
+- Use draft PRs for active, blocked, QA-ready, or review-worthy Beads.
+- Use a tracked review artifact when a Bead needs review but has no code branch.
+- Do not create fake implementation PRs for plain backlog items.
+
+## Batch Rules
+- Publish a small first batch before mirroring the full backlog.
+- Prioritize in-progress Beads, local branches with commits ahead of main, blocked P1 Beads, and recovery lanes.
+- Check branch file overlap before requesting human review.
+- Include the Bead ID in every GitHub title.
+
+## After Export
+- Record the GitHub issue/project/PR mapping.
+- Confirm every active Bead is visible in GitHub.
+- Confirm backlog-only Beads are visible without PR noise.
+- Confirm no closed Beads were exported unless explicitly requested.
