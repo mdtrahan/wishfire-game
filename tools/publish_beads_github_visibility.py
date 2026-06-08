@@ -17,6 +17,7 @@ from typing import Any
 
 
 BEAD_TITLE_RE = re.compile(r"^(ORKA-[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)*):")
+PUBLIC_SAFE_LEVEL = "public-safe"
 
 
 def run_command(args: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -31,6 +32,10 @@ def run_command(args: list[str], check: bool = True) -> subprocess.CompletedProc
 
 def load_manifest(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def is_public_safe_manifest(manifest: dict[str, Any]) -> bool:
+    return manifest.get("publication_safety") == PUBLIC_SAFE_LEVEL
 
 
 def load_existing_issues(repo: str) -> dict[str, dict[str, Any]]:
@@ -174,12 +179,23 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Apply proposed labels. Requires labels to already exist or gh will fail.",
     )
+    parser.add_argument(
+        "--allow-detailed-internal",
+        action="store_true",
+        help="Allow applying an older/detailed manifest. Do not use for public GitHub publication.",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     manifest = load_manifest(Path(args.manifest))
+    if args.apply and not is_public_safe_manifest(manifest) and not args.allow_detailed_internal:
+        raise SystemExit(
+            "Refusing to apply manifest without publication_safety=public-safe. "
+            "Regenerate with tools/export_beads_github_visibility.py or pass "
+            "--allow-detailed-internal only for explicitly approved internal use."
+        )
     issue_results = publish_issues(
         manifest,
         apply=args.apply,

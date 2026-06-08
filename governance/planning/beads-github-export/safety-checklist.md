@@ -9,8 +9,8 @@ Use this before creating or updating GitHub Issues, Project items, or draft PRs 
 - Confirm no runtime/gameplay files will be edited by the export pass.
 
 ## Data Rules
-- Export Bead ID, title, status, priority, type, labels, parent, blockers, blocks, branch, worktree, and sanitized acceptance criteria.
-- Do not export `.beads` credentials, backup files, database internals, raw comments, raw notes, or private local metadata.
+- Public GitHub issue and PR bodies may export Bead ID, title, status, priority, type, labels, parent, blockers, blocks, GitHub surface, branch presence, and branch-overlap signals.
+- Do not export Bead descriptions, acceptance criteria, comments, raw notes, changed-file paths, worktree paths, `.beads` credentials, backup files, database internals, or private local metadata to GitHub.
 - Redact local user paths before publishing text to GitHub.
 - Keep Beads as source of truth for status.
 

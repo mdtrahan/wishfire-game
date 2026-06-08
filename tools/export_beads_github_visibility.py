@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Dry-run Beads to GitHub visibility export for Codex-Orka.
 
-This tool keeps Beads authoritative. It produces GitHub-facing planning
-artifacts so a team can inspect backlog, active work, blockers, review needs,
-and branch overlap without reading private Beads internals.
+This tool keeps Beads authoritative. It produces public-safe GitHub-facing
+planning artifacts so a team can inspect backlog, active work, blockers,
+review needs, and branch-overlap signals without exporting private Beads
+internals.
 """
 
 from __future__ import annotations
@@ -24,7 +25,6 @@ ACTIVE_PR_STATUSES = {"in_progress", "blocked", "recovery"}
 BEAD_ID_RE = re.compile(r"ORKA-[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)*")
 LOCAL_PATH_RE = re.compile(r"/Users/[^\s`),]+")
 MAX_REPORT_TEXT = 180
-MAX_CHANGED_FILES_IN_REPORT = 12
 PRIVATE_EXPORT_PATH_PREFIXES = (".beads/",)
 DEFAULT_REPOSITORY = "mdtrahan/wishfire-game"
 
@@ -193,24 +193,28 @@ def safe_changed_files(files: list[str]) -> list[str]:
     ]
 
 
-def has_private_changed_files(files: list[str]) -> bool:
-    return any(file_path.startswith(prefix) for prefix in PRIVATE_EXPORT_PATH_PREFIXES for file_path in files)
-
-
-def build_overlap_notes(branches_by_bead: dict[str, BranchInfo]) -> dict[str, list[str]]:
+def build_overlap_summaries(branches_by_bead: dict[str, BranchInfo]) -> dict[str, dict[str, Any]]:
     file_to_beads: dict[str, set[str]] = defaultdict(set)
     for bead_id, branch in branches_by_bead.items():
         for file_path in safe_changed_files(branch.changed_files):
             file_to_beads[file_path].add(bead_id)
 
-    notes: dict[str, list[str]] = defaultdict(list)
+    overlapping_beads: dict[str, set[str]] = defaultdict(set)
+    overlap_file_counts: dict[str, int] = defaultdict(int)
     for file_path, bead_ids in file_to_beads.items():
         if len(bead_ids) < 2:
             continue
-        joined = ", ".join(sorted(bead_ids))
         for bead_id in bead_ids:
-            notes[bead_id].append(f"Shares `{file_path}` branch diff with {joined}.")
-    return notes
+            overlapping_beads[bead_id].update(other for other in bead_ids if other != bead_id)
+            overlap_file_counts[bead_id] += 1
+
+    return {
+        bead_id: {
+            "overlap_bead_ids": sorted(others),
+            "overlap_file_count": overlap_file_counts[bead_id],
+        }
+        for bead_id, others in overlapping_beads.items()
+    }
 
 
 def remote_base_status(repo: Path, remote_ref: str = "origin/main", local_ref: str = "main") -> dict[str, Any]:
@@ -281,13 +285,18 @@ def classify_surface(bead: dict[str, Any], branch: BranchInfo | None) -> tuple[s
 
 def make_mapping(beads: list[dict[str, Any]], branches: dict[str, BranchInfo]) -> list[dict[str, Any]]:
     branches_by_bead = branch_map(branches)
-    overlap_notes = build_overlap_notes(branches_by_bead)
+    overlap_summaries = build_overlap_summaries(branches_by_bead)
     visible = [bead for bead in beads if bead.get("status") not in CLOSED_STATUSES]
 
     rows: list[dict[str, Any]] = []
     for bead in visible:
         bead_id = bead["id"]
         branch = branches_by_bead.get(bead_id)
+        safe_files = safe_changed_files(branch.changed_files) if branch else []
+        overlap_summary = overlap_summaries.get(
+            bead_id,
+            {"overlap_bead_ids": [], "overlap_file_count": 0},
+        )
         surface, surface_reason = classify_surface(bead, branch)
         gh_issue_title = f"{bead_id}: {bead.get('title', '').strip()}"
         review_slug = slug(bead.get("title", "review"))
@@ -308,20 +317,16 @@ def make_mapping(beads: list[dict[str, Any]], branches: dict[str, BranchInfo]) -
                 "blocks": dependent_ids(beads, bead_id),
                 "branch": branch.name if branch else "",
                 "upstream": branch.upstream if branch else "",
-                "worktree_path": redact(branch.worktree_path) if branch else "",
                 "ahead_of_main": branch.ahead_of_main if branch else None,
                 "behind_main": branch.behind_main if branch else None,
-                "changed_files": safe_changed_files(branch.changed_files) if branch else [],
-                "private_beads_metadata_changed": has_private_changed_files(branch.changed_files)
-                if branch
-                else False,
+                "changed_file_count": len(safe_files),
                 "review_artifact_path": f"governance/bead-reviews/{bead_id}.md"
                 if surface == "review_packet_pr" and not branch
                 else "",
                 "proposed_review_branch": proposed_review_branch,
-                "description": bead.get("description", ""),
-                "acceptance_criteria": bead.get("acceptance_criteria", ""),
-                "overlap_risks": sorted(overlap_notes.get(bead_id, [])),
+                "has_branch_overlap": bool(overlap_summary["overlap_bead_ids"]),
+                "overlap_bead_ids": overlap_summary["overlap_bead_ids"],
+                "overlap_file_count": overlap_summary["overlap_file_count"],
                 "export_note": "Beads remains source of truth; GitHub is the team-visible review surface.",
             }
         )
@@ -395,15 +400,14 @@ def render_report(mapping: list[dict[str, Any]], batch: list[dict[str, Any]]) ->
 
     overlap_rows: list[list[str]] = []
     for row in mapping:
-        if not row["overlap_risks"]:
+        if not row["has_branch_overlap"]:
             continue
-        changed_files = row["changed_files"][:MAX_CHANGED_FILES_IN_REPORT]
         overlap_rows.append(
             [
                 row["bead_id"],
                 row["branch"] or "",
-                "; ".join(short_text(note, 120) for note in row["overlap_risks"][:4]),
-                ", ".join(changed_files),
+                ", ".join(row["overlap_bead_ids"]),
+                str(row["overlap_file_count"]),
             ]
         )
 
@@ -438,7 +442,7 @@ def render_report(mapping: list[dict[str, Any]], batch: list[dict[str, Any]]) ->
     ]
 
     if overlap_rows:
-        report.append(markdown_table(overlap_rows, ["Bead", "Branch", "Risk Notes", "Changed Files"]))
+        report.append(markdown_table(overlap_rows, ["Bead", "Branch", "Overlaps With", "Shared File Count"]))
     else:
         report.append("No branch file-overlap risks detected among local Bead branches.")
 
@@ -454,8 +458,8 @@ def render_report(mapping: list[dict[str, Any]], batch: list[dict[str, Any]]) ->
             "",
             "## Data Safety",
             "",
-            "- Export includes Bead IDs, titles, status, priority, type, labels, dependency links, branch/worktree pointers, and sanitized descriptions/acceptance criteria in JSON.",
-            "- Export omits comments, raw notes, `.beads` backup data, credentials, local database internals, and Beads implementation files.",
+            "- GitHub-publishable artifacts include Bead IDs, titles, status, priority, type, labels, dependency links, branch names, and branch-overlap signals.",
+            "- GitHub-publishable artifacts omit Bead descriptions, acceptance criteria, comments, raw notes, changed-file paths, worktree paths, `.beads` backup data, credentials, local database internals, and Beads implementation files.",
             "- Local filesystem paths in exported text are redacted to `[local-path]`.",
         ]
     )
@@ -519,8 +523,8 @@ Use this before creating or updating GitHub Issues, Project items, or draft PRs 
 - Confirm no runtime/gameplay files will be edited by the export pass.
 
 ## Data Rules
-- Export Bead ID, title, status, priority, type, labels, parent, blockers, blocks, branch, worktree, and sanitized acceptance criteria.
-- Do not export `.beads` credentials, backup files, database internals, raw comments, raw notes, or private local metadata.
+- Public GitHub issue and PR bodies may export Bead ID, title, status, priority, type, labels, parent, blockers, blocks, GitHub surface, branch presence, and branch-overlap signals.
+- Do not export Bead descriptions, acceptance criteria, comments, raw notes, changed-file paths, worktree paths, `.beads` credentials, backup files, database internals, or private local metadata to GitHub.
 - Redact local user paths before publishing text to GitHub.
 - Keep Beads as source of truth for status.
 
@@ -552,17 +556,23 @@ def proposed_labels(row: dict[str, Any]) -> list[str]:
     return labels
 
 
+def yes_no(value: bool) -> str:
+    return "yes" if value else "no"
+
+
+def render_overlap_signal(row: dict[str, Any]) -> str:
+    if not row["has_branch_overlap"]:
+        return "`no`"
+    count = row["overlap_file_count"]
+    noun = "file" if count == 1 else "files"
+    return f"`yes` ({count} shared branch {noun}; details stay in Beads/local review artifacts)"
+
+
 def render_issue_body(row: dict[str, Any]) -> str:
     blockers = ", ".join(row["blockers"]) or "None"
     blocks = ", ".join(row["blocks"]) or "None"
-    review_surface = row["github_surface"]
-    branch = row["branch"] or "None"
-    review_artifact = row["review_artifact_path"] or "None"
-    overlap = "\n".join(f"- {note}" for note in row["overlap_risks"]) or "- None detected in local Bead branches."
-    description = short_text(row.get("description"), 900) or "No description exported."
-    acceptance = short_text(row.get("acceptance_criteria"), 900) or "No acceptance criteria exported."
 
-    return f"""Beads remains source of truth. This GitHub issue mirrors Beads state for team visibility.
+    return f"""Beads remains source of truth. This GitHub issue is a public-safe visibility mirror.
 
 ## Bead State
 - Bead ID: `{row['bead_id']}`
@@ -573,30 +583,23 @@ def render_issue_body(row: dict[str, Any]) -> str:
 - Blockers: {blockers}
 - Blocks: {blocks}
 
-## Scope
-{description}
-
-## Acceptance Criteria
-{acceptance}
-
 ## GitHub Visibility Plan
-- Surface: `{review_surface}`
-- Branch: `{branch}`
-- Review artifact: `{review_artifact}`
+- Surface: `{row['github_surface']}`
+- Local branch present: `{yes_no(bool(row['branch']))}`
+- Review artifact needed: `{yes_no(bool(row['review_artifact_path']))}`
+- Branch-overlap signal: {render_overlap_signal(row)}
 - Export note: {row['export_note']}
 
-## Overlap Risks
-{overlap}
+## Omitted From GitHub
+Detailed Bead scope, acceptance criteria, comments, raw notes, changed-file paths, worktree paths, and `.beads` internals stay in Beads/local repo context.
 """
 
 
 def render_pr_body(row: dict[str, Any], issue_reference: str = "<issue-number>") -> str:
     blockers = ", ".join(row["blockers"]) or "None"
     blocks = ", ".join(row["blocks"]) or "None"
-    changed_files = "\n".join(f"- `{file_path}`" for file_path in row["changed_files"][:20]) or "- None in local branch diff."
-    overlap = "\n".join(f"- {note}" for note in row["overlap_risks"]) or "- None detected in local Bead branches."
 
-    return f"""Beads remains source of truth. This draft PR is the team-visible review surface for `{row['bead_id']}`.
+    return f"""Beads remains source of truth. This draft PR is the public-safe team-visible review surface for `{row['bead_id']}`.
 
 Linked Bead mirror issue: #{issue_reference}
 
@@ -608,27 +611,18 @@ Linked Bead mirror issue: #{issue_reference}
 - Blockers: {blockers}
 - Blocks: {blocks}
 
-## Scope
-{short_text(row.get('description'), 900) or 'No description exported.'}
-
-## Acceptance Criteria
-{short_text(row.get('acceptance_criteria'), 900) or 'No acceptance criteria exported.'}
-
-## Branch And Worktree
+## Branch
 - Branch: `{row['branch'] or row['proposed_review_branch']}`
 - Upstream: `{row['upstream'] or 'not configured'}`
 - Ahead/behind main: `{row['ahead_of_main']}/{row['behind_main']}`
-- Contains private Beads metadata changes: `{row['private_beads_metadata_changed']}`
-
-## Changed Files
-{changed_files}
 
 ## Review Request
 - Review type: `{row['github_surface']}`
 - Inspect Bead scope, overlap, blockers, and whether this lane should continue, split, or wait.
+- Branch-overlap signal: {render_overlap_signal(row)}
 
-## Overlap And Risk
-{overlap}
+## Omitted From GitHub
+Detailed Bead scope, acceptance criteria, comments, raw notes, changed-file paths, worktree paths, and `.beads` internals stay in Beads/local repo context.
 
 ## Export Note
 This PR mirrors Beads state for visibility. Do not infer that GitHub status replaces Beads status.
@@ -681,6 +675,18 @@ def build_publish_manifest(
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "source": "live bd list plus local git branch/worktree state",
         "source_of_truth": "Beads remains authoritative; GitHub mirrors visibility.",
+        "publication_safety": "public-safe",
+        "omitted_from_github": [
+            "bead descriptions",
+            "acceptance criteria",
+            "comments",
+            "raw notes",
+            "changed-file paths",
+            "worktree paths",
+            ".beads internals",
+            "credentials",
+            "local database internals",
+        ],
         "remote_base_status": remote_status,
         "counts": {
             "visible_beads": len(mapping),
@@ -745,6 +751,7 @@ def render_publish_plan(manifest: dict[str, Any], batch: list[dict[str, Any]]) -
             "",
             "- Local `gh auth status` currently reports an invalid token for `mdtrahan`, so the publisher cannot apply writes from local CLI until auth is repaired.",
             "- GitHub connector read access confirmed recent repository PRs are closed/merged; no current open PR collision was found through the connector read.",
+            "- The first connector write rejected detailed Bead bodies as too much non-public workspace data; `github-publish-manifest.json` is now public-safe and omits detailed scope, acceptance criteria, changed-file paths, worktree paths, and raw Beads internals.",
             "",
             "## Remote Baseline",
             "",
@@ -754,7 +761,7 @@ def render_publish_plan(manifest: dict[str, Any], batch: list[dict[str, Any]]) -
             "",
             "## Publish Phases",
             "",
-            "1. Create or update GitHub Issues for all visible non-closed Beads from `github-publish-manifest.json`.",
+            "1. Create or update GitHub Issues for all visible non-closed Beads from the public-safe `github-publish-manifest.json`.",
             "2. Add those Issues to the team Project and expose the listed project fields.",
             "3. Sync local `main` to GitHub through the protected-branch PR process.",
             "4. Push selected Bead branches or create tracked review artifacts.",
