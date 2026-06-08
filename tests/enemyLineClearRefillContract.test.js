@@ -53,6 +53,36 @@ test('app refill loop keeps enemy line-clear empties until a player action clear
   assert.doesNotMatch(src, /if \(enemyAction\.state === 'DONE'\) \{[\s\S]*if \(hasEmptySlots\(\) && !\(gameState\.refillBounce && gameState\.refillBounce\.active\)\) \{[\s\S]*startRefillBounce\(\);/s);
 });
 
+test('app starts normal refill before deferred turn advance resolves', () => {
+  const src = read('web-runner/app.js');
+  const refillReadyBlock = src.match(/const refillReady =([\s\S]*?);/);
+
+  assert.ok(refillReadyBlock, 'missing refillReady gate');
+  assert.doesNotMatch(
+    refillReadyBlock[0],
+    /!state\.globals\.DeferAdvance/,
+    'empty board slots should refill before DeferAdvance resolves'
+  );
+  assert.match(
+    src,
+    /if \(deferredAdvanceState\.refillPending\) \{\s*\/\/ Refill must complete before advancing to the next actor\.\s*startRefillBounce\(\);/s
+  );
+});
+
+test('non-yellow match resolution starts refill immediately after gem destruction', () => {
+  const src = read('web-runner/app.js');
+
+  assert.match(
+    src,
+    /const rebuildGridAndStartMatchRefill = \(\) => \{[\s\S]*rebuildGridFromGems\(\);[\s\S]*startRefillBounce\(\);[\s\S]*\};/
+  );
+  for (const colorCase of ['color === 0 || color === 1', 'color === 2', 'color === 4', 'color === 5']) {
+    const start = src.indexOf(`if (${colorCase})`);
+    const branch = start >= 0 ? src.slice(start, src.indexOf('} else if', start + 1) >= 0 ? src.indexOf('} else if', start + 1) : src.indexOf('\n  }\n\n  console.log', start)) : '';
+    assert.ok(branch.includes('rebuildGridAndStartMatchRefill();'), `${colorCase} branch should refill immediately`);
+  }
+});
+
 test('app startRefillBounce queues missing cells after a line-clear style gem removal', () => {
   const src = read('web-runner/app.js');
   const setGemArraySrc = extractFunctionSource(src, 'setGemArray');
@@ -121,6 +151,28 @@ test('app startRefillBounce queues missing cells after a line-clear style gem re
     ]
   );
   assert.equal(sandbox.state.globals.BoardFillActive, 1);
+});
+
+test('refill bounce fills every queued empty cell before waiting for settle', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
+
+  assert.doesNotMatch(
+    src,
+    /refill\.current = \{\\n\s*doneAt: nowTime \+ bounceDur\s*\\n\s*\};\\n\s*break;/,
+    'refill must not leave later queued cells visibly empty while waiting for the first settle'
+  );
+  assert.ok(
+    src.includes(
+      [
+        '          refill.current = {',
+        '            doneAt: Math.max(Number(refill.current?.doneAt || 0), nowTime + bounceDur),',
+        '          };',
+        '          refill.index += 1;',
+        '          continue;',
+      ].join('\\n')
+    ),
+    'refill should create every queued gem in the same pass, then settle once'
+  );
 });
 
 test('existing Djinn/Marid incomplete-board fallback contract is still present', () => {

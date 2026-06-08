@@ -4119,6 +4119,12 @@ function handleGemMatch(color) {
       gameState.gems = state.globals.Gems;
     }
   };
+  const rebuildGridAndStartMatchRefill = () => {
+    rebuildGridFromGems();
+    if (hasEmptySlots() && !(gameState.refillBounce && gameState.refillBounce.active)) {
+      startRefillBounce();
+    }
+  };
 
   if (color === 0 || color === 1) {
     const matchedCount = Math.max(0, Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0);
@@ -4130,7 +4136,7 @@ function handleGemMatch(color) {
     callFunctionWithContext(fnContext, 'ClearMatchState');
     syncGemsFromGlobals();
     clearLocalSelection();
-    rebuildGridFromGems();
+    rebuildGridAndStartMatchRefill();
     callFunctionWithContext(fnContext, 'Sub_Energy');
     g.ApplyChainToNextDamage = g.ChainNumber >= 2 ? 1 : 0;
   } else if (color === 2) {
@@ -4147,7 +4153,7 @@ function handleGemMatch(color) {
     callFunctionWithContext(fnContext, 'ClearMatchState');
     syncGemsFromGlobals();
     clearLocalSelection();
-    rebuildGridFromGems();
+    rebuildGridAndStartMatchRefill();
     callFunctionWithContext(fnContext, 'Sub_Energy');
     g.ApplyChainToNextDamage = 0;
   } else if (color === 3) {
@@ -4185,7 +4191,7 @@ function handleGemMatch(color) {
     callFunctionWithContext(fnContext, 'ClearMatchState');
     syncGemsFromGlobals();
     clearLocalSelection();
-    rebuildGridFromGems();
+    rebuildGridAndStartMatchRefill();
     callFunctionWithContext(fnContext, 'Sub_Energy');
     callFunctionWithContext(fnContext, 'ResolveGemAction', 4, actorUID, matchedCount);
   } else if (color === 5) {
@@ -4194,7 +4200,7 @@ function handleGemMatch(color) {
     callFunctionWithContext(fnContext, 'ClearMatchState');
     syncGemsFromGlobals();
     clearLocalSelection();
-    rebuildGridFromGems();
+    rebuildGridAndStartMatchRefill();
     callFunctionWithContext(fnContext, 'ResolveGemAction', 5, actorUID, matchedCount);
     callFunctionWithContext(fnContext, 'Sub_Energy', 1);
   }
@@ -7684,7 +7690,6 @@ function getStoryCardLiveLineState() {
       !state.globals.IsPlayerBusy &&
       !state.globals.PendingSkillID &&
       !state.globals.ActionInProgress &&
-      !state.globals.DeferAdvance &&
       !pendingSkillDraughtClaimed &&
       refillStartBarrier.canStartRefill &&
       !(refill && refill.active);
