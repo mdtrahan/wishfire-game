@@ -10,7 +10,8 @@ Beads remains source of truth. These GitHub issues are public-safe visibility mi
 
 - Published issue mirrors: `99`
 - GitHub issue range: `#23` through `#121`
-- Draft PR creation remains gated until local `main` and `origin/main` are aligned.
+- ORKA-7ff6 clean draft PR review surface: [#122](https://github.com/mdtrahan/wishfire-game/pull/122)
+- Other Bead-lane draft PR creation remains gated until local `main` and `origin/main` are aligned.
 - GitHub Project field insertion is still gated because no Project V2 write tool is available in this session and local `gh` auth is invalid.
 
 ## Published Issues

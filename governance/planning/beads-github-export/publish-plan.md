@@ -10,7 +10,7 @@ Beads remains source of truth. Publish GitHub records as visibility mirrors only
 | --- | --- | --- |
 | Remote baseline | blocked | Sync local main to GitHub before opening Bead branch PRs. |
 | Issue creation | complete | All 99 visible non-closed Beads in the manifest are published as GitHub Issues #23 through #121. |
-| Draft PR creation | blocked | Requires pushed branch/review artifact and remote main parity. |
+| Draft PR review surface | partial | ORKA-7ff6 has clean draft PR #122; remaining Bead-lane PRs require pushed branches/review artifacts and remote main parity. |
 
 ## GitHub Access Notes
 
@@ -18,6 +18,7 @@ Beads remains source of truth. Publish GitHub records as visibility mirrors only
 - GitHub connector read access confirmed recent repository PRs are closed/merged; no current open PR collision was found through the connector read.
 - The first connector write rejected detailed Bead bodies as too much non-public workspace data; `github-publish-manifest.json` is now public-safe and omits detailed scope, acceptance criteria, changed-file paths, worktree paths, and raw Beads internals.
 - GitHub connector issue creation completed all issue mirrors, but no GitHub Project V2 write tool is available in this session.
+- GitHub connector draft PR creation completed ORKA-7ff6 as #122 from a clean branch based on `origin/main`, avoiding the 35 local-only `main` commits.
 
 ## Remote Baseline
 
@@ -31,7 +32,13 @@ Beads remains source of truth. Publish GitHub records as visibility mirrors only
 2. Add those Issues to the team Project and expose the listed project fields. Gated on Project V2 write access.
 3. Sync local `main` to GitHub through the protected-branch PR process.
 4. Push selected Bead branches or create tracked review artifacts.
-5. Open draft PRs for active, blocked, QA-ready, or review-worthy Beads.
+5. Open draft PRs for active, blocked, QA-ready, or review-worthy Beads. Started with ORKA-7ff6 clean draft PR #122; other lanes remain gated.
+
+## Published Draft PRs
+
+| PR | Bead | Branch | Base | State | Notes |
+| --- | --- | --- | --- | --- | --- |
+| [#122](https://github.com/mdtrahan/wishfire-game/pull/122) | ORKA-7ff6 | `bead/ORKA-7ff6-github-visibility-export-clean-pr` | `main` | draft | Clean review branch replayed only the export commits onto `origin/main`. |
 
 ## First Batch
 
