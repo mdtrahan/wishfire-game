@@ -21,6 +21,7 @@ Beads remains source of truth. Publish GitHub records as visibility mirrors only
 - The first connector write rejected detailed Bead bodies as too much non-public workspace data; `github-publish-manifest.json` is now public-safe and omits detailed scope, acceptance criteria, changed-file paths, worktree paths, and raw Beads internals.
 - Open `mdtrahan` Project #2 exists, but it is untitled, empty, and currently has only GitHub default fields. Do not populate it without explicit user approval.
 - The publisher now audits the Bead field schema and refuses Project item insertion when fields are missing, unless `--allow-missing-project-fields` is explicitly passed for a deliberately partial board.
+- Project #2 readiness evidence is recorded in `project-v2-readiness-audit.md`.
 
 ## Remote Baseline
 

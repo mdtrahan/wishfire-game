@@ -19,6 +19,7 @@ Project writes are prepared but not applied.
 - Open `mdtrahan` Project #2 exists at `https://github.com/users/mdtrahan/projects/2`, but it is untitled, empty, and currently has only GitHub default fields.
 - Do not populate Project #2 or create a new Project as part of this export without explicit user approval.
 - Apply requires a confirmed GitHub Project owner/number and, for full field visibility, the public-safe Bead fields listed above.
+- Current readiness evidence is recorded in `project-v2-readiness-audit.md`.
 
 ## Dry Run
 
