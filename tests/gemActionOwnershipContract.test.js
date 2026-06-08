@@ -48,7 +48,35 @@ test('gem action resolver follows Rust owner when Rust and JS disagree', async (
   assert.equal(decision.owner, 'rust');
   assert.equal(decision.routeCode, 2);
   assert.equal(decision.pendingSkillId, '');
-  assert.equal(decision.jsDecision.routeCode, 0);
+  assert.equal(decision.jsDecision.routeCode, -1);
+});
+
+test('stale green owner packets normalize to unknown and drop attack UI state', async () => {
+  const { resolveGemAction } = await import(pathToFileURL(rulesPath));
+  const decision = resolveGemAction({
+    source: 'test.retiredGreenOwner',
+    gemColor: 0,
+    consumedCount: 4,
+    ownerHook: () => ({
+      owner: 'rust',
+      routeCode: 0,
+      pendingSkillCode: 1,
+      setIsAoe: 1,
+      isAoe: 1,
+      showAttackUi: 1,
+      callCode: 0,
+      consumesTurn: 0,
+      consumedCount: 4,
+    }),
+  });
+
+  assert.equal(decision.owner, 'rust');
+  assert.equal(decision.routeCode, -1);
+  assert.equal(decision.pendingSkillCode, 0);
+  assert.equal(decision.pendingSkillId, '');
+  assert.equal(decision.setIsAoe, 0);
+  assert.equal(decision.isAoe, 0);
+  assert.equal(decision.showAttackUi, 0);
 });
 
 test('ResolveGemAction routes branch packet through Rust-owned resolver', () => {

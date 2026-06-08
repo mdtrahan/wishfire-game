@@ -33,7 +33,22 @@ test('dev idle autoplay picks each hero preferred color when party HP is stable'
   assert.deepEqual(pickIdleAutoplayTriplet(board, { heroName: 'Falie', partyHpRatio: 0.7 }), pickedTriplet(1));
   assert.deepEqual(pickIdleAutoplayTriplet(board, { heroName: 'Huun', partyHpRatio: 0.7 }), pickedTriplet(3));
   assert.deepEqual(pickIdleAutoplayTriplet(board, { heroName: 'Runa', partyHpRatio: 0.7 }), pickedTriplet(2));
-  assert.deepEqual(pickIdleAutoplayTriplet(board, { heroName: 'Kojonn', partyHpRatio: 0.7 }), pickedTriplet(0));
+  assert.deepEqual(pickIdleAutoplayTriplet(board, { heroName: 'Kojonn', partyHpRatio: 0.7 }, () => 0), pickedTriplet(1));
+});
+
+test('dev idle autoplay ignores retired green triplets and supergems', async () => {
+  const { pickIdleAutoplaySuperGem, pickIdleAutoplayTriplet } = await import(modulePath);
+  const board = [
+    ...triplet(0, 0),
+    ...triplet(1, 1),
+  ];
+  const superGems = [
+    superGem(0, 0),
+    superGem(1, 1),
+  ];
+
+  assert.deepEqual(pickIdleAutoplayTriplet(board, { heroName: 'Kojonn', partyHpRatio: 0.7 }), pickedTriplet(1));
+  assert.deepEqual(pickIdleAutoplaySuperGem(superGems, { heroName: 'Kojonn', partyHpRatio: 0.7 }), { row: 1, col: 0 });
 });
 
 test('dev idle autoplay HP thresholds override or suppress heal triplets', async () => {
@@ -51,11 +66,11 @@ test('dev idle autoplay keeps gold/yellow resource-only unless Huun is active wh
   const { pickIdleAutoplaySuperGem, pickIdleAutoplayTriplet } = await import(modulePath);
   const board = [
     ...triplet(3, 0),
-    ...triplet(0, 1),
+    ...triplet(1, 1),
   ];
   const superGems = [
     superGem(3, 0),
-    superGem(0, 1),
+    superGem(1, 1),
   ];
 
   assert.deepEqual(pickIdleAutoplayTriplet(board, { heroName: 'Runa', partyHpRatio: 0.7, hasLivingEnemies: true }), pickedTriplet(1));

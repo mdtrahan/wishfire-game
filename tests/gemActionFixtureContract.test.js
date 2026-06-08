@@ -7,6 +7,7 @@ const { pathToFileURL } = require('node:url');
 const fixturePath = path.join(__dirname, 'fixtures', 'gem_action_cases.csv');
 const rustLibPath = path.join(__dirname, '..', 'rust', 'simulation_core', 'src', 'lib.rs');
 const wasmPath = path.join(__dirname, '..', 'web-runner', 'assets', 'simulation_core.wasm');
+const simulationCoreShadowPath = path.join(__dirname, '..', 'web-runner', 'systems', 'simulationCoreShadow.js');
 const rulesPaths = [
   path.join(__dirname, '..', 'src', 'core', 'gemActionRules.mjs'),
   path.join(__dirname, '..', 'web-runner', 'src', 'core', 'gemActionRules.mjs'),
@@ -75,6 +76,16 @@ test('Rust simulation core declares gem action shadow exports', () => {
   assert.match(rustSrc, /extern "C" fn gem_action_route_code_shadow/);
   assert.match(rustSrc, /extern "C" fn gem_action_action_lock_until_shadow/);
   assert.match(rustSrc, /extern "C" fn gem_action_purple_energy_amount_shadow/);
+});
+
+test('browser startup gem-action smoke check matches current blue draught handoff fixture', () => {
+  const rows = parseCsvRows(fs.readFileSync(fixturePath, 'utf8'));
+  const draughtRow = rows.find(row => row.name === 'blue_opens_draught');
+  assert.ok(draughtRow, 'blue_opens_draught fixture exists');
+
+  const shadowSrc = fs.readFileSync(simulationCoreShadowPath, 'utf8');
+  assert.match(shadowSrc, new RegExp(`jsActionLockUntil:\\s*${draughtRow.expectedActionLockUntil.replace('.', '\\.')}`));
+  assert.doesNotMatch(shadowSrc, /jsActionLockUntil:\s*14\b/);
 });
 
 test('static simulation core wasm matches gem action fixtures', async () => {

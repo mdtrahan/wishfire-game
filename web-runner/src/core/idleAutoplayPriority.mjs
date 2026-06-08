@@ -1,4 +1,3 @@
-const COLOR_GREEN = 0;
 const COLOR_RED = 1;
 const COLOR_BLUE = 2;
 const COLOR_GOLD = 3;
@@ -6,7 +5,6 @@ const COLOR_HEAL = 4;
 const COLOR_PURPLE = 5;
 
 const NON_HEAL_COLORS = Object.freeze([
-  COLOR_GREEN,
   COLOR_RED,
   COLOR_BLUE,
   COLOR_GOLD,
@@ -17,7 +15,6 @@ const HERO_COLOR_PREFERENCE = Object.freeze({
   falie: COLOR_RED,
   huun: COLOR_GOLD,
   runa: COLOR_BLUE,
-  kojonn: COLOR_GREEN,
 });
 
 function normalizeHeroName(heroName) {
@@ -31,7 +28,7 @@ function getHeroPreferredColor(heroName) {
 
 function normalizeColor(value) {
   const color = Number(value);
-  return Number.isFinite(color) && color >= COLOR_GREEN && color <= COLOR_PURPLE ? color : null;
+  return Number.isFinite(color) && color >= COLOR_RED && color <= COLOR_PURPLE ? color : null;
 }
 
 function clampRatio(value) {
@@ -63,7 +60,8 @@ function pushTier(tiers, colors) {
   if (unique.length) tiers.push(Object.freeze(unique));
 }
 
-function isExcludedIdleAutoplayColor(color, { heroName = '', hasLivingEnemies = false } = {}) {
+function isExcludedIdleAutoplayColor(color, { heroName = '', hasLivingEnemies = false, forcedBoardColor = null } = {}) {
+  if (normalizeColor(forcedBoardColor) === color) return false;
   return color === COLOR_GOLD && !!hasLivingEnemies && normalizeHeroName(heroName) !== 'huun';
 }
 

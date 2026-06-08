@@ -266,11 +266,8 @@ test('app pending attack and hero pickability honor enemy roster refill gate', (
 
   const pendingAttackStart = src.indexOf('// Pending hero attack: click an enemy to execute');
   assert.notEqual(pendingAttackStart, -1, 'missing pending attack click block');
-  const pendingAttackIdx = src.indexOf(
-    "callFunctionWithContext(fnContext, 'ExecuteSkill', state.globals.PendingSkillID",
-    pendingAttackStart,
-  );
-  assert.notEqual(pendingAttackIdx, -1, 'missing pending attack ExecuteSkill call');
+  const pendingAttackIdx = src.indexOf("source: 'manual-button'", pendingAttackStart);
+  assert.notEqual(pendingAttackIdx, -1, 'missing pending attack shared handoff call');
   const beforePendingAttack = src.slice(Math.max(0, pendingAttackIdx - 1600), pendingAttackIdx);
   assert.match(beforePendingAttack, /const enemyRosterStability = getEnemyRosterStabilitySnapshot\(\);/);
   assert.match(beforePendingAttack, /if \(!enemyRosterStability\.stable\)/);

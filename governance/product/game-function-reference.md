@@ -90,8 +90,8 @@ The current gem-action mapping is defined by `ResolveGemAction` in [web-runner/m
 Current meanings:
 
 - Green (`gemColor === 0`)
-  - Hero AOE attack flow.
-  - Opens a hero attack action path.
+  - Retired legacy input.
+  - Does not spawn, form supergems, open attack UI, or increment hero gem counters.
 
 - Red (`gemColor === 1`)
   - Hero single-target attack flow.
@@ -122,7 +122,7 @@ Not every gem resolves the same way.
 
 Important player-facing rules:
 
-- Red and green hero actions can enter a pending attack state.
+- Red hero actions can enter a pending attack state.
 - In that state, the player may need to:
   1. choose an enemy target
   2. confirm via the centered attack button

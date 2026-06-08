@@ -30,6 +30,10 @@ function loadFunctionBank(modulePath) {
 module.exports = {
   ApplyDamageToTarget,
   ExecuteSkill,
+  ForceAstralFlowSkillDraught,
+  GetPartySkillDefinitions,
+  GetSkillDraughtState,
+  SelectSkillDraughtCard,
 };`;
   const context = {
     console,
@@ -88,28 +92,28 @@ function activateRedSuperGem(runtime, context) {
   });
 }
 
-test('Falie red super-gem creates then sustains party ward without arming the red attack path', () => {
+test('Falie red super-gem stays a single-target cluster attack and does not trigger Crimson Ward', () => {
   const runtime = loadSuperGemRuntime();
   const context = createSuperGemContext('Falie');
-  const expected = [
-    { shield: 36, ratio: 0.18 },
-    { shield: 108, ratio: 0.54 },
-    { shield: 180, ratio: 0.9 },
-    { shield: 200, ratio: 1 },
-  ];
 
-  for (const step of expected) {
-    assert.equal(activateRedSuperGem(runtime, context), true);
-    assert.equal(context.state.globals.PendingSkillID || '', '');
-    assert.equal(context.state.globals.PendingSuperGemAction || null, null);
-    assert.equal(context.state.globals.PartyTempHPShield, step.shield);
-    assert.equal(context.state.globals.PartyTempHPShieldRatio, step.ratio);
-    assert.equal(context.state.globals.PartyTempHPShieldMax, 200);
-    assert.equal(context.state.globals.PartyTempHPShieldColor, '#6CCBEE');
-    assert.equal(context.state.globals.PartyHP, 200);
-    assert.equal(context.state.globals.DeferAdvance, 1);
-    assert.equal(context.state.globals.AdvanceAfterAction, 1);
-  }
+  assert.equal(activateRedSuperGem(runtime, context), true);
+  assert.equal(context.state.globals.PendingSkillID, 'HERO_SINGLE');
+  assert.equal(context.state.globals.PendingSuperGemAction.kind, 'super_gem_attack');
+  assert.equal(context.state.globals.PendingSuperGemAction.color, 1);
+  assert.equal(context.state.globals.PendingSuperGemAction.actorUID, 4);
+  assert.equal(context.state.globals.PartyTempHPShield || 0, 0);
+  assert.equal(context.state.globals.PartyWardBarrierVisualsByUID || null, null);
+  assert.equal(context.state.globals.SkillDraughtOpen || 0, 0);
+  assert.deepEqual(context.state.globals.SessionSkillsByHeroUID || {}, {});
+  assert.deepEqual(context.state.globals.SkillProcTrace || [], []);
+
+  assert.equal(runtime.executePendingSuperGemAction(context), true);
+  assert.equal(context.state.globals.PendingSuperGemAction, null);
+  assert.equal(context.state.globals.PendingHeroHits.length, 3);
+  assert.equal(context.state.globals.PendingHeroHits.every(hit => hit.targetUID === 200), true);
+  assert.equal(context.state.globals.PendingHeroHits.every(hit => hit.heroUID === 4), true);
+  assert.equal(context.state.globals.NextHeroActionProfile, 'single');
+  assert.equal(context.state.globals.PartyTempHPShield || 0, 0);
 });
 
 function makeFalieRedAttackContext(modulePath, { shield = 36, maxHP = 200 } = {}) {
@@ -154,21 +158,22 @@ function makeFalieRedAttackContext(modulePath, { shield = 36, maxHP = 200 } = {}
   return { ExecuteSkill, ctx, hero, enemy };
 }
 
-function assertFalieRedAttackSustainsActiveWard(modulePath) {
+function assertFalieRedAttackDoesNotSustainCrimsonWard(modulePath) {
   const { ExecuteSkill, ctx, hero } = makeFalieRedAttackContext(modulePath, { shield: 36 });
 
   ExecuteSkill(ctx, 'HERO_SINGLE', hero.uid);
 
-  assert.equal(ctx.state.globals.PartyTempHPShield, 72);
-  assert.equal(ctx.state.globals.PartyTempHPShieldRatio, 0.36);
+  assert.equal(ctx.state.globals.PartyTempHPShield, 36);
+  assert.equal(ctx.state.globals.PartyTempHPShieldRatio, 0.18);
   assert.equal(ctx.state.globals.PartyTempHPShieldMax, 200);
-  assert.equal(ctx.state.globals.PartyTempHPShieldSource, 'falie_red_sustain');
+  assert.equal(ctx.state.globals.PartyTempHPShieldSource || '', '');
+  assert.equal(ctx.state.globals.LastCrimsonWard || null, null);
   assert.equal(ctx.state.globals.PendingHeroHits.length, 1);
 }
 
-test('Falie ordinary red attack sustains an active ward in both runtime mirrors', () => {
-  assertFalieRedAttackSustainsActiveWard(path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js'));
-  assertFalieRedAttackSustainsActiveWard(path.join(repoRoot, 'Scripts', 'functionBank.js'));
+test('Falie ordinary red attack does not sustain Crimson Ward in either runtime mirror', () => {
+  assertFalieRedAttackDoesNotSustainCrimsonWard(path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js'));
+  assertFalieRedAttackDoesNotSustainCrimsonWard(path.join(repoRoot, 'Scripts', 'functionBank.js'));
 });
 
 function assertFalieRedAttackDoesNotRecreateBrokenWard(modulePath) {
@@ -182,48 +187,96 @@ function assertFalieRedAttackDoesNotRecreateBrokenWard(modulePath) {
   assert.equal(ctx.state.globals.PendingHeroHits.length, 1);
 }
 
-test('Falie ordinary red attack cannot recreate a broken ward in both runtime mirrors', () => {
+test('Falie ordinary red attack cannot create Crimson Ward in both runtime mirrors', () => {
   assertFalieRedAttackDoesNotRecreateBrokenWard(path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js'));
   assertFalieRedAttackDoesNotRecreateBrokenWard(path.join(repoRoot, 'Scripts', 'functionBank.js'));
 });
 
-test('Falie Ward creates one refreshed barrier visual per hero', () => {
-  const runtime = loadSuperGemRuntime();
-  const context = createSuperGemContext('Falie');
-  context.state.entities.splice(
-    1,
-    0,
+function makeCrimsonWardSkillCardContext() {
+  const heroes = [
+    { uid: 4, kind: 'hero', name: 'Falie', heroIndex: 0, hp: 200, maxHP: 200 },
     { uid: 5, kind: 'hero', name: 'Huun', heroIndex: 1, hp: 100, maxHP: 100 },
     { uid: 6, kind: 'hero', name: 'Runa', heroIndex: 2, hp: 100, maxHP: 100 },
     { uid: 7, kind: 'hero', name: 'Kojonn', heroIndex: 3, hp: 100, maxHP: 100 },
-  );
+  ];
+  return {
+    state: {
+      globals: {
+        time: 2,
+        PartyHP: 200,
+        PartyMaxHP: 200,
+        CombatLog: [],
+        CombatActionLines: ['', '', '', ''],
+        SkillDraughtOpen: 0,
+        SkillDraughtHeroUID: 0,
+        SkillDraughtCandidates: [],
+        SkillDraughtHitZones: [],
+        SkillDraughtSelectedSkillId: '',
+        SessionSkillsByHeroUID: {},
+        SkillDraughtTrace: [],
+        SkillDraughtTraceSeq: 0,
+        AstralFlowAmpPoints: 18,
+        AstralFlowAmpMax: 18,
+        AstralFlowAmpReady: 1,
+      },
+      entities: heroes,
+    },
+    callFunction() {},
+  };
+}
 
-  assert.equal(activateRedSuperGem(runtime, context), true);
-  const firstVisuals = context.state.globals.PartyWardBarrierVisualsByUID;
+function assertCrimsonWardSkillCardCreatesPartyWard(modulePath) {
+  const mod = loadFunctionBank(modulePath);
+  const ctx = makeCrimsonWardSkillCardContext();
+  const partyIds = Array.from(mod.GetPartySkillDefinitions(), skill => skill.id);
+  assert.equal(partyIds.includes('party_crimson_ward'), true);
+
+  const opened = mod.ForceAstralFlowSkillDraught(ctx, 4, 'party_crimson_ward');
+  assert.equal(opened.ok, true);
+  assert.equal(opened.candidates[0].id, 'party_crimson_ward');
+  assert.equal(opened.candidates[0].title, 'Crimson Ward');
+
+  const selected = mod.SelectSkillDraughtCard(ctx, 0);
+  assert.equal(selected.ok, true);
+  assert.equal(selected.skill.id, 'party_crimson_ward');
+  assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__[0].id, 'party_crimson_ward');
+  assert.equal(ctx.state.globals.PartyTempHPShield, 36);
+  assert.equal(ctx.state.globals.PartyTempHPShieldRatio, 0.18);
+  assert.equal(ctx.state.globals.PartyTempHPShieldMax, 200);
+  assert.equal(ctx.state.globals.PartyTempHPShieldColor, '#6CCBEE');
+  assert.equal(ctx.state.globals.PartyTempHPShieldSource, 'party_crimson_ward');
+  assert.equal(ctx.state.globals.LastCrimsonWard.source, 'party_crimson_ward');
+  assert.match(ctx.state.globals.CombatLog.join('\n'), /Crimson Ward activated\./);
+
+  const firstVisuals = ctx.state.globals.PartyWardBarrierVisualsByUID;
   assert.deepEqual(Object.keys(firstVisuals).sort(), ['4', '5', '6', '7']);
-  assert.equal(context.state.globals.PartyWardBarrierAssetPath, 'images/falie_ward_84x62.png');
-  assert.equal(context.state.globals.PartyWardBarrierOffsetWorldX, 22);
-  assert.equal(context.state.globals.PartyWardBarrierWidth, 84);
-  assert.equal(context.state.globals.PartyWardBarrierHeight, 62);
+  assert.equal(ctx.state.globals.PartyWardBarrierAssetPath, 'images/falie_ward_84x62.png');
+  assert.equal(ctx.state.globals.PartyWardBarrierOffsetWorldX, 22);
+  assert.equal(ctx.state.globals.PartyWardBarrierWidth, 84);
+  assert.equal(ctx.state.globals.PartyWardBarrierHeight, 62);
+  assert.equal(firstVisuals[4].source, 'party_crimson_ward');
   assert.equal(firstVisuals[4].state, 'fadeIn');
   assert.equal(firstVisuals[4].refreshCount, 1);
+}
 
-  assert.equal(activateRedSuperGem(runtime, context), true);
-  const refreshedVisuals = context.state.globals.PartyWardBarrierVisualsByUID;
-  assert.strictEqual(refreshedVisuals, firstVisuals);
-  assert.deepEqual(Object.keys(refreshedVisuals).sort(), ['4', '5', '6', '7']);
-  assert.equal(refreshedVisuals[4].refreshCount, 2);
+test('Crimson Ward skill-card selection creates one barrier visual per hero in both mirrors', () => {
+  assertCrimsonWardSkillCardCreatesPartyWard(path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js'));
+  assertCrimsonWardSkillCardCreatesPartyWard(path.join(repoRoot, 'Scripts', 'functionBank.js'));
 });
 
-test('red super-gem shield is Falie-only', () => {
+test('red super-gem never opens skill-card Crimson Ward directly', () => {
   const runtime = loadSuperGemRuntime();
-  const context = createSuperGemContext('Kojonn');
+  for (const actorName of ['Falie', 'Kojonn']) {
+    const context = createSuperGemContext(actorName);
 
-  assert.equal(activateRedSuperGem(runtime, context), true);
-  assert.equal(context.state.globals.PendingSkillID, 'HERO_SINGLE');
-  assert.equal(context.state.globals.PendingSuperGemAction.color, 1);
-  assert.equal(context.state.globals.PartyTempHPShield || 0, 0);
-  assert.equal(context.state.globals.PartyTempHPShieldStacks || 0, 0);
+    assert.equal(activateRedSuperGem(runtime, context), true);
+    assert.equal(context.state.globals.PendingSkillID, 'HERO_SINGLE');
+    assert.equal(context.state.globals.PendingSuperGemAction.color, 1);
+    assert.equal(context.state.globals.SkillDraughtOpen || 0, 0);
+    assert.deepEqual(context.state.globals.SessionSkillsByHeroUID || {}, {});
+    assert.equal(context.state.globals.PartyTempHPShield || 0, 0);
+    assert.equal(context.state.globals.PartyTempHPShieldStacks || 0, 0);
+  }
 });
 
 test('non-Falie red super-gem still executes the single-target cluster attack contract', () => {

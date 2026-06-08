@@ -820,15 +820,43 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: 'party_guard_rail', owner: 'Party', slot: 3, title: 'Guard Rail', cardText: 'Reduce the impact of a dangerous hit.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On heavy hit taken', payloadImplemented: false },
   { id: 'party_blue_spark', owner: 'Party', slot: 4, title: 'Blue Spark', cardText: 'Turn blue water gains into a bonus for the whole party.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On blue water match', payloadImplemented: false },
   { id: 'party_weaken', owner: 'Party', slot: 5, title: 'Weaken', cardText: 'Lower enemy defense so your hits land harder.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On special hit', payloadImplemented: false },
-  { id: 'party_destiny', owner: 'Party', slot: 6, title: 'Destiny', cardText: 'Small chance to restore HP when attacking enemies.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On hit', payloadImplemented: true },
+  { id: 'party_destiny', owner: 'Party', slot: 6, title: 'Destiny', cardText: 'Attacks have a chance to restore 2.5% health on impact.', risk: 'MED', growth: [32, 32, 32, 32], procPattern: 'On hit', payloadImplemented: true, drawClass: 'one_off', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'reject_after_selected' }, trigger: { event: 'hit_enemy', eligibility: 'active_party_skill_positive_hero_damage' }, effect: { kind: 'proc_heal', procChancePct: 32, healPctPartyMax: 2.5 }, qa: { proof: 'PartyDestinyAttempts/Procs/Heals/Misses and SkillDraughtTrace' } },
   { id: 'party_hot_streak', owner: 'Party', slot: 7, title: 'Hot Streak', cardText: 'Build up a better payoff with consecutive matches.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On consecutive matches', payloadImplemented: false },
   { id: 'party_last_push', owner: 'Party', slot: 8, title: 'Last Push', cardText: 'Gain a brief comeback burst when the party nears defeat.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On low party HP', payloadImplemented: false },
   { id: 'party_chain_pop', owner: 'Party', slot: 9, title: 'Chain Pop', cardText: 'Trigger an extra board effect from a match.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On match', payloadImplemented: false },
-  { id: 'party_magic_fruit', owner: 'Party', slot: 10, title: 'Magic Fruit', cardText: 'Heals party for 40% of max HP', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true },
+  { id: 'party_magic_fruit', owner: 'Party', slot: 10, title: 'Magic Fruit', cardText: 'Heals party for 40% of max HP', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'party_heal', healPctPartyMax: 40 }, qa: { proof: 'ApplyPartyHeal once per selection' } },
+  { id: 'party_crimson_ward', owner: 'Party', slot: 11, title: 'Crimson Ward', cardText: 'Grant a temporary party ward before true HP is damaged.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'party_temp_hp_shield', shieldPctPartyMax: 18, stacking: 'refresh_capped_shield' }, qa: { proof: 'PartyTempHPShield and ward visuals refresh' } },
+  { id: 'party_faze', owner: 'Party', slot: 12, title: 'Faze', cardText: 'Blights the field, poisoning enemies for the remainder of the session.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'field_refresh', status: 'tainted_ground' }, qa: { proof: 'TaintedGroundZones and PendingHeroHits refresh' } },
 ]);
 
+const PARTY_SKILL_DRAW_ALLOWED_IDS = Object.freeze([
+  'party_crimson_ward',
+  'party_magic_fruit',
+  'party_destiny',
+  'party_faze',
+]);
+const PARTY_SKILL_DRAW_ALLOWED_ID_SET = Object.freeze(new Set(PARTY_SKILL_DRAW_ALLOWED_IDS));
+const SKILL_DRAW_ALLOWED_CALL_IDS = PARTY_SKILL_DRAW_ALLOWED_IDS;
+const SKILL_DRAW_ALLOWED_CALL_ID_SET = PARTY_SKILL_DRAW_ALLOWED_ID_SET;
+const SKILL_DRAW_CLASSES = Object.freeze(['one_off', 'tiered', 'repeatable']);
+const SKILL_DRAW_CLASS_SET = Object.freeze(new Set(SKILL_DRAW_CLASSES));
+
+const FAZE_TAINTED_GROUND_DURATION_HERO_TEAM_TURNS = 3;
+const FAZE_TAINTED_GROUND_DAMAGE_SCALE = 0.5;
+
+function cloneSkillMetadata(value) {
+  if (Array.isArray(value)) return value.map(item => cloneSkillMetadata(item));
+  if (value && typeof value === 'object') {
+    return Object.keys(value).reduce((out, key) => {
+      out[key] = cloneSkillMetadata(value[key]);
+      return out;
+    }, {});
+  }
+  return value;
+}
+
 function cloneSkillDefinition(def) {
-  return {
+  const clean = {
     id: String(def.id || ''),
     owner: String(def.owner || ''),
     slot: Math.max(0, Math.floor(Number(def.slot) || 0)),
@@ -839,6 +867,12 @@ function cloneSkillDefinition(def) {
     procPattern: String(def.procPattern || ''),
     payloadImplemented: def.payloadImplemented === true,
   };
+  const drawClass = String(def.drawClass || '').trim();
+  if (SKILL_DRAW_CLASS_SET.has(drawClass)) clean.drawClass = drawClass;
+  for (const key of ['selection', 'trigger', 'effect', 'qa']) {
+    if (def[key] && typeof def[key] === 'object') clean[key] = cloneSkillMetadata(def[key]);
+  }
+  return clean;
 }
 
 function getHeroSkillDefinitionsForOwner(heroName) {
@@ -852,6 +886,12 @@ function getSkillDefinitionById(skillId) {
   const key = String(skillId || '').trim().toLowerCase();
   return HERO_SKILL_DEFINITIONS.concat(PARTY_SKILL_DEFINITIONS)
     .find(def => String(def.id || '').toLowerCase() === key) || null;
+}
+
+function getPartySkillDrawDefinitions() {
+  return PARTY_SKILL_DEFINITIONS.filter(def => (
+    PARTY_SKILL_DRAW_ALLOWED_ID_SET.has(String(def.id || '').toLowerCase())
+  ));
 }
 
 export function GetHeroSkillDefinitions(ctx, heroName = '') {
@@ -890,18 +930,158 @@ function ensureSkillDraughtState(ctx) {
   const g = getGlobals(ctx);
   if (!Number.isFinite(g.SkillDraughtOpen)) g.SkillDraughtOpen = 0;
   if (!Number.isFinite(g.SkillDraughtHeroUID)) g.SkillDraughtHeroUID = 0;
+  if (!Number.isFinite(g.SkillDraughtPendingOpen)) g.SkillDraughtPendingOpen = 0;
+  if (!Number.isFinite(g.SkillDraughtPendingHeroUID)) g.SkillDraughtPendingHeroUID = 0;
+  if (typeof g.SkillDraughtPendingForcedSkillId !== 'string') g.SkillDraughtPendingForcedSkillId = '';
   if (!Array.isArray(g.SkillDraughtCandidates)) g.SkillDraughtCandidates = [];
   if (!Array.isArray(g.SkillDraughtHitZones)) g.SkillDraughtHitZones = [];
   if (typeof g.SkillDraughtSelectedSkillId !== 'string') g.SkillDraughtSelectedSkillId = '';
   if (!g.SessionSkillsByHeroUID || typeof g.SessionSkillsByHeroUID !== 'object') g.SessionSkillsByHeroUID = {};
+  if (!g.SkillDraughtOneOffExposureBySkillId || typeof g.SkillDraughtOneOffExposureBySkillId !== 'object' || Array.isArray(g.SkillDraughtOneOffExposureBySkillId)) g.SkillDraughtOneOffExposureBySkillId = {};
+  if (typeof g.SkillDraughtLastForcedSkillSuppressedReason !== 'string') g.SkillDraughtLastForcedSkillSuppressedReason = '';
   if (!Array.isArray(g.SkillDraughtTrace)) g.SkillDraughtTrace = [];
   if (!Number.isFinite(g.SkillDraughtTraceSeq)) g.SkillDraughtTraceSeq = 0;
+  ensureSkillDrawDebugCounters(g);
   return g;
+}
+
+function ensureSkillDrawDebugCounters(g) {
+  if (!g.SkillDrawCalls || typeof g.SkillDrawCalls !== 'object' || Array.isArray(g.SkillDrawCalls)) {
+    g.SkillDrawCalls = {};
+  }
+  for (const id of SKILL_DRAW_ALLOWED_CALL_IDS) {
+    const count = Number(g.SkillDrawCalls[id] || 0);
+    g.SkillDrawCalls[id] = Number.isFinite(count) && count >= 0 ? Math.floor(count) : 0;
+  }
+  const unexpectedCalls = Number(g.SkillDrawUnexpectedCalls || 0);
+  g.SkillDrawUnexpectedCalls = Number.isFinite(unexpectedCalls) && unexpectedCalls >= 0
+    ? Math.floor(unexpectedCalls)
+    : 0;
+  return g.SkillDrawCalls;
+}
+
+function makeEmptySkillDrawDebugSnapshot() {
+  return {
+    calls: SKILL_DRAW_ALLOWED_CALL_IDS.reduce((out, id) => {
+      out[id] = 0;
+      return out;
+    }, {}),
+    unexpectedCalls: 0,
+  };
+}
+
+function publishSkillDrawDebugSnapshot(snapshot) {
+  try {
+    if (typeof globalThis !== 'undefined') {
+      const encoded = JSON.stringify(snapshot);
+      globalThis.__orkaSkillDrawDebug = JSON.parse(encoded);
+      globalThis.SkillDrawCalls = JSON.parse(JSON.stringify(snapshot.calls || {}));
+      globalThis.SkillDrawUnexpectedCalls = Number(snapshot.unexpectedCalls || 0);
+      const root = globalThis.document?.documentElement;
+      if (root && typeof root.setAttribute === 'function') {
+        root.setAttribute('data-skill-draw-debug', encoded);
+        root.setAttribute('data-skill-draw-unexpected-calls', String(Number(snapshot.unexpectedCalls || 0)));
+      }
+    }
+  } catch (_err) {
+    // Debug publishing must never affect combat flow.
+  }
+  return snapshot;
+}
+
+function snapshotSkillDrawDebugCounters(g) {
+  const calls = ensureSkillDrawDebugCounters(g);
+  const snapshot = {
+    calls: SKILL_DRAW_ALLOWED_CALL_IDS.reduce((out, id) => {
+      out[id] = Number(calls[id] || 0);
+      return out;
+    }, {}),
+    unexpectedCalls: Number(g.SkillDrawUnexpectedCalls || 0),
+  };
+  return publishSkillDrawDebugSnapshot(snapshot);
+}
+
+function isAllowedSkillDrawCallId(skillId) {
+  return SKILL_DRAW_ALLOWED_CALL_ID_SET.has(String(skillId || '').trim().toLowerCase());
+}
+
+function recordSkillDrawAppearances(g, candidates) {
+  const calls = ensureSkillDrawDebugCounters(g);
+  for (const candidate of Array.isArray(candidates) ? candidates : []) {
+    const skillId = String(candidate?.id || '').trim().toLowerCase();
+    if (isAllowedSkillDrawCallId(skillId)) {
+      calls[skillId] = Math.max(0, Math.floor(Number(calls[skillId] || 0))) + 1;
+    } else {
+      g.SkillDrawUnexpectedCalls = Math.max(0, Math.floor(Number(g.SkillDrawUnexpectedCalls || 0))) + 1;
+    }
+  }
+  snapshotSkillDrawDebugCounters(g);
+}
+
+publishSkillDrawDebugSnapshot(makeEmptySkillDrawDebugSnapshot());
+
+function getSkillSessionEntryId(entry) {
+  return String((entry && (entry.id || entry.key || entry.definitionId)) || '').trim().toLowerCase();
+}
+
+function countSessionSkillSelections(bucket, skillId) {
+  const key = String(skillId || '').trim().toLowerCase();
+  if (!Array.isArray(bucket) || !key) return 0;
+  return bucket.reduce((count, entry) => count + (getSkillSessionEntryId(entry) === key ? 1 : 0), 0);
+}
+
+function getSkillSessionBucketKey(def, heroUID) {
+  const selectionBucket = String(def?.selection?.sessionBucket || '').trim();
+  if (selectionBucket) return selectionBucket;
+  return String(def?.owner || '').toLowerCase() === 'party' ? HERO_SKILL_SHARED_KEY : String(Number(heroUID || 0));
+}
+
+function getOneOffSkillSuppressionReason(g, def, heroUID) {
+  const skillId = String(def?.id || '').trim().toLowerCase();
+  if (!skillId || String(def?.drawClass || '') !== 'one_off') return '';
+  const bucketKey = getSkillSessionBucketKey(def, heroUID);
+  const bucket = Array.isArray(g.SessionSkillsByHeroUID?.[bucketKey]) ? g.SessionSkillsByHeroUID[bucketKey] : [];
+  if (countSessionSkillSelections(bucket, skillId) > 0) return 'one_off_already_selected';
+  if (Number(g.SkillDraughtOneOffExposureBySkillId?.[skillId] || 0) > 0) return 'one_off_already_exposed';
+  return '';
+}
+
+function markOneOffSkillDrawExposures(g, candidates) {
+  if (!g.SkillDraughtOneOffExposureBySkillId || typeof g.SkillDraughtOneOffExposureBySkillId !== 'object') {
+    g.SkillDraughtOneOffExposureBySkillId = {};
+  }
+  for (const candidate of Array.isArray(candidates) ? candidates : []) {
+    const skillId = String(candidate?.id || '').trim().toLowerCase();
+    if (skillId && String(candidate?.drawClass || '') === 'one_off') {
+      g.SkillDraughtOneOffExposureBySkillId[skillId] = 1;
+    }
+  }
+}
+
+function makeSessionSkillRecord(candidate, def, bucketKey, selectionCount, source, selectedAt) {
+  const skillId = String(candidate?.id || def?.id || '');
+  const drawClass = String(def?.drawClass || candidate?.drawClass || '');
+  const selection = (def && def.selection) || (candidate && candidate.selection) || {};
+  return {
+    id: skillId,
+    key: String(candidate?.key || skillId),
+    definitionId: skillId,
+    title: String(candidate?.title || candidate?.name || def?.title || ''),
+    description: String(candidate?.description || candidate?.cardText || def?.cardText || ''),
+    owner: String(candidate?.owner || def?.owner || ''),
+    drawClass,
+    sessionBucket: String(bucketKey || ''),
+    duplicatePolicy: String(selection.duplicatePolicy || (drawClass === 'one_off' ? 'reject_after_selected' : 'allow_repeat')),
+    selectionCount: Math.max(1, Math.floor(Number(selectionCount || 1))),
+    rank: drawClass === 'tiered' ? Math.max(1, Math.floor(Number(selectionCount || 1))) : 0,
+    selectedAt: Number(selectedAt || 0),
+    source: String(source || 'skill_draught'),
+  };
 }
 
 function makeSkillDraughtCandidate(def, index = 0) {
   const clean = cloneSkillDefinition(def);
-  return {
+  const candidate = {
     index: Math.max(0, Math.floor(Number(index) || 0)),
     id: clean.id,
     key: clean.id,
@@ -914,6 +1094,10 @@ function makeSkillDraughtCandidate(def, index = 0) {
     risk: clean.risk,
     payloadImplemented: clean.payloadImplemented,
   };
+  for (const key of ['drawClass', 'selection', 'trigger', 'effect', 'qa']) {
+    if (clean[key] != null) candidate[key] = cloneSkillMetadata(clean[key]);
+  }
+  return candidate;
 }
 
 function appendSkillDraughtTrace(g, action, payload = {}) {
@@ -927,20 +1111,42 @@ function appendSkillDraughtTrace(g, action, payload = {}) {
   if (g.SkillDraughtTrace.length > 80) g.SkillDraughtTrace.splice(0, g.SkillDraughtTrace.length - 80);
 }
 
-function buildSkillDraughtCandidates(ctx, heroUID, forcedSkillId = '') {
-  const forced = GetSkillDefinition(ctx, forcedSkillId);
-  const defs = GetPartySkillDefinitions();
-  let ordered = defs.slice();
-  if (forced && String(forced.owner || '').toLowerCase() === 'party') {
-    ordered = [forced].concat(defs.filter(def => String(def.id) !== String(forced.id)));
-  } else {
-    const magicFruit = defs.find(def => String(def.id) === 'party_magic_fruit');
-    if (magicFruit) {
-      const withoutMagicFruit = ordered.filter(def => String(def.id) !== 'party_magic_fruit');
-      ordered = withoutMagicFruit.slice(0, 2).concat(magicFruit, withoutMagicFruit.slice(2));
-    }
+function sampleSkillDraughtDefinitions(ctx, defs, count) {
+  const remaining = Array.isArray(defs) ? defs.slice() : [];
+  const picked = [];
+  while (picked.length < count && remaining.length) {
+    const index = randomIndex(ctx, remaining.length);
+    const [def] = remaining.splice(index, 1);
+    if (def) picked.push(def);
   }
-  return ordered.slice(0, 3).map((def, index) => makeSkillDraughtCandidate(def, index));
+  return picked;
+}
+
+function buildSkillDraughtCandidates(ctx, heroUID, forcedSkillId = '') {
+  const g = ensureSkillDraughtState(ctx);
+  const allDefs = getPartySkillDrawDefinitions();
+  const forcedKey = String(forcedSkillId || '').trim().toLowerCase();
+  const forcedDef = allDefs.find(def => String(def.id || '').toLowerCase() === forcedKey) || null;
+  const forcedSkillSuppressedReason = forcedDef
+    ? getOneOffSkillSuppressionReason(g, forcedDef, heroUID)
+    : '';
+  const defs = allDefs.filter(def => !getOneOffSkillSuppressionReason(g, def, heroUID));
+  const forced = forcedSkillSuppressedReason
+    ? null
+    : defs.find(def => String(def.id || '').toLowerCase() === forcedKey) || null;
+  let ordered = [];
+  if (forced && String(forced.owner || '').toLowerCase() === 'party') {
+    ordered = [forced].concat(
+      sampleSkillDraughtDefinitions(ctx, defs.filter(def => String(def.id) !== String(forced.id)), 2)
+    );
+  } else {
+    ordered = sampleSkillDraughtDefinitions(ctx, defs, 3);
+  }
+  return {
+    candidates: ordered.map((def, index) => makeSkillDraughtCandidate(def, index)),
+    forcedSkillId: forcedKey,
+    forcedSkillSuppressedReason,
+  };
 }
 
 function activateMagicFruitSkill(ctx) {
@@ -951,14 +1157,165 @@ function activateMagicFruitSkill(ctx) {
   return healAmount;
 }
 
+function getFazeHeroTeamTurnSpan(ctx) {
+  const g = getGlobals(ctx);
+  if (Array.isArray(g.TurnOrderArray) && g.TurnOrderArray.length > 0) {
+    const heroSlots = g.TurnOrderArray.filter(slot => Number(slot?.type || 0) === 0);
+    if (heroSlots.length > 0) return heroSlots.length;
+  }
+  if (Array.isArray(g.RoundRoster) && g.RoundRoster.length > 0) {
+    const heroSlots = g.RoundRoster.filter(slot => Number(slot?.type || 0) === 0);
+    if (heroSlots.length > 0) return heroSlots.length;
+  }
+  const aliveHeroes = getEntities(ctx).filter(entity => (
+    entity
+    && entity.kind === 'hero'
+    && Number(entity.hp ?? 1) > 0
+  ));
+  return Math.max(1, aliveHeroes.length || 1);
+}
+
+function getFazeHeroTeamTurnSerial(ctx) {
+  const explicit = Number(getGlobals(ctx).HeroTeamTurnSerial);
+  if (Number.isFinite(explicit) && explicit >= 0) return Math.floor(explicit);
+  return 0;
+}
+
+function getNextFazeTaintedGroundZoneId(ctx) {
+  const g = getGlobals(ctx);
+  const next = Math.max(1, Number(g.NextTaintedGroundZoneId || 1));
+  g.NextTaintedGroundZoneId = next + 1;
+  return `tg-${next}`;
+}
+
+function ensureFazeTaintedGroundZones(ctx) {
+  const g = getGlobals(ctx);
+  if (!Array.isArray(g.TaintedGroundZones)) g.TaintedGroundZones = [];
+  return g.TaintedGroundZones;
+}
+
+function refreshFazeTaintedGroundZone(ctx, sourceUID, enemy, dotTotalDamage, startsAt) {
+  const g = getGlobals(ctx);
+  const zones = ensureFazeTaintedGroundZones(ctx);
+  const slotIndex = getTaintedGroundSlotIndex(enemy);
+  const enemyX = Number(enemy?.x);
+  const enemyY = Number(enemy?.y);
+  const anchorWorldX = Number.isFinite(enemyX) ? enemyX : null;
+  const anchorWorldY = Number.isFinite(enemyY) ? enemyY : null;
+  const nowTurnSerial = Number(g.TurnSerial || 0);
+  const heroTeamTurnSpan = getFazeHeroTeamTurnSpan(ctx);
+  const nowHeroTeamTurnSerial = getFazeHeroTeamTurnSerial(ctx);
+  const totalHeroTeamTurns = FAZE_TAINTED_GROUND_DURATION_HERO_TEAM_TURNS;
+  for (let i = zones.length - 1; i >= 0; i -= 1) {
+    const zone = zones[i];
+    if (!zone) continue;
+    if (Number(zone.sourceUID || 0) !== Number(sourceUID || 0)) continue;
+    if (Number(zone.slotIndex || 0) !== slotIndex) continue;
+    zone.targetUID = Number(enemy?.uid || 0);
+    if (!Number.isFinite(Number(zone.anchorWorldX)) && anchorWorldX != null) zone.anchorWorldX = anchorWorldX;
+    if (!Number.isFinite(Number(zone.anchorWorldY)) && anchorWorldY != null) zone.anchorWorldY = anchorWorldY;
+    zone.remainingTurns = totalHeroTeamTurns;
+    zone.durationHeroTeamTurns = totalHeroTeamTurns;
+    zone.heroTeamTurnSpan = heroTeamTurnSpan;
+    zone.createdTurnSerial = nowTurnSerial;
+    zone.lastSeenTurnSerial = nowTurnSerial;
+    zone.createdHeroTeamTurnSerial = nowHeroTeamTurnSerial;
+    zone.expiresAtHeroTeamTurnSerial = nowHeroTeamTurnSerial + totalHeroTeamTurns;
+    zone.lastSeenHeroTeamTurnSerial = nowHeroTeamTurnSerial;
+    zone.visualStartsAt = Number(startsAt || 0);
+    zone.activeAt = Number(startsAt || 0);
+    zone.fadeStartedAt = null;
+    zone.dotTotalDamage = Math.max(1, Math.floor(Number(dotTotalDamage || 1) || 1));
+    zone.appliedUIDs = { [Number(enemy?.uid || 0)]: true };
+    zone.effectName = 'TaintedGround';
+    zone.visual = 'blight_disc';
+    return zone;
+  }
+  const zone = {
+    id: getNextFazeTaintedGroundZoneId(ctx),
+    sourceUID: Number(sourceUID || 0),
+    slotIndex,
+    targetUID: Number(enemy?.uid || 0),
+    anchorWorldX,
+    anchorWorldY,
+    remainingTurns: totalHeroTeamTurns,
+    durationHeroTeamTurns: totalHeroTeamTurns,
+    heroTeamTurnSpan,
+    createdTurnSerial: nowTurnSerial,
+    lastSeenTurnSerial: nowTurnSerial,
+    createdHeroTeamTurnSerial: nowHeroTeamTurnSerial,
+    expiresAtHeroTeamTurnSerial: nowHeroTeamTurnSerial + totalHeroTeamTurns,
+    lastSeenHeroTeamTurnSerial: nowHeroTeamTurnSerial,
+    visualStartsAt: Number(startsAt || 0),
+    activeAt: Number(startsAt || 0),
+    dotTotalDamage: Math.max(1, Math.floor(Number(dotTotalDamage || 1) || 1)),
+    appliedUIDs: { [Number(enemy?.uid || 0)]: true },
+    effectName: 'TaintedGround',
+    visual: 'blight_disc',
+  };
+  zones.push(zone);
+  return zone;
+}
+
+function activateFazeSkill(ctx, actorUID) {
+  const g = getGlobals(ctx);
+  const heroUID = Number(actorUID || 0);
+  const actor = GetActorByUID(ctx, heroUID);
+  if (!actor) return 0;
+  const enemies = getEnemies(ctx).filter(enemy => Number(enemy?.hp || 0) > 0);
+  if (!enemies.length) return 0;
+  const actorName = String(actor.name || '?');
+  const baseDotDamage = Math.max(1, Math.floor(GetEffectiveStat(ctx, actor, 'MAG') * 0.75));
+  const dotTotalDamage = Math.max(1, Math.floor(baseDotDamage * FAZE_TAINTED_GROUND_DAMAGE_SCALE));
+  const totalDamage = dotTotalDamage * enemies.length;
+  const now = Number(g.time || 0);
+  const hitDelay = Math.max(0.14 + 0.75 + 0.18, 1.07);
+  const applyAt = now + hitDelay;
+  g.PendingHeroHits = g.PendingHeroHits || [];
+  for (const enemy of enemies) {
+    const zone = refreshFazeTaintedGroundZone(ctx, heroUID, enemy, dotTotalDamage, applyAt);
+    g.PendingHeroHits.push({
+      at: applyAt,
+      heroUID,
+      targetUID: Number(enemy.uid || 0),
+      dmg: 0,
+      finalDmg: 0,
+      dotTotalDamage,
+      powerAmpMultiplier: 0,
+      consumePowerAmp: 0,
+      effectType: 'dot_apply',
+      effectName: 'Blight',
+      actionName: 'Faze',
+      calcPath: 'magicCalc',
+      heroName: actorName,
+      heroType: 'magic',
+      taintedGroundZoneId: zone.id,
+      taintedGroundSlotIndex: zone.slotIndex,
+      msg: `${actorName} corrupted ${String(enemy.name || '?')}'s ground with blight for ${dotTotalDamage}!`,
+    });
+  }
+  LogCombat(ctx, `${actorName} used Faze to blight the field for ${totalDamage}!`);
+  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), applyAt + 0.42);
+  g.DeferAdvance = 1;
+  g.AdvanceAfterAction = 1;
+  g.ActionOwnerUID = heroUID;
+  return totalDamage;
+}
+
 export function GetSkillDraughtState(ctx) {
   const g = ensureSkillDraughtState(ctx);
   return {
     open: Number(g.SkillDraughtOpen || 0),
     heroUID: Number(g.SkillDraughtHeroUID || 0),
+    pendingOpen: Number(g.SkillDraughtPendingOpen || 0),
+    pendingHeroUID: Number(g.SkillDraughtPendingHeroUID || 0),
+    pendingForcedSkillId: String(g.SkillDraughtPendingForcedSkillId || ''),
     candidates: g.SkillDraughtCandidates.map(candidate => ({ ...candidate })),
     selectedSkillId: String(g.SkillDraughtSelectedSkillId || ''),
     sessionSkillsByHeroUID: JSON.parse(JSON.stringify(g.SessionSkillsByHeroUID || {})),
+    oneOffExposureBySkillId: JSON.parse(JSON.stringify(g.SkillDraughtOneOffExposureBySkillId || {})),
+    lastForcedSkillSuppressedReason: String(g.SkillDraughtLastForcedSkillSuppressedReason || ''),
+    skillDrawDebug: snapshotSkillDrawDebugCounters(g),
   };
 }
 
@@ -970,19 +1327,67 @@ export function OpenSkillDraughtForHero(ctx, heroUID, forcedSkillId = '') {
     appendSkillDraughtTrace(g, 'open_rejected', { heroUID: uid, reason: 'hero_not_found' });
     return { ok: false, reason: 'hero_not_found', candidates: [] };
   }
-  const candidates = buildSkillDraughtCandidates(ctx, uid, forcedSkillId);
+  const drawResult = buildSkillDraughtCandidates(ctx, uid, forcedSkillId);
+  const candidates = Array.isArray(drawResult?.candidates) ? drawResult.candidates : [];
+  const forcedSkillSuppressedReason = String(drawResult?.forcedSkillSuppressedReason || '');
+  g.SkillDraughtLastForcedSkillSuppressedReason = forcedSkillSuppressedReason;
   if (!candidates.length) {
-    appendSkillDraughtTrace(g, 'open_rejected', { heroUID: uid, reason: 'no_candidates' });
-    return { ok: false, reason: 'no_candidates', candidates: [] };
+    appendSkillDraughtTrace(g, 'open_rejected', {
+      heroUID: uid,
+      reason: 'no_drawable_candidates',
+      forcedSkillId: String(drawResult?.forcedSkillId || ''),
+      forcedSkillSuppressedReason,
+    });
+    return { ok: false, reason: 'no_drawable_candidates', candidates: [], forcedSkillSuppressedReason };
   }
   g.SkillDraughtOpen = 1;
   g.SkillDraughtHeroUID = uid;
+  g.SkillDraughtPendingOpen = 0;
+  g.SkillDraughtPendingHeroUID = 0;
+  g.SkillDraughtPendingForcedSkillId = '';
   g.SkillDraughtCandidates = candidates;
   g.SkillDraughtHitZones = [];
   g.SkillDraughtSelectedSkillId = '';
-  appendSkillDraughtTrace(g, 'open', { heroUID: uid, candidateIds: candidates.map(candidate => candidate.id) });
+  markOneOffSkillDrawExposures(g, candidates);
+  recordSkillDrawAppearances(g, candidates);
+  appendSkillDraughtTrace(g, 'open', {
+    heroUID: uid,
+    forcedSkillId: String(drawResult?.forcedSkillId || ''),
+    forcedSkillSuppressedReason,
+    candidateIds: candidates.map(candidate => candidate.id),
+  });
   LogCombat(ctx, 'The party found new skills.');
-  return { ok: true, heroUID: uid, candidates: candidates.map(candidate => ({ ...candidate })) };
+  return { ok: true, heroUID: uid, forcedSkillSuppressedReason, candidates: candidates.map(candidate => ({ ...candidate })) };
+}
+
+export function QueueSkillDraughtForHero(ctx, heroUID, forcedSkillId = '') {
+  const g = ensureSkillDraughtState(ctx);
+  const uid = Number(heroUID || 0);
+  const actor = GetActorByUID(ctx, uid);
+  if (!actor) {
+    appendSkillDraughtTrace(g, 'queue_rejected', { heroUID: uid, reason: 'hero_not_found' });
+    return { ok: false, reason: 'hero_not_found' };
+  }
+  g.SkillDraughtPendingOpen = 1;
+  g.SkillDraughtPendingHeroUID = uid;
+  g.SkillDraughtPendingForcedSkillId = String(forcedSkillId || '');
+  appendSkillDraughtTrace(g, 'queue', { heroUID: uid, forcedSkillId: g.SkillDraughtPendingForcedSkillId });
+  return { ok: true, heroUID: uid, pendingOpen: 1 };
+}
+
+export function ClaimPendingSkillDraught(ctx) {
+  const g = ensureSkillDraughtState(ctx);
+  if (Number(g.SkillDraughtOpen || 0)) return { ok: false, reason: 'draught_open' };
+  if (!Number(g.SkillDraughtPendingOpen || 0)) return { ok: false, reason: 'no_pending_draught' };
+  const uid = Number(g.SkillDraughtPendingHeroUID || 0);
+  const forcedSkillId = String(g.SkillDraughtPendingForcedSkillId || '');
+  const result = OpenSkillDraughtForHero(ctx, uid, forcedSkillId);
+  if (result && result.ok) return { ...result, claimed: true };
+  g.SkillDraughtPendingOpen = 0;
+  g.SkillDraughtPendingHeroUID = 0;
+  g.SkillDraughtPendingForcedSkillId = '';
+  appendSkillDraughtTrace(g, 'claim_rejected', { heroUID: uid, reason: String(result?.reason || 'open_failed') });
+  return result || { ok: false, reason: 'open_failed' };
 }
 
 export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
@@ -992,16 +1397,27 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
   const candidate = g.SkillDraughtCandidates.find(row => Number(row.index) === index) || g.SkillDraughtCandidates[index] || null;
   if (!candidate) return { ok: false, reason: 'candidate_not_found' };
   const uid = Number(g.SkillDraughtHeroUID || 0);
-  const key = String(candidate.owner || '').toLowerCase() === 'party' ? HERO_SKILL_SHARED_KEY : String(uid || 0);
+  const def = getSkillDefinitionById(candidate.id) || candidate;
+  const key = getSkillSessionBucketKey(def, uid);
   if (!Array.isArray(g.SessionSkillsByHeroUID[key])) g.SessionSkillsByHeroUID[key] = [];
-  const sessionSkill = {
-    id: String(candidate.id || ''),
-    key: String(candidate.key || candidate.id || ''),
-    title: String(candidate.title || candidate.name || ''),
-    description: String(candidate.description || candidate.cardText || ''),
-    owner: String(candidate.owner || ''),
-    selectedAt: Number(g.time || 0),
-  };
+  const skillId = String(candidate.id || def?.id || '').trim().toLowerCase();
+  const existingSelections = countSessionSkillSelections(g.SessionSkillsByHeroUID[key], skillId);
+  if (String(def?.drawClass || candidate?.drawClass || '') === 'one_off' && existingSelections > 0) {
+    appendSkillDraughtTrace(g, 'select_rejected', {
+      heroUID: uid,
+      skillId,
+      reason: 'one_off_already_selected',
+    });
+    return { ok: false, reason: 'one_off_already_selected', skillId };
+  }
+  const sessionSkill = makeSessionSkillRecord(
+    candidate,
+    def,
+    key,
+    existingSelections + 1,
+    'skill_draught',
+    Number(g.time || 0),
+  );
   g.SessionSkillsByHeroUID[key].push(sessionSkill);
   g.SkillDraughtSelectedSkillId = sessionSkill.id;
   g.SkillDraughtOpen = 0;
@@ -1011,8 +1427,15 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
   g.AstralFlowAmpReady = 0;
   UpdateAstralFlowAmpBar(ctx);
   if (sessionSkill.id === 'party_magic_fruit') activateMagicFruitSkill(ctx);
+  if (sessionSkill.id === 'party_crimson_ward') activateCrimsonWardSkill(ctx);
+  if (sessionSkill.id === 'party_faze') activateFazeSkill(ctx, uid);
   const scope = String(sessionSkill.owner || '').toLowerCase() === 'party' ? 'party' : 'hero';
-  appendSkillDraughtTrace(g, 'select', { heroUID: uid, skillId: sessionSkill.id, scope });
+  appendSkillDraughtTrace(g, 'select', {
+    heroUID: uid,
+    skillId: sessionSkill.id,
+    scope,
+    skillDrawAllowed: isAllowedSkillDrawCallId(sessionSkill.id) ? 1 : 0,
+  });
   g.CombatActionPinnedLine = '';
   g.CombatActionPinnedUntil = 0;
   LogCombat(ctx, scope === 'party'
@@ -1025,10 +1448,15 @@ export function ClearSessionSkillDraught(ctx) {
   const g = ensureSkillDraughtState(ctx);
   g.SkillDraughtOpen = 0;
   g.SkillDraughtHeroUID = 0;
+  g.SkillDraughtPendingOpen = 0;
+  g.SkillDraughtPendingHeroUID = 0;
+  g.SkillDraughtPendingForcedSkillId = '';
   g.SkillDraughtCandidates = [];
   g.SkillDraughtHitZones = [];
   g.SkillDraughtSelectedSkillId = '';
   g.SessionSkillsByHeroUID = {};
+  g.SkillDraughtOneOffExposureBySkillId = {};
+  g.SkillDraughtLastForcedSkillSuppressedReason = '';
   appendSkillDraughtTrace(g, 'clear', {});
   return { ok: true };
 }
@@ -1867,8 +2295,9 @@ export function TryPartyDestiny(ctx, options = undefined) {
     return { ok: roll.ok, success: false, reason: roll.reason, sourceUID, targetUID: Number(opts.targetUID || 0), roll, appliedHeal: 0 };
   }
   g.PartyDestinyProcs = Math.max(0, Math.floor(Number(g.PartyDestinyProcs || 0))) + 1;
-  const maxHP = Math.max(0, Number(source.maxHP || source.MaxHP || 0));
-  const defaultHeal = Math.max(1, Math.ceil(maxHP * 0.10));
+  const sourceMaxHP = Math.max(0, Number(source.maxHP || source.MaxHP || 0));
+  const partyMaxHP = Math.max(0, Number(g.PartyMaxHP || 0));
+  const defaultHeal = Math.max(1, Math.ceil((partyMaxHP || sourceMaxHP) * 2.5 / 100));
   const requestedHeal = Math.max(1, Math.floor(Number(opts.healAmount || defaultHeal)));
   const heal = applyPartyDestinyActorHeal(ctx, sourceUID, requestedHeal);
   if (heal.appliedHeal > 0) g.PartyDestinyHeals = Math.max(0, Math.floor(Number(g.PartyDestinyHeals || 0))) + 1;
@@ -1889,15 +2318,22 @@ export function TriggerPartyDestinyDev(ctx, sourceUID = 0) {
     String((entry && (entry.id || entry.key || entry.definitionId)) || '').trim().toLowerCase() === 'party_destiny'
   );
   if (!hasDestiny) {
-    g.SessionSkillsByHeroUID[HERO_SKILL_SHARED_KEY].push({
-      id: 'party_destiny',
-      key: 'party_destiny',
-      title: 'Destiny',
-      description: 'Attacks can restore HP.',
-      owner: 'Party',
-      selectedAt: Number(g.time || 0),
-      source: 'dev_trigger',
-    });
+    const destinyDef = getSkillDefinitionById('party_destiny');
+    g.SessionSkillsByHeroUID[HERO_SKILL_SHARED_KEY].push(makeSessionSkillRecord(
+      {
+        id: 'party_destiny',
+        key: 'party_destiny',
+        title: 'Destiny',
+        description: 'Attacks can restore HP.',
+        owner: 'Party',
+      },
+      destinyDef,
+      HERO_SKILL_SHARED_KEY,
+      1,
+      'dev_trigger',
+      Number(g.time || 0),
+    ));
+    g.SkillDraughtOneOffExposureBySkillId.party_destiny = 1;
   }
   g.PartyDestinyAttempts = 0;
   g.PartyDestinyProcs = 0;
@@ -2152,7 +2588,7 @@ function logActionGateBlock(g, tag, payload = {}) {
   console.log(tag, payload);
 }
 
-const HERO_GEM_USAGE_KEYS = Object.freeze(['RED', 'GREEN', 'BLUE', 'HEAL', 'YELLOW']);
+const HERO_GEM_USAGE_KEYS = Object.freeze(['RED', 'BLUE', 'HEAL', 'YELLOW']);
 const HERO_GEM_MILESTONE_DEFAULTS = Object.freeze([1000, 5000, 10000]);
 
 function cloneGemUsageRow(input = null) {
@@ -2295,14 +2731,14 @@ function ensureHeroGemUsageState(ctx) {
       version: 1,
       byHeroId: {},
       byHero: {},
-      party: { RED: 0, GREEN: 0, BLUE: 0, HEAL: 0, YELLOW: 0 },
+      party: createGemUsageRow(),
     };
   }
   if (!Number.isFinite(g.HeroGemUsage.version)) g.HeroGemUsage.version = 1;
   if (!g.HeroGemUsage.byHeroId || typeof g.HeroGemUsage.byHeroId !== 'object') g.HeroGemUsage.byHeroId = {};
   if (!g.HeroGemUsage.byHero || typeof g.HeroGemUsage.byHero !== 'object') g.HeroGemUsage.byHero = {};
   if (!g.HeroGemUsage.party || typeof g.HeroGemUsage.party !== 'object') {
-    g.HeroGemUsage.party = { RED: 0, GREEN: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
+    g.HeroGemUsage.party = createGemUsageRow();
   }
   migrateLegacyHeroGemUsageByName(ctx, g.HeroGemUsage);
   syncHeroGemUsageLegacyView(ctx, g.HeroGemUsage);
@@ -2310,11 +2746,10 @@ function ensureHeroGemUsageState(ctx) {
 }
 
 function createGemUsageRow() {
-  return { RED: 0, GREEN: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
+  return { RED: 0, BLUE: 0, HEAL: 0, YELLOW: 0 };
 }
 
 function resolveGemUsageColorKey(gemColor) {
-  if (gemColor === 0) return 'GREEN';
   if (gemColor === 1) return 'RED';
   if (gemColor === 2) return 'BLUE';
   if (gemColor === 3) return 'YELLOW';
@@ -4568,18 +5003,18 @@ function applyPartyTempHPShieldAbsorptionResult(g, result = {}) {
   return { damageAfterShield, absorbed, shieldAfter };
 }
 
-const FALIE_WARD_BARRIER_FADE_OUT_SEC = 0.28;
-const FALIE_WARD_BARRIER_HIT_PULSE_SEC = 0.18;
-const FALIE_WARD_BARRIER_OFFSET_WORLD_X = 22;
-const FALIE_WARD_SUSTAIN_RATIO = 0.18;
-const FALIE_RED_SUPER_GEM_SHIELD_COLOR = '#6CCBEE';
-const FALIE_WARD_BARRIER_ASSET_PATH = 'images/falie_ward_84x62.png';
-const FALIE_WARD_BARRIER_FADE_IN_SEC = 0.12;
-const FALIE_WARD_BARRIER_BASE_ALPHA = 0.82;
-const FALIE_WARD_BARRIER_WIDTH = 84;
-const FALIE_WARD_BARRIER_HEIGHT = 62;
+const CRIMSON_WARD_BARRIER_FADE_OUT_SEC = 0.28;
+const CRIMSON_WARD_BARRIER_HIT_PULSE_SEC = 0.18;
+const CRIMSON_WARD_BARRIER_OFFSET_WORLD_X = 22;
+const CRIMSON_WARD_RATIO = 0.18;
+const CRIMSON_WARD_SHIELD_COLOR = '#6CCBEE';
+const CRIMSON_WARD_BARRIER_ASSET_PATH = 'images/falie_ward_84x62.png';
+const CRIMSON_WARD_BARRIER_FADE_IN_SEC = 0.12;
+const CRIMSON_WARD_BARRIER_BASE_ALPHA = 0.82;
+const CRIMSON_WARD_BARRIER_WIDTH = 84;
+const CRIMSON_WARD_BARRIER_HEIGHT = 62;
 
-function refreshFalieWardBarrierVisuals(ctx) {
+function refreshCrimsonWardBarrierVisuals(ctx) {
   const g = getGlobals(ctx);
   const now = Number(g.time || 0);
   const heroes = getHeroes(ctx);
@@ -4595,12 +5030,12 @@ function refreshFalieWardBarrierVisuals(ctx) {
     const existing = visuals[uid] && typeof visuals[uid] === 'object' ? visuals[uid] : {};
     visuals[uid] = {
       uid,
-      source: 'falie_red_sustain',
+      source: 'party_crimson_ward',
       state: 'fadeIn',
       fadeInStartedAt: now,
-      fadeInDuration: FALIE_WARD_BARRIER_FADE_IN_SEC,
-      fadeOutDuration: FALIE_WARD_BARRIER_FADE_OUT_SEC,
-      baseAlpha: FALIE_WARD_BARRIER_BASE_ALPHA,
+      fadeInDuration: CRIMSON_WARD_BARRIER_FADE_IN_SEC,
+      fadeOutDuration: CRIMSON_WARD_BARRIER_FADE_OUT_SEC,
+      baseAlpha: CRIMSON_WARD_BARRIER_BASE_ALPHA,
       hitUntil: Number(existing.hitUntil || 0),
       refreshCount: Math.max(1, Number(existing.refreshCount || 0) + 1),
     };
@@ -4610,41 +5045,36 @@ function refreshFalieWardBarrierVisuals(ctx) {
   }
   g.PartyWardBarrierVisualsByUID = visuals;
   g.PartyWardBarrierActive = 1;
-  g.PartyWardBarrierAssetPath = FALIE_WARD_BARRIER_ASSET_PATH;
-  g.PartyWardBarrierOffsetWorldX = FALIE_WARD_BARRIER_OFFSET_WORLD_X;
-  g.PartyWardBarrierWidth = FALIE_WARD_BARRIER_WIDTH;
-  g.PartyWardBarrierHeight = FALIE_WARD_BARRIER_HEIGHT;
-  g.PartyWardBarrierBaseAlpha = FALIE_WARD_BARRIER_BASE_ALPHA;
+  g.PartyWardBarrierAssetPath = CRIMSON_WARD_BARRIER_ASSET_PATH;
+  g.PartyWardBarrierOffsetWorldX = CRIMSON_WARD_BARRIER_OFFSET_WORLD_X;
+  g.PartyWardBarrierWidth = CRIMSON_WARD_BARRIER_WIDTH;
+  g.PartyWardBarrierHeight = CRIMSON_WARD_BARRIER_HEIGHT;
+  g.PartyWardBarrierBaseAlpha = CRIMSON_WARD_BARRIER_BASE_ALPHA;
   g.PartyWardBarrierFadeOutUntil = 0;
   return true;
 }
 
-function sustainActiveFalieWardFromRedAttack(ctx, actorUID) {
-  const actor = GetActorByUID(ctx, actorUID);
-  if (String(actor && actor.name || '') !== 'Falie') return false;
+function activateCrimsonWardSkill(ctx) {
   const g = getGlobals(ctx);
   const before = Math.max(0, Number(g.PartyTempHPShield || 0));
-  if (before <= 0) return false;
   const maxHP = Math.max(1, Number(g.PartyMaxHP || 1));
-  const sustainHP = Math.max(1, Math.round(maxHP * FALIE_WARD_SUSTAIN_RATIO));
-  const after = Math.min(maxHP, before + sustainHP);
-  const unitHP = Math.max(1, Math.round(maxHP * FALIE_WARD_SUSTAIN_RATIO));
+  const wardHP = Math.max(1, Math.round(maxHP * CRIMSON_WARD_RATIO));
+  const after = Math.min(maxHP, before + wardHP);
   const ratio = Math.max(0, Math.min(1, after / maxHP));
   g.PartyTempHPShield = after;
-  g.PartyTempHPShieldStacks = Math.max(1, Math.ceil(after / unitHP));
+  g.PartyTempHPShieldStacks = Math.max(1, Math.ceil(after / wardHP));
   g.PartyTempHPShieldRatio = ratio;
   g.PartyTempHPShieldMax = maxHP;
-  g.PartyTempHPShieldColor = FALIE_RED_SUPER_GEM_SHIELD_COLOR;
-  g.PartyTempHPShieldSource = 'falie_red_sustain';
-  g.LastFalieWardSustain = {
-    source: 'falie_red_sustain',
+  g.PartyTempHPShieldColor = CRIMSON_WARD_SHIELD_COLOR;
+  g.PartyTempHPShieldSource = 'party_crimson_ward';
+  g.LastCrimsonWard = {
+    source: 'party_crimson_ward',
     before,
     after,
     added: Math.max(0, after - before),
-    multiplier: 1,
     ratio,
   };
-  refreshFalieWardBarrierVisuals(ctx);
+  refreshCrimsonWardBarrierVisuals(ctx);
   return true;
 }
 
@@ -4658,14 +5088,14 @@ function markPartyWardBarrierHit(ctx, hero, absorbed) {
     : {};
   const visual = visuals[uid] && typeof visuals[uid] === 'object' ? visuals[uid] : {
     uid,
-    source: 'falie_red_super_gem',
+    source: 'party_crimson_ward',
     state: 'active',
     fadeInStartedAt: now,
     fadeInDuration: 0.001,
-    fadeOutDuration: FALIE_WARD_BARRIER_FADE_OUT_SEC,
+    fadeOutDuration: CRIMSON_WARD_BARRIER_FADE_OUT_SEC,
     baseAlpha: Number(g.PartyWardBarrierBaseAlpha || 0.82),
   };
-  visual.hitUntil = now + FALIE_WARD_BARRIER_HIT_PULSE_SEC;
+  visual.hitUntil = now + CRIMSON_WARD_BARRIER_HIT_PULSE_SEC;
   visual.lastAbsorbed = Math.max(0, Number(absorbed || 0));
   visuals[uid] = visual;
   g.PartyWardBarrierVisualsByUID = visuals;
@@ -4686,12 +5116,12 @@ function getPartyWardBarrierDamageTextPos(g, hero, fallbackX, fallbackY) {
   const heroPos = Array.isArray(g.HeroIconPosByIndex) ? g.HeroIconPosByIndex[idx] : null;
   if (heroPos && Number.isFinite(Number(heroPos.x)) && Number.isFinite(Number(heroPos.y))) {
     return {
-      x: Number(heroPos.x) + Number(g.PartyWardBarrierOffsetWorldX || FALIE_WARD_BARRIER_OFFSET_WORLD_X),
+      x: Number(heroPos.x) + Number(g.PartyWardBarrierOffsetWorldX || CRIMSON_WARD_BARRIER_OFFSET_WORLD_X),
       y: Number(heroPos.y),
     };
   }
   return {
-    x: Number(fallbackX || 0) + Number(g.PartyWardBarrierOffsetWorldX || FALIE_WARD_BARRIER_OFFSET_WORLD_X),
+    x: Number(fallbackX || 0) + Number(g.PartyWardBarrierOffsetWorldX || CRIMSON_WARD_BARRIER_OFFSET_WORLD_X),
     y: Number(fallbackY || 0),
   };
 }
@@ -4703,7 +5133,7 @@ function startPartyWardBarrierFadeOut(ctx) {
     : null;
   if (!visuals) return 0;
   const now = Number(g.time || 0);
-  const until = now + FALIE_WARD_BARRIER_FADE_OUT_SEC;
+  const until = now + CRIMSON_WARD_BARRIER_FADE_OUT_SEC;
   let touched = false;
   for (const key of Object.keys(visuals)) {
     const visual = visuals[key];
@@ -4715,7 +5145,7 @@ function startPartyWardBarrierFadeOut(ctx) {
       visual.state = 'fadeOut';
       visual.fadeOutStartedAt = now;
     }
-    visual.fadeOutDuration = FALIE_WARD_BARRIER_FADE_OUT_SEC;
+    visual.fadeOutDuration = CRIMSON_WARD_BARRIER_FADE_OUT_SEC;
     visual.fadeOutUntil = until;
     touched = true;
   }
@@ -5725,8 +6155,7 @@ export function HeroAttackAOE(ctx, heroUID) {
   const actorName = actor ? (actor.name || '?') : '?';
   const mode = actor && actor.attackType === 'magic' ? 'magic' : 'melee';
   const heroIndex = actor && actor.heroIndex != null ? actor.heroIndex : 0;
-  const isKojonn = String(actor && actor.name || '') === 'Kojonn';
-  const aoeName = isKojonn ? 'Faze' : (['Pummel', 'Swipe', 'Burst', 'Faze'][heroIndex] || 'AOE');
+  const aoeName = ['Pummel', 'Swipe', 'Burst', 'AOE'][heroIndex] || 'AOE';
   let totalDamage = 0;
   const g = getGlobals(ctx);
   let ampMult = GetPowerAmpMultiplierForActor(ctx, heroUID);
@@ -5736,18 +6165,7 @@ export function HeroAttackAOE(ctx, heroUID) {
   }
   const enemies = getEnemies(ctx);
   const hits = [];
-  const baseKojonnDotDamage = isKojonn
-    ? Math.max(1, Math.floor(GetEffectiveStat(ctx, actor, 'MAG') * 0.75))
-    : 0;
-  const kojonnDotDamage = isKojonn
-    ? (ampMult > 0 ? Math.max(1, Math.ceil(baseKojonnDotDamage * ampMult)) : baseKojonnDotDamage)
-    : 0;
   for (const e of enemies) {
-    if (isKojonn) {
-      hits.push({ targetUID: e.uid, dotTotalDamage: kojonnDotDamage, consumePowerAmp: 0 });
-      totalDamage += kojonnDotDamage;
-      continue;
-    }
     const dmg = CalculateDamage(ctx, heroUID, e.uid, mode);
     const finalDmg = ampMult > 0 ? Math.max(1, Math.ceil(dmg * ampMult)) : dmg;
     hits.push({ targetUID: e.uid, dmg, powerAmpMultiplier: ampMult, consumePowerAmp: 0, finalDmg });
@@ -5765,25 +6183,16 @@ export function HeroAttackAOE(ctx, heroUID) {
       targetUID: hit.targetUID,
       dmg: hit.dmg,
       finalDmg: Number(hit.finalDmg || 0),
-      dotTotalDamage: Number(hit.dotTotalDamage || 0),
       powerAmpMultiplier: hit.powerAmpMultiplier,
       consumePowerAmp: hit.consumePowerAmp,
-      effectType: isKojonn ? 'dot_apply' : 'damage',
-      calcPath: isKojonn ? 'fazeDot' : (mode === 'magic' ? 'magicCalc' : 'meleeCalc'),
+      effectType: 'damage',
+      calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
       heroName: actorName,
       heroType: mode,
     };
-    if (isKojonn) {
-      packet.effectName = 'Blight';
-      packet.actionName = 'Faze';
-    }
     g.PendingHeroHits.push(packet);
   }
-  if (isKojonn) {
-    LogCombat(ctx, `${actorName} used ${aoeName} to spread blight over time for ${totalDamage}!`);
-  } else {
-    LogCombat(ctx, `${actorName} used ${aoeName} on all enemies for ${totalDamage}!`);
-  }
+  LogCombat(ctx, `${actorName} used ${aoeName} on all enemies for ${totalDamage}!`);
 }
 
 function getTaintedGroundSlotIndex(enemy) {
@@ -6683,7 +7092,6 @@ export function RefreshPartyBuffUI(ctx) {
   ];
 }
 
-const GEM_ACTION_GREEN_ATTACK = 0;
 const GEM_ACTION_RED_ATTACK = 1;
 const GEM_ACTION_BLUE_ASTRAL = 2;
 const GEM_ACTION_YELLOW_CASINO = 3;
@@ -6699,11 +7107,10 @@ function gemActionNumberOr(value, fallback = 0) {
 
 function gemActionRouteCodeFallback(gemColor) {
   const color = Math.floor(gemActionNumberOr(gemColor, -1));
-  return color >= 0 && color <= 5 ? color : -1;
+  return color >= 1 && color <= 5 ? color : -1;
 }
 
 function gemActionIntentMetaFallback(routeCode) {
-  if (routeCode === GEM_ACTION_GREEN_ATTACK) return { frame: 0, colorName: 'GREEN', intentKey: 'HERO_AOE', extra: '' };
   if (routeCode === GEM_ACTION_RED_ATTACK) return { frame: 1, colorName: 'RED', intentKey: 'HERO_SINGLE', extra: '' };
   if (routeCode === GEM_ACTION_BLUE_ASTRAL) return { frame: 2, colorName: 'BLUE', intentKey: 'Astral_Flow', extra: '' };
   if (routeCode === GEM_ACTION_YELLOW_CASINO) return { frame: 3, colorName: 'YELLOW', intentKey: 'Casino_Recolor', extra: '' };
@@ -6726,12 +7133,12 @@ function buildGemActionFallbackDecision(payload = {}, owner = 'fallback') {
   const currentLock = gemActionNumberOr(payload.actionLockUntil, 0);
   let actionLockUntil = currentLock;
   if (routeCode === GEM_ACTION_BLUE_ASTRAL) {
-    actionLockUntil = Math.max(currentLock, now + 0.32, blueOpenDraught ? now + 4 : currentLock);
+    actionLockUntil = Math.max(currentLock, now + 0.32);
   } else if (routeCode === GEM_ACTION_PURPLE_ENERGY) {
     actionLockUntil = Math.max(currentLock, now + 0.32, gemActionNumberOr(payload.textAnimEndAt, 0));
   }
   const intent = gemActionIntentMetaFallback(routeCode);
-  const pendingSkillCode = routeCode === GEM_ACTION_GREEN_ATTACK ? 1 : (routeCode === GEM_ACTION_RED_ATTACK ? 2 : 0);
+  const pendingSkillCode = routeCode === GEM_ACTION_RED_ATTACK ? 2 : 0;
   const purpleRoll = Number.isFinite(Number(payload.purpleRoll01)) ? Number(payload.purpleRoll01) : 0.5;
   const purpleEnergyOptions = [6, 12, 15];
   const purpleEnergyAmount = purpleEnergyOptions[Math.floor(Math.max(0, Math.min(0.999999, purpleRoll)) * purpleEnergyOptions.length)] || 6;
@@ -6742,9 +7149,9 @@ function buildGemActionFallbackDecision(payload = {}, owner = 'fallback') {
     hideHeroSelector: 1,
     pendingSkillCode,
     pendingSkillId: pendingSkillCode === 1 ? 'HERO_AOE' : (pendingSkillCode === 2 ? 'HERO_SINGLE' : ''),
-    setIsAoe: routeCode === GEM_ACTION_GREEN_ATTACK || routeCode === GEM_ACTION_RED_ATTACK || routeCode === GEM_ACTION_BLUE_ASTRAL ? 1 : 0,
-    isAoe: routeCode === GEM_ACTION_GREEN_ATTACK ? 1 : 0,
-    showAttackUi: routeCode === GEM_ACTION_GREEN_ATTACK || routeCode === GEM_ACTION_RED_ATTACK ? 1 : 0,
+    setIsAoe: routeCode === GEM_ACTION_RED_ATTACK || routeCode === GEM_ACTION_BLUE_ASTRAL ? 1 : 0,
+    isAoe: 0,
+    showAttackUi: routeCode === GEM_ACTION_RED_ATTACK ? 1 : 0,
     callCode: routeCode === GEM_ACTION_HEAL ? GEM_ACTION_CALL_DO_HEAL : (routeCode === GEM_ACTION_PURPLE_ENERGY ? GEM_ACTION_CALL_PURPLE_MATCH_ENERGY : 0),
     consumesTurn: routeCode === GEM_ACTION_BLUE_ASTRAL || routeCode === GEM_ACTION_PURPLE_ENERGY ? 1 : 0,
     intentFrame: intent.frame,
@@ -7199,7 +7606,7 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
     g.AstralFlowAmpPoints = Number(decision.blueAmpPointsAfter || 0);
     g.AstralFlowAmpReady = Number(decision.blueAmpReadyAfter || 0) ? 1 : 0;
     if (Number(decision.blueOpenDraught || 0) === 1) {
-      OpenSkillDraughtForHero(ctx, actorUID);
+      QueueSkillDraughtForHero(ctx, actorUID);
       LogCombat(ctx, `${getActorNameByUID(ctx, actorUID)} gained Astral Flow!`);
     }
     UpdateAstralFlowAmpBar(ctx);
@@ -7410,9 +7817,7 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
   }
   console.log(`[SKILL] start skill=${skillId} actor=${actorName} uid=${actorUID} phase=${g.TurnPhase} busy=${g.IsPlayerBusy} canPick=${g.CanPickGems}`);
   if (actor && actor.kind === 'hero' && (skillId === 'HERO_SINGLE' || skillId === 'HERO_AOE')) {
-    g.NextHeroActionProfile = skillId === 'HERO_AOE'
-      ? (String(actor.name || '') === 'Kojonn' ? 'faze' : 'aoe')
-      : 'single';
+    g.NextHeroActionProfile = skillId === 'HERO_AOE' ? 'aoe' : 'single';
     const lungeStarted = StartHeroLunge(ctx, actorUID);
     if (lungeStarted === 0 || lungeStarted === false) {
       logActionGateBlock(g, '[ACTION_HANDOFF_REFUSED]', {
@@ -7487,7 +7892,6 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     if (target) {
       resolvedTargetUID = Number(target.uid || 0);
       HeroAttackSingle(ctx, actorUID, target.uid);
-      sustainActiveFalieWardFromRedAttack(ctx, actorUID);
     }
     const now = g.time || 0;
     g.ActionLockUntil = Math.max(g.ActionLockUntil || 0, now + 0.5);
@@ -7638,6 +8042,7 @@ function recordEnemyTurnFlowOwner(g, decision, source) {
 
 export function EnemyTurn(ctx, enemyUID) {
   const g = getGlobals(ctx);
+  if (Number(g.SkillDraughtOpen || 0)) return;
   const activeEnemyUID = Number(enemyUID || GetCurrentTurn(ctx) || 0);
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
   const ownerHook = root && typeof root.__ORKA_ENEMY_TURN_FLOW_OWNER__ === 'function'
@@ -7806,6 +8211,7 @@ export function ProcessTurn(ctx) {
   const uid = GetCurrentTurn(ctx);
   const actor = GetActorByUID(ctx, uid);
   const g = getGlobals(ctx);
+  if (Number(g.SkillDraughtOpen || 0)) return;
   if (g.BoardFillActive) return;
   resolvePendingEnemyDeaths(ctx);
   if (holdForEnemyRosterRefill(ctx)) return;

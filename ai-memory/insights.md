@@ -25,6 +25,8 @@
 - If these imply outdated model assumptions, pause and rewrite bead scope before coding.
 - When render extraction moves visual helpers behind a dependency scope, verify app-to-renderer predicates are live state readers rather than false stubs; status overlays keyed by effect names should accept stable prefixes such as `Blight*`.
 - When removing a hero-specific heal expression, route that hero through the shared heal body; do not replace the special branch with a guard that still consumes action pacing but skips `ApplyPartyHeal`.
+- For normal gem matches, refill must start at the gem-destruction seam before deferred action/turn handoff can leave visible board holes. Batch-create all queued refill gems before waiting on settle animation.
+- Regular gem colors should share the refill-bounce owner for empty slots. If a color has extra presentation work, keep that work separate from board refill and keep `CanPickGems` closed while `DeferAdvance` or action locks are still pending.
 
 ## 2026-03-07 Regression Note
 - Hero selector render gate must treat hero-turn as `TurnPhase === 0` (not `1`) in web-runner runtime.
@@ -90,6 +92,7 @@
 - **AOE heal readability rule**: if players must quickly perceive threat under fast pacing, prefer equal per-target heal application over split pools unless split behavior is explicitly part of design.
 - **Outcome-table tuning workflow**: for event-style randomness (purple amp), keep probabilities in one visible table and tune only weights first; avoid adding pity/extra systems until weight tuning is proven insufficient.
 - **Mirror discipline rule**: deterministic combat rules must be edited in both runtime mirrors (`web-runner/modules/functionBank.js` and `Scripts/functionBank.js`) in the same patch cycle.
+- **Random draw reachability rule**: gameplay card draws must sample from the full eligible pool, not the first entries in registry order. If QA or acceptance requires a later skill such as Crimson Ward to be playable, add a deterministic RNG contract proving that normal draw can reach it without forced hooks.
 
 ## 2026-03-09 — Encounter Slotting Seam
 - **Initial vs refill seam**: center-slot strongest logic belongs at package-to-slot assignment seams, not inside per-slot respawn picker logic.
@@ -217,6 +220,10 @@
 - If a skill is presented as a “free second attack,” do not implement it with extra-turn scheduler semantics. The owner seam must duplicate the attack immediately, preserve the original gem spend, and retarget only if the original target is gone before the follow-up lands.
 - If a presentation-heavy attack pattern makes another mechanic unreadable, move that pattern behind an explicit skill harness instead of leaving it in the default action seam.
 - If a free follow-up attack is meant to read as a real second attack, do not pre-time the second damage packet during the first action. Gate the second strike from the first strike's visible completion signal, then start a fresh lunge and schedule the second hit from that new anchor.
+
+## 2026-06-07 — Pending Supergem Target Rejections Need Full Handoff Recovery
+- When a pending supergem target action rejects, clear the pending supergem action, pending skill/actor, selected target, and busy/defer ownership together. Falling back into normal `ExecuteSkill` from that rejected state can strand combat between target selection and refill.
+- Dev one-color boards are harness state, not normal autoplay intent. When the board is forced to one color, autoplay may spend that forced color so scheduler recovery can be tested without waiting for a natural board.
 - Per-actor proc latches for repeatable skill harnesses must reset at per-turn granularity, not only on encounter-wide scheduler resets. Otherwise a `100%` harness can appear correct once and then silently stop firing for the rest of combat.
 
 ## 2026-05-07 — Blue Gem Accounting Must Carry Count And Hero Ownership Together
@@ -380,3 +387,42 @@
 ## 2026-05-26 — Pending Target Resolution Is Not A New Action Claim
 - A red/green target picker created by the current gem match must resolve before refill, even when the match already left empty board slots. `refill-pending` blocks new action claims, turn advance, input restore, and refill completion; it must not block the already-pending target button that will finish the current action.
 - For target-selection regressions, validate both normal match and pending supergem action shapes. `PendingSkillID` plus `TurnPhase === 1` or `PendingSuperGemAction` should be allowed through only when no real presentation lane is active and `DeferAdvance` is clear.
+
+## 2026-05-31 — Supergem And Skill-Card Effects Must Stay In Separate Seams
+- Supergem activations and skill-card selections are separate trigger seams. If a supergem path directly grants a skill-owned effect, regressions will silently re-couple unrelated systems.
+- For supergem/skill crossovers, contract both negative and positive paths: assert the supergem does **not** open/select skills or grant the skill effect, and assert the same effect still appears through skill-card selection.
+
+## 2026-05-31 — Hero Match Routes Must Not Own Skill-Card Identity
+- If a named ability is moved into skill-card draw, remove that identity from gem-match logs, profiles, and direct payload branches. A generic match that still says the old ability name will be indistinguishable from a live skill trigger in QA.
+- For ability separation bugs, test both sides of the boundary: the old match route must stay generic, and the new card route must own the renamed payload and presentation state.
+
+## 2026-06-04 — Party Draw Cleanup Must Audit Every Unimplemented Party Stub
+- When removing party skill stubs from skill-card draw, audit the full `PARTY_SKILL_DEFINITIONS` list for `payloadImplemented: false`, not only the originally reported slot numbers.
+- Keep canonical definitions intact for planning/reference, but contract both normal random draws and forced QA draws so unimplemented party cards cannot leak into the playable draw modal.
+
+## 2026-06-06 — Debug Counters Must Live At The Measured Event Seam
+- If a QA counter is meant to track card appearances, increment it when the draw candidate list is created, not when the player selects or applies a card. A downstream application seam will undercount visible choices and make unsupported card appearances look lower than what QA can see.
+- For pause-to-inspect debug surfaces, opening the panel must freeze gameplay through the same turn-gate pause owner as the primary dev panel, or the act of reading the panel can pollute the state being measured.
+
+## 2026-06-07 — Layout Navigation Must Not Borrow Combat Input Gates
+- Top-level layout navigation such as Map and Vault must stay reachable when gem-pick gates, selected gems, or selection locks are active. Those gates own combat board actions, not escape or inspection routes.
+- For nav click regressions, validate both the exact text hit zones and the fallback nav band under a polluted combat state so selected-gem state and scaled canvas coordinates do not hide the real gate.
+
+## 2026-06-07 — Dev Board Overrides Must Reset Board-Owned State
+- A Dev Panel board-color override is a QA board reset, not only a visual recolor. It must clear selected gems, supergem overlays/cell maps, pending supergem actions, merge effects, and board-fill flags before handing control back to autoplay.
+- If autoplay freezes after a forced board color, inspect whether the visible board and board-owned runtime state diverged. A visually recolored board can still be logically old if supergem or selection state survived the override.
+
+## 2026-06-02 — Skill Draw Modals Need A Checkpoint Gate
+- Skill draw eligibility may be discovered during a hero action, but the modal should spawn only at a hero-turn checkpoint after merge, refill, action locks, pending hits, and target selection are clear.
+- Treat an open skill draw as a presentation barrier lane. It should block refill, enemy action claims, deferred turn advance, and input restore until selection closes the modal.
+- Treat a pending skill draw as a handoff barrier, not a presentation lane. It must block refill and turn advance while still allowing the checkpoint claim once presentation lanes are clear.
+
+## 2026-06-02 — Modal Handoffs Must Not Borrow Read-Time Locks
+- Combat message read time and action-lock time are separate contracts. If a modal claim gate waits on `ActionLockUntil`, do not extend that lock only to keep a combat line readable; pin the text through its own presentation state.
+- For meter-threshold modal bugs, check the queued flag, the action lock, and the checkpoint claim gate together. A full meter with `SkillDraughtPendingOpen=1` can still look broken if the claim is hidden behind a decorative read-time lock.
+- Hero turn type is `0`; never default `GetCurrentType()` with `||` in hero-only gates. Use nullish fallback so a valid hero turn does not become `-1` and strand pending Astral Flow modals.
+- Skill-card draw trigger ownership is blue-only: regular blue opens draw only through full Astral Flow, and blue supergem opens draw directly. Green/red/yellow/purple paths must not call `QueueSkillDraughtForHero`, even when they relate to implemented skills such as Faze.
+
+## 2026-06-08 — Frame-Zero Board Color Retirement Must Not Touch Heal
+- Retiring frame `0` green is not a reason to remove frame `4` heal. Keep heal in forced board options, spawn palettes, visual preload lists, and supergem detection unless a separate heal-removal bead explicitly says otherwise.
+- Supergem spends may defer turn/action presentation, but the board refill lane must be claimed in the same call that clears gem cells. A deferred action handoff must not leave frame-zero empty board slots without refill ownership.

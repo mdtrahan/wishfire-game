@@ -7,6 +7,12 @@ const vm = require('node:vm');
 const repoRoot = path.join(__dirname, '..');
 const runtimePath = path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js');
 const scriptsPath = path.join(repoRoot, 'Scripts', 'functionBank.js');
+const legalPartyDrawIds = [
+  'party_crimson_ward',
+  'party_magic_fruit',
+  'party_destiny',
+  'party_faze',
+];
 
 function loadModule(modulePath) {
   const original = fs.readFileSync(modulePath, 'utf8');
@@ -82,6 +88,18 @@ function makeContext() {
   return { ctx, calls };
 }
 
+function installSequenceRandom(ctx, values) {
+  let index = 0;
+  const draws = [];
+  ctx.state.globals.RuntimeRandom = () => {
+    const value = Number(values[Math.min(index, values.length - 1)] ?? 0);
+    index += 1;
+    draws.push(value);
+    return value;
+  };
+  return draws;
+}
+
 test('Magic Fruit is a mirrored party draw option that heals once through ApplyPartyHeal', () => {
   const expectedExistingPartyIds = [
     'party_fresh_start',
@@ -110,6 +128,7 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
     assert.equal(partyIds[expectedExistingPartyIds.length], 'party_magic_fruit');
 
     const { ctx: defaultCtx } = makeContext();
+    installSequenceRandom(defaultCtx, [0.4, 0, 0]);
     const defaultOpened = mod.ForceAstralFlowSkillDraught(defaultCtx, 100);
     assert.equal(defaultOpened.ok, true);
     const defaultMagicFruit = defaultOpened.candidates.find(candidate => candidate.id === 'party_magic_fruit');
@@ -129,6 +148,9 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
     const selected = mod.SelectSkillDraughtCard(ctx, 0);
     assert.equal(selected.ok, true);
     assert.equal(selected.skill.id, 'party_magic_fruit');
+    assert.equal(selected.skill.drawClass, 'repeatable');
+    assert.equal(selected.skill.duplicatePolicy, 'allow_repeat');
+    assert.equal(selected.skill.selectionCount, 1);
     assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__[0].id, 'party_magic_fruit');
     assert.equal(ctx.state.globals.PartyHP, 51);
     assert.equal(ctx.state.entities[0].hp, 51);
@@ -147,5 +169,85 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
     assert.equal(selectedAgain.reason, 'draught_closed');
     assert.equal(calls.filter(call => call.name === 'ApplyPartyHeal').length, 1);
     assert.equal(ctx.state.globals.PartyHP, 51);
+
+    const openedRepeat = mod.ForceAstralFlowSkillDraught(ctx, 100, 'party_magic_fruit');
+    assert.equal(openedRepeat.ok, true);
+    assert.equal(openedRepeat.candidates[0].id, 'party_magic_fruit');
+    const selectedRepeat = mod.SelectSkillDraughtCard(ctx, 0);
+    assert.equal(selectedRepeat.ok, true);
+    assert.equal(selectedRepeat.skill.id, 'party_magic_fruit');
+    assert.equal(selectedRepeat.skill.drawClass, 'repeatable');
+    assert.equal(selectedRepeat.skill.selectionCount, 2);
+    assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__.length, 2);
+    assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__[1].rank, 0);
+    assert.equal(calls.filter(call => call.name === 'ApplyPartyHeal').length, 2);
+  }
+});
+
+test('normal party skill draught samples the full party pool through RuntimeRandom', () => {
+  for (const modulePath of [runtimePath, scriptsPath]) {
+    const mod = loadModule(modulePath);
+    const { ctx } = makeContext();
+    const draws = installSequenceRandom(ctx, [0.7, 0, 0]);
+
+    const opened = mod.ForceAstralFlowSkillDraught(ctx, 100);
+
+    assert.equal(opened.ok, true);
+    assert.ok(draws.length >= 1, 'normal skill draw should consume RuntimeRandom');
+    assert.equal(opened.candidates.length, 3);
+    assert.equal(new Set(opened.candidates.map(candidate => candidate.id)).size, 3);
+    assert.equal(opened.candidates[0].id, 'party_crimson_ward');
+    assert.ok(
+      opened.candidates.some(candidate => candidate.id === 'party_crimson_ward'),
+      'Crimson Ward should be reachable from the normal random draw'
+    );
+  }
+});
+
+test('normal party skill draught uses only the active party draw allowlist', () => {
+  for (const modulePath of [runtimePath, scriptsPath]) {
+    const mod = loadModule(modulePath);
+    const legalIdSet = new Set(legalPartyDrawIds);
+    const nonLegalPartyIds = mod.GetPartySkillDefinitions()
+      .map(def => def.id)
+      .filter(id => !legalIdSet.has(id));
+
+    assert.ok(nonLegalPartyIds.includes('party_blue_spark'));
+    assert.ok(nonLegalPartyIds.includes('party_hot_streak'));
+
+    const observedLegalIds = new Set();
+    for (const randomValues of [[0, 0, 0], [0.34, 0, 0], [0.67, 0, 0], [0.99, 0, 0]]) {
+      const { ctx } = makeContext();
+      installSequenceRandom(ctx, randomValues);
+
+      const opened = mod.ForceAstralFlowSkillDraught(ctx, 100);
+
+      assert.equal(opened.ok, true);
+      assert.equal(opened.candidates.length, 3);
+      for (const candidate of opened.candidates) {
+        assert.ok(legalIdSet.has(candidate.id), `${candidate.id} must be in the active party draw allowlist`);
+        observedLegalIds.add(candidate.id);
+      }
+    }
+
+    assert.deepEqual(
+      Array.from(observedLegalIds).sort(),
+      legalPartyDrawIds.slice().sort(),
+      'deterministic random samples should prove every active party draw id is reachable',
+    );
+
+    for (const id of nonLegalPartyIds) {
+      const { ctx: forcedCtx } = makeContext();
+      installSequenceRandom(forcedCtx, [0, 0, 0]);
+
+      const forcedOpened = mod.ForceAstralFlowSkillDraught(forcedCtx, 100, id);
+
+      assert.equal(forcedOpened.ok, true);
+      assert.equal(forcedOpened.candidates.length, 3);
+      assert.equal(forcedOpened.candidates.some(candidate => candidate.id === id), false);
+      for (const candidate of forcedOpened.candidates) {
+        assert.ok(legalIdSet.has(candidate.id), `${candidate.id} must be in the active party draw allowlist`);
+      }
+    }
   }
 });

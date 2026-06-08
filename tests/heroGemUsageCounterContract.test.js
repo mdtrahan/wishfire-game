@@ -12,10 +12,12 @@ for (const filePath of MIRRORS) {
   test(`hero gem usage counter helper present in ${path.relative(process.cwd(), filePath)}`, () => {
     const src = fs.readFileSync(filePath, 'utf8');
     assert.match(src, /const HERO_GEM_MILESTONE_DEFAULTS = Object\.freeze\(\[1000, 5000, 10000\]\);/);
+    assert.match(src, /const HERO_GEM_USAGE_KEYS = Object\.freeze\(\['RED', 'BLUE', 'HEAL', 'YELLOW'\]\);/);
     assert.match(src, /function ensureHeroGemUsageState\(ctx\)/);
     assert.match(src, /byHeroId:\s*\{\}/);
-    assert.match(src, /party:\s*\{\s*RED:\s*0,\s*GREEN:\s*0,\s*BLUE:\s*0,\s*HEAL:\s*0,\s*YELLOW:\s*0\s*\}/);
+    assert.match(src, /party:\s*createGemUsageRow\(\)/);
     assert.match(src, /function resolveGemUsageColorKey\(gemColor\)/);
+    assert.doesNotMatch(src, /if \(gemColor === 0\) return 'GREEN';/);
     assert.match(src, /function ensureHeroGemMilestonesState\(ctx\)/);
     assert.match(src, /function evaluateHeroGemMilestones\(ctx, heroId = '', emitTrace = false\)/);
     assert.match(src, /export function RegisterHeroGemUsage\(ctx, actorUID, gemColor, consumedCount = 0\)/);
