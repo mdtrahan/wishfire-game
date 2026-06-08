@@ -426,3 +426,6 @@
 ## 2026-06-08 — Frame-Zero Board Color Retirement Must Not Touch Heal
 - Retiring frame `0` green is not a reason to remove frame `4` heal. Keep heal in forced board options, spawn palettes, visual preload lists, and supergem detection unless a separate heal-removal bead explicitly says otherwise.
 - Supergem spends may defer turn/action presentation, but the board refill lane must be claimed in the same call that clears gem cells. A deferred action handoff must not leave frame-zero empty board slots without refill ownership.
+
+## 2026-06-08 — Repeatable Field Skills Should Refresh Pending Presentation
+- If a repeatable skill refreshes a field effect before its delayed damage presentation resolves, upsert the pending packet by source, target, effect, and zone instead of appending another packet. The gameplay field can refresh without spawning duplicate floating numbers for the same enemy.

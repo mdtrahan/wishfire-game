@@ -166,3 +166,44 @@ test('Faze is a mirrored party draw option that owns the tainted-ground payload'
     assert.equal(stateAfterSelect.candidates.length, 0);
   }
 });
+
+test('repeated Faze refreshes pending per-enemy dot presentation instead of stacking it', () => {
+  for (const modulePath of [runtimePath, scriptsPath]) {
+    const mod = loadModule(modulePath);
+    const { ctx } = makeContext();
+
+    const firstOpen = mod.ForceAstralFlowSkillDraught(ctx, 100, 'party_faze');
+    assert.equal(firstOpen.ok, true);
+    const firstSelect = mod.SelectSkillDraughtCard(ctx, 0);
+    assert.equal(firstSelect.ok, true);
+
+    const firstPending = ctx.state.globals.PendingHeroHits.map(hit => ({
+      targetUID: hit.targetUID,
+      zoneId: hit.taintedGroundZoneId,
+      at: hit.at,
+    }));
+    assert.equal(firstPending.length, 2);
+
+    ctx.state.globals.time += 0.5;
+    const secondOpen = mod.ForceAstralFlowSkillDraught(ctx, 100, 'party_faze');
+    assert.equal(secondOpen.ok, true);
+    const secondSelect = mod.SelectSkillDraughtCard(ctx, 0);
+    assert.equal(secondSelect.ok, true);
+
+    const pending = ctx.state.globals.PendingHeroHits;
+    assert.equal(pending.length, 2, 'repeat Faze should keep one pending dot presentation per enemy');
+    assert.deepEqual(
+      pending.map(hit => hit.targetUID).sort((a, b) => a - b),
+      [201, 202],
+    );
+    assert.deepEqual(
+      pending.map(hit => hit.taintedGroundZoneId).sort(),
+      firstPending.map(hit => hit.zoneId).sort(),
+    );
+    assert.ok(pending.every(hit => hit.effectType === 'dot_apply'));
+    assert.ok(pending.every(hit => hit.actionName === 'Faze'));
+    assert.ok(pending.every(hit => hit.dotTotalDamage === 15));
+    assert.ok(pending.every(hit => hit.at > firstPending[0].at));
+    assert.equal(ctx.state.globals.TaintedGroundZones.length, 2);
+  }
+});

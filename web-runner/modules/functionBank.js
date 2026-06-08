@@ -1300,6 +1300,28 @@ function refreshFazeTaintedGroundZone(ctx, sourceUID, enemy, dotTotalDamage, sta
   return zone;
 }
 
+function upsertFazePendingDotApplyHit(ctx, packet) {
+  const g = getGlobals(ctx);
+  g.PendingHeroHits = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
+  const heroUID = Number(packet?.heroUID || 0);
+  const targetUID = Number(packet?.targetUID || 0);
+  const zoneId = String(packet?.taintedGroundZoneId || '');
+  for (let i = g.PendingHeroHits.length - 1; i >= 0; i -= 1) {
+    const hit = g.PendingHeroHits[i];
+    if (!hit) continue;
+    if (String(hit.effectType || '') !== 'dot_apply') continue;
+    if (String(hit.actionName || '') !== 'Faze') continue;
+    if (Number(hit.heroUID || 0) !== heroUID) continue;
+    if (Number(hit.targetUID || 0) !== targetUID) continue;
+    const existingZoneId = String(hit.taintedGroundZoneId || '');
+    if (zoneId && existingZoneId && existingZoneId !== zoneId) continue;
+    g.PendingHeroHits[i] = { ...hit, ...packet };
+    return g.PendingHeroHits[i];
+  }
+  g.PendingHeroHits.push(packet);
+  return packet;
+}
+
 function activateFazeSkill(ctx, actorUID) {
   const g = getGlobals(ctx);
   const heroUID = Number(actorUID || 0);
@@ -1317,7 +1339,7 @@ function activateFazeSkill(ctx, actorUID) {
   g.PendingHeroHits = g.PendingHeroHits || [];
   for (const enemy of enemies) {
     const zone = refreshFazeTaintedGroundZone(ctx, heroUID, enemy, dotTotalDamage, applyAt);
-    g.PendingHeroHits.push({
+    upsertFazePendingDotApplyHit(ctx, {
       at: applyAt,
       heroUID,
       targetUID: Number(enemy.uid || 0),
