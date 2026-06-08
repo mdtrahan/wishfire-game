@@ -1,4 +1,4 @@
-# ORKA-5fnb: [FEAT] Spirit skill equipability and archetype compatibility contract
+# ORKA-idfa: App shell cleanup after render extraction
 
 Generated: `2026-06-08T15:12:46Z`
 
@@ -6,24 +6,24 @@ Beads remains source of truth. This review packet is a public-safe GitHub-visibl
 
 ## GitHub Links
 
-- Mirror issue: [#113](https://github.com/mdtrahan/wishfire-game/issues/113)
-- Proposed review branch: `bead/ORKA-5fnb-feat-spirit-skill-equipability-and-archetype-compatibility-contr`
+- Mirror issue: [#32](https://github.com/mdtrahan/wishfire-game/issues/32)
+- Proposed review branch: `bead/ORKA-idfa-appjs-offload`
 - Proposed PR base: `main`
 
 ## Bead State
 
 | Field | Value |
 | --- | --- |
-| Bead ID | `ORKA-5fnb` |
-| Beads status | `blocked` |
-| Priority | `P3` |
-| Type | `feature` |
+| Bead ID | `ORKA-idfa` |
+| Beads status | `open` |
+| Priority | `P2` |
+| Type | `task` |
 | Parent/Epic | `None` |
 | Blockers | None |
 | Blocks | None |
-| GitHub surface | `review_packet_pr` |
-| Review artifact needed | `yes` |
-| Branch-overlap signal | no |
+| GitHub surface | `draft_pr` |
+| Review artifact needed | `no` |
+| Branch-overlap signal | yes (1 shared branch file; file-level detail stays local) |
 
 ## Review Request
 

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Generate public-safe Bead review packet artifacts.
 
-The packets are review surfaces for Beads that need human triage but do not
-currently have a code branch suitable for a normal implementation PR. They are
-generated only from the public-safe Beads-to-GitHub mapping and manifest.
+The packets are review surfaces for Beads that need human triage, including
+branch-backed draft PR candidates and Beads that do not yet have a code branch
+suitable for a normal implementation PR. They are generated only from the
+public-safe Beads-to-GitHub mapping and manifest.
 """
 
 from __future__ import annotations
@@ -94,7 +95,7 @@ Beads remains source of truth. This review packet is a public-safe GitHub-visibl
 
 - Decide whether this Bead should become an implementation branch, stay backlog-only, split into smaller Beads, or wait on blockers.
 - Check overlap and dependency signals before assigning work.
-- If implementation starts, create a Bead-scoped worktree/branch and keep Beads as the workflow authority.
+- If implementation starts or continues, use the Bead-scoped branch/worktree and keep Beads as the workflow authority.
 
 ## Omitted From GitHub
 
@@ -108,7 +109,7 @@ def render_index(rows: list[dict[str, Any]], generated_at: str) -> str:
         "",
         f"Generated: `{generated_at}`",
         "",
-        "Beads remains source of truth. These are public-safe review packet artifacts for Beads that need human triage but do not yet have a branch suitable for a normal PR.",
+        "Beads remains source of truth. These are public-safe review packet artifacts for draft PR candidates, including branch-backed Beads and Beads that need triage before code.",
         "",
         f"- Review packets: `{len(rows)}`",
         "",
@@ -159,6 +160,11 @@ def parse_args() -> argparse.Namespace:
         default="governance/planning/beads-github-export/published-issue-mapping.md",
     )
     parser.add_argument("--output-dir", default="governance/bead-reviews")
+    parser.add_argument(
+        "--review-required-only",
+        action="store_true",
+        help="Generate only packets for operations that explicitly require review artifacts.",
+    )
     return parser.parse_args()
 
 
@@ -168,11 +174,9 @@ def main() -> int:
     manifest = load_json(Path(args.manifest))
     links = issue_links(Path(args.published_issues))
     rows_by_bead = {row["bead_id"]: row for row in mapping["beads"]}
-    operations = [
-        operation
-        for operation in manifest.get("draft_pr_operations") or []
-        if operation.get("requires_review_artifact")
-    ]
+    operations = manifest.get("draft_pr_operations") or []
+    if args.review_required_only:
+        operations = [operation for operation in operations if operation.get("requires_review_artifact")]
     generated_at = manifest.get("generated_at") or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -181,7 +185,7 @@ def main() -> int:
     for operation in operations:
         bead_id = operation["match_key"]
         row = rows_by_bead[bead_id]
-        artifact_path = Path(operation["review_artifact_path"])
+        artifact_path = Path(operation["review_artifact_path"] or f"{bead_id}.md")
         if artifact_path.parent != output_dir:
             artifact_path = output_dir / artifact_path.name
         issue = links.get(bead_id)

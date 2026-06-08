@@ -2,13 +2,16 @@
 
 Generated: `2026-06-08T15:12:46Z`
 
-Beads remains source of truth. These are public-safe review packet artifacts for Beads that need human triage but do not yet have a branch suitable for a normal PR.
+Beads remains source of truth. These are public-safe review packet artifacts for draft PR candidates, including branch-backed Beads and Beads that need triage before code.
 
-- Review packets: `32`
+- Review packets: `36`
 
 | Bead | Status | Priority | Type | Packet | Mirror Issue |
 | --- | --- | --- | --- | --- | --- |
+| ORKA-7ff6 | in_progress | P1 | task | [packet](ORKA-7ff6.md) | [#23](https://github.com/mdtrahan/wishfire-game/issues/23) |
+| ORKA-zy2o | in_progress | P1 | task | [packet](ORKA-zy2o.md) | [#24](https://github.com/mdtrahan/wishfire-game/issues/24) |
 | ORKA-0h6k | open | P1 | bug | [packet](ORKA-0h6k.md) | [#35](https://github.com/mdtrahan/wishfire-game/issues/35) |
+| ORKA-v4mh | open | P1 | task | [packet](ORKA-v4mh.md) | [#25](https://github.com/mdtrahan/wishfire-game/issues/25) |
 | ORKA-8hqv | open | P1 | feature | [packet](ORKA-8hqv.md) | [#36](https://github.com/mdtrahan/wishfire-game/issues/36) |
 | ORKA-zvq1 | open | P1 | bug | [packet](ORKA-zvq1.md) | [#37](https://github.com/mdtrahan/wishfire-game/issues/37) |
 | ORKA-9vi9 | open | P1 | feature | [packet](ORKA-9vi9.md) | [#38](https://github.com/mdtrahan/wishfire-game/issues/38) |
@@ -26,6 +29,7 @@ Beads remains source of truth. These are public-safe review packet artifacts for
 | ORKA-zih | open | P1 | epic | [packet](ORKA-zih.md) | [#47](https://github.com/mdtrahan/wishfire-game/issues/47) |
 | ORKA-03d | blocked | P1 | bug | [packet](ORKA-03d.md) | [#30](https://github.com/mdtrahan/wishfire-game/issues/30) |
 | ORKA-tk9 | blocked | P1 | feature | [packet](ORKA-tk9.md) | [#31](https://github.com/mdtrahan/wishfire-game/issues/31) |
+| ORKA-idfa | open | P2 | task | [packet](ORKA-idfa.md) | [#32](https://github.com/mdtrahan/wishfire-game/issues/32) |
 | ORKA-e67 | blocked | P2 | task | [packet](ORKA-e67.md) | [#33](https://github.com/mdtrahan/wishfire-game/issues/33) |
 | ORKA-b2c | blocked | P2 | task | [packet](ORKA-b2c.md) | [#34](https://github.com/mdtrahan/wishfire-game/issues/34) |
 | ORKA-6cfd | blocked | P3 | feature | [packet](ORKA-6cfd.md) | [#109](https://github.com/mdtrahan/wishfire-game/issues/109) |

@@ -29,7 +29,7 @@ Beads remains source of truth. This review packet is a public-safe GitHub-visibl
 
 - Decide whether this Bead should become an implementation branch, stay backlog-only, split into smaller Beads, or wait on blockers.
 - Check overlap and dependency signals before assigning work.
-- If implementation starts, create a Bead-scoped worktree/branch and keep Beads as the workflow authority.
+- If implementation starts or continues, use the Bead-scoped branch/worktree and keep Beads as the workflow authority.
 
 ## Omitted From GitHub
 

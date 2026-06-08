@@ -1,4 +1,4 @@
-# ORKA-5fnb: [FEAT] Spirit skill equipability and archetype compatibility contract
+# ORKA-zy2o: [TASK] Remove green gems and green super gems safely
 
 Generated: `2026-06-08T15:12:46Z`
 
@@ -6,24 +6,24 @@ Beads remains source of truth. This review packet is a public-safe GitHub-visibl
 
 ## GitHub Links
 
-- Mirror issue: [#113](https://github.com/mdtrahan/wishfire-game/issues/113)
-- Proposed review branch: `bead/ORKA-5fnb-feat-spirit-skill-equipability-and-archetype-compatibility-contr`
+- Mirror issue: [#24](https://github.com/mdtrahan/wishfire-game/issues/24)
+- Proposed review branch: `bead/ORKA-zy2o-remove-green-gems`
 - Proposed PR base: `main`
 
 ## Bead State
 
 | Field | Value |
 | --- | --- |
-| Bead ID | `ORKA-5fnb` |
-| Beads status | `blocked` |
-| Priority | `P3` |
-| Type | `feature` |
+| Bead ID | `ORKA-zy2o` |
+| Beads status | `in_progress` |
+| Priority | `P1` |
+| Type | `task` |
 | Parent/Epic | `None` |
 | Blockers | None |
-| Blocks | None |
-| GitHub surface | `review_packet_pr` |
-| Review artifact needed | `yes` |
-| Branch-overlap signal | no |
+| Blocks | ORKA-8hqv |
+| GitHub surface | `draft_pr` |
+| Review artifact needed | `no` |
+| Branch-overlap signal | yes (15 shared branch files; file-level detail stays local) |
 
 ## Review Request
 

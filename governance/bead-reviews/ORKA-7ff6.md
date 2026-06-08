@@ -1,4 +1,4 @@
-# ORKA-5fnb: [FEAT] Spirit skill equipability and archetype compatibility contract
+# ORKA-7ff6: [TASK] Export Beads to GitHub visibility surfaces
 
 Generated: `2026-06-08T15:12:46Z`
 
@@ -6,23 +6,23 @@ Beads remains source of truth. This review packet is a public-safe GitHub-visibl
 
 ## GitHub Links
 
-- Mirror issue: [#113](https://github.com/mdtrahan/wishfire-game/issues/113)
-- Proposed review branch: `bead/ORKA-5fnb-feat-spirit-skill-equipability-and-archetype-compatibility-contr`
+- Mirror issue: [#23](https://github.com/mdtrahan/wishfire-game/issues/23)
+- Proposed review branch: `bead/ORKA-7ff6-github-visibility-export`
 - Proposed PR base: `main`
 
 ## Bead State
 
 | Field | Value |
 | --- | --- |
-| Bead ID | `ORKA-5fnb` |
-| Beads status | `blocked` |
-| Priority | `P3` |
-| Type | `feature` |
+| Bead ID | `ORKA-7ff6` |
+| Beads status | `in_progress` |
+| Priority | `P1` |
+| Type | `task` |
 | Parent/Epic | `None` |
 | Blockers | None |
 | Blocks | None |
-| GitHub surface | `review_packet_pr` |
-| Review artifact needed | `yes` |
+| GitHub surface | `draft_pr` |
+| Review artifact needed | `no` |
 | Branch-overlap signal | no |
 
 ## Review Request
