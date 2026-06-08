@@ -568,6 +568,29 @@ def render_overlap_signal(row: dict[str, Any]) -> str:
     return f"`yes` ({count} shared branch {noun}; details stay in Beads/local review artifacts)"
 
 
+def render_project_overlap_value(row: dict[str, Any]) -> str:
+    if not row["has_branch_overlap"]:
+        return "no"
+    count = row["overlap_file_count"]
+    noun = "file" if count == 1 else "files"
+    return f"yes ({count} shared branch {noun})"
+
+
+def render_project_field_values(row: dict[str, Any]) -> dict[str, str]:
+    return {
+        "Bead ID": row["bead_id"],
+        "Beads Status": row["status"] or "",
+        "Priority": f"P{row['priority']}",
+        "Type": row.get("type") or "",
+        "Parent/Epic": row.get("parent") or "",
+        "Blockers": ", ".join(row["blockers"]),
+        "Blocks": ", ".join(row["blocks"]),
+        "GitHub Surface": row["github_surface"],
+        "Branch": row["branch"] or row["proposed_review_branch"] or "",
+        "Overlap Risk": render_project_overlap_value(row),
+    }
+
+
 def render_issue_body(row: dict[str, Any]) -> str:
     blockers = ", ".join(row["blockers"]) or "None"
     blocks = ", ".join(row["blocks"]) or "None"
@@ -646,6 +669,15 @@ def build_publish_manifest(
         }
         for row in mapping
     ]
+    project_item_operations = [
+        {
+            "operation": "create_or_update_project_item",
+            "match_key": row["bead_id"],
+            "issue_title": row["github_issue_title"],
+            "field_values": render_project_field_values(row),
+        }
+        for row in mapping
+    ]
 
     pr_operations = []
     for row in mapping:
@@ -691,6 +723,7 @@ def build_publish_manifest(
         "counts": {
             "visible_beads": len(mapping),
             "issue_operations": len(issue_operations),
+            "project_item_operations": len(project_item_operations),
             "draft_pr_operations": len(pr_operations),
             "first_batch": len(batch),
         },
@@ -708,6 +741,7 @@ def build_publish_manifest(
             "Overlap Risk",
         ],
         "issue_operations": issue_operations,
+        "project_item_operations": project_item_operations,
         "draft_pr_operations": pr_operations,
     }
 
@@ -728,6 +762,7 @@ def render_publish_plan(manifest: dict[str, Any], batch: list[dict[str, Any]]) -
     gate_rows = [
         ["Remote baseline", "pass" if remote["safe_for_branch_prs"] else "blocked", remote["note"]],
         ["Issue creation", "ready", "Manifest contains one create/update operation per visible non-closed Bead."],
+        ["Project item creation", "ready", "Manifest contains one Project item operation per visible non-closed Bead."],
         [
             "Draft PR creation",
             "blocked" if not remote["safe_for_branch_prs"] else "ready",
@@ -762,7 +797,7 @@ def render_publish_plan(manifest: dict[str, Any], batch: list[dict[str, Any]]) -
             "## Publish Phases",
             "",
             "1. Create or update GitHub Issues for all visible non-closed Beads from the public-safe `github-publish-manifest.json`.",
-            "2. Add those Issues to the team Project and expose the listed project fields.",
+            "2. Add those Issues to the team Project and expose the listed project fields from `project_item_operations`.",
             "3. Sync local `main` to GitHub through the protected-branch PR process.",
             "4. Push selected Bead branches or create tracked review artifacts.",
             "5. Open draft PRs for active, blocked, QA-ready, or review-worthy Beads.",
