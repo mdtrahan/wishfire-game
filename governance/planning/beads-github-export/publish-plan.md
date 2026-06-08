@@ -9,7 +9,7 @@ Beads remains source of truth. Publish GitHub records as visibility mirrors only
 | Gate | State | Evidence |
 | --- | --- | --- |
 | Remote baseline | blocked | Sync local main to GitHub before opening Bead branch PRs. |
-| Issue creation | ready | Manifest contains one create/update operation per visible non-closed Bead. |
+| Issue creation | complete | All 99 visible non-closed Beads in the manifest are published as GitHub Issues #23 through #121. |
 | Draft PR creation | blocked | Requires pushed branch/review artifact and remote main parity. |
 
 ## GitHub Access Notes
@@ -17,6 +17,7 @@ Beads remains source of truth. Publish GitHub records as visibility mirrors only
 - Local `gh auth status` currently reports an invalid token for `mdtrahan`, so the publisher cannot apply writes from local CLI until auth is repaired.
 - GitHub connector read access confirmed recent repository PRs are closed/merged; no current open PR collision was found through the connector read.
 - The first connector write rejected detailed Bead bodies as too much non-public workspace data; `github-publish-manifest.json` is now public-safe and omits detailed scope, acceptance criteria, changed-file paths, worktree paths, and raw Beads internals.
+- GitHub connector issue creation completed all issue mirrors, but no GitHub Project V2 write tool is available in this session.
 
 ## Remote Baseline
 
@@ -26,8 +27,8 @@ Beads remains source of truth. Publish GitHub records as visibility mirrors only
 
 ## Publish Phases
 
-1. Create or update GitHub Issues for all visible non-closed Beads from the public-safe `github-publish-manifest.json`.
-2. Add those Issues to the team Project and expose the listed project fields.
+1. Create or update GitHub Issues for all visible non-closed Beads from the public-safe `github-publish-manifest.json`. Completed; see `published-issue-mapping.md`.
+2. Add those Issues to the team Project and expose the listed project fields. Gated on Project V2 write access.
 3. Sync local `main` to GitHub through the protected-branch PR process.
 4. Push selected Bead branches or create tracked review artifacts.
 5. Open draft PRs for active, blocked, QA-ready, or review-worthy Beads.
