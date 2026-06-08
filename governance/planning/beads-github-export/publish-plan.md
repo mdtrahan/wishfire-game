@@ -11,6 +11,7 @@ Beads remains source of truth. Publish GitHub records as visibility mirrors only
 | Remote baseline | blocked | Sync local main to GitHub before opening Bead branch PRs. |
 | Issue creation | complete | All 99 visible non-closed Beads in the manifest are published as GitHub Issues #23 through #121. |
 | Project item operations | prepared | Manifest contains 99 Project item operations with the public-safe Project fields. Apply still needs Project V2 access. |
+| Review packet artifacts | complete | Generated 32 public-safe review packets under `governance/bead-reviews/`. |
 | Draft PR review surface | partial | ORKA-7ff6 has clean draft PR #122; remaining Bead-lane PRs require pushed branches/review artifacts and remote main parity. |
 
 ## GitHub Access Notes
@@ -21,6 +22,7 @@ Beads remains source of truth. Publish GitHub records as visibility mirrors only
 - GitHub connector issue creation completed all issue mirrors, but no GitHub Project V2 write tool is available in this session.
 - GitHub connector draft PR creation completed ORKA-7ff6 as #122 from a clean branch based on `origin/main`, avoiding the 35 local-only `main` commits.
 - `tools/publish_beads_github_visibility.py` now has a Project V2 path that can add existing mirror Issues to a Project and set the configured fields once `gh` auth and the Project number are available.
+- `tools/generate_bead_review_packets.py` generated public-safe review packets for all 32 `requires_review_artifact` draft PR candidates.
 
 ## Remote Baseline
 
@@ -33,7 +35,7 @@ Beads remains source of truth. Publish GitHub records as visibility mirrors only
 1. Create or update GitHub Issues for all visible non-closed Beads from the public-safe `github-publish-manifest.json`. Completed; see `published-issue-mapping.md`.
 2. Add those Issues to the team Project and expose the listed project fields. Operations prepared; apply is gated on Project V2 write access and Project number.
 3. Sync local `main` to GitHub through the protected-branch PR process.
-4. Push selected Bead branches or create tracked review artifacts.
+4. Push selected Bead branches or create tracked review artifacts. Review artifacts completed for the 32 no-branch review-packet candidates; see `governance/bead-reviews/INDEX.md`.
 5. Open draft PRs for active, blocked, QA-ready, or review-worthy Beads. Started with ORKA-7ff6 clean draft PR #122; other lanes remain gated.
 
 ## Published Draft PRs
@@ -55,6 +57,12 @@ Apply after `gh auth status` passes and the team Project number is known:
 ```sh
 python3 tools/publish_beads_github_visibility.py --manifest governance/planning/beads-github-export/github-publish-manifest.json --apply --skip-issues --project-owner mdtrahan --project-owner-type user --project-number <project-number>
 ```
+
+## Review Packet Artifacts
+
+| Artifact | Count | Notes |
+| --- | --- | --- |
+| [governance/bead-reviews/INDEX.md](../../bead-reviews/INDEX.md) | 32 | Public-safe packets for Beads that need triage but do not yet have a branch suitable for a normal PR. |
 
 ## First Batch
 
