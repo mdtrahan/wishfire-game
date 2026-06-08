@@ -265,7 +265,7 @@ export function createRefillStartGate(current = {}) {
 
 export function createRefillCompleteGate(current = {}) {
   const base = normalizeTurnGateState(current);
-  const canRestorePickability = Number(current.TurnPhase || 0) === 0;
+  const canRestorePickability = Number(current.TurnPhase || 0) === 0 && !Number(current.DeferAdvance || 0);
   return {
     ...base,
     CanPickGems: canRestorePickability ? 1 : 0,

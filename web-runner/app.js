@@ -16,6 +16,7 @@ import {
   isCanPickGemsReady,
   createRefillCompleteGate,
   createRefillStartGate,
+  createYellowSafetyNet,
   createYellowSequenceCompletion,
   createYellowSequenceGate,
   createYellowSequenceSkip,
@@ -24,7 +25,6 @@ import {
   YELLOW_COLOR,
   YELLOW_REFILL_TARGETS,
   pickYellowReassignTarget,
-  pickYellowRefillTarget,
 } from './src/core/yellowRefillRules.mjs';
 import {
   resolveCurrentHeroUID,
@@ -3792,7 +3792,6 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
       const key = `${r},${c}`;
       const gem = gemByCell.get(key) || null;
       const color = gem && gem.color != null ? gem.color : (gem ? gem.elementIndex : null);
-      const cellFilled = !!(gameState.grid[c] && gameState.grid[c][r]);
       if (gem && color === YELLOW_COLOR) {
         queue.push({
           type: 'yellow',
@@ -3801,20 +3800,6 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
           cellC: c,
           cellR: r,
           target: pickYellowReassignTarget(),
-          sequence: null,
-          startAt: 0,
-          duration: YELLOW_CASINO_SPIN_SEC,
-          frameDuration: 0,
-        });
-      } else if (!cellFilled) {
-        const pos = getCellWorldPos(c, r);
-        queue.push({
-          type: 'empty',
-          reason: 'yellow-refill',
-          uid: 0,
-          cellC: c,
-          cellR: r,
-          target: pickYellowRefillTarget(),
           sequence: null,
           startAt: 0,
           duration: YELLOW_CASINO_SPIN_SEC,
@@ -3895,7 +3880,14 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
     state.globals.BoardFillActive = 1;
   } else {
     traceTask015YellowAnimation('yellow-sequence-skip', { reason: 'no-yellow-slots' });
-    state.globals.BoardFillActive = 0;
+    const pendingGoldAward = Math.max(0, Number(casino.pendingGoldAward || 0));
+    if (pendingGoldAward > 0) {
+      state.globals.goldTotal = Number(state.globals.goldTotal || 0) + pendingGoldAward;
+      casino.pendingGoldAward = 0;
+    }
+    if (!(gameState.refillBounce && gameState.refillBounce.active)) {
+      state.globals.BoardFillActive = 0;
+    }
     applyTurnGateIntent(createYellowSequenceSkip);
   }
 }
@@ -4176,12 +4168,18 @@ function handleGemMatch(color) {
     callFunctionWithContext(fnContext, 'ClearMatchState');
     syncGemsFromGlobals();
     clearLocalSelection();
-    rebuildGridFromGems();
+    rebuildGridAndStartMatchRefill();
     callFunctionWithContext(fnContext, 'Sub_Energy');
     startYellowCasinoSequence(actorUID, matchedYellowCount, {
       goldTarget,
       mergeSources: yellowMergeSources,
     });
+    if (!(gameState.yellowCasino && gameState.yellowCasino.active)) {
+      applyTurnGateIntent(createYellowSafetyNet, {
+        now: Number(state.globals.time || 0),
+        currentTurnUID: actorUID,
+      });
+    }
   } else if (color === 4) {
     const matchedCount = Math.max(0, Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0);
     g.MatchedColorValue = 4;
@@ -7753,7 +7751,15 @@ function getStoryCardLiveLineState() {
       const noSpinActive = !(gameState.yellowCasino && gameState.yellowCasino.active);
       const boardFull = Array.isArray(gameState.gems) && gameState.gems.length === 24;
       const idlePhase = state.globals.TurnPhase === 0;
-      if (noRefillActive && noSpinActive && boardFull && idlePhase && !isCanPickGemsReady(state.globals.CanPickGems)) {
+      if (
+        noRefillActive &&
+        noSpinActive &&
+        boardFull &&
+        idlePhase &&
+        !state.globals.DeferAdvance &&
+        (state.globals.ActionLockUntil || 0) <= (state.globals.time || 0) &&
+        !isCanPickGemsReady(state.globals.CanPickGems)
+      ) {
         const sig = JSON.stringify({
           boardFull,
           TurnPhase: state.globals.TurnPhase,

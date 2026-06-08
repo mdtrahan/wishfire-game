@@ -119,6 +119,17 @@ for (const modulePath of [
     assert.equal(idleHero.CanPickGems, 1);
     assert.equal(idleHero.IsPlayerBusy, 0);
 
+    const deferredHero = mod.createRefillCompleteGate({
+      CanPickGems: 0,
+      IsPlayerBusy: 1,
+      TurnPhase: 0,
+      DeferAdvance: 1,
+      AdvanceAfterAction: 1,
+    });
+    assert.equal(deferredHero.CanPickGems, 0);
+    assert.equal(deferredHero.IsPlayerBusy, 0);
+    assert.equal(deferredHero.DeferAdvance, 1);
+
     const actionPhase = mod.createRefillCompleteGate({
       CanPickGems: 0,
       IsPlayerBusy: 1,

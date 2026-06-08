@@ -69,14 +69,14 @@ test('app starts normal refill before deferred turn advance resolves', () => {
   );
 });
 
-test('non-yellow match resolution starts refill immediately after gem destruction', () => {
+test('regular match resolution starts refill immediately after gem destruction', () => {
   const src = read('web-runner/app.js');
 
   assert.match(
     src,
     /const rebuildGridAndStartMatchRefill = \(\) => \{[\s\S]*rebuildGridFromGems\(\);[\s\S]*startRefillBounce\(\);[\s\S]*\};/
   );
-  for (const colorCase of ['color === 0 || color === 1', 'color === 2', 'color === 4', 'color === 5']) {
+  for (const colorCase of ['color === 0 || color === 1', 'color === 2', 'color === 3', 'color === 4', 'color === 5']) {
     const start = src.indexOf(`if (${colorCase})`);
     const branch = start >= 0 ? src.slice(start, src.indexOf('} else if', start + 1) >= 0 ? src.indexOf('} else if', start + 1) : src.indexOf('\n  }\n\n  console.log', start)) : '';
     assert.ok(branch.includes('rebuildGridAndStartMatchRefill();'), `${colorCase} branch should refill immediately`);
