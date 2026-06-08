@@ -10,7 +10,7 @@ Beads remains source of truth. These draft PRs are public-safe review surfaces; 
 
 - Published draft PR review surfaces: `1`
 - First published draft PR: [#122](https://github.com/mdtrahan/wishfire-game/pull/122)
-- Public-safe review packet artifacts: `36`
+- Public-safe review packet artifacts for current non-closed Beads: `35`
 - GitHub Project field insertion is prepared but not applied. Open `mdtrahan` Project #2 exists, but it is untitled, empty, and currently has only GitHub default fields; apply requires explicit confirmation of the target Project and field setup.
 - Other Bead-lane draft PRs remain gated until their branches or review artifacts are ready.
 

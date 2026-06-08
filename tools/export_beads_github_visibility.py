@@ -530,8 +530,10 @@ Use this before creating or updating GitHub Issues, Project items, or draft PRs 
 
 ## GitHub Surface Rules
 - Use one GitHub Issue or Project item per visible non-closed Bead.
+- Apply Project V2 operations only from a `publication_safety=public-safe` manifest.
 - Use draft PRs for active, blocked, QA-ready, or review-worthy Beads.
 - Use a tracked review artifact when a Bead needs review but has no code branch.
+- Generate tracked review artifacts only from the public-safe mapping/manifest.
 - Do not create fake implementation PRs for plain backlog items.
 
 ## Batch Rules
@@ -543,6 +545,8 @@ Use this before creating or updating GitHub Issues, Project items, or draft PRs 
 ## After Export
 - Record the GitHub issue/project/PR mapping.
 - Confirm every active Bead is visible in GitHub.
+- Confirm Project item count matches the visible non-closed Bead count when Project V2 apply is available.
+- Confirm review packet artifact count matches all draft PR operations, or use `--review-required-only` when intentionally checking only the no-branch subset.
 - Confirm backlog-only Beads are visible without PR noise.
 - Confirm no closed Beads were exported unless explicitly requested.
 """

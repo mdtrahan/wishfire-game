@@ -1,13 +1,13 @@
 # Beads to GitHub Visibility Dry Run
 
-Generated: `2026-06-08T15:12:46Z`
+Generated: `2026-06-08T19:05:30Z`
 
 Beads remains source of truth. This report proposes GitHub Issues, Project rows, and draft PR review packets for team visibility only.
 
 ## Summary
 
-- Visible non-closed Beads: `99`
-- Draft PR candidates: `4`
+- Visible non-closed Beads: `98`
+- Draft PR candidates: `3`
 - Review-packet PR candidates: `32`
 - Issue/Project-only candidates: `63`
 
@@ -17,7 +17,7 @@ Beads remains source of truth. This report proposes GitHub Issues, Project rows,
 | --- | --- |
 | blocked | 19 |
 | deferred | 1 |
-| in_progress | 2 |
+| in_progress | 1 |
 | open | 76 |
 | recovery | 1 |
 
@@ -25,7 +25,7 @@ Beads remains source of truth. This report proposes GitHub Issues, Project rows,
 
 | Surface | Count |
 | --- | --- |
-| draft_pr | 4 |
+| draft_pr | 3 |
 | issue_project | 63 |
 | review_packet_pr | 32 |
 
@@ -34,7 +34,6 @@ Beads remains source of truth. This report proposes GitHub Issues, Project rows,
 | Bead | Status | Priority | Surface | Branch Or Artifact | GitHub Title |
 | --- | --- | --- | --- | --- | --- |
 | ORKA-7ff6 | in_progress | P1 | draft_pr | bead/ORKA-7ff6-github-visibility-export | ORKA-7ff6: [TASK] Export Beads to GitHub visibility surfaces |
-| ORKA-zy2o | in_progress | P1 | draft_pr | bead/ORKA-zy2o-remove-green-gems | ORKA-zy2o: [TASK] Remove green gems and green super gems safely |
 | ORKA-v4mh | open | P1 | draft_pr | bead/ORKA-v4mh-simulation-core-contract | ORKA-v4mh: [MIGRATION] SimulationCore Rust/JS contract and fixture strategy |
 | ORKA-idfa | open | P2 | draft_pr | bead/ORKA-idfa-appjs-offload | ORKA-idfa: App shell cleanup after render extraction |
 | ORKA-iz4q | recovery | P1 | review_packet_pr | governance/bead-reviews/ORKA-iz4q.md | ORKA-iz4q: [RECOVERY] Verify recent merged beads in isolated worktree before safe merge |
@@ -45,20 +44,19 @@ Beads remains source of truth. This report proposes GitHub Issues, Project rows,
 | ORKA-tk9 | blocked | P1 | review_packet_pr | governance/bead-reviews/ORKA-tk9.md | ORKA-tk9: [FEAT] TASK-010 Tower war-beacon map loop |
 | ORKA-b2c | blocked | P2 | review_packet_pr | governance/bead-reviews/ORKA-b2c.md | ORKA-b2c: [REF] TASK-006 Transition-depth suspend/resume validation |
 | ORKA-e67 | blocked | P2 | review_packet_pr | governance/bead-reviews/ORKA-e67.md | ORKA-e67: [STUB] Enemy-death loot fly-up visual hook (art pending) |
+| ORKA-0x85 | blocked | P3 | review_packet_pr | governance/bead-reviews/ORKA-0x85.md | ORKA-0x85: [EPIC] Hall of Heroes event system |
 
 ## Branch Overlap Risks
 
 | Bead | Branch | Overlaps With | Shared File Count |
 | --- | --- | --- | --- |
-| ORKA-zy2o | bead/ORKA-zy2o-remove-green-gems | ORKA-c1h0, ORKA-c6zn, ORKA-idfa, ORKA-rrxj.9 | 15 |
-| ORKA-idfa | bead/ORKA-idfa-appjs-offload | ORKA-c1h0, ORKA-rrxj.9, ORKA-zy2o | 1 |
+| ORKA-idfa | bead/ORKA-idfa-appjs-offload | ORKA-c1h0, ORKA-rrxj.9 | 1 |
 
 ## All Visible Beads
 
 | Bead | Status | Priority | Type | Surface | Branch | Blockers | Blocks | GitHub Title |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | ORKA-7ff6 | in_progress | P1 | task | draft_pr | bead/ORKA-7ff6-github-visibility-export |  |  | ORKA-7ff6: [TASK] Export Beads to GitHub visibility surfaces |
-| ORKA-zy2o | in_progress | P1 | task | draft_pr | bead/ORKA-zy2o-remove-green-gems |  | ORKA-8hqv | ORKA-zy2o: [TASK] Remove green gems and green super gems safely |
 | ORKA-0h6k | open | P1 | bug | review_packet_pr |  |  |  | ORKA-0h6k: [BUG] Faze skill-card damage floats stack per enemy |
 | ORKA-v4mh | open | P1 | task | draft_pr | bead/ORKA-v4mh-simulation-core-contract |  |  | ORKA-v4mh: [MIGRATION] SimulationCore Rust/JS contract and fixture strategy |
 | ORKA-8hqv | open | P1 | feature | review_packet_pr |  | ORKA-zps4, ORKA-zy2o |  | ORKA-8hqv: [FEAT] Kojonn green supergem Tainted Ground redesign |

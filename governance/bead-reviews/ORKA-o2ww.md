@@ -1,6 +1,6 @@
 # ORKA-o2ww: [FEAT] Hero legacy unlock state and Spirit grant contract
 
-Generated: `2026-06-08T15:12:46Z`
+Generated: `2026-06-08T19:05:30Z`
 
 Beads remains source of truth. This review packet is a public-safe GitHub-visible triage artifact; it is not an implementation branch and does not replace Beads.
 

@@ -8,69 +8,38 @@ Beads remains source of truth. Publish GitHub records as visibility mirrors only
 
 | Gate | State | Evidence |
 | --- | --- | --- |
-| Remote baseline | complete | PR #123 merged the 46 local `main` commits into GitHub `main`; export branch is merged with current `origin/main`. |
-| Issue creation | complete | All 99 visible non-closed Beads in the manifest are published as GitHub Issues #23 through #121. |
-| Project item operations | prepared | Manifest contains 99 Project item operations with the public-safe Project fields. Apply still needs explicit confirmation of the target Project and field setup. |
-| Review packet artifacts | complete | Generated 36 public-safe review packets, one for each draft PR candidate, under `governance/bead-reviews/`. |
+| Remote baseline | complete | Local main matches remote main after merged PR #123. |
+| Issue creation | complete | 99 total Bead mirror issues were published; 98 remain open for current non-closed Beads after closing ORKA-zy2o mirror #24. |
+| Project item creation | prepared | Manifest contains 98 Project item operations for current non-closed Beads. Apply needs explicit confirmation of Project #2 or another target board plus field setup. |
+| Review packet artifacts | complete | Generated 35 public-safe review packets for current non-closed draft PR candidates. |
 | Draft PR review surface | partial | ORKA-7ff6 has draft PR #122; remaining Bead-lane PRs require branch pushes or review decisions. |
 
 ## GitHub Access Notes
 
-- Local `gh auth status` is valid for `mdtrahan` and includes Project scope.
-- GitHub `main` is caught up with the committed local `main` history through merged PR #123.
+- Verify local `gh auth status` and Project scope before applying writes from the local CLI.
+- Project item apply requires an existing GitHub Project owner and Project number; do not create a new Project without explicit approval.
 - The first connector write rejected detailed Bead bodies as too much non-public workspace data; `github-publish-manifest.json` is now public-safe and omits detailed scope, acceptance criteria, changed-file paths, worktree paths, and raw Beads internals.
-- GitHub issue creation completed all 99 public-safe issue mirrors.
-- Open `mdtrahan` Project #2 exists, but it is untitled, empty, and currently has only GitHub default fields. Project insertion remains prepared but unapplied until the target board and field setup are explicitly confirmed.
-- GitHub draft PR creation completed ORKA-7ff6 as #122.
-- `tools/publish_beads_github_visibility.py` now has a Project V2 path that can add existing mirror Issues to a Project and set the configured fields once the Project owner and number are available.
-- `tools/generate_bead_review_packets.py` generated public-safe review packets for all 36 draft PR candidates; `--review-required-only` still reproduces the 32 no-branch subset.
+- Open `mdtrahan` Project #2 exists, but it is untitled, empty, and currently has only GitHub default fields. Do not populate it without explicit user approval.
 
 ## Remote Baseline
 
-- `main` and `origin/main` are aligned after merged PR #123.
-- The ORKA-7ff6 export branch has been merged with current `origin/main`.
-- Future Bead branch PRs no longer need to carry the former local-only baseline.
+- `main` is `0` commits ahead of `origin/main`.
+- `origin/main` is `0` commits ahead of `main`.
+- If the local baseline has commits not yet on GitHub, sync it through the protected-branch PR process before opening Bead branch PRs.
 
 ## Publish Phases
 
-1. Create or update GitHub Issues for all visible non-closed Beads from the public-safe `github-publish-manifest.json`. Completed; see `published-issue-mapping.md`.
-2. Add those Issues to the team Project and expose the listed project fields. Operations prepared; apply is gated on explicit confirmation of the target Project and field setup.
+1. Create or update GitHub Issues for all visible non-closed Beads from the public-safe `github-publish-manifest.json`. Completed for the current set; closed ORKA-zy2o mirror #24 is retained as history.
+2. Add those Issues to the team Project and expose the listed project fields from `project_item_operations`. Prepared; gated on explicit Project/field approval.
 3. Sync local `main` to GitHub through the protected-branch PR process. Completed by PR #123.
-4. Push selected Bead branches or create tracked review artifacts. Review artifacts completed for all 36 draft PR candidates, including branch-backed Beads; see `governance/bead-reviews/INDEX.md`.
-5. Open draft PRs for active, blocked, QA-ready, or review-worthy Beads. Started with ORKA-7ff6 clean draft PR #122; other lanes remain gated.
-
-## Published Draft PRs
-
-| PR | Bead | Branch | Base | State | Notes |
-| --- | --- | --- | --- | --- | --- |
-| [#122](https://github.com/mdtrahan/wishfire-game/pull/122) | ORKA-7ff6 | `bead/ORKA-7ff6-github-visibility-export-clean-pr` | `main` | draft | Clean review branch replayed only the export commits onto `origin/main`. |
-
-## Project V2 Apply Command
-
-Dry-run all Project item operations:
-
-```sh
-python3 tools/publish_beads_github_visibility.py --manifest governance/planning/beads-github-export/github-publish-manifest.json
-```
-
-Apply after the team confirms the target Project owner/number and desired field setup:
-
-```sh
-python3 tools/publish_beads_github_visibility.py --manifest governance/planning/beads-github-export/github-publish-manifest.json --apply --skip-issues --project-owner mdtrahan --project-owner-type user --project-number <project-number>
-```
-
-## Review Packet Artifacts
-
-| Artifact | Count | Notes |
-| --- | --- | --- |
-| [governance/bead-reviews/INDEX.md](../../bead-reviews/INDEX.md) | 36 | Public-safe packets for every draft PR candidate, including branch-backed Beads and Beads that need triage before code. |
+4. Push selected Bead branches or create tracked review artifacts. Review artifacts are generated for the current 35 candidates.
+5. Open draft PRs for active, blocked, QA-ready, or review-worthy Beads. Started with ORKA-7ff6 draft PR #122.
 
 ## First Batch
 
 | Bead | Status | Priority | Surface | Branch Or Artifact | Needs PR |
 | --- | --- | --- | --- | --- | --- |
 | ORKA-7ff6 | in_progress | P1 | draft_pr | bead/ORKA-7ff6-github-visibility-export | yes |
-| ORKA-zy2o | in_progress | P1 | draft_pr | bead/ORKA-zy2o-remove-green-gems | yes |
 | ORKA-v4mh | open | P1 | draft_pr | bead/ORKA-v4mh-simulation-core-contract | yes |
 | ORKA-idfa | open | P2 | draft_pr | bead/ORKA-idfa-appjs-offload | yes |
 | ORKA-iz4q | recovery | P1 | review_packet_pr | governance/bead-reviews/ORKA-iz4q.md | yes |
@@ -81,6 +50,7 @@ python3 tools/publish_beads_github_visibility.py --manifest governance/planning/
 | ORKA-tk9 | blocked | P1 | review_packet_pr | governance/bead-reviews/ORKA-tk9.md | yes |
 | ORKA-b2c | blocked | P2 | review_packet_pr | governance/bead-reviews/ORKA-b2c.md | yes |
 | ORKA-e67 | blocked | P2 | review_packet_pr | governance/bead-reviews/ORKA-e67.md | yes |
+| ORKA-0x85 | blocked | P3 | review_packet_pr | governance/bead-reviews/ORKA-0x85.md | yes |
 
 ## Safety Rules
 

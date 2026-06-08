@@ -11,7 +11,7 @@ Beads remains source of truth. These GitHub issues are public-safe visibility mi
 | Bead | GitHub Issue | Mirrored Status | Surface | Notes |
 | --- | --- | --- | --- | --- |
 | ORKA-7ff6 | https://github.com/mdtrahan/wishfire-game/issues/23 | in_progress | draft_pr | Existing issue updated to public-safe body |
-| ORKA-zy2o | https://github.com/mdtrahan/wishfire-game/issues/24 | in_progress | draft_pr | Branch-overlap signal only; detailed files omitted |
+| ORKA-zy2o | https://github.com/mdtrahan/wishfire-game/issues/24 | closed | historical_closed_mirror | Closed after ORKA-zy2o reached QA PASS in Beads |
 | ORKA-v4mh | https://github.com/mdtrahan/wishfire-game/issues/25 | open | draft_pr | Branch present |
 | ORKA-iz4q | https://github.com/mdtrahan/wishfire-game/issues/26 | recovery | review_packet_pr | Review artifact needed |
 | ORKA-macy | https://github.com/mdtrahan/wishfire-game/issues/27 | blocked | review_packet_pr | Review artifact needed |
@@ -25,9 +25,9 @@ Beads remains source of truth. These GitHub issues are public-safe visibility mi
 
 ## Still Gated
 
-- Full backlog publication is intentionally not automatic; continue in small reviewed batches from the public-safe manifest.
-- Draft PR creation remains gated until local `main` and `origin/main` are aligned. Current export evidence shows local `main` is 35 commits ahead of `origin/main`, so branch PRs would be noisy.
-- GitHub Project field wiring is not complete in this batch; the issues exist and can be added to the project view manually or by a future connector/API pass.
+- Full current non-closed backlog publication is complete; historical closed mirror #24 remains closed.
+- Draft PR creation for other Bead lanes remains gated by branch readiness and review decisions, not by remote-baseline mismatch.
+- GitHub Project field wiring is not complete in this batch. Open Project #2 exists but is untitled/default-field-only, and should not be populated without explicit approval.
 
 ## Safety
 

@@ -1,15 +1,14 @@
 # Bead Review Packet Index
 
-Generated: `2026-06-08T15:12:46Z`
+Generated: `2026-06-08T19:05:30Z`
 
 Beads remains source of truth. These are public-safe review packet artifacts for draft PR candidates, including branch-backed Beads and Beads that need triage before code.
 
-- Review packets: `36`
+- Review packets: `35`
 
 | Bead | Status | Priority | Type | Packet | Mirror Issue |
 | --- | --- | --- | --- | --- | --- |
 | ORKA-7ff6 | in_progress | P1 | task | [packet](ORKA-7ff6.md) | [#23](https://github.com/mdtrahan/wishfire-game/issues/23) |
-| ORKA-zy2o | in_progress | P1 | task | [packet](ORKA-zy2o.md) | [#24](https://github.com/mdtrahan/wishfire-game/issues/24) |
 | ORKA-0h6k | open | P1 | bug | [packet](ORKA-0h6k.md) | [#35](https://github.com/mdtrahan/wishfire-game/issues/35) |
 | ORKA-v4mh | open | P1 | task | [packet](ORKA-v4mh.md) | [#25](https://github.com/mdtrahan/wishfire-game/issues/25) |
 | ORKA-8hqv | open | P1 | feature | [packet](ORKA-8hqv.md) | [#36](https://github.com/mdtrahan/wishfire-game/issues/36) |

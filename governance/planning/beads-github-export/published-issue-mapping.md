@@ -8,9 +8,10 @@ Beads remains source of truth. These GitHub issues are public-safe visibility mi
 
 ## Summary
 
-- Published issue mirrors: `99`
+- Published issue mirrors: `99` total, `98` currently open/non-closed Bead mirrors
 - GitHub issue range: `#23` through `#121`
-- Prepared Project V2 item operations: `99`
+- Closed mirror issues: `#24` for ORKA-zy2o, closed after the Bead reached QA PASS in Beads
+- Prepared Project V2 item operations for current non-closed Beads: `98`
 - ORKA-7ff6 clean draft PR review surface: [#122](https://github.com/mdtrahan/wishfire-game/pull/122)
 - Local `main` and `origin/main` are aligned through merged PR #123.
 - GitHub Project field insertion is prepared but not applied. Open `mdtrahan` Project #2 exists, but it is untitled, empty, and currently has only GitHub default fields; apply requires explicit confirmation of the target Project and field setup.
@@ -20,7 +21,7 @@ Beads remains source of truth. These GitHub issues are public-safe visibility mi
 | Issue | Bead | Status | Priority | Type | Surface | Title |
 | --- | --- | --- | --- | --- | --- | --- |
 | [#23](https://github.com/mdtrahan/wishfire-game/issues/23) | ORKA-7ff6 | in_progress | P1 | task | draft_pr | ORKA-7ff6: [TASK] Export Beads to GitHub visibility surfaces |
-| [#24](https://github.com/mdtrahan/wishfire-game/issues/24) | ORKA-zy2o | in_progress | P1 | task | draft_pr | ORKA-zy2o: [TASK] Remove green gems and green super gems safely |
+| [#24](https://github.com/mdtrahan/wishfire-game/issues/24) | ORKA-zy2o | closed | P1 | task | historical_closed_mirror | ORKA-zy2o: [TASK] Remove green gems and green super gems safely |
 | [#35](https://github.com/mdtrahan/wishfire-game/issues/35) | ORKA-0h6k | open | P1 | bug | review_packet_pr | ORKA-0h6k: [BUG] Faze skill-card damage floats stack per enemy |
 | [#25](https://github.com/mdtrahan/wishfire-game/issues/25) | ORKA-v4mh | open | P1 | task | draft_pr | ORKA-v4mh: [MIGRATION] SimulationCore Rust/JS contract and fixture strategy |
 | [#36](https://github.com/mdtrahan/wishfire-game/issues/36) | ORKA-8hqv | open | P1 | feature | review_packet_pr | ORKA-8hqv: [FEAT] Kojonn green supergem Tainted Ground redesign |

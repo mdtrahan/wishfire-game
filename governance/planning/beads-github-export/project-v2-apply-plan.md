@@ -6,7 +6,7 @@ Beads remains source of truth. GitHub Project V2 is a visibility board only.
 
 ## Prepared Operations
 
-- Project item operations: `99`
+- Project item operations: `98`
 - Source manifest: `github-publish-manifest.json`
 - Source issues: GitHub Issues `#23` through `#121`
 - Public-safe fields: `Bead ID`, `Beads Status`, `Priority`, `Type`, `Parent/Epic`, `Blockers`, `Blocks`, `GitHub Surface`, `Branch`, `Overlap Risk`
