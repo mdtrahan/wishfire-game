@@ -26,9 +26,23 @@ Project writes are prepared but not applied.
 python3 tools/publish_beads_github_visibility.py --manifest governance/planning/beads-github-export/github-publish-manifest.json
 ```
 
-## Apply
+Audit Project #2 field readiness without writing:
+
+```sh
+python3 tools/publish_beads_github_visibility.py --manifest governance/planning/beads-github-export/github-publish-manifest.json --skip-issues --project-owner mdtrahan --project-owner-type user --project-number 2
+```
+
+## Apply Stages
 
 Run only after the team confirms the target Project owner/number and desired field setup:
+
+Create missing Bead fields only:
+
+```sh
+python3 tools/publish_beads_github_visibility.py --manifest governance/planning/beads-github-export/github-publish-manifest.json --apply --skip-issues --skip-project-items --ensure-project-fields --project-owner mdtrahan --project-owner-type user --project-number <project-number>
+```
+
+Add current mirror Issues to the confirmed Project:
 
 ```sh
 python3 tools/publish_beads_github_visibility.py --manifest governance/planning/beads-github-export/github-publish-manifest.json --apply --skip-issues --project-owner mdtrahan --project-owner-type user --project-number <project-number>
@@ -38,4 +52,4 @@ python3 tools/publish_beads_github_visibility.py --manifest governance/planning/
 
 - The publisher refuses to apply a manifest unless `publication_safety` is `public-safe`.
 - Project item operations use existing GitHub issue mirrors; they do not publish raw Beads descriptions, acceptance criteria, comments, changed-file paths, worktree paths, or `.beads` internals.
-- Missing Project fields are skipped rather than invented by the publisher.
+- Project item insertion refuses to proceed when public-safe Bead fields are missing, unless `--allow-missing-project-fields` is explicitly passed for a deliberately partial board.

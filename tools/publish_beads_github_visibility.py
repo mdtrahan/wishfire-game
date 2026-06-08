@@ -18,6 +18,20 @@ from typing import Any
 
 BEAD_TITLE_RE = re.compile(r"^(ORKA-[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)*):")
 PUBLIC_SAFE_LEVEL = "public-safe"
+TEXT_PROJECT_FIELDS = {
+    "Bead ID",
+    "Parent/Epic",
+    "Blockers",
+    "Blocks",
+    "Branch",
+    "Overlap Risk",
+}
+SINGLE_SELECT_FIELD_ORDER = {
+    "Beads Status": ["open", "in_progress", "blocked", "recovery", "deferred", "closed"],
+    "Priority": ["P1", "P2", "P3", "P4"],
+    "Type": ["task", "bug", "feature", "epic", "chore"],
+    "GitHub Surface": ["draft_pr", "review_packet_pr", "issue_project", "historical_closed_mirror"],
+}
 
 
 def run_command(
@@ -120,6 +134,144 @@ query($owner: String!, $number: Int!) {{
         if field and field.get("name")
     }
     return {"id": project["id"], "fields": fields}
+
+
+def ordered_options(field_name: str, values: set[str]) -> list[str]:
+    preferred = SINGLE_SELECT_FIELD_ORDER.get(field_name, [])
+    ordered = [value for value in preferred if value in values]
+    ordered.extend(sorted(value for value in values if value not in preferred))
+    return ordered
+
+
+def desired_project_field_specs(manifest: dict[str, Any]) -> list[dict[str, Any]]:
+    fields = manifest.get("project_fields") or []
+    operations = manifest.get("project_item_operations") or []
+    specs: list[dict[str, Any]] = []
+    for field_name in fields:
+        values = {
+            str((operation.get("field_values") or {}).get(field_name) or "").strip()
+            for operation in operations
+        }
+        values.discard("")
+        if field_name in SINGLE_SELECT_FIELD_ORDER:
+            specs.append(
+                {
+                    "field": field_name,
+                    "data_type": "SINGLE_SELECT",
+                    "options": ordered_options(field_name, values),
+                }
+            )
+        elif field_name in TEXT_PROJECT_FIELDS:
+            specs.append({"field": field_name, "data_type": "TEXT", "options": []})
+        else:
+            specs.append({"field": field_name, "data_type": "TEXT", "options": []})
+    return specs
+
+
+def project_field_gaps(
+    specs: list[dict[str, Any]],
+    project: dict[str, Any],
+) -> dict[str, list[dict[str, Any]]]:
+    missing_fields: list[dict[str, Any]] = []
+    missing_options: list[dict[str, Any]] = []
+    wrong_types: list[dict[str, Any]] = []
+    fields = project["fields"]
+    for spec in specs:
+        field_name = spec["field"]
+        field = fields.get(field_name)
+        if not field:
+            missing_fields.append(spec)
+            continue
+        expected_type = spec["data_type"]
+        if expected_type == "SINGLE_SELECT":
+            if field.get("__typename") != "ProjectV2SingleSelectField":
+                wrong_types.append(
+                    {
+                        "field": field_name,
+                        "expected": expected_type,
+                        "actual": field.get("__typename") or field.get("dataType") or "unknown",
+                    }
+                )
+                continue
+            existing = {str(option.get("name") or "").casefold() for option in field.get("options") or []}
+            missing = [option for option in spec["options"] if option.casefold() not in existing]
+            if missing:
+                missing_options.append({"field": field_name, "missing_options": missing})
+            continue
+        if field.get("__typename") != "ProjectV2Field" or field.get("dataType") != expected_type:
+            wrong_types.append(
+                {
+                    "field": field_name,
+                    "expected": expected_type,
+                    "actual": field.get("dataType") or field.get("__typename") or "unknown",
+                }
+            )
+    return {
+        "missing_fields": missing_fields,
+        "missing_options": missing_options,
+        "wrong_types": wrong_types,
+    }
+
+
+def create_project_field(owner: str, number: int, spec: dict[str, Any]) -> dict[str, Any]:
+    args = [
+        "gh",
+        "project",
+        "field-create",
+        str(number),
+        "--owner",
+        owner,
+        "--name",
+        spec["field"],
+        "--data-type",
+        spec["data_type"],
+        "--format",
+        "json",
+    ]
+    if spec["data_type"] == "SINGLE_SELECT":
+        args.extend(["--single-select-options", ",".join(spec["options"])])
+    result = run_command(args)
+    return json.loads(result.stdout)
+
+
+def ensure_project_fields(
+    manifest: dict[str, Any],
+    apply: bool,
+    ensure_fields: bool,
+    project_owner: str,
+    project_owner_type: str,
+    project_number: int | None,
+) -> list[dict[str, Any]]:
+    specs = desired_project_field_specs(manifest)
+    results: list[dict[str, Any]] = []
+    if project_number is None:
+        for spec in specs:
+            results.append({**spec, "action": "requires_project_number", "applied": False})
+        return results
+
+    project = load_project_v2(project_owner, int(project_number), project_owner_type)
+    gaps = project_field_gaps(specs, project)
+    missing_by_name = {field["field"]: field for field in gaps["missing_fields"]}
+    missing_options_by_name = {field["field"]: field["missing_options"] for field in gaps["missing_options"]}
+    wrong_types_by_name = {field["field"]: field for field in gaps["wrong_types"]}
+
+    for spec in specs:
+        field_name = spec["field"]
+        result = {**spec, "applied": False}
+        if field_name in wrong_types_by_name:
+            result.update({"action": "wrong_type", "details": wrong_types_by_name[field_name]})
+        elif field_name in missing_options_by_name:
+            result.update({"action": "missing_options", "missing_options": missing_options_by_name[field_name]})
+        elif field_name in missing_by_name:
+            if apply and ensure_fields:
+                output = create_project_field(project_owner, int(project_number), spec)
+                result.update({"action": "created_field", "applied": True, "output": output})
+            else:
+                result.update({"action": "create_field", "applied": False})
+        else:
+            result.update({"action": "exists", "applied": False})
+        results.append(result)
+    return results
 
 
 def existing_project_item_id(issue_node_id: str, project_id: str) -> str | None:
@@ -303,6 +455,7 @@ def publish_project_items(
     project_owner: str,
     project_owner_type: str,
     project_number: int | None,
+    allow_missing_project_fields: bool,
 ) -> list[dict[str, Any]]:
     repo = manifest["repository"]
     first_batch = set(manifest.get("first_batch_bead_ids") or [])
@@ -312,6 +465,17 @@ def publish_project_items(
 
     existing = load_existing_issues(repo) if apply else {}
     project = load_project_v2(project_owner, int(project_number), project_owner_type) if apply else None
+    if apply and project and not allow_missing_project_fields:
+        specs = desired_project_field_specs(manifest)
+        gaps = project_field_gaps(specs, project)
+        if gaps["missing_fields"] or gaps["missing_options"] or gaps["wrong_types"]:
+            raise SystemExit(
+                "Refusing to apply Project items because the target Project is missing "
+                "the public-safe Bead field schema. Run with --ensure-project-fields "
+                "after explicit approval, or pass --allow-missing-project-fields for "
+                "a deliberately partial Project view.\n"
+                + json.dumps(gaps, indent=2)
+            )
     results: list[dict[str, Any]] = []
     for operation in operations:
         bead_id = operation["match_key"]
@@ -397,6 +561,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Do not create/update Issues. Useful when applying only Project V2 items.",
     )
+    parser.add_argument(
+        "--skip-project-items",
+        action="store_true",
+        help="Do not add/update Project items. Useful when applying only Project field setup.",
+    )
     parser.add_argument("--first-batch-only", action="store_true", help="Limit issue publish to first batch.")
     parser.add_argument(
         "--project-owner",
@@ -419,6 +588,16 @@ def parse_args() -> argparse.Namespace:
         "--with-labels",
         action="store_true",
         help="Apply proposed labels. Requires labels to already exist or gh will fail.",
+    )
+    parser.add_argument(
+        "--ensure-project-fields",
+        action="store_true",
+        help="With --apply and --project-number, create missing public-safe Bead Project fields before item insertion.",
+    )
+    parser.add_argument(
+        "--allow-missing-project-fields",
+        action="store_true",
+        help="Allow Project item insertion even if public-safe Bead fields are missing. Produces a partial Project view.",
     )
     parser.add_argument(
         "--allow-detailed-internal",
@@ -446,15 +625,26 @@ def main() -> int:
             with_labels=args.with_labels,
         )
     project_owner = args.project_owner or repo_owner(manifest["repository"])
-    project_apply = bool(args.apply and args.project_number is not None)
-    project_item_results = publish_project_items(
+    project_apply = bool(args.apply and args.project_number is not None and not args.skip_project_items)
+    project_field_results = ensure_project_fields(
         manifest,
-        apply=project_apply,
-        first_batch_only=args.first_batch_only,
+        apply=bool(args.apply),
+        ensure_fields=args.ensure_project_fields,
         project_owner=project_owner,
         project_owner_type=args.project_owner_type,
         project_number=args.project_number,
     )
+    project_item_results = []
+    if not args.skip_project_items:
+        project_item_results = publish_project_items(
+            manifest,
+            apply=project_apply,
+            first_batch_only=args.first_batch_only,
+            project_owner=project_owner,
+            project_owner_type=args.project_owner_type,
+            project_number=args.project_number,
+            allow_missing_project_fields=args.allow_missing_project_fields,
+        )
     pr_gates = summarize_pr_gates(manifest)
     output = {
         "mode": "apply" if args.apply else "dry-run",
@@ -464,8 +654,10 @@ def main() -> int:
             "owner_type": args.project_owner_type,
             "number": args.project_number,
             "applied": project_apply,
+            "fields_ensured": bool(args.apply and args.ensure_project_fields and args.project_number),
         },
         "issue_results": issue_results,
+        "project_field_results": project_field_results,
         "project_item_results": project_item_results,
         "draft_pr_gates": pr_gates,
     }

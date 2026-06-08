@@ -20,6 +20,7 @@ Beads remains source of truth. Publish GitHub records as visibility mirrors only
 - Project item apply requires an existing GitHub Project owner and Project number; do not create a new Project without explicit approval.
 - The first connector write rejected detailed Bead bodies as too much non-public workspace data; `github-publish-manifest.json` is now public-safe and omits detailed scope, acceptance criteria, changed-file paths, worktree paths, and raw Beads internals.
 - Open `mdtrahan` Project #2 exists, but it is untitled, empty, and currently has only GitHub default fields. Do not populate it without explicit user approval.
+- The publisher now audits the Bead field schema and refuses Project item insertion when fields are missing, unless `--allow-missing-project-fields` is explicitly passed for a deliberately partial board.
 
 ## Remote Baseline
 
@@ -30,7 +31,7 @@ Beads remains source of truth. Publish GitHub records as visibility mirrors only
 ## Publish Phases
 
 1. Create or update GitHub Issues for all visible non-closed Beads from the public-safe `github-publish-manifest.json`. Completed for the current set; closed ORKA-zy2o mirror #24 is retained as history.
-2. Add those Issues to the team Project and expose the listed project fields from `project_item_operations`. Prepared; gated on explicit Project/field approval.
+2. Add those Issues to the team Project and expose the listed project fields from `project_item_operations`. Prepared; gated on explicit Project/field approval, with field-only setup available via `--skip-project-items --ensure-project-fields`.
 3. Sync local `main` to GitHub through the protected-branch PR process. Completed by PR #123.
 4. Push selected Bead branches or create tracked review artifacts. Review artifacts are generated for the current 35 candidates.
 5. Open draft PRs for active, blocked, QA-ready, or review-worthy Beads. Started with ORKA-7ff6 draft PR #122.
