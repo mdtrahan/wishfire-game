@@ -16,9 +16,9 @@ Beads remains source of truth. GitHub Project V2 is a visibility board only.
 Project writes are prepared but not applied.
 
 - Local `gh` auth has Project scope.
-- No open `mdtrahan` user Project currently exists for this repository.
-- Do not create a new Project as part of this export without explicit user approval.
-- Apply requires an existing GitHub Project URL or Project number and owner.
+- Open `mdtrahan` Project #2 exists at `https://github.com/users/mdtrahan/projects/2`, but it is untitled, empty, and currently has only GitHub default fields.
+- Do not populate Project #2 or create a new Project as part of this export without explicit user approval.
+- Apply requires a confirmed GitHub Project owner/number and, for full field visibility, the public-safe Bead fields listed above.
 
 ## Dry Run
 
@@ -28,7 +28,7 @@ python3 tools/publish_beads_github_visibility.py --manifest governance/planning/
 
 ## Apply
 
-Run only after the team provides an existing Project owner and Project number:
+Run only after the team confirms the target Project owner/number and desired field setup:
 
 ```sh
 python3 tools/publish_beads_github_visibility.py --manifest governance/planning/beads-github-export/github-publish-manifest.json --apply --skip-issues --project-owner mdtrahan --project-owner-type user --project-number <project-number>

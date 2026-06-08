@@ -13,7 +13,7 @@ Beads remains source of truth. These GitHub issues are public-safe visibility mi
 - Prepared Project V2 item operations: `99`
 - ORKA-7ff6 clean draft PR review surface: [#122](https://github.com/mdtrahan/wishfire-game/pull/122)
 - Local `main` and `origin/main` are aligned through merged PR #123.
-- GitHub Project field insertion is prepared but not applied because no open `mdtrahan` user Project currently exists; apply requires an existing Project owner/number or explicit approval to create a new board.
+- GitHub Project field insertion is prepared but not applied. Open `mdtrahan` Project #2 exists, but it is untitled, empty, and currently has only GitHub default fields; apply requires explicit confirmation of the target Project and field setup.
 
 ## Published Issues
 
