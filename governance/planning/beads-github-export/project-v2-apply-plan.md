@@ -11,15 +11,15 @@ Beads remains source of truth. GitHub Project V2 is a visibility board only.
 - Source issues: GitHub Issues `#23` through `#121`
 - Public-safe fields: `Bead ID`, `Beads Status`, `Priority`, `Type`, `Parent/Epic`, `Blockers`, `Blocks`, `GitHub Surface`, `Branch`, `Overlap Risk`
 
-## Apply Gate
+## Apply Result
 
-Project writes are prepared but not applied.
+Project writes are applied to `https://github.com/users/mdtrahan/projects/2`.
 
 - Local `gh` auth has Project scope.
-- Open `mdtrahan` Project #2 exists at `https://github.com/users/mdtrahan/projects/2`, but it is untitled, empty, and currently has only GitHub default fields.
-- Do not populate Project #2 or create a new Project as part of this export without explicit user approval.
-- Apply requires a confirmed GitHub Project owner/number and, for full field visibility, the public-safe Bead fields listed above.
-- Current readiness evidence is recorded in `project-v2-readiness-audit.md`.
+- Open `mdtrahan` Project #2 was renamed to `Wishfire Beads`.
+- The board contains `98` current non-closed Bead mirror issues.
+- The board contains `23` fields: GitHub defaults plus the `10` public-safe Bead visibility fields.
+- Current apply evidence is recorded in `project-v2-readiness-audit.md`.
 
 ## Dry Run
 
@@ -35,18 +35,18 @@ python3 tools/publish_beads_github_visibility.py --manifest governance/planning/
 
 ## Apply Stages
 
-Run only after the team confirms the target Project owner/number and desired field setup:
+These were the applied stages for Project #2:
 
 Create missing Bead fields only:
 
 ```sh
-python3 tools/publish_beads_github_visibility.py --manifest governance/planning/beads-github-export/github-publish-manifest.json --apply --skip-issues --skip-project-items --ensure-project-fields --project-owner mdtrahan --project-owner-type user --project-number <project-number>
+python3 tools/publish_beads_github_visibility.py --manifest governance/planning/beads-github-export/github-publish-manifest.json --apply --skip-issues --skip-project-items --ensure-project-fields --project-owner mdtrahan --project-owner-type user --project-number 2
 ```
 
 Add current mirror Issues to the confirmed Project:
 
 ```sh
-python3 tools/publish_beads_github_visibility.py --manifest governance/planning/beads-github-export/github-publish-manifest.json --apply --skip-issues --project-owner mdtrahan --project-owner-type user --project-number <project-number>
+python3 tools/publish_beads_github_visibility.py --manifest governance/planning/beads-github-export/github-publish-manifest.json --apply --skip-issues --project-owner mdtrahan --project-owner-type user --project-number 2
 ```
 
 ## Safety

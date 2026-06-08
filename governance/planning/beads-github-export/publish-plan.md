@@ -10,7 +10,7 @@ Beads remains source of truth. Publish GitHub records as visibility mirrors only
 | --- | --- | --- |
 | Remote baseline | complete | Local main matches remote main after merged PR #123. |
 | Issue creation | complete | 99 total Bead mirror issues were published; 98 remain open for current non-closed Beads after closing ORKA-zy2o mirror #24. |
-| Project item creation | prepared | Manifest contains 98 Project item operations for current non-closed Beads. Apply needs explicit confirmation of Project #2 or another target board plus field setup. |
+| Project item creation | complete | Project #2 was renamed to `Wishfire Beads`, the 10 Bead fields were created, and 98 current non-closed Bead mirror issues were added. |
 | Review packet artifacts | complete | Generated 35 public-safe review packets for current non-closed draft PR candidates. |
 | Draft PR review surface | partial | ORKA-7ff6 has draft PR #122; remaining Bead-lane PRs require branch pushes or review decisions. |
 
@@ -19,9 +19,9 @@ Beads remains source of truth. Publish GitHub records as visibility mirrors only
 - Verify local `gh auth status` and Project scope before applying writes from the local CLI.
 - Project item apply requires an existing GitHub Project owner and Project number; do not create a new Project without explicit approval.
 - The first connector write rejected detailed Bead bodies as too much non-public workspace data; `github-publish-manifest.json` is now public-safe and omits detailed scope, acceptance criteria, changed-file paths, worktree paths, and raw Beads internals.
-- Open `mdtrahan` Project #2 exists, but it is untitled, empty, and currently has only GitHub default fields. Do not populate it without explicit user approval.
+- Open `mdtrahan` Project #2 exists at `https://github.com/users/mdtrahan/projects/2` as `Wishfire Beads`; it now contains 98 current Bead items and 23 fields.
 - The publisher now audits the Bead field schema and refuses Project item insertion when fields are missing, unless `--allow-missing-project-fields` is explicitly passed for a deliberately partial board.
-- Project #2 readiness evidence is recorded in `project-v2-readiness-audit.md`.
+- Project #2 apply evidence is recorded in `project-v2-readiness-audit.md`.
 
 ## Remote Baseline
 
@@ -32,7 +32,7 @@ Beads remains source of truth. Publish GitHub records as visibility mirrors only
 ## Publish Phases
 
 1. Create or update GitHub Issues for all visible non-closed Beads from the public-safe `github-publish-manifest.json`. Completed for the current set; closed ORKA-zy2o mirror #24 is retained as history.
-2. Add those Issues to the team Project and expose the listed project fields from `project_item_operations`. Prepared; gated on explicit Project/field approval, with field-only setup available via `--skip-project-items --ensure-project-fields`.
+2. Add those Issues to the team Project and expose the listed project fields from `project_item_operations`. Completed for Project #2, `Wishfire Beads`.
 3. Sync local `main` to GitHub through the protected-branch PR process. Completed by PR #123.
 4. Push selected Bead branches or create tracked review artifacts. Review artifacts are generated for the current 35 candidates.
 5. Open draft PRs for active, blocked, QA-ready, or review-worthy Beads. Started with ORKA-7ff6 draft PR #122.

@@ -11,10 +11,10 @@ Beads remains source of truth. These GitHub issues are public-safe visibility mi
 - Published issue mirrors: `99` total, `98` currently open/non-closed Bead mirrors
 - GitHub issue range: `#23` through `#121`
 - Closed mirror issues: `#24` for ORKA-zy2o, closed after the Bead reached QA PASS in Beads
-- Prepared Project V2 item operations for current non-closed Beads: `98`
+- Applied Project V2 item operations for current non-closed Beads: `98`
+- Project board: [`Wishfire Beads`](https://github.com/users/mdtrahan/projects/2), with 23 fields and 98 current Bead items
 - ORKA-7ff6 clean draft PR review surface: [#122](https://github.com/mdtrahan/wishfire-game/pull/122)
 - Local `main` and `origin/main` are aligned through merged PR #123.
-- GitHub Project field insertion is prepared but not applied. Open `mdtrahan` Project #2 exists, but it is untitled, empty, and currently has only GitHub default fields; apply requires explicit confirmation of the target Project and field setup.
 
 ## Published Issues
 

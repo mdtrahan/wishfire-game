@@ -27,7 +27,7 @@ Beads remains source of truth. These GitHub issues are public-safe visibility mi
 
 - Full current non-closed backlog publication is complete; historical closed mirror #24 remains closed.
 - Draft PR creation for other Bead lanes remains gated by branch readiness and review decisions, not by remote-baseline mismatch.
-- GitHub Project field wiring is not complete in this batch. Open Project #2 exists but is untitled/default-field-only, and should not be populated without explicit approval.
+- GitHub Project field wiring is complete for Project #2, `Wishfire Beads`, with 98 current Bead items and the 10 Bead visibility fields applied.
 
 ## Safety
 
