@@ -1,6 +1,6 @@
 # Beads to GitHub Visibility Dry Run
 
-Generated: `2026-06-08T14:59:23Z`
+Generated: `2026-06-08T15:12:46Z`
 
 Beads remains source of truth. This report proposes GitHub Issues, Project rows, and draft PR review packets for team visibility only.
 
@@ -48,10 +48,10 @@ Beads remains source of truth. This report proposes GitHub Issues, Project rows,
 
 ## Branch Overlap Risks
 
-| Bead | Branch | Risk Notes | Changed Files |
+| Bead | Branch | Overlaps With | Shared File Count |
 | --- | --- | --- | --- |
-| ORKA-zy2o | bead/ORKA-zy2o-remove-green-gems | Shares `Scripts/functionBank.js` branch diff with ORKA-c1h0, ORKA-zy2o.; Shares `ai-memory/insights.md` branch diff with ORKA-c1h0, ORKA-zy2o.; Shares `rust/simulation_core/src/lib.rs` branch diff with ORKA-c1h0, ORKA-zy2o.; Shares `src/core/gemActionRules.mjs` branch diff with ORKA-c1h0, ORKA-zy2o. | Scripts/functionBank.js, Scripts/state.js, ai-memory/insights.md, governance/product/game-function-reference.md, governance/product/hero-supergem-bead-ledger.md, governance/product/player-living-guide.md, rust/simulation_core/src/lib.rs, src/core/gemActionRules.mjs, tests/enemyLineClearRefillContract.test.js, tests/fixtures/gem_action_cases.csv, tests/gemActionOwnershipContract.test.js, tests/greenGemRemovalContract.test.js |
-| ORKA-idfa | bead/ORKA-idfa-appjs-offload | Shares `web-runner/app.js` branch diff with ORKA-c1h0, ORKA-idfa, ORKA-rrxj.9, ORKA-zy2o. | tests/artifactsLayoutScaffoldContract.test.js, tests/chestsLayoutScaffoldContract.test.js, tests/collectiblesLayoutScaffoldContract.test.js, tests/homesteadLayoutScaffoldContract.test.js, tests/idleFarmLayoutScaffoldContract.test.js, tests/mountsLayoutScaffoldContract.test.js, tests/superGemAppContract.test.js, tests/tomesLayoutScaffoldContract.test.js, web-runner/app.js, web-runner/state/gameState.js, web-runner/state/harnessLayoutState.js, web-runner/state/heroScreenConfig.js |
+| ORKA-zy2o | bead/ORKA-zy2o-remove-green-gems | ORKA-c1h0, ORKA-c6zn, ORKA-idfa, ORKA-rrxj.9 | 15 |
+| ORKA-idfa | bead/ORKA-idfa-appjs-offload | ORKA-c1h0, ORKA-rrxj.9, ORKA-zy2o | 1 |
 
 ## All Visible Beads
 
@@ -159,6 +159,6 @@ Beads remains source of truth. This report proposes GitHub Issues, Project rows,
 
 ## Data Safety
 
-- Export includes Bead IDs, titles, status, priority, type, labels, dependency links, branch/worktree pointers, and sanitized descriptions/acceptance criteria in JSON.
-- Export omits comments, raw notes, `.beads` backup data, credentials, local database internals, and Beads implementation files.
+- GitHub-publishable artifacts include Bead IDs, titles, status, priority, type, labels, dependency links, branch names, and branch-overlap signals.
+- GitHub-publishable artifacts omit Bead descriptions, acceptance criteria, comments, raw notes, changed-file paths, worktree paths, `.beads` backup data, credentials, local database internals, and Beads implementation files.
 - Local filesystem paths in exported text are redacted to `[local-path]`.

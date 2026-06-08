@@ -16,6 +16,7 @@ Beads remains source of truth. Publish GitHub records as visibility mirrors only
 
 - Local `gh auth status` currently reports an invalid token for `mdtrahan`, so the publisher cannot apply writes from local CLI until auth is repaired.
 - GitHub connector read access confirmed recent repository PRs are closed/merged; no current open PR collision was found through the connector read.
+- The first connector write rejected detailed Bead bodies as too much non-public workspace data; `github-publish-manifest.json` is now public-safe and omits detailed scope, acceptance criteria, changed-file paths, worktree paths, and raw Beads internals.
 
 ## Remote Baseline
 
@@ -25,7 +26,7 @@ Beads remains source of truth. Publish GitHub records as visibility mirrors only
 
 ## Publish Phases
 
-1. Create or update GitHub Issues for all visible non-closed Beads from `github-publish-manifest.json`.
+1. Create or update GitHub Issues for all visible non-closed Beads from the public-safe `github-publish-manifest.json`.
 2. Add those Issues to the team Project and expose the listed project fields.
 3. Sync local `main` to GitHub through the protected-branch PR process.
 4. Push selected Bead branches or create tracked review artifacts.
