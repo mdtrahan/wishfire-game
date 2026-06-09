@@ -62,6 +62,29 @@ test('dev idle autoplay HP thresholds override or suppress heal triplets', async
   assert.deepEqual(pickIdleAutoplayTriplet(board, { heroName: 'Falie', partyHpRatio: 0.81 }), pickedTriplet(0));
 });
 
+test('dev idle autoplay skips locked gems and locked super-gem footprints', async () => {
+  const { pickIdleAutoplaySuperGem, pickIdleAutoplayTriplet } = await import(modulePath);
+  const board = [
+    { cellR: 0, cellC: 0, color: 1, locked: true, lockCountdown: 3 },
+    { cellR: 0, cellC: 1, color: 1 },
+    { cellR: 0, cellC: 2, color: 1 },
+    ...triplet(1, 1),
+  ];
+  const superGems = [
+    { baseColor: 1, cells: [{ r: 0, c: 0 }, { r: 0, c: 1 }] },
+    { baseColor: 1, cells: [{ r: 1, c: 0 }, { r: 1, c: 1 }] },
+  ];
+
+  assert.deepEqual(
+    pickIdleAutoplayTriplet(board, { heroName: 'Falie', partyHpRatio: 0.7 }),
+    [{ row: 0, col: 1 }, { row: 0, col: 2 }, { row: 1, col: 0 }],
+  );
+  assert.deepEqual(
+    pickIdleAutoplaySuperGem(superGems, { heroName: 'Falie', partyHpRatio: 0.7, lockedCells: ['0,0'] }),
+    { row: 1, col: 0 },
+  );
+});
+
 test('dev idle autoplay keeps gold/yellow resource-only unless Huun is active while enemies are living', async () => {
   const { pickIdleAutoplaySuperGem, pickIdleAutoplayTriplet } = await import(modulePath);
   const board = [
@@ -97,6 +120,7 @@ test('dev idle autoplay runtime delegates priority through the core module', () 
   const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
   assert.match(src, /from '\.\/src\/core\/idleAutoplayPriority\.mjs';/);
   assert.match(src, /hasLivingEnemiesForIdleAutoplay\(\)/);
+  assert.match(src, /lockedCells: getLockedGemCellKeys\(\)/);
   assert.match(src, /pickIdleAutoplayTriplet\(gameState\.gems, getIdleAutoplayPriorityContext\(\)\)/);
   assert.match(src, /pickIdleAutoplaySuperGem\(gameState\.superGems, getIdleAutoplayPriorityContext\(\)\)/);
   assert.match(src, /const beforeSuperGemProgressSig = getDevAutoplayProgressSig\(\);/);

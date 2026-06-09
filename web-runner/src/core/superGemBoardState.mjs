@@ -44,6 +44,16 @@ function getGemColor(gem) {
   return Number(gem?.color ?? gem?.elementIndex);
 }
 
+function isLockedGem(gem) {
+  return !!(
+    gem && (
+      gem.locked === true ||
+      Number(gem.Locked || 0) > 0 ||
+      Number(gem.lockCountdown ?? gem.LockCountdown ?? 0) > 0
+    )
+  );
+}
+
 function getCellKey(cellR, cellC) {
   return `${Number(cellR)},${Number(cellC)}`;
 }
@@ -73,9 +83,11 @@ function buildSuperGemColorClear({ superGem, gems = [] }) {
   for (const gem of gems || []) {
     if (!gem) continue;
     const key = getCellKey(gem.cellR, gem.cellC);
+    const isSuperGemSourceCell = superGemCellKeys.has(key);
     if (getGemColor(gem) !== color) continue;
+    if (!isSuperGemSourceCell && isLockedGem(gem)) continue;
     clearKeys.add(key);
-    if (!superGemCellKeys.has(key)) {
+    if (!isSuperGemSourceCell) {
       flyItems.push({
         x: Number(gem.x || 0),
         y: Number(gem.y || 0),
@@ -88,6 +100,17 @@ function buildSuperGemColorClear({ superGem, gems = [] }) {
     flyItems,
     center: getSuperGemCenterWorld(superGem, gems),
   };
+}
+
+function hasLockedSuperGemSource(superGem, gems = []) {
+  const cells = Array.isArray(superGem?.cells) ? superGem.cells : [];
+  if (!cells.length) return false;
+  return cells.some((cell) => {
+    const gem = (gems || []).find((candidate) => (
+      candidate && candidate.cellR === cell.r && candidate.cellC === cell.c
+    ));
+    return isLockedGem(gem);
+  });
 }
 
 function hasSuperGemBoardEmptySlots(gameState = {}) {
@@ -243,6 +266,7 @@ export function spendSuperGem({
   const cells = Array.isArray(superGem.cells) ? superGem.cells : [];
   if (!cells.length) return false;
   if (!isRainbowFamilyColor(superGem.baseColor)) return false;
+  if (hasLockedSuperGemSource(superGem, gameState.gems || [])) return false;
   if (!canStartSuperGemSpend(state.globals || {}, gameState)) return false;
   const currentTurnUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
   const currentTurnActor = currentTurnUID > 0 ? callFunctionWithContext(fnContext, 'GetActorByUID', currentTurnUID) : null;

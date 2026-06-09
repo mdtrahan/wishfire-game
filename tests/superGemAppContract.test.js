@@ -48,7 +48,7 @@ test('app wires super gem hooks for settle, spend, and decomposition', () => {
   assert.doesNotMatch(src, /function spendSuperGem\(superGem, reason = 'tap'\)/);
   assert.match(src, /const tappedSuperGem = getSuperGemAtCanvasPoint\(\{\s*gameState,\s*mx,\s*my,/s);
   assert.match(src, /const tappedSuperGem = getSuperGemAtCell\(gameState, gem\.cellR, gem\.cellC\);/);
-  assert.match(src, /if \(tappedSuperGem\) \{\s*spendSuperGem\(\{/s);
+  assert.match(src, /if \(tappedSuperGem\) \{[\s\S]*?isSuperGemLockedByBoardGems\(tappedSuperGem\)[\s\S]*?spendSuperGem\(\{/s);
   assert.match(src, /resolveSuperGemDecomposition\(\{ gameState, state, reason: 'pre-refill' }\);/);
   assert.match(src, /settleSuperGemShapes\(\{ gameState, state, boardGeometry, reason: 'immediate-fill' }\);/);
   assert.match(src, /settleSuperGemShapes\(\{ gameState, state, boardGeometry, reason: 'refill-gem-board' }\);/);

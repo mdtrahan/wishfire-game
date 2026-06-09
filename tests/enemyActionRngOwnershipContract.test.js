@@ -131,7 +131,7 @@ test('enemy action RNG pockets no longer call direct Math.random in deterministi
       sourceSlice(src, 'function buildWaveRespawnPlan', 'function ensurePendingEnemyRespawnSlots'),
       sourceSlice(src, 'export function ResolveEnemyAction', 'export function ExecuteEnemySkill'),
       sourceSlice(src, 'export function PickEnemySkill', 'export function GetEnemySkillAssignmentMap'),
-      sourceSlice(src, 'function clearRandomGemLine', 'function executeEnemyBoardPressureSkill'),
+      sourceSlice(src, 'function lockRandomGemLine', 'function executeEnemyBoardPressureSkill'),
     ];
     for (const snippet of snippets) {
       assert.doesNotMatch(snippet, /Math\.random\(\)/, modulePath);

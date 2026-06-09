@@ -31,6 +31,31 @@ function normalizeColor(value) {
   return Number.isFinite(color) && color >= COLOR_RED && color <= COLOR_PURPLE ? color : null;
 }
 
+function isLockedGem(gem) {
+  if (!gem) return false;
+  const countdown = Number(gem.lockCountdown ?? gem.LockCountdown ?? 0);
+  return countdown > 0 || gem.locked === true || Number(gem.Locked || 0) === 1;
+}
+
+function cellKey(row, col) {
+  return `${Number(row || 0)},${Number(col || 0)}`;
+}
+
+function normalizeLockedCells(input) {
+  if (input instanceof Set) return input;
+  const set = new Set();
+  for (const item of (Array.isArray(input) ? input : [])) {
+    if (typeof item === 'string') {
+      set.add(item);
+      continue;
+    }
+    if (item && typeof item === 'object') {
+      set.add(cellKey(item.r ?? item.row, item.c ?? item.col));
+    }
+  }
+  return set;
+}
+
 function clampRatio(value) {
   const ratio = Number(value);
   if (!Number.isFinite(ratio)) return null;
@@ -116,6 +141,7 @@ export function pickIdleAutoplayTriplet(gems = [], context = {}, randomFn = Math
   const byColor = new Map();
   for (const gem of (Array.isArray(gems) ? gems : [])) {
     if (!gem) continue;
+    if (isLockedGem(gem)) continue;
     const color = normalizeColor(gem.color != null ? gem.color : gem.elementIndex);
     if (color == null) continue;
     if (!byColor.has(color)) byColor.set(color, []);
@@ -138,12 +164,14 @@ export function pickIdleAutoplayTriplet(gems = [], context = {}, randomFn = Math
 export function pickIdleAutoplaySuperGem(superGems = [], context = {}) {
   const candidates = Array.isArray(superGems) ? superGems : [];
   if (!candidates.length) return null;
+  const lockedCells = normalizeLockedCells(context.lockedCells);
 
   for (const tier of getIdleAutoplayColorPriorityTiers(context)) {
     for (const superGem of candidates) {
       const color = normalizeColor(superGem && superGem.baseColor);
       const cells = Array.isArray(superGem && superGem.cells) ? superGem.cells : [];
       if (color == null || !tier.includes(color) || !cells.length) continue;
+      if (cells.some((cell) => lockedCells.has(cellKey(cell.r ?? cell.row, cell.c ?? cell.col)))) continue;
       const cell = cells[0];
       return { row: Number(cell.r ?? cell.row ?? 0), col: Number(cell.c ?? cell.col ?? 0) };
     }

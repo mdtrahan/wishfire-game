@@ -3965,6 +3965,7 @@ export function AdvanceTurn(ctx) {
   const currentUID = GetCurrentTurn(ctx);
   const currentType = GetCurrentType(ctx);
   recordHeroTeamTurnProgress(ctx, currentUID, currentType);
+  tickEnemyGemLockCountdowns(ctx);
   if (currentType === 0 && currentUID && g.ExtraTurnGranted && Object.prototype.hasOwnProperty.call(g.ExtraTurnGranted, currentUID)) {
     delete g.ExtraTurnGranted[currentUID];
   }
@@ -8432,17 +8433,24 @@ function resolveEnemyBoardLineFallbackSkill(enemy, skillId) {
   return String(conf?.regularSkill || 'Enemy_ATK_Single');
 }
 
+const ENEMY_GEM_LOCK_DURATIONS = Object.freeze({
+  Enemy_Scathe: 3,
+  Enemy_Sweep: 5,
+});
+
 const ENEMY_BOARD_PRESSURE_SKILL_HARNESSES = Object.freeze({
   Enemy_Scathe: Object.freeze({
     skillId: 'Enemy_Scathe',
     axis: 'column',
     label: 'Scathe',
+    duration: ENEMY_GEM_LOCK_DURATIONS.Enemy_Scathe,
     logSuffix: 'from a column.',
   }),
   Enemy_Sweep: Object.freeze({
     skillId: 'Enemy_Sweep',
     axis: 'row',
     label: 'Sweep',
+    duration: ENEMY_GEM_LOCK_DURATIONS.Enemy_Sweep,
     logSuffix: 'from a row.',
   }),
 });
@@ -8539,39 +8547,154 @@ export function Enemy_Drain_Buff(ctx, enemyUID) {
   return 1;
 }
 
-function clearRandomGemLine(ctx, axis) {
+function clearEnemyGemLockState(gem) {
+  if (!gem) return;
+  delete gem.locked;
+  delete gem.Locked;
+  delete gem.lockGroupId;
+  delete gem.LockGroupId;
+  delete gem.lockCountdown;
+  delete gem.LockCountdown;
+  delete gem.lockSourceSkill;
+  delete gem.LockSourceSkill;
+}
+
+function isEnemyGemLocked(gem) {
+  if (!gem) return false;
+  const countdown = Number(gem.lockCountdown ?? gem.LockCountdown ?? 0);
+  return countdown > 0 || gem.locked === true || Number(gem.Locked || 0) === 1;
+}
+
+function ensureEnemyGemLockGroups(g) {
+  if (!g.EnemyGemLockGroups || typeof g.EnemyGemLockGroups !== 'object' || Array.isArray(g.EnemyGemLockGroups)) {
+    g.EnemyGemLockGroups = {};
+  }
+  return g.EnemyGemLockGroups;
+}
+
+function createEnemyGemLockGroup(ctx, options) {
+  const opts = options && typeof options === 'object' ? options : {};
+  const { skillId, axis, lineIndex, duration, gemUIDs } = opts;
   const g = getGlobals(ctx);
+  const groups = ensureEnemyGemLockGroups(g);
+  const nextId = Math.max(0, Math.floor(Number(g.EnemyGemLockNextGroupId || 0))) + 1;
+  g.EnemyGemLockNextGroupId = nextId;
+  const groupId = `enemy-gem-lock-${nextId}`;
+  groups[groupId] = {
+    id: groupId,
+    skillId: String(skillId || ''),
+    axis: String(axis || ''),
+    lineIndex: Number(lineIndex),
+    duration: Math.max(1, Math.floor(Number(duration || 1))),
+    remaining: Math.max(1, Math.floor(Number(duration || 1))),
+    lastTickTurnSerial: Math.max(0, Math.floor(Number(g.TurnSerial || 0))),
+    gemUIDs: Array.isArray(gemUIDs) ? gemUIDs.map(uid => Number(uid || 0)).filter(uid => uid > 0) : [],
+  };
+  return groups[groupId];
+}
+
+function applyEnemyGemLockState(gem, group) {
+  if (!gem || !group) return;
+  const remaining = Math.max(0, Math.floor(Number(group.remaining || 0)));
+  gem.locked = true;
+  gem.Locked = 1;
+  gem.lockGroupId = group.id;
+  gem.LockGroupId = group.id;
+  gem.lockCountdown = remaining;
+  gem.LockCountdown = remaining;
+  gem.lockSourceSkill = group.skillId;
+  gem.LockSourceSkill = group.skillId;
+  gem.selected = false;
+  gem.Selected = 0;
+}
+
+function syncEnemyGemLockGroupsToBoard(ctx) {
+  const g = getGlobals(ctx);
+  const groups = ensureEnemyGemLockGroups(g);
   const gems = getGems(ctx);
-  const occupiedIndices = Array.from(new Set(
-    gems
-      .map((gem) => Number(axis === 'column' ? gem?.cellC : gem?.cellR))
-      .filter((value) => Number.isInteger(value) && value >= 0)
-  ));
-  if (!occupiedIndices.length) return { cleared: 0, lineIndex: -1 };
-  const lineIndex = occupiedIndices[randomIndex(ctx, occupiedIndices.length)];
-  const nextGems = [];
-  let consumed = 0;
-  for (const gem of gems) {
-    const gemIndex = Number(axis === 'column' ? gem?.cellC : gem?.cellR);
-    if (gemIndex === lineIndex) {
-      consumed += 1;
+  let activeCount = 0;
+  for (const gem of (Array.isArray(gems) ? gems : [])) {
+    if (!isEnemyGemLocked(gem)) continue;
+    const groupId = String(gem.lockGroupId || gem.LockGroupId || '');
+    const group = groupId ? groups[groupId] : null;
+    const remaining = Math.max(0, Math.floor(Number(group?.remaining || 0)));
+    if (!group || remaining <= 0) {
+      clearEnemyGemLockState(gem);
       continue;
     }
-    nextGems.push(gem);
+    applyEnemyGemLockState(gem, group);
+    activeCount += 1;
   }
-  setGems(ctx, nextGems);
+  g.EnemyGemLockActive = activeCount > 0 ? 1 : 0;
+  if (activeCount === 0 && Object.keys(groups).length === 0) {
+    delete g.EnemyGemLockActive;
+  }
+  return activeCount;
+}
+
+function tickEnemyGemLockCountdowns(ctx) {
+  const g = getGlobals(ctx);
+  const groups = ensureEnemyGemLockGroups(g);
+  const currentTurnSerial = Math.max(0, Math.floor(Number(g.TurnSerial || 0)));
+  for (const [groupId, group] of Object.entries(groups)) {
+    if (!group || typeof group !== 'object') {
+      delete groups[groupId];
+      continue;
+    }
+    const remaining = Math.max(0, Math.floor(Number(group.remaining || 0)));
+    if (remaining <= 0) {
+      delete groups[groupId];
+      continue;
+    }
+    const lastTick = Math.max(0, Math.floor(Number(group.lastTickTurnSerial ?? currentTurnSerial)));
+    if (lastTick >= currentTurnSerial) continue;
+    group.remaining = remaining - 1;
+    group.lastTickTurnSerial = currentTurnSerial;
+    if (group.remaining <= 0) delete groups[groupId];
+  }
+  syncEnemyGemLockGroupsToBoard(ctx);
+}
+
+function lockRandomGemLine(ctx, axis, skillId, duration) {
+  const g = getGlobals(ctx);
+  const gems = getGems(ctx);
+  const lineCounts = new Map();
+  for (const gem of (Array.isArray(gems) ? gems : [])) {
+    if (!gem || isEnemyGemLocked(gem)) continue;
+    const value = Number(axis === 'column' ? gem.cellC : gem.cellR);
+    if (!Number.isInteger(value) || value < 0) continue;
+    lineCounts.set(value, (lineCounts.get(value) || 0) + 1);
+  }
+  const occupiedIndices = Array.from(lineCounts.keys());
+  if (!occupiedIndices.length) return { locked: 0, lineIndex: -1, duration: Math.max(1, Math.floor(Number(duration || 1))), groupId: '' };
+  const lineIndex = occupiedIndices[randomIndex(ctx, occupiedIndices.length)];
+  const targetGems = [];
+  for (const gem of (Array.isArray(gems) ? gems : [])) {
+    const gemIndex = Number(axis === 'column' ? gem?.cellC : gem?.cellR);
+    if (gemIndex === lineIndex && !isEnemyGemLocked(gem)) targetGems.push(gem);
+  }
+  const safeDuration = Math.max(1, Math.floor(Number(duration || 1)));
+  const group = createEnemyGemLockGroup(ctx, {
+    skillId,
+    axis,
+    lineIndex,
+    duration: safeDuration,
+    gemUIDs: targetGems.map(gem => Number(gem?.uid || 0)).filter(uid => uid > 0),
+  });
+  for (const gem of targetGems) applyEnemyGemLockState(gem, group);
+  setGems(ctx, gems);
   setSelectedGemIndices(ctx, []);
   g.TapIndex = 0;
-  if (consumed > 0) g.EnemyLineClearPressureActive = 1;
-  return { cleared: consumed, lineIndex };
+  g.EnemyGemLockActive = targetGems.length > 0 ? 1 : 0;
+  return { locked: targetGems.length, lineIndex, duration: safeDuration, groupId: group.id };
 }
 
 function executeEnemyBoardPressureSkill(ctx, enemyUID, skillId) {
   const harness = getEnemyBoardPressureSkillHarness(skillId);
   if (!harness) return 0;
   const enemyName = getActorNameByUID(ctx, enemyUID);
-  const result = clearRandomGemLine(ctx, harness.axis);
-  LogCombat(ctx, `${enemyName} used ${harness.label} and removed ${result.cleared} gems ${harness.logSuffix}`);
+  const result = lockRandomGemLine(ctx, harness.axis, harness.skillId, harness.duration);
+  LogCombat(ctx, `${enemyName} used ${harness.label} and locked ${result.locked} gems ${harness.logSuffix} (${result.duration} turns).`);
   return 1;
 }
 

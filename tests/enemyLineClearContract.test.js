@@ -12,9 +12,10 @@ test('Djinn/Marid line-clear skills only select on full boards in both runtime m
 
   for (const src of [runtimeSrc, scriptsSrc]) {
     assert.match(src, /function isBoardFullyPopulatedForEnemyMutation\(ctx\)/);
+    assert.match(src, /const ENEMY_GEM_LOCK_DURATIONS = Object\.freeze\(\{/);
     assert.match(src, /const ENEMY_BOARD_PRESSURE_SKILL_HARNESSES = Object\.freeze\(\{/);
-    assert.match(src, /Enemy_Scathe:\s*Object\.freeze\(\{[\s\S]*axis:\s*'column'[\s\S]*label:\s*'Scathe'/);
-    assert.match(src, /Enemy_Sweep:\s*Object\.freeze\(\{[\s\S]*axis:\s*'row'[\s\S]*label:\s*'Sweep'/);
+    assert.match(src, /Enemy_Scathe:\s*Object\.freeze\(\{[\s\S]*axis:\s*'column'[\s\S]*label:\s*'Scathe'[\s\S]*duration:\s*ENEMY_GEM_LOCK_DURATIONS\.Enemy_Scathe/);
+    assert.match(src, /Enemy_Sweep:\s*Object\.freeze\(\{[\s\S]*axis:\s*'row'[\s\S]*label:\s*'Sweep'[\s\S]*duration:\s*ENEMY_GEM_LOCK_DURATIONS\.Enemy_Sweep/);
     assert.match(src, /function getEnemyBoardPressureSkillHarness\(skillId\)/);
     assert.match(src, /function normalizeEnemyBoardLineSkillDecision\(ctx, enemy, decision\)/);
     assert.match(src, /if \(!getEnemyBoardPressureSkillHarness\(selected\)\) return decision;/);
@@ -35,7 +36,7 @@ test('Djinn/Marid line-clear skills fall back to single-target magic at executio
     assert.match(src, /if \(actionCode === ENEMY_JOB_ACTION_MAGIC_SINGLE\) \{\s+if \(resolvedTargetUID\) Enemy_MAG_Single\(ctx, enemyUID, resolvedTargetUID\);/);
     assert.match(src, /function executeEnemyBoardPressureSkill\(ctx, enemyUID, skillId\)/);
     assert.match(src, /const harness = getEnemyBoardPressureSkillHarness\(skillId\);/);
-    assert.match(src, /const result = clearRandomGemLine\(ctx, harness\.axis\);/);
-    assert.match(src, /LogCombat\(ctx, `\$\{enemyName\} used \$\{harness\.label\} and removed \$\{result\.cleared\} gems \$\{harness\.logSuffix\}`\);/);
+    assert.match(src, /const result = lockRandomGemLine\(ctx, harness\.axis, harness\.skillId, harness\.duration\);/);
+    assert.match(src, /LogCombat\(ctx, `\$\{enemyName\} used \$\{harness\.label\} and locked \$\{result\.locked\} gems \$\{harness\.logSuffix\} \(\$\{result\.duration\} turns\)\.`\);/);
   }
 });

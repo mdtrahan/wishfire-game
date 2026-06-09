@@ -3792,7 +3792,7 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
       const key = `${r},${c}`;
       const gem = gemByCell.get(key) || null;
       const color = gem && gem.color != null ? gem.color : (gem ? gem.elementIndex : null);
-      if (gem && color === YELLOW_COLOR) {
+      if (gem && color === YELLOW_COLOR && !isBoardGemLocked(gem)) {
         queue.push({
           type: 'yellow',
           reason: 'yellow-reassign',
@@ -4106,6 +4106,12 @@ function handleGemMatch(color) {
     state.globals.TapIndex = 0;
   };
 
+  const selectedLockedGem = (gameState.selectedGems || []).some((idx) => isBoardGemLocked(gameState.gems && gameState.gems[idx]));
+  if (selectedLockedGem) {
+    clearLocalSelection();
+    return;
+  }
+
   const syncGemsFromGlobals = () => {
     if (state.globals.Gems && Array.isArray(state.globals.Gems)) {
       gameState.gems = state.globals.Gems;
@@ -4154,7 +4160,7 @@ function handleGemMatch(color) {
     const actor = state.entities.find(e => e.uid === actorUID);
     const actorName = actor ? (actor.name || 'Hero') : 'Hero';
     const yellowMergeSources = (gameState.gems || [])
-      .filter((gm) => Number(gm && (gm.color ?? gm.elementIndex)) === YELLOW_COLOR)
+      .filter((gm) => !isBoardGemLocked(gm) && Number(gm && (gm.color ?? gm.elementIndex)) === YELLOW_COLOR)
       .map((gm) => ({
         cellC: Number(gm.cellC || 0),
         cellR: Number(gm.cellR || 0),
@@ -6183,6 +6189,24 @@ function getStoryCardLiveLineState() {
   function getGemByRC(row, col) {
     return (gameState.gems || []).find(g => g && g.cellR === row && g.cellC === col);
   }
+  function isBoardGemLocked(gem) {
+    if (!gem) return false;
+    const countdown = Number(gem.lockCountdown ?? gem.LockCountdown ?? 0);
+    return countdown > 0 || gem.locked === true || Number(gem.Locked || 0) === 1;
+  }
+  function getLockedGemCellKeys() {
+    return (gameState.gems || [])
+      .filter(isBoardGemLocked)
+      .map(g => `${Number(g.cellR || 0)},${Number(g.cellC || 0)}`);
+  }
+  function isSuperGemLockedByBoardGems(superGem) {
+    const cells = Array.isArray(superGem && superGem.cells) ? superGem.cells : [];
+    return cells.some((cell) => {
+      const row = Number(cell?.r ?? cell?.row ?? 0);
+      const col = Number(cell?.c ?? cell?.col ?? 0);
+      return isBoardGemLocked(getGemByRC(row, col));
+    });
+  }
   function getSelectionLen() {
     return Array.isArray(gameState.selection) ? gameState.selection.length : 0;
   }
@@ -6209,6 +6233,7 @@ function getStoryCardLiveLineState() {
   function clickGemCell(row, col) {
     const gem = getGemByRC(row, col);
     if (!gem) return false;
+    if (isBoardGemLocked(gem)) return false;
     const pos = worldToCanvas(gem.x, gem.y);
     const rect = canvas.getBoundingClientRect();
     const clientX = rect.left + pos.x;
@@ -6418,6 +6443,7 @@ function getStoryCardLiveLineState() {
       heroName: getCurrentIdleAutoplayHeroName(),
       hasLivingEnemies: hasLivingEnemiesForIdleAutoplay(),
       forcedBoardColor: Number(state.globals.DevForcedBoardColor),
+      lockedCells: getLockedGemCellKeys(),
       partyHpRatio: resolveIdleAutoplayPartyHpRatio({
         partyHP: state.globals.PartyHP,
         partyMaxHP: state.globals.PartyMaxHP,
@@ -7388,6 +7414,13 @@ function getStoryCardLiveLineState() {
         worldToCanvas,
       });
       if (tappedSuperGem) {
+        if (isSuperGemLockedByBoardGems(tappedSuperGem)) {
+          runtimeDebugLogging.gemDebugLog('[GEM_REJECT]', {
+            reason: 'reject-locked-super-gem-footprint',
+            cells: Array.isArray(tappedSuperGem.cells) ? tappedSuperGem.cells : [],
+          }, state);
+          return;
+        }
         spendSuperGem({
           superGem: tappedSuperGem,
           gameState,
@@ -7439,8 +7472,25 @@ function getStoryCardLiveLineState() {
           if (gem.color == null && gem.elementIndex != null) {
             gem.color = gem.elementIndex;
           }
+          if (isBoardGemLocked(gem)) {
+            runtimeDebugLogging.gemDebugLog('[GEM_REJECT]', {
+              reason: 'reject-locked-gem',
+              row: gem.cellR,
+              col: gem.cellC,
+              countdown: Number(gem.lockCountdown ?? gem.LockCountdown ?? 0),
+              groupId: String(gem.lockGroupId || gem.LockGroupId || ''),
+            }, state);
+            return;
+          }
           const tappedSuperGem = getSuperGemAtCell(gameState, gem.cellR, gem.cellC);
           if (tappedSuperGem) {
+            if (isSuperGemLockedByBoardGems(tappedSuperGem)) {
+              runtimeDebugLogging.gemDebugLog('[GEM_REJECT]', {
+                reason: 'reject-locked-super-gem-footprint',
+                cells: Array.isArray(tappedSuperGem.cells) ? tappedSuperGem.cells : [],
+              }, state);
+              return;
+            }
             spendSuperGem({
               superGem: tappedSuperGem,
               gameState,
@@ -8151,6 +8201,9 @@ function getStoryCardLiveLineState() {
           x: g.x,
           y: g.y,
           selected: !!(g.selected || g.Selected),
+          locked: isBoardGemLocked(g),
+          lockCountdown: Number(g.lockCountdown ?? g.LockCountdown ?? 0),
+          lockGroupId: String(g.lockGroupId || g.LockGroupId || ''),
         })),
       };
       return JSON.stringify(payload);
@@ -8179,6 +8232,7 @@ function getStoryCardLiveLineState() {
         const idx = gameState.gems.findIndex(g => g.cellR === row && g.cellC === col);
         if (idx === -1) return false;
         const gem = gameState.gems[idx];
+        if (isBoardGemLocked(gem)) return false;
         if (gameState.selectedGems.includes(idx)) return true;
         gameState.selectedGems.push(idx);
         gem.selected = true;

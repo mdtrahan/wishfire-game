@@ -30,12 +30,28 @@ function extractFunctionSource(src, name) {
 }
 
 function buildLineClearFns(src) {
+  const lockDurationSrc = src.match(/const ENEMY_GEM_LOCK_DURATIONS = Object\.freeze\(\{[\s\S]*?\n\}\);/);
+  assert.ok(lockDurationSrc, 'missing ENEMY_GEM_LOCK_DURATIONS');
   const harnessStoreSrc = src.match(/const ENEMY_BOARD_PRESSURE_SKILL_HARNESSES = Object\.freeze\(\{[\s\S]*?\n\}\);/);
   assert.ok(harnessStoreSrc, 'missing ENEMY_BOARD_PRESSURE_SKILL_HARNESSES');
   const getHarnessSrc = extractFunctionSource(src, 'getEnemyBoardPressureSkillHarness')
     .replace(/^function\s+getEnemyBoardPressureSkillHarness\s*\(/, 'function(');
-  const clearRandomGemLineSrc = extractFunctionSource(src, 'clearRandomGemLine')
-    .replace(/^function\s+clearRandomGemLine\s*\(/, 'function(');
+  const clearLockStateSrc = extractFunctionSource(src, 'clearEnemyGemLockState')
+    .replace(/^function\s+clearEnemyGemLockState\s*\(/, 'function(');
+  const isLockedSrc = extractFunctionSource(src, 'isEnemyGemLocked')
+    .replace(/^function\s+isEnemyGemLocked\s*\(/, 'function(');
+  const ensureGroupsSrc = extractFunctionSource(src, 'ensureEnemyGemLockGroups')
+    .replace(/^function\s+ensureEnemyGemLockGroups\s*\(/, 'function(');
+  const createGroupSrc = extractFunctionSource(src, 'createEnemyGemLockGroup')
+    .replace(/^function\s+createEnemyGemLockGroup\s*\(/, 'function(');
+  const applyLockSrc = extractFunctionSource(src, 'applyEnemyGemLockState')
+    .replace(/^function\s+applyEnemyGemLockState\s*\(/, 'function(');
+  const syncGroupsSrc = extractFunctionSource(src, 'syncEnemyGemLockGroupsToBoard')
+    .replace(/^function\s+syncEnemyGemLockGroupsToBoard\s*\(/, 'function(');
+  const tickGroupsSrc = extractFunctionSource(src, 'tickEnemyGemLockCountdowns')
+    .replace(/^function\s+tickEnemyGemLockCountdowns\s*\(/, 'function(');
+  const lockRandomGemLineSrc = extractFunctionSource(src, 'lockRandomGemLine')
+    .replace(/^function\s+lockRandomGemLine\s*\(/, 'function(');
   const executeEnemyBoardPressureSkillSrc = extractFunctionSource(src, 'executeEnemyBoardPressureSkill')
     .replace(/^function\s+executeEnemyBoardPressureSkill\s*\(/, 'function(');
   const enemyScatheSrc = extractFunctionSource(src, 'Enemy_Scathe')
@@ -52,13 +68,22 @@ function buildLineClearFns(src) {
     'getActorNameByUID',
     'LogCombat',
     'randomIndex',
-    `${harnessStoreSrc[0]}
+    `${lockDurationSrc[0]}
+     ${harnessStoreSrc[0]}
      const getEnemyBoardPressureSkillHarness = ${getHarnessSrc};
-     const clearRandomGemLine = ${clearRandomGemLineSrc};
+     const clearEnemyGemLockState = ${clearLockStateSrc};
+     const isEnemyGemLocked = ${isLockedSrc};
+     const ensureEnemyGemLockGroups = ${ensureGroupsSrc};
+     const createEnemyGemLockGroup = ${createGroupSrc};
+     const applyEnemyGemLockState = ${applyLockSrc};
+     const syncEnemyGemLockGroupsToBoard = ${syncGroupsSrc};
+     const tickEnemyGemLockCountdowns = ${tickGroupsSrc};
+     const lockRandomGemLine = ${lockRandomGemLineSrc};
      const executeEnemyBoardPressureSkill = ${executeEnemyBoardPressureSkillSrc};
      return {
        Enemy_Scathe: ${enemyScatheSrc},
        Enemy_Sweep: ${enemySweepSrc},
+       tickEnemyGemLockCountdowns,
      };`
   );
 }
@@ -87,11 +112,11 @@ function makeSandbox() {
 }
 
 for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
-  test(`Djinn clears a column and Marid clears a row in ${relPath}`, () => {
+  test(`Djinn locks a column and Marid locks a row in ${relPath}`, () => {
     const src = read(relPath);
     const sandbox = makeSandbox();
     const factory = buildLineClearFns(src);
-    const { Enemy_Scathe, Enemy_Sweep } = factory(
+    const { Enemy_Scathe, Enemy_Sweep, tickEnemyGemLockCountdowns } = factory(
       (ctx) => ctx.globals,
       (ctx) => ctx.gems,
       (ctx, gems) => { ctx.gems = gems; },
@@ -106,13 +131,30 @@ for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBa
     assert.deepEqual(
       sandbox.gems.map((gem) => [gem.cellC, gem.cellR]),
       [
-        [0, 0], [2, 0],
-        [0, 1], [2, 1],
-        [0, 2], [2, 2],
+        [0, 0], [1, 0], [2, 0],
+        [0, 1], [1, 1], [2, 1],
+        [0, 2], [1, 2], [2, 2],
       ],
     );
-    assert.equal(sandbox.globals.EnemyLineClearPressureActive, 1);
-    assert.equal(sandbox.logs[0], 'Djinn used Scathe and removed 3 gems from a column.');
+    const lockedColumn = sandbox.gems.filter((gem) => gem.cellC === 1);
+    assert.equal(lockedColumn.length, 3);
+    assert.ok(lockedColumn.every((gem) => gem.locked === true && gem.Locked === 1));
+    assert.ok(lockedColumn.every((gem) => gem.lockCountdown === 3 && gem.LockCountdown === 3));
+    assert.equal(new Set(lockedColumn.map((gem) => gem.lockGroupId)).size, 1);
+    assert.equal(sandbox.globals.EnemyLineClearPressureActive, undefined);
+    assert.equal(sandbox.logs[0], 'Djinn used Scathe and locked 3 gems from a column. (3 turns).');
+
+    tickEnemyGemLockCountdowns(sandbox);
+    assert.ok(lockedColumn.every((gem) => gem.lockCountdown === 3));
+    sandbox.globals.TurnSerial = 1;
+    tickEnemyGemLockCountdowns(sandbox);
+    assert.ok(lockedColumn.every((gem) => gem.lockCountdown === 2));
+    sandbox.globals.TurnSerial = 2;
+    tickEnemyGemLockCountdowns(sandbox);
+    assert.ok(lockedColumn.every((gem) => gem.lockCountdown === 1));
+    sandbox.globals.TurnSerial = 3;
+    tickEnemyGemLockCountdowns(sandbox);
+    assert.ok(lockedColumn.every((gem) => !gem.locked && gem.Locked == null));
 
     sandbox.gems = [
       { uid: 1, cellC: 0, cellR: 0 },
@@ -134,10 +176,16 @@ for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBa
       sandbox.gems.map((gem) => [gem.cellC, gem.cellR]),
       [
         [0, 0], [1, 0], [2, 0],
+        [0, 1], [1, 1], [2, 1],
         [0, 2], [1, 2], [2, 2],
       ],
     );
-    assert.equal(sandbox.globals.EnemyLineClearPressureActive, 1);
-    assert.equal(sandbox.logs[0], 'Marid used Sweep and removed 3 gems from a row.');
+    const lockedRow = sandbox.gems.filter((gem) => gem.cellR === 1);
+    assert.equal(lockedRow.length, 3);
+    assert.ok(lockedRow.every((gem) => gem.locked === true && gem.Locked === 1));
+    assert.ok(lockedRow.every((gem) => gem.lockCountdown === 5 && gem.LockCountdown === 5));
+    assert.equal(new Set(lockedRow.map((gem) => gem.lockGroupId)).size, 1);
+    assert.equal(sandbox.globals.EnemyLineClearPressureActive, undefined);
+    assert.equal(sandbox.logs[0], 'Marid used Sweep and locked 3 gems from a row. (5 turns).');
   });
 }

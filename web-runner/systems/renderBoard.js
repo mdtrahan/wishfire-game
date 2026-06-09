@@ -62,6 +62,63 @@ export function getGemBounceScale(t, amp = 1) {
   return 1 + ((curveScale - 1) * intensity * GEM_APPEAR_BOUNCE_OVERSHOOT_SCALE);
 }
 
+function isLockedGem(gem) {
+  if (!gem) return false;
+  const countdown = Number(gem.lockCountdown ?? gem.LockCountdown ?? 0);
+  return countdown > 0 || gem.locked === true || Number(gem.Locked || 0) === 1;
+}
+
+function getLockedGemCountdown(gem) {
+  return Math.max(0, Math.floor(Number(gem?.lockCountdown ?? gem?.LockCountdown ?? 0)));
+}
+
+function getGemRenderRect({ gem, worldToCanvas, layoutScale, now, gameTime }) {
+  const pos = worldToCanvas(gem.x, gem.y);
+  let scale = 1;
+  if (gem.bounceStart != null && gem.bounceDur != null) {
+    const bounceNow = Number(gameTime != null ? gameTime : now);
+    const bounceDuration = Math.max(
+      0.001,
+      Number(gem.bounceDur || 0),
+      GEM_APPEAR_BOUNCE_MIN_RENDER_SEC,
+    );
+    const t = (bounceNow - gem.bounceStart) / bounceDuration;
+    if (t >= 0 && t < 1) {
+      const amp = Number(gem.bounceAmp ?? 1);
+      scale = getGemBounceScale(t, amp);
+    }
+  }
+  const w = gem.width * layoutScale * scale;
+  const h = gem.height * layoutScale * scale;
+  return {
+    x: pos.x - w * 0.5,
+    y: pos.y - h * 0.5,
+    w,
+    h,
+    cx: pos.x,
+    cy: pos.y,
+  };
+}
+
+function renderLockedGemOverlay(ctx, rect, countdown) {
+  if (!rect || !(rect.w > 0) || !(rect.h > 0)) return;
+  const label = String(Math.max(0, Math.floor(Number(countdown || 0))));
+  ctx.save();
+  ctx.fillStyle = 'rgba(55, 65, 81, 0.66)';
+  ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  const fontSize = Math.max(14, Math.floor(Math.min(rect.w, rect.h) * 0.54));
+  ctx.font = `700 ${fontSize}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = Math.max(3, Math.floor(fontSize * 0.16));
+  ctx.fillStyle = '#fff';
+  ctx.strokeText(label, rect.cx, rect.cy);
+  ctx.fillText(label, rect.cx, rect.cy);
+  ctx.restore();
+}
+
 export function renderBoard(ctx, gameState, uiState, animationMath, dims) {
   const {
     boardGeometry,
@@ -84,27 +141,13 @@ export function renderBoard(ctx, gameState, uiState, animationMath, dims) {
       }
       const pos = worldToCanvas(gem.x, gem.y);
 
-      let scale = 1;
-      if (gem.bounceStart != null && gem.bounceDur != null) {
-        const bounceNow = Number(gameTime != null ? gameTime : now);
-        const bounceDuration = Math.max(
-          0.001,
-          Number(gem.bounceDur || 0),
-          GEM_APPEAR_BOUNCE_MIN_RENDER_SEC,
-        );
-        const t = (bounceNow - gem.bounceStart) / bounceDuration;
-        if (t >= 0 && t < 1) {
-          const amp = Number(gem.bounceAmp ?? 1);
-          scale = getGemBounceScale(t, amp);
-        }
-      }
-
       const frameIndex = (gem.color ?? 0) % 6;
       const gemImg = gemFrames[frameIndex];
-      const gemW = gem.width * layoutScale * scale;
-      const gemH = gem.height * layoutScale * scale;
-      const gemX = pos.x - gemW * 0.5;
-      const gemY = pos.y - gemH * 0.5;
+      const rect = getGemRenderRect({ gem, worldToCanvas, layoutScale, now, gameTime });
+      const gemW = rect.w;
+      const gemH = rect.h;
+      const gemX = rect.x;
+      const gemY = rect.y;
 
       if (gemImg) {
         ctx.drawImage(gemImg, gemX, gemY, gemW, gemH);
@@ -144,6 +187,14 @@ export function renderBoard(ctx, gameState, uiState, animationMath, dims) {
       if (superGemImg) {
         ctx.drawImage(superGemImg, rect.x, rect.y, rect.w, rect.h);
       }
+    }
+  }
+
+  if (gameState.boardCreated && gameState.gems) {
+    for (const gem of gameState.gems) {
+      if (!isLockedGem(gem)) continue;
+      const rect = getGemRenderRect({ gem, worldToCanvas, layoutScale, now, gameTime });
+      renderLockedGemOverlay(ctx, rect, getLockedGemCountdown(gem));
     }
   }
 
