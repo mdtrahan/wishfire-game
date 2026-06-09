@@ -885,7 +885,8 @@ const SKILL_DRAW_CLASSES = Object.freeze(['one_off', 'tiered', 'repeatable']);
 const SKILL_DRAW_CLASS_SET = Object.freeze(new Set(SKILL_DRAW_CLASSES));
 
 const FAZE_TAINTED_GROUND_DURATION_HERO_TEAM_TURNS = 3;
-const FAZE_TAINTED_GROUND_DAMAGE_SCALE = 0.5;
+const FAZE_TAINTED_GROUND_BASE_TICK_DAMAGE = 1;
+const FAZE_TAINTED_GROUND_DOT_TOTAL_TICKS = 3;
 const FAZE_TAINTED_GROUND_MAX_STACK_COUNT = 4;
 
 function cloneSkillMetadata(value) {
@@ -1242,7 +1243,9 @@ function refreshFazeTaintedGroundZone(ctx, sourceUID, enemy, dotTotalDamage, sta
   const g = getGlobals(ctx);
   const zones = ensureFazeTaintedGroundZones(ctx);
   const slotIndex = getTaintedGroundSlotIndex(enemy);
-  const nextDotBaseDamage = Math.max(1, Math.floor(Number(dotTotalDamage || 1) || 1));
+  const totalDotTicks = FAZE_TAINTED_GROUND_DOT_TOTAL_TICKS;
+  const requestedTotalDamage = Math.max(1, Math.floor(Number(dotTotalDamage || 1) || 1));
+  const nextTickDamage = Math.max(1, Math.ceil(requestedTotalDamage / totalDotTicks));
   const enemyX = Number(enemy?.x);
   const enemyY = Number(enemy?.y);
   const anchorWorldX = Number.isFinite(enemyX) ? enemyX : null;
@@ -1260,8 +1263,8 @@ function refreshFazeTaintedGroundZone(ctx, sourceUID, enemy, dotTotalDamage, sta
     const previousActivationCount = Math.max(1, Math.floor(Number(zone.fazeActivationCount || zone.fazeStackCount || 1) || 1));
     const nextActivationCount = previousActivationCount + 1;
     const nextStackCount = Math.min(FAZE_TAINTED_GROUND_MAX_STACK_COUNT, nextActivationCount);
-    const previousBaseDamage = Math.max(1, Math.floor(Number(zone.fazeBaseDotDamage || nextDotBaseDamage) || nextDotBaseDamage));
-    const nextBaseDamage = Math.max(previousBaseDamage, nextDotBaseDamage);
+    const previousTickDamage = Math.max(1, Math.floor(Number(zone.fazeBaseTickDamage || nextTickDamage) || nextTickDamage));
+    const nextBaseTickDamage = Math.max(previousTickDamage, nextTickDamage);
     zone.sourceUID = Number(sourceUID || zone.sourceUID || 0);
     zone.targetUID = Number(enemy?.uid || 0);
     if (!Number.isFinite(Number(zone.anchorWorldX)) && anchorWorldX != null) zone.anchorWorldX = anchorWorldX;
@@ -1277,10 +1280,10 @@ function refreshFazeTaintedGroundZone(ctx, sourceUID, enemy, dotTotalDamage, sta
     zone.visualStartsAt = Number(startsAt || 0);
     zone.activeAt = Number(startsAt || 0);
     zone.fadeStartedAt = null;
-    zone.dotTotalDamage = Math.max(1, nextBaseDamage * nextStackCount);
+    zone.dotTotalDamage = Math.max(1, nextBaseTickDamage * nextStackCount * totalDotTicks);
     zone.fazeStackCount = nextStackCount;
     zone.fazeActivationCount = nextActivationCount;
-    zone.fazeBaseDotDamage = nextBaseDamage;
+    zone.fazeBaseTickDamage = nextBaseTickDamage;
     zone.appliedUIDs = { [Number(enemy?.uid || 0)]: true };
     zone.effectName = 'TaintedGround';
     zone.visual = 'blight_disc';
@@ -1303,10 +1306,10 @@ function refreshFazeTaintedGroundZone(ctx, sourceUID, enemy, dotTotalDamage, sta
     lastSeenHeroTeamTurnSerial: nowHeroTeamTurnSerial,
     visualStartsAt: Number(startsAt || 0),
     activeAt: Number(startsAt || 0),
-    dotTotalDamage: nextDotBaseDamage,
+    dotTotalDamage: nextTickDamage * totalDotTicks,
     fazeStackCount: 1,
     fazeActivationCount: 1,
-    fazeBaseDotDamage: nextDotBaseDamage,
+    fazeBaseTickDamage: nextTickDamage,
     appliedUIDs: { [Number(enemy?.uid || 0)]: true },
     effectName: 'TaintedGround',
     visual: 'blight_disc',
@@ -1348,8 +1351,8 @@ function activateFazeSkill(ctx, actorUID) {
   const enemies = getEnemies(ctx).filter(enemy => Number(enemy?.hp || 0) > 0);
   if (!enemies.length) return 0;
   const actorName = String(actor.name || '?');
-  const baseDotDamage = Math.max(1, Math.floor(GetEffectiveStat(ctx, actor, 'MAG') * 0.75));
-  const dotTotalDamage = Math.max(1, Math.floor(baseDotDamage * FAZE_TAINTED_GROUND_DAMAGE_SCALE));
+  const dotTickDamage = FAZE_TAINTED_GROUND_BASE_TICK_DAMAGE;
+  const dotTotalDamage = dotTickDamage * FAZE_TAINTED_GROUND_DOT_TOTAL_TICKS;
   let totalDamage = 0;
   const now = Number(g.time || 0);
   const hitDelay = Math.max(0.14 + 0.75 + 0.18, 1.07);

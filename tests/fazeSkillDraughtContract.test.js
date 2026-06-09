@@ -83,6 +83,19 @@ function makeContext() {
   return { ctx, calls };
 }
 
+function dotTickSeries(totalDamage, totalTicks = 3) {
+  const ticks = [];
+  let remainingDamage = Math.max(1, Math.floor(Number(totalDamage || 0) || 1));
+  let remainingTicks = Math.max(1, Math.floor(Number(totalTicks || 1) || 1));
+  while (remainingTicks > 0 && remainingDamage > 0) {
+    const dmg = Math.max(1, Math.floor(remainingDamage / remainingTicks) + ((remainingDamage % remainingTicks) > 0 ? 1 : 0));
+    ticks.push(dmg);
+    remainingDamage = Math.max(0, remainingDamage - dmg);
+    remainingTicks -= 1;
+  }
+  return ticks;
+}
+
 test('Faze is a mirrored party draw option that owns the tainted-ground payload', () => {
   const expectedExistingPartyIds = [
     'party_fresh_start',
@@ -132,7 +145,8 @@ test('Faze is a mirrored party draw option that owns the tainted-ground payload'
     assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.effectName === 'Blight'));
     assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.actionName === 'Faze'));
     assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.calcPath === 'magicCalc'));
-    assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.dotTotalDamage === 15));
+    assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.dotTotalDamage === 3));
+    assert.ok(ctx.state.globals.PendingHeroHits.every(hit => JSON.stringify(dotTickSeries(hit.dotTotalDamage)) === JSON.stringify([1, 1, 1])));
     assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.fazeStackCount === 1));
     assert.ok(ctx.state.globals.PendingHeroHits.every(hit => /^Kojonn uses Faze on .+!$/.test(String(hit.msg || ''))));
     assert.ok(ctx.state.globals.PendingHeroHits.every(hit => String(hit.taintedGroundZoneId || '').startsWith('tg-')));
@@ -154,8 +168,8 @@ test('Faze is a mirrored party draw option that owns the tainted-ground payload'
         visualStartsAt: zone.visualStartsAt,
       }))),
       JSON.stringify([
-        { slotIndex: 0, sourceUID: 100, remainingTurns: 3, durationHeroTeamTurns: 3, heroTeamTurnSpan: 1, createdHeroTeamTurnSerial: 4, expiresAtHeroTeamTurnSerial: 7, dotTotalDamage: 15, fazeStackCount: 1, effectName: 'TaintedGround', visual: 'blight_disc', visualStartsAt: 6.07 },
-        { slotIndex: 1, sourceUID: 100, remainingTurns: 3, durationHeroTeamTurns: 3, heroTeamTurnSpan: 1, createdHeroTeamTurnSerial: 4, expiresAtHeroTeamTurnSerial: 7, dotTotalDamage: 15, fazeStackCount: 1, effectName: 'TaintedGround', visual: 'blight_disc', visualStartsAt: 6.07 },
+        { slotIndex: 0, sourceUID: 100, remainingTurns: 3, durationHeroTeamTurns: 3, heroTeamTurnSpan: 1, createdHeroTeamTurnSerial: 4, expiresAtHeroTeamTurnSerial: 7, dotTotalDamage: 3, fazeStackCount: 1, effectName: 'TaintedGround', visual: 'blight_disc', visualStartsAt: 6.07 },
+        { slotIndex: 1, sourceUID: 100, remainingTurns: 3, durationHeroTeamTurns: 3, heroTeamTurnSpan: 1, createdHeroTeamTurnSerial: 4, expiresAtHeroTeamTurnSerial: 7, dotTotalDamage: 3, fazeStackCount: 1, effectName: 'TaintedGround', visual: 'blight_disc', visualStartsAt: 6.07 },
       ]),
     );
 
@@ -205,16 +219,17 @@ test('repeated Faze refreshes pending per-enemy dot presentation instead of stac
     );
     assert.ok(pending.every(hit => hit.effectType === 'dot_apply'));
     assert.ok(pending.every(hit => hit.actionName === 'Faze'));
-    assert.ok(pending.every(hit => hit.dotTotalDamage === 30));
+    assert.ok(pending.every(hit => hit.dotTotalDamage === 6));
+    assert.ok(pending.every(hit => JSON.stringify(dotTickSeries(hit.dotTotalDamage)) === JSON.stringify([2, 2, 2])));
     assert.ok(pending.every(hit => hit.fazeStackCount === 2));
     assert.ok(pending.every(hit => hit.at > firstPending[0].at));
     assert.equal(ctx.state.globals.TaintedGroundZones.length, 2);
-    assert.ok(ctx.state.globals.TaintedGroundZones.every(zone => zone.dotTotalDamage === 30));
+    assert.ok(ctx.state.globals.TaintedGroundZones.every(zone => zone.dotTotalDamage === 6));
     assert.ok(ctx.state.globals.TaintedGroundZones.every(zone => zone.fazeStackCount === 2));
   }
 });
 
-test('Faze activated by different heroes shares one visual pool per enemy and accumulates damage', () => {
+test('Faze activated by different heroes shares one visual pool per enemy and increments tick count', () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const { ctx } = makeContext();
@@ -255,7 +270,7 @@ test('Faze activated by different heroes shares one visual pool per enemy and ac
       JSON.stringify(zones.map(zone => zone.slotIndex).sort((a, b) => a - b)),
       JSON.stringify([0, 1]),
     );
-    assert.ok(zones.every(zone => zone.dotTotalDamage === 30));
+    assert.ok(zones.every(zone => zone.dotTotalDamage === 6));
     assert.ok(zones.every(zone => zone.fazeStackCount === 2));
 
     const pending = ctx.state.globals.PendingHeroHits;
@@ -266,7 +281,8 @@ test('Faze activated by different heroes shares one visual pool per enemy and ac
     );
     assert.ok(pending.every(hit => hit.effectType === 'dot_apply'));
     assert.ok(pending.every(hit => hit.actionName === 'Faze'));
-    assert.ok(pending.every(hit => hit.dotTotalDamage === 30));
+    assert.ok(pending.every(hit => hit.dotTotalDamage === 6));
+    assert.ok(pending.every(hit => JSON.stringify(dotTickSeries(hit.dotTotalDamage)) === JSON.stringify([2, 2, 2])));
     assert.ok(pending.every(hit => hit.fazeStackCount === 2));
     assert.ok(pending.every(hit => /^Huun uses Faze on .+!$/.test(String(hit.msg || ''))));
   }
@@ -276,8 +292,9 @@ test('Faze damage scaling is linear and capped by activation count', () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const { ctx } = makeContext();
-    const expectedDamageByActivation = [15, 30, 45, 60, 60];
+    const expectedDamageByActivation = [3, 6, 9, 12, 12];
     const expectedStackByActivation = [1, 2, 3, 4, 4];
+    const expectedTicksByActivation = [[1, 1, 1], [2, 2, 2], [3, 3, 3], [4, 4, 4], [4, 4, 4]];
 
     for (let i = 0; i < expectedDamageByActivation.length; i += 1) {
       const opened = mod.ForceAstralFlowSkillDraught(ctx, 100, 'party_faze');
@@ -290,6 +307,7 @@ test('Faze damage scaling is linear and capped by activation count', () => {
       assert.equal(pending.length, 2, `${modulePath} activation ${i + 1} keeps one pending packet per enemy`);
       assert.ok(zones.every(zone => zone.dotTotalDamage === expectedDamageByActivation[i]));
       assert.ok(pending.every(hit => hit.dotTotalDamage === expectedDamageByActivation[i]));
+      assert.ok(pending.every(hit => JSON.stringify(dotTickSeries(hit.dotTotalDamage)) === JSON.stringify(expectedTicksByActivation[i])));
       assert.ok(zones.every(zone => zone.fazeStackCount === expectedStackByActivation[i]));
       assert.ok(pending.every(hit => hit.fazeStackCount === expectedStackByActivation[i]));
       ctx.state.globals.time += 0.5;
