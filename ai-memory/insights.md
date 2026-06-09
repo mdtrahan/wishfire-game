@@ -428,4 +428,4 @@
 - Supergem spends may defer turn/action presentation, but the board refill lane must be claimed in the same call that clears gem cells. A deferred action handoff must not leave frame-zero empty board slots without refill ownership.
 
 ## 2026-06-08 — Repeatable Field Skills Should Refresh Pending Presentation
-- Party-level skill-card field effects should refresh by target slot, effect, and zone instead of source actor. Repeated Faze activations share one visible field per enemy, accumulate the field damage/count, and replace the pending presentation packet instead of spawning duplicate floating numbers. Keep internal effect labels out of player-facing action copy; use the standard actor-skill-target wording.
+- Party-level skill-card field effects should refresh by target slot, effect, and zone instead of source actor. Repeated Faze activations share one visible field per enemy, replace both pending presentation and delayed DoT packets, and scale the field by a capped linear activation count instead of accumulated prior damage. Keep internal effect labels out of player-facing action copy; use the standard actor-skill-target wording.

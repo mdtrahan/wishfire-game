@@ -843,6 +843,7 @@ const SKILL_DRAW_CLASS_SET = Object.freeze(new Set(SKILL_DRAW_CLASSES));
 
 const FAZE_TAINTED_GROUND_DURATION_HERO_TEAM_TURNS = 3;
 const FAZE_TAINTED_GROUND_DAMAGE_SCALE = 0.5;
+const FAZE_TAINTED_GROUND_MAX_STACK_COUNT = 4;
 
 function cloneSkillMetadata(value) {
   if (Array.isArray(value)) return value.map(item => cloneSkillMetadata(item));
@@ -1198,7 +1199,7 @@ function refreshFazeTaintedGroundZone(ctx, sourceUID, enemy, dotTotalDamage, sta
   const g = getGlobals(ctx);
   const zones = ensureFazeTaintedGroundZones(ctx);
   const slotIndex = getTaintedGroundSlotIndex(enemy);
-  const nextDotTotalDamage = Math.max(1, Math.floor(Number(dotTotalDamage || 1) || 1));
+  const nextDotBaseDamage = Math.max(1, Math.floor(Number(dotTotalDamage || 1) || 1));
   const enemyX = Number(enemy?.x);
   const enemyY = Number(enemy?.y);
   const anchorWorldX = Number.isFinite(enemyX) ? enemyX : null;
@@ -1213,8 +1214,11 @@ function refreshFazeTaintedGroundZone(ctx, sourceUID, enemy, dotTotalDamage, sta
     if (Number(zone.slotIndex || 0) !== slotIndex) continue;
     if (String(zone.effectName || 'TaintedGround') !== 'TaintedGround') continue;
     if (String(zone.visual || 'blight_disc') !== 'blight_disc') continue;
-    const previousDamage = Math.max(0, Math.floor(Number(zone.dotTotalDamage || 0) || 0));
-    const previousStackCount = Math.max(1, Math.floor(Number(zone.fazeStackCount || 1) || 1));
+    const previousActivationCount = Math.max(1, Math.floor(Number(zone.fazeActivationCount || zone.fazeStackCount || 1) || 1));
+    const nextActivationCount = previousActivationCount + 1;
+    const nextStackCount = Math.min(FAZE_TAINTED_GROUND_MAX_STACK_COUNT, nextActivationCount);
+    const previousBaseDamage = Math.max(1, Math.floor(Number(zone.fazeBaseDotDamage || nextDotBaseDamage) || nextDotBaseDamage));
+    const nextBaseDamage = Math.max(previousBaseDamage, nextDotBaseDamage);
     zone.sourceUID = Number(sourceUID || zone.sourceUID || 0);
     zone.targetUID = Number(enemy?.uid || 0);
     if (!Number.isFinite(Number(zone.anchorWorldX)) && anchorWorldX != null) zone.anchorWorldX = anchorWorldX;
@@ -1230,8 +1234,10 @@ function refreshFazeTaintedGroundZone(ctx, sourceUID, enemy, dotTotalDamage, sta
     zone.visualStartsAt = Number(startsAt || 0);
     zone.activeAt = Number(startsAt || 0);
     zone.fadeStartedAt = null;
-    zone.dotTotalDamage = Math.max(1, previousDamage + nextDotTotalDamage);
-    zone.fazeStackCount = previousStackCount + 1;
+    zone.dotTotalDamage = Math.max(1, nextBaseDamage * nextStackCount);
+    zone.fazeStackCount = nextStackCount;
+    zone.fazeActivationCount = nextActivationCount;
+    zone.fazeBaseDotDamage = nextBaseDamage;
     zone.appliedUIDs = { [Number(enemy?.uid || 0)]: true };
     zone.effectName = 'TaintedGround';
     zone.visual = 'blight_disc';
@@ -1254,8 +1260,10 @@ function refreshFazeTaintedGroundZone(ctx, sourceUID, enemy, dotTotalDamage, sta
     lastSeenHeroTeamTurnSerial: nowHeroTeamTurnSerial,
     visualStartsAt: Number(startsAt || 0),
     activeAt: Number(startsAt || 0),
-    dotTotalDamage: nextDotTotalDamage,
+    dotTotalDamage: nextDotBaseDamage,
     fazeStackCount: 1,
+    fazeActivationCount: 1,
+    fazeBaseDotDamage: nextDotBaseDamage,
     appliedUIDs: { [Number(enemy?.uid || 0)]: true },
     effectName: 'TaintedGround',
     visual: 'blight_disc',
@@ -6258,14 +6266,18 @@ export function QueueEnemyDamageOverTime(ctx, actorUID, enemyUID, totalDamage, o
   const taintedGroundZoneId = String(options?.taintedGroundZoneId || '');
   const logMessage = String(options?.logMessage || '');
   if (!g.EnemyDamageOverTime) g.EnemyDamageOverTime = [];
-  // Reapplying same DoT source/effect on same target resets the package.
+  // Reapplying a field-owned DoT on the same target/effect/zone resets the package.
   for (let i = g.EnemyDamageOverTime.length - 1; i >= 0; i--) {
     const existing = g.EnemyDamageOverTime[i];
     if (!existing) continue;
     if (Number(existing.targetUID || 0) !== Number(enemyUID || 0)) continue;
-    if (Number(existing.sourceUID || 0) !== Number(actorUID || 0)) continue;
     if (String(existing.effectName || 'Blight') !== effectName) continue;
-    if (String(existing.taintedGroundZoneId || '') !== taintedGroundZoneId) continue;
+    const existingZoneId = String(existing.taintedGroundZoneId || '');
+    if (taintedGroundZoneId || existingZoneId) {
+      if (existingZoneId !== taintedGroundZoneId) continue;
+    } else if (Number(existing.sourceUID || 0) !== Number(actorUID || 0)) {
+      continue;
+    }
     g.EnemyDamageOverTime.splice(i, 1);
   }
   const jsPacket = {

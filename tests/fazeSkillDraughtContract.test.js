@@ -271,3 +271,28 @@ test('Faze activated by different heroes shares one visual pool per enemy and ac
     assert.ok(pending.every(hit => /^Huun uses Faze on .+!$/.test(String(hit.msg || ''))));
   }
 });
+
+test('Faze damage scaling is linear and capped by activation count', () => {
+  for (const modulePath of [runtimePath, scriptsPath]) {
+    const mod = loadModule(modulePath);
+    const { ctx } = makeContext();
+    const expectedDamageByActivation = [15, 30, 45, 60, 60];
+    const expectedStackByActivation = [1, 2, 3, 4, 4];
+
+    for (let i = 0; i < expectedDamageByActivation.length; i += 1) {
+      const opened = mod.ForceAstralFlowSkillDraught(ctx, 100, 'party_faze');
+      assert.equal(opened.ok, true);
+      assert.equal(mod.SelectSkillDraughtCard(ctx, 0).ok, true);
+
+      const zones = ctx.state.globals.TaintedGroundZones;
+      const pending = ctx.state.globals.PendingHeroHits;
+      assert.equal(zones.length, 2, `${modulePath} activation ${i + 1} keeps one field per enemy`);
+      assert.equal(pending.length, 2, `${modulePath} activation ${i + 1} keeps one pending packet per enemy`);
+      assert.ok(zones.every(zone => zone.dotTotalDamage === expectedDamageByActivation[i]));
+      assert.ok(pending.every(hit => hit.dotTotalDamage === expectedDamageByActivation[i]));
+      assert.ok(zones.every(zone => zone.fazeStackCount === expectedStackByActivation[i]));
+      assert.ok(pending.every(hit => hit.fazeStackCount === expectedStackByActivation[i]));
+      ctx.state.globals.time += 0.5;
+    }
+  }
+});
