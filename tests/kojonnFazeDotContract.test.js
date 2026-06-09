@@ -13,6 +13,7 @@ test('Kojonn Faze queues a recovered 3-turn Blight package from the extracted ru
   assert.match(renderRuntimeSrc, /cadence: 'turn',/);
   assert.match(renderRuntimeSrc, /firesEveryTurns: 1,/);
   assert.match(renderRuntimeSrc, /startAfterTurns: 1,/);
+  assert.match(renderRuntimeSrc, /logMessage: String\(hit\.msg \|\| ''\),/);
   assert.match(renderRuntimeSrc, /if \(String\(dot\.cadence \|\| 'tick'\) === 'turn'\) continue;/);
 });
 
@@ -21,6 +22,7 @@ test('Kojonn Blight queue payload supports turn cadence and source-target reset 
     const src = read(relPath);
     assert.match(src, /const nowTurnSerial = Number\(g\.TurnSerial \|\| 0\);/);
     assert.match(src, /const cadence = String\(options\?\.cadence \|\| 'tick'\);/);
+    assert.match(src, /const logMessage = String\(options\?\.logMessage \|\| ''\);/);
     assert.match(src, /Reapplying same DoT source\/effect on same target resets the package\./);
     assert.match(src, /g\.EnemyDamageOverTime\.splice\(i, 1\);/);
     assert.match(src, /function maybeResolveEnemyDotPacketOwner\(ctx, payload = \{\}\) \{/);
@@ -32,6 +34,7 @@ test('Kojonn Blight queue payload supports turn cadence and source-target reset 
     assert.match(src, /const taintedGroundZoneId = String\(options\?\.taintedGroundZoneId \|\| ''\);/);
     assert.match(src, /taintedGroundZoneId,/);
     assert.match(src, /if \(String\(existing\.taintedGroundZoneId \|\| ''\) !== taintedGroundZoneId\) continue;/);
+    assert.match(src, /LogCombat\(ctx, logMessage \|\|/);
     assert.doesNotMatch(src, /findRenewableTaintedGroundZone/);
     assert.doesNotMatch(src, /taintedGroundRenewalZone/);
     assert.match(src, /function recordHeroTeamTurnProgress\(ctx, currentUID, currentType\) \{/);

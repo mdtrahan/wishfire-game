@@ -117,6 +117,7 @@ test('enemy DoT queue packet follows Rust owner when Rust and JS disagree', () =
       cadence: 'turn',
       effectName: 'RiftBurn',
       taintedGroundZoneId: 'zone-a',
+      logMessage: 'Kojonn uses Faze on Marid!',
     });
     const dot = ctx.state.globals.EnemyDamageOverTime[0];
 
@@ -136,5 +137,6 @@ test('enemy DoT queue packet follows Rust owner when Rust and JS disagree', () =
     assert.equal(ctx.state.globals.LastEnemyDotPacketOwner.totalDamageRemaining, 77);
     assert.equal(ctx.state.globals.LastEnemyDotApplicationPacket.owner, 'rust');
     assert.equal(ctx.state.globals.LastEnemyDotApplicationPacket.actionType, 'status.enemyDotPacket');
+    assert.equal(ctx.state.globals.CombatLog.at(-1), 'Kojonn uses Faze on Marid!');
   }
 });

@@ -133,6 +133,8 @@ test('Faze is a mirrored party draw option that owns the tainted-ground payload'
     assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.actionName === 'Faze'));
     assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.calcPath === 'magicCalc'));
     assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.dotTotalDamage === 15));
+    assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.fazeStackCount === 1));
+    assert.ok(ctx.state.globals.PendingHeroHits.every(hit => /^Kojonn uses Faze on .+!$/.test(String(hit.msg || ''))));
     assert.ok(ctx.state.globals.PendingHeroHits.every(hit => String(hit.taintedGroundZoneId || '').startsWith('tg-')));
 
     assert.equal(ctx.state.globals.TaintedGroundZones.length, 2);
@@ -146,17 +148,18 @@ test('Faze is a mirrored party draw option that owns the tainted-ground payload'
         createdHeroTeamTurnSerial: zone.createdHeroTeamTurnSerial,
         expiresAtHeroTeamTurnSerial: zone.expiresAtHeroTeamTurnSerial,
         dotTotalDamage: zone.dotTotalDamage,
+        fazeStackCount: zone.fazeStackCount,
         effectName: zone.effectName,
         visual: zone.visual,
         visualStartsAt: zone.visualStartsAt,
       }))),
       JSON.stringify([
-        { slotIndex: 0, sourceUID: 100, remainingTurns: 3, durationHeroTeamTurns: 3, heroTeamTurnSpan: 1, createdHeroTeamTurnSerial: 4, expiresAtHeroTeamTurnSerial: 7, dotTotalDamage: 15, effectName: 'TaintedGround', visual: 'blight_disc', visualStartsAt: 6.07 },
-        { slotIndex: 1, sourceUID: 100, remainingTurns: 3, durationHeroTeamTurns: 3, heroTeamTurnSpan: 1, createdHeroTeamTurnSerial: 4, expiresAtHeroTeamTurnSerial: 7, dotTotalDamage: 15, effectName: 'TaintedGround', visual: 'blight_disc', visualStartsAt: 6.07 },
+        { slotIndex: 0, sourceUID: 100, remainingTurns: 3, durationHeroTeamTurns: 3, heroTeamTurnSpan: 1, createdHeroTeamTurnSerial: 4, expiresAtHeroTeamTurnSerial: 7, dotTotalDamage: 15, fazeStackCount: 1, effectName: 'TaintedGround', visual: 'blight_disc', visualStartsAt: 6.07 },
+        { slotIndex: 1, sourceUID: 100, remainingTurns: 3, durationHeroTeamTurns: 3, heroTeamTurnSpan: 1, createdHeroTeamTurnSerial: 4, expiresAtHeroTeamTurnSerial: 7, dotTotalDamage: 15, fazeStackCount: 1, effectName: 'TaintedGround', visual: 'blight_disc', visualStartsAt: 6.07 },
       ]),
     );
 
-    assert.match(ctx.state.globals.CombatLog.join('\n'), /Kojonn used Faze to blight the field for 30!/);
+    assert.match(ctx.state.globals.CombatLog.join('\n'), /Kojonn uses Faze on enemies!/);
     assert.equal(ctx.state.globals.ActionOwnerUID, 100);
     assert.equal(ctx.state.globals.DeferAdvance, 1);
     assert.equal(ctx.state.globals.AdvanceAfterAction, 1);
@@ -202,8 +205,69 @@ test('repeated Faze refreshes pending per-enemy dot presentation instead of stac
     );
     assert.ok(pending.every(hit => hit.effectType === 'dot_apply'));
     assert.ok(pending.every(hit => hit.actionName === 'Faze'));
-    assert.ok(pending.every(hit => hit.dotTotalDamage === 15));
+    assert.ok(pending.every(hit => hit.dotTotalDamage === 30));
+    assert.ok(pending.every(hit => hit.fazeStackCount === 2));
     assert.ok(pending.every(hit => hit.at > firstPending[0].at));
     assert.equal(ctx.state.globals.TaintedGroundZones.length, 2);
+    assert.ok(ctx.state.globals.TaintedGroundZones.every(zone => zone.dotTotalDamage === 30));
+    assert.ok(ctx.state.globals.TaintedGroundZones.every(zone => zone.fazeStackCount === 2));
+  }
+});
+
+test('Faze activated by different heroes shares one visual pool per enemy and accumulates damage', () => {
+  for (const modulePath of [runtimePath, scriptsPath]) {
+    const mod = loadModule(modulePath);
+    const { ctx } = makeContext();
+    ctx.state.entities.push({
+      uid: 101,
+      kind: 'hero',
+      name: 'Huun',
+      baseHeroName: 'Huun',
+      heroIndex: 1,
+      attackType: 'magic',
+      hp: 50,
+      maxHP: 50,
+      stats: { ATK: 4, DEF: 0, MAG: 40, RES: 0, SPD: 1 },
+    });
+
+    const firstOpen = mod.ForceAstralFlowSkillDraught(ctx, 100, 'party_faze');
+    assert.equal(firstOpen.ok, true);
+    assert.equal(mod.SelectSkillDraughtCard(ctx, 0).ok, true);
+
+    const firstZones = ctx.state.globals.TaintedGroundZones.map(zone => ({
+      id: zone.id,
+      slotIndex: zone.slotIndex,
+    }));
+    assert.equal(firstZones.length, 2);
+
+    ctx.state.globals.time += 0.5;
+    const secondOpen = mod.ForceAstralFlowSkillDraught(ctx, 101, 'party_faze');
+    assert.equal(secondOpen.ok, true);
+    assert.equal(mod.SelectSkillDraughtCard(ctx, 0).ok, true);
+
+    const zones = ctx.state.globals.TaintedGroundZones;
+    assert.equal(zones.length, 2, 'repeat Faze should not create stacked field pools per enemy slot');
+    assert.equal(
+      JSON.stringify(zones.map(zone => zone.id).sort()),
+      JSON.stringify(firstZones.map(zone => zone.id).sort()),
+    );
+    assert.equal(
+      JSON.stringify(zones.map(zone => zone.slotIndex).sort((a, b) => a - b)),
+      JSON.stringify([0, 1]),
+    );
+    assert.ok(zones.every(zone => zone.dotTotalDamage === 30));
+    assert.ok(zones.every(zone => zone.fazeStackCount === 2));
+
+    const pending = ctx.state.globals.PendingHeroHits;
+    assert.equal(pending.length, 2, 'repeat Faze should keep one pending dot float per enemy target');
+    assert.equal(
+      JSON.stringify(pending.map(hit => hit.targetUID).sort((a, b) => a - b)),
+      JSON.stringify([201, 202]),
+    );
+    assert.ok(pending.every(hit => hit.effectType === 'dot_apply'));
+    assert.ok(pending.every(hit => hit.actionName === 'Faze'));
+    assert.ok(pending.every(hit => hit.dotTotalDamage === 30));
+    assert.ok(pending.every(hit => hit.fazeStackCount === 2));
+    assert.ok(pending.every(hit => /^Huun uses Faze on .+!$/.test(String(hit.msg || ''))));
   }
 });

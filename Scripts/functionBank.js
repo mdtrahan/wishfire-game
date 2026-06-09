@@ -1198,6 +1198,7 @@ function refreshFazeTaintedGroundZone(ctx, sourceUID, enemy, dotTotalDamage, sta
   const g = getGlobals(ctx);
   const zones = ensureFazeTaintedGroundZones(ctx);
   const slotIndex = getTaintedGroundSlotIndex(enemy);
+  const nextDotTotalDamage = Math.max(1, Math.floor(Number(dotTotalDamage || 1) || 1));
   const enemyX = Number(enemy?.x);
   const enemyY = Number(enemy?.y);
   const anchorWorldX = Number.isFinite(enemyX) ? enemyX : null;
@@ -1209,8 +1210,12 @@ function refreshFazeTaintedGroundZone(ctx, sourceUID, enemy, dotTotalDamage, sta
   for (let i = zones.length - 1; i >= 0; i -= 1) {
     const zone = zones[i];
     if (!zone) continue;
-    if (Number(zone.sourceUID || 0) !== Number(sourceUID || 0)) continue;
     if (Number(zone.slotIndex || 0) !== slotIndex) continue;
+    if (String(zone.effectName || 'TaintedGround') !== 'TaintedGround') continue;
+    if (String(zone.visual || 'blight_disc') !== 'blight_disc') continue;
+    const previousDamage = Math.max(0, Math.floor(Number(zone.dotTotalDamage || 0) || 0));
+    const previousStackCount = Math.max(1, Math.floor(Number(zone.fazeStackCount || 1) || 1));
+    zone.sourceUID = Number(sourceUID || zone.sourceUID || 0);
     zone.targetUID = Number(enemy?.uid || 0);
     if (!Number.isFinite(Number(zone.anchorWorldX)) && anchorWorldX != null) zone.anchorWorldX = anchorWorldX;
     if (!Number.isFinite(Number(zone.anchorWorldY)) && anchorWorldY != null) zone.anchorWorldY = anchorWorldY;
@@ -1225,7 +1230,8 @@ function refreshFazeTaintedGroundZone(ctx, sourceUID, enemy, dotTotalDamage, sta
     zone.visualStartsAt = Number(startsAt || 0);
     zone.activeAt = Number(startsAt || 0);
     zone.fadeStartedAt = null;
-    zone.dotTotalDamage = Math.max(1, Math.floor(Number(dotTotalDamage || 1) || 1));
+    zone.dotTotalDamage = Math.max(1, previousDamage + nextDotTotalDamage);
+    zone.fazeStackCount = previousStackCount + 1;
     zone.appliedUIDs = { [Number(enemy?.uid || 0)]: true };
     zone.effectName = 'TaintedGround';
     zone.visual = 'blight_disc';
@@ -1248,7 +1254,8 @@ function refreshFazeTaintedGroundZone(ctx, sourceUID, enemy, dotTotalDamage, sta
     lastSeenHeroTeamTurnSerial: nowHeroTeamTurnSerial,
     visualStartsAt: Number(startsAt || 0),
     activeAt: Number(startsAt || 0),
-    dotTotalDamage: Math.max(1, Math.floor(Number(dotTotalDamage || 1) || 1)),
+    dotTotalDamage: nextDotTotalDamage,
+    fazeStackCount: 1,
     appliedUIDs: { [Number(enemy?.uid || 0)]: true },
     effectName: 'TaintedGround',
     visual: 'blight_disc',
@@ -1260,18 +1267,21 @@ function refreshFazeTaintedGroundZone(ctx, sourceUID, enemy, dotTotalDamage, sta
 function upsertFazePendingDotApplyHit(ctx, packet) {
   const g = getGlobals(ctx);
   g.PendingHeroHits = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
-  const heroUID = Number(packet?.heroUID || 0);
   const targetUID = Number(packet?.targetUID || 0);
   const zoneId = String(packet?.taintedGroundZoneId || '');
+  const slotIndex = Number(packet?.taintedGroundSlotIndex ?? -1);
   for (let i = g.PendingHeroHits.length - 1; i >= 0; i -= 1) {
     const hit = g.PendingHeroHits[i];
     if (!hit) continue;
     if (String(hit.effectType || '') !== 'dot_apply') continue;
     if (String(hit.actionName || '') !== 'Faze') continue;
-    if (Number(hit.heroUID || 0) !== heroUID) continue;
     if (Number(hit.targetUID || 0) !== targetUID) continue;
     const existingZoneId = String(hit.taintedGroundZoneId || '');
-    if (zoneId && existingZoneId && existingZoneId !== zoneId) continue;
+    if (zoneId || existingZoneId) {
+      if (zoneId !== existingZoneId) continue;
+    } else if (slotIndex >= 0 && Number(hit.taintedGroundSlotIndex ?? -1) !== slotIndex) {
+      continue;
+    }
     g.PendingHeroHits[i] = { ...hit, ...packet };
     return g.PendingHeroHits[i];
   }
@@ -1289,20 +1299,24 @@ function activateFazeSkill(ctx, actorUID) {
   const actorName = String(actor.name || '?');
   const baseDotDamage = Math.max(1, Math.floor(GetEffectiveStat(ctx, actor, 'MAG') * 0.75));
   const dotTotalDamage = Math.max(1, Math.floor(baseDotDamage * FAZE_TAINTED_GROUND_DAMAGE_SCALE));
-  const totalDamage = dotTotalDamage * enemies.length;
+  let totalDamage = 0;
   const now = Number(g.time || 0);
   const hitDelay = Math.max(0.14 + 0.75 + 0.18, 1.07);
   const applyAt = now + hitDelay;
   g.PendingHeroHits = g.PendingHeroHits || [];
   for (const enemy of enemies) {
     const zone = refreshFazeTaintedGroundZone(ctx, heroUID, enemy, dotTotalDamage, applyAt);
+    const accumulatedDotTotalDamage = Math.max(1, Math.floor(Number(zone.dotTotalDamage || dotTotalDamage) || dotTotalDamage));
+    const fazeStackCount = Math.max(1, Math.floor(Number(zone.fazeStackCount || 1) || 1));
+    totalDamage += accumulatedDotTotalDamage;
     upsertFazePendingDotApplyHit(ctx, {
       at: applyAt,
       heroUID,
       targetUID: Number(enemy.uid || 0),
       dmg: 0,
       finalDmg: 0,
-      dotTotalDamage,
+      dotTotalDamage: accumulatedDotTotalDamage,
+      fazeStackCount,
       powerAmpMultiplier: 0,
       consumePowerAmp: 0,
       effectType: 'dot_apply',
@@ -1313,10 +1327,10 @@ function activateFazeSkill(ctx, actorUID) {
       heroType: 'magic',
       taintedGroundZoneId: zone.id,
       taintedGroundSlotIndex: zone.slotIndex,
-      msg: `${actorName} corrupted ${String(enemy.name || '?')}'s ground with blight for ${dotTotalDamage}!`,
+      msg: `${actorName} uses Faze on ${String(enemy.name || '?')}!`,
     });
   }
-  LogCombat(ctx, `${actorName} used Faze to blight the field for ${totalDamage}!`);
+  LogCombat(ctx, `${actorName} uses Faze on enemies!`);
   g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), applyAt + 0.42);
   g.DeferAdvance = 1;
   g.AdvanceAfterAction = 1;
@@ -6242,6 +6256,7 @@ export function QueueEnemyDamageOverTime(ctx, actorUID, enemyUID, totalDamage, o
   const effectName = String(options?.effectName || 'Blight');
   const cadence = String(options?.cadence || 'tick');
   const taintedGroundZoneId = String(options?.taintedGroundZoneId || '');
+  const logMessage = String(options?.logMessage || '');
   if (!g.EnemyDamageOverTime) g.EnemyDamageOverTime = [];
   // Reapplying same DoT source/effect on same target resets the package.
   for (let i = g.EnemyDamageOverTime.length - 1; i >= 0; i--) {
@@ -6307,7 +6322,7 @@ export function QueueEnemyDamageOverTime(ctx, actorUID, enemyUID, totalDamage, o
     effectName: String(packet.effectName || effectName),
     taintedGroundZoneId: String(packet.taintedGroundZoneId || taintedGroundZoneId),
   });
-  LogCombat(ctx, `${actor.name || 'Hero'} applies ${effectName} to ${enemy.name || 'Enemy'}!`);
+  LogCombat(ctx, logMessage || `${actor.name || 'Hero'} applies ${effectName} to ${enemy.name || 'Enemy'}!`);
   return 1;
 }
 
