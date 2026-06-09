@@ -117,6 +117,7 @@ test('enemy DoT queue packet follows Rust owner when Rust and JS disagree', () =
       cadence: 'turn',
       effectName: 'RiftBurn',
       taintedGroundZoneId: 'zone-a',
+      logMessage: 'Kojonn uses Faze on Marid!',
     });
     const dot = ctx.state.globals.EnemyDamageOverTime[0];
 
@@ -136,5 +137,45 @@ test('enemy DoT queue packet follows Rust owner when Rust and JS disagree', () =
     assert.equal(ctx.state.globals.LastEnemyDotPacketOwner.totalDamageRemaining, 77);
     assert.equal(ctx.state.globals.LastEnemyDotApplicationPacket.owner, 'rust');
     assert.equal(ctx.state.globals.LastEnemyDotApplicationPacket.actionType, 'status.enemyDotPacket');
+    assert.equal(ctx.state.globals.CombatLog.at(-1), 'Kojonn uses Faze on Marid!');
+  }
+});
+
+test('field-owned enemy DoT queue resets by target effect and zone across source actors', () => {
+  for (const modulePath of [runtimeFunctionBankPath, scriptsFunctionBankPath]) {
+    const mod = loadFunctionBank(modulePath, null);
+    const ctx = makeContext();
+    ctx.state.entities.push({
+      uid: 101,
+      kind: 'hero',
+      name: 'Huun',
+      hp: 40,
+    });
+    ctx.state.globals.EnemyDamageOverTime = [];
+
+    assert.equal(mod.QueueEnemyDamageOverTime(ctx, 100, 200, 1, {
+      totalTicks: 2,
+      cadence: 'turn',
+      effectName: 'Blight',
+      taintedGroundZoneId: 'tg-1',
+    }), 1);
+    assert.equal(mod.QueueEnemyDamageOverTime(ctx, 101, 200, 2, {
+      totalTicks: 2,
+      cadence: 'turn',
+      effectName: 'Blight',
+      taintedGroundZoneId: 'tg-1',
+    }), 1);
+
+    assert.equal(
+      ctx.state.globals.EnemyDamageOverTime.length,
+      1,
+      `${modulePath} should replace the old same-zone field DoT instead of stacking it`,
+    );
+    const dot = ctx.state.globals.EnemyDamageOverTime[0];
+    assert.equal(dot.targetUID, 200);
+    assert.equal(dot.sourceUID, 101);
+    assert.equal(dot.effectName, 'Blight');
+    assert.equal(dot.taintedGroundZoneId, 'tg-1');
+    assert.equal(dot.totalDamageRemaining, 2);
   }
 });
