@@ -4,6 +4,16 @@ function keyOf(r, c) {
   return `${r},${c}`;
 }
 
+function isLockedGem(gem) {
+  return !!(
+    gem && (
+      gem.locked === true ||
+      Number(gem.Locked || 0) > 0 ||
+      Number(gem.lockCountdown ?? gem.LockCountdown ?? 0) > 0
+    )
+  );
+}
+
 export function superGemArea(size) {
   const n = Number(size || 0);
   return n > 0 ? (n * n) : 0;
@@ -17,6 +27,7 @@ export function buildColorGrid(gems = [], rows = 0, cols = 0) {
   const grid = Array.from({ length: rows }, () => Array.from({ length: cols }, () => null));
   for (const gem of gems) {
     if (!gem) continue;
+    if (isLockedGem(gem)) continue;
     const r = Number(gem.cellR);
     const c = Number(gem.cellC);
     if (!Number.isInteger(r) || !Number.isInteger(c)) continue;

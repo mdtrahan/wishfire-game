@@ -59,6 +59,19 @@ test('red blue yellow heal and purple 2x2 squares become super gems', async () =
   }
 });
 
+test('locked gems cannot seed super gem formation', async () => {
+  const mod = await loadRules();
+  const gems = [
+    { ...makeGem(0, 0, 1), locked: true, lockCountdown: 3 },
+    makeGem(0, 1, 1),
+    makeGem(1, 0, 1),
+    makeGem(1, 1, 1),
+  ];
+  const grid = mod.buildColorGrid(gems, 2, 2);
+  const clusters = mod.detectSuperGemClusters(grid, 2, 2);
+  assert.equal(clusters.length, 0);
+});
+
 test('retired green 2x2 squares do not become super gems', async () => {
   const mod = await loadRules();
   const gems = [
