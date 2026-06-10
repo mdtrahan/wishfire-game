@@ -435,3 +435,7 @@
 ## 2026-06-10 — Board Gate Helpers Must Live Before Match Claims
 - Gem-match handlers claim `CanPickGems`/`IsPlayerBusy` before resolving a match, so guard helpers used by match and AutoPlay paths must be in that scope before input is claimed. A missing helper can throw mid-claim and strand combat with gates closed.
 - For board-state feature additions, add contracts for helper placement and run at least one browser AutoPlay probe after settings changes, not only direct board mutation checks.
+
+## 2026-06-09 — Dev Modal Resume Must Revalidate Idle Hero Input
+- Dev tooling pause snapshots are historical state, not always safe state. When a modal closes into an idle hero turn with a full board and no presentation barriers, revalidate the live combat gate and explicitly restore gem input instead of replaying a stale blocked snapshot.
+- For Dev Panel autoplay softlocks, check both `CanPickGems` and `IsPlayerBusy`; a full board with `TurnPhase === 0` can still be non-actionable if modal pause restored only half of the input gate.
