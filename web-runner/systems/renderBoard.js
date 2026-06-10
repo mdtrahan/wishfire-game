@@ -5,6 +5,7 @@ const GEM_APPEAR_BOUNCE_OVERSHOOT_SCALE = 0.56;
 const LOCKED_GEM_GRAY = 160;
 const LOCKED_GEM_LUMINANCE_MIX = 0.4;
 const LOCKED_GEM_GRAY_MIX = 0.6;
+const LOCKED_GEM_COUNTER_Y_OFFSET_PX = 5;
 const lockedGemGrayCache = new WeakMap();
 
 export const GEM_APPEAR_BOUNCE_POINTS = Object.freeze([
@@ -167,8 +168,9 @@ function renderLockedGemOverlay(ctx, rect, countdown, drawGemSprite = null) {
   ctx.strokeStyle = '#000';
   ctx.lineWidth = Math.max(3, Math.floor(fontSize * 0.16));
   ctx.fillStyle = '#fff';
-  ctx.strokeText(label, rect.cx, rect.cy);
-  ctx.fillText(label, rect.cx, rect.cy);
+  const labelY = rect.cy + LOCKED_GEM_COUNTER_Y_OFFSET_PX;
+  ctx.strokeText(label, rect.cx, labelY);
+  ctx.fillText(label, rect.cx, labelY);
   ctx.restore();
 }
 

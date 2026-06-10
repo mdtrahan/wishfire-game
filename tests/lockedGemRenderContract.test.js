@@ -11,6 +11,7 @@ test('locked gems render normalized gray lock treatment and centered countdown t
   assert.match(src, /const LOCKED_GEM_GRAY = 160;/);
   assert.match(src, /const LOCKED_GEM_LUMINANCE_MIX = 0\.4;/);
   assert.match(src, /const LOCKED_GEM_GRAY_MIX = 0\.6;/);
+  assert.match(src, /const LOCKED_GEM_COUNTER_Y_OFFSET_PX = 5;/);
   assert.match(src, /function getLockedGemGraySprite\(sourceImage\)/);
   assert.match(src, /0\.2126 \* data\[i\]/);
   assert.match(src, /0\.7152 \* data\[i \+ 1\]/);
@@ -29,6 +30,9 @@ test('locked gems render normalized gray lock treatment and centered countdown t
   assert.match(src, /ctx\.textBaseline = 'middle';/);
   assert.match(src, /ctx\.strokeStyle = '#000';/);
   assert.match(src, /ctx\.fillStyle = '#fff';/);
+  assert.match(src, /const labelY = rect\.cy \+ LOCKED_GEM_COUNTER_Y_OFFSET_PX;/);
+  assert.match(src, /ctx\.strokeText\(label, rect\.cx, labelY\);/);
+  assert.match(src, /ctx\.fillText\(label, rect\.cx, labelY\);/);
   assert.match(src, /const lockedGemImg = gemImg \? getLockedGemGraySprite\(gemImg\) : null;/);
   assert.match(src, /const drawLockedGemSprite = lockedGemImg \? \(\) => ctx\.drawImage\(lockedGemImg, rect\.x, rect\.y, rect\.w, rect\.h\) : null;/);
   assert.match(src, /renderLockedGemOverlay\(ctx, rect, getLockedGemCountdown\(gem\), drawLockedGemSprite\);/);
