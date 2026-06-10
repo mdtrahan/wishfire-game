@@ -9,6 +9,15 @@ test('app rejects locked gems from manual and dev autoplay selection paths', () 
 
   assert.match(src, /function isBoardGemLocked\(gem\)/);
   assert.match(src, /function isSuperGemLockedByBoardGems\(superGem\)/);
+  assert.ok(
+    src.indexOf('function isBoardGemLocked(gem)') < src.indexOf('function handleGemMatch(color)'),
+    'isBoardGemLocked must be in scope before match handling claims input',
+  );
+  assert.equal(
+    src.indexOf('function isBoardGemLocked(gem)', src.indexOf('function isBoardGemLocked(gem)') + 1),
+    -1,
+    'isBoardGemLocked should have a single shared declaration',
+  );
   assert.match(src, /if \(isBoardGemLocked\(gem\)\) return false;/);
   assert.match(src, /reason: 'reject-locked-gem'/);
   assert.match(src, /reason: 'reject-locked-super-gem-footprint'/);

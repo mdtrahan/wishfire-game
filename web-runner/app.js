@@ -3768,6 +3768,12 @@ function getCellWorldPos(cellC, cellR) {
   return { x, y, w: g.cellSize, h: g.cellSize };
 }
 
+function isBoardGemLocked(gem) {
+  if (!gem) return false;
+  const countdown = Number(gem.lockCountdown ?? gem.LockCountdown ?? 0);
+  return countdown > 0 || gem.locked === true || Number(gem.Locked || 0) === 1;
+}
+
 function pickYellowCasinoTarget() {
   const idx = runtimeRandomIndex(YELLOW_CASINO_TARGETS.length);
   return YELLOW_CASINO_TARGETS[idx];
@@ -6188,11 +6194,6 @@ function getStoryCardLiveLineState() {
   }
   function getGemByRC(row, col) {
     return (gameState.gems || []).find(g => g && g.cellR === row && g.cellC === col);
-  }
-  function isBoardGemLocked(gem) {
-    if (!gem) return false;
-    const countdown = Number(gem.lockCountdown ?? gem.LockCountdown ?? 0);
-    return countdown > 0 || gem.locked === true || Number(gem.Locked || 0) === 1;
   }
   function getLockedGemCellKeys() {
     return (gameState.gems || [])
