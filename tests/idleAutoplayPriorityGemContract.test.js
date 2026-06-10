@@ -102,6 +102,31 @@ test('dev idle autoplay keeps gold/yellow resource-only unless Huun is active wh
   assert.deepEqual(pickIdleAutoplaySuperGem(superGems, { heroName: 'Huun', partyHpRatio: 0.7, hasLivingEnemies: true }), { row: 0, col: 0 });
 });
 
+test('dev idle autoplay uses yellow as a last resort instead of skipping a hero turn', async () => {
+  const { pickIdleAutoplaySuperGem, pickIdleAutoplayTriplet } = await import(modulePath);
+  const board = [
+    ...triplet(3, 0),
+    { cellR: 1, cellC: 0, color: 2, locked: true, lockCountdown: 3 },
+    { cellR: 1, cellC: 1, color: 2, locked: true, lockCountdown: 3 },
+    { cellR: 1, cellC: 2, color: 2 },
+    { cellR: 2, cellC: 0, color: 1 },
+    { cellR: 2, cellC: 1, color: 5 },
+    { cellR: 2, cellC: 2, color: 4 },
+  ];
+  const superGems = [
+    superGem(3, 0),
+  ];
+
+  assert.deepEqual(
+    pickIdleAutoplayTriplet(board, { heroName: 'Runa', partyHpRatio: 0.7, hasLivingEnemies: true }),
+    pickedTriplet(0),
+  );
+  assert.deepEqual(
+    pickIdleAutoplaySuperGem(superGems, { heroName: 'Runa', partyHpRatio: 0.7, hasLivingEnemies: true }),
+    null,
+  );
+});
+
 test('dev idle autoplay always takes an available heal supergem below 40 percent HP', async () => {
   const { pickIdleAutoplaySuperGem } = await import(modulePath);
   const superGems = [

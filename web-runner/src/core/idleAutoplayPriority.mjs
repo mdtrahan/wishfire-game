@@ -115,6 +115,8 @@ export function getIdleAutoplayColorPriorityTiers(context = {}) {
   const { heroName = '', partyHpRatio = null } = context;
   const ratio = clampRatio(partyHpRatio);
   const heroColor = getHeroPreferredColor(heroName);
+  const allowDeferredResourceFallback = context.allowDeferredResourceFallback !== false;
+  const goldDeferredForCombat = isExcludedIdleAutoplayColor(COLOR_GOLD, context);
   const otherNonHealColors = NON_HEAL_COLORS.filter((color) => color !== heroColor && color !== COLOR_PURPLE);
   const tiers = [];
   const addTier = (colors) => pushTier(
@@ -133,6 +135,9 @@ export function getIdleAutoplayColorPriorityTiers(context = {}) {
   addTier([COLOR_PURPLE]);
   addTier(otherNonHealColors);
   addTier([COLOR_HEAL]);
+  if (goldDeferredForCombat && allowDeferredResourceFallback) {
+    pushTier(tiers, [COLOR_GOLD]);
+  }
 
   return Object.freeze(tiers);
 }
@@ -166,7 +171,10 @@ export function pickIdleAutoplaySuperGem(superGems = [], context = {}) {
   if (!candidates.length) return null;
   const lockedCells = normalizeLockedCells(context.lockedCells);
 
-  for (const tier of getIdleAutoplayColorPriorityTiers(context)) {
+  for (const tier of getIdleAutoplayColorPriorityTiers({
+    ...context,
+    allowDeferredResourceFallback: false,
+  })) {
     for (const superGem of candidates) {
       const color = normalizeColor(superGem && superGem.baseColor);
       const cells = Array.isArray(superGem && superGem.cells) ? superGem.cells : [];

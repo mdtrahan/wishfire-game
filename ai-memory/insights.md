@@ -439,6 +439,7 @@
 - Board locks with turn durations should use the hero-team turn clock (`HeroTeamTurnSerial`) instead of generic actor turns. Enemy turns and individual hero turns make "3 turns" visibly expire too fast.
 - Consecutive board-control enemies need per-cast lock caps, even when duration timing is correct. A full-row or full-column lock can still stack into a soft board denial pattern across 24 gems.
 - Disabled gems must be excluded from passive board-shape detectors, not only from tap/spend paths. For supergem regressions, validate the formation color grid treats locked cells as unavailable so overlays cannot ghost under newly created shapes.
+- Dev AutoPlay color priorities should distinguish "low priority" from "never pick." When locks remove a hero's preferred combat colors, resource colors such as yellow still need a last-resort fallback so a playable board does not skip the current hero.
 
 ## 2026-06-09 — Dev Modal Resume Must Revalidate Idle Hero Input
 - Dev tooling pause snapshots are historical state, not always safe state. When a modal closes into an idle hero turn with a full board and no presentation barriers, revalidate the live combat gate and explicitly restore gem input instead of replaying a stale blocked snapshot.
