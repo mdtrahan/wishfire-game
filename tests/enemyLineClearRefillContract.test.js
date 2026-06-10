@@ -35,8 +35,8 @@ test('enemy board locks do not mark line-clear refill pressure in both runtime m
   const scriptsSrc = read('Scripts/functionBank.js');
 
   for (const src of [runtimeSrc, scriptsSrc]) {
-    assert.match(src, /function lockRandomGemLine\(ctx, axis, skillId, duration\)/);
-    assert.match(src, /g\.EnemyGemLockActive = targetGems\.length > 0 \? 1 : 0;/);
+    assert.match(src, /function lockRandomGemLine\(ctx, axis, skillId, duration, maxLocks = 0\)/);
+    assert.match(src, /g\.EnemyGemLockActive = cappedTargetGems\.length > 0 \? 1 : 0;/);
     assert.doesNotMatch(src, /EnemyLineClearPressureActive = 1/);
   }
 });
@@ -186,6 +186,6 @@ test('existing Djinn/Marid incomplete-board fallback contract is still present',
     assert.match(src, /if \(!getEnemyBoardPressureSkillHarness\(selected\)\) return decision;/);
     assert.match(src, /selected: resolveEnemyBoardLineFallbackSkill\(enemy, selected\),/);
     assert.match(src, /blocked_incomplete_board/);
-    assert.match(src, /const result = lockRandomGemLine\(ctx, harness\.axis, harness\.skillId, harness\.duration\);/);
+    assert.match(src, /const result = lockRandomGemLine\(ctx, harness\.axis, harness\.skillId, harness\.duration, harness\.maxLocks\);/);
   }
 });

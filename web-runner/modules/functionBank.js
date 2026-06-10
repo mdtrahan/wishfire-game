@@ -8444,6 +8444,7 @@ const ENEMY_BOARD_PRESSURE_SKILL_HARNESSES = Object.freeze({
     axis: 'column',
     label: 'Scathe',
     duration: ENEMY_GEM_LOCK_DURATIONS.Enemy_Scathe,
+    maxLocks: 1,
     logSuffix: 'from a column.',
   }),
   Enemy_Sweep: Object.freeze({
@@ -8451,6 +8452,7 @@ const ENEMY_BOARD_PRESSURE_SKILL_HARNESSES = Object.freeze({
     axis: 'row',
     label: 'Sweep',
     duration: ENEMY_GEM_LOCK_DURATIONS.Enemy_Sweep,
+    maxLocks: 2,
     logSuffix: 'from a row.',
   }),
 });
@@ -8687,7 +8689,7 @@ function tickEnemyGemLockCountdowns(ctx) {
   syncEnemyGemLockGroupsToBoard(ctx);
 }
 
-function lockRandomGemLine(ctx, axis, skillId, duration) {
+function lockRandomGemLine(ctx, axis, skillId, duration, maxLocks = 0) {
   const g = getGlobals(ctx);
   const gems = getGems(ctx);
   const lineCounts = new Map();
@@ -8705,28 +8707,39 @@ function lockRandomGemLine(ctx, axis, skillId, duration) {
     const gemIndex = Number(axis === 'column' ? gem?.cellC : gem?.cellR);
     if (gemIndex === lineIndex && !isEnemyGemLocked(gem)) targetGems.push(gem);
   }
+  const safeMaxLocks = Math.max(0, Math.floor(Number(maxLocks || 0)));
+  const lockLimit = safeMaxLocks > 0 ? Math.min(targetGems.length, safeMaxLocks) : targetGems.length;
+  const cappedTargetGems = lockLimit >= targetGems.length ? targetGems : [];
+  if (lockLimit < targetGems.length) {
+    const candidates = targetGems.slice();
+    while (cappedTargetGems.length < lockLimit && candidates.length > 0) {
+      const pickedIndex = randomIndex(ctx, candidates.length);
+      cappedTargetGems.push(candidates.splice(pickedIndex, 1)[0]);
+    }
+  }
   const safeDuration = Math.max(1, Math.floor(Number(duration || 1)));
   const group = createEnemyGemLockGroup(ctx, {
     skillId,
     axis,
     lineIndex,
     duration: safeDuration,
-    gemUIDs: targetGems.map(gem => Number(gem?.uid || 0)).filter(uid => uid > 0),
+    gemUIDs: cappedTargetGems.map(gem => Number(gem?.uid || 0)).filter(uid => uid > 0),
   });
-  for (const gem of targetGems) applyEnemyGemLockState(gem, group);
+  for (const gem of cappedTargetGems) applyEnemyGemLockState(gem, group);
   setGems(ctx, gems);
   setSelectedGemIndices(ctx, []);
   g.TapIndex = 0;
-  g.EnemyGemLockActive = targetGems.length > 0 ? 1 : 0;
-  return { locked: targetGems.length, lineIndex, duration: safeDuration, groupId: group.id };
+  g.EnemyGemLockActive = cappedTargetGems.length > 0 ? 1 : 0;
+  return { locked: cappedTargetGems.length, lineIndex, duration: safeDuration, groupId: group.id };
 }
 
 function executeEnemyBoardPressureSkill(ctx, enemyUID, skillId) {
   const harness = getEnemyBoardPressureSkillHarness(skillId);
   if (!harness) return 0;
   const enemyName = getActorNameByUID(ctx, enemyUID);
-  const result = lockRandomGemLine(ctx, harness.axis, harness.skillId, harness.duration);
-  LogCombat(ctx, `${enemyName} used ${harness.label} and locked ${result.locked} gems ${harness.logSuffix} (${result.duration} turns).`);
+  const result = lockRandomGemLine(ctx, harness.axis, harness.skillId, harness.duration, harness.maxLocks);
+  const gemWord = result.locked === 1 ? 'gem' : 'gems';
+  LogCombat(ctx, `${enemyName} used ${harness.label} and locked ${result.locked} ${gemWord} ${harness.logSuffix} (${result.duration} turns).`);
   return 1;
 }
 

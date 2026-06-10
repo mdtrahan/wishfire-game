@@ -437,6 +437,7 @@
 - For board-state feature additions, add contracts for helper placement and run at least one browser AutoPlay probe after settings changes, not only direct board mutation checks.
 - Visual lock effects must be masked by the rendered gem art alpha, not by cell bounds. A rectangular overlay can satisfy state tests while failing player readability and asset-shape fidelity.
 - Board locks with turn durations should use the hero-team turn clock (`HeroTeamTurnSerial`) instead of generic actor turns. Enemy turns and individual hero turns make "3 turns" visibly expire too fast.
+- Consecutive board-control enemies need per-cast lock caps, even when duration timing is correct. A full-row or full-column lock can still stack into a soft board denial pattern across 24 gems.
 
 ## 2026-06-09 — Dev Modal Resume Must Revalidate Idle Hero Input
 - Dev tooling pause snapshots are historical state, not always safe state. When a modal closes into an idle hero turn with a full board and no presentation barriers, revalidate the live combat gate and explicitly restore gem input instead of replaying a stale blocked snapshot.

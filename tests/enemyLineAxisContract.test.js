@@ -152,35 +152,37 @@ for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBa
       ],
     );
     const lockedColumn = sandbox.gems.filter((gem) => gem.cellC === 1);
+    const lockedScatheGems = lockedColumn.filter((gem) => gem.locked === true && gem.Locked === 1);
     assert.equal(lockedColumn.length, 3);
-    assert.ok(lockedColumn.every((gem) => gem.locked === true && gem.Locked === 1));
-    assert.ok(lockedColumn.every((gem) => gem.lockCountdown === 3 && gem.LockCountdown === 3));
-    assert.equal(new Set(lockedColumn.map((gem) => gem.lockGroupId)).size, 1);
-    const scatheGroup = sandbox.globals.EnemyGemLockGroups[lockedColumn[0].lockGroupId];
+    assert.equal(lockedScatheGems.length, 1);
+    assert.ok(lockedScatheGems.every((gem) => gem.lockCountdown === 3 && gem.LockCountdown === 3));
+    assert.equal(new Set(lockedScatheGems.map((gem) => gem.lockGroupId)).size, 1);
+    const scatheGroup = sandbox.globals.EnemyGemLockGroups[lockedScatheGems[0].lockGroupId];
     assert.equal(scatheGroup.durationHeroTeamTurns, 3);
     assert.equal(scatheGroup.heroTeamTurnSpan, 4);
     assert.equal(scatheGroup.createdHeroTeamTurnSerial, 10);
     assert.equal(scatheGroup.expiresAtHeroTeamTurnSerial, 13);
+    assert.equal(scatheGroup.gemUIDs.length, 1);
     assert.equal(sandbox.globals.EnemyLineClearPressureActive, undefined);
-    assert.equal(sandbox.logs[0], 'Djinn used Scathe and locked 3 gems from a column. (3 turns).');
+    assert.equal(sandbox.logs[0], 'Djinn used Scathe and locked 1 gem from a column. (3 turns).');
 
     tickEnemyGemLockCountdowns(sandbox);
-    assert.ok(lockedColumn.every((gem) => gem.lockCountdown === 3));
+    assert.ok(lockedScatheGems.every((gem) => gem.lockCountdown === 3));
     sandbox.globals.TurnSerial = 21;
     tickEnemyGemLockCountdowns(sandbox);
-    assert.ok(lockedColumn.every((gem) => gem.lockCountdown === 3), 'actor turns do not decrement locked gems');
+    assert.ok(lockedScatheGems.every((gem) => gem.lockCountdown === 3), 'actor turns do not decrement locked gems');
     sandbox.globals.HeroTeamTurnSerial = 11;
     tickEnemyGemLockCountdowns(sandbox);
-    assert.ok(lockedColumn.every((gem) => gem.lockCountdown === 2));
+    assert.ok(lockedScatheGems.every((gem) => gem.lockCountdown === 2));
     sandbox.globals.TurnSerial = 25;
     tickEnemyGemLockCountdowns(sandbox);
-    assert.ok(lockedColumn.every((gem) => gem.lockCountdown === 2), 'enemy-only turn serial changes do not decrement again');
+    assert.ok(lockedScatheGems.every((gem) => gem.lockCountdown === 2), 'enemy-only turn serial changes do not decrement again');
     sandbox.globals.HeroTeamTurnSerial = 12;
     tickEnemyGemLockCountdowns(sandbox);
-    assert.ok(lockedColumn.every((gem) => gem.lockCountdown === 1));
+    assert.ok(lockedScatheGems.every((gem) => gem.lockCountdown === 1));
     sandbox.globals.HeroTeamTurnSerial = 13;
     tickEnemyGemLockCountdowns(sandbox);
-    assert.ok(lockedColumn.every((gem) => !gem.locked && gem.Locked == null));
+    assert.ok(lockedScatheGems.every((gem) => !gem.locked && gem.Locked == null));
 
     sandbox.gems = [
       { uid: 1, cellC: 0, cellR: 0 },
@@ -209,16 +211,52 @@ for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBa
       ],
     );
     const lockedRow = sandbox.gems.filter((gem) => gem.cellR === 1);
+    const lockedSweepGems = lockedRow.filter((gem) => gem.locked === true && gem.Locked === 1);
     assert.equal(lockedRow.length, 3);
-    assert.ok(lockedRow.every((gem) => gem.locked === true && gem.Locked === 1));
-    assert.ok(lockedRow.every((gem) => gem.lockCountdown === 5 && gem.LockCountdown === 5));
-    assert.equal(new Set(lockedRow.map((gem) => gem.lockGroupId)).size, 1);
-    const sweepGroup = sandbox.globals.EnemyGemLockGroups[lockedRow[0].lockGroupId];
+    assert.equal(lockedSweepGems.length, 2);
+    assert.ok(lockedSweepGems.every((gem) => gem.lockCountdown === 5 && gem.LockCountdown === 5));
+    assert.equal(new Set(lockedSweepGems.map((gem) => gem.lockGroupId)).size, 1);
+    const sweepGroup = sandbox.globals.EnemyGemLockGroups[lockedSweepGems[0].lockGroupId];
     assert.equal(sweepGroup.durationHeroTeamTurns, 5);
     assert.equal(sweepGroup.heroTeamTurnSpan, 4);
     assert.equal(sweepGroup.createdHeroTeamTurnSerial, 20);
     assert.equal(sweepGroup.expiresAtHeroTeamTurnSerial, 25);
+    assert.equal(sweepGroup.gemUIDs.length, 2);
     assert.equal(sandbox.globals.EnemyLineClearPressureActive, undefined);
-    assert.equal(sandbox.logs[0], 'Marid used Sweep and locked 3 gems from a row. (5 turns).');
+    assert.equal(sandbox.logs[0], 'Marid used Sweep and locked 2 gems from a row. (5 turns).');
+  });
+
+  test(`consecutive Djinn and Marid lock casts stay capped per group in ${relPath}`, () => {
+    const src = read(relPath);
+    const factory = buildLineClearFns(src);
+    const { Enemy_Scathe, Enemy_Sweep } = factory(
+      (ctx) => ctx.globals,
+      (ctx) => ctx.gems,
+      (ctx, gems) => { ctx.gems = gems; },
+      () => {},
+      (_ctx, uid) => (uid === 100 ? 'Djinn' : 'Marid'),
+      (ctx, msg) => ctx.logs.push(String(msg)),
+      (ctx, size) => Math.floor(Number(ctx.globals.RuntimeRandom()) * size),
+    );
+
+    const djinnSandbox = makeSandbox();
+    Enemy_Scathe(djinnSandbox, 100);
+    Enemy_Scathe(djinnSandbox, 100);
+    const scatheGroups = Object.values(djinnSandbox.globals.EnemyGemLockGroups)
+      .filter((group) => group.skillId === 'Enemy_Scathe');
+    assert.equal(scatheGroups.length, 2);
+    assert.ok(scatheGroups.every((group) => group.gemUIDs.length <= 1));
+    assert.equal(djinnSandbox.gems.filter((gem) => gem.locked === true).length, 2);
+    assert.ok(djinnSandbox.logs.every((line) => /locked 1 gem from a column/.test(line)));
+
+    const maridSandbox = makeSandbox();
+    Enemy_Sweep(maridSandbox, 101);
+    Enemy_Sweep(maridSandbox, 101);
+    const sweepGroups = Object.values(maridSandbox.globals.EnemyGemLockGroups)
+      .filter((group) => group.skillId === 'Enemy_Sweep');
+    assert.equal(sweepGroups.length, 2);
+    assert.ok(sweepGroups.every((group) => group.gemUIDs.length <= 2));
+    assert.ok(maridSandbox.gems.filter((gem) => gem.locked === true).length <= 4);
+    assert.ok(maridSandbox.logs.every((line) => /locked [12] gems? from a row/.test(line)));
   });
 }
