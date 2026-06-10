@@ -430,3 +430,7 @@
 ## 2026-06-08 — Repeatable Field Skills Should Refresh Pending Presentation
 - Party-level skill-card field effects should refresh by target slot, effect, and zone instead of source actor. Repeated Faze activations share one visible field per enemy, replace both pending presentation and delayed DoT packets, and scale the field by a capped linear activation count instead of accumulated prior damage. Keep internal effect labels out of player-facing action copy; use the standard actor-skill-target wording.
 - When a field effect uses a total damage pool that the renderer divides into ticks, contract the visible per-tick values too. For Faze, the pool must be `applicationCount * totalTicks`, so the player sees `1, 2, 3, 4, max` instead of stat-derived or pool-derived jumps.
+
+## 2026-06-09 — Dev Modal Resume Must Revalidate Idle Hero Input
+- Dev tooling pause snapshots are historical state, not always safe state. When a modal closes into an idle hero turn with a full board and no presentation barriers, revalidate the live combat gate and explicitly restore gem input instead of replaying a stale blocked snapshot.
+- For Dev Panel autoplay softlocks, check both `CanPickGems` and `IsPlayerBusy`; a full board with `TurnPhase === 0` can still be non-actionable if modal pause restored only half of the input gate.

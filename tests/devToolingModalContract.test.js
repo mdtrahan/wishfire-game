@@ -122,6 +122,35 @@ test('dev tooling restart helper owns restart button labels and reset delegation
   assert.match(appSrc, /window\.location\.reload\(\)/);
 });
 
+test('dev tooling resume restores playable hero input when combat is idle', () => {
+  const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
+  const src = fs.readFileSync(filePath, 'utf8');
+  const resumeSrc = extractFunctionSource(src, 'resumeGameplayFromDevTooling');
+  const restoreSrc = extractFunctionSource(src, 'restorePlayableHeroInputAfterDevToolingResume');
+
+  assert.match(resumeSrc, /applyTurnGateGlobals\(devToolingPauseSnapshot\);[\s\S]*restorePlayableHeroInputAfterDevToolingResume\(\);/);
+  assert.match(restoreSrc, /state\.globals\.GamePhase === 'RUNTIME'/);
+  assert.match(restoreSrc, /callFunctionWithContext\(fnContext, 'GetCurrentType'\) === 0/);
+  assert.match(restoreSrc, /state\.globals\.TurnPhase === 0/);
+  assert.match(restoreSrc, /!\(gameState\.refillBounce && gameState\.refillBounce\.active\)/);
+  assert.match(restoreSrc, /!\(gameState\.yellowCasino && gameState\.yellowCasino\.active\)/);
+  assert.match(restoreSrc, /!hasEmptySlots\(\)/);
+  assert.match(restoreSrc, /getPresentationTurnBarrier\(\{[\s\S]*enemyLineClearPressureActive: !!state\.globals\.EnemyLineClearPressureActive,[\s\S]*\}\)/);
+  assert.match(restoreSrc, /heroInputBarrier\.canRestoreHeroInput/);
+  assert.match(restoreSrc, /getEnemyRosterStabilitySnapshot\(\)\.stable/);
+  assert.doesNotMatch(restoreSrc, /clearSelectionOnly\(\);/);
+  assert.match(restoreSrc, /gameState\.selectedGems = \[\];/);
+  assert.match(restoreSrc, /gameState\.selectionLocked = false;/);
+  assert.match(restoreSrc, /for \(const gem of \(gameState\.gems \|\| \[\]\)\) \{/);
+  assert.match(restoreSrc, /gem\.selected = false;/);
+  assert.match(restoreSrc, /gem\.Selected = 0;/);
+  assert.match(restoreSrc, /state\.globals\.TapIndex = 0;/);
+  assert.match(restoreSrc, /state\.globals\.CanPickGems = true;/);
+  assert.match(restoreSrc, /state\.globals\.IsPlayerBusy = 0;/);
+  assert.match(restoreSrc, /state\.globals\.DeferAdvance = 0;/);
+  assert.match(restoreSrc, /state\.globals\.BoardFillActive = 0;/);
+});
+
 test('startup preload can prepare combat assets while story mock is active', () => {
   const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
   const src = fs.readFileSync(filePath, 'utf8');
