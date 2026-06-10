@@ -8561,14 +8561,25 @@ function createEnemyGemLockGroup(ctx, options) {
   const nextId = Math.max(0, Math.floor(Number(g.EnemyGemLockNextGroupId || 0))) + 1;
   g.EnemyGemLockNextGroupId = nextId;
   const groupId = `enemy-gem-lock-${nextId}`;
+  const safeDuration = Math.max(1, Math.floor(Number(duration || 1)));
+  const nowTurnSerial = Math.max(0, Math.floor(Number(g.TurnSerial || 0)));
+  const heroTeamTurnSpan = getFazeHeroTeamTurnSpan(ctx);
+  const nowHeroTeamTurnSerial = getFazeHeroTeamTurnSerial(ctx);
   groups[groupId] = {
     id: groupId,
     skillId: String(skillId || ''),
     axis: String(axis || ''),
     lineIndex: Number(lineIndex),
-    duration: Math.max(1, Math.floor(Number(duration || 1))),
-    remaining: Math.max(1, Math.floor(Number(duration || 1))),
-    lastTickTurnSerial: Math.max(0, Math.floor(Number(g.TurnSerial || 0))),
+    duration: safeDuration,
+    remaining: safeDuration,
+    durationHeroTeamTurns: safeDuration,
+    heroTeamTurnSpan,
+    createdTurnSerial: nowTurnSerial,
+    lastSeenTurnSerial: nowTurnSerial,
+    lastTickTurnSerial: nowTurnSerial,
+    createdHeroTeamTurnSerial: nowHeroTeamTurnSerial,
+    expiresAtHeroTeamTurnSerial: nowHeroTeamTurnSerial + safeDuration,
+    lastSeenHeroTeamTurnSerial: nowHeroTeamTurnSerial,
     gemUIDs: Array.isArray(gemUIDs) ? gemUIDs.map(uid => Number(uid || 0)).filter(uid => uid > 0) : [],
   };
   return groups[groupId];
@@ -8617,6 +8628,7 @@ function tickEnemyGemLockCountdowns(ctx) {
   const g = getGlobals(ctx);
   const groups = ensureEnemyGemLockGroups(g);
   const currentTurnSerial = Math.max(0, Math.floor(Number(g.TurnSerial || 0)));
+  const currentHeroTeamTurnSerial = getFazeHeroTeamTurnSerial(ctx);
   for (const [groupId, group] of Object.entries(groups)) {
     if (!group || typeof group !== 'object') {
       delete groups[groupId];
@@ -8627,10 +8639,30 @@ function tickEnemyGemLockCountdowns(ctx) {
       delete groups[groupId];
       continue;
     }
-    const lastTick = Math.max(0, Math.floor(Number(group.lastTickTurnSerial ?? currentTurnSerial)));
-    if (lastTick >= currentTurnSerial) continue;
-    group.remaining = remaining - 1;
+    const durationHeroTeamTurns = Math.max(1, Math.floor(Number(group.durationHeroTeamTurns || group.duration || remaining || 1)));
+    if (!Number.isFinite(Number(group.createdHeroTeamTurnSerial))) {
+      const elapsedHeroTeamTurns = Math.max(0, durationHeroTeamTurns - remaining);
+      group.createdHeroTeamTurnSerial = Math.max(0, currentHeroTeamTurnSerial - elapsedHeroTeamTurns);
+    }
+    if (!Number.isFinite(Number(group.expiresAtHeroTeamTurnSerial))) {
+      group.expiresAtHeroTeamTurnSerial = Number(group.createdHeroTeamTurnSerial || currentHeroTeamTurnSerial) + durationHeroTeamTurns;
+    }
+    const lastSeenHeroTeamTurnSerial = Math.max(
+      0,
+      Math.floor(Number(group.lastSeenHeroTeamTurnSerial ?? group.createdHeroTeamTurnSerial ?? currentHeroTeamTurnSerial)),
+    );
+    if (lastSeenHeroTeamTurnSerial >= currentHeroTeamTurnSerial) continue;
+    const createdHeroTeamTurnSerial = Math.max(0, Math.floor(Number(group.createdHeroTeamTurnSerial ?? currentHeroTeamTurnSerial)));
+    const expiresAtHeroTeamTurnSerial = Math.max(
+      createdHeroTeamTurnSerial + durationHeroTeamTurns,
+      Math.floor(Number(group.expiresAtHeroTeamTurnSerial ?? currentHeroTeamTurnSerial)),
+    );
+    group.durationHeroTeamTurns = durationHeroTeamTurns;
+    group.expiresAtHeroTeamTurnSerial = expiresAtHeroTeamTurnSerial;
+    group.remaining = Math.max(0, expiresAtHeroTeamTurnSerial - currentHeroTeamTurnSerial);
+    group.lastSeenTurnSerial = currentTurnSerial;
     group.lastTickTurnSerial = currentTurnSerial;
+    group.lastSeenHeroTeamTurnSerial = currentHeroTeamTurnSerial;
     if (group.remaining <= 0) delete groups[groupId];
   }
   syncEnemyGemLockGroupsToBoard(ctx);

@@ -42,6 +42,10 @@ function buildLineClearFns(src) {
     .replace(/^function\s+isEnemyGemLocked\s*\(/, 'function(');
   const ensureGroupsSrc = extractFunctionSource(src, 'ensureEnemyGemLockGroups')
     .replace(/^function\s+ensureEnemyGemLockGroups\s*\(/, 'function(');
+  const getFazeHeroTeamTurnSpanSrc = extractFunctionSource(src, 'getFazeHeroTeamTurnSpan')
+    .replace(/^function\s+getFazeHeroTeamTurnSpan\s*\(/, 'function(');
+  const getFazeHeroTeamTurnSerialSrc = extractFunctionSource(src, 'getFazeHeroTeamTurnSerial')
+    .replace(/^function\s+getFazeHeroTeamTurnSerial\s*\(/, 'function(');
   const createGroupSrc = extractFunctionSource(src, 'createEnemyGemLockGroup')
     .replace(/^function\s+createEnemyGemLockGroup\s*\(/, 'function(');
   const applyLockSrc = extractFunctionSource(src, 'applyEnemyGemLockState')
@@ -74,6 +78,8 @@ function buildLineClearFns(src) {
      const clearEnemyGemLockState = ${clearLockStateSrc};
      const isEnemyGemLocked = ${isLockedSrc};
      const ensureEnemyGemLockGroups = ${ensureGroupsSrc};
+     const getFazeHeroTeamTurnSpan = ${getFazeHeroTeamTurnSpanSrc};
+     const getFazeHeroTeamTurnSerial = ${getFazeHeroTeamTurnSerialSrc};
      const createEnemyGemLockGroup = ${createGroupSrc};
      const applyEnemyGemLockState = ${applyLockSrc};
      const syncEnemyGemLockGroupsToBoard = ${syncGroupsSrc};
@@ -92,6 +98,15 @@ function makeSandbox() {
   const ctx = {
     globals: {
       RuntimeRandom: () => 0.4,
+      TurnSerial: 20,
+      HeroTeamTurnSerial: 10,
+      TurnOrderArray: [
+        { uid: 1, type: 0 },
+        { uid: 2, type: 0 },
+        { uid: 3, type: 0 },
+        { uid: 4, type: 0 },
+        { uid: 100, type: 1 },
+      ],
     },
     gems: [],
   };
@@ -141,18 +156,29 @@ for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBa
     assert.ok(lockedColumn.every((gem) => gem.locked === true && gem.Locked === 1));
     assert.ok(lockedColumn.every((gem) => gem.lockCountdown === 3 && gem.LockCountdown === 3));
     assert.equal(new Set(lockedColumn.map((gem) => gem.lockGroupId)).size, 1);
+    const scatheGroup = sandbox.globals.EnemyGemLockGroups[lockedColumn[0].lockGroupId];
+    assert.equal(scatheGroup.durationHeroTeamTurns, 3);
+    assert.equal(scatheGroup.heroTeamTurnSpan, 4);
+    assert.equal(scatheGroup.createdHeroTeamTurnSerial, 10);
+    assert.equal(scatheGroup.expiresAtHeroTeamTurnSerial, 13);
     assert.equal(sandbox.globals.EnemyLineClearPressureActive, undefined);
     assert.equal(sandbox.logs[0], 'Djinn used Scathe and locked 3 gems from a column. (3 turns).');
 
     tickEnemyGemLockCountdowns(sandbox);
     assert.ok(lockedColumn.every((gem) => gem.lockCountdown === 3));
-    sandbox.globals.TurnSerial = 1;
+    sandbox.globals.TurnSerial = 21;
+    tickEnemyGemLockCountdowns(sandbox);
+    assert.ok(lockedColumn.every((gem) => gem.lockCountdown === 3), 'actor turns do not decrement locked gems');
+    sandbox.globals.HeroTeamTurnSerial = 11;
     tickEnemyGemLockCountdowns(sandbox);
     assert.ok(lockedColumn.every((gem) => gem.lockCountdown === 2));
-    sandbox.globals.TurnSerial = 2;
+    sandbox.globals.TurnSerial = 25;
+    tickEnemyGemLockCountdowns(sandbox);
+    assert.ok(lockedColumn.every((gem) => gem.lockCountdown === 2), 'enemy-only turn serial changes do not decrement again');
+    sandbox.globals.HeroTeamTurnSerial = 12;
     tickEnemyGemLockCountdowns(sandbox);
     assert.ok(lockedColumn.every((gem) => gem.lockCountdown === 1));
-    sandbox.globals.TurnSerial = 3;
+    sandbox.globals.HeroTeamTurnSerial = 13;
     tickEnemyGemLockCountdowns(sandbox);
     assert.ok(lockedColumn.every((gem) => !gem.locked && gem.Locked == null));
 
@@ -169,6 +195,8 @@ for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBa
     ];
     sandbox.logs.length = 0;
     delete sandbox.globals.EnemyLineClearPressureActive;
+    sandbox.globals.TurnSerial = 30;
+    sandbox.globals.HeroTeamTurnSerial = 20;
 
     const sweepResult = Enemy_Sweep(sandbox, 101);
     assert.equal(sweepResult, 1);
@@ -185,6 +213,11 @@ for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBa
     assert.ok(lockedRow.every((gem) => gem.locked === true && gem.Locked === 1));
     assert.ok(lockedRow.every((gem) => gem.lockCountdown === 5 && gem.LockCountdown === 5));
     assert.equal(new Set(lockedRow.map((gem) => gem.lockGroupId)).size, 1);
+    const sweepGroup = sandbox.globals.EnemyGemLockGroups[lockedRow[0].lockGroupId];
+    assert.equal(sweepGroup.durationHeroTeamTurns, 5);
+    assert.equal(sweepGroup.heroTeamTurnSpan, 4);
+    assert.equal(sweepGroup.createdHeroTeamTurnSerial, 20);
+    assert.equal(sweepGroup.expiresAtHeroTeamTurnSerial, 25);
     assert.equal(sandbox.globals.EnemyLineClearPressureActive, undefined);
     assert.equal(sandbox.logs[0], 'Marid used Sweep and locked 3 gems from a row. (5 turns).');
   });

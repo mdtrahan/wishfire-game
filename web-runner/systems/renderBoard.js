@@ -100,12 +100,23 @@ function getGemRenderRect({ gem, worldToCanvas, layoutScale, now, gameTime }) {
   };
 }
 
-function renderLockedGemOverlay(ctx, rect, countdown) {
+function renderLockedGemOverlay(ctx, rect, countdown, drawGemSprite = null) {
   if (!rect || !(rect.w > 0) || !(rect.h > 0)) return;
   const label = String(Math.max(0, Math.floor(Number(countdown || 0))));
   ctx.save();
-  ctx.fillStyle = 'rgba(55, 65, 81, 0.66)';
-  ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  if (typeof drawGemSprite === 'function') {
+    ctx.globalAlpha = 0.66;
+    ctx.filter = 'brightness(0.28) grayscale(1)';
+    drawGemSprite();
+  } else {
+    const radius = Math.min(rect.w, rect.h) * 0.45;
+    ctx.fillStyle = 'rgba(55, 65, 81, 0.66)';
+    ctx.beginPath();
+    ctx.arc(rect.cx, rect.cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+  ctx.save();
   const fontSize = Math.max(14, Math.floor(Math.min(rect.w, rect.h) * 0.54));
   ctx.font = `700 ${fontSize}px monospace`;
   ctx.textAlign = 'center';
@@ -194,7 +205,10 @@ export function renderBoard(ctx, gameState, uiState, animationMath, dims) {
     for (const gem of gameState.gems) {
       if (!isLockedGem(gem)) continue;
       const rect = getGemRenderRect({ gem, worldToCanvas, layoutScale, now, gameTime });
-      renderLockedGemOverlay(ctx, rect, getLockedGemCountdown(gem));
+      const frameIndex = Number(gem.color ?? 0) % 6;
+      const gemImg = gemFrames[frameIndex] || null;
+      const drawLockedGemSprite = gemImg ? () => ctx.drawImage(gemImg, rect.x, rect.y, rect.w, rect.h) : null;
+      renderLockedGemOverlay(ctx, rect, getLockedGemCountdown(gem), drawLockedGemSprite);
     }
   }
 
