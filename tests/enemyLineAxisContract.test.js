@@ -32,10 +32,16 @@ function extractFunctionSource(src, name) {
 function buildLineClearFns(src) {
   const lockDurationSrc = src.match(/const ENEMY_GEM_LOCK_DURATIONS = Object\.freeze\(\{[\s\S]*?\n\}\);/);
   assert.ok(lockDurationSrc, 'missing ENEMY_GEM_LOCK_DURATIONS');
+  const lockTargetColorSrc = src.match(/const ENEMY_GEM_LOCK_TARGET_COLORS = Object\.freeze\(\{[\s\S]*?\n\}\);/);
+  assert.ok(lockTargetColorSrc, 'missing ENEMY_GEM_LOCK_TARGET_COLORS');
   const harnessStoreSrc = src.match(/const ENEMY_BOARD_PRESSURE_SKILL_HARNESSES = Object\.freeze\(\{[\s\S]*?\n\}\);/);
   assert.ok(harnessStoreSrc, 'missing ENEMY_BOARD_PRESSURE_SKILL_HARNESSES');
   const getHarnessSrc = extractFunctionSource(src, 'getEnemyBoardPressureSkillHarness')
     .replace(/^function\s+getEnemyBoardPressureSkillHarness\s*\(/, 'function(');
+  const getGemColorSrc = extractFunctionSource(src, 'getEnemyGemColor')
+    .replace(/^function\s+getEnemyGemColor\s*\(/, 'function(');
+  const isPressureTargetSrc = extractFunctionSource(src, 'isEnemyBoardPressureLockTargetGem')
+    .replace(/^function\s+isEnemyBoardPressureLockTargetGem\s*\(/, 'function(');
   const clearLockStateSrc = extractFunctionSource(src, 'clearEnemyGemLockState')
     .replace(/^function\s+clearEnemyGemLockState\s*\(/, 'function(');
   const isLockedSrc = extractFunctionSource(src, 'isEnemyGemLocked')
@@ -73,8 +79,11 @@ function buildLineClearFns(src) {
     'LogCombat',
     'randomIndex',
     `${lockDurationSrc[0]}
+     ${lockTargetColorSrc[0]}
      ${harnessStoreSrc[0]}
      const getEnemyBoardPressureSkillHarness = ${getHarnessSrc};
+     const getEnemyGemColor = ${getGemColorSrc};
+     const isEnemyBoardPressureLockTargetGem = ${isPressureTargetSrc};
      const clearEnemyGemLockState = ${clearLockStateSrc};
      const isEnemyGemLocked = ${isLockedSrc};
      const ensureEnemyGemLockGroups = ${ensureGroupsSrc};
@@ -111,15 +120,15 @@ function makeSandbox() {
     gems: [],
   };
   const baseGems = [
-    { uid: 1, cellC: 0, cellR: 0 },
-    { uid: 2, cellC: 1, cellR: 0 },
-    { uid: 3, cellC: 2, cellR: 0 },
-    { uid: 4, cellC: 0, cellR: 1 },
-    { uid: 5, cellC: 1, cellR: 1 },
-    { uid: 6, cellC: 2, cellR: 1 },
-    { uid: 7, cellC: 0, cellR: 2 },
-    { uid: 8, cellC: 1, cellR: 2 },
-    { uid: 9, cellC: 2, cellR: 2 },
+    { uid: 1, cellC: 0, cellR: 0, color: 2 },
+    { uid: 2, cellC: 1, cellR: 0, color: 4 },
+    { uid: 3, cellC: 2, cellR: 0, color: 1 },
+    { uid: 4, cellC: 0, cellR: 1, color: 4 },
+    { uid: 5, cellC: 1, cellR: 1, color: 2 },
+    { uid: 6, cellC: 2, cellR: 1, color: 4 },
+    { uid: 7, cellC: 0, cellR: 2, color: 4 },
+    { uid: 8, cellC: 1, cellR: 2, color: 3 },
+    { uid: 9, cellC: 2, cellR: 2, color: 2 },
   ];
   ctx.gems = JSON.parse(JSON.stringify(baseGems));
   ctx.logs = [];
@@ -156,6 +165,7 @@ for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBa
     assert.equal(lockedColumn.length, 3);
     assert.equal(lockedScatheGems.length, 1);
     assert.ok(lockedScatheGems.every((gem) => gem.lockCountdown === 3 && gem.LockCountdown === 3));
+    assert.ok(lockedScatheGems.every((gem) => gem.color === 2));
     assert.equal(new Set(lockedScatheGems.map((gem) => gem.lockGroupId)).size, 1);
     const scatheGroup = sandbox.globals.EnemyGemLockGroups[lockedScatheGems[0].lockGroupId];
     assert.equal(scatheGroup.durationHeroTeamTurns, 3);
@@ -185,15 +195,15 @@ for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBa
     assert.ok(lockedScatheGems.every((gem) => !gem.locked && gem.Locked == null));
 
     sandbox.gems = [
-      { uid: 1, cellC: 0, cellR: 0 },
-      { uid: 2, cellC: 1, cellR: 0 },
-      { uid: 3, cellC: 2, cellR: 0 },
-      { uid: 4, cellC: 0, cellR: 1 },
-      { uid: 5, cellC: 1, cellR: 1 },
-      { uid: 6, cellC: 2, cellR: 1 },
-      { uid: 7, cellC: 0, cellR: 2 },
-      { uid: 8, cellC: 1, cellR: 2 },
-      { uid: 9, cellC: 2, cellR: 2 },
+      { uid: 1, cellC: 0, cellR: 0, color: 2 },
+      { uid: 2, cellC: 1, cellR: 0, color: 4 },
+      { uid: 3, cellC: 2, cellR: 0, color: 1 },
+      { uid: 4, cellC: 0, cellR: 1, color: 4 },
+      { uid: 5, cellC: 1, cellR: 1, color: 2 },
+      { uid: 6, cellC: 2, cellR: 1, color: 4 },
+      { uid: 7, cellC: 0, cellR: 2, color: 4 },
+      { uid: 8, cellC: 1, cellR: 2, color: 3 },
+      { uid: 9, cellC: 2, cellR: 2, color: 2 },
     ];
     sandbox.logs.length = 0;
     delete sandbox.globals.EnemyLineClearPressureActive;
@@ -215,6 +225,7 @@ for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBa
     assert.equal(lockedRow.length, 3);
     assert.equal(lockedSweepGems.length, 2);
     assert.ok(lockedSweepGems.every((gem) => gem.lockCountdown === 5 && gem.LockCountdown === 5));
+    assert.ok(lockedSweepGems.every((gem) => gem.color === 4));
     assert.equal(new Set(lockedSweepGems.map((gem) => gem.lockGroupId)).size, 1);
     const sweepGroup = sandbox.globals.EnemyGemLockGroups[lockedSweepGems[0].lockGroupId];
     assert.equal(sweepGroup.durationHeroTeamTurns, 5);
@@ -258,5 +269,31 @@ for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBa
     assert.ok(sweepGroups.every((group) => group.gemUIDs.length <= 2));
     assert.ok(maridSandbox.gems.filter((gem) => gem.locked === true).length <= 4);
     assert.ok(maridSandbox.logs.every((line) => /locked [12] gems? from a row/.test(line)));
+  });
+
+  test(`Djinn and Marid lock moves are unavailable without their required gem color in ${relPath}`, () => {
+    const src = read(relPath);
+    const factory = buildLineClearFns(src);
+    const { Enemy_Scathe, Enemy_Sweep } = factory(
+      (ctx) => ctx.globals,
+      (ctx) => ctx.gems,
+      (ctx, gems) => { ctx.gems = gems; },
+      () => {},
+      (_ctx, uid) => (uid === 100 ? 'Djinn' : 'Marid'),
+      (ctx, msg) => ctx.logs.push(String(msg)),
+      (ctx, size) => Math.floor(Number(ctx.globals.RuntimeRandom()) * size),
+    );
+
+    const djinnSandbox = makeSandbox();
+    djinnSandbox.gems.forEach((gem) => { gem.color = 4; });
+    assert.equal(Enemy_Scathe(djinnSandbox, 100), 0);
+    assert.equal(djinnSandbox.gems.filter((gem) => gem.locked === true).length, 0);
+    assert.deepEqual(djinnSandbox.logs, []);
+
+    const maridSandbox = makeSandbox();
+    maridSandbox.gems.forEach((gem) => { gem.color = 2; });
+    assert.equal(Enemy_Sweep(maridSandbox, 101), 0);
+    assert.equal(maridSandbox.gems.filter((gem) => gem.locked === true).length, 0);
+    assert.deepEqual(maridSandbox.logs, []);
   });
 }
