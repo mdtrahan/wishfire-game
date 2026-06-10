@@ -1979,6 +1979,37 @@ function clearDevToolingPauseSnapshot() {
   devToolingPauseSnapshot = null;
 }
 
+function restorePlayableHeroInputAfterDevToolingResume() {
+  const heroInputBarrier = getPresentationTurnBarrier({
+    hasEmpty: hasEmptySlots(),
+    enemyLineClearPressureActive: !!state.globals.EnemyLineClearPressureActive,
+  });
+  const combatIdleHeroInputReady = (
+    state.globals.GamePhase === 'RUNTIME' &&
+    callFunctionWithContext(fnContext, 'GetCurrentType') === 0 &&
+    state.globals.TurnPhase === 0 &&
+    !(gameState.refillBounce && gameState.refillBounce.active) &&
+    !(gameState.yellowCasino && gameState.yellowCasino.active) &&
+    !hasEmptySlots() &&
+    heroInputBarrier.canRestoreHeroInput &&
+    getEnemyRosterStabilitySnapshot().stable
+  );
+  if (!combatIdleHeroInputReady) return false;
+  gameState.selectedGems = [];
+  gameState.selectionLocked = false;
+  for (const gem of (gameState.gems || [])) {
+    if (!gem) continue;
+    gem.selected = false;
+    gem.Selected = 0;
+  }
+  state.globals.TapIndex = 0;
+  state.globals.CanPickGems = true;
+  state.globals.IsPlayerBusy = 0;
+  state.globals.DeferAdvance = 0;
+  state.globals.BoardFillActive = 0;
+  return true;
+}
+
 function resumeGameplayFromDevTooling() {
   if (!devToolingPauseSnapshot) {
     state.globals.DevToolingPaused = 0;
@@ -1990,6 +2021,7 @@ function resumeGameplayFromDevTooling() {
     Number(devToolingPauseSnapshot.TurnSerial || 0) === Number(state.globals.TurnSerial || 0);
   if (sameCombatSession && sameTurnSerial) {
     applyTurnGateGlobals(devToolingPauseSnapshot);
+    restorePlayableHeroInputAfterDevToolingResume();
   }
   state.globals.DevToolingPaused = 0;
   clearDevToolingPauseSnapshot();
