@@ -271,6 +271,31 @@ for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBa
     assert.ok(maridSandbox.logs.every((line) => /locked [12] gems? from a row/.test(line)));
   });
 
+  test(`Marid prefers a row with two lockable heal gems when available in ${relPath}`, () => {
+    const src = read(relPath);
+    const factory = buildLineClearFns(src);
+    const { Enemy_Sweep } = factory(
+      (ctx) => ctx.globals,
+      (ctx) => ctx.gems,
+      (ctx, gems) => { ctx.gems = gems; },
+      () => {},
+      () => 'Marid',
+      (ctx, msg) => ctx.logs.push(String(msg)),
+      (ctx, size) => Math.floor(Number(ctx.globals.RuntimeRandom()) * size),
+    );
+
+    const maridSandbox = makeSandbox();
+    maridSandbox.globals.RuntimeRandom = () => 0;
+    const result = Enemy_Sweep(maridSandbox, 101);
+    const lockedGems = maridSandbox.gems.filter((gem) => gem.locked === true && gem.Locked === 1);
+
+    assert.equal(result, 1);
+    assert.equal(lockedGems.length, 2);
+    assert.ok(lockedGems.every((gem) => gem.cellR === 1));
+    assert.ok(lockedGems.every((gem) => gem.color === 4));
+    assert.equal(maridSandbox.logs[0], 'Marid used Sweep and locked 2 gems from a row. (5 turns).');
+  });
+
   test(`Djinn and Marid lock moves are unavailable without their required gem color in ${relPath}`, () => {
     const src = read(relPath);
     const factory = buildLineClearFns(src);

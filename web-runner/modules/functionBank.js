@@ -8732,13 +8732,17 @@ function lockRandomGemLine(ctx, axis, skillId, duration, maxLocks = 0, targetCol
   }
   const occupiedIndices = Array.from(lineCounts.keys());
   if (!occupiedIndices.length) return { locked: 0, lineIndex: -1, duration: Math.max(1, Math.floor(Number(duration || 1))), groupId: '' };
-  const lineIndex = occupiedIndices[randomIndex(ctx, occupiedIndices.length)];
+  const safeMaxLocks = Math.max(0, Math.floor(Number(maxLocks || 0)));
+  const preferredIndices = safeMaxLocks > 1
+    ? occupiedIndices.filter(index => Number(lineCounts.get(index) || 0) >= safeMaxLocks)
+    : occupiedIndices;
+  const selectableIndices = preferredIndices.length > 0 ? preferredIndices : occupiedIndices;
+  const lineIndex = selectableIndices[randomIndex(ctx, selectableIndices.length)];
   const targetGems = [];
   for (const gem of (Array.isArray(gems) ? gems : [])) {
     const gemIndex = Number(axis === 'column' ? gem?.cellC : gem?.cellR);
     if (gemIndex === lineIndex && isEnemyBoardPressureLockTargetGem(gem, harness)) targetGems.push(gem);
   }
-  const safeMaxLocks = Math.max(0, Math.floor(Number(maxLocks || 0)));
   const lockLimit = safeMaxLocks > 0 ? Math.min(targetGems.length, safeMaxLocks) : targetGems.length;
   const cappedTargetGems = lockLimit >= targetGems.length ? targetGems : [];
   if (lockLimit < targetGems.length) {
