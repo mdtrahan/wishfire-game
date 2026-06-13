@@ -2,6 +2,11 @@ import { getSuperGemRenderImage, getSuperGemRenderRect } from '../src/core/super
 
 export const GEM_APPEAR_BOUNCE_MIN_RENDER_SEC = 0.14784;
 const GEM_APPEAR_BOUNCE_OVERSHOOT_SCALE = 0.56;
+const LOCKED_GEM_GRAY = 160;
+const LOCKED_GEM_LUMINANCE_MIX = 0.4;
+const LOCKED_GEM_GRAY_MIX = 0.6;
+const LOCKED_GEM_COUNTER_Y_OFFSET_PX = 5;
+const lockedGemGrayCache = new WeakMap();
 
 export const GEM_APPEAR_BOUNCE_POINTS = Object.freeze([
   [0, 0],
@@ -62,6 +67,46 @@ export function getGemBounceScale(t, amp = 1) {
   return 1 + ((curveScale - 1) * intensity * GEM_APPEAR_BOUNCE_OVERSHOOT_SCALE);
 }
 
+function createLockedGemGraySprite(sourceImage) {
+  if (typeof document === 'undefined') return null;
+  const width = Math.max(0, Math.floor(Number(sourceImage?.naturalWidth || sourceImage?.width || 0)));
+  const height = Math.max(0, Math.floor(Number(sourceImage?.naturalHeight || sourceImage?.height || 0)));
+  if (!(width > 0) || !(height > 0)) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const offscreenCtx = canvas.getContext('2d');
+  if (!offscreenCtx) return null;
+  offscreenCtx.drawImage(sourceImage, 0, 0, width, height);
+  const imageData = offscreenCtx.getImageData(0, 0, width, height);
+  const { data } = imageData;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] <= 0) continue;
+    const luminance = (0.2126 * data[i]) + (0.7152 * data[i + 1]) + (0.0722 * data[i + 2]);
+    const lockedGray = Math.round((luminance * LOCKED_GEM_LUMINANCE_MIX) + (LOCKED_GEM_GRAY * LOCKED_GEM_GRAY_MIX));
+    data[i] = lockedGray;
+    data[i + 1] = lockedGray;
+    data[i + 2] = lockedGray;
+  }
+  offscreenCtx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
+function getLockedGemGraySprite(sourceImage) {
+  if (!sourceImage) return null;
+  if (lockedGemGrayCache.has(sourceImage)) {
+    return lockedGemGrayCache.get(sourceImage);
+  }
+  let sprite = null;
+  try {
+    sprite = createLockedGemGraySprite(sourceImage);
+  } catch {
+    sprite = null;
+  }
+  lockedGemGrayCache.set(sourceImage, sprite);
+  return sprite;
+}
+
 function isLockedGem(gem) {
   if (!gem) return false;
   const countdown = Number(gem.lockCountdown ?? gem.LockCountdown ?? 0);
@@ -105,12 +150,10 @@ function renderLockedGemOverlay(ctx, rect, countdown, drawGemSprite = null) {
   const label = String(Math.max(0, Math.floor(Number(countdown || 0))));
   ctx.save();
   if (typeof drawGemSprite === 'function') {
-    ctx.globalAlpha = 0.66;
-    ctx.filter = 'brightness(0.28) grayscale(1)';
     drawGemSprite();
   } else {
     const radius = Math.min(rect.w, rect.h) * 0.45;
-    ctx.fillStyle = 'rgba(55, 65, 81, 0.66)';
+    ctx.fillStyle = 'rgba(229, 231, 235, 0.42)';
     ctx.beginPath();
     ctx.arc(rect.cx, rect.cy, radius, 0, Math.PI * 2);
     ctx.fill();
@@ -125,8 +168,9 @@ function renderLockedGemOverlay(ctx, rect, countdown, drawGemSprite = null) {
   ctx.strokeStyle = '#000';
   ctx.lineWidth = Math.max(3, Math.floor(fontSize * 0.16));
   ctx.fillStyle = '#fff';
-  ctx.strokeText(label, rect.cx, rect.cy);
-  ctx.fillText(label, rect.cx, rect.cy);
+  const labelY = rect.cy + LOCKED_GEM_COUNTER_Y_OFFSET_PX;
+  ctx.strokeText(label, rect.cx, labelY);
+  ctx.fillText(label, rect.cx, labelY);
   ctx.restore();
 }
 
@@ -207,7 +251,8 @@ export function renderBoard(ctx, gameState, uiState, animationMath, dims) {
       const rect = getGemRenderRect({ gem, worldToCanvas, layoutScale, now, gameTime });
       const frameIndex = Number(gem.color ?? 0) % 6;
       const gemImg = gemFrames[frameIndex] || null;
-      const drawLockedGemSprite = gemImg ? () => ctx.drawImage(gemImg, rect.x, rect.y, rect.w, rect.h) : null;
+      const lockedGemImg = gemImg ? getLockedGemGraySprite(gemImg) : null;
+      const drawLockedGemSprite = lockedGemImg ? () => ctx.drawImage(lockedGemImg, rect.x, rect.y, rect.w, rect.h) : null;
       renderLockedGemOverlay(ctx, rect, getLockedGemCountdown(gem), drawLockedGemSprite);
     }
   }
