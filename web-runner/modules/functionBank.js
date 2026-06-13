@@ -8438,6 +8438,11 @@ const ENEMY_GEM_LOCK_DURATIONS = Object.freeze({
   Enemy_Sweep: 5,
 });
 
+const ENEMY_GEM_LOCK_TARGET_COLORS = Object.freeze({
+  Enemy_Scathe: 2,
+  Enemy_Sweep: 4,
+});
+
 const ENEMY_BOARD_PRESSURE_SKILL_HARNESSES = Object.freeze({
   Enemy_Scathe: Object.freeze({
     skillId: 'Enemy_Scathe',
@@ -8445,6 +8450,7 @@ const ENEMY_BOARD_PRESSURE_SKILL_HARNESSES = Object.freeze({
     label: 'Scathe',
     duration: ENEMY_GEM_LOCK_DURATIONS.Enemy_Scathe,
     maxLocks: 1,
+    targetColor: ENEMY_GEM_LOCK_TARGET_COLORS.Enemy_Scathe,
     logSuffix: 'from a column.',
   }),
   Enemy_Sweep: Object.freeze({
@@ -8453,6 +8459,7 @@ const ENEMY_BOARD_PRESSURE_SKILL_HARNESSES = Object.freeze({
     label: 'Sweep',
     duration: ENEMY_GEM_LOCK_DURATIONS.Enemy_Sweep,
     maxLocks: 2,
+    targetColor: ENEMY_GEM_LOCK_TARGET_COLORS.Enemy_Sweep,
     logSuffix: 'from a row.',
   }),
 });
@@ -8461,14 +8468,37 @@ function getEnemyBoardPressureSkillHarness(skillId) {
   return ENEMY_BOARD_PRESSURE_SKILL_HARNESSES[String(skillId || '')] || null;
 }
 
+function getEnemyGemColor(gem) {
+  return Number(gem?.color ?? gem?.elementIndex ?? -1);
+}
+
+function isEnemyBoardPressureLockTargetGem(gem, harness) {
+  if (!gem || !harness || isEnemyGemLocked(gem)) return false;
+  const targetColor = Number(harness.targetColor || 0);
+  return targetColor <= 0 || getEnemyGemColor(gem) === targetColor;
+}
+
+function hasEnemyBoardPressureLockTargets(ctx, harness) {
+  if (!harness) return false;
+  const gems = getGems(ctx);
+  return (Array.isArray(gems) ? gems : []).some(gem => isEnemyBoardPressureLockTargetGem(gem, harness));
+}
+
+function isEnemyBoardPressureSkillAvailable(ctx, skillId) {
+  const harness = getEnemyBoardPressureSkillHarness(skillId);
+  return !!harness && isBoardFullyPopulatedForEnemyMutation(ctx) && hasEnemyBoardPressureLockTargets(ctx, harness);
+}
+
 function normalizeEnemyBoardLineSkillDecision(ctx, enemy, decision) {
   const selected = String(decision?.selected || '');
-  if (!getEnemyBoardPressureSkillHarness(selected)) return decision;
-  if (isBoardFullyPopulatedForEnemyMutation(ctx)) return decision;
+  const harness = getEnemyBoardPressureSkillHarness(selected);
+  if (!harness) return decision;
+  if (isEnemyBoardPressureSkillAvailable(ctx, selected)) return decision;
+  const branchSuffix = isBoardFullyPopulatedForEnemyMutation(ctx) ? 'blocked_no_lock_target' : 'blocked_incomplete_board';
   return {
     ...decision,
     selected: resolveEnemyBoardLineFallbackSkill(enemy, selected),
-    branch: `${String(decision?.branch || 'special')}_blocked_incomplete_board`,
+    branch: `${String(decision?.branch || 'special')}_${branchSuffix}`,
   };
 }
 
@@ -8487,7 +8517,7 @@ export function PickEnemySkill(ctx, enemyUID) {
     && hp <= Math.floor(maxHP * 0.5)
     && (damagedAlliesCount > 0 || hp < maxHP);
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
-  const decision = resolveEnemySkillChoice({
+  const decision = normalizeEnemyBoardLineSkillDecision(ctx, enemy, resolveEnemySkillChoice({
     enemyName: String(enemy.name || ''),
     hp,
     maxHP,
@@ -8498,7 +8528,7 @@ export function PickEnemySkill(ctx, enemyUID) {
     ownerHook: root && typeof root.__ORKA_ENEMY_SKILL_CHOICE_OWNER__ === 'function'
       ? root.__ORKA_ENEMY_SKILL_CHOICE_OWNER__
       : null,
-  });
+  }));
   const g = getGlobals(ctx);
   g.LastEnemySkillChoiceOwner = {
     owner: String(decision.owner || 'fallback'),
@@ -8689,25 +8719,30 @@ function tickEnemyGemLockCountdowns(ctx) {
   syncEnemyGemLockGroupsToBoard(ctx);
 }
 
-function lockRandomGemLine(ctx, axis, skillId, duration, maxLocks = 0) {
+function lockRandomGemLine(ctx, axis, skillId, duration, maxLocks = 0, targetColor = 0) {
   const g = getGlobals(ctx);
   const gems = getGems(ctx);
+  const harness = { targetColor: Number(targetColor || 0) };
   const lineCounts = new Map();
   for (const gem of (Array.isArray(gems) ? gems : [])) {
-    if (!gem || isEnemyGemLocked(gem)) continue;
+    if (!isEnemyBoardPressureLockTargetGem(gem, harness)) continue;
     const value = Number(axis === 'column' ? gem.cellC : gem.cellR);
     if (!Number.isInteger(value) || value < 0) continue;
     lineCounts.set(value, (lineCounts.get(value) || 0) + 1);
   }
   const occupiedIndices = Array.from(lineCounts.keys());
   if (!occupiedIndices.length) return { locked: 0, lineIndex: -1, duration: Math.max(1, Math.floor(Number(duration || 1))), groupId: '' };
-  const lineIndex = occupiedIndices[randomIndex(ctx, occupiedIndices.length)];
+  const safeMaxLocks = Math.max(0, Math.floor(Number(maxLocks || 0)));
+  const preferredIndices = safeMaxLocks > 1
+    ? occupiedIndices.filter(index => Number(lineCounts.get(index) || 0) >= safeMaxLocks)
+    : occupiedIndices;
+  const selectableIndices = preferredIndices.length > 0 ? preferredIndices : occupiedIndices;
+  const lineIndex = selectableIndices[randomIndex(ctx, selectableIndices.length)];
   const targetGems = [];
   for (const gem of (Array.isArray(gems) ? gems : [])) {
     const gemIndex = Number(axis === 'column' ? gem?.cellC : gem?.cellR);
-    if (gemIndex === lineIndex && !isEnemyGemLocked(gem)) targetGems.push(gem);
+    if (gemIndex === lineIndex && isEnemyBoardPressureLockTargetGem(gem, harness)) targetGems.push(gem);
   }
-  const safeMaxLocks = Math.max(0, Math.floor(Number(maxLocks || 0)));
   const lockLimit = safeMaxLocks > 0 ? Math.min(targetGems.length, safeMaxLocks) : targetGems.length;
   const cappedTargetGems = lockLimit >= targetGems.length ? targetGems : [];
   if (lockLimit < targetGems.length) {
@@ -8737,7 +8772,8 @@ function executeEnemyBoardPressureSkill(ctx, enemyUID, skillId) {
   const harness = getEnemyBoardPressureSkillHarness(skillId);
   if (!harness) return 0;
   const enemyName = getActorNameByUID(ctx, enemyUID);
-  const result = lockRandomGemLine(ctx, harness.axis, harness.skillId, harness.duration, harness.maxLocks);
+  const result = lockRandomGemLine(ctx, harness.axis, harness.skillId, harness.duration, harness.maxLocks, harness.targetColor);
+  if (result.locked <= 0) return 0;
   const gemWord = result.locked === 1 ? 'gem' : 'gems';
   LogCombat(ctx, `${enemyName} used ${harness.label} and locked ${result.locked} ${gemWord} ${harness.logSuffix} (${result.duration} turns).`);
   return 1;
@@ -8829,11 +8865,19 @@ export function ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID = 0) {
     return resultValue || 1;
   }
   if (actionCode === ENEMY_JOB_ACTION_SCATHE) {
-    Enemy_Scathe(ctx, enemyUID);
+    if (isEnemyBoardPressureSkillAvailable(ctx, 'Enemy_Scathe')) {
+      Enemy_Scathe(ctx, enemyUID);
+    } else if (resolvedTargetUID) {
+      Enemy_MAG_Single(ctx, enemyUID, resolvedTargetUID);
+    }
     return resultValue || 1;
   }
   if (actionCode === ENEMY_JOB_ACTION_SWEEP) {
-    Enemy_Sweep(ctx, enemyUID);
+    if (isEnemyBoardPressureSkillAvailable(ctx, 'Enemy_Sweep')) {
+      Enemy_Sweep(ctx, enemyUID);
+    } else if (resolvedTargetUID) {
+      Enemy_MAG_Single(ctx, enemyUID, resolvedTargetUID);
+    }
     return resultValue || 1;
   }
   if (actionCode === ENEMY_JOB_ACTION_MAGIC_SINGLE) {
