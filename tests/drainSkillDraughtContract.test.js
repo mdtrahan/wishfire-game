@@ -40,8 +40,8 @@ function makeContext() {
   const hero = {
     uid: 100,
     kind: 'hero',
-    name: 'Kojonn',
-    baseHeroName: 'Kojonn',
+    name: 'Falie',
+    baseHeroName: 'Falie',
     heroIndex: 3,
     attackType: 'magic',
     hp: 50,
@@ -140,8 +140,8 @@ test('Drain is a mirrored party draw option with separate speed-down field state
         visualStartsAt: zone.visualStartsAt,
       }))),
       [
-        { slotIndex: 0, sourceUID: 100, remainingTurns: 3, durationHeroTeamTurns: 3, heroTeamTurnSpan: 1, createdHeroTeamTurnSerial: 4, expiresAtHeroTeamTurnSerial: 7, drainSlowPct: 10, effectName: 'Drain', visual: 'drain_lines', visualStartsAt: 6.07 },
-        { slotIndex: 1, sourceUID: 100, remainingTurns: 3, durationHeroTeamTurns: 3, heroTeamTurnSpan: 1, createdHeroTeamTurnSerial: 4, expiresAtHeroTeamTurnSerial: 7, drainSlowPct: 10, effectName: 'Drain', visual: 'drain_lines', visualStartsAt: 6.07 },
+        { slotIndex: 0, sourceUID: 0, remainingTurns: 3, durationHeroTeamTurns: 3, heroTeamTurnSpan: 1, createdHeroTeamTurnSerial: 4, expiresAtHeroTeamTurnSerial: 7, drainSlowPct: 10, effectName: 'Drain', visual: 'drain_lines', visualStartsAt: 6.07 },
+        { slotIndex: 1, sourceUID: 0, remainingTurns: 3, durationHeroTeamTurns: 3, heroTeamTurnSpan: 1, createdHeroTeamTurnSerial: 4, expiresAtHeroTeamTurnSerial: 7, drainSlowPct: 10, effectName: 'Drain', visual: 'drain_lines', visualStartsAt: 6.07 },
       ],
     );
 
@@ -156,7 +156,8 @@ test('Drain is a mirrored party draw option with separate speed-down field state
     ctx.state.entities.push(enteringEnemy);
     assert.equal(mod.GetEffectiveStat(ctx, enteringEnemy, 'SPD'), 27, 'entering enemies standing in a Drain slot are slowed');
 
-    assert.match(ctx.state.globals.CombatLog.join('\n'), /Kojonn uses Drain on enemies!/);
+    assert.match(ctx.state.globals.CombatLog.join('\n'), /Party uses Drain on enemies!/);
+    assert.doesNotMatch(ctx.state.globals.CombatLog.join('\n'), /Falie|Kojonn/);
     assert.equal(ctx.state.globals.ActionOwnerUID, 100);
     assert.equal(ctx.state.globals.DeferAdvance, 1);
     assert.equal(ctx.state.globals.AdvanceAfterAction, 1);

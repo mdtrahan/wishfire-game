@@ -1555,16 +1555,15 @@ function activateDrainSkill(ctx, actorUID) {
   if (!actor) return 0;
   const enemies = getEnemies(ctx).filter(enemy => Number(enemy?.hp || 0) > 0);
   if (!enemies.length) return 0;
-  const actorName = String(actor.name || '?');
   const now = Number(g.time || 0);
   const hitDelay = Math.max(0.14 + 0.75 + 0.18, 1.07);
   const applyAt = now + hitDelay;
   let applied = 0;
   for (const enemy of enemies) {
-    refreshDrainFieldZone(ctx, heroUID, enemy, applyAt);
+    refreshDrainFieldZone(ctx, 0, enemy, applyAt);
     applied += 1;
   }
-  LogCombat(ctx, `${actorName} uses Drain on enemies!`);
+  LogCombat(ctx, 'Party uses Drain on enemies!');
   g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), applyAt + 0.42);
   g.DeferAdvance = 1;
   g.AdvanceAfterAction = 1;
