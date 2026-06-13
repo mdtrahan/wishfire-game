@@ -12,6 +12,7 @@ const legalPartyDrawIds = [
   'party_magic_fruit',
   'party_destiny',
   'party_faze',
+  'party_drain',
 ];
 
 function loadModule(modulePath) {
@@ -188,7 +189,7 @@ test('normal party skill draught samples the full party pool through RuntimeRand
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const { ctx } = makeContext();
-    const draws = installSequenceRandom(ctx, [0.7, 0, 0]);
+    const draws = installSequenceRandom(ctx, [0.99, 0.5, 0]);
 
     const opened = mod.ForceAstralFlowSkillDraught(ctx, 100);
 
@@ -196,7 +197,7 @@ test('normal party skill draught samples the full party pool through RuntimeRand
     assert.ok(draws.length >= 1, 'normal skill draw should consume RuntimeRandom');
     assert.equal(opened.candidates.length, 3);
     assert.equal(new Set(opened.candidates.map(candidate => candidate.id)).size, 3);
-    assert.equal(opened.candidates[0].id, 'party_crimson_ward');
+    assert.equal(opened.candidates[0].id, 'party_drain');
     assert.ok(
       opened.candidates.some(candidate => candidate.id === 'party_crimson_ward'),
       'Crimson Ward should be reachable from the normal random draw'

@@ -78,11 +78,11 @@ test('app wires super gem hooks for settle, spend, and decomposition', () => {
   assert.match(src, /function getPersistentTaintedGroundOverlays\(\) \{/);
   assert.match(src, /anchorWorldX: Number\(zone\.anchorWorldX\),/);
   assert.match(src, /anchorWorldY: Number\(zone\.anchorWorldY\),/);
-  assert.match(src, /getPersistentTaintedGroundOverlays,\s+hasPersistentEnemyTaintedGroundOverlay,\s+hasPersistentEnemyBlightOverlay,/);
+  assert.match(src, /getPersistentTaintedGroundOverlays,\s+getPersistentDrainFieldOverlays,\s+hasPersistentEnemyTaintedGroundOverlay,\s+hasPersistentEnemyBlightOverlay,\s+hasPersistentEnemyDrainOverlay,/);
   assert.match(renderRuntimeSrc, /const renderEnemyTaintedGround = \(drawX, drawY, enemyW, enemyH, seed = 0, alphaScale = 1\) => \{/);
   assert.match(renderRuntimeSrc, /const taintedGroundFieldOverlays = typeof getPersistentTaintedGroundOverlays === 'function' \? getPersistentTaintedGroundOverlays\(\) : \[\];/);
-  assert.match(renderRuntimeSrc, /const getTaintedGroundOverlayPosition = \(overlay, fallbackEnemy = null\) => \{/);
-  assert.match(renderRuntimeSrc, /const enemyStandsInRenderedTaintedGround = \(enemy\) => \{/);
+  assert.match(renderRuntimeSrc, /const getFieldOverlayPosition = \(overlay, fallbackEnemy = null\) => \{/);
+  assert.match(renderRuntimeSrc, /const enemyStandsInRenderedTaintedGround = \(enemy\) => enemyStandsInFieldOverlay\(enemy, taintedGroundFieldOverlays\);/);
   assert.match(renderRuntimeSrc, /const renderTaintedGroundFieldZones = \(\) => \{/);
   assert.match(renderRuntimeSrc, /const anchoredX = Number\(overlay && overlay\.anchorWorldX\);/);
   assert.match(renderRuntimeSrc, /x: Number\.isFinite\(anchoredX\) \? anchoredX : \(slotEnemy && slotEnemy\.x != null \? slotEnemy\.x : \(g\.X0 \|\| 200\)\),/);
