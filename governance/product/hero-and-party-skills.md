@@ -295,15 +295,15 @@ Party Promise: Smooth the run, create short burst windows, and rescue weak state
    - Growth: `4% / 4% / 5% / 5% (18%)`
    - Proc Pattern: On match.
    - Short Session: `Keep in draw.`
-11. `Grow`: Roll for permanent hero growth: more power, less Max HP.
-   - Card Text: Roll for permanent hero growth: more power, less Max HP.
+11. `Grow`: Grow all living heroes: more power, less Max HP.
+   - Card Text: Grow all living heroes: more power, less Max HP.
    - Draw Class: `tiered`
    - Risk: `HIGH`
-   - Note: Glass-cannon specialization. Grow trades survivability capacity for offensive power; it never reduces DEF or RES.
-   - Growth: `+20% / +30% / +50% Power Amp`
-   - Tradeoff: `-15% / -20% / -25% Max HP`
+   - Note: Deterministic glass-cannon specialization. Grow trades survivability capacity for offensive power; it never rolls acquisition and never reduces DEF or RES.
+   - Growth: `+8% / +14% / +20% Power Amp`
+   - Tradeoff: `-8% / -14% / -20% Max HP`
    - HP Handling: Recalculate Max HP and Current HP proportionally when acquired or tiered up, using existing HP rounding conventions. Grow is a stat conversion, not a damage event.
-   - Proc Pattern: On selection; each living non-Grow hero rolls independently at `32%` acceptance chance.
+   - Proc Pattern: On selection; all living heroes immediately receive or advance Grow with no RNG gate, miss, or sequential acceptance presentation.
    - Short Session: `Tier up to 3 selections, then remove from draw.`
 
 Active Runtime Draw Pool: `party_crimson_ward`, `party_magic_fruit`, `party_destiny`, `party_faze`, `party_grow`, `party_drain`

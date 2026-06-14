@@ -38,7 +38,7 @@ Use the draw-class guide in `governance/product/hero-and-party-skills.md` to dec
 | `ORKA-2anc` | `[SKILL] KOJONN - Scrolls` | `vault_scrolls` | Move out of live hero-skill fanout. Canon maps Scrolls to Vault/relic passive progression. |
 | `ORKA-nwyi` | `[SKILL] KOJONN - Exchange` | `vault_exchange` | Move out of live hero-skill fanout. Canon maps Exchange to Vault/relic passive progression. |
 | `ORKA-rrxj.4` | `[FEAT] Vault relic passive state foundation` | Vault/relic foundation | Keep as the required foundation before individual Vault/relic passive beads. |
-| `ORKA-rrxj.12` | `[SKILL] Grow` | `party_grow` | Active implementation bead for tiered Grow: persistent Power Amp with percentage-based Max HP tradeoff and proportional Current HP recalculation. |
+| `ORKA-rrxj.12` | `[SKILL] Grow` | `party_grow` | Active implementation bead for deterministic all-living Grow: persistent Power Amp with percentage-based Max HP tradeoff and proportional Current HP recalculation. |
 
 No existing visible bead should be reused for Falie, Huun, or Runa live draw payloads without renaming and scope correction.
 

@@ -72,12 +72,10 @@ const POWER_AMP_OUTCOMES = [
 ];
 
 const GROW_SKILL_ID = 'party_grow';
-const GROW_ACCEPTANCE_CHANCE_PCT = 32;
-const GROW_PRESENTATION_STEP_SECONDS = 0.45;
 const GROW_TIERS = Object.freeze([
-  Object.freeze({ tier: 1, powerAmpPct: 20, powerAmpMultiplier: 1.2, maxHpPenaltyPct: 15 }),
-  Object.freeze({ tier: 2, powerAmpPct: 30, powerAmpMultiplier: 1.3, maxHpPenaltyPct: 20 }),
-  Object.freeze({ tier: 3, powerAmpPct: 50, powerAmpMultiplier: 1.5, maxHpPenaltyPct: 25 }),
+  Object.freeze({ tier: 1, powerAmpPct: 8, powerAmpMultiplier: 1.08, maxHpPenaltyPct: 8 }),
+  Object.freeze({ tier: 2, powerAmpPct: 14, powerAmpMultiplier: 1.14, maxHpPenaltyPct: 14 }),
+  Object.freeze({ tier: 3, powerAmpPct: 20, powerAmpMultiplier: 1.2, maxHpPenaltyPct: 20 }),
 ]);
 const GROW_MAX_TIER = GROW_TIERS.length;
 
@@ -1024,7 +1022,7 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: 'party_magic_fruit', owner: 'Party', slot: 10, title: 'Magic Fruit', cardText: 'Heals party for 40% of max HP', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'party_heal', healPctPartyMax: 40 }, qa: { proof: 'ApplyPartyHeal once per selection' } },
   { id: 'party_crimson_ward', owner: 'Party', slot: 11, title: 'Crimson Ward', cardText: 'Grant a temporary party ward before true HP is damaged.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'party_temp_hp_shield', shieldPctPartyMax: 18, stacking: 'refresh_capped_shield' }, qa: { proof: 'PartyTempHPShield and ward visuals refresh' } },
   { id: 'party_faze', owner: 'Party', slot: 12, title: 'Faze', cardText: 'Blights the field, poisoning enemies for the remainder of the session.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'field_refresh', status: 'tainted_ground' }, qa: { proof: 'TaintedGroundZones and PendingHeroHits refresh' } },
-  { id: 'party_grow', owner: 'Party', slot: 13, title: 'Grow', cardText: 'Roll for permanent hero growth: more power, less Max HP.', risk: 'HIGH', growth: [20, 30, 50], procPattern: 'On selection', payloadImplemented: true, drawClass: 'tiered', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_until_cap' }, trigger: { event: 'selection', eligibility: 'living_heroes_without_grow' }, effect: { kind: 'grow', maxTier: GROW_MAX_TIER, acceptanceChancePct: GROW_ACCEPTANCE_CHANCE_PCT, powerAmpPctByTier: GROW_TIERS.map(row => row.powerAmpPct), maxHpPenaltyPctByTier: GROW_TIERS.map(row => row.maxHpPenaltyPct) }, qa: { proof: 'GrowAcquisitionTrace and persistent PowerAmpVisualByUID state' } },
+  { id: 'party_grow', owner: 'Party', slot: 13, title: 'Grow', cardText: 'Grow all living heroes: more power, less Max HP.', risk: 'HIGH', growth: [8, 14, 20], procPattern: 'On selection', payloadImplemented: true, drawClass: 'tiered', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_until_cap' }, trigger: { event: 'selection', eligibility: 'all_living_heroes' }, effect: { kind: 'grow', maxTier: GROW_MAX_TIER, application: 'all_living_heroes', powerAmpPctByTier: GROW_TIERS.map(row => row.powerAmpPct), maxHpPenaltyPctByTier: GROW_TIERS.map(row => row.maxHpPenaltyPct) }, qa: { proof: 'GrowAcquisitionTrace and persistent PowerAmpVisualByUID state' } },
   { id: 'party_drain', owner: 'Party', slot: 14, title: 'Drain', cardText: 'Slows enemies standing in the field by 10% SPD.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'field_refresh', status: 'speed_down', slowPct: 10, stacking: 'refresh_only' }, qa: { proof: 'DrainFieldZones refresh and GetEffectiveStat SPD slow' } },
 ]);
 
@@ -1804,52 +1802,34 @@ function activateGrowSkill(ctx, actorUID, sessionSkill = null) {
   );
 
   const heroes = getHeroes(ctx).filter(hero => Number(hero?.hp || 0) > 0);
+  const events = [];
   for (const hero of heroes) {
     const existing = getGrowStateForActor(ctx, hero.uid);
-    if (existing) applyGrowTierToHero(ctx, hero, tierConfig, { acquiredAt: existing.acquiredAt, tierAcquired: existing.tierAcquired });
-  }
-
-  const events = [];
-  let sequenceIndex = 0;
-  for (const hero of heroes) {
-    if (getGrowStateForActor(ctx, hero.uid)) continue;
-    const roll = random01(ctx);
-    const accepted = roll < (GROW_ACCEPTANCE_CHANCE_PCT / 100) ? 1 : 0;
-    const presentationAt = now + (sequenceIndex * GROW_PRESENTATION_STEP_SECONDS);
-    const event = {
+    const record = applyGrowTierToHero(ctx, hero, tierConfig, {
+      acquiredAt: existing ? existing.acquiredAt : now,
+      tierAcquired: existing ? existing.tierAcquired : nextTier,
+    });
+    events.push(appendGrowAcquisitionTrace(g, {
       skillId: GROW_SKILL_ID,
       tier: nextTier,
       heroUID: Number(hero.uid || 0),
       heroName: String(hero.name || ''),
-      roll,
-      accepted,
-      presentationAt,
-      sequenceIndex,
+      deterministic: 1,
+      newlyAcquired: existing ? 0 : 1,
+      currentTier: Number(record?.currentTier || nextTier),
       modalClosedAtResolution: Number(g.SkillDraughtOpen || 0) === 0 ? 1 : 0,
-    };
-    if (accepted) {
-      applyGrowTierToHero(ctx, hero, tierConfig, { acquiredAt: now, tierAcquired: nextTier });
-    }
-    events.push(appendGrowAcquisitionTrace(g, event));
-    sequenceIndex += 1;
+    }));
   }
 
-  g.GrowAcquisitionQueue = events.map(event => ({ ...event }));
+  g.GrowAcquisitionQueue = [];
   g.GrowLastSelection = {
     skillId: GROW_SKILL_ID,
     tier: nextTier,
     selectedAt: now,
     actorUID: Number(actorUID || 0),
-    attemptedHeroes: events.length,
-    acceptedHeroes: events.filter(event => Number(event.accepted || 0) === 1).length,
+    affectedHeroes: events.length,
+    newlyAcquiredHeroes: events.filter(event => Number(event.newlyAcquired || 0) === 1).length,
   };
-  if (events.length > 0) {
-    const lastPresentationAt = Math.max(...events.map(event => Number(event.presentationAt || now)));
-    g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), lastPresentationAt + GROW_PRESENTATION_STEP_SECONDS);
-    g.DeferAdvance = 1;
-    g.AdvanceAfterAction = 1;
-    g.ActionOwnerUID = Number(actorUID || 0);
-  }
   LogCombat(ctx, `Grow reached Tier ${nextTier}.`);
   return g.GrowLastSelection;
 }
