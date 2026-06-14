@@ -105,7 +105,8 @@ import {
   addAppViewportResizeListener,
   resizeCanvasToContainedViewport,
 } from './systems/appShellViewport.js';
-import { createIdleFarmAppRuntime } from './systems/idleFarmAppRuntime.js';import * as helpers from './utils/helpers.js';
+import { createIdleFarmAppRuntime } from './systems/idleFarmAppRuntime.js';
+import * as helpers from './utils/helpers.js';
 import * as mapLayoutState from './state/mapLayoutState.js';
 import * as uiState from './state/uiState.js';
 import { createInitialGameState } from './state/gameState.js';
