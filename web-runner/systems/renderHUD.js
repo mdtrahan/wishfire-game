@@ -36,9 +36,103 @@ function formatSkillDrawDebugText(stateGlobals) {
     `SkillDrawCalls.party_magic_fruit: ${count('party_magic_fruit')}`,
     `SkillDrawCalls.party_destiny: ${count('party_destiny')}`,
     `SkillDrawCalls.party_faze: ${count('party_faze')}`,
+    `SkillDrawCalls.party_grow: ${count('party_grow')}`,
     `SkillDrawCalls.party_drain: ${count('party_drain')}`,
     `SkillDrawUnexpectedCalls: ${Number.isFinite(unexpectedCalls) && unexpectedCalls >= 0 ? Math.floor(unexpectedCalls) : 0}`,
   ];
+}
+
+function formatDebugNumber(value) {
+  const num = Number(value || 0);
+  if (!Number.isFinite(num)) return '0';
+  if (Number.isInteger(num)) return String(num);
+  return String(Math.round(num * 100) / 100);
+}
+
+function formatDebugPct(value) {
+  const num = Number(value || 0);
+  if (!Number.isFinite(num)) return '0';
+  if (Number.isInteger(num)) return String(num);
+  return String(Math.round(num * 10) / 10);
+}
+
+function getGrowRecordForHero(growState, heroUID) {
+  const heroes = growState && growState.heroes && typeof growState.heroes === 'object'
+    ? growState.heroes
+    : {};
+  return heroes[String(heroUID)] || heroes[heroUID] || null;
+}
+
+function getHeroPowerStat(hero) {
+  return String(hero?.attackType || '').toLowerCase() === 'magic' ? 'MAG' : 'ATK';
+}
+
+function readGrowState(callFunctionWithContext, fnContext) {
+  if (typeof callFunctionWithContext !== 'function') return {};
+  try {
+    return callFunctionWithContext(fnContext, 'GetGrowSkillState') || {};
+  } catch {
+    return {};
+  }
+}
+
+function readGrowPowerMultiplier(callFunctionWithContext, fnContext, heroUID, fallback) {
+  if (typeof callFunctionWithContext !== 'function') return Number(fallback || 0);
+  try {
+    const value = Number(callFunctionWithContext(fnContext, 'GetPowerAmpMultiplierForActor', heroUID) || 0);
+    return value > 0 ? value : Number(fallback || 0);
+  } catch {
+    return Number(fallback || 0);
+  }
+}
+
+export function formatGrowDebugText({
+  stateEntities,
+  callFunctionWithContext,
+  fnContext,
+} = {}) {
+  const growState = readGrowState(callFunctionWithContext, fnContext);
+  const partyTier = Math.max(0, Math.floor(Number(growState.tier || 0)));
+  const heroes = Array.isArray(stateEntities)
+    ? stateEntities
+      .filter(hero => hero && hero.kind === 'hero')
+      .sort((a, b) => Number(a.heroDisplaySlot ?? a.heroIndex ?? 0) - Number(b.heroDisplaySlot ?? b.heroIndex ?? 0))
+    : [];
+  const lines = [
+    '',
+    'Grow Debug',
+    `Party Tier: ${partyTier > 0 ? `T${partyTier}` : '--'}`,
+  ];
+  if (heroes.length === 0) {
+    lines.push('(no heroes)');
+    return lines.join('\n');
+  }
+  for (const hero of heroes) {
+    const uid = Number(hero.uid || 0);
+    const record = getGrowRecordForHero(growState, uid);
+    const tier = record ? Math.max(0, Math.floor(Number(record.currentTier || partyTier || 0))) : 0;
+    const stat = getHeroPowerStat(hero);
+    const basePower = Number(hero.stats?.[stat] ?? hero[stat] ?? 0);
+    const fallbackMultiplier = record ? Number(record.powerAmpMultiplier || 0) : 0;
+    const multiplier = record ? readGrowPowerMultiplier(callFunctionWithContext, fnContext, uid, fallbackMultiplier) : 0;
+    const powerPct = record
+      ? Number(record.powerAmpPct || (multiplier > 0 ? Math.round((multiplier - 1) * 1000) / 10 : 0))
+      : 0;
+    const effectivePower = multiplier > 0 ? Math.max(0, Math.ceil(basePower * multiplier)) : basePower;
+    const baseHP = record
+      ? Number(record.baseMaxHP || hero.growBaseMaxHP || hero.baseMaxHP || hero.maxHP || 0)
+      : Number(hero.maxHP || hero.baseMaxHP || 0);
+    const effectiveHP = record ? Number(record.maxHP || hero.maxHP || 0) : Number(hero.maxHP || 0);
+    const hpPenaltyPct = record ? Number(record.maxHpPenaltyPct || 0) : 0;
+    lines.push(
+      '',
+      String(hero.name || `Hero ${uid || '?'}`),
+      `Grow [${tier > 0 ? `T${tier}` : '--'}]`,
+      `Power: ${stat} [${formatDebugNumber(basePower)} / ${formatDebugNumber(effectivePower)}] (+${formatDebugPct(powerPct)}%)`,
+      `HP [${formatDebugNumber(baseHP)} / ${formatDebugNumber(effectiveHP)}] (-${formatDebugPct(hpPenaltyPct)}%)`,
+    );
+  }
+  return lines.join('\n');
 }
 
 export function withSkillDrawDebugText(text, stateGlobals) {
@@ -175,12 +269,18 @@ export function drawHUD({
     const cpSuffix = actor.kind === 'enemy' ? ` CP: ${Math.round(cp)}` : '';
     turnOrderLines.push(`${label} SPD: ${Math.round(curSpd)}${cpSuffix}${extraTag}`);
   }
+  const growDebugLines = formatGrowDebugText({
+    stateEntities,
+    callFunctionWithContext,
+    fnContext,
+  }).split('\n');
   const lines = [
     gameState.baseSummary,
     '',
     `TurnPhase: ${g.TurnPhase}`,
     `Board: ${gameState.boardCreated ? `${gameState.gems.length} gems` : 'waiting'}`,
     `Overlay: ${uiState.overlayVisible ? 'OPEN' : 'closed'}`,
+    ...growDebugLines,
     '',
     actorIntent,
     ...combatLogLines,

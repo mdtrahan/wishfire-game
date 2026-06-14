@@ -158,6 +158,12 @@ export const state = {
     BoardFillActive: 0,
     PowerAmpVisualByUID: {},
     PowerAmpFadeByUID: {},
+    GrowTier: 0,
+    GrowSelectionCount: 0,
+    GrowStateByHeroUID: {},
+    GrowAcquisitionQueue: [],
+    GrowAcquisitionTrace: [],
+    GrowAcquisitionTraceSeq: 0,
   },
 };
 

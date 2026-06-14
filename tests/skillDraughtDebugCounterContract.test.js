@@ -153,6 +153,7 @@ test('skill draw debug counters track card appearances, not selected/used skills
         party_magic_fruit: 0,
         party_destiny: 0,
         party_faze: 0,
+        party_grow: 0,
         party_drain: 0,
       },
       unexpectedCalls: 0,
@@ -169,8 +170,8 @@ test('skill draw debug counters track card appearances, not selected/used skills
     const openedAllowed = openForcedSkillDraw(mod, ctx, 'party_magic_fruit');
     assert.deepEqual(plain(openedAllowed.candidates.map(candidate => candidate.id)), [
       'party_magic_fruit',
-      'party_destiny',
       'party_crimson_ward',
+      'party_destiny',
     ]);
 
     const allowedState = plain(mod.GetSkillDraughtState(ctx).skillDrawDebug);
@@ -179,6 +180,7 @@ test('skill draw debug counters track card appearances, not selected/used skills
       party_magic_fruit: 1,
       party_destiny: 1,
       party_faze: 0,
+      party_grow: 0,
       party_drain: 0,
     });
     assert.equal(allowedState.unexpectedCalls, 0);
@@ -209,6 +211,7 @@ test('skill draw debug counters track card appearances, not selected/used skills
       party_magic_fruit: 1,
       party_destiny: 1,
       party_faze: 0,
+      party_grow: 0,
       party_drain: 1,
     });
     assert.equal(legalOnlyState.unexpectedCalls, 0);

@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const vm = require('node:vm');
 
 const runtimePath = path.join(__dirname, '..', 'web-runner', 'modules', 'functionBank.js');
 const scriptsPath = path.join(__dirname, '..', 'Scripts', 'functionBank.js');
@@ -28,6 +29,21 @@ function extractFunctionSource(src, name) {
     }
   }
   assert.fail(`unterminated ${name}`);
+}
+
+function loadRenderHudModule() {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'renderHUD.js'), 'utf8');
+  const transformed = `${src.replace(/export function /g, 'function ')}
+module.exports = {
+  formatGrowDebugText,
+};`;
+  const sandbox = {
+    module: { exports: {} },
+    exports: {},
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(transformed, sandbox);
+  return sandbox.module.exports;
 }
 
 test('skill draw state is session-only and resettable', () => {
@@ -97,13 +113,94 @@ test('dev panel 2 output appends skill draw debug counters', () => {
   assert.match(hudSrc, /SkillDrawCalls\.party_magic_fruit/);
   assert.match(hudSrc, /SkillDrawCalls\.party_destiny/);
   assert.match(hudSrc, /SkillDrawCalls\.party_faze/);
+  assert.match(hudSrc, /SkillDrawCalls\.party_grow/);
   assert.match(hudSrc, /SkillDrawCalls\.party_drain/);
   assert.match(hudSrc, /SkillDrawUnexpectedCalls/);
-  assert.match(hudSrc, /out\.textContent = lines\.concat\(formatSkillDrawDebugText\(g\)\)\.join\('\\n'\);/);
+  assert.match(hudSrc, /const growDebugLines = formatGrowDebugText\(\{/);
+  assert.match(hudSrc, /\.\.\.growDebugLines,/);
+  assert.match(hudSrc, /formatSkillDrawDebugText\(g\)\)\.join\('\\n'\);/);
 
   const appSrc = fs.readFileSync(appPath, 'utf8');
   assert.match(appSrc, /renderHUD\.withSkillDrawDebugText\(gameState\.baseSummary \+ '\\n\\nLoading images\.\.\.', state\.globals\)/);
   assert.match(appSrc, /renderHUD\.withSkillDrawDebugText\(`🎮 Puzzle RPG\\n\\n✓ Game loaded\\n\$\{rendered\.length\} total objects loaded`, state\.globals\)/);
+});
+
+test('dev panel 2 output exposes Grow base and effective hero values', async () => {
+  const hudPath = path.join(__dirname, '..', 'web-runner', 'systems', 'renderHUD.js');
+  const hud = loadRenderHudModule();
+  assert.equal(typeof hud.formatGrowDebugText, 'function');
+
+  const heroes = [
+    {
+      kind: 'hero',
+      uid: 100,
+      name: 'Falie',
+      attackType: 'melee',
+      heroDisplaySlot: 0,
+      hp: 92,
+      maxHP: 92,
+      stats: { ATK: 100, MAG: 20 },
+    },
+    {
+      kind: 'hero',
+      uid: 101,
+      name: 'Runa',
+      attackType: 'magic',
+      heroDisplaySlot: 1,
+      hp: 110,
+      maxHP: 110,
+      stats: { ATK: 15, MAG: 125 },
+    },
+    { kind: 'enemy', uid: 201, name: 'Ignored' },
+  ];
+  const text = hud.formatGrowDebugText({
+    stateEntities: heroes,
+    callFunctionWithContext: (_ctx, name, actorUID) => {
+      if (name === 'GetGrowSkillState') {
+        return {
+          tier: 1,
+          heroes: {
+            100: {
+              currentTier: 1,
+              powerAmpPct: 8,
+              powerAmpMultiplier: 1.08,
+              maxHpPenaltyPct: 8,
+              baseMaxHP: 100,
+              maxHP: 92,
+            },
+            101: {
+              currentTier: 1,
+              powerAmpPct: 8,
+              powerAmpMultiplier: 1.08,
+              maxHpPenaltyPct: 8,
+              baseMaxHP: 120,
+              maxHP: 110,
+            },
+          },
+        };
+      }
+      if (name === 'GetPowerAmpMultiplierForActor') return actorUID === 100 || actorUID === 101 ? 1.08 : 0;
+      return 0;
+    },
+    fnContext: {},
+  });
+
+  assert.match(text, /Grow Debug/);
+  assert.match(text, /Party Tier: T1/);
+  assert.match(text, /Falie/);
+  assert.match(text, /Grow \[T1\]/);
+  assert.match(text, /Power: ATK \[100 \/ 108\] \(\+8%\)/);
+  assert.match(text, /HP \[100 \/ 92\] \(-8%\)/);
+  assert.match(text, /Runa/);
+  assert.match(text, /Power: MAG \[125 \/ 135\] \(\+8%\)/);
+  assert.match(text, /HP \[120 \/ 110\] \(-8%\)/);
+
+  const hudSrc = fs.readFileSync(hudPath, 'utf8');
+  assert.match(hudSrc, /formatGrowDebugText\(\{/);
+  assert.match(hudSrc, /GetGrowSkillState/);
+  assert.match(hudSrc, /GetPowerAmpMultiplierForActor/);
+  assert.match(hudSrc, /const growDebugLines = formatGrowDebugText\(\{/);
+  assert.match(hudSrc, /\.\.\.growDebugLines,/);
 });
 
 test('dev panel 2 mirrors dev panel pause while open', () => {
