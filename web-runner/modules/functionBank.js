@@ -819,6 +819,7 @@ export function GetHeroPowerAmpRenderState(ctx, actorUID) {
     fadeDuration: Number(next.fadeDuration || 0.16),
     heroScale: Number(next.heroScale || 1),
     scaleState: String(next.scaleState || 'normal'),
+    showBadge: visual && visual.showBadge === false ? false : true,
   };
 }
 
@@ -870,6 +871,7 @@ function updateGrowVisualForHero(g, heroUID, tierConfig, now) {
     existingVisual.growTier = Number(tierConfig.tier || 0);
     existingVisual.powerAmpPct = Number(tierConfig.powerAmpPct || 0);
     existingVisual.persistent = true;
+    existingVisual.showBadge = false;
     return { seeded: false, lifecycleId: Number(existingVisual.lifecycleId || 0) };
   }
   const lifecycleId = nextPowerAmpLifecycleId(g);
@@ -879,6 +881,7 @@ function updateGrowVisualForHero(g, heroUID, tierConfig, now) {
     g.PowerAmpVisualByUID[uid].growTier = Number(tierConfig.tier || 0);
     g.PowerAmpVisualByUID[uid].powerAmpPct = Number(tierConfig.powerAmpPct || 0);
     g.PowerAmpVisualByUID[uid].persistent = true;
+    g.PowerAmpVisualByUID[uid].showBadge = false;
     if (!Number.isFinite(Number(g.PowerAmpVisualByUID[uid].startAt))) {
       g.PowerAmpVisualByUID[uid].startAt = Number(now || 0);
     }

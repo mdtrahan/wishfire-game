@@ -7,6 +7,7 @@ const vm = require('node:vm');
 const repoRoot = path.join(__dirname, '..');
 const runtimePath = path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js');
 const scriptsPath = path.join(repoRoot, 'Scripts', 'functionBank.js');
+const renderRuntimePath = path.join(repoRoot, 'web-runner', 'systems', 'renderRuntime.js');
 
 function normalizePowerAmpLifecycleMeta(existingMeta, lifecycleId = 0) {
   const normalizedLife = Number(lifecycleId || 0);
@@ -42,6 +43,51 @@ function derivePowerAmpVisualState({ existingVisual, existingMeta, now, mult, li
   };
 }
 
+function derivePowerAmpRenderState({
+  entry,
+  visual,
+  fade,
+  existingMeta,
+  now,
+  defaultFadeDuration,
+  scalePeak = 1.3,
+}) {
+  const lifecycleId = Number(visual?.lifecycleId || entry?.lifecycleId || fade?.lifecycleId || 0);
+  const meta = normalizePowerAmpLifecycleMeta(existingMeta, lifecycleId);
+  const safeNow = Number(now || 0);
+  const storeMult = Number(entry?.mult || 0);
+  const active = !!visual || storeMult > 0;
+  const fadeDuration = Number(fade?.duration || defaultFadeDuration || 0);
+  const fadeStartAt = Number(fade?.startAt || meta.fadeStartAt || 0);
+  const fadeActive = !!(!active && fade && safeNow < fadeStartAt + fadeDuration);
+  const mult = Number(visual?.mult || storeMult || fade?.mult || entry?.pendingMult || 0);
+  const visualStartAt = Number(visual?.startAt || meta.visualStartAt || safeNow);
+  let heroScale = 1;
+  let scaleState = 'normal';
+  if (active) {
+    const tIn = Math.max(0, Math.min(1, (safeNow - visualStartAt) / 0.18));
+    const eIn = 1 - Math.pow(1 - tIn, 2);
+    heroScale = 1 + (Number(scalePeak || 1.3) - 1) * eIn;
+    scaleState = 'active';
+  } else if (fadeActive) {
+    const fadeT = Math.max(0, Math.min(1, (safeNow - fadeStartAt) / fadeDuration));
+    heroScale = 1 + (Number(scalePeak || 1.3) - 1) * (1 - fadeT);
+    scaleState = 'fade';
+  }
+  return {
+    active,
+    fadeActive,
+    mult,
+    lifecycleId,
+    visualStartAt,
+    fadeStartAt,
+    fadeDuration,
+    heroScale,
+    scaleState,
+    meta,
+  };
+}
+
 function loadModule(modulePath) {
   const original = fs.readFileSync(modulePath, 'utf8');
   const transformed = `${original
@@ -53,6 +99,7 @@ module.exports = {
   ForceAstralFlowSkillDraught,
   GetEffectiveStat,
   GetGrowSkillState,
+  GetHeroPowerAmpRenderState,
   GetPartySkillDefinitions,
   GetPowerAmpMultiplierForActor,
   GetSkillDraughtState,
@@ -63,6 +110,7 @@ module.exports = {
     Math,
     normalizePowerAmpLifecycleMeta,
     derivePowerAmpVisualState,
+    derivePowerAmpRenderState,
     module: { exports: {} },
     exports: {},
     state: { globals: {}, entities: [] },
@@ -245,6 +293,37 @@ test('Grow selection deterministically gives all living heroes persistent Max HP
     assert.equal(ctx.state.globals.PowerAmpVisualByUID[102].source, 'party_grow');
     assert.equal(ctx.state.globals.PowerAmpVisualByUID[103], undefined);
   }
+});
+
+test('Grow selection applies to all living heroes while suppressing visible multiplier badges', () => {
+  for (const modulePath of [runtimePath, scriptsPath]) {
+    const mod = loadModule(modulePath);
+    const ctx = makeContext();
+    ctx.state.entities[3].hp = 50;
+    ctx.state.globals.PartyHPByIndex[3] = 50;
+    ctx.state.globals.PartyHP = 260;
+
+    selectGrow(mod, ctx, [0.99, 0.99, 0.99, 0.99, 0.99]);
+    ctx.state.globals.time += 0.3;
+
+    const growState = mod.GetGrowSkillState(ctx);
+    assert.deepEqual(plain(Object.keys(growState.heroes).sort()), ['100', '101', '102', '103']);
+    for (const hero of ctx.state.entities) {
+      assert.equal(growState.heroes[String(hero.uid)].currentTier, 1);
+      assert.equal(ctx.state.globals.PowerAmpVisualByUID[hero.uid].source, 'party_grow');
+      assert.equal(ctx.state.globals.PowerAmpVisualByUID[hero.uid].showBadge, false);
+      const renderState = mod.GetHeroPowerAmpRenderState(ctx, hero.uid);
+      assert.equal(renderState.active, true);
+      assert.equal(renderState.showBadge, false);
+      assert.ok(renderState.heroScale > 1, 'Grow still uses the permanent growth visual');
+    }
+  }
+});
+
+test('Grow render path keeps Power Amp badges silent', () => {
+  const src = fs.readFileSync(renderRuntimePath, 'utf8');
+  assert.match(src, /const ampShowsBadge = ampActive && ampProjection\?\.showBadge !== false;/);
+  assert.match(src, /if \(ampShowsBadge\) \{/);
 });
 
 test('Grow tier updates existing grown heroes without rerolling and leaves the pool after tier three', () => {
