@@ -36,6 +36,7 @@ function formatSkillDrawDebugText(stateGlobals) {
     `SkillDrawCalls.party_magic_fruit: ${count('party_magic_fruit')}`,
     `SkillDrawCalls.party_destiny: ${count('party_destiny')}`,
     `SkillDrawCalls.party_faze: ${count('party_faze')}`,
+    `SkillDrawCalls.party_grow: ${count('party_grow')}`,
     `SkillDrawCalls.party_drain: ${count('party_drain')}`,
     `SkillDrawUnexpectedCalls: ${Number.isFinite(unexpectedCalls) && unexpectedCalls >= 0 ? Math.floor(unexpectedCalls) : 0}`,
   ];

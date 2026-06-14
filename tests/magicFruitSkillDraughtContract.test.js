@@ -12,6 +12,7 @@ const legalPartyDrawIds = [
   'party_magic_fruit',
   'party_destiny',
   'party_faze',
+  'party_grow',
   'party_drain',
 ];
 
@@ -232,7 +233,7 @@ test('normal party skill draught excludes removed stubs and uses only the active
     }
 
     const observedLegalIds = new Set();
-    for (const randomValues of [[0, 0, 0], [0.34, 0, 0], [0.67, 0, 0], [0.99, 0, 0]]) {
+    for (const randomValues of [[0, 0, 0], [0.34, 0, 0], [0.5, 0, 0], [0.67, 0, 0], [0.99, 0, 0]]) {
       const { ctx } = makeContext();
       installSequenceRandom(ctx, randomValues);
 

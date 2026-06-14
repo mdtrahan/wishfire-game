@@ -23,7 +23,7 @@ Use the class as the first decision when assigning a new skill, tuning its perfo
 | Class | Draw behavior | Runtime meaning | Example |
 | --- | --- | --- | --- |
 | `one_off` | Can appear once per combat session. After the card is exposed or selected, remove it from normal and forced draw candidates for that session. | Selection enables a session effect or unlocks a rule once. Duplicate entries should not be possible through normal draw. Dev/test activation should be idempotent. | `party_destiny` |
-| `tiered` | Can continue appearing after selection. | Each selection increases a rank, stack, shield value, chance, duration, or other additive value. The skill must define its stacking formula and cap. | Future ranked skills |
+| `tiered` | Can continue appearing after selection until its cap. | Each selection increases a rank, stack, shield value, chance, duration, or other additive value. The skill must define its stacking formula and cap. | `party_grow` |
 | `repeatable` | Can continue appearing after selection. | Each selection fires the payload once. It does not add a persistent duplicate rank, multiplier, or bonus unless the skill also defines a separate tiered state. | `party_magic_fruit` |
 
 Required definition fields for live draw skills:
@@ -295,8 +295,18 @@ Party Promise: Smooth the run, create short burst windows, and rescue weak state
    - Growth: `4% / 4% / 5% / 5% (18%)`
    - Proc Pattern: On match.
    - Short Session: `Keep in draw.`
+11. `Grow`: Roll for permanent hero growth: more power, less Max HP.
+   - Card Text: Roll for permanent hero growth: more power, less Max HP.
+   - Draw Class: `tiered`
+   - Risk: `HIGH`
+   - Note: Glass-cannon specialization. Grow trades survivability capacity for offensive power; it never reduces DEF or RES.
+   - Growth: `+20% / +30% / +50% Power Amp`
+   - Tradeoff: `-15% / -20% / -25% Max HP`
+   - HP Handling: Recalculate Max HP and Current HP proportionally when acquired or tiered up, using existing HP rounding conventions. Grow is a stat conversion, not a damage event.
+   - Proc Pattern: On selection; each living non-Grow hero rolls independently at `32%` acceptance chance.
+   - Short Session: `Tier up to 3 selections, then remove from draw.`
 
-Active Runtime Draw Pool: `party_crimson_ward`, `party_magic_fruit`, `party_destiny`, `party_faze`
+Active Runtime Draw Pool: `party_crimson_ward`, `party_magic_fruit`, `party_destiny`, `party_faze`, `party_grow`, `party_drain`
 Sharpen: Favor board rescue, short bursts, and comeback windows over passive smoothing.
 Vault Lean: `Lucky Break`, `Clean Slate`
 

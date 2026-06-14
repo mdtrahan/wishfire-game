@@ -71,6 +71,16 @@ const POWER_AMP_OUTCOMES = [
   { key: 'JACKPOT_ALL_2X', multiplier: 2, chance: 0.04, jackpotAllLivingHeroes: true },
 ];
 
+const GROW_SKILL_ID = 'party_grow';
+const GROW_ACCEPTANCE_CHANCE_PCT = 32;
+const GROW_PRESENTATION_STEP_SECONDS = 0.45;
+const GROW_TIERS = Object.freeze([
+  Object.freeze({ tier: 1, powerAmpPct: 20, powerAmpMultiplier: 1.2, maxHpPenaltyPct: 15 }),
+  Object.freeze({ tier: 2, powerAmpPct: 30, powerAmpMultiplier: 1.3, maxHpPenaltyPct: 20 }),
+  Object.freeze({ tier: 3, powerAmpPct: 50, powerAmpMultiplier: 1.5, maxHpPenaltyPct: 25 }),
+]);
+const GROW_MAX_TIER = GROW_TIERS.length;
+
 const ENEMY_SKILL_ASSIGNMENT_MAP = {
   Djinn: {
     specialSkill: 'Enemy_Scathe',
@@ -655,10 +665,10 @@ function rollEnemyHealAmount(ctx, healer, {
 export function GetPowerAmpMultiplierForActor(ctx, actorUID) {
   const store = ensurePowerAmpByUID(ctx);
   const entry = store[actorUID];
-  if (!entry) return 0;
-  if (entry.state !== 'active_this_turn') return 0;
-  if (entry.usedThisTurn) return 0;
-  return Number(entry.mult || 0);
+  if (entry && entry.state === 'active_this_turn' && !entry.usedThisTurn) {
+    return Number(entry.mult || 0);
+  }
+  return getGrowPowerAmpMultiplierForActor(ctx, actorUID);
 }
 
 export function ConsumePowerAmpForActor(ctx, actorUID) {
@@ -775,6 +785,193 @@ function getAllHeroActors(ctx) {
   return getEntities(ctx).filter(e => e && e.kind === 'hero');
 }
 
+function getGrowTierConfig(tier) {
+  const normalized = Math.max(1, Math.min(GROW_MAX_TIER, Math.floor(Number(tier || 1))));
+  return GROW_TIERS[normalized - 1] || GROW_TIERS[0];
+}
+
+function ensureGrowSkillState(g) {
+  if (!g || typeof g !== 'object') return null;
+  const tier = Math.max(0, Math.min(GROW_MAX_TIER, Math.floor(Number(g.GrowTier || 0))));
+  g.GrowTier = tier;
+  const selectionCount = Math.max(0, Math.floor(Number(g.GrowSelectionCount || 0)));
+  g.GrowSelectionCount = Math.max(selectionCount, tier);
+  if (!g.GrowStateByHeroUID || typeof g.GrowStateByHeroUID !== 'object' || Array.isArray(g.GrowStateByHeroUID)) {
+    g.GrowStateByHeroUID = {};
+  }
+  if (!Array.isArray(g.GrowAcquisitionTrace)) g.GrowAcquisitionTrace = [];
+  if (!Array.isArray(g.GrowAcquisitionQueue)) g.GrowAcquisitionQueue = [];
+  if (!Number.isFinite(g.GrowAcquisitionTraceSeq)) g.GrowAcquisitionTraceSeq = 0;
+  return g;
+}
+
+function getGrowStateForActor(ctx, actorUID) {
+  const g = ensureGrowSkillState(getGlobals(ctx));
+  const uid = Number(actorUID || 0);
+  if (!g || !uid) return null;
+  const state = g.GrowStateByHeroUID[String(uid)] || g.GrowStateByHeroUID[uid] || null;
+  return state && typeof state === 'object' ? state : null;
+}
+
+function getGrowPowerAmpMultiplierForActor(ctx, actorUID) {
+  const state = getGrowStateForActor(ctx, actorUID);
+  if (!state) return 0;
+  return Math.max(0, Number(state.powerAmpMultiplier || 0));
+}
+
+function updateGrowVisualForHero(g, heroUID, tierConfig, now) {
+  const uid = Number(heroUID || 0);
+  if (!g || !uid || !tierConfig) return { seeded: false, lifecycleId: 0 };
+  ensurePowerAmpVisuals(g);
+  const existingVisual = g.PowerAmpVisualByUID[uid] || null;
+  if (existingVisual && existingVisual.source === GROW_SKILL_ID) {
+    existingVisual.mult = Number(tierConfig.powerAmpMultiplier || 0);
+    existingVisual.growTier = Number(tierConfig.tier || 0);
+    existingVisual.powerAmpPct = Number(tierConfig.powerAmpPct || 0);
+    existingVisual.persistent = true;
+    return { seeded: false, lifecycleId: Number(existingVisual.lifecycleId || 0) };
+  }
+  const lifecycleId = nextPowerAmpLifecycleId(g);
+  const seeded = setPowerAmpVisual(g, uid, Number(tierConfig.powerAmpMultiplier || 0), lifecycleId);
+  if (g.PowerAmpVisualByUID[uid]) {
+    g.PowerAmpVisualByUID[uid].source = GROW_SKILL_ID;
+    g.PowerAmpVisualByUID[uid].growTier = Number(tierConfig.tier || 0);
+    g.PowerAmpVisualByUID[uid].powerAmpPct = Number(tierConfig.powerAmpPct || 0);
+    g.PowerAmpVisualByUID[uid].persistent = true;
+    if (!Number.isFinite(Number(g.PowerAmpVisualByUID[uid].startAt))) {
+      g.PowerAmpVisualByUID[uid].startAt = Number(now || 0);
+    }
+  }
+  return seeded;
+}
+
+function getHeroPartyIndex(hero) {
+  const heroIndex = Number(hero?.heroIndex);
+  return Number.isInteger(heroIndex) && heroIndex >= 0 ? heroIndex : -1;
+}
+
+function syncPartyHpTotalsFromHeroes(ctx) {
+  const g = getGlobals(ctx);
+  const heroes = getHeroes(ctx);
+  if (!Array.isArray(g.PartyHPByIndex)) g.PartyHPByIndex = [];
+  if (!Array.isArray(g.PartyMaxHPByIndex)) g.PartyMaxHPByIndex = [];
+  for (const hero of heroes) {
+    const index = getHeroPartyIndex(hero);
+    if (index < 0) continue;
+    g.PartyHPByIndex[index] = Math.max(0, Number(hero.hp || 0));
+    g.PartyMaxHPByIndex[index] = Math.max(0, Number(hero.maxHP || 0));
+  }
+  g.PartyHP = g.PartyHPByIndex.reduce((sum, value) => sum + Math.max(0, Number(value || 0)), 0);
+  g.PartyMaxHP = g.PartyMaxHPByIndex.reduce((sum, value) => sum + Math.max(0, Number(value || 0)), 0);
+}
+
+function resolveGrowBaseMaxHP(hero, existing = {}) {
+  const candidates = [
+    existing.baseMaxHP,
+    hero?.growBaseMaxHP,
+    hero?.baseMaxHP,
+    hero?.maxHP,
+  ]
+    .map(value => Number(value || 0))
+    .filter(value => Number.isFinite(value) && value > 0);
+  return Math.max(1, Math.floor(candidates.length ? Math.max(...candidates) : 1));
+}
+
+function applyGrowMaxHpPenaltyToHero(ctx, hero, tierConfig, existing = {}) {
+  const baseMaxHP = resolveGrowBaseMaxHP(hero, existing);
+  const penaltyPct = Math.max(0, Number(tierConfig?.maxHpPenaltyPct || 0));
+  const nextMaxHP = Math.max(1, Math.floor(baseMaxHP * Math.max(0, 100 - penaltyPct) / 100));
+  const currentMaxHP = Math.max(1, Number(hero?.maxHP || baseMaxHP || 1));
+  const currentHP = Math.max(0, Number(hero?.hp || 0));
+  const hpRatio = Math.max(0, Math.min(1, currentHP / currentMaxHP));
+  hero.growBaseMaxHP = baseMaxHP;
+  hero.maxHP = nextMaxHP;
+  hero.hp = Math.max(0, Math.min(nextMaxHP, Math.floor(nextMaxHP * hpRatio)));
+  syncPartyHpTotalsFromHeroes(ctx);
+  return { baseMaxHP, maxHP: nextMaxHP, hp: hero.hp, hpRatio, maxHpPenaltyPct: penaltyPct };
+}
+
+function restoreGrowMaxHpState(ctx, g) {
+  const records = g && g.GrowStateByHeroUID && typeof g.GrowStateByHeroUID === 'object'
+    ? Object.values(g.GrowStateByHeroUID)
+    : [];
+  for (const record of records) {
+    const hero = GetActorByUID(ctx, Number(record?.heroUID || 0));
+    if (!hero) continue;
+    const baseMaxHP = resolveGrowBaseMaxHP(hero, record);
+    const currentMaxHP = Math.max(1, Number(hero.maxHP || baseMaxHP || 1));
+    const currentHP = Math.max(0, Number(hero.hp || 0));
+    const hpRatio = Math.max(0, Math.min(1, currentHP / currentMaxHP));
+    hero.maxHP = baseMaxHP;
+    hero.hp = Math.max(0, Math.min(baseMaxHP, Math.floor(baseMaxHP * hpRatio)));
+    delete hero.growBaseMaxHP;
+  }
+  syncPartyHpTotalsFromHeroes(ctx);
+}
+
+function applyGrowTierToHero(ctx, hero, tierConfig, { acquiredAt = 0, tierAcquired = null } = {}) {
+  const g = ensureGrowSkillState(getGlobals(ctx));
+  const uid = Number(hero?.uid || 0);
+  if (!g || !uid || !tierConfig) return null;
+  const key = String(uid);
+  const existing = g.GrowStateByHeroUID[key] && typeof g.GrowStateByHeroUID[key] === 'object'
+    ? g.GrowStateByHeroUID[key]
+    : {};
+  const visual = updateGrowVisualForHero(g, uid, tierConfig, acquiredAt);
+  const maxHp = applyGrowMaxHpPenaltyToHero(ctx, hero, tierConfig, existing);
+  const record = {
+    heroUID: uid,
+    heroName: String(hero?.name || ''),
+    tierAcquired: Math.max(1, Math.floor(Number(tierAcquired || existing.tierAcquired || tierConfig.tier || 1))),
+    currentTier: Number(tierConfig.tier || 0),
+    powerAmpPct: Number(tierConfig.powerAmpPct || 0),
+    powerAmpMultiplier: Number(tierConfig.powerAmpMultiplier || 0),
+    maxHpPenaltyPct: Number(maxHp.maxHpPenaltyPct || 0),
+    baseMaxHP: Number(maxHp.baseMaxHP || 0),
+    maxHP: Number(maxHp.maxHP || 0),
+    hp: Number(maxHp.hp || 0),
+    hpRatio: Number(maxHp.hpRatio || 0),
+    acquiredAt: Number(existing.acquiredAt ?? acquiredAt ?? 0),
+    visualLifecycleId: Number(visual.lifecycleId || existing.visualLifecycleId || 0),
+  };
+  g.GrowStateByHeroUID[key] = record;
+  return record;
+}
+
+function appendGrowAcquisitionTrace(g, event) {
+  ensureGrowSkillState(g);
+  g.GrowAcquisitionTraceSeq = Math.max(0, Math.floor(Number(g.GrowAcquisitionTraceSeq || 0))) + 1;
+  const entry = {
+    seq: g.GrowAcquisitionTraceSeq,
+    ...event,
+  };
+  g.GrowAcquisitionTrace.push(entry);
+  if (g.GrowAcquisitionTrace.length > 120) g.GrowAcquisitionTrace.splice(0, g.GrowAcquisitionTrace.length - 120);
+  return entry;
+}
+
+function clearGrowSkillState(ctx) {
+  const g = ensureGrowSkillState(getGlobals(ctx));
+  ensureGrowSkillState(g);
+  restoreGrowMaxHpState(ctx, g);
+  if (g.PowerAmpVisualByUID && typeof g.PowerAmpVisualByUID === 'object') {
+    for (const [uid, visual] of Object.entries(g.PowerAmpVisualByUID)) {
+      if (visual && visual.source === GROW_SKILL_ID) delete g.PowerAmpVisualByUID[uid];
+    }
+  }
+  if (g.PowerAmpFadeByUID && typeof g.PowerAmpFadeByUID === 'object') {
+    for (const [uid, fade] of Object.entries(g.PowerAmpFadeByUID)) {
+      if (fade && fade.source === GROW_SKILL_ID) delete g.PowerAmpFadeByUID[uid];
+    }
+  }
+  g.GrowTier = 0;
+  g.GrowSelectionCount = 0;
+  g.GrowStateByHeroUID = {};
+  g.GrowAcquisitionQueue = [];
+  g.GrowAcquisitionTrace = [];
+  g.GrowAcquisitionTraceSeq = 0;
+}
+
 function makeStableHeroSkillPointId(hero) {
   const actorUID = Number(hero && hero.uid);
   if (Number.isInteger(actorUID) && actorUID > 0) return `hero_actor:${actorUID}`;
@@ -827,7 +1024,8 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: 'party_magic_fruit', owner: 'Party', slot: 10, title: 'Magic Fruit', cardText: 'Heals party for 40% of max HP', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'party_heal', healPctPartyMax: 40 }, qa: { proof: 'ApplyPartyHeal once per selection' } },
   { id: 'party_crimson_ward', owner: 'Party', slot: 11, title: 'Crimson Ward', cardText: 'Grant a temporary party ward before true HP is damaged.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'party_temp_hp_shield', shieldPctPartyMax: 18, stacking: 'refresh_capped_shield' }, qa: { proof: 'PartyTempHPShield and ward visuals refresh' } },
   { id: 'party_faze', owner: 'Party', slot: 12, title: 'Faze', cardText: 'Blights the field, poisoning enemies for the remainder of the session.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'field_refresh', status: 'tainted_ground' }, qa: { proof: 'TaintedGroundZones and PendingHeroHits refresh' } },
-  { id: 'party_drain', owner: 'Party', slot: 13, title: 'Drain', cardText: 'Slows enemies standing in the field by 10% SPD.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'field_refresh', status: 'speed_down', slowPct: 10, stacking: 'refresh_only' }, qa: { proof: 'DrainFieldZones refresh and GetEffectiveStat SPD slow' } },
+  { id: 'party_grow', owner: 'Party', slot: 13, title: 'Grow', cardText: 'Roll for permanent hero growth: more power, less Max HP.', risk: 'HIGH', growth: [20, 30, 50], procPattern: 'On selection', payloadImplemented: true, drawClass: 'tiered', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_until_cap' }, trigger: { event: 'selection', eligibility: 'living_heroes_without_grow' }, effect: { kind: 'grow', maxTier: GROW_MAX_TIER, acceptanceChancePct: GROW_ACCEPTANCE_CHANCE_PCT, powerAmpPctByTier: GROW_TIERS.map(row => row.powerAmpPct), maxHpPenaltyPctByTier: GROW_TIERS.map(row => row.maxHpPenaltyPct) }, qa: { proof: 'GrowAcquisitionTrace and persistent PowerAmpVisualByUID state' } },
+  { id: 'party_drain', owner: 'Party', slot: 14, title: 'Drain', cardText: 'Slows enemies standing in the field by 10% SPD.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'field_refresh', status: 'speed_down', slowPct: 10, stacking: 'refresh_only' }, qa: { proof: 'DrainFieldZones refresh and GetEffectiveStat SPD slow' } },
 ]);
 
 const PARTY_SKILL_DRAW_ALLOWED_IDS = Object.freeze([
@@ -835,6 +1033,7 @@ const PARTY_SKILL_DRAW_ALLOWED_IDS = Object.freeze([
   'party_magic_fruit',
   'party_destiny',
   'party_faze',
+  'party_grow',
   'party_drain',
 ]);
 const PARTY_SKILL_DRAW_EXCLUDED_IDS = Object.freeze(new Set([
@@ -1054,13 +1253,23 @@ function getSkillSessionBucketKey(def, heroUID) {
   return String(def?.owner || '').toLowerCase() === 'party' ? HERO_SKILL_SHARED_KEY : String(Number(heroUID || 0));
 }
 
-function getOneOffSkillSuppressionReason(g, def, heroUID) {
+function getSkillDrawSuppressionReason(g, def, heroUID) {
   const skillId = String(def?.id || '').trim().toLowerCase();
-  if (!skillId || String(def?.drawClass || '') !== 'one_off') return '';
+  if (!skillId) return '';
   const bucketKey = getSkillSessionBucketKey(def, heroUID);
   const bucket = Array.isArray(g.SessionSkillsByHeroUID?.[bucketKey]) ? g.SessionSkillsByHeroUID[bucketKey] : [];
-  if (countSessionSkillSelections(bucket, skillId) > 0) return 'one_off_already_selected';
-  if (Number(g.SkillDraughtOneOffExposureBySkillId?.[skillId] || 0) > 0) return 'one_off_already_exposed';
+  const selectionCount = countSessionSkillSelections(bucket, skillId);
+  const drawClass = String(def?.drawClass || '');
+  if (drawClass === 'one_off') {
+    if (selectionCount > 0) return 'one_off_already_selected';
+    if (Number(g.SkillDraughtOneOffExposureBySkillId?.[skillId] || 0) > 0) return 'one_off_already_exposed';
+    return '';
+  }
+  if (drawClass === 'tiered') {
+    const maxTier = Math.max(0, Math.floor(Number(def?.effect?.maxTier || 0)));
+    const currentTier = skillId === GROW_SKILL_ID ? Math.max(Number(g.GrowTier || 0), selectionCount) : selectionCount;
+    if (maxTier > 0 && currentTier >= maxTier) return 'tier_cap_reached';
+  }
   return '';
 }
 
@@ -1146,9 +1355,9 @@ function buildSkillDraughtCandidates(ctx, heroUID, forcedSkillId = '') {
   const forcedKey = String(forcedSkillId || '').trim().toLowerCase();
   const forcedDef = allDefs.find(def => String(def.id || '').toLowerCase() === forcedKey) || null;
   const forcedSkillSuppressedReason = forcedDef
-    ? getOneOffSkillSuppressionReason(g, forcedDef, heroUID)
+    ? getSkillDrawSuppressionReason(g, forcedDef, heroUID)
     : '';
-  const defs = allDefs.filter(def => !getOneOffSkillSuppressionReason(g, def, heroUID));
+  const defs = allDefs.filter(def => !getSkillDrawSuppressionReason(g, def, heroUID));
   const forced = forcedSkillSuppressedReason
     ? null
     : defs.find(def => String(def.id || '').toLowerCase() === forcedKey) || null;
@@ -1582,6 +1791,81 @@ function activateDrainSkill(ctx, actorUID) {
   return applied;
 }
 
+function activateGrowSkill(ctx, actorUID, sessionSkill = null) {
+  const g = ensureGrowSkillState(getGlobals(ctx));
+  const now = Number(g.time || 0);
+  const nextTier = Math.max(1, Math.min(GROW_MAX_TIER, Math.floor(Number(g.GrowTier || 0)) + 1));
+  const tierConfig = getGrowTierConfig(nextTier);
+  g.GrowTier = nextTier;
+  g.GrowSelectionCount = Math.max(
+    nextTier,
+    Math.floor(Number(g.GrowSelectionCount || 0)) + 1,
+    Math.floor(Number(sessionSkill?.selectionCount || 0)),
+  );
+
+  const heroes = getHeroes(ctx).filter(hero => Number(hero?.hp || 0) > 0);
+  for (const hero of heroes) {
+    const existing = getGrowStateForActor(ctx, hero.uid);
+    if (existing) applyGrowTierToHero(ctx, hero, tierConfig, { acquiredAt: existing.acquiredAt, tierAcquired: existing.tierAcquired });
+  }
+
+  const events = [];
+  let sequenceIndex = 0;
+  for (const hero of heroes) {
+    if (getGrowStateForActor(ctx, hero.uid)) continue;
+    const roll = random01(ctx);
+    const accepted = roll < (GROW_ACCEPTANCE_CHANCE_PCT / 100) ? 1 : 0;
+    const presentationAt = now + (sequenceIndex * GROW_PRESENTATION_STEP_SECONDS);
+    const event = {
+      skillId: GROW_SKILL_ID,
+      tier: nextTier,
+      heroUID: Number(hero.uid || 0),
+      heroName: String(hero.name || ''),
+      roll,
+      accepted,
+      presentationAt,
+      sequenceIndex,
+      modalClosedAtResolution: Number(g.SkillDraughtOpen || 0) === 0 ? 1 : 0,
+    };
+    if (accepted) {
+      applyGrowTierToHero(ctx, hero, tierConfig, { acquiredAt: now, tierAcquired: nextTier });
+    }
+    events.push(appendGrowAcquisitionTrace(g, event));
+    sequenceIndex += 1;
+  }
+
+  g.GrowAcquisitionQueue = events.map(event => ({ ...event }));
+  g.GrowLastSelection = {
+    skillId: GROW_SKILL_ID,
+    tier: nextTier,
+    selectedAt: now,
+    actorUID: Number(actorUID || 0),
+    attemptedHeroes: events.length,
+    acceptedHeroes: events.filter(event => Number(event.accepted || 0) === 1).length,
+  };
+  if (events.length > 0) {
+    const lastPresentationAt = Math.max(...events.map(event => Number(event.presentationAt || now)));
+    g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), lastPresentationAt + GROW_PRESENTATION_STEP_SECONDS);
+    g.DeferAdvance = 1;
+    g.AdvanceAfterAction = 1;
+    g.ActionOwnerUID = Number(actorUID || 0);
+  }
+  LogCombat(ctx, `Grow reached Tier ${nextTier}.`);
+  return g.GrowLastSelection;
+}
+
+export function GetGrowSkillState(ctx) {
+  const g = ensureGrowSkillState(getGlobals(ctx));
+  return {
+    tier: Number(g.GrowTier || 0),
+    maxTier: GROW_MAX_TIER,
+    selectionCount: Number(g.GrowSelectionCount || 0),
+    heroes: JSON.parse(JSON.stringify(g.GrowStateByHeroUID || {})),
+    acquisitionQueue: JSON.parse(JSON.stringify(g.GrowAcquisitionQueue || [])),
+    acquisitionTrace: JSON.parse(JSON.stringify(g.GrowAcquisitionTrace || [])),
+  };
+}
+
 export function GetSkillDraughtState(ctx) {
   const g = ensureSkillDraughtState(ctx);
   return {
@@ -1682,13 +1966,14 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
   if (!Array.isArray(g.SessionSkillsByHeroUID[key])) g.SessionSkillsByHeroUID[key] = [];
   const skillId = String(candidate.id || def?.id || '').trim().toLowerCase();
   const existingSelections = countSessionSkillSelections(g.SessionSkillsByHeroUID[key], skillId);
-  if (String(def?.drawClass || candidate?.drawClass || '') === 'one_off' && existingSelections > 0) {
+  const suppressionReason = getSkillDrawSuppressionReason(g, def, uid);
+  if (suppressionReason) {
     appendSkillDraughtTrace(g, 'select_rejected', {
       heroUID: uid,
       skillId,
-      reason: 'one_off_already_selected',
+      reason: suppressionReason,
     });
-    return { ok: false, reason: 'one_off_already_selected', skillId };
+    return { ok: false, reason: suppressionReason, skillId };
   }
   const sessionSkill = makeSessionSkillRecord(
     candidate,
@@ -1709,6 +1994,7 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
   if (sessionSkill.id === 'party_magic_fruit') activateMagicFruitSkill(ctx);
   if (sessionSkill.id === 'party_crimson_ward') activateCrimsonWardSkill(ctx);
   if (sessionSkill.id === 'party_faze') activateFazeSkill(ctx, uid);
+  if (sessionSkill.id === 'party_grow') activateGrowSkill(ctx, uid, sessionSkill);
   if (sessionSkill.id === 'party_drain') activateDrainSkill(ctx, uid);
   const scope = String(sessionSkill.owner || '').toLowerCase() === 'party' ? 'party' : 'hero';
   appendSkillDraughtTrace(g, 'select', {
@@ -1738,6 +2024,7 @@ export function ClearSessionSkillDraught(ctx) {
   g.SessionSkillsByHeroUID = {};
   g.SkillDraughtOneOffExposureBySkillId = {};
   g.SkillDraughtLastForcedSkillSuppressedReason = '';
+  clearGrowSkillState(ctx);
   appendSkillDraughtTrace(g, 'clear', {});
   return { ok: true };
 }
