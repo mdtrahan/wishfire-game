@@ -42,8 +42,7 @@
 - Active workspace work is allowed only for minor actions.
 - Beads are the primary unit of task isolation, checkpointing, recovery, and rollback.
 - Include the bead id in both branch and worktree names.
-- Cap active bead worktrees at 5.
-- If 5 active bead worktrees already exist, close, merge, or clean up before opening another, or ask for explicit user override.
+- Follow concurrency and delegation limits from the active orchestrator skill.
 
 Minor actions may stay in the active workspace:
 - read-only review, policy analysis, bead creation, and bead triage
@@ -113,12 +112,15 @@ Minor exemption does not apply to:
   - record the inconsistency in coordination artifacts if it affects execution
   - do not assume the first follow-up read is canonical
 
+## PM / Dev / Review Contract
+- PM shapes executable beads, rejects vague work, confirms significant-diff commit prep when the guard applies, and closes only with evidence.
+- Dev implements one bead at a time, stays inside scope, prepares significant staged diffs with the repo-owned commit-check helper before commit, and reports exact tests and touched files.
+- Review checks acceptance, evidence, scope compliance, and commit-prep evidence when required; mixed-scope closeouts should be rejected.
+
 ## Anti-Patterns
 - Starting work from stale `.beads/` mirrors instead of live `bd`
 - Treating a null/underspecified bead as executable
 - Running implementation beads in the active workspace without minor exemption or explicit override
-- Opening more than 5 active bead worktrees without cleanup or explicit override
-- Mixing multiple implementation beads in one worktree
 - Mixing multiple hot-file lanes in one dirty workspace without explicit recovery plan
 - Closing a bead based on code presence alone without targeted validation
 - Trusting a single immediate `bd` read after a write when the tool has shown inconsistency

@@ -1,0 +1,2756 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wishfire Abilities</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f8f9fb;
+      --surface: #ffffff;
+      --surface-soft: #f1f3f6;
+      --ink: #101418;
+      --muted: #59616c;
+      --line: #d8dde5;
+      --strong-line: #2f2938;
+      --accent: #245f86;
+      --accent-2: #3a4f66;
+      --accent-3: #6a7480;
+      --violet: #8b78d6;
+      --violet-strong: #6751b7;
+      --code-bg: #eef1f4;
+      --mark-blue: #e8f0f6;
+      --mark-neutral: #eef1f4;
+      --soft-blue: #edf4fa;
+      --soft-violet: #f4efff;
+      --row-hover: #f3f6fa;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.52;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(36, 95, 134, 0.28);
+    }
+
+    a:hover,
+    a:focus-visible {
+      color: var(--accent-2);
+      border-bottom-color: var(--accent);
+    }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.93em;
+      background: var(--code-bg);
+      color: var(--ink);
+      border-radius: 4px;
+      padding: 0.08rem 0.3rem;
+      white-space: nowrap;
+    }
+
+    .page {
+      min-height: 100vh;
+    }
+
+    .masthead {
+      background: linear-gradient(180deg, #ffffff 0%, #f8f9fb 74%, #fbf9ff 100%);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .masthead-inner {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 52px 0 34px;
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 980px;
+      margin: 0;
+      font-size: clamp(2.6rem, 7vw, 6.4rem);
+      line-height: 0.92;
+      letter-spacing: 0;
+    }
+
+    .thesis {
+      max-width: 820px;
+      margin: 22px 0 0;
+      color: var(--muted);
+      font-size: clamp(1.02rem, 1.8vw, 1.26rem);
+    }
+
+    .status-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-top: 36px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .status-item {
+      min-height: 82px;
+      padding: 15px 22px;
+      border-right: 1px solid var(--line);
+      background: transparent;
+    }
+
+    .status-item:last-child {
+      border-right: 0;
+    }
+
+    .status-item b {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .status-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 248px minmax(0, 1fr);
+      gap: 42px;
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 30px 0 64px;
+    }
+
+    .toc {
+      position: sticky;
+      top: 18px;
+      align-self: start;
+      padding: 16px 0;
+      border-top: 1px solid var(--strong-line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .toc-title {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .toc a {
+      display: block;
+      padding: 6px 0;
+      border-bottom: 0;
+      color: var(--ink);
+      font-size: 0.95rem;
+    }
+
+    .toc a:hover,
+    .toc a:focus-visible {
+      color: var(--accent);
+      transform: translateX(2px);
+    }
+
+    main {
+      min-width: 0;
+    }
+
+    section {
+      padding: 54px 0;
+      border-bottom: 0;
+      scroll-margin-top: 22px;
+    }
+
+    section:first-child {
+      padding-top: 0;
+    }
+
+    section + section {
+      padding-top: 62px;
+    }
+
+    .section-kicker {
+      margin: 0 0 7px;
+      color: var(--accent);
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: clamp(1.55rem, 3vw, 2.45rem);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 24px 0 10px;
+      font-size: 1.08rem;
+      letter-spacing: 0;
+    }
+
+    p {
+      max-width: 850px;
+      margin: 0 0 14px;
+      color: var(--muted);
+    }
+
+    .callout {
+      margin: 18px 0;
+      padding: 14px 0 14px 18px;
+      border-left: 3px solid var(--accent);
+      background: transparent;
+    }
+
+    .callout strong {
+      color: var(--ink);
+    }
+
+    .warning {
+      border-left-color: var(--violet);
+      background: transparent;
+    }
+
+    .note-line {
+      max-width: 880px;
+      margin: 14px 0 18px;
+      padding-left: 16px;
+      border-left: 3px solid var(--violet);
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .grid-two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 30px;
+      margin-top: 18px;
+    }
+
+    .panel {
+      padding: 0;
+      border-top: 1px solid var(--line);
+      background: transparent;
+    }
+
+    .panel h3 {
+      margin-top: 16px;
+    }
+
+    .table-wrap {
+      margin: 20px 0 24px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: transparent;
+    }
+
+    table {
+      width: 100%;
+      min-width: 0;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+
+    th,
+    td {
+      padding: 12px 13px;
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      overflow-wrap: normal;
+      word-break: normal;
+    }
+
+    th:last-child,
+    td:last-child {
+      border-right: 0;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--surface-soft);
+      color: var(--ink);
+      font-size: 0.75rem;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    tbody tr:hover td {
+      background: var(--row-hover);
+    }
+
+    td code,
+    th code {
+      overflow-wrap: normal;
+      word-break: normal;
+    }
+
+    .skill-summary {
+      table-layout: fixed;
+    }
+
+    .lifecycle-summary {
+      table-layout: fixed;
+    }
+
+    .lifecycle-summary th:nth-child(1),
+    .lifecycle-summary td:nth-child(1) {
+      width: 19%;
+    }
+
+    .lifecycle-summary th:nth-child(2),
+    .lifecycle-summary td:nth-child(2) {
+      width: 20%;
+    }
+
+    .lifecycle-summary th:nth-child(3),
+    .lifecycle-summary td:nth-child(3) {
+      width: 21%;
+    }
+
+    .lifecycle-summary th:nth-child(4),
+    .lifecycle-summary td:nth-child(4) {
+      width: 18%;
+    }
+
+    .lifecycle-summary th:nth-child(5),
+    .lifecycle-summary td:nth-child(5) {
+      width: 22%;
+    }
+
+    .skill-summary th:nth-child(1),
+    .skill-summary td:nth-child(1) {
+      width: 22%;
+    }
+
+    .skill-summary th:nth-child(2),
+    .skill-summary td:nth-child(2) {
+      width: 28%;
+    }
+
+    .skill-summary th:nth-child(3),
+    .skill-summary td:nth-child(3) {
+      width: 27%;
+    }
+
+    .skill-summary th:nth-child(4),
+    .skill-summary td:nth-child(4) {
+      width: 23%;
+    }
+
+    .archetype-table {
+      table-layout: fixed;
+    }
+
+    .archetype-table th:nth-child(1),
+    .archetype-table td:nth-child(1) {
+      width: 9%;
+    }
+
+    .archetype-table th:nth-child(2),
+    .archetype-table td:nth-child(2) {
+      width: 12%;
+    }
+
+    .archetype-table th:nth-child(3),
+    .archetype-table td:nth-child(3) {
+      width: 20%;
+    }
+
+    .archetype-table th:nth-child(4),
+    .archetype-table td:nth-child(4) {
+      width: 34%;
+    }
+
+    .archetype-table th:nth-child(5),
+    .archetype-table td:nth-child(5) {
+      width: 25%;
+    }
+
+    .cell-stack {
+      display: grid;
+      gap: 7px;
+    }
+
+    .cell-stack > code,
+    .cell-stack > .tag {
+      justify-self: start;
+    }
+
+    .cell-note {
+      display: block;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    ul,
+    ol {
+      margin: 10px 0 0;
+      padding-left: 1.15rem;
+      color: var(--muted);
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 0.08rem 0.34rem;
+      border-radius: 4px;
+      background: var(--mark-blue);
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      line-height: 1.35;
+      max-width: 100%;
+      width: fit-content;
+      white-space: normal;
+    }
+
+    .tag.low,
+    .tag.planned,
+    .tag.open,
+    .tag.stale {
+      background: var(--mark-neutral);
+      color: var(--accent-2);
+    }
+
+    .tag.med,
+    .tag.canon,
+    .tag.closed,
+    .tag.implemented {
+      background: var(--mark-blue);
+      color: var(--accent);
+    }
+
+    .tag.high,
+    .tag.partial,
+    .tag.conflict,
+    .tag.blocked,
+    .tag.unknown {
+      background: var(--soft-violet);
+      color: var(--violet-strong);
+    }
+
+    .neutral-state-table .tag {
+      background: var(--mark-neutral);
+      color: var(--accent-2);
+    }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0;
+      margin-top: 18px;
+      border-top: 1px solid var(--line);
+      border-left: 1px solid var(--line);
+    }
+
+    .pipe-step {
+      position: relative;
+      min-height: 112px;
+      padding: 15px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: transparent;
+    }
+
+    .pipe-step::after {
+      content: "->";
+      position: absolute;
+      top: 50%;
+      right: -13px;
+      transform: translateY(-50%);
+      color: var(--violet);
+      font-weight: 900;
+    }
+
+    .pipe-step:nth-child(4n)::after,
+    .pipe-step:last-child::after,
+    .pipe-end::after,
+    .pipe-empty::after {
+      content: "";
+    }
+
+    .pipe-empty {
+      pointer-events: none;
+    }
+
+    .pipe-step b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--ink);
+    }
+
+    .pipe-step span {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .hero-lanes {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 26px 30px;
+      margin-top: 18px;
+    }
+
+    .hero-lane {
+      border-top: 1px solid var(--line);
+      background: transparent;
+      padding: 0;
+    }
+
+    .hero-lane h3 {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 16px 0 0;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .lane-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .lane-list div {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      gap: 10px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .lane-list b {
+      color: var(--ink);
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      margin-top: 18px;
+      border-top: 1px solid var(--line);
+      border-left: 1px solid var(--line);
+    }
+
+    .life {
+      min-height: 132px;
+      padding: 14px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: transparent;
+    }
+
+    .life b {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .life span {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .check-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0;
+      margin-top: 16px;
+      border-top: 1px solid var(--line);
+      border-left: 1px solid var(--line);
+    }
+
+    .check {
+      padding: 12px 13px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .check b {
+      color: var(--ink);
+    }
+
+    .check-empty {
+      pointer-events: none;
+    }
+
+    .footer-note {
+      max-width: none;
+      margin-top: 34px;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    @media (max-width: 980px) {
+      .status-strip,
+      .grid-two,
+      .hero-lanes,
+      .pipeline,
+      .timeline,
+      .check-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .status-item {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+        padding-right: 0;
+      }
+
+      .status-item:last-child {
+        border-bottom: 0;
+      }
+
+      .pipe-step::after {
+        content: "";
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .toc {
+        position: static;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0 18px;
+        padding: 14px 0;
+      }
+
+      .toc-title {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .masthead-inner,
+      .layout {
+        width: min(100% - 24px, 1180px);
+      }
+
+      .status-item {
+        min-height: auto;
+      }
+
+      .toc {
+        grid-template-columns: 1fr;
+      }
+
+      section {
+        padding: 28px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="masthead">
+      <div class="masthead-inner">
+        <p class="eyebrow">Wishfire product systems</p>
+        <h1>Wishfire Ability System</h1>
+        <p class="thesis">
+          Game design reference for ability categories, decision lifetimes, Astral Flow draws,
+          hero ranks, supergems, affinity, Vault/relic passives, and current design drift.
+        </p>
+        <div class="status-strip" aria-label="Document scope summary">
+          <div class="status-item">
+            <b>Type</b>
+            <span>GDD system reference.</span>
+          </div>
+          <div class="status-item">
+            <b>Covers</b>
+            <span>Categories, lifetimes, interactions, progression, and balance limits.</span>
+          </div>
+          <div class="status-item">
+            <b>Does Not Cover</b>
+            <span>Delivery priority, task tracking, branch process, or implementation instructions.</span>
+          </div>
+          <div class="status-item">
+            <b>Revision Trigger</b>
+            <span>Revise when gameplay behavior, rank math, or design state changes.</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <nav class="toc" aria-label="Page sections">
+        <p class="toc-title">Sections</p>
+        <a href="#overview">Overview</a>
+        <a href="#authority">Design Scope</a>
+        <a href="#source-precedence">Source Precedence</a>
+        <a href="#glossary">Glossary</a>
+        <a href="#lifecycle-map">Lifecycle Map</a>
+        <a href="#decision-lifetimes">Decision Lifetimes</a>
+        <a href="#pipeline">Combat Timing</a>
+        <a href="#skill-draw">Skill Draw System</a>
+        <a href="#skill-tiers">Skill Tier Catalog</a>
+        <a href="#skill-function-shapes">Skill Function Shapes</a>
+        <a href="#hero-tensions">Hero Build Tensions</a>
+        <a href="#supergems">Supergem Grammar</a>
+        <a href="#progression">Progression Shapes</a>
+        <a href="#vault">Vault And Relics</a>
+        <a href="#budgets">Balance Budgets</a>
+        <a href="#definition-contract">Ability Spec</a>
+        <a href="#planning-paths">Planning Paths</a>
+        <a href="#drift">Design State And Drift</a>
+      </nav>
+
+      <main>
+        <section id="overview">
+          <p class="section-kicker">Overview</p>
+          <h2>Color pressure becomes build identity.</h2>
+          <p>
+            Wishfire starts with a compact combat verb: pick any three gems of one color. The ability
+            system makes that choice durable through hero ownership, supergem identity spikes, Astral
+            Flow session choices, skill-point ranks, affinity, and Vault/relic pressure.
+          </p>
+          <div class="callout">
+            <strong>Player-facing goal:</strong> the player should be able to read the board, choose a color,
+            and feel that choice bend toward a recognizable build: ward survival, gold burst, magical
+            field control, support choreography, or long-horizon relic pressure.
+          </div>
+        </section>
+
+        <section id="authority">
+          <p class="section-kicker">Design Scope</p>
+          <h2>This page defines how abilities fit Wishfire.</h2>
+          <p>
+            Use this ability-system slice of the GDD to classify an ability, understand its player purpose,
+            place it in the right lifecycle, and keep mechanics, UI surface, enemy pressure, and playtest
+            expectations aligned as Wishfire grows.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>This document aims to</th>
+                  <th>This document does not</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Define the ability-system map: categories, owners, lifetimes, integration order, and risk budgets.</td>
+                  <td>Replace the full skill catalog, player guide, behavior notes, current game build, or balance spreadsheets.</td>
+                </tr>
+                <tr>
+                  <td>Make Astral Flow, session party skills, hero ranks, supergems, affinity, and Vault/relic passives distinct enough to design against.</td>
+                  <td>Freeze temporary status notes, open questions, or current build gaps as permanent canon.</td>
+                </tr>
+                <tr>
+                  <td>Help a designer, producer, or developer classify a new ability before it becomes a concrete feature.</td>
+                  <td>Track delivery status, decide release order, or schedule feature work.</td>
+                </tr>
+                <tr>
+                  <td>Stay narrow: ability behavior, player choice, UI surface, enemy pressure, and balance containment.</td>
+                  <td>Hold story scripts, art direction, engine architecture, production runbooks, or general project notes.</td>
+                </tr>
+                <tr>
+                  <td>Expose current drift where product language, current game behavior, and planning docs no longer line up.</td>
+                  <td>Freeze balance values, invent missing payloads, or approve game behavior without a source decision.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="grid-two">
+            <div class="panel">
+              <h3>Reference material</h3>
+              <ul>
+                <li><a href="./player-living-guide.md">player-living-guide.md</a> keeps the player-facing explanation honest.</li>
+                <li><a href="./hero-and-party-skills.md">hero-and-party-skills.md</a> lists the current hero and party skill pool.</li>
+                <li><a href="./hero-and-party-skill-pseudocode.md">hero-and-party-skill-pseudocode.md</a> sketches trigger and payload behavior.</li>
+                <li><a href="./vault-progression.md">vault-progression.md</a> maps Vault-layer and relic-style progression lanes.</li>
+                <li><a href="./skill-proc-qa-guide.md">skill-proc-qa-guide.md</a> records proc, eligibility, and proof expectations.</li>
+                <li><a href="./hero-supergem-bead-ledger.md">hero-supergem-bead-ledger.md</a> records current supergem implementation evidence.</li>
+              </ul>
+            </div>
+            <div class="panel">
+              <h3>GDD upkeep</h3>
+              <ul>
+                <li>Keep this page current when an ability changes category, lifetime, modal behavior, rank ladder, risk class, or live design state.</li>
+                <li>Keep temporary status notes clearly temporary; remove them when they stop helping the design picture.</li>
+                <li>When a design decision changes, update the affected table row and the drift register instead of adding a disconnected note.</li>
+                <li>Keep delivery mechanics out unless they directly change how an ability behaves for the player.</li>
+                <li>Reconcile player-facing wording and live behavior when they disagree.</li>
+              </ul>
+            </div>
+          </div>
+          <h3>Current canon snapshot</h3>
+          <p>
+            This snapshot records the current design read when companion docs or runtime behavior disagree.
+            Use it to classify new ability work, not to infer that every runtime seam already exists.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Area</th>
+                  <th>Current design read</th>
+                  <th>Important boundary</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Falie</td>
+                  <td>Red survival identity. Player-facing noun is Ward: Temporary Ward, Ward Bash, ward pressure.</td>
+                  <td>Runtime may still use temporary HP barrier/state language internally, but product copy should name Falie's protection as Ward.</td>
+                </tr>
+                <tr>
+                  <td>Huun</td>
+                  <td>Yellow/gold burst and execution identity. Goldstrike is the native supergem anchor.</td>
+                  <td>Banked-gold spend, tax, cap, and measurement rules remain unresolved before broader implementation.</td>
+                </tr>
+                <tr>
+                  <td>Runa</td>
+                  <td>Green AOE rule-changing owner: totems, burst AOE healing, field pressure, targeting shifts, and damage-profile changes.</td>
+                  <td>Only the broad lane is canon. Exact healing, targeting, and damage-profile recipes still need contracts.</td>
+                </tr>
+                <tr>
+                  <td>Kojonn</td>
+                  <td>Blue Astral Flow growth candidate, with a pawn-like growth arc through acquisition and transformation.</td>
+                  <td>Older green/Faze/Tainted direction is blocked until product defines a family-friendly non-dark expression.</td>
+                </tr>
+                <tr>
+                  <td>Action architecture</td>
+                  <td>Future abilities should be recipes over shared resolver families: event, gates, selector, payload, bounds, presentation, proof.</td>
+                  <td>Current runtime has partial hooks and bespoke branches. Do not treat target event envelopes or ActionResult-style proof as live APIs yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <h3 id="source-precedence">Source precedence</h3>
+          <p>
+            Use this table when source docs disagree. Player-facing terms may simplify the system, but
+            implementation planning must use the internal category names below.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Question</th>
+                  <th>Primary source</th>
+                  <th>Use this page for</th>
+                  <th>Current warning</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>What design lane is this ability?</td>
+                  <td><code>abilities.html</code></td>
+                  <td>Taxonomy, lifecycle, combat timing, and drift status.</td>
+                  <td>Name both the progression lane and the payload facet when both matter.</td>
+                </tr>
+                <tr>
+                  <td>What skills currently exist?</td>
+                  <td><a href="./hero-and-party-skills.md">hero-and-party-skills.md</a></td>
+                  <td>Names, owners, risk bands, and raw rank increments.</td>
+                  <td>Older hero-skill "draw" wording is legacy shorthand, not current Astral Flow behavior.</td>
+                </tr>
+                <tr>
+                  <td>How should a payload behave?</td>
+                  <td><a href="./hero-and-party-skill-pseudocode.md">hero-and-party-skill-pseudocode.md</a></td>
+                  <td>Trigger shape, payload sketch, containment notes, and open timing questions.</td>
+                  <td>Pseudocode is design intent, not a runtime contract until current build evidence validates it.</td>
+                </tr>
+                <tr>
+                  <td>How should it be explained to players?</td>
+                  <td><a href="./player-living-guide.md">player-living-guide.md</a></td>
+                  <td>Public language and player-facing expectation checks.</td>
+                  <td>Player shorthand like "hero skill" is not internal taxonomy.</td>
+                </tr>
+                <tr>
+                  <td>Is it implemented or only designed?</td>
+                  <td>Runtime evidence and focused tests</td>
+                  <td>Drift notes and design-state consequences.</td>
+                  <td>Status labels here are design warnings, not delivery authority.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <h3>Player terms vs internal terms</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Player-facing shorthand</th>
+                  <th>Internal category</th>
+                  <th>Planning rule</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Hero skill</td>
+                  <td>Hero rank ability, supergem special, or native-color behavior depending on context.</td>
+                  <td>Do not specify or implement the feature until the exact category is named.</td>
+                </tr>
+                <tr>
+                  <td>Skill draw</td>
+                  <td>Astral Flow party/session skill draw only.</td>
+                  <td>Hero rank abilities do not enter the party draw unless this page explicitly changes.</td>
+                </tr>
+                <tr>
+                  <td>Special gem skill</td>
+                  <td>Native-color supergem special.</td>
+                  <td>Keep supergem spikes separate from party/session skills and hero rank cards.</td>
+                </tr>
+                <tr>
+                  <td>Passive</td>
+                  <td>Affinity, Vault progression, relic item, or equipped passive.</td>
+                  <td>Name the passive lane and reset boundary before designing payloads.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="glossary">
+          <p class="section-kicker">Glossary</p>
+          <h2>Use qualified names. Do not say only "skill."</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Term</th>
+                  <th>Meaning</th>
+                  <th>Common mistake</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>color action</code></td>
+                  <td>Base result of matching a gem color: attack, heal, Energy, gold, or Astral Flow.</td>
+                  <td>Treating a color action as a hero-specific payload.</td>
+                </tr>
+                <tr>
+                  <td><code>hero ability</code></td>
+                  <td>Hero-owned combat identity, usually tied to canonical hero skill definitions or native color behavior.</td>
+                  <td>Putting a party-wide or Vault passive under one hero because the name feels thematic.</td>
+                </tr>
+                <tr>
+                  <td><code>supergem special</code></td>
+                  <td>Native-color identity spike from a larger, rarer gem.</td>
+                  <td>Reusing a supergem repair as a live draw skill.</td>
+                </tr>
+                <tr>
+                  <td><code>party/session skill</code></td>
+                  <td>Astral Flow draw choice stored in shared session skill state and helping the party until session end.</td>
+                  <td>Making it permanent, hero-specific by accident, or counting activation as a payload proc.</td>
+                </tr>
+                <tr>
+                  <td><code>skill-point rank</code></td>
+                  <td>Permanent hero skill progress with locked/unlocked state, rank, cost curve, and growth value.</td>
+                  <td>Confusing Hero Screen rank progression with Astral Flow session skill selection.</td>
+                </tr>
+                <tr>
+                  <td><code>affinity passive</code></td>
+                  <td>Passive identity growth for a hero. It is not a live combat meter.</td>
+                  <td>Turning affinity into another draw or proc subsystem.</td>
+                </tr>
+                <tr>
+                  <td><code>Vault/relic passive</code></td>
+                  <td>Long-horizon background modifier that depends on Vault/relic foundation design.</td>
+                  <td>Implementing it as a live draw card.</td>
+                </tr>
+                <tr>
+                  <td><code>proc payload</code></td>
+                  <td>Effect that resolves after activation, eligibility, and roll ownership are satisfied.</td>
+                  <td>Letting a dev button or activation text execute the payload.</td>
+                </tr>
+                <tr>
+                  <td><code>player evidence</code></td>
+                  <td>Visible result that tells the player what happened: animation, number, icon, log line, modal state, or board change.</td>
+                  <td>Letting an ability exist only as hidden state or developer-only output.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="lifecycle-map">
+          <p class="section-kicker">Lifecycle Map</p>
+          <h2>Each ability class has an owner, state shape, lifetime, and player-facing evidence.</h2>
+          <div class="table-wrap">
+            <table class="lifecycle-summary">
+              <thead>
+                <tr>
+                  <th>Class / example</th>
+                  <th>Player purpose</th>
+                  <th>Source / state anchor</th>
+                  <th>Surface / lifetime</th>
+                  <th>Design state / evidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="cell-stack"><b>Base color action</b><span>Red single-target, green AOE, blue Astral Flow</span></div></td>
+                  <td>Immediate tactical choice from the board.</td>
+                  <td><div class="cell-stack"><a href="./player-living-guide.md">Player guide</a><span>Gem action resolution</span></div></td>
+                  <td><div class="cell-stack"><span>Combat board and action text</span><span class="tag">event</span></div></td>
+                  <td><div class="cell-stack"><span>Combat behavior lane</span><span>Board change, action text, and immediate damage/heal/resource result.</span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><b>Supergem special</b><span>Temporary Ward, Goldstrike, Faze</span></div></td>
+                  <td>Native-color identity spike with visible payoff.</td>
+                  <td><div class="cell-stack"><span>Supergem design ledger</span><span>Supergem combat state</span></div></td>
+                  <td><div class="cell-stack"><span>Combat board, hero action, HP/effect visuals</span><span class="tag">event/combat</span></div></td>
+                  <td><div class="cell-stack"><span>Hero supergem lane</span><span>Distinct supergem animation, state consequence, and readable hero payoff.</span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><b>Canonical hero definition</b><span><code>falie_ward_bash</code>, <code>huun_growth</code></span></div></td>
+                  <td>Defines hero-owned skill identity and growth metadata.</td>
+                  <td><div class="cell-stack"><a href="./hero-and-party-skills.md">Hero and party skills</a><span>Canonical skill registry</span></div></td>
+                  <td><div class="cell-stack"><span>Hero screen after mapping work</span><span class="tag">definition</span></div></td>
+                  <td><div class="cell-stack"><span class="tag implemented">registry exists</span><span>Card title, owner, trigger label, growth values, and risk are readable.</span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><b>Permanent hero rank</b><span>Unlock/rank a hero ability</span></div></td>
+                  <td>Longer-term build sculpting through skill points.</td>
+                  <td><div class="cell-stack"><a href="./hero-and-party-skills.md">Hero skill canon</a><span>Hero progress, stable identity, rank/cost state</span></div></td>
+                  <td><div class="cell-stack"><span>Hero screen progression display</span><span class="tag">account/run</span></div></td>
+                  <td><div class="cell-stack"><span class="tag planned">rank-card presentation pending</span><span>Hero screen shows locked/unlocked state, rank, cost, and effective value.</span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><b>Astral Flow session skill</b><span>Three-card party draw; <code>party_destiny</code></span></div></td>
+                  <td>Run-shaping party modifier earned from blue flow, selected once per filled meter.</td>
+                  <td><div class="cell-stack"><a href="./hero-and-party-skills.md">Party skill canon</a><span>Draw candidates and shared session skill state</span></div></td>
+                  <td><div class="cell-stack"><span>Astral Flow draw and side readout</span><span class="tag">session</span></div></td>
+                  <td><div class="cell-stack"><span class="tag planned">surface exists; pool logic still shallow</span><span>Three-card choice, selected session skill, meter reset, and visible payload later.</span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><b>Proc payload</b><span>Destiny heals after eligible hero hit</span></div></td>
+                  <td>Chance-based combat effect after a real trigger.</td>
+                  <td><div class="cell-stack"><span>Proc behavior notes</span><span>Roll/chance state and combat-event owner seam</span></div></td>
+                  <td><div class="cell-stack"><span>Combat log, floating number, icon, board effect, or visible stat change</span><span class="tag">event</span></div></td>
+                  <td><div class="cell-stack"><span>One payload design lane</span><span>Player can tell why the effect did or did not happen.</span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><b>Affinity passive</b><span>Falie red identity, Huun yellow payoff</span></div></td>
+                  <td>Deepens hero identity outside live draws.</td>
+                  <td><div class="cell-stack"><a href="./hero-and-party-skills.md#affinity-notes">Affinity notes</a><span>Future passive identity state</span></div></td>
+                  <td><div class="cell-stack"><span>Hero/progression surfaces</span><span class="tag">account/run</span></div></td>
+                  <td><div class="cell-stack"><span>Dedicated affinity lane</span><span>Hero identity reads differently before combat and during color play.</span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><b>Vault/relic passive</b><span><code>vault_steal</code>, <code>vault_shell</code></span></div></td>
+                  <td>Long-horizon pressure, vow, or background modifier.</td>
+                  <td><div class="cell-stack"><a href="./vault-progression.md">Vault progression</a><span>Future discovered/equipped passive state</span></div></td>
+                  <td><div class="cell-stack"><span>Vault/relic gallery</span><span class="tag">run/account</span></div></td>
+                  <td><div class="cell-stack"><span class="tag planned">passive foundation first</span><span>Equipped relic pressure is visible as a clear vow, constraint, or passive rule.</span></div></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="decision-lifetimes">
+          <p class="section-kicker">Decision Lifetimes</p>
+          <h2>The same idea changes risk when it lasts longer.</h2>
+          <p>
+            Lifetimes are design boundaries. Moving an ability to a longer lifetime changes ownership,
+            tuning, UI, save/reset behavior, and this page's system contract.
+          </p>
+          <div class="timeline">
+            <div class="life">
+              <b>Event</b>
+              <span>One resolved action, proc, hit, match, or supergem spend.</span>
+            </div>
+            <div class="life">
+              <b>Turn</b>
+              <span>Expires after the current actor acts or the turn passes to the other side.</span>
+            </div>
+            <div class="life">
+              <b>Combat</b>
+              <span>Persists through one encounter until combat exits or resets.</span>
+            </div>
+            <div class="life">
+              <b>Session / run</b>
+              <span>Astral Flow and selected party skills can shape the current session.</span>
+            </div>
+            <div class="life">
+              <b>Account progression</b>
+              <span>Skill ranks, affinity, and discovered/equipped relic state may persist beyond a run.</span>
+            </div>
+            <div class="life">
+              <b>Visual-only</b>
+              <span>Feedback layer only. It must not become gameplay state by accident.</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="pipeline">
+          <p class="section-kicker">Combat Timing</p>
+          <h2>Resolve ability interactions through named timing stacks.</h2>
+          <p>
+            One linear pipeline is not enough for combat. A new ability must declare which timing stack
+            it enters, what event makes it eligible, and which later hooks it may affect.
+          </p>
+          <div class="pipeline" aria-label="Ability integration pipeline">
+            <div class="pipe-step">
+              <b>Outgoing action</b>
+              <span>Base color action, native supergem replacement, stat query, pre-payload modifier, payload, feedback.</span>
+            </div>
+            <div class="pipe-step">
+              <b>Incoming damage reaction</b>
+              <span>Targeting, intercept, mitigation/guard, shield absorption, true HP damage, reflect/counter, feedback.</span>
+            </div>
+            <div class="pipe-step">
+              <b>Post-damage proc</b>
+              <span>Positive damage or healing gates resolve after payload, then check eligibility, roll, payload, feedback.</span>
+            </div>
+            <div class="pipe-step">
+              <b>Board / refill aftermath</b>
+              <span>Board effects, rerolls, chain pops, refill, and reward hooks resolve after direct combat payloads.</span>
+            </div>
+            <div class="pipe-step pipe-end">
+              <b>Pre-combat / session passive</b>
+              <span>Affinity, Vault/relic, and session passives enter through explicit setup, stat query, or trigger hooks.</span>
+            </div>
+            <div class="pipe-step pipe-empty" aria-hidden="true"></div>
+            <div class="pipe-step pipe-empty" aria-hidden="true"></div>
+            <div class="pipe-step pipe-empty" aria-hidden="true"></div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Timing stack</th>
+                  <th>Canonical order</th>
+                  <th>Skills that depend on it</th>
+                  <th>Design risk</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Outgoing action</td>
+                  <td>Color action -> supergem replace/augment -> stat query -> pre-payload modifier -> payload -> feedback.</td>
+                  <td>Bell, Trinity, Growth, Blue Spark, Weaken, Goldstrike.</td>
+                  <td>Pre-payload and post-payload procs must not be confused.</td>
+                </tr>
+                <tr>
+                  <td>Incoming damage reaction</td>
+                  <td>Hit declared -> redirect/intercept -> heavy-hit check -> mitigation/guard -> shield absorb -> true HP apply -> post-damage reaction.</td>
+                  <td>Temporary Ward, Cover / Block, Phalanx, Reprisal / Bounce, Ward Bash, Guard Rail.</td>
+                  <td>Shield-only damage does not count as true HP damage unless the ability says it does.</td>
+                </tr>
+                <tr>
+                  <td>Post-damage proc</td>
+                  <td>Payload lands -> positive amount confirmed -> eligibility -> roll -> secondary payload -> feedback.</td>
+                  <td>Destiny, Growth, reward or lifesteal-style future abilities.</td>
+                  <td>Activation text or attempted hits must not count as payload evidence.</td>
+                </tr>
+                <tr>
+                  <td>Board / refill aftermath</td>
+                  <td>Match resolves -> board effect eligibility -> bounded reroll/chain effect -> refill -> next action readiness.</td>
+                  <td>Second Chance, Chain Pop, Hot Streak, future board-shaping skills.</td>
+                  <td>Board effects need no-chain and no-guaranteed-color containment.</td>
+                </tr>
+                <tr>
+                  <td>Session passive hook</td>
+                  <td>Session start or acquisition -> passive registration -> stat query or event hook -> visible proof when it matters.</td>
+                  <td>Affinity, Vault/relic passives, Fresh Start, Last Push.</td>
+                  <td>Background value must remain inspectable and must not become invisible stat soup.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="note-line">
+            Event names and payload fields in this section are design-target contracts. Current runtime has
+            partial trait hooks, skill helpers, and Destiny-specific proc evidence; implementation work must
+            adapter-map or build the relevant event seam before relying on these names.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Event name</th>
+                  <th>Use for</th>
+                  <th>Rejected states</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>combat_start</code></td>
+                  <td>Fresh Start, encounter-entry passives, pre-combat setup.</td>
+                  <td>Mid-combat selection unless the skill says "next combat."</td>
+                </tr>
+                <tr>
+                  <td><code>gem_match_resolved</code></td>
+                  <td>Base color payoff, board aftermath, generic match-count skills.</td>
+                  <td>Preview, invalid selection, canceled action, or dev-only activation.</td>
+                </tr>
+                <tr>
+                  <td><code>blue_match_consumed</code></td>
+                  <td>Astral Flow fill and blue-specific party effects.</td>
+                  <td>Blue UI animation without consumed board value.</td>
+                </tr>
+                <tr>
+                  <td><code>hero_attack_declared</code></td>
+                  <td>Attack-start checks and target validation.</td>
+                  <td>Dead target, no selected target, or non-attack color result.</td>
+                </tr>
+                <tr>
+                  <td><code>enemy_damage_applied</code></td>
+                  <td>Incoming damage reactions after true HP is changed.</td>
+                  <td>Shield-only absorption unless explicitly allowed.</td>
+                </tr>
+                <tr>
+                  <td><code>hero_positive_damage_dealt</code></td>
+                  <td>Destiny, Growth, lifesteal-style future skills.</td>
+                  <td>Zero damage, blocked damage, wrong target class, activation-only text.</td>
+                </tr>
+                <tr>
+                  <td><code>special_hit_applied</code></td>
+                  <td>Weaken, Invert, Elevate, future special-hit payloads.</td>
+                  <td>Special activation without a valid hit or eligible target.</td>
+                </tr>
+                <tr>
+                  <td><code>supergem_spent</code></td>
+                  <td>Native supergem replacement or augment behavior.</td>
+                  <td>Ordinary gem match, non-native fallback, or preview state.</td>
+                </tr>
+                <tr>
+                  <td><code>combo_finisher_resolved</code></td>
+                  <td>Finisher-only multipliers, repeat attacks, reward-chain hooks.</td>
+                  <td>Ordinary match, generated repeat attack, or canceled combo.</td>
+                </tr>
+                <tr>
+                  <td><code>enemy_hit_declared</code></td>
+                  <td>Intercept, heavy-hit checks, pre-HP mitigation, shield absorption.</td>
+                  <td>Previewed enemy attack, shield-only UI pulse, or already redirected hit.</td>
+                </tr>
+                <tr>
+                  <td><code>ally_action_resolved</code></td>
+                  <td>Kojonn support timing: Lift, Step, future ally choreography.</td>
+                  <td>Enemy action, canceled ally action, or generated repeat action unless allowed.</td>
+                </tr>
+                <tr>
+                  <td><code>party_status_checked</code></td>
+                  <td>Low-HP comeback checks and weak-board checks.</td>
+                  <td>Healthy party, stable board, or status checked before the triggering state exists.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Event envelope</th>
+                  <th>Required payload fields</th>
+                  <th>Why it matters</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>enemy_hit_declared</code></td>
+                  <td><code>sourceUID</code>, <code>targetUID</code>, <code>rawDamage</code>, <code>sourceTag</code>, <code>generatedBySkillId</code>, <code>alreadyRedirected</code></td>
+                  <td>Lets intercept, mitigation, shield, and true-HP checks share one damage story.</td>
+                </tr>
+                <tr>
+                  <td><code>enemy_damage_applied</code></td>
+                  <td><code>sourceUID</code>, <code>targetUID</code>, <code>appliedDamage</code>, <code>trueHpDamageApplied</code>, <code>sourceTag</code>, <code>generatedBySkillId</code>, <code>alreadyCounteredThisHit</code></td>
+                  <td>Prevents shield-only hits from triggering post-damage reactions.</td>
+                </tr>
+                <tr>
+                  <td><code>hero_positive_damage_dealt</code></td>
+                  <td><code>sourceUID</code>, <code>targetUID</code>, <code>appliedDamage</code>, <code>sourceTag</code>, <code>generatedBySkillId</code></td>
+                  <td>Separates real damage from activation text and blocks self-feeding loops.</td>
+                </tr>
+                <tr>
+                  <td><code>gem_match_resolved</code></td>
+                  <td><code>actorUID</code>, <code>color</code>, <code>consumedCount</code>, <code>chainIndex</code>, <code>sourceTag</code>, <code>generatedBySkillId</code></td>
+                  <td>Keeps board effects, color hooks, and reward chains from guessing at match state.</td>
+                </tr>
+                <tr>
+                  <td><code>special_hit_applied</code></td>
+                  <td><code>sourceUID</code>, <code>targetUID</code>, <code>specialId</code>, <code>appliedDamage</code>, <code>sourceTag</code>, <code>generatedBySkillId</code>, <code>eligibleEffectId</code></td>
+                  <td>Lets special-hit skills validate target, payload, and eligible effect before rolling.</td>
+                </tr>
+                <tr>
+                  <td><code>hero_attack_declared</code></td>
+                  <td><code>actorUID</code>, <code>targetUID</code>, <code>actionType</code>, <code>color</code>, <code>sourceTag</code>, <code>generatedBySkillId</code></td>
+                  <td>Lets attack-start skills reject generated actions or invalid targets before rolling.</td>
+                </tr>
+                <tr>
+                  <td><code>supergem_spent</code></td>
+                  <td><code>actorUID</code>, <code>color</code>, <code>consumedCount</code>, <code>isNativeOwner</code>, <code>fallbackMode</code>, <code>sourceTag</code>, <code>generatedBySkillId</code></td>
+                  <td>Keeps native spikes, fallback behavior, and spend/augment rules explicit.</td>
+                </tr>
+                <tr>
+                  <td><code>combo_finisher_resolved</code></td>
+                  <td><code>actorUID</code>, <code>targetUID</code>, <code>chainIndex</code>, <code>sourceTag</code>, <code>generatedBySkillId</code></td>
+                  <td>Lets finisher-only skills reject generated repeat attacks and self-feeding chains.</td>
+                </tr>
+                <tr>
+                  <td><code>blue_match_consumed</code></td>
+                  <td><code>actorUID</code>, <code>consumedBlue</code>, <code>sourceTag</code>, <code>generatedBySkillId</code></td>
+                  <td>Keeps blue resource conversion separate from blue-colored feedback.</td>
+                </tr>
+                <tr>
+                  <td><code>ally_action_resolved</code></td>
+                  <td><code>actorUID</code>, <code>allyUID</code>, <code>actionType</code>, <code>sourceTag</code>, <code>generatedBySkillId</code></td>
+                  <td>Lets support skills know whose action they are amplifying or moving.</td>
+                </tr>
+                <tr>
+                  <td><code>party_status_checked</code></td>
+                  <td><code>statusType</code>, <code>partyHpPct</code>, <code>boardQuality</code>, <code>sourceTag</code></td>
+                  <td>Prevents low-HP or weak-board skills from rolling against unstated status checks.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pipeline" aria-label="Ability interaction phases">
+            <div class="pipe-step">
+              <b>1. Event</b>
+              <span>Named combat or progression event happens.</span>
+            </div>
+            <div class="pipe-step">
+              <b>2. Eligibility</b>
+              <span>Rejected states are filtered before any roll.</span>
+            </div>
+            <div class="pipe-step">
+              <b>3. Roll</b>
+              <span>Chance is checked only when the event is eligible.</span>
+            </div>
+            <div class="pipe-step">
+              <b>4. Payload</b>
+              <span>Damage, heal, guard, debuff, board, or resource effect resolves.</span>
+            </div>
+            <div class="pipe-step pipe-end">
+              <b>5. Feedback</b>
+              <span>Readable number, animation, icon, log line, board change, or modal state.</span>
+            </div>
+            <div class="pipe-step pipe-empty" aria-hidden="true"></div>
+            <div class="pipe-step pipe-empty" aria-hidden="true"></div>
+            <div class="pipe-step pipe-empty" aria-hidden="true"></div>
+          </div>
+          <div class="callout warning">
+            <strong>Invariant:</strong> activation is not payload execution. Eligible events create checks;
+            successful rolls create procs; payload counters only move after real payloads.
+          </div>
+        </section>
+
+        <section id="skill-draw">
+          <p class="section-kicker">Skill Draw System</p>
+          <h2>Astral Flow opens a real three-card party-skill draw.</h2>
+          <p>
+            Blue matches fill Astral Flow. When the meter fills, the current hero opens a three-card
+            draw over combat. The player chooses exactly one party-wide session skill, the meter resets
+            to zero, and the selected skill stays active until the session ends.
+          </p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>System part</th>
+                  <th>Product contract</th>
+                  <th>Current game anchor</th>
+                  <th>Must not become</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Astral Flow fill</td>
+                  <td>Blue play builds toward a session choice, not direct stat inflation.</td>
+                  <td><code>AstralFlowAmpPoints</code>, <code>AstralFlowAmpReady</code></td>
+                  <td>A generic mana bar for every hero skill.</td>
+                </tr>
+                <tr>
+                  <td>Three-card draw</td>
+                  <td>Show three eligible, unique party-skill candidates from canon skill definitions.</td>
+                  <td><code>SkillDrawCandidates</code></td>
+                  <td>Three placeholders or the same first three cards forever.</td>
+                </tr>
+                <tr>
+                  <td>Selection</td>
+                  <td>Activate exactly one session skill, close the modal, and reset Astral Flow to zero.</td>
+                  <td><code>SelectSkillDrawCard</code></td>
+                  <td>A permanent unlock, instant payload, or hidden multi-pick.</td>
+                </tr>
+                <tr>
+                  <td>Session state</td>
+                  <td>Party-wide draw skills live in shared session state and clear on session end/reset.</td>
+                  <td><code>SessionSkillsByHeroUID.__party_shared__</code></td>
+                  <td>Hero rank storage or account progression.</td>
+                </tr>
+                <tr>
+                  <td>Card information</td>
+                  <td>Target card contract: title, trigger, payoff, chance/rank text, lifetime, risk, and implemented status.</td>
+                  <td>Canonical registry plus modal mapping work</td>
+                  <td>Flavor-only copy with no trigger, payoff, tier, or lifetime clarity.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Party draw pool</h3>
+          <p>
+            The draw pool is the canonical party-skill list, excluding Vault/relic passives and permanent
+            hero-rank cards. If fewer than three eligible skills remain, the system may offer rank-up,
+            refresh, or duplicate-policy cards only after that behavior is explicitly defined here.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Skill</th>
+                  <th>Trigger</th>
+                  <th>Party payoff</th>
+                  <th>Risk</th>
+                  <th>Current payload state</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>party_fresh_start</code> / Fresh Start</td>
+                  <td>Battle start</td>
+                  <td>Small opening power burst.</td>
+                  <td><span class="tag low">Low</span></td>
+                  <td><span class="tag planned">definition only</span></td>
+                </tr>
+                <tr>
+                  <td><code>party_second_chance</code> / Second Chance</td>
+                  <td>Weak board state</td>
+                  <td>Reroll part of a bad board.</td>
+                  <td><span class="tag med">Medium</span></td>
+                  <td><span class="tag planned">definition only</span></td>
+                </tr>
+                <tr>
+                  <td><code>party_momentum</code> / Momentum</td>
+                  <td>Combo finisher</td>
+                  <td>Carry a strong turn into the next turn.</td>
+                  <td><span class="tag med">Medium</span></td>
+                  <td><span class="tag planned">definition only</span></td>
+                </tr>
+                <tr>
+                  <td><code>party_guard_rail</code> / Guard Rail</td>
+                  <td>Heavy hit taken</td>
+                  <td>Soften a dangerous incoming hit.</td>
+                  <td><span class="tag med">Medium</span></td>
+                  <td><span class="tag planned">definition only</span></td>
+                </tr>
+                <tr>
+                  <td><code>party_blue_spark</code> / Blue Spark</td>
+                  <td>Blue match</td>
+                  <td>Spill a small blue-flow bonus into the party.</td>
+                  <td><span class="tag med">Medium</span></td>
+                  <td><span class="tag planned">definition only</span></td>
+                </tr>
+                <tr>
+                  <td><code>party_weaken</code> / Weaken</td>
+                  <td>Special hit</td>
+                  <td>Lower enemy defense for burst windows.</td>
+                  <td><span class="tag med">Medium</span></td>
+                  <td><span class="tag planned">mapping needs correction</span></td>
+                </tr>
+                <tr>
+                  <td><code>party_destiny</code> / Destiny</td>
+                  <td>Eligible hit after positive damage</td>
+                  <td>Small chance to restore HP after a real hit; current runtime scope is source-actor healing.</td>
+                  <td><span class="tag med">Medium</span></td>
+                  <td><span class="tag partial">transitional evidence</span></td>
+                </tr>
+                <tr>
+                  <td><code>party_hot_streak</code> / Hot Streak</td>
+                  <td>Consecutive matches</td>
+                  <td>Improve payoff for sustained good play.</td>
+                  <td><span class="tag med">Medium</span></td>
+                  <td><span class="tag planned">definition only</span></td>
+                </tr>
+                <tr>
+                  <td><code>party_last_push</code> / Last Push</td>
+                  <td>Low party HP</td>
+                  <td>Brief comeback bump near defeat.</td>
+                  <td><span class="tag med">Medium</span></td>
+                  <td><span class="tag planned">definition only</span></td>
+                </tr>
+                <tr>
+                  <td><code>party_chain_pop</code> / Chain Pop</td>
+                  <td>Match</td>
+                  <td>Trigger a small extra board effect.</td>
+                  <td><span class="tag med">Medium</span></td>
+                  <td><span class="tag planned">definition only</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Party draw proof cues</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Skill ID</th>
+                  <th>Party promise / tactical question</th>
+                  <th>System role</th>
+                  <th>Counterpressure</th>
+                  <th>Proof cue</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>party_fresh_start</code></td>
+                  <td>Open strong: is this the right session opener?</td>
+                  <td>Source</td>
+                  <td>Combat-start only; mid-session pick waits for next combat.</td>
+                  <td>Start-of-combat buff icon and proc trace.</td>
+                </tr>
+                <tr>
+                  <td><code>party_second_chance</code></td>
+                  <td>Board rescue: can the party recover a weak board?</td>
+                  <td>Gate / converter</td>
+                  <td>Limited tiles and no guaranteed color.</td>
+                  <td>Changed tile count and reroll source tag.</td>
+                </tr>
+                <tr>
+                  <td><code>party_momentum</code></td>
+                  <td>Carry tempo: can a strong turn improve the next action?</td>
+                  <td>Feedback loop</td>
+                  <td>One pending buff; cannot refresh itself.</td>
+                  <td>Pending buff appears once and clears on use.</td>
+                </tr>
+                <tr>
+                  <td><code>party_guard_rail</code></td>
+                  <td>Comeback defense: can the party survive one spike?</td>
+                  <td>Drain / gate</td>
+                  <td>Heavy-hit threshold and nonzero remaining damage.</td>
+                  <td>Damage-reduction trace before shield/HP apply.</td>
+                </tr>
+                <tr>
+                  <td><code>party_blue_spark</code></td>
+                  <td>Blue payoff: does Flow play spill into magic tempo?</td>
+                  <td>Converter</td>
+                  <td>Short duration and no recursive blue gain.</td>
+                  <td>Blue consumed event, MAG buff, and duration clear.</td>
+                </tr>
+                <tr>
+                  <td><code>party_weaken</code></td>
+                  <td>Target setup: does a special hit open a burst window?</td>
+                  <td>Drain</td>
+                  <td>Valid damaged enemy and debuff stack cap.</td>
+                  <td>Enemy DEF debuff icon with target UID.</td>
+                </tr>
+                <tr>
+                  <td><code>party_destiny</code></td>
+                  <td>Hit-to-heal sustain: can real damage recover the party?</td>
+                  <td>Feedback loop</td>
+                  <td>Positive applied damage only; zero damage fails.</td>
+                  <td>Heal pulse, HP delta, and <code>hero_positive_damage_dealt</code> trace.</td>
+                </tr>
+                <tr>
+                  <td><code>party_hot_streak</code></td>
+                  <td>Reward pressure: should consecutive play improve the next payoff?</td>
+                  <td>Feedback loop</td>
+                  <td>No recursive reward source.</td>
+                  <td>Reward bonus source tag and one-shot consumption.</td>
+                </tr>
+                <tr>
+                  <td><code>party_last_push</code></td>
+                  <td>Near-defeat rally: can the party make one comeback push?</td>
+                  <td>Source / gate</td>
+                  <td>HP threshold and cooldown.</td>
+                  <td>Low-HP check, cooldown trace, ATK/MAG icons.</td>
+                </tr>
+                <tr>
+                  <td><code>party_chain_pop</code></td>
+                  <td>Board volatility: can a match create one extra board effect?</td>
+                  <td>Source</td>
+                  <td>Generated board effect suppresses Chain Pop.</td>
+                  <td>Extra board effect has <code>party_chain_pop</code> source tag.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Character tier upgrades</h3>
+          <p>
+            Hero skill ranks are a separate character progression system. A tier ladder should read as
+            effective rank values, not vague growth theater. Example: <code>Womble</code> could be
+            "on attack, chance to gain HP" at <code>3%/6%/9%/12%</code> for ranks 1-4.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Hero</th>
+                  <th>Tiered hero skills</th>
+                  <th>Rank meaning</th>
+                  <th>Draw relationship</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Falie</td>
+                  <td>Ward Bash, Cover / Block, Reprisal / Bounce, Phalanx</td>
+                  <td>Ranks improve protection, retaliation, or anti-spike chance.</td>
+                  <td>Not party draw cards unless product canon changes.</td>
+                </tr>
+                <tr>
+                  <td>Huun</td>
+                  <td>Bell, Glare, Trinity, Growth</td>
+                  <td>Ranks improve burst, turn delay, extra-action, or damage-to-Flow chance.</td>
+                  <td>Can synergize with party draw skills but does not replace them.</td>
+                </tr>
+                <tr>
+                  <td>Runa</td>
+                  <td>Aura Totem: Blast, Aura Totem: Burn, Invert, Intensify</td>
+                  <td>Ranks improve green AOE field pressure, burst AOE healing, targeting disruption, damage-profile shifts, or color-payoff amplification.</td>
+                  <td>Totem/relic lanes must stay distinct from session party skills.</td>
+                </tr>
+                <tr>
+                  <td>Kojonn</td>
+                  <td>Lock, Lift, Step, Elevate</td>
+                  <td>Current ranks improve cost bypass, ally amplification, turn choreography, or amp escalation; redesign may tie him to blue Astral Flow growth.</td>
+                  <td>High-risk support or blue-growth ranks need hard anti-loop containment.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="callout warning">
+            <strong>Current drift:</strong> the current game has the draw state and modal seam, but candidate
+            building still needs real eligible-pool behavior, duplicate policy, implemented-status display,
+            and rank/effective-chance presentation.
+          </div>
+        </section>
+
+        <section id="skill-tiers">
+          <p class="section-kicker">Skill Tier Catalog</p>
+          <h2>Current skills and rank ladders.</h2>
+          <p>
+            This is the current named skill pool for hero ranks and Astral Flow party draws. Keep this
+            section aligned with the canonical registry so skill names, triggers, risk, and tier math do
+            not silently drift. The source ladders are rank increments; effective chance is cumulative by
+            rank.
+          </p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Risk band</th>
+                  <th>Rank increments</th>
+                  <th>Effective by rank</th>
+                  <th>Max chance</th>
+                  <th>Hero rank costs</th>
+                  <th>Design use</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="tag low">Low</span></td>
+                  <td><code>6%/6%/7%/8%</code></td>
+                  <td><code>6%/12%/19%/27%</code></td>
+                  <td><code>27%</code></td>
+                  <td><code>1/2/3/4</code></td>
+                  <td>Safe, readable procs with low loop pressure.</td>
+                </tr>
+                <tr>
+                  <td><span class="tag med">Medium</span></td>
+                  <td><code>4%/4%/5%/5%</code></td>
+                  <td><code>4%/8%/13%/18%</code></td>
+                  <td><code>18%</code></td>
+                  <td><code>2/3/4/5</code></td>
+                  <td>Useful build pressure with containment needs.</td>
+                </tr>
+                <tr>
+                  <td><span class="tag high">High</span></td>
+                  <td><code>2%/2%/3%/3%</code></td>
+                  <td><code>2%/4%/7%/10%</code></td>
+                  <td><code>10%</code></td>
+                  <td><code>3/4/5/6</code></td>
+                  <td>Turn, multiplier, resource, or persistent-state effects.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 id="skill-function-shapes">Hero skill function shapes</h3>
+          <p>
+            Hero skills use the tier values below as effective rank values. Unless a later design states
+            otherwise, read the ladder as effective chance by rank: R1, R2, R3, R4. Read each row as an
+            action recipe, not a one-function implementation request: player verb, trigger/eligibility,
+            payload, containment, and proof. Skill names link to <a href="./hero-and-party-skill-pseudocode.md">human-readable pseudocode</a>.
+          </p>
+          <p class="note-line">
+            Design target: listed effective values are cumulative rank values. Current runtime may still read
+            the active rank slot; do not rely on cumulative behavior until the rank-value seam is adapted and tested.
+          </p>
+          <div class="table-wrap">
+            <table class="skill-summary">
+              <thead>
+                <tr>
+                  <th>Skill</th>
+                  <th>Trigger / chance</th>
+                  <th>Function shape</th>
+                  <th>Risk / containment / state</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="cell-stack"><span>Falie</span><code>falie_ward_bash</code><a href="./hero-and-party-skill-pseudocode.md#ward-bash">Ward Bash</a></div></td>
+                  <td><div class="cell-stack"><code>enemy_damage_applied</code><span class="cell-note">Effective <code>6%/12%/19%/27%</code></span></div></td>
+                  <td>If proc after being attacked, counterstrike the attacker with a physical ward hit.</td>
+                  <td><div class="cell-stack"><span class="tag low">Low</span><span>Once per incoming hit.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><span>Falie</span><code>falie_cover_block</code><a href="./hero-and-party-skill-pseudocode.md#cover--block">Cover / Block</a></div></td>
+                  <td><div class="cell-stack"><code>enemy_hit_declared</code><span class="cell-note">Effective <code>4%/8%/13%/18%</code></span></div></td>
+                  <td>If proc when an ally is hit, Falie intercepts and redirects that damage to herself.</td>
+                  <td><div class="cell-stack"><span class="tag med">Medium</span><span>One intercept per hit; redirected damage keeps source tag.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><span>Falie</span><code>falie_reprisal_bounce</code><a href="./hero-and-party-skill-pseudocode.md#reprisal--bounce">Reprisal / Bounce</a></div></td>
+                  <td><div class="cell-stack"><code>enemy_damage_applied</code><span class="cell-note">Effective <code>4%/8%/13%/18%</code></span></div></td>
+                  <td>If proc after taking damage, reflect a rank-scaled percent of that damage to the attacker.</td>
+                  <td><div class="cell-stack"><span class="tag med">Medium</span><span>Reflect cannot trigger another reflect or counter chain.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><span>Falie</span><code>falie_phalanx</code><a href="./hero-and-party-skill-pseudocode.md#phalanx">Phalanx</a></div></td>
+                  <td><div class="cell-stack"><code>enemy_hit_declared</code><span class="cell-note">Effective <code>2%/4%/7%/10%</code></span></div></td>
+                  <td>If heavy-hit proc succeeds, reduce incoming damage by a rank-scaled percent.</td>
+                  <td><div class="cell-stack"><span class="tag high">High</span><span>Heavy-hit threshold required; no full damage denial.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><span>Huun</span><code>huun_bell</code><a href="./hero-and-party-skill-pseudocode.md#bell">Bell</a></div></td>
+                  <td><div class="cell-stack"><code>combo_finisher_resolved</code><span class="cell-note">Effective <code>4%/8%/13%/18%</code></span></div></td>
+                  <td>If proc on a finisher, multiply the finishing hit against one enemy.</td>
+                  <td><div class="cell-stack"><span class="tag med">Medium</span><span>Finisher-only; one multiplier source per payload.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><span>Huun</span><code>huun_glare</code><a href="./hero-and-party-skill-pseudocode.md#glare">Glare</a></div></td>
+                  <td><div class="cell-stack"><code>hero_attack_declared</code><span class="cell-note">Effective <code>4%/8%/13%/18%</code></span></div></td>
+                  <td>If proc on attack, push the target enemy later in the turn order.</td>
+                  <td><div class="cell-stack"><span class="tag med">Medium</span><span>Per-target delay cap; bosses may resist.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><span>Huun</span><code>huun_trinity</code><a href="./hero-and-party-skill-pseudocode.md#trinity">Trinity</a></div></td>
+                  <td><div class="cell-stack"><code>combo_finisher_resolved</code><span class="cell-note">Effective <code>2%/4%/7%/10%</code></span></div></td>
+                  <td>If proc on a finisher, repeat Huun's attack sequence against the target.</td>
+                  <td><div class="cell-stack"><span class="tag high">High</span><span>No repeat attack may trigger Trinity again.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><span>Huun</span><code>huun_growth</code><a href="./hero-and-party-skill-pseudocode.md#growth">Growth</a></div></td>
+                  <td><div class="cell-stack"><code>hero_positive_damage_dealt</code><span class="cell-note">Effective <code>2%/4%/7%/10%</code></span></div></td>
+                  <td>If proc after positive damage, convert part of dealt damage into Astral Flow.</td>
+                  <td><div class="cell-stack"><span class="tag high">High</span><span>Conversion cap; generated Flow cannot immediately fuel another Growth loop.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><span>Runa</span><code>runa_aura_totem_blast</code><a href="./hero-and-party-skill-pseudocode.md#aura-totem-blast">Aura Totem: Blast</a></div></td>
+                  <td><div class="cell-stack"><code>hero_attack_declared</code><span class="cell-note">Effective <code>2%/4%/7%/10%</code></span></div></td>
+                  <td>If proc on attack, summon a destructible detonation totem that ticks, stores charge, and bursts.</td>
+                  <td><div class="cell-stack"><span class="tag high">High</span><span>Concurrent totem cap; ticks cannot recursively summon totems.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><span>Runa</span><code>runa_aura_totem_burn</code><a href="./hero-and-party-skill-pseudocode.md#aura-totem-burn">Aura Totem: Burn</a></div></td>
+                  <td><div class="cell-stack"><code>hero_attack_declared</code><span class="cell-note">Effective <code>2%/4%/7%/10%</code></span></div></td>
+                  <td>If proc on attack, summon a destructible persistent damage-over-time totem.</td>
+                  <td><div class="cell-stack"><span class="tag high">High</span><span>Concurrent totem and duration caps; enemies may target totems.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><span>Runa</span><code>runa_invert</code><a href="./hero-and-party-skill-pseudocode.md#invert">Invert</a></div></td>
+                  <td><div class="cell-stack"><code>special_hit_applied</code><span class="cell-note">Effective <code>2%/4%/7%/10%</code></span></div></td>
+                  <td>Blocked design: valid special hit may invert matchup stats, but exact stat pair and restore rules are unresolved.</td>
+                  <td><div class="cell-stack"><span class="tag high">High</span><span>Duration and boss rules required; source wording conflict must stay visible.</span><span class="cell-note">State: <span class="tag conflict">design conflict</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><span>Runa</span><code>runa_intensify</code><a href="./hero-and-party-skill-pseudocode.md#intensify">Intensify</a></div></td>
+                  <td><div class="cell-stack"><code>gem_match_resolved</code><span class="cell-note">Red match; effective <code>2%/4%/7%/10%</code></span></div></td>
+                  <td>If proc on red match, double the next red or heal payoff for a short window.</td>
+                  <td><div class="cell-stack"><span class="tag high">High</span><span>One pending double; expires after next eligible payoff.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><span>Kojonn</span><code>kojonn_lock</code><a href="./hero-and-party-skill-pseudocode.md#lock">Lock</a></div></td>
+                  <td><div class="cell-stack"><code>gem_match_resolved</code><span class="cell-note">Effective <code>2%/4%/7%/10%</code></span></div></td>
+                  <td>If proc on gem use, make the next gem action free.</td>
+                  <td><div class="cell-stack"><span class="tag high">High</span><span>Free action cannot trigger another free action.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><span>Kojonn</span><code>kojonn_lift</code><a href="./hero-and-party-skill-pseudocode.md#lift">Lift</a></div></td>
+                  <td><div class="cell-stack"><code>ally_action_resolved</code><span class="cell-note">Effective <code>2%/4%/7%/10%</code></span></div></td>
+                  <td>If proc on ally attack, add a temporary attack boost to that ally.</td>
+                  <td><div class="cell-stack"><span class="tag high">High</span><span>One attack boost source per ally payload.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><span>Kojonn</span><code>kojonn_step</code><a href="./hero-and-party-skill-pseudocode.md#step">Step</a></div></td>
+                  <td><div class="cell-stack"><code>ally_action_resolved</code><span class="cell-note">Effective <code>2%/4%/7%/10%</code></span></div></td>
+                  <td>If proc on ally action, advance that ally forward in turn order.</td>
+                  <td><div class="cell-stack"><span class="tag high">High</span><span>Per-ally advance cap; cannot create immediate repeat turns.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><span>Kojonn</span><code>kojonn_elevate</code><a href="./hero-and-party-skill-pseudocode.md#elevate">Elevate</a></div></td>
+                  <td><div class="cell-stack"><code>special_hit_applied</code><span class="cell-note">Effective <code>2%/4%/7%/10%</code></span></div></td>
+                  <td>If proc on a valid special hit, raise an ally effect to the next tier.</td>
+                  <td><div class="cell-stack"><span class="tag high">High</span><span>Eligible effect list and stack cap required.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Design contract and proof cues</h3>
+          <p>
+            Each skill needs a local design contract so iteration can change numbers without changing
+            function. Proof cues name what a human or deterministic check should be able to see.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Skill ID</th>
+                  <th>Player role / tactical question</th>
+                  <th>System role</th>
+                  <th>Counterpressure</th>
+                  <th>Proof cue</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>falie_ward_bash</code></td>
+                  <td>Tank retaliation: can Falie bait attacks into punishment?</td>
+                  <td>Feedback loop</td>
+                  <td>Ranged pressure, stun, or attacks that avoid true HP damage.</td>
+                  <td>Counter VFX, attacker HP loss, proc trace source.</td>
+                </tr>
+                <tr>
+                  <td><code>falie_cover_block</code></td>
+                  <td>Protector tradeoff: should Falie take the hit for an ally?</td>
+                  <td>Gate / redirect</td>
+                  <td>Focus fire, wardbreak, intercept cap.</td>
+                  <td>Damage target changes to Falie; source tag remains visible.</td>
+                </tr>
+                <tr>
+                  <td><code>falie_reprisal_bounce</code></td>
+                  <td>Retaliation sustain: can incoming pain become return pressure?</td>
+                  <td>Feedback loop</td>
+                  <td>Reflect immunity, true-HP gate, non-recursion tag.</td>
+                  <td>Reflect arc, tagged reflected damage, no second reflect proc.</td>
+                </tr>
+                <tr>
+                  <td><code>falie_phalanx</code></td>
+                  <td>Anti-spike defense: can the party survive burst without erasing threat?</td>
+                  <td>Gate / drain</td>
+                  <td>Heavy-hit threshold, partial reduction cap.</td>
+                  <td>Incoming damage reduced, true HP still changes if damage remains.</td>
+                </tr>
+                <tr>
+                  <td><code>huun_bell</code></td>
+                  <td>Execution burst: is the finisher worth setting up?</td>
+                  <td>Converter</td>
+                  <td>Finisher-only gate, one multiplier source.</td>
+                  <td>Multiplier tag on final payload and larger damage number.</td>
+                </tr>
+                <tr>
+                  <td><code>huun_glare</code></td>
+                  <td>Tempo disruption: should Huun delay a key enemy?</td>
+                  <td>Delay</td>
+                  <td>Boss resistance and per-target delay cap.</td>
+                  <td>Turn-order marker moves later with source tag.</td>
+                </tr>
+                <tr>
+                  <td><code>huun_trinity</code></td>
+                  <td>Greedy execution: can Huun chain a finisher without infinite attacks?</td>
+                  <td>Source</td>
+                  <td>Generated attacks suppress Trinity and extra-action skills.</td>
+                  <td>Exactly two tagged repeats; no repeat-triggered Trinity.</td>
+                </tr>
+                <tr>
+                  <td><code>huun_growth</code></td>
+                  <td>Damage-to-Flow greed: can burst accelerate the next session choice?</td>
+                  <td>Converter</td>
+                  <td>Flow gain cap and no immediate self-fuel.</td>
+                  <td>Flow meter increases with conversion trace and cap reason.</td>
+                </tr>
+                <tr>
+                  <td><code>runa_aura_totem_blast</code></td>
+                  <td>Field setup: can Runa invest in a delayed burst object?</td>
+                  <td>Delay / source</td>
+                  <td>Totem cap, enemy targeting, no tick-created totems.</td>
+                  <td>Totem object, charge ticks, burst trace on expiry/death.</td>
+                </tr>
+                <tr>
+                  <td><code>runa_aura_totem_burn</code></td>
+                  <td>Persistent pressure: can Runa hold damage over time on the field?</td>
+                  <td>Persistent hazard</td>
+                  <td>Duration cap, target cap, cleanse or totem attacks.</td>
+                  <td>Burn ticks show source and remaining duration.</td>
+                </tr>
+                <tr>
+                  <td><code>runa_invert</code></td>
+                  <td>Rule inversion: can Runa flip a matchup window?</td>
+                  <td>Gate / converter</td>
+                  <td>Blocked until stat pair, duration, restore, and boss rules resolve.</td>
+                  <td>Blocked-design trace until resolved; then stat-swap icon and restore event.</td>
+                </tr>
+                <tr>
+                  <td><code>runa_intensify</code></td>
+                  <td>Payoff timing: should Runa hold the next red/heal burst?</td>
+                  <td>Delay / converter</td>
+                  <td>One pending double, expiry after next eligible payoff.</td>
+                  <td>Pending-double icon clears after payoff or expiry.</td>
+                </tr>
+                <tr>
+                  <td><code>kojonn_lock</code></td>
+                  <td>Cost bypass: can Kojonn create one free board action?</td>
+                  <td>Source</td>
+                  <td>Free action suppresses Lock and cannot create another free action.</td>
+                  <td>One charge appears, is consumed, and logs source.</td>
+                </tr>
+                <tr>
+                  <td><code>kojonn_lift</code></td>
+                  <td>Ally amplification: who gets the next damage window?</td>
+                  <td>Converter</td>
+                  <td>One boost source per ally payload.</td>
+                  <td>Ally buff icon and tagged boosted payload.</td>
+                </tr>
+                <tr>
+                  <td><code>kojonn_step</code></td>
+                  <td>Turn choreography: whose action needs to happen sooner?</td>
+                  <td>Delay</td>
+                  <td>Per-ally advance cap; cannot create an immediate repeat turn.</td>
+                  <td>Turn-order movement with cap/blocked trace when denied.</td>
+                </tr>
+                <tr>
+                  <td><code>kojonn_elevate</code></td>
+                  <td>Effect upgrade: which ally effect is worth raising a tier?</td>
+                  <td>Converter</td>
+                  <td>Eligible-effect list and stack cap.</td>
+                  <td>Effect tier marker increments once with eligible effect id.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Party draw skills</h3>
+          <p>
+            Party skills are selected through Astral Flow and currently behave as session skills. Their
+            reference ladders are listed only for future party-rank design; current session picks use
+            rank 1 chance unless a party-rank system is explicitly added. Skill names link to
+            <a href="./hero-and-party-skill-pseudocode.md#party-skills">party-skill pseudocode</a>.
+          </p>
+          <div class="table-wrap">
+            <table class="skill-summary">
+              <thead>
+                <tr>
+                  <th>Skill</th>
+                  <th>Trigger / chance</th>
+                  <th>Function shape</th>
+                  <th>Risk / containment / state</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="cell-stack"><code>party_fresh_start</code><a href="./hero-and-party-skill-pseudocode.md#fresh-start">Fresh Start</a></div></td>
+                  <td><div class="cell-stack"><code>combat_start</code><span class="cell-note">Reference <code>6%/12%/19%/27%</code></span></div></td>
+                  <td>If proc at combat start, add a short party attack opener buff.</td>
+                  <td><div class="cell-stack"><span class="tag low">Low</span><span>If selected mid-session, applies to next combat start only.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><code>party_second_chance</code><a href="./hero-and-party-skill-pseudocode.md#second-chance">Second Chance</a></div></td>
+                  <td><div class="cell-stack"><code>party_status_checked</code><span class="cell-note">Reference <code>4%/8%/13%/18%</code></span></div></td>
+                  <td>If proc on weak board state, reroll a small selected gem subset.</td>
+                  <td><div class="cell-stack"><span class="tag med">Medium</span><span>Limited tiles; reroll cannot guarantee a desired color.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><code>party_momentum</code><a href="./hero-and-party-skill-pseudocode.md#momentum">Momentum</a></div></td>
+                  <td><div class="cell-stack"><code>combo_finisher_resolved</code><span class="cell-note">Reference <code>4%/8%/13%/18%</code></span></div></td>
+                  <td>If proc after a finisher chain, carry a short party attack buff into the next action.</td>
+                  <td><div class="cell-stack"><span class="tag med">Medium</span><span>One pending buff; cannot refresh itself indefinitely.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><code>party_guard_rail</code><a href="./hero-and-party-skill-pseudocode.md#guard-rail">Guard Rail</a></div></td>
+                  <td><div class="cell-stack"><code>enemy_hit_declared</code><span class="cell-note">Reference <code>4%/8%/13%/18%</code></span></div></td>
+                  <td>If proc on heavy incoming damage, reduce party damage by a rank-scaled percent.</td>
+                  <td><div class="cell-stack"><span class="tag med">Medium</span><span>Heavy-hit threshold required; cannot erase all damage.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><code>party_blue_spark</code><a href="./hero-and-party-skill-pseudocode.md#blue-spark">Blue Spark</a></div></td>
+                  <td><div class="cell-stack"><code>blue_match_consumed</code><span class="cell-note">Reference <code>4%/8%/13%/18%</code></span></div></td>
+                  <td>If proc after blue is consumed, add a short party magic buff.</td>
+                  <td><div class="cell-stack"><span class="tag med">Medium</span><span>Short duration; blue gain cannot recursively trigger more blue gain.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><code>party_weaken</code><a href="./hero-and-party-skill-pseudocode.md#weaken">Weaken</a></div></td>
+                  <td><div class="cell-stack"><code>special_hit_applied</code><span class="cell-note">Reference <code>4%/8%/13%/18%</code></span></div></td>
+                  <td>If proc on special hit, apply a short DEF debuff to the target enemy.</td>
+                  <td><div class="cell-stack"><span class="tag med">Medium</span><span>Debuff stack cap; target must be a valid damaged enemy.</span><span class="cell-note">State: <span class="tag planned">mapping needs correction</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><code>party_destiny</code><a href="./hero-and-party-skill-pseudocode.md#destiny">Destiny</a></div></td>
+                  <td><div class="cell-stack"><code>hero_positive_damage_dealt</code><span class="cell-note">Reference <code>4%/8%/13%/18%</code></span></div></td>
+                  <td>If proc after a positive hit, restore HP; current runtime evidence heals the source actor, not a generic party payload.</td>
+                  <td><div class="cell-stack"><span class="tag med">Medium</span><span>Positive applied damage required; activation or zero damage does not count.</span><span class="cell-note">State: <span class="tag partial">transitional evidence</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><code>party_hot_streak</code><a href="./hero-and-party-skill-pseudocode.md#hot-streak">Hot Streak</a></div></td>
+                  <td><div class="cell-stack"><code>gem_match_resolved</code><span class="cell-note">Consecutive chain; reference <code>4%/8%/13%/18%</code></span></div></td>
+                  <td>If proc on a consecutive chain, add a run/session reward or effect bonus.</td>
+                  <td><div class="cell-stack"><span class="tag med">Medium</span><span>Reward bonus cannot recursively create reward bonus.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><code>party_last_push</code><a href="./hero-and-party-skill-pseudocode.md#last-push">Last Push</a></div></td>
+                  <td><div class="cell-stack"><code>party_status_checked</code><span class="cell-note">Reference <code>4%/8%/13%/18%</code></span></div></td>
+                  <td>If proc at low party HP, add short ATK and MAG comeback buffs.</td>
+                  <td><div class="cell-stack"><span class="tag med">Medium</span><span>HP threshold and cooldown required to prevent threshold abuse.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-stack"><code>party_chain_pop</code><a href="./hero-and-party-skill-pseudocode.md#chain-pop">Chain Pop</a></div></td>
+                  <td><div class="cell-stack"><code>gem_match_resolved</code><span class="cell-note">Reference <code>4%/8%/13%/18%</code></span></div></td>
+                  <td>If proc on a valid match, trigger one extra board effect.</td>
+                  <td><div class="cell-stack"><span class="tag med">Medium</span><span>Extra board effect cannot trigger Chain Pop again.</span><span class="cell-note">State: <span class="tag planned">definition only</span></span></div></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="hero-tensions">
+          <p class="section-kicker">Hero Build Tensions</p>
+          <h2>Each hero needs pressure, payoff, and counterpressure.</h2>
+          <p>
+            Chess archetypes come from <a href="./hero-and-party-skills.md">hero-and-party-skills.md</a>.
+            Use them as skill-shaping pressure, not literal movement rules.
+          </p>
+          <div class="table-wrap">
+            <table class="archetype-table">
+              <thead>
+                <tr>
+                  <th>Hero</th>
+                  <th>Archetype</th>
+                  <th>Skill-shaping use</th>
+                  <th>Future skills should</th>
+                  <th>Avoid</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Falie</td>
+                  <td><code>ROOK</code></td>
+                  <td>Latent potential vs forced destiny.</td>
+                  <td>Hold a line through protection, interception, anti-spike defense, and counterpressure.</td>
+                  <td>Fragile burst, evasive tricks, or greed mechanics that ignore incoming pressure.</td>
+                </tr>
+                <tr>
+                  <td>Huun</td>
+                  <td><code>KING</code></td>
+                  <td>Optimization under decay and constant risk calculus.</td>
+                  <td>Force clear tradeoffs between cashing out now, holding value, and risking exposure.</td>
+                  <td>Safe passive damage, no-counterplay scaling, or unbounded extra-action loops.</td>
+                </tr>
+                <tr>
+                  <td>Runa</td>
+                  <td><code>KNIGHT</code></td>
+                  <td>Dynamic expansion, rule breaks, and combat-profile pivots.</td>
+                  <td>Bend rules through green AOE totems, enemy targeting shifts, hero damage-profile changes, delayed burst, healing bursts, or positional surprise.</td>
+                  <td>Generic damage procs that do not change targeting, the board, timing, or combat rules.</td>
+                </tr>
+                <tr>
+                  <td>Kojonn</td>
+                  <td><code>PAWN</code></td>
+                  <td>Growth through accumulation and eventual transformation.</td>
+                  <td>Turn small setup actions into visible Astral Flow acquisition, growth pressure, ally timing, or capstone transformation.</td>
+                  <td>Dark-energy identity, cruel black magic framing, invisible aura stacks, or unbounded cost bypass.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="hero-lanes">
+            <article class="hero-lane">
+              <h3>Falie <span class="tag">Red / survival</span></h3>
+              <div class="lane-list">
+                <div><b>Tensions</b><span>Protect vs retaliate vs sacrifice.</span></div>
+                <div><b>Wins by</b><span>Turning pressure into time, ward value, intercepts, and counter damage.</span></div>
+                <div><b>Loses to</b><span>Wardbreak, bypass, attrition that punishes passive stalling.</span></div>
+                <div><b>Synergy</b><span>Survives long enough for Huun cashout or Runa field setup.</span></div>
+              </div>
+            </article>
+            <article class="hero-lane">
+              <h3>Huun <span class="tag">Yellow / gold</span></h3>
+              <div class="lane-list">
+                <div><b>Tensions</b><span>Gold greed vs execution vs tempo disruption.</span></div>
+                <div><b>Wins by</b><span>Converting timing and stored value into burst or turn pressure.</span></div>
+                <div><b>Loses to</b><span>Gold theft, delayed payoff windows, enemies that punish overbanking.</span></div>
+                <div><b>Synergy</b><span>Uses Falie protection, Runa AOE fields, or Kojonn setup to reach stronger cashout turns.</span></div>
+              </div>
+            </article>
+            <article class="hero-lane">
+              <h3>Runa <span class="tag">Green / AOE rules</span></h3>
+              <div class="lane-list">
+                <div><b>Tensions</b><span>Green AOE totem persistence vs detonation vs burst healing vs rule inversion.</span></div>
+                <div><b>Wins by</b><span>Changing enemy targeting, reshaping hero damage profiles, creating AOE field pressure, and timing burst windows.</span></div>
+                <div><b>Loses to</b><span>Totem hunters, cleanse, burst enemies that end setup turns early.</span></div>
+                <div><b>Synergy</b><span>Benefits from board shaping, protection, and enemies held in vulnerable states.</span></div>
+              </div>
+            </article>
+            <article class="hero-lane">
+              <h3>Kojonn <span class="tag">Blue candidate / growth</span></h3>
+              <div class="lane-list">
+                <div><b>Tensions</b><span>Astral Flow growth vs ally timing vs transformation payoff.</span></div>
+                <div><b>Wins by</b><span>Making small actions accumulate into visible blue progress, timing help, or capstone growth.</span></div>
+                <div><b>Loses to</b><span>Anti-turn-control enemies, support disruption, overstack caps.</span></div>
+                <div><b>Synergy</b><span>Feeds Astral Flow windows that let Falie safety, Huun cashout, or Runa green rules matter.</span></div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section id="supergems">
+          <p class="section-kicker">Supergem Grammar</p>
+          <h2>Native supergems are hero identity spikes.</h2>
+          <p>
+            A native-color supergem must have an immediate payoff, a board or state consequence, a visible
+            signature, and a non-native fallback. It should not silently become a generic skill payload.
+            Use <a href="./hero-supergem-bead-ledger.md">hero-supergem-bead-ledger.md</a> for current
+            implementation evidence; use this section for design grammar.
+          </p>
+          <div class="table-wrap">
+            <table class="neutral-state-table">
+              <thead>
+                <tr>
+                  <th>Hero</th>
+                  <th>Anchor</th>
+                  <th>Native color shape</th>
+                  <th>Current design state</th>
+                  <th>Guardrail</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Falie</td>
+                  <td>Temporary Ward</td>
+                  <td>Red supergem creates party ward pressure and survival identity.</td>
+                  <td><span class="tag implemented">red ward identity</span></td>
+                  <td>Do not confuse the ward with Ward Bash; ward sustain details belong to current runtime evidence.</td>
+                </tr>
+                <tr>
+                  <td>Huun</td>
+                  <td>Goldstrike</td>
+                  <td>Yellow supergem converts banked gold plus board value into damage roll.</td>
+                  <td><span class="tag planned">gold conversion identity</span></td>
+                  <td>Decide whether banked gold is measured, spent, taxed, or capped.</td>
+                </tr>
+                <tr>
+                  <td>Runa</td>
+                  <td>Green AOE damage/heal expression</td>
+                  <td>Green supergem direction should amplify AOE fields, totem pressure, enemy targeting shifts, hero damage-profile changes, burst AOE healing, or party HoT/AOE healing without becoming generic AOE spam.</td>
+                  <td><span class="tag conflict">green ownership drift</span></td>
+                  <td>Keep totem AOE, burst healing, targeting rules, damage-profile rules, Faze, Blight, and Tainted Ground terms distinct until the supergem ledger is reconciled.</td>
+                </tr>
+                <tr>
+                  <td>Kojonn</td>
+                  <td>Blue Astral Flow growth candidate</td>
+                  <td>Candidate blue direction should improve Astral Flow acquisition, visible growth, or capstone transformation without dark-energy or black-magic framing.</td>
+                  <td><span class="tag conflict">tone conflict</span></td>
+                  <td>Redesign Kojonn away from cruel/dark magic language and keep him out of Runa's green AOE rule-changing lane.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="progression">
+          <p class="section-kicker">Progression Shapes</p>
+          <h2>Skill points should support choices, not only higher percentages.</h2>
+          <p>
+            Hero skill progress is per hero and keyed by stable hero identity. Astral Flow session skills
+            are separate and live in shared session state. Do not describe session draw picks as permanent
+            character upgrades, and do not describe hero ranks as temporary session choices.
+          </p>
+          <div class="table-wrap">
+            <table class="neutral-state-table">
+              <thead>
+                <tr>
+                  <th>Progression lane</th>
+                  <th>Lives in</th>
+                  <th>Player action</th>
+                  <th>Value shown to player/team</th>
+                  <th>Known state</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Hero skill rank</td>
+                  <td><code>HeroSkillProgressByHeroId</code></td>
+                  <td>Spend hero skill points on the Hero screen.</td>
+                  <td>Effective rank value, such as <code>3%/6%/9%/12%</code>.</td>
+                  <td><span class="tag implemented">live progression evidence exists</span></td>
+                </tr>
+                <tr>
+                  <td>Party session skill</td>
+                  <td><code>SessionSkillsByHeroUID.__party_shared__</code></td>
+                  <td>Choose one of three Astral Flow draw cards.</td>
+                  <td>Use rank 1 chance; higher ladder values are reference only until party ranking exists.</td>
+                  <td><span class="tag planned">modal seam exists; pool/content needs expansion</span></td>
+                </tr>
+                <tr>
+                  <td>Vault/relic passive</td>
+                  <td>Future equipped/discovered passive state</td>
+                  <td>Acquire, equip, or commit to long-horizon pressure.</td>
+                  <td>Passive payload plus visible constraint or identity pressure.</td>
+                  <td><span class="tag planned">design unresolved</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Shape</th>
+                  <th>Meaning</th>
+                  <th>Use when</th>
+                  <th>Risk</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Unlock</td>
+                  <td>Ability becomes available or active.</td>
+                  <td>Introducing a new behavior cleanly.</td>
+                  <td>Low if activation is not payload.</td>
+                </tr>
+                <tr>
+                  <td>Rank</td>
+                  <td>Existing behavior improves through known growth values.</td>
+                  <td>Improving chance, amount, duration, or reliability.</td>
+                  <td>Medium if it changes uptime or sustain.</td>
+                </tr>
+                <tr>
+                  <td>Specialize</td>
+                  <td>Player chooses one direction instead of all benefits.</td>
+                  <td>Preventing a hero from owning every payoff at once.</td>
+                  <td>Medium; needs clear exclusivity.</td>
+                </tr>
+                <tr>
+                  <td>Mutate</td>
+                  <td>Ability changes behavior rather than simply getting stronger.</td>
+                  <td>Creating build identity and replay variation.</td>
+                  <td>High if it changes triggers or target rules.</td>
+                </tr>
+                <tr>
+                  <td>Capstone</td>
+                  <td>Late, identity-defining payoff with strong constraints.</td>
+                  <td>Rewarding committed build paths.</td>
+                  <td>High; requires loop and uptime limits.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="vault">
+          <p class="section-kicker">Vault And Relics</p>
+          <h2>Vault pressure should feel like a vow, not invisible stat soup.</h2>
+          <p>
+            Vault/relic abilities are passive, backgrounded, and identity-bearing. They are not live draw
+            cards. Individual Vault/relic payloads wait for equipped passive state foundation.
+          </p>
+          <div class="callout">
+            <strong>Relic shape:</strong> prefer clear build vows with visible constraints or recognizable
+            pressure. Example: a Huun relic can strengthen gold attacks but should also define the risk of
+            holding or spending gold.
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Lane</th>
+                  <th>Examples</th>
+                  <th>Allowed role</th>
+                  <th>Watch for</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Mitigation / threat</td>
+                  <td>Crusade, Protect, Shell, Formless</td>
+                  <td>Support Falie survival and pressure routing.</td>
+                  <td>Permanent taunt or damage denial uptime.</td>
+                </tr>
+                <tr>
+                  <td>Economy / conversion</td>
+                  <td>Rabbithole, Consume, Scout, Steal</td>
+                  <td>Support Huun and resource momentum builds.</td>
+                  <td>Self-feeding reward or blue-to-damage loops.</td>
+                </tr>
+                <tr>
+                  <td>Magic / field value</td>
+                  <td>Inspire, Scrolls, Ignore, Insight, totem lanes</td>
+                  <td>Support Runa green AOE pressure, targeting disruption, and totem identity.</td>
+                  <td>Boss stat borrowing, persistent hazard scaling.</td>
+                </tr>
+                <tr>
+                  <td>Board / transfer</td>
+                  <td>Lucky, Exchange, Lucky Break, Clean Slate</td>
+                  <td>Support Kojonn growth, blue acquisition, and party rescue moments.</td>
+                  <td>Board over-stabilization or free cleanse dominance.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="budgets">
+          <p class="section-kicker">Balance Budgets</p>
+          <h2>Risk classes need containment, not adjectives.</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Budget class</th>
+                  <th>Includes</th>
+                  <th>Risk</th>
+                  <th>Required containment for high-risk cases</th>
+                  <th>Forbidden loop examples</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Action economy</td>
+                  <td>Extra attacks, repeat actions, free actions</td>
+                  <td><span class="tag high">High</span></td>
+                  <td>Once-per-event/turn, no self-trigger, no chain recursion.</td>
+                  <td>Extra action procs another extra action.</td>
+                </tr>
+                <tr>
+                  <td>Turn control</td>
+                  <td>Advance ally, delay enemy, reorder queue</td>
+                  <td><span class="tag high">High</span></td>
+                  <td>Cooldown, cap per target, no permanent lockout.</td>
+                  <td>Enemy never receives a valid turn.</td>
+                </tr>
+                <tr>
+                  <td>Sustain</td>
+                  <td>Heal, shield, mitigation, cleanse</td>
+                  <td><span class="tag med">Medium</span></td>
+                  <td>Uptime cap, threshold gating, cannot erase all attrition.</td>
+                  <td>Healing fully offsets routine enemy output forever.</td>
+                </tr>
+                <tr>
+                  <td>Resource conversion</td>
+                  <td>Gold to damage, damage to Astral Flow, blue to attack</td>
+                  <td><span class="tag high">High</span></td>
+                  <td>Conversion cap, decay, no conversion back into its own fuel.</td>
+                  <td>Damage creates Flow that creates more damage with no loss.</td>
+                </tr>
+                <tr>
+                  <td>Board control</td>
+                  <td>Reroll, recolor, free gem use, chain pop</td>
+                  <td><span class="tag med">Medium</span></td>
+                  <td>Limited tiles, limited frequency, no guaranteed desired color loop.</td>
+                  <td>Board always stabilizes into one best color.</td>
+                </tr>
+                <tr>
+                  <td>Stat multiplier</td>
+                  <td>2x attack, amp escalation, stat borrowing</td>
+                  <td><span class="tag high">High</span></td>
+                  <td>Stack cap, short duration, one source per event.</td>
+                  <td>Multiplier stacks with itself before payload resolves.</td>
+                </tr>
+                <tr>
+                  <td>Persistent hazard</td>
+                  <td>DoT, totem, Tainted Ground, detonation charge</td>
+                  <td><span class="tag med">Medium</span></td>
+                  <td>Duration cap, target cap, enemy counterpressure.</td>
+                  <td>Hazard uptime crowds out direct combat choices.</td>
+                </tr>
+                <tr>
+                  <td>Reward economy</td>
+                  <td>Extra gold, drops, chest meter, reward bonus</td>
+                  <td><span class="tag med">Medium</span></td>
+                  <td>Reward cap, source tagging, no recursive payout.</td>
+                  <td>Reward bonus creates resources that retrigger reward bonus.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="definition-contract">
+          <p class="section-kicker">Ability Spec</p>
+          <h2>A new ability is real only when its play shape is defined.</h2>
+          <p>
+            This is the GDD minimum for adding an ability to Wishfire. It defines what the player can
+            understand, what state the game must remember, and what design limits keep the ability fair.
+          </p>
+          <h3 id="ability-action-shape">Ability action shape</h3>
+          <p>
+            Use action shape to keep different ability front doors from turning into bespoke mechanics.
+            A hero rank, party draw skill, supergem, enemy skill, boss mechanic, combo finisher, totem,
+            proc, or passive can enter from a different surface, but the design question stays the same:
+            what readable player action does it create?
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Action layer</th>
+                  <th>GDD question</th>
+                  <th>Must decide</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Player intent</td>
+                  <td>What does the player read, choose, or set up?</td>
+                  <td>Owner, player verb, tactical question, and enemy pressure.</td>
+                </tr>
+                <tr>
+                  <td>Trigger + owner</td>
+                  <td>When can the ability check, and who gets credit?</td>
+                  <td>Canonical event, owner/source, eligible states, rejected states, and current-vs-target runtime status.</td>
+                </tr>
+                <tr>
+                  <td>Target + payload</td>
+                  <td>What receives the effect, and what changes?</td>
+                  <td>Selector, payload facet, value/rank axis, and invalid-target fallback.</td>
+                </tr>
+                <tr>
+                  <td>Bounds + counterpressure</td>
+                  <td>Why does it stay fair and interactable?</td>
+                  <td>Stack or overwrite policy, cap key, reset boundary, cooldown group, cleanup hook, anti-recursion rule, and enemy counter.</td>
+                </tr>
+                <tr>
+                  <td>Evidence + handoff</td>
+                  <td>How can a designer or player prove it worked, or why it did not?</td>
+                  <td>Visible cue, trace/proof field, rejected-state reason, and affected companion docs.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            Prototype resolver examples live in <a href="./hero-and-party-skill-pseudocode.md">human-readable pseudocode</a>
+            and <a href="./skill-proc-qa-guide.md">proc QA notes</a>; this page names the gameplay contract, not a runtime API.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Target layer</th>
+                  <th>Design purpose</th>
+                  <th>Current warning</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Front door</td>
+                  <td>Hero rank, party draw, supergem, enemy skill, boss mechanic, combo finisher, passive, or field effect.</td>
+                  <td>Different surfaces should not create separate bespoke mechanics for the same action shape.</td>
+                </tr>
+                <tr>
+                  <td>Recipe contract</td>
+                  <td>Stable id, event, gates, selector, resolver family, payload facet, bounds, presentation, and proof.</td>
+                  <td>Per-skill pseudocode is reference material; it is not permission to add one new function per skill.</td>
+                </tr>
+                <tr>
+                  <td>Resolver family</td>
+                  <td>Shared action shape such as instant status, reaction counter, rhythmic tick, field effect, resource conversion, or board aftermath.</td>
+                  <td>Resolver families are design targets until a foundation bead maps or implements them in runtime.</td>
+                </tr>
+                <tr>
+                  <td>Runtime adapter</td>
+                  <td>Bridge current hooks and helper returns into named event envelopes and proof traces.</td>
+                  <td>Current code has partial trait hooks, numeric/boolean returns, and Destiny-specific counters rather than a universal ActionResult.</td>
+                </tr>
+                <tr>
+                  <td>Proof packet</td>
+                  <td>Make success, miss, rejection, payload, source tag, and containment reason inspectable.</td>
+                  <td>Do not use visual feedback or activation text as proof that a payload resolved.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="check-grid">
+            <div class="check"><b>Canonical id</b><br>Stable skill/passive/supergem identifier.</div>
+            <div class="check"><b>Category / facet</b><br>Progression lane plus payload facet when needed.</div>
+            <div class="check"><b>Owner</b><br>Hero, party, Vault, relic, or system.</div>
+            <div class="check"><b>Lifetimes</b><br>Decision, state, payload, and reset boundary.</div>
+            <div class="check"><b>Player fantasy</b><br>What the skill lets the player feel or plan.</div>
+            <div class="check"><b>Tactical question</b><br>The decision or tradeoff created by the ability.</div>
+            <div class="check"><b>Trigger event</b><br>Exact named event that starts eligibility.</div>
+            <div class="check"><b>Eligibility</b><br>Rejected states that must not count as checks.</div>
+            <div class="check"><b>Target rules</b><br>Allowed targets, invalid targets, and fallback selection.</div>
+            <div class="check"><b>Roll / chance</b><br>Chance model or explicit no-roll statement.</div>
+            <div class="check"><b>Payload</b><br>Damage, heal, buff, debuff, guard, board, or resource effect.</div>
+            <div class="check"><b>Scaling axis</b><br>Chance, amount, duration, target count, cooldown, or cap.</div>
+            <div class="check"><b>System role</b><br>source, drain, converter, gate, delay, or feedback loop.</div>
+            <div class="check"><b>Anti-loop rule</b><br>Cap key, cooldown group, decay, non-recursion, source tag, or uptime limit.</div>
+            <div class="check"><b>Enemy counterplay</b><br>Shieldbreak, cleanse, resistance, targeting, theft, or pressure.</div>
+            <div class="check"><b>Player feedback</b><br>Animation, number, icon, board change, log line, or modal state.</div>
+            <div class="check"><b>Readability failure</b><br>How the ability can become invisible, misleading, or too noisy.</div>
+            <div class="check"><b>Playtest acceptance</b><br>What a human should observe when the ability works.</div>
+            <div class="check"><b>Canon impact</b><br>Player-guide language and source pages that must stay aligned.</div>
+            <div class="check check-empty" aria-hidden="true"></div>
+            <div class="check check-empty" aria-hidden="true"></div>
+          </div>
+          <h3 id="planning-paths">Planning paths</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Planning task</th>
+                  <th>Start here</th>
+                  <th>Must decide before feature work</th>
+                  <th>Out of scope until decided</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>New hero rank ability</td>
+                  <td>Skill Tier Catalog and Hero Build Tensions.</td>
+                  <td>Hero owner, effective chance, trigger event, target rules, containment.</td>
+                  <td>Astral Flow draw behavior unless explicitly changed.</td>
+                </tr>
+                <tr>
+                  <td>New party draw skill</td>
+                  <td>Skill Draw System and Party draw skills.</td>
+                  <td>Eligible three-card pool rule, session lifetime, duplicate policy, visible card fields.</td>
+                  <td>Permanent hero rank progress.</td>
+                </tr>
+                <tr>
+                  <td>New supergem</td>
+                  <td>Supergem Grammar and supergem ledger.</td>
+                  <td>Native color owner, non-native fallback, cap, visible signature, resource source/sink.</td>
+                  <td>Generic party/session proc behavior.</td>
+                </tr>
+                <tr>
+                  <td>New Vault/relic passive</td>
+                  <td>Vault And Relics and vault progression notes.</td>
+                  <td>Benefit, constraint, visibility, passive hook, stacking and exclusivity.</td>
+                  <td>Live draw cards or active combat buttons.</td>
+                </tr>
+                <tr>
+                  <td>Shared action foundation</td>
+                  <td>Ability action shape, timing stacks, and pseudocode recipe target.</td>
+                  <td>Event adapter map, resolver family names, payload/result proof fields, rank-value policy, and first migrated reference skill.</td>
+                  <td>New bespoke payload functions or broad skill migration before the foundation seam is proven.</td>
+                </tr>
+                <tr>
+                  <td>Resolve drift</td>
+                  <td>Design State And Drift.</td>
+                  <td>Canonical source, replacement wording, affected pseudocode, affected player copy.</td>
+                  <td>Runtime implementation before the design conflict is resolved.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="drift">
+          <p class="section-kicker">Design State And Drift</p>
+          <h2>Keep temporary build facts subordinate to the ability design.</h2>
+          <p>
+            This register tracks where the current game shape and the desired ability design do not fully
+            line up. Keep the rows only while they explain a player-facing or design-facing consequence.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Design area</th>
+                  <th>State</th>
+                  <th>What exists now</th>
+                  <th>GDD meaning</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Hero and party skill registry</td>
+                  <td><span class="tag implemented">implemented</span></td>
+                  <td>Stable skill IDs, owners, card text, risk tiers, growth values, and trigger labels exist.</td>
+                  <td>The GDD can treat the current skill pool as a concrete catalog, not placeholders.</td>
+                </tr>
+                <tr>
+                  <td>Chance and trigger behavior</td>
+                  <td><span class="tag partial">partial</span></td>
+                  <td>Proc helpers and traces exist, but canonical event envelopes and shared resolver execution are not live runtime contracts yet.</td>
+                  <td>Ability text should name trigger, eligibility, chance, payload, and required runtime seam separately.</td>
+                </tr>
+                <tr>
+                  <td>Astral Flow draw</td>
+                  <td><span class="tag partial">partial</span></td>
+                  <td>The three-card modal surface exists, but final candidate-pool behavior is still shallow.</td>
+                  <td>The GDD must define eligible unique draw, duplicate policy, and what each card communicates.</td>
+                </tr>
+                <tr>
+                  <td>Vault/relic passives</td>
+                  <td><span class="tag planned">planned</span></td>
+                  <td>Vault and relic lanes exist as design scaffolds, not final equipped passive behavior.</td>
+                  <td>Keep Vault/relic abilities out of live draw cards unless the design intentionally changes.</td>
+                </tr>
+                <tr>
+                  <td>Hero rank presentation</td>
+                  <td><span class="tag planned">planned</span></td>
+                  <td>Hero skill rank state exists, but the visible card stack still needs clearer expanded presentation.</td>
+                  <td>Rank ladders should read as player-facing value tiers, not storage fields.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Drift register</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Issue</th>
+                  <th>Status</th>
+                  <th>Source / evidence</th>
+                  <th>Current drift</th>
+                  <th>Design resolution</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Hero skill draw wording</td>
+                  <td><span class="tag conflict">conflict</span></td>
+                  <td><a href="./hero-and-party-skills.md">hero-and-party-skills.md</a></td>
+                  <td>Older source text says hero skills are "Live Draw Core" or "Keep in draw"; current design separates hero ranks from Astral Flow party draw.</td>
+                  <td>Treat older hero-skill draw wording as non-authoritative until that source doc is reconciled.</td>
+                </tr>
+                <tr>
+                  <td>Destiny wording drift</td>
+                  <td><span class="tag partial">partial</span></td>
+                  <td><a href="./hero-and-party-skill-pseudocode.md#destiny">pseudocode</a>; skill catalog; proc QA</td>
+                  <td>Older product text describes match-style healing; current behavior treats Destiny as on-hit after positive applied damage and heals the source actor.</td>
+                  <td>Keep Destiny as transitional proc evidence only. Do not clone it as the blueprint for future skills; extract the shared event, roll, payload, and proof shape first.</td>
+                </tr>
+                <tr>
+                  <td>Invert target rule</td>
+                  <td><span class="tag conflict">conflict</span></td>
+                  <td><a href="./hero-and-party-skills.md">skill catalog</a>; <a href="./hero-and-party-skill-pseudocode.md#invert">pseudocode</a></td>
+                  <td>Catalog text says self ATK / enemy RES; current design shape uses enemy ATK / enemy RES.</td>
+                  <td>Keep implementation blocked until the stat pair, duration, restoration, and boss rules are settled.</td>
+                </tr>
+                <tr>
+                  <td>Weaken ownership</td>
+                  <td><span class="tag conflict">conflict</span></td>
+                  <td>Backlog skill list; <a href="./hero-and-party-skills.md">skill catalog</a>; this page</td>
+                  <td>Backlog wording names Weaken as a Kojonn skill, while current GDD classifies <code>party_weaken</code> as an Astral Flow party draw skill.</td>
+                  <td>Choose one lane before implementation: party draw skill, Kojonn hero rank skill, or two separately named effects.</td>
+                </tr>
+                <tr>
+                  <td>Huun Siphon HoT</td>
+                  <td><span class="tag">unknown</span></td>
+                  <td>Backlog skill list only</td>
+                  <td>A Huun candidate exists for removing enemy HoT and absorbing remaining duration, but it is not in the current skill catalog, pseudocode, or ability map.</td>
+                  <td>Classify as Huun anti-heal/resource-conversion skill or retire it before any runtime work starts.</td>
+                </tr>
+                <tr>
+                  <td>Backlog naming aliases</td>
+                  <td><span class="tag stale">stale</span></td>
+                  <td>Backlog skill list; <a href="./hero-and-party-skills.md">skill catalog</a></td>
+                  <td>Older names include pre-Ward Bash wording, Block, and RabbityHole; current GDD names are Ward Bash, Cover / Block, and Rabbithole.</td>
+                  <td>Treat old names as aliases only unless product intentionally splits them into separate abilities.</td>
+                </tr>
+                <tr>
+                  <td>Skill draw candidate pool</td>
+                  <td><span class="tag partial">partial</span></td>
+                  <td>Astral Flow modal and current skill registry</td>
+                  <td>The modal seam exists, but current candidate construction and card fields are still shallower than the target contract.</td>
+                  <td>Define eligible unique three-card draw, duplicate policy, trigger/chance/lifetime fields, and implemented-status display before calling the draw complete.</td>
+                </tr>
+                <tr>
+                  <td>Rank ladder runtime math</td>
+                  <td><span class="tag conflict">conflict</span></td>
+                  <td>Skill Tier Catalog; current skill helpers</td>
+                  <td>This GDD reads rank ladders as cumulative effective values, while current runtime may still read the active rank slot.</td>
+                  <td>Choose and test the rank-value policy before implementing or balancing any skill payload against these tier ladders.</td>
+                </tr>
+                <tr>
+                  <td>Action recipe foundation</td>
+                  <td><span class="tag partial">partial</span></td>
+                  <td>Ability action shape; pseudocode recipe target; current runtime helpers</td>
+                  <td>Current code has partial hooks and some harness-like enemy helpers, but no universal event envelope, shared recipe executor, or ActionResult-style proof packet.</td>
+                  <td>Create a foundation bead before broad skill work: map current hooks, prove one resolver family, and migrate one reference skill without adding bespoke per-skill logic.</td>
+                </tr>
+                <tr>
+                  <td>Hero rank value display</td>
+                  <td><span class="tag planned">planned</span></td>
+                  <td>Skill Tier Catalog; Hero screen presentation</td>
+                  <td>The Skill Tier Catalog now lists current rank ladders; human-facing Hero cards still need the same effective values.</td>
+                  <td>Use this page's catalog as the reference for player-facing rank display and future skill balance review.</td>
+                </tr>
+                <tr>
+                  <td>Hero screen card count</td>
+                  <td><span class="tag planned">planned</span></td>
+                  <td>Hero screen UI and canonical skill catalog</td>
+                  <td>Canon defines four hero skills per hero; current visible Hero screen path is still constrained by card expansion work.</td>
+                  <td>Keep hero-rank display work tied to the Hero Screen skill-card presentation.</td>
+                </tr>
+                <tr>
+                  <td>Vault/relic ownership</td>
+                  <td><span class="tag planned">planned</span></td>
+                  <td><a href="./vault-progression.md">vault-progression.md</a></td>
+                  <td>Vault docs define passives; current game state has scaffold/gallery metadata and no final passive foundation.</td>
+                  <td>Keep individual passive payloads design-scoped until equipped passive state is defined.</td>
+                </tr>
+                <tr>
+                  <td>Runa green expression</td>
+                  <td><span class="tag conflict">conflict</span></td>
+                  <td>Supergem grammar; skill catalog; supergem ledger</td>
+                  <td>Current GDD ties Runa's totem skills, burst AOE healing, likely party HoT/AOE healing, enemy targeting shifts, and hero damage-profile changes to green expression, while older backlog language still points Kojonn toward green Tainted Ground.</td>
+                  <td>Treat Runa as the green/AOE rule-changing owner unless product explicitly splits Tainted Ground from the totem lane.</td>
+                </tr>
+                <tr>
+                  <td>Kojonn blue candidate</td>
+                  <td><span class="tag conflict">conflict</span></td>
+                  <td>Hero Build Tensions; Supergem Grammar; older green backlog</td>
+                  <td>Older Kojonn green direction reads as dark energy or cruel black magic, which conflicts with the desired family-friendly RPG tone; his pawn archetype may fit blue growth through Astral Flow acquisition instead.</td>
+                  <td>Keep Kojonn as a blue/Astral Flow growth redesign candidate until product defines a non-dark, non-cruel expression; likely move party HoT/AOE healing pressure to Runa.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="footer-note">
+            Last updated for ability-system design. If a future change alters an ability category,
+            lifecycle, source of truth, or risk containment rule, revise this GDD page with the new design state.
+          </p>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

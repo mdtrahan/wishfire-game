@@ -444,3 +444,11 @@
 ## 2026-06-09 — Dev Modal Resume Must Revalidate Idle Hero Input
 - Dev tooling pause snapshots are historical state, not always safe state. When a modal closes into an idle hero turn with a full board and no presentation barriers, revalidate the live combat gate and explicitly restore gem input instead of replaying a stale blocked snapshot.
 - For Dev Panel autoplay softlocks, check both `CanPickGems` and `IsPlayerBusy`; a full board with `TurnPhase === 0` can still be non-actionable if modal pause restored only half of the input gate.
+
+## 2026-05-26 - Pending Supergem Handoffs Must Be Atomic
+- A rejected pending supergem action must clear PendingSuperGemAction, PendingSkillID, selected target state, UI attack prompts, busy flags, and deferred-advance ownership together. Leaving any one of those fields stale can trap the board between target selection and refill.
+- Resolve pending target clicks through one shared helper for manual and dev-autoplay paths. Otherwise QA-only selection helpers can recover from a modal state that the real player path cannot, or vice versa.
+
+## 2026-05-26 - Gem Input Gates Must Normalize Numeric Flags
+- CanPickGems is stored as both numeric and boolean-like values across runtime seams. Input and supergem spend gates should ask one shared readiness predicate instead of strict boolean comparisons, or one-color dev boards can look idle while supergem clicks are rejected.
+- Normalize only at input-readiness seams. Presentation barriers, pending action gates, and turn ownership must remain separate so failed supergem spends cannot fall through into normal gem selection.

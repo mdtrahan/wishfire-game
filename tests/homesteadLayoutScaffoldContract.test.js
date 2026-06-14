@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 test('homestead scaffold defines deterministic scene metadata in runtime state', () => {
-  const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
+  const filePath = path.join(__dirname, '..', 'web-runner', 'state', 'gameState.js');
   const src = fs.readFileSync(filePath, 'utf8');
   assert.match(src, /homesteadLayout:\s*\{/);
   assert.match(src, /entryPoint:\s*'map-locale'/);
@@ -17,6 +17,8 @@ test('homestead scaffold defines deterministic scene metadata in runtime state',
 test('homestead layout is wired as map locale entry and runtime layout route', () => {
   const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
   const src = fs.readFileSync(filePath, 'utf8');
+  assert.match(src, /import \{ createInitialGameState \} from '\.\/state\/gameState\.js';/);
+  assert.match(src, /const gameState = createInitialGameState\(\);/);
   assert.match(src, /allowedTransitions:\s*\[[^\]]*'homesteadLayout'[^\]]*\]/);
   assert.match(src, /id:\s*'homesteadLayout'/);
   assert.match(src, /layoutState\.requestLayoutChange\('homesteadLayout',\s*'map-homestead-locale'\)/);

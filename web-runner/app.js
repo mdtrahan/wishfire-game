@@ -105,9 +105,15 @@ import {
   addAppViewportResizeListener,
   resizeCanvasToContainedViewport,
 } from './systems/appShellViewport.js';
+import { createIdleFarmAppRuntime } from './systems/idleFarmAppRuntime.js';
 import * as helpers from './utils/helpers.js';
 import * as mapLayoutState from './state/mapLayoutState.js';
 import * as uiState from './state/uiState.js';
+import { createInitialGameState } from './state/gameState.js';
+import { CANONICAL_HERO_ROSTER, FIGMA_HERO_BACK_URL, FIGMA_HERO_CLOSE_OVAL_URL, FIGMA_HERO_NEXT_URL, FIGMA_MINUS_URL, FIGMA_PLUS_URL, HERO_CLASS_LABELS, HERO_PACK_CLOSE_OVAL_PATH, HERO_PACK_MINUS_PATH, HERO_PACK_PLUS_PATH, HERO_STAT_KEYS, heroLayoutSpec } from './state/heroScreenConfig.js';
+import { createHarnessEventBus, createHarnessLayoutState, HarnessInputDomainManager } from './state/harnessLayoutState.js';
+import { createRuntimeEnvironment, createRuntimeFingerprint, exposeRuntimeDebugFlags } from './state/runtimeEnvironment.js';
+import * as task015TraceState from './state/task015TraceState.js';
 
 const out = document.getElementById('output');
 const gemCounterOut = document.getElementById('gem-counter-output');
@@ -122,34 +128,16 @@ const simulationCoreShadowReady = initializeSimulationCoreShadow();
 if (simulationCoreShadowReady && typeof simulationCoreShadowReady.then === 'function') {
   void simulationCoreShadowReady.then(() => runSeededRngShadowStartupChecks());
 }
-const HARNESS_MODE = typeof window !== 'undefined' && window.location.search.includes('harness=true');
-const DEBUG_LAYOUT = (() => {
-  let enabled = false;
-  try {
-    if (typeof process !== 'undefined' && process && process.env && process.env.DEBUG_LAYOUT === 'true') {
-      enabled = true;
-    }
-  } catch {}
-  try {
-    if (typeof window !== 'undefined' && window && window.DEBUG_LAYOUT === true) {
-      enabled = true;
-    }
-  } catch {}
-  return enabled;
-})();
-const DEBUG_GEMS_QUERY = (() => {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    return (
-      params.has('devtest') ||
-      params.get('devtest') === 'true' ||
-      params.has('debug_gems') ||
-      params.get('debug_gems') === 'true'
-    );
-  } catch {
-    return false;
-  }
-})();
+const {
+  HARNESS_MODE,
+  DEBUG_LAYOUT,
+  DEBUG_GEMS_QUERY,
+  GEM_DEBUG_LEVEL,
+  BOOTSTRAP_SEED,
+  STARTUP_DEBUG,
+} = createRuntimeEnvironment();
+let bootstrapDeterministicRefillPending = false;
+const COMBAT_RUNTIME_RNG_SALT = 0x9e3779b9;
 const GEM_INTERACTIVITY_DIAGNOSTIC_QUERY = (() => {
   try {
     const params = new URLSearchParams(window.location.search);
@@ -158,36 +146,7 @@ const GEM_INTERACTIVITY_DIAGNOSTIC_QUERY = (() => {
     return false;
   }
 })();
-const GEM_DEBUG_LEVEL = (function () {
-  const p = new URLSearchParams(window.location.search);
-  return p.get('gemlog') || 'minimal';
-})();
-const BOOTSTRAP_SEED = (() => {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const raw = params.get('bootstrap_seed') || params.get('gem_seed');
-    if (raw == null || raw === '') return null;
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-})();
-let bootstrapDeterministicRefillPending = false;
-const COMBAT_RUNTIME_RNG_SALT = 0x9e3779b9;
-const STARTUP_DEBUG = (() => {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    return params.has('startup_debug') || params.get('startup_debug') === 'true';
-  } catch {
-    return false;
-  }
-})();
-if (typeof window !== 'undefined') {
-  window.DEBUG_LAYOUT = DEBUG_LAYOUT;
-  window.STARTUP_DEBUG = STARTUP_DEBUG;
-  window.DEBUG_GEMS_QUERY = DEBUG_GEMS_QUERY;
-}
+exposeRuntimeDebugFlags({ DEBUG_LAYOUT, STARTUP_DEBUG, DEBUG_GEMS_QUERY });
 const DEV_TOOL_HOTKEY_LABEL = 'Ctrl+Shift+P';
 const DEV_TOOL_GEM_RANDOM = -1;
 const DEV_TOOL_GEM_OPTIONS = Object.freeze([
@@ -520,6 +479,71 @@ function getPersistentTaintedGroundOverlays() {
   return overlays;
 }
 
+function isActiveDrainFieldZone(zone) {
+  if (!zone) return false;
+  if (String(zone.effectName || '') !== 'Drain') return false;
+  if (String(zone.visual || '') !== 'drain_lines') return false;
+  const now = Number(state.globals.time || 0);
+  if (now < Number(zone.visualStartsAt || zone.activeAt || 0)) return false;
+  const fadeStartedAt = zone.fadeStartedAt == null ? null : Number(zone.fadeStartedAt || 0);
+  if (fadeStartedAt == null) return true;
+  return (now - fadeStartedAt) < 0.55;
+}
+
+function enemyOccupiesDrainFieldZone(enemy, zone) {
+  if (!enemy || !zone) return false;
+  const enemySlotIndex = Number(enemy.slotIndex);
+  if (Number.isFinite(enemySlotIndex) && enemySlotIndex === Number(zone.slotIndex || 0)) return true;
+  const enemyX = Number(enemy.x);
+  const enemyY = Number(enemy.y);
+  const anchorX = Number(zone.anchorWorldX);
+  const anchorY = Number(zone.anchorWorldY);
+  if (!Number.isFinite(enemyX) || !Number.isFinite(enemyY) || !Number.isFinite(anchorX) || !Number.isFinite(anchorY)) {
+    return false;
+  }
+  const spacing = Number(state.globals.Spacing || ((state.globals.EnemySize || 40) + (state.globals.enemyGAP || 8)) || 48);
+  const dx = Math.abs(enemyX - anchorX);
+  const dy = Math.abs(enemyY - anchorY);
+  return dx <= Math.max(16, spacing * 0.75) && dy <= Math.max(16, spacing * 0.75);
+}
+
+function hasPersistentEnemyDrainOverlay(uid) {
+  if (!uid) return false;
+  const enemy = state.entities.find((entity) => Number(entity && entity.uid || 0) === Number(uid || 0));
+  if (!enemy) return false;
+  const zones = Array.isArray(state.globals.DrainFieldZones) ? state.globals.DrainFieldZones : [];
+  for (const zone of zones) {
+    if (!isActiveDrainFieldZone(zone)) continue;
+    if (!enemyOccupiesDrainFieldZone(enemy, zone)) continue;
+    return true;
+  }
+  return false;
+}
+
+function getPersistentDrainFieldOverlays() {
+  const zones = Array.isArray(state.globals.DrainFieldZones) ? state.globals.DrainFieldZones : [];
+  const now = Number(state.globals.time || 0);
+  const overlays = [];
+  for (const zone of zones) {
+    if (!isActiveDrainFieldZone(zone)) continue;
+    const fadeStartedAt = zone.fadeStartedAt == null ? null : Number(zone.fadeStartedAt || 0);
+    const fadeAlpha = fadeStartedAt == null
+      ? 1
+      : Math.max(0, Math.min(1, 1 - ((now - fadeStartedAt) / 0.55)));
+    if (fadeAlpha <= 0) continue;
+    overlays.push({
+      id: String(zone.id || ''),
+      slotIndex: Number(zone.slotIndex || 0),
+      anchorWorldX: Number(zone.anchorWorldX),
+      anchorWorldY: Number(zone.anchorWorldY),
+      seed: Number(zone.sourceUID || 0) + Number(zone.slotIndex || 0) * 23,
+      alpha: fadeAlpha,
+      slowPct: Number(zone.drainSlowPct || 10),
+    });
+  }
+  return overlays;
+}
+
 function hasPersistentHeroRegenOverlay() {
   const regens = Array.isArray(state.globals.PartyRegens) ? state.globals.PartyRegens : [];
   for (const regen of regens) {
@@ -620,28 +644,7 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
     }
   }
 }
-const RUNTIME_FINGERPRINT = (() => {
-  const source = (typeof window !== 'undefined' && window.__ORKA_RUNTIME_FINGERPRINT__)
-    ? window.__ORKA_RUNTIME_FINGERPRINT__
-    : {};
-  const params = (typeof window !== 'undefined')
-    ? new URLSearchParams(window.location.search)
-    : null;
-  const qaTaskOverride = params
-    ? (params.get('qa_task') || params.get('task') || '').trim()
-    : '';
-  const worktree = source.worktree || 'unknown-worktree';
-  const branch = source.branch || 'unknown-branch';
-  const issueId = qaTaskOverride || source.issueId || 'ORKA-UNKNOWN';
-  const orka69rReady = Boolean(source.contracts && source.contracts.ORKA69R_READY);
-  return {
-    worktree,
-    branch,
-    issueId,
-    orka69rReady,
-    label: `WT:${worktree} BR:${branch} TASK:${issueId} 69R:${orka69rReady ? 'READY' : 'MISSING'}`,
-  };
-})();
+const RUNTIME_FINGERPRINT = createRuntimeFingerprint();
 console.info(`[RUNTIME_FINGERPRINT] ${RUNTIME_FINGERPRINT.label}`);
 if (!RUNTIME_FINGERPRINT.orka69rReady) {
   console.warn('[RUNTIME_CONTRACT] ORKA-69r not present in this build (69R:MISSING).');
@@ -652,586 +655,12 @@ const layoutHarnessEnabled = (() => {
 })();
 let detachRuntimeInputListeners = null;
 
-function createHarnessEventBus() {
-  const listeners = new Map();
-  const events = [];
-  return {
-    events,
-    on(eventName, handler) {
-      if (!listeners.has(eventName)) listeners.set(eventName, new Set());
-      listeners.get(eventName).add(handler);
-      return () => listeners.get(eventName)?.delete(handler);
-    },
-    emit(eventName, payload = {}) {
-      events.push({ name: eventName, payload });
-      const subs = listeners.get(eventName);
-      if (!subs || subs.size === 0) return;
-      for (const fn of [...subs]) fn(payload);
-    },
-  };
-}
-
-class HarnessInputDomainManager {
-  constructor(eventBus) {
-    this.eventBus = eventBus;
-    this.activeDomain = null;
-    this.locked = false;
-  }
-
-  setActiveDomain(domain) {
-    this.activeDomain = domain || null;
-  }
-
-  getActiveDomain() {
-    return this.activeDomain;
-  }
-
-  lock() {
-    this.locked = true;
-    runtimeDebugLogging.debugLayoutLog('[Input] Locked');
-  }
-
-  unlock() {
-    this.locked = false;
-    runtimeDebugLogging.debugLayoutLog('[Input] Unlocked');
-  }
-
-  emit(domain, eventName, payload = {}) {
-    const allowed = !this.locked && !!domain && domain === this.activeDomain;
-    runtimeDebugLogging.debugLayoutLog(`[Input] Emit → domain:${domain} event:${eventName} allowed:${allowed} active:${this.activeDomain}`);
-    if (!allowed) return false;
-    this.eventBus.emit(eventName, { ...payload, domain });
-    return true;
-  }
-}
-
-function createHarnessLayoutState({ eventBus, inputDomains, combatRuntimeGateway }) {
-  const layouts = new Map();
-  const snapshotsByLayout = new Map();
-  let activeLayoutId = null;
-  let isTransitioning = false;
-
-  return {
-    registerLayout(descriptor) {
-      layouts.set(descriptor.id, descriptor);
-    },
-    hasLayout(layoutId) {
-      return layouts.has(layoutId);
-    },
-    canTransitionTo(targetLayoutId) {
-      const sourceLayout = activeLayoutId ? layouts.get(activeLayoutId) : null;
-      if (!layouts.has(targetLayoutId)) {
-        return { allowed: false, reason: 'target-unregistered', from: activeLayoutId, to: targetLayoutId };
-      }
-      if (sourceLayout && Array.isArray(sourceLayout.allowedTransitions) && !sourceLayout.allowedTransitions.includes(targetLayoutId)) {
-        return { allowed: false, reason: 'transition-forbidden', from: activeLayoutId, to: targetLayoutId };
-      }
-      return { allowed: true, reason: 'ok', from: activeLayoutId, to: targetLayoutId };
-    },
-    getActiveLayoutId() {
-      return activeLayoutId;
-    },
-    getSnapshot(layoutId) {
-      return snapshotsByLayout.get(layoutId);
-    },
-    async activateInitialLayout(layoutId, payload = {}) {
-      const targetLayout = layouts.get(layoutId);
-      if (!targetLayout) throw new Error(`Missing layout: ${layoutId}`);
-      activeLayoutId = layoutId;
-      inputDomains.setActiveDomain(layoutId);
-      runtimeDebugLogging.debugLayoutLog(`[Layout] Initial activation → ${layoutId}`);
-      const context = {
-        eventBus,
-        payload,
-        reason: 'harness-initial',
-        from: null,
-        to: layoutId,
-        resumeSnapshot: snapshotsByLayout.get(layoutId) || null,
-      };
-      if (typeof targetLayout.onEnter === 'function') await targetLayout.onEnter(context);
-      if (typeof targetLayout.onActive === 'function') await targetLayout.onActive(context);
-    },
-    async requestLayoutChange(targetLayoutId, reason = 'harness-request', payload = {}) {
-      runtimeDebugLogging.debugLayoutLog(`[Layout] Request → from:${activeLayoutId} to:${targetLayoutId} reason:${reason}`);
-      if (isTransitioning) return false;
-      if (activeLayoutId === targetLayoutId) return false;
-      const sourceLayout = activeLayoutId ? layouts.get(activeLayoutId) : null;
-      const targetLayout = layouts.get(targetLayoutId);
-      if (!targetLayout) return false;
-      if (sourceLayout && Array.isArray(sourceLayout.allowedTransitions)) {
-        if (!sourceLayout.allowedTransitions.includes(targetLayoutId)) {
-          runtimeDebugLogging.debugLayoutLog(`[Layout] Invalid transition → from:${activeLayoutId} to:${targetLayoutId}`);
-          return false;
-        }
-      }
-
-      isTransitioning = true;
-      inputDomains.lock();
-      eventBus.emit('layout:changeRequested', { from: activeLayoutId, to: targetLayoutId, reason });
-      try {
-        if (sourceLayout && typeof sourceLayout.onExit === 'function') {
-          const exitContext = { eventBus, payload, reason, from: activeLayoutId, to: targetLayoutId };
-          const snapshot = await sourceLayout.onExit(exitContext);
-          if (snapshot !== undefined) snapshotsByLayout.set(activeLayoutId, snapshot);
-        }
-        const from = activeLayoutId;
-        activeLayoutId = targetLayoutId;
-        inputDomains.setActiveDomain(targetLayoutId);
-        const enterContext = {
-          eventBus,
-          payload,
-          reason,
-          from,
-          to: targetLayoutId,
-          resumeSnapshot: snapshotsByLayout.get(targetLayoutId) || null,
-        };
-        if (typeof targetLayout.onEnter === 'function') await targetLayout.onEnter(enterContext);
-        if (typeof targetLayout.onActive === 'function') await targetLayout.onActive(enterContext);
-        eventBus.emit('layout:changed', { from, to: targetLayoutId, reason });
-        runtimeDebugLogging.debugLayoutLog(`[Layout] Active → ${targetLayoutId}`);
-        return true;
-      } finally {
-        isTransitioning = false;
-        inputDomains.unlock();
-      }
-    },
-  };
-}
-
 function getHeroUIDByIndex(idx) {
   const hero = state.entities.find(e => e.kind === 'hero' && (e.heroDisplaySlot === idx || e.heroIndex === idx));
   return hero ? hero.uid : 0;
 }
 
-// simple inline game state (could import from gameLogic.js if module support added)
-const gameState = {
-  selectedHero: 0,
-  selectedEnemy: 0,
-  playerTurn: true,
-  partyHP: [42, 35, 30, 40],
-  partyMaxHP: [42, 35, 30, 40],
-  enemyHP: [50, 60, 55],
-  enemyMaxHP: [50, 60, 55],
-  // Overlay state - NavMenu opens overlay window
-  // Gem board state
-  gems: [], // array of gem objects {cellC, cellR, color, x, y}
-  selectedGems: [], // indices of selected gems
-  boardCreated: false,
-  gridBounds: null, // bounds of grid_placeholder area for centering
-  grid: [], // 2D grid of gem uid or 0
-  nextGemUID: 1,
-  bootstrapRng: {
-    enabled: false,
-    next: null,
-    gemInitRemaining: 0,
-  },
-  selectionLocked: false,
-  enemyTurnKicked: false,
-  buffRollTimer: 0,
-  buffIconPresentation: null,
-  gemMergeFx: null,
-  yellowCasino: {
-    active: false,
-    phase: 'idle',
-    queue: [],
-    index: 0,
-    current: null,
-    telegraphUntil: 0,
-  },
-  refillBounce: {
-    active: false,
-    queue: [],
-    index: 0,
-    current: null,
-  },
-  superGems: [],
-  superGemCellMap: new Map(),
-  superGemSignature: '',
-  nextSuperGemId: 1,
-  storyCardLine: {
-    text: '',
-    animUntil: 0,
-  },
-  storyCardLayout: {
-    x: 0,
-    y: 0,
-    w: 0,
-    h: 0,
-    initialized: false,
-    trigger: '',
-  },
-  tomesLayout: {
-    entryPoint: 'map-locale',
-    selectedIndex: 0,
-    hitZones: null,
-    gallery: [
-      {
-        id: 'tome-cinder-codex',
-        name: 'Cinder Codex',
-        discovered: true,
-        rarity: 'Rare',
-        buffSlot: { stat: 'ATK', mode: 'flat', value: 1, cadenceTurns: 4 },
-        enemyDebuffSlot: null,
-      },
-      {
-        id: 'tome-gale-archive',
-        name: 'Gale Archive',
-        discovered: true,
-        rarity: 'Epic',
-        buffSlot: { stat: 'SPD', mode: 'flat', value: 1, cadenceTurns: 5 },
-        enemyDebuffSlot: { stat: 'CRIT', mode: 'pct', value: 0.08, cadenceTurns: 0 },
-      },
-      {
-        id: 'tome-ward-index',
-        name: 'Ward Index',
-        discovered: false,
-        rarity: 'Legendary',
-        buffSlot: { stat: 'DEF', mode: 'flat', value: 1, cadenceTurns: 6 },
-        enemyDebuffSlot: null,
-      },
-      {
-        id: 'tome-hollow-scripture',
-        name: 'Hollow Scripture',
-        discovered: false,
-        rarity: 'Epic',
-        buffSlot: { stat: 'RES', mode: 'flat', value: 1, cadenceTurns: 5 },
-        enemyDebuffSlot: { stat: 'ATK', mode: 'pct', value: 0.06, cadenceTurns: 0 },
-      },
-    ],
-  },
-  artifactsLayout: {
-    entryPoint: 'map-locale',
-    selectedIndex: 0,
-    hitZones: null,
-    gallery: [
-      {
-        id: 'artifact-fang-mark',
-        name: 'Fang Mark',
-        discovered: true,
-        rarity: 'Rare',
-        passiveHook: { key: 'regen_tick', mode: 'flat', value: 2, cadenceTurns: 5 },
-        visibleCombatFx: false,
-      },
-      {
-        id: 'artifact-iron-crest',
-        name: 'Iron Crest',
-        discovered: true,
-        rarity: 'Epic',
-        passiveHook: { key: 'defense_boost', mode: 'flat', value: 1, cadenceTurns: 15 },
-        visibleCombatFx: false,
-      },
-      {
-        id: 'artifact-night-coin',
-        name: 'Night Coin',
-        discovered: false,
-        rarity: 'Legendary',
-        passiveHook: { key: 'enemy_slow', mode: 'pct', value: 0.06, cadenceTurns: 15 },
-        visibleCombatFx: false,
-      },
-      {
-        id: 'artifact-ward-prism',
-        name: 'Ward Prism',
-        discovered: false,
-        rarity: 'Epic',
-        passiveHook: { key: 'resist_guard', mode: 'flat', value: 1, cadenceTurns: 8 },
-        visibleCombatFx: false,
-      },
-    ],
-  },
-  mountsLayout: {
-    entryPoint: 'map-locale',
-    selectedIndex: 0,
-    hitZones: null,
-    gallery: [
-      {
-        id: 'mount-ash-runner',
-        name: 'Ash Runner',
-        discovered: true,
-        rarity: 'Rare',
-        siblingFamily: 'progression-gallery',
-        vaultCompatibilityTier: 1,
-        passiveHook: { key: 'turn_speed', mode: 'flat', value: 1, cadenceTurns: 4 },
-      },
-      {
-        id: 'mount-ridge-boar',
-        name: 'Ridge Boar',
-        discovered: true,
-        rarity: 'Epic',
-        siblingFamily: 'progression-gallery',
-        vaultCompatibilityTier: 2,
-        passiveHook: { key: 'impact_guard', mode: 'flat', value: 1, cadenceTurns: 7 },
-      },
-      {
-        id: 'mount-aether-drake',
-        name: 'Aether Drake',
-        discovered: false,
-        rarity: 'Legendary',
-        siblingFamily: 'progression-gallery',
-        vaultCompatibilityTier: 3,
-        passiveHook: { key: 'opening_strike', mode: 'pct', value: 0.05, cadenceTurns: 0 },
-      },
-      {
-        id: 'mount-fog-stag',
-        name: 'Fog Stag',
-        discovered: false,
-        rarity: 'Epic',
-        siblingFamily: 'progression-gallery',
-        vaultCompatibilityTier: 2,
-        passiveHook: { key: 'resist_guard', mode: 'flat', value: 1, cadenceTurns: 8 },
-      },
-    ],
-  },
-  collectiblesLayout: {
-    entryPoint: 'map-locale',
-    selectedIndex: 0,
-    hitZones: null,
-    gallery: [
-      {
-        id: 'collectible-astral-seal',
-        name: 'Astral Seal',
-        discovered: true,
-        rarity: 'Rare',
-        siblingFamily: 'progression-gallery',
-        setTag: 'seal-archive',
-        passiveHook: { key: 'wallet_bonus', mode: 'pct', value: 0.04, cadenceTurns: 0 },
-      },
-      {
-        id: 'collectible-vault-shard',
-        name: 'Vault Shard',
-        discovered: true,
-        rarity: 'Epic',
-        siblingFamily: 'progression-gallery',
-        setTag: 'ward-breaker',
-        passiveHook: { key: 'ward_break_boost', mode: 'flat', value: 1, cadenceTurns: 0 },
-      },
-      {
-        id: 'collectible-orbit-emblem',
-        name: 'Orbit Emblem',
-        discovered: false,
-        rarity: 'Legendary',
-        siblingFamily: 'progression-gallery',
-        setTag: 'orbit-regalia',
-        passiveHook: { key: 'drop_weight', mode: 'pct', value: 0.05, cadenceTurns: 0 },
-      },
-    ],
-  },
-  relicsLayout: {
-    entryPoint: 'map-locale',
-    selectedIndex: 0,
-    hitZones: null,
-    gallery: [
-      {
-        id: 'relic-astral-seal',
-        name: 'Astral Seal',
-        discovered: true,
-        rarity: 'Rare',
-        siblingFamily: 'progression-gallery',
-        setTag: 'seal-archive',
-        passiveHook: { key: 'wallet_bonus', mode: 'pct', value: 0.04, cadenceTurns: 0 },
-      },
-      {
-        id: 'relic-vault-shard',
-        name: 'Vault Shard',
-        discovered: true,
-        rarity: 'Epic',
-        siblingFamily: 'progression-gallery',
-        setTag: 'ward-breaker',
-        passiveHook: { key: 'ward_break_boost', mode: 'flat', value: 1, cadenceTurns: 0 },
-      },
-      {
-        id: 'relic-orbit-emblem',
-        name: 'Orbit Emblem',
-        discovered: false,
-        rarity: 'Legendary',
-        siblingFamily: 'progression-gallery',
-        setTag: 'orbit-regalia',
-        passiveHook: { key: 'drop_weight', mode: 'pct', value: 0.05, cadenceTurns: 0 },
-      },
-      {
-        id: 'relic-echo-trophy',
-        name: 'Echo Trophy',
-        discovered: false,
-        rarity: 'Epic',
-        siblingFamily: 'progression-gallery',
-        setTag: 'echo-line',
-        passiveHook: { key: 'chest_meter', mode: 'pct', value: 0.03, cadenceTurns: 0 },
-      },
-    ],
-  },
-  petsLayout: {
-    entryPoint: 'map-locale',
-    selectedIndex: 0,
-    hitZones: null,
-    gallery: [
-      {
-        id: 'pet-ember-sprite',
-        name: 'Ember Sprite',
-        discovered: true,
-        rarity: 'Rare',
-        siblingFamily: 'progression-gallery',
-        milestoneSlots: 5,
-        deploymentSlots: 2,
-        passiveHook: { key: 'opening_haste', mode: 'flat', value: 1, cadenceTurns: 3 },
-      },
-      {
-        id: 'pet-mossback',
-        name: 'Mossback',
-        discovered: true,
-        rarity: 'Epic',
-        siblingFamily: 'progression-gallery',
-        milestoneSlots: 5,
-        deploymentSlots: 2,
-        passiveHook: { key: 'guard_bloom', mode: 'flat', value: 1, cadenceTurns: 5 },
-      },
-      {
-        id: 'pet-velvet-fox',
-        name: 'Velvet Fox',
-        discovered: false,
-        rarity: 'Legendary',
-        siblingFamily: 'progression-gallery',
-        milestoneSlots: 5,
-        deploymentSlots: 2,
-        passiveHook: { key: 'crit_trail', mode: 'pct', value: 0.05, cadenceTurns: 0 },
-      },
-      {
-        id: 'pet-lantern-jelly',
-        name: 'Lantern Jelly',
-        discovered: false,
-        rarity: 'Epic',
-        siblingFamily: 'progression-gallery',
-        milestoneSlots: 5,
-        deploymentSlots: 2,
-        passiveHook: { key: 'mana_drift', mode: 'flat', value: 1, cadenceTurns: 4 },
-      },
-    ],
-  },
-  idleFarmLayout: {
-    entryPoint: 'astral-flow-nav',
-    hitZones: null,
-    config: {
-      heroNames: ['Falie', 'Kojonn'],
-      loopForever: true,
-      enemySlots: 2,
-      maxVisibleEnemies: 2,
-      secondEnemyChance: 0.45,
-      hitsToKill: 3,
-      attackIntervalSec: 3,
-      enemySpawnDelaySec: 1.5,
-      rewardCadenceSec: 18,
-      goldPerCadence: 1,
-      scrapPerCadence: 1,
-    },
-    metaBonuses: {
-      goldGainPct: 0,
-      resourceGainPct: 0,
-    },
-    rewardLedger: {
-      unclaimedEnergy: 0,
-      claimedEnergyTotal: 0,
-      unclaimedTokens: {
-        SAND: 0,
-        BONE_CHIP: 0,
-        SLIME: 0,
-        HORN: 0,
-        SHELL: 0,
-      },
-      claimedTokensTotal: {
-        SAND: 0,
-        BONE_CHIP: 0,
-        SLIME: 0,
-        HORN: 0,
-        SHELL: 0,
-      },
-    },
-    emissionState: null,
-    session: null,
-  },
-  evolutionLayout: {
-    entryPoint: 'map-locale',
-    selectedLevel: 0,
-    hitZones: null,
-    ladder: [
-      { level: 1, stat: 'HP', bonusText: '+25 HP', softCurrency: 'Astral Dust', cost: 40, status: 'preview-open' },
-      { level: 2, stat: 'ATK', bonusText: '+3 ATK', softCurrency: 'Astral Dust', cost: 55, status: 'preview-open' },
-      { level: 3, stat: 'DEF', bonusText: '+3 DEF', softCurrency: 'Astral Dust', cost: 70, status: 'preview-open' },
-      { level: 4, stat: 'MAG', bonusText: '+4 MAG', softCurrency: 'Astral Dust', cost: 90, status: 'preview-open' },
-      { level: 5, stat: 'RES', bonusText: '+4 RES', softCurrency: 'Astral Dust', cost: 110, status: 'preview-open' },
-      { level: 6, stat: 'SPD', bonusText: '+2 SPD', softCurrency: 'Astral Dust', cost: 135, status: 'preview-open' },
-      { level: 7, stat: 'Core', bonusText: 'Trait lattice unlock seam', softCurrency: 'Astral Dust', cost: 165, status: 'future-capstone' },
-    ],
-    researchGates: [
-      { id: 'evo-gate-falie-aegis', hero: 'Falie', node: 'Aegis Theory', unlockLevel: 3, state: 'future-research' },
-      { id: 'evo-gate-huun-ambush', hero: 'Huun', node: 'Ambush Weave', unlockLevel: 4, state: 'future-research' },
-      { id: 'evo-gate-runa-ward', hero: 'Runa', node: 'Ward Bloom', unlockLevel: 5, state: 'future-research' },
-      { id: 'evo-gate-kojonn-blight', hero: 'Kojonn', node: 'Blight Script', unlockLevel: 6, state: 'future-research' },
-    ],
-  },
-  homesteadLayout: {
-    entryPoint: 'map-locale',
-    selectedSlot: 0,
-    hitZones: null,
-    scene: {
-      theme: 'garden-shell',
-      slots: [
-        { id: 'home-slot-1', kind: 'emitter-pad', unlocked: true, buildState: 'empty' },
-        { id: 'home-slot-2', kind: 'workshop-node', unlocked: true, buildState: 'empty' },
-        { id: 'home-slot-3', kind: 'storage-node', unlocked: false, buildState: 'locked' },
-        { id: 'home-slot-4', kind: 'garden-node', unlocked: false, buildState: 'locked' },
-      ],
-      placeholderEmissions: [
-        { key: 'soft_currency', cadenceSeconds: 300, value: 10 },
-        { key: 'material_scrap', cadenceSeconds: 600, value: 1 },
-      ],
-    },
-  },
-  chestsLayout: {
-    entryPoint: 'menu-nav',
-    activeTab: 'Common',
-    progress: {
-      current: 36,
-      target: 100,
-      milestoneReward: 'Tier Chest',
-    },
-    hitZones: null,
-    tabs: [
-      { id: 'Common', label: 'Common', tier: 1, chestCount: 3 },
-      { id: 'Rare', label: 'Rare', tier: 2, chestCount: 2 },
-      { id: 'Epic', label: 'Epic', tier: 3, chestCount: 1 },
-      { id: 'Legendary', label: 'Legendary', tier: 4, chestCount: 0 },
-    ],
-    retentionButtons: [
-      { id: 'homestead', title: 'Enter Homestead', subtitle: 'Map Locale', targetLayout: 'homesteadLayout', fill: '#f4efcf', stroke: '#a08f41', text: '#5a4d17' },
-      { id: 'collectibles', title: 'Enter Collectibles', subtitle: 'Map Locale', targetLayout: 'collectiblesLayout', fill: '#f1e0f7', stroke: '#8e61a4', text: '#4a275d' },
-      { id: 'relics', title: 'Enter Relics', subtitle: 'Map Locale', targetLayout: 'relicsLayout', fill: '#f1e0f7', stroke: '#8e61a4', text: '#4a275d' },
-      { id: 'pets', title: 'Enter Pets', subtitle: 'Map Locale', targetLayout: 'petsLayout', fill: '#e7f2d5', stroke: '#7e9e54', text: '#324819' },
-      { id: 'evolution', title: 'Enter Evolution', subtitle: 'Soft Currency', targetLayout: 'evolutionLayout', fill: '#e3ecfb', stroke: '#5a79b8', text: '#20385f' },
-      { id: 'mounts', title: 'Enter Mounts', subtitle: 'Map Locale', targetLayout: 'mountsLayout', fill: '#d9f2da', stroke: '#4a8b4f', text: '#1f4a24' },
-      { id: 'artifacts', title: 'Enter Artifacts', subtitle: 'Map Locale', targetLayout: 'artifactsLayout', fill: '#d7e7f8', stroke: '#3c6f9f', text: '#17324a' },
-      { id: 'tomes', title: 'Enter Tomes', subtitle: 'Map Locale', targetLayout: 'tomesLayout', fill: '#f3ddaa', stroke: '#8d6d2a', text: '#2f2412' },
-    ],
-    rewardsByTab: {
-      Common: ['Pet Fragment x5', 'Relic Scrap x8', 'Coins x250'],
-      Rare: ['Pet Fragment x10', 'Relic Token x2', 'Coins x600'],
-      Epic: ['Pet Core x1', 'Relic Token x4', 'Coins x1200'],
-      Legendary: ['Pet Core x2', 'Ancient Relic x1', 'Coins x3000'],
-    },
-  },
-  task015Trace: {
-    storycardPlacement: [],
-    yellowQueue: [],
-    yellowRefillQueue: [],
-    yellowWrites: [],
-    yellowAnimation: [],
-  },
-  lastTurnPhase: null,
-  baseSummary: '',
-  startupLoad: {
-    active: true,
-    phase: 'boot',
-    label: 'Booting runtime...',
-    progress: 0,
-  },
-};
+const gameState = createInitialGameState();
 
 function createDefaultDevToolingConfig() {
   return {
@@ -1250,55 +679,20 @@ function createDefaultDevToolingConfig() {
   };
 }
 
-function getIdleFarmRuntimeDeps(nowSec = 0) {
-  return {
-    nowSec,
-    heroSlots: ensureDevToolingConfig().heroSlots,
-    fallbackRoster: CANONICAL_HERO_ROSTER.map((hero) => String(hero?.name || '')).filter(Boolean),
-    enemyCatalog: Array.isArray(state.globals.DevToolEnemyCatalog) ? state.globals.DevToolEnemyCatalog : [],
-  };
-}
-
-function ensureIdleFarmSession(nowSec = 0) {
-  const layout = gameState.idleFarmLayout || {};
-  return ensureIdleFarmSessionState(layout, getIdleFarmRuntimeDeps(nowSec));
-}
-
-function startIdleFarmEmissions(nowSec = 0) {
-  const layout = gameState.idleFarmLayout;
-  if (!layout) return null;
-  return startIdleFarmEmissionState(layout, getIdleFarmRuntimeDeps(nowSec));
-}
-
-function updateIdleFarmEmissions(nowSec = 0) {
-  const layout = gameState.idleFarmLayout;
-  if (!layout) return null;
-  return updateIdleFarmEmissionState(layout, getIdleFarmRuntimeDeps(nowSec));
-}
-
-function updateIdleFarmSession(nowSec = 0) {
-  const layout = gameState.idleFarmLayout;
-  if (!layout) return null;
-  return updateIdleFarmSessionState(layout, getIdleFarmRuntimeDeps(nowSec));
-}
-
-function restartIdleFarmSession(nowSec = 0) {
-  const layout = gameState.idleFarmLayout;
-  if (!layout) return null;
-  return restartIdleFarmSessionState(layout, getIdleFarmRuntimeDeps(nowSec));
-}
-
-function claimIdleFarmRewards() {
-  const layout = gameState.idleFarmLayout;
-  if (!layout) return { energy: 0, tokens: {} };
-  updateIdleFarmEmissions(performance.now() / 1000);
-  const claimed = claimIdleFarmRewardsFromState(layout);
-  const applied = applyIdleFarmRewardsToGlobals(state.globals, claimed);
-  if ((applied.energy > 0) || Object.values(applied.tokens || {}).some((amount) => Number(amount || 0) > 0)) {
-    resetIdleFarmEmissionCadence(layout, getIdleFarmRuntimeDeps(performance.now() / 1000));
-  }
-  return applied;
-}
+const {
+  ensureIdleFarmSession,
+  startIdleFarmEmissions,
+  updateIdleFarmEmissions,
+  updateIdleFarmSession,
+  restartIdleFarmSession,
+  claimIdleFarmRewards,
+} = createIdleFarmAppRuntime({
+  gameState,
+  state,
+  getDevToolingConfig: ensureDevToolingConfig,
+  getFallbackRoster: () => CANONICAL_HERO_ROSTER.map((hero) => String(hero?.name || '')).filter(Boolean),
+  getNowSec: () => performance.now() / 1000,
+});
 
 function sanitizeDevToolingConfig(input = {}) {
   const base = createDefaultDevToolingConfig();
@@ -2153,71 +1547,23 @@ function isEditableDomTarget(target) {
 }
 
 function getTask015TraceStore() {
-  if (!gameState.task015Trace) {
-    gameState.task015Trace = {
-      storycardPlacement: [],
-      yellowQueue: [],
-      yellowRefillQueue: [],
-      yellowWrites: [],
-      yellowAnimation: [],
-    };
-  }
-  return gameState.task015Trace;
+  return task015TraceState.getTask015TraceStore(gameState);
 }
 
 function updateStartupLoadState(patch = {}) {
-  const prev = gameState.startupLoad && typeof gameState.startupLoad === 'object'
-    ? gameState.startupLoad
-    : { active: true, phase: 'boot', label: 'Booting runtime...', progress: 0 };
-  const nextProgress = Math.max(0, Math.min(1, Number(
-    Object.prototype.hasOwnProperty.call(patch, 'progress')
-      ? patch.progress
-      : prev.progress
-  ) || 0));
-  gameState.startupLoad = {
-    ...prev,
-    ...patch,
-    progress: nextProgress,
-  };
-  return gameState.startupLoad;
+  return task015TraceState.updateStartupLoadState(gameState, patch);
 }
 
 function traceTask015YellowQueue(queue) {
-  const store = getTask015TraceStore();
-  store.yellowQueue = (queue || []).map((item, idx) => ({
-    idx: Number(idx),
-    type: String(item.type || ''),
-    cellR: Number(item.cellR || 0),
-    cellC: Number(item.cellC || 0),
-    reason: String(item.reason || ''),
-    uid: Number(item.uid || 0),
-    target: Number(item.target || 0),
-  }));
+  task015TraceState.traceTask015YellowQueue(gameState, queue);
 }
 
 function traceTask015YellowWrite(source, item, step) {
-  const store = getTask015TraceStore();
-  store.yellowWrites.push({
-    source: String(source || ''),
-    step: Number(step || 0),
-    cellR: Number(item.cellR || 0),
-    cellC: Number(item.cellC || 0),
-    type: String(item.type || ''),
-    target: Number(item.target || 0),
-    assignedColor: Number(item.target || 0),
-    time: Number(state.globals.time || 0),
-  });
-  if (store.yellowWrites.length > 120) store.yellowWrites.shift();
+  task015TraceState.traceTask015YellowWrite({ gameState, state, source, item, step });
 }
 
 function traceTask015YellowAnimation(stage, payload = {}) {
-  const store = getTask015TraceStore();
-  store.yellowAnimation.push({
-    stage: String(stage || ''),
-    time: Number(state.globals.time || 0),
-    ...payload,
-  });
-  if (store.yellowAnimation.length > 200) store.yellowAnimation.shift();
+  task015TraceState.traceTask015YellowAnimation({ gameState, state, stage, payload });
 }
 let COMBAT_LAYOUT_READY = false;
 let COMBAT_BOOTSTRAP_COMPLETE = false;
@@ -2260,19 +1606,6 @@ const combatRuntimeGateway = new CombatRuntimeGateway({
   },
 });
 
-const CANONICAL_HERO_ROSTER = [
-  { name: 'Falie', hp: 42, maxHP: 42, ATK: 18, DEF: 20, MAG: 10, RES: 18, SPD: 9, attackType: 'melee' },
-  { name: 'Huun', hp: 35, maxHP: 35, ATK: 22, DEF: 10, MAG: 8, RES: 12, SPD: 20, attackType: 'melee' },
-  { name: 'Runa', hp: 30, maxHP: 30, ATK: 8, DEF: 8, MAG: 28, RES: 20, SPD: 11, attackType: 'magic' },
-  { name: 'Kojonn', hp: 40, maxHP: 40, ATK: 12, DEF: 14, MAG: 22, RES: 18, SPD: 14, attackType: 'magic' },
-];
-const HERO_CLASS_LABELS = Object.freeze({
-  falie: 'Guardian',
-  huun: 'Vanguard',
-  runa: 'Mystic',
-  kojonn: 'Arcanist',
-});
-// Deterministic gate metric used for progression/access comparisons.
 function computeCombatPower(atk, def, hp) {
   const a = Number(atk || 0);
   const d = Number(def || 0);
@@ -2291,149 +1624,6 @@ function resolveEnemyEncounterCombatPower(row) {
   if (Number.isFinite(explicit) && explicit > 0) return Math.round(explicit * 100) / 100;
   return computeCombatPower(row?.ATK, row?.DEF, row?.HP);
 }
-const HERO_STAT_KEYS = ['ATK', 'DEF', 'MAG', 'RES', 'SPD', 'HP'];
-const FIGMA_HERO_NEXT_URL = 'https://www.figma.com/api/mcp/asset/dfb1bc1b-4189-4f52-9c88-1cf1e4f8029a';
-const FIGMA_HERO_BACK_URL = 'https://www.figma.com/api/mcp/asset/6ce3ba17-8c7d-4a3e-bc8e-194b9b4947d9';
-const FIGMA_HERO_CLOSE_OVAL_URL = 'https://www.figma.com/api/mcp/asset/978c0a6d-a797-4ae7-b41c-4306877ad7bd';
-const FIGMA_PLUS_URL = 'https://www.figma.com/api/mcp/asset/f978e439-2103-43fd-be9d-fcb7f5aa9d7f';
-const FIGMA_MINUS_URL = 'https://www.figma.com/api/mcp/asset/b5733d59-96b6-4f04-a5de-e4134dea9565';
-const HERO_PACK_PLUS_PATH = 'images/plus.png';
-const HERO_PACK_MINUS_PATH = 'images/minus.png';
-const HERO_PACK_CLOSE_OVAL_PATH = 'images/ui_navclosebutton-animation 1-000.png';
-const heroLayoutSpec = {
-  artboard: { w: 360, h: 640 },
-  portrait: { x: 109, y: 32, w: 142, h: 92 },
-  arrows: {
-    left: { x: 22, y: 78, w: 24, h: 38, glyphX: 34, glyphY: 97 },
-    right: { x: 322, y: 78, w: 24, h: 38, glyphX: 334, glyphY: 97 },
-  },
-  namePill: { x: 85, y: 134, w: 190, h: 24 },
-  stats: {
-    labelsTop: 168,
-    valuesTop: 190,
-    labelH: 14,
-    valueH: 44,
-    cells: [
-      { x: 16, w: 50 },
-      { x: 72, w: 50 },
-      { x: 128, w: 50 },
-      { x: 184, w: 50 },
-      { x: 240, w: 50 },
-      { x: 296, w: 50 },
-    ],
-  },
-  skillPoints: {
-    row: { x: 160, y: 251, w: 190, h: 24 },
-    chip: { x: 286, y: 252, w: 58, h: 20 },
-  },
-  heroHeader: {
-    namePill: { x: 18, y: 38, w: 190, h: 24 },
-    classLabel: { x: 24, y: 70, w: 128, h: 16 },
-  },
-  heroPortrait: { x: 69, y: 107, w: 224, h: 146 },
-  heroArrows: {
-    left: { x: 14, y: 152, w: 24, h: 38, glyphX: 26, glyphY: 171 },
-    right: { x: 320, y: 152, w: 24, h: 38, glyphX: 332, glyphY: 171 },
-  },
-  heroCP: { x: 136, y: 272, w: 88, h: 18 },
-  heroStats: {
-    bar: { x: 6, y: 306, w: 350, h: 27 },
-    items: [
-      { iconX: 27, valueX: 54, key: 'HP' },
-      { iconX: 94, valueX: 122, key: 'ATK' },
-      { iconX: 165, valueX: 190, key: 'DEF' },
-      { iconX: 233, valueX: 258, key: 'MAG' },
-      { iconX: 301, valueX: 330, key: 'RES' },
-    ],
-  },
-  heroNodes: {
-    items: [
-      {
-        x: 101,
-        y: 352,
-        kind: 'circle',
-        size: 44,
-        frameFill: '#D9D9D9',
-        frameStroke: '#FFFFFF',
-        frameStrokeWidth: 1,
-        levelBacker: { x: 132, y: 379, w: 18, h: 18, label: 'N' },
-      },
-      {
-        x: 159,
-        y: 352,
-        kind: 'circle',
-        size: 44,
-        frameFill: '#D9D9D9',
-        frameStroke: null,
-        frameStrokeWidth: 0,
-        levelBacker: { x: 190, y: 379, w: 18, h: 18, label: 'N' },
-      },
-      {
-        x: 222.5,
-        y: 355.615,
-        kind: 'diamond',
-        size: 36.77,
-        frameFill: '#D9D9D9',
-        frameStroke: null,
-        frameStrokeWidth: 0,
-        frameRadius: 8,
-        levelBacker: { x: 251, y: 379, w: 18, h: 18, label: 'N' },
-      },
-    ],
-  },
-  heroSkillPoints: {
-    row: { x: 86, y: 415, w: 190, h: 24 },
-    chip: { x: 216, y: 415, w: 88, h: 24 },
-  },
-  heroSkillModal: {
-    card: { x: 32, y: 92, w: 296, h: 438 },
-    headerPill: { x: 56, y: 112, w: 168, h: 24 },
-    classLabel: { x: 56, y: 142, w: 128, h: 16 },
-    frame: { x: 56, y: 170, w: 44, h: 44 },
-    rankRow: { x: 120, y: 176, w: 154, h: 24 },
-    summaryRow: { x: 56, y: 228, w: 240, h: 56 },
-    upgradeList: { x: 56, y: 300, w: 240, h: 118 },
-    upgradeButton: { x: 104, y: 430, w: 152, h: 56 },
-    close: { cx: 180, cy: 507, r: 15 },
-  },
-  heroUpgrade: { x: 118, y: 494, w: 124, h: 42 },
-  cards: [
-    {
-      card: { x: 12, y: 287, w: 336, h: 79.53 },
-      titleStrip: { x: 60, y: 295, w: 182, h: 13 },
-      iconTile: { x: 18.96, y: 308.87, w: 37.775, h: 37.775 },
-      bodyText: { x: 65.68, titleY: 306.5, line1Y: 324.5, line2Y: 336.5, line3Y: 348.5 },
-      controls: {
-        minus: { x: 249.59, y: 316.73, w: 22.773, h: 23.954 },
-        value: { x: 277, y: 316, w: 35.787, h: 20.876 },
-        plus: { x: 317.18, y: 312.85, w: 22.039, h: 23.676 },
-      },
-    },
-    {
-      card: { x: 12, y: 380.44, w: 336, h: 79.53 },
-      titleStrip: { x: 60, y: 389, w: 182, h: 13 },
-      iconTile: { x: 18.96, y: 402.31, w: 37.775, h: 37.775 },
-      bodyText: { x: 65.68, titleY: 400.5, line1Y: 418.5, line2Y: 430.5, line3Y: 442.5 },
-      controls: {
-        minus: { x: 249.59, y: 410.17, w: 22.773, h: 23.954 },
-        value: { x: 277, y: 409, w: 35.787, h: 20.876 },
-        plus: { x: 317.18, y: 406.29, w: 22.039, h: 23.676 },
-      },
-    },
-    {
-      card: { x: 12, y: 473.89, w: 336, h: 79.53 },
-      titleStrip: { x: 60, y: 482, w: 182, h: 13 },
-      iconTile: { x: 18.96, y: 495.76, w: 37.775, h: 37.775 },
-      bodyText: { x: 65.68, titleY: 493.5, line1Y: 511.5, line2Y: 523.5, line3Y: 535.5 },
-      controls: {
-        minus: { x: 249.59, y: 503.61, w: 22.773, h: 23.954 },
-        value: { x: 277, y: 503, w: 35.787, h: 20.876 },
-        plus: { x: 317.18, y: 499.73, w: 22.039, h: 23.676 },
-      },
-    },
-  ],
-  close: { cx: 180, cy: 608, r: 15 },
-};
 
 function getHeroScreenRoster() {
   const runtimeHeroes = (state.entities || [])
@@ -5905,6 +5095,7 @@ async function main(){
   function drawFrame(dtOverride){
     syncSuperGemShapes({ gameState, state, boardGeometry, reason: 'draw-frame' });
     processTurnCadencePartyRegens();
+    callFunctionWithContext(fnContext, 'SyncDrainFieldZones');
     superGemRuntime.syncTaintedGroundZones({
       state,
       callFunctionWithContext,
@@ -6028,8 +5219,10 @@ async function main(){
       assertBoardIntegrity,
       getGemGateSnapshot,
       getPersistentTaintedGroundOverlays,
+      getPersistentDrainFieldOverlays,
       hasPersistentEnemyTaintedGroundOverlay,
       hasPersistentEnemyBlightOverlay,
+      hasPersistentEnemyDrainOverlay,
       hasPersistentHeroRegenOverlay,
       isHitFlashActive,
       getHitFlashTone,

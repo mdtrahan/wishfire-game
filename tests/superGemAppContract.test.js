@@ -35,14 +35,17 @@ test('render runtime generated body does not contain raw string newlines', () =>
 
 test('app wires super gem hooks for settle, spend, and decomposition', () => {
   const src = fs.readFileSync('web-runner/app.js', 'utf8');
+  const stateSrc = fs.readFileSync('web-runner/state/gameState.js', 'utf8');
   const runtimeSrc = fs.readFileSync('web-runner/systems/superGemRuntime.js', 'utf8');
   const renderRuntimeSrc = fs.readFileSync('web-runner/systems/renderRuntime.js', 'utf8');
   const boardStateSrc = fs.readFileSync('web-runner/src/core/superGemBoardState.mjs', 'utf8');
   const renderBoardSrc = fs.readFileSync('web-runner/systems/renderBoard.js', 'utf8');
   assert.match(src, /import\s+\{[\s\S]*getSuperGemAtCanvasPoint[\s\S]*getSuperGemAtCell[\s\S]*spendSuperGem[\s\S]*syncSuperGemShapes[\s\S]*\}\s+from\s+'\.\/src\/core\/superGemBoardState\.mjs';/);
   assert.match(src, /import \* as superGemRuntime from '\.\/systems\/superGemRuntime\.js';/);
-  assert.match(src, /superGems:\s*\[\],/);
-  assert.match(src, /superGemCellMap:\s*new Map\(\),/);
+  assert.match(src, /import \{ createInitialGameState \} from '\.\/state\/gameState\.js';/);
+  assert.match(src, /const gameState = createInitialGameState\(\);/);
+  assert.match(stateSrc, /superGems:\s*\[\],/);
+  assert.match(stateSrc, /superGemCellMap:\s*new Map\(\),/);
   assert.doesNotMatch(src, /function settleSuperGemShapes\(reason = 'unknown'\)/);
   assert.doesNotMatch(src, /function resolveSuperGemDecomposition\(reason = 'unknown'\)/);
   assert.doesNotMatch(src, /function spendSuperGem\(superGem, reason = 'tap'\)/);
@@ -78,11 +81,11 @@ test('app wires super gem hooks for settle, spend, and decomposition', () => {
   assert.match(src, /function getPersistentTaintedGroundOverlays\(\) \{/);
   assert.match(src, /anchorWorldX: Number\(zone\.anchorWorldX\),/);
   assert.match(src, /anchorWorldY: Number\(zone\.anchorWorldY\),/);
-  assert.match(src, /getPersistentTaintedGroundOverlays,\s+hasPersistentEnemyTaintedGroundOverlay,\s+hasPersistentEnemyBlightOverlay,/);
+  assert.match(src, /getPersistentTaintedGroundOverlays,\s+getPersistentDrainFieldOverlays,\s+hasPersistentEnemyTaintedGroundOverlay,\s+hasPersistentEnemyBlightOverlay,\s+hasPersistentEnemyDrainOverlay,/);
   assert.match(renderRuntimeSrc, /const renderEnemyTaintedGround = \(drawX, drawY, enemyW, enemyH, seed = 0, alphaScale = 1\) => \{/);
   assert.match(renderRuntimeSrc, /const taintedGroundFieldOverlays = typeof getPersistentTaintedGroundOverlays === 'function' \? getPersistentTaintedGroundOverlays\(\) : \[\];/);
-  assert.match(renderRuntimeSrc, /const getTaintedGroundOverlayPosition = \(overlay, fallbackEnemy = null\) => \{/);
-  assert.match(renderRuntimeSrc, /const enemyStandsInRenderedTaintedGround = \(enemy\) => \{/);
+  assert.match(renderRuntimeSrc, /const getFieldOverlayPosition = \(overlay, fallbackEnemy = null\) => \{/);
+  assert.match(renderRuntimeSrc, /const enemyStandsInRenderedTaintedGround = \(enemy\) => enemyStandsInFieldOverlay\(enemy, taintedGroundFieldOverlays\);/);
   assert.match(renderRuntimeSrc, /const renderTaintedGroundFieldZones = \(\) => \{/);
   assert.match(renderRuntimeSrc, /const anchoredX = Number\(overlay && overlay\.anchorWorldX\);/);
   assert.match(renderRuntimeSrc, /x: Number\.isFinite\(anchoredX\) \? anchoredX : \(slotEnemy && slotEnemy\.x != null \? slotEnemy\.x : \(g\.X0 \|\| 200\)\),/);
