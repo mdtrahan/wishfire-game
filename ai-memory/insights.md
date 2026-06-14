@@ -27,7 +27,7 @@
 - When removing a hero-specific heal expression, route that hero through the shared heal body; do not replace the special branch with a guard that still consumes action pacing but skips `ApplyPartyHeal`.
 - For normal gem matches, refill must start at the gem-destruction seam before deferred action/turn handoff can leave visible board holes. Batch-create all queued refill gems before waiting on settle animation.
 - Regular gem colors should share the refill-bounce owner for empty slots. If a color has extra presentation work, keep that work separate from board refill and keep `CanPickGems` closed while `DeferAdvance` or action locks are still pending.
-- Resource rewards for normal gem matches must be scoped to the matched set passed across the match seam. Do not reuse board-wide sweep counts or unrelated same-color cells unless the action is explicitly a supergem/sweep owner path.
+- Resource accounting for normal gem matches must pass only the matched set count into the existing reward owner (for yellow, `Add_Gold`) rather than replacing reward math. Board-wide same-color counts belong only to explicit supergem/sweep owner paths.
 - Enemy board-pressure effects that run during autoplay should preserve board cardinality unless the turn/refill gates explicitly own the resulting empty cells. Prefer visible lock/disable state for temporary denial effects, and make autoplay skip disabled gems instead of trying to select through them.
 
 ## 2026-03-07 Regression Note

@@ -3089,7 +3089,11 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
         };
       })
       .filter((item) => Number.isFinite(item.x) && Number.isFinite(item.y));
-    if (pendingGoldAward > 0 && mergeSources.length > 0) {
+    if (pendingGoldAward > 0) {
+      callFunctionWithContext(fnContext, 'Add_Gold', pendingGoldAward);
+      casino.pendingGoldAward = 0;
+    }
+    if (mergeSources.length > 0) {
       startGemMergeFx({
         target: casino.goldMergeTarget || getGoldLabelTargetWorld(),
         scaleOut: false,
@@ -3097,20 +3101,12 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
         sourceItems: mergeSources,
       });
       if (gameState.gemMergeFx && gameState.gemMergeFx.active) {
-        gameState.gemMergeFx.goldAward = pendingGoldAward;
         gameState.gemMergeFx.releaseGate = {};
-        casino.pendingGoldAward = 0;
         state.globals.CanPickGems = 0;
         state.globals.IsPlayerBusy = 1;
       } else {
-        state.globals.goldTotal = Number(state.globals.goldTotal || 0) + pendingGoldAward;
-        casino.pendingGoldAward = 0;
         applyTurnGateIntent(createYellowSequenceSkip);
       }
-    } else if (pendingGoldAward > 0) {
-      state.globals.goldTotal = Number(state.globals.goldTotal || 0) + pendingGoldAward;
-      casino.pendingGoldAward = 0;
-      applyTurnGateIntent(createYellowSequenceSkip);
     } else {
       applyTurnGateIntent(createYellowSequenceSkip);
     }

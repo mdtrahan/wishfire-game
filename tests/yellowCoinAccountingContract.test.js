@@ -49,7 +49,7 @@ function loadYellowSequenceHarness() {
     'module.exports = { startYellowCasinoSequence };',
   ].join('\n');
 
-  const captured = { queues: [], gates: [] };
+  const captured = { queues: [], gates: [], functionCalls: [] };
   const context = {
     module: { exports: {} },
     exports: {},
@@ -107,6 +107,8 @@ function loadYellowSequenceHarness() {
     traceTask015YellowAnimation: () => {},
     runtimeDebugLogging: { gemDebugLog: () => {} },
     applyTurnGateIntent: (intent, payload) => { captured.gates.push({ intent, payload }); },
+    callFunctionWithContext: (_fnContext, name, ...args) => { captured.functionCalls.push({ name, args }); },
+    fnContext: {},
     createYellowSequenceGate: function createYellowSequenceGate() {},
     createYellowSequenceSkip: function createYellowSequenceSkip() {},
   };
@@ -125,7 +127,7 @@ function loadSuperGemRuntime() {
   return context.module.exports;
 }
 
-test('normal yellow match awards only the matched yellow gems', () => {
+test('normal yellow match-3 sends only matched gems through regular gold randomizer', () => {
   const { startYellowCasinoSequence, context, captured } = loadYellowSequenceHarness();
 
   startYellowCasinoSequence(77, 3, {
@@ -138,23 +140,27 @@ test('normal yellow match awards only the matched yellow gems', () => {
   });
 
   assert.equal(context.state.globals.goldTotal, 10);
-  assert.equal(context.gameState.gemMergeFx.goldAward, 3);
+  assert.deepEqual(captured.functionCalls.filter(call => call.name === 'Add_Gold'), [
+    { name: 'Add_Gold', args: [3] },
+  ]);
+  assert.equal(context.gameState.gemMergeFx.goldAward, undefined);
   assert.equal(context.gameState.yellowCasino.pendingGoldAward, 0);
   assert.equal(context.gameState.yellowCasino.active, false);
   assert.equal(captured.queues[0].length, 0);
 });
 
-test('yellow supergem keeps its distinct supergem gold behavior', () => {
+test('yellow supergem consumes board-wide yellow count and bypasses random gold roll', () => {
   const { activateSuperGemEffect } = loadSuperGemRuntime();
   const actor = { uid: 4, name: 'Falie', kind: 'hero' };
   const state = {
     globals: {
       time: 8,
       goldTotal: 15,
-      RuntimeRandom: () => 0,
+      RuntimeRandom: () => { throw new Error('yellow supergem gold should not roll random gold'); },
     },
     entities: [actor],
   };
+  const calls = [];
 
   const activated = activateSuperGemEffect({
     superGem: { baseColor: 3 },
@@ -162,6 +168,7 @@ test('yellow supergem keeps its distinct supergem gold behavior', () => {
     selectedEnemyUID: 0,
     state,
     callFunctionWithContext: (_ctx, name, ...args) => {
+      calls.push({ name, args });
       if (name === 'GetActorByUID') return state.entities.find((entity) => Number(entity.uid) === Number(args[0])) || null;
       return undefined;
     },
@@ -173,5 +180,6 @@ test('yellow supergem keeps its distinct supergem gold behavior', () => {
   });
 
   assert.equal(activated, true);
-  assert.equal(state.globals.goldTotal, 23);
+  assert.equal(state.globals.goldTotal, 25);
+  assert.ok(calls.some((call) => call.name === 'LogCombat' && /found 10 gold/.test(String(call.args[0]))));
 });
