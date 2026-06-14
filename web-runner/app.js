@@ -3009,37 +3009,10 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
   const now = state.globals.time || 0;
   const casino = gameState.yellowCasino || (gameState.yellowCasino = {});
   casino.mode = 'yellow';
-  const gemByCell = new Map();
-  for (const gm of (gameState.gems || [])) {
-    if (!gm || gm.cellR == null || gm.cellC == null) continue;
-    gemByCell.set(`${gm.cellR},${gm.cellC}`, gm);
-  }
   const queue = [];
-  for (let r = 0; r < boardGeometry.rows; r++) {
-    for (let c = 0; c < boardGeometry.cols; c++) {
-      const key = `${r},${c}`;
-      const gem = gemByCell.get(key) || null;
-      const color = gem && gem.color != null ? gem.color : (gem ? gem.elementIndex : null);
-      if (gem && color === YELLOW_COLOR && !isBoardGemLocked(gem)) {
-        queue.push({
-          type: 'yellow',
-          reason: 'yellow-reassign',
-          uid: gem.uid,
-          cellC: c,
-          cellR: r,
-          target: pickYellowReassignTarget(),
-          sequence: null,
-          startAt: 0,
-          duration: YELLOW_CASINO_SPIN_SEC,
-          frameDuration: 0,
-        });
-      }
-    }
-  }
 
   const hasWork = queue.length > 0;
-  const additionalYellowConsumed = queue.filter((item) => item.type === 'yellow').length;
-  const totalYellowConsumed = Math.max(0, Number(initialMatchedYellowCount || 0)) + additionalYellowConsumed;
+  const totalYellowConsumed = Math.max(0, Number(initialMatchedYellowCount || 0));
   casino.pendingGoldAward = totalYellowConsumed;
   traceTask015YellowQueue(queue);
   traceTask015YellowAnimation('yellow-sequence-start', {
@@ -3065,12 +3038,6 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
           color: Number(item.color ?? item.elementIndex ?? YELLOW_COLOR),
         }))
     : [];
-
-  for (const item of queue) {
-    if (item.type !== 'yellow') continue;
-    const gm = gemByCell.get(`${item.cellR},${item.cellC}`);
-    if (gm) gm.flashUntil = now + YELLOW_CASINO_TELEGRAPH_SEC;
-  }
 
   runtimeDebugLogging.gemDebugLog('[FILL_GATE]', {
     stage: 'yellow-sequence-start',
@@ -3109,14 +3076,47 @@ function startYellowCasinoSequence(actorUID, initialMatchedYellowCount = 0, opti
   } else {
     traceTask015YellowAnimation('yellow-sequence-skip', { reason: 'no-yellow-slots' });
     const pendingGoldAward = Math.max(0, Number(casino.pendingGoldAward || 0));
-    if (pendingGoldAward > 0) {
+    const mergeSources = (casino.goldMergeSources || [])
+      .map((item) => {
+        if (Number.isFinite(Number(item?.cellC)) && Number.isFinite(Number(item?.cellR))) {
+          const pos = getCellWorldPos(Number(item.cellC), Number(item.cellR));
+          return { x: pos.x, y: pos.y, color: Number(item.color ?? YELLOW_COLOR) };
+        }
+        return {
+          x: Number(item?.x || 0),
+          y: Number(item?.y || 0),
+          color: Number(item?.color ?? YELLOW_COLOR),
+        };
+      })
+      .filter((item) => Number.isFinite(item.x) && Number.isFinite(item.y));
+    if (pendingGoldAward > 0 && mergeSources.length > 0) {
+      startGemMergeFx({
+        target: casino.goldMergeTarget || getGoldLabelTargetWorld(),
+        scaleOut: false,
+        startScale: 1.5,
+        sourceItems: mergeSources,
+      });
+      if (gameState.gemMergeFx && gameState.gemMergeFx.active) {
+        gameState.gemMergeFx.goldAward = pendingGoldAward;
+        gameState.gemMergeFx.releaseGate = {};
+        casino.pendingGoldAward = 0;
+        state.globals.CanPickGems = 0;
+        state.globals.IsPlayerBusy = 1;
+      } else {
+        state.globals.goldTotal = Number(state.globals.goldTotal || 0) + pendingGoldAward;
+        casino.pendingGoldAward = 0;
+        applyTurnGateIntent(createYellowSequenceSkip);
+      }
+    } else if (pendingGoldAward > 0) {
       state.globals.goldTotal = Number(state.globals.goldTotal || 0) + pendingGoldAward;
       casino.pendingGoldAward = 0;
+      applyTurnGateIntent(createYellowSequenceSkip);
+    } else {
+      applyTurnGateIntent(createYellowSequenceSkip);
     }
     if (!(gameState.refillBounce && gameState.refillBounce.active)) {
       state.globals.BoardFillActive = 0;
     }
-    applyTurnGateIntent(createYellowSequenceSkip);
   }
 }
 
@@ -3383,12 +3383,14 @@ function handleGemMatch(color) {
     callFunctionWithContext(fnContext, 'Sub_Energy');
     g.ApplyChainToNextDamage = 0;
   } else if (color === 3) {
-    const matchedYellowCount = Math.max(0, Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0);
+    const selectedYellowGems = Array.isArray(gameState.selectedGems)
+      ? gameState.selectedGems.filter((gm) => gm && !isBoardGemLocked(gm) && Number(gm.color ?? gm.elementIndex) === YELLOW_COLOR)
+      : [];
+    const matchedYellowCount = selectedYellowGems.length;
     const goldTarget = getGoldLabelTargetWorld();
     const actor = state.entities.find(e => e.uid === actorUID);
     const actorName = actor ? (actor.name || 'Hero') : 'Hero';
-    const yellowMergeSources = (gameState.gems || [])
-      .filter((gm) => !isBoardGemLocked(gm) && Number(gm && (gm.color ?? gm.elementIndex)) === YELLOW_COLOR)
+    const yellowMergeSources = selectedYellowGems
       .map((gm) => ({
         cellC: Number(gm.cellC || 0),
         cellR: Number(gm.cellR || 0),
