@@ -138,6 +138,14 @@ const {
 } = createRuntimeEnvironment();
 let bootstrapDeterministicRefillPending = false;
 const COMBAT_RUNTIME_RNG_SALT = 0x9e3779b9;
+const GEM_INTERACTIVITY_DIAGNOSTIC_QUERY = (() => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('gemdiag') === 'true';
+  } catch {
+    return false;
+  }
+})();
 exposeRuntimeDebugFlags({ DEBUG_LAYOUT, STARTUP_DEBUG, DEBUG_GEMS_QUERY });
 const DEV_TOOL_HOTKEY_LABEL = 'Ctrl+Shift+P';
 const DEV_TOOL_GEM_RANDOM = -1;
