@@ -3380,7 +3380,14 @@ function handleGemMatch(color) {
     g.ApplyChainToNextDamage = 0;
   } else if (color === 3) {
     const selectedYellowGems = Array.isArray(gameState.selectedGems)
-      ? gameState.selectedGems.filter((gm) => gm && !isBoardGemLocked(gm) && Number(gm.color ?? gm.elementIndex) === YELLOW_COLOR)
+      ? gameState.selectedGems
+        .map((selection) => {
+          if (selection == null) return null;
+          if (typeof selection === 'object') return selection;
+          const index = Number(selection);
+          return Number.isInteger(index) ? (gameState.gems && gameState.gems[index]) : null;
+        })
+        .filter((gm) => gm && !isBoardGemLocked(gm) && Number(gm.color ?? gm.elementIndex) === YELLOW_COLOR)
       : [];
     const matchedYellowCount = selectedYellowGems.length;
     const goldTarget = getGoldLabelTargetWorld();

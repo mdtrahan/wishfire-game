@@ -149,6 +149,19 @@ test('normal yellow match-3 sends only matched gems through regular gold randomi
   assert.equal(captured.queues[0].length, 0);
 });
 
+test('yellow match branch resolves selected indices before counting gold award', () => {
+  const src = read('web-runner/app.js');
+  const handleGemMatchSrc = extractFunctionSource(src, 'handleGemMatch');
+  const yellowBranch = handleGemMatchSrc.match(/} else if \(color === 3\) \{[\s\S]*?\n  \} else if \(color === 4\)/);
+
+  assert.ok(yellowBranch, 'handleGemMatch should have a yellow branch');
+  assert.match(yellowBranch[0], /\? gameState\.selectedGems\s*\n\s*\.map\(\(selection\) => \{/);
+  assert.match(yellowBranch[0], /gameState\.gems && gameState\.gems\[index\]/);
+  assert.match(yellowBranch[0], /const matchedYellowCount = selectedYellowGems\.length;/);
+  assert.match(yellowBranch[0], /startYellowCasinoSequence\(actorUID, matchedYellowCount,/);
+  assert.doesNotMatch(yellowBranch[0], /gameState\.selectedGems\.filter\(\(gm\) =>/);
+});
+
 test('yellow supergem consumes board-wide yellow count and bypasses random gold roll', () => {
   const { activateSuperGemEffect } = loadSuperGemRuntime();
   const actor = { uid: 4, name: 'Falie', kind: 'hero' };
