@@ -34,14 +34,14 @@ test('renderer applies tone-aware hit-flash overlay to attacked combatants', () 
   assert.match(src, /if \(!enemyOccupiesTaintedGroundZone\(enemy, zone\)\) continue;/);
   assert.match(src, /const anchorX = Number\(zone\.anchorWorldX\);/);
   assert.match(renderRuntimeSrc, /if \(!String\(dot\.effectName \|\| 'Blight'\)\.startsWith\('Blight'\)\) continue;/);
-  assert.match(src, /hasPersistentEnemyBlightOverlay,\s+hasPersistentHeroRegenOverlay,\s+isHitFlashActive,\s+getHitFlashTone,/s);
+  assert.match(src, /hasPersistentEnemyBlightOverlay,\s+hasPersistentEnemyDrainOverlay,\s+hasPersistentHeroRegenOverlay,\s+isHitFlashActive,\s+getHitFlashTone,/s);
   assert.doesNotMatch(src, /hasPersistentEnemyBlightOverlay:\s*\(\) => false/);
   assert.doesNotMatch(src, /hasPersistentHeroRegenOverlay:\s*\(\) => false/);
   assert.doesNotMatch(src, /isHitFlashActive:\s*\(\) => false/);
   assert.doesNotMatch(src, /getHitFlashTone:\s*\(\) => 'black'/);
   assert.match(renderRuntimeSrc, /const renderEnemyBlightShimmer = \(drawX, drawY, enemyW, enemyH, seed = 0\) => \{/);
   assert.match(renderRuntimeSrc, /const taintedGroundFieldOverlays = typeof getPersistentTaintedGroundOverlays === 'function' \? getPersistentTaintedGroundOverlays\(\) : \[\];/);
-  assert.match(renderRuntimeSrc, /const enemyStandsInRenderedTaintedGround = \(enemy\) => \{/);
+  assert.match(renderRuntimeSrc, /const enemyStandsInRenderedTaintedGround = \(enemy\) => enemyStandsInFieldOverlay\(enemy, taintedGroundFieldOverlays\);/);
   assert.match(renderRuntimeSrc, /hasPersistentEnemyBlightOverlay\(enemy\.uid\) \|\| enemyStandsInRenderedTaintedGround\(enemy\)/);
   assert.match(renderRuntimeSrc, /const dotCount = 4;/);
   assert.match(renderRuntimeSrc, /ctx\.fillStyle = '#8D37FF';/);
@@ -52,7 +52,7 @@ test('renderer applies tone-aware hit-flash overlay to attacked combatants', () 
   assert.match(renderRuntimeSrc, /ctx\.arc\(0, 0, dotSize, 0, Math\.PI \* 2\);/);
   assert.match(renderRuntimeSrc, /ctx\.stroke\(\);/);
   assert.doesNotMatch(renderRuntimeSrc, /renderEnemyBlightShimmer[\s\S]*ctx\.clip\(\);/);
-  assert.match(renderRuntimeSrc, /ctx\.globalAlpha = tone === 'purple' \? 0\.5 : 0\.3;/);
+  assert.match(renderRuntimeSrc, /ctx\.globalAlpha = tone === 'purple' \? 0\.5 : \(tone === 'blue' \? 0\.42 : 0\.3\);/);
   assert.match(renderRuntimeSrc, /tone === 'purple'/);
   assert.match(src, /return 'black';/);
   assert.match(renderRuntimeSrc, /const renderHitFlashOverlay = \(drawSprite, tone = 'black'\) => \{/);

@@ -11,6 +11,7 @@ const activePartyDrawIds = [
   'party_magic_fruit',
   'party_destiny',
   'party_faze',
+  'party_drain',
 ];
 
 function extractFunctionSource(src, name) {
@@ -112,6 +113,7 @@ module.exports = {
       party_magic_fruit: 'repeatable',
       party_destiny: 'one_off',
       party_faze: 'repeatable',
+      party_drain: 'repeatable',
     };
     const partyDefs = mod.GetPartySkillDefinitions();
 

@@ -97,6 +97,7 @@ test('dev panel 2 output appends skill draw debug counters', () => {
   assert.match(hudSrc, /SkillDrawCalls\.party_magic_fruit/);
   assert.match(hudSrc, /SkillDrawCalls\.party_destiny/);
   assert.match(hudSrc, /SkillDrawCalls\.party_faze/);
+  assert.match(hudSrc, /SkillDrawCalls\.party_drain/);
   assert.match(hudSrc, /SkillDrawUnexpectedCalls/);
   assert.match(hudSrc, /out\.textContent = lines\.concat\(formatSkillDrawDebugText\(g\)\)\.join\('\\n'\);/);
 
