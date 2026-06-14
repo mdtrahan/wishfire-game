@@ -1,0 +1,92 @@
+{
+  "summary": {
+    "total_issues": 6,
+    "high_confidence": 4
+  },
+  "actions": [
+    {
+      "id": "TD-2026-06-08-001",
+      "file": "tests/",
+      "type": "red_contract_suite",
+      "action": "refactor",
+      "confidence": "high",
+      "reason": "The suite is still red at 574 tests, 548 passing, and 26 failing across presentation, targeting, routing, delayed-hit, preload, and layout contracts.",
+      "risk": "high",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API",
+        "keep fixes scoped to an explicit stabilization bead"
+      ]
+    },
+    {
+      "id": "TD-2026-06-08-002",
+      "file": "web-runner/app.js",
+      "type": "app_shell_bloat",
+      "action": "refactor",
+      "confidence": "high",
+      "reason": "The app shell is 8305 lines, grew since the prior baseline, and remains too large for the orchestration-only policy.",
+      "risk": "high",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API",
+        "move reusable state and render contracts into dedicated modules"
+      ]
+    },
+    {
+      "id": "TD-2026-06-08-003",
+      "file": "Scripts/functionBank.js",
+      "type": "mirrored_runtime_logic",
+      "action": "merge",
+      "confidence": "high",
+      "reason": "The legacy and web-runner function-bank mirrors are 8863 and 8882 lines, creating split-brain parity risk for combat behavior.",
+      "risk": "high",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API",
+        "use fixture-backed parity checks before consolidation"
+      ]
+    },
+    {
+      "id": "TD-2026-06-08-004",
+      "file": "web-runner/systems/simulationCoreShadow.js",
+      "type": "cross_runtime_shadow_bloat",
+      "action": "refactor",
+      "confidence": "high",
+      "reason": "The JS shadow layer is 4040 lines and remains a broad cross-runtime parity surface with the Rust simulation core.",
+      "risk": "medium",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API",
+        "split adapters only after the red contract suite is stabilized"
+      ]
+    },
+    {
+      "id": "TD-2026-06-08-005",
+      "file": "rust/simulation_core/src/lib.rs",
+      "type": "oversized_simulation_core",
+      "action": "refactor",
+      "confidence": "medium",
+      "reason": "The Rust simulation core is 4523 lines and still has broad ownership coupled to JS fixture contracts.",
+      "risk": "high",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API",
+        "coordinate with the simulation-core contract bead"
+      ]
+    },
+    {
+      "id": "TD-2026-06-08-006",
+      "file": "rust/simulation_core/target",
+      "type": "generated_build_output",
+      "action": "delete",
+      "confidence": "medium",
+      "reason": "Generated Rust build output is present locally at about 40M and should not be treated as source debt.",
+      "risk": "low",
+      "constraints": [
+        "preserve behavior",
+        "do not modify public API",
+        "confirm no local build artifact is needed before removal"
+      ]
+    }
+  ]
+}
