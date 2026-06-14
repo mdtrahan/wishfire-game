@@ -73,6 +73,7 @@ Do not implement out-of-scope fixes.
 - Shared deterministic JS and layout contracts: `src/`
 - Rust deterministic simulation core: `rust/simulation_core/`
 - Product and workflow truth: `governance/`
+- Ability system map: `governance/product/abilities.html` for skills, abilities, supergems, affinity, Vault/relic taxonomy, function shapes, lifetimes, and drift.
 - Legacy Construct 3 artifacts are retired.
 - Primary branch: `main`
 
