@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 test('chests scaffold defines deterministic tabs/progress/reward model in runtime state', () => {
-  const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
+  const filePath = path.join(__dirname, '..', 'web-runner', 'state', 'gameState.js');
   const src = fs.readFileSync(filePath, 'utf8');
   assert.match(src, /chestsLayout:\s*\{/);
   assert.match(src, /entryPoint:\s*'menu-nav'/);
@@ -17,6 +17,8 @@ test('chests scaffold defines deterministic tabs/progress/reward model in runtim
 test('chests layout is wired to mission nav and runtime route', () => {
   const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
   const src = fs.readFileSync(filePath, 'utf8');
+  assert.match(src, /import \{ createInitialGameState \} from '\.\/state\/gameState\.js';/);
+  assert.match(src, /const gameState = createInitialGameState\(\);/);
   assert.match(src, /id:\s*'chestsLayout'/);
   assert.match(src, /layoutState\.requestLayoutChange\('chestsLayout',\s*'nav-chests'\)/);
   assert.match(src, /case 'chestsLayout':/);
