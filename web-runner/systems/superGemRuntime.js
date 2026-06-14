@@ -842,7 +842,7 @@ export function activateSuperGemEffect({
         consumedColorGemCount,
       });
     }
-    const award = randomIntInclusive(8, 16, rng);
+    const award = Math.max(0, Math.floor(Number(consumedColorGemCount || 0)));
     if (typeof startGemMergeFx === 'function') {
       startGemMergeFx({
         target: typeof getGoldLabelTargetWorld === 'function' ? getGoldLabelTargetWorld() : null,
