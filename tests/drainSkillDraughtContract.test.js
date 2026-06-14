@@ -155,6 +155,10 @@ test('Drain is a mirrored party draw option with separate speed-down field state
     const enteringEnemy = { uid: 203, kind: 'enemy', name: 'Ifrit', hp: 50, slotIndex: 0, x: 240, y: 88, stats: { SPD: 30 } };
     ctx.state.entities.push(enteringEnemy);
     assert.equal(mod.GetEffectiveStat(ctx, enteringEnemy, 'SPD'), 27, 'entering enemies standing in a Drain slot are slowed');
+    assert.equal(mod.SyncDrainFieldZones(ctx), 2);
+    const inheritedZone = ctx.state.globals.DrainFieldZones.find(zone => Number(zone.slotIndex) === 0);
+    assert.equal(inheritedZone.targetUID, 203, 'entering enemies inherit Drain pool target presentation state');
+    assert.equal(inheritedZone.appliedUIDs[203], true, 'entering enemies are marked as standing in the active Drain pool');
 
     assert.match(ctx.state.globals.CombatLog.join('\n'), /Party uses Drain on enemies!/);
     assert.doesNotMatch(ctx.state.globals.CombatLog.join('\n'), /Falie|Kojonn/);
@@ -211,7 +215,7 @@ test('Drain speed-down expires on Faze-mirrored hero-team duration while visuals
   }
 });
 
-test('Drain visual presentation uses blue downward lines and app overlay helpers', () => {
+test('Drain visual presentation separates one-shot shimmer from persistent blue pool slots', () => {
   const appSrc = fs.readFileSync(appPath, 'utf8');
   const renderSrc = fs.readFileSync(renderRuntimePath, 'utf8');
 
@@ -219,16 +223,26 @@ test('Drain visual presentation uses blue downward lines and app overlay helpers
   assert.match(appSrc, /function hasPersistentEnemyDrainOverlay\(uid\)/);
   assert.match(appSrc, /callFunctionWithContext\(fnContext, 'SyncDrainFieldZones'\)/);
   assert.match(appSrc, /getPersistentDrainFieldOverlays,\s+hasPersistentEnemyTaintedGroundOverlay,\s+hasPersistentEnemyBlightOverlay,\s+hasPersistentEnemyDrainOverlay,/s);
+  assert.match(appSrc, /startedAt: Number\(zone\.visualStartsAt \|\| zone\.activeAt \|\| 0\)/);
 
-  assert.match(renderSrc, /const renderEnemyDrainLines = \(drawX, drawY, enemyW, enemyH, seed = 0, alphaScale = 1\) => \{/);
+  assert.match(renderSrc, /const renderEnemyDrainPool = \(drawX, drawY, enemyW, enemyH, seed = 0, alphaScale = 1\) => \{/);
+  assert.match(renderSrc, /const renderEnemyDrainStartShimmer = \(drawX, drawY, enemyW, enemyH, seed = 0, startedAt = 0, alphaScale = 1\) => \{/);
+  assert.match(renderSrc, /const shimmerDuration = 0\.62;/);
+  assert.match(renderSrc, /const age = Math\.max\(0, shimmerNow - Number\(startedAt \|\| 0\)\);/);
+  assert.match(renderSrc, /if \(age >= shimmerDuration\) return;/);
+  assert.match(renderSrc, /renderDrainFieldZones\(\);/);
+  assert.match(renderSrc, /renderEnemyDrainPool\(pos\.x - enemyW \/ 2, pos\.y - enemyH \/ 2, enemyW, enemyH, Number\(overlay\.seed \|\| posInfo\.slotIndex\), Number\(overlay\.alpha \|\| 1\)\);/);
   assert.match(renderSrc, /tone === 'blue'/);
   assert.match(renderSrc, /fillStyle = '#A9EEFF'/);
-  assert.match(renderSrc, /renderEnemyDrainLines\(drawX, drawY, enemyW, enemyH, enemy\.uid, drainAlpha\)/);
-  const drainPainterStart = renderSrc.indexOf('const renderEnemyDrainLines');
+  assert.match(renderSrc, /renderEnemyDrainStartShimmer\(drawX, drawY, enemyW, enemyH, enemy\.uid, drainStartAt, drainAlpha\)/);
+  const drainPainterStart = renderSrc.indexOf('const renderEnemyDrainStartShimmer');
   const drainPainterEnd = renderSrc.indexOf('const renderHealBlooms', drainPainterStart);
   assert.notEqual(drainPainterStart, -1);
   assert.notEqual(drainPainterEnd, -1);
   const drainPainterSrc = renderSrc.slice(drainPainterStart, drainPainterEnd);
+  assert.doesNotMatch(drainPainterSrc, /% 1/);
+  assert.doesNotMatch(drainPainterSrc, /shimmerNow \* 2\.4/);
+  assert.doesNotMatch(drainPainterSrc, /fillRect\(lineX, top, lineW, lineH\)/);
   assert.doesNotMatch(drainPainterSrc, /arc\(/);
   assert.doesNotMatch(drainPainterSrc, /#8D37FF|#4B176F/);
 });

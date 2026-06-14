@@ -538,6 +538,7 @@ function getPersistentDrainFieldOverlays() {
       anchorWorldY: Number(zone.anchorWorldY),
       seed: Number(zone.sourceUID || 0) + Number(zone.slotIndex || 0) * 23,
       alpha: fadeAlpha,
+      startedAt: Number(zone.visualStartsAt || zone.activeAt || 0),
       slowPct: Number(zone.drainSlowPct || 10),
     });
   }

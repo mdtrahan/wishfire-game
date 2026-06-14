@@ -28,6 +28,7 @@
 - For normal gem matches, refill must start at the gem-destruction seam before deferred action/turn handoff can leave visible board holes. Batch-create all queued refill gems before waiting on settle animation.
 - Regular gem colors should share the refill-bounce owner for empty slots. If a color has extra presentation work, keep that work separate from board refill and keep `CanPickGems` closed while `DeferAdvance` or action locks are still pending.
 - Enemy board-pressure effects that run during autoplay should preserve board cardinality unless the turn/refill gates explicitly own the resulting empty cells. Prefer visible lock/disable state for temporary denial effects, and make autoplay skip disabled gems instead of trying to select through them.
+- For lingering field or pool effects, contract activation cues separately from persistent ground ownership: the start shimmer should be short and non-looping, while the slot/pool overlay should persist from effect state and visibly transfer to fresh occupants.
 
 ## 2026-03-07 Regression Note
 - Hero selector render gate must treat hero-turn as `TurnPhase === 0` (not `1`) in web-runner runtime.
