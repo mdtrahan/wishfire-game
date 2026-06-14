@@ -205,7 +205,19 @@ test('normal party skill draught samples the full party pool through RuntimeRand
   }
 });
 
-test('normal party skill draught uses only the active party draw allowlist', () => {
+test('normal party skill draught excludes removed stubs and uses only the active party draw allowlist', () => {
+  const removedStubCases = [
+    { id: 'party_fresh_start', title: 'Fresh Start', randomValues: [0, 0, 0] },
+    { id: 'party_second_chance', title: 'Second Chance', randomValues: [0.1, 0, 0] },
+    { id: 'party_momentum', title: 'Momentum', randomValues: [0.2, 0, 0] },
+    { id: 'party_guard_rail', title: 'Guard Rail', randomValues: [0.25, 0, 0] },
+    { id: 'party_blue_spark', title: 'Blue Spark', randomValues: [0.3, 0, 0] },
+    { id: 'party_weaken', title: 'Weaken', randomValues: [0.4, 0, 0] },
+    { id: 'party_hot_streak', title: 'Hot Streak', randomValues: [0.4, 0, 0] },
+    { id: 'party_last_push', title: 'Last Push', randomValues: [0.65, 0, 0] },
+    { id: 'party_chain_pop', title: 'Chain Pop', randomValues: [0.7, 0, 0] },
+  ];
+
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const legalIdSet = new Set(legalPartyDrawIds);
@@ -215,6 +227,9 @@ test('normal party skill draught uses only the active party draw allowlist', () 
 
     assert.ok(nonLegalPartyIds.includes('party_blue_spark'));
     assert.ok(nonLegalPartyIds.includes('party_hot_streak'));
+    for (const removedCase of removedStubCases) {
+      assert.ok(nonLegalPartyIds.includes(removedCase.id), `${removedCase.id} should stay out of party draws`);
+    }
 
     const observedLegalIds = new Set();
     for (const randomValues of [[0, 0, 0], [0.34, 0, 0], [0.67, 0, 0], [0.99, 0, 0]]) {

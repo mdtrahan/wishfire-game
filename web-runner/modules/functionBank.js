@@ -880,6 +880,17 @@ const PARTY_SKILL_DRAW_ALLOWED_IDS = Object.freeze([
   'party_faze',
   'party_drain',
 ]);
+const PARTY_SKILL_DRAW_EXCLUDED_IDS = Object.freeze(new Set([
+  'party_fresh_start',
+  'party_second_chance',
+  'party_momentum',
+  'party_guard_rail',
+  'party_weaken',
+  'party_blue_spark',
+  'party_hot_streak',
+  'party_last_push',
+  'party_chain_pop',
+]));
 const PARTY_SKILL_DRAW_ALLOWED_ID_SET = Object.freeze(new Set(PARTY_SKILL_DRAW_ALLOWED_IDS));
 const SKILL_DRAW_ALLOWED_CALL_IDS = PARTY_SKILL_DRAW_ALLOWED_IDS;
 const SKILL_DRAW_ALLOWED_CALL_ID_SET = PARTY_SKILL_DRAW_ALLOWED_ID_SET;
