@@ -56,3 +56,20 @@ The helper now generates `.beads/hot-file-lock/<bd-id>.scope` automatically from
 Generated scope lines may include `__MODULE__` for reviewed top-level edits such as imports, module constants, or top-level state-shape wiring in hot files. That token is explicit by design: module-scope edits stay declared and reviewable instead of being blocked as impossible to commit.
 
 Do not hand-author `.scope` files unless you are debugging the tooling itself.
+## Significant-Diff Commit Compliance
+
+The repo treats a staged diff as significant if any of these are true:
+
+- at least one staged hot-file edit
+- 3 or more staged files
+- 80 or more staged changed lines
+
+Before committing a significant staged diff:
+
+1. ensure the correct bead is the single active in_progress issue
+2. run tools/prepare_commit_check.sh <bd-id>
+3. commit only after the helper succeeds
+
+The helper writes .beads/commit-check/<bd-id>.json with changed files, function or __MODULE__ markers, staged blob ids, and hot-file classification. It delegates to tools/prepare_hot_file_commit.sh when staged hot files are present.
+
+Tracked hooks in .beads/hooks enforce bd-id commit messages, single active in-progress bead ownership, fresh significant-diff metadata, and hot-file scope locks.

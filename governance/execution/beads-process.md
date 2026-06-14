@@ -112,6 +112,11 @@ Minor exemption does not apply to:
   - record the inconsistency in coordination artifacts if it affects execution
   - do not assume the first follow-up read is canonical
 
+## PM / Dev / Review Contract
+- PM shapes executable beads, rejects vague work, confirms significant-diff commit prep when the guard applies, and closes only with evidence.
+- Dev implements one bead at a time, stays inside scope, prepares significant staged diffs with the repo-owned commit-check helper before commit, and reports exact tests and touched files.
+- Review checks acceptance, evidence, scope compliance, and commit-prep evidence when required; mixed-scope closeouts should be rejected.
+
 ## Anti-Patterns
 - Starting work from stale `.beads/` mirrors instead of live `bd`
 - Treating a null/underspecified bead as executable
