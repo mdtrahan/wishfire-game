@@ -1,0 +1,30 @@
+# Web Runner Core DOX
+
+## Purpose
+- Own browser-shipped ESM rule modules and runtime helpers used directly by `web-runner/app.js`, modules, and systems.
+- Keep deterministic browser rules aligned with shared `src/core/` and Rust SimulationCore ownership where applicable.
+
+## Ownership
+- Turn gates, scheduler, gem action, combat outcome, status, targeting, RNG, and packet helper modules used by the browser runtime.
+- Runtime-only helpers such as animation/math helpers that must ship with the browser bundle.
+- Browser-specific copies of shared rule modules when the runtime cannot import the root `src/core/` file directly.
+
+## Local Contracts
+- Most rule modules should be pure and deterministic: no DOM, Canvas, localStorage, network, or deployment behavior.
+- If a matching module exists in root `src/core/`, keep behavior mirrored or document/test the intentional divergence.
+- Rust-owned rule families should preserve owner-hook packet shapes and diagnostics.
+- Presentation helper modules may touch Canvas-like drawing inputs, but must not own gameplay state transitions.
+- New deterministic rule changes need focused contract tests and, when applicable, fixture rows.
+
+## Work Guidance
+- Prefer extracting deterministic decisions here or in root `src/core/` instead of adding branches to `app.js` or render modules.
+- When duplicating between root `src/core/` and `web-runner/src/core/`, update both copies and their tests in the same bead unless explicitly scoped otherwise.
+- Keep packet helpers JSON-safe and free of browser-only state.
+
+## Verification
+- Focused `node --test tests/*Contract.test.js` for the touched rule.
+- Fixture tests in `tests/*FixtureContract.test.js` when CSV fixtures exist.
+- Rust/WASM shadow tests when owner hooks or migrated rule families change.
+
+## Child DOX Index
+- None.
