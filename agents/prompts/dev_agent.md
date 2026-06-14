@@ -139,6 +139,12 @@ Validate functionality against bead acceptance criteria.
 
 Run broader test coverage to confirm no unrelated behavior changed.
 
+For hot-file lanes, default deterministic regression proof is:
+
+- `npm run test:hot-file-gate`
+
+Only replace it when the bead explicitly defines a narrower or broader pack.
+
 ## Phase 5 — Edge Case Review
 
 Validate:

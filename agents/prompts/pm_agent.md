@@ -114,6 +114,7 @@ Validate the following:
 2. `/agents/dev_reports.md` contains a report.
 3. Tests were executed and recorded.
 4. Implementation stayed within bead scope.
+5. For hot-file lanes, reported deterministic regression proof includes `npm run test:hot-file-gate` unless the bead explicitly authorized a different pack.
 
 If acceptable:
 

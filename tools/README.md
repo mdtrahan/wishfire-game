@@ -73,3 +73,19 @@ Before committing a significant staged diff:
 The helper writes .beads/commit-check/<bd-id>.json with changed files, function or __MODULE__ markers, staged blob ids, and hot-file classification. It delegates to tools/prepare_hot_file_commit.sh when staged hot files are present.
 
 Tracked hooks in .beads/hooks enforce bd-id commit messages, single active in-progress bead ownership, fresh significant-diff metadata, and hot-file scope locks.
+## Hot-File Regression Gate Pack
+
+Use the repo-owned regression gate pack when a bead changes staged hot files or PM/dev closeout needs one deterministic regression proof for core hot-file seams.
+
+- npm run test:hot-file-gate
+
+This pack intentionally reuses shipped checks:
+
+- tests/powerAmpLifecycleContract.test.js
+- tests/yellowTurnHandoffContract.test.js
+- tests/huunExecutionDropBonusContract.test.js
+- tests/turnSchedulerRepeatGuardContract.test.js
+- tests/functionBankParityContract.test.js
+- node tools/audit_initiative_fairness.js
+
+Treat it as the default deterministic regression pack for hot-file lanes unless the bead explicitly names a narrower or broader replacement pack.
