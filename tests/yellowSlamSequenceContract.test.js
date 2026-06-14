@@ -48,11 +48,15 @@ test('regular yellow matches route empty-cell fill through shared bounce refill'
   assert.match(branch, /startYellowCasinoSequence\(actorUID, matchedYellowCount,/);
 });
 
-test('yellow casino sequence no longer owns empty-slot refill work', () => {
+test('yellow casino sequence no longer owns unrelated board-yellow or empty-slot refill work', () => {
   const src = read('web-runner/app.js');
   const sequence = extractFunctionSource(src, 'startYellowCasinoSequence');
 
-  assert.match(sequence, /reason: 'yellow-reassign'/);
+  assert.match(sequence, /const queue = \[\];/);
+  assert.match(sequence, /const totalYellowConsumed = Math\.max\(0, Number\(initialMatchedYellowCount \|\| 0\)\);/);
+  assert.doesNotMatch(sequence, /additionalYellowConsumed/);
+  assert.doesNotMatch(sequence, /reason: 'yellow-reassign'/);
+  assert.doesNotMatch(sequence, /pickYellowReassignTarget\(\)/);
   assert.doesNotMatch(sequence, /type: 'empty'/);
   assert.doesNotMatch(sequence, /reason: 'yellow-refill'/);
   assert.doesNotMatch(sequence, /pickYellowRefillTarget\(\)/);

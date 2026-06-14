@@ -109,11 +109,11 @@ test('Huun yellow super-gem cannot be stolen by a stale CurrentHeroUID', () => {
   });
 
   assert.equal(activated, true);
-  assert.equal(state.globals.goldTotal, 23);
+  assert.equal(state.globals.goldTotal, 25);
   assert.equal(state.globals.PendingHeroHits, undefined);
   assert.equal(state.globals.LastHuunYellowSuperGemGoldstrike, undefined);
   assert.ok(!calls.some((call) => call.name === 'StartHeroLunge'));
-  assert.ok(calls.some((call) => call.name === 'LogCombat' && /Falie found 8 gold/.test(String(call.args[0]))));
+  assert.ok(calls.some((call) => call.name === 'LogCombat' && /Falie found 10 gold/.test(String(call.args[0]))));
 });
 
 test('Huun yellow super-gem high roll triples bank plus consumed yellow board value', () => {
@@ -171,7 +171,7 @@ test('non-Huun yellow super-gem keeps the standard gold award behavior', () => {
     globals: {
       time: 8,
       goldTotal: 15,
-      RuntimeRandom: () => 0,
+      RuntimeRandom: () => { throw new Error('non-Huun yellow supergem gold should not randomize'); },
     },
     entities: [actor],
   };
@@ -194,7 +194,7 @@ test('non-Huun yellow super-gem keeps the standard gold award behavior', () => {
   });
 
   assert.equal(activated, true);
-  assert.equal(state.globals.goldTotal, 23);
+  assert.equal(state.globals.goldTotal, 25);
   assert.equal(state.globals.PendingHeroHits, undefined);
-  assert.ok(calls.some((call) => call.name === 'LogCombat' && /found 8 gold/.test(String(call.args[0]))));
+  assert.ok(calls.some((call) => call.name === 'LogCombat' && /found 10 gold/.test(String(call.args[0]))));
 });
