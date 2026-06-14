@@ -127,6 +127,25 @@ test('dev idle autoplay uses yellow as a last resort instead of skipping a hero 
   );
 });
 
+test('dev idle autoplay forced-yellow board can spend yellow for non-Huun instead of stalling', async () => {
+  const { pickIdleAutoplaySuperGem, pickIdleAutoplayTriplet } = await import(modulePath);
+  const yellowOnlyBoard = [
+    ...triplet(3, 0),
+  ];
+  const yellowOnlySuperGems = [
+    superGem(3, 0),
+  ];
+  const context = {
+    heroName: 'Kojonn',
+    partyHpRatio: 0.7,
+    hasLivingEnemies: true,
+    forcedBoardColor: 3,
+  };
+
+  assert.deepEqual(pickIdleAutoplayTriplet(yellowOnlyBoard, context), pickedTriplet(0));
+  assert.deepEqual(pickIdleAutoplaySuperGem(yellowOnlySuperGems, context), { row: 0, col: 0 });
+});
+
 test('dev idle autoplay always takes an available heal supergem below 40 percent HP', async () => {
   const { pickIdleAutoplaySuperGem } = await import(modulePath);
   const superGems = [
