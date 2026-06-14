@@ -20,13 +20,12 @@
 
 ## 3) Beads Gate
 - No implementation work without a bead.
-- One active implementation bead per agent run.
 - Commits must include `bd-<id>`.
 
 Default implementation flow:
 - create or select the bead
 - create a bead-scoped branch/worktree before marking `in_progress`
-- cap active bead worktrees at 5; close, merge, or clean up before opening more
+- follow concurrency and delegation limits from the active orchestrator skill
 - use Beads for task tracking, checkpoints, recovery, and rollback
 - make periodic commits for historical safety
 
@@ -56,14 +55,11 @@ Do not implement out-of-scope fixes.
 
 ## 3.1) Worktree Discipline
 - Git is transport; Beads is workflow authority.
-- One implementation bead gets one bead-scoped worktree unless a minor exemption applies.
 - Include the bead id in the branch and worktree names.
 - Use `$bead-worktree-lifecycle` for intentional worktree creation and cleanup.
-- Stop and ask before exceeding 5 active bead worktrees.
 
 Do not:
 - run implementation beads in the active workspace without minor exemption or explicit override
-- mix multiple implementation beads in one worktree
 - merge without validation + rollback checkpoint
 
 ## 4) Execution Rules
@@ -105,7 +101,7 @@ Stop and ask when:
 - architecture impact is significant
 - persistence/deployment/schema behavior changes
 - repo state is unexpected
-- worktree cap or ownership is unclear
+- ownership is unclear
 
 ## 4.4) Subagents
 Use subagents only when they improve:
