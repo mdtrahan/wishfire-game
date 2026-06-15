@@ -23,9 +23,10 @@ function extractFunctionSource(src, signature) {
 }
 
 test('dev tooling refresh uses the shared combat turn refresh baseline and invalidates stale pause snapshots', () => {
-  const src = read('web-runner/app.js');
+  const appSrc = read('web-runner/app.js');
+  const src = read('web-runner/systems/devToolingRuntime.js');
 
-  assert.match(src, /createCombatTurnRefreshBaseline/);
+  assert.match(appSrc, /createCombatTurnRefreshBaseline/);
   assert.match(src, /function clearDevToolingPauseSnapshot\(\)/);
   assert.match(src, /function resetCombatRuntimeForFreshSession\(reason = 'combat-refresh', options = \{\}\)/);
   assert.match(src, /applyTurnGateGlobals\(createCombatTurnRefreshBaseline\(state\.globals, \{/);
@@ -37,7 +38,7 @@ test('dev tooling refresh uses the shared combat turn refresh baseline and inval
   assert.match(src, /if \(sameCombatSession && sameTurnSerial\) \{\s*applyTurnGateGlobals\(devToolingPauseSnapshot\);/s);
   assert.match(src, /if \(closeModal\) closeDevToolingModal\(\{ restorePauseSnapshot: appliedSessionChange !== 'combat_refresh' \}\);/);
 
-  const refreshBlock = extractFunctionSource(src, 'async function refreshCombatSessionFromDevTooling({ forceCombat = false, resetGame = false } = {})');
+  const refreshBlock = extractFunctionSource(appSrc, 'async function refreshCombatSessionFromDevTooling({ forceCombat = false, resetGame = false } = {})');
   assert.match(refreshBlock, /resetCombatRuntimeForFreshSession\('dev-tool-refresh', \{[\s\S]*boardHasEmptySlots: hasEmptySlots\(\),[\s\S]*\}\);/);
   assert.doesNotMatch(refreshBlock, /state\.globals\.(IsPlayerBusy|PendingSkillID|DeferAdvance|ActionInProgress|PendingActor|CanPickGems)\s*=/);
 });
