@@ -17,6 +17,7 @@ test('combat nav remaps mission text/route to Vault', () => {
 test('chests layout includes top-rail retention buttons and routing hit zones', () => {
   const appPath = path.join(__dirname, '..', 'web-runner', 'app.js');
   const src = fs.readFileSync(appPath, 'utf8');
+  const pointerRouterSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'pointerRoutingShell.js'), 'utf8');
   const chestsSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'renderChests.js'), 'utf8');
   const stateSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'state', 'gameState.js'), 'utf8');
 
@@ -30,8 +31,9 @@ test('chests layout includes top-rail retention buttons and routing hit zones', 
   assert.match(stateSrc, /title:\s*'Enter Artifacts'/);
   assert.match(stateSrc, /title:\s*'Enter Tomes'/);
   assert.match(chestsSrc, /retentionButtons:\s*retentionHitZones,/);
-  assert.match(src, /requestLayoutChange\('combat', 'chests-close-button'\)/);
-  assert.match(src, /layoutState\.requestLayoutChange\(String\(btn\.targetLayout\),\s*`chests-\$\{String\(btn\.id \|\| 'retention'\)\}`\)/);
+  assert.match(src, /createPointerRoutingShell/);
+  assert.match(pointerRouterSrc, /requestLayoutChange\('combat', 'chests-close-button'\)/);
+  assert.match(pointerRouterSrc, /layoutState\.requestLayoutChange\(String\(btn\.targetLayout\),\s*`chests-\$\{String\(btn\.id \|\| 'retention'\)\}`\)/);
 });
 
 test('map layout no longer exposes retention-locale hit buttons', () => {
@@ -46,15 +48,16 @@ test('map layout no longer exposes retention-locale hit buttons', () => {
 });
 
 test('retention gallery back routes return to vault home (chestsLayout)', () => {
-  const appPath = path.join(__dirname, '..', 'web-runner', 'app.js');
-  const src = fs.readFileSync(appPath, 'utf8');
+  const pointerRouterPath = path.join(__dirname, '..', 'web-runner', 'systems', 'pointerRoutingShell.js');
+  const src = fs.readFileSync(pointerRouterPath, 'utf8');
   const registrySrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'runtimeLayoutRegistry.js'), 'utf8');
 
   assert.match(registrySrc, /const GALLERY_TRANSITIONS = Object\.freeze\(\['chestsLayout', 'combat'\]\);/);
-  assert.match(src, /requestLayoutChange\('chestsLayout', 'tomes-back-vault'\)/);
-  assert.match(src, /requestLayoutChange\('chestsLayout', 'artifacts-back-vault'\)/);
-  assert.match(src, /requestLayoutChange\('chestsLayout', 'mounts-back-vault'\)/);
-  assert.match(src, /requestLayoutChange\('chestsLayout', 'collectibles-back-vault'\)/);
+  assert.match(src, /tomesLayout: 'selectedIndex'/);
+  assert.match(src, /artifactsLayout: 'selectedIndex'/);
+  assert.match(src, /mountsLayout: 'selectedIndex'/);
+  assert.match(src, /collectiblesLayout: 'selectedIndex'/);
+  assert.match(src, /layoutState\.requestLayoutChange\('chestsLayout', `\$\{routePrefix\}-back-vault`\)/);
   assert.match(src, /requestLayoutChange\('chestsLayout', 'homestead-back-vault'\)/);
   assert.match(src, /isPointInRect\(mx, my, zones\.close\) \|\| isPointInRect\(mx, my, zones\.mapBack\)/);
 });

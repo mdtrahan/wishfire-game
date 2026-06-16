@@ -19,10 +19,11 @@ test('chests layout is wired to mission nav and runtime route', () => {
   const src = fs.readFileSync(filePath, 'utf8');
   const registrySrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'runtimeLayoutRegistry.js'), 'utf8');
   const surfaceRouterSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'surfaceRenderRouter.js'), 'utf8');
+  const pointerRouterSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'pointerRoutingShell.js'), 'utf8');
   assert.match(src, /import \{ createInitialGameState \} from '\.\/state\/gameState\.js';/);
   assert.match(src, /const gameState = createInitialGameState\(\);/);
   assert.match(registrySrc, /id:\s*'chestsLayout'/);
   assert.match(src, /layoutState\.requestLayoutChange\('chestsLayout',\s*'nav-chests'\)/);
   assert.match(surfaceRouterSrc, /case 'chestsLayout':/);
-  assert.match(src, /if \(activeLayoutId === 'chestsLayout'\)/);
+  assert.match(pointerRouterSrc, /if \(activeLayoutId === 'chestsLayout'\)/);
 });

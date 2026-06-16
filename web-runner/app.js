@@ -94,6 +94,7 @@ import {
 import { initializeStoryCardPresentationLayout } from './systems/storyCardPresentation.js';
 import { registerRuntimeLayouts } from './systems/runtimeLayoutRegistry.js';
 import { createSurfaceRenderRouter } from './systems/surfaceRenderRouter.js';
+import { createPointerRoutingShell } from './systems/pointerRoutingShell.js';
 import { createIdleFarmAppRuntime } from './systems/idleFarmAppRuntime.js';
 import {
   createDevToolingRuntime,
@@ -1075,11 +1076,6 @@ function normalizeHeroSelectionIndex() {
     gameState.selectedHero = Math.max(0, Math.min(maxIndex, Math.floor(selected)));
   }
   return gameState.selectedHero;
-}
-
-function isPointInRect(mx, my, rect) {
-  if (!rect) return false;
-  return mx >= rect.x && mx <= (rect.x + rect.w) && my >= rect.y && my <= (rect.y + rect.h);
 }
 
 function renderSkillDraughtOverlay(ctx, canvas, pixelRatio = 1) {
@@ -4840,432 +4836,35 @@ function getStoryCardLiveLineState() {
     drawFrame,
   });
 
+  const pointerRoutingShell = createPointerRoutingShell({
+    canvas,
+    getDpr: () => dpr,
+    state,
+    gameState,
+    uiState,
+    layoutState,
+    mapLayoutState,
+    inputDomains,
+    layoutHarnessEnabled,
+    harnessLayoutState,
+    harnessInputDomains,
+    callFunctionWithContext,
+    fnContext,
+    drawFrame,
+    handleMapDragStart,
+    deriveEncounterRequestFromMapState,
+    restartIdleFarmSession,
+    claimIdleFarmRewards,
+    getHeroScreenRoster,
+    normalizeHeroSelectionIndex,
+  });
+
   // pointer handler for nav menu and overlay (more responsive than click)
   const handlePointerDown = (ev) => {
-    const rect = canvas.getBoundingClientRect();
-    const logicalW = canvas.width / Math.max(1, dpr || 1);
-    const logicalH = canvas.height / Math.max(1, dpr || 1);
-    const scaleX = rect.width > 0 ? logicalW / rect.width : 1;
-    const scaleY = rect.height > 0 ? logicalH / rect.height : 1;
-    const mx = (ev.clientX - rect.left) * scaleX;
-    const my = (ev.clientY - rect.top) * scaleY;
-
-    if (Number(state.globals.SkillDraughtOpen || 0)) {
-      const zones = Array.isArray(state.globals.SkillDraughtHitZones) ? state.globals.SkillDraughtHitZones : [];
-      const hit = zones.find((zone) => isPointInRect(mx, my, zone));
-      if (hit) {
-        callFunctionWithContext(fnContext, 'SelectSkillDraughtCard', Number(hit.index || 0));
-        drawFrame();
-      }
+    const routedPointer = pointerRoutingShell.routePointerDown(ev);
+    const { mx, my, rect } = routedPointer;
+    if (routedPointer.handled) {
       return;
-    }
-
-    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
-      ? layoutState.getActiveLayoutId()
-      : null;
-    if (activeLayoutId === 'storyMock') {
-      inputDomains.emit('storyMock', 'layout:storyMock:click', { x: mx, y: my });
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'town') {
-      inputDomains.emit('town', 'layout:town:click', { x: mx, y: my });
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'idleFarmLayout') {
-      const zones = (gameState.idleFarmLayout && gameState.idleFarmLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.restartBtn)) {
-        restartIdleFarmSession(performance.now() / 1000);
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.collectBtn)) {
-        claimIdleFarmRewards();
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'idle-farm-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] idleFarm->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.baseBack)) {
-        layoutState.requestLayoutChange('storyMock', 'idle-farm-back-base').catch((err) => {
-          console.error('[LAYOUT_PHASE1] idleFarm->storyMock failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'mapLayout') {
-      const close = mapLayoutState.getMapLayoutState().closeHit;
-      if (isPointInRect(mx, my, close)) {
-        const req = deriveEncounterRequestFromMapState();
-        state.globals.EncounterTargetCP = Number(req.targetCP || 120);
-        state.globals.EncounterLocale = String(req.locale || 'clouds');
-        state.globals.EncounterMaxSlots = Number(req.maxSlots || 3);
-        state.globals.EncounterPolicy = String(req.policy || 'mixed');
-        state.globals.EncounterFaction = String(req.faction || '');
-        state.globals.EncounterSeed = Number(req.seed || 1);
-        state.globals.EncounterSeedExplicit = 1;
-        // Map close is benign: return to existing combat snapshot without resetting combat state.
-        layoutState.requestLayoutChange('combat', 'map-close-button').catch((err) => {
-          console.error('[LAYOUT_PHASE1] map return failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (handleMapDragStart(ev, { mx, my })) return;
-    }
-    if (activeLayoutId === 'tomesLayout') {
-      const zones = (gameState.tomesLayout && gameState.tomesLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
-        layoutState.requestLayoutChange('chestsLayout', 'tomes-back-vault').catch((err) => {
-          console.error('[LAYOUT_PHASE1] tomes->vault failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'tomes-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] tomes->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      const cards = Array.isArray(zones.cards) ? zones.cards : [];
-      for (let i = 0; i < cards.length; i += 1) {
-        if (isPointInRect(mx, my, cards[i])) {
-          gameState.tomesLayout.selectedIndex = i;
-          drawFrame();
-          return;
-        }
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'artifactsLayout') {
-      const zones = (gameState.artifactsLayout && gameState.artifactsLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
-        layoutState.requestLayoutChange('chestsLayout', 'artifacts-back-vault').catch((err) => {
-          console.error('[LAYOUT_PHASE1] artifacts->vault failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'artifacts-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] artifacts->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      const cards = Array.isArray(zones.cards) ? zones.cards : [];
-      for (let i = 0; i < cards.length; i += 1) {
-        if (isPointInRect(mx, my, cards[i])) {
-          gameState.artifactsLayout.selectedIndex = i;
-          drawFrame();
-          return;
-        }
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'mountsLayout') {
-      const zones = (gameState.mountsLayout && gameState.mountsLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
-        layoutState.requestLayoutChange('chestsLayout', 'mounts-back-vault').catch((err) => {
-          console.error('[LAYOUT_PHASE1] mounts->vault failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'mounts-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] mounts->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      const cards = Array.isArray(zones.cards) ? zones.cards : [];
-      for (let i = 0; i < cards.length; i += 1) {
-        if (isPointInRect(mx, my, cards[i])) {
-          gameState.mountsLayout.selectedIndex = i;
-          drawFrame();
-          return;
-        }
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'collectiblesLayout') {
-      const zones = (gameState.collectiblesLayout && gameState.collectiblesLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
-        layoutState.requestLayoutChange('chestsLayout', 'collectibles-back-vault').catch((err) => {
-          console.error('[LAYOUT_PHASE1] collectibles->vault failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'collectibles-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] collectibles->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      const cards = Array.isArray(zones.cards) ? zones.cards : [];
-      for (let i = 0; i < cards.length; i += 1) {
-        if (isPointInRect(mx, my, cards[i])) {
-          gameState.collectiblesLayout.selectedIndex = i;
-          drawFrame();
-          return;
-        }
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'relicsLayout') {
-      const zones = (gameState.relicsLayout && gameState.relicsLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
-        layoutState.requestLayoutChange('chestsLayout', 'relics-back-vault').catch((err) => {
-          console.error('[LAYOUT_PHASE1] relics->vault failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'relics-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] relics->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      const cards = Array.isArray(zones.cards) ? zones.cards : [];
-      for (let i = 0; i < cards.length; i += 1) {
-        if (isPointInRect(mx, my, cards[i])) {
-          gameState.relicsLayout.selectedIndex = i;
-          drawFrame();
-          return;
-        }
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'petsLayout') {
-      const zones = (gameState.petsLayout && gameState.petsLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
-        layoutState.requestLayoutChange('chestsLayout', 'pets-back-vault').catch((err) => {
-          console.error('[LAYOUT_PHASE1] pets->vault failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'pets-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] pets->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      const cards = Array.isArray(zones.cards) ? zones.cards : [];
-      for (let i = 0; i < cards.length; i += 1) {
-        if (isPointInRect(mx, my, cards[i])) {
-          gameState.petsLayout.selectedIndex = i;
-          drawFrame();
-          return;
-        }
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'evolutionLayout') {
-      const zones = (gameState.evolutionLayout && gameState.evolutionLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
-        layoutState.requestLayoutChange('chestsLayout', 'evolution-back-vault').catch((err) => {
-          console.error('[LAYOUT_PHASE1] evolution->vault failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'evolution-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] evolution->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      const cards = Array.isArray(zones.cards) ? zones.cards : [];
-      for (let i = 0; i < cards.length; i += 1) {
-        if (isPointInRect(mx, my, cards[i])) {
-          gameState.evolutionLayout.selectedLevel = i;
-          drawFrame();
-          return;
-        }
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'homesteadLayout') {
-      const zones = (gameState.homesteadLayout && gameState.homesteadLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
-        layoutState.requestLayoutChange('chestsLayout', 'homestead-back-vault').catch((err) => {
-          console.error('[LAYOUT_PHASE1] homestead->vault failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'homestead-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] homestead->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      const slots = Array.isArray(zones.slots) ? zones.slots : [];
-      for (let i = 0; i < slots.length; i += 1) {
-        if (isPointInRect(mx, my, slots[i])) {
-          gameState.homesteadLayout.selectedSlot = i;
-          drawFrame();
-          return;
-        }
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'chestsLayout') {
-      const zones = (gameState.chestsLayout && gameState.chestsLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.close)) {
-        layoutState.requestLayoutChange('combat', 'chests-close-button').catch((err) => {
-          console.error('[LAYOUT_PHASE1] chests close->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'chests-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] chests->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      const retentionButtons = Array.isArray(zones.retentionButtons) ? zones.retentionButtons : [];
-      for (let i = 0; i < retentionButtons.length; i += 1) {
-        const btn = retentionButtons[i];
-        if (isPointInRect(mx, my, btn) && btn.targetLayout) {
-          layoutState.requestLayoutChange(String(btn.targetLayout), `chests-${String(btn.id || 'retention')}`).catch((err) => {
-            console.error('[LAYOUT_PHASE1] chests->retention failed', err);
-          });
-          drawFrame();
-          return;
-        }
-      }
-      const tabs = Array.isArray(zones.tabs) ? zones.tabs : [];
-      for (let i = 0; i < tabs.length; i += 1) {
-        const tab = tabs[i];
-        if (isPointInRect(mx, my, tab)) {
-          gameState.chestsLayout.activeTab = String(tab.id || gameState.chestsLayout.activeTab || 'Common');
-          drawFrame();
-          return;
-        }
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'heroLayout') {
-      const zones = uiState.getUIState().heroScreenHitZones || {};
-      const roster = getHeroScreenRoster();
-      const selectedHero = roster[normalizeHeroSelectionIndex()] || null;
-      const skillNodes = Array.isArray(zones.skillNodes) ? zones.skillNodes : [];
-      const selectedSkillIndex = Math.max(0, Math.floor(Number(zones.selectedSkillIndex || uiState.getUIState().heroScreenSelectedSkillIndex || 0)));
-      const modalZones = zones.modal || null;
-      let consumedSkillClick = false;
-      if (uiState.getUIState().heroScreenSkillModalOpen && modalZones) {
-        if (isPointInRect(mx, my, modalZones.close) || !isPointInRect(mx, my, modalZones.card)) {
-          uiState.setUIStateField('heroScreenSkillModalOpen', false);
-          drawFrame();
-          return;
-        }
-        if (isPointInRect(mx, my, modalZones.upgradeButton)) {
-          const activeNode = skillNodes.find((node) => Number(node?.idx || -1) === Number(uiState.getUIState().heroScreenSkillModalSkillIndex || 0)) || skillNodes[0] || null;
-          if (activeNode && activeNode.actionable !== false && selectedHero) {
-            callFunctionWithContext(fnContext, 'AttemptHeroSkillUpgrade', selectedHero.uid, activeNode.skillKey, 'hero_skill_modal_upgrade_button');
-          }
-          drawFrame();
-          return;
-        }
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.close)) {
-        uiState.setUIStateField('heroScreenSkillModalOpen', false);
-        const closeHeroLayout = () => layoutState.requestLayoutChange('combat', 'hero-close-button').catch((err) => {
-          console.error('[LAYOUT_PHASE1] hero return failed', err);
-        });
-        closeHeroLayout().then((changed) => {
-          if (!changed) {
-            setTimeout(() => {
-              closeHeroLayout();
-            }, 24);
-          }
-        });
-      } else if (isPointInRect(mx, my, zones.prevHero)) {
-        if (roster.length) {
-          gameState.selectedHero = (normalizeHeroSelectionIndex() + roster.length - 1) % roster.length;
-          uiState.setUIStateField('heroScreenSelectedSkillIndex', 0);
-          uiState.setUIStateField('heroScreenSkillModalOpen', false);
-        }
-      } else if (isPointInRect(mx, my, zones.nextHero)) {
-        if (roster.length) {
-          gameState.selectedHero = (normalizeHeroSelectionIndex() + 1) % roster.length;
-          uiState.setUIStateField('heroScreenSelectedSkillIndex', 0);
-          uiState.setUIStateField('heroScreenSkillModalOpen', false);
-        }
-      } else {
-        for (const node of skillNodes) {
-          if (!node) continue;
-          if (isPointInRect(mx, my, node.rect)) {
-            uiState.setUIStateField('heroScreenSelectedSkillIndex', Math.max(0, Math.floor(Number(node.idx || 0))));
-            uiState.setUIStateField('heroScreenSkillModalSkillIndex', Math.max(0, Math.floor(Number(node.idx || 0))));
-            uiState.setUIStateField('heroScreenSkillModalOpen', true);
-            consumedSkillClick = true;
-            break;
-          }
-        }
-        if (!consumedSkillClick && selectedHero && isPointInRect(mx, my, zones.upgradeButton)) {
-          const activeNode = skillNodes.find((node) => Number(node?.idx || -1) === selectedSkillIndex) || skillNodes[0] || null;
-          if (activeNode && activeNode.actionable !== false) {
-            callFunctionWithContext(fnContext, 'AttemptHeroSkillUpgrade', selectedHero.uid, activeNode.skillKey, 'hero_screen_upgrade_button');
-            consumedSkillClick = true;
-          }
-        }
-      }
-      drawFrame();
-      return;
-    }
-
-    if (layoutHarnessEnabled && harnessLayoutState && harnessInputDomains) {
-      const activeLayout = harnessLayoutState.getActiveLayoutId();
-      if (activeLayout === 'storyMock') {
-        harnessInputDomains.emit(activeLayout, 'layout:storyMock:click', { x: mx, y: my });
-        drawFrame();
-        return;
-      }
-      if (activeLayout === 'town') {
-        harnessInputDomains.emit(activeLayout, 'layout:town:click', { x: mx, y: my });
-        drawFrame();
-        return;
-      }
-      if (activeLayout === 'astralOverlay') {
-        harnessInputDomains.emit(activeLayout, 'layout:astralOverlay:click', { x: mx, y: my });
-        drawFrame();
-        return;
-      }
     }
 
     if (state.globals.GamePhase !== 'RUNTIME') {
