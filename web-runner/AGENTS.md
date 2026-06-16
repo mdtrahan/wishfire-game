@@ -14,6 +14,7 @@
 
 ## Local Contracts
 - Keep `app.js` thin. Add business logic to contextual modules or shared core files, then wire minimally through `app.js`.
+- Changes touching `app.js` must pass `npm run test:appjs-boundary`; update `governance/planning/app-js-ownership-contract.json` only when ownership policy changes, not to dodge extraction.
 - JavaScript owns browser integration: Canvas rendering, input, menus, overlays, audio, save/load wrappers, deployment, and presentation timing.
 - Rust SimulationCore owns deterministic simulation rule families that have owner markers and fixture contracts.
 - Browser runtime code may apply returned state and render presentation events; it must not recompute Rust-owned outcomes.
