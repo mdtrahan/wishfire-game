@@ -101,9 +101,9 @@ import {
   shadowSeededRng,
 } from './systems/simulationCoreShadow.js';
 import {
-  addAppViewportResizeListener,
-  resizeCanvasToContainedViewport,
+  createAppViewportRuntime,
 } from './systems/appShellViewport.js';
+import { initializeStoryCardPresentationLayout } from './systems/storyCardPresentation.js';
 import { createIdleFarmAppRuntime } from './systems/idleFarmAppRuntime.js';
 import {
   createDevToolingRuntime,
@@ -3609,23 +3609,22 @@ async function main(){
   }
   const runtimeListenerTeardowns = [];
 
-  function resizeCanvas() {
-    const metrics = resizeCanvasToContainedViewport({ canvas, layoutW, layoutH });
-    dpr = metrics.dpr;
-    layoutScale = metrics.layoutScale;
-    layoutOffsetX = metrics.layoutOffsetX;
-    layoutOffsetY = metrics.layoutOffsetY;
-    if (typeof window !== 'undefined') {
-      window.__orkaAppViewport = metrics;
-    }
-  }
-  resizeCanvas();
-  const handleWindowResize = () => {
-    resizeCanvas();
-    initializeStoryCardLayout('window-resize');
-    if (typeof drawFrame === 'function') drawFrame();
-  };
-  runtimeListenerTeardowns.push(addAppViewportResizeListener(handleWindowResize));
+  const viewportRuntime = createAppViewportRuntime({
+    canvas,
+    layoutW,
+    layoutH,
+    onMetrics(metrics) {
+      dpr = metrics.dpr;
+      layoutScale = metrics.layoutScale;
+      layoutOffsetX = metrics.layoutOffsetX;
+      layoutOffsetY = metrics.layoutOffsetY;
+    },
+    onResize() {
+      initializeStoryCardLayout('window-resize');
+      if (typeof drawFrame === 'function') drawFrame();
+    },
+  });
+  runtimeListenerTeardowns.push(viewportRuntime.teardown);
 
   // Map Construct world coords to canvas coords (preserve layout aspect/position)
   function worldToCanvas(wx, wy) {
@@ -3649,70 +3648,18 @@ async function main(){
   }
 
   function initializeStoryCardLayout(trigger = 'layout-active') {
-    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
-      ? layoutState.getActiveLayoutId()
-      : null;
-    if (activeLayoutId !== 'combat') return false;
-
-    const viewLeft = layoutOffsetX;
-    const viewTop = layoutOffsetY;
-    const viewWidth = layoutW * layoutScale;
-    const contentBandWidth = viewWidth * 0.95;
-    const slotX = viewLeft + (viewWidth - contentBandWidth) * 0.5;
-
-    const hpBarInstance = (instances || []).find(ins => ins && ins.type === 'PartyHP_Bar' && ins.world);
-    const hpBarBottom = hpBarInstance
-      ? (() => {
-          const p = worldToCanvas(hpBarInstance.world.x || 0, hpBarInstance.world.y || 0);
-          const h = Number(hpBarInstance.world.height || 0) * layoutScale;
-          const oy = Number(hpBarInstance.world.originY != null ? hpBarInstance.world.originY : 0);
-          return p.y - (h * oy) + h;
-        })()
-      : 0;
-    const hpBarHeight = hpBarInstance ? Number(hpBarInstance.world.height || 0) * layoutScale : 0;
-    const ampBarBottom = hpBarBottom
-      ? hpBarBottom + hpBarHeight + Math.max(4, Math.round(hpBarHeight * 0.55))
-      : 0;
-    const buffTypes = new Set(['buffIcon1', 'buffIcon2', 'buffIcon3', 'buffIcon4']);
-    const buffInstances = (instances || []).filter(ins => ins && buffTypes.has(ins.type) && ins.world);
-    const layoutAnchorBottom = buffInstances.length
-      ? Math.max(...buffInstances.map(ins => {
-          const p = worldToCanvas(ins.world.x || 0, ins.world.y || 0);
-          const h = Number(ins.world.height || 0) * layoutScale;
-          const oy = Number(ins.world.originY != null ? ins.world.originY : 0.5);
-          return p.y - (h * oy) + h;
-        }))
-      : (ampBarBottom || hpBarBottom || (viewTop + Math.max(240, Math.round(250 * layoutScale))));
-
-    const grid = gameState.gridBounds || {
-      minX: boardGeometry.gx,
-      minY: boardGeometry.gy,
-      maxX: boardGeometry.gx + (boardGeometry.cols * boardGeometry.cellSize + (boardGeometry.cols - 1) * boardGeometry.gap),
-      maxY: boardGeometry.gy + (boardGeometry.rows * boardGeometry.cellSize + (boardGeometry.rows - 1) * boardGeometry.gap),
-    };
-    const gridTop = layoutOffsetY + Number(grid.minY || 0) * layoutScale;
-    const topMargin = Math.max(8, Math.round(10 * layoutScale));
-    const bottomMargin = Math.max(8, Math.round(10 * layoutScale));
-    const slotY = layoutAnchorBottom + topMargin;
-    const rawH = gridTop - bottomMargin - slotY;
-    const slotH = Math.max(Math.round(34 * layoutScale), Math.min(Math.round(58 * layoutScale), rawH));
-    const adjustedY = rawH >= Math.round(24 * layoutScale)
-      ? slotY
-      : (gridTop - bottomMargin - Math.max(Math.round(34 * layoutScale), Math.round(38 * layoutScale)));
-
-    const bounds = {
-      x: slotX,
-      y: adjustedY,
-      w: contentBandWidth,
-      h: Math.max(Math.round(34 * layoutScale), slotH),
-    };
-    gameState.storyCardLayout = {
-      ...bounds,
-      initialized: true,
-      trigger: String(trigger || 'layout-active'),
-    };
-    traceTask015StoryPlacement(trigger, bounds);
-    return true;
+    return initializeStoryCardPresentationLayout({
+      trigger,
+      activeLayoutId: layoutState && typeof layoutState.getActiveLayoutId === 'function'
+        ? layoutState.getActiveLayoutId()
+        : null,
+      gameState,
+      instances,
+      boardGeometry,
+      layoutMetrics: { layoutW, layoutScale, layoutOffsetX, layoutOffsetY },
+      worldToCanvas,
+      tracePlacement: traceTask015StoryPlacement,
+    });
   }
 
   if (layoutHarnessEnabled && harnessLayoutState) {
