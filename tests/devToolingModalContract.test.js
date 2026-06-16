@@ -162,12 +162,14 @@ test('dev tooling resume restores playable hero input when combat is idle', () =
 test('startup preload can prepare combat assets while story mock is active', () => {
   const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
   const src = fs.readFileSync(filePath, 'utf8');
+  const initializerSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'combatSessionInitializer.js'), 'utf8');
   const preloadSrc = extractFunctionSource(src, 'loadC3ProjectAssets');
   const prepareSrc = extractFunctionSource(src, 'prepareCombatSetupFromInstances');
 
   assert.doesNotMatch(preloadSrc, /assertCombatLayoutDev\('loadC3ProjectAssets'\)/);
   assert.doesNotMatch(prepareSrc, /assertCombatLayoutDev\('prepareCombatSetupFromInstances'\)/);
-  assert.match(src, /assertCombatLayoutDev\('initEntities'\)/);
+  assert.match(src, /createCombatSessionInitializer/);
+  assert.match(initializerSrc, /assertCombatLayoutDev\('initEntities'\)/);
   assert.match(src, /assertCombatLayoutDev\('createGemBoard'\)/);
   assert.match(src, /assertCombatLayoutDev\('StartRound'\)/);
 });

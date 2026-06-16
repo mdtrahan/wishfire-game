@@ -934,6 +934,8 @@ export function createDevToolingRuntime(deps = {}) {
     getDevToolEnemyOptions,
     getConfiguredHeroSlots,
     getConfiguredEnemySlots,
+    readEscortPartyConfig,
+    buildConfiguredCombatPartyMembers,
     syncIdleFarmDevLoadoutConfig,
     updateDevToolingStatus,
     applyDevToolingConfig,

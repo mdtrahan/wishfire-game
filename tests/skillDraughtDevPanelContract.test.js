@@ -218,8 +218,7 @@ test('dev panel 2 mirrors dev panel pause while open', () => {
 });
 
 test('fresh combat session clears selected session skills without touching progression', () => {
-  const appSrc = fs.readFileSync(appPath, 'utf8');
-  const initSrc = extractFunctionSource(appSrc, 'initEntities');
+  const initSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'combatSessionInitializer.js'), 'utf8');
   assert.match(initSrc, /state\.globals\.CombatSessionId = Number\(state\.globals\.CombatSessionId \|\| 0\) \+ 1;/);
   assert.match(initSrc, /callFunctionWithContext\(fnContext, 'ClearSessionSkillDraught'\);/);
   assert.doesNotMatch(initSrc, /HeroSkillProgressByHeroId = \{\}/);

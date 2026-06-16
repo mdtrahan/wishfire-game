@@ -175,12 +175,14 @@ test('combat runtime RNG helpers install a Rust-owned seeded RuntimeRandom sessi
 
 test('combat startup installs RuntimeRandom from the encounter seed and keeps metadata fields explicit', () => {
   const appSrc = fs.readFileSync(appPath, 'utf8');
+  const initializerSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'combatSessionInitializer.js'), 'utf8');
   const stateSrc = fs.readFileSync(statePath, 'utf8');
 
   assert.match(appSrc, /function normalizeRuntimeRngSeed/);
   assert.match(appSrc, /function deriveCombatRuntimeRngSeed/);
   assert.match(appSrc, /function installCombatRuntimeRandom/);
-  assert.match(appSrc, /installCombatRuntimeRandom\(deriveCombatRuntimeRngSeed\(encounterSeed\), 'initEntities'\)/);
+  assert.match(appSrc, /createCombatSessionInitializer\(\{[\s\S]*deriveCombatRuntimeRngSeed,[\s\S]*installCombatRuntimeRandom,/);
+  assert.match(initializerSrc, /installCombatRuntimeRandom\(deriveCombatRuntimeRngSeed\(encounterSeed\), 'initEntities'\)/);
   assert.match(stateSrc, /RuntimeRandomSeed: 0/);
   assert.match(stateSrc, /RuntimeRandomDraws: 0/);
   assert.match(stateSrc, /RuntimeRandomOwner: ''/);

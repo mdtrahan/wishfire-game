@@ -4,37 +4,16 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 
-function extractFunction(src, name) {
-  const match = src.match(new RegExp(`function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}`));
-  assert.ok(match, `missing ${name}`);
-  return match[0];
-}
+const initializerPath = path.join(__dirname, '..', 'web-runner', 'systems', 'combatSessionInitializer.js');
 
 function loadEncounterHelpers() {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
-  const snippet = [
-    `function createSimulationCoreSeededRng(seed = 1) {
-  let state = Number(seed || 1) >>> 0;
-  if (!state) state = 1;
-  return () => {
-    state = (1664525 * state + 1013904223) >>> 0;
-    return state / 4294967296;
-  };
-}`,
-    extractFunction(src, 'computeCombatPower'),
-    extractFunction(src, 'resolveEnemyEncounterCombatPower'),
-    extractFunction(src, 'normalizeBiomeTags'),
-    extractFunction(src, 'normalizeEnemyRole'),
-    extractFunction(src, 'normalizeFaction'),
-    extractFunction(src, 'createSeededRng'),
-    extractFunction(src, 'computeEncounterTotalCP'),
-    extractFunction(src, 'deriveEncounterPoolNames'),
-    extractFunction(src, 'buildEncounterByBudget'),
-  ].join('\n\n');
-  const script = `${snippet}
+  const src = fs.readFileSync(initializerPath, 'utf8');
+  const transformed = src
+    .replace(/import[\s\S]*?;\n/g, '')
+    .replace(/export function /g, 'function ');
+  const script = `${transformed}
 module.exports = {
   buildEncounterByBudget,
-  computeCombatPower,
   normalizeBiomeTags,
   normalizeEnemyRole,
   normalizeFaction,
@@ -48,6 +27,8 @@ module.exports = {
     Array,
     JSON,
     Math,
+    Set,
+    Infinity,
   };
   vm.runInNewContext(script, context, { filename: 'encounterCpHelpers.js' });
   return context.module.exports;
