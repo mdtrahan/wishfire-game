@@ -104,6 +104,7 @@ import {
   createAppViewportRuntime,
 } from './systems/appShellViewport.js';
 import { initializeStoryCardPresentationLayout } from './systems/storyCardPresentation.js';
+import { registerRuntimeLayouts } from './systems/runtimeLayoutRegistry.js';
 import { createIdleFarmAppRuntime } from './systems/idleFarmAppRuntime.js';
 import {
   createDevToolingRuntime,
@@ -3153,349 +3154,79 @@ async function main(){
     })();
     return startupPreloadPromise;
   }
-  const registerCoreLayouts = (layoutState, { combatGateway: gateway }) => {
-    const validateCombatSnapshot = (snapshot, stage, transitionLabel) => {
-      const valid = !snapshot || (
-        Array.isArray(snapshot.turnQueue) &&
-        Number.isFinite(Number(snapshot.currentActorIndex))
-      );
-      console.log('[LAYOUT_PHASE1]', {
-        stage,
-        transition: transitionLabel,
-        hasSnapshot: Boolean(snapshot),
-        snapshotValid: valid,
-      });
-      return valid;
-    };
+  const validateCombatSnapshot = (snapshot, stage, transitionLabel) => {
+    const valid = !snapshot || (
+      Array.isArray(snapshot.turnQueue) &&
+      Number.isFinite(Number(snapshot.currentActorIndex))
+    );
+    console.log('[LAYOUT_PHASE1]', {
+      stage,
+      transition: transitionLabel,
+      hasSnapshot: Boolean(snapshot),
+      snapshotValid: valid,
+    });
+    return valid;
+  };
 
-    layoutState.registerLayout({
-      id: 'combat',
-      allowedTransitions: ['base', 'shop', 'intro', 'idleFarmLayout', 'mapLayout', 'heroLayout', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'relicsLayout', 'petsLayout', 'evolutionLayout', 'homesteadLayout', 'chestsLayout', 'storyMock', 'town'],
-      async onEnter({ resumeSnapshot, payload, reason }) {
-        const hasRuntimeData =
-          Array.isArray(instances) && instances.length > 0 &&
-          types && Object.keys(types).length > 0 &&
-          Array.isArray(enemyRows) && enemyRows.length > 0;
-        const needsBootstrap = !freshCombatBootstrapped || !hasRuntimeData;
-        const freshCombatStart = reason === 'town-click' || !!payload?.freshStart;
-        const needsCombatSeed = freshCombatStart || !combatSessionSeeded;
+  const combatLayout = {
+    id: 'combat',
+    allowedTransitions: ['base', 'shop', 'intro', 'idleFarmLayout', 'mapLayout', 'heroLayout', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'relicsLayout', 'petsLayout', 'evolutionLayout', 'homesteadLayout', 'chestsLayout', 'storyMock', 'town'],
+    async onEnter({ resumeSnapshot, payload, reason }) {
+      const hasRuntimeData =
+        Array.isArray(instances) && instances.length > 0 &&
+        types && Object.keys(types).length > 0 &&
+        Array.isArray(enemyRows) && enemyRows.length > 0;
+      const needsBootstrap = !freshCombatBootstrapped || !hasRuntimeData;
+      const freshCombatStart = reason === 'town-click' || !!payload?.freshStart;
+      const needsCombatSeed = freshCombatStart || !combatSessionSeeded;
 
-        validateCombatSnapshot((freshCombatStart ? null : resumeSnapshot) || null, 'onEnter', 'x->1');
-        console.log('[Layout] Combat activated via LayoutState');
-        COMBAT_LAYOUT_READY = true;
-        console.log('[LayoutGuard] Combat layout ready');
-        if (needsBootstrap) {
-          if (!hasRuntimeData) {
-            console.log('[LayoutGuard] Combat bootstrap forcing asset init (missing runtime data)');
-            await beginLayout0Preload();
-            if (gameState.startupLoad?.phase === 'error') {
-              throw new Error('Layout 0 preload not ready; combat transition blocked');
-            }
-          }
-          state.globals.GamePhase = 'BOOTSTRAP';
-          runtimeDebugLogging.startupDebugLog('[INIT] Starting initialization...');
-          prepareCombatSetupFromInstances(instances, gameState);
-          freshCombatBootstrapped = true;
-          COMBAT_BOOTSTRAP_COMPLETE = true;
-        }
-        gateway.resume(freshCombatStart ? null : (resumeSnapshot || null));
-        if (needsCombatSeed) {
-          initEntities(enemyRows, instances);
-          heroGemProgressStorage.restoreHeroGemProgressFromStorage({ callFunctionWithContext, fnContext, syncFromGlobals });
-          assertCombatLayoutDev('StartRound');
-          callFunctionWithContext(fnContext, 'StartRound');
-          createGemBoard(gridBounds);
-          combatSessionSeeded = true;
-          updateStartupLoadState({ active: false, phase: 'runtime', label: 'Ready', progress: 1 });
-          if (runtimeDebugLogging.isGemDebugEnabled(state) && GEM_INTERACTIVITY_DIAGNOSTIC_QUERY) {
-            setTimeout(() => {
-              runGemInteractivityDiagnostic().catch((err) => {
-                console.error('[DIAG] Gem interactivity diagnostic failed:', err);
-              });
-            }, 1000);
+      validateCombatSnapshot((freshCombatStart ? null : resumeSnapshot) || null, 'onEnter', 'x->1');
+      console.log('[Layout] Combat activated via LayoutState');
+      COMBAT_LAYOUT_READY = true;
+      console.log('[LayoutGuard] Combat layout ready');
+      if (needsBootstrap) {
+        if (!hasRuntimeData) {
+          console.log('[LayoutGuard] Combat bootstrap forcing asset init (missing runtime data)');
+          await beginLayout0Preload();
+          if (gameState.startupLoad?.phase === 'error') {
+            throw new Error('Layout 0 preload not ready; combat transition blocked');
           }
         }
-        gameState.combatFailExitRequested = false;
-        initializeStoryCardLayout('layout1-active');
-        eventBus.emit('layout:combat:entered', { restored: Boolean(resumeSnapshot) });
-      },
-      onActive() {},
-      onExit({ to }) {
-        gameState.storyCardLayout.initialized = false;
-        const snapshot = gateway.suspend();
-        const transitionLabel = to === 'idleFarmLayout' ? '1->2' : '1->x';
-        validateCombatSnapshot(snapshot, 'onExit', transitionLabel);
-        return snapshot;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'mapLayout',
-      allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'collectiblesLayout', 'relicsLayout', 'petsLayout', 'homesteadLayout'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        mapLayoutState.setMapPanY(0);
-        mapLayoutState.setMapLayoutField('tomesLocaleHit', null);
-        mapLayoutState.setMapLayoutField('artifactsLocaleHit', null);
-        mapLayoutState.setMapLayoutField('mountsLocaleHit', null);
-        mapLayoutState.setMapLayoutField('collectiblesLocaleHit', null);
-        mapLayoutState.setMapLayoutField('relicsLocaleHit', null);
-        mapLayoutState.setMapLayoutField('homesteadLocaleHit', null);
-        mapLayoutState.setMapLayoutField('closeHit', null);
-        mapLayoutState.setMapDragState({
-          active: false,
-          pointerId: null,
-          lastX: 0,
-          lastY: 0,
-          moved: 0,
-        });
-        console.log('[LAYOUT_PHASE1]', { stage: 'onEnter', transition: '1->map', trigger: 'map-click' });
-      },
-      onActive() {},
-      onExit() { return null; },
-    });
-    layoutState.registerLayout({
-      id: 'tomesLayout',
-      allowedTransitions: ['chestsLayout', 'combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        gameState.tomesLayout.hitZones = null;
-        gameState.tomesLayout.selectedIndex = Math.max(
-          0,
-          Math.min(
-            Math.max(0, (gameState.tomesLayout.gallery || []).length - 1),
-            Number(gameState.tomesLayout.selectedIndex || 0),
-          ),
-        );
-      },
-      onActive() {},
-      onExit() {
-        gameState.tomesLayout.hitZones = null;
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'artifactsLayout',
-      allowedTransitions: ['chestsLayout', 'combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        gameState.artifactsLayout.hitZones = null;
-        gameState.artifactsLayout.selectedIndex = Math.max(
-          0,
-          Math.min(
-            Math.max(0, (gameState.artifactsLayout.gallery || []).length - 1),
-            Number(gameState.artifactsLayout.selectedIndex || 0),
-          ),
-        );
-      },
-      onActive() {},
-      onExit() {
-        gameState.artifactsLayout.hitZones = null;
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'mountsLayout',
-      allowedTransitions: ['chestsLayout', 'combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        gameState.mountsLayout.hitZones = null;
-        gameState.mountsLayout.selectedIndex = Math.max(
-          0,
-          Math.min(
-            Math.max(0, (gameState.mountsLayout.gallery || []).length - 1),
-            Number(gameState.mountsLayout.selectedIndex || 0),
-          ),
-        );
-      },
-      onActive() {},
-      onExit() {
-        gameState.mountsLayout.hitZones = null;
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'collectiblesLayout',
-      allowedTransitions: ['chestsLayout', 'combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        gameState.collectiblesLayout.hitZones = null;
-        gameState.collectiblesLayout.selectedIndex = Math.max(
-          0,
-          Math.min(
-            Math.max(0, (gameState.collectiblesLayout.gallery || []).length - 1),
-            Number(gameState.collectiblesLayout.selectedIndex || 0),
-          ),
-        );
-      },
-      onActive() {},
-      onExit() {
-        gameState.collectiblesLayout.hitZones = null;
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'relicsLayout',
-      allowedTransitions: ['chestsLayout', 'combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        gameState.relicsLayout.hitZones = null;
-        gameState.relicsLayout.selectedIndex = Math.max(
-          0,
-          Math.min(
-            Math.max(0, (gameState.relicsLayout.gallery || []).length - 1),
-            Number(gameState.relicsLayout.selectedIndex || 0),
-          ),
-        );
-      },
-      onActive() {},
-      onExit() {
-        gameState.relicsLayout.hitZones = null;
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'petsLayout',
-      allowedTransitions: ['chestsLayout', 'combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        gameState.petsLayout.hitZones = null;
-        gameState.petsLayout.selectedIndex = Math.max(
-          0,
-          Math.min(
-            Math.max(0, (gameState.petsLayout.gallery || []).length - 1),
-            Number(gameState.petsLayout.selectedIndex || 0),
-          ),
-        );
-      },
-      onActive() {},
-      onExit() {
-        gameState.petsLayout.hitZones = null;
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'evolutionLayout',
-      allowedTransitions: ['chestsLayout', 'combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        gameState.evolutionLayout.hitZones = null;
-        gameState.evolutionLayout.selectedLevel = Math.max(
-          0,
-          Math.min(
-            Math.max(0, (gameState.evolutionLayout.ladder || []).length - 1),
-            Number(gameState.evolutionLayout.selectedLevel || 0),
-          ),
-        );
-      },
-      onActive() {},
-      onExit() {
-        gameState.evolutionLayout.hitZones = null;
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'homesteadLayout',
-      allowedTransitions: ['chestsLayout', 'combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        gameState.homesteadLayout.hitZones = null;
-        gameState.homesteadLayout.selectedSlot = Math.max(
-          0,
-          Math.min(
-            Math.max(0, ((gameState.homesteadLayout.scene && gameState.homesteadLayout.scene.slots) || []).length - 1),
-            Number(gameState.homesteadLayout.selectedSlot || 0),
-          ),
-        );
-      },
-      onActive() {},
-      onExit() {
-        gameState.homesteadLayout.hitZones = null;
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'chestsLayout',
-      allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'collectiblesLayout', 'relicsLayout', 'petsLayout', 'evolutionLayout', 'homesteadLayout'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        gameState.chestsLayout.hitZones = null;
-        const tabs = Array.isArray(gameState.chestsLayout.tabs) ? gameState.chestsLayout.tabs : [];
-        const allowed = new Set(tabs.map((t) => String(t.id || '')));
-        if (!allowed.has(String(gameState.chestsLayout.activeTab || ''))) {
-          gameState.chestsLayout.activeTab = tabs.length ? String(tabs[0].id || 'Common') : 'Common';
+        state.globals.GamePhase = 'BOOTSTRAP';
+        runtimeDebugLogging.startupDebugLog('[INIT] Starting initialization...');
+        prepareCombatSetupFromInstances(instances, gameState);
+        freshCombatBootstrapped = true;
+        COMBAT_BOOTSTRAP_COMPLETE = true;
+      }
+      combatRuntimeGateway.resume(freshCombatStart ? null : (resumeSnapshot || null));
+      if (needsCombatSeed) {
+        initEntities(enemyRows, instances);
+        heroGemProgressStorage.restoreHeroGemProgressFromStorage({ callFunctionWithContext, fnContext, syncFromGlobals });
+        assertCombatLayoutDev('StartRound');
+        callFunctionWithContext(fnContext, 'StartRound');
+        createGemBoard(gridBounds);
+        combatSessionSeeded = true;
+        updateStartupLoadState({ active: false, phase: 'runtime', label: 'Ready', progress: 1 });
+        if (runtimeDebugLogging.isGemDebugEnabled(state) && GEM_INTERACTIVITY_DIAGNOSTIC_QUERY) {
+          setTimeout(() => {
+            runGemInteractivityDiagnostic().catch((err) => {
+              console.error('[DIAG] Gem interactivity diagnostic failed:', err);
+            });
+          }, 1000);
         }
-      },
-      onActive() {},
-      onExit() {
-        gameState.chestsLayout.hitZones = null;
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'heroLayout',
-      allowedTransitions: ['combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        uiState.setUIStateField('heroScreenHitZones', null);
-        normalizeHeroSelectionIndex();
-      },
-      onActive() {},
-      onExit() {
-        uiState.setUIStateField('heroScreenHitZones', null);
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'base',
-      allowedTransitions: ['combat', 'shop', 'intro'],
-      onEnter() {},
-      onActive() {},
-      onExit() { return null; },
-    });
-    layoutState.registerLayout({
-      id: 'intro',
-      allowedTransitions: ['base', 'combat'],
-      onEnter() {},
-      onActive() {},
-      onExit() { return null; },
-    });
-    layoutState.registerLayout({
-      id: 'shop',
-      allowedTransitions: ['base', 'combat'],
-      onEnter() {},
-      onActive() {},
-      onExit() { return null; },
-    });
-    layoutState.registerLayout({
-      id: 'storyMock',
-      allowedTransitions: ['town'],
-      onEnter() {
-        gameState.combatFailExitRequested = false;
-      },
-      onActive() {},
-      onExit() { return null; },
-    });
-    layoutState.registerLayout({
-      id: 'town',
-      allowedTransitions: ['combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        restorePartyToFullHP();
-      },
-      onActive() {},
-      onExit() { return null; },
-    });
-    layoutState.registerLayout({
-      id: 'idleFarmLayout',
-      allowedTransitions: ['combat', 'storyMock'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        startIdleFarmEmissions(performance.now() / 1000);
-        restartIdleFarmSession(performance.now() / 1000);
-      },
-      onActive() {},
-      onExit() { return null; },
-    });
+      }
+      gameState.combatFailExitRequested = false;
+      initializeStoryCardLayout('layout1-active');
+      eventBus.emit('layout:combat:entered', { restored: Boolean(resumeSnapshot) });
+    },
+    onActive() {},
+    onExit({ to }) {
+      gameState.storyCardLayout.initialized = false;
+      const snapshot = combatRuntimeGateway.suspend();
+      const transitionLabel = to === 'idleFarmLayout' ? '1->2' : '1->x';
+      validateCombatSnapshot(snapshot, 'onExit', transitionLabel);
+      return snapshot;
+    },
   };
 
   layoutState = createLayoutStateSingleton({
@@ -3505,7 +3236,17 @@ async function main(){
     inputDomains,
   });
   combatRuntimeGateway.setLayoutState(layoutState);
-  registerCoreLayouts(layoutState, { combatGateway: combatRuntimeGateway });
+  registerRuntimeLayouts(layoutState, {
+    combatLayout,
+    uiState,
+    mapLayoutState,
+    gameState,
+    normalizeHeroSelectionIndex,
+    restorePartyToFullHP,
+    startIdleFarmEmissions,
+    restartIdleFarmSession,
+    getNowSec: () => performance.now() / 1000,
+  });
 
   state.globals.Player_maxEnergy = 150;
   state.globals.Player_Energy = state.globals.Player_maxEnergy;

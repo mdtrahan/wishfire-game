@@ -17,9 +17,10 @@ test('chests scaffold defines deterministic tabs/progress/reward model in runtim
 test('chests layout is wired to mission nav and runtime route', () => {
   const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
   const src = fs.readFileSync(filePath, 'utf8');
+  const registrySrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'runtimeLayoutRegistry.js'), 'utf8');
   assert.match(src, /import \{ createInitialGameState \} from '\.\/state\/gameState\.js';/);
   assert.match(src, /const gameState = createInitialGameState\(\);/);
-  assert.match(src, /id:\s*'chestsLayout'/);
+  assert.match(registrySrc, /id:\s*'chestsLayout'/);
   assert.match(src, /layoutState\.requestLayoutChange\('chestsLayout',\s*'nav-chests'\)/);
   assert.match(src, /case 'chestsLayout':/);
   assert.match(src, /if \(activeLayoutId === 'chestsLayout'\)/);
