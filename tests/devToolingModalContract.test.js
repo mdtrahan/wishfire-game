@@ -40,9 +40,11 @@ function extractFunctionSource(src, name) {
 test('dev tooling runtime owns modal/config while app keeps restart wiring', () => {
   const appPath = path.join(__dirname, '..', 'web-runner', 'app.js');
   const runtimePath = path.join(__dirname, '..', 'web-runner', 'systems', 'devToolingRuntime.js');
+  const devHooksPath = path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js');
   const appSrc = fs.readFileSync(appPath, 'utf8');
   const runtimeSrc = fs.readFileSync(runtimePath, 'utf8');
-  const src = `${runtimeSrc}\n${appSrc}`;
+  const devHooksSrc = fs.readFileSync(devHooksPath, 'utf8');
+  const src = `${runtimeSrc}\n${appSrc}\n${devHooksSrc}`;
 
   assert.match(appSrc, /createDevToolingRuntime\(\{/);
   assert.match(appSrc, /function ensureDevToolingConfig\(\) \{\n  return requireDevToolingRuntime\(\)\.ensureDevToolingConfig\(\);\n\}/);
@@ -54,6 +56,8 @@ test('dev tooling runtime owns modal/config while app keeps restart wiring', () 
   assert.match(runtimeSrc, /function createDefaultDevToolingConfig\(\)/);
   assert.match(runtimeSrc, /function ensureDevToolingConfig\(\)/);
   assert.match(appSrc, /window\.addEventListener\('keydown', handleGlobalKeydown, true\);/);
+  assert.match(appSrc, /registerDevBrowserTestHooks\(\{/);
+  assert.match(devHooksSrc, /export function registerDevBrowserTestHooks\(\{/);
   assert.match(src, /devToolingDom\.launcher\.addEventListener\('click', \(\) => toggleDevToolingModal\(true\)\);/);
   assert.doesNotMatch(src, /data-devtool-status/);
   assert.doesNotMatch(src, /Global runtime controls\. Hotkey:/);
