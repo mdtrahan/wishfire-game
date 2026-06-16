@@ -75,21 +75,9 @@ import * as inputHandling from './systems/inputHandling.js';
 import * as renderSystem from './systems/renderSystem.js';
 import * as renderHUD from './systems/renderHUD.js';
 import * as renderHeroScreen from './systems/renderHeroScreen.js';
-import * as renderMap from './systems/renderMap.js';
 import * as renderBoard from './systems/renderBoard.js';
 import * as gemVisuals from './systems/gemVisuals.js';
 import * as renderCombatRuntime from './systems/renderCombatRuntime.js';
-import * as renderTomes from './systems/renderTomes.js';
-import * as renderArtifacts from './systems/renderArtifacts.js';
-import * as renderMounts from './systems/renderMounts.js';
-import * as renderCollectibles from './systems/renderCollectibles.js';
-import * as renderRelics from './systems/renderRelics.js';
-import * as renderPets from './systems/renderPets.js';
-import * as renderIdleFarm from './systems/renderIdleFarm.js';
-import * as renderEvolution from './systems/renderEvolution.js';
-import * as renderHomestead from './systems/renderHomestead.js';
-import * as renderChests from './systems/renderChests.js';
-import * as renderHarnessFallback from './systems/renderHarnessFallback.js';
 import * as renderOverlays from './systems/renderOverlays.js';
 import * as renderSkillDraught from './systems/renderSkillDraughtOverlay.js';
 import * as renderRuntime from './systems/renderRuntime.js';
@@ -105,6 +93,7 @@ import {
 } from './systems/appShellViewport.js';
 import { initializeStoryCardPresentationLayout } from './systems/storyCardPresentation.js';
 import { registerRuntimeLayouts } from './systems/runtimeLayoutRegistry.js';
+import { createSurfaceRenderRouter } from './systems/surfaceRenderRouter.js';
 import { createIdleFarmAppRuntime } from './systems/idleFarmAppRuntime.js';
 import {
   createDevToolingRuntime,
@@ -3672,119 +3661,46 @@ async function main(){
   // Track last overlay state for logging only on change
   let lastOverlayState = null;
 
-  function drawHarnessLayoutTakeover(layoutId) {
-    const viewWidth = canvas.width / dpr;
-    const viewHeight = canvas.height / dpr;
-    const applyLayoutResult = (layoutRef, result) => {
-      if (layoutRef && result && result.hitZones) layoutRef.hitZones = result.hitZones;
-      uiState.setUIFields((result && result.uiPatches) || {});
-      if (result && result.drawHudAfter) drawHUD();
-    };
+  const surfaceRenderRouter = createSurfaceRenderRouter({
+    ctx,
+    canvas,
+    gameState,
+    uiState,
+    mapLayoutState,
+    animationMath,
+    heroLayoutSpec,
+    getCloseWinOvalImage: () => closeWinOvalImage,
+    getMapBackgroundImage: () => mapBackgroundImage,
+    renderHeroScreenLayoutV2,
+    getDpr: () => dpr,
+    getFreshCombatBootstrapped: () => freshCombatBootstrapped,
+    getStartupFingerprintLabel: () => RUNTIME_FINGERPRINT.label,
+    getHeroScreenDeps: () => ({
+      fnContext,
+      closeWinOvalImage,
+      heroPortraitImages,
+      heroSkillSpriteSheetImage: null,
+      heroSkillIconImages: [
+        heroSkillIconsBySlot[0] || null,
+        heroSkillIconsBySlot[1] || null,
+        heroSkillIconsBySlot[2] || null,
+      ],
+    }),
+    getIdleFarmDeps: () => ({
+      nowSec: performance.now() / 1000,
+      animationMath,
+      updateIdleFarmEmissions,
+      startIdleFarmEmissions,
+      updateIdleFarmSession,
+      ensureIdleFarmSession,
+      heroCapsuleImages,
+      enemySpriteImages,
+    }),
+    drawHUD,
+  });
 
-    switch (layoutId) {
-      case 'mapLayout': {
-        mapLayoutState.setMapPanY(0);
-        const mapRenderResult = renderMap.renderMap(
-          ctx,
-          gameState,
-          uiState.getUIState(),
-          mapLayoutState.getMapLayoutState(),
-          {
-            viewWidth,
-            viewHeight,
-            mapBackgroundImage,
-            heroLayoutSpec,
-            closeWinOvalImage,
-          },
-        );
-        mapLayoutState.setMapLayoutBounds(mapRenderResult.panBounds);
-        mapLayoutState.setMapPanX(mapRenderResult.clampedPanX);
-        mapLayoutState.setMapLayoutField('lastRender', mapRenderResult.lastRender);
-        mapLayoutState.setMapLayoutField('closeHit', mapRenderResult.closeHit);
-        mapLayoutState.setMapLayoutField('tomesLocaleHit', mapRenderResult.localeHits.tomesLocaleHit);
-        mapLayoutState.setMapLayoutField('artifactsLocaleHit', mapRenderResult.localeHits.artifactsLocaleHit);
-        mapLayoutState.setMapLayoutField('mountsLocaleHit', mapRenderResult.localeHits.mountsLocaleHit);
-        mapLayoutState.setMapLayoutField('relicsLocaleHit', mapRenderResult.localeHits.relicsLocaleHit);
-        mapLayoutState.setMapLayoutField('collectiblesLocaleHit', mapRenderResult.localeHits.collectiblesLocaleHit);
-        mapLayoutState.setMapLayoutField('homesteadLocaleHit', mapRenderResult.localeHits.homesteadLocaleHit);
-        return;
-      }
-      case 'tomesLayout':
-        applyLayoutResult(gameState.tomesLayout, renderTomes.renderTomes(ctx, gameState, { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage }));
-        return;
-      case 'artifactsLayout':
-        applyLayoutResult(gameState.artifactsLayout, renderArtifacts.renderArtifacts(ctx, gameState, { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage }));
-        return;
-      case 'mountsLayout':
-        applyLayoutResult(gameState.mountsLayout, renderMounts.renderMounts(ctx, gameState, { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage }));
-        return;
-      case 'collectiblesLayout':
-        applyLayoutResult(gameState.collectiblesLayout, renderCollectibles.renderCollectibles(ctx, gameState, { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage }));
-        return;
-      case 'relicsLayout':
-        applyLayoutResult(gameState.relicsLayout, renderRelics.renderRelics(ctx, gameState, { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage }));
-        return;
-      case 'petsLayout':
-        applyLayoutResult(gameState.petsLayout, renderPets.renderPets(ctx, gameState, { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage }));
-        return;
-      case 'idleFarmLayout': {
-        const nowSec = performance.now() / 1000;
-        applyLayoutResult(
-          gameState.idleFarmLayout,
-          renderIdleFarm.renderIdleFarm(
-            ctx,
-            gameState,
-            {
-              nowSec,
-              animationMath,
-              updateIdleFarmEmissions,
-              startIdleFarmEmissions,
-              updateIdleFarmSession,
-              ensureIdleFarmSession,
-              heroCapsuleImages,
-              enemySpriteImages,
-            },
-            { viewWidth, viewHeight },
-          ),
-        );
-        return;
-      }
-      case 'evolutionLayout':
-        applyLayoutResult(gameState.evolutionLayout, renderEvolution.renderEvolution(ctx, gameState, { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage }));
-        return;
-      case 'homesteadLayout':
-        applyLayoutResult(gameState.homesteadLayout, renderHomestead.renderHomestead(ctx, gameState, { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage }));
-        return;
-      case 'chestsLayout':
-        applyLayoutResult(gameState.chestsLayout, renderChests.renderChests(ctx, gameState, { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage }));
-        return;
-      case 'heroLayout': {
-        renderHeroScreenLayoutV2({
-          ctx,
-          canvas,
-          dpr,
-          gameState,
-          fnContext,
-          closeWinOvalImage,
-          heroPortraitImages,
-          heroSkillSpriteSheetImage: null,
-          heroSkillIconImages: [
-            heroSkillIconsBySlot[0] || null,
-            heroSkillIconsBySlot[1] || null,
-            heroSkillIconsBySlot[2] || null,
-          ],
-        });
-        return;
-      }
-      default:
-        renderHarnessFallback.renderHarnessFallback(ctx, layoutId, gameState, {
-          viewWidth,
-          viewHeight,
-          startupFingerprintLabel: RUNTIME_FINGERPRINT.label,
-          freshCombatBootstrapped,
-        });
-        return;
-    }
+  function drawHarnessLayoutTakeover(layoutId) {
+    surfaceRenderRouter.draw(layoutId);
   }
 
   // helper function to draw all instances
@@ -4018,19 +3934,6 @@ async function main(){
       uiState,
       mapLayoutState,
       animationMath,
-      renderMap,
-      renderTomes,
-      renderArtifacts,
-      renderMounts,
-      renderCollectibles,
-      renderRelics,
-      renderPets,
-      renderIdleFarm,
-      renderEvolution,
-      renderHomestead,
-      renderChests,
-      renderHeroScreenLayoutV2,
-      renderHarnessFallback,
       renderOverlays,
       renderBoard,
       renderCombatRuntime,
