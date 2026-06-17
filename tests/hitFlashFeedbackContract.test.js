@@ -34,7 +34,7 @@ test('renderer applies tone-aware hit-flash overlay to attacked combatants', () 
   assert.match(src, /if \(!enemyOccupiesTaintedGroundZone\(enemy, zone\)\) continue;/);
   assert.match(src, /const anchorX = Number\(zone\.anchorWorldX\);/);
   assert.match(renderRuntimeSrc, /if \(!String\(dot\.effectName \|\| 'Blight'\)\.startsWith\('Blight'\)\) continue;/);
-  assert.match(src, /hasPersistentEnemyBlightOverlay,\s+hasPersistentEnemyDrainOverlay,\s+hasPersistentHeroRegenOverlay,\s+isHitFlashActive,\s+getHitFlashTone,/s);
+  assert.match(src, /hasPersistentEnemyBlightOverlay,\s+hasPersistentHeroRegenOverlay,\s+isHitFlashActive,\s+getHitFlashTone,/s);
   assert.doesNotMatch(src, /hasPersistentEnemyBlightOverlay:\s*\(\) => false/);
   assert.doesNotMatch(src, /hasPersistentHeroRegenOverlay:\s*\(\) => false/);
   assert.doesNotMatch(src, /isHitFlashActive:\s*\(\) => false/);

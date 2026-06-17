@@ -67,7 +67,6 @@ test('app wires super gem hooks for settle, spend, and decomposition', () => {
   assert.match(runtimeSrc, /const SUPER_GEM_COST = 4;/);
   assert.match(runtimeSrc, /randomIntInclusive\(3, 5, rng\)/);
   assert.match(runtimeSrc, /randomIntInclusive\(4, 6, rng\)/);
-  assert.match(runtimeSrc, /randomIntInclusive\(8, 16, rng\)/);
   assert.match(runtimeSrc, /superGemClusterVisualOnly/);
   assert.match(runtimeSrc, /superGemClusterApplyTotalOnHit/);
   assert.match(runtimeSrc, /function queueKojonnTaintedGroundAoe\(/);
@@ -81,7 +80,7 @@ test('app wires super gem hooks for settle, spend, and decomposition', () => {
   assert.match(src, /function getPersistentTaintedGroundOverlays\(\) \{/);
   assert.match(src, /anchorWorldX: Number\(zone\.anchorWorldX\),/);
   assert.match(src, /anchorWorldY: Number\(zone\.anchorWorldY\),/);
-  assert.match(src, /getPersistentTaintedGroundOverlays,\s+getPersistentDrainFieldOverlays,\s+hasPersistentEnemyTaintedGroundOverlay,\s+hasPersistentEnemyBlightOverlay,\s+hasPersistentEnemyDrainOverlay,/);
+  assert.match(src, /getPersistentTaintedGroundOverlays,\s+hasPersistentEnemyTaintedGroundOverlay,\s+hasPersistentEnemyBlightOverlay,/);
   assert.match(renderRuntimeSrc, /const renderEnemyTaintedGround = \(drawX, drawY, enemyW, enemyH, seed = 0, alphaScale = 1\) => \{/);
   assert.match(renderRuntimeSrc, /const taintedGroundFieldOverlays = typeof getPersistentTaintedGroundOverlays === 'function' \? getPersistentTaintedGroundOverlays\(\) : \[\];/);
   assert.match(renderRuntimeSrc, /const getFieldOverlayPosition = \(overlay, fallbackEnemy = null\) => \{/);

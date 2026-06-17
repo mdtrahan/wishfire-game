@@ -1099,10 +1099,6 @@ const FAZE_TAINTED_GROUND_DURATION_HERO_TEAM_TURNS = 3;
 const FAZE_TAINTED_GROUND_BASE_TICK_DAMAGE = 1;
 const FAZE_TAINTED_GROUND_DOT_TOTAL_TICKS = 3;
 const FAZE_TAINTED_GROUND_MAX_STACK_COUNT = 4;
-const DRAIN_FIELD_DURATION_HERO_TEAM_TURNS = FAZE_TAINTED_GROUND_DURATION_HERO_TEAM_TURNS;
-const DRAIN_SPEED_DOWN_PCT = 10;
-const DRAIN_FIELD_FADE_SECONDS = 0.55;
-
 function cloneSkillMetadata(value) {
   if (Array.isArray(value)) return value.map(item => cloneSkillMetadata(item));
   if (value && typeof value === 'object') {
@@ -1542,200 +1538,6 @@ function refreshFazeTaintedGroundZone(ctx, sourceUID, enemy, dotTotalDamage, sta
   return zone;
 }
 
-function getNextDrainFieldZoneId(ctx) {
-  const g = getGlobals(ctx);
-  const next = Math.max(1, Number(g.NextDrainFieldZoneId || 1));
-  g.NextDrainFieldZoneId = next + 1;
-  return `drain-${next}`;
-}
-
-function ensureDrainFieldZones(ctx) {
-  const g = getGlobals(ctx);
-  if (!Array.isArray(g.DrainFieldZones)) g.DrainFieldZones = [];
-  return g.DrainFieldZones;
-}
-
-function isDrainFieldZoneVisualActive(ctx, zone) {
-  if (!zone) return false;
-  if (String(zone.effectName || '') !== 'Drain') return false;
-  if (String(zone.visual || '') !== 'drain_lines') return false;
-  const now = Number(getGlobals(ctx).time || 0);
-  if (now < Number(zone.visualStartsAt || zone.activeAt || 0)) return false;
-  const fadeStartedAt = zone.fadeStartedAt == null ? null : Number(zone.fadeStartedAt || 0);
-  if (fadeStartedAt == null) return true;
-  return (now - fadeStartedAt) < DRAIN_FIELD_FADE_SECONDS;
-}
-
-function isDrainFieldZoneSlowing(ctx, zone) {
-  if (!isDrainFieldZoneVisualActive(ctx, zone)) return false;
-  if (zone.fadeStartedAt != null) return false;
-  const currentHeroTeamTurnSerial = getFazeHeroTeamTurnSerial(ctx);
-  const durationHeroTeamTurns = Math.max(1, Math.floor(Number(zone.durationHeroTeamTurns || DRAIN_FIELD_DURATION_HERO_TEAM_TURNS)));
-  const createdHeroTeamTurnSerial = Math.max(0, Math.floor(Number(zone.createdHeroTeamTurnSerial ?? currentHeroTeamTurnSerial)));
-  const expiresAtHeroTeamTurnSerial = Math.max(
-    createdHeroTeamTurnSerial + durationHeroTeamTurns,
-    Math.floor(Number(zone.expiresAtHeroTeamTurnSerial ?? currentHeroTeamTurnSerial)),
-  );
-  return currentHeroTeamTurnSerial < expiresAtHeroTeamTurnSerial;
-}
-
-function enemyOccupiesDrainFieldZone(ctx, enemy, zone) {
-  if (!enemy || !zone) return false;
-  const enemySlotIndex = Number(enemy.slotIndex);
-  if (Number.isFinite(enemySlotIndex) && enemySlotIndex === Number(zone.slotIndex || 0)) return true;
-  const enemyX = Number(enemy.x);
-  const enemyY = Number(enemy.y);
-  const anchorX = Number(zone.anchorWorldX);
-  const anchorY = Number(zone.anchorWorldY);
-  if (!Number.isFinite(enemyX) || !Number.isFinite(enemyY) || !Number.isFinite(anchorX) || !Number.isFinite(anchorY)) {
-    return false;
-  }
-  const g = getGlobals(ctx);
-  const spacing = Number(g.Spacing || ((g.EnemySize || 40) + (g.enemyGAP || 8)) || 48);
-  const dx = Math.abs(enemyX - anchorX);
-  const dy = Math.abs(enemyY - anchorY);
-  return dx <= Math.max(16, spacing * 0.75) && dy <= Math.max(16, spacing * 0.75);
-}
-
-function refreshDrainFieldZone(ctx, sourceUID, enemy, startsAt) {
-  const g = getGlobals(ctx);
-  const zones = ensureDrainFieldZones(ctx);
-  const slotIndex = getTaintedGroundSlotIndex(enemy);
-  const enemyX = Number(enemy?.x);
-  const enemyY = Number(enemy?.y);
-  const anchorWorldX = Number.isFinite(enemyX) ? enemyX : null;
-  const anchorWorldY = Number.isFinite(enemyY) ? enemyY : null;
-  const nowTurnSerial = Number(g.TurnSerial || 0);
-  const heroTeamTurnSpan = getFazeHeroTeamTurnSpan(ctx);
-  const nowHeroTeamTurnSerial = getFazeHeroTeamTurnSerial(ctx);
-  const totalHeroTeamTurns = DRAIN_FIELD_DURATION_HERO_TEAM_TURNS;
-  for (let i = zones.length - 1; i >= 0; i -= 1) {
-    const zone = zones[i];
-    if (!zone) continue;
-    if (Number(zone.slotIndex || 0) !== slotIndex) continue;
-    if (String(zone.effectName || 'Drain') !== 'Drain') continue;
-    if (String(zone.visual || 'drain_lines') !== 'drain_lines') continue;
-    const previousStartsAt = Number(zone.visualStartsAt || zone.activeAt || startsAt || 0);
-    const nextStartsAt = Number(startsAt || 0);
-    const visualStartsAt = isDrainFieldZoneVisualActive(ctx, zone) && zone.fadeStartedAt == null
-      ? Math.min(previousStartsAt, nextStartsAt)
-      : nextStartsAt;
-    zone.sourceUID = Number(sourceUID || zone.sourceUID || 0);
-    zone.targetUID = Number(enemy?.uid || 0);
-    if (!Number.isFinite(Number(zone.anchorWorldX)) && anchorWorldX != null) zone.anchorWorldX = anchorWorldX;
-    if (!Number.isFinite(Number(zone.anchorWorldY)) && anchorWorldY != null) zone.anchorWorldY = anchorWorldY;
-    zone.remainingTurns = totalHeroTeamTurns;
-    zone.durationHeroTeamTurns = totalHeroTeamTurns;
-    zone.heroTeamTurnSpan = heroTeamTurnSpan;
-    zone.createdTurnSerial = nowTurnSerial;
-    zone.lastSeenTurnSerial = nowTurnSerial;
-    zone.createdHeroTeamTurnSerial = nowHeroTeamTurnSerial;
-    zone.expiresAtHeroTeamTurnSerial = nowHeroTeamTurnSerial + totalHeroTeamTurns;
-    zone.lastSeenHeroTeamTurnSerial = nowHeroTeamTurnSerial;
-    zone.visualStartsAt = visualStartsAt;
-    zone.activeAt = visualStartsAt;
-    zone.fadeStartedAt = null;
-    zone.drainSlowPct = DRAIN_SPEED_DOWN_PCT;
-    zone.appliedUIDs = { [Number(enemy?.uid || 0)]: true };
-    zone.effectName = 'Drain';
-    zone.visual = 'drain_lines';
-    return zone;
-  }
-  const zone = {
-    id: getNextDrainFieldZoneId(ctx),
-    sourceUID: Number(sourceUID || 0),
-    slotIndex,
-    targetUID: Number(enemy?.uid || 0),
-    anchorWorldX,
-    anchorWorldY,
-    remainingTurns: totalHeroTeamTurns,
-    durationHeroTeamTurns: totalHeroTeamTurns,
-    heroTeamTurnSpan,
-    createdTurnSerial: nowTurnSerial,
-    lastSeenTurnSerial: nowTurnSerial,
-    createdHeroTeamTurnSerial: nowHeroTeamTurnSerial,
-    expiresAtHeroTeamTurnSerial: nowHeroTeamTurnSerial + totalHeroTeamTurns,
-    lastSeenHeroTeamTurnSerial: nowHeroTeamTurnSerial,
-    visualStartsAt: Number(startsAt || 0),
-    activeAt: Number(startsAt || 0),
-    drainSlowPct: DRAIN_SPEED_DOWN_PCT,
-    appliedUIDs: { [Number(enemy?.uid || 0)]: true },
-    effectName: 'Drain',
-    visual: 'drain_lines',
-  };
-  zones.push(zone);
-  return zone;
-}
-
-function syncDrainFieldZones(ctx) {
-  const g = getGlobals(ctx);
-  if (!Array.isArray(g.DrainFieldZones)) return 0;
-  const zones = g.DrainFieldZones;
-  const currentTurnSerial = Number(g.TurnSerial || 0);
-  const currentHeroTeamTurnSerial = getFazeHeroTeamTurnSerial(ctx);
-  const now = Number(g.time || 0);
-  let activeCount = 0;
-  for (let i = zones.length - 1; i >= 0; i -= 1) {
-    const zone = zones[i];
-    if (!zone || String(zone.effectName || '') !== 'Drain' || String(zone.visual || '') !== 'drain_lines') {
-      zones.splice(i, 1);
-      continue;
-    }
-    const durationHeroTeamTurns = Math.max(1, Math.floor(Number(zone.durationHeroTeamTurns || DRAIN_FIELD_DURATION_HERO_TEAM_TURNS)));
-    if (Number(zone.lastSeenHeroTeamTurnSerial ?? zone.createdHeroTeamTurnSerial ?? -1) < currentHeroTeamTurnSerial) {
-      const createdHeroTeamTurnSerial = Math.max(0, Math.floor(Number(zone.createdHeroTeamTurnSerial ?? currentHeroTeamTurnSerial)));
-      const expiresAtHeroTeamTurnSerial = Math.max(
-        createdHeroTeamTurnSerial + durationHeroTeamTurns,
-        Math.floor(Number(zone.expiresAtHeroTeamTurnSerial ?? currentHeroTeamTurnSerial)),
-      );
-      zone.remainingTurns = Math.max(0, expiresAtHeroTeamTurnSerial - currentHeroTeamTurnSerial);
-      zone.lastSeenTurnSerial = currentTurnSerial;
-      zone.lastSeenHeroTeamTurnSerial = currentHeroTeamTurnSerial;
-      if (currentHeroTeamTurnSerial >= expiresAtHeroTeamTurnSerial) {
-        zone.fadeStartedAt = zone.fadeStartedAt ?? now;
-      }
-    }
-    if (zone.fadeStartedAt != null) {
-      if (now - Number(zone.fadeStartedAt || now) >= DRAIN_FIELD_FADE_SECONDS) {
-        zones.splice(i, 1);
-      }
-      continue;
-    }
-    if (!isDrainFieldZoneVisualActive(ctx, zone)) continue;
-    const enemy = getEntities(ctx).find(entity => (
-      entity
-      && entity.kind === 'enemy'
-      && Number(entity.hp || 0) > 0
-      && enemyOccupiesDrainFieldZone(ctx, entity, zone)
-    ));
-    if (enemy) {
-      if (!zone.appliedUIDs || typeof zone.appliedUIDs !== 'object') zone.appliedUIDs = {};
-      zone.appliedUIDs[Number(enemy.uid || 0)] = true;
-      zone.targetUID = Number(enemy.uid || 0);
-      activeCount += 1;
-    }
-  }
-  if (zones.length === 0) delete g.DrainFieldZones;
-  return activeCount;
-}
-
-export function SyncDrainFieldZones(ctx) {
-  return syncDrainFieldZones(ctx);
-}
-
-function getDrainSpeedDownPctForEnemy(ctx, enemy) {
-  if (!enemy || Number(enemy.hp || 0) <= 0) return 0;
-  syncDrainFieldZones(ctx);
-  const zones = Array.isArray(getGlobals(ctx).DrainFieldZones) ? getGlobals(ctx).DrainFieldZones : [];
-  let slowPct = 0;
-  for (const zone of zones) {
-    if (!isDrainFieldZoneSlowing(ctx, zone)) continue;
-    if (!enemyOccupiesDrainFieldZone(ctx, enemy, zone)) continue;
-    slowPct = Math.max(slowPct, Math.max(0, Math.min(100, Number(zone.drainSlowPct || DRAIN_SPEED_DOWN_PCT))));
-  }
-  return slowPct;
-}
-
 function upsertFazePendingDotApplyHit(ctx, packet) {
   const g = getGlobals(ctx);
   g.PendingHeroHits = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
@@ -1808,29 +1610,6 @@ function activateFazeSkill(ctx, actorUID) {
   g.AdvanceAfterAction = 1;
   g.ActionOwnerUID = heroUID;
   return totalDamage;
-}
-
-function activateDrainSkill(ctx, actorUID) {
-  const g = getGlobals(ctx);
-  const heroUID = Number(actorUID || 0);
-  const actor = GetActorByUID(ctx, heroUID);
-  if (!actor) return 0;
-  const enemies = getEnemies(ctx).filter(enemy => Number(enemy?.hp || 0) > 0);
-  if (!enemies.length) return 0;
-  const now = Number(g.time || 0);
-  const hitDelay = Math.max(0.14 + 0.75 + 0.18, 1.07);
-  const applyAt = now + hitDelay;
-  let applied = 0;
-  for (const enemy of enemies) {
-    refreshDrainFieldZone(ctx, 0, enemy, applyAt);
-    applied += 1;
-  }
-  LogCombat(ctx, 'Party uses Drain on enemies!');
-  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), applyAt + 0.42);
-  g.DeferAdvance = 1;
-  g.AdvanceAfterAction = 1;
-  g.ActionOwnerUID = heroUID;
-  return applied;
 }
 
 function activateGrowSkill(ctx, actorUID, sessionSkill = null) {
@@ -4756,11 +4535,7 @@ export function GetEffectiveStat(ctx, inst, stat) {
   const partyBuff = actorKind === 'hero' ? partyBuffForStat(g, stat) : 0;
   const debuffs = actorKind === 'enemy' ? g?.EnemyDebuffs?.[inst.uid] : null;
   const directEnemyDebuff = debuffs && debuffs[stat] ? Number(debuffs[stat] || 0) : 0;
-  const drainSlowPct = actorKind === 'enemy' && String(stat || '').toUpperCase() === 'SPD'
-    ? getDrainSpeedDownPctForEnemy(ctx, inst)
-    : 0;
-  const drainEnemyDebuff = drainSlowPct > 0 ? Math.max(0, base) * (drainSlowPct / 100) : 0;
-  const enemyDebuff = directEnemyDebuff + drainEnemyDebuff;
+  const enemyDebuff = directEnemyDebuff;
   let jsValue = base;
 
   if (actorKind === 'hero') {
