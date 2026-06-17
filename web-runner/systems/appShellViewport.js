@@ -81,3 +81,34 @@ export function addAppViewportResizeListener(handler, win = window) {
     }
   };
 }
+
+export function createAppViewportRuntime({
+  canvas,
+  layoutW,
+  layoutH,
+  onMetrics,
+  onResize,
+  win = window,
+} = {}) {
+  function resizeCanvas() {
+    const metrics = resizeCanvasToContainedViewport({ canvas, layoutW, layoutH, win });
+    if (typeof onMetrics === 'function') onMetrics(metrics);
+    if (typeof win !== 'undefined') {
+      win.__orkaAppViewport = metrics;
+    }
+    return metrics;
+  }
+
+  resizeCanvas();
+
+  const handleWindowResize = () => {
+    const metrics = resizeCanvas();
+    if (typeof onResize === 'function') onResize(metrics);
+  };
+
+  return {
+    resizeCanvas,
+    handleWindowResize,
+    teardown: addAppViewportResizeListener(handleWindowResize, win),
+  };
+}

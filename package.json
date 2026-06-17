@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "node --test",
+    "test:appjs-boundary": "node --test tests/appJsOrchestrationBoundaryContract.test.js",
     "test:hot-file-gate": "bash tools/run_hot_file_regression_gate.sh",
     "rust:build-wasm": "node tools/build_simulation_core_wasm.js",
     "serve:qa": "node tools/serve_web.js --port 8000",

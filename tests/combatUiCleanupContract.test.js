@@ -19,16 +19,22 @@ test('combat UI cleanup suppresses inactive buff placeholder icons from the runt
 
 test('combat story card layout anchors to the HP bar when buff placeholders are removed', () => {
   const appSrc = read('web-runner/app.js');
-  assert.match(appSrc, /const hpBarInstance = \(instances \|\| \[\]\)\.find\(ins => ins && ins\.type === 'PartyHP_Bar' && ins\.world\);/);
-  assert.match(appSrc, /const hpBarBottom = hpBarInstance/);
-  assert.match(appSrc, /const layoutAnchorBottom = buffInstances\.length/);
-  assert.match(appSrc, /: \(ampBarBottom \|\| hpBarBottom \|\| \(viewTop \+ Math\.max\(240, Math\.round\(250 \* layoutScale\)\)\)\);/);
-  assert.match(appSrc, /const slotY = layoutAnchorBottom \+ topMargin;/);
+  const storyCardSrc = read('web-runner/systems/storyCardPresentation.js');
+  assert.match(appSrc, /initializeStoryCardPresentationLayout\(\{/);
+  assert.doesNotMatch(appSrc, /const hpBarInstance = \(instances \|\| \[\]\)\.find\(ins => ins && ins\.type === 'PartyHP_Bar' && ins\.world\);/);
+  assert.match(storyCardSrc, /const hpBarInstance = \(instances \|\| \[\]\)\.find\(ins => ins && ins\.type === 'PartyHP_Bar' && ins\.world\);/);
+  assert.match(storyCardSrc, /const hpBarBottom = hpBarInstance/);
+  assert.match(storyCardSrc, /const layoutAnchorBottom = buffInstances\.length/);
+  assert.match(storyCardSrc, /: \(ampBarBottom \|\| hpBarBottom \|\| \(viewTop \+ Math\.max\(240, Math\.round\(250 \* scale\)\)\)\);/);
+  assert.match(storyCardSrc, /const slotY = layoutAnchorBottom \+ topMargin;/);
 });
 
 test('combat story card layout is recomputed after browser resize', () => {
   const appSrc = read('web-runner/app.js');
-  assert.match(appSrc, /const handleWindowResize = \(\) => \{[\s\S]*resizeCanvas\(\);[\s\S]*initializeStoryCardLayout\('window-resize'\);[\s\S]*if \(typeof drawFrame === 'function'\) drawFrame\(\);[\s\S]*\};/);
+  const viewportSrc = read('web-runner/systems/appShellViewport.js');
+  assert.match(appSrc, /createAppViewportRuntime\(\{[\s\S]*onResize\(\) \{[\s\S]*initializeStoryCardLayout\('window-resize'\);[\s\S]*if \(typeof drawFrame === 'function'\) drawFrame\(\);[\s\S]*\}/);
+  assert.doesNotMatch(appSrc, /const handleWindowResize = \(\) => \{/);
+  assert.match(viewportSrc, /const handleWindowResize = \(\) => \{[\s\S]*const metrics = resizeCanvas\(\);[\s\S]*if \(typeof onResize === 'function'\) onResize\(metrics\);[\s\S]*\};/);
 });
 
 test('combat renderer removes the four buff slot boxes from combat entirely', () => {

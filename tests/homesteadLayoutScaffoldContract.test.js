@@ -17,10 +17,11 @@ test('homestead scaffold defines deterministic scene metadata in runtime state',
 test('homestead layout is wired as map locale entry and runtime layout route', () => {
   const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
   const src = fs.readFileSync(filePath, 'utf8');
+  const registrySrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'runtimeLayoutRegistry.js'), 'utf8');
   assert.match(src, /import \{ createInitialGameState \} from '\.\/state\/gameState\.js';/);
   assert.match(src, /const gameState = createInitialGameState\(\);/);
-  assert.match(src, /allowedTransitions:\s*\[[^\]]*'homesteadLayout'[^\]]*\]/);
-  assert.match(src, /id:\s*'homesteadLayout'/);
+  assert.match(registrySrc, /id:\s*'homesteadLayout'[\s\S]*allowedTransitions: \['chestsLayout', 'combat'\]/);
+  assert.match(registrySrc, /id:\s*'homesteadLayout'/);
   assert.match(src, /layoutState\.requestLayoutChange\('homesteadLayout',\s*'map-homestead-locale'\)/);
   assert.match(src, /if \(layoutId === 'homesteadLayout'\)/);
 });

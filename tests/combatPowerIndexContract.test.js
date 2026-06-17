@@ -4,15 +4,16 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 test('runtime app defines deterministic combat power helper and bootstraps hero/enemy combatPower', () => {
-  const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
-  const src = fs.readFileSync(filePath, 'utf8');
-  assert.match(src, /function computeCombatPower\(atk, def, hp\)/);
-  assert.match(src, /const result = Math\.round\(\(a \+ d \+ \(h \/ 10\)\) \* 100\) \/ 100;/);
-  assert.match(src, /return shadowCombatPower\(\{[\s\S]*jsValue: result[\s\S]*\}\);/);
-  assert.match(src, /function resolveEnemyEncounterCombatPower\(row\)/);
-  assert.match(src, /combatPower: computeCombatPower\(v\.ATK, v\.DEF, partyMaxHP\[i\]\)/);
-  assert.match(src, /state\.globals\.EnemyData = \(enemyRows \|\| \[\]\)\.map\(\(row\) => \(\{/);
-  assert.match(src, /CombatPower: resolveEnemyEncounterCombatPower\(row\)/);
+  const appSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
+  const initializerSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'combatSessionInitializer.js'), 'utf8');
+  assert.match(appSrc, /function computeCombatPower\(atk, def, hp\)/);
+  assert.match(appSrc, /const result = Math\.round\(\(a \+ d \+ \(h \/ 10\)\) \* 100\) \/ 100;/);
+  assert.match(appSrc, /return shadowCombatPower\(\{[\s\S]*jsValue: result[\s\S]*\}\);/);
+  assert.match(appSrc, /createCombatSessionInitializer\(\{[\s\S]*computeCombatPower,/);
+  assert.match(initializerSrc, /export function resolveEnemyEncounterCombatPower\(row, computeCombatPower = defaultComputeCombatPower\)/);
+  assert.match(initializerSrc, /combatPower: computeCombatPower\(v\.ATK, v\.DEF, partyMaxHP\[i\]\)/);
+  assert.match(initializerSrc, /state\.globals\.EnemyData = \(enemyRows \|\| \[\]\)\.map\(\(row\) => \(\{/);
+  assert.match(initializerSrc, /CombatPower: resolveEnemyEncounterCombatPower\(row, computeCombatPower\)/);
 });
 
 test('runtime snapshot surfaces combatPower for heroes and enemies', () => {

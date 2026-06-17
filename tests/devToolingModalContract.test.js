@@ -37,15 +37,27 @@ function extractFunctionSource(src, name) {
   assert.fail(`unterminated ${name}`);
 }
 
-test('web-runner app keeps dev tooling restart as a layout-agnostic hard reset', () => {
-  const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
-  const src = fs.readFileSync(filePath, 'utf8');
+test('dev tooling runtime owns modal/config while app keeps restart wiring', () => {
+  const appPath = path.join(__dirname, '..', 'web-runner', 'app.js');
+  const runtimePath = path.join(__dirname, '..', 'web-runner', 'systems', 'devToolingRuntime.js');
+  const devHooksPath = path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js');
+  const appSrc = fs.readFileSync(appPath, 'utf8');
+  const runtimeSrc = fs.readFileSync(runtimePath, 'utf8');
+  const devHooksSrc = fs.readFileSync(devHooksPath, 'utf8');
+  const src = `${runtimeSrc}\n${appSrc}\n${devHooksSrc}`;
 
-  assert.match(src, /const DEV_TOOL_HOTKEY_LABEL = 'Ctrl\+Shift\+P';/);
-  assert.match(src, /let devToolingDom = null;/);
-  assert.match(src, /function createDefaultDevToolingConfig\(\)/);
-  assert.match(src, /function ensureDevToolingConfig\(\)/);
-  assert.match(src, /window\.addEventListener\('keydown', handleGlobalKeydown, true\);/);
+  assert.match(appSrc, /createDevToolingRuntime\(\{/);
+  assert.match(appSrc, /function ensureDevToolingConfig\(\) \{\n  return requireDevToolingRuntime\(\)\.ensureDevToolingConfig\(\);\n\}/);
+  assert.doesNotMatch(appSrc, /Dev Tooling Modal/);
+  assert.doesNotMatch(appSrc, /devToolingDom\.launcher\.addEventListener/);
+  assert.match(runtimeSrc, /export function createDevToolingRuntime\(deps = \{\}\)/);
+  assert.match(runtimeSrc, /const DEV_TOOL_HOTKEY_LABEL = 'Ctrl\+Shift\+P';/);
+  assert.match(runtimeSrc, /let devToolingDom = null;/);
+  assert.match(runtimeSrc, /function createDefaultDevToolingConfig\(\)/);
+  assert.match(runtimeSrc, /function ensureDevToolingConfig\(\)/);
+  assert.match(appSrc, /window\.addEventListener\('keydown', handleGlobalKeydown, true\);/);
+  assert.match(appSrc, /registerDevBrowserTestHooks\(\{/);
+  assert.match(devHooksSrc, /export function registerDevBrowserTestHooks\(\{/);
   assert.match(src, /devToolingDom\.launcher\.addEventListener\('click', \(\) => toggleDevToolingModal\(true\)\);/);
   assert.doesNotMatch(src, /data-devtool-status/);
   assert.doesNotMatch(src, /Global runtime controls\. Hotkey:/);
@@ -96,7 +108,7 @@ test('web-runner app keeps dev tooling restart as a layout-agnostic hard reset',
   assert.doesNotMatch(src, /applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ resetGame:/);
   assert.match(src, /Double Attack: \$\{next\.doubleAttackHeroName \|\| 'Off'\}/);
 
-  const resetBlock = extractFunctionSource(src, 'refreshCombatSessionFromDevTooling');
+  const resetBlock = extractFunctionSource(appSrc, 'refreshCombatSessionFromDevTooling');
   assert.match(resetBlock, /if \(resetGame\) \{[\s\S]*return hardRestartRuntimeFromDevTooling\(\);[\s\S]*\}/);
   assert.ok(
     resetBlock.indexOf('return hardRestartRuntimeFromDevTooling();') < resetBlock.indexOf('const activeLayoutId'),
@@ -118,12 +130,12 @@ test('dev tooling restart helper owns restart button labels and reset delegation
   assert.match(src, /closeDevToolingModal\(\{ restorePauseSnapshot: true \}\);/);
   assert.match(src, /const restarted = await devToolingRefreshHandler\(\{ resetGame: true \}\);/);
   assert.match(src, /updateDevToolingStatus\('Game restart unavailable'\);/);
-  const appSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
-  assert.match(appSrc, /window\.location\.reload\(\)/);
+  const runtimeSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devToolingRuntime.js'), 'utf8');
+  assert.match(runtimeSrc, /window\.location\.reload\(\)/);
 });
 
 test('dev tooling resume restores playable hero input when combat is idle', () => {
-  const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
+  const filePath = path.join(__dirname, '..', 'web-runner', 'systems', 'devToolingRuntime.js');
   const src = fs.readFileSync(filePath, 'utf8');
   const resumeSrc = extractFunctionSource(src, 'resumeGameplayFromDevTooling');
   const restoreSrc = extractFunctionSource(src, 'restorePlayableHeroInputAfterDevToolingResume');
@@ -154,12 +166,14 @@ test('dev tooling resume restores playable hero input when combat is idle', () =
 test('startup preload can prepare combat assets while story mock is active', () => {
   const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
   const src = fs.readFileSync(filePath, 'utf8');
+  const initializerSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'combatSessionInitializer.js'), 'utf8');
   const preloadSrc = extractFunctionSource(src, 'loadC3ProjectAssets');
   const prepareSrc = extractFunctionSource(src, 'prepareCombatSetupFromInstances');
 
   assert.doesNotMatch(preloadSrc, /assertCombatLayoutDev\('loadC3ProjectAssets'\)/);
   assert.doesNotMatch(prepareSrc, /assertCombatLayoutDev\('prepareCombatSetupFromInstances'\)/);
-  assert.match(src, /assertCombatLayoutDev\('initEntities'\)/);
+  assert.match(src, /createCombatSessionInitializer/);
+  assert.match(initializerSrc, /assertCombatLayoutDev\('initEntities'\)/);
   assert.match(src, /assertCombatLayoutDev\('createGemBoard'\)/);
   assert.match(src, /assertCombatLayoutDev\('StartRound'\)/);
 });

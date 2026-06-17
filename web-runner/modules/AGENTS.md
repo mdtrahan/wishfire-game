@@ -13,7 +13,7 @@
 ## Local Contracts
 - `state.globals` is the live runtime envelope. New fields need a clear owner, reset/init behavior, tests, and debug/proof visibility when user-facing.
 - `Scripts/functionBank.js` mirrors selected high-risk functions. Do not drift mirrored functions without a test and explicit bead scope.
-- Combat uses strict team phases: heroes open, then `Heroes -> Enemies -> Heroes -> Enemies`. Do not reintroduce global woven initiative for normal combat.
+- Combat uses speed-based interleaved initiative for normal combat. Do not force strict `Heroes -> Enemies -> Heroes` team phases unless a future bead explicitly changes that product decision.
 - Use `CanPickGems` through numeric readiness helpers such as `isCanPickGemsReady`; do not rely on strict boolean checks.
 - Astral Flow fills the SkillDraught path. Skill cards must declare `one_off`, `tiered`, or `repeatable`, and one-off exposure/selection must suppress duplicates.
 - Active party draw behavior is party-scoped. Do not couple party skills such as Crimson Ward to a hero supergem unless the product docs and tests explicitly say so.
@@ -29,7 +29,7 @@
 ## Verification
 - `node --test tests/functionBankParityContract.test.js`
 - Focused contracts for touched systems, for example:
-  - `tests/teamPhaseSchedulerContract.test.js`
+  - `tests/speedInitiativeSchedulerContract.test.js`
   - `tests/skillDraughtDevPanelContract.test.js`
   - `tests/heroSkillDefinitionRegistryContract.test.js`
   - `tests/finalRustOwnershipBoundaryContract.test.js`

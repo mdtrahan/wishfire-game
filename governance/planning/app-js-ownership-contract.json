@@ -1,0 +1,86 @@
+{
+  "target": "web-runner/app.js",
+  "maxLines": 5400,
+  "baselineLines": 5207,
+  "allowedResponsibilities": [
+    "import runtime owners",
+    "create shared runtime dependencies",
+    "wire lifecycle startup",
+    "register top-level layouts and input surfaces",
+    "delegate behavior to named owner modules"
+  ],
+  "forbiddenResponsibilities": [
+    "image or visual asset preload implementations",
+    "dev tooling modal implementation",
+    "dev browser test hook implementation",
+    "combat session entity initialization implementation",
+    "pointer routing branch implementation",
+    "surface render routing implementation",
+    "layout registry implementation",
+    "viewport metric implementation"
+  ],
+  "requiredDelegates": [
+    "createDevToolingRuntime",
+    "createAppViewportRuntime",
+    "initializeStoryCardPresentationLayout",
+    "registerRuntimeLayouts",
+    "createSurfaceRenderRouter",
+    "createPointerRoutingShell",
+    "createCombatSessionInitializer",
+    "loadRuntimeVisualAssets",
+    "registerDevBrowserTestHooks"
+  ],
+  "forbiddenAppJsPatterns": [
+    {
+      "pattern": "async function loadImage\\s*\\(",
+      "reason": "image loading belongs in web-runner/systems/runtimeVisualAssetLoader.js"
+    },
+    {
+      "pattern": "function loadCoreVisuals\\s*\\(",
+      "reason": "visual preload groups belong in web-runner/systems/runtimeVisualAssetLoader.js"
+    },
+    {
+      "pattern": "function loadDeferredVisuals\\s*\\(",
+      "reason": "deferred visual loading belongs in web-runner/systems/runtimeVisualAssetLoader.js"
+    },
+    {
+      "pattern": "function loadBaseSprites\\s*\\(",
+      "reason": "base sprite loading belongs in web-runner/systems/runtimeVisualAssetLoader.js"
+    },
+    {
+      "pattern": "function loadSpriteTypeImage\\s*\\(",
+      "reason": "sprite image loading belongs in web-runner/systems/runtimeVisualAssetLoader.js"
+    },
+    {
+      "pattern": "window\\.render_game_to_text\\s*=",
+      "reason": "dev browser hooks belong in web-runner/systems/devBrowserTestHooks.js"
+    },
+    {
+      "pattern": "window\\.__codexGame\\s*=",
+      "reason": "dev browser hooks belong in web-runner/systems/devBrowserTestHooks.js"
+    },
+    {
+      "pattern": "window\\.advanceTime\\s*=",
+      "reason": "dev browser hooks belong in web-runner/systems/devBrowserTestHooks.js"
+    },
+    {
+      "pattern": "devToolingDom\\.",
+      "reason": "dev tooling DOM implementation belongs in web-runner/systems/devToolingRuntime.js"
+    },
+    {
+      "pattern": "function buildEncounterSpawnPlan\\s*\\(",
+      "reason": "encounter spawn planning belongs in web-runner/systems/combatSessionInitializer.js"
+    },
+    {
+      "pattern": "function buildForcedEnemySpawnPlan\\s*\\(",
+      "reason": "forced enemy spawn planning belongs in web-runner/systems/combatSessionInitializer.js"
+    }
+  ],
+  "smallWrapperContracts": [
+    {
+      "functionName": "initEntities",
+      "maxLines": 4,
+      "mustInclude": "return initCombatSessionEntities(enemyRows, layoutInstances);"
+    }
+  ]
+}

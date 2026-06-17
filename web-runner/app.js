@@ -75,22 +75,9 @@ import * as inputHandling from './systems/inputHandling.js';
 import * as renderSystem from './systems/renderSystem.js';
 import * as renderHUD from './systems/renderHUD.js';
 import * as renderHeroScreen from './systems/renderHeroScreen.js';
-import * as renderMap from './systems/renderMap.js';
 import * as renderBoard from './systems/renderBoard.js';
-import * as devToolingControls from './systems/devToolingControls.js';
 import * as gemVisuals from './systems/gemVisuals.js';
 import * as renderCombatRuntime from './systems/renderCombatRuntime.js';
-import * as renderTomes from './systems/renderTomes.js';
-import * as renderArtifacts from './systems/renderArtifacts.js';
-import * as renderMounts from './systems/renderMounts.js';
-import * as renderCollectibles from './systems/renderCollectibles.js';
-import * as renderRelics from './systems/renderRelics.js';
-import * as renderPets from './systems/renderPets.js';
-import * as renderIdleFarm from './systems/renderIdleFarm.js';
-import * as renderEvolution from './systems/renderEvolution.js';
-import * as renderHomestead from './systems/renderHomestead.js';
-import * as renderChests from './systems/renderChests.js';
-import * as renderHarnessFallback from './systems/renderHarnessFallback.js';
 import * as renderOverlays from './systems/renderOverlays.js';
 import * as renderSkillDraught from './systems/renderSkillDraughtOverlay.js';
 import * as renderRuntime from './systems/renderRuntime.js';
@@ -102,15 +89,30 @@ import {
   shadowSeededRng,
 } from './systems/simulationCoreShadow.js';
 import {
-  addAppViewportResizeListener,
-  resizeCanvasToContainedViewport,
+  createAppViewportRuntime,
 } from './systems/appShellViewport.js';
+import { initializeStoryCardPresentationLayout } from './systems/storyCardPresentation.js';
+import { registerRuntimeLayouts } from './systems/runtimeLayoutRegistry.js';
+import { createSurfaceRenderRouter } from './systems/surfaceRenderRouter.js';
+import { createPointerRoutingShell } from './systems/pointerRoutingShell.js';
 import { createIdleFarmAppRuntime } from './systems/idleFarmAppRuntime.js';
+import { loadRuntimeVisualAssets } from './systems/runtimeVisualAssetLoader.js';
+import { registerDevBrowserTestHooks } from './systems/devBrowserTestHooks.js';
+import {
+  createCombatSessionInitializer,
+  generateEncounterSeed,
+} from './systems/combatSessionInitializer.js';
+import {
+  createDevToolingRuntime,
+  DEV_TOOL_GEM_OPTIONS,
+  DEV_TOOL_GEM_RANDOM,
+  GEM_SPAWN_COLORS,
+} from './systems/devToolingRuntime.js';
 import * as helpers from './utils/helpers.js';
 import * as mapLayoutState from './state/mapLayoutState.js';
 import * as uiState from './state/uiState.js';
 import { createInitialGameState } from './state/gameState.js';
-import { CANONICAL_HERO_ROSTER, FIGMA_HERO_BACK_URL, FIGMA_HERO_CLOSE_OVAL_URL, FIGMA_HERO_NEXT_URL, FIGMA_MINUS_URL, FIGMA_PLUS_URL, HERO_CLASS_LABELS, HERO_PACK_CLOSE_OVAL_PATH, HERO_PACK_MINUS_PATH, HERO_PACK_PLUS_PATH, HERO_STAT_KEYS, heroLayoutSpec } from './state/heroScreenConfig.js';
+import { CANONICAL_HERO_ROSTER, HERO_CLASS_LABELS, HERO_STAT_KEYS, heroLayoutSpec } from './state/heroScreenConfig.js';
 import { createHarnessEventBus, createHarnessLayoutState, HarnessInputDomainManager } from './state/harnessLayoutState.js';
 import { createRuntimeEnvironment, createRuntimeFingerprint, exposeRuntimeDebugFlags } from './state/runtimeEnvironment.js';
 import * as task015TraceState from './state/task015TraceState.js';
@@ -147,35 +149,6 @@ const GEM_INTERACTIVITY_DIAGNOSTIC_QUERY = (() => {
   }
 })();
 exposeRuntimeDebugFlags({ DEBUG_LAYOUT, STARTUP_DEBUG, DEBUG_GEMS_QUERY });
-const DEV_TOOL_HOTKEY_LABEL = 'Ctrl+Shift+P';
-const DEV_TOOL_GEM_RANDOM = -1;
-const DEV_TOOL_GEM_OPTIONS = Object.freeze([
-  { value: DEV_TOOL_GEM_RANDOM, label: 'Random' },
-  { value: 1, label: 'RED' },
-  { value: 2, label: 'BLUE' },
-  { value: 3, label: 'YELLOW' },
-  { value: 4, label: 'HEAL' },
-  { value: 5, label: 'PURPLE' },
-]);
-const GEM_SPAWN_COLORS = Object.freeze([1, 2, 3, 4, 5]);
-const DEV_TOOL_REWARD_OPTIONS = Object.freeze([
-  { value: '', label: 'None' },
-  { value: 'GOLD', label: 'Gold' },
-  { value: 'ENERGY', label: 'Energy' },
-  { value: 'HEAL', label: 'Heal' },
-  { value: 'SAND', label: 'Sand' },
-  { value: 'BONE_CHIP', label: 'Bone Chip' },
-  { value: 'SLIME', label: 'Slime' },
-  { value: 'HORN', label: 'Horn' },
-  { value: 'SHELL', label: 'Shell' },
-]);
-const DEV_TOOLING_STORAGE_KEY = 'orka.dev_tooling_config.v1';
-const DEV_TOOL_EMPTY_SLOT = '';
-const DEV_TOOL_RANDOM_ENEMY_SLOT = '__RANDOM__';
-let devToolingDom = null;
-let devToolingRefreshHandler = null;
-let devToolingAutoplayHandler = null;
-let devToolingPauseSnapshot = null;
 const TURN_TRANSIENT_NUMERIC_KEYS = Object.freeze([
   'CanPickGems',
   'IsPlayerBusy',
@@ -662,21 +635,87 @@ function getHeroUIDByIndex(idx) {
 
 const gameState = createInitialGameState();
 
+let devToolingRuntime = null;
+
+function requireDevToolingRuntime() {
+  if (!devToolingRuntime) throw new Error('Dev tooling runtime not initialized');
+  return devToolingRuntime;
+}
+
 function createDefaultDevToolingConfig() {
-  return {
-    open: false,
-    hotkey: DEV_TOOL_HOTKEY_LABEL,
-    heroSlots: CANONICAL_HERO_ROSTER.map((hero) => String(hero.name || '')),
-    enemySlots: Array.from({ length: 3 }, () => DEV_TOOL_RANDOM_ENEMY_SLOT),
-    boardGemColor: DEV_TOOL_GEM_RANDOM,
-    goldAmount: 0,
-    combatSpeed: 1,
-    rewardDrops: '',
-    rewardCount: 1,
-    doubleAttackHeroName: '',
-    doubleAttackChance: 1,
-    lastAppliedAt: 0,
-  };
+  return requireDevToolingRuntime().createDefaultDevToolingConfig();
+}
+
+function sanitizeDevToolingConfig(input = {}) {
+  return requireDevToolingRuntime().sanitizeDevToolingConfig(input);
+}
+
+function ensureDevToolingConfig() {
+  return requireDevToolingRuntime().ensureDevToolingConfig();
+}
+
+function getConfiguredHeroCount() {
+  return requireDevToolingRuntime().getConfiguredHeroCount();
+}
+
+function getConfiguredEnemyCount() {
+  return requireDevToolingRuntime().getConfiguredEnemyCount();
+}
+
+function getDevToolHeroOptions() {
+  return requireDevToolingRuntime().getDevToolHeroOptions();
+}
+
+function getDevToolEnemyOptions() {
+  return requireDevToolingRuntime().getDevToolEnemyOptions();
+}
+
+function getConfiguredHeroSlots() {
+  return requireDevToolingRuntime().getConfiguredHeroSlots();
+}
+
+function getConfiguredEnemySlots() {
+  return requireDevToolingRuntime().getConfiguredEnemySlots();
+}
+
+function readEscortPartyConfig() {
+  return requireDevToolingRuntime().readEscortPartyConfig();
+}
+
+function buildConfiguredCombatPartyMembers(configuredHeroSlots, escortConfig = null) {
+  return requireDevToolingRuntime().buildConfiguredCombatPartyMembers(configuredHeroSlots, escortConfig);
+}
+
+function updateDevToolingStatus(message = '') {
+  return requireDevToolingRuntime().updateDevToolingStatus(message);
+}
+
+function applyDevToolingConfig(patch = {}, options = {}) {
+  return requireDevToolingRuntime().applyDevToolingConfig(patch, options);
+}
+
+function ensureDevToolingModal() {
+  return requireDevToolingRuntime().ensureDevToolingModal();
+}
+
+function closeDevToolingModal(options = {}) {
+  return requireDevToolingRuntime().closeDevToolingModal(options);
+}
+
+function resetCombatRuntimeForFreshSession(reason = 'combat-refresh', options = {}) {
+  return requireDevToolingRuntime().resetCombatRuntimeForFreshSession(reason, options);
+}
+
+function toggleDevToolingModal(nextOpen = null) {
+  return requireDevToolingRuntime().toggleDevToolingModal(nextOpen);
+}
+
+function isDevToolingHotkey(ev) {
+  return requireDevToolingRuntime().isDevToolingHotkey(ev);
+}
+
+function isEditableDomTarget(target) {
+  return requireDevToolingRuntime().isEditableDomTarget(target);
 }
 
 const {
@@ -693,858 +732,6 @@ const {
   getFallbackRoster: () => CANONICAL_HERO_ROSTER.map((hero) => String(hero?.name || '')).filter(Boolean),
   getNowSec: () => performance.now() / 1000,
 });
-
-function sanitizeDevToolingConfig(input = {}) {
-  const base = createDefaultDevToolingConfig();
-  const next = { ...base, ...(input && typeof input === 'object' ? input : {}) };
-  next.open = !!next.open;
-  next.hotkey = DEV_TOOL_HOTKEY_LABEL;
-  const allowedHeroNames = new Set(base.heroSlots);
-  const rawHeroSlots = Array.isArray(next.heroSlots) ? next.heroSlots : base.heroSlots;
-  next.heroSlots = Array.from({ length: 4 }, (_, idx) => {
-    const value = String(rawHeroSlots[idx] || '').trim();
-    return value && allowedHeroNames.has(value) ? value : DEV_TOOL_EMPTY_SLOT;
-  });
-  if (!next.heroSlots.some(Boolean)) next.heroSlots[0] = base.heroSlots[0];
-  const rawEnemySlots = Array.isArray(next.enemySlots) ? next.enemySlots : base.enemySlots;
-  next.enemySlots = Array.from({ length: 3 }, (_, idx) => {
-    const value = String(rawEnemySlots[idx] || '').trim();
-    return value || DEV_TOOL_EMPTY_SLOT;
-  });
-  const colorValue = Number(next.boardGemColor);
-  next.boardGemColor = DEV_TOOL_GEM_OPTIONS.some((row) => row.value === colorValue) ? colorValue : base.boardGemColor;
-  next.goldAmount = Math.max(0, Math.floor(Number(next.goldAmount || 0)));
-  next.combatSpeed = Math.max(0.25, Math.min(4, Number(next.combatSpeed || 1)));
-  const rewardDrop = String(next.rewardDrops || '').trim().toUpperCase();
-  next.rewardDrops = DEV_TOOL_REWARD_OPTIONS.some((row) => row.value === rewardDrop) ? rewardDrop : '';
-  next.rewardCount = Math.max(0, Math.min(99, Math.floor(Number(next.rewardCount || base.rewardCount))));
-  const doubleAttackHeroName = String(next.doubleAttackHeroName || '').trim();
-  next.doubleAttackHeroName = !doubleAttackHeroName || allowedHeroNames.has(doubleAttackHeroName) ? doubleAttackHeroName : '';
-  next.doubleAttackChance = 1;
-  next.lastAppliedAt = Number(next.lastAppliedAt || 0);
-  return next;
-}
-
-function syncConfiguredDoubleAttackHarness(cfg = ensureDevToolingConfig()) {
-  const heroNames = getDevToolHeroOptions();
-  for (const heroName of heroNames) {
-    const actor = state.entities.find((entity) => entity && entity.kind === 'hero' && String(entity.name || '') === heroName);
-    if (!actor) continue;
-    callFunctionWithContext(fnContext, 'RemoveActorExtraTurnSkill', actor.uid);
-  }
-  const holderName = String(cfg.doubleAttackHeroName || '').trim();
-  state.globals.DevDoubleAttackChance = Number(cfg.doubleAttackChance || 1);
-  if (!holderName) {
-    state.globals.DevDoubleAttackHolderName = '';
-    state.globals.DevDoubleAttackHolderUID = 0;
-    return null;
-  }
-  const actor = state.entities.find((entity) => entity && entity.kind === 'hero' && String(entity.name || '') === holderName);
-  if (!actor) {
-    state.globals.DevDoubleAttackHolderName = '';
-    state.globals.DevDoubleAttackHolderUID = 0;
-    return null;
-  }
-  callFunctionWithContext(fnContext, 'ConfigureActorExtraTurnSkill', actor.uid, {
-    chance: Number(cfg.doubleAttackChance || 1),
-    traitId: 'double_attack',
-    skillId: 'DOUBLE_ATTACK',
-  });
-  state.globals.DevDoubleAttackHolderName = holderName;
-  state.globals.DevDoubleAttackHolderUID = Number(actor.uid || 0);
-  return Number(actor.uid || 0);
-}
-
-function readPersistedDevToolingConfig() {
-  try {
-    if (typeof window === 'undefined' || !window.sessionStorage) return null;
-    const raw = window.sessionStorage.getItem(DEV_TOOLING_STORAGE_KEY);
-    if (!raw) return null;
-    return sanitizeDevToolingConfig(JSON.parse(raw));
-  } catch {
-    return null;
-  }
-}
-
-function persistDevToolingConfig(cfg) {
-  try {
-    if (typeof window === 'undefined' || !window.sessionStorage) return;
-    window.sessionStorage.setItem(DEV_TOOLING_STORAGE_KEY, JSON.stringify(sanitizeDevToolingConfig(cfg)));
-  } catch {}
-}
-
-function clearPersistedDevToolingConfig() {
-  try {
-    if (typeof window === 'undefined' || !window.sessionStorage) return;
-    window.sessionStorage.removeItem(DEV_TOOLING_STORAGE_KEY);
-  } catch {}
-}
-
-function hardRestartRuntimeFromDevTooling() {
-  if (typeof window === 'undefined' || !window.location) return false;
-  clearPersistedDevToolingConfig();
-  try {
-    const cleanUrl = new URL(window.location.href);
-    cleanUrl.search = '';
-    cleanUrl.hash = '';
-    if (window.location.href !== cleanUrl.href && typeof window.location.replace === 'function') {
-      window.location.replace(cleanUrl.href);
-      return true;
-    }
-  } catch {}
-  if (typeof window.location.reload === 'function') {
-    window.location.reload();
-    return true;
-  }
-  return false;
-}
-
-function ensureDevToolingConfig() {
-  const persisted = readPersistedDevToolingConfig();
-  const live = (state.globals.DevToolingConfig && typeof state.globals.DevToolingConfig === 'object')
-    ? state.globals.DevToolingConfig
-    : {};
-  const next = sanitizeDevToolingConfig({
-    ...(persisted || {}),
-    ...live,
-    open: !!live.open,
-  });
-  state.globals.DevToolingConfig = next;
-  return next;
-}
-
-function getConfiguredHeroCount() {
-  return sanitizeDevToolingConfig(state.globals.DevToolingConfig || {}).heroSlots.filter(Boolean).length;
-}
-
-function getConfiguredEnemyCount() {
-  return sanitizeDevToolingConfig(state.globals.DevToolingConfig || {}).enemySlots
-    .filter((value) => String(value || '').trim() !== DEV_TOOL_EMPTY_SLOT)
-    .length;
-}
-
-function getDevToolHeroOptions() {
-  return CANONICAL_HERO_ROSTER.map((hero) => String(hero.name || '')).filter(Boolean);
-}
-
-function getDevToolEnemyOptions() {
-  const pool = Array.isArray(state.globals.DevToolEnemyCatalog) ? state.globals.DevToolEnemyCatalog : [];
-  return [...new Set(pool.map((name) => String(name || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-}
-
-function getConfiguredHeroSlots() {
-  return sanitizeDevToolingConfig(state.globals.DevToolingConfig || {}).heroSlots.slice(0, 4);
-}
-
-function getConfiguredEnemySlots() {
-  return sanitizeDevToolingConfig(state.globals.DevToolingConfig || {}).enemySlots.slice(0, 3);
-}
-
-function syncIdleFarmDevLoadoutConfig(cfg = ensureDevToolingConfig()) {
-  const layout = gameState.idleFarmLayout || (gameState.idleFarmLayout = {});
-  const currentConfig = (layout.config && typeof layout.config === 'object') ? layout.config : {};
-  const heroNames = Array.isArray(cfg.heroSlots) ? cfg.heroSlots.map((value) => String(value || '').trim()).filter(Boolean) : [];
-  const rawEnemySlots = Array.isArray(cfg.enemySlots) ? cfg.enemySlots.map((value) => String(value || '').trim()) : [];
-  const activeEnemySlots = rawEnemySlots.filter((value) => value !== DEV_TOOL_EMPTY_SLOT);
-  layout.config = {
-    ...currentConfig,
-    heroNames,
-    enemySlots: Math.max(1, activeEnemySlots.length || Number(currentConfig.enemySlots || 1)),
-    enemyNames: rawEnemySlots.map((value) => (value === DEV_TOOL_RANDOM_ENEMY_SLOT ? '' : value)),
-  };
-  return layout.config;
-}
-
-function readEscortPartyConfig() {
-  const raw = state.globals && state.globals.EscortPartyConfig;
-  if (!raw || typeof raw !== 'object' || !raw.enabled) return null;
-  const heroName = String(raw.activeHeroName || raw.heroName || '').trim();
-  const escortName = String(raw.escortName || raw.name || 'Escort').trim() || 'Escort';
-  const portraitName = String(raw.escortPortraitName || raw.portraitName || heroName || 'Falie').trim() || 'Falie';
-  const heroDisplaySlot = Math.max(0, Math.min(3, Math.floor(Number(raw.heroDisplaySlot ?? 0) || 0)));
-  let escortDisplaySlot = Math.max(0, Math.min(3, Math.floor(Number(raw.escortDisplaySlot ?? (heroDisplaySlot + 1)) || 0)));
-  if (escortDisplaySlot === heroDisplaySlot) escortDisplaySlot = Math.min(3, heroDisplaySlot + 1);
-  const hp = Math.max(1, Math.floor(Number(raw.hp || raw.maxHP || 30) || 30));
-  const maxHP = Math.max(hp, Math.floor(Number(raw.maxHP || hp) || hp));
-  return {
-    activeHeroName: heroName,
-    heroDisplaySlot,
-    escortName,
-    escortDisplaySlot,
-    portraitName,
-    hp,
-    maxHP,
-  };
-}
-
-function buildConfiguredCombatPartyMembers(configuredHeroSlots, escortConfig = null) {
-  const requestedSlots = Array.from({ length: 4 }, (_, idx) => String(configuredHeroSlots?.[idx] || '').trim());
-  const resolvedSlots = escortConfig
-    ? Array.from({ length: 4 }, () => DEV_TOOL_EMPTY_SLOT)
-    : requestedSlots.slice();
-  if (escortConfig) {
-    const heroName = String(escortConfig.activeHeroName || '').trim();
-    if (heroName) resolvedSlots[escortConfig.heroDisplaySlot] = heroName;
-  }
-  const heroCloneCounts = {};
-  const heroMembers = resolvedSlots.map((heroName, displaySlot) => {
-    const name = String(heroName || '').trim();
-    if (!name) return null;
-    const canonicalIndex = CANONICAL_HERO_ROSTER.findIndex((hero) => String(hero?.name || '') === name);
-    if (canonicalIndex === -1) return null;
-    heroCloneCounts[name] = Number(heroCloneCounts[name] || 0) + 1;
-    const cloneOrdinal = heroCloneCounts[name];
-    const cloneLabel = String.fromCharCode(64 + Math.min(26, cloneOrdinal));
-    const duplicateCount = resolvedSlots.filter((slotName) => String(slotName || '').trim() === name).length;
-    return {
-      ...CANONICAL_HERO_ROSTER[canonicalIndex],
-      canonicalIndex,
-      baseHeroName: name,
-      cloneOrdinal,
-      cloneLabel,
-      instanceName: duplicateCount > 1 ? `${name} ${cloneLabel}` : name,
-      heroInstanceKey: `${name.toLowerCase()}#${cloneOrdinal}`,
-      displaySlot,
-    };
-  });
-  const escortMember = escortConfig ? {
-    uid: 0,
-    kind: 'escort',
-    name: escortConfig.escortName,
-    baseHeroName: escortConfig.portraitName,
-    portraitName: escortConfig.portraitName,
-    hp: escortConfig.hp,
-    maxHP: escortConfig.maxHP,
-    heroDisplaySlot: escortConfig.escortDisplaySlot,
-    escortDisplaySlot: escortConfig.escortDisplaySlot,
-    nonActingEscort: true,
-    isAlive: true,
-    stats: { ATK: 0, DEF: 0, MAG: 0, RES: 0, SPD: 0 },
-    attackType: 'none',
-  } : null;
-  return {
-    heroMembers,
-    escortMember,
-    renderSlots: heroMembers
-      .map((member) => member ? { ...member, kind: 'hero', heroDisplaySlot: member.displaySlot } : null)
-      .concat(escortMember ? [escortMember] : [])
-      .filter(Boolean)
-      .sort((a, b) => Number(a.heroDisplaySlot || 0) - Number(b.heroDisplaySlot || 0)),
-  };
-}
-
-function getCombatPartyRenderRoster() {
-  return (state.entities || [])
-    .filter((entity) => entity && (entity.kind === 'hero' || entity.kind === 'escort'))
-    .sort((a, b) => Number(a.heroDisplaySlot ?? a.escortDisplaySlot ?? 0) - Number(b.heroDisplaySlot ?? b.escortDisplaySlot ?? 0))
-    .map((actor) => ({
-      name: actor.name,
-      portraitName: String(actor.baseHeroName || actor.portraitName || actor.name || ''),
-      idx: Number(actor.heroIndex || 0),
-      displaySlot: Number(actor.heroDisplaySlot ?? actor.escortDisplaySlot ?? 0),
-      uid: Number(actor.uid || 0),
-      kind: String(actor.kind || ''),
-    }));
-}
-
-function applyBoardGemColor(colorValue) {
-  const color = Number(colorValue);
-  if (!Number.isFinite(color) || color === DEV_TOOL_GEM_RANDOM) return 0;
-  if (!Array.isArray(gameState.gems)) return 0;
-  resetSuperGemBoardState(gameState);
-  superGemRuntime.clearPendingSuperGemAction(state);
-  gameState.selectedGems = [];
-  gameState.selectionLocked = false;
-  gameState.gemMergeFx = null;
-  state.globals.BoardFillActive = 0;
-  state.globals.TapIndex = 0;
-  let changed = 0;
-  for (const gem of gameState.gems) {
-    if (!gem) continue;
-    gem.color = color;
-    gem.elementIndex = color;
-    gem.selected = false;
-    gem.Selected = 0;
-    gem.flashUntil = 0;
-    changed += 1;
-  }
-  setGemArray(gameState.gems);
-  rebuildGridFromGems();
-  return changed;
-}
-
-function updateDevToolingStatus(message = '') {
-  if (!devToolingDom) return;
-  const autoplayActive = !!state.globals.DevAutoplayActive;
-  if (devToolingDom.autoplay) {
-    devToolingDom.autoplay.textContent = devToolingControls.getAutoplayButtonLabel(autoplayActive);
-  }
-  if (!devToolingDom.status) return;
-  const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
-    ? layoutState.getActiveLayoutId()
-    : 'unknown';
-  const skillDraught = getSkillDraughtDevSummary();
-  const suffix = message ? `\n${message}` : '';
-  devToolingDom.status.textContent =
-    `Hotkey: ${DEV_TOOL_HOTKEY_LABEL}\nActive Layout: ${activeLayoutId}\nIdle Mode: ${autoplayActive ? 'ACTIVE' : 'idle'}\nSkill Draw: ${skillDraught}\nApply: writes only the selected condition; no combat reset, turn advance, or loadout refresh${suffix}`;
-}
-
-function getSkillDraughtDevSummary() {
-  const draught = callFunctionWithContext(fnContext, 'GetSkillDraughtState') || {};
-  const sessionSkills = draught.sessionSkillsByHeroUID || {};
-  const learnedCount = Object.values(sessionSkills).reduce((total, row) => total + (Array.isArray(row) ? row.length : 0), 0);
-  const open = Number(draught.open || 0) ? 'open' : 'closed';
-  return `${open}, hero ${Number(draught.heroUID || 0)}, candidates ${(draught.candidates || []).length}, session ${learnedCount}`;
-}
-
-function populateDevToolSlotSelect(selectEl, { choices = [], includeRandom = false, selected = '' } = {}) {
-  if (!selectEl) return;
-  const value = String(selected || '');
-  selectEl.innerHTML = '';
-  if (includeRandom) {
-    const randomOpt = document.createElement('option');
-    randomOpt.value = DEV_TOOL_RANDOM_ENEMY_SLOT;
-    randomOpt.textContent = 'Current pool/random';
-    selectEl.appendChild(randomOpt);
-  }
-  const emptyOpt = document.createElement('option');
-  emptyOpt.value = DEV_TOOL_EMPTY_SLOT;
-  emptyOpt.textContent = 'Empty slot';
-  selectEl.appendChild(emptyOpt);
-  for (const name of choices) {
-    const opt = document.createElement('option');
-    opt.value = name;
-    opt.textContent = name;
-    selectEl.appendChild(opt);
-  }
-  const fallback = includeRandom ? DEV_TOOL_RANDOM_ENEMY_SLOT : DEV_TOOL_EMPTY_SLOT;
-  selectEl.value = Array.from(selectEl.options).some((opt) => opt.value === value) ? value : fallback;
-}
-
-function syncDevToolingDomFromConfig() {
-  if (!devToolingDom) return;
-  const cfg = ensureDevToolingConfig();
-  const heroChoices = getDevToolHeroOptions();
-  const enemyChoices = getDevToolEnemyOptions();
-  devToolingDom.heroSlots.forEach((selectEl, idx) => {
-    populateDevToolSlotSelect(selectEl, { choices: heroChoices, includeRandom: false, selected: cfg.heroSlots[idx] || '' });
-  });
-  devToolingDom.enemySlots.forEach((selectEl, idx) => {
-    populateDevToolSlotSelect(selectEl, { choices: enemyChoices, includeRandom: true, selected: cfg.enemySlots[idx] || DEV_TOOL_RANDOM_ENEMY_SLOT });
-  });
-  devToolingDom.boardGemColor.value = String(cfg.boardGemColor);
-  devToolingDom.goldAmount.value = String(cfg.goldAmount);
-  devToolingDom.combatSpeed.value = String(cfg.combatSpeed);
-  devToolingDom.rewardDrops.value = String(cfg.rewardDrops || '');
-  devToolingDom.rewardCount.value = String(cfg.rewardCount);
-  populateDevToolSlotSelect(devToolingDom.doubleAttackHero, { choices: getDevToolHeroOptions(), includeRandom: false, selected: cfg.doubleAttackHeroName || DEV_TOOL_EMPTY_SLOT });
-  if (devToolingDom.skillHero && !devToolingDom.skillHero.value) {
-    devToolingDom.skillHero.value = String(callFunctionWithContext(fnContext, 'GetCurrentTurn') || '');
-  }
-  updateDevToolingStatus();
-}
-
-function readDevToolingDomConfigPatch() {
-  if (!devToolingDom) return {};
-  return {
-    heroSlots: devToolingDom.heroSlots.map((selectEl) => String(selectEl?.value || '')),
-    enemySlots: devToolingDom.enemySlots.map((selectEl) => String(selectEl?.value || DEV_TOOL_RANDOM_ENEMY_SLOT)),
-    boardGemColor: Number(devToolingDom.boardGemColor.value || 0),
-    goldAmount: Number(devToolingDom.goldAmount.value || 0),
-    combatSpeed: Number(devToolingDom.combatSpeed.value || 1),
-    rewardDrops: String(devToolingDom.rewardDrops.value || ''),
-    rewardCount: Number(devToolingDom.rewardCount.value || 1),
-    doubleAttackHeroName: String(devToolingDom.doubleAttackHero?.value || ''),
-  };
-}
-
-async function applyDevToolingConfig(patch = {}, { closeModal = true } = {}) {
-  const prev = ensureDevToolingConfig();
-  const next = sanitizeDevToolingConfig({
-    ...prev,
-    ...(patch && typeof patch === 'object' ? patch : {}),
-    lastAppliedAt: Number(state.globals.time || 0),
-  });
-  state.globals.DevToolingConfig = next;
-  state.globals.DevHeroSlots = [...next.heroSlots];
-  state.globals.DevHeroCount = next.heroSlots.filter(Boolean).length;
-  state.globals.DevEnemySlots = [...next.enemySlots];
-  state.globals.EncounterMaxSlots = next.enemySlots.filter((value) => String(value || '').trim() !== DEV_TOOL_EMPTY_SLOT).length;
-  state.globals.DevForcedEnemyType = '';
-  state.globals.DevForcedBoardColor = next.boardGemColor;
-  state.globals.goldTotal = next.goldAmount;
-  state.globals.DevCombatSpeedMultiplier = next.combatSpeed;
-  state.globals.DevRewardDropId = next.rewardDrops;
-  state.globals.DevRewardDrops = next.rewardDrops
-    ? Array.from({ length: next.rewardCount }, () => next.rewardDrops)
-    : [];
-  state.globals.DevRewardCount = next.rewardCount;
-  state.globals.DevDoubleAttackHolderName = '';
-  state.globals.DevDoubleAttackHolderUID = 0;
-  state.globals.DevDoubleAttackChance = Number(next.doubleAttackChance || 1);
-  persistDevToolingConfig(next);
-  syncIdleFarmDevLoadoutConfig(next);
-  gameState.selectedHero = Math.min(gameState.selectedHero || 0, Math.max(0, next.heroSlots.filter(Boolean).length - 1));
-  gameState.selectedEnemy = Math.min(gameState.selectedEnemy || 0, Math.max(0, next.enemySlots.filter((value) => String(value || '').trim() !== DEV_TOOL_EMPTY_SLOT).length - 1));
-  const recolored = applyBoardGemColor(next.boardGemColor);
-  const doubleAttackUID = syncConfiguredDoubleAttackHarness(next);
-  const heroSlotsChanged = JSON.stringify(prev.heroSlots || []) !== JSON.stringify(next.heroSlots || []);
-  const enemySlotsChanged = JSON.stringify(prev.enemySlots || []) !== JSON.stringify(next.enemySlots || []);
-  const loadoutChanged = heroSlotsChanged || enemySlotsChanged;
-  const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
-    ? layoutState.getActiveLayoutId()
-    : '';
-  let appliedSessionChange = 'none';
-  if (loadoutChanged) {
-    if (activeLayoutId === 'combat' && typeof devToolingRefreshHandler === 'function') {
-      await devToolingRefreshHandler({ forceCombat: false, resetGame: false });
-      appliedSessionChange = 'combat_refresh';
-    } else if (activeLayoutId === 'idleFarmLayout') {
-      restartIdleFarmSession(performance.now() / 1000);
-      appliedSessionChange = 'idle_restart';
-    }
-  }
-  syncDevToolingDomFromConfig();
-  if (closeModal) closeDevToolingModal({ restorePauseSnapshot: appliedSessionChange !== 'combat_refresh' });
-  updateDevToolingStatus(
-    `Applied\n` +
-    `Board recolor count: ${recolored}\n` +
-    `Hero slots (staged): ${next.heroSlots.map((value) => value || 'Empty').join(', ')}\n` +
-    `Enemy slots (staged): ${next.enemySlots.map((value) => value === DEV_TOOL_RANDOM_ENEMY_SLOT ? 'Random' : (value || 'Empty')).join(', ')}\n` +
-    `Double Attack: ${next.doubleAttackHeroName || 'Off'}${doubleAttackUID ? ` (uid ${doubleAttackUID})` : ''}\n` +
-    `Reward (staged): ${next.rewardDrops || 'None'} x${next.rewardCount}\n` +
-    `${loadoutChanged ? `Loadout applied: ${appliedSessionChange}` : 'Combat state unchanged'}`
-  );
-  return {
-    ...next,
-    rewardDrops: [...(state.globals.DevRewardDrops || [])],
-    boardRecolored: recolored,
-    doubleAttackUID,
-    loadoutChanged,
-    appliedSessionChange,
-    refreshed: false,
-  };
-}
-
-function ensureDevToolingModal() {
-  if (devToolingDom || typeof document === 'undefined') return devToolingDom;
-  const root = document.createElement('div');
-  root.id = 'orka-dev-tooling-modal';
-  root.style.cssText = [
-    'position:fixed',
-    'inset:0',
-    'display:none',
-    'align-items:center',
-    'justify-content:center',
-    'background:rgba(0,0,0,0.58)',
-    'z-index:9999',
-    'padding:16px',
-    'box-sizing:border-box',
-  ].join(';');
-  const panel = document.createElement('div');
-  panel.style.cssText = [
-    'width:min(520px, calc(100vw - 32px))',
-    'max-height:88vh',
-    'overflow:auto',
-    'padding:18px',
-    'border-radius:14px',
-    'border:2px solid #1f2937',
-    'background:#f7f2e8',
-    'box-shadow:0 18px 48px rgba(0,0,0,0.4)',
-    'font:12px/1.4 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    'color:#111827',
-  ].join(';');
-  panel.innerHTML = `
-    <style>
-      #orka-dev-tooling-modal * { box-sizing:border-box; }
-      #orka-dev-tooling-modal button {
-        appearance:none;
-        -webkit-appearance:none;
-        display:inline-flex;
-        align-items:center;
-        justify-content:center;
-        min-height:36px;
-        line-height:1;
-        white-space:nowrap;
-        text-align:center;
-        user-select:none;
-        pointer-events:auto;
-        text-decoration:none;
-      }
-      #orka-dev-tooling-modal input,
-      #orka-dev-tooling-modal select { width:100%; box-sizing:border-box; }
-      @media (max-width: 560px) {
-        #orka-dev-tooling-modal [data-devtool-control-grid] { grid-template-columns:1fr !important; }
-      }
-    </style>
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;">
-      <div>
-        <div style="font-size:18px;font-weight:800;">Dev Tooling Modal</div>
-      </div>
-      <button type="button" data-devtool-close style="border:1px solid #334155;background:#ffffff;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Close</button>
-    </div>
-    <div data-devtool-control-grid style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;">
-      <div style="display:flex;flex-direction:column;gap:4px;">
-        <div style="font-weight:700;">Hero Slots</div>
-        <label style="display:flex;flex-direction:column;gap:4px;">Hero Slot 1
-          <select data-devtool-hero-slot="0"></select>
-        </label>
-        <label style="display:flex;flex-direction:column;gap:4px;">Hero Slot 2
-          <select data-devtool-hero-slot="1"></select>
-        </label>
-        <label style="display:flex;flex-direction:column;gap:4px;">Hero Slot 3
-          <select data-devtool-hero-slot="2"></select>
-        </label>
-        <label style="display:flex;flex-direction:column;gap:4px;">Hero Slot 4
-          <select data-devtool-hero-slot="3"></select>
-        </label>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:4px;">
-        <div style="font-weight:700;">Enemy Slots</div>
-        <label style="display:flex;flex-direction:column;gap:4px;">Enemy Slot 1
-          <select data-devtool-enemy-slot="0"></select>
-        </label>
-        <label style="display:flex;flex-direction:column;gap:4px;">Enemy Slot 2
-          <select data-devtool-enemy-slot="1"></select>
-        </label>
-        <label style="display:flex;flex-direction:column;gap:4px;">Enemy Slot 3
-          <select data-devtool-enemy-slot="2"></select>
-        </label>
-      </div>
-      <label style="display:flex;flex-direction:column;gap:4px;">Board Gem Color
-        <select data-devtool-board-color>
-          ${DEV_TOOL_GEM_OPTIONS.map((row) => `<option value="${row.value}">${row.label}</option>`).join('')}
-        </select>
-      </label>
-      <label style="display:flex;flex-direction:column;gap:4px;">Gold Amount
-        <input data-devtool-gold-amount type="number" min="0" step="1">
-      </label>
-      <label style="display:flex;flex-direction:column;gap:4px;">Combat Speed
-        <input data-devtool-combat-speed type="number" min="0.25" max="4" step="0.25">
-      </label>
-      <label style="display:flex;flex-direction:column;gap:4px;">Reward Drop
-        <select data-devtool-reward-drops>
-          ${DEV_TOOL_REWARD_OPTIONS.map((row) => `<option value="${row.value}">${row.label}</option>`).join('')}
-        </select>
-      </label>
-      <label style="display:flex;flex-direction:column;gap:4px;">Reward Count
-        <input data-devtool-reward-count type="number" min="0" max="99" step="1">
-      </label>
-      <label style="display:flex;flex-direction:column;gap:4px;">Double Attack
-        <select data-devtool-double-attack-hero></select>
-      </label>
-      <label style="display:flex;flex-direction:column;gap:4px;">Skill Draw Hero UID
-        <input data-devtool-skill-hero type="number" min="0" step="1">
-      </label>
-      <label style="display:flex;flex-direction:column;gap:4px;">Skill Draw Skill ID
-        <input data-devtool-skill-id type="text" placeholder="optional">
-      </label>
-    </div>
-    <div data-devtool-button-row style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px;">
-      <button type="button" data-devtool-apply style="border:1px solid #14532d;background:#1f8f4a;color:#fff;padding:8px 12px;border-radius:8px;font-weight:800;cursor:pointer;">Apply</button>
-      <button type="button" data-devtool-refresh style="border:1px solid #475569;background:#fff;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Save Staged</button>
-      <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">AutoPlay</button>
-      <button type="button" data-devtool-restart style="border:1px solid #92400e;background:#fff7ed;color:#9a3412;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Restart</button>
-      <button type="button" data-devtool-force-skill-draught style="border:1px solid #4c1d95;background:#f5f3ff;color:#4c1d95;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Force Draw</button>
-      <button type="button" data-devtool-trigger-destiny style="border:1px solid #365314;background:#f7fee7;color:#365314;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Trigger Destiny</button>
-      <button type="button" data-devtool-clear-session-skills style="border:1px solid #7f1d1d;background:#fef2f2;color:#7f1d1d;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Clear Skills</button>
-    </div>
-  `;
-  root.appendChild(panel);
-  document.body.appendChild(root);
-  const launcher = document.createElement('button');
-  launcher.type = 'button';
-  launcher.textContent = 'DEV';
-  launcher.setAttribute('aria-label', 'Open developer tooling modal');
-  launcher.style.cssText = [
-    'position:fixed',
-    'top:10px',
-    'right:10px',
-    'z-index:10000',
-    'border:1px solid #1f2937',
-    'background:#f8fafc',
-    'color:#111827',
-    'padding:6px 10px',
-    'border-radius:999px',
-    'font:700 11px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    'cursor:pointer',
-    'box-shadow:0 4px 12px rgba(0,0,0,0.18)',
-  ].join(';');
-  document.body.appendChild(launcher);
-  devToolingDom = {
-    root,
-    panel,
-    launcher,
-    close: panel.querySelector('[data-devtool-close]'),
-    apply: panel.querySelector('[data-devtool-apply]'),
-    refresh: panel.querySelector('[data-devtool-refresh]'),
-    restart: panel.querySelector('[data-devtool-restart]'),
-    autoplay: panel.querySelector('[data-devtool-autoplay]'),
-    heroSlots: Array.from(panel.querySelectorAll('[data-devtool-hero-slot]')),
-    enemySlots: Array.from(panel.querySelectorAll('[data-devtool-enemy-slot]')),
-    boardGemColor: panel.querySelector('[data-devtool-board-color]'),
-    goldAmount: panel.querySelector('[data-devtool-gold-amount]'),
-    combatSpeed: panel.querySelector('[data-devtool-combat-speed]'),
-    rewardDrops: panel.querySelector('[data-devtool-reward-drops]'),
-    rewardCount: panel.querySelector('[data-devtool-reward-count]'),
-    doubleAttackHero: panel.querySelector('[data-devtool-double-attack-hero]'),
-    skillHero: panel.querySelector('[data-devtool-skill-hero]'),
-    skillId: panel.querySelector('[data-devtool-skill-id]'),
-    forceSkillDraught: panel.querySelector('[data-devtool-force-skill-draught]'),
-    triggerDestiny: panel.querySelector('[data-devtool-trigger-destiny]'),
-    clearSessionSkills: panel.querySelector('[data-devtool-clear-session-skills]'),
-    status: null,
-  };
-  devToolingDom.launcher.addEventListener('click', () => toggleDevToolingModal(true));
-  devToolingDom.close.addEventListener('click', () => toggleDevToolingModal(false));
-  devToolingDom.refresh.addEventListener('click', () => applyDevToolingConfig(readDevToolingDomConfigPatch(), { closeModal: false }));
-  devToolingDom.apply.addEventListener('click', () => applyDevToolingConfig(readDevToolingDomConfigPatch(), { closeModal: true }));
-  devToolingDom.restart.addEventListener('click', async () => devToolingControls.handleRestartClick({
-    closeDevToolingModal,
-    devToolingRefreshHandler,
-    updateDevToolingStatus,
-  }));
-  devToolingDom.autoplay.addEventListener('click', async () => {
-    if (state.globals.DevAutoplayActive) {
-      state.globals.DevAutoplayStopRequested = 1;
-      updateDevToolingStatus('AutoPlay stop requested');
-      return;
-    }
-    closeDevToolingModal({ restorePauseSnapshot: true });
-    if (typeof devToolingAutoplayHandler === 'function') {
-      await devToolingAutoplayHandler();
-    }
-  });
-  devToolingDom.forceSkillDraught.addEventListener('click', () => {
-    const heroUID = Number(devToolingDom.skillHero?.value || callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
-    const skillId = String(devToolingDom.skillId?.value || '').trim();
-    callFunctionWithContext(fnContext, 'ForceAstralFlowSkillDraught', heroUID, skillId);
-    closeDevToolingModal({ restorePauseSnapshot: true });
-  });
-  devToolingDom.triggerDestiny.addEventListener('click', () => {
-    const requestedUID = Number(devToolingDom.skillHero?.value || 0);
-    const requestedActor = state.entities.find(actor => Number(actor?.uid || 0) === requestedUID) || null;
-    const currentUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
-    const currentActor = state.entities.find(actor => Number(actor?.uid || 0) === currentUID) || null;
-    const fallbackHero = state.entities.find(actor => actor?.kind === 'hero' && Number(actor?.hp || 0) > 0) || null;
-    const sourceUID = requestedActor?.kind === 'hero'
-      ? requestedUID
-      : (currentActor?.kind === 'hero' ? currentUID : Number(fallbackHero?.uid || 0));
-    const result = callFunctionWithContext(fnContext, 'TriggerPartyDestinyDev', sourceUID);
-    if (!result?.success) {
-      callFunctionWithContext(fnContext, 'LogCombat', `Destiny dev trigger failed: ${result?.reason || 'no-op'}.`);
-    }
-    closeDevToolingModal({ restorePauseSnapshot: true });
-  });
-  devToolingDom.clearSessionSkills.addEventListener('click', () => {
-    callFunctionWithContext(fnContext, 'ClearSessionSkillDraught');
-    updateDevToolingStatus('Session skill draw cleared');
-  });
-  root.addEventListener('click', (ev) => {
-    if (ev.target === root) toggleDevToolingModal(false);
-  });
-  syncDevToolingDomFromConfig();
-  return devToolingDom;
-}
-
-function pauseGameplayForDevTooling() {
-  if (devToolingPauseSnapshot) return;
-  devToolingPauseSnapshot = {
-    CanPickGems: Number(state.globals.CanPickGems || 0),
-    IsPlayerBusy: Number(state.globals.IsPlayerBusy || 0),
-    DeferAdvance: Number(state.globals.DeferAdvance || 0),
-    PendingSkillID: String(state.globals.PendingSkillID || ''),
-    CombatSessionId: Number(state.globals.CombatSessionId || 0),
-    TurnSerial: Number(state.globals.TurnSerial || 0),
-  };
-  applyTurnGateGlobals({
-    CanPickGems: 0,
-    IsPlayerBusy: 1,
-  });
-  state.globals.DevToolingPaused = 1;
-}
-
-function isDev2DiagnosticsOpen() {
-  const panel = document.getElementById('dev2-diagnostics');
-  return !!panel && !panel.hidden;
-}
-
-function clearDevToolingPauseSnapshot() {
-  devToolingPauseSnapshot = null;
-}
-
-function restorePlayableHeroInputAfterDevToolingResume() {
-  const heroInputBarrier = getPresentationTurnBarrier({
-    hasEmpty: hasEmptySlots(),
-    enemyLineClearPressureActive: !!state.globals.EnemyLineClearPressureActive,
-  });
-  const combatIdleHeroInputReady = (
-    state.globals.GamePhase === 'RUNTIME' &&
-    callFunctionWithContext(fnContext, 'GetCurrentType') === 0 &&
-    state.globals.TurnPhase === 0 &&
-    !(gameState.refillBounce && gameState.refillBounce.active) &&
-    !(gameState.yellowCasino && gameState.yellowCasino.active) &&
-    !hasEmptySlots() &&
-    heroInputBarrier.canRestoreHeroInput &&
-    getEnemyRosterStabilitySnapshot().stable
-  );
-  if (!combatIdleHeroInputReady) return false;
-  gameState.selectedGems = [];
-  gameState.selectionLocked = false;
-  for (const gem of (gameState.gems || [])) {
-    if (!gem) continue;
-    gem.selected = false;
-    gem.Selected = 0;
-  }
-  state.globals.TapIndex = 0;
-  state.globals.CanPickGems = true;
-  state.globals.IsPlayerBusy = 0;
-  state.globals.DeferAdvance = 0;
-  state.globals.BoardFillActive = 0;
-  return true;
-}
-
-function resumeGameplayFromDevTooling() {
-  if (!devToolingPauseSnapshot) {
-    state.globals.DevToolingPaused = 0;
-    return;
-  }
-  const sameCombatSession =
-    Number(devToolingPauseSnapshot.CombatSessionId || 0) === Number(state.globals.CombatSessionId || 0);
-  const sameTurnSerial =
-    Number(devToolingPauseSnapshot.TurnSerial || 0) === Number(state.globals.TurnSerial || 0);
-  if (sameCombatSession && sameTurnSerial) {
-    applyTurnGateGlobals(devToolingPauseSnapshot);
-    restorePlayableHeroInputAfterDevToolingResume();
-  }
-  state.globals.DevToolingPaused = 0;
-  clearDevToolingPauseSnapshot();
-}
-
-function closeDevToolingModal({ restorePauseSnapshot = true } = {}) {
-  const cfg = ensureDevToolingConfig();
-  const root = ensureDevToolingModal()?.root;
-  cfg.open = false;
-  state.globals.DevToolingConfig = cfg;
-  if (root) root.style.display = 'none';
-  if (restorePauseSnapshot) {
-    if (isDev2DiagnosticsOpen()) {
-      state.globals.DevToolingPaused = 1;
-    } else {
-      resumeGameplayFromDevTooling();
-    }
-  } else {
-    devToolingPauseSnapshot = null;
-    state.globals.DevToolingPaused = 0;
-  }
-  return cfg;
-}
-
-function resetCombatRuntimeForFreshSession(reason = 'combat-refresh', options = {}) {
-  const refill = gameState.refillBounce || (gameState.refillBounce = {});
-  refill.active = false;
-  refill.queue = [];
-  refill.index = 0;
-  refill.current = null;
-  refill.speedScale = 1;
-
-  const yellowCasino = gameState.yellowCasino || (gameState.yellowCasino = {});
-  yellowCasino.active = false;
-  yellowCasino.phase = 'idle';
-  yellowCasino.queue = [];
-  yellowCasino.index = 0;
-  yellowCasino.current = null;
-  yellowCasino.telegraphUntil = 0;
-  yellowCasino.ghost = null;
-  yellowCasino.pendingGoldAward = 0;
-
-  gameState.selectedGems = [];
-  gameState.selectionLocked = false;
-  gameState.gemMergeFx = null;
-  gameState.lastTurnPhase = null;
-  gameState.enemyTurnKicked = false;
-  gameState.buffRollTimer = 0;
-  gameState._lastBuffRollActive = 0;
-  state.globals.BoardFillActive = Number(options.boardFillActive || 0);
-  state.globals.HeroLungeOffsetByUID = {};
-  state.globals.DamageTexts = [];
-  state.globals.TextAnimEndAt = 0;
-  state.globals.TextAnimating = 0;
-  state.globals.BlueBuffSequenceActive = 0;
-  state.globals.BuffRollActive = 0;
-  state.globals.BuffRollFrame = 0;
-  state.globals.BuffRollSlot = -1;
-  state.globals.BuffRollEndsAt = 0;
-  state.globals.BuffRollApplyStat = 0;
-  state.globals.BuffRollSkillID = '';
-  state.globals.BuffRollActor = 0;
-  state.globals.BuffRollType = 0;
-  delete state.globals.HeroAction;
-  delete state.globals.EnemyAction;
-  delete state.globals.PendingHeroHits;
-  delete state.globals.DoubleAttackLungeStarted;
-  delete state.globals.DoubleAttackBatchAnchors;
-  delete state.globals.NextHeroActionProfile;
-
-  applyTurnGateGlobals(createCombatTurnRefreshBaseline(state.globals, {
-    currentTurnType: Number(options.currentTurnType || 0),
-    boardFillActive: Number(state.globals.BoardFillActive || 0),
-    boardHasEmptySlots: !!options.boardHasEmptySlots,
-  }));
-
-  clearDevToolingPauseSnapshot();
-  state.globals.DevToolingPaused = (ensureDevToolingConfig().open || isDev2DiagnosticsOpen()) ? 1 : 0;
-  console.log(
-    `[TURN] reset combat runtime baseline reason=${reason} ` +
-    `turnType=${Number(options.currentTurnType || 0)} ` +
-    `boardFill=${Number(state.globals.BoardFillActive || 0)} ` +
-    `hasEmpty=${options.boardHasEmptySlots ? 1 : 0}`,
-  );
-}
-
-function toggleDevToolingModal(nextOpen = null) {
-  const cfg = ensureDevToolingConfig();
-  const root = ensureDevToolingModal()?.root;
-  if (!root) return cfg;
-  const open = nextOpen == null ? !cfg.open : !!nextOpen;
-  cfg.open = open;
-  state.globals.DevToolingConfig = cfg;
-  root.style.display = open ? 'flex' : 'none';
-  if (open) {
-    pauseGameplayForDevTooling();
-    syncDevToolingDomFromConfig();
-    devToolingDom.heroSlots[0]?.focus();
-  } else {
-    closeDevToolingModal({ restorePauseSnapshot: true });
-  }
-  return cfg;
-}
-
-window.addEventListener('orka:dev2-diagnostics-open-change', (ev) => {
-  const open = !!ev?.detail?.open;
-  if (open) {
-    pauseGameplayForDevTooling();
-    return;
-  }
-  if (!ensureDevToolingConfig().open) {
-    resumeGameplayFromDevTooling();
-  }
-});
-if (isDev2DiagnosticsOpen()) {
-  pauseGameplayForDevTooling();
-}
-
-function isDevToolingHotkey(ev) {
-  if (!ev) return false;
-  const key = String(ev.key || '').toLowerCase();
-  const code = String(ev.code || '');
-  return !!((ev.ctrlKey || ev.metaKey) && ev.shiftKey && (code === 'KeyP' || key === 'p'));
-}
-
-function isEditableDomTarget(target) {
-  const tag = String(target?.tagName || '').toUpperCase();
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-}
 
 function getTask015TraceStore() {
   return task015TraceState.getTask015TraceStore(gameState);
@@ -1619,12 +806,6 @@ function computeCombatPower(atk, def, hp) {
     jsValue: result,
   });
 }
-function resolveEnemyEncounterCombatPower(row) {
-  const explicit = Number(row?.EncounterCP ?? row?.encounterCP ?? row?.CombatPower ?? row?.combatPower);
-  if (Number.isFinite(explicit) && explicit > 0) return Math.round(explicit * 100) / 100;
-  return computeCombatPower(row?.ATK, row?.DEF, row?.HP);
-}
-
 function getHeroScreenRoster() {
   const runtimeHeroes = (state.entities || [])
     .filter(e => e && e.kind === 'hero')
@@ -1694,6 +875,20 @@ function getHeroStarterSkillTitle(heroName) {
     Kojonn: 'Faze',
   };
   return byHero[key] || 'Skill 1 Placeholder';
+}
+
+function getCombatPartyRenderRoster() {
+  return (state.entities || [])
+    .filter((entity) => entity && (entity.kind === 'hero' || entity.kind === 'escort'))
+    .sort((a, b) => Number(a.heroDisplaySlot ?? a.escortDisplaySlot ?? 0) - Number(b.heroDisplaySlot ?? b.escortDisplaySlot ?? 0))
+    .map((actor) => ({
+      name: actor.name,
+      portraitName: String(actor.baseHeroName || actor.portraitName || actor.name || ''),
+      idx: Number(actor.heroIndex || 0),
+      displaySlot: Number(actor.heroDisplaySlot ?? actor.escortDisplaySlot ?? 0),
+      uid: Number(actor.uid || 0),
+      kind: String(actor.kind || ''),
+    }));
 }
 
 function getHeroRoleLabel(hero) {
@@ -1889,11 +1084,6 @@ function normalizeHeroSelectionIndex() {
   return gameState.selectedHero;
 }
 
-function isPointInRect(mx, my, rect) {
-  if (!rect) return false;
-  return mx >= rect.x && mx <= (rect.x + rect.w) && my >= rect.y && my <= (rect.y + rect.h);
-}
-
 function renderSkillDraughtOverlay(ctx, canvas, pixelRatio = 1) {
   renderSkillDraught.renderSkillDraughtOverlay({
     ctx,
@@ -2035,6 +1225,25 @@ const fnContext = createContext({
     gameState.selectedGems = arr;
     if (!arr || arr.length === 0) gameState.selectionLocked = false;
   },
+});
+
+devToolingRuntime = createDevToolingRuntime({
+  state,
+  gameState,
+  CANONICAL_HERO_ROSTER,
+  callFunctionWithContext,
+  fnContext,
+  getLayoutState: () => layoutState,
+  resetSuperGemBoardState,
+  superGemRuntime,
+  setGemArray,
+  rebuildGridFromGems,
+  restartIdleFarmSession,
+  hasEmptySlots,
+  getPresentationTurnBarrier,
+  getEnemyRosterStabilitySnapshot,
+  applyTurnGateGlobals,
+  createCombatTurnRefreshBaseline,
 });
 
 function syncPartyTotals() {
@@ -2271,41 +1480,6 @@ function parseC2ArrayTable(c2) {
   return items;
 }
 
-function normalizeBiomeTags(input) {
-  if (Array.isArray(input)) {
-    const tags = input.map(v => String(v || '').trim().toLowerCase()).filter(Boolean);
-    return tags.length ? tags : ['all'];
-  }
-  const raw = String(input ?? '').trim();
-  if (!raw) return ['all'];
-  if (raw.startsWith('[') && raw.endsWith(']')) {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return normalizeBiomeTags(parsed);
-    } catch (_) {
-      // no-op: fall through to delimited parsing
-    }
-  }
-  const tags = raw
-    .split('|')
-    .flatMap(part => String(part).split(','))
-    .map(v => String(v || '').trim().toLowerCase())
-    .filter(Boolean);
-  return tags.length ? tags : ['all'];
-}
-
-function normalizeEnemyRole(input) {
-  const role = String(input || '').trim().toLowerCase();
-  if (role === 'commander' || role === 'bodyguard' || role === 'fodder') return role;
-  return 'fodder';
-}
-
-function normalizeFaction(input) {
-  const faction = String(input || '').trim().toLowerCase();
-  if (faction === 'wishless' || faction === 'dreamless' || faction === 'hopeless') return faction;
-  return 'wishless';
-}
-
 function createSeededRng(seed = 1) {
   return createSimulationCoreSeededRng(seed, { source: 'app.createSeededRng' });
 }
@@ -2402,401 +1576,27 @@ function resetBootstrapRngSession() {
   bootstrapDeterministicRefillPending = true;
 }
 
-function generateEncounterSeed() {
-  const now = Date.now() >>> 0;
-  const perfNow = Math.floor(((typeof performance !== 'undefined' && performance.now) ? performance.now() : 0) * 1000) >>> 0;
-  const rand = Math.floor(Math.random() * 0x7fffffff) >>> 0;
-  const mixed = (now ^ perfNow ^ rand) >>> 0;
-  return mixed || 1;
-}
-
-function computeEncounterTotalCP(picks) {
-  return (picks || []).reduce((sum, row) => sum + Number(row?.CombatPower || row?.combatPower || 0), 0);
-}
-
-function buildEncounterSpawnPlan(picks, { policy = 'mixed' } = {}) {
-  const rows = Array.isArray(picks) ? picks.filter(Boolean) : [];
-  if (!rows.length) return [];
-  const isSoloCommander = String(policy || '').trim().toLowerCase() === 'solo_commander';
-  if (isSoloCommander) {
-    const commanderRows = rows.filter((row) => normalizeEnemyRole(row?.enemyRole || row?.role) === 'commander');
-    const soloPool = commanderRows.length ? commanderRows : rows;
-    const pick = soloPool[Math.floor(Math.random() * soloPool.length)];
-    return [{ row: pick, slotIndex: 1 }];
-  }
-
-  const pool = [...rows];
-  const selected = [];
-  while (selected.length < Math.min(3, rows.length) && pool.length > 0) {
-    const idx = Math.floor(Math.random() * pool.length);
-    selected.push(pool[idx]);
-    pool.splice(idx, 1);
-  }
-  if (!selected.length) return [];
-  const getCP = (row) => Number(row?.CombatPower || row?.combatPower || 0);
-  let strongestIdx = 0;
-  for (let i = 1; i < selected.length; i += 1) {
-    if (getCP(selected[i]) > getCP(selected[strongestIdx])) strongestIdx = i;
-  }
-  const strongest = selected[strongestIdx];
-  const sideRows = selected.filter((_, idx) => idx !== strongestIdx);
-  if (sideRows.length > 1 && Math.random() < 0.5) sideRows.reverse();
-
-  const plan = [{ row: strongest, slotIndex: 1 }];
-  if (sideRows[0]) plan.push({ row: sideRows[0], slotIndex: 0 });
-  if (sideRows[1]) plan.push({ row: sideRows[1], slotIndex: 2 });
-  return plan;
-}
-
-function buildForcedEnemySpawnPlan(row, count) {
-  if (!row) return [];
-  const total = Math.max(0, Math.min(3, Math.floor(Number(count || 0))));
-  if (!total) return [];
-  const slotOrder = [1, 0, 2];
-  const plan = [];
-  for (let i = 0; i < total; i += 1) {
-    plan.push({ row, slotIndex: slotOrder[i] });
-  }
-  return plan;
-}
-
-function deriveEncounterPoolNames({ pool, locale = 'all', faction = '' } = {}) {
-  const candidates = Array.isArray(pool) ? pool : [];
-  const normalizedLocale = String(locale || 'all').trim().toLowerCase() || 'all';
-  const rawFactionFilter = String(faction || '').trim().toLowerCase();
-  const normalizedFaction = rawFactionFilter ? normalizeFaction(rawFactionFilter) : '';
-  return candidates
-    .filter((row) => {
-      const tags = normalizeBiomeTags(row?.localeTags || row?.locale || row?.biome || 'all');
-      const localeOk = normalizedLocale === 'all' || tags.includes('all') || tags.includes(normalizedLocale);
-      if (!localeOk) return false;
-      if (!normalizedFaction) return true;
-      return normalizeFaction(row?.faction) === normalizedFaction;
-    })
-    .map((row) => String(row?.name || '').trim())
-    .filter(Boolean);
-}
-
-function buildEncounterByBudget({ pool, targetCP, locale = 'all', maxSlots = 3, policy = 'mixed', seed = 1, faction = '', historyCounts = null } = {}) {
-  const candidates = Array.isArray(pool) ? pool : [];
-  const normalizedLocale = String(locale || 'all').trim().toLowerCase() || 'all';
-  const rawFactionFilter = String(faction || '').trim().toLowerCase();
-  const normalizedFaction = rawFactionFilter ? normalizeFaction(rawFactionFilter) : '';
-  const rng = createSeededRng(seed);
-  const reasonCodes = [];
-  const eligibleNames = new Set(deriveEncounterPoolNames({ pool: candidates, locale: normalizedLocale, faction: normalizedFaction }));
-  const eligible = candidates.filter((row) => eligibleNames.has(String(row?.name || '').trim()));
-  if (!eligible.length) {
-    return { selected: [], finalCP: 0, targetCP: Number(targetCP || 0), deltaCP: Number(targetCP || 0), slotsUsed: 0, underfilled: true, reasonCodes: ['no_locale_candidates'] };
-  }
-
-  const slots = Math.max(1, Number(maxSlots || 3));
-  const target = Math.max(0, Number(targetCP || 0));
-  const selected = [];
-  const usedNames = new Set();
-  const byRole = {
-    commander: eligible.filter(e => normalizeEnemyRole(e?.enemyRole || e?.role) === 'commander'),
-    bodyguard: eligible.filter(e => normalizeEnemyRole(e?.enemyRole || e?.role) === 'bodyguard'),
-    fodder: eligible.filter(e => normalizeEnemyRole(e?.enemyRole || e?.role) === 'fodder'),
-  };
-
-  const pickBest = (source, remainingTarget, capName = '') => {
-    const arr = (source || []).filter(row => row && !usedNames.has(String(row.name || '')));
-    if (!arr.length) return null;
-    const getSeen = (row) => Number(historyCounts && historyCounts[String(row?.name || '')] || 0);
-    const hasHistory = !!(historyCounts && typeof historyCounts === 'object');
-    let working = arr;
-    if (hasHistory) {
-      let minSeen = Infinity;
-      for (const row of arr) minSeen = Math.min(minSeen, getSeen(row));
-      const lowestSeenPool = arr.filter(row => getSeen(row) === minSeen);
-      if (lowestSeenPool.length) working = lowestSeenPool;
-    }
-    const ranked = working
-      .map((row) => {
-        const cp = Number(row?.CombatPower || row?.combatPower || 0);
-        const diff = Math.abs(remainingTarget - cp);
-        return { row, diff };
-      })
-      .sort((a, b) => a.diff - b.diff);
-    const topK = ranked.slice(0, Math.max(1, Math.min(6, ranked.length)));
-    const rollPool = topK.length ? topK : ranked;
-    const pickIndex = Math.floor(rng() * rollPool.length);
-    const best = rollPool[Math.max(0, Math.min(rollPool.length - 1, pickIndex))].row;
-    if (capName) reasonCodes.push(`picked_${capName}`);
-    return best;
-  };
-
-  const pushPick = (row) => {
-    if (!row || selected.length >= slots) return;
-    selected.push(row);
-    usedNames.add(String(row.name || ''));
-  };
-
-  const normalizedPolicy = String(policy || 'mixed').trim().toLowerCase();
-  if (normalizedPolicy === 'solo_commander') {
-    const commander = pickBest(byRole.commander, target, 'commander');
-    if (commander) {
-      pushPick(commander);
-    } else {
-      reasonCodes.push('no_commander_for_solo_policy');
-      pushPick(pickBest(eligible, target, 'fallback_any'));
-    }
-  } else if (normalizedPolicy === 'fodder_only') {
-    while (selected.length < slots) {
-      const remaining = target - computeEncounterTotalCP(selected);
-      const fodder = pickBest(byRole.fodder, remaining, 'fodder');
-      if (!fodder) break;
-      pushPick(fodder);
-    }
-  } else {
-    // Mixed policy: allow any role and balance by CP fit + underused roster entries.
-    while (selected.length < slots) {
-      const remaining = target - computeEncounterTotalCP(selected);
-      let pick = pickBest(eligible, remaining, 'mixed_any');
-      if (!pick) pick = pickBest(byRole.fodder, remaining, 'fodder');
-      if (!pick) pick = pickBest(byRole.bodyguard, remaining, 'bodyguard');
-      if (!pick) pick = pickBest(byRole.commander, remaining, 'commander');
-      if (!pick) pick = pickBest(eligible, remaining, 'fallback_any');
-      if (!pick) break;
-      pushPick(pick);
-    }
-  }
-
-  const finalCP = computeEncounterTotalCP(selected);
-  const underfilled = selected.length < slots || finalCP < target;
-  if (selected.length < slots) reasonCodes.push('underfilled_slots');
-  if (finalCP < target) reasonCodes.push('underfilled_cp');
-  return {
-    selected,
-    finalCP,
-    targetCP: target,
-    deltaCP: target - finalCP,
-    slotsUsed: selected.length,
-    underfilled,
-    reasonCodes,
-  };
-}
+const initCombatSessionEntities = createCombatSessionInitializer({
+  state,
+  gameState,
+  fnContext,
+  callFunctionWithContext,
+  assertCombatLayoutDev,
+  computeCombatPower,
+  createSeededRng,
+  resetBootstrapRngSession,
+  generateEncounterSeed,
+  deriveCombatRuntimeRngSeed,
+  installCombatRuntimeRandom,
+  getConfiguredHeroSlots,
+  readEscortPartyConfig,
+  buildConfiguredCombatPartyMembers,
+  getConfiguredEnemySlots,
+  syncFromGlobals,
+});
 
 function initEntities(enemyRows, layoutInstances) {
-  assertCombatLayoutDev('initEntities');
-  state.entities = [];
-  state.globals.EnemyData = (enemyRows || []).map((row) => ({
-    ...row,
-    faction: normalizeFaction(row?.faction),
-    enemyRole: normalizeEnemyRole(row?.enemyRole || row?.role),
-    locale: String(row?.locale || row?.biome || row?.biomes || 'all').trim().toLowerCase() || 'all',
-    biome: String(row?.biome || row?.biomes || 'all').trim().toLowerCase() || 'all',
-    biomeTags: normalizeBiomeTags(row?.biomes || row?.biome || 'all'),
-    localeTags: normalizeBiomeTags(row?.localeTags || row?.locale_tags || row?.locale || row?.biomes || row?.biome || 'all'),
-    CombatPower: resolveEnemyEncounterCombatPower(row),
-  }));
-  const mappedEnemyData = state.globals.EnemyData;
-  state.globals.DevToolEnemyCatalog = [...new Set(state.globals.EnemyData.map((row) => String(row?.name || row?.EnemyName || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  state.globals.CombatSessionId = Number(state.globals.CombatSessionId || 0) + 1;
-  callFunctionWithContext(fnContext, 'ClearSessionSkillDraught');
-  resetBootstrapRngSession();
-
-  const partyHP = [];
-  const partyMaxHP = [];
-  const configuredHeroSlots = getConfiguredHeroSlots();
-  const escortConfig = readEscortPartyConfig();
-  const partyMembers = buildConfiguredCombatPartyMembers(configuredHeroSlots, escortConfig);
-  const heroSlotRoster = partyMembers.heroMembers;
-  for (let i = 0; i < CANONICAL_HERO_ROSTER.length; i++) {
-    const v = heroSlotRoster[i];
-    if (!v) {
-      partyHP[i] = 0;
-      partyMaxHP[i] = 0;
-      continue;
-    }
-    let maxHP = Number(v.maxHP);
-    if (!Number.isFinite(maxHP) || maxHP <= 0) maxHP = 1;
-    let hp = Number(v.hp);
-    if (!Number.isFinite(hp) || hp < 0) hp = maxHP;
-    if (hp > maxHP) hp = maxHP;
-    partyHP[i] = hp;
-    partyMaxHP[i] = maxHP;
-    state.entities.push({
-      uid: i + 1,
-      kind: 'hero',
-      name: v.instanceName,
-      baseHeroName: v.baseHeroName,
-      heroInstanceKey: v.heroInstanceKey,
-      heroCloneOrdinal: v.cloneOrdinal,
-      heroCloneLabel: v.cloneLabel,
-      hp,
-      maxHP: partyMaxHP[i],
-      combatPower: computeCombatPower(v.ATK, v.DEF, partyMaxHP[i]),
-      stats: {
-        ATK: Number(v.ATK),
-        DEF: Number(v.DEF),
-        MAG: Number(v.MAG),
-        RES: Number(v.RES),
-        SPD: Number(v.SPD),
-      },
-      heroIndex: Number(v.canonicalIndex || 0),
-      heroDisplaySlot: i,
-      attackType: v.attackType,
-      isAlive: true,
-    });
-    runtimeDebugLogging.startupDebugLog(`[HP_FIX] hero=${v.name} maxHP=${maxHP}`);
-  }
-  if (partyMembers.escortMember) {
-    const escortUID = state.entities.reduce((max, entity) => Math.max(max, Number(entity?.uid || 0)), 0) + 1;
-    const escortEntity = {
-      ...partyMembers.escortMember,
-      uid: escortUID,
-    };
-    state.entities.push(escortEntity);
-    state.globals.EscortNPCState = {
-      uid: escortUID,
-      name: escortEntity.name,
-      portraitName: escortEntity.baseHeroName,
-      hp: escortEntity.hp,
-      maxHP: escortEntity.maxHP,
-      displaySlot: escortEntity.heroDisplaySlot,
-      enabled: 1,
-    };
-  } else {
-    delete state.globals.EscortNPCState;
-  }
-
-  gameState.partyHP = partyHP;
-  gameState.partyMaxHP = partyMaxHP;
-  callFunctionWithContext(fnContext, 'InitPartyHPFromHeroes');
-  // Test lane seed: deterministic party skill-point stock for upgrade-consumption QA.
-  callFunctionWithContext(fnContext, 'SetHeroSkillPointsForParty', 300, 'ORKA-spt-seed');
-  state.globals.BattleStartMode = 'heroes';
-  state.globals.BattleStartResolved = 1;
-  state.globals.TeamPhaseType = 0;
-  state.globals.BattleStartShown = 1;
-  state.globals.BattleStartClearedForSession = 0;
-  const msg = 'Heroes take the initiative!';
-  state.globals.BattleStartText = msg;
-  state.globals.BattleStartSessionText = msg;
-  state.globals.BattleStartSessionId = Number(state.globals.CombatSessionId || 0);
-  state.globals.BattleStartActive = 1;
-  state.globals.BattleStartProcessStarted = 0;
-  state.globals.BattleStartEndsAt = 2.0;
-  state.globals.BattleStartFadeEndsAt = 2.4;
-  state.globals.IsPlayerBusy = 1;
-  state.globals.CanPickGems = 0;
-  // Ensure enemy UIDs don't collide with hero UIDs
-  state.globals.NextUID = state.entities.reduce((max, e) => Math.max(max, e.uid || 0), 0) + 1;
-
-  if (enemyRows && enemyRows.length) {
-    state.globals.InitialSpawn = 1;
-    const rawSeed = Number(state.globals.EncounterSeed || 0);
-    const explicitSeed = Number(state.globals.EncounterSeedExplicit || 0) === 1;
-    const encounterSeed = (explicitSeed && Number.isFinite(rawSeed) && rawSeed > 0)
-      ? rawSeed
-      : generateEncounterSeed();
-    state.globals.EncounterSeed = encounterSeed;
-    state.globals.EncounterSeedExplicit = 0;
-    installCombatRuntimeRandom(deriveCombatRuntimeRngSeed(encounterSeed), 'initEntities');
-    const encounterRequest = {
-      pool: mappedEnemyData,
-      targetCP: Number(state.globals.EncounterTargetCP || 120),
-      locale: String(state.globals.EncounterLocale || state.globals.CurrentLocale || 'clouds'),
-      maxSlots: Number(state.globals.EncounterMaxSlots || 3),
-      policy: String(state.globals.EncounterPolicy || 'mixed'),
-      seed: encounterSeed,
-      faction: String(state.globals.EncounterFaction || ''),
-      historyCounts: (state.globals.EncounterSeenCounts && typeof state.globals.EncounterSeenCounts === 'object')
-        ? state.globals.EncounterSeenCounts
-        : {},
-    };
-    runtimeDebugLogging.startupDebugLog(`[ENCOUNTER] seed=${encounterSeed} targetCP=${encounterRequest.targetCP} locale=${encounterRequest.locale} policy=${encounterRequest.policy}`);
-    const configuredEnemySlots = getConfiguredEnemySlots();
-    const hasManualEnemyLayout = configuredEnemySlots.some((value) => String(value || '').trim() !== DEV_TOOL_RANDOM_ENEMY_SLOT);
-    let encounter = null;
-    let spawnPlan = [];
-    if (hasManualEnemyLayout) {
-      const randomSlotIndexes = [];
-      for (let slotIndex = 0; slotIndex < configuredEnemySlots.length; slotIndex += 1) {
-        const slotValue = String(configuredEnemySlots[slotIndex] || '').trim();
-        if (!slotValue) continue;
-        if (slotValue === DEV_TOOL_RANDOM_ENEMY_SLOT) {
-          randomSlotIndexes.push(slotIndex);
-          continue;
-        }
-        const row = mappedEnemyData.find((entry) => String(entry?.name || entry?.EnemyName || '').trim() === slotValue);
-        if (row) spawnPlan.push({ row, slotIndex });
-      }
-      if (randomSlotIndexes.length) {
-        const randomEncounter = buildEncounterByBudget({
-          ...encounterRequest,
-          maxSlots: randomSlotIndexes.length,
-        });
-        const randomRows = randomEncounter.selected || [];
-        for (let i = 0; i < Math.min(randomSlotIndexes.length, randomRows.length); i += 1) {
-          spawnPlan.push({ row: randomRows[i], slotIndex: randomSlotIndexes[i] });
-        }
-      }
-      spawnPlan.sort((a, b) => Number(a.slotIndex || 0) - Number(b.slotIndex || 0));
-      encounter = {
-        selected: spawnPlan.map((entry) => entry.row),
-        finalCP: spawnPlan.reduce((sum, entry) => sum + Number(entry?.row?.CombatPower || entry?.row?.combatPower || 0), 0),
-        targetCP: Number(encounterRequest.targetCP || 0),
-        deltaCP: 0,
-        slotsUsed: spawnPlan.length,
-        underfilled: spawnPlan.length < configuredEnemySlots.filter((value) => String(value || '').trim() !== DEV_TOOL_EMPTY_SLOT).length,
-        reasonCodes: ['manual_enemy_slots'],
-      };
-    } else {
-      encounter = buildEncounterByBudget(encounterRequest);
-      const picks = encounter.selected || [];
-      spawnPlan = buildEncounterSpawnPlan(picks, { policy: encounterRequest.policy });
-    }
-    const picks = encounter.selected || [];
-    state.globals.EncounterSummary = encounter;
-    state.globals.EncounterPoolNames = hasManualEnemyLayout
-      ? picks.map((pick) => String(pick?.name || '')).filter(Boolean)
-      : deriveEncounterPoolNames({
-          pool: mappedEnemyData,
-          locale: encounterRequest.locale,
-          faction: encounterRequest.faction,
-        });
-    const seen = (state.globals.EncounterSeenCounts && typeof state.globals.EncounterSeenCounts === 'object')
-      ? state.globals.EncounterSeenCounts
-      : {};
-    for (const pick of picks) {
-      const key = String(pick?.name || '').trim();
-      if (!key) continue;
-      seen[key] = Number(seen[key] || 0) + 1;
-    }
-    state.globals.EncounterSeenCounts = seen;
-    for (let i = 0; i < spawnPlan.length; i++) {
-      const pick = spawnPlan[i].row;
-      const slotIndex = Number(spawnPlan[i].slotIndex || 0);
-      callFunctionWithContext(fnContext, 'SpawnEnemy', {
-        name: pick.name,
-        HP: Number(pick.HP || 0),
-        ATK: Number(pick.ATK || 0),
-        DEF: Number(pick.DEF || 0),
-        MAG: Number(pick.MAG || 0),
-        RES: Number(pick.RES || 0),
-        SPD: Number(pick.SPD || 0),
-        attackType: String(pick.attackType || ''),
-        faction: String(pick.faction || 'wishless'),
-        enemyRole: String(pick.enemyRole || 'fodder'),
-        localeTags: Array.isArray(pick.localeTags) ? pick.localeTags : ['all'],
-        CombatPower: Number(pick.CombatPower || pick.combatPower || resolveEnemyEncounterCombatPower(pick)),
-      }, slotIndex);
-    }
-    state.globals.InitialSpawn = 0;
-  }
-  // Ensure party starts at full health
-  if (state.globals.PartyMaxHP > 0) {
-    state.globals.PartyHP = state.globals.PartyMaxHP;
-    syncFromGlobals();
-  }
-  callFunctionWithContext(fnContext, 'UpdateEnemyHPUI');
-  if (state.globals.EnemyHPByIndex) {
-    gameState.enemyHP = [...state.globals.EnemyHPByIndex];
-    gameState.enemyMaxHP = [...state.globals.EnemyMaxHPByIndex];
-  }
+  return initCombatSessionEntities(enemyRows, layoutInstances);
 }
 
 // Create gem board with active colors (1-5: red, blue, yellow, heal, purple energy).
@@ -3494,15 +2294,6 @@ function makeImagePath(typeName, animName){
   return assetUrl(`images/${t}-${a}-000.png`);
 }
 
-async function loadImage(url){
-  return new Promise((res)=>{
-    const img = new Image();
-    img.onload = ()=>res(img);
-    img.onerror = ()=>res(null);
-    img.src = resolveRuntimeImageUrl(url);
-  });
-}
-
 async function main(){
   const HARNESS_MODE = window.location.search.includes('harness=true');
   if (HARNESS_MODE) {
@@ -3703,7 +2494,7 @@ async function main(){
     combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
     return true;
   }
-  devToolingRefreshHandler = refreshCombatSessionFromDevTooling;
+  requireDevToolingRuntime().setRefreshHandler(refreshCombatSessionFromDevTooling);
   async function loadC3ProjectAssets() {
     updateStartupLoadState({ active: true, phase: 'bootstrap', label: 'Loading layout data...', progress: 0.05 });
     runtimeLayouts = await fetchJson(assetUrl('layouts.json')) || {};
@@ -3745,167 +2536,37 @@ async function main(){
     out.textContent = renderHUD.withSkillDrawDebugText(gameState.baseSummary + '\n\nLoading images...', state.globals);
     updateStartupLoadState({ phase: 'bootstrap', label: 'Loading critical visuals...', progress: 0.3 });
 
-    images = {};
-    enemySpriteImages = {};
-    heroPortraitImages = {};
-    wardBarrierImage = null;
-    heroSkillIconsBySlot = [];
-    heroSelectorImage = null;
-    gemFrameImages = [];
-    superGemFrameImages = [];
-    superGemRainbowImage = null;
-    buffIconFrameImages = {};
-    debuffIconImages = {};
-    mapBackgroundImage = null;
-    heroCapsuleImages = {};
-    plusIconImage = null;
-    minusIconImage = null;
-    heroBackArrowImage = null;
-    heroNextArrowImage = null;
-    closeWinOvalImage = null;
-    let loadedCount = 0;
-    const failedImages = [];
-    const getSpriteImagePath = (t, data) => {
-      const pluginId = data && data['plugin-id'];
-      if (pluginId && pluginId !== 'Sprite') return null;
-      let animName = null;
-      try {
-        animName = data.animations && data.animations.items && data.animations.items[0] && data.animations.items[0].name;
-      } catch {}
-      const imgPath = makeImagePath(t, animName);
-      if (!imgPath) return null;
-      return { imgPath, animName };
-    };
-    const loadSpriteTypeImage = async (t, data) => {
-      const meta = getSpriteImagePath(t, data);
-      if (!meta) return { type: t, skipped: true };
-      try {
-        const img = await loadImage(meta.imgPath);
-        if (img) {
-          images[t] = img;
-          loadedCount++;
-          if (['UI_NavCloseButton', 'UI_NavCloseX', 'UI_CloseWin'].includes(t)) {
-            runtimeDebugLogging.startupDebugLog(`[LOAD] SUCCESS: ${t} loaded from ${meta.imgPath}`);
-          }
-          return { type: t, ok: true };
-        }
-        failedImages.push({ type: t, path: meta.imgPath, anim: meta.animName });
-        if (['UI_NavCloseButton', 'UI_NavCloseX', 'UI_CloseWin'].includes(t)) {
-          console.log(`[LOAD] FAILED: ${t} from ${meta.imgPath}`);
-        }
-        return { type: t, ok: false };
-      } catch (e) {
-        console.warn(`[LOAD] Failed to load image for type ${t}:`, e.message);
-        failedImages.push({ type: t, path: meta.imgPath, anim: meta.animName });
-        return { type: t, ok: false, reason: e.message };
-      }
-    };
-    const loadBaseSprites = async (typeNames, progressStart = null, progressEnd = null) => {
-      const names = Array.isArray(typeNames) ? typeNames : [];
-      if (names.length === 0) return;
-      let completed = 0;
-      await Promise.all(names.map(async (t) => {
-        await loadSpriteTypeImage(t, types[t]);
-        completed += 1;
-        if (progressStart != null && progressEnd != null) {
-          const tNorm = completed / names.length;
-          const pct = progressStart + ((progressEnd - progressStart) * tNorm);
-          updateStartupLoadState({ progress: pct });
-        }
-      }));
-    };
-
-    const loadCoreVisuals = async () => {
-      const tasks = [];
-      const heroPortraitLoads = ['Falie', 'Huun', 'Runa', 'Kojonn'].map(async (heroName) => {
-        heroPortraitImages[heroName] = await loadImage(assetUrl(`images/cap_${heroName}.png`));
-      });
-      const wardBarrierLoad = (async () => {
-        wardBarrierImage = await loadImage(assetUrl('images/falie_ward_84x62.png'));
-      })();
-      const heroSkillIconLoads = [
-        'images/bufficon1-animation 1-000.png',
-        'images/bufficon2-animation 1-000.png',
-        'images/bufficon3-animation 1-000.png',
-      ].map(async (imgPath, idx) => {
-        heroSkillIconsBySlot[idx] = await loadImage(assetUrl(imgPath));
-      });
-      const gemVisualLoads = (async () => {
-        const loadedGemVisuals = await gemVisuals.loadGemVisuals({ assetUrl, loadImage });
-        gemFrameImages = loadedGemVisuals.gemFrameImages;
-        superGemFrameImages = loadedGemVisuals.superGemFrameImages;
-        superGemRainbowImage = loadedGemVisuals.superGemRainbowImage;
-      })();
-      const heroCapsuleLoads = CANONICAL_HERO_ROSTER.map(async (hero) => {
-        const key = String(hero.name || '');
-        if (!key) return;
-        heroCapsuleImages[key] = await loadImage(assetUrl(`images/cap_${key}.png`));
-      });
-      const plusPromise = loadImage(assetUrl(HERO_PACK_PLUS_PATH)).then(img => img || loadImage(FIGMA_PLUS_URL));
-      const minusPromise = loadImage(assetUrl(HERO_PACK_MINUS_PATH)).then(img => img || loadImage(FIGMA_MINUS_URL));
-      const closePromise = loadImage(assetUrl(HERO_PACK_CLOSE_OVAL_PATH)).then(img => img || loadImage(FIGMA_HERO_CLOSE_OVAL_URL));
-
-      tasks.push(
-        ...heroPortraitLoads,
-        wardBarrierLoad,
-        ...heroSkillIconLoads,
-        ...heroCapsuleLoads,
-        gemVisualLoads,
-        (async () => { heroSelectorImage = await loadImage(assetUrl('images/h_selector-animation 1-000.png')); })(),
-        (async () => { mapBackgroundImage = await loadImage(assetUrl('images/map-layout.png')); })(),
-        (async () => { plusIconImage = await plusPromise; })(),
-        (async () => { minusIconImage = await minusPromise; })(),
-        (async () => { heroBackArrowImage = await loadImage(FIGMA_HERO_BACK_URL); })(),
-        (async () => { heroNextArrowImage = await loadImage(FIGMA_HERO_NEXT_URL); })(),
-        (async () => { closeWinOvalImage = await closePromise; })(),
-      );
-
-      let completed = 0;
-      const total = Math.max(1, tasks.length);
-      await Promise.all(tasks.map(async (task) => {
-        await task;
-        completed += 1;
-        const tNorm = completed / total;
-        updateStartupLoadState({ progress: 0.55 + (0.35 * tNorm) });
-      }));
-    };
-
-    const loadDeferredVisuals = async () => {
-      const enemyType = types['Enemy_Sprite'];
-      if (enemyType && enemyType.animations && Array.isArray(enemyType.animations.items)) {
-        for (const anim of enemyType.animations.items) {
-          const animName = anim.name;
-          const imgPath = makeImagePath('Enemy_Sprite', animName);
-          if (!imgPath) continue;
-          const img = await loadImage(imgPath);
-          if (img) enemySpriteImages[String(animName).toLowerCase()] = img;
-        }
-        runtimeDebugLogging.startupDebugLog('[LOAD] Enemy_Sprite animations loaded:', Object.keys(enemySpriteImages).length);
-      }
-      for (let i = 1; i <= 4; i++) {
-        const key = `buffIcon${i}`;
-        buffIconFrameImages[key] = [];
-        for (let f = 0; f < 5; f++) {
-          const imgPath = assetUrl(`images/bufficon${i}-animation 1-${String(f).padStart(3, '0')}.png`);
-          const img = await loadImage(imgPath);
-          if (img) buffIconFrameImages[key][f] = img;
-        }
-      }
-      debuffIconImages.ATK = await loadImage(assetUrl('images/ATK_down.png'));
-      debuffIconImages.DEF = await loadImage(assetUrl('images/DEF_down.png'));
-      debuffIconImages.MAG = await loadImage(assetUrl('images/MAG_down.png'));
-      debuffIconImages.RES = await loadImage(assetUrl('images/RES_down.png'));
-      debuffIconImages.SPD = await loadImage(assetUrl('images/SPD_down.png'));
-    };
-
     try {
-      const allTypeNames = Object.keys(types);
-      await loadBaseSprites(allTypeNames, 0.3, 0.74);
-      updateStartupLoadState({ phase: 'bootstrap', label: 'Loading hero and board visuals...', progress: 0.74 });
-      await loadCoreVisuals();
-      updateStartupLoadState({ phase: 'bootstrap', label: 'Loading extended visuals...', progress: 0.9 });
-      await loadDeferredVisuals();
-      updateStartupLoadState({ phase: 'bootstrap', label: 'Finalizing runtime...', progress: 0.96 });
+      const visualAssets = await loadRuntimeVisualAssets({
+        types,
+        assetUrl,
+        makeImagePath,
+        gemVisuals,
+        updateStartupLoadState,
+        runtimeDebugLogging,
+        resolveRuntimeImageUrl,
+      });
+      ({
+        images,
+        enemySpriteImages,
+        heroPortraitImages,
+        wardBarrierImage,
+        heroSkillIconsBySlot,
+        heroSelectorImage,
+        gemFrameImages,
+        superGemFrameImages,
+        superGemRainbowImage,
+        buffIconFrameImages,
+        debuffIconImages,
+        mapBackgroundImage,
+        heroCapsuleImages,
+        plusIconImage,
+        minusIconImage,
+        heroBackArrowImage,
+        heroNextArrowImage,
+        closeWinOvalImage,
+      } = visualAssets);
+      const { loadedCount, failedImages } = visualAssets;
       console.log(`[LOAD] Core assets loaded: ${loadedCount}/${Object.keys(types).length} base sprites`);
       if(failedImages.length > 0) {
         console.log(`[LOAD] Failed images (first 5):`, failedImages.slice(0, 5).map(f => `${f.type}(${f.path})`).join(', '));
@@ -3936,349 +2597,79 @@ async function main(){
     })();
     return startupPreloadPromise;
   }
-  const registerCoreLayouts = (layoutState, { combatGateway: gateway }) => {
-    const validateCombatSnapshot = (snapshot, stage, transitionLabel) => {
-      const valid = !snapshot || (
-        Array.isArray(snapshot.turnQueue) &&
-        Number.isFinite(Number(snapshot.currentActorIndex))
-      );
-      console.log('[LAYOUT_PHASE1]', {
-        stage,
-        transition: transitionLabel,
-        hasSnapshot: Boolean(snapshot),
-        snapshotValid: valid,
-      });
-      return valid;
-    };
+  const validateCombatSnapshot = (snapshot, stage, transitionLabel) => {
+    const valid = !snapshot || (
+      Array.isArray(snapshot.turnQueue) &&
+      Number.isFinite(Number(snapshot.currentActorIndex))
+    );
+    console.log('[LAYOUT_PHASE1]', {
+      stage,
+      transition: transitionLabel,
+      hasSnapshot: Boolean(snapshot),
+      snapshotValid: valid,
+    });
+    return valid;
+  };
 
-    layoutState.registerLayout({
-      id: 'combat',
-      allowedTransitions: ['base', 'shop', 'intro', 'idleFarmLayout', 'mapLayout', 'heroLayout', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'relicsLayout', 'petsLayout', 'evolutionLayout', 'homesteadLayout', 'chestsLayout', 'storyMock', 'town'],
-      async onEnter({ resumeSnapshot, payload, reason }) {
-        const hasRuntimeData =
-          Array.isArray(instances) && instances.length > 0 &&
-          types && Object.keys(types).length > 0 &&
-          Array.isArray(enemyRows) && enemyRows.length > 0;
-        const needsBootstrap = !freshCombatBootstrapped || !hasRuntimeData;
-        const freshCombatStart = reason === 'town-click' || !!payload?.freshStart;
-        const needsCombatSeed = freshCombatStart || !combatSessionSeeded;
+  const combatLayout = {
+    id: 'combat',
+    allowedTransitions: ['base', 'shop', 'intro', 'idleFarmLayout', 'mapLayout', 'heroLayout', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'relicsLayout', 'petsLayout', 'evolutionLayout', 'homesteadLayout', 'chestsLayout', 'storyMock', 'town'],
+    async onEnter({ resumeSnapshot, payload, reason }) {
+      const hasRuntimeData =
+        Array.isArray(instances) && instances.length > 0 &&
+        types && Object.keys(types).length > 0 &&
+        Array.isArray(enemyRows) && enemyRows.length > 0;
+      const needsBootstrap = !freshCombatBootstrapped || !hasRuntimeData;
+      const freshCombatStart = reason === 'town-click' || !!payload?.freshStart;
+      const needsCombatSeed = freshCombatStart || !combatSessionSeeded;
 
-        validateCombatSnapshot((freshCombatStart ? null : resumeSnapshot) || null, 'onEnter', 'x->1');
-        console.log('[Layout] Combat activated via LayoutState');
-        COMBAT_LAYOUT_READY = true;
-        console.log('[LayoutGuard] Combat layout ready');
-        if (needsBootstrap) {
-          if (!hasRuntimeData) {
-            console.log('[LayoutGuard] Combat bootstrap forcing asset init (missing runtime data)');
-            await beginLayout0Preload();
-            if (gameState.startupLoad?.phase === 'error') {
-              throw new Error('Layout 0 preload not ready; combat transition blocked');
-            }
-          }
-          state.globals.GamePhase = 'BOOTSTRAP';
-          runtimeDebugLogging.startupDebugLog('[INIT] Starting initialization...');
-          prepareCombatSetupFromInstances(instances, gameState);
-          freshCombatBootstrapped = true;
-          COMBAT_BOOTSTRAP_COMPLETE = true;
-        }
-        gateway.resume(freshCombatStart ? null : (resumeSnapshot || null));
-        if (needsCombatSeed) {
-          initEntities(enemyRows, instances);
-          heroGemProgressStorage.restoreHeroGemProgressFromStorage({ callFunctionWithContext, fnContext, syncFromGlobals });
-          assertCombatLayoutDev('StartRound');
-          callFunctionWithContext(fnContext, 'StartRound');
-          createGemBoard(gridBounds);
-          combatSessionSeeded = true;
-          updateStartupLoadState({ active: false, phase: 'runtime', label: 'Ready', progress: 1 });
-          if (runtimeDebugLogging.isGemDebugEnabled(state) && GEM_INTERACTIVITY_DIAGNOSTIC_QUERY) {
-            setTimeout(() => {
-              runGemInteractivityDiagnostic().catch((err) => {
-                console.error('[DIAG] Gem interactivity diagnostic failed:', err);
-              });
-            }, 1000);
+      validateCombatSnapshot((freshCombatStart ? null : resumeSnapshot) || null, 'onEnter', 'x->1');
+      console.log('[Layout] Combat activated via LayoutState');
+      COMBAT_LAYOUT_READY = true;
+      console.log('[LayoutGuard] Combat layout ready');
+      if (needsBootstrap) {
+        if (!hasRuntimeData) {
+          console.log('[LayoutGuard] Combat bootstrap forcing asset init (missing runtime data)');
+          await beginLayout0Preload();
+          if (gameState.startupLoad?.phase === 'error') {
+            throw new Error('Layout 0 preload not ready; combat transition blocked');
           }
         }
-        gameState.combatFailExitRequested = false;
-        initializeStoryCardLayout('layout1-active');
-        eventBus.emit('layout:combat:entered', { restored: Boolean(resumeSnapshot) });
-      },
-      onActive() {},
-      onExit({ to }) {
-        gameState.storyCardLayout.initialized = false;
-        const snapshot = gateway.suspend();
-        const transitionLabel = to === 'idleFarmLayout' ? '1->2' : '1->x';
-        validateCombatSnapshot(snapshot, 'onExit', transitionLabel);
-        return snapshot;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'mapLayout',
-      allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'collectiblesLayout', 'relicsLayout', 'petsLayout', 'homesteadLayout'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        mapLayoutState.setMapPanY(0);
-        mapLayoutState.setMapLayoutField('tomesLocaleHit', null);
-        mapLayoutState.setMapLayoutField('artifactsLocaleHit', null);
-        mapLayoutState.setMapLayoutField('mountsLocaleHit', null);
-        mapLayoutState.setMapLayoutField('collectiblesLocaleHit', null);
-        mapLayoutState.setMapLayoutField('relicsLocaleHit', null);
-        mapLayoutState.setMapLayoutField('homesteadLocaleHit', null);
-        mapLayoutState.setMapLayoutField('closeHit', null);
-        mapLayoutState.setMapDragState({
-          active: false,
-          pointerId: null,
-          lastX: 0,
-          lastY: 0,
-          moved: 0,
-        });
-        console.log('[LAYOUT_PHASE1]', { stage: 'onEnter', transition: '1->map', trigger: 'map-click' });
-      },
-      onActive() {},
-      onExit() { return null; },
-    });
-    layoutState.registerLayout({
-      id: 'tomesLayout',
-      allowedTransitions: ['chestsLayout', 'combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        gameState.tomesLayout.hitZones = null;
-        gameState.tomesLayout.selectedIndex = Math.max(
-          0,
-          Math.min(
-            Math.max(0, (gameState.tomesLayout.gallery || []).length - 1),
-            Number(gameState.tomesLayout.selectedIndex || 0),
-          ),
-        );
-      },
-      onActive() {},
-      onExit() {
-        gameState.tomesLayout.hitZones = null;
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'artifactsLayout',
-      allowedTransitions: ['chestsLayout', 'combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        gameState.artifactsLayout.hitZones = null;
-        gameState.artifactsLayout.selectedIndex = Math.max(
-          0,
-          Math.min(
-            Math.max(0, (gameState.artifactsLayout.gallery || []).length - 1),
-            Number(gameState.artifactsLayout.selectedIndex || 0),
-          ),
-        );
-      },
-      onActive() {},
-      onExit() {
-        gameState.artifactsLayout.hitZones = null;
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'mountsLayout',
-      allowedTransitions: ['chestsLayout', 'combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        gameState.mountsLayout.hitZones = null;
-        gameState.mountsLayout.selectedIndex = Math.max(
-          0,
-          Math.min(
-            Math.max(0, (gameState.mountsLayout.gallery || []).length - 1),
-            Number(gameState.mountsLayout.selectedIndex || 0),
-          ),
-        );
-      },
-      onActive() {},
-      onExit() {
-        gameState.mountsLayout.hitZones = null;
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'collectiblesLayout',
-      allowedTransitions: ['chestsLayout', 'combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        gameState.collectiblesLayout.hitZones = null;
-        gameState.collectiblesLayout.selectedIndex = Math.max(
-          0,
-          Math.min(
-            Math.max(0, (gameState.collectiblesLayout.gallery || []).length - 1),
-            Number(gameState.collectiblesLayout.selectedIndex || 0),
-          ),
-        );
-      },
-      onActive() {},
-      onExit() {
-        gameState.collectiblesLayout.hitZones = null;
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'relicsLayout',
-      allowedTransitions: ['chestsLayout', 'combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        gameState.relicsLayout.hitZones = null;
-        gameState.relicsLayout.selectedIndex = Math.max(
-          0,
-          Math.min(
-            Math.max(0, (gameState.relicsLayout.gallery || []).length - 1),
-            Number(gameState.relicsLayout.selectedIndex || 0),
-          ),
-        );
-      },
-      onActive() {},
-      onExit() {
-        gameState.relicsLayout.hitZones = null;
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'petsLayout',
-      allowedTransitions: ['chestsLayout', 'combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        gameState.petsLayout.hitZones = null;
-        gameState.petsLayout.selectedIndex = Math.max(
-          0,
-          Math.min(
-            Math.max(0, (gameState.petsLayout.gallery || []).length - 1),
-            Number(gameState.petsLayout.selectedIndex || 0),
-          ),
-        );
-      },
-      onActive() {},
-      onExit() {
-        gameState.petsLayout.hitZones = null;
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'evolutionLayout',
-      allowedTransitions: ['chestsLayout', 'combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        gameState.evolutionLayout.hitZones = null;
-        gameState.evolutionLayout.selectedLevel = Math.max(
-          0,
-          Math.min(
-            Math.max(0, (gameState.evolutionLayout.ladder || []).length - 1),
-            Number(gameState.evolutionLayout.selectedLevel || 0),
-          ),
-        );
-      },
-      onActive() {},
-      onExit() {
-        gameState.evolutionLayout.hitZones = null;
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'homesteadLayout',
-      allowedTransitions: ['chestsLayout', 'combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        gameState.homesteadLayout.hitZones = null;
-        gameState.homesteadLayout.selectedSlot = Math.max(
-          0,
-          Math.min(
-            Math.max(0, ((gameState.homesteadLayout.scene && gameState.homesteadLayout.scene.slots) || []).length - 1),
-            Number(gameState.homesteadLayout.selectedSlot || 0),
-          ),
-        );
-      },
-      onActive() {},
-      onExit() {
-        gameState.homesteadLayout.hitZones = null;
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'chestsLayout',
-      allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'collectiblesLayout', 'relicsLayout', 'petsLayout', 'evolutionLayout', 'homesteadLayout'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        gameState.chestsLayout.hitZones = null;
-        const tabs = Array.isArray(gameState.chestsLayout.tabs) ? gameState.chestsLayout.tabs : [];
-        const allowed = new Set(tabs.map((t) => String(t.id || '')));
-        if (!allowed.has(String(gameState.chestsLayout.activeTab || ''))) {
-          gameState.chestsLayout.activeTab = tabs.length ? String(tabs[0].id || 'Common') : 'Common';
+        state.globals.GamePhase = 'BOOTSTRAP';
+        runtimeDebugLogging.startupDebugLog('[INIT] Starting initialization...');
+        prepareCombatSetupFromInstances(instances, gameState);
+        freshCombatBootstrapped = true;
+        COMBAT_BOOTSTRAP_COMPLETE = true;
+      }
+      combatRuntimeGateway.resume(freshCombatStart ? null : (resumeSnapshot || null));
+      if (needsCombatSeed) {
+        initEntities(enemyRows, instances);
+        heroGemProgressStorage.restoreHeroGemProgressFromStorage({ callFunctionWithContext, fnContext, syncFromGlobals });
+        assertCombatLayoutDev('StartRound');
+        callFunctionWithContext(fnContext, 'StartRound');
+        createGemBoard(gridBounds);
+        combatSessionSeeded = true;
+        updateStartupLoadState({ active: false, phase: 'runtime', label: 'Ready', progress: 1 });
+        if (runtimeDebugLogging.isGemDebugEnabled(state) && GEM_INTERACTIVITY_DIAGNOSTIC_QUERY) {
+          setTimeout(() => {
+            runGemInteractivityDiagnostic().catch((err) => {
+              console.error('[DIAG] Gem interactivity diagnostic failed:', err);
+            });
+          }, 1000);
         }
-      },
-      onActive() {},
-      onExit() {
-        gameState.chestsLayout.hitZones = null;
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'heroLayout',
-      allowedTransitions: ['combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        uiState.setUIStateField('heroScreenHitZones', null);
-        normalizeHeroSelectionIndex();
-      },
-      onActive() {},
-      onExit() {
-        uiState.setUIStateField('heroScreenHitZones', null);
-        return null;
-      },
-    });
-    layoutState.registerLayout({
-      id: 'base',
-      allowedTransitions: ['combat', 'shop', 'intro'],
-      onEnter() {},
-      onActive() {},
-      onExit() { return null; },
-    });
-    layoutState.registerLayout({
-      id: 'intro',
-      allowedTransitions: ['base', 'combat'],
-      onEnter() {},
-      onActive() {},
-      onExit() { return null; },
-    });
-    layoutState.registerLayout({
-      id: 'shop',
-      allowedTransitions: ['base', 'combat'],
-      onEnter() {},
-      onActive() {},
-      onExit() { return null; },
-    });
-    layoutState.registerLayout({
-      id: 'storyMock',
-      allowedTransitions: ['town'],
-      onEnter() {
-        gameState.combatFailExitRequested = false;
-      },
-      onActive() {},
-      onExit() { return null; },
-    });
-    layoutState.registerLayout({
-      id: 'town',
-      allowedTransitions: ['combat'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        restorePartyToFullHP();
-      },
-      onActive() {},
-      onExit() { return null; },
-    });
-    layoutState.registerLayout({
-      id: 'idleFarmLayout',
-      allowedTransitions: ['combat', 'storyMock'],
-      onEnter() {
-        uiState.setUIStateField('overlayVisible', false);
-        startIdleFarmEmissions(performance.now() / 1000);
-        restartIdleFarmSession(performance.now() / 1000);
-      },
-      onActive() {},
-      onExit() { return null; },
-    });
+      }
+      gameState.combatFailExitRequested = false;
+      initializeStoryCardLayout('layout1-active');
+      eventBus.emit('layout:combat:entered', { restored: Boolean(resumeSnapshot) });
+    },
+    onActive() {},
+    onExit({ to }) {
+      gameState.storyCardLayout.initialized = false;
+      const snapshot = combatRuntimeGateway.suspend();
+      const transitionLabel = to === 'idleFarmLayout' ? '1->2' : '1->x';
+      validateCombatSnapshot(snapshot, 'onExit', transitionLabel);
+      return snapshot;
+    },
   };
 
   layoutState = createLayoutStateSingleton({
@@ -4288,7 +2679,21 @@ async function main(){
     inputDomains,
   });
   combatRuntimeGateway.setLayoutState(layoutState);
-  registerCoreLayouts(layoutState, { combatGateway: combatRuntimeGateway });
+  registerRuntimeLayouts(layoutState, {
+    combatLayout,
+    uiState,
+    mapLayoutState,
+    gameState,
+    normalizeHeroSelectionIndex,
+    restorePartyToFullHP,
+    startIdleFarmEmissions,
+    restartIdleFarmSession,
+    getNowSec: () => performance.now() / 1000,
+  });
+  const harnessEventBus = eventBus;
+  const harnessInputDomains = inputDomains;
+  const harnessCombatGateway = combatRuntimeGateway;
+  const harnessLayoutState = layoutState;
 
   state.globals.Player_maxEnergy = 150;
   state.globals.Player_Energy = state.globals.Player_maxEnergy;
@@ -4392,23 +2797,22 @@ async function main(){
   }
   const runtimeListenerTeardowns = [];
 
-  function resizeCanvas() {
-    const metrics = resizeCanvasToContainedViewport({ canvas, layoutW, layoutH });
-    dpr = metrics.dpr;
-    layoutScale = metrics.layoutScale;
-    layoutOffsetX = metrics.layoutOffsetX;
-    layoutOffsetY = metrics.layoutOffsetY;
-    if (typeof window !== 'undefined') {
-      window.__orkaAppViewport = metrics;
-    }
-  }
-  resizeCanvas();
-  const handleWindowResize = () => {
-    resizeCanvas();
-    initializeStoryCardLayout('window-resize');
-    if (typeof drawFrame === 'function') drawFrame();
-  };
-  runtimeListenerTeardowns.push(addAppViewportResizeListener(handleWindowResize));
+  const viewportRuntime = createAppViewportRuntime({
+    canvas,
+    layoutW,
+    layoutH,
+    onMetrics(metrics) {
+      dpr = metrics.dpr;
+      layoutScale = metrics.layoutScale;
+      layoutOffsetX = metrics.layoutOffsetX;
+      layoutOffsetY = metrics.layoutOffsetY;
+    },
+    onResize() {
+      initializeStoryCardLayout('window-resize');
+      if (typeof drawFrame === 'function') drawFrame();
+    },
+  });
+  runtimeListenerTeardowns.push(viewportRuntime.teardown);
 
   // Map Construct world coords to canvas coords (preserve layout aspect/position)
   function worldToCanvas(wx, wy) {
@@ -4432,70 +2836,18 @@ async function main(){
   }
 
   function initializeStoryCardLayout(trigger = 'layout-active') {
-    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
-      ? layoutState.getActiveLayoutId()
-      : null;
-    if (activeLayoutId !== 'combat') return false;
-
-    const viewLeft = layoutOffsetX;
-    const viewTop = layoutOffsetY;
-    const viewWidth = layoutW * layoutScale;
-    const contentBandWidth = viewWidth * 0.95;
-    const slotX = viewLeft + (viewWidth - contentBandWidth) * 0.5;
-
-    const hpBarInstance = (instances || []).find(ins => ins && ins.type === 'PartyHP_Bar' && ins.world);
-    const hpBarBottom = hpBarInstance
-      ? (() => {
-          const p = worldToCanvas(hpBarInstance.world.x || 0, hpBarInstance.world.y || 0);
-          const h = Number(hpBarInstance.world.height || 0) * layoutScale;
-          const oy = Number(hpBarInstance.world.originY != null ? hpBarInstance.world.originY : 0);
-          return p.y - (h * oy) + h;
-        })()
-      : 0;
-    const hpBarHeight = hpBarInstance ? Number(hpBarInstance.world.height || 0) * layoutScale : 0;
-    const ampBarBottom = hpBarBottom
-      ? hpBarBottom + hpBarHeight + Math.max(4, Math.round(hpBarHeight * 0.55))
-      : 0;
-    const buffTypes = new Set(['buffIcon1', 'buffIcon2', 'buffIcon3', 'buffIcon4']);
-    const buffInstances = (instances || []).filter(ins => ins && buffTypes.has(ins.type) && ins.world);
-    const layoutAnchorBottom = buffInstances.length
-      ? Math.max(...buffInstances.map(ins => {
-          const p = worldToCanvas(ins.world.x || 0, ins.world.y || 0);
-          const h = Number(ins.world.height || 0) * layoutScale;
-          const oy = Number(ins.world.originY != null ? ins.world.originY : 0.5);
-          return p.y - (h * oy) + h;
-        }))
-      : (ampBarBottom || hpBarBottom || (viewTop + Math.max(240, Math.round(250 * layoutScale))));
-
-    const grid = gameState.gridBounds || {
-      minX: boardGeometry.gx,
-      minY: boardGeometry.gy,
-      maxX: boardGeometry.gx + (boardGeometry.cols * boardGeometry.cellSize + (boardGeometry.cols - 1) * boardGeometry.gap),
-      maxY: boardGeometry.gy + (boardGeometry.rows * boardGeometry.cellSize + (boardGeometry.rows - 1) * boardGeometry.gap),
-    };
-    const gridTop = layoutOffsetY + Number(grid.minY || 0) * layoutScale;
-    const topMargin = Math.max(8, Math.round(10 * layoutScale));
-    const bottomMargin = Math.max(8, Math.round(10 * layoutScale));
-    const slotY = layoutAnchorBottom + topMargin;
-    const rawH = gridTop - bottomMargin - slotY;
-    const slotH = Math.max(Math.round(34 * layoutScale), Math.min(Math.round(58 * layoutScale), rawH));
-    const adjustedY = rawH >= Math.round(24 * layoutScale)
-      ? slotY
-      : (gridTop - bottomMargin - Math.max(Math.round(34 * layoutScale), Math.round(38 * layoutScale)));
-
-    const bounds = {
-      x: slotX,
-      y: adjustedY,
-      w: contentBandWidth,
-      h: Math.max(Math.round(34 * layoutScale), slotH),
-    };
-    gameState.storyCardLayout = {
-      ...bounds,
-      initialized: true,
-      trigger: String(trigger || 'layout-active'),
-    };
-    traceTask015StoryPlacement(trigger, bounds);
-    return true;
+    return initializeStoryCardPresentationLayout({
+      trigger,
+      activeLayoutId: layoutState && typeof layoutState.getActiveLayoutId === 'function'
+        ? layoutState.getActiveLayoutId()
+        : null,
+      gameState,
+      instances,
+      boardGeometry,
+      layoutMetrics: { layoutW, layoutScale, layoutOffsetX, layoutOffsetY },
+      worldToCanvas,
+      tracePlacement: traceTask015StoryPlacement,
+    });
   }
 
   if (layoutHarnessEnabled && harnessLayoutState) {
@@ -4767,119 +3119,46 @@ async function main(){
   // Track last overlay state for logging only on change
   let lastOverlayState = null;
 
-  function drawHarnessLayoutTakeover(layoutId) {
-    const viewWidth = canvas.width / dpr;
-    const viewHeight = canvas.height / dpr;
-    const applyLayoutResult = (layoutRef, result) => {
-      if (layoutRef && result && result.hitZones) layoutRef.hitZones = result.hitZones;
-      uiState.setUIFields((result && result.uiPatches) || {});
-      if (result && result.drawHudAfter) drawHUD();
-    };
+  const surfaceRenderRouter = createSurfaceRenderRouter({
+    ctx,
+    canvas,
+    gameState,
+    uiState,
+    mapLayoutState,
+    animationMath,
+    heroLayoutSpec,
+    getCloseWinOvalImage: () => closeWinOvalImage,
+    getMapBackgroundImage: () => mapBackgroundImage,
+    renderHeroScreenLayoutV2,
+    getDpr: () => dpr,
+    getFreshCombatBootstrapped: () => freshCombatBootstrapped,
+    getStartupFingerprintLabel: () => RUNTIME_FINGERPRINT.label,
+    getHeroScreenDeps: () => ({
+      fnContext,
+      closeWinOvalImage,
+      heroPortraitImages,
+      heroSkillSpriteSheetImage: null,
+      heroSkillIconImages: [
+        heroSkillIconsBySlot[0] || null,
+        heroSkillIconsBySlot[1] || null,
+        heroSkillIconsBySlot[2] || null,
+      ],
+    }),
+    getIdleFarmDeps: () => ({
+      nowSec: performance.now() / 1000,
+      animationMath,
+      updateIdleFarmEmissions,
+      startIdleFarmEmissions,
+      updateIdleFarmSession,
+      ensureIdleFarmSession,
+      heroCapsuleImages,
+      enemySpriteImages,
+    }),
+    drawHUD,
+  });
 
-    switch (layoutId) {
-      case 'mapLayout': {
-        mapLayoutState.setMapPanY(0);
-        const mapRenderResult = renderMap.renderMap(
-          ctx,
-          gameState,
-          uiState.getUIState(),
-          mapLayoutState.getMapLayoutState(),
-          {
-            viewWidth,
-            viewHeight,
-            mapBackgroundImage,
-            heroLayoutSpec,
-            closeWinOvalImage,
-          },
-        );
-        mapLayoutState.setMapLayoutBounds(mapRenderResult.panBounds);
-        mapLayoutState.setMapPanX(mapRenderResult.clampedPanX);
-        mapLayoutState.setMapLayoutField('lastRender', mapRenderResult.lastRender);
-        mapLayoutState.setMapLayoutField('closeHit', mapRenderResult.closeHit);
-        mapLayoutState.setMapLayoutField('tomesLocaleHit', mapRenderResult.localeHits.tomesLocaleHit);
-        mapLayoutState.setMapLayoutField('artifactsLocaleHit', mapRenderResult.localeHits.artifactsLocaleHit);
-        mapLayoutState.setMapLayoutField('mountsLocaleHit', mapRenderResult.localeHits.mountsLocaleHit);
-        mapLayoutState.setMapLayoutField('relicsLocaleHit', mapRenderResult.localeHits.relicsLocaleHit);
-        mapLayoutState.setMapLayoutField('collectiblesLocaleHit', mapRenderResult.localeHits.collectiblesLocaleHit);
-        mapLayoutState.setMapLayoutField('homesteadLocaleHit', mapRenderResult.localeHits.homesteadLocaleHit);
-        return;
-      }
-      case 'tomesLayout':
-        applyLayoutResult(gameState.tomesLayout, renderTomes.renderTomes(ctx, gameState, { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage }));
-        return;
-      case 'artifactsLayout':
-        applyLayoutResult(gameState.artifactsLayout, renderArtifacts.renderArtifacts(ctx, gameState, { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage }));
-        return;
-      case 'mountsLayout':
-        applyLayoutResult(gameState.mountsLayout, renderMounts.renderMounts(ctx, gameState, { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage }));
-        return;
-      case 'collectiblesLayout':
-        applyLayoutResult(gameState.collectiblesLayout, renderCollectibles.renderCollectibles(ctx, gameState, { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage }));
-        return;
-      case 'relicsLayout':
-        applyLayoutResult(gameState.relicsLayout, renderRelics.renderRelics(ctx, gameState, { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage }));
-        return;
-      case 'petsLayout':
-        applyLayoutResult(gameState.petsLayout, renderPets.renderPets(ctx, gameState, { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage }));
-        return;
-      case 'idleFarmLayout': {
-        const nowSec = performance.now() / 1000;
-        applyLayoutResult(
-          gameState.idleFarmLayout,
-          renderIdleFarm.renderIdleFarm(
-            ctx,
-            gameState,
-            {
-              nowSec,
-              animationMath,
-              updateIdleFarmEmissions,
-              startIdleFarmEmissions,
-              updateIdleFarmSession,
-              ensureIdleFarmSession,
-              heroCapsuleImages,
-              enemySpriteImages,
-            },
-            { viewWidth, viewHeight },
-          ),
-        );
-        return;
-      }
-      case 'evolutionLayout':
-        applyLayoutResult(gameState.evolutionLayout, renderEvolution.renderEvolution(ctx, gameState, { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage }));
-        return;
-      case 'homesteadLayout':
-        applyLayoutResult(gameState.homesteadLayout, renderHomestead.renderHomestead(ctx, gameState, { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage }));
-        return;
-      case 'chestsLayout':
-        applyLayoutResult(gameState.chestsLayout, renderChests.renderChests(ctx, gameState, { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage }));
-        return;
-      case 'heroLayout': {
-        renderHeroScreenLayoutV2({
-          ctx,
-          canvas,
-          dpr,
-          gameState,
-          fnContext,
-          closeWinOvalImage,
-          heroPortraitImages,
-          heroSkillSpriteSheetImage: null,
-          heroSkillIconImages: [
-            heroSkillIconsBySlot[0] || null,
-            heroSkillIconsBySlot[1] || null,
-            heroSkillIconsBySlot[2] || null,
-          ],
-        });
-        return;
-      }
-      default:
-        renderHarnessFallback.renderHarnessFallback(ctx, layoutId, gameState, {
-          viewWidth,
-          viewHeight,
-          startupFingerprintLabel: RUNTIME_FINGERPRINT.label,
-          freshCombatBootstrapped,
-        });
-        return;
-    }
+  function drawHarnessLayoutTakeover(layoutId) {
+    surfaceRenderRouter.draw(layoutId);
   }
 
   // helper function to draw all instances
@@ -5113,19 +3392,6 @@ async function main(){
       uiState,
       mapLayoutState,
       animationMath,
-      renderMap,
-      renderTomes,
-      renderArtifacts,
-      renderMounts,
-      renderCollectibles,
-      renderRelics,
-      renderPets,
-      renderIdleFarm,
-      renderEvolution,
-      renderHomestead,
-      renderChests,
-      renderHeroScreenLayoutV2,
-      renderHarnessFallback,
       renderOverlays,
       renderBoard,
       renderCombatRuntime,
@@ -5973,7 +4239,7 @@ function getStoryCardLiveLineState() {
     if (!readyAfterTurns) throw new Error('[DIAG] Board not playable after auto turns');
     await auditGemClickability('post-10-auto-turns');
   }
-  devToolingAutoplayHandler = runDevAutoplayUntilDepleted;
+  requireDevToolingRuntime().setAutoplayHandler(runDevAutoplayUntilDepleted);
 
 
   function getEnemyHit(mx, my) {
@@ -6032,432 +4298,35 @@ function getStoryCardLiveLineState() {
     drawFrame,
   });
 
+  const pointerRoutingShell = createPointerRoutingShell({
+    canvas,
+    getDpr: () => dpr,
+    state,
+    gameState,
+    uiState,
+    layoutState,
+    mapLayoutState,
+    inputDomains,
+    layoutHarnessEnabled,
+    harnessLayoutState,
+    harnessInputDomains,
+    callFunctionWithContext,
+    fnContext,
+    drawFrame,
+    handleMapDragStart,
+    deriveEncounterRequestFromMapState,
+    restartIdleFarmSession,
+    claimIdleFarmRewards,
+    getHeroScreenRoster,
+    normalizeHeroSelectionIndex,
+  });
+
   // pointer handler for nav menu and overlay (more responsive than click)
   const handlePointerDown = (ev) => {
-    const rect = canvas.getBoundingClientRect();
-    const logicalW = canvas.width / Math.max(1, dpr || 1);
-    const logicalH = canvas.height / Math.max(1, dpr || 1);
-    const scaleX = rect.width > 0 ? logicalW / rect.width : 1;
-    const scaleY = rect.height > 0 ? logicalH / rect.height : 1;
-    const mx = (ev.clientX - rect.left) * scaleX;
-    const my = (ev.clientY - rect.top) * scaleY;
-
-    if (Number(state.globals.SkillDraughtOpen || 0)) {
-      const zones = Array.isArray(state.globals.SkillDraughtHitZones) ? state.globals.SkillDraughtHitZones : [];
-      const hit = zones.find((zone) => isPointInRect(mx, my, zone));
-      if (hit) {
-        callFunctionWithContext(fnContext, 'SelectSkillDraughtCard', Number(hit.index || 0));
-        drawFrame();
-      }
+    const routedPointer = pointerRoutingShell.routePointerDown(ev);
+    const { mx, my, rect } = routedPointer;
+    if (routedPointer.handled) {
       return;
-    }
-
-    const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
-      ? layoutState.getActiveLayoutId()
-      : null;
-    if (activeLayoutId === 'storyMock') {
-      inputDomains.emit('storyMock', 'layout:storyMock:click', { x: mx, y: my });
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'town') {
-      inputDomains.emit('town', 'layout:town:click', { x: mx, y: my });
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'idleFarmLayout') {
-      const zones = (gameState.idleFarmLayout && gameState.idleFarmLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.restartBtn)) {
-        restartIdleFarmSession(performance.now() / 1000);
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.collectBtn)) {
-        claimIdleFarmRewards();
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'idle-farm-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] idleFarm->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.baseBack)) {
-        layoutState.requestLayoutChange('storyMock', 'idle-farm-back-base').catch((err) => {
-          console.error('[LAYOUT_PHASE1] idleFarm->storyMock failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'mapLayout') {
-      const close = mapLayoutState.getMapLayoutState().closeHit;
-      if (isPointInRect(mx, my, close)) {
-        const req = deriveEncounterRequestFromMapState();
-        state.globals.EncounterTargetCP = Number(req.targetCP || 120);
-        state.globals.EncounterLocale = String(req.locale || 'clouds');
-        state.globals.EncounterMaxSlots = Number(req.maxSlots || 3);
-        state.globals.EncounterPolicy = String(req.policy || 'mixed');
-        state.globals.EncounterFaction = String(req.faction || '');
-        state.globals.EncounterSeed = Number(req.seed || 1);
-        state.globals.EncounterSeedExplicit = 1;
-        // Map close is benign: return to existing combat snapshot without resetting combat state.
-        layoutState.requestLayoutChange('combat', 'map-close-button').catch((err) => {
-          console.error('[LAYOUT_PHASE1] map return failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (handleMapDragStart(ev, { mx, my })) return;
-    }
-    if (activeLayoutId === 'tomesLayout') {
-      const zones = (gameState.tomesLayout && gameState.tomesLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
-        layoutState.requestLayoutChange('chestsLayout', 'tomes-back-vault').catch((err) => {
-          console.error('[LAYOUT_PHASE1] tomes->vault failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'tomes-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] tomes->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      const cards = Array.isArray(zones.cards) ? zones.cards : [];
-      for (let i = 0; i < cards.length; i += 1) {
-        if (isPointInRect(mx, my, cards[i])) {
-          gameState.tomesLayout.selectedIndex = i;
-          drawFrame();
-          return;
-        }
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'artifactsLayout') {
-      const zones = (gameState.artifactsLayout && gameState.artifactsLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
-        layoutState.requestLayoutChange('chestsLayout', 'artifacts-back-vault').catch((err) => {
-          console.error('[LAYOUT_PHASE1] artifacts->vault failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'artifacts-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] artifacts->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      const cards = Array.isArray(zones.cards) ? zones.cards : [];
-      for (let i = 0; i < cards.length; i += 1) {
-        if (isPointInRect(mx, my, cards[i])) {
-          gameState.artifactsLayout.selectedIndex = i;
-          drawFrame();
-          return;
-        }
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'mountsLayout') {
-      const zones = (gameState.mountsLayout && gameState.mountsLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
-        layoutState.requestLayoutChange('chestsLayout', 'mounts-back-vault').catch((err) => {
-          console.error('[LAYOUT_PHASE1] mounts->vault failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'mounts-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] mounts->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      const cards = Array.isArray(zones.cards) ? zones.cards : [];
-      for (let i = 0; i < cards.length; i += 1) {
-        if (isPointInRect(mx, my, cards[i])) {
-          gameState.mountsLayout.selectedIndex = i;
-          drawFrame();
-          return;
-        }
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'collectiblesLayout') {
-      const zones = (gameState.collectiblesLayout && gameState.collectiblesLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
-        layoutState.requestLayoutChange('chestsLayout', 'collectibles-back-vault').catch((err) => {
-          console.error('[LAYOUT_PHASE1] collectibles->vault failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'collectibles-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] collectibles->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      const cards = Array.isArray(zones.cards) ? zones.cards : [];
-      for (let i = 0; i < cards.length; i += 1) {
-        if (isPointInRect(mx, my, cards[i])) {
-          gameState.collectiblesLayout.selectedIndex = i;
-          drawFrame();
-          return;
-        }
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'relicsLayout') {
-      const zones = (gameState.relicsLayout && gameState.relicsLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
-        layoutState.requestLayoutChange('chestsLayout', 'relics-back-vault').catch((err) => {
-          console.error('[LAYOUT_PHASE1] relics->vault failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'relics-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] relics->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      const cards = Array.isArray(zones.cards) ? zones.cards : [];
-      for (let i = 0; i < cards.length; i += 1) {
-        if (isPointInRect(mx, my, cards[i])) {
-          gameState.relicsLayout.selectedIndex = i;
-          drawFrame();
-          return;
-        }
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'petsLayout') {
-      const zones = (gameState.petsLayout && gameState.petsLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
-        layoutState.requestLayoutChange('chestsLayout', 'pets-back-vault').catch((err) => {
-          console.error('[LAYOUT_PHASE1] pets->vault failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'pets-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] pets->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      const cards = Array.isArray(zones.cards) ? zones.cards : [];
-      for (let i = 0; i < cards.length; i += 1) {
-        if (isPointInRect(mx, my, cards[i])) {
-          gameState.petsLayout.selectedIndex = i;
-          drawFrame();
-          return;
-        }
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'evolutionLayout') {
-      const zones = (gameState.evolutionLayout && gameState.evolutionLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
-        layoutState.requestLayoutChange('chestsLayout', 'evolution-back-vault').catch((err) => {
-          console.error('[LAYOUT_PHASE1] evolution->vault failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'evolution-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] evolution->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      const cards = Array.isArray(zones.cards) ? zones.cards : [];
-      for (let i = 0; i < cards.length; i += 1) {
-        if (isPointInRect(mx, my, cards[i])) {
-          gameState.evolutionLayout.selectedLevel = i;
-          drawFrame();
-          return;
-        }
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'homesteadLayout') {
-      const zones = (gameState.homesteadLayout && gameState.homesteadLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.close) || isPointInRect(mx, my, zones.mapBack)) {
-        layoutState.requestLayoutChange('chestsLayout', 'homestead-back-vault').catch((err) => {
-          console.error('[LAYOUT_PHASE1] homestead->vault failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'homestead-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] homestead->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      const slots = Array.isArray(zones.slots) ? zones.slots : [];
-      for (let i = 0; i < slots.length; i += 1) {
-        if (isPointInRect(mx, my, slots[i])) {
-          gameState.homesteadLayout.selectedSlot = i;
-          drawFrame();
-          return;
-        }
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'chestsLayout') {
-      const zones = (gameState.chestsLayout && gameState.chestsLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.close)) {
-        layoutState.requestLayoutChange('combat', 'chests-close-button').catch((err) => {
-          console.error('[LAYOUT_PHASE1] chests close->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'chests-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] chests->combat failed', err);
-        });
-        drawFrame();
-        return;
-      }
-      const retentionButtons = Array.isArray(zones.retentionButtons) ? zones.retentionButtons : [];
-      for (let i = 0; i < retentionButtons.length; i += 1) {
-        const btn = retentionButtons[i];
-        if (isPointInRect(mx, my, btn) && btn.targetLayout) {
-          layoutState.requestLayoutChange(String(btn.targetLayout), `chests-${String(btn.id || 'retention')}`).catch((err) => {
-            console.error('[LAYOUT_PHASE1] chests->retention failed', err);
-          });
-          drawFrame();
-          return;
-        }
-      }
-      const tabs = Array.isArray(zones.tabs) ? zones.tabs : [];
-      for (let i = 0; i < tabs.length; i += 1) {
-        const tab = tabs[i];
-        if (isPointInRect(mx, my, tab)) {
-          gameState.chestsLayout.activeTab = String(tab.id || gameState.chestsLayout.activeTab || 'Common');
-          drawFrame();
-          return;
-        }
-      }
-      drawFrame();
-      return;
-    }
-    if (activeLayoutId === 'heroLayout') {
-      const zones = uiState.getUIState().heroScreenHitZones || {};
-      const roster = getHeroScreenRoster();
-      const selectedHero = roster[normalizeHeroSelectionIndex()] || null;
-      const skillNodes = Array.isArray(zones.skillNodes) ? zones.skillNodes : [];
-      const selectedSkillIndex = Math.max(0, Math.floor(Number(zones.selectedSkillIndex || uiState.getUIState().heroScreenSelectedSkillIndex || 0)));
-      const modalZones = zones.modal || null;
-      let consumedSkillClick = false;
-      if (uiState.getUIState().heroScreenSkillModalOpen && modalZones) {
-        if (isPointInRect(mx, my, modalZones.close) || !isPointInRect(mx, my, modalZones.card)) {
-          uiState.setUIStateField('heroScreenSkillModalOpen', false);
-          drawFrame();
-          return;
-        }
-        if (isPointInRect(mx, my, modalZones.upgradeButton)) {
-          const activeNode = skillNodes.find((node) => Number(node?.idx || -1) === Number(uiState.getUIState().heroScreenSkillModalSkillIndex || 0)) || skillNodes[0] || null;
-          if (activeNode && activeNode.actionable !== false && selectedHero) {
-            callFunctionWithContext(fnContext, 'AttemptHeroSkillUpgrade', selectedHero.uid, activeNode.skillKey, 'hero_skill_modal_upgrade_button');
-          }
-          drawFrame();
-          return;
-        }
-        drawFrame();
-        return;
-      }
-      if (isPointInRect(mx, my, zones.close)) {
-        uiState.setUIStateField('heroScreenSkillModalOpen', false);
-        const closeHeroLayout = () => layoutState.requestLayoutChange('combat', 'hero-close-button').catch((err) => {
-          console.error('[LAYOUT_PHASE1] hero return failed', err);
-        });
-        closeHeroLayout().then((changed) => {
-          if (!changed) {
-            setTimeout(() => {
-              closeHeroLayout();
-            }, 24);
-          }
-        });
-      } else if (isPointInRect(mx, my, zones.prevHero)) {
-        if (roster.length) {
-          gameState.selectedHero = (normalizeHeroSelectionIndex() + roster.length - 1) % roster.length;
-          uiState.setUIStateField('heroScreenSelectedSkillIndex', 0);
-          uiState.setUIStateField('heroScreenSkillModalOpen', false);
-        }
-      } else if (isPointInRect(mx, my, zones.nextHero)) {
-        if (roster.length) {
-          gameState.selectedHero = (normalizeHeroSelectionIndex() + 1) % roster.length;
-          uiState.setUIStateField('heroScreenSelectedSkillIndex', 0);
-          uiState.setUIStateField('heroScreenSkillModalOpen', false);
-        }
-      } else {
-        for (const node of skillNodes) {
-          if (!node) continue;
-          if (isPointInRect(mx, my, node.rect)) {
-            uiState.setUIStateField('heroScreenSelectedSkillIndex', Math.max(0, Math.floor(Number(node.idx || 0))));
-            uiState.setUIStateField('heroScreenSkillModalSkillIndex', Math.max(0, Math.floor(Number(node.idx || 0))));
-            uiState.setUIStateField('heroScreenSkillModalOpen', true);
-            consumedSkillClick = true;
-            break;
-          }
-        }
-        if (!consumedSkillClick && selectedHero && isPointInRect(mx, my, zones.upgradeButton)) {
-          const activeNode = skillNodes.find((node) => Number(node?.idx || -1) === selectedSkillIndex) || skillNodes[0] || null;
-          if (activeNode && activeNode.actionable !== false) {
-            callFunctionWithContext(fnContext, 'AttemptHeroSkillUpgrade', selectedHero.uid, activeNode.skillKey, 'hero_screen_upgrade_button');
-            consumedSkillClick = true;
-          }
-        }
-      }
-      drawFrame();
-      return;
-    }
-
-    if (layoutHarnessEnabled && harnessLayoutState && harnessInputDomains) {
-      const activeLayout = harnessLayoutState.getActiveLayoutId();
-      if (activeLayout === 'storyMock') {
-        harnessInputDomains.emit(activeLayout, 'layout:storyMock:click', { x: mx, y: my });
-        drawFrame();
-        return;
-      }
-      if (activeLayout === 'town') {
-        harnessInputDomains.emit(activeLayout, 'layout:town:click', { x: mx, y: my });
-        drawFrame();
-        return;
-      }
-      if (activeLayout === 'astralOverlay') {
-        harnessInputDomains.emit(activeLayout, 'layout:astralOverlay:click', { x: mx, y: my });
-        drawFrame();
-        return;
-      }
     }
 
     if (state.globals.GamePhase !== 'RUNTIME') {
@@ -7289,312 +5158,43 @@ function getStoryCardLiveLineState() {
   }
   tick();
 
-  // Dev-only test hooks for deterministic agent-browser CLI control
-  if (typeof window !== 'undefined') {
-    window.render_game_to_text = () => {
-      const currentUID = callFunctionWithContext(fnContext, 'GetCurrentTurn');
-      const currentActor = callFunctionWithContext(fnContext, 'GetActorByUID', currentUID);
-      const turnOrderRaw = Array.isArray(state.globals.TurnOrderArray)
-        ? state.globals.TurnOrderArray
-        : [];
-      const turnOrder = turnOrderRaw.map(entry => {
-        const actor = callFunctionWithContext(fnContext, 'GetActorByUID', entry.uid);
-        return {
-          uid: entry.uid,
-          type: entry.type,
-          name: actor ? actor.name : null,
-          spd: entry.spd ?? null,
-        };
-      });
-      const payload = {
-        coordSystem: 'origin:top-left, x:right, y:down',
-        time: state.globals.time || 0,
-        turn: {
-          uid: currentUID,
-          type: callFunctionWithContext(fnContext, 'GetCurrentType'),
-          name: currentActor ? currentActor.name : null,
-        },
-        round: {
-          active: !!state.globals.RoundActive,
-          groupIndex: state.globals.RoundGroupIndex ?? 0,
-          memberIndex: state.globals.RoundMemberIndex ?? 0,
-        },
-        turnOrder,
-        party: {
-          hp: state.globals.PartyHP || 0,
-          maxHp: state.globals.PartyMaxHP || 0,
-        },
-        resources: {
-          energy: state.globals.Player_Energy || 0,
-          maxEnergy: state.globals.Player_maxEnergy || 0,
-          gold: state.globals.goldTotal || 0,
-          tokenWallet: state.globals.TokenWallet || {},
-          astralFlowWallet: state.globals.AstralFlowWallet || 0,
-          heroGemUsage: state.globals.HeroGemUsage || null,
-          heroGemMilestones: state.globals.HeroGemMilestones || null,
-          heroGemProgressPersistedAt: state.globals.HeroGemProgressPersistedAt || 0,
-          idleFarmLastCollect: state.globals.IdleFarmLastCollect || null,
-          powerAmpTelemetry: Array.isArray(state.globals.PowerAmpTelemetryTrace)
-            ? state.globals.PowerAmpTelemetryTrace.slice(-40)
-            : [],
-        },
-        devTools: {
-          config: ensureDevToolingConfig(),
-          autoplay: getDevAutoplayState(),
-          heroSlotOptions: getDevToolHeroOptions(),
-          enemySlotOptions: getDevToolEnemyOptions(),
-          enemyTypeOptions: getDevToolEnemyOptions(),
-        },
-        idleFarm: {
-          active: layoutState && typeof layoutState.getActiveLayoutId === 'function'
-            ? layoutState.getActiveLayoutId() === 'idleFarmLayout'
-            : false,
-          state: gameState.idleFarmLayout || null,
-        },
-        mapLayout: {
-          panX: Number(mapLayoutState.getMapLayoutState().panX || 0),
-          panY: Number(mapLayoutState.getMapLayoutState().panY || 0),
-          warMeter: Number(mapLayoutState.getMapLayoutState().warMeter || 0),
-          encounterNode: mapLayoutState.getMapLayoutState().encounterNode || null,
-          render: mapLayoutState.getMapLayoutState().lastRender || null,
-          encounterRequestPreview: deriveEncounterRequestFromMapState(),
-        },
-        heroScreen: {
-          mode: String(uiState.getUIState().heroScreenMode || 'details'),
-          selectedHero: Number(gameState.selectedHero || 0),
-          selectedSkillIndex: Number(uiState.getUIState().heroScreenSelectedSkillIndex || 0),
-          activeHeroName: (() => {
-            const roster = getHeroScreenRoster();
-            const idx = normalizeHeroSelectionIndex();
-            const hero = roster[idx];
-            return hero ? String(hero.name || '') : '';
-          })(),
-          activePartySlots: normalizePartyFormationSlots(getConfiguredHeroSlots()),
-        },
-        flags: {
-          canPickGems: state.globals.CanPickGems,
-          isPlayerBusy: state.globals.IsPlayerBusy,
-          turnPhase: state.globals.TurnPhase ?? 0,
-          deferAdvance: state.globals.DeferAdvance ?? 0,
-          actionLockUntil: state.globals.ActionLockUntil ?? 0,
-          pendingSkillId: state.globals.PendingSkillID || null,
-          overlayVisible: uiState.getUIState().overlayVisible,
-          layoutId: layoutState && typeof layoutState.getActiveLayoutId === 'function'
-            ? layoutState.getActiveLayoutId()
-            : (layoutHarnessEnabled && harnessLayoutState ? harnessLayoutState.getActiveLayoutId() : 'combat'),
-          combatAcceptEvents: layoutHarnessEnabled && harnessCombatGateway
-            ? harnessCombatGateway.canAcceptEvents()
-            : true,
-          layout0Ready: !gameState.startupLoad?.active && gameState.startupLoad?.phase !== 'error',
-          layout0Failed: gameState.startupLoad?.phase === 'error',
-        },
-        heroes: state.entities
-          .filter(e => e.kind === 'hero')
-          .map(e => ({ uid: e.uid, name: e.name, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHP, combatPower: Number(e.combatPower || 0) })),
-        enemies: state.entities
-          .filter(e => e.kind === 'enemy')
-          .map(e => ({ uid: e.uid, name: e.name, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHP, slot: e.slotIndex, combatPower: Number(e.combatPower || 0) })),
-        damageTexts: (state.globals.DamageTexts || []).map(d => {
-          const riseSec = Math.max(0.001, Number(d.riseInSec || 0.18));
-          const phase = Number(d.phase || 0);
-          const phaseAge = Number(d.age || 0);
-          let progress = 1;
-          if (phase === 0) {
-            const riseT = Math.max(0, Math.min(1, phaseAge / riseSec));
-            progress = riseT * (2 - riseT);
-          }
-          const offset = deriveDamageFloatFrameOffset(d, progress);
-          const baseX = Number(d.baseX != null ? d.baseX : (d.x || 0));
-          const baseY = Number(d.baseY != null ? d.baseY : (d.y || 0));
-          return {
-            amount: d.amount,
-            kind: d.kind,
-            targetKind: d.targetKind || null,
-            baseX,
-            baseY,
-            x: Number(d.x || 0),
-            y: Number(d.y || 0),
-            displayX: baseX + offset.x,
-            displayY: baseY + offset.y,
-            floatAngleDeg: Number(d.floatAngleDeg || 0),
-            floatVectorX: Number(d.floatVectorX || 0),
-            floatVectorY: Number(d.floatVectorY || 0),
-            phase,
-            age: phaseAge,
-            domSpawned: !!d.domSpawned,
-          };
-        }),
-        gems: (gameState.gems || []).map(g => ({
-          uid: g.uid,
-          r: g.cellR,
-          c: g.cellC,
-          color: g.color ?? g.elementIndex,
-          x: g.x,
-          y: g.y,
-          selected: !!(g.selected || g.Selected),
-          locked: isBoardGemLocked(g),
-          lockCountdown: Number(g.lockCountdown ?? g.LockCountdown ?? 0),
-          lockGroupId: String(g.lockGroupId || g.LockGroupId || ''),
-        })),
-      };
-      return JSON.stringify(payload);
-    };
-    window.advanceTime = (ms) => {
-      const step = 1 / 60;
-      const steps = Math.max(1, Math.round(ms / (1000 / 60)));
-      for (let i = 0; i < steps; i++) drawFrame(step);
-    };
-    window.__codexGame = {
-      get state() { return state; },
-      get globals() { return state.globals; },
-      get gems() { return gameState.gems; },
-      get turn() {
-        const uid = callFunctionWithContext(fnContext, 'GetCurrentTurn');
-        return {
-          uid,
-          type: callFunctionWithContext(fnContext, 'GetCurrentType'),
-          actor: callFunctionWithContext(fnContext, 'GetActorByUID', uid),
-        };
-      },
-      stepFrames(n = 1) {
-        for (let i = 0; i < n; i++) drawFrame();
-      },
-      selectGemByRC(row, col) {
-        const idx = gameState.gems.findIndex(g => g.cellR === row && g.cellC === col);
-        if (idx === -1) return false;
-        const gem = gameState.gems[idx];
-        if (isBoardGemLocked(gem)) return false;
-        if (gameState.selectedGems.includes(idx)) return true;
-        gameState.selectedGems.push(idx);
-        gem.selected = true;
-        gem.Selected = 1;
-        return true;
-      },
-      clearSelection() {
-        gameState.selectedGems = [];
-        gameState.selectionLocked = false;
-        for (const gm of gameState.gems) {
-          gm.selected = false;
-          gm.Selected = 0;
-        }
-        state.globals.TapIndex = 0;
-      },
-      forceMatch(color) {
-        handleGemMatch(color);
-      },
-      setEncounterRequest(input = {}) {
-        const req = input && typeof input === 'object' ? input : {};
-        if (req.targetCP != null) state.globals.EncounterTargetCP = Number(req.targetCP || 0);
-        if (req.locale != null) state.globals.EncounterLocale = String(req.locale || 'all').trim().toLowerCase() || 'all';
-        if (req.maxSlots != null) state.globals.EncounterMaxSlots = Math.max(1, Number(req.maxSlots || 0));
-        if (req.policy != null) state.globals.EncounterPolicy = String(req.policy || 'mixed').trim().toLowerCase() || 'mixed';
-        if (req.faction != null) state.globals.EncounterFaction = String(req.faction || '').trim().toLowerCase();
-        if (req.seed != null) {
-          state.globals.EncounterSeed = Number(req.seed || 0);
-          state.globals.EncounterSeedExplicit = 1;
-        } else {
-          state.globals.EncounterSeedExplicit = 0;
-        }
-        return {
-          targetCP: Number(state.globals.EncounterTargetCP || 0),
-          locale: String(state.globals.EncounterLocale || 'all'),
-          maxSlots: Number(state.globals.EncounterMaxSlots || 3),
-          policy: String(state.globals.EncounterPolicy || 'mixed'),
-          faction: String(state.globals.EncounterFaction || ''),
-          seed: Number(state.globals.EncounterSeed || 0),
-        };
-      },
-      setMapEncounterNode(input = {}) {
-        const node = input && typeof input === 'object' ? input : {};
-        const prev = mapLayoutState.getMapLayoutState().encounterNode || {};
-        const next = {
-          id: String(node.id || prev.id || 'clouds-alpha'),
-          locale: String(node.locale || prev.locale || 'clouds').trim().toLowerCase() || 'clouds',
-          faction: String(node.faction || prev.faction || 'wishless').trim().toLowerCase() || 'wishless',
-        };
-        mapLayoutState.setMapLayoutField('encounterNode', next);
-        if (node.warMeter != null) {
-          mapLayoutState.setMapLayoutField('warMeter', Math.max(0, Math.min(1, Number(node.warMeter || 0))));
-        }
-        return {
-          encounterNode: mapLayoutState.getMapLayoutState().encounterNode,
-          warMeter: Number(mapLayoutState.getMapLayoutState().warMeter || 0),
-        };
-      },
-      toggleDevToolingModal(nextOpen = null) {
-        return toggleDevToolingModal(nextOpen);
-      },
-      getDevToolingState() {
-        return {
-          config: ensureDevToolingConfig(),
-          autoplay: getDevAutoplayState(),
-          heroSlotOptions: getDevToolHeroOptions(),
-          enemySlotOptions: getDevToolEnemyOptions(),
-          enemyTypeOptions: getDevToolEnemyOptions(),
-        };
-      },
-      applyDevToolingConfig(input = {}) {
-        return applyDevToolingConfig(input);
-      },
-      runDevAutoplayUntilDepleted() {
-        return runDevAutoplayUntilDepleted();
-      },
-      stopDevAutoplay() {
-        state.globals.DevAutoplayStopRequested = 1;
-        return getDevAutoplayState();
-      },
-      callFunction(fnName, ...args) {
-        return callFunctionWithContext(fnContext, fnName, ...args);
-      },
-      getStoryCardDebugLine() {
-        const rawLatest = getLatestCombatActionLine();
-        const filteredLatest = getLatestStoryCardActionLine();
-        const live = getStoryCardLiveLineState();
-        const split = splitStoryCardActorSegment(live.text);
-        const intentFallback = getStoryCardIntentFallbackLine();
-        const g = state.globals || {};
-        return {
-          rawLatest,
-          filteredLatest,
-          intentFallback,
-          rendered: live.text,
-          split,
-          battleStart: {
-            active: !!g.BattleStartActive,
-            clearedForSession: !!g.BattleStartClearedForSession,
-            sessionId: Number(g.BattleStartSessionId || 0),
-            sessionText: String(g.BattleStartSessionText || ''),
-          },
-          colors: {
-            actor: '#E35822',
-            rest: '#314877',
-          },
-          filteredToken: isStoryCardTokenLine(rawLatest),
-        };
-      },
-      getTask011Audit() {
-        return JSON.parse(JSON.stringify(ensureTask011Audit()));
-      },
-      resetTask011Audit() {
-        gameState.task011Audit = null;
-        return true;
-      },
-      getTask015Trace() {
-        return JSON.parse(JSON.stringify(getTask015TraceStore()));
-      },
-      resetTask015Trace() {
-        gameState.task015Trace = {
-          storycardPlacement: [],
-          yellowQueue: [],
-          yellowRefillQueue: [],
-          yellowWrites: [],
-          yellowAnimation: [],
-        };
-        return true;
-      },
-    };
-    window.__auditBoard = () => assertBoardIntegrity('manual');
-  }
+  registerDevBrowserTestHooks({
+    state,
+    gameState,
+    callFunctionWithContext,
+    fnContext,
+    ensureDevToolingConfig,
+    getDevAutoplayState,
+    getDevToolHeroOptions,
+    getDevToolEnemyOptions,
+    layoutState,
+    mapLayoutState,
+    uiState,
+    deriveEncounterRequestFromMapState,
+    getHeroScreenRoster,
+    normalizeHeroSelectionIndex,
+    normalizePartyFormationSlots,
+    getConfiguredHeroSlots,
+    layoutHarnessEnabled,
+    harnessLayoutState,
+    harnessCombatGateway,
+    deriveDamageFloatFrameOffset,
+    isBoardGemLocked,
+    drawFrame,
+    handleGemMatch,
+    toggleDevToolingModal,
+    applyDevToolingConfig,
+    runDevAutoplayUntilDepleted,
+    getLatestCombatActionLine,
+    getLatestStoryCardActionLine,
+    getStoryCardLiveLineState,
+    splitStoryCardActorSegment,
+    getStoryCardIntentFallbackLine,
+    isStoryCardTokenLine,
+    ensureTask011Audit,
+    getTask015TraceStore,
+    assertBoardIntegrity,
+  });
 }
 
 (async function boot() {

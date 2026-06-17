@@ -17,10 +17,11 @@ test('collectibles scaffold defines deterministic gallery model in runtime state
 test('collectibles layout is wired as map locale entry and runtime layout route', () => {
   const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
   const src = fs.readFileSync(filePath, 'utf8');
+  const registrySrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'runtimeLayoutRegistry.js'), 'utf8');
   assert.match(src, /import \{ createInitialGameState \} from '\.\/state\/gameState\.js';/);
   assert.match(src, /const gameState = createInitialGameState\(\);/);
-  assert.match(src, /allowedTransitions:\s*\[[^\]]*'collectiblesLayout'[^\]]*\]/);
-  assert.match(src, /id:\s*'collectiblesLayout'/);
+  assert.match(registrySrc, /const GALLERY_TRANSITIONS = Object\.freeze\(\['chestsLayout', 'combat'\]\);/);
+  assert.match(registrySrc, /id:\s*'collectiblesLayout'/);
   assert.match(src, /layoutState\.requestLayoutChange\('collectiblesLayout',\s*'map-collectibles-locale'\)/);
   assert.match(src, /if \(layoutId === 'collectiblesLayout'\)/);
 });
