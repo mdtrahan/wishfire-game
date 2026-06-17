@@ -4,6 +4,7 @@
 - Keep always-on context minimal, local, and operational.
 - Beads controls scope and workflow; Git is transport.
 - Use live `bd` state, the codebase, and the nearest applicable AGENTS.md chain as source of truth.
+- Use `soul.md` for judgment preferences and collaboration tradeoffs; do not treat it as execution policy, task tracking, coding standards, or a replacement for AGENTS.md.
 - This file owns repo-wide rules and the top-level Child DOX Index.
 
 ## DOX Contract
