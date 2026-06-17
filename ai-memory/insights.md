@@ -378,6 +378,10 @@
 - The scheduler must not re-enter while any action is in progress, even if the active action belongs to the current turn owner. Same-owner reentry is still reentry and can mutate target-selection state into an unplayable phase.
 - For hero-action softlocks, inspect the meta-state first: `PendingSkillID`, `ActionInProgress`, `ActionActorUID`, `HeroAction`/`EnemyAction`, `ActionOwnerUID`, and `DeferAdvance` must describe the same owner and phase. Individual hero edge cases usually fall out of that broken symmetry.
 
+## 2026-06-17 — Party-Wide Skill Effects Must Use The Party Roster
+- Party-wide skill-card effects such as Grow should iterate the party hero roster, not an `hp > 0` subset. The game can have party HP remaining while an individual hero record has zero HP, and filtering by that field silently skips a visible party member.
+- For party-wide buffs, contract both normal all-healthy cases and one-zero-HP hero cases so selection state, visuals, and persistent hero records cover the full roster.
+
 ## 2026-05-17 — Deferred Handoffs Must Survive Blocking Gates
 - A deferred turn-advance token is not spent until `AdvanceTurn()` has actually moved the scheduler or intentionally finished the handoff. If a refill/death gate keeps the same owner and phase, preserve the owned defer so the handoff can resume after the gate clears.
 - Refill-complete gates may release visual/busy state, but they must not restore player input while `TurnPhase` is still resolving. `CanPickGems` is an idle hero-phase privilege, not a generic "no animation is running" flag.

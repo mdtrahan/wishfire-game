@@ -1624,7 +1624,7 @@ function activateGrowSkill(ctx, actorUID, sessionSkill = null) {
     Math.floor(Number(sessionSkill?.selectionCount || 0)),
   );
 
-  const heroes = getHeroes(ctx).filter(hero => Number(hero?.hp || 0) > 0);
+  const heroes = getHeroes(ctx);
   const events = [];
   for (const hero of heroes) {
     const existing = getGrowStateForActor(ctx, hero.uid);
