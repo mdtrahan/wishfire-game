@@ -11,7 +11,7 @@
 ## Local Contracts
 - Planning contracts describe intended boundaries and stop conditions; they do not authorize implementation unless the active bead scope does.
 - SimulationCore planning establishes Rust as deterministic simulation owner and JavaScript as browser integration owner.
-- Turn-state invariants establish strict hero/enemy team phases for normal combat.
+- Turn-state invariants establish speed-based interleaved initiative for normal combat.
 - If a planning doc lists stop conditions, honor them before writing code.
 - Keep reports/evidence separate from new implementation instructions unless a doc is explicitly a plan.
 

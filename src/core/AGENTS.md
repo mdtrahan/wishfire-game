@@ -10,7 +10,7 @@
 ## Local Contracts
 - Keep rule modules deterministic and JSON-safe.
 - Do not import DOM, Canvas, localStorage, audio, Netlify, or browser globals into deterministic modules.
-- Team-phase rules are canonical: heroes open, phases alternate by team, speed sorts only inside the active team.
+- Speed-based interleaved initiative is canonical for normal combat; team-phase helpers are compatibility/shadow surfaces unless a bead explicitly changes the product decision.
 - SimulationCore packet shapes must exclude browser-owned presentation/storage state.
 - If Rust owns a rule family, JS code should preserve packet/diagnostic compatibility and avoid acting as final authority.
 - CJS mirrors such as `simulationCorePacket.cjs`, `gameStateEnvelopeRules.cjs`, and `combatRuntimeGateway.cjs` must stay aligned with their intended test/runtime consumers.

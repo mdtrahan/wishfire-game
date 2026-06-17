@@ -106,9 +106,10 @@ test('combat renderer keeps HP green and draws a blue Astral Flow amp bar beneat
   assert.match(runtimeSrc, /ctx\.fillRect\(ampX, ampY, ampW \* ampRatio, barH\);/);
 });
 
-test('battle start messaging is always hero-first and does not roll enemy-first initiative', () => {
+test('battle start messaging avoids random ambush copy', () => {
   const appSrc = read('web-runner/app.js');
-  assert.doesNotMatch(appSrc, /BattleStartMode = Math\.random\(\) < 0\.5 \? 'ambush' : 'initiative';/);
-  assert.match(appSrc, /state\.globals\.BattleStartMode = 'heroes';/);
-  assert.match(appSrc, /Heroes take the initiative!/);
+  const initializerSrc = read('web-runner/systems/combatSessionInitializer.js');
+  assert.doesNotMatch(appSrc + initializerSrc, /BattleStartMode = Math\.random\(\) < 0\.5 \? 'ambush' : 'initiative';/);
+  assert.match(initializerSrc, /state\.globals\.BattleStartMode = 'heroes';/);
+  assert.match(initializerSrc, /Heroes take the initiative!/);
 });

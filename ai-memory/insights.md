@@ -331,9 +331,9 @@
 - If an effect duration is expressed in hero team turns, do not derive it from total combatant `TurnSerial` or full turn-queue length. Enemy turns and small-party encounters will skew the duration.
 - Store an explicit hero-team-turn serial that advances only after the live hero side completes a pass, then anchor field expiry to that serial. The field can still remember hero-team size for QA/debug, but size is not the clock.
 
-## 2026-05-14 — Strategy Turns Are Team Phases, Not Global Queues
-- If combat is strategy-game-style, phase ownership must alternate by team regardless of team size. Do not let global speed sorting weave heroes and enemies together or let enemy count shrink/expand spill one side into the other side's phase.
-- Speed sorting belongs only inside the active team phase. Battle start should initialize the first phase, not create enemy-first starts or extra priority turns.
+## 2026-05-14 — Superseded: Strategy Turns Were Team Phases, Not Global Queues
+- Superseded by `ORKA-qtg4`: normal combat now uses speed-based interleaved initiative. Keep this note only as historical context for older team-phase guards.
+- Battle start presentation is separate from scheduler ownership. Do not use hero-start copy as proof that normal combat must resolve in locked team phases.
 
 ## 2026-05-14 — Field Effects Must Own Their Own Visual And DoT Timers
 - Slot/field effects should render from field-zone state, not from the current living unit in that slot. Unit death, entry, or direct status expiry must not pop the field visual unless the field's own timer expired.
