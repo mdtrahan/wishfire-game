@@ -12,7 +12,6 @@ const activePartyDrawIds = [
   'party_destiny',
   'party_faze',
   'party_grow',
-  'party_drain',
 ];
 
 function extractFunctionSource(src, name) {
@@ -115,7 +114,6 @@ module.exports = {
       party_destiny: 'one_off',
       party_faze: 'repeatable',
       party_grow: 'tiered',
-      party_drain: 'repeatable',
     };
     const partyDefs = mod.GetPartySkillDefinitions();
 

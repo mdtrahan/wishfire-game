@@ -362,6 +362,10 @@
 - If several damage texts spawn from one action, randomize at the text-instance seam, not only at the action or packet seam. A repeated or deterministic RNG value can make a whole AoE read as one shared vector unless each spawned text also carries a sequence/salt into the variation picker.
 - For visual-randomness QA, test both normal RNG and fixed-RNG runs. Fixed-RNG proof catches accidental batch coupling while normal runs catch distribution and readability issues.
 
+## 2026-06-16 — Retired Skills Need Runtime Allowlist Guards
+- Retiring a skill in product docs is not enough. Remove the skill id from active draw allowlists, forced-draw eligibility, HUD/debug counters, and positive "skill works" contracts in the same change.
+- Preserve retired implementation code only as archived/reference behavior; add a negative contract proving the retired id cannot appear or activate through current player-facing draw seams.
+
 ## 2026-05-17 — Death Refills Must Be Scheduler Gates
 - Treat enemy death resolution, required-slot refill, slot occupancy, and target validity as one roster-stability contract before any next action can be claimed.
 - A side-turn boundary is too late for backup arrival if the prior turn killed an enemy. The completion seam that observes death must either finish refill or hold the scheduler behind an explicit refill-pending gate.

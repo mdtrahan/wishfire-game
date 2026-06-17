@@ -306,7 +306,7 @@ Party Promise: Smooth the run, create short burst windows, and rescue weak state
    - Proc Pattern: On selection; all living heroes immediately receive or advance Grow with no RNG gate, miss, or sequential acceptance presentation.
    - Short Session: `Tier up to 3 selections, then remove from draw.`
 
-Active Runtime Draw Pool: `party_crimson_ward`, `party_magic_fruit`, `party_destiny`, `party_faze`, `party_grow`, `party_drain`
+Active Runtime Draw Pool: `party_crimson_ward`, `party_magic_fruit`, `party_destiny`, `party_faze`, `party_grow`
 Sharpen: Favor board rescue, short bursts, and comeback windows over passive smoothing.
 Vault Lean: `Lucky Break`, `Clean Slate`
 
