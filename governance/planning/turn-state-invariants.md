@@ -2,23 +2,24 @@
 
 ## Canonical Turn System
 
-As of `ORKA-zps4`, combat uses a strict strategy-game team-phase model.
+As of `ORKA-qtg4`, normal combat uses speed-based interleaved initiative.
 
-- Heroes always receive the opening phase.
-- Phase ownership alternates by locked team blocks: `Heroes -> Enemies -> Heroes -> Enemies`.
-- Team size does not affect phase ownership or sequencing.
-- A phase belongs entirely to the active team until all living, able-to-act actors on that team have completed their actions.
-- Speed may sort actors only inside the active team phase.
-- Do not use enemy-first initiative, ambush opening, or Final Fantasy X-style woven global speed queues for normal combat.
-- Dead, stopped, paralyzed, stunned, disabled, or otherwise unable actors are excluded from the active phase queue.
+- Actors resolve through the time initiative scheduler (`InitiativeMode: 'time'`).
+- Effective SPD may weave heroes and enemies in the same combat cycle.
+- Team size must not force locked `Heroes -> Enemies -> Heroes` phase blocks.
+- Current-actor anchoring and repeat guards must prevent stalls, duplicate non-extra turns, and lost actors.
+- Dead, stopped, paralyzed, stunned, disabled, or otherwise unable actors are excluded from initiative selection.
+- Team-phase helpers and round-group projections are compatibility/shadow surfaces, not the product contract for normal combat flow.
+- Do not reintroduce strict heroes-then-enemies phase requirements unless a future bead explicitly changes this decision.
+- Battle-opening copy and hero-start affordances are separate presentation/product choices; do not treat them as proof of team-phase scheduling.
 
 Canonical implementation and validation:
-- Bead: `ORKA-zps4` (`[BUG] Replace battle initiative with strict Heroes/Enemies team phases`)
+- Bead: `ORKA-qtg4` (`[DECISION] Make speed-based interleaved turns canonical`)
 - Runtime owner: `web-runner/modules/functionBank.js`
 - Shared scheduler rules: `src/core/schedulerRules.mjs` and `web-runner/src/core/schedulerRules.mjs`
-- Contract: `tests/teamPhaseSchedulerContract.test.js`
+- Contract: `tests/speedInitiativeSchedulerContract.test.js`
 
-The older queue-oriented suspend/resume invariant notes below are historical context for layout transition safety. They must not be read as permission to reintroduce a cross-team global initiative queue.
+The older queue-oriented suspend/resume invariant notes below are historical context for layout transition safety. They must not be read as permission to bypass time-initiative repeat guards, current-actor anchoring, or actor eligibility checks.
 
 ## Historical Suspend/Resume Notes
 

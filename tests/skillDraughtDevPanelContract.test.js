@@ -10,6 +10,8 @@ const statePath = path.join(__dirname, '..', 'web-runner', 'modules', 'state.js'
 const appPath = path.join(__dirname, '..', 'web-runner', 'app.js');
 const indexPath = path.join(__dirname, '..', 'web-runner', 'index.html');
 const renderOverlayPath = path.join(__dirname, '..', 'web-runner', 'systems', 'renderSkillDraughtOverlay.js');
+const devToolingRuntimePath = path.join(__dirname, '..', 'web-runner', 'systems', 'devToolingRuntime.js');
+const pointerRoutingPath = path.join(__dirname, '..', 'web-runner', 'systems', 'pointerRoutingShell.js');
 
 function extractFunctionSource(src, name) {
   const marker = `function ${name}(`;
@@ -96,14 +98,14 @@ test('app claims pending skill draw only at the hero end-of-turn checkpoint', ()
 });
 
 test('dev panel wires mandatory draw controls', () => {
-  const appSrc = fs.readFileSync(appPath, 'utf8');
-  assert.match(appSrc, /data-devtool-skill-hero/);
-  assert.match(appSrc, /data-devtool-skill-id/);
-  assert.match(appSrc, /data-devtool-force-skill-draught/);
-  assert.match(appSrc, /data-devtool-clear-session-skills/);
-  assert.match(appSrc, /ForceAstralFlowSkillDraught/);
-  assert.match(appSrc, /ClearSessionSkillDraught/);
-  assert.match(appSrc, /getSkillDraughtDevSummary/);
+  const devToolingSrc = fs.readFileSync(devToolingRuntimePath, 'utf8');
+  assert.match(devToolingSrc, /data-devtool-skill-hero/);
+  assert.match(devToolingSrc, /data-devtool-skill-id/);
+  assert.match(devToolingSrc, /data-devtool-force-skill-draught/);
+  assert.match(devToolingSrc, /data-devtool-clear-session-skills/);
+  assert.match(devToolingSrc, /ForceAstralFlowSkillDraught/);
+  assert.match(devToolingSrc, /ClearSessionSkillDraught/);
+  assert.match(devToolingSrc, /getSkillDraughtDevSummary/);
 });
 
 test('dev panel 2 output appends skill draw debug counters', () => {
@@ -208,16 +210,15 @@ test('dev panel 2 mirrors dev panel pause while open', () => {
   assert.match(indexSrc, /new CustomEvent\('orka:dev2-diagnostics-open-change'/);
   assert.match(indexSrc, /detail: \{ open \}/);
 
-  const appSrc = fs.readFileSync(appPath, 'utf8');
-  assert.match(appSrc, /function isDev2DiagnosticsOpen\(\)/);
-  assert.match(appSrc, /window\.addEventListener\('orka:dev2-diagnostics-open-change'/);
-  assert.match(appSrc, /if \(open\) \{\s*pauseGameplayForDevTooling\(\);/s);
-  assert.match(appSrc, /if \(isDev2DiagnosticsOpen\(\)\) \{\s*state\.globals\.DevToolingPaused = 1;/s);
+  const devToolingSrc = fs.readFileSync(devToolingRuntimePath, 'utf8');
+  assert.match(devToolingSrc, /function isDev2DiagnosticsOpen\(\)/);
+  assert.match(devToolingSrc, /window\.addEventListener\('orka:dev2-diagnostics-open-change'/);
+  assert.match(devToolingSrc, /if \(open\) \{\s*pauseGameplayForDevTooling\(\);/s);
+  assert.match(devToolingSrc, /if \(isDev2DiagnosticsOpen\(\)\) \{\s*state\.globals\.DevToolingPaused = 1;/s);
 });
 
 test('fresh combat session clears selected session skills without touching progression', () => {
-  const appSrc = fs.readFileSync(appPath, 'utf8');
-  const initSrc = extractFunctionSource(appSrc, 'initEntities');
+  const initSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'combatSessionInitializer.js'), 'utf8');
   assert.match(initSrc, /state\.globals\.CombatSessionId = Number\(state\.globals\.CombatSessionId \|\| 0\) \+ 1;/);
   assert.match(initSrc, /callFunctionWithContext\(fnContext, 'ClearSessionSkillDraught'\);/);
   assert.doesNotMatch(initSrc, /HeroSkillProgressByHeroId = \{\}/);
@@ -226,12 +227,13 @@ test('fresh combat session clears selected session skills without touching progr
 
 test('draw render uses dimmed combat background and exactly three horizontal cards', () => {
   const appSrc = fs.readFileSync(appPath, 'utf8');
+  const pointerSrc = fs.readFileSync(pointerRoutingPath, 'utf8');
   const renderSrc = fs.readFileSync(renderOverlayPath, 'utf8');
   assert.match(appSrc, /renderSkillDraughtOverlay/);
   assert.match(appSrc, /renderSkillDraught\.renderSkillDraughtOverlay/);
-  assert.match(appSrc, /const logicalW = canvas\.width \/ Math\.max\(1, dpr \|\| 1\);/);
-  assert.match(appSrc, /const scaleX = rect\.width > 0 \? logicalW \/ rect\.width : 1;/);
-  assert.match(appSrc, /const mx = \(ev\.clientX - rect\.left\) \* scaleX;/);
+  assert.match(pointerSrc, /const logicalW = canvas\.width \/ Math\.max\(1, dpr \|\| 1\);/);
+  assert.match(pointerSrc, /const scaleX = rect\.width > 0 \? logicalW \/ rect\.width : 1;/);
+  assert.match(pointerSrc, /const hit = zones\.find\(\(zone\) => isPointInRect\(mx, my, zone\)\);/);
   assert.match(renderSrc, /rgba\(0, 0, 0, 0\.58\)/);
   assert.match(renderSrc, /Choose a Skill/);
   assert.match(renderSrc, /SkillDraughtHitZones/);

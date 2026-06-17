@@ -450,11 +450,12 @@ test('party shield render expression is light blue and right-edge aligned over t
 
 test('Ward barrier asset is loaded and rendered from the game assets path', () => {
   const appSource = fs.readFileSync(path.join(repoRoot, 'web-runner', 'app.js'), 'utf8');
+  const assetLoaderSource = fs.readFileSync(path.join(repoRoot, 'web-runner', 'systems', 'runtimeVisualAssetLoader.js'), 'utf8');
   const renderSource = fs.readFileSync(path.join(repoRoot, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
   const assetPath = path.join(repoRoot, 'web-runner', 'assets', 'images', 'falie_ward_84x62.png');
 
   assert.equal(fs.existsSync(assetPath), true);
-  assert.match(appSource, /wardBarrierImage = await loadImage\(assetUrl\('images\/falie_ward_84x62\.png'\)\);/);
+  assert.match(assetLoaderSource, /wardBarrierImage = await loadImage\(assetUrl\('images\/falie_ward_84x62\.png'\)\);/);
   assert.match(appSource, /wardBarrierImage,/);
   assert.match(renderSource, /PartyWardBarrierVisualsByUID/);
   assert.match(renderSource, /wardBarrierImage/);

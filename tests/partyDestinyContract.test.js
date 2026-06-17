@@ -318,13 +318,13 @@ test('Destiny resolves from enemy damage receive seam after hero hit', () => {
 });
 
 test('dev panel exposes Destiny trigger without inlining effect logic', () => {
-  const appSrc = fs.readFileSync(appPath, 'utf8');
-  const destinyTriggerStart = appSrc.indexOf('devToolingDom.triggerDestiny.addEventListener');
-  const destinyTriggerEnd = appSrc.indexOf('devToolingDom.clearSessionSkills.addEventListener', destinyTriggerStart);
+  const runtimeSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devToolingRuntime.js'), 'utf8');
+  const destinyTriggerStart = runtimeSrc.indexOf('devToolingDom.triggerDestiny.addEventListener');
+  const destinyTriggerEnd = runtimeSrc.indexOf('devToolingDom.clearSessionSkills.addEventListener', destinyTriggerStart);
   assert.notEqual(destinyTriggerStart, -1);
   assert.notEqual(destinyTriggerEnd, -1);
-  const destinyTriggerSrc = appSrc.slice(destinyTriggerStart, destinyTriggerEnd);
-  assert.match(appSrc, /data-devtool-trigger-destiny/);
+  const destinyTriggerSrc = runtimeSrc.slice(destinyTriggerStart, destinyTriggerEnd);
+  assert.match(runtimeSrc, /data-devtool-trigger-destiny/);
   assert.match(destinyTriggerSrc, /TriggerPartyDestinyDev/);
   assert.match(destinyTriggerSrc, /const requestedUID = Number\(devToolingDom\.skillHero\?\.value \|\| 0\);/);
   assert.match(destinyTriggerSrc, /const requestedActor = state\.entities\.find\(actor => Number\(actor\?\.uid \|\| 0\) === requestedUID\) \|\| null;/);

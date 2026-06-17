@@ -4,14 +4,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 
+const initializerPath = path.join(__dirname, '..', 'web-runner', 'systems', 'combatSessionInitializer.js');
+
 function loadEncounterHelpers() {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
-  const snippet = [
-    src.match(/function normalizeBiomeTags\(input\) \{[\s\S]*?\n\}/)?.[0],
-    src.match(/function normalizeFaction\(input\) \{[\s\S]*?\n\}/)?.[0],
-    src.match(/function deriveEncounterPoolNames\(\{ pool, locale = 'all', faction = '' \} = \{\}\) \{[\s\S]*?\n\}/)?.[0],
-  ].join('\n\n');
-  const script = `${snippet}
+  const src = fs.readFileSync(initializerPath, 'utf8');
+  const transformed = src
+    .replace(/import[\s\S]*?;\n/g, '')
+    .replace(/export function /g, 'function ');
+  const script = `${transformed}
 module.exports = { normalizeBiomeTags, normalizeFaction, deriveEncounterPoolNames };`;
   const context = {
     module: { exports: {} },

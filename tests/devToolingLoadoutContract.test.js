@@ -11,7 +11,7 @@ test('idle farm runtime accepts forced duplicate hero names and forced enemy slo
 });
 
 test('dev tooling loadout sync writes hero and enemy slot overrides into idle farm config', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devToolingRuntime.js'), 'utf8');
   assert.match(src, /function syncIdleFarmDevLoadoutConfig\(cfg = ensureDevToolingConfig\(\)\) \{/);
   assert.match(src, /heroNames,/);
   assert.match(src, /enemySlots: Math\.max\(1, activeEnemySlots\.length \|\| Number\(currentConfig\.enemySlots \|\| 1\)\),/);
