@@ -242,7 +242,7 @@ test('Grow is a mirrored deterministic tiered party draw card with cap metadata'
   }
 });
 
-test('Grow selection deterministically gives all living heroes persistent Max HP tradeoff state', () => {
+test('Grow selection deterministically gives every party hero persistent Max HP tradeoff state', () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const ctx = makeContext();
@@ -257,7 +257,7 @@ test('Grow selection deterministically gives all living heroes persistent Max HP
 
     const growState = mod.GetGrowSkillState(ctx);
     assert.equal(growState.tier, 1);
-    assert.deepEqual(plain(Object.keys(growState.heroes).sort()), ['100', '101', '102']);
+    assert.deepEqual(plain(Object.keys(growState.heroes).sort()), ['100', '101', '102', '103']);
     assert.equal(growState.heroes['100'].powerAmpPct, 8);
     assert.equal(growState.heroes['100'].maxHpPenaltyPct, 8);
     assert.equal(growState.heroes['102'].powerAmpMultiplier, 1.08);
@@ -275,12 +275,12 @@ test('Grow selection deterministically gives all living heroes persistent Max HP
     assert.equal(ctx.state.globals.PartyHPByIndex[1], 64);
     assert.equal(ctx.state.globals.PartyMaxHPByIndex[2], 92);
     assert.equal(ctx.state.globals.PartyHPByIndex[2], 55);
-    assert.equal(ctx.state.globals.PartyMaxHP, 376);
+    assert.equal(ctx.state.globals.PartyMaxHP, 368);
     assert.equal(ctx.state.globals.PartyHP, 192);
     assert.equal(mod.GetEffectiveStat(ctx, ctx.state.entities[0], 'DEF'), 100);
     assert.equal(mod.GetEffectiveStat(ctx, ctx.state.entities[0], 'RES'), 100);
     assert.equal(mod.GetEffectiveStat(ctx, ctx.state.entities[0], 'ATK'), 50);
-    assert.equal(ctx.state.entities[3].maxHP, 100, 'dead heroes are not acquired by deterministic Grow');
+    assert.equal(ctx.state.entities[3].maxHP, 92, 'Grow is party-wide even when a hero has no individual HP');
     assert.equal(ctx.state.entities[3].hp, 0);
 
     assert.deepEqual(plain(ctx.state.globals.GrowAcquisitionQueue), []);
@@ -291,7 +291,7 @@ test('Grow selection deterministically gives all living heroes persistent Max HP
     assert.equal(ctx.state.globals.PowerAmpVisualByUID[100].growTier, 1);
     assert.equal(ctx.state.globals.PowerAmpVisualByUID[101].source, 'party_grow');
     assert.equal(ctx.state.globals.PowerAmpVisualByUID[102].source, 'party_grow');
-    assert.equal(ctx.state.globals.PowerAmpVisualByUID[103], undefined);
+    assert.equal(ctx.state.globals.PowerAmpVisualByUID[103].source, 'party_grow');
   }
 });
 
@@ -332,7 +332,7 @@ test('Grow tier updates existing grown heroes without rerolling and leaves the p
     const ctx = makeContext();
 
     selectGrow(mod, ctx, [0, 0, 0.9, 0.9, 0.9]);
-    assert.deepEqual(plain(Object.keys(mod.GetGrowSkillState(ctx).heroes).sort()), ['100', '101', '102']);
+    assert.deepEqual(plain(Object.keys(mod.GetGrowSkillState(ctx).heroes).sort()), ['100', '101', '102', '103']);
     assert.equal(ctx.state.globals.GrowAcquisitionQueue.length, 0);
 
     ctx.state.entities[3].hp = 50;
@@ -355,7 +355,7 @@ test('Grow tier updates existing grown heroes without rerolling and leaves the p
     assert.equal(ctx.state.entities[2].maxHP, 86);
     assert.equal(ctx.state.entities[2].hp, 51);
     assert.equal(ctx.state.entities[3].maxHP, 86);
-    assert.equal(ctx.state.entities[3].hp, 43);
+    assert.equal(ctx.state.entities[3].hp, 46);
     assert.equal(mod.GetEffectiveStat(ctx, ctx.state.entities[0], 'DEF'), 100);
 
     const visualStartAt = ctx.state.globals.PowerAmpVisualByUID[100].startAt;
@@ -374,7 +374,7 @@ test('Grow tier updates existing grown heroes without rerolling and leaves the p
     assert.equal(ctx.state.entities[2].maxHP, 80);
     assert.equal(ctx.state.entities[2].hp, 47);
     assert.equal(ctx.state.entities[3].maxHP, 80);
-    assert.equal(ctx.state.entities[3].hp, 40);
+    assert.equal(ctx.state.entities[3].hp, 42);
     assert.equal(ctx.state.globals.PartyMaxHPByIndex[0], 80);
     assert.equal(ctx.state.globals.PartyHPByIndex[0], 63);
     assert.equal(ctx.state.globals.PowerAmpVisualByUID[100].startAt, visualStartAt, 'tier updates do not regrow the hero');
@@ -416,7 +416,7 @@ test('Grow clears with the session skill draught reset', () => {
 
     selectGrow(mod, ctx, [0, 0, 0.1, 0.1, 0.1]);
     assert.equal(ctx.state.globals.GrowTier, 1);
-    assert.equal(Object.keys(ctx.state.globals.GrowStateByHeroUID).length, 3);
+    assert.equal(Object.keys(ctx.state.globals.GrowStateByHeroUID).length, 4);
 
     const cleared = mod.ClearSessionSkillDraught(ctx);
     assert.equal(cleared.ok, true);
