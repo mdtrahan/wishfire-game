@@ -1026,7 +1026,6 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: 'party_crimson_ward', owner: 'Party', slot: 11, title: 'Crimson Ward', cardText: 'Grant a temporary party ward before true HP is damaged.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'party_temp_hp_shield', shieldPctPartyMax: 18, stacking: 'refresh_capped_shield' }, qa: { proof: 'PartyTempHPShield and ward visuals refresh' } },
   { id: 'party_faze', owner: 'Party', slot: 12, title: 'Faze', cardText: 'Blights the field, poisoning enemies for the remainder of the session.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'field_refresh', status: 'tainted_ground' }, qa: { proof: 'TaintedGroundZones and PendingHeroHits refresh' } },
   { id: 'party_grow', owner: 'Party', slot: 13, title: 'Grow', cardText: 'Grow all living heroes: more power, less Max HP.', risk: 'HIGH', growth: [8, 14, 20], procPattern: 'On selection', payloadImplemented: true, drawClass: 'tiered', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_until_cap' }, trigger: { event: 'selection', eligibility: 'all_living_heroes' }, effect: { kind: 'grow', maxTier: GROW_MAX_TIER, application: 'all_living_heroes', powerAmpPctByTier: GROW_TIERS.map(row => row.powerAmpPct), maxHpPenaltyPctByTier: GROW_TIERS.map(row => row.maxHpPenaltyPct) }, qa: { proof: 'GrowAcquisitionTrace and persistent PowerAmpVisualByUID state' } },
-  { id: 'party_drain', owner: 'Party', slot: 14, title: 'Drain', cardText: 'Slows enemies standing in the field by 10% SPD.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'field_refresh', status: 'speed_down', slowPct: 10, stacking: 'refresh_only' }, qa: { proof: 'DrainFieldZones refresh and GetEffectiveStat SPD slow' } },
 ]);
 
 const PARTY_SKILL_DRAW_ALLOWED_IDS = Object.freeze([
@@ -1035,7 +1034,6 @@ const PARTY_SKILL_DRAW_ALLOWED_IDS = Object.freeze([
   'party_destiny',
   'party_faze',
   'party_grow',
-  'party_drain',
 ]);
 const PARTY_SKILL_DRAW_EXCLUDED_IDS = Object.freeze(new Set([
   'party_fresh_start',
@@ -1978,7 +1976,6 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
   if (sessionSkill.id === 'party_crimson_ward') activateCrimsonWardSkill(ctx);
   if (sessionSkill.id === 'party_faze') activateFazeSkill(ctx, uid);
   if (sessionSkill.id === 'party_grow') activateGrowSkill(ctx, uid, sessionSkill);
-  if (sessionSkill.id === 'party_drain') activateDrainSkill(ctx, uid);
   const scope = String(sessionSkill.owner || '').toLowerCase() === 'party' ? 'party' : 'hero';
   appendSkillDraughtTrace(g, 'select', {
     heroUID: uid,
