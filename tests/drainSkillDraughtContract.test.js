@@ -7,7 +7,10 @@ const vm = require('node:vm');
 const repoRoot = path.join(__dirname, '..');
 const runtimePath = path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js');
 const scriptsPath = path.join(repoRoot, 'Scripts', 'functionBank.js');
+const appPath = path.join(repoRoot, 'web-runner', 'app.js');
+const renderRuntimePath = path.join(repoRoot, 'web-runner', 'systems', 'renderRuntime.js');
 const retiredDocPath = path.join(repoRoot, 'governance', 'product', 'retired-skills', 'drain.md');
+const retiredSkillId = ['party', 'drain'].join('_');
 
 function loadModule(modulePath) {
   const original = fs.readFileSync(modulePath, 'utf8');
@@ -82,41 +85,42 @@ test('Drain is retired from active skill draught draw surfaces', () => {
     const allowedListEnd = src.indexOf(']);', allowedListStart);
     assert.notEqual(allowedListStart, -1);
     const allowedListSrc = src.slice(allowedListStart, allowedListEnd);
-    assert.doesNotMatch(allowedListSrc, /party_drain/);
+    assert.equal(allowedListSrc.includes(retiredSkillId), false);
     assert.doesNotMatch(src, /sessionSkill\.id === 'party_drain'\)\s+activateDrainSkill/);
 
     const mod = loadModule(modulePath);
     const partyIds = Array.from(mod.GetPartySkillDefinitions(), skill => skill.id);
-    assert.equal(partyIds.includes('party_drain'), false, 'retired definition must not stay in the public party registry');
+    assert.equal(partyIds.includes(retiredSkillId), false, 'retired definition must not stay in the public party registry');
 
     const ctx = makeContext();
-    const forced = mod.ForceAstralFlowSkillDraught(ctx, 100, 'party_drain');
+    const forced = mod.ForceAstralFlowSkillDraught(ctx, 100, retiredSkillId);
     assert.equal(forced.ok, true);
-    assert.equal(forced.candidates.some(candidate => candidate.id === 'party_drain'), false);
-    assert.equal(mod.GetSkillDraughtState(ctx).skillDrawDebug.calls.party_drain, undefined);
-    assert.equal(ctx.state.globals.DrainFieldZones, undefined);
+    assert.equal(forced.candidates.some(candidate => candidate.id === retiredSkillId), false);
+    assert.equal(mod.GetSkillDraughtState(ctx).skillDrawDebug.calls[retiredSkillId], undefined);
   }
 });
 
-test('injected Drain candidates do not activate retired Drain runtime behavior', () => {
+test('retired party Drain implementation residue is absent from active runtime files', () => {
+  const forbiddenRuntimePatterns = [
+    /\bactivateDrainSkill\b/,
+    /\bSyncDrainFieldZones\b/,
+    /\bDrainFieldZones\b/,
+    /\bdrainSlowPct\b/,
+    /\bdrain_lines\b/,
+    /\bParty uses Drain\b/,
+  ];
   for (const modulePath of [runtimePath, scriptsPath]) {
-    const mod = loadModule(modulePath);
-    const ctx = makeContext();
-    ctx.state.globals.SkillDraughtOpen = 1;
-    ctx.state.globals.SkillDraughtHeroUID = 100;
-    ctx.state.globals.SkillDraughtCandidates = [{
-      index: 0,
-      id: 'party_drain',
-      key: 'party_drain',
-      title: 'Drain',
-      owner: 'Party',
-      drawClass: 'repeatable',
-    }];
-
-    const selected = mod.SelectSkillDraughtCard(ctx, 0);
-    assert.equal(selected.ok, true);
-    assert.equal(selected.skill.id, 'party_drain');
-    assert.equal(ctx.state.globals.DrainFieldZones, undefined);
-    assert.doesNotMatch(ctx.state.globals.CombatLog.join('\n'), /Party uses Drain/);
+    const src = fs.readFileSync(modulePath, 'utf8');
+    for (const pattern of forbiddenRuntimePatterns) assert.doesNotMatch(src, pattern);
   }
+
+  const appSrc = fs.readFileSync(appPath, 'utf8');
+  assert.doesNotMatch(appSrc, /\bgetPersistentDrainFieldOverlays\b/);
+  assert.doesNotMatch(appSrc, /\bhasPersistentEnemyDrainOverlay\b/);
+  assert.doesNotMatch(appSrc, /\bSyncDrainFieldZones\b/);
+
+  const renderRuntimeSrc = fs.readFileSync(renderRuntimePath, 'utf8');
+  assert.doesNotMatch(renderRuntimeSrc, /\brenderEnemyDrainLines\b/);
+  assert.doesNotMatch(renderRuntimeSrc, /\bdrainFieldOverlays\b/);
+  assert.doesNotMatch(renderRuntimeSrc, /\benemyIsDrained\b/);
 });

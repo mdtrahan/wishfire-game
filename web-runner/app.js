@@ -452,71 +452,6 @@ function getPersistentTaintedGroundOverlays() {
   return overlays;
 }
 
-function isActiveDrainFieldZone(zone) {
-  if (!zone) return false;
-  if (String(zone.effectName || '') !== 'Drain') return false;
-  if (String(zone.visual || '') !== 'drain_lines') return false;
-  const now = Number(state.globals.time || 0);
-  if (now < Number(zone.visualStartsAt || zone.activeAt || 0)) return false;
-  const fadeStartedAt = zone.fadeStartedAt == null ? null : Number(zone.fadeStartedAt || 0);
-  if (fadeStartedAt == null) return true;
-  return (now - fadeStartedAt) < 0.55;
-}
-
-function enemyOccupiesDrainFieldZone(enemy, zone) {
-  if (!enemy || !zone) return false;
-  const enemySlotIndex = Number(enemy.slotIndex);
-  if (Number.isFinite(enemySlotIndex) && enemySlotIndex === Number(zone.slotIndex || 0)) return true;
-  const enemyX = Number(enemy.x);
-  const enemyY = Number(enemy.y);
-  const anchorX = Number(zone.anchorWorldX);
-  const anchorY = Number(zone.anchorWorldY);
-  if (!Number.isFinite(enemyX) || !Number.isFinite(enemyY) || !Number.isFinite(anchorX) || !Number.isFinite(anchorY)) {
-    return false;
-  }
-  const spacing = Number(state.globals.Spacing || ((state.globals.EnemySize || 40) + (state.globals.enemyGAP || 8)) || 48);
-  const dx = Math.abs(enemyX - anchorX);
-  const dy = Math.abs(enemyY - anchorY);
-  return dx <= Math.max(16, spacing * 0.75) && dy <= Math.max(16, spacing * 0.75);
-}
-
-function hasPersistentEnemyDrainOverlay(uid) {
-  if (!uid) return false;
-  const enemy = state.entities.find((entity) => Number(entity && entity.uid || 0) === Number(uid || 0));
-  if (!enemy) return false;
-  const zones = Array.isArray(state.globals.DrainFieldZones) ? state.globals.DrainFieldZones : [];
-  for (const zone of zones) {
-    if (!isActiveDrainFieldZone(zone)) continue;
-    if (!enemyOccupiesDrainFieldZone(enemy, zone)) continue;
-    return true;
-  }
-  return false;
-}
-
-function getPersistentDrainFieldOverlays() {
-  const zones = Array.isArray(state.globals.DrainFieldZones) ? state.globals.DrainFieldZones : [];
-  const now = Number(state.globals.time || 0);
-  const overlays = [];
-  for (const zone of zones) {
-    if (!isActiveDrainFieldZone(zone)) continue;
-    const fadeStartedAt = zone.fadeStartedAt == null ? null : Number(zone.fadeStartedAt || 0);
-    const fadeAlpha = fadeStartedAt == null
-      ? 1
-      : Math.max(0, Math.min(1, 1 - ((now - fadeStartedAt) / 0.55)));
-    if (fadeAlpha <= 0) continue;
-    overlays.push({
-      id: String(zone.id || ''),
-      slotIndex: Number(zone.slotIndex || 0),
-      anchorWorldX: Number(zone.anchorWorldX),
-      anchorWorldY: Number(zone.anchorWorldY),
-      seed: Number(zone.sourceUID || 0) + Number(zone.slotIndex || 0) * 23,
-      alpha: fadeAlpha,
-      slowPct: Number(zone.drainSlowPct || 10),
-    });
-  }
-  return overlays;
-}
-
 function hasPersistentHeroRegenOverlay() {
   const regens = Array.isArray(state.globals.PartyRegens) ? state.globals.PartyRegens : [];
   for (const regen of regens) {
@@ -3379,7 +3314,6 @@ async function main(){
   function drawFrame(dtOverride){
     syncSuperGemShapes({ gameState, state, boardGeometry, reason: 'draw-frame' });
     processTurnCadencePartyRegens();
-    callFunctionWithContext(fnContext, 'SyncDrainFieldZones');
     superGemRuntime.syncTaintedGroundZones({
       state,
       callFunctionWithContext,
@@ -3490,10 +3424,8 @@ async function main(){
       assertBoardIntegrity,
       getGemGateSnapshot,
       getPersistentTaintedGroundOverlays,
-      getPersistentDrainFieldOverlays,
       hasPersistentEnemyTaintedGroundOverlay,
       hasPersistentEnemyBlightOverlay,
-      hasPersistentEnemyDrainOverlay,
       hasPersistentHeroRegenOverlay,
       isHitFlashActive,
       getHitFlashTone,
