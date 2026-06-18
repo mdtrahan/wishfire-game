@@ -641,6 +641,10 @@ function resetCombatRuntimeForFreshSession(reason = 'combat-refresh', options = 
   return requireDevToolingRuntime().resetCombatRuntimeForFreshSession(reason, options);
 }
 
+function hardRestartRuntimeFromDevTooling() {
+  return requireDevToolingRuntime().hardRestartRuntimeFromDevTooling();
+}
+
 function toggleDevToolingModal(nextOpen = null) {
   return requireDevToolingRuntime().toggleDevToolingModal(nextOpen);
 }

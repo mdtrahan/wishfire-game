@@ -944,6 +944,7 @@ export function createDevToolingRuntime(deps = {}) {
     resumeGameplayFromDevTooling,
     closeDevToolingModal,
     resetCombatRuntimeForFreshSession,
+    hardRestartRuntimeFromDevTooling,
     toggleDevToolingModal,
     isDevToolingHotkey,
     isEditableDomTarget,

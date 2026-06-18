@@ -97,6 +97,8 @@ test('dev tooling runtime owns modal/config while app keeps restart wiring', () 
   assert.match(src, /function clearPersistedDevToolingConfig\(\)/);
   assert.match(src, /window\.sessionStorage\.removeItem\(DEV_TOOLING_STORAGE_KEY\);/);
   assert.match(src, /function hardRestartRuntimeFromDevTooling\(\)/);
+  assert.match(appSrc, /function hardRestartRuntimeFromDevTooling\(\) \{\n  return requireDevToolingRuntime\(\)\.hardRestartRuntimeFromDevTooling\(\);\n\}/);
+  assert.match(runtimeSrc, /hardRestartRuntimeFromDevTooling,\n    toggleDevToolingModal,/);
   assert.match(src, /cleanUrl\.search = '';/);
   assert.match(src, /cleanUrl\.hash = '';/);
   assert.match(src, /window\.location\.replace\(cleanUrl\.href\);/);
