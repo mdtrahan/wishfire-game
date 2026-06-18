@@ -453,6 +453,7 @@
 - Automatic hero single attacks must not read stale `SelectedEnemyUID`; that global belongs to pending manual target selection. If a hero action is not resolving that actor's active `PendingSkillID`, choose a fresh living enemy target through runtime RNG.
 - Dev autoplay pending-target resolution is still combat targeting, not UI convenience. It must consume `RuntimeRandom` across living enemies; assigning `livingEnemies[0]` recreates sticky focus until the first target dies.
 - Enemy selector presentation must prefer queued `PendingHeroHits[].targetUID` over `SelectedEnemyUID` once a hero attack handoff has queued damage. Otherwise the visible marker can fall back to a stale or default enemy while damage lands on the resolved target.
+- Hero target/selector regressions are only fixed when validation covers target choice, queued hit target, and rendered selector together; one layer can pass while the player still sees marker/damage desync.
 - When moving dev tooling logic out of `app.js`, every remaining app wrapper must delegate to a returned runtime method. A helper existing inside `devToolingRuntime.js` is not enough; reset/restart paths need contract coverage for both the runtime return object and the app wrapper.
 
 ## 2026-06-09 — Dev Modal Resume Must Revalidate Idle Hero Input
