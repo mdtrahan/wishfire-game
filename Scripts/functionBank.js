@@ -8221,8 +8221,12 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
   } else if (skillId === 'HERO_SINGLE') {
     handled = true;
     const enemies = getEnemies(ctx);
-    const preferred = g.SelectedEnemyUID ? GetActorByUID(ctx, g.SelectedEnemyUID) : null;
-    const target = preferred && preferred.kind === 'enemy' ? preferred : enemies[0];
+    const pendingManualTarget = String(g.PendingSkillID || '') === 'HERO_SINGLE'
+      && Number(g.PendingActor || 0) === Number(actorUID || 0);
+    const preferred = pendingManualTarget && g.SelectedEnemyUID ? GetActorByUID(ctx, g.SelectedEnemyUID) : null;
+    const target = preferred && preferred.kind === 'enemy' && (preferred.hp ?? 0) > 0
+      ? preferred
+      : randomPick(ctx, enemies);
     if (target) {
       resolvedTargetUID = Number(target.uid || 0);
       HeroAttackSingle(ctx, actorUID, target.uid);
