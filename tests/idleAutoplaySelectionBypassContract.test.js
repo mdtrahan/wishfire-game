@@ -10,6 +10,10 @@ test('dev idle mode auto-resolves pending hero target selection instead of stall
   assert.match(src, /if \(!state\.globals\.PendingSkillID\) return false;/);
   assert.match(src, /if \(!presentationBarrier\.canResolvePendingTargetAction\) return false;/);
   assert.match(src, /if \(String\(state\.globals\.PendingSkillID \|\| ''\) === 'HERO_SINGLE'\) \{/);
+  assert.match(src, /const roll = typeof state\.globals\.RuntimeRandom === 'function'\s*\? Number\(state\.globals\.RuntimeRandom\(\)\)\s*: 0;/);
+  assert.match(src, /const targetIndex = Math\.max\(0, Math\.min\(livingEnemies\.length - 1, Math\.floor\(safeRoll \* livingEnemies\.length\)\)\);/);
+  assert.match(src, /state\.globals\.SelectedEnemyUID = Number\(livingEnemies\[targetIndex\]\.uid \|\| 0\);/);
+  assert.doesNotMatch(src, /state\.globals\.SelectedEnemyUID = Number\(livingEnemies\[0\]\.uid \|\| 0\);/);
   assert.match(src, /resolvePendingTargetHandoff\(\{\s*actorUID,\s*source: 'dev-autoplay',\s*\}\)/s);
   assert.match(src, /if \(autoResolvePendingSelectionForDevIdle\(\)\) \{/);
 });

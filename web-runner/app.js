@@ -3912,7 +3912,12 @@ function getStoryCardLiveLineState() {
       livingEnemies: livingEnemies.length,
     });
     if (String(state.globals.PendingSkillID || '') === 'HERO_SINGLE') {
-      state.globals.SelectedEnemyUID = Number(livingEnemies[0].uid || 0);
+      const roll = typeof state.globals.RuntimeRandom === 'function'
+        ? Number(state.globals.RuntimeRandom())
+        : 0;
+      const safeRoll = Number.isFinite(roll) && roll >= 0 && roll < 1 ? roll : 0;
+      const targetIndex = Math.max(0, Math.min(livingEnemies.length - 1, Math.floor(safeRoll * livingEnemies.length)));
+      state.globals.SelectedEnemyUID = Number(livingEnemies[targetIndex].uid || 0);
     }
     const handoff = resolvePendingTargetHandoff({
       actorUID,
