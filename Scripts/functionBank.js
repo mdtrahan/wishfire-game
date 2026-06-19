@@ -80,6 +80,8 @@ const GROW_TIERS = Object.freeze([
 const GROW_MAX_TIER = GROW_TIERS.length;
 const PARTY_CHAIN_STRIKE_I_ID = 'party_chain_strike_i';
 const PARTY_CHAIN_STRIKE_I_DAMAGE_PCT = 33;
+const PARTY_CHAIN_STRIKE_II_ID = 'party_chain_strike_ii';
+const PARTY_CHAIN_STRIKE_II_DAMAGE_PCT = 66;
 const PARTY_CHAIN_STRIKE_VISUAL_KEY = 'chain_arc_ribbon';
 const PARTY_CHAIN_STRIKE_VISUAL_ASSET = 'SkillChainStrikeArc';
 
@@ -1031,6 +1033,7 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: 'party_faze', owner: 'Party', slot: 12, title: 'Faze', cardText: 'Blights the field, poisoning enemies for the remainder of the session.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'field_refresh', status: 'tainted_ground' }, qa: { proof: 'TaintedGroundZones and PendingHeroHits refresh' } },
   { id: 'party_grow', owner: 'Party', slot: 13, title: 'Grow', cardText: 'Grow all living heroes: more power, less Max HP.', risk: 'HIGH', growth: [8, 14, 20], procPattern: 'On selection', payloadImplemented: true, drawClass: 'tiered', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_until_cap' }, trigger: { event: 'selection', eligibility: 'all_living_heroes' }, effect: { kind: 'grow', maxTier: GROW_MAX_TIER, application: 'all_living_heroes', powerAmpPctByTier: GROW_TIERS.map(row => row.powerAmpPct), maxHpPenaltyPctByTier: GROW_TIERS.map(row => row.maxHpPenaltyPct) }, qa: { proof: 'GrowAcquisitionTrace and persistent PowerAmpVisualByUID state' } },
   { id: PARTY_CHAIN_STRIKE_I_ID, owner: 'Party', slot: 14, title: 'Chain Strike I', cardText: 'Hero attacks bounce once for 33% damage.', risk: 'MED', growth: [33], procPattern: 'On hero attack', payloadImplemented: true, drawClass: 'one_off', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'reject_after_selected' }, trigger: { event: 'hero_attack_single', eligibility: 'active_party_skill_living_enemy_target' }, effect: { kind: 'chain_bounce', bounceDamagePct: PARTY_CHAIN_STRIKE_I_DAMAGE_PCT, maxBounces: 1, targeting: 'next_living_enemy_sequence', oneEnemyFallback: 'same_enemy', visual: PARTY_CHAIN_STRIKE_VISUAL_KEY }, qa: { proof: 'PendingHeroHits chain_bounce packet and ChainStrikeVisuals arc ribbon' } },
+  { id: PARTY_CHAIN_STRIKE_II_ID, owner: 'Party', slot: 15, title: 'Chain Strike II', cardText: 'Upgrade Chain Strike to bounce twice for 66% damage.', risk: 'MED', growth: [66], procPattern: 'On hero attack', payloadImplemented: true, drawClass: 'one_off', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'reject_after_selected' }, trigger: { event: 'hero_attack_single', eligibility: 'requires_chain_strike_i' }, effect: { kind: 'chain_bounce_upgrade', upgrades: PARTY_CHAIN_STRIKE_I_ID, bounceDamagePct: PARTY_CHAIN_STRIKE_II_DAMAGE_PCT, maxBounces: 2, targeting: 'next_living_enemy_sequence', oneEnemyFallback: 'same_enemy', visual: PARTY_CHAIN_STRIKE_VISUAL_KEY }, qa: { proof: 'Requires Chain Strike I and upgrades LastPartyChainStrike to two 66% bounces' } },
 ]);
 
 const PARTY_SKILL_DRAW_ALLOWED_IDS = Object.freeze([
@@ -1040,6 +1043,7 @@ const PARTY_SKILL_DRAW_ALLOWED_IDS = Object.freeze([
   'party_faze',
   'party_grow',
   PARTY_CHAIN_STRIKE_I_ID,
+  PARTY_CHAIN_STRIKE_II_ID,
 ]);
 const PARTY_SKILL_DRAW_EXCLUDED_IDS = Object.freeze(new Set([
   'party_fresh_start',
@@ -1260,6 +1264,15 @@ function getSkillDrawSuppressionReason(g, def, heroUID, options = {}) {
   const bucketKey = getSkillSessionBucketKey(def, heroUID);
   const bucket = Array.isArray(g.SessionSkillsByHeroUID?.[bucketKey]) ? g.SessionSkillsByHeroUID[bucketKey] : [];
   const selectionCount = countSessionSkillSelections(bucket, skillId);
+  const chainStrikeISelections = countSessionSkillSelections(bucket, PARTY_CHAIN_STRIKE_I_ID);
+  const chainStrikeIISelections = countSessionSkillSelections(bucket, PARTY_CHAIN_STRIKE_II_ID);
+  if (skillId === PARTY_CHAIN_STRIKE_I_ID && chainStrikeIISelections > 0) return 'upgraded_by_chain_strike_ii';
+  if (skillId === PARTY_CHAIN_STRIKE_II_ID) {
+    if (selectionCount > 0) return 'one_off_already_selected';
+    if (chainStrikeISelections <= 0) return 'requires_chain_strike_i';
+    if (!options.ignoreExposure && Number(g.SkillDraughtOneOffExposureBySkillId?.[skillId] || 0) > 0) return 'one_off_already_exposed';
+    return '';
+  }
   const drawClass = String(def?.drawClass || '');
   if (drawClass === 'one_off') {
     if (selectionCount > 0) return 'one_off_already_selected';
@@ -5493,9 +5506,11 @@ function startPartyWardBarrierFadeOut(ctx) {
   return until;
 }
 
-export function ApplyDamageToTarget(ctx, uid, dmg) {
+export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   const g = getGlobals(ctx);
-  g.LastDamageSourceUID = Number(GetCurrentTurn(ctx) || 0);
+  const opts = options && typeof options === 'object' ? options : {};
+  const sourceUID = Number(opts.sourceUID || opts.actorUID || 0);
+  g.LastDamageSourceUID = sourceUID > 0 ? sourceUID : Number(GetCurrentTurn(ctx) || 0);
   const t = GetActorByUID(ctx, uid);
   if (!t) return 0;
   const beforeHP = Number(t.hp ?? 0);
@@ -6440,7 +6455,7 @@ function resolveChainStrikeBounceTarget(ctx, sourceTargetUID) {
   return livingEnemies[(sourceIndex + 1) % livingEnemies.length] || livingEnemies[0];
 }
 
-function queueChainStrikeVisual(g, sourceTargetUID, targetUID, startAt, impactAt) {
+function queueChainStrikeVisual(g, sourceTargetUID, targetUID, startAt, impactAt, skillId = PARTY_CHAIN_STRIKE_I_ID) {
   if (!g.ChainStrikeVisuals || !Array.isArray(g.ChainStrikeVisuals)) g.ChainStrikeVisuals = [];
   const serial = Number(g.ChainStrikeVisualSerial || 0) + 1;
   g.ChainStrikeVisualSerial = serial;
@@ -6448,7 +6463,7 @@ function queueChainStrikeVisual(g, sourceTargetUID, targetUID, startAt, impactAt
   const impact = Number.isFinite(Number(impactAt)) ? Number(impactAt) : start + 0.28;
   g.ChainStrikeVisuals.push({
     id: serial,
-    skillId: PARTY_CHAIN_STRIKE_I_ID,
+    skillId: String(skillId || PARTY_CHAIN_STRIKE_I_ID),
     sourceTargetUID: Number(sourceTargetUID || 0),
     targetUID: Number(targetUID || 0),
     startAt: start,
@@ -6460,6 +6475,26 @@ function queueChainStrikeVisual(g, sourceTargetUID, targetUID, startAt, impactAt
   return serial;
 }
 
+function getActiveChainStrikeTier(ctx) {
+  if (IsPartySessionSkillActive(ctx, PARTY_CHAIN_STRIKE_II_ID)) {
+    return {
+      skillId: PARTY_CHAIN_STRIKE_II_ID,
+      actionName: 'Chain Strike II',
+      damagePct: PARTY_CHAIN_STRIKE_II_DAMAGE_PCT,
+      maxBounces: 2,
+    };
+  }
+  if (IsPartySessionSkillActive(ctx, PARTY_CHAIN_STRIKE_I_ID)) {
+    return {
+      skillId: PARTY_CHAIN_STRIKE_I_ID,
+      actionName: 'Chain Strike I',
+      damagePct: PARTY_CHAIN_STRIKE_I_DAMAGE_PCT,
+      maxBounces: 1,
+    };
+  }
+  return null;
+}
+
 function queuePartyChainStrikeBounce(ctx, {
   heroUID,
   sourceTargetUID,
@@ -6468,58 +6503,90 @@ function queuePartyChainStrikeBounce(ctx, {
   mode,
   actorName,
 } = {}) {
-  if (!IsPartySessionSkillActive(ctx, PARTY_CHAIN_STRIKE_I_ID)) return false;
+  const activeTier = getActiveChainStrikeTier(ctx);
+  if (!activeTier) return false;
   const actor = GetActorByUID(ctx, heroUID);
   if (!actor || actor.kind !== 'hero' || (actor.hp ?? 0) <= 0) return false;
   const sourceTarget = GetActorByUID(ctx, sourceTargetUID);
   if (!sourceTarget || sourceTarget.kind !== 'enemy') return false;
-  const bounceTarget = resolveChainStrikeBounceTarget(ctx, sourceTargetUID);
-  if (!bounceTarget) return false;
   const baseDamage = Math.max(0, Math.floor(Number(originalDamage || 0)));
   if (baseDamage <= 0) return false;
-  const bounceDamage = Math.max(1, Math.ceil(baseDamage * (PARTY_CHAIN_STRIKE_I_DAMAGE_PCT / 100)));
+  const bounceDamage = Math.max(1, Math.ceil(baseDamage * (activeTier.damagePct / 100)));
+  const maxBounces = Math.max(1, Math.floor(Number(activeTier.maxBounces || 1)));
   const g = getGlobals(ctx);
   const now = Number(g.time || 0);
   const originalApplyAt = Number.isFinite(Number(applyAt)) ? Number(applyAt) : now + 0.97;
-  const visualStartAt = Math.max(now, originalApplyAt + 0.04);
-  const bounceApplyAt = Math.max(visualStartAt + 0.26, originalApplyAt + 0.22);
   g.PendingHeroHits = g.PendingHeroHits || [];
-  const visualId = queueChainStrikeVisual(g, sourceTargetUID, bounceTarget.uid, visualStartAt, bounceApplyAt);
-  g.PendingHeroHits.push({
-    at: bounceApplyAt,
-    heroUID,
-    targetUID: Number(bounceTarget.uid || 0),
-    dmg: bounceDamage,
-    powerAmpMultiplier: 0,
-    finalDmg: bounceDamage,
-    powerAmpLifecycleId: 0,
-    consumePowerAmp: 0,
-    calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
-    heroName: actorName,
-    heroType: mode,
-    effectType: 'chain_bounce',
-    actionName: 'Chain Strike I',
-    generatedBySkillId: PARTY_CHAIN_STRIKE_I_ID,
-    chainStrikeDamagePct: PARTY_CHAIN_STRIKE_I_DAMAGE_PCT,
-    chainStrikeSourceTargetUID: Number(sourceTargetUID || 0),
-    chainStrikeVisual: PARTY_CHAIN_STRIKE_VISUAL_KEY,
-    chainStrikeVisualAsset: PARTY_CHAIN_STRIKE_VISUAL_ASSET,
-    chainStrikeVisualId: visualId,
-    msg: `Chain Strike arcs to ${bounceTarget.name || '?'} for ${bounceDamage}!`,
-  });
-  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), bounceApplyAt + 0.28);
+  let chainSourceUID = Number(sourceTargetUID || 0);
+  let lastBounceApplyAt = originalApplyAt;
+  const targetUIDs = [];
+  const visualIds = [];
+  for (let bounceIndex = 0; bounceIndex < maxBounces; bounceIndex += 1) {
+    const bounceTarget = resolveChainStrikeBounceTarget(ctx, chainSourceUID);
+    if (!bounceTarget) break;
+    const visualStartAt = Math.max(now, originalApplyAt + 0.04 + (bounceIndex * 0.16));
+    const bounceApplyAt = Math.max(visualStartAt + 0.26, originalApplyAt + 0.22 + (bounceIndex * 0.16));
+    const visualId = queueChainStrikeVisual(g, chainSourceUID, bounceTarget.uid, visualStartAt, bounceApplyAt, activeTier.skillId);
+    g.PendingHeroHits.push({
+      at: bounceApplyAt,
+      heroUID,
+      targetUID: Number(bounceTarget.uid || 0),
+      dmg: bounceDamage,
+      powerAmpMultiplier: 0,
+      finalDmg: bounceDamage,
+      powerAmpLifecycleId: 0,
+      consumePowerAmp: 0,
+      calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
+      heroName: actorName,
+      heroType: mode,
+      effectType: 'chain_bounce',
+      actionName: activeTier.actionName,
+      generatedBySkillId: activeTier.skillId,
+      chainStrikeDamagePct: activeTier.damagePct,
+      chainStrikeBounceIndex: bounceIndex + 1,
+      chainStrikeBounceCount: maxBounces,
+      chainStrikeSourceTargetUID: chainSourceUID,
+      chainStrikeVisual: PARTY_CHAIN_STRIKE_VISUAL_KEY,
+      chainStrikeVisualAsset: PARTY_CHAIN_STRIKE_VISUAL_ASSET,
+      chainStrikeVisualId: visualId,
+      msg: `Chain Strike arcs to ${bounceTarget.name || '?'} for ${bounceDamage}!`,
+    });
+    targetUIDs.push(Number(bounceTarget.uid || 0));
+    visualIds.push(visualId);
+    chainSourceUID = Number(bounceTarget.uid || 0);
+    lastBounceApplyAt = bounceApplyAt;
+  }
+  if (targetUIDs.length <= 0) return false;
+  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), lastBounceApplyAt + 0.28);
   g.DeferAdvance = 1;
-  g.PartyChainStrikeIProcs = Number(g.PartyChainStrikeIProcs || 0) + 1;
+  if (activeTier.skillId === PARTY_CHAIN_STRIKE_II_ID) g.PartyChainStrikeIIProcs = Number(g.PartyChainStrikeIIProcs || 0) + 1;
+  else g.PartyChainStrikeIProcs = Number(g.PartyChainStrikeIProcs || 0) + 1;
   g.LastPartyChainStrike = {
-    skillId: PARTY_CHAIN_STRIKE_I_ID,
+    skillId: activeTier.skillId,
     heroUID: Number(heroUID || 0),
     sourceTargetUID: Number(sourceTargetUID || 0),
-    targetUID: Number(bounceTarget.uid || 0),
-    damagePct: PARTY_CHAIN_STRIKE_I_DAMAGE_PCT,
+    targetUID: Number(targetUIDs[0] || 0),
+    targetUIDs,
+    damagePct: activeTier.damagePct,
     damage: bounceDamage,
-    visualId,
+    bounceCount: targetUIDs.length,
+    maxBounces,
+    visualId: Number(visualIds[0] || 0),
+    visualIds,
   };
   return true;
+}
+
+export function QueueHeroAttackSkillBounds(ctx, options = {}) {
+  const opts = options && typeof options === 'object' ? options : {};
+  return queuePartyChainStrikeBounce(ctx, {
+    heroUID: Number(opts.heroUID || opts.actorUID || opts.sourceUID || 0),
+    sourceTargetUID: Number(opts.sourceTargetUID || opts.targetUID || 0),
+    originalDamage: Number(opts.originalDamage || opts.finalDmg || opts.damage || 0),
+    applyAt: opts.applyAt,
+    mode: String(opts.mode || opts.heroType || ''),
+    actorName: opts.actorName || opts.heroName || '',
+  });
 }
 
 export function HeroAttackSingle(ctx, heroUID, targetUID) {

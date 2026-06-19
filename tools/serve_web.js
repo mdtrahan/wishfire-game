@@ -52,6 +52,8 @@ function detectWorktreeName(gitDir, repoRoot) {
 }
 
 function detectIssueId(branch) {
+  const fromBranch = String(branch || '').match(/(ORKA-[A-Za-z0-9]+(?:\.[0-9]+)?)/i);
+  if (fromBranch && fromBranch[1]) return fromBranch[1];
   const rawList = safeExec('bd', ['list', '--json'], '');
   if (rawList) {
     try {
@@ -64,10 +66,8 @@ function detectIssueId(branch) {
       }
     } catch {}
   }
-  const fromBranch = String(branch || '').match(/(ORKA-[A-Za-z0-9]+)/i);
-  if (fromBranch && fromBranch[1]) return fromBranch[1];
   const subjects = safeGit(['log', '-20', '--pretty=%s'], '');
-  const fromHistory = String(subjects).match(/(?:bd-)?(ORKA-[A-Za-z0-9]+)/i);
+  const fromHistory = String(subjects).match(/(?:bd-)?(ORKA-[A-Za-z0-9]+(?:\.[0-9]+)?)/i);
   if (fromHistory && fromHistory[1]) return fromHistory[1];
   return 'ORKA-UNKNOWN';
 }
@@ -137,6 +137,9 @@ const server = http.createServer((req,res)=>{
     const ext = path.extname(fp);
     const ct = mime[ext] || 'application/octet-stream';
     res.setHeader('Content-Type', ct + (ct.startsWith('text/')?'; charset=utf-8':''));
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     fs.createReadStream(fp).pipe(res);
   });
 });

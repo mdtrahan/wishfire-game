@@ -135,6 +135,27 @@ function beginQueuedHeroAction({
   return true;
 }
 
+function queueHeroAttackSkillBounds({
+  callFunctionWithContext,
+  fnContext,
+  actorUID,
+  targetUID,
+  originalDamage,
+  applyAt,
+  mode,
+  actorName,
+}) {
+  if (typeof callFunctionWithContext !== 'function') return false;
+  return !!callFunctionWithContext(fnContext, 'QueueHeroAttackSkillBounds', {
+    heroUID: actorUID,
+    targetUID,
+    originalDamage,
+    applyAt,
+    mode,
+    actorName,
+  });
+}
+
 function queueClusterSingleHits({
   state,
   callFunctionWithContext,
@@ -174,8 +195,9 @@ function queueClusterSingleHits({
   const shotDamages = splitDamageAcrossHits(totalDamage, hitCount);
   for (let hitIndex = 0; hitIndex < hitCount; hitIndex += 1) {
     const shotDamage = Number(shotDamages[hitIndex] || 1);
-    state.globals.PendingHeroHits.push({
-      at: applyAt + (hitIndex * SUPER_GEM_HIT_INTERVAL),
+    const hitApplyAt = applyAt + (hitIndex * SUPER_GEM_HIT_INTERVAL);
+    const hit = {
+      at: hitApplyAt,
       heroUID: actorUID,
       targetUID,
       dmg: shotDamage,
@@ -188,9 +210,22 @@ function queueClusterSingleHits({
       heroName,
       heroType: mode,
       superGemClusterBatchId: batchId,
-      superGemClusterVisualOnly: hitIndex < (hitCount - 1) ? 1 : 0,
-      superGemClusterApplyTotalOnHit: hitIndex === (hitCount - 1) ? totalDamage : 0,
+      superGemClusterVisualOnly: 0,
+      superGemClusterApplyTotalOnHit: 0,
+      superGemClusterHitIndex: hitIndex + 1,
+      superGemClusterHitCount: hitCount,
       msg: buildNormalHitLog(heroName, targetName, shotDamage),
+    };
+    state.globals.PendingHeroHits.push(hit);
+    queueHeroAttackSkillBounds({
+      callFunctionWithContext,
+      fnContext,
+      actorUID,
+      targetUID,
+      originalDamage: shotDamage,
+      applyAt: hitApplyAt,
+      mode,
+      actorName: heroName,
     });
   }
   state.globals.ActionLockUntil = Math.max(
@@ -266,10 +301,11 @@ function queueHuunYellowGoldstrike({
   const batchId = isJackpot ? getNextSuperGemBatchId(state) : 0;
   for (const target of targets) {
     const enemyName = String(target.name || '?');
-    state.globals.PendingHeroHits.push({
+    const targetUIDForHit = Number(target.uid || 0);
+    const hit = {
       at: applyAt,
       heroUID: actorUID,
-      targetUID: Number(target.uid || 0),
+      targetUID: targetUIDForHit,
       dmg: finalDmg,
       finalDmg,
       calcPath: 'goldstrike',
@@ -282,6 +318,17 @@ function queueHuunYellowGoldstrike({
       superGemClusterBatchId: batchId,
       superGemClusterVisualOnly: 0,
       msg: buildHuunGoldstrikeLog(heroName, enemyName, roll, finalDmg, branch),
+    };
+    state.globals.PendingHeroHits.push(hit);
+    queueHeroAttackSkillBounds({
+      callFunctionWithContext,
+      fnContext,
+      actorUID,
+      targetUID: targetUIDForHit,
+      originalDamage: finalDmg,
+      applyAt,
+      mode: 'melee',
+      actorName: heroName,
     });
   }
   state.globals.goldTotal = bankedGold + boardGold;
@@ -576,14 +623,12 @@ function queueClusterAoeHits({
   const applyAt = now + SUPER_GEM_AOE_HIT_DELAY;
   const heroName = getActorName(callFunctionWithContext, fnContext, actorUID);
   let firstHit = true;
-  const targetTotals = new Map();
   const queuedHits = [];
   for (let wave = 0; wave < hitCount; wave += 1) {
     for (const enemy of enemies) {
       const dmg = callFunctionWithContext(fnContext, 'CalculateDamage', actorUID, enemy.uid, mode);
       const finalDmg = ampMult > 0 ? Math.max(1, Math.ceil(Number(dmg || 0) * ampMult)) : Math.max(1, Number(dmg || 0));
       const targetUID = Number(enemy.uid || 0);
-      if (!targetTotals.has(targetUID)) targetTotals.set(targetUID, finalDmg);
       const shotDamage = Number(splitDamageAcrossHits(finalDmg, hitCount)[wave] || 1);
       queuedHits.push({
         at: applyAt + (wave * SUPER_GEM_HIT_INTERVAL),
@@ -603,19 +648,26 @@ function queueClusterAoeHits({
     }
   }
   const batchId = getNextSuperGemBatchId(state);
-  const pendingByTarget = new Map();
-  for (let i = queuedHits.length - 1; i >= 0; i -= 1) {
+  for (let i = 0; i < queuedHits.length; i += 1) {
     const hit = queuedHits[i];
-    const targetUID = Number(hit.targetUID || 0);
-    const seen = Number(pendingByTarget.get(targetUID) || 0);
-    const remaining = seen + 1;
-    pendingByTarget.set(targetUID, remaining);
     hit.superGemClusterBatchId = batchId;
-    hit.superGemClusterVisualOnly = remaining > 1 ? 1 : 0;
-    hit.superGemClusterApplyTotalOnHit = remaining === 1 ? Number(targetTotals.get(targetUID) || hit.finalDmg || 0) : 0;
+    hit.superGemClusterVisualOnly = 0;
+    hit.superGemClusterApplyTotalOnHit = 0;
+    hit.superGemClusterHitIndex = Math.floor(i / enemies.length) + 1;
+    hit.superGemClusterHitCount = hitCount;
   }
   for (const hit of queuedHits) {
     state.globals.PendingHeroHits.push(hit);
+    queueHeroAttackSkillBounds({
+      callFunctionWithContext,
+      fnContext,
+      actorUID,
+      targetUID: Number(hit.targetUID || 0),
+      originalDamage: Number(hit.finalDmg || hit.dmg || 0),
+      applyAt: Number(hit.at || applyAt),
+      mode,
+      actorName: heroName,
+    });
   }
   state.globals.ActionLockUntil = Math.max(
     Number(state.globals.ActionLockUntil || 0),
