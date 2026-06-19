@@ -63,7 +63,7 @@ git add src/a.js src/b.js src/c.js web-runner/modules/functionBank.js Scripts/fu
 git commit -q -m "test: seed fixture bd-ORKA-seed"
 
 cat > "$BD_STATE" <<'EOF'
-{"statuses":{"ORKA-test":"in_progress"}}
+{"statuses":{"ORKA-test":"closed","ORKA-other":"in_progress"}}
 EOF
 
 cat > "${BD_SHIM_DIR}/bd" <<'EOF'
@@ -134,7 +134,7 @@ git add src/a.js src/b.js src/c.js
 if "$ENFORCE_SCRIPT" >/tmp/commit-compliance-case1.out 2>/tmp/commit-compliance-case1.err; then
   CASE1_PASS=0
 else
-  if grep -q "Run tools/prepare_commit_check.sh ORKA-test" /tmp/commit-compliance-case1.err; then
+  if grep -q "Run tools/prepare_commit_check.sh <bd-id>" /tmp/commit-compliance-case1.err; then
     CASE1_PASS=1
   fi
 fi

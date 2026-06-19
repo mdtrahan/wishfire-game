@@ -66,13 +66,13 @@ The repo treats a staged diff as significant if any of these are true:
 
 Before committing a significant staged diff:
 
-1. ensure the correct bead is the single active in_progress issue
+1. choose the bead id that owns the staged diff
 2. run tools/prepare_commit_check.sh <bd-id>
 3. commit only after the helper succeeds
 
 The helper writes .beads/commit-check/<bd-id>.json with changed files, function or __MODULE__ markers, staged blob ids, and hot-file classification. It delegates to tools/prepare_hot_file_commit.sh when staged hot files are present.
 
-Tracked hooks in .beads/hooks enforce bd-id commit messages, single active in-progress bead ownership, fresh significant-diff metadata, and hot-file scope locks.
+Tracked hooks in .beads/hooks enforce bd-id commit messages, fresh significant-diff metadata, and hot-file scope locks.
 ## Hot-File Regression Gate Pack
 
 Use the repo-owned regression gate pack when a bead changes staged hot files or PM/dev closeout needs one deterministic regression proof for core hot-file seams.

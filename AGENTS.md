@@ -65,7 +65,7 @@ Do not implement out-of-scope fixes.
 - Use `$bead-worktree-lifecycle` for bead-scoped worktree creation, QA PASS cleanup, safe merge, worktree removal, and merged branch deletion.
 - One implementation bead gets one bead-scoped worktree unless a minor exemption applies.
 - Include the bead id in branch and worktree names.
-- Do not block new bead work solely on a numeric worktree/WIP cap; assess ownership, overlap, and repo-state risk directly.
+- Do not block new bead work solely because many bead worktrees exist; assess ownership, overlap, and repo-state risk directly.
 - Never mix multiple implementation beads in one worktree.
 - Never merge without validation plus a rollback checkpoint.
 
