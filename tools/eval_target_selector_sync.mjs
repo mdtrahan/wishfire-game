@@ -85,7 +85,7 @@ hasRegex(
 );
 hasRegex(
   'web-runner/app.js',
-  /state\.globals\.SelectedEnemyUID = Number\(livingEnemies\[targetIndex\]\.uid \|\| 0\);/,
+  /const targetUID = Number\(livingEnemies\[targetIndex\]\.uid \|\| 0\);\s*state\.globals\.SelectedEnemyUID = targetUID;/,
   'dev autoplay writes the randomized target UID for pending handoff',
 );
 lacksRegex(

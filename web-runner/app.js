@@ -3323,6 +3323,7 @@ async function main(){
       callFunctionWithContext,
       fnContext,
     });
+    ensureDevAutoplayPendingSingleTarget();
     const runtimeScope = {
       dtOverride,
       state,
@@ -3871,6 +3872,26 @@ function getStoryCardLiveLineState() {
     if (typeof state === 'undefined' || !Array.isArray(state.entities)) return false;
     return state.entities.some((entity) => entity && entity.kind === 'enemy' && Number(entity.hp ?? 0) > 0);
   }
+  function ensureDevAutoplayPendingSingleTarget() {
+    if (!state.globals.DevAutoplayActive) return 0;
+    if (String(state.globals.PendingSkillID || '') !== 'HERO_SINGLE') return 0;
+    const pendingActorUID = Number(state.globals.PendingActor || callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
+    if (!(pendingActorUID > 0)) return 0;
+    const livingEnemies = state.entities.filter((entity) => entity && entity.kind === 'enemy' && Number(entity.hp ?? 0) > 0);
+    if (!livingEnemies.length) return 0;
+    const selectedUID = Number(state.globals.SelectedEnemyUID || 0);
+    const selectedOwnerUID = Number(state.globals.SelectedEnemyUIDOwner || 0);
+    if (selectedOwnerUID === pendingActorUID && livingEnemies.some((enemy) => Number(enemy.uid || 0) === selectedUID)) {
+      return selectedUID;
+    }
+    const roll = typeof state.globals.RuntimeRandom === 'function' ? Number(state.globals.RuntimeRandom()) : 0;
+    const safeRoll = Number.isFinite(roll) && roll >= 0 && roll < 1 ? roll : 0;
+    const targetIndex = Math.max(0, Math.min(livingEnemies.length - 1, Math.floor(safeRoll * livingEnemies.length)));
+    const targetUID = Number(livingEnemies[targetIndex].uid || 0);
+    state.globals.SelectedEnemyUID = targetUID;
+    state.globals.SelectedEnemyUIDOwner = pendingActorUID;
+    return targetUID;
+  }
   function getIdleAutoplayPriorityContext() {
     return {
       heroName: getCurrentIdleAutoplayHeroName(),
@@ -3904,7 +3925,7 @@ function getStoryCardLiveLineState() {
     if (!presentationBarrier.canResolvePendingTargetAction) return false;
     const actorUID = Number(state.globals.PendingActor || callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
     if (actorUID <= 0) return false;
-    const livingEnemies = state.entities.filter((entity) => entity && entity.kind === 'enemy' && (entity.hp ?? 0) > 0);
+    const livingEnemies = state.entities.filter((entity) => entity && entity.kind === 'enemy' && Number(entity.hp ?? 0) > 0);
     if (!livingEnemies.length) return false;
     logActionHandoffDebug('[DEV_AUTOPLAY_RESOLVE]', {
       stage: 'before',
@@ -3912,12 +3933,8 @@ function getStoryCardLiveLineState() {
       livingEnemies: livingEnemies.length,
     });
     if (String(state.globals.PendingSkillID || '') === 'HERO_SINGLE') {
-      const roll = typeof state.globals.RuntimeRandom === 'function'
-        ? Number(state.globals.RuntimeRandom())
-        : 0;
-      const safeRoll = Number.isFinite(roll) && roll >= 0 && roll < 1 ? roll : 0;
-      const targetIndex = Math.max(0, Math.min(livingEnemies.length - 1, Math.floor(safeRoll * livingEnemies.length)));
-      state.globals.SelectedEnemyUID = Number(livingEnemies[targetIndex].uid || 0);
+      const targetUID = ensureDevAutoplayPendingSingleTarget();
+      if (!(targetUID > 0)) return false;
     }
     const handoff = resolvePendingTargetHandoff({
       actorUID,
