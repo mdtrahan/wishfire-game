@@ -140,12 +140,12 @@ set_bd_state '{"statuses":{"ORKA-test":"in_progress"}}'
 if run_enforce >/tmp/hot-lock-case1.out 2>/tmp/hot-lock-case1.err; then
   CASE1_PASS=0
 else
-  if grep -q "Run tools/prepare_hot_file_commit.sh ORKA-test" /tmp/hot-lock-case1.err; then
+  if grep -q "Run tools/prepare_hot_file_commit.sh <bd-id>" /tmp/hot-lock-case1.err; then
     CASE1_PASS=1
   fi
 fi
 
-# Case 2: prepare fails once with actionable alignment commands when active bead state is wrong.
+# Case 2: prepare succeeds for the explicit target even when other beads are in progress.
 reset_fixture
 python3 - <<'PY'
 from pathlib import Path
@@ -156,14 +156,13 @@ PY
 git add web-runner/modules/functionBank.js
 set_bd_state '{"statuses":{"ORKA-a":"in_progress","ORKA-b":"in_progress","ORKA-test":"open"}}'
 if run_prepare ORKA-test >/tmp/hot-lock-case2.out 2>/tmp/hot-lock-case2.err; then
-  CASE2_PASS=0
-else
-  if grep -q "bd update ORKA-a --status open" /tmp/hot-lock-case2.err && grep -q "bd update ORKA-test --status in_progress" /tmp/hot-lock-case2.err; then
+  if grep -q "web-runner/modules/functionBank.js:getDropRate" .beads/hot-file-lock/ORKA-test.scope && \
+     test -f .beads/hot-file-lock/ORKA-test.prepared.json; then
     CASE2_PASS=1
   fi
 fi
 
-# Case 3: prepare generates multi-file, multi-function scope and aligned restore guidance.
+# Case 3: prepare generates multi-file, multi-function scope without changing Beads WIP state.
 reset_fixture
 python3 - <<'PY'
 from pathlib import Path
@@ -179,11 +178,9 @@ p.write_text(text)
 PY
 git add web-runner/modules/functionBank.js Scripts/functionBank.js
 set_bd_state '{"statuses":{"ORKA-a":"in_progress","ORKA-test":"open"}}'
-if run_prepare ORKA-test --align-active >/tmp/hot-lock-case3.out 2>/tmp/hot-lock-case3.err; then
+if run_prepare ORKA-test >/tmp/hot-lock-case3.out 2>/tmp/hot-lock-case3.err; then
   if grep -q "web-runner/modules/functionBank.js:getDropRate,queueConfiguredDoubleAttackFollowUp" .beads/hot-file-lock/ORKA-test.scope && \
-     grep -q "Scripts/functionBank.js:queueConfiguredDoubleAttackFollowUp" .beads/hot-file-lock/ORKA-test.scope && \
-     grep -q "bd update ORKA-test --status open" /tmp/hot-lock-case3.out && \
-     grep -q "bd update ORKA-a --status in_progress" /tmp/hot-lock-case3.out; then
+     grep -q "Scripts/functionBank.js:queueConfiguredDoubleAttackFollowUp" .beads/hot-file-lock/ORKA-test.scope; then
     CASE3_PASS=1
   fi
 else
@@ -271,8 +268,8 @@ fi
 
 echo "Hot-file lock self-test summary"
 echo "  CASE 1 (missing preparation fails once with actionable instruction): $([[ "$CASE1_PASS" -eq 1 ]] && echo PASS || echo FAIL)"
-echo "  CASE 2 (wrong active bead state fails once with exact alignment commands): $([[ "$CASE2_PASS" -eq 1 ]] && echo PASS || echo FAIL)"
-echo "  CASE 3 (prepare generates multi-function scope and restore guidance): $([[ "$CASE3_PASS" -eq 1 ]] && echo PASS || echo FAIL)"
+echo "  CASE 2 (explicit target prepare ignores unrelated active beads): $([[ "$CASE2_PASS" -eq 1 ]] && echo PASS || echo FAIL)"
+echo "  CASE 3 (prepare generates multi-function scope without WIP-state mutation): $([[ "$CASE3_PASS" -eq 1 ]] && echo PASS || echo FAIL)"
 echo "  CASE 4 (prepare generates module scope for top-level edits): $([[ "$CASE4_PASS" -eq 1 ]] && echo PASS || echo FAIL)"
 echo "  CASE 5 (undeclared module/function drift is reported): $([[ "$CASE5_PASS" -eq 1 ]] && echo PASS || echo FAIL)"
 echo "  CASE 6 (prepared scope passes and stale staged diff requires regeneration): $([[ "$CASE6_PASS" -eq 1 ]] && echo PASS || echo FAIL)"

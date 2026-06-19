@@ -44,13 +44,6 @@ def run(cmd: Sequence[str], cwd: Path, check: bool = True) -> subprocess.Complet
     )
 
 
-def read_json(cmd: Sequence[str], cwd: Path) -> object:
-    proc = run(cmd, cwd, check=False)
-    if proc.returncode != 0:
-        raise RuntimeError(proc.stderr.strip() or "command failed")
-    return json.loads(proc.stdout or "[]")
-
-
 def staged_files(root: Path) -> List[str]:
     proc = run(["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"], root)
     return [line.strip() for line in proc.stdout.splitlines() if line.strip()]
@@ -125,18 +118,6 @@ def locate_changed_functions(root: Path, file_path: str) -> Tuple[List[str], boo
     return functions, module_scope_needed
 
 
-def get_active_issue_ids(root: Path) -> List[str]:
-    payload = read_json(["bd", "list", "--status=in_progress", "--json"], root)
-    return [str(item["id"]) for item in payload if isinstance(item, dict) and item.get("id")]
-
-
-def ensure_single_active_issue(root: Path) -> str:
-    active_ids = get_active_issue_ids(root)
-    if len(active_ids) != 1:
-        raise RuntimeError("commit compliance requires exactly one in-progress Beads issue")
-    return active_ids[0]
-
-
 def hot_staged_files(files: List[str]) -> List[str]:
     return [file_path for file_path in files if file_path in HOT_FILES]
 
@@ -155,6 +136,10 @@ def scope_dir(root: Path) -> Path:
 
 def scope_path(root: Path, issue_id: str) -> Path:
     return scope_dir(root) / f"{issue_id}.scope"
+
+
+def hot_stamp_path(root: Path, issue_id: str) -> Path:
+    return scope_dir(root) / f"{issue_id}.prepared.json"
 
 
 def total_changed_lines(root: Path, files: List[str]) -> int:
@@ -197,14 +182,44 @@ def current_blob_map(root: Path, files: List[str]) -> Dict[str, str]:
     return output
 
 
-def prepare_hot(root: Path, issue_id: str) -> int:
-    active_issue = ensure_single_active_issue(root)
-    if active_issue != issue_id:
-        print(f"ERROR: active in-progress bead is {active_issue}, but prepare target is {issue_id}.", file=sys.stderr)
-        print(f"Run: bd update {active_issue} --status open", file=sys.stderr)
-        print(f"Run: bd update {issue_id} --status in_progress", file=sys.stderr)
-        return 1
+def prepared_metadata(root: Path) -> List[Tuple[str, Path, Dict[str, object]]]:
+    directory = metadata_dir(root)
+    if not directory.exists():
+        return []
+    output: List[Tuple[str, Path, Dict[str, object]]] = []
+    for path in sorted(directory.glob("*.json")):
+        try:
+            payload = json.loads(path.read_text())
+        except json.JSONDecodeError:
+            continue
+        issue_id = str(payload.get("issue_id") or path.stem)
+        if isinstance(payload, dict):
+            output.append((issue_id, path, payload))
+    return output
 
+
+def matching_metadata(root: Path, files: List[str]) -> Tuple[Optional[str], Optional[Dict[str, object]], Optional[str]]:
+    current_blobs = current_blob_map(root, files)
+    same_files = [
+        (issue_id, payload)
+        for issue_id, _path, payload in prepared_metadata(root)
+        if payload.get("files") == files
+    ]
+    exact = [
+        (issue_id, payload)
+        for issue_id, payload in same_files
+        if payload.get("staged_blobs") == current_blobs
+    ]
+    if len(exact) == 1:
+        return exact[0][0], exact[0][1], None
+    if len(exact) > 1:
+        return None, None, "multiple prepared metadata files match the current staged diff"
+    if same_files:
+        return same_files[0][0], same_files[0][1], "stale"
+    return None, None, "missing"
+
+
+def prepare_hot(root: Path, issue_id: str) -> int:
     files = hot_staged_files(staged_files(root))
     if not files:
         print("No staged hot files; hot-file scope not generated.")
@@ -215,18 +230,30 @@ def prepare_hot(root: Path, issue_id: str) -> int:
     target = scope_path(root, issue_id)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text("\n".join(lines) + "\n")
+    stamp = hot_stamp_path(root, issue_id)
+    stamp.write_text(
+        json.dumps(
+            {
+                "issue_id": issue_id,
+                "hot_files": {
+                    file_path: {
+                        "functions": changed[file_path],
+                        "staged_blob": staged_blob_id(root, file_path),
+                    }
+                    for file_path in files
+                },
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n"
+    )
     print(f"Wrote {target.relative_to(root)}")
+    print(f"Wrote {stamp.relative_to(root)}")
     return 0
 
 
 def prepare(root: Path, issue_id: str) -> int:
-    active_issue = ensure_single_active_issue(root)
-    if active_issue != issue_id:
-        print(f"ERROR: active in-progress bead is {active_issue}, but prepare target is {issue_id}.", file=sys.stderr)
-        print(f"Run: bd update {active_issue} --status open", file=sys.stderr)
-        print(f"Run: bd update {issue_id} --status in_progress", file=sys.stderr)
-        return 1
-
     files = staged_files(root)
     if not files:
         print("No staged files; commit compliance metadata not generated.")
@@ -262,22 +289,23 @@ def enforce(root: Path) -> int:
     if not significant:
         return 0
 
-    try:
-        issue_id = ensure_single_active_issue(root)
-    except RuntimeError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+    issue_id, payload, metadata_error = matching_metadata(root, files)
+    if metadata_error == "missing":
+        print("ERROR: Missing commit compliance metadata for the current staged diff.", file=sys.stderr)
+        print("Run tools/prepare_commit_check.sh <bd-id>", file=sys.stderr)
         return 1
-
-    target = metadata_path(root, issue_id)
-    if not target.exists():
-        print(f"ERROR: Missing commit compliance metadata for {issue_id}.", file=sys.stderr)
-        print(f"Run tools/prepare_commit_check.sh {issue_id}", file=sys.stderr)
-        return 1
-
-    payload = json.loads(target.read_text())
-    if payload.get("files") != files or payload.get("staged_blobs") != current_blob_map(root, files):
+    if metadata_error == "stale":
         print("ERROR: Commit compliance metadata is stale for the current staged diff.", file=sys.stderr)
         print(f"Run tools/prepare_commit_check.sh {issue_id}", file=sys.stderr)
+        return 1
+    if metadata_error:
+        print(f"ERROR: {metadata_error}.", file=sys.stderr)
+        print("Remove stale .beads/commit-check metadata or rerun tools/prepare_commit_check.sh <bd-id>.", file=sys.stderr)
+        return 1
+
+    if not issue_id or payload is None:
+        print("ERROR: Missing commit compliance metadata for the current staged diff.", file=sys.stderr)
+        print("Run tools/prepare_commit_check.sh <bd-id>", file=sys.stderr)
         return 1
 
     if not payload.get("significant", False):

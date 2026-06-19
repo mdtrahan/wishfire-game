@@ -66,16 +66,6 @@ def run(cmd: Sequence[str], cwd: Path, check: bool = True) -> subprocess.Complet
     )
 
 
-def read_json(cmd: Sequence[str], cwd: Path) -> object:
-    proc = run(cmd, cwd, check=False)
-    if proc.returncode != 0:
-        raise RuntimeError(proc.stderr.strip() or "command failed")
-    try:
-        return json.loads(proc.stdout or "[]")
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(f"invalid json from {' '.join(cmd)}: {exc}") from exc
-
-
 def staged_files(root: Path) -> List[str]:
     proc = run(["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"], root)
     return [line.strip() for line in proc.stdout.splitlines() if line.strip()]
@@ -201,36 +191,6 @@ def validate_file_with_declared_functions(
     return errors
 
 
-def get_active_issue_ids(root: Path) -> List[str]:
-    if shutil_which("bd") is None:
-        raise RuntimeError("bd command not found. Hot-file lock requires active Beads issue context.")
-    payload = read_json(["bd", "list", "--status=in_progress", "--json"], root)
-    return [str(item["id"]) for item in payload if isinstance(item, dict) and item.get("id")]
-
-
-def shutil_which(cmd: str) -> Optional[str]:
-    for part in os.environ.get("PATH", "").split(os.pathsep):
-        if not part:
-            continue
-        candidate = Path(part) / cmd
-        if candidate.exists() and os.access(candidate, os.X_OK):
-            return str(candidate)
-    return None
-
-
-def bead_status(root: Path, issue_id: str) -> Optional[str]:
-    proc = run(["bd", "show", issue_id], root, check=False)
-    if proc.returncode != 0:
-        return None
-    first = (proc.stdout or "").splitlines()
-    if not first:
-        return None
-    m = re.search(r"\[(?:[^\]]*·\s*)?([A-Z_]+)\s*\]", first[0])
-    if m:
-        return m.group(1)
-    return None
-
-
 def staged_blob_id(root: Path, file_path: str) -> Optional[str]:
     proc = run(["git", "rev-parse", f":{file_path}"], root, check=False)
     if proc.returncode != 0:
@@ -281,87 +241,6 @@ def print_errors(title: str, errors: Sequence[ScopeError]) -> int:
     return 1
 
 
-def ensure_single_active_issue(root: Path, target_issue_id: Optional[str]) -> Tuple[int, Optional[str]]:
-    try:
-        active_ids = get_active_issue_ids(root)
-    except RuntimeError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 1, None
-    if len(active_ids) != 1:
-        print("ERROR: Hot-file lock requires exactly one in-progress Beads issue.", file=sys.stderr)
-        if active_ids:
-            print(f"Current in-progress: {', '.join(active_ids)}", file=sys.stderr)
-        print("Set a single active issue before committing hot-file edits.", file=sys.stderr)
-        return 1, None
-    issue_id = active_ids[0]
-    if target_issue_id and issue_id != target_issue_id:
-        print(
-            f"ERROR: Active in-progress bead is {issue_id}, but prepare target is {target_issue_id}.",
-            file=sys.stderr,
-        )
-        print(f"Run: bd update {issue_id} --status open", file=sys.stderr)
-        print(f"Run: bd update {target_issue_id} --status in_progress", file=sys.stderr)
-        return 1, None
-    return 0, issue_id
-
-
-def build_restore_commands(target_issue_id: str, target_original_status: Optional[str], other_active: Sequence[str]) -> List[str]:
-    commands: List[str] = []
-    if target_original_status and target_original_status != "IN_PROGRESS":
-        commands.append(f"bd update {target_issue_id} --status {target_original_status.lower()}")
-    for issue_id in other_active:
-        commands.append(f"bd update {issue_id} --status in_progress")
-    return commands
-
-
-def maybe_align_active_issue(root: Path, target_issue_id: str, align: bool) -> Tuple[bool, List[str]]:
-    try:
-        active_ids = get_active_issue_ids(root)
-    except RuntimeError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return False, []
-
-    if active_ids == [target_issue_id]:
-        return True, []
-
-    target_original_status = bead_status(root, target_issue_id)
-    other_active = [issue_id for issue_id in active_ids if issue_id != target_issue_id]
-    restore_commands = build_restore_commands(target_issue_id, target_original_status, other_active)
-
-    if not align:
-        print(
-            "ERROR: Hot-file prepare needs exactly one active in-progress bead matching the target issue.",
-            file=sys.stderr,
-        )
-        if active_ids:
-            print(f"Current in-progress: {', '.join(active_ids)}", file=sys.stderr)
-        else:
-            print("Current in-progress: <none>", file=sys.stderr)
-        print("Run one of these flows before retrying:", file=sys.stderr)
-        for issue_id in other_active:
-            print(f"  bd update {issue_id} --status open", file=sys.stderr)
-        if target_issue_id not in active_ids:
-            print(f"  bd update {target_issue_id} --status in_progress", file=sys.stderr)
-        if restore_commands:
-            print("After commit, restore truthful state with:", file=sys.stderr)
-            for cmd in restore_commands:
-                print(f"  {cmd}", file=sys.stderr)
-        return False, []
-
-    for issue_id in other_active:
-        proc = run(["bd", "update", issue_id, "--status", "open"], root, check=False)
-        if proc.returncode != 0:
-            print(proc.stderr.strip() or proc.stdout.strip(), file=sys.stderr)
-            return False, []
-    if target_issue_id not in active_ids:
-        proc = run(["bd", "update", target_issue_id, "--status", "in_progress"], root, check=False)
-        if proc.returncode != 0:
-            print(proc.stderr.strip() or proc.stdout.strip(), file=sys.stderr)
-            return False, []
-    print(f"Aligned active hot-file bead to {target_issue_id}.", file=sys.stderr)
-    return True, restore_commands
-
-
 def current_prepared_blobs(root: Path, hot_staged: Sequence[str]) -> Dict[str, str]:
     blobs: Dict[str, str] = {}
     for file_path in hot_staged:
@@ -371,12 +250,56 @@ def current_prepared_blobs(root: Path, hot_staged: Sequence[str]) -> Dict[str, s
     return blobs
 
 
+def prepared_stamps(root: Path) -> List[Tuple[str, Dict[str, object]]]:
+    directory = scope_file_path(root, "placeholder").parent
+    if not directory.exists():
+        return []
+    output: List[Tuple[str, Dict[str, object]]] = []
+    for path in sorted(directory.glob("*.prepared.json")):
+        try:
+            payload = json.loads(path.read_text())
+        except json.JSONDecodeError:
+            continue
+        issue_id = str(payload.get("issue_id") or path.name.removesuffix(".prepared.json"))
+        if isinstance(payload, dict):
+            output.append((issue_id, payload))
+    return output
+
+
+def matching_prepared_stamp(
+    root: Path, hot_staged: Sequence[str]
+) -> Tuple[Optional[str], Optional[Dict[str, object]], Optional[str]]:
+    current_blobs = current_prepared_blobs(root, hot_staged)
+    same_files = [
+        (issue_id, payload)
+        for issue_id, payload in prepared_stamps(root)
+        if set((payload.get("hot_files") or {}).keys()) == set(current_blobs.keys())
+    ]
+    exact: List[Tuple[str, Dict[str, object]]] = []
+    for issue_id, payload in same_files:
+        prepared = payload.get("hot_files", {})
+        if not isinstance(prepared, dict):
+            continue
+        if all(
+            isinstance(prepared.get(file_path), dict)
+            and prepared[file_path].get("staged_blob") == blob
+            for file_path, blob in current_blobs.items()
+        ):
+            exact.append((issue_id, payload))
+    if len(exact) == 1:
+        return exact[0][0], exact[0][1], None
+    if len(exact) > 1:
+        return None, None, "multiple prepared hot-file stamps match the current staged diff"
+    if same_files:
+        return same_files[0][0], same_files[0][1], "stale"
+    return None, None, "missing"
+
+
 def command_prepare(args: argparse.Namespace) -> int:
     root = repo_root()
     target_issue_id = args.issue_id
-    ok, restore_commands = maybe_align_active_issue(root, target_issue_id, args.align_active)
-    if not ok:
-        return 1
+    if args.align_active:
+        print("--align-active is no longer needed; prepare uses the explicit issue id.", file=sys.stderr)
 
     hot_staged = staged_hot_files(root)
     if not hot_staged:
@@ -413,10 +336,6 @@ def command_prepare(args: argparse.Namespace) -> int:
         print(f"  {file_path}: {', '.join(functions) if functions else '<none>'}")
     print(f"  scope: {scope_path.relative_to(root)}")
     print(f"  stamp: {stamp_path.relative_to(root)}")
-    if restore_commands:
-        print("After commit, restore truthful Beads state with:")
-        for cmd in restore_commands:
-            print(f"  {cmd}")
     return 0
 
 
@@ -426,21 +345,28 @@ def command_enforce(args: argparse.Namespace) -> int:
     if not hot_staged:
         return 0
 
-    rc, issue_id = ensure_single_active_issue(root, None)
-    if rc != 0 or not issue_id:
+    issue_id, stamp, stamp_error = matching_prepared_stamp(root, hot_staged)
+    if stamp_error == "missing":
+        print("ERROR: Hot-file preparation missing for the current staged diff.", file=sys.stderr)
+        print("Run tools/prepare_hot_file_commit.sh <bd-id>", file=sys.stderr)
+        return 1
+    if stamp_error == "stale":
+        print(f"ERROR: Prepared hot-file scope for {issue_id} is stale.", file=sys.stderr)
+        print(f"Run tools/prepare_hot_file_commit.sh {issue_id}", file=sys.stderr)
+        return 1
+    if stamp_error:
+        print(f"ERROR: {stamp_error}.", file=sys.stderr)
+        print("Remove stale .beads/hot-file-lock metadata or rerun tools/prepare_hot_file_commit.sh <bd-id>.", file=sys.stderr)
+        return 1
+    if not issue_id or stamp is None:
+        print("ERROR: Hot-file preparation missing for the current staged diff.", file=sys.stderr)
+        print("Run tools/prepare_hot_file_commit.sh <bd-id>", file=sys.stderr)
         return 1
 
     scope_path = scope_file_path(root, issue_id)
     stamp_path = stamp_file_path(root, issue_id)
     if not scope_path.exists() or not stamp_path.exists():
         print(f"ERROR: Hot-file preparation missing for {issue_id}.", file=sys.stderr)
-        print(f"Run tools/prepare_hot_file_commit.sh {issue_id}", file=sys.stderr)
-        return 1
-
-    try:
-        stamp = json.loads(stamp_path.read_text())
-    except json.JSONDecodeError:
-        print(f"ERROR: Invalid prepared metadata in {stamp_path}.", file=sys.stderr)
         print(f"Run tools/prepare_hot_file_commit.sh {issue_id}", file=sys.stderr)
         return 1
 
@@ -496,7 +422,7 @@ def build_parser() -> argparse.ArgumentParser:
     prepare.add_argument(
         "--align-active",
         action="store_true",
-        help="Temporarily align active in-progress bead state to the target issue before preparing.",
+        help="Deprecated no-op; prepare now uses the explicit issue id without changing Beads WIP state.",
     )
     prepare.set_defaults(func=command_prepare)
 
