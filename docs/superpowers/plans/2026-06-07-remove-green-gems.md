@@ -103,7 +103,7 @@ git worktree list --porcelain
 Expected:
 - `pwd` is `/Users/Mace/Codex-Orka`.
 - `ORKA-zy2o` is open.
-- Fewer than five active bead worktrees exist.
+- Existing bead worktrees have clear ownership and no blocking overlap.
 - Any unrelated dirt is listed and left untouched.
 
 - [ ] **Step 2: Create the bead worktree**
@@ -925,7 +925,7 @@ Expected:
 Stop and ask before continuing if any of these happen:
 - Baseline focused tests fail in a way that makes later comparison impossible.
 - `main` or the bead worktree has unexpected tracked dirt in runtime files.
-- More than four active bead worktrees exist before opening this lane.
+- Existing bead worktrees create unclear ownership or overlapping runtime-file risk before opening this lane.
 - Removing color `0` requires a broader redesign of Kojonn, Faze, AOE identity, or skill-card progression.
 - Light-green heal behavior changes.
 - Any red, blue, yellow, heal, or purple supergem contract starts failing.

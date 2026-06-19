@@ -36,7 +36,7 @@ Shell notes:
 Default implementation flow:
 - create or select the bead
 - create a bead-scoped branch/worktree before marking `in_progress`
-- cap active bead worktrees at 5; close, merge, or clean up before opening more
+- keep bead worktrees ownership-scoped; close, merge, or clean up stale lanes when they block clarity
 - use Beads for task tracking, checkpoints, recovery, and rollback
 - make periodic commits for historical safety
 
@@ -65,7 +65,7 @@ Do not implement out-of-scope fixes.
 - Use `$bead-worktree-lifecycle` for bead-scoped worktree creation, QA PASS cleanup, safe merge, worktree removal, and merged branch deletion.
 - One implementation bead gets one bead-scoped worktree unless a minor exemption applies.
 - Include the bead id in branch and worktree names.
-- Stop and ask before exceeding 5 active bead worktrees.
+- Do not block new bead work solely on a numeric worktree/WIP cap; assess ownership, overlap, and repo-state risk directly.
 - Never mix multiple implementation beads in one worktree.
 - Never merge without validation plus a rollback checkpoint.
 
@@ -141,7 +141,7 @@ Stop and ask when:
 - architecture impact is significant
 - persistence/deployment/schema behavior changes
 - repo state is unexpected
-- worktree cap or ownership is unclear
+- worktree ownership is unclear
 
 ## Subagents
 Use subagents only when they improve retrieval, implementation, QA/review, or docs/API verification.

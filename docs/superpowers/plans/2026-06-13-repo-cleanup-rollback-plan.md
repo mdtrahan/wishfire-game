@@ -711,7 +711,7 @@ gh pr list --repo mdtrahan/wishfire-game --state open --json number,title,url,he
 gh project item-list 2 --owner mdtrahan --format json --limit 500 > "$EVIDENCE/github/final-project-2-items.json"
 ```
 
-Expected: worktree count is at or below the repo cap, active Beads match active worktrees, and open PRs match active lanes.
+Expected: active Beads match active worktrees, open PRs match active lanes, and any stale or unclear worktrees are explicitly classified.
 
 - [ ] **Step 2: Run focused validation**
 
