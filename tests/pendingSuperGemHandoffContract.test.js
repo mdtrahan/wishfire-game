@@ -14,6 +14,7 @@ for (const modulePath of [
       PendingActor: 101,
       PendingSuperGemAction: { kind: 'super_gem_attack', color: 1, actorUID: 101 },
       SelectedEnemyUID: 202,
+      SelectedEnemyUIDOwner: 101,
       CanPickGems: false,
       IsPlayerBusy: 1,
       DeferAdvance: 0,
@@ -45,6 +46,7 @@ for (const modulePath of [
     assert.equal(globals.PendingActor, 0);
     assert.equal(globals.PendingSuperGemAction, null);
     assert.equal(globals.SelectedEnemyUID, 0);
+    assert.equal(globals.SelectedEnemyUIDOwner, 0);
     assert.equal(globals.CanPickGems, false);
     assert.equal(globals.IsPlayerBusy, 0);
     assert.equal(globals.DeferAdvance, 0);
@@ -60,6 +62,7 @@ for (const modulePath of [
       PendingActor: 101,
       PendingSuperGemAction: { kind: 'super_gem_attack', color: 1, actorUID: 101 },
       SelectedEnemyUID: 202,
+      SelectedEnemyUIDOwner: 101,
       CanPickGems: false,
       IsPlayerBusy: 0,
     };
@@ -82,6 +85,7 @@ for (const modulePath of [
     assert.equal(globals.PendingSkillID, '');
     assert.equal(globals.PendingActor, 0);
     assert.equal(globals.SelectedEnemyUID, 0);
+    assert.equal(globals.SelectedEnemyUIDOwner, 0);
     assert.equal(globals.CanPickGems, false);
     assert.equal(globals.IsPlayerBusy, 1);
   });
@@ -93,6 +97,7 @@ for (const modulePath of [
       PendingActor: 101,
       PendingSuperGemAction: null,
       SelectedEnemyUID: 202,
+      SelectedEnemyUIDOwner: 101,
       CanPickGems: false,
       IsPlayerBusy: 0,
     };
@@ -118,6 +123,7 @@ for (const modulePath of [
     assert.equal(globals.PendingSkillID, '');
     assert.equal(globals.PendingActor, 0);
     assert.equal(globals.SelectedEnemyUID, 0);
+    assert.equal(globals.SelectedEnemyUIDOwner, 0);
     assert.equal(globals.CanPickGems, false);
     assert.equal(globals.IsPlayerBusy, 1);
   });
@@ -128,6 +134,7 @@ test('app routes manual and dev autoplay pending target handoffs through shared 
 
   assert.match(src, /import \{ resolvePendingSuperGemHandoff \} from '\.\/src\/core\/pendingSuperGemHandoff\.mjs';/);
   assert.match(src, /function resolvePendingTargetHandoff\(\{ actorUID, source \}\)/);
+  assert.match(src, /state\.globals\.SelectedEnemyUIDOwner = Number\(state\.globals\.PendingActor \|\| 0\);/);
   assert.match(src, /resolvePendingTargetHandoff\(\{\s*actorUID,\s*source: 'dev-autoplay',\s*\}\)/s);
   assert.match(src, /resolvePendingTargetHandoff\(\{\s*actorUID,\s*source: 'manual-button',\s*\}\)/s);
 });

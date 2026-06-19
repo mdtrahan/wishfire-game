@@ -2,6 +2,7 @@ function clearPendingTargetState(globals) {
   globals.PendingSkillID = '';
   globals.PendingActor = 0;
   globals.SelectedEnemyUID = 0;
+  globals.SelectedEnemyUIDOwner = 0;
 }
 
 export function resolvePendingSuperGemHandoff({

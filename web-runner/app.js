@@ -4435,6 +4435,7 @@ function getStoryCardLiveLineState() {
       const hit = getEnemyHit(mx, my);
       if (hit) {
         state.globals.SelectedEnemyUID = hit.uid;
+        state.globals.SelectedEnemyUIDOwner = Number(state.globals.PendingActor || 0);
         drawFrame();
         return;
       }

@@ -224,7 +224,11 @@ export function renderRuntime(deps) {
     runtimeArtifacts.visualControlPatches = Object.keys(visualControlPatches).length ? visualControlPatches : null;
     return runtimeArtifacts;
   `
-    ].join("");
+    ].join("")
+      .replace(
+        "const resolvedSelectedUid = pendingHitTargetUID || selectedUid;",
+        "const resolvedSelectedUid = selectedUid || pendingHitTargetUID;",
+      );
     renderImpl = new Function('scope', 'dtOverride', 'with (scope) {\n' + body + '\n}');
   }
   return renderImpl(deps, deps.dtOverride);

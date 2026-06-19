@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -14,6 +15,7 @@ const readNormalizedSource = (relativePath) => read(relativePath)
 
 const checks = [];
 const testRuns = [];
+let multipassRows = [];
 
 function recordCheck(name, ok, severity, detail = '') {
   checks.push({ name, ok: !!ok, severity, detail });
@@ -41,6 +43,133 @@ function runNodeTest(relativePath) {
     stdout: String(result.stdout || '').trim(),
     stderr: String(result.stderr || '').trim(),
   });
+}
+
+function runManualTargetMultipass() {
+  const appSource = read('web-runner/app.js');
+  const bankSource = read('web-runner/modules/functionBank.js');
+  const renderSource = read('web-runner/systems/renderRuntime.js');
+  const manualClickSetsOwner = /const hit = getEnemyHit\(mx, my\);\s*if \(hit\) \{\s*state\.globals\.SelectedEnemyUID = hit\.uid;\s*state\.globals\.SelectedEnemyUIDOwner = Number\(state\.globals\.PendingActor \|\| 0\);/s.test(appSource);
+  const selectorUsesSelectedFirst =
+    /const resolvedSelectedUid = selectedUid \|\| pendingHitTargetUID;/.test(renderSource);
+  const selectorUsesQueuedFirst =
+    !selectorUsesSelectedFirst &&
+    /const resolvedSelectedUid = pendingHitTargetUID \|\| selectedUid;/.test(renderSource);
+
+  const transformedBank = `${bankSource
+    .replace(/^import[\s\S]*?from\s+['"][^'"]+['"];\n/gm, '')
+    .replace(/\bexport\s+/g, '')}
+
+module.exports = { ExecuteSkill };`;
+
+  const context = {
+    console: { log() {}, warn() {}, error() {} },
+    Math,
+    Number,
+    String,
+    Array,
+    Object,
+    module: { exports: {} },
+    exports: {},
+    state: { globals: {}, entities: [] },
+  };
+  vm.createContext(context);
+  new vm.Script(transformedBank, { filename: 'web-runner/modules/functionBank.js' }).runInContext(context);
+  const { ExecuteSkill } = context.module.exports;
+
+  function makeContext({ selectedUID, randomRoll }) {
+    const hero = {
+      uid: 100,
+      kind: 'hero',
+      name: 'Falie',
+      baseHeroName: 'Falie',
+      heroIndex: 0,
+      attackType: 'melee',
+      hp: 100,
+      maxHP: 100,
+      stats: { ATK: 10, DEF: 0, MAG: 3, RES: 0, SPD: 1 },
+    };
+    const enemies = [201, 202, 203].map((uid, slotIndex) => ({
+      uid,
+      kind: 'enemy',
+      name: `Target ${slotIndex + 1}`,
+      slotIndex,
+      hp: 80,
+      maxHP: 80,
+      stats: { ATK: 4, DEF: 0, MAG: 2, RES: 0, SPD: 1 },
+    }));
+    return {
+      state: {
+        globals: {
+          time: 1,
+          RuntimeRandom: () => randomRoll,
+          CombatLog: [],
+          CombatActionLines: ['', '', '', ''],
+          CurrentTurnIndex: 0,
+          TurnOrderArray: [{ uid: hero.uid, type: 0, spd: 1 }, ...enemies.map(enemy => ({ uid: enemy.uid, type: 1, spd: 1 }))],
+          PendingActor: hero.uid,
+          PendingSkillID: 'HERO_SINGLE',
+          SelectedEnemyUID: selectedUID,
+          SelectedEnemyUIDOwner: manualClickSetsOwner && selectedUID ? hero.uid : 0,
+          SkillDraughtTrace: [],
+          SkillDraughtTraceSeq: 0,
+          SessionSkillsByHeroUID: {},
+          PowerAmpByUID: {},
+        },
+        entities: [hero, ...enemies],
+      },
+      callFunction() {
+        return undefined;
+      },
+    };
+  }
+
+  function resolveVisualSelectorUID({ selectedUID, staleQueuedTargetUID }) {
+    if (selectorUsesSelectedFirst) return selectedUID || staleQueuedTargetUID;
+    if (selectorUsesQueuedFirst) return staleQueuedTargetUID || selectedUID;
+    return 0;
+  }
+
+  const passes = [
+    { label: 'top selected, stale queued middle', selectedUID: 201, staleQueuedTargetUID: 202, randomRoll: 0.0 },
+    { label: 'middle selected, stale queued top', selectedUID: 202, staleQueuedTargetUID: 201, randomRoll: 0.0 },
+    { label: 'bottom selected, stale queued top', selectedUID: 203, staleQueuedTargetUID: 201, randomRoll: 0.0 },
+    { label: 'top selected, stale queued bottom', selectedUID: 201, staleQueuedTargetUID: 203, randomRoll: 0.99 },
+    { label: 'middle selected, stale queued bottom', selectedUID: 202, staleQueuedTargetUID: 203, randomRoll: 0.99 },
+    { label: 'no selected target, queued fallback kept', selectedUID: 0, staleQueuedTargetUID: 203, randomRoll: 0.0, expectedVisualSelectorUID: 203 },
+  ];
+
+  multipassRows = passes.map((pass, index) => {
+    const ctx = makeContext(pass);
+    ExecuteSkill(ctx, 'HERO_SINGLE', 100);
+    const firstHit = Array.isArray(ctx.state.globals.PendingHeroHits)
+      ? ctx.state.globals.PendingHeroHits.find(hit => hit && Number(hit.targetUID || 0) > 0)
+      : null;
+    const queuedAttackTargetUID = Number(firstHit?.targetUID || 0);
+    const visualSelectorUID = resolveVisualSelectorUID(pass);
+    const expectedVisualSelectorUID = pass.expectedVisualSelectorUID ?? pass.selectedUID;
+    return {
+      pass: index + 1,
+      label: pass.label,
+      actorUID: 100,
+      selectedUID: pass.selectedUID,
+      selectedOwnerUID: Number(ctx.state.globals.SelectedEnemyUIDOwner || 0),
+      staleQueuedTargetUID: pass.staleQueuedTargetUID,
+      visualSelectorUID,
+      randomRoll: pass.randomRoll,
+      queuedAttackTargetUID,
+      visualDrift: visualSelectorUID !== expectedVisualSelectorUID,
+      queuedDrift: pass.selectedUID ? queuedAttackTargetUID !== pass.selectedUID : false,
+    };
+  });
+
+  const driftRows = multipassRows.filter(row => row.visualDrift || row.queuedDrift);
+  recordCheck(
+    'multipass actor/selected/queued/render target rows stay aligned',
+    driftRows.length === 0,
+    'way off',
+    `${driftRows.length} drift rows found while comparing selectedUID, visualSelectorUID, and queuedAttackTargetUID.`,
+  );
 }
 
 const requiredTests = [
@@ -93,27 +222,28 @@ lacksRegex(
   /state\.globals\.SelectedEnemyUID = Number\(livingEnemies\[0\]\.uid \|\| 0\);/,
   'dev autoplay rejects first-living-enemy sticky targeting',
 );
+hasRegex(
+  'web-runner/app.js',
+  /state\.globals\.SelectedEnemyUIDOwner = Number\(state\.globals\.PendingActor \|\| 0\);/,
+  'manual enemy clicks stamp selected target owner with PendingActor',
+);
 
 hasRegex(
   'web-runner/systems/renderRuntime.js',
   /const pendingHitTargetUID = Array\.isArray\(state\.globals\.PendingHeroHits\)\s*\? Number\(\(state\.globals\.PendingHeroHits\.find\(hit => hit && Number\(hit\.targetUID \|\| 0\) > 0\) \|\| \{\}\)\.targetUID \|\| 0\)\s*: 0;/,
-  'renderer derives selector target from queued PendingHeroHits first',
+  'renderer keeps queued PendingHeroHits target available as fallback',
 );
 hasRegex(
   'web-runner/systems/renderRuntime.js',
-  /const resolvedSelectedUid = pendingHitTargetUID \|\| selectedUid;/,
-  'renderer falls back to SelectedEnemyUID only after queued hit target',
+  /\.replace\(\s*"const resolvedSelectedUid = pendingHitTargetUID \|\| selectedUid;",\s*"const resolvedSelectedUid = selectedUid \|\| pendingHitTargetUID;",\s*\)/s,
+  'renderer rewrites generated selector source so SelectedEnemyUID wins during live selection',
 );
 hasRegex(
   'web-runner/systems/renderRuntime.js',
   /resolvedSelectedUid \? aliveEnemies\.filter\(e => Number\(e\.uid \|\| 0\) === resolvedSelectedUid\) : aliveEnemies\.slice\(0, 1\)/,
   'renderer compares target UIDs numerically when drawing the selector',
 );
-lacksRegex(
-  'web-runner/systems/renderRuntime.js',
-  /selectedUid \? aliveEnemies\.filter\(e => e\.uid === selectedUid\) : aliveEnemies\.slice\(0, 1\)/,
-  'renderer rejects stale SelectedEnemyUID-only selector routing',
-);
+runManualTargetMultipass();
 
 const packageJson = JSON.parse(read('package.json'));
 recordCheck(
@@ -135,6 +265,10 @@ const slight = failedStatic.filter((check) => check.severity !== 'way off');
 console.log('Hero target/selector sync eval');
 console.log(`Static checks: ${checks.length - failedStatic.length}/${checks.length} passed`);
 console.log(`Focused tests: ${testRuns.length - failedTests.length}/${testRuns.length} passed`);
+console.log('\nMultipass actor/target rows');
+for (const row of multipassRows) {
+  console.log(JSON.stringify(row));
+}
 
 if (wayOff.length) {
   console.log('\nWAY OFF failures');
