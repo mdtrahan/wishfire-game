@@ -707,6 +707,8 @@ export function armPendingSuperGemAttack({
   const hitCount = randomIntInclusive(3, 5, rng);
   state.globals.PendingSkillID = 'HERO_SINGLE';
   state.globals.PendingActor = Number(actorUID || 0);
+  state.globals.SelectedEnemyUID = 0;
+  state.globals.SelectedEnemyUIDOwner = 0;
   state.globals.PendingSuperGemAction = {
     kind: 'super_gem_attack',
     color,

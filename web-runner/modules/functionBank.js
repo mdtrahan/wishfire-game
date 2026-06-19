@@ -7928,8 +7928,13 @@ export function ResolveGemAction(ctx, gemColor, actorUID, consumedCount = 0) {
     );
   }
   if (decision.pendingSkillId) {
-    g.PendingSkillID = String(decision.pendingSkillId);
+    const pendingSkillID = String(decision.pendingSkillId);
+    g.PendingSkillID = pendingSkillID;
     g.PendingActor = actorUID;
+    if (pendingSkillID === 'HERO_SINGLE') {
+      g.SelectedEnemyUID = 0;
+      g.SelectedEnemyUIDOwner = 0;
+    }
   }
   if (Number(decision.showAttackUi || 0) === 1) {
     ShowAttackUI(ctx);
