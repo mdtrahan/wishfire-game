@@ -4,14 +4,15 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 test('layout-0 startup loading frame renders when bootstrap is incomplete', () => {
-  const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
-  const src = fs.readFileSync(filePath, 'utf8');
+  const appSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
+  const fallbackSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'renderHarnessFallback.js'), 'utf8');
+  const overlaySrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'renderOverlays.js'), 'utf8');
 
-  assert.match(src, /function drawStartupLoadingFrame\(\) \{/);
-  assert.match(src, /const startupLoading = layoutId === 'storyMock' && !freshCombatBootstrapped;/);
-  assert.match(src, /Story Mock \(loading\.\.\.\)/);
-  assert.match(src, /const barY = Math\.max\(24, viewH - 66\);/);
-  assert.match(src, /Loading/);
+  assert.match(appSrc, /function drawStartupLoadingFrame\(\) \{/);
+  assert.match(fallbackSrc, /const startupLoading = layoutId === 'storyMock' && !freshCombatBootstrapped;/);
+  assert.match(fallbackSrc, /Story Mock \(loading\.\.\.\)/);
+  assert.match(fallbackSrc, /const barY = Math\.max\(24, viewHeight - 66\);/);
+  assert.match(overlaySrc, /Loading assets/);
 });
 
 test('startup loading state is tracked and finalized at runtime readiness', () => {

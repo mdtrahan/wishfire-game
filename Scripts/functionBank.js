@@ -78,6 +78,10 @@ const GROW_TIERS = Object.freeze([
   Object.freeze({ tier: 3, powerAmpPct: 20, powerAmpMultiplier: 1.2, maxHpPenaltyPct: 20 }),
 ]);
 const GROW_MAX_TIER = GROW_TIERS.length;
+const PARTY_CHAIN_STRIKE_I_ID = 'party_chain_strike_i';
+const PARTY_CHAIN_STRIKE_I_DAMAGE_PCT = 33;
+const PARTY_CHAIN_STRIKE_VISUAL_KEY = 'chain_arc_ribbon';
+const PARTY_CHAIN_STRIKE_VISUAL_ASSET = 'SkillChainStrikeArc';
 
 const ENEMY_SKILL_ASSIGNMENT_MAP = {
   Djinn: {
@@ -1026,6 +1030,7 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: 'party_crimson_ward', owner: 'Party', slot: 11, title: 'Crimson Ward', cardText: 'Grant a temporary party ward before true HP is damaged.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'party_temp_hp_shield', shieldPctPartyMax: 18, stacking: 'refresh_capped_shield' }, qa: { proof: 'PartyTempHPShield and ward visuals refresh' } },
   { id: 'party_faze', owner: 'Party', slot: 12, title: 'Faze', cardText: 'Blights the field, poisoning enemies for the remainder of the session.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'field_refresh', status: 'tainted_ground' }, qa: { proof: 'TaintedGroundZones and PendingHeroHits refresh' } },
   { id: 'party_grow', owner: 'Party', slot: 13, title: 'Grow', cardText: 'Grow all living heroes: more power, less Max HP.', risk: 'HIGH', growth: [8, 14, 20], procPattern: 'On selection', payloadImplemented: true, drawClass: 'tiered', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_until_cap' }, trigger: { event: 'selection', eligibility: 'all_living_heroes' }, effect: { kind: 'grow', maxTier: GROW_MAX_TIER, application: 'all_living_heroes', powerAmpPctByTier: GROW_TIERS.map(row => row.powerAmpPct), maxHpPenaltyPctByTier: GROW_TIERS.map(row => row.maxHpPenaltyPct) }, qa: { proof: 'GrowAcquisitionTrace and persistent PowerAmpVisualByUID state' } },
+  { id: PARTY_CHAIN_STRIKE_I_ID, owner: 'Party', slot: 14, title: 'Chain Strike I', cardText: 'Hero attacks bounce once for 33% damage.', risk: 'MED', growth: [33], procPattern: 'On hero attack', payloadImplemented: true, drawClass: 'one_off', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'reject_after_selected' }, trigger: { event: 'hero_attack_single', eligibility: 'active_party_skill_living_enemy_target' }, effect: { kind: 'chain_bounce', bounceDamagePct: PARTY_CHAIN_STRIKE_I_DAMAGE_PCT, maxBounces: 1, targeting: 'next_living_enemy_sequence', oneEnemyFallback: 'same_enemy', visual: PARTY_CHAIN_STRIKE_VISUAL_KEY }, qa: { proof: 'PendingHeroHits chain_bounce packet and ChainStrikeVisuals arc ribbon' } },
 ]);
 
 const PARTY_SKILL_DRAW_ALLOWED_IDS = Object.freeze([
@@ -1034,6 +1039,7 @@ const PARTY_SKILL_DRAW_ALLOWED_IDS = Object.freeze([
   'party_destiny',
   'party_faze',
   'party_grow',
+  PARTY_CHAIN_STRIKE_I_ID,
 ]);
 const PARTY_SKILL_DRAW_EXCLUDED_IDS = Object.freeze(new Set([
   'party_fresh_start',
@@ -1248,7 +1254,7 @@ function getSkillSessionBucketKey(def, heroUID) {
   return String(def?.owner || '').toLowerCase() === 'party' ? HERO_SKILL_SHARED_KEY : String(Number(heroUID || 0));
 }
 
-function getSkillDrawSuppressionReason(g, def, heroUID) {
+function getSkillDrawSuppressionReason(g, def, heroUID, options = {}) {
   const skillId = String(def?.id || '').trim().toLowerCase();
   if (!skillId) return '';
   const bucketKey = getSkillSessionBucketKey(def, heroUID);
@@ -1257,7 +1263,7 @@ function getSkillDrawSuppressionReason(g, def, heroUID) {
   const drawClass = String(def?.drawClass || '');
   if (drawClass === 'one_off') {
     if (selectionCount > 0) return 'one_off_already_selected';
-    if (Number(g.SkillDraughtOneOffExposureBySkillId?.[skillId] || 0) > 0) return 'one_off_already_exposed';
+    if (!options.ignoreExposure && Number(g.SkillDraughtOneOffExposureBySkillId?.[skillId] || 0) > 0) return 'one_off_already_exposed';
     return '';
   }
   if (drawClass === 'tiered') {
@@ -1726,7 +1732,7 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
   if (!Array.isArray(g.SessionSkillsByHeroUID[key])) g.SessionSkillsByHeroUID[key] = [];
   const skillId = String(candidate.id || def?.id || '').trim().toLowerCase();
   const existingSelections = countSessionSkillSelections(g.SessionSkillsByHeroUID[key], skillId);
-  const suppressionReason = getSkillDrawSuppressionReason(g, def, uid);
+  const suppressionReason = getSkillDrawSuppressionReason(g, def, uid, { ignoreExposure: true });
   if (suppressionReason) {
     appendSkillDraughtTrace(g, 'select_rejected', {
       heroUID: uid,
@@ -6408,6 +6414,114 @@ export function MagicCalc(ctx, attackerUID, targetUID) {
   return CalculateDamage(ctx, attackerUID, targetUID, 'magic');
 }
 
+function getChainStrikeEnemySequenceIndex(enemy) {
+  if (!enemy) return 0;
+  const slotIndex = Number(enemy.slotIndex);
+  if (Number.isFinite(slotIndex)) return Math.floor(slotIndex);
+  const y = Number(enemy.y);
+  if (Number.isFinite(y)) return Math.floor(y);
+  return Number(enemy.uid || 0);
+}
+
+function resolveChainStrikeBounceTarget(ctx, sourceTargetUID) {
+  const sourceUID = Number(sourceTargetUID || 0);
+  const livingEnemies = getEnemies(ctx)
+    .filter(enemy => (enemy.hp ?? 0) > 0)
+    .slice()
+    .sort((a, b) => {
+      const bySequence = getChainStrikeEnemySequenceIndex(a) - getChainStrikeEnemySequenceIndex(b);
+      if (bySequence !== 0) return bySequence;
+      return Number(a.uid || 0) - Number(b.uid || 0);
+    });
+  if (livingEnemies.length <= 0) return null;
+  if (livingEnemies.length === 1) return livingEnemies[0];
+  const sourceIndex = livingEnemies.findIndex(enemy => Number(enemy.uid || 0) === sourceUID);
+  if (sourceIndex < 0) return livingEnemies[0];
+  return livingEnemies[(sourceIndex + 1) % livingEnemies.length] || livingEnemies[0];
+}
+
+function queueChainStrikeVisual(g, sourceTargetUID, targetUID, startAt, impactAt) {
+  if (!g.ChainStrikeVisuals || !Array.isArray(g.ChainStrikeVisuals)) g.ChainStrikeVisuals = [];
+  const serial = Number(g.ChainStrikeVisualSerial || 0) + 1;
+  g.ChainStrikeVisualSerial = serial;
+  const start = Number.isFinite(Number(startAt)) ? Number(startAt) : Number(g.time || 0);
+  const impact = Number.isFinite(Number(impactAt)) ? Number(impactAt) : start + 0.28;
+  g.ChainStrikeVisuals.push({
+    id: serial,
+    skillId: PARTY_CHAIN_STRIKE_I_ID,
+    sourceTargetUID: Number(sourceTargetUID || 0),
+    targetUID: Number(targetUID || 0),
+    startAt: start,
+    impactAt: impact,
+    duration: Math.max(0.18, impact - start),
+    visual: PARTY_CHAIN_STRIKE_VISUAL_KEY,
+    asset: PARTY_CHAIN_STRIKE_VISUAL_ASSET,
+  });
+  return serial;
+}
+
+function queuePartyChainStrikeBounce(ctx, {
+  heroUID,
+  sourceTargetUID,
+  originalDamage,
+  applyAt,
+  mode,
+  actorName,
+} = {}) {
+  if (!IsPartySessionSkillActive(ctx, PARTY_CHAIN_STRIKE_I_ID)) return false;
+  const actor = GetActorByUID(ctx, heroUID);
+  if (!actor || actor.kind !== 'hero' || (actor.hp ?? 0) <= 0) return false;
+  const sourceTarget = GetActorByUID(ctx, sourceTargetUID);
+  if (!sourceTarget || sourceTarget.kind !== 'enemy') return false;
+  const bounceTarget = resolveChainStrikeBounceTarget(ctx, sourceTargetUID);
+  if (!bounceTarget) return false;
+  const baseDamage = Math.max(0, Math.floor(Number(originalDamage || 0)));
+  if (baseDamage <= 0) return false;
+  const bounceDamage = Math.max(1, Math.ceil(baseDamage * (PARTY_CHAIN_STRIKE_I_DAMAGE_PCT / 100)));
+  const g = getGlobals(ctx);
+  const now = Number(g.time || 0);
+  const originalApplyAt = Number.isFinite(Number(applyAt)) ? Number(applyAt) : now + 0.97;
+  const visualStartAt = Math.max(now, originalApplyAt + 0.04);
+  const bounceApplyAt = Math.max(visualStartAt + 0.26, originalApplyAt + 0.22);
+  g.PendingHeroHits = g.PendingHeroHits || [];
+  const visualId = queueChainStrikeVisual(g, sourceTargetUID, bounceTarget.uid, visualStartAt, bounceApplyAt);
+  g.PendingHeroHits.push({
+    at: bounceApplyAt,
+    heroUID,
+    targetUID: Number(bounceTarget.uid || 0),
+    dmg: bounceDamage,
+    powerAmpMultiplier: 0,
+    finalDmg: bounceDamage,
+    powerAmpLifecycleId: 0,
+    consumePowerAmp: 0,
+    calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
+    heroName: actorName,
+    heroType: mode,
+    effectType: 'chain_bounce',
+    actionName: 'Chain Strike I',
+    generatedBySkillId: PARTY_CHAIN_STRIKE_I_ID,
+    chainStrikeDamagePct: PARTY_CHAIN_STRIKE_I_DAMAGE_PCT,
+    chainStrikeSourceTargetUID: Number(sourceTargetUID || 0),
+    chainStrikeVisual: PARTY_CHAIN_STRIKE_VISUAL_KEY,
+    chainStrikeVisualAsset: PARTY_CHAIN_STRIKE_VISUAL_ASSET,
+    chainStrikeVisualId: visualId,
+    msg: `Chain Strike arcs to ${bounceTarget.name || '?'} for ${bounceDamage}!`,
+  });
+  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), bounceApplyAt + 0.28);
+  g.DeferAdvance = 1;
+  g.PartyChainStrikeIProcs = Number(g.PartyChainStrikeIProcs || 0) + 1;
+  g.LastPartyChainStrike = {
+    skillId: PARTY_CHAIN_STRIKE_I_ID,
+    heroUID: Number(heroUID || 0),
+    sourceTargetUID: Number(sourceTargetUID || 0),
+    targetUID: Number(bounceTarget.uid || 0),
+    damagePct: PARTY_CHAIN_STRIKE_I_DAMAGE_PCT,
+    damage: bounceDamage,
+    visualId,
+  };
+  return true;
+}
+
 export function HeroAttackSingle(ctx, heroUID, targetUID) {
   const actorName = getActorNameByUID(ctx, heroUID);
   const target = GetActorByUID(ctx, targetUID);
@@ -6476,6 +6590,14 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
     heroName: actorName,
     heroType: mode,
     msg: `${actorName} hit ${target.name || '?'} for ${finalDmg}!`,
+  });
+  queuePartyChainStrikeBounce(ctx, {
+    heroUID,
+    sourceTargetUID: targetUID,
+    originalDamage: finalDmg,
+    applyAt,
+    mode,
+    actorName,
   });
 }
 

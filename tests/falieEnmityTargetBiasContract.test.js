@@ -9,9 +9,9 @@ function read(relPath) {
 
 test('runtime function bank delegates enemy targeting to data-driven shared policy', () => {
   const src = read('web-runner/modules/functionBank.js');
-  assert.match(src, /import \{ pickEnemyTargetHeroFromRoster \} from '..\/src\/core\/enemyTargetingRules\.mjs';/);
+  assert.match(src, /resolveEnemyTargetHero,\s*\} from '..\/src\/core\/enemyTargetingRules\.mjs';/);
   assert.match(src, /function pickEnemyTargetHero\(ctx, enemyUID = 0\)/);
-  assert.match(src, /const result = pickEnemyTargetHeroFromRoster\(\{/);
+  assert.match(src, /const result = resolveEnemyTargetHero\(\{/);
   assert.match(src, /g\.LastEnemyTargetBias = result\.trace;/);
   assert.doesNotMatch(src, /FALIE_ENMITY_BONUS/);
 });
@@ -19,15 +19,16 @@ test('runtime function bank delegates enemy targeting to data-driven shared poli
 test('enemy single-target paths use shared target picker', () => {
   const src = read('web-runner/modules/functionBank.js');
   assert.match(src, /const target = pickEnemyTargetHero\(ctx, actorUID\);/);
-  assert.match(src, /const resolvedTargetUID = targetUID \|\| \(pickEnemyTargetHero\(ctx, enemyUID\)\?\.uid \|\| 0\);/);
+  assert.match(src, /const target = pickEnemyTargetHero\(ctx, enemyUID\);/);
+  assert.match(src, /const targetUID = target \? target\.uid : 0;/);
   assert.match(src, /const target = pickEnemyTargetHero\(ctx, enemyUID\);/);
 });
 
 test('Scripts mirror delegates enemy targeting to data-driven shared policy', () => {
   const src = read('Scripts/functionBank.js');
-  assert.match(src, /import \{ pickEnemyTargetHeroFromRoster \} from '..\/src\/core\/enemyTargetingRules\.mjs';/);
+  assert.match(src, /resolveEnemyTargetHero,\s*\} from '..\/src\/core\/enemyTargetingRules\.mjs';/);
   assert.match(src, /function pickEnemyTargetHero\(ctx, enemyUID = 0\)/);
-  assert.match(src, /const result = pickEnemyTargetHeroFromRoster\(\{/);
+  assert.match(src, /const result = resolveEnemyTargetHero\(\{/);
   assert.match(src, /g\.LastEnemyTargetBias = result\.trace;/);
   assert.doesNotMatch(src, /FALIE_ENMITY_BONUS/);
 });

@@ -17,7 +17,7 @@ test('runtime app defines deterministic combat power helper and bootstraps hero/
 });
 
 test('runtime snapshot surfaces combatPower for heroes and enemies', () => {
-  const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
+  const filePath = path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js');
   const src = fs.readFileSync(filePath, 'utf8');
   assert.match(src, /heroes:[\s\S]*combatPower: Number\(e\.combatPower \|\| 0\)/);
   assert.match(src, /enemies:[\s\S]*combatPower: Number\(e\.combatPower \|\| 0\)/);

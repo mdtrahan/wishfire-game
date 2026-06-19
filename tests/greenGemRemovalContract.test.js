@@ -9,9 +9,10 @@ function read(relPath) {
 
 test('runtime board spawning, yellow refill, and dev forced board options retire only frame-zero green', () => {
   const src = read('web-runner/app.js');
-  assert.doesNotMatch(src, /\{\s*value:\s*0,\s*label:\s*'GREEN'\s*\}/);
-  assert.match(src, /\{\s*value:\s*4,\s*label:\s*'HEAL'\s*\}/);
-  assert.match(src, /const GEM_SPAWN_COLORS = Object\.freeze\(\[1, 2, 3, 4, 5\]\);/);
+  const devToolingSrc = read('web-runner/systems/devToolingRuntime.js');
+  assert.doesNotMatch(devToolingSrc, /\{\s*value:\s*0,\s*label:\s*'GREEN'\s*\}/);
+  assert.match(devToolingSrc, /\{\s*value:\s*4,\s*label:\s*'HEAL'\s*\}/);
+  assert.match(devToolingSrc, /const GEM_SPAWN_COLORS = Object\.freeze\(\[1, 2, 3, 4, 5\]\);/);
   assert.doesNotMatch(src, /const weights = \[1, 1, 1, 1, 1, PURPLE_WEIGHT\];/);
 
   const yellowSrc = read('web-runner/src/core/yellowRefillRules.mjs');

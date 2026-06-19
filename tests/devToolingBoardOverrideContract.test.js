@@ -3,8 +3,8 @@ const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-function readAppSource() {
-  return fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
+function readDevToolingSource() {
+  return fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devToolingRuntime.js'), 'utf8');
 }
 
 function extractFunctionSource(src, signature) {
@@ -23,7 +23,7 @@ function extractFunctionSource(src, signature) {
 }
 
 test('dev panel gem color override resets board-only stale state', () => {
-  const src = readAppSource();
+  const src = readDevToolingSource();
   const fn = extractFunctionSource(src, 'function applyBoardGemColor(colorValue)');
 
   assert.match(fn, /resetSuperGemBoardState\(gameState\);/);
