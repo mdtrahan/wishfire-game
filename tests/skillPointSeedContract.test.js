@@ -12,7 +12,7 @@ test('party seed function exists in runtime functionBank', () => {
 });
 
 test('combat init seeds party skill points to 300 for ORKA-spt lane', () => {
-  const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
+  const filePath = path.join(__dirname, '..', 'web-runner', 'systems', 'combatSessionInitializer.js');
   const src = fs.readFileSync(filePath, 'utf8');
   assert.match(src, /callFunctionWithContext\(fnContext, 'SetHeroSkillPointsForParty', 300, 'ORKA-spt-seed'\);/);
 });

@@ -115,9 +115,9 @@ test('Kojonn red single stores full queued totals for base, x2, and x3 Power Amp
 });
 
 test('app delayed-hit resolver honors queued final damage before fallback recomputation', () => {
-  const src = read('web-runner/app.js');
+  const src = read('web-runner/systems/renderRuntime.js');
   assert.match(
     src,
-    /const queuedFinalDmg = Number\(hit\.finalDmg\);[\s\S]*const finalDmg = Number\.isFinite\(queuedFinalDmg\) && queuedFinalDmg > 0[\s\S]*: \(ampMult > 0 \? Math\.max\(1, Math\.ceil\(\(hit\.dmg \|\| 0\) \* ampMult\)\) : hit\.dmg\);/
+    /const queuedFinalDmg = Number\(hit\.finalDmg\);[\s\S]*const finalDmg = Number\.isFinite\(queuedFinalDmg\) && queuedFinalDmg > 0[\s\S]*\? Math\.max\(1, Math\.floor\(queuedFinalDmg\)\)[\s\S]*: \(ampMult > 0 \? Math\.max\(1, Math\.ceil\(\(hit\.dmg \|\| 0\) \* ampMult\)\) : hit\.dmg\);/
   );
 });

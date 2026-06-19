@@ -13,6 +13,7 @@ const legalPartyDrawIds = [
   'party_destiny',
   'party_faze',
   'party_grow',
+  'party_chain_strike_i',
 ];
 
 function loadModule(modulePath) {
@@ -197,7 +198,7 @@ test('normal party skill draught samples the full party pool through RuntimeRand
     assert.ok(draws.length >= 1, 'normal skill draw should consume RuntimeRandom');
     assert.equal(opened.candidates.length, 3);
     assert.equal(new Set(opened.candidates.map(candidate => candidate.id)).size, 3);
-    assert.equal(opened.candidates[0].id, 'party_grow');
+    assert.equal(opened.candidates[0].id, 'party_chain_strike_i');
     assert.ok(
       opened.candidates.some(candidate => candidate.id === 'party_crimson_ward'),
       'Crimson Ward should be reachable from the normal random draw'

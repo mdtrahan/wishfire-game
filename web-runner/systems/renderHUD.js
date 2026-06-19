@@ -37,6 +37,7 @@ function formatSkillDrawDebugText(stateGlobals) {
     `SkillDrawCalls.party_destiny: ${count('party_destiny')}`,
     `SkillDrawCalls.party_faze: ${count('party_faze')}`,
     `SkillDrawCalls.party_grow: ${count('party_grow')}`,
+    `SkillDrawCalls.party_chain_strike_i: ${count('party_chain_strike_i')}`,
     `SkillDrawUnexpectedCalls: ${Number.isFinite(unexpectedCalls) && unexpectedCalls >= 0 ? Math.floor(unexpectedCalls) : 0}`,
   ];
 }

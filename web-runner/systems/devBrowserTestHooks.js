@@ -170,6 +170,16 @@ export function registerDevBrowserTestHooks({
           domSpawned: !!d.domSpawned,
         };
       }),
+      chainStrikeVisuals: (state.globals.ChainStrikeVisuals || []).map(visual => ({
+        id: Number(visual.id || 0),
+        skillId: String(visual.skillId || ''),
+        sourceTargetUID: Number(visual.sourceTargetUID || 0),
+        targetUID: Number(visual.targetUID || 0),
+        startAt: Number(visual.startAt || 0),
+        impactAt: Number(visual.impactAt || 0),
+        asset: String(visual.asset || ''),
+        visual: String(visual.visual || ''),
+      })),
       gems: (gameState.gems || []).map(g => ({
         uid: g.uid,
         r: g.cellR,

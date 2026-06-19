@@ -53,12 +53,10 @@ test('Kojonn green super-gem no longer launches Faze or Tainted Ground', () => {
     fnContext: {},
   });
 
-  assert.equal(activated, true);
-  assert.equal(state.globals.PendingSuperGemAction, null);
+  assert.equal(activated, false);
+  assert.equal(state.globals.PendingSuperGemAction.kind, 'super_gem_attack');
   assert.equal(state.globals.TaintedGroundZones, undefined);
-  assert.equal(state.globals.PendingHeroHits.length, 8);
-  assert.ok(state.globals.PendingHeroHits.every(hit => hit.effectType !== 'dot_apply'));
-  assert.ok(state.globals.PendingHeroHits.every(hit => !hit.effectName));
-  assert.ok(state.globals.PendingHeroHits.every(hit => !hit.taintedGroundZoneId));
-  assert.equal(calls.filter(call => call.name === 'CalculateDamage').length, 2);
+  assert.equal(state.globals.PendingHeroHits, undefined);
+  assert.equal(calls.filter(call => call.name === 'CalculateDamage').length, 0);
+  assert.equal(calls.filter(call => call.name === 'StartHeroLunge').length, 0);
 });

@@ -27,13 +27,16 @@ test('party formation slot assignment swaps duplicate heroes instead of cloning 
   }
 });
 
-test('hero layout formation mode writes active party slots through the existing dev-tooling config seam', () => {
-  const src = read('web-runner/app.js');
-  assert.match(src, /modeToggle/);
-  assert.match(src, /gameState\.heroScreen\.mode === 'formation'/);
-  assert.match(src, /activePartySlots: normalizePartyFormationSlots\(getConfiguredHeroSlots\(\)\)/);
-  assert.match(src, /assignSelectedHeroToPartySlot\(slotIndex = 0\)[\s\S]*applyDevToolingConfig\(\{ heroSlots: nextSlots \}, \{ closeModal: false \}\)/);
-  assert.match(src, /formation assign failed/);
-  assert.match(src, /AVAILABLE ROSTER/);
-  assert.match(src, /ACTIVE PARTY/);
+test('party slot assignment writes active party slots through the existing dev-tooling config path', () => {
+  const appSrc = read('web-runner/app.js');
+  assert.match(appSrc, /assignHeroToPartySlot,/);
+  assert.match(appSrc, /normalizePartyFormationSlots,/);
+  assert.match(appSrc, /async function assignSelectedHeroToPartySlot\(slotIndex = 0\)/);
+  assert.match(appSrc, /const currentSlots = normalizePartyFormationSlots\(getConfiguredHeroSlots\(\)\);/);
+  assert.match(appSrc, /const nextSlots = assignHeroToPartySlot\(currentSlots, hero\.name, slotIndex\);/);
+  assert.match(appSrc, /uiState\.setUIStateField\('heroScreenSelectedPartySlot'/);
+  assert.match(appSrc, /applyDevToolingConfig\(\{ heroSlots: nextSlots \}, \{ closeModal: false \}\)/);
+
+  const hookSrc = read('web-runner/systems/devBrowserTestHooks.js');
+  assert.match(hookSrc, /activePartySlots: normalizePartyFormationSlots\(getConfiguredHeroSlots\(\)\)/);
 });

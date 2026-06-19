@@ -110,6 +110,16 @@ export async function loadRuntimeVisualAssets({
     const wardBarrierLoad = (async () => {
       wardBarrierImage = await loadImage(assetUrl('images/falie_ward_84x62.png'));
     })();
+    const chainStrikeArcLoad = (async () => {
+      const path = assetUrl('images/skill_chain_strike_arc_160x48.png');
+      const img = await loadImage(path);
+      if (img) {
+        images.SkillChainStrikeArc = img;
+        loadedCount += 1;
+      } else {
+        failedImages.push({ type: 'SkillChainStrikeArc', path, anim: 'chain-strike' });
+      }
+    })();
     const heroSkillIconLoads = [
       'images/bufficon1-animation 1-000.png',
       'images/bufficon2-animation 1-000.png',
@@ -135,6 +145,7 @@ export async function loadRuntimeVisualAssets({
     tasks.push(
       ...heroPortraitLoads,
       wardBarrierLoad,
+      chainStrikeArcLoad,
       ...heroSkillIconLoads,
       ...heroCapsuleLoads,
       gemVisualLoads,

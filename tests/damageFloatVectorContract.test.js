@@ -104,7 +104,7 @@ test('spawned damage text stores angle/vector proof fields in both function-bank
   const scriptsSrc = read('Scripts/functionBank.js');
   for (const src of [runtimeSrc, scriptsSrc]) {
     assert.match(src, /g\.DamageFloatSpawnSeq = \(Number\(g\.DamageFloatSpawnSeq \|\| 0\) \+ 1\);/);
-    assert.match(src, /pickDamageFloatAngleDeg\(\{\s*random: getRandomSource\(ctx\),\s*maxAbsAngleDeg: floatMaxAngleDeg,\s*sequence: g\.DamageFloatSpawnSeq,\s*\}\)/);
+    assert.match(src, /pickDamageFloatAngleDeg\(\{\s*random: presentationRandom,\s*maxAbsAngleDeg: floatMaxAngleDeg,\s*sequence: g\.DamageFloatSpawnSeq,\s*\}\)/);
     assert.match(src, /deriveDamageFloatVector\(\{/);
     assert.match(src, /baseX: drawX,/);
     assert.match(src, /floatAngleDeg: floatVector\.angleDeg,/);
@@ -117,10 +117,11 @@ test('spawned damage text stores angle/vector proof fields in both function-bank
 test('DOM and canvas fallback consume the same damage float vector fields', () => {
   const appSrc = read('web-runner/app.js');
   const domSrc = read('web-runner/src/core/damageNumberAnimation.mjs');
+  const hookSrc = read('web-runner/systems/devBrowserTestHooks.js');
   const renderSrc = read('web-runner/systems/renderRuntime.js');
 
   assert.match(appSrc, /floatVector: \{\s*x: Number\(d\.floatVectorX \|\| 0\),\s*y: Number\(d\.floatVectorY \|\| 0\),\s*\}/);
-  assert.match(appSrc, /damageTexts: \(state\.globals\.DamageTexts \|\| \[\]\)\.map/);
+  assert.match(hookSrc, /damageTexts: \(state\.globals\.DamageTexts \|\| \[\]\)\.map/);
   assert.match(appSrc, /DebugDamageFloatVectors/);
   assert.match(domSrc, /wrapper\.dataset\.floatAngleDeg/);
   assert.match(domSrc, /x: floatX,/);

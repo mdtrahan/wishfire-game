@@ -6,6 +6,7 @@ const assert = require('node:assert/strict');
 test('app rejects locked gems from manual and dev autoplay selection paths', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
   const superGemBoardSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'superGemBoardState.mjs'), 'utf8');
+  const devBrowserHookSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js'), 'utf8');
 
   assert.match(src, /function isBoardGemLocked\(gem\)/);
   assert.match(src, /function isSuperGemLockedByBoardGems\(superGem\)/);
@@ -23,8 +24,8 @@ test('app rejects locked gems from manual and dev autoplay selection paths', () 
   assert.match(src, /reason: 'reject-locked-super-gem-footprint'/);
   assert.match(src, /const selectedLockedGem = \(gameState\.selectedGems \|\| \[\]\)\.some\(\(idx\) => isBoardGemLocked\(gameState\.gems && gameState\.gems\[idx\]\)\);/);
   assert.match(src, /lockedCells: getLockedGemCellKeys\(\)/);
-  assert.match(src, /locked: isBoardGemLocked\(g\),/);
-  assert.match(src, /lockCountdown: Number\(g\.lockCountdown \?\? g\.LockCountdown \?\? 0\),/);
+  assert.match(devBrowserHookSrc, /locked: isBoardGemLocked\(g\),/);
+  assert.match(devBrowserHookSrc, /lockCountdown: Number\(g\.lockCountdown \?\? g\.LockCountdown \?\? 0\),/);
   assert.match(superGemBoardSrc, /function isLockedGem\(gem\)/);
   assert.match(superGemBoardSrc, /if \(!isSuperGemSourceCell && isLockedGem\(gem\)\) continue;/);
   assert.match(superGemBoardSrc, /if \(hasLockedSuperGemSource\(superGem, gameState\.gems \|\| \[\]\)\) return false;/);
