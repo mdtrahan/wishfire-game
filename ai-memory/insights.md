@@ -468,3 +468,7 @@
 ## 2026-05-26 - Gem Input Gates Must Normalize Numeric Flags
 - CanPickGems is stored as both numeric and boolean-like values across runtime seams. Input and supergem spend gates should ask one shared readiness predicate instead of strict boolean comparisons, or one-color dev boards can look idle while supergem clicks are rejected.
 - Normalize only at input-readiness seams. Presentation barriers, pending action gates, and turn ownership must remain separate so failed supergem spends cannot fall through into normal gem selection.
+
+## 2026-06-19 - Supergem Attacks Must Enter Skill-Bound Attack Seams
+- Supergem hit packets are still hero attacks. Do not mark clustered hits as visual-only if attack-bound skills such as Chain Strike or Destiny need per-hit behavior; split damage can preserve total damage while each hit remains a real skill hook surface.
+- When a gem or hero-specific attack expression adds flavor, route the generated hit through a shared skill-bound attack wrapper before presentation. The priority is skill bounds first, then hero/gem behavior.

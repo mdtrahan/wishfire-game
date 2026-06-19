@@ -37,6 +37,17 @@ test('simulation core can be built as a static wasm asset', () => {
   assert.match(serveSrc, /'\.wasm':'application\/wasm'/);
 });
 
+test('serve runtime fingerprint prefers branch bead id before live Beads fallback', () => {
+  const serveSrc = fs.readFileSync(servePath, 'utf8');
+  const branchMatchIndex = serveSrc.indexOf("String(branch || '').match(/(ORKA-[A-Za-z0-9]+(?:\\.[0-9]+)?)/i)");
+  const liveBeadsIndex = serveSrc.indexOf("safeExec('bd', ['list', '--json'], '')");
+
+  assert.ok(branchMatchIndex >= 0, 'serve fingerprint should parse dotted bead ids from branch names');
+  assert.ok(liveBeadsIndex >= 0, 'serve fingerprint should retain live Beads fallback');
+  assert.ok(branchMatchIndex < liveBeadsIndex, 'branch bead id must win over unrelated in-progress beads');
+  assert.match(serveSrc, /fromHistory[\s\S]*ORKA-\[A-Za-z0-9\]\+\(\?:\\\.\[0-9\]\+\)\?/);
+});
+
 test('static simulation core wasm exposes the combat power shadow export', async () => {
   const bytes = fs.readFileSync(wasmPath);
   const result = await WebAssembly.instantiate(bytes, {});

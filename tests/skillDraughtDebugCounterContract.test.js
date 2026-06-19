@@ -155,6 +155,7 @@ test('skill draw debug counters track card appearances, not selected/used skills
         party_faze: 0,
         party_grow: 0,
         party_chain_strike_i: 0,
+        party_chain_strike_ii: 0,
       },
       unexpectedCalls: 0,
     };
@@ -182,6 +183,7 @@ test('skill draw debug counters track card appearances, not selected/used skills
       party_faze: 0,
       party_grow: 0,
       party_chain_strike_i: 0,
+      party_chain_strike_ii: 0,
     });
     assert.equal(allowedState.unexpectedCalls, 0);
     assert.deepEqual(plain(mod.__context.__orkaSkillDrawDebug), allowedState);
@@ -213,6 +215,7 @@ test('skill draw debug counters track card appearances, not selected/used skills
       party_faze: 0,
       party_grow: 0,
       party_chain_strike_i: 1,
+      party_chain_strike_ii: 0,
     });
     assert.equal(legalOnlyState.unexpectedCalls, 0);
     assert.deepEqual(plain(mod.__context.__orkaSkillDrawDebug), legalOnlyState);

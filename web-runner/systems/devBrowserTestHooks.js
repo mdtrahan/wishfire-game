@@ -170,6 +170,19 @@ export function registerDevBrowserTestHooks({
           domSpawned: !!d.domSpawned,
         };
       }),
+      pendingHeroHits: (state.globals.PendingHeroHits || []).map(hit => ({
+        at: Number(hit.at || 0),
+        heroUID: Number(hit.heroUID || 0),
+        targetUID: Number(hit.targetUID || 0),
+        dmg: Number(hit.dmg || 0),
+        finalDmg: Number(hit.finalDmg || 0),
+        actionName: String(hit.actionName || ''),
+        generatedBySkillId: String(hit.generatedBySkillId || ''),
+        chainStrikeDamagePct: Number(hit.chainStrikeDamagePct || 0),
+        chainStrikeBounceIndex: Number(hit.chainStrikeBounceIndex || 0),
+        chainStrikeBounceCount: Number(hit.chainStrikeBounceCount || 0),
+        chainStrikeSourceTargetUID: Number(hit.chainStrikeSourceTargetUID || 0),
+      })),
       chainStrikeVisuals: (state.globals.ChainStrikeVisuals || []).map(visual => ({
         id: Number(visual.id || 0),
         skillId: String(visual.skillId || ''),
@@ -180,6 +193,7 @@ export function registerDevBrowserTestHooks({
         asset: String(visual.asset || ''),
         visual: String(visual.visual || ''),
       })),
+      qaScenario: state.globals.ChainStrikeIITestScenario || null,
       gems: (gameState.gems || []).map(g => ({
         uid: g.uid,
         r: g.cellR,
@@ -297,6 +311,155 @@ export function registerDevBrowserTestHooks({
     runDevAutoplayUntilDepleted() {
       return runDevAutoplayUntilDepleted();
     },
+    async setupChainStrikeIIScenario() {
+      const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+      const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function')
+        ? performance.now()
+        : Date.now();
+      const waitForStartupReady = async () => {
+        const deadline = now() + 15000;
+        while (now() < deadline) {
+          const load = gameState.startupLoad || {};
+          if (!load.active && (load.phase === 'ready' || load.phase === 'runtime')) return true;
+          if (load.phase === 'error') return false;
+          await sleep(100);
+        }
+        return false;
+      };
+      const waitForLayout = async (layoutId) => {
+        const deadline = now() + 5000;
+        while (now() < deadline) {
+          if (!layoutState || typeof layoutState.getActiveLayoutId !== 'function') return true;
+          if (layoutState.getActiveLayoutId() === layoutId) return true;
+          await sleep(50);
+        }
+        return false;
+      };
+      const chooseAvailable = (preferred, available) => {
+        const normalized = new Map((available || []).map(value => [String(value || '').trim().toLowerCase(), String(value || '').trim()]));
+        for (const name of preferred) {
+          const match = normalized.get(String(name || '').trim().toLowerCase());
+          if (match) return match;
+        }
+        return String((available || []).find(Boolean) || '').trim();
+      };
+      const heroSlots = ['Falie', 'Huun', 'Runa', 'Kojonn']
+        .map(name => chooseAvailable([name], getDevToolHeroOptions()))
+        .filter(Boolean);
+      const enemyOptions = getDevToolEnemyOptions();
+      const enemySlots = [
+        chooseAvailable(['Gobloc', 'Goblin', 'Wishless'], enemyOptions),
+        chooseAvailable(['Lizardo', 'Lizard', 'Marid'], enemyOptions),
+        chooseAvailable(['Djinn', 'Chimerilass', 'Wisp'], enemyOptions),
+      ].filter(Boolean);
+      if (!(await waitForStartupReady())) {
+        return {
+          ok: false,
+          reason: 'startup_not_ready',
+          startupLoad: { ...(gameState.startupLoad || {}) },
+        };
+      }
+      if (layoutState && typeof layoutState.getActiveLayoutId === 'function') {
+        if (layoutState.getActiveLayoutId() === 'storyMock') {
+          await layoutState.requestLayoutChange('town', 'chain-strike-ii-qa-scenario-story');
+          await waitForLayout('town');
+        }
+        if (layoutState.getActiveLayoutId() !== 'combat') {
+          await layoutState.requestLayoutChange('combat', 'chain-strike-ii-qa-scenario-town', { freshStart: true });
+          await waitForLayout('combat');
+        }
+      }
+      if (heroSlots.length > 0 || enemySlots.length > 0) {
+        await applyDevToolingConfig({
+          heroSlots: heroSlots.length ? heroSlots : undefined,
+          enemySlots: enemySlots.length ? enemySlots : undefined,
+          boardGemColor: 0,
+          combatSpeed: 1,
+        }, { closeModal: false });
+      }
+      const g = state.globals;
+      const heroes = state.entities.filter(actor => actor && actor.kind === 'hero');
+      const enemies = state.entities.filter(actor => actor && actor.kind === 'enemy');
+      const hero = heroes.find(actor => Number(actor.hp || 0) > 0) || heroes[0] || null;
+      const livingEnemies = enemies.slice(0, 3);
+      if (!hero || livingEnemies.length === 0) {
+        return { ok: false, reason: 'missing_hero_or_enemy' };
+      }
+
+      for (const h of heroes) {
+        h.maxHP = Math.max(120, Number(h.maxHP || h.max || h.hp || 0));
+        h.hp = h.maxHP;
+        h.isAlive = true;
+      }
+      for (let i = 0; i < livingEnemies.length; i += 1) {
+        const enemy = livingEnemies[i];
+        enemy.maxHP = Math.max(160, Number(enemy.maxHP || enemy.hp || 0));
+        enemy.hp = enemy.maxHP;
+        enemy.isAlive = true;
+        enemy.slotIndex = i;
+      }
+
+      g.SessionSkillsByHeroUID = {
+        ...(g.SessionSkillsByHeroUID && typeof g.SessionSkillsByHeroUID === 'object' ? g.SessionSkillsByHeroUID : {}),
+        __party_shared__: [
+          { id: 'party_chain_strike_i', definitionId: 'party_chain_strike_i', title: 'Chain Strike I', owner: 'Party', selectionCount: 1 },
+          { id: 'party_chain_strike_ii', definitionId: 'party_chain_strike_ii', title: 'Chain Strike II', owner: 'Party', selectionCount: 1 },
+        ],
+      };
+      g.Player_maxEnergy = Math.max(150, Number(g.Player_maxEnergy || 0));
+      g.Player_Energy = g.Player_maxEnergy;
+      g.PartyHPByIndex = heroes.map(h => Number(h.hp || 0));
+      g.PartyMaxHPByIndex = heroes.map(h => Number(h.maxHP || h.hp || 0));
+      g.PartyHP = g.PartyHPByIndex.reduce((sum, value) => sum + value, 0);
+      g.PartyMaxHP = g.PartyMaxHPByIndex.reduce((sum, value) => sum + value, 0);
+      g.RoundActive = 0;
+      g.RoundGroups = [];
+      g.RoundGroupIndex = 0;
+      g.RoundMemberIndex = 0;
+      g.TurnOrderArray = [
+        { uid: Number(hero.uid || 0), type: 0, spd: Number(hero.stats?.SPD ?? hero.SPD ?? 10), name: String(hero.name || '') },
+        ...livingEnemies.map(enemy => ({
+          uid: Number(enemy.uid || 0),
+          type: 1,
+          spd: Number(enemy.stats?.SPD ?? enemy.SPD ?? 5),
+          name: String(enemy.name || ''),
+        })),
+      ];
+      g.CurrentTurnIndex = 0;
+      g.PendingHeroHits = [];
+      g.ChainStrikeVisuals = [];
+      g.DamageTexts = [];
+      g.PendingSkillID = 'HERO_SINGLE';
+      g.PendingActor = Number(hero.uid || 0);
+      g.SelectedEnemyUID = Number(livingEnemies[0].uid || 0);
+      g.SelectedEnemyUIDOwner = Number(hero.uid || 0);
+      g.CanPickGems = 0;
+      g.IsPlayerBusy = 1;
+      g.TurnPhase = 1;
+      g.HideHeroSelector = 1;
+      g.DeferAdvance = 0;
+      g.AdvanceAfterAction = 0;
+      g.ActionInProgress = 0;
+      g.ActionActorUID = 0;
+      g.ActionOwnerUID = 0;
+      g.ActionLockUntil = 0;
+      g.BattleStartActive = 0;
+      g.BattleStartShown = 0;
+      g.BattleStartClearedForSession = 1;
+      g.ChainStrikeIITestScenario = {
+        id: 'chain-strike-ii',
+        heroUID: Number(hero.uid || 0),
+        heroName: String(hero.name || ''),
+        enemyUIDs: livingEnemies.map(enemy => Number(enemy.uid || 0)),
+        activeSkills: ['party_chain_strike_i', 'party_chain_strike_ii'],
+        expectedBouncePct: 66,
+        expectedBounceCount: 2,
+        layoutId: layoutState && typeof layoutState.getActiveLayoutId === 'function' ? layoutState.getActiveLayoutId() : '',
+        expectedFlow: 'click an enemy, press ATTACK, then pendingHeroHits should contain original hit plus two Chain Strike II bounces',
+      };
+      drawFrame();
+      return { ok: true, ...g.ChainStrikeIITestScenario };
+    },
     stopDevAutoplay() {
       state.globals.DevAutoplayStopRequested = 1;
       return getDevAutoplayState();
@@ -351,5 +514,12 @@ export function registerDevBrowserTestHooks({
       return true;
     },
   };
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const scenario = String(params.get('scenario') || params.get('qa') || '').trim().toLowerCase();
+    if (scenario === 'chain-strike-ii' || scenario === 'chainstrike2') {
+      void window.__codexGame.setupChainStrikeIIScenario();
+    }
+  } catch (_) {}
   window.__auditBoard = () => assertBoardIntegrity('manual');
 }
