@@ -1034,6 +1034,7 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: 'party_grow', owner: 'Party', slot: 13, title: 'Grow', cardText: 'Grow all living heroes: more power, less Max HP.', risk: 'HIGH', growth: [8, 14, 20], procPattern: 'On selection', payloadImplemented: true, drawClass: 'tiered', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_until_cap' }, trigger: { event: 'selection', eligibility: 'all_living_heroes' }, effect: { kind: 'grow', maxTier: GROW_MAX_TIER, application: 'all_living_heroes', powerAmpPctByTier: GROW_TIERS.map(row => row.powerAmpPct), maxHpPenaltyPctByTier: GROW_TIERS.map(row => row.maxHpPenaltyPct) }, qa: { proof: 'GrowAcquisitionTrace and persistent PowerAmpVisualByUID state' } },
   { id: PARTY_CHAIN_STRIKE_I_ID, owner: 'Party', slot: 14, title: 'Chain Strike I', cardText: 'Hero attacks bounce once for 33% damage.', risk: 'MED', growth: [33], procPattern: 'On hero attack', payloadImplemented: true, drawClass: 'one_off', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'reject_after_selected' }, trigger: { event: 'hero_attack_single', eligibility: 'active_party_skill_living_enemy_target' }, effect: { kind: 'chain_bounce', bounceDamagePct: PARTY_CHAIN_STRIKE_I_DAMAGE_PCT, maxBounces: 1, targeting: 'next_living_enemy_sequence', oneEnemyFallback: 'same_enemy', visual: PARTY_CHAIN_STRIKE_VISUAL_KEY }, qa: { proof: 'PendingHeroHits chain_bounce packet and ChainStrikeVisuals arc ribbon' } },
   { id: PARTY_CHAIN_STRIKE_II_ID, owner: 'Party', slot: 15, title: 'Chain Strike II', cardText: 'Upgrade Chain Strike to bounce twice for 66% damage.', risk: 'MED', growth: [66], procPattern: 'On hero attack', payloadImplemented: true, drawClass: 'one_off', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'reject_after_selected' }, trigger: { event: 'hero_attack_single', eligibility: 'requires_chain_strike_i' }, effect: { kind: 'chain_bounce_upgrade', upgrades: PARTY_CHAIN_STRIKE_I_ID, bounceDamagePct: PARTY_CHAIN_STRIKE_II_DAMAGE_PCT, maxBounces: 2, targeting: 'next_living_enemy_sequence', oneEnemyFallback: 'same_enemy', visual: PARTY_CHAIN_STRIKE_VISUAL_KEY }, qa: { proof: 'Requires Chain Strike I and upgrades LastPartyChainStrike to two 66% bounces' } },
+  { id: 'party_arcane_pulse', owner: 'Party', slot: 16, title: 'Arcane Pulse', cardText: 'Every other hero attack deals 12 bonus magic damage to the selected target.', risk: 'MED', growth: [12, 12, 12, 12], procPattern: 'Every 2 hero attacks', payloadImplemented: true, drawClass: 'one_off', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'reject_after_selected' }, trigger: { event: 'hero_attack_single', eligibility: 'active_party_skill_selected_enemy_target' }, effect: { kind: 'arcane_pulse', flatDamage: 12, triggerEvery: 2, targeting: 'selected_enemy', visual: 'arcane_pulse_burst' }, qa: { proof: 'PartyArcanePulseActionCount/Procs and ArcanePulseVisuals' } },
 ]);
 
 const PARTY_SKILL_DRAW_ALLOWED_IDS = Object.freeze([
@@ -1044,6 +1045,7 @@ const PARTY_SKILL_DRAW_ALLOWED_IDS = Object.freeze([
   'party_grow',
   PARTY_CHAIN_STRIKE_I_ID,
   PARTY_CHAIN_STRIKE_II_ID,
+  'party_arcane_pulse',
 ]);
 const PARTY_SKILL_DRAW_EXCLUDED_IDS = Object.freeze(new Set([
   'party_fresh_start',
@@ -1066,6 +1068,10 @@ const FAZE_TAINTED_GROUND_DURATION_HERO_TEAM_TURNS = 3;
 const FAZE_TAINTED_GROUND_BASE_TICK_DAMAGE = 1;
 const FAZE_TAINTED_GROUND_DOT_TOTAL_TICKS = 3;
 const FAZE_TAINTED_GROUND_MAX_STACK_COUNT = 4;
+const PARTY_ARCANE_PULSE_ID = 'party_arcane_pulse';
+const PARTY_ARCANE_PULSE_DAMAGE = 12;
+const PARTY_ARCANE_PULSE_TRIGGER_EVERY = 2;
+const PARTY_ARCANE_PULSE_VISUAL_KEY = 'arcane_pulse_burst';
 function cloneSkillMetadata(value) {
   if (Array.isArray(value)) return value.map(item => cloneSkillMetadata(item));
   if (value && typeof value === 'object') {
@@ -2417,6 +2423,166 @@ export function IsPartySessionSkillActive(ctx, skillRef) {
     const id = String((entry && (entry.id || entry.key || entry.definitionId)) || '').trim().toLowerCase();
     return id === skillId;
   });
+}
+
+function centerFinitePositions(positions) {
+  const clean = Array.isArray(positions)
+    ? positions.filter(pos => pos && Number.isFinite(Number(pos.x)) && Number.isFinite(Number(pos.y)))
+    : [];
+  if (!clean.length) return null;
+  const xs = clean.map(pos => Number(pos.x));
+  const ys = clean.map(pos => Number(pos.y));
+  return {
+    x: (Math.min(...xs) + Math.max(...xs)) / 2,
+    y: (Math.min(...ys) + Math.max(...ys)) / 2,
+  };
+}
+
+function resolveArcanePulsePartySource(ctx, fallbackHero = null) {
+  const g = getGlobals(ctx);
+  const cachedSource = centerFinitePositions([
+    ...(Array.isArray(g.HeroPortraitPosByIndex) ? g.HeroPortraitPosByIndex : []),
+    ...(Array.isArray(g.HeroIconPosByIndex) ? g.HeroIconPosByIndex : []),
+  ]);
+  if (cachedSource) return cachedSource;
+
+  const partyActors = getEntities(ctx)
+    .filter(actor => actor && (actor.kind === 'hero' || actor.kind === 'escort') && Number(actor.hp ?? 1) > 0);
+  const entitySource = centerFinitePositions(partyActors);
+  if (entitySource) return entitySource;
+
+  const rect = g.EnemyAreaRect || null;
+  const minX = Number(rect?.minX);
+  const minY = Number(rect?.minY);
+  const maxY = Number(rect?.maxY);
+  const enemySize = Math.max(1, Number(g.EnemySize || 40));
+  if (Number.isFinite(minX) && Number.isFinite(minY) && Number.isFinite(maxY) && partyActors.length > 0) {
+    const gap = 8;
+    const heroCount = Math.max(1, partyActors.length);
+    const availableH = Math.max(0, maxY - minY);
+    const heroHWorld = Math.max(1, Math.min(enemySize, (availableH - gap * Math.max(0, heroCount - 1)) / heroCount));
+    const heroSpacing = heroHWorld + gap;
+    const baseXWorld = Math.max(heroHWorld / 2 + 12, minX - enemySize * 0.9) - 90;
+    const offsetWorld = heroHWorld * 0.35;
+    const formationPositions = partyActors.map((_, index) => ({
+      x: baseXWorld + (index % 2 === 0 ? offsetWorld : -offsetWorld),
+      y: minY + (heroHWorld / 2) + index * heroSpacing,
+    }));
+    const formationSource = centerFinitePositions(formationPositions);
+    if (formationSource) return formationSource;
+  }
+
+  const heroX = Number(fallbackHero?.x);
+  const heroY = Number(fallbackHero?.y);
+  if (Number.isFinite(heroX) && Number.isFinite(heroY)) return { x: heroX, y: heroY };
+  const rectCenterY = Number.isFinite(minY) && Number.isFinite(maxY) ? (minY + maxY) / 2 : Number(g.EnemyAreaY0);
+  return {
+    x: Number.isFinite(heroX) ? heroX : (Number.isFinite(minX) ? Math.max(enemySize / 2 + 12, minX - enemySize * 0.9) - 90 : 0),
+    y: Number.isFinite(rectCenterY) ? rectCenterY : (Number.isFinite(heroY) ? heroY : 0),
+  };
+}
+
+function queueArcanePulseVisual(ctx, heroUID, targetUID, startAt, impactAt) {
+  const g = getGlobals(ctx);
+  const hero = GetActorByUID(ctx, heroUID);
+  const target = GetActorByUID(ctx, targetUID);
+  if (!target) return null;
+  if (!Array.isArray(g.ArcanePulseVisuals)) g.ArcanePulseVisuals = [];
+  const targetX = Number(target?.x ?? 0);
+  const targetY = Number(target?.y ?? 0);
+  const partySource = resolveArcanePulsePartySource(ctx, hero);
+  const visual = {
+    id: `arcane-pulse-${Number(g.ArcanePulseVisualSerial || 0) + 1}`,
+    skillId: PARTY_ARCANE_PULSE_ID,
+    visualKey: PARTY_ARCANE_PULSE_VISUAL_KEY,
+    heroUID: Number(heroUID || 0),
+    targetUID: Number(targetUID || 0),
+    startAt: Number(startAt || g.time || 0),
+    impactAt: Number(impactAt || startAt || g.time || 0),
+    duration: Math.max(0.2, Number(impactAt || 0) - Number(startAt || 0)),
+    shape: 'crescent_arc_blast',
+    sequence: 'attack_then_bonus_pulse',
+    sourceX: Number(partySource.x || 0),
+    sourceY: Number(partySource.y || 0),
+    targetX,
+    targetY,
+  };
+  g.ArcanePulseVisualSerial = Number(g.ArcanePulseVisualSerial || 0) + 1;
+  g.ArcanePulseVisuals.push(visual);
+  if (g.ArcanePulseVisuals.length > 12) g.ArcanePulseVisuals.splice(0, g.ArcanePulseVisuals.length - 12);
+  return visual;
+}
+
+function queuePartyArcanePulse(ctx, { heroUID = 0, targetUID = 0, applyAt = 0, actorName = 'Hero' } = {}) {
+  const g = getGlobals(ctx);
+  if (!IsPartySessionSkillActive(ctx, PARTY_ARCANE_PULSE_ID)) return false;
+  const actor = GetActorByUID(ctx, heroUID);
+  const target = GetActorByUID(ctx, targetUID);
+  if (!actor || actor.kind !== 'hero' || Number(actor.hp || 0) <= 0) return false;
+  if (!target || target.kind !== 'enemy' || Number(target.hp || 0) <= 0) return false;
+  const count = Math.max(0, Math.floor(Number(g.PartyArcanePulseActionCount || 0))) + 1;
+  const triggerEvery = Math.max(1, Math.floor(PARTY_ARCANE_PULSE_TRIGGER_EVERY));
+  g.PartyArcanePulseActionCount = count;
+  const shouldTrigger = count % triggerEvery === 0;
+  g.LastPartyArcanePulse = {
+    skillId: PARTY_ARCANE_PULSE_ID,
+    triggered: shouldTrigger ? 1 : 0,
+    actionCount: count,
+    triggerEvery,
+    heroUID: Number(heroUID || 0),
+    targetUID: Number(targetUID || 0),
+    selectedTargetUID: Number(targetUID || 0),
+    damage: shouldTrigger ? PARTY_ARCANE_PULSE_DAMAGE : 0,
+  };
+  if (!shouldTrigger) return false;
+  const now = Number(g.time || 0);
+  const normalImpactAt = Number(applyAt || now);
+  const startAt = Math.max(now + 0.2, normalImpactAt + 0.24);
+  const pulseAt = startAt + 0.24;
+  const damage = Math.max(1, Math.floor(PARTY_ARCANE_PULSE_DAMAGE));
+  g.PendingHeroHits = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
+  g.PendingHeroHits.push({
+    at: pulseAt,
+    heroUID,
+    targetUID,
+    dmg: damage,
+    finalDmg: damage,
+    powerAmpMultiplier: 0,
+    powerAmpLifecycleId: 0,
+    consumePowerAmp: 0,
+    sourceUID: Number(heroUID || 0),
+    suppressPartySkillHitHooks: 1,
+    suppressHitFlash: 1,
+    suppressDamageText: 1,
+    suppressAttackSkillBounds: 1,
+    bonusDamageOnly: 1,
+    effectType: 'arcane_pulse',
+    actionName: 'Arcane Pulse',
+    generatedBySkillId: PARTY_ARCANE_PULSE_ID,
+    arcanePulseDamage: damage,
+    arcanePulseVisual: PARTY_ARCANE_PULSE_VISUAL_KEY,
+    calcPath: 'magicCalc',
+    heroName: actorName,
+    heroType: 'magic',
+    sequence: 'attack_then_bonus_pulse',
+    msg: `Arcane Pulse strikes ${target.name || '?'} for ${damage}!`,
+  });
+  queueArcanePulseVisual(ctx, heroUID, targetUID, startAt, pulseAt);
+  g.PartyArcanePulseProcs = Math.max(0, Math.floor(Number(g.PartyArcanePulseProcs || 0))) + 1;
+  g.LastPartyArcanePulse.triggered = 1;
+  g.LastPartyArcanePulse.procCount = g.PartyArcanePulseProcs;
+  g.LastPartyArcanePulse.normalImpactAt = normalImpactAt;
+  g.LastPartyArcanePulse.visualStartAt = startAt;
+  g.LastPartyArcanePulse.impactAt = pulseAt;
+  g.LastPartyArcanePulse.sequence = 'attack_then_bonus_pulse';
+  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), pulseAt + 0.28);
+  g.DeferAdvance = 1;
+  g.AdvanceAfterAction = 1;
+  return true;
+}
+
+export function QueuePartyArcanePulse(ctx, options = {}) {
+  return queuePartyArcanePulse(ctx, options);
 }
 
 function logPartyDestinyQa(ctx, eventName, data = {}) {
@@ -5506,6 +5672,41 @@ function startPartyWardBarrierFadeOut(ctx) {
   return until;
 }
 
+function findMatchingPendingHeroHit(ctx, uid, dmg, predicate = undefined) {
+  const g = getGlobals(ctx);
+  const pending = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
+  const targetUID = Number(uid || 0);
+  const damage = Math.max(0, Math.floor(Number(dmg || 0)));
+  const now = Number(g.time || 0);
+  return pending.find((hit) => {
+    if (!hit) return false;
+    if (Number(hit.targetUID || 0) !== targetUID) return false;
+    const hitDamage = Math.max(0, Math.floor(Number(hit.finalDmg != null ? hit.finalDmg : hit.dmg) || 0));
+    if (hitDamage !== damage) return false;
+    const at = Number(hit.at || 0);
+    if (at > now + 0.001) return false;
+    return typeof predicate === 'function' ? !!predicate(hit) : true;
+  }) || null;
+}
+
+function shouldSuppressPartySkillHitHooks(ctx, uid, dmg, options = undefined) {
+  const opts = options && typeof options === 'object' ? options : {};
+  if (Number(opts.suppressPartySkillHitHooks || 0) > 0) return true;
+  return !!findMatchingPendingHeroHit(ctx, uid, dmg, (hit) => Number(hit.suppressPartySkillHitHooks || 0) > 0);
+}
+
+function shouldSuppressHitFlash(ctx, uid, dmg, options = undefined) {
+  const opts = options && typeof options === 'object' ? options : {};
+  if (Number(opts.suppressHitFlash || 0) > 0) return true;
+  return !!findMatchingPendingHeroHit(ctx, uid, dmg, (hit) => Number(hit.suppressHitFlash || 0) > 0);
+}
+
+function shouldSuppressDamageText(ctx, uid, dmg, options = undefined) {
+  const opts = options && typeof options === 'object' ? options : {};
+  if (Number(opts.suppressDamageText || 0) > 0) return true;
+  return !!findMatchingPendingHeroHit(ctx, uid, dmg, (hit) => Number(hit.suppressDamageText || 0) > 0);
+}
+
 export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   const g = getGlobals(ctx);
   const opts = options && typeof options === 'object' ? options : {};
@@ -5513,6 +5714,9 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   g.LastDamageSourceUID = sourceUID > 0 ? sourceUID : Number(GetCurrentTurn(ctx) || 0);
   const t = GetActorByUID(ctx, uid);
   if (!t) return 0;
+  const suppressPartySkillHitHooks = shouldSuppressPartySkillHitHooks(ctx, uid, dmg, opts);
+  const suppressHitFlash = shouldSuppressHitFlash(ctx, uid, dmg, opts);
+  const suppressDamageText = shouldSuppressDamageText(ctx, uid, dmg, opts);
   const beforeHP = Number(t.hp ?? 0);
   let incomingDamage = Math.max(0, Number(dmg || 0));
   const shieldBefore = t.kind === 'hero' ? Math.max(0, Number(g.PartyTempHPShield || 0)) : 0;
@@ -5572,7 +5776,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
     beforeHP,
     afterHP,
   });
-  if (t.kind === 'enemy' && appliedDamage > 0) {
+  if (t.kind === 'enemy' && appliedDamage > 0 && !suppressPartySkillHitHooks) {
     if (IsPartySessionSkillActive(ctx, 'party_destiny')) {
       logPartyDestinyQa(ctx, 'enemy_hit_hook', {
         sourceUID: Number(g.LastDamageSourceUID || 0),
@@ -5588,7 +5792,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
     });
   }
   const now = Number(g.time || 0);
-  const shouldFlashTarget = !(t.kind === 'hero' && shieldAbsorbed > 0 && appliedDamage <= 0);
+  const shouldFlashTarget = !suppressHitFlash && !(t.kind === 'hero' && shieldAbsorbed > 0 && appliedDamage <= 0);
   if (shouldFlashTarget) {
     if (!g.HitFlashByUID || typeof g.HitFlashByUID !== 'object') {
       g.HitFlashByUID = {};
@@ -5610,11 +5814,11 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
       dy = pos.y;
     }
   }
-  if (shieldAbsorbed > 0 && g.SpawnDamageText !== 0) {
+  if (shieldAbsorbed > 0 && g.SpawnDamageText !== 0 && !suppressDamageText) {
     const wardTextPos = getPartyWardBarrierDamageTextPos(g, t, dx, dy);
     SpawnDamageText(ctx, shieldAbsorbed, wardTextPos.x, wardTextPos.y, 'ward', 'ward');
   }
-  if (appliedDamage > 0 && dx != null && dy != null && g.SpawnDamageText !== 0) {
+  if (appliedDamage > 0 && dx != null && dy != null && g.SpawnDamageText !== 0 && !suppressDamageText) {
     const damageTextKind = String(g.NextDamageTextKind || 'damage');
     SpawnDamageText(ctx, appliedDamage, dx, dy, damageTextKind, t.kind || null);
   }
@@ -6642,6 +6846,13 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
         });
       }
       LogCombat(ctx, `${actorName} used Incinerate on ${target.name || '?'} for ${totalBurstDamage}!`);
+      queuePartyArcanePulse(ctx, {
+        heroUID,
+        targetUID,
+        applyAt: applyAt + ((presentation.hitCount - 1) * presentation.intervalSec),
+        mode,
+        actorName,
+      });
       return;
     }
   }
@@ -6666,6 +6877,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
     mode,
     actorName,
   });
+  queuePartyArcanePulse(ctx, { heroUID, targetUID, applyAt, mode, actorName });
 }
 
 export function HeroAttackAOE(ctx, heroUID) {

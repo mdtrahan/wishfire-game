@@ -194,6 +194,14 @@ export function registerDevBrowserTestHooks({
         visual: String(visual.visual || ''),
       })),
       qaScenario: state.globals.ChainStrikeIITestScenario || null,
+      arcanePulseVisuals: (state.globals.ArcanePulseVisuals || []).map(pulse => ({
+        skillId: String(pulse.skillId || ''),
+        visualKey: String(pulse.visualKey || ''),
+        heroUID: Number(pulse.heroUID || 0),
+        targetUID: Number(pulse.targetUID || 0),
+        startAt: Number(pulse.startAt || 0),
+        impactAt: Number(pulse.impactAt || 0),
+      })),
       gems: (gameState.gems || []).map(g => ({
         uid: g.uid,
         r: g.cellR,

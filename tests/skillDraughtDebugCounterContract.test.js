@@ -156,6 +156,7 @@ test('skill draw debug counters track card appearances, not selected/used skills
         party_grow: 0,
         party_chain_strike_i: 0,
         party_chain_strike_ii: 0,
+        party_arcane_pulse: 0,
       },
       unexpectedCalls: 0,
     };
@@ -184,6 +185,7 @@ test('skill draw debug counters track card appearances, not selected/used skills
       party_grow: 0,
       party_chain_strike_i: 0,
       party_chain_strike_ii: 0,
+      party_arcane_pulse: 0,
     });
     assert.equal(allowedState.unexpectedCalls, 0);
     assert.deepEqual(plain(mod.__context.__orkaSkillDrawDebug), allowedState);
@@ -203,7 +205,7 @@ test('skill draw debug counters track card appearances, not selected/used skills
     const openedLegalOnly = openForcedSkillDraw(mod, legalOnlyCtx, 'party_magic_fruit');
     assert.deepEqual(plain(openedLegalOnly.candidates.map(candidate => candidate.id)), [
       'party_magic_fruit',
-      'party_chain_strike_i',
+      'party_arcane_pulse',
       'party_destiny',
     ]);
     const legalOnlyState = plain(mod.GetSkillDraughtState(legalOnlyCtx).skillDrawDebug);
@@ -214,8 +216,9 @@ test('skill draw debug counters track card appearances, not selected/used skills
       party_destiny: 1,
       party_faze: 0,
       party_grow: 0,
-      party_chain_strike_i: 1,
+      party_chain_strike_i: 0,
       party_chain_strike_ii: 0,
+      party_arcane_pulse: 1,
     });
     assert.equal(legalOnlyState.unexpectedCalls, 0);
     assert.deepEqual(plain(mod.__context.__orkaSkillDrawDebug), legalOnlyState);

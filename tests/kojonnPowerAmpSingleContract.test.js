@@ -43,6 +43,7 @@ function buildHeroAttackSingle(fnSource, deps) {
     'getGlobals',
     'ensureActorRedAttackSkillStore',
     'LogCombat',
+    'queuePartyArcanePulse',
     `return (${body});`
   )(
     deps.getActorNameByUID,
@@ -53,7 +54,8 @@ function buildHeroAttackSingle(fnSource, deps) {
     deps.ConsumePowerAmpForActor,
     deps.getGlobals,
     deps.ensureActorRedAttackSkillStore,
-    deps.LogCombat
+    deps.LogCombat,
+    deps.queuePartyArcanePulse
   );
 }
 
@@ -80,6 +82,7 @@ function runKojonnSingleCase(src, ampMult) {
       [actor.uid]: { actorUID: actor.uid, skillId: 'INCINERATE' },
     }),
     LogCombat: (_ctx, msg) => logs.push(String(msg)),
+    queuePartyArcanePulse: () => false,
   });
 
   fn(ctx, actor.uid, target.uid);

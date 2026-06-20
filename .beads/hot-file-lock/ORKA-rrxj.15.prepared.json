@@ -1,0 +1,41 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "makeStableHeroSkillPointId",
+        "centerFinitePositions",
+        "resolveArcanePulsePartySource",
+        "queueArcanePulseVisual",
+        "queuePartyArcanePulse",
+        "QueuePartyArcanePulse",
+        "findMatchingPendingHeroHit",
+        "shouldSuppressPartySkillHitHooks",
+        "shouldSuppressHitFlash",
+        "shouldSuppressDamageText",
+        "ApplyDamageToTarget",
+        "pos",
+        "HeroAttackSingle"
+      ],
+      "staged_blob": "e94806c0dcbe0a03cfaa5dad2660521483d667eb"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "makeStableHeroSkillPointId",
+        "centerFinitePositions",
+        "resolveArcanePulsePartySource",
+        "queueArcanePulseVisual",
+        "queuePartyArcanePulse",
+        "QueuePartyArcanePulse",
+        "findMatchingPendingHeroHit",
+        "shouldSuppressPartySkillHitHooks",
+        "shouldSuppressHitFlash",
+        "shouldSuppressDamageText",
+        "ApplyDamageToTarget",
+        "pos",
+        "HeroAttackSingle"
+      ],
+      "staged_blob": "d7571f47f882d8c7a22f6af5c810451101eff33d"
+    }
+  },
+  "issue_id": "ORKA-rrxj.15"
+}

@@ -14,6 +14,7 @@ const activePartyDrawIds = [
   'party_grow',
   'party_chain_strike_i',
   'party_chain_strike_ii',
+  'party_arcane_pulse',
 ];
 
 function extractFunctionSource(src, name) {
@@ -118,6 +119,7 @@ module.exports = {
       party_grow: 'tiered',
       party_chain_strike_i: 'one_off',
       party_chain_strike_ii: 'one_off',
+      party_arcane_pulse: 'one_off',
     };
     const partyDefs = mod.GetPartySkillDefinitions();
 

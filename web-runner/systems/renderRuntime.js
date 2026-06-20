@@ -214,6 +214,73 @@ export function renderRuntime(deps) {
       }
     }
 
+    const renderArcanePulseVisuals = () => {
+      const pulses = Array.isArray(state.globals.ArcanePulseVisuals) ? state.globals.ArcanePulseVisuals : [];
+      if (!pulses.length) return;
+      const img = images.SkillArcanePulse || null;
+      const nowPulse = Number(state.globals.time || 0);
+      state.globals.ArcanePulseVisuals = pulses.filter((pulse) => {
+        if (!pulse) return false;
+        const startAt = Number(pulse.startAt || 0);
+        const impactAt = Number(pulse.impactAt || startAt);
+        const endAt = impactAt + 0.28;
+        if (nowPulse > endAt) return false;
+        if (nowPulse < startAt) return true;
+        const duration = Math.max(0.001, impactAt - startAt);
+        const travelT = Math.max(0, Math.min(1, (nowPulse - startAt) / duration));
+        const source = worldToCanvas(Number(pulse.sourceX || 0), Number(pulse.sourceY || 0));
+        const target = worldToCanvas(Number(pulse.targetX || 0), Number(pulse.targetY || 0));
+        const shape = String(pulse.shape || 'crescent_arc_blast');
+        const ease = 1 - Math.pow(1 - travelT, 3);
+        const dx = target.x - source.x;
+        const dy = target.y - source.y;
+        const angle = Math.atan2(dy, dx);
+        const distance = Math.max(1, Math.hypot(dx, dy));
+        const impactT = Math.max(0, Math.min(1, (nowPulse - impactAt) / 0.28));
+        const surgeAlpha = Math.max(0, Math.min(0.95, travelT < 1 ? 0.18 + ease * 0.77 : 1 - impactT));
+        const frontRadius = Math.max(18 * layoutScale, Math.min(distance * 1.06, distance * (0.16 + ease * 0.9)));
+        const spread = Math.max(0.3, Math.min(0.66, 0.52 - ease * 0.12));
+        const arcWidth = Math.max(5, 9 * layoutScale) * (1 - impactT * 0.35);
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        ctx.translate(source.x, source.y);
+        ctx.rotate(angle);
+        ctx.lineCap = 'round';
+        ctx.shadowColor = 'rgba(52, 218, 255, 0.52)';
+        ctx.shadowBlur = Math.max(5, 14 * layoutScale);
+        const drawCrescentArc = (radius, width, alpha, phaseOffset) => {
+          if (radius <= 0 || alpha <= 0) return;
+          const grad = ctx.createLinearGradient(Math.max(0, radius - 72 * layoutScale), 0, radius + 12 * layoutScale, 0);
+          grad.addColorStop(0, 'rgba(86, 42, 185, 0)');
+          grad.addColorStop(0.38, 'rgba(139, 83, 255, 0.5)');
+          grad.addColorStop(1, 'rgba(117, 238, 255, 0.95)');
+          ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = Math.max(1, width);
+          ctx.beginPath();
+          ctx.arc(0, phaseOffset, radius, -spread, spread);
+          ctx.stroke();
+        };
+        if (shape === 'crescent_arc_blast') {
+          drawCrescentArc(frontRadius, arcWidth, surgeAlpha, 0);
+          drawCrescentArc(frontRadius - 13 * layoutScale, arcWidth * 0.58, surgeAlpha * 0.48, -2 * layoutScale);
+          drawCrescentArc(frontRadius + 7 * layoutScale, arcWidth * 0.42, surgeAlpha * 0.34, 2 * layoutScale);
+        }
+        if (img) {
+          const textureSize = Math.max(40, 62 * layoutScale) * (0.92 + ease * 0.22);
+          ctx.save();
+          ctx.globalAlpha = surgeAlpha * 0.16;
+          ctx.translate(frontRadius, 0);
+          ctx.scale(1.85, 0.48);
+          ctx.drawImage(img, -textureSize / 2, -textureSize / 2, textureSize, textureSize);
+          ctx.restore();
+        }
+        ctx.restore();
+        return true;
+      });
+    };
+    renderArcanePulseVisuals();
+
     // Render non-hero damage text above gameplay
     renderDamageTexts(d => d.targetKind !== 'hero');
 

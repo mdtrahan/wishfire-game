@@ -21,5 +21,8 @@ test('core visuals load in parallel batch instead of sequential await chain', ()
   assert.match(src, /const heroPortraitLoads = \['Falie', 'Huun', 'Runa', 'Kojonn'\]\.map/);
   assert.match(src, /const chainStrikeArcLoad = \(async \(\) => \{/);
   assert.match(src, /images\.SkillChainStrikeArc = img;/);
+  assert.match(src, /const chainStrikeArcLoad = \(async \(\) => \{/);
+  assert.match(src, /images\.SkillChainStrikeArc = img;/);
+  assert.match(src, /images\.SkillArcanePulse = await loadImage\(assetUrl\('images\/skill_arcane_pulse_96x96\.png'\)\);/);
   assert.match(src, /const loadedGemVisuals = await gemVisuals\.loadGemVisuals/);
 });
