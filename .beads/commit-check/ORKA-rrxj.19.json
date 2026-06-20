@@ -1,0 +1,60 @@
+{
+  "changed_functions": {
+    ".beads/hot-file-lock/ORKA-rrxj.19.prepared.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-rrxj.19.scope": [
+      "__MODULE__"
+    ],
+    ".beads/interactions.jsonl": [
+      "__MODULE__"
+    ],
+    "Scripts/functionBank.js": [
+      "applyPartyMaxHPBonus",
+      "makeStableHeroSkillPointId",
+      "activateMagicFruitSkill"
+    ],
+    "tests/magicFruitSkillDraughtContract.test.js": [
+      "makeContext",
+      "installSequenceRandom",
+      "__MODULE__"
+    ],
+    "web-runner/modules/functionBank.js": [
+      "applyPartyMaxHPBonus",
+      "makeStableHeroSkillPointId",
+      "activateMagicFruitSkill"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "Scripts/functionBank.js",
+      "web-runner/modules/functionBank.js"
+    ],
+    "staged_file_count": 6,
+    "staged_line_count": 133,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/hot-file-lock/ORKA-rrxj.19.prepared.json",
+    ".beads/hot-file-lock/ORKA-rrxj.19.scope",
+    ".beads/interactions.jsonl",
+    "Scripts/functionBank.js",
+    "tests/magicFruitSkillDraughtContract.test.js",
+    "web-runner/modules/functionBank.js"
+  ],
+  "issue_id": "ORKA-rrxj.19",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/hot-file-lock/ORKA-rrxj.19.prepared.json": "13ea2902c63b97c1ddf1cb70a195f59d76de0254",
+    ".beads/hot-file-lock/ORKA-rrxj.19.scope": "651e9c6e1eb8eaabc6b12b9cc4017521680c76d8",
+    ".beads/interactions.jsonl": "da753b3ff63798e534af522a1822d2001f51ca66",
+    "Scripts/functionBank.js": "f1da31af2201cd134d8c186d6527523a804f441a",
+    "tests/magicFruitSkillDraughtContract.test.js": "a37573292515dae1a48ede6cd352c96c465ab57c",
+    "web-runner/modules/functionBank.js": "2a8ee203f7a0d7cf1f823dd1763151f1af24b581"
+  }
+}
