@@ -7,6 +7,7 @@ const vm = require('node:vm');
 const repoRoot = path.join(__dirname, '..');
 const runtimePath = path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js');
 const scriptsPath = path.join(repoRoot, 'Scripts', 'functionBank.js');
+const magicFruitText = 'Heals party for 32% and raises max HP by 15% of current max HP';
 const legalPartyDrawIds = [
   'party_crimson_ward',
   'party_magic_fruit',
@@ -85,6 +86,9 @@ function makeContext() {
         hero.hp = globals.PartyHP;
         globals.PartyHPByIndex[0] = hero.hp;
       }
+      if (name === 'UpdateHeroHPUI' || name === 'UpdatePartyHPText' || name === 'UpdatePartyHPBar') {
+        return undefined;
+      }
       return undefined;
     },
   };
@@ -120,7 +124,8 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
   for (const filePath of [runtimePath, scriptsPath]) {
     const src = fs.readFileSync(filePath, 'utf8');
     assert.match(src, /id: 'party_magic_fruit'[\s\S]*title: 'Magic Fruit'/);
-    assert.match(src, /cardText: 'Heals party for 40% of max HP'/);
+    assert.match(src, /cardText: 'Heals party for 32% and raises max HP by 15% of current max HP'/);
+    assert.match(src, /effect: \{ kind: 'party_heal_max_hp', healPctPartyMax: 32, maxHpPctPartyMax: 15 \}/);
     assert.match(src, /payloadImplemented: true/);
   }
 
@@ -137,16 +142,16 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
     const defaultMagicFruit = defaultOpened.candidates.find(candidate => candidate.id === 'party_magic_fruit');
     assert.ok(defaultMagicFruit, 'Magic Fruit should appear in the normal skill draw candidates');
     assert.equal(defaultMagicFruit.title, 'Magic Fruit');
-    assert.equal(defaultMagicFruit.cardText, 'Heals party for 40% of max HP');
-    assert.equal(defaultMagicFruit.description, 'Heals party for 40% of max HP');
+    assert.equal(defaultMagicFruit.cardText, magicFruitText);
+    assert.equal(defaultMagicFruit.description, magicFruitText);
 
     const { ctx, calls } = makeContext();
     const opened = mod.ForceAstralFlowSkillDraught(ctx, 100, 'party_magic_fruit');
     assert.equal(opened.ok, true);
     assert.equal(opened.candidates[0].id, 'party_magic_fruit');
     assert.equal(opened.candidates[0].title, 'Magic Fruit');
-    assert.equal(opened.candidates[0].cardText, 'Heals party for 40% of max HP');
-    assert.equal(opened.candidates[0].description, 'Heals party for 40% of max HP');
+    assert.equal(opened.candidates[0].cardText, magicFruitText);
+    assert.equal(opened.candidates[0].description, magicFruitText);
 
     const selected = mod.SelectSkillDraughtCard(ctx, 0);
     assert.equal(selected.ok, true);
@@ -155,11 +160,15 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
     assert.equal(selected.skill.duplicatePolicy, 'allow_repeat');
     assert.equal(selected.skill.selectionCount, 1);
     assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__[0].id, 'party_magic_fruit');
-    assert.equal(ctx.state.globals.PartyHP, 51);
-    assert.equal(ctx.state.entities[0].hp, 51);
+    assert.equal(ctx.state.globals.PartyHP, 42);
+    assert.equal(ctx.state.globals.PartyMaxHP, 116);
+    assert.equal(ctx.state.entities[0].hp, 42);
+    assert.equal(ctx.state.entities[0].maxHP, 116);
+    assert.deepEqual(ctx.state.globals.PartyHPByIndex, [42]);
+    assert.deepEqual(ctx.state.globals.PartyMaxHPByIndex, [116]);
     assert.deepEqual(
       calls.filter(call => call.name === 'ApplyPartyHeal').map(call => call.args),
-      [[41]]
+      [[32]]
     );
 
     const stateAfterSelect = mod.GetSkillDraughtState(ctx);
@@ -171,7 +180,8 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
     assert.equal(selectedAgain.ok, false);
     assert.equal(selectedAgain.reason, 'draught_closed');
     assert.equal(calls.filter(call => call.name === 'ApplyPartyHeal').length, 1);
-    assert.equal(ctx.state.globals.PartyHP, 51);
+    assert.equal(ctx.state.globals.PartyHP, 42);
+    assert.equal(ctx.state.globals.PartyMaxHP, 116);
 
     const openedRepeat = mod.ForceAstralFlowSkillDraught(ctx, 100, 'party_magic_fruit');
     assert.equal(openedRepeat.ok, true);
@@ -184,6 +194,16 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
     assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__.length, 2);
     assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__[1].rank, 0);
     assert.equal(calls.filter(call => call.name === 'ApplyPartyHeal').length, 2);
+    assert.equal(ctx.state.globals.PartyHP, 79);
+    assert.equal(ctx.state.globals.PartyMaxHP, 133);
+    assert.equal(ctx.state.entities[0].hp, 79);
+    assert.equal(ctx.state.entities[0].maxHP, 133);
+    assert.deepEqual(ctx.state.globals.PartyHPByIndex, [79]);
+    assert.deepEqual(ctx.state.globals.PartyMaxHPByIndex, [133]);
+    assert.deepEqual(
+      calls.filter(call => call.name === 'ApplyPartyHeal').map(call => call.args),
+      [[32], [37]]
+    );
   }
 });
 

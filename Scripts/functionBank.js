@@ -872,6 +872,41 @@ function syncPartyHpTotalsFromHeroes(ctx) {
   g.PartyMaxHP = g.PartyMaxHPByIndex.reduce((sum, value) => sum + Math.max(0, Number(value || 0)), 0);
 }
 
+function applyPartyMaxHPBonus(ctx, totalBonus) {
+  const g = getGlobals(ctx);
+  const bonus = Math.max(0, Math.floor(Number(totalBonus || 0)));
+  if (bonus <= 0) return 0;
+  const heroes = getHeroes(ctx);
+  const livingHeroes = heroes.filter(hero => hero && Number(hero.hp ?? 0) > 0);
+  const targets = livingHeroes.length > 0 ? livingHeroes : heroes;
+  if (!Array.isArray(g.PartyHPByIndex)) g.PartyHPByIndex = [];
+  if (!Array.isArray(g.PartyMaxHPByIndex)) g.PartyMaxHPByIndex = [];
+  if (!targets.length) {
+    g.PartyMaxHP = Math.max(0, Number(g.PartyMaxHP || 0)) + bonus;
+    g.PartyHP = Math.min(g.PartyMaxHP, Math.max(0, Number(g.PartyHP || 0)));
+  } else {
+    const baseBonus = Math.floor(bonus / targets.length);
+    let remainder = bonus - (baseBonus * targets.length);
+    for (const hero of targets) {
+      const heroBonus = baseBonus + (remainder > 0 ? 1 : 0);
+      if (remainder > 0) remainder -= 1;
+      const index = getHeroPartyIndex(hero);
+      const currentMaxHP = Math.max(0, Number(hero.maxHP || (index >= 0 ? g.PartyMaxHPByIndex[index] : 0) || 0));
+      hero.maxHP = currentMaxHP + heroBonus;
+      hero.hp = Math.min(hero.maxHP, Math.max(0, Number(hero.hp || 0)));
+      if (index >= 0) {
+        g.PartyMaxHPByIndex[index] = hero.maxHP;
+        g.PartyHPByIndex[index] = hero.hp;
+      }
+    }
+    syncPartyHpTotalsFromHeroes(ctx);
+  }
+  try { ctx.callFunction('UpdateHeroHPUI'); } catch (_) {}
+  try { ctx.callFunction('UpdatePartyHPText'); } catch (_) {}
+  try { ctx.callFunction('UpdatePartyHPBar'); } catch (_) {}
+  return bonus;
+}
+
 function resolveGrowBaseMaxHP(hero, existing = {}) {
   const candidates = [
     existing.baseMaxHP,
@@ -1028,7 +1063,7 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: 'party_hot_streak', owner: 'Party', slot: 7, title: 'Hot Streak', cardText: 'Build up a better payoff with consecutive matches.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On consecutive matches', payloadImplemented: false },
   { id: 'party_last_push', owner: 'Party', slot: 8, title: 'Last Push', cardText: 'Gain a brief comeback burst when the party nears defeat.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On low party HP', payloadImplemented: false },
   { id: 'party_chain_pop', owner: 'Party', slot: 9, title: 'Chain Pop', cardText: 'Trigger an extra board effect from a match.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On match', payloadImplemented: false },
-  { id: 'party_magic_fruit', owner: 'Party', slot: 10, title: 'Magic Fruit', cardText: 'Heals party for 40% of max HP', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'party_heal', healPctPartyMax: 40 }, qa: { proof: 'ApplyPartyHeal once per selection' } },
+  { id: 'party_magic_fruit', owner: 'Party', slot: 10, title: 'Magic Fruit', cardText: 'Heals party for 32% and raises max HP by 15% of current max HP', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'party_heal_max_hp', healPctPartyMax: 32, maxHpPctPartyMax: 15 }, qa: { proof: 'ApplyPartyHeal once per selection and PartyMaxHP increase' } },
   { id: 'party_crimson_ward', owner: 'Party', slot: 11, title: 'Crimson Ward', cardText: 'Grant a temporary party ward before true HP is damaged.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'party_temp_hp_shield', shieldPctPartyMax: 18, stacking: 'refresh_capped_shield' }, qa: { proof: 'PartyTempHPShield and ward visuals refresh' } },
   { id: 'party_faze', owner: 'Party', slot: 12, title: 'Faze', cardText: 'Blights the field, poisoning enemies for the remainder of the session.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'field_refresh', status: 'tainted_ground' }, qa: { proof: 'TaintedGroundZones and PendingHeroHits refresh' } },
   { id: 'party_grow', owner: 'Party', slot: 13, title: 'Grow', cardText: 'Grow all living heroes: more power, less Max HP.', risk: 'HIGH', growth: [8, 14, 20], procPattern: 'On selection', payloadImplemented: true, drawClass: 'tiered', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_until_cap' }, trigger: { event: 'selection', eligibility: 'all_living_heroes' }, effect: { kind: 'grow', maxTier: GROW_MAX_TIER, application: 'all_living_heroes', powerAmpPctByTier: GROW_TIERS.map(row => row.powerAmpPct), maxHpPenaltyPctByTier: GROW_TIERS.map(row => row.maxHpPenaltyPct) }, qa: { proof: 'GrowAcquisitionTrace and persistent PowerAmpVisualByUID state' } },
@@ -1399,9 +1434,11 @@ function buildSkillDraughtCandidates(ctx, heroUID, forcedSkillId = '') {
 function activateMagicFruitSkill(ctx) {
   const g = getGlobals(ctx);
   const partyMaxHP = Math.max(0, Number(g.PartyMaxHP || 0));
-  const healAmount = Math.max(1, Math.ceil(partyMaxHP * 40 / 100));
+  const maxHPBonus = Math.max(1, Math.floor(partyMaxHP * 15 / 100));
+  const healAmount = Math.max(1, Math.floor(partyMaxHP * 32 / 100));
+  applyPartyMaxHPBonus(ctx, maxHPBonus);
   ctx.callFunction('ApplyPartyHeal', healAmount);
-  return healAmount;
+  return { healAmount, maxHPBonus };
 }
 
 function getFazeHeroTeamTurnSpan(ctx) {
