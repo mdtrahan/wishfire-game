@@ -77,6 +77,37 @@ function splitDamageAcrossHits(totalDamage, hitCount) {
   });
 }
 
+function queueArcanePulseAfterAttack({
+  state,
+  callFunctionWithContext,
+  fnContext,
+  actorUID,
+  targetUID,
+  applyAt,
+  heroName,
+}) {
+  const uid = Number(targetUID || 0);
+  if (!(uid > 0) || typeof callFunctionWithContext !== 'function') return false;
+  return !!callFunctionWithContext(fnContext, 'QueuePartyArcanePulse', {
+    heroUID: Number(actorUID || 0),
+    targetUID: uid,
+    applyAt: Number(applyAt || state?.globals?.time || 0),
+    actorName: String(heroName || getActorName(callFunctionWithContext, fnContext, actorUID)),
+  });
+}
+
+function resolveArcanePulseSuperGemTargetUID(state, enemies, selectedEnemyUID = 0) {
+  const preferredUID = Number(selectedEnemyUID || state?.globals?.SelectedEnemyUID || 0);
+  const preferred = Array.isArray(enemies)
+    ? enemies.find((enemy) => Number(enemy?.uid || 0) === preferredUID && Number(enemy?.hp || 0) > 0)
+    : null;
+  if (preferred) return Number(preferred.uid || 0);
+  const first = Array.isArray(enemies)
+    ? enemies.find((enemy) => enemy && Number(enemy.hp || 0) > 0)
+    : null;
+  return Number(first?.uid || 0);
+}
+
 function isActionHandoffDebugEnabled(state) {
   return !!(state?.globals?.DevTestMode === true || state?.globals?.DebugGemsMode === true);
 }
@@ -228,6 +259,15 @@ function queueClusterSingleHits({
       actorName: heroName,
     });
   }
+  queueArcanePulseAfterAttack({
+    state,
+    callFunctionWithContext,
+    fnContext,
+    actorUID,
+    targetUID,
+    applyAt: applyAt + ((hitCount - 1) * SUPER_GEM_HIT_INTERVAL),
+    heroName,
+  });
   state.globals.ActionLockUntil = Math.max(
     Number(state.globals.ActionLockUntil || 0),
     applyAt + ((hitCount - 1) * SUPER_GEM_HIT_INTERVAL) + 0.26,
@@ -343,6 +383,15 @@ function queueHuunYellowGoldstrike({
   };
   const logTargetName = isJackpot ? 'all enemies' : String(targets[0]?.name || '?');
   callFunctionWithContext(fnContext, 'LogCombat', buildHuunGoldstrikeLog(heroName, logTargetName, roll, finalDmg, branch));
+  queueArcanePulseAfterAttack({
+    state,
+    callFunctionWithContext,
+    fnContext,
+    actorUID,
+    targetUID: resolveArcanePulseSuperGemTargetUID(state, enemies, selectedEnemyUID),
+    applyAt,
+    heroName,
+  });
   state.globals.ActionLockUntil = Math.max(
     Number(state.globals.ActionLockUntil || 0),
     applyAt + 0.42,
@@ -669,6 +718,15 @@ function queueClusterAoeHits({
       actorName: heroName,
     });
   }
+  queueArcanePulseAfterAttack({
+    state,
+    callFunctionWithContext,
+    fnContext,
+    actorUID,
+    targetUID: resolveArcanePulseSuperGemTargetUID(state, enemies),
+    applyAt: applyAt + ((hitCount - 1) * SUPER_GEM_HIT_INTERVAL),
+    heroName,
+  });
   state.globals.ActionLockUntil = Math.max(
     Number(state.globals.ActionLockUntil || 0),
     applyAt + ((hitCount - 1) * SUPER_GEM_HIT_INTERVAL) + 0.42,
@@ -751,6 +809,7 @@ export function armPendingSuperGemAttack({
   superGem,
   actorUID,
   state,
+  selectedEnemyUID = 0,
 }) {
   if (!superGem || !state || !state.globals || !(actorUID > 0)) return false;
   const color = Number(superGem.baseColor);
@@ -759,13 +818,15 @@ export function armPendingSuperGemAttack({
   const hitCount = randomIntInclusive(3, 5, rng);
   state.globals.PendingSkillID = 'HERO_SINGLE';
   state.globals.PendingActor = Number(actorUID || 0);
-  state.globals.SelectedEnemyUID = 0;
-  state.globals.SelectedEnemyUIDOwner = 0;
+  const selectedUID = Number(selectedEnemyUID || 0);
+  state.globals.SelectedEnemyUID = selectedUID > 0 ? selectedUID : 0;
+  state.globals.SelectedEnemyUIDOwner = selectedUID > 0 ? Number(actorUID || 0) : 0;
   state.globals.PendingSuperGemAction = {
     kind: 'super_gem_attack',
     color,
     hitCount,
     actorUID: Number(actorUID || 0),
+    selectedEnemyUID: selectedUID > 0 ? selectedUID : 0,
   };
   state.globals.HideHeroSelector = 1;
   state.globals.CanPickGems = false;
@@ -800,7 +861,7 @@ export function executePendingSuperGemAction({
   });
   let activated = false;
   if (color === 1) {
-    const targetUID = Number(state.globals.SelectedEnemyUID || 0) || getDefaultSingleTargetUID(state);
+    const targetUID = Number(state.globals.SelectedEnemyUID || 0) || Number(pending.selectedEnemyUID || 0) || getDefaultSingleTargetUID(state);
     if (!(targetUID > 0)) return false;
     activated = queueClusterSingleHits({
       state,
@@ -859,7 +920,7 @@ export function activateSuperGemEffect({
   if (!(actorUID > 0)) return false;
   state.globals.HideHeroSelector = color === 1 ? 0 : 1;
   if (color === 1) {
-    return armPendingSuperGemAttack({ superGem, actorUID, state });
+    return armPendingSuperGemAttack({ superGem, actorUID, state, selectedEnemyUID });
   }
   if (color === 2) {
     if (typeof startGemMergeFx === 'function') {

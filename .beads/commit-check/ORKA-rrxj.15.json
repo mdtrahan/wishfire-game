@@ -1,0 +1,152 @@
+{
+  "changed_functions": {
+    ".beads/hot-file-lock/ORKA-rrxj.15.prepared.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-rrxj.15.scope": [
+      "__MODULE__"
+    ],
+    ".beads/interactions.jsonl": [
+      "__MODULE__"
+    ],
+    "Scripts/functionBank.js": [
+      "makeStableHeroSkillPointId",
+      "centerFinitePositions",
+      "resolveArcanePulsePartySource",
+      "queueArcanePulseVisual",
+      "queuePartyArcanePulse",
+      "QueuePartyArcanePulse",
+      "findMatchingPendingHeroHit",
+      "shouldSuppressPartySkillHitHooks",
+      "shouldSuppressHitFlash",
+      "shouldSuppressDamageText",
+      "ApplyDamageToTarget",
+      "pos",
+      "HeroAttackSingle"
+    ],
+    "tests/arcanePulseSkillContract.test.js": [
+      "loadFunctionBank",
+      "loadSuperGemRuntime",
+      "makeContext",
+      "selectArcanePulse",
+      "makeSuperGemArcaneContext",
+      "callFunctionWithContext",
+      "__MODULE__"
+    ],
+    "tests/heroSkillDefinitionRegistryContract.test.js": [
+      "extractFunctionSource",
+      "__MODULE__"
+    ],
+    "tests/kojonnPowerAmpSingleContract.test.js": [
+      "buildHeroAttackSingle",
+      "runKojonnSingleCase"
+    ],
+    "tests/magicFruitSkillDraughtContract.test.js": [
+      "installSequenceRandom",
+      "__MODULE__"
+    ],
+    "tests/skillDraughtDebugCounterContract.test.js": [
+      "domDebug"
+    ],
+    "tests/skillDraughtDevPanelContract.test.js": [
+      "loadRenderHudModule"
+    ],
+    "tests/startupAssetLoadPerfContract.test.js": [
+      "__MODULE__"
+    ],
+    "web-runner/assets/images/skill_arcane_pulse_96x96.png": [],
+    "web-runner/modules/functionBank.js": [
+      "makeStableHeroSkillPointId",
+      "centerFinitePositions",
+      "resolveArcanePulsePartySource",
+      "queueArcanePulseVisual",
+      "queuePartyArcanePulse",
+      "QueuePartyArcanePulse",
+      "findMatchingPendingHeroHit",
+      "shouldSuppressPartySkillHitHooks",
+      "shouldSuppressHitFlash",
+      "shouldSuppressDamageText",
+      "ApplyDamageToTarget",
+      "pos",
+      "HeroAttackSingle"
+    ],
+    "web-runner/systems/devBrowserTestHooks.js": [
+      "registerDevBrowserTestHooks"
+    ],
+    "web-runner/systems/renderHUD.js": [
+      "count"
+    ],
+    "web-runner/systems/renderRuntime.js": [
+      "renderArcanePulseVisuals",
+      "drawCrescentArc"
+    ],
+    "web-runner/systems/runtimeVisualAssetLoader.js": [
+      "gemVisualLoads"
+    ],
+    "web-runner/systems/superGemRuntime.js": [
+      "queueArcanePulseAfterAttack",
+      "resolveArcanePulseSuperGemTargetUID",
+      "queueClusterSingleHits",
+      "enemies",
+      "armPendingSuperGemAttack",
+      "executePendingSuperGemAction",
+      "activateSuperGemEffect"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "Scripts/functionBank.js",
+      "web-runner/modules/functionBank.js"
+    ],
+    "staged_file_count": 18,
+    "staged_line_count": 1159,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/hot-file-lock/ORKA-rrxj.15.prepared.json",
+    ".beads/hot-file-lock/ORKA-rrxj.15.scope",
+    ".beads/interactions.jsonl",
+    "Scripts/functionBank.js",
+    "tests/arcanePulseSkillContract.test.js",
+    "tests/heroSkillDefinitionRegistryContract.test.js",
+    "tests/kojonnPowerAmpSingleContract.test.js",
+    "tests/magicFruitSkillDraughtContract.test.js",
+    "tests/skillDraughtDebugCounterContract.test.js",
+    "tests/skillDraughtDevPanelContract.test.js",
+    "tests/startupAssetLoadPerfContract.test.js",
+    "web-runner/assets/images/skill_arcane_pulse_96x96.png",
+    "web-runner/modules/functionBank.js",
+    "web-runner/systems/devBrowserTestHooks.js",
+    "web-runner/systems/renderHUD.js",
+    "web-runner/systems/renderRuntime.js",
+    "web-runner/systems/runtimeVisualAssetLoader.js",
+    "web-runner/systems/superGemRuntime.js"
+  ],
+  "issue_id": "ORKA-rrxj.15",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/hot-file-lock/ORKA-rrxj.15.prepared.json": "36b129ff0c6fc3b2790ca2de2d99c1cb3c2d22b6",
+    ".beads/hot-file-lock/ORKA-rrxj.15.scope": "2fcd29aaf8c77a4f21a6505c284359801b04a583",
+    ".beads/interactions.jsonl": "5818922f214c9416899f5db3ea7453b8c2a4fa31",
+    "Scripts/functionBank.js": "e94806c0dcbe0a03cfaa5dad2660521483d667eb",
+    "tests/arcanePulseSkillContract.test.js": "95cd11a0a6db78f7f578d28e81c8f0af1c6c2643",
+    "tests/heroSkillDefinitionRegistryContract.test.js": "f31e083dab1ee248f223579c09fcc08b0c613d53",
+    "tests/kojonnPowerAmpSingleContract.test.js": "ffb156a53d4c9798c103beeb1d9f76c7fdafdc08",
+    "tests/magicFruitSkillDraughtContract.test.js": "66f6d8cd40ff2e9a9221c6f07f57496681e5b902",
+    "tests/skillDraughtDebugCounterContract.test.js": "89f836d9cd493c450236076dea08fab038609af8",
+    "tests/skillDraughtDevPanelContract.test.js": "ab0ced1b9e3b486fd2a4ad697a4bddf27459716f",
+    "tests/startupAssetLoadPerfContract.test.js": "cb7416c8ca0240f770c5569695c90cbe700678b6",
+    "web-runner/assets/images/skill_arcane_pulse_96x96.png": "83e23a07efc6309106e1418e8d7e95dcc8bb8e48",
+    "web-runner/modules/functionBank.js": "d7571f47f882d8c7a22f6af5c810451101eff33d",
+    "web-runner/systems/devBrowserTestHooks.js": "5d8432f4960711cf4ad6bc33763415716304e9ae",
+    "web-runner/systems/renderHUD.js": "d910ad802f301eddda43c574d2e97d01cebc4c98",
+    "web-runner/systems/renderRuntime.js": "73ea93bc38c34dc5d7e27a63cbd99bc932ae8ba4",
+    "web-runner/systems/runtimeVisualAssetLoader.js": "50dc0010db6a4fd526ba0fafb06fb395c6804426",
+    "web-runner/systems/superGemRuntime.js": "51fd618756fe8c2fa61415f66b6d933e1d87a9c8"
+  }
+}
