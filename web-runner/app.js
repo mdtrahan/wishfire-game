@@ -81,6 +81,7 @@ import * as renderCombatRuntime from './systems/renderCombatRuntime.js';
 import * as renderOverlays from './systems/renderOverlays.js';
 import * as renderSkillDraught from './systems/renderSkillDraughtOverlay.js';
 import * as renderRuntime from './systems/renderRuntime.js';
+import * as astralFlowKoOrbPresentation from './systems/astralFlowKoOrbPresentation.js';
 import * as superGemRuntime from './systems/superGemRuntime.js';
 import {
   createSimulationCoreSeededRng,
@@ -3450,6 +3451,13 @@ async function main(){
     if (result && result.visualControlPatches) {
       Object.assign(state.globals, result.visualControlPatches);
     }
+    astralFlowKoOrbPresentation.updateAndRenderAstralFlowKoOrbPresentation({
+      ctx,
+      state,
+      worldToCanvas,
+      callFunctionWithContext,
+      fnContext,
+    });
     renderSkillDraughtOverlay(ctx, canvas, dpr);
     if (typeof runtimeScope.lastFrameTime === 'number') {
       lastFrameTime = runtimeScope.lastFrameTime;

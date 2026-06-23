@@ -65,7 +65,11 @@ import {
   createRunaMagicResistSimulationPacket,
 } from '../src/core/runaMagicResistRules.mjs';
 import { getEnemyRosterStability } from '../src/core/enemyRosterStability.mjs';
-import { applyAstralFlowEnemyKoReward } from '../src/core/astralFlowEnemyKoRewards.mjs';
+import {
+  ASTRAL_FLOW_METER_BLUE,
+  applyAstralFlowEnemyKoReward,
+  getEnemyKoAstralFlowOrbPresentation,
+} from '../src/core/astralFlowEnemyKoRewards.mjs';
 const POWER_AMP_OUTCOMES = [
   { key: 'HERO_2X', multiplier: 2, chance: 0.62 },
   { key: 'HERO_3X', multiplier: 3, chance: 0.34 },
@@ -3091,12 +3095,63 @@ function ensureAstralFlowWallet(ctx) {
   return g.AstralFlowWallet;
 }
 
+function ensureAstralFlowKoOrbQueue(ctx) {
+  const g = getGlobals(ctx);
+  if (!Array.isArray(g.AstralFlowKoOrbQueue)) g.AstralFlowKoOrbQueue = [];
+  return g.AstralFlowKoOrbQueue;
+}
+
 function ensureAstralFlowAmpState(ctx) {
   const g = getGlobals(ctx);
   if (!Number.isFinite(g.AstralFlowAmpPoints)) g.AstralFlowAmpPoints = 0;
   if (!Number.isFinite(g.AstralFlowAmpMax) || Number(g.AstralFlowAmpMax) <= 0) g.AstralFlowAmpMax = 18;
   if (!Number.isFinite(g.AstralFlowAmpReady)) g.AstralFlowAmpReady = 0;
   return g;
+}
+
+function getEnemyKoAstralFlowGroundPoint(g, enemy) {
+  const slotIndex = Number(enemy?.slotIndex ?? 0);
+  const enemySize = Math.max(1, Number(g.EnemySize || 40));
+  const spacing = Math.max(1, Number(g.Spacing || (enemySize + Number(g.enemyGAP || 8))));
+  const fallbackX = Number(g.X0 || 200);
+  const fallbackY = Number(g.EnemyAreaY0 || 140) + slotIndex * spacing;
+  const x = Number.isFinite(Number(enemy?.originX))
+    ? Number(enemy.originX)
+    : (Number.isFinite(Number(enemy?.x)) ? Number(enemy.x) : fallbackX);
+  const y = Number.isFinite(Number(enemy?.originY))
+    ? Number(enemy.originY)
+    : (Number.isFinite(Number(enemy?.y)) ? Number(enemy.y) : fallbackY);
+  return {
+    source: { x, y },
+    ground: { x, y: y + enemySize / 2 },
+    slotIndex,
+  };
+}
+
+function queueAstralFlowKoOrbPresentation(ctx, enemy, reward, options = {}) {
+  const g = getGlobals(ctx);
+  const enemyName = String(enemy?.name || enemy?.key || enemy?.type || reward?.enemyName || '');
+  const presentation = getEnemyKoAstralFlowOrbPresentation(enemyName, random01(ctx));
+  if (!presentation.orbScales.length) return null;
+  const placement = getEnemyKoAstralFlowGroundPoint(g, enemy);
+  const event = {
+    id: `ko-af-${Number(g.time || 0).toFixed(3)}-${Number(enemy?.uid || 0)}-${ensureAstralFlowKoOrbQueue(ctx).length}`,
+    enemyUID: Number(enemy?.uid || 0),
+    enemyName,
+    killerUID: Number(options.killerUID || 0),
+    source: placement.source,
+    ground: placement.ground,
+    slotIndex: placement.slotIndex,
+    color: presentation.color || ASTRAL_FLOW_METER_BLUE,
+    orbScales: presentation.orbScales.map(scale => Number(scale || 1)),
+    reward: { ...reward },
+  };
+  ensureAstralFlowKoOrbQueue(ctx).push(event);
+  g.AstralFlowKoOrbPresentationPending = 1;
+  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), Number(g.time || 0) + 1.1);
+  g.DeferAdvance = 1;
+  g.AdvanceAfterAction = 1;
+  return event;
 }
 
 export function AwardEnemyKoAstralFlow(ctx, enemy, options = {}) {
@@ -3111,15 +3166,48 @@ export function AwardEnemyKoAstralFlow(ctx, enemy, options = {}) {
   });
   if (Number(reward.rewardPercent || 0) <= 0) return { ok: false, reason: 'no_enemy_ko_astral_flow_reward', reward };
 
-  g.AstralFlowWallet = Number(reward.astralFlowWalletAfter || 0);
-  g.AstralFlowAmpPoints = Number(reward.astralFlowAmpPointsAfter || 0);
-  g.AstralFlowAmpReady = Number(reward.astralFlowAmpReadyAfter || 0) ? 1 : 0;
-  UpdateAstralFlowAmpBar(ctx);
+  const presentation = queueAstralFlowKoOrbPresentation(ctx, enemy, reward, options);
+  if (!presentation) return { ok: false, reason: 'no_enemy_ko_astral_flow_orbs', reward };
 
-  if (Number(reward.openDraught || 0) === 1) {
-    QueueSkillDraughtForHero(ctx, Number(options.killerUID || GetCurrentTurn(ctx) || 0));
+  return { ok: true, reward, presentation };
+}
+
+export function CompleteAstralFlowKoOrbRewards(ctx) {
+  const g = ensureAstralFlowAmpState(ctx);
+  ensureAstralFlowWallet(ctx);
+  const queue = ensureAstralFlowKoOrbQueue(ctx);
+  if (!queue.length) return { ok: false, reason: 'no_astral_flow_ko_orbs' };
+  const pending = queue.splice(0, queue.length);
+  let appliedCount = 0;
+  let openDraught = 0;
+  let drawHeroUID = 0;
+  let lastReward = null;
+  for (const entry of pending) {
+    const reward = applyAstralFlowEnemyKoReward({
+      enemyName: entry?.enemyName || entry?.reward?.enemyName || '',
+      astralFlowAmpPoints: g.AstralFlowAmpPoints,
+      astralFlowAmpMax: g.AstralFlowAmpMax,
+      astralFlowAmpReady: g.AstralFlowAmpReady,
+      astralFlowWallet: g.AstralFlowWallet,
+    });
+    if (Number(reward.rewardPercent || 0) <= 0) continue;
+    g.AstralFlowWallet = Number(reward.astralFlowWalletAfter || 0);
+    g.AstralFlowAmpPoints = Number(reward.astralFlowAmpPointsAfter || 0);
+    g.AstralFlowAmpReady = Number(reward.astralFlowAmpReadyAfter || 0) ? 1 : 0;
+    if (Number(reward.openDraught || 0) === 1) {
+      openDraught = 1;
+      if (!drawHeroUID) drawHeroUID = Number(entry?.killerUID || 0);
+    }
+    appliedCount += 1;
+    lastReward = reward;
   }
-  return { ok: true, reward };
+  UpdateAstralFlowAmpBar(ctx);
+  g.AstralFlowKoOrbPresentationPending = 0;
+  g.AstralFlowKoOrbPresentationActive = 0;
+  if (openDraught) {
+    QueueSkillDraughtForHero(ctx, Number(drawHeroUID || GetCurrentTurn(ctx) || 0));
+  }
+  return { ok: appliedCount > 0, appliedCount, reward: lastReward };
 }
 
 function shouldResetAstralFlowAmpOnHeroTurn(g) {

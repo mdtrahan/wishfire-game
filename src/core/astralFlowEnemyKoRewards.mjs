@@ -11,6 +11,8 @@ const ENEMY_KO_ASTRAL_FLOW_REWARD_PCT = Object.freeze({
   troll: 10,
 });
 
+export const ASTRAL_FLOW_METER_BLUE = '#1e7bd6';
+
 function numberOr(value, fallback = 0) {
   const normalized = Number(value);
   return Number.isFinite(normalized) ? normalized : fallback;
@@ -31,6 +33,43 @@ function normalizeEnemyName(enemyName = '') {
 
 export function getEnemyKoAstralFlowRewardPercent(enemyName = '') {
   return ENEMY_KO_ASTRAL_FLOW_REWARD_PCT[normalizeEnemyName(enemyName)] || 0;
+}
+
+function clampUnit(value) {
+  const normalized = numberOr(value, 0.5);
+  if (normalized < 0) return 0;
+  if (normalized >= 1) return 0.999999;
+  return normalized;
+}
+
+function pickCount(min, max, randomUnit = 0.5) {
+  const span = Math.max(0, Math.floor(max - min));
+  return Math.max(min, Math.min(max, min + Math.floor(clampUnit(randomUnit) * (span + 1))));
+}
+
+export function getEnemyKoAstralFlowOrbPresentation(enemyName = '', randomUnit = 0.5) {
+  const rewardPercent = getEnemyKoAstralFlowRewardPercent(enemyName);
+  if (rewardPercent === 5) {
+    const count = pickCount(3, 5, randomUnit);
+    return {
+      rewardPercent,
+      color: ASTRAL_FLOW_METER_BLUE,
+      orbScales: Array.from({ length: count }, () => 1),
+    };
+  }
+  if (rewardPercent === 10) {
+    const count = pickCount(2, 4, randomUnit);
+    return {
+      rewardPercent,
+      color: ASTRAL_FLOW_METER_BLUE,
+      orbScales: Array.from({ length: count }, (_, index) => (index % 2 === 1 ? 1.5 : 1)),
+    };
+  }
+  return {
+    rewardPercent: 0,
+    color: ASTRAL_FLOW_METER_BLUE,
+    orbScales: [],
+  };
 }
 
 export function applyAstralFlowEnemyKoReward({

@@ -30,6 +30,7 @@ async function loadFunctionBank(modulePath) {
 
 module.exports = {
   AwardEnemyKoAstralFlow,
+  CompleteAstralFlowKoOrbRewards,
   KillEnemyAt,
 };`;
   const context = {
@@ -80,6 +81,7 @@ function makeKillContext(enemyName = 'High Orc') {
         AstralFlowAmpPoints: 17,
         AstralFlowAmpMax: 18,
         AstralFlowAmpReady: 0,
+        EnemySize: 40,
         SkillDraughtOpen: 0,
         SkillDraughtHeroUID: 0,
         SkillDraughtPendingOpen: 0,
@@ -114,6 +116,9 @@ test('enemy KO Astral Flow fixed binary table is shared by runtime and Scripts h
     assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Marid'), 10);
     assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Troll'), 10);
     assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Unknown'), 0);
+    assert.deepEqual(mod.getEnemyKoAstralFlowOrbPresentation('High Orc').orbScales, [1, 1, 1, 1]);
+    assert.deepEqual(mod.getEnemyKoAstralFlowOrbPresentation('Troll').orbScales, [1, 1.5, 1]);
+    assert.equal(mod.getEnemyKoAstralFlowOrbPresentation('Unknown').orbScales.length, 0);
 
     const reward = mod.applyAstralFlowEnemyKoReward({
       enemyName: 'High Orc',
@@ -147,7 +152,7 @@ test('enemy KO Astral Flow fixed binary table is shared by runtime and Scripts h
   }
 });
 
-test('enemy KO hook awards Astral Flow before normal removal in both function bank mirrors', async () => {
+test('enemy KO hook queues Astral Flow orbs before normal removal in both function bank mirrors', async () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = await loadFunctionBank(modulePath);
     const ctx = makeKillContext('High Gobloc');
@@ -155,12 +160,29 @@ test('enemy KO hook awards Astral Flow before normal removal in both function ba
     mod.KillEnemyAt(ctx, 0);
 
     const g = ctx.state.globals;
+    assert.equal(g.AstralFlowAmpPoints, 17);
+    assert.equal(g.AstralFlowAmpReady, 0);
+    assert.equal(g.SkillDraughtPendingOpen, 0);
+    assert.equal(g.SkillDraughtPendingHeroUID, 0);
+    assert.equal(g.AstralFlowKoOrbQueue.length, 1);
+    assert.equal(g.AstralFlowKoOrbQueue[0].enemyName, 'High Gobloc');
+    assert.equal(g.AstralFlowKoOrbQueue[0].reward.rewardPercent, 10);
+    assert.equal(g.AstralFlowKoOrbQueue[0].source.x, 220);
+    assert.equal(g.AstralFlowKoOrbQueue[0].source.y, 90);
+    assert.equal(g.AstralFlowKoOrbQueue[0].ground.y, 110);
+    assert.equal(g.AstralFlowKoOrbQueue[0].color, '#1e7bd6');
+    assert.deepEqual(g.AstralFlowKoOrbQueue[0].orbScales, [1, 1.5, 1]);
+    assert.equal(g.DamageTexts.length, 0);
+    assert.equal(ctx.state.entities.some(entity => entity && entity.uid === 300), false);
+
+    const completed = mod.CompleteAstralFlowKoOrbRewards(ctx);
+    assert.equal(completed.ok, true);
+    assert.equal(completed.appliedCount, 1);
     assert.equal(g.AstralFlowAmpPoints, 18);
     assert.equal(g.AstralFlowAmpReady, 1);
     assert.equal(g.SkillDraughtPendingOpen, 1);
     assert.equal(g.SkillDraughtPendingHeroUID, 100);
-    assert.equal(g.DamageTexts.length, 0);
-    assert.equal(ctx.state.entities.some(entity => entity && entity.uid === 300), false);
+    assert.equal(g.AstralFlowKoOrbQueue.length, 0);
   }
 });
 
@@ -170,6 +192,7 @@ test('function bank mirrors keep KO reward integration narrow', () => {
     assert.match(src, /applyAstralFlowEnemyKoReward/);
     assert.match(src, /export function AwardEnemyKoAstralFlow\(ctx, enemy, options = \{\}\)/);
     assert.match(src, /AwardEnemyKoAstralFlow\(ctx, deadEnemy, \{[\s\S]*killerUID: Number\(currentUID \|\| 0\),[\s\S]*\}\);/);
+    assert.match(src, /export function CompleteAstralFlowKoOrbRewards\(ctx\)/);
     const awardStart = src.indexOf('export function AwardEnemyKoAstralFlow');
     const nextFunction = src.indexOf('\nfunction shouldResetAstralFlowAmpOnHeroTurn', awardStart);
     const awardBody = src.slice(awardStart, nextFunction);
