@@ -1,9 +1,13 @@
-const ASTRAL_FLOW_ORB_DROP_SEC = 0.28;
-const ASTRAL_FLOW_ORB_BOUNCE_SEC = 0.22;
+const ASTRAL_FLOW_ORB_SPILL_SEC = 0.24;
+const ASTRAL_FLOW_ORB_BOUNCE_ONE_SEC = 0.18;
+const ASTRAL_FLOW_ORB_BOUNCE_TWO_SEC = 0.16;
+const ASTRAL_FLOW_ORB_BOUNCE_THREE_SEC = 0.14;
 const ASTRAL_FLOW_ORB_FLY_SEC = 0.46;
 const ASTRAL_FLOW_ORB_DISSOLVE_SEC = 0.18;
-const ASTRAL_FLOW_ORB_TOTAL_SEC = ASTRAL_FLOW_ORB_DROP_SEC
-  + ASTRAL_FLOW_ORB_BOUNCE_SEC
+const ASTRAL_FLOW_ORB_TOTAL_SEC = ASTRAL_FLOW_ORB_SPILL_SEC
+  + ASTRAL_FLOW_ORB_BOUNCE_ONE_SEC
+  + ASTRAL_FLOW_ORB_BOUNCE_TWO_SEC
+  + ASTRAL_FLOW_ORB_BOUNCE_THREE_SEC
   + ASTRAL_FLOW_ORB_FLY_SEC
   + ASTRAL_FLOW_ORB_DISSOLVE_SEC;
 
@@ -28,6 +32,25 @@ function easeInOutQuad(t) {
 
 function roundTime(value) {
   return Math.round(numberOr(value, 0) * 100) / 100;
+}
+
+function getOrbSpillX(index, count, radius) {
+  const safeCount = Math.max(1, count | 0);
+  if (safeCount <= 1) return 0;
+  const midpoint = (safeCount - 1) / 2;
+  const normalized = midpoint > 0 ? (index - midpoint) / midpoint : 0;
+  if (Math.abs(normalized) < 0.01) return 0;
+  const direction = normalized < 0 ? -1 : 1;
+  const edgeWeight = Math.abs(normalized);
+  return direction * (16 + radius * 2.4 + edgeWeight * 18);
+}
+
+function lerpPoint(from, to, t) {
+  const eased = clamp01(t);
+  return {
+    x: from.x + (to.x - from.x) * eased,
+    y: from.y + (to.y - from.y) * eased,
+  };
 }
 
 function getMeterTarget(globals) {
@@ -68,14 +91,16 @@ export function createAstralFlowKoOrbPresentation({ globals, worldToCanvas } = {
     const scales = Array.isArray(event?.orbScales) ? event.orbScales : [];
     const color = String(event?.color || target.color || '#1e7bd6');
     for (let index = 0; index < scales.length; index += 1) {
-      const spread = (index - (scales.length - 1) / 2) * 8;
       const stagger = index * 0.025;
       const scale = Math.max(0.4, numberOr(scales[index], 1));
+      const radius = 4.6 * scale;
+      const spillX = getOrbSpillX(index, scales.length, radius);
       orbs.push({
-        source: { x: source.x + spread * 0.25, y: source.y },
-        ground: { x: ground.x + spread, y: ground.y },
+        source,
+        ground,
+        spillX,
         target,
-        radius: 4.6 * scale,
+        radius,
         color,
         stagger,
       });
@@ -96,37 +121,70 @@ export function getAstralFlowKoOrbFrame(orb, now, startedAt) {
   const ground = orb?.ground || source;
   const target = orb?.target || ground;
   const radius = Math.max(1, numberOr(orb?.radius, 4));
+  const spillX = numberOr(orb?.spillX, 0);
+  const firstContact = { x: ground.x + spillX * 0.48, y: ground.y };
+  const secondContact = { x: ground.x + spillX * 0.74, y: ground.y };
+  const thirdContact = { x: ground.x + spillX * 0.94, y: ground.y };
+  const launchContact = { x: ground.x + spillX, y: ground.y };
 
-  if (elapsed <= ASTRAL_FLOW_ORB_DROP_SEC) {
-    const t = easeOutQuad(elapsed / ASTRAL_FLOW_ORB_DROP_SEC);
+  if (elapsed <= ASTRAL_FLOW_ORB_SPILL_SEC) {
+    const t = easeOutQuad(elapsed / ASTRAL_FLOW_ORB_SPILL_SEC);
+    const point = lerpPoint(source, firstContact, t);
     return {
-      phase: 'drop',
-      x: source.x + (ground.x - source.x) * t,
-      y: source.y + (ground.y - source.y) * t,
+      phase: 'spill',
+      x: point.x,
+      y: point.y,
       radius,
       alpha: 1,
     };
   }
 
-  const bounceElapsed = elapsed - ASTRAL_FLOW_ORB_DROP_SEC;
-  if (bounceElapsed <= ASTRAL_FLOW_ORB_BOUNCE_SEC) {
-    const t = clamp01(bounceElapsed / ASTRAL_FLOW_ORB_BOUNCE_SEC);
+  const bounceOneElapsed = elapsed - ASTRAL_FLOW_ORB_SPILL_SEC;
+  if (bounceOneElapsed <= ASTRAL_FLOW_ORB_BOUNCE_ONE_SEC) {
+    const t = clamp01(bounceOneElapsed / ASTRAL_FLOW_ORB_BOUNCE_ONE_SEC);
+    const point = lerpPoint(firstContact, secondContact, t);
     return {
-      phase: 'bounce',
-      x: ground.x,
-      y: ground.y - Math.sin(t * Math.PI) * radius * 2.4,
+      phase: 'bounce-1',
+      x: point.x,
+      y: point.y - Math.sin(t * Math.PI) * radius * 2.5,
       radius,
       alpha: 1,
     };
   }
 
-  const flyElapsed = bounceElapsed - ASTRAL_FLOW_ORB_BOUNCE_SEC;
+  const bounceTwoElapsed = bounceOneElapsed - ASTRAL_FLOW_ORB_BOUNCE_ONE_SEC;
+  if (bounceTwoElapsed <= ASTRAL_FLOW_ORB_BOUNCE_TWO_SEC) {
+    const t = clamp01(bounceTwoElapsed / ASTRAL_FLOW_ORB_BOUNCE_TWO_SEC);
+    const point = lerpPoint(secondContact, thirdContact, t);
+    return {
+      phase: 'bounce-2',
+      x: point.x,
+      y: point.y - Math.sin(t * Math.PI) * radius * 1.65,
+      radius,
+      alpha: 1,
+    };
+  }
+
+  const bounceThreeElapsed = bounceTwoElapsed - ASTRAL_FLOW_ORB_BOUNCE_TWO_SEC;
+  if (bounceThreeElapsed <= ASTRAL_FLOW_ORB_BOUNCE_THREE_SEC) {
+    const t = clamp01(bounceThreeElapsed / ASTRAL_FLOW_ORB_BOUNCE_THREE_SEC);
+    const point = lerpPoint(thirdContact, launchContact, t);
+    return {
+      phase: 'bounce-3',
+      x: point.x,
+      y: point.y - Math.sin(t * Math.PI) * radius * 0.95,
+      radius,
+      alpha: 1,
+    };
+  }
+
+  const flyElapsed = bounceThreeElapsed - ASTRAL_FLOW_ORB_BOUNCE_THREE_SEC;
   if (flyElapsed <= ASTRAL_FLOW_ORB_FLY_SEC) {
     const t = easeInOutQuad(flyElapsed / ASTRAL_FLOW_ORB_FLY_SEC);
     return {
       phase: 'fly',
-      x: ground.x + (target.x - ground.x) * t,
-      y: ground.y + (target.y - ground.y) * t,
+      x: launchContact.x + (target.x - launchContact.x) * t,
+      y: launchContact.y + (target.y - launchContact.y) * t,
       radius: radius * (1 - 0.25 * t),
       alpha: 1,
     };

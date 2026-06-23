@@ -91,19 +91,64 @@ test('Astral Flow KO orb presentation waits until dissolve completion before app
   assert.equal(completed.length, 0);
   assert.equal(globals.AstralFlowKoOrbPresentationActive, 1);
   assert.equal(globals.AstralFlowKoOrbPresentationState.orbs.length, 7);
-  assert.equal(globals.ActionLockUntil, 11.14);
+  assert.equal(globals.ActionLockUntil, globals.AstralFlowKoOrbPresentationState.endAt);
+  assert.ok(globals.ActionLockUntil > 11.14);
   assert.ok(ctx.calls.some(call => call[0] === 'arc' && call[3] > 0));
   assert.ok(ctx.calls.some(call => call[0] === 'fillStyle' && call[1] === '#1e7bd6'));
 
-  globals.time = 11.13;
+  globals.time = globals.AstralFlowKoOrbPresentationState.endAt - 0.01;
   mod.updateAndRenderAstralFlowKoOrbPresentation(deps);
   assert.equal(completed.length, 0);
 
-  globals.time = 11.15;
+  globals.time = globals.AstralFlowKoOrbPresentationState.endAt + 0.01;
   mod.updateAndRenderAstralFlowKoOrbPresentation(deps);
   assert.deepEqual(completed, ['CompleteAstralFlowKoOrbRewards']);
   assert.equal(globals.AstralFlowKoOrbPresentationActive, 0);
   assert.equal(globals.AstralFlowKoOrbPresentationState, null);
+});
+
+test('Astral Flow KO orbs spill outward from the enemy and bounce multiple times before flying home', () => {
+  const mod = loadPresentationModule();
+  const globals = {
+    time: 2,
+    AstralFlowKoOrbQueue: [
+      {
+        id: 'ko-spill',
+        enemyName: 'High Orc',
+        source: { x: 220, y: 90 },
+        ground: { x: 220, y: 110 },
+        color: '#1e7bd6',
+        orbScales: [1, 1, 1, 1, 1],
+      },
+    ],
+    AstralFlowAmpBarCanvas: { x: 40, y: 20, w: 120, h: 8, color: '#1e7bd6' },
+  };
+
+  const presentation = mod.createAstralFlowKoOrbPresentation({
+    globals,
+    worldToCanvas: (x, y) => ({ x, y }),
+  });
+
+  assert.equal(presentation.orbs.length, 5);
+  assert.ok(presentation.orbs.every(orb => Math.abs(orb.source.x - 220) <= 1));
+  assert.ok(presentation.orbs.some(orb => orb.spillX < -20));
+  assert.ok(presentation.orbs.some(orb => orb.spillX > 20));
+
+  const rightOrb = presentation.orbs.find(orb => orb.spillX > 20);
+  const early = mod.getAstralFlowKoOrbFrame(rightOrb, 2.12, presentation.startedAt);
+  const firstBounce = mod.getAstralFlowKoOrbFrame(rightOrb, 2.34, presentation.startedAt);
+  const secondBounce = mod.getAstralFlowKoOrbFrame(rightOrb, 2.53, presentation.startedAt);
+  const thirdBounce = mod.getAstralFlowKoOrbFrame(rightOrb, 2.69, presentation.startedAt);
+  const fly = mod.getAstralFlowKoOrbFrame(rightOrb, 2.86, presentation.startedAt);
+
+  assert.equal(early.phase, 'spill');
+  assert.equal(firstBounce.phase, 'bounce-1');
+  assert.equal(secondBounce.phase, 'bounce-2');
+  assert.equal(thirdBounce.phase, 'bounce-3');
+  assert.equal(fly.phase, 'fly');
+  assert.ok(firstBounce.x > early.x);
+  assert.ok(secondBounce.x > firstBounce.x);
+  assert.ok(thirdBounce.x > secondBounce.x);
 });
 
 test('runtime wiring keeps KO orb presentation outside app-level orchestration', () => {
