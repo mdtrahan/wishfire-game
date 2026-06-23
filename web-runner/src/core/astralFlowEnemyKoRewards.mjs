@@ -61,6 +61,5 @@ export function applyAstralFlowEnemyKoReward({
     astralFlowAmpPointsAfter: pointsAfter,
     astralFlowAmpReadyAfter: readyAfter,
     openDraught,
-    displayText: rewardPercent > 0 ? `+${rewardPercent}% Astral Flow` : '',
   };
 }

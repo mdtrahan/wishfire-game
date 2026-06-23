@@ -3159,12 +3159,6 @@ export function AwardEnemyKoAstralFlow(ctx, enemy, options = {}) {
   g.AstralFlowAmpReady = Number(reward.astralFlowAmpReadyAfter || 0) ? 1 : 0;
   UpdateAstralFlowAmpBar(ctx);
 
-  if (g.SpawnDamageText !== 0) {
-    const textX = Number(enemy?.x ?? enemy?.originX ?? 0);
-    const textY = Number(enemy?.y ?? enemy?.originY ?? 0);
-    SpawnDamageText(ctx, reward.rewardPercent, textX, textY, 'astral_flow', 'astral_flow', reward.displayText);
-  }
-
   if (Number(reward.openDraught || 0) === 1) {
     QueueSkillDraughtForHero(ctx, Number(options.killerUID || GetCurrentTurn(ctx) || 0));
   }
@@ -9718,7 +9712,7 @@ export function StartEnemyAction(ctx, enemyUID) {
   };
 }
 
-export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind = null, displayText = '') {
+export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind = null) {
   const g = getGlobals(ctx);
   g.DamageTexts = g.DamageTexts || [];
   const textKind = String(kind || 'damage');
@@ -9777,7 +9771,6 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
     y: drawY,
     kind: textKind,
     targetKind,
-    displayText: typeof displayText === 'string' ? displayText : '',
     canvasAnchored,
     heat,
     peakScale,

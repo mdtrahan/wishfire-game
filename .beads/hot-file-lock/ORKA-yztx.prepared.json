@@ -2,29 +2,21 @@
   "hot_files": {
     "Scripts/functionBank.js": {
       "functions": [
-        "AwardEnemyKoAstralFlow",
-        "KillEnemyAt",
-        "KillEnemyByUID",
-        "SpawnDamageText",
-        "__MODULE__"
+        "SpawnDamageText"
       ],
-      "staged_blob": "65ed52a58ef47d88aa02db222104ff7f40dddd7a"
+      "staged_blob": "26e11cdce95f37b964b9be30233b2f37b5ce8690"
     },
     "web-runner/app.js": {
       "functions": [
         "spawnPendingDamageNumbers"
       ],
-      "staged_blob": "f1bda79b57c17623eb130d94787667fa8841d453"
+      "staged_blob": "3155516aeb7318a04771636dabcc3a10d4265d7a"
     },
     "web-runner/modules/functionBank.js": {
       "functions": [
-        "AwardEnemyKoAstralFlow",
-        "KillEnemyAt",
-        "KillEnemyByUID",
-        "SpawnDamageText",
-        "__MODULE__"
+        "SpawnDamageText"
       ],
-      "staged_blob": "d4aa96ea06a2f84904ee7ea215cbe1ea99bbc048"
+      "staged_blob": "8c2a91c0aea6dafcecbf33c0e0431c9c6a085b4c"
     }
   },
   "issue_id": "ORKA-yztx"

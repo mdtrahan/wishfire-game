@@ -128,7 +128,7 @@ test('enemy KO Astral Flow fixed binary table is shared by runtime and Scripts h
     assert.equal(reward.astralFlowAmpReadyAfter, 0);
     assert.equal(reward.openDraught, 0);
     assert.equal(reward.astralFlowWalletAfter, 4.9);
-    assert.equal(reward.displayText, '+5% Astral Flow');
+    assert.equal(Object.hasOwn(reward, 'displayText'), false);
 
     const drawReward = mod.applyAstralFlowEnemyKoReward({
       enemyName: 'High Gobloc',
@@ -143,7 +143,7 @@ test('enemy KO Astral Flow fixed binary table is shared by runtime and Scripts h
     assert.equal(drawReward.astralFlowAmpReadyAfter, 1);
     assert.equal(drawReward.openDraught, 1);
     assert.equal(drawReward.astralFlowWalletAfter, 5.8);
-    assert.equal(drawReward.displayText, '+10% Astral Flow');
+    assert.equal(Object.hasOwn(drawReward, 'displayText'), false);
   }
 });
 
@@ -159,7 +159,7 @@ test('enemy KO hook awards Astral Flow before normal removal in both function ba
     assert.equal(g.AstralFlowAmpReady, 1);
     assert.equal(g.SkillDraughtPendingOpen, 1);
     assert.equal(g.SkillDraughtPendingHeroUID, 100);
-    assert.equal(g.DamageTexts.some(text => text.kind === 'astral_flow' && text.displayText === '+10% Astral Flow'), true);
+    assert.equal(g.DamageTexts.length, 0);
     assert.equal(ctx.state.entities.some(entity => entity && entity.uid === 300), false);
   }
 });
@@ -170,17 +170,27 @@ test('function bank mirrors keep KO reward integration narrow', () => {
     assert.match(src, /applyAstralFlowEnemyKoReward/);
     assert.match(src, /export function AwardEnemyKoAstralFlow\(ctx, enemy, options = \{\}\)/);
     assert.match(src, /AwardEnemyKoAstralFlow\(ctx, deadEnemy, \{[\s\S]*killerUID: Number\(currentUID \|\| 0\),[\s\S]*\}\);/);
-    assert.match(src, /SpawnDamageText\(ctx, reward\.rewardPercent, textX, textY, 'astral_flow', 'astral_flow', reward\.displayText\);/);
+    const awardStart = src.indexOf('export function AwardEnemyKoAstralFlow');
+    const nextFunction = src.indexOf('\nfunction shouldResetAstralFlowAmpOnHeroTurn', awardStart);
+    const awardBody = src.slice(awardStart, nextFunction);
+    assert.doesNotMatch(awardBody, /SpawnDamageText|displayText|'astral_flow'|"astral_flow"/);
   }
   for (const relPath of ['src/core/astralFlowEnemyKoRewards.mjs', 'web-runner/src/core/astralFlowEnemyKoRewards.mjs']) {
     const src = read(relPath);
-    assert.doesNotMatch(src, /EncounterCP|percentile|interpolate|scaling|formula/i);
+    assert.doesNotMatch(src, /EncounterCP|percentile|interpolate|scaling|formula|displayText/i);
   }
 });
 
-test('app renderer uses displayText without taking ownership of KO reward rules', () => {
+test('damage text rendering keeps the pre-bead numeric text path', () => {
   const appSrc = fs.readFileSync(appPath, 'utf8');
-  assert.match(appSrc, /const displayText = typeof d\.displayText === 'string' && d\.displayText/);
-  assert.match(appSrc, /text: displayText \|\| text,/);
-  assert.doesNotMatch(appSrc, /High Orc|EncounterCP|AwardEnemyKoAstralFlow|applyAstralFlowEnemyKoReward/);
+  assert.match(appSrc, /text,/);
+  assert.doesNotMatch(appSrc, /displayText|High Orc|EncounterCP|AwardEnemyKoAstralFlow|applyAstralFlowEnemyKoReward|astral_flow/);
+  for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
+    const src = read(relPath);
+    assert.match(src, /export function SpawnDamageText\(ctx, amount, x, y, kind = 'damage', targetKind = null\)/);
+    const spawnStart = src.indexOf('export function SpawnDamageText');
+    const spawnEnd = src.indexOf('\nexport function StartBuffRoll', spawnStart);
+    const spawnBody = src.slice(spawnStart, spawnEnd);
+    assert.doesNotMatch(spawnBody, /displayText/);
+  }
 });

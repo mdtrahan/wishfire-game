@@ -1,19 +1,28 @@
 {
   "changed_functions": {
-    "src/core/astralFlowEnemyKoRewards.mjs": [
-      "__MODULE__"
+    "Scripts/functionBank.js": [
+      "SpawnDamageText"
     ],
+    "src/core/astralFlowEnemyKoRewards.mjs": [],
     "tests/astralFlowEnemyKoRewardContract.test.js": [
       "makeKillContext"
     ],
-    "web-runner/src/core/astralFlowEnemyKoRewards.mjs": [
-      "__MODULE__"
-    ]
+    "web-runner/app.js": [
+      "spawnPendingDamageNumbers"
+    ],
+    "web-runner/modules/functionBank.js": [
+      "SpawnDamageText"
+    ],
+    "web-runner/src/core/astralFlowEnemyKoRewards.mjs": []
   },
   "details": {
-    "hot_files_touched": [],
-    "staged_file_count": 3,
-    "staged_line_count": 59,
+    "hot_files_touched": [
+      "Scripts/functionBank.js",
+      "web-runner/app.js",
+      "web-runner/modules/functionBank.js"
+    ],
+    "staged_file_count": 6,
+    "staged_line_count": 22,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -21,16 +30,22 @@
     }
   },
   "files": [
+    "Scripts/functionBank.js",
     "src/core/astralFlowEnemyKoRewards.mjs",
     "tests/astralFlowEnemyKoRewardContract.test.js",
+    "web-runner/app.js",
+    "web-runner/modules/functionBank.js",
     "web-runner/src/core/astralFlowEnemyKoRewards.mjs"
   ],
   "issue_id": "ORKA-yztx",
   "out_of_scope_hot_file_touch": false,
   "significant": true,
   "staged_blobs": {
-    "src/core/astralFlowEnemyKoRewards.mjs": "4d7b7f196fb661e6569a3fe6a70f2c79da22ff0c",
-    "tests/astralFlowEnemyKoRewardContract.test.js": "92343daa0c3bae4a83cca76081fbedb418b388c5",
-    "web-runner/src/core/astralFlowEnemyKoRewards.mjs": "4d7b7f196fb661e6569a3fe6a70f2c79da22ff0c"
+    "Scripts/functionBank.js": "26e11cdce95f37b964b9be30233b2f37b5ce8690",
+    "src/core/astralFlowEnemyKoRewards.mjs": "aa97873b8d59fbd9669b95f2be66fd92b9343bed",
+    "tests/astralFlowEnemyKoRewardContract.test.js": "07ecdc8c273e1541957ce37141abfd413f8b7975",
+    "web-runner/app.js": "3155516aeb7318a04771636dabcc3a10d4265d7a",
+    "web-runner/modules/functionBank.js": "8c2a91c0aea6dafcecbf33c0e0431c9c6a085b4c",
+    "web-runner/src/core/astralFlowEnemyKoRewards.mjs": "aa97873b8d59fbd9669b95f2be66fd92b9343bed"
   }
 }

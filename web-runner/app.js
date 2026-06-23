@@ -508,9 +508,8 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
       : (d.targetKind === 'bar'
         ? formatDamageValue({ value: d.amount, type: 'heal', isCrit })
         : formatDamageValue({ value: d.amount, type: d.kind === 'heal' ? 'heal' : (d.kind === 'ward' ? 'ward' : 'damage'), isCrit }));
-    const displayText = typeof d.displayText === 'string' && d.displayText ? d.displayText : '';
     const animation = createDamageNumber({
-      text: displayText || text,
+      text,
       amount: d.amount,
       partyMaxHP: d.partyMaxHP,
       x: pos.x,
