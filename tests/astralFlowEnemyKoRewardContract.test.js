@@ -100,19 +100,19 @@ function makeKillContext(enemyName = 'High Orc') {
   };
 }
 
-test('enemy KO Astral Flow reward tiers are shared by runtime and Scripts helpers', async () => {
+test('enemy KO Astral Flow fixed binary table is shared by runtime and Scripts helpers', async () => {
   for (const modulePath of [runtimeRulesPath, sharedRulesPath]) {
     const mod = await loadRules(modulePath);
-    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('High Orc'), 15);
-    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Gobloc'), 10);
-    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Skeleton'), 10);
-    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Lizardo'), 10);
-    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Orc'), 7);
-    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Chimerilass'), 7);
-    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Djinn'), 7);
-    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('High Gobloc'), 5);
-    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Marid'), 5);
-    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Troll'), 5);
+    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('High Orc'), 5);
+    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Gobloc'), 5);
+    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Skeleton'), 5);
+    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Lizardo'), 5);
+    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Orc'), 5);
+    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Chimerilass'), 5);
+    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Djinn'), 5);
+    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('High Gobloc'), 10);
+    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Marid'), 10);
+    assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Troll'), 10);
     assert.equal(mod.getEnemyKoAstralFlowRewardPercent('Unknown'), 0);
 
     const reward = mod.applyAstralFlowEnemyKoReward({
@@ -122,20 +122,35 @@ test('enemy KO Astral Flow reward tiers are shared by runtime and Scripts helper
       astralFlowAmpReady: 0,
       astralFlowWallet: 4,
     });
-    assert.equal(reward.rewardPercent, 15);
-    assert.equal(reward.rewardPoints, 2.7);
-    assert.equal(reward.astralFlowAmpPointsAfter, 18);
-    assert.equal(reward.astralFlowAmpReadyAfter, 1);
-    assert.equal(reward.openDraught, 1);
-    assert.equal(reward.astralFlowWalletAfter, 6.7);
-    assert.equal(reward.displayText, '+15% Astral Flow');
+    assert.equal(reward.rewardPercent, 5);
+    assert.equal(reward.rewardPoints, 0.9);
+    assert.equal(reward.astralFlowAmpPointsAfter, 17.9);
+    assert.equal(reward.astralFlowAmpReadyAfter, 0);
+    assert.equal(reward.openDraught, 0);
+    assert.equal(reward.astralFlowWalletAfter, 4.9);
+    assert.equal(reward.displayText, '+5% Astral Flow');
+
+    const drawReward = mod.applyAstralFlowEnemyKoReward({
+      enemyName: 'High Gobloc',
+      astralFlowAmpPoints: 17,
+      astralFlowAmpMax: 18,
+      astralFlowAmpReady: 0,
+      astralFlowWallet: 4,
+    });
+    assert.equal(drawReward.rewardPercent, 10);
+    assert.equal(drawReward.rewardPoints, 1.8);
+    assert.equal(drawReward.astralFlowAmpPointsAfter, 18);
+    assert.equal(drawReward.astralFlowAmpReadyAfter, 1);
+    assert.equal(drawReward.openDraught, 1);
+    assert.equal(drawReward.astralFlowWalletAfter, 5.8);
+    assert.equal(drawReward.displayText, '+10% Astral Flow');
   }
 });
 
 test('enemy KO hook awards Astral Flow before normal removal in both function bank mirrors', async () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = await loadFunctionBank(modulePath);
-    const ctx = makeKillContext('High Orc');
+    const ctx = makeKillContext('High Gobloc');
 
     mod.KillEnemyAt(ctx, 0);
 
@@ -144,7 +159,7 @@ test('enemy KO hook awards Astral Flow before normal removal in both function ba
     assert.equal(g.AstralFlowAmpReady, 1);
     assert.equal(g.SkillDraughtPendingOpen, 1);
     assert.equal(g.SkillDraughtPendingHeroUID, 100);
-    assert.equal(g.DamageTexts.some(text => text.kind === 'astral_flow' && text.displayText === '+15% Astral Flow'), true);
+    assert.equal(g.DamageTexts.some(text => text.kind === 'astral_flow' && text.displayText === '+10% Astral Flow'), true);
     assert.equal(ctx.state.entities.some(entity => entity && entity.uid === 300), false);
   }
 });
@@ -156,6 +171,10 @@ test('function bank mirrors keep KO reward integration narrow', () => {
     assert.match(src, /export function AwardEnemyKoAstralFlow\(ctx, enemy, options = \{\}\)/);
     assert.match(src, /AwardEnemyKoAstralFlow\(ctx, deadEnemy, \{[\s\S]*killerUID: Number\(currentUID \|\| 0\),[\s\S]*\}\);/);
     assert.match(src, /SpawnDamageText\(ctx, reward\.rewardPercent, textX, textY, 'astral_flow', 'astral_flow', reward\.displayText\);/);
+  }
+  for (const relPath of ['src/core/astralFlowEnemyKoRewards.mjs', 'web-runner/src/core/astralFlowEnemyKoRewards.mjs']) {
+    const src = read(relPath);
+    assert.doesNotMatch(src, /EncounterCP|percentile|interpolate|scaling|formula/i);
   }
 });
 

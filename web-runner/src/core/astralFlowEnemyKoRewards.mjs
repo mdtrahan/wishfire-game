@@ -1,14 +1,14 @@
 const ENEMY_KO_ASTRAL_FLOW_REWARD_PCT = Object.freeze({
-  'high orc': 15,
-  gobloc: 10,
-  skeleton: 10,
-  lizardo: 10,
-  orc: 7,
-  chimerilass: 7,
-  djinn: 7,
-  'high gobloc': 5,
-  marid: 5,
-  troll: 5,
+  'high orc': 5,
+  gobloc: 5,
+  skeleton: 5,
+  lizardo: 5,
+  orc: 5,
+  chimerilass: 5,
+  djinn: 5,
+  'high gobloc': 10,
+  marid: 10,
+  troll: 10,
 });
 
 function numberOr(value, fallback = 0) {

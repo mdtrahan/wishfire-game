@@ -1,63 +1,19 @@
 {
   "changed_functions": {
-    ".beads/hot-file-lock/ORKA-yztx.prepared.json": [
-      "__MODULE__"
-    ],
-    ".beads/hot-file-lock/ORKA-yztx.scope": [
-      "__MODULE__"
-    ],
-    ".beads/interactions.jsonl": [
-      "__MODULE__"
-    ],
-    "Scripts/functionBank.js": [
-      "AwardEnemyKoAstralFlow",
-      "KillEnemyAt",
-      "KillEnemyByUID",
-      "SpawnDamageText",
-      "__MODULE__"
-    ],
     "src/core/astralFlowEnemyKoRewards.mjs": [
-      "numberOr",
-      "positiveNumberOr",
-      "cleanRewardNumber",
-      "normalizeEnemyName",
-      "getEnemyKoAstralFlowRewardPercent",
-      "applyAstralFlowEnemyKoReward",
       "__MODULE__"
     ],
     "tests/astralFlowEnemyKoRewardContract.test.js": [
-      "read",
-      "makeKillContext",
-      "__MODULE__"
-    ],
-    "web-runner/app.js": [
-      "spawnPendingDamageNumbers"
-    ],
-    "web-runner/modules/functionBank.js": [
-      "AwardEnemyKoAstralFlow",
-      "KillEnemyAt",
-      "KillEnemyByUID",
-      "SpawnDamageText",
-      "__MODULE__"
+      "makeKillContext"
     ],
     "web-runner/src/core/astralFlowEnemyKoRewards.mjs": [
-      "numberOr",
-      "positiveNumberOr",
-      "cleanRewardNumber",
-      "normalizeEnemyName",
-      "getEnemyKoAstralFlowRewardPercent",
-      "applyAstralFlowEnemyKoReward",
       "__MODULE__"
     ]
   },
   "details": {
-    "hot_files_touched": [
-      "Scripts/functionBank.js",
-      "web-runner/app.js",
-      "web-runner/modules/functionBank.js"
-    ],
-    "staged_file_count": 9,
-    "staged_line_count": 420,
+    "hot_files_touched": [],
+    "staged_file_count": 3,
+    "staged_line_count": 59,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -65,28 +21,16 @@
     }
   },
   "files": [
-    ".beads/hot-file-lock/ORKA-yztx.prepared.json",
-    ".beads/hot-file-lock/ORKA-yztx.scope",
-    ".beads/interactions.jsonl",
-    "Scripts/functionBank.js",
     "src/core/astralFlowEnemyKoRewards.mjs",
     "tests/astralFlowEnemyKoRewardContract.test.js",
-    "web-runner/app.js",
-    "web-runner/modules/functionBank.js",
     "web-runner/src/core/astralFlowEnemyKoRewards.mjs"
   ],
   "issue_id": "ORKA-yztx",
   "out_of_scope_hot_file_touch": false,
   "significant": true,
   "staged_blobs": {
-    ".beads/hot-file-lock/ORKA-yztx.prepared.json": "8e4879b9f10aa683feb14e2ba584174000e89366",
-    ".beads/hot-file-lock/ORKA-yztx.scope": "34d5894db7fd61814cb56dd70e3c12c6f40b7ab8",
-    ".beads/interactions.jsonl": "8081670174586ade9fd265cc1f97d62ffb757ae2",
-    "Scripts/functionBank.js": "65ed52a58ef47d88aa02db222104ff7f40dddd7a",
-    "src/core/astralFlowEnemyKoRewards.mjs": "f5b96b3f7ddf478604304629a05ab7c0af1ab952",
-    "tests/astralFlowEnemyKoRewardContract.test.js": "8d3a0285a34d5d4af0a6e3c78f8552b419e5b00a",
-    "web-runner/app.js": "f1bda79b57c17623eb130d94787667fa8841d453",
-    "web-runner/modules/functionBank.js": "d4aa96ea06a2f84904ee7ea215cbe1ea99bbc048",
-    "web-runner/src/core/astralFlowEnemyKoRewards.mjs": "f5b96b3f7ddf478604304629a05ab7c0af1ab952"
+    "src/core/astralFlowEnemyKoRewards.mjs": "4d7b7f196fb661e6569a3fe6a70f2c79da22ff0c",
+    "tests/astralFlowEnemyKoRewardContract.test.js": "92343daa0c3bae4a83cca76081fbedb418b388c5",
+    "web-runner/src/core/astralFlowEnemyKoRewards.mjs": "4d7b7f196fb661e6569a3fe6a70f2c79da22ff0c"
   }
 }
