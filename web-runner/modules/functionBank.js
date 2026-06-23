@@ -66,6 +66,7 @@ import {
   createRunaMagicResistSimulationPacket,
 } from '../src/core/runaMagicResistRules.mjs';
 import { getEnemyRosterStability } from '../src/core/enemyRosterStability.mjs';
+import { applyAstralFlowEnemyKoReward } from '../src/core/astralFlowEnemyKoRewards.mjs';
 const POWER_AMP_OUTCOMES = [
   { key: 'HERO_2X', multiplier: 2, chance: 0.62 },
   { key: 'HERO_3X', multiplier: 3, chance: 0.34 },
@@ -3139,6 +3140,35 @@ function ensureAstralFlowAmpState(ctx) {
   if (!Number.isFinite(g.AstralFlowAmpMax) || Number(g.AstralFlowAmpMax) <= 0) g.AstralFlowAmpMax = 18;
   if (!Number.isFinite(g.AstralFlowAmpReady)) g.AstralFlowAmpReady = 0;
   return g;
+}
+
+export function AwardEnemyKoAstralFlow(ctx, enemy, options = {}) {
+  const g = ensureAstralFlowAmpState(ctx);
+  ensureAstralFlowWallet(ctx);
+  const reward = applyAstralFlowEnemyKoReward({
+    enemyName: enemy?.name || enemy?.key || enemy?.type || '',
+    astralFlowAmpPoints: g.AstralFlowAmpPoints,
+    astralFlowAmpMax: g.AstralFlowAmpMax,
+    astralFlowAmpReady: g.AstralFlowAmpReady,
+    astralFlowWallet: g.AstralFlowWallet,
+  });
+  if (Number(reward.rewardPercent || 0) <= 0) return { ok: false, reason: 'no_enemy_ko_astral_flow_reward', reward };
+
+  g.AstralFlowWallet = Number(reward.astralFlowWalletAfter || 0);
+  g.AstralFlowAmpPoints = Number(reward.astralFlowAmpPointsAfter || 0);
+  g.AstralFlowAmpReady = Number(reward.astralFlowAmpReadyAfter || 0) ? 1 : 0;
+  UpdateAstralFlowAmpBar(ctx);
+
+  if (g.SpawnDamageText !== 0) {
+    const textX = Number(enemy?.x ?? enemy?.originX ?? 0);
+    const textY = Number(enemy?.y ?? enemy?.originY ?? 0);
+    SpawnDamageText(ctx, reward.rewardPercent, textX, textY, 'astral_flow', 'astral_flow', reward.displayText);
+  }
+
+  if (Number(reward.openDraught || 0) === 1) {
+    QueueSkillDraughtForHero(ctx, Number(options.killerUID || GetCurrentTurn(ctx) || 0));
+  }
+  return { ok: true, reward };
 }
 
 function shouldResetAstralFlowAmpOnHeroTurn(g) {
@@ -7560,12 +7590,16 @@ export function KillEnemyAt(ctx, slotIndex) {
   const deadCell = g.EnemySlots[slotIndex] || 0;
   if (deadCell <= 0) return;
   const deadUID = deadCell - 1;
+  const entities = ensureEntities(ctx);
+  const deadEnemy = entities.find(e => e && e.uid === deadUID) || null;
   runTraitHooks(ctx, 'enemy_death', {
     enemyUID: Number(deadUID || 0),
     slotIndex: Number(slotIndex || 0),
     killerUID: Number(currentUID || 0),
   });
-  const entities = ensureEntities(ctx);
+  AwardEnemyKoAstralFlow(ctx, deadEnemy, {
+    killerUID: Number(currentUID || 0),
+  });
   const idx = entities.findIndex(e => e && e.uid === deadUID);
   if (idx !== -1) entities.splice(idx, 1);
   if (g.EnemyDebuffs && g.EnemyDebuffs[deadUID]) delete g.EnemyDebuffs[deadUID];
@@ -7613,12 +7647,16 @@ export function KillEnemyByUID(ctx, enemyUID, fallbackSlotIndex = 0) {
     return;
   }
   const currentUID = GetCurrentTurn(ctx);
+  const entities = ensureEntities(ctx);
+  const deadEnemy = entities.find(e => e && e.uid === targetUID) || null;
   runTraitHooks(ctx, 'enemy_death', {
     enemyUID: targetUID,
     slotIndex: Number(slotIndex || 0),
     killerUID: Number(currentUID || 0),
   });
-  const entities = ensureEntities(ctx);
+  AwardEnemyKoAstralFlow(ctx, deadEnemy, {
+    killerUID: Number(currentUID || 0),
+  });
   const idx = entities.findIndex(e => e && e.uid === targetUID);
   if (idx !== -1) entities.splice(idx, 1);
   if (g.EnemyDebuffs && g.EnemyDebuffs[targetUID]) delete g.EnemyDebuffs[targetUID];
@@ -9680,7 +9718,7 @@ export function StartEnemyAction(ctx, enemyUID) {
   };
 }
 
-export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind = null) {
+export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind = null, displayText = '') {
   const g = getGlobals(ctx);
   g.DamageTexts = g.DamageTexts || [];
   const textKind = String(kind || 'damage');
@@ -9739,6 +9777,7 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
     y: drawY,
     kind: textKind,
     targetKind,
+    displayText: typeof displayText === 'string' ? displayText : '',
     canvasAnchored,
     heat,
     peakScale,

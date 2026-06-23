@@ -1,0 +1,31 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "AwardEnemyKoAstralFlow",
+        "KillEnemyAt",
+        "KillEnemyByUID",
+        "SpawnDamageText",
+        "__MODULE__"
+      ],
+      "staged_blob": "65ed52a58ef47d88aa02db222104ff7f40dddd7a"
+    },
+    "web-runner/app.js": {
+      "functions": [
+        "spawnPendingDamageNumbers"
+      ],
+      "staged_blob": "f1bda79b57c17623eb130d94787667fa8841d453"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "AwardEnemyKoAstralFlow",
+        "KillEnemyAt",
+        "KillEnemyByUID",
+        "SpawnDamageText",
+        "__MODULE__"
+      ],
+      "staged_blob": "d4aa96ea06a2f84904ee7ea215cbe1ea99bbc048"
+    }
+  },
+  "issue_id": "ORKA-yztx"
+}
