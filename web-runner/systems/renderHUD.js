@@ -38,7 +38,6 @@ function formatSkillDrawDebugText(stateGlobals) {
     `SkillDrawCalls.party_faze: ${count('party_faze')}`,
     `SkillDrawCalls.party_grow: ${count('party_grow')}`,
     `SkillDrawCalls.party_chain_strike_i: ${count('party_chain_strike_i')}`,
-    `SkillDrawCalls.party_chain_strike_i: ${count('party_chain_strike_i')}`,
     `SkillDrawCalls.party_chain_strike_ii: ${count('party_chain_strike_ii')}`,
     `SkillDrawCalls.party_arcane_pulse: ${count('party_arcane_pulse')}`,
     `SkillDrawUnexpectedCalls: ${Number.isFinite(unexpectedCalls) && unexpectedCalls >= 0 ? Math.floor(unexpectedCalls) : 0}`,
