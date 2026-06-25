@@ -81,6 +81,8 @@ import * as renderCombatRuntime from './systems/renderCombatRuntime.js';
 import * as renderOverlays from './systems/renderOverlays.js';
 import * as renderSkillDraught from './systems/renderSkillDraughtOverlay.js';
 import * as renderRuntime from './systems/renderRuntime.js';
+import * as partyStatOsd from './systems/partyStatOsd.js';
+import * as astralFlowKoOrbPresentation from './systems/astralFlowKoOrbPresentation.js';
 import * as superGemRuntime from './systems/superGemRuntime.js';
 import {
   createSimulationCoreSeededRng,
@@ -1164,6 +1166,12 @@ const fnContext = createContext({
     gameState.selectedGems = arr;
     if (!arr || arr.length === 0) gameState.selectionLocked = false;
   },
+});
+
+const partyStatOsdRuntime = partyStatOsd.createPartyStatOsdRuntime({
+  state,
+  getEffectiveStat: (hero, stat) => callFunctionWithContext(fnContext, 'GetEffectiveStat', hero, stat),
+  getPowerMultiplier: (hero) => callFunctionWithContext(fnContext, 'GetPowerAmpMultiplierForActor', Number(hero?.uid || 0)),
 });
 
 devToolingRuntime = createDevToolingRuntime({
@@ -3450,7 +3458,15 @@ async function main(){
     if (result && result.visualControlPatches) {
       Object.assign(state.globals, result.visualControlPatches);
     }
+    astralFlowKoOrbPresentation.updateAndRenderAstralFlowKoOrbPresentation({
+      ctx,
+      state,
+      worldToCanvas,
+      callFunctionWithContext,
+      fnContext,
+    });
     renderSkillDraughtOverlay(ctx, canvas, dpr);
+    partyStatOsdRuntime.refresh();
     if (typeof runtimeScope.lastFrameTime === 'number') {
       lastFrameTime = runtimeScope.lastFrameTime;
     }
@@ -4703,6 +4719,12 @@ function getStoryCardLiveLineState() {
   function handleGlobalKeydown(ev) {
     if (isDevToolingHotkey(ev)) {
       toggleDevToolingModal();
+      ev.stopPropagation();
+      ev.preventDefault();
+      return;
+    }
+    if (partyStatOsd.isPartyStatOsdHotkey(ev)) {
+      partyStatOsdRuntime.toggle();
       ev.stopPropagation();
       ev.preventDefault();
       return;

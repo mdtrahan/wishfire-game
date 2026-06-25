@@ -472,3 +472,7 @@
 ## 2026-06-19 - Supergem Attacks Must Enter Skill-Bound Attack Seams
 - Supergem hit packets are still hero attacks. Do not mark clustered hits as visual-only if attack-bound skills such as Chain Strike or Destiny need per-hit behavior; split damage can preserve total damage while each hit remains a real skill hook surface.
 - When a gem or hero-specific attack expression adds flavor, route the generated hit through a shared skill-bound attack wrapper before presentation. The priority is skill bounds first, then hero/gem behavior.
+
+## 2026-06-25 - Debug Counter Displays Need Label Uniqueness Contracts
+- Counter state can be correct while a diagnostics renderer duplicates a label. For Dev Panel readouts, contract the rendered labels as a display surface, not only the backing counter object.
+- SkillDrawCalls count card appearances, not selections or proc executions. Keep that distinction explicit when reviewing QA screenshots so duplicate display rows are not mistaken for duplicate draw events.

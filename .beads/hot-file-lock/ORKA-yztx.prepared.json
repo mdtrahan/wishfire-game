@@ -1,0 +1,23 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "SpawnDamageText"
+      ],
+      "staged_blob": "26e11cdce95f37b964b9be30233b2f37b5ce8690"
+    },
+    "web-runner/app.js": {
+      "functions": [
+        "spawnPendingDamageNumbers"
+      ],
+      "staged_blob": "3155516aeb7318a04771636dabcc3a10d4265d7a"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "SpawnDamageText"
+      ],
+      "staged_blob": "8c2a91c0aea6dafcecbf33c0e0431c9c6a085b4c"
+    }
+  },
+  "issue_id": "ORKA-yztx"
+}

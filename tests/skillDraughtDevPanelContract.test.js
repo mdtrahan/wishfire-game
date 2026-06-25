@@ -13,6 +13,10 @@ const renderOverlayPath = path.join(__dirname, '..', 'web-runner', 'systems', 'r
 const devToolingRuntimePath = path.join(__dirname, '..', 'web-runner', 'systems', 'devToolingRuntime.js');
 const pointerRoutingPath = path.join(__dirname, '..', 'web-runner', 'systems', 'pointerRoutingShell.js');
 
+function countLiteral(source, literal) {
+  return source.split(literal).length - 1;
+}
+
 function extractFunctionSource(src, name) {
   const marker = `function ${name}(`;
   const exportedMarker = `export function ${name}(`;
@@ -117,9 +121,24 @@ test('dev panel 2 output appends skill draw debug counters', () => {
   assert.match(hudSrc, /SkillDrawCalls\.party_faze/);
   assert.match(hudSrc, /SkillDrawCalls\.party_grow/);
   assert.match(hudSrc, /SkillDrawCalls\.party_chain_strike_i/);
-  assert.match(hudSrc, /SkillDrawCalls\.party_chain_strike_i/);
   assert.match(hudSrc, /SkillDrawCalls\.party_chain_strike_ii/);
   assert.match(hudSrc, /SkillDrawCalls\.party_arcane_pulse/);
+  for (const id of [
+    'party_crimson_ward',
+    'party_magic_fruit',
+    'party_destiny',
+    'party_faze',
+    'party_grow',
+    'party_chain_strike_i',
+    'party_chain_strike_ii',
+    'party_arcane_pulse',
+  ]) {
+    assert.equal(
+      countLiteral(hudSrc, `SkillDrawCalls.${id}:`),
+      1,
+      `Dev Panel 2 should render SkillDrawCalls.${id} exactly once`,
+    );
+  }
   assert.doesNotMatch(hudSrc, /SkillDrawCalls\.party_drain/);
   assert.match(hudSrc, /SkillDrawUnexpectedCalls/);
   assert.match(hudSrc, /const growDebugLines = formatGrowDebugText\(\{/);
