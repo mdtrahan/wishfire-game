@@ -180,7 +180,9 @@ function stylePartyStatOsd(root) {
     'color:#f8fafc',
     'border:1px solid rgba(226, 232, 240, 0.36)',
     'box-shadow:0 10px 26px rgba(0,0,0,0.38)',
-    'font:700 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
+    'font:700 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
+    'font-variant-numeric:tabular-nums',
+    'letter-spacing:0',
     'white-space:pre',
     'pointer-events:none',
   ].join(';');
