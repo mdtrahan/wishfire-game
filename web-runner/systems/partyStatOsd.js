@@ -1,6 +1,8 @@
 const PARTY_STAT_KEYS = Object.freeze(['ATK', 'MAG', 'DEF', 'RES', 'SPD']);
 const OSD_ROOT_ATTR = 'data-party-stat-osd';
 const OSD_BODY_ATTR = 'data-party-stat-osd-body';
+const BUFF_COLOR = '#ffff00';
+const DEBUFF_COLOR = '#ff0000';
 
 function isEditableDomTarget(target) {
   const tag = String(target?.tagName || '').toUpperCase();
@@ -76,6 +78,23 @@ function formatModifier(delta) {
   return '';
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function formatModifierHtml(delta) {
+  const text = formatModifier(delta);
+  if (!text) return '';
+  const color = sanitizeNumber(delta) > 0 ? BUFF_COLOR : DEBUFF_COLOR;
+  const kind = sanitizeNumber(delta) > 0 ? 'buff' : 'debuff';
+  return `<span data-party-stat-modifier="${kind}" style="color:${color};font-weight:900">${escapeHtml(text)}</span>`;
+}
+
 export function isPartyStatOsdHotkey(ev) {
   if (!ev || isEditableDomTarget(ev.target)) return false;
   const key = String(ev.key || '').toLowerCase();
@@ -116,6 +135,15 @@ export function formatPartyStatRow(row) {
   return `${name} ${statText}`.trim();
 }
 
+export function formatPartyStatRowHtml(row) {
+  const name = String(row?.name || 'Hero');
+  const stats = Array.isArray(row?.stats) ? row.stats : [];
+  const statHtml = stats
+    .map(item => `${escapeHtml(item.stat)} ${escapeHtml(formatNumber(item.effective))}${formatModifierHtml(item.delta)}`)
+    .join(', ');
+  return `${escapeHtml(name)} ${statHtml}`.trim();
+}
+
 export function formatPartyStatOsdText({
   stateEntities = [],
   stateGlobals = {},
@@ -125,6 +153,17 @@ export function formatPartyStatOsdText({
   const rows = buildPartyStatRows({ stateEntities, stateGlobals, getEffectiveStat, getPowerMultiplier });
   if (!rows.length) return 'No party heroes';
   return rows.map(formatPartyStatRow).join('\n');
+}
+
+export function formatPartyStatOsdHtml({
+  stateEntities = [],
+  stateGlobals = {},
+  getEffectiveStat = null,
+  getPowerMultiplier = null,
+} = {}) {
+  const rows = buildPartyStatRows({ stateEntities, stateGlobals, getEffectiveStat, getPowerMultiplier });
+  if (!rows.length) return 'No party heroes';
+  return rows.map(formatPartyStatRowHtml).join('\n');
 }
 
 function stylePartyStatOsd(root) {
@@ -200,7 +239,7 @@ export function createPartyStatOsdRuntime({
     },
     refresh() {
       if (!root || !body || !runtime.visible) return;
-      body.textContent = formatPartyStatOsdText({
+      body.innerHTML = formatPartyStatOsdHtml({
         stateEntities: state?.entities || [],
         stateGlobals: state?.globals || {},
         getEffectiveStat,

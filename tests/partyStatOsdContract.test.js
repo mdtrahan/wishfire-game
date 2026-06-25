@@ -64,6 +64,7 @@ function makeFakeDocument() {
         style: { cssText: '' },
         hidden: false,
         textContent: '',
+        innerHTML: '',
         setAttribute(name, value) {
           this.attributes[name] = value;
         },
@@ -146,7 +147,26 @@ test('party stat OSD runtime creates dark read-only overlay and toggles visibili
   runtime.toggle();
   assert.equal(runtime.root.hidden, false);
   assert.equal(runtime.root.dataset.visible, 'true');
-  assert.match(runtime.root.querySelector('[data-party-stat-osd-body]').textContent, /Falie ATK 9, MAG 3/);
+  assert.match(runtime.root.querySelector('[data-party-stat-osd-body]').innerHTML, /Falie ATK 9, MAG 3/);
+});
+
+test('party stat OSD colors buffs bright yellow and debuffs pure red', async () => {
+  const osd = await loadOsdModule();
+  const state = makeState();
+
+  const html = osd.formatPartyStatOsdHtml({
+    stateEntities: state.entities,
+    stateGlobals: state.globals,
+    getEffectiveStat(hero, stat) {
+      const base = Number(hero.stats?.[stat] || 0);
+      if (hero.name === 'Falie' && stat === 'ATK') return base + 3;
+      if (hero.name === 'Falie' && stat === 'DEF') return base - 2;
+      return base;
+    },
+  });
+
+  assert.match(html, /data-party-stat-modifier="buff" style="color:#ffff00;font-weight:900"> \+3<\/span>/);
+  assert.match(html, /data-party-stat-modifier="debuff" style="color:#ff0000;font-weight:900"> -2<\/span>/);
 });
 
 test('app wires party stat OSD without adding app-owned stat formatting', () => {
