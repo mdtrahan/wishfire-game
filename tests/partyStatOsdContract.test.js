@@ -141,6 +141,8 @@ test('party stat OSD runtime creates dark read-only overlay and toggles visibili
   assert.equal(nodes.length, 1);
   assert.match(runtime.root.style.cssText, /background:rgba\(8, 13, 24, 0\.94\)/);
   assert.match(runtime.root.style.cssText, /color:#f8fafc/);
+  assert.match(runtime.root.style.cssText, /width:min\(560px, calc\(100vw - 24px\)\)/);
+  assert.match(runtime.root.style.cssText, /padding:10px 32px 10px 12px/);
   assert.match(runtime.root.style.cssText, /pointer-events:none/);
   assert.equal(runtime.root.hidden, true);
 
