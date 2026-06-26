@@ -1,0 +1,17 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "HeroAttackSplit"
+      ],
+      "staged_blob": "a6829b3c5065284c4e1367a910dab8221b1a27e4"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "HeroAttackSplit"
+      ],
+      "staged_blob": "faed4e1b45b5e2c3a3e25aed1486b15f37128ae7"
+    }
+  },
+  "issue_id": "ORKA-rrxj.17"
+}
