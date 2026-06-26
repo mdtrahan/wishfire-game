@@ -43,7 +43,13 @@ module.exports = {
   return context.module.exports;
 }
 
-function makeContext({ active = false, onlyOneEnemy = false, pending = false } = {}) {
+function makeContext({
+  active = false,
+  activeSkillIds = null,
+  enemyHpByUid = {},
+  onlyOneEnemy = false,
+  pending = false,
+} = {}) {
   const hero = {
     uid: 100,
     kind: 'hero',
@@ -60,7 +66,7 @@ function makeContext({ active = false, onlyOneEnemy = false, pending = false } =
     kind: 'enemy',
     name: 'Ashling',
     slotIndex: 0,
-    hp: 80,
+    hp: Number.isFinite(Number(enemyHpByUid[201])) ? Number(enemyHpByUid[201]) : 80,
     maxHP: 80,
     stats: { ATK: 4, DEF: 0, MAG: 2, RES: 0, SPD: 1 },
   };
@@ -69,7 +75,7 @@ function makeContext({ active = false, onlyOneEnemy = false, pending = false } =
     kind: 'enemy',
     name: 'Cinder Imp',
     slotIndex: 1,
-    hp: onlyOneEnemy ? 0 : 80,
+    hp: onlyOneEnemy ? 0 : (Number.isFinite(Number(enemyHpByUid[202])) ? Number(enemyHpByUid[202]) : 80),
     maxHP: 80,
     stats: { ATK: 4, DEF: 0, MAG: 2, RES: 0, SPD: 1 },
   };
@@ -88,8 +94,11 @@ function makeContext({ active = false, onlyOneEnemy = false, pending = false } =
     SkillDraughtCandidates: [],
     SkillDraughtHitZones: [],
     SkillDraughtSelectedSkillId: '',
-    SessionSkillsByHeroUID: active ? {
-      __party_shared__: [{ id: 'party_chain_strike_i', title: 'Chain Strike I', owner: 'Party' }],
+    SessionSkillsByHeroUID: active || Array.isArray(activeSkillIds) ? {
+      __party_shared__: (Array.isArray(activeSkillIds) && activeSkillIds.length > 0
+        ? activeSkillIds
+        : ['party_chain_strike_i']
+      ).map(id => ({ id, title: id, owner: 'Party' })),
     } : {},
     SkillDraughtTrace: [],
     SkillDraughtTraceSeq: 0,
@@ -106,6 +115,146 @@ function makeContext({ active = false, onlyOneEnemy = false, pending = false } =
     },
   };
 }
+
+test('Split is a one-off party draw skill in both function bank mirrors', () => {
+  for (const modulePath of [runtimePath, scriptsPath]) {
+    const mod = loadModule(modulePath);
+    const def = mod.GetSkillDefinition(null, 'party_split');
+
+    assert.equal(def.id, 'party_split');
+    assert.equal(def.title, 'Split');
+    assert.equal(def.owner, 'Party');
+    assert.equal(def.payloadImplemented, true);
+    assert.equal(def.drawClass, 'one_off');
+    assert.equal(def.growth.length, 0);
+    assert.equal(def.selection.sessionBucket, '__party_shared__');
+    assert.equal(def.selection.duplicatePolicy, 'reject_after_selected');
+    assert.equal(def.trigger.event, 'hero_attack_red');
+    assert.equal(def.effect.kind, 'split_red_aoe');
+    assert.equal(def.effect.damageMath, 'red_attack_total_divided_by_living_enemies');
+    assert.equal(def.effect.chainStrikeSource, 'living_enemy_from_saved_red_target_anchor');
+    assert.equal(typeof def.qa.proof, 'string');
+
+    const partyIds = mod.GetPartySkillDefinitions().map(skill => skill.id);
+    assert.ok(partyIds.includes('party_split'));
+
+    const ctx = makeContext();
+    const opened = mod.ForceAstralFlowSkillDraught(ctx, 100, 'party_split');
+    assert.equal(opened.ok, true);
+    assert.equal(opened.candidates[0].id, 'party_split');
+
+    const selected = mod.SelectSkillDraughtCard(ctx, 0);
+    assert.equal(selected.ok, true);
+    assert.equal(selected.skill.id, 'party_split');
+    assert.equal(mod.IsPartySessionSkillActive(ctx, 'party_split'), true);
+
+    const blocked = mod.ForceAstralFlowSkillDraught(ctx, 100, 'party_split');
+    assert.equal(blocked.ok, true);
+    assert.equal(blocked.candidates.some(candidate => candidate.id === 'party_split'), false);
+  }
+});
+
+test('Split turns a red-lane attack into AOE while preserving the red target anchor', () => {
+  for (const modulePath of [runtimePath, scriptsPath]) {
+    const mod = loadModule(modulePath);
+    const ctx = makeContext({ activeSkillIds: ['party_split'] });
+    ctx.state.globals.SelectedEnemyUID = 999;
+
+    mod.HeroAttackSingle(ctx, 100, 201);
+
+    const hits = ctx.state.globals.PendingHeroHits;
+    assert.equal(hits.length, 2);
+    assert.equal(JSON.stringify(hits.map(hit => hit.targetUID)), JSON.stringify([201, 202]));
+    assert.equal(JSON.stringify(hits.map(hit => hit.finalDmg)), JSON.stringify([5, 5]));
+    assert.equal(hits.reduce((sum, hit) => sum + Number(hit.finalDmg || 0), 0), 10);
+    assert.ok(hits.every(hit => hit.effectType === 'damage'));
+    assert.ok(hits.every(hit => hit.actionName === 'Split'));
+    assert.ok(hits.every(hit => hit.generatedBySkillId === 'party_split'));
+    assert.ok(hits.every(hit => hit.splitRootTargetUID === 201));
+    assert.equal(ctx.state.globals.SelectedEnemyUID, 999);
+  }
+});
+
+test('Split Chain Strike I resolves from living saved red target anchor', () => {
+  for (const modulePath of [runtimePath, scriptsPath]) {
+    const mod = loadModule(modulePath);
+    const ctx = makeContext({ activeSkillIds: ['party_split', 'party_chain_strike_i'] });
+
+    mod.HeroAttackSingle(ctx, 100, 201);
+
+    const hits = ctx.state.globals.PendingHeroHits;
+    assert.equal(hits.length, 3);
+    assert.equal(JSON.stringify(hits.map(hit => hit.targetUID)), JSON.stringify([201, 202, 202]));
+    assert.equal(JSON.stringify(hits.slice(0, 2).map(hit => hit.finalDmg)), JSON.stringify([5, 5]));
+    assert.equal(hits[2].effectType, 'chain_bounce');
+    assert.equal(hits[2].actionName, 'Chain Strike I');
+    assert.equal(hits[2].generatedBySkillId, 'party_chain_strike_i');
+    assert.equal(hits[2].chainStrikeSourceTargetUID, 201);
+    assert.equal(hits[2].finalDmg, 4);
+    assert.equal(ctx.state.globals.PartyChainStrikeIProcs, 1);
+    assert.equal(ctx.state.globals.LastPartyChainStrike.sourceTargetUID, 201);
+  }
+});
+
+test('Split Chain Strike II queues two bounces from the living red target anchor', () => {
+  const mod = loadModule(runtimePath);
+  const ctx = makeContext({ activeSkillIds: ['party_split', 'party_chain_strike_ii'] });
+
+  mod.HeroAttackSingle(ctx, 100, 201);
+
+  const hits = ctx.state.globals.PendingHeroHits;
+  assert.equal(hits.length, 4);
+  assert.equal(JSON.stringify(hits.map(hit => hit.targetUID)), JSON.stringify([201, 202, 202, 201]));
+  assert.equal(JSON.stringify(hits.slice(0, 2).map(hit => hit.finalDmg)), JSON.stringify([5, 5]));
+  assert.equal(hits[2].effectType, 'chain_bounce');
+  assert.equal(hits[3].effectType, 'chain_bounce');
+  assert.ok(hits.slice(2).every(hit => hit.actionName === 'Chain Strike II'));
+  assert.ok(hits.slice(2).every(hit => hit.generatedBySkillId === 'party_chain_strike_ii'));
+  assert.ok(hits.slice(2).every(hit => hit.chainStrikeDamagePct === 66));
+  assert.equal(hits[2].chainStrikeSourceTargetUID, 201);
+  assert.equal(hits[3].chainStrikeSourceTargetUID, 202);
+  assert.equal(hits[2].finalDmg, 7);
+  assert.equal(hits[3].finalDmg, 7);
+  assert.equal(ctx.state.globals.PartyChainStrikeIIProcs, 1);
+});
+
+test('Split Chain Strike falls back to the next living enemy when the saved root dies from AOE', () => {
+  const mod = loadModule(runtimePath);
+  const ctx = makeContext({
+    activeSkillIds: ['party_split', 'party_chain_strike_i'],
+    enemyHpByUid: { 201: 1, 202: 80 },
+  });
+
+  mod.HeroAttackSingle(ctx, 100, 201);
+
+  const hits = ctx.state.globals.PendingHeroHits;
+  assert.equal(hits.length, 3);
+  assert.equal(JSON.stringify(hits.map(hit => hit.targetUID)), JSON.stringify([201, 202, 202]));
+  assert.equal(JSON.stringify(hits.slice(0, 2).map(hit => hit.finalDmg)), JSON.stringify([5, 5]));
+  assert.equal(hits[2].effectType, 'chain_bounce');
+  assert.equal(hits[2].chainStrikeSourceTargetUID, 202);
+  assert.equal(hits[2].finalDmg, 4);
+  assert.equal(ctx.state.globals.ChainStrikeVisuals[0].sourceTargetUID, 202);
+  assert.equal(ctx.state.globals.ChainStrikeVisuals[0].targetUID, 202);
+});
+
+test('Split Chain Strike does not fire when Split AOE leaves no living enemies', () => {
+  const mod = loadModule(runtimePath);
+  const ctx = makeContext({
+    activeSkillIds: ['party_split', 'party_chain_strike_i'],
+    enemyHpByUid: { 201: 1, 202: 1 },
+  });
+
+  mod.HeroAttackSingle(ctx, 100, 201);
+
+  const hits = ctx.state.globals.PendingHeroHits;
+  assert.equal(hits.length, 2);
+  assert.equal(JSON.stringify(hits.map(hit => hit.targetUID)), JSON.stringify([201, 202]));
+  assert.equal(JSON.stringify(hits.map(hit => hit.finalDmg)), JSON.stringify([5, 5]));
+  assert.equal(hits.some(hit => hit.effectType === 'chain_bounce'), false);
+  assert.equal(ctx.state.globals.PartyChainStrikeIProcs || 0, 0);
+  assert.equal(ctx.state.globals.ChainStrikeVisuals, undefined);
+});
 
 test('Chain Strike I is a one-off active party draw in both function bank mirrors', () => {
   for (const modulePath of [runtimePath, scriptsPath]) {

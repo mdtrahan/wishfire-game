@@ -89,6 +89,7 @@ const PARTY_CHAIN_STRIKE_II_ID = 'party_chain_strike_ii';
 const PARTY_CHAIN_STRIKE_II_DAMAGE_PCT = 66;
 const PARTY_CHAIN_STRIKE_VISUAL_KEY = 'chain_arc_ribbon';
 const PARTY_CHAIN_STRIKE_VISUAL_ASSET = 'SkillChainStrikeArc';
+const PARTY_SPLIT_ID = 'party_split';
 
 const ENEMY_SKILL_ASSIGNMENT_MAP = {
   Djinn: {
@@ -1075,6 +1076,7 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: PARTY_CHAIN_STRIKE_I_ID, owner: 'Party', slot: 14, title: 'Chain Strike I', cardText: 'Hero attacks bounce once for 33% damage.', risk: 'MED', growth: [33], procPattern: 'On hero attack', payloadImplemented: true, drawClass: 'one_off', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'reject_after_selected' }, trigger: { event: 'hero_attack_single', eligibility: 'active_party_skill_living_enemy_target' }, effect: { kind: 'chain_bounce', bounceDamagePct: PARTY_CHAIN_STRIKE_I_DAMAGE_PCT, maxBounces: 1, targeting: 'next_living_enemy_sequence', oneEnemyFallback: 'same_enemy', visual: PARTY_CHAIN_STRIKE_VISUAL_KEY }, qa: { proof: 'PendingHeroHits chain_bounce packet and ChainStrikeVisuals arc ribbon' } },
   { id: PARTY_CHAIN_STRIKE_II_ID, owner: 'Party', slot: 15, title: 'Chain Strike II', cardText: 'Upgrade Chain Strike to bounce twice for 66% damage.', risk: 'MED', growth: [66], procPattern: 'On hero attack', payloadImplemented: true, drawClass: 'one_off', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'reject_after_selected' }, trigger: { event: 'hero_attack_single', eligibility: 'requires_chain_strike_i' }, effect: { kind: 'chain_bounce_upgrade', upgrades: PARTY_CHAIN_STRIKE_I_ID, bounceDamagePct: PARTY_CHAIN_STRIKE_II_DAMAGE_PCT, maxBounces: 2, targeting: 'next_living_enemy_sequence', oneEnemyFallback: 'same_enemy', visual: PARTY_CHAIN_STRIKE_VISUAL_KEY }, qa: { proof: 'Requires Chain Strike I and upgrades LastPartyChainStrike to two 66% bounces' } },
   { id: 'party_arcane_pulse', owner: 'Party', slot: 16, title: 'Arcane Pulse', cardText: 'Every other hero attack deals 12 bonus magic damage to the selected target.', risk: 'MED', growth: [12, 12, 12, 12], procPattern: 'Every 2 hero attacks', payloadImplemented: true, drawClass: 'one_off', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'reject_after_selected' }, trigger: { event: 'hero_attack_single', eligibility: 'active_party_skill_selected_enemy_target' }, effect: { kind: 'arcane_pulse', flatDamage: 12, triggerEvery: 2, targeting: 'selected_enemy', visual: 'arcane_pulse_burst' }, qa: { proof: 'PartyArcanePulseActionCount/Procs and ArcanePulseVisuals' } },
+  { id: PARTY_SPLIT_ID, owner: 'Party', slot: 17, title: 'Split', cardText: 'Red attacks split their damage through all living enemies.', risk: 'MED', growth: [], procPattern: 'On red attack', payloadImplemented: true, drawClass: 'one_off', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'reject_after_selected' }, trigger: { event: 'hero_attack_red', eligibility: 'active_party_skill_red_lane_attack' }, effect: { kind: 'split_red_aoe', targeting: 'all_living_enemies', damageMath: 'red_attack_total_divided_by_living_enemies', chainStrikeSource: 'living_enemy_from_saved_red_target_anchor' }, qa: { proof: 'PendingHeroHits Split AOE packets and Chain Strike living-anchor fallback' } },
 ]);
 
 const PARTY_SKILL_DRAW_ALLOWED_IDS = Object.freeze([
@@ -1086,6 +1088,7 @@ const PARTY_SKILL_DRAW_ALLOWED_IDS = Object.freeze([
   PARTY_CHAIN_STRIKE_I_ID,
   PARTY_CHAIN_STRIKE_II_ID,
   'party_arcane_pulse',
+  PARTY_SPLIT_ID,
 ]);
 const PARTY_SKILL_DRAW_EXCLUDED_IDS = Object.freeze(new Set([
   'party_fresh_start',
@@ -6791,16 +6794,23 @@ function getChainStrikeEnemySequenceIndex(enemy) {
   return Number(enemy.uid || 0);
 }
 
-function resolveChainStrikeBounceTarget(ctx, sourceTargetUID) {
-  const sourceUID = Number(sourceTargetUID || 0);
-  const livingEnemies = getEnemies(ctx)
-    .filter(enemy => (enemy.hp ?? 0) > 0)
+function getChainStrikeLivingEnemies(ctx, allowedLivingEnemyUIDs = null) {
+  const allowed = Array.isArray(allowedLivingEnemyUIDs)
+    ? new Set(allowedLivingEnemyUIDs.map(uid => Number(uid || 0)).filter(uid => uid > 0))
+    : null;
+  return getEnemies(ctx)
+    .filter(enemy => (enemy.hp ?? 0) > 0 && (!allowed || allowed.has(Number(enemy.uid || 0))))
     .slice()
     .sort((a, b) => {
       const bySequence = getChainStrikeEnemySequenceIndex(a) - getChainStrikeEnemySequenceIndex(b);
       if (bySequence !== 0) return bySequence;
       return Number(a.uid || 0) - Number(b.uid || 0);
     });
+}
+
+function resolveChainStrikeBounceTarget(ctx, sourceTargetUID, allowedLivingEnemyUIDs = null) {
+  const sourceUID = Number(sourceTargetUID || 0);
+  const livingEnemies = getChainStrikeLivingEnemies(ctx, allowedLivingEnemyUIDs);
   if (livingEnemies.length <= 0) return null;
   if (livingEnemies.length === 1) return livingEnemies[0];
   const sourceIndex = livingEnemies.findIndex(enemy => Number(enemy.uid || 0) === sourceUID);
@@ -6855,13 +6865,17 @@ function queuePartyChainStrikeBounce(ctx, {
   applyAt,
   mode,
   actorName,
+  allowedLivingEnemyUIDs,
 } = {}) {
   const activeTier = getActiveChainStrikeTier(ctx);
   if (!activeTier) return false;
   const actor = GetActorByUID(ctx, heroUID);
   if (!actor || actor.kind !== 'hero' || (actor.hp ?? 0) <= 0) return false;
+  const allowed = Array.isArray(allowedLivingEnemyUIDs)
+    ? new Set(allowedLivingEnemyUIDs.map(uid => Number(uid || 0)).filter(uid => uid > 0))
+    : null;
   const sourceTarget = GetActorByUID(ctx, sourceTargetUID);
-  if (!sourceTarget || sourceTarget.kind !== 'enemy') return false;
+  if (!sourceTarget || sourceTarget.kind !== 'enemy' || (allowed && !allowed.has(Number(sourceTarget.uid || 0)))) return false;
   const baseDamage = Math.max(0, Math.floor(Number(originalDamage || 0)));
   if (baseDamage <= 0) return false;
   const bounceDamage = Math.max(1, Math.ceil(baseDamage * (activeTier.damagePct / 100)));
@@ -6875,7 +6889,7 @@ function queuePartyChainStrikeBounce(ctx, {
   const targetUIDs = [];
   const visualIds = [];
   for (let bounceIndex = 0; bounceIndex < maxBounces; bounceIndex += 1) {
-    const bounceTarget = resolveChainStrikeBounceTarget(ctx, chainSourceUID);
+    const bounceTarget = resolveChainStrikeBounceTarget(ctx, chainSourceUID, allowedLivingEnemyUIDs);
     if (!bounceTarget) break;
     const visualStartAt = Math.max(now, originalApplyAt + 0.04 + (bounceIndex * 0.16));
     const bounceApplyAt = Math.max(visualStartAt + 0.26, originalApplyAt + 0.22 + (bounceIndex * 0.16));
@@ -6942,11 +6956,101 @@ export function QueueHeroAttackSkillBounds(ctx, options = {}) {
   });
 }
 
+function resolveSplitChainSourceEnemy(ctx, rootTargetUID, postAoeLivingUIDs) {
+  const livingEnemies = getChainStrikeLivingEnemies(ctx, postAoeLivingUIDs);
+  if (livingEnemies.length <= 0) return null;
+  const rootUID = Number(rootTargetUID || 0);
+  const direct = livingEnemies.find(enemy => Number(enemy.uid || 0) === rootUID);
+  if (direct) return direct;
+  const root = GetActorByUID(ctx, rootUID);
+  const rootSequence = root ? getChainStrikeEnemySequenceIndex(root) : -Infinity;
+  const afterRoot = livingEnemies.find(enemy => getChainStrikeEnemySequenceIndex(enemy) > rootSequence);
+  return afterRoot || livingEnemies[0] || null;
+}
+
+function splitDamageAcrossLivingTargets(totalDamage, targetCount) {
+  const count = Math.max(0, Math.floor(Number(targetCount || 0)));
+  if (count <= 0) return [];
+  const total = Math.max(0, Math.floor(Number(totalDamage || 0)));
+  const base = Math.floor(total / count);
+  let remainder = total % count;
+  return Array.from({ length: count }, () => {
+    const damage = base + (remainder > 0 ? 1 : 0);
+    if (remainder > 0) remainder -= 1;
+    return Math.max(0, damage);
+  });
+}
+
+function HeroAttackSplit(ctx, heroUID, rootTargetUID) {
+  const actor = GetActorByUID(ctx, heroUID);
+  const actorName = actor ? (actor.name || '?') : '?';
+  const mode = actor && actor.attackType === 'magic' ? 'magic' : 'melee';
+  const g = getGlobals(ctx);
+  const ampEntry = ensurePowerAmpByUID(ctx)[heroUID];
+  const ampLifecycleId = Number(ampEntry?.lifecycleId || 0);
+  const rootDamage = CalculateDamage(ctx, heroUID, rootTargetUID, mode);
+  let ampMult = GetPowerAmpMultiplierForActor(ctx, heroUID);
+  if (ampMult > 0) {
+    const consumed = ConsumePowerAmpForActor(ctx, heroUID);
+    if (consumed > 0) ampMult = consumed;
+  }
+  const enemies = getEnemies(ctx);
+  const totalDamage = ampMult > 0 ? Math.max(1, Math.ceil(rootDamage * ampMult)) : Math.max(1, rootDamage);
+  const splitDamages = splitDamageAcrossLivingTargets(totalDamage, enemies.length);
+  const damageByTargetUID = new Map();
+  const now = g.time || 0;
+  const hitDelay = Math.max(0.14 + 0.75 + 0.18, 1.07);
+  const applyAt = now + hitDelay;
+  g.PendingHeroHits = g.PendingHeroHits || [];
+  for (let index = 0; index < enemies.length; index += 1) {
+    const enemy = enemies[index];
+    const splitDamage = Math.max(0, Number(splitDamages[index] || 0));
+    damageByTargetUID.set(Number(enemy.uid || 0), splitDamage);
+    g.PendingHeroHits.push({
+      at: applyAt,
+      heroUID,
+      targetUID: Number(enemy.uid || 0),
+      dmg: splitDamage,
+      finalDmg: splitDamage,
+      powerAmpMultiplier: ampMult,
+      powerAmpLifecycleId: ampLifecycleId,
+      consumePowerAmp: ampMult > 0 && index === 0 ? 1 : 0,
+      effectType: 'damage',
+      actionName: 'Split',
+      generatedBySkillId: PARTY_SPLIT_ID,
+      splitRootTargetUID: Number(rootTargetUID || 0),
+      calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
+      heroName: actorName,
+      heroType: mode,
+    });
+  }
+  const postAoeLivingUIDs = enemies
+    .filter(enemy => Number(enemy.hp ?? 0) - Number(damageByTargetUID.get(Number(enemy.uid || 0)) || 0) > 0)
+    .map(enemy => Number(enemy.uid || 0));
+  const chainSource = resolveSplitChainSourceEnemy(ctx, rootTargetUID, postAoeLivingUIDs);
+  if (chainSource) {
+    queuePartyChainStrikeBounce(ctx, {
+      heroUID,
+      sourceTargetUID: Number(chainSource.uid || 0),
+      originalDamage: totalDamage,
+      applyAt,
+      mode,
+      actorName,
+      allowedLivingEnemyUIDs: postAoeLivingUIDs,
+    });
+  }
+  LogCombat(ctx, `${actorName} used Split on all enemies for ${totalDamage}!`);
+}
+
 export function HeroAttackSingle(ctx, heroUID, targetUID) {
   const actorName = getActorNameByUID(ctx, heroUID);
   const target = GetActorByUID(ctx, targetUID);
   if (!target) {
     LogCombat(ctx, `${actorName} had no target`);
+    return;
+  }
+  if (IsPartySessionSkillActive(ctx, PARTY_SPLIT_ID)) {
+    HeroAttackSplit(ctx, heroUID, targetUID);
     return;
   }
   const actor = GetActorByUID(ctx, heroUID);

@@ -16,6 +16,7 @@ const legalPartyDrawIds = [
   'party_grow',
   'party_chain_strike_i',
   'party_arcane_pulse',
+  'party_split',
 ];
 
 function loadModule(modulePath) {
@@ -219,7 +220,7 @@ test('normal party skill draught samples the full party pool through RuntimeRand
     assert.ok(draws.length >= 1, 'normal skill draw should consume RuntimeRandom');
     assert.equal(opened.candidates.length, 3);
     assert.equal(new Set(opened.candidates.map(candidate => candidate.id)).size, 3);
-    assert.equal(opened.candidates[0].id, 'party_arcane_pulse');
+    assert.equal(opened.candidates[0].id, 'party_split');
     assert.ok(
       opened.candidates.some(candidate => candidate.id === 'party_faze'),
       'Faze should be reachable from the normal random draw'
@@ -254,7 +255,7 @@ test('normal party skill draught excludes removed stubs and uses only the active
     }
 
     const observedLegalIds = new Set();
-    for (const randomValues of [[0, 0, 0], [0.25, 0, 0], [0.35, 0, 0], [0.5, 0, 0], [0.65, 0, 0], [0.8, 0, 0], [0.95, 0, 0]]) {
+    for (const randomValues of [[0, 0, 0], [0.25, 0, 0], [0.35, 0, 0], [0.45, 0, 0], [0.5, 0, 0], [0.65, 0, 0], [0.8, 0, 0], [0.95, 0, 0]]) {
       const { ctx } = makeContext();
       installSequenceRandom(ctx, randomValues);
 

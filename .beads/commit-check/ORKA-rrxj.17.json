@@ -1,0 +1,39 @@
+{
+  "changed_functions": {
+    "Scripts/functionBank.js": [
+      "HeroAttackSplit"
+    ],
+    "tests/chainStrikeSkillContract.test.js": [
+      "makeContext"
+    ],
+    "web-runner/modules/functionBank.js": [
+      "HeroAttackSplit"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "Scripts/functionBank.js",
+      "web-runner/modules/functionBank.js"
+    ],
+    "staged_file_count": 3,
+    "staged_line_count": 6,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    "Scripts/functionBank.js",
+    "tests/chainStrikeSkillContract.test.js",
+    "web-runner/modules/functionBank.js"
+  ],
+  "issue_id": "ORKA-rrxj.17",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    "Scripts/functionBank.js": "a6829b3c5065284c4e1367a910dab8221b1a27e4",
+    "tests/chainStrikeSkillContract.test.js": "27433aac8e07f903975b9e3cb345433d78b296ce",
+    "web-runner/modules/functionBank.js": "faed4e1b45b5e2c3a3e25aed1486b15f37128ae7"
+  }
+}
