@@ -216,6 +216,14 @@ export function drawAstralFlowKoOrbPresentation(ctx, presentation, now) {
   }
 }
 
+function hasPendingAttackPresentation(globals) {
+  if (!globals || typeof globals !== 'object') return false;
+  if (Array.isArray(globals.PendingHeroHits) && globals.PendingHeroHits.length > 0) return true;
+  if (Array.isArray(globals.ChainStrikeVisuals) && globals.ChainStrikeVisuals.length > 0) return true;
+  if (Array.isArray(globals.ArcanePulseVisuals) && globals.ArcanePulseVisuals.length > 0) return true;
+  return false;
+}
+
 export function updateAndRenderAstralFlowKoOrbPresentation({
   ctx,
   state,
@@ -227,6 +235,13 @@ export function updateAndRenderAstralFlowKoOrbPresentation({
   if (!globals) return { active: false };
   let presentation = globals.AstralFlowKoOrbPresentationState || null;
   if (!presentation && Array.isArray(globals.AstralFlowKoOrbQueue) && globals.AstralFlowKoOrbQueue.length) {
+    if (hasPendingAttackPresentation(globals)) {
+      globals.AstralFlowKoOrbPresentationPending = 1;
+      return { active: false, pending: true };
+    }
+    if (typeof callFunctionWithContext === 'function') {
+      callFunctionWithContext(fnContext, 'CommitAstralFlowKoOrbEnemyDeaths');
+    }
     presentation = createAstralFlowKoOrbPresentation({ globals, worldToCanvas });
     if (presentation) {
       globals.AstralFlowKoOrbPresentationState = presentation;

@@ -476,3 +476,7 @@
 ## 2026-06-25 - Debug Counter Displays Need Label Uniqueness Contracts
 - Counter state can be correct while a diagnostics renderer duplicates a label. For Dev Panel readouts, contract the rendered labels as a display surface, not only the backing counter object.
 - SkillDrawCalls count card appearances, not selections or proc executions. Keep that distinction explicit when reviewing QA screenshots so duplicate display rows are not mistaken for duplicate draw events.
+
+## 2026-06-27 - Death Reward Orbs Need A Death-Visual Barrier
+- If a KO reward has a delayed presentation, do not remove the dead enemy at the reward-queue seam. Hold the 0-HP enemy visual until pending attack/chain visuals finish, then commit removal immediately before reward fallout starts.
+- For death reward bugs, contract ordering across all three seams: dead enemy remains visible while attack visuals finish, removal happens before orb spill, and meter reward math applies only after orb flight completes.

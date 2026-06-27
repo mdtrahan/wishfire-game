@@ -2,19 +2,27 @@
   "hot_files": {
     "Scripts/functionBank.js": {
       "functions": [
-        "applyPartyMaxHPBonus",
-        "makeStableHeroSkillPointId",
-        "activateMagicFruitSkill"
+        "ensureEnemyDeathVisualHoldMap",
+        "markEnemyDeathVisualHold",
+        "clearEnemyDeathVisualHold",
+        "commitEnemyDeathRemoval",
+        "CommitAstralFlowKoOrbEnemyDeaths",
+        "KillEnemyAt",
+        "KillEnemyByUID"
       ],
-      "staged_blob": "f1da31af2201cd134d8c186d6527523a804f441a"
+      "staged_blob": "448ba5c215021c121d2649e6e835f9388b990977"
     },
     "web-runner/modules/functionBank.js": {
       "functions": [
-        "applyPartyMaxHPBonus",
-        "makeStableHeroSkillPointId",
-        "activateMagicFruitSkill"
+        "ensureEnemyDeathVisualHoldMap",
+        "markEnemyDeathVisualHold",
+        "clearEnemyDeathVisualHold",
+        "commitEnemyDeathRemoval",
+        "CommitAstralFlowKoOrbEnemyDeaths",
+        "KillEnemyAt",
+        "KillEnemyByUID"
       ],
-      "staged_blob": "2a8ee203f7a0d7cf1f823dd1763151f1af24b581"
+      "staged_blob": "fc021de6a24cac54f73d114bf7251d9bb1bf9e21"
     }
   },
   "issue_id": "ORKA-rrxj.19"
