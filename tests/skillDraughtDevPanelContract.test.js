@@ -107,6 +107,10 @@ test('dev panel wires mandatory draw controls', () => {
   assert.match(devToolingSrc, /data-devtool-skill-id/);
   assert.match(devToolingSrc, /data-devtool-force-skill-draught/);
   assert.match(devToolingSrc, /data-devtool-clear-session-skills/);
+  assert.match(devToolingSrc, /Skill Draw Hero UID \/ Slot/);
+  assert.match(devToolingSrc, /function resolveDevToolingSkillHeroUID\(rawValue = ''\)/);
+  assert.match(devToolingSrc, /Number\(actor\?\.uid \|\| 0\) === requestedUID/);
+  assert.match(devToolingSrc, /heroIndex \+ 1 === requestedUID/);
   assert.match(devToolingSrc, /ForceAstralFlowSkillDraught/);
   assert.match(devToolingSrc, /ClearSessionSkillDraught/);
   assert.match(devToolingSrc, /getSkillDraughtDevSummary/);
