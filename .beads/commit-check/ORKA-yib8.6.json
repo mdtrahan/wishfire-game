@@ -1,0 +1,36 @@
+{
+  "changed_functions": {
+    ".beads/interactions.jsonl": [
+      "__MODULE__"
+    ],
+    ".fallowrc.jsonc": [
+      "__MODULE__"
+    ],
+    "governance/execution/fallow-entrypoint-profile.md": [
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 3,
+    "staged_line_count": 85,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/interactions.jsonl",
+    ".fallowrc.jsonc",
+    "governance/execution/fallow-entrypoint-profile.md"
+  ],
+  "issue_id": "ORKA-yib8.6",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/interactions.jsonl": "086e45a9b8ef28af2417035d72159ba345512fb6",
+    ".fallowrc.jsonc": "bc4d22072f1d45e6efde03debe94ecb0dbfcebfa",
+    "governance/execution/fallow-entrypoint-profile.md": "f5be9182f19cd2b8f0b20df528a112c24c33dcbc"
+  }
+}
