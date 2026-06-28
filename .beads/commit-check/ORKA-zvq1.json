@@ -1,0 +1,37 @@
+{
+  "changed_functions": {
+    ".beads/interactions.jsonl": [
+      "__MODULE__"
+    ],
+    "ai-memory/insights.md": [
+      "__MODULE__"
+    ],
+    "tests/kojonnPowerAmpSingleContract.test.js": [
+      "buildHeroAttackSingle",
+      "runKojonnSingleCase"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 3,
+    "staged_line_count": 8,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/interactions.jsonl",
+    "ai-memory/insights.md",
+    "tests/kojonnPowerAmpSingleContract.test.js"
+  ],
+  "issue_id": "ORKA-zvq1",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/interactions.jsonl": "86c97a13436cfef076bc37309bcc7a3d1a5b370f",
+    "ai-memory/insights.md": "d4dd701e3f007996764ff3ba1bcb4eb5c40ee00f",
+    "tests/kojonnPowerAmpSingleContract.test.js": "43d20e368ba83c09816755631a34a8447a3d9434"
+  }
+}
