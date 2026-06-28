@@ -48,6 +48,7 @@ export function createDamageNumber({
   kind = 'damage',
   targetKind = null,
   isCrit = false,
+  zIndex = 4,
   container,
   angleDeg = 0,
   floatVector = null,
@@ -67,7 +68,7 @@ export function createDamageNumber({
   wrapper.style.alignItems = 'flex-end';
   wrapper.style.justifyContent = 'center';
   wrapper.style.gap = '0px';
-  wrapper.style.zIndex = '4';
+  wrapper.style.zIndex = String(Math.max(4, Math.floor(Number(zIndex || 0))));
 
   gsap.set(wrapper, {
     x: 0,
@@ -80,6 +81,7 @@ export function createDamageNumber({
   const isHeal = normalizedKind === 'heal';
   const isEnergy = normalizedKind === 'energy';
   const isWard = normalizedKind === 'ward';
+  const isArcanePulse = normalizedKind === 'arcane_pulse';
   const fallbackVector = deriveDamageFloatVector({
     angleDeg,
     travel: isEnergy ? DAMAGE_FLOAT_ENERGY_TRAVEL : DAMAGE_FLOAT_DEFAULT_TRAVEL,
@@ -97,9 +99,11 @@ export function createDamageNumber({
     ? [ENERGY_TEXT_COLOR, ENERGY_TEXT_COLOR]
     : (isWard
         ? ['#FFD1EB', '#FF94CC']
+    : (isArcanePulse
+        ? ['#BFEFFF', '#3DA5FF']
     : (isHeal
         ? ['#86eb2e', '#9fdfff']
-        : ['#fbfdce', '#f7f8d4']));
+        : ['#fbfdce', '#f7f8d4'])));
   const timelines = [];
 
   const cleanup = () => {

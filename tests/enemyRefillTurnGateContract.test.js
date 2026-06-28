@@ -104,6 +104,16 @@ test('enemy roster stability rejects pending, dead, mismatched, duplicate, and w
       ],
     }).deadSlots, [1], `${relPath} dead occupant`);
 
+    const heldDeath = mod.getEnemyRosterStability({
+      ...base,
+      entities: [
+        { uid: 101, kind: 'enemy', hp: 10, isAlive: true, slotIndex: 0 },
+        { uid: 202, kind: 'enemy', hp: 0, isAlive: true, pendingOfficialDeath: 1, deathVisualHold: 1, deathState: 'pending_attack', slotIndex: 1 },
+      ],
+    });
+    assert.equal(heldDeath.stable, true, `${relPath} pending official death remains roster-stable`);
+    assert.deepEqual(heldDeath.deadSlots, [], `${relPath} pending official death is not refillable`);
+
     assert.deepEqual(mod.getEnemyRosterStability({
       ...base,
       enemyIds: [101, 999, 0],
@@ -226,6 +236,8 @@ test('function banks wire roster stability and gate scheduler mutation before ad
     assert.match(src, /getEnemyRosterStability/);
     assert.match(src, /createEnemyRosterRefillHold/);
     assert.match(src, /export function GetEnemyRosterStability/);
+    assert.match(src, /function hasActiveAstralFlowKoOrbPayout\(g\)/);
+    assert.match(src, /koPayoutActive: true/);
     assert.match(src, /function resolvePendingEnemyDeaths/);
 
     const advanceTurn = extractFunctionSource(src, 'AdvanceTurn');
@@ -252,6 +264,11 @@ test('function banks wire roster stability and gate scheduler mutation before ad
     assert.match(spawnEnemy, /clearEnemyRespawnPendingForFilledSlot/);
 
     const finalizeRespawn = extractFunctionSource(src, 'finalizeEnemyRespawnWindow');
+    assert.ok(
+      lineIndex(finalizeRespawn, 'hasActiveAstralFlowKoOrbPayout(g)') <
+        lineIndex(finalizeRespawn, 'const desiredSlots'),
+      `${relPath} enemy respawn callback must not refill while KO orb payout is active`,
+    );
     assert.doesNotMatch(finalizeRespawn, /g\.PendingEnemyRespawnSlots = Array\.from\(\{ length: desiredSlots \}, \(\) => 0\)/);
     assert.match(finalizeRespawn, /rescheduleEnemyRespawnWindowRetry/);
   }

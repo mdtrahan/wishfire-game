@@ -476,3 +476,18 @@
 ## 2026-06-25 - Debug Counter Displays Need Label Uniqueness Contracts
 - Counter state can be correct while a diagnostics renderer duplicates a label. For Dev Panel readouts, contract the rendered labels as a display surface, not only the backing counter object.
 - SkillDrawCalls count card appearances, not selections or proc executions. Keep that distinction explicit when reviewing QA screenshots so duplicate display rows are not mistaken for duplicate draw events.
+
+## 2026-06-27 - Death Reward Orbs Need A Death-Visual Barrier
+- If a KO reward has a delayed presentation, do not clear the enemy slot at the reward-queue seam. Hold the 0-HP enemy visual until pending attack/chain visuals finish, then hide that same enemy for reward fallout while keeping the slot occupied.
+- For death reward bugs, contract ordering across all seams: enemy HP can be <= 0 while the slot remains owned, death payout begins only after attack visuals finish, and real slot clear/refill happens only after orb flight completes.
+
+## 2026-06-28 - Death-Visual Barriers Must Use Presentation Clocks
+- Pending-hit arrays are not the whole attack presentation. KO orb fallout must also wait for active hero/enemy action objects and damage text lifetime before beginning the death payout.
+- Do not let the KO queue's own action lock block KO orb preparation; that self-lock is for turn advancement, not for delaying the payout presenter.
+- If a death reward looks like an old enemy or new refill enemy donated the orbs, inspect whether the reward presenter clears the slot before the orb payout completes.
+
+## 2026-06-28 - KO Orb Delivery Must Own The Slot Through Final Delivery
+- KO orb completion needs a final rendered delivery frame before reward completion. Completing on the first `now >= endAt` frame lets state mutations race the visual payoff.
+- Apply the Astral Flow reward while the dead enemy still owns its slot, then commit the enemy removal/refill window after the meter payout. A refill enemy must never appear before the old enemy's death loot has finished delivering.
+- KO orb reward completion happens after the attack owner has already released its handoff lane, so it must not set a new `DeferAdvance`/`AdvanceAfterAction`. Use a tiny visual action lock only; fresh deferred handoffs at this seam can hang combat.
+- Treat KO orb payout as its own roster-blocking lane. Turn advance and respawn timers must see active KO queues/presentations as unavailable roster state so refill cannot spawn a new enemy under old death loot.

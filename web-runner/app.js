@@ -496,7 +496,11 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
   ensureDamageNumberLayer();
   syncDamageNumberLayerBounds();
   gameState.healBlooms = Array.isArray(gameState.healBlooms) ? gameState.healBlooms : [];
-  for (const d of texts) {
+  const layeredTexts = texts
+    .map((d, index) => ({ d, index }))
+    .sort((a, b) => (Number(a.d?.zIndex || 0) || a.index) - (Number(b.d?.zIndex || 0) || b.index));
+  for (const entry of layeredTexts) {
+    const d = entry.d;
     if (!d || d.domSpawned) continue;
     d.domSpawned = true;
     const xOffset = d.targetKind === 'hero' ? -10 : (d.targetKind === 'ward' ? 0 : (d.canvasAnchored ? 0 : 10));
@@ -505,21 +509,25 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
       : projectToCanvas((d.x || 0) + xOffset, d.baseY != null ? d.baseY : (d.y || 0));
     const isCrit = !!d.isCrit;
     const isEnergyText = d.targetKind === 'energy' || d.kind === 'energy';
+    const domKind = isEnergyText
+      ? 'energy'
+      : (d.kind === 'heal' ? 'heal' : (d.kind === 'ward' ? 'ward' : (d.kind === 'arcane_pulse' ? 'arcane_pulse' : 'damage')));
     const text = isEnergyText
       ? `+${formatDamageValue({ value: d.amount, type: 'heal', isCrit })}`
       : (d.targetKind === 'bar'
         ? formatDamageValue({ value: d.amount, type: 'heal', isCrit })
-        : formatDamageValue({ value: d.amount, type: d.kind === 'heal' ? 'heal' : (d.kind === 'ward' ? 'ward' : 'damage'), isCrit }));
+        : formatDamageValue({ value: d.amount, type: domKind === 'heal' || domKind === 'energy' ? 'heal' : 'damage', isCrit }));
     const animation = createDamageNumber({
       text,
       amount: d.amount,
       partyMaxHP: d.partyMaxHP,
       x: pos.x,
       y: pos.y,
-      kind: isEnergyText ? 'energy' : (d.kind === 'heal' ? 'heal' : (d.kind === 'ward' ? 'ward' : 'damage')),
+      kind: domKind,
       targetKind: d.targetKind || null,
       isCrit,
       floatAngleDeg: d.floatAngleDeg,
+      zIndex: Number(d.zIndex || entry.index || 0),
       container: damageNumberLayer,
       angleDeg: Number(d.floatAngleDeg || 0),
       floatVector: {
@@ -3445,6 +3453,12 @@ async function main(){
       deriveDamageFloatFrameOffset,
       createPartyRegenTickSimulationPacket,
     };
+    astralFlowKoOrbPresentation.prepareAstralFlowKoOrbPresentation({
+      state,
+      worldToCanvas,
+      callFunctionWithContext,
+      fnContext,
+    });
     const result = renderRuntime.renderRuntime(runtimeScope);
     if (result && result.overlayData) {
       state.globals.LastCombatOverlayData = result.overlayData;
