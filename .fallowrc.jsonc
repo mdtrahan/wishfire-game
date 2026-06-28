@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": [
+    "web-runner/index.html",
+    "web-runner/app.js"
+  ],
+  "ignoreUnresolvedImports": [
+    "./runtime-fingerprint.js"
+  ],
+  "ignorePatterns": [
+    ".fallow/**",
+    ".worktrees/**",
+    "node_modules/**",
+    "output/**",
+    "test-results/**"
+  ]
+}
