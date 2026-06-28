@@ -236,6 +236,8 @@ test('function banks wire roster stability and gate scheduler mutation before ad
     assert.match(src, /getEnemyRosterStability/);
     assert.match(src, /createEnemyRosterRefillHold/);
     assert.match(src, /export function GetEnemyRosterStability/);
+    assert.match(src, /function hasActiveAstralFlowKoOrbPayout\(g\)/);
+    assert.match(src, /koPayoutActive: true/);
     assert.match(src, /function resolvePendingEnemyDeaths/);
 
     const advanceTurn = extractFunctionSource(src, 'AdvanceTurn');
@@ -262,6 +264,11 @@ test('function banks wire roster stability and gate scheduler mutation before ad
     assert.match(spawnEnemy, /clearEnemyRespawnPendingForFilledSlot/);
 
     const finalizeRespawn = extractFunctionSource(src, 'finalizeEnemyRespawnWindow');
+    assert.ok(
+      lineIndex(finalizeRespawn, 'hasActiveAstralFlowKoOrbPayout(g)') <
+        lineIndex(finalizeRespawn, 'const desiredSlots'),
+      `${relPath} enemy respawn callback must not refill while KO orb payout is active`,
+    );
     assert.doesNotMatch(finalizeRespawn, /g\.PendingEnemyRespawnSlots = Array\.from\(\{ length: desiredSlots \}, \(\) => 0\)/);
     assert.match(finalizeRespawn, /rescheduleEnemyRespawnWindowRetry/);
   }

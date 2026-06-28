@@ -2,29 +2,39 @@
   "hot_files": {
     "Scripts/functionBank.js": {
       "functions": [
+        "hasActiveAstralFlowKoOrbPayout",
+        "GetEnemyRosterStability",
+        "makeStableHeroSkillPointId",
+        "queuePartyArcanePulse",
         "CompleteAstralFlowKoOrbRewards",
-        "markEnemyDeathVisualHold",
-        "BeginAstralFlowKoOrbEnemyDeaths",
-        "commitEnemyDeathRemoval",
-        "pos"
+        "getPendingDamageTextKind",
+        "pos",
+        "HeroAttackSplit",
+        "finalizeEnemyRespawnWindow",
+        "SpawnDamageText"
       ],
-      "staged_blob": "f8a6b738b0115fb911133c68bd65702ec39155eb"
+      "staged_blob": "7282cb99d25575b69ce5d136b44010325400051f"
     },
     "web-runner/app.js": {
       "functions": [
-        "drawFrame"
+        "spawnPendingDamageNumbers"
       ],
-      "staged_blob": "c8ad4ae542d349f439aa6eeb341c93c1db1dc735"
+      "staged_blob": "8e3c15d88789178fdc6a15c026b4216adbb5666e"
     },
     "web-runner/modules/functionBank.js": {
       "functions": [
+        "hasActiveAstralFlowKoOrbPayout",
+        "GetEnemyRosterStability",
+        "makeStableHeroSkillPointId",
+        "queuePartyArcanePulse",
         "CompleteAstralFlowKoOrbRewards",
-        "markEnemyDeathVisualHold",
-        "BeginAstralFlowKoOrbEnemyDeaths",
-        "commitEnemyDeathRemoval",
-        "pos"
+        "getPendingDamageTextKind",
+        "pos",
+        "HeroAttackSplit",
+        "finalizeEnemyRespawnWindow",
+        "SpawnDamageText"
       ],
-      "staged_blob": "6c004026b4f436f802c3908bc069947417812f2b"
+      "staged_blob": "1e309c52a86a0c7c6b4d276f448d725690ba710a"
     }
   },
   "issue_id": "ORKA-rrxj.19"

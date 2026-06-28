@@ -388,15 +388,33 @@ function applyTurnGateIntent(g, createIntent, options = undefined) {
   applyTurnGateState(g, createIntent(g, options));
 }
 
+function hasActiveAstralFlowKoOrbPayout(g) {
+  if (!g || typeof g !== 'object') return false;
+  if (Array.isArray(g.AstralFlowKoOrbQueue) && g.AstralFlowKoOrbQueue.length > 0) return true;
+  if (g.AstralFlowKoOrbPresentationState) return true;
+  if (Number(g.AstralFlowKoOrbPresentationActive || 0) > 0) return true;
+  if (Number(g.AstralFlowKoOrbPresentationPending || 0) > 0) return true;
+  return false;
+}
+
 export function GetEnemyRosterStability(ctx) {
   const g = getGlobals(ctx);
-  return getEnemyRosterStability({
+  const stability = getEnemyRosterStability({
     enemySlots: Array.isArray(g.EnemySlots) ? g.EnemySlots : [],
     enemyIds: Array.isArray(g.EnemyIDs) ? g.EnemyIDs : [],
     pendingRespawnSlots: Array.isArray(g.PendingEnemyRespawnSlots) ? g.PendingEnemyRespawnSlots : [],
     pendingRespawnTimerActive: Number(g.PendingEnemyRespawnTimerActive || 0),
     entities: getEntities(ctx),
   });
+  if (hasActiveAstralFlowKoOrbPayout(g)) {
+    return {
+      ...stability,
+      stable: false,
+      pending: true,
+      koPayoutActive: true,
+    };
+  }
+  return stability;
 }
 
 function holdForEnemyRosterRefill(ctx, options = {}) {
@@ -1115,6 +1133,7 @@ const PARTY_ARCANE_PULSE_ID = 'party_arcane_pulse';
 const PARTY_ARCANE_PULSE_DAMAGE = 12;
 const PARTY_ARCANE_PULSE_TRIGGER_EVERY = 2;
 const PARTY_ARCANE_PULSE_VISUAL_KEY = 'arcane_pulse_burst';
+const PARTY_ARCANE_PULSE_DAMAGE_TEXT_CLEAR_SEC = 0.18 + 0.7 + 0.45;
 function cloneSkillMetadata(value) {
   if (Array.isArray(value)) return value.map(item => cloneSkillMetadata(item));
   if (value && typeof value === 'object') {
@@ -2584,6 +2603,7 @@ function queuePartyArcanePulse(ctx, { heroUID = 0, targetUID = 0, applyAt = 0, a
   const normalImpactAt = Number(applyAt || now);
   const startAt = Math.max(now + 0.2, normalImpactAt + 0.24);
   const pulseAt = startAt + 0.24;
+  const visualClearAt = pulseAt + PARTY_ARCANE_PULSE_DAMAGE_TEXT_CLEAR_SEC;
   const damage = Math.max(1, Math.floor(PARTY_ARCANE_PULSE_DAMAGE));
   g.PendingHeroHits = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
   g.PendingHeroHits.push({
@@ -2598,7 +2618,8 @@ function queuePartyArcanePulse(ctx, { heroUID = 0, targetUID = 0, applyAt = 0, a
     sourceUID: Number(heroUID || 0),
     suppressPartySkillHitHooks: 1,
     suppressHitFlash: 1,
-    suppressDamageText: 1,
+    damageTextKind: 'arcane_pulse',
+    presentationClearAt: visualClearAt,
     suppressAttackSkillBounds: 1,
     bonusDamageOnly: 1,
     effectType: 'arcane_pulse',
@@ -2619,8 +2640,9 @@ function queuePartyArcanePulse(ctx, { heroUID = 0, targetUID = 0, applyAt = 0, a
   g.LastPartyArcanePulse.normalImpactAt = normalImpactAt;
   g.LastPartyArcanePulse.visualStartAt = startAt;
   g.LastPartyArcanePulse.impactAt = pulseAt;
+  g.LastPartyArcanePulse.visualClearAt = visualClearAt;
   g.LastPartyArcanePulse.sequence = 'attack_then_bonus_pulse';
-  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), pulseAt + 0.28);
+  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), visualClearAt);
   g.DeferAdvance = 1;
   g.AdvanceAfterAction = 1;
   return true;
@@ -3180,8 +3202,7 @@ export function CompleteAstralFlowKoOrbRewards(ctx) {
   ensureAstralFlowWallet(ctx);
   const queue = ensureAstralFlowKoOrbQueue(ctx);
   if (!queue.length) return { ok: false, reason: 'no_astral_flow_ko_orbs' };
-  CommitAstralFlowKoOrbEnemyDeaths(ctx);
-  const pending = queue.splice(0, queue.length);
+  const pending = queue.slice();
   let appliedCount = 0;
   let openDraught = 0;
   let drawHeroUID = 0;
@@ -3206,8 +3227,11 @@ export function CompleteAstralFlowKoOrbRewards(ctx) {
     lastReward = reward;
   }
   UpdateAstralFlowAmpBar(ctx);
+  CommitAstralFlowKoOrbEnemyDeaths(ctx);
+  queue.splice(0, queue.length);
   g.AstralFlowKoOrbPresentationPending = 0;
   g.AstralFlowKoOrbPresentationActive = 0;
+  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), Number(g.time || 0) + 0.05);
   if (openDraught) {
     QueueSkillDraughtForHero(ctx, Number(drawHeroUID || GetCurrentTurn(ctx) || 0));
   }
@@ -5973,6 +5997,13 @@ function shouldSuppressDamageText(ctx, uid, dmg, options = undefined) {
   return !!findMatchingPendingHeroHit(ctx, uid, dmg, (hit) => Number(hit.suppressDamageText || 0) > 0);
 }
 
+function getPendingDamageTextKind(ctx, uid, dmg, options = undefined) {
+  const opts = options && typeof options === 'object' ? options : {};
+  if (opts.damageTextKind != null && String(opts.damageTextKind || '')) return String(opts.damageTextKind || '');
+  const hit = findMatchingPendingHeroHit(ctx, uid, dmg, (entry) => entry.damageTextKind != null && String(entry.damageTextKind || ''));
+  return hit ? String(hit.damageTextKind || '') : '';
+}
+
 export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   const g = getGlobals(ctx);
   const opts = options && typeof options === 'object' ? options : {};
@@ -6085,7 +6116,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
     SpawnDamageText(ctx, shieldAbsorbed, wardTextPos.x, wardTextPos.y, 'ward', 'ward');
   }
   if (appliedDamage > 0 && dx != null && dy != null && g.SpawnDamageText !== 0 && !suppressDamageText) {
-    const damageTextKind = String(g.NextDamageTextKind || 'damage');
+    const damageTextKind = String(g.NextDamageTextKind || getPendingDamageTextKind(ctx, uid, dmg, opts) || 'damage');
     SpawnDamageText(ctx, appliedDamage, dx, dy, damageTextKind, t.kind || null);
   }
   delete g.NextDamageTextKind;
@@ -7158,6 +7189,7 @@ function HeroAttackSplit(ctx, heroUID, rootTargetUID) {
       allowedLivingEnemyUIDs: postAoeLivingUIDs,
     });
   }
+  queuePartyArcanePulse(ctx, { heroUID, targetUID: rootTargetUID, applyAt, mode, actorName });
   LogCombat(ctx, `${actorName} used Split on all enemies for ${totalDamage}!`);
 }
 
@@ -7756,6 +7788,11 @@ function rescheduleEnemyRespawnWindowRetry(ctx) {
 
 function finalizeEnemyRespawnWindow(ctx) {
   const g = getGlobals(ctx);
+  if (hasActiveAstralFlowKoOrbPayout(g)) {
+    g.PendingEnemyRespawnTimerActive = 0;
+    rescheduleEnemyRespawnWindowRetry(ctx);
+    return;
+  }
   const desiredSlots = Math.max(1, Number((Array.isArray(g.EnemySlots) && g.EnemySlots.length) ? g.EnemySlots.length : 3));
   g.EnemySlots = g.EnemySlots || Array.from({ length: desiredSlots }, () => 0);
   while (g.EnemySlots.length < desiredSlots) g.EnemySlots.push(0);
@@ -10031,8 +10068,11 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
   const riseInSec = 0.18;
   const holdSec = 0.7;
   const fadeSec = 0.45;
+  g.DamageTextLayerSeq = Number(g.DamageTextLayerSeq || 0) + 1;
+  const zIndex = g.DamageTextLayerSeq;
   g.DamageTexts.push({
     amount,
+    zIndex,
     partyMaxHP,
     x: drawX,
     y: drawY,

@@ -104,6 +104,11 @@ test('Astral Flow KO orb presentation waits until dissolve completion before app
 
   globals.time = globals.AstralFlowKoOrbPresentationState.endAt + 0.01;
   mod.updateAndRenderAstralFlowKoOrbPresentation(deps);
+  assert.deepEqual(completed, ['BeginAstralFlowKoOrbEnemyDeaths']);
+  assert.equal(globals.AstralFlowKoOrbPresentationActive, 1);
+  assert.equal(globals.AstralFlowKoOrbPresentationState.deliveryFrameDrawn, 1);
+
+  mod.updateAndRenderAstralFlowKoOrbPresentation(deps);
   assert.deepEqual(completed, ['BeginAstralFlowKoOrbEnemyDeaths', 'CompleteAstralFlowKoOrbRewards']);
   assert.equal(globals.AstralFlowKoOrbPresentationActive, 0);
   assert.equal(globals.AstralFlowKoOrbPresentationState, null);

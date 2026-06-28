@@ -275,6 +275,12 @@ export function updateAndRenderAstralFlowKoOrbPresentation({
   const now = numberOr(globals.time, 0);
   globals.ActionLockUntil = Math.max(numberOr(globals.ActionLockUntil, 0), presentation.endAt);
   if (now >= presentation.endAt) {
+    if (!presentation.deliveryFrameDrawn) {
+      presentation.deliveryFrameDrawn = 1;
+      globals.ActionLockUntil = Math.max(numberOr(globals.ActionLockUntil, 0), now + 0.05);
+      drawAstralFlowKoOrbPresentation(ctx, presentation, presentation.endAt);
+      return { active: true, completed: false, deliveryFrameDrawn: true };
+    }
     if (typeof callFunctionWithContext === 'function') {
       callFunctionWithContext(fnContext, 'CompleteAstralFlowKoOrbRewards');
     }

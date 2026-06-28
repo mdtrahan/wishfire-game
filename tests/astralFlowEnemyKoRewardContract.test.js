@@ -215,6 +215,19 @@ test('function bank mirrors keep KO reward integration narrow', () => {
 	    assert.match(src, /export function BeginAstralFlowKoOrbEnemyDeaths\(ctx\)/);
 	    assert.match(src, /export function CommitAstralFlowKoOrbEnemyDeaths\(ctx\)/);
 	    assert.match(src, /export function CompleteAstralFlowKoOrbRewards\(ctx\)/);
+	    const completeStart = src.indexOf('export function CompleteAstralFlowKoOrbRewards');
+	    const completeEnd = src.indexOf('\nfunction ensureEnemyDeathVisualHoldMap', completeStart);
+	    const completeBody = src.slice(completeStart, completeEnd);
+	    assert.ok(
+	      completeBody.indexOf('UpdateAstralFlowAmpBar(ctx);') <
+	        completeBody.indexOf('CommitAstralFlowKoOrbEnemyDeaths(ctx);'),
+	      'KO orb rewards must apply before the dead enemy slot is released'
+	    );
+	    assert.doesNotMatch(
+	      completeBody,
+	      /g\.DeferAdvance\s*=\s*1|g\.AdvanceAfterAction\s*=\s*1/,
+	      'KO orb reward completion must not create a fresh deferred turn handoff'
+	    );
     const awardStart = src.indexOf('export function AwardEnemyKoAstralFlow');
     const nextFunction = src.indexOf('\nfunction shouldResetAstralFlowAmpOnHeroTurn', awardStart);
     const awardBody = src.slice(awardStart, nextFunction);

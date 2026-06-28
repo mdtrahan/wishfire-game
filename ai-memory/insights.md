@@ -485,3 +485,9 @@
 - Pending-hit arrays are not the whole attack presentation. KO orb fallout must also wait for active hero/enemy action objects and damage text lifetime before beginning the death payout.
 - Do not let the KO queue's own action lock block KO orb preparation; that self-lock is for turn advancement, not for delaying the payout presenter.
 - If a death reward looks like an old enemy or new refill enemy donated the orbs, inspect whether the reward presenter clears the slot before the orb payout completes.
+
+## 2026-06-28 - KO Orb Delivery Must Own The Slot Through Final Delivery
+- KO orb completion needs a final rendered delivery frame before reward completion. Completing on the first `now >= endAt` frame lets state mutations race the visual payoff.
+- Apply the Astral Flow reward while the dead enemy still owns its slot, then commit the enemy removal/refill window after the meter payout. A refill enemy must never appear before the old enemy's death loot has finished delivering.
+- KO orb reward completion happens after the attack owner has already released its handoff lane, so it must not set a new `DeferAdvance`/`AdvanceAfterAction`. Use a tiny visual action lock only; fresh deferred handoffs at this seam can hang combat.
+- Treat KO orb payout as its own roster-blocking lane. Turn advance and respawn timers must see active KO queues/presentations as unavailable roster state so refill cannot spawn a new enemy under old death loot.
