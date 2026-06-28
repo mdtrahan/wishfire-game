@@ -2,27 +2,29 @@
   "hot_files": {
     "Scripts/functionBank.js": {
       "functions": [
-        "ensureEnemyDeathVisualHoldMap",
+        "CompleteAstralFlowKoOrbRewards",
         "markEnemyDeathVisualHold",
-        "clearEnemyDeathVisualHold",
+        "BeginAstralFlowKoOrbEnemyDeaths",
         "commitEnemyDeathRemoval",
-        "CommitAstralFlowKoOrbEnemyDeaths",
-        "KillEnemyAt",
-        "KillEnemyByUID"
+        "pos"
       ],
-      "staged_blob": "448ba5c215021c121d2649e6e835f9388b990977"
+      "staged_blob": "f8a6b738b0115fb911133c68bd65702ec39155eb"
+    },
+    "web-runner/app.js": {
+      "functions": [
+        "drawFrame"
+      ],
+      "staged_blob": "c8ad4ae542d349f439aa6eeb341c93c1db1dc735"
     },
     "web-runner/modules/functionBank.js": {
       "functions": [
-        "ensureEnemyDeathVisualHoldMap",
+        "CompleteAstralFlowKoOrbRewards",
         "markEnemyDeathVisualHold",
-        "clearEnemyDeathVisualHold",
+        "BeginAstralFlowKoOrbEnemyDeaths",
         "commitEnemyDeathRemoval",
-        "CommitAstralFlowKoOrbEnemyDeaths",
-        "KillEnemyAt",
-        "KillEnemyByUID"
+        "pos"
       ],
-      "staged_blob": "fc021de6a24cac54f73d114bf7251d9bb1bf9e21"
+      "staged_blob": "6c004026b4f436f802c3908bc069947417812f2b"
     }
   },
   "issue_id": "ORKA-rrxj.19"

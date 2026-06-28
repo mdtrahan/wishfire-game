@@ -9,6 +9,14 @@ function enemyUidFromSlotCell(cell) {
 
 function isLiveEnemy(entity) {
   if (!entity || entity.kind !== 'enemy') return false;
+  if (
+    Number(entity.pendingOfficialDeath || 0) > 0 ||
+    Number(entity.deathVisualHold || 0) > 0 ||
+    String(entity.deathState || '') === 'pending_attack' ||
+    String(entity.deathState || '') === 'payout'
+  ) {
+    return true;
+  }
   if (entity.isAlive === false) return false;
   return Number(entity.hp ?? 1) > 0;
 }

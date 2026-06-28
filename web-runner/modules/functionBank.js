@@ -3223,6 +3223,7 @@ export function CompleteAstralFlowKoOrbRewards(ctx) {
   ensureAstralFlowWallet(ctx);
   const queue = ensureAstralFlowKoOrbQueue(ctx);
   if (!queue.length) return { ok: false, reason: 'no_astral_flow_ko_orbs' };
+  CommitAstralFlowKoOrbEnemyDeaths(ctx);
   const pending = queue.splice(0, queue.length);
   let appliedCount = 0;
   let openDraught = 0;
@@ -3275,7 +3276,8 @@ function markEnemyDeathVisualHold(ctx, enemy, slotIndex, currentUID = 0) {
     startedAt: Number(g.time || 0),
     currentUID: Number(currentUID || 0),
   };
-  enemy.isAlive = false;
+  enemy.pendingOfficialDeath = 1;
+  enemy.deathState = 'pending_attack';
   enemy.deathVisualHold = 1;
   enemy.deathVisualHoldStartedAt = Number(g.time || 0);
   return true;
@@ -3291,6 +3293,28 @@ function clearEnemyDeathVisualHold(ctx, enemyUID) {
   }
 }
 
+export function BeginAstralFlowKoOrbEnemyDeaths(ctx) {
+  const g = getGlobals(ctx);
+  const queue = ensureAstralFlowKoOrbQueue(ctx);
+  const holds = g.EnemyDeathVisualHoldByUID && typeof g.EnemyDeathVisualHoldByUID === 'object'
+    ? g.EnemyDeathVisualHoldByUID
+    : {};
+  let hiddenCount = 0;
+  for (const event of queue) {
+    const uid = Number(event?.enemyUID || 0);
+    if (!uid || !holds[uid]) continue;
+    const enemy = GetActorByUID(ctx, uid);
+    holds[uid].hiddenForOrb = 1;
+    if (enemy) {
+      enemy.pendingOfficialDeath = 1;
+      enemy.deathState = 'payout';
+      enemy.deathVisualHiddenForOrb = 1;
+    }
+    hiddenCount += 1;
+  }
+  return { ok: hiddenCount > 0, hiddenCount };
+}
+
 function commitEnemyDeathRemoval(ctx, enemyUID, fallbackSlotIndex = 0, currentUID = 0) {
   const g = getGlobals(ctx);
   const targetUID = Number(enemyUID || 0);
@@ -3298,6 +3322,11 @@ function commitEnemyDeathRemoval(ctx, enemyUID, fallbackSlotIndex = 0, currentUI
   const slotIndex = resolveEnemySlotIndex(ctx, targetUID, fallbackSlotIndex);
   const entities = ensureEntities(ctx);
   const idx = entities.findIndex(e => e && e.uid === targetUID);
+  runTraitHooks(ctx, 'enemy_death', {
+    enemyUID: Number(targetUID || 0),
+    slotIndex: Number(slotIndex || 0),
+    killerUID: Number(currentUID || GetCurrentTurn(ctx) || 0),
+  });
   if (idx !== -1) entities.splice(idx, 1);
   if (g.EnemyDebuffs && g.EnemyDebuffs[targetUID]) delete g.EnemyDebuffs[targetUID];
   if (g.EnemyDebuffSlots && g.EnemyDebuffSlots[targetUID]) delete g.EnemyDebuffSlots[targetUID];
@@ -6069,8 +6098,13 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
     SpawnDamageText(ctx, appliedDamage, dx, dy, damageTextKind, t.kind || null);
   }
   delete g.NextDamageTextKind;
-  if (t.hp === 0 && t.isAlive !== false) {
-    t.isAlive = false;
+  if (t.hp === 0 && t.isAlive !== false && !Number(t.pendingOfficialDeath || 0)) {
+    if (t.kind === 'enemy') {
+      t.pendingOfficialDeath = 1;
+      t.deathState = 'pending_attack';
+    } else {
+      t.isAlive = false;
+    }
     if ((g.RoundActive && g.GroupResolving) || (isTimeInitiative(ctx) && g.GroupResolving)) {
       g.PendingDeaths = g.PendingDeaths || {};
       g.PendingDeaths[t.uid] = {
@@ -7863,11 +7897,6 @@ export function KillEnemyAt(ctx, slotIndex) {
   const deadUID = deadCell - 1;
   const entities = ensureEntities(ctx);
   const deadEnemy = entities.find(e => e && e.uid === deadUID) || null;
-  runTraitHooks(ctx, 'enemy_death', {
-    enemyUID: Number(deadUID || 0),
-    slotIndex: Number(slotIndex || 0),
-    killerUID: Number(currentUID || 0),
-  });
   const astralFlowAward = AwardEnemyKoAstralFlow(ctx, deadEnemy, {
     killerUID: Number(currentUID || 0),
   });
@@ -7909,11 +7938,6 @@ export function KillEnemyByUID(ctx, enemyUID, fallbackSlotIndex = 0) {
   const currentUID = GetCurrentTurn(ctx);
   const entities = ensureEntities(ctx);
   const deadEnemy = entities.find(e => e && e.uid === targetUID) || null;
-  runTraitHooks(ctx, 'enemy_death', {
-    enemyUID: targetUID,
-    slotIndex: Number(slotIndex || 0),
-    killerUID: Number(currentUID || 0),
-  });
   const astralFlowAward = AwardEnemyKoAstralFlow(ctx, deadEnemy, {
     killerUID: Number(currentUID || 0),
   });

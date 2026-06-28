@@ -6,39 +6,46 @@
     ".beads/hot-file-lock/ORKA-rrxj.19.scope": [
       "__MODULE__"
     ],
-    ".beads/interactions.jsonl": [
-      "__MODULE__"
-    ],
     "Scripts/functionBank.js": [
-      "ensureEnemyDeathVisualHoldMap",
+      "CompleteAstralFlowKoOrbRewards",
       "markEnemyDeathVisualHold",
-      "clearEnemyDeathVisualHold",
+      "BeginAstralFlowKoOrbEnemyDeaths",
       "commitEnemyDeathRemoval",
-      "CommitAstralFlowKoOrbEnemyDeaths",
-      "KillEnemyAt",
-      "KillEnemyByUID"
+      "pos"
     ],
     "ai-memory/insights.md": [
       "__MODULE__"
+    ],
+    "src/core/enemyRosterStability.mjs": [
+      "isLiveEnemy"
     ],
     "tests/astralFlowEnemyKoRewardContract.test.js": [
       "read",
       "makeKillContext"
     ],
     "tests/astralFlowKoOrbPresentationContract.test.js": [
+      "loadPresentationModule",
       "makeCanvasRecorder"
     ],
+    "tests/enemyRefillTurnGateContract.test.js": [
+      "loadSuperGemRuntime"
+    ],
+    "web-runner/app.js": [
+      "drawFrame"
+    ],
     "web-runner/modules/functionBank.js": [
-      "ensureEnemyDeathVisualHoldMap",
+      "CompleteAstralFlowKoOrbRewards",
       "markEnemyDeathVisualHold",
-      "clearEnemyDeathVisualHold",
+      "BeginAstralFlowKoOrbEnemyDeaths",
       "commitEnemyDeathRemoval",
-      "CommitAstralFlowKoOrbEnemyDeaths",
-      "KillEnemyAt",
-      "KillEnemyByUID"
+      "pos"
+    ],
+    "web-runner/src/core/enemyRosterStability.mjs": [
+      "isLiveEnemy"
     ],
     "web-runner/systems/astralFlowKoOrbPresentation.js": [
       "hasPendingAttackPresentation",
+      "prepareAstralFlowKoOrbPresentation",
       "updateAndRenderAstralFlowKoOrbPresentation"
     ],
     "web-runner/systems/renderRuntime.js": [
@@ -48,10 +55,11 @@
   "details": {
     "hot_files_touched": [
       "Scripts/functionBank.js",
+      "web-runner/app.js",
       "web-runner/modules/functionBank.js"
     ],
-    "staged_file_count": 10,
-    "staged_line_count": 309,
+    "staged_file_count": 13,
+    "staged_line_count": 365,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -61,12 +69,15 @@
   "files": [
     ".beads/hot-file-lock/ORKA-rrxj.19.prepared.json",
     ".beads/hot-file-lock/ORKA-rrxj.19.scope",
-    ".beads/interactions.jsonl",
     "Scripts/functionBank.js",
     "ai-memory/insights.md",
+    "src/core/enemyRosterStability.mjs",
     "tests/astralFlowEnemyKoRewardContract.test.js",
     "tests/astralFlowKoOrbPresentationContract.test.js",
+    "tests/enemyRefillTurnGateContract.test.js",
+    "web-runner/app.js",
     "web-runner/modules/functionBank.js",
+    "web-runner/src/core/enemyRosterStability.mjs",
     "web-runner/systems/astralFlowKoOrbPresentation.js",
     "web-runner/systems/renderRuntime.js"
   ],
@@ -74,15 +85,18 @@
   "out_of_scope_hot_file_touch": false,
   "significant": true,
   "staged_blobs": {
-    ".beads/hot-file-lock/ORKA-rrxj.19.prepared.json": "57a38d1ce09895ea5376e492a149537acc8b4b4f",
-    ".beads/hot-file-lock/ORKA-rrxj.19.scope": "539dd16c829e4d71ebef75d24760f79c07ce0637",
-    ".beads/interactions.jsonl": "d83eabc09b0207ad7d608657d75d3801b92f2f5c",
-    "Scripts/functionBank.js": "448ba5c215021c121d2649e6e835f9388b990977",
-    "ai-memory/insights.md": "5f3f3afe3aeaf6b26d6619da6d885383a13649fd",
-    "tests/astralFlowEnemyKoRewardContract.test.js": "26e37d7f3ddbfd2e958267152954949a85c02804",
-    "tests/astralFlowKoOrbPresentationContract.test.js": "6d489e72e0cfad9640f72eb6cc889b3083e65d34",
-    "web-runner/modules/functionBank.js": "fc021de6a24cac54f73d114bf7251d9bb1bf9e21",
-    "web-runner/systems/astralFlowKoOrbPresentation.js": "eb53e38a84b76d56af75eb6d5ba3fea29595b58b",
-    "web-runner/systems/renderRuntime.js": "885c881a1c9a2fbf1c7a785d4bfc318b3df9e0aa"
+    ".beads/hot-file-lock/ORKA-rrxj.19.prepared.json": "2fe67f1d25d40e2322e2adcf0f1953685021d62d",
+    ".beads/hot-file-lock/ORKA-rrxj.19.scope": "958af5b56944321edba713f862858940385cfe0d",
+    "Scripts/functionBank.js": "f8a6b738b0115fb911133c68bd65702ec39155eb",
+    "ai-memory/insights.md": "02bb08b448222250899c7ba00c4e1d550359a8c2",
+    "src/core/enemyRosterStability.mjs": "ba56ca528cb105d6e1e389f97811911901b0f987",
+    "tests/astralFlowEnemyKoRewardContract.test.js": "0f8f5cc4de9416680f978f6b02d47dc63bd9f581",
+    "tests/astralFlowKoOrbPresentationContract.test.js": "2209d4a5d467cdff9277bc598d9b64955ca6e980",
+    "tests/enemyRefillTurnGateContract.test.js": "1e7e4552d3cc13d53e4542250709d1fa7501b1f3",
+    "web-runner/app.js": "c8ad4ae542d349f439aa6eeb341c93c1db1dc735",
+    "web-runner/modules/functionBank.js": "6c004026b4f436f802c3908bc069947417812f2b",
+    "web-runner/src/core/enemyRosterStability.mjs": "ba56ca528cb105d6e1e389f97811911901b0f987",
+    "web-runner/systems/astralFlowKoOrbPresentation.js": "63e53ffddafd83ee3feab87351f45434a7a331c2",
+    "web-runner/systems/renderRuntime.js": "39f4a17251619de402742053a0a8a2f1c4c0be51"
   }
 }

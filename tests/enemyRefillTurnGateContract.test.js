@@ -104,6 +104,16 @@ test('enemy roster stability rejects pending, dead, mismatched, duplicate, and w
       ],
     }).deadSlots, [1], `${relPath} dead occupant`);
 
+    const heldDeath = mod.getEnemyRosterStability({
+      ...base,
+      entities: [
+        { uid: 101, kind: 'enemy', hp: 10, isAlive: true, slotIndex: 0 },
+        { uid: 202, kind: 'enemy', hp: 0, isAlive: true, pendingOfficialDeath: 1, deathVisualHold: 1, deathState: 'pending_attack', slotIndex: 1 },
+      ],
+    });
+    assert.equal(heldDeath.stable, true, `${relPath} pending official death remains roster-stable`);
+    assert.deepEqual(heldDeath.deadSlots, [], `${relPath} pending official death is not refillable`);
+
     assert.deepEqual(mod.getEnemyRosterStability({
       ...base,
       enemyIds: [101, 999, 0],
