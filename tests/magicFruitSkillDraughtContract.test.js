@@ -9,15 +9,17 @@ const runtimePath = path.join(repoRoot, 'web-runner', 'modules', 'functionBank.j
 const scriptsPath = path.join(repoRoot, 'Scripts', 'functionBank.js');
 const magicFruitText = 'Heals party for 32% and raises max HP by 15% of current max HP';
 const legalPartyDrawIds = [
-  'party_crimson_ward',
-  'party_magic_fruit',
   'party_destiny',
+  'party_magic_fruit',
+  'party_crimson_ward',
   'party_faze',
   'party_grow',
   'party_chain_strike_i',
+  'party_chain_strike_ii',
   'party_arcane_pulse',
   'party_split',
 ];
+const ungatedNormalDrawIds = legalPartyDrawIds.filter(id => id !== 'party_chain_strike_ii');
 
 function loadModule(modulePath) {
   const original = fs.readFileSync(modulePath, 'utf8');
@@ -109,19 +111,6 @@ function installSequenceRandom(ctx, values) {
 }
 
 test('Magic Fruit is a mirrored party draw option that heals once through ApplyPartyHeal', () => {
-  const expectedExistingPartyIds = [
-    'party_fresh_start',
-    'party_second_chance',
-    'party_momentum',
-    'party_guard_rail',
-    'party_blue_spark',
-    'party_weaken',
-    'party_destiny',
-    'party_hot_streak',
-    'party_last_push',
-    'party_chain_pop',
-  ];
-
   for (const filePath of [runtimePath, scriptsPath]) {
     const src = fs.readFileSync(filePath, 'utf8');
     assert.match(src, /id: 'party_magic_fruit'[\s\S]*title: 'Magic Fruit'/);
@@ -133,8 +122,7 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const partyIds = Array.from(mod.GetPartySkillDefinitions(), skill => skill.id);
-    assert.deepEqual(partyIds.slice(0, expectedExistingPartyIds.length), expectedExistingPartyIds);
-    assert.equal(partyIds[expectedExistingPartyIds.length], 'party_magic_fruit');
+    assert.deepEqual(partyIds, legalPartyDrawIds);
 
     const { ctx: defaultCtx } = makeContext();
     installSequenceRandom(defaultCtx, [0.4, 0, 0]);
@@ -229,29 +217,25 @@ test('normal party skill draught samples the full party pool through RuntimeRand
 });
 
 test('normal party skill draught excludes removed stubs and uses only the active party draw allowlist', () => {
-  const removedStubCases = [
-    { id: 'party_fresh_start', title: 'Fresh Start', randomValues: [0, 0, 0] },
-    { id: 'party_second_chance', title: 'Second Chance', randomValues: [0.1, 0, 0] },
-    { id: 'party_momentum', title: 'Momentum', randomValues: [0.2, 0, 0] },
-    { id: 'party_guard_rail', title: 'Guard Rail', randomValues: [0.25, 0, 0] },
-    { id: 'party_blue_spark', title: 'Blue Spark', randomValues: [0.3, 0, 0] },
-    { id: 'party_weaken', title: 'Weaken', randomValues: [0.4, 0, 0] },
-    { id: 'party_hot_streak', title: 'Hot Streak', randomValues: [0.4, 0, 0] },
-    { id: 'party_last_push', title: 'Last Push', randomValues: [0.65, 0, 0] },
-    { id: 'party_chain_pop', title: 'Chain Pop', randomValues: [0.7, 0, 0] },
+  const removedStubIds = [
+    'party_fresh_start',
+    'party_second_chance',
+    'party_momentum',
+    'party_guard_rail',
+    'party_blue_spark',
+    'party_weaken',
+    'party_hot_streak',
+    'party_last_push',
+    'party_chain_pop',
   ];
 
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const legalIdSet = new Set(legalPartyDrawIds);
-    const nonLegalPartyIds = mod.GetPartySkillDefinitions()
-      .map(def => def.id)
-      .filter(id => !legalIdSet.has(id));
+    const partyIds = mod.GetPartySkillDefinitions().map(def => def.id);
 
-    assert.ok(nonLegalPartyIds.includes('party_blue_spark'));
-    assert.ok(nonLegalPartyIds.includes('party_hot_streak'));
-    for (const removedCase of removedStubCases) {
-      assert.ok(nonLegalPartyIds.includes(removedCase.id), `${removedCase.id} should stay out of party draws`);
+    for (const removedId of removedStubIds) {
+      assert.equal(partyIds.includes(removedId), false, `${removedId} should be removed from the party registry`);
     }
 
     const observedLegalIds = new Set();
@@ -271,11 +255,11 @@ test('normal party skill draught excludes removed stubs and uses only the active
 
     assert.deepEqual(
       Array.from(observedLegalIds).sort(),
-      legalPartyDrawIds.slice().sort(),
-      'deterministic random samples should prove every active party draw id is reachable',
+      ungatedNormalDrawIds.slice().sort(),
+      'deterministic random samples should prove every ungated party draw id is reachable',
     );
 
-    for (const id of nonLegalPartyIds) {
+    for (const id of removedStubIds) {
       const { ctx: forcedCtx } = makeContext();
       installSequenceRandom(forcedCtx, [0, 0, 0]);
 

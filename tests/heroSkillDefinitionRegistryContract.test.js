@@ -15,6 +15,7 @@ const activePartyDrawIds = [
   'party_chain_strike_i',
   'party_chain_strike_ii',
   'party_arcane_pulse',
+  'party_split',
 ];
 
 function extractFunctionSource(src, name) {
@@ -35,7 +36,7 @@ function extractFunctionSource(src, name) {
   assert.fail(`unterminated ${name}`);
 }
 
-test('canonical skill registry exposes all hero and party definitions without payloads', () => {
+test('canonical skill registry exposes only implemented runtime definitions', () => {
   const src = fs.readFileSync(runtimePath, 'utf8');
   const requiredExports = [
     'GetHeroSkillDefinitions',
@@ -47,7 +48,7 @@ test('canonical skill registry exposes all hero and party definitions without pa
     assert.match(src, new RegExp(`export function ${name}\\(`), `missing ${name}`);
   }
 
-  const heroSkillIds = [
+  const removedHeroSkillIds = [
     'falie_ward_bash',
     'falie_cover_block',
     'falie_reprisal_bounce',
@@ -65,29 +66,30 @@ test('canonical skill registry exposes all hero and party definitions without pa
     'kojonn_step',
     'kojonn_elevate',
   ];
-  for (const id of heroSkillIds) {
-    assert.match(src, new RegExp(`id: '${id}'`), `missing hero skill ${id}`);
+  for (const id of removedHeroSkillIds) {
+    assert.doesNotMatch(src, new RegExp(`id: '${id}'`), `removed hero skill ${id} should not stay registered`);
   }
 
-  const partySkillIds = [
+  const removedPartySkillIds = [
     'party_fresh_start',
     'party_second_chance',
     'party_momentum',
     'party_guard_rail',
     'party_blue_spark',
     'party_weaken',
-    'party_destiny',
     'party_hot_streak',
     'party_last_push',
     'party_chain_pop',
   ];
-  for (const id of partySkillIds) {
-    assert.match(src, new RegExp(`id: '${id}'`), `missing party skill ${id}`);
+  for (const id of removedPartySkillIds) {
+    assert.doesNotMatch(src, new RegExp(`id: '${id}'`), `removed party skill ${id} should not stay registered`);
   }
 
-  assert.match(src, /payloadImplemented: false/);
-  assert.match(src, /growth: \[6, 6, 7, 8\]/);
-  assert.match(src, /procPattern: 'On defend'/);
+  assert.doesNotMatch(src, /payloadImplemented: false/);
+  assert.match(src, /const HERO_SKILL_DEFINITIONS = Object\.freeze\(\[\]\);/);
+  for (const id of activePartyDrawIds) {
+    assert.match(src, new RegExp(`(?:id: '${id}'|const PARTY_[A-Z_]+_ID = '${id}')`), `missing active party skill ${id}`);
+  }
 });
 
 test('active party draw definitions expose mirrored class metadata through public APIs', () => {
@@ -98,6 +100,8 @@ test('active party draw definitions expose mirrored class metadata through publi
       .replace(/\bexport\s+/g, '')}
 
 module.exports = {
+  GetHeroSkillDefinitions,
+  GetHeroSkillDefinitionCardsForHero,
   GetPartySkillDefinitions,
   GetSkillDefinition,
 };`;
@@ -120,8 +124,12 @@ module.exports = {
       party_chain_strike_i: 'one_off',
       party_chain_strike_ii: 'one_off',
       party_arcane_pulse: 'one_off',
+      party_split: 'one_off',
     };
     const partyDefs = mod.GetPartySkillDefinitions();
+    assert.equal(mod.GetHeroSkillDefinitions(null).length, 0);
+    assert.equal(mod.GetHeroSkillDefinitionCardsForHero(null, 'Falie').length, 0);
+    assert.equal(mod.GetHeroSkillDefinitionCardsForHero(null, 'Kojonn').length, 0);
 
     for (const id of activePartyDrawIds) {
       const def = partyDefs.find(row => row.id === id);
