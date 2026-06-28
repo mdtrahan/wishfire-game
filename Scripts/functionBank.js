@@ -3180,6 +3180,7 @@ export function CompleteAstralFlowKoOrbRewards(ctx) {
   ensureAstralFlowWallet(ctx);
   const queue = ensureAstralFlowKoOrbQueue(ctx);
   if (!queue.length) return { ok: false, reason: 'no_astral_flow_ko_orbs' };
+  CommitAstralFlowKoOrbEnemyDeaths(ctx);
   const pending = queue.splice(0, queue.length);
   let appliedCount = 0;
   let openDraught = 0;
@@ -3211,6 +3212,119 @@ export function CompleteAstralFlowKoOrbRewards(ctx) {
     QueueSkillDraughtForHero(ctx, Number(drawHeroUID || GetCurrentTurn(ctx) || 0));
   }
   return { ok: appliedCount > 0, appliedCount, reward: lastReward };
+}
+
+function ensureEnemyDeathVisualHoldMap(ctx) {
+  const g = getGlobals(ctx);
+  if (!g.EnemyDeathVisualHoldByUID || typeof g.EnemyDeathVisualHoldByUID !== 'object' || Array.isArray(g.EnemyDeathVisualHoldByUID)) {
+    g.EnemyDeathVisualHoldByUID = {};
+  }
+  return g.EnemyDeathVisualHoldByUID;
+}
+
+function markEnemyDeathVisualHold(ctx, enemy, slotIndex, currentUID = 0) {
+  if (!enemy || enemy.kind !== 'enemy' || !Number(enemy.uid || 0)) return false;
+  const g = getGlobals(ctx);
+  const holds = ensureEnemyDeathVisualHoldMap(ctx);
+  const uid = Number(enemy.uid || 0);
+  holds[uid] = {
+    uid,
+    slotIndex: Number(slotIndex || 0),
+    startedAt: Number(g.time || 0),
+    currentUID: Number(currentUID || 0),
+  };
+  enemy.pendingOfficialDeath = 1;
+  enemy.deathState = 'pending_attack';
+  enemy.deathVisualHold = 1;
+  enemy.deathVisualHoldStartedAt = Number(g.time || 0);
+  return true;
+}
+
+function clearEnemyDeathVisualHold(ctx, enemyUID) {
+  const g = getGlobals(ctx);
+  const holds = g.EnemyDeathVisualHoldByUID;
+  const uid = Number(enemyUID || 0);
+  if (holds && typeof holds === 'object') {
+    delete holds[uid];
+    if (Object.keys(holds).length === 0) g.EnemyDeathVisualHoldByUID = {};
+  }
+}
+
+export function BeginAstralFlowKoOrbEnemyDeaths(ctx) {
+  const g = getGlobals(ctx);
+  const queue = ensureAstralFlowKoOrbQueue(ctx);
+  const holds = g.EnemyDeathVisualHoldByUID && typeof g.EnemyDeathVisualHoldByUID === 'object'
+    ? g.EnemyDeathVisualHoldByUID
+    : {};
+  let hiddenCount = 0;
+  for (const event of queue) {
+    const uid = Number(event?.enemyUID || 0);
+    if (!uid || !holds[uid]) continue;
+    const enemy = GetActorByUID(ctx, uid);
+    holds[uid].hiddenForOrb = 1;
+    if (enemy) {
+      enemy.pendingOfficialDeath = 1;
+      enemy.deathState = 'payout';
+      enemy.deathVisualHiddenForOrb = 1;
+    }
+    hiddenCount += 1;
+  }
+  return { ok: hiddenCount > 0, hiddenCount };
+}
+
+function commitEnemyDeathRemoval(ctx, enemyUID, fallbackSlotIndex = 0, currentUID = 0) {
+  const g = getGlobals(ctx);
+  const targetUID = Number(enemyUID || 0);
+  if (!targetUID) return false;
+  const slotIndex = resolveEnemySlotIndex(ctx, targetUID, fallbackSlotIndex);
+  const entities = ensureEntities(ctx);
+  const idx = entities.findIndex(e => e && e.uid === targetUID);
+  runTraitHooks(ctx, 'enemy_death', {
+    enemyUID: Number(targetUID || 0),
+    slotIndex: Number(slotIndex || 0),
+    killerUID: Number(currentUID || GetCurrentTurn(ctx) || 0),
+  });
+  if (idx !== -1) entities.splice(idx, 1);
+  if (g.EnemyDebuffs && g.EnemyDebuffs[targetUID]) delete g.EnemyDebuffs[targetUID];
+  if (g.EnemyDebuffSlots && g.EnemyDebuffSlots[targetUID]) delete g.EnemyDebuffSlots[targetUID];
+  if (g.EnemyDebuffTurns && g.EnemyDebuffTurns[targetUID]) delete g.EnemyDebuffTurns[targetUID];
+  if (g.SelectedEnemyUID === targetUID) g.SelectedEnemyUID = 0;
+  if (Array.isArray(g.EnemySlots) && slotIndex >= 0) g.EnemySlots[slotIndex] = 0;
+  if (Array.isArray(g.EnemyIDs) && slotIndex >= 0) g.EnemyIDs[slotIndex] = 0;
+  clearEnemyDeathVisualHold(ctx, targetUID);
+  markEnemyRespawnPending(ctx, slotIndex);
+  g.IsPlayerBusy = 1;
+  if (typeof recordTurnSchedulerEvent === 'function') {
+    recordTurnSchedulerEvent(ctx, 'removal_commit', {
+      cause: 'kill_enemy_at',
+      removed: [{ uid: targetUID, kind: 'enemy', slotIndex }],
+      currentUID: Number(currentUID || GetCurrentTurn(ctx) || 0),
+    });
+  }
+  if (isTimeInitiative(ctx)) {
+    schedulerApplyRemovalCompaction(ctx, targetUID, slotIndex, Number(currentUID || GetCurrentTurn(ctx) || 0));
+  }
+  UpdateEnemyHPUI(ctx);
+  const respawnDelay = Math.max(0.4, (g.DamageTextDurationSec || 1.35));
+  scheduleEnemyRespawnWindow(ctx, slotIndex, respawnDelay);
+  return true;
+}
+
+export function CommitAstralFlowKoOrbEnemyDeaths(ctx) {
+  const g = getGlobals(ctx);
+  const queue = ensureAstralFlowKoOrbQueue(ctx);
+  const holds = g.EnemyDeathVisualHoldByUID && typeof g.EnemyDeathVisualHoldByUID === 'object'
+    ? g.EnemyDeathVisualHoldByUID
+    : {};
+  let committedCount = 0;
+  for (const event of queue) {
+    const uid = Number(event?.enemyUID || 0);
+    if (!uid || !holds[uid]) continue;
+    const slotIndex = Number(event?.slotIndex ?? holds[uid].slotIndex ?? 0);
+    const currentUID = Number(event?.killerUID || holds[uid].currentUID || GetCurrentTurn(ctx) || 0);
+    if (commitEnemyDeathRemoval(ctx, uid, slotIndex, currentUID)) committedCount += 1;
+  }
+  return { ok: committedCount > 0, committedCount };
 }
 
 function shouldResetAstralFlowAmpOnHeroTurn(g) {
@@ -5975,8 +6089,13 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
     SpawnDamageText(ctx, appliedDamage, dx, dy, damageTextKind, t.kind || null);
   }
   delete g.NextDamageTextKind;
-  if (t.hp === 0 && t.isAlive !== false) {
-    t.isAlive = false;
+  if (t.hp === 0 && t.isAlive !== false && !Number(t.pendingOfficialDeath || 0)) {
+    if (t.kind === 'enemy') {
+      t.pendingOfficialDeath = 1;
+      t.deathState = 'pending_attack';
+    } else {
+      t.isAlive = false;
+    }
     if ((g.RoundActive && g.GroupResolving) || (isTimeInitiative(ctx) && g.GroupResolving)) {
       g.PendingDeaths = g.PendingDeaths || {};
       g.PendingDeaths[t.uid] = {
@@ -7762,28 +7881,15 @@ export function KillEnemyAt(ctx, slotIndex) {
   const deadUID = deadCell - 1;
   const entities = ensureEntities(ctx);
   const deadEnemy = entities.find(e => e && e.uid === deadUID) || null;
-  runTraitHooks(ctx, 'enemy_death', {
-    enemyUID: Number(deadUID || 0),
-    slotIndex: Number(slotIndex || 0),
+  const astralFlowAward = AwardEnemyKoAstralFlow(ctx, deadEnemy, {
     killerUID: Number(currentUID || 0),
   });
-  AwardEnemyKoAstralFlow(ctx, deadEnemy, {
-    killerUID: Number(currentUID || 0),
-  });
-  const idx = entities.findIndex(e => e && e.uid === deadUID);
-  if (idx !== -1) entities.splice(idx, 1);
-  if (g.EnemyDebuffs && g.EnemyDebuffs[deadUID]) delete g.EnemyDebuffs[deadUID];
-  if (g.EnemyDebuffSlots && g.EnemyDebuffSlots[deadUID]) delete g.EnemyDebuffSlots[deadUID];
-  if (g.EnemyDebuffTurns && g.EnemyDebuffTurns[deadUID]) delete g.EnemyDebuffTurns[deadUID];
-  if (g.SelectedEnemyUID === deadUID) g.SelectedEnemyUID = 0;
-  g.EnemySlots[slotIndex] = 0;
-  if (Array.isArray(g.EnemyIDs)) g.EnemyIDs[slotIndex] = 0;
-  markEnemyRespawnPending(ctx, slotIndex);
-  g.IsPlayerBusy = 1;
-  schedulerApplyRemovalCompaction(ctx, deadUID);
-  UpdateEnemyHPUI(ctx);
-  const respawnDelay = Math.max(0.4, (g.DamageTextDurationSec || 1.35));
-  scheduleEnemyRespawnWindow(ctx, slotIndex, respawnDelay);
+  if (astralFlowAward && astralFlowAward.ok && markEnemyDeathVisualHold(ctx, deadEnemy, slotIndex, currentUID)) {
+    g.IsPlayerBusy = 1;
+    UpdateEnemyHPUI(ctx);
+    return;
+  }
+  commitEnemyDeathRemoval(ctx, deadUID, slotIndex, currentUID);
 }
 
 function resolveEnemySlotIndex(ctx, enemyUID, fallbackSlotIndex = 0) {
@@ -7816,27 +7922,15 @@ export function KillEnemyByUID(ctx, enemyUID, fallbackSlotIndex = 0) {
   const currentUID = GetCurrentTurn(ctx);
   const entities = ensureEntities(ctx);
   const deadEnemy = entities.find(e => e && e.uid === targetUID) || null;
-  runTraitHooks(ctx, 'enemy_death', {
-    enemyUID: targetUID,
-    slotIndex: Number(slotIndex || 0),
+  const astralFlowAward = AwardEnemyKoAstralFlow(ctx, deadEnemy, {
     killerUID: Number(currentUID || 0),
   });
-  AwardEnemyKoAstralFlow(ctx, deadEnemy, {
-    killerUID: Number(currentUID || 0),
-  });
-  const idx = entities.findIndex(e => e && e.uid === targetUID);
-  if (idx !== -1) entities.splice(idx, 1);
-  if (g.EnemyDebuffs && g.EnemyDebuffs[targetUID]) delete g.EnemyDebuffs[targetUID];
-  if (g.EnemyDebuffSlots && g.EnemyDebuffSlots[targetUID]) delete g.EnemyDebuffSlots[targetUID];
-  if (g.EnemyDebuffTurns && g.EnemyDebuffTurns[targetUID]) delete g.EnemyDebuffTurns[targetUID];
-  if (g.SelectedEnemyUID === targetUID) g.SelectedEnemyUID = 0;
-  if (Array.isArray(g.EnemySlots) && slotIndex >= 0) g.EnemySlots[slotIndex] = 0;
-  if (Array.isArray(g.EnemyIDs) && slotIndex >= 0) g.EnemyIDs[slotIndex] = 0;
-  markEnemyRespawnPending(ctx, slotIndex);
-  g.IsPlayerBusy = 1;
-  UpdateEnemyHPUI(ctx);
-  const respawnDelay = Math.max(0.4, (g.DamageTextDurationSec || 1.35));
-  scheduleEnemyRespawnWindow(ctx, slotIndex, respawnDelay);
+  if (astralFlowAward && astralFlowAward.ok && markEnemyDeathVisualHold(ctx, deadEnemy, slotIndex, currentUID)) {
+    g.IsPlayerBusy = 1;
+    UpdateEnemyHPUI(ctx);
+    return;
+  }
+  commitEnemyDeathRemoval(ctx, targetUID, slotIndex, currentUID);
 }
 
 export function Add_Gold(ctx, amt) {

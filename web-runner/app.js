@@ -3445,6 +3445,12 @@ async function main(){
       deriveDamageFloatFrameOffset,
       createPartyRegenTickSimulationPacket,
     };
+    astralFlowKoOrbPresentation.prepareAstralFlowKoOrbPresentation({
+      state,
+      worldToCanvas,
+      callFunctionWithContext,
+      fnContext,
+    });
     const result = renderRuntime.renderRuntime(runtimeScope);
     if (result && result.overlayData) {
       state.globals.LastCombatOverlayData = result.overlayData;

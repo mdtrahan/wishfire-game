@@ -30,7 +30,9 @@ async function loadFunctionBank(modulePath) {
 
 module.exports = {
   AwardEnemyKoAstralFlow,
+  BeginAstralFlowKoOrbEnemyDeaths,
   CompleteAstralFlowKoOrbRewards,
+  CommitAstralFlowKoOrbEnemyDeaths,
   KillEnemyAt,
 };`;
   const context = {
@@ -152,7 +154,7 @@ test('enemy KO Astral Flow fixed binary table is shared by runtime and Scripts h
   }
 });
 
-test('enemy KO hook queues Astral Flow orbs before normal removal in both function bank mirrors', async () => {
+test('enemy KO hook holds dead enemy visual until Astral Flow orbs are ready in both function bank mirrors', async () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = await loadFunctionBank(modulePath);
     const ctx = makeKillContext('High Gobloc');
@@ -172,13 +174,31 @@ test('enemy KO hook queues Astral Flow orbs before normal removal in both functi
     assert.equal(g.AstralFlowKoOrbQueue[0].ground.y, 110);
     assert.equal(g.AstralFlowKoOrbQueue[0].color, '#1e7bd6');
     assert.deepEqual(g.AstralFlowKoOrbQueue[0].orbScales, [1, 1.5, 1]);
-    assert.equal(g.DamageTexts.length, 0);
-    assert.equal(ctx.state.entities.some(entity => entity && entity.uid === 300), false);
+	    assert.equal(g.DamageTexts.length, 0);
+	    assert.equal(ctx.state.entities.some(entity => entity && entity.uid === 300), true);
+	    assert.equal(g.EnemySlots[0], 301);
+	    assert.equal(g.EnemyDeathVisualHoldByUID[300].slotIndex, 0);
+	    const heldEnemy = ctx.state.entities.find(entity => entity && entity.uid === 300);
+	    assert.equal(heldEnemy.pendingOfficialDeath, 1);
+	    assert.equal(heldEnemy.deathState, 'pending_attack');
+	    assert.notEqual(heldEnemy.isAlive, false);
 
-    const completed = mod.CompleteAstralFlowKoOrbRewards(ctx);
-    assert.equal(completed.ok, true);
-    assert.equal(completed.appliedCount, 1);
-    assert.equal(g.AstralFlowAmpPoints, 18);
+	    const begun = mod.BeginAstralFlowKoOrbEnemyDeaths(ctx);
+	    assert.equal(begun.ok, true);
+	    assert.equal(begun.hiddenCount, 1);
+	    assert.equal(g.EnemyDeathVisualHoldByUID[300].hiddenForOrb, 1);
+	    assert.equal(heldEnemy.deathState, 'payout');
+	    assert.equal(heldEnemy.deathVisualHiddenForOrb, 1);
+	    assert.equal(ctx.state.entities.some(entity => entity && entity.uid === 300), true);
+	    assert.equal(g.EnemySlots[0], 301);
+
+	    const completed = mod.CompleteAstralFlowKoOrbRewards(ctx);
+	    assert.equal(completed.ok, true);
+	    assert.equal(completed.appliedCount, 1);
+	    assert.equal(ctx.state.entities.some(entity => entity && entity.uid === 300), false);
+	    assert.equal(g.EnemySlots[0], 0);
+	    assert.equal(Object.keys(g.EnemyDeathVisualHoldByUID).length, 0);
+	    assert.equal(g.AstralFlowAmpPoints, 18);
     assert.equal(g.AstralFlowAmpReady, 1);
     assert.equal(g.SkillDraughtPendingOpen, 1);
     assert.equal(g.SkillDraughtPendingHeroUID, 100);
@@ -190,9 +210,11 @@ test('function bank mirrors keep KO reward integration narrow', () => {
   for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
     const src = read(relPath);
     assert.match(src, /applyAstralFlowEnemyKoReward/);
-    assert.match(src, /export function AwardEnemyKoAstralFlow\(ctx, enemy, options = \{\}\)/);
-    assert.match(src, /AwardEnemyKoAstralFlow\(ctx, deadEnemy, \{[\s\S]*killerUID: Number\(currentUID \|\| 0\),[\s\S]*\}\);/);
-    assert.match(src, /export function CompleteAstralFlowKoOrbRewards\(ctx\)/);
+	    assert.match(src, /export function AwardEnemyKoAstralFlow\(ctx, enemy, options = \{\}\)/);
+	    assert.match(src, /AwardEnemyKoAstralFlow\(ctx, deadEnemy, \{[\s\S]*killerUID: Number\(currentUID \|\| 0\),[\s\S]*\}\);/);
+	    assert.match(src, /export function BeginAstralFlowKoOrbEnemyDeaths\(ctx\)/);
+	    assert.match(src, /export function CommitAstralFlowKoOrbEnemyDeaths\(ctx\)/);
+	    assert.match(src, /export function CompleteAstralFlowKoOrbRewards\(ctx\)/);
     const awardStart = src.indexOf('export function AwardEnemyKoAstralFlow');
     const nextFunction = src.indexOf('\nfunction shouldResetAstralFlowAmpOnHeroTurn', awardStart);
     const awardBody = src.slice(awardStart, nextFunction);

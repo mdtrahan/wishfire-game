@@ -476,3 +476,12 @@
 ## 2026-06-25 - Debug Counter Displays Need Label Uniqueness Contracts
 - Counter state can be correct while a diagnostics renderer duplicates a label. For Dev Panel readouts, contract the rendered labels as a display surface, not only the backing counter object.
 - SkillDrawCalls count card appearances, not selections or proc executions. Keep that distinction explicit when reviewing QA screenshots so duplicate display rows are not mistaken for duplicate draw events.
+
+## 2026-06-27 - Death Reward Orbs Need A Death-Visual Barrier
+- If a KO reward has a delayed presentation, do not clear the enemy slot at the reward-queue seam. Hold the 0-HP enemy visual until pending attack/chain visuals finish, then hide that same enemy for reward fallout while keeping the slot occupied.
+- For death reward bugs, contract ordering across all seams: enemy HP can be <= 0 while the slot remains owned, death payout begins only after attack visuals finish, and real slot clear/refill happens only after orb flight completes.
+
+## 2026-06-28 - Death-Visual Barriers Must Use Presentation Clocks
+- Pending-hit arrays are not the whole attack presentation. KO orb fallout must also wait for active hero/enemy action objects and damage text lifetime before beginning the death payout.
+- Do not let the KO queue's own action lock block KO orb preparation; that self-lock is for turn advancement, not for delaying the payout presenter.
+- If a death reward looks like an old enemy or new refill enemy donated the orbs, inspect whether the reward presenter clears the slot before the orb payout completes.

@@ -6,32 +6,60 @@
     ".beads/hot-file-lock/ORKA-rrxj.19.scope": [
       "__MODULE__"
     ],
-    ".beads/interactions.jsonl": [
-      "__MODULE__"
-    ],
     "Scripts/functionBank.js": [
-      "applyPartyMaxHPBonus",
-      "makeStableHeroSkillPointId",
-      "activateMagicFruitSkill"
+      "CompleteAstralFlowKoOrbRewards",
+      "markEnemyDeathVisualHold",
+      "BeginAstralFlowKoOrbEnemyDeaths",
+      "commitEnemyDeathRemoval",
+      "pos"
     ],
-    "tests/magicFruitSkillDraughtContract.test.js": [
-      "makeContext",
-      "installSequenceRandom",
+    "ai-memory/insights.md": [
       "__MODULE__"
+    ],
+    "src/core/enemyRosterStability.mjs": [
+      "isLiveEnemy"
+    ],
+    "tests/astralFlowEnemyKoRewardContract.test.js": [
+      "read",
+      "makeKillContext"
+    ],
+    "tests/astralFlowKoOrbPresentationContract.test.js": [
+      "loadPresentationModule",
+      "makeCanvasRecorder"
+    ],
+    "tests/enemyRefillTurnGateContract.test.js": [
+      "loadSuperGemRuntime"
+    ],
+    "web-runner/app.js": [
+      "drawFrame"
     ],
     "web-runner/modules/functionBank.js": [
-      "applyPartyMaxHPBonus",
-      "makeStableHeroSkillPointId",
-      "activateMagicFruitSkill"
+      "CompleteAstralFlowKoOrbRewards",
+      "markEnemyDeathVisualHold",
+      "BeginAstralFlowKoOrbEnemyDeaths",
+      "commitEnemyDeathRemoval",
+      "pos"
+    ],
+    "web-runner/src/core/enemyRosterStability.mjs": [
+      "isLiveEnemy"
+    ],
+    "web-runner/systems/astralFlowKoOrbPresentation.js": [
+      "hasPendingAttackPresentation",
+      "prepareAstralFlowKoOrbPresentation",
+      "updateAndRenderAstralFlowKoOrbPresentation"
+    ],
+    "web-runner/systems/renderRuntime.js": [
+      "textY"
     ]
   },
   "details": {
     "hot_files_touched": [
       "Scripts/functionBank.js",
+      "web-runner/app.js",
       "web-runner/modules/functionBank.js"
     ],
-    "staged_file_count": 6,
-    "staged_line_count": 133,
+    "staged_file_count": 13,
+    "staged_line_count": 365,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -41,20 +69,34 @@
   "files": [
     ".beads/hot-file-lock/ORKA-rrxj.19.prepared.json",
     ".beads/hot-file-lock/ORKA-rrxj.19.scope",
-    ".beads/interactions.jsonl",
     "Scripts/functionBank.js",
-    "tests/magicFruitSkillDraughtContract.test.js",
-    "web-runner/modules/functionBank.js"
+    "ai-memory/insights.md",
+    "src/core/enemyRosterStability.mjs",
+    "tests/astralFlowEnemyKoRewardContract.test.js",
+    "tests/astralFlowKoOrbPresentationContract.test.js",
+    "tests/enemyRefillTurnGateContract.test.js",
+    "web-runner/app.js",
+    "web-runner/modules/functionBank.js",
+    "web-runner/src/core/enemyRosterStability.mjs",
+    "web-runner/systems/astralFlowKoOrbPresentation.js",
+    "web-runner/systems/renderRuntime.js"
   ],
   "issue_id": "ORKA-rrxj.19",
   "out_of_scope_hot_file_touch": false,
   "significant": true,
   "staged_blobs": {
-    ".beads/hot-file-lock/ORKA-rrxj.19.prepared.json": "13ea2902c63b97c1ddf1cb70a195f59d76de0254",
-    ".beads/hot-file-lock/ORKA-rrxj.19.scope": "651e9c6e1eb8eaabc6b12b9cc4017521680c76d8",
-    ".beads/interactions.jsonl": "da753b3ff63798e534af522a1822d2001f51ca66",
-    "Scripts/functionBank.js": "f1da31af2201cd134d8c186d6527523a804f441a",
-    "tests/magicFruitSkillDraughtContract.test.js": "a37573292515dae1a48ede6cd352c96c465ab57c",
-    "web-runner/modules/functionBank.js": "2a8ee203f7a0d7cf1f823dd1763151f1af24b581"
+    ".beads/hot-file-lock/ORKA-rrxj.19.prepared.json": "2fe67f1d25d40e2322e2adcf0f1953685021d62d",
+    ".beads/hot-file-lock/ORKA-rrxj.19.scope": "958af5b56944321edba713f862858940385cfe0d",
+    "Scripts/functionBank.js": "f8a6b738b0115fb911133c68bd65702ec39155eb",
+    "ai-memory/insights.md": "02bb08b448222250899c7ba00c4e1d550359a8c2",
+    "src/core/enemyRosterStability.mjs": "ba56ca528cb105d6e1e389f97811911901b0f987",
+    "tests/astralFlowEnemyKoRewardContract.test.js": "0f8f5cc4de9416680f978f6b02d47dc63bd9f581",
+    "tests/astralFlowKoOrbPresentationContract.test.js": "2209d4a5d467cdff9277bc598d9b64955ca6e980",
+    "tests/enemyRefillTurnGateContract.test.js": "1e7e4552d3cc13d53e4542250709d1fa7501b1f3",
+    "web-runner/app.js": "c8ad4ae542d349f439aa6eeb341c93c1db1dc735",
+    "web-runner/modules/functionBank.js": "6c004026b4f436f802c3908bc069947417812f2b",
+    "web-runner/src/core/enemyRosterStability.mjs": "ba56ca528cb105d6e1e389f97811911901b0f987",
+    "web-runner/systems/astralFlowKoOrbPresentation.js": "63e53ffddafd83ee3feab87351f45434a7a331c2",
+    "web-runner/systems/renderRuntime.js": "39f4a17251619de402742053a0a8a2f1c4c0be51"
   }
 }

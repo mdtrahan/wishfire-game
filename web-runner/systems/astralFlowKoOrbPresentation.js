@@ -216,8 +216,20 @@ export function drawAstralFlowKoOrbPresentation(ctx, presentation, now) {
   }
 }
 
-export function updateAndRenderAstralFlowKoOrbPresentation({
-  ctx,
+function hasPendingAttackPresentation(globals) {
+  if (!globals || typeof globals !== 'object') return false;
+  const now = numberOr(globals.time, 0);
+  if (Array.isArray(globals.PendingHeroHits) && globals.PendingHeroHits.length > 0) return true;
+  if (Array.isArray(globals.ChainStrikeVisuals) && globals.ChainStrikeVisuals.length > 0) return true;
+  if (Array.isArray(globals.ArcanePulseVisuals) && globals.ArcanePulseVisuals.length > 0) return true;
+  if (globals.HeroAction && globals.HeroAction.active) return true;
+  if (globals.EnemyAction && globals.EnemyAction.active) return true;
+  if (numberOr(globals.TextAnimEndAt, 0) > now) return true;
+  if (Array.isArray(globals.DamageTexts) && globals.DamageTexts.length > 0) return true;
+  return false;
+}
+
+export function prepareAstralFlowKoOrbPresentation({
   state,
   worldToCanvas,
   callFunctionWithContext,
@@ -227,12 +239,36 @@ export function updateAndRenderAstralFlowKoOrbPresentation({
   if (!globals) return { active: false };
   let presentation = globals.AstralFlowKoOrbPresentationState || null;
   if (!presentation && Array.isArray(globals.AstralFlowKoOrbQueue) && globals.AstralFlowKoOrbQueue.length) {
+    if (hasPendingAttackPresentation(globals)) {
+      globals.AstralFlowKoOrbPresentationPending = 1;
+      return { active: false, pending: true };
+    }
+    if (typeof callFunctionWithContext === 'function') {
+      callFunctionWithContext(fnContext, 'BeginAstralFlowKoOrbEnemyDeaths');
+    }
     presentation = createAstralFlowKoOrbPresentation({ globals, worldToCanvas });
     if (presentation) {
       globals.AstralFlowKoOrbPresentationState = presentation;
       globals.AstralFlowKoOrbPresentationActive = 1;
       globals.AstralFlowKoOrbPresentationPending = 0;
     }
+  }
+  if (presentation) return { active: true, prepared: true };
+  return { active: false };
+}
+
+export function updateAndRenderAstralFlowKoOrbPresentation({
+  ctx,
+  state,
+  callFunctionWithContext,
+  fnContext,
+} = {}) {
+  const globals = state?.globals;
+  if (!globals) return { active: false };
+  const presentation = globals.AstralFlowKoOrbPresentationState || null;
+  if (!presentation && Array.isArray(globals.AstralFlowKoOrbQueue) && globals.AstralFlowKoOrbQueue.length) {
+    globals.AstralFlowKoOrbPresentationPending = 1;
+    return { active: false, pending: true };
   }
   if (!presentation) return { active: false };
 
