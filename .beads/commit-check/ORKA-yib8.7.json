@@ -1,0 +1,37 @@
+{
+  "changed_functions": {
+    ".beads/interactions.jsonl": [
+      "__MODULE__"
+    ],
+    "src/core/initiativeGuards.mjs": [
+      "shouldAutoCorrectImproperRepeat",
+      "sanitizeInitiativeQueue"
+    ],
+    "tests/turnSchedulerRepeatGuardContract.test.js": [
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 3,
+    "staged_line_count": 104,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/interactions.jsonl",
+    "src/core/initiativeGuards.mjs",
+    "tests/turnSchedulerRepeatGuardContract.test.js"
+  ],
+  "issue_id": "ORKA-yib8.7",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/interactions.jsonl": "b365c7af8d0c7608bfd834e046b2f4ca025283dd",
+    "src/core/initiativeGuards.mjs": "47cc14ff9d69853a03608497c3e399c040e36607",
+    "tests/turnSchedulerRepeatGuardContract.test.js": "23c3d3722840772c76ebbb97225eb6982a2f921d"
+  }
+}
