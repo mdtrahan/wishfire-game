@@ -4,6 +4,7 @@
 - Make symbol-level code exploration the default for large-file analysis work.
 - Reduce brute-force full-file reads in hot runtime files.
 - Improve precision and speed when tracing ownership, lifecycle, and cross-file dependencies.
+- Scope this doc to `jcodemunch-mcp`; full retrieval precedence lives in `governance/execution/repo-context-retrieval.md`.
 
 ## Preferred Use
 - Use `jcodemunch-mcp` for:
