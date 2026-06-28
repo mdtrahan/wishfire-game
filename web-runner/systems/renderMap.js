@@ -1,4 +1,64 @@
 import * as renderSystem from './renderSystem.js';
+import {
+  DEFAULT_WORLD_MAP_GRID,
+  getWorldMapCoordinateAtPoint,
+  getWorldMapGridLines,
+  indexToColumnLabel,
+} from '../src/core/worldMapCoordinates.mjs';
+
+function drawLine(ctx, fromX, fromY, toX, toY) {
+  ctx.beginPath();
+  ctx.moveTo(fromX, fromY);
+  ctx.lineTo(toX, toY);
+  ctx.stroke();
+}
+
+export function drawWorldMapCoordinateGrid(ctx, lastRender, options = {}) {
+  if (!options.visible || !lastRender) return { visible: false };
+  const grid = options.grid || DEFAULT_WORLD_MAP_GRID;
+  const xScale = lastRender.drawW / grid.width;
+  const yScale = lastRender.drawH / grid.height;
+  const lines = getWorldMapGridLines(grid);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(lastRender.drawX, lastRender.drawY, lastRender.drawW, lastRender.drawH);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.34)';
+  ctx.lineWidth = 1;
+  for (const worldX of lines.vertical) {
+    const x = lastRender.drawX + worldX * xScale;
+    drawLine(ctx, x, lastRender.drawY, x, lastRender.drawY + lastRender.drawH);
+  }
+  for (const worldY of lines.horizontal) {
+    const y = lastRender.drawY + worldY * yScale;
+    drawLine(ctx, lastRender.drawX, y, lastRender.drawX + lastRender.drawW, y);
+  }
+
+  const cellW = lastRender.drawW / grid.columns;
+  const cellH = lastRender.drawH / grid.rows;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.68)';
+  ctx.font = `${Math.max(8, Math.min(12, Math.round(cellH * 0.34)))}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (let columnIndex = 0; columnIndex < grid.columns; columnIndex += 1) {
+    const column = indexToColumnLabel(columnIndex);
+    for (let rowIndex = 0; rowIndex < grid.rows; rowIndex += 1) {
+      const coordinate = `${column}${String(rowIndex + 1).padStart(grid.rowPad, '0')}`;
+      const x = lastRender.drawX + columnIndex * cellW + cellW / 2;
+      const y = lastRender.drawY + rowIndex * cellH + cellH / 2;
+      ctx.fillText(coordinate, x, y);
+    }
+  }
+  ctx.restore();
+
+  return {
+    visible: true,
+    gridId: grid.id,
+    columns: grid.columns,
+    rows: grid.rows,
+  };
+}
 
 export function renderMap(ctx, gameState, uiState, mapLayoutState, dims) {
   const viewWidth = Number(dims?.viewWidth || 0);
@@ -49,6 +109,19 @@ export function renderMap(ctx, gameState, uiState, mapLayoutState, dims) {
 
   const verticalFitScale = mapBackgroundImage ? (viewHeight / mapBackgroundImage.height) : 1;
   drawParallax(mapBackgroundImage, verticalFitScale, 0.95);
+  if (lastRender) {
+    const xScale = lastRender.drawW / DEFAULT_WORLD_MAP_GRID.width;
+    const yScale = lastRender.drawH / DEFAULT_WORLD_MAP_GRID.height;
+    const centerWorldX = (viewWidth / 2 - lastRender.drawX) / xScale;
+    const centerWorldY = (viewHeight / 2 - lastRender.drawY) / yScale;
+    lastRender.centerCoordinate = getWorldMapCoordinateAtPoint(centerWorldX, centerWorldY);
+    const coordinateGridDevOverlayVisible = Boolean(dims?.coordinateGridDevOverlayEnabled)
+      && Boolean(mapLayoutState?.showCoordinateGrid);
+    lastRender.gridOverlay = drawWorldMapCoordinateGrid(ctx, lastRender, {
+      visible: coordinateGridDevOverlayVisible,
+      grid: DEFAULT_WORLD_MAP_GRID,
+    });
+  }
 
   const meterPad = 14;
   const meterW = Math.max(180, viewWidth - (meterPad * 2));

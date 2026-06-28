@@ -151,7 +151,7 @@ export async function loadRuntimeVisualAssets({
       gemVisualLoads,
       (async () => { heroSelectorImage = await loadImage(assetUrl('images/h_selector-animation 1-000.png')); })(),
       (async () => { images.SkillArcanePulse = await loadImage(assetUrl('images/skill_arcane_pulse_96x96.png')); })(),
-      (async () => { mapBackgroundImage = await loadImage(assetUrl('images/map-layout.png')); })(),
+      (async () => { mapBackgroundImage = await loadImage(assetUrl('images/genielands-geography.png')); })(),
       (async () => { plusIconImage = await plusPromise; })(),
       (async () => { minusIconImage = await minusPromise; })(),
       (async () => { heroBackArrowImage = await loadImage(FIGMA_HERO_BACK_URL); })(),
