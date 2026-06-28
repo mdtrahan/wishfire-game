@@ -1,0 +1,56 @@
+{
+  "changed_functions": {
+    ".beads/interactions.jsonl": [
+      "__MODULE__"
+    ],
+    "Scripts/functionBank.js": [
+      "makeStableHeroSkillPointId"
+    ],
+    "tests/fazeSkillDraughtContract.test.js": [
+      "dotTickSeries"
+    ],
+    "tests/heroSkillDefinitionRegistryContract.test.js": [
+      "extractFunctionSource",
+      "__MODULE__"
+    ],
+    "tests/magicFruitSkillDraughtContract.test.js": [
+      "installSequenceRandom",
+      "__MODULE__"
+    ],
+    "web-runner/modules/functionBank.js": [
+      "makeStableHeroSkillPointId"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "Scripts/functionBank.js",
+      "web-runner/modules/functionBank.js"
+    ],
+    "staged_file_count": 6,
+    "staged_line_count": 50,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/interactions.jsonl",
+    "Scripts/functionBank.js",
+    "tests/fazeSkillDraughtContract.test.js",
+    "tests/heroSkillDefinitionRegistryContract.test.js",
+    "tests/magicFruitSkillDraughtContract.test.js",
+    "web-runner/modules/functionBank.js"
+  ],
+  "issue_id": "ORKA-rrxj.18",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/interactions.jsonl": "dceda377554be3bd745025f13ee565f98b51776f",
+    "Scripts/functionBank.js": "bd346b687d5d9c510fd1edb874f52af67aa6c025",
+    "tests/fazeSkillDraughtContract.test.js": "da48eb754c9d8edb1238e5a312b400351652bc82",
+    "tests/heroSkillDefinitionRegistryContract.test.js": "cd266481b471a0716a4fdd2b91f879d4eeda7936",
+    "tests/magicFruitSkillDraughtContract.test.js": "ca7bcf8971aa6f6754302faaa29b7ff4c7291ec1",
+    "web-runner/modules/functionBank.js": "a88871a61eb9c01af7007d594c9fbebd9aa6946d"
+  }
+}
