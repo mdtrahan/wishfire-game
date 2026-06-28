@@ -19,6 +19,7 @@
 
 ## Work Guidance
 - Separate product truth, implementation plans, audit evidence, and process method docs.
+- For repo-context retrieval, follow `execution/repo-context-retrieval.md` before adding more always-on guidance to root `AGENTS.md`.
 - When docs disagree, preserve the conflict and ask or create a decision bead rather than flattening it.
 - Avoid turning governance docs into event logs; record reusable rules, decisions, and evidence.
 

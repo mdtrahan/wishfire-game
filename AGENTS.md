@@ -109,16 +109,20 @@ Avoid:
 - unnecessary full test suites
 
 ## Retrieval
-For code-location, ownership, dependency, or call-path questions, first use `jcodemunch-mcp`.
+Use `codebase-memory` as the first project-wide knowledge layer after required startup/DOX reads. It is the default for repo maps, architecture summaries, hotspots, indexed doc/code search, and symbol discovery when the project is indexed.
+
+Use `jcodemunch-mcp` when the question needs exact code-location, ownership, dependency, import, or call-path evidence. If a question is purely about one symbol or hot file, `jcodemunch-mcp` may be first; if it is broader repo context, start with `codebase-memory` then narrow with `jcodemunch-mcp`.
 
 Retrieval Receipt is required for code-location, ownership, dependency, or call-path answers:
 - tool used
-- if not `jcodemunch-mcp`, why not
+- if not `codebase-memory` or `jcodemunch-mcp`, why not
 - repo/query used
 - files/symbols retrieved
 - whether full-file reads were avoided
 
-Prefer indexed symbol/text search before full-file reads. Use focused `rg -l` or `rg -n -m` after indexed retrieval or when searching docs/data/non-code files.
+Use connectors/MCPs for external systems only when the local repo and indexed tools cannot answer. Use focused `rg -l` or `rg -n -m` only after indexed retrieval, when searching docs/data/non-code files, or when validating exact text.
+
+Detailed routing: `governance/execution/repo-context-retrieval.md`.
 
 ## Containment
 - First command: `pwd`.
