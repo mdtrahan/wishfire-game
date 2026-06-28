@@ -1,0 +1,17 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "makeStableHeroSkillPointId"
+      ],
+      "staged_blob": "bd346b687d5d9c510fd1edb874f52af67aa6c025"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "makeStableHeroSkillPointId"
+      ],
+      "staged_blob": "a88871a61eb9c01af7007d594c9fbebd9aa6946d"
+    }
+  },
+  "issue_id": "ORKA-rrxj.18"
+}

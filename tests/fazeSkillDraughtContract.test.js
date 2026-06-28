@@ -98,18 +98,15 @@ function dotTickSeries(totalDamage, totalTicks = 3) {
 
 test('Faze is a mirrored party draw option that owns the tainted-ground payload', () => {
   const expectedExistingPartyIds = [
-    'party_fresh_start',
-    'party_second_chance',
-    'party_momentum',
-    'party_guard_rail',
-    'party_blue_spark',
-    'party_weaken',
     'party_destiny',
-    'party_hot_streak',
-    'party_last_push',
-    'party_chain_pop',
     'party_magic_fruit',
     'party_crimson_ward',
+    'party_faze',
+    'party_grow',
+    'party_chain_strike_i',
+    'party_chain_strike_ii',
+    'party_arcane_pulse',
+    'party_split',
   ];
 
   for (const filePath of [runtimePath, scriptsPath]) {
@@ -123,8 +120,7 @@ test('Faze is a mirrored party draw option that owns the tainted-ground payload'
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const partyIds = Array.from(mod.GetPartySkillDefinitions(), skill => skill.id);
-    assert.deepEqual(partyIds.slice(0, expectedExistingPartyIds.length), expectedExistingPartyIds);
-    assert.equal(partyIds[expectedExistingPartyIds.length], 'party_faze');
+    assert.deepEqual(partyIds, expectedExistingPartyIds);
 
     const { ctx, calls } = makeContext();
     const opened = mod.ForceAstralFlowSkillDraught(ctx, 100, 'party_faze');
