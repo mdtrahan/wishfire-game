@@ -1872,6 +1872,16 @@ export function ClearSessionSkillDraught(ctx) {
   g.SessionSkillsByHeroUID = {};
   g.SkillDraughtOneOffExposureBySkillId = {};
   g.SkillDraughtLastForcedSkillSuppressedReason = '';
+  g.HeroTempSkillStateByUID = {};
+  g.SessionSkillPassivesByHeroUID = {};
+  g.SkillProcTrace = [];
+  g.SkillProcTraceSeq = 0;
+  g.PartyDestinyAttempts = 0;
+  g.PartyDestinyProcs = 0;
+  g.PartyDestinyHeals = 0;
+  g.PartyDestinyMisses = 0;
+  g.PartyDestinyLastResult = '';
+  g.LastPartyDestiny = null;
   clearGrowSkillState(ctx);
   appendSkillDraughtTrace(g, 'clear', {});
   return { ok: true };

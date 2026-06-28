@@ -1,0 +1,17 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "ClearSessionSkillDraught"
+      ],
+      "staged_blob": "da8ef794efb25a8459cd3606313320761b3068bf"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "ClearSessionSkillDraught"
+      ],
+      "staged_blob": "4b06521a7e32cf1e2403c07f0549b73e126cd8c2"
+    }
+  },
+  "issue_id": "ORKA-p3rw"
+}
