@@ -485,3 +485,9 @@
 - Pending-hit arrays are not the whole attack presentation. KO orb fallout must also wait for active hero/enemy action objects and damage text lifetime before beginning the death payout.
 - Do not let the KO queue's own action lock block KO orb preparation; that self-lock is for turn advancement, not for delaying the payout presenter.
 - If a death reward looks like an old enemy or new refill enemy donated the orbs, inspect whether the reward presenter clears the slot before the orb payout completes.
+
+## 2026-06-28 - Generated Attack Branches Must Rejoin Party Skill Hooks
+- If a skill replaces the normal hero attack path and returns early, explicitly rejoin downstream party-skill hooks such as Arcane Pulse after the generated attack packets are queued.
+- Regression tests for interacting party skills should assert both packet families in one action, for example Split AOE packets plus the later Arcane Pulse bonus packet.
+- Bonus attack visuals need their own presentation clearance, not only an impact timestamp. If a bonus hit has a distinct visual/damage-float identity, keep the action lane locked through the float lifetime and pass the text kind directly into damage application instead of relying only on pending-hit matching.
+- Damage text recency should be explicit. Assign a monotonic layer at spawn time and render lower layers first so newer attack numbers can visually supersede lingering floats without deleting the older presentation.

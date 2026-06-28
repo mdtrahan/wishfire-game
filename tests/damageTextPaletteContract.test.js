@@ -11,7 +11,7 @@ test('damage application can route a dedicated floating-text kind through both f
   const runtimeSrc = read('web-runner/modules/functionBank.js');
   const scriptsSrc = read('Scripts/functionBank.js');
   for (const src of [runtimeSrc, scriptsSrc]) {
-    assert.match(src, /const damageTextKind = String\(g\.NextDamageTextKind \|\| 'damage'\);/);
+    assert.match(src, /const damageTextKind = String\(g\.NextDamageTextKind \|\| getPendingDamageTextKind\(ctx, uid, dmg, opts\) \|\| 'damage'\);/);
     assert.match(src, /SpawnDamageText\(ctx, appliedDamage, dx, dy, damageTextKind, t\.kind \|\| null/);
     assert.match(src, /delete g\.NextDamageTextKind;/);
   }
@@ -43,15 +43,37 @@ test('dom and canvas fallback preserve energy floating text as a readout effect'
   const appSrc = read('web-runner/app.js');
   const renderSrc = read('web-runner/systems/renderRuntime.js');
   assert.match(appSrc, /const isEnergyText = d\.targetKind === 'energy' \|\| d\.kind === 'energy';/);
+  assert.match(appSrc, /const domKind = isEnergyText/);
   assert.match(appSrc, /const xOffset = d\.targetKind === 'hero' \? -10 : \(d\.targetKind === 'ward' \? 0 : \(d\.canvasAnchored \? 0 : 10\)\);/);
   assert.match(appSrc, /const pos = d\.canvasAnchored/);
   assert.match(appSrc, /const text = isEnergyText/);
   assert.match(appSrc, /\?\s*`\+\$\{formatDamageValue\(\{ value: d\.amount, type: 'heal', isCrit \}\)\}`/);
-  assert.match(appSrc, /kind: isEnergyText \? 'energy' : \(d\.kind === 'heal' \? 'heal' : \(d\.kind === 'ward' \? 'ward' : 'damage'\)\)/);
-  assert.match(renderSrc, /const kind = d\.kind === 'heal' \|\| d\.kind === 'energy' \|\| d\.kind === 'ward' \? d\.kind : 'damage';/);
+  assert.match(appSrc, /kind: domKind,/);
+  assert.match(renderSrc, /const kind = d\.kind === 'heal' \|\| d\.kind === 'energy' \|\| d\.kind === 'ward' \|\| d\.kind === 'arcane_pulse' \? d\.kind : 'damage';/);
   assert.match(renderSrc, /const xOffset = d\.targetKind === 'hero' \? -10 : \(d\.targetKind === 'ward' \? 0 : \(d\.canvasAnchored \? 0 : 10\)\);/);
   assert.match(renderSrc, /d\.targetKind === 'bar' \|\| d\.targetKind === 'energy'/);
   assert.match(renderSrc, /if \(kind === 'energy'\) \{/);
+});
+
+test('damage floating text has explicit global recency layers across spawn and render paths', () => {
+  const runtimeSrc = read('web-runner/modules/functionBank.js');
+  const scriptsSrc = read('Scripts/functionBank.js');
+  const appSrc = read('web-runner/app.js');
+  const renderSrc = read('web-runner/systems/renderRuntime.js');
+  const animationSrc = read('web-runner/src/core/damageNumberAnimation.mjs');
+
+  for (const src of [runtimeSrc, scriptsSrc]) {
+    assert.match(src, /g\.DamageTextLayerSeq = Number\(g\.DamageTextLayerSeq \|\| 0\) \+ 1;/);
+    assert.match(src, /const zIndex = g\.DamageTextLayerSeq;/);
+    assert.match(src, /zIndex,/);
+  }
+  assert.match(appSrc, /const layeredTexts = texts/);
+  assert.match(appSrc, /\.sort\(\(a, b\) => \(Number\(a\.d\?\.zIndex \|\| 0\) \|\| a\.index\) - \(Number\(b\.d\?\.zIndex \|\| 0\) \|\| b\.index\)\)/);
+  assert.match(appSrc, /zIndex: Number\(d\.zIndex \|\| entry\.index \|\| 0\),/);
+  assert.match(renderSrc, /const layeredDamageTexts = dmgTexts/);
+  assert.match(renderSrc, /\.sort\(\(a, b\) => \(Number\(a\.d\?\.zIndex \|\| 0\) \|\| a\.index\) - \(Number\(b\.d\?\.zIndex \|\| 0\) \|\| b\.index\)\)/);
+  assert.match(animationSrc, /zIndex = 4,/);
+  assert.match(animationSrc, /wrapper\.style\.zIndex = String\(Math\.max\(4, Math\.floor\(Number\(zIndex \|\| 0\)\)\)\);/);
 });
 
 test('dom floating numbers apply outlined gradients, glow, and squash-stretch for damage\/heal\/energy', () => {
@@ -101,6 +123,7 @@ test('damage floating text disperses upward and damage tiers scale by amount', (
   }
 
   assert.match(appSrc, /amount: d\.amount,/);
+  assert.match(appSrc, /zIndex: Number\(d\.zIndex \|\| entry\.index \|\| 0\),/);
   assert.match(appSrc, /partyMaxHP: d\.partyMaxHP,/);
   assert.match(appSrc, /floatAngleDeg: d\.floatAngleDeg,/);
   assert.match(animationSrc, /partyMaxHP = 0,/);
@@ -117,7 +140,8 @@ test('damage floating text disperses upward and damage tiers scale by amount', (
   assert.match(renderSrc, /const floatOffset = deriveDamageFloatFrameOffset\(d, floatProgress\);/);
   assert.match(renderSrc, /baseX \+ xOffset \+ floatOffset\.x/);
   assert.match(renderSrc, /baseY \+ floatOffset\.y/);
-  assert.match(renderSrc, /const isWeakDamage = kind === 'damage' && Number\(d\.amount\) < 10;\\n\s*const isLargeDamage = kind === 'damage' && Number\(d\.partyMaxHP\) > 0 && Number\(d\.amount\) > Number\(d\.partyMaxHP\) \* 0\.5;\\n\s*const fontBaseSize = isWeakDamage \? 22 \* 0\.75 : \(isLargeDamage \? 22 \* 1\.2 : \(d\.isCrit \? 26 : 22\)\);\\n\s*const fontSize = isWeakDamage \? scaleFont\(fontBaseSize\) : Math\.max\(scaleFont\(fontBaseSize\), 12\);/);
+  assert.match(renderSrc, /const damageTextType = kind === 'heal' \|\| kind === 'energy' \? 'heal' : 'damage';/);
+  assert.match(renderSrc, /const isWeakDamage = damageTextType === 'damage' && Number\(d\.amount\) < 10;\\n\s*const isLargeDamage = damageTextType === 'damage' && Number\(d\.partyMaxHP\) > 0 && Number\(d\.amount\) > Number\(d\.partyMaxHP\) \* 0\.5;\\n\s*const fontBaseSize = isWeakDamage \? 22 \* 0\.75 : \(isLargeDamage \? 22 \* 1\.2 : \(d\.isCrit \? 26 : 22\)\);\\n\s*const fontSize = isWeakDamage \? scaleFont\(fontBaseSize\) : Math\.max\(scaleFont\(fontBaseSize\), 12\);/);
 });
 
 test('Kojonn dot paths explicitly arm dot floating-text kind before damage application', () => {

@@ -1,0 +1,33 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "makeStableHeroSkillPointId",
+        "queuePartyArcanePulse",
+        "getPendingDamageTextKind",
+        "pos",
+        "HeroAttackSplit",
+        "SpawnDamageText"
+      ],
+      "staged_blob": "57c3f2003ff70ea9736bae935767aa52b2d2153a"
+    },
+    "web-runner/app.js": {
+      "functions": [
+        "spawnPendingDamageNumbers"
+      ],
+      "staged_blob": "8e3c15d88789178fdc6a15c026b4216adbb5666e"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "makeStableHeroSkillPointId",
+        "queuePartyArcanePulse",
+        "getPendingDamageTextKind",
+        "pos",
+        "HeroAttackSplit",
+        "SpawnDamageText"
+      ],
+      "staged_blob": "b0c96fbe40ef3e2733fc7720240debc797ef5a01"
+    }
+  },
+  "issue_id": "ORKA-iqg1"
+}

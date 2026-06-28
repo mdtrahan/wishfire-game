@@ -1,0 +1,3 @@
+Scripts/functionBank.js:makeStableHeroSkillPointId,queuePartyArcanePulse,getPendingDamageTextKind,pos,HeroAttackSplit,SpawnDamageText
+web-runner/app.js:spawnPendingDamageNumbers
+web-runner/modules/functionBank.js:makeStableHeroSkillPointId,queuePartyArcanePulse,getPendingDamageTextKind,pos,HeroAttackSplit,SpawnDamageText

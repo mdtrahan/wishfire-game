@@ -1115,6 +1115,7 @@ const PARTY_ARCANE_PULSE_ID = 'party_arcane_pulse';
 const PARTY_ARCANE_PULSE_DAMAGE = 12;
 const PARTY_ARCANE_PULSE_TRIGGER_EVERY = 2;
 const PARTY_ARCANE_PULSE_VISUAL_KEY = 'arcane_pulse_burst';
+const PARTY_ARCANE_PULSE_DAMAGE_TEXT_CLEAR_SEC = 0.18 + 0.7 + 0.45;
 function cloneSkillMetadata(value) {
   if (Array.isArray(value)) return value.map(item => cloneSkillMetadata(item));
   if (value && typeof value === 'object') {
@@ -2584,6 +2585,7 @@ function queuePartyArcanePulse(ctx, { heroUID = 0, targetUID = 0, applyAt = 0, a
   const normalImpactAt = Number(applyAt || now);
   const startAt = Math.max(now + 0.2, normalImpactAt + 0.24);
   const pulseAt = startAt + 0.24;
+  const visualClearAt = pulseAt + PARTY_ARCANE_PULSE_DAMAGE_TEXT_CLEAR_SEC;
   const damage = Math.max(1, Math.floor(PARTY_ARCANE_PULSE_DAMAGE));
   g.PendingHeroHits = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
   g.PendingHeroHits.push({
@@ -2598,7 +2600,8 @@ function queuePartyArcanePulse(ctx, { heroUID = 0, targetUID = 0, applyAt = 0, a
     sourceUID: Number(heroUID || 0),
     suppressPartySkillHitHooks: 1,
     suppressHitFlash: 1,
-    suppressDamageText: 1,
+    damageTextKind: 'arcane_pulse',
+    presentationClearAt: visualClearAt,
     suppressAttackSkillBounds: 1,
     bonusDamageOnly: 1,
     effectType: 'arcane_pulse',
@@ -2619,8 +2622,9 @@ function queuePartyArcanePulse(ctx, { heroUID = 0, targetUID = 0, applyAt = 0, a
   g.LastPartyArcanePulse.normalImpactAt = normalImpactAt;
   g.LastPartyArcanePulse.visualStartAt = startAt;
   g.LastPartyArcanePulse.impactAt = pulseAt;
+  g.LastPartyArcanePulse.visualClearAt = visualClearAt;
   g.LastPartyArcanePulse.sequence = 'attack_then_bonus_pulse';
-  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), pulseAt + 0.28);
+  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), visualClearAt);
   g.DeferAdvance = 1;
   g.AdvanceAfterAction = 1;
   return true;
@@ -5973,6 +5977,13 @@ function shouldSuppressDamageText(ctx, uid, dmg, options = undefined) {
   return !!findMatchingPendingHeroHit(ctx, uid, dmg, (hit) => Number(hit.suppressDamageText || 0) > 0);
 }
 
+function getPendingDamageTextKind(ctx, uid, dmg, options = undefined) {
+  const opts = options && typeof options === 'object' ? options : {};
+  if (opts.damageTextKind != null && String(opts.damageTextKind || '')) return String(opts.damageTextKind || '');
+  const hit = findMatchingPendingHeroHit(ctx, uid, dmg, (entry) => entry.damageTextKind != null && String(entry.damageTextKind || ''));
+  return hit ? String(hit.damageTextKind || '') : '';
+}
+
 export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   const g = getGlobals(ctx);
   const opts = options && typeof options === 'object' ? options : {};
@@ -6085,7 +6096,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
     SpawnDamageText(ctx, shieldAbsorbed, wardTextPos.x, wardTextPos.y, 'ward', 'ward');
   }
   if (appliedDamage > 0 && dx != null && dy != null && g.SpawnDamageText !== 0 && !suppressDamageText) {
-    const damageTextKind = String(g.NextDamageTextKind || 'damage');
+    const damageTextKind = String(g.NextDamageTextKind || getPendingDamageTextKind(ctx, uid, dmg, opts) || 'damage');
     SpawnDamageText(ctx, appliedDamage, dx, dy, damageTextKind, t.kind || null);
   }
   delete g.NextDamageTextKind;
@@ -7158,6 +7169,7 @@ function HeroAttackSplit(ctx, heroUID, rootTargetUID) {
       allowedLivingEnemyUIDs: postAoeLivingUIDs,
     });
   }
+  queuePartyArcanePulse(ctx, { heroUID, targetUID: rootTargetUID, applyAt, mode, actorName });
   LogCombat(ctx, `${actorName} used Split on all enemies for ${totalDamage}!`);
 }
 
@@ -10031,8 +10043,11 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
   const riseInSec = 0.18;
   const holdSec = 0.7;
   const fadeSec = 0.45;
+  g.DamageTextLayerSeq = Number(g.DamageTextLayerSeq || 0) + 1;
+  const zIndex = g.DamageTextLayerSeq;
   g.DamageTexts.push({
     amount,
+    zIndex,
     partyMaxHP,
     x: drawX,
     y: drawY,
