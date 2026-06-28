@@ -270,3 +270,4 @@
 {"id":"int-3edfb2d7","kind":"field_change","created_at":"2026-06-27T20:23:34.947481Z","actor":"mdtrahan","issue_id":"ORKA-rrxj.19","extra":{"field":"status","new_value":"open","old_value":"in_progress"}}
 {"id":"int-0020cf24","kind":"field_change","created_at":"2026-06-28T05:21:13.415973Z","actor":"mdtrahan","issue_id":"ORKA-rrxj.19","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}
 {"id":"int-e67ec047","kind":"field_change","created_at":"2026-06-28T19:45:09.423137Z","actor":"mdtrahan","issue_id":"ORKA-rrxj.19","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"QA PASS: KO orb payout now owns enemy slots through orb delivery; Arcane Pulse blue damage text and layering preserved; focused combat gates passed."}}
+{"id":"int-aa2a4305","kind":"field_change","created_at":"2026-06-28T21:14:14.101557Z","actor":"mdtrahan","issue_id":"ORKA-n9v2","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}
