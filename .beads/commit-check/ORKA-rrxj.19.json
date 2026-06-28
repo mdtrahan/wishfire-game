@@ -10,19 +10,39 @@
       "__MODULE__"
     ],
     "Scripts/functionBank.js": [
-      "applyPartyMaxHPBonus",
-      "makeStableHeroSkillPointId",
-      "activateMagicFruitSkill"
+      "ensureEnemyDeathVisualHoldMap",
+      "markEnemyDeathVisualHold",
+      "clearEnemyDeathVisualHold",
+      "commitEnemyDeathRemoval",
+      "CommitAstralFlowKoOrbEnemyDeaths",
+      "KillEnemyAt",
+      "KillEnemyByUID"
     ],
-    "tests/magicFruitSkillDraughtContract.test.js": [
-      "makeContext",
-      "installSequenceRandom",
+    "ai-memory/insights.md": [
       "__MODULE__"
     ],
+    "tests/astralFlowEnemyKoRewardContract.test.js": [
+      "read",
+      "makeKillContext"
+    ],
+    "tests/astralFlowKoOrbPresentationContract.test.js": [
+      "makeCanvasRecorder"
+    ],
     "web-runner/modules/functionBank.js": [
-      "applyPartyMaxHPBonus",
-      "makeStableHeroSkillPointId",
-      "activateMagicFruitSkill"
+      "ensureEnemyDeathVisualHoldMap",
+      "markEnemyDeathVisualHold",
+      "clearEnemyDeathVisualHold",
+      "commitEnemyDeathRemoval",
+      "CommitAstralFlowKoOrbEnemyDeaths",
+      "KillEnemyAt",
+      "KillEnemyByUID"
+    ],
+    "web-runner/systems/astralFlowKoOrbPresentation.js": [
+      "hasPendingAttackPresentation",
+      "updateAndRenderAstralFlowKoOrbPresentation"
+    ],
+    "web-runner/systems/renderRuntime.js": [
+      "textY"
     ]
   },
   "details": {
@@ -30,8 +50,8 @@
       "Scripts/functionBank.js",
       "web-runner/modules/functionBank.js"
     ],
-    "staged_file_count": 6,
-    "staged_line_count": 133,
+    "staged_file_count": 10,
+    "staged_line_count": 309,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -43,18 +63,26 @@
     ".beads/hot-file-lock/ORKA-rrxj.19.scope",
     ".beads/interactions.jsonl",
     "Scripts/functionBank.js",
-    "tests/magicFruitSkillDraughtContract.test.js",
-    "web-runner/modules/functionBank.js"
+    "ai-memory/insights.md",
+    "tests/astralFlowEnemyKoRewardContract.test.js",
+    "tests/astralFlowKoOrbPresentationContract.test.js",
+    "web-runner/modules/functionBank.js",
+    "web-runner/systems/astralFlowKoOrbPresentation.js",
+    "web-runner/systems/renderRuntime.js"
   ],
   "issue_id": "ORKA-rrxj.19",
   "out_of_scope_hot_file_touch": false,
   "significant": true,
   "staged_blobs": {
-    ".beads/hot-file-lock/ORKA-rrxj.19.prepared.json": "13ea2902c63b97c1ddf1cb70a195f59d76de0254",
-    ".beads/hot-file-lock/ORKA-rrxj.19.scope": "651e9c6e1eb8eaabc6b12b9cc4017521680c76d8",
-    ".beads/interactions.jsonl": "da753b3ff63798e534af522a1822d2001f51ca66",
-    "Scripts/functionBank.js": "f1da31af2201cd134d8c186d6527523a804f441a",
-    "tests/magicFruitSkillDraughtContract.test.js": "a37573292515dae1a48ede6cd352c96c465ab57c",
-    "web-runner/modules/functionBank.js": "2a8ee203f7a0d7cf1f823dd1763151f1af24b581"
+    ".beads/hot-file-lock/ORKA-rrxj.19.prepared.json": "57a38d1ce09895ea5376e492a149537acc8b4b4f",
+    ".beads/hot-file-lock/ORKA-rrxj.19.scope": "539dd16c829e4d71ebef75d24760f79c07ce0637",
+    ".beads/interactions.jsonl": "d83eabc09b0207ad7d608657d75d3801b92f2f5c",
+    "Scripts/functionBank.js": "448ba5c215021c121d2649e6e835f9388b990977",
+    "ai-memory/insights.md": "5f3f3afe3aeaf6b26d6619da6d885383a13649fd",
+    "tests/astralFlowEnemyKoRewardContract.test.js": "26e37d7f3ddbfd2e958267152954949a85c02804",
+    "tests/astralFlowKoOrbPresentationContract.test.js": "6d489e72e0cfad9640f72eb6cc889b3083e65d34",
+    "web-runner/modules/functionBank.js": "fc021de6a24cac54f73d114bf7251d9bb1bf9e21",
+    "web-runner/systems/astralFlowKoOrbPresentation.js": "eb53e38a84b76d56af75eb6d5ba3fea29595b58b",
+    "web-runner/systems/renderRuntime.js": "885c881a1c9a2fbf1c7a785d4bfc318b3df9e0aa"
   }
 }

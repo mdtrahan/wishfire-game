@@ -88,7 +88,7 @@ test('Astral Flow KO orb presentation waits until dissolve completion before app
 
   mod.updateAndRenderAstralFlowKoOrbPresentation(deps);
 
-  assert.equal(completed.length, 0);
+  assert.deepEqual(completed, ['CommitAstralFlowKoOrbEnemyDeaths']);
   assert.equal(globals.AstralFlowKoOrbPresentationActive, 1);
   assert.equal(globals.AstralFlowKoOrbPresentationState.orbs.length, 7);
   assert.equal(globals.ActionLockUntil, globals.AstralFlowKoOrbPresentationState.endAt);
@@ -98,13 +98,62 @@ test('Astral Flow KO orb presentation waits until dissolve completion before app
 
   globals.time = globals.AstralFlowKoOrbPresentationState.endAt - 0.01;
   mod.updateAndRenderAstralFlowKoOrbPresentation(deps);
-  assert.equal(completed.length, 0);
+  assert.equal(completed.length, 1);
 
   globals.time = globals.AstralFlowKoOrbPresentationState.endAt + 0.01;
   mod.updateAndRenderAstralFlowKoOrbPresentation(deps);
-  assert.deepEqual(completed, ['CompleteAstralFlowKoOrbRewards']);
+  assert.deepEqual(completed, ['CommitAstralFlowKoOrbEnemyDeaths', 'CompleteAstralFlowKoOrbRewards']);
   assert.equal(globals.AstralFlowKoOrbPresentationActive, 0);
   assert.equal(globals.AstralFlowKoOrbPresentationState, null);
+});
+
+test('Astral Flow KO orbs wait for attack visuals then commit death removal before spill', async () => {
+  const mod = loadPresentationModule();
+  const globals = {
+    time: 6,
+    PendingHeroHits: [{ targetUID: 300, at: 6.1 }],
+    ChainStrikeVisuals: [{ sourceTargetUID: 300, targetUID: 301 }],
+    AstralFlowKoOrbQueue: [
+      {
+        id: 'ko-held',
+        enemyUID: 300,
+        enemyName: 'High Orc',
+        source: { x: 220, y: 90 },
+        ground: { x: 220, y: 110 },
+        color: '#1e7bd6',
+        orbScales: [1, 1, 1, 1],
+      },
+    ],
+    AstralFlowAmpBarCanvas: { x: 40, y: 20, w: 120, h: 8, color: '#1e7bd6' },
+  };
+  const calls = [];
+  const deps = {
+    ctx: makeCanvasRecorder(),
+    state: { globals },
+    worldToCanvas: (x, y) => ({ x, y }),
+    callFunctionWithContext: (_fnContext, name) => {
+      calls.push(name);
+      return { ok: true };
+    },
+    fnContext: {},
+  };
+
+  const held = mod.updateAndRenderAstralFlowKoOrbPresentation(deps);
+  assert.equal(held.active, false);
+  assert.equal(held.pending, true);
+  assert.deepEqual(calls, []);
+  assert.equal(globals.AstralFlowKoOrbPresentationState, undefined);
+  assert.equal(globals.AstralFlowKoOrbPresentationPending, 1);
+
+  globals.PendingHeroHits = [];
+  globals.ChainStrikeVisuals = [];
+  const started = mod.updateAndRenderAstralFlowKoOrbPresentation(deps);
+
+  assert.deepEqual(calls, ['CommitAstralFlowKoOrbEnemyDeaths']);
+  assert.equal(started.active, true);
+  assert.equal(globals.AstralFlowKoOrbPresentationActive, 1);
+  assert.equal(globals.AstralFlowKoOrbPresentationPending, 0);
+  assert.equal(globals.AstralFlowKoOrbPresentationState.orbs.length, 4);
 });
 
 test('Astral Flow KO orbs spill outward from the enemy and bounce multiple times before flying home', () => {
@@ -160,4 +209,6 @@ test('runtime wiring keeps KO orb presentation outside app-level orchestration',
   assert.doesNotMatch(appSrc, /getEnemyKoAstralFlowOrbPresentation|CompleteAstralFlowKoOrbRewards|applyAstralFlowEnemyKoReward/);
 
   assert.match(renderRuntimeSrc, /presentationPatches\.AstralFlowAmpBarCanvas = \{[\s\S]*x: ampX,[\s\S]*y: ampY,[\s\S]*w: ampW,[\s\S]*h: barH,[\s\S]*color: '#1e7bd6',[\s\S]*\};/);
+  assert.match(renderRuntimeSrc, /EnemyDeathVisualHoldByUID/);
+  assert.match(renderRuntimeSrc, /\(e\.hp \?\? 0\) > 0 \|\| deathHoldByUID\[e\.uid\]/);
 });
