@@ -1,0 +1,55 @@
+{
+  "changed_functions": {
+    ".beads/interactions.jsonl": [
+      "__MODULE__"
+    ],
+    "docs/duplicate-asset-analysis-2026-06-28.md": [
+      "__MODULE__"
+    ],
+    "tools/analyze_duplicate_assets.js": [
+      "usage",
+      "parseArgs",
+      "normalizeSlash",
+      "toRepoRelative",
+      "ensureInsideRoot",
+      "walkFiles",
+      "visit",
+      "hashFile",
+      "groupBy",
+      "isBinaryBuffer",
+      "repoTextFiles",
+      "buildReferencePatterns",
+      "scanReferences",
+      "formatBytes",
+      "buildReport",
+      "markdownList",
+      "renderMarkdown",
+      "writeOutput",
+      "main",
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 3,
+    "staged_line_count": 523,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/interactions.jsonl",
+    "docs/duplicate-asset-analysis-2026-06-28.md",
+    "tools/analyze_duplicate_assets.js"
+  ],
+  "issue_id": "ORKA-n9v2",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/interactions.jsonl": "06d10f5c46218a9721fd27e556f7a0d023f27bcd",
+    "docs/duplicate-asset-analysis-2026-06-28.md": "3a70817d0c9d0d2a6b456377b48ebc23e20a01a7",
+    "tools/analyze_duplicate_assets.js": "bd94c9012c8d7bd0eb7d0581b50e7f4a313ba19f"
+  }
+}
