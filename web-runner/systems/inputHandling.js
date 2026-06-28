@@ -60,6 +60,36 @@ export function finishMapDrag(ev, { layoutState, gameState, canvas }) {
   try { canvas.releasePointerCapture(ev.pointerId); } catch {}
 }
 
+function isEditableDomTarget(target) {
+  if (!target) return false;
+  const tag = String(target.tagName || '').toUpperCase();
+  return Boolean(target.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT');
+}
+
+export function isMapCoordinateGridDevOverlayEnabled(globalScope = globalThis) {
+  return Boolean(globalScope && globalScope.__codexGameDevTest);
+}
+
+export function handleMapCoordinateGridKeydown(ev, { layoutState, drawFrame } = {}) {
+  const activeLayoutId = getActiveLayoutId(layoutState);
+  if (activeLayoutId !== 'mapLayout') return false;
+  if (!isMapCoordinateGridDevOverlayEnabled()) {
+    if (mapLayoutState.getMapLayoutState().showCoordinateGrid) {
+      mapLayoutState.setMapLayoutField('showCoordinateGrid', false);
+      if (typeof drawFrame === 'function') drawFrame();
+    }
+    return false;
+  }
+  if (isEditableDomTarget(ev?.target)) return false;
+  if (ev?.metaKey || ev?.ctrlKey || ev?.altKey) return false;
+  if (String(ev?.key || '').toLowerCase() !== 'g') return false;
+  const current = Boolean(mapLayoutState.getMapLayoutState().showCoordinateGrid);
+  mapLayoutState.setMapLayoutField('showCoordinateGrid', !current);
+  if (typeof ev.preventDefault === 'function') ev.preventDefault();
+  if (typeof drawFrame === 'function') drawFrame();
+  return true;
+}
+
 export function attachMapDragInputHandlers({
   canvas,
   runtimeListenerTeardowns,
@@ -70,6 +100,7 @@ export function attachMapDragInputHandlers({
   const deps = { layoutState, gameState, canvas, drawFrame };
   const handlePointerMove = (ev) => handleMapPointerMove(ev, deps);
   const handlePointerFinish = (ev) => finishMapDrag(ev, deps);
+  const handleGridToggle = (ev) => handleMapCoordinateGridKeydown(ev, deps);
 
   canvas.addEventListener('pointermove', handlePointerMove);
   runtimeListenerTeardowns.push(() => canvas.removeEventListener('pointermove', handlePointerMove));
@@ -78,4 +109,10 @@ export function attachMapDragInputHandlers({
   canvas.addEventListener('pointercancel', handlePointerFinish);
   runtimeListenerTeardowns.push(() => canvas.removeEventListener('pointerup', handlePointerFinish));
   runtimeListenerTeardowns.push(() => canvas.removeEventListener('pointercancel', handlePointerFinish));
+
+  const keyTarget = typeof window !== 'undefined' ? window : canvas;
+  if (keyTarget && typeof keyTarget.addEventListener === 'function') {
+    keyTarget.addEventListener('keydown', handleGridToggle);
+    runtimeListenerTeardowns.push(() => keyTarget.removeEventListener('keydown', handleGridToggle));
+  }
 }

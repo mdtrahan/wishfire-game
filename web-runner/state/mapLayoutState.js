@@ -22,6 +22,7 @@ export const mapLayoutState = {
   homesteadLocaleHit: null,
   warMeter: 0.64,
   encounterNode: { id: 'clouds-alpha', locale: 'clouds', faction: 'wishless' },
+  showCoordinateGrid: false,
   lastRender: null,
 };
 
