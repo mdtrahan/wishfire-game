@@ -21,6 +21,7 @@ module.exports = {
   GetSkillDefinition,
   GetSkillDraughtState,
   SelectSkillDraughtCard,
+  ClearSessionSkillDraught,
   IsPartySessionSkillActive,
   RollPartySkillProc,
   TryPartyDestiny,
@@ -326,10 +327,43 @@ test('dev panel exposes Destiny trigger without inlining effect logic', () => {
   const destinyTriggerSrc = runtimeSrc.slice(destinyTriggerStart, destinyTriggerEnd);
   assert.match(runtimeSrc, /data-devtool-trigger-destiny/);
   assert.match(destinyTriggerSrc, /TriggerPartyDestinyDev/);
-  assert.match(destinyTriggerSrc, /const requestedUID = Number\(devToolingDom\.skillHero\?\.value \|\| 0\);/);
-  assert.match(destinyTriggerSrc, /const requestedActor = state\.entities\.find\(actor => Number\(actor\?\.uid \|\| 0\) === requestedUID\) \|\| null;/);
-  assert.match(destinyTriggerSrc, /const sourceUID = requestedActor\?\.kind === 'hero'/);
+  assert.match(destinyTriggerSrc, /const sourceUID = resolveDevToolingSkillHeroUID\(devToolingDom\.skillHero\?\.value \|\| ''\);/);
+  assert.doesNotMatch(destinyTriggerSrc, /const requestedUID = Number/);
+  assert.doesNotMatch(destinyTriggerSrc, /const requestedActor = state\.entities\.find/);
+  assert.match(runtimeSrc, /Number\(actor\?\.uid \|\| 0\) === requestedUID/);
+  assert.match(runtimeSrc, /heroIndex \+ 1 === requestedUID/);
   assert.match(destinyTriggerSrc, /Destiny dev trigger failed:/);
   assert.match(destinyTriggerSrc, /closeDevToolingModal\(\{ restorePauseSnapshot: true \}\);/);
   assert.doesNotMatch(destinyTriggerSrc, /ApplyPartyHeal/);
+});
+
+test('Clear Skills reset clears Destiny session state and proc readout counters in both mirrors', () => {
+  for (const modulePath of [runtimePath, scriptsPath]) {
+    const mod = loadModule(modulePath);
+    const ctx = makeContext({ active: false });
+    ctx.state.entities[0].hp = 50;
+    ctx.state.globals.PartyHPByIndex = [50];
+    ctx.state.globals.PartyHP = 50;
+
+    const activated = mod.TriggerPartyDestinyDev(ctx, 100);
+    assert.equal(activated.success, true);
+    assert.equal(mod.IsPartySessionSkillActive(ctx, 'party_destiny'), true);
+    const healed = mod.TryPartyDestiny(ctx, { sourceUID: 100, targetUID: 200, appliedDamage: 1, forcedRollPct: 0 });
+    assert.equal(healed.success, true);
+    assert.equal(ctx.state.globals.PartyDestinyAttempts, 1);
+    assert.equal(ctx.state.globals.PartyDestinyProcs, 1);
+    assert.equal(ctx.state.globals.PartyDestinyHeals, 1);
+    assert.ok(mod.GetSkillProcTrace(ctx, 20).length > 0);
+
+    const cleared = mod.ClearSessionSkillDraught(ctx);
+    assert.equal(cleared.ok, true);
+    assert.equal(mod.IsPartySessionSkillActive(ctx, 'party_destiny'), false);
+    assert.equal(ctx.state.globals.PartyDestinyAttempts, 0);
+    assert.equal(ctx.state.globals.PartyDestinyProcs, 0);
+    assert.equal(ctx.state.globals.PartyDestinyHeals, 0);
+    assert.equal(ctx.state.globals.PartyDestinyMisses, 0);
+    assert.equal(ctx.state.globals.PartyDestinyLastResult, '');
+    assert.equal(ctx.state.globals.LastPartyDestiny, null);
+    assert.equal(mod.GetSkillProcTrace(ctx, 20).length, 0);
+  }
 });

@@ -1,0 +1,60 @@
+{
+  "changed_functions": {
+    ".beads/hot-file-lock/ORKA-p3rw.prepared.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-p3rw.scope": [
+      "__MODULE__"
+    ],
+    ".beads/interactions.jsonl": [
+      "__MODULE__"
+    ],
+    "Scripts/functionBank.js": [
+      "ClearSessionSkillDraught"
+    ],
+    "ai-memory/insights.md": [
+      "__MODULE__"
+    ],
+    "tests/partyDestinyContract.test.js": [
+      "loadModule",
+      "makeContext"
+    ],
+    "web-runner/modules/functionBank.js": [
+      "ClearSessionSkillDraught"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "Scripts/functionBank.js",
+      "web-runner/modules/functionBank.js"
+    ],
+    "staged_file_count": 7,
+    "staged_line_count": 78,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/hot-file-lock/ORKA-p3rw.prepared.json",
+    ".beads/hot-file-lock/ORKA-p3rw.scope",
+    ".beads/interactions.jsonl",
+    "Scripts/functionBank.js",
+    "ai-memory/insights.md",
+    "tests/partyDestinyContract.test.js",
+    "web-runner/modules/functionBank.js"
+  ],
+  "issue_id": "ORKA-p3rw",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/hot-file-lock/ORKA-p3rw.prepared.json": "3beefe219e84a7f81a86cc64b21b6ac6832c247f",
+    ".beads/hot-file-lock/ORKA-p3rw.scope": "488308f20c76c4dbbbcdfa304a98a1fde506ebd6",
+    ".beads/interactions.jsonl": "bd9313772dc60b9198afd578881ff7a7bfef9a68",
+    "Scripts/functionBank.js": "da8ef794efb25a8459cd3606313320761b3068bf",
+    "ai-memory/insights.md": "5503ffe4c51feb4210b390c5e5750f7112310a7c",
+    "tests/partyDestinyContract.test.js": "c974bbbef199694295ff16f0971398724f4eabf2",
+    "web-runner/modules/functionBank.js": "4b06521a7e32cf1e2403c07f0549b73e126cd8c2"
+  }
+}
