@@ -60,6 +60,7 @@ function makeContext({ activeI = false, activeII = false, onlyOneEnemy = false, 
       globals: {
         time: 3,
         SelectedEnemyUID: pending ? firstEnemy.uid : 0,
+        SelectedEnemyUIDOwner: pending ? hero.uid : 0,
         PendingSkillID: pending ? 'HERO_SINGLE' : '',
         PendingActor: pending ? hero.uid : 0,
         SessionSkillsByHeroUID: skills.length ? { __party_shared__: skills } : {},
@@ -220,7 +221,7 @@ test('Chain Strike II reuses the production raster connector asset and renderer'
   assert.match(assetLoader, /SkillChainStrikeArc/);
   assert.match(assetLoader, /skill_chain_strike_arc_160x48\.png/);
   assert.match(renderRuntime, /ChainStrikeVisuals/);
-  assert.match(renderRuntime, /"const resolvedSelectedUid = selectedUid \|\| pendingHitTargetUID;"/);
+  assert.match(renderRuntime, /const resolvedSelectedUid = ownerMatchedSelectedUid \|\| pendingHitTargetUID;/);
   assert.doesNotMatch(renderRuntime, /ctx\.moveTo\([^)]*ChainStrike/);
 });
 

@@ -50,10 +50,10 @@ function runManualTargetMultipass() {
   const bankSource = read('web-runner/modules/functionBank.js');
   const renderSource = read('web-runner/systems/renderRuntime.js');
   const manualClickSetsOwner = /const hit = getEnemyHit\(mx, my\);\s*if \(hit\) \{\s*state\.globals\.SelectedEnemyUID = hit\.uid;\s*state\.globals\.SelectedEnemyUIDOwner = Number\(state\.globals\.PendingActor \|\| 0\);/s.test(appSource);
-  const selectorUsesSelectedFirst =
-    /const resolvedSelectedUid = selectedUid \|\| pendingHitTargetUID;/.test(renderSource);
+  const selectorUsesOwnedSelectedFirst =
+    /const resolvedSelectedUid = ownerMatchedSelectedUid \|\| pendingHitTargetUID;/.test(renderSource);
   const selectorUsesQueuedFirst =
-    !selectorUsesSelectedFirst &&
+    !selectorUsesOwnedSelectedFirst &&
     /const resolvedSelectedUid = pendingHitTargetUID \|\| selectedUid;/.test(renderSource);
 
   const transformedBank = `${bankSource
@@ -77,7 +77,7 @@ module.exports = { ExecuteSkill };`;
   new vm.Script(transformedBank, { filename: 'web-runner/modules/functionBank.js' }).runInContext(context);
   const { ExecuteSkill } = context.module.exports;
 
-  function makeContext({ selectedUID, randomRoll }) {
+  function makeContext({ selectedUID, selectedOwnerUID = null, randomRoll }) {
     const hero = {
       uid: 100,
       kind: 'hero',
@@ -98,6 +98,9 @@ module.exports = { ExecuteSkill };`;
       maxHP: 80,
       stats: { ATK: 4, DEF: 0, MAG: 2, RES: 0, SPD: 1 },
     }));
+    const ownerUID = selectedOwnerUID == null
+      ? (manualClickSetsOwner && selectedUID ? hero.uid : 0)
+      : Number(selectedOwnerUID || 0);
     return {
       state: {
         globals: {
@@ -110,7 +113,7 @@ module.exports = { ExecuteSkill };`;
           PendingActor: hero.uid,
           PendingSkillID: 'HERO_SINGLE',
           SelectedEnemyUID: selectedUID,
-          SelectedEnemyUIDOwner: manualClickSetsOwner && selectedUID ? hero.uid : 0,
+          SelectedEnemyUIDOwner: ownerUID,
           SkillDraughtTrace: [],
           SkillDraughtTraceSeq: 0,
           SessionSkillsByHeroUID: {},
@@ -124,8 +127,12 @@ module.exports = { ExecuteSkill };`;
     };
   }
 
-  function resolveVisualSelectorUID({ selectedUID, staleQueuedTargetUID }) {
-    if (selectorUsesSelectedFirst) return selectedUID || staleQueuedTargetUID;
+  function resolveVisualSelectorUID({ selectedUID, selectedOwnerUID = null, staleQueuedTargetUID }) {
+    const ownerUID = selectedOwnerUID == null
+      ? (manualClickSetsOwner && selectedUID ? 100 : 0)
+      : Number(selectedOwnerUID || 0);
+    const ownerMatchedSelectedUID = ownerUID === 100 ? selectedUID : 0;
+    if (selectorUsesOwnedSelectedFirst) return ownerMatchedSelectedUID || staleQueuedTargetUID;
     if (selectorUsesQueuedFirst) return staleQueuedTargetUID || selectedUID;
     return 0;
   }
@@ -136,6 +143,7 @@ module.exports = { ExecuteSkill };`;
     { label: 'bottom selected, stale queued top', selectedUID: 203, staleQueuedTargetUID: 201, randomRoll: 0.0 },
     { label: 'top selected, stale queued bottom', selectedUID: 201, staleQueuedTargetUID: 203, randomRoll: 0.99 },
     { label: 'middle selected, stale queued bottom', selectedUID: 202, staleQueuedTargetUID: 203, randomRoll: 0.99 },
+    { label: 'middle selected by stale owner, random top', selectedUID: 202, selectedOwnerUID: 999, staleQueuedTargetUID: 0, randomRoll: 0.0, expectedVisualSelectorUID: 0, expectedQueuedAttackTargetUID: 201 },
     { label: 'no selected target, queued fallback kept', selectedUID: 0, staleQueuedTargetUID: 203, randomRoll: 0.0, expectedVisualSelectorUID: 203 },
   ];
 
@@ -148,6 +156,7 @@ module.exports = { ExecuteSkill };`;
     const queuedAttackTargetUID = Number(firstHit?.targetUID || 0);
     const visualSelectorUID = resolveVisualSelectorUID(pass);
     const expectedVisualSelectorUID = pass.expectedVisualSelectorUID ?? pass.selectedUID;
+    const expectedQueuedAttackTargetUID = pass.expectedQueuedAttackTargetUID ?? pass.selectedUID;
     return {
       pass: index + 1,
       label: pass.label,
@@ -159,7 +168,7 @@ module.exports = { ExecuteSkill };`;
       randomRoll: pass.randomRoll,
       queuedAttackTargetUID,
       visualDrift: visualSelectorUID !== expectedVisualSelectorUID,
-      queuedDrift: pass.selectedUID ? queuedAttackTargetUID !== pass.selectedUID : false,
+      queuedDrift: expectedQueuedAttackTargetUID ? queuedAttackTargetUID !== expectedQueuedAttackTargetUID : false,
     };
   });
 
@@ -187,8 +196,8 @@ for (const testPath of requiredTests) {
 for (const bankPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
   hasRegex(
     bankPath,
-    /const pendingManualTarget = String\(g\.PendingSkillID \|\| ''\) === 'HERO_SINGLE'\s*&& Number\(g\.PendingActor \|\| 0\) === Number\(actorUID \|\| 0\);/,
-    `${bankPath} scopes SelectedEnemyUID to the actor's pending manual HERO_SINGLE handoff`,
+    /const pendingManualTarget = String\(g\.PendingSkillID \|\| ''\) === 'HERO_SINGLE'\s*&& Number\(g\.PendingActor \|\| 0\) === Number\(actorUID \|\| 0\)\s*&& Number\(g\.SelectedEnemyUIDOwner \|\| 0\) === Number\(actorUID \|\| 0\);/,
+    `${bankPath} scopes SelectedEnemyUID to the actor-owned pending manual HERO_SINGLE handoff`,
   );
   hasRegex(
     bankPath,
@@ -235,8 +244,8 @@ hasRegex(
 );
 hasRegex(
   'web-runner/systems/renderRuntime.js',
-  /\.replace\(\s*"const resolvedSelectedUid = pendingHitTargetUID \|\| selectedUid;",\s*"const resolvedSelectedUid = selectedUid \|\| pendingHitTargetUID;",\s*\)/s,
-  'renderer rewrites generated selector source so SelectedEnemyUID wins during live selection',
+  /const ownerMatchedSelectedUid = selectedOwnerUID === pendingActorUID \? selectedUid : 0;\n\s*const resolvedSelectedUid = ownerMatchedSelectedUid \|\| pendingHitTargetUID;/,
+  'renderer uses SelectedEnemyUID only when it is owned by the pending actor',
 );
 hasRegex(
   'web-runner/systems/renderRuntime.js',
