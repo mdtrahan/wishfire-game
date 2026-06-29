@@ -493,3 +493,7 @@
 - Apply the Astral Flow reward while the dead enemy still owns its slot, then commit the enemy removal/refill window after the meter payout. A refill enemy must never appear before the old enemy's death loot has finished delivering.
 - KO orb reward completion happens after the attack owner has already released its handoff lane, so it must not set a new `DeferAdvance`/`AdvanceAfterAction`. Use a tiny visual action lock only; fresh deferred handoffs at this seam can hang combat.
 - Treat KO orb payout as its own roster-blocking lane. Turn advance and respawn timers must see active KO queues/presentations as unavailable roster state so refill cannot spawn a new enemy under old death loot.
+
+## 2026-06-29 - Force Draw Audits Must Follow Draw Class
+- Dev Force Draw by skill id is an acquisition-path probe, not a skill-specific trigger. Audit one-off, tiered, and repeatable draw classes together so a fix for Chain Strike or Destiny cannot hide another id with the same exposure/cap edge.
+- Once a one-off skill appears in the draw, exposure should suppress later forced appearances even if the player did not select it. Repeatable skills should remain forceable, and tiered skills should stop only at their declared cap.
