@@ -548,6 +548,13 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
         y: d.baseY != null ? d.baseY : d.y,
       });
       gameState.healBlooms.push(d.healBloomAnimation);
+    } else if (d.kind === 'heal' && d.targetKind === 'enemy' && !d.healBloomSpawned) {
+      d.healBloomSpawned = true;
+      d.healBloomAnimation = createHealBloom({
+        x: d.x,
+        y: d.baseY != null ? d.baseY : d.y,
+      });
+      gameState.healBlooms.push(d.healBloomAnimation);
     } else if (d.kind === 'heal' && d.targetKind === 'bar' && !d.healBloomSpawned) {
       d.healBloomSpawned = true;
       const heroPositions = Array.isArray(state.globals.HeroIconPosByIndex) ? state.globals.HeroIconPosByIndex : [];

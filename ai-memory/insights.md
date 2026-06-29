@@ -31,6 +31,7 @@
 - Resource accounting for normal gem matches must pass only the matched set count into the existing reward owner (for yellow, `Add_Gold`) rather than replacing reward math. Board-wide same-color counts belong only to explicit supergem/sweep owner paths.
 - Match selections store board indices at runtime; resolve through `gameState.gems` before applying gem-object predicates such as color or lock state, otherwise resource counts can silently collapse to zero.
 - Enemy board-pressure effects that run during autoplay should preserve board cardinality unless the turn/refill gates explicitly own the resulting empty cells. Prefer visible lock/disable state for temporary denial effects, and make autoplay skip disabled gems instead of trying to select through them.
+- 2026-06-29: Heal bloom presentation should be keyed by heal damage-text target kind, not only hero/bar branches. Enemy heals already emit `targetKind: 'enemy'`; the shared DOM text bridge must spawn the bloom from that anchor too.
 
 ## 2026-03-07 Regression Note
 - Hero selector render gate must treat hero-turn as `TurnPhase === 0` (not `1`) in web-runner runtime.

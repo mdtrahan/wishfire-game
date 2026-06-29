@@ -1,0 +1,11 @@
+{
+  "hot_files": {
+    "web-runner/app.js": {
+      "functions": [
+        "spawnPendingDamageNumbers"
+      ],
+      "staged_blob": "2da0b0816f4661b5a862c82660df5f55504de9c7"
+    }
+  },
+  "issue_id": "ORKA-9lek"
+}
