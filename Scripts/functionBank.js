@@ -90,6 +90,15 @@ const PARTY_CHAIN_STRIKE_II_DAMAGE_PCT = 66;
 const PARTY_CHAIN_STRIKE_VISUAL_KEY = 'chain_arc_ribbon';
 const PARTY_CHAIN_STRIKE_VISUAL_ASSET = 'SkillChainStrikeArc';
 const PARTY_SPLIT_ID = 'party_split';
+const SESSION_SKILL_EFFECT_IDS = new Set([
+  'party_destiny',
+  'party_crimson_ward',
+  'party_faze',
+  GROW_SKILL_ID,
+  PARTY_CHAIN_STRIKE_I_ID,
+  PARTY_CHAIN_STRIKE_II_ID,
+  PARTY_SPLIT_ID,
+]);
 
 const ENEMY_SKILL_ASSIGNMENT_MAP = {
   Djinn: {
@@ -1859,6 +1868,68 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
   return { ok: true, heroUID: uid, skill: { ...sessionSkill } };
 }
 
+function clearCrimsonWardSkillState(ctx) {
+  const g = getGlobals(ctx);
+  g.PartyTempHPShield = 0;
+  g.PartyTempHPShieldStacks = 0;
+  g.PartyTempHPShieldRatio = 0;
+  g.PartyTempHPShieldMax = 0;
+  g.PartyTempHPShieldColor = '';
+  g.PartyTempHPShieldSource = '';
+  g.LastCrimsonWard = null;
+  g.LastPartyTempHPShieldAbsorbed = 0;
+  g.LastPartyWardBarrierHitUID = 0;
+  g.LastPartyWardBarrierAbsorbed = 0;
+  delete g.PartyWardBarrierVisualsByUID;
+  delete g.PartyWardBarrierPosByUID;
+  delete g.PartyWardBarrierTextCanvasByUID;
+  g.PartyWardBarrierActive = 0;
+  g.PartyWardBarrierFadeOutUntil = 0;
+}
+
+function clearFazeSkillState(ctx) {
+  const g = getGlobals(ctx);
+  g.TaintedGroundZones = [];
+  g.NextTaintedGroundZoneId = 1;
+  if (Array.isArray(g.EnemyDamageOverTime)) {
+    g.EnemyDamageOverTime = g.EnemyDamageOverTime.filter((dot) => {
+      if (!dot) return false;
+      const effectName = String(dot.effectName || '').trim();
+      const zoneId = String(dot.taintedGroundZoneId || '').trim();
+      if (zoneId && effectName.startsWith('Blight')) return false;
+      return true;
+    });
+    if (g.EnemyDamageOverTime.length === 0) delete g.EnemyDamageOverTime;
+  }
+  g.LastEnemyDotTickShadow = null;
+  g.LastEnemyDotTickOwner = null;
+  g.LastEnemyDotTickPacket = null;
+  g.LastEnemyDotLifecycleOwner = null;
+  g.LastEnemyDotLifecyclePacket = null;
+  g.LastEnemyDotPacketOwner = null;
+  g.LastEnemyDotApplicationPacket = null;
+}
+
+function clearChainStrikeSkillState(ctx) {
+  const g = getGlobals(ctx);
+  g.ChainStrikeVisuals = [];
+  g.ChainStrikeVisualSerial = 0;
+  g.PartyChainStrikeIProcs = 0;
+  g.PartyChainStrikeIIProcs = 0;
+  g.LastPartyChainStrike = null;
+}
+
+function clearSessionSkillPendingHits(ctx) {
+  const g = getGlobals(ctx);
+  if (!Array.isArray(g.PendingHeroHits)) return;
+  g.PendingHeroHits = g.PendingHeroHits.filter((hit) => {
+    const generatedBySkillId = String(hit?.generatedBySkillId || '').trim().toLowerCase();
+    if (generatedBySkillId && SESSION_SKILL_EFFECT_IDS.has(generatedBySkillId)) return false;
+    if (String(hit?.actionName || '') === 'Faze' && String(hit?.effectType || '') === 'dot_apply') return false;
+    return true;
+  });
+}
+
 export function ClearSessionSkillDraught(ctx) {
   const g = ensureSkillDraughtState(ctx);
   g.SkillDraughtOpen = 0;
@@ -1882,7 +1953,12 @@ export function ClearSessionSkillDraught(ctx) {
   g.PartyDestinyMisses = 0;
   g.PartyDestinyLastResult = '';
   g.LastPartyDestiny = null;
+  g.LastPartyDestinyDevTrigger = null;
   clearGrowSkillState(ctx);
+  clearCrimsonWardSkillState(ctx);
+  clearFazeSkillState(ctx);
+  clearChainStrikeSkillState(ctx);
+  clearSessionSkillPendingHits(ctx);
   appendSkillDraughtTrace(g, 'clear', {});
   return { ok: true };
 }
