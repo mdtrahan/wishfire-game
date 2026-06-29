@@ -8,6 +8,40 @@ const repoRoot = path.join(__dirname, '..');
 const runtimePath = path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js');
 const scriptsPath = path.join(repoRoot, 'Scripts', 'functionBank.js');
 
+function normalizePowerAmpLifecycleMeta(existingMeta, lifecycleId = 0) {
+  const normalizedLife = Number(lifecycleId || 0);
+  if (existingMeta && Number(existingMeta.lifecycleId || 0) === normalizedLife) {
+    return { ...existingMeta, lifecycleId: normalizedLife };
+  }
+  return {
+    lifecycleId: normalizedLife,
+    visualStarted: false,
+    visualStartAt: 0,
+    consumed: false,
+    fadeStarted: false,
+    fadeStartAt: 0,
+    closed: false,
+  };
+}
+
+function derivePowerAmpVisualState({ existingVisual, existingMeta, now, mult, lifecycleId }) {
+  const normalizedLife = Number(lifecycleId || 0);
+  const safeNow = Number(now || 0);
+  const meta = normalizePowerAmpLifecycleMeta(existingMeta, normalizedLife);
+  const visual = existingVisual && Number(existingVisual.lifecycleId || 0) === normalizedLife
+    ? { ...existingVisual, mult }
+    : { mult, startAt: safeNow, lifecycleId: normalizedLife };
+  meta.visualStarted = true;
+  meta.visualStartAt = Number(visual.startAt || safeNow);
+  return {
+    meta,
+    visual,
+    seeded: visual.startAt === safeNow,
+    startAt: Number(visual.startAt || safeNow),
+    lifecycleId: normalizedLife,
+  };
+}
+
 function loadModule(modulePath) {
   const original = fs.readFileSync(modulePath, 'utf8');
   const transformed = `${original
@@ -16,6 +50,7 @@ function loadModule(modulePath) {
 
 module.exports = {
   ForceAstralFlowSkillDraught,
+  GetPartySkillDefinitions,
   GetSkillDraughtState,
   SelectSkillDraughtCard,
 };`;
@@ -38,6 +73,8 @@ module.exports = {
     module: { exports: {} },
     exports: {},
     state: { globals: {}, entities: [] },
+    normalizePowerAmpLifecycleMeta,
+    derivePowerAmpVisualState,
   };
   vm.createContext(context);
   new vm.Script(transformed, { filename: modulePath }).runInContext(context);
@@ -115,6 +152,12 @@ function selectForcedSkill(mod, ctx, skillId) {
   assert.equal(selected.ok, true);
   assert.equal(selected.skill.id, skillId);
   return { opened, selected };
+}
+
+function closeSkillDrawWithoutSelection(ctx) {
+  ctx.state.globals.SkillDraughtOpen = 0;
+  ctx.state.globals.SkillDraughtCandidates = [];
+  ctx.state.globals.SkillDraughtHitZones = [];
 }
 
 function selectInjectedSkill(mod, ctx, skillId) {
@@ -232,5 +275,78 @@ test('skill draw debug counters track card appearances, not selected/used skills
     const injectedCtx = makeContext();
     selectInjectedSkill(mod, injectedCtx, 'non_registered_skill');
     assert.deepEqual(plain(mod.GetSkillDraughtState(injectedCtx).skillDrawDebug), emptyDebug);
+  }
+});
+
+test('Force Draw by skill id respects every active skill draw class', () => {
+  for (const modulePath of [runtimePath, scriptsPath]) {
+    const mod = loadModule(modulePath);
+    const defs = mod.GetPartySkillDefinitions()
+      .filter(def => ['one_off', 'repeatable', 'tiered'].includes(String(def.drawClass || '')));
+    const auditedIds = new Set();
+
+    for (const def of defs.filter(row => row.drawClass === 'one_off' && row.id !== 'party_chain_strike_ii')) {
+      const ctx = makeContext();
+      const first = openForcedSkillDraw(mod, ctx, def.id);
+      assert.equal(ctx.state.globals.SkillDraughtOneOffExposureBySkillId[def.id], 1, `${def.id} should spend on exposure`);
+      assert.equal(first.forcedSkillSuppressedReason, '');
+
+      closeSkillDrawWithoutSelection(ctx);
+      const afterExposure = mod.ForceAstralFlowSkillDraught(ctx, 100, def.id);
+      assert.equal(afterExposure.ok, true);
+      assert.equal(afterExposure.forcedSkillSuppressedReason, 'one_off_already_exposed', `${def.id} should reject repeat forced exposure`);
+      assert.equal(afterExposure.candidates.some(candidate => candidate.id === def.id), false, `${def.id} should not reappear after exposure`);
+      auditedIds.add(def.id);
+    }
+
+    {
+      const ctx = makeContext();
+      selectForcedSkill(mod, ctx, 'party_chain_strike_i');
+      const first = openForcedSkillDraw(mod, ctx, 'party_chain_strike_ii');
+      assert.equal(first.forcedSkillSuppressedReason, '');
+      assert.equal(ctx.state.globals.SkillDraughtOneOffExposureBySkillId.party_chain_strike_ii, 1);
+
+      closeSkillDrawWithoutSelection(ctx);
+      const afterExposure = mod.ForceAstralFlowSkillDraught(ctx, 100, 'party_chain_strike_ii');
+      assert.equal(afterExposure.ok, true);
+      assert.equal(afterExposure.forcedSkillSuppressedReason, 'one_off_already_exposed');
+      assert.equal(afterExposure.candidates.some(candidate => candidate.id === 'party_chain_strike_ii'), false);
+      auditedIds.add('party_chain_strike_ii');
+    }
+
+    for (const def of defs.filter(row => row.drawClass === 'repeatable')) {
+      const ctx = makeContext();
+      openForcedSkillDraw(mod, ctx, def.id);
+      closeSkillDrawWithoutSelection(ctx);
+
+      const repeated = mod.ForceAstralFlowSkillDraught(ctx, 100, def.id);
+      assert.equal(repeated.ok, true);
+      assert.equal(repeated.forcedSkillSuppressedReason, '', `${def.id} should remain forceable`);
+      assert.equal(repeated.candidates[0].id, def.id, `${def.id} should be forceable more than once`);
+      auditedIds.add(def.id);
+    }
+
+    {
+      const grow = defs.find(def => def.id === 'party_grow');
+      assert.ok(grow, 'party_grow should be audited as the current tiered skill');
+      const maxTier = Math.max(1, Math.floor(Number(grow.effect.maxTier || 0)));
+      const ctx = makeContext();
+      for (let tier = 1; tier <= maxTier; tier += 1) {
+        const selected = selectForcedSkill(mod, ctx, 'party_grow').selected;
+        assert.equal(selected.skill.selectionCount, tier);
+      }
+
+      const afterCap = mod.ForceAstralFlowSkillDraught(ctx, 100, 'party_grow');
+      assert.equal(afterCap.ok, true);
+      assert.equal(afterCap.forcedSkillSuppressedReason, 'tier_cap_reached');
+      assert.equal(afterCap.candidates.some(candidate => candidate.id === 'party_grow'), false);
+      auditedIds.add('party_grow');
+    }
+
+    assert.equal(
+      JSON.stringify([...auditedIds].sort()),
+      JSON.stringify(defs.map(def => def.id).sort()),
+      `${modulePath} should audit every active skill draw id`,
+    );
   }
 });
