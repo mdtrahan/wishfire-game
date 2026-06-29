@@ -9020,7 +9020,8 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     handled = true;
     const enemies = getEnemies(ctx);
     const pendingManualTarget = String(g.PendingSkillID || '') === 'HERO_SINGLE'
-      && Number(g.PendingActor || 0) === Number(actorUID || 0);
+      && Number(g.PendingActor || 0) === Number(actorUID || 0)
+      && Number(g.SelectedEnemyUIDOwner || 0) === Number(actorUID || 0);
     const preferred = pendingManualTarget && g.SelectedEnemyUID ? GetActorByUID(ctx, g.SelectedEnemyUID) : null;
     const target = preferred && preferred.kind === 'enemy' && (preferred.hp ?? 0) > 0
       ? preferred

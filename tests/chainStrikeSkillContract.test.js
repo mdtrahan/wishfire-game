@@ -89,6 +89,7 @@ function makeContext({
     PendingActor: pending ? hero.uid : 0,
     PendingSkillID: pending ? 'HERO_SINGLE' : '',
     SelectedEnemyUID: firstEnemy.uid,
+    SelectedEnemyUIDOwner: pending ? hero.uid : 0,
     SkillDraughtOpen: 0,
     SkillDraughtHeroUID: 0,
     SkillDraughtCandidates: [],

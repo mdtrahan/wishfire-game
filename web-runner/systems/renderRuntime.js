@@ -47,7 +47,7 @@ export function renderRuntime(deps) {
     ].join("")
       .replace(
         "const resolvedSelectedUid = pendingHitTargetUID || selectedUid;",
-        "const resolvedSelectedUid = selectedUid || pendingHitTargetUID;",
+        "const selectedOwnerUID = Number(state.globals.SelectedEnemyUIDOwner || 0);\n      const pendingActorUID = Number(state.globals.PendingActor || 0);\n      const ownerMatchedSelectedUid = selectedOwnerUID === pendingActorUID ? selectedUid : 0;\n      const resolvedSelectedUid = ownerMatchedSelectedUid || pendingHitTargetUID;",
       );
     renderImpl = new Function('scope', 'dtOverride', 'with (scope) {\n' + body + '\n}');
   }

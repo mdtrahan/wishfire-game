@@ -130,6 +130,7 @@ function makeContext({ pending = false } = {}) {
     PendingActor: pending ? hero.uid : 0,
     PendingSkillID: pending ? 'HERO_SINGLE' : '',
     SelectedEnemyUID: pending ? enemyB.uid : 0,
+    SelectedEnemyUIDOwner: pending ? hero.uid : 0,
     PowerAmpByUID: {},
     SessionSkillsByHeroUID: {},
     SkillDraughtOpen: 0,
