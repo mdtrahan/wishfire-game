@@ -18,6 +18,8 @@ test('heal bloom module uses heavy plus glyph particles and GSAP timelines', () 
   assert.match(src, /fontWeight: 800,/);
   assert.match(src, /color: '#A0FE0B',/);
   assert.match(src, /const total = Math\.max\(8, Math\.min\(14, Math\.floor\(Number\(count \|\| 12\)\)\)\);/);
+  assert.match(src, /const HEAL_BLOOM_WIDTH_SCALE = 0\.8;/);
+  assert.match(src, /const dx = Math\.cos\(angle\) \* distance \* HEAL_BLOOM_WIDTH_SCALE;/);
   assert.match(src, /const tl = gsap\.timeline\(\);/);
   assert.match(src, /ease: 'back\.out\(1\.6\)'/);
   assert.match(src, /ease: 'power2\.out'/);
@@ -29,16 +31,18 @@ test('heal bloom module uses heavy plus glyph particles and GSAP timelines', () 
 
 test('app heal path spawns heal bloom on hero sprites and renders it behind actors', () => {
   const appSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
+  const spawnSrc = sliceBetween(appSrc, 'function spawnPendingDamageNumbers', 'const RUNTIME_FINGERPRINT');
   const renderSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
   assert.match(appSrc, /import\s+\{\s*createHealBloom\s*\}\s+from\s+'\.\/src\/core\/healBloomAnimation\.mjs';/);
-  assert.match(appSrc, /if \(d\.kind === 'heal' && d\.targetKind === 'hero' && !d\.healBloomSpawned\) \{/);
-  assert.match(appSrc, /d\.healBloomAnimation = createHealBloom\(\{/);
-  assert.match(appSrc, /else if \(d\.kind === 'heal' && d\.targetKind === 'bar' && !d\.healBloomSpawned\) \{/);
-  assert.match(appSrc, /const heroPositions = Array\.isArray\(state\.globals\.HeroIconPosByIndex\) \? state\.globals\.HeroIconPosByIndex : \[\];/);
-  assert.match(appSrc, /for \(const pos of heroPositions\) \{/);
-  assert.match(appSrc, /gameState\.healBlooms = Array\.isArray\(gameState\.healBlooms\) \? gameState\.healBlooms : \[\];/);
-  assert.match(appSrc, /gameState\.healBlooms\.push\(d\.healBloomAnimation\);/);
-  assert.match(appSrc, /if \(bloom\) gameState\.healBlooms\.push\(bloom\);/);
+  assert.match(spawnSrc, /if \(d\.kind === 'heal' && d\.targetKind === 'hero' && !d\.healBloomSpawned\) \{/);
+  assert.match(spawnSrc, /d\.healBloomAnimation = createHealBloom\(\{/);
+  assert.match(spawnSrc, /else if \(d\.kind === 'heal' && d\.targetKind === 'enemy' && !d\.healBloomSpawned\) \{[\s\S]*d\.healBloomAnimation = createHealBloom\(\{[\s\S]*x: d\.x,[\s\S]*y: d\.baseY != null \? d\.baseY : d\.y,[\s\S]*gameState\.healBlooms\.push\(d\.healBloomAnimation\);[\s\S]*\} else if \(d\.kind === 'heal' && d\.targetKind === 'bar'/);
+  assert.match(spawnSrc, /else if \(d\.kind === 'heal' && d\.targetKind === 'bar' && !d\.healBloomSpawned\) \{/);
+  assert.match(spawnSrc, /const heroPositions = Array\.isArray\(state\.globals\.HeroIconPosByIndex\) \? state\.globals\.HeroIconPosByIndex : \[\];/);
+  assert.match(spawnSrc, /for \(const pos of heroPositions\) \{/);
+  assert.match(spawnSrc, /gameState\.healBlooms = Array\.isArray\(gameState\.healBlooms\) \? gameState\.healBlooms : \[\];/);
+  assert.match(spawnSrc, /gameState\.healBlooms\.push\(d\.healBloomAnimation\);/);
+  assert.match(spawnSrc, /if \(bloom\) gameState\.healBlooms\.push\(bloom\);/);
   assert.match(renderSrc, /const renderHealBlooms = \(\) => \{/);
   assert.match(renderSrc, /ctx\.fillRect\(-arm \/ 2, -length \/ 2, arm, length\);/);
   assert.match(renderSrc, /ctx\.fillRect\(-length \/ 2, -arm \/ 2, length, arm\);/);
