@@ -27,7 +27,6 @@ export function createSurfaceRenderRouter({
   getStartupFingerprintLabel,
   getHeroScreenDeps,
   getIdleFarmDeps,
-  getCoordinateGridDevOverlayEnabled,
   drawHUD,
 } = {}) {
   const getViewSize = () => {
@@ -65,10 +64,6 @@ export function createSurfaceRenderRouter({
             mapBackgroundImage,
             heroLayoutSpec,
             closeWinOvalImage,
-            coordinateGridDevOverlayEnabled: Boolean(
-              typeof getCoordinateGridDevOverlayEnabled === 'function'
-                && getCoordinateGridDevOverlayEnabled(),
-            ),
           },
         );
         mapLayoutState.setMapLayoutBounds(mapRenderResult.panBounds);

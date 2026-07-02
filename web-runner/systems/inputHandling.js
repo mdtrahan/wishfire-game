@@ -66,20 +66,9 @@ function isEditableDomTarget(target) {
   return Boolean(target.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT');
 }
 
-export function isMapCoordinateGridDevOverlayEnabled(globalScope = globalThis) {
-  return Boolean(globalScope && globalScope.__codexGameDevTest);
-}
-
 export function handleMapCoordinateGridKeydown(ev, { layoutState, drawFrame } = {}) {
   const activeLayoutId = getActiveLayoutId(layoutState);
   if (activeLayoutId !== 'mapLayout') return false;
-  if (!isMapCoordinateGridDevOverlayEnabled()) {
-    if (mapLayoutState.getMapLayoutState().showCoordinateGrid) {
-      mapLayoutState.setMapLayoutField('showCoordinateGrid', false);
-      if (typeof drawFrame === 'function') drawFrame();
-    }
-    return false;
-  }
   if (isEditableDomTarget(ev?.target)) return false;
   if (ev?.metaKey || ev?.ctrlKey || ev?.altKey) return false;
   if (String(ev?.key || '').toLowerCase() !== 'g') return false;

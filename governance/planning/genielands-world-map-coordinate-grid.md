@@ -57,4 +57,4 @@ Use `src/core/worldMapCoordinates.mjs` for shared deterministic references and `
 
 Future quest, POI, fast travel, event, or documentation data should store locations by coordinate only. Rendering code can resolve bounds or center points through the coordinate helper instead of hand-placing pixels.
 
-The coordinate grid is not player-facing UI. It is hidden by default, ignored by player-mode rendering, and may only be toggled in dev/test sessions. While the map layout is active in dev/test mode, press `g` to toggle the coordinate grid.
+The coordinate grid is hidden by default and is only shown when toggled. While the map layout is active, press `g` to toggle the coordinate grid; editable fields and modifier-key shortcuts must not trigger it.

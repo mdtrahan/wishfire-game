@@ -115,10 +115,8 @@ export function renderMap(ctx, gameState, uiState, mapLayoutState, dims) {
     const centerWorldX = (viewWidth / 2 - lastRender.drawX) / xScale;
     const centerWorldY = (viewHeight / 2 - lastRender.drawY) / yScale;
     lastRender.centerCoordinate = getWorldMapCoordinateAtPoint(centerWorldX, centerWorldY);
-    const coordinateGridDevOverlayVisible = Boolean(dims?.coordinateGridDevOverlayEnabled)
-      && Boolean(mapLayoutState?.showCoordinateGrid);
     lastRender.gridOverlay = drawWorldMapCoordinateGrid(ctx, lastRender, {
-      visible: coordinateGridDevOverlayVisible,
+      visible: Boolean(mapLayoutState?.showCoordinateGrid),
       grid: DEFAULT_WORLD_MAP_GRID,
     });
   }

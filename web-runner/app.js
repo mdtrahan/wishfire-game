@@ -3088,7 +3088,6 @@ async function main(){
     getDpr: () => dpr,
     getFreshCombatBootstrapped: () => freshCombatBootstrapped,
     getStartupFingerprintLabel: () => RUNTIME_FINGERPRINT.label,
-    getCoordinateGridDevOverlayEnabled: () => Boolean(state.globals.DevTestMode),
     getHeroScreenDeps: () => ({
       fnContext,
       closeWinOvalImage,

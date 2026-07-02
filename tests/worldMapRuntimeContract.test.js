@@ -25,15 +25,17 @@ test('map runtime owns coordinate overlay toggle and rendering outside app shell
 
   assert.match(stateSrc, /showCoordinateGrid:\s*false/);
   assert.match(inputSrc, /handleMapCoordinateGridKeydown/);
-  assert.match(inputSrc, /isMapCoordinateGridDevOverlayEnabled/);
-  assert.match(inputSrc, /__codexGameDevTest/);
+  assert.match(inputSrc, /String\(ev\?\.key \|\| ''\)\.toLowerCase\(\) !== 'g'/);
+  assert.match(inputSrc, /isEditableDomTarget\(ev\?\.target\)/);
+  assert.match(inputSrc, /ev\?\.metaKey \|\| ev\?\.ctrlKey \|\| ev\?\.altKey/);
   assert.match(inputSrc, /setMapLayoutField\('showCoordinateGrid'/);
   assert.match(renderMapSrc, /worldMapCoordinates/);
   assert.match(renderMapSrc, /drawWorldMapCoordinateGrid/);
   assert.match(renderMapSrc, /getWorldMapCoordinateAtPoint/);
-  assert.match(renderMapSrc, /coordinateGridDevOverlayEnabled/);
-  assert.match(renderMapSrc, /Boolean\(dims\?\.coordinateGridDevOverlayEnabled\)\s*&&\s*Boolean\(mapLayoutState\?\.showCoordinateGrid\)/);
-  assert.match(surfaceRouterSrc, /getCoordinateGridDevOverlayEnabled/);
-  assert.match(appSrc, /getCoordinateGridDevOverlayEnabled:\s*\(\)\s*=>\s*Boolean\(state\.globals\.DevTestMode\)/);
+  assert.match(renderMapSrc, /Boolean\(mapLayoutState\?\.showCoordinateGrid\)/);
+  assert.doesNotMatch(inputSrc, /__codexGameDevTest/);
+  assert.doesNotMatch(renderMapSrc, /coordinateGridDevOverlayEnabled/);
+  assert.doesNotMatch(surfaceRouterSrc, /getCoordinateGridDevOverlayEnabled/);
   assert.doesNotMatch(appSrc, /showCoordinateGrid/);
+  assert.doesNotMatch(appSrc, /getCoordinateGridDevOverlayEnabled/);
 });
