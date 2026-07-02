@@ -494,3 +494,6 @@
 - Apply the Astral Flow reward while the dead enemy still owns its slot, then commit the enemy removal/refill window after the meter payout. A refill enemy must never appear before the old enemy's death loot has finished delivering.
 - KO orb reward completion happens after the attack owner has already released its handoff lane, so it must not set a new `DeferAdvance`/`AdvanceAfterAction`. Use a tiny visual action lock only; fresh deferred handoffs at this seam can hang combat.
 - Treat KO orb payout as its own roster-blocking lane. Turn advance and respawn timers must see active KO queues/presentations as unavailable roster state so refill cannot spawn a new enemy under old death loot.
+
+## 2026-07-02 - Hidden Debug Overlays Need Separate Access And Visibility Gates
+- Hidden-by-default player aids should keep their visibility state separate from dev/test access gates. If the intended behavior is "press a hotkey to show it," validate normal-play hotkey access and default-hidden rendering independently so a dev-only proof does not mask the real player path.
