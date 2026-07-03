@@ -553,7 +553,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Publish Beads GitHub visibility manifest.")
     parser.add_argument(
         "--manifest",
-        default="governance/planning/beads-github-export/github-publish-manifest.json",
+        default="",
+        help="Path to a reviewed public-safe publish manifest. Required; no active docs path is assumed.",
     )
     parser.add_argument("--apply", action="store_true", help="Actually create/update GitHub issues.")
     parser.add_argument(
@@ -609,6 +610,9 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    if not args.manifest:
+        print("Refusing to choose a default publish manifest. Pass --manifest explicitly.")
+        return 2
     manifest = load_manifest(Path(args.manifest))
     if args.apply and not is_public_safe_manifest(manifest) and not args.allow_detailed_internal:
         raise SystemExit(

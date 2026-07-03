@@ -185,7 +185,8 @@ Leave sections empty only when there is no stable local guidance yet.
 
 Root-owned areas without child AGENTS.md:
 - `ai-memory/` - stable context and insights; follow startup and bug/regression rules above.
-- `docs/`, `agents/`, `goals/`, `skills/`, `inputs/`, `output/` - reference, archive, and support materials unless a future bead creates a durable local boundary.
+- `docs/`, `goals/`, `skills/`, `inputs/`, `output/` - reference, archive, and support materials unless a future bead creates a durable local boundary.
+- `agents/` is retired as a live coordination surface; quarantined legacy prompt/log artifacts are historical evidence only.
 - `node-app/`, `python-app/` - scaffold/support apps, not current canonical runtime.
 - root package/deploy/config files - repo-level tooling and deployment surface.
 

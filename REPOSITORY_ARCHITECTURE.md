@@ -89,7 +89,8 @@ Supporting surfaces:
 - `governance/product/` stores player-facing and design-facing gameplay truth.
 - `governance/planning/` stores architecture contracts, workflow plans, and invariants.
 - `governance/audit/` stores historical audits and regression history.
-- `governance/bead-reviews/` stores Beads review packets.
+- `governance/audit/quarantine/` stores historical generated docs and stale review/export packets that should not be read as current workflow truth.
+- Fresh Beads review packets must be regenerated from live Beads/GitHub state for an explicit export or review pass.
 - `docs/` is mostly reference/archive support and is root-owned in the DOX hierarchy until a durable sub-boundary emerges.
 
 ## High-Risk And Historically Complex Systems

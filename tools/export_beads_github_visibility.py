@@ -27,6 +27,7 @@ LOCAL_PATH_RE = re.compile(r"/Users/[^\s`),]+")
 MAX_REPORT_TEXT = 180
 PRIVATE_EXPORT_PATH_PREFIXES = (".beads/",)
 DEFAULT_REPOSITORY = "mdtrahan/wishfire-game"
+ACTIVE_GENERATED_OUTPUT_DIR = "governance/planning/beads-github-export"
 
 
 @dataclass
@@ -320,9 +321,7 @@ def make_mapping(beads: list[dict[str, Any]], branches: dict[str, BranchInfo]) -
                 "ahead_of_main": branch.ahead_of_main if branch else None,
                 "behind_main": branch.behind_main if branch else None,
                 "changed_file_count": len(safe_files),
-                "review_artifact_path": f"governance/bead-reviews/{bead_id}.md"
-                if surface == "review_packet_pr" and not branch
-                else "",
+                "review_artifact_path": f"{bead_id}.md" if surface == "review_packet_pr" and not branch else "",
                 "proposed_review_branch": proposed_review_branch,
                 "has_branch_overlap": bool(overlap_summary["overlap_bead_ids"]),
                 "overlap_bead_ids": overlap_summary["overlap_bead_ids"],
@@ -843,12 +842,16 @@ def write_outputs(
     (output_dir / "publish-plan.md").write_text(render_publish_plan(manifest, batch), encoding="utf-8")
 
 
+def is_active_generated_output_dir(output_dir: str) -> bool:
+    return Path(output_dir).as_posix().rstrip("/") == ACTIVE_GENERATED_OUTPUT_DIR
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Export Beads visibility plan for GitHub.")
     parser.add_argument(
         "--output-dir",
-        default="governance/planning/beads-github-export",
-        help="Directory for dry-run artifacts.",
+        default="",
+        help="Directory for generated dry-run artifacts. Required with --allow-generated-doc-output.",
     )
     parser.add_argument(
         "--bd-cwd",
@@ -861,11 +864,38 @@ def parse_args() -> argparse.Namespace:
         help="GitHub repository in owner/name form for generated publish operations.",
     )
     parser.add_argument("--first-batch-limit", type=int, default=12)
+    parser.add_argument(
+        "--allow-generated-doc-output",
+        action="store_true",
+        help="Required to write generated Beads/GitHub visibility artifacts.",
+    )
+    parser.add_argument(
+        "--allow-active-doc-output",
+        action="store_true",
+        help="Permit writing to governance/planning/beads-github-export instead of a quarantine or temporary directory.",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    if not args.allow_generated_doc_output:
+        print(
+            "Refusing to write generated Beads/GitHub visibility docs without "
+            "--allow-generated-doc-output."
+        )
+        print("Use an explicit --output-dir, preferably under governance/audit/quarantine/ or /tmp.")
+        return 2
+    if not args.output_dir:
+        print("Refusing to choose a default output directory. Pass --output-dir explicitly.")
+        return 2
+    if is_active_generated_output_dir(args.output_dir) and not args.allow_active_doc_output:
+        print(
+            "Refusing to write generated export artifacts into the active planning path without "
+            "--allow-active-doc-output."
+        )
+        print("Prefer a dated quarantine or temporary output directory.")
+        return 2
     repo = Path.cwd()
     bd_cwd = Path(args.bd_cwd).expanduser().resolve() if args.bd_cwd else primary_worktree(repo)
     beads = load_beads(bd_cwd)

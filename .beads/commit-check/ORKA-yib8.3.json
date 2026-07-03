@@ -1,0 +1,26 @@
+{
+  "changed_functions": {
+    ".beads/interactions.jsonl": [
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 1,
+    "staged_line_count": 1,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/interactions.jsonl"
+  ],
+  "issue_id": "ORKA-yib8.3",
+  "out_of_scope_hot_file_touch": false,
+  "significant": false,
+  "staged_blobs": {
+    ".beads/interactions.jsonl": "5aacd0e87bfa8be4835337758f0ab3930fe80348"
+  }
+}
