@@ -80,4 +80,6 @@ These files exist on `origin/main` but not on this cleanup branch's base. They w
 - Restore a quarantined file only if a bead or PR explicitly needs that exact historical artifact.
 - Regenerate Beads review packets from live Beads/GitHub state instead of reusing the quarantined 2026-06-08 packet set.
 - Regenerate export manifests before any Beads GitHub publication pass.
+- Generated export/review tools require `--allow-generated-doc-output` plus explicit source/output paths; active-path writes require `--allow-active-doc-output`.
+- Publish commands require an explicit reviewed `--manifest`; no active generated manifest path is assumed.
 - Do not recreate `agents/dev_reports.md`, `agents/pm_status.md`, or `agents/issues.md`; use live Beads state, PR body, and focused audit docs instead.

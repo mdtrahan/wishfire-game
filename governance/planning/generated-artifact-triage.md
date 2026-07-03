@@ -44,6 +44,15 @@ Quarantined in `governance/audit/quarantine/pr-doc-output-2026-07-03/`:
 - one-time `docs/superpowers/plans/` rollback/implementation plans
 - generic `reports/` generated report/action files
 
+Permanent defanging:
+
+- active PM/dev prompt files were removed from `agents/` and preserved only under quarantine
+- root DOX marks `agents/` retired as a live coordination surface
+- Beads export/review packet generators now refuse generated doc writes unless `--allow-generated-doc-output` and explicit source/output paths are provided
+- Beads publish helper now refuses to choose a default manifest path; a reviewed `--manifest` must be named explicitly
+- exported review packet paths are filename-only so approved regeneration does not steer output back into `governance/bead-reviews/`
+- writing generated artifacts back into the retired active paths also requires `--allow-active-doc-output`
+
 Deferred: `origin/main` root token-drift and one-time jcodemunch diagnosis docs were audited but not moved because this branch cannot record their original-path deletion without merging `origin/main`, and that merge conflicts in `.beads/interactions.jsonl`.
 
 Kept active: DOX/AGENTS files, durable retrieval routing, product truth, reusable export safety/template docs, eval command notes, game-design research, and audit evidence already under dated audit/report paths.

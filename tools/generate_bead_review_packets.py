@@ -20,6 +20,7 @@ from typing import Any
 ISSUE_ROW_RE = re.compile(
     r"^\| \[#(?P<number>\d+)\]\((?P<url>[^)]+)\) \| (?P<bead>ORKA-[^ |]+) \|"
 )
+ACTIVE_REVIEW_PACKET_DIR = "governance/bead-reviews"
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -145,34 +146,75 @@ def render_index(rows: list[dict[str, Any]], generated_at: str) -> str:
     return "\n".join(lines) + "\n"
 
 
+def is_active_review_packet_dir(output_dir: str) -> bool:
+    return Path(output_dir).as_posix().rstrip("/") == ACTIVE_REVIEW_PACKET_DIR
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate public-safe Bead review packets.")
     parser.add_argument(
         "--mapping",
-        default="governance/planning/beads-github-export/bead-github-mapping.json",
+        default="",
+        help="Path to a reviewed Beads/GitHub mapping JSON. Required; no active docs path is assumed.",
     )
     parser.add_argument(
         "--manifest",
-        default="governance/planning/beads-github-export/github-publish-manifest.json",
+        default="",
+        help="Path to a reviewed public-safe publish manifest. Required; no active docs path is assumed.",
     )
     parser.add_argument(
         "--published-issues",
-        default="governance/planning/beads-github-export/published-issue-mapping.md",
+        default="",
+        help="Optional path to a reviewed published-issue mapping markdown file.",
     )
-    parser.add_argument("--output-dir", default="governance/bead-reviews")
+    parser.add_argument(
+        "--output-dir",
+        default="",
+        help="Directory for generated packet artifacts. Required with --allow-generated-doc-output.",
+    )
     parser.add_argument(
         "--review-required-only",
         action="store_true",
         help="Generate only packets for operations that explicitly require review artifacts.",
+    )
+    parser.add_argument(
+        "--allow-generated-doc-output",
+        action="store_true",
+        help="Required to write generated Beads review packet artifacts.",
+    )
+    parser.add_argument(
+        "--allow-active-doc-output",
+        action="store_true",
+        help="Permit writing to governance/bead-reviews instead of a quarantine or temporary directory.",
     )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    if not args.allow_generated_doc_output:
+        print("Refusing to write generated Beads review packets without --allow-generated-doc-output.")
+        print("Use an explicit --output-dir, preferably under governance/audit/quarantine/ or /tmp.")
+        return 2
+    if not args.output_dir:
+        print("Refusing to choose a default output directory. Pass --output-dir explicitly.")
+        return 2
+    if is_active_review_packet_dir(args.output_dir) and not args.allow_active_doc_output:
+        print(
+            "Refusing to write generated review packets into the retired active path without "
+            "--allow-active-doc-output."
+        )
+        print("Prefer a dated quarantine or temporary output directory.")
+        return 2
+    if not args.mapping:
+        print("Refusing to choose a default mapping input. Pass --mapping explicitly.")
+        return 2
+    if not args.manifest:
+        print("Refusing to choose a default publish manifest input. Pass --manifest explicitly.")
+        return 2
     mapping = load_json(Path(args.mapping))
     manifest = load_json(Path(args.manifest))
-    links = issue_links(Path(args.published_issues))
+    links = issue_links(Path(args.published_issues)) if args.published_issues else {}
     rows_by_bead = {row["bead_id"]: row for row in mapping["beads"]}
     operations = manifest.get("draft_pr_operations") or []
     if args.review_required_only:
