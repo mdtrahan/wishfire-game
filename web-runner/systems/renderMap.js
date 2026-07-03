@@ -177,7 +177,6 @@ export function renderMap(ctx, gameState, uiState, mapLayoutState, dims) {
   const viewWidth = Number(dims?.viewWidth || 0);
   const viewHeight = Number(dims?.viewHeight || 0);
   const panX = Number(mapLayoutState?.panX || 0);
-  const warMeter = Math.max(0, Math.min(1, Number(mapLayoutState?.warMeter || 0)));
   const mapBackgroundImage = dims?.mapBackgroundImage || null;
   const mapCaveImage = dims?.mapCaveImage || null;
   const mapTowerImages = dims?.mapTowerImages || null;
@@ -241,23 +240,6 @@ export function renderMap(ctx, gameState, uiState, mapLayoutState, dims) {
       grid: DEFAULT_WORLD_MAP_GRID,
     });
   }
-
-  const meterPad = 14;
-  const meterW = Math.max(180, viewWidth - (meterPad * 2));
-  const meterH = 16;
-  const meterX = meterPad;
-  const meterY = 14;
-  ctx.fillStyle = '#0f1722';
-  ctx.fillRect(meterX, meterY, meterW, meterH);
-  ctx.fillStyle = '#cf3d2e';
-  ctx.fillRect(meterX + 2, meterY + 2, Math.max(0, (meterW - 4) * warMeter), meterH - 4);
-  ctx.strokeStyle = '#d6dbe3';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(meterX, meterY, meterW, meterH);
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '600 12px Arial';
-  ctx.textAlign = 'left';
-  ctx.fillText(`War Meter ${Math.round(warMeter * 100)}%`, meterX + 6, meterY + 12);
 
   const closeHit = renderSystem.getHeroStyleCloseRect(viewWidth, viewHeight, heroLayoutSpec);
   renderSystem.drawHeroStyleCloseControl(ctx, closeHit, closeWinOvalImage, '#111');
