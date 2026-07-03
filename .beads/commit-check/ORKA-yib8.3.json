@@ -1,31 +1,13 @@
 {
   "changed_functions": {
-    "governance/audit/quarantine/pr-doc-output-2026-07-03/INDEX.md": [
-      "__MODULE__"
-    ],
-    "governance/planning/beads-github-export/safety-checklist.md": [
-      "__MODULE__"
-    ],
-    "governance/planning/generated-artifact-triage.md": [
-      "__MODULE__"
-    ],
-    "tools/export_beads_github_visibility.py": [
-      "__MODULE__"
-    ],
-    "tools/generate_bead_review_packets.py": [
-      "__MODULE__"
-    ],
-    "tools/manifest.md": [
-      "__MODULE__"
-    ],
-    "tools/publish_beads_github_visibility.py": [
+    ".beads/interactions.jsonl": [
       "__MODULE__"
     ]
   },
   "details": {
     "hot_files_touched": [],
-    "staged_file_count": 7,
-    "staged_line_count": 105,
+    "staged_file_count": 1,
+    "staged_line_count": 1,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -33,24 +15,12 @@
     }
   },
   "files": [
-    "governance/audit/quarantine/pr-doc-output-2026-07-03/INDEX.md",
-    "governance/planning/beads-github-export/safety-checklist.md",
-    "governance/planning/generated-artifact-triage.md",
-    "tools/export_beads_github_visibility.py",
-    "tools/generate_bead_review_packets.py",
-    "tools/manifest.md",
-    "tools/publish_beads_github_visibility.py"
+    ".beads/interactions.jsonl"
   ],
   "issue_id": "ORKA-yib8.3",
   "out_of_scope_hot_file_touch": false,
-  "significant": true,
+  "significant": false,
   "staged_blobs": {
-    "governance/audit/quarantine/pr-doc-output-2026-07-03/INDEX.md": "a56d6f7362a19da2175cf722628cea36b23f2d12",
-    "governance/planning/beads-github-export/safety-checklist.md": "4715f6bb3923ef2d9601bd3af0b63b30e6f51da7",
-    "governance/planning/generated-artifact-triage.md": "f380ac658077620208f941581a65b555029762dd",
-    "tools/export_beads_github_visibility.py": "1c9641c1aa9217586bc102a1479e478ceceb9032",
-    "tools/generate_bead_review_packets.py": "6bac3863e5e0cc162ece8433c2398383c883cdfa",
-    "tools/manifest.md": "5c7ee440912e08894d45619e1e5ed12c52fd93ab",
-    "tools/publish_beads_github_visibility.py": "aa31ba4fde518860c36e623aa4c82780cb27893b"
+    ".beads/interactions.jsonl": "5aacd0e87bfa8be4835337758f0ab3930fe80348"
   }
 }
