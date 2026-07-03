@@ -7,6 +7,7 @@ Use this before creating or updating GitHub Issues, Project items, or draft PRs 
 - Confirm the Bead export lane is active and scoped.
 - Confirm local Git status and preserve unrelated dirty files.
 - Confirm no runtime/gameplay files will be edited by the export pass.
+- Regenerate manifests and review packets from live state; do not reuse quarantined 2026-06-08 export artifacts.
 
 ## Data Rules
 - Public GitHub issue and PR bodies may export Bead ID, title, status, priority, type, labels, parent, blockers, blocks, GitHub surface, branch presence, and branch-overlap signals.
@@ -35,3 +36,4 @@ Use this before creating or updating GitHub Issues, Project items, or draft PRs 
 - Confirm review packet artifact count matches all draft PR operations, or use `--review-required-only` when intentionally checking only the no-branch subset.
 - Confirm backlog-only Beads are visible without PR noise.
 - Confirm no closed Beads were exported unless explicitly requested.
+- Quarantine one-time mappings, dry-run reports, manifests, and packet snapshots after the export is no longer the active work surface.

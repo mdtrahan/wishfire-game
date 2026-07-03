@@ -1,13 +1,13 @@
 # Governance DOX
 
 ## Purpose
-- Own durable product truth, planning contracts, audits, Beads review material, and process documentation.
+- Own durable product truth, planning contracts, audits, quarantined Beads review material, and process documentation.
 - Keep gameplay/design intent discoverable without bloating root AGENTS.md.
 
 ## Ownership
 - `product/` owns player-facing and design-facing gameplay truth.
 - `planning/` owns architecture contracts, invariants, roadmaps, and process plans.
-- `audit/`, `metrics/`, `qa/`, and `bead-reviews/` own evidence, reports, QA packets, and review artifacts.
+- `audit/`, `metrics/`, and `qa/` own evidence, reports, QA packets, review artifacts, and quarantined generated docs.
 - `execution/` owns process guidance and active execution directives.
 
 ## Local Contracts
@@ -19,6 +19,8 @@
 
 ## Work Guidance
 - Separate product truth, implementation plans, audit evidence, and process method docs.
+- For repo-context retrieval, follow `execution/repo-context-retrieval.md` before adding more always-on guidance to root `AGENTS.md`.
+- Do not treat quarantined generated review packets, export manifests, agent logs, or rollback plans as current workflow truth.
 - When docs disagree, preserve the conflict and ask or create a decision bead rather than flattening it.
 - Avoid turning governance docs into event logs; record reusable rules, decisions, and evidence.
 

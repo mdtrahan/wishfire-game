@@ -32,6 +32,24 @@ Checked on 2026-06-28 from the main checkout before opening the `ORKA-yib8.3` wo
 3. Beads backup policy: decide `.beads/backup` ownership separately from generated-artifact cleanup.
 4. Tiny generated-trash cleanup: remove `.DS_Store` files only after confirming no tracked proof or backup files are included.
 
+## PR Documentation Output Audit
+
+Checked PR metadata updated since 2026-06-03 plus markdown additions in local/origin history. Completion-style docs were classified one by one as active, useful evidence, or quarantine.
+
+Quarantined in `governance/audit/quarantine/pr-doc-output-2026-07-03/`:
+
+- legacy `agents/` prompt/log files that forced completion reports outside Beads
+- generated `governance/bead-reviews/` packet snapshots
+- stale Beads GitHub export manifests, mappings, dry-run reports, publish plans, and publication ledgers
+- one-time `docs/superpowers/plans/` rollback/implementation plans
+- generic `reports/` generated report/action files
+
+Deferred: `origin/main` root token-drift and one-time jcodemunch diagnosis docs were audited but not moved because this branch cannot record their original-path deletion without merging `origin/main`, and that merge conflicts in `.beads/interactions.jsonl`.
+
+Kept active: DOX/AGENTS files, durable retrieval routing, product truth, reusable export safety/template docs, eval command notes, game-design research, and audit evidence already under dated audit/report paths.
+
+Quarantine index: `governance/audit/quarantine/pr-doc-output-2026-07-03/INDEX.md`.
+
 ## Stop Conditions
 
 Stop before deleting tracked artifacts, `.beads` backups, validation proofs, package lock files, or deployment/build config. Stop if cleanup would mix package metadata, proof retention, Beads recovery, and local-cache hygiene in one PR.

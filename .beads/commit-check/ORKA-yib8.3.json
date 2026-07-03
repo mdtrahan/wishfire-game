@@ -1,0 +1,337 @@
+{
+  "changed_functions": {
+    "\"governance/audit/quarantine/pr-doc-output-2026-07-03/reports/\\342\\236\\234  codex-orka git:(main) \\342\\234\\227 npx fallow.md\"": [],
+    ".beads/commit-check/ORKA-yib8.3.json": [
+      "__MODULE__"
+    ],
+    "AGENTS.md": [
+      "__MODULE__"
+    ],
+    "REPOSITORY_ARCHITECTURE.md": [
+      "__MODULE__"
+    ],
+    "governance/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/INDEX.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/agents/dev_reports.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/agents/issues.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/agents/pm_status.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/agents/prompts/dev_agent.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/agents/prompts/pm_agent.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/docs/superpowers/plans/2026-06-07-remove-green-gems.md": [
+      "read",
+      "pickByWeightedColors",
+      "forcedColor",
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/docs/superpowers/plans/2026-06-13-repo-cleanup-rollback-plan.md": [
+      "emit",
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/docs/superpowers/plans/2026-06-14-app-js-decomposition-rollback-plan.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/INDEX.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-03d.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-0h6k.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-0x85.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-39i0.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-3as.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-5fnb.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-6cfd.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-6opp.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-7c0.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-7ff6.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-8hqv.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-9e0b.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-9vi9.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-arti.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-b2c.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-dbxf.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-e67.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-hvj.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-idfa.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-iz4q.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-macy.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-mgpd.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-o2ww.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-p3rw.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-qw2o.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-rrxj.4.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-rrxj.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-tk9.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-toxc.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-tpql.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-uhha.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-v4mh.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-xjtv.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-zih.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-zvq1.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/bead-github-mapping.json": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/dry-run-report.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/github-publish-manifest.json": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/project-v2-apply-plan.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/project-v2-readiness-audit.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/publish-plan.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/published-draft-pr-mapping.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/published-first-batch.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/published-issue-mapping.md": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/reports/debt-actions.json": [
+      "__MODULE__"
+    ],
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/reports/debt-report.md": [
+      "__MODULE__"
+    ],
+    "governance/planning/beads-github-export/safety-checklist.md": [
+      "__MODULE__"
+    ],
+    "governance/planning/generated-artifact-triage.md": [
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 63,
+    "staged_line_count": 13525,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/commit-check/ORKA-yib8.3.json",
+    "AGENTS.md",
+    "REPOSITORY_ARCHITECTURE.md",
+    "governance/AGENTS.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/INDEX.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/agents/dev_reports.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/agents/issues.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/agents/pm_status.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/agents/prompts/dev_agent.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/agents/prompts/pm_agent.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/docs/superpowers/plans/2026-06-07-remove-green-gems.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/docs/superpowers/plans/2026-06-13-repo-cleanup-rollback-plan.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/docs/superpowers/plans/2026-06-14-app-js-decomposition-rollback-plan.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/INDEX.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-03d.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-0h6k.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-0x85.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-39i0.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-3as.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-5fnb.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-6cfd.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-6opp.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-7c0.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-7ff6.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-8hqv.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-9e0b.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-9vi9.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-arti.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-b2c.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-dbxf.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-e67.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-hvj.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-idfa.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-iz4q.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-macy.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-mgpd.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-o2ww.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-p3rw.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-qw2o.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-rrxj.4.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-rrxj.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-tk9.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-toxc.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-tpql.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-uhha.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-v4mh.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-xjtv.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-zih.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-zvq1.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/bead-github-mapping.json",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/dry-run-report.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/github-publish-manifest.json",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/project-v2-apply-plan.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/project-v2-readiness-audit.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/publish-plan.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/published-draft-pr-mapping.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/published-first-batch.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/published-issue-mapping.md",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/reports/debt-actions.json",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/reports/debt-report.md",
+    "\"governance/audit/quarantine/pr-doc-output-2026-07-03/reports/\\342\\236\\234  codex-orka git:(main) \\342\\234\\227 npx fallow.md\"",
+    "governance/planning/beads-github-export/safety-checklist.md",
+    "governance/planning/generated-artifact-triage.md"
+  ],
+  "issue_id": "ORKA-yib8.3",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/commit-check/ORKA-yib8.3.json": "d36fd8475b627ce08a92810313719786d4662631",
+    "AGENTS.md": "6175da6fc3bcb4dd4d100410beb195ee8aac2e1d",
+    "REPOSITORY_ARCHITECTURE.md": "01e513438465e1f36e4a605475b3179984ac8f04",
+    "governance/AGENTS.md": "52b9a28bbb3ebfbb4306617d2d35a2f3df5ee616",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/INDEX.md": "ad28768e3d22c42112d97a9d03070d4b0d77bab0",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/agents/dev_reports.md": "72a44a7dfe17769369289d9bc7e6d0672006262c",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/agents/issues.md": "858965706df6e380c1a8d0b305585e0c27583083",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/agents/pm_status.md": "77ecd23abb1b2ebf764225036dfec5a93645d034",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/agents/prompts/dev_agent.md": "c95c1819d3f8b229c8d7e59a78bcc9dd65af928b",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/agents/prompts/pm_agent.md": "186b4526a5ecb3a16b58a269ac57f34ccd31547f",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/docs/superpowers/plans/2026-06-07-remove-green-gems.md": "584b7e247374bd50068fb757684d94ce2e540bfd",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/docs/superpowers/plans/2026-06-13-repo-cleanup-rollback-plan.md": "f1aff18aa0a0b6f1b2d5edb04ca1f6df6370ff67",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/docs/superpowers/plans/2026-06-14-app-js-decomposition-rollback-plan.md": "b4b2e2ad20717d950ead282c9807f35de1c5c874",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/INDEX.md": "f0169734abf8168591689f5ad08aeac96203672e",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-03d.md": "2937f6a6c0bec381ca7facc05c2798c06a6907d4",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-0h6k.md": "984e399bf8441094569cad06f5d85b9f51545006",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-0x85.md": "35a221bf229e29704f0f9c51898d4ee1c471c305",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-39i0.md": "dcb702de10b705658fea656851a0b977a4819f81",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-3as.md": "9913383d6628fc652c4c17a79eeb1eddcc9ba6da",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-5fnb.md": "d5f2098e5b516c1d52004846e7b23cec2ddee42e",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-6cfd.md": "2d92ee09306db8e46fff295b47660dcfd4ea226a",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-6opp.md": "1523a5b3b856b86cde4f8cc59e49772d991e1e82",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-7c0.md": "d3fb2a102a8c66f8f7bdaffc57756f075c125af4",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-7ff6.md": "9dacab6f3ef2e8fece240fa45266a10e2f78804d",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-8hqv.md": "06ad01d709c994067de28cd07e2a81c867a36dfa",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-9e0b.md": "ae0af22a35cd41e31dcbb89af625746f2d81f71e",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-9vi9.md": "2e8e799075f6a3a6afe0052c5cd65130bed4f2c3",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-arti.md": "867a11067a8940eef27966a0345885e25740ae85",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-b2c.md": "9924f19b62fc8c51f1b4fdcb289626e8cef74cf8",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-dbxf.md": "e73e48c8bca1b5e444a06e871f5a1f9c7b3c583c",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-e67.md": "669440e5c7f380eee08562ef42d0b3099f5b189b",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-hvj.md": "d993946baba29abe8edea4aa5131f1c48ded4058",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-idfa.md": "107452b276b6acbe06eab851b89a6ad0b7c96a42",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-iz4q.md": "506fe362fd64103d50bd39a6ce28728387a29575",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-macy.md": "b9af4ef0bdaa54a9c561e50a6fd13942fa185afd",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-mgpd.md": "68f60259e681d885d20a05d3ee2bf4328d8c6574",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-o2ww.md": "8ad9f1a0f1e0a423487a3f580d192fb84870651d",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-p3rw.md": "13feb2d6b326fe47c207a54e5bf7e946a3c659f6",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-qw2o.md": "da88ce592512a837208d429b90ed3db8a7a987db",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-rrxj.4.md": "606d5c7acb3d300b32090319612d769f81a96470",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-rrxj.md": "e4a661140e8180de18ec3a748e19f562300b536b",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-tk9.md": "70e323f3821e966f5bfa516c042e21d2bb3c3c69",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-toxc.md": "a1e94ce4fefbe4e96dbd1fd43b60d5705c68d6d2",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-tpql.md": "3a3bcc0dc7b4f73dcd00fc38d4457a483ba3575a",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-uhha.md": "34a0130dbdfa69cb222f5d3d18c66bdd5d98b7d3",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-v4mh.md": "a5a2d760f956bfde758baa9da750c7e6dfc1fe76",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-xjtv.md": "a4946bd573a3c07dea05c672f03fb50856c84473",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-zih.md": "72d95eba6c677b7aad56d26c07d60b6a53c2ac75",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/bead-reviews/ORKA-zvq1.md": "09563c05c6080b8d991ebd3c49b62172e5d757f8",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/bead-github-mapping.json": "38a3ab05d33efd78382999cc9044e69e8d00842c",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/dry-run-report.md": "1d87a50aabd5c4d94eb7f1207e070fd3857d632c",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/github-publish-manifest.json": "74d6c6d318dadc7938edd2527272a3132464fde2",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/project-v2-apply-plan.md": "464b18cc68427c5b9d392bfd045d176ad10b6601",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/project-v2-readiness-audit.md": "d591866cc98201b751f4b86e6c994d1ac4f98e86",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/publish-plan.md": "074e4602db519e164a0debf5a114d22c188d6ad1",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/published-draft-pr-mapping.md": "ab5a59579dc26b67e7a8ae6ae18c6f5f1bfc6588",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/published-first-batch.md": "9436eed55c379e469db87b871abe8e70a4669fa1",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/governance/planning/beads-github-export/published-issue-mapping.md": "57f55073bce7191a69391005aa74bbb5c9fcd997",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/reports/debt-actions.json": "0ade459370f0ddf9aff5039a9e305fccd6a75e12",
+    "governance/audit/quarantine/pr-doc-output-2026-07-03/reports/debt-report.md": "bb759120ef842116d8dbdabb7d12b12472642e7c",
+    "governance/planning/beads-github-export/safety-checklist.md": "bd013bd89fdacef7bc4b018138c45d22d53d3be7",
+    "governance/planning/generated-artifact-triage.md": "e1ccf8166e6cc8614c316ed40de6b2e89107e60b"
+  }
+}
