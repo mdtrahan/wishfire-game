@@ -21,6 +21,8 @@ export function createSurfaceRenderRouter({
   heroLayoutSpec,
   getCloseWinOvalImage,
   getMapBackgroundImage,
+  getMapCaveImage,
+  getMapTowerImages,
   renderHeroScreenLayoutV2,
   getDpr,
   getFreshCombatBootstrapped,
@@ -48,6 +50,8 @@ export function createSurfaceRenderRouter({
     const { dpr, viewWidth, viewHeight } = getViewSize();
     const closeWinOvalImage = typeof getCloseWinOvalImage === 'function' ? getCloseWinOvalImage() : null;
     const mapBackgroundImage = typeof getMapBackgroundImage === 'function' ? getMapBackgroundImage() : null;
+    const mapCaveImage = typeof getMapCaveImage === 'function' ? getMapCaveImage() : null;
+    const mapTowerImages = typeof getMapTowerImages === 'function' ? getMapTowerImages() : null;
     const sharedDims = { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage };
 
     switch (layoutId) {
@@ -62,6 +66,8 @@ export function createSurfaceRenderRouter({
             viewWidth,
             viewHeight,
             mapBackgroundImage,
+            mapCaveImage,
+            mapTowerImages,
             heroLayoutSpec,
             closeWinOvalImage,
           },
