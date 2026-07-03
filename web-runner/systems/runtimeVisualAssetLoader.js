@@ -42,6 +42,7 @@ export async function loadRuntimeVisualAssets({
   const debuffIconImages = {};
   let mapBackgroundImage = null;
   let mapCaveImage = null;
+  let mapPortalImage = null;
   const mapTowerImages = {};
   const heroCapsuleImages = {};
   let plusIconImage = null;
@@ -155,6 +156,7 @@ export async function loadRuntimeVisualAssets({
       (async () => { images.SkillArcanePulse = await loadImage(assetUrl('images/skill_arcane_pulse_96x96.png')); })(),
       (async () => { mapBackgroundImage = await loadImage(assetUrl('images/genielands-geography.png')); })(),
       (async () => { mapCaveImage = await loadImage(assetUrl('images/map_cave_46.png')); })(),
+      (async () => { mapPortalImage = await loadImage(assetUrl('images/map_warp_portal_46x52.png')); })(),
       (async () => { mapTowerImages.red = await loadImage(assetUrl('images/map_tower_spire_red_46x54.png')); })(),
       (async () => { mapTowerImages.gold = await loadImage(assetUrl('images/map_tower_spire_gold_46x54.png')); })(),
       (async () => { mapTowerImages.purple = await loadImage(assetUrl('images/map_tower_spire_purple_46x54.png')); })(),
@@ -227,6 +229,7 @@ export async function loadRuntimeVisualAssets({
     debuffIconImages,
     mapBackgroundImage,
     mapCaveImage,
+    mapPortalImage,
     mapTowerImages,
     heroCapsuleImages,
     plusIconImage,
