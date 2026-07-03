@@ -1,0 +1,104 @@
+{
+  "changed_functions": {
+    ".beads/interactions.jsonl": [
+      "__MODULE__"
+    ],
+    "tests/worldMapCaveInstancesContract.test.js": [
+      "readRepoFile",
+      "readPngHeader",
+      "__MODULE__"
+    ],
+    "tests/worldMapTowerInstancesContract.test.js": [
+      "readRepoFile",
+      "readPngHeader",
+      "assertClose",
+      "__MODULE__"
+    ],
+    "web-runner/app.js": [
+      "createLayoutStateSingleton",
+      "prepareCombatSetupFromInstances",
+      "bottom"
+    ],
+    "web-runner/assets/images/map_cave_46.png": [],
+    "web-runner/assets/images/map_tower_spire_46x54.png": [],
+    "web-runner/assets/images/map_tower_spire_gold_46x54.png": [],
+    "web-runner/assets/images/map_tower_spire_green_46x54.png": [],
+    "web-runner/assets/images/map_tower_spire_purple_46x54.png": [],
+    "web-runner/assets/images/map_tower_spire_red_46x54.png": [],
+    "web-runner/src/core/worldMapCaveInstances.mjs": [
+      "__MODULE__"
+    ],
+    "web-runner/src/core/worldMapTowerInstances.mjs": [
+      "getTowerAnchorCoordinates",
+      "resolveTwoCellIntercept",
+      "resolveWorldMapTowerPoint",
+      "__MODULE__"
+    ],
+    "web-runner/systems/renderMap.js": [
+      "drawWorldMapCaves",
+      "getWorldMapTowerImage",
+      "drawWorldMapTowers",
+      "renderMap",
+      "centerWorldY",
+      "__MODULE__"
+    ],
+    "web-runner/systems/runtimeVisualAssetLoader.js": [
+      "loadImage",
+      "gemVisualLoads",
+      "loadDeferredVisuals"
+    ],
+    "web-runner/systems/surfaceRenderRouter.js": [
+      "createSurfaceRenderRouter",
+      "draw"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "web-runner/app.js"
+    ],
+    "staged_file_count": 15,
+    "staged_line_count": 430,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/interactions.jsonl",
+    "tests/worldMapCaveInstancesContract.test.js",
+    "tests/worldMapTowerInstancesContract.test.js",
+    "web-runner/app.js",
+    "web-runner/assets/images/map_cave_46.png",
+    "web-runner/assets/images/map_tower_spire_46x54.png",
+    "web-runner/assets/images/map_tower_spire_gold_46x54.png",
+    "web-runner/assets/images/map_tower_spire_green_46x54.png",
+    "web-runner/assets/images/map_tower_spire_purple_46x54.png",
+    "web-runner/assets/images/map_tower_spire_red_46x54.png",
+    "web-runner/src/core/worldMapCaveInstances.mjs",
+    "web-runner/src/core/worldMapTowerInstances.mjs",
+    "web-runner/systems/renderMap.js",
+    "web-runner/systems/runtimeVisualAssetLoader.js",
+    "web-runner/systems/surfaceRenderRouter.js"
+  ],
+  "issue_id": "ORKA-ks66",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/interactions.jsonl": "373cdce594afb6ea83176e5ba2dd1109dc6179d5",
+    "tests/worldMapCaveInstancesContract.test.js": "71999cdadce76ab270269e5b6b53c65d0449e341",
+    "tests/worldMapTowerInstancesContract.test.js": "9c71c1285ef3215530b62f9dbe0af216b7630c03",
+    "web-runner/app.js": "d9fac4b879aec858a6dccd98fee608082ea9c265",
+    "web-runner/assets/images/map_cave_46.png": "4880d15f51978670e99f588678ab8bda61c90843",
+    "web-runner/assets/images/map_tower_spire_46x54.png": "10e105dd60f690f9f3542f8fad8471339d2c9f62",
+    "web-runner/assets/images/map_tower_spire_gold_46x54.png": "4c651fc3055b848fe2f995b019f2402ed2e9381d",
+    "web-runner/assets/images/map_tower_spire_green_46x54.png": "67d567a0396e51f017be0758521ecc0421fee3ad",
+    "web-runner/assets/images/map_tower_spire_purple_46x54.png": "4d6c14531f02a32d75b6c55ee05369b731491f31",
+    "web-runner/assets/images/map_tower_spire_red_46x54.png": "5e461d0219349dd467001b68c7c16a74712e57cb",
+    "web-runner/src/core/worldMapCaveInstances.mjs": "f18c03a34e762d16052df98cccee7e246d754d5e",
+    "web-runner/src/core/worldMapTowerInstances.mjs": "76c6b90a63a79f285be1c780c4490a254777db17",
+    "web-runner/systems/renderMap.js": "a671e12ed12fb2e5dc4a557548adb0df209f34b4",
+    "web-runner/systems/runtimeVisualAssetLoader.js": "98961b5b8d0aeaae4d496fea2cacee8f1a4d8dfe",
+    "web-runner/systems/surfaceRenderRouter.js": "12465f85c550b59d632798af8ca3917f3849fba6"
+  }
+}

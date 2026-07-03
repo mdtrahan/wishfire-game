@@ -2,9 +2,21 @@ import * as renderSystem from './renderSystem.js';
 import {
   DEFAULT_WORLD_MAP_GRID,
   getWorldMapCoordinateAtPoint,
+  getWorldMapCellBounds,
   getWorldMapGridLines,
   indexToColumnLabel,
 } from '../src/core/worldMapCoordinates.mjs';
+import {
+  WORLD_MAP_CAVE_IMAGE_SIZE,
+  WORLD_MAP_CAVE_INSTANCES,
+} from '../src/core/worldMapCaveInstances.mjs';
+import {
+  WORLD_MAP_TOWER_IMAGE_HEIGHT,
+  WORLD_MAP_TOWER_IMAGE_WIDTH,
+  WORLD_MAP_TOWER_INSTANCES,
+  WORLD_MAP_TOWER_RENDER_OFFSET_Y,
+  resolveWorldMapTowerPoint,
+} from '../src/core/worldMapTowerInstances.mjs';
 
 function drawLine(ctx, fromX, fromY, toX, toY) {
   ctx.beginPath();
@@ -60,12 +72,115 @@ export function drawWorldMapCoordinateGrid(ctx, lastRender, options = {}) {
   };
 }
 
+export function drawWorldMapCaves(ctx, lastRender, caveImage, options = {}) {
+  if (!lastRender || !caveImage) {
+    return { count: 0, instances: [] };
+  }
+  const grid = options.grid || DEFAULT_WORLD_MAP_GRID;
+  const imageSize = Math.max(1, Number(options.imageSize || WORLD_MAP_CAVE_IMAGE_SIZE));
+  const caves = Array.isArray(options.instances) ? options.instances : WORLD_MAP_CAVE_INSTANCES;
+  const xScale = lastRender.drawW / grid.width;
+  const yScale = lastRender.drawH / grid.height;
+  const rendered = [];
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(lastRender.drawX, lastRender.drawY, lastRender.drawW, lastRender.drawH);
+  ctx.clip();
+  for (const cave of caves) {
+    const bounds = getWorldMapCellBounds(cave?.coordinate, grid);
+    if (!bounds) continue;
+    const centerX = lastRender.drawX + bounds.centerX * xScale;
+    const centerY = lastRender.drawY + bounds.centerY * yScale;
+    const drawX = centerX - imageSize / 2;
+    const drawY = centerY - imageSize / 2;
+    ctx.drawImage(caveImage, drawX, drawY, imageSize, imageSize);
+    rendered.push({
+      id: cave.id,
+      coordinate: bounds.coordinate,
+      centerX,
+      centerY,
+      drawX,
+      drawY,
+      drawW: imageSize,
+      drawH: imageSize,
+    });
+  }
+  ctx.restore();
+
+  return {
+    count: rendered.length,
+    imageSize,
+    instances: rendered,
+  };
+}
+
+function getWorldMapTowerImage(towerImages, variant) {
+  if (!towerImages) return null;
+  if (typeof towerImages === 'object' && !('width' in towerImages)) {
+    return towerImages[variant] || null;
+  }
+  return towerImages;
+}
+
+export function drawWorldMapTowers(ctx, lastRender, towerImages, options = {}) {
+  if (!lastRender || !towerImages) {
+    return { count: 0, instances: [] };
+  }
+  const grid = options.grid || DEFAULT_WORLD_MAP_GRID;
+  const imageWidth = Math.max(1, Number(options.imageWidth || WORLD_MAP_TOWER_IMAGE_WIDTH));
+  const imageHeight = Math.max(1, Number(options.imageHeight || WORLD_MAP_TOWER_IMAGE_HEIGHT));
+  const towers = Array.isArray(options.instances) ? options.instances : WORLD_MAP_TOWER_INSTANCES;
+  const xScale = lastRender.drawW / grid.width;
+  const yScale = lastRender.drawH / grid.height;
+  const rendered = [];
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(lastRender.drawX, lastRender.drawY, lastRender.drawW, lastRender.drawH);
+  ctx.clip();
+  for (const tower of towers) {
+    const point = resolveWorldMapTowerPoint(tower, grid);
+    if (!point) continue;
+    const towerImage = getWorldMapTowerImage(towerImages, point.variant);
+    if (!towerImage) continue;
+    const centerX = lastRender.drawX + point.centerX * xScale;
+    const centerY = lastRender.drawY + point.centerY * yScale + WORLD_MAP_TOWER_RENDER_OFFSET_Y;
+    const drawX = centerX - imageWidth / 2;
+    const drawY = centerY - imageHeight / 2;
+    ctx.drawImage(towerImage, drawX, drawY, imageWidth, imageHeight);
+    rendered.push({
+      id: tower.id,
+      coordinate: point.coordinate,
+      anchorCoordinates: point.anchorCoordinates,
+      placement: point.placement,
+      variant: point.variant,
+      centerX,
+      centerY,
+      drawX,
+      drawY,
+      drawW: imageWidth,
+      drawH: imageHeight,
+    });
+  }
+  ctx.restore();
+
+  return {
+    count: rendered.length,
+    imageWidth,
+    imageHeight,
+    instances: rendered,
+  };
+}
+
 export function renderMap(ctx, gameState, uiState, mapLayoutState, dims) {
   const viewWidth = Number(dims?.viewWidth || 0);
   const viewHeight = Number(dims?.viewHeight || 0);
   const panX = Number(mapLayoutState?.panX || 0);
   const warMeter = Math.max(0, Math.min(1, Number(mapLayoutState?.warMeter || 0)));
   const mapBackgroundImage = dims?.mapBackgroundImage || null;
+  const mapCaveImage = dims?.mapCaveImage || null;
+  const mapTowerImages = dims?.mapTowerImages || null;
   const heroLayoutSpec = dims?.heroLayoutSpec || null;
   const closeWinOvalImage = dims?.closeWinOvalImage || null;
 
@@ -115,6 +230,12 @@ export function renderMap(ctx, gameState, uiState, mapLayoutState, dims) {
     const centerWorldX = (viewWidth / 2 - lastRender.drawX) / xScale;
     const centerWorldY = (viewHeight / 2 - lastRender.drawY) / yScale;
     lastRender.centerCoordinate = getWorldMapCoordinateAtPoint(centerWorldX, centerWorldY);
+    lastRender.caves = drawWorldMapCaves(ctx, lastRender, mapCaveImage, {
+      grid: DEFAULT_WORLD_MAP_GRID,
+    });
+    lastRender.towers = drawWorldMapTowers(ctx, lastRender, mapTowerImages, {
+      grid: DEFAULT_WORLD_MAP_GRID,
+    });
     lastRender.gridOverlay = drawWorldMapCoordinateGrid(ctx, lastRender, {
       visible: Boolean(mapLayoutState?.showCoordinateGrid),
       grid: DEFAULT_WORLD_MAP_GRID,

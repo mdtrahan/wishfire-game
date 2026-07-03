@@ -1,0 +1,13 @@
+{
+  "hot_files": {
+    "web-runner/app.js": {
+      "functions": [
+        "createLayoutStateSingleton",
+        "prepareCombatSetupFromInstances",
+        "bottom"
+      ],
+      "staged_blob": "d9fac4b879aec858a6dccd98fee608082ea9c265"
+    }
+  },
+  "issue_id": "ORKA-ks66"
+}
