@@ -6,6 +6,10 @@ const assert = require('node:assert/strict');
 
 const repoRoot = path.join(__dirname, '..');
 
+function readRepoFile(...parts) {
+  return fs.readFileSync(path.join(repoRoot, ...parts), 'utf8');
+}
+
 function readPngRgba(filePath) {
   const bytes = fs.readFileSync(filePath);
   assert.equal(bytes.toString('ascii', 1, 4), 'PNG');
@@ -122,4 +126,39 @@ test('world map warp portal asset is a 46x52 light-burst transparent PNG', () =>
       }
     }
   }
+});
+
+test('world map warp portal instances resolve requested grid coordinates', async () => {
+  const portals = await import(path.join(repoRoot, 'web-runner', 'src', 'core', 'worldMapPortalInstances.mjs'));
+  const coordinates = await import(path.join(repoRoot, 'src', 'core', 'worldMapCoordinates.mjs'));
+
+  assert.equal(portals.WORLD_MAP_PORTAL_IMAGE_WIDTH, 46);
+  assert.equal(portals.WORLD_MAP_PORTAL_IMAGE_HEIGHT, 52);
+  assert.equal(portals.WORLD_MAP_PORTAL_SHADOW.blur, 8);
+  assert.equal(portals.WORLD_MAP_PORTAL_SHADOW.offsetY, 3);
+  assert.deepEqual(portals.WORLD_MAP_PORTAL_INSTANCES.map((portal) => portal.coordinate), [
+    'C11',
+    'K05',
+  ]);
+  assert.equal(new Set(portals.WORLD_MAP_PORTAL_INSTANCES.map((portal) => portal.coordinate)).size, 2);
+  for (const portal of portals.WORLD_MAP_PORTAL_INSTANCES) {
+    assert.ok(coordinates.getWorldMapCellBounds(portal.coordinate), `${portal.coordinate} resolves to a map cell`);
+  }
+});
+
+test('world map warp portal rendering is owned by map modules', () => {
+  const loaderSrc = readRepoFile('web-runner', 'systems', 'runtimeVisualAssetLoader.js');
+  const routerSrc = readRepoFile('web-runner', 'systems', 'surfaceRenderRouter.js');
+  const renderMapSrc = readRepoFile('web-runner', 'systems', 'renderMap.js');
+  const appSrc = readRepoFile('web-runner', 'app.js');
+
+  assert.match(loaderSrc, /mapPortalImage = await loadImage\(assetUrl\('images\/map_warp_portal_46x52\.png'\)\);/);
+  assert.match(routerSrc, /getMapPortalImage/);
+  assert.match(renderMapSrc, /WORLD_MAP_PORTAL_INSTANCES/);
+  assert.match(renderMapSrc, /WORLD_MAP_PORTAL_SHADOW/);
+  assert.match(renderMapSrc, /ctx\.shadowColor = shadow\?\.color/);
+  assert.match(renderMapSrc, /ctx\.ellipse\(/);
+  assert.match(renderMapSrc, /drawWorldMapPortals/);
+  assert.match(appSrc, /getMapPortalImage: \(\) => mapPortalImage/);
+  assert.doesNotMatch(appSrc, /WORLD_MAP_PORTAL_INSTANCES/);
 });

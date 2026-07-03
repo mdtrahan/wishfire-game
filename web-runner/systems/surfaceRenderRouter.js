@@ -22,6 +22,7 @@ export function createSurfaceRenderRouter({
   getCloseWinOvalImage,
   getMapBackgroundImage,
   getMapCaveImage,
+  getMapPortalImage,
   getMapTowerImages,
   renderHeroScreenLayoutV2,
   getDpr,
@@ -51,6 +52,7 @@ export function createSurfaceRenderRouter({
     const closeWinOvalImage = typeof getCloseWinOvalImage === 'function' ? getCloseWinOvalImage() : null;
     const mapBackgroundImage = typeof getMapBackgroundImage === 'function' ? getMapBackgroundImage() : null;
     const mapCaveImage = typeof getMapCaveImage === 'function' ? getMapCaveImage() : null;
+    const mapPortalImage = typeof getMapPortalImage === 'function' ? getMapPortalImage() : null;
     const mapTowerImages = typeof getMapTowerImages === 'function' ? getMapTowerImages() : null;
     const sharedDims = { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage };
 
@@ -67,6 +69,7 @@ export function createSurfaceRenderRouter({
             viewHeight,
             mapBackgroundImage,
             mapCaveImage,
+            mapPortalImage,
             mapTowerImages,
             heroLayoutSpec,
             closeWinOvalImage,

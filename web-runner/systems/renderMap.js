@@ -11,6 +11,12 @@ import {
   WORLD_MAP_CAVE_INSTANCES,
 } from '../src/core/worldMapCaveInstances.mjs';
 import {
+  WORLD_MAP_PORTAL_IMAGE_HEIGHT,
+  WORLD_MAP_PORTAL_IMAGE_WIDTH,
+  WORLD_MAP_PORTAL_INSTANCES,
+  WORLD_MAP_PORTAL_SHADOW,
+} from '../src/core/worldMapPortalInstances.mjs';
+import {
   WORLD_MAP_TOWER_IMAGE_HEIGHT,
   WORLD_MAP_TOWER_IMAGE_WIDTH,
   WORLD_MAP_TOWER_INSTANCES,
@@ -115,6 +121,73 @@ export function drawWorldMapCaves(ctx, lastRender, caveImage, options = {}) {
   };
 }
 
+export function drawWorldMapPortals(ctx, lastRender, portalImage, options = {}) {
+  if (!lastRender || !portalImage) {
+    return { count: 0, instances: [] };
+  }
+  const grid = options.grid || DEFAULT_WORLD_MAP_GRID;
+  const imageWidth = Math.max(1, Number(options.imageWidth || WORLD_MAP_PORTAL_IMAGE_WIDTH));
+  const imageHeight = Math.max(1, Number(options.imageHeight || WORLD_MAP_PORTAL_IMAGE_HEIGHT));
+  const shadow = options.shadow || WORLD_MAP_PORTAL_SHADOW;
+  const portals = Array.isArray(options.instances) ? options.instances : WORLD_MAP_PORTAL_INSTANCES;
+  const xScale = lastRender.drawW / grid.width;
+  const yScale = lastRender.drawH / grid.height;
+  const rendered = [];
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(lastRender.drawX, lastRender.drawY, lastRender.drawW, lastRender.drawH);
+  ctx.clip();
+  for (const portal of portals) {
+    const bounds = getWorldMapCellBounds(portal?.coordinate, grid);
+    if (!bounds) continue;
+    const centerX = lastRender.drawX + bounds.centerX * xScale;
+    const centerY = lastRender.drawY + bounds.centerY * yScale;
+    const drawX = centerX - imageWidth / 2;
+    const drawY = centerY - imageHeight / 2;
+    if (shadow?.floorColor) {
+      ctx.fillStyle = shadow.floorColor;
+      ctx.beginPath();
+      ctx.ellipse(
+        centerX,
+        centerY + Number(shadow.floorOffsetY || 0),
+        Math.max(1, Number(shadow.floorWidth || 1)) / 2,
+        Math.max(1, Number(shadow.floorHeight || 1)) / 2,
+        0,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+    }
+    ctx.save();
+    ctx.shadowColor = shadow?.color || 'transparent';
+    ctx.shadowBlur = Math.max(0, Number(shadow?.blur || 0));
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = Number(shadow?.offsetY || 0);
+    ctx.drawImage(portalImage, drawX, drawY, imageWidth, imageHeight);
+    ctx.restore();
+    rendered.push({
+      id: portal.id,
+      coordinate: bounds.coordinate,
+      centerX,
+      centerY,
+      drawX,
+      drawY,
+      drawW: imageWidth,
+      drawH: imageHeight,
+      shadow,
+    });
+  }
+  ctx.restore();
+
+  return {
+    count: rendered.length,
+    imageWidth,
+    imageHeight,
+    instances: rendered,
+  };
+}
+
 function getWorldMapTowerImage(towerImages, variant) {
   if (!towerImages) return null;
   if (typeof towerImages === 'object' && !('width' in towerImages)) {
@@ -179,6 +252,7 @@ export function renderMap(ctx, gameState, uiState, mapLayoutState, dims) {
   const panX = Number(mapLayoutState?.panX || 0);
   const mapBackgroundImage = dims?.mapBackgroundImage || null;
   const mapCaveImage = dims?.mapCaveImage || null;
+  const mapPortalImage = dims?.mapPortalImage || null;
   const mapTowerImages = dims?.mapTowerImages || null;
   const heroLayoutSpec = dims?.heroLayoutSpec || null;
   const closeWinOvalImage = dims?.closeWinOvalImage || null;
@@ -230,6 +304,9 @@ export function renderMap(ctx, gameState, uiState, mapLayoutState, dims) {
     const centerWorldY = (viewHeight / 2 - lastRender.drawY) / yScale;
     lastRender.centerCoordinate = getWorldMapCoordinateAtPoint(centerWorldX, centerWorldY);
     lastRender.caves = drawWorldMapCaves(ctx, lastRender, mapCaveImage, {
+      grid: DEFAULT_WORLD_MAP_GRID,
+    });
+    lastRender.portals = drawWorldMapPortals(ctx, lastRender, mapPortalImage, {
       grid: DEFAULT_WORLD_MAP_GRID,
     });
     lastRender.towers = drawWorldMapTowers(ctx, lastRender, mapTowerImages, {
