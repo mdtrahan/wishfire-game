@@ -18,6 +18,9 @@ import {
   WORLD_MAP_PORTAL_SHADOW,
 } from '../src/core/worldMapPortalInstances.mjs';
 import {
+  WORLD_MAP_TOWER_GEM_ANCHOR,
+  WORLD_MAP_TOWER_GEM_GLOW,
+  WORLD_MAP_TOWER_GEM_GLOW_COLORS,
   WORLD_MAP_TOWER_IMAGE_HEIGHT,
   WORLD_MAP_TOWER_IMAGE_WIDTH,
   WORLD_MAP_TOWER_INSTANCES,
@@ -330,6 +333,109 @@ function getWorldMapTowerImage(towerImages, variant) {
   return towerImages;
 }
 
+function getTowerGemGlowPalette(variant) {
+  return WORLD_MAP_TOWER_GEM_GLOW_COLORS[variant] || WORLD_MAP_TOWER_GEM_GLOW_COLORS.blue;
+}
+
+function getTowerGemGlowPulse(nowSec, glow = WORLD_MAP_TOWER_GEM_GLOW) {
+  const rawPulse = getPortalGlowPulse(nowSec, glow);
+  const strength = Math.max(0, Math.min(1, Number(glow.pulseStrength || 1)));
+  return 0.5 + ((rawPulse - 0.5) * strength);
+}
+
+function drawWorldMapTowerGemGlow(ctx, centerX, centerY, baseSize, pulse, glow, palette) {
+  const alpha = lerp(Number(glow.alphaMin || 0), Number(glow.alphaMax || 0), pulse);
+  const coreRadius = baseSize * lerp(
+    Number(glow.coreRadiusMinScale || 0.2),
+    Number(glow.coreRadiusMaxScale || 0.3),
+    pulse,
+  );
+  const burstRadius = baseSize * lerp(
+    Number(glow.burstRadiusMinScale || 0.45),
+    Number(glow.burstRadiusMaxScale || 0.6),
+    pulse,
+  );
+  const rayAlpha = lerp(Number(glow.rayAlphaMin || 0), Number(glow.rayAlphaMax || 0), pulse);
+  const rayLengthPulse = lerp(
+    Number(glow.rayLengthMinScale || 0.7),
+    Number(glow.rayLengthMaxScale || 0.9),
+    pulse,
+  );
+  const rays = Array.isArray(glow.rays) ? glow.rays : [];
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, burstRadius);
+  gradient.addColorStop(0, `rgba(${palette.core}, ${alpha.toFixed(3)})`);
+  gradient.addColorStop(0.36, `rgba(${palette.mid}, ${(alpha * 0.58).toFixed(3)})`);
+  gradient.addColorStop(1, `rgba(${palette.edge}, 0)`);
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, burstRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.lineCap = 'round';
+  for (const ray of rays) {
+    const angle = (Number(ray.angleDeg || 0) * Math.PI) / 180;
+    const negativeLength = baseSize * Number(ray.negativeLengthScale || 0.2) * rayLengthPulse;
+    const positiveLength = baseSize * Number(ray.positiveLengthScale || 0.2) * rayLengthPulse;
+    const startX = centerX - Math.cos(angle) * negativeLength;
+    const startY = centerY - Math.sin(angle) * negativeLength;
+    const endX = centerX + Math.cos(angle) * positiveLength;
+    const endY = centerY + Math.sin(angle) * positiveLength;
+    const scaledAlpha = rayAlpha * Number(ray.alphaScale || 1);
+    const rayGradient = ctx.createLinearGradient(startX, startY, endX, endY);
+    rayGradient.addColorStop(0, `rgba(${palette.edge}, 0)`);
+    rayGradient.addColorStop(0.42, `rgba(${palette.mid}, ${(scaledAlpha * 0.42).toFixed(3)})`);
+    rayGradient.addColorStop(0.5, `rgba(${palette.core}, ${scaledAlpha.toFixed(3)})`);
+    rayGradient.addColorStop(0.58, `rgba(${palette.mid}, ${(scaledAlpha * 0.42).toFixed(3)})`);
+    rayGradient.addColorStop(1, `rgba(${palette.edge}, 0)`);
+    ctx.lineWidth = lerp(Number(ray.widthMin || 1), Number(ray.widthMax || 1), pulse);
+    ctx.strokeStyle = rayGradient;
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  return {
+    pulse,
+    alpha,
+    coreRadius,
+    burstRadius,
+    rayAlpha,
+    rayLengthPulse,
+    rayCount: rays.length,
+  };
+}
+
+function drawWorldMapTowerGemInnerGlow(ctx, centerX, centerY, baseSize, pulse, glow, palette) {
+  const innerAlpha = lerp(Number(glow.innerAlphaMin || 0), Number(glow.innerAlphaMax || 0), pulse);
+  const innerRadius = baseSize * lerp(
+    Number(glow.innerRadiusMinScale || 0.1),
+    Number(glow.innerRadiusMaxScale || 0.14),
+    pulse,
+  );
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, innerRadius);
+  gradient.addColorStop(0, `rgba(255, 255, 255, ${innerAlpha.toFixed(3)})`);
+  gradient.addColorStop(0.48, `rgba(${palette.core}, ${(innerAlpha * 0.72).toFixed(3)})`);
+  gradient.addColorStop(1, `rgba(${palette.mid}, 0)`);
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, innerRadius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  return {
+    innerAlpha,
+    innerRadius,
+  };
+}
+
 export function drawWorldMapTowers(ctx, lastRender, towerImages, options = {}) {
   if (!lastRender || !towerImages) {
     return { count: 0, instances: [] };
@@ -337,6 +443,9 @@ export function drawWorldMapTowers(ctx, lastRender, towerImages, options = {}) {
   const grid = options.grid || DEFAULT_WORLD_MAP_GRID;
   const imageWidth = Math.max(1, Number(options.imageWidth || WORLD_MAP_TOWER_IMAGE_WIDTH));
   const imageHeight = Math.max(1, Number(options.imageHeight || WORLD_MAP_TOWER_IMAGE_HEIGHT));
+  const glow = options.gemGlow || WORLD_MAP_TOWER_GEM_GLOW;
+  const pulse = getTowerGemGlowPulse(options.nowSec, glow);
+  const gemGlowSize = imageWidth * Math.max(0, Number(glow.sizeScale || 0.5));
   const towers = Array.isArray(options.instances) ? options.instances : WORLD_MAP_TOWER_INSTANCES;
   const xScale = lastRender.drawW / grid.width;
   const yScale = lastRender.drawH / grid.height;
@@ -355,7 +464,12 @@ export function drawWorldMapTowers(ctx, lastRender, towerImages, options = {}) {
     const centerY = lastRender.drawY + point.centerY * yScale + WORLD_MAP_TOWER_RENDER_OFFSET_Y;
     const drawX = centerX - imageWidth / 2;
     const drawY = centerY - imageHeight / 2;
+    const gemCenterX = drawX + imageWidth * WORLD_MAP_TOWER_GEM_ANCHOR.xRatio;
+    const gemCenterY = drawY + imageHeight * WORLD_MAP_TOWER_GEM_ANCHOR.yRatio;
+    const gemPalette = getTowerGemGlowPalette(point.variant);
+    const gemGlow = drawWorldMapTowerGemGlow(ctx, gemCenterX, gemCenterY, gemGlowSize, pulse, glow, gemPalette);
     ctx.drawImage(towerImage, drawX, drawY, imageWidth, imageHeight);
+    const gemInnerGlow = drawWorldMapTowerGemInnerGlow(ctx, gemCenterX, gemCenterY, gemGlowSize, pulse, glow, gemPalette);
     rendered.push({
       id: tower.id,
       coordinate: point.coordinate,
@@ -368,6 +482,9 @@ export function drawWorldMapTowers(ctx, lastRender, towerImages, options = {}) {
       drawY,
       drawW: imageWidth,
       drawH: imageHeight,
+      gemGlow: { ...gemGlow, ...gemInnerGlow },
+      gemCenterX,
+      gemCenterY,
     });
   }
   ctx.restore();
@@ -376,6 +493,7 @@ export function drawWorldMapTowers(ctx, lastRender, towerImages, options = {}) {
     count: rendered.length,
     imageWidth,
     imageHeight,
+    gemGlowSize,
     instances: rendered,
   };
 }
@@ -448,6 +566,7 @@ export function renderMap(ctx, gameState, uiState, mapLayoutState, dims) {
     });
     lastRender.towers = drawWorldMapTowers(ctx, lastRender, mapTowerImages, {
       grid: DEFAULT_WORLD_MAP_GRID,
+      nowSec,
     });
     lastRender.gridOverlay = drawWorldMapCoordinateGrid(ctx, lastRender, {
       visible: Boolean(mapLayoutState?.showCoordinateGrid),
