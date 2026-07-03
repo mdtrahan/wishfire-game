@@ -1,0 +1,26 @@
+{
+  "changed_functions": {
+    "web-runner/systems/renderRuntime.js": [
+      "renderRuntime"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 1,
+    "staged_line_count": 100,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    "web-runner/systems/renderRuntime.js"
+  ],
+  "issue_id": "ORKA-yib8.1.2",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    "web-runner/systems/renderRuntime.js": "94eb341c51193445b07901d9d37ac1f826188559"
+  }
+}

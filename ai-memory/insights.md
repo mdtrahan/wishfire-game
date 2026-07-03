@@ -23,6 +23,7 @@
 ## Regression Triggers
 - Before starting combat-system beads, scan acceptance + code for: `buff`, `debuff`, `duration`, `turns`, `stack`.
 - If these imply outdated model assumptions, pause and rewrite bead scope before coding.
+- Dev-panel reset buttons must clear the readout-owned counters and traces, not only the activation/session selection flags; otherwise QA side panels can show stale proof after a real reset.
 - When render extraction moves visual helpers behind a dependency scope, verify app-to-renderer predicates are live state readers rather than false stubs; status overlays keyed by effect names should accept stable prefixes such as `Blight*`.
 - When removing a hero-specific heal expression, route that hero through the shared heal body; do not replace the special branch with a guard that still consumes action pacing but skips `ApplyPartyHeal`.
 - For normal gem matches, refill must start at the gem-destruction seam before deferred action/turn handoff can leave visible board holes. Batch-create all queued refill gems before waiting on settle animation.
@@ -30,6 +31,7 @@
 - Resource accounting for normal gem matches must pass only the matched set count into the existing reward owner (for yellow, `Add_Gold`) rather than replacing reward math. Board-wide same-color counts belong only to explicit supergem/sweep owner paths.
 - Match selections store board indices at runtime; resolve through `gameState.gems` before applying gem-object predicates such as color or lock state, otherwise resource counts can silently collapse to zero.
 - Enemy board-pressure effects that run during autoplay should preserve board cardinality unless the turn/refill gates explicitly own the resulting empty cells. Prefer visible lock/disable state for temporary denial effects, and make autoplay skip disabled gems instead of trying to select through them.
+- 2026-06-29: Heal bloom presentation should be keyed by heal damage-text target kind, not only hero/bar branches. Enemy heals already emit `targetKind: 'enemy'`; the shared DOM text bridge must spawn the bloom from that anchor too.
 
 ## 2026-03-07 Regression Note
 - Hero selector render gate must treat hero-turn as `TurnPhase === 0` (not `1`) in web-runner runtime.
@@ -455,6 +457,7 @@
 - Enemy selector presentation has two target authorities: live pending selection uses `SelectedEnemyUID`; queued `PendingHeroHits[].targetUID` is only a fallback when there is no active selected target to show. Reversing that order makes stale queued hits visually override the player’s latest click.
 - Hero target/selector regressions are only fixed when validation covers target choice, queued hit target, and rendered selector together; log actor UID, selected UID, stale queued UID, visual selector UID, and queued attack target UID in the same pass so one green layer cannot hide marker/damage desync.
 - Dev autoplay must write the random single-target `SelectedEnemyUID` before rendering the pending attack selector, then reuse that same UID when resolving the attack. If target choice happens only at resolve time, the marker can show the first/default enemy while damage lands on the later random target.
+- Treat `SelectedEnemyUID` and `SelectedEnemyUIDOwner` as one intent pair. Pending HERO_SINGLE damage and selector rendering must ignore a selected UID unless its owner matches the current pending actor, or stale target state can make the marker and damage disagree.
 - When moving dev tooling logic out of `app.js`, every remaining app wrapper must delegate to a returned runtime method. A helper existing inside `devToolingRuntime.js` is not enough; reset/restart paths need contract coverage for both the runtime return object and the app wrapper.
 
 ## 2026-06-09 — Dev Modal Resume Must Revalidate Idle Hero Input
@@ -476,3 +479,18 @@
 ## 2026-06-25 - Debug Counter Displays Need Label Uniqueness Contracts
 - Counter state can be correct while a diagnostics renderer duplicates a label. For Dev Panel readouts, contract the rendered labels as a display surface, not only the backing counter object.
 - SkillDrawCalls count card appearances, not selections or proc executions. Keep that distinction explicit when reviewing QA screenshots so duplicate display rows are not mistaken for duplicate draw events.
+
+## 2026-06-27 - Death Reward Orbs Need A Death-Visual Barrier
+- If a KO reward has a delayed presentation, do not clear the enemy slot at the reward-queue seam. Hold the 0-HP enemy visual until pending attack/chain visuals finish, then hide that same enemy for reward fallout while keeping the slot occupied.
+- For death reward bugs, contract ordering across all seams: enemy HP can be <= 0 while the slot remains owned, death payout begins only after attack visuals finish, and real slot clear/refill happens only after orb flight completes.
+
+## 2026-06-28 - Death-Visual Barriers Must Use Presentation Clocks
+- Pending-hit arrays are not the whole attack presentation. KO orb fallout must also wait for active hero/enemy action objects and damage text lifetime before beginning the death payout.
+- Do not let the KO queue's own action lock block KO orb preparation; that self-lock is for turn advancement, not for delaying the payout presenter.
+- If a death reward looks like an old enemy or new refill enemy donated the orbs, inspect whether the reward presenter clears the slot before the orb payout completes.
+
+## 2026-06-28 - KO Orb Delivery Must Own The Slot Through Final Delivery
+- KO orb completion needs a final rendered delivery frame before reward completion. Completing on the first `now >= endAt` frame lets state mutations race the visual payoff.
+- Apply the Astral Flow reward while the dead enemy still owns its slot, then commit the enemy removal/refill window after the meter payout. A refill enemy must never appear before the old enemy's death loot has finished delivering.
+- KO orb reward completion happens after the attack owner has already released its handoff lane, so it must not set a new `DeferAdvance`/`AdvanceAfterAction`. Use a tiny visual action lock only; fresh deferred handoffs at this seam can hang combat.
+- Treat KO orb payout as its own roster-blocking lane. Turn advance and respawn timers must see active KO queues/presentations as unavailable roster state so refill cannot spawn a new enemy under old death loot.

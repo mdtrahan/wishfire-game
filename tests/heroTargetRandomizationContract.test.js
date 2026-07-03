@@ -33,10 +33,13 @@ module.exports = { ExecuteSkill };`;
   return context.module.exports;
 }
 
-function createContext({ pending = false } = {}) {
+function createContext({ pending = false, selectedOwnerUID = null } = {}) {
   const hero = { uid: 101, kind: 'hero', name: 'Falie', attackType: 'melee', hp: 50 };
   const staleEnemy = { uid: 201, kind: 'enemy', name: 'Stale', hp: 90, maxHP: 90 };
   const randomEnemy = { uid: 202, kind: 'enemy', name: 'Random', hp: 90, maxHP: 90 };
+  const ownerUID = selectedOwnerUID == null
+    ? (pending ? hero.uid : 0)
+    : Number(selectedOwnerUID || 0);
   return {
     state: {
       globals: {
@@ -47,6 +50,7 @@ function createContext({ pending = false } = {}) {
         PowerAmpByUID: {},
         RuntimeRandom: () => 0.75,
         SelectedEnemyUID: staleEnemy.uid,
+        SelectedEnemyUIDOwner: ownerUID,
         time: 1,
       },
       entities: [hero, staleEnemy, randomEnemy],
@@ -73,5 +77,15 @@ for (const modulePath of mirrors) {
 
     assert.equal(ctx.state.globals.PendingHeroHits.length, 1);
     assert.equal(ctx.state.globals.PendingHeroHits[0].targetUID, 201);
+  });
+
+  test(`pending HERO_SINGLE ignores selected enemy owned by a different actor in ${path.relative(repoRoot, modulePath)}`, () => {
+    const { ExecuteSkill } = loadFunctionBank(modulePath);
+    const ctx = createContext({ pending: true, selectedOwnerUID: 999 });
+
+    ExecuteSkill(ctx, 'HERO_SINGLE', 101);
+
+    assert.equal(ctx.state.globals.PendingHeroHits.length, 1);
+    assert.equal(ctx.state.globals.PendingHeroHits[0].targetUID, 202);
   });
 }

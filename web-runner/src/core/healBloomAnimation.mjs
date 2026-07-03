@@ -1,5 +1,7 @@
 import { gsap } from './gsapShim.mjs';
 
+const HEAL_BLOOM_WIDTH_SCALE = 0.8;
+
 function random(min, max) {
   return Math.random() * (max - min) + min;
 }
@@ -27,7 +29,7 @@ export function createHealBloom({
   for (let i = 0; i < total; i += 1) {
     const angle = random(0, Math.PI * 2);
     const distance = random(40, 90);
-    const dx = Math.cos(angle) * distance;
+    const dx = Math.cos(angle) * distance * HEAL_BLOOM_WIDTH_SCALE;
     const dy = Math.sin(angle) * distance * 0.7;
     const delay = random(0, 0.15);
     const rotation = random(-20, 20);

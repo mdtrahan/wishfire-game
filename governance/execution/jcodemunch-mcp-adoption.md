@@ -4,6 +4,7 @@
 - Make symbol-level code exploration the default for large-file analysis work.
 - Reduce brute-force full-file reads in hot runtime files.
 - Improve precision and speed when tracing ownership, lifecycle, and cross-file dependencies.
+- Scope this doc to `jcodemunch-mcp`; full retrieval precedence lives in `governance/execution/repo-context-retrieval.md`.
 
 ## Preferred Use
 - Use `jcodemunch-mcp` for:
@@ -39,6 +40,13 @@
   - the target is non-code text
   - the symbol index is missing or stale
   - final diff verification needs direct file context
+
+## Codex-Orka Index Routing
+- Current full index observed during ORKA-ygz6 diagnosis: `local/Codex-Orka-904e2bad`.
+- Treat `local/Codex-Orka-c326b16a` as stale unless it is revalidated.
+- If `repo: "Codex-Orka"` is ambiguous, run `get_repo_health` against each candidate and choose the index with current file/symbol counts.
+- For an extra freshness check, inspect `web-runner/app.js` with `get_dependency_graph`. A current index should show the modern runtime module graph, including systems such as `renderRuntime`, `partyStatOsd`, `combatSessionInitializer`, `devToolingRuntime`, `superGemRuntime`, and `simulationCoreShadow`.
+- Do not fall back to broad full-file reads after an ambiguity error. Resolve the index first, then continue with focused retrieval.
 
 ## Project Policy
 - `jcodemunch-mcp` is a tooling aid, not a gameplay/runtime dependency.

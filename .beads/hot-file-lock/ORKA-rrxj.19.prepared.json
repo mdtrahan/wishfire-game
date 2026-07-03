@@ -2,19 +2,39 @@
   "hot_files": {
     "Scripts/functionBank.js": {
       "functions": [
-        "applyPartyMaxHPBonus",
+        "hasActiveAstralFlowKoOrbPayout",
+        "GetEnemyRosterStability",
         "makeStableHeroSkillPointId",
-        "activateMagicFruitSkill"
+        "queuePartyArcanePulse",
+        "CompleteAstralFlowKoOrbRewards",
+        "getPendingDamageTextKind",
+        "pos",
+        "HeroAttackSplit",
+        "finalizeEnemyRespawnWindow",
+        "SpawnDamageText"
       ],
-      "staged_blob": "f1da31af2201cd134d8c186d6527523a804f441a"
+      "staged_blob": "7282cb99d25575b69ce5d136b44010325400051f"
+    },
+    "web-runner/app.js": {
+      "functions": [
+        "spawnPendingDamageNumbers"
+      ],
+      "staged_blob": "8e3c15d88789178fdc6a15c026b4216adbb5666e"
     },
     "web-runner/modules/functionBank.js": {
       "functions": [
-        "applyPartyMaxHPBonus",
+        "hasActiveAstralFlowKoOrbPayout",
+        "GetEnemyRosterStability",
         "makeStableHeroSkillPointId",
-        "activateMagicFruitSkill"
+        "queuePartyArcanePulse",
+        "CompleteAstralFlowKoOrbRewards",
+        "getPendingDamageTextKind",
+        "pos",
+        "HeroAttackSplit",
+        "finalizeEnemyRespawnWindow",
+        "SpawnDamageText"
       ],
-      "staged_blob": "2a8ee203f7a0d7cf1f823dd1763151f1af24b581"
+      "staged_blob": "1e309c52a86a0c7c6b4d276f448d725690ba710a"
     }
   },
   "issue_id": "ORKA-rrxj.19"

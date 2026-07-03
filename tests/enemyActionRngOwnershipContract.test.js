@@ -31,6 +31,7 @@ function loadFunctionBank(modulePath, overrides = {}) {
     .replace(/\bexport\s+/g, '')}
 
 module.exports = {
+  Enemy_Heal_Allies,
   Enemy_Heal_Ally,
   Enemy_Heal_Self,
   PickEnemySkill,
@@ -167,5 +168,39 @@ test('enemy heal amount and ally target rolls consume RuntimeRandom', () => {
     assert.equal(trace.targetUID, 302, modulePath);
     assert.equal(trace.rangeRoll, 0, modulePath);
     assert.equal(trace.critRoll, 0.99, modulePath);
+  }
+});
+
+test('enemy heal actions emit enemy-target heal texts for bloom anchoring', () => {
+  for (const modulePath of [runtimeFunctionBankPath, scriptsFunctionBankPath]) {
+    const mod = loadFunctionBank(modulePath);
+
+    const selfCtx = makeEnemyActionContext([0.5, 0.99]);
+    mod.Enemy_Heal_Self(selfCtx, 300);
+    assert.deepEqual(
+      selfCtx.state.globals.DamageTexts.map(({ kind, targetKind, x, y }) => ({ kind, targetKind, x, y })),
+      [{ kind: 'heal', targetKind: 'enemy', x: 10, y: 10 }],
+      modulePath,
+    );
+
+    const allyCtx = makeEnemyActionContext([0.5, 0.99]);
+    mod.Enemy_Heal_Ally(allyCtx, 300, 301);
+    assert.deepEqual(
+      allyCtx.state.globals.DamageTexts.map(({ kind, targetKind, x, y }) => ({ kind, targetKind, x, y })),
+      [{ kind: 'heal', targetKind: 'enemy', x: 20, y: 20 }],
+      modulePath,
+    );
+
+    const groupCtx = makeEnemyActionContext([0.5, 0.99]);
+    mod.Enemy_Heal_Allies(groupCtx, 300);
+    assert.deepEqual(
+      groupCtx.state.globals.DamageTexts.map(({ kind, targetKind, x, y }) => ({ kind, targetKind, x, y })),
+      [
+        { kind: 'heal', targetKind: 'enemy', x: 10, y: 10 },
+        { kind: 'heal', targetKind: 'enemy', x: 20, y: 20 },
+        { kind: 'heal', targetKind: 'enemy', x: 30, y: 30 },
+      ],
+      modulePath,
+    );
   }
 });

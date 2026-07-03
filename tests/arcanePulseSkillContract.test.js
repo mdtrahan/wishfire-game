@@ -130,6 +130,7 @@ function makeContext({ pending = false } = {}) {
     PendingActor: pending ? hero.uid : 0,
     PendingSkillID: pending ? 'HERO_SINGLE' : '',
     SelectedEnemyUID: pending ? enemyB.uid : 0,
+    SelectedEnemyUIDOwner: pending ? hero.uid : 0,
     PowerAmpByUID: {},
     SessionSkillsByHeroUID: {},
     SkillDraughtOpen: 0,
@@ -159,6 +160,16 @@ function selectArcanePulse(mod, ctx) {
   const selected = mod.SelectSkillDraughtCard(ctx, 0);
   assert.equal(selected.ok, true);
   assert.equal(selected.skill.id, 'party_arcane_pulse');
+  return selected.skill;
+}
+
+function selectPartySkill(mod, ctx, skillId) {
+  const opened = mod.ForceAstralFlowSkillDraught(ctx, 100, skillId);
+  assert.equal(opened.ok, true);
+  assert.equal(opened.candidates[0].id, skillId);
+  const selected = mod.SelectSkillDraughtCard(ctx, 0);
+  assert.equal(selected.ok, true);
+  assert.equal(selected.skill.id, skillId);
   return selected.skill;
 }
 
@@ -250,16 +261,22 @@ for (const modulePath of [runtimePath, scriptsPath]) {
     assert.equal(pulse.consumePowerAmp, 0);
     assert.equal(pulse.suppressPartySkillHitHooks, 1);
     assert.equal(pulse.suppressHitFlash, 1);
-    assert.equal(pulse.suppressDamageText, 1);
     assert.equal(pulse.suppressAttackSkillBounds, 1);
     assert.equal(pulse.bonusDamageOnly, 1);
     assert.equal(pulse.hitFlashTone, undefined);
-    assert.equal(pulse.damageTextKind, undefined);
+    assert.equal(pulse.suppressDamageText, undefined);
+    assert.equal(pulse.damageTextKind, 'arcane_pulse');
+    assert.ok(Number(pulse.presentationClearAt) >= Number(pulse.at) + 1.3);
     assert.equal(pulse.sequence, 'attack_then_bonus_pulse');
     assert.ok(Number(pulse.at) > Number(normalHit.at), 'Arcane Pulse damage must resolve after the base attack');
     assert.equal(pulse.retargetOnDeath, undefined);
     assert.equal(ctx.state.globals.LastPartyArcanePulse.selectedTargetUID, 202);
     assert.equal(ctx.state.globals.LastPartyArcanePulse.sequence, 'attack_then_bonus_pulse');
+    assert.equal(ctx.state.globals.LastPartyArcanePulse.visualClearAt, pulse.presentationClearAt);
+    assert.ok(
+      Number(ctx.state.globals.ActionLockUntil || 0) >= Number(pulse.presentationClearAt || 0),
+      'Arcane Pulse should hold the action lane until its blue damage float finishes'
+    );
     assert.ok(
       Number(ctx.state.globals.LastPartyArcanePulse.visualStartAt) > Number(normalHit.at),
       'Arcane Pulse visual should begin after the base attack impact'
@@ -274,6 +291,32 @@ for (const modulePath of [runtimePath, scriptsPath]) {
     assert.ok(
       Number(ctx.state.globals.ArcanePulseVisuals[0].startAt) > Number(normalHit.at),
       'Arcane Pulse crescent should not overlap the normal attack impact'
+    );
+  });
+
+  test(`Arcane Pulse triggers after Split red AOE attacks in ${rel}`, () => {
+    const mod = loadFunctionBank(modulePath);
+    const ctx = makeContext();
+    selectPartySkill(mod, ctx, 'party_arcane_pulse');
+    selectPartySkill(mod, ctx, 'party_split');
+    ctx.state.globals.PartyArcanePulseActionCount = 1;
+
+    mod.HeroAttackSingle(ctx, 100, 202);
+
+    const hits = ctx.state.globals.PendingHeroHits;
+    const splitHits = hits.filter(hit => hit && hit.generatedBySkillId === 'party_split');
+    const pulse = hits.find(hit => hit && hit.effectType === 'arcane_pulse');
+    assert.equal(splitHits.length, 2);
+    assert.ok(pulse, 'expected Split attack to queue Arcane Pulse');
+    assert.equal(ctx.state.globals.PartyArcanePulseActionCount, 2);
+    assert.equal(ctx.state.globals.PartyArcanePulseProcs, 1);
+    assert.equal(pulse.targetUID, 202);
+    assert.equal(pulse.generatedBySkillId, 'party_arcane_pulse');
+    assert.equal(pulse.damageTextKind, 'arcane_pulse');
+    assert.equal(pulse.sequence, 'attack_then_bonus_pulse');
+    assert.ok(
+      Number(pulse.at) > Math.max(...splitHits.map(hit => Number(hit.at || 0))),
+      'Arcane Pulse should resolve after Split AOE packets'
     );
   });
 
@@ -361,16 +404,19 @@ for (const modulePath of [runtimePath, scriptsPath]) {
     assert.ok(pulse, 'expected Arcane Pulse hit packet');
     assert.equal(pulse.suppressPartySkillHitHooks, 1);
     assert.equal(pulse.suppressHitFlash, 1);
-    assert.equal(pulse.suppressDamageText, 1);
+    assert.equal(pulse.suppressDamageText, undefined);
+    assert.equal(pulse.damageTextKind, 'arcane_pulse');
 
     ctx.state.globals.time = Number(pulse.at || 0) + 0.01;
     const pulseDamage = mod.ApplyDamageToTarget(ctx, pulse.targetUID, pulse.finalDmg);
     assert.equal(pulseDamage, 12);
+    assert.equal(ctx.state.globals.DamageTexts.length, 1);
+    assert.equal(ctx.state.globals.DamageTexts[0].kind, 'arcane_pulse');
+    assert.equal(ctx.state.globals.DamageTexts[0].amount, 12);
     assert.equal(ctx.state.globals.PartyDestinyAttempts || 0, 0);
     assert.equal(ctx.state.globals.PartyDestinyProcs || 0, 0);
     assert.equal(ctx.state.entities[0].hp, 40);
     assert.equal(ctx.state.globals.HitFlashByUID?.[pulse.targetUID], undefined);
-    assert.equal((ctx.state.globals.DamageTexts || []).length, 0);
 
     ctx.state.globals.PendingHeroHits = [{
       at: ctx.state.globals.time,
@@ -450,7 +496,8 @@ test('Arcane Pulse queues after red supergem cluster attacks', () => {
     assert.equal(pulse.targetUID, 202);
     assert.equal(pulse.sequence, 'attack_then_bonus_pulse');
     assert.equal(pulse.suppressHitFlash, 1);
-    assert.equal(pulse.suppressDamageText, 1);
+    assert.equal(pulse.suppressDamageText, undefined);
+    assert.equal(pulse.damageTextKind, 'arcane_pulse');
     assert.ok(
       Number(pulse.at) > Math.max(...clusterHits.map(hit => Number(hit.at || 0))),
       'Arcane Pulse should resolve after the final red supergem cluster hit'
@@ -487,6 +534,7 @@ test('Arcane Pulse queues after Huun yellow supergem Goldstrike attacks', () => 
     assert.equal(goldstrike.targetUID, 202);
     assert.equal(pulse.targetUID, 202);
     assert.equal(pulse.sequence, 'attack_then_bonus_pulse');
+    assert.equal(pulse.damageTextKind, 'arcane_pulse');
     assert.ok(
       Number(pulse.at) > Number(goldstrike.at || 0),
       'Arcane Pulse should resolve after Huun yellow supergem Goldstrike'
@@ -503,11 +551,20 @@ test('Arcane Pulse has raster asset and browser-visible render hooks', () => {
   const loaderSrc = fs.readFileSync(loaderPath, 'utf8');
   const rendererSrc = fs.readFileSync(rendererPath, 'utf8');
   const hooksSrc = fs.readFileSync(browserHooksPath, 'utf8');
+  const appSrc = fs.readFileSync(path.join(repoRoot, 'web-runner/app.js'), 'utf8');
+  const damageNumberSrc = fs.readFileSync(path.join(repoRoot, 'web-runner/src/core/damageNumberAnimation.mjs'), 'utf8');
   assert.match(loaderSrc, /skill_arcane_pulse_96x96\.png/);
   assert.match(loaderSrc, /SkillArcanePulse/);
   assert.match(rendererSrc, /renderArcanePulseVisuals/);
   assert.match(rendererSrc, /images\.SkillArcanePulse/);
+  assert.match(rendererSrc, /kind === 'arcane_pulse'/);
+  assert.match(rendererSrc, /#3DA5FF/);
+  assert.match(rendererSrc, /damageTextKind: hit\.damageTextKind/);
+  assert.match(rendererSrc, /ApplyDamageToTarget', hit\.targetUID, finalDmg, damageOptions/);
   assert.match(rendererSrc, /crescent_arc_blast/);
+  assert.match(appSrc, /d\.kind === 'arcane_pulse' \? 'arcane_pulse' : 'damage'/);
+  assert.match(damageNumberSrc, /const isArcanePulse = normalizedKind === 'arcane_pulse';/);
+  assert.match(damageNumberSrc, /#3DA5FF/);
   assert.match(rendererSrc, /drawCrescentArc/);
   assert.doesNotMatch(rendererSrc, /drawPulseSprite/);
   assert.doesNotMatch(rendererSrc, /ctx\.translate\(target\.x, target\.y\)/);
