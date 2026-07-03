@@ -136,6 +136,8 @@ test('world map warp portal instances resolve requested grid coordinates', async
   assert.equal(portals.WORLD_MAP_PORTAL_IMAGE_HEIGHT, 52);
   assert.equal(portals.WORLD_MAP_PORTAL_SHADOW.blur, 8);
   assert.equal(portals.WORLD_MAP_PORTAL_SHADOW.offsetY, 3);
+  assert.equal(portals.WORLD_MAP_PORTAL_SHADOW.floorColor, 'rgba(8, 22, 34, 0.30)');
+  assert.equal(portals.WORLD_MAP_PORTAL_SHADOW.floorBlur, 2.4);
   assert.deepEqual(portals.WORLD_MAP_PORTAL_INSTANCES.map((portal) => portal.coordinate), [
     'C11',
     'K05',
@@ -157,6 +159,7 @@ test('world map warp portal rendering is owned by map modules', () => {
   assert.match(renderMapSrc, /WORLD_MAP_PORTAL_INSTANCES/);
   assert.match(renderMapSrc, /WORLD_MAP_PORTAL_SHADOW/);
   assert.match(renderMapSrc, /ctx\.shadowColor = shadow\?\.color/);
+  assert.match(renderMapSrc, /ctx\.filter = floorBlur > 0 \? `blur\(\$\{floorBlur\}px\)` : 'none';/);
   assert.match(renderMapSrc, /ctx\.ellipse\(/);
   assert.match(renderMapSrc, /drawWorldMapPortals/);
   assert.match(appSrc, /getMapPortalImage: \(\) => mapPortalImage/);

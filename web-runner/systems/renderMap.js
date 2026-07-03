@@ -146,6 +146,9 @@ export function drawWorldMapPortals(ctx, lastRender, portalImage, options = {}) 
     const drawX = centerX - imageWidth / 2;
     const drawY = centerY - imageHeight / 2;
     if (shadow?.floorColor) {
+      const floorBlur = Math.max(0, Number(shadow.floorBlur || 0));
+      ctx.save();
+      ctx.filter = floorBlur > 0 ? `blur(${floorBlur}px)` : 'none';
       ctx.fillStyle = shadow.floorColor;
       ctx.beginPath();
       ctx.ellipse(
@@ -158,6 +161,7 @@ export function drawWorldMapPortals(ctx, lastRender, portalImage, options = {}) 
         Math.PI * 2,
       );
       ctx.fill();
+      ctx.restore();
     }
     ctx.save();
     ctx.shadowColor = shadow?.color || 'transparent';
