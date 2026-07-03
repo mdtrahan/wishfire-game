@@ -134,6 +134,15 @@ test('world map warp portal instances resolve requested grid coordinates', async
 
   assert.equal(portals.WORLD_MAP_PORTAL_IMAGE_WIDTH, 46);
   assert.equal(portals.WORLD_MAP_PORTAL_IMAGE_HEIGHT, 52);
+  assert.equal(portals.WORLD_MAP_PORTAL_GLOW.periodSec, 3.6);
+  assert.equal(portals.WORLD_MAP_PORTAL_GLOW.alphaMin, 0.30);
+  assert.equal(portals.WORLD_MAP_PORTAL_GLOW.alphaMax, 0.58);
+  assert.equal(portals.WORLD_MAP_PORTAL_GLOW.burstRadiusMaxScale, 0.72);
+  assert.equal(portals.WORLD_MAP_PORTAL_GLOW.rayLengthMaxScale, 1.06);
+  assert.equal(portals.WORLD_MAP_PORTAL_GLOW.rays.length, 4);
+  assert.equal(portals.WORLD_MAP_PORTAL_GLOW.rays[0].angleDeg, 0);
+  assert.equal(portals.WORLD_MAP_PORTAL_GLOW.rays[1].angleDeg, -47);
+  assert.equal(portals.WORLD_MAP_PORTAL_GLOW.innerAlphaMax, 0.52);
   assert.equal(portals.WORLD_MAP_PORTAL_SHADOW.blur, 8);
   assert.equal(portals.WORLD_MAP_PORTAL_SHADOW.offsetY, 3);
   assert.equal(portals.WORLD_MAP_PORTAL_SHADOW.floorColor, 'rgba(8, 22, 34, 0.30)');
@@ -157,6 +166,15 @@ test('world map warp portal rendering is owned by map modules', () => {
   assert.match(loaderSrc, /mapPortalImage = await loadImage\(assetUrl\('images\/map_warp_portal_46x52\.png'\)\);/);
   assert.match(routerSrc, /getMapPortalImage/);
   assert.match(renderMapSrc, /WORLD_MAP_PORTAL_INSTANCES/);
+  assert.match(renderMapSrc, /WORLD_MAP_PORTAL_GLOW/);
+  assert.match(renderMapSrc, /Math\.sin\(radians - \(Math\.PI \/ 2\)\)/);
+  assert.match(renderMapSrc, /ctx\.globalCompositeOperation = 'lighter';/);
+  assert.match(renderMapSrc, /ctx\.createRadialGradient/);
+  assert.match(renderMapSrc, /ctx\.createLinearGradient/);
+  assert.match(renderMapSrc, /ctx\.moveTo\(startX, startY\);/);
+  assert.match(renderMapSrc, /drawWorldMapPortalInnerBurst/);
+  assert.doesNotMatch(renderMapSrc, /for \(let i = 0; i < rayCount; i \+= 1\)/);
+  assert.doesNotMatch(renderMapSrc, /ringAlpha/);
   assert.match(renderMapSrc, /WORLD_MAP_PORTAL_SHADOW/);
   assert.match(renderMapSrc, /ctx\.shadowColor = shadow\?\.color/);
   assert.match(renderMapSrc, /ctx\.filter = floorBlur > 0 \? `blur\(\$\{floorBlur\}px\)` : 'none';/);
