@@ -51,6 +51,17 @@ test('world map tower instances resolve requested coordinates and intercepts', a
   assert.equal(towers.WORLD_MAP_TOWER_IMAGE_WIDTH, 46);
   assert.equal(towers.WORLD_MAP_TOWER_IMAGE_HEIGHT, 54);
   assert.equal(towers.WORLD_MAP_TOWER_RENDER_OFFSET_Y, -8);
+  assert.equal(towers.WORLD_MAP_TOWER_GEM_ANCHOR.xRatio, 0.5);
+  assert.equal(towers.WORLD_MAP_TOWER_GEM_ANCHOR.yRatio, 0.15);
+  assert.equal(towers.WORLD_MAP_TOWER_GEM_GLOW.sizeScale, 0.5);
+  assert.equal(towers.WORLD_MAP_TOWER_GEM_GLOW.pulseStrength, 0.5);
+  assert.deepEqual(Object.keys(towers.WORLD_MAP_TOWER_GEM_GLOW_COLORS), [
+    'red',
+    'gold',
+    'purple',
+    'green',
+    'blue',
+  ]);
   assert.equal(towers.WORLD_MAP_TOWER_INSTANCES.length, 5);
   assert.deepEqual(towers.WORLD_MAP_TOWER_INSTANCES.map((tower) => tower.variant), [
     'red',
@@ -118,6 +129,11 @@ test('world map tower rendering is owned by map modules', () => {
   assert.match(routerSrc, /getMapTowerImages/);
   assert.match(renderMapSrc, /WORLD_MAP_TOWER_INSTANCES/);
   assert.match(renderMapSrc, /WORLD_MAP_TOWER_RENDER_OFFSET_Y/);
+  assert.match(renderMapSrc, /WORLD_MAP_TOWER_GEM_ANCHOR/);
+  assert.match(renderMapSrc, /WORLD_MAP_TOWER_GEM_GLOW_COLORS/);
+  assert.match(renderMapSrc, /drawWorldMapTowerGemGlow/);
+  assert.match(renderMapSrc, /drawX \+ imageWidth \* WORLD_MAP_TOWER_GEM_ANCHOR\.xRatio/);
+  assert.match(renderMapSrc, /drawY \+ imageHeight \* WORLD_MAP_TOWER_GEM_ANCHOR\.yRatio/);
   assert.match(renderMapSrc, /drawWorldMapTowers/);
   assert.match(appSrc, /getMapTowerImages: \(\) => mapTowerImages/);
   assert.doesNotMatch(appSrc, /WORLD_MAP_TOWER_INSTANCES/);
