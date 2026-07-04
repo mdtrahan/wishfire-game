@@ -43,6 +43,10 @@ function normalizeSpeed(actor = {}) {
   return numberOr(actor?.speed ?? actor?.effectiveSpeed ?? actor?.effectiveSPD ?? actor?.spd ?? actor?.SPD ?? actor?.stats?.SPD, 0);
 }
 
+function normalizeHp(actor = {}) {
+  return numberOr(actor?.hp ?? actor?.HP, 0);
+}
+
 function normalizeName(actor = {}, uid = 0) {
   const raw = String(actor?.name ?? actor?.key ?? actor?.id ?? '').trim();
   return raw || String(uid || '');
@@ -66,6 +70,7 @@ function normalizeActorForEncounter(actor = {}) {
     type: normalizeType(actor?.type),
     name: normalizeName(actor, uid),
     speed: normalizeSpeed(actor),
+    hp: normalizeHp(actor),
   };
 }
 
@@ -95,27 +100,49 @@ function configuredSeed(globals = {}) {
   );
 }
 
-function encounterActorMap() {
-  return new Map(DYNAMIC_INITIATIVE_AUTHORITY_ENCOUNTER.actors.map(actor => [actor.uid, normalizeActorForEncounter(actor)]));
+function encounterActorList() {
+  return DYNAMIC_INITIATIVE_AUTHORITY_ENCOUNTER.actors.map(normalizeActorForEncounter);
+}
+
+function encounterIdentityKey(actor = {}, { includeHp = false } = {}) {
+  const parts = [
+    normalizeType(actor.type),
+    normalizeName(actor, actor.uid),
+    normalizeSpeed(actor),
+  ];
+  if (includeHp) parts.push(normalizeHp(actor));
+  return parts.join('|');
+}
+
+function actorIdentityMatches(actual = {}, expected = {}, { includeHp = false } = {}) {
+  return encounterIdentityKey(actual, { includeHp }) === encounterIdentityKey(expected, { includeHp });
+}
+
+function rosterMatchesLockedEncounterSubset(normalizedActors = [], expectedActors = []) {
+  if (normalizedActors.length <= 0) return false;
+  const usedExpectedIndexes = new Set();
+  for (const actor of normalizedActors) {
+    const expectedIndex = expectedActors.findIndex((expectedActor, index) => (
+      !usedExpectedIndexes.has(index)
+      && actorIdentityMatches(actor, expectedActor, { includeHp: false })
+    ));
+    if (expectedIndex < 0) return false;
+    usedExpectedIndexes.add(expectedIndex);
+  }
+  return true;
 }
 
 function rosterMatchesAuthorityEncounter(actors = [], { allowSubset = false } = {}) {
-  const expected = encounterActorMap();
+  const expected = encounterActorList();
   const normalizedActors = (Array.isArray(actors) ? actors : [])
     .map(normalizeActorForEncounter)
     .filter(actor => actor.uid > 0);
-  if (!allowSubset && normalizedActors.length !== expected.size) return false;
-  if (allowSubset && normalizedActors.length <= 0) return false;
-  const seen = new Set();
-  for (const actor of normalizedActors) {
-    const expectedActor = expected.get(actor.uid);
-    if (!expectedActor || seen.has(actor.uid)) return false;
-    seen.add(actor.uid);
-    if (actor.type !== expectedActor.type) return false;
-    if (actor.name !== expectedActor.name) return false;
-    if (actor.speed !== expectedActor.speed) return false;
+  if (allowSubset) return rosterMatchesLockedEncounterSubset(normalizedActors, expected);
+  if (normalizedActors.length !== expected.length) return false;
+  for (let index = 0; index < expected.length; index += 1) {
+    if (!actorIdentityMatches(normalizedActors[index], expected[index], { includeHp: true })) return false;
   }
-  return allowSubset ? true : seen.size === expected.size;
+  return true;
 }
 
 export function isDynamicInitiativeAuthorityExperimentEnabled({

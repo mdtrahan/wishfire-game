@@ -48,7 +48,10 @@ function readCanonicalEnemy(name) {
   assert.fail(`missing canonical enemy ${name}`);
 }
 
-function canonicalAuthorityBattleStartActors() {
+function canonicalAuthorityBattleStartActors({
+  djinnUID = 101,
+  maridUID = 102,
+} = {}) {
   const falie = readCanonicalHero('Falie');
   const huun = readCanonicalHero('Huun');
   const djinn = readCanonicalEnemy('Djinn');
@@ -56,8 +59,8 @@ function canonicalAuthorityBattleStartActors() {
   return [
     { uid: 1, type: 0, name: falie.name, speed: falie.speed, hp: falie.hp },
     { uid: 2, type: 0, name: huun.name, speed: huun.speed, hp: huun.hp },
-    { uid: 101, type: 1, name: djinn.name, speed: djinn.speed, hp: djinn.hp },
-    { uid: 102, type: 1, name: marid.name, speed: marid.speed, hp: marid.hp },
+    { uid: djinnUID, type: 1, name: djinn.name, speed: djinn.speed, hp: djinn.hp },
+    { uid: maridUID, type: 1, name: marid.name, speed: marid.speed, hp: marid.hp },
   ];
 }
 
@@ -99,6 +102,39 @@ for (const modulePath of authorityModulePaths) {
         BattleId: authority.DYNAMIC_INITIATIVE_AUTHORITY_BATTLE_ID,
       },
       actors,
+    }), false);
+  });
+
+  test(`dynamic initiative authority gate binds live actor identities instead of transient enemy UIDs in ${modulePath}`, async () => {
+    const authority = await loadAuthorityModule(modulePath);
+    const liveActors = canonicalAuthorityBattleStartActors({ djinnUID: 4, maridUID: 5 });
+    const globals = {
+      DynamicInitiativeAuthorityEnabled: 1,
+      DynamicInitiativeAuthorityExperimentId: authority.DYNAMIC_INITIATIVE_AUTHORITY_EXPERIMENT_ID,
+      DynamicInitiativeAuthoritySeed: authority.DYNAMIC_INITIATIVE_AUTHORITY_SEED,
+      BattleId: authority.DYNAMIC_INITIATIVE_AUTHORITY_BATTLE_ID,
+    };
+
+    assert.equal(authority.isDynamicInitiativeAuthorityExperimentEnabled({
+      globals,
+      actors: liveActors,
+    }), true);
+
+    assert.equal(authority.isDynamicInitiativeAuthorityExperimentEnabled({
+      globals,
+      actors: [
+        liveActors[0],
+        liveActors[1],
+        liveActors[3],
+        liveActors[2],
+      ],
+    }), false);
+
+    assert.equal(authority.isDynamicInitiativeAuthorityExperimentEnabled({
+      globals,
+      actors: liveActors.map(actor => (
+        actor.name === 'Marid' ? { ...actor, name: 'Gob' } : actor
+      )),
     }), false);
   });
 
