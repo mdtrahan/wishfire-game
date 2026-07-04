@@ -64,11 +64,11 @@ test('enemy-turn retry hold preserves a live enemy turn instead of scheduling ad
   }
 });
 
-test('app enemy-action abort routes through recovery while leaked live enemy-idle restarts the active enemy', () => {
+test('app enemy-action abort routes through recovery while leaked live enemy-idle re-enters ProcessTurn', () => {
   const src = read('web-runner/app.js');
   assert.match(src, /createEnemyTurnIdleRecovery/);
   assert.match(
     src,
-    /currentTurnType === 1[\s\S]*state\.globals\.TurnPhase === 2[\s\S]*!state\.globals\.ActionInProgress[\s\S]*!state\.globals\.IsPlayerBusy[\s\S]*\(isCanPickGemsReady\(state\.globals\.CanPickGems\) \|\| !state\.globals\.DeferAdvance\)[\s\S]*const currentEnemy = currentTurnUID[\s\S]*const liveCurrentEnemy = currentEnemy && currentEnemy\.kind === 'enemy'[\s\S]*if \(liveCurrentEnemy && !hasEmpty && !refillActive && actionClaimBarrier\.canClaimCombatAction\)[\s\S]*applyTurnGateIntent\(createEnemyTurnGateBaseline\);[\s\S]*callFunctionWithContext\(fnContext, 'EnemyTurn', currentTurnUID\);[\s\S]*else if \(liveCurrentEnemy\)[\s\S]*applyTurnGateIntent\(createEnemyTurnRetryHold, \{[\s\S]*currentTurnUID,[\s\S]*\}\);[\s\S]*else if \(actionClaimBarrier\.canClaimCombatAction\) \{[\s\S]*applyTurnGateIntent\(createEnemyTurnIdleRecovery, \{[\s\S]*currentTurnUID,[\s\S]*\}\);[\s\S]*combatRuntimeGateway\.runCombatStep\(fnContext, 'ProcessTurn'\);/,
+    /currentTurnType === 1[\s\S]*state\.globals\.TurnPhase === 2[\s\S]*!state\.globals\.ActionInProgress[\s\S]*!state\.globals\.IsPlayerBusy[\s\S]*\(isCanPickGemsReady\(state\.globals\.CanPickGems\) \|\| !state\.globals\.DeferAdvance\)[\s\S]*const currentEnemy = currentTurnUID[\s\S]*const liveCurrentEnemy = currentEnemy && currentEnemy\.kind === 'enemy'[\s\S]*if \(liveCurrentEnemy && !hasEmpty && !refillActive && actionClaimBarrier\.canClaimCombatAction\)[\s\S]*applyTurnGateIntent\(createEnemyTurnGateBaseline\);[\s\S]*combatRuntimeGateway\.runCombatStep\(fnContext, 'ProcessTurn'\);[\s\S]*else if \(liveCurrentEnemy\)[\s\S]*applyTurnGateIntent\(createEnemyTurnRetryHold, \{[\s\S]*currentTurnUID,[\s\S]*\}\);[\s\S]*else if \(actionClaimBarrier\.canClaimCombatAction\) \{[\s\S]*applyTurnGateIntent\(createEnemyTurnIdleRecovery, \{[\s\S]*currentTurnUID,[\s\S]*\}\);[\s\S]*combatRuntimeGateway\.runCombatStep\(fnContext, 'ProcessTurn'\);/,
   );
 });

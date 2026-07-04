@@ -1,6 +1,5 @@
 import {
   DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD,
-  DYNAMIC_INITIATIVE_HERO_OPENER,
   applyDynamicInitiativeActionCompleted,
   buildDynamicInitiativeRoster,
   selectDynamicInitiativeTurn,
@@ -55,25 +54,6 @@ function cloneProgress(progress = {}) {
   return out;
 }
 
-function consumeCompletedOpeningActor(openingPolicy = null, completedActor = null) {
-  if (!openingPolicy || String(openingPolicy.mode || '') !== DYNAMIC_INITIATIVE_HERO_OPENER) {
-    return { openingPolicy: openingPolicy || null, consumed: false };
-  }
-  const uid = normalizeUID(completedActor?.uid);
-  const remainingUIDs = { ...(openingPolicy.remainingUIDs || {}) };
-  const key = String(uid);
-  const consumed = uid > 0 && !!remainingUIDs[key];
-  if (consumed) delete remainingUIDs[key];
-  return {
-    openingPolicy: {
-      mode: DYNAMIC_INITIATIVE_HERO_OPENER,
-      remainingUIDs,
-      exhausted: Object.keys(remainingUIDs).length === 0,
-    },
-    consumed,
-  };
-}
-
 function readyCandidates(actors = [], progress = {}, threshold = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD) {
   return buildDynamicInitiativeRoster(actors).eligible
     .map(actor => ({
@@ -88,9 +68,8 @@ function canAdvanceInitiative(eligible = []) {
     .some(actor => numberOr(actor?.speed ?? actor?.effectiveSpeed ?? actor?.spd, 0) > 0);
 }
 
-function classifySelectionReason({ selected = null, actors = [], progress = {}, threshold = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD, openingPolicyTurn = false } = {}) {
+function classifySelectionReason({ selected = null, actors = [], progress = {}, threshold = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD } = {}) {
   if (!selected) return 'no_ready_actor';
-  if (openingPolicyTurn) return 'opening_policy';
 
   const candidates = readyCandidates(actors, progress, threshold);
   const selectedProgress = numberOr(progress[String(selected.uid)], 0);
@@ -100,28 +79,12 @@ function classifySelectionReason({ selected = null, actors = [], progress = {}, 
   }
 
   const progressTied = candidates.filter(actor => numberOr(actor.progress, 0) === highestProgress);
-  const selectedType = normalizeType(selected.type);
-  if (progressTied.some(actor => normalizeType(actor.type) !== selectedType) && selectedType === 0) {
-    return 'tie_hero_over_enemy';
-  }
-
-  const sameSide = progressTied.filter(actor => normalizeType(actor.type) === selectedType);
   const selectedSpeed = numberOr(selected.speed ?? selected.effectiveSpeed, 0);
-  if (selectedSpeed > Math.max(...sameSide.filter(actor => actor.uid !== selected.uid).map(actor => numberOr(actor.speed ?? actor.effectiveSpeed, 0)), -Infinity)) {
+  if (selectedSpeed > Math.max(...progressTied.filter(actor => actor.uid !== selected.uid).map(actor => numberOr(actor.speed ?? actor.effectiveSpeed, 0)), -Infinity)) {
     return 'tie_speed';
   }
 
   return 'tie_stable_order';
-}
-
-function normalizeOpeningPolicyForTrace(policy = null, consumed = false) {
-  if (!policy) return null;
-  return {
-    mode: String(policy.mode || ''),
-    remainingUIDs: { ...(policy.remainingUIDs || {}) },
-    exhausted: !!policy.exhausted,
-    completedActorConsumed: !!consumed,
-  };
 }
 
 export function advanceDynamicInitiativeShadow({
@@ -130,7 +93,6 @@ export function advanceDynamicInitiativeShadow({
   actors = [],
   completedActor = null,
   progress = {},
-  openingPolicy = null,
   pendingDeaths = null,
   threshold = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD,
 } = {}) {
@@ -138,7 +100,6 @@ export function advanceDynamicInitiativeShadow({
   const actorOrder = rosterBefore.eligible;
   const progressBeforeAdvance = orderedProgress(cloneProgress(progress), actorOrder);
   const completed = normalizeActorRef(completedActor);
-  const consumedOpening = consumeCompletedOpeningActor(openingPolicy, completed);
   let advanced = applyDynamicInitiativeActionCompleted({
     actors,
     progress: progressBeforeAdvance,
@@ -151,7 +112,6 @@ export function advanceDynamicInitiativeShadow({
     progress: progressBeforeSelection,
     pendingDeaths,
     threshold,
-    openingPolicy: consumedOpening.openingPolicy,
   });
   while (!selected.turn && canAdvanceInitiative(advanced.eligible) && initiativeAdvanceCount < 1000) {
     advanced = applyDynamicInitiativeActionCompleted({
@@ -166,18 +126,15 @@ export function advanceDynamicInitiativeShadow({
       progress: progressBeforeSelection,
       pendingDeaths,
       threshold,
-      openingPolicy: consumedOpening.openingPolicy,
     });
   }
   const selectedActor = normalizeActorRef(selected.actor);
   const progressAfterSelection = orderedProgress(selected.progress, advanced.eligible);
-  const openingPolicyTurn = !!selected.turn?.openingPolicyTurn;
   const selectionReason = classifySelectionReason({
     selected: selected.actor,
     actors,
     progress: progressBeforeSelection,
     threshold,
-    openingPolicyTurn,
   });
   const trace = {
     battleId: normalizeUID(battleId),
@@ -191,7 +148,7 @@ export function advanceDynamicInitiativeShadow({
     selectedActor,
     selectionReason,
     threshold: Math.max(1, Math.floor(numberOr(threshold, DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD))),
-    openingPolicy: normalizeOpeningPolicyForTrace(selected.openingPolicy, consumedOpening.consumed),
+    openingPolicy: null,
     eligibilitySkips: advanced.skipped,
     pendingDeathExclusions: advanced.skipped.filter(actor => actor.reason === 'pending_death'),
     reasons: selected.reasons || [],
@@ -199,7 +156,7 @@ export function advanceDynamicInitiativeShadow({
   return {
     nextState: {
       progress: progressAfterSelection,
-      openingPolicy: selected.openingPolicy || null,
+      openingPolicy: null,
     },
     trace,
   };
@@ -265,14 +222,12 @@ export function runDynamicInitiativeTraceHarness({
   battleId = 0,
   actors = [],
   progress = {},
-  openingPolicy = null,
   pendingDeaths = null,
   threshold = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD,
   actionCount = 1,
 } = {}) {
   const traces = [];
   let nextProgress = cloneProgress(progress);
-  let nextOpeningPolicy = openingPolicy || null;
   const count = Math.max(0, Math.floor(numberOr(actionCount, 0)));
 
   for (let i = 0; i < count; i += 1) {
@@ -283,7 +238,6 @@ export function runDynamicInitiativeTraceHarness({
       progress: progressBeforeSelection,
       pendingDeaths,
       threshold,
-      openingPolicy: nextOpeningPolicy,
     });
     let initiativeAdvanceCount = 0;
     let nextSelectionProgress = progressBeforeSelection;
@@ -302,7 +256,6 @@ export function runDynamicInitiativeTraceHarness({
         progress: nextSelectionProgress,
         pendingDeaths,
         threshold,
-        openingPolicy: nextOpeningPolicy,
       });
     }
     if (!selected.turn) break;
@@ -323,10 +276,9 @@ export function runDynamicInitiativeTraceHarness({
         actors,
         progress: nextSelectionProgress,
         threshold,
-        openingPolicyTurn: !!selected.turn?.openingPolicyTurn,
       }),
       threshold,
-      openingPolicy: normalizeOpeningPolicyForTrace(selected.openingPolicy, false),
+      openingPolicy: null,
       eligibilitySkips: selected.skipped,
       pendingDeathExclusions: selected.skipped.filter(actor => actor.reason === 'pending_death'),
       reasons: selected.reasons || [],
@@ -338,13 +290,12 @@ export function runDynamicInitiativeTraceHarness({
       pendingDeaths,
     });
     nextProgress = advanced.progress;
-    nextOpeningPolicy = selected.openingPolicy || null;
   }
 
   return {
     traces,
     progress: nextProgress,
-    openingPolicy: nextOpeningPolicy,
+    openingPolicy: null,
     text: traces.map(formatDynamicInitiativeTrace).join('\n\n'),
   };
 }

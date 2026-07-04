@@ -1,6 +1,5 @@
 export const DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD = 100;
 export const DYNAMIC_INITIATIVE_SHADOW_MODE = 'shadow_only';
-export const DYNAMIC_INITIATIVE_HERO_OPENER = 'hero_opener';
 
 const BLOCKED_STATUS_VALUES = new Set([
   'dead',
@@ -152,7 +151,6 @@ function candidateFor(actor = {}, progressValue = 0, threshold = DYNAMIC_INITIAT
 
 function compareCandidates(a = {}, b = {}) {
   const diff = (numberOr(b.progress, 0) - numberOr(a.progress, 0))
-    || (numberOr(a.type, 0) - numberOr(b.type, 0))
     || (numberOr(b.speed, 0) - numberOr(a.speed, 0))
     || (numberOr(a.stableIndex, 0) - numberOr(b.stableIndex, 0))
     || (numberOr(a.uid, 0) - numberOr(b.uid, 0));
@@ -168,59 +166,9 @@ function readyActors(actors = [], progress = {}, threshold = DYNAMIC_INITIATIVE_
     .sort(compareCandidates);
 }
 
-function normalizeOpeningPolicy(openingPolicy = null, eligible = []) {
-  if (!openingPolicy || String(openingPolicy.mode || '') !== DYNAMIC_INITIATIVE_HERO_OPENER) {
-    return {
-      policy: null,
-      candidates: [],
-      heldActors: [],
-    };
-  }
-  const eligibleHeroUIDs = new Set(
-    eligible
-      .filter(actor => Number(actor.type || 0) === 0)
-      .map(actor => String(actor.uid)),
-  );
-  const rawRemaining = openingPolicy.remainingUIDs && typeof openingPolicy.remainingUIDs === 'object'
-    ? openingPolicy.remainingUIDs
-    : Object.fromEntries(Array.from(eligibleHeroUIDs).map(uid => [uid, true]));
-  const remainingUIDs = {};
-  for (const [uid, value] of Object.entries(rawRemaining)) {
-    const normalizedUID = String(normalizeUID(uid));
-    if (value && eligibleHeroUIDs.has(normalizedUID)) remainingUIDs[normalizedUID] = true;
-  }
-  const remainingSet = new Set(Object.keys(remainingUIDs));
-  if (remainingSet.size === 0) {
-    return {
-      policy: { mode: DYNAMIC_INITIATIVE_HERO_OPENER, remainingUIDs, exhausted: true },
-      candidates: [],
-      heldActors: [],
-    };
-  }
-  const candidates = eligible.filter(actor => remainingSet.has(String(actor.uid)));
-  const heldActors = eligible.filter(actor => !remainingSet.has(String(actor.uid)));
-  return {
-    policy: { mode: DYNAMIC_INITIATIVE_HERO_OPENER, remainingUIDs, exhausted: false },
-    candidates,
-    heldActors,
-  };
-}
-
-function consumeOpeningPolicy(policy = null, uid = 0) {
-  if (!policy || String(policy.mode || '') !== DYNAMIC_INITIATIVE_HERO_OPENER) return policy;
-  const remainingUIDs = { ...(policy.remainingUIDs || {}) };
-  delete remainingUIDs[String(normalizeUID(uid))];
-  return {
-    mode: DYNAMIC_INITIATIVE_HERO_OPENER,
-    remainingUIDs,
-    exhausted: Object.keys(remainingUIDs).length === 0,
-  };
-}
-
 function dynamicTurnRecord(actor = {}, {
   progressBeforeAct = 0,
   threshold = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD,
-  openingPolicyTurn = false,
 } = {}) {
   return {
     uid: Number(actor.uid || 0),
@@ -230,7 +178,7 @@ function dynamicTurnRecord(actor = {}, {
     progressBeforeAct,
     overflowBeforeAct: progressBeforeAct - threshold,
     threshold,
-    openingPolicyTurn: !!openingPolicyTurn,
+    openingPolicyTurn: false,
   };
 }
 
@@ -258,17 +206,11 @@ export function selectDynamicInitiativeTurn({
   progress = {},
   pendingDeaths = null,
   threshold = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD,
-  openingPolicy = null,
 } = {}) {
   const normalizedThreshold = positiveThreshold(threshold);
   const roster = buildDynamicInitiativeRoster(actors, { pendingDeaths });
   const nextProgress = normalizeProgress(progress, roster.eligible);
-  const opening = normalizeOpeningPolicy(openingPolicy, roster.eligible);
-  const reasons = opening.heldActors.map(actor => ({
-    reason: 'opening_policy_hold',
-    uid: actor.uid,
-    mode: DYNAMIC_INITIATIVE_HERO_OPENER,
-  }));
+  const reasons = [];
 
   if (!roster.eligible.length) {
     return {
@@ -277,28 +219,7 @@ export function selectDynamicInitiativeTurn({
       progress: nextProgress,
       skipped: roster.skipped,
       reasons: [{ reason: 'no_eligible_actor' }],
-      openingPolicy: opening.policy,
-      threshold: normalizedThreshold,
-    };
-  }
-
-  if (opening.candidates.length > 0) {
-    const openingCandidates = opening.candidates
-      .map(actor => candidateFor(actor, numberOr(nextProgress[String(actor.uid)], 0), normalizedThreshold))
-      .sort(compareCandidates);
-    const actor = openingCandidates[0];
-    const nextOpeningPolicy = consumeOpeningPolicy(opening.policy, actor.uid);
-    return {
-      actor: { ...actor },
-      turn: dynamicTurnRecord(actor, {
-        progressBeforeAct: numberOr(nextProgress[String(actor.uid)], 0),
-        threshold: normalizedThreshold,
-        openingPolicyTurn: true,
-      }),
-      progress: nextProgress,
-      skipped: roster.skipped,
-      reasons,
-      openingPolicy: nextOpeningPolicy,
+      openingPolicy: null,
       threshold: normalizedThreshold,
     };
   }
@@ -311,7 +232,7 @@ export function selectDynamicInitiativeTurn({
       progress: nextProgress,
       skipped: roster.skipped,
       reasons: [...reasons, { reason: 'no_ready_actor' }],
-      openingPolicy: opening.policy,
+      openingPolicy: null,
       threshold: normalizedThreshold,
     };
   }
@@ -325,12 +246,11 @@ export function selectDynamicInitiativeTurn({
     turn: dynamicTurnRecord(actor, {
       progressBeforeAct,
       threshold: normalizedThreshold,
-      openingPolicyTurn: false,
     }),
     progress: nextProgress,
     skipped: roster.skipped,
     reasons,
-    openingPolicy: opening.policy,
+    openingPolicy: null,
     threshold: normalizedThreshold,
   };
 }
@@ -353,13 +273,11 @@ export function previewDynamicInitiativeTurns({
   pendingDeaths = null,
   threshold = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD,
   turnCount = 8,
-  openingPolicy = null,
 } = {}) {
   const turns = [];
   const skipped = [];
   const reasons = [];
   let nextProgress = { ...(progress || {}) };
-  let nextOpeningPolicy = openingPolicy;
   const count = Math.max(0, Math.floor(numberOr(turnCount, 0)));
 
   for (let i = 0; i < count; i += 1) {
@@ -368,14 +286,12 @@ export function previewDynamicInitiativeTurns({
       progress: nextProgress,
       pendingDeaths,
       threshold,
-      openingPolicy: nextOpeningPolicy,
     });
     skipped.push(...selected.skipped);
     reasons.push(...selected.reasons);
     if (!selected.turn) break;
     turns.push(selected.turn);
     nextProgress = selected.progress;
-    nextOpeningPolicy = selected.openingPolicy;
     const advanced = applyDynamicInitiativeActionCompleted({
       actors,
       progress: nextProgress,
@@ -391,7 +307,7 @@ export function previewDynamicInitiativeTurns({
     progress: nextProgress,
     skipped: dedupeSkipped(skipped),
     reasons,
-    openingPolicy: nextOpeningPolicy,
+    openingPolicy: null,
     threshold: positiveThreshold(threshold),
   };
 }
@@ -434,7 +350,6 @@ export function createDynamicInitiativeShadowAudit({
   pendingDeaths = null,
   threshold = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD,
   previewCount = 8,
-  openingPolicy = null,
 } = {}) {
   const currentOrder = normalizeCurrentOrder(currentTeamPhaseOrder, actors);
   const preview = previewDynamicInitiativeTurns({
@@ -443,7 +358,6 @@ export function createDynamicInitiativeShadowAudit({
     pendingDeaths,
     threshold,
     turnCount: previewCount,
-    openingPolicy,
   });
   const proposedOrder = preview.turns;
   return {
@@ -451,13 +365,13 @@ export function createDynamicInitiativeShadowAudit({
     liveModeUnchanged: true,
     currentModel: 'team_phase',
     proposedModel: 'dynamic_progress',
-    firstTurnPolicy: openingPolicy ? String(openingPolicy.mode || '') : '',
+    firstTurnPolicy: '',
     currentOrder,
     proposedOrder,
     skipped: preview.skipped,
     reasons: preview.reasons,
     progress: preview.progress,
-    openingPolicy: preview.openingPolicy,
+    openingPolicy: null,
     threshold: preview.threshold,
     divergesFromCurrentOrder: ordersDiverge(currentOrder, proposedOrder.slice(0, currentOrder.length)),
   };

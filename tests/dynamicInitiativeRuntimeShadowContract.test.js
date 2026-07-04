@@ -38,7 +38,7 @@ for (const modulePath of shadowModulePaths) {
     assert.deepEqual(result.nextState.progress, { 1: 40, 101: 80 });
   });
 
-  test(`dynamic initiative shadow adapter records hero tie break and live mismatch in ${modulePath}`, async () => {
+  test(`dynamic initiative shadow adapter records stable-order tie break with no team preference in ${modulePath}`, async () => {
     const shadow = await loadShadowModule(modulePath);
     const actors = [
       { uid: 101, type: 1, speed: 50, hp: 20, name: 'Enemy B' },
@@ -53,64 +53,39 @@ for (const modulePath of shadowModulePaths) {
       threshold: 100,
     });
     const comparison = shadow.compareDynamicInitiativeShadowSelection(result.trace, {
-      uid: 101,
-      type: 1,
-      name: 'Enemy B',
+      uid: 1,
+      type: 0,
+      name: 'Hero A',
     });
 
-    assert.equal(result.trace.selectedActor.uid, 1);
-    assert.equal(result.trace.selectionReason, 'tie_hero_over_enemy');
+    assert.equal(result.trace.selectedActor.uid, 101);
+    assert.equal(result.trace.selectionReason, 'tie_stable_order');
     assert.equal(comparison.matches, false);
-    assert.equal(comparison.expected.uid, 1);
-    assert.equal(comparison.live.uid, 101);
+    assert.equal(comparison.expected.uid, 101);
+    assert.equal(comparison.live.uid, 1);
   });
 
-  test(`dynamic initiative shadow adapter consumes explicit hero opening policy without team phase ownership in ${modulePath}`, async () => {
+  test(`dynamic initiative shadow adapter bootstraps first actor from Speed and Progress only in ${modulePath}`, async () => {
     const shadow = await loadShadowModule(modulePath);
     const actors = [
-      { uid: 1, type: 0, speed: 10, hp: 40, name: 'Hero A' },
-      { uid: 2, type: 0, speed: 8, hp: 40, name: 'Hero C' },
-      { uid: 101, type: 1, speed: 200, hp: 20, name: 'Enemy B' },
+      { uid: 2, type: 0, speed: 20, hp: 35, name: 'Huun' },
+      { uid: 101, type: 1, speed: 22, hp: 20, name: 'Skeleton' },
     ];
 
     const result = shadow.advanceDynamicInitiativeShadow({
       actionSerial: 1,
       actors,
-      completedActor: { uid: 1, type: 0, name: 'Hero A' },
-      progress: { 1: 0, 2: 0, 101: 500 },
-      openingPolicy: { mode: 'hero_opener', remainingUIDs: { 1: true, 2: true } },
+      progress: {},
       threshold: 100,
     });
 
-    assert.equal(result.trace.openingPolicy.completedActorConsumed, true);
-    assert.equal(result.trace.selectedActor.uid, 2);
-    assert.equal(result.trace.selectionReason, 'opening_policy');
-    assert.deepEqual(result.nextState.openingPolicy.remainingUIDs, {});
-  });
-
-  test(`dynamic initiative shadow adapter becomes Progress-driven after one opening selection in ${modulePath}`, async () => {
-    const shadow = await loadShadowModule(modulePath);
-    const actors = [
-      { uid: 1, type: 0, speed: 60, hp: 42, name: 'Synthetic Hero A' },
-      { uid: 2, type: 0, speed: 45, hp: 36, name: 'Synthetic Hero B' },
-      { uid: 101, type: 1, speed: 50, hp: 30, name: 'Synthetic Enemy A' },
-      { uid: 102, type: 1, speed: 35, hp: 30, name: 'Synthetic Enemy B' },
-    ];
-
-    const result = shadow.advanceDynamicInitiativeShadow({
-      actionSerial: 2,
-      actors,
-      completedActor: { uid: 1, type: 0, name: 'Synthetic Hero A' },
-      progress: { 1: 0, 2: 0, 101: 0, 102: 0 },
-      openingPolicy: { mode: 'hero_opener', remainingUIDs: {}, exhausted: true },
-      threshold: 100,
-    });
-
-    assert.equal(result.trace.selectedActor.uid, 1);
+    assert.equal(result.trace.selectedActor.uid, 101);
     assert.equal(result.trace.selectionReason, 'highest_progress');
-    assert.equal(result.trace.initiativeAdvanceCount, 2);
-    assert.deepEqual(result.trace.progressBeforeSelection, { 1: 120, 2: 90, 101: 100, 102: 70 });
-    assert.deepEqual(result.trace.progressAfterSelection, { 1: 20, 2: 90, 101: 100, 102: 70 });
+    assert.equal(result.trace.initiativeAdvanceCount, 5);
+    assert.deepEqual(result.trace.progressBeforeSelection, { 2: 100, 101: 110 });
+    assert.deepEqual(result.trace.progressAfterSelection, { 2: 100, 101: 10 });
+    assert.equal(result.trace.openingPolicy, null);
+    assert.equal(result.nextState.openingPolicy, null);
   });
 
   test(`dynamic initiative shadow adapter reports eligibility skips and pending-death exclusions in ${modulePath}`, async () => {

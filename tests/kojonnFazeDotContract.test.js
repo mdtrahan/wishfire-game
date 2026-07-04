@@ -66,11 +66,10 @@ test('turn-cadence Blight only fires on the afflicted enemy turn in both mirrors
   assert.doesNotMatch(appSrc, /processTurnCadenceEnemyDots\(\);/);
 });
 
-test('app phase handoff can call EnemyTurn without skipping the active enemy', () => {
+test('app phase handoff does not bypass ProcessTurn for enemy actions', () => {
   const appSrc = read('web-runner/app.js');
-  assert.match(appSrc, /const immediateEnemyTurnBarrier = getPresentationTurnBarrier\(\{[\s\S]*?enemyLineClearPressureActive: !!state\.globals\.EnemyLineClearPressureActive,[\s\S]*?\}\);/);
-  assert.match(appSrc, /if \(state\.globals\.TurnPhase === 2 && immediateEnemyTurnBarrier\.canClaimCombatAction\) \{\s*callFunctionWithContext\(fnContext, 'EnemyTurn'\);\s*\}/);
-  assert.match(appSrc, /currentTurnType === 1[\s\S]*?const currentEnemy = currentTurnUID[\s\S]*?callFunctionWithContext\(fnContext, 'EnemyTurn', currentTurnUID\);/);
+  assert.doesNotMatch(appSrc, /callFunctionWithContext\(fnContext, 'EnemyTurn'/);
+  assert.match(appSrc, /combatRuntimeGateway\.runCombatStep\(fnContext, 'ProcessTurn'\)/);
 
   for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
     const src = read(relPath);

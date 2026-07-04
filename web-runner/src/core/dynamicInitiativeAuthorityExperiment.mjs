@@ -1,6 +1,5 @@
 import {
   DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD,
-  DYNAMIC_INITIATIVE_HERO_OPENER,
   buildDynamicInitiativeRoster,
 } from './dynamicInitiativeRules.mjs';
 import {
@@ -466,15 +465,11 @@ export function formatDynamicInitiativeAuthorityTrace(trace = {}) {
 export function runDynamicInitiativeAuthorityExperimentHarness({
   actionCount = 8,
 } = {}) {
-  const openingPolicy = {
-    mode: DYNAMIC_INITIATIVE_HERO_OPENER,
-    remainingUIDs: { 1: true },
-  };
   const harness = runDynamicInitiativeTraceHarness({
     battleId: DYNAMIC_INITIATIVE_AUTHORITY_BATTLE_ID,
     actors: DYNAMIC_INITIATIVE_AUTHORITY_ENCOUNTER.actors,
     progress: {},
-    openingPolicy,
+    openingPolicy: null,
     threshold: DYNAMIC_INITIATIVE_AUTHORITY_ENCOUNTER.threshold,
     actionCount,
   });
@@ -493,7 +488,7 @@ export function runDynamicInitiativeAuthorityExperimentHarness({
       { event: 'progress_applied', threshold: prediction.threshold },
       thresholdApplied
         ? { event: 'threshold_subtracted', uid: selectedUID }
-        : { event: 'threshold_not_subtracted', uid: selectedUID, reason: 'opening_policy' },
+        : { event: 'threshold_not_subtracted', uid: selectedUID, reason: 'unexpected_not_ready' },
     ];
     const validation = validateDynamicInitiativeAuthoritySelection({
       prediction,

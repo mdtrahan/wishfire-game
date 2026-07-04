@@ -2212,7 +2212,7 @@ function handleGemMatch(color) {
     enemyLineClearPressureActive: !!state.globals.EnemyLineClearPressureActive,
   });
   if (state.globals.TurnPhase === 2 && immediateEnemyTurnBarrier.canClaimCombatAction) {
-    callFunctionWithContext(fnContext, 'EnemyTurn');
+    combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
   }
   syncFromGlobals();
 }
@@ -3849,7 +3849,6 @@ function getStoryCardLiveLineState() {
     if (!runtimeDebugLogging.isGemDebugEnabled(state)) return;
     if (state.globals.GamePhase !== 'RUNTIME') return;
     for (let i = 0; i < turnCount; i++) {
-      callFunctionWithContext(fnContext, 'AdvanceTurn');
       combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
       await devSleep(40);
     }
@@ -5094,7 +5093,7 @@ function getStoryCardLiveLineState() {
         } else {
           applyTurnGateIntent(createEnemyTurnGateBaseline);
           state.globals.BoardFillActive = 0;
-          callFunctionWithContext(fnContext, 'EnemyTurn', currentTurnUID);
+          combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
         }
       } else if (liveCurrentEnemy) {
         if (!enemyRosterStability.stable) {

@@ -250,15 +250,14 @@ for (const modulePath of authorityModulePaths) {
 
     assert.deepEqual(
       harness.traces.slice(0, 10).map(trace => trace.selectedActor.name),
-      ['Falie', 'Skeleton', 'Huun', 'Gobloc', 'Kojonn', 'Skeleton', 'Runa', 'Huun', 'Gobloc', 'Falie'],
+      ['Skeleton', 'Huun', 'Gobloc', 'Kojonn', 'Skeleton', 'Runa', 'Huun', 'Gobloc', 'Falie', 'Skeleton'],
     );
-    assert.equal(harness.traces.filter(trace => trace.selectionReason === 'opening_policy').length, 1);
+    assert.equal(harness.traces.filter(trace => trace.selectionReason === 'opening_policy').length, 0);
     assert.ok(harness.traces.every(trace => trace.validation.ok));
-    assert.equal(harness.traces[0].openingPolicy?.mode, 'hero_opener');
-    assert.equal(harness.traces[1].initiativeAdvanceCount, 4);
-    assert.equal(harness.traces[0].thresholdSubtraction.applied, false);
+    assert.equal(harness.traces[0].openingPolicy, null);
+    assert.equal(harness.traces[0].initiativeAdvanceCount, 5);
     assert.deepEqual(
-      harness.traces[1].thresholdSubtraction,
+      harness.traces[0].thresholdSubtraction,
       { uid: 101, before: 110, threshold: 100, after: 10, applied: true },
     );
     const counts = harness.traces.reduce((acc, trace) => {
@@ -275,13 +274,12 @@ for (const modulePath of authorityModulePaths) {
       && harness.traces[index - 1].selectedActor.type !== harness.traces[Math.max(0, index - 2)]?.selectedActor?.type
     )));
     assert.ok(harness.text.includes('Cadence events:'));
-    assert.ok(harness.text.includes('Initiative advances: 4'));
-    assert.ok(harness.text.includes('Threshold subtraction: not applied for Falie (0 < 100)'));
+    assert.ok(harness.text.includes('Initiative advances: 5'));
     assert.ok(harness.text.includes('Threshold subtraction: Skeleton 110 - 100 = 10'));
   });
 }
 
-test('dynamic initiative authority wiring is dev-flagged and does not flip time initiative', () => {
+test('dynamic initiative authority harness remains gated while default combat uses scheduler selection', () => {
   for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
     const src = fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
 
@@ -289,6 +287,9 @@ test('dynamic initiative authority wiring is dev-flagged and does not flip time 
     assert.match(src, /DynamicInitiativeAuthorityEnabled/);
     assert.match(src, /function isDynamicInitiativeAuthorityFlagEnabled\(g\)/);
     assert.match(src, /tryApplyDynamicInitiativeAuthoritySelection\(ctx, dynamicInitiativeShadowPrediction, dynamicInitiativeCadenceEvents\)/);
+    assert.match(src, /function getDynamicInitiativeDefaultCurrent\(g\)/);
+    assert.match(src, /recordDynamicInitiativeDefaultAfterAction\(ctx, currentUID, currentType, dynamicInitiativeCadenceEvents\)/);
+    assert.match(src, /applyDynamicInitiativeDefaultSelection\(ctx, dynamicInitiativeDefaultPrediction, dynamicInitiativeCadenceEvents\)/);
     assert.match(src, /const actors = getDynamicInitiativeRoster\(ctx\);/);
     assert.match(src, /speed: GetEffectiveStat\(ctx, hero, 'SPD'\)/);
     assert.match(src, /speed: GetEffectiveStat\(ctx, enemy, 'SPD'\)/);
