@@ -4231,6 +4231,163 @@ function recordDynamicInitiativeShadowAfterAction(ctx, currentUID, currentType, 
 }
 function recordDynamicInitiativeShadowSelectionComparison(ctx, prediction) { if (!prediction) return null; const g = getGlobals(ctx), shadow = ensureDynamicInitiativeShadowState(g), liveUID = GetCurrentTurn(ctx), liveType = GetCurrentType(ctx), liveActor = getDynamicInitiativeActorSnapshot(ctx, liveUID, liveType), comparison = compareDynamicInitiativeShadowSelection(prediction, liveActor); shadow.lastComparison = comparison; shadow.comparisons.push(comparison); if (shadow.comparisons.length > 200) shadow.comparisons.shift(); if (!comparison.matches) { recordTurnSchedulerEvent(ctx, 'dynamic_initiative_shadow_mismatch', { actionSerial: comparison.actionSerial, expectedUID: Number(comparison.expected?.uid || 0), expectedType: Number(comparison.expected?.type || 0), liveUID: Number(comparison.live?.uid || 0), liveType: Number(comparison.live?.type || 0), selectionReason: prediction.selectionReason }); } return comparison; }
 
+function ensureDynamicInitiativeDefaultState(g) {
+  if (!g.DynamicInitiative || typeof g.DynamicInitiative !== 'object') {
+    g.DynamicInitiative = {
+      active: 0,
+      current: null,
+      progress: {},
+      openingPolicy: null,
+      openingPolicyInitialized: false,
+      traces: [],
+      actionCount: 0,
+      lastTraceText: '',
+      sessionId: 0,
+    };
+  }
+  if (!g.DynamicInitiative.progress || typeof g.DynamicInitiative.progress !== 'object') g.DynamicInitiative.progress = {};
+  if (!Array.isArray(g.DynamicInitiative.traces)) g.DynamicInitiative.traces = [];
+  return g.DynamicInitiative;
+}
+function resetDynamicInitiativeDefaultState(g, sessionId = 0, reason = '') {
+  const state = ensureDynamicInitiativeDefaultState(g);
+  state.active = 0;
+  state.current = null;
+  state.progress = {};
+  state.openingPolicy = null;
+  state.openingPolicyInitialized = false;
+  state.traces = [];
+  state.actionCount = 0;
+  state.lastTraceText = '';
+  state.sessionId = Number(sessionId || 0);
+  state.lastResetReason = String(reason || '');
+  g.DynamicInitiativeLastTraceText = '';
+  return state;
+}
+function getDynamicInitiativeSessionId(g) {
+  const combatSessionId = Number(g.CombatSessionId || 0);
+  if (Number.isFinite(combatSessionId) && combatSessionId > 0) return combatSessionId;
+  return getDynamicInitiativeBattleId(g);
+}
+function syncDynamicInitiativeDefaultSession(ctx) {
+  const g = getGlobals(ctx);
+  const sessionId = getDynamicInitiativeSessionId(g);
+  const state = ensureDynamicInitiativeDefaultState(g);
+  if (Number(state.sessionId || 0) !== Number(sessionId || 0)) {
+    return resetDynamicInitiativeDefaultState(g, sessionId, 'combat_session_changed');
+  }
+  return state;
+}
+function getDynamicInitiativeDefaultCurrent(g) {
+  const current = g.DynamicInitiative && g.DynamicInitiative.active ? g.DynamicInitiative.current : null;
+  const uid = Number(current?.uid || 0);
+  if (!(uid > 0)) return null;
+  return { uid, type: Number(current.type || 0) === 1 ? 1 : 0, name: String(current.name || uid) };
+}
+function setDynamicInitiativeDefaultCurrent(ctx, actor, source = 'unknown') {
+  if (!actor || !(Number(actor.uid || 0) > 0)) return null;
+  const g = getGlobals(ctx);
+  const state = syncDynamicInitiativeDefaultSession(ctx);
+  const current = {
+    uid: Number(actor.uid || 0),
+    type: Number(actor.type || 0) === 1 ? 1 : 0,
+    name: String(actor.name || actor.uid || ''),
+  };
+  state.active = 1;
+  state.current = current;
+  g.InitiativeCurrentUID = current.uid;
+  schedulerSyncIndexToUID(ctx, current.uid, null, Number(g.CurrentTurnIndex || 0));
+  g.TurnPhase = resolveCurrentTurnPhase(ctx, `functionBank.DynamicInitiativeDefault.${source}`);
+  return current;
+}
+function initializeDynamicInitiativeDefaultCurrent(ctx, source = 'initialize') {
+  const g = getGlobals(ctx);
+  const state = syncDynamicInitiativeDefaultSession(ctx);
+  const actors = getDynamicInitiativeRoster(ctx);
+  if (!actors.length) {
+    resetDynamicInitiativeDefaultState(g, getDynamicInitiativeSessionId(g), 'no_eligible_roster');
+    return null;
+  }
+  const currentUID = Number(state.current?.uid || 0);
+  if (state.active && currentUID > 0 && actors.some(actor => Number(actor.uid || 0) === currentUID)) {
+    return state.current;
+  }
+  if (!state.openingPolicyInitialized) {
+    state.openingPolicy = createDynamicInitiativeOpeningPolicy(actors);
+    state.openingPolicyInitialized = true;
+  }
+  const openerUID = Number(Object.keys(state.openingPolicy?.remainingUIDs || {})[0] || 0);
+  const opener = actors.find(actor => Number(actor.uid || 0) === openerUID) || null;
+  if (!opener) return null;
+  const current = setDynamicInitiativeDefaultCurrent(ctx, opener, source);
+  recordTurnSchedulerEvent(ctx, 'dynamic_initiative_default_opening_selection', {
+    selectedUID: Number(current?.uid || 0),
+    selectedType: Number(current?.type || 0),
+    selectionReason: 'opening_policy',
+  });
+  return current;
+}
+function recordDynamicInitiativeDefaultAfterAction(ctx, currentUID, currentType, cadenceEvents = []) {
+  const g = getGlobals(ctx);
+  const state = syncDynamicInitiativeDefaultSession(ctx);
+  const actors = getDynamicInitiativeRoster(ctx);
+  if (!actors.length) {
+    resetDynamicInitiativeDefaultState(g, getDynamicInitiativeSessionId(g), 'empty_roster_after_action');
+    return null;
+  }
+  if (!state.openingPolicyInitialized) {
+    state.openingPolicy = createDynamicInitiativeOpeningPolicy(actors);
+    state.openingPolicyInitialized = true;
+  }
+  const completedActor = getDynamicInitiativeActorSnapshot(ctx, currentUID, currentType);
+  const result = advanceDynamicInitiativeShadow({
+    battleId: getDynamicInitiativeBattleId(g),
+    actionSerial: Number(g.TurnSerial || 0),
+    actors,
+    completedActor,
+    progress: state.progress || {},
+    openingPolicy: state.openingPolicy || null,
+    pendingDeaths: g.PendingDeaths || null,
+    threshold: getDynamicInitiativeThreshold(g),
+  });
+  result.trace.cadenceEvents = Array.isArray(cadenceEvents) ? cadenceEvents.slice() : [];
+  state.progress = result.nextState.progress;
+  state.openingPolicy = result.nextState.openingPolicy;
+  state.lastTrace = result.trace;
+  state.lastTraceText = formatDynamicInitiativeTrace(result.trace);
+  state.traces.push(result.trace);
+  if (state.traces.length > 200) state.traces.shift();
+  g.DynamicInitiativeLastTraceText = state.lastTraceText;
+  return result.trace;
+}
+function applyDynamicInitiativeDefaultSelection(ctx, prediction, cadenceEvents = []) {
+  if (!prediction || !prediction.selectedActor) return false;
+  const g = getGlobals(ctx);
+  const selected = prediction.selectedActor;
+  const uid = Number(selected.uid || 0);
+  const actor = uid > 0 ? GetActorByUID(ctx, uid) : null;
+  if (!actor) return false;
+  const state = syncDynamicInitiativeDefaultSession(ctx);
+  const current = setDynamicInitiativeDefaultCurrent(ctx, selected, 'AdvanceTurn');
+  state.actionCount = Number(state.actionCount || 0) + 1;
+  state.lastActionSerial = Number(prediction.actionSerial || 0);
+  state.lastSelectedUID = Number(current.uid || 0);
+  state.lastSelectionReason = String(prediction.selectionReason || 'unknown');
+  recordTurnSchedulerEvent(ctx, 'dynamic_initiative_default_selection', {
+    actionSerial: Number(prediction.actionSerial || 0),
+    selectedUID: Number(current.uid || 0),
+    selectedType: Number(current.type || 0),
+    selectionReason: prediction.selectionReason,
+    progressBeforeSelection: prediction.progressBeforeSelection,
+    progressAfterSelection: prediction.progressAfterSelection,
+    thresholdSubtraction: prediction.thresholdSubtraction,
+    cadenceEvents: Array.isArray(cadenceEvents) ? cadenceEvents.slice() : [],
+    eligibilitySkips: prediction.eligibilitySkips,
+    pendingDeaths: g.PendingDeaths || null,
+  });
+  return true;
+}
+
 function ensureDynamicInitiativeAuthorityState(g) {
   if (!g.DynamicInitiativeAuthority || typeof g.DynamicInitiativeAuthority !== 'object') {
     g.DynamicInitiativeAuthority = {
@@ -4725,6 +4882,8 @@ export function GetCurrentTurn(ctx) {
   const g = getGlobals(ctx);
   const authorityCurrent = getDynamicInitiativeAuthorityCurrent(g);
   if (authorityCurrent) return authorityCurrent.uid;
+  const dynamicCurrent = getDynamicInitiativeDefaultCurrent(g);
+  if (dynamicCurrent) return dynamicCurrent.uid;
   if (isTimeInitiative(ctx)) {
     return g.InitiativeCurrentUID || 0;
   }
@@ -4742,6 +4901,8 @@ export function GetCurrentType(ctx) {
   const g = getGlobals(ctx);
   const authorityCurrent = getDynamicInitiativeAuthorityCurrent(g);
   if (authorityCurrent) return authorityCurrent.type;
+  const dynamicCurrent = getDynamicInitiativeDefaultCurrent(g);
+  if (dynamicCurrent) return dynamicCurrent.type;
   if (isTimeInitiative(ctx)) {
     const actor = GetActorByUID(ctx, g.InitiativeCurrentUID || 0);
     return actor && actor.kind === 'enemy' ? 1 : 0;
@@ -4982,8 +5143,11 @@ export function AdvanceTurn(ctx) {
   }
   if (holdForEnemyRosterRefill(ctx)) return;
   dynamicInitiativeShadowPrediction = recordDynamicInitiativeShadowAfterAction(ctx, currentUID, currentType, dynamicInitiativeCadenceEvents);
+  const dynamicInitiativeDefaultPrediction = recordDynamicInitiativeDefaultAfterAction(ctx, currentUID, currentType, dynamicInitiativeCadenceEvents);
   const dynamicInitiativeAuthorityApplied = tryApplyDynamicInitiativeAuthoritySelection(ctx, dynamicInitiativeShadowPrediction, dynamicInitiativeCadenceEvents);
-  if (!dynamicInitiativeAuthorityApplied) ProcessCurrentTurn(ctx);
+  const dynamicInitiativeDefaultApplied = !dynamicInitiativeAuthorityApplied
+    && applyDynamicInitiativeDefaultSelection(ctx, dynamicInitiativeDefaultPrediction, dynamicInitiativeCadenceEvents);
+  if (!dynamicInitiativeAuthorityApplied && !dynamicInitiativeDefaultApplied) ProcessCurrentTurn(ctx);
   recordDynamicInitiativeShadowSelectionComparison(ctx, dynamicInitiativeShadowPrediction);
 }
 
@@ -9056,6 +9220,7 @@ export function BuildRoundGroups(ctx) {
     g.RoundActive = 0;
     g.PendingDeaths = {};
     schedulerClearQueue(ctx);
+    resetDynamicInitiativeDefaultState(g, getDynamicInitiativeSessionId(g), 'empty_round_roster');
     return;
   }
   const requestedType = Number.isFinite(Number(g.TeamPhaseType)) ? Number(g.TeamPhaseType || 0) : 0;
@@ -9098,6 +9263,7 @@ export function BuildRoundGroups(ctx) {
   const flat = groups.flatMap(gr => gr.members || []);
   schedulerWriteQueue(ctx, flat.map(a => ({ uid: a.uid, spd: a.spd, type: a.type })));
   schedulerWriteIndex(ctx, 0);
+  initializeDynamicInitiativeDefaultCurrent(ctx, 'BuildRoundGroups');
   console.log('[ROUND] Built groups:', groups.map(gp => gp.members.map(m => {
     const a = GetActorByUID(ctx, m.uid);
     return a && a.name ? a.name : m.uid;
@@ -9601,11 +9767,18 @@ export function ProcessTurn(ctx) {
   }
   g.DebugTurnCount = (g.DebugTurnCount || 0) + 1;
   console.log(`[DEBUG] matches=${g.DebugMatchCount || 0} turns=${g.DebugTurnCount}`);
-  const flatRaw = isTimeInitiative(ctx)
+  const dynamicCurrent = getDynamicInitiativeDefaultCurrent(g);
+  const flatRaw = dynamicCurrent
+    ? getDynamicInitiativeRoster(ctx).map(actor => ({
+      uid: actor.uid,
+      spd: actor.speed,
+      type: actor.type,
+    }))
+    : (isTimeInitiative(ctx)
     ? (g.TurnOrderArray || [])
-    : (g.RoundActive ? (g.RoundGroups || []).flatMap(gr => gr.members || []) : (g.TurnOrderArray || []));
+    : (g.RoundActive ? (g.RoundGroups || []).flatMap(gr => gr.members || []) : (g.TurnOrderArray || [])));
   const flatOrder = flatRaw.filter(a => GetActorByUID(ctx, a.uid));
-  if (g.RoundActive) {
+  if (dynamicCurrent || g.RoundActive) {
     schedulerWriteQueue(ctx, flatOrder.map(a => ({ uid: a.uid, spd: a.spd, type: a.type })));
   }
   const curUID = uid;
@@ -9617,7 +9790,7 @@ export function ProcessTurn(ctx) {
     const tag = a.type === 0 ? '(H)' : '(E)';
     return `${i === g.CurrentTurnIndex ? '>' : ''}${name}${tag}`;
   }).join(' | ');
-  console.log(`[TURN][ORDER] idx=${g.CurrentTurnIndex} ${orderLine}`);
+  console.log(`${dynamicCurrent ? '[TURN][DYNAMIC_ORDER]' : '[TURN][ORDER]'} idx=${g.CurrentTurnIndex} ${orderLine}`);
   if (actor) {
     const eff = GetEffectiveStat(ctx, actor, 'SPD');
     const cp = Number(actor.combatPower || actor.CombatPower || 0);

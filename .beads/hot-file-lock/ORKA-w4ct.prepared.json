@@ -1,0 +1,43 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "ensureDynamicInitiativeDefaultState",
+        "resetDynamicInitiativeDefaultState",
+        "getDynamicInitiativeSessionId",
+        "syncDynamicInitiativeDefaultSession",
+        "getDynamicInitiativeDefaultCurrent",
+        "setDynamicInitiativeDefaultCurrent",
+        "initializeDynamicInitiativeDefaultCurrent",
+        "recordDynamicInitiativeDefaultAfterAction",
+        "applyDynamicInitiativeDefaultSelection",
+        "GetCurrentTurn",
+        "GetCurrentType",
+        "AdvanceTurn",
+        "BuildRoundGroups",
+        "ProcessTurn"
+      ],
+      "staged_blob": "bb6023e98f9def03d82f8b571b1d785f0e510b73"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "ensureDynamicInitiativeDefaultState",
+        "resetDynamicInitiativeDefaultState",
+        "getDynamicInitiativeSessionId",
+        "syncDynamicInitiativeDefaultSession",
+        "getDynamicInitiativeDefaultCurrent",
+        "setDynamicInitiativeDefaultCurrent",
+        "initializeDynamicInitiativeDefaultCurrent",
+        "recordDynamicInitiativeDefaultAfterAction",
+        "applyDynamicInitiativeDefaultSelection",
+        "GetCurrentTurn",
+        "GetCurrentType",
+        "AdvanceTurn",
+        "BuildRoundGroups",
+        "ProcessTurn"
+      ],
+      "staged_blob": "8581e5958eb972b6f88ae190e7b32de6ffd12758"
+    }
+  },
+  "issue_id": "ORKA-w4ct"
+}

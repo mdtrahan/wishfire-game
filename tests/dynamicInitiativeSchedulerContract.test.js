@@ -224,12 +224,18 @@ for (const schedulerPath of dynamicSchedulerPaths) {
   });
 }
 
-test('checkpoint leaves live combat turn wiring on current team-phase behavior', () => {
+test('default combat delegates actor selection to Dynamic Initiative without reviving legacy time initiative', () => {
   for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
     const src = fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
 
     assert.match(src, /function isTimeInitiative\(ctx\) \{\s*return false;\s*\}/);
-    assert.doesNotMatch(src, /dynamicInitiativeRules/);
+    assert.match(src, /function ensureDynamicInitiativeDefaultState\(g\)/);
+    assert.match(src, /function getDynamicInitiativeDefaultCurrent\(g\)/);
+    assert.match(src, /function recordDynamicInitiativeDefaultAfterAction\(ctx, currentUID, currentType, cadenceEvents = \[\]\)/);
+    assert.match(src, /function applyDynamicInitiativeDefaultSelection\(ctx, prediction, cadenceEvents = \[\]\)/);
+    assert.match(src, /initializeDynamicInitiativeDefaultCurrent\(ctx, 'BuildRoundGroups'\)/);
+    assert.match(src, /getDynamicInitiativeDefaultCurrent\(g\);\s*if \(dynamicCurrent\) return dynamicCurrent\.uid;/);
+    assert.match(src, /applyDynamicInitiativeDefaultSelection\(ctx, dynamicInitiativeDefaultPrediction, dynamicInitiativeCadenceEvents\)/);
     assert.match(src, /export function AdvanceTurn\(ctx\)/);
     assert.match(src, /export function ProcessCurrentTurn\(ctx\)/);
     assert.match(src, /export function HeroTurn\(ctx, heroUID\)/);
