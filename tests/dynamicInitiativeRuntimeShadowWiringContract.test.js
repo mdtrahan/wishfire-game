@@ -42,6 +42,10 @@ test('dynamic initiative shadow adapter remains wired while authority stays dev-
     assert.match(src, /function tryApplyDynamicInitiativeAuthoritySelection\(ctx, prediction, cadenceEvents = \[\]\)/);
     assert.match(src, /function isDynamicInitiativeAuthorityFlagEnabled\(g\)/);
     assert.match(src, /if \(!isDynamicInitiativeAuthorityFlagEnabled\(g\)\)/);
+    const openingPolicy = extractFunctionSource(src, 'createDynamicInitiativeOpeningPolicy');
+    assert.match(openingPolicy, /const opener = openingHeroes\[0\]\?\.actor \|\| null/);
+    assert.match(openingPolicy, /remainingUIDs = opener \? \{ \[Number\(opener\.uid\)\]: true \} : \{\}/);
+    assert.doesNotMatch(openingPolicy, /for \(const actor of actors\)/);
 
     const advanceTurn = extractFunctionSource(src, 'AdvanceTurn');
     assert.match(advanceTurn, /recordDynamicInitiativeShadowAfterAction\(ctx, currentUID, currentType, dynamicInitiativeCadenceEvents\)/);

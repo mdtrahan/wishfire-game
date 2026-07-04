@@ -330,6 +330,7 @@ export function createDynamicInitiativeAuthorityTrace({
     progressBeforeSelection: completeTraceProgress(prediction.progressBeforeSelection || {}, actors),
     progressAfterSelection: completeTraceProgress(prediction.progressAfterSelection || {}, actors),
     thresholdSubtraction: thresholdSubtractionFor(prediction),
+    initiativeAdvanceCount: Math.max(0, Math.floor(numberOr(prediction.initiativeAdvanceCount, 0))),
     selectionReason: String(prediction.selectionReason || 'unknown'),
     whyActorWon: String(prediction.selectionReason || 'unknown'),
     openingPolicy: prediction.openingPolicy || null,
@@ -397,6 +398,7 @@ export function formatDynamicInitiativeAuthorityTrace(trace = {}) {
     'Progress before selection:',
     ...formatProgressLines(trace, 'progressBeforeSelection'),
     `Why this actor won: ${String(trace.whyActorWon || trace.selectionReason || 'unknown')}`,
+    `Initiative advances: ${Math.max(0, Math.floor(numberOr(trace.initiativeAdvanceCount, 0)))}`,
   ];
   if (thresholdSubtraction) {
     const actor = selected || { uid: thresholdSubtraction.uid };
@@ -434,7 +436,7 @@ export function runDynamicInitiativeAuthorityExperimentHarness({
 } = {}) {
   const openingPolicy = {
     mode: DYNAMIC_INITIATIVE_HERO_OPENER,
-    remainingUIDs: { 1: true, 2: true },
+    remainingUIDs: { 1: true },
   };
   const harness = runDynamicInitiativeTraceHarness({
     battleId: DYNAMIC_INITIATIVE_AUTHORITY_BATTLE_ID,
@@ -447,12 +449,19 @@ export function runDynamicInitiativeAuthorityExperimentHarness({
   let previousState = { actionCount: 0 };
   const traces = [];
   for (const prediction of harness.traces) {
+    const selectedUID = prediction.selectedActor?.uid || 0;
+    const threshold = Math.max(1, Math.floor(numberOr(prediction.threshold, DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD)));
+    const before = progressValue(prediction.progressBeforeSelection || {}, selectedUID);
+    const after = progressValue(prediction.progressAfterSelection || {}, selectedUID);
+    const thresholdApplied = selectedUID > 0 && before >= threshold && after === before - threshold;
     const cadenceEvents = [
       { event: 'action_completed', actionSerial: prediction.actionSerial },
       { event: 'turn_serial_increment', turnSerial: prediction.actionSerial },
       { event: 'pending_death_resolution', before: 0, after: 0 },
       { event: 'progress_applied', threshold: prediction.threshold },
-      { event: 'threshold_subtracted', uid: prediction.selectedActor?.uid || 0 },
+      thresholdApplied
+        ? { event: 'threshold_subtracted', uid: selectedUID }
+        : { event: 'threshold_not_subtracted', uid: selectedUID, reason: 'opening_policy' },
     ];
     const validation = validateDynamicInitiativeAuthoritySelection({
       prediction,

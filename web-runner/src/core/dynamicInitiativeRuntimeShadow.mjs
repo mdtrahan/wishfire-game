@@ -83,6 +83,11 @@ function readyCandidates(actors = [], progress = {}, threshold = DYNAMIC_INITIAT
     .filter(actor => actor.progress >= threshold);
 }
 
+function canAdvanceInitiative(eligible = []) {
+  return (Array.isArray(eligible) ? eligible : [])
+    .some(actor => numberOr(actor?.speed ?? actor?.effectiveSpeed ?? actor?.spd, 0) > 0);
+}
+
 function classifySelectionReason({ selected = null, actors = [], progress = {}, threshold = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD, openingPolicyTurn = false } = {}) {
   if (!selected) return 'no_ready_actor';
   if (openingPolicyTurn) return 'opening_policy';
@@ -134,19 +139,36 @@ export function advanceDynamicInitiativeShadow({
   const progressBeforeAdvance = orderedProgress(cloneProgress(progress), actorOrder);
   const completed = normalizeActorRef(completedActor);
   const consumedOpening = consumeCompletedOpeningActor(openingPolicy, completed);
-  const advanced = applyDynamicInitiativeActionCompleted({
+  let advanced = applyDynamicInitiativeActionCompleted({
     actors,
     progress: progressBeforeAdvance,
     pendingDeaths,
   });
-  const progressBeforeSelection = orderedProgress(advanced.progress, advanced.eligible);
-  const selected = selectDynamicInitiativeTurn({
+  let initiativeAdvanceCount = 1;
+  let progressBeforeSelection = orderedProgress(advanced.progress, advanced.eligible);
+  let selected = selectDynamicInitiativeTurn({
     actors,
     progress: progressBeforeSelection,
     pendingDeaths,
     threshold,
     openingPolicy: consumedOpening.openingPolicy,
   });
+  while (!selected.turn && canAdvanceInitiative(advanced.eligible) && initiativeAdvanceCount < 1000) {
+    advanced = applyDynamicInitiativeActionCompleted({
+      actors,
+      progress: progressBeforeSelection,
+      pendingDeaths,
+    });
+    initiativeAdvanceCount += 1;
+    progressBeforeSelection = orderedProgress(advanced.progress, advanced.eligible);
+    selected = selectDynamicInitiativeTurn({
+      actors,
+      progress: progressBeforeSelection,
+      pendingDeaths,
+      threshold,
+      openingPolicy: consumedOpening.openingPolicy,
+    });
+  }
   const selectedActor = normalizeActorRef(selected.actor);
   const progressAfterSelection = orderedProgress(selected.progress, advanced.eligible);
   const openingPolicyTurn = !!selected.turn?.openingPolicyTurn;
@@ -163,6 +185,7 @@ export function advanceDynamicInitiativeShadow({
     actors: advanced.eligible.map(actor => normalizeActorRef(actor)).filter(Boolean),
     completedActor: completed,
     progressBeforeAdvance,
+    initiativeAdvanceCount,
     progressBeforeSelection,
     progressAfterSelection,
     selectedActor,
@@ -255,29 +278,50 @@ export function runDynamicInitiativeTraceHarness({
   for (let i = 0; i < count; i += 1) {
     const roster = buildDynamicInitiativeRoster(actors, { pendingDeaths });
     const progressBeforeSelection = orderedProgress(nextProgress, roster.eligible);
-    const selected = selectDynamicInitiativeTurn({
+    let selected = selectDynamicInitiativeTurn({
       actors,
       progress: progressBeforeSelection,
       pendingDeaths,
       threshold,
       openingPolicy: nextOpeningPolicy,
     });
+    let initiativeAdvanceCount = 0;
+    let nextSelectionProgress = progressBeforeSelection;
+    let nextRoster = roster;
+    while (!selected.turn && canAdvanceInitiative(nextRoster.eligible) && initiativeAdvanceCount < 1000) {
+      const advanced = applyDynamicInitiativeActionCompleted({
+        actors,
+        progress: nextSelectionProgress,
+        pendingDeaths,
+      });
+      initiativeAdvanceCount += 1;
+      nextRoster = { eligible: advanced.eligible, skipped: advanced.skipped };
+      nextSelectionProgress = orderedProgress(advanced.progress, advanced.eligible);
+      selected = selectDynamicInitiativeTurn({
+        actors,
+        progress: nextSelectionProgress,
+        pendingDeaths,
+        threshold,
+        openingPolicy: nextOpeningPolicy,
+      });
+    }
     if (!selected.turn) break;
     const selectedActor = normalizeActorRef(selected.actor);
-    const progressAfterSelection = orderedProgress(selected.progress, roster.eligible);
+    const progressAfterSelection = orderedProgress(selected.progress, nextRoster.eligible);
     const trace = {
       battleId: normalizeUID(battleId),
       actionSerial: i + 1,
-      actors: roster.eligible.map(actor => normalizeActorRef(actor)).filter(Boolean),
+      actors: nextRoster.eligible.map(actor => normalizeActorRef(actor)).filter(Boolean),
       completedActor: null,
       progressBeforeAdvance: progressBeforeSelection,
-      progressBeforeSelection,
+      initiativeAdvanceCount,
+      progressBeforeSelection: nextSelectionProgress,
       progressAfterSelection,
       selectedActor,
       selectionReason: classifySelectionReason({
         selected: selected.actor,
         actors,
-        progress: progressBeforeSelection,
+        progress: nextSelectionProgress,
         threshold,
         openingPolicyTurn: !!selected.turn?.openingPolicyTurn,
       }),

@@ -4176,7 +4176,19 @@ function getDynamicInitiativeThreshold(g) { const threshold = Number(g.DynamicIn
 function getDynamicInitiativeBattleId(g) { const id = Number(g.BattleId || g.BattleUID || g.EncounterUID || g.EncounterId || 0); return Number.isFinite(id) ? id : 0; }
 function getDynamicInitiativeActorSnapshot(ctx, uid, typeHint = null) { const actor = Number(uid || 0) > 0 ? GetActorByUID(ctx, Number(uid || 0)) : null; const type = typeHint != null ? Number(typeHint || 0) : (actor && actor.kind === 'enemy' ? 1 : 0); if (!actor && !(Number(uid || 0) > 0)) return null; return { uid: Number(uid || actor?.uid || 0), type: type === 1 ? 1 : 0, name: actor ? String(actor.name || actor.uid || uid) : String(uid || ''), speed: actor ? GetEffectiveStat(ctx, actor, 'SPD') : 0, hp: actor ? Number(actor.hp ?? 1) : 0, stunned: !!actor?.stunned, disabled: !!actor?.disabled, pendingDeath: !!actor?.pendingDeath || !!actor?.deathPending, status: actor?.status, state: actor?.state, statuses: Array.isArray(actor?.statuses) ? actor.statuses : [], statusEffects: Array.isArray(actor?.statusEffects) ? actor.statusEffects : [] }; }
 function getDynamicInitiativeRoster(ctx) { const g = getGlobals(ctx), actors = [], seen = new Set(), partyAlive = Number(g.PartyHP || 0) > 0; if (partyAlive) { for (const hero of getHeroes(ctx)) { const uid = Number(hero?.uid || 0); if (!(uid > 0) || seen.has(uid)) continue; seen.add(uid); actors.push({ uid, type: 0, name: String(hero.name || uid), speed: GetEffectiveStat(ctx, hero, 'SPD'), hp: Number(hero.hp ?? 1) > 0 ? Number(hero.hp ?? 1) : 1, stunned: !!hero.stunned, disabled: !!hero.disabled, status: hero.status, state: hero.state, statuses: Array.isArray(hero.statuses) ? hero.statuses : [], statusEffects: Array.isArray(hero.statusEffects) ? hero.statusEffects : [] }); } } for (const enemy of getEnemies(ctx)) { const uid = Number(enemy?.uid || 0); if (!(uid > 0) || seen.has(uid)) continue; seen.add(uid); actors.push({ uid, type: 1, name: String(enemy.name || uid), speed: GetEffectiveStat(ctx, enemy, 'SPD'), hp: Number(enemy.hp ?? 0), stunned: !!enemy.stunned, disabled: !!enemy.disabled, pendingDeath: !!enemy.pendingDeath || !!enemy.deathPending, status: enemy.status, state: enemy.state, statuses: Array.isArray(enemy.statuses) ? enemy.statuses : [], statusEffects: Array.isArray(enemy.statusEffects) ? enemy.statusEffects : [] }); } return actors; }
-function createDynamicInitiativeOpeningPolicy(actors = []) { const remainingUIDs = {}; for (const actor of actors) { if (Number(actor?.type || 0) === 0 && Number(actor?.uid || 0) > 0 && Number(actor?.hp ?? 1) > 0) remainingUIDs[Number(actor.uid)] = true; } return { mode: 'hero_opener', remainingUIDs, exhausted: Object.keys(remainingUIDs).length === 0 }; }
+function createDynamicInitiativeOpeningPolicy(actors = []) {
+  const openingHeroes = (Array.isArray(actors) ? actors : [])
+    .map((actor, index) => ({ actor, index }))
+    .filter(({ actor }) => Number(actor?.type || 0) === 0 && Number(actor?.uid || 0) > 0 && Number(actor?.hp ?? 1) > 0)
+    .sort((a, b) => {
+      const speedDelta = Number(b.actor?.speed ?? b.actor?.spd ?? 0) - Number(a.actor?.speed ?? a.actor?.spd ?? 0);
+      if (speedDelta) return speedDelta;
+      return a.index - b.index;
+    });
+  const opener = openingHeroes[0]?.actor || null;
+  const remainingUIDs = opener ? { [Number(opener.uid)]: true } : {};
+  return { mode: 'hero_opener', remainingUIDs, exhausted: !opener };
+}
 function recordDynamicInitiativeShadowAfterAction(ctx, currentUID, currentType, cadenceEvents = []) {
   const g = getGlobals(ctx);
   if (g.DynamicInitiativeShadowDisabled) return null;

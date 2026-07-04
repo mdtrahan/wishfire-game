@@ -124,17 +124,20 @@ for (const modulePath of authorityModulePaths) {
     const authority = await loadAuthorityModule(modulePath);
     const harness = authority.runDynamicInitiativeAuthorityExperimentHarness({ actionCount: 6 });
 
-    assert.deepEqual(harness.traces.map(trace => trace.selectedActor.uid), [1, 2, 1, 101, 2, 1]);
+    assert.deepEqual(harness.traces.map(trace => trace.selectedActor.uid), [1, 1, 101, 2, 1, 102]);
+    assert.equal(harness.traces.filter(trace => trace.selectionReason === 'opening_policy').length, 1);
     assert.ok(harness.traces.every(trace => trace.validation.ok));
     assert.equal(harness.traces[0].openingPolicy?.mode, 'hero_opener');
+    assert.equal(harness.traces[1].initiativeAdvanceCount, 1);
     assert.equal(harness.traces[0].thresholdSubtraction.applied, false);
     assert.deepEqual(
-      harness.traces[3].thresholdSubtraction,
-      { uid: 101, before: 150, threshold: 100, after: 50, applied: true },
+      harness.traces[1].thresholdSubtraction,
+      { uid: 1, before: 120, threshold: 100, after: 20, applied: true },
     );
     assert.ok(harness.text.includes('Cadence events:'));
+    assert.ok(harness.text.includes('Initiative advances: 1'));
     assert.ok(harness.text.includes('Threshold subtraction: not applied for Falie (0 < 100)'));
-    assert.ok(harness.text.includes('Threshold subtraction: Djinn 150 - 100 = 50'));
+    assert.ok(harness.text.includes('Threshold subtraction: Falie 120 - 100 = 20'));
   });
 }
 

@@ -2,35 +2,17 @@
   "hot_files": {
     "Scripts/functionBank.js": {
       "functions": [
-        "recordDynamicInitiativeShadowAfterAction",
-        "ensureDynamicInitiativeAuthorityState",
-        "isDynamicInitiativeAuthorityFlagEnabled",
-        "getDynamicInitiativeAuthorityCurrent",
-        "clearDynamicInitiativeAuthorityCurrent",
-        "failDynamicInitiativeAuthority",
-        "tryApplyDynamicInitiativeAuthoritySelection",
-        "GetCurrentTurn",
-        "GetCurrentType",
-        "AdvanceTurn",
-        "__MODULE__"
+        "createDynamicInitiativeOpeningPolicy",
+        "openingHeroes"
       ],
-      "staged_blob": "69a30ad0761d90d41ada22c316d14519cfea1a9b"
+      "staged_blob": "e3ddd41b0d7a3ea05f5fcd18d541d91f809fa2ee"
     },
     "web-runner/modules/functionBank.js": {
       "functions": [
-        "recordDynamicInitiativeShadowAfterAction",
-        "ensureDynamicInitiativeAuthorityState",
-        "isDynamicInitiativeAuthorityFlagEnabled",
-        "getDynamicInitiativeAuthorityCurrent",
-        "clearDynamicInitiativeAuthorityCurrent",
-        "failDynamicInitiativeAuthority",
-        "tryApplyDynamicInitiativeAuthoritySelection",
-        "GetCurrentTurn",
-        "GetCurrentType",
-        "AdvanceTurn",
-        "__MODULE__"
+        "createDynamicInitiativeOpeningPolicy",
+        "openingHeroes"
       ],
-      "staged_blob": "4ccbf158a99f5aeef4fef09b38cf969f5ba08092"
+      "staged_blob": "4a223545ef44e665e380951002fd6c63cfe7cbcf"
     }
   },
   "issue_id": "ORKA-n765"
