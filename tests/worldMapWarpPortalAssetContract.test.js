@@ -151,6 +151,10 @@ test('world map warp portal instances resolve requested grid coordinates', async
     'C11',
     'K05',
   ]);
+  assert.deepEqual(portals.WORLD_MAP_PORTAL_INSTANCES.map((portal) => portal.visible), [
+    true,
+    true,
+  ]);
   assert.equal(new Set(portals.WORLD_MAP_PORTAL_INSTANCES.map((portal) => portal.coordinate)).size, 2);
   for (const portal of portals.WORLD_MAP_PORTAL_INSTANCES) {
     assert.ok(coordinates.getWorldMapCellBounds(portal.coordinate), `${portal.coordinate} resolves to a map cell`);

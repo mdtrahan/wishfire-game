@@ -2366,6 +2366,7 @@ async function main(){
   let mapCaveImage = null;
   let mapPortalImage = null;
   let mapTowerImages = {};
+  let mapTownImages = {};
   let heroCapsuleImages = {};
   let plusIconImage = null;
   let minusIconImage = null;
@@ -2520,6 +2521,7 @@ async function main(){
         mapCaveImage,
         mapPortalImage,
         mapTowerImages,
+        mapTownImages,
         heroCapsuleImages,
         plusIconImage,
         minusIconImage,
@@ -3093,6 +3095,7 @@ async function main(){
     getMapCaveImage: () => mapCaveImage,
     getMapPortalImage: () => mapPortalImage,
     getMapTowerImages: () => mapTowerImages,
+    getMapTownImages: () => mapTownImages,
     renderHeroScreenLayoutV2,
     getDpr: () => dpr,
     getFreshCombatBootstrapped: () => freshCombatBootstrapped,
