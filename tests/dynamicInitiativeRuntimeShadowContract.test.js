@@ -91,16 +91,16 @@ for (const modulePath of shadowModulePaths) {
   test(`dynamic initiative shadow adapter becomes Progress-driven after one opening selection in ${modulePath}`, async () => {
     const shadow = await loadShadowModule(modulePath);
     const actors = [
-      { uid: 1, type: 0, speed: 60, hp: 42, name: 'Falie' },
-      { uid: 2, type: 0, speed: 45, hp: 36, name: 'Huun' },
-      { uid: 101, type: 1, speed: 50, hp: 30, name: 'Djinn' },
-      { uid: 102, type: 1, speed: 35, hp: 30, name: 'Marid' },
+      { uid: 1, type: 0, speed: 60, hp: 42, name: 'Synthetic Hero A' },
+      { uid: 2, type: 0, speed: 45, hp: 36, name: 'Synthetic Hero B' },
+      { uid: 101, type: 1, speed: 50, hp: 30, name: 'Synthetic Enemy A' },
+      { uid: 102, type: 1, speed: 35, hp: 30, name: 'Synthetic Enemy B' },
     ];
 
     const result = shadow.advanceDynamicInitiativeShadow({
       actionSerial: 2,
       actors,
-      completedActor: { uid: 1, type: 0, name: 'Falie' },
+      completedActor: { uid: 1, type: 0, name: 'Synthetic Hero A' },
       progress: { 1: 0, 2: 0, 101: 0, 102: 0 },
       openingPolicy: { mode: 'hero_opener', remainingUIDs: {}, exhausted: true },
       threshold: 100,

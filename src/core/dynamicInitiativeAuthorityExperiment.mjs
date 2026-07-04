@@ -19,10 +19,10 @@ export const DYNAMIC_INITIATIVE_AUTHORITY_ENCOUNTER = Object.freeze({
   seed: DYNAMIC_INITIATIVE_AUTHORITY_SEED,
   threshold: DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD,
   actors: Object.freeze([
-    Object.freeze({ uid: 1, type: 0, name: 'Falie', speed: 60, hp: 42 }),
-    Object.freeze({ uid: 2, type: 0, name: 'Huun', speed: 45, hp: 36 }),
-    Object.freeze({ uid: 101, type: 1, name: 'Djinn', speed: 50, hp: 30 }),
-    Object.freeze({ uid: 102, type: 1, name: 'Marid', speed: 35, hp: 30 }),
+    Object.freeze({ uid: 1, type: 0, name: 'Falie', speed: 9, hp: 42 }),
+    Object.freeze({ uid: 2, type: 0, name: 'Huun', speed: 20, hp: 35 }),
+    Object.freeze({ uid: 101, type: 1, name: 'Djinn', speed: 11, hp: 55 }),
+    Object.freeze({ uid: 102, type: 1, name: 'Marid', speed: 9, hp: 60 }),
   ]),
 });
 
