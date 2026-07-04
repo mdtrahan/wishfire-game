@@ -44,6 +44,7 @@ export async function loadRuntimeVisualAssets({
   let mapCaveImage = null;
   let mapPortalImage = null;
   const mapTowerImages = {};
+  const mapTownImages = {};
   const heroCapsuleImages = {};
   let plusIconImage = null;
   let minusIconImage = null;
@@ -162,6 +163,10 @@ export async function loadRuntimeVisualAssets({
       (async () => { mapTowerImages.purple = await loadImage(assetUrl('images/map_tower_spire_purple_46x54.png')); })(),
       (async () => { mapTowerImages.green = await loadImage(assetUrl('images/map_tower_spire_green_46x54.png')); })(),
       (async () => { mapTowerImages.blue = await loadImage(assetUrl('images/map_tower_spire_46x54.png')); })(),
+      (async () => { mapTownImages.town = await loadImage(assetUrl('images/map_town_town_46.png')); })(),
+      (async () => { mapTownImages.castle = await loadImage(assetUrl('images/map_town_castle_46.png')); })(),
+      (async () => { mapTownImages.moor = await loadImage(assetUrl('images/map_town_moor_46.png')); })(),
+      (async () => { mapTownImages.cape = await loadImage(assetUrl('images/map_town_cape_46.png')); })(),
       (async () => { plusIconImage = await plusPromise; })(),
       (async () => { minusIconImage = await minusPromise; })(),
       (async () => { heroBackArrowImage = await loadImage(FIGMA_HERO_BACK_URL); })(),
@@ -231,6 +236,7 @@ export async function loadRuntimeVisualAssets({
     mapCaveImage,
     mapPortalImage,
     mapTowerImages,
+    mapTownImages,
     heroCapsuleImages,
     plusIconImage,
     minusIconImage,

@@ -35,6 +35,6 @@ export const WORLD_MAP_PORTAL_SHADOW = Object.freeze({
 });
 
 export const WORLD_MAP_PORTAL_INSTANCES = Object.freeze([
-  Object.freeze({ id: 'western-lightburst-portal', coordinate: 'C11' }),
-  Object.freeze({ id: 'northeast-lightburst-portal', coordinate: 'K05' }),
+  Object.freeze({ id: 'western-lightburst-portal', coordinate: 'C11', visible: true }),
+  Object.freeze({ id: 'northeast-lightburst-portal', coordinate: 'K05', visible: true }),
 ]);

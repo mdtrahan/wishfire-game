@@ -24,6 +24,7 @@ export function createSurfaceRenderRouter({
   getMapCaveImage,
   getMapPortalImage,
   getMapTowerImages,
+  getMapTownImages,
   renderHeroScreenLayoutV2,
   getDpr,
   getFreshCombatBootstrapped,
@@ -54,6 +55,7 @@ export function createSurfaceRenderRouter({
     const mapCaveImage = typeof getMapCaveImage === 'function' ? getMapCaveImage() : null;
     const mapPortalImage = typeof getMapPortalImage === 'function' ? getMapPortalImage() : null;
     const mapTowerImages = typeof getMapTowerImages === 'function' ? getMapTowerImages() : null;
+    const mapTownImages = typeof getMapTownImages === 'function' ? getMapTownImages() : null;
     const sharedDims = { viewWidth, viewHeight, heroLayoutSpec, closeWinOvalImage };
 
     switch (layoutId) {
@@ -71,6 +73,7 @@ export function createSurfaceRenderRouter({
             mapCaveImage,
             mapPortalImage,
             mapTowerImages,
+            mapTownImages,
             heroLayoutSpec,
             closeWinOvalImage,
           },
