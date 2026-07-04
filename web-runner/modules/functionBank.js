@@ -4269,6 +4269,7 @@ function ensureDynamicInitiativeDefaultState(g) {
       active: 0,
       current: null,
       progress: {},
+      queue: [],
       openingPolicy: null,
       openingPolicyInitialized: false,
       traces: [],
@@ -4278,6 +4279,7 @@ function ensureDynamicInitiativeDefaultState(g) {
     };
   }
   if (!g.DynamicInitiative.progress || typeof g.DynamicInitiative.progress !== 'object') g.DynamicInitiative.progress = {};
+  if (!Array.isArray(g.DynamicInitiative.queue)) g.DynamicInitiative.queue = [];
   if (!Array.isArray(g.DynamicInitiative.traces)) g.DynamicInitiative.traces = [];
   return g.DynamicInitiative;
 }
@@ -4286,6 +4288,7 @@ function resetDynamicInitiativeDefaultState(g, sessionId = 0, reason = '') {
   state.active = 0;
   state.current = null;
   state.progress = {};
+  state.queue = [];
   state.openingPolicy = null;
   state.openingPolicyInitialized = false;
   state.traces = [];
@@ -4295,6 +4298,77 @@ function resetDynamicInitiativeDefaultState(g, sessionId = 0, reason = '') {
   state.lastResetReason = String(reason || '');
   g.DynamicInitiativeLastTraceText = '';
   return state;
+}
+function dynamicSpeedOrderForTrace(ctx, queue = []) {
+  return (Array.isArray(queue) ? queue : []).map((slot, index) => {
+    const uid = Number(slot?.uid || 0);
+    const actor = uid ? GetActorByUID(ctx, uid) : null;
+    const speed = actor ? GetEffectiveStat(ctx, actor, 'SPD') : Number(slot?.spd || 0);
+    return {
+      index,
+      uid,
+      type: Number(slot?.type || 0) === 1 ? 1 : 0,
+      name: actor ? String(actor.name || uid) : String(uid || ''),
+      speed: Number(speed || 0),
+    };
+  });
+}
+function formatDynamicSpeedInitiativeTrace(trace = {}) {
+  const order = (trace.speedOrder || [])
+    .map(slot => `${slot.name || slot.uid} ${Math.round(Number(slot.speed || 0))}`)
+    .join(' | ');
+  const selected = trace.selectedActor || {};
+  return [
+    `Action ${Number(trace.actionSerial || 0)}`,
+    `Speed order: ${order}`,
+    `Selected: ${String(selected.name || selected.uid || '')}`,
+    `Reason: ${String(trace.selectionReason || 'speed_sorted_cycle')}`,
+  ].join('\n');
+}
+function buildDynamicInitiativeDefaultSpeedSelection(ctx, options = null) {
+  const opts = options && typeof options === 'object' ? options : {};
+  const currentUID = Number(opts.currentUID || 0);
+  const source = String(opts.source || 'unknown');
+  const cadenceEvents = Array.isArray(opts.cadenceEvents) ? opts.cadenceEvents : [];
+  const g = getGlobals(ctx);
+  const state = syncDynamicInitiativeDefaultSession(ctx);
+  const roster = getInitiativeRoster(ctx);
+  if (!roster.length) {
+    resetDynamicInitiativeDefaultState(g, getDynamicInitiativeSessionId(g), 'empty_speed_roster');
+    return null;
+  }
+  const queue = buildFixedCycleSlots(roster, 0);
+  const completedUID = Number(currentUID || 0);
+  const completedIndex = queue.findIndex(slot => Number(slot.uid || 0) === completedUID);
+  const selectedIndex = completedIndex === -1 || completedIndex >= queue.length - 1 ? 0 : completedIndex + 1;
+  const selected = queue[selectedIndex] || null;
+  if (!selected) return null;
+  schedulerWriteQueue(ctx, queue);
+  schedulerWriteIndex(ctx, selectedIndex);
+  state.queue = queue.map(slot => ({ ...slot }));
+  const actor = GetActorByUID(ctx, selected.uid);
+  const selectedActor = {
+    uid: Number(selected.uid || 0),
+    type: Number(selected.type || 0) === 1 ? 1 : 0,
+    name: actor ? String(actor.name || selected.uid) : String(selected.uid || ''),
+    speed: actor ? GetEffectiveStat(ctx, actor, 'SPD') : Number(selected.spd || 0),
+  };
+  return {
+    battleId: getDynamicInitiativeBattleId(g),
+    actionSerial: Number(g.TurnSerial || 0),
+    source,
+    selectedActor,
+    selectionReason: 'speed_sorted_cycle',
+    speedOrder: dynamicSpeedOrderForTrace(ctx, queue),
+    selectedIndex,
+    completedUID,
+    cadenceEvents: Array.isArray(cadenceEvents) ? cadenceEvents.slice() : [],
+    progressBeforeSelection: {},
+    progressAfterSelection: {},
+    thresholdSubtraction: null,
+    eligibilitySkips: [],
+    pendingDeaths: g.PendingDeaths || null,
+  };
 }
 function getDynamicInitiativeSessionId(g) {
   const combatSessionId = Number(g.CombatSessionId || 0);
@@ -4316,6 +4390,12 @@ function getDynamicInitiativeDefaultCurrent(g) {
   if (!(uid > 0)) return null;
   return { uid, type: Number(current.type || 0) === 1 ? 1 : 0, name: String(current.name || uid) };
 }
+function getDynamicInitiativeDefaultOrder(ctx) {
+  const g = getGlobals(ctx);
+  const state = g.DynamicInitiative && g.DynamicInitiative.active ? g.DynamicInitiative : null;
+  const queue = state && Array.isArray(state.queue) ? state.queue : [];
+  return queue.length ? queue : getInitiativeRoster(ctx);
+}
 function setDynamicInitiativeDefaultCurrent(ctx, actor, source = 'unknown') {
   if (!actor || !(Number(actor.uid || 0) > 0)) return null;
   const g = getGlobals(ctx);
@@ -4335,49 +4415,35 @@ function setDynamicInitiativeDefaultCurrent(ctx, actor, source = 'unknown') {
 function initializeDynamicInitiativeDefaultCurrent(ctx, source = 'initialize') {
   const g = getGlobals(ctx);
   const state = syncDynamicInitiativeDefaultSession(ctx);
-  const actors = getDynamicInitiativeRoster(ctx);
-  if (!actors.length) {
-    resetDynamicInitiativeDefaultState(g, getDynamicInitiativeSessionId(g), 'no_eligible_roster');
-    return null;
-  }
   const currentUID = Number(state.current?.uid || 0);
+  const actors = getInitiativeRoster(ctx);
   if (state.active && currentUID > 0 && actors.some(actor => Number(actor.uid || 0) === currentUID)) {
     return state.current;
   }
-  const result = advanceDynamicInitiativeShadow({
-    battleId: getDynamicInitiativeBattleId(g),
-    actionSerial: Number(g.TurnSerial || 0),
-    actors,
-    completedActor: null,
-    progress: state.progress || {},
-    openingPolicy: null,
-    pendingDeaths: g.PendingDeaths || null,
-    threshold: getDynamicInitiativeThreshold(g),
-  });
-  state.progress = result.nextState.progress;
+  const trace = buildDynamicInitiativeDefaultSpeedSelection(ctx, { currentUID: 0, source });
+  if (!trace) return null;
   state.openingPolicy = null;
   state.openingPolicyInitialized = true;
-  state.lastPrediction = result.trace;
-  state.lastTraceText = formatDynamicInitiativeTrace(result.trace);
+  state.lastPrediction = trace;
+  state.lastTraceText = formatDynamicSpeedInitiativeTrace(trace);
   g.DynamicInitiativeLastTraceText = state.lastTraceText;
-  state.traces.push(result.trace);
+  state.traces.push(trace);
   if (state.traces.length > 200) state.traces.shift();
-  const current = setDynamicInitiativeDefaultCurrent(ctx, result.trace.selectedActor, source);
+  const current = setDynamicInitiativeDefaultCurrent(ctx, trace.selectedActor, source);
   if (!current) return null;
   recordTurnSchedulerEvent(ctx, 'dynamic_initiative_default_initial_selection', {
     selectedUID: Number(current?.uid || 0),
     selectedType: Number(current?.type || 0),
-    selectionReason: result.trace.selectionReason,
-    initiativeAdvanceCount: Number(result.trace.initiativeAdvanceCount || 0),
-    progressBeforeSelection: result.trace.progressBeforeSelection,
-    progressAfterSelection: result.trace.progressAfterSelection,
+    selectionReason: trace.selectionReason,
+    speedOrder: trace.speedOrder,
+    selectedIndex: trace.selectedIndex,
   });
   return current;
 }
 function recordDynamicInitiativeDefaultAfterAction(ctx, currentUID, currentType, cadenceEvents = []) {
   const g = getGlobals(ctx);
   const state = syncDynamicInitiativeDefaultSession(ctx);
-  const actors = getDynamicInitiativeRoster(ctx);
+  const actors = getInitiativeRoster(ctx);
   if (!actors.length) {
     resetDynamicInitiativeDefaultState(g, getDynamicInitiativeSessionId(g), 'empty_roster_after_action');
     return null;
@@ -4386,26 +4452,15 @@ function recordDynamicInitiativeDefaultAfterAction(ctx, currentUID, currentType,
     state.openingPolicy = null;
     state.openingPolicyInitialized = true;
   }
-  const completedActor = getDynamicInitiativeActorSnapshot(ctx, currentUID, currentType);
-  const result = advanceDynamicInitiativeShadow({
-    battleId: getDynamicInitiativeBattleId(g),
-    actionSerial: Number(g.TurnSerial || 0),
-    actors,
-    completedActor,
-    progress: state.progress || {},
-    openingPolicy: null,
-    pendingDeaths: g.PendingDeaths || null,
-    threshold: getDynamicInitiativeThreshold(g),
-  });
-  result.trace.cadenceEvents = Array.isArray(cadenceEvents) ? cadenceEvents.slice() : [];
-  state.progress = result.nextState.progress;
+  const trace = buildDynamicInitiativeDefaultSpeedSelection(ctx, { currentUID, source: 'AdvanceTurn', cadenceEvents });
+  if (!trace) return null;
   state.openingPolicy = null;
-  state.lastTrace = result.trace;
-  state.lastTraceText = formatDynamicInitiativeTrace(result.trace);
-  state.traces.push(result.trace);
+  state.lastTrace = trace;
+  state.lastTraceText = formatDynamicSpeedInitiativeTrace(trace);
+  state.traces.push(trace);
   if (state.traces.length > 200) state.traces.shift();
   g.DynamicInitiativeLastTraceText = state.lastTraceText;
-  return result.trace;
+  return trace;
 }
 function applyDynamicInitiativeDefaultSelection(ctx, prediction, cadenceEvents = []) {
   if (!prediction || !prediction.selectedActor) return false;
@@ -5158,7 +5213,7 @@ export function AdvanceTurn(ctx) {
   }
   recordDynamicInitiativeShadowSelectionComparison(ctx, dynamicInitiativeShadowPrediction);
   const audit = ensureTurnSchedulerAudit(g); let repeatSource = null;
-  if (beforeSlot && afterSlot && Number(beforeSlot.uid || 0) === Number(afterSlot.uid || 0)) { if (dynamicInitiativeAuthorityApplied || dynamicInitiativeDefaultApplied) repeatSource = 'dynamic_progress_math'; else if (audit.lastQueueMutation?.source === 'explicit_mechanic') repeatSource = 'explicit_mechanic'; else if (audit.lastQueueMutation?.source === 'collapse_after_future_slot_removal') repeatSource = 'collapse_after_future_slot_removal'; else if (rolloverCandidate) repeatSource = 'cycle_rollover'; else if (timeMode) repeatSource = 'non_compliant_scheduler_behavior'; }
+  if (beforeSlot && afterSlot && Number(beforeSlot.uid || 0) === Number(afterSlot.uid || 0)) { if (dynamicInitiativeAuthorityApplied || dynamicInitiativeDefaultApplied) repeatSource = 'speed_sorted_cycle'; else if (audit.lastQueueMutation?.source === 'explicit_mechanic') repeatSource = 'explicit_mechanic'; else if (audit.lastQueueMutation?.source === 'collapse_after_future_slot_removal') repeatSource = 'collapse_after_future_slot_removal'; else if (rolloverCandidate) repeatSource = 'cycle_rollover'; else if (timeMode) repeatSource = 'non_compliant_scheduler_behavior'; }
   recordTurnSchedulerEvent(ctx, 'pointer_advance', { cause: dynamicInitiativeAuthorityApplied ? 'dynamic_initiative_authority' : (dynamicInitiativeDefaultApplied ? 'dynamic_initiative_default' : (timeMode ? 'time_select_next' : (rolloverCandidate ? 'round_cycle_rollover' : 'round_pointer_increment'))), beforeUID: beforeSlot ? beforeSlot.uid : 0, afterUID: afterSlot ? afterSlot.uid : 0, beforeIndex, afterIndex, repeatSource, rolloverCandidate, queue: afterQueue });
 }
 
@@ -9787,9 +9842,9 @@ export function ProcessTurn(ctx) {
   console.log(`[DEBUG] matches=${g.DebugMatchCount || 0} turns=${g.DebugTurnCount}`);
   const dynamicCurrent = getDynamicInitiativeDefaultCurrent(g);
   const flatRaw = dynamicCurrent
-    ? getDynamicInitiativeRoster(ctx).map(actor => ({
+    ? getDynamicInitiativeDefaultOrder(ctx).map(actor => ({
       uid: actor.uid,
-      spd: actor.speed,
+      spd: Number(actor.spd ?? actor.speed ?? 0),
       type: actor.type,
     }))
     : (isTimeInitiative(ctx)

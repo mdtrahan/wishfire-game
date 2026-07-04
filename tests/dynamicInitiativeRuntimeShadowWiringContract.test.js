@@ -40,6 +40,7 @@ test('dynamic initiative runtime keeps shadow diagnostics while default combat u
     assert.match(src, /function recordDynamicInitiativeShadowAfterAction\(ctx, currentUID, currentType, cadenceEvents = \[\]\)/);
     assert.match(src, /function recordDynamicInitiativeShadowSelectionComparison\(ctx, prediction\)/);
     assert.match(src, /function ensureDynamicInitiativeDefaultState\(g\)/);
+    assert.match(src, /function buildDynamicInitiativeDefaultSpeedSelection\(ctx, options = null\)/);
     assert.match(src, /function initializeDynamicInitiativeDefaultCurrent\(ctx, source = 'initialize'\)/);
     assert.match(src, /function recordDynamicInitiativeDefaultAfterAction\(ctx, currentUID, currentType, cadenceEvents = \[\]\)/);
     assert.match(src, /function applyDynamicInitiativeDefaultSelection\(ctx, prediction, cadenceEvents = \[\]\)/);
@@ -48,11 +49,19 @@ test('dynamic initiative runtime keeps shadow diagnostics while default combat u
     assert.match(src, /if \(!isDynamicInitiativeAuthorityFlagEnabled\(g\)\)/);
 
     const initializeDefault = extractFunctionSource(src, 'initializeDynamicInitiativeDefaultCurrent');
-    assert.match(initializeDefault, /advanceDynamicInitiativeShadow\(/);
-    assert.match(initializeDefault, /openingPolicy: null/);
+    assert.match(initializeDefault, /buildDynamicInitiativeDefaultSpeedSelection\(ctx, \{ currentUID: 0, source \}\)/);
+    assert.match(initializeDefault, /formatDynamicSpeedInitiativeTrace\(trace\)/);
     assert.match(initializeDefault, /dynamic_initiative_default_initial_selection/);
     assert.doesNotMatch(initializeDefault, /createDynamicInitiativeOpeningPolicy/);
     assert.doesNotMatch(initializeDefault, /dynamic_initiative_default_opening_selection/);
+
+    const defaultSpeedSelection = extractFunctionSource(src, 'buildDynamicInitiativeDefaultSpeedSelection');
+    assert.match(defaultSpeedSelection, /const roster = getInitiativeRoster\(ctx\)/);
+    assert.match(defaultSpeedSelection, /const queue = buildFixedCycleSlots\(roster, 0\)/);
+    assert.match(defaultSpeedSelection, /selectionReason: 'speed_sorted_cycle'/);
+    assert.match(defaultSpeedSelection, /speedOrder: dynamicSpeedOrderForTrace\(ctx, queue\)/);
+    assert.doesNotMatch(defaultSpeedSelection, /advanceDynamicInitiativeShadow\(/);
+    assert.doesNotMatch(defaultSpeedSelection, /progressBeforeAct|thresholdSubtraction: \{/);
 
     const shadowPrediction = extractFunctionSource(src, 'recordDynamicInitiativeShadowAfterAction');
     assert.match(shadowPrediction, /openingPolicy: null/);

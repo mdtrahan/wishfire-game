@@ -209,18 +209,22 @@ for (const schedulerPath of dynamicSchedulerPaths) {
   });
 }
 
-test('default combat delegates actor selection to Dynamic Initiative without reviving legacy time initiative', () => {
+test('default combat delegates actor selection to effective Speed sorting without reviving team phases', () => {
   for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
     const src = fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
 
     assert.match(src, /function isTimeInitiative\(ctx\) \{\s*return false;\s*\}/);
     assert.match(src, /function ensureDynamicInitiativeDefaultState\(g\)/);
     assert.match(src, /function getDynamicInitiativeDefaultCurrent\(g\)/);
+    assert.match(src, /function buildDynamicInitiativeDefaultSpeedSelection\(ctx, options = null\)/);
     assert.match(src, /function recordDynamicInitiativeDefaultAfterAction\(ctx, currentUID, currentType, cadenceEvents = \[\]\)/);
     assert.match(src, /function applyDynamicInitiativeDefaultSelection\(ctx, prediction, cadenceEvents = \[\]\)/);
+    assert.match(src, /buildFixedCycleSlots\(roster, 0\)/);
+    assert.match(src, /selectionReason: 'speed_sorted_cycle'/);
     assert.match(src, /initializeDynamicInitiativeDefaultCurrent\(ctx, 'BuildRoundGroups'\)/);
     assert.match(src, /getDynamicInitiativeDefaultCurrent\(g\);\s*if \(dynamicCurrent\) return dynamicCurrent\.uid;/);
     assert.match(src, /applyDynamicInitiativeDefaultSelection\(ctx, dynamicInitiativeDefaultPrediction, dynamicInitiativeCadenceEvents\)/);
+    assert.doesNotMatch(src, /dynamic_progress_math/);
     assert.match(src, /export function AdvanceTurn\(ctx\)/);
     assert.match(src, /export function ProcessCurrentTurn\(ctx\)/);
     assert.match(src, /export function HeroTurn\(ctx, heroUID\)/);
