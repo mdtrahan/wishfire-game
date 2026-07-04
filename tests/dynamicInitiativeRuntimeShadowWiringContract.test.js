@@ -46,10 +46,17 @@ test('dynamic initiative runtime keeps shadow diagnostics while default combat u
     assert.match(src, /function tryApplyDynamicInitiativeAuthoritySelection\(ctx, prediction, cadenceEvents = \[\]\)/);
     assert.match(src, /function isDynamicInitiativeAuthorityFlagEnabled\(g\)/);
     assert.match(src, /if \(!isDynamicInitiativeAuthorityFlagEnabled\(g\)\)/);
-    const openingPolicy = extractFunctionSource(src, 'createDynamicInitiativeOpeningPolicy');
-    assert.match(openingPolicy, /const opener = openingHeroes\[0\]\?\.actor \|\| null/);
-    assert.match(openingPolicy, /remainingUIDs = opener \? \{ \[Number\(opener\.uid\)\]: true \} : \{\}/);
-    assert.doesNotMatch(openingPolicy, /for \(const actor of actors\)/);
+
+    const initializeDefault = extractFunctionSource(src, 'initializeDynamicInitiativeDefaultCurrent');
+    assert.match(initializeDefault, /advanceDynamicInitiativeShadow\(/);
+    assert.match(initializeDefault, /openingPolicy: null/);
+    assert.match(initializeDefault, /dynamic_initiative_default_initial_selection/);
+    assert.doesNotMatch(initializeDefault, /createDynamicInitiativeOpeningPolicy/);
+    assert.doesNotMatch(initializeDefault, /dynamic_initiative_default_opening_selection/);
+
+    const shadowPrediction = extractFunctionSource(src, 'recordDynamicInitiativeShadowAfterAction');
+    assert.match(shadowPrediction, /openingPolicy: null/);
+    assert.doesNotMatch(shadowPrediction, /createDynamicInitiativeOpeningPolicy/);
 
     const advanceTurn = extractFunctionSource(src, 'AdvanceTurn');
     assert.match(advanceTurn, /recordDynamicInitiativeShadowAfterAction\(ctx, currentUID, currentType, dynamicInitiativeCadenceEvents\)/);

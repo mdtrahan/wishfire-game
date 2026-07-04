@@ -117,13 +117,13 @@ for (const schedulerPath of dynamicSchedulerPaths) {
 
     const preview = scheduler.previewDynamicInitiativeTurns({
       actors,
+      progress: { 1: 100, 101: 0 },
       threshold: 100,
-      openingPolicy: { mode: 'hero_opener', remainingUIDs: { 1: true } },
       turnCount: 12,
     });
 
     assert.deepEqual(preview.turns.map(turn => turn.uid), [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 101]);
-    assert.equal(preview.turns[0].openingPolicyTurn, true);
+    assert.equal(preview.turns.every(turn => !turn.openingPolicyTurn), true);
     assert.equal(preview.turns.some(turn => turn.uid === 101), true);
     assert.equal(preview.reasons.some(reason => /cap|limit|repeat/i.test(reason.reason)), false);
   });
@@ -158,41 +158,24 @@ for (const schedulerPath of dynamicSchedulerPaths) {
     );
   });
 
-  test(`dynamic initiative models hero opener as explicit policy instead of team phase in ${schedulerPath}`, async () => {
+  test(`dynamic initiative does not prefer heroes when Progress makes an enemy the winner in ${schedulerPath}`, async () => {
     const scheduler = await loadScheduler(schedulerPath);
     const actors = [
       { uid: 1, type: 0, spd: 10, hp: 40, name: 'Falie' },
       { uid: 2, type: 0, spd: 8, hp: 35, name: 'Huun' },
       { uid: 101, type: 1, spd: 200, hp: 20, name: 'Djinn' },
     ];
-    const openingPolicy = {
-      mode: 'hero_opener',
-      remainingUIDs: { 1: true, 2: true },
-    };
 
-    const first = scheduler.selectDynamicInitiativeTurn({
+    const selected = scheduler.selectDynamicInitiativeTurn({
       actors,
-      progress: { 1: 0, 2: 0, 101: 500 },
-      openingPolicy,
+      progress: { 1: 100, 2: 100, 101: 500 },
       threshold: 100,
     });
 
-    assert.equal(first.actor.uid, 1);
-    assert.equal(first.turn.openingPolicyTurn, true);
-    assert.deepEqual(first.openingPolicy.remainingUIDs, { 2: true });
-    assert.deepEqual(first.progress, { 1: 0, 2: 0, 101: 500 });
-    assert.ok(first.reasons.some(reason => reason.uid === 101 && reason.reason === 'opening_policy_hold'));
-
-    const second = scheduler.selectDynamicInitiativeTurn({
-      actors,
-      progress: first.progress,
-      openingPolicy: first.openingPolicy,
-      threshold: 100,
-    });
-
-    assert.equal(second.actor.uid, 2);
-    assert.equal(second.turn.openingPolicyTurn, true);
-    assert.deepEqual(second.openingPolicy.remainingUIDs, {});
+    assert.equal(selected.actor.uid, 101);
+    assert.equal(selected.turn.openingPolicyTurn, false);
+    assert.equal(selected.openingPolicy, null);
+    assert.equal(selected.reasons.some(reason => reason.reason === 'opening_policy_hold'), false);
   });
 
   test(`dynamic initiative shadow audit compares team phase against frozen Progress contract in ${schedulerPath}`, async () => {
@@ -208,7 +191,7 @@ for (const schedulerPath of dynamicSchedulerPaths) {
     const audit = scheduler.createDynamicInitiativeShadowAudit({
       actors,
       currentTeamPhaseOrder: [1, 2, 101, 102],
-      openingPolicy: { mode: 'hero_opener', remainingUIDs: { 1: true, 2: true } },
+      progress: { 1: 100, 2: 80, 101: 120, 102: 100, 103: 120 },
       threshold: 100,
       previewCount: 6,
     });
@@ -217,9 +200,11 @@ for (const schedulerPath of dynamicSchedulerPaths) {
     assert.equal(audit.liveModeUnchanged, true);
     assert.equal(audit.proposedModel, 'dynamic_progress');
     assert.deepEqual(audit.currentOrder.map(turn => turn.uid), [1, 2, 101, 102]);
-    assert.deepEqual(audit.proposedOrder.map(turn => turn.uid), [1, 2]);
+    assert.deepEqual(audit.proposedOrder.map(turn => turn.uid), [101, 1, 102, 101, 2]);
     assert.ok(audit.skipped.some(actor => actor.uid === 103 && actor.reason === 'stunned'));
-    assert.ok(audit.reasons.some(reason => reason.reason === 'opening_policy_hold'));
+    assert.equal(audit.firstTurnPolicy, '');
+    assert.equal(audit.openingPolicy, null);
+    assert.equal(audit.reasons.some(reason => reason.reason === 'opening_policy_hold'), false);
     assert.equal(audit.divergesFromCurrentOrder, true);
   });
 }

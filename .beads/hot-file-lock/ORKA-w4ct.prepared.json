@@ -2,41 +2,19 @@
   "hot_files": {
     "Scripts/functionBank.js": {
       "functions": [
-        "ensureDynamicInitiativeDefaultState",
-        "resetDynamicInitiativeDefaultState",
-        "getDynamicInitiativeSessionId",
-        "syncDynamicInitiativeDefaultSession",
-        "getDynamicInitiativeDefaultCurrent",
-        "setDynamicInitiativeDefaultCurrent",
+        "recordDynamicInitiativeShadowAfterAction",
         "initializeDynamicInitiativeDefaultCurrent",
-        "recordDynamicInitiativeDefaultAfterAction",
-        "applyDynamicInitiativeDefaultSelection",
-        "GetCurrentTurn",
-        "GetCurrentType",
-        "AdvanceTurn",
-        "BuildRoundGroups",
-        "ProcessTurn"
+        "recordDynamicInitiativeDefaultAfterAction"
       ],
-      "staged_blob": "bb6023e98f9def03d82f8b571b1d785f0e510b73"
+      "staged_blob": "629179c7ad6def79105cb8790380118254134600"
     },
     "web-runner/modules/functionBank.js": {
       "functions": [
-        "ensureDynamicInitiativeDefaultState",
-        "resetDynamicInitiativeDefaultState",
-        "getDynamicInitiativeSessionId",
-        "syncDynamicInitiativeDefaultSession",
-        "getDynamicInitiativeDefaultCurrent",
-        "setDynamicInitiativeDefaultCurrent",
+        "recordDynamicInitiativeShadowAfterAction",
         "initializeDynamicInitiativeDefaultCurrent",
-        "recordDynamicInitiativeDefaultAfterAction",
-        "applyDynamicInitiativeDefaultSelection",
-        "GetCurrentTurn",
-        "GetCurrentType",
-        "AdvanceTurn",
-        "BuildRoundGroups",
-        "ProcessTurn"
+        "recordDynamicInitiativeDefaultAfterAction"
       ],
-      "staged_blob": "8581e5958eb972b6f88ae190e7b32de6ffd12758"
+      "staged_blob": "1b248be988d5e01361977de241030ea4a7124fbb"
     }
   },
   "issue_id": "ORKA-w4ct"
