@@ -30,17 +30,22 @@ function extractFunctionSource(src, name) {
   assert.fail(`unterminated ${name}`);
 }
 
-test('dynamic initiative shadow adapter is wired into functionBank mirrors without becoming authoritative', () => {
+test('dynamic initiative shadow adapter remains wired while authority stays dev-flag gated', () => {
   for (const relPath of functionBankPaths) {
     const src = read(relPath);
 
     assert.match(src, /dynamicInitiativeRuntimeShadow\.mjs/);
+    assert.match(src, /dynamicInitiativeAuthorityExperiment\.mjs/);
     assert.match(src, /function isTimeInitiative\(ctx\) \{\s*return false;\s*\}/);
-    assert.match(src, /function recordDynamicInitiativeShadowAfterAction\(ctx, currentUID, currentType\)/);
+    assert.match(src, /function recordDynamicInitiativeShadowAfterAction\(ctx, currentUID, currentType, cadenceEvents = \[\]\)/);
     assert.match(src, /function recordDynamicInitiativeShadowSelectionComparison\(ctx, prediction\)/);
+    assert.match(src, /function tryApplyDynamicInitiativeAuthoritySelection\(ctx, prediction, cadenceEvents = \[\]\)/);
+    assert.match(src, /function isDynamicInitiativeAuthorityFlagEnabled\(g\)/);
+    assert.match(src, /if \(!isDynamicInitiativeAuthorityFlagEnabled\(g\)\)/);
 
     const advanceTurn = extractFunctionSource(src, 'AdvanceTurn');
-    assert.match(advanceTurn, /recordDynamicInitiativeShadowAfterAction\(ctx, currentUID, currentType\)/);
+    assert.match(advanceTurn, /recordDynamicInitiativeShadowAfterAction\(ctx, currentUID, currentType, dynamicInitiativeCadenceEvents\)/);
+    assert.match(advanceTurn, /tryApplyDynamicInitiativeAuthoritySelection\(ctx, dynamicInitiativeShadowPrediction, dynamicInitiativeCadenceEvents\)/);
     assert.match(advanceTurn, /recordDynamicInitiativeShadowSelectionComparison\(ctx, dynamicInitiativeShadowPrediction\)/);
     assert.match(advanceTurn, /ProcessCurrentTurn\(ctx\)/);
     assert.doesNotMatch(advanceTurn, /selectDynamicInitiativeTurn\(/);

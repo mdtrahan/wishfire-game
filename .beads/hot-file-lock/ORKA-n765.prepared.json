@@ -1,0 +1,37 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "recordDynamicInitiativeShadowAfterAction",
+        "ensureDynamicInitiativeAuthorityState",
+        "isDynamicInitiativeAuthorityFlagEnabled",
+        "getDynamicInitiativeAuthorityCurrent",
+        "clearDynamicInitiativeAuthorityCurrent",
+        "failDynamicInitiativeAuthority",
+        "tryApplyDynamicInitiativeAuthoritySelection",
+        "GetCurrentTurn",
+        "GetCurrentType",
+        "AdvanceTurn",
+        "__MODULE__"
+      ],
+      "staged_blob": "69a30ad0761d90d41ada22c316d14519cfea1a9b"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "recordDynamicInitiativeShadowAfterAction",
+        "ensureDynamicInitiativeAuthorityState",
+        "isDynamicInitiativeAuthorityFlagEnabled",
+        "getDynamicInitiativeAuthorityCurrent",
+        "clearDynamicInitiativeAuthorityCurrent",
+        "failDynamicInitiativeAuthority",
+        "tryApplyDynamicInitiativeAuthoritySelection",
+        "GetCurrentTurn",
+        "GetCurrentType",
+        "AdvanceTurn",
+        "__MODULE__"
+      ],
+      "staged_blob": "4ccbf158a99f5aeef4fef09b38cf969f5ba08092"
+    }
+  },
+  "issue_id": "ORKA-n765"
+}

@@ -120,6 +120,14 @@ export const state = {
     InitiativeMaxLoops: 500,
     BattleStartRemaining: {},
     BattleStartResolved: 0,
+    DynamicInitiativeAuthorityEnabled: 0,
+    DynamicInitiativeAuthorityExperimentId: '',
+    DynamicInitiativeAuthoritySeed: 0,
+    DynamicInitiativeAuthorityBattleId: 0,
+    DynamicInitiativeAuthorityEncounterLocked: 0,
+    DynamicInitiativeAuthorityMaxActions: 64,
+    DynamicInitiativeAuthority: null,
+    DynamicInitiativeAuthorityLastTraceText: '',
 
     // Enemy/turn order arrays
     EnemyArray: [],
