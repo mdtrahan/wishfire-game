@@ -48,25 +48,34 @@ function readCanonicalEnemy(name) {
   assert.fail(`missing canonical enemy ${name}`);
 }
 
-function canonicalAuthorityBattleStartActors({
-  djinnUID = 101,
-  maridUID = 102,
+function proofAuthorityBattleStartActors({
+  proofHp,
+  skeletonUID = 101,
+  goblocUID = 102,
+  trollUID = 103,
 } = {}) {
   const falie = readCanonicalHero('Falie');
   const huun = readCanonicalHero('Huun');
-  const djinn = readCanonicalEnemy('Djinn');
-  const marid = readCanonicalEnemy('Marid');
+  const runa = readCanonicalHero('Runa');
+  const kojonn = readCanonicalHero('Kojonn');
+  const skeleton = readCanonicalEnemy('Skeleton');
+  const gobloc = readCanonicalEnemy('Gobloc');
+  const troll = readCanonicalEnemy('Troll');
   return [
-    { uid: 1, type: 0, name: falie.name, speed: falie.speed, hp: falie.hp },
-    { uid: 2, type: 0, name: huun.name, speed: huun.speed, hp: huun.hp },
-    { uid: djinnUID, type: 1, name: djinn.name, speed: djinn.speed, hp: djinn.hp },
-    { uid: maridUID, type: 1, name: marid.name, speed: marid.speed, hp: marid.hp },
+    { uid: 1, type: 0, name: falie.name, speed: falie.speed, hp: proofHp },
+    { uid: 2, type: 0, name: huun.name, speed: huun.speed, hp: proofHp },
+    { uid: 3, type: 0, name: runa.name, speed: runa.speed, hp: proofHp },
+    { uid: 4, type: 0, name: kojonn.name, speed: kojonn.speed, hp: proofHp },
+    { uid: skeletonUID, type: 1, name: skeleton.name, speed: skeleton.speed, hp: proofHp },
+    { uid: goblocUID, type: 1, name: gobloc.name, speed: gobloc.speed, hp: proofHp },
+    { uid: trollUID, type: 1, name: troll.name, speed: troll.speed, hp: proofHp },
   ];
 }
 
 for (const modulePath of authorityModulePaths) {
-  test(`dynamic initiative authority encounter uses canonical battle-start Speed in ${modulePath}`, async () => {
+  test(`dynamic initiative authority proof encounter uses canonical Speed with proof HP in ${modulePath}`, async () => {
     const authority = await loadAuthorityModule(modulePath);
+    const proofHp = authority.DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP;
 
     assert.deepEqual(
       authority.DYNAMIC_INITIATIVE_AUTHORITY_ENCOUNTER.actors.map(actor => ({
@@ -76,7 +85,7 @@ for (const modulePath of authorityModulePaths) {
         speed: actor.speed,
         hp: actor.hp,
       })),
-      canonicalAuthorityBattleStartActors(),
+      proofAuthorityBattleStartActors({ proofHp }),
     );
   });
 
@@ -107,7 +116,13 @@ for (const modulePath of authorityModulePaths) {
 
   test(`dynamic initiative authority gate binds live actor identities instead of transient enemy UIDs in ${modulePath}`, async () => {
     const authority = await loadAuthorityModule(modulePath);
-    const liveActors = canonicalAuthorityBattleStartActors({ djinnUID: 4, maridUID: 5 });
+    const proofHp = authority.DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP;
+    const liveActors = proofAuthorityBattleStartActors({
+      proofHp,
+      skeletonUID: 5,
+      goblocUID: 6,
+      trollUID: 7,
+    });
     const globals = {
       DynamicInitiativeAuthorityEnabled: 1,
       DynamicInitiativeAuthorityExperimentId: authority.DYNAMIC_INITIATIVE_AUTHORITY_EXPERIMENT_ID,
@@ -122,32 +137,41 @@ for (const modulePath of authorityModulePaths) {
 
     assert.equal(authority.isDynamicInitiativeAuthorityExperimentEnabled({
       globals,
+      actors: liveActors.map(actor => (
+        actor.name === 'Skeleton' ? { ...actor, hp: proofHp - 2 } : actor
+      )),
+    }), true);
+
+    assert.equal(authority.isDynamicInitiativeAuthorityExperimentEnabled({
+      globals,
       actors: [
-        liveActors[0],
-        liveActors[1],
-        liveActors[3],
-        liveActors[2],
+        ...liveActors.slice(0, 4),
+        liveActors[5],
+        liveActors[4],
+        liveActors[6],
       ],
     }), false);
 
     assert.equal(authority.isDynamicInitiativeAuthorityExperimentEnabled({
       globals,
       actors: liveActors.map(actor => (
-        actor.name === 'Marid' ? { ...actor, name: 'Gob' } : actor
+        actor.name === 'Troll' ? { ...actor, name: 'Orc' } : actor
       )),
     }), false);
   });
 
   test(`dynamic initiative authority validates selected actor eligibility in ${modulePath}`, async () => {
     const authority = await loadAuthorityModule(modulePath);
-    const [falie, , djinn] = canonicalAuthorityBattleStartActors();
+    const [falie, , , , skeleton] = proofAuthorityBattleStartActors({
+      proofHp: authority.DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP,
+    });
     const actors = [
       falie,
-      { ...djinn, hp: 0 },
+      { ...skeleton, hp: 0 },
     ];
     const prediction = {
       actionSerial: 4,
-      selectedActor: { uid: 101, type: 1, name: 'Djinn' },
+      selectedActor: { uid: 101, type: 1, name: 'Skeleton' },
       progressBeforeSelection: { 1: 60, 101: 120 },
       progressAfterSelection: { 1: 60 },
       threshold: 100,
@@ -222,9 +246,12 @@ for (const modulePath of authorityModulePaths) {
 
   test(`dynamic initiative authority harness explains a deterministic battle trace in ${modulePath}`, async () => {
     const authority = await loadAuthorityModule(modulePath);
-    const harness = authority.runDynamicInitiativeAuthorityExperimentHarness({ actionCount: 6 });
+    const harness = authority.runDynamicInitiativeAuthorityExperimentHarness({ actionCount: 50 });
 
-    assert.deepEqual(harness.traces.map(trace => trace.selectedActor.uid), [1, 2, 101, 2, 1, 102]);
+    assert.deepEqual(
+      harness.traces.slice(0, 10).map(trace => trace.selectedActor.name),
+      ['Falie', 'Skeleton', 'Huun', 'Gobloc', 'Kojonn', 'Skeleton', 'Runa', 'Huun', 'Gobloc', 'Falie'],
+    );
     assert.equal(harness.traces.filter(trace => trace.selectionReason === 'opening_policy').length, 1);
     assert.ok(harness.traces.every(trace => trace.validation.ok));
     assert.equal(harness.traces[0].openingPolicy?.mode, 'hero_opener');
@@ -232,12 +259,25 @@ for (const modulePath of authorityModulePaths) {
     assert.equal(harness.traces[0].thresholdSubtraction.applied, false);
     assert.deepEqual(
       harness.traces[1].thresholdSubtraction,
-      { uid: 2, before: 100, threshold: 100, after: 0, applied: true },
+      { uid: 101, before: 110, threshold: 100, after: 10, applied: true },
     );
+    const counts = harness.traces.reduce((acc, trace) => {
+      const name = trace.selectedActor.name;
+      acc[name] = Number(acc[name] || 0) + 1;
+      return acc;
+    }, {});
+    assert.ok(counts.Skeleton > counts.Troll);
+    assert.ok(counts.Huun > counts.Falie);
+    assert.ok(counts.Gobloc > counts.Falie);
+    assert.ok(harness.traces.some((trace, index) => (
+      index > 0
+      && trace.selectedActor.type !== harness.traces[index - 1].selectedActor.type
+      && harness.traces[index - 1].selectedActor.type !== harness.traces[Math.max(0, index - 2)]?.selectedActor?.type
+    )));
     assert.ok(harness.text.includes('Cadence events:'));
     assert.ok(harness.text.includes('Initiative advances: 4'));
     assert.ok(harness.text.includes('Threshold subtraction: not applied for Falie (0 < 100)'));
-    assert.ok(harness.text.includes('Threshold subtraction: Huun 100 - 100 = 0'));
+    assert.ok(harness.text.includes('Threshold subtraction: Skeleton 110 - 100 = 10'));
   });
 }
 

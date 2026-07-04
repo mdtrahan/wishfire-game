@@ -7,11 +7,13 @@ import {
   runDynamicInitiativeTraceHarness,
 } from './dynamicInitiativeRuntimeShadow.mjs';
 
-export const DYNAMIC_INITIATIVE_AUTHORITY_EXPERIMENT_ID = 'battle-1001-falie-huun-djinn-marid';
+export const DYNAMIC_INITIATIVE_AUTHORITY_EXPERIMENT_ID = 'battle-1001-speed-proof';
 export const DYNAMIC_INITIATIVE_AUTHORITY_BATTLE_ID = 1001;
 export const DYNAMIC_INITIATIVE_AUTHORITY_SEED = 1001;
-export const DYNAMIC_INITIATIVE_AUTHORITY_MAX_ACTIONS = 64;
+export const DYNAMIC_INITIATIVE_AUTHORITY_MAX_ACTIONS = 96;
 export const DYNAMIC_INITIATIVE_AUTHORITY_MAX_STARVATION_ACTIONS = 16;
+export const DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP = 5000;
+export const DYNAMIC_INITIATIVE_AUTHORITY_PROOF_DAMAGE_STAT = 1;
 
 export const DYNAMIC_INITIATIVE_AUTHORITY_ENCOUNTER = Object.freeze({
   id: DYNAMIC_INITIATIVE_AUTHORITY_EXPERIMENT_ID,
@@ -19,10 +21,13 @@ export const DYNAMIC_INITIATIVE_AUTHORITY_ENCOUNTER = Object.freeze({
   seed: DYNAMIC_INITIATIVE_AUTHORITY_SEED,
   threshold: DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD,
   actors: Object.freeze([
-    Object.freeze({ uid: 1, type: 0, name: 'Falie', speed: 9, hp: 42 }),
-    Object.freeze({ uid: 2, type: 0, name: 'Huun', speed: 20, hp: 35 }),
-    Object.freeze({ uid: 101, type: 1, name: 'Djinn', speed: 11, hp: 55 }),
-    Object.freeze({ uid: 102, type: 1, name: 'Marid', speed: 9, hp: 60 }),
+    Object.freeze({ uid: 1, type: 0, name: 'Falie', speed: 9, hp: DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP }),
+    Object.freeze({ uid: 2, type: 0, name: 'Huun', speed: 20, hp: DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP }),
+    Object.freeze({ uid: 3, type: 0, name: 'Runa', speed: 11, hp: DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP }),
+    Object.freeze({ uid: 4, type: 0, name: 'Kojonn', speed: 14, hp: DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP }),
+    Object.freeze({ uid: 101, type: 1, name: 'Skeleton', speed: 22, hp: DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP }),
+    Object.freeze({ uid: 102, type: 1, name: 'Gobloc', speed: 17, hp: DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP }),
+    Object.freeze({ uid: 103, type: 1, name: 'Troll', speed: 5, hp: DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP }),
   ]),
 });
 
@@ -140,7 +145,7 @@ function rosterMatchesAuthorityEncounter(actors = [], { allowSubset = false } = 
   if (allowSubset) return rosterMatchesLockedEncounterSubset(normalizedActors, expected);
   if (normalizedActors.length !== expected.length) return false;
   for (let index = 0; index < expected.length; index += 1) {
-    if (!actorIdentityMatches(normalizedActors[index], expected[index], { includeHp: true })) return false;
+    if (!actorIdentityMatches(normalizedActors[index], expected[index], { includeHp: false })) return false;
   }
   return true;
 }

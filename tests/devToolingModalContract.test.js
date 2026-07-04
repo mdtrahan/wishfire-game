@@ -164,15 +164,22 @@ test('dev browser hooks expose an explicit dynamic initiative authority QA scena
   const src = fs.readFileSync(devHooksPath, 'utf8');
 
   assert.match(src, /setupDynamicInitiativeAuthorityScenario/);
+  assert.match(src, /DYNAMIC_INITIATIVE_AUTHORITY_EXPERIMENT_ID/);
+  assert.match(src, /DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP/);
+  assert.match(src, /DYNAMIC_INITIATIVE_AUTHORITY_PROOF_DAMAGE_STAT/);
   assert.match(src, /DynamicInitiativeAuthorityEnabled\s*=\s*1/);
-  assert.match(src, /DynamicInitiativeAuthorityExperimentId\s*=\s*'battle-1001-falie-huun-djinn-marid'/);
-  assert.match(src, /DynamicInitiativeAuthoritySeed\s*=\s*1001/);
-  assert.match(src, /DynamicInitiativeAuthorityBattleId\s*=\s*1001/);
+  assert.match(src, /DynamicInitiativeAuthorityExperimentId\s*=\s*DYNAMIC_INITIATIVE_AUTHORITY_EXPERIMENT_ID/);
+  assert.match(src, /DynamicInitiativeAuthoritySeed\s*=\s*DYNAMIC_INITIATIVE_AUTHORITY_SEED/);
+  assert.match(src, /DynamicInitiativeAuthorityBattleId\s*=\s*DYNAMIC_INITIATIVE_AUTHORITY_BATTLE_ID/);
   assert.match(src, /BattleStartClearedForSession\s*=\s*1/);
   assert.match(src, /CanPickGems\s*=\s*true/);
-  assert.match(src, /heroSlots:\s*\['Falie',\s*'Huun',\s*'',\s*''\]/);
-  assert.match(src, /enemySlots:\s*\['Djinn',\s*'Marid',\s*''\]/);
+  assert.match(src, /const proofHeroSlots = \['Falie',\s*'Huun',\s*'Runa',\s*'Kojonn'\]/);
+  assert.match(src, /const proofEnemySlots = \['Skeleton',\s*'Gobloc',\s*'Troll'\]/);
+  assert.match(src, /heroSlots: proofHeroSlots/);
+  assert.match(src, /enemySlots: proofEnemySlots/);
   assert.match(src, /boardGemColor:\s*1/);
+  assert.match(src, /actor\.hp = DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP/);
+  assert.match(src, /actor\.stats\.ATK = DYNAMIC_INITIATIVE_AUTHORITY_PROOF_DAMAGE_STAT/);
   assert.match(src, /const authorityEnemies = state\.entities[\s\S]*\.filter\(\(entity\) => entity && entity\.kind === 'enemy'\)[\s\S]*\.sort\(/);
   assert.match(src, /g\.EnemyIDs = \[/);
   assert.match(src, /g\.EnemySlots = \[/);

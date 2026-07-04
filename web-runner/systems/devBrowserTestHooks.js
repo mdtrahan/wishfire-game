@@ -1,3 +1,12 @@
+import {
+  DYNAMIC_INITIATIVE_AUTHORITY_BATTLE_ID,
+  DYNAMIC_INITIATIVE_AUTHORITY_EXPERIMENT_ID,
+  DYNAMIC_INITIATIVE_AUTHORITY_MAX_ACTIONS,
+  DYNAMIC_INITIATIVE_AUTHORITY_PROOF_DAMAGE_STAT,
+  DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP,
+  DYNAMIC_INITIATIVE_AUTHORITY_SEED,
+} from '../src/core/dynamicInitiativeAuthorityExperiment.mjs';
+
 export function registerDevBrowserTestHooks({
   state,
   gameState,
@@ -360,19 +369,40 @@ export function registerDevBrowserTestHooks({
           await waitForLayout('combat');
         }
       }
+      const proofHeroSlots = ['Falie', 'Huun', 'Runa', 'Kojonn'];
+      const proofEnemySlots = ['Skeleton', 'Gobloc', 'Troll'];
       await applyDevToolingConfig({
-        heroSlots: ['Falie', 'Huun', '', ''],
-        enemySlots: ['Djinn', 'Marid', ''],
+        heroSlots: proofHeroSlots,
+        enemySlots: proofEnemySlots,
         boardGemColor: 1,
         combatSpeed: 1,
       }, { closeModal: false });
       const g = state.globals;
-      const authorityEnemyNames = new Set(['Djinn', 'Marid']);
+      const authorityEnemyNames = new Set(proofEnemySlots);
       state.entities = state.entities.filter((entity) => (
         !entity
         || entity.kind !== 'enemy'
         || authorityEnemyNames.has(String(entity.name || '').trim())
       ));
+      state.entities
+        .filter((entity) => entity && (entity.kind === 'hero' || entity.kind === 'enemy'))
+        .forEach((actor) => {
+          actor.hp = DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP;
+          actor.maxHP = DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP;
+          actor.isAlive = true;
+          actor.pendingDeath = false;
+          actor.deathPending = false;
+          actor.disabled = false;
+          actor.stunned = false;
+          actor.stopped = false;
+          actor.paralyzed = false;
+          actor.ableToAct = true;
+          actor.stats = actor.stats && typeof actor.stats === 'object' ? actor.stats : {};
+          actor.stats.ATK = DYNAMIC_INITIATIVE_AUTHORITY_PROOF_DAMAGE_STAT;
+          actor.stats.MAG = DYNAMIC_INITIATIVE_AUTHORITY_PROOF_DAMAGE_STAT;
+          actor.ATK = DYNAMIC_INITIATIVE_AUTHORITY_PROOF_DAMAGE_STAT;
+          actor.MAG = DYNAMIC_INITIATIVE_AUTHORITY_PROOF_DAMAGE_STAT;
+        });
       state.entities
         .filter((entity) => entity && entity.kind === 'enemy')
         .forEach((enemy, slotIndex) => {
@@ -383,32 +413,36 @@ export function registerDevBrowserTestHooks({
         .filter((entity) => entity && entity.kind === 'enemy')
         .sort((left, right) => Number(left.slotIndex || 0) - Number(right.slotIndex || 0));
       g.DynamicInitiativeAuthorityEnabled = 1;
-      g.DynamicInitiativeAuthorityExperimentId = 'battle-1001-falie-huun-djinn-marid';
-      g.DynamicInitiativeAuthoritySeed = 1001;
-      g.DynamicInitiativeAuthorityBattleId = 1001;
-      g.DynamicInitiativeAuthorityMaxActions = 64;
+      callFunctionWithContext(fnContext, 'InitPartyHPFromHeroes');
+      callFunctionWithContext(fnContext, 'UpdateEnemyHPUI');
+      callFunctionWithContext(fnContext, 'Update_Bars');
+      g.DynamicInitiativeAuthorityExperimentId = DYNAMIC_INITIATIVE_AUTHORITY_EXPERIMENT_ID;
+      g.DynamicInitiativeAuthoritySeed = DYNAMIC_INITIATIVE_AUTHORITY_SEED;
+      g.DynamicInitiativeAuthorityBattleId = DYNAMIC_INITIATIVE_AUTHORITY_BATTLE_ID;
+      g.DynamicInitiativeAuthorityMaxActions = DYNAMIC_INITIATIVE_AUTHORITY_MAX_ACTIONS;
       g.DynamicInitiativeAuthorityEncounterLocked = 0;
       g.DynamicInitiativeAuthority = null;
       g.DynamicInitiativeAuthorityLastTraceText = '';
-      g.BattleId = 1001;
-      g.EncounterSeed = 1001;
+      g.BattleId = DYNAMIC_INITIATIVE_AUTHORITY_BATTLE_ID;
+      g.EncounterSeed = DYNAMIC_INITIATIVE_AUTHORITY_SEED;
       g.EncounterSeedExplicit = 1;
-      g.EncounterMaxSlots = 2;
-      g.DevEnemySlots = ['Djinn', 'Marid', ''];
+      g.EncounterMaxSlots = proofEnemySlots.length;
+      g.DevEnemySlots = [...proofEnemySlots];
       g.EnemyIDs = [
         Number(authorityEnemies[0]?.uid || 0),
         Number(authorityEnemies[1]?.uid || 0),
-        0,
+        Number(authorityEnemies[2]?.uid || 0),
       ];
       g.EnemySlots = [
         Number(authorityEnemies[0]?.uid || 0) > 0 ? Number(authorityEnemies[0].uid || 0) + 1 : 0,
         Number(authorityEnemies[1]?.uid || 0) > 0 ? Number(authorityEnemies[1].uid || 0) + 1 : 0,
-        0,
+        Number(authorityEnemies[2]?.uid || 0) > 0 ? Number(authorityEnemies[2].uid || 0) + 1 : 0,
       ];
       g.PendingEnemyRespawnSlots = [0, 0, 0];
       g.PendingEnemyRespawnTimerActive = 0;
       if (g.DevToolingConfig && typeof g.DevToolingConfig === 'object') {
-        g.DevToolingConfig.enemySlots = ['Djinn', 'Marid', ''];
+        g.DevToolingConfig.heroSlots = [...proofHeroSlots];
+        g.DevToolingConfig.enemySlots = [...proofEnemySlots];
       }
       g.TurnOrderArray = Array.isArray(g.TurnOrderArray)
         ? g.TurnOrderArray.filter((slot) => state.entities.some((entity) => Number(entity?.uid || 0) === Number(slot?.uid || 0)))
@@ -435,9 +469,11 @@ export function registerDevBrowserTestHooks({
         experimentId: g.DynamicInitiativeAuthorityExperimentId,
         battleId: g.BattleId,
         seed: g.DynamicInitiativeAuthoritySeed,
-        heroSlots: ['Falie', 'Huun', '', ''],
-        enemySlots: ['Djinn', 'Marid', ''],
-        expectedFlow: 'start with one hero opener, then let Dynamic Initiative authority select actors by Progress',
+        heroSlots: [...proofHeroSlots],
+        enemySlots: [...proofEnemySlots],
+        proofHp: DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP,
+        proofDamageStat: DYNAMIC_INITIATIVE_AUTHORITY_PROOF_DAMAGE_STAT,
+        expectedFlow: 'one hero opener, then visible Speed-driven interleaving: Skeleton 22, Huun 20, Gobloc 17, Kojonn 14, Runa 11, Falie 9, Troll 5',
       };
       drawFrame();
       return { ok: true, ...g.DynamicInitiativeAuthorityQAScenario };
