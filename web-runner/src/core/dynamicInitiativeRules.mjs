@@ -1,6 +1,4 @@
 export const DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD = 100;
-export const DYNAMIC_INITIATIVE_DEFAULT_MAX_TICKS = 10000;
-export const DYNAMIC_INITIATIVE_DEFAULT_BURST_CAP = 2;
 export const DYNAMIC_INITIATIVE_SHADOW_MODE = 'shadow_only';
 export const DYNAMIC_INITIATIVE_HERO_OPENER = 'hero_opener';
 
@@ -17,9 +15,9 @@ function numberOr(value, fallback = 0) {
   return Number.isFinite(normalized) ? normalized : fallback;
 }
 
-function positiveIntOr(value, fallback) {
-  const normalized = Math.floor(numberOr(value, fallback));
-  return normalized > 0 ? normalized : fallback;
+function positiveThreshold(value = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD) {
+  const normalized = Math.floor(numberOr(value, DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD));
+  return normalized > 0 ? normalized : DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD;
 }
 
 function normalizeUID(value = 0) {
@@ -37,8 +35,8 @@ function normalizeName(actor = {}, uid = 0) {
   return name || String(uid || '');
 }
 
-function effectiveSpeed(actor = {}) {
-  return numberOr(actor?.effectiveSPD ?? actor?.spd ?? actor?.SPD ?? actor?.stats?.SPD, 0);
+function actorSpeed(actor = {}) {
+  return numberOr(actor?.effectiveSpeed ?? actor?.speed ?? actor?.effectiveSPD ?? actor?.spd ?? actor?.SPD ?? actor?.stats?.SPD, 0);
 }
 
 function actorHp(actor = {}) {
@@ -76,14 +74,14 @@ function hasPendingDeath(pendingDeaths = null, uid = 0) {
   return false;
 }
 
-function skippedActor(actor = {}, stableIndex = 0, reason = 'invalid_actor') {
+function actorProjection(actor = {}, stableIndex = 0, reason = 'invalid_actor') {
   const uid = normalizeUID(actor?.uid);
-  const spd = effectiveSpeed(actor);
+  const speed = actorSpeed(actor);
   return {
     uid,
     type: normalizeType(actor),
-    spd,
-    effectiveSPD: spd,
+    speed,
+    effectiveSpeed: speed,
     hp: actorHp(actor),
     name: normalizeName(actor, uid),
     stableIndex,
@@ -96,23 +94,11 @@ export function normalizeDynamicInitiativeActor(actor = {}, {
   stableIndex = 0,
   pendingDeaths = null,
 } = {}) {
-  if (!actor || typeof actor !== 'object') return skippedActor({}, stableIndex, 'invalid_actor');
-  const uid = normalizeUID(actor.uid);
-  const spd = effectiveSpeed(actor);
-  const normalized = {
-    uid,
-    type: normalizeType(actor),
-    spd,
-    effectiveSPD: spd,
-    hp: actorHp(actor),
-    name: normalizeName(actor, uid),
-    stableIndex,
-    eligible: false,
-    reason: '',
-  };
+  if (!actor || typeof actor !== 'object') return actorProjection({}, stableIndex, 'invalid_actor');
+  const normalized = actorProjection(actor, stableIndex, '');
 
-  if (uid <= 0) return { ...normalized, reason: 'invalid_uid' };
-  if (hasPendingDeath(pendingDeaths, uid) || actor.pendingDeath || actor.pendingDeath === 1 || actor.deathPending) {
+  if (normalized.uid <= 0) return { ...normalized, reason: 'invalid_uid' };
+  if (hasPendingDeath(pendingDeaths, normalized.uid) || actor.pendingDeath || actor.pendingDeath === 1 || actor.deathPending) {
     return { ...normalized, reason: 'pending_death' };
   }
   if (normalized.hp <= 0 || actor.isAlive === false) return { ...normalized, reason: 'dead' };
@@ -123,7 +109,7 @@ export function normalizeDynamicInitiativeActor(actor = {}, {
   if (actor.paralyzed) return { ...normalized, reason: 'paralyzed' };
   const blocked = statusBlockedReason(actor);
   if (blocked) return { ...normalized, reason: blocked };
-  if (spd <= 0) return { ...normalized, reason: 'non_positive_speed' };
+  if (normalized.speed <= 0) return { ...normalized, reason: 'non_positive_speed' };
 
   return {
     ...normalized,
@@ -146,26 +132,28 @@ export function buildDynamicInitiativeRoster(actors = [], {
   return { eligible, skipped };
 }
 
-function normalizeMeters(meters = {}, eligible = []) {
+function normalizeProgress(progress = {}, eligible = []) {
   const next = {};
   for (const actor of eligible) {
     const key = String(actor.uid);
-    next[key] = Math.max(0, numberOr(meters?.[key] ?? meters?.[actor.uid], 0));
+    next[key] = Math.max(0, numberOr(progress?.[key] ?? progress?.[actor.uid], 0));
   }
   return next;
 }
 
-function readyCandidate(actor, meter = 0, threshold = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD) {
+function candidateFor(actor = {}, progressValue = 0, threshold = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD) {
   return {
     ...actor,
-    meter,
-    overflow: meter - threshold,
+    progress: progressValue,
+    progressBeforeAct: progressValue,
+    overflowBeforeAct: progressValue - threshold,
   };
 }
 
-function compareReadyCandidates(a = {}, b = {}) {
-  const diff = (numberOr(b.overflow, 0) - numberOr(a.overflow, 0))
-    || (numberOr(b.effectiveSPD, 0) - numberOr(a.effectiveSPD, 0))
+function compareCandidates(a = {}, b = {}) {
+  const diff = (numberOr(b.progress, 0) - numberOr(a.progress, 0))
+    || (numberOr(a.type, 0) - numberOr(b.type, 0))
+    || (numberOr(b.speed, 0) - numberOr(a.speed, 0))
     || (numberOr(a.stableIndex, 0) - numberOr(b.stableIndex, 0))
     || (numberOr(a.uid, 0) - numberOr(b.uid, 0));
   if (diff < 0) return -1;
@@ -173,42 +161,18 @@ function compareReadyCandidates(a = {}, b = {}) {
   return 0;
 }
 
-function readyActors(actors = [], meters = {}, threshold = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD) {
+function readyActors(actors = [], progress = {}, threshold = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD) {
   return actors
-    .map(actor => readyCandidate(actor, numberOr(meters[String(actor.uid)], 0), threshold))
-    .filter(actor => actor.meter >= threshold)
-    .sort(compareReadyCandidates);
-}
-
-function ticksToNextReady(actors = [], meters = {}, threshold = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD, {
-  excludeUID = 0,
-} = {}) {
-  let ticks = Infinity;
-  for (const actor of actors) {
-    if (excludeUID && Number(actor.uid || 0) === Number(excludeUID || 0)) continue;
-    const meter = numberOr(meters[String(actor.uid)], 0);
-    if (meter >= threshold) return 0;
-    const spd = numberOr(actor.effectiveSPD, 0);
-    if (spd <= 0) continue;
-    ticks = Math.min(ticks, Math.ceil((threshold - meter) / spd));
-  }
-  return Number.isFinite(ticks) ? Math.max(1, ticks) : null;
-}
-
-function addTicksToMeters(meters = {}, eligible = [], ticks = 0) {
-  const next = { ...meters };
-  for (const actor of eligible) {
-    const key = String(actor.uid);
-    next[key] = Math.max(0, numberOr(next[key], 0) + (numberOr(actor.effectiveSPD, 0) * ticks));
-  }
-  return next;
+    .map(actor => candidateFor(actor, numberOr(progress[String(actor.uid)], 0), threshold))
+    .filter(actor => actor.progress >= threshold)
+    .sort(compareCandidates);
 }
 
 function normalizeOpeningPolicy(openingPolicy = null, eligible = []) {
   if (!openingPolicy || String(openingPolicy.mode || '') !== DYNAMIC_INITIATIVE_HERO_OPENER) {
     return {
       policy: null,
-      activeActors: eligible,
+      candidates: [],
       heldActors: [],
     };
   }
@@ -229,15 +193,15 @@ function normalizeOpeningPolicy(openingPolicy = null, eligible = []) {
   if (remainingSet.size === 0) {
     return {
       policy: { mode: DYNAMIC_INITIATIVE_HERO_OPENER, remainingUIDs, exhausted: true },
-      activeActors: eligible,
+      candidates: [],
       heldActors: [],
     };
   }
-  const activeActors = eligible.filter(actor => remainingSet.has(String(actor.uid)));
+  const candidates = eligible.filter(actor => remainingSet.has(String(actor.uid)));
   const heldActors = eligible.filter(actor => !remainingSet.has(String(actor.uid)));
   return {
     policy: { mode: DYNAMIC_INITIATIVE_HERO_OPENER, remainingUIDs, exhausted: false },
-    activeActors,
+    candidates,
     heldActors,
   };
 }
@@ -253,209 +217,121 @@ function consumeOpeningPolicy(policy = null, uid = 0) {
   };
 }
 
-function selectReadyActor({
-  ready = [],
-  activeActors = [],
-  lastActorUID = 0,
-  consecutiveTurns = 0,
-  maxConsecutiveTurns = DYNAMIC_INITIATIVE_DEFAULT_BURST_CAP,
-  reasons = [],
-} = {}) {
-  const first = ready[0] || null;
-  if (!first) return { actor: null, waitForAlternative: false };
-  const lastUID = normalizeUID(lastActorUID);
-  const cap = positiveIntOr(maxConsecutiveTurns, DYNAMIC_INITIATIVE_DEFAULT_BURST_CAP);
-  const capReached = lastUID > 0
-    && Number(first.uid || 0) === lastUID
-    && Number(consecutiveTurns || 0) >= cap;
-  if (!capReached) return { actor: first, waitForAlternative: false };
-
-  const alternative = ready.find(actor => Number(actor.uid || 0) !== lastUID);
-  if (alternative) {
-    reasons.push({
-      reason: 'burst_cap_select_alternative',
-      cappedUID: lastUID,
-      uid: alternative.uid,
-      maxConsecutiveTurns: cap,
-    });
-    return { actor: alternative, waitForAlternative: false };
-  }
-
-  const hasAlternativeActor = activeActors.some(actor => Number(actor.uid || 0) !== lastUID);
-  if (hasAlternativeActor) {
-    reasons.push({
-      reason: 'burst_cap_wait_for_alternative',
-      cappedUID: lastUID,
-      maxConsecutiveTurns: cap,
-    });
-    return { actor: null, waitForAlternative: true };
-  }
-
-  reasons.push({
-    reason: 'burst_cap_single_actor_no_alternative',
-    uid: first.uid,
-    maxConsecutiveTurns: cap,
-  });
-  return { actor: first, waitForAlternative: false };
-}
-
 function dynamicTurnRecord(actor = {}, {
-  meterBeforeAct = 0,
+  progressBeforeAct = 0,
   threshold = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD,
-  ticksElapsed = 0,
-  consecutiveTurns = 1,
+  openingPolicyTurn = false,
 } = {}) {
   return {
     uid: Number(actor.uid || 0),
     type: Number(actor.type || 0),
-    spd: Number(actor.effectiveSPD || actor.spd || 0),
+    speed: Number(actor.speed || 0),
     name: String(actor.name || actor.uid || ''),
-    ticksElapsed,
-    meterBeforeAct,
-    overflowBeforeAct: meterBeforeAct - threshold,
-    consecutiveTurns,
+    progressBeforeAct,
+    overflowBeforeAct: progressBeforeAct - threshold,
+    threshold,
+    openingPolicyTurn: !!openingPolicyTurn,
+  };
+}
+
+export function applyDynamicInitiativeActionCompleted({
+  actors = [],
+  progress = {},
+  pendingDeaths = null,
+} = {}) {
+  const roster = buildDynamicInitiativeRoster(actors, { pendingDeaths });
+  const nextProgress = normalizeProgress(progress, roster.eligible);
+  for (const actor of roster.eligible) {
+    const key = String(actor.uid);
+    nextProgress[key] = Math.max(0, numberOr(nextProgress[key], 0) + numberOr(actor.speed, 0));
+  }
+  return {
+    progress: nextProgress,
+    eligible: roster.eligible,
+    skipped: roster.skipped,
+    reasons: [],
   };
 }
 
 export function selectDynamicInitiativeTurn({
   actors = [],
-  meters = {},
+  progress = {},
   pendingDeaths = null,
   threshold = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD,
-  maxTicks = DYNAMIC_INITIATIVE_DEFAULT_MAX_TICKS,
-  maxConsecutiveTurns = DYNAMIC_INITIATIVE_DEFAULT_BURST_CAP,
-  lastActorUID = 0,
-  consecutiveTurns = 0,
   openingPolicy = null,
 } = {}) {
-  const normalizedThreshold = positiveIntOr(threshold, DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD);
-  const normalizedMaxTicks = positiveIntOr(maxTicks, DYNAMIC_INITIATIVE_DEFAULT_MAX_TICKS);
+  const normalizedThreshold = positiveThreshold(threshold);
   const roster = buildDynamicInitiativeRoster(actors, { pendingDeaths });
-  let nextMeters = normalizeMeters(meters, roster.eligible);
+  const nextProgress = normalizeProgress(progress, roster.eligible);
   const opening = normalizeOpeningPolicy(openingPolicy, roster.eligible);
-  const activeActors = opening.activeActors;
   const reasons = opening.heldActors.map(actor => ({
     reason: 'opening_policy_hold',
     uid: actor.uid,
     mode: DYNAMIC_INITIATIVE_HERO_OPENER,
   }));
 
-  if (!roster.eligible.length || !activeActors.length) {
+  if (!roster.eligible.length) {
     return {
       actor: null,
       turn: null,
-      meters: nextMeters,
-      ticksElapsed: 0,
+      progress: nextProgress,
       skipped: roster.skipped,
-      reasons: [
-        ...reasons,
-        { reason: roster.eligible.length ? 'no_active_opening_actor' : 'no_eligible_actor' },
-      ],
+      reasons: [{ reason: 'no_eligible_actor' }],
       openingPolicy: opening.policy,
-      lastActorUID: normalizeUID(lastActorUID),
-      consecutiveTurns: Math.max(0, Math.floor(numberOr(consecutiveTurns, 0))),
+      threshold: normalizedThreshold,
     };
   }
 
-  let ticksElapsed = 0;
-  for (let guard = 0; guard < normalizedMaxTicks + activeActors.length + 1; guard += 1) {
-    const ready = readyActors(activeActors, nextMeters, normalizedThreshold);
-    if (ready.length <= 0) {
-      const ticks = ticksToNextReady(activeActors, nextMeters, normalizedThreshold);
-      if (ticks == null || ticksElapsed + ticks > normalizedMaxTicks) {
-        return {
-          actor: null,
-          turn: null,
-          meters: nextMeters,
-          ticksElapsed,
-          skipped: roster.skipped,
-          reasons: [...reasons, { reason: 'max_ticks_without_ready_actor', maxTicks: normalizedMaxTicks }],
-          openingPolicy: opening.policy,
-          lastActorUID: normalizeUID(lastActorUID),
-          consecutiveTurns: Math.max(0, Math.floor(numberOr(consecutiveTurns, 0))),
-        };
-      }
-      nextMeters = addTicksToMeters(nextMeters, roster.eligible, ticks);
-      ticksElapsed += ticks;
-      continue;
-    }
-
-    const selected = selectReadyActor({
-      ready,
-      activeActors,
-      lastActorUID,
-      consecutiveTurns,
-      maxConsecutiveTurns,
-      reasons,
-    });
-    if (selected.waitForAlternative) {
-      const ticks = ticksToNextReady(activeActors, nextMeters, normalizedThreshold, {
-        excludeUID: lastActorUID,
-      });
-      if (ticks == null || ticksElapsed + ticks > normalizedMaxTicks) {
-        return {
-          actor: null,
-          turn: null,
-          meters: nextMeters,
-          ticksElapsed,
-          skipped: roster.skipped,
-          reasons: [...reasons, { reason: 'burst_cap_no_alternative_before_tick_cap', maxTicks: normalizedMaxTicks }],
-          openingPolicy: opening.policy,
-          lastActorUID: normalizeUID(lastActorUID),
-          consecutiveTurns: Math.max(0, Math.floor(numberOr(consecutiveTurns, 0))),
-        };
-      }
-      nextMeters = addTicksToMeters(nextMeters, roster.eligible, ticks);
-      ticksElapsed += ticks;
-      continue;
-    }
-
-    const actor = selected.actor;
-    const key = String(actor.uid);
-    const meterBeforeAct = numberOr(nextMeters[key], 0);
-    const nextConsecutiveTurns = Number(actor.uid || 0) === normalizeUID(lastActorUID)
-      ? Math.max(0, Math.floor(numberOr(consecutiveTurns, 0))) + 1
-      : 1;
-    nextMeters[key] = Math.max(0, meterBeforeAct - normalizedThreshold);
-    if (nextConsecutiveTurns > 1) {
-      reasons.push({
-        reason: 'speed_overflow_repeat',
-        uid: actor.uid,
-        consecutiveTurns: nextConsecutiveTurns,
-      });
-    }
+  if (opening.candidates.length > 0) {
+    const openingCandidates = opening.candidates
+      .map(actor => candidateFor(actor, numberOr(nextProgress[String(actor.uid)], 0), normalizedThreshold))
+      .sort(compareCandidates);
+    const actor = openingCandidates[0];
     const nextOpeningPolicy = consumeOpeningPolicy(opening.policy, actor.uid);
-    const turn = dynamicTurnRecord(actor, {
-      meterBeforeAct,
-      threshold: normalizedThreshold,
-      ticksElapsed,
-      consecutiveTurns: nextConsecutiveTurns,
-    });
     return {
       actor: { ...actor },
-      turn,
-      meters: nextMeters,
-      ticksElapsed,
+      turn: dynamicTurnRecord(actor, {
+        progressBeforeAct: numberOr(nextProgress[String(actor.uid)], 0),
+        threshold: normalizedThreshold,
+        openingPolicyTurn: true,
+      }),
+      progress: nextProgress,
       skipped: roster.skipped,
       reasons,
       openingPolicy: nextOpeningPolicy,
-      lastActorUID: actor.uid,
-      consecutiveTurns: nextConsecutiveTurns,
       threshold: normalizedThreshold,
-      burstCap: positiveIntOr(maxConsecutiveTurns, DYNAMIC_INITIATIVE_DEFAULT_BURST_CAP),
     };
   }
 
+  const ready = readyActors(roster.eligible, nextProgress, normalizedThreshold);
+  if (!ready.length) {
+    return {
+      actor: null,
+      turn: null,
+      progress: nextProgress,
+      skipped: roster.skipped,
+      reasons: [...reasons, { reason: 'no_ready_actor' }],
+      openingPolicy: opening.policy,
+      threshold: normalizedThreshold,
+    };
+  }
+
+  const actor = ready[0];
+  const key = String(actor.uid);
+  const progressBeforeAct = numberOr(nextProgress[key], 0);
+  nextProgress[key] = progressBeforeAct - normalizedThreshold;
   return {
-    actor: null,
-    turn: null,
-    meters: nextMeters,
-    ticksElapsed,
+    actor: { ...actor },
+    turn: dynamicTurnRecord(actor, {
+      progressBeforeAct,
+      threshold: normalizedThreshold,
+      openingPolicyTurn: false,
+    }),
+    progress: nextProgress,
     skipped: roster.skipped,
-    reasons: [...reasons, { reason: 'scheduler_guard_exhausted' }],
+    reasons,
     openingPolicy: opening.policy,
-    lastActorUID: normalizeUID(lastActorUID),
-    consecutiveTurns: Math.max(0, Math.floor(numberOr(consecutiveTurns, 0))),
+    threshold: normalizedThreshold,
   };
 }
 
@@ -473,65 +349,50 @@ function dedupeSkipped(skipped = []) {
 
 export function previewDynamicInitiativeTurns({
   actors = [],
-  meters = {},
+  progress = {},
   pendingDeaths = null,
   threshold = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD,
-  maxTicks = DYNAMIC_INITIATIVE_DEFAULT_MAX_TICKS,
-  maxConsecutiveTurns = DYNAMIC_INITIATIVE_DEFAULT_BURST_CAP,
   turnCount = 8,
   openingPolicy = null,
-  lastActorUID = 0,
-  consecutiveTurns = 0,
 } = {}) {
   const turns = [];
   const skipped = [];
   const reasons = [];
-  const repeats = [];
-  let nextMeters = { ...(meters || {}) };
+  let nextProgress = { ...(progress || {}) };
   let nextOpeningPolicy = openingPolicy;
-  let nextLastUID = normalizeUID(lastActorUID);
-  let nextConsecutiveTurns = Math.max(0, Math.floor(numberOr(consecutiveTurns, 0)));
   const count = Math.max(0, Math.floor(numberOr(turnCount, 0)));
 
   for (let i = 0; i < count; i += 1) {
     const selected = selectDynamicInitiativeTurn({
       actors,
-      meters: nextMeters,
+      progress: nextProgress,
       pendingDeaths,
       threshold,
-      maxTicks,
-      maxConsecutiveTurns,
       openingPolicy: nextOpeningPolicy,
-      lastActorUID: nextLastUID,
-      consecutiveTurns: nextConsecutiveTurns,
     });
     skipped.push(...selected.skipped);
     reasons.push(...selected.reasons);
     if (!selected.turn) break;
     turns.push(selected.turn);
-    if (turns.length > 1 && turns[turns.length - 2].uid === selected.turn.uid) {
-      repeats.push({
-        uid: selected.turn.uid,
-        fromIndex: turns.length - 2,
-        toIndex: turns.length - 1,
-        reason: 'speed_overflow_repeat',
-      });
-    }
-    nextMeters = selected.meters;
+    nextProgress = selected.progress;
     nextOpeningPolicy = selected.openingPolicy;
-    nextLastUID = selected.lastActorUID;
-    nextConsecutiveTurns = selected.consecutiveTurns;
+    const advanced = applyDynamicInitiativeActionCompleted({
+      actors,
+      progress: nextProgress,
+      pendingDeaths,
+    });
+    nextProgress = advanced.progress;
+    skipped.push(...advanced.skipped);
+    reasons.push(...advanced.reasons);
   }
 
   return {
     turns,
-    meters: nextMeters,
+    progress: nextProgress,
     skipped: dedupeSkipped(skipped),
     reasons,
-    repeats,
     openingPolicy: nextOpeningPolicy,
-    lastActorUID: nextLastUID,
-    consecutiveTurns: nextConsecutiveTurns,
+    threshold: positiveThreshold(threshold),
   };
 }
 
@@ -550,7 +411,7 @@ function normalizeCurrentOrder(currentTeamPhaseOrder = [], actors = []) {
       return {
         uid,
         type: Number((typeof entry === 'object' ? entry?.type : actor.type) || 0),
-        spd: Number((typeof entry === 'object' ? entry?.spd : actor.spd) || 0),
+        speed: Number((typeof entry === 'object' ? entry?.speed : actor.speed) || 0),
         name: String((typeof entry === 'object' ? entry?.name : actor.name) || uid || ''),
         index,
       };
@@ -569,22 +430,18 @@ function ordersDiverge(currentOrder = [], proposedOrder = []) {
 export function createDynamicInitiativeShadowAudit({
   actors = [],
   currentTeamPhaseOrder = [],
-  meters = {},
+  progress = {},
   pendingDeaths = null,
   threshold = DYNAMIC_INITIATIVE_DEFAULT_THRESHOLD,
-  maxTicks = DYNAMIC_INITIATIVE_DEFAULT_MAX_TICKS,
-  maxConsecutiveTurns = DYNAMIC_INITIATIVE_DEFAULT_BURST_CAP,
   previewCount = 8,
   openingPolicy = null,
 } = {}) {
   const currentOrder = normalizeCurrentOrder(currentTeamPhaseOrder, actors);
   const preview = previewDynamicInitiativeTurns({
     actors,
-    meters,
+    progress,
     pendingDeaths,
     threshold,
-    maxTicks,
-    maxConsecutiveTurns,
     turnCount: previewCount,
     openingPolicy,
   });
@@ -593,15 +450,15 @@ export function createDynamicInitiativeShadowAudit({
     mode: DYNAMIC_INITIATIVE_SHADOW_MODE,
     liveModeUnchanged: true,
     currentModel: 'team_phase',
-    proposedModel: 'dynamic_action_gauge',
+    proposedModel: 'dynamic_progress',
     firstTurnPolicy: openingPolicy ? String(openingPolicy.mode || '') : '',
     currentOrder,
     proposedOrder,
     skipped: preview.skipped,
-    repeats: preview.repeats,
     reasons: preview.reasons,
-    meters: preview.meters,
+    progress: preview.progress,
     openingPolicy: preview.openingPolicy,
+    threshold: preview.threshold,
     divergesFromCurrentOrder: ordersDiverge(currentOrder, proposedOrder.slice(0, currentOrder.length)),
   };
 }

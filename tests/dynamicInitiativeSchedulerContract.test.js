@@ -14,68 +14,121 @@ async function loadScheduler(relPath) {
 }
 
 for (const schedulerPath of dynamicSchedulerPaths) {
-  test(`dynamic initiative gauge math keeps overflow for successive high-speed turns in ${schedulerPath}`, async () => {
+  test(`dynamic initiative source removes burst caps and repeat-limit concepts in ${schedulerPath}`, () => {
+    const src = fs.readFileSync(path.join(__dirname, '..', schedulerPath), 'utf8');
+
+    assert.doesNotMatch(src, /burst/i);
+    assert.doesNotMatch(src, /maxConsecutive/i);
+    assert.doesNotMatch(src, /consecutiveTurns/i);
+    assert.doesNotMatch(src, /extra.?turn/i);
+    assert.doesNotMatch(src, /repeat/i);
+    assert.doesNotMatch(src, /ticksElapsed|maxTicks/i);
+  });
+
+  test(`dynamic initiative accumulates Speed into Progress after an action completes in ${schedulerPath}`, async () => {
     const scheduler = await loadScheduler(schedulerPath);
     const actors = [
-      { uid: 1, type: 0, spd: 60, hp: 40, name: 'Falie' },
-      { uid: 101, type: 1, spd: 30, hp: 20, name: 'Djinn' },
+      { uid: 1, type: 0, spd: 30, hp: 40, name: 'Falie' },
+      { uid: 101, type: 1, spd: 15, hp: 20, name: 'Djinn' },
     ];
 
-    const first = scheduler.selectDynamicInitiativeTurn({ actors, threshold: 100, maxConsecutiveTurns: 2 });
+    const result = scheduler.applyDynamicInitiativeActionCompleted({
+      actors,
+      progress: { 1: 10, 101: 90 },
+    });
+
+    assert.deepEqual(result.progress, { 1: 40, 101: 105 });
+    assert.deepEqual(result.eligible.map(actor => actor.uid), [1, 101]);
+    assert.deepEqual(result.skipped, []);
+  });
+
+  test(`dynamic initiative preserves overflow so successive turns emerge from Progress math in ${schedulerPath}`, async () => {
+    const scheduler = await loadScheduler(schedulerPath);
+    const actors = [
+      { uid: 1, type: 0, spd: 100, hp: 40, name: 'Falie' },
+      { uid: 101, type: 1, spd: 10, hp: 20, name: 'Djinn' },
+    ];
+
+    const first = scheduler.selectDynamicInitiativeTurn({
+      actors,
+      progress: { 1: 250, 101: 60 },
+      threshold: 100,
+    });
 
     assert.equal(first.actor.uid, 1);
-    assert.equal(first.ticksElapsed, 2);
-    assert.equal(first.meters['1'], 20);
-    assert.equal(first.meters['101'], 60);
+    assert.equal(first.turn.progressBeforeAct, 250);
+    assert.equal(first.turn.overflowBeforeAct, 150);
+    assert.deepEqual(first.progress, { 1: 150, 101: 60 });
 
+    const afterFirstAction = scheduler.applyDynamicInitiativeActionCompleted({
+      actors,
+      progress: first.progress,
+    });
     const second = scheduler.selectDynamicInitiativeTurn({
       actors,
-      meters: first.meters,
-      lastActorUID: first.actor.uid,
-      consecutiveTurns: first.consecutiveTurns,
+      progress: afterFirstAction.progress,
       threshold: 100,
-      maxConsecutiveTurns: 2,
     });
 
     assert.equal(second.actor.uid, 1);
-    assert.equal(second.ticksElapsed, 2);
-    assert.equal(second.meters['1'], 40);
-    assert.equal(second.meters['101'], 120);
-    assert.equal(second.consecutiveTurns, 2);
-    assert.ok(second.reasons.some(reason => reason.reason === 'speed_overflow_repeat'));
+    assert.equal(second.turn.progressBeforeAct, 250);
+    assert.deepEqual(second.progress, { 1: 150, 101: 70 });
+    assert.equal(second.reasons.some(reason => /cap|limit|repeat/i.test(reason.reason)), false);
   });
 
-  test(`dynamic initiative ready picks use overflow, SPD, then stable order in ${schedulerPath}`, async () => {
+  test(`dynamic initiative tie break prefers hero over enemy when Progress is equal in ${schedulerPath}`, async () => {
     const scheduler = await loadScheduler(schedulerPath);
     const actors = [
-      { uid: 9, type: 0, spd: 10, hp: 30, name: 'Slow overflow' },
-      { uid: 4, type: 1, spd: 40, hp: 20, name: 'Fast tie A' },
-      { uid: 8, type: 1, spd: 40, hp: 20, name: 'Fast tie B' },
+      { uid: 101, type: 1, spd: 40, hp: 20, name: 'Djinn' },
+      { uid: 1, type: 0, spd: 40, hp: 40, name: 'Falie' },
     ];
 
-    const overflowWins = scheduler.selectDynamicInitiativeTurn({
+    const selected = scheduler.selectDynamicInitiativeTurn({
       actors,
-      meters: { 9: 130, 4: 120, 8: 120 },
+      progress: { 1: 120, 101: 120 },
       threshold: 100,
     });
-    assert.equal(overflowWins.actor.uid, 9);
 
-    const speedThenOrderWins = scheduler.selectDynamicInitiativeTurn({
-      actors,
-      meters: { 9: 100, 4: 120, 8: 120 },
-      threshold: 100,
-    });
-    assert.equal(speedThenOrderWins.actor.uid, 4);
-
-    const stableOrderWins = scheduler.selectDynamicInitiativeTurn({
-      actors: [actors[2], actors[1]],
-      meters: { 4: 120, 8: 120 },
-      threshold: 100,
-    });
-    assert.equal(stableOrderWins.actor.uid, 8);
+    assert.equal(selected.actor.uid, 1);
   });
 
-  test(`dynamic initiative eligibility filtering skips dead stunned disabled and pending-death actors in ${schedulerPath}`, async () => {
+  test(`dynamic initiative ordering is stable after Progress side and Speed ties in ${schedulerPath}`, async () => {
+    const scheduler = await loadScheduler(schedulerPath);
+    const actors = [
+      { uid: 8, type: 0, spd: 30, hp: 20, name: 'Stable first' },
+      { uid: 4, type: 0, spd: 30, hp: 20, name: 'Stable second' },
+    ];
+
+    const stableIndexWins = scheduler.selectDynamicInitiativeTurn({
+      actors,
+      progress: { 4: 120, 8: 120 },
+      threshold: 100,
+    });
+
+    assert.equal(stableIndexWins.actor.uid, 8);
+  });
+
+  test(`dynamic initiative does not starve slower actors when faster actors act successively in ${schedulerPath}`, async () => {
+    const scheduler = await loadScheduler(schedulerPath);
+    const actors = [
+      { uid: 1, type: 0, spd: 100, hp: 40, name: 'Fast' },
+      { uid: 101, type: 1, spd: 10, hp: 20, name: 'Slow' },
+    ];
+
+    const preview = scheduler.previewDynamicInitiativeTurns({
+      actors,
+      threshold: 100,
+      openingPolicy: { mode: 'hero_opener', remainingUIDs: { 1: true } },
+      turnCount: 12,
+    });
+
+    assert.deepEqual(preview.turns.map(turn => turn.uid), [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 101]);
+    assert.equal(preview.turns[0].openingPolicyTurn, true);
+    assert.equal(preview.turns.some(turn => turn.uid === 101), true);
+    assert.equal(preview.reasons.some(reason => /cap|limit|repeat/i.test(reason.reason)), false);
+  });
+
+  test(`dynamic initiative eligibility filtering skips ineligible actors and does not grant Progress to them in ${schedulerPath}`, async () => {
     const scheduler = await loadScheduler(schedulerPath);
     const actors = [
       { uid: 1, type: 0, spd: 20, hp: 0, name: 'Dead' },
@@ -86,11 +139,15 @@ for (const schedulerPath of dynamicSchedulerPaths) {
       { uid: 6, type: 1, spd: 20, hp: 10, name: 'Eligible' },
     ];
 
-    const roster = scheduler.buildDynamicInitiativeRoster(actors, { pendingDeaths: { 4: { group: 0 } } });
+    const result = scheduler.applyDynamicInitiativeActionCompleted({
+      actors,
+      progress: { 1: 80, 2: 80, 3: 80, 4: 80, 5: 80, 6: 80 },
+      pendingDeaths: { 4: { group: 0 } },
+    });
 
-    assert.deepEqual(roster.eligible.map(actor => actor.uid), [6]);
+    assert.deepEqual(result.progress, { 6: 100 });
     assert.deepEqual(
-      roster.skipped.map(actor => [actor.uid, actor.reason]),
+      result.skipped.map(actor => [actor.uid, actor.reason]),
       [
         [1, 'dead'],
         [2, 'stunned'],
@@ -99,33 +156,9 @@ for (const schedulerPath of dynamicSchedulerPaths) {
         [5, 'status_blocked:paralyzed'],
       ],
     );
-
-    const turn = scheduler.selectDynamicInitiativeTurn({ actors, pendingDeaths: { 4: true } });
-    assert.equal(turn.actor.uid, 6);
-    assert.ok(turn.skipped.some(actor => actor.uid === 4 && actor.reason === 'pending_death'));
   });
 
-  test(`dynamic initiative burst cap prevents starvation without timer seconds in ${schedulerPath}`, async () => {
-    const scheduler = await loadScheduler(schedulerPath);
-    const actors = [
-      { uid: 1, type: 0, spd: 100, hp: 40, name: 'Fast' },
-      { uid: 101, type: 1, spd: 10, hp: 20, name: 'Slow' },
-    ];
-
-    const preview = scheduler.previewDynamicInitiativeTurns({
-      actors,
-      threshold: 100,
-      maxConsecutiveTurns: 2,
-      turnCount: 6,
-    });
-
-    assert.deepEqual(preview.turns.map(turn => turn.uid), [1, 1, 101, 1, 1, 101]);
-    assert.ok(preview.reasons.some(reason => reason.reason === 'burst_cap_wait_for_alternative'));
-    assert.ok(preview.reasons.some(reason => reason.reason === 'burst_cap_select_alternative'));
-    assert.equal(preview.turns.some(turn => !Number.isInteger(turn.ticksElapsed)), false);
-  });
-
-  test(`dynamic initiative models hero opener as an explicit opening policy in ${schedulerPath}`, async () => {
+  test(`dynamic initiative models hero opener as explicit policy instead of team phase in ${schedulerPath}`, async () => {
     const scheduler = await loadScheduler(schedulerPath);
     const actors = [
       { uid: 1, type: 0, spd: 10, hp: 40, name: 'Falie' },
@@ -139,26 +172,30 @@ for (const schedulerPath of dynamicSchedulerPaths) {
 
     const first = scheduler.selectDynamicInitiativeTurn({
       actors,
+      progress: { 1: 0, 2: 0, 101: 500 },
       openingPolicy,
       threshold: 100,
     });
 
     assert.equal(first.actor.uid, 1);
+    assert.equal(first.turn.openingPolicyTurn, true);
     assert.deepEqual(first.openingPolicy.remainingUIDs, { 2: true });
+    assert.deepEqual(first.progress, { 1: 0, 2: 0, 101: 500 });
     assert.ok(first.reasons.some(reason => reason.uid === 101 && reason.reason === 'opening_policy_hold'));
 
     const second = scheduler.selectDynamicInitiativeTurn({
       actors,
-      meters: first.meters,
+      progress: first.progress,
       openingPolicy: first.openingPolicy,
       threshold: 100,
     });
 
     assert.equal(second.actor.uid, 2);
+    assert.equal(second.turn.openingPolicyTurn, true);
     assert.deepEqual(second.openingPolicy.remainingUIDs, {});
   });
 
-  test(`dynamic initiative shadow audit compares team phase against proposed gauge order in ${schedulerPath}`, async () => {
+  test(`dynamic initiative shadow audit compares team phase against frozen Progress contract in ${schedulerPath}`, async () => {
     const scheduler = await loadScheduler(schedulerPath);
     const actors = [
       { uid: 1, type: 0, spd: 10, hp: 40, name: 'Falie' },
@@ -173,17 +210,16 @@ for (const schedulerPath of dynamicSchedulerPaths) {
       currentTeamPhaseOrder: [1, 2, 101, 102],
       openingPolicy: { mode: 'hero_opener', remainingUIDs: { 1: true, 2: true } },
       threshold: 100,
-      maxConsecutiveTurns: 2,
-      previewCount: 5,
+      previewCount: 6,
     });
 
     assert.equal(audit.mode, 'shadow_only');
     assert.equal(audit.liveModeUnchanged, true);
+    assert.equal(audit.proposedModel, 'dynamic_progress');
     assert.deepEqual(audit.currentOrder.map(turn => turn.uid), [1, 2, 101, 102]);
-    assert.deepEqual(audit.proposedOrder.map(turn => turn.uid), [1, 2, 101, 101, 1]);
+    assert.deepEqual(audit.proposedOrder.map(turn => turn.uid), [1, 2]);
     assert.ok(audit.skipped.some(actor => actor.uid === 103 && actor.reason === 'stunned'));
-    assert.ok(audit.repeats.some(repeat => repeat.uid === 101 && repeat.reason === 'speed_overflow_repeat'));
-    assert.ok(audit.reasons.some(reason => reason.reason === 'burst_cap_select_alternative'));
+    assert.ok(audit.reasons.some(reason => reason.reason === 'opening_policy_hold'));
     assert.equal(audit.divergesFromCurrentOrder, true);
   });
 }
