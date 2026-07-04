@@ -1,18 +1,10 @@
 {
   "hot_files": {
-    "Scripts/functionBank.js": {
+    "web-runner/app.js": {
       "functions": [
-        "createDynamicInitiativeOpeningPolicy",
-        "openingHeroes"
+        "rosterHoldKeptDeferredAdvance"
       ],
-      "staged_blob": "e3ddd41b0d7a3ea05f5fcd18d541d91f809fa2ee"
-    },
-    "web-runner/modules/functionBank.js": {
-      "functions": [
-        "createDynamicInitiativeOpeningPolicy",
-        "openingHeroes"
-      ],
-      "staged_blob": "4a223545ef44e665e380951002fd6c63cfe7cbcf"
+      "staged_blob": "610acbb81447acdc95298c3483bdfd4ae3f97070"
     }
   },
   "issue_id": "ORKA-n765"

@@ -1,0 +1,84 @@
+{
+  "changed_functions": {
+    ".beads/hot-file-lock/ORKA-n765.prepared.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-n765.scope": [
+      "__MODULE__"
+    ],
+    "ai-memory/insights.md": [
+      "__MODULE__"
+    ],
+    "src/core/pendingSuperGemHandoff.mjs": [
+      "resolvePendingSuperGemHandoff"
+    ],
+    "src/core/turnGateController.mjs": [],
+    "tests/devToolingModalContract.test.js": [
+      "extractFunctionSource"
+    ],
+    "tests/pendingSuperGemHandoffContract.test.js": [
+      "__MODULE__"
+    ],
+    "tests/turnGateRefreshBaselineContract.test.js": [
+      "__MODULE__"
+    ],
+    "web-runner/app.js": [
+      "rosterHoldKeptDeferredAdvance"
+    ],
+    "web-runner/src/core/pendingSuperGemHandoff.mjs": [
+      "resolvePendingSuperGemHandoff"
+    ],
+    "web-runner/src/core/turnGateController.mjs": [],
+    "web-runner/systems/devBrowserTestHooks.js": [
+      "registerDevBrowserTestHooks",
+      "sleep",
+      "now",
+      "waitForStartupReady",
+      "waitForLayout",
+      "chooseAvailable"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "web-runner/app.js"
+    ],
+    "staged_file_count": 12,
+    "staged_line_count": 216,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/hot-file-lock/ORKA-n765.prepared.json",
+    ".beads/hot-file-lock/ORKA-n765.scope",
+    "ai-memory/insights.md",
+    "src/core/pendingSuperGemHandoff.mjs",
+    "src/core/turnGateController.mjs",
+    "tests/devToolingModalContract.test.js",
+    "tests/pendingSuperGemHandoffContract.test.js",
+    "tests/turnGateRefreshBaselineContract.test.js",
+    "web-runner/app.js",
+    "web-runner/src/core/pendingSuperGemHandoff.mjs",
+    "web-runner/src/core/turnGateController.mjs",
+    "web-runner/systems/devBrowserTestHooks.js"
+  ],
+  "issue_id": "ORKA-n765",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/hot-file-lock/ORKA-n765.prepared.json": "c2ef371b9e7bfe1f61403c4b68ce9f59385a4d8e",
+    ".beads/hot-file-lock/ORKA-n765.scope": "468b2f24dc80dd76e73574a04f61166ab2d6e330",
+    "ai-memory/insights.md": "effe87332a439dca29bc7035f77a8bbb54cd0cc5",
+    "src/core/pendingSuperGemHandoff.mjs": "aae4692ade2e634a0075a6a8bf631049e2405640",
+    "src/core/turnGateController.mjs": "94b9a7e133067dc92bed56e0b3eee93b7b4bc5b4",
+    "tests/devToolingModalContract.test.js": "e3595ffe3053739ff4107e2de898eba35d3b112f",
+    "tests/pendingSuperGemHandoffContract.test.js": "9cbd86fa13742e94b39228aa6f3aca33ce0f07c8",
+    "tests/turnGateRefreshBaselineContract.test.js": "a7c58b0b952409d08db4e27f828b6697857ba887",
+    "web-runner/app.js": "610acbb81447acdc95298c3483bdfd4ae3f97070",
+    "web-runner/src/core/pendingSuperGemHandoff.mjs": "aae4692ade2e634a0075a6a8bf631049e2405640",
+    "web-runner/src/core/turnGateController.mjs": "94b9a7e133067dc92bed56e0b3eee93b7b4bc5b4",
+    "web-runner/systems/devBrowserTestHooks.js": "be0312349142e49abff76b80d2b00b2b83274a6a"
+  }
+}

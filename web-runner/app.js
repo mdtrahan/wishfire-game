@@ -5139,6 +5139,7 @@ function getStoryCardLiveLineState() {
       (!isCanPickGemsReady(state.globals.CanPickGems) || state.globals.BoardFillActive !== 0)
     ) {
       state.globals.CanPickGems = true;
+      state.globals.IsPlayerBusy = 0;
       state.globals.BoardFillActive = 0;
       if (runtimeDebugLogging.isGemDebugEnabled(state)) {
         runtimeDebugLogging.gemDebugLog('[TURN_RESTORE_PICK]', {

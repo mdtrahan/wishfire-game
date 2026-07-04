@@ -494,3 +494,7 @@
 
 ## 2026-07-02 - Hidden Debug Overlays Need Separate Access And Visibility Gates
 - Hidden-by-default player aids should keep their visibility state separate from dev/test access gates. If the intended behavior is "press a hotkey to show it," validate normal-play hotkey access and default-hidden rendering independently so a dev-only proof does not mask the real player path.
+
+## 2026-07-04 - Authority QA Must Use Live Combat Identity
+- Dynamic initiative QA launchers must bind the exact live encounter and clear startup/input gates before judging turn order. Synthetic roster setup can prove scheduler math, but Browser/autoplay validation must activate through the same authority gate as real combat.
+- Pending target actions must execute with their owning pending actor, not whichever actor is current when the follow-up resolves. Actor handoff regressions can look like team-turn ordering bugs or consumed SuperGems with no attack.

@@ -159,6 +159,29 @@ test('dev tooling restart helper owns restart button labels and reset delegation
   assert.match(runtimeSrc, /window\.location\.reload\(\)/);
 });
 
+test('dev browser hooks expose an explicit dynamic initiative authority QA scenario', () => {
+  const devHooksPath = path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js');
+  const src = fs.readFileSync(devHooksPath, 'utf8');
+
+  assert.match(src, /setupDynamicInitiativeAuthorityScenario/);
+  assert.match(src, /DynamicInitiativeAuthorityEnabled\s*=\s*1/);
+  assert.match(src, /DynamicInitiativeAuthorityExperimentId\s*=\s*'battle-1001-falie-huun-djinn-marid'/);
+  assert.match(src, /DynamicInitiativeAuthoritySeed\s*=\s*1001/);
+  assert.match(src, /DynamicInitiativeAuthorityBattleId\s*=\s*1001/);
+  assert.match(src, /BattleStartClearedForSession\s*=\s*1/);
+  assert.match(src, /CanPickGems\s*=\s*true/);
+  assert.match(src, /heroSlots:\s*\['Falie',\s*'Huun',\s*'',\s*''\]/);
+  assert.match(src, /enemySlots:\s*\['Djinn',\s*'Marid',\s*''\]/);
+  assert.match(src, /boardGemColor:\s*1/);
+  assert.match(src, /const authorityEnemies = state\.entities[\s\S]*\.filter\(\(entity\) => entity && entity\.kind === 'enemy'\)[\s\S]*\.sort\(/);
+  assert.match(src, /g\.EnemyIDs = \[/);
+  assert.match(src, /g\.EnemySlots = \[/);
+  assert.match(src, /g\.PendingEnemyRespawnSlots = \[0, 0, 0\];/);
+  assert.match(src, /g\.PendingEnemyRespawnTimerActive = 0;/);
+  assert.match(src, /scenario === 'dynamic-initiative-authority'/);
+  assert.match(src, /scenario === 'dynamic-initiative'/);
+});
+
 test('dev tooling resume restores playable hero input when combat is idle', () => {
   const filePath = path.join(__dirname, '..', 'web-runner', 'systems', 'devToolingRuntime.js');
   const src = fs.readFileSync(filePath, 'utf8');
