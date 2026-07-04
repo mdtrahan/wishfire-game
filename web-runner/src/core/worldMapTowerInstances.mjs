@@ -2,6 +2,9 @@ import {
   DEFAULT_WORLD_MAP_GRID,
   getWorldMapCellBounds,
 } from './worldMapCoordinates.mjs';
+import {
+  isWorldMapIconVisible,
+} from './worldMapIconVisibility.mjs';
 
 export const WORLD_MAP_TOWER_IMAGE_WIDTH = 46;
 export const WORLD_MAP_TOWER_IMAGE_HEIGHT = 54;
@@ -16,21 +19,23 @@ export const WORLD_MAP_TOWER_IMAGE_ASSETS = Object.freeze({
 });
 
 export const WORLD_MAP_TOWER_INSTANCES = Object.freeze([
-  Object.freeze({ id: 'northland-spire-tower', coordinate: 'H04', variant: 'red' }),
+  Object.freeze({ id: 'northland-spire-tower', coordinate: 'H04', variant: 'red', visible: true }),
   Object.freeze({
     id: 'southern-channel-intercept-tower',
     anchorCoordinates: Object.freeze(['H15', 'J15']),
     placement: 'intercept',
     variant: 'gold',
+    visible: true,
   }),
-  Object.freeze({ id: 'southern-peninsula-spire-tower', coordinate: 'L19', variant: 'purple' }),
+  Object.freeze({ id: 'southern-peninsula-spire-tower', coordinate: 'L19', variant: 'purple', visible: true }),
   Object.freeze({
     id: 'east-bay-intercept-tower',
     anchorCoordinates: Object.freeze(['M08', 'N08', 'M09', 'N09']),
     placement: 'intercept',
     variant: 'blue',
+    visible: true,
   }),
-  Object.freeze({ id: 'western-marsh-spire-tower', coordinate: 'B18', variant: 'green' }),
+  Object.freeze({ id: 'western-marsh-spire-tower', coordinate: 'B18', variant: 'green', visible: true }),
 ]);
 
 function getTowerAnchorCoordinates(tower) {
@@ -78,6 +83,7 @@ export function resolveWorldMapTowerPoint(tower, grid = DEFAULT_WORLD_MAP_GRID) 
     anchorCoordinates,
     placement: tower.placement || (anchorCoordinates.length > 1 ? 'intercept' : 'center'),
     variant: tower.variant || null,
+    visible: isWorldMapIconVisible(tower),
     centerX,
     centerY,
   };

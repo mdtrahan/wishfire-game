@@ -34,15 +34,25 @@ test('world map cave instances are six unique valid grid coordinates', async () 
   const caves = await import(path.join(repoRoot, 'web-runner', 'src', 'core', 'worldMapCaveInstances.mjs'));
   const coordinates = await import(path.join(repoRoot, 'src', 'core', 'worldMapCoordinates.mjs'));
 
-  assert.equal(caves.WORLD_MAP_CAVE_IMAGE_SIZE, 46);
+  assert.equal(caves.WORLD_MAP_CAVE_ASSET_SIZE, 46);
+  assert.equal(caves.WORLD_MAP_CAVE_RENDER_SCALE, 0.75);
+  assert.equal(caves.WORLD_MAP_CAVE_IMAGE_SIZE, 34.5);
   assert.equal(caves.WORLD_MAP_CAVE_INSTANCES.length, 6);
   assert.deepEqual(caves.WORLD_MAP_CAVE_INSTANCES.map((cave) => cave.coordinate), [
     'F04',
     'D09',
-    'E16',
+    'E13',
     'I10',
     'L13',
     'N16',
+  ]);
+  assert.deepEqual(caves.WORLD_MAP_CAVE_INSTANCES.map((cave) => cave.visible), [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
   ]);
   assert.equal(new Set(caves.WORLD_MAP_CAVE_INSTANCES.map((cave) => cave.coordinate)).size, 6);
   for (const cave of caves.WORLD_MAP_CAVE_INSTANCES) {

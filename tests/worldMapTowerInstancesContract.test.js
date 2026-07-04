@@ -51,6 +51,8 @@ test('world map tower instances resolve requested coordinates and intercepts', a
   assert.equal(towers.WORLD_MAP_TOWER_IMAGE_WIDTH, 46);
   assert.equal(towers.WORLD_MAP_TOWER_IMAGE_HEIGHT, 54);
   assert.equal(towers.WORLD_MAP_TOWER_RENDER_OFFSET_Y, -8);
+  assert.equal(towers.WORLD_MAP_TOWER_GEM_GLOW, undefined);
+  assert.equal(towers.WORLD_MAP_TOWER_GEM_GLOW_COLORS, undefined);
   assert.equal(towers.WORLD_MAP_TOWER_INSTANCES.length, 5);
   assert.deepEqual(towers.WORLD_MAP_TOWER_INSTANCES.map((tower) => tower.variant), [
     'red',
@@ -72,6 +74,13 @@ test('world map tower instances resolve requested coordinates and intercepts', a
     'M08/N08/M09/N09',
     'B18',
   ]);
+  assert.deepEqual(towers.WORLD_MAP_TOWER_INSTANCES.map((tower) => tower.visible), [
+    true,
+    true,
+    true,
+    true,
+    true,
+  ]);
 
   for (const tower of towers.WORLD_MAP_TOWER_INSTANCES) {
     const anchors = tower.coordinate ? [tower.coordinate] : tower.anchorCoordinates;
@@ -79,6 +88,7 @@ test('world map tower instances resolve requested coordinates and intercepts', a
       assert.ok(coordinates.getWorldMapCellBounds(coordinate), `${coordinate} resolves to a map cell`);
     }
     assert.ok(towers.resolveWorldMapTowerPoint(tower), `${tower.id} resolves to a map point`);
+    assert.equal(towers.resolveWorldMapTowerPoint(tower).visible, true, `${tower.id} resolves visible`);
   }
 
   const h15 = coordinates.getWorldMapCellBounds('H15');
@@ -118,6 +128,9 @@ test('world map tower rendering is owned by map modules', () => {
   assert.match(routerSrc, /getMapTowerImages/);
   assert.match(renderMapSrc, /WORLD_MAP_TOWER_INSTANCES/);
   assert.match(renderMapSrc, /WORLD_MAP_TOWER_RENDER_OFFSET_Y/);
+  assert.doesNotMatch(renderMapSrc, /WORLD_MAP_TOWER_GEM_GLOW/);
+  assert.doesNotMatch(renderMapSrc, /drawWorldMapTowerGemGlow/);
+  assert.doesNotMatch(renderMapSrc, /gemGlow/);
   assert.match(renderMapSrc, /drawWorldMapTowers/);
   assert.match(appSrc, /getMapTowerImages: \(\) => mapTowerImages/);
   assert.doesNotMatch(appSrc, /WORLD_MAP_TOWER_INSTANCES/);
