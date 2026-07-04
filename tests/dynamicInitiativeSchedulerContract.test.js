@@ -76,7 +76,7 @@ for (const schedulerPath of dynamicSchedulerPaths) {
     assert.equal(second.reasons.some(reason => /cap|limit|repeat/i.test(reason.reason)), false);
   });
 
-  test(`dynamic initiative tie break prefers hero over enemy when Progress is equal in ${schedulerPath}`, async () => {
+  test(`dynamic initiative tie break uses Speed then stable order with no team preference in ${schedulerPath}`, async () => {
     const scheduler = await loadScheduler(schedulerPath);
     const actors = [
       { uid: 101, type: 1, spd: 40, hp: 20, name: 'Djinn' },
@@ -89,7 +89,7 @@ for (const schedulerPath of dynamicSchedulerPaths) {
       threshold: 100,
     });
 
-    assert.equal(selected.actor.uid, 1);
+    assert.equal(selected.actor.uid, 101);
   });
 
   test(`dynamic initiative ordering is stable after Progress side and Speed ties in ${schedulerPath}`, async () => {
@@ -219,8 +219,9 @@ test('default combat delegates actor selection to effective Speed sorting withou
     assert.match(src, /function buildDynamicInitiativeDefaultSpeedSelection\(ctx, options = null\)/);
     assert.match(src, /function recordDynamicInitiativeDefaultAfterAction\(ctx, currentUID, currentType, cadenceEvents = \[\]\)/);
     assert.match(src, /function applyDynamicInitiativeDefaultSelection\(ctx, prediction, cadenceEvents = \[\]\)/);
-    assert.match(src, /buildFixedCycleSlots\(roster, 0\)/);
-    assert.match(src, /selectionReason: 'speed_sorted_cycle'/);
+    assert.match(src, /advanceDynamicInitiativeShadow\(\{/);
+    assert.match(src, /state\.progress = \{ \.\.\.\(trace\.progressAfterSelection \|\| \{\}\) \}/);
+    assert.match(src, /selectionReason: trace\.selectionReason/);
     assert.match(src, /initializeDynamicInitiativeDefaultCurrent\(ctx, 'BuildRoundGroups'\)/);
     assert.match(src, /getDynamicInitiativeDefaultCurrent\(g\);\s*if \(dynamicCurrent\) return dynamicCurrent\.uid;/);
     assert.match(src, /applyDynamicInitiativeDefaultSelection\(ctx, dynamicInitiativeDefaultPrediction, dynamicInitiativeCadenceEvents\)/);

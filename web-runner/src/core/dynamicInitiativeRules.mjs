@@ -151,7 +151,6 @@ function candidateFor(actor = {}, progressValue = 0, threshold = DYNAMIC_INITIAT
 
 function compareCandidates(a = {}, b = {}) {
   const diff = (numberOr(b.progress, 0) - numberOr(a.progress, 0))
-    || (numberOr(a.type, 0) - numberOr(b.type, 0))
     || (numberOr(b.speed, 0) - numberOr(a.speed, 0))
     || (numberOr(a.stableIndex, 0) - numberOr(b.stableIndex, 0))
     || (numberOr(a.uid, 0) - numberOr(b.uid, 0));

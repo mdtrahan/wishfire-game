@@ -4268,6 +4268,48 @@ function dynamicSpeedOrderForTrace(ctx, queue = []) {
     };
   });
 }
+function speedGaugeQueueFromTrace(ctx, roster = [], trace = {}) {
+  const progress = trace && trace.progressBeforeSelection && typeof trace.progressBeforeSelection === 'object'
+    ? trace.progressBeforeSelection
+    : {};
+  return (Array.isArray(roster) ? roster : [])
+    .map((actor, stableIndex) => {
+      const uid = Number(actor?.uid || 0);
+      const live = uid ? GetActorByUID(ctx, uid) : null;
+      const speed = live ? GetEffectiveStat(ctx, live, 'SPD') : Number(actor?.speed ?? actor?.spd ?? 0);
+      return {
+        uid,
+        type: Number(actor?.type || 0) === 1 ? 1 : 0,
+        spd: Number(speed || 0),
+        progress: Number(progress[String(uid)] || 0),
+        stableIndex,
+      };
+    })
+    .filter(slot => slot.uid > 0)
+    .sort((a, b) => (
+      (Number(b.progress || 0) - Number(a.progress || 0))
+      || (Number(b.spd || 0) - Number(a.spd || 0))
+      || (Number(a.stableIndex || 0) - Number(b.stableIndex || 0))
+      || (Number(a.uid || 0) - Number(b.uid || 0))
+    ))
+    .map(({ progress, stableIndex, ...slot }) => slot);
+}
+function thresholdSubtractionFromTrace(trace = {}) {
+  const selected = trace && trace.selectedActor ? trace.selectedActor : null;
+  const uid = Number(selected?.uid || 0);
+  if (!(uid > 0)) return null;
+  const key = String(uid);
+  const before = Number(trace.progressBeforeSelection?.[key] || 0);
+  const after = Number(trace.progressAfterSelection?.[key] || 0);
+  const threshold = Number(trace.threshold || 0);
+  return {
+    uid,
+    before,
+    threshold,
+    after,
+    applied: before >= threshold && after === before - threshold,
+  };
+}
 function formatDynamicSpeedInitiativeTrace(trace = {}) {
   const order = (trace.speedOrder || [])
     .map(slot => `${slot.name || slot.uid} ${Math.round(Number(slot.speed || 0))}`)
@@ -4277,12 +4319,13 @@ function formatDynamicSpeedInitiativeTrace(trace = {}) {
     `Action ${Number(trace.actionSerial || 0)}`,
     `Speed order: ${order}`,
     `Selected: ${String(selected.name || selected.uid || '')}`,
-    `Reason: ${String(trace.selectionReason || 'speed_sorted_cycle')}`,
+    `Reason: ${String(trace.selectionReason || 'speed_progress')}`,
   ].join('\n');
 }
 function buildDynamicInitiativeDefaultSpeedSelection(ctx, options = null) {
   const opts = options && typeof options === 'object' ? options : {};
   const currentUID = Number(opts.currentUID || 0);
+  const currentType = Number(opts.currentType || 0);
   const source = String(opts.source || 'unknown');
   const cadenceEvents = Array.isArray(opts.cadenceEvents) ? opts.cadenceEvents : [];
   const g = getGlobals(ctx);
@@ -4292,12 +4335,21 @@ function buildDynamicInitiativeDefaultSpeedSelection(ctx, options = null) {
     resetDynamicInitiativeDefaultState(g, getDynamicInitiativeSessionId(g), 'empty_speed_roster');
     return null;
   }
-  const queue = buildFixedCycleSlots(roster, 0);
-  const completedUID = Number(currentUID || 0);
-  const completedIndex = queue.findIndex(slot => Number(slot.uid || 0) === completedUID);
-  const selectedIndex = completedIndex === -1 || completedIndex >= queue.length - 1 ? 0 : completedIndex + 1;
-  const selected = queue[selectedIndex] || null;
-  if (!selected) return null;
+  const result = advanceDynamicInitiativeShadow({
+    battleId: getDynamicInitiativeBattleId(g),
+    actionSerial: Number(g.TurnSerial || 0),
+    actors: roster,
+    completedActor: currentUID > 0 ? getDynamicInitiativeActorSnapshot(ctx, currentUID, currentType) : null,
+    progress: state.progress || {},
+    pendingDeaths: g.PendingDeaths || null,
+    threshold: Number(g.DynamicInitiativeThreshold || 100),
+  });
+  const trace = result && result.trace ? result.trace : null;
+  const selected = trace && trace.selectedActor ? trace.selectedActor : null;
+  if (!selected || !(Number(selected.uid || 0) > 0)) return null;
+  state.progress = { ...(trace.progressAfterSelection || {}) };
+  const queue = speedGaugeQueueFromTrace(ctx, roster, trace);
+  const selectedIndex = Math.max(0, queue.findIndex(slot => Number(slot.uid || 0) === Number(selected.uid || 0)));
   schedulerWriteQueue(ctx, queue);
   schedulerWriteIndex(ctx, selectedIndex);
   state.queue = queue.map(slot => ({ ...slot }));
@@ -4306,22 +4358,23 @@ function buildDynamicInitiativeDefaultSpeedSelection(ctx, options = null) {
     uid: Number(selected.uid || 0),
     type: Number(selected.type || 0) === 1 ? 1 : 0,
     name: actor ? String(actor.name || selected.uid) : String(selected.uid || ''),
-    speed: actor ? GetEffectiveStat(ctx, actor, 'SPD') : Number(selected.spd || 0),
+    speed: actor ? GetEffectiveStat(ctx, actor, 'SPD') : Number(selected.speed || selected.spd || 0),
   };
   return {
-    battleId: getDynamicInitiativeBattleId(g),
-    actionSerial: Number(g.TurnSerial || 0),
+    ...trace,
+    battleId: Number(trace.battleId || getDynamicInitiativeBattleId(g)),
+    actionSerial: Number(trace.actionSerial || g.TurnSerial || 0),
     source,
     selectedActor,
-    selectionReason: 'speed_sorted_cycle',
+    selectionReason: trace.selectionReason,
     speedOrder: dynamicSpeedOrderForTrace(ctx, queue),
     selectedIndex,
-    completedUID,
+    completedUID: Number(currentUID || 0),
     cadenceEvents: Array.isArray(cadenceEvents) ? cadenceEvents.slice() : [],
-    progressBeforeSelection: {},
-    progressAfterSelection: {},
-    thresholdSubtraction: null,
-    eligibilitySkips: [],
+    progressBeforeSelection: trace.progressBeforeSelection,
+    progressAfterSelection: trace.progressAfterSelection,
+    thresholdSubtraction: thresholdSubtractionFromTrace(trace),
+    eligibilitySkips: trace.eligibilitySkips || [],
     pendingDeaths: g.PendingDeaths || null,
   };
 }
@@ -4407,7 +4460,7 @@ function recordDynamicInitiativeDefaultAfterAction(ctx, currentUID, currentType,
     state.openingPolicy = null;
     state.openingPolicyInitialized = true;
   }
-  const trace = buildDynamicInitiativeDefaultSpeedSelection(ctx, { currentUID, source: 'AdvanceTurn', cadenceEvents });
+  const trace = buildDynamicInitiativeDefaultSpeedSelection(ctx, { currentUID, currentType, source: 'AdvanceTurn', cadenceEvents });
   if (!trace) return null;
   state.openingPolicy = null;
   state.lastTrace = trace;
@@ -9847,7 +9900,7 @@ export function ProcessTurn(ctx) {
     const tag = a.type === 0 ? '(H)' : '(E)';
     return `${i === g.CurrentTurnIndex ? '>' : ''}${name}${tag}`;
   }).join(' | ');
-  console.log(`${dynamicCurrent ? '[TURN][DYNAMIC_ORDER]' : '[TURN][ORDER]'} idx=${g.CurrentTurnIndex} ${orderLine}`);
+  console.log(`${dynamicCurrent ? '[TURN][SPEED_ORDER]' : '[TURN][ORDER]'} idx=${g.CurrentTurnIndex} ${orderLine}`);
   if (actor) {
     const eff = GetEffectiveStat(ctx, actor, 'SPD');
     const cp = Number(actor.combatPower || actor.CombatPower || 0);

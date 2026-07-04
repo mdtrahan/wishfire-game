@@ -38,7 +38,7 @@ for (const modulePath of shadowModulePaths) {
     assert.deepEqual(result.nextState.progress, { 1: 40, 101: 80 });
   });
 
-  test(`dynamic initiative shadow adapter records hero tie break and live mismatch in ${modulePath}`, async () => {
+  test(`dynamic initiative shadow adapter records stable-order tie break with no team preference in ${modulePath}`, async () => {
     const shadow = await loadShadowModule(modulePath);
     const actors = [
       { uid: 101, type: 1, speed: 50, hp: 20, name: 'Enemy B' },
@@ -53,16 +53,16 @@ for (const modulePath of shadowModulePaths) {
       threshold: 100,
     });
     const comparison = shadow.compareDynamicInitiativeShadowSelection(result.trace, {
-      uid: 101,
-      type: 1,
-      name: 'Enemy B',
+      uid: 1,
+      type: 0,
+      name: 'Hero A',
     });
 
-    assert.equal(result.trace.selectedActor.uid, 1);
-    assert.equal(result.trace.selectionReason, 'tie_hero_over_enemy');
+    assert.equal(result.trace.selectedActor.uid, 101);
+    assert.equal(result.trace.selectionReason, 'tie_stable_order');
     assert.equal(comparison.matches, false);
-    assert.equal(comparison.expected.uid, 1);
-    assert.equal(comparison.live.uid, 101);
+    assert.equal(comparison.expected.uid, 101);
+    assert.equal(comparison.live.uid, 1);
   });
 
   test(`dynamic initiative shadow adapter bootstraps first actor from Speed and Progress only in ${modulePath}`, async () => {

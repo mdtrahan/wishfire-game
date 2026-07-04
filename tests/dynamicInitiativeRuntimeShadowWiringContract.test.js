@@ -57,11 +57,12 @@ test('dynamic initiative runtime keeps shadow diagnostics while default combat u
 
     const defaultSpeedSelection = extractFunctionSource(src, 'buildDynamicInitiativeDefaultSpeedSelection');
     assert.match(defaultSpeedSelection, /const roster = getInitiativeRoster\(ctx\)/);
-    assert.match(defaultSpeedSelection, /const queue = buildFixedCycleSlots\(roster, 0\)/);
-    assert.match(defaultSpeedSelection, /selectionReason: 'speed_sorted_cycle'/);
-    assert.match(defaultSpeedSelection, /speedOrder: dynamicSpeedOrderForTrace\(ctx, queue\)/);
-    assert.doesNotMatch(defaultSpeedSelection, /advanceDynamicInitiativeShadow\(/);
-    assert.doesNotMatch(defaultSpeedSelection, /progressBeforeAct|thresholdSubtraction: \{/);
+    assert.match(defaultSpeedSelection, /advanceDynamicInitiativeShadow\(\{/);
+    assert.match(defaultSpeedSelection, /selectionReason: trace\.selectionReason/);
+    assert.match(defaultSpeedSelection, /progressBeforeSelection: trace\.progressBeforeSelection/);
+    assert.match(defaultSpeedSelection, /thresholdSubtraction:/);
+    assert.doesNotMatch(defaultSpeedSelection, /buildFixedCycleSlots\(roster, 0\)/);
+    assert.doesNotMatch(defaultSpeedSelection, /selectionReason: 'speed_sorted_cycle'/);
 
     const shadowPrediction = extractFunctionSource(src, 'recordDynamicInitiativeShadowAfterAction');
     assert.match(shadowPrediction, /openingPolicy: null/);

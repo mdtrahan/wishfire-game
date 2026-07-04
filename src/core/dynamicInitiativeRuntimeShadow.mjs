@@ -79,14 +79,8 @@ function classifySelectionReason({ selected = null, actors = [], progress = {}, 
   }
 
   const progressTied = candidates.filter(actor => numberOr(actor.progress, 0) === highestProgress);
-  const selectedType = normalizeType(selected.type);
-  if (progressTied.some(actor => normalizeType(actor.type) !== selectedType) && selectedType === 0) {
-    return 'tie_hero_over_enemy';
-  }
-
-  const sameSide = progressTied.filter(actor => normalizeType(actor.type) === selectedType);
   const selectedSpeed = numberOr(selected.speed ?? selected.effectiveSpeed, 0);
-  if (selectedSpeed > Math.max(...sameSide.filter(actor => actor.uid !== selected.uid).map(actor => numberOr(actor.speed ?? actor.effectiveSpeed, 0)), -Infinity)) {
+  if (selectedSpeed > Math.max(...progressTied.filter(actor => actor.uid !== selected.uid).map(actor => numberOr(actor.speed ?? actor.effectiveSpeed, 0)), -Infinity)) {
     return 'tie_speed';
   }
 
