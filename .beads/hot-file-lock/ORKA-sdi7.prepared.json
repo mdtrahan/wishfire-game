@@ -1,0 +1,38 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "ensureTurnSchedulerAudit",
+        "snapshotTurnOrderSlots",
+        "recordTurnSchedulerEvent",
+        "ensureDynamicInitiativeShadowState",
+        "getDynamicInitiativeThreshold",
+        "getDynamicInitiativeBattleId",
+        "getDynamicInitiativeActorSnapshot",
+        "getDynamicInitiativeRoster",
+        "createDynamicInitiativeOpeningPolicy",
+        "recordDynamicInitiativeShadowAfterAction",
+        "recordDynamicInitiativeShadowSelectionComparison",
+        "AdvanceTurn",
+        "__MODULE__"
+      ],
+      "staged_blob": "f70196aec9c82834c8cabbd11e196c861e199b22"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "ensureDynamicInitiativeShadowState",
+        "getDynamicInitiativeThreshold",
+        "getDynamicInitiativeBattleId",
+        "getDynamicInitiativeActorSnapshot",
+        "getDynamicInitiativeRoster",
+        "createDynamicInitiativeOpeningPolicy",
+        "recordDynamicInitiativeShadowAfterAction",
+        "recordDynamicInitiativeShadowSelectionComparison",
+        "AdvanceTurn",
+        "__MODULE__"
+      ],
+      "staged_blob": "77a92363330d9528bd847bbe564c30a041cb6096"
+    }
+  },
+  "issue_id": "ORKA-sdi7"
+}

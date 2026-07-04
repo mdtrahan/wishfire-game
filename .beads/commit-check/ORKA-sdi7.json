@@ -1,0 +1,128 @@
+{
+  "changed_functions": {
+    ".beads/hot-file-lock/ORKA-sdi7.prepared.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-sdi7.scope": [
+      "__MODULE__"
+    ],
+    ".beads/interactions.jsonl": [
+      "__MODULE__"
+    ],
+    "Scripts/functionBank.js": [
+      "ensureTurnSchedulerAudit",
+      "snapshotTurnOrderSlots",
+      "recordTurnSchedulerEvent",
+      "ensureDynamicInitiativeShadowState",
+      "getDynamicInitiativeThreshold",
+      "getDynamicInitiativeBattleId",
+      "getDynamicInitiativeActorSnapshot",
+      "getDynamicInitiativeRoster",
+      "createDynamicInitiativeOpeningPolicy",
+      "recordDynamicInitiativeShadowAfterAction",
+      "recordDynamicInitiativeShadowSelectionComparison",
+      "AdvanceTurn",
+      "__MODULE__"
+    ],
+    "src/core/dynamicInitiativeRuntimeShadow.mjs": [
+      "numberOr",
+      "normalizeUID",
+      "normalizeType",
+      "actorName",
+      "normalizeActorRef",
+      "orderedProgress",
+      "cloneProgress",
+      "consumeCompletedOpeningActor",
+      "readyCandidates",
+      "classifySelectionReason",
+      "normalizeOpeningPolicyForTrace",
+      "advanceDynamicInitiativeShadow",
+      "compareDynamicInitiativeShadowSelection",
+      "formatActorLine",
+      "orderedTraceActors",
+      "add",
+      "formatDynamicInitiativeTrace",
+      "runDynamicInitiativeTraceHarness",
+      "__MODULE__"
+    ],
+    "tests/dynamicInitiativeRuntimeShadowContract.test.js": [
+      "__MODULE__"
+    ],
+    "tests/dynamicInitiativeRuntimeShadowWiringContract.test.js": [
+      "read",
+      "extractFunctionSource",
+      "__MODULE__"
+    ],
+    "web-runner/modules/functionBank.js": [
+      "ensureDynamicInitiativeShadowState",
+      "getDynamicInitiativeThreshold",
+      "getDynamicInitiativeBattleId",
+      "getDynamicInitiativeActorSnapshot",
+      "getDynamicInitiativeRoster",
+      "createDynamicInitiativeOpeningPolicy",
+      "recordDynamicInitiativeShadowAfterAction",
+      "recordDynamicInitiativeShadowSelectionComparison",
+      "AdvanceTurn",
+      "__MODULE__"
+    ],
+    "web-runner/src/core/dynamicInitiativeRuntimeShadow.mjs": [
+      "numberOr",
+      "normalizeUID",
+      "normalizeType",
+      "actorName",
+      "normalizeActorRef",
+      "orderedProgress",
+      "cloneProgress",
+      "consumeCompletedOpeningActor",
+      "readyCandidates",
+      "classifySelectionReason",
+      "normalizeOpeningPolicyForTrace",
+      "advanceDynamicInitiativeShadow",
+      "compareDynamicInitiativeShadowSelection",
+      "formatActorLine",
+      "orderedTraceActors",
+      "add",
+      "formatDynamicInitiativeTrace",
+      "runDynamicInitiativeTraceHarness",
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "Scripts/functionBank.js",
+      "web-runner/modules/functionBank.js"
+    ],
+    "staged_file_count": 9,
+    "staged_line_count": 939,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/hot-file-lock/ORKA-sdi7.prepared.json",
+    ".beads/hot-file-lock/ORKA-sdi7.scope",
+    ".beads/interactions.jsonl",
+    "Scripts/functionBank.js",
+    "src/core/dynamicInitiativeRuntimeShadow.mjs",
+    "tests/dynamicInitiativeRuntimeShadowContract.test.js",
+    "tests/dynamicInitiativeRuntimeShadowWiringContract.test.js",
+    "web-runner/modules/functionBank.js",
+    "web-runner/src/core/dynamicInitiativeRuntimeShadow.mjs"
+  ],
+  "issue_id": "ORKA-sdi7",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/hot-file-lock/ORKA-sdi7.prepared.json": "fcd7460fbefb867e7cbd1bfa970c72c5d6d9c575",
+    ".beads/hot-file-lock/ORKA-sdi7.scope": "57f86f80f625b0cdc1d2ff5d667ba04cff0a0a4f",
+    ".beads/interactions.jsonl": "3858cbfd488abf5aeb8e0c8909eaf9c27db3d3ba",
+    "Scripts/functionBank.js": "f70196aec9c82834c8cabbd11e196c861e199b22",
+    "src/core/dynamicInitiativeRuntimeShadow.mjs": "442cea7f97fd702045f0f884e1891ca404db8134",
+    "tests/dynamicInitiativeRuntimeShadowContract.test.js": "00d8d509f57065bc3c2bf422ab9fb5291734598a",
+    "tests/dynamicInitiativeRuntimeShadowWiringContract.test.js": "2eefdbcf159f156db981469b2ff7d9a20247a69e",
+    "web-runner/modules/functionBank.js": "77a92363330d9528bd847bbe564c30a041cb6096",
+    "web-runner/src/core/dynamicInitiativeRuntimeShadow.mjs": "442cea7f97fd702045f0f884e1891ca404db8134"
+  }
+}
