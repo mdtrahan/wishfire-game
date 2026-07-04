@@ -1,11 +1,26 @@
-# Asset Usage Audit (web-runner images)
+# Historical Asset Usage Audit (web-runner images)
 
 Date: 2026-02-20
 Scope: `/Users/Mace/Wishfire/Codex-Orka/web-runner/assets/images`
 
+## Status
+This is a historical snapshot, not current prune authority.
+
+The runtime asset tree and map image loaders changed after this audit. Current
+evidence should be reconstructed from live code and tests, especially
+`web-runner/systems/runtimeVisualAssetLoader.js`,
+`tests/worldMapRuntimeContract.test.js`,
+`tests/worldMapCaveInstancesContract.test.js`,
+`tests/worldMapWarpPortalAssetContract.test.js`,
+`tests/worldMapTowerInstancesContract.test.js`, and
+`tests/worldMapTownAssetsContract.test.js`.
+
+For newer duplicate-asset findings, use
+`docs/duplicate-asset-analysis-2026-06-28.md`.
+
 ## Method
-- Enumerated all `.png` files in `web-runner/assets/images`.
-- Reconstructed runtime image load set from current runtime wiring:
+- Enumerated all `.png` files in `web-runner/assets/images` as of 2026-02-20.
+- Reconstructed the then-current runtime image load set from runtime wiring:
   - Base sprite preload from `typesNeeded` in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`.
   - Core/deferred explicit loads in `/Users/Mace/Wishfire/Codex-Orka/web-runner/app.js`.
   - Object animation metadata in `/Users/Mace/Wishfire/Codex-Orka/web-runner/assets/objectTypes.json`.
@@ -13,11 +28,13 @@ Scope: `/Users/Mace/Wishfire/Codex-Orka/web-runner/assets/images`
 - Ran SHA-256 duplicate-content grouping.
 
 ## Summary
+Historical counts from 2026-02-20:
+
 - Total image files: 86
 - Runtime-used files: 68
-- Not currently used by runtime: 18
+- Not used by runtime in this snapshot: 18
 
-## Not Currently Used In Game
+## Not Used In Game In This Snapshot
 - `4X_tower.png`
 - `4x_map.png`
 - `attackbutton-animation 1-001.png`
@@ -48,19 +65,19 @@ Scope: `/Users/Mace/Wishfire/Codex-Orka/web-runner/assets/images`
 - `sprite2-animation 1-000.png` duplicates `sprite-animation 1-000.png`.
 
 ## Buff Icon Clarification
-- Runtime currently preloads buff icons only for `buffIcon1..4`, frames `000..004`.
+- At the time of this audit, runtime preloaded buff icons only for `buffIcon1..4`, frames `000..004`.
 - That is 20 image files by design (4 icons x 5 frames).
-- `bufficon5-*` files exist on disk but are not used by current runtime path.
+- `bufficon5-*` files existed on disk but were not used by that runtime path.
 
 ## Tech Debt Note
-- Candidate prune set is the 18-file "Not Currently Used In Game" list above.
-- Before deletion, run one post-prune runtime smoke test for layout load + combat UI image preload.
+- Do not use the 18-file list above as a current deletion list.
+- Before any future asset deletion, regenerate a fresh live usage report from current loader code, tests, and on-disk assets.
 
 ## PM Intake Packet (Scoping Ready)
-Use this packet to convert visual-asset debt into planned sprint work without code-scope drift:
+Historical intake guidance from this snapshot:
 
 1. Create one task for manifest + prune plan only (no deletion yet).
-2. Create one execution task for controlled prune of the 18-file unused list.
+2. Create one execution task for controlled prune of the then-unused list after refreshing live usage evidence.
 3. Create one validation task for post-prune runtime smoke evidence and rollback criteria.
 
 Suggested planning constraints:
