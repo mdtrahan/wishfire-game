@@ -71,6 +71,17 @@ import {
   applyAstralFlowEnemyKoReward,
   getEnemyKoAstralFlowOrbPresentation,
 } from '../src/core/astralFlowEnemyKoRewards.mjs';
+import {
+  advanceDynamicInitiativeShadow,
+  compareDynamicInitiativeShadowSelection,
+  formatDynamicInitiativeTrace,
+} from '../src/core/dynamicInitiativeRuntimeShadow.mjs';
+import {
+  createDynamicInitiativeAuthorityTrace,
+  formatDynamicInitiativeAuthorityTrace,
+  isDynamicInitiativeAuthorityExperimentEnabled,
+  validateDynamicInitiativeAuthoritySelection,
+} from '../src/core/dynamicInitiativeAuthorityExperiment.mjs';
 const POWER_AMP_OUTCOMES = [
   { key: 'HERO_2X', multiplier: 2, chance: 0.62 },
   { key: 'HERO_3X', multiplier: 3, chance: 0.34 },
@@ -91,15 +102,6 @@ const PARTY_CHAIN_STRIKE_II_DAMAGE_PCT = 66;
 const PARTY_CHAIN_STRIKE_VISUAL_KEY = 'chain_arc_ribbon';
 const PARTY_CHAIN_STRIKE_VISUAL_ASSET = 'SkillChainStrikeArc';
 const PARTY_SPLIT_ID = 'party_split';
-const SESSION_SKILL_EFFECT_IDS = new Set([
-  'party_destiny',
-  'party_crimson_ward',
-  'party_faze',
-  GROW_SKILL_ID,
-  PARTY_CHAIN_STRIKE_I_ID,
-  PARTY_CHAIN_STRIKE_II_ID,
-  PARTY_SPLIT_ID,
-]);
 
 const ENEMY_SKILL_ASSIGNMENT_MAP = {
   Djinn: {
@@ -1911,68 +1913,6 @@ export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
   return { ok: true, heroUID: uid, skill: { ...sessionSkill } };
 }
 
-function clearCrimsonWardSkillState(ctx) {
-  const g = getGlobals(ctx);
-  g.PartyTempHPShield = 0;
-  g.PartyTempHPShieldStacks = 0;
-  g.PartyTempHPShieldRatio = 0;
-  g.PartyTempHPShieldMax = 0;
-  g.PartyTempHPShieldColor = '';
-  g.PartyTempHPShieldSource = '';
-  g.LastCrimsonWard = null;
-  g.LastPartyTempHPShieldAbsorbed = 0;
-  g.LastPartyWardBarrierHitUID = 0;
-  g.LastPartyWardBarrierAbsorbed = 0;
-  delete g.PartyWardBarrierVisualsByUID;
-  delete g.PartyWardBarrierPosByUID;
-  delete g.PartyWardBarrierTextCanvasByUID;
-  g.PartyWardBarrierActive = 0;
-  g.PartyWardBarrierFadeOutUntil = 0;
-}
-
-function clearFazeSkillState(ctx) {
-  const g = getGlobals(ctx);
-  g.TaintedGroundZones = [];
-  g.NextTaintedGroundZoneId = 1;
-  if (Array.isArray(g.EnemyDamageOverTime)) {
-    g.EnemyDamageOverTime = g.EnemyDamageOverTime.filter((dot) => {
-      if (!dot) return false;
-      const effectName = String(dot.effectName || '').trim();
-      const zoneId = String(dot.taintedGroundZoneId || '').trim();
-      if (zoneId && effectName.startsWith('Blight')) return false;
-      return true;
-    });
-    if (g.EnemyDamageOverTime.length === 0) delete g.EnemyDamageOverTime;
-  }
-  g.LastEnemyDotTickShadow = null;
-  g.LastEnemyDotTickOwner = null;
-  g.LastEnemyDotTickPacket = null;
-  g.LastEnemyDotLifecycleOwner = null;
-  g.LastEnemyDotLifecyclePacket = null;
-  g.LastEnemyDotPacketOwner = null;
-  g.LastEnemyDotApplicationPacket = null;
-}
-
-function clearChainStrikeSkillState(ctx) {
-  const g = getGlobals(ctx);
-  g.ChainStrikeVisuals = [];
-  g.ChainStrikeVisualSerial = 0;
-  g.PartyChainStrikeIProcs = 0;
-  g.PartyChainStrikeIIProcs = 0;
-  g.LastPartyChainStrike = null;
-}
-
-function clearSessionSkillPendingHits(ctx) {
-  const g = getGlobals(ctx);
-  if (!Array.isArray(g.PendingHeroHits)) return;
-  g.PendingHeroHits = g.PendingHeroHits.filter((hit) => {
-    const generatedBySkillId = String(hit?.generatedBySkillId || '').trim().toLowerCase();
-    if (generatedBySkillId && SESSION_SKILL_EFFECT_IDS.has(generatedBySkillId)) return false;
-    if (String(hit?.actionName || '') === 'Faze' && String(hit?.effectType || '') === 'dot_apply') return false;
-    return true;
-  });
-}
-
 export function ClearSessionSkillDraught(ctx) {
   const g = ensureSkillDraughtState(ctx);
   g.SkillDraughtOpen = 0;
@@ -1986,22 +1926,7 @@ export function ClearSessionSkillDraught(ctx) {
   g.SessionSkillsByHeroUID = {};
   g.SkillDraughtOneOffExposureBySkillId = {};
   g.SkillDraughtLastForcedSkillSuppressedReason = '';
-  g.HeroTempSkillStateByUID = {};
-  g.SessionSkillPassivesByHeroUID = {};
-  g.SkillProcTrace = [];
-  g.SkillProcTraceSeq = 0;
-  g.PartyDestinyAttempts = 0;
-  g.PartyDestinyProcs = 0;
-  g.PartyDestinyHeals = 0;
-  g.PartyDestinyMisses = 0;
-  g.PartyDestinyLastResult = '';
-  g.LastPartyDestiny = null;
-  g.LastPartyDestinyDevTrigger = null;
   clearGrowSkillState(ctx);
-  clearCrimsonWardSkillState(ctx);
-  clearFazeSkillState(ctx);
-  clearChainStrikeSkillState(ctx);
-  clearSessionSkillPendingHits(ctx);
   appendSkillDraughtTrace(g, 'clear', {});
   return { ok: true };
 }
@@ -4292,6 +4217,439 @@ function ensureActorExtraTurnProcCountStore(g) { if (!g.ActorExtraTurnProcCountB
 function ensureActorRedAttackSkillStore(g) { if (!g.ActorRedAttackSkillByUID || typeof g.ActorRedAttackSkillByUID !== 'object') g.ActorRedAttackSkillByUID = {}; return g.ActorRedAttackSkillByUID; }
 function snapshotTurnOrderSlots(ctx, queue = null) { const g = getGlobals(ctx), arr = Array.isArray(queue) ? queue : (Array.isArray(g.TurnOrderArray) ? g.TurnOrderArray : []); return arr.map((slot, idx) => { const uid = Number(slot?.uid || 0), actor = uid ? GetActorByUID(ctx, uid) : null; return { idx, uid, type: Number(slot?.type ?? (actor && actor.kind === 'enemy' ? 1 : 0)), spd: Number(slot?.spd ?? (actor ? Number(actor.stats?.SPD ?? actor.SPD ?? 0) : 0)), extra: !!slot?.extra, name: actor ? String(actor.name || uid) : null }; }); }
 function recordTurnSchedulerEvent(ctx, kind, details = {}) { const g = getGlobals(ctx), audit = ensureTurnSchedulerAudit(g), queue = Array.isArray(details.queue) ? details.queue : snapshotTurnOrderSlots(ctx), { queue: _queue, ...rest } = details, currentIndex = Number.isFinite(Number(g.CurrentTurnIndex)) ? Number(g.CurrentTurnIndex) : 0, currentSlot = queue[currentIndex] || null, positionsByUID = new Map(); for (const slot of queue) { const uid = Number(slot.uid || 0); if (!positionsByUID.has(uid)) positionsByUID.set(uid, []); positionsByUID.get(uid).push(slot.idx); } const repeats = []; for (const [uid, positions] of positionsByUID.entries()) { if (positions.length <= 1) continue; const repeatedSlots = positions.map(idx => queue[idx]).filter(Boolean), name = repeatedSlots[0]?.name || null, provenance = rest.repeatSource || rest.mutationSource || audit.lastQueueMutation?.source || null, source = provenance === 'collapse_after_future_slot_removal' ? 'collapse_after_future_slot_removal' : (provenance === 'explicit_mechanic' ? 'explicit_mechanic' : (provenance === 'cycle_rollover' ? 'cycle_rollover' : (provenance === 'non_compliant_scheduler_behavior' ? 'non_compliant_scheduler_behavior' : (repeatedSlots.some(slot => slot.extra) ? 'explicit_mechanic' : 'ambiguous_repeat')))); repeats.push({ uid, name, positions, source }); } const event = { seq: Number(audit.seq || 0) + 1, kind: String(kind || 'unknown'), time: Number(g.time || 0), turnSerial: Number(g.TurnSerial || 0), initiativeMode: String(g.InitiativeMode || ''), roundActive: !!g.RoundActive, currentTurnIndex: currentIndex, currentUID: currentSlot ? Number(currentSlot.uid || 0) : Number(g.InitiativeCurrentUID || 0), queueShape: queue.map(slot => ({ idx: slot.idx, uid: slot.uid, type: slot.type, spd: slot.spd, extra: !!slot.extra, name: slot.name })), repeats, ...rest }; audit.seq = event.seq; audit.events.push(event); if (audit.events.length > 500) audit.events.shift(); if (kind === 'queue_mutation' && event.mutationSource) audit.lastQueueMutation = { seq: event.seq, cause: event.cause || null, source: event.mutationSource, removedUIDs: Array.isArray(event.removedUIDs) ? event.removedUIDs.slice() : [], addedUIDs: Array.isArray(event.addedUIDs) ? event.addedUIDs.slice() : [] }; if (kind === 'removal_commit') audit.lastRemovalSeq = event.seq; return event; }
+function ensureDynamicInitiativeShadowState(g) { if (!g.DynamicInitiativeShadow || typeof g.DynamicInitiativeShadow !== 'object') g.DynamicInitiativeShadow = { progress: {}, openingPolicy: null, openingPolicyInitialized: false, traces: [], comparisons: [], lastTraceText: '' }; return g.DynamicInitiativeShadow; }
+function getDynamicInitiativeThreshold(g) { const threshold = Number(g.DynamicInitiativeThreshold || g.InitiativeThreshold || 100); return Number.isFinite(threshold) && threshold > 0 ? threshold : 100; }
+function getDynamicInitiativeBattleId(g) { const id = Number(g.BattleId || g.BattleUID || g.EncounterUID || g.EncounterId || 0); return Number.isFinite(id) ? id : 0; }
+function getDynamicInitiativeActorSnapshot(ctx, uid, typeHint = null) { const actor = Number(uid || 0) > 0 ? GetActorByUID(ctx, Number(uid || 0)) : null; const type = typeHint != null ? Number(typeHint || 0) : (actor && actor.kind === 'enemy' ? 1 : 0); if (!actor && !(Number(uid || 0) > 0)) return null; return { uid: Number(uid || actor?.uid || 0), type: type === 1 ? 1 : 0, name: actor ? String(actor.name || actor.uid || uid) : String(uid || ''), speed: actor ? GetEffectiveStat(ctx, actor, 'SPD') : 0, hp: actor ? Number(actor.hp ?? 1) : 0, stunned: !!actor?.stunned, disabled: !!actor?.disabled, pendingDeath: !!actor?.pendingDeath || !!actor?.deathPending, status: actor?.status, state: actor?.state, statuses: Array.isArray(actor?.statuses) ? actor.statuses : [], statusEffects: Array.isArray(actor?.statusEffects) ? actor.statusEffects : [] }; }
+function getDynamicInitiativeRoster(ctx) { const g = getGlobals(ctx), actors = [], seen = new Set(), partyAlive = Number(g.PartyHP || 0) > 0; if (partyAlive) { for (const hero of getHeroes(ctx)) { const uid = Number(hero?.uid || 0); if (!(uid > 0) || seen.has(uid)) continue; seen.add(uid); actors.push({ uid, type: 0, name: String(hero.name || uid), speed: GetEffectiveStat(ctx, hero, 'SPD'), hp: Number(hero.hp ?? 1) > 0 ? Number(hero.hp ?? 1) : 1, stunned: !!hero.stunned, disabled: !!hero.disabled, status: hero.status, state: hero.state, statuses: Array.isArray(hero.statuses) ? hero.statuses : [], statusEffects: Array.isArray(hero.statusEffects) ? hero.statusEffects : [] }); } } for (const enemy of getEnemies(ctx)) { const uid = Number(enemy?.uid || 0); if (!(uid > 0) || seen.has(uid)) continue; seen.add(uid); actors.push({ uid, type: 1, name: String(enemy.name || uid), speed: GetEffectiveStat(ctx, enemy, 'SPD'), hp: Number(enemy.hp ?? 0), stunned: !!enemy.stunned, disabled: !!enemy.disabled, pendingDeath: !!enemy.pendingDeath || !!enemy.deathPending, status: enemy.status, state: enemy.state, statuses: Array.isArray(enemy.statuses) ? enemy.statuses : [], statusEffects: Array.isArray(enemy.statusEffects) ? enemy.statusEffects : [] }); } return actors; }
+function recordDynamicInitiativeShadowAfterAction(ctx, currentUID, currentType, cadenceEvents = []) {
+  const g = getGlobals(ctx);
+  if (g.DynamicInitiativeShadowDisabled) return null;
+  const shadow = ensureDynamicInitiativeShadowState(g);
+  const actors = getDynamicInitiativeRoster(ctx);
+  if (!shadow.openingPolicyInitialized) {
+    shadow.openingPolicy = null;
+    shadow.openingPolicyInitialized = true;
+  }
+  const completedActor = getDynamicInitiativeActorSnapshot(ctx, currentUID, currentType);
+  const result = advanceDynamicInitiativeShadow({
+    battleId: getDynamicInitiativeBattleId(g),
+    actionSerial: Number(g.TurnSerial || 0),
+    actors,
+    completedActor,
+    progress: shadow.progress || {},
+    openingPolicy: null,
+    pendingDeaths: g.PendingDeaths || null,
+    threshold: getDynamicInitiativeThreshold(g),
+  });
+  result.trace.cadenceEvents = Array.isArray(cadenceEvents) ? cadenceEvents.slice() : [];
+  shadow.progress = result.nextState.progress;
+  shadow.openingPolicy = null;
+  shadow.lastPrediction = result.trace;
+  shadow.lastTraceText = formatDynamicInitiativeTrace(result.trace);
+  shadow.traces.push(result.trace);
+  if (shadow.traces.length > 200) shadow.traces.shift();
+  recordTurnSchedulerEvent(ctx, 'dynamic_initiative_shadow_prediction', {
+    actionSerial: result.trace.actionSerial,
+    completedUID: Number(completedActor?.uid || 0),
+    predictedUID: Number(result.trace.selectedActor?.uid || 0),
+    predictedType: Number(result.trace.selectedActor?.type || 0),
+    selectionReason: result.trace.selectionReason,
+    progressBeforeSelection: result.trace.progressBeforeSelection,
+    progressAfterSelection: result.trace.progressAfterSelection,
+    eligibilitySkips: result.trace.eligibilitySkips,
+    cadenceEvents: result.trace.cadenceEvents,
+  });
+  return result.trace;
+}
+function recordDynamicInitiativeShadowSelectionComparison(ctx, prediction) { if (!prediction) return null; const g = getGlobals(ctx), shadow = ensureDynamicInitiativeShadowState(g), liveUID = GetCurrentTurn(ctx), liveType = GetCurrentType(ctx), liveActor = getDynamicInitiativeActorSnapshot(ctx, liveUID, liveType), comparison = compareDynamicInitiativeShadowSelection(prediction, liveActor); shadow.lastComparison = comparison; shadow.comparisons.push(comparison); if (shadow.comparisons.length > 200) shadow.comparisons.shift(); if (!comparison.matches) { recordTurnSchedulerEvent(ctx, 'dynamic_initiative_shadow_mismatch', { actionSerial: comparison.actionSerial, expectedUID: Number(comparison.expected?.uid || 0), expectedType: Number(comparison.expected?.type || 0), liveUID: Number(comparison.live?.uid || 0), liveType: Number(comparison.live?.type || 0), selectionReason: prediction.selectionReason }); } return comparison; }
+function ensureDynamicInitiativeDefaultState(g) {
+  if (!g.DynamicInitiative || typeof g.DynamicInitiative !== 'object') {
+    g.DynamicInitiative = {
+      active: 0,
+      current: null,
+      progress: {},
+      queue: [],
+      openingPolicy: null,
+      openingPolicyInitialized: false,
+      traces: [],
+      actionCount: 0,
+      lastTraceText: '',
+      sessionId: 0,
+    };
+  }
+  if (!g.DynamicInitiative.progress || typeof g.DynamicInitiative.progress !== 'object') g.DynamicInitiative.progress = {};
+  if (!Array.isArray(g.DynamicInitiative.queue)) g.DynamicInitiative.queue = [];
+  if (!Array.isArray(g.DynamicInitiative.traces)) g.DynamicInitiative.traces = [];
+  return g.DynamicInitiative;
+}
+function resetDynamicInitiativeDefaultState(g, sessionId = 0, reason = '') {
+  const state = ensureDynamicInitiativeDefaultState(g);
+  state.active = 0;
+  state.current = null;
+  state.progress = {};
+  state.queue = [];
+  state.openingPolicy = null;
+  state.openingPolicyInitialized = false;
+  state.traces = [];
+  state.actionCount = 0;
+  state.lastTraceText = '';
+  state.sessionId = Number(sessionId || 0);
+  state.lastResetReason = String(reason || '');
+  g.DynamicInitiativeLastTraceText = '';
+  return state;
+}
+function dynamicSpeedOrderForTrace(ctx, queue = []) {
+  return (Array.isArray(queue) ? queue : []).map((slot, index) => {
+    const uid = Number(slot?.uid || 0);
+    const actor = uid ? GetActorByUID(ctx, uid) : null;
+    const speed = actor ? GetEffectiveStat(ctx, actor, 'SPD') : Number(slot?.spd || 0);
+    return {
+      index,
+      uid,
+      type: Number(slot?.type || 0) === 1 ? 1 : 0,
+      name: actor ? String(actor.name || uid) : String(uid || ''),
+      speed: Number(speed || 0),
+    };
+  });
+}
+function speedGaugeQueueFromTrace(ctx, roster = [], trace = {}) {
+  const progress = trace && trace.progressBeforeSelection && typeof trace.progressBeforeSelection === 'object'
+    ? trace.progressBeforeSelection
+    : {};
+  return (Array.isArray(roster) ? roster : [])
+    .map((actor, stableIndex) => {
+      const uid = Number(actor?.uid || 0);
+      const live = uid ? GetActorByUID(ctx, uid) : null;
+      const speed = live ? GetEffectiveStat(ctx, live, 'SPD') : Number(actor?.speed ?? actor?.spd ?? 0);
+      return {
+        uid,
+        type: Number(actor?.type || 0) === 1 ? 1 : 0,
+        spd: Number(speed || 0),
+        progress: Number(progress[String(uid)] || 0),
+        stableIndex,
+      };
+    })
+    .filter(slot => slot.uid > 0)
+    .sort((a, b) => (
+      (Number(b.progress || 0) - Number(a.progress || 0))
+      || (Number(b.spd || 0) - Number(a.spd || 0))
+      || (Number(a.stableIndex || 0) - Number(b.stableIndex || 0))
+      || (Number(a.uid || 0) - Number(b.uid || 0))
+    ))
+    .map(({ progress, stableIndex, ...slot }) => slot);
+}
+function thresholdSubtractionFromTrace(trace = {}) {
+  const selected = trace && trace.selectedActor ? trace.selectedActor : null;
+  const uid = Number(selected?.uid || 0);
+  if (!(uid > 0)) return null;
+  const key = String(uid);
+  const before = Number(trace.progressBeforeSelection?.[key] || 0);
+  const after = Number(trace.progressAfterSelection?.[key] || 0);
+  const threshold = Number(trace.threshold || 0);
+  return {
+    uid,
+    before,
+    threshold,
+    after,
+    applied: before >= threshold && after === before - threshold,
+  };
+}
+function formatDynamicSpeedInitiativeTrace(trace = {}) {
+  const order = (trace.speedOrder || [])
+    .map(slot => `${slot.name || slot.uid} ${Math.round(Number(slot.speed || 0))}`)
+    .join(' | ');
+  const selected = trace.selectedActor || {};
+  return [
+    `Action ${Number(trace.actionSerial || 0)}`,
+    `Speed order: ${order}`,
+    `Selected: ${String(selected.name || selected.uid || '')}`,
+    `Reason: ${String(trace.selectionReason || 'speed_progress')}`,
+  ].join('\n');
+}
+function buildDynamicInitiativeDefaultSpeedSelection(ctx, options = null) {
+  const opts = options && typeof options === 'object' ? options : {};
+  const currentUID = Number(opts.currentUID || 0);
+  const currentType = Number(opts.currentType || 0);
+  const source = String(opts.source || 'unknown');
+  const cadenceEvents = Array.isArray(opts.cadenceEvents) ? opts.cadenceEvents : [];
+  const g = getGlobals(ctx);
+  const state = syncDynamicInitiativeDefaultSession(ctx);
+  const roster = getInitiativeRoster(ctx);
+  if (!roster.length) {
+    resetDynamicInitiativeDefaultState(g, getDynamicInitiativeSessionId(g), 'empty_speed_roster');
+    return null;
+  }
+  const result = advanceDynamicInitiativeShadow({
+    battleId: getDynamicInitiativeBattleId(g),
+    actionSerial: Number(g.TurnSerial || 0),
+    actors: roster,
+    completedActor: currentUID > 0 ? getDynamicInitiativeActorSnapshot(ctx, currentUID, currentType) : null,
+    progress: state.progress || {},
+    pendingDeaths: g.PendingDeaths || null,
+    threshold: Number(g.DynamicInitiativeThreshold || 100),
+  });
+  const trace = result && result.trace ? result.trace : null;
+  const selected = trace && trace.selectedActor ? trace.selectedActor : null;
+  if (!selected || !(Number(selected.uid || 0) > 0)) return null;
+  state.progress = { ...(trace.progressAfterSelection || {}) };
+  const queue = speedGaugeQueueFromTrace(ctx, roster, trace);
+  const selectedIndex = Math.max(0, queue.findIndex(slot => Number(slot.uid || 0) === Number(selected.uid || 0)));
+  schedulerWriteQueue(ctx, queue);
+  schedulerWriteIndex(ctx, selectedIndex);
+  state.queue = queue.map(slot => ({ ...slot }));
+  const actor = GetActorByUID(ctx, selected.uid);
+  const selectedActor = {
+    uid: Number(selected.uid || 0),
+    type: Number(selected.type || 0) === 1 ? 1 : 0,
+    name: actor ? String(actor.name || selected.uid) : String(selected.uid || ''),
+    speed: actor ? GetEffectiveStat(ctx, actor, 'SPD') : Number(selected.speed || selected.spd || 0),
+  };
+  return {
+    ...trace,
+    battleId: Number(trace.battleId || getDynamicInitiativeBattleId(g)),
+    actionSerial: Number(trace.actionSerial || g.TurnSerial || 0),
+    source,
+    selectedActor,
+    selectionReason: trace.selectionReason,
+    speedOrder: dynamicSpeedOrderForTrace(ctx, queue),
+    selectedIndex,
+    completedUID: Number(currentUID || 0),
+    cadenceEvents: Array.isArray(cadenceEvents) ? cadenceEvents.slice() : [],
+    progressBeforeSelection: trace.progressBeforeSelection,
+    progressAfterSelection: trace.progressAfterSelection,
+    thresholdSubtraction: thresholdSubtractionFromTrace(trace),
+    eligibilitySkips: trace.eligibilitySkips || [],
+    pendingDeaths: g.PendingDeaths || null,
+  };
+}
+function getDynamicInitiativeSessionId(g) {
+  const combatSessionId = Number(g.CombatSessionId || 0);
+  if (Number.isFinite(combatSessionId) && combatSessionId > 0) return combatSessionId;
+  return getDynamicInitiativeBattleId(g);
+}
+function syncDynamicInitiativeDefaultSession(ctx) {
+  const g = getGlobals(ctx);
+  const sessionId = getDynamicInitiativeSessionId(g);
+  const state = ensureDynamicInitiativeDefaultState(g);
+  if (Number(state.sessionId || 0) !== Number(sessionId || 0)) {
+    return resetDynamicInitiativeDefaultState(g, sessionId, 'combat_session_changed');
+  }
+  return state;
+}
+function getDynamicInitiativeDefaultCurrent(g) {
+  const current = g.DynamicInitiative && g.DynamicInitiative.active ? g.DynamicInitiative.current : null;
+  const uid = Number(current?.uid || 0);
+  if (!(uid > 0)) return null;
+  return { uid, type: Number(current.type || 0) === 1 ? 1 : 0, name: String(current.name || uid) };
+}
+function getDynamicInitiativeDefaultOrder(ctx) {
+  const g = getGlobals(ctx);
+  const state = g.DynamicInitiative && g.DynamicInitiative.active ? g.DynamicInitiative : null;
+  const queue = state && Array.isArray(state.queue) ? state.queue : [];
+  return queue.length ? queue : getInitiativeRoster(ctx);
+}
+function setDynamicInitiativeDefaultCurrent(ctx, actor, source = 'unknown') {
+  if (!actor || !(Number(actor.uid || 0) > 0)) return null;
+  const g = getGlobals(ctx);
+  const state = syncDynamicInitiativeDefaultSession(ctx);
+  const current = {
+    uid: Number(actor.uid || 0),
+    type: Number(actor.type || 0) === 1 ? 1 : 0,
+    name: String(actor.name || actor.uid || ''),
+  };
+  state.active = 1;
+  state.current = current;
+  g.InitiativeCurrentUID = current.uid;
+  schedulerSyncIndexToUID(ctx, current.uid, null, Number(g.CurrentTurnIndex || 0));
+  g.TurnPhase = resolveCurrentTurnPhase(ctx, `functionBank.DynamicInitiativeDefault.${source}`);
+  return current;
+}
+function initializeDynamicInitiativeDefaultCurrent(ctx, source = 'initialize') {
+  const g = getGlobals(ctx);
+  const state = syncDynamicInitiativeDefaultSession(ctx);
+  const currentUID = Number(state.current?.uid || 0);
+  const actors = getInitiativeRoster(ctx);
+  if (state.active && currentUID > 0 && actors.some(actor => Number(actor.uid || 0) === currentUID)) {
+    return state.current;
+  }
+  const trace = buildDynamicInitiativeDefaultSpeedSelection(ctx, { currentUID: 0, source });
+  if (!trace) return null;
+  state.openingPolicy = null;
+  state.openingPolicyInitialized = true;
+  state.lastPrediction = trace;
+  state.lastTraceText = formatDynamicSpeedInitiativeTrace(trace);
+  g.DynamicInitiativeLastTraceText = state.lastTraceText;
+  state.traces.push(trace);
+  if (state.traces.length > 200) state.traces.shift();
+  const current = setDynamicInitiativeDefaultCurrent(ctx, trace.selectedActor, source);
+  if (!current) return null;
+  recordTurnSchedulerEvent(ctx, 'dynamic_initiative_default_initial_selection', {
+    selectedUID: Number(current?.uid || 0),
+    selectedType: Number(current?.type || 0),
+    selectionReason: trace.selectionReason,
+    speedOrder: trace.speedOrder,
+    selectedIndex: trace.selectedIndex,
+  });
+  return current;
+}
+function recordDynamicInitiativeDefaultAfterAction(ctx, currentUID, currentType, cadenceEvents = []) {
+  const g = getGlobals(ctx);
+  const state = syncDynamicInitiativeDefaultSession(ctx);
+  const actors = getInitiativeRoster(ctx);
+  if (!actors.length) {
+    resetDynamicInitiativeDefaultState(g, getDynamicInitiativeSessionId(g), 'empty_roster_after_action');
+    return null;
+  }
+  if (!state.openingPolicyInitialized) {
+    state.openingPolicy = null;
+    state.openingPolicyInitialized = true;
+  }
+  const trace = buildDynamicInitiativeDefaultSpeedSelection(ctx, { currentUID, currentType, source: 'AdvanceTurn', cadenceEvents });
+  if (!trace) return null;
+  state.openingPolicy = null;
+  state.lastTrace = trace;
+  state.lastTraceText = formatDynamicSpeedInitiativeTrace(trace);
+  state.traces.push(trace);
+  if (state.traces.length > 200) state.traces.shift();
+  g.DynamicInitiativeLastTraceText = state.lastTraceText;
+  return trace;
+}
+function applyDynamicInitiativeDefaultSelection(ctx, prediction, cadenceEvents = []) {
+  if (!prediction || !prediction.selectedActor) return false;
+  const g = getGlobals(ctx);
+  const selected = prediction.selectedActor;
+  const uid = Number(selected.uid || 0);
+  const actor = uid > 0 ? GetActorByUID(ctx, uid) : null;
+  if (!actor) return false;
+  const state = syncDynamicInitiativeDefaultSession(ctx);
+  const current = setDynamicInitiativeDefaultCurrent(ctx, selected, 'AdvanceTurn');
+  state.actionCount = Number(state.actionCount || 0) + 1;
+  state.lastActionSerial = Number(prediction.actionSerial || 0);
+  state.lastSelectedUID = Number(current.uid || 0);
+  state.lastSelectionReason = String(prediction.selectionReason || 'unknown');
+  recordTurnSchedulerEvent(ctx, 'dynamic_initiative_default_selection', {
+    actionSerial: Number(prediction.actionSerial || 0),
+    selectedUID: Number(current.uid || 0),
+    selectedType: Number(current.type || 0),
+    selectionReason: prediction.selectionReason,
+    progressBeforeSelection: prediction.progressBeforeSelection,
+    progressAfterSelection: prediction.progressAfterSelection,
+    thresholdSubtraction: prediction.thresholdSubtraction,
+    cadenceEvents: Array.isArray(cadenceEvents) ? cadenceEvents.slice() : [],
+    eligibilitySkips: prediction.eligibilitySkips,
+    pendingDeaths: g.PendingDeaths || null,
+  });
+  return true;
+}
+function ensureDynamicInitiativeAuthorityState(g) {
+  if (!g.DynamicInitiativeAuthority || typeof g.DynamicInitiativeAuthority !== 'object') {
+    g.DynamicInitiativeAuthority = {
+      active: 0,
+      current: null,
+      traces: [],
+      aborts: [],
+      actionCount: 0,
+      lastTraceText: '',
+      starvationWatch: {},
+    };
+  }
+  return g.DynamicInitiativeAuthority;
+}
+function isDynamicInitiativeAuthorityFlagEnabled(g) {
+  const flag = String(g.DynamicInitiativeAuthorityEnabled ?? '').trim().toLowerCase();
+  return g.DynamicInitiativeAuthorityEnabled === true
+    || g.DynamicInitiativeAuthorityEnabled === 1
+    || flag === '1'
+    || flag === 'true'
+    || flag === 'on'
+    || flag === 'enabled';
+}
+function getDynamicInitiativeAuthorityCurrent(g) {
+  if (!isDynamicInitiativeAuthorityFlagEnabled(g)) return null;
+  const authority = g.DynamicInitiativeAuthority;
+  const current = authority && authority.active ? authority.current : null;
+  const uid = Number(current?.uid || 0);
+  if (!(uid > 0)) return null;
+  return { uid, type: Number(current.type || 0) === 1 ? 1 : 0, name: String(current.name || uid) };
+}
+function clearDynamicInitiativeAuthorityCurrent(g) {
+  const authority = ensureDynamicInitiativeAuthorityState(g);
+  authority.active = 0;
+  authority.current = null;
+}
+function failDynamicInitiativeAuthority(ctx, validation, trace = null) {
+  const g = getGlobals(ctx), authority = ensureDynamicInitiativeAuthorityState(g);
+  authority.active = 0;
+  authority.current = null;
+  authority.lastAbort = validation;
+  authority.aborts.push(validation);
+  if (authority.aborts.length > 50) authority.aborts.shift();
+  if (trace) {
+    authority.lastTrace = trace;
+    authority.lastTraceText = formatDynamicInitiativeAuthorityTrace(trace);
+  }
+  recordTurnSchedulerEvent(ctx, 'dynamic_initiative_authority_abort', {
+    actionSerial: Number(validation?.actionSerial || 0),
+    reason: String(validation?.reason || 'unknown'),
+    abortMessage: String(validation?.abortMessage || ''),
+  });
+  throw new Error(validation?.abortMessage || 'Dynamic Initiative authority abort');
+}
+function tryApplyDynamicInitiativeAuthoritySelection(ctx, prediction, cadenceEvents = []) {
+  if (!prediction) return false;
+  const g = getGlobals(ctx);
+  if (!isDynamicInitiativeAuthorityFlagEnabled(g)) {
+    clearDynamicInitiativeAuthorityCurrent(g);
+    return false;
+  }
+  const actors = getDynamicInitiativeRoster(ctx);
+  if (!isDynamicInitiativeAuthorityExperimentEnabled({ globals: g, actors })) {
+    clearDynamicInitiativeAuthorityCurrent(g);
+    return false;
+  }
+  g.DynamicInitiativeAuthorityEncounterLocked = 1;
+  const authority = ensureDynamicInitiativeAuthorityState(g);
+  const validation = validateDynamicInitiativeAuthoritySelection({
+    prediction,
+    actors,
+    cadenceEvents,
+    previousState: authority,
+    maxActions: Number(g.DynamicInitiativeAuthorityMaxActions || 64),
+  });
+  const trace = createDynamicInitiativeAuthorityTrace({
+    prediction,
+    validation,
+    cadenceEvents,
+    pendingDeaths: g.PendingDeaths || null,
+  });
+  if (!validation.ok) failDynamicInitiativeAuthority(ctx, validation, trace);
+  authority.active = 1;
+  authority.current = validation.selectedActor;
+  authority.actionCount = validation.nextState.actionCount;
+  authority.lastActionSerial = validation.nextState.lastActionSerial;
+  authority.lastSelectedUID = validation.nextState.lastSelectedUID;
+  authority.starvationWatch = validation.nextState.starvationWatch;
+  authority.lastTrace = trace;
+  authority.lastTraceText = formatDynamicInitiativeAuthorityTrace(trace);
+  authority.traces.push(trace);
+  if (authority.traces.length > 200) authority.traces.shift();
+  g.DynamicInitiativeAuthorityLastTraceText = authority.lastTraceText;
+  g.InitiativeCurrentUID = Number(validation.selectedActor.uid || 0);
+  g.TurnPhase = resolveCurrentTurnPhase(ctx, 'functionBank.DynamicInitiativeAuthority');
+  recordTurnSchedulerEvent(ctx, 'dynamic_initiative_authority_selection', {
+    actionSerial: Number(trace.actionSerial || 0),
+    selectedUID: Number(validation.selectedActor.uid || 0),
+    selectedType: Number(validation.selectedActor.type || 0),
+    selectionReason: trace.selectionReason,
+    progressBeforeSelection: trace.progressBeforeSelection,
+    progressAfterSelection: trace.progressAfterSelection,
+    thresholdSubtraction: trace.thresholdSubtraction,
+    cadenceEvents: trace.cadenceEvents,
+    pendingDeaths: trace.pendingDeaths,
+  });
+  return true;
+}
 function schedulerWriteQueue(ctx, nextQueue) { const g = getGlobals(ctx); g.TurnOrderArray = Array.isArray(nextQueue) ? nextQueue : []; return g.TurnOrderArray; }
 function schedulerWriteIndex(ctx, nextIndex) { const g = getGlobals(ctx), normalized = Number(nextIndex); g.CurrentTurnIndex = Number.isFinite(normalized) ? Math.max(0, Math.trunc(normalized)) : 0; return g.CurrentTurnIndex; }
 function schedulerClearQueue(ctx) { schedulerWriteQueue(ctx, []); schedulerWriteIndex(ctx, 0); return []; }
@@ -4612,6 +4970,10 @@ export function RebuildTurnOrderPreserveCurrent(ctx) {
 
 export function GetCurrentTurn(ctx) {
   const g = getGlobals(ctx);
+  const authorityCurrent = getDynamicInitiativeAuthorityCurrent(g);
+  if (authorityCurrent) return authorityCurrent.uid;
+  const dynamicCurrent = getDynamicInitiativeDefaultCurrent(g);
+  if (dynamicCurrent) return dynamicCurrent.uid;
   if (isTimeInitiative(ctx)) {
     return g.InitiativeCurrentUID || 0;
   }
@@ -4627,6 +4989,10 @@ export function GetCurrentTurn(ctx) {
 
 export function GetCurrentType(ctx) {
   const g = getGlobals(ctx);
+  const authorityCurrent = getDynamicInitiativeAuthorityCurrent(g);
+  if (authorityCurrent) return authorityCurrent.type;
+  const dynamicCurrent = getDynamicInitiativeDefaultCurrent(g);
+  if (dynamicCurrent) return dynamicCurrent.type;
   if (isTimeInitiative(ctx)) {
     const actor = GetActorByUID(ctx, g.InitiativeCurrentUID || 0);
     return actor && actor.kind === 'enemy' ? 1 : 0;
@@ -4805,10 +5171,23 @@ export function AdvanceTurn(ctx) {
   const g = getGlobals(ctx);
   const currentUID = GetCurrentTurn(ctx);
   const currentType = GetCurrentType(ctx);
+  const dynamicInitiativeCadenceEvents = [
+    { event: 'action_completed', uid: Number(currentUID || 0), type: Number(currentType || 0) },
+  ];
+  const heroTeamTurnSerialBefore = Number(g.HeroTeamTurnSerial || 0);
   recordHeroTeamTurnProgress(ctx, currentUID, currentType);
+  if (currentType === 0 && currentUID) {
+    dynamicInitiativeCadenceEvents.push({
+      event: 'hero_team_turn_progress',
+      before: heroTeamTurnSerialBefore,
+      after: Number(g.HeroTeamTurnSerial || 0),
+    });
+  }
   tickEnemyGemLockCountdowns(ctx);
+  dynamicInitiativeCadenceEvents.push({ event: 'locked_gem_countdown_tick' });
   if (currentType === 0 && currentUID && g.ExtraTurnGranted && Object.prototype.hasOwnProperty.call(g.ExtraTurnGranted, currentUID)) {
     delete g.ExtraTurnGranted[currentUID];
+    dynamicInitiativeCadenceEvents.push({ event: 'legacy_followup_marker_cleared', uid: Number(currentUID || 0) });
   }
   const timeMode = isTimeInitiative(ctx), beforeQueue = snapshotTurnOrderSlots(ctx), beforeIndex = Number(g.CurrentTurnIndex || 0), beforeSlot = beforeQueue[beforeIndex] || null, rolloverCandidate = beforeQueue.length > 0 && beforeIndex >= beforeQueue.length - 1;
   if (currentType === 0 && currentUID) {
@@ -4817,6 +5196,7 @@ export function AdvanceTurn(ctx) {
     if (entry) {
       if (entry.state === 'active_this_turn') {
         ClosePowerAmpForActor(ctx, currentUID, 'turn_complete');
+        dynamicInitiativeCadenceEvents.push({ event: 'power_amp_closed', uid: Number(currentUID || 0), reason: 'turn_complete' });
       } else if (
         entry.state === 'pending_next_own_turn' &&
         Number(g.TurnSerial || 0) > Number(entry.armedAtTurnSerial || 0)
@@ -4824,27 +5204,55 @@ export function AdvanceTurn(ctx) {
         // Strict safety net: if a hero reached next own turn but activation was missed,
         // force expiry at that turn end to prevent carryover leaks.
         ClosePowerAmpForActor(ctx, currentUID, 'missed_activation_expire');
+        dynamicInitiativeCadenceEvents.push({ event: 'power_amp_closed', uid: Number(currentUID || 0), reason: 'missed_activation_expire' });
       }
     }
   }
   if (currentType === 1 && currentUID) {
     decayEnemyDebuffsForTurn(ctx, currentUID);
+    dynamicInitiativeCadenceEvents.push({ event: 'enemy_debuff_decay', uid: Number(currentUID || 0) });
   }
   g.TurnSerial = Number(g.TurnSerial || 0) + 1;
+  dynamicInitiativeCadenceEvents.push({ event: 'turn_serial_increment', turnSerial: Number(g.TurnSerial || 0) });
+  const pendingDeathsBefore = Object.keys(g.PendingDeaths || {}).length;
   resolvePendingEnemyDeaths(ctx);
+  dynamicInitiativeCadenceEvents.push({
+    event: 'pending_death_resolution',
+    before: pendingDeathsBefore,
+    after: Object.keys(g.PendingDeaths || {}).length,
+  });
+  let dynamicInitiativeShadowPrediction = null;
+  let dynamicInitiativeAuthorityApplied = false;
+  let dynamicInitiativeDefaultApplied = false;
   if (timeMode) {
     resolvePendingDeathsForInitiative(ctx);
     if (holdForEnemyRosterRefill(ctx)) return;
+    dynamicInitiativeShadowPrediction = recordDynamicInitiativeShadowAfterAction(ctx, currentUID, currentType, dynamicInitiativeCadenceEvents);
     selectNextInitiativeActor(ctx);
     ProcessCurrentTurn(ctx);
   } else {
     if (holdForEnemyRosterRefill(ctx)) return;
-    ProcessCurrentTurn(ctx);
+    dynamicInitiativeShadowPrediction = recordDynamicInitiativeShadowAfterAction(ctx, currentUID, currentType, dynamicInitiativeCadenceEvents);
+    const dynamicInitiativeDefaultPrediction = recordDynamicInitiativeDefaultAfterAction(ctx, currentUID, currentType, dynamicInitiativeCadenceEvents);
+    dynamicInitiativeAuthorityApplied = tryApplyDynamicInitiativeAuthoritySelection(ctx, dynamicInitiativeShadowPrediction, dynamicInitiativeCadenceEvents);
+    if (!dynamicInitiativeAuthorityApplied) {
+      dynamicInitiativeDefaultApplied = applyDynamicInitiativeDefaultSelection(ctx, dynamicInitiativeDefaultPrediction, dynamicInitiativeCadenceEvents);
+    }
+    if (!dynamicInitiativeAuthorityApplied && !dynamicInitiativeDefaultApplied) ProcessCurrentTurn(ctx);
   }
   let afterQueue = snapshotTurnOrderSlots(ctx);
   let afterIndex = Number(g.CurrentTurnIndex || 0);
   let afterSlot = afterQueue[afterIndex] || null;
-  if (shouldAutoCorrectImproperRepeat({
+  if (dynamicInitiativeAuthorityApplied || dynamicInitiativeDefaultApplied) {
+    const schedulerCurrent = getDynamicInitiativeAuthorityCurrent(g) || getDynamicInitiativeDefaultCurrent(g);
+    if (schedulerCurrent) {
+      const schedulerIndex = afterQueue.findIndex(slot => Number(slot.uid || 0) === Number(schedulerCurrent.uid || 0));
+      if (schedulerIndex !== -1) afterIndex = schedulerIndex;
+      const actor = GetActorByUID(ctx, schedulerCurrent.uid);
+      afterSlot = { ...schedulerCurrent, spd: Number(actor ? GetEffectiveStat(ctx, actor, 'SPD') : 0) };
+    }
+  }
+  if (!dynamicInitiativeAuthorityApplied && !dynamicInitiativeDefaultApplied && shouldAutoCorrectImproperRepeat({
     timeMode,
     beforeUID: Number(beforeSlot?.uid || 0),
     afterSlot,
@@ -4856,9 +5264,10 @@ export function AdvanceTurn(ctx) {
     afterIndex = Number(g.CurrentTurnIndex || 0);
     afterSlot = afterQueue[afterIndex] || null;
   }
+  recordDynamicInitiativeShadowSelectionComparison(ctx, dynamicInitiativeShadowPrediction);
   const audit = ensureTurnSchedulerAudit(g); let repeatSource = null;
-  if (beforeSlot && afterSlot && Number(beforeSlot.uid || 0) === Number(afterSlot.uid || 0)) { if (audit.lastQueueMutation?.source === 'explicit_mechanic') repeatSource = 'explicit_mechanic'; else if (audit.lastQueueMutation?.source === 'collapse_after_future_slot_removal') repeatSource = 'collapse_after_future_slot_removal'; else if (rolloverCandidate) repeatSource = 'cycle_rollover'; else if (timeMode) repeatSource = 'non_compliant_scheduler_behavior'; }
-  recordTurnSchedulerEvent(ctx, 'pointer_advance', { cause: timeMode ? 'time_select_next' : (rolloverCandidate ? 'round_cycle_rollover' : 'round_pointer_increment'), beforeUID: beforeSlot ? beforeSlot.uid : 0, afterUID: afterSlot ? afterSlot.uid : 0, beforeIndex, afterIndex, repeatSource, rolloverCandidate, queue: afterQueue });
+  if (beforeSlot && afterSlot && Number(beforeSlot.uid || 0) === Number(afterSlot.uid || 0)) { if (dynamicInitiativeAuthorityApplied || dynamicInitiativeDefaultApplied) repeatSource = 'speed_progress_overflow'; else if (audit.lastQueueMutation?.source === 'explicit_mechanic') repeatSource = 'explicit_mechanic'; else if (audit.lastQueueMutation?.source === 'collapse_after_future_slot_removal') repeatSource = 'collapse_after_future_slot_removal'; else if (rolloverCandidate) repeatSource = 'cycle_rollover'; else if (timeMode) repeatSource = 'non_compliant_scheduler_behavior'; }
+  recordTurnSchedulerEvent(ctx, 'pointer_advance', { cause: dynamicInitiativeAuthorityApplied ? 'dynamic_initiative_authority' : (dynamicInitiativeDefaultApplied ? 'dynamic_initiative_default' : (timeMode ? 'time_select_next' : (rolloverCandidate ? 'round_cycle_rollover' : 'round_pointer_increment'))), beforeUID: beforeSlot ? beforeSlot.uid : 0, afterUID: afterSlot ? afterSlot.uid : 0, beforeIndex, afterIndex, repeatSource, rolloverCandidate, queue: afterQueue });
 }
 
 export function TryGrantSpeedExtraTurn(ctx, actorUID) {
@@ -8937,6 +9346,7 @@ export function BuildRoundGroups(ctx) {
     g.RoundActive = 0;
     g.PendingDeaths = {};
     schedulerClearQueue(ctx);
+    resetDynamicInitiativeDefaultState(g, getDynamicInitiativeSessionId(g), 'empty_round_roster');
     return;
   }
   const requestedType = Number.isFinite(Number(g.TeamPhaseType)) ? Number(g.TeamPhaseType || 0) : 0;
@@ -8979,6 +9389,7 @@ export function BuildRoundGroups(ctx) {
   const flat = groups.flatMap(gr => gr.members || []);
   schedulerWriteQueue(ctx, flat.map(a => ({ uid: a.uid, spd: a.spd, type: a.type })));
   schedulerWriteIndex(ctx, 0);
+  initializeDynamicInitiativeDefaultCurrent(ctx, 'BuildRoundGroups');
   console.log('[ROUND] Built groups:', groups.map(gp => gp.members.map(m => {
     const a = GetActorByUID(ctx, m.uid);
     return a && a.name ? a.name : m.uid;
@@ -9122,8 +9533,7 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     handled = true;
     const enemies = getEnemies(ctx);
     const pendingManualTarget = String(g.PendingSkillID || '') === 'HERO_SINGLE'
-      && Number(g.PendingActor || 0) === Number(actorUID || 0)
-      && Number(g.SelectedEnemyUIDOwner || 0) === Number(actorUID || 0);
+      && Number(g.PendingActor || 0) === Number(actorUID || 0);
     const preferred = pendingManualTarget && g.SelectedEnemyUID ? GetActorByUID(ctx, g.SelectedEnemyUID) : null;
     const target = preferred && preferred.kind === 'enemy' && (preferred.hp ?? 0) > 0
       ? preferred
@@ -9483,11 +9893,18 @@ export function ProcessTurn(ctx) {
   }
   g.DebugTurnCount = (g.DebugTurnCount || 0) + 1;
   console.log(`[DEBUG] matches=${g.DebugMatchCount || 0} turns=${g.DebugTurnCount}`);
-  const flatRaw = isTimeInitiative(ctx)
+  const dynamicCurrent = getDynamicInitiativeDefaultCurrent(g);
+  const flatRaw = dynamicCurrent
+    ? getDynamicInitiativeDefaultOrder(ctx).map(actor => ({
+      uid: actor.uid,
+      spd: Number(actor.spd ?? actor.speed ?? 0),
+      type: actor.type,
+    }))
+    : (isTimeInitiative(ctx)
     ? (g.TurnOrderArray || [])
-    : (g.RoundActive ? (g.RoundGroups || []).flatMap(gr => gr.members || []) : (g.TurnOrderArray || []));
+    : (g.RoundActive ? (g.RoundGroups || []).flatMap(gr => gr.members || []) : (g.TurnOrderArray || [])));
   const flatOrder = flatRaw.filter(a => GetActorByUID(ctx, a.uid));
-  if (g.RoundActive) {
+  if (dynamicCurrent || g.RoundActive) {
     schedulerWriteQueue(ctx, flatOrder.map(a => ({ uid: a.uid, spd: a.spd, type: a.type })));
   }
   const curUID = uid;
@@ -9499,7 +9916,7 @@ export function ProcessTurn(ctx) {
     const tag = a.type === 0 ? '(H)' : '(E)';
     return `${i === g.CurrentTurnIndex ? '>' : ''}${name}${tag}`;
   }).join(' | ');
-  console.log(`[TURN][ORDER] idx=${g.CurrentTurnIndex} ${orderLine}`);
+  console.log(`${dynamicCurrent ? '[TURN][SPEED_ORDER]' : '[TURN][ORDER]'} idx=${g.CurrentTurnIndex} ${orderLine}`);
   if (actor) {
     const eff = GetEffectiveStat(ctx, actor, 'SPD');
     const cp = Number(actor.combatPower || actor.CombatPower || 0);

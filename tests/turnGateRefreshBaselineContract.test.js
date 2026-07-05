@@ -267,5 +267,21 @@ for (const modulePath of [
     assert.equal(idleHero.canClaimCombatAction, true);
     assert.equal(idleHero.canRestoreHeroInput, true);
     assert.equal(idleHero.firstBlockingLane, null);
+
+    const staleBusyIdleHero = mod.derivePresentationTurnBarrier({
+      globals: { time: 10, TurnPhase: 0, IsPlayerBusy: 1 },
+    });
+    assert.equal(staleBusyIdleHero.canRestoreHeroInput, true);
+    assert.equal(staleBusyIdleHero.canAdvanceTurn, true);
+
+    const activeBusyHeroAction = mod.derivePresentationTurnBarrier({
+      globals: {
+        time: 10,
+        TurnPhase: 0,
+        IsPlayerBusy: 1,
+        ActionInProgress: 1,
+      },
+    });
+    assert.equal(activeBusyHeroAction.canRestoreHeroInput, false);
   });
 }

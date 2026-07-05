@@ -127,6 +127,38 @@ for (const modulePath of [
     assert.equal(globals.CanPickGems, false);
     assert.equal(globals.IsPlayerBusy, 1);
   });
+
+  test(`pending skill handoff resolves with pending actor instead of stale current actor in ${modulePath}`, async () => {
+    const mod = await import(modulePath);
+    const globals = {
+      PendingSkillID: 'HERO_SINGLE',
+      PendingActor: 101,
+      PendingSuperGemAction: null,
+      SelectedEnemyUID: 202,
+      SelectedEnemyUIDOwner: 101,
+      CanPickGems: false,
+      IsPlayerBusy: 0,
+    };
+    const calls = [];
+
+    const result = mod.resolvePendingSuperGemHandoff({
+      globals,
+      actorUID: 404,
+      executePendingSuperGemAction: () => false,
+      executeSkill: (skillID, actorUID) => {
+        calls.push({ skillID, actorUID });
+        return 1;
+      },
+      hideAttackUI: () => {},
+    });
+
+    assert.equal(result.executeSkillResult, 1);
+    assert.deepEqual(calls, [{ skillID: 'HERO_SINGLE', actorUID: 101 }]);
+    assert.equal(globals.PendingSkillID, '');
+    assert.equal(globals.PendingActor, 0);
+    assert.equal(globals.SelectedEnemyUID, 0);
+    assert.equal(globals.SelectedEnemyUIDOwner, 0);
+  });
 }
 
 test('app routes manual and dev autoplay pending target handoffs through shared supergem recovery', () => {

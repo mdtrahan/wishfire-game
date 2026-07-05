@@ -47,18 +47,24 @@ test(`speed initiative ability gate classifies dead and disabled actors in ${sch
 });
 }
 
-test('runtime mirrors use time initiative as the normal combat scheduler', () => {
+test('runtime mirrors use effective Speed sorting as the normal combat scheduler', () => {
   const runtimeSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner/modules/functionBank.js'), 'utf8');
   assert.match(runtimeSrc, /function isTimeInitiative\(ctx\)/);
-  assert.match(runtimeSrc, /function selectNextInitiativeActor\(ctx\)/);
-  assert.match(runtimeSrc, /buildFixedCycleSlots\(roster, 0/);
-  assert.match(runtimeSrc, /resolveCurrentTurnPhase\(ctx, 'functionBank\.ProcessCurrentTurn\.timeInitiative'\)/);
-  assert.match(runtimeSrc, /if \(isTimeInitiative\(ctx\)\) \{/);
+  assert.match(runtimeSrc, /function buildDynamicInitiativeDefaultSpeedSelection\(ctx, options = null\)/);
+  assert.match(runtimeSrc, /const roster = getInitiativeRoster\(ctx\)/);
+  assert.match(runtimeSrc, /advanceDynamicInitiativeShadow\(\{/);
+  assert.match(runtimeSrc, /selectionReason: trace\.selectionReason/);
+  assert.match(runtimeSrc, /progressBeforeSelection: trace\.progressBeforeSelection/);
+  assert.match(runtimeSrc, /thresholdSubtraction:/);
 
   for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
     const src = fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
-    assert.match(src, /function isTimeInitiative\(ctx\)/);
-    assert.match(src, /resolveCurrentTurnPhase\(ctx, 'functionBank\.ProcessCurrentTurn\.timeInitiative'\)/);
-    assert.match(src, /if \(isTimeInitiative\(ctx\)\) \{/);
+    assert.match(src, /function isTimeInitiative\(ctx\) \{\s*return false;\s*\}/);
+    assert.match(src, /function buildDynamicInitiativeDefaultSpeedSelection\(ctx, options = null\)/);
+    assert.match(src, /advanceDynamicInitiativeShadow\(\{/);
+    assert.match(src, /selectionReason: trace\.selectionReason/);
+    assert.match(src, /state\.progress = \{ \.\.\.\(trace\.progressAfterSelection \|\| \{\}\) \}/);
+    assert.doesNotMatch(src, /selectionReason: 'speed_sorted_cycle'/);
+    assert.doesNotMatch(src, /dynamic_progress_math/);
   }
 });
