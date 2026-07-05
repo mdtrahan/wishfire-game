@@ -1,4 +1,5 @@
 import * as devToolingControls from './devToolingControls.js';
+import { renderCombatTurnQaReadoutHtml } from './combatTurnQaReadout.mjs';
 
 const DEV_TOOL_HOTKEY_LABEL = 'Ctrl+Shift+P';
 const DEV_TOOL_GEM_RANDOM = -1;
@@ -434,6 +435,15 @@ export function createDevToolingRuntime(deps = {}) {
       `Hotkey: ${DEV_TOOL_HOTKEY_LABEL}\nActive Layout: ${activeLayoutId}\nIdle Mode: ${autoplayActive ? 'ACTIVE' : 'idle'}\nSkill Draw: ${skillDraught}\nApply: writes only the selected condition; no combat reset, turn advance, or loadout refresh${suffix}`;
   }
 
+  function refreshCombatTurnQaReadout() {
+    if (!devToolingDom?.turnOrderQaSlot) return;
+    devToolingDom.turnOrderQaSlot.innerHTML = renderCombatTurnQaReadoutHtml({
+      state,
+      callFunctionWithContext,
+      fnContext,
+    });
+  }
+
   function getSkillDraughtDevSummary() {
     const draught = callFunctionWithContext(fnContext, 'GetSkillDraughtState') || {};
     const sessionSkills = draught.sessionSkillsByHeroUID || {};
@@ -694,6 +704,7 @@ export function createDevToolingRuntime(deps = {}) {
         <button type="button" data-devtool-trigger-destiny style="border:1px solid #365314;background:#f7fee7;color:#365314;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Trigger Destiny</button>
         <button type="button" data-devtool-clear-session-skills style="border:1px solid #7f1d1d;background:#fef2f2;color:#7f1d1d;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Clear Skills</button>
       </div>
+      <div data-devtool-turn-order-qa-slot></div>
       ${renderDevToolSkillLegendHtml()}
     `;
     root.appendChild(panel);
@@ -739,6 +750,7 @@ export function createDevToolingRuntime(deps = {}) {
       forceSkillDraught: panel.querySelector('[data-devtool-force-skill-draught]'),
       triggerDestiny: panel.querySelector('[data-devtool-trigger-destiny]'),
       clearSessionSkills: panel.querySelector('[data-devtool-clear-session-skills]'),
+      turnOrderQaSlot: panel.querySelector('[data-devtool-turn-order-qa-slot]'),
       status: null,
     };
     devToolingDom.launcher.addEventListener('click', () => toggleDevToolingModal(true));
@@ -783,6 +795,7 @@ export function createDevToolingRuntime(deps = {}) {
       if (ev.target === root) toggleDevToolingModal(false);
     });
     syncDevToolingDomFromConfig();
+    refreshCombatTurnQaReadout();
     return devToolingDom;
   }
 
@@ -952,6 +965,7 @@ export function createDevToolingRuntime(deps = {}) {
     if (open) {
       pauseGameplayForDevTooling();
       syncDevToolingDomFromConfig();
+      refreshCombatTurnQaReadout();
       devToolingDom.heroSlots[0]?.focus();
     } else {
       closeDevToolingModal({ restorePauseSnapshot: true });

@@ -51,6 +51,7 @@ test('dev tooling runtime owns modal/config while app keeps restart wiring', () 
   assert.doesNotMatch(appSrc, /Dev Tooling Modal/);
   assert.doesNotMatch(appSrc, /devToolingDom\.launcher\.addEventListener/);
   assert.match(runtimeSrc, /export function createDevToolingRuntime\(deps = \{\}\)/);
+  assert.match(runtimeSrc, /import \{ renderCombatTurnQaReadoutHtml \} from '\.\/combatTurnQaReadout\.mjs';/);
   assert.match(runtimeSrc, /const DEV_TOOL_HOTKEY_LABEL = 'Ctrl\+Shift\+P';/);
   assert.match(runtimeSrc, /let devToolingDom = null;/);
   assert.match(runtimeSrc, /function createDefaultDevToolingConfig\(\)/);
@@ -96,6 +97,9 @@ test('dev tooling runtime owns modal/config while app keeps restart wiring', () 
   assert.doesNotMatch(runtimeSrc, /party_guard_rail/);
   assert.doesNotMatch(runtimeSrc, /party_chain_pop/);
   assert.match(runtimeSrc, /data-devtool-skill-legend/);
+  assert.match(runtimeSrc, /data-devtool-turn-order-qa-slot/);
+  assert.match(runtimeSrc, /function refreshCombatTurnQaReadout\(\)/);
+  assert.match(runtimeSrc, /renderCombatTurnQaReadoutHtml\(\{/);
   assert.match(runtimeSrc, /Skill ID Legend/);
   assert.match(runtimeSrc, /data-devtool-button-row[\s\S]*\$\{renderDevToolSkillLegendHtml\(\)\}/);
   assert.match(src, /data-devtool-double-attack-hero/);
