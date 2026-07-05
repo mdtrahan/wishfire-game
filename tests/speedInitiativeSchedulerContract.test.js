@@ -47,18 +47,22 @@ test(`speed initiative ability gate classifies dead and disabled actors in ${sch
 });
 }
 
-test('runtime mirrors use time initiative as the normal combat scheduler', () => {
+test('initiative path documentation matches current runtime authority split', () => {
+  const initiativeDoc = fs.readFileSync(path.join(__dirname, '..', 'governance/planning/combat-initiative-paths.md'), 'utf8');
   const runtimeSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner/modules/functionBank.js'), 'utf8');
-  assert.match(runtimeSrc, /function isTimeInitiative\(ctx\)/);
-  assert.match(runtimeSrc, /function selectNextInitiativeActor\(ctx\)/);
-  assert.match(runtimeSrc, /buildFixedCycleSlots\(roster, 0/);
-  assert.match(runtimeSrc, /resolveCurrentTurnPhase\(ctx, 'functionBank\.ProcessCurrentTurn\.timeInitiative'\)/);
-  assert.match(runtimeSrc, /if \(isTimeInitiative\(ctx\)\) \{/);
 
   for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
     const src = fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
-    assert.match(src, /function isTimeInitiative\(ctx\)/);
+    assert.match(src, /function isTimeInitiative\(ctx\)\s*\{\s*return false;\s*\}/);
+    assert.match(src, /function selectNextInitiativeActor\(ctx\)/);
     assert.match(src, /resolveCurrentTurnPhase\(ctx, 'functionBank\.ProcessCurrentTurn\.timeInitiative'\)/);
-    assert.match(src, /if \(isTimeInitiative\(ctx\)\) \{/);
   }
+
+  assert.match(runtimeSrc, /BuildRoundGroups\(ctx\);/);
+  assert.match(initiativeDoc, /Current Live Browser Runtime Path/);
+  assert.match(initiativeDoc, /Dormant Time-Initiative Branch/);
+  assert.match(initiativeDoc, /Shared Scheduler Rules/);
+  assert.match(initiativeDoc, /Shadow And SimulationCore Ownership/);
+  assert.match(initiativeDoc, /Experiment And Follow-Up Lanes/);
+  assert.match(initiativeDoc, /Do not flip this guard as cleanup\./);
 });
