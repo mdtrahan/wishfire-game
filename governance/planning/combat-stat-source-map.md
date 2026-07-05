@@ -10,7 +10,7 @@ This map records where combat stats come from, where they are copied at runtime,
 | Where does Skeleton's Speed come from? | `web-runner/assets/enemies.json` is a column-oriented enemy table; the `SPD` row gives Skeleton `22`. |
 | Where are hero stats copied for combat? | `web-runner/systems/combatSessionInitializer.js` copies selected hero roster stats into `state.entities[].stats`. |
 | Where are enemy stats copied for combat? | `combatSessionInitializer` passes enemy row stats into `SpawnEnemy`; `web-runner/modules/functionBank.js` stores them on enemy `stats`. |
-| Where is effective Speed calculated? | `GetEffectiveStat` in `web-runner/modules/functionBank.js`, with Rust SimulationCore ownership/shadow support. |
+| Where is effective Speed calculated? | `GetEffectiveStat` in `web-runner/modules/functionBank.js`, with Rust SimulationCore ownership/shadow support. See `governance/planning/effective-combat-stat-owner.md`. |
 | What modifies Speed? | Hero party Speed buff via `Party_SPD_UP`; enemy Speed debuff through the enemy debuff system. |
 | Which systems consume effective Speed? | Turn roster, turn-order grouping, initiative preview paths, turn logs, and stat/QA readouts that call `GetEffectiveStat`. |
 
@@ -21,7 +21,7 @@ This map records where combat stats come from, where they are copied at runtime,
 | Canonical hero data | `web-runner/state/heroScreenConfig.js` | `CANONICAL_HERO_ROSTER`, `HERO_STAT_KEYS` | Base hero stats for selectable combat heroes. |
 | Canonical enemy table | `web-runner/assets/enemies.json` | `name`, `HP`, `ATK`, `DEF`, `MAG`, `RES`, `SPD`, `EncounterCP` rows | The table is column-oriented, so human lookup is slower than for hero data. |
 | Runtime stat copies | `state.entities` | hero and enemy `stats` objects | Runtime copies are created per combat session and should not be treated as canonical source data. |
-| Derived values | `web-runner/modules/functionBank.js`, `rust/simulation_core/` | `GetEffectiveStat`, `effective_stat_value` | Effective stats apply current buffs/debuffs and clamp at zero. |
+| Derived values | `web-runner/modules/functionBank.js`, `rust/simulation_core/` | `GetEffectiveStat`, `effective_stat_value` | Effective stats apply current buffs/debuffs and clamp at zero. Owner boundary: `governance/planning/effective-combat-stat-owner.md`. |
 | Legacy/mirror data | `Scripts/` mirrors and archived governance docs | mirrored function bank and older skill notes | Use only when validating parity or historical context. Do not treat as current product truth without live-code confirmation. |
 | Test fixtures | `tests/` | scheduler, effective-stat, debuff, party-stat OSD fixtures | Fixtures prove contracts. Fixture stat values may be synthetic and are not canonical tuning data. |
 
@@ -63,7 +63,7 @@ Effective Speed is used anywhere combat needs current turn-order input or visibl
 
 - Hero stats are easy to inspect; enemy stats require understanding the column-oriented enemy JSON shape.
 - Runtime copies look similar to canonical sources, but changing runtime entities is not the same as changing base tuning.
-- Effective stat ownership crosses JavaScript runtime, Rust SimulationCore, shadow/owner hooks, and tests.
+- Effective stat ownership crosses JavaScript runtime, Rust SimulationCore, shadow/owner hooks, and tests; see `governance/planning/effective-combat-stat-owner.md` for the named owner boundary.
 - Some current tests use synthetic stat fixtures; do not infer tuning from those fixtures.
 - Initiative docs and live runtime path need a separate ownership clarification; see `ORKA-6ejk`.
 

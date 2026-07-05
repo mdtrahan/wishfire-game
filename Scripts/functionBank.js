@@ -4587,10 +4587,7 @@ export function RebuildTurnOrderPreserveCurrent(ctx) {
   const currentIndex = idxInPrev !== -1 ? idxInPrev : (g.CurrentTurnIndex || 0);
   const before = prevOrder.map(a => {
     const actor = GetActorByUID(ctx, a.uid);
-    const base = actor ? Number(actor.stats?.SPD ?? actor.SPD ?? 0) : 0;
-    const buff = actor && actor.kind === 'hero' ? (g.PartyBuff_SPD || 0) : 0;
-    const debuff = actor && actor.kind === 'enemy' ? (g.EnemyDebuffs?.[actor.uid]?.SPD || 0) : 0;
-    const cur = base + buff - debuff;
+    const cur = actor ? GetEffectiveStat(ctx, actor, 'SPD') : 0;
     return `${actor ? actor.name : a.uid} ${Math.round(cur)}`;
   });
   BuildTurnOrder(ctx);
@@ -4605,10 +4602,7 @@ export function RebuildTurnOrderPreserveCurrent(ctx) {
   if (idx !== -1) schedulerWriteIndex(ctx, idx);
   const after = g.TurnOrderArray.map(a => {
     const actor = GetActorByUID(ctx, a.uid);
-    const base = actor ? Number(actor.stats?.SPD ?? actor.SPD ?? 0) : 0;
-    const buff = actor && actor.kind === 'hero' ? (g.PartyBuff_SPD || 0) : 0;
-    const debuff = actor && actor.kind === 'enemy' ? (g.EnemyDebuffs?.[actor.uid]?.SPD || 0) : 0;
-    const cur = base + buff - debuff;
+    const cur = actor ? GetEffectiveStat(ctx, actor, 'SPD') : 0;
     return `${actor ? actor.name : a.uid} ${Math.round(cur)}`;
   });
   console.log('[TURN][SPD] Rebuild preserve:', {

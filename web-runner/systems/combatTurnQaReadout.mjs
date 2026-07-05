@@ -40,17 +40,15 @@ function readSpeedModifier(globals = {}, actor = null) {
 
 function readEffectiveSpeed({
   actor,
-  globals,
   callFunctionWithContext,
   fnContext,
 }) {
-  if (!actor) return 0;
+  if (!actor) return null;
   if (typeof callFunctionWithContext === 'function') {
     const owned = Number(callFunctionWithContext(fnContext, 'GetEffectiveStat', actor, 'SPD'));
     if (Number.isFinite(owned)) return owned;
   }
-  const modifier = readSpeedModifier(globals, actor);
-  return Math.max(0, readBaseSpeed(actor) + Number(modifier.amount || 0));
+  return null;
 }
 
 function readCurrentTurnUID({
@@ -127,6 +125,7 @@ function describeCurrentTurnReason({ globals = {}, orderSource = '', currentInde
 
 function describeSpeedOrder(rows = []) {
   if (!rows.length) return 'Unavailable: no actors are in the visible order.';
+  if (rows.some(row => row.effectiveSpeed == null)) return 'Unavailable: effective Speed owner was not available.';
   if (rows.length === 1) return 'Yes: only one actor is in the visible order.';
   const sorted = rows.every((row, idx) => idx === 0 || Number(rows[idx - 1].effectiveSpeed || 0) >= Number(row.effectiveSpeed || 0));
   return sorted
@@ -160,7 +159,7 @@ export function buildCombatTurnQaReadout({
       name: actorName(actor, slot.uid),
       team: actorTypeLabel(actor, slot.type),
       baseSpeed: readBaseSpeed(actor),
-      effectiveSpeed: readEffectiveSpeed({ actor, globals, callFunctionWithContext, fnContext }),
+      effectiveSpeed: readEffectiveSpeed({ actor, callFunctionWithContext, fnContext }),
       modifier: modifier.label,
     };
   });
@@ -180,6 +179,10 @@ export function buildCombatTurnQaReadout({
   };
 }
 
+function formatSpeed(value) {
+  return value == null ? 'Unavailable' : String(Math.round(Number(value || 0)));
+}
+
 export function renderCombatTurnQaReadoutHtml(args = {}) {
   const readout = buildCombatTurnQaReadout(args);
   const rowHtml = readout.rows.length
@@ -189,7 +192,7 @@ export function renderCombatTurnQaReadoutHtml(args = {}) {
         <td style="padding:4px 6px;border-top:1px solid #e2e8f0;">${escapeHtml(row.name)}</td>
         <td style="padding:4px 6px;border-top:1px solid #e2e8f0;">${escapeHtml(row.team)}</td>
         <td style="padding:4px 6px;border-top:1px solid #e2e8f0;text-align:right;">${Math.round(row.baseSpeed)}</td>
-        <td style="padding:4px 6px;border-top:1px solid #e2e8f0;text-align:right;font-weight:800;">${Math.round(row.effectiveSpeed)}</td>
+        <td style="padding:4px 6px;border-top:1px solid #e2e8f0;text-align:right;font-weight:800;">${escapeHtml(formatSpeed(row.effectiveSpeed))}</td>
         <td style="padding:4px 6px;border-top:1px solid #e2e8f0;">${escapeHtml(row.modifier)}</td>
       </tr>
     `).join('')
