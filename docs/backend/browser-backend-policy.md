@@ -1,50 +1,49 @@
 # Browser Backend Policy
 
-## Backend
-- Browser automation backend is `agent-browser` CLI only.
+## Current Backend Routing
+- Use the Codex in-app Browser first for local `web-runner` visual/manual QA.
+- Use standalone Playwright, Chrome/CDP, or `agent-browser` only when the Browser surface is unavailable, the user asks for that surface, or the check requires unsupported Browser capability.
+- Use `npm run balance-harness` as the canonical batch game automation path.
+- Treat Playwright/Chrome tools as support tooling for the balance harness, interactive inspection, startup/attach diagnosis, and spot checks.
+- Treat `agent-browser` as the existing opt-in CLI smoke and snapshot/control surface, not the only approved backend.
 
 ## Explicit Ban
-- Playwright is deprecated and forbidden for new or existing browser automation paths.
-- Forbidden categories:
-  - Legacy JS browser-driver imports/usages.
-  - Legacy browser MCP recommendations.
-  - Legacy browser-driver dependency additions.
-  - Agent requests to run Playwright without explicit PM exception recorded in repository artifacts.
+- Deprecated JS browser-driver imports/usages are forbidden.
+- Legacy browser-driver dependency additions are forbidden.
+- New browser automation pipelines are forbidden unless a bead explicitly scopes them.
 
 ## Validation Requirement
 - Before browser automation is used in a run, execute:
   - `pwd` (must resolve inside repository root)
   - `git status` (pre-check)
-  - `agent-browser --help`
-- If the command fails or returns non-zero exit code:
-  - Stop execution.
-  - Report error.
-  - Do not proceed with browser automation tasks.
+  - the selected backend's lightweight availability check when relevant, such as `agent-browser --help`, `npm run playwright:doctor`, or a CDP `/json/version` probe
+- If the selected backend cannot start or attach:
+  - classify the failure as startup, attach/control, page/runtime, or game behavior
+  - report the selected backend and failure class
+  - do not treat one backend failure as proof that the game behavior failed
 
 ## Execution Standard
-- Use explicit CLI commands only.
-- Capture stdout and exit code for each command.
-- Treat non-zero exit codes as hard failures.
-- Run `git status` after execution; any file change is a containment failure.
+- Use explicit commands or the Codex in-app Browser surface.
+- Capture enough output to classify failures.
+- Treat non-zero validation exits as failures unless the command is diagnostic and the failure is the expected evidence.
+- Run `git status` after automation that can write generated artifacts; unexpected file changes are a containment failure.
 
 ## Escalation Default
-- Escalation is denied by default.
-- If sandbox blocks execution, task fails unless PM explicitly authorizes escalation in repository artifacts.
-- Do not auto-escalate.
+- Prefer the in-app Browser when it avoids local GUI or sandbox escalation.
+- If sandbox blocks a required standalone browser command, request explicit approval and state which backend is being used and why.
+- Do not route around the repo-owned harness or user-specified browser surface silently.
 
 ## Handoff Gate
-- PM must publish: `Containment guard active.`
-- Lead must confirm containment before delegating.
-- Dev must confirm containment before executing.
-- Missing confirmation invalidates execution authority.
+- Browser QA handoffs must name the selected surface, test URL, steps, expected result, and any startup/attach preflight required.
+- Missing backend or preflight evidence invalidates browser-automation claims.
 
 ## Exception Policy
-- Playwright remains hard-denied by default.
-- Any temporary exception must be explicitly authorized by PM in repository artifacts, scoped to a named task, and time-bounded.
-- No recorded PM exception means no Playwright usage.
+- Playwright is not globally hard-denied; it is scoped support tooling.
+- Use Playwright through the documented repo paths unless the user or bead explicitly requests another Playwright surface.
+- Keep the Codex Playwright skill and Playwright MCP as inspection/debugging aids around repo-owned flows, not replacements for the balance harness.
 
 ## Non-Compliance Handling
 - If Lead or any agent reintroduces deprecated browser-driver tokens/usages:
-  - Reject the patch.
-  - Require correction before handoff approval.
-  - Log the violation in `ai-memory/insights.md`.
+  - reject the patch
+  - require correction before handoff approval
+  - log the violation in `ai-memory/insights.md` when it is a bug/regression bead
