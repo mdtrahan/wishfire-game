@@ -77,6 +77,8 @@ function makeContext() {
 test('Drain is retired from active skill draught draw surfaces', () => {
   const retiredDoc = fs.readFileSync(retiredDocPath, 'utf8');
   assert.match(retiredDoc, /Status: retired/);
+  assert.match(retiredDoc, /Historical note:/);
+  assert.match(retiredDoc, /Current normal combat uses effective Speed interleaving\./);
   assert.match(retiredDoc, /Drain must not appear in normal skill draughts, forced skill draughts, or active\s+skill draw debug counters\./);
 
   for (const modulePath of [runtimePath, scriptsPath]) {

@@ -18,10 +18,12 @@ Reference implementation:
 
 ## Retirement Decision
 
-Drain is retired as an active skill-card option. In the team-turn combat model,
-slowing enemy SPD mostly rearranges the order of enemies already present in the
-slots. That payoff is too small for a player-facing party skill and does not
-deliver the power-fantasy level expected from Astral Flow skill cards.
+Drain is retired as an active skill-card option.
+
+Historical note: the original retirement rationale referenced an older
+team-turn combat framing. Current normal combat uses effective Speed interleaving.
+Drain remains retired because a party skill focused on slowing enemy Speed did
+not deliver the power-fantasy level expected from Astral Flow skill cards.
 
 Drain must not appear in normal skill draughts, forced skill draughts, or active
 skill draw debug counters.
