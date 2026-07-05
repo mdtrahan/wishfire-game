@@ -65,6 +65,7 @@ Effective Speed is used anywhere combat needs current turn-order input or visibl
 - Runtime copies look similar to canonical sources, but changing runtime entities is not the same as changing base tuning.
 - Effective stat ownership crosses JavaScript runtime, Rust SimulationCore, shadow/owner hooks, and tests; see `governance/planning/effective-combat-stat-owner.md` for the named owner boundary.
 - Some current tests use synthetic stat fixtures; do not infer tuning from those fixtures.
+- Stale Speed terms are separated from current behavior in `governance/planning/combat-speed-terminology.md`.
 - Initiative docs and live runtime path need a separate ownership clarification; see `ORKA-6ejk`.
 
 ## Validation

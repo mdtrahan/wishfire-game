@@ -109,6 +109,7 @@ export const state = {
     PendingDeaths: {},
     RoundJitter: 0,
     UnisonTolerance: 0.5,
+    // Legacy compatibility field; current double-attack and extra-turn logic must not read it.
     SpeedDoubleRatio: 2.0,
     DamageTextDurationSec: 1.35,
     InitiativeMode: 'time',
