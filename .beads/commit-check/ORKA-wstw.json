@@ -1,0 +1,75 @@
+{
+  "changed_functions": {
+    ".beads/hot-file-lock/ORKA-wstw.prepared.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-wstw.scope": [
+      "__MODULE__"
+    ],
+    "Scripts/functionBank.js": [
+      "prevOrder"
+    ],
+    "governance/planning/combat-stat-source-map.md": [
+      "__MODULE__"
+    ],
+    "governance/planning/effective-combat-stat-owner.md": [
+      "__MODULE__"
+    ],
+    "tests/combatTurnQaReadoutContract.test.js": [
+      "callFunctionWithContext"
+    ],
+    "tests/effectiveStatOwnershipContract.test.js": [
+      "extractFunctionBody",
+      "makeContext",
+      "__MODULE__"
+    ],
+    "web-runner/modules/functionBank.js": [
+      "prevOrder"
+    ],
+    "web-runner/systems/combatTurnQaReadout.mjs": [
+      "readEffectiveSpeed",
+      "describeSpeedOrder",
+      "buildCombatTurnQaReadout",
+      "formatSpeed",
+      "renderCombatTurnQaReadoutHtml"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "Scripts/functionBank.js",
+      "web-runner/modules/functionBank.js"
+    ],
+    "staged_file_count": 9,
+    "staged_line_count": 132,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/hot-file-lock/ORKA-wstw.prepared.json",
+    ".beads/hot-file-lock/ORKA-wstw.scope",
+    "Scripts/functionBank.js",
+    "governance/planning/combat-stat-source-map.md",
+    "governance/planning/effective-combat-stat-owner.md",
+    "tests/combatTurnQaReadoutContract.test.js",
+    "tests/effectiveStatOwnershipContract.test.js",
+    "web-runner/modules/functionBank.js",
+    "web-runner/systems/combatTurnQaReadout.mjs"
+  ],
+  "issue_id": "ORKA-wstw",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/hot-file-lock/ORKA-wstw.prepared.json": "6b4d85fc16c7e98f730542af00cefd8c1f5594bc",
+    ".beads/hot-file-lock/ORKA-wstw.scope": "94828ca37f0b4c6948b81705a7a88df9e0166ac5",
+    "Scripts/functionBank.js": "6314cbfae4d869c36083178aa09d8687eecf00c0",
+    "governance/planning/combat-stat-source-map.md": "7b63fa28cf91428aeccdd16919c6034c91fc3b90",
+    "governance/planning/effective-combat-stat-owner.md": "1d0c5930864451b2c2a421eec015c7cc4cf70edd",
+    "tests/combatTurnQaReadoutContract.test.js": "619a81090469d8a78567a3e8c589aa5370ea1949",
+    "tests/effectiveStatOwnershipContract.test.js": "e88516895eef1a4930453a1ef3282feb3a4d19e2",
+    "web-runner/modules/functionBank.js": "444c6dcdee30b95b7b308d5577ffe8cd6dba78c3",
+    "web-runner/systems/combatTurnQaReadout.mjs": "313b8451a72119d211bdc7fd6822850d70cd31b9"
+  }
+}

@@ -51,7 +51,7 @@ test('combat turn QA readout explains current actor and visible Speed order', as
   assert.match(html, /Why:/);
 });
 
-test('combat turn QA readout falls back to living actors and local modifiers without mutation', async () => {
+test('combat turn QA readout falls back to living actors without owning effective Speed math', async () => {
   const { buildCombatTurnQaReadout } = await loadReadoutModule();
   const state = {
     globals: { PartyBuff_SPD: 2 },
@@ -63,7 +63,9 @@ test('combat turn QA readout falls back to living actors and local modifiers wit
   const readout = buildCombatTurnQaReadout({ state });
 
   assert.equal(readout.orderSource, 'living actors');
-  assert.match(readout.speedOrderAnswer, /^Yes:/);
-  assert.equal(readout.rows[0].effectiveSpeed, 11);
+  assert.equal(readout.speedOrderAnswer, 'Unavailable: effective Speed owner was not available.');
+  assert.equal(readout.rows[0].baseSpeed, 9);
+  assert.equal(readout.rows[0].modifier, '+2 party Speed buff');
+  assert.equal(readout.rows[0].effectiveSpeed, null);
   assert.equal(state.entities[0].stats.SPD, 9);
 });

@@ -9,6 +9,23 @@ const runtimeFunctionBankPath = path.join(__dirname, '..', 'web-runner', 'module
 const scriptsFunctionBankPath = path.join(__dirname, '..', 'Scripts', 'functionBank.js');
 const shadowModulePath = path.join(__dirname, '..', 'web-runner', 'systems', 'simulationCoreShadow.js');
 const rulesPath = path.join(__dirname, '..', 'web-runner', 'src', 'core', 'effectiveStatRules.mjs');
+const combatTurnQaReadoutPath = path.join(__dirname, '..', 'web-runner', 'systems', 'combatTurnQaReadout.mjs');
+
+function extractFunctionBody(src, functionName) {
+  const marker = `export function ${functionName}`;
+  const start = src.indexOf(marker);
+  assert.notEqual(start, -1, `${functionName} export exists`);
+  const open = src.indexOf('{', start);
+  assert.notEqual(open, -1, `${functionName} body opens`);
+  let depth = 0;
+  for (let idx = open; idx < src.length; idx += 1) {
+    const ch = src[idx];
+    if (ch === '{') depth += 1;
+    if (ch === '}') depth -= 1;
+    if (depth === 0) return src.slice(open + 1, idx);
+  }
+  assert.fail(`${functionName} body closes`);
+}
 
 function loadFunctionBank(modulePath, effectiveStatOwner) {
   const original = fs.readFileSync(modulePath, 'utf8');
@@ -109,6 +126,27 @@ test('simulation core module exposes a Rust-owned effective stat marker', () => 
   assert.match(shadowSrc, /simulationCore\.startup\.effectiveStatOwner/);
   assert.match(shadowSrc, /effectiveStatOwnerChecks/);
   assert.match(shadowSrc, /dataset\.simCoreShadowEffectiveStatOwner/);
+});
+
+test('turn-order rebuild diagnostics read effective Speed through the named owner', () => {
+  for (const modulePath of [runtimeFunctionBankPath, scriptsFunctionBankPath]) {
+    const src = fs.readFileSync(modulePath, 'utf8');
+    const body = extractFunctionBody(src, 'RebuildTurnOrderPreserveCurrent');
+
+    assert.match(body, /GetEffectiveStat\(ctx,\s*actor,\s*['"]SPD['"]\)/, `${modulePath} uses GetEffectiveStat for rebuild Speed logs`);
+    assert.doesNotMatch(body, /PartyBuff_SPD/, `${modulePath} does not re-read party Speed buffs in rebuild logs`);
+    assert.doesNotMatch(body, /EnemyDebuffs/, `${modulePath} does not re-read enemy Speed debuffs in rebuild logs`);
+    assert.doesNotMatch(body, /stats\?\.\s*SPD|actor\.SPD/, `${modulePath} does not recompute base Speed in rebuild logs`);
+  }
+});
+
+test('combat turn QA readout does not own effective Speed calculation', () => {
+  const src = fs.readFileSync(combatTurnQaReadoutPath, 'utf8');
+
+  assert.match(src, /callFunctionWithContext\(fnContext,\s*['"]GetEffectiveStat['"],\s*actor,\s*['"]SPD['"]\)/);
+  assert.doesNotMatch(src, /Math\.max\(0,\s*readBaseSpeed/);
+  assert.doesNotMatch(src, /readBaseSpeed\(actor\)\s*\+\s*Number\(modifier\.amount/);
+  assert.match(src, /Unavailable: effective Speed owner was not available\./);
 });
 
 test('effective stat packet follows Rust owner when Rust and JS disagree', async () => {
