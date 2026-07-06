@@ -1,0 +1,19 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "queuePartyDestinyHealText",
+        "TryPartyDestiny"
+      ],
+      "staged_blob": "5e5654b1ef6c25d3e2c00271991908eeda7a0c6a"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "queuePartyDestinyHealText",
+        "TryPartyDestiny"
+      ],
+      "staged_blob": "92333bc7591cf2ef4b5de9f92be95a9332fb4355"
+    }
+  },
+  "issue_id": "ORKA-8ww8"
+}

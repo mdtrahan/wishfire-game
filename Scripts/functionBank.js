@@ -2825,6 +2825,17 @@ function applyPartyDestinyActorHeal(ctx, actorUID, healAmount) {
   return { before, after: Number(actor.hp || 0), appliedHeal: Math.max(0, Number(actor.hp || 0) - before) };
 }
 
+function queuePartyDestinyHealText(ctx, actor, appliedHeal) {
+  const g = getGlobals(ctx);
+  const amount = Math.max(0, Math.floor(Number(appliedHeal || 0)));
+  if (!actor || actor.kind !== 'hero' || amount <= 0 || g.SpawnDamageText === 0) return;
+  const idx = Number(actor.heroIndex ?? -1);
+  const iconPos = Array.isArray(g.HeroIconPosByIndex) && idx >= 0 ? g.HeroIconPosByIndex[idx] : null;
+  const x = iconPos && Number.isFinite(Number(iconPos.x)) ? Number(iconPos.x) : Number(actor.x || 0);
+  const y = iconPos && Number.isFinite(Number(iconPos.y)) ? Number(iconPos.y) : Number(actor.y || 0);
+  SpawnDamageText(ctx, amount, x, y, 'heal', 'hero');
+}
+
 export function TryPartyDestiny(ctx, options = undefined) {
   const g = ensureSkillProcRuntime(ctx);
   const opts = options && typeof options === 'object' ? options : {};
@@ -2879,7 +2890,10 @@ export function TryPartyDestiny(ctx, options = undefined) {
   const defaultHeal = Math.max(1, Math.ceil((partyMaxHP || sourceMaxHP) * 2.5 / 100));
   const requestedHeal = Math.max(1, Math.floor(Number(opts.healAmount || defaultHeal)));
   const heal = applyPartyDestinyActorHeal(ctx, sourceUID, requestedHeal);
-  if (heal.appliedHeal > 0) g.PartyDestinyHeals = Math.max(0, Math.floor(Number(g.PartyDestinyHeals || 0))) + 1;
+  if (heal.appliedHeal > 0) {
+    g.PartyDestinyHeals = Math.max(0, Math.floor(Number(g.PartyDestinyHeals || 0))) + 1;
+    queuePartyDestinyHealText(ctx, source, heal.appliedHeal);
+  }
   g.LastPartyDestiny = { success: true, reason: heal.appliedHeal > 0 ? 'healed' : 'hp_full', sourceUID, targetUID: Number(opts.targetUID || 0), roll, requestedHeal, ...heal };
   g.PartyDestinyLastResult = String(g.LastPartyDestiny.reason || 'proc_success');
   if (heal.appliedHeal > 0) LogCombat(ctx, `Destiny restores ${heal.appliedHeal} HP to ${source.name || 'the hero'}.`);

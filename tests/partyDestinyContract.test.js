@@ -317,6 +317,42 @@ test('Destiny resolves from enemy damage receive seam after hero hit', () => {
   assert.equal(ctx.state.globals.LastPartyDestiny.reason, 'healed');
 });
 
+test('Destiny hero hit proc queues one heal bloom text on the attacking hero only', () => {
+  const mod = loadModule(runtimePath);
+  const ctx = makeContext({ active: true });
+  const supportHero = {
+    uid: 101,
+    kind: 'hero',
+    name: 'Kojonn',
+    baseHeroName: 'Kojonn',
+    heroIndex: 1,
+    hp: 40,
+    maxHP: 100,
+    x: 30,
+    y: 30,
+    stats: { ATK: 4, DEF: 0, MAG: 2, RES: 0, SPD: 1 },
+  };
+  ctx.state.entities.splice(1, 0, supportHero);
+  ctx.state.globals.PartyHPByIndex = [100, 40];
+  ctx.state.globals.PartyMaxHPByIndex = [100, 100];
+  ctx.state.globals.PartyHP = 140;
+  ctx.state.globals.PartyMaxHP = 200;
+  ctx.state.globals.HeroIconPosByIndex = [{ x: 101, y: 202 }, { x: 303, y: 404 }];
+  ctx.state.globals.RuntimeRandom = () => 0;
+
+  const appliedDamage = mod.ApplyDamageToTarget(ctx, 200, 5, { sourceUID: 101 });
+
+  assert.equal(appliedDamage, 5);
+  assert.equal(supportHero.hp, 45);
+  const healTexts = ctx.state.globals.DamageTexts.filter(text => text.kind === 'heal');
+  assert.equal(healTexts.length, 1);
+  assert.equal(healTexts[0].targetKind, 'hero');
+  assert.equal(healTexts[0].amount, 5);
+  assert.equal(healTexts[0].x, 303);
+  assert.equal(healTexts[0].y, 404);
+  assert.equal(ctx.state.globals.DamageTexts.some(text => text.kind === 'heal' && text.targetKind === 'bar'), false);
+});
+
 test('dev panel exposes Destiny trigger without inlining effect logic', () => {
   const runtimeSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devToolingRuntime.js'), 'utf8');
   const destinyTriggerStart = runtimeSrc.indexOf('devToolingDom.triggerDestiny.addEventListener');
