@@ -1,0 +1,56 @@
+{
+  "changed_functions": {
+    ".beads/hot-file-lock/ORKA-8ww8.prepared.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-8ww8.scope": [
+      "__MODULE__"
+    ],
+    ".beads/interactions.jsonl": [
+      "__MODULE__"
+    ],
+    "Scripts/functionBank.js": [
+      "queuePartyDestinyHealText",
+      "TryPartyDestiny"
+    ],
+    "tests/partyDestinyContract.test.js": [
+      "makeContext"
+    ],
+    "web-runner/modules/functionBank.js": [
+      "queuePartyDestinyHealText",
+      "TryPartyDestiny"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "Scripts/functionBank.js",
+      "web-runner/modules/functionBank.js"
+    ],
+    "staged_file_count": 6,
+    "staged_line_count": 88,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/hot-file-lock/ORKA-8ww8.prepared.json",
+    ".beads/hot-file-lock/ORKA-8ww8.scope",
+    ".beads/interactions.jsonl",
+    "Scripts/functionBank.js",
+    "tests/partyDestinyContract.test.js",
+    "web-runner/modules/functionBank.js"
+  ],
+  "issue_id": "ORKA-8ww8",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/hot-file-lock/ORKA-8ww8.prepared.json": "f31255ad28e01a96cff6a5aa20482e0491d46855",
+    ".beads/hot-file-lock/ORKA-8ww8.scope": "57b9d873437ff0ec5f89fae3d96480f3ecf8cdb9",
+    ".beads/interactions.jsonl": "9e3055f8ca05a14f388b855a2f14b23029f8ef5e",
+    "Scripts/functionBank.js": "5e5654b1ef6c25d3e2c00271991908eeda7a0c6a",
+    "tests/partyDestinyContract.test.js": "ef97c54e04da2749e099f60cd567202de1f4487d",
+    "web-runner/modules/functionBank.js": "92333bc7591cf2ef4b5de9f92be95a9332fb4355"
+  }
+}
