@@ -1,2 +1,3 @@
-Scripts/functionBank.js:queuePartyDestinyHealText,TryPartyDestiny
-web-runner/modules/functionBank.js:queuePartyDestinyHealText,TryPartyDestiny
+Scripts/functionBank.js:queuePartyDestinyHealText,__MODULE__
+web-runner/app.js:spawnPendingDamageNumbers
+web-runner/modules/functionBank.js:queuePartyDestinyHealText,__MODULE__

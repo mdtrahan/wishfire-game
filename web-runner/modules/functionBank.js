@@ -78,6 +78,7 @@ const POWER_AMP_OUTCOMES = [
 ];
 
 const GROW_SKILL_ID = 'party_grow';
+const PARTY_DESTINY_HEAL_TEXT_FONT_SCALE = 0.6;
 const GROW_TIERS = Object.freeze([
   Object.freeze({ tier: 1, powerAmpPct: 8, powerAmpMultiplier: 1.08, maxHpPenaltyPct: 8 }),
   Object.freeze({ tier: 2, powerAmpPct: 14, powerAmpMultiplier: 1.14, maxHpPenaltyPct: 14 }),
@@ -2876,7 +2877,13 @@ function queuePartyDestinyHealText(ctx, actor, appliedHeal) {
   const iconPos = Array.isArray(g.HeroIconPosByIndex) && idx >= 0 ? g.HeroIconPosByIndex[idx] : null;
   const x = iconPos && Number.isFinite(Number(iconPos.x)) ? Number(iconPos.x) : Number(actor.x || 0);
   const y = iconPos && Number.isFinite(Number(iconPos.y)) ? Number(iconPos.y) : Number(actor.y || 0);
+  const textIndex = Array.isArray(g.DamageTexts) ? g.DamageTexts.length : 0;
   SpawnDamageText(ctx, amount, x, y, 'heal', 'hero');
+  const text = Array.isArray(g.DamageTexts) ? g.DamageTexts[textIndex] : null;
+  if (text) {
+    text.presentationSource = 'party_destiny';
+    text.fontScale = PARTY_DESTINY_HEAL_TEXT_FONT_SCALE;
+  }
 }
 
 export function TryPartyDestiny(ctx, options = undefined) {

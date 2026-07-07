@@ -48,6 +48,7 @@ export function createDamageNumber({
   kind = 'damage',
   targetKind = null,
   isCrit = false,
+  fontScale = 1,
   zIndex = 4,
   container,
   angleDeg = 0,
@@ -116,9 +117,11 @@ export function createDamageNumber({
     && Number(partyMaxHP) > 0
     && Number(amount) > Number(partyMaxHP) * 0.5;
   const damageFontSize = 28;
-  const fontSize = isWeakDamage
+  const baseFontSize = isWeakDamage
     ? damageFontSize * 0.75
     : (isLargeDamage ? damageFontSize * 1.2 : damageFontSize);
+  const normalizedFontScale = Math.max(0.25, Math.min(2, Number(fontScale || 1)));
+  const fontSize = baseFontSize * normalizedFontScale;
   const approxWidth = Math.max(72, Math.ceil(value.length * 24 + 40));
   const approxHeight = 72;
   const numberText = document.createElement('canvas');

@@ -3,16 +3,22 @@
     "Scripts/functionBank.js": {
       "functions": [
         "queuePartyDestinyHealText",
-        "TryPartyDestiny"
+        "__MODULE__"
       ],
-      "staged_blob": "5e5654b1ef6c25d3e2c00271991908eeda7a0c6a"
+      "staged_blob": "4ed0d71b44176f6f69b1f5f9c4d18dde409e1949"
+    },
+    "web-runner/app.js": {
+      "functions": [
+        "spawnPendingDamageNumbers"
+      ],
+      "staged_blob": "c84dc0a84315be44d0ce8ebb2a7f01e2cd8d9ebf"
     },
     "web-runner/modules/functionBank.js": {
       "functions": [
         "queuePartyDestinyHealText",
-        "TryPartyDestiny"
+        "__MODULE__"
       ],
-      "staged_blob": "92333bc7591cf2ef4b5de9f92be95a9332fb4355"
+      "staged_blob": "0792fa8f7cafc76852168b635ec1aa4729608441"
     }
   },
   "issue_id": "ORKA-8ww8"

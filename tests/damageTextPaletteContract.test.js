@@ -76,6 +76,19 @@ test('damage floating text has explicit global recency layers across spawn and r
   assert.match(animationSrc, /wrapper\.style\.zIndex = String\(Math\.max\(4, Math\.floor\(Number\(zIndex \|\| 0\)\)\)\);/);
 });
 
+test('damage floating text supports source-specific font scaling in dom and canvas render paths', () => {
+  const appSrc = read('web-runner/app.js');
+  const renderSrc = read('web-runner/systems/renderRuntime.js');
+  const animationSrc = read('web-runner/src/core/damageNumberAnimation.mjs');
+
+  assert.match(appSrc, /fontScale: d\.fontScale,/);
+  assert.match(animationSrc, /fontScale = 1,/);
+  assert.match(animationSrc, /const normalizedFontScale = Math\.max\(0\.25, Math\.min\(2, Number\(fontScale \|\| 1\)\)\);/);
+  assert.match(animationSrc, /const fontSize = baseFontSize \* normalizedFontScale;/);
+  assert.match(renderSrc, /const normalizedFontScale = Math\.max\(0\.25, Math\.min\(2, Number\(d\.fontScale \|\| 1\)\)\);/);
+  assert.match(renderSrc, /const fontSize = Math\.max\(scaleFont\(fontBaseSize \* normalizedFontScale\), 8\);/);
+});
+
 test('dom floating numbers apply outlined gradients, glow, and squash-stretch for damage\/heal\/energy', () => {
   const src = read('web-runner/src/core/damageNumberAnimation.mjs');
   assert.match(src, /const isEnergy = normalizedKind === 'energy';/);
@@ -132,7 +145,8 @@ test('damage floating text disperses upward and damage tiers scale by amount', (
   assert.match(animationSrc, /const isWeakDamage = normalizedKind === 'damage' && Number\(amount\) < 10;/);
   assert.match(animationSrc, /const isLargeDamage = normalizedKind === 'damage'\s*\n\s*&& Number\(partyMaxHP\) > 0\s*\n\s*&& Number\(amount\) > Number\(partyMaxHP\) \* 0\.5;/);
   assert.match(animationSrc, /const damageFontSize = 28;/);
-  assert.match(animationSrc, /const fontSize = isWeakDamage\s*\n\s*\? damageFontSize \* 0\.75\s*\n\s*: \(isLargeDamage \? damageFontSize \* 1\.2 : damageFontSize\);/);
+  assert.match(animationSrc, /const baseFontSize = isWeakDamage\s*\n\s*\? damageFontSize \* 0\.75\s*\n\s*: \(isLargeDamage \? damageFontSize \* 1\.2 : damageFontSize\);/);
+  assert.match(animationSrc, /const fontSize = baseFontSize \* normalizedFontScale;/);
   assert.match(animationSrc, /const fallbackVector = deriveDamageFloatVector\(\{/);
   assert.match(animationSrc, /const floatX = Number\.isFinite\(Number\(floatVector && floatVector\.x\)\)/);
   assert.match(animationSrc, /const floatY = Number\.isFinite\(Number\(floatVector && floatVector\.y\)\)/);
@@ -141,7 +155,7 @@ test('damage floating text disperses upward and damage tiers scale by amount', (
   assert.match(renderSrc, /baseX \+ xOffset \+ floatOffset\.x/);
   assert.match(renderSrc, /baseY \+ floatOffset\.y/);
   assert.match(renderSrc, /const damageTextType = kind === 'heal' \|\| kind === 'energy' \? 'heal' : 'damage';/);
-  assert.match(renderSrc, /const isWeakDamage = damageTextType === 'damage' && Number\(d\.amount\) < 10;\\n\s*const isLargeDamage = damageTextType === 'damage' && Number\(d\.partyMaxHP\) > 0 && Number\(d\.amount\) > Number\(d\.partyMaxHP\) \* 0\.5;\\n\s*const fontBaseSize = isWeakDamage \? 22 \* 0\.75 : \(isLargeDamage \? 22 \* 1\.2 : \(d\.isCrit \? 26 : 22\)\);\\n\s*const fontSize = isWeakDamage \? scaleFont\(fontBaseSize\) : Math\.max\(scaleFont\(fontBaseSize\), 12\);/);
+  assert.match(renderSrc, /const isWeakDamage = damageTextType === 'damage' && Number\(d\.amount\) < 10;\\n\s*const isLargeDamage = damageTextType === 'damage' && Number\(d\.partyMaxHP\) > 0 && Number\(d\.amount\) > Number\(d\.partyMaxHP\) \* 0\.5;\\n\s*const fontBaseSize = isWeakDamage \? 22 \* 0\.75 : \(isLargeDamage \? 22 \* 1\.2 : \(d\.isCrit \? 26 : 22\)\);\\n\s*const normalizedFontScale = Math\.max\(0\.25, Math\.min\(2, Number\(d\.fontScale \|\| 1\)\)\);\\n\s*const fontSize = Math\.max\(scaleFont\(fontBaseSize \* normalizedFontScale\), 8\);/);
 });
 
 test('Kojonn dot paths explicitly arm dot floating-text kind before damage application', () => {
