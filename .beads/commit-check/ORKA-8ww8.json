@@ -1,33 +1,38 @@
 {
   "changed_functions": {
-    ".beads/hot-file-lock/ORKA-8ww8.prepared.json": [
-      "__MODULE__"
-    ],
-    ".beads/hot-file-lock/ORKA-8ww8.scope": [
-      "__MODULE__"
-    ],
-    ".beads/interactions.jsonl": [
-      "__MODULE__"
-    ],
     "Scripts/functionBank.js": [
       "queuePartyDestinyHealText",
-      "TryPartyDestiny"
+      "__MODULE__"
+    ],
+    "tests/damageTextPaletteContract.test.js": [
+      "read"
     ],
     "tests/partyDestinyContract.test.js": [
       "makeContext"
     ],
+    "web-runner/app.js": [
+      "spawnPendingDamageNumbers"
+    ],
     "web-runner/modules/functionBank.js": [
       "queuePartyDestinyHealText",
-      "TryPartyDestiny"
+      "__MODULE__"
+    ],
+    "web-runner/src/core/damageNumberAnimation.mjs": [
+      "createDamageNumber",
+      "cleanup"
+    ],
+    "web-runner/systems/renderRuntime.js": [
+      "renderRuntime"
     ]
   },
   "details": {
     "hot_files_touched": [
       "Scripts/functionBank.js",
+      "web-runner/app.js",
       "web-runner/modules/functionBank.js"
     ],
-    "staged_file_count": 6,
-    "staged_line_count": 88,
+    "staged_file_count": 7,
+    "staged_line_count": 38,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -35,22 +40,24 @@
     }
   },
   "files": [
-    ".beads/hot-file-lock/ORKA-8ww8.prepared.json",
-    ".beads/hot-file-lock/ORKA-8ww8.scope",
-    ".beads/interactions.jsonl",
     "Scripts/functionBank.js",
+    "tests/damageTextPaletteContract.test.js",
     "tests/partyDestinyContract.test.js",
-    "web-runner/modules/functionBank.js"
+    "web-runner/app.js",
+    "web-runner/modules/functionBank.js",
+    "web-runner/src/core/damageNumberAnimation.mjs",
+    "web-runner/systems/renderRuntime.js"
   ],
   "issue_id": "ORKA-8ww8",
   "out_of_scope_hot_file_touch": false,
   "significant": true,
   "staged_blobs": {
-    ".beads/hot-file-lock/ORKA-8ww8.prepared.json": "f31255ad28e01a96cff6a5aa20482e0491d46855",
-    ".beads/hot-file-lock/ORKA-8ww8.scope": "57b9d873437ff0ec5f89fae3d96480f3ecf8cdb9",
-    ".beads/interactions.jsonl": "9e3055f8ca05a14f388b855a2f14b23029f8ef5e",
-    "Scripts/functionBank.js": "5e5654b1ef6c25d3e2c00271991908eeda7a0c6a",
-    "tests/partyDestinyContract.test.js": "ef97c54e04da2749e099f60cd567202de1f4487d",
-    "web-runner/modules/functionBank.js": "92333bc7591cf2ef4b5de9f92be95a9332fb4355"
+    "Scripts/functionBank.js": "4ed0d71b44176f6f69b1f5f9c4d18dde409e1949",
+    "tests/damageTextPaletteContract.test.js": "98f1388c27351eda0a0b915fbc188102f63d224d",
+    "tests/partyDestinyContract.test.js": "411f8e7e62e0b0073bdcf8029a2bd5e95129dd85",
+    "web-runner/app.js": "c84dc0a84315be44d0ce8ebb2a7f01e2cd8d9ebf",
+    "web-runner/modules/functionBank.js": "0792fa8f7cafc76852168b635ec1aa4729608441",
+    "web-runner/src/core/damageNumberAnimation.mjs": "6a43fa0ba4778154d41f5388719bf3e22c16a4ea",
+    "web-runner/systems/renderRuntime.js": "87aab5243f601b0ac77ec22af09dfa4fba694ffe"
   }
 }

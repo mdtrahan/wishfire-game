@@ -351,6 +351,8 @@ test('Destiny hero hit proc queues one heal bloom text on the attacking hero onl
   assert.equal(healTexts[0].amount, 5);
   assert.equal(healTexts[0].x, 303);
   assert.equal(healTexts[0].y, 404);
+  assert.equal(healTexts[0].presentationSource, 'party_destiny');
+  assert.equal(healTexts[0].fontScale, 0.6);
   assert.equal(ctx.state.globals.DamageTexts.some(text => text.kind === 'heal' && text.targetKind === 'bar'), false);
 });
 

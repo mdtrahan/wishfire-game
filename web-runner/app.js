@@ -526,6 +526,7 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
       kind: domKind,
       targetKind: d.targetKind || null,
       isCrit,
+      fontScale: d.fontScale,
       floatAngleDeg: d.floatAngleDeg,
       zIndex: Number(d.zIndex || entry.index || 0),
       container: damageNumberLayer,
