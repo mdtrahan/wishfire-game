@@ -81,6 +81,46 @@ test('world map coordinates resolve deterministic cell bounds and centers', asyn
   assert.equal(getWorldMapCoordinateAtPoint(1549, 10), null);
 });
 
+test('world map zoom clamps requested cells to safe whole-cell centers', async () => {
+  const shared = await loadSharedCoordinates();
+  const browser = await loadBrowserCoordinates();
+  const viewWidth = 360;
+  const viewHeight = 640;
+  const zoomDrawH = viewHeight * (shared.DEFAULT_WORLD_MAP_GRID.rows / 9);
+  const zoomDrawW = zoomDrawH * (1338 / 1176);
+
+  const center = shared.resolveWorldMapSafeZoomCenter('H11', {
+    viewWidth,
+    viewHeight,
+    drawW: zoomDrawW,
+    drawH: zoomDrawH,
+  });
+  assert.equal(center.requestedCoordinate, 'H11');
+  assert.equal(center.centerCoordinate, 'H11');
+  assert.equal(center.clamped, false);
+  assert.ok(center.drawX <= 0 && center.drawY <= 0);
+  assert.ok(center.drawX + zoomDrawW >= viewWidth);
+  assert.ok(center.drawY + zoomDrawH >= viewHeight);
+
+  const corner = shared.resolveWorldMapSafeZoomCenter('A01', {
+    viewWidth,
+    viewHeight,
+    drawW: zoomDrawW,
+    drawH: zoomDrawH,
+  });
+  assert.equal(corner.requestedCoordinate, 'A01');
+  assert.equal(corner.centerCoordinate, 'B05');
+  assert.equal(corner.clamped, true);
+  assert.ok(corner.drawX <= 0 && corner.drawY <= 0);
+  assert.ok(corner.drawX + zoomDrawW >= viewWidth);
+  assert.ok(corner.drawY + zoomDrawH >= viewHeight);
+
+  assert.deepEqual(
+    browser.resolveWorldMapSafeZoomCenter('A01', { viewWidth, viewHeight, drawW: zoomDrawW, drawH: zoomDrawH }),
+    corner,
+  );
+});
+
 test('Genielands browser presentation asset keeps the canonical map frame', async () => {
   const { DEFAULT_WORLD_MAP_GRID } = await loadSharedCoordinates();
   const imagePath = path.join(repoRoot, 'web-runner', 'assets', 'images', 'genielands-geography.png');

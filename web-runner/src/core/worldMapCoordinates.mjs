@@ -18,6 +18,11 @@ function normalizeGrid(grid = DEFAULT_WORLD_MAP_GRID) {
   };
 }
 
+function clampNumber(value, min, max) {
+  if (max < min) return (min + max) / 2;
+  return Math.max(min, Math.min(max, value));
+}
+
 export function indexToColumnLabel(index) {
   let value = Math.floor(Number(index));
   if (!Number.isFinite(value) || value < 0) return null;
@@ -107,5 +112,51 @@ export function getWorldMapGridLines(grid = DEFAULT_WORLD_MAP_GRID) {
   return {
     vertical: Array.from({ length: spec.columns + 1 }, (_, index) => index * cellWidth),
     horizontal: Array.from({ length: spec.rows + 1 }, (_, index) => index * cellHeight),
+  };
+}
+
+export function resolveWorldMapSafeZoomCenter(coordinate, options = {}) {
+  const spec = normalizeGrid(options.grid || DEFAULT_WORLD_MAP_GRID);
+  const requested = getWorldMapCellBounds(coordinate, spec);
+  if (!requested) return null;
+
+  const viewWidth = Math.max(1, Number(options.viewWidth || 0));
+  const viewHeight = Math.max(1, Number(options.viewHeight || 0));
+  const drawW = Math.max(viewWidth, Number(options.drawW || 0));
+  const drawH = Math.max(viewHeight, Number(options.drawH || 0));
+  const xScale = drawW / spec.width;
+  const yScale = drawH / spec.height;
+  const cellW = spec.width / spec.columns;
+  const cellH = spec.height / spec.rows;
+  const halfWorldW = viewWidth / Math.max(1, xScale) / 2;
+  const halfWorldH = viewHeight / Math.max(1, yScale) / 2;
+  const minCenterX = halfWorldW;
+  const maxCenterX = spec.width - halfWorldW;
+  const minCenterY = halfWorldH;
+  const maxCenterY = spec.height - halfWorldH;
+  const epsilon = 0.000001;
+  const minColumnIndex = Math.max(0, Math.ceil((minCenterX / cellW) - 0.5 - epsilon));
+  const maxColumnIndex = Math.min(spec.columns - 1, Math.floor((maxCenterX / cellW) - 0.5 + epsilon));
+  const minRowIndex = Math.max(0, Math.ceil((minCenterY / cellH) - 0.5 - epsilon));
+  const maxRowIndex = Math.min(spec.rows - 1, Math.floor((maxCenterY / cellH) - 0.5 + epsilon));
+  const centerColumnIndex = Math.round(clampNumber(requested.columnIndex, minColumnIndex, maxColumnIndex));
+  const centerRowIndex = Math.round(clampNumber(requested.rowIndex, minRowIndex, maxRowIndex));
+  const centerCoordinate = `${indexToColumnLabel(centerColumnIndex)}${String(centerRowIndex + 1).padStart(spec.rowPad, '0')}`;
+  const center = getWorldMapCellBounds(centerCoordinate, spec);
+  const centerX = center ? center.centerX : clampNumber(requested.centerX, minCenterX, maxCenterX);
+  const centerY = center ? center.centerY : clampNumber(requested.centerY, minCenterY, maxCenterY);
+  const drawX = clampNumber((viewWidth / 2) - (centerX * xScale), viewWidth - drawW, 0);
+  const drawY = clampNumber((viewHeight / 2) - (centerY * yScale), viewHeight - drawH, 0);
+
+  return {
+    requestedCoordinate: requested.coordinate,
+    centerCoordinate,
+    clamped: centerCoordinate !== requested.coordinate,
+    centerX,
+    centerY,
+    drawX,
+    drawY,
+    safeColumnRange: { min: minColumnIndex, max: maxColumnIndex },
+    safeRowRange: { min: minRowIndex, max: maxRowIndex },
   };
 }

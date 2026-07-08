@@ -5,6 +5,7 @@ import {
   getWorldMapCellBounds,
   getWorldMapGridLines,
   indexToColumnLabel,
+  resolveWorldMapSafeZoomCenter,
 } from '../src/core/worldMapCoordinates.mjs';
 import {
   WORLD_MAP_CAVE_IMAGE_SIZE,
@@ -32,6 +33,8 @@ import {
   WORLD_MAP_TOWN_INSTANCES,
   resolveWorldMapTownPoint,
 } from '../src/core/worldMapTownInstances.mjs';
+
+const WORLD_MAP_SAFE_ZOOM_VISIBLE_CELLS = 9;
 
 function drawLine(ctx, fromX, fromY, toX, toY) {
   ctx.beginPath();
@@ -483,19 +486,32 @@ export function renderMap(ctx, gameState, uiState, mapLayoutState, dims) {
     if (!img) return;
     const w = img.width * scale;
     const h = img.height * scale;
+    const zoomActive = Boolean(mapLayoutState?.zoom?.active && mapLayoutState?.zoom?.centerCoordinate);
     const halfSpillX = Math.max(0, (w - viewWidth) / 2);
-    const minPanX = -halfSpillX;
-    const maxPanX = halfSpillX;
+    const minPanX = zoomActive ? 0 : -halfSpillX;
+    const maxPanX = zoomActive ? 0 : halfSpillX;
     panBounds = { minX: minPanX, maxX: maxPanX };
-    clampedPanX = Math.max(minPanX, Math.min(maxPanX, panX));
-    const x = ((viewWidth - w) / 2) + clampedPanX;
-    const y = 0;
+    clampedPanX = zoomActive ? 0 : Math.max(minPanX, Math.min(maxPanX, panX));
+    const zoomCoordinate = zoomActive
+      ? (mapLayoutState.zoom.requestedCoordinate || mapLayoutState.zoom.centerCoordinate)
+      : null;
+    const zoomCenter = zoomActive
+      ? resolveWorldMapSafeZoomCenter(zoomCoordinate, {
+        viewWidth,
+        viewHeight,
+        drawW: w,
+        drawH: h,
+        grid: DEFAULT_WORLD_MAP_GRID,
+      })
+      : null;
+    const x = zoomCenter ? zoomCenter.drawX : (((viewWidth - w) / 2) + clampedPanX);
+    const y = zoomCenter ? zoomCenter.drawY : 0;
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.drawImage(img, x, y, w, h);
     ctx.restore();
     lastRender = {
-      fitMode: 'vertical',
+      fitMode: zoomCenter ? 'safe-zoom' : 'vertical',
       viewWidth,
       viewHeight,
       drawW: w,
@@ -505,12 +521,21 @@ export function renderMap(ctx, gameState, uiState, mapLayoutState, dims) {
       panX: clampedPanX,
       panY: 0,
       panBounds: { minX: minPanX, maxX: maxPanX },
+      zoom: zoomCenter ? {
+        active: true,
+        requestedCoordinate: mapLayoutState.zoom.requestedCoordinate || null,
+        centerCoordinate: zoomCenter.centerCoordinate,
+        clamped: zoomCenter.clamped,
+      } : { active: false },
       towerOverlayRendered: false,
     };
   };
 
   const verticalFitScale = mapBackgroundImage ? (viewHeight / mapBackgroundImage.height) : 1;
-  drawParallax(mapBackgroundImage, verticalFitScale, 0.95);
+  const zoomScale = Boolean(mapLayoutState?.zoom?.active)
+    ? DEFAULT_WORLD_MAP_GRID.rows / WORLD_MAP_SAFE_ZOOM_VISIBLE_CELLS
+    : 1;
+  drawParallax(mapBackgroundImage, verticalFitScale * zoomScale, 0.95);
   if (lastRender) {
     const xScale = lastRender.drawW / DEFAULT_WORLD_MAP_GRID.width;
     const yScale = lastRender.drawH / DEFAULT_WORLD_MAP_GRID.height;

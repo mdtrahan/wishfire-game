@@ -39,3 +39,29 @@ test('map runtime owns coordinate overlay toggle and rendering outside app shell
   assert.doesNotMatch(appSrc, /showCoordinateGrid/);
   assert.doesNotMatch(appSrc, /getCoordinateGridDevOverlayEnabled/);
 });
+
+test('map runtime owns safe tap zoom outside app shell', () => {
+  const appSrc = readRepoFile('web-runner', 'app.js');
+  const stateSrc = readRepoFile('web-runner', 'state', 'mapLayoutState.js');
+  const inputSrc = readRepoFile('web-runner', 'systems', 'inputHandling.js');
+  const pointerSrc = readRepoFile('web-runner', 'systems', 'pointerRoutingShell.js');
+  const renderMapSrc = readRepoFile('web-runner', 'systems', 'renderMap.js');
+
+  assert.match(stateSrc, /zoom:\s*\{/);
+  assert.match(stateSrc, /active:\s*false/);
+  assert.match(stateSrc, /centerCoordinate:\s*null/);
+  assert.match(inputSrc, /handleMapZoomTap/);
+  assert.match(inputSrc, /MAP_TAP_MOVE_THRESHOLD/);
+  assert.match(inputSrc, /ev\?\.type === 'pointerup'/);
+  assert.match(inputSrc, /if \(isPointerUp && moved <= MAP_TAP_MOVE_THRESHOLD\)/);
+  assert.match(inputSrc, /const zoomActive = Boolean\(mapLayoutState\.getMapLayoutState\(\)\.zoom\?\.active\);/);
+  assert.match(inputSrc, /if \(zoomActive\) \{/);
+  assert.doesNotMatch(inputSrc, /if \(mapState\.zoom\?\.active\) return false;/);
+  assert.doesNotMatch(inputSrc, /if \(mapLayoutState\.getMapLayoutState\(\)\.zoom\?\.active\) return;/);
+  assert.doesNotMatch(pointerSrc, /handleMapZoomTap/);
+  assert.match(renderMapSrc, /resolveWorldMapSafeZoomCenter/);
+  assert.match(renderMapSrc, /mapLayoutState\.zoom\.requestedCoordinate \|\| mapLayoutState\.zoom\.centerCoordinate/);
+  assert.doesNotMatch(renderMapSrc, /resolveWorldMapSafeZoomCenter\(mapLayoutState\.zoom\.centerCoordinate/);
+  assert.match(renderMapSrc, /mapLayoutState\?\.zoom\?\.active/);
+  assert.doesNotMatch(appSrc, /handleMapZoomTap/);
+});
