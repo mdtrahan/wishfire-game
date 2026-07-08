@@ -1,0 +1,129 @@
+{
+  "changed_functions": {
+    ".beads/hot-file-lock/ORKA-4yrd.prepared.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-4yrd.scope": [
+      "__MODULE__"
+    ],
+    ".beads/interactions.jsonl": [
+      "__MODULE__"
+    ],
+    "governance/planning/genielands-world-map-coordinate-grid.md": [
+      "__MODULE__"
+    ],
+    "src/core/worldMapCoordinates.mjs": [
+      "normalizeGrid",
+      "indexToColumnLabel",
+      "columnLabelToIndex",
+      "normalizeWorldMapCoordinate",
+      "getWorldMapCell",
+      "getWorldMapCellBounds",
+      "getWorldMapCoordinateAtPoint",
+      "getWorldMapGridLines",
+      "__MODULE__"
+    ],
+    "tests/worldMapCoordinateContract.test.js": [
+      "assertClose",
+      "readPngHeader",
+      "__MODULE__"
+    ],
+    "tests/worldMapRuntimeContract.test.js": [
+      "readRepoFile",
+      "__MODULE__"
+    ],
+    "web-runner/app.js": [
+      "bottom"
+    ],
+    "web-runner/assets/images/genielands-geography.png": [],
+    "web-runner/assets/images/genielands-geography.svg": [
+      "__MODULE__"
+    ],
+    "web-runner/src/core/worldMapCoordinates.mjs": [
+      "normalizeGrid",
+      "indexToColumnLabel",
+      "columnLabelToIndex",
+      "normalizeWorldMapCoordinate",
+      "getWorldMapCell",
+      "getWorldMapCellBounds",
+      "getWorldMapCoordinateAtPoint",
+      "getWorldMapGridLines",
+      "__MODULE__"
+    ],
+    "web-runner/state/mapLayoutState.js": [
+      "__MODULE__"
+    ],
+    "web-runner/systems/inputHandling.js": [
+      "isEditableDomTarget",
+      "isMapCoordinateGridDevOverlayEnabled",
+      "handleMapCoordinateGridKeydown",
+      "handleGridToggle"
+    ],
+    "web-runner/systems/renderMap.js": [
+      "drawLine",
+      "drawWorldMapCoordinateGrid",
+      "x",
+      "centerWorldX",
+      "centerWorldY",
+      "__MODULE__"
+    ],
+    "web-runner/systems/runtimeVisualAssetLoader.js": [
+      "gemVisualLoads"
+    ],
+    "web-runner/systems/surfaceRenderRouter.js": [
+      "createSurfaceRenderRouter",
+      "draw"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "web-runner/app.js"
+    ],
+    "staged_file_count": 16,
+    "staged_line_count": 642,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/hot-file-lock/ORKA-4yrd.prepared.json",
+    ".beads/hot-file-lock/ORKA-4yrd.scope",
+    ".beads/interactions.jsonl",
+    "governance/planning/genielands-world-map-coordinate-grid.md",
+    "src/core/worldMapCoordinates.mjs",
+    "tests/worldMapCoordinateContract.test.js",
+    "tests/worldMapRuntimeContract.test.js",
+    "web-runner/app.js",
+    "web-runner/assets/images/genielands-geography.png",
+    "web-runner/assets/images/genielands-geography.svg",
+    "web-runner/src/core/worldMapCoordinates.mjs",
+    "web-runner/state/mapLayoutState.js",
+    "web-runner/systems/inputHandling.js",
+    "web-runner/systems/renderMap.js",
+    "web-runner/systems/runtimeVisualAssetLoader.js",
+    "web-runner/systems/surfaceRenderRouter.js"
+  ],
+  "issue_id": "ORKA-4yrd",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/hot-file-lock/ORKA-4yrd.prepared.json": "e9d982e59be196a593f38d3f27069f7c22ef35f2",
+    ".beads/hot-file-lock/ORKA-4yrd.scope": "206130167bb3e97f283c93cb84ba109ed5f2bd00",
+    ".beads/interactions.jsonl": "6b121b85e1c8ab26c37c2761e868dfded91c816d",
+    "governance/planning/genielands-world-map-coordinate-grid.md": "ff810620c9a990662a5261aef818e37e3ea9f9f7",
+    "src/core/worldMapCoordinates.mjs": "31ac1eb35c8bc63ecb4e8f0505877309c156cac6",
+    "tests/worldMapCoordinateContract.test.js": "5f304560f595f840fdb23ef9b24d4e70dd3abb00",
+    "tests/worldMapRuntimeContract.test.js": "9fc71ffdcccf1a650dd3f6d620e0e9d7f850194a",
+    "web-runner/app.js": "8b8206171a8b9175daa860b8299ca51cce460cfa",
+    "web-runner/assets/images/genielands-geography.png": "13a42b152956c081f7a0f35a8c63f6ce7a79c233",
+    "web-runner/assets/images/genielands-geography.svg": "f777e069ae3ce32f64844ceb7ddacc53ca6b4df1",
+    "web-runner/src/core/worldMapCoordinates.mjs": "31ac1eb35c8bc63ecb4e8f0505877309c156cac6",
+    "web-runner/state/mapLayoutState.js": "41961fbc6eada5c0918c47a661b0bb0cf23b6f36",
+    "web-runner/systems/inputHandling.js": "505c6cee8b1b31b4e2ae1bc0a587f0921bb6cb51",
+    "web-runner/systems/renderMap.js": "8eaec78e47b0fd0b79699bf88a6b213ece312367",
+    "web-runner/systems/runtimeVisualAssetLoader.js": "f9c388c903648e47c1a5f93f167ddd51a293c53e",
+    "web-runner/systems/surfaceRenderRouter.js": "185772a3331d782a52eb49ae9df64d465d0a43f2"
+  }
+}

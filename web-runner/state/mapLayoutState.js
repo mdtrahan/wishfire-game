@@ -9,6 +9,11 @@ export const mapLayoutState = {
     lastY: 0,
     moved: 0,
   },
+  zoom: {
+    active: false,
+    requestedCoordinate: null,
+    centerCoordinate: null,
+  },
   closeHit: null,
   tomesLocaleButton: { x: 0, y: 0, w: 146, h: 36 },
   tomesLocaleHit: null,
@@ -22,6 +27,7 @@ export const mapLayoutState = {
   homesteadLocaleHit: null,
   warMeter: 0.64,
   encounterNode: { id: 'clouds-alpha', locale: 'clouds', faction: 'wishless' },
+  showCoordinateGrid: false,
   lastRender: null,
 };
 
@@ -47,4 +53,16 @@ export function setMapLayoutField(key, value) {
 
 export function setMapDragState(patch) {
   Object.assign(mapLayoutState.drag, patch);
+}
+
+export function setMapZoomState(patch) {
+  Object.assign(mapLayoutState.zoom, patch);
+}
+
+export function resetMapZoomState() {
+  Object.assign(mapLayoutState.zoom, {
+    active: false,
+    requestedCoordinate: null,
+    centerCoordinate: null,
+  });
 }

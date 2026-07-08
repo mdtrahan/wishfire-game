@@ -1,0 +1,57 @@
+{
+  "changed_functions": {
+    ".beads/interactions.jsonl": [
+      "__MODULE__"
+    ],
+    "ai-memory/insights.md": [
+      "__MODULE__"
+    ],
+    "governance/planning/genielands-world-map-coordinate-grid.md": [
+      "__MODULE__"
+    ],
+    "tests/worldMapRuntimeContract.test.js": [
+      "readRepoFile"
+    ],
+    "web-runner/app.js": [],
+    "web-runner/systems/inputHandling.js": [],
+    "web-runner/systems/renderMap.js": [
+      "centerWorldY"
+    ],
+    "web-runner/systems/surfaceRenderRouter.js": []
+  },
+  "details": {
+    "hot_files_touched": [
+      "web-runner/app.js"
+    ],
+    "staged_file_count": 8,
+    "staged_line_count": 14,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/interactions.jsonl",
+    "ai-memory/insights.md",
+    "governance/planning/genielands-world-map-coordinate-grid.md",
+    "tests/worldMapRuntimeContract.test.js",
+    "web-runner/app.js",
+    "web-runner/systems/inputHandling.js",
+    "web-runner/systems/renderMap.js",
+    "web-runner/systems/surfaceRenderRouter.js"
+  ],
+  "issue_id": "ORKA-1dpt",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/interactions.jsonl": "2f752185dfe688671e91778bd936063fec5b36fc",
+    "ai-memory/insights.md": "8764955a80d60ddf894bc86e6ed8e6e2da025352",
+    "governance/planning/genielands-world-map-coordinate-grid.md": "c8cc1a1a9f8ef7a6cff62a4145c6206080309dc5",
+    "tests/worldMapRuntimeContract.test.js": "b7f7e95b920b17d5495c9c231607f124efab9ad2",
+    "web-runner/app.js": "8e3c15d88789178fdc6a15c026b4216adbb5666e",
+    "web-runner/systems/inputHandling.js": "199cd664bbd3e6d97d7ccaeb7c84be5c5987aa89",
+    "web-runner/systems/renderMap.js": "a975cf48f694a52ddd33b4381ad7dafa974bc6d9",
+    "web-runner/systems/surfaceRenderRouter.js": "4af5588a7fffbef426fe393291bc0331d2a3662d"
+  }
+}

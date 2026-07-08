@@ -1,3 +1,12 @@
+import {
+  DYNAMIC_INITIATIVE_AUTHORITY_BATTLE_ID,
+  DYNAMIC_INITIATIVE_AUTHORITY_EXPERIMENT_ID,
+  DYNAMIC_INITIATIVE_AUTHORITY_MAX_ACTIONS,
+  DYNAMIC_INITIATIVE_AUTHORITY_PROOF_DAMAGE_STAT,
+  DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP,
+  DYNAMIC_INITIATIVE_AUTHORITY_SEED,
+} from '../src/core/dynamicInitiativeAuthorityExperiment.mjs';
+
 export function registerDevBrowserTestHooks({
   state,
   gameState,
@@ -319,6 +328,156 @@ export function registerDevBrowserTestHooks({
     runDevAutoplayUntilDepleted() {
       return runDevAutoplayUntilDepleted();
     },
+    async setupDynamicInitiativeAuthorityScenario() {
+      const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+      const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function')
+        ? performance.now()
+        : Date.now();
+      const waitForStartupReady = async () => {
+        const deadline = now() + 15000;
+        while (now() < deadline) {
+          const load = gameState.startupLoad || {};
+          if (!load.active && (load.phase === 'ready' || load.phase === 'runtime')) return true;
+          if (load.phase === 'error') return false;
+          await sleep(100);
+        }
+        return false;
+      };
+      const waitForLayout = async (layoutId) => {
+        const deadline = now() + 5000;
+        while (now() < deadline) {
+          if (!layoutState || typeof layoutState.getActiveLayoutId !== 'function') return true;
+          if (layoutState.getActiveLayoutId() === layoutId) return true;
+          await sleep(50);
+        }
+        return false;
+      };
+      if (!(await waitForStartupReady())) {
+        return {
+          ok: false,
+          reason: 'startup_not_ready',
+          startupLoad: { ...(gameState.startupLoad || {}) },
+        };
+      }
+      if (layoutState && typeof layoutState.getActiveLayoutId === 'function') {
+        if (layoutState.getActiveLayoutId() === 'storyMock') {
+          await layoutState.requestLayoutChange('town', 'dynamic-initiative-authority-qa-scenario-story');
+          await waitForLayout('town');
+        }
+        if (layoutState.getActiveLayoutId() !== 'combat') {
+          await layoutState.requestLayoutChange('combat', 'dynamic-initiative-authority-qa-scenario-town', { freshStart: true });
+          await waitForLayout('combat');
+        }
+      }
+      const proofHeroSlots = ['Falie', 'Huun', 'Runa', 'Kojonn'];
+      const proofEnemySlots = ['Skeleton', 'Gobloc', 'Troll'];
+      await applyDevToolingConfig({
+        heroSlots: proofHeroSlots,
+        enemySlots: proofEnemySlots,
+        boardGemColor: 1,
+        combatSpeed: 1,
+      }, { closeModal: false });
+      const g = state.globals;
+      const authorityEnemyNames = new Set(proofEnemySlots);
+      state.entities = state.entities.filter((entity) => (
+        !entity
+        || entity.kind !== 'enemy'
+        || authorityEnemyNames.has(String(entity.name || '').trim())
+      ));
+      state.entities
+        .filter((entity) => entity && (entity.kind === 'hero' || entity.kind === 'enemy'))
+        .forEach((actor) => {
+          actor.hp = DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP;
+          actor.maxHP = DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP;
+          actor.isAlive = true;
+          actor.pendingDeath = false;
+          actor.deathPending = false;
+          actor.disabled = false;
+          actor.stunned = false;
+          actor.stopped = false;
+          actor.paralyzed = false;
+          actor.ableToAct = true;
+          actor.stats = actor.stats && typeof actor.stats === 'object' ? actor.stats : {};
+          actor.stats.ATK = DYNAMIC_INITIATIVE_AUTHORITY_PROOF_DAMAGE_STAT;
+          actor.stats.MAG = DYNAMIC_INITIATIVE_AUTHORITY_PROOF_DAMAGE_STAT;
+          actor.ATK = DYNAMIC_INITIATIVE_AUTHORITY_PROOF_DAMAGE_STAT;
+          actor.MAG = DYNAMIC_INITIATIVE_AUTHORITY_PROOF_DAMAGE_STAT;
+        });
+      state.entities
+        .filter((entity) => entity && entity.kind === 'enemy')
+        .forEach((enemy, slotIndex) => {
+          enemy.slotIndex = slotIndex;
+          enemy.isAlive = Number(enemy.hp || 0) > 0;
+        });
+      const authorityEnemies = state.entities
+        .filter((entity) => entity && entity.kind === 'enemy')
+        .sort((left, right) => Number(left.slotIndex || 0) - Number(right.slotIndex || 0));
+      g.DynamicInitiativeAuthorityEnabled = 1;
+      callFunctionWithContext(fnContext, 'InitPartyHPFromHeroes');
+      callFunctionWithContext(fnContext, 'UpdateEnemyHPUI');
+      callFunctionWithContext(fnContext, 'Update_Bars');
+      g.DynamicInitiativeAuthorityExperimentId = DYNAMIC_INITIATIVE_AUTHORITY_EXPERIMENT_ID;
+      g.DynamicInitiativeAuthoritySeed = DYNAMIC_INITIATIVE_AUTHORITY_SEED;
+      g.DynamicInitiativeAuthorityBattleId = DYNAMIC_INITIATIVE_AUTHORITY_BATTLE_ID;
+      g.DynamicInitiativeAuthorityMaxActions = DYNAMIC_INITIATIVE_AUTHORITY_MAX_ACTIONS;
+      g.DynamicInitiativeAuthorityEncounterLocked = 0;
+      g.DynamicInitiativeAuthority = null;
+      g.DynamicInitiativeAuthorityLastTraceText = '';
+      g.BattleId = DYNAMIC_INITIATIVE_AUTHORITY_BATTLE_ID;
+      g.EncounterSeed = DYNAMIC_INITIATIVE_AUTHORITY_SEED;
+      g.EncounterSeedExplicit = 1;
+      g.EncounterMaxSlots = proofEnemySlots.length;
+      g.DevEnemySlots = [...proofEnemySlots];
+      g.EnemyIDs = [
+        Number(authorityEnemies[0]?.uid || 0),
+        Number(authorityEnemies[1]?.uid || 0),
+        Number(authorityEnemies[2]?.uid || 0),
+      ];
+      g.EnemySlots = [
+        Number(authorityEnemies[0]?.uid || 0) > 0 ? Number(authorityEnemies[0].uid || 0) + 1 : 0,
+        Number(authorityEnemies[1]?.uid || 0) > 0 ? Number(authorityEnemies[1].uid || 0) + 1 : 0,
+        Number(authorityEnemies[2]?.uid || 0) > 0 ? Number(authorityEnemies[2].uid || 0) + 1 : 0,
+      ];
+      g.PendingEnemyRespawnSlots = [0, 0, 0];
+      g.PendingEnemyRespawnTimerActive = 0;
+      if (g.DevToolingConfig && typeof g.DevToolingConfig === 'object') {
+        g.DevToolingConfig.heroSlots = [...proofHeroSlots];
+        g.DevToolingConfig.enemySlots = [...proofEnemySlots];
+      }
+      g.TurnOrderArray = Array.isArray(g.TurnOrderArray)
+        ? g.TurnOrderArray.filter((slot) => state.entities.some((entity) => Number(entity?.uid || 0) === Number(slot?.uid || 0)))
+        : [];
+      g.BattleStartActive = 0;
+      g.BattleStartShown = 0;
+      g.BattleStartClearedForSession = 1;
+      g.BattleStartProcessStarted = 0;
+      g.PendingSkillID = '';
+      g.PendingActor = 0;
+      g.SelectedEnemyUID = 0;
+      g.SelectedEnemyUIDOwner = 0;
+      g.CanPickGems = true;
+      g.IsPlayerBusy = 0;
+      g.BoardFillActive = 0;
+      g.ActionInProgress = 0;
+      g.DeferAdvance = 0;
+      g.AdvanceAfterAction = 0;
+      g.TurnPhase = 0;
+      g.PartyBuff_SPD = 0;
+      g.EnemyDebuffs = {};
+      g.DynamicInitiativeAuthorityQAScenario = {
+        id: 'dynamic-initiative-authority',
+        experimentId: g.DynamicInitiativeAuthorityExperimentId,
+        battleId: g.BattleId,
+        seed: g.DynamicInitiativeAuthoritySeed,
+        heroSlots: [...proofHeroSlots],
+        enemySlots: [...proofEnemySlots],
+        proofHp: DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP,
+        proofDamageStat: DYNAMIC_INITIATIVE_AUTHORITY_PROOF_DAMAGE_STAT,
+        expectedFlow: 'one hero opener, then visible Speed-driven interleaving: Skeleton 22, Huun 20, Gobloc 17, Kojonn 14, Runa 11, Falie 9, Troll 5',
+      };
+      drawFrame();
+      return { ok: true, ...g.DynamicInitiativeAuthorityQAScenario };
+    },
     async setupChainStrikeIIScenario() {
       const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
       const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function')
@@ -525,6 +684,9 @@ export function registerDevBrowserTestHooks({
   try {
     const params = new URLSearchParams(window.location.search);
     const scenario = String(params.get('scenario') || params.get('qa') || '').trim().toLowerCase();
+    if (scenario === 'dynamic-initiative-authority' || scenario === 'dynamic-initiative') {
+      void window.__codexGame.setupDynamicInitiativeAuthorityScenario();
+    }
     if (scenario === 'chain-strike-ii' || scenario === 'chainstrike2') {
       void window.__codexGame.setupChainStrikeIIScenario();
     }

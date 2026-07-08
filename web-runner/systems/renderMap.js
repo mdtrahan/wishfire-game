@@ -1,11 +1,476 @@
 import * as renderSystem from './renderSystem.js';
+import {
+  DEFAULT_WORLD_MAP_GRID,
+  getWorldMapCoordinateAtPoint,
+  getWorldMapCellBounds,
+  getWorldMapGridLines,
+  indexToColumnLabel,
+  resolveWorldMapSafeZoomCenter,
+} from '../src/core/worldMapCoordinates.mjs';
+import {
+  WORLD_MAP_CAVE_IMAGE_SIZE,
+  WORLD_MAP_CAVE_INSTANCES,
+} from '../src/core/worldMapCaveInstances.mjs';
+import {
+  getWorldMapVisibleIconInstances,
+} from '../src/core/worldMapIconVisibility.mjs';
+import {
+  WORLD_MAP_PORTAL_GLOW,
+  WORLD_MAP_PORTAL_IMAGE_HEIGHT,
+  WORLD_MAP_PORTAL_IMAGE_WIDTH,
+  WORLD_MAP_PORTAL_INSTANCES,
+  WORLD_MAP_PORTAL_SHADOW,
+} from '../src/core/worldMapPortalInstances.mjs';
+import {
+  WORLD_MAP_TOWER_IMAGE_HEIGHT,
+  WORLD_MAP_TOWER_IMAGE_WIDTH,
+  WORLD_MAP_TOWER_INSTANCES,
+  WORLD_MAP_TOWER_RENDER_OFFSET_Y,
+  resolveWorldMapTowerPoint,
+} from '../src/core/worldMapTowerInstances.mjs';
+import {
+  WORLD_MAP_TOWN_IMAGE_SIZE,
+  WORLD_MAP_TOWN_INSTANCES,
+  resolveWorldMapTownPoint,
+} from '../src/core/worldMapTownInstances.mjs';
+
+const WORLD_MAP_SAFE_ZOOM_VISIBLE_CELLS = 9;
+
+function drawLine(ctx, fromX, fromY, toX, toY) {
+  ctx.beginPath();
+  ctx.moveTo(fromX, fromY);
+  ctx.lineTo(toX, toY);
+  ctx.stroke();
+}
+
+export function drawWorldMapCoordinateGrid(ctx, lastRender, options = {}) {
+  if (!options.visible || !lastRender) return { visible: false };
+  const grid = options.grid || DEFAULT_WORLD_MAP_GRID;
+  const xScale = lastRender.drawW / grid.width;
+  const yScale = lastRender.drawH / grid.height;
+  const lines = getWorldMapGridLines(grid);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(lastRender.drawX, lastRender.drawY, lastRender.drawW, lastRender.drawH);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.34)';
+  ctx.lineWidth = 1;
+  for (const worldX of lines.vertical) {
+    const x = lastRender.drawX + worldX * xScale;
+    drawLine(ctx, x, lastRender.drawY, x, lastRender.drawY + lastRender.drawH);
+  }
+  for (const worldY of lines.horizontal) {
+    const y = lastRender.drawY + worldY * yScale;
+    drawLine(ctx, lastRender.drawX, y, lastRender.drawX + lastRender.drawW, y);
+  }
+
+  const cellW = lastRender.drawW / grid.columns;
+  const cellH = lastRender.drawH / grid.rows;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.68)';
+  ctx.font = `${Math.max(8, Math.min(12, Math.round(cellH * 0.34)))}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (let columnIndex = 0; columnIndex < grid.columns; columnIndex += 1) {
+    const column = indexToColumnLabel(columnIndex);
+    for (let rowIndex = 0; rowIndex < grid.rows; rowIndex += 1) {
+      const coordinate = `${column}${String(rowIndex + 1).padStart(grid.rowPad, '0')}`;
+      const x = lastRender.drawX + columnIndex * cellW + cellW / 2;
+      const y = lastRender.drawY + rowIndex * cellH + cellH / 2;
+      ctx.fillText(coordinate, x, y);
+    }
+  }
+  ctx.restore();
+
+  return {
+    visible: true,
+    gridId: grid.id,
+    columns: grid.columns,
+    rows: grid.rows,
+  };
+}
+
+export function drawWorldMapCaves(ctx, lastRender, caveImage, options = {}) {
+  if (!lastRender || !caveImage) {
+    return { count: 0, instances: [] };
+  }
+  const grid = options.grid || DEFAULT_WORLD_MAP_GRID;
+  const imageSize = Math.max(1, Number(options.imageSize || WORLD_MAP_CAVE_IMAGE_SIZE));
+  const caves = getWorldMapVisibleIconInstances(
+    Array.isArray(options.instances) ? options.instances : WORLD_MAP_CAVE_INSTANCES,
+  );
+  const xScale = lastRender.drawW / grid.width;
+  const yScale = lastRender.drawH / grid.height;
+  const rendered = [];
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(lastRender.drawX, lastRender.drawY, lastRender.drawW, lastRender.drawH);
+  ctx.clip();
+  for (const cave of caves) {
+    const bounds = getWorldMapCellBounds(cave?.coordinate, grid);
+    if (!bounds) continue;
+    const centerX = lastRender.drawX + bounds.centerX * xScale;
+    const centerY = lastRender.drawY + bounds.centerY * yScale;
+    const drawX = centerX - imageSize / 2;
+    const drawY = centerY - imageSize / 2;
+    ctx.drawImage(caveImage, drawX, drawY, imageSize, imageSize);
+    rendered.push({
+      id: cave.id,
+      coordinate: bounds.coordinate,
+      centerX,
+      centerY,
+      drawX,
+      drawY,
+      drawW: imageSize,
+      drawH: imageSize,
+      visible: true,
+    });
+  }
+  ctx.restore();
+
+  return {
+    count: rendered.length,
+    imageSize,
+    instances: rendered,
+  };
+}
+
+function getWorldMapRenderTimeSec(dims = {}) {
+  const explicit = Number(dims.nowSec);
+  if (Number.isFinite(explicit)) return explicit;
+  if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
+    return performance.now() / 1000;
+  }
+  return 0;
+}
+
+function getPortalGlowPulse(nowSec, glow = WORLD_MAP_PORTAL_GLOW) {
+  const periodSec = Math.max(0.1, Number(glow?.periodSec || WORLD_MAP_PORTAL_GLOW.periodSec));
+  const radians = (Number(nowSec || 0) / periodSec) * Math.PI * 2;
+  return (Math.sin(radians - (Math.PI / 2)) + 1) / 2;
+}
+
+function lerp(a, b, t) {
+  return a + ((b - a) * t);
+}
+
+function drawWorldMapPortalGlow(ctx, centerX, centerY, imageWidth, imageHeight, pulse, glow) {
+  const alpha = lerp(
+    Number(glow.alphaMin || 0),
+    Number(glow.alphaMax || 0),
+    pulse,
+  );
+  const coreRadius = imageWidth * lerp(
+    Number(glow.coreRadiusMinScale || 0.25),
+    Number(glow.coreRadiusMaxScale || 0.4),
+    pulse,
+  );
+  const burstRadius = imageWidth * lerp(
+    Number(glow.burstRadiusMinScale || 0.6),
+    Number(glow.burstRadiusMaxScale || 0.9),
+    pulse,
+  );
+  const rayAlpha = lerp(
+    Number(glow.rayAlphaMin || 0),
+    Number(glow.rayAlphaMax || 0),
+    pulse,
+  );
+  const rayLengthPulse = lerp(
+    Number(glow.rayLengthMinScale || 0.35),
+    Number(glow.rayLengthMaxScale || 0.6),
+    pulse,
+  );
+  const rays = Array.isArray(glow.rays) && glow.rays.length ? glow.rays : [];
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, burstRadius);
+  gradient.addColorStop(0, `rgba(244, 255, 255, ${alpha.toFixed(3)})`);
+  gradient.addColorStop(0.36, `rgba(105, 223, 255, ${(alpha * 0.54).toFixed(3)})`);
+  gradient.addColorStop(1, 'rgba(54, 167, 255, 0)');
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, burstRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.lineCap = 'round';
+  for (const ray of rays) {
+    const angle = (Number(ray.angleDeg || 0) * Math.PI) / 180;
+    const negativeLength = imageWidth * Number(ray.negativeLengthScale || 0.2) * rayLengthPulse;
+    const positiveLength = imageWidth * Number(ray.positiveLengthScale || 0.2) * rayLengthPulse;
+    const startX = centerX - Math.cos(angle) * negativeLength;
+    const startY = centerY - Math.sin(angle) * negativeLength;
+    const endX = centerX + Math.cos(angle) * positiveLength;
+    const endY = centerY + Math.sin(angle) * positiveLength;
+    const scaledAlpha = rayAlpha * Number(ray.alphaScale || 1);
+    const rayGradient = ctx.createLinearGradient(startX, startY, endX, endY);
+    rayGradient.addColorStop(0, 'rgba(72, 182, 255, 0)');
+    rayGradient.addColorStop(0.42, `rgba(118, 226, 255, ${(scaledAlpha * 0.42).toFixed(3)})`);
+    rayGradient.addColorStop(0.5, `rgba(252, 255, 255, ${scaledAlpha.toFixed(3)})`);
+    rayGradient.addColorStop(0.58, `rgba(118, 226, 255, ${(scaledAlpha * 0.42).toFixed(3)})`);
+    rayGradient.addColorStop(1, 'rgba(72, 182, 255, 0)');
+    ctx.lineWidth = lerp(Number(ray.widthMin || 1), Number(ray.widthMax || 1), pulse);
+    ctx.strokeStyle = rayGradient;
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  return {
+    pulse,
+    alpha,
+    coreRadius,
+    burstRadius,
+    rayAlpha,
+    rayLengthPulse,
+    rayCount: rays.length,
+  };
+}
+
+function drawWorldMapPortalInnerBurst(ctx, centerX, centerY, imageWidth, pulse, glow) {
+  const innerAlpha = lerp(
+    Number(glow.innerAlphaMin || 0),
+    Number(glow.innerAlphaMax || 0),
+    pulse,
+  );
+  const innerRadius = imageWidth * lerp(
+    Number(glow.innerRadiusMinScale || 0.14),
+    Number(glow.innerRadiusMaxScale || 0.24),
+    pulse,
+  );
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, innerRadius);
+  gradient.addColorStop(0, `rgba(255, 255, 255, ${innerAlpha.toFixed(3)})`);
+  gradient.addColorStop(0.46, `rgba(180, 242, 255, ${(innerAlpha * 0.64).toFixed(3)})`);
+  gradient.addColorStop(1, 'rgba(104, 215, 255, 0)');
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, innerRadius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  return {
+    innerAlpha,
+    innerRadius,
+  };
+}
+
+export function drawWorldMapPortals(ctx, lastRender, portalImage, options = {}) {
+  if (!lastRender || !portalImage) {
+    return { count: 0, instances: [] };
+  }
+  const grid = options.grid || DEFAULT_WORLD_MAP_GRID;
+  const imageWidth = Math.max(1, Number(options.imageWidth || WORLD_MAP_PORTAL_IMAGE_WIDTH));
+  const imageHeight = Math.max(1, Number(options.imageHeight || WORLD_MAP_PORTAL_IMAGE_HEIGHT));
+  const glow = options.glow || WORLD_MAP_PORTAL_GLOW;
+  const shadow = options.shadow || WORLD_MAP_PORTAL_SHADOW;
+  const pulse = getPortalGlowPulse(options.nowSec, glow);
+  const portals = getWorldMapVisibleIconInstances(
+    Array.isArray(options.instances) ? options.instances : WORLD_MAP_PORTAL_INSTANCES,
+  );
+  const xScale = lastRender.drawW / grid.width;
+  const yScale = lastRender.drawH / grid.height;
+  const rendered = [];
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(lastRender.drawX, lastRender.drawY, lastRender.drawW, lastRender.drawH);
+  ctx.clip();
+  for (const portal of portals) {
+    const bounds = getWorldMapCellBounds(portal?.coordinate, grid);
+    if (!bounds) continue;
+    const centerX = lastRender.drawX + bounds.centerX * xScale;
+    const centerY = lastRender.drawY + bounds.centerY * yScale;
+    const drawX = centerX - imageWidth / 2;
+    const drawY = centerY - imageHeight / 2;
+    if (shadow?.floorColor) {
+      const floorBlur = Math.max(0, Number(shadow.floorBlur || 0));
+      ctx.save();
+      ctx.filter = floorBlur > 0 ? `blur(${floorBlur}px)` : 'none';
+      ctx.fillStyle = shadow.floorColor;
+      ctx.beginPath();
+      ctx.ellipse(
+        centerX,
+        centerY + Number(shadow.floorOffsetY || 0),
+        Math.max(1, Number(shadow.floorWidth || 1)) / 2,
+        Math.max(1, Number(shadow.floorHeight || 1)) / 2,
+        0,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+      ctx.restore();
+    }
+    const glowRender = drawWorldMapPortalGlow(ctx, centerX, centerY, imageWidth, imageHeight, pulse, glow);
+    ctx.save();
+    ctx.shadowColor = shadow?.color || 'transparent';
+    ctx.shadowBlur = Math.max(0, Number(shadow?.blur || 0));
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = Number(shadow?.offsetY || 0);
+    ctx.drawImage(portalImage, drawX, drawY, imageWidth, imageHeight);
+    ctx.restore();
+    const innerBurst = drawWorldMapPortalInnerBurst(ctx, centerX, centerY, imageWidth, pulse, glow);
+    rendered.push({
+      id: portal.id,
+      coordinate: bounds.coordinate,
+      centerX,
+      centerY,
+      drawX,
+      drawY,
+      drawW: imageWidth,
+      drawH: imageHeight,
+      visible: true,
+      glow: { ...glowRender, ...innerBurst },
+      shadow,
+    });
+  }
+  ctx.restore();
+
+  return {
+    count: rendered.length,
+    imageWidth,
+    imageHeight,
+    instances: rendered,
+  };
+}
+
+function getWorldMapTowerImage(towerImages, variant) {
+  if (!towerImages) return null;
+  if (typeof towerImages === 'object' && !('width' in towerImages)) {
+    return towerImages[variant] || null;
+  }
+  return towerImages;
+}
+
+function getWorldMapTownImage(townImages, variant) {
+  if (!townImages) return null;
+  if (typeof townImages === 'object' && !('width' in townImages)) {
+    return townImages[variant] || null;
+  }
+  return townImages;
+}
+
+export function drawWorldMapTowns(ctx, lastRender, townImages, options = {}) {
+  if (!lastRender || !townImages) {
+    return { count: 0, instances: [] };
+  }
+  const grid = options.grid || DEFAULT_WORLD_MAP_GRID;
+  const imageSize = Math.max(1, Number(options.imageSize || WORLD_MAP_TOWN_IMAGE_SIZE));
+  const towns = getWorldMapVisibleIconInstances(
+    Array.isArray(options.instances) ? options.instances : WORLD_MAP_TOWN_INSTANCES,
+  );
+  const xScale = lastRender.drawW / grid.width;
+  const yScale = lastRender.drawH / grid.height;
+  const rendered = [];
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(lastRender.drawX, lastRender.drawY, lastRender.drawW, lastRender.drawH);
+  ctx.clip();
+  for (const town of towns) {
+    const point = resolveWorldMapTownPoint(town, grid);
+    if (!point) continue;
+    const townImage = getWorldMapTownImage(townImages, point.variant);
+    if (!townImage) continue;
+    const centerX = lastRender.drawX + point.centerX * xScale + point.offsetX;
+    const centerY = lastRender.drawY + point.centerY * yScale + point.offsetY;
+    const drawX = centerX - imageSize / 2;
+    const drawY = centerY - imageSize / 2;
+    ctx.drawImage(townImage, drawX, drawY, imageSize, imageSize);
+    rendered.push({
+      id: town.id,
+      coordinate: point.coordinate,
+      anchorCoordinates: point.anchorCoordinates,
+      placement: point.placement,
+      variant: point.variant,
+      visible: point.visible,
+      centerX,
+      centerY,
+      drawX,
+      drawY,
+      drawW: imageSize,
+      drawH: imageSize,
+      offsetX: point.offsetX,
+      offsetY: point.offsetY,
+    });
+  }
+  ctx.restore();
+
+  return {
+    count: rendered.length,
+    imageSize,
+    instances: rendered,
+  };
+}
+
+export function drawWorldMapTowers(ctx, lastRender, towerImages, options = {}) {
+  if (!lastRender || !towerImages) {
+    return { count: 0, instances: [] };
+  }
+  const grid = options.grid || DEFAULT_WORLD_MAP_GRID;
+  const imageWidth = Math.max(1, Number(options.imageWidth || WORLD_MAP_TOWER_IMAGE_WIDTH));
+  const imageHeight = Math.max(1, Number(options.imageHeight || WORLD_MAP_TOWER_IMAGE_HEIGHT));
+  const towers = getWorldMapVisibleIconInstances(
+    Array.isArray(options.instances) ? options.instances : WORLD_MAP_TOWER_INSTANCES,
+  );
+  const xScale = lastRender.drawW / grid.width;
+  const yScale = lastRender.drawH / grid.height;
+  const rendered = [];
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(lastRender.drawX, lastRender.drawY, lastRender.drawW, lastRender.drawH);
+  ctx.clip();
+  for (const tower of towers) {
+    const point = resolveWorldMapTowerPoint(tower, grid);
+    if (!point) continue;
+    const towerImage = getWorldMapTowerImage(towerImages, point.variant);
+    if (!towerImage) continue;
+    const centerX = lastRender.drawX + point.centerX * xScale;
+    const centerY = lastRender.drawY + point.centerY * yScale + WORLD_MAP_TOWER_RENDER_OFFSET_Y;
+    const drawX = centerX - imageWidth / 2;
+    const drawY = centerY - imageHeight / 2;
+    ctx.drawImage(towerImage, drawX, drawY, imageWidth, imageHeight);
+    rendered.push({
+      id: tower.id,
+      coordinate: point.coordinate,
+      anchorCoordinates: point.anchorCoordinates,
+      placement: point.placement,
+      variant: point.variant,
+      visible: point.visible,
+      centerX,
+      centerY,
+      drawX,
+      drawY,
+      drawW: imageWidth,
+      drawH: imageHeight,
+    });
+  }
+  ctx.restore();
+
+  return {
+    count: rendered.length,
+    imageWidth,
+    imageHeight,
+    instances: rendered,
+  };
+}
 
 export function renderMap(ctx, gameState, uiState, mapLayoutState, dims) {
   const viewWidth = Number(dims?.viewWidth || 0);
   const viewHeight = Number(dims?.viewHeight || 0);
   const panX = Number(mapLayoutState?.panX || 0);
-  const warMeter = Math.max(0, Math.min(1, Number(mapLayoutState?.warMeter || 0)));
   const mapBackgroundImage = dims?.mapBackgroundImage || null;
+  const mapCaveImage = dims?.mapCaveImage || null;
+  const mapPortalImage = dims?.mapPortalImage || null;
+  const mapTowerImages = dims?.mapTowerImages || null;
+  const mapTownImages = dims?.mapTownImages || null;
+  const nowSec = getWorldMapRenderTimeSec(dims);
   const heroLayoutSpec = dims?.heroLayoutSpec || null;
   const closeWinOvalImage = dims?.closeWinOvalImage || null;
 
@@ -21,19 +486,32 @@ export function renderMap(ctx, gameState, uiState, mapLayoutState, dims) {
     if (!img) return;
     const w = img.width * scale;
     const h = img.height * scale;
+    const zoomActive = Boolean(mapLayoutState?.zoom?.active && mapLayoutState?.zoom?.centerCoordinate);
     const halfSpillX = Math.max(0, (w - viewWidth) / 2);
-    const minPanX = -halfSpillX;
-    const maxPanX = halfSpillX;
+    const minPanX = zoomActive ? 0 : -halfSpillX;
+    const maxPanX = zoomActive ? 0 : halfSpillX;
     panBounds = { minX: minPanX, maxX: maxPanX };
-    clampedPanX = Math.max(minPanX, Math.min(maxPanX, panX));
-    const x = ((viewWidth - w) / 2) + clampedPanX;
-    const y = 0;
+    clampedPanX = zoomActive ? 0 : Math.max(minPanX, Math.min(maxPanX, panX));
+    const zoomCoordinate = zoomActive
+      ? (mapLayoutState.zoom.requestedCoordinate || mapLayoutState.zoom.centerCoordinate)
+      : null;
+    const zoomCenter = zoomActive
+      ? resolveWorldMapSafeZoomCenter(zoomCoordinate, {
+        viewWidth,
+        viewHeight,
+        drawW: w,
+        drawH: h,
+        grid: DEFAULT_WORLD_MAP_GRID,
+      })
+      : null;
+    const x = zoomCenter ? zoomCenter.drawX : (((viewWidth - w) / 2) + clampedPanX);
+    const y = zoomCenter ? zoomCenter.drawY : 0;
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.drawImage(img, x, y, w, h);
     ctx.restore();
     lastRender = {
-      fitMode: 'vertical',
+      fitMode: zoomCenter ? 'safe-zoom' : 'vertical',
       viewWidth,
       viewHeight,
       drawW: w,
@@ -43,29 +521,45 @@ export function renderMap(ctx, gameState, uiState, mapLayoutState, dims) {
       panX: clampedPanX,
       panY: 0,
       panBounds: { minX: minPanX, maxX: maxPanX },
+      zoom: zoomCenter ? {
+        active: true,
+        requestedCoordinate: mapLayoutState.zoom.requestedCoordinate || null,
+        centerCoordinate: zoomCenter.centerCoordinate,
+        clamped: zoomCenter.clamped,
+      } : { active: false },
       towerOverlayRendered: false,
     };
   };
 
   const verticalFitScale = mapBackgroundImage ? (viewHeight / mapBackgroundImage.height) : 1;
-  drawParallax(mapBackgroundImage, verticalFitScale, 0.95);
-
-  const meterPad = 14;
-  const meterW = Math.max(180, viewWidth - (meterPad * 2));
-  const meterH = 16;
-  const meterX = meterPad;
-  const meterY = 14;
-  ctx.fillStyle = '#0f1722';
-  ctx.fillRect(meterX, meterY, meterW, meterH);
-  ctx.fillStyle = '#cf3d2e';
-  ctx.fillRect(meterX + 2, meterY + 2, Math.max(0, (meterW - 4) * warMeter), meterH - 4);
-  ctx.strokeStyle = '#d6dbe3';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(meterX, meterY, meterW, meterH);
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '600 12px Arial';
-  ctx.textAlign = 'left';
-  ctx.fillText(`War Meter ${Math.round(warMeter * 100)}%`, meterX + 6, meterY + 12);
+  const zoomScale = Boolean(mapLayoutState?.zoom?.active)
+    ? DEFAULT_WORLD_MAP_GRID.rows / WORLD_MAP_SAFE_ZOOM_VISIBLE_CELLS
+    : 1;
+  drawParallax(mapBackgroundImage, verticalFitScale * zoomScale, 0.95);
+  if (lastRender) {
+    const xScale = lastRender.drawW / DEFAULT_WORLD_MAP_GRID.width;
+    const yScale = lastRender.drawH / DEFAULT_WORLD_MAP_GRID.height;
+    const centerWorldX = (viewWidth / 2 - lastRender.drawX) / xScale;
+    const centerWorldY = (viewHeight / 2 - lastRender.drawY) / yScale;
+    lastRender.centerCoordinate = getWorldMapCoordinateAtPoint(centerWorldX, centerWorldY);
+    lastRender.caves = drawWorldMapCaves(ctx, lastRender, mapCaveImage, {
+      grid: DEFAULT_WORLD_MAP_GRID,
+    });
+    lastRender.towns = drawWorldMapTowns(ctx, lastRender, mapTownImages, {
+      grid: DEFAULT_WORLD_MAP_GRID,
+    });
+    lastRender.portals = drawWorldMapPortals(ctx, lastRender, mapPortalImage, {
+      grid: DEFAULT_WORLD_MAP_GRID,
+      nowSec,
+    });
+    lastRender.towers = drawWorldMapTowers(ctx, lastRender, mapTowerImages, {
+      grid: DEFAULT_WORLD_MAP_GRID,
+    });
+    lastRender.gridOverlay = drawWorldMapCoordinateGrid(ctx, lastRender, {
+      visible: Boolean(mapLayoutState?.showCoordinateGrid),
+      grid: DEFAULT_WORLD_MAP_GRID,
+    });
+  }
 
   const closeHit = renderSystem.getHeroStyleCloseRect(viewWidth, viewHeight, heroLayoutSpec);
   renderSystem.drawHeroStyleCloseControl(ctx, closeHit, closeWinOvalImage, '#111');

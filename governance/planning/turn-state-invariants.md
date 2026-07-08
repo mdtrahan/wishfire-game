@@ -19,6 +19,10 @@ Canonical implementation and validation:
 - Shared scheduler rules: `src/core/schedulerRules.mjs` and `web-runner/src/core/schedulerRules.mjs`
 - Contract: `tests/speedInitiativeSchedulerContract.test.js`
 
+Current implementation status:
+- `governance/planning/combat-initiative-paths.md` labels the current live browser path, dormant time-initiative branch, shared scheduler rules, SimulationCore/shadow owners, test fixtures, and active experiment lanes.
+- If live code and this product contract disagree, treat the disagreement as implementation drift and route behavior changes through a separate initiative bead. Do not use this invariant document alone as permission to flip initiative authority.
+
 The older queue-oriented suspend/resume invariant notes below are historical context for layout transition safety. They must not be read as permission to bypass time-initiative repeat guards, current-actor anchoring, or actor eligibility checks.
 
 ## Historical Suspend/Resume Notes

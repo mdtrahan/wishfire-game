@@ -1,0 +1,17 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "prevOrder"
+      ],
+      "staged_blob": "6314cbfae4d869c36083178aa09d8687eecf00c0"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "prevOrder"
+      ],
+      "staged_blob": "444c6dcdee30b95b7b308d5577ffe8cd6dba78c3"
+    }
+  },
+  "issue_id": "ORKA-wstw"
+}

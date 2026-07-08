@@ -1,0 +1,70 @@
+{
+  "changed_functions": {
+    "src/core/worldMapCoordinates.mjs": [
+      "clampNumber",
+      "getWorldMapGridLines",
+      "resolveWorldMapSafeZoomCenter"
+    ],
+    "tests/worldMapCoordinateContract.test.js": [
+      "readPngHeader"
+    ],
+    "tests/worldMapRuntimeContract.test.js": [
+      "readRepoFile"
+    ],
+    "web-runner/src/core/worldMapCoordinates.mjs": [
+      "clampNumber",
+      "getWorldMapGridLines",
+      "resolveWorldMapSafeZoomCenter"
+    ],
+    "web-runner/state/mapLayoutState.js": [
+      "setMapDragState",
+      "setMapZoomState",
+      "resetMapZoomState",
+      "__MODULE__"
+    ],
+    "web-runner/systems/inputHandling.js": [
+      "getMapCoordinateFromCanvasPoint",
+      "worldX",
+      "worldY",
+      "handleMapZoomTap",
+      "handleMapPointerMove",
+      "finishMapDrag",
+      "__MODULE__"
+    ],
+    "web-runner/systems/renderMap.js": [
+      "drawParallax",
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 7,
+    "staged_line_count": 291,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    "src/core/worldMapCoordinates.mjs",
+    "tests/worldMapCoordinateContract.test.js",
+    "tests/worldMapRuntimeContract.test.js",
+    "web-runner/src/core/worldMapCoordinates.mjs",
+    "web-runner/state/mapLayoutState.js",
+    "web-runner/systems/inputHandling.js",
+    "web-runner/systems/renderMap.js"
+  ],
+  "issue_id": "ORKA-bn9",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    "src/core/worldMapCoordinates.mjs": "5c3d547bd2048c11f5f9f55c5d919b2809bfc39a",
+    "tests/worldMapCoordinateContract.test.js": "52bb1fae2796c7eaad1aaa8190aa94a87ed29314",
+    "tests/worldMapRuntimeContract.test.js": "77b97ec129af661a94d32e7ee8b347f27a910ca6",
+    "web-runner/src/core/worldMapCoordinates.mjs": "5c3d547bd2048c11f5f9f55c5d919b2809bfc39a",
+    "web-runner/state/mapLayoutState.js": "fbff80ca7eef1f804777fc6aafb43d92fa3dc179",
+    "web-runner/systems/inputHandling.js": "e10a5f788a8f7244d951dee97a270852ad0e1a9c",
+    "web-runner/systems/renderMap.js": "d0113f41f646c3a001a4c8cc6670c6823bcb5af2"
+  }
+}

@@ -41,6 +41,10 @@ export async function loadRuntimeVisualAssets({
   const buffIconFrameImages = {};
   const debuffIconImages = {};
   let mapBackgroundImage = null;
+  let mapCaveImage = null;
+  let mapPortalImage = null;
+  const mapTowerImages = {};
+  const mapTownImages = {};
   const heroCapsuleImages = {};
   let plusIconImage = null;
   let minusIconImage = null;
@@ -151,7 +155,18 @@ export async function loadRuntimeVisualAssets({
       gemVisualLoads,
       (async () => { heroSelectorImage = await loadImage(assetUrl('images/h_selector-animation 1-000.png')); })(),
       (async () => { images.SkillArcanePulse = await loadImage(assetUrl('images/skill_arcane_pulse_96x96.png')); })(),
-      (async () => { mapBackgroundImage = await loadImage(assetUrl('images/map-layout.png')); })(),
+      (async () => { mapBackgroundImage = await loadImage(assetUrl('images/genielands-geography.png')); })(),
+      (async () => { mapCaveImage = await loadImage(assetUrl('images/map_cave_46.png')); })(),
+      (async () => { mapPortalImage = await loadImage(assetUrl('images/map_warp_portal_46x52.png')); })(),
+      (async () => { mapTowerImages.red = await loadImage(assetUrl('images/map_tower_spire_red_46x54.png')); })(),
+      (async () => { mapTowerImages.gold = await loadImage(assetUrl('images/map_tower_spire_gold_46x54.png')); })(),
+      (async () => { mapTowerImages.purple = await loadImage(assetUrl('images/map_tower_spire_purple_46x54.png')); })(),
+      (async () => { mapTowerImages.green = await loadImage(assetUrl('images/map_tower_spire_green_46x54.png')); })(),
+      (async () => { mapTowerImages.blue = await loadImage(assetUrl('images/map_tower_spire_46x54.png')); })(),
+      (async () => { mapTownImages.town = await loadImage(assetUrl('images/map_town_town_46.png')); })(),
+      (async () => { mapTownImages.castle = await loadImage(assetUrl('images/map_town_castle_46.png')); })(),
+      (async () => { mapTownImages.moor = await loadImage(assetUrl('images/map_town_moor_46.png')); })(),
+      (async () => { mapTownImages.cape = await loadImage(assetUrl('images/map_town_cape_46.png')); })(),
       (async () => { plusIconImage = await plusPromise; })(),
       (async () => { minusIconImage = await minusPromise; })(),
       (async () => { heroBackArrowImage = await loadImage(FIGMA_HERO_BACK_URL); })(),
@@ -218,6 +233,10 @@ export async function loadRuntimeVisualAssets({
     buffIconFrameImages,
     debuffIconImages,
     mapBackgroundImage,
+    mapCaveImage,
+    mapPortalImage,
+    mapTowerImages,
+    mapTownImages,
     heroCapsuleImages,
     plusIconImage,
     minusIconImage,

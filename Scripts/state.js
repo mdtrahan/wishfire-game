@@ -109,6 +109,7 @@ export const state = {
     PendingDeaths: {},
     RoundJitter: 0,
     UnisonTolerance: 0.5,
+    // Legacy compatibility field; current double-attack and extra-turn logic must not read it.
     SpeedDoubleRatio: 2.0,
     DamageTextDurationSec: 1.35,
     InitiativeMode: 'time',
@@ -120,6 +121,14 @@ export const state = {
     InitiativeMaxLoops: 500,
     BattleStartRemaining: {},
     BattleStartResolved: 0,
+    DynamicInitiativeAuthorityEnabled: 0,
+    DynamicInitiativeAuthorityExperimentId: '',
+    DynamicInitiativeAuthoritySeed: 0,
+    DynamicInitiativeAuthorityBattleId: 0,
+    DynamicInitiativeAuthorityEncounterLocked: 0,
+    DynamicInitiativeAuthorityMaxActions: 64,
+    DynamicInitiativeAuthority: null,
+    DynamicInitiativeAuthorityLastTraceText: '',
 
     // Enemy/turn order arrays
     EnemyArray: [],
