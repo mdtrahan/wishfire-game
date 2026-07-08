@@ -71,8 +71,9 @@ test('deferred advance loop owns the single AdvanceTurn call after yellow comple
   assert.match(src, /if \(\s*state\.globals\.GamePhase === 'RUNTIME'[\s\S]*state\.globals\.DeferAdvance[\s\S]*callFunctionWithContext\(fnContext, 'AdvanceTurn'\);/);
   const gameplayAdvance = src.match(/console\.log\(`\[TURN\] DeferAdvance -> AdvanceTurn[\s\S]*?callFunctionWithContext\(fnContext, 'AdvanceTurn'\);/);
   assert.ok(gameplayAdvance, 'expected deferred gameplay handoff to remain the production AdvanceTurn path');
-  const devAutoplayAdvance = src.match(/async function autoPlayTurnsDev[\s\S]*?callFunctionWithContext\(fnContext, 'AdvanceTurn'\);/);
-  assert.ok(devAutoplayAdvance, 'expected dev autoplay helper to be the only non-gameplay AdvanceTurn caller');
+  const devAutoplayBlock = src.match(/async function autoPlayTurnsDev[\s\S]*?\n  \}/);
+  assert.ok(devAutoplayBlock, 'expected dev autoplay helper to remain defined');
+  assert.doesNotMatch(devAutoplayBlock[0], /callFunctionWithContext\(fnContext, 'AdvanceTurn'\);/);
   const yellowFinishBlock = src.match(/if \(!casino\.current && casino\.index >= casino\.queue\.length\) \{[\s\S]*?traceTask015YellowAnimation\('yellow-sequence-finished', \{[\s\S]*?\n\s*}\n\s*}/);
   assert.ok(yellowFinishBlock, 'expected to isolate the yellow completion block');
   assert.doesNotMatch(yellowFinishBlock[0], /AdvanceTurn/);

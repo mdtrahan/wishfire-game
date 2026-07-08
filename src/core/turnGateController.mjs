@@ -88,7 +88,6 @@ export function derivePresentationTurnBarrier({
       !globals.DeferAdvance &&
       !globals.PendingSkillID &&
       !globals.PendingSuperGemAction &&
-      !globals.IsPlayerBusy &&
       !globals.ActionInProgress &&
       Number(globals.TurnPhase || 0) === 0
     ),

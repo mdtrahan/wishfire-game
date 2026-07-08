@@ -163,6 +163,36 @@ test('dev tooling restart helper owns restart button labels and reset delegation
   assert.match(runtimeSrc, /window\.location\.reload\(\)/);
 });
 
+test('dev browser hooks expose an explicit dynamic initiative authority QA scenario', () => {
+  const devHooksPath = path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js');
+  const src = fs.readFileSync(devHooksPath, 'utf8');
+
+  assert.match(src, /setupDynamicInitiativeAuthorityScenario/);
+  assert.match(src, /DYNAMIC_INITIATIVE_AUTHORITY_EXPERIMENT_ID/);
+  assert.match(src, /DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP/);
+  assert.match(src, /DYNAMIC_INITIATIVE_AUTHORITY_PROOF_DAMAGE_STAT/);
+  assert.match(src, /DynamicInitiativeAuthorityEnabled\s*=\s*1/);
+  assert.match(src, /DynamicInitiativeAuthorityExperimentId\s*=\s*DYNAMIC_INITIATIVE_AUTHORITY_EXPERIMENT_ID/);
+  assert.match(src, /DynamicInitiativeAuthoritySeed\s*=\s*DYNAMIC_INITIATIVE_AUTHORITY_SEED/);
+  assert.match(src, /DynamicInitiativeAuthorityBattleId\s*=\s*DYNAMIC_INITIATIVE_AUTHORITY_BATTLE_ID/);
+  assert.match(src, /BattleStartClearedForSession\s*=\s*1/);
+  assert.match(src, /CanPickGems\s*=\s*true/);
+  assert.match(src, /const proofHeroSlots = \['Falie',\s*'Huun',\s*'Runa',\s*'Kojonn'\]/);
+  assert.match(src, /const proofEnemySlots = \['Skeleton',\s*'Gobloc',\s*'Troll'\]/);
+  assert.match(src, /heroSlots: proofHeroSlots/);
+  assert.match(src, /enemySlots: proofEnemySlots/);
+  assert.match(src, /boardGemColor:\s*1/);
+  assert.match(src, /actor\.hp = DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP/);
+  assert.match(src, /actor\.stats\.ATK = DYNAMIC_INITIATIVE_AUTHORITY_PROOF_DAMAGE_STAT/);
+  assert.match(src, /const authorityEnemies = state\.entities[\s\S]*\.filter\(\(entity\) => entity && entity\.kind === 'enemy'\)[\s\S]*\.sort\(/);
+  assert.match(src, /g\.EnemyIDs = \[/);
+  assert.match(src, /g\.EnemySlots = \[/);
+  assert.match(src, /g\.PendingEnemyRespawnSlots = \[0, 0, 0\];/);
+  assert.match(src, /g\.PendingEnemyRespawnTimerActive = 0;/);
+  assert.match(src, /scenario === 'dynamic-initiative-authority'/);
+  assert.match(src, /scenario === 'dynamic-initiative'/);
+});
+
 test('dev tooling resume restores playable hero input when combat is idle', () => {
   const filePath = path.join(__dirname, '..', 'web-runner', 'systems', 'devToolingRuntime.js');
   const src = fs.readFileSync(filePath, 'utf8');

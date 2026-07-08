@@ -22,6 +22,9 @@ export function resolvePendingSuperGemHandoff({
   }
   const hadPendingSuperGemAction = !!globals.PendingSuperGemAction;
   const pendingSkillID = String(globals.PendingSkillID || '');
+  const resolvedActorUID = Number(globals.PendingActor || 0) > 0
+    ? Number(globals.PendingActor || 0)
+    : Number(actorUID || 0);
   let resolvedPendingSuperGem = false;
   let executeSkillResult = null;
 
@@ -33,7 +36,7 @@ export function resolvePendingSuperGemHandoff({
     const pending = globals.PendingSuperGemAction || {};
     globals.LastPendingSuperGemReject = {
       source: String(source || 'pending-supergem-handoff'),
-      actorUID: Number(actorUID || 0),
+      actorUID: resolvedActorUID,
       pendingSkillID,
       color: Number(pending.color ?? -1),
       reason: 'execute-rejected',
@@ -54,7 +57,7 @@ export function resolvePendingSuperGemHandoff({
   }
 
   if (!resolvedPendingSuperGem && typeof executeSkill === 'function') {
-    executeSkillResult = executeSkill(pendingSkillID, actorUID);
+    executeSkillResult = executeSkill(pendingSkillID, resolvedActorUID);
   }
 
   clearPendingTargetState(globals);

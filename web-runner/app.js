@@ -548,13 +548,6 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
         y: d.baseY != null ? d.baseY : d.y,
       });
       gameState.healBlooms.push(d.healBloomAnimation);
-    } else if (d.kind === 'heal' && d.targetKind === 'enemy' && !d.healBloomSpawned) {
-      d.healBloomSpawned = true;
-      d.healBloomAnimation = createHealBloom({
-        x: d.x,
-        y: d.baseY != null ? d.baseY : d.y,
-      });
-      gameState.healBlooms.push(d.healBloomAnimation);
     } else if (d.kind === 'heal' && d.targetKind === 'bar' && !d.healBloomSpawned) {
       d.healBloomSpawned = true;
       const heroPositions = Array.isArray(state.globals.HeroIconPosByIndex) ? state.globals.HeroIconPosByIndex : [];
@@ -2219,7 +2212,7 @@ function handleGemMatch(color) {
     enemyLineClearPressureActive: !!state.globals.EnemyLineClearPressureActive,
   });
   if (state.globals.TurnPhase === 2 && immediateEnemyTurnBarrier.canClaimCombatAction) {
-    callFunctionWithContext(fnContext, 'EnemyTurn');
+    combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
   }
   syncFromGlobals();
 }
@@ -3856,7 +3849,6 @@ function getStoryCardLiveLineState() {
     if (!runtimeDebugLogging.isGemDebugEnabled(state)) return;
     if (state.globals.GamePhase !== 'RUNTIME') return;
     for (let i = 0; i < turnCount; i++) {
-      callFunctionWithContext(fnContext, 'AdvanceTurn');
       combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
       await devSleep(40);
     }
@@ -5101,7 +5093,7 @@ function getStoryCardLiveLineState() {
         } else {
           applyTurnGateIntent(createEnemyTurnGateBaseline);
           state.globals.BoardFillActive = 0;
-          callFunctionWithContext(fnContext, 'EnemyTurn', currentTurnUID);
+          combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
         }
       } else if (liveCurrentEnemy) {
         if (!enemyRosterStability.stable) {
@@ -5146,6 +5138,7 @@ function getStoryCardLiveLineState() {
       (!isCanPickGemsReady(state.globals.CanPickGems) || state.globals.BoardFillActive !== 0)
     ) {
       state.globals.CanPickGems = true;
+      state.globals.IsPlayerBusy = 0;
       state.globals.BoardFillActive = 0;
       if (runtimeDebugLogging.isGemDebugEnabled(state)) {
         runtimeDebugLogging.gemDebugLog('[TURN_RESTORE_PICK]', {

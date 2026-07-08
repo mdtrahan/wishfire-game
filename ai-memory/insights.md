@@ -23,7 +23,6 @@
 ## Regression Triggers
 - Before starting combat-system beads, scan acceptance + code for: `buff`, `debuff`, `duration`, `turns`, `stack`.
 - If these imply outdated model assumptions, pause and rewrite bead scope before coding.
-- Dev-panel reset buttons must clear the readout-owned counters and traces, not only the activation/session selection flags; otherwise QA side panels can show stale proof after a real reset.
 - When render extraction moves visual helpers behind a dependency scope, verify app-to-renderer predicates are live state readers rather than false stubs; status overlays keyed by effect names should accept stable prefixes such as `Blight*`.
 - When removing a hero-specific heal expression, route that hero through the shared heal body; do not replace the special branch with a guard that still consumes action pacing but skips `ApplyPartyHeal`.
 - For normal gem matches, refill must start at the gem-destruction seam before deferred action/turn handoff can leave visible board holes. Batch-create all queued refill gems before waiting on settle animation.
@@ -31,7 +30,6 @@
 - Resource accounting for normal gem matches must pass only the matched set count into the existing reward owner (for yellow, `Add_Gold`) rather than replacing reward math. Board-wide same-color counts belong only to explicit supergem/sweep owner paths.
 - Match selections store board indices at runtime; resolve through `gameState.gems` before applying gem-object predicates such as color or lock state, otherwise resource counts can silently collapse to zero.
 - Enemy board-pressure effects that run during autoplay should preserve board cardinality unless the turn/refill gates explicitly own the resulting empty cells. Prefer visible lock/disable state for temporary denial effects, and make autoplay skip disabled gems instead of trying to select through them.
-- 2026-06-29: Heal bloom presentation should be keyed by heal damage-text target kind, not only hero/bar branches. Enemy heals already emit `targetKind: 'enemy'`; the shared DOM text bridge must spawn the bloom from that anchor too.
 
 ## 2026-03-07 Regression Note
 - Hero selector render gate must treat hero-turn as `TurnPhase === 0` (not `1`) in web-runner runtime.
@@ -457,7 +455,6 @@
 - Enemy selector presentation has two target authorities: live pending selection uses `SelectedEnemyUID`; queued `PendingHeroHits[].targetUID` is only a fallback when there is no active selected target to show. Reversing that order makes stale queued hits visually override the player’s latest click.
 - Hero target/selector regressions are only fixed when validation covers target choice, queued hit target, and rendered selector together; log actor UID, selected UID, stale queued UID, visual selector UID, and queued attack target UID in the same pass so one green layer cannot hide marker/damage desync.
 - Dev autoplay must write the random single-target `SelectedEnemyUID` before rendering the pending attack selector, then reuse that same UID when resolving the attack. If target choice happens only at resolve time, the marker can show the first/default enemy while damage lands on the later random target.
-- Treat `SelectedEnemyUID` and `SelectedEnemyUIDOwner` as one intent pair. Pending HERO_SINGLE damage and selector rendering must ignore a selected UID unless its owner matches the current pending actor, or stale target state can make the marker and damage disagree.
 - When moving dev tooling logic out of `app.js`, every remaining app wrapper must delegate to a returned runtime method. A helper existing inside `devToolingRuntime.js` is not enough; reset/restart paths need contract coverage for both the runtime return object and the app wrapper.
 
 ## 2026-06-09 — Dev Modal Resume Must Revalidate Idle Hero Input
@@ -497,3 +494,7 @@
 
 ## 2026-07-02 - Hidden Debug Overlays Need Separate Access And Visibility Gates
 - Hidden-by-default player aids should keep their visibility state separate from dev/test access gates. If the intended behavior is "press a hotkey to show it," validate normal-play hotkey access and default-hidden rendering independently so a dev-only proof does not mask the real player path.
+
+## 2026-07-04 - Authority QA Must Use Live Combat Identity
+- Dynamic initiative QA launchers must bind the exact live encounter and clear startup/input gates before judging turn order. Synthetic roster setup can prove scheduler math, but Browser/autoplay validation must activate through the same authority gate as real combat.
+- Pending target actions must execute with their owning pending actor, not whichever actor is current when the follow-up resolves. Actor handoff regressions can look like team-turn ordering bugs or consumed SuperGems with no attack.

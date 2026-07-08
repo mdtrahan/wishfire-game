@@ -33,6 +33,6 @@ test('deferred advance gate is centralized in app runtime', () => {
   assert.match(src, /const ownerOk = !ownerUID \|\| ownerUID === currentUID;/);
   assert.match(src, /let deferredAdvanceState = canResolveDeferredAdvance\(\{/);
   assert.match(src, /!deferredAdvanceState\.ownerOk &&\s*!deferredAdvanceState\.blockedPhase &&\s*deferredAdvanceState\.presentationBarrier\.canAdvanceTurn/s);
-  assert.match(src, /const immediateEnemyTurnBarrier = getPresentationTurnBarrier\(\{/);
-  assert.match(src, /state\.globals\.TurnPhase === 2 && immediateEnemyTurnBarrier\.canClaimCombatAction/);
+  assert.doesNotMatch(src, /callFunctionWithContext\(fnContext, 'EnemyTurn'/);
+  assert.match(src, /combatRuntimeGateway\.runCombatStep\(fnContext, 'ProcessTurn'\)/);
 });
