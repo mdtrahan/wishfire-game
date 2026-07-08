@@ -140,18 +140,23 @@ test('enemy action RNG pockets no longer call direct Math.random in deterministi
   }
 });
 
-test('PickEnemySkill consumes RuntimeRandom for Rust-owned enemy skill choice rolls', () => {
+test('PickEnemySkill does not consume RuntimeRandom for deterministic behavior scripts', () => {
   for (const modulePath of [runtimeFunctionBankPath, scriptsFunctionBankPath]) {
     const captured = captureEnemySkillChoice();
     const mod = loadFunctionBank(modulePath, captured);
     const ctx = makeEnemyActionContext([0.73]);
+    ctx.state.globals.RuntimeRandom = () => {
+      throw new Error('enemy behavior scripts should not roll hidden action randomness');
+    };
 
     const selected = mod.PickEnemySkill(ctx, 300);
 
-    assert.equal(selected, 'Enemy_Heal_Self', modulePath);
+    assert.equal(selected, 'Enemy_Heal_Allies', modulePath);
     assert.equal(captured.calls.length, 1, modulePath);
-    assert.equal(captured.calls[0].roll, -1, modulePath);
-    assert.equal(captured.calls[0].healRoll, 0.73, modulePath);
+    assert.equal(captured.calls[0].behaviorTurn, 0, modulePath);
+    assert.equal(captured.calls[0].lastBehaviorSkill, '', modulePath);
+    assert.equal(captured.calls[0].roll, 0, modulePath);
+    assert.equal(captured.calls[0].healRoll, 0, modulePath);
     assert.equal(ctx.state.globals.LastEnemySkillChoiceOwner.owner, 'rust', modulePath);
   }
 });

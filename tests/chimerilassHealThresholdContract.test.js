@@ -17,7 +17,8 @@ for (const filePath of MIRRORS) {
     assert.match(src, /let pick = random01\(ctx\) \* total;/);
     assert.match(src, /random01\(ctx\) < 0\.16/);
     assert.match(src, /random01\(ctx\) < 0\.10/);
-    assert.match(src, /regularSkill: 'Enemy_Heal_Self'/);
+    assert.match(src, /openingSkill: 'Enemy_MAG_Single'/);
+    assert.match(src, /fallbackSkill: 'Enemy_MAG_Single'/);
     assert.match(src, /weighted\.push\(\{ skillId: 'Enemy_Heal_Allies', weight: 20 \}\)/);
     assert.match(src, /weighted\.push\(\{ skillId: 'Enemy_Heal_Ally', weight: 15 \}\)/);
     assert.match(src, /weighted\.push\(\{ skillId: 'Enemy_Heal_Self', weight: 65 \}\)/);

@@ -213,49 +213,61 @@ fn clamp_roll(value: f64) -> f64 {
     number_or_zero(value).clamp(0.0, 0.999_999_999)
 }
 
-fn enemy_skill_base_choice(kind_code: f64, hp: f64, max_hp: f64, roll: f64) -> (f64, f64) {
-    let hp_value = number_or_zero(hp);
-    let max_value = number_or_zero(max_hp);
-    let is_damaged = hp_value < max_value;
-    let roll_value = clamp_roll(roll);
+fn enemy_script_fallback_code(kind_code: f64) -> f64 {
     match enemy_kind_code(kind_code) {
-        1.0 => {
-            if roll_value < 0.30 {
-                (1.0, 1.0)
-            } else if roll_value < 0.85 {
-                (2.0, 2.0)
-            } else {
-                (0.0, 0.0)
-            }
-        }
-        2.0 => {
-            if roll_value < 0.25 {
-                (3.0, 1.0)
-            } else if roll_value < 0.65 {
-                (2.0, 2.0)
-            } else {
-                (0.0, 0.0)
-            }
-        }
-        3.0 => {
-            if is_damaged && roll_value < 0.20 {
-                (4.0, 1.0)
-            } else if is_damaged && roll_value < 0.49 {
-                (5.0, 2.0)
-            } else {
-                (0.0, 0.0)
-            }
-        }
-        _ => (0.0, 0.0),
+        1.0 | 2.0 | 3.0 => 2.0,
+        _ => 0.0,
     }
 }
 
 fn enemy_regular_skill_code(kind_code: f64) -> f64 {
+    enemy_script_fallback_code(kind_code)
+}
+
+fn enemy_script_opening_code(kind_code: f64) -> f64 {
     match enemy_kind_code(kind_code) {
-        1.0 | 2.0 => 2.0,
-        3.0 => 5.0,
+        1.0 => 1.0,
+        2.0 => 3.0,
+        3.0 => 2.0,
         _ => 0.0,
     }
+}
+
+fn enemy_script_loop_code(kind_code: f64, _behavior_turn: f64) -> f64 {
+    match enemy_kind_code(kind_code) {
+        1.0 | 2.0 | 3.0 => 2.0,
+        _ => 0.0,
+    }
+}
+
+fn enemy_skill_is_heal(skill_code: f64) -> bool {
+    let code = number_or_zero(skill_code).floor() as i32;
+    code == 5 || code == 6 || code == 7
+}
+
+fn enemy_skill_is_board_lock(skill_code: f64) -> bool {
+    let code = number_or_zero(skill_code).floor() as i32;
+    code == 1 || code == 3
+}
+
+fn enemy_skill_script_choice(
+    kind_code: f64,
+    behavior_turn: f64,
+    last_behavior_skill_code: f64,
+) -> (f64, f64) {
+    let turn = positive_floor_or_zero(behavior_turn);
+    let selected = if turn == 0.0 {
+        enemy_script_opening_code(kind_code)
+    } else {
+        enemy_script_loop_code(kind_code, turn)
+    };
+    if enemy_skill_is_board_lock(selected)
+        && selected == number_or_zero(last_behavior_skill_code).floor()
+    {
+        return (enemy_script_fallback_code(kind_code), 17.0);
+    }
+    let branch = if turn == 0.0 { 8.0 } else { 9.0 };
+    (selected, branch)
 }
 
 fn enemy_skill_apply_board_fallback(
@@ -270,45 +282,47 @@ fn enemy_skill_apply_board_fallback(
     if selected_code != 1.0 && selected_code != 3.0 {
         return (selected_code, branch_code);
     }
-    let blocked_branch = if branch_code == 1.0 { 5.0 } else { 6.0 };
-    (enemy_regular_skill_code(kind_code), blocked_branch)
+    let blocked_branch = if branch_code == 9.0 { 19.0 } else { 18.0 };
+    (enemy_script_fallback_code(kind_code), blocked_branch)
 }
 
-fn enemy_skill_chimerilass_heal_choice(
+fn enemy_skill_is_self_critical(hp: f64, max_hp: f64) -> bool {
+    let hp_value = number_or_zero(hp);
+    let max_value = number_or_zero(max_hp).max(1.0);
+    hp_value > 0.0 && hp_value <= (max_value * 0.25).floor()
+}
+
+fn enemy_skill_chimerilass_rule_choice(
     hp: f64,
     max_hp: f64,
     damaged_allies_count: f64,
-    heal_roll: f64,
+    critical_allies_count: f64,
+    last_behavior_skill_code: f64,
 ) -> Option<(f64, f64)> {
+    let hp_value = number_or_zero(hp);
+    let max_value = number_or_zero(max_hp).max(1.0);
     let damaged = positive_floor_or_zero(damaged_allies_count);
-    let mut weighted: [(f64, f64); 3] = [(0.0, 0.0); 3];
-    let mut count = 0usize;
-    if damaged > 1.0 {
-        weighted[count] = (7.0, 20.0);
-        count += 1;
-    }
-    if damaged > 0.0 {
-        weighted[count] = (6.0, 15.0);
-        count += 1;
-    }
-    if number_or_zero(hp) < number_or_zero(max_hp) {
-        weighted[count] = (5.0, 65.0);
-        count += 1;
-    }
-    if count == 0 {
-        return None;
-    }
-    let total: f64 = weighted[..count].iter().map(|(_, weight)| *weight).sum();
-    let mut pick = clamp_roll(heal_roll) * total;
-    let mut selected = weighted[count - 1].0;
-    for (skill_code, weight) in weighted[..count].iter() {
-        pick -= *weight;
-        if pick <= 0.0 {
-            selected = *skill_code;
-            break;
+    let critical_allies = positive_floor_or_zero(critical_allies_count);
+    let self_critical = enemy_skill_is_self_critical(hp_value, max_value);
+    let decision = if damaged >= 2.0 {
+        Some((7.0, if critical_allies > 0.0 { 13.0 } else { 10.0 }))
+    } else if damaged >= 1.0 {
+        Some((6.0, if critical_allies > 0.0 { 14.0 } else { 11.0 }))
+    } else if hp_value < max_value && hp_value <= (max_value * 0.5).floor() {
+        Some((5.0, if self_critical { 15.0 } else { 12.0 }))
+    } else {
+        None
+    };
+    if let Some((selected, branch)) = decision {
+        if enemy_skill_is_heal(last_behavior_skill_code)
+            && critical_allies <= 0.0
+            && !self_critical
+        {
+            return Some((2.0, 16.0));
         }
+        return Some((selected, branch));
     }
-    Some((selected, 4.0))
+    None
 }
 
 fn enemy_skill_choice_pair(
@@ -316,7 +330,10 @@ fn enemy_skill_choice_pair(
     hp: f64,
     max_hp: f64,
     damaged_allies_count: f64,
+    critical_allies_count: f64,
     board_ready: f64,
+    behavior_turn: f64,
+    last_behavior_skill_code: f64,
     roll: f64,
     heal_roll: f64,
 ) -> (f64, f64) {
@@ -330,27 +347,22 @@ fn enemy_skill_choice_pair(
         1.0
     };
     let max_value = max_input.max(1.0);
-    let below_half_hp = hp_value <= (max_value * 0.5).floor();
 
     if kind == 3.0 {
-        if !below_half_hp {
-            let decision = enemy_skill_base_choice(kind, hp_value, max_value, roll);
-            if decision.0 == 5.0 || decision.0 == 6.0 || decision.0 == 7.0 || decision.0 == 4.0 {
-                return (2.0, 3.0);
-            }
-            return decision;
-        }
-        if let Some(decision) = enemy_skill_chimerilass_heal_choice(
+        if let Some(decision) = enemy_skill_chimerilass_rule_choice(
             hp_value,
             max_value,
             damaged_allies_count,
-            heal_roll,
+            critical_allies_count,
+            last_behavior_skill_code,
         ) {
             return decision;
         }
     }
 
-    let decision = enemy_skill_base_choice(kind, hp_value, max_value, roll);
+    let _ = roll;
+    let _ = heal_roll;
+    let decision = enemy_skill_script_choice(kind, behavior_turn, last_behavior_skill_code);
     enemy_skill_apply_board_fallback(kind, board_ready, decision.0, decision.1)
 }
 
@@ -359,7 +371,10 @@ pub fn enemy_skill_choice_selected_code(
     hp: f64,
     max_hp: f64,
     damaged_allies_count: f64,
+    critical_allies_count: f64,
     board_ready: f64,
+    behavior_turn: f64,
+    last_behavior_skill_code: f64,
     roll: f64,
     heal_roll: f64,
 ) -> f64 {
@@ -368,7 +383,10 @@ pub fn enemy_skill_choice_selected_code(
         hp,
         max_hp,
         damaged_allies_count,
+        critical_allies_count,
         board_ready,
+        behavior_turn,
+        last_behavior_skill_code,
         roll,
         heal_roll,
     )
@@ -380,7 +398,10 @@ pub fn enemy_skill_choice_branch_code(
     hp: f64,
     max_hp: f64,
     damaged_allies_count: f64,
+    critical_allies_count: f64,
     board_ready: f64,
+    behavior_turn: f64,
+    last_behavior_skill_code: f64,
     roll: f64,
     heal_roll: f64,
 ) -> f64 {
@@ -389,7 +410,10 @@ pub fn enemy_skill_choice_branch_code(
         hp,
         max_hp,
         damaged_allies_count,
+        critical_allies_count,
         board_ready,
+        behavior_turn,
+        last_behavior_skill_code,
         roll,
         heal_roll,
     )
@@ -1536,7 +1560,10 @@ pub extern "C" fn enemy_skill_choice_selected_code_shadow(
     hp: f64,
     max_hp: f64,
     damaged_allies_count: f64,
+    critical_allies_count: f64,
     board_ready: f64,
+    behavior_turn: f64,
+    last_behavior_skill_code: f64,
     roll: f64,
     heal_roll: f64,
 ) -> f64 {
@@ -1545,7 +1572,10 @@ pub extern "C" fn enemy_skill_choice_selected_code_shadow(
         hp,
         max_hp,
         damaged_allies_count,
+        critical_allies_count,
         board_ready,
+        behavior_turn,
+        last_behavior_skill_code,
         roll,
         heal_roll,
     )
@@ -1557,7 +1587,10 @@ pub extern "C" fn enemy_skill_choice_branch_code_shadow(
     hp: f64,
     max_hp: f64,
     damaged_allies_count: f64,
+    critical_allies_count: f64,
     board_ready: f64,
+    behavior_turn: f64,
+    last_behavior_skill_code: f64,
     roll: f64,
     heal_roll: f64,
 ) -> f64 {
@@ -1566,7 +1599,10 @@ pub extern "C" fn enemy_skill_choice_branch_code_shadow(
         hp,
         max_hp,
         damaged_allies_count,
+        critical_allies_count,
         board_ready,
+        behavior_turn,
+        last_behavior_skill_code,
         roll,
         heal_roll,
     )
@@ -3972,16 +4008,17 @@ mod single_hit_resolution_tests {
     #[test]
     fn mirrors_current_enemy_skill_choice_cases() {
         let cases = [
-            // kind, hp, max, damaged_allies, board_ready, roll, heal_roll, selected, branch
-            (0.0, 10.0, 20.0, 0.0, 1.0, 0.1, 0.0, 0.0, 0.0),
-            (1.0, 20.0, 20.0, 0.0, 1.0, 0.1, 0.0, 1.0, 1.0),
-            (1.0, 20.0, 20.0, 0.0, 1.0, 0.5, 0.0, 2.0, 2.0),
-            (1.0, 20.0, 20.0, 0.0, 1.0, 0.9, 0.0, 0.0, 0.0),
-            (2.0, 20.0, 20.0, 0.0, 0.0, 0.1, 0.0, 2.0, 5.0),
-            (3.0, 80.0, 100.0, 0.0, 1.0, 0.1, 0.0, 2.0, 3.0),
-            (3.0, 40.0, 100.0, 2.0, 1.0, -1.0, 0.1, 7.0, 4.0),
-            (3.0, 40.0, 100.0, 1.0, 1.0, -1.0, 0.1, 6.0, 4.0),
-            (3.0, 40.0, 100.0, 0.0, 1.0, -1.0, 0.1, 5.0, 4.0),
+            // kind, hp, max, damaged_allies, critical_allies, board_ready,
+            // behavior_turn, last_skill, roll, heal_roll, selected, branch
+            (0.0, 10.0, 20.0, 0.0, 0.0, 1.0, 4.0, 0.0, 0.99, 0.0, 0.0, 9.0),
+            (1.0, 20.0, 20.0, 0.0, 0.0, 1.0, 0.0, -1.0, 0.99, 0.0, 1.0, 8.0),
+            (1.0, 20.0, 20.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 2.0, 9.0),
+            (1.0, 20.0, 20.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 2.0, 17.0),
+            (2.0, 20.0, 20.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 2.0, 18.0),
+            (3.0, 80.0, 100.0, 0.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0, 2.0, 8.0),
+            (3.0, 80.0, 100.0, 2.0, 0.0, 1.0, 1.0, 2.0, 0.0, 0.0, 7.0, 10.0),
+            (3.0, 45.0, 100.0, 1.0, 0.0, 1.0, 4.0, 6.0, 0.0, 0.0, 2.0, 16.0),
+            (3.0, 20.0, 100.0, 0.0, 0.0, 1.0, 5.0, 5.0, 0.0, 0.0, 5.0, 15.0),
         ];
 
         for (
@@ -3989,7 +4026,10 @@ mod single_hit_resolution_tests {
             hp,
             max_hp,
             damaged_allies,
+            critical_allies,
             board_ready,
+            behavior_turn,
+            last_skill,
             roll,
             heal_roll,
             expected_selected,
@@ -4002,7 +4042,10 @@ mod single_hit_resolution_tests {
                     hp,
                     max_hp,
                     damaged_allies,
+                    critical_allies,
                     board_ready,
+                    behavior_turn,
+                    last_skill,
                     roll,
                     heal_roll,
                 ),
@@ -4014,7 +4057,10 @@ mod single_hit_resolution_tests {
                     hp,
                     max_hp,
                     damaged_allies,
+                    critical_allies,
                     board_ready,
+                    behavior_turn,
+                    last_skill,
                     roll,
                     heal_roll,
                 ),

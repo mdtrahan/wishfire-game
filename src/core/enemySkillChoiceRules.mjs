@@ -36,6 +36,18 @@ export const ENEMY_SKILL_BRANCH_CODES = Object.freeze({
   special_blocked_incomplete_board: 5,
   regular_blocked_incomplete_board: 6,
   fallback_blocked_incomplete_board: 7,
+  opening: 8,
+  loop: 9,
+  rule_heal_party: 10,
+  rule_heal_ally: 11,
+  rule_heal_self: 12,
+  rule_heal_party_critical: 13,
+  rule_heal_ally_critical: 14,
+  rule_heal_self_critical: 15,
+  repeat_prevented_heal: 16,
+  repeat_prevented_special: 17,
+  opening_blocked_incomplete_board: 18,
+  loop_blocked_incomplete_board: 19,
 });
 
 export const ENEMY_SKILL_BRANCH_IDS = Object.freeze([
@@ -47,40 +59,67 @@ export const ENEMY_SKILL_BRANCH_IDS = Object.freeze([
   'special_blocked_incomplete_board',
   'regular_blocked_incomplete_board',
   'fallback_blocked_incomplete_board',
+  'opening',
+  'loop',
+  'rule_heal_party',
+  'rule_heal_ally',
+  'rule_heal_self',
+  'rule_heal_party_critical',
+  'rule_heal_ally_critical',
+  'rule_heal_self_critical',
+  'repeat_prevented_heal',
+  'repeat_prevented_special',
+  'opening_blocked_incomplete_board',
+  'loop_blocked_incomplete_board',
 ]);
 
-const CONFIG_BY_KIND = Object.freeze({
+const DEFAULT_MELEE_SCRIPT = Object.freeze({
+  opening: ENEMY_SKILL_CODES.Enemy_ATK_Single,
+  loop: Object.freeze([ENEMY_SKILL_CODES.Enemy_ATK_Single]),
+  fallback: ENEMY_SKILL_CODES.Enemy_ATK_Single,
+});
+
+const SCRIPT_BY_KIND = Object.freeze({
   [ENEMY_KIND_CODES.Djinn]: Object.freeze({
-    specialSkillCode: ENEMY_SKILL_CODES.Enemy_Scathe,
-    specialChance: 0.30,
-    regularSkillCode: ENEMY_SKILL_CODES.Enemy_MAG_Single,
-    regularChance: 0.85,
-    requiresDamaged: 0,
+    opening: ENEMY_SKILL_CODES.Enemy_Scathe,
+    loop: Object.freeze([
+      ENEMY_SKILL_CODES.Enemy_MAG_Single,
+      ENEMY_SKILL_CODES.Enemy_MAG_Single,
+    ]),
+    fallback: ENEMY_SKILL_CODES.Enemy_MAG_Single,
   }),
   [ENEMY_KIND_CODES.Marid]: Object.freeze({
-    specialSkillCode: ENEMY_SKILL_CODES.Enemy_Sweep,
-    specialChance: 0.25,
-    regularSkillCode: ENEMY_SKILL_CODES.Enemy_MAG_Single,
-    regularChance: 0.65,
-    requiresDamaged: 0,
+    opening: ENEMY_SKILL_CODES.Enemy_Sweep,
+    loop: Object.freeze([
+      ENEMY_SKILL_CODES.Enemy_MAG_Single,
+      ENEMY_SKILL_CODES.Enemy_MAG_Single,
+    ]),
+    fallback: ENEMY_SKILL_CODES.Enemy_MAG_Single,
   }),
   [ENEMY_KIND_CODES.Chimerilass]: Object.freeze({
-    specialSkillCode: ENEMY_SKILL_CODES.Enemy_Wipe,
-    specialChance: 0.20,
-    regularSkillCode: ENEMY_SKILL_CODES.Enemy_Heal_Self,
-    regularChance: 0.49,
-    requiresDamaged: 1,
+    opening: ENEMY_SKILL_CODES.Enemy_MAG_Single,
+    loop: Object.freeze([ENEMY_SKILL_CODES.Enemy_MAG_Single]),
+    fallback: ENEMY_SKILL_CODES.Enemy_MAG_Single,
   }),
 });
+
+const HEAL_SKILL_CODES = Object.freeze([
+  ENEMY_SKILL_CODES.Enemy_Heal_Self,
+  ENEMY_SKILL_CODES.Enemy_Heal_Ally,
+  ENEMY_SKILL_CODES.Enemy_Heal_Allies,
+]);
 
 function numberOr(value, fallback = 0) {
   const normalized = Number(value);
   return Number.isFinite(normalized) ? normalized : fallback;
 }
 
-function clampRoll(value) {
-  const normalized = numberOr(value, 0);
-  return Math.max(0, Math.min(0.999999999, normalized));
+function wholeNumberOr(value, fallback = 0) {
+  return Math.trunc(numberOr(value, fallback));
+}
+
+function positiveWholeOr(value, fallback = 0) {
+  return Math.max(0, wholeNumberOr(value, fallback));
 }
 
 export function enemyKindCodeFromName(name = '') {
@@ -103,78 +142,119 @@ export function enemySkillBranchCodeFromId(branch = '') {
   return ENEMY_SKILL_BRANCH_CODES[String(branch || '')] ?? ENEMY_SKILL_BRANCH_CODES.fallback;
 }
 
-function baseEnemySkillChoice(kindCode, hp, maxHP, roll) {
-  const conf = CONFIG_BY_KIND[kindCode];
-  if (!conf) {
-    return {
-      selectedCode: ENEMY_SKILL_CODES.Enemy_ATK_Single,
-      branchCode: ENEMY_SKILL_BRANCH_CODES.fallback,
-    };
+function normalizeSkillCode(value, skillId = '') {
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric >= 0) {
+    return Math.trunc(numeric);
   }
-  const isDamaged = numberOr(hp, 0) < numberOr(maxHP, 0);
-  const hpEligible = conf.requiresDamaged ? isDamaged : true;
-  if (hpEligible && clampRoll(roll) < Number(conf.specialChance || 0)) {
-    return {
-      selectedCode: conf.specialSkillCode,
-      branchCode: ENEMY_SKILL_BRANCH_CODES.special,
-    };
+  if (String(skillId || '')) {
+    return enemySkillCodeFromId(skillId);
   }
-  if (hpEligible && clampRoll(roll) < Number(conf.regularChance || 0)) {
-    return {
-      selectedCode: conf.regularSkillCode,
-      branchCode: ENEMY_SKILL_BRANCH_CODES.regular,
-    };
-  }
+  return -1;
+}
+
+function isHealSkillCode(skillCode) {
+  return HEAL_SKILL_CODES.includes(Math.trunc(numberOr(skillCode, -1)));
+}
+
+function isBoardLockSkillCode(skillCode) {
+  const normalized = Math.trunc(numberOr(skillCode, -1));
+  return normalized === ENEMY_SKILL_CODES.Enemy_Scathe
+    || normalized === ENEMY_SKILL_CODES.Enemy_Sweep;
+}
+
+function branchCodeFromSkillBranch(branch) {
+  return enemySkillBranchCodeFromId(branch);
+}
+
+function makeDecision(selectedCode, branch) {
   return {
-    selectedCode: ENEMY_SKILL_CODES.Enemy_ATK_Single,
-    branchCode: ENEMY_SKILL_BRANCH_CODES.fallback,
+    selectedCode,
+    branchCode: branchCodeFromSkillBranch(branch),
   };
+}
+
+function getScript(kindCode) {
+  return SCRIPT_BY_KIND[kindCode] || DEFAULT_MELEE_SCRIPT;
+}
+
+function loopChoice(script, behaviorTurn) {
+  const loop = Array.isArray(script.loop) && script.loop.length ? script.loop : [script.fallback];
+  const loopIndex = Math.max(0, positiveWholeOr(behaviorTurn, 1) - 1) % loop.length;
+  return loop[loopIndex] ?? script.fallback;
+}
+
+function scriptChoice(kindCode, behaviorTurn, lastSkillCode) {
+  const script = getScript(kindCode);
+  const turn = positiveWholeOr(behaviorTurn, 0);
+  const selectedCode = turn === 0 ? script.opening : loopChoice(script, turn);
+  const branch = turn === 0 ? 'opening' : 'loop';
+  if (isBoardLockSkillCode(selectedCode) && selectedCode === Math.trunc(numberOr(lastSkillCode, -1))) {
+    return makeDecision(script.fallback, 'repeat_prevented_special');
+  }
+  return makeDecision(selectedCode, branch);
 }
 
 function applyBoardFallback(kindCode, boardReady, selectedCode, branchCode) {
   if (Number(boardReady || 0) === 1) return { selectedCode, branchCode };
-  if (
-    selectedCode !== ENEMY_SKILL_CODES.Enemy_Scathe
-    && selectedCode !== ENEMY_SKILL_CODES.Enemy_Sweep
-  ) {
+  if (!isBoardLockSkillCode(selectedCode)) {
     return { selectedCode, branchCode };
   }
-  const conf = CONFIG_BY_KIND[kindCode];
+  const branch = enemySkillBranchFromCode(branchCode) === 'loop'
+    ? 'loop_blocked_incomplete_board'
+    : 'opening_blocked_incomplete_board';
   return {
-    selectedCode: conf?.regularSkillCode ?? ENEMY_SKILL_CODES.Enemy_ATK_Single,
-    branchCode: Number(branchCode || 0) === ENEMY_SKILL_BRANCH_CODES.special
-      ? ENEMY_SKILL_BRANCH_CODES.special_blocked_incomplete_board
-      : ENEMY_SKILL_BRANCH_CODES.regular_blocked_incomplete_board,
+    selectedCode: getScript(kindCode).fallback,
+    branchCode: enemySkillBranchCodeFromId(branch),
   };
 }
 
-function chimerilassHealChoice(hp, maxHP, damagedAlliesCount, healRoll) {
-  const weighted = [];
-  if (numberOr(damagedAlliesCount, 0) > 1) {
-    weighted.push({ selectedCode: ENEMY_SKILL_CODES.Enemy_Heal_Allies, weight: 20 });
-  }
-  if (numberOr(damagedAlliesCount, 0) > 0) {
-    weighted.push({ selectedCode: ENEMY_SKILL_CODES.Enemy_Heal_Ally, weight: 15 });
-  }
-  if (numberOr(hp, 0) < numberOr(maxHP, 0)) {
-    weighted.push({ selectedCode: ENEMY_SKILL_CODES.Enemy_Heal_Self, weight: 65 });
-  }
-  if (!weighted.length) return null;
+function isSelfCritical(hp, maxHP) {
+  const hpValue = numberOr(hp, 0);
+  const maxValue = Math.max(1, numberOr(maxHP, hpValue || 1));
+  return hpValue > 0 && hpValue <= Math.floor(maxValue * 0.25);
+}
 
-  const total = weighted.reduce((sum, row) => sum + Number(row.weight || 0), 0);
-  let pick = clampRoll(healRoll) * total;
-  let selected = weighted[weighted.length - 1];
-  for (const row of weighted) {
-    pick -= row.weight;
-    if (pick <= 0) {
-      selected = row;
-      break;
-    }
+function chimerilassRuleChoice({
+  hp,
+  maxHP,
+  damagedAlliesCount,
+  criticalAlliesCount,
+  lastSkillCode,
+}) {
+  const hpValue = numberOr(hp, 0);
+  const maxValue = Math.max(1, numberOr(maxHP, hpValue || 1));
+  const damaged = positiveWholeOr(damagedAlliesCount, 0);
+  const criticalAllies = positiveWholeOr(criticalAlliesCount, 0);
+  const selfCritical = isSelfCritical(hpValue, maxValue);
+
+  let decision = null;
+  if (damaged >= 2) {
+    decision = makeDecision(
+      ENEMY_SKILL_CODES.Enemy_Heal_Allies,
+      criticalAllies > 0 ? 'rule_heal_party_critical' : 'rule_heal_party',
+    );
+  } else if (damaged >= 1) {
+    decision = makeDecision(
+      ENEMY_SKILL_CODES.Enemy_Heal_Ally,
+      criticalAllies > 0 ? 'rule_heal_ally_critical' : 'rule_heal_ally',
+    );
+  } else if (hpValue < maxValue && hpValue <= Math.floor(maxValue * 0.5)) {
+    decision = makeDecision(
+      ENEMY_SKILL_CODES.Enemy_Heal_Self,
+      selfCritical ? 'rule_heal_self_critical' : 'rule_heal_self',
+    );
   }
-  return {
-    selectedCode: selected.selectedCode,
-    branchCode: ENEMY_SKILL_BRANCH_CODES.cmh_under_50_forced_heal,
-  };
+
+  if (
+    decision
+    && isHealSkillCode(lastSkillCode)
+    && criticalAllies <= 0
+    && !selfCritical
+  ) {
+    return makeDecision(ENEMY_SKILL_CODES.Enemy_MAG_Single, 'repeat_prevented_heal');
+  }
+  return decision;
 }
 
 export function enemySkillChoiceFromJs({
@@ -183,7 +263,11 @@ export function enemySkillChoiceFromJs({
   hp = 0,
   maxHP = 0,
   damagedAlliesCount = 0,
+  criticalAlliesCount = 0,
   boardReady = 1,
+  behaviorTurn = 0,
+  lastBehaviorSkill = '',
+  lastBehaviorSkillCode = -1,
   roll = 0,
   healRoll = 0,
 } = {}) {
@@ -192,30 +276,21 @@ export function enemySkillChoiceFromJs({
     : Math.max(0, Math.trunc(numberOr(enemyKindCode, 0)));
   const hpValue = numberOr(hp, 0);
   const maxValue = Math.max(1, numberOr(maxHP, hpValue || 1));
-  const belowHalfHP = hpValue <= Math.floor(maxValue * 0.5);
+  const lastSkillCode = normalizeSkillCode(lastBehaviorSkillCode, lastBehaviorSkill);
 
   let decision = null;
   if (kindCode === ENEMY_KIND_CODES.Chimerilass) {
-    if (!belowHalfHP) {
-      decision = baseEnemySkillChoice(kindCode, hpValue, maxValue, roll);
-      if (
-        decision.selectedCode === ENEMY_SKILL_CODES.Enemy_Heal_Self
-        || decision.selectedCode === ENEMY_SKILL_CODES.Enemy_Heal_Ally
-        || decision.selectedCode === ENEMY_SKILL_CODES.Enemy_Heal_Allies
-        || decision.selectedCode === ENEMY_SKILL_CODES.Enemy_Wipe
-      ) {
-        decision = {
-          selectedCode: ENEMY_SKILL_CODES.Enemy_MAG_Single,
-          branchCode: ENEMY_SKILL_BRANCH_CODES.cmh_over_50_no_heal,
-        };
-      }
-    } else {
-      decision = chimerilassHealChoice(hpValue, maxValue, damagedAlliesCount, healRoll);
-    }
+    decision = chimerilassRuleChoice({
+      hp: hpValue,
+      maxHP: maxValue,
+      damagedAlliesCount,
+      criticalAlliesCount,
+      lastSkillCode,
+    });
   }
 
   if (!decision) {
-    decision = baseEnemySkillChoice(kindCode, hpValue, maxValue, roll);
+    decision = scriptChoice(kindCode, behaviorTurn, lastSkillCode);
     decision = applyBoardFallback(kindCode, boardReady, decision.selectedCode, decision.branchCode);
   }
 
@@ -227,7 +302,11 @@ export function enemySkillChoiceFromJs({
     branchCode: decision.branchCode,
     branch: enemySkillBranchFromCode(decision.branchCode),
     enemyName: String(enemyName || ''),
+    behaviorTurn: positiveWholeOr(behaviorTurn, 0),
+    lastBehaviorSkill: String(lastBehaviorSkill || ''),
+    lastBehaviorSkillCode: lastSkillCode,
     roll: numberOr(roll, 0),
+    healRoll: numberOr(healRoll, 0),
   };
 }
 
@@ -236,7 +315,11 @@ export function resolveEnemySkillChoice({
   hp = 0,
   maxHP = 0,
   damagedAlliesCount = 0,
+  criticalAlliesCount = 0,
   boardReady = 1,
+  behaviorTurn = 0,
+  lastBehaviorSkill = '',
+  lastBehaviorSkillCode = -1,
   roll = 0,
   healRoll = 0,
   ownerHook = null,
@@ -246,7 +329,11 @@ export function resolveEnemySkillChoice({
     hp,
     maxHP,
     damagedAlliesCount,
+    criticalAlliesCount,
     boardReady,
+    behaviorTurn,
+    lastBehaviorSkill,
+    lastBehaviorSkillCode,
     roll,
     healRoll,
   });
@@ -259,7 +346,11 @@ export function resolveEnemySkillChoice({
         hp: numberOr(hp, 0),
         maxHP: Math.max(1, numberOr(maxHP, hp || 1)),
         damagedAlliesCount: Math.max(0, Math.trunc(numberOr(damagedAlliesCount, 0))),
+        criticalAlliesCount: Math.max(0, Math.trunc(numberOr(criticalAlliesCount, 0))),
         boardReady: Number(boardReady || 0) === 1 ? 1 : 0,
+        behaviorTurn: positiveWholeOr(behaviorTurn, 0),
+        lastBehaviorSkill: String(lastBehaviorSkill || ''),
+        lastBehaviorSkillCode: jsDecision.lastBehaviorSkillCode,
         roll: numberOr(roll, 0),
         healRoll: numberOr(healRoll, 0),
         jsSelectedCode: jsDecision.selectedCode,
@@ -276,7 +367,11 @@ export function resolveEnemySkillChoice({
           branchCode,
           branch: enemySkillBranchFromCode(branchCode),
           enemyName: String(enemyName || ''),
+          behaviorTurn: jsDecision.behaviorTurn,
+          lastBehaviorSkill: jsDecision.lastBehaviorSkill,
+          lastBehaviorSkillCode: jsDecision.lastBehaviorSkillCode,
           roll: numberOr(roll, 0),
+          healRoll: numberOr(healRoll, 0),
           jsDecision,
         };
       }

@@ -1,0 +1,151 @@
+{
+  "changed_functions": {
+    ".beads/commit-check/ORKA-6fw.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-6fw.prepared.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-6fw.scope": [
+      "__MODULE__"
+    ],
+    ".beads/interactions.jsonl": [
+      "__MODULE__"
+    ],
+    "Scripts/functionBank.js": [
+      "resolveEnemySkillDecision",
+      "SpawnEnemy",
+      "resolveEnemyBoardLineFallbackSkill",
+      "PickEnemySkill",
+      "ExecuteEnemyJobSkill",
+      "__MODULE__"
+    ],
+    "governance/product/enemy-behavior-scripts.md": [
+      "__MODULE__"
+    ],
+    "rust/simulation_core/src/lib.rs": [
+      "index",
+      "enemy_defeated",
+      "__MODULE__"
+    ],
+    "src/core/enemySkillChoiceRules.mjs": [
+      "wholeNumberOr",
+      "positiveWholeOr",
+      "normalizeSkillCode",
+      "isHealSkillCode",
+      "isBoardLockSkillCode",
+      "branchCodeFromSkillBranch",
+      "makeDecision",
+      "getScript",
+      "loopChoice",
+      "scriptChoice",
+      "applyBoardFallback",
+      "isSelfCritical",
+      "chimerilassRuleChoice",
+      "enemySkillChoiceFromJs",
+      "resolveEnemySkillChoice",
+      "__MODULE__"
+    ],
+    "tests/chimerilassHealThresholdContract.test.js": [
+      "__MODULE__"
+    ],
+    "tests/enemyActionRngOwnershipContract.test.js": [
+      "sourceSlice"
+    ],
+    "tests/enemyBehaviorScriptContract.test.js": [
+      "pick",
+      "__MODULE__"
+    ],
+    "tests/enemySkillChoiceFixtureContract.test.js": [
+      "payloadFromRow"
+    ],
+    "tests/fixtures/enemy_skill_choice_cases.csv": [
+      "__MODULE__"
+    ],
+    "web-runner/assets/simulation_core.wasm": [],
+    "web-runner/modules/functionBank.js": [
+      "resolveEnemySkillDecision",
+      "SpawnEnemy",
+      "resolveEnemyBoardLineFallbackSkill",
+      "PickEnemySkill",
+      "ExecuteEnemyJobSkill",
+      "__MODULE__"
+    ],
+    "web-runner/src/core/enemySkillChoiceRules.mjs": [
+      "wholeNumberOr",
+      "positiveWholeOr",
+      "normalizeSkillCode",
+      "isHealSkillCode",
+      "isBoardLockSkillCode",
+      "branchCodeFromSkillBranch",
+      "makeDecision",
+      "getScript",
+      "loopChoice",
+      "scriptChoice",
+      "applyBoardFallback",
+      "isSelfCritical",
+      "chimerilassRuleChoice",
+      "enemySkillChoiceFromJs",
+      "resolveEnemySkillChoice",
+      "__MODULE__"
+    ],
+    "web-runner/systems/simulationCoreShadow.js": [
+      "runEnemySkillChoiceOwnerStartupCheck",
+      "createSimulationCoreEnemySkillChoiceResolution"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "Scripts/functionBank.js",
+      "web-runner/modules/functionBank.js"
+    ],
+    "staged_file_count": 17,
+    "staged_line_count": 1099,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/commit-check/ORKA-6fw.json",
+    ".beads/hot-file-lock/ORKA-6fw.prepared.json",
+    ".beads/hot-file-lock/ORKA-6fw.scope",
+    ".beads/interactions.jsonl",
+    "Scripts/functionBank.js",
+    "governance/product/enemy-behavior-scripts.md",
+    "rust/simulation_core/src/lib.rs",
+    "src/core/enemySkillChoiceRules.mjs",
+    "tests/chimerilassHealThresholdContract.test.js",
+    "tests/enemyActionRngOwnershipContract.test.js",
+    "tests/enemyBehaviorScriptContract.test.js",
+    "tests/enemySkillChoiceFixtureContract.test.js",
+    "tests/fixtures/enemy_skill_choice_cases.csv",
+    "web-runner/assets/simulation_core.wasm",
+    "web-runner/modules/functionBank.js",
+    "web-runner/src/core/enemySkillChoiceRules.mjs",
+    "web-runner/systems/simulationCoreShadow.js"
+  ],
+  "issue_id": "ORKA-6fw",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/commit-check/ORKA-6fw.json": "5e90a9721dca831fa730164cf0600c0815eb24d5",
+    ".beads/hot-file-lock/ORKA-6fw.prepared.json": "c7550040256ee1d1c4a92278dc011d2ed6620b1d",
+    ".beads/hot-file-lock/ORKA-6fw.scope": "7a33cc16dee4f54520cb17d2a80d7dcf10cd3b10",
+    ".beads/interactions.jsonl": "655511ffe86ddb8a4d4339f4d659870299baaee0",
+    "Scripts/functionBank.js": "e9f3c6a3896ebd0055460a6b734b190503606479",
+    "governance/product/enemy-behavior-scripts.md": "d564a0e477a1a5ebfb589d300a7bdba07e87791f",
+    "rust/simulation_core/src/lib.rs": "1adec37f275581096c3be2a4fde9f93621522a49",
+    "src/core/enemySkillChoiceRules.mjs": "355146f2cf3597d07e3e85c69420829ef6607e62",
+    "tests/chimerilassHealThresholdContract.test.js": "5fe61bdf4423bdad92f02e9a33204959a24d7405",
+    "tests/enemyActionRngOwnershipContract.test.js": "47da92b7b2dcf09105ca937d808092835ed264d1",
+    "tests/enemyBehaviorScriptContract.test.js": "e1d57af2d4e423b8072ff75f79f2ace8fd7cdf96",
+    "tests/enemySkillChoiceFixtureContract.test.js": "d77daf3dcaae5b0dc35b02dc41d7893b82847c64",
+    "tests/fixtures/enemy_skill_choice_cases.csv": "b6e8fc24bcab308be96119844790ace15da61b09",
+    "web-runner/assets/simulation_core.wasm": "9f49af4e84edbb3561d4ab4860dfe30ab513bf71",
+    "web-runner/modules/functionBank.js": "88f38ad34bb1642a5d5b085a4c1df5f60783d1ea",
+    "web-runner/src/core/enemySkillChoiceRules.mjs": "355146f2cf3597d07e3e85c69420829ef6607e62",
+    "web-runner/systems/simulationCoreShadow.js": "5f52ea8f47ec7f385960395841639bdb2bc2a141"
+  }
+}
