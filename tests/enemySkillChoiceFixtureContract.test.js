@@ -31,7 +31,10 @@ function payloadFromRow(row) {
     hp: toNumber(row, 'hp'),
     maxHP: toNumber(row, 'maxHP'),
     damagedAlliesCount: toNumber(row, 'damagedAlliesCount'),
+    criticalAlliesCount: toNumber(row, 'criticalAlliesCount'),
     boardReady: toNumber(row, 'boardReady'),
+    behaviorTurn: toNumber(row, 'behaviorTurn'),
+    lastBehaviorSkillCode: toNumber(row, 'lastBehaviorSkillCode'),
     roll: toNumber(row, 'roll'),
     healRoll: toNumber(row, 'healRoll'),
   };
@@ -76,7 +79,10 @@ test('static simulation core wasm matches enemy skill choice fixtures', async ()
       payload.hp,
       payload.maxHP,
       payload.damagedAlliesCount,
+      payload.criticalAlliesCount,
       payload.boardReady,
+      payload.behaviorTurn,
+      payload.lastBehaviorSkillCode,
       payload.roll,
       payload.healRoll,
     ));
@@ -85,7 +91,10 @@ test('static simulation core wasm matches enemy skill choice fixtures', async ()
       payload.hp,
       payload.maxHP,
       payload.damagedAlliesCount,
+      payload.criticalAlliesCount,
       payload.boardReady,
+      payload.behaviorTurn,
+      payload.lastBehaviorSkillCode,
       payload.roll,
       payload.healRoll,
     ));

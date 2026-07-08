@@ -103,25 +103,19 @@ const SESSION_SKILL_EFFECT_IDS = new Set([
 
 const ENEMY_SKILL_ASSIGNMENT_MAP = {
   Djinn: {
-    specialSkill: 'Enemy_Scathe',
-    specialChance: 0.30,
-    regularSkill: 'Enemy_MAG_Single',
-    regularChance: 0.85,
-    requiresDamaged: false,
+    openingSkill: 'Enemy_Scathe',
+    loopSkills: ['Enemy_MAG_Single', 'Enemy_MAG_Single'],
+    fallbackSkill: 'Enemy_MAG_Single',
   },
   Marid: {
-    specialSkill: 'Enemy_Sweep',
-    specialChance: 0.25,
-    regularSkill: 'Enemy_MAG_Single',
-    regularChance: 0.65,
-    requiresDamaged: false,
+    openingSkill: 'Enemy_Sweep',
+    loopSkills: ['Enemy_MAG_Single', 'Enemy_MAG_Single'],
+    fallbackSkill: 'Enemy_MAG_Single',
   },
   Chimerilass: {
-    specialSkill: 'Enemy_Wipe',
-    specialChance: 0.20,
-    regularSkill: 'Enemy_Heal_Self',
-    regularChance: 0.49,
-    requiresDamaged: true,
+    openingSkill: 'Enemy_MAG_Single',
+    loopSkills: ['Enemy_MAG_Single'],
+    fallbackSkill: 'Enemy_MAG_Single',
   },
 };
 
@@ -655,15 +649,12 @@ function resolveEnemySkillDecision(enemy, roll) {
   if (!conf) {
     return { roll, selected: fallback, branch: 'fallback', enemyName: name };
   }
-  const isDamaged = Number(enemy.hp || 0) < Number(enemy.maxHP || 0);
-  const hpEligible = conf.requiresDamaged ? isDamaged : true;
-  if (hpEligible && roll < Number(conf.specialChance || 0)) {
-    return { roll, selected: conf.specialSkill, branch: 'special', enemyName: name };
+  const behaviorTurn = Math.max(0, Math.trunc(Number(enemy?.behaviorTurn || 0)));
+  if (behaviorTurn === 0) {
+    return { roll, selected: conf.openingSkill || conf.fallbackSkill || fallback, branch: 'opening', enemyName: name };
   }
-  if (hpEligible && roll < Number(conf.regularChance || 0)) {
-    return { roll, selected: conf.regularSkill, branch: 'regular', enemyName: name };
-  }
-  return { roll, selected: fallback, branch: 'fallback', enemyName: name };
+  const loop = Array.isArray(conf.loopSkills) && conf.loopSkills.length ? conf.loopSkills : [conf.fallbackSkill || fallback];
+  return { roll, selected: loop[(behaviorTurn - 1) % loop.length] || conf.fallbackSkill || fallback, branch: 'loop', enemyName: name };
 }
 
 function traceEnemySkillDecision(ctx, enemyUID, decision) {
@@ -7983,6 +7974,8 @@ export function SpawnEnemy(ctx, enemyData, slotIndex = 0) {
     faction: String(enemyData.faction || 'wishless'),
     enemyRole: String(enemyData.enemyRole || enemyData.role || 'fodder'),
     targetPreference: enemyData.targetPreference || enemyData.targetingPreference || enemyData.targetingPolicy || enemyData.targetPolicy || '',
+    behaviorTurn: 0,
+    lastBehaviorSkill: '',
     localeTags: normalizeLocaleTags(enemyData.localeTags || enemyData.locale || enemyData.biomes || enemyData.biome || 'all'),
     slotIndex,
     originX: SlotX(ctx, slotIndex),
@@ -9597,7 +9590,7 @@ function resolveEnemyBoardLineFallbackSkill(enemy, skillId) {
   if (skillId !== 'Enemy_Scathe' && skillId !== 'Enemy_Sweep') return skillId;
   const name = String(enemy?.name || '');
   const conf = ENEMY_SKILL_ASSIGNMENT_MAP[name];
-  return String(conf?.regularSkill || 'Enemy_ATK_Single');
+  return String(conf?.fallbackSkill || 'Enemy_ATK_Single');
 }
 
 const ENEMY_GEM_LOCK_DURATIONS = Object.freeze({
@@ -9680,18 +9673,24 @@ export function PickEnemySkill(ctx, enemyUID) {
     (ally.hp || 0) > 0 &&
     (ally.maxHP || ally.hp || 0) > (ally.hp || 0),
   ).length;
-  const shouldUseHealRoll = String(enemy.name || '') === 'Chimerilass'
-    && hp <= Math.floor(maxHP * 0.5)
-    && (damagedAlliesCount > 0 || hp < maxHP);
+  const criticalAlliesCount = getEnemies(ctx).filter((ally) => {
+    if (!ally || ally.uid === enemy.uid || (ally.hp || 0) <= 0) return false;
+    const allyMaxHP = Math.max(1, Number(ally.maxHP || ally.hp || 1));
+    return (ally.maxHP || ally.hp || 0) > (ally.hp || 0)
+      && Number(ally.hp || 0) <= Math.floor(allyMaxHP * 0.25);
+  }).length;
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
   const decision = normalizeEnemyBoardLineSkillDecision(ctx, enemy, resolveEnemySkillChoice({
     enemyName: String(enemy.name || ''),
     hp,
     maxHP,
     damagedAlliesCount,
+    criticalAlliesCount,
     boardReady: isBoardFullyPopulatedForEnemyMutation(ctx) ? 1 : 0,
-    roll: shouldUseHealRoll ? -1 : random01(ctx),
-    healRoll: shouldUseHealRoll ? random01(ctx) : 0,
+    behaviorTurn: Math.max(0, Math.trunc(Number(enemy.behaviorTurn || 0))),
+    lastBehaviorSkill: String(enemy.lastBehaviorSkill || ''),
+    roll: 0,
+    healRoll: 0,
     ownerHook: root && typeof root.__ORKA_ENEMY_SKILL_CHOICE_OWNER__ === 'function'
       ? root.__ORKA_ENEMY_SKILL_CHOICE_OWNER__
       : null,
@@ -10019,6 +10018,8 @@ export function ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID = 0) {
   const actionCode = Number(decision.actionCode || 0);
   const resultValue = Number(decision.returnValue || 0);
   const resolvedTargetUID = Number(decision.resolvedTargetUID || 0);
+  enemy.behaviorTurn = Math.max(0, Math.trunc(Number(enemy.behaviorTurn || 0))) + 1;
+  enemy.lastBehaviorSkill = String(decision.normalizedSkillId || skillId || '');
   if (actionCode === ENEMY_JOB_ACTION_HEAL_SELF) {
     Enemy_Heal_Self(ctx, enemyUID);
     return resultValue || 1;

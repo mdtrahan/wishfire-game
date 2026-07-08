@@ -1,0 +1,27 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "resolveEnemySkillDecision",
+        "SpawnEnemy",
+        "resolveEnemyBoardLineFallbackSkill",
+        "PickEnemySkill",
+        "ExecuteEnemyJobSkill",
+        "__MODULE__"
+      ],
+      "staged_blob": "e9f3c6a3896ebd0055460a6b734b190503606479"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "resolveEnemySkillDecision",
+        "SpawnEnemy",
+        "resolveEnemyBoardLineFallbackSkill",
+        "PickEnemySkill",
+        "ExecuteEnemyJobSkill",
+        "__MODULE__"
+      ],
+      "staged_blob": "88f38ad34bb1642a5d5b085a4c1df5f60783d1ea"
+    }
+  },
+  "issue_id": "ORKA-6fw"
+}
