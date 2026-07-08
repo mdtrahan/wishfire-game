@@ -1,0 +1,71 @@
+{
+  "changed_functions": {
+    ".beads/hot-file-lock/ORKA-k61.prepared.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-k61.scope": [
+      "__MODULE__"
+    ],
+    "Scripts/functionBank.js": [
+      "ClearSessionSkillDraught",
+      "order",
+      "buildDynamicInitiativeDefaultSpeedSelection"
+    ],
+    "tests/dynamicInitiativeRuntimeShadowWiringContract.test.js": [
+      "extractFunctionSource"
+    ],
+    "tests/dynamicInitiativeSchedulerContract.test.js": [
+      "__MODULE__"
+    ],
+    "tests/partyDestinyContract.test.js": [
+      "makeContext"
+    ],
+    "tests/speedInitiativeSchedulerContract.test.js": [
+      "extractFunctionSource"
+    ],
+    "web-runner/modules/functionBank.js": [
+      "ClearSessionSkillDraught",
+      "order",
+      "buildDynamicInitiativeDefaultSpeedSelection"
+    ],
+    "web-runner/systems/devToolingRuntime.js": []
+  },
+  "details": {
+    "hot_files_touched": [
+      "Scripts/functionBank.js",
+      "web-runner/modules/functionBank.js"
+    ],
+    "staged_file_count": 9,
+    "staged_line_count": 125,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/hot-file-lock/ORKA-k61.prepared.json",
+    ".beads/hot-file-lock/ORKA-k61.scope",
+    "Scripts/functionBank.js",
+    "tests/dynamicInitiativeRuntimeShadowWiringContract.test.js",
+    "tests/dynamicInitiativeSchedulerContract.test.js",
+    "tests/partyDestinyContract.test.js",
+    "tests/speedInitiativeSchedulerContract.test.js",
+    "web-runner/modules/functionBank.js",
+    "web-runner/systems/devToolingRuntime.js"
+  ],
+  "issue_id": "ORKA-k61",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/hot-file-lock/ORKA-k61.prepared.json": "489e7f3c0abde95e31a9901305084e59a2978e21",
+    ".beads/hot-file-lock/ORKA-k61.scope": "8f7e5999299b0e34045245e3d72442ffe3f6470e",
+    "Scripts/functionBank.js": "02db122e344bd953467d4078834fe039171027ab",
+    "tests/dynamicInitiativeRuntimeShadowWiringContract.test.js": "da20a17c447875bdfae8ebeede087bca62f07a87",
+    "tests/dynamicInitiativeSchedulerContract.test.js": "1aef778839e0020d2cd60e1742839fb740344452",
+    "tests/partyDestinyContract.test.js": "a367cd14be13210606082ae0629a7b63cf0d1312",
+    "tests/speedInitiativeSchedulerContract.test.js": "ae277866ba36b268a0c1a403617ba5f54d2b3ce7",
+    "web-runner/modules/functionBank.js": "47b7b1f9cf749f7008871735214f2f58a62fb05b",
+    "web-runner/systems/devToolingRuntime.js": "673e8643e3a16f6ce1e2c049ad0bced53a85b591"
+  }
+}

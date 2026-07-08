@@ -1,0 +1,21 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "ClearSessionSkillDraught",
+        "order",
+        "buildDynamicInitiativeDefaultSpeedSelection"
+      ],
+      "staged_blob": "02db122e344bd953467d4078834fe039171027ab"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "ClearSessionSkillDraught",
+        "order",
+        "buildDynamicInitiativeDefaultSpeedSelection"
+      ],
+      "staged_blob": "47b7b1f9cf749f7008871735214f2f58a62fb05b"
+    }
+  },
+  "issue_id": "ORKA-k61"
+}

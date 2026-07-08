@@ -701,7 +701,6 @@ export function createDevToolingRuntime(deps = {}) {
         <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">AutoPlay</button>
         <button type="button" data-devtool-restart style="border:1px solid #92400e;background:#fff7ed;color:#9a3412;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Restart</button>
         <button type="button" data-devtool-force-skill-draught style="border:1px solid #4c1d95;background:#f5f3ff;color:#4c1d95;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Force Draw</button>
-        <button type="button" data-devtool-trigger-destiny style="border:1px solid #365314;background:#f7fee7;color:#365314;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Trigger Destiny</button>
         <button type="button" data-devtool-clear-session-skills style="border:1px solid #7f1d1d;background:#fef2f2;color:#7f1d1d;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Clear Skills</button>
       </div>
       <div data-devtool-turn-order-qa-slot></div>
@@ -748,7 +747,6 @@ export function createDevToolingRuntime(deps = {}) {
       skillHero: panel.querySelector('[data-devtool-skill-hero]'),
       skillId: panel.querySelector('[data-devtool-skill-id]'),
       forceSkillDraught: panel.querySelector('[data-devtool-force-skill-draught]'),
-      triggerDestiny: panel.querySelector('[data-devtool-trigger-destiny]'),
       clearSessionSkills: panel.querySelector('[data-devtool-clear-session-skills]'),
       turnOrderQaSlot: panel.querySelector('[data-devtool-turn-order-qa-slot]'),
       status: null,
@@ -777,14 +775,6 @@ export function createDevToolingRuntime(deps = {}) {
       const heroUID = resolveDevToolingSkillHeroUID(devToolingDom.skillHero?.value || '');
       const skillId = String(devToolingDom.skillId?.value || '').trim();
       callFunctionWithContext(fnContext, 'ForceAstralFlowSkillDraught', heroUID, skillId);
-      closeDevToolingModal({ restorePauseSnapshot: true });
-    });
-    devToolingDom.triggerDestiny.addEventListener('click', () => {
-      const sourceUID = resolveDevToolingSkillHeroUID(devToolingDom.skillHero?.value || '');
-      const result = callFunctionWithContext(fnContext, 'TriggerPartyDestinyDev', sourceUID);
-      if (!result?.success) {
-        callFunctionWithContext(fnContext, 'LogCombat', `Destiny dev trigger failed: ${result?.reason || 'no-op'}.`);
-      }
       closeDevToolingModal({ restorePauseSnapshot: true });
     });
     devToolingDom.clearSessionSkills.addEventListener('click', () => {

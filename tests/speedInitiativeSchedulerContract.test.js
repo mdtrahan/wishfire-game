@@ -4,6 +4,24 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { pathToFileURL } = require('node:url');
 
+function extractFunctionSource(src, name) {
+  const marker = `function ${name}(`;
+  const start = src.indexOf(marker);
+  assert.notEqual(start, -1, `missing ${name}`);
+  const braceStart = src.indexOf('{', start);
+  assert.notEqual(braceStart, -1, `missing body for ${name}`);
+  let depth = 0;
+  for (let i = braceStart; i < src.length; i += 1) {
+    const ch = src[i];
+    if (ch === '{') depth += 1;
+    if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) return src.slice(start, i + 1);
+    }
+  }
+  assert.fail(`unterminated ${name}`);
+}
+
 for (const schedulerPath of ['src/core/schedulerRules.mjs', 'web-runner/src/core/schedulerRules.mjs']) {
 test(`speed initiative scheduler can weave heroes and enemies by SPD in ${schedulerPath}`, async () => {
   const scheduler = await import(pathToFileURL(path.join(__dirname, '..', schedulerPath)).href);
@@ -20,6 +38,12 @@ test(`speed initiative scheduler can weave heroes and enemies by SPD in ${schedu
   const cycle = scheduler.buildFixedCycleSlots(roster, 0).map(slot => slot.uid);
 
   assert.deepEqual(cycle, [2, 101, 3, 102, 1, 4, 103]);
+
+  const proofCycle = scheduler.buildFixedCycleSlots([
+    { uid: 2, type: 0, spd: 20, name: 'Huun' },
+    { uid: 101, type: 1, spd: 22, name: 'Skeleton' },
+  ], 0).map(slot => slot.uid);
+  assert.deepEqual(proofCycle, [101, 2]);
 });
 
 test(`speed initiative anchor preserves the current actor then continues the cycle in ${schedulerPath}`, async () => {
@@ -47,28 +71,30 @@ test(`speed initiative ability gate classifies dead and disabled actors in ${sch
 });
 }
 
-test('initiative path documentation matches current runtime authority split', () => {
+test('runtime default actor selection uses fixed effective-Speed cycling', () => {
   const initiativeDoc = fs.readFileSync(path.join(__dirname, '..', 'governance/planning/combat-initiative-paths.md'), 'utf8');
   const runtimeSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner/modules/functionBank.js'), 'utf8');
 
   assert.match(runtimeSrc, /function isTimeInitiative\(ctx\)/);
   assert.match(runtimeSrc, /function buildDynamicInitiativeDefaultSpeedSelection\(ctx, options = null\)/);
   assert.match(runtimeSrc, /const roster = getInitiativeRoster\(ctx\)/);
-  assert.match(runtimeSrc, /advanceDynamicInitiativeShadow\(\{/);
-  assert.match(runtimeSrc, /selectionReason: trace\.selectionReason/);
-  assert.match(runtimeSrc, /progressBeforeSelection: trace\.progressBeforeSelection/);
-  assert.match(runtimeSrc, /thresholdSubtraction:/);
+  assert.match(runtimeSrc, /buildFixedCycleSlots\(roster, 0\)/);
+  assert.match(runtimeSrc, /selectionReason: 'speed_sorted_cycle'/);
 
   for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
     const src = fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
+    const defaultSpeedSelection = extractFunctionSource(src, 'buildDynamicInitiativeDefaultSpeedSelection');
     assert.match(src, /function isTimeInitiative\(ctx\)\s*\{\s*return false;\s*\}/);
     assert.match(src, /function selectNextInitiativeActor\(ctx\)/);
     assert.match(src, /resolveCurrentTurnPhase\(ctx, 'functionBank\.ProcessCurrentTurn\.timeInitiative'\)/);
     assert.match(src, /function buildDynamicInitiativeDefaultSpeedSelection\(ctx, options = null\)/);
-    assert.match(src, /advanceDynamicInitiativeShadow\(\{/);
-    assert.match(src, /selectionReason: trace\.selectionReason/);
-    assert.match(src, /state\.progress = \{ \.\.\.\(trace\.progressAfterSelection \|\| \{\}\) \}/);
-    assert.doesNotMatch(src, /selectionReason: 'speed_sorted_cycle'/);
+    assert.match(defaultSpeedSelection, /const queue = buildFixedCycleSlots\(roster, 0\)/);
+    assert.match(defaultSpeedSelection, /selectionReason: 'speed_sorted_cycle'/);
+    assert.match(defaultSpeedSelection, /completedIndex === -1 \|\| completedIndex >= queue\.length - 1 \? 0 : completedIndex \+ 1/);
+    assert.match(defaultSpeedSelection, /progressBeforeSelection: \{\}/);
+    assert.match(defaultSpeedSelection, /thresholdSubtraction: null/);
+    assert.doesNotMatch(defaultSpeedSelection, /advanceDynamicInitiativeShadow\(\{/);
+    assert.doesNotMatch(defaultSpeedSelection, /selectionReason: trace\.selectionReason/);
     assert.doesNotMatch(src, /dynamic_progress_math/);
   }
 

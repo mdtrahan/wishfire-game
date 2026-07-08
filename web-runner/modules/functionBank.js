@@ -1926,6 +1926,15 @@ export function ClearSessionSkillDraught(ctx) {
   g.SessionSkillsByHeroUID = {};
   g.SkillDraughtOneOffExposureBySkillId = {};
   g.SkillDraughtLastForcedSkillSuppressedReason = '';
+  ensureSkillProcRuntime(ctx);
+  g.PartyDestinyAttempts = 0;
+  g.PartyDestinyProcs = 0;
+  g.PartyDestinyHeals = 0;
+  g.PartyDestinyMisses = 0;
+  g.PartyDestinyLastResult = '';
+  g.LastPartyDestiny = null;
+  g.SkillProcTrace = [];
+  g.SkillProcTraceSeq = 0;
   clearGrowSkillState(ctx);
   appendSkillDraughtTrace(g, 'clear', {});
   return { ok: true };
@@ -4364,13 +4373,12 @@ function formatDynamicSpeedInitiativeTrace(trace = {}) {
     `Action ${Number(trace.actionSerial || 0)}`,
     `Speed order: ${order}`,
     `Selected: ${String(selected.name || selected.uid || '')}`,
-    `Reason: ${String(trace.selectionReason || 'speed_progress')}`,
+    `Reason: ${String(trace.selectionReason || 'speed_sorted_cycle')}`,
   ].join('\n');
 }
 function buildDynamicInitiativeDefaultSpeedSelection(ctx, options = null) {
   const opts = options && typeof options === 'object' ? options : {};
   const currentUID = Number(opts.currentUID || 0);
-  const currentType = Number(opts.currentType || 0);
   const source = String(opts.source || 'unknown');
   const cadenceEvents = Array.isArray(opts.cadenceEvents) ? opts.cadenceEvents : [];
   const g = getGlobals(ctx);
@@ -4380,21 +4388,13 @@ function buildDynamicInitiativeDefaultSpeedSelection(ctx, options = null) {
     resetDynamicInitiativeDefaultState(g, getDynamicInitiativeSessionId(g), 'empty_speed_roster');
     return null;
   }
-  const result = advanceDynamicInitiativeShadow({
-    battleId: getDynamicInitiativeBattleId(g),
-    actionSerial: Number(g.TurnSerial || 0),
-    actors: roster,
-    completedActor: currentUID > 0 ? getDynamicInitiativeActorSnapshot(ctx, currentUID, currentType) : null,
-    progress: state.progress || {},
-    pendingDeaths: g.PendingDeaths || null,
-    threshold: Number(g.DynamicInitiativeThreshold || 100),
-  });
-  const trace = result && result.trace ? result.trace : null;
-  const selected = trace && trace.selectedActor ? trace.selectedActor : null;
-  if (!selected || !(Number(selected.uid || 0) > 0)) return null;
-  state.progress = { ...(trace.progressAfterSelection || {}) };
-  const queue = speedGaugeQueueFromTrace(ctx, roster, trace);
-  const selectedIndex = Math.max(0, queue.findIndex(slot => Number(slot.uid || 0) === Number(selected.uid || 0)));
+  const queue = buildFixedCycleSlots(roster, 0);
+  const completedUID = Number(currentUID || 0);
+  const completedIndex = queue.findIndex(slot => Number(slot.uid || 0) === completedUID);
+  const selectedIndex = completedIndex === -1 || completedIndex >= queue.length - 1 ? 0 : completedIndex + 1;
+  const selected = queue[selectedIndex] || null;
+  if (!selected) return null;
+  state.progress = {};
   schedulerWriteQueue(ctx, queue);
   schedulerWriteIndex(ctx, selectedIndex);
   state.queue = queue.map(slot => ({ ...slot }));
@@ -4403,23 +4403,22 @@ function buildDynamicInitiativeDefaultSpeedSelection(ctx, options = null) {
     uid: Number(selected.uid || 0),
     type: Number(selected.type || 0) === 1 ? 1 : 0,
     name: actor ? String(actor.name || selected.uid) : String(selected.uid || ''),
-    speed: actor ? GetEffectiveStat(ctx, actor, 'SPD') : Number(selected.speed || selected.spd || 0),
+    speed: actor ? GetEffectiveStat(ctx, actor, 'SPD') : Number(selected.spd || 0),
   };
   return {
-    ...trace,
-    battleId: Number(trace.battleId || getDynamicInitiativeBattleId(g)),
-    actionSerial: Number(trace.actionSerial || g.TurnSerial || 0),
+    battleId: getDynamicInitiativeBattleId(g),
+    actionSerial: Number(g.TurnSerial || 0),
     source,
     selectedActor,
-    selectionReason: trace.selectionReason,
+    selectionReason: 'speed_sorted_cycle',
     speedOrder: dynamicSpeedOrderForTrace(ctx, queue),
     selectedIndex,
-    completedUID: Number(currentUID || 0),
+    completedUID,
     cadenceEvents: Array.isArray(cadenceEvents) ? cadenceEvents.slice() : [],
-    progressBeforeSelection: trace.progressBeforeSelection,
-    progressAfterSelection: trace.progressAfterSelection,
-    thresholdSubtraction: thresholdSubtractionFromTrace(trace),
-    eligibilitySkips: trace.eligibilitySkips || [],
+    progressBeforeSelection: {},
+    progressAfterSelection: {},
+    thresholdSubtraction: null,
+    eligibilitySkips: [],
     pendingDeaths: g.PendingDeaths || null,
   };
 }
