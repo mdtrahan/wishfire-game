@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { parseCsvRows } = require('./helpers/fixtureCsv');
 const { pathToFileURL } = require('node:url');
 
 const fixturePath = path.join(__dirname, 'fixtures', 'gem_action_cases.csv');
@@ -12,15 +13,6 @@ const rulesPaths = [
   path.join(__dirname, '..', 'src', 'core', 'gemActionRules.mjs'),
   path.join(__dirname, '..', 'web-runner', 'src', 'core', 'gemActionRules.mjs'),
 ];
-
-function parseCsvRows(src) {
-  const [headerLine, ...lines] = src.trim().split(/\r?\n/);
-  const headers = headerLine.split(',');
-  return lines.map((line) => {
-    const cols = line.split(',');
-    return Object.fromEntries(headers.map((header, index) => [header, cols[index]]));
-  });
-}
 
 function toNumber(row, key) {
   return Number(row[key] || 0);
