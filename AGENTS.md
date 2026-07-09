@@ -67,7 +67,41 @@ Do not implement out-of-scope fixes.
 - Include the bead id in branch and worktree names.
 - Do not block new bead work solely because many bead worktrees exist; assess ownership, overlap, and repo-state risk directly.
 - Never mix multiple implementation beads in one worktree.
-- Never merge without validation plus a rollback checkpoint.
+- Never merge without validation, current Integration Ready evidence, and a rollback checkpoint.
+- QA PASS certifies feature quality only; Integration Ready certifies merge readiness against current `main`.
+
+## Branch Disposition Gate
+
+Every branch, worktree, or PR found during audit must receive an explicit owner-facing disposition. Do not leave branches in an ambiguous "maybe merge later" state.
+
+Allowed dispositions:
+- `backlog` - preserve idea, not active now
+- `needs-spec` - intent or acceptance criteria unclear
+- `active` - current implementation lane
+- `complete` - QA passed and integration is intended
+- `closed` - merged, superseded, or intentionally ended
+- `legacy` - preserved for reference, not merge-bound
+- `deprecated` - obsolete due to newer product or architecture direction
+- `delete-candidate` - safe to remove only after owner approval
+- `needs-owner-decision` - Codex cannot infer disposition
+
+Disposition rules:
+- No branch is `active` unless it has a live bead and current owner intent.
+- No branch is `complete` unless it has QA PASS or explicit owner acceptance.
+- No branch may be merged unless it is `complete` and has Integration Ready evidence.
+- If merge readiness is unclear, classify it as `needs-spec`, `legacy`, `deprecated`, or `delete-candidate`; do not keep it floating.
+- If Codex cannot infer disposition, mark `needs-owner-decision` and ask for one decision.
+
+Required audit fields:
+- Branch:
+- Bead:
+- Current disposition:
+- Recommended disposition:
+- Merge intent: merge | cherry-pick | archive | delete | needs-owner-decision
+- Reason:
+- Blocking issue:
+- Next action:
+- Owner decision required: yes/no
 
 ## Canonical Code
 - Runtime: `Scripts/`, `web-runner/`
@@ -173,6 +207,35 @@ Leave sections empty only when there is no stable local guidance yet.
 - `Test URL`
 - `Steps`
 - `Expected`
+
+`integration ready <bd-id>`:
+- `INTEGRATION READY: YES|NO`
+- `Bead: <id>`
+- `Branch: <branch>`
+- `State: Already Integrated|Integration Ready|Mechanical Conflict|Semantic Conflict|New Regression|Active Development|Dependency Blocked|Unknown`
+- `Conflict Class: none|Metadata Conflict|Mechanical Conflict|Semantic Conflict`
+- `Main Base: <sha>`
+- `Merge Source: <branch or PR>`
+- `Dependencies: merged|ordered|blocked|none`
+- `Feature QA: PASS|BLOCKED|NOT CHECKED`
+- `Baseline Failures: <count/summary>`
+- `New Regressions: <count/summary>`
+- `Validation: <commands/baseline-relative results>`
+- `Blocking Reason: <one line or none>`
+
+`repository audit integration drift`:
+- `Integration Drift`
+- `Bead`
+- `Branch`
+- `Drift From Main`
+- `Missing Integration Ready Evidence`
+- `Baseline Failure / New Regression`
+- `Conflict Class`
+- `Disposition: backlog|needs-spec|active|complete|closed|legacy|deprecated|delete-candidate|needs-owner-decision`
+- `Blocking Reason`
+- `Next Action`
+- `Summary Buckets: Ready to Merge|Metadata Conflicts|Mechanical Conflicts|Semantic Conflicts|Needs Bug Fixes|Active Development|Already Integrated|Unknown`
+- `Integration Debt Metrics: counts, total debt, oldest ready branch, oldest semantic conflict, average ready age, flags`
 
 ## Child DOX Index
 - `Scripts/AGENTS.md` - Construct-style runtime mirror and high-risk function parity.

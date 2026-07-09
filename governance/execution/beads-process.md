@@ -19,10 +19,15 @@
 4. Confirm the bead is executable.
 5. Mark `in_progress`.
 6. Implement only the scoped change.
-7. Run targeted verification.
-8. Record closeout artifacts.
-9. Confirm `bd` write results.
-10. Close the bead.
+7. Run targeted feature verification.
+8. Record QA PASS artifacts only after feature quality is proven.
+9. Run the Integration Ready gate against current `main`.
+10. If Integration Ready fails, report the exact blocker and keep the branch out of the merge queue.
+11. Merge only after Integration Ready passes.
+12. After merge, verify containment on `main`, smoke tests, and clean repository state.
+13. Confirm `bd` write results for any workflow-state changes.
+
+Detailed QA PASS, Integration Ready, merge, and audit rules live in `governance/execution/integration-ready-gate.md`.
 
 ## Queue Creation vs Execution
 - Creating a bead is not the same as starting a lane.
@@ -95,12 +100,23 @@ Minor exemption does not apply to:
   - one actionable prepare command when preparation is missing
   - one batched error list when top-level or undeclared-function violations exist
 
-## Closeout Rules
-- A bead is not ready to close unless all of the following are true:
+## QA PASS And Integration Closeout Rules
+- A bead is not ready for QA PASS unless all of the following are true:
   - acceptance criteria are satisfied
   - tests or validation were actually run
   - bug/regression beads update `/ai-memory/insights.md`
 - If unrelated dirty changes remain in touched hot files, do not treat the lane as cleanly reviewable without explicitly calling out that risk.
+- QA PASS certifies feature quality only. It does not certify merge readiness.
+- A bead is not ready for merge unless the Integration Ready gate passes against current `main`.
+- Integration Ready validation is baseline-relative: failures already present on current `main` are `Baseline Failure` items, while failures newly introduced or worsened by the candidate are `New Regression` items.
+- Do not block a branch solely because it inherits unrelated `Baseline Failure` items from `main`.
+- Repository audits must classify each remaining branch as exactly one of: `Already Integrated`, `Integration Ready`, `Mechanical Conflict`, `Semantic Conflict`, `New Regression`, `Active Development`, `Dependency Blocked`, or `Unknown`.
+- Do not classify merge conflicts, dependency ordering, or inherited baseline failures as validation failure.
+- Do not reduce `Integration Ready` for conflicts limited to metadata files such as `.beads/interactions.jsonl` or `ai-memory/insights.md`; report them as `Metadata Conflict`.
+- Split conflicts by risk: `Mechanical Conflict` means expected manual merge only; `Semantic Conflict` means overlapping feature ownership or behavioral disagreement needs owner review.
+- Repository audits must report Integration Debt metrics so completed branches do not accumulate outside `main`.
+- If `main` moves after Integration Ready, rerun the Integration Ready gate before merge.
+- If a QA PASS branch drifts from current `main` without Integration Ready evidence, classify it as `Integration Drift` in repository audits.
 
 ## `bd` Write Confirmation Rule
 - Treat `bd` writes as unconfirmed until a second read succeeds.
@@ -123,4 +139,6 @@ Minor exemption does not apply to:
 - Running implementation beads in the active workspace without minor exemption or explicit override
 - Mixing multiple hot-file lanes in one dirty workspace without explicit recovery plan
 - Closing a bead based on code presence alone without targeted validation
+- Treating QA PASS as permission to merge without current `main` integration evidence
+- Leaving QA PASS branches to drift while `main` continues moving
 - Trusting a single immediate `bd` read after a write when the tool has shown inconsistency
