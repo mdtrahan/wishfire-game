@@ -1,0 +1,63 @@
+{
+  "changed_functions": {
+    ".beads/hot-file-lock/ORKA-k61.prepared.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-k61.scope": [
+      "__MODULE__"
+    ],
+    "Scripts/functionBank.js": [
+      "shouldApplyDynamicInitiativeAuthorityForDefaultSelection",
+      "recordDynamicInitiativeAuthorityAlignmentSkip",
+      "AdvanceTurn"
+    ],
+    "ai-memory/insights.md": [
+      "__MODULE__"
+    ],
+    "tests/dynamicInitiativeAuthorityExperimentContract.test.js": [
+      "proofAuthorityBattleStartActors"
+    ],
+    "tests/speedInitiativeSchedulerContract.test.js": [
+      "extractFunctionSource"
+    ],
+    "web-runner/modules/functionBank.js": [
+      "shouldApplyDynamicInitiativeAuthorityForDefaultSelection",
+      "recordDynamicInitiativeAuthorityAlignmentSkip",
+      "AdvanceTurn"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "Scripts/functionBank.js",
+      "web-runner/modules/functionBank.js"
+    ],
+    "staged_file_count": 7,
+    "staged_line_count": 73,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/hot-file-lock/ORKA-k61.prepared.json",
+    ".beads/hot-file-lock/ORKA-k61.scope",
+    "Scripts/functionBank.js",
+    "ai-memory/insights.md",
+    "tests/dynamicInitiativeAuthorityExperimentContract.test.js",
+    "tests/speedInitiativeSchedulerContract.test.js",
+    "web-runner/modules/functionBank.js"
+  ],
+  "issue_id": "ORKA-k61",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/hot-file-lock/ORKA-k61.prepared.json": "bd0637efaaf009430643c37fbf53bfd32c6835f8",
+    ".beads/hot-file-lock/ORKA-k61.scope": "9e000eca806b2bb477dbf872e431ea429f40f70d",
+    "Scripts/functionBank.js": "edc391a5997bf9cea1c8459b6164c8913c45caa9",
+    "ai-memory/insights.md": "e5b50bd208172df71c1d702be0cf35a79efe5bc7",
+    "tests/dynamicInitiativeAuthorityExperimentContract.test.js": "63abacd3497ce4207ec2179e5597da192f6ae8eb",
+    "tests/speedInitiativeSchedulerContract.test.js": "2e159ef736839efcd31d8c7422f169fcbe3a8cf0",
+    "web-runner/modules/functionBank.js": "89e2a94a2ca65ba4fdd632ae8f18b6e51068244d"
+  }
+}

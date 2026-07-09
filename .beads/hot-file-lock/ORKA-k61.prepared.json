@@ -1,0 +1,21 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "shouldApplyDynamicInitiativeAuthorityForDefaultSelection",
+        "recordDynamicInitiativeAuthorityAlignmentSkip",
+        "AdvanceTurn"
+      ],
+      "staged_blob": "edc391a5997bf9cea1c8459b6164c8913c45caa9"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "shouldApplyDynamicInitiativeAuthorityForDefaultSelection",
+        "recordDynamicInitiativeAuthorityAlignmentSkip",
+        "AdvanceTurn"
+      ],
+      "staged_blob": "89e2a94a2ca65ba4fdd632ae8f18b6e51068244d"
+    }
+  },
+  "issue_id": "ORKA-k61"
+}

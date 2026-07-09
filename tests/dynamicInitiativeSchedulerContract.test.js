@@ -219,9 +219,9 @@ test('default combat delegates actor selection to effective Speed sorting withou
     assert.match(src, /function buildDynamicInitiativeDefaultSpeedSelection\(ctx, options = null\)/);
     assert.match(src, /function recordDynamicInitiativeDefaultAfterAction\(ctx, currentUID, currentType, cadenceEvents = \[\]\)/);
     assert.match(src, /function applyDynamicInitiativeDefaultSelection\(ctx, prediction, cadenceEvents = \[\]\)/);
-    assert.match(src, /advanceDynamicInitiativeShadow\(\{/);
-    assert.match(src, /state\.progress = \{ \.\.\.\(trace\.progressAfterSelection \|\| \{\}\) \}/);
-    assert.match(src, /selectionReason: trace\.selectionReason/);
+    assert.match(src, /buildFixedCycleSlots\(roster, 0\)/);
+    assert.match(src, /selectionReason: 'speed_sorted_cycle'/);
+    assert.match(src, /progressBeforeSelection: \{\}/);
     assert.match(src, /initializeDynamicInitiativeDefaultCurrent\(ctx, 'BuildRoundGroups'\)/);
     assert.match(src, /getDynamicInitiativeDefaultCurrent\(g\);\s*if \(dynamicCurrent\) return dynamicCurrent\.uid;/);
     assert.match(src, /applyDynamicInitiativeDefaultSelection\(ctx, dynamicInitiativeDefaultPrediction, dynamicInitiativeCadenceEvents\)/);

@@ -318,23 +318,15 @@ test('Destiny resolves from enemy damage receive seam after hero hit', () => {
   assert.equal(ctx.state.globals.LastPartyDestiny.reason, 'healed');
 });
 
-test('dev panel exposes Destiny trigger without inlining effect logic', () => {
+test('dev panel does not expose direct Destiny trigger', () => {
   const runtimeSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devToolingRuntime.js'), 'utf8');
-  const destinyTriggerStart = runtimeSrc.indexOf('devToolingDom.triggerDestiny.addEventListener');
-  const destinyTriggerEnd = runtimeSrc.indexOf('devToolingDom.clearSessionSkills.addEventListener', destinyTriggerStart);
-  assert.notEqual(destinyTriggerStart, -1);
-  assert.notEqual(destinyTriggerEnd, -1);
-  const destinyTriggerSrc = runtimeSrc.slice(destinyTriggerStart, destinyTriggerEnd);
-  assert.match(runtimeSrc, /data-devtool-trigger-destiny/);
-  assert.match(destinyTriggerSrc, /TriggerPartyDestinyDev/);
-  assert.match(destinyTriggerSrc, /const sourceUID = resolveDevToolingSkillHeroUID\(devToolingDom\.skillHero\?\.value \|\| ''\);/);
-  assert.doesNotMatch(destinyTriggerSrc, /const requestedUID = Number/);
-  assert.doesNotMatch(destinyTriggerSrc, /const requestedActor = state\.entities\.find/);
+  assert.doesNotMatch(runtimeSrc, /data-devtool-trigger-destiny/);
+  assert.doesNotMatch(runtimeSrc, /devToolingDom\.triggerDestiny/);
+  assert.doesNotMatch(runtimeSrc, /TriggerPartyDestinyDev/);
+  assert.match(runtimeSrc, /data-devtool-force-skill-draught/);
+  assert.match(runtimeSrc, /data-devtool-clear-session-skills/);
   assert.match(runtimeSrc, /Number\(actor\?\.uid \|\| 0\) === requestedUID/);
   assert.match(runtimeSrc, /heroIndex \+ 1 === requestedUID/);
-  assert.match(destinyTriggerSrc, /Destiny dev trigger failed:/);
-  assert.match(destinyTriggerSrc, /closeDevToolingModal\(\{ restorePauseSnapshot: true \}\);/);
-  assert.doesNotMatch(destinyTriggerSrc, /ApplyPartyHeal/);
 });
 
 test('Clear Skills reset clears Destiny session state and proc readout counters in both mirrors', () => {
