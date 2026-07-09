@@ -2,19 +2,19 @@
   "hot_files": {
     "Scripts/functionBank.js": {
       "functions": [
-        "ClearSessionSkillDraught",
-        "order",
-        "buildDynamicInitiativeDefaultSpeedSelection"
+        "shouldApplyDynamicInitiativeAuthorityForDefaultSelection",
+        "recordDynamicInitiativeAuthorityAlignmentSkip",
+        "AdvanceTurn"
       ],
-      "staged_blob": "02db122e344bd953467d4078834fe039171027ab"
+      "staged_blob": "edc391a5997bf9cea1c8459b6164c8913c45caa9"
     },
     "web-runner/modules/functionBank.js": {
       "functions": [
-        "ClearSessionSkillDraught",
-        "order",
-        "buildDynamicInitiativeDefaultSpeedSelection"
+        "shouldApplyDynamicInitiativeAuthorityForDefaultSelection",
+        "recordDynamicInitiativeAuthorityAlignmentSkip",
+        "AdvanceTurn"
       ],
-      "staged_blob": "47b7b1f9cf749f7008871735214f2f58a62fb05b"
+      "staged_blob": "89e2a94a2ca65ba4fdd632ae8f18b6e51068244d"
     }
   },
   "issue_id": "ORKA-k61"

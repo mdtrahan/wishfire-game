@@ -88,6 +88,8 @@ test('runtime default actor selection uses fixed effective-Speed cycling', () =>
     assert.match(src, /function selectNextInitiativeActor\(ctx\)/);
     assert.match(src, /resolveCurrentTurnPhase\(ctx, 'functionBank\.ProcessCurrentTurn\.timeInitiative'\)/);
     assert.match(src, /function buildDynamicInitiativeDefaultSpeedSelection\(ctx, options = null\)/);
+    assert.match(src, /function shouldApplyDynamicInitiativeAuthorityForDefaultSelection\(authorityPrediction, defaultPrediction\)/);
+    assert.match(src, /function recordDynamicInitiativeAuthorityAlignmentSkip\(ctx, authorityPrediction, defaultPrediction, cadenceEvents = \[\]\)/);
     assert.match(defaultSpeedSelection, /const queue = buildFixedCycleSlots\(roster, 0\)/);
     assert.match(defaultSpeedSelection, /selectionReason: 'speed_sorted_cycle'/);
     assert.match(defaultSpeedSelection, /completedIndex === -1 \|\| completedIndex >= queue\.length - 1 \? 0 : completedIndex \+ 1/);
@@ -95,6 +97,9 @@ test('runtime default actor selection uses fixed effective-Speed cycling', () =>
     assert.match(defaultSpeedSelection, /thresholdSubtraction: null/);
     assert.doesNotMatch(defaultSpeedSelection, /advanceDynamicInitiativeShadow\(\{/);
     assert.doesNotMatch(defaultSpeedSelection, /selectionReason: trace\.selectionReason/);
+    assert.match(src, /!isDynamicInitiativeAuthorityFlagEnabled\(g\)/);
+    assert.match(src, /recordDynamicInitiativeAuthorityAlignmentSkip\(ctx, dynamicInitiativeShadowPrediction, dynamicInitiativeDefaultPrediction, dynamicInitiativeCadenceEvents\)/);
+    assert.match(src, /authority_prediction_mismatched_speed_cycle/);
     assert.doesNotMatch(src, /dynamic_progress_math/);
   }
 

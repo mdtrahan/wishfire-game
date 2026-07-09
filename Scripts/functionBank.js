@@ -4610,6 +4610,27 @@ function tryApplyDynamicInitiativeAuthoritySelection(ctx, prediction, cadenceEve
   return true;
 }
 
+function shouldApplyDynamicInitiativeAuthorityForDefaultSelection(authorityPrediction, defaultPrediction) {
+  const authorityUID = Number(authorityPrediction?.selectedActor?.uid || 0);
+  if (!(authorityUID > 0)) return false;
+  const defaultUID = Number(defaultPrediction?.selectedActor?.uid || 0);
+  if (!(defaultUID > 0)) return true;
+  return authorityUID === defaultUID;
+}
+
+function recordDynamicInitiativeAuthorityAlignmentSkip(ctx, authorityPrediction, defaultPrediction, cadenceEvents = []) {
+  clearDynamicInitiativeAuthorityCurrent(getGlobals(ctx));
+  recordTurnSchedulerEvent(ctx, 'dynamic_initiative_authority_alignment_skip', {
+    actionSerial: Number(authorityPrediction?.actionSerial || 0),
+    authoritySelectedUID: Number(authorityPrediction?.selectedActor?.uid || 0),
+    defaultSelectedUID: Number(defaultPrediction?.selectedActor?.uid || 0),
+    authoritySelectionReason: String(authorityPrediction?.selectionReason || ''),
+    defaultSelectionReason: String(defaultPrediction?.selectionReason || ''),
+    cadenceEvents: Array.isArray(cadenceEvents) ? cadenceEvents.slice() : [],
+    reason: 'authority_prediction_mismatched_speed_cycle',
+  });
+}
+
 function schedulerWriteQueue(ctx, nextQueue) {
   const g = getGlobals(ctx);
   g.TurnOrderArray = Array.isArray(nextQueue) ? nextQueue : [];
@@ -5247,7 +5268,14 @@ export function AdvanceTurn(ctx) {
   if (holdForEnemyRosterRefill(ctx)) return;
   dynamicInitiativeShadowPrediction = recordDynamicInitiativeShadowAfterAction(ctx, currentUID, currentType, dynamicInitiativeCadenceEvents);
   const dynamicInitiativeDefaultPrediction = recordDynamicInitiativeDefaultAfterAction(ctx, currentUID, currentType, dynamicInitiativeCadenceEvents);
-  const dynamicInitiativeAuthorityApplied = tryApplyDynamicInitiativeAuthoritySelection(ctx, dynamicInitiativeShadowPrediction, dynamicInitiativeCadenceEvents);
+  let dynamicInitiativeAuthorityApplied = false;
+  if (!isDynamicInitiativeAuthorityFlagEnabled(g)) {
+    clearDynamicInitiativeAuthorityCurrent(g);
+  } else if (shouldApplyDynamicInitiativeAuthorityForDefaultSelection(dynamicInitiativeShadowPrediction, dynamicInitiativeDefaultPrediction)) {
+    dynamicInitiativeAuthorityApplied = tryApplyDynamicInitiativeAuthoritySelection(ctx, dynamicInitiativeShadowPrediction, dynamicInitiativeCadenceEvents);
+  } else {
+    recordDynamicInitiativeAuthorityAlignmentSkip(ctx, dynamicInitiativeShadowPrediction, dynamicInitiativeDefaultPrediction, dynamicInitiativeCadenceEvents);
+  }
   const dynamicInitiativeDefaultApplied = !dynamicInitiativeAuthorityApplied
     && applyDynamicInitiativeDefaultSelection(ctx, dynamicInitiativeDefaultPrediction, dynamicInitiativeCadenceEvents);
   if (!dynamicInitiativeAuthorityApplied && !dynamicInitiativeDefaultApplied) ProcessCurrentTurn(ctx);

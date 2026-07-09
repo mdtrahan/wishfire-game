@@ -30,6 +30,7 @@
 - Resource accounting for normal gem matches must pass only the matched set count into the existing reward owner (for yellow, `Add_Gold`) rather than replacing reward math. Board-wide same-color counts belong only to explicit supergem/sweep owner paths.
 - Match selections store board indices at runtime; resolve through `gameState.gems` before applying gem-object predicates such as color or lock state, otherwise resource counts can silently collapse to zero.
 - Enemy board-pressure effects that run during autoplay should preserve board cardinality unless the turn/refill gates explicitly own the resulting empty cells. Prefer visible lock/disable state for temporary denial effects, and make autoplay skip disabled gems instead of trying to select through them.
+- Speed-based initiative must validate the live current-turn source, not just the displayed speed order. Dynamic authority/progress predictions are shadows unless they agree with the fixed-speed next actor; first handoff proof should include Skeleton 22 -> Huun 20.
 
 ## 2026-03-07 Regression Note
 - Hero selector render gate must treat hero-turn as `TurnPhase === 0` (not `1`) in web-runner runtime.

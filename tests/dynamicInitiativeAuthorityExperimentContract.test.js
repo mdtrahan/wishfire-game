@@ -289,6 +289,8 @@ test('dynamic initiative authority harness remains gated while default combat us
     assert.match(src, /tryApplyDynamicInitiativeAuthoritySelection\(ctx, dynamicInitiativeShadowPrediction, dynamicInitiativeCadenceEvents\)/);
     assert.match(src, /function getDynamicInitiativeDefaultCurrent\(g\)/);
     assert.match(src, /recordDynamicInitiativeDefaultAfterAction\(ctx, currentUID, currentType, dynamicInitiativeCadenceEvents\)/);
+    assert.match(src, /shouldApplyDynamicInitiativeAuthorityForDefaultSelection\(dynamicInitiativeShadowPrediction, dynamicInitiativeDefaultPrediction\)/);
+    assert.match(src, /authority_prediction_mismatched_speed_cycle/);
     assert.match(src, /applyDynamicInitiativeDefaultSelection\(ctx, dynamicInitiativeDefaultPrediction, dynamicInitiativeCadenceEvents\)/);
     assert.match(src, /const actors = getDynamicInitiativeRoster\(ctx\);/);
     assert.match(src, /speed: GetEffectiveStat\(ctx, hero, 'SPD'\)/);
