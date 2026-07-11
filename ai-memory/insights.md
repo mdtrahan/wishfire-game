@@ -499,3 +499,6 @@
 ## 2026-07-04 - Authority QA Must Use Live Combat Identity
 - Dynamic initiative QA launchers must bind the exact live encounter and clear startup/input gates before judging turn order. Synthetic roster setup can prove scheduler math, but Browser/autoplay validation must activate through the same authority gate as real combat.
 - Pending target actions must execute with their owning pending actor, not whichever actor is current when the follow-up resolves. Actor handoff regressions can look like team-turn ordering bugs or consumed SuperGems with no attack.
+
+## 2026-07-11 - Editable Dev Fields Must Bypass Gameplay Hotkeys
+- Capture-phase keyboard handlers must return immediately for editable modal targets before evaluating gameplay shortcuts. Physical-code shortcuts such as `KeyA` otherwise prevent matching letters from being entered even when the modal correctly recognizes the target as an input.

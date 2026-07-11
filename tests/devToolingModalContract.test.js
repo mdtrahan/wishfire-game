@@ -163,6 +163,22 @@ test('dev tooling restart helper owns restart button labels and reset delegation
   assert.match(runtimeSrc, /window\.location\.reload\(\)/);
 });
 
+test('editable dev tooling fields bypass gameplay keyboard shortcuts', () => {
+  const filePath = path.join(__dirname, '..', 'web-runner', 'app.js');
+  const src = fs.readFileSync(filePath, 'utf8');
+  const keydownSrc = extractFunctionSource(src, 'handleGlobalKeydown');
+
+  assert.match(
+    keydownSrc,
+    /if \(ensureDevToolingConfig\(\)\.open\) \{[\s\S]*if \(!isEditableDomTarget\(ev\.target\)\) \{[\s\S]*return;[\s\S]*\}\s*return;\s*\}/,
+  );
+  assert.ok(
+    keydownSrc.indexOf('return;\n    }\n    if (state.globals.DevTestMode)')
+      < keydownSrc.indexOf("ev.code === 'KeyA'"),
+    'editable modal targets must return before the KeyA gameplay shortcut',
+  );
+});
+
 test('dev browser hooks expose an explicit dynamic initiative authority QA scenario', () => {
   const devHooksPath = path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js');
   const src = fs.readFileSync(devHooksPath, 'utf8');
