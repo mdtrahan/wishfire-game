@@ -4766,6 +4766,7 @@ function getStoryCardLiveLineState() {
         ev.preventDefault();
         return;
       }
+      return;
     }
     if (state.globals.DevTestMode) {
       if (ev.code === 'KeyA') {
@@ -5068,6 +5069,7 @@ function getStoryCardLiveLineState() {
     const currentTurnUID = callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0;
     if (
       state.globals.GamePhase === 'RUNTIME' &&
+      !state.globals.BattleStartActive &&
       currentTurnType === 1 &&
       state.globals.TurnPhase === 2 &&
       !state.globals.ActionInProgress &&

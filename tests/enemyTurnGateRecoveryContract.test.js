@@ -72,3 +72,11 @@ test('app enemy-action abort routes through recovery while leaked live enemy-idl
     /currentTurnType === 1[\s\S]*state\.globals\.TurnPhase === 2[\s\S]*!state\.globals\.ActionInProgress[\s\S]*!state\.globals\.IsPlayerBusy[\s\S]*\(isCanPickGemsReady\(state\.globals\.CanPickGems\) \|\| !state\.globals\.DeferAdvance\)[\s\S]*const currentEnemy = currentTurnUID[\s\S]*const liveCurrentEnemy = currentEnemy && currentEnemy\.kind === 'enemy'[\s\S]*if \(liveCurrentEnemy && !hasEmpty && !refillActive && actionClaimBarrier\.canClaimCombatAction\)[\s\S]*applyTurnGateIntent\(createEnemyTurnGateBaseline\);[\s\S]*combatRuntimeGateway\.runCombatStep\(fnContext, 'ProcessTurn'\);[\s\S]*else if \(liveCurrentEnemy\)[\s\S]*applyTurnGateIntent\(createEnemyTurnRetryHold, \{[\s\S]*currentTurnUID,[\s\S]*\}\);[\s\S]*else if \(actionClaimBarrier\.canClaimCombatAction\) \{[\s\S]*applyTurnGateIntent\(createEnemyTurnIdleRecovery, \{[\s\S]*currentTurnUID,[\s\S]*\}\);[\s\S]*combatRuntimeGateway\.runCombatStep\(fnContext, 'ProcessTurn'\);/,
   );
 });
+
+test('battle start owns the first turn claim before enemy idle recovery can run', () => {
+  const src = read('web-runner/app.js');
+  assert.match(
+    src,
+    /state\.globals\.GamePhase === 'RUNTIME' &&\s+!state\.globals\.BattleStartActive &&\s+currentTurnType === 1/,
+  );
+});
