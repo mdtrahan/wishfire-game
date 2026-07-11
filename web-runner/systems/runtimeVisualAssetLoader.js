@@ -1,10 +1,5 @@
 import {
   CANONICAL_HERO_ROSTER,
-  FIGMA_HERO_BACK_URL,
-  FIGMA_HERO_CLOSE_OVAL_URL,
-  FIGMA_HERO_NEXT_URL,
-  FIGMA_MINUS_URL,
-  FIGMA_PLUS_URL,
   HERO_PACK_CLOSE_OVAL_PATH,
   HERO_PACK_MINUS_PATH,
   HERO_PACK_PLUS_PATH,
@@ -142,9 +137,9 @@ export async function loadRuntimeVisualAssets({
       if (!key) return;
       heroCapsuleImages[key] = await loadImage(assetUrl(`images/cap_${key}.png`));
     });
-    const plusPromise = loadImage(assetUrl(HERO_PACK_PLUS_PATH)).then(img => img || loadImage(FIGMA_PLUS_URL));
-    const minusPromise = loadImage(assetUrl(HERO_PACK_MINUS_PATH)).then(img => img || loadImage(FIGMA_MINUS_URL));
-    const closePromise = loadImage(assetUrl(HERO_PACK_CLOSE_OVAL_PATH)).then(img => img || loadImage(FIGMA_HERO_CLOSE_OVAL_URL));
+    const plusPromise = loadImage(assetUrl(HERO_PACK_PLUS_PATH));
+    const minusPromise = loadImage(assetUrl(HERO_PACK_MINUS_PATH));
+    const closePromise = loadImage(assetUrl(HERO_PACK_CLOSE_OVAL_PATH));
 
     tasks.push(
       ...heroPortraitLoads,
@@ -169,8 +164,6 @@ export async function loadRuntimeVisualAssets({
       (async () => { mapTownImages.cape = await loadImage(assetUrl('images/map_town_cape_46.png')); })(),
       (async () => { plusIconImage = await plusPromise; })(),
       (async () => { minusIconImage = await minusPromise; })(),
-      (async () => { heroBackArrowImage = await loadImage(FIGMA_HERO_BACK_URL); })(),
-      (async () => { heroNextArrowImage = await loadImage(FIGMA_HERO_NEXT_URL); })(),
       (async () => { closeWinOvalImage = await closePromise; })(),
     );
 
@@ -216,8 +209,14 @@ export async function loadRuntimeVisualAssets({
   await loadBaseSprites(allTypeNames, 0.3, 0.74);
   updateStartupLoadState({ phase: 'bootstrap', label: 'Loading hero and board visuals...', progress: 0.74 });
   await loadCoreVisuals();
-  updateStartupLoadState({ phase: 'bootstrap', label: 'Loading extended visuals...', progress: 0.9 });
-  await loadDeferredVisuals();
+  updateStartupLoadState({ phase: 'bootstrap', label: 'Queuing extended visuals...', progress: 0.9 });
+  const deferredVisualsPromise = loadDeferredVisuals()
+    .then(() => {
+      runtimeDebugLogging.startupDebugLog('[LOAD] Deferred visuals loaded');
+    })
+    .catch((err) => {
+      console.warn('[LOAD] Deferred visuals failed:', err?.message || err || 'unknown');
+    });
   updateStartupLoadState({ phase: 'bootstrap', label: 'Finalizing runtime...', progress: 0.96 });
 
   return {
@@ -245,5 +244,6 @@ export async function loadRuntimeVisualAssets({
     closeWinOvalImage,
     loadedCount,
     failedImages,
+    deferredVisualsPromise,
   };
 }

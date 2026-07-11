@@ -18,11 +18,6 @@ export function computeCombatPower(atk, def, hp) {
   return Math.round((a + d + (h / 10)) * 100) / 100;
 }
 export const HERO_STAT_KEYS = ['ATK', 'DEF', 'MAG', 'RES', 'SPD', 'HP'];
-export const FIGMA_HERO_NEXT_URL = 'https://www.figma.com/api/mcp/asset/dfb1bc1b-4189-4f52-9c88-1cf1e4f8029a';
-export const FIGMA_HERO_BACK_URL = 'https://www.figma.com/api/mcp/asset/6ce3ba17-8c7d-4a3e-bc8e-194b9b4947d9';
-export const FIGMA_HERO_CLOSE_OVAL_URL = 'https://www.figma.com/api/mcp/asset/978c0a6d-a797-4ae7-b41c-4306877ad7bd';
-export const FIGMA_PLUS_URL = 'https://www.figma.com/api/mcp/asset/f978e439-2103-43fd-be9d-fcb7f5aa9d7f';
-export const FIGMA_MINUS_URL = 'https://www.figma.com/api/mcp/asset/b5733d59-96b6-4f04-a5de-e4134dea9565';
 export const HERO_PACK_PLUS_PATH = 'images/plus.png';
 export const HERO_PACK_MINUS_PATH = 'images/minus.png';
 export const HERO_PACK_CLOSE_OVAL_PATH = 'images/ui_navclosebutton-animation 1-000.png';
