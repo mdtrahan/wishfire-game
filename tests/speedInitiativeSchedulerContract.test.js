@@ -39,11 +39,18 @@ test(`speed initiative scheduler can weave heroes and enemies by SPD in ${schedu
 
   assert.deepEqual(cycle, [2, 101, 3, 102, 1, 4, 103]);
 
-  const proofCycle = scheduler.buildFixedCycleSlots([
-    { uid: 2, type: 0, spd: 20, name: 'Huun' },
-    { uid: 101, type: 1, spd: 22, name: 'Skeleton' },
-  ], 0).map(slot => slot.uid);
+  const proofRoster = [
+    { uid: 2, type: 0, spd: 20, name: 'Quick Hero' },
+    { uid: 101, type: 1, spd: 22, name: 'Fast Enemy' },
+  ];
+  const proofCycle = scheduler.buildFixedCycleSlots(proofRoster, 0).map(slot => slot.uid);
   assert.deepEqual(proofCycle, [101, 2]);
+
+  const renamedProofCycle = scheduler.buildFixedCycleSlots(
+    proofRoster.map((slot, index) => ({ ...slot, name: `Renamed Actor ${index + 1}` })),
+    0,
+  ).map(slot => slot.uid);
+  assert.deepEqual(renamedProofCycle, proofCycle);
 });
 
 test(`speed initiative anchor preserves the current actor then continues the cycle in ${schedulerPath}`, async () => {
