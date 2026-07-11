@@ -16,7 +16,7 @@
 1. Run `bd ready`.
 2. Select the highest-priority ready bead or the explicitly assigned bead.
 3. Run `bd show <id>`.
-4. Confirm the bead is executable.
+4. Confirm the bead is executable under `governance/execution/implementation-gate.md`.
 5. Mark `in_progress`.
 6. Implement only the scoped change.
 7. Run targeted feature verification.
@@ -27,7 +27,10 @@
 12. After merge, verify containment on `main`, smoke tests, and clean repository state.
 13. Confirm `bd` write results for any workflow-state changes.
 
-Detailed QA PASS, Integration Ready, merge, and audit rules live in `governance/execution/integration-ready-gate.md`.
+Detailed implementation, integration, and validation rules live in:
+- `governance/execution/implementation-gate.md`
+- `governance/execution/integration.md`
+- `governance/execution/validation.md`
 
 ## Queue Creation vs Execution
 - Creating a bead is not the same as starting a lane.
@@ -48,18 +51,9 @@ Detailed QA PASS, Integration Ready, merge, and audit rules live in `governance/
 - Beads are the primary unit of task isolation, checkpointing, recovery, and rollback.
 - Include the bead id in both branch and worktree names.
 - Follow concurrency and delegation limits from the active orchestrator skill.
+- Follow `governance/execution/integration.md` for branch/worktree creation, branch disposition, merge, cleanup, and deletion rules.
 
-Minor actions may stay in the active workspace:
-- read-only review, policy analysis, bead creation, and bead triage
-- spelling fixes, small reference `.md` additions, metadata/doc touch-ups
-- tiny policy wording edits with no runtime behavior change
-
-Minor exemption does not apply to:
-- runtime code
-- hot files
-- package, build, deploy, persistence, or data-model changes
-- overlapping dirty paths
-- multi-agent write work
+Minor exemption rules live in `governance/execution/implementation-gate.md`.
 
 ## Executable Bead Criteria
 - A bead is executable only if live `bd` state includes:
@@ -101,22 +95,9 @@ Minor exemption does not apply to:
   - one batched error list when top-level or undeclared-function violations exist
 
 ## QA PASS And Integration Closeout Rules
-- A bead is not ready for QA PASS unless all of the following are true:
-  - acceptance criteria are satisfied
-  - tests or validation were actually run
-  - bug/regression beads update `/ai-memory/insights.md`
+- Follow `governance/execution/validation.md` for feature proof and bug/regression insight requirements.
+- Follow `governance/execution/integration.md` for QA PASS, Integration Ready, repository audit classification, and Integration Drift.
 - If unrelated dirty changes remain in touched hot files, do not treat the lane as cleanly reviewable without explicitly calling out that risk.
-- QA PASS certifies feature quality only. It does not certify merge readiness.
-- A bead is not ready for merge unless the Integration Ready gate passes against current `main`.
-- Integration Ready validation is baseline-relative: failures already present on current `main` are `Baseline Failure` items, while failures newly introduced or worsened by the candidate are `New Regression` items.
-- Do not block a branch solely because it inherits unrelated `Baseline Failure` items from `main`.
-- Repository audits must classify each remaining branch as exactly one of: `Already Integrated`, `Integration Ready`, `Mechanical Conflict`, `Semantic Conflict`, `New Regression`, `Active Development`, `Dependency Blocked`, or `Unknown`.
-- Do not classify merge conflicts, dependency ordering, or inherited baseline failures as validation failure.
-- Do not reduce `Integration Ready` for conflicts limited to metadata files such as `.beads/interactions.jsonl` or `ai-memory/insights.md`; report them as `Metadata Conflict`.
-- Split conflicts by risk: `Mechanical Conflict` means expected manual merge only; `Semantic Conflict` means overlapping feature ownership or behavioral disagreement needs owner review.
-- Repository audits must report Integration Debt metrics so completed branches do not accumulate outside `main`.
-- If `main` moves after Integration Ready, rerun the Integration Ready gate before merge.
-- If a QA PASS branch drifts from current `main` without Integration Ready evidence, classify it as `Integration Drift` in repository audits.
 
 ## `bd` Write Confirmation Rule
 - Treat `bd` writes as unconfirmed until a second read succeeds.
@@ -139,6 +120,6 @@ Minor exemption does not apply to:
 - Running implementation beads in the active workspace without minor exemption or explicit override
 - Mixing multiple hot-file lanes in one dirty workspace without explicit recovery plan
 - Closing a bead based on code presence alone without targeted validation
-- Treating QA PASS as permission to merge without current `main` integration evidence
-- Leaving QA PASS branches to drift while `main` continues moving
+- Bypassing Integration Ready after QA PASS
+- Leaving QA PASS branches to drift without repository audit classification
 - Trusting a single immediate `bd` read after a write when the tool has shown inconsistency

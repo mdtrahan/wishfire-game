@@ -20,7 +20,8 @@
 ## Work Guidance
 - Separate product truth, implementation plans, audit evidence, and process method docs.
 - For repo-context retrieval, follow `execution/repo-context-retrieval.md` before adding more always-on guidance to root `AGENTS.md`.
-- For QA PASS, merge readiness, and repository audit classification, follow `execution/integration-ready-gate.md`.
+- For root execution policy, prefer the focused docs in `execution/`: `implementation-gate.md`, `integration.md`, `retrieval.md`, `validation.md`, and `output-contracts.md`.
+- For branch/worktree lifecycle, QA PASS, merge readiness, and repository audit classification, follow `execution/integration.md`.
 - Do not treat quarantined generated review packets, export manifests, agent logs, or rollback plans as current workflow truth.
 - When docs disagree, preserve the conflict and ask or create a decision bead rather than flattening it.
 - Avoid turning governance docs into event logs; record reusable rules, decisions, and evidence.
