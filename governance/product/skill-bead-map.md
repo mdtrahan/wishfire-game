@@ -59,9 +59,15 @@ Reason: it is low risk, has a simple on-defend/counterattack shape, and is a goo
 
 ## Missing Party Skill Beads
 
+Already implemented as active party draw definitions in the runtime mirrors:
+
+`party_magic_fruit`, `party_crimson_ward`, `party_destiny`, `party_faze`, `party_grow`, `party_chain_strike_i`, `party_chain_strike_ii`, `party_arcane_pulse`, `party_split`.
+
+Current evidence: `web-runner/modules/functionBank.js` and `Scripts/functionBank.js` mark these definitions `payloadImplemented: true` and include them in `PARTY_SKILL_DRAW_ALLOWED_IDS`; focused contracts cover their draw class, activation, and payload behavior.
+
 Create one QA-controlled bead each for:
 
-`party_fresh_start`, `party_second_chance`, `party_momentum`, `party_guard_rail`, `party_blue_spark`, `party_destiny`, `party_hot_streak`, `party_last_push`, `party_chain_pop`.
+`party_fresh_start`, `party_second_chance`, `party_momentum`, `party_guard_rail`, `party_blue_spark`, `party_hot_streak`, `party_last_push`, `party_chain_pop`.
 
 `party_weaken` can reuse `ORKA-8jr6` only if that bead is renamed and rewritten away from Kojonn ownership.
 
