@@ -57,16 +57,23 @@ export function deriveCombatFormationAnchors({ globals = {}, entities = [], hero
       }
     }
   }
-  const enemyYs = entities
+  const configuredSlotCounts = [
+    Number(globals?.Slots),
+    Array.isArray(globals?.EnemySlots) ? globals.EnemySlots.length : 0,
+    Array.isArray(globals?.EnemyIDs) ? globals.EnemyIDs.length : 0,
+    Array.isArray(globals?.PendingEnemyRespawnSlots) ? globals.PendingEnemyRespawnSlots.length : 0,
+  ].filter((value) => Number.isFinite(value) && value > 0);
+  const observedSlotCount = entities
     .filter((entity) => entity?.kind === 'enemy')
-    .map((enemy) => {
-      const slot = Number(enemy?.slotIndex || 0);
-      const fallbackY = Number(globals?.EnemyAreaY0 || 140) + slot * enemySpacing;
-      const originY = enemy?.originY == null ? null : Number(enemy.originY);
-      const y = enemy?.y == null ? null : Number(enemy.y);
-      return Number.isFinite(originY) ? originY : (Number.isFinite(y) ? y : fallbackY);
-    })
-    .filter(Number.isFinite);
+    .reduce((highest, enemy) => {
+      const slot = Number(enemy?.slotIndex);
+      return Number.isFinite(slot) && slot >= 0 ? Math.max(highest, Math.floor(slot) + 1) : highest;
+    }, 0);
+  const enemySlotCount = Math.max(1, Math.floor(configuredSlotCounts[0] || observedSlotCount || 3));
+  const enemyY0 = Number(globals?.EnemyAreaY0 || 140);
+  const enemyYs = Number.isFinite(enemyY0) && Number.isFinite(enemySpacing)
+    ? Array.from({ length: enemySlotCount }, (_, slot) => enemyY0 + slot * enemySpacing)
+    : [];
   return { heroYs, enemyYs };
 }
 
@@ -102,18 +109,24 @@ export function createCombatFormationProjection({
   };
 }
 
-export function createCombatOrientationGeometry({ orientation, layoutW, actors = [] } = {}) {
+export function createCombatOrientationGeometry({
+  orientation,
+  layoutW,
+  actors = [],
+  heroYs: formationHeroYs,
+  enemyYs: formationEnemyYs,
+} = {}) {
   const normalizedOrientation = normalizeCombatOrientation(orientation);
   const worldWidth = Number(layoutW);
-  const heroYs = actors
+  const actorHeroYs = actors
     .filter((actor) => actor?.kind === 'hero' || actor?.kind === 'escort')
     .map((actor) => actor?.y);
-  const enemyYs = actors.filter((actor) => actor?.kind === 'enemy').map((actor) => actor?.y);
+  const actorEnemyYs = actors.filter((actor) => actor?.kind === 'enemy').map((actor) => actor?.y);
   const projection = createCombatFormationProjection({
     orientation: normalizedOrientation,
     layoutW: worldWidth,
-    heroYs,
-    enemyYs,
+    heroYs: Array.isArray(formationHeroYs) ? formationHeroYs : actorHeroYs,
+    enemyYs: Array.isArray(formationEnemyYs) ? formationEnemyYs : actorEnemyYs,
   });
   return {
     orientation: normalizedOrientation,

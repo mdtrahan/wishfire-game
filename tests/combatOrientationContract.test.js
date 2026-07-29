@@ -87,6 +87,7 @@ test('runtime-shaped formation anchors preserve hero Y and align the enemy block
     enemyGAP: 8,
     Spacing: 55,
     EnemyAreaY0: 60.791,
+    Slots: 3,
   };
   const entities = [
     { kind: 'enemy', slotIndex: 0, originY: 60.791 },
@@ -110,6 +111,71 @@ test('runtime-shaped formation anchors preserve hero Y and align the enemy block
   assert.ok(Math.abs(projection.heroMidY - (projection.enemyMidY + projection.enemyTranslateY)) < 1e-9);
 });
 
+test('enemy death and refill never change surviving right-wise slot projections', async () => {
+  const rules = await loadRules();
+  const globals = {
+    EnemyAreaRect: { minY: 38.638, maxY: 203.974 },
+    EnemySize: 40,
+    enemyGAP: 8,
+    Spacing: 55,
+    EnemyAreaY0: 60.791,
+    Slots: 3,
+    EnemySlots: [7, 8, 9],
+  };
+  const fullRoster = [
+    { uid: 6, kind: 'enemy', slotIndex: 0, originX: 273, originY: 60.791 },
+    { uid: 7, kind: 'enemy', slotIndex: 1, originX: 249, originY: 115.791 },
+    { uid: 8, kind: 'enemy', slotIndex: 2, originX: 273, originY: 170.791 },
+  ];
+  const afterTopDeath = fullRoster.slice(1);
+  const afterBottomDeath = fullRoster.slice(0, 2);
+  const replacementRoster = [
+    { uid: 9, kind: 'enemy', slotIndex: 0, originX: 273, originY: 60.791 },
+    ...afterTopDeath,
+  ];
+  const snapshots = [fullRoster, afterTopDeath, afterBottomDeath, replacementRoster].map((entities) => {
+    const anchors = rules.deriveCombatFormationAnchors({ globals, entities, heroCount: 4 });
+    const projection = rules.createCombatFormationProjection({
+      orientation: 'right-wise',
+      layoutW: 360,
+      ...anchors,
+    });
+    return {
+      anchors,
+      projection,
+      positions: new Map(entities.map((enemy) => [
+        enemy.uid,
+        projection.project(enemy.originX, enemy.originY, 'enemy'),
+      ])),
+    };
+  });
+
+  for (const snapshot of snapshots) {
+    assert.deepEqual(snapshot.anchors.enemyYs, [60.791, 115.791, 170.791]);
+    assert.ok(Math.abs(snapshot.projection.enemyTranslateY - 5.515) < 0.001);
+  }
+  assert.deepEqual(snapshots[1].positions.get(7), snapshots[0].positions.get(7));
+  assert.deepEqual(snapshots[1].positions.get(8), snapshots[0].positions.get(8));
+  assert.deepEqual(snapshots[2].positions.get(6), snapshots[0].positions.get(6));
+  assert.deepEqual(snapshots[2].positions.get(7), snapshots[0].positions.get(7));
+  assert.deepEqual(snapshots[3].positions.get(9), snapshots[0].positions.get(6));
+
+  const survivorGeometry = rules.createCombatOrientationGeometry({
+    orientation: 'right-wise',
+    layoutW: 360,
+    actors: afterTopDeath.map((enemy) => ({
+      uid: enemy.uid,
+      kind: enemy.kind,
+      slot: enemy.slotIndex,
+      canonicalX: enemy.originX,
+      y: enemy.originY,
+    })),
+    ...snapshots[1].anchors,
+  });
+  assert.equal(survivorGeometry.actors.find((actor) => actor.uid === 7).y, snapshots[0].positions.get(7).y);
+  assert.equal(survivorGeometry.actors.find((actor) => actor.uid === 8).y, snapshots[0].positions.get(8).y);
+});
+
 test('runtime projects actor visuals, hit regions, and action anchors without mutating combat state', () => {
   const app = fs.readFileSync(path.join(root, 'web-runner', 'app.js'), 'utf8');
   const render = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
@@ -129,7 +195,7 @@ test('runtime projects actor visuals, hit regions, and action anchors without mu
   assert.match(render, /projectCombatActorWorldToCanvas\(Number\(pulse\.sourceX[^\n]*'hero'/);
   assert.match(render, /projectCombatActorWorldToCanvas\(Number\(pulse\.targetX[^\n]*'enemy'/);
   assert.match(render, /projectCombatActorWorldToCanvas\(x, y, 'enemy'\)/);
-  assert.match(render, /CombatOrientationGeometry = createCombatOrientationGeometry/);
+  assert.match(render, /CombatOrientationGeometry = createCombatOrientationGeometry\([^\n]*\.\.\.combatFormationAnchors/);
   assert.match(hooks, /combatOrientation:/);
 
   assert.doesNotMatch(app, /localStorage[^\n]*CombatOrientation|CombatOrientation[^\n]*localStorage/);

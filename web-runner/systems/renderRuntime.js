@@ -117,7 +117,7 @@ export function renderRuntime(deps) {
       )
       .replace(
         "runtimeArtifacts.presentationPatches = Object.keys(presentationPatches).length ? presentationPatches : null;",
-        "presentationPatches.CombatOrientationGeometry = createCombatOrientationGeometry({ orientation: activeCombatOrientation, layoutW, actors: combatOrientationGeometryActors });\n    runtimeArtifacts.presentationPatches = Object.keys(presentationPatches).length ? presentationPatches : null;",
+        "presentationPatches.CombatOrientationGeometry = createCombatOrientationGeometry({ orientation: activeCombatOrientation, layoutW, actors: combatOrientationGeometryActors, ...combatFormationAnchors });\n    runtimeArtifacts.presentationPatches = Object.keys(presentationPatches).length ? presentationPatches : null;",
       )
       .replaceAll(
         "ctx.drawImage(sprite, drawX, drawY, enemyW, enemyH)",
