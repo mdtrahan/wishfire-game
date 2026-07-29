@@ -26,7 +26,7 @@ For the same logical viewport and combatants, every hero, escort, and enemy stan
 
 `rightX = layoutW - leftX`
 
-Right-wise anchors derive from the canonical left-wise baseline, never from already reflected or transient animation positions. Actor `y`, slot/display order, dimensions, scale, origin semantics, roster order, intra-team spacing, and corresponding-edge distance remain unchanged. Sprites and assets are not horizontally flipped.
+Right-wise anchors derive from the canonical left-wise baseline, never from already reflected or transient animation positions. Actor `y`, slot/display order, dimensions, scale, origin semantics, roster order, intra-team spacing, and corresponding-edge distance remain unchanged. Right-wise actor sprite pixels reflect about each oriented pivot so teams face inward and asymmetric art does not retain its left-wise pixel bias; source assets remain unchanged.
 
 ## Session And Respawn Behavior
 - Orientation stays stable through combat layout suspend/resume, dev-tool combat refresh, and same-session enemy respawn/repositioning.
@@ -55,6 +55,7 @@ Right-wise anchors derive from the canonical left-wise baseline, never from alre
 - No team identity swap.
 - No combat rebalance, rule change, AI change, new camera behavior, responsive-layout redesign, or asset mirroring.
 - No independent hand-tuned right-wise coordinates.
+- No source-asset mutation; right-wise facing is a Canvas presentation transform.
 - No in-place orientation flip that preserves an active combat session; the dev panel may start a fresh dev combat session in the selected orientation.
 
 ## Validation

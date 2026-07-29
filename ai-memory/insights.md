@@ -502,3 +502,6 @@
 
 ## 2026-07-11 - Editable Dev Fields Must Bypass Gameplay Hotkeys
 - Capture-phase keyboard handlers must return immediately for editable modal targets before evaluating gameplay shortcuts. Physical-code shortcuts such as `KeyA` otherwise prevent matching letters from being entered even when the modal correctly recognizes the target as an input.
+## 2026-07-28 — Mirrored Combat Must Reflect Sprite Pixels, Not Only Pivots
+- Exact reflected actor pivots are insufficient when sprite art has directional facing or asymmetric transparent padding. Moving unflipped art to the opposite team side makes combatants face away and can create a visible edge bias even when geometry equations pass.
+- For a face-to-face mirrored combat presentation, reflect right-wise actor pixels about the same oriented pivot used by sprites, hit regions, bars, and effects. Apply the same draw transform to hit-flash redraws, while leaving canonical coordinates and source assets unchanged.

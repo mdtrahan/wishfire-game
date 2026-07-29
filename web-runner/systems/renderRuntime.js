@@ -5,6 +5,7 @@ import {
   orientCombatWorldOffsetX,
   orientCombatWorldX,
 } from '../../src/core/combatOrientation.mjs';
+import { drawCombatActorSprite } from './combatActorSpritePresentation.mjs';
 
 let renderImpl = null;
 
@@ -14,6 +15,7 @@ export function renderRuntime(deps) {
   deps.normalizeCombatOrientation = normalizeCombatOrientation;
   deps.orientCombatWorldOffsetX = orientCombatWorldOffsetX;
   deps.orientCombatWorldX = orientCombatWorldX;
+  deps.drawCombatActorSprite = drawCombatActorSprite;
   if (!renderImpl) {
     const body = [
       // Generated body chunks; preserve joined payload byte-for-byte.
@@ -114,6 +116,14 @@ export function renderRuntime(deps) {
       .replace(
         "runtimeArtifacts.presentationPatches = Object.keys(presentationPatches).length ? presentationPatches : null;",
         "presentationPatches.CombatOrientationGeometry = createCombatOrientationGeometry({ orientation: activeCombatOrientation, layoutW, actors: combatOrientationGeometryActors });\n    runtimeArtifacts.presentationPatches = Object.keys(presentationPatches).length ? presentationPatches : null;",
+      )
+      .replaceAll(
+        "ctx.drawImage(sprite, drawX, drawY, enemyW, enemyH)",
+        "drawCombatActorSprite(ctx, sprite, { drawX, drawY, width: enemyW, height: enemyH, pivotX: pos.x, orientation: activeCombatOrientation })",
+      )
+      .replaceAll(
+        "ctx.drawImage(img, drawX, drawY, scaledW, scaledH)",
+        "drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation })",
       );
     renderImpl = new Function('scope', 'dtOverride', 'with (scope) {\n' + body + '\n}');
   }

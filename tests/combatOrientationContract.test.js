@@ -95,3 +95,47 @@ test('developer panel stages orientation and refreshes combat instead of flippin
   assert.match(devTooling, /const combatSetupChanged = loadoutChanged \|\| orientationChanged/);
   assert.match(devTooling, /await devToolingRefreshHandler\(\{ forceCombat: false, resetGame: false \}\)/);
 });
+
+test('right-wise actor sprites mirror about their oriented pivot while left-wise stays byte-compatible', async () => {
+  const presentation = await import(pathToFileURL(path.join(
+    root,
+    'web-runner',
+    'systems',
+    'combatActorSpritePresentation.mjs',
+  )).href);
+  const makeContext = () => {
+    const calls = [];
+    return {
+      calls,
+      save: () => calls.push(['save']),
+      translate: (x, y) => calls.push(['translate', x, y]),
+      scale: (x, y) => calls.push(['scale', x, y]),
+      drawImage: (...args) => calls.push(['drawImage', ...args]),
+      restore: () => calls.push(['restore']),
+    };
+  };
+  const image = { id: 'actor-sprite' };
+  const draw = { drawX: 280, drawY: 40, width: 80, height: 60, pivotX: 320 };
+
+  const leftCtx = makeContext();
+  const left = presentation.drawCombatActorSprite(leftCtx, image, { ...draw, orientation: 'left-wise' });
+  assert.equal(left.mirrored, false);
+  assert.deepEqual(leftCtx.calls, [['drawImage', image, 280, 40, 80, 60]]);
+
+  const rightCtx = makeContext();
+  const right = presentation.drawCombatActorSprite(rightCtx, image, { ...draw, orientation: 'right-wise' });
+  assert.equal(right.mirrored, true);
+  assert.deepEqual(rightCtx.calls, [
+    ['save'],
+    ['translate', 320, 0],
+    ['scale', -1, 1],
+    ['translate', -320, 0],
+    ['drawImage', image, 280, 40, 80, 60],
+    ['restore'],
+  ]);
+
+  const render = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
+  assert.match(render, /drawCombatActorSprite\(ctx, sprite/);
+  assert.match(render, /drawCombatActorSprite\(ctx, img/);
+  assert.match(render, /\.replaceAll\(/);
+});
