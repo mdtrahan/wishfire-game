@@ -1,0 +1,45 @@
+{
+  "bead": "ORKA-vb7",
+  "runtimeCommit": "98fbda6454454d6bcfc2760852997bf19c6e59e1",
+  "branch": "bead/ORKA-vb7-combat-orientation",
+  "seed": 424242,
+  "logicalViewport": { "width": 360, "height": 640, "reflectionAxisX": 180 },
+  "roster": {
+    "heroes": ["Falie", "Huun", "Runa", "Kojonn"],
+    "enemies": ["Gobloc", "Orc", "Skeleton"]
+  },
+  "actors": [
+    { "uid": 1, "name": "Falie", "kind": "hero", "slot": 0, "leftX": 68.38944125806748, "rightX": 291.61055874193255, "sumX": 360, "y": 49.29437943106725 },
+    { "uid": 2, "name": "Huun", "kind": "hero", "slot": 1, "leftX": 40.384024662835685, "rightX": 319.6159753371643, "sumX": 360, "y": 97.30211742425553 },
+    { "uid": 3, "name": "Runa", "kind": "hero", "slot": 2, "leftX": 68.38944125806748, "rightX": 291.61055874193255, "sumX": 360, "y": 145.30985541744383 },
+    { "uid": 4, "name": "Kojonn", "kind": "hero", "slot": 3, "leftX": 40.384024662835685, "rightX": 319.6159753371643, "sumX": 360, "y": 193.3175934106321 },
+    { "uid": 6, "name": "Gobloc", "kind": "enemy", "slot": 0, "leftX": 273.28292302223093, "rightX": 86.71707697776907, "sumX": 360, "y": 60.790510434473106 },
+    { "uid": 7, "name": "Orc", "kind": "enemy", "slot": 1, "leftX": 249.28292302223093, "rightX": 110.71707697776907, "sumX": 360, "y": 115.7905104344731 },
+    { "uid": 8, "name": "Skeleton", "kind": "enemy", "slot": 2, "leftX": 273.28292302223093, "rightX": 86.71707697776907, "sumX": 360, "y": 170.7905104344731 }
+  ],
+  "viewportChecks": [
+    { "viewport": "1200x800", "canvasWidth": 450, "pairedCanvasXSum": 450, "yEqual": true },
+    { "viewport": "900x700", "canvasWidth": 393, "pairedCanvasXSum": 393, "yEqual": true }
+  ],
+  "nonRegression": {
+    "uidKindSlotYEqual": true,
+    "hpAndStatsEqual": true,
+    "initiativeOrderEqual": true,
+    "boardStateEqual": true,
+    "pageErrors": []
+  },
+  "devPanel": {
+    "before": "right-wise",
+    "selected": "left-wise",
+    "after": "left-wise",
+    "orientationChanged": true,
+    "appliedSessionChange": "combat_refresh"
+  },
+  "images": {
+    "dev-panel-orientation-toggle.png": "9cb53b3cda43f7b9f47fb03c9771f319b9ce4d3e5d73750da76e755c799d92ef",
+    "left-wise-1200x800.png": "6393bc78b0b8fb6f1b61b05bde6f37ed43aface7262edba7322c222a2730a7fa",
+    "left-wise-900x700.png": "1ded4a95b006ee653728d2c0f7a4038c78c46773d564133ee0660956dbc237b3",
+    "right-wise-1200x800.png": "12d4e5dfc4be306b569f54b19c76165c8852fda473fcd551d8d35aabb5060966",
+    "right-wise-900x700.png": "08db6e4871527d54d1c94780c8a161c682050f807c43824d89c7bba483bf3572"
+  }
+}
