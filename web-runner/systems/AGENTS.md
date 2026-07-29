@@ -14,6 +14,8 @@
 - `devToolingControls.js` and runtime debug helpers own QA/dev surfaces.
 
 ## Local Contracts
+- Combat actor orientation must project canonical left-wise anchors through `src/core/combatOrientation.mjs`; mirror actor-attached x offsets, never combat rules, canonical positions, or sprite assets.
+- The dev-tool orientation control stages the next combat orientation and uses the existing fresh combat-refresh path when changed during combat; never flip a live combat frame in place.
 - Render modules may read state and draw presentation; they must not become owners of deterministic combat rules.
 - `renderRuntime.js` should shrink over time. Do not add broad new gameplay branches there when a focused render module or gameplay module can own the change.
 - `heroGemProgressStorage.js` may use `window.localStorage`; SimulationCore packets and Rust-owned code must not.

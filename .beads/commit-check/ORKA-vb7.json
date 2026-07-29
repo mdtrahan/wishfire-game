@@ -1,0 +1,89 @@
+{
+  "changed_functions": {
+    "goals/ORKA-vb7-combat-orientation.md": [
+      "__MODULE__"
+    ],
+    "src/core/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "src/core/combatOrientation.mjs": [
+      "normalizeCombatOrientation",
+      "readCombatOrientationFromSearch",
+      "orientCombatWorldX",
+      "orientCombatWorldOffsetX",
+      "createCombatOrientationGeometry",
+      "__MODULE__"
+    ],
+    "tests/combatOrientationContract.test.js": [
+      "__MODULE__"
+    ],
+    "tests/damageFloatVectorContract.test.js": [
+      "read"
+    ],
+    "web-runner/app.js": [
+      "spawnPendingDamageNumbers",
+      "validateCombatSnapshot",
+      "combatActorWorldToCanvas",
+      "drawFrame",
+      "enemyH",
+      "__MODULE__"
+    ],
+    "web-runner/systems/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/systems/devBrowserTestHooks.js": [
+      "registerDevBrowserTestHooks"
+    ],
+    "web-runner/systems/devToolingRuntime.js": [
+      "createDefaultDevToolingConfig",
+      "sanitizeDevToolingConfig",
+      "syncDevToolingDomFromConfig",
+      "readDevToolingDomConfigPatch",
+      "ensureDevToolingModal",
+      "__MODULE__"
+    ],
+    "web-runner/systems/renderRuntime.js": [
+      "renderRuntime",
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "web-runner/app.js"
+    ],
+    "staged_file_count": 10,
+    "staged_line_count": 325,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    "goals/ORKA-vb7-combat-orientation.md",
+    "src/core/AGENTS.md",
+    "src/core/combatOrientation.mjs",
+    "tests/combatOrientationContract.test.js",
+    "tests/damageFloatVectorContract.test.js",
+    "web-runner/app.js",
+    "web-runner/systems/AGENTS.md",
+    "web-runner/systems/devBrowserTestHooks.js",
+    "web-runner/systems/devToolingRuntime.js",
+    "web-runner/systems/renderRuntime.js"
+  ],
+  "issue_id": "ORKA-vb7",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    "goals/ORKA-vb7-combat-orientation.md": "9d684cf205e019887d84aa56255e5bc30e65b825",
+    "src/core/AGENTS.md": "989674faabd96dd5dde07bbb780d724452885904",
+    "src/core/combatOrientation.mjs": "3e55d7ecd90785a9cbac6fa1e1fffbee34cbb92b",
+    "tests/combatOrientationContract.test.js": "df7a30b36094c575418bcb64f8092868606af2eb",
+    "tests/damageFloatVectorContract.test.js": "9eb1625b1153807b4c3c2f19a4651559a4b0da8a",
+    "web-runner/app.js": "b6949e4fdcbf91fe1ce099a77d00be44643b6fe5",
+    "web-runner/systems/AGENTS.md": "00d7bfa1b1c7201684943d1842b473e23b1de67e",
+    "web-runner/systems/devBrowserTestHooks.js": "9cdc70d240613c966636250d37d293c99a2279e6",
+    "web-runner/systems/devToolingRuntime.js": "5ded5630008062c6e98116ae469e91228e9dbf34",
+    "web-runner/systems/renderRuntime.js": "6c073886cdabbe79e863dd9b8ac52a8e524fdc7b"
+  }
+}

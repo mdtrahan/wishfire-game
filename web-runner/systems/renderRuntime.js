@@ -1,9 +1,19 @@
 import { updateHpTextRollState } from '../src/core/hpTextRollAnimation.mjs';
+import {
+  createCombatOrientationGeometry,
+  normalizeCombatOrientation,
+  orientCombatWorldOffsetX,
+  orientCombatWorldX,
+} from '../../src/core/combatOrientation.mjs';
 
 let renderImpl = null;
 
 export function renderRuntime(deps) {
   deps.updateHpTextRollState = updateHpTextRollState;
+  deps.createCombatOrientationGeometry = createCombatOrientationGeometry;
+  deps.normalizeCombatOrientation = normalizeCombatOrientation;
+  deps.orientCombatWorldOffsetX = orientCombatWorldOffsetX;
+  deps.orientCombatWorldX = orientCombatWorldX;
   if (!renderImpl) {
     const body = [
       // Generated body chunks; preserve joined payload byte-for-byte.
@@ -48,6 +58,62 @@ export function renderRuntime(deps) {
       .replace(
         "const resolvedSelectedUid = pendingHitTargetUID || selectedUid;",
         "const selectedOwnerUID = Number(state.globals.SelectedEnemyUIDOwner || 0);\n      const pendingActorUID = Number(state.globals.PendingActor || 0);\n      const ownerMatchedSelectedUid = selectedOwnerUID === pendingActorUID ? selectedUid : 0;\n      const resolvedSelectedUid = ownerMatchedSelectedUid || pendingHitTargetUID;",
+      )
+      .replace(
+        "const presentationPatches = {};",
+        "const presentationPatches = {};\n    const activeCombatOrientation = normalizeCombatOrientation(state.globals.CombatOrientation);\n    const projectCombatActorWorldToCanvas = (x, y) => worldToCanvas(orientCombatWorldX(x, layoutW, activeCombatOrientation), y);\n    const projectCombatDamageWorldToCanvas = (x, y, targetKind) => (targetKind === 'bar' || targetKind === 'energy') ? worldToCanvas(x, y) : projectCombatActorWorldToCanvas(x, y);\n    const combatOrientationGeometryActors = [];",
+      )
+      .replace(
+        "spawnPendingDamageNumbers(worldToCanvas);",
+        "spawnPendingDamageNumbers(projectCombatDamageWorldToCanvas);",
+      )
+      .replaceAll(
+        "const pos = worldToCanvas(x, y);",
+        "const pos = projectCombatActorWorldToCanvas(x, y);",
+      )
+      .replace(
+        "const basePos = worldToCanvas(Number(bloom.x || 0), Number(bloom.y || 0));",
+        "const basePos = projectCombatActorWorldToCanvas(Number(bloom.x || 0), Number(bloom.y || 0));",
+      )
+      .replace(
+        "ctx.translate(basePos.x + Number(particle.x || 0), basePos.y + Number(particle.y || 0));",
+        "ctx.translate(basePos.x + orientCombatWorldOffsetX(Number(particle.x || 0), activeCombatOrientation), basePos.y + Number(particle.y || 0));",
+      )
+      .replace(
+        "const pos = worldToCanvas(posInfo.x, posInfo.y);",
+        "const pos = projectCombatActorWorldToCanvas(posInfo.x, posInfo.y);",
+      )
+      .replace(
+        ": worldToCanvas(baseX + xOffset + floatOffset.x, baseY + floatOffset.y);",
+        ": projectCombatDamageWorldToCanvas(baseX + xOffset + floatOffset.x, baseY + floatOffset.y, d.targetKind);",
+      )
+      .replace(
+        "const pos = worldToCanvas(xWorld, yWorld);",
+        "const pos = projectCombatActorWorldToCanvas(xWorld, yWorld);\n          const standingPos = projectCombatActorWorldToCanvas(baseX, yWorld);\n          if (hero) combatOrientationGeometryActors.push({ uid: hero.uid, name: hero.name, kind: hero.kind, slot: entry.displaySlot, canonicalX: baseX, y: yWorld, canvasX: standingPos.x, canvasY: standingPos.y });",
+      )
+      .replace(
+        "const wardPos = worldToCanvas(wardWorldX, wardWorldY);",
+        "const wardPos = projectCombatActorWorldToCanvas(wardWorldX, wardWorldY);",
+      )
+      .replace(
+        "const source = worldToCanvas(Number(pulse.sourceX || 0), Number(pulse.sourceY || 0));",
+        "const source = projectCombatActorWorldToCanvas(Number(pulse.sourceX || 0), Number(pulse.sourceY || 0));",
+      )
+      .replace(
+        "const target = worldToCanvas(Number(pulse.targetX || 0), Number(pulse.targetY || 0));",
+        "const target = projectCombatActorWorldToCanvas(Number(pulse.targetX || 0), Number(pulse.targetY || 0));",
+      )
+      .replace(
+        "const baseX = pos.x + enemyW / 2 + (4 * layoutScale);",
+        "const baseX = activeCombatOrientation === 'right-wise' ? pos.x - enemyW / 2 - (4 * layoutScale) - iconSize : pos.x + enemyW / 2 + (4 * layoutScale);",
+      )
+      .replace(
+        "const sprite = enemySpriteImages[String(enemy.name || '').toLowerCase()];",
+        "const sprite = enemySpriteImages[String(enemy.name || '').toLowerCase()];\n        const standingX = enemy.originX != null ? Number(enemy.originX) : Number(x);\n        const standingY = enemy.originY != null ? Number(enemy.originY) : Number(y);\n        const standingPos = projectCombatActorWorldToCanvas(standingX, standingY);\n        combatOrientationGeometryActors.push({ uid: enemy.uid, name: enemy.name, kind: enemy.kind, slot: slotIndex, canonicalX: standingX, y: standingY, canvasX: standingPos.x, canvasY: standingPos.y });",
+      )
+      .replace(
+        "runtimeArtifacts.presentationPatches = Object.keys(presentationPatches).length ? presentationPatches : null;",
+        "presentationPatches.CombatOrientationGeometry = createCombatOrientationGeometry({ orientation: activeCombatOrientation, layoutW, actors: combatOrientationGeometryActors });\n    runtimeArtifacts.presentationPatches = Object.keys(presentationPatches).length ? presentationPatches : null;",
       );
     renderImpl = new Function('scope', 'dtOverride', 'with (scope) {\n' + body + '\n}');
   }

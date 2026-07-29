@@ -1,0 +1,16 @@
+{
+  "hot_files": {
+    "web-runner/app.js": {
+      "functions": [
+        "spawnPendingDamageNumbers",
+        "validateCombatSnapshot",
+        "combatActorWorldToCanvas",
+        "drawFrame",
+        "enemyH",
+        "__MODULE__"
+      ],
+      "staged_blob": "b6949e4fdcbf91fe1ce099a77d00be44643b6fe5"
+    }
+  },
+  "issue_id": "ORKA-vb7"
+}

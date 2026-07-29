@@ -14,6 +14,7 @@
 - SimulationCore packet shapes must exclude browser-owned presentation/storage state.
 - If Rust owns a rule family, JS code should preserve packet/diagnostic compatibility and avoid acting as final authority.
 - CJS mirrors such as `simulationCorePacket.cjs`, `gameStateEnvelopeRules.cjs`, and `combatRuntimeGateway.cjs` must stay aligned with their intended test/runtime consumers.
+- `combatOrientation.mjs` owns the presentation-only left/right normalization and logical-world x reflection. Do not put orientation in SimulationCore packets or mutate canonical actor coordinates.
 
 ## Work Guidance
 - Add fixture rows for deterministic behavior with meaningful edge cases.
