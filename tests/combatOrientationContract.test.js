@@ -22,13 +22,13 @@ test('combat orientation input is defensive and defaults left-wise', async () =>
   assert.equal(rules.readCombatOrientationFromSearch(''), 'left-wise');
 });
 
-test('right-wise geometry is an exact logical-world reflection', async () => {
+test('right-wise geometry reflects and translates formations as whole blocks', async () => {
   const rules = await loadRules();
   const layoutW = 960;
   const actorSets = [
     [
-      { uid: 1, kind: 'hero', slot: 0, x: 170, y: 240 },
-      { uid: 101, kind: 'enemy', slot: 0, x: 740, y: 240 },
+      { uid: 1, kind: 'hero', slot: 0, x: 170, y: 220 },
+      { uid: 101, kind: 'enemy', slot: 0, x: 740, y: 200 },
     ],
     [
       { uid: 1, kind: 'hero', slot: 0, x: 145, y: 130 },
@@ -51,17 +51,63 @@ test('right-wise geometry is an exact logical-world reflection', async () => {
     const right = rules.createCombatOrientationGeometry({ orientation: 'right-wise', layoutW, actors });
     assert.equal(left.axis, layoutW / 2);
     assert.equal(right.axis, layoutW / 2);
+    assert.equal(left.translateX, 0);
+    assert.equal(right.translateX, rules.RIGHT_WISE_FORMATION_TRANSLATE_X);
     assert.equal(left.actors.length, right.actors.length);
     for (let i = 0; i < actors.length; i += 1) {
-      assert.equal(left.actors[i].x + right.actors[i].x, layoutW);
+      assert.equal(
+        left.actors[i].x + right.actors[i].x,
+        layoutW + rules.RIGHT_WISE_FORMATION_TRANSLATE_X,
+      );
       assert.equal(left.actors[i].uid, right.actors[i].uid);
       assert.equal(left.actors[i].kind, right.actors[i].kind);
       assert.equal(left.actors[i].slot, right.actors[i].slot);
-      assert.equal(left.actors[i].y, right.actors[i].y);
+      if (left.actors[i].kind === 'enemy') {
+        assert.equal(right.actors[i].y, left.actors[i].y + right.enemyTranslateY);
+      } else {
+        assert.equal(left.actors[i].y, right.actors[i].y);
+      }
+    }
+    const rightHeroYs = right.actors.filter((actor) => actor.kind === 'hero').map((actor) => actor.y);
+    const rightEnemyYs = right.actors.filter((actor) => actor.kind === 'enemy').map((actor) => actor.y);
+    if (rightHeroYs.length && rightEnemyYs.length) {
+      const midpoint = (values) => (Math.min(...values) + Math.max(...values)) / 2;
+      assert.equal(midpoint(rightEnemyYs), midpoint(rightHeroYs));
     }
   }
   assert.equal(rules.orientCombatWorldOffsetX(18, 'right-wise'), -18);
   assert.equal(rules.orientCombatWorldOffsetX(18, 'left-wise'), 18);
+});
+
+test('runtime-shaped formation anchors preserve hero Y and align the enemy block midpoint', async () => {
+  const rules = await loadRules();
+  const globals = {
+    EnemyAreaRect: { minY: 38.638, maxY: 203.974 },
+    EnemySize: 40,
+    enemyGAP: 8,
+    Spacing: 55,
+    EnemyAreaY0: 60.791,
+  };
+  const entities = [
+    { kind: 'enemy', slotIndex: 0, originY: 60.791 },
+    { kind: 'enemy', slotIndex: 1, originY: null, y: 115.791 },
+    { kind: 'enemy', slotIndex: 2, originY: 170.791 },
+  ];
+  const anchors = rules.deriveCombatFormationAnchors({ globals, entities, heroCount: 4 });
+  const projection = rules.createCombatFormationProjection({
+    orientation: 'right-wise',
+    layoutW: 360,
+    ...anchors,
+  });
+
+  assert.equal(anchors.heroYs.length, 4);
+  assert.deepEqual(anchors.enemyYs, [60.791, 115.791, 170.791]);
+  assert.ok(Math.abs(projection.enemyTranslateY - 5.515) < 0.001);
+  assert.equal(projection.project(68, anchors.heroYs[0], 'hero').y, anchors.heroYs[0]);
+  const shiftedEnemyYs = anchors.enemyYs.map((y) => projection.project(290, y, 'enemy').y);
+  assert.equal(shiftedEnemyYs[1] - shiftedEnemyYs[0], anchors.enemyYs[1] - anchors.enemyYs[0]);
+  assert.equal(shiftedEnemyYs[2] - shiftedEnemyYs[1], anchors.enemyYs[2] - anchors.enemyYs[1]);
+  assert.ok(Math.abs(projection.heroMidY - (projection.enemyMidY + projection.enemyTranslateY)) < 1e-9);
 });
 
 test('runtime projects actor visuals, hit regions, and action anchors without mutating combat state', () => {
@@ -71,15 +117,18 @@ test('runtime projects actor visuals, hit regions, and action anchors without mu
 
   assert.match(app, /CombatOrientation = readCombatOrientationFromSearch\(window\.location\.search\)/);
   assert.match(app, /function combatActorWorldToCanvas/);
-  assert.match(app, /const pos = combatActorWorldToCanvas\(x, y\)/);
-  assert.match(app, /worldToCanvas: combatActorWorldToCanvas/);
+  assert.match(app, /createCombatFormationProjection/);
+  assert.match(app, /deriveCombatFormationAnchors/);
+  assert.match(app, /const pos = combatActorWorldToCanvas\(x, y, 'enemy'\)/);
+  assert.match(app, /worldToCanvas: \(x, y\) => combatActorWorldToCanvas\(x, y, 'enemy'\)/);
   assert.match(app, /orientCombatWorldOffsetX\(Number\(d\.floatVectorX/);
 
   assert.match(render, /spawnPendingDamageNumbers\(projectCombatDamageWorldToCanvas\)/);
-  assert.match(render, /projectCombatActorWorldToCanvas\(xWorld, yWorld\)/);
-  assert.match(render, /projectCombatActorWorldToCanvas\(wardWorldX, wardWorldY\)/);
-  assert.match(render, /projectCombatActorWorldToCanvas\(Number\(pulse\.sourceX/);
-  assert.match(render, /projectCombatActorWorldToCanvas\(Number\(pulse\.targetX/);
+  assert.match(render, /projectCombatActorWorldToCanvas\(xWorld, yWorld, 'hero'\)/);
+  assert.match(render, /projectCombatActorWorldToCanvas\(wardWorldX, wardWorldY, 'hero'\)/);
+  assert.match(render, /projectCombatActorWorldToCanvas\(Number\(pulse\.sourceX[^\n]*'hero'/);
+  assert.match(render, /projectCombatActorWorldToCanvas\(Number\(pulse\.targetX[^\n]*'enemy'/);
+  assert.match(render, /projectCombatActorWorldToCanvas\(x, y, 'enemy'\)/);
   assert.match(render, /CombatOrientationGeometry = createCombatOrientationGeometry/);
   assert.match(hooks, /combatOrientation:/);
 

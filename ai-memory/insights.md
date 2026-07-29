@@ -505,3 +505,4 @@
 ## 2026-07-28 — Mirrored Combat Must Reflect Sprite Pixels, Not Only Pivots
 - Exact reflected actor pivots are insufficient when sprite art has directional facing or asymmetric transparent padding. Moving unflipped art to the opposite team side makes combatants face away and can create a visible edge bias even when geometry equations pass.
 - For a face-to-face mirrored combat presentation, reflect right-wise actor pixels about the same oriented pivot used by sprites, hit regions, bars, and effects. Apply the same draw transform to hit-flash redraws, while leaving canonical coordinates and source assets unchanged.
+- When two combat formations need visual correction, project each team as a block: use one shared X translation and derive any team Y correction from formation midpoints. Apply the same projection to sprites, hit regions, bars, text, and effects; avoid per-slot tuning that drifts spacing or attachment.

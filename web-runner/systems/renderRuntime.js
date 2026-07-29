@@ -1,9 +1,10 @@
 import { updateHpTextRollState } from '../src/core/hpTextRollAnimation.mjs';
 import {
+  createCombatFormationProjection,
   createCombatOrientationGeometry,
+  deriveCombatFormationAnchors,
   normalizeCombatOrientation,
   orientCombatWorldOffsetX,
-  orientCombatWorldX,
 } from '../../src/core/combatOrientation.mjs';
 import { drawCombatActorSprite } from './combatActorSpritePresentation.mjs';
 
@@ -11,10 +12,11 @@ let renderImpl = null;
 
 export function renderRuntime(deps) {
   deps.updateHpTextRollState = updateHpTextRollState;
+  deps.createCombatFormationProjection = createCombatFormationProjection;
   deps.createCombatOrientationGeometry = createCombatOrientationGeometry;
+  deps.deriveCombatFormationAnchors = deriveCombatFormationAnchors;
   deps.normalizeCombatOrientation = normalizeCombatOrientation;
   deps.orientCombatWorldOffsetX = orientCombatWorldOffsetX;
-  deps.orientCombatWorldX = orientCombatWorldX;
   deps.drawCombatActorSprite = drawCombatActorSprite;
   if (!renderImpl) {
     const body = [
@@ -63,7 +65,7 @@ export function renderRuntime(deps) {
       )
       .replace(
         "const presentationPatches = {};",
-        "const presentationPatches = {};\n    const activeCombatOrientation = normalizeCombatOrientation(state.globals.CombatOrientation);\n    const projectCombatActorWorldToCanvas = (x, y) => worldToCanvas(orientCombatWorldX(x, layoutW, activeCombatOrientation), y);\n    const projectCombatDamageWorldToCanvas = (x, y, targetKind) => (targetKind === 'bar' || targetKind === 'energy') ? worldToCanvas(x, y) : projectCombatActorWorldToCanvas(x, y);\n    const combatOrientationGeometryActors = [];",
+        "const presentationPatches = {};\n    const activeCombatOrientation = normalizeCombatOrientation(state.globals.CombatOrientation);\n    const combatFormationAnchors = deriveCombatFormationAnchors({ globals: state.globals, entities: state.entities, heroCount: getCombatPartyRenderRoster().length });\n    const combatFormationProjection = createCombatFormationProjection({ orientation: activeCombatOrientation, layoutW, ...combatFormationAnchors });\n    const projectCombatActorWorldToCanvas = (x, y, actorKind = '') => { const point = combatFormationProjection.project(x, y, actorKind); return worldToCanvas(point.x, point.y); };\n    const projectCombatDamageWorldToCanvas = (x, y, targetKind) => (targetKind === 'bar' || targetKind === 'energy') ? worldToCanvas(x, y) : projectCombatActorWorldToCanvas(x, y, targetKind === 'hero' ? 'hero' : 'enemy');\n    const combatOrientationGeometryActors = [];",
       )
       .replace(
         "spawnPendingDamageNumbers(worldToCanvas);",
@@ -71,11 +73,11 @@ export function renderRuntime(deps) {
       )
       .replaceAll(
         "const pos = worldToCanvas(x, y);",
-        "const pos = projectCombatActorWorldToCanvas(x, y);",
+        "const pos = projectCombatActorWorldToCanvas(x, y, 'enemy');",
       )
       .replace(
         "const basePos = worldToCanvas(Number(bloom.x || 0), Number(bloom.y || 0));",
-        "const basePos = projectCombatActorWorldToCanvas(Number(bloom.x || 0), Number(bloom.y || 0));",
+        "const basePos = projectCombatActorWorldToCanvas(Number(bloom.x || 0), Number(bloom.y || 0), 'hero');",
       )
       .replace(
         "ctx.translate(basePos.x + Number(particle.x || 0), basePos.y + Number(particle.y || 0));",
@@ -83,7 +85,7 @@ export function renderRuntime(deps) {
       )
       .replace(
         "const pos = worldToCanvas(posInfo.x, posInfo.y);",
-        "const pos = projectCombatActorWorldToCanvas(posInfo.x, posInfo.y);",
+        "const pos = projectCombatActorWorldToCanvas(posInfo.x, posInfo.y, 'enemy');",
       )
       .replace(
         ": worldToCanvas(baseX + xOffset + floatOffset.x, baseY + floatOffset.y);",
@@ -91,19 +93,19 @@ export function renderRuntime(deps) {
       )
       .replace(
         "const pos = worldToCanvas(xWorld, yWorld);",
-        "const pos = projectCombatActorWorldToCanvas(xWorld, yWorld);\n          const standingPos = projectCombatActorWorldToCanvas(baseX, yWorld);\n          if (hero) combatOrientationGeometryActors.push({ uid: hero.uid, name: hero.name, kind: hero.kind, slot: entry.displaySlot, canonicalX: baseX, y: yWorld, canvasX: standingPos.x, canvasY: standingPos.y });",
+        "const pos = projectCombatActorWorldToCanvas(xWorld, yWorld, 'hero');\n          const standingPos = projectCombatActorWorldToCanvas(baseX, yWorld, 'hero');\n          if (hero) combatOrientationGeometryActors.push({ uid: hero.uid, name: hero.name, kind: hero.kind, slot: entry.displaySlot, canonicalX: baseX, y: yWorld, canvasX: standingPos.x, canvasY: standingPos.y });",
       )
       .replace(
         "const wardPos = worldToCanvas(wardWorldX, wardWorldY);",
-        "const wardPos = projectCombatActorWorldToCanvas(wardWorldX, wardWorldY);",
+        "const wardPos = projectCombatActorWorldToCanvas(wardWorldX, wardWorldY, 'hero');",
       )
       .replace(
         "const source = worldToCanvas(Number(pulse.sourceX || 0), Number(pulse.sourceY || 0));",
-        "const source = projectCombatActorWorldToCanvas(Number(pulse.sourceX || 0), Number(pulse.sourceY || 0));",
+        "const source = projectCombatActorWorldToCanvas(Number(pulse.sourceX || 0), Number(pulse.sourceY || 0), 'hero');",
       )
       .replace(
         "const target = worldToCanvas(Number(pulse.targetX || 0), Number(pulse.targetY || 0));",
-        "const target = projectCombatActorWorldToCanvas(Number(pulse.targetX || 0), Number(pulse.targetY || 0));",
+        "const target = projectCombatActorWorldToCanvas(Number(pulse.targetX || 0), Number(pulse.targetY || 0), 'enemy');",
       )
       .replace(
         "const baseX = pos.x + enemyW / 2 + (4 * layoutScale);",
@@ -111,7 +113,7 @@ export function renderRuntime(deps) {
       )
       .replace(
         "const sprite = enemySpriteImages[String(enemy.name || '').toLowerCase()];",
-        "const sprite = enemySpriteImages[String(enemy.name || '').toLowerCase()];\n        const standingX = enemy.originX != null ? Number(enemy.originX) : Number(x);\n        const standingY = enemy.originY != null ? Number(enemy.originY) : Number(y);\n        const standingPos = projectCombatActorWorldToCanvas(standingX, standingY);\n        combatOrientationGeometryActors.push({ uid: enemy.uid, name: enemy.name, kind: enemy.kind, slot: slotIndex, canonicalX: standingX, y: standingY, canvasX: standingPos.x, canvasY: standingPos.y });",
+        "const sprite = enemySpriteImages[String(enemy.name || '').toLowerCase()];\n        const standingX = enemy.originX != null ? Number(enemy.originX) : Number(x);\n        const standingY = enemy.originY != null ? Number(enemy.originY) : Number(y);\n        const standingPos = projectCombatActorWorldToCanvas(standingX, standingY, 'enemy');\n        combatOrientationGeometryActors.push({ uid: enemy.uid, name: enemy.name, kind: enemy.kind, slot: slotIndex, canonicalX: standingX, y: standingY, canvasX: standingPos.x, canvasY: standingPos.y });",
       )
       .replace(
         "runtimeArtifacts.presentationPatches = Object.keys(presentationPatches).length ? presentationPatches : null;",

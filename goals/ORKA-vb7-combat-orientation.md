@@ -19,14 +19,14 @@ Add an explicit direct-combat orientation with two values: `left-wise` keeps her
 - Applying it outside combat stages the value for the next combat entry.
 - The selected dev value may use the existing session-scoped dev-tool configuration storage, but never durable game/save storage.
 
-## Reflection Invariant
-Combat reflection uses logical combat-world bounds `[0, layoutW]`, before `worldToCanvas`, layout scaling, letterboxing, CSS sizing, or DPR conversion. `EnemyAreaRect` is enemy-side geometry and is not the reflection boundary.
+## Formation Projection Invariant
+Combat orientation uses logical combat-world bounds `[0, layoutW]`, before `worldToCanvas`, layout scaling, letterboxing, CSS sizing, or DPR conversion. `EnemyAreaRect` is enemy-side geometry and is not the reflection boundary.
 
 For the same logical viewport and combatants, every hero, escort, and enemy standing pivot satisfies:
 
-`rightX = layoutW - leftX`
+`rightX = layoutW - leftX - 40`
 
-Right-wise anchors derive from the canonical left-wise baseline, never from already reflected or transient animation positions. Actor `y`, slot/display order, dimensions, scale, origin semantics, roster order, intra-team spacing, and corresponding-edge distance remain unchanged. Right-wise actor sprite pixels reflect about each oriented pivot so teams face inward and asymmetric art does not retain its left-wise pixel bias; source assets remain unchanged.
+The `-40` world-unit translation moves both right-wise formations left as equal blocks. Heroes keep their canonical Y. Enemies receive one block Y translation equal to `heroFormationMidY - enemyFormationMidY`, so formation midpoints align without changing enemy internal spacing. Right-wise anchors derive from the canonical left-wise baseline, never from already reflected or transient animation positions. Slot/display order, dimensions, scale, origin semantics, roster order, and intra-team spacing remain unchanged. Right-wise actor sprite pixels reflect about each oriented pivot so teams face inward and asymmetric art does not retain its left-wise pixel bias; source assets remain unchanged.
 
 ## Session And Respawn Behavior
 - Orientation stays stable through combat layout suspend/resume, dev-tool combat refresh, and same-session enemy respawn/repositioning.
@@ -37,15 +37,15 @@ Right-wise anchors derive from the canonical left-wise baseline, never from alre
 - Actor sprite, pointer hit region, selector, HP bar, damage/heal text, status/debuff/ward visuals, and skill/action anchors derive from the same oriented actor anchor.
 - Relative x offsets attached to actors reflect with their actor when required for exact mirrored presentation.
 - Hero and enemy action paths derive direction from oriented source/target anchors, not hard-coded team-side assumptions.
-- At equal animation times, right-wise actor/action x values reflect left-wise values while y, duration, easing, damage timing, and combat outcomes remain equal.
+- At equal animation times, right-wise actor/action x values use the shared reflected-and-translated projection; hero Y remains equal and enemy-attached visuals receive the same enemy block Y translation. Duration, easing, damage timing, and combat outcomes remain equal.
 - Cached projectile and skill endpoints are captured from oriented anchors.
 
 ## Passing Means
-- Both orientations are directly loadable and visually distinct only by reflected actor x-positioning.
+- Both orientations are directly loadable. Right-wise changes only actor-team presentation coordinates: shared reflected/translated X plus enemy-block midpoint alignment on Y.
 - Selectors, hit targets, damage/heal text, status visuals, and action animation anchors stay attached to their actors.
 - Existing left-wise output is unchanged by default.
 - Initiative, turns, targeting ownership, skills, damage, RNG, encounter generation, save state, and all other combat rules remain unchanged.
-- Deterministic geometry tests cover 1v1, full 4v3, and sparse/noncontiguous legal slots. For identical roster, slots, and logical viewport, every paired pivot satisfies `leftX + rightX = layoutW` within a declared world-coordinate epsilon; all non-x placement fields remain equal.
+- Deterministic geometry tests cover 1v1, full 4v3, and sparse/noncontiguous legal slots. For identical roster, slots, and logical viewport, every paired pivot satisfies `leftX + rightX = layoutW - 40` within a declared world-coordinate epsilon; hero Y is equal, enemy internal spacing is equal, and the right-wise team formation midpoints align.
 - Deterministic non-regression proves identical actor identities, stats, HP, slots, encounter summary, initiative queue, RNG state, targeting state, and skill state except explicitly named orientation/presentation-coordinate fields.
 - Browser proof uses identical combatants, slots, encounter seed, logical/CSS viewport, DPR, and stable idle phase for both orientations; it includes a canonical viewport and a differently scaled/aspect viewport with console errors checked.
 - Annotated screenshots label logical bounds, centerline, every actor pivot, and paired reflection measurements. A machine-readable geometry table keyed by actor UID accompanies them.
@@ -54,7 +54,7 @@ Right-wise anchors derive from the canonical left-wise baseline, never from alre
 ## Non-Goals
 - No team identity swap.
 - No combat rebalance, rule change, AI change, new camera behavior, responsive-layout redesign, or asset mirroring.
-- No independent hand-tuned right-wise coordinates.
+- No per-actor or per-slot hand-tuned right-wise coordinates; the approved shared X translation and derived enemy-block Y translation are formation-level transforms.
 - No source-asset mutation; right-wise facing is a Canvas presentation transform.
 - No in-place orientation flip that preserves an active combat session; the dev panel may start a fresh dev combat session in the selected orientation.
 

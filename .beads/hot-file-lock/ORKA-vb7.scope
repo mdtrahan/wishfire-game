@@ -1,1 +1,1 @@
-web-runner/app.js:spawnPendingDamageNumbers,validateCombatSnapshot,combatActorWorldToCanvas,drawFrame,enemyH,__MODULE__
+web-runner/app.js:combatActorWorldToCanvas,drawFrame,enemyH,__MODULE__

@@ -62,8 +62,9 @@ import { resolvePendingSuperGemHandoff } from './src/core/pendingSuperGemHandoff
 import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
 import { deriveDamageFloatFrameOffset } from '../src/core/damageFloatVector.mjs';
 import {
+  createCombatFormationProjection,
+  deriveCombatFormationAnchors,
   orientCombatWorldOffsetX,
-  orientCombatWorldX,
   readCombatOrientationFromSearch,
 } from '../src/core/combatOrientation.mjs';
 import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
@@ -2790,11 +2791,19 @@ async function main(){
     return { x: cx, y: cy };
   }
 
-  function combatActorWorldToCanvas(wx, wy) {
-    return worldToCanvas(
-      orientCombatWorldX(wx, layoutW, state.globals.CombatOrientation),
-      wy,
-    );
+  function combatActorWorldToCanvas(wx, wy, actorKind = '') {
+    const anchors = deriveCombatFormationAnchors({
+      globals: state.globals,
+      entities: state.entities,
+      heroCount: getCombatPartyRenderRoster().length,
+    });
+    const projection = createCombatFormationProjection({
+      orientation: state.globals.CombatOrientation,
+      layoutW,
+      ...anchors,
+    });
+    const point = projection.project(wx, wy, actorKind);
+    return worldToCanvas(point.x, point.y);
   }
 
   function traceTask015StoryPlacement(trigger, bounds) {
@@ -3480,7 +3489,7 @@ async function main(){
     };
     astralFlowKoOrbPresentation.prepareAstralFlowKoOrbPresentation({
       state,
-      worldToCanvas: combatActorWorldToCanvas,
+      worldToCanvas: (x, y) => combatActorWorldToCanvas(x, y, 'enemy'),
       callFunctionWithContext,
       fnContext,
     });
@@ -4269,7 +4278,7 @@ function getStoryCardLiveLineState() {
       const origH = enemyOrig ? enemyOrig.height : 1;
       const enemyH = (g.EnemySize || 40) * layoutScale;
       const enemyW = enemyH * (origW / origH);
-      const pos = combatActorWorldToCanvas(x, y);
+      const pos = combatActorWorldToCanvas(x, y, 'enemy');
       if (mx >= pos.x - enemyW / 2 && mx <= pos.x + enemyW / 2 &&
           my >= pos.y - enemyH / 2 && my <= pos.y + enemyH / 2) {
         return enemy;
