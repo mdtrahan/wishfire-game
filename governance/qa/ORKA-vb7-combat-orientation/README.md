@@ -1,6 +1,6 @@
 # ORKA-vb7 Combat Orientation Proof
 
-- Runtime commit: `efaf1e03688e9d7fafc353c46efaefcb5bb70e42`
+- Runtime correction commit: `d9614d19864e020abcc6c92e83734e4861122f47`
 - Branch: `bead/ORKA-vb7-combat-orientation`
 - Seed: `424242`
 - Roster: Falie, Huun, Runa, Kojonn vs Gobloc, Orc, Skeleton
@@ -8,11 +8,11 @@
 - Browser viewports: `1200x800` and `900x700`
 - Browser page errors: none
 
-The cyan line marks the reflection axis. Green rings mark hero standing pivots; red rings mark enemy pivots. Yellow arrows annotate inward facing. Each right-wise x equals `360 - left-wise x`; UID, kind, slot, y, HP, stats, initiative order, and board state remain equal.
+The cyan line marks the reflection axis. Green rings mark hero standing pivots; red rings mark enemy pivots. Each right-wise x equals `360 - left-wise x - 40`. Hero Y is unchanged. Enemies receive one `+5.515475986` world-Y block translation, aligning both formation midpoints at world Y `121.305986421` while preserving all intra-team spacing.
 
-The original right-wise QA frame exposed a presentation defect: reflected pivots moved directional/asymmetric art without reflecting its pixels, leaving teams back-to-back and silhouettes biased right. Commit `efaf1e0` reflects only right-wise actor pixels about the already-correct oriented pivot, including hit-flash redraws. Source assets, pivots, hit regions, combat state, and rules are unchanged.
+The original right-wise QA frame exposed a presentation defect: reflected pivots moved directional/asymmetric art without reflecting its pixels, leaving teams back-to-back and silhouettes biased right. Commit `efaf1e0` fixed facing. Follow-up commit `d9614d1` applies the approved shared left translation and derived enemy midpoint alignment to sprites, hit regions, bars, text, and actor-attached effects. Source assets, canonical combat state, and rules are unchanged.
 
-Final paired captures were frozen at full party HP (`147/147`) with identical hero/enemy HP and identical 24-gem color order before annotation. This removes combat progression as a comparison variable.
+The corrected right-wise captures were taken from exact commit `d9614d1`, frozen at full party HP (`147/147`) with 24 gems and no page errors. The left-wise captures are the unchanged `efaf1e0` reference baseline; the correction contract and tests prove left-wise remains byte-compatible.
 
 ## Images
 

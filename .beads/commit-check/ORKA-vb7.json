@@ -1,45 +1,18 @@
 {
   "changed_functions": {
-    "ai-memory/insights.md": [
+    "governance/qa/ORKA-vb7-combat-orientation/README.md": [
       "__MODULE__"
     ],
-    "goals/ORKA-vb7-combat-orientation.md": [
+    "governance/qa/ORKA-vb7-combat-orientation/geometry-proof.json": [
       "__MODULE__"
     ],
-    "src/core/AGENTS.md": [
-      "__MODULE__"
-    ],
-    "src/core/combatOrientation.mjs": [
-      "finiteMidpoint",
-      "deriveCombatFormationAnchors",
-      "createCombatFormationProjection",
-      "createCombatOrientationGeometry",
-      "__MODULE__"
-    ],
-    "tests/combatOrientationContract.test.js": [
-      "midpoint",
-      "__MODULE__"
-    ],
-    "web-runner/app.js": [
-      "combatActorWorldToCanvas",
-      "drawFrame",
-      "enemyH",
-      "__MODULE__"
-    ],
-    "web-runner/systems/AGENTS.md": [
-      "__MODULE__"
-    ],
-    "web-runner/systems/renderRuntime.js": [
-      "renderRuntime",
-      "__MODULE__"
-    ]
+    "governance/qa/ORKA-vb7-combat-orientation/right-wise-1200x800.png": [],
+    "governance/qa/ORKA-vb7-combat-orientation/right-wise-900x700.png": []
   },
   "details": {
-    "hot_files_touched": [
-      "web-runner/app.js"
-    ],
-    "staged_file_count": 8,
-    "staged_line_count": 192,
+    "hot_files_touched": [],
+    "staged_file_count": 4,
+    "staged_line_count": 30,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -47,26 +20,18 @@
     }
   },
   "files": [
-    "ai-memory/insights.md",
-    "goals/ORKA-vb7-combat-orientation.md",
-    "src/core/AGENTS.md",
-    "src/core/combatOrientation.mjs",
-    "tests/combatOrientationContract.test.js",
-    "web-runner/app.js",
-    "web-runner/systems/AGENTS.md",
-    "web-runner/systems/renderRuntime.js"
+    "governance/qa/ORKA-vb7-combat-orientation/README.md",
+    "governance/qa/ORKA-vb7-combat-orientation/geometry-proof.json",
+    "governance/qa/ORKA-vb7-combat-orientation/right-wise-1200x800.png",
+    "governance/qa/ORKA-vb7-combat-orientation/right-wise-900x700.png"
   ],
   "issue_id": "ORKA-vb7",
   "out_of_scope_hot_file_touch": false,
   "significant": true,
   "staged_blobs": {
-    "ai-memory/insights.md": "557578994711b57dfdc7754fdc082126c1be39c3",
-    "goals/ORKA-vb7-combat-orientation.md": "83b908c2f907e84c303f11952e7a8cf4a30643b7",
-    "src/core/AGENTS.md": "d4d639ed5223d1ef4053f1806a99f084bfa54d74",
-    "src/core/combatOrientation.mjs": "f739b19e2cc90dc4e49b2de52a2fd6cc19eefba9",
-    "tests/combatOrientationContract.test.js": "2cf539bfc7439c1f217f855a2bd49bf118a65029",
-    "web-runner/app.js": "c1654f71a1c5b78f0604427d8517d71e5b581c85",
-    "web-runner/systems/AGENTS.md": "c319f0534484826efd27af9f204e4fbc2acf8598",
-    "web-runner/systems/renderRuntime.js": "91d7f65d84e0f16c20e5018a3009be007952a61d"
+    "governance/qa/ORKA-vb7-combat-orientation/README.md": "aea591e35fb3cc0d54076a485d3f5af7d1f54a1f",
+    "governance/qa/ORKA-vb7-combat-orientation/geometry-proof.json": "21b5da33cc5934d98e1451087298beccfd9bb8bd",
+    "governance/qa/ORKA-vb7-combat-orientation/right-wise-1200x800.png": "10d00424b175bb7e65c015f786bfa5d1207e8405",
+    "governance/qa/ORKA-vb7-combat-orientation/right-wise-900x700.png": "6be972d8c52ac30a0026cabb76b6b33a14fabef7"
   }
 }
