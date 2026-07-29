@@ -33,6 +33,9 @@
     "hpAndStatsEqual": true,
     "initiativeOrderEqual": true,
     "boardStateEqual": true,
+    "capturedPartyHp": { "hp": 147, "maxHp": 147 },
+    "capturedGemCount": 24,
+    "capturedStateFingerprintEqual": true,
     "pageErrors": []
   },
   "devPanel": {
@@ -44,9 +47,9 @@
   },
   "images": {
     "dev-panel-orientation-toggle.png": "9cb53b3cda43f7b9f47fb03c9771f319b9ce4d3e5d73750da76e755c799d92ef",
-    "left-wise-1200x800.png": "16d85b903e5c253ef38dce7f61c09a5a1cb28dc35f3fc7a59f9db41c07bfa1a2",
-    "left-wise-900x700.png": "f3351292cd8ef8cb25442c8a989987f831989f14b0c3514999c178c12c88865c",
-    "right-wise-1200x800.png": "ed23cc5f55f0a31472bd2754847964a554c88d12dd4047c5ff098632ba7f0270",
-    "right-wise-900x700.png": "0bf4c225b4998c4033ff7cd488919b1ac088bec7a0edd52f98116200053ed5f3"
+    "left-wise-1200x800.png": "ab25ed2917c4f83896ff5d9de56a27f8376953d8459f8cbd5d6c21a6388c75bd",
+    "left-wise-900x700.png": "93cd35f7f0ae39d8ffaf6679d9c6b828a8fcf75d5b655bd68d0db507071aed92",
+    "right-wise-1200x800.png": "70cf30d81e90577d84e37621437fa2b91ce44a09105824fd63e616d0786e71f0",
+    "right-wise-900x700.png": "6341962cda2ca52b15fa7f99782e0a7259344e0f6e81eb5ba05bccdd4a1909fe"
   }
 }

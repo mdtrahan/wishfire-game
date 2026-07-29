@@ -12,6 +12,8 @@ The cyan line marks the reflection axis. Green rings mark hero standing pivots; 
 
 The original right-wise QA frame exposed a presentation defect: reflected pivots moved directional/asymmetric art without reflecting its pixels, leaving teams back-to-back and silhouettes biased right. Commit `efaf1e0` reflects only right-wise actor pixels about the already-correct oriented pivot, including hit-flash redraws. Source assets, pivots, hit regions, combat state, and rules are unchanged.
 
+Final paired captures were frozen at full party HP (`147/147`) with identical hero/enemy HP and identical 24-gem color order before annotation. This removes combat progression as a comparison variable.
+
 ## Images
 
 - `left-wise-1200x800.png` / `right-wise-1200x800.png`

@@ -14,7 +14,7 @@
   "details": {
     "hot_files_touched": [],
     "staged_file_count": 6,
-    "staged_line_count": 16,
+    "staged_line_count": 9,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -33,11 +33,11 @@
   "out_of_scope_hot_file_touch": false,
   "significant": true,
   "staged_blobs": {
-    "governance/qa/ORKA-vb7-combat-orientation/README.md": "4698f77a2d7c2e4a7dfc00bd088a56edb67a1042",
-    "governance/qa/ORKA-vb7-combat-orientation/geometry-proof.json": "72097ab51f229d2b7a4b2313829748442d6f5554",
-    "governance/qa/ORKA-vb7-combat-orientation/left-wise-1200x800.png": "2ee08d11703decf556e4acd006af4182fb14113c",
-    "governance/qa/ORKA-vb7-combat-orientation/left-wise-900x700.png": "7f6ab16e254771b63b4a868d3909e740af325f93",
-    "governance/qa/ORKA-vb7-combat-orientation/right-wise-1200x800.png": "d61be80c7b1c99c4c1e45380b9759285baf00ad0",
-    "governance/qa/ORKA-vb7-combat-orientation/right-wise-900x700.png": "e5c6047ab751d0839c28eaea5ae46f89efafadf2"
+    "governance/qa/ORKA-vb7-combat-orientation/README.md": "0784fc5802a381bb11b6bec61f7407c28c0444d8",
+    "governance/qa/ORKA-vb7-combat-orientation/geometry-proof.json": "0234eba60b7ea61470543d7dc4873178499bbf60",
+    "governance/qa/ORKA-vb7-combat-orientation/left-wise-1200x800.png": "11679074187ef95bee73106def799b92c8e5e736",
+    "governance/qa/ORKA-vb7-combat-orientation/left-wise-900x700.png": "1f4435ea0ec0aaf95ec85d58a7fe7bcc04d31cdc",
+    "governance/qa/ORKA-vb7-combat-orientation/right-wise-1200x800.png": "272a15ad8f8dc4a9e4c1bdb664a0c384f7617e9f",
+    "governance/qa/ORKA-vb7-combat-orientation/right-wise-900x700.png": "c9f67575ea749262075c93d8bbabcff3bc36d8ac"
   }
 }
