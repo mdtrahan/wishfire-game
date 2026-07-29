@@ -61,6 +61,12 @@ import {
 import { resolvePendingSuperGemHandoff } from './src/core/pendingSuperGemHandoff.mjs';
 import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
 import { deriveDamageFloatFrameOffset } from '../src/core/damageFloatVector.mjs';
+import {
+  createCombatFormationProjection,
+  deriveCombatFormationAnchors,
+  orientCombatWorldOffsetX,
+  readCombatOrientationFromSearch,
+} from '../src/core/combatOrientation.mjs';
 import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
 import { createHealBloom } from './src/core/healBloomAnimation.mjs';
 import { createCombatOutcomeSimulationPacket } from './src/core/combatOutcomeRules.mjs';
@@ -506,7 +512,7 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
     const xOffset = d.targetKind === 'hero' ? -10 : (d.targetKind === 'ward' ? 0 : (d.canvasAnchored ? 0 : 10));
     const pos = d.canvasAnchored
       ? { x: Number(d.x || 0) + xOffset, y: Number(d.baseY != null ? d.baseY : (d.y || 0)) }
-      : projectToCanvas((d.x || 0) + xOffset, d.baseY != null ? d.baseY : (d.y || 0));
+      : projectToCanvas((d.x || 0) + xOffset, d.baseY != null ? d.baseY : (d.y || 0), d.targetKind);
     const isCrit = !!d.isCrit;
     const isEnergyText = d.targetKind === 'energy' || d.kind === 'energy';
     const domKind = isEnergyText
@@ -531,7 +537,7 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
       container: damageNumberLayer,
       angleDeg: Number(d.floatAngleDeg || 0),
       floatVector: {
-        x: Number(d.floatVectorX || 0),
+        x: orientCombatWorldOffsetX(Number(d.floatVectorX || 0), state.globals.CombatOrientation),
         y: Number(d.floatVectorY || 0),
       },
     });
@@ -2664,6 +2670,7 @@ async function main(){
   if (state.globals.EnemyDoTs) delete state.globals.EnemyDoTs;
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
+    state.globals.CombatOrientation = readCombatOrientationFromSearch(window.location.search);
     state.globals.DevTestMode = params.has('devtest') || params.get('devtest') === 'true';
     state.globals.DebugGemsMode = params.has('debug_gems') || params.get('debug_gems') === 'true';
     state.globals.DebugDamageFloatVectors =
@@ -2782,6 +2789,21 @@ async function main(){
     const cx = layoutOffsetX + wx * layoutScale;
     const cy = layoutOffsetY + wy * layoutScale;
     return { x: cx, y: cy };
+  }
+
+  function combatActorWorldToCanvas(wx, wy, actorKind = '') {
+    const anchors = deriveCombatFormationAnchors({
+      globals: state.globals,
+      entities: state.entities,
+      heroCount: getCombatPartyRenderRoster().length,
+    });
+    const projection = createCombatFormationProjection({
+      orientation: state.globals.CombatOrientation,
+      layoutW,
+      ...anchors,
+    });
+    const point = projection.project(wx, wy, actorKind);
+    return worldToCanvas(point.x, point.y);
   }
 
   function traceTask015StoryPlacement(trigger, bounds) {
@@ -3467,7 +3489,7 @@ async function main(){
     };
     astralFlowKoOrbPresentation.prepareAstralFlowKoOrbPresentation({
       state,
-      worldToCanvas,
+      worldToCanvas: (x, y) => combatActorWorldToCanvas(x, y, 'enemy'),
       callFunctionWithContext,
       fnContext,
     });
@@ -4256,7 +4278,7 @@ function getStoryCardLiveLineState() {
       const origH = enemyOrig ? enemyOrig.height : 1;
       const enemyH = (g.EnemySize || 40) * layoutScale;
       const enemyW = enemyH * (origW / origH);
-      const pos = worldToCanvas(x, y);
+      const pos = combatActorWorldToCanvas(x, y, 'enemy');
       if (mx >= pos.x - enemyW / 2 && mx <= pos.x + enemyW / 2 &&
           my >= pos.y - enemyH / 2 && my <= pos.y + enemyH / 2) {
         return enemy;

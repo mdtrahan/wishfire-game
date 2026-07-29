@@ -114,19 +114,20 @@ test('spawned damage text stores angle/vector proof fields in both function-bank
   }
 });
 
-test('DOM and canvas fallback consume the same damage float vector fields', () => {
+test('DOM and canvas fallback consume the same orientation-aware damage float vector fields', () => {
   const appSrc = read('web-runner/app.js');
   const domSrc = read('web-runner/src/core/damageNumberAnimation.mjs');
   const hookSrc = read('web-runner/systems/devBrowserTestHooks.js');
   const renderSrc = read('web-runner/systems/renderRuntime.js');
 
-  assert.match(appSrc, /floatVector: \{\s*x: Number\(d\.floatVectorX \|\| 0\),\s*y: Number\(d\.floatVectorY \|\| 0\),\s*\}/);
+  assert.match(appSrc, /floatVector: \{\s*x: orientCombatWorldOffsetX\(Number\(d\.floatVectorX \|\| 0\), state\.globals\.CombatOrientation\),\s*y: Number\(d\.floatVectorY \|\| 0\),\s*\}/);
   assert.match(hookSrc, /damageTexts: \(state\.globals\.DamageTexts \|\| \[\]\)\.map/);
   assert.match(appSrc, /DebugDamageFloatVectors/);
   assert.match(domSrc, /wrapper\.dataset\.floatAngleDeg/);
   assert.match(domSrc, /x: floatX,/);
   assert.match(domSrc, /y: floatY,/);
   assert.match(renderSrc, /const floatOffset = deriveDamageFloatFrameOffset\(d, floatProgress\);/);
+  assert.match(renderSrc, /projectCombatDamageWorldToCanvas\(baseX \+ xOffset \+ floatOffset\.x, baseY \+ floatOffset\.y, d\.targetKind\)/);
   assert.match(renderSrc, /baseX \+ xOffset \+ floatOffset\.x/);
   assert.match(renderSrc, /baseY \+ floatOffset\.y/);
 });

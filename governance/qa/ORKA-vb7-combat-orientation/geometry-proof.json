@@ -1,0 +1,68 @@
+{
+  "bead": "ORKA-vb7",
+  "runtimeCommit": "d9614d19864e020abcc6c92e83734e4861122f47",
+  "branch": "bead/ORKA-vb7-combat-orientation",
+  "seed": 424242,
+  "logicalViewport": { "width": 360, "height": 640, "reflectionAxisX": 180 },
+  "roster": {
+    "heroes": ["Falie", "Huun", "Runa", "Kojonn"],
+    "enemies": ["Gobloc", "Orc", "Skeleton"]
+  },
+  "actors": [
+    { "uid": 1, "name": "Falie", "kind": "hero", "slot": 0, "leftX": 68.38944125806748, "rightX": 251.61055874193255, "sumX": 320, "leftY": 49.29437943106725, "rightY": 49.29437943106725 },
+    { "uid": 2, "name": "Huun", "kind": "hero", "slot": 1, "leftX": 40.384024662835685, "rightX": 279.6159753371643, "sumX": 320, "leftY": 97.30211742425553, "rightY": 97.30211742425553 },
+    { "uid": 3, "name": "Runa", "kind": "hero", "slot": 2, "leftX": 68.38944125806748, "rightX": 251.61055874193255, "sumX": 320, "leftY": 145.30985541744383, "rightY": 145.30985541744383 },
+    { "uid": 4, "name": "Kojonn", "kind": "hero", "slot": 3, "leftX": 40.384024662835685, "rightX": 279.6159753371643, "sumX": 320, "leftY": 193.3175934106321, "rightY": 193.3175934106321 },
+    { "uid": 6, "name": "Gobloc", "kind": "enemy", "slot": 0, "leftX": 273.28292302223093, "rightX": 46.71707697776907, "sumX": 320, "leftY": 60.790510434473106, "rightY": 66.30598642084968 },
+    { "uid": 7, "name": "Orc", "kind": "enemy", "slot": 1, "leftX": 249.28292302223093, "rightX": 70.71707697776907, "sumX": 320, "leftY": 115.7905104344731, "rightY": 121.30598642084968 },
+    { "uid": 8, "name": "Skeleton", "kind": "enemy", "slot": 2, "leftX": 273.28292302223093, "rightX": 46.71707697776907, "sumX": 320, "leftY": 170.7905104344731, "rightY": 176.30598642084968 }
+  ],
+  "formationProjection": {
+    "rightWiseTranslateX": -40,
+    "heroTranslateY": 0,
+    "enemyTranslateY": 5.515475986376572,
+    "heroMidY": 121.30598642084968,
+    "enemyMidYBefore": 115.7905104344731,
+    "enemyMidYAfter": 121.30598642084968,
+    "midpointsAligned": true,
+    "internalSpacingPreserved": true
+  },
+  "viewportChecks": [
+    { "viewport": "1200x800", "canvasWidth": 450, "pairedCanvasXSum": 400, "heroYEqual": true, "midpointsAligned": true },
+    { "viewport": "900x700", "canvasWidth": 393, "pairedCanvasXSum": 349.3333333333333, "heroYEqual": true, "midpointsAligned": true }
+  ],
+  "spritePresentation": {
+    "leftWise": { "heroesFace": "right", "enemiesFace": "left", "pixelTransform": "none" },
+    "rightWise": { "heroesFace": "left", "enemiesFace": "right", "pixelTransform": "scaleX(-1) about oriented actor pivot" },
+    "sourceAssetsChanged": false,
+    "hitFlashUsesSameTransform": true,
+    "visibleRightwardBiasCorrected": true
+  },
+  "nonRegression": {
+    "uidKindSlotEqual": true,
+    "heroYEqual": true,
+    "enemySpacingEqual": true,
+    "formationMidpointsAligned": true,
+    "hpAndStatsEqual": true,
+    "initiativeOrderEqual": true,
+    "boardStateEqual": true,
+    "capturedPartyHp": { "hp": 147, "maxHp": 147 },
+    "capturedGemCount": 24,
+    "capturedStateFingerprintEqual": true,
+    "pageErrors": []
+  },
+  "devPanel": {
+    "before": "right-wise",
+    "selected": "left-wise",
+    "after": "left-wise",
+    "orientationChanged": true,
+    "appliedSessionChange": "combat_refresh"
+  },
+  "images": {
+    "dev-panel-orientation-toggle.png": "9cb53b3cda43f7b9f47fb03c9771f319b9ce4d3e5d73750da76e755c799d92ef",
+    "left-wise-1200x800.png": "ab25ed2917c4f83896ff5d9de56a27f8376953d8459f8cbd5d6c21a6388c75bd",
+    "left-wise-900x700.png": "93cd35f7f0ae39d8ffaf6679d9c6b828a8fcf75d5b655bd68d0db507071aed92",
+    "right-wise-1200x800.png": "b3a2941de5c43cfc0e2b192062ed632f6f6e8c4c5e8d77cb127e1c2025ca3808",
+    "right-wise-900x700.png": "89cfc47fca9e358587fa0ca876ad47a8b74fd57ed1357647f6cdd41a95bdfb1f"
+  }
+}

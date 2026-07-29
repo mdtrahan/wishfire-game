@@ -79,6 +79,10 @@ export function registerDevBrowserTestHooks({
         hp: state.globals.PartyHP || 0,
         maxHp: state.globals.PartyMaxHP || 0,
       },
+      combatOrientation: {
+        orientation: String(state.globals.CombatOrientation || 'left-wise'),
+        geometry: state.globals.CombatOrientationGeometry || null,
+      },
       resources: {
         energy: state.globals.Player_Energy || 0,
         maxEnergy: state.globals.Player_maxEnergy || 0,

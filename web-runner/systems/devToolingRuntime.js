@@ -1,5 +1,6 @@
 import * as devToolingControls from './devToolingControls.js';
 import { renderCombatTurnQaReadoutHtml } from './combatTurnQaReadout.mjs';
+import { normalizeCombatOrientation } from '../../src/core/combatOrientation.mjs';
 
 const DEV_TOOL_HOTKEY_LABEL = 'Ctrl+Shift+P';
 const DEV_TOOL_GEM_RANDOM = -1;
@@ -89,6 +90,7 @@ export function createDevToolingRuntime(deps = {}) {
       boardGemColor: DEV_TOOL_GEM_RANDOM,
       goldAmount: 0,
       combatSpeed: 1,
+      combatOrientation: normalizeCombatOrientation(state.globals.CombatOrientation),
       rewardDrops: '',
       rewardCount: 1,
       doubleAttackHeroName: '',
@@ -118,6 +120,7 @@ export function createDevToolingRuntime(deps = {}) {
     next.boardGemColor = DEV_TOOL_GEM_OPTIONS.some((row) => row.value === colorValue) ? colorValue : base.boardGemColor;
     next.goldAmount = Math.max(0, Math.floor(Number(next.goldAmount || 0)));
     next.combatSpeed = Math.max(0.25, Math.min(4, Number(next.combatSpeed || 1)));
+    next.combatOrientation = normalizeCombatOrientation(next.combatOrientation);
     const rewardDrop = String(next.rewardDrops || '').trim().toUpperCase();
     next.rewardDrops = DEV_TOOL_REWARD_OPTIONS.some((row) => row.value === rewardDrop) ? rewardDrop : '';
     next.rewardCount = Math.max(0, Math.min(99, Math.floor(Number(next.rewardCount || base.rewardCount))));
@@ -490,6 +493,7 @@ export function createDevToolingRuntime(deps = {}) {
     devToolingDom.boardGemColor.value = String(cfg.boardGemColor);
     devToolingDom.goldAmount.value = String(cfg.goldAmount);
     devToolingDom.combatSpeed.value = String(cfg.combatSpeed);
+    devToolingDom.combatOrientation.value = String(cfg.combatOrientation);
     devToolingDom.rewardDrops.value = String(cfg.rewardDrops || '');
     devToolingDom.rewardCount.value = String(cfg.rewardCount);
     populateDevToolSlotSelect(devToolingDom.doubleAttackHero, { choices: getDevToolHeroOptions(), includeRandom: false, selected: cfg.doubleAttackHeroName || DEV_TOOL_EMPTY_SLOT });
@@ -507,6 +511,7 @@ export function createDevToolingRuntime(deps = {}) {
       boardGemColor: Number(devToolingDom.boardGemColor.value || 0),
       goldAmount: Number(devToolingDom.goldAmount.value || 0),
       combatSpeed: Number(devToolingDom.combatSpeed.value || 1),
+      combatOrientation: String(devToolingDom.combatOrientation.value || 'left-wise'),
       rewardDrops: String(devToolingDom.rewardDrops.value || ''),
       rewardCount: Number(devToolingDom.rewardCount.value || 1),
       doubleAttackHeroName: String(devToolingDom.doubleAttackHero?.value || ''),
@@ -529,6 +534,7 @@ export function createDevToolingRuntime(deps = {}) {
     state.globals.DevForcedBoardColor = next.boardGemColor;
     state.globals.goldTotal = next.goldAmount;
     state.globals.DevCombatSpeedMultiplier = next.combatSpeed;
+    state.globals.CombatOrientation = next.combatOrientation;
     state.globals.DevRewardDropId = next.rewardDrops;
     state.globals.DevRewardDrops = next.rewardDrops
       ? Array.from({ length: next.rewardCount }, () => next.rewardDrops)
@@ -546,11 +552,13 @@ export function createDevToolingRuntime(deps = {}) {
     const heroSlotsChanged = JSON.stringify(prev.heroSlots || []) !== JSON.stringify(next.heroSlots || []);
     const enemySlotsChanged = JSON.stringify(prev.enemySlots || []) !== JSON.stringify(next.enemySlots || []);
     const loadoutChanged = heroSlotsChanged || enemySlotsChanged;
+    const orientationChanged = prev.combatOrientation !== next.combatOrientation;
+    const combatSetupChanged = loadoutChanged || orientationChanged;
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
       ? layoutState.getActiveLayoutId()
       : '';
     let appliedSessionChange = 'none';
-    if (loadoutChanged) {
+    if (combatSetupChanged) {
       if (activeLayoutId === 'combat' && typeof devToolingRefreshHandler === 'function') {
         await devToolingRefreshHandler({ forceCombat: false, resetGame: false });
         appliedSessionChange = 'combat_refresh';
@@ -566,9 +574,10 @@ export function createDevToolingRuntime(deps = {}) {
       `Board recolor count: ${recolored}\n` +
       `Hero slots (staged): ${next.heroSlots.map((value) => value || 'Empty').join(', ')}\n` +
       `Enemy slots (staged): ${next.enemySlots.map((value) => value === DEV_TOOL_RANDOM_ENEMY_SLOT ? 'Random' : (value || 'Empty')).join(', ')}\n` +
+      `Combat orientation: ${next.combatOrientation}\n` +
       `Double Attack: ${next.doubleAttackHeroName || 'Off'}${doubleAttackUID ? ` (uid ${doubleAttackUID})` : ''}\n` +
       `Reward (staged): ${next.rewardDrops || 'None'} x${next.rewardCount}\n` +
-      `${loadoutChanged ? `Loadout applied: ${appliedSessionChange}` : 'Combat state unchanged'}`
+      `${combatSetupChanged ? `Combat setup applied: ${appliedSessionChange}` : 'Combat state unchanged'}`
     );
     return {
       ...next,
@@ -576,6 +585,7 @@ export function createDevToolingRuntime(deps = {}) {
       boardRecolored: recolored,
       doubleAttackUID,
       loadoutChanged,
+      orientationChanged,
       appliedSessionChange,
       refreshed: false,
     };
@@ -677,6 +687,12 @@ export function createDevToolingRuntime(deps = {}) {
         <label style="display:flex;flex-direction:column;gap:4px;">Combat Speed
           <input data-devtool-combat-speed type="number" min="0.25" max="4" step="0.25">
         </label>
+        <label style="display:flex;flex-direction:column;gap:4px;">Combat Orientation
+          <select data-devtool-combat-orientation>
+            <option value="left-wise">Left-wise</option>
+            <option value="right-wise">Right-wise</option>
+          </select>
+        </label>
         <label style="display:flex;flex-direction:column;gap:4px;">Reward Drop
           <select data-devtool-reward-drops>
             ${DEV_TOOL_REWARD_OPTIONS.map((row) => `<option value="${row.value}">${row.label}</option>`).join('')}
@@ -741,6 +757,7 @@ export function createDevToolingRuntime(deps = {}) {
       boardGemColor: panel.querySelector('[data-devtool-board-color]'),
       goldAmount: panel.querySelector('[data-devtool-gold-amount]'),
       combatSpeed: panel.querySelector('[data-devtool-combat-speed]'),
+      combatOrientation: panel.querySelector('[data-devtool-combat-orientation]'),
       rewardDrops: panel.querySelector('[data-devtool-reward-drops]'),
       rewardCount: panel.querySelector('[data-devtool-reward-count]'),
       doubleAttackHero: panel.querySelector('[data-devtool-double-attack-hero]'),

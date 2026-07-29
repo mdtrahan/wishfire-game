@@ -1,0 +1,14 @@
+{
+  "hot_files": {
+    "web-runner/app.js": {
+      "functions": [
+        "combatActorWorldToCanvas",
+        "drawFrame",
+        "enemyH",
+        "__MODULE__"
+      ],
+      "staged_blob": "c1654f71a1c5b78f0604427d8517d71e5b581c85"
+    }
+  },
+  "issue_id": "ORKA-vb7"
+}

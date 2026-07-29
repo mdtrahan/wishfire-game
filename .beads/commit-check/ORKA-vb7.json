@@ -1,0 +1,57 @@
+{
+  "changed_functions": {
+    "ai-memory/insights.md": [
+      "__MODULE__"
+    ],
+    "goals/ORKA-vb7-combat-orientation.md": [
+      "__MODULE__"
+    ],
+    "src/core/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "src/core/combatOrientation.mjs": [
+      "deriveCombatFormationAnchors",
+      "createCombatOrientationGeometry"
+    ],
+    "tests/combatOrientationContract.test.js": [
+      "midpoint"
+    ],
+    "web-runner/systems/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/systems/renderRuntime.js": [
+      "renderRuntime"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 7,
+    "staged_line_count": 99,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    "ai-memory/insights.md",
+    "goals/ORKA-vb7-combat-orientation.md",
+    "src/core/AGENTS.md",
+    "src/core/combatOrientation.mjs",
+    "tests/combatOrientationContract.test.js",
+    "web-runner/systems/AGENTS.md",
+    "web-runner/systems/renderRuntime.js"
+  ],
+  "issue_id": "ORKA-vb7",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    "ai-memory/insights.md": "299ea9d4e2f27ea93ec72ad71f7b6db83a3c4900",
+    "goals/ORKA-vb7-combat-orientation.md": "810c4c6025142b4c64d3e77ec7bf6ad5ecf3ce2a",
+    "src/core/AGENTS.md": "e5cdb9fe23e57adf51276d2dd36599e6c59540f1",
+    "src/core/combatOrientation.mjs": "4344fb0cd8d324074760b50fd3488bc987564e8c",
+    "tests/combatOrientationContract.test.js": "da697071c3d8ba3c6c10caca5cd89afcba212302",
+    "web-runner/systems/AGENTS.md": "1b214c920bc363501e5f6fc5b61aa7c2f838710c",
+    "web-runner/systems/renderRuntime.js": "b4f3445162553f5733c2ded54b2987882de989c3"
+  }
+}
