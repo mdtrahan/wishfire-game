@@ -1,6 +1,6 @@
 {
   "bead": "ORKA-vb7",
-  "runtimeCommit": "98fbda6454454d6bcfc2760852997bf19c6e59e1",
+  "runtimeCommit": "efaf1e03688e9d7fafc353c46efaefcb5bb70e42",
   "branch": "bead/ORKA-vb7-combat-orientation",
   "seed": 424242,
   "logicalViewport": { "width": 360, "height": 640, "reflectionAxisX": 180 },
@@ -21,6 +21,13 @@
     { "viewport": "1200x800", "canvasWidth": 450, "pairedCanvasXSum": 450, "yEqual": true },
     { "viewport": "900x700", "canvasWidth": 393, "pairedCanvasXSum": 393, "yEqual": true }
   ],
+  "spritePresentation": {
+    "leftWise": { "heroesFace": "right", "enemiesFace": "left", "pixelTransform": "none" },
+    "rightWise": { "heroesFace": "left", "enemiesFace": "right", "pixelTransform": "scaleX(-1) about oriented actor pivot" },
+    "sourceAssetsChanged": false,
+    "hitFlashUsesSameTransform": true,
+    "visibleRightwardBiasCorrected": true
+  },
   "nonRegression": {
     "uidKindSlotYEqual": true,
     "hpAndStatsEqual": true,
@@ -37,9 +44,9 @@
   },
   "images": {
     "dev-panel-orientation-toggle.png": "9cb53b3cda43f7b9f47fb03c9771f319b9ce4d3e5d73750da76e755c799d92ef",
-    "left-wise-1200x800.png": "6393bc78b0b8fb6f1b61b05bde6f37ed43aface7262edba7322c222a2730a7fa",
-    "left-wise-900x700.png": "1ded4a95b006ee653728d2c0f7a4038c78c46773d564133ee0660956dbc237b3",
-    "right-wise-1200x800.png": "12d4e5dfc4be306b569f54b19c76165c8852fda473fcd551d8d35aabb5060966",
-    "right-wise-900x700.png": "08db6e4871527d54d1c94780c8a161c682050f807c43824d89c7bba483bf3572"
+    "left-wise-1200x800.png": "16d85b903e5c253ef38dce7f61c09a5a1cb28dc35f3fc7a59f9db41c07bfa1a2",
+    "left-wise-900x700.png": "f3351292cd8ef8cb25442c8a989987f831989f14b0c3514999c178c12c88865c",
+    "right-wise-1200x800.png": "ed23cc5f55f0a31472bd2754847964a554c88d12dd4047c5ff098632ba7f0270",
+    "right-wise-900x700.png": "0bf4c225b4998c4033ff7cd488919b1ac088bec7a0edd52f98116200053ed5f3"
   }
 }
