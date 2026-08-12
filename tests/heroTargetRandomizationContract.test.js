@@ -79,13 +79,14 @@ for (const modulePath of mirrors) {
     assert.equal(ctx.state.globals.PendingHeroHits[0].targetUID, 201);
   });
 
-  test(`pending HERO_SINGLE ignores selected enemy owned by a different actor in ${path.relative(repoRoot, modulePath)}`, () => {
+  test(`pending HERO_SINGLE refuses a selected enemy owned by a different actor in ${path.relative(repoRoot, modulePath)}`, () => {
     const { ExecuteSkill } = loadFunctionBank(modulePath);
     const ctx = createContext({ pending: true, selectedOwnerUID: 999 });
 
-    ExecuteSkill(ctx, 'HERO_SINGLE', 101);
+    const result = ExecuteSkill(ctx, 'HERO_SINGLE', 101);
 
-    assert.equal(ctx.state.globals.PendingHeroHits.length, 1);
-    assert.equal(ctx.state.globals.PendingHeroHits[0].targetUID, 202);
+    assert.equal(result.accepted, false);
+    assert.equal(result.reason, 'invalid_manual_target');
+    assert.equal((ctx.state.globals.PendingHeroHits || []).length, 0);
   });
 }

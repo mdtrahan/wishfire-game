@@ -221,7 +221,7 @@ test('Chain Strike II reuses the production raster connector asset and renderer'
   assert.match(assetLoader, /SkillChainStrikeArc/);
   assert.match(assetLoader, /skill_chain_strike_arc_160x48\.png/);
   assert.match(renderRuntime, /ChainStrikeVisuals/);
-  assert.match(renderRuntime, /const resolvedSelectedUid = ownerMatchedSelectedUid \|\| pendingHitTargetUID;/);
+  assert.match(renderRuntime, /const resolvedSelectedUid = ownerMatchedSelectedUid;/);
   assert.doesNotMatch(renderRuntime, /ctx\.moveTo\([^)]*ChainStrike/);
 });
 

@@ -58,7 +58,12 @@ import {
   spendSuperGem,
   syncSuperGemShapes,
 } from './src/core/superGemBoardState.mjs';
-import { resolvePendingSuperGemHandoff } from './src/core/pendingSuperGemHandoff.mjs';
+import {
+  capturePendingEnemyTargetIntent,
+  recoverPendingTargetActor,
+  resolvePendingSuperGemHandoff,
+  validatePendingEnemyTargetIntent,
+} from './src/core/pendingSuperGemHandoff.mjs';
 import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
 import { deriveDamageFloatFrameOffset } from '../src/core/damageFloatVector.mjs';
 import { createDamageNumber, ensureDamageTextFontReady, isDamageTextFontReady } from './src/core/damageNumberAnimation.mjs';
@@ -204,6 +209,7 @@ function getActionHandoffSnapshot() {
     pendingActor: Number(state.globals.PendingActor || 0),
     pendingSuperGem: !!state.globals.PendingSuperGemAction,
     selectedEnemyUID: Number(state.globals.SelectedEnemyUID || 0),
+    selectedEnemyUIDOwner: Number(state.globals.SelectedEnemyUIDOwner || 0),
     actionInProgress: Number(state.globals.ActionInProgress || 0),
     actionActorUID: Number(state.globals.ActionActorUID || 0),
     actionOwnerUID: Number(state.globals.ActionOwnerUID || 0),
@@ -213,16 +219,36 @@ function getActionHandoffSnapshot() {
     time: Number(state.globals.time || 0),
     heroActionActive: !!(state.globals.HeroAction && state.globals.HeroAction.active),
     enemyActionActive: !!(state.globals.EnemyAction && state.globals.EnemyAction.active),
-    pendingHeroHits: Array.isArray(state.globals.PendingHeroHits) ? state.globals.PendingHeroHits.length : 0,
-    livingEnemies: state.entities.filter((entity) => entity && entity.kind === 'enemy' && (entity.hp ?? 0) > 0).length,
+    pendingHeroHits: Array.isArray(state.globals.PendingHeroHits)
+      ? state.globals.PendingHeroHits.map((hit) => ({
+          targetUID: Number(hit?.targetUID || 0),
+          heroUID: Number(hit?.heroUID || 0),
+          targetTraceSequence: Number(hit?.targetTraceSequence || 0),
+        }))
+      : [],
+    pendingManualTargetIntent: state.globals.PendingManualTargetIntent || null,
+    enemyRoster: state.entities
+      .filter((entity) => entity && entity.kind === 'enemy' && Number(entity.hp ?? 0) > 0)
+      .map((entity) => ({
+        uid: Number(entity.uid || 0),
+        name: String(entity.name || ''),
+        slotIndex: Number(entity.slotIndex ?? -1),
+        hp: Number(entity.hp ?? 0),
+      })),
+    enemyIDs: Array.isArray(state.globals.EnemyIDs) ? [...state.globals.EnemyIDs] : [],
+    enemySlots: Array.isArray(state.globals.EnemySlots) ? [...state.globals.EnemySlots] : [],
   };
 }
 
 function logActionHandoffDebug(tag, payload = {}) {
-  runtimeDebugLogging.gemDebugLog(tag, {
+  const entry = {
     ...payload,
     snapshot: getActionHandoffSnapshot(),
-  }, state);
+  };
+  runtimeDebugLogging.gemDebugLog(tag, entry, state);
+  if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+    console.log(`${tag}_JSON ${JSON.stringify(entry)}`);
+  }
 }
 
 function resolvePendingTargetHandoff({ actorUID, source }) {
@@ -242,6 +268,15 @@ function resolvePendingTargetHandoff({ actorUID, source }) {
       resolvedActorUID,
     ),
     hideAttackUI: () => callFunctionWithContext(fnContext, 'HideAttackUI'),
+  });
+}
+
+function recoverPendingTargetActorUID() {
+  return recoverPendingTargetActor({
+    globals: state.globals,
+    currentTurnUID: callFunctionWithContext(fnContext, 'GetCurrentTurn'),
+    selectedHeroUID: getHeroUIDByIndex(gameState.selectedHero),
+    getActorByUID: (uid) => callFunctionWithContext(fnContext, 'GetActorByUID', uid),
   });
 }
 
@@ -4439,7 +4474,31 @@ function getStoryCardLiveLineState() {
           drawFrame();
           return;
         }
-        const actorUID = state.globals.PendingActor || getHeroUIDByIndex(gameState.selectedHero);
+        const actorUID = recoverPendingTargetActorUID();
+        if (!(actorUID > 0)) {
+          drawFrame();
+          return;
+        }
+        if (String(state.globals.PendingSkillID || '') === 'HERO_SINGLE') {
+          const targetCheck = validatePendingEnemyTargetIntent({
+            globals: state.globals,
+            actorUID,
+            getActorByUID: (uid) => callFunctionWithContext(fnContext, 'GetActorByUID', uid),
+          });
+          logActionHandoffDebug('[MANUAL_TARGET_CONFIRM]', {
+            actorUID,
+            ok: !!targetCheck.ok,
+            reason: String(targetCheck.reason || ''),
+            targetUID: Number(targetCheck.targetUID || 0),
+          });
+          if (!targetCheck.ok) {
+            drawFrame();
+            return;
+          }
+          state.globals.SelectedEnemyUID = Number(targetCheck.targetUID || 0);
+          state.globals.SelectedEnemyUIDOwner = actorUID;
+          state.globals.ActiveManualTargetTraceSequence = Number(targetCheck.intent?.sequence || 0);
+        }
         logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
           stage: 'before',
           source: 'manual-button',
@@ -4475,8 +4534,25 @@ function getStoryCardLiveLineState() {
       }
       const hit = getEnemyHit(mx, my);
       if (hit) {
-        state.globals.SelectedEnemyUID = hit.uid;
-        state.globals.SelectedEnemyUIDOwner = Number(state.globals.PendingActor || 0);
+        const targetOwnerUID = recoverPendingTargetActorUID();
+        if (!(targetOwnerUID > 0)) {
+          drawFrame();
+          return;
+        }
+        const targetIntent = capturePendingEnemyTargetIntent({
+          globals: state.globals,
+          actorUID: targetOwnerUID,
+          target: hit,
+          now: Number(state.globals.time || 0),
+        });
+        logActionHandoffDebug('[MANUAL_TARGET_SELECT]', {
+          pointer: { x: Number(mx || 0), y: Number(my || 0) },
+          actorUID: targetOwnerUID,
+          targetUID: Number(hit.uid || 0),
+          targetName: String(hit.name || ''),
+          targetSlotIndex: Number(hit.slotIndex ?? -1),
+          targetTraceSequence: Number(targetIntent?.sequence || 0),
+        });
         drawFrame();
         return;
       }
@@ -5203,6 +5279,9 @@ function getStoryCardLiveLineState() {
     ensureTask011Audit,
     getTask015TraceStore,
     assertBoardIntegrity,
+    getAttackButtonBounds,
+    worldToCanvas,
+    canvas,
   });
 }
 

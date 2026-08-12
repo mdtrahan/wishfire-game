@@ -502,3 +502,7 @@
 
 ## 2026-07-11 - Editable Dev Fields Must Bypass Gameplay Hotkeys
 - Capture-phase keyboard handlers must return immediately for editable modal targets before evaluating gameplay shortcuts. Physical-code shortcuts such as `KeyA` otherwise prevent matching letters from being entered even when the modal correctly recognizes the target as an input.
+
+## 2026-08-11 - Manual Enemy Targets Need Actor And Slot Ownership
+- Store a manual enemy choice with the hero who made it and the enemy's slot identity. Revalidate both when the attack resolves so a later hero or a refill enemy cannot inherit stale target state.
+- Targeting QA must compare the selected marker, queued hit, damage presentation, and HP loss. Speed ordering is a separate check; effective Speed does not grant automatic bonus actions.

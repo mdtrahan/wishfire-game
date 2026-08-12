@@ -1,0 +1,154 @@
+{
+  "changed_functions": {
+    ".beads/commit-check/ORKA-d1k.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-d1k.prepared.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-d1k.scope": [
+      "__MODULE__"
+    ],
+    "Scripts/functionBank.js": [
+      "ApplyDamageToTarget",
+      "pos",
+      "HeroAttackSingle",
+      "ExecuteSkill"
+    ],
+    "ai-memory/insights.md": [
+      "__MODULE__"
+    ],
+    "src/core/pendingSuperGemHandoff.mjs": [
+      "clearPendingTargetState",
+      "getLivingHeroUID",
+      "recoverPendingTargetActor",
+      "capturePendingEnemyTargetIntent",
+      "validatePendingEnemyTargetIntent",
+      "reject"
+    ],
+    "tests/chainStrikeUpgradeContract.test.js": [
+      "makeContext"
+    ],
+    "tests/enemyRefillTurnGateContract.test.js": [
+      "loadSuperGemRuntime"
+    ],
+    "tests/enemySelectorTargetSyncContract.test.js": [
+      "__MODULE__"
+    ],
+    "tests/heroTargetRandomizationContract.test.js": [
+      "createContext"
+    ],
+    "tests/pendingSuperGemHandoffContract.test.js": [
+      "getActorByUID",
+      "__MODULE__"
+    ],
+    "tests/superGemAppContract.test.js": [
+      "__MODULE__"
+    ],
+    "tools/diagnose_target_misfire.mjs": [
+      "assert",
+      "canvasPoint",
+      "__MODULE__"
+    ],
+    "tools/diagnose_target_misfire_continuous.mjs": [
+      "canvasPoint",
+      "gems",
+      "assertNoOutstandingHit",
+      "index",
+      "__MODULE__"
+    ],
+    "tools/eval_target_selector_sync.mjs": [
+      "runManualTargetMultipass",
+      "resolveVisualSelectorUID"
+    ],
+    "web-runner/app.js": [
+      "getActionHandoffSnapshot",
+      "logActionHandoffDebug",
+      "recoverPendingTargetActorUID",
+      "h",
+      "rosterHoldKeptDeferredAdvance",
+      "__MODULE__"
+    ],
+    "web-runner/modules/functionBank.js": [
+      "ApplyDamageToTarget",
+      "pos",
+      "HeroAttackSingle",
+      "ExecuteSkill"
+    ],
+    "web-runner/src/core/pendingSuperGemHandoff.mjs": [
+      "clearPendingTargetState",
+      "getLivingHeroUID",
+      "recoverPendingTargetActor",
+      "capturePendingEnemyTargetIntent",
+      "validatePendingEnemyTargetIntent",
+      "reject"
+    ],
+    "web-runner/systems/devBrowserTestHooks.js": [
+      "registerDevBrowserTestHooks"
+    ],
+    "web-runner/systems/renderRuntime.js": [
+      "renderRuntime"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "Scripts/functionBank.js",
+      "web-runner/app.js",
+      "web-runner/modules/functionBank.js"
+    ],
+    "staged_file_count": 20,
+    "staged_line_count": 1395,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/commit-check/ORKA-d1k.json",
+    ".beads/hot-file-lock/ORKA-d1k.prepared.json",
+    ".beads/hot-file-lock/ORKA-d1k.scope",
+    "Scripts/functionBank.js",
+    "ai-memory/insights.md",
+    "src/core/pendingSuperGemHandoff.mjs",
+    "tests/chainStrikeUpgradeContract.test.js",
+    "tests/enemyRefillTurnGateContract.test.js",
+    "tests/enemySelectorTargetSyncContract.test.js",
+    "tests/heroTargetRandomizationContract.test.js",
+    "tests/pendingSuperGemHandoffContract.test.js",
+    "tests/superGemAppContract.test.js",
+    "tools/diagnose_target_misfire.mjs",
+    "tools/diagnose_target_misfire_continuous.mjs",
+    "tools/eval_target_selector_sync.mjs",
+    "web-runner/app.js",
+    "web-runner/modules/functionBank.js",
+    "web-runner/src/core/pendingSuperGemHandoff.mjs",
+    "web-runner/systems/devBrowserTestHooks.js",
+    "web-runner/systems/renderRuntime.js"
+  ],
+  "issue_id": "ORKA-d1k",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/commit-check/ORKA-d1k.json": "d4737eda9ffe3d202b2b8d42c5c8efa48d7cdc21",
+    ".beads/hot-file-lock/ORKA-d1k.prepared.json": "0b5f1eed91c64b358e791c7fd3f4b240a9d8c12f",
+    ".beads/hot-file-lock/ORKA-d1k.scope": "56978071d6a10a7c31edb49182396f2a2279020e",
+    "Scripts/functionBank.js": "773ae1cbaf38b3ac9095375bba8be005fd9b7441",
+    "ai-memory/insights.md": "31d1914aff708b52db054889c847cb53c50f1542",
+    "src/core/pendingSuperGemHandoff.mjs": "b2b9afa2694db96b96b2a197d7c63c1112d62759",
+    "tests/chainStrikeUpgradeContract.test.js": "a1c825bd437ecd80f7c3459c79175bb7f93ff03f",
+    "tests/enemyRefillTurnGateContract.test.js": "ec70368881c104cd5d61d053e4f9e4d80c00c20c",
+    "tests/enemySelectorTargetSyncContract.test.js": "66d68c9eb107e1fceec0b8105af704cc04ec9d55",
+    "tests/heroTargetRandomizationContract.test.js": "ba3d9eb0e543ab2d6add9297689375e8dfbb11e8",
+    "tests/pendingSuperGemHandoffContract.test.js": "9329be7d8082045b0b8224cb1e0d1fa515783cb2",
+    "tests/superGemAppContract.test.js": "1af04767350aaef372c17df0aa97f2b09986a554",
+    "tools/diagnose_target_misfire.mjs": "374551d11c1119dec8e09d9715b5b911cff69411",
+    "tools/diagnose_target_misfire_continuous.mjs": "f32f744f8ecf66511777ac3a4f347f80fb0197c1",
+    "tools/eval_target_selector_sync.mjs": "4b30b19f591bdd8dda66e790ca6202d66dba3c58",
+    "web-runner/app.js": "a0cccadcc113b56335c2e54996f338c1434d2f20",
+    "web-runner/modules/functionBank.js": "5e0fad966f48b68fa2b4fa7887224ce3466d2b29",
+    "web-runner/src/core/pendingSuperGemHandoff.mjs": "b2b9afa2694db96b96b2a197d7c63c1112d62759",
+    "web-runner/systems/devBrowserTestHooks.js": "3a95975b696b283cf74395da2b2c0c73366f0e30",
+    "web-runner/systems/renderRuntime.js": "5f3f6756e45165c4f8d870027feff4d9bbaca24b"
+  }
+}

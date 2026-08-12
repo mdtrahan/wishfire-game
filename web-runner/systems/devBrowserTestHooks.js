@@ -43,6 +43,9 @@ export function registerDevBrowserTestHooks({
   ensureTask011Audit,
   getTask015TraceStore,
   assertBoardIntegrity,
+  getAttackButtonBounds,
+  worldToCanvas,
+  canvas,
 }) {
   if (typeof window === 'undefined') return;
 
@@ -267,6 +270,39 @@ export function registerDevBrowserTestHooks({
         gm.Selected = 0;
       }
       state.globals.TapIndex = 0;
+    },
+    getTargetDebugGeometry() {
+      const button = typeof getAttackButtonBounds === 'function' ? getAttackButtonBounds() : null;
+      const g = state.globals;
+      const enemySize = Number(g.EnemySize || 40);
+      return {
+        canvas: (() => {
+          const view = document.getElementById('view');
+          const rect = view ? view.getBoundingClientRect() : null;
+          return rect ? { width: rect.width, height: rect.height } : null;
+        })(),
+        attackButton: button ? {
+          x: Number(button.dx || 0),
+          y: Number(button.dy || 0),
+          w: Number(button.w || 0),
+          h: Number(button.h || 0),
+        } : null,
+        enemies: state.entities
+          .filter((entity) => entity?.kind === 'enemy' && Number(entity.hp || 0) > 0)
+          .map((enemy) => {
+            const pos = typeof worldToCanvas === 'function'
+              ? worldToCanvas(Number(enemy.x || 0), Number(enemy.y || 0))
+              : { x: Number(enemy.x || 0), y: Number(enemy.y || 0) };
+            return {
+              uid: Number(enemy.uid || 0),
+              name: String(enemy.name || ''),
+              slotIndex: Number(enemy.slotIndex || 0),
+              x: Number(pos.x || 0),
+              y: Number(pos.y || 0),
+              enemySize,
+            };
+          }),
+      };
     },
     forceMatch(color) {
       handleGemMatch(color);

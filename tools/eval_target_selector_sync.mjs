@@ -49,9 +49,9 @@ function runManualTargetMultipass() {
   const appSource = read('web-runner/app.js');
   const bankSource = read('web-runner/modules/functionBank.js');
   const renderSource = read('web-runner/systems/renderRuntime.js');
-  const manualClickSetsOwner = /const hit = getEnemyHit\(mx, my\);\s*if \(hit\) \{\s*state\.globals\.SelectedEnemyUID = hit\.uid;\s*state\.globals\.SelectedEnemyUIDOwner = Number\(state\.globals\.PendingActor \|\| 0\);/s.test(appSource);
+  const manualClickSetsOwner = /const hit = getEnemyHit\(mx, my\);\s*if \(hit\) \{[\s\S]*const targetOwnerUID = recoverPendingTargetActorUID\(\);[\s\S]*capturePendingEnemyTargetIntent\(\{[\s\S]*actorUID: targetOwnerUID,[\s\S]*target: hit,/s.test(appSource);
   const selectorUsesOwnedSelectedFirst =
-    /const resolvedSelectedUid = ownerMatchedSelectedUid \|\| pendingHitTargetUID;/.test(renderSource);
+    /const resolvedSelectedUid = ownerMatchedSelectedUid;/.test(renderSource);
   const selectorUsesQueuedFirst =
     !selectorUsesOwnedSelectedFirst &&
     /const resolvedSelectedUid = pendingHitTargetUID \|\| selectedUid;/.test(renderSource);
@@ -132,7 +132,7 @@ module.exports = { ExecuteSkill };`;
       ? (manualClickSetsOwner && selectedUID ? 100 : 0)
       : Number(selectedOwnerUID || 0);
     const ownerMatchedSelectedUID = ownerUID === 100 ? selectedUID : 0;
-    if (selectorUsesOwnedSelectedFirst) return ownerMatchedSelectedUID || staleQueuedTargetUID;
+    if (selectorUsesOwnedSelectedFirst) return ownerMatchedSelectedUID;
     if (selectorUsesQueuedFirst) return staleQueuedTargetUID || selectedUID;
     return 0;
   }
@@ -143,8 +143,8 @@ module.exports = { ExecuteSkill };`;
     { label: 'bottom selected, stale queued top', selectedUID: 203, staleQueuedTargetUID: 201, randomRoll: 0.0 },
     { label: 'top selected, stale queued bottom', selectedUID: 201, staleQueuedTargetUID: 203, randomRoll: 0.99 },
     { label: 'middle selected, stale queued bottom', selectedUID: 202, staleQueuedTargetUID: 203, randomRoll: 0.99 },
-    { label: 'middle selected by stale owner, random top', selectedUID: 202, selectedOwnerUID: 999, staleQueuedTargetUID: 0, randomRoll: 0.0, expectedVisualSelectorUID: 0, expectedQueuedAttackTargetUID: 201 },
-    { label: 'no selected target, queued fallback kept', selectedUID: 0, staleQueuedTargetUID: 203, randomRoll: 0.0, expectedVisualSelectorUID: 203 },
+    { label: 'middle selected by stale owner is refused', selectedUID: 202, selectedOwnerUID: 999, staleQueuedTargetUID: 0, randomRoll: 0.0, expectedVisualSelectorUID: 0, expectedQueuedAttackTargetUID: 0 },
+    { label: 'no selected target remains unselected', selectedUID: 0, staleQueuedTargetUID: 203, randomRoll: 0.0, expectedVisualSelectorUID: 0, expectedQueuedAttackTargetUID: 0 },
   ];
 
   multipassRows = passes.map((pass, index) => {
@@ -168,7 +168,7 @@ module.exports = { ExecuteSkill };`;
       randomRoll: pass.randomRoll,
       queuedAttackTargetUID,
       visualDrift: visualSelectorUID !== expectedVisualSelectorUID,
-      queuedDrift: expectedQueuedAttackTargetUID ? queuedAttackTargetUID !== expectedQueuedAttackTargetUID : false,
+      queuedDrift: queuedAttackTargetUID !== expectedQueuedAttackTargetUID,
     };
   });
 
@@ -233,24 +233,24 @@ lacksRegex(
 );
 hasRegex(
   'web-runner/app.js',
-  /state\.globals\.SelectedEnemyUIDOwner = Number\(state\.globals\.PendingActor \|\| 0\);/,
-  'manual enemy clicks stamp selected target owner with PendingActor',
+  /const targetOwnerUID = recoverPendingTargetActorUID\(\);[\s\S]*capturePendingEnemyTargetIntent\(\{[\s\S]*actorUID: targetOwnerUID,[\s\S]*target: hit,/,
+  'manual enemy clicks capture actor-owned UID and slot intent',
 );
 
 hasRegex(
   'web-runner/systems/renderRuntime.js',
-  /const pendingHitTargetUID = Array\.isArray\(state\.globals\.PendingHeroHits\)\s*\? Number\(\(state\.globals\.PendingHeroHits\.find\(hit => hit && Number\(hit\.targetUID \|\| 0\) > 0\) \|\| \{\}\)\.targetUID \|\| 0\)\s*: 0;/,
-  'renderer keeps queued PendingHeroHits target available as fallback',
+  /const resolvedSelectedUid = ownerMatchedSelectedUid;/,
+  'renderer does not substitute a queued or default enemy for explicit selection',
 );
 hasRegex(
   'web-runner/systems/renderRuntime.js',
-  /const ownerMatchedSelectedUid = selectedOwnerUID === pendingActorUID \? selectedUid : 0;\n\s*const resolvedSelectedUid = ownerMatchedSelectedUid \|\| pendingHitTargetUID;/,
+  /const ownerMatchedSelectedUid = selectedOwnerUID === pendingActorUID \? selectedUid : 0;\n\s*const resolvedSelectedUid = ownerMatchedSelectedUid;/,
   'renderer uses SelectedEnemyUID only when it is owned by the pending actor',
 );
 hasRegex(
   'web-runner/systems/renderRuntime.js',
-  /resolvedSelectedUid \? aliveEnemies\.filter\(e => Number\(e\.uid \|\| 0\) === resolvedSelectedUid\) : aliveEnemies\.slice\(0, 1\)/,
-  'renderer compares target UIDs numerically when drawing the selector',
+  /resolvedSelectedUid \? aliveEnemies\.filter\(e => Number\(e\.uid \|\| 0\) === resolvedSelectedUid\) : \[\]/,
+  'renderer draws no single-target selector before an explicit selection',
 );
 runManualTargetMultipass();
 
