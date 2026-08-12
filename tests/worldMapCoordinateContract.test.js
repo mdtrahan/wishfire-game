@@ -4,6 +4,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const repoRoot = path.join(__dirname, '..');
+const GENIELANDS_RUNTIME_WIDTH = 960;
+const GENIELANDS_RUNTIME_HEIGHT = 843;
 
 async function loadSharedCoordinates() {
   return import(path.join(repoRoot, 'src', 'core', 'worldMapCoordinates.mjs'));
@@ -87,7 +89,7 @@ test('world map zoom clamps requested cells to safe whole-cell centers', async (
   const viewWidth = 360;
   const viewHeight = 640;
   const zoomDrawH = viewHeight * (shared.DEFAULT_WORLD_MAP_GRID.rows / 9);
-  const zoomDrawW = zoomDrawH * (1338 / 1176);
+  const zoomDrawW = zoomDrawH * (GENIELANDS_RUNTIME_WIDTH / GENIELANDS_RUNTIME_HEIGHT);
 
   const center = shared.resolveWorldMapSafeZoomCenter('H11', {
     viewWidth,
@@ -126,8 +128,8 @@ test('Genielands browser presentation asset keeps the canonical map frame', asyn
   const imagePath = path.join(repoRoot, 'web-runner', 'assets', 'images', 'genielands-geography.png');
   const header = readPngHeader(imagePath);
 
-  assert.equal(header.width, 1338);
-  assert.equal(header.height, 1176);
+  assert.equal(header.width, GENIELANDS_RUNTIME_WIDTH);
+  assert.equal(header.height, GENIELANDS_RUNTIME_HEIGHT);
   assert.equal(header.bitDepth, 8);
   assert.equal(header.colorType, 2);
   assert.ok(
