@@ -508,3 +508,7 @@
 - For a face-to-face mirrored combat presentation, reflect right-wise actor pixels about the same oriented pivot used by sprites, hit regions, bars, and effects. Apply the same draw transform to hit-flash redraws, while leaving canonical coordinates and source assets unchanged.
 - When two combat formations need visual correction, project each team as a block: use one shared X translation and derive any team Y correction from formation midpoints. Apply the same projection to sprites, hit regions, bars, text, and effects; avoid per-slot tuning that drifts spacing or attachment.
 - Formation-level presentation offsets must derive from structural slot anchors, not the current living roster. Otherwise removing an outer actor changes the midpoint and makes every survivor shuffle; death should release one slot and refill should reuse it without moving residents.
+
+## 2026-08-11 - Manual Enemy Targets Need Actor And Slot Ownership
+- Store a manual enemy choice with the hero who made it and the enemy's slot identity. Revalidate both when the attack resolves so a later hero or a refill enemy cannot inherit stale target state.
+- Targeting QA must compare the selected marker, queued hit, damage presentation, and HP loss. Speed ordering is a separate check; effective Speed does not grant automatic bonus actions.

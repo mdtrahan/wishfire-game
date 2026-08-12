@@ -104,7 +104,7 @@ test('app wires super gem hooks for settle, spend, and decomposition', () => {
   assert.match(runtimeSrc, /const purpleGemCost = 1;/);
   assert.match(runtimeSrc, /ResolvePurpleSuperGemEnergyAction', actorUID, purpleGemCost/);
   assert.doesNotMatch(runtimeSrc, /ResolveGemAction', 5, actorUID, purpleGemCost/);
-  assert.match(src, /import \{ resolvePendingSuperGemHandoff \} from '\.\/src\/core\/pendingSuperGemHandoff\.mjs';/);
+  assert.match(src, /capturePendingEnemyTargetIntent,[\s\S]*recoverPendingTargetActor,[\s\S]*resolvePendingSuperGemHandoff,[\s\S]*validatePendingEnemyTargetIntent,[\s\S]*from '\.\/src\/core\/pendingSuperGemHandoff\.mjs';/);
   assert.match(src, /function resolvePendingTargetHandoff\(\{ actorUID, source \}\)/);
   assert.match(src, /executePendingSuperGemAction: \(\) => superGemRuntime\.executePendingSuperGemAction\(\{/);
 });

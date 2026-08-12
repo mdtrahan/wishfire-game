@@ -6527,6 +6527,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   g.LastDamageSourceUID = sourceUID > 0 ? sourceUID : Number(GetCurrentTurn(ctx) || 0);
   const t = GetActorByUID(ctx, uid);
   if (!t) return 0;
+  const targetTraceHit = findMatchingPendingHeroHit(ctx, uid, dmg, (hit) => Number(hit.targetTraceSequence || 0) > 0);
   const suppressPartySkillHitHooks = shouldSuppressPartySkillHitHooks(ctx, uid, dmg, opts);
   const suppressHitFlash = shouldSuppressHitFlash(ctx, uid, dmg, opts);
   const suppressDamageText = shouldSuppressDamageText(ctx, uid, dmg, opts);
@@ -6569,6 +6570,19 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   }
   const afterHP = Number(t.hp ?? 0);
   const appliedDamage = Math.max(0, beforeHP - afterHP);
+  if ((g.DevTestMode === true || g.DebugGemsMode === true) && targetTraceHit) {
+    console.log(`[TARGET_DAMAGE_JSON] ${JSON.stringify({
+      sequence: Number(targetTraceHit.targetTraceSequence || 0),
+      heroUID: Number(targetTraceHit.heroUID || 0),
+      targetUID: Number(uid || 0),
+      targetName: String(t.name || ''),
+      targetSlotIndex: Number(t.slotIndex ?? -1),
+      requestedDamage: Number(dmg || 0),
+      appliedDamage,
+      beforeHP,
+      afterHP,
+    })}`);
+  }
   maybeShadowSingleHitResolution(ctx, t, incomingDamage, beforeHP, appliedDamage, afterHP, shieldAbsorbed);
   if (t.kind === 'hero' && appliedDamage > 0) {
     const idx = Number(t.heroIndex ?? 0);
@@ -6634,6 +6648,12 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   if (appliedDamage > 0 && dx != null && dy != null && g.SpawnDamageText !== 0 && !suppressDamageText) {
     const damageTextKind = String(g.NextDamageTextKind || getPendingDamageTextKind(ctx, uid, dmg, opts) || 'damage');
     SpawnDamageText(ctx, appliedDamage, dx, dy, damageTextKind, t.kind || null);
+    const damageText = Array.isArray(g.DamageTexts) ? g.DamageTexts[g.DamageTexts.length - 1] : null;
+    if (damageText) {
+      damageText.targetUID = Number(uid || 0);
+      damageText.targetSlotIndex = Number(t.slotIndex ?? -1);
+      damageText.targetTraceSequence = Number(targetTraceHit?.targetTraceSequence || 0);
+    }
   }
   delete g.NextDamageTextKind;
   if (t.hp === 0 && t.isAlive !== false && !Number(t.pendingOfficialDeath || 0)) {
@@ -7763,6 +7783,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
           calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
           heroName: actorName,
           heroType: mode,
+          targetTraceSequence: Number(g.ActiveManualTargetTraceSequence || 0),
         });
       }
       LogCombat(ctx, `${actorName} used Incinerate on ${target.name || '?'} for ${totalBurstDamage}!`);
@@ -7787,6 +7808,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
     calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
     heroName: actorName,
     heroType: mode,
+    targetTraceSequence: Number(g.ActiveManualTargetTraceSequence || 0),
     msg: `${actorName} hit ${target.name || '?'} for ${finalDmg}!`,
   });
   queuePartyChainStrikeBounce(ctx, {
@@ -9466,6 +9488,27 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     });
   }
   console.log(`[SKILL] start skill=${skillId} actor=${actorName} uid=${actorUID} phase=${g.TurnPhase} busy=${g.IsPlayerBusy} canPick=${g.CanPickGems}`);
+  if (actor && actor.kind === 'hero' && skillId === 'HERO_SINGLE' && String(g.PendingSkillID || '') === 'HERO_SINGLE') {
+    const selectedUID = Number(g.SelectedEnemyUID || 0);
+    const selected = selectedUID > 0 ? GetActorByUID(ctx, selectedUID) : null;
+    const validManualTarget = Number(g.PendingActor || 0) === Number(actorUID || 0)
+      && Number(g.SelectedEnemyUIDOwner || 0) === Number(actorUID || 0)
+      && selected
+      && selected.kind === 'enemy'
+      && Number(selected.hp ?? 0) > 0;
+    if (!validManualTarget) {
+      if (g.DevTestMode === true || g.DebugGemsMode === true) {
+        console.log(`[MANUAL_TARGET_REFUSED_JSON] ${JSON.stringify({
+          reason: 'invalid_manual_target',
+          actorUID: Number(actorUID || 0),
+          pendingActorUID: Number(g.PendingActor || 0),
+          selectedUID,
+          selectedOwnerUID: Number(g.SelectedEnemyUIDOwner || 0),
+        })}`);
+      }
+      return { accepted: false, reason: 'invalid_manual_target' };
+    }
+  }
   if (actor && actor.kind === 'hero' && (skillId === 'HERO_SINGLE' || skillId === 'HERO_AOE')) {
     g.NextHeroActionProfile = skillId === 'HERO_AOE' ? 'aoe' : 'single';
     const lungeStarted = StartHeroLunge(ctx, actorUID);
