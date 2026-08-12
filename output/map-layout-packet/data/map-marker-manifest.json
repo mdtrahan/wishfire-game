@@ -1,0 +1,508 @@
+{
+  "grid": {
+    "id": "genielands-v1",
+    "sourceWidth": 1549,
+    "sourceHeight": 1361,
+    "presentationWidth": 1338,
+    "presentationHeight": 1176,
+    "columns": 16,
+    "rows": 24,
+    "rowPad": 2
+  },
+  "placementRules": {
+    "center": "Use the center of one coordinate cell.",
+    "intercept": "Use the shared edge for two adjacent anchors, or the average center for larger anchor groups; then apply explicit offsets."
+  },
+  "markers": [
+    {
+      "id": "northwest-highland-cave",
+      "kind": "cave",
+      "variant": "cave",
+      "coordinate": "F04",
+      "placement": "center",
+      "asset": "images/map_cave_46.png",
+      "renderSize": "34.5x34.5",
+      "visible": true,
+      "anchorCoordinates": [
+        "F04"
+      ],
+      "resolvedPresentationPoint": {
+        "x": 459.94,
+        "y": 171.5
+      }
+    },
+    {
+      "id": "western-ridge-cave",
+      "kind": "cave",
+      "variant": "cave",
+      "coordinate": "D09",
+      "placement": "center",
+      "asset": "images/map_cave_46.png",
+      "renderSize": "34.5x34.5",
+      "visible": true,
+      "anchorCoordinates": [
+        "D09"
+      ],
+      "resolvedPresentationPoint": {
+        "x": 292.69,
+        "y": 416.5
+      }
+    },
+    {
+      "id": "southwest-woodland-cave",
+      "kind": "cave",
+      "variant": "cave",
+      "coordinate": "E13",
+      "placement": "center",
+      "asset": "images/map_cave_46.png",
+      "renderSize": "34.5x34.5",
+      "visible": true,
+      "anchorCoordinates": [
+        "E13"
+      ],
+      "resolvedPresentationPoint": {
+        "x": 376.31,
+        "y": 612.5
+      }
+    },
+    {
+      "id": "northern-eastland-cave",
+      "kind": "cave",
+      "variant": "cave",
+      "coordinate": "I10",
+      "placement": "center",
+      "asset": "images/map_cave_46.png",
+      "renderSize": "34.5x34.5",
+      "visible": true,
+      "anchorCoordinates": [
+        "I10"
+      ],
+      "resolvedPresentationPoint": {
+        "x": 710.81,
+        "y": 465.5
+      }
+    },
+    {
+      "id": "central-eastland-cave",
+      "kind": "cave",
+      "variant": "cave",
+      "coordinate": "L13",
+      "placement": "center",
+      "asset": "images/map_cave_46.png",
+      "renderSize": "34.5x34.5",
+      "visible": true,
+      "anchorCoordinates": [
+        "L13"
+      ],
+      "resolvedPresentationPoint": {
+        "x": 961.69,
+        "y": 612.5
+      }
+    },
+    {
+      "id": "far-east-ridge-cave",
+      "kind": "cave",
+      "variant": "cave",
+      "coordinate": "N16",
+      "placement": "center",
+      "asset": "images/map_cave_46.png",
+      "renderSize": "34.5x34.5",
+      "visible": true,
+      "anchorCoordinates": [
+        "N16"
+      ],
+      "resolvedPresentationPoint": {
+        "x": 1128.94,
+        "y": 759.5
+      }
+    },
+    {
+      "id": "western-lightburst-portal",
+      "kind": "teleport",
+      "variant": "warp-portal",
+      "coordinate": "C11",
+      "placement": "center",
+      "asset": "images/map_warp_portal_46x52.png",
+      "renderSize": "46x52",
+      "visible": true,
+      "anchorCoordinates": [
+        "C11"
+      ],
+      "resolvedPresentationPoint": {
+        "x": 209.06,
+        "y": 514.5
+      }
+    },
+    {
+      "id": "northeast-lightburst-portal",
+      "kind": "teleport",
+      "variant": "warp-portal",
+      "coordinate": "K05",
+      "placement": "center",
+      "asset": "images/map_warp_portal_46x52.png",
+      "renderSize": "46x52",
+      "visible": true,
+      "anchorCoordinates": [
+        "K05"
+      ],
+      "resolvedPresentationPoint": {
+        "x": 878.06,
+        "y": 220.5
+      }
+    },
+    {
+      "id": "northland-spire-tower",
+      "coordinate": "H04",
+      "variant": "red",
+      "kind": "tower",
+      "asset": "images/map_tower_spire_red_46x54.png",
+      "renderSize": "46x54",
+      "renderOffsetY": -8,
+      "visible": true,
+      "anchorCoordinates": [
+        "H04"
+      ],
+      "placement": "center",
+      "resolvedPresentationPoint": {
+        "x": 627.19,
+        "y": 171.5
+      }
+    },
+    {
+      "id": "southern-channel-intercept-tower",
+      "anchorCoordinates": [
+        "H15",
+        "J15"
+      ],
+      "placement": "intercept",
+      "variant": "gold",
+      "kind": "tower",
+      "asset": "images/map_tower_spire_gold_46x54.png",
+      "renderSize": "46x54",
+      "renderOffsetY": -8,
+      "visible": true,
+      "coordinate": "H15/J15",
+      "resolvedPresentationPoint": {
+        "x": 669.0,
+        "y": 710.5
+      }
+    },
+    {
+      "id": "southern-peninsula-spire-tower",
+      "coordinate": "L19",
+      "variant": "purple",
+      "kind": "tower",
+      "asset": "images/map_tower_spire_purple_46x54.png",
+      "renderSize": "46x54",
+      "renderOffsetY": -8,
+      "visible": true,
+      "anchorCoordinates": [
+        "L19"
+      ],
+      "placement": "center",
+      "resolvedPresentationPoint": {
+        "x": 961.69,
+        "y": 906.5
+      }
+    },
+    {
+      "id": "east-bay-intercept-tower",
+      "anchorCoordinates": [
+        "M08",
+        "N08",
+        "M09",
+        "N09"
+      ],
+      "placement": "intercept",
+      "variant": "blue",
+      "kind": "tower",
+      "asset": "images/map_tower_spire_46x54.png",
+      "renderSize": "46x54",
+      "renderOffsetY": -8,
+      "visible": true,
+      "coordinate": "M08/N08/M09/N09",
+      "resolvedPresentationPoint": {
+        "x": 1087.12,
+        "y": 392.0
+      }
+    },
+    {
+      "id": "western-marsh-spire-tower",
+      "coordinate": "B18",
+      "variant": "green",
+      "kind": "tower",
+      "asset": "images/map_tower_spire_green_46x54.png",
+      "renderSize": "46x54",
+      "renderOffsetY": -8,
+      "visible": true,
+      "anchorCoordinates": [
+        "B18"
+      ],
+      "placement": "center",
+      "resolvedPresentationPoint": {
+        "x": 125.44,
+        "y": 857.5
+      }
+    },
+    {
+      "id": "eastern-fields-town",
+      "coordinate": "M14",
+      "variant": "town",
+      "kind": "town",
+      "asset": "images/map_town_town_46.png",
+      "renderSize": "46x46",
+      "visible": true,
+      "anchorCoordinates": [
+        "M14"
+      ],
+      "placement": "center",
+      "resolvedPresentationPoint": {
+        "x": 1045.31,
+        "y": 661.5
+      }
+    },
+    {
+      "id": "western-grove-town",
+      "coordinate": "G11",
+      "variant": "town",
+      "kind": "town",
+      "asset": "images/map_town_town_46.png",
+      "renderSize": "46x46",
+      "visible": true,
+      "anchorCoordinates": [
+        "G11"
+      ],
+      "placement": "center",
+      "resolvedPresentationPoint": {
+        "x": 543.56,
+        "y": 514.5
+      }
+    },
+    {
+      "id": "southwest-meadow-town",
+      "coordinate": "F19",
+      "variant": "town",
+      "kind": "town",
+      "asset": "images/map_town_town_46.png",
+      "renderSize": "46x46",
+      "visible": true,
+      "anchorCoordinates": [
+        "F19"
+      ],
+      "placement": "center",
+      "resolvedPresentationPoint": {
+        "x": 459.94,
+        "y": 906.5
+      }
+    },
+    {
+      "id": "southland-crossroads-town",
+      "coordinate": "I17",
+      "variant": "town",
+      "kind": "town",
+      "asset": "images/map_town_town_46.png",
+      "renderSize": "46x46",
+      "visible": true,
+      "anchorCoordinates": [
+        "I17"
+      ],
+      "placement": "center",
+      "resolvedPresentationPoint": {
+        "x": 710.81,
+        "y": 808.5
+      }
+    },
+    {
+      "id": "western-coast-town",
+      "coordinate": "C14",
+      "variant": "town",
+      "kind": "town",
+      "asset": "images/map_town_town_46.png",
+      "renderSize": "46x46",
+      "visible": true,
+      "anchorCoordinates": [
+        "C14"
+      ],
+      "placement": "center",
+      "resolvedPresentationPoint": {
+        "x": 209.06,
+        "y": 661.5
+      }
+    },
+    {
+      "id": "western-lowland-moor",
+      "coordinate": "B13",
+      "variant": "moor",
+      "kind": "moor",
+      "asset": "images/map_town_moor_46.png",
+      "renderSize": "46x46",
+      "visible": true,
+      "anchorCoordinates": [
+        "B13"
+      ],
+      "placement": "center",
+      "resolvedPresentationPoint": {
+        "x": 125.44,
+        "y": 612.5
+      }
+    },
+    {
+      "id": "western-mountain-moor",
+      "coordinate": "D16",
+      "variant": "moor",
+      "kind": "moor",
+      "asset": "images/map_town_moor_46.png",
+      "renderSize": "46x46",
+      "visible": true,
+      "anchorCoordinates": [
+        "D16"
+      ],
+      "placement": "center",
+      "resolvedPresentationPoint": {
+        "x": 292.69,
+        "y": 759.5
+      }
+    },
+    {
+      "id": "eastern-coast-moor",
+      "coordinate": "O11",
+      "variant": "moor",
+      "kind": "moor",
+      "asset": "images/map_town_moor_46.png",
+      "renderSize": "46x46",
+      "visible": true,
+      "anchorCoordinates": [
+        "O11"
+      ],
+      "placement": "center",
+      "resolvedPresentationPoint": {
+        "x": 1212.56,
+        "y": 514.5
+      }
+    },
+    {
+      "id": "southern-crossing-castle",
+      "coordinate": "J18",
+      "variant": "castle",
+      "kind": "castle",
+      "asset": "images/map_town_castle_46.png",
+      "renderSize": "46x46",
+      "visible": true,
+      "anchorCoordinates": [
+        "J18"
+      ],
+      "placement": "center",
+      "resolvedPresentationPoint": {
+        "x": 794.44,
+        "y": 857.5
+      }
+    },
+    {
+      "id": "central-eastland-castle",
+      "coordinate": "L10",
+      "variant": "castle",
+      "kind": "castle",
+      "asset": "images/map_town_castle_46.png",
+      "renderSize": "46x46",
+      "visible": true,
+      "anchorCoordinates": [
+        "L10"
+      ],
+      "placement": "center",
+      "resolvedPresentationPoint": {
+        "x": 961.69,
+        "y": 465.5
+      }
+    },
+    {
+      "id": "far-southeast-castle",
+      "coordinate": "O19",
+      "variant": "castle",
+      "kind": "castle",
+      "asset": "images/map_town_castle_46.png",
+      "renderSize": "46x46",
+      "visible": true,
+      "anchorCoordinates": [
+        "O19"
+      ],
+      "placement": "center",
+      "resolvedPresentationPoint": {
+        "x": 1212.56,
+        "y": 906.5
+      }
+    },
+    {
+      "id": "central-isthmus-cape",
+      "coordinate": "I14",
+      "variant": "cape",
+      "offsetY": -20,
+      "kind": "cape",
+      "asset": "images/map_town_cape_46.png",
+      "renderSize": "46x46",
+      "visible": true,
+      "anchorCoordinates": [
+        "I14"
+      ],
+      "placement": "center",
+      "resolvedPresentationPoint": {
+        "x": 710.81,
+        "y": 641.5
+      }
+    },
+    {
+      "id": "western-right-edge-cape",
+      "anchorCoordinates": [
+        "B10",
+        "C10"
+      ],
+      "placement": "intercept",
+      "variant": "cape",
+      "offsetX": -23,
+      "kind": "cape",
+      "asset": "images/map_town_cape_46.png",
+      "renderSize": "46x46",
+      "visible": true,
+      "coordinate": "B10/C10",
+      "resolvedPresentationPoint": {
+        "x": 144.25,
+        "y": 465.5
+      }
+    },
+    {
+      "id": "northwest-channel-cape",
+      "anchorCoordinates": [
+        "G07",
+        "H07"
+      ],
+      "placement": "intercept",
+      "variant": "cape",
+      "kind": "cape",
+      "asset": "images/map_town_cape_46.png",
+      "renderSize": "46x46",
+      "visible": true,
+      "coordinate": "G07/H07",
+      "resolvedPresentationPoint": {
+        "x": 585.38,
+        "y": 318.5
+      }
+    },
+    {
+      "id": "southern-upper-cape",
+      "coordinate": "K21",
+      "variant": "cape",
+      "offsetY": -12,
+      "kind": "cape",
+      "asset": "images/map_town_cape_46.png",
+      "renderSize": "46x46",
+      "visible": true,
+      "anchorCoordinates": [
+        "K21"
+      ],
+      "placement": "center",
+      "resolvedPresentationPoint": {
+        "x": 878.06,
+        "y": 992.5
+      }
+    }
+  ]
+}

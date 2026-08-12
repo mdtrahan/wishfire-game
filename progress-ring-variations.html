@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Progress Ring Motion Study</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { min-height: 100vh; margin: 0; display: grid; place-items: center; overflow-x: hidden; background: radial-gradient(circle at 50% 0%, #20302b, #0b100f 57%); color: #edf4ef; }
+    main { width: min(1100px, calc(100% - 32px)); padding: 48px 0 56px; text-align: center; }
+    h1 { margin: 0; font-size: clamp(2rem, 5vw, 4.3rem); letter-spacing: -.06em; }
+    .intro { max-width: 570px; margin: 16px auto 38px; color: #b5c8bd; line-height: 1.55; }
+    kbd { padding: 3px 8px; border: 1px solid #6d8277; border-radius: 6px; background: #15201b; color: #edffcf; font: inherit; font-weight: 800; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+    .card { min-height: 315px; padding: 26px 18px 22px; position: relative; display: grid; place-items: center; align-content: center; overflow: hidden; border: 1px solid rgba(185, 235, 189, .15); border-radius: 22px; background: linear-gradient(145deg, rgba(35, 51, 44, .9), rgba(13, 20, 17, .94)); box-shadow: inset 0 1px rgba(255,255,255,.04), 0 15px 40px rgba(0,0,0,.17); cursor: pointer; transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease; }
+    .card:hover, .card:focus-visible { transform: translateY(-3px); border-color: rgba(151, 255, 159, .58); outline: none; }
+    .card.is-active { border-color: #96ff9d; box-shadow: inset 0 0 0 1px rgba(213, 255, 194, .25), 0 0 0 3px rgba(83, 235, 121, .16), 0 15px 40px rgba(0,0,0,.17); }
+    .variant { position: absolute; top: 18px; left: 19px; margin: 0; color: #ebffc8; font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .detail { position: absolute; bottom: 17px; margin: 0; color: #82988a; font-size: .76rem; }
+    .stage { width: 178px; height: 178px; position: relative; display: grid; place-items: center; }
+    .ring { --fill: 0%; --ring: #4de279; --track: #203a2a; width: 138px; height: 138px; display: grid; place-items: center; position: relative; border-radius: 50%; background: conic-gradient(var(--ring) var(--fill), var(--track) var(--fill)); box-shadow: 0 0 22px color-mix(in srgb, var(--ring) 30%, transparent); transition: background .07s linear; }
+    .ring::before { content: ''; width: 116px; height: 116px; border-radius: inherit; background: #121b18; box-shadow: inset 0 0 0 1px rgba(225,255,214,.08), inset 0 10px 22px rgba(255,255,255,.025); }
+    .number { position: absolute; color: #f5ffc9; font-size: 2.15rem; font-weight: 850; letter-spacing: -.08em; font-variant-numeric: tabular-nums; text-shadow: 0 2px 10px rgba(188,255,117,.18); }
+    .particles { inset: 0; position: absolute; z-index: 2; pointer-events: none; }
+    .particle { --x: 0px; --y: 0px; position: absolute; left: 50%; top: 50%; width: 0; height: 0; opacity: 0; border-left: var(--size) solid transparent; border-right: var(--size) solid transparent; border-bottom: calc(var(--size) * 1.75) solid var(--color); transform: translate(-50%, -50%) rotate(var(--angle)); animation: burst var(--life) cubic-bezier(.14,.72,.25,1) forwards; filter: drop-shadow(0 0 4px var(--color)); }
+    @keyframes burst { 0% { opacity: 1; transform: translate(-50%, -50%) rotate(var(--angle)) scale(1.25); } 55% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) rotate(calc(var(--angle) + 180deg)) scale(.2); } }
+    .bounce-1 { animation: spring-1 .32s cubic-bezier(.24,1.48,.59,1) both; }
+    .bounce-2 { animation: spring-2 .48s cubic-bezier(.2,1.6,.4,1) both; }
+    .bounce-3 { animation: spring-3 .23s cubic-bezier(.2,1.45,.65,1) both; }
+    .bounce-4 { animation: spring-4 .6s cubic-bezier(.14,1.72,.35,1) both; }
+    .bounce-5 { animation: spring-5 .4s cubic-bezier(.15,1.35,.5,1) both; }
+    .bounce-6 { animation: spring-6 .72s cubic-bezier(.17,1.55,.42,1) both; }
+    .bounce-gentle { animation: spring-gentle .26s cubic-bezier(.18,1.2,.55,1) both; }
+    .bounce-gentler { animation: spring-gentler .26s cubic-bezier(.18,1.2,.55,1) both; }
+    @keyframes spring-1 { 45% { transform: scale(1.10); } 100% { transform: scale(1); } }
+    @keyframes spring-2 { 38% { transform: scale(1.22); } 70% { transform: scale(.97); } 100% { transform: scale(1); } }
+    @keyframes spring-3 { 42% { transform: scale(1.055); } 100% { transform: scale(1); } }
+    @keyframes spring-4 { 34% { transform: scale(1.28); } 62% { transform: scale(.93); } 82% { transform: scale(1.04); } 100% { transform: scale(1); } }
+    @keyframes spring-5 { 40% { transform: scale(1.16); } 76% { transform: scale(.985); } 100% { transform: scale(1); } }
+    @keyframes spring-6 { 29% { transform: scale(1.20); } 57% { transform: scale(.91); } 77% { transform: scale(1.05); } 100% { transform: scale(1); } }
+    @keyframes spring-gentle { 42% { transform: scale(1.064); } 100% { transform: scale(1); } }
+    @keyframes spring-gentler { 42% { transform: scale(1.0512); } 100% { transform: scale(1); } }
+    @media (max-width: 720px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .card { min-height: 290px; } }
+    @media (max-width: 440px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Progress Ring Motion Study</h1>
+    <p class="intro">Click one card, then press or hold <kbd>X</kbd> to charge that variation in isolation. Each press gives immediate feedback; holding adds a steady charge. At 100%, the ring locks and releases its own small triangular shimmer.</p>
+    <section class="grid" id="grid" aria-label="Six ring variations"></section>
+  </main>
+  <script>
+    const variants = [
+      { name: '01 / Soft · Wide', detail: 'green · press + hold', mode: 'hold', pressAmount: 8, holdRate: 36, splash: [18, .56, 1.42] },
+      { name: '02 / Ten Steps', detail: 'green · 10 presses', mode: 'press', pressAmount: 10, bounceClass: 'bounce-gentler', splash: [18, .56, 1.42] },
+      { name: '03 / Traffic Light', detail: 'red → yellow → green · 3 presses', mode: 'press', pressAmount: 100 / 3, sparkColors: ['#4de279', '#eaffae'], colorStages: [{ max: 100 / 3, ringColor: '#f05b5b', track: '#4a2020' }, { max: 200 / 3, ringColor: '#f3c64d', track: '#443817' }, { max: 100, ringColor: '#4de279', track: '#203a2a' }], splash: [20, .58, 1.42] },
+      { name: '04 / Gold Five', detail: 'gold · 5% per press', mode: 'press', pressAmount: 5, bounceClass: 'bounce-gentle', ringColor: '#f3c64d', track: '#443817', sparkColors: ['#f3c64d', '#fff0a0'], splash: [22, .58, 1.42] },
+      { name: '05 / Blue Half', detail: 'blue · 2 presses', mode: 'press', pressAmount: 50, ringColor: '#4ca9ff', track: '#173452', sparkColors: ['#4ca9ff', '#d6efff'], splash: [16, .54, 1.35] },
+      { name: '06 / Auto Three', detail: 'green · one press smooth auto-fill', mode: 'auto', pressAmount: 1, autoDelay: 28, splash: [28, .7, 1.55] }
+    ];
+    const states = variants.map((variant, index) => ({ progress: 0, completed: false, capacity: 100, ringColor: '#4de279', track: '#203a2a', bounceClass: 'bounce-5', sparkColors: ['#9cff81', '#eaffae'], ...variant, index, holdElapsed: 0, autoElapsed: 0, autoRunning: false, inputLocked: false }));
+    const grid = document.querySelector('#grid');
+
+    let activeIndex = 0;
+    grid.innerHTML = states.map((s, index) => `<article class="card${index === activeIndex ? ' is-active' : ''}" role="button" tabindex="0" aria-pressed="${index === activeIndex}"><p class="variant">${s.name}</p><div class="stage"><div class="particles"></div><div class="ring"><span class="number">0</span></div></div><p class="detail">${s.detail}</p></article>`).join('');
+    states.forEach((state, index) => Object.assign(state, {
+      card: grid.children[index], ring: grid.children[index].querySelector('.ring'),
+      number: grid.children[index].querySelector('.number'), particles: grid.children[index].querySelector('.particles')
+    }));
+    states.forEach(state => {
+      state.ring.style.setProperty('--ring', state.ringColor);
+      state.ring.style.setProperty('--track', state.track);
+    });
+    function setActive(index) {
+      activeIndex = index;
+      states.forEach((state, stateIndex) => {
+        const active = stateIndex === activeIndex;
+        state.card.classList.toggle('is-active', active);
+        state.card.setAttribute('aria-pressed', active);
+      });
+    }
+    states.forEach((state, index) => {
+      state.card.addEventListener('click', () => setActive(index));
+      state.card.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setActive(index); }
+      });
+    });
+
+    function render(state) {
+      const percentage = state.progress / state.capacity * 100;
+      const stage = state.colorStages?.find(candidate => percentage <= candidate.max);
+      state.ring.style.setProperty('--ring', stage?.ringColor || state.ringColor);
+      state.ring.style.setProperty('--track', stage?.track || state.track);
+      state.ring.style.setProperty('--fill', `${percentage}%`);
+      state.number.textContent = Math.round(percentage);
+    }
+    states.forEach(render);
+    function bounce(state) {
+      state.ring.classList.remove('bounce-5', 'bounce-gentle', 'bounce-gentler');
+      void state.ring.offsetWidth;
+      state.ring.classList.add(state.bounceClass);
+    }
+    function shimmer(state) {
+      const [count, life, reach] = state.splash;
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i / count) + Math.random() * .3;
+        const distance = (50 + Math.random() * 34) * reach;
+        const el = document.createElement('i');
+        el.className = 'particle';
+        el.style.setProperty('--x', `${Math.cos(angle) * distance}px`);
+        el.style.setProperty('--y', `${Math.sin(angle) * distance}px`);
+        el.style.setProperty('--angle', `${angle * 57.3}deg`);
+        el.style.setProperty('--size', `${4 + Math.random() * 3}px`);
+        el.style.setProperty('--life', `${life + Math.random() * .18}s`);
+        el.style.setProperty('--color', state.sparkColors[i % 3 ? 0 : 1]);
+        el.addEventListener('animationend', () => el.remove());
+        state.particles.appendChild(el);
+      }
+    }
+    function add(state, amount, isPress = false) {
+      if (state.completed) return;
+      if (isPress) bounce(state);
+      state.progress = Math.min(state.capacity, state.progress + amount);
+      render(state);
+      if (state.progress === state.capacity) { state.completed = true; state.autoRunning = false; shimmer(state); }
+    }
+    function startInput() {
+      const state = states[activeIndex];
+      if (state.completed || state.inputLocked) return;
+      if (state.mode === 'auto') {
+        state.inputLocked = true;
+        state.autoRunning = true;
+        bounce(state);
+        return;
+      }
+      add(state, state.pressAmount, true);
+    }
+    let held = false, last = performance.now();
+    function tick(now) {
+      const delta = Math.min(60, now - last); last = now;
+      const active = states[activeIndex];
+      if (held && active.mode === 'hold') {
+        if (active.holdInterval) {
+          active.holdElapsed += delta;
+          while (active.holdElapsed >= active.holdInterval) {
+            active.holdElapsed -= active.holdInterval;
+            add(active, active.holdAmount);
+          }
+        } else add(active, active.holdRate * delta / 1000);
+      }
+      states.filter(state => state.autoRunning).forEach(state => {
+        state.autoElapsed += delta;
+        while (state.autoElapsed >= state.autoDelay && state.autoRunning) {
+          state.autoElapsed -= state.autoDelay;
+          add(state, state.pressAmount);
+        }
+      });
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+    addEventListener('keydown', event => {
+      if (event.key.toLowerCase() !== 'x') return;
+      event.preventDefault();
+      if (!held) { held = true; startInput(); }
+    });
+    addEventListener('keyup', event => { if (event.key.toLowerCase() === 'x') { held = false; states.forEach(state => state.holdElapsed = 0); } });
+    addEventListener('blur', () => held = false);
+    window.render_game_to_text = () => JSON.stringify({ control: 'click a card, then use X', active: states[activeIndex].name, variants: states.map(s => ({ name: s.name, progress: Math.round(s.progress / s.capacity * 100), capped: s.completed })), origin: 'top-left' });
+    window.advanceTime = ms => { const active = states[activeIndex]; if (held && active.mode === 'hold') add(active, active.holdInterval ? active.holdAmount * Math.floor(ms / active.holdInterval) : active.holdRate * ms / 1000); states.forEach(render); };
+  </script>
+</body>
+</html>
