@@ -25,6 +25,7 @@
 - Reload after the last edit, inspect the resulting frame, exercise affected controls, check console errors, and leave the verified page visible when the user is performing QA.
 - Visual release and handoff are hard gates. URL reachability, a correct fingerprint, DOM presence, green tests, and a clean console do not replace inspection of the final screenshot.
 - If the final natural-size frame has Canvas/overlay overlap, clipped text, truncated labels, or a material mismatch from the approved reference, mark the release unsafe and stop before push or deployment.
+- For presentation-owned changes, run the repository presentation gate. Its untouched startup screenshot must precede interaction, and commit preparation must reject missing, unreviewed, or source-stale evidence.
 
 ## Merge Readiness
 - Use `governance/execution/integration.md` for QA PASS boundaries, baseline-relative validation, conflict classification, merge readiness, and integration debt reporting.

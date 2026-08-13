@@ -76,5 +76,18 @@ test('fallback text scales or elides against the measured logical Canvas width',
   assert.equal(computeFont({ preferredPx: 18, minimumPx: 11, measuredWidth: 270, maximumWidth: 201 }), 13.4);
   assert.equal(computeFont({ preferredPx: 18, minimumPx: 11, measuredWidth: 180, maximumWidth: 201 }), 18);
   assert.equal(fitText({ measureText: value => ({ width: value.length * 6 }) }, 'ABCDEFGHIJ', 36), 'ABCDE…');
-  assert.match(src, /maximumWidth: Math\.max\(1, viewWidth - 16\)/);
+  assert.match(src, /headlineMaximumWidth = Math\.max\(1, viewWidth - 16\)/);
+});
+
+test('compact fallback copy wraps inside measured Canvas bounds without truncation', () => {
+  const src = read('web-runner/systems/renderHarnessFallback.js');
+  const fitFn = extractExportedFunction(src, 'fitCanvasText').replace('function fitCanvasText', 'function fitCanvasTextLocal');
+  const wrapFn = extractExportedFunction(src, 'wrapCanvasText').replace(/fitCanvasText\(/g, 'fitCanvasTextLocal(');
+  const wrapText = new Function(`${fitFn}; ${wrapFn}; return wrapCanvasText;`)();
+  const ctx = { measureText: value => ({ width: String(value).length * 4 }) };
+  const result = wrapText(ctx, 'Party restored. Tap to continue back into combat.', 146, 3);
+  assert.equal(result.truncated, false);
+  assert.deepEqual(result.lines, ['Party restored. Tap to continue back', 'into combat.']);
+  assert.ok(result.lines.every(line => ctx.measureText(line).width <= 146));
+  assert.match(src, /__orkaCanvasTextAudit/);
 });

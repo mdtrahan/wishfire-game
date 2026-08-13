@@ -1,0 +1,1052 @@
+{
+  "bead": "ORKA-myz",
+  "branch": "bead/ORKA-myz-compact-viewport-containment",
+  "generatedAt": "2026-08-13T04:41:47.838Z",
+  "sourceHash": "347743868aad640a49ea6cd4b4ce8d9fd108cd33d1e19b59de9711fbe54d6e72",
+  "status": "automated-pass",
+  "failures": [],
+  "reportHtml": "/tmp/codex-orka-presentation-gate/ORKA-myz/347743868aad/report.html",
+  "referenceRatios": {
+    "DEV": 0.10463686342592593,
+    "DEV2": 0.12116608796296297
+  },
+  "scenarios": [
+    {
+      "scenario": {
+        "id": "compact-landscape",
+        "width": 514,
+        "height": 289,
+        "dpr": 2.49
+      },
+      "browserProblems": [],
+      "frames": [
+        {
+          "state": "startup",
+          "metrics": {
+            "url": "http://127.0.0.1:55859/web-runner/index.html",
+            "viewport": {
+              "width": 514,
+              "height": 289,
+              "dpr": 2.490000009536743
+            },
+            "canvas": {
+              "rect": {
+                "x": 176,
+                "y": 0,
+                "width": 162,
+                "height": 289
+              },
+              "backing": {
+                "width": 403,
+                "height": 720
+              },
+              "aspectRatio": 0.5605536332179931
+            },
+            "overlays": [
+              {
+                "label": "DEV",
+                "rect": {
+                  "x": 489.1585998535156,
+                  "y": 4.5,
+                  "width": 20.341400146484375,
+                  "height": 11.25
+                },
+                "transform": "matrix(0.45, 0, 0, 0.45, 0, 0)"
+              },
+              {
+                "label": "DEV2",
+                "rect": {
+                  "x": 485.9453125,
+                  "y": 19.796875,
+                  "width": 23.5546875,
+                  "height": 11.25
+                },
+                "transform": "matrix(0.45, 0, 0, 0.45, 0, 0)"
+              }
+            ],
+            "controlScale": "0.45",
+            "canvasTextAudit": [
+              {
+                "key": "headline",
+                "lines": [
+                  "Story Mock (tap to enter",
+                  "town)"
+                ],
+                "widths": [
+                  125.90380859375,
+                  29.32080078125
+                ],
+                "maximumWidth": 145.8473889383546,
+                "truncated": false,
+                "allowTruncate": false
+              },
+              {
+                "key": "fingerprint",
+                "lines": [
+                  "WT:wt-ORKA-myz-compact-…"
+                ],
+                "widths": [
+                  144.0234375
+                ],
+                "maximumWidth": 145.8473889383546,
+                "truncated": true,
+                "allowTruncate": true
+              }
+            ],
+            "combatTextAudit": [],
+            "fingerprint": {
+              "worktree": "wt-ORKA-myz-compact-viewport-containment",
+              "branch": "bead/ORKA-myz-compact-viewport-containment",
+              "issueId": "ORKA-myz",
+              "contracts": {
+                "ORKA69R_READY": true
+              },
+              "generatedAt": "2026-08-13T04:41:41.758Z"
+            }
+          },
+          "screenshot": {
+            "path": "/tmp/codex-orka-presentation-gate/ORKA-myz/347743868aad/compact-landscape-startup.png",
+            "sha256": "b6e491da441dc2749e818ecc7bdfb80707a7c260df487a8ea62fff9ee5ba14b2"
+          },
+          "failures": []
+        },
+        {
+          "state": "town",
+          "metrics": {
+            "url": "http://127.0.0.1:55859/web-runner/index.html",
+            "viewport": {
+              "width": 514,
+              "height": 289,
+              "dpr": 2.490000009536743
+            },
+            "canvas": {
+              "rect": {
+                "x": 176,
+                "y": 0,
+                "width": 162,
+                "height": 289
+              },
+              "backing": {
+                "width": 403,
+                "height": 720
+              },
+              "aspectRatio": 0.5605536332179931
+            },
+            "overlays": [
+              {
+                "label": "DEV",
+                "rect": {
+                  "x": 489.1585998535156,
+                  "y": 4.5,
+                  "width": 20.341400146484375,
+                  "height": 11.25
+                },
+                "transform": "matrix(0.45, 0, 0, 0.45, 0, 0)"
+              },
+              {
+                "label": "DEV2",
+                "rect": {
+                  "x": 485.9453125,
+                  "y": 19.796875,
+                  "width": 23.5546875,
+                  "height": 11.25
+                },
+                "transform": "matrix(0.45, 0, 0, 0.45, 0, 0)"
+              }
+            ],
+            "controlScale": "0.45",
+            "canvasTextAudit": [
+              {
+                "key": "headline",
+                "lines": [
+                  "Town (tap to enter combat)"
+                ],
+                "widths": [
+                  145.83274841308594
+                ],
+                "maximumWidth": 145.8473889383546,
+                "truncated": false,
+                "allowTruncate": false
+              },
+              {
+                "key": "recovery",
+                "lines": [
+                  "Party restored. Tap to continue back",
+                  "into combat."
+                ],
+                "widths": [
+                  138.10546875,
+                  47.5546875
+                ],
+                "maximumWidth": 145.8473889383546,
+                "truncated": false,
+                "allowTruncate": false
+              }
+            ],
+            "combatTextAudit": [],
+            "fingerprint": {
+              "worktree": "wt-ORKA-myz-compact-viewport-containment",
+              "branch": "bead/ORKA-myz-compact-viewport-containment",
+              "issueId": "ORKA-myz",
+              "contracts": {
+                "ORKA69R_READY": true
+              },
+              "generatedAt": "2026-08-13T04:41:41.758Z"
+            }
+          },
+          "screenshot": {
+            "path": "/tmp/codex-orka-presentation-gate/ORKA-myz/347743868aad/compact-landscape-town.png",
+            "sha256": "2b8fb65c66735404979a60ce47ac9c6d461dbacf9978925b047c91d0daebba65"
+          },
+          "failures": []
+        },
+        {
+          "state": "combat",
+          "metrics": {
+            "url": "http://127.0.0.1:55859/web-runner/index.html",
+            "viewport": {
+              "width": 514,
+              "height": 289,
+              "dpr": 2.490000009536743
+            },
+            "canvas": {
+              "rect": {
+                "x": 176,
+                "y": 0,
+                "width": 162,
+                "height": 289
+              },
+              "backing": {
+                "width": 403,
+                "height": 720
+              },
+              "aspectRatio": 0.5605536332179931
+            },
+            "overlays": [
+              {
+                "label": "DEV",
+                "rect": {
+                  "x": 489.1585998535156,
+                  "y": 4.5,
+                  "width": 20.341400146484375,
+                  "height": 11.25
+                },
+                "transform": "matrix(0.45, 0, 0, 0.45, 0, 0)"
+              },
+              {
+                "label": "DEV2",
+                "rect": {
+                  "x": 485.9453125,
+                  "y": 19.796875,
+                  "width": 23.5546875,
+                  "height": 11.25
+                },
+                "transform": "matrix(0.45, 0, 0, 0.45, 0, 0)"
+              }
+            ],
+            "controlScale": "0.45",
+            "canvasTextAudit": [
+              {
+                "key": "headline",
+                "lines": [
+                  "Town (tap to enter combat)"
+                ],
+                "widths": [
+                  145.83274841308594
+                ],
+                "maximumWidth": 145.8473889383546,
+                "truncated": false,
+                "allowTruncate": false
+              },
+              {
+                "key": "recovery",
+                "lines": [
+                  "Party restored. Tap to continue back",
+                  "into combat."
+                ],
+                "widths": [
+                  138.10546875,
+                  47.5546875
+                ],
+                "maximumWidth": 145.8473889383546,
+                "truncated": false,
+                "allowTruncate": false
+              }
+            ],
+            "combatTextAudit": [
+              {
+                "key": "Nav_HomeText",
+                "group": "navigation",
+                "text": "Home",
+                "x": 180.31042683909004,
+                "y": 271.25217089909034,
+                "width": 13.33740234375,
+                "maximumWidth": 20.661786061509318,
+                "left": 173.64172566721504,
+                "right": 186.97912801096504
+              },
+              {
+                "key": "Nav_MissionText",
+                "group": "navigation",
+                "text": "Vault",
+                "x": 103.74479440228788,
+                "y": 270.8941020773263,
+                "width": 11.02783203125,
+                "maximumWidth": 20.661786061509318,
+                "left": 98.23087838666288,
+                "right": 109.25871041791288
+              },
+              {
+                "key": "Nav_AstralFlowText",
+                "group": "navigation",
+                "text": "Astral Flow",
+                "x": 132.14071863674144,
+                "y": 270.8941020773263,
+                "width": 24.7265625,
+                "maximumWidth": 31.272613005836092,
+                "left": 119.77743738674144,
+                "right": 144.50399988674144
+              },
+              {
+                "key": "Nav_MapText",
+                "group": "navigation",
+                "text": "Map",
+                "x": 51.24231634572763,
+                "y": 270.8941020773263,
+                "width": 9.7265625,
+                "maximumWidth": 20.661786061509318,
+                "left": 46.37903509572763,
+                "right": 56.10559759572763
+              },
+              {
+                "key": "Nav_HeroText",
+                "group": "navigation",
+                "text": "Hero",
+                "x": 26.51563192459012,
+                "y": 270.8941020773263,
+                "width": 10.83740234375,
+                "maximumWidth": 20.661786061509318,
+                "left": 21.09693075271512,
+                "right": 31.93433309646512
+              },
+              {
+                "key": "CombatAction",
+                "group": "story",
+                "text": "Heroes take the initiative!",
+                "x": 9.046184723458865,
+                "y": 147.3630138614546,
+                "width": 60.576171875,
+                "maximumWidth": 143.75501949143688,
+                "left": 9.046184723458865,
+                "right": 69.62235659845886
+              }
+            ],
+            "fingerprint": {
+              "worktree": "wt-ORKA-myz-compact-viewport-containment",
+              "branch": "bead/ORKA-myz-compact-viewport-containment",
+              "issueId": "ORKA-myz",
+              "contracts": {
+                "ORKA69R_READY": true
+              },
+              "generatedAt": "2026-08-13T04:41:41.758Z"
+            }
+          },
+          "screenshot": {
+            "path": "/tmp/codex-orka-presentation-gate/ORKA-myz/347743868aad/compact-landscape-combat.png",
+            "sha256": "ba39339acbf3dd2f8dd08debb9135f42e956840005c9405db322291a7ef2d7be"
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "id": "compact-portrait",
+        "width": 281,
+        "height": 472,
+        "dpr": 2.49
+      },
+      "browserProblems": [],
+      "frames": [
+        {
+          "state": "startup",
+          "metrics": {
+            "url": "http://127.0.0.1:55859/web-runner/index.html",
+            "viewport": {
+              "width": 281,
+              "height": 472,
+              "dpr": 2.490000009536743
+            },
+            "canvas": {
+              "rect": {
+                "x": 0,
+                "y": 29,
+                "width": 233,
+                "height": 414
+              },
+              "backing": {
+                "width": 580,
+                "height": 1031
+              },
+              "aspectRatio": 0.5628019323671497
+            },
+            "overlays": [
+              {
+                "label": "DEV",
+                "rect": {
+                  "x": 245.2904815673828,
+                  "y": 6.46875,
+                  "width": 29.240768432617188,
+                  "height": 16.171875
+                },
+                "transform": "matrix(0.646875, 0, 0, 0.646875, 0, 0)"
+              },
+              {
+                "label": "DEV2",
+                "rect": {
+                  "x": 240.67138671875,
+                  "y": 28.453125,
+                  "width": 33.85986328125,
+                  "height": 16.171875
+                },
+                "transform": "matrix(0.646875, 0, 0, 0.646875, 0, 0)"
+              }
+            ],
+            "controlScale": "0.646875",
+            "canvasTextAudit": [
+              {
+                "key": "headline",
+                "lines": [
+                  "Story Mock (tap to enter town)"
+                ],
+                "widths": [
+                  216.8444366455078
+                ],
+                "maximumWidth": 216.931726015498,
+                "truncated": false,
+                "allowTruncate": false
+              },
+              {
+                "key": "fingerprint",
+                "lines": [
+                  "WT:wt-ORKA-myz-compact-viewport-con…"
+                ],
+                "widths": [
+                  216.03515625
+                ],
+                "maximumWidth": 216.931726015498,
+                "truncated": true,
+                "allowTruncate": true
+              }
+            ],
+            "combatTextAudit": [],
+            "fingerprint": {
+              "worktree": "wt-ORKA-myz-compact-viewport-containment",
+              "branch": "bead/ORKA-myz-compact-viewport-containment",
+              "issueId": "ORKA-myz",
+              "contracts": {
+                "ORKA69R_READY": true
+              },
+              "generatedAt": "2026-08-13T04:41:43.872Z"
+            }
+          },
+          "screenshot": {
+            "path": "/tmp/codex-orka-presentation-gate/ORKA-myz/347743868aad/compact-portrait-startup.png",
+            "sha256": "ea60e11d51cecdf8167bb53477d8b35dde47bbaf6a04179316cc2d329d7c1479"
+          },
+          "failures": []
+        },
+        {
+          "state": "town",
+          "metrics": {
+            "url": "http://127.0.0.1:55859/web-runner/index.html",
+            "viewport": {
+              "width": 281,
+              "height": 472,
+              "dpr": 2.490000009536743
+            },
+            "canvas": {
+              "rect": {
+                "x": 0,
+                "y": 29,
+                "width": 233,
+                "height": 414
+              },
+              "backing": {
+                "width": 580,
+                "height": 1031
+              },
+              "aspectRatio": 0.5628019323671497
+            },
+            "overlays": [
+              {
+                "label": "DEV",
+                "rect": {
+                  "x": 245.2904815673828,
+                  "y": 6.46875,
+                  "width": 29.240768432617188,
+                  "height": 16.171875
+                },
+                "transform": "matrix(0.646875, 0, 0, 0.646875, 0, 0)"
+              },
+              {
+                "label": "DEV2",
+                "rect": {
+                  "x": 240.67138671875,
+                  "y": 28.453125,
+                  "width": 33.85986328125,
+                  "height": 16.171875
+                },
+                "transform": "matrix(0.646875, 0, 0, 0.646875, 0, 0)"
+              }
+            ],
+            "controlScale": "0.646875",
+            "canvasTextAudit": [
+              {
+                "key": "headline",
+                "lines": [
+                  "Town (tap to enter combat)"
+                ],
+                "widths": [
+                  216.8994140625
+                ],
+                "maximumWidth": 216.931726015498,
+                "truncated": false,
+                "allowTruncate": false
+              },
+              {
+                "key": "recovery",
+                "lines": [
+                  "Party restored. Tap to continue back into combat."
+                ],
+                "widths": [
+                  216.7694549560547
+                ],
+                "maximumWidth": 216.931726015498,
+                "truncated": false,
+                "allowTruncate": false
+              }
+            ],
+            "combatTextAudit": [],
+            "fingerprint": {
+              "worktree": "wt-ORKA-myz-compact-viewport-containment",
+              "branch": "bead/ORKA-myz-compact-viewport-containment",
+              "issueId": "ORKA-myz",
+              "contracts": {
+                "ORKA69R_READY": true
+              },
+              "generatedAt": "2026-08-13T04:41:43.872Z"
+            }
+          },
+          "screenshot": {
+            "path": "/tmp/codex-orka-presentation-gate/ORKA-myz/347743868aad/compact-portrait-town.png",
+            "sha256": "bc2ae95a762326c397ec7c749d0b1f33b01e9da8de95536950f9d35108eb7201"
+          },
+          "failures": []
+        },
+        {
+          "state": "combat",
+          "metrics": {
+            "url": "http://127.0.0.1:55859/web-runner/index.html",
+            "viewport": {
+              "width": 281,
+              "height": 472,
+              "dpr": 2.490000009536743
+            },
+            "canvas": {
+              "rect": {
+                "x": 0,
+                "y": 29,
+                "width": 233,
+                "height": 414
+              },
+              "backing": {
+                "width": 580,
+                "height": 1031
+              },
+              "aspectRatio": 0.5628019323671497
+            },
+            "overlays": [
+              {
+                "label": "DEV",
+                "rect": {
+                  "x": 245.2904815673828,
+                  "y": 6.46875,
+                  "width": 29.240768432617188,
+                  "height": 16.171875
+                },
+                "transform": "matrix(0.646875, 0, 0, 0.646875, 0, 0)"
+              },
+              {
+                "label": "DEV2",
+                "rect": {
+                  "x": 240.67138671875,
+                  "y": 28.453125,
+                  "width": 33.85986328125,
+                  "height": 16.171875
+                },
+                "transform": "matrix(0.646875, 0, 0, 0.646875, 0, 0)"
+              }
+            ],
+            "controlScale": "0.646875",
+            "canvasTextAudit": [
+              {
+                "key": "headline",
+                "lines": [
+                  "Town (tap to enter combat)"
+                ],
+                "widths": [
+                  216.8994140625
+                ],
+                "maximumWidth": 216.931726015498,
+                "truncated": false,
+                "allowTruncate": false
+              },
+              {
+                "key": "recovery",
+                "lines": [
+                  "Party restored. Tap to continue back into combat."
+                ],
+                "widths": [
+                  216.7694549560547
+                ],
+                "maximumWidth": 216.931726015498,
+                "truncated": false,
+                "allowTruncate": false
+              }
+            ],
+            "combatTextAudit": [
+              {
+                "key": "Nav_HomeText",
+                "group": "navigation",
+                "text": "Home",
+                "x": 259.4884265406926,
+                "y": 389.44013557686725,
+                "width": 21.33984375,
+                "maximumWidth": 29.733361176294203,
+                "left": 248.81850466569261,
+                "right": 270.1583484156926
+              },
+              {
+                "key": "Nav_MissionText",
+                "group": "navigation",
+                "text": "Vault",
+                "x": 149.30658668630562,
+                "y": 388.9248563279297,
+                "width": 17.64453125,
+                "maximumWidth": 29.733361176294203,
+                "left": 140.48432106130562,
+                "right": 158.12885231130562
+              },
+              {
+                "key": "Nav_AstralFlowText",
+                "group": "navigation",
+                "text": "Astral Flow",
+                "x": 190.16976611736868,
+                "y": 388.9248563279297,
+                "width": 39.5625,
+                "maximumWidth": 45.00288090588604,
+                "left": 170.38851611736868,
+                "right": 209.95101611736868
+              },
+              {
+                "key": "Nav_MapText",
+                "group": "navigation",
+                "text": "Map",
+                "x": 73.75285004132691,
+                "y": 388.9248563279297,
+                "width": 15.5625,
+                "maximumWidth": 29.733361176294203,
+                "left": 65.97160004132691,
+                "right": 81.53410004132691
+              },
+              {
+                "key": "Nav_HeroText",
+                "group": "navigation",
+                "text": "Hero",
+                "x": 38.16989335030101,
+                "y": 388.9248563279297,
+                "width": 17.33984375,
+                "maximumWidth": 29.733361176294203,
+                "left": 29.49997147530101,
+                "right": 46.83981522530101
+              },
+              {
+                "key": "CombatAction",
+                "group": "story",
+                "text": "Heroes take the initiative!",
+                "x": 13.83521584110484,
+                "y": 211.2798179353935,
+                "width": 84.806640625,
+                "maximumWidth": 205.2612943332883,
+                "left": 13.83521584110484,
+                "right": 98.64185646610484
+              }
+            ],
+            "fingerprint": {
+              "worktree": "wt-ORKA-myz-compact-viewport-containment",
+              "branch": "bead/ORKA-myz-compact-viewport-containment",
+              "issueId": "ORKA-myz",
+              "contracts": {
+                "ORKA69R_READY": true
+              },
+              "generatedAt": "2026-08-13T04:41:43.872Z"
+            }
+          },
+          "screenshot": {
+            "path": "/tmp/codex-orka-presentation-gate/ORKA-myz/347743868aad/compact-portrait-combat.png",
+            "sha256": "8e0188927f0eaaa8f43d22ea49d0ea3bc173b900cb23c9ed0b08cb4caeaa625e"
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "id": "reference",
+        "width": 1024,
+        "height": 768,
+        "dpr": 1
+      },
+      "browserProblems": [],
+      "frames": [
+        {
+          "state": "startup",
+          "metrics": {
+            "url": "http://127.0.0.1:55859/web-runner/index.html",
+            "viewport": {
+              "width": 1024,
+              "height": 768,
+              "dpr": 1
+            },
+            "canvas": {
+              "rect": {
+                "x": 296,
+                "y": 0,
+                "width": 432,
+                "height": 768
+              },
+              "backing": {
+                "width": 432,
+                "height": 768
+              },
+              "aspectRatio": 0.5625
+            },
+            "overlays": [
+              {
+                "label": "DEV",
+                "rect": {
+                  "x": 968.796875,
+                  "y": 10,
+                  "width": 45.203125,
+                  "height": 25
+                },
+                "transform": "matrix(1, 0, 0, 1, 0, 0)"
+              },
+              {
+                "label": "DEV2",
+                "rect": {
+                  "x": 961.65625,
+                  "y": 44,
+                  "width": 52.34375,
+                  "height": 25
+                },
+                "transform": "matrix(1, 0, 0, 1, 0, 0)"
+              }
+            ],
+            "controlScale": "1",
+            "canvasTextAudit": [
+              {
+                "key": "headline",
+                "lines": [
+                  "Story Mock (tap to enter town)"
+                ],
+                "widths": [
+                  259.0048828125
+                ],
+                "maximumWidth": 416,
+                "truncated": false,
+                "allowTruncate": false
+              },
+              {
+                "key": "fingerprint",
+                "lines": [
+                  "WT:wt-ORKA-myz-compact-viewport-containment BR:bead/ORKA-myz-compact…"
+                ],
+                "widths": [
+                  414.0673828125
+                ],
+                "maximumWidth": 416,
+                "truncated": true,
+                "allowTruncate": true
+              }
+            ],
+            "combatTextAudit": [],
+            "fingerprint": {
+              "worktree": "wt-ORKA-myz-compact-viewport-containment",
+              "branch": "bead/ORKA-myz-compact-viewport-containment",
+              "issueId": "ORKA-myz",
+              "contracts": {
+                "ORKA69R_READY": true
+              },
+              "generatedAt": "2026-08-13T04:41:45.909Z"
+            }
+          },
+          "screenshot": {
+            "path": "/tmp/codex-orka-presentation-gate/ORKA-myz/347743868aad/reference-startup.png",
+            "sha256": "880b5df9a6ce37c20f0a4e3bfaffb5bc0f550c2e03df23195643fed15f272e4f"
+          },
+          "failures": []
+        },
+        {
+          "state": "town",
+          "metrics": {
+            "url": "http://127.0.0.1:55859/web-runner/index.html",
+            "viewport": {
+              "width": 1024,
+              "height": 768,
+              "dpr": 1
+            },
+            "canvas": {
+              "rect": {
+                "x": 296,
+                "y": 0,
+                "width": 432,
+                "height": 768
+              },
+              "backing": {
+                "width": 432,
+                "height": 768
+              },
+              "aspectRatio": 0.5625
+            },
+            "overlays": [
+              {
+                "label": "DEV",
+                "rect": {
+                  "x": 968.796875,
+                  "y": 10,
+                  "width": 45.203125,
+                  "height": 25
+                },
+                "transform": "matrix(1, 0, 0, 1, 0, 0)"
+              },
+              {
+                "label": "DEV2",
+                "rect": {
+                  "x": 961.65625,
+                  "y": 44,
+                  "width": 52.34375,
+                  "height": 25
+                },
+                "transform": "matrix(1, 0, 0, 1, 0, 0)"
+              }
+            ],
+            "controlScale": "1",
+            "canvasTextAudit": [
+              {
+                "key": "headline",
+                "lines": [
+                  "Town (tap to enter combat)"
+                ],
+                "widths": [
+                  229.658203125
+                ],
+                "maximumWidth": 416,
+                "truncated": false,
+                "allowTruncate": false
+              },
+              {
+                "key": "recovery",
+                "lines": [
+                  "Party restored. Tap to continue back into combat."
+                ],
+                "widths": [
+                  281.82421875
+                ],
+                "maximumWidth": 416,
+                "truncated": false,
+                "allowTruncate": false
+              }
+            ],
+            "combatTextAudit": [],
+            "fingerprint": {
+              "worktree": "wt-ORKA-myz-compact-viewport-containment",
+              "branch": "bead/ORKA-myz-compact-viewport-containment",
+              "issueId": "ORKA-myz",
+              "contracts": {
+                "ORKA69R_READY": true
+              },
+              "generatedAt": "2026-08-13T04:41:45.909Z"
+            }
+          },
+          "screenshot": {
+            "path": "/tmp/codex-orka-presentation-gate/ORKA-myz/347743868aad/reference-town.png",
+            "sha256": "eebfb5cd2e88568d18524a4c480f02d07dd3ad55468beb248bfef52fa537875e"
+          },
+          "failures": []
+        },
+        {
+          "state": "combat",
+          "metrics": {
+            "url": "http://127.0.0.1:55859/web-runner/index.html",
+            "viewport": {
+              "width": 1024,
+              "height": 768,
+              "dpr": 1
+            },
+            "canvas": {
+              "rect": {
+                "x": 296,
+                "y": 0,
+                "width": 432,
+                "height": 768
+              },
+              "backing": {
+                "width": 432,
+                "height": 768
+              },
+              "aspectRatio": 0.5625
+            },
+            "overlays": [
+              {
+                "label": "DEV",
+                "rect": {
+                  "x": 968.796875,
+                  "y": 10,
+                  "width": 45.203125,
+                  "height": 25
+                },
+                "transform": "matrix(1, 0, 0, 1, 0, 0)"
+              },
+              {
+                "label": "DEV2",
+                "rect": {
+                  "x": 961.65625,
+                  "y": 44,
+                  "width": 52.34375,
+                  "height": 25
+                },
+                "transform": "matrix(1, 0, 0, 1, 0, 0)"
+              }
+            ],
+            "controlScale": "1",
+            "canvasTextAudit": [
+              {
+                "key": "headline",
+                "lines": [
+                  "Town (tap to enter combat)"
+                ],
+                "widths": [
+                  229.658203125
+                ],
+                "maximumWidth": 416,
+                "truncated": false,
+                "allowTruncate": false
+              },
+              {
+                "key": "recovery",
+                "lines": [
+                  "Party restored. Tap to continue back into combat."
+                ],
+                "widths": [
+                  281.82421875
+                ],
+                "maximumWidth": 416,
+                "truncated": false,
+                "allowTruncate": false
+              }
+            ],
+            "combatTextAudit": [
+              {
+                "key": "Nav_HomeText",
+                "group": "navigation",
+                "text": "Home",
+                "x": 481.2811927670682,
+                "y": 722.7771124119562,
+                "width": 37.3447265625,
+                "maximumWidth": 55.15004991505777,
+                "left": 462.6088294858182,
+                "right": 499.9535560483182
+              },
+              {
+                "key": "Nav_MissionText",
+                "group": "navigation",
+                "text": "Vault",
+                "x": 276.9136498016586,
+                "y": 721.8213618619054,
+                "width": 30.8779296875,
+                "maximumWidth": 55.15004991505777,
+                "left": 261.4746849579086,
+                "right": 292.3526146454086
+              },
+              {
+                "key": "Nav_AstralFlowText",
+                "group": "navigation",
+                "text": "Astral Flow",
+                "x": 352.7075155522905,
+                "y": 721.8213618619054,
+                "width": 69.234375,
+                "maximumWidth": 83.47226919840439,
+                "left": 318.0903280522905,
+                "right": 387.3247030522905
+              },
+              {
+                "key": "Nav_MapText",
+                "group": "navigation",
+                "text": "Map",
+                "x": 136.7750249575289,
+                "y": 721.8213618619054,
+                "width": 27.234375,
+                "maximumWidth": 55.15004991505777,
+                "left": 123.1578374575289,
+                "right": 150.3922124575289
+              },
+              {
+                "key": "Nav_HeroText",
+                "group": "navigation",
+                "text": "Hero",
+                "x": 70.77502495752888,
+                "y": 721.8213618619054,
+                "width": 30.3447265625,
+                "maximumWidth": 55.15004991505777,
+                "left": 55.602661676278885,
+                "right": 85.94738823877888
+              },
+              {
+                "key": "CombatAction",
+                "group": "story",
+                "text": "Heroes take the initiative!",
+                "x": 24.80000000000001,
+                "y": 391.0070905133705,
+                "width": 157.498046875,
+                "maximumWidth": 382.4,
+                "left": 24.80000000000001,
+                "right": 182.298046875
+              }
+            ],
+            "fingerprint": {
+              "worktree": "wt-ORKA-myz-compact-viewport-containment",
+              "branch": "bead/ORKA-myz-compact-viewport-containment",
+              "issueId": "ORKA-myz",
+              "contracts": {
+                "ORKA69R_READY": true
+              },
+              "generatedAt": "2026-08-13T04:41:45.909Z"
+            }
+          },
+          "screenshot": {
+            "path": "/tmp/codex-orka-presentation-gate/ORKA-myz/347743868aad/reference-combat.png",
+            "sha256": "ab012a3f4a8117a896cf83e5c82be336a608407e7b8c848560bc869caadd704c"
+          },
+          "failures": []
+        }
+      ]
+    }
+  ],
+  "visualReview": {
+    "status": "approved",
+    "approvedAt": "2026-08-13T04:41:59.195Z",
+    "reviewer": "mdtrahan"
+  }
+}

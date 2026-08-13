@@ -17,12 +17,60 @@ export function fitCanvasText(ctx, text, maximumWidth) {
   return end > 0 ? `${value.slice(0, end)}${ellipsis}` : ellipsis;
 }
 
+export function wrapCanvasText(ctx, text, maximumWidth, maximumLines = 3) {
+  const value = String(text || '').trim();
+  const maximum = Math.max(1, Number(maximumWidth) || 1);
+  const lineLimit = Math.max(1, Math.floor(Number(maximumLines) || 1));
+  if (!value) return { lines: [''], truncated: false };
+  if (ctx.measureText(value).width <= maximum) return { lines: [value], truncated: false };
+  const words = value.split(/\s+/);
+  const lines = [];
+  let current = '';
+  for (let index = 0; index < words.length; index += 1) {
+    const candidate = current ? `${current} ${words[index]}` : words[index];
+    if (ctx.measureText(candidate).width <= maximum) {
+      current = candidate;
+      continue;
+    }
+    if (current) lines.push(current);
+    current = words[index];
+    if (lines.length === lineLimit - 1) {
+      const remainder = [current, ...words.slice(index + 1)].join(' ');
+      const fitted = fitCanvasText(ctx, remainder, maximum);
+      lines.push(fitted);
+      return { lines, truncated: fitted !== remainder };
+    }
+  }
+  if (current) lines.push(current);
+  return { lines: lines.slice(0, lineLimit), truncated: lines.length > lineLimit };
+}
+
 function setFittedCanvasFont(ctx, text, { weight, preferredPx, minimumPx, family, maximumWidth }) {
   ctx.font = `${weight} ${preferredPx}px ${family}`;
   const measuredWidth = typeof ctx.measureText === 'function' ? ctx.measureText(text).width : 0;
   const fittedPx = computeFittedCanvasFontSize({ preferredPx, minimumPx, measuredWidth, maximumWidth });
   ctx.font = `${weight} ${fittedPx}px ${family}`;
   return fittedPx;
+}
+
+
+function recordTextAudit(key, ctx, textLayout, maximumWidth, allowTruncate = false) {
+  if (typeof window === 'undefined') return;
+  if (!Array.isArray(window.__orkaCanvasTextAudit)) window.__orkaCanvasTextAudit = [];
+  window.__orkaCanvasTextAudit.push({
+    key,
+    lines: textLayout.lines.slice(),
+    widths: textLayout.lines.map(line => ctx.measureText(line).width),
+    maximumWidth,
+    truncated: !!textLayout.truncated,
+    allowTruncate: !!allowTruncate,
+  });
+}
+
+function drawCenteredTextLayout(ctx, textLayout, centerX, centerY, fontPx) {
+  const lineHeight = Math.max(10, fontPx * 1.2);
+  const firstBaseline = centerY - ((textLayout.lines.length - 1) * lineHeight) / 2;
+  textLayout.lines.forEach((line, index) => ctx.fillText(line, centerX, firstBaseline + index * lineHeight));
 }
 
 export function renderHarnessFallback(ctx, layoutId, gameState, dims) {
@@ -32,6 +80,7 @@ export function renderHarnessFallback(ctx, layoutId, gameState, dims) {
   ctx.fillRect(0, 0, viewWidth, viewHeight);
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'center';
+  if (typeof window !== 'undefined') window.__orkaCanvasTextAudit = [];
   const load = gameState.startupLoad || {};
   const startupLoading = layoutId === 'storyMock' && !freshCombatBootstrapped;
   const headline = layoutId === 'storyMock'
@@ -39,14 +88,17 @@ export function renderHarnessFallback(ctx, layoutId, gameState, dims) {
     : layoutId === 'town'
       ? 'Town (tap to enter combat)'
       : 'Astral Overlay (click to return to combat)';
-  setFittedCanvasFont(ctx, headline, {
+  const headlineMaximumWidth = Math.max(1, viewWidth - 16);
+  const headlineFontPx = setFittedCanvasFont(ctx, headline, {
     weight: 600,
     preferredPx: 18,
     minimumPx: 11,
     family: 'Arial',
-    maximumWidth: Math.max(1, viewWidth - 16),
+    maximumWidth: headlineMaximumWidth,
   });
-  ctx.fillText(headline, viewWidth / 2, viewHeight / 2);
+  const headlineLayout = wrapCanvasText(ctx, headline, headlineMaximumWidth, 2);
+  drawCenteredTextLayout(ctx, headlineLayout, viewWidth / 2, viewHeight / 2, headlineFontPx);
+  recordTextAudit('headline', ctx, headlineLayout, headlineMaximumWidth);
 
   if (startupLoading) {
     const progress = Math.max(0, Math.min(1, Number(load.progress || 0)));
@@ -65,34 +117,43 @@ export function renderHarnessFallback(ctx, layoutId, gameState, dims) {
     ctx.font = '700 11px Arial';
     ctx.fillText(`${Math.round(progress * 100)}%`, viewWidth / 2, barY + barH / 2 + 3);
     const loadingLabel = String(load.label || 'Loading assets...');
-    setFittedCanvasFont(ctx, loadingLabel, {
+    const loadingMaximumWidth = Math.max(1, viewWidth - 16);
+    const loadingFontPx = setFittedCanvasFont(ctx, loadingLabel, {
       weight: 600,
       preferredPx: 10,
       minimumPx: 8,
       family: 'Arial',
-      maximumWidth: Math.max(1, viewWidth - 16),
+      maximumWidth: loadingMaximumWidth,
     });
     ctx.fillStyle = '#d6d6d6';
-    ctx.fillText(loadingLabel, viewWidth / 2, barY - 8);
+    const loadingLayout = wrapCanvasText(ctx, loadingLabel, loadingMaximumWidth, 2);
+    drawCenteredTextLayout(ctx, loadingLayout, viewWidth / 2, barY - 8, loadingFontPx);
+    recordTextAudit('loading', ctx, loadingLayout, loadingMaximumWidth);
   }
 
   if (layoutId === 'storyMock') {
     ctx.fillStyle = 'rgba(255,255,255,0.9)';
     ctx.font = '500 10px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(fitCanvasText(ctx, startupFingerprintLabel, Math.max(1, viewWidth - 16)), 8, 14);
+    const fingerprintMaximumWidth = Math.max(1, viewWidth - 16);
+    const fingerprintText = fitCanvasText(ctx, startupFingerprintLabel, fingerprintMaximumWidth);
+    ctx.fillText(fingerprintText, 8, 14);
+    recordTextAudit('fingerprint', ctx, { lines: [fingerprintText], truncated: fingerprintText !== startupFingerprintLabel }, fingerprintMaximumWidth, true);
   } else if (layoutId === 'town') {
     const recoveryLabel = 'Party restored. Tap to continue back into combat.';
     ctx.fillStyle = 'rgba(255,255,255,0.92)';
-    setFittedCanvasFont(ctx, recoveryLabel, {
+    const recoveryMaximumWidth = Math.max(1, viewWidth - 16);
+    const recoveryFontPx = setFittedCanvasFont(ctx, recoveryLabel, {
       weight: 600,
       preferredPx: 12,
       minimumPx: 8,
       family: 'Arial',
-      maximumWidth: Math.max(1, viewWidth - 16),
+      maximumWidth: recoveryMaximumWidth,
     });
     ctx.textAlign = 'center';
-    ctx.fillText(recoveryLabel, viewWidth / 2, viewHeight / 2 + 24);
+    const recoveryLayout = wrapCanvasText(ctx, recoveryLabel, recoveryMaximumWidth, 3);
+    drawCenteredTextLayout(ctx, recoveryLayout, viewWidth / 2, viewHeight / 2 + 24, recoveryFontPx);
+    recordTextAudit('recovery', ctx, recoveryLayout, recoveryMaximumWidth);
   }
 
   ctx.textAlign = 'left';

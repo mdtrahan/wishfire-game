@@ -47,6 +47,7 @@
 - After the final visual change, reload and display the exact live page to the user. Earlier screenshots, source inspection, and green tests do not prove the currently displayed frame.
 - A Browser viewport override is diagnostic evidence only. It counts only after measured CSS dimensions confirm it took effect, and it cannot clear a failure at the natural in-app size. Browser implementations may interpret override arguments as device pixels, so never infer CSS size from the request. Reset temporary overrides after QA.
 - Before calling a release candidate QA-ready, visually inspect its final screenshot after the last reload. Any clipped text, truncated label, Canvas/DOM overlap, or material reference mismatch blocks push and deployment even when tests and console checks pass.
+- Presentation-owned changes must pass `npm run qa:presentation -- --bead <id>`. Inspect the generated startup-first contact sheet, approve it explicitly, and keep the source-hash evidence current through commit preparation.
 
 ## Child DOX Index
 - `web-runner/modules/AGENTS.md` - gameplay state, function registry, combat, skills, progression bridges.
