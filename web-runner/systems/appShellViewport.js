@@ -34,14 +34,46 @@ export function computeContainedStageSize({ viewportWidth, viewportHeight, layou
   };
 }
 
+export function computeCompactControlRailWidth({
+  viewportWidth,
+  viewportHeight,
+  stageWidth,
+  minimumRailWidth = 64,
+  minimumStageWidth = 160,
+}) {
+  const viewportW = Math.max(1, Number(viewportWidth) || 1);
+  const viewportH = Math.max(1, Number(viewportHeight) || 1);
+  const currentStageW = Math.max(1, Number(stageWidth) || viewportW);
+  const requiredRailW = Math.max(0, Number(minimumRailWidth) || 0);
+  if (requiredRailW === 0 || viewportW >= viewportH) return 0;
+  const rightGutterW = Math.max(0, (viewportW - currentStageW) / 2);
+  if (rightGutterW >= requiredRailW) return 0;
+  return Math.min(requiredRailW, Math.max(0, viewportW - Math.max(1, Number(minimumStageWidth) || 1)));
+}
+
 export function resizeCanvasToContainedViewport({ canvas, layoutW, layoutH, win = window }) {
   const viewport = getAppViewport(win);
-  const stage = computeContainedStageSize({
+  const unconstrainedStage = computeContainedStageSize({
     viewportWidth: viewport.width,
     viewportHeight: viewport.height,
     layoutW,
     layoutH,
   });
+  const controlRailWidth = computeCompactControlRailWidth({
+    viewportWidth: viewport.width,
+    viewportHeight: viewport.height,
+    stageWidth: unconstrainedStage.width,
+  });
+  const stage = computeContainedStageSize({
+    viewportWidth: viewport.width - controlRailWidth,
+    viewportHeight: viewport.height,
+    layoutW,
+    layoutH,
+  });
+  const appShell = canvas && canvas.parentElement;
+  if (appShell && appShell.classList && appShell.classList.contains('app-shell')) {
+    appShell.style.paddingInlineEnd = controlRailWidth > 0 ? `${controlRailWidth}px` : '';
+  }
   const dpr = Math.max(1, Number(win.devicePixelRatio) || 1);
   canvas.style.width = `${stage.width}px`;
   canvas.style.height = `${stage.height}px`;
@@ -65,6 +97,7 @@ export function resizeCanvasToContainedViewport({ canvas, layoutW, layoutH, win 
     viewportHeight: viewport.height,
     stageWidth: stage.width,
     stageHeight: stage.height,
+    controlRailWidth,
   };
 }
 

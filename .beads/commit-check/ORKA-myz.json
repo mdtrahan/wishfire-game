@@ -1,0 +1,52 @@
+{
+  "changed_functions": {
+    "ai-memory/insights.md": [
+      "__MODULE__"
+    ],
+    "progress.md": [
+      "__MODULE__"
+    ],
+    "tests/compactViewportContainmentContract.test.js": [
+      "read",
+      "extractExportedFunction",
+      "__MODULE__"
+    ],
+    "web-runner/systems/appShellViewport.js": [
+      "computeCompactControlRailWidth",
+      "resizeCanvasToContainedViewport"
+    ],
+    "web-runner/systems/renderHarnessFallback.js": [
+      "computeFittedCanvasFontSize",
+      "fitCanvasText",
+      "setFittedCanvasFont",
+      "renderHarnessFallback"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 5,
+    "staged_line_count": 171,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    "ai-memory/insights.md",
+    "progress.md",
+    "tests/compactViewportContainmentContract.test.js",
+    "web-runner/systems/appShellViewport.js",
+    "web-runner/systems/renderHarnessFallback.js"
+  ],
+  "issue_id": "ORKA-myz",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    "ai-memory/insights.md": "d7438f5c94a4d7e2325e7dcb471fd6844aee7bb2",
+    "progress.md": "c3f5465701e24998e240d11d20ce39a9a1289bbf",
+    "tests/compactViewportContainmentContract.test.js": "bc24e150d1f7fcb0546f502a5ac647081d57cc50",
+    "web-runner/systems/appShellViewport.js": "f83068a8f716b48a22436d65481998aa7c841605",
+    "web-runner/systems/renderHarnessFallback.js": "020122f82f91fc22f14e61255f4c353b35791338"
+  }
+}

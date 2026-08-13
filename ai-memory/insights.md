@@ -512,3 +512,7 @@
 ## 2026-08-11 - Manual Enemy Targets Need Actor And Slot Ownership
 - Store a manual enemy choice with the hero who made it and the enemy's slot identity. Revalidate both when the attack resolves so a later hero or a refill enemy cannot inherit stale target state.
 - Targeting QA must compare the selected marker, queued hit, damage presentation, and HP loss. Speed ordering is a separate check; effective Speed does not grant automatic bonus actions.
+
+## 2026-08-12 - Canvas And DOM Controls Need One Containment Budget
+- A portrait Canvas and fixed DOM launchers use separate layout layers. Compute a compact control rail before sizing the Canvas when the natural gutter cannot contain the launchers; scaling either layer alone cannot guarantee non-overlap.
+- Browser viewport override arguments may resolve in device pixels. Accept viewport evidence only after measuring `window.innerWidth`, `window.innerHeight`, and the final Canvas/overlay rectangles, then inspect the reloaded screenshot.
