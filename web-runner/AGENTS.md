@@ -32,6 +32,21 @@
 - For runtime/manual QA, start `npm run serve:qa` and use the Codex in-app Browser when a visual check is needed.
 - For batch game automation, prefer the repo-owned `npm run balance-harness` path.
 
+## Viewport QA Contract
+- Read this file from the exact checkout being served before release QA. Guidance in another branch or worktree does not certify the current checkout.
+- Treat the in-app Browser's natural CSS viewport as variable across Codex and Browser-plugin releases. Measure each visual pass; screenshot pixel dimensions are not viewport dimensions.
+- Before changing layout code, inventory every app-owned presentation layer: Canvas drawing, Canvas hit zones, HTML launchers, HTML modals, and CSS overlays. Name the failing layer in the QA record.
+- Record `document.documentElement.clientWidth/clientHeight`, `window.devicePixelRatio`, the canvas `getBoundingClientRect()`, the canvas backing `width/height`, and each visible app-owned DOM overlay rectangle with the QA evidence.
+- Wishfire's reference layout is `360x640` logical pixels. Also validate a compact contained stage at `216x384` CSS pixels, which covers the short in-app pane class that can reduce the portrait canvas to about `217x387`.
+- Render from CSS-logical canvas dimensions (`canvas.width / dpr`, `canvas.height / dpr`). Scale type, portraits, panels, spacing, and hit zones from the same layout scale. Cap hard minimums so sibling widths plus gaps fit inside the logical viewport.
+- Canvas-adjacent HTML overlays do not inherit the Canvas transform. Compare each overlay's width-to-canvas-width ratio and edge offsets between reference and compact captures. Keep ratio drift within 20% unless the user approves a design change; keep gutter controls fully outside the canvas.
+- Fix only the failing layer and property. Preserve opacity, placement, scale, and interaction behavior unless the request or reference evidence changes them.
+- Visual QA requires readable text, distinct controls, in-bounds hit zones, and no overlap, clipping, or truncated labels at both reference and compact sizes.
+- Run the natural in-app Browser size first. When it is below `360x640`, classify that evidence as the compact pass and run a reference-size external-browser pass too. External-browser evidence alone does not clear a compact-layout regression.
+- After the final visual change, reload and display the exact live page to the user. Earlier screenshots, source inspection, and green tests do not prove the currently displayed frame.
+- A Browser viewport override is diagnostic evidence only. It counts only after measured CSS dimensions confirm it took effect, and it cannot clear a failure at the natural in-app size. Browser implementations may interpret override arguments as device pixels, so never infer CSS size from the request. Reset temporary overrides after QA.
+- Before calling a release candidate QA-ready, visually inspect its final screenshot after the last reload. Any clipped text, truncated label, Canvas/DOM overlap, or material reference mismatch blocks push and deployment even when tests and console checks pass.
+
 ## Child DOX Index
 - `web-runner/modules/AGENTS.md` - gameplay state, function registry, combat, skills, progression bridges.
 - `web-runner/systems/AGENTS.md` - rendering, input, local persistence, supergem runtime, dev tooling, SimulationCore shadow.
