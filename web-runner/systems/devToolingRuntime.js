@@ -730,8 +730,8 @@ export function createDevToolingRuntime(deps = {}) {
     launcher.setAttribute('aria-label', 'Open developer tooling modal');
     launcher.style.cssText = [
       'position:fixed',
-      'top:10px',
-      'right:10px',
+      'top:var(--orka-dev-top, 10px)',
+      'right:var(--orka-control-right, 10px)',
       'z-index:10000',
       'border:1px solid #1f2937',
       'background:#f8fafc',
@@ -741,6 +741,8 @@ export function createDevToolingRuntime(deps = {}) {
       'font:700 11px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       'cursor:pointer',
       'box-shadow:0 4px 12px rgba(0,0,0,0.18)',
+      'transform:scale(var(--orka-control-scale, 1))',
+      'transform-origin:top right',
     ].join(';');
     document.body.appendChild(launcher);
     devToolingDom = {

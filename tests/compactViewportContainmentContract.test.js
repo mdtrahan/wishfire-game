@@ -37,20 +37,35 @@ function extractExportedFunction(src, name) {
   assert.fail(`unterminated ${name}`);
 }
 
-test('compact portrait viewport reserves a right-side control rail only when its natural gutter is too small', () => {
+test('compact launchers scale with the Canvas and reserve only their scaled rail', () => {
   const src = read('web-runner/systems/appShellViewport.js');
+  const computeScale = new Function(`${extractExportedFunction(src, 'computeAppControlScale')}; return computeAppControlScale;`)();
   const computeRail = new Function(`${extractExportedFunction(src, 'computeCompactControlRailWidth')}; return computeCompactControlRailWidth;`)();
 
-  assert.equal(computeRail({ viewportWidth: 281, viewportHeight: 472, stageWidth: 265 }), 64);
-  assert.equal(computeRail({ viewportWidth: 373, viewportHeight: 387, stageWidth: 217 }), 0);
-  assert.equal(computeRail({ viewportWidth: 1024, viewportHeight: 768, stageWidth: 432 }), 0);
+  assert.equal(computeScale({ stageWidth: 162, stageHeight: 289, layoutW: 360, layoutH: 640 }), 0.45);
+  assert.equal(computeScale({ stageWidth: 432, stageHeight: 768, layoutW: 360, layoutH: 640 }), 1);
+  assert.equal(computeRail({ viewportWidth: 281, viewportHeight: 472, stageWidth: 265, controlScale: 0.736 }), 48);
+  assert.equal(computeRail({ viewportWidth: 373, viewportHeight: 387, stageWidth: 217, controlScale: 0.603 }), 0);
+  assert.equal(computeRail({ viewportWidth: 1024, viewportHeight: 768, stageWidth: 432, controlScale: 1 }), 0);
 });
 
-test('viewport runtime applies the rail to both stage sizing and app-shell layout metrics', () => {
+test('viewport runtime applies scaled rail and launcher metrics with the stage resize', () => {
   const src = read('web-runner/systems/appShellViewport.js');
   assert.match(src, /viewportWidth: viewport\.width - controlRailWidth/);
   assert.match(src, /appShell\.style\.paddingInlineEnd = controlRailWidth > 0/);
+  assert.match(src, /--orka-control-scale/);
+  assert.match(src, /--orka-dev2-top/);
   assert.match(src, /controlRailWidth,/);
+  assert.match(src, /controlScale,/);
+});
+
+test('both developer launchers consume the shared compact control scale', () => {
+  const html = read('web-runner/index.html');
+  const devTooling = read('web-runner/systems/devToolingRuntime.js');
+  assert.match(html, /transform:scale\(var\(--orka-control-scale,1\)\)/);
+  assert.match(html, /top:var\(--orka-dev2-top,44px\)/);
+  assert.match(devTooling, /transform:scale\(var\(--orka-control-scale, 1\)\)/);
+  assert.match(devTooling, /top:var\(--orka-dev-top, 10px\)/);
 });
 
 test('fallback text scales or elides against the measured logical Canvas width', () => {

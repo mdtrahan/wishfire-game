@@ -514,5 +514,5 @@
 - Targeting QA must compare the selected marker, queued hit, damage presentation, and HP loss. Speed ordering is a separate check; effective Speed does not grant automatic bonus actions.
 
 ## 2026-08-12 - Canvas And DOM Controls Need One Containment Budget
-- A portrait Canvas and fixed DOM launchers use separate layout layers. Compute a compact control rail before sizing the Canvas when the natural gutter cannot contain the launchers; scaling either layer alone cannot guarantee non-overlap.
+- A portrait Canvas and fixed DOM launchers use separate layout layers. Scale compact launchers from the Canvas layout scale first, then reserve only the remaining scaled rail when the natural gutter cannot contain them. Reserving a desktop-size rail can make the game unreadable.
 - Browser viewport override arguments may resolve in device pixels. Accept viewport evidence only after measuring `window.innerWidth`, `window.innerHeight`, and the final Canvas/overlay rectangles, then inspect the reloaded screenshot.

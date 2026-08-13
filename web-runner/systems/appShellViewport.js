@@ -34,17 +34,37 @@ export function computeContainedStageSize({ viewportWidth, viewportHeight, layou
   };
 }
 
+export function computeAppControlScale({
+  stageWidth,
+  stageHeight,
+  layoutW,
+  layoutH,
+  minimumScale = 0.4,
+}) {
+  const sourceW = Math.max(1, Number(layoutW) || 360);
+  const sourceH = Math.max(1, Number(layoutH) || 640);
+  const stageW = Math.max(1, Number(stageWidth) || sourceW);
+  const stageH = Math.max(1, Number(stageHeight) || sourceH);
+  return Math.max(
+    Math.min(1, Math.max(0.1, Number(minimumScale) || 0.1)),
+    Math.min(1, stageW / sourceW, stageH / sourceH),
+  );
+}
+
 export function computeCompactControlRailWidth({
   viewportWidth,
   viewportHeight,
   stageWidth,
+  controlScale = 1,
   minimumRailWidth = 64,
   minimumStageWidth = 160,
 }) {
   const viewportW = Math.max(1, Number(viewportWidth) || 1);
   const viewportH = Math.max(1, Number(viewportHeight) || 1);
   const currentStageW = Math.max(1, Number(stageWidth) || viewportW);
-  const requiredRailW = Math.max(0, Number(minimumRailWidth) || 0);
+  const requiredRailW = Math.ceil(
+    Math.max(0, Number(minimumRailWidth) || 0) * Math.min(1, Math.max(0.1, Number(controlScale) || 1)),
+  );
   if (requiredRailW === 0 || viewportW >= viewportH) return 0;
   const rightGutterW = Math.max(0, (viewportW - currentStageW) / 2);
   if (rightGutterW >= requiredRailW) return 0;
@@ -59,10 +79,17 @@ export function resizeCanvasToContainedViewport({ canvas, layoutW, layoutH, win 
     layoutW,
     layoutH,
   });
+  const unconstrainedControlScale = computeAppControlScale({
+    stageWidth: unconstrainedStage.width,
+    stageHeight: unconstrainedStage.height,
+    layoutW,
+    layoutH,
+  });
   const controlRailWidth = computeCompactControlRailWidth({
     viewportWidth: viewport.width,
     viewportHeight: viewport.height,
     stageWidth: unconstrainedStage.width,
+    controlScale: unconstrainedControlScale,
   });
   const stage = computeContainedStageSize({
     viewportWidth: viewport.width - controlRailWidth,
@@ -73,6 +100,19 @@ export function resizeCanvasToContainedViewport({ canvas, layoutW, layoutH, win 
   const appShell = canvas && canvas.parentElement;
   if (appShell && appShell.classList && appShell.classList.contains('app-shell')) {
     appShell.style.paddingInlineEnd = controlRailWidth > 0 ? `${controlRailWidth}px` : '';
+  }
+  const controlScale = computeAppControlScale({
+    stageWidth: stage.width,
+    stageHeight: stage.height,
+    layoutW,
+    layoutH,
+  });
+  const docEl = win.document && win.document.documentElement;
+  if (docEl && docEl.style && typeof docEl.style.setProperty === 'function') {
+    docEl.style.setProperty('--orka-control-scale', String(controlScale));
+    docEl.style.setProperty('--orka-control-right', `${10 * controlScale}px`);
+    docEl.style.setProperty('--orka-dev-top', `${10 * controlScale}px`);
+    docEl.style.setProperty('--orka-dev2-top', `${44 * controlScale}px`);
   }
   const dpr = Math.max(1, Number(win.devicePixelRatio) || 1);
   canvas.style.width = `${stage.width}px`;
@@ -98,6 +138,7 @@ export function resizeCanvasToContainedViewport({ canvas, layoutW, layoutH, win 
     stageWidth: stage.width,
     stageHeight: stage.height,
     controlRailWidth,
+    controlScale,
   };
 }
 
