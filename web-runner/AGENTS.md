@@ -40,6 +40,7 @@
 - Wishfire's reference layout is `360x640` logical pixels. Also validate a compact contained stage at `216x384` CSS pixels, which covers the short in-app pane class that can reduce the portrait canvas to about `217x387`.
 - Render from CSS-logical canvas dimensions (`canvas.width / dpr`, `canvas.height / dpr`). Scale type, portraits, panels, spacing, and hit zones from the same layout scale. Cap hard minimums so sibling widths plus gaps fit inside the logical viewport.
 - Canvas-adjacent HTML overlays do not inherit the Canvas transform. Compare each overlay's width-to-canvas-width ratio and edge offsets between reference and compact captures. Keep ratio drift within 20% unless the user approves a design change; keep gutter controls fully outside the canvas.
+- Broad fallback navigation bands may run only when rendered `Nav_*` labels are absent. When labels exist, their measured hit zones own navigation so combat-board pointer events cannot be reinterpreted as layout changes.
 - Scale fixed DEV launchers from the measured Canvas layout scale below the `360x640` reference size. Reserve only the scaled launcher rail; a full desktop-width rail can make compact gameplay unreadable.
 - Fix only the failing layer and property. Preserve opacity, placement, scale, and interaction behavior unless the request or reference evidence changes them.
 - Visual QA requires readable text, distinct controls, in-bounds hit zones, and no overlap, clipping, or truncated labels at both reference and compact sizes.

@@ -1,0 +1,63 @@
+{
+  "changed_functions": {
+    ".beads/commit-check/ORKA-99o.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-99o.prepared.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-99o.scope": [
+      "__MODULE__"
+    ],
+    ".beads/interactions.jsonl": [
+      "__MODULE__"
+    ],
+    "ai-memory/insights.md": [
+      "__MODULE__"
+    ],
+    "tests/autoplayMapNavigationGuardContract.test.js": [
+      "__MODULE__"
+    ],
+    "web-runner/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/app.js": [
+      "h"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "web-runner/app.js"
+    ],
+    "staged_file_count": 8,
+    "staged_line_count": 108,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/commit-check/ORKA-99o.json",
+    ".beads/hot-file-lock/ORKA-99o.prepared.json",
+    ".beads/hot-file-lock/ORKA-99o.scope",
+    ".beads/interactions.jsonl",
+    "ai-memory/insights.md",
+    "tests/autoplayMapNavigationGuardContract.test.js",
+    "web-runner/AGENTS.md",
+    "web-runner/app.js"
+  ],
+  "issue_id": "ORKA-99o",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/commit-check/ORKA-99o.json": "8c69b8a09dfe10f33bcc9c4eec7d890d735c2cbe",
+    ".beads/hot-file-lock/ORKA-99o.prepared.json": "dc290e5471c9181078d245fee8f6f6d088208269",
+    ".beads/hot-file-lock/ORKA-99o.scope": "394db05cd9ff373067f582cedc40749f07b46f1d",
+    ".beads/interactions.jsonl": "e81facd356f987804ad47f07bf7261644c1bad31",
+    "ai-memory/insights.md": "2df8ff8c487ac7a73b6a54b87f2602ee6c9df924",
+    "tests/autoplayMapNavigationGuardContract.test.js": "73f1e1a2bed94494f223163ff5985ec71d231f70",
+    "web-runner/AGENTS.md": "82aa5817ad550dc1d2e487b55630b825bff74e16",
+    "web-runner/app.js": "10b531acb21dd25dd10c964e148573a695856085"
+  }
+}

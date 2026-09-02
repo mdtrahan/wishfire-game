@@ -4461,6 +4461,7 @@ function getStoryCardLiveLineState() {
       h: Math.max(64, 68 * layoutScale),
     };
     if (
+      navLabelItems.length === 0 &&
       mx >= fallbackNavBand.x &&
       mx <= fallbackNavBand.x + fallbackNavBand.w &&
       my >= fallbackNavBand.y &&

@@ -518,3 +518,7 @@
 
 ## 2026-09-01 - Hidden Legacy Combat Text Must Not Leave Its Backdrop
 - When a legacy combat text group is disabled, remove its companion fill-and-stroke panel from the same render path. Otherwise the empty frame remains visible behind active arena art.
+
+## 2026-09-02 - Fallback Navigation Must Yield To Rendered Labels
+- A compact fallback navigation band becomes an input hazard when it overlaps the board and runs before gem routing. Synthetic AutoPlay pointer events and manual bottom-row gem clicks can then be reinterpreted as Map or another top-level destination.
+- Use broad fallback navigation only when rendered `Nav_*` labels are unavailable. When labels exist, their measured hit zones are the sole navigation authority; verify both AutoPlay gem clicks and explicit player Map clicks.
