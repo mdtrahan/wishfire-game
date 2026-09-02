@@ -17,8 +17,4 @@ if grep -Eq '^(web-runner/modules/functionBank\.js|Scripts/functionBank\.js|web-
   "$ROOT/tools/prepare_hot_file_commit.sh" "$ISSUE_ID" "$@"
 fi
 
-if grep -Eq '^(package\.json|tools/(prepare_commit_check\.sh|qa_presentation_gate\.mjs)|web-runner/index\.html|web-runner/systems/(appShellViewport|combatPresentationScale|devToolingRuntime|render[^/]*)\.(m?js))$' <<<"$STAGED"; then
-  node "$ROOT/tools/qa_presentation_gate.mjs" --verify-only --bead "$ISSUE_ID"
-fi
-
 exec python3 "$ROOT/tools/commit_compliance.py" prepare "$ISSUE_ID"

@@ -53,20 +53,6 @@ function setFittedCanvasFont(ctx, text, { weight, preferredPx, minimumPx, family
   return fittedPx;
 }
 
-
-function recordTextAudit(key, ctx, textLayout, maximumWidth, allowTruncate = false) {
-  if (typeof window === 'undefined') return;
-  if (!Array.isArray(window.__orkaCanvasTextAudit)) window.__orkaCanvasTextAudit = [];
-  window.__orkaCanvasTextAudit.push({
-    key,
-    lines: textLayout.lines.slice(),
-    widths: textLayout.lines.map(line => ctx.measureText(line).width),
-    maximumWidth,
-    truncated: !!textLayout.truncated,
-    allowTruncate: !!allowTruncate,
-  });
-}
-
 function drawCenteredTextLayout(ctx, textLayout, centerX, centerY, fontPx) {
   const lineHeight = Math.max(10, fontPx * 1.2);
   const firstBaseline = centerY - ((textLayout.lines.length - 1) * lineHeight) / 2;
@@ -80,7 +66,6 @@ export function renderHarnessFallback(ctx, layoutId, gameState, dims) {
   ctx.fillRect(0, 0, viewWidth, viewHeight);
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'center';
-  if (typeof window !== 'undefined') window.__orkaCanvasTextAudit = [];
   const load = gameState.startupLoad || {};
   const startupLoading = layoutId === 'storyMock' && !freshCombatBootstrapped;
   const headline = layoutId === 'storyMock'
@@ -98,7 +83,6 @@ export function renderHarnessFallback(ctx, layoutId, gameState, dims) {
   });
   const headlineLayout = wrapCanvasText(ctx, headline, headlineMaximumWidth, 2);
   drawCenteredTextLayout(ctx, headlineLayout, viewWidth / 2, viewHeight / 2, headlineFontPx);
-  recordTextAudit('headline', ctx, headlineLayout, headlineMaximumWidth);
 
   if (startupLoading) {
     const progress = Math.max(0, Math.min(1, Number(load.progress || 0)));
@@ -128,7 +112,6 @@ export function renderHarnessFallback(ctx, layoutId, gameState, dims) {
     ctx.fillStyle = '#d6d6d6';
     const loadingLayout = wrapCanvasText(ctx, loadingLabel, loadingMaximumWidth, 2);
     drawCenteredTextLayout(ctx, loadingLayout, viewWidth / 2, barY - 8, loadingFontPx);
-    recordTextAudit('loading', ctx, loadingLayout, loadingMaximumWidth);
   }
 
   if (layoutId === 'storyMock') {
@@ -138,7 +121,6 @@ export function renderHarnessFallback(ctx, layoutId, gameState, dims) {
     const fingerprintMaximumWidth = Math.max(1, viewWidth - 16);
     const fingerprintText = fitCanvasText(ctx, startupFingerprintLabel, fingerprintMaximumWidth);
     ctx.fillText(fingerprintText, 8, 14);
-    recordTextAudit('fingerprint', ctx, { lines: [fingerprintText], truncated: fingerprintText !== startupFingerprintLabel }, fingerprintMaximumWidth, true);
   } else if (layoutId === 'town') {
     const recoveryLabel = 'Party restored. Tap to continue back into combat.';
     ctx.fillStyle = 'rgba(255,255,255,0.92)';
@@ -153,7 +135,6 @@ export function renderHarnessFallback(ctx, layoutId, gameState, dims) {
     ctx.textAlign = 'center';
     const recoveryLayout = wrapCanvasText(ctx, recoveryLabel, recoveryMaximumWidth, 3);
     drawCenteredTextLayout(ctx, recoveryLayout, viewWidth / 2, viewHeight / 2 + 24, recoveryFontPx);
-    recordTextAudit('recovery', ctx, recoveryLayout, recoveryMaximumWidth);
   }
 
   ctx.textAlign = 'left';

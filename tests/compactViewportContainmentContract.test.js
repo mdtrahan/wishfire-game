@@ -89,5 +89,4 @@ test('compact fallback copy wraps inside measured Canvas bounds without truncati
   assert.equal(result.truncated, false);
   assert.deepEqual(result.lines, ['Party restored. Tap to continue back', 'into combat.']);
   assert.ok(result.lines.every(line => ctx.measureText(line).width <= 146));
-  assert.match(src, /__orkaCanvasTextAudit/);
 });

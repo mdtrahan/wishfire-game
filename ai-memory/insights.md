@@ -512,11 +512,3 @@
 ## 2026-08-11 - Manual Enemy Targets Need Actor And Slot Ownership
 - Store a manual enemy choice with the hero who made it and the enemy's slot identity. Revalidate both when the attack resolves so a later hero or a refill enemy cannot inherit stale target state.
 - Targeting QA must compare the selected marker, queued hit, damage presentation, and HP loss. Speed ordering is a separate check; effective Speed does not grant automatic bonus actions.
-
-## 2026-08-12 - Canvas And DOM Controls Need One Containment Budget
-- A portrait Canvas and fixed DOM launchers use separate layout layers. Scale compact launchers from the Canvas layout scale first, then reserve only the remaining scaled rail when the natural gutter cannot contain them. Reserving a desktop-size rail can make the game unreadable.
-- Browser viewport override arguments may resolve in device pixels. Accept viewport evidence only after measuring `window.innerWidth`, `window.innerHeight`, and the final Canvas/overlay rectangles, then inspect the reloaded screenshot.
-
-## 2026-08-12 - Canvas Text Must Share The Geometry Scale
-- Desktop font minimums can leave combat text at two-thirds size while its Canvas shrinks below two-fifths, causing collisions that geometry tests miss. Derive all combat type from the active layout scale, fit it to its measured slot, and audit the final text intervals.
-- Visual guidance needs an executable release gate. Bind startup-first screenshots, compact and reference matrices, measured Canvas/DOM/text bounds, explicit review, and the staged source hash into commit preparation so later presentation edits cannot reuse stale proof.

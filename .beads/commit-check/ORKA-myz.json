@@ -1,33 +1,28 @@
 {
   "changed_functions": {
-    "ai-memory/insights.md": [
+    "ai-memory/insights.md": [],
+    "governance/execution/validation.md": [],
+    "package.json": [],
+    "progress.md": [],
+    "tests/compactViewportContainmentContract.test.js": [],
+    "tools/AGENTS.md": [],
+    "tools/prepare_commit_check.sh": [],
+    "web-runner/AGENTS.md": [],
+    "web-runner/systems/AGENTS.md": [
       "__MODULE__"
     ],
-    "progress.md": [
-      "__MODULE__"
-    ],
-    "tests/compactViewportContainmentContract.test.js": [
-      "extractExportedFunction"
-    ],
-    "web-runner/AGENTS.md": [
-      "__MODULE__"
-    ],
-    "web-runner/index.html": [
-      "__MODULE__"
-    ],
-    "web-runner/systems/appShellViewport.js": [
-      "computeAppControlScale",
-      "computeCompactControlRailWidth",
-      "resizeCanvasToContainedViewport"
-    ],
-    "web-runner/systems/devToolingRuntime.js": [
-      "ensureDevToolingModal"
+    "web-runner/systems/combatPresentationScale.mjs": [],
+    "web-runner/systems/renderHarnessFallback.js": [],
+    "web-runner/systems/renderRuntime.js": [
+      "renderRuntime"
     ]
   },
   "details": {
-    "hot_files_touched": [],
-    "staged_file_count": 7,
-    "staged_line_count": 75,
+    "hot_files_touched": [
+      "web-runner/systems/renderRuntime.js"
+    ],
+    "staged_file_count": 12,
+    "staged_line_count": 3,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -36,23 +31,33 @@
   },
   "files": [
     "ai-memory/insights.md",
+    "governance/execution/validation.md",
+    "package.json",
     "progress.md",
     "tests/compactViewportContainmentContract.test.js",
+    "tools/AGENTS.md",
+    "tools/prepare_commit_check.sh",
     "web-runner/AGENTS.md",
-    "web-runner/index.html",
-    "web-runner/systems/appShellViewport.js",
-    "web-runner/systems/devToolingRuntime.js"
+    "web-runner/systems/AGENTS.md",
+    "web-runner/systems/combatPresentationScale.mjs",
+    "web-runner/systems/renderHarnessFallback.js",
+    "web-runner/systems/renderRuntime.js"
   ],
   "issue_id": "ORKA-myz",
   "out_of_scope_hot_file_touch": false,
   "significant": true,
   "staged_blobs": {
-    "ai-memory/insights.md": "57bdd5a40f6f92d6ae68d76618e3bfffe4fe4015",
-    "progress.md": "4edc7723c4cc48d9ff5beae650804740d7301a21",
-    "tests/compactViewportContainmentContract.test.js": "790b763a602a4a32566e96a89e2afc067e28a693",
+    "ai-memory/insights.md": "9278cfa6d71876e7c9e269b0af2d416d5298f8d0",
+    "governance/execution/validation.md": "de45fa5a9e02c697345b6a896420cf353abbeb43",
+    "package.json": "078c98063f20caec2712207e5acb5b1dc0c89042",
+    "progress.md": "36488e74e1ae84edf8bb32f2e3c85ada86e840ee",
+    "tests/compactViewportContainmentContract.test.js": "75fb8a8c9e15e5a74520484b45772ee1140c2bb6",
+    "tools/AGENTS.md": "b270dcec6b39ddae1f9a97c6afa380aed2d7a0aa",
+    "tools/prepare_commit_check.sh": "8241af2a7cc4680c6736aa39407b78b03d87847e",
     "web-runner/AGENTS.md": "98e03d01d54f1dd2b8d862bd90848d3c250f0ba1",
-    "web-runner/index.html": "6a12c4aded53a571bace569b866685238129e064",
-    "web-runner/systems/appShellViewport.js": "8dd51e2b301ad9c5a44b98775a2652682b5c39a6",
-    "web-runner/systems/devToolingRuntime.js": "3781d34181314ae061377ce6ac1f4cb0fed1b1be"
+    "web-runner/systems/AGENTS.md": "8ab67565a80cacdd5b685cb1a6db4d5097d31c4f",
+    "web-runner/systems/combatPresentationScale.mjs": "fbc830f02542839487286990f77ea873aafef5f8",
+    "web-runner/systems/renderHarnessFallback.js": "05b96df94dd04bd55fd070d5b7ff6e0ee805024e",
+    "web-runner/systems/renderRuntime.js": "b9e9db7ab0ce0163f400307e3cea2c6d261534e7"
   }
 }

@@ -1,0 +1,11 @@
+{
+  "hot_files": {
+    "web-runner/systems/renderRuntime.js": {
+      "functions": [
+        "renderRuntime"
+      ],
+      "staged_blob": "b9e9db7ab0ce0163f400307e3cea2c6d261534e7"
+    }
+  },
+  "issue_id": "ORKA-myz"
+}

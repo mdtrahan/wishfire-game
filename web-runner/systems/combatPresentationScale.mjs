@@ -31,20 +31,3 @@ export function fitCanvasText(ctx, text, options = {}) {
     overflow: maximumWidth > 0 && width > maximumWidth + 0.5,
   };
 }
-
-export function createCombatTextAudit({ key, group = '', text, x, y, width, maximumWidth, align = 'center' }) {
-  const numericWidth = Math.max(0, Number(width) || 0);
-  const anchorX = Number(x) || 0;
-  const left = align === 'left' ? anchorX : (align === 'right' ? anchorX - numericWidth : anchorX - numericWidth / 2);
-  return {
-    key: String(key || ''),
-    group: String(group || ''),
-    text: String(text ?? ''),
-    x: anchorX,
-    y: Number(y) || 0,
-    width: numericWidth,
-    maximumWidth: Math.max(0, Number(maximumWidth) || 0),
-    left,
-    right: left + numericWidth,
-  };
-}

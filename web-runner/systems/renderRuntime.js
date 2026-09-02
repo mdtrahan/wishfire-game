@@ -9,7 +9,6 @@ import {
 import { drawCombatActorSprite } from './combatActorSpritePresentation.mjs';
 import {
   computeViewportFontSize,
-  createCombatTextAudit,
   fitCanvasText,
 } from './combatPresentationScale.mjs';
 
@@ -24,7 +23,6 @@ export function renderRuntime(deps) {
   deps.orientCombatWorldOffsetX = orientCombatWorldOffsetX;
   deps.drawCombatActorSprite = drawCombatActorSprite;
   deps.computeViewportFontSize = computeViewportFontSize;
-  deps.createCombatTextAudit = createCombatTextAudit;
   deps.fitCanvasText = fitCanvasText;
   if (!renderImpl) {
     const body = [
@@ -68,10 +66,6 @@ export function renderRuntime(deps) {
       "          if (radius <= 0 || alpha <= 0) return;\n          const grad = ctx.createLinearGradient(Math.max(0, radius - 72 * layoutScale), 0, radius + 12 * layoutScale, 0);\n          grad.addColorStop(0, 'rgba(86, 42, 185, 0)');\n          grad.addColorStop(0.38, 'rgba(139, 83, 255, 0.5)');\n          grad.addColorStop(1, 'rgba(117, 238, 255, 0.95)');\n          ctx.globalAlpha = Math.max(0, Math.min(1, alpha));\n          ctx.strokeStyle = grad;\n          ctx.lineWidth = Math.max(1, width);\n          ctx.beginPath();\n          ctx.arc(0, phaseOffset, radius, -spread, spread);\n          ctx.stroke();\n        };\n        if (shape === 'crescent_arc_blast') {\n          drawCrescentArc(frontRadius, arcWidth, surgeAlpha, 0);\n          drawCrescentArc(frontRadius - 13 * layoutScale, arcWidth * 0.58, surgeAlpha * 0.48, -2 * layoutScale);\n          drawCrescentArc(frontRadius + 7 * layoutScale, arcWidth * 0.42, surgeAlpha * 0.34, 2 * layoutScale);\n        }\n        if (img) {\n          const textureSize = Math.max(40, 62 * layoutScale) * (0.92 + ease * 0.22);\n          ctx.save();\n          ctx.globalAlpha = surgeAlpha * 0.16;\n          ctx.translate(frontRadius, 0);\n          ctx.scale(1.85, 0.48);\n          ctx.drawImage(img, -textureSize / 2, -textureSize / 2, textureSize, textureSize);\n          ctx.restore();\n        }\n        ctx.restore();\n        return true;\n      });\n    };\n    renderArcanePulseVisuals();\n\n    // Render non-hero damage text above gameplay\n    renderDamageTexts(d => d.targetKind !== 'hero');\n\n    // draw HUD overlay (game state)\n    drawHUD();\n\n    runtimeArtifacts.presentationPatches = Object.keys(presentationPatches).length ? presentationPatches : null;\n    runtimeArtifacts.visualControlPatches = Object.keys(visualControlPatches).length ? visualControlPatches : null;\n    return runtimeArtifacts;\n  "
     ].join("")
       .replace(
-        "const presentationPatches = {};",
-        "const presentationPatches = {};\n    if (typeof window !== 'undefined') window.__orkaCombatTextAudit = [];",
-      )
-      .replace(
         "const scaleFont = (size) => Math.max(8, Math.round(size * layoutScale));\n    const navFontBoost = Math.max(2, Math.round(2 * layoutScale));",
         "const scaleFont = (size) => computeViewportFontSize(size, layoutScale);\n    const navFontBoost = computeViewportFontSize(2, layoutScale, 1);",
       )
@@ -85,11 +79,11 @@ export function renderRuntime(deps) {
       )
       .replace(
         "const storyTextX = storySlot.x + Math.max(10, Math.round(12 * layoutScale));\n          const storyTextY = storySlot.y + (storySlot.h * 0.58);\n          const split = splitStoryCardActorSegment(text);",
-        "const storyPadding = Math.max(4, Math.round(12 * layoutScale));\n          const storyTextX = storySlot.x + storyPadding;\n          const storyTextY = storySlot.y + (storySlot.h * 0.58);\n          const storyMaximumWidth = Math.max(1, storySlot.w - (storyPadding * 2));\n          const storyFit = fitCanvasText(ctx, text, { baseSize: 10.71, layoutScale, maximumWidth: storyMaximumWidth, weight: 'bold' });\n          const split = splitStoryCardActorSegment(text);\n          if (typeof window !== 'undefined') window.__orkaCombatTextAudit.push(createCombatTextAudit({ key: 'CombatAction', group: 'story', text, x: storyTextX, y: storyTextY, width: storyFit.width, maximumWidth: storyMaximumWidth, align: 'left' }));",
+        "const storyPadding = Math.max(4, Math.round(12 * layoutScale));\n          const storyTextX = storySlot.x + storyPadding;\n          const storyTextY = storySlot.y + (storySlot.h * 0.58);\n          const storyMaximumWidth = Math.max(1, storySlot.w - (storyPadding * 2));\n          fitCanvasText(ctx, text, { baseSize: 10.71, layoutScale, maximumWidth: storyMaximumWidth, weight: 'bold' });\n          const split = splitStoryCardActorSegment(text);",
       )
       .replace(
         "ctx.fillText(text, r.dx + r.w/2, r.dy + r.h/2 + 5);\n      } else if(r.isButton){",
-        "const textX = r.dx + r.w / 2;\n        const textY = r.dy + r.h / 2 + Math.max(2, Math.round(5 * layoutScale));\n        const textMaximumWidth = Math.max(1, r.w);\n        const textFit = fitCanvasText(ctx, text, { baseSize: baseSize + (navTextTypes.has(r.inst.type) ? 2 : 0), layoutScale, maximumWidth: textMaximumWidth });\n        ctx.fillText(text, textX, textY);\n        if (navTextTypes.has(r.inst.type) && typeof window !== 'undefined') window.__orkaCombatTextAudit.push(createCombatTextAudit({ key: r.inst.type, group: 'navigation', text, x: textX, y: textY, width: textFit.width, maximumWidth: textMaximumWidth, align: 'center' }));\n      } else if(r.isButton){",
+        "const textX = r.dx + r.w / 2;\n        const textY = r.dy + r.h / 2 + Math.max(2, Math.round(5 * layoutScale));\n        const textMaximumWidth = Math.max(1, r.w);\n        fitCanvasText(ctx, text, { baseSize: baseSize + (navTextTypes.has(r.inst.type) ? 2 : 0), layoutScale, maximumWidth: textMaximumWidth });\n        ctx.fillText(text, textX, textY);\n      } else if(r.isButton){",
       )
       .replace(
       "const resolvedSelectedUid = pendingHitTargetUID || selectedUid;",
