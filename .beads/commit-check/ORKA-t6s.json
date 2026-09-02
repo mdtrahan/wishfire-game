@@ -1,0 +1,63 @@
+{
+  "changed_functions": {
+    ".beads/commit-check/ORKA-t6s.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-t6s.prepared.json": [
+      "__MODULE__"
+    ],
+    ".beads/hot-file-lock/ORKA-t6s.scope": [
+      "__MODULE__"
+    ],
+    ".beads/interactions.jsonl": [
+      "__MODULE__"
+    ],
+    "ai-memory/insights.md": [
+      "__MODULE__"
+    ],
+    "tests/legacyCombatBackdropContract.test.js": [
+      "__MODULE__"
+    ],
+    "web-runner/systems/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/systems/renderRuntime.js": [
+      "renderRuntime"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "web-runner/systems/renderRuntime.js"
+    ],
+    "staged_file_count": 8,
+    "staged_line_count": 86,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    ".beads/commit-check/ORKA-t6s.json",
+    ".beads/hot-file-lock/ORKA-t6s.prepared.json",
+    ".beads/hot-file-lock/ORKA-t6s.scope",
+    ".beads/interactions.jsonl",
+    "ai-memory/insights.md",
+    "tests/legacyCombatBackdropContract.test.js",
+    "web-runner/systems/AGENTS.md",
+    "web-runner/systems/renderRuntime.js"
+  ],
+  "issue_id": "ORKA-t6s",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    ".beads/commit-check/ORKA-t6s.json": "f6758fa97ad719ea0012a7040d16570c49d8666c",
+    ".beads/hot-file-lock/ORKA-t6s.prepared.json": "985b65ef5d5ef87c4408b56e56fa876762a7516c",
+    ".beads/hot-file-lock/ORKA-t6s.scope": "abcff22787dc226dcfc01f96c4e024738f53869e",
+    ".beads/interactions.jsonl": "78cb47faa4b75aa8c2c7c7f22c0f0b2121c3e939",
+    "ai-memory/insights.md": "946576cc70c37c996d1a93e21aef0ec909eeda80",
+    "tests/legacyCombatBackdropContract.test.js": "a71e57ad5e1a89e1f2a127798f0a7fe34ec567e6",
+    "web-runner/systems/AGENTS.md": "d9677cf924fb7fc82395b43ca2f5a34128a92377",
+    "web-runner/systems/renderRuntime.js": "1248ec94eac8dd7c75cd6ff0509fbbd6cbc80f99"
+  }
+}

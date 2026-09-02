@@ -512,7 +512,9 @@
 ## 2026-08-11 - Manual Enemy Targets Need Actor And Slot Ownership
 - Store a manual enemy choice with the hero who made it and the enemy's slot identity. Revalidate both when the attack resolves so a later hero or a refill enemy cannot inherit stale target state.
 - Targeting QA must compare the selected marker, queued hit, damage presentation, and HP loss. Speed ordering is a separate check; effective Speed does not grant automatic bonus actions.
-
 ## 2026-09-01 - Late Overlays Must Join The Canvas Projection
 - Z order can correlate with a scaling regression without causing it. Check whether late Canvas sprites cached authored dimensions before layout data loaded and whether DOM overlays bypass the active layout scale.
 - Story and town fallback screens, modal panels, selectors, action controls, and damage numbers must consume the same measured scale as actors, gems, bars, and hit zones. Validate the earliest fallback screen before entering combat.
+
+## 2026-09-01 - Hidden Legacy Combat Text Must Not Leave Its Backdrop
+- When a legacy combat text group is disabled, remove its companion fill-and-stroke panel from the same render path. Otherwise the empty frame remains visible behind active arena art.
