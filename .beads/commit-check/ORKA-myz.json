@@ -1,28 +1,75 @@
 {
   "changed_functions": {
-    "ai-memory/insights.md": [],
-    "governance/execution/validation.md": [],
-    "package.json": [],
-    "progress.md": [],
-    "tests/compactViewportContainmentContract.test.js": [],
-    "tools/AGENTS.md": [],
-    "tools/prepare_commit_check.sh": [],
-    "web-runner/AGENTS.md": [],
+    "ai-memory/insights.md": [
+      "__MODULE__"
+    ],
+    "tests/compactViewportContainmentContract.test.js": [
+      "extractExportedFunction",
+      "__MODULE__"
+    ],
+    "tests/damageTextPaletteContract.test.js": [
+      "read"
+    ],
+    "tests/startupLoadingBarContract.test.js": [
+      "__MODULE__"
+    ],
+    "web-runner/app.js": [
+      "spawnPendingDamageNumbers",
+      "prepareCombatSetupFromInstances",
+      "findAssetInstance",
+      "refreshCombatOverlayAssetSizes",
+      "moveUp",
+      "bottom",
+      "__MODULE__"
+    ],
+    "web-runner/index.html": [
+      "__MODULE__"
+    ],
+    "web-runner/src/core/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/src/core/damageNumberAnimation.mjs": [
+      "createDamageNumber",
+      "cleanup",
+      "drawGlyph"
+    ],
     "web-runner/systems/AGENTS.md": [
       "__MODULE__"
     ],
-    "web-runner/systems/combatPresentationScale.mjs": [],
-    "web-runner/systems/renderHarnessFallback.js": [],
+    "web-runner/systems/appShellViewport.js": [
+      "resizeCanvasToContainedViewport"
+    ],
+    "web-runner/systems/combatPresentationScale.mjs": [
+      "computeScaledCombatControlSize",
+      "computeCombatDamageFontSize"
+    ],
+    "web-runner/systems/combatTurnQaReadout.mjs": [
+      "renderCombatTurnQaReadoutHtml"
+    ],
+    "web-runner/systems/devToolingRuntime.js": [
+      "ensureDevToolingModal"
+    ],
+    "web-runner/systems/renderHarnessFallback.js": [
+      "setFittedCanvasFont",
+      "drawCenteredTextLayout",
+      "renderHarnessFallback"
+    ],
     "web-runner/systems/renderRuntime.js": [
-      "renderRuntime"
+      "renderRuntime",
+      "__MODULE__"
+    ],
+    "web-runner/systems/surfaceRenderRouter.js": [
+      "createSurfaceRenderRouter",
+      "draw"
     ]
   },
   "details": {
     "hot_files_touched": [
+      "web-runner/app.js",
       "web-runner/systems/renderRuntime.js"
     ],
-    "staged_file_count": 12,
-    "staged_line_count": 3,
+    "staged_file_count": 16,
+    "staged_line_count": 219,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -31,33 +78,41 @@
   },
   "files": [
     "ai-memory/insights.md",
-    "governance/execution/validation.md",
-    "package.json",
-    "progress.md",
     "tests/compactViewportContainmentContract.test.js",
-    "tools/AGENTS.md",
-    "tools/prepare_commit_check.sh",
-    "web-runner/AGENTS.md",
+    "tests/damageTextPaletteContract.test.js",
+    "tests/startupLoadingBarContract.test.js",
+    "web-runner/app.js",
+    "web-runner/index.html",
+    "web-runner/src/core/AGENTS.md",
+    "web-runner/src/core/damageNumberAnimation.mjs",
     "web-runner/systems/AGENTS.md",
+    "web-runner/systems/appShellViewport.js",
     "web-runner/systems/combatPresentationScale.mjs",
+    "web-runner/systems/combatTurnQaReadout.mjs",
+    "web-runner/systems/devToolingRuntime.js",
     "web-runner/systems/renderHarnessFallback.js",
-    "web-runner/systems/renderRuntime.js"
+    "web-runner/systems/renderRuntime.js",
+    "web-runner/systems/surfaceRenderRouter.js"
   ],
   "issue_id": "ORKA-myz",
   "out_of_scope_hot_file_touch": false,
   "significant": true,
   "staged_blobs": {
-    "ai-memory/insights.md": "9278cfa6d71876e7c9e269b0af2d416d5298f8d0",
-    "governance/execution/validation.md": "de45fa5a9e02c697345b6a896420cf353abbeb43",
-    "package.json": "078c98063f20caec2712207e5acb5b1dc0c89042",
-    "progress.md": "36488e74e1ae84edf8bb32f2e3c85ada86e840ee",
-    "tests/compactViewportContainmentContract.test.js": "75fb8a8c9e15e5a74520484b45772ee1140c2bb6",
-    "tools/AGENTS.md": "b270dcec6b39ddae1f9a97c6afa380aed2d7a0aa",
-    "tools/prepare_commit_check.sh": "8241af2a7cc4680c6736aa39407b78b03d87847e",
-    "web-runner/AGENTS.md": "98e03d01d54f1dd2b8d862bd90848d3c250f0ba1",
-    "web-runner/systems/AGENTS.md": "8ab67565a80cacdd5b685cb1a6db4d5097d31c4f",
-    "web-runner/systems/combatPresentationScale.mjs": "fbc830f02542839487286990f77ea873aafef5f8",
-    "web-runner/systems/renderHarnessFallback.js": "05b96df94dd04bd55fd070d5b7ff6e0ee805024e",
-    "web-runner/systems/renderRuntime.js": "b9e9db7ab0ce0163f400307e3cea2c6d261534e7"
+    "ai-memory/insights.md": "1774a8835f930bdea0aba05dced04eb4ce358403",
+    "tests/compactViewportContainmentContract.test.js": "4bf7bdfaa5eb1dd6b36fd3c79221022123e77f3a",
+    "tests/damageTextPaletteContract.test.js": "d0cf85ec9d9af8fa56b37b9e734c78f8615f9dab",
+    "tests/startupLoadingBarContract.test.js": "6073ccb85d3373df3fb5eea1c3c99e2814ecb424",
+    "web-runner/app.js": "23e52d849337dd52d6336f9da7cf92760181033b",
+    "web-runner/index.html": "39d2c35e70d3ac6be06aa086643f64414fb3050e",
+    "web-runner/src/core/AGENTS.md": "3c0e3972acc25f6649c3f245a9212b776ec603a1",
+    "web-runner/src/core/damageNumberAnimation.mjs": "2b044d8e45db687921242475f4ce115b32239a0a",
+    "web-runner/systems/AGENTS.md": "aa2ccca67cf6b36d6bebede2e5fc83bc339c3cb4",
+    "web-runner/systems/appShellViewport.js": "ab479b60a49312e2baeb46fd48e2285e9fa4214e",
+    "web-runner/systems/combatPresentationScale.mjs": "34d4e78c1a3ad0f171773893b05724d563f8b5b8",
+    "web-runner/systems/combatTurnQaReadout.mjs": "78c380621c604348bfc3dcd1530c7a740f0d22ae",
+    "web-runner/systems/devToolingRuntime.js": "6deeb1bb1d448f45fc41528135ebb9792908a3d7",
+    "web-runner/systems/renderHarnessFallback.js": "da3994e2f400561bccb50f08ab10402416813579",
+    "web-runner/systems/renderRuntime.js": "b82e2202de114ac287d27d067298efb2de7ba93f",
+    "web-runner/systems/surfaceRenderRouter.js": "917040fa04628b307f00507e220cc14b57e0ec09"
   }
 }

@@ -112,7 +112,7 @@ export function resizeCanvasToContainedViewport({ canvas, layoutW, layoutH, win 
     docEl.style.setProperty('--orka-control-scale', String(controlScale));
     docEl.style.setProperty('--orka-control-right', `${10 * controlScale}px`);
     docEl.style.setProperty('--orka-dev-top', `${10 * controlScale}px`);
-    docEl.style.setProperty('--orka-dev2-top', `${44 * controlScale}px`);
+    docEl.style.setProperty('--orka-dev2-top', `${30 * controlScale}px`);
   }
   const dpr = Math.max(1, Number(win.devicePixelRatio) || 1);
   canvas.style.width = `${stage.width}px`;

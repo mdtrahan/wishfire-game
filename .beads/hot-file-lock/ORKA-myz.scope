@@ -1,1 +1,2 @@
-web-runner/systems/renderRuntime.js:renderRuntime
+web-runner/app.js:spawnPendingDamageNumbers,prepareCombatSetupFromInstances,findAssetInstance,refreshCombatOverlayAssetSizes,moveUp,bottom,__MODULE__
+web-runner/systems/renderRuntime.js:renderRuntime,__MODULE__

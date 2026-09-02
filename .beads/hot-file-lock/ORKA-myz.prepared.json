@@ -1,10 +1,23 @@
 {
   "hot_files": {
+    "web-runner/app.js": {
+      "functions": [
+        "spawnPendingDamageNumbers",
+        "prepareCombatSetupFromInstances",
+        "findAssetInstance",
+        "refreshCombatOverlayAssetSizes",
+        "moveUp",
+        "bottom",
+        "__MODULE__"
+      ],
+      "staged_blob": "23e52d849337dd52d6336f9da7cf92760181033b"
+    },
     "web-runner/systems/renderRuntime.js": {
       "functions": [
-        "renderRuntime"
+        "renderRuntime",
+        "__MODULE__"
       ],
-      "staged_blob": "b9e9db7ab0ce0163f400307e3cea2c6d261534e7"
+      "staged_blob": "b82e2202de114ac287d27d067298efb2de7ba93f"
     }
   },
   "issue_id": "ORKA-myz"

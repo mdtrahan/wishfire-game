@@ -132,7 +132,9 @@ test('damage floating text disperses upward and damage tiers scale by amount', (
   assert.match(animationSrc, /const isWeakDamage = normalizedKind === 'damage' && Number\(amount\) < 10;/);
   assert.match(animationSrc, /const isLargeDamage = normalizedKind === 'damage'\s*\n\s*&& Number\(partyMaxHP\) > 0\s*\n\s*&& Number\(amount\) > Number\(partyMaxHP\) \* 0\.5;/);
   assert.match(animationSrc, /const damageFontSize = 28;/);
-  assert.match(animationSrc, /const fontSize = isWeakDamage\s*\n\s*\? damageFontSize \* 0\.75\s*\n\s*: \(isLargeDamage \? damageFontSize \* 1\.2 : damageFontSize\);/);
+  assert.match(animationSrc, /const tierFontSize = isWeakDamage\s*\n\s*\? damageFontSize \* 0\.75\s*\n\s*: \(isLargeDamage \? damageFontSize \* 1\.2 : damageFontSize\);/);
+  assert.match(animationSrc, /const fontSize = Math\.max\(1, Number\(displayFontSize\) \|\| tierFontSize\);/);
+  assert.match(appSrc, /displayFontSize: computeCombatDamageFontSize\(\{/);
   assert.match(animationSrc, /const fallbackVector = deriveDamageFloatVector\(\{/);
   assert.match(animationSrc, /const floatX = Number\.isFinite\(Number\(floatVector && floatVector\.x\)\)/);
   assert.match(animationSrc, /const floatY = Number\.isFinite\(Number\(floatVector && floatVector\.y\)\)/);

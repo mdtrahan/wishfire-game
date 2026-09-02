@@ -42,6 +42,7 @@ export function createDamageNumber({
   text,
   amount,
   partyMaxHP = 0,
+  displayFontSize = null,
   floatAngleDeg = 0,
   x,
   y,
@@ -116,11 +117,15 @@ export function createDamageNumber({
     && Number(partyMaxHP) > 0
     && Number(amount) > Number(partyMaxHP) * 0.5;
   const damageFontSize = 28;
-  const fontSize = isWeakDamage
+  const tierFontSize = isWeakDamage
     ? damageFontSize * 0.75
     : (isLargeDamage ? damageFontSize * 1.2 : damageFontSize);
-  const approxWidth = Math.max(72, Math.ceil(value.length * 24 + 40));
-  const approxHeight = 72;
+  const fontSize = Math.max(1, Number(displayFontSize) || tierFontSize);
+  const approxWidth = Math.max(
+    Math.ceil(fontSize * 2.6),
+    Math.ceil(value.length * fontSize * 0.86 + fontSize * 1.4),
+  );
+  const approxHeight = Math.max(12, Math.ceil(fontSize * 2.6));
   const numberText = document.createElement('canvas');
   numberText.width = approxWidth;
   numberText.height = approxHeight;
@@ -152,7 +157,7 @@ export function createDamageNumber({
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.strokeStyle = '#0f0f0f';
-    ctx.lineWidth = 5;
+    ctx.lineWidth = Math.max(1.5, fontSize * 0.18);
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;

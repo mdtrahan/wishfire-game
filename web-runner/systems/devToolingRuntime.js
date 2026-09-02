@@ -618,6 +618,8 @@ export function createDevToolingRuntime(deps = {}) {
       'box-shadow:0 18px 48px rgba(0,0,0,0.4)',
       'font:12px/1.4 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       'color:#111827',
+      'transform:scale(var(--orka-control-scale, 1))',
+      'transform-origin:center',
     ].join(';');
     panel.innerHTML = `
       <style>
@@ -736,9 +738,9 @@ export function createDevToolingRuntime(deps = {}) {
       'border:1px solid #1f2937',
       'background:#f8fafc',
       'color:#111827',
-      'padding:6px 10px',
+      'padding:4px 6px',
       'border-radius:999px',
-      'font:700 11px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      'font:700 8px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       'cursor:pointer',
       'box-shadow:0 4px 12px rgba(0,0,0,0.18)',
       'transform:scale(var(--orka-control-scale, 1))',
