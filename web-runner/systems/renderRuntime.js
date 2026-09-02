@@ -74,6 +74,10 @@ export function renderRuntime(deps) {
         "spawnPendingDamageNumbers(projectCombatDamageWorldToCanvas, layoutScale);",
       )
       .replace(
+        "    if (!movedRadiatorsToSidebar) {\n      drawRadiatorPanel(radiatorPanels.track);\n    }\n",
+        "",
+      )
+      .replace(
         "const scaleFont = (size) => Math.max(8, Math.round(size * layoutScale));\n    const navFontBoost = Math.max(2, Math.round(2 * layoutScale));",
         "const scaleFont = (size) => computeViewportFontSize(size, layoutScale);\n    const navFontBoost = computeViewportFontSize(2, layoutScale, 1);",
       )

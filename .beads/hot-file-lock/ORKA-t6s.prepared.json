@@ -1,0 +1,11 @@
+{
+  "hot_files": {
+    "web-runner/systems/renderRuntime.js": {
+      "functions": [
+        "renderRuntime"
+      ],
+      "staged_blob": "e445efdcefebde78cf103efd1978541f6b03a21f"
+    }
+  },
+  "issue_id": "ORKA-t6s"
+}
