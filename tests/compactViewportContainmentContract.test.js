@@ -53,6 +53,8 @@ test('viewport runtime scales launchers without reserving layout width', () => {
   const src = read('web-runner/systems/appShellViewport.js');
   assert.match(src, /appShell\.style\.paddingInlineEnd = ''/);
   assert.match(src, /--orka-control-scale/);
+  assert.match(src, /--orka-control-viewport-width/);
+  assert.match(src, /--orka-control-viewport-height/);
   assert.match(src, /const rightGutterWidth = Math\.max\(0, \(viewport\.width - stage\.width\) \/ 2\);/);
   assert.match(src, /const controlRight = rightGutterWidth > 0 \? 0 : 10 \* controlScale;/);
   assert.match(src, /--orka-control-right', `\$\{controlRight\}px`/);
@@ -73,6 +75,10 @@ test('both developer launchers consume the shared compact control scale', () => 
   assert.match(devTooling, /'font:700 8px\/1/);
   assert.match(html, /\.dev2-panel\{[\s\S]*transform:scale\(var\(--orka-control-scale,1\)\)/);
   assert.match(devTooling, /'transform:scale\(var\(--orka-control-scale, 1\)\)'/);
+  assert.match(html, /width:min\(760px,var\(--orka-control-viewport-width/);
+  assert.match(devTooling, /width:min\(520px, var\(--orka-control-viewport-width/);
+  assert.match(html, /\.dev2-panel\{\s*flex:none/);
+  assert.match(devTooling, /'flex:none'/);
   assert.match(read('web-runner/systems/appShellViewport.js'), /--orka-dev2-top', `\$\{30 \* controlScale\}px`/);
 });
 
@@ -87,6 +93,7 @@ test('developer panels permit vertical scrolling without horizontal overflow', (
   assert.match(turnQa, /word-break:break-word/);
   assert.match(html, /overflow-wrap:anywhere/);
   assert.match(devTooling, /min-height:28px/);
+  assert.match(devTooling, /data-devtool-title[\s\S]*white-space:nowrap/);
 });
 
 test('skill cards, progress bars, and damage bitmaps obey the presentation scale', () => {
