@@ -608,8 +608,9 @@ export function createDevToolingRuntime(deps = {}) {
     ].join(';');
     const panel = document.createElement('div');
     panel.style.cssText = [
-      'width:min(520px, calc(100vw - 32px))',
-      'max-height:88vh',
+      'flex:none',
+      'width:min(520px, var(--orka-control-viewport-width, calc(100vw - 32px)))',
+      'max-height:var(--orka-control-viewport-height, 88dvh)',
       'overflow:auto',
       'padding:18px',
       'border-radius:14px',
@@ -646,7 +647,7 @@ export function createDevToolingRuntime(deps = {}) {
       </style>
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;">
         <div>
-          <div style="font-size:18px;font-weight:800;">Dev Tooling Modal</div>
+          <div data-devtool-title style="font-size:18px;font-weight:800;white-space:nowrap;">Dev Tooling Modal</div>
         </div>
         <button type="button" data-devtool-close style="border:1px solid #334155;background:#ffffff;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Close</button>
       </div>

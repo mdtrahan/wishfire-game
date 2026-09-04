@@ -76,6 +76,8 @@ export function resizeCanvasToContainedViewport({ canvas, layoutW, layoutH, win 
   const docEl = win.document && win.document.documentElement;
   if (docEl && docEl.style && typeof docEl.style.setProperty === 'function') {
     docEl.style.setProperty('--orka-control-scale', String(controlScale));
+    docEl.style.setProperty('--orka-control-viewport-width', `${Math.max(1, viewport.width - 32) / controlScale}px`);
+    docEl.style.setProperty('--orka-control-viewport-height', `${viewport.height * 0.88 / controlScale}px`);
     docEl.style.setProperty('--orka-control-right', `${controlRight}px`);
     docEl.style.setProperty('--orka-dev-top', `${10 * controlScale}px`);
     docEl.style.setProperty('--orka-dev2-top', `${30 * controlScale}px`);

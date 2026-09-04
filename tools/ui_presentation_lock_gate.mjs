@@ -18,6 +18,7 @@ const viewports = [
   { name: 'compact', width: 216, height: 384, dpr: 1 },
   { name: 'reference', width: 360, height: 640, dpr: 1 },
   { name: 'natural-preview', width: 316, height: 452, dpr: 1 },
+  { name: 'live-narrow', width: 233, height: 452, dpr: 1 },
   { name: 'compact-retina', width: 216, height: 384, dpr: 2 },
 ];
 const focusedContracts = [
@@ -400,10 +401,13 @@ async function captureDevPanels(page, viewport, artifactDir, metrics) {
     const root = document.getElementById('orka-dev-tooling-modal');
     const panel = root?.firstElementChild;
     const close = panel?.querySelector('[data-devtool-close]');
+    const title = panel?.querySelector('[data-devtool-title]');
     const actions = panel?.querySelector('[data-devtool-button-row]');
     const settings = panel?.querySelector('[data-devtool-control-grid]');
     const box = panel?.getBoundingClientRect();
     const actionBox = panel?.querySelector('[data-devtool-apply]')?.getBoundingClientRect();
+    const titleBox = title?.getBoundingClientRect();
+    const closeBox = close?.getBoundingClientRect();
     return {
       rect: box ? { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height } : null,
       scrollWidth: panel?.scrollWidth || 0,
@@ -411,6 +415,8 @@ async function captureDevPanels(page, viewport, artifactDir, metrics) {
       scrollHeight: panel?.scrollHeight || 0,
       clientHeight: panel?.clientHeight || 0,
       actionButton: actionBox ? { width: actionBox.width, height: actionBox.height } : null,
+      title: titleBox ? { right: titleBox.right, height: titleBox.height, whiteSpace: getComputedStyle(title).whiteSpace } : null,
+      close: closeBox ? { left: closeBox.left } : null,
       order: { close: close?.compareDocumentPosition(actions) || 0, actions: actions?.compareDocumentPosition(settings) || 0 },
     };
   });
@@ -441,22 +447,23 @@ async function captureDevPanels(page, viewport, artifactDir, metrics) {
     && panel.rect.bottom <= viewport.height + 1
     && panel.scrollWidth <= panel.clientWidth + 1
   );
-  const panelWidthMatches = (panel) => within(
-    (panel.rect?.width || 0) / metrics.controlScale,
-    metrics.viewport.width - APPROVED.panels.gutterPx,
+  const panelWidthMatches = (panel, maximumWidth) => within(
+    panel.rect?.width || 0,
+    Math.min(maximumWidth * metrics.controlScale, metrics.viewport.width - APPROVED.panels.gutterPx),
     APPROVED.panels.widthTolerancePx,
   );
   const follows = 4;
   return [
     invariant('dev-launcher-scale', launcherPass, { launchers: launcherResults, canvasRight, canvasIsNarrowerThanViewport }, { ...APPROVED.launchers, narrowCanvasUsesRightGutter: true }),
-    invariant('dev-panel-1-containment', contained(panel1) && panelWidthMatches(panel1), panel1, { fullyInsideViewport: true, horizontalOverflowPx: 0, normalizedWidth: 'viewport minus 32px gutter' }),
+    invariant('dev-panel-1-containment', contained(panel1) && panelWidthMatches(panel1, 520), panel1, { fullyInsideViewport: true, horizontalOverflowPx: 0, physicalWidth: 'viewport minus 32px gutter' }),
+    invariant('dev-panel-1-title-single-line', panel1.title?.whiteSpace === 'nowrap' && panel1.close && panel1.title.right <= panel1.close.left + 1, { title: panel1.title, close: panel1.close }, { whiteSpace: 'nowrap', clearsCloseButton: true }),
     invariant(
       'dev-panel-1-action-scale',
       within((panel1.actionButton?.height || 0) / metrics.controlScale, APPROVED.panels.actionHeightPx, APPROVED.panels.actionTolerancePx),
       { ...panel1.actionButton, normalizedHeight: (panel1.actionButton?.height || 0) / metrics.controlScale },
       APPROVED.panels,
     ),
-    invariant('dev-panel-2-containment', contained(panel2) && panelWidthMatches(panel2), panel2, { fullyInsideViewport: true, horizontalOverflowPx: 0, normalizedWidth: 'viewport minus 32px gutter' }),
+    invariant('dev-panel-2-containment', contained(panel2) && panelWidthMatches(panel2, 760), panel2, { fullyInsideViewport: true, horizontalOverflowPx: 0, physicalWidth: 'viewport minus 32px gutter' }),
     invariant(
       'dev-panel-1-action-order',
       Boolean((panel1.order.close & follows) && (panel1.order.actions & follows)),
@@ -704,7 +711,7 @@ async function runViewport(browser, baseUrl, viewport, artifactDir, { injectStag
     await page.evaluate(() => {
       const style = document.createElement('style');
       style.id = 'orka-ui-lock-rejection-drift';
-      style.textContent = '#view { transform: scale(1.1) !important; transform-origin: top left !important; }';
+      style.textContent = '#view { transform: scale(1.1) !important; transform-origin: top left !important; } #orka-dev-tooling-modal > div, .dev2-panel { width:50% !important; }';
       document.head.appendChild(style);
     });
   }
@@ -731,16 +738,17 @@ async function runRejectionProof(browser, baseUrl, artifactDir) {
   const run = await runViewport(
     browser,
     baseUrl,
-    viewports.find((viewport) => viewport.name === 'reference'),
+    viewports.find((viewport) => viewport.name === 'live-narrow'),
     artifactDir,
     { injectStageDrift: true },
   );
   const failures = run.invariants.filter((entry) => !entry.pass);
   const stageFailure = failures.find((entry) => entry.name === 'stage-contained-reference-aspect');
-  if (!stageFailure) {
-    throw new Error(`UI lock rejected no stage drift: ${JSON.stringify(failures)}`);
+  const panelFailure = failures.find((entry) => entry.name === 'dev-panel-1-containment');
+  if (!stageFailure || !panelFailure) {
+    throw new Error(`UI lock rejected no stage or panel drift: ${JSON.stringify(failures)}`);
   }
-  return { pass: true, expectedFailure: stageFailure, allFailures: failures };
+  return { pass: true, expectedFailures: [stageFailure, panelFailure], allFailures: failures };
 }
 
 async function main() {
@@ -813,7 +821,7 @@ async function main() {
   }
   const total = report.runs.reduce((sum, run) => sum + run.invariants.length, 0);
   console.log(`[UI_LOCK_PASS] ${total}/${total} rendered invariants passed`);
-  if (report.rejectionProof?.pass) console.log('[UI_LOCK_REJECTION_PROOF_PASS] intentional stage drift was rejected');
+  if (report.rejectionProof?.pass) console.log('[UI_LOCK_REJECTION_PROOF_PASS] intentional stage and panel drift were rejected');
   console.log(`[UI_LOCK_REPORT] ${reportPath}`);
 }
 

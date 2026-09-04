@@ -22,6 +22,7 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
     'stage-contained-reference-aspect',
     'dev-launcher-scale',
     'dev-panel-1-containment',
+    'dev-panel-1-title-single-line',
     'dev-panel-1-action-scale',
     'dev-panel-2-containment',
     'dev-panel-1-action-order',
@@ -46,6 +47,7 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
   assert.match(gate, /\{ name: 'compact', width: 216, height: 384, dpr: 1 \}/);
   assert.match(gate, /\{ name: 'reference', width: 360, height: 640, dpr: 1 \}/);
   assert.match(gate, /\{ name: 'natural-preview', width: 316, height: 452, dpr: 1 \}/);
+  assert.match(gate, /\{ name: 'live-narrow', width: 233, height: 452, dpr: 1 \}/);
   assert.match(gate, /\{ name: 'compact-retina', width: 216, height: 384, dpr: 2 \}/);
   assert.match(gate, /CanvasRenderingContext2D\.prototype\.drawImage/);
   assert.match(gate, /CanvasRenderingContext2D\.prototype\.fillText/);
