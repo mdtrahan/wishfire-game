@@ -7,6 +7,12 @@ import {
   orientCombatWorldOffsetX,
 } from '../../src/core/combatOrientation.mjs';
 import { drawCombatActorSprite } from './combatActorSpritePresentation.mjs';
+import {
+  computeCombatDamageFontSize,
+  computeScaledCombatControlSize,
+  computeViewportFontSize,
+  fitCanvasText,
+} from './combatPresentationScale.mjs';
 
 let renderImpl = null;
 
@@ -18,6 +24,10 @@ export function renderRuntime(deps) {
   deps.normalizeCombatOrientation = normalizeCombatOrientation;
   deps.orientCombatWorldOffsetX = orientCombatWorldOffsetX;
   deps.drawCombatActorSprite = drawCombatActorSprite;
+  deps.computeCombatDamageFontSize = computeCombatDamageFontSize;
+  deps.computeScaledCombatControlSize = computeScaledCombatControlSize;
+  deps.computeViewportFontSize = computeViewportFontSize;
+  deps.fitCanvasText = fitCanvasText;
   if (!renderImpl) {
     const body = [
       // Generated body chunks; preserve joined payload byte-for-byte.
@@ -59,6 +69,54 @@ export function renderRuntime(deps) {
       "            visuals.splice(i, 1);\n            continue;\n          }\n          const startAt = Number(visual.startAt || nowTime);\n          const duration = Math.max(0.12, Number(visual.duration || 0.28));\n          if (nowTime > startAt + duration + 0.18) {\n            visuals.splice(i, 1);\n            continue;\n          }\n          if (!chainImg) continue;\n          const from = enemyAnchor(visual.sourceTargetUID);\n          const to = enemyAnchor(visual.targetUID);\n          if (!from || !to) continue;\n          const progress = Math.max(0, Math.min(1, (nowTime - startAt) / duration));\n          const alpha = Math.max(0, Math.min(0.95, Math.sin(progress * Math.PI) * 0.9 + (progress > 0 && progress < 1 ? 0.05 : 0)));\n          if (alpha <= 0) continue;\n          const sameTarget = Number(visual.sourceTargetUID || 0) === Number(visual.targetUID || 0);\n          ctx.save();\n          ctx.globalAlpha = alpha;\n          ctx.shadowColor = 'rgba(105, 235, 255, 0.52)';\n          ctx.shadowBlur = Math.max(8, 14 * layoutScale);\n          if (sameTarget) {\n            const w = Math.max(64, 90 * layoutScale);\n            const h = Math.max(22, 32 * layoutScale);\n            ctx.translate(to.x, to.y - Math.max(4, 5 * layoutScale));\n            ctx.rotate(-0.18 + Math.sin(nowTime * 18) * 0.08);\n            ctx.drawImage(chainImg, -w * 0.5, -h * 0.5, w, h);\n          } else {\n            const dx = to.x - from.x;\n            const dy = to.y - from.y;\n            const distance = Math.max(1, Math.sqrt(dx * dx + dy * dy));\n            const angle = Math.atan2(dy, dx);\n            const ribbonW = Math.max(24, (distance + 18 * layoutScale) * Math.max(0.18, progress));\n            const ribbonH = Math.max(22, Math.min(42, 32 * layoutScale));\n            const cropW = Math.max(1, chainImg.width * Math.max(0.18, progress));\n            ctx.translate(from.x, from.y);\n            ctx.rotate(angle);\n            ctx.drawImage(chainImg, 0, 0, cropW, chainImg.height, -8 * layoutScale, -ribbonH * 0.5, ribbonW, ribbonH);\n          }\n          ctx.restore();\n        }\n        if (visuals.length === 0) delete g.ChainStrikeVisuals;\n      }\n    }\n\n    const renderArcanePulseVisuals = () => {\n      const pulses = Array.isArray(state.globals.ArcanePulseVisuals) ? state.globals.ArcanePulseVisuals : [];\n      if (!pulses.length) return;\n      const img = images.SkillArcanePulse || null;\n      const nowPulse = Number(state.globals.time || 0);\n      state.globals.ArcanePulseVisuals = pulses.filter((pulse) => {\n        if (!pulse) return false;\n        const startAt = Number(pulse.startAt || 0);\n        const impactAt = Number(pulse.impactAt || startAt);\n        const endAt = impactAt + 0.28;\n        if (nowPulse > endAt) return false;\n        if (nowPulse < startAt) return true;\n        const duration = Math.max(0.001, impactAt - startAt);\n        const travelT = Math.max(0, Math.min(1, (nowPulse - startAt) / duration));\n        const source = worldToCanvas(Number(pulse.sourceX || 0), Number(pulse.sourceY || 0));\n        const target = worldToCanvas(Number(pulse.targetX || 0), Number(pulse.targetY || 0));\n        const shape = String(pulse.shape || 'crescent_arc_blast');\n        const ease = 1 - Math.pow(1 - travelT, 3);\n        const dx = target.x - source.x;\n        const dy = target.y - source.y;\n        const angle = Math.atan2(dy, dx);\n        const distance = Math.max(1, Math.hypot(dx, dy));\n        const impactT = Math.max(0, Math.min(1, (nowPulse - impactAt) / 0.28));\n        const surgeAlpha = Math.max(0, Math.min(0.95, travelT < 1 ? 0.18 + ease * 0.77 : 1 - impactT));\n        const frontRadius = Math.max(18 * layoutScale, Math.min(distance * 1.06, distance * (0.16 + ease * 0.9)));\n        const spread = Math.max(0.3, Math.min(0.66, 0.52 - ease * 0.12));\n        const arcWidth = Math.max(5, 9 * layoutScale) * (1 - impactT * 0.35);\n        ctx.save();\n        ctx.globalCompositeOperation = 'screen';\n        ctx.translate(source.x, source.y);\n        ctx.rotate(angle);\n        ctx.lineCap = 'round';\n        ctx.shadowColor = 'rgba(52, 218, 255, 0.52)';\n        ctx.shadowBlur = Math.max(5, 14 * layoutScale);\n        const drawCrescentArc = (radius, width, alpha, phaseOffset) => {\n",
       "          if (radius <= 0 || alpha <= 0) return;\n          const grad = ctx.createLinearGradient(Math.max(0, radius - 72 * layoutScale), 0, radius + 12 * layoutScale, 0);\n          grad.addColorStop(0, 'rgba(86, 42, 185, 0)');\n          grad.addColorStop(0.38, 'rgba(139, 83, 255, 0.5)');\n          grad.addColorStop(1, 'rgba(117, 238, 255, 0.95)');\n          ctx.globalAlpha = Math.max(0, Math.min(1, alpha));\n          ctx.strokeStyle = grad;\n          ctx.lineWidth = Math.max(1, width);\n          ctx.beginPath();\n          ctx.arc(0, phaseOffset, radius, -spread, spread);\n          ctx.stroke();\n        };\n        if (shape === 'crescent_arc_blast') {\n          drawCrescentArc(frontRadius, arcWidth, surgeAlpha, 0);\n          drawCrescentArc(frontRadius - 13 * layoutScale, arcWidth * 0.58, surgeAlpha * 0.48, -2 * layoutScale);\n          drawCrescentArc(frontRadius + 7 * layoutScale, arcWidth * 0.42, surgeAlpha * 0.34, 2 * layoutScale);\n        }\n        if (img) {\n          const textureSize = Math.max(40, 62 * layoutScale) * (0.92 + ease * 0.22);\n          ctx.save();\n          ctx.globalAlpha = surgeAlpha * 0.16;\n          ctx.translate(frontRadius, 0);\n          ctx.scale(1.85, 0.48);\n          ctx.drawImage(img, -textureSize / 2, -textureSize / 2, textureSize, textureSize);\n          ctx.restore();\n        }\n        ctx.restore();\n        return true;\n      });\n    };\n    renderArcanePulseVisuals();\n\n    // Render non-hero damage text above gameplay\n    renderDamageTexts(d => d.targetKind !== 'hero');\n\n    // draw HUD overlay (game state)\n    drawHUD();\n\n    runtimeArtifacts.presentationPatches = Object.keys(presentationPatches).length ? presentationPatches : null;\n    runtimeArtifacts.visualControlPatches = Object.keys(visualControlPatches).length ? visualControlPatches : null;\n    return runtimeArtifacts;\n  "
     ].join("")
+      .replace(
+        "spawnPendingDamageNumbers(worldToCanvas);",
+        "spawnPendingDamageNumbers(projectCombatDamageWorldToCanvas, layoutScale);",
+      )
+      .replace(
+        "const barH = partyBar.h;",
+        "const barH = Math.min(partyBar.h, 8 * layoutScale);",
+      )
+      .replace(
+        "    if (!movedRadiatorsToSidebar) {\n      drawRadiatorPanel(radiatorPanels.track);\n    }\n",
+        "",
+      )
+      .replace(
+        "const scaleFont = (size) => Math.max(8, Math.round(size * layoutScale));\n    const navFontBoost = Math.max(2, Math.round(2 * layoutScale));",
+        "const scaleFont = (size) => computeViewportFontSize(size, layoutScale);\n    const navFontBoost = computeViewportFontSize(2, layoutScale, 1);",
+      )
+      .replaceAll(
+        "const fontSize = scaleFont(baseSize) + (navTextTypes.has(r.inst.type) ? navFontBoost : 0);",
+        "const fontSize = computeViewportFontSize(baseSize + (navTextTypes.has(r.inst.type) ? 2 : 0), layoutScale);",
+      )
+      .replace(
+        "const storyFontSizeBase = Math.max(Math.round(18 * layoutScale), scaleFont(14));\n          const storyFontSize = Math.max(8, Math.round(storyFontSizeBase * 0.595));",
+        "const storyFontSize = computeViewportFontSize(10.71, layoutScale);",
+      )
+      .replace(
+        "const storyTextX = storySlot.x + Math.max(10, Math.round(12 * layoutScale));\n          const storyTextY = storySlot.y + (storySlot.h * 0.58);\n          const split = splitStoryCardActorSegment(text);",
+        "const storyPadding = Math.max(4, Math.round(12 * layoutScale));\n          const storyTextX = storySlot.x + storyPadding;\n          const storyTextY = storySlot.y + (storySlot.h * 0.58);\n          const storyMaximumWidth = Math.max(1, storySlot.w - (storyPadding * 2));\n          fitCanvasText(ctx, text, { baseSize: 10.71, layoutScale, maximumWidth: storyMaximumWidth, weight: 'bold' });\n          const split = splitStoryCardActorSegment(text);",
+      )
+      .replace(
+        "ctx.fillText(text, r.dx + r.w/2, r.dy + r.h/2 + 5);\n      } else if(r.isButton){",
+        "const textX = r.dx + r.w / 2;\n        const textY = r.dy + r.h / 2 + Math.max(2, Math.round(5 * layoutScale));\n        const textMaximumWidth = Math.max(1, r.w);\n        fitCanvasText(ctx, text, { baseSize: baseSize + (navTextTypes.has(r.inst.type) ? 2 : 0), layoutScale, maximumWidth: textMaximumWidth });\n        ctx.fillText(text, textX, textY);\n      } else if(r.isButton){",
+      )
+      .replace(
+        "const isWeakDamage = damageTextType === 'damage' && Number(d.amount) < 10;\n        const isLargeDamage = damageTextType === 'damage' && Number(d.partyMaxHP) > 0 && Number(d.amount) > Number(d.partyMaxHP) * 0.5;\n        const fontBaseSize = isWeakDamage ? 22 * 0.75 : (isLargeDamage ? 22 * 1.2 : (d.isCrit ? 26 : 22));\n        const fontSize = isWeakDamage ? scaleFont(fontBaseSize) : Math.max(scaleFont(fontBaseSize), 12);",
+        "const fontSize = computeCombatDamageFontSize({ amount: d.amount, partyMaxHP: d.partyMaxHP, isCrit: d.isCrit, damageType: damageTextType, layoutScale });",
+      )
+      .replace(
+        "const controlScale = Math.max(0.7, Math.min(layoutScale, 1));\n              const bob = 2.2 * controlScale * pulse;\n              const rawSelW = (selectorAsset ? selectorAsset.width : selectorImg.width) * controlScale * selScale;\n              const rawSelH = (selectorAsset ? selectorAsset.height : selectorImg.height) * controlScale * selScale;\n              const selW = Math.max(12, Math.min(46, rawSelW));\n              const selH = Math.max(8, Math.min(24, rawSelH));",
+        "const bob = 2.2 * layoutScale * pulse;\n              const selectorSize = computeScaledCombatControlSize({ sourceWidth: selectorAsset ? selectorAsset.width : 26, sourceHeight: selectorAsset ? selectorAsset.height : 14, layoutScale, pulse: selScale });\n              const selW = selectorSize.width;\n              const selH = selectorSize.height;",
+      )
+      .replace(
+        "const controlScale = Math.max(0.7, Math.min(layoutScale, 1));\n      const clampSelectorSize = (rawW, rawH) => ({\n        w: Math.max(12, Math.min(46, rawW)),\n        h: Math.max(8, Math.min(24, rawH)),\n      });",
+        "",
+      )
+      .replace(
+        "const rawSelW = (selectorAsset ? selectorAsset.width : selectorImg.width) * controlScale;\n          const rawSelH = (selectorAsset ? selectorAsset.height : selectorImg.height) * controlScale;\n          const { w: selW, h: selH } = clampSelectorSize(rawSelW, rawSelH);",
+        "const selectorSize = computeScaledCombatControlSize({ sourceWidth: selectorAsset ? selectorAsset.width : 26, sourceHeight: selectorAsset ? selectorAsset.height : 14, layoutScale });\n          const selW = selectorSize.width;\n          const selH = selectorSize.height;",
+      )
       .replace(
       "const resolvedSelectedUid = pendingHitTargetUID || selectedUid;",
         "const selectedOwnerUID = Number(state.globals.SelectedEnemyUIDOwner || 0);\n      const pendingActorUID = Number(state.globals.PendingActor || 0);\n      const ownerMatchedSelectedUid = selectedOwnerUID === pendingActorUID ? selectedUid : 0;\n      const resolvedSelectedUid = ownerMatchedSelectedUid;",

@@ -104,6 +104,10 @@ import {
 import {
   createAppViewportRuntime,
 } from './systems/appShellViewport.js';
+import {
+  computeCombatDamageFontSize,
+  computeScaledCombatControlSize,
+} from './systems/combatPresentationScale.mjs';
 import { initializeStoryCardPresentationLayout } from './systems/storyCardPresentation.js';
 import { registerRuntimeLayouts } from './systems/runtimeLayoutRegistry.js';
 import { createSurfaceRenderRouter } from './systems/surfaceRenderRouter.js';
@@ -531,7 +535,7 @@ function syncDamageNumberLayerBounds() {
   damageNumberLayer.style.height = `${rect.height}px`;
 }
 
-function spawnPendingDamageNumbers(projectToCanvas = null) {
+function spawnPendingDamageNumbers(projectToCanvas = null, presentationScale = 1) {
   const texts = state.globals.DamageTexts || [];
   if (!texts.length || typeof projectToCanvas !== 'function') return;
   ensureDamageNumberLayer();
@@ -562,6 +566,13 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
       text,
       amount: d.amount,
       partyMaxHP: d.partyMaxHP,
+      displayFontSize: computeCombatDamageFontSize({
+        amount: d.amount,
+        partyMaxHP: d.partyMaxHP,
+        isCrit,
+        damageType: domKind === 'heal' || domKind === 'energy' ? 'heal' : 'damage',
+        layoutScale: presentationScale,
+      }),
       x: pos.x,
       y: pos.y,
       kind: domKind,
@@ -2502,6 +2513,7 @@ async function main(){
     runtimeDebugLogging.startupDebugLog('[LAYOUT_AUDIT] topLevelKeys', Object.keys(layout || {}));
     runtimeDebugLogging.startupDebugLog('[INIT] Layout loaded');
     assetsLayout = runtimeLayouts.assetsLayout || null;
+    refreshCombatOverlayAssetSizes();
 
     const project = runtimeLayouts.project || { viewportWidth: 360, viewportHeight: 640 };
     viewW = project && project.viewportWidth ? project.viewportWidth : 360;
@@ -2980,7 +2992,12 @@ async function main(){
   }
 
   const assetSizes = {
-    AttackButton: (() => {
+    AttackButton: null,
+    Selector: null,
+  };
+
+  function refreshCombatOverlayAssetSizes() {
+    assetSizes.AttackButton = (() => {
       const inst = findAssetInstance('AttackButton');
       return inst && inst.world ? {
         width: inst.world.width,
@@ -2988,8 +3005,8 @@ async function main(){
         originX: inst.world.originX,
         originY: inst.world.originY
       } : null;
-    })(),
-    Selector: (() => {
+    })();
+    assetSizes.Selector = (() => {
       const inst = findAssetInstance('Selector');
       return inst && inst.world ? {
         width: inst.world.width,
@@ -2997,8 +3014,8 @@ async function main(){
         originX: inst.world.originX,
         originY: inst.world.originY
       } : null;
-    })()
-  };
+    })();
+  }
 
   // Helper to extract text content from instance data or type
   function getTextContent(inst, typeData){
@@ -3039,15 +3056,13 @@ async function main(){
     const moveUp = (asset ? asset.height : (img ? img.height : 60)) / 2;
     const worldY = 235 - moveUp;
     const pos = worldToCanvas(worldX, worldY);
-    const controlScale = Math.max(0.7, Math.min(layoutScale, 1));
-    const minW = 52;
-    const maxW = 120;
-    const minH = 22;
-    const maxH = 48;
-    const rawW = (asset ? asset.width : (img ? img.width : 120)) * controlScale;
-    const rawH = (asset ? asset.height : (img ? img.height : 60)) * controlScale;
-    const w = Math.max(minW, Math.min(maxW, rawW));
-    const h = Math.max(minH, Math.min(maxH, rawH));
+    const size = computeScaledCombatControlSize({
+      sourceWidth: asset ? asset.width : 50,
+      sourceHeight: asset ? asset.height : 25,
+      layoutScale,
+    });
+    const w = size.width;
+    const h = size.height;
     const ox = asset ? asset.originX : origin.ox;
     const oy = asset ? asset.originY : origin.oy;
     const dx = pos.x - w * ox;
@@ -3155,6 +3170,7 @@ async function main(){
     getMapTownImages: () => mapTownImages,
     renderHeroScreenLayoutV2,
     getDpr: () => dpr,
+    getLayoutScale: () => layoutScale,
     getFreshCombatBootstrapped: () => freshCombatBootstrapped,
     getStartupFingerprintLabel: () => RUNTIME_FINGERPRINT.label,
     getHeroScreenDeps: () => ({

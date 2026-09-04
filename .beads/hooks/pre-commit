@@ -42,3 +42,17 @@ else
   echo "ERROR: Missing executable tools/enforce_hot_file_scope.sh required by hot-file lock policy." >&2
   exit 1
 fi
+
+# Fail closed on presentation-owner changes. Vertical panel scrolling is allowed;
+# horizontal overflow, blown-up controls, and legacy combat chrome are not.
+# Owners: web-runner/app.js, web-runner/systems/renderRuntime.js,
+# web-runner/systems/renderSkillDraughtOverlay.js, web-runner/systems/devToolingRuntime.js,
+# web-runner/systems/combatPresentationScale.mjs, web-runner/systems/appShellViewport.js,
+# web-runner/systems/surfaceRenderRouter.js, web-runner/systems/pointerRoutingShell.js,
+# and web-runner/src/core/damageNumberAnimation.mjs.
+UI_LOCK_OWNER_PATTERN='^(package\.json|tools/ui_presentation_lock_gate\.mjs|tests/uiPresentationLockGateContract\.test\.js|web-runner/index\.html|web-runner/app\.js|web-runner/src/core/damageNumberAnimation\.mjs|web-runner/systems/renderRuntime\.js|web-runner/systems/renderSkillDraughtOverlay\.js|web-runner/systems/devToolingRuntime\.js|web-runner/systems/combatPresentationScale\.mjs|web-runner/systems/appShellViewport\.js|web-runner/systems/surfaceRenderRouter\.js|web-runner/systems/pointerRoutingShell\.js)$'
+UI_LOCK_STAGED_FILES="$(git diff --cached --name-only --diff-filter=ACMRD)"
+if printf '%s\n' "$UI_LOCK_STAGED_FILES" | grep -Eq "$UI_LOCK_OWNER_PATTERN"; then
+  echo "UI presentation owner changed; running rendered UI lock..."
+  npm run test:ui-lock
+fi

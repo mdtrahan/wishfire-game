@@ -26,6 +26,7 @@
 - `node --test tests/<file>.test.js`
 - `npm test` only when broad validation is needed and expected to be meaningful.
 - Browser/Playwright checks only for behavior that cannot be covered deterministically.
+- `tests/uiPresentationLockGateContract.test.js` protects the rendered gate command, viewport matrix, rejection mode, evidence inventory, and staged-path routing. The browser gate supplies the behavioral proof for those static seams.
 
 ## Child DOX Index
 - `tests/fixtures/AGENTS.md` - deterministic CSV fixtures and JS/Rust parity data.
