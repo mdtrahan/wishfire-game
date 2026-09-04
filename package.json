@@ -9,6 +9,7 @@
     "eval:yellow-coin-accounting": "node tools/eval_yellow_coin_accounting.mjs",
     "test:appjs-boundary": "node --test tests/appJsOrchestrationBoundaryContract.test.js",
     "test:hot-file-gate": "bash tools/run_hot_file_regression_gate.sh",
+    "test:ui-lock": "node tools/ui_presentation_lock_gate.mjs",
     "rust:build-wasm": "node tools/build_simulation_core_wasm.js",
     "serve:qa": "node tools/serve_web.js --port 8000",
     "balance-harness": "node tools/balance_harness.js",

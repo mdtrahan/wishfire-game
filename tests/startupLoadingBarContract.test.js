@@ -11,7 +11,7 @@ test('layout-0 startup loading frame renders when bootstrap is incomplete', () =
   assert.match(appSrc, /function drawStartupLoadingFrame\(\) \{/);
   assert.match(fallbackSrc, /const startupLoading = layoutId === 'storyMock' && !freshCombatBootstrapped;/);
   assert.match(fallbackSrc, /Story Mock \(loading\.\.\.\)/);
-  assert.match(fallbackSrc, /const barY = Math\.max\(24, viewHeight - 66\);/);
+  assert.match(fallbackSrc, /const barY = Math\.max\(24 \* layoutScale, viewHeight - 66 \* layoutScale\);/);
   assert.match(overlaySrc, /Loading assets/);
 });
 

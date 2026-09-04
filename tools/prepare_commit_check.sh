@@ -13,7 +13,7 @@ fi
 shift || true
 
 STAGED="$(git diff --cached --name-only --diff-filter=ACMR)"
-if grep -Eq '^(web-runner/modules/functionBank\.js|Scripts/functionBank\.js|web-runner/app\.js)$' <<<"$STAGED"; then
+if grep -Eq '^(web-runner/modules/functionBank\.js|Scripts/functionBank\.js|web-runner/app\.js|web-runner/systems/renderRuntime\.js)$' <<<"$STAGED"; then
   "$ROOT/tools/prepare_hot_file_commit.sh" "$ISSUE_ID" "$@"
 fi
 
