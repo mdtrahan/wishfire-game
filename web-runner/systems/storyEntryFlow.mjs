@@ -25,8 +25,9 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
   const contains = (point, rect) => point && rect && point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h;
   async function go(target, reason, payload = {}) {
     if (entry.pending) return false;
-    entry.pending = true;
     entry.error = null;
+    if (layoutState.getActiveLayoutId() === target) return true;
+    entry.pending = true;
     try {
       const changed = await layoutState.requestLayoutChange(target, reason, payload);
       if (!changed) entry.error = 'This destination is unavailable.';

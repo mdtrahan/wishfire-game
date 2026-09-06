@@ -146,3 +146,12 @@ test('synthetic roster stages sort by CP, use existing thumbnails, and unlock on
  assert.equal(s.gameState.storyEntry.progress.completed.length,12);
  assert.equal(s.gameState.storyEntry.progress.resources,750);
 });
+
+test('Quests from the map changes the view without requesting the same layout', async () => {
+ const s = await setup();
+ assert.equal(await s.flow.navigate('Quests'), true);
+ assert.equal(s.gameState.storyEntry.phase, 'ladder');
+ assert.equal(s.gameState.storyEntry.error, null);
+ assert.equal(await s.flow.navigate('Quests'), true);
+ assert.equal(s.gameState.storyEntry.error, null);
+});
