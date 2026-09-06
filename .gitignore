@@ -27,3 +27,7 @@ web-runner/runtime-fingerprint.js
 .DS_Store
 .DS_Store
 .serena/
+
+# Local checkpoints and runtime release output
+/output/ORKA-aoq-checkpoint/
+/dist/

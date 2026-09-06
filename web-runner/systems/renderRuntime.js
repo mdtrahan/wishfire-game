@@ -188,6 +188,10 @@ export function renderRuntime(deps) {
       .replaceAll(
         "ctx.drawImage(img, drawX, drawY, scaledW, scaledH)",
         "drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation })",
+      )
+      .replace(
+        'for(const r of nonModalRendered){',
+        "for(const r of nonModalRendered){\n      if (r.inst.type === 'PartyHP_Bar' || r.uid === 10 || r.inst.type.startsWith('Nav_')) continue;",
       );
     renderImpl = new Function('scope', 'dtOverride', 'with (scope) {\n' + body + '\n}');
   }

@@ -10,6 +10,7 @@
 - `images/`, `gems/`, and `fonts/` are presentation assets referenced by render/runtime code and tests.
 
 ## Local Contracts
+- `narrative/characters/` contains the existing Hondo, Fara, Kaja, and Runa scene sprites. Content character IDs resolve these filenames through the narrative renderer; the opening uses the existing solo/pair shot contract.
 - Do not hand-edit `simulation_core.wasm`; rebuild it with `npm run rust:build-wasm`.
 - Treat `layouts.json` as large structured data from the retired Construct surface. Use JSON-aware edits and keep gameplay rules in code/product docs.
 - Asset filenames are often referenced directly by render code and tests; rename only with a full reference search.
@@ -27,3 +28,7 @@
 
 ## Child DOX Index
 - None.
+
+- `narrative/chapter-1-map.png` is the approved 360x640 C placeholder composition with the original raised town token proportions.
+
+- Navigation badges in images/navigation are transparent 128px object-only illustrations designed to read at 40–50px: bold silhouettes, broad color blocks, minimal interior detail; preserve six labels and hide the shared menu during dialogue. Generation prompts accompany the assets.

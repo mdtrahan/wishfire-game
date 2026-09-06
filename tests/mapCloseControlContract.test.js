@@ -27,7 +27,7 @@ test('map layout omits war meter chrome', () => {
   assert.doesNotMatch(renderMapSrc, /#cf3d2e/);
 });
 
-test('map close control routes to combat and preserves map drag path', () => {
+test('map close control returns to the quest ladder and preserves map drag path', () => {
   const appPath = path.join(__dirname, '..', 'web-runner', 'app.js');
   const inputPath = path.join(__dirname, '..', 'web-runner', 'systems', 'inputHandling.js');
   const pointerRouterPath = path.join(__dirname, '..', 'web-runner', 'systems', 'pointerRoutingShell.js');
@@ -39,7 +39,7 @@ test('map close control routes to combat and preserves map drag path', () => {
   assert.match(pointerRouterSrc, /if \(activeLayoutId === 'mapLayout'\) \{/);
   assert.match(pointerRouterSrc, /const close = mapLayoutState\.getMapLayoutState\(\)\.closeHit;/);
   assert.match(pointerRouterSrc, /if \(isPointInRect\(mx, my, close\)\) \{/);
-  assert.match(pointerRouterSrc, /requestLayoutChange\('combat', 'map-close-button'\)/);
+  assert.match(pointerRouterSrc, /returnToQuest\(gameState, layoutState, 'map-close-button'\)/);
   assert.match(pointerRouterSrc, /if \(handleMapDragStart\(event, \{ mx, my \}\)\) \{/);
   assert.match(inputSrc, /mapLayoutState\.setMapDragState\(\{\s*active: true,/s);
 });

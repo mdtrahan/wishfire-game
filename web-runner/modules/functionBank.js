@@ -3379,7 +3379,7 @@ function commitEnemyDeathRemoval(ctx, enemyUID, fallbackSlotIndex = 0, currentUI
   if (Array.isArray(g.EnemySlots) && slotIndex >= 0) g.EnemySlots[slotIndex] = 0;
   if (Array.isArray(g.EnemyIDs) && slotIndex >= 0) g.EnemyIDs[slotIndex] = 0;
   clearEnemyDeathVisualHold(ctx, targetUID);
-  markEnemyRespawnPending(ctx, slotIndex);
+  if (!g.QuestFiniteEncounter) markEnemyRespawnPending(ctx, slotIndex);
   g.IsPlayerBusy = 1;
   if (typeof recordTurnSchedulerEvent === 'function') {
     recordTurnSchedulerEvent(ctx, 'removal_commit', {
@@ -3393,7 +3393,7 @@ function commitEnemyDeathRemoval(ctx, enemyUID, fallbackSlotIndex = 0, currentUI
   }
   UpdateEnemyHPUI(ctx);
   const respawnDelay = Math.max(0.4, (g.DamageTextDurationSec || 1.35));
-  scheduleEnemyRespawnWindow(ctx, slotIndex, respawnDelay);
+  if (!g.QuestFiniteEncounter) scheduleEnemyRespawnWindow(ctx, slotIndex, respawnDelay);
   return true;
 }
 
@@ -8339,6 +8339,7 @@ function rescheduleEnemyRespawnWindowRetry(ctx) {
 
 function finalizeEnemyRespawnWindow(ctx) {
   const g = getGlobals(ctx);
+  if (g.QuestFiniteEncounter) { g.PendingEnemyRespawnTimerActive = 0; g.PendingEnemyRespawnSlots = []; return; }
   if (hasActiveAstralFlowKoOrbPayout(g)) {
     g.PendingEnemyRespawnTimerActive = 0;
     rescheduleEnemyRespawnWindowRetry(ctx);

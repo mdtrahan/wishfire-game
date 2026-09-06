@@ -233,7 +233,7 @@ test('Chain Strike II browser QA scenario bypasses draw RNG and exposes actor ta
   assert.match(hooks, /waitForLayout/);
   assert.match(hooks, /party_chain_strike_i/);
   assert.match(hooks, /party_chain_strike_ii/);
-  assert.match(hooks, /requestLayoutChange\('town', 'chain-strike-ii-qa-scenario-story'\)/);
+  assert.match(hooks, /storyEntry\.skip\(\);\s+await waitForLayout\('combat'\);/);
   assert.match(hooks, /requestLayoutChange\('combat', 'chain-strike-ii-qa-scenario-town', \{ freshStart: true \}\)/);
   assert.match(hooks, /PendingSkillID = 'HERO_SINGLE'/);
   assert.match(hooks, /SelectedEnemyUIDOwner = Number\(hero\.uid \|\| 0\)/);

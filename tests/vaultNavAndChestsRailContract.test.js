@@ -3,15 +3,11 @@ const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-test('combat nav remaps mission text/route to Vault', () => {
-  const appPath = path.join(__dirname, '..', 'web-runner', 'app.js');
-  const src = fs.readFileSync(appPath, 'utf8');
-  const runtimeSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
-
-  assert.match(src, /if \(label === 'Vault' \|\| label === 'Mission'\)/);
-  assert.match(src, /Nav_MissionText:\s*'Vault'/);
-  assert.match(runtimeSrc, /Nav_MissionText/);
-  assert.match(runtimeSrc, /text = 'Vault';/);
+test('shared navigation exposes Vault and routes it to chests', () => {
+  const nav = fs.readFileSync(path.join(__dirname, '..', 'web-runner/systems/renderExistingNavigation.mjs'), 'utf8');
+  const flow = fs.readFileSync(path.join(__dirname, '..', 'web-runner/systems/storyEntryFlow.mjs'), 'utf8');
+  assert.match(nav, /\['VAULT', 'Vault', 'vault'\]/);
+  assert.match(flow, /Vault: 'chestsLayout'/);
 });
 
 test('chests layout includes top-rail retention buttons and routing hit zones', () => {
@@ -32,7 +28,7 @@ test('chests layout includes top-rail retention buttons and routing hit zones', 
   assert.match(stateSrc, /title:\s*'Enter Tomes'/);
   assert.match(chestsSrc, /retentionButtons:\s*retentionHitZones,/);
   assert.match(src, /createPointerRoutingShell/);
-  assert.match(pointerRouterSrc, /requestLayoutChange\('combat', 'chests-close-button'\)/);
+  assert.match(pointerRouterSrc, /returnToQuest\(gameState, layoutState, 'chests-close-button'\)/);
   assert.match(pointerRouterSrc, /layoutState\.requestLayoutChange\(String\(btn\.targetLayout\),\s*`chests-\$\{String\(btn\.id \|\| 'retention'\)\}`\)/);
 });
 
@@ -52,7 +48,7 @@ test('retention gallery back routes return to vault home (chestsLayout)', () => 
   const src = fs.readFileSync(pointerRouterPath, 'utf8');
   const registrySrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'runtimeLayoutRegistry.js'), 'utf8');
 
-  assert.match(registrySrc, /const GALLERY_TRANSITIONS = Object\.freeze\(\['chestsLayout', 'combat'\]\);/);
+  assert.match(registrySrc, /const GALLERY_TRANSITIONS = Object\.freeze\(\['chestsLayout', 'combat', 'storyMock', 'heroLayout', 'idleFarmLayout'\]\);/);
   assert.match(src, /tomesLayout: 'selectedIndex'/);
   assert.match(src, /artifactsLayout: 'selectedIndex'/);
   assert.match(src, /mountsLayout: 'selectedIndex'/);

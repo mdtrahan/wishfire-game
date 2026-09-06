@@ -23,7 +23,7 @@ test('chests layout is wired to mission nav and runtime route', () => {
   assert.match(src, /import \{ createInitialGameState \} from '\.\/state\/gameState\.js';/);
   assert.match(src, /const gameState = createInitialGameState\(\);/);
   assert.match(registrySrc, /id:\s*'chestsLayout'/);
-  assert.match(src, /layoutState\.requestLayoutChange\('chestsLayout',\s*'nav-chests'\)/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'web-runner/systems/storyEntryFlow.mjs'), 'utf8'), /Vault: 'chestsLayout'/);
   assert.match(surfaceRouterSrc, /case 'chestsLayout':/);
   assert.match(pointerRouterSrc, /if \(activeLayoutId === 'chestsLayout'\)/);
 });

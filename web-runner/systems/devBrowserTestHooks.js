@@ -10,6 +10,7 @@ import {
 export function registerDevBrowserTestHooks({
   state,
   gameState,
+  storyEntry,
   callFunctionWithContext,
   fnContext,
   ensureDevToolingConfig,
@@ -49,6 +50,26 @@ export function registerDevBrowserTestHooks({
 }) {
   if (typeof window === 'undefined') return;
 
+  if (new URLSearchParams(window.location.search).get('questQA') === '1') {
+    const controls = document.createElement('div');
+    controls.setAttribute('aria-label', 'Quest QA');
+    controls.style.cssText = 'position:fixed;top:4px;left:4px;z-index:10001;display:flex;gap:4px';
+    for (const [label, action] of [
+      ['QA defeat', () => {
+        if (gameState.storyEntry.phase !== 'combat') return;
+        for (const hero of state.entities.filter(e => e.kind === 'hero')) hero.hp = 0;
+        callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
+      }],
+      ['QA clear monsters', () => {
+        if (gameState.storyEntry.phase !== 'combat') return;
+        for (const enemy of state.entities.filter(e => e.kind === 'enemy')) callFunctionWithContext(fnContext, 'KillEnemyByUID', enemy.uid);
+      }],
+    ]) {
+      const button = document.createElement('button'); button.textContent = label;
+      button.addEventListener('click', action); controls.append(button);
+    }
+    document.body.append(controls);
+  }
   window.render_game_to_text = () => {
     const currentUID = callFunctionWithContext(fnContext, 'GetCurrentTurn');
     const currentActor = callFunctionWithContext(fnContext, 'GetActorByUID', currentUID);
@@ -66,6 +87,7 @@ export function registerDevBrowserTestHooks({
     });
     const payload = {
       coordSystem: 'origin:top-left, x:right, y:down',
+      quest: { canSkip: gameState.storyEntry.phase === 'opening' && !!gameState.narrativeScene?.hitZones?.skip, phase: gameState.storyEntry.phase, activeCard: gameState.storyEntry.activeCard, progress: gameState.storyEntry.progress, modal: gameState.storyEntry.modal },
       time: state.globals.time || 0,
       turn: {
         uid: currentUID,
@@ -401,8 +423,8 @@ export function registerDevBrowserTestHooks({
       }
       if (layoutState && typeof layoutState.getActiveLayoutId === 'function') {
         if (layoutState.getActiveLayoutId() === 'storyMock') {
-          await layoutState.requestLayoutChange('town', 'dynamic-initiative-authority-qa-scenario-story');
-          await waitForLayout('town');
+          storyEntry.skip();
+          await waitForLayout('combat');
         }
         if (layoutState.getActiveLayoutId() !== 'combat') {
           await layoutState.requestLayoutChange('combat', 'dynamic-initiative-authority-qa-scenario-town', { freshStart: true });
@@ -568,8 +590,8 @@ export function registerDevBrowserTestHooks({
       }
       if (layoutState && typeof layoutState.getActiveLayoutId === 'function') {
         if (layoutState.getActiveLayoutId() === 'storyMock') {
-          await layoutState.requestLayoutChange('town', 'chain-strike-ii-qa-scenario-story');
-          await waitForLayout('town');
+          storyEntry.skip();
+          await waitForLayout('combat');
         }
         if (layoutState.getActiveLayoutId() !== 'combat') {
           await layoutState.requestLayoutChange('combat', 'chain-strike-ii-qa-scenario-town', { freshStart: true });

@@ -1,3 +1,8 @@
+function returnToQuest(gameState, layoutState, reason) {
+  gameState.storyEntry.phase = 'ladder';
+  return layoutState.requestLayoutChange('storyMock', reason);
+}
+
 function isPointInRect(mx, my, rect) {
   if (!rect) return false;
   return mx >= rect.x && mx <= (rect.x + rect.w) && my >= rect.y && my <= (rect.y + rect.h);
@@ -36,7 +41,7 @@ function routeCardGalleryLayout({
     return true;
   }
   if (isPointInRect(mx, my, zones.combatBack)) {
-    layoutState.requestLayoutChange('combat', `${routePrefix}-back-combat`).catch((err) => {
+    returnToQuest(gameState, layoutState, `${routePrefix}-back-combat`).catch((err) => {
       console.error(`[LAYOUT_PHASE1] ${routePrefix}->combat failed`, err);
     });
     drawFrame();
@@ -95,6 +100,11 @@ export function createPointerRoutingShell({
       ? layoutState.getActiveLayoutId()
       : null;
 
+    const navHit = (gameState.sharedNavHitZones || []).find(zone => isPointInRect(mx, my, zone));
+    if (navHit) {
+      inputDomains.emit(activeLayoutId, 'nav:clicked', { label: navHit.label });
+      return { handled: true, mx, my, rect };
+    }
     if (activeLayoutId === 'storyMock') {
       inputDomains.emit('storyMock', 'layout:storyMock:click', { x: mx, y: my });
       drawFrame();
@@ -118,7 +128,7 @@ export function createPointerRoutingShell({
         return { handled: true, mx, my, rect };
       }
       if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'idle-farm-back-combat').catch((err) => {
+        returnToQuest(gameState, layoutState, 'idle-farm-back-combat').catch((err) => {
           console.error('[LAYOUT_PHASE1] idleFarm->combat failed', err);
         });
         drawFrame();
@@ -145,7 +155,7 @@ export function createPointerRoutingShell({
         state.globals.EncounterFaction = String(req.faction || '');
         state.globals.EncounterSeed = Number(req.seed || 1);
         state.globals.EncounterSeedExplicit = 1;
-        layoutState.requestLayoutChange('combat', 'map-close-button').catch((err) => {
+        returnToQuest(gameState, layoutState, 'map-close-button').catch((err) => {
           console.error('[LAYOUT_PHASE1] map return failed', err);
         });
         drawFrame();
@@ -188,7 +198,7 @@ export function createPointerRoutingShell({
         return { handled: true, mx, my, rect };
       }
       if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'homestead-back-combat').catch((err) => {
+        returnToQuest(gameState, layoutState, 'homestead-back-combat').catch((err) => {
           console.error('[LAYOUT_PHASE1] homestead->combat failed', err);
         });
         drawFrame();
@@ -209,14 +219,14 @@ export function createPointerRoutingShell({
     if (activeLayoutId === 'chestsLayout') {
       const zones = (gameState.chestsLayout && gameState.chestsLayout.hitZones) || {};
       if (isPointInRect(mx, my, zones.close)) {
-        layoutState.requestLayoutChange('combat', 'chests-close-button').catch((err) => {
+        returnToQuest(gameState, layoutState, 'chests-close-button').catch((err) => {
           console.error('[LAYOUT_PHASE1] chests close->combat failed', err);
         });
         drawFrame();
         return { handled: true, mx, my, rect };
       }
       if (isPointInRect(mx, my, zones.combatBack)) {
-        layoutState.requestLayoutChange('combat', 'chests-back-combat').catch((err) => {
+        returnToQuest(gameState, layoutState, 'chests-back-combat').catch((err) => {
           console.error('[LAYOUT_PHASE1] chests->combat failed', err);
         });
         drawFrame();
@@ -273,7 +283,7 @@ export function createPointerRoutingShell({
       }
       if (isPointInRect(mx, my, zones.close)) {
         uiState.setUIStateField('heroScreenSkillModalOpen', false);
-        const closeHeroLayout = () => layoutState.requestLayoutChange('combat', 'hero-close-button').catch((err) => {
+        const closeHeroLayout = () => returnToQuest(gameState, layoutState, 'hero-close-button').catch((err) => {
           console.error('[LAYOUT_PHASE1] hero return failed', err);
         });
         closeHeroLayout().then((changed) => {

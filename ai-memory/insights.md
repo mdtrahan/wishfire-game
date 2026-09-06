@@ -512,3 +512,12 @@
 ## 2026-08-11 - Manual Enemy Targets Need Actor And Slot Ownership
 - Store a manual enemy choice with the hero who made it and the enemy's slot identity. Revalidate both when the attack resolves so a later hero or a refill enemy cannot inherit stale target state.
 - Targeting QA must compare the selected marker, queued hit, damage presentation, and HP loss. Speed ordering is a separate check; effective Speed does not grant automatic bonus actions.
+
+## 2026-09-05: Chapter 1 map checkpoint
+Preserved the owned dialogue-entry work and approved 360x640 C image in output/ORKA-aoq-checkpoint/pre-chapter-map/checkpoint.tar.gz. manifest.json lists every preserved path and SHA-256. Keep original town token proportions; asset resolution was the sizing concern.
+
+## Quest ladder checkpoint
+Pre-build state preserved in output/ORKA-aoq-checkpoint/pre-quest-ladder with per-file hashes. Quest economy stays separate from combat energy; persistent party/quest profiles and EXP/readiness remain planned.
+
+## 2026-09-06: Quest publication checkpoint
+The pre-publication archive preserves 64 owned files with verified SHA-256 hashes. Navigation migration tests should exercise the shared route and dialogue gate instead of requiring retired Canvas text objects. Keep checkpoint archives and QA-only review pages out of runtime deployments.

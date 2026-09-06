@@ -14,6 +14,8 @@
 - `devToolingControls.js` and runtime debug helpers own QA/dev surfaces.
 
 ## Local Contracts
+- `storyEntryFlow.mjs` owns quest card flow. Confirmed Skip advances within the current card; embedded combat begins immediately. Defeat waits for Continue or Quit; Quit returns to Quests.
+- Narrative rendering preserves the existing two-sentence pages and solo/pair shots. Scene startup, Auto advancement, and layout changes belong to the controller/entry flow, outside `renderNarrativeScene.js`.
 - Combat actor orientation must project canonical left-wise anchors through `src/core/combatOrientation.mjs`; mirror actor-attached x offsets, never combat rules or canonical positions. Right-wise actor sprite pixels mirror about each oriented pivot so both teams face inward and asymmetric art remains visually reflected.
 - The dev-tool orientation control stages the next combat orientation and uses the existing fresh combat-refresh path when changed during combat; never flip a live combat frame in place.
 - Right-wise rendering consumes the shared formation projection: both teams use the same `-40` logical-X translation after reflection, heroes keep canonical Y, and enemy-attached visuals share the one block-Y midpoint-alignment offset. The offset is fixed from structural enemy slot anchors for the combat layout; do not recenter from living entities after death or refill.
@@ -46,3 +48,17 @@
 
 ## Child DOX Index
 - None.
+
+- Chapter 1 begins in the map phase. The rendered town token and START button open Quests; map and hit zone share the narrative 360x640 viewport transform. Developer Skip also bypasses map entry.
+
+- Player-facing labels use Quests, Main Story and Stage; Back is a compact curved arrow. Quest ladder owns progressive card completion, one-time dummy rewards, confirmed story Skip and Continue/Quit. The shared renderExistingNavigation menu owns DAILY, HERO, QUESTS, VAULT, SHOP and FLOW across layouts. Dialogue hides and disables it; DAILY and SHOP remain disabled until their screens exist. Badges use object-only illustrated assets, without characters. Its 360x60 frame begins at reference Y=580. The charcoal navigation bar uses a teal glow behind the active badge, without an enclosing selection frame. Cards are 56/640 of the reference height, with the map visible and light panels. Quest progress and economy are session-local until versioned player saves are designed.
+
+- Main Story 2 follows Stage 5 in the current ten-stage roster; synthetic stages are sorted by existing Encounter CP (name breaks ties). Each uses its roster enemy through the existing encounter slot path and a CSS-cropped sprite thumbnail. They preserve combat rules and progressive unlocks; the roster determines the stage count. Main Story parts are numbered.
+
+- Quest cards retain the chapter panel's 320-unit width regardless of overflow. The scrollbar occupies the right margin outside that column; the list clips 18 units above the combat navigation, with Back overlaid instead of reserving a footer row.
+
+- Pending single-target attacks receive an actor-owned living default target before rendering, using the same target-intent capture as an enemy click. Preserve a valid player choice; replace dead/stale targets. ATK must accept the displayed default without an extra enemy tap.
+
+- Fresh encounter initialization clears Astral Flow charge and transient battle conditions through combatSessionReset.mjs. Continue bypasses initialization and preserves them. Gold and persistent progression are outside this reset. PartyHP_Bar supplies geometry only; the live HP renderer owns its sole visible fill.
+
+- Gold is currency persisted by goldProgressStorage.mjs under wishfire.gold.v1. Fresh encounters and resurrection never reset it; balance changes, including spending, are saved locally.

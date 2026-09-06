@@ -14,6 +14,7 @@
 
 ## Local Contracts
 - Keep `app.js` thin. Add business logic to contextual modules or shared core files, then wire minimally through `app.js`.
+- Fresh entry uses Chapter 1 dialogue in the retained `storyMock` layout slot. `systems/storyEntryFlow.mjs` owns combat access and the existing Skip handoff; ordinary dialogue clicks must never route directly to Town or combat.
 - Before expanding `app.js`, read `governance/planning/app-js-thinning-playbook.md` and apply `governance/planning/js-orchestration-review-checklist.md`.
 - Changes touching `app.js` must pass `npm run test:appjs-boundary`; update `governance/planning/app-js-ownership-contract.json` only when ownership policy changes, not to dodge extraction.
 - JavaScript owns browser integration: Canvas rendering, input, menus, overlays, audio, save/load wrappers, deployment, and presentation timing.
@@ -53,3 +54,5 @@
 - `web-runner/systems/AGENTS.md` - rendering, input, local persistence, supergem runtime, dev tooling, SimulationCore shadow.
 - `web-runner/src/core/AGENTS.md` - browser-shipped deterministic rules and runtime helpers.
 - `web-runner/assets/AGENTS.md` - runtime data, images, fonts, gems, and WASM artifact.
+
+- Quest entry: map -> ladder -> authored sub-chapter. Navigation uses one shared charcoal/brass menu with a teal active glow across non-dialogue screens. The test-only questQA query exposes deterministic defeat/monster-clear controls for browser proof.

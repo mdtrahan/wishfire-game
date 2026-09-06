@@ -751,6 +751,84 @@ async function runRejectionProof(browser, baseUrl, artifactDir) {
   return { pass: true, expectedFailures: [stageFailure, panelFailure], allFailures: failures };
 }
 
+async function runQuestViewport(browser, baseUrl, viewport, artifactDir) {
+  const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, deviceScaleFactor: viewport.dpr });
+  const page = await context.newPage();
+  try {
+    await page.goto(`${baseUrl}/web-runner/index.html?questQA=1`);
+    await page.waitForFunction(() => typeof window.render_game_to_text === 'function');
+    const clickCanvas = async (x,y) => {
+      const box = await page.locator('canvas').boundingBox();
+      await page.mouse.click(box.x + box.width*x/360,box.y+box.height*y/640);
+    };
+    await page.waitForFunction(() => JSON.parse(window.render_game_to_text()).flags.layout0Ready);
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    for (const label of ['HERO', 'VAULT', 'FLOW', 'QUESTS']) {
+      await page.getByRole('button', {name:label, exact:true}).click();
+      await page.waitForFunction(label => document.querySelector('#game-meta-nav [aria-current="page"]')?.textContent === label, label);
+    }
+    await page.waitForFunction(() => [...document.querySelectorAll('#game-meta-nav img')].length === 6 && [...document.querySelectorAll('#game-meta-nav img')].every(img => img.complete && img.naturalWidth > 0));
+    const nav = await page.locator('#game-meta-nav').evaluate(el => ({labels:[...el.children].map(b=>b.textContent),width:el.offsetWidth,height:el.offsetHeight,daily:el.firstChild.disabled,overflow:el.scrollWidth>el.clientWidth}));
+    if (nav.labels.join(',') !== 'DAILY,HERO,QUESTS,VAULT,SHOP,FLOW' || nav.width !== 360 || nav.height !== 60 || !nav.daily || nav.overflow) throw new Error('Shared navigation geometry/labels failed: '+JSON.stringify(nav));
+    await page.getByRole('button', {name:/Main Story/}).waitFor();
+    const metrics = await page.evaluate(() => {
+      const canvas = document.querySelector('canvas').getBoundingClientRect();
+      const card = document.querySelector('#quest-ui .card');
+      const box = card.getBoundingClientRect();
+      return { rowHeight: box.height / canvas.height * 640, rowRatio: box.height/canvas.height, contained: box.left >= canvas.left && box.right <= canvas.right, overflow: document.documentElement.scrollWidth > innerWidth, cardOverflow: card.scrollWidth > card.clientWidth || card.scrollHeight > card.clientHeight, canvas:canvas.toJSON(), dpr:devicePixelRatio };
+    });
+    await page.screenshot({path:path.join(artifactDir,`${viewport.name}-quest-ladder.png`)});
+    await page.getByRole('button',{name:/Main Story/}).click();
+    await page.waitForFunction(() => JSON.parse(window.render_game_to_text()).quest.canSkip);
+    if (!await page.locator('#game-meta-nav').evaluate(el => el.hidden && el.inert && [...el.children].every(b=>b.disabled))) throw new Error('Dialogue navigation must be hidden and disabled');
+    await clickCanvas(304,453);
+    await page.getByRole('button',{name:'Cancel',exact:true}).click();
+    await clickCanvas(304,453);
+    await page.getByRole('button',{name:'Skip',exact:true}).click();
+    await page.waitForFunction(() => JSON.parse(window.render_game_to_text()).quest.phase === 'combat');
+    await page.getByRole('button', {name:'QUESTS',exact:true}).waitFor();
+    await page.getByRole('button',{name:'QA defeat',exact:true}).click();
+    await page.getByRole('button',{name:'Continue · 30',exact:true}).waitFor();
+    await page.screenshot({path:path.join(artifactDir,`${viewport.name}-quest-continue.png`)});
+    await page.getByRole('button',{name:'Continue · 30',exact:true}).click();
+    await page.waitForFunction(() => JSON.parse(window.render_game_to_text()).quest.phase === 'combat');
+    await page.getByRole('button',{name:'QA clear monsters',exact:true}).click();
+    await page.locator('[data-action="card:1"]').waitFor();
+    const progress = await page.evaluate(() => JSON.parse(window.render_game_to_text()).quest.progress);
+    await page.screenshot({path:path.join(artifactDir,`${viewport.name}-quest-unlocked.png`)});
+    for (let i=1; i<=10; i++) {
+      const card = page.locator(`[data-action="card:${i <= 5 ? i : i+1}"]`);
+      await card.waitFor();
+      await card.locator('img').evaluate(img => img.decode());
+      if(i===1 || i===10) await page.screenshot({path:path.join(artifactDir,`${viewport.name}-stage-${i}.png`)});
+      const column = await card.evaluate(el => {
+        const panel = document.querySelector('#quest-ui .chapter').getBoundingClientRect();
+        const row = el.getBoundingClientRect();
+        return Math.abs(row.width-panel.width)<1 && Math.abs(row.right-panel.right)<1;
+      });
+      if (!column) throw new Error(`Quest card column drift at ${viewport.name}, Stage ${i}`);
+      const enemy = await card.locator('img').getAttribute('alt');
+      await card.click();
+      await page.waitForFunction(() => window.__codexGame.globals.AstralFlowAmpPoints===0);
+      await page.waitForFunction(name => window.__codexGame.state.entities.filter(e=>e.kind==='enemy').length===1 && window.__codexGame.state.entities.some(e=>e.kind==='enemy' && e.name===name),enemy);
+      await page.getByRole('button',{name:'QA clear monsters',exact:true}).click();
+      await page.waitForFunction(index => JSON.parse(window.render_game_to_text()).quest.progress.completed.length===index+1+(index>5 ? 1 : 0),i);
+      if (i===5) {
+        await page.screenshot({path:path.join(artifactDir,`${viewport.name}-midpoint-story.png`)});
+        await page.getByRole('button',{name:/Main Story 2/}).click();
+        await page.waitForFunction(() => JSON.parse(window.render_game_to_text()).quest.canSkip);
+        await clickCanvas(304,453);
+        await page.getByRole('button',{name:'Skip',exact:true}).click();
+      }
+    }
+    return {viewport, metrics, invariants:[
+      invariant('quest-card-height',within(metrics.rowHeight,56,0.5),metrics.rowHeight,56),
+      invariant('quest-card-contained',metrics.contained && !metrics.overflow && !metrics.cardOverflow,metrics,'contained'),
+      invariant('quest-outcome-and-cost',progress.revealed===2 && progress.resources===170 && progress.energy===95,progress,'one unlock, 30 spent, 50 awarded'),
+    ]};
+  } catch(error) { await page.screenshot({path:path.join(artifactDir,'quest-failure.png')}); throw error; } finally { await context.close(); }
+}
+
 async function main() {
   runFocusedContracts();
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -758,7 +836,10 @@ async function main() {
   await fsPromises.mkdir(artifactDir, { recursive: true });
   const port = await reservePort();
   const baseUrl = `http://127.0.0.1:${port}`;
-  const server = spawn(process.execPath, ['tools/serve_web.js', '--port', String(port)], {
+  const release = process.argv.includes('--release');
+  const server = spawn(release ? 'python3' : process.execPath, release
+    ? ['-m', 'http.server', String(port), '--bind', '127.0.0.1', '--directory', path.join(repoRoot, 'dist')]
+    : ['tools/serve_web.js', '--port', String(port)], {
     cwd: repoRoot,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -777,7 +858,7 @@ async function main() {
     });
     const runs = [];
     for (const viewport of viewports) {
-      runs.push(await runViewport(browser, baseUrl, viewport, artifactDir));
+      runs.push(await (process.argv.includes('--quest') ? runQuestViewport : runViewport)(browser, baseUrl, viewport, artifactDir));
     }
     const failed = runs.flatMap((run) => run.invariants.filter((entry) => !entry.pass).map((entry) => ({ viewport: run.viewport.name, ...entry })));
     const rejectionProof = proveRejection ? await runRejectionProof(browser, baseUrl, artifactDir) : null;

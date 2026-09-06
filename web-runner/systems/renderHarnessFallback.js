@@ -1,3 +1,5 @@
+import { renderNarrativeScene, renderStoryChapterMap } from './renderNarrativeScene.js';
+
 export function computeFittedCanvasFontSize({ preferredPx, minimumPx, measuredWidth, maximumWidth }) {
   const preferred = Math.max(1, Number(preferredPx) || 1);
   const minimum = Math.min(preferred, Math.max(1, Number(minimumPx) || 1));
@@ -69,6 +71,11 @@ function drawCenteredTextLayout(ctx, textLayout, centerX, centerY, fontPx) {
 
 export function renderHarnessFallback(ctx, layoutId, gameState, dims) {
   const { viewWidth, viewHeight, startupFingerprintLabel, freshCombatBootstrapped } = dims;
+  if (layoutId === 'storyMock' && freshCombatBootstrapped) {
+    return gameState.storyEntry?.phase !== 'opening'
+      ? renderStoryChapterMap(ctx, gameState, dims)
+      : renderNarrativeScene(ctx, gameState, dims, gameState.storyEntry?.content);
+  }
   const layoutScale = Math.max(0.1, Number(dims.layoutScale) || 1);
   ctx.clearRect(0, 0, viewWidth, viewHeight);
   ctx.fillStyle = layoutId === 'storyMock' ? '#1557ff' : (layoutId === 'town' ? '#6d4b2f' : '#d52525');
@@ -78,7 +85,7 @@ export function renderHarnessFallback(ctx, layoutId, gameState, dims) {
   const load = gameState.startupLoad || {};
   const startupLoading = layoutId === 'storyMock' && !freshCombatBootstrapped;
   const headline = layoutId === 'storyMock'
-    ? (startupLoading ? 'Story Mock (loading...)' : 'Story Mock (tap to enter town)')
+    ? 'Loading Chapter 1...'
     : layoutId === 'town'
       ? 'Town (tap to enter combat)'
       : 'Astral Overlay (click to return to combat)';

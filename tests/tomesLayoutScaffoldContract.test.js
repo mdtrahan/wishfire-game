@@ -20,7 +20,7 @@ test('tomes layout is wired as map locale entry and runtime layout route', () =>
   const registrySrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'runtimeLayoutRegistry.js'), 'utf8');
   assert.match(src, /import \{ createInitialGameState \} from '\.\/state\/gameState\.js';/);
   assert.match(src, /const gameState = createInitialGameState\(\);/);
-  assert.match(registrySrc, /const GALLERY_TRANSITIONS = Object\.freeze\(\['chestsLayout', 'combat'\]\);/);
+  assert.match(registrySrc, /const GALLERY_TRANSITIONS = Object\.freeze\(\['chestsLayout', 'combat', 'storyMock', 'heroLayout', 'idleFarmLayout'\]\);/);
   assert.match(registrySrc, /id:\s*'tomesLayout'/);
   assert.match(src, /layoutState\.requestLayoutChange\('tomesLayout',\s*'map-tomes-locale'\)/);
   assert.match(src, /if \(layoutId === 'tomesLayout'\)/);

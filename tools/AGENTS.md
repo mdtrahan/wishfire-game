@@ -34,3 +34,5 @@
 
 ## Child DOX Index
 - None.
+
+- build_runtime_release.mjs packages only tracked runtime files from web-runner/ and src/ into dist/, with commit and SHA-256 manifest. Netlify publishes dist/; checkpoints, governance reviews and generation prompts are excluded.

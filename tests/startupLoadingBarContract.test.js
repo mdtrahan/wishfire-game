@@ -10,7 +10,7 @@ test('layout-0 startup loading frame renders when bootstrap is incomplete', () =
 
   assert.match(appSrc, /function drawStartupLoadingFrame\(\) \{/);
   assert.match(fallbackSrc, /const startupLoading = layoutId === 'storyMock' && !freshCombatBootstrapped;/);
-  assert.match(fallbackSrc, /Story Mock \(loading\.\.\.\)/);
+  assert.match(fallbackSrc, /Loading Chapter 1\.\.\./);
   assert.match(fallbackSrc, /const barY = Math\.max\(24 \* layoutScale, viewHeight - 66 \* layoutScale\);/);
   assert.match(overlaySrc, /Loading assets/);
 });
@@ -24,5 +24,5 @@ test('startup loading state is tracked and finalized at runtime readiness', () =
   assert.match(src, /updateStartupLoadState\(\{ active: false, phase: 'runtime', label: 'Ready', progress: 1 \}\);/);
   assert.match(src, /function ensureStartupPreload\(\) \{/);
   assert.match(src, /ensureStartupPreload\(\)\.catch\(\(\) => \{\}\);/);
-  assert.match(src, /blocked: 'bootstrap_loading'/);
+  assert.match(src, /isReady: \(\) => freshCombatBootstrapped/);
 });
