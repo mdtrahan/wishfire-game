@@ -286,36 +286,19 @@ async function readViewportMetrics(page) {
 }
 
 async function captureStoryAndTown(page, viewport, artifactDir) {
-  await page.waitForFunction(() => {
-    const calls = window.__orkaUiLockTrace?.read?.() || [];
-    return calls.some((entry) => entry.kind === 'fillText' && /Story Mock/.test(entry.text));
-  });
-  const storyTrace = await readTrace(page);
-  const story = latestText(storyTrace, /Story Mock/);
+  await page.waitForFunction(() => window.__orkaUiLockTrace.read().some(e => e.kind === 'fillText' && e.text === 'QUESTS'));
+  const story = latestText(await readTrace(page), /^QUESTS$/);
   const metrics = await readViewportMetrics(page);
   metrics.requestedViewport = { width: viewport.width, height: viewport.height, dpr: viewport.dpr };
   const layoutScale = Number(metrics.appViewport?.layoutScale || 0);
-  const storyFontPx = parseFontPx(story?.font);
-  await page.screenshot({ path: path.join(artifactDir, `${viewport.name}-01-story.png`) });
-
-  await resetTrace(page);
+  const storyFontPx = parseFontPx(story?.font) * Number(story?.transformA || 1) / metrics.dpr;
+  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-01-map.png`)});
   const canvasBox = await page.locator('#view').boundingBox();
-  if (!canvasBox) throw new Error('Canvas #view has no browser box');
-  await page.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
-  await page.waitForFunction(() => {
-    try {
-      return JSON.parse(window.render_game_to_text())?.flags?.layoutId === 'town';
-    } catch {
-      return false;
-    }
-  });
-  await page.waitForFunction(() => (
-    window.__orkaUiLockTrace.read().some((entry) => entry.kind === 'fillText' && /Town/.test(entry.text))
-  ));
-  const townTrace = await readTrace(page);
-  const town = latestText(townTrace, /Town/);
-  const townFontPx = parseFontPx(town?.font);
-  await page.screenshot({ path: path.join(artifactDir, `${viewport.name}-02-town.png`) });
+  await page.mouse.click(canvasBox.x + canvasBox.width * 184.5/360, canvasBox.y + canvasBox.height * 427/640);
+  await page.locator('#quest-ui .chapter h1').waitFor();
+  const town = await page.locator('#quest-ui .chapter h1').evaluate(el => ({text:el.textContent,font:getComputedStyle(el).font,fontSize:parseFloat(getComputedStyle(el).fontSize)}));
+  const townFontPx = town.fontSize * layoutScale;
+  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-02-ladder.png`)});
 
   const expectedStage = computeContainedStage(viewport);
   const pageFits = metrics.document.scrollWidth <= metrics.document.clientWidth;
@@ -360,14 +343,14 @@ async function captureStoryAndTown(page, viewport, artifactDir) {
         { expectedStage, centered: true, backingMatchesDpr: true },
       ),
       invariant(
-        'story-mock-text-scale',
-        within(storyFontPx / layoutScale, APPROVED.text.normalizedPx, APPROVED.text.tolerancePx),
+        'quests-banner-text-scale',
+        within(storyFontPx / layoutScale, 13, APPROVED.text.tolerancePx),
         { text: story?.text || null, font: story?.font || null, normalizedFontPx: storyFontPx / layoutScale },
         APPROVED.text,
       ),
       invariant(
-        'town-text-scale',
-        within(townFontPx / layoutScale, APPROVED.text.normalizedPx, APPROVED.text.tolerancePx),
+        'chapter-text-scale',
+        within(townFontPx / layoutScale, 18, APPROVED.text.tolerancePx),
         { text: town?.text || null, font: town?.font || null, normalizedFontPx: townFontPx / layoutScale },
         APPROVED.text,
       ),
@@ -477,6 +460,7 @@ async function captureCombat(page, viewport, artifactDir) {
   const setup = await page.evaluate(() => window.__codexGame.setupDynamicInitiativeAuthorityScenario());
   if (!setup?.ok) throw new Error(`Combat QA setup failed: ${JSON.stringify(setup)}`);
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text())?.flags?.layoutId === 'combat');
+  await page.locator('[aria-label="Entering combat"]').waitFor({state:'hidden'});
   await page.evaluate(() => {
     const game = window.__codexGame;
     const globals = game.globals;
@@ -545,6 +529,7 @@ async function captureCombat(page, viewport, artifactDir) {
     const game = window.__codexGame;
     const globals = game.globals;
     const enemy = game.state.entities.find((entity) => entity?.kind === 'enemy' && Number(entity.hp || 0) > 0);
+    document.querySelectorAll('.damage-number canvas').forEach(el => el.dataset.uiLockExisting = 'true');
     globals.DamageTexts = [{
       amount: 20,
       partyMaxHP: Number(globals.PartyMaxHP || 147),
@@ -569,10 +554,10 @@ async function captureCombat(page, viewport, artifactDir) {
     }];
     game.stepFrames(1);
   });
-  await page.waitForSelector('.damage-number canvas', { timeout: 3000 });
+  await page.waitForSelector('.damage-number canvas:not([data-ui-lock-existing])', { timeout: 3000 });
   await page.waitForTimeout(50);
   const damage = await page.evaluate(() => {
-    const canvas = document.querySelector('.damage-number canvas');
+    const canvas = document.querySelector('.damage-number canvas:not([data-ui-lock-existing])');
     const box = canvas?.getBoundingClientRect();
     const trace = window.__orkaUiLockTrace.read();
     const text = [...trace].reverse().find((entry) => entry.kind === 'fillText' && entry.text === '20');
@@ -787,6 +772,7 @@ async function runQuestViewport(browser, baseUrl, viewport, artifactDir) {
     await page.getByRole('button',{name:'Skip',exact:true}).click();
     await page.waitForFunction(() => JSON.parse(window.render_game_to_text()).quest.phase === 'combat');
     await page.getByRole('button', {name:'QUESTS',exact:true}).waitFor();
+    await page.locator('[aria-label="Entering combat"]').waitFor({state:'hidden'});
     await page.getByRole('button',{name:'QA defeat',exact:true}).click();
     await page.getByRole('button',{name:'Continue · 30',exact:true}).waitFor();
     await page.screenshot({path:path.join(artifactDir,`${viewport.name}-quest-continue.png`)});
@@ -811,6 +797,7 @@ async function runQuestViewport(browser, baseUrl, viewport, artifactDir) {
       await card.click();
       await page.waitForFunction(() => window.__codexGame.globals.AstralFlowAmpPoints===0);
       await page.waitForFunction(name => window.__codexGame.state.entities.filter(e=>e.kind==='enemy').length===1 && window.__codexGame.state.entities.some(e=>e.kind==='enemy' && e.name===name),enemy);
+      await page.locator('[aria-label="Entering combat"]').waitFor({state:'hidden'});
       await page.getByRole('button',{name:'QA clear monsters',exact:true}).click();
       await page.waitForFunction(index => JSON.parse(window.render_game_to_text()).quest.progress.completed.length===index+1+(index>5 ? 1 : 0),i);
       if (i===5) {

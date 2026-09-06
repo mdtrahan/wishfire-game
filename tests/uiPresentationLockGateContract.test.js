@@ -15,8 +15,8 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
 
   const gate = fs.readFileSync(gatePath, 'utf8');
   for (const requiredEvidence of [
-    'story-mock-text-scale',
-    'town-text-scale',
+    'quests-banner-text-scale',
+    'chapter-text-scale',
     'actual-viewport-metrics',
     'page-horizontal-overflow',
     'stage-contained-reference-aspect',
