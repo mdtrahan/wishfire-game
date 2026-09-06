@@ -29,6 +29,8 @@
 ## Child DOX Index
 - None.
 
-- `narrative/chapter-1-map.png` is the approved 360x640 C placeholder composition with the original raised town token proportions.
+- `narrative/chapter-1-map.png` is a terrain-only 360x640 background. `chapter-town-token.png` is a separate transparent token; chapterMapPresentation.mjs owns overlay positions and labels.
 
 - Navigation badges in images/navigation are transparent 128px object-only illustrations designed to read at 40–50px: bold silhouettes, broad color blocks, minimal interior detail; preserve six labels and hide the shared menu during dialogue. Generation prompts accompany the assets.
+
+- Never bake UI into gameplay backgrounds: headings, dividers, chapter labels, map tokens and buttons must be independent rendered layers. Baked UI is allowed only in mockups or simulated screenshots.

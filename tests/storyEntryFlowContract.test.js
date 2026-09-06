@@ -26,8 +26,9 @@ async function setup(ready = true, enemies = []) {
   const gameState = {};
   const readiness = { ready };
   let combatEntries = 0;
+  let sessionEnds = 0;
   let heals = 0;
-  const flow = createStoryEntryFlow({ gameState, layoutState: layout, isReady: () => readiness.ready, getEnemies: () => enemies });
+  const flow = createStoryEntryFlow({ gameState, layoutState: layout, isReady: () => readiness.ready, getEnemies: () => enemies, onCombatEnd: () => { sessionEnds++; } });
   registerRuntimeLayouts(layout, {
     gameState, storyEntry: flow,
     combatLayout: { id: 'combat', allowedTransitions: ['storyMock', 'heroLayout'], onEnter() { combatEntries++; }, onActive() {}, onExit() {} },
@@ -35,7 +36,7 @@ async function setup(ready = true, enemies = []) {
     restorePartyToFullHP() { heals++; },
   });
   await layout.activateInitialLayout('storyMock');
-  return { gameState, flow, controller, content, layout, input, bus, readiness, combatEntries: () => combatEntries, heals: () => heals };
+  return { gameState, flow, controller, content, layout, input, bus, readiness, combatEntries: () => combatEntries, sessionEnds: () => sessionEnds, heals: () => heals };
 }
 
 
@@ -49,7 +50,7 @@ test('map opens ladder; only revealed cards can start and energy is charged once
  assert.equal(s.flow.startCard(1), false);
  assert.equal(s.flow.startCard(0), true);
  assert.equal(s.flow.startCard(0), false);
- assert.equal(s.gameState.storyEntry.progress.energy, 95);
+ assert.equal(s.gameState.storyEntry.progress.energy, 200);
  assert.equal(s.gameState.narrative.stepIndex, 0);
  assert.equal(s.layout.canTransitionTo('combat').allowed, false);
 });
@@ -121,6 +122,7 @@ test('synthetic roster stages sort by CP, use existing thumbnails, and unlock on
  const cp = table.data.find(column => column[0][0] === 'EncounterCP');
  const enemies = names.slice(1).map((value,i) => ({name:value[0], CombatPower:cp[i+1][0]}));
  const stages = buildSyntheticQuestStages(enemies);
+ assert.deepEqual(buildSyntheticQuestStages(enemies.map(e => ({name:e.name, EncounterCP:e.CombatPower}))), stages);
  assert.equal(stages.length,10);
  assert.equal(stages[0].enemyName,'Troll');
  assert.equal(stages.at(-1).enemyName,'High Orc');
@@ -154,4 +156,24 @@ test('Quests from the map changes the view without requesting the same layout', 
  assert.equal(s.gameState.storyEntry.error, null);
  assert.equal(await s.flow.navigate('Quests'), true);
  assert.equal(s.gameState.storyEntry.error, null);
+});
+
+
+test('combat end resets overrides once; Continue preserves the active session', async () => {
+ const s = await setup(); s.flow.skip(); await flush();
+ s.flow.defeat(); await flush();
+ assert.equal(s.sessionEnds(),0);
+ await s.flow.continueCombat();
+ assert.equal(s.sessionEnds(),0);
+ s.flow.victory(); await flush();
+ assert.equal(s.sessionEnds(),1);
+ s.flow.victory(); assert.equal(s.sessionEnds(),1);
+ s.flow.startCard(0); s.flow.requestSkip(); s.flow.confirmSkip(); await flush();
+ s.flow.defeat(); await flush(); s.flow.quit();
+ assert.equal(s.sessionEnds(),2);
+ s.flow.startCard(1); s.flow.requestSkip(); s.flow.confirmSkip();
+ assert.equal(s.sessionEnds(),2,'story-only completion has no combat overrides to clear');
+ s.flow.startCard(0); s.flow.requestSkip(); s.flow.confirmSkip(); await flush();
+ await s.flow.navigate('Quests');
+ assert.equal(s.sessionEnds(),3);
 });

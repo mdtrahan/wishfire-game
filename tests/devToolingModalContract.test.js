@@ -299,3 +299,42 @@ test('debug gem diagnostics do not mutate timing samples unless explicitly reque
   assert.doesNotMatch(runtimeSrc, /GATE_STUCK_AFTER_REFILL[\s\S]*state\.globals\.CanPickGems = true;/);
   assert.doesNotMatch(runtimeSrc, /console\.error\('\[GATE_STUCK_AFTER_REFILL\]'/);
 });
+
+
+test('combat end clears staged dev overrides and autoplay while preserving gold', () => {
+  const vm = require('node:vm');
+  const src = fs.readFileSync(path.join(__dirname, '../web-runner/systems/devToolingRuntime.js'), 'utf8')
+    .replace(/^import .*;$/gm, '')
+    .replace(/export \{[\s\S]*?\};/, '')
+    .replace('export function createDevToolingRuntime', 'function createDevToolingRuntime');
+  const removed = [];
+  const calls = [];
+  const context = vm.createContext({
+    window: { addEventListener() {}, sessionStorage: { removeItem: key => removed.push(key) } },
+    document: { getElementById: () => null },
+    normalizeCombatOrientation: () => 'rtl',
+  });
+  vm.runInContext(src, context);
+  const state = { globals: { goldTotal: 4321, DevAutoplayRunId: 7, DevAutoplayActive: 1,
+    DevToolingConfig: { combatSpeed: 4, boardGemColor: 1, goldAmount: 0 },
+    DevForcedEnemyType: 'boss', DevToolingPaused: 1 }, entities: [] };
+  const runtime = context.createDevToolingRuntime({ state, gameState: {},
+    CANONICAL_HERO_ROSTER: [{ name: 'Hero' }],
+    callFunctionWithContext: (_, name) => calls.push(name),
+  });
+  runtime.clearCombatSessionOverrides();
+  const g = state.globals;
+  assert.equal(g.goldTotal, 4321);
+  assert.equal(g.DevToolingConfig.goldAmount, 4321);
+  assert.equal(g.DevAutoplayActive, 0);
+  assert.equal(g.DevAutoplayRunId, 8);
+  assert.equal(g.DevCombatSpeedMultiplier, 1);
+  assert.equal(g.DevForcedBoardColor, -1);
+  assert.equal(g.DevForcedEnemyType, '');
+  assert.equal(g.DevToolingPaused, 0);
+  assert.equal(g.DevDoubleAttackHolderUID, 0);
+  assert.equal(g.DevRewardDrops.length, 0);
+  assert.equal(g.DevEnemySlots.join(','), '__RANDOM__,__RANDOM__,__RANDOM__');
+  assert.deepEqual(removed, ['orka.dev_tooling_config.v1']);
+  assert.ok(calls.includes('ClearSessionSkillDraught'));
+});

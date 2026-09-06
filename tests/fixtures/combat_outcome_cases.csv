@@ -1,9 +1,9 @@
 name,energy,partyHp,livingHeroes,expectedCode
 continue,10,40,4,0
-energy_zero,0,40,4,1
-energy_negative,-1,40,4,1
+energy_zero,0,40,4,0
+energy_negative,-1,40,4,0
 party_defeated,10,0,4,2
 party_negative,10,-3,4,2
 no_living_heroes,10,12,0,3
-energy_priority,0,0,0,1
+party_defeated_without_energy,0,0,0,2
 party_priority,5,0,0,2

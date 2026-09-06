@@ -92,13 +92,11 @@ for (const filePath of MIRRORED_FUNCTION_BANKS) {
     assert.match(superResolveSrc, /g\.ActionLockUntil = Math\.max\(g\.ActionLockUntil \|\| 0, \(g\.time \|\| 0\) \+ 0\.32, g\.TextAnimEndAt \|\| 0\);/);
   });
 
-  test(`energy spend can charge the explicit purple gem count in ${path.relative(process.cwd(), filePath)}`, () => {
+  test(`action handoff preserves macro energy in ${path.relative(process.cwd(), filePath)}`, () => {
     const src = fs.readFileSync(filePath, 'utf8');
     const subEnergySrc = extractFunctionSource(src, 'Sub_Energy');
     assert.match(subEnergySrc, /export function Sub_Energy\(ctx, amount = 3\)/);
-    assert.match(subEnergySrc, /const rawCost = Math\.floor\(Number\(amount \?\? 3\)\);/);
-    assert.match(subEnergySrc, /const cost = Number\.isFinite\(rawCost\) \? Math\.max\(0, rawCost\) : 0;/);
-    assert.match(subEnergySrc, /g\.Player_Energy = \(g\.Player_Energy \|\| 0\) - cost;/);
+    assert.doesNotMatch(subEnergySrc, /g\.Player_Energy\s*=/);
   });
 }
 
@@ -110,18 +108,13 @@ test('frame-6 energy pickup is removed as a separate combat path', () => {
   assert.doesNotMatch(src, /function findIdleAutoplayPrioritySinglePick\(/);
 });
 
-test('renderer exposes the energy readout as a floating-text target', () => {
+test('combat renderer omits the macro energy readout and bar', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
-  assert.match(src, /} else if \(r\.inst\.type === 'Text_Energy'\) \{/);
-  assert.match(src, /presentationPatches\.EnergyReadoutTextWorld = \{/);
-  assert.match(src, /presentationPatches\.EnergyReadoutTextCanvas = \{/);
-  assert.match(src, /x: centerX,/);
-  assert.match(src, /y: y \+ 5,/);
-  assert.match(src, /x: Number\(r\.world\.x \|\| 0\) \+ \(0\.5 - ox\) \* w,/);
-  assert.match(src, /y: Number\(r\.world\.y \|\| 0\) \+ \(0\.5 - oy\) \* h,/);
+  assert.doesNotMatch(src, /presentationPatches\.EnergyReadoutText/);
+  assert.doesNotMatch(src, /const curE = Math/);
 });
 
-test('regular purple matches spend a flat one energy', () => {
+test('regular purple matches retain the action handoff call', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
   const branch = src.match(/} else if \(color === 5\) \{[\s\S]*?\n  \}/);
   assert.ok(branch, 'handleGemMatch should have a purple branch');

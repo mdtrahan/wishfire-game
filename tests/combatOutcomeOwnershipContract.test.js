@@ -98,7 +98,7 @@ test('dev autoplay and main runtime stop checks route through Rust-owned combat 
   assert.match(appSrc, /function resolveMainRuntimeCombatOutcome/);
   assert.match(appSrc, /app\.runDevAutoplayUntilDepleted/);
   assert.match(appSrc, /app\.mainRuntimeCombatOutcome/);
-  assert.match(appSrc, /energy: Number\(energy \|\| 0\) < 0 \? 0 : 1,/);
+  assert.doesNotMatch(appSrc, /energy: Number\(energy/);
   assert.match(appSrc, /const outcome = resolveMainRuntimeCombatOutcome\(\{ energy, partyHp, livingHeroes \}\);/);
   assert.match(appSrc, /lastReason: outcome\.reason/);
   assert.match(appSrc, /requestCombatFailureExit\(outcome\.reason\)/);

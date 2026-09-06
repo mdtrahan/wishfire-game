@@ -31,3 +31,5 @@
 
 ## Child DOX Index
 - None.
+
+- Combat outcome ignores macro energy. Only party HP and living heroes determine defeat; energy is spent at quest entry and purple gems may restore it.

@@ -47,7 +47,6 @@ function createFallbackSimulationCoreResponse({
 }
 
 export function combatOutcomeCodeFromJs({ energy = 0, partyHp = 0, livingHeroes = 0 } = {}) {
-  if (Number(energy || 0) <= 0) return COMBAT_OUTCOME_ENERGY_DEPLETED;
   if (Number(partyHp || 0) <= 0) return COMBAT_OUTCOME_PARTY_DEFEATED;
   if (Number(livingHeroes || 0) <= 0) return COMBAT_OUTCOME_NO_LIVING_HEROES;
   return COMBAT_OUTCOME_CONTINUE;

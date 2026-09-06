@@ -142,10 +142,7 @@ pub fn effective_stat_value(
     value.max(0.0)
 }
 
-pub fn combat_outcome_code(energy: f64, party_hp: f64, living_heroes: f64) -> f64 {
-    if number_or_zero(energy) <= 0.0 {
-        return 1.0;
-    }
+pub fn combat_outcome_code(_energy: f64, party_hp: f64, living_heroes: f64) -> f64 {
     if number_or_zero(party_hp) <= 0.0 {
         return 2.0;
     }
@@ -3778,12 +3775,12 @@ mod single_hit_resolution_tests {
     fn mirrors_current_combat_outcome_cases() {
         let cases = [
             (10.0, 40.0, 4.0, 0.0),
-            (0.0, 40.0, 4.0, 1.0),
-            (-1.0, 40.0, 4.0, 1.0),
+            (0.0, 40.0, 4.0, 0.0),
+            (-1.0, 40.0, 4.0, 0.0),
             (10.0, 0.0, 4.0, 2.0),
             (10.0, -3.0, 4.0, 2.0),
             (10.0, 12.0, 0.0, 3.0),
-            (0.0, 0.0, 0.0, 1.0),
+            (0.0, 0.0, 0.0, 2.0),
             (5.0, 0.0, 0.0, 2.0),
         ];
 

@@ -521,3 +521,5 @@ Pre-build state preserved in output/ORKA-aoq-checkpoint/pre-quest-ladder with pe
 
 ## 2026-09-06: Quest publication checkpoint
 The pre-publication archive preserves 64 owned files with verified SHA-256 hashes. Navigation migration tests should exercise the shared route and dialogue gate instead of requiring retired Canvas text objects. Keep checkpoint archives and QA-only review pages out of runtime deployments.
+
+- Gameplay backgrounds must contain scenery only. Keep changing chapter labels, navigation titles, decorative UI and location tokens as separate layers, and derive interaction bounds from their placement data. Flattening a mockup into a runtime background prevents chapter updates and leaks labels beneath overlays.

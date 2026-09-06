@@ -13,6 +13,7 @@ import {
   syncNarrativeSceneLine,
 } from './narrativeSceneController.mjs';
 import { computeNarrativeSceneViewport, transformNarrativeHitZones } from './narrativeSceneViewport.mjs';
+import { CHAPTER_ONE_MAP } from './chapterMapPresentation.mjs';
 
 const imageCache = new Map();
 const PORTRAIT_STAGE_SCALE = 0.38;
@@ -419,9 +420,11 @@ export function renderNarrativeScene(ctx, gameState, dims = {}, content = WISHFI
 }
 
 // Approved placeholder composition uses the same reference frame as dialogue.
-export function renderStoryChapterMap(ctx, gameState, { viewWidth, viewHeight }) {
+export function renderStoryChapterMap(ctx, gameState, { viewWidth, viewHeight, map = CHAPTER_ONE_MAP }) {
   const viewport = computeNarrativeSceneViewport(viewWidth, viewHeight);
-  const image = resolveImage('assets/narrative/chapter-1-map.png');
+  const image = resolveImage(map.background);
+  const token = resolveImage(map.token.asset);
+  const isMap = gameState.storyEntry.phase === 'map';
   ctx.save();
   ctx.fillStyle = '#243d3c';
   ctx.fillRect(0, 0, viewWidth, viewHeight);
@@ -429,12 +432,63 @@ export function renderStoryChapterMap(ctx, gameState, { viewWidth, viewHeight })
   ctx.scale(viewport.scale, viewport.scale);
   if (image) {
     ctx.drawImage(image, 0, 0, 360, 640);
-    if (gameState.storyEntry.phase === 'map') {
-    const fill = ctx.createLinearGradient(0, 405, 0, 449);
+    if (token) ctx.drawImage(token, map.token.x, map.token.y, map.token.w, map.token.h);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    const heading = map.heading;
+    const banner = ctx.createLinearGradient(0, heading.y, 0, heading.y + heading.h);
+    banner.addColorStop(0, '#a88d50');
+    banner.addColorStop(0.5, '#79643b');
+    banner.addColorStop(1, '#54452d');
+    ctx.beginPath();
+    ctx.moveTo(heading.x, heading.y);
+    ctx.lineTo(heading.x + heading.w - 12, heading.y);
+    ctx.lineTo(heading.x + heading.w, heading.y + heading.h / 2);
+    ctx.lineTo(heading.x + heading.w - 12, heading.y + heading.h);
+    ctx.lineTo(heading.x, heading.y + heading.h);
+    ctx.closePath();
+    ctx.fillStyle = banner;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#e2c775';
+    ctx.stroke();
+    ctx.font = 'bold 13px sans-serif';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#514021';
+    ctx.fillStyle = '#fff4dc';
+    ctx.strokeText(heading.text, heading.x + (heading.w - 8) / 2, heading.y + heading.h / 2);
+    ctx.fillText(heading.text, heading.x + (heading.w - 8) / 2, heading.y + heading.h / 2);
+    if (isMap) {
+    const divider = map.divider;
+    ctx.strokeStyle = '#dbc17c';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(divider.x, divider.y);
+    ctx.lineTo(divider.x + divider.w, divider.y);
+    ctx.stroke();
+    const center = divider.x + divider.w / 2;
+    ctx.beginPath();
+    ctx.moveTo(center, divider.y - 4);
+    ctx.lineTo(center + 4, divider.y);
+    ctx.lineTo(center, divider.y + 4);
+    ctx.lineTo(center - 4, divider.y);
+    ctx.closePath();
+    ctx.fillStyle = '#685536';
+    ctx.fill();
+    ctx.stroke();
+    ctx.font = 'bold 17px Georgia';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#514021';
+    ctx.fillStyle = '#fff0b9';
+    ctx.strokeText(map.chapter.text, map.chapter.x, map.chapter.y);
+    ctx.fillText(map.chapter.text, map.chapter.x, map.chapter.y);
+    const start = map.start;
+    const fill = ctx.createLinearGradient(0, start.y, 0, start.y + start.h);
     fill.addColorStop(0, '#747cff');
     fill.addColorStop(0.5, '#4546bc');
     fill.addColorStop(1, '#242164');
-    roundedRectPath(ctx, 111.4, 405, 146.2, 44, 5);
+    roundedRectPath(ctx, start.x, start.y, start.w, start.h, 5);
     ctx.fillStyle = fill;
     ctx.fill();
     ctx.strokeStyle = '#514021';
@@ -448,22 +502,22 @@ export function renderStoryChapterMap(ctx, gameState, { viewWidth, viewHeight })
     ctx.font = 'bold 22px sans-serif';
     ctx.lineWidth = 3;
     ctx.strokeStyle = '#242146';
-    ctx.strokeText('START', 184.5, 428);
+    ctx.strokeText('START', start.x + start.w / 2, start.y + start.h / 2 + 1);
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('START', 184.5, 428);
+    ctx.fillText('START', start.x + start.w / 2, start.y + start.h / 2 + 1);
     }
   }
   else {
     ctx.fillStyle = '#ffffff';
     ctx.font = '16px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Loading Chapter 1 map…', 180, 320);
+    ctx.fillText('Loading map…', 180, 320);
   }
   ctx.restore();
-  gameState.storyEntry.townHitZone = image
-    ? transformNarrativeHitZones({ town: { x: 123, y: 270, w: 123, h: 114 } }, viewport).town
+  gameState.storyEntry.townHitZone = image && token && isMap
+    ? transformNarrativeHitZones({ town: map.token }, viewport).town
     : null;
-  gameState.storyEntry.startHitZone = image
-    ? transformNarrativeHitZones({ start: { x: 111.4, y: 405, w: 146.2, h: 44 } }, viewport).start
+  gameState.storyEntry.startHitZone = image && isMap
+    ? transformNarrativeHitZones({ start: map.start }, viewport).start
     : null;
 }

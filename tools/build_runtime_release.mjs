@@ -16,7 +16,7 @@ for (const file of files) {
   fs.mkdirSync(path.dirname(path.join(output, file)), { recursive: true });
   fs.copyFileSync(path.join(root, file), path.join(output, file));
 }
-fs.writeFileSync(path.join(output, 'web-runner/runtime-fingerprint.js'), `window.__ORKA_RUNTIME_FINGERPRINT__ = ${JSON.stringify({ commit, issueId: 'ORKA-aoq', release: true })};\n`);
+fs.writeFileSync(path.join(output, 'web-runner/runtime-fingerprint.js'), `window.__ORKA_RUNTIME_FINGERPRINT__ = ${JSON.stringify({ commit, issueId: 'ORKA-bxd', release: true })};\n`);
 files.push('web-runner/runtime-fingerprint.js');
 fs.writeFileSync(path.join(output, '_redirects'), '/ /web-runner/ 301\n/web-runner /web-runner/ 301\n');
 files.push('_redirects');

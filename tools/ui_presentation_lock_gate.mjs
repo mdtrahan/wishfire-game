@@ -824,7 +824,7 @@ async function runQuestViewport(browser, baseUrl, viewport, artifactDir) {
     return {viewport, metrics, invariants:[
       invariant('quest-card-height',within(metrics.rowHeight,56,0.5),metrics.rowHeight,56),
       invariant('quest-card-contained',metrics.contained && !metrics.overflow && !metrics.cardOverflow,metrics,'contained'),
-      invariant('quest-outcome-and-cost',progress.revealed===2 && progress.resources===170 && progress.energy===95,progress,'one unlock, 30 spent, 50 awarded'),
+      invariant('quest-outcome-and-cost',progress.revealed===2 && progress.resources===170 && progress.energy===200,progress,'one unlock, 30 spent, 50 awarded'),
     ]};
   } catch(error) { await page.screenshot({path:path.join(artifactDir,'quest-failure.png')}); throw error; } finally { await context.close(); }
 }
