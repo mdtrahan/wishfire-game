@@ -62,3 +62,23 @@
 - Fresh encounter initialization clears Astral Flow charge and transient battle conditions through combatSessionReset.mjs. Continue bypasses initialization and preserves them. Gold and persistent progression are outside this reset. PartyHP_Bar supplies geometry only; the live HP renderer owns its sole visible fill.
 
 - Gold is currency persisted by goldProgressStorage.mjs under wishfire.gold.v1. Fresh encounters and resurrection never reset it; balance changes, including spending, are saved locally.
+
+- Map presentation draws terrain first, then independent headings, divider, chapter label, token and START from chapterMapPresentation.mjs. Token hit bounds derive from its draw rectangle. The QUESTS page banner stays visible in both map and ladder phases. The ladder wallet shares its top row; its chapter panel begins below that row. The town token stays at its world position behind ladder cards; it never belongs inside the chapter panel. Only the map-specific chapter label, divider and START hide when the ladder opens. Never bake runtime UI into scenery; only mockups or simulated screenshots may do so.
+
+- Chapter map and quest ladder share identical banner/resource header anchors at reference Y=48. The ladder panel begins at Y=92 and retains a centered title, existing location artwork and completion count. Quest cards keep 56-unit height with thumbnail left, title/energy center and one-time reward right; shared nav remains unchanged.
+
+- Quest resource strip reads live saved gold through getGold from state.globals.goldTotal, followed by resources and energy, identically on map and ladder. Gold changes invalidate the header render. QUESTS banner is 24 reference units high with 13px text.
+
+- Chapter progress counts completed sub-chapter cards of every kind against the entire chapter roster, including unrevealed combat stages. The UI cache must invalidate when the asynchronously populated roster size changes.
+
+- Chapter, story and combat panels use fully opaque fills. Do not reuse the world map as chapter-panel artwork or apply translucent fills that visually merge the panel with terrain.
+
+- Combat-session completion, Quit, or return to Quests clears dev-tool overrides and invalidates pending autoplay work. Continue retains the same session. Reset staged settings and persisted dev config while preserving saved gold.
+
+- Resource Continue restores party HP while preserving energy, encounter progress, buffs and skills.
+
+- Energy is a macro balance: quest entry spends it, combat actions do not. Purple recovery remains active. Combat defeat depends on party HP/living heroes; Continue preserves energy.
+
+- Starting macro energy is 200. Stage cards cost 15 per entry; all Main Story cards cost zero and omit the energy row, including embedded combat.
+
+- Combat entry uses a 250ms eased blackout, 500ms black hold, then 1000ms eased reveal. Change layout under black; block pointer input throughout.

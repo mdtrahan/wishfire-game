@@ -2,26 +2,27 @@ import { WISHFIRE_WARP_CROSSING_CONTENT } from '../src/core/wishfireWarpCrossing
 import { handleNarrativeScenePointer, restartNarrativeScene, skipNarrativeScene, updateNarrativeSceneAuto } from './narrativeSceneController.mjs';
 
 export function buildSyntheticQuestStages(enemies) {
-  return enemies.filter(e => e.name && Number(e.CombatPower) > 0)
+  return enemies.map(e => ({ ...e, CombatPower: Number(e.EncounterCP ?? e.CombatPower) }))
+    .filter(e => e.name && e.CombatPower > 0)
     .slice().sort((a, b) => a.CombatPower - b.CombatPower || a.name.localeCompare(b.name))
     .map((enemy, index) => ({
       id: `stage:${enemy.name}`, title: `Stage ${index + 1}`, kind: 'Combat',
-      enemyName: enemy.name, cp: Number(enemy.CombatPower), combat: true, cost: 5, reward: 50,
+      enemyName: enemy.name, cp: Number(enemy.CombatPower), combat: true, cost: 15, reward: 50,
       thumbnail: `assets/images/enemy_sprite-${encodeURIComponent(enemy.name.toLowerCase())}-000.png`,
     }));
 }
 
-export function createStoryEntryFlow({ gameState, layoutState, isReady, content = WISHFIRE_WARP_CROSSING_CONTENT, resurrect = () => {}, prepareEncounter = () => {}, getEnemies = () => [] }) {
+export function createStoryEntryFlow({ gameState, layoutState, isReady, content = WISHFIRE_WARP_CROSSING_CONTENT, resurrect = () => {}, prepareEncounter = () => {}, getEnemies = () => [], onCombatEnd = () => {}, energyGlobals = { Player_Energy: 200 }, enterCombat = change => change() }) {
   const scene = content.scenes[0];
   const handoff = scene.steps.findIndex(step => step.id === scene.combatHandoffStepId);
   if (handoff < 0) throw new Error('Opening scene requires an authored combat handoff step');
   const segment = steps => ({ ...content, scenes: [{ ...scene, steps }] });
   const cards = [
-    { id: 'warp-crossing', title: 'Main Story 1', kind: 'Story + combat', cost: 5, reward: 50, combat: true, content: segment(scene.steps.slice(0, handoff)) },
-    { id: 'after-the-crossing', title: 'Main Story 2', kind: 'Story', cost: 2, reward: 50, combat: false, content: segment(scene.steps.slice(handoff + 1)) },
+    { id: 'warp-crossing', title: 'Main Story 1', kind: 'Story + combat', cost: 0, reward: 50, combat: true, content: segment(scene.steps.slice(0, handoff)) },
+    { id: 'after-the-crossing', title: 'Main Story 2', kind: 'Story', cost: 0, reward: 50, combat: false, content: segment(scene.steps.slice(handoff + 1)) },
   ];
   const entry = gameState.storyEntry = { phase: 'map', pending: false, error: null, combatUnlocked: false, activeCard: null, modal: null, cards,
-    progress: { energy: 100, resources: 150, completed: [], revealed: 1 }, content: cards[0].content };
+    progress: { get energy() { return energyGlobals.Player_Energy; }, set energy(value) { energyGlobals.Player_Energy = value; }, resources: 150, completed: [], revealed: 1 }, content: cards[0].content };
   const contains = (point, rect) => point && rect && point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h;
   async function go(target, reason, payload = {}) {
     if (entry.pending) return false;
@@ -29,7 +30,11 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
     if (layoutState.getActiveLayoutId() === target) return true;
     entry.pending = true;
     try {
-      const changed = await layoutState.requestLayoutChange(target, reason, payload);
+      const change = () => {
+        if (target === 'combat' && entry.phase !== 'defeat') entry.phase = 'combat';
+        return layoutState.requestLayoutChange(target, reason, payload);
+      };
+      const changed = await (target === 'combat' && payload.freshStart ? enterCombat(change) : change());
       if (!changed) entry.error = 'This destination is unavailable.';
       return changed;
     } catch (error) { entry.error = String(error?.message || error); return false; }
@@ -38,6 +43,7 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
   function complete() {
     const card = cards[entry.activeCard];
     if (!card) return;
+    if (card.combat) onCombatEnd();
     if (!entry.progress.completed.includes(card.id)) {
       entry.progress.completed.push(card.id);
       entry.progress.resources += card.reward;
@@ -53,7 +59,6 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
     const card = cards[entry.activeCard];
     if (!card) return;
     if (card.combat) {
-      entry.phase = 'combat';
       entry.combatUnlocked = true;
       prepareEncounter();
       void go('combat', 'story-combat-handoff', { freshStart: true });
@@ -66,7 +71,7 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
     entry.progress.energy -= card.cost;
     entry.activeCard = index;
     entry.content = card.content;
-    entry.phase = 'opening';
+    entry.phase = card.content ? 'opening' : 'ladder';
     entry.error = null;
     if (card.content) restartNarrativeScene(gameState, entry.content, scene.id);
     else finishStory();
@@ -120,6 +125,7 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
     const target = targets[label];
     if (!target) return false;
     if (target === 'storyMock') {
+      if (entry.phase === 'combat') { onCombatEnd(); entry.activeCard = null; entry.combatUnlocked = false; }
       entry.phase = label === 'Map' ? 'map' : 'ladder';
     }
     return go(target, 'quest-navigation');
@@ -142,7 +148,7 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
       entry.phase = 'combat';
       return true;
     },
-    quit() { if (entry.phase !== 'defeat' || entry.pending) return; entry.phase = 'ladder'; entry.activeCard = null; entry.combatUnlocked = false; entry.error = null; },
+    quit() { if (entry.phase !== 'defeat' || entry.pending) return; onCombatEnd(); entry.phase = 'ladder'; entry.activeCard = null; entry.combatUnlocked = false; entry.error = null; },
     // Existing developer scenarios intentionally bypass presentation controls.
     skip() {
       if (!isReady() || entry.pending) return false;

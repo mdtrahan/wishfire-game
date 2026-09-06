@@ -904,6 +904,44 @@ export function createDevToolingRuntime(deps = {}) {
     return cfg;
   }
 
+  function clearCombatSessionOverrides() {
+    const g = state.globals;
+    // Invalidate sleeping autoplay work before resetting its visible controls.
+    g.DevAutoplayRunId = Number(g.DevAutoplayRunId || 0) + 1;
+    g.DevAutoplayActive = 0;
+    g.DevAutoplayStopRequested = 0;
+    g.DevAutoplaySkillDraughtSeenAt = 0;
+    g.DevAutoplayMatchesPlayed = 0;
+    g.DevAutoplayStartedAt = 0;
+    g.DevAutoplayEndedAt = 0;
+    g.DevAutoplayLastReason = '';
+    clearPersistedDevToolingConfig();
+    const cfg = { ...createDefaultDevToolingConfig(), combatOrientation: normalizeCombatOrientation(), goldAmount: Number(g.goldTotal || 0) };
+    g.DevToolingConfig = cfg;
+    g.DevHeroSlots = [...cfg.heroSlots];
+    g.DevHeroCount = cfg.heroSlots.filter(Boolean).length;
+    g.DevEnemySlots = [...cfg.enemySlots];
+    g.EncounterMaxSlots = cfg.enemySlots.length;
+    g.DevForcedEnemyType = '';
+    g.DevForcedBoardColor = cfg.boardGemColor;
+    g.DevCombatSpeedMultiplier = cfg.combatSpeed;
+    g.CombatOrientation = cfg.combatOrientation;
+    g.DevRewardDropId = '';
+    g.DevRewardDrops = [];
+    g.DevRewardCount = cfg.rewardCount;
+    syncConfiguredDoubleAttackHarness(cfg);
+    syncIdleFarmDevLoadoutConfig(cfg);
+    callFunctionWithContext(fnContext, 'ClearSessionSkillDraught');
+    devToolingPauseSnapshot = null;
+    g.DevToolingPaused = 0;
+    if (devToolingDom) {
+      devToolingDom.root.style.display = 'none';
+      syncDevToolingDomFromConfig();
+      devToolingDom.skillHero.value = '';
+      devToolingDom.skillId.value = '';
+    }
+  }
+
   function resetCombatRuntimeForFreshSession(reason = 'combat-refresh', options = {}) {
     const refill = gameState.refillBounce || (gameState.refillBounce = {});
     refill.active = false;
@@ -1031,6 +1069,7 @@ export function createDevToolingRuntime(deps = {}) {
     resumeGameplayFromDevTooling,
     closeDevToolingModal,
     resetCombatRuntimeForFreshSession,
+    clearCombatSessionOverrides,
     hardRestartRuntimeFromDevTooling,
     toggleDevToolingModal,
     isDevToolingHotkey,

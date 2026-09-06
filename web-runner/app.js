@@ -114,6 +114,7 @@ import { registerRuntimeLayouts } from './systems/runtimeLayoutRegistry.js';
 import { renderExistingNavigation } from './systems/renderExistingNavigation.mjs';
 import { createQuestLadderUI } from './systems/questLadderUI.mjs';
 import { createQuestCombatSession } from './systems/questCombatSession.mjs';
+import { createCombatEntryTransition } from './systems/combatEntryTransition.mjs';
 import { createStoryEntryFlow } from './systems/storyEntryFlow.mjs';
 import { createSurfaceRenderRouter } from './systems/surfaceRenderRouter.js';
 import { createPointerRoutingShell } from './systems/pointerRoutingShell.js';
@@ -2702,8 +2703,8 @@ async function main(){
   combatRuntimeGateway.setLayoutState(layoutState);
   const questCombat = createQuestCombatSession({ state, gameState, call: name => callFunctionWithContext(fnContext, name), sync: syncFromGlobals });
   const goldProgress = createGoldProgressStorage({ globals: state.globals, storage: window.localStorage });
-  const storyEntry = createStoryEntryFlow({ gameState, layoutState, isReady: () => freshCombatBootstrapped, getEnemies: () => state.globals.EnemyData || [], prepareEncounter: questCombat.prepare, resurrect: questCombat.resurrect });
-  const questUI = createQuestLadderUI({ canvas, gameState, layoutState, flow: storyEntry });
+  const storyEntry = createStoryEntryFlow({ gameState, layoutState, isReady: () => freshCombatBootstrapped, getEnemies: () => enemyRows, prepareEncounter: questCombat.prepare, resurrect: questCombat.resurrect, energyGlobals: state.globals, enterCombat: createCombatEntryTransition(canvas), onCombatEnd: () => devToolingRuntime.clearCombatSessionOverrides() });
+  const questUI = createQuestLadderUI({ canvas, gameState, layoutState, flow: storyEntry, getGold: () => state.globals.goldTotal || 0 });
   registerRuntimeLayouts(layoutState, {
     storyEntry,
     combatLayout,
@@ -2721,7 +2722,7 @@ async function main(){
   const harnessCombatGateway = combatRuntimeGateway;
   const harnessLayoutState = layoutState;
 
-  state.globals.Player_maxEnergy = 150;
+  state.globals.Player_maxEnergy = 200;
   state.globals.Player_Energy = state.globals.Player_maxEnergy;
   state.globals.EnergyInitialized = 1;
   if (state.globals.EnemyDoTs) delete state.globals.EnemyDoTs;
@@ -3977,10 +3978,11 @@ function getStoryCardLiveLineState() {
       }),
     };
   }
-  async function playIdleAutoplayTriplet(cells) {
+  async function playIdleAutoplayTriplet(cells, isCurrentRun) {
     if (!Array.isArray(cells) || cells.length < 3) return false;
     clearSelectionOnly();
     for (const cell of cells.slice(0, 3)) {
+      if (!isCurrentRun()) return false;
       if (!clickGemCell(Number(cell.row || 0), Number(cell.col || 0))) return false;
       await devSleep(24);
     }
@@ -4094,7 +4096,7 @@ function getStoryCardLiveLineState() {
   function resolveMainRuntimeCombatOutcome({ energy = 0, partyHp = 0, livingHeroes = 0 } = {}) {
     return resolveCombatOutcomeWithOwner({
       source: 'app.mainRuntimeCombatOutcome',
-      energy: Number(energy || 0) < 0 ? 0 : 1,
+      energy,
       partyHp,
       livingHeroes,
     });
@@ -4145,6 +4147,10 @@ function getStoryCardLiveLineState() {
     return true;
   }
   async function runDevAutoplayUntilDepleted() {
+    if (gameState.storyEntry.phase !== 'combat') return getDevAutoplayState();
+    const runId = state.globals.DevAutoplayRunId = Number(state.globals.DevAutoplayRunId || 0) + 1;
+    const isCurrentRun = () => state.globals.DevAutoplayRunId === runId && !!state.globals.DevAutoplayActive;
+
     const startedAt = Number(state.globals.time || 0);
     let matchesPlayed = 0;
     let lastProgressSig = '';
@@ -4158,6 +4164,7 @@ function getStoryCardLiveLineState() {
       endedAt: 0,
     });
     while (true) {
+      if (!isCurrentRun()) return getDevAutoplayState();
       if (state.globals.DevAutoplayStopRequested) {
         setDevAutoplayState({ active: false, stopRequested: false, lastReason: 'manual_stop', matchesPlayed, endedAt: Number(state.globals.time || 0) });
         return getDevAutoplayState();
@@ -4190,6 +4197,7 @@ function getStoryCardLiveLineState() {
           const beforeSuperGemProgressSig = getDevAutoplayProgressSig();
           const played = clickGemCell(Number(superGemPick.row || 0), Number(superGemPick.col || 0));
           await devSleep(90);
+          if (!isCurrentRun()) return getDevAutoplayState();
           if (played && getDevAutoplayProgressSig() !== beforeSuperGemProgressSig) {
             matchesPlayed += 1;
             setDevAutoplayState({ active: true, stopRequested: false, lastReason: 'running', matchesPlayed, startedAt, endedAt: 0 });
@@ -4201,7 +4209,8 @@ function getStoryCardLiveLineState() {
           setDevAutoplayState({ active: false, stopRequested: false, lastReason: 'no_valid_triplet', matchesPlayed, endedAt: Number(state.globals.time || 0) });
           return getDevAutoplayState();
         }
-        const played = await playIdleAutoplayTriplet(pick);
+        const played = await playIdleAutoplayTriplet(pick, isCurrentRun);
+        if (!isCurrentRun()) return getDevAutoplayState();
         if (played) {
           matchesPlayed += 1;
           setDevAutoplayState({ active: true, stopRequested: false, lastReason: 'running', matchesPlayed, startedAt, endedAt: 0 });

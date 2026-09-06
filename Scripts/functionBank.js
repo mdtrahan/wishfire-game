@@ -6756,9 +6756,7 @@ export function UpdateAstralFlowAmpBar(ctx) {
 
 export function Sub_Energy(ctx, amount = 3) {
   const g = getGlobals(ctx);
-  const rawCost = Math.floor(Number(amount ?? 3));
-  const cost = Number.isFinite(rawCost) ? Math.max(0, rawCost) : 0;
-  g.Player_Energy = (g.Player_Energy || 0) - cost;
+  // Energy is charged at quest entry; action callers retain turn handoff only.
   // Yellow recolor path can bypass skill defer wiring; ensure deterministic turn handoff.
   if (Number(g.MatchedColorValue || -1) === 3) {
     applyTurnGateIntent(g, createYellowSafetyNet, {
