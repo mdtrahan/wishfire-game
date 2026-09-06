@@ -1,3 +1,4 @@
+import { createGoldProgressStorage } from './systems/goldProgressStorage.mjs';
 import { state } from './modules/state.js';
 import { createContext, callFunctionWithContext } from './modules/functionRegistry.js';
 import { CombatRuntimeGateway } from './src/core/combatRuntimeGateway.js';
@@ -58,7 +59,12 @@ import {
   spendSuperGem,
   syncSuperGemShapes,
 } from './src/core/superGemBoardState.mjs';
-import { resolvePendingSuperGemHandoff } from './src/core/pendingSuperGemHandoff.mjs';
+import {
+  capturePendingEnemyTargetIntent,
+  recoverPendingTargetActor,
+  resolvePendingSuperGemHandoff,
+  validatePendingEnemyTargetIntent,
+} from './src/core/pendingSuperGemHandoff.mjs';
 import { formatDamageValue } from '../src/core/damageTextFormatting.mjs';
 import { deriveDamageFloatFrameOffset } from '../src/core/damageFloatVector.mjs';
 import {
@@ -99,8 +105,16 @@ import {
 import {
   createAppViewportRuntime,
 } from './systems/appShellViewport.js';
+import {
+  computeCombatDamageFontSize,
+  computeScaledCombatControlSize,
+} from './systems/combatPresentationScale.mjs';
 import { initializeStoryCardPresentationLayout } from './systems/storyCardPresentation.js';
 import { registerRuntimeLayouts } from './systems/runtimeLayoutRegistry.js';
+import { renderExistingNavigation } from './systems/renderExistingNavigation.mjs';
+import { createQuestLadderUI } from './systems/questLadderUI.mjs';
+import { createQuestCombatSession } from './systems/questCombatSession.mjs';
+import { createStoryEntryFlow } from './systems/storyEntryFlow.mjs';
 import { createSurfaceRenderRouter } from './systems/surfaceRenderRouter.js';
 import { createPointerRoutingShell } from './systems/pointerRoutingShell.js';
 import { createIdleFarmAppRuntime } from './systems/idleFarmAppRuntime.js';
@@ -210,6 +224,7 @@ function getActionHandoffSnapshot() {
     pendingActor: Number(state.globals.PendingActor || 0),
     pendingSuperGem: !!state.globals.PendingSuperGemAction,
     selectedEnemyUID: Number(state.globals.SelectedEnemyUID || 0),
+    selectedEnemyUIDOwner: Number(state.globals.SelectedEnemyUIDOwner || 0),
     actionInProgress: Number(state.globals.ActionInProgress || 0),
     actionActorUID: Number(state.globals.ActionActorUID || 0),
     actionOwnerUID: Number(state.globals.ActionOwnerUID || 0),
@@ -219,16 +234,36 @@ function getActionHandoffSnapshot() {
     time: Number(state.globals.time || 0),
     heroActionActive: !!(state.globals.HeroAction && state.globals.HeroAction.active),
     enemyActionActive: !!(state.globals.EnemyAction && state.globals.EnemyAction.active),
-    pendingHeroHits: Array.isArray(state.globals.PendingHeroHits) ? state.globals.PendingHeroHits.length : 0,
-    livingEnemies: state.entities.filter((entity) => entity && entity.kind === 'enemy' && (entity.hp ?? 0) > 0).length,
+    pendingHeroHits: Array.isArray(state.globals.PendingHeroHits)
+      ? state.globals.PendingHeroHits.map((hit) => ({
+          targetUID: Number(hit?.targetUID || 0),
+          heroUID: Number(hit?.heroUID || 0),
+          targetTraceSequence: Number(hit?.targetTraceSequence || 0),
+        }))
+      : [],
+    pendingManualTargetIntent: state.globals.PendingManualTargetIntent || null,
+    enemyRoster: state.entities
+      .filter((entity) => entity && entity.kind === 'enemy' && Number(entity.hp ?? 0) > 0)
+      .map((entity) => ({
+        uid: Number(entity.uid || 0),
+        name: String(entity.name || ''),
+        slotIndex: Number(entity.slotIndex ?? -1),
+        hp: Number(entity.hp ?? 0),
+      })),
+    enemyIDs: Array.isArray(state.globals.EnemyIDs) ? [...state.globals.EnemyIDs] : [],
+    enemySlots: Array.isArray(state.globals.EnemySlots) ? [...state.globals.EnemySlots] : [],
   };
 }
 
 function logActionHandoffDebug(tag, payload = {}) {
-  runtimeDebugLogging.gemDebugLog(tag, {
+  const entry = {
     ...payload,
     snapshot: getActionHandoffSnapshot(),
-  }, state);
+  };
+  runtimeDebugLogging.gemDebugLog(tag, entry, state);
+  if (runtimeDebugLogging.isGemDebugEnabled(state)) {
+    console.log(`${tag}_JSON ${JSON.stringify(entry)}`);
+  }
 }
 
 function resolvePendingTargetHandoff({ actorUID, source }) {
@@ -248,6 +283,15 @@ function resolvePendingTargetHandoff({ actorUID, source }) {
       resolvedActorUID,
     ),
     hideAttackUI: () => callFunctionWithContext(fnContext, 'HideAttackUI'),
+  });
+}
+
+function recoverPendingTargetActorUID() {
+  return recoverPendingTargetActor({
+    globals: state.globals,
+    currentTurnUID: callFunctionWithContext(fnContext, 'GetCurrentTurn'),
+    selectedHeroUID: getHeroUIDByIndex(gameState.selectedHero),
+    getActorByUID: (uid) => callFunctionWithContext(fnContext, 'GetActorByUID', uid),
   });
 }
 
@@ -496,7 +540,7 @@ function syncDamageNumberLayerBounds() {
   damageNumberLayer.style.height = `${rect.height}px`;
 }
 
-function spawnPendingDamageNumbers(projectToCanvas = null) {
+function spawnPendingDamageNumbers(projectToCanvas = null, presentationScale = 1) {
   const texts = state.globals.DamageTexts || [];
   if (!texts.length || typeof projectToCanvas !== 'function') return;
   ensureDamageNumberLayer();
@@ -527,6 +571,13 @@ function spawnPendingDamageNumbers(projectToCanvas = null) {
       text,
       amount: d.amount,
       partyMaxHP: d.partyMaxHP,
+      displayFontSize: computeCombatDamageFontSize({
+        amount: d.amount,
+        partyMaxHP: d.partyMaxHP,
+        isCrit,
+        damageType: domKind === 'heal' || domKind === 'energy' ? 'heal' : 'damage',
+        layoutScale: presentationScale,
+      }),
       x: pos.x,
       y: pos.y,
       kind: domKind,
@@ -2467,6 +2518,7 @@ async function main(){
     runtimeDebugLogging.startupDebugLog('[LAYOUT_AUDIT] topLevelKeys', Object.keys(layout || {}));
     runtimeDebugLogging.startupDebugLog('[INIT] Layout loaded');
     assetsLayout = runtimeLayouts.assetsLayout || null;
+    refreshCombatOverlayAssetSizes();
 
     const project = runtimeLayouts.project || { viewportWidth: 360, viewportHeight: 640 };
     viewW = project && project.viewportWidth ? project.viewportWidth : 360;
@@ -2648,7 +2700,12 @@ async function main(){
     inputDomains,
   });
   combatRuntimeGateway.setLayoutState(layoutState);
+  const questCombat = createQuestCombatSession({ state, gameState, call: name => callFunctionWithContext(fnContext, name), sync: syncFromGlobals });
+  const goldProgress = createGoldProgressStorage({ globals: state.globals, storage: window.localStorage });
+  const storyEntry = createStoryEntryFlow({ gameState, layoutState, isReady: () => freshCombatBootstrapped, getEnemies: () => state.globals.EnemyData || [], prepareEncounter: questCombat.prepare, resurrect: questCombat.resurrect });
+  const questUI = createQuestLadderUI({ canvas, gameState, layoutState, flow: storyEntry });
   registerRuntimeLayouts(layoutState, {
+    storyEntry,
     combatLayout,
     uiState,
     mapLayoutState,
@@ -2682,66 +2739,8 @@ async function main(){
   ensureDevToolingModal();
   state.globals.GamePhase = 'BOOTSTRAP';
 
-  eventBus.on('nav:clicked', async ({ label }) => {
-    if (label === 'Map') {
-      if (layoutState.getActiveLayoutId() !== 'combat') {
-        console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->map', trigger: 'map-click', blocked: 'active-layout-not-combat' });
-        return;
-      }
-      console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->map', trigger: 'map-click' });
-      await layoutState.requestLayoutChange('mapLayout', 'nav-map');
-      return;
-    }
-    if (label === 'AstralFlow') {
-      if (layoutState.getActiveLayoutId() !== 'combat') {
-        console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->2', trigger: 'astral-flow-click', blocked: 'active-layout-not-combat' });
-        return;
-      }
-      const transitionCheck = typeof layoutState.canTransitionTo === 'function'
-        ? layoutState.canTransitionTo('idleFarmLayout')
-        : { allowed: true, reason: 'unknown' };
-      if (!transitionCheck.allowed) {
-        console.log('[LAYOUT_PHASE1]', {
-          stage: 'entry',
-          transition: '1->2',
-          trigger: 'astral-flow-click',
-          blocked: transitionCheck.reason,
-          fallback: 'overlay-visible',
-        });
-        uiState.setUIStateField('overlayVisible', true);
-        return;
-      }
-      console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '1->2', trigger: 'astral-flow-click' });
-      await layoutState.requestLayoutChange('idleFarmLayout', 'nav-astral-flow');
-      return;
-    }
-    if (label === 'Hero') {
-      if (layoutState.getActiveLayoutId() !== 'combat') {
-        return;
-      }
-      uiState.setUIStateField('overlayVisible', false);
-      await layoutState.requestLayoutChange('heroLayout', 'nav-hero');
-      return;
-    }
-    if (label === 'Vault' || label === 'Mission') {
-      if (layoutState.getActiveLayoutId() !== 'combat') {
-        return;
-      }
-      uiState.setUIStateField('overlayVisible', false);
-      await layoutState.requestLayoutChange('chestsLayout', 'nav-chests');
-      return;
-    }
-    uiState.setUIStateField('overlayVisible', true);
-  });
-  eventBus.on('layout:storyMock:click', async () => {
-    if (layoutState.getActiveLayoutId() !== 'storyMock') return;
-    if (!freshCombatBootstrapped) {
-      console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '0->town', trigger: 'blue-click', blocked: 'bootstrap_loading' });
-      return;
-    }
-    console.log('[LAYOUT_PHASE1]', { stage: 'entry', transition: '0->town', trigger: 'blue-click' });
-    await layoutState.requestLayoutChange('town', 'story-blue-click');
-  });
+  eventBus.on('nav:clicked', ({ label }) => storyEntry.navigate(label));
+  eventBus.on('layout:storyMock:click', point => storyEntry.handlePointer(point));
   eventBus.on('layout:town:click', async () => {
     if (layoutState.getActiveLayoutId() !== 'town') return;
     restorePartyToFullHP();
@@ -2945,7 +2944,12 @@ async function main(){
   }
 
   const assetSizes = {
-    AttackButton: (() => {
+    AttackButton: null,
+    Selector: null,
+  };
+
+  function refreshCombatOverlayAssetSizes() {
+    assetSizes.AttackButton = (() => {
       const inst = findAssetInstance('AttackButton');
       return inst && inst.world ? {
         width: inst.world.width,
@@ -2953,8 +2957,8 @@ async function main(){
         originX: inst.world.originX,
         originY: inst.world.originY
       } : null;
-    })(),
-    Selector: (() => {
+    })();
+    assetSizes.Selector = (() => {
       const inst = findAssetInstance('Selector');
       return inst && inst.world ? {
         width: inst.world.width,
@@ -2962,8 +2966,8 @@ async function main(){
         originX: inst.world.originX,
         originY: inst.world.originY
       } : null;
-    })()
-  };
+    })();
+  }
 
   // Helper to extract text content from instance data or type
   function getTextContent(inst, typeData){
@@ -3004,15 +3008,13 @@ async function main(){
     const moveUp = (asset ? asset.height : (img ? img.height : 60)) / 2;
     const worldY = 235 - moveUp;
     const pos = worldToCanvas(worldX, worldY);
-    const controlScale = Math.max(0.7, Math.min(layoutScale, 1));
-    const minW = 52;
-    const maxW = 120;
-    const minH = 22;
-    const maxH = 48;
-    const rawW = (asset ? asset.width : (img ? img.width : 120)) * controlScale;
-    const rawH = (asset ? asset.height : (img ? img.height : 60)) * controlScale;
-    const w = Math.max(minW, Math.min(maxW, rawW));
-    const h = Math.max(minH, Math.min(maxH, rawH));
+    const size = computeScaledCombatControlSize({
+      sourceWidth: asset ? asset.width : 50,
+      sourceHeight: asset ? asset.height : 25,
+      layoutScale,
+    });
+    const w = size.width;
+    const h = size.height;
     const ox = asset ? asset.originX : origin.ox;
     const oy = asset ? asset.originY : origin.oy;
     const dx = pos.x - w * ox;
@@ -3120,6 +3122,7 @@ async function main(){
     getMapTownImages: () => mapTownImages,
     renderHeroScreenLayoutV2,
     getDpr: () => dpr,
+    getLayoutScale: () => layoutScale,
     getFreshCombatBootstrapped: () => freshCombatBootstrapped,
     getStartupFingerprintLabel: () => RUNTIME_FINGERPRINT.label,
     getHeroScreenDeps: () => ({
@@ -3366,6 +3369,9 @@ async function main(){
   }
 
   function drawFrame(dtOverride){
+    if (freshCombatBootstrapped) goldProgress.sync();
+    storyEntry.update();
+    questUI.update();
     syncSuperGemShapes({ gameState, state, boardGeometry, reason: 'draw-frame' });
     processTurnCadencePartyRegens();
     superGemRuntime.syncTaintedGroundZones({
@@ -3373,7 +3379,7 @@ async function main(){
       callFunctionWithContext,
       fnContext,
     });
-    ensureDevAutoplayPendingSingleTarget();
+    ensurePendingSingleTarget();
     const runtimeScope = {
       dtOverride,
       state,
@@ -3494,6 +3500,7 @@ async function main(){
       fnContext,
     });
     const result = renderRuntime.renderRuntime(runtimeScope);
+    renderExistingNavigation(ctx, { worldToCanvas, layoutScale, gameState, layoutState, eventBus });
     if (result && result.overlayData) {
       state.globals.LastCombatOverlayData = result.overlayData;
     }
@@ -3935,8 +3942,7 @@ function getStoryCardLiveLineState() {
     if (typeof state === 'undefined' || !Array.isArray(state.entities)) return false;
     return state.entities.some((entity) => entity && entity.kind === 'enemy' && Number(entity.hp ?? 0) > 0);
   }
-  function ensureDevAutoplayPendingSingleTarget() {
-    if (!state.globals.DevAutoplayActive) return 0;
+  function ensurePendingSingleTarget() {
     if (String(state.globals.PendingSkillID || '') !== 'HERO_SINGLE') return 0;
     const pendingActorUID = Number(state.globals.PendingActor || callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
     if (!(pendingActorUID > 0)) return 0;
@@ -3947,12 +3953,14 @@ function getStoryCardLiveLineState() {
     if (selectedOwnerUID === pendingActorUID && livingEnemies.some((enemy) => Number(enemy.uid || 0) === selectedUID)) {
       return selectedUID;
     }
-    const roll = typeof state.globals.RuntimeRandom === 'function' ? Number(state.globals.RuntimeRandom()) : 0;
+    const roll = state.globals.DevAutoplayActive && typeof state.globals.RuntimeRandom === 'function' ? Number(state.globals.RuntimeRandom()) : 0;
     const safeRoll = Number.isFinite(roll) && roll >= 0 && roll < 1 ? roll : 0;
     const targetIndex = Math.max(0, Math.min(livingEnemies.length - 1, Math.floor(safeRoll * livingEnemies.length)));
     const targetUID = Number(livingEnemies[targetIndex].uid || 0);
-    state.globals.SelectedEnemyUID = targetUID;
-    state.globals.SelectedEnemyUIDOwner = pendingActorUID;
+    capturePendingEnemyTargetIntent({
+      globals: state.globals, actorUID: pendingActorUID,
+      target: livingEnemies[targetIndex], now: Number(state.globals.time || 0),
+    });
     return targetUID;
   }
   function getIdleAutoplayPriorityContext() {
@@ -3996,7 +4004,7 @@ function getStoryCardLiveLineState() {
       livingEnemies: livingEnemies.length,
     });
     if (String(state.globals.PendingSkillID || '') === 'HERO_SINGLE') {
-      const targetUID = ensureDevAutoplayPendingSingleTarget();
+      const targetUID = ensurePendingSingleTarget();
       if (!(targetUID > 0)) return false;
     }
     const handoff = resolvePendingTargetHandoff({
@@ -4106,6 +4114,7 @@ function getStoryCardLiveLineState() {
     });
   }
   function requestCombatFailureExit(reason = 'party_defeated') {
+    if (storyEntry.defeat()) return true;
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
       ? layoutState.getActiveLayoutId()
       : null;
@@ -4368,77 +4377,6 @@ function getStoryCardLiveLineState() {
       }
     }
 
-    // Check nav label clicks using actual Nav_* text objects.
-    // AstralFlow is processed first so intended 1->2 transition remains reachable.
-    const navTypes = new Set(['Nav_HeroText', 'Nav_MapText', 'Nav_MissionText', 'Nav_AstralFlowText', 'Nav_HomeText']);
-    const navLabelItems = rendered.filter(r => navTypes.has(r.inst.type));
-    const labelMap = {
-      Nav_HeroText: 'Hero',
-      Nav_MapText: 'Map',
-      Nav_MissionText: 'Vault',
-      Nav_AstralFlowText: 'AstralFlow',
-      Nav_HomeText: 'Home',
-    };
-    const navAlwaysAllowedLabels = new Set(['AstralFlow', 'Hero', 'Map', 'Vault']);
-    const navHit = navLabelItems.find((r) => {
-      const pos = worldToCanvas(r.world.x || 0, r.world.y || 0);
-      const w = Math.max(40, (r.world.width || 60) * layoutScale);
-      const h = Math.max(16, (r.world.height || 20) * layoutScale);
-      const dx = pos.x - w * r.ox;
-      const dy = pos.y - h * r.oy;
-      return mx >= dx && mx <= dx + w && my >= dy && my <= dy + h;
-    });
-    if (navHit) {
-      const labelName = labelMap[navHit.inst.type] || '';
-      const navBlockedBySelection = gameState.selectedGems.length > 0 || gameState.selectionLocked || !isCanPickGemsReady(state.globals.CanPickGems);
-      if (navAlwaysAllowedLabels.has(labelName) || !navBlockedBySelection) {
-        inputDomains.emit(
-          layoutState.getActiveLayoutId(),
-          'nav:clicked',
-          { label: labelName }
-        );
-        drawFrame();
-        return;
-      }
-    }
-    const viewW = rect.width;
-    const viewH = rect.height;
-    const fallbackNavBand = {
-      x: Math.max(0, layoutOffsetX),
-      y: Math.max(0, viewH - Math.max(76, 72 * layoutScale)),
-      w: Math.min(viewW, layoutW * layoutScale),
-      h: Math.max(64, 68 * layoutScale),
-    };
-    if (
-      mx >= fallbackNavBand.x &&
-      mx <= fallbackNavBand.x + fallbackNavBand.w &&
-      my >= fallbackNavBand.y &&
-      my <= fallbackNavBand.y + fallbackNavBand.h
-    ) {
-      const navSlots = [
-        { label: 'Hero', center: 0.1 },
-        { label: 'Map', center: 0.28 },
-        { label: 'Vault', center: 0.68 },
-        { label: 'AstralFlow', center: 0.86 },
-      ];
-      const navSlot = navSlots.reduce((best, slot) => {
-        const cx = fallbackNavBand.x + (fallbackNavBand.w * slot.center);
-        const distance = Math.abs(mx - cx);
-        return !best || distance < best.distance ? { ...slot, distance } : best;
-      }, null);
-      const labelName = navSlot ? navSlot.label : '';
-      const navBlockedBySelection = gameState.selectedGems.length > 0 || gameState.selectionLocked || !isCanPickGemsReady(state.globals.CanPickGems);
-      if (labelName && (navAlwaysAllowedLabels.has(labelName) || !navBlockedBySelection)) {
-        inputDomains.emit(
-          layoutState.getActiveLayoutId(),
-          'nav:clicked',
-          { label: labelName }
-        );
-        drawFrame();
-        return;
-      }
-    }
-
     // Pending hero attack: click an enemy to execute
     if (!uiState.getUIState().overlayVisible && state.globals.PendingSkillID) {
       const btn = getAttackButtonBounds();
@@ -4461,7 +4399,31 @@ function getStoryCardLiveLineState() {
           drawFrame();
           return;
         }
-        const actorUID = state.globals.PendingActor || getHeroUIDByIndex(gameState.selectedHero);
+        const actorUID = recoverPendingTargetActorUID();
+        if (!(actorUID > 0)) {
+          drawFrame();
+          return;
+        }
+        if (String(state.globals.PendingSkillID || '') === 'HERO_SINGLE') {
+          const targetCheck = validatePendingEnemyTargetIntent({
+            globals: state.globals,
+            actorUID,
+            getActorByUID: (uid) => callFunctionWithContext(fnContext, 'GetActorByUID', uid),
+          });
+          logActionHandoffDebug('[MANUAL_TARGET_CONFIRM]', {
+            actorUID,
+            ok: !!targetCheck.ok,
+            reason: String(targetCheck.reason || ''),
+            targetUID: Number(targetCheck.targetUID || 0),
+          });
+          if (!targetCheck.ok) {
+            drawFrame();
+            return;
+          }
+          state.globals.SelectedEnemyUID = Number(targetCheck.targetUID || 0);
+          state.globals.SelectedEnemyUIDOwner = actorUID;
+          state.globals.ActiveManualTargetTraceSequence = Number(targetCheck.intent?.sequence || 0);
+        }
         logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
           stage: 'before',
           source: 'manual-button',
@@ -4497,8 +4459,25 @@ function getStoryCardLiveLineState() {
       }
       const hit = getEnemyHit(mx, my);
       if (hit) {
-        state.globals.SelectedEnemyUID = hit.uid;
-        state.globals.SelectedEnemyUIDOwner = Number(state.globals.PendingActor || 0);
+        const targetOwnerUID = recoverPendingTargetActorUID();
+        if (!(targetOwnerUID > 0)) {
+          drawFrame();
+          return;
+        }
+        const targetIntent = capturePendingEnemyTargetIntent({
+          globals: state.globals,
+          actorUID: targetOwnerUID,
+          target: hit,
+          now: Number(state.globals.time || 0),
+        });
+        logActionHandoffDebug('[MANUAL_TARGET_SELECT]', {
+          pointer: { x: Number(mx || 0), y: Number(my || 0) },
+          actorUID: targetOwnerUID,
+          targetUID: Number(hit.uid || 0),
+          targetName: String(hit.name || ''),
+          targetSlotIndex: Number(hit.slotIndex ?? -1),
+          targetTraceSequence: Number(targetIntent?.sequence || 0),
+        });
         drawFrame();
         return;
       }
@@ -4828,6 +4807,7 @@ function getStoryCardLiveLineState() {
   let frameCount = 0;
   function tick(){
     frameCount++;
+    if (gameState.storyEntry.phase === 'defeat') { drawFrame(); requestAnimationFrame(tick); return; }
     if (ensureDevToolingConfig().open) {
       requestAnimationFrame(tick);
       return;
@@ -5070,6 +5050,7 @@ function getStoryCardLiveLineState() {
     } else {
       state.globals._DeferBlockLogged = 0;
     }
+    if (gameState.storyEntry.phase === 'combat' && questCombat.isCleared()) storyEntry.victory();
     const currentTurnType = callFunctionWithContext(fnContext, 'GetCurrentType');
     trackTask011EnemyBoundary(currentTurnType);
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
@@ -5192,6 +5173,7 @@ function getStoryCardLiveLineState() {
   registerDevBrowserTestHooks({
     state,
     gameState,
+    storyEntry,
     callFunctionWithContext,
     fnContext,
     ensureDevToolingConfig,
@@ -5225,6 +5207,9 @@ function getStoryCardLiveLineState() {
     ensureTask011Audit,
     getTask015TraceStore,
     assertBoardIntegrity,
+    getAttackButtonBounds,
+    worldToCanvas,
+    canvas,
   });
 }
 

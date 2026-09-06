@@ -608,8 +608,9 @@ export function createDevToolingRuntime(deps = {}) {
     ].join(';');
     const panel = document.createElement('div');
     panel.style.cssText = [
-      'width:min(520px, calc(100vw - 32px))',
-      'max-height:88vh',
+      'flex:none',
+      'width:min(520px, var(--orka-control-viewport-width, calc(100vw - 32px)))',
+      'max-height:var(--orka-control-viewport-height, 88dvh)',
       'overflow:auto',
       'padding:18px',
       'border-radius:14px',
@@ -618,6 +619,8 @@ export function createDevToolingRuntime(deps = {}) {
       'box-shadow:0 18px 48px rgba(0,0,0,0.4)',
       'font:12px/1.4 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       'color:#111827',
+      'transform:scale(var(--orka-control-scale, 1))',
+      'transform-origin:center',
     ].join(';');
     panel.innerHTML = `
       <style>
@@ -628,7 +631,7 @@ export function createDevToolingRuntime(deps = {}) {
           display:inline-flex;
           align-items:center;
           justify-content:center;
-          min-height:36px;
+          min-height:28px;
           line-height:1;
           white-space:nowrap;
           text-align:center;
@@ -644,9 +647,17 @@ export function createDevToolingRuntime(deps = {}) {
       </style>
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;">
         <div>
-          <div style="font-size:18px;font-weight:800;">Dev Tooling Modal</div>
+          <div data-devtool-title style="font-size:18px;font-weight:800;white-space:nowrap;">Dev Tooling Modal</div>
         </div>
         <button type="button" data-devtool-close style="border:1px solid #334155;background:#ffffff;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Close</button>
+      </div>
+      <div data-devtool-button-row style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:14px;">
+        <button type="button" data-devtool-apply style="border:1px solid #14532d;background:#1f8f4a;color:#fff;padding:6px 10px;border-radius:8px;font-weight:800;cursor:pointer;">Apply</button>
+        <button type="button" data-devtool-refresh style="border:1px solid #475569;background:#fff;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Save Staged</button>
+        <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">AutoPlay</button>
+        <button type="button" data-devtool-restart style="border:1px solid #92400e;background:#fff7ed;color:#9a3412;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Restart</button>
+        <button type="button" data-devtool-force-skill-draught style="border:1px solid #4c1d95;background:#f5f3ff;color:#4c1d95;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Force Draw</button>
+        <button type="button" data-devtool-clear-session-skills style="border:1px solid #7f1d1d;background:#fef2f2;color:#7f1d1d;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Clear Skills</button>
       </div>
       <div data-devtool-control-grid style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;">
         <div style="display:flex;flex-direction:column;gap:4px;">
@@ -711,14 +722,6 @@ export function createDevToolingRuntime(deps = {}) {
           <input data-devtool-skill-id type="text" placeholder="optional">
         </label>
       </div>
-      <div data-devtool-button-row style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px;">
-        <button type="button" data-devtool-apply style="border:1px solid #14532d;background:#1f8f4a;color:#fff;padding:8px 12px;border-radius:8px;font-weight:800;cursor:pointer;">Apply</button>
-        <button type="button" data-devtool-refresh style="border:1px solid #475569;background:#fff;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Save Staged</button>
-        <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">AutoPlay</button>
-        <button type="button" data-devtool-restart style="border:1px solid #92400e;background:#fff7ed;color:#9a3412;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Restart</button>
-        <button type="button" data-devtool-force-skill-draught style="border:1px solid #4c1d95;background:#f5f3ff;color:#4c1d95;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Force Draw</button>
-        <button type="button" data-devtool-clear-session-skills style="border:1px solid #7f1d1d;background:#fef2f2;color:#7f1d1d;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;">Clear Skills</button>
-      </div>
       <div data-devtool-turn-order-qa-slot></div>
       ${renderDevToolSkillLegendHtml()}
     `;
@@ -730,17 +733,19 @@ export function createDevToolingRuntime(deps = {}) {
     launcher.setAttribute('aria-label', 'Open developer tooling modal');
     launcher.style.cssText = [
       'position:fixed',
-      'top:10px',
-      'right:10px',
+      'top:var(--orka-dev-top, 10px)',
+      'right:var(--orka-control-right, 10px)',
       'z-index:10000',
       'border:1px solid #1f2937',
       'background:#f8fafc',
       'color:#111827',
-      'padding:6px 10px',
+      'padding:4px 6px',
       'border-radius:999px',
-      'font:700 11px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      'font:700 8px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       'cursor:pointer',
       'box-shadow:0 4px 12px rgba(0,0,0,0.18)',
+      'transform:scale(var(--orka-control-scale, 1))',
+      'transform-origin:top right',
     ].join(';');
     document.body.appendChild(launcher);
     devToolingDom = {

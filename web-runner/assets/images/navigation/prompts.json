@@ -1,0 +1,29 @@
+{
+  "tool": "Built-in image_gen",
+  "assets": [
+    {
+      "name": "daily",
+      "prompt": "Generate one transparent-background game UI badge for Wishfire genie RPG. CRITICAL: designed to read at 40 to 50 pixels square. Extremely simplified chunky cartoon inventory sprite, thick clean dark outline, flat saturated color blocks with just ONE cel shadow and ONE broad highlight. At most 4 main colors, NO fine linework, NO filigree, NO engraved patterns, NO tiny gems, NO texture, NO sparkles, NO micro details. Strong immediately legible silhouette, fills 90% square, transparent alpha around object. No text, no characters, no faces. Rich game object illustration rather than line icon or corporate website icon. A chunky golden gift box with a single oversized coral-red ribbon bow. Only box and bow."
+    },
+    {
+      "name": "hero",
+      "prompt": "Generate one transparent-background game UI badge for Wishfire genie RPG. CRITICAL: designed to read at 40 to 50 pixels square. Extremely simplified chunky cartoon inventory sprite, thick clean dark outline, flat saturated color blocks with just ONE cel shadow and ONE broad highlight. At most 4 main colors, NO fine linework, NO filigree, NO engraved patterns, NO tiny gems, NO texture, NO sparkles, NO micro details. Strong immediately legible silhouette, fills 90% square, transparent alpha around object. No text, no characters, no faces. Rich game object illustration rather than line icon or corporate website icon. An ivory turban with one big turquoise fold and one large ruby, in front of two broad crossed curved sabers. Only equipment, absolutely no head or face."
+    },
+    {
+      "name": "quests",
+      "prompt": "Generate one transparent-background game UI badge for Wishfire genie RPG. CRITICAL: designed to read at 40 to 50 pixels square. Extremely simplified chunky cartoon inventory sprite, thick clean dark outline, flat saturated color blocks with just ONE cel shadow and ONE broad highlight. At most 4 main colors, NO fine linework, NO filigree, NO engraved patterns, NO tiny gems, NO texture, NO sparkles, NO micro details. Strong immediately legible silhouette, fills 90% square, transparent alpha around object. No text, no characters, no faces. Rich game object illustration rather than line icon or corporate website icon. An open ivory rolled treasure map with one thick red winding route ending in a large red X. No compass, no terrain drawings. Oversized rolled parchment edges."
+    },
+    {
+      "name": "vault",
+      "prompt": "Generate one transparent-background game UI badge for Wishfire genie RPG. CRITICAL: designed to read at 40 to 50 pixels square. Extremely simplified chunky cartoon inventory sprite, thick clean dark outline, flat saturated color blocks with just ONE cel shadow and ONE broad highlight. At most 4 main colors, NO fine linework, NO filigree, NO engraved patterns, NO tiny gems, NO texture, NO sparkles, NO micro details. Strong immediately legible silhouette, fills 90% square, transparent alpha around object. No text, no characters, no faces. Rich game object illustration rather than line icon or corporate website icon. A squat purple treasure chest with thick gold bands and one oversized gold latch. Lid slightly open with only TWO big turquoise jewels visible. No ornament."
+    },
+    {
+      "name": "shop",
+      "prompt": "Generate one transparent-background game UI badge for Wishfire genie RPG. CRITICAL: designed to read at 40 to 50 pixels square. Extremely simplified chunky cartoon inventory sprite, thick clean dark outline, flat saturated color blocks with just ONE cel shadow and ONE broad highlight. At most 4 main colors, NO fine linework, NO filigree, NO engraved patterns, NO tiny gems, NO texture, NO sparkles, NO micro details. Strong immediately legible silhouette, fills 90% square, transparent alpha around object. No text, no characters, no faces. Rich game object illustration rather than line icon or corporate website icon. A tiny bazaar stall reduced to a bold coral-and-cream striped canopy with only three broad stripes, two wooden posts and one solid golden counter. No merchandise, no coins, no patterned trim."
+    },
+    {
+      "name": "flow",
+      "prompt": "Edit this Wishfire FLOW navigation badge. Preserve its simple chunky cartoon style, thick dark outline, gold genie lamp, cyan/blue smoke, transparent alpha and no characters or text. Improve silhouette for 40-50px display: make the thick smoke sweep from the spout UP and AROUND the lamp in a broad nearly circular C-shaped curl, across the top and down the left, framing the lamp like a big magical halo with open negative space. Enlarge smoke into a substantial single ribbon, no wispy details or little swirls. Raise the lamp body into the middle of the composition; balance visual mass vertically, broad square compact silhouette occupying 85-90% image. Keep only a few flat color blocks with one cel shadow and broad highlight. The smoke and lamp should read as one strong centered emblem rather than a low lamp with a thin isolated question-mark plume. No enclosing frame or extra objects."
+    }
+  ]
+}

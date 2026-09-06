@@ -76,6 +76,14 @@ test('dev tooling runtime owns modal/config while app keeps restart wiring', () 
   assert.match(src, /data-devtool-button-row/);
   assert.match(src, /align-items:center/);
   assert.match(src, /flex-wrap:wrap/);
+  const modalSrc = extractFunctionSource(runtimeSrc, 'ensureDevToolingModal');
+  const closeButtonIndex = modalSrc.indexOf('data-devtool-close');
+  const actionRowIndex = modalSrc.indexOf('data-devtool-button-row');
+  const settingsGridIndex = modalSrc.indexOf('<div data-devtool-control-grid');
+  assert.ok(
+    closeButtonIndex < actionRowIndex && actionRowIndex < settingsGridIndex,
+    'the action-button group must sit below Close and above every settings control',
+  );
   assert.match(runtimeSrc, /function collectDevToolSkillLegendRows\(\)/);
   assert.match(runtimeSrc, /const DEV_TOOL_SKILL_ID_LEGEND = Object\.freeze\(\[/);
   assert.match(runtimeSrc, /party_magic_fruit/);

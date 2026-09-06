@@ -42,6 +42,7 @@ export function createDamageNumber({
   text,
   amount,
   partyMaxHP = 0,
+  displayFontSize = null,
   floatAngleDeg = 0,
   x,
   y,
@@ -116,14 +117,19 @@ export function createDamageNumber({
     && Number(partyMaxHP) > 0
     && Number(amount) > Number(partyMaxHP) * 0.5;
   const damageFontSize = 28;
-  const fontSize = isWeakDamage
+  const tierFontSize = isWeakDamage
     ? damageFontSize * 0.75
     : (isLargeDamage ? damageFontSize * 1.2 : damageFontSize);
-  const approxWidth = Math.max(72, Math.ceil(value.length * 24 + 40));
-  const approxHeight = 72;
+  const fontSize = Math.max(1, Number(displayFontSize) || tierFontSize);
+  const approxWidth = Math.max(
+    Math.ceil(fontSize * 2.6),
+    Math.ceil(value.length * fontSize * 0.86 + fontSize * 1.4),
+  );
+  const approxHeight = Math.max(12, Math.ceil(fontSize * 2.6));
+  const pixelRatio = Math.max(1, Number(document.defaultView?.devicePixelRatio) || 1);
   const numberText = document.createElement('canvas');
-  numberText.width = approxWidth;
-  numberText.height = approxHeight;
+  numberText.width = Math.ceil(approxWidth * pixelRatio);
+  numberText.height = Math.ceil(approxHeight * pixelRatio);
   numberText.style.width = `${approxWidth}px`;
   numberText.style.height = `${approxHeight}px`;
   numberText.style.position = 'relative';
@@ -140,7 +146,9 @@ export function createDamageNumber({
   const ctx = numberText.getContext('2d');
   const drawGlyph = () => {
     if (!ctx) return;
-    ctx.clearRect(0, 0, approxWidth, approxHeight);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, numberText.width, numberText.height);
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     const gradient = ctx.createLinearGradient(0, 0, 0, approxHeight);
     gradient.addColorStop(0, gradientStops[0]);
     gradient.addColorStop(1, gradientStops[1]);
@@ -152,7 +160,7 @@ export function createDamageNumber({
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.strokeStyle = '#0f0f0f';
-    ctx.lineWidth = 5;
+    ctx.lineWidth = Math.max(1.5, fontSize * 0.18);
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;

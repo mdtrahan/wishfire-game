@@ -31,6 +31,7 @@
 - Match selections store board indices at runtime; resolve through `gameState.gems` before applying gem-object predicates such as color or lock state, otherwise resource counts can silently collapse to zero.
 - Enemy board-pressure effects that run during autoplay should preserve board cardinality unless the turn/refill gates explicitly own the resulting empty cells. Prefer visible lock/disable state for temporary denial effects, and make autoplay skip disabled gems instead of trying to select through them.
 - Speed-based initiative must validate the live current-turn source, not just the displayed speed order. Dynamic authority/progress predictions are shadows unless they agree with the fixed-speed next actor; first handoff proof should include Skeleton 22 -> Huun 20.
+- Runtime asset cleanup must separate startup-critical visuals from background visuals. Production code should not request Figma/MCP/design-tool assets, and galleries, alternate enemies, buff frames, or debug/helper icons should not block the game-ready gate unless the current player path needs them.
 
 ## 2026-03-07 Regression Note
 - Hero selector render gate must treat hero-turn as `TurnPhase === 0` (not `1`) in web-runner runtime.
@@ -507,3 +508,16 @@
 - For a face-to-face mirrored combat presentation, reflect right-wise actor pixels about the same oriented pivot used by sprites, hit regions, bars, and effects. Apply the same draw transform to hit-flash redraws, while leaving canonical coordinates and source assets unchanged.
 - When two combat formations need visual correction, project each team as a block: use one shared X translation and derive any team Y correction from formation midpoints. Apply the same projection to sprites, hit regions, bars, text, and effects; avoid per-slot tuning that drifts spacing or attachment.
 - Formation-level presentation offsets must derive from structural slot anchors, not the current living roster. Otherwise removing an outer actor changes the midpoint and makes every survivor shuffle; death should release one slot and refill should reuse it without moving residents.
+
+## 2026-08-11 - Manual Enemy Targets Need Actor And Slot Ownership
+- Store a manual enemy choice with the hero who made it and the enemy's slot identity. Revalidate both when the attack resolves so a later hero or a refill enemy cannot inherit stale target state.
+- Targeting QA must compare the selected marker, queued hit, damage presentation, and HP loss. Speed ordering is a separate check; effective Speed does not grant automatic bonus actions.
+
+## 2026-09-05: Chapter 1 map checkpoint
+Preserved the owned dialogue-entry work and approved 360x640 C image in output/ORKA-aoq-checkpoint/pre-chapter-map/checkpoint.tar.gz. manifest.json lists every preserved path and SHA-256. Keep original town token proportions; asset resolution was the sizing concern.
+
+## Quest ladder checkpoint
+Pre-build state preserved in output/ORKA-aoq-checkpoint/pre-quest-ladder with per-file hashes. Quest economy stays separate from combat energy; persistent party/quest profiles and EXP/readiness remain planned.
+
+## 2026-09-06: Quest publication checkpoint
+The pre-publication archive preserves 64 owned files with verified SHA-256 hashes. Navigation migration tests should exercise the shared route and dialogue gate instead of requiring retired Canvas text objects. Keep checkpoint archives and QA-only review pages out of runtime deployments.

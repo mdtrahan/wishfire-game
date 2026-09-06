@@ -12,6 +12,16 @@ Game automation in this repo has one canonical execution path:
 
 Everything else in this folder is support tooling around that harness, not a second test pipeline.
 
+## UI Presentation Lock
+
+Run `npm run test:ui-lock` when changing responsive presentation owners. This is the canonical presentation-only gate; `npm run balance-harness` remains the gameplay and balance automation path.
+
+The UI lock starts the repo server on a temporary port and drives the shipped game in a real browser at 216x384, 360x640, 316x452 natural-preview, and 216x384 Retina. It records actual viewport/zoom/DPR metrics, rendered Canvas calls, DOM geometry, all skill-card draw/hit bounds, and the approved combat and developer UI sizes. Each run writes screenshots plus `ui-lock-report.json` under ignored `test-results/ui-lock/<timestamp>/`. Use `npm run test:ui-lock -- --prove-rejection` to prove a deliberate stage-size regression is rejected.
+
+The gate fails with the viewport, invariant, measured result, accepted range, and report path. The tracked pre-commit hook runs it when staged changes touch its declared UI owners. Vertical developer-panel scrolling is valid. Horizontal overflow fails.
+
+The tracked hook is active when `git config --get core.hooksPath` prints `.beads/hooks`. Restore that repo-scoped setting with `git config core.hooksPath .beads/hooks` if another hook installer replaces it.
+
 ### Supporting tools only
 
 - `npm run playwright:doctor`

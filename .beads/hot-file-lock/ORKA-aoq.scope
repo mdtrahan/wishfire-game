@@ -1,0 +1,3 @@
+web-runner/app.js:validateCombatSnapshot,drawFrame,ensurePendingSingleTarget,autoResolvePendingSelectionForDevIdle,requestCombatFailureExit,tick,rosterHoldKeptDeferredAdvance,__MODULE__
+web-runner/modules/functionBank.js:commitEnemyDeathRemoval,finalizeEnemyRespawnWindow
+web-runner/systems/renderRuntime.js:renderRuntime

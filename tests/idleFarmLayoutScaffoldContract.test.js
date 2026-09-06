@@ -18,7 +18,7 @@ test('web-runner app restores ORKA-1ys idle farm routing shell', () => {
 
   assert.match(src, /import \{ createInitialGameState \} from '\.\/state\/gameState\.js';/);
   assert.match(src, /const gameState = createInitialGameState\(\);/);
-  assert.match(src, /requestLayoutChange\('idleFarmLayout', 'nav-astral-flow'\)/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'web-runner/systems/storyEntryFlow.mjs'), 'utf8'), /AstralFlow: 'idleFarmLayout'/);
   assert.match(registrySrc, /id:\s*'idleFarmLayout'/);
   assert.match(surfaceRouterSrc, /case 'idleFarmLayout':/);
   assert.match(pointerRouterSrc, /if \(activeLayoutId === 'idleFarmLayout'\)/);

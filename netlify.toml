@@ -1,5 +1,6 @@
 [build]
-  publish = "."
+  command = "node tools/build_runtime_release.mjs"
+  publish = "dist"
 
 [[redirects]]
   from = "/"
@@ -11,7 +12,27 @@
   to = "/web-runner/"
   status = 301
 
-[[redirects]]
-  from = "/favicon.ico"
-  to = "/web-runner/assets/images/gem-animation%201-000.png"
-  status = 302
+[[headers]]
+  for = "/web-runner/assets/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+[[headers]]
+  for = "/favicon.ico"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+[[headers]]
+  for = "/web-runner/assets/gems/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+[[headers]]
+  for = "/web-runner/assets/fonts/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+[[headers]]
+  for = "/web-runner/assets/*.wasm"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"

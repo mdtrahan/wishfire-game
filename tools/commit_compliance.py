@@ -16,6 +16,7 @@ HOT_FILES = [
     "web-runner/modules/functionBank.js",
     "Scripts/functionBank.js",
     "web-runner/app.js",
+    "web-runner/systems/renderRuntime.js",
 ]
 MODULE_SCOPE_TOKEN = "__MODULE__"
 SIGNIFICANT_FILE_THRESHOLD = 3

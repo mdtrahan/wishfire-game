@@ -27,6 +27,7 @@ export function createSurfaceRenderRouter({
   getMapTownImages,
   renderHeroScreenLayoutV2,
   getDpr,
+  getLayoutScale,
   getFreshCombatBootstrapped,
   getStartupFingerprintLabel,
   getHeroScreenDeps,
@@ -145,6 +146,7 @@ export function createSurfaceRenderRouter({
         renderHarnessFallback.renderHarnessFallback(ctx, layoutId, gameState, {
           viewWidth,
           viewHeight,
+          layoutScale: typeof getLayoutScale === 'function' ? getLayoutScale() : 1,
           startupFingerprintLabel: typeof getStartupFingerprintLabel === 'function' ? getStartupFingerprintLabel() : '',
           freshCombatBootstrapped: typeof getFreshCombatBootstrapped === 'function' ? getFreshCombatBootstrapped() : false,
         });

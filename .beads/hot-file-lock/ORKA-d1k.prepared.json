@@ -1,0 +1,34 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "ApplyDamageToTarget",
+        "pos",
+        "HeroAttackSingle",
+        "ExecuteSkill"
+      ],
+      "staged_blob": "773ae1cbaf38b3ac9095375bba8be005fd9b7441"
+    },
+    "web-runner/app.js": {
+      "functions": [
+        "getActionHandoffSnapshot",
+        "logActionHandoffDebug",
+        "recoverPendingTargetActorUID",
+        "h",
+        "rosterHoldKeptDeferredAdvance",
+        "__MODULE__"
+      ],
+      "staged_blob": "a0cccadcc113b56335c2e54996f338c1434d2f20"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "ApplyDamageToTarget",
+        "pos",
+        "HeroAttackSingle",
+        "ExecuteSkill"
+      ],
+      "staged_blob": "5e0fad966f48b68fa2b4fa7887224ce3466d2b29"
+    }
+  },
+  "issue_id": "ORKA-d1k"
+}

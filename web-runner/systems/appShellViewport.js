@@ -34,6 +34,23 @@ export function computeContainedStageSize({ viewportWidth, viewportHeight, layou
   };
 }
 
+export function computeAppControlScale({
+  stageWidth,
+  stageHeight,
+  layoutW,
+  layoutH,
+  minimumScale = 0.4,
+}) {
+  const sourceW = Math.max(1, Number(layoutW) || 360);
+  const sourceH = Math.max(1, Number(layoutH) || 640);
+  const stageW = Math.max(1, Number(stageWidth) || sourceW);
+  const stageH = Math.max(1, Number(stageHeight) || sourceH);
+  return Math.max(
+    Math.min(1, Math.max(0.1, Number(minimumScale) || 0.1)),
+    Math.min(1, stageW / sourceW, stageH / sourceH),
+  );
+}
+
 export function resizeCanvasToContainedViewport({ canvas, layoutW, layoutH, win = window }) {
   const viewport = getAppViewport(win);
   const stage = computeContainedStageSize({
@@ -42,6 +59,29 @@ export function resizeCanvasToContainedViewport({ canvas, layoutW, layoutH, win 
     layoutW,
     layoutH,
   });
+  const appShell = canvas && canvas.parentElement;
+  if (appShell && appShell.classList && appShell.classList.contains('app-shell')) {
+    appShell.style.paddingInlineEnd = '';
+  }
+  const controlScale = computeAppControlScale({
+    stageWidth: stage.width,
+    stageHeight: stage.height,
+    layoutW,
+    layoutH,
+  });
+  // Fixed launchers scale from their right edge. A contained stage's natural
+  // gutter can hold that edge without consuming any Canvas layout width.
+  const rightGutterWidth = Math.max(0, (viewport.width - stage.width) / 2);
+  const controlRight = rightGutterWidth > 0 ? 0 : 10 * controlScale;
+  const docEl = win.document && win.document.documentElement;
+  if (docEl && docEl.style && typeof docEl.style.setProperty === 'function') {
+    docEl.style.setProperty('--orka-control-scale', String(controlScale));
+    docEl.style.setProperty('--orka-control-viewport-width', `${Math.max(1, viewport.width - 32) / controlScale}px`);
+    docEl.style.setProperty('--orka-control-viewport-height', `${viewport.height * 0.88 / controlScale}px`);
+    docEl.style.setProperty('--orka-control-right', `${controlRight}px`);
+    docEl.style.setProperty('--orka-dev-top', `${10 * controlScale}px`);
+    docEl.style.setProperty('--orka-dev2-top', `${30 * controlScale}px`);
+  }
   const dpr = Math.max(1, Number(win.devicePixelRatio) || 1);
   canvas.style.width = `${stage.width}px`;
   canvas.style.height = `${stage.height}px`;
@@ -65,6 +105,8 @@ export function resizeCanvasToContainedViewport({ canvas, layoutW, layoutH, win 
     viewportHeight: viewport.height,
     stageWidth: stage.width,
     stageHeight: stage.height,
+    controlRailWidth: 0,
+    controlScale,
   };
 }
 

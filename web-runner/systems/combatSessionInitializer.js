@@ -1,3 +1,4 @@
+import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import { CANONICAL_HERO_ROSTER } from '../state/heroScreenConfig.js';
 import {
   DEV_TOOL_EMPTY_SLOT,
@@ -267,6 +268,7 @@ export function createCombatSessionInitializer({
 }) {
   return function initCombatSessionEntities(enemyRows) {
     assertCombatLayoutDev('initEntities');
+    resetCombatSessionConditions(state.globals, gameState);
     state.entities = [];
     state.globals.EnemyData = (enemyRows || []).map((row) => ({
       ...row,
@@ -394,7 +396,8 @@ export function createCombatSessionInitializer({
         createSeededRng,
       };
       runtimeDebugLogging.startupDebugLog(`[ENCOUNTER] seed=${encounterSeed} targetCP=${encounterRequest.targetCP} locale=${encounterRequest.locale} policy=${encounterRequest.policy}`);
-      const configuredEnemySlots = getConfiguredEnemySlots();
+      const questEnemy = gameState.storyEntry?.cards[gameState.storyEntry.activeCard]?.enemyName;
+      const configuredEnemySlots = questEnemy ? [questEnemy] : getConfiguredEnemySlots();
       const hasManualEnemyLayout = configuredEnemySlots.some((value) => String(value || '').trim() !== DEV_TOOL_RANDOM_ENEMY_SLOT);
       let encounter = null;
       let spawnPlan = [];

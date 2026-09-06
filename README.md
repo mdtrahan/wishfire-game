@@ -1,17 +1,47 @@
-<!-- Runtime source of truth is Scripts/ + web-runner/. -->
-# Codex-Orka (workspace bootstrap)
+# Codex-Orka
 
-This repository contains process docs (ATLAS/GOTCHA). The workspace has been initialized with a minimal GOTCHA layout and a sample deterministic tool.
+Codex-Orka is the Wishfire HTML5 game workspace.
 
-How to run the sample health check (quick):
+## Runtime Surfaces
+
+- Browser runner: `web-runner/`
+- Construct-style runtime mirror: `Scripts/`
+- Shared deterministic JavaScript contracts: `src/`
+- Rust SimulationCore source: `rust/simulation_core/`
+- Product, planning, audit, and workflow truth: `governance/`
+
+Legacy Construct 3 JSON artifacts and conversion tooling are retired. See
+`docs/construct3-retirement.md`.
+
+## Working In This Repo
+
+Before editing, read `AGENTS.md`, `ai-memory/context.md`, and every applicable
+child `AGENTS.md` on the path you will touch. Beads controls implementation
+scope; Git is the transport layer.
+
+For runtime work, prefer focused owner modules over adding behavior to
+`web-runner/app.js`. Keep deterministic rules in `src/`, `web-runner/src/core/`,
+or Rust-owned SimulationCore seams when the local contract requires it.
+
+## Useful Commands
 
 ```bash
-python3 /Volumes/Newton/Projects/Codex-Orka/tools/health_check.py
+npm run serve:qa
+npm test
+npm run test:appjs-boundary
+npm run test:hot-file-gate
+npm run rust:build-wasm
+cargo test --manifest-path rust/simulation_core/Cargo.toml
 ```
 
-To customize environment variables copy `.env.example` to `.env` and edit.
+Prefer focused `node --test tests/<file>.test.js` checks during development and
+use broad validation only when the change requires it.
 
-Next steps you can ask me to scaffold:
-- Minimal Node/React app
-- Minimal Python FastAPI app
-- Supabase/Postgres schema + connection check
+## Primary References
+
+- `AGENTS.md` - repo workflow, Beads gate, DOX chain, and ownership rules.
+- `governance/product/player-living-guide.md` - player-facing product truth.
+- `governance/product/abilities.html` - ability system map and drift register.
+- `governance/execution/repo-context-retrieval.md` - retrieval/tool routing.
+- `governance/planning/app-js-thinning-playbook.md` - `app.js` ownership rules.
+- `governance/planning/simulation-core-rust-js-contract.md` - Rust/JS boundary.

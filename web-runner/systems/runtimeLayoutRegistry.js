@@ -8,7 +8,7 @@ const GALLERY_LAYOUTS = Object.freeze([
   { id: 'evolutionLayout', stateKey: 'evolutionLayout', listKey: 'ladder', indexKey: 'selectedLevel' },
 ]);
 
-const GALLERY_TRANSITIONS = Object.freeze(['chestsLayout', 'combat']);
+const GALLERY_TRANSITIONS = Object.freeze(['chestsLayout', 'combat', 'storyMock', 'heroLayout', 'idleFarmLayout']);
 
 function clampSelection(layoutState, listKey, indexKey) {
   const list = Array.isArray(layoutState?.[listKey]) ? layoutState[listKey] : [];
@@ -46,6 +46,7 @@ function registerGalleryLayouts(layoutState, gameState, uiState) {
 
 export function registerRuntimeLayouts(layoutState, {
   combatLayout,
+  storyEntry,
   uiState,
   mapLayoutState,
   gameState,
@@ -59,7 +60,7 @@ export function registerRuntimeLayouts(layoutState, {
 
   layoutState.registerLayout({
     id: 'mapLayout',
-    allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'collectiblesLayout', 'relicsLayout', 'petsLayout', 'homesteadLayout'],
+    allowedTransitions: ['storyMock', 'heroLayout', 'chestsLayout', 'idleFarmLayout', 'combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'collectiblesLayout', 'relicsLayout', 'petsLayout', 'homesteadLayout'],
     onEnter() {
       uiState.setUIStateField('overlayVisible', false);
       mapLayoutState.setMapPanY(0);
@@ -87,7 +88,7 @@ export function registerRuntimeLayouts(layoutState, {
 
   layoutState.registerLayout({
     id: 'homesteadLayout',
-    allowedTransitions: ['chestsLayout', 'combat'],
+    allowedTransitions: ['chestsLayout', 'combat', 'storyMock', 'heroLayout', 'idleFarmLayout'],
     onEnter() {
       uiState.setUIStateField('overlayVisible', false);
       gameState.homesteadLayout.hitZones = null;
@@ -108,7 +109,7 @@ export function registerRuntimeLayouts(layoutState, {
 
   layoutState.registerLayout({
     id: 'chestsLayout',
-    allowedTransitions: ['combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'collectiblesLayout', 'relicsLayout', 'petsLayout', 'evolutionLayout', 'homesteadLayout'],
+    allowedTransitions: ['storyMock', 'heroLayout', 'chestsLayout', 'idleFarmLayout', 'combat', 'tomesLayout', 'artifactsLayout', 'mountsLayout', 'collectiblesLayout', 'relicsLayout', 'petsLayout', 'evolutionLayout', 'homesteadLayout'],
     onEnter() {
       uiState.setUIStateField('overlayVisible', false);
       gameState.chestsLayout.hitZones = null;
@@ -127,7 +128,7 @@ export function registerRuntimeLayouts(layoutState, {
 
   layoutState.registerLayout({
     id: 'heroLayout',
-    allowedTransitions: ['combat'],
+    allowedTransitions: ['combat', 'storyMock', 'heroLayout', 'chestsLayout', 'idleFarmLayout'],
     onEnter() {
       uiState.setUIStateField('overlayVisible', false);
       uiState.setUIStateField('heroScreenHitZones', null);
@@ -163,16 +164,17 @@ export function registerRuntimeLayouts(layoutState, {
   });
   layoutState.registerLayout({
     id: 'storyMock',
-    allowedTransitions: ['town'],
+    get allowedTransitions() { return storyEntry?.allowedTransitions() || []; },
     onEnter() {
       gameState.combatFailExitRequested = false;
+      storyEntry?.enter();
     },
     onActive() {},
     onExit() { return null; },
   });
   layoutState.registerLayout({
     id: 'town',
-    allowedTransitions: ['combat'],
+    allowedTransitions: ['combat', 'storyMock', 'heroLayout', 'chestsLayout', 'idleFarmLayout'],
     onEnter() {
       uiState.setUIStateField('overlayVisible', false);
       restorePartyToFullHP();
@@ -182,7 +184,7 @@ export function registerRuntimeLayouts(layoutState, {
   });
   layoutState.registerLayout({
     id: 'idleFarmLayout',
-    allowedTransitions: ['combat', 'storyMock'],
+    allowedTransitions: ['combat', 'storyMock', 'heroLayout', 'chestsLayout'],
     onEnter() {
       uiState.setUIStateField('overlayVisible', false);
       const nowSec = typeof getNowSec === 'function' ? getNowSec() : performance.now() / 1000;

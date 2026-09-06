@@ -14,6 +14,7 @@
 
 ## Local Contracts
 - Keep `app.js` thin. Add business logic to contextual modules or shared core files, then wire minimally through `app.js`.
+- Fresh entry uses Chapter 1 dialogue in the retained `storyMock` layout slot. `systems/storyEntryFlow.mjs` owns combat access and the existing Skip handoff; ordinary dialogue clicks must never route directly to Town or combat.
 - Before expanding `app.js`, read `governance/planning/app-js-thinning-playbook.md` and apply `governance/planning/js-orchestration-review-checklist.md`.
 - Changes touching `app.js` must pass `npm run test:appjs-boundary`; update `governance/planning/app-js-ownership-contract.json` only when ownership policy changes, not to dodge extraction.
 - JavaScript owns browser integration: Canvas rendering, input, menus, overlays, audio, save/load wrappers, deployment, and presentation timing.
@@ -32,8 +33,26 @@
 - For runtime/manual QA, start `npm run serve:qa` and use the Codex in-app Browser when a visual check is needed.
 - For batch game automation, prefer the repo-owned `npm run balance-harness` path.
 
+## Viewport QA Contract
+- Read this file from the exact checkout being served before release QA. Guidance in another branch or worktree does not certify the current checkout.
+- Treat the in-app Browser's natural CSS viewport as variable across Codex and Browser-plugin releases. Measure each visual pass; screenshot pixel dimensions are not viewport dimensions.
+- Before changing layout code, inventory every app-owned presentation layer: Canvas drawing, Canvas hit zones, HTML launchers, HTML modals, and CSS overlays. Name the failing layer in the QA record.
+- Record `document.documentElement.clientWidth/clientHeight`, `window.devicePixelRatio`, the canvas `getBoundingClientRect()`, the canvas backing `width/height`, and each visible app-owned DOM overlay rectangle with the QA evidence.
+- Wishfire's reference layout is `360x640` logical pixels. Also validate compact `216x384`, live-narrow `233x452`, and natural-preview `316x452` CSS viewports.
+- Render from CSS-logical canvas dimensions (`canvas.width / dpr`, `canvas.height / dpr`). Scale type, portraits, panel contents, spacing, and hit zones from the same layout scale. Pre-compensate transformed panel shells so their final physical bounds keep 16px viewport gutters.
+- Canvas-adjacent HTML overlays do not inherit the Canvas transform. Compare each overlay's width-to-canvas-width ratio and edge offsets between reference and compact captures. Keep ratio drift within 20% unless the user approves a design change; keep gutter controls fully outside the canvas.
+- Scale viewport-fixed DEV launchers from the measured Canvas layout scale below the `360x640` reference size. They reserve zero rail width and use the available right gutter whenever the contained Canvas is narrower than the viewport.
+- Fix only the failing layer and property. Preserve opacity, placement, scale, and interaction behavior unless the request or reference evidence changes them.
+- Visual QA requires readable text, distinct controls, in-bounds hit zones, and no overlap, clipping, or truncated labels at both reference and compact sizes.
+- Run the natural in-app Browser size first. When it is below `360x640`, classify that evidence as the compact pass and run a reference-size external-browser pass too. External-browser evidence alone does not clear a compact-layout regression.
+- After the final visual change, reload and display the exact live page to the user. Earlier screenshots, source inspection, and green tests do not prove the currently displayed frame.
+- A Browser viewport override is diagnostic evidence only. It counts only after measured CSS dimensions confirm it took effect, and it cannot clear a failure at the natural in-app size. Browser implementations may interpret override arguments as device pixels, so never infer CSS size from the request. Reset temporary overrides after QA.
+- Before calling a release candidate QA-ready, visually inspect its final screenshot after the last reload. Any clipped text, truncated label, Canvas/DOM overlap, or material reference mismatch blocks push and deployment even when tests and console checks pass.
+
 ## Child DOX Index
 - `web-runner/modules/AGENTS.md` - gameplay state, function registry, combat, skills, progression bridges.
 - `web-runner/systems/AGENTS.md` - rendering, input, local persistence, supergem runtime, dev tooling, SimulationCore shadow.
 - `web-runner/src/core/AGENTS.md` - browser-shipped deterministic rules and runtime helpers.
 - `web-runner/assets/AGENTS.md` - runtime data, images, fonts, gems, and WASM artifact.
+
+- Quest entry: map -> ladder -> authored sub-chapter. Navigation uses one shared charcoal/brass menu with a teal active glow across non-dialogue screens. The test-only questQA query exposes deterministic defeat/monster-clear controls for browser proof.

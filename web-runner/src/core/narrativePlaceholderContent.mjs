@@ -1,0 +1,190 @@
+// Narrative Framework Reference MVP only.
+// This temporary content pack is not production story content; keep it as a development resource.
+export const PLACEHOLDER_NARRATIVE_CONTENT = Object.freeze({
+  version: 1,
+  contentPackId: 'temporary-narrative-framework-demo',
+  temporary: true,
+  defaultLocale: 'en',
+  characters: Object.freeze([
+    Object.freeze({
+      id: 'temp-demo-ranger',
+      displayNameKey: 'character.tempDemoRanger.name',
+      portrait: Object.freeze({
+        kind: 'temporary-illustration',
+        role: 'traveling-ranger',
+        swatch: '#556f5d',
+        accent: '#d8a84f',
+        initialsKey: 'character.tempDemoRanger.initials',
+      }),
+    }),
+    Object.freeze({
+      id: 'temp-demo-scout',
+      displayNameKey: 'character.tempDemoScout.name',
+      portrait: Object.freeze({
+        kind: 'temporary-illustration',
+        role: 'village-scout',
+        swatch: '#36536b',
+        accent: '#d2a85e',
+        initialsKey: 'character.tempDemoScout.initials',
+      }),
+    }),
+    Object.freeze({
+      id: 'temp-demo-innkeeper',
+      displayNameKey: 'character.tempDemoInnkeeper.name',
+      portrait: Object.freeze({
+        kind: 'temporary-illustration',
+        role: 'village-innkeeper',
+        swatch: '#8f5f4c',
+        accent: '#6fb2a4',
+        initialsKey: 'character.tempDemoInnkeeper.initials',
+      }),
+    }),
+  ]),
+  backgrounds: Object.freeze([
+    Object.freeze({
+      id: 'temp-demo-village-inn-night',
+      kind: 'temporary-illustration',
+      swatchTop: '#172a36',
+      swatchMid: '#41594e',
+      swatchBottom: '#1b171d',
+      labelKey: 'background.tempDemoVillageInnNight.name',
+    }),
+  ]),
+  scenes: Object.freeze([
+    Object.freeze({
+      id: 'temp-demo-portal-return',
+      temporary: true,
+      backgroundId: 'temp-demo-village-inn-night',
+      presentation: Object.freeze({
+        mode: 'conversation',
+        viewport: 'mobile-first',
+        cameraShots: Object.freeze([
+          Object.freeze({
+            id: 'solo-arrival',
+            cast: Object.freeze([
+              Object.freeze({ characterId: 'temp-demo-ranger', slot: 'solo-center' }),
+            ]),
+          }),
+          Object.freeze({
+            id: 'waiting-pair',
+            cast: Object.freeze([
+              Object.freeze({ characterId: 'temp-demo-scout', slot: 'duo-left' }),
+              Object.freeze({ characterId: 'temp-demo-innkeeper', slot: 'duo-right' }),
+            ]),
+          }),
+        ]),
+        interactionDemo: true,
+      }),
+      steps: Object.freeze([
+        Object.freeze({
+          id: 'temp-demo-portal-return-001',
+          type: 'line',
+          speakerId: 'temp-demo-ranger',
+          textKey: 'scene.tempDemoPortalReturn.001',
+          cameraShotId: 'solo-arrival',
+        }),
+        Object.freeze({
+          id: 'temp-demo-portal-return-002',
+          type: 'line',
+          speakerId: 'temp-demo-innkeeper',
+          textKey: 'scene.tempDemoPortalReturn.002',
+          cameraShotId: 'waiting-pair',
+        }),
+        Object.freeze({
+          id: 'temp-demo-portal-return-003',
+          type: 'line',
+          speakerId: 'temp-demo-scout',
+          textKey: 'scene.tempDemoPortalReturn.003',
+          cameraShotId: 'waiting-pair',
+        }),
+        Object.freeze({
+          id: 'temp-demo-portal-return-004',
+          type: 'line',
+          speakerId: 'temp-demo-ranger',
+          textKey: 'scene.tempDemoPortalReturn.004',
+          cameraShotId: 'solo-arrival',
+        }),
+        Object.freeze({
+          id: 'temp-demo-portal-return-005',
+          type: 'line',
+          speakerId: 'temp-demo-innkeeper',
+          textKey: 'scene.tempDemoPortalReturn.005',
+          cameraShotId: 'waiting-pair',
+        }),
+        Object.freeze({
+          id: 'temp-demo-portal-return-006',
+          type: 'line',
+          speakerId: 'temp-demo-scout',
+          textKey: 'scene.tempDemoPortalReturn.006',
+          cameraShotId: 'waiting-pair',
+        }),
+        Object.freeze({
+          id: 'temp-demo-portal-return-007',
+          type: 'line',
+          speakerId: 'temp-demo-ranger',
+          textKey: 'scene.tempDemoPortalReturn.007',
+          cameraShotId: 'solo-arrival',
+        }),
+        Object.freeze({
+          id: 'temp-demo-portal-return-008',
+          type: 'line',
+          speakerId: 'temp-demo-innkeeper',
+          textKey: 'scene.tempDemoPortalReturn.008',
+          cameraShotId: 'waiting-pair',
+        }),
+        Object.freeze({
+          id: 'temp-demo-portal-return-009',
+          type: 'line',
+          speakerId: 'temp-demo-scout',
+          textKey: 'scene.tempDemoPortalReturn.009',
+          cameraShotId: 'waiting-pair',
+        }),
+        Object.freeze({
+          id: 'temp-demo-portal-return-010',
+          type: 'line',
+          speakerId: 'temp-demo-innkeeper',
+          textKey: 'scene.tempDemoPortalReturn.010',
+          cameraShotId: 'waiting-pair',
+        }),
+      ]),
+      onComplete: Object.freeze({
+        type: 'demo-complete',
+        messageKey: 'demo.complete.message',
+      }),
+    }),
+  ]),
+  mapTriggers: Object.freeze([
+    Object.freeze({
+      id: 'map.temp-demo-portal-return',
+      layoutId: 'mapLayout',
+      sceneId: 'temp-demo-portal-return',
+      coordinate: 'TEMP-01',
+      once: false,
+      temporary: true,
+      labelKey: 'map.tempDemoPortalReturn.label',
+    }),
+  ]),
+  locales: Object.freeze({
+    en: Object.freeze({
+      'character.tempDemoRanger.name': 'Temporary Traveler',
+      'character.tempDemoRanger.initials': 'TR',
+      'character.tempDemoScout.name': 'Temporary Scout',
+      'character.tempDemoScout.initials': 'TS',
+      'character.tempDemoInnkeeper.name': 'Temporary Innkeeper',
+      'character.tempDemoInnkeeper.initials': 'TI',
+      'background.tempDemoVillageInnNight.name': 'Temporary Inn At Night',
+      'map.tempDemoPortalReturn.label': 'Demo',
+      'demo.complete.message': 'End of Narrative Framework Demonstration',
+      'scene.tempDemoPortalReturn.001': 'I was hoping this was still home.',
+      'scene.tempDemoPortalReturn.002': 'That light... wait. Traveler? Is that really you?',
+      'scene.tempDemoPortalReturn.003': 'You came back! We watched that portal close behind you.',
+      'scene.tempDemoPortalReturn.004': 'I found the return path when your beacon reached me.',
+      'scene.tempDemoPortalReturn.005': 'You are back. You are really back.',
+      'scene.tempDemoPortalReturn.006': 'I told everyone the portal had not taken you for good.',
+      'scene.tempDemoPortalReturn.007': 'Both of you look exactly the same.',
+      'scene.tempDemoPortalReturn.008': 'The lanterns. We kept lighting them every night.',
+      'scene.tempDemoPortalReturn.009': 'Come here before I decide you are another trick of the light.',
+      'scene.tempDemoPortalReturn.010': 'And you look impossible. Welcome home.',
+    }),
+  }),
+});

@@ -206,7 +206,7 @@ export function renderCombatTurnQaReadoutHtml(args = {}) {
         <div data-combat-turn-qa-reason style="color:#334155;">Why: ${escapeHtml(readout.currentTurnReason)}</div>
         <div data-combat-turn-qa-source style="color:#475569;">Visible order source: ${escapeHtml(readout.orderSource)}</div>
       </div>
-      <table style="width:100%;border-collapse:collapse;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;font-size:11px;">
+      <table style="width:100%;min-width:0;table-layout:fixed;border-collapse:collapse;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;font-size:11px;overflow-wrap:anywhere;word-break:break-word;">
         <thead>
           <tr>
             <th style="padding:4px 6px;text-align:left;">#</th>

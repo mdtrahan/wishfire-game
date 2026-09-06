@@ -1,0 +1,3 @@
+Scripts/functionBank.js:ApplyDamageToTarget,pos,HeroAttackSingle,ExecuteSkill
+web-runner/app.js:getActionHandoffSnapshot,logActionHandoffDebug,recoverPendingTargetActorUID,h,rosterHoldKeptDeferredAdvance,__MODULE__
+web-runner/modules/functionBank.js:ApplyDamageToTarget,pos,HeroAttackSingle,ExecuteSkill

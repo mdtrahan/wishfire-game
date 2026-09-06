@@ -7,6 +7,12 @@ import {
   orientCombatWorldOffsetX,
 } from '../../src/core/combatOrientation.mjs';
 import { drawCombatActorSprite } from './combatActorSpritePresentation.mjs';
+import {
+  computeCombatDamageFontSize,
+  computeScaledCombatControlSize,
+  computeViewportFontSize,
+  fitCanvasText,
+} from './combatPresentationScale.mjs';
 
 let renderImpl = null;
 
@@ -18,6 +24,10 @@ export function renderRuntime(deps) {
   deps.normalizeCombatOrientation = normalizeCombatOrientation;
   deps.orientCombatWorldOffsetX = orientCombatWorldOffsetX;
   deps.drawCombatActorSprite = drawCombatActorSprite;
+  deps.computeCombatDamageFontSize = computeCombatDamageFontSize;
+  deps.computeScaledCombatControlSize = computeScaledCombatControlSize;
+  deps.computeViewportFontSize = computeViewportFontSize;
+  deps.fitCanvasText = fitCanvasText;
   if (!renderImpl) {
     const body = [
       // Generated body chunks; preserve joined payload byte-for-byte.
@@ -60,8 +70,60 @@ export function renderRuntime(deps) {
       "          if (radius <= 0 || alpha <= 0) return;\n          const grad = ctx.createLinearGradient(Math.max(0, radius - 72 * layoutScale), 0, radius + 12 * layoutScale, 0);\n          grad.addColorStop(0, 'rgba(86, 42, 185, 0)');\n          grad.addColorStop(0.38, 'rgba(139, 83, 255, 0.5)');\n          grad.addColorStop(1, 'rgba(117, 238, 255, 0.95)');\n          ctx.globalAlpha = Math.max(0, Math.min(1, alpha));\n          ctx.strokeStyle = grad;\n          ctx.lineWidth = Math.max(1, width);\n          ctx.beginPath();\n          ctx.arc(0, phaseOffset, radius, -spread, spread);\n          ctx.stroke();\n        };\n        if (shape === 'crescent_arc_blast') {\n          drawCrescentArc(frontRadius, arcWidth, surgeAlpha, 0);\n          drawCrescentArc(frontRadius - 13 * layoutScale, arcWidth * 0.58, surgeAlpha * 0.48, -2 * layoutScale);\n          drawCrescentArc(frontRadius + 7 * layoutScale, arcWidth * 0.42, surgeAlpha * 0.34, 2 * layoutScale);\n        }\n        if (img) {\n          const textureSize = Math.max(40, 62 * layoutScale) * (0.92 + ease * 0.22);\n          ctx.save();\n          ctx.globalAlpha = surgeAlpha * 0.16;\n          ctx.translate(frontRadius, 0);\n          ctx.scale(1.85, 0.48);\n          ctx.drawImage(img, -textureSize / 2, -textureSize / 2, textureSize, textureSize);\n          ctx.restore();\n        }\n        ctx.restore();\n        return true;\n      });\n    };\n    renderArcanePulseVisuals();\n\n    // Render non-hero damage text above gameplay\n    renderDamageTexts(d => d.targetKind !== 'hero');\n\n    // draw HUD overlay (game state)\n    drawHUD();\n\n    runtimeArtifacts.presentationPatches = Object.keys(presentationPatches).length ? presentationPatches : null;\n    runtimeArtifacts.visualControlPatches = Object.keys(visualControlPatches).length ? visualControlPatches : null;\n    return runtimeArtifacts;\n  "
     ].join("")
       .replace(
-        "const resolvedSelectedUid = pendingHitTargetUID || selectedUid;",
-        "const selectedOwnerUID = Number(state.globals.SelectedEnemyUIDOwner || 0);\n      const pendingActorUID = Number(state.globals.PendingActor || 0);\n      const ownerMatchedSelectedUid = selectedOwnerUID === pendingActorUID ? selectedUid : 0;\n      const resolvedSelectedUid = ownerMatchedSelectedUid || pendingHitTargetUID;",
+        "spawnPendingDamageNumbers(worldToCanvas);",
+        "spawnPendingDamageNumbers(projectCombatDamageWorldToCanvas, layoutScale);",
+      )
+      .replace(
+        "const barH = partyBar.h;",
+        "const barH = Math.min(partyBar.h, 8 * layoutScale);",
+      )
+      .replace(
+        "    if (!movedRadiatorsToSidebar) {\n      drawRadiatorPanel(radiatorPanels.track);\n    }\n",
+        "",
+      )
+      .replace(
+        "const scaleFont = (size) => Math.max(8, Math.round(size * layoutScale));\n    const navFontBoost = Math.max(2, Math.round(2 * layoutScale));",
+        "const scaleFont = (size) => computeViewportFontSize(size, layoutScale);\n    const navFontBoost = computeViewportFontSize(2, layoutScale, 1);",
+      )
+      .replaceAll(
+        "const fontSize = scaleFont(baseSize) + (navTextTypes.has(r.inst.type) ? navFontBoost : 0);",
+        "const fontSize = computeViewportFontSize(baseSize + (navTextTypes.has(r.inst.type) ? 2 : 0), layoutScale);",
+      )
+      .replace(
+        "const storyFontSizeBase = Math.max(Math.round(18 * layoutScale), scaleFont(14));\n          const storyFontSize = Math.max(8, Math.round(storyFontSizeBase * 0.595));",
+        "const storyFontSize = computeViewportFontSize(10.71, layoutScale);",
+      )
+      .replace(
+        "const storyTextX = storySlot.x + Math.max(10, Math.round(12 * layoutScale));\n          const storyTextY = storySlot.y + (storySlot.h * 0.58);\n          const split = splitStoryCardActorSegment(text);",
+        "const storyPadding = Math.max(4, Math.round(12 * layoutScale));\n          const storyTextX = storySlot.x + storyPadding;\n          const storyTextY = storySlot.y + (storySlot.h * 0.58);\n          const storyMaximumWidth = Math.max(1, storySlot.w - (storyPadding * 2));\n          fitCanvasText(ctx, text, { baseSize: 10.71, layoutScale, maximumWidth: storyMaximumWidth, weight: 'bold' });\n          const split = splitStoryCardActorSegment(text);",
+      )
+      .replace(
+        "ctx.fillText(text, r.dx + r.w/2, r.dy + r.h/2 + 5);\n      } else if(r.isButton){",
+        "const textX = r.dx + r.w / 2;\n        const textY = r.dy + r.h / 2 + Math.max(2, Math.round(5 * layoutScale));\n        const textMaximumWidth = Math.max(1, r.w);\n        fitCanvasText(ctx, text, { baseSize: baseSize + (navTextTypes.has(r.inst.type) ? 2 : 0), layoutScale, maximumWidth: textMaximumWidth });\n        ctx.fillText(text, textX, textY);\n      } else if(r.isButton){",
+      )
+      .replace(
+        "const isWeakDamage = damageTextType === 'damage' && Number(d.amount) < 10;\n        const isLargeDamage = damageTextType === 'damage' && Number(d.partyMaxHP) > 0 && Number(d.amount) > Number(d.partyMaxHP) * 0.5;\n        const fontBaseSize = isWeakDamage ? 22 * 0.75 : (isLargeDamage ? 22 * 1.2 : (d.isCrit ? 26 : 22));\n        const fontSize = isWeakDamage ? scaleFont(fontBaseSize) : Math.max(scaleFont(fontBaseSize), 12);",
+        "const fontSize = computeCombatDamageFontSize({ amount: d.amount, partyMaxHP: d.partyMaxHP, isCrit: d.isCrit, damageType: damageTextType, layoutScale });",
+      )
+      .replace(
+        "const controlScale = Math.max(0.7, Math.min(layoutScale, 1));\n              const bob = 2.2 * controlScale * pulse;\n              const rawSelW = (selectorAsset ? selectorAsset.width : selectorImg.width) * controlScale * selScale;\n              const rawSelH = (selectorAsset ? selectorAsset.height : selectorImg.height) * controlScale * selScale;\n              const selW = Math.max(12, Math.min(46, rawSelW));\n              const selH = Math.max(8, Math.min(24, rawSelH));",
+        "const bob = 2.2 * layoutScale * pulse;\n              const selectorSize = computeScaledCombatControlSize({ sourceWidth: selectorAsset ? selectorAsset.width : 26, sourceHeight: selectorAsset ? selectorAsset.height : 14, layoutScale, pulse: selScale });\n              const selW = selectorSize.width;\n              const selH = selectorSize.height;",
+      )
+      .replace(
+        "const controlScale = Math.max(0.7, Math.min(layoutScale, 1));\n      const clampSelectorSize = (rawW, rawH) => ({\n        w: Math.max(12, Math.min(46, rawW)),\n        h: Math.max(8, Math.min(24, rawH)),\n      });",
+        "",
+      )
+      .replace(
+        "const rawSelW = (selectorAsset ? selectorAsset.width : selectorImg.width) * controlScale;\n          const rawSelH = (selectorAsset ? selectorAsset.height : selectorImg.height) * controlScale;\n          const { w: selW, h: selH } = clampSelectorSize(rawSelW, rawSelH);",
+        "const selectorSize = computeScaledCombatControlSize({ sourceWidth: selectorAsset ? selectorAsset.width : 26, sourceHeight: selectorAsset ? selectorAsset.height : 14, layoutScale });\n          const selW = selectorSize.width;\n          const selH = selectorSize.height;",
+      )
+      .replace(
+      "const resolvedSelectedUid = pendingHitTargetUID || selectedUid;",
+        "const selectedOwnerUID = Number(state.globals.SelectedEnemyUIDOwner || 0);\n      const pendingActorUID = Number(state.globals.PendingActor || 0);\n      const ownerMatchedSelectedUid = selectedOwnerUID === pendingActorUID ? selectedUid : 0;\n      const resolvedSelectedUid = ownerMatchedSelectedUid;",
+      )
+      .replace(
+        ": (resolvedSelectedUid ? aliveEnemies.filter(e => Number(e.uid || 0) === resolvedSelectedUid) : aliveEnemies.slice(0, 1));",
+        ": (resolvedSelectedUid ? aliveEnemies.filter(e => Number(e.uid || 0) === resolvedSelectedUid) : []);",
       )
       .replace(
         "const presentationPatches = {};",
@@ -126,6 +188,10 @@ export function renderRuntime(deps) {
       .replaceAll(
         "ctx.drawImage(img, drawX, drawY, scaledW, scaledH)",
         "drawCombatActorSprite(ctx, img, { drawX, drawY, width: scaledW, height: scaledH, pivotX: pos.x, orientation: activeCombatOrientation })",
+      )
+      .replace(
+        'for(const r of nonModalRendered){',
+        "for(const r of nonModalRendered){\n      if (r.inst.type === 'PartyHP_Bar' || r.uid === 10 || r.inst.type.startsWith('Nav_')) continue;",
       );
     renderImpl = new Function('scope', 'dtOverride', 'with (scope) {\n' + body + '\n}');
   }

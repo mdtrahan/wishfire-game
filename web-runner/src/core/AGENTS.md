@@ -10,10 +10,13 @@
 - Browser-specific copies of shared rule modules when the runtime cannot import the root `src/core/` file directly.
 
 ## Local Contracts
+- Narrative content owns localized dialogue, camera-shot references, and the opening combat handoff marker. `narrativeRuntime.mjs` owns deterministic scene progression; browser timing, input, and combat routing stay in systems. Preserve dialogue after the handoff until an authored combat-completion route is integrated.
 - Most rule modules should be pure and deterministic: no DOM, Canvas, localStorage, network, or deployment behavior.
 - If a matching module exists in root `src/core/`, keep behavior mirrored or document/test the intentional divergence.
 - Rust-owned rule families should preserve owner-hook packet shapes and diagnostics.
 - Presentation helper modules may touch Canvas-like drawing inputs, but must not own gameplay state transitions.
+- DOM presentation helpers accept viewport-projected sizes from their caller; they must not invent fixed CSS sizes that bypass the Canvas layout scale.
+- DOM child canvases keep CSS dimensions in logical pixels and multiply backing-store dimensions by `devicePixelRatio` before drawing.
 - New deterministic rule changes need focused contract tests and, when applicable, fixture rows.
 
 ## Work Guidance

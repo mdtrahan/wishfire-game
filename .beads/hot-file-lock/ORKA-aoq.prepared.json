@@ -1,0 +1,31 @@
+{
+  "hot_files": {
+    "web-runner/app.js": {
+      "functions": [
+        "validateCombatSnapshot",
+        "drawFrame",
+        "ensurePendingSingleTarget",
+        "autoResolvePendingSelectionForDevIdle",
+        "requestCombatFailureExit",
+        "tick",
+        "rosterHoldKeptDeferredAdvance",
+        "__MODULE__"
+      ],
+      "staged_blob": "08d5254ca3e24510a1537f2251c5238f07bbaa7c"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "commitEnemyDeathRemoval",
+        "finalizeEnemyRespawnWindow"
+      ],
+      "staged_blob": "6c82c4ddaa0f332b0fce9a9bad57286c9f3945bc"
+    },
+    "web-runner/systems/renderRuntime.js": {
+      "functions": [
+        "renderRuntime"
+      ],
+      "staged_blob": "e024c5b8ada3d8014fdaa6160af466805c92fa6d"
+    }
+  },
+  "issue_id": "ORKA-aoq"
+}
