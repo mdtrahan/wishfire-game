@@ -1,5 +1,4 @@
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
-import { CANONICAL_HERO_ROSTER } from '../state/heroScreenConfig.js';
 import {
   DEV_TOOL_EMPTY_SLOT,
   DEV_TOOL_RANDOM_ENEMY_SLOT,
@@ -292,7 +291,7 @@ export function createCombatSessionInitializer({
     const escortConfig = readEscortPartyConfig();
     const partyMembers = buildConfiguredCombatPartyMembers(configuredHeroSlots, escortConfig);
     const heroSlotRoster = partyMembers.heroMembers;
-    for (let i = 0; i < CANONICAL_HERO_ROSTER.length; i += 1) {
+    for (let i = 0; i < Math.min(heroSlotRoster.length, 6); i += 1) {
       const v = heroSlotRoster[i];
       if (!v) {
         partyHP[i] = 0;

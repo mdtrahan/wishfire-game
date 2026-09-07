@@ -10,4 +10,4 @@ Beads issues: ORKA-8ri, ORKA-tk9, ORKA-03d, ORKA-b2c, ORKA-a09, ORKA-91y, ORKA-k
 
 - [x] ORKA-aoq Quest ladder buildout and browser proof; checkpointed for publication on 2026-09-06. Later: versioned player party/quest/energy saves, EXP progression and readiness design.
 
-- [ ] ORKA-49k.1: combat migration checkpoint and configured party initialization through six slots; epic ORKA-49k.
+- [ ] ORKA-49k.1: Development Complete, unmerged. Checkpoint 9a31fe5; configured party initializer accepts up to six supplied members; 33 focused checks pass. Epic ORKA-49k still owns the remaining combat migration and AF decisions.

@@ -52,3 +52,11 @@ Implement in the isolated worktree. Run the new initializer test plus combat pow
 
 ## Retrieval receipt
 codebase-memory searched party formation symbols in Users-Mace-Codex-Orka. jcodemunch resolved local/Codex-Orka-904e2bad and returned no formation importers; targeted git grep on current main found actual app/test consumers, so the index was insufficient for current caller evidence. Direct reads verified combatSessionInitializer and its imported configuration. Large functionBank/renderRuntime files were not read in full. Runtime implementation stays in the existing JavaScript initialization owner; no Rust-owned outcome changes.
+
+## Implementation receipt
+- Pre-edit checkpoint commit: `9a31fe5`; tag: `checkpoint/ORKA-49k-pre-implementation-20260907`.
+- Runtime change: `web-runner/systems/combatSessionInitializer.js` consumes the supplied roster up to six slots, removing the catalog-size dependency.
+- Contract: `web-runner/systems/AGENTS.md` records capacity and scope.
+- Behavioral proof: `tests/combatPartyInitializationContract.test.js` invokes the initializer with controlled dependencies. Five relevant cases failed against the old four-member cap; all nine pass after the change. Test fixtures for extra heroes are not launch content.
+- Focused validation: 33/33 passed across combatPartyInitializationContract, combatPowerIndexContract, combatRuntimeRngOwnershipContract, seededRngOwnershipContract, devToolingModalContract and partyFormationContract. `git diff --check` passed.
+- Scope status: this prerequisite is Development Complete. The migration remains active, with downstream four-slot configuration/rendering and shared-HP behavior still present. No browser proof, Integration Ready claim, merge or deployment.
