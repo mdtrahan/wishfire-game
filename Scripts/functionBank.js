@@ -4147,17 +4147,13 @@ function isTimeInitiative(ctx) {
 }
 
 function getInitiativeRoster(ctx) {
-  const g = getGlobals(ctx);
   const roster = [];
   const seen = new Set();
-  const partyAlive = (g.PartyHP || 0) > 0;
-  if (partyAlive) {
-    for (const h of getHeroes(ctx)) {
-      if (seen.has(h.uid)) continue;
-      const spd = GetEffectiveStat(ctx, h, 'SPD');
-      roster.push({ uid: h.uid, type: 0, spd });
-      seen.add(h.uid);
-    }
+  for (const h of getHeroes(ctx)) {
+    if (Number(h.hp ?? 0) <= 0 || seen.has(h.uid)) continue;
+    const spd = GetEffectiveStat(ctx, h, 'SPD');
+    roster.push({ uid: h.uid, type: 0, spd });
+    seen.add(h.uid);
   }
   for (const e of getEnemies(ctx)) {
     if ((e.hp ?? 0) <= 0) continue;
@@ -4184,7 +4180,7 @@ function ensureDynamicInitiativeShadowState(g) { if (!g.DynamicInitiativeShadow 
 function getDynamicInitiativeThreshold(g) { const threshold = Number(g.DynamicInitiativeThreshold || g.InitiativeThreshold || 100); return Number.isFinite(threshold) && threshold > 0 ? threshold : 100; }
 function getDynamicInitiativeBattleId(g) { const id = Number(g.BattleId || g.BattleUID || g.EncounterUID || g.EncounterId || 0); return Number.isFinite(id) ? id : 0; }
 function getDynamicInitiativeActorSnapshot(ctx, uid, typeHint = null) { const actor = Number(uid || 0) > 0 ? GetActorByUID(ctx, Number(uid || 0)) : null; const type = typeHint != null ? Number(typeHint || 0) : (actor && actor.kind === 'enemy' ? 1 : 0); if (!actor && !(Number(uid || 0) > 0)) return null; return { uid: Number(uid || actor?.uid || 0), type: type === 1 ? 1 : 0, name: actor ? String(actor.name || actor.uid || uid) : String(uid || ''), speed: actor ? GetEffectiveStat(ctx, actor, 'SPD') : 0, hp: actor ? Number(actor.hp ?? 1) : 0, stunned: !!actor?.stunned, disabled: !!actor?.disabled, pendingDeath: !!actor?.pendingDeath || !!actor?.deathPending, status: actor?.status, state: actor?.state, statuses: Array.isArray(actor?.statuses) ? actor.statuses : [], statusEffects: Array.isArray(actor?.statusEffects) ? actor.statusEffects : [] }; }
-function getDynamicInitiativeRoster(ctx) { const g = getGlobals(ctx), actors = [], seen = new Set(), partyAlive = Number(g.PartyHP || 0) > 0; if (partyAlive) { for (const hero of getHeroes(ctx)) { const uid = Number(hero?.uid || 0); if (!(uid > 0) || seen.has(uid)) continue; seen.add(uid); actors.push({ uid, type: 0, name: String(hero.name || uid), speed: GetEffectiveStat(ctx, hero, 'SPD'), hp: Number(hero.hp ?? 1) > 0 ? Number(hero.hp ?? 1) : 1, stunned: !!hero.stunned, disabled: !!hero.disabled, status: hero.status, state: hero.state, statuses: Array.isArray(hero.statuses) ? hero.statuses : [], statusEffects: Array.isArray(hero.statusEffects) ? hero.statusEffects : [] }); } } for (const enemy of getEnemies(ctx)) { const uid = Number(enemy?.uid || 0); if (!(uid > 0) || seen.has(uid)) continue; seen.add(uid); actors.push({ uid, type: 1, name: String(enemy.name || uid), speed: GetEffectiveStat(ctx, enemy, 'SPD'), hp: Number(enemy.hp ?? 0), stunned: !!enemy.stunned, disabled: !!enemy.disabled, pendingDeath: !!enemy.pendingDeath || !!enemy.deathPending, status: enemy.status, state: enemy.state, statuses: Array.isArray(enemy.statuses) ? enemy.statuses : [], statusEffects: Array.isArray(enemy.statusEffects) ? enemy.statusEffects : [] }); } return actors; }
+function getDynamicInitiativeRoster(ctx) { const actors = [], seen = new Set(); for (const hero of getHeroes(ctx)) { const uid = Number(hero?.uid || 0); if (!(uid > 0) || Number(hero.hp ?? 0) <= 0 || seen.has(uid)) continue; seen.add(uid); actors.push({ uid, type: 0, name: String(hero.name || uid), speed: GetEffectiveStat(ctx, hero, 'SPD'), hp: Number(hero.hp ?? 0), stunned: !!hero.stunned, disabled: !!hero.disabled, status: hero.status, state: hero.state, statuses: Array.isArray(hero.statuses) ? hero.statuses : [], statusEffects: Array.isArray(hero.statusEffects) ? hero.statusEffects : [] }); } for (const enemy of getEnemies(ctx)) { const uid = Number(enemy?.uid || 0); if (!(uid > 0) || seen.has(uid)) continue; seen.add(uid); actors.push({ uid, type: 1, name: String(enemy.name || uid), speed: GetEffectiveStat(ctx, enemy, 'SPD'), hp: Number(enemy.hp ?? 0), stunned: !!enemy.stunned, disabled: !!enemy.disabled, pendingDeath: !!enemy.pendingDeath || !!enemy.deathPending, status: enemy.status, state: enemy.state, statuses: Array.isArray(enemy.statuses) ? enemy.statuses : [], statusEffects: Array.isArray(enemy.statusEffects) ? enemy.statusEffects : [] }); } return actors; }
 function recordDynamicInitiativeShadowAfterAction(ctx, currentUID, currentType, cadenceEvents = []) {
   const g = getGlobals(ctx);
   if (g.DynamicInitiativeShadowDisabled) return null;
@@ -9970,12 +9966,6 @@ export function ProcessTurn(ctx) {
     const cpSuffix = type === 1 ? ` CP: ${Math.round(cp)}` : '';
     console.log(`[TURN] idx=${g.CurrentTurnIndex} ${actor.name || uid} type=${type} SPD: ${Math.round(eff)}${cpSuffix}`);
   }
-  runTraitHooks(ctx, 'turn_start', {
-    actorUID: Number(uid || 0),
-    actorKind: String(actor?.kind || ''),
-    turnType: Number(type || 0),
-    turnIndex: Number(g.CurrentTurnIndex || 0),
-  });
 
   if (type === 0) {
     g.GroupResolving = 1;
@@ -9983,7 +9973,6 @@ export function ProcessTurn(ctx) {
       g.ActiveGroupIndex = g.RoundGroupIndex || 0;
     }
     const pendingGroup = g.PendingDeaths ? g.PendingDeaths[uid] : null;
-    const partyAlive = (g.PartyHP || 0) > 0;
     const heroEligibility = resolveProcessTurnActorEligibility(ctx, {
       source: 'functionBank.ProcessTurn.hero',
       turnType: type,
@@ -9995,10 +9984,16 @@ export function ProcessTurn(ctx) {
       blueBuffSequenceActive: 0,
     });
     if (heroEligibility.code === TURN_ACTOR_ELIGIBILITY_ACT) {
+      runTraitHooks(ctx, 'turn_start', {
+        actorUID: Number(uid || 0),
+        actorKind: String(actor?.kind || ''),
+        turnType: Number(type || 0),
+        turnIndex: Number(g.CurrentTurnIndex || 0),
+      });
       HeroTurn(ctx, uid);
     } else {
-      if (actor && !partyAlive) {
-        console.log(`[TURN] skip hero uid=${uid} partyHP=${g.PartyHP || 0}`);
+      if (actor && Number(actor.hp ?? 0) <= 0) {
+        console.log(`[TURN] skip hero uid=${uid} HP=${actor.hp || 0}`);
       }
       AdvanceTurn(ctx);
       if (holdForEnemyRosterRefill(ctx)) return;
@@ -10025,6 +10020,12 @@ export function ProcessTurn(ctx) {
     });
     if (enemyEligibility.code === TURN_ACTOR_ELIGIBILITY_HOLD) return;
     if (enemyEligibility.code === TURN_ACTOR_ELIGIBILITY_ACT) {
+      runTraitHooks(ctx, 'turn_start', {
+        actorUID: Number(uid || 0),
+        actorKind: String(actor?.kind || ''),
+        turnType: Number(type || 0),
+        turnIndex: Number(g.CurrentTurnIndex || 0),
+      });
       EnemyTurn(ctx, uid);
     } else {
       AdvanceTurn(ctx);

@@ -29,3 +29,5 @@
 
 ## Child DOX Index
 - None.
+
+- Normal-turn eligibility uses the individual actor HP; pooled HP and pending-group markers never grant a KO actor a new action. Enemy-target owner packets support six formation slots.

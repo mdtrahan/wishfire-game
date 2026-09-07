@@ -192,7 +192,7 @@ export function resolveEnemyTargetHero({
         preference: jsDecision.preference,
         preferenceCode: jsDecision.preferenceCode,
         roll: jsDecision.rollUnit,
-        heroes: (Array.isArray(heroes) ? heroes : []).slice(0, 4).map(normalizeHeroForOwner),
+        heroes: (Array.isArray(heroes) ? heroes : []).slice(0, 6).map(normalizeHeroForOwner),
         jsTargetUID: jsDecision.targetUID,
         jsModeCode: jsDecision.modeCode,
         jsRollIndex: jsDecision.rollIndex,
@@ -200,7 +200,7 @@ export function resolveEnemyTargetHero({
       const targetUID = Number(result?.targetUID || 0);
       const modeCode = Number(result?.modeCode ?? jsDecision.modeCode);
       const rollIndex = Number(result?.rollIndex ?? jsDecision.rollIndex);
-      const target = (Array.isArray(heroes) ? heroes : []).find((hero) => Number(hero?.uid || 0) === targetUID) || null;
+      const target = (Array.isArray(heroes) ? heroes : []).find((hero) => Number(hero?.uid || 0) === targetUID && Number(hero?.hp || 0) > 0) || null;
       if (target || targetUID === 0) {
         const mode = enemyTargetModeFromCode(modeCode);
         return {

@@ -2043,7 +2043,7 @@ export function createSimulationCoreHeroTurnEntryResolution({
 
 function normalizeEnemyTargetHeroes(heroes = []) {
   const source = Array.isArray(heroes) ? heroes : [];
-  return Array.from({ length: 4 }, (_, index) => {
+  return Array.from({ length: 6 }, (_, index) => {
     const hero = source[index] || {};
     const hp = Math.max(0, Number(hero?.hp || 0));
     return {

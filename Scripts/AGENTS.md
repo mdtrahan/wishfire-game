@@ -28,4 +28,6 @@
 ## Child DOX Index
 - None.
 
-- Energy is a macro balance: quest entry spends it, combat actions do not. Purple recovery remains active. Combat defeat depends on party HP/living heroes; Continue preserves energy.
+- Energy is a macro balance: quest entry spends it, combat actions do not. Purple recovery remains active. Combat defeat depends on living heroes; Continue preserves energy.
+
+- Mirror individual-HP initiative and turn eligibility; KO actors receive no new turn-start hooks. Pooled HP must not determine actor survival.

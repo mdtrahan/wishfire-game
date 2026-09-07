@@ -32,4 +32,6 @@
 ## Child DOX Index
 - None.
 
-- Combat outcome ignores macro energy. Only party HP and living heroes determine defeat; energy is spent at quest entry and purple gems may restore it.
+- Combat outcome ignores macro energy. Only living heroes determine defeat; energy is spent at quest entry and purple gems may restore it.
+
+- Combat defeat uses the living deployed hero count. Pooled HP is diagnostic. Individual actor HP gates new turns, including when old pending-group markers remain; enemy-target packets support six slots.

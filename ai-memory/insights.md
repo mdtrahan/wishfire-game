@@ -526,3 +526,6 @@ The pre-publication archive preserves 64 owned files with verified SHA-256 hashe
 
 ## 2026-09-07: Combat migration boundary
 Separate deployed party capacity from the number of authored hero definitions. Validate actual initialized actors, slot identity and UID allocation; a six-slot helper alone does not prove six-hero gameplay. Keep unresolved AF spending and interruption decisions out of unrelated foundation changes.
+
+## 2026-09-07 — ORKA-49k.2
+AF is spendable currency: each standalone special consumes one turn and 1/N of capacity, retaining the exact balance. Stored sequences are future scope. Individual-HP initiative/outcome and six-slot Rust targeting now have focused proof; pooled healing/bulk damage are still migration work.

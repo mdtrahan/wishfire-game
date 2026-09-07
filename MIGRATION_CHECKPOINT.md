@@ -14,8 +14,10 @@
 ## Decisions recorded
 SPEED orders ordinary turns. Deploy 1–6 heroes with individual HP in the completed migration. Commands use visible buttons and standard mouse/touch/keyboard inputs. AF stays slim at upper-left, with exact fractional milestones and SPEED-ordered hero diamonds. Reached diamonds enable their heroes. One spendable AF balance funds early specials and full-bar buff/group opportunities.
 
-## Unselected decisions
-AF interruption timing and whether specials consume ordinary turns; early solo/group prices; exact full-bar spending; normal MP; KO/re-entry; roster content and duplicate policy; save conversion. The user's instruction to begin is not an answer selecting options 4 or 5 from the outstanding interview. Do not infer those answers.
+## Current decisions and remaining choices
+Owner answers on 2026-09-07: every standalone action, including an AF special, consumes a turn. Future stored sequences consume one turn upon completion. Each individual special costs exactly 1/N of full capacity. Deduct only that cost from current charge and retain the remainder, with milestone eligibility recalculated after spending. Six heroes at 22% leave 5⅓% after one special.
+
+Remaining choices include group/card-draw costs, AF earnings, normal MP, healing allocation, KO/re-entry, roster content/duplicates and save conversion.
 
 ## First implementation boundary
 Remove the initializer's catalog-length cap so supplied configured parties can initialize through six slots. Preserve formation positions, identities, stats, HP sanitization and escort/enemy UID separation. Do not expose incomplete six-member gameplay or claim the menu, individual-HP survival or gacha roster is delivered. Current configuration UI still supplies four slots; later children own that migration.
@@ -60,3 +62,15 @@ codebase-memory searched party formation symbols in Users-Mace-Codex-Orka. jcode
 - Behavioral proof: `tests/combatPartyInitializationContract.test.js` invokes the initializer with controlled dependencies. Five relevant cases failed against the old four-member cap; all nine pass after the change. Test fixtures for extra heroes are not launch content.
 - Focused validation: 33/33 passed across combatPartyInitializationContract, combatPowerIndexContract, combatRuntimeRngOwnershipContract, seededRngOwnershipContract, devToolingModalContract and partyFormationContract. `git diff --check` passed.
 - Scope status: this prerequisite is Development Complete. The migration remains active, with downstream four-slot configuration/rendering and shared-HP behavior still present. No browser proof, Integration Ready claim, merge or deployment.
+
+## Second implementation receipt: ORKA-49k.2
+- Base: `5a4ed8498bdf7f98554576f4d3f5456247fc1c44`, preserving the initializer checkpoint. Branch `codex/ORKA-49k.2-individual-survival`, worktree `/Users/Mace/Codex-Orka/.worktrees/wt-ORKA-49k.2-individual-survival`.
+- Preflight: READY 94%, scope limited to individual actor survival, turn-start eligibility, six-slot enemy targeting, Rust/WASM mirrors and current decision records. Healing/damage aggregation, command UI, AF runtime and saves remain subsequent work.
+- Retrieval: read-only investigations used codebase-memory and jcodemunch at parent 5a4ed84. The index predates current main; focused symbol/caller reads verified functionBank initiative, ProcessTurn, outcome/eligibility rules, targeting, Rust exports and SimulationCore bridge. Full functionBank reads avoided.
+- Rule changes: individual HP gates new turns; KO actors receive no turn-start hooks; living hero count determines defeat regardless of stale PartyHP. Fifth/sixth heroes reach the existing Rust enemy-target owner. Target preferences and RNG remain unchanged.
+- Proof: new fixtures reproduced five failures before changes. After rebuilding WASM, 34 focused Node tests pass, including actual JS-to-WASM sixth-member selection and both runtime roster functions. Rust: 29 tests pass. Full suite: 844/847 pass; the same three failures occur at the parent baseline (842/845).
+- Inherited failures: app heal-bloom source contract; Kojonn red-single queued-total contract; Clear Skills visible-effects contract. Full output: `/tmp/orka-49k-survival-suite.log`; parent output: `/tmp/orka-49k-pre-hp-baseline.log`.
+- No browser UI proof, Integration Ready, merge or deployment. This slice does not complete individual HP migration: pooled healing and some bulk damage writers still require replacement.
+
+## Group-size clarification
+The current four heroes are sufficient. Any loaded group of 1–6 members is valid, including scripted solo or small-party encounters. Six is capacity. Empty positions create no actors or missing-member requirement. AF denominator and milestone count use the loaded group; KO preserves its milestone/slot within the encounter. Additional heroes and story scenarios are future content.

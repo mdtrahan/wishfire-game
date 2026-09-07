@@ -6,13 +6,13 @@ Replace gem-driven combat with direct hero commands beneath the existing arena. 
 
 Wishfire is an HTML5 game played in desktop and mobile browsers. Core combat controls must work with a mouse, touch or keyboard. Desktop support is part of this migration's scope.
 
-This document defines the requested scope and the work required to deliver it. **Confirmed requirements are fixed. Proposed rules require a design decision before their dependent implementation begins.** No game code, configuration, saves or repository files have been changed for this plan.
+This document defines the requested scope and the work required to deliver it. **Confirmed requirements are fixed. Proposed rules require a design decision before their dependent implementation begins.** Implementation began after owner approval on 2026-09-07. MIGRATION_CHECKPOINT.md records delivered slices and remaining work.
 
 ## 1. Confirmed requirements
 
 - Remove the gem board and replace its screen area with compact black command panels.
 - Retain the arena, existing character identity and reusable combat presentation.
-- Support a collectible roster with one to six deployed heroes.
+- Support a collectible roster with one to six deployed heroes. The current four heroes form a complete valid group. Every nonempty loaded group through six is valid; empty capacity never causes an insufficient-party error, creates substitute actors, or blocks combat. Tutorial and story encounters may load a solo hero or any smaller group. Additional hero content is future work.
 - Make each hero's HP determine their survival, targeting and KO state. Retire shared party HP as a survival rule.
 - Ordinary hero and enemy turns follow SPEED order. Only the scheduled actor takes an ordinary action; prepared commands do not override initiative.
 - Use explicit buttons for combat commands, with ordinary click, tap and keyboard activation. Execute each hero through its own button. Remove the global Execute Round button. Swipe and drag commands are excluded.
@@ -82,7 +82,7 @@ Allow long skill lists to scroll within the editor. Protect the footer and prima
 
 **Confirmed model:** heroes and enemies take ordinary turns in SPEED order. Retain the existing initiative foundation and adapt its command and individual-HP dependencies. The player selects and executes the scheduled hero's ordinary action; scheduled enemies act through their AI. There is no freely ordered party phase followed by a separate enemy phase.
 
-Basic Attack is the proposed initial command. The player may prepare commands for other heroes, but those heroes' ordinary execution buttons remain unavailable until their scheduled turn. Clearly distinguish normal-turn availability from milestone-based AF availability. Whether AF may interrupt the normal order is still a decision below.
+Basic Attack is the proposed initial command. The player may prepare commands for other heroes, but those heroes' ordinary execution buttons remain unavailable until their scheduled turn. Clearly distinguish normal-turn availability from milestone-based AF availability. Every standalone action, including an AF special, consumes a turn. Future stored sequences consume one turn when the sequence completes; stored sequences are outside the current implementation.
 
 Preparation is editable. Launch is a commitment:
 
@@ -124,7 +124,7 @@ Define encounter carryover and rest recovery for HP, KO and the selected normal 
 
 **Proposed normal resource: individual MP.** Basic Attack and Guard remain free. Set each hero's maximum, skill costs, recovery, drains and carryover. A recovery command may trade an activation for MP if approved.
 
-The current shared Energy resource needs a disposition. Retaining it as expedition attrition requires its own clear role and recovery rules. Retiring it requires conversion of related progression and removal of combat costs. Resolve the current difference between live and automated Energy depletion behavior during this work.
+Current main uses shared Energy for quest entry. Preserve this macro resource and its existing recovery; combat commands do not spend Energy.
 
 ## 5. Astral Flow
 
@@ -151,7 +151,7 @@ Reaching a diamond makes its pictured hero eligible for an AF special. SPEED the
 
 The participant selector must show eligible heroes, selected participants, targets, total cost and the resulting effects before commitment. Support a single participant, a smaller group and the full deployed group when eligible. Specials consume Astral Flow only.
 
-Early special use depletes the same balance that is being saved for a card draw or full-party combination. Exact solo and group prices remain to be selected. Validate the current milestone eligibility and affordability when launching, including specials prepared earlier. Commit the cost once. Refresh milestone availability after each spend; do not bank permanent unlocks from previously reached diamonds.
+Early special use depletes the same balance that is being saved for a card draw or full-party combination. Each individual special costs exactly 1/N of the full bar, where N is the actual loaded group size for that encounter, excluding empty slots. A four-hero group has four milestones and a 25% individual-special cost; a solo hero has one milestone and a 100% cost. KO retains its existing slot and milestone meaning within that group. Subtract that cost from the current charge and retain the exact remainder. With six members, 22% minus 16⅔% leaves 5⅓%. Milestone positions govern hero eligibility; the special cost is one segment regardless of the hero’s milestone position. Stored sequences are future scope. Validate the current milestone eligibility and affordability when launching, including specials prepared earlier. Commit the cost once. Refresh milestone availability after each spend; do not bank permanent unlocks from previously reached diamonds.
 
 At full charge, expose the card-draw and full-party combination options. The player chooses the resource's use. Exact full-bar spending amounts and the choice presentation remain to be specified; do not silently give both rewards from one expenditure. An eligible special remains a valid tactical choice even when the player could save for a larger reward. Avoid additional per-phase quotas, required special sequences or mandatory saving rules.
 
@@ -221,11 +221,11 @@ Use separate identities for a hero definition, an owned copy and a temporary com
 
 The sixteen existing hero-skill registry entries have no implemented payloads. Budget actual kit authoring and effects. Several entries describe passive or gem-dependent behavior and require redesign.
 
-**Proposed minimum kit budget:** common Attack/Guard, two role skills, one passive and one AF contribution per hero. Preserve Fara's protection, Hondo's physical/gold identity, Runa's magic/totems and Kaja's support/AF identity. Select roles and assets for two additional heroes. Review Runa's totems/Invert, Kaja's gem-cost bypass and all old initiative effects individually.
+**Proposed minimum kit budget:** common Attack/Guard, two role skills, one passive and one AF contribution per hero. Preserve Fara's protection, Hondo's physical/gold identity, Runa's magic/totems and Kaja's support/AF identity. Migrate the current four heroes. Future additions may fill slots five and six; their absence must never block combat. Review Runa's totems/Invert, Kaja's gem-cost bypass and all old initiative effects individually.
 
 Each adopted ability needs a target rule, resource cost, unlock, scaling, duration clock, trigger category, animation and observable result. Ensure useful choices across the full kit without assuming all registry entries become buttons.
 
-Collection scope includes owned-unit storage, recruitment results, formation editing, hero details, upgrades, onboarding and persistence. Six playable heroes fill the formation. A seventh candidate is needed to demonstrate replacing a member while retaining a full six-member group; a larger launch roster adds content work.
+Collection scope includes owned-unit storage, recruitment results, formation editing, hero details, upgrades, onboarding and persistence. The current four-hero catalog is sufficient for migration. Formation size follows the loaded group, with six as capacity. Test roster replacement using current owned heroes and a smaller group; future roster growth adds separate content work.
 
 Decide duplicate acquisition separately from duplicate deployment. The proposed initial formation rule permits one copy of each hero definition. Random recruitment requires pool weights, cost, duplicate outcomes, transaction integrity and any adopted guarantees.
 
@@ -244,7 +244,7 @@ Keep deterministic combat rules in the existing shared simulation owners. Render
 | [Shared core](/Users/Mace/Codex-Orka/src/core/) and [browser core](/Users/Mace/Codex-Orka/web-runner/src/core/) | Deterministic legality, targets, costs, actor-turn completion and formation rules |
 | [Rust simulation](/Users/Mace/Codex-Orka/rust/simulation_core/src/lib.rs) and [shadow integration](/Users/Mace/Codex-Orka/web-runner/systems/simulationCoreShadow.js) | Update affected owned rules, state packets and export contracts; regenerate WASM after changes |
 | [Render runtime](/Users/Mace/Codex-Orka/web-runner/systems/renderRuntime.js) and focused input/render modules | Command cards, editor, targeting, AF selector, mobile layout and accessible input |
-| [Combat initialization](/Users/Mace/Codex-Orka/web-runner/systems/combatSessionInitializer.js), [hero configuration](/Users/Mace/Codex-Orka/web-runner/state/heroScreenConfig.js) and [formation rules](/Users/Mace/Codex-Orka/web-runner/src/core/partyFormationRules.mjs) | Owned roster deployment, six positions and additional heroes |
+| [Combat initialization](/Users/Mace/Codex-Orka/web-runner/systems/combatSessionInitializer.js), [hero configuration](/Users/Mace/Codex-Orka/web-runner/state/heroScreenConfig.js) and [formation rules](/Users/Mace/Codex-Orka/web-runner/src/core/partyFormationRules.mjs) | Loaded group deployment through six positions; preserve the current four-hero catalog |
 | [Progress storage](/Users/Mace/Codex-Orka/web-runner/systems/heroGemProgressStorage.js) | Versioned conversion and persistent owned-unit progression |
 | [Supergem runtime](/Users/Mace/Codex-Orka/web-runner/systems/superGemRuntime.js) | Extract retained special effects, then retire board availability logic |
 | [Autoplay rules](/Users/Mace/Codex-Orka/web-runner/src/core/idleAutoplayPriority.mjs) and [balance harness](/Users/Mace/Codex-Orka/tools/balance_harness.js) | Legal command policy and encounter measurements |
@@ -256,7 +256,7 @@ After migration, remove gem dispatch, geometry, selection, refill waits, obsolet
 
 ## 10. Delivery sequence and effort
 
-Estimates assume six initial kits, reuse of current assets and simulation, a limited existing enemy set, and composable AF effects. They are preliminary person-weeks, pending confirmation through one playable encounter.
+Estimates cover the current four kits, capacity for groups up to six, reuse of current assets and simulation, a limited existing enemy set, and composable AF effects. Additional hero kits are separate future content work. They are preliminary person-weeks, pending confirmation through one playable encounter.
 
 The ranges below predate the selected SPEED-order and shared-currency rules. Re-estimate the affected work after defining AF interruption and validating reuse of the existing scheduler; these figures are not a revised commitment.
 
@@ -264,7 +264,7 @@ The ranges below predate the selected SPEED-order and shared-currency rules. Re-
 | --- | ---: | --- |
 | Commands, retained initiative and individual HP | 3–5 weeks | Direct actions, valid targets, KO/revival and reliable actor-turn completion |
 | Variable formation, owned identity and collection foundation | 2–4 weeks | All party sizes launch; reorder/save/load preserve progression |
-| Normal resources and six kits | 4–7 weeks | Every hero has implemented legal actions, recovery and authored effects |
+| Normal resources and current four kits | 4–7 weeks | Every hero has implemented legal actions, recovery and authored effects |
 | AF combinations and nine upgrades | 3–5 weeks | Correct thresholds, participation, spending, draws and proc behavior |
 | Enemy and economy conversion | 3–5 weeks | Board threats replaced; intended party sizes complete representative encounters |
 | Saves, automation, board retirement and mobile integration | 4–6 weeks | Restart/resume and complete runs work without retired board dependencies |
@@ -276,7 +276,7 @@ Begin with approved combat and AF rules, then implement one encounter with indiv
 
 ## 11. Acceptance criteria
 
-- Every party size from one through six enters and completes combat. Cards follow column-major order and remain fixed through KO.
+- Every party size from one through six enters and completes combat. The current four-hero group and solo/two-hero story groups require no missing-member recovery or slot padding with actors. Empty slots contribute zero actors, actions, milestones or AF cost. Cards follow column-major order and remain fixed through KO.
 - Every hero's damage, healing, cover, barriers and defeat state use individual HP.
 - Preparation spends nothing. Launch commits once. Duplicate clicks/taps, keyboard repeat, interruption and resume never duplicate costs, damage or rewards.
 - Ordinary actions follow SPEED order. Preparation and Repeat cannot bypass it. Incapacitation, counters, revival and final-enemy death cannot stall initiative or grant unintended ordinary activations.
@@ -295,10 +295,10 @@ Begin with approved combat and AF rules, then implement one encounter with indiv
 
 | Decision | Proposed starting point |
 | --- | --- |
-| Normal resources | Individual MP, free Attack/Guard; separately decide shared Energy's future |
-| AF prices and income | Select solo/group/card-draw prices, bounded earnings, cap and overflow for the confirmed shared balance |
+| Normal resources | Individual MP and free Attack/Guard remain proposed. Preserve shared Energy as quest-entry currency. |
+| AF prices and income | Solo price is fixed at 1/N. Select group/card-draw prices, bounded earnings, cap and overflow for the confirmed shared balance |
 | KO and revival | Fixed encounter denominator is proposed; select full-charge behavior with unavailable heroes and revival's initiative re-entry |
-| AF timing and carryover | Select special interruption windows and effect on normal turns; define encounter carryover |
+| AF timing and carryover | Standalone actions consume a turn. Future stored sequences consume one turn upon completion. Preserve the current fresh-encounter charge reset; Continue retains the same encounter balance. |
 | SPEED updates | Retain SPEED initiative; select tie/reordering behavior for the queue and milestone portraits; verify existing initiative skills |
 | Small-party balance | Support intentional solo and smaller groups; determine encounter and reward scaling from measured play |
 | Collection launch | Choose roster size, duplicates, recruitment rules and whether paid acquisition is included |

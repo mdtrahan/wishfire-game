@@ -142,10 +142,7 @@ pub fn effective_stat_value(
     value.max(0.0)
 }
 
-pub fn combat_outcome_code(_energy: f64, party_hp: f64, living_heroes: f64) -> f64 {
-    if number_or_zero(party_hp) <= 0.0 {
-        return 2.0;
-    }
+pub fn combat_outcome_code(_energy: f64, _party_hp: f64, living_heroes: f64) -> f64 {
     if number_or_zero(living_heroes) <= 0.0 {
         return 3.0;
     }
@@ -156,19 +153,16 @@ pub fn turn_actor_eligibility_code(
     turn_type: f64,
     actor_exists: f64,
     actor_hp: f64,
-    party_hp: f64,
-    round_active: f64,
-    pending_group_matches: f64,
+    _party_hp: f64,
+    _round_active: f64,
+    _pending_group_matches: f64,
     blue_buff_sequence_active: f64,
 ) -> f64 {
-    let is_round_pending =
-        number_or_zero(round_active) == 1.0 && number_or_zero(pending_group_matches) == 1.0;
-
     if number_or_zero(turn_type) == 0.0 {
         if number_or_zero(actor_exists) != 1.0 {
             return 0.0;
         }
-        if number_or_zero(party_hp) > 0.0 || is_round_pending {
+        if number_or_zero(actor_hp) > 0.0 {
             return 1.0;
         }
         return 0.0;
@@ -181,7 +175,7 @@ pub fn turn_actor_eligibility_code(
         if number_or_zero(actor_exists) != 1.0 {
             return 0.0;
         }
-        if number_or_zero(actor_hp) > 0.0 || is_round_pending {
+        if number_or_zero(actor_hp) > 0.0 {
             return 1.0;
         }
     }
@@ -814,8 +808,20 @@ fn enemy_target_choice_pair(
     hero3_atk: f64,
     hero3_slot: f64,
     hero3_role_code: f64,
+    hero4_uid: f64,
+    hero4_hp: f64,
+    hero4_max_hp: f64,
+    hero4_atk: f64,
+    hero4_slot: f64,
+    hero4_role_code: f64,
+    hero5_uid: f64,
+    hero5_hp: f64,
+    hero5_max_hp: f64,
+    hero5_atk: f64,
+    hero5_slot: f64,
+    hero5_role_code: f64,
 ) -> (f64, f64, f64) {
-    let mut heroes = Vec::with_capacity(4);
+    let mut heroes = Vec::with_capacity(6);
     enemy_target_push_hero(
         &mut heroes,
         hero0_uid,
@@ -851,6 +857,24 @@ fn enemy_target_choice_pair(
         hero3_atk,
         hero3_slot,
         hero3_role_code,
+    );
+    enemy_target_push_hero(
+        &mut heroes,
+        hero4_uid,
+        hero4_hp,
+        hero4_max_hp,
+        hero4_atk,
+        hero4_slot,
+        hero4_role_code,
+    );
+    enemy_target_push_hero(
+        &mut heroes,
+        hero5_uid,
+        hero5_hp,
+        hero5_max_hp,
+        hero5_atk,
+        hero5_slot,
+        hero5_role_code,
     );
     enemy_target_choice_from_heroes(preference_code, roll, &heroes)
 }
@@ -882,6 +906,18 @@ pub fn enemy_target_selected_uid(
     hero3_atk: f64,
     hero3_slot: f64,
     hero3_role_code: f64,
+    hero4_uid: f64,
+    hero4_hp: f64,
+    hero4_max_hp: f64,
+    hero4_atk: f64,
+    hero4_slot: f64,
+    hero4_role_code: f64,
+    hero5_uid: f64,
+    hero5_hp: f64,
+    hero5_max_hp: f64,
+    hero5_atk: f64,
+    hero5_slot: f64,
+    hero5_role_code: f64,
 ) -> f64 {
     enemy_target_choice_pair(
         preference_code,
@@ -910,6 +946,18 @@ pub fn enemy_target_selected_uid(
         hero3_atk,
         hero3_slot,
         hero3_role_code,
+        hero4_uid,
+        hero4_hp,
+        hero4_max_hp,
+        hero4_atk,
+        hero4_slot,
+        hero4_role_code,
+        hero5_uid,
+        hero5_hp,
+        hero5_max_hp,
+        hero5_atk,
+        hero5_slot,
+        hero5_role_code,
     )
     .0
 }
@@ -941,6 +989,18 @@ pub fn enemy_target_mode_code(
     hero3_atk: f64,
     hero3_slot: f64,
     hero3_role_code: f64,
+    hero4_uid: f64,
+    hero4_hp: f64,
+    hero4_max_hp: f64,
+    hero4_atk: f64,
+    hero4_slot: f64,
+    hero4_role_code: f64,
+    hero5_uid: f64,
+    hero5_hp: f64,
+    hero5_max_hp: f64,
+    hero5_atk: f64,
+    hero5_slot: f64,
+    hero5_role_code: f64,
 ) -> f64 {
     enemy_target_choice_pair(
         preference_code,
@@ -969,6 +1029,18 @@ pub fn enemy_target_mode_code(
         hero3_atk,
         hero3_slot,
         hero3_role_code,
+        hero4_uid,
+        hero4_hp,
+        hero4_max_hp,
+        hero4_atk,
+        hero4_slot,
+        hero4_role_code,
+        hero5_uid,
+        hero5_hp,
+        hero5_max_hp,
+        hero5_atk,
+        hero5_slot,
+        hero5_role_code,
     )
     .1
 }
@@ -1000,6 +1072,18 @@ pub fn enemy_target_roll_index(
     hero3_atk: f64,
     hero3_slot: f64,
     hero3_role_code: f64,
+    hero4_uid: f64,
+    hero4_hp: f64,
+    hero4_max_hp: f64,
+    hero4_atk: f64,
+    hero4_slot: f64,
+    hero4_role_code: f64,
+    hero5_uid: f64,
+    hero5_hp: f64,
+    hero5_max_hp: f64,
+    hero5_atk: f64,
+    hero5_slot: f64,
+    hero5_role_code: f64,
 ) -> f64 {
     enemy_target_choice_pair(
         preference_code,
@@ -1028,6 +1112,18 @@ pub fn enemy_target_roll_index(
         hero3_atk,
         hero3_slot,
         hero3_role_code,
+        hero4_uid,
+        hero4_hp,
+        hero4_max_hp,
+        hero4_atk,
+        hero4_slot,
+        hero4_role_code,
+        hero5_uid,
+        hero5_hp,
+        hero5_max_hp,
+        hero5_atk,
+        hero5_slot,
+        hero5_role_code,
     )
     .2
 }
@@ -1776,6 +1872,18 @@ pub extern "C" fn enemy_target_selected_uid_shadow(
     hero3_atk: f64,
     hero3_slot: f64,
     hero3_role_code: f64,
+    hero4_uid: f64,
+    hero4_hp: f64,
+    hero4_max_hp: f64,
+    hero4_atk: f64,
+    hero4_slot: f64,
+    hero4_role_code: f64,
+    hero5_uid: f64,
+    hero5_hp: f64,
+    hero5_max_hp: f64,
+    hero5_atk: f64,
+    hero5_slot: f64,
+    hero5_role_code: f64,
 ) -> f64 {
     enemy_target_selected_uid(
         preference_code,
@@ -1804,6 +1912,18 @@ pub extern "C" fn enemy_target_selected_uid_shadow(
         hero3_atk,
         hero3_slot,
         hero3_role_code,
+        hero4_uid,
+        hero4_hp,
+        hero4_max_hp,
+        hero4_atk,
+        hero4_slot,
+        hero4_role_code,
+        hero5_uid,
+        hero5_hp,
+        hero5_max_hp,
+        hero5_atk,
+        hero5_slot,
+        hero5_role_code,
     )
 }
 
@@ -1835,6 +1955,18 @@ pub extern "C" fn enemy_target_mode_code_shadow(
     hero3_atk: f64,
     hero3_slot: f64,
     hero3_role_code: f64,
+    hero4_uid: f64,
+    hero4_hp: f64,
+    hero4_max_hp: f64,
+    hero4_atk: f64,
+    hero4_slot: f64,
+    hero4_role_code: f64,
+    hero5_uid: f64,
+    hero5_hp: f64,
+    hero5_max_hp: f64,
+    hero5_atk: f64,
+    hero5_slot: f64,
+    hero5_role_code: f64,
 ) -> f64 {
     enemy_target_mode_code(
         preference_code,
@@ -1863,6 +1995,18 @@ pub extern "C" fn enemy_target_mode_code_shadow(
         hero3_atk,
         hero3_slot,
         hero3_role_code,
+        hero4_uid,
+        hero4_hp,
+        hero4_max_hp,
+        hero4_atk,
+        hero4_slot,
+        hero4_role_code,
+        hero5_uid,
+        hero5_hp,
+        hero5_max_hp,
+        hero5_atk,
+        hero5_slot,
+        hero5_role_code,
     )
 }
 
@@ -1894,6 +2038,18 @@ pub extern "C" fn enemy_target_roll_index_shadow(
     hero3_atk: f64,
     hero3_slot: f64,
     hero3_role_code: f64,
+    hero4_uid: f64,
+    hero4_hp: f64,
+    hero4_max_hp: f64,
+    hero4_atk: f64,
+    hero4_slot: f64,
+    hero4_role_code: f64,
+    hero5_uid: f64,
+    hero5_hp: f64,
+    hero5_max_hp: f64,
+    hero5_atk: f64,
+    hero5_slot: f64,
+    hero5_role_code: f64,
 ) -> f64 {
     enemy_target_roll_index(
         preference_code,
@@ -1922,6 +2078,18 @@ pub extern "C" fn enemy_target_roll_index_shadow(
         hero3_atk,
         hero3_slot,
         hero3_role_code,
+        hero4_uid,
+        hero4_hp,
+        hero4_max_hp,
+        hero4_atk,
+        hero4_slot,
+        hero4_role_code,
+        hero5_uid,
+        hero5_hp,
+        hero5_max_hp,
+        hero5_atk,
+        hero5_slot,
+        hero5_role_code,
     )
 }
 
@@ -3777,11 +3945,11 @@ mod single_hit_resolution_tests {
             (10.0, 40.0, 4.0, 0.0),
             (0.0, 40.0, 4.0, 0.0),
             (-1.0, 40.0, 4.0, 0.0),
-            (10.0, 0.0, 4.0, 2.0),
-            (10.0, -3.0, 4.0, 2.0),
+            (10.0, 0.0, 4.0, 0.0),
+            (10.0, -3.0, 4.0, 0.0),
             (10.0, 12.0, 0.0, 3.0),
-            (0.0, 0.0, 0.0, 2.0),
-            (5.0, 0.0, 0.0, 2.0),
+            (0.0, 0.0, 0.0, 3.0),
+            (5.0, 0.0, 0.0, 3.0),
         ];
 
         for (energy, party_hp, living_heroes, expected) in cases {
@@ -3854,12 +4022,12 @@ mod single_hit_resolution_tests {
         let cases = [
             (0.0, 0.0, 0.0, 40.0, 0.0, 0.0, 0.0, 0.0),
             (0.0, 1.0, 10.0, 40.0, 0.0, 0.0, 0.0, 1.0),
-            (0.0, 1.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0),
-            (0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0),
+            (0.0, 1.0, 10.0, 0.0, 0.0, 0.0, 0.0, 1.0),
+            (0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0),
             (1.0, 0.0, 0.0, 40.0, 0.0, 0.0, 0.0, 0.0),
             (1.0, 1.0, 12.0, 40.0, 0.0, 0.0, 0.0, 1.0),
             (1.0, 1.0, 0.0, 40.0, 0.0, 0.0, 0.0, 0.0),
-            (1.0, 1.0, 0.0, 40.0, 1.0, 1.0, 0.0, 1.0),
+            (1.0, 1.0, 0.0, 40.0, 1.0, 1.0, 0.0, 0.0),
             (1.0, 1.0, 12.0, 40.0, 0.0, 0.0, 1.0, 2.0),
             (2.0, 1.0, 12.0, 40.0, 0.0, 0.0, 0.0, 0.0),
         ];
@@ -4267,6 +4435,8 @@ mod single_hit_resolution_tests {
                     heroes[3].3,
                     heroes[3].4,
                     heroes[3].5,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                 ),
                 expected_uid
             );
@@ -4298,6 +4468,8 @@ mod single_hit_resolution_tests {
                     heroes[3].3,
                     heroes[3].4,
                     heroes[3].5,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                 ),
                 expected_mode
             );
@@ -4329,6 +4501,8 @@ mod single_hit_resolution_tests {
                     heroes[3].3,
                     heroes[3].4,
                     heroes[3].5,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                 ),
                 expected_roll_index
             );

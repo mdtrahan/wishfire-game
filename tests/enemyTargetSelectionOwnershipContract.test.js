@@ -47,3 +47,26 @@ test('pickEnemyTargetHero routes final enemy target through Rust-owned resolver'
     assert.match(src, /g\.LastEnemyTargetBias = result\.trace;/);
   }
 });
+
+test('sixth-member targeting survives the complete JS to WASM owner bridge', async () => {
+  const vm = require('node:vm');
+  const source = fs.readFileSync(shadowPath, 'utf8')
+    .replace(/^import[\s\S]*?from\s+['"][^'"]+['"];\n/gm, '')
+    .replace(/\bexport\s+/g, '');
+  const context = { console, document: undefined };
+  vm.createContext(context);
+  vm.runInContext(source, context);
+  const { instance } = await WebAssembly.instantiate(fs.readFileSync(path.join(__dirname, '..', 'web-runner/assets/simulation_core.wasm')), {});
+  const { resolveEnemyTargetHero } = await import(pathToFileURL(rulesPath));
+  const heroes = Array.from({ length: 6 }, (_, i) => ({ uid: i + 1, hp: i === 5 ? 10 : 0, maxHP: 10 }));
+  const decision = resolveEnemyTargetHero({
+    heroes,
+    rng: () => 0.5,
+    ownerHook: payload => context.createSimulationCoreEnemyTargetResolution(payload, { exportsOverride: instance.exports }),
+  });
+  assert.equal(decision.owner, 'rust');
+  assert.equal(decision.targetUID, 6);
+  assert.equal(decision.jsDecision.targetUID, 6);
+  const invalidOwner = resolveEnemyTargetHero({ heroes, rng: () => 0.5, ownerHook: () => ({ targetUID: 1 }) });
+  assert.equal(invalidOwner.targetUID, 6);
+});

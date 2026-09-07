@@ -22,6 +22,37 @@ function extractFunctionSource(src, name) {
   assert.fail(`unterminated ${name}`);
 }
 
+test('runtime initiative rosters use individual HP across six slots', () => {
+  const vm = require('node:vm');
+  for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
+    const src = fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
+    const context = {
+      getGlobals: ctx => ctx.globals,
+      getEntities: ctx => ctx.entities,
+      GetEffectiveStat: (_ctx, actor) => actor.stats.SPD,
+    };
+    vm.createContext(context);
+    vm.runInContext(['getHeroes', 'getEnemies', 'getInitiativeRoster', 'getDynamicInitiativeRoster']
+      .map(name => extractFunctionSource(src, name)).join('\n'), context);
+    for (let size = 1; size <= 6; size += 1) {
+      const heroes = Array.from({ length: size }, (_, i) => ({
+        uid: i + 1, kind: 'hero', hp: 10, stats: { SPD: 12 - i },
+      }));
+      for (const PartyHP of [0, 50]) {
+        const ctx = { globals: { PartyHP }, entities: [...heroes, { uid: 100, kind: 'enemy', hp: 10, stats: { SPD: 8 } }] };
+        for (const ko of [false, true]) {
+          heroes[0].hp = ko ? 0 : 10;
+          const expected = [...heroes.filter(hero => hero.hp > 0).map(hero => hero.uid), 100];
+          for (const name of ['getInitiativeRoster', 'getDynamicInitiativeRoster']) {
+            assert.deepEqual(Array.from(context[name](ctx), actor => actor.uid), expected, `${relPath} ${name} size=${size} pool=${PartyHP} ko=${ko}`);
+          }
+          assert.equal(heroes[0].hp, ko ? 0 : 10);
+        }
+      }
+    }
+  }
+});
+
 for (const schedulerPath of ['src/core/schedulerRules.mjs', 'web-runner/src/core/schedulerRules.mjs']) {
 test(`speed initiative scheduler can weave heroes and enemies by SPD in ${schedulerPath}`, async () => {
   const scheduler = await import(pathToFileURL(path.join(__dirname, '..', schedulerPath)).href);
