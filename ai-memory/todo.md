@@ -9,3 +9,5 @@ Beads issues: ORKA-8ri, ORKA-tk9, ORKA-03d, ORKA-b2c, ORKA-a09, ORKA-91y, ORKA-k
 - [x] ORKA-aoq: approved Chapter 1 map and START button precede dialogue; checkpoint captured and in-app browser validated.
 
 - [x] ORKA-aoq Quest ladder buildout and browser proof; checkpointed for publication on 2026-09-06. Later: versioned player party/quest/energy saves, EXP progression and readiness design.
+
+- [ ] ORKA-49k.1: combat migration checkpoint and configured party initialization through six slots; epic ORKA-49k.
