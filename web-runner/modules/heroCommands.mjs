@@ -9,7 +9,7 @@ export function getHeroCommandSlots(entities){const slots=Array(6).fill(null);fo
 export function canUseHeroCommand(ctx,actorUID){const g=ctx.state.globals,hero=ctx.state.entities.find(a=>a.uid===actorUID&&a.kind==='hero');return !!hero&&hero.hp>0&&!g.NativeBattleEnded&&g.GamePhase==='RUNTIME'&&!g.BattleStartActive&&!g.IsPlayerBusy&&Number(g.TurnPhase)===0&&Number(ctx.callFunction('GetCurrentTurn'))===actorUID&&ctx.callFunction('GetEnemyRosterStability')?.stable===true&&derivePresentationTurnBarrier({globals:g}).canClaimCombatAction;}
 export function rulesContext(ctx){
  const g=ctx.state.globals;g.statusOrder=g.statusOrder||0;
- return {actors:ctx.state.entities,state:g,random:()=>typeof g.RuntimeRandom==='function'?g.RuntimeRandom():Math.random(),
+ return {actors:ctx.state.entities,state:g,flowRandom:()=>typeof g.FlowRandom==='function'?g.FlowRandom():Math.random(),random:()=>typeof g.RuntimeRandom==='function'?g.RuntimeRandom():Math.random(),
  calculateDamage:(a,t,mode)=>ctx.callFunction('CalculateDamage',a.uid,t.uid,mode),
  applyDamage:(a,t,amount,origin)=>{const before=t.hp;ctx.callFunction('ApplyDamageToTarget',t.uid,amount,{sourceUID:a.uid,nativeResolved:true,suppressPartySkillHitHooks:1,...origin});return before-t.hp;},
  onKO:actor=>{if(actor.kind==='enemy'){const battle=g.ProgressionBattle;if(battle)battle.defeated[actor.uid]=actor.expValue??PROGRESSION.enemyEXP;}},

@@ -157,3 +157,7 @@ Owner authorized replacing all current skills with role-template kits: Fara Stoi
 ## Runtime migration delivered: ORKA-49k.7
 
 Canonical progression, complete four-hero kits, personal FLOW, exact SP queue accounting, independent action capacity, combat resolution and hero-screen integration are implemented in the playable lane. Final validation: 791 Node tests passed, 73 historical tests skipped, 236/236 rendered invariants passed. See COMBAT_MIGRATION_REPORT.md for evidence and scope limits. Earlier documentation-only and SP-deferral checkpoints above are superseded. This is a local checkpoint; no merge or deployment.
+
+## FLOW orb conversion
+
+Direct role charge is superseded by random living-hero orb distribution. The ten roles remain as orb passives; baseline is 35% / one10-FLOW orb per damaging action. Core owns collection, Canvas owns the short nonblocking flight. All previous personal scope, SP, slots and CTB rules remain. Full Node suite803 passed/73 historical skipped; UI gate241/241. See current revision in COMBAT_MIGRATION_REPORT.md.

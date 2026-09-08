@@ -47,3 +47,5 @@
 - Migration coverage uses `combatRulesMigration`, `heroProgressionMigration` and `personalFlowContract` for canonical effects, growth and sequence settlement. VM function-bank harnesses must inject the real core/module imports.
 
 - Action capacity tests cover mixed 1/2/3 slots, affordability, removal and early commit. Browser proof exercises real target clicks and capacity auto-commit. Paused frame-based regeneration must not affect combat.
+
+- flowOrbsContract covers baseline/failure RNG, independent random recipients, collection timing, passive caps, skill overrides, special ancestry and SP/CTB independence. Direct role-charge expectations are superseded.

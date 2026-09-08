@@ -53,3 +53,5 @@
 - Paid sequences reserve only their actual SP costs after accepted launch; FLOW specials empty FLOW and preserve SP. Neither resource is projected from the other.
 
 - `heroCommands.mjs` reserves a legal sequence once, revalidates each action, refunds only unexecuted costs, and settles victory before progression. Ordinary counters never own a turn.
+
+- Resolved skill events call orb generation/passive checks with shared per-action deduplication. rulesContext supplies separate FlowRandom and RuntimeRandom streams. Personal meter charge occurs at orb collection only.

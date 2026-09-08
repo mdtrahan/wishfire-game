@@ -40,9 +40,11 @@
 
 - personalFlow.mjs owns browser-shipped personal charge and current hero skill budgets, shared with both function registries. It has no DOM or timer access. FLOW event attribution occurs only at resolved gameplay seams.
 
-- Combat SP and FLOW are independent actor balances: fresh encounters start full SP and zero FLOW; role events change FLOW only.
+- Combat SP and FLOW are independent actor balances: fresh encounters start full SP and zero FLOW; role events produce orbs only.
 
 - `heroDefinitions.mjs` is the single kit/tuning source for combat and hero detail UI. `heroProgression.mjs` owns individual EXP, stat growth and unlock evaluation; KO remains zero HP during growth.
 - `combatRules.mjs` resolves statuses, accuracy, Cover and reactions. Preserve action source ancestry, reject illegal actions before spending, and grant no routine periodic FLOW.
 
 - `actionSelection.mjs` owns action capacity and draft budgets independently of SP and CTB scheduling. High SP cannot increase the action count.
+
+- FLOW charging is owned only by flowOrbs.mjs collection. Role triggers produce capped orb passives; they never directly increase FLOW. Combat RNG and orb RNG remain separate. Session reset cancels pending flights.

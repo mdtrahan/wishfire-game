@@ -99,3 +99,5 @@
 - `questCombatSession.mjs` presents settled progression before allowing the victory return. Queue settlement and EXP computation remain core/module-owned.
 
 - Skill taps queue directly. Independent per-hero action slots auto-commit at capacity; ACT ends selection early. Battlefield selection persists; queued targets are snapshots. Removing entries restores reservations.
+
+- renderFlowOrbs.mjs draws gem flights using the actor projection. Collection belongs to the core update; presentation never blocks CTB. Hero detail text describes orb passives and random distribution.

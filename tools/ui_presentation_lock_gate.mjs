@@ -731,6 +731,29 @@ async function captureCommandTurns(page, viewport, artifactDir) {
       {preparesWithoutSpend:true,attackCompletes:true,count}));
     if (count === 1 || count === 6) await page.screenshot({path:path.join(artifactDir,`${viewport.name}-09-group-${count}.png`)});
   }
+  const orbBefore = await arrange(3);
+  await page.evaluate(() => {
+    const g=window.__codexGame.globals;
+    g.FlowRandom=()=>0;g.FlowOrbs=[];
+    window.__codexGame.state.entities.find(a=>a.uid===100).flow=90;
+  });
+  await open(orbBefore.actorUID);
+  await page.getByRole('button',{name:'Attack',exact:true}).click();
+  await page.getByRole('button',{name:'Act',exact:true}).click();
+  await page.waitForFunction(()=>window.__codexGame.globals.FlowOrbs?.some(o=>!o.collected));
+  const flight=await page.evaluate(()=>{
+    const game=window.__codexGame,g=game.globals,o=g.FlowOrbs[0];
+    return {orb:{...o},flow:game.state.entities.find(a=>a.uid===o.recipientUID).flow,age:g.time-o.born};
+  });
+  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-orb-flight.png`)});
+  await page.waitForFunction(()=>window.__codexGame.globals.FlowOrbs?.some(o=>!o.collected&&window.__codexGame.globals.time-o.born>=.24));
+  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-orb-travel.png`)});
+  await page.waitForFunction(()=>window.__codexGame.state.entities.find(a=>a.uid===100).flow===100);
+  await settled(orbBefore);
+  const collected=await page.evaluate(()=>({ready:document.querySelector('#hero-commands article[data-uid="100"]').dataset.ready,heroes:window.__codexGame.state.entities.filter(a=>a.kind==='hero').map(a=>({uid:a.uid,flow:a.flow,sp:a.sp})),turn:window.__codexGame.globals.TurnSerial}));
+  results.push(invariant('flow-orb-flight-and-collection',flight.flow===90&&flight.orb.recipientUID===100&&flight.orb.sourceKind==='enemy'&&flight.orb.value===10&&collected.ready==='true'&&collected.heroes.every(h=>h.sp===100)&&collected.turn===orbBefore.turn+1,{flight,collected},{visibleFlight:true,randomNonAttacker:true,chargeOnArrival:true,SPUnchanged:true,oneTurn:true}));
+  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-orb-collected.png`)});
+  await page.evaluate(()=>{delete window.__codexGame.globals.FlowRandom;});
   const flowBefore = await arrange(6,100);
   await open(flowBefore.actorUID);
   await page.getByRole('button',{name:'FLOW',exact:true}).click();
@@ -813,7 +836,7 @@ async function captureCommandTurns(page, viewport, artifactDir) {
   await page.waitForFunction(()=>document.querySelectorAll('#hero-details article').length===1);
   const specialCount=await page.locator('#hero-details article').count();
   await page.screenshot({path:path.join(artifactDir,`${viewport.name}-hero-details.png`)});
-  results.push(invariant('hero-detail-canonical-kit',!heroDetails.overflow&&activeCount===8&&passiveCount===6&&specialCount===1&&heroDetails.text.includes('Builds FLOW:'),{heroDetails,activeCount,passiveCount,specialCount},{overflow:false,activesPlusAttack:8,passives:6,special:1}));
+  results.push(invariant('hero-detail-canonical-kit',!heroDetails.overflow&&activeCount===8&&passiveCount===6&&specialCount===1&&heroDetails.text.includes('Orb passive:'),{heroDetails,activeCount,passiveCount,specialCount},{overflow:false,activesPlusAttack:8,passives:6,special:1}));
   return results;
 }
 

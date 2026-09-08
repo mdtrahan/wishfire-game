@@ -10,12 +10,12 @@ Groups may contain one through six heroes. Each hero has their own HP, SP, level
 
 ## Current Heroes
 
-| Hero | Role | How FLOW builds |
+| Hero | Role | Orb passive |
 | --- | --- | --- |
-| Fara | Tank | Taking enemy damage |
-| Hondo | Fighter | Damaging enemies |
-| Runa | Controller | Applying or refreshing enemy debuffs |
-| Kaja | Support | Allies taking enemy damage |
+| Fara | Tank | 25% bonus-orb chance when damaged |
+| Hondo | Fighter | Basic Attack orb chance rises to 50% |
+| Runa | Controller | 35% orb chance after a successful debuff action |
+| Kaja | Support | 15% orb chance when another ally takes damage |
 
 Every hero has seven active skills, six passives and one unique FLOW special. Abilities unlock as that hero levels. The hero screen shows current stats, costs, effects and future unlocks.
 
@@ -25,7 +25,7 @@ Every hero has seven active skills, six passives and one unique FLOW special. Ab
 
 **SP** pays for active skills. Heroes begin encounters with full SP and recover five SP at the start of their own living turn. Only executed actions spend SP. Unexecuted actions are refunded if their targets become invalid, their actor is KO'd or victory ends combat.
 
-**FLOW** begins at zero in every encounter. Each hero's role determines how it grows. When full, that hero can use their special. The red meter is labeled FLOW; the blue meter shows SP. Party-card draws are paused.
+**FLOW** begins at zero in every encounter. Damaging actions have a 35% chance to release one orb from an enemy. Each orb travels to a random living hero and grants 10 FLOW on arrival. Orb passives can improve these drops. When full, that hero can use their special. The red meter is labeled FLOW; the blue meter shows SP. Party-card draws are paused.
 
 **Energy and Gold** belong to the wider quest economy. They do not set the number of skills a hero can queue.
 

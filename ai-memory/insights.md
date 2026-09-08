@@ -540,3 +540,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - 2026-09-07, ORKA-49k.6: Migrating shared healing requires changing both recipient and percentage basis. Actor-only writes still over-heal if they scale from party max HP. Retire reverse HP projection and shared-bar text together, then exercise a real prepared command through turn completion.
 
 - Combat migration: action capacity, SP affordability and initiative are independent boundaries. Validate actual battlefield clicks and full-queue auto-commit through presentation completion. Generated renderer edits must preserve the array join and post-processing chain; edit the decoded body within that boundary. Paused effects need removed runtime callers, not just disabled acquisition.
+
+- Orb rewards must separate event qualification, per-action proc caps, recipient assignment and collection. Keep probability draws outside the combat RNG stream; use the same action identity for failed as well as successful proc checks.

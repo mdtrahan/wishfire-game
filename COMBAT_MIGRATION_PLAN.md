@@ -8,7 +8,7 @@ Replace every existing hero skill kit using the role templates below. The owner 
 
 Retire puzzle-board combat and shared AF milestones. Pause roguelite party-card acquisition and effects, retaining their historical content only where useful for later restoration. Remove their active combat dependencies. Do not add gacha commerce, catch-up progression, extra recruitable heroes or multi-hero combination systems in this migration.
 
-Earlier empty-on-use SP, deferred SP regeneration, automatic retargeting, periodic-tick FLOW generation and legacy-skill preservation rules are superseded. The new SP economy is a configurable baseline, not final balance. No automatic role substitution for a smaller party: Kaja remains Comrade when alone.
+Earlier direct role-based FLOW gain, empty-on-use SP, deferred SP regeneration, automatic retargeting, periodic-tick FLOW generation and legacy-skill preservation rules are superseded. The new SP economy is a configurable baseline, not final balance. No automatic role substitution for a smaller party: Kaja remains Comrade when alone.
 
 ## 2. Heroes and kit data
 
@@ -91,7 +91,7 @@ Abilities declare their own configurable unlock levels. Generic progression eval
 
 ## 4. SP and FLOW resources
 
-SP and FLOW are independent balances. Fresh combat initializes full configured starting SP and FLOW 0. Personal FLOW ranges 0–100; no shared bar or milestones. KO and revival preserve FLOW. Roles provide no charge merely for entering combat.
+SP and FLOW are independent balances. Fresh combat initializes full configured starting SP and FLOW 0. Personal FLOW ranges 0–100; no shared bar or milestones. KO and revival preserve FLOW. No charge is granted merely for entering combat.
 
 Basic Attack costs 0 SP and is exclusive with a skill sequence. A FLOW special replaces the entire prepared sequence, costs 0 SP, consumes its full personal meter when it executes and spends one turn. A legality failure before execution consumes no FLOW. A rejected commit does not spend the turn; an accepted sequence that begins execution spends the turn even if all actions later become invalid.
 
@@ -148,35 +148,30 @@ Routine periodic ticks generate no FLOW. This applies to both caster rewards and
 
 Silence blocks `magic`-tagged skills and FLOW specials at queue/execute checks. It does not inspect whether damage scales from MAG. `ignoresSilence = true` bypasses the restriction. Blind applies a configurable accuracy penalty only to `physical`-tagged actions unless `ignoresBlind = true`.
 
-## 7. FLOW event contract
+## 7. FLOW orb contract
 
-Use resolved gameplay events with source ownership and action identity; render polling must never grant FLOW. Exact gain amounts are centralized tuning values. Keep event eligibility separate from balance magnitudes.
+This section supersedes direct role-based charge. Each hero retains a 100-point personal FLOW gauge. Combat events spawn orbs; only collection increases FLOW. SP spending and action capacity never generate charge.
 
-| Archetype | Qualifying event |
-| --- | --- |
-| Stoic | Actual enemy-originated damage received, including the lethal hit before KO resolves |
-| Warrior | Each unique enemy actually damaged by one skill, once regardless of hit count |
-| Slayer | Credited enemy kill, including an eligible periodic kill outcome |
-| Healer | Each unique hero whose HP actually increases from the immediate skill, including self and successful revival |
-| Tactician | Every successful enemy debuff application or actual duration refresh; multiple statuses on one enemy each count |
-| Comrade | Enemy-originated damage to another ally, including lethal damage, while the Comrade hero is alive at event resolution |
-| Dancer | Defender evasion defeats an attack that already passed attacker accuracy |
-| Rook | Mitigation owned by that Rook actually prevents enemy-originated damage |
-| Daredevil | Own turn at configured critical HP |
-| Loner | Acting while sole surviving party combatant |
+A successful normal damaging action has a 35% chance of one 10-FLOW orb, capped at one base drop per action across all targets and hits. Each queued skill gets its own check. Data in `FLOW_ORB_TUNING` and skill fields supports `limitOrbDropChance`, `limitOrbValue`, `limitOrbDropCount`, `orbChancePer` (`action` or `hit`), `maxDropsPerAction`, `guaranteedDrops` and `limitOrbChanceBonus`. Guaranteed and random base drops share the configured base cap. Passive bonus drops are separate.
 
-Additional constraints:
+Each orb independently chooses a random living eligible hero, including heroes other than its generator. Full gauges remain eligible and clamp at 100, discarding excess. A recipient who becomes KO or ineligible before collection receives no charge; that flight dissipates. New encounters clear flights and begin at zero FLOW. FLOW-special ancestry excludes its caster from receiving its own generated orbs, including delayed descendants; other heroes remain eligible.
 
-- Stoic/Comrade exclude self-damage, HP costs and friendly damage. Rook also excludes environmental/non-hostile damage. Fully prevented damage grants no Stoic/Comrade FLOW.
-- Credit Rook to the mitigation provider, including self-protection, and track each mitigation source's actual prevented amount without duplicate credit.
-- A lethal qualifying hit earns Stoic FLOW before KO and preserves the new total. Comrade eligibility uses whether that hero is alive when the damage event resolves.
-- Eight damaging hits on one enemy grant one Warrior event; damaging four enemies grants four. Distinct skill executions have distinct event identities.
-- Healing the same hero repeatedly within one skill grants one Healer event. Overhealing alone grants zero. Revive from 0 to positive HP plus further healing counts once. Pure HoT application and routine HoT ticks grant zero; an immediate heal plus HoT can earn from the immediate healing only.
-- Tactician counts each successful status, per enemy. Resisted, failed or duration-unchanged applications grant zero. Do not add a per-skill cap now; that is future tuning if needed.
-- Attacker inaccuracy/Blind misses grant no Dancer FLOW. Evasion is a separate defender result after accuracy succeeds.
-- Ordinary counters and passive effects can earn legitimate role FLOW, subject to periodic exclusions.
-- Anything caused by a hero's `isFlowSpecial = true` action generates zero FLOW for that hero, across damage, kills, healing, status, mitigation, evasion and delayed descendants. Preserve this source exclusion permanently on derived effects. Other heroes can earn from their own qualifying conditions caused by that action.
-- An already KO'd hero earns no FLOW. The lethal-hit Stoic ordering above is the explicit exception before KO resolution.
+| Preserved passive name | Orb effect | Proc boundary |
+| --- | --- | --- |
+| Stoic | 25% chance of one bonus orb after hostile damage, including a lethal hit | Once per incoming action |
+| Warrior | Basic Attack chance gains 15 percentage points, reaching 50% | Base action cap |
+| Slayer | One guaranteed bonus orb plus 25% chance of a second | Per enemy killed |
+| Healer | 30% chance of one orb after actual immediate HP restoration, including self/revival | Once per healing action |
+| Tactician | 35% chance of one orb after a successful enemy debuff or actual refresh | Once per action |
+| Comrade | 15% chance of one orb when another ally takes hostile damage | Once per enemy action |
+| Dancer | 50% chance of one orb from actual defender evasion | Once per incoming action |
+| Rook | 35% chance of one orb when owned mitigation prevents at least 1 damage | Once per incoming action |
+| Daredevil | Add 25 percentage points to normal action chance at HP ≤25%, reaching 60% | Base action cap |
+| Loner | Normal action chance becomes 70% while sole living hero | Base action cap; sole hero receives orbs |
+
+All chances and the Rook minimum are centralized tuning. Role names and current assignments are preserved as orb passives. There is no simultaneous direct meter reward. Failed proc checks also consume that action's check. Rook credits the mitigation provider. Self/friendly/environmental damage is ineligible for Stoic, Comrade and Rook. Blind misses do not trigger Dancer. Pure HoT, overheal and routine periodic ticks create no orbs. A DoT kill can trigger living-source Slayer. Counters remain distinct actions and retain source exclusions.
+
+Orbs pop from the damaged enemy (or the relevant passive event source), then travel to the randomly assigned hero's arena portrait. Collection occurs after 0.14 seconds of release and 0.38 seconds of flight; a 0.12-second arrival flash follows. Use the game's gem artwork with a red glow. These events never own a turn barrier, action slot, SP reservation or initiative change. Orb RNG uses its own runtime stream so proc rolls cannot alter later combat rolls. Full FLOW retains the existing ready indication and manually selected special command.
 
 ## 8. Accuracy, Provoke and Cover
 
@@ -242,7 +237,7 @@ Use focused deterministic checks plus the existing browser QA harness. Cover the
 - Groups 1–6, full starting SP/zero FLOW, own-turn regeneration once, no regeneration on KO/revive/counter, independent resources and costs retained after partial execution.
 - Per-action targets, multicasting flag, affordability, invalid-target refunds, partial group validity, actor KO, all-skipped turn, and immediate victory cancellation before EXP.
 - Status refresh/stronger magnitude, self-turn expiry, KO clearing, snapshot periodic effects after caster KO, simultaneous DoT/HoT survival, and no routine tick FLOW.
-- FLOW deduplication, per-status Tactician events, true HP restoration, hostile origin, lethal Stoic/Comrade timing, mitigation ownership and inherited special-source exclusion.
+- FLOW deduplication, once-per-action orb passive checks, true HP restoration, hostile origin, lethal Stoic/Comrade timing, mitigation ownership and inherited special-source exclusion.
 - Tag-based Silence/Blind, accuracy versus evasion, Provoke recency, Cover recency/defense ownership, coverer KO fallback and partial-skill no-refund.
 - Counter timing, one per defender, current SPEED order, per-counter validity, no chains and no initiative/SP side effects.
 - Live browser proof for current hero kits, queued mixed targets, resources, progression results, defeat/revival and victory; persistent active glow and approved reference/compact/natural/Retina layout.

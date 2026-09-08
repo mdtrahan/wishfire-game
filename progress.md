@@ -41,3 +41,7 @@ ORKA-49k.7: personal charge and native queues implemented; party cards paused. F
 
 
 2026-09-08: Implemented canonical progression/kits/effects, independent action slots and battlefield targeting. Removed paused frame-tick callers. Final validation and checkpoint receipts are in COMBAT_MIGRATION_REPORT.md.
+
+## ORKA-49k.7 · FLOW orb conversion
+
+Owner requested replacing direct role charge with random-distribution orb collection while preserving ten role triggers as orb passives. Implemented capped base rolls, per-action passive checks, separate RNG, delayed collection and actor-projected gem flights. Full Node suite: 803 passed, 73 historical skips. Browser validation in progress.

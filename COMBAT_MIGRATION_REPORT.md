@@ -1,5 +1,20 @@
 # Combat migration implementation report
 
+## Current revision: combat FLOW orbs
+
+The direct role-charge system from the preceding checkpoint is replaced. Each living hero retains a personal 100 FLOW gauge. Normal damaging actions roll 35% for one 10-point orb, capped once per action across hits and targets. Every orb independently chooses a random living eligible hero. Charge is applied on arrival after a 0.52-second release/flight, with a short arrival flash. Orb animation never enters the turn barrier.
+
+The ten role names and current assignments now describe configurable orb passives. Stoic, Slayer, Healer, Tactician, Comrade, Dancer and Rook create bonus orbs from the existing qualifying events; Warrior, Daredevil and Loner modify base drop chances. Passive checks respect the owner's action caps, including one Healer/Tactician check per action, one Comrade check per enemy action, and intentional per-kill Slayer bonuses. All direct role-meter writes were removed.
+
+`flowOrbs.mjs` owns generation, random assignment and collection. The existing resolver supplies source attribution and action deduplication. `renderFlowOrbs.mjs` draws existing gem artwork with a red glow through the actors' orientation/scale projection. App wiring adds only update/render calls. Hero details now explain orb passives. Encounter reset clears flights. SP, action slots and SPEED scheduling retain their existing owners.
+
+Skill tuning supports chance/value/count, action or hit rolls, maximum base drops, guaranteed drops and chance bonuses. A full recipient clamps at 100. If a recipient becomes KO/ineligible during flight, that orb dissipates. FLOW-special source exclusions remain intact so a special cannot recharge its own caster. Passive orbs use the same random distribution.
+
+Validation for this revision: **803 Node tests passed, 0 failed, 73 unchanged historical skips**; app boundary **4 passed**. Browser gate: **241/241 passed**. Receipt: `test-results/ui-lock/2026-09-08T07-23-53-648Z/ui-lock-report.json`. Release/collection screenshots were inspected at reference and compact sizes. The in-app Browser was unavailable because the Mac was locked, so rendered proof uses the repository Playwright gate. Local preview remains on port 8047.
+
+The earlier checkpoint evidence below describes the base migration; its direct-role FLOW statements are superseded by this revision and section 7 of the migration plan.
+
+
 Local implementation in `codex/ORKA-49k.7-astral-spending`. The preview is served from this worktree at `http://localhost:8047/web-runner/index.html`. Main and production have not been changed.
 
 ## Delivered behavior

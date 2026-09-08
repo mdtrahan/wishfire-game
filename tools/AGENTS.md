@@ -43,3 +43,5 @@
 - The UI gate checks full-charge FLOW and a 45/50 SP queue through Act, single-turn completion, absent retired draw controls, and steady scheduled-actor highlighting through busy action frames.
 
 - The UI gate also verifies canonical hero-detail kit counts and overflow, and the production victory dialog after a native final hit.
+
+- The UI gate captures enemy-to-nonattacker orb flight before charge and verifies collection, readiness and one-turn completion across its viewport profiles.

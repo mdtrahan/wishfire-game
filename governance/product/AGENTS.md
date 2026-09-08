@@ -31,3 +31,5 @@
 
 ## Child DOX Index
 - None.
+
+- Personal FLOW is charged by randomly distributed combat orbs. Preserved archetype names now describe orb passives; direct role-based meter rewards are superseded.

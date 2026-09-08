@@ -5,7 +5,7 @@ export function resetCombatSessionConditions(globals, gameState) {
   }
   Object.assign(globals, {
     AstralFlowAmpPoints: 0, AstralFlowAmpReady: 0,
-    NativeCommandSequence: null, SessionSkillsByHeroUID: {},
+    FlowOrbs: [], FlowOrbSerial: 0, NativeCommandSequence: null, SessionSkillsByHeroUID: {},
     SkillDraughtOpen: 0, SkillDraughtPendingOpen: 0, SkillDraughtCandidates: [], SkillDraughtHitZones: [],
     AstralFlowKoOrbPresentationActive: 0, AstralFlowKoOrbPresentationPending: 0,
     AstralFlowKoOrbQueue: [], PartyRegens: [], TrackBuffs: [], PartyBuffSlots: [],

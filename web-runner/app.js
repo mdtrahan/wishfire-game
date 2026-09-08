@@ -1,3 +1,5 @@
+import {advanceFlowOrbs} from './src/core/flowOrbs.mjs';
+import {renderFlowOrbs} from './systems/renderFlowOrbs.mjs';
 import { createGoldProgressStorage } from './systems/goldProgressStorage.mjs';
 import { state } from './modules/state.js';
 import { createContext, callFunctionWithContext } from './modules/functionRegistry.js';
@@ -2697,6 +2699,7 @@ async function main(){
       createPartyRegenTickSimulationPacket,
     };
     const result = renderRuntime.renderRuntime(runtimeScope);
+    advanceFlowOrbs(state.globals, state.entities);
     renderExistingNavigation(ctx, { worldToCanvas, layoutScale, gameState, layoutState, eventBus });
     heroCommandUI.update({
       visible: layoutState.getActiveLayoutId() === 'combat' && state.globals.GamePhase === 'RUNTIME',
@@ -2717,6 +2720,7 @@ async function main(){
     if (result && result.visualControlPatches) {
       Object.assign(state.globals, result.visualControlPatches);
     }
+    if (layoutState.getActiveLayoutId() === 'combat') renderFlowOrbs(ctx, state.globals, state.entities, combatActorWorldToCanvas, layoutScale, gemFrameImages[0]);
     partyStatOsdRuntime.refresh();
     if (typeof runtimeScope.lastFrameTime === 'number') {
       lastFrameTime = runtimeScope.lastFrameTime;
