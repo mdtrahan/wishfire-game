@@ -1,3 +1,5 @@
+import { effectiveStat } from '../src/core/combatRules.mjs';
+import { resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit } from './heroCommands.mjs';
 import { state } from './state.js';
 import { MONSTER_KEYS, MONSTER_LOOT_TABLE, TOKEN, EMPTY } from './monsterLootTableEventTokens.js';
 import { ACTIVE_EVENT_IDS, LIVE_OPS_EVENTS, TOKEN_REGISTRY } from './liveOpsTokens.js';
@@ -1787,130 +1789,23 @@ export function GetSkillDraughtState(ctx) {
 }
 
 export function OpenSkillDraughtForHero(ctx, heroUID, forcedSkillId = '') {
-  const g = ensureSkillDraughtState(ctx);
-  const uid = Number(heroUID || 0);
-  const actor = GetActorByUID(ctx, uid);
-  if (!actor) {
-    appendSkillDraughtTrace(g, 'open_rejected', { heroUID: uid, reason: 'hero_not_found' });
-    return { ok: false, reason: 'hero_not_found', candidates: [] };
-  }
-  const drawResult = buildSkillDraughtCandidates(ctx, uid, forcedSkillId);
-  const candidates = Array.isArray(drawResult?.candidates) ? drawResult.candidates : [];
-  const forcedSkillSuppressedReason = String(drawResult?.forcedSkillSuppressedReason || '');
-  g.SkillDraughtLastForcedSkillSuppressedReason = forcedSkillSuppressedReason;
-  if (!candidates.length) {
-    appendSkillDraughtTrace(g, 'open_rejected', {
-      heroUID: uid,
-      reason: 'no_drawable_candidates',
-      forcedSkillId: String(drawResult?.forcedSkillId || ''),
-      forcedSkillSuppressedReason,
-    });
-    return { ok: false, reason: 'no_drawable_candidates', candidates: [], forcedSkillSuppressedReason };
-  }
-  g.SkillDraughtOpen = 1;
-  g.SkillDraughtHeroUID = uid;
-  g.SkillDraughtPendingOpen = 0;
-  g.SkillDraughtPendingHeroUID = 0;
-  g.SkillDraughtPendingForcedSkillId = '';
-  g.SkillDraughtCandidates = candidates;
-  g.SkillDraughtHitZones = [];
-  g.SkillDraughtSelectedSkillId = '';
-  markOneOffSkillDrawExposures(g, candidates);
-  recordSkillDrawAppearances(g, candidates);
-  appendSkillDraughtTrace(g, 'open', {
-    heroUID: uid,
-    forcedSkillId: String(drawResult?.forcedSkillId || ''),
-    forcedSkillSuppressedReason,
-    candidateIds: candidates.map(candidate => candidate.id),
-  });
-  LogCombat(ctx, 'The party found new skills.');
-  return { ok: true, heroUID: uid, forcedSkillSuppressedReason, candidates: candidates.map(candidate => ({ ...candidate })) };
+  // Party-card acquisition and procs are paused by the JRPG migration.
+  return false;
 }
 
 export function QueueSkillDraughtForHero(ctx, heroUID, forcedSkillId = '') {
-  const g = ensureSkillDraughtState(ctx);
-  const uid = Number(heroUID || 0);
-  const actor = GetActorByUID(ctx, uid);
-  if (!actor) {
-    appendSkillDraughtTrace(g, 'queue_rejected', { heroUID: uid, reason: 'hero_not_found' });
-    return { ok: false, reason: 'hero_not_found' };
-  }
-  g.SkillDraughtPendingOpen = 1;
-  g.SkillDraughtPendingHeroUID = uid;
-  g.SkillDraughtPendingForcedSkillId = String(forcedSkillId || '');
-  appendSkillDraughtTrace(g, 'queue', { heroUID: uid, forcedSkillId: g.SkillDraughtPendingForcedSkillId });
-  return { ok: true, heroUID: uid, pendingOpen: 1 };
+  // Party-card acquisition and procs are paused by the JRPG migration.
+  return false;
 }
 
 export function ClaimPendingSkillDraught(ctx) {
-  const g = ensureSkillDraughtState(ctx);
-  if (Number(g.SkillDraughtOpen || 0)) return { ok: false, reason: 'draught_open' };
-  if (!Number(g.SkillDraughtPendingOpen || 0)) return { ok: false, reason: 'no_pending_draught' };
-  const uid = Number(g.SkillDraughtPendingHeroUID || 0);
-  const forcedSkillId = String(g.SkillDraughtPendingForcedSkillId || '');
-  const result = OpenSkillDraughtForHero(ctx, uid, forcedSkillId);
-  if (result && result.ok) return { ...result, claimed: true };
-  g.SkillDraughtPendingOpen = 0;
-  g.SkillDraughtPendingHeroUID = 0;
-  g.SkillDraughtPendingForcedSkillId = '';
-  appendSkillDraughtTrace(g, 'claim_rejected', { heroUID: uid, reason: String(result?.reason || 'open_failed') });
-  return result || { ok: false, reason: 'open_failed' };
+  // Party-card acquisition and procs are paused by the JRPG migration.
+  return false;
 }
 
 export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
-  const g = ensureSkillDraughtState(ctx);
-  if (!Number(g.SkillDraughtOpen || 0)) return { ok: false, reason: 'draught_closed' };
-  const index = Math.max(0, Math.floor(Number(candidateIndex) || 0));
-  const candidate = g.SkillDraughtCandidates.find(row => Number(row.index) === index) || g.SkillDraughtCandidates[index] || null;
-  if (!candidate) return { ok: false, reason: 'candidate_not_found' };
-  const uid = Number(g.SkillDraughtHeroUID || 0);
-  const def = getSkillDefinitionById(candidate.id) || candidate;
-  const key = getSkillSessionBucketKey(def, uid);
-  if (!Array.isArray(g.SessionSkillsByHeroUID[key])) g.SessionSkillsByHeroUID[key] = [];
-  const skillId = String(candidate.id || def?.id || '').trim().toLowerCase();
-  const existingSelections = countSessionSkillSelections(g.SessionSkillsByHeroUID[key], skillId);
-  const suppressionReason = getSkillDrawSuppressionReason(g, def, uid, { ignoreExposure: true });
-  if (suppressionReason) {
-    appendSkillDraughtTrace(g, 'select_rejected', {
-      heroUID: uid,
-      skillId,
-      reason: suppressionReason,
-    });
-    return { ok: false, reason: suppressionReason, skillId };
-  }
-  const sessionSkill = makeSessionSkillRecord(
-    candidate,
-    def,
-    key,
-    existingSelections + 1,
-    'skill_draught',
-    Number(g.time || 0),
-  );
-  g.SessionSkillsByHeroUID[key].push(sessionSkill);
-  g.SkillDraughtSelectedSkillId = sessionSkill.id;
-  g.SkillDraughtOpen = 0;
-  g.SkillDraughtCandidates = [];
-  g.SkillDraughtHitZones = [];
-  g.AstralFlowAmpPoints = 0;
-  g.AstralFlowAmpReady = 0;
-  UpdateAstralFlowAmpBar(ctx);
-  if (sessionSkill.id === 'party_magic_fruit') activateMagicFruitSkill(ctx);
-  if (sessionSkill.id === 'party_crimson_ward') activateCrimsonWardSkill(ctx);
-  if (sessionSkill.id === 'party_faze') activateFazeSkill(ctx, uid);
-  if (sessionSkill.id === 'party_grow') activateGrowSkill(ctx, uid, sessionSkill);
-  const scope = String(sessionSkill.owner || '').toLowerCase() === 'party' ? 'party' : 'hero';
-  appendSkillDraughtTrace(g, 'select', {
-    heroUID: uid,
-    skillId: sessionSkill.id,
-    scope,
-    skillDrawAllowed: isAllowedSkillDrawCallId(sessionSkill.id) ? 1 : 0,
-  });
-  g.CombatActionPinnedLine = '';
-  g.CombatActionPinnedUntil = 0;
-  LogCombat(ctx, scope === 'party'
-    ? `${sessionSkill.title} activated.`
-    : `${getActorNameByUID(ctx, uid)} activated ${sessionSkill.title}.`);
-  return { ok: true, heroUID: uid, skill: { ...sessionSkill } };
+  // Party-card acquisition and procs are paused by the JRPG migration.
+  return false;
 }
 
 export function ClearSessionSkillDraught(ctx) {
@@ -1941,12 +1836,8 @@ export function ClearSessionSkillDraught(ctx) {
 }
 
 export function ForceAstralFlowSkillDraught(ctx, heroUID, forcedSkillId = '') {
-  const g = ensureAstralFlowAmpState(ctx);
-  const ampMax = Math.max(1, Number(g.AstralFlowAmpMax || 18));
-  g.AstralFlowAmpPoints = ampMax;
-  g.AstralFlowAmpReady = 1;
-  UpdateAstralFlowAmpBar(ctx);
-  return OpenSkillDraughtForHero(ctx, heroUID, forcedSkillId);
+  // Party-card acquisition and procs are paused by the JRPG migration.
+  return false;
 }
 
 function resolveHeroSkillPointIdentity(ctx, heroRef) {
@@ -2529,27 +2420,13 @@ function appendSkillProcTrace(g, entry) {
 }
 
 export function IsHeroSessionSkillActive(ctx, heroUID, skillRef) {
-  const g = ensureSkillDraughtState(ctx);
-  const skillId = normalizeSkillProcId(skillRef).toLowerCase();
-  if (!skillId) return false;
-  const bucket = g.SessionSkillsByHeroUID[String(Number(heroUID || 0))] || g.SessionSkillsByHeroUID[String(heroUID || '')] || [];
-  if (!Array.isArray(bucket)) return false;
-  return bucket.some(entry => {
-    const id = String((entry && (entry.id || entry.key || entry.definitionId)) || '').trim().toLowerCase();
-    return id === skillId;
-  });
+  // Party-card acquisition and procs are paused by the JRPG migration.
+  return false;
 }
 
 export function IsPartySessionSkillActive(ctx, skillRef) {
-  const g = ensureSkillDraughtState(ctx);
-  const skillId = normalizeSkillProcId(skillRef).toLowerCase();
-  if (!skillId) return false;
-  const bucket = g.SessionSkillsByHeroUID[HERO_SKILL_SHARED_KEY] || [];
-  if (!Array.isArray(bucket)) return false;
-  return bucket.some(entry => {
-    const id = String((entry && (entry.id || entry.key || entry.definitionId)) || '').trim().toLowerCase();
-    return id === skillId;
-  });
+  // Party-card acquisition and procs are paused by the JRPG migration.
+  return false;
 }
 
 function centerFinitePositions(positions) {
@@ -2944,47 +2821,8 @@ export function TryPartyDestiny(ctx, options = undefined) {
 }
 
 export function TriggerPartyDestinyDev(ctx, sourceUID = 0) {
-  const g = ensureSkillProcRuntime(ctx);
-  ensureSkillDraughtState(ctx);
-  const source = GetActorByUID(ctx, sourceUID) || getHeroes(ctx).find(hero => Number(hero?.hp || 0) > 0) || null;
-  if (!source) return { ok: false, success: false, reason: 'source_not_found', appliedHeal: 0 };
-  if (!Array.isArray(g.SessionSkillsByHeroUID[HERO_SKILL_SHARED_KEY])) g.SessionSkillsByHeroUID[HERO_SKILL_SHARED_KEY] = [];
-  const hasDestiny = g.SessionSkillsByHeroUID[HERO_SKILL_SHARED_KEY].some(entry =>
-    String((entry && (entry.id || entry.key || entry.definitionId)) || '').trim().toLowerCase() === 'party_destiny'
-  );
-  if (!hasDestiny) {
-    const destinyDef = getSkillDefinitionById('party_destiny');
-    g.SessionSkillsByHeroUID[HERO_SKILL_SHARED_KEY].push(makeSessionSkillRecord(
-      {
-        id: 'party_destiny',
-        key: 'party_destiny',
-        title: 'Destiny',
-        description: 'Attacks can restore HP.',
-        owner: 'Party',
-      },
-      destinyDef,
-      HERO_SKILL_SHARED_KEY,
-      1,
-      'dev_trigger',
-      Number(g.time || 0),
-    ));
-    g.SkillDraughtOneOffExposureBySkillId.party_destiny = 1;
-  }
-  g.PartyDestinyAttempts = 0;
-  g.PartyDestinyProcs = 0;
-  g.PartyDestinyHeals = 0;
-  g.PartyDestinyMisses = 0;
-  g.PartyDestinyLastResult = 'activated';
-  g.LastPartyDestiny = {
-    success: false,
-    reason: 'activated',
-    sourceUID: Number(source.uid || 0),
-    targetUID: 0,
-    appliedHeal: 0,
-  };
-  LogCombat(ctx, 'Chance to restore HP when attacking enemies activated!');
-  logPartyDestinyQa(ctx, 'activated', { sourceUID: Number(source.uid || 0) });
-  return { ok: true, success: true, reason: 'activated', sourceUID: Number(source.uid || 0), appliedHeal: 0 };
+  // Party-card acquisition and procs are paused by the JRPG migration.
+  return false;
 }
 
 export function GetSkillProcTrace(ctx, limit = 40) {
@@ -3236,21 +3074,7 @@ function queueAstralFlowKoOrbPresentation(ctx, enemy, reward, options = {}) {
 }
 
 export function AwardEnemyKoAstralFlow(ctx, enemy, options = {}) {
-  const g = ensureAstralFlowAmpState(ctx);
-  ensureAstralFlowWallet(ctx);
-  const reward = applyAstralFlowEnemyKoReward({
-    enemyName: enemy?.name || enemy?.key || enemy?.type || '',
-    astralFlowAmpPoints: g.AstralFlowAmpPoints,
-    astralFlowAmpMax: g.AstralFlowAmpMax,
-    astralFlowAmpReady: g.AstralFlowAmpReady,
-    astralFlowWallet: g.AstralFlowWallet,
-  });
-  if (Number(reward.rewardPercent || 0) <= 0) return { ok: false, reason: 'no_enemy_ko_astral_flow_reward', reward };
-
-  const presentation = queueAstralFlowKoOrbPresentation(ctx, enemy, reward, options);
-  if (!presentation) return { ok: false, reason: 'no_enemy_ko_astral_flow_orbs', reward };
-
-  return { ok: true, reward, presentation };
+  return { ok: false, reason: 'personal_flow_owns_rewards' };
 }
 
 export function CompleteAstralFlowKoOrbRewards(ctx) {
@@ -5170,6 +4994,7 @@ export function AdvanceTurn(ctx) {
   const g = getGlobals(ctx);
   const currentUID = GetCurrentTurn(ctx);
   const currentType = GetCurrentType(ctx);
+  nativeTurnEnded(ctx, GetActorByUID(ctx, currentUID));
   const dynamicInitiativeCadenceEvents = [
     { event: 'action_completed', uid: Number(currentUID || 0), type: Number(currentType || 0) },
   ];
@@ -5506,7 +5331,7 @@ export function GetEffectiveStat(ctx, inst, stat) {
   if (!inst) return 0;
   const g = getGlobals(ctx);
   const actorKind = String(inst.kind || '');
-  const base = Number(inst.stats?.[stat] ?? inst[stat] ?? 0);
+  const base = effectiveStat(inst, stat, Number(inst.stats?.[stat] ?? inst[stat] ?? 0));
   const partyBuff = actorKind === 'hero' ? partyBuffForStat(g, stat) : 0;
   const debuffs = actorKind === 'enemy' ? g?.EnemyDebuffs?.[inst.uid] : null;
   const directEnemyDebuff = debuffs && debuffs[stat] ? Number(debuffs[stat] || 0) : 0;
@@ -6518,15 +6343,21 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   const opts = options && typeof options === 'object' ? options : {};
   const sourceUID = Number(opts.sourceUID || opts.actorUID || 0);
   g.LastDamageSourceUID = sourceUID > 0 ? sourceUID : Number(GetCurrentTurn(ctx) || 0);
-  const t = GetActorByUID(ctx, uid);
+  let t = GetActorByUID(ctx, uid);
   if (!t || Number(t.hp ?? 0) <= 0) return 0;
+  const source = GetActorByUID(ctx, g.LastDamageSourceUID);
+  if (source?.kind === 'enemy' && t.kind === 'hero' && !opts.nativeResolved) {
+    const before = t.hp;
+    resolveIncomingNativeHit(ctx, source, t, Math.max(0, Number(dmg) || 0), opts);
+    return Math.max(0, before - t.hp);
+  }
   const targetTraceHit = findMatchingPendingHeroHit(ctx, uid, dmg, (hit) => Number(hit.targetTraceSequence || 0) > 0);
   const suppressPartySkillHitHooks = shouldSuppressPartySkillHitHooks(ctx, uid, dmg, opts);
   const suppressHitFlash = shouldSuppressHitFlash(ctx, uid, dmg, opts);
   const suppressDamageText = shouldSuppressDamageText(ctx, uid, dmg, opts);
   const beforeHP = Number(t.hp ?? 0);
   let incomingDamage = Math.max(0, Number(dmg || 0));
-  const shieldBefore = t.kind === 'hero' ? Math.max(0, Number(g.PartyTempHPShield || 0)) : 0;
+  const shieldBefore = opts.nativeResolved ? 0 : (t.kind === 'hero' ? Math.max(0, Number(g.PartyTempHPShield || 0)) : 0);
   const jsShieldAbsorbed = t.kind === 'hero' ? Math.min(shieldBefore, incomingDamage) : 0;
   const jsDamageToHP = Math.max(0, incomingDamage - jsShieldAbsorbed);
   const jsAfterHp = Math.max(0, beforeHP - jsDamageToHP);
@@ -6545,7 +6376,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   }
   let damageToHP = incomingDamage;
   let shieldAbsorbed = 0;
-  if (t.kind === 'hero') {
+  if (t.kind === 'hero' && !opts.nativeResolved) {
     const shieldResult = absorbPartyTempHPShield(g, damageToHP);
     damageToHP = shieldResult.damageAfterShield;
     shieldAbsorbed = shieldResult.absorbed;
@@ -6563,6 +6394,8 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   }
   const afterHP = Number(t.hp ?? 0);
   const appliedDamage = Math.max(0, beforeHP - afterHP);
+  g.LastDamageSourceUID = source?.uid || g.LastDamageSourceUID;
+
   if ((g.DevTestMode === true || g.DebugGemsMode === true) && targetTraceHit) {
     console.log(`[TARGET_DAMAGE_JSON] ${JSON.stringify({
       sequence: Number(targetTraceHit.targetTraceSequence || 0),
@@ -8056,7 +7889,7 @@ export function ProcessEnemyTurnDamageOverTime(ctx, enemyUID) {
 
 export function Enemy_ATK_Single(ctx, enemyUID, targetHeroUID) {
   const dmg = CalculateDamage(ctx, enemyUID, targetHeroUID, 'melee');
-  const appliedDamage = ApplyDamageToTarget(ctx, targetHeroUID, dmg);
+  const appliedDamage = ApplyDamageToTarget(ctx, targetHeroUID, dmg, {sourceUID:enemyUID});
   const enemyName = getActorNameByUID(ctx, enemyUID);
   const heroName = getActorNameByUID(ctx, targetHeroUID);
   LogCombat(ctx, `${enemyName} hit ${heroName} for ${appliedDamage}!`);
@@ -8064,19 +7897,8 @@ export function Enemy_ATK_Single(ctx, enemyUID, targetHeroUID) {
 
 export function Enemy_MAG_Single(ctx, enemyUID, targetHeroUID) {
   const dmg = CalculateDamage(ctx, enemyUID, targetHeroUID, 'magic');
-  const resist = applyRunaMagicResist(ctx, enemyUID, targetHeroUID, dmg, 'Enemy_MAG_Single');
-  const appliedDamage = resist.finalDamage > 0
-    ? ApplyDamageToTarget(ctx, targetHeroUID, resist.finalDamage)
-    : 0;
-  const enemyName = getActorNameByUID(ctx, enemyUID);
-  const heroName = getActorNameByUID(ctx, targetHeroUID);
-  if (resist.mode === 'nullify') {
-    LogCombat(ctx, `${heroName} nullified ${enemyName}'s magic!`);
-  } else if (resist.mode === 'heavy_resist') {
-    LogCombat(ctx, `${heroName} heavily resisted magic! (${dmg}->${appliedDamage})`);
-  } else {
-    LogCombat(ctx, `${enemyName} cast on ${heroName} for ${appliedDamage}!`);
-  }
+  const appliedDamage = ApplyDamageToTarget(ctx, targetHeroUID, dmg, {sourceUID:enemyUID,magic:true});
+  LogCombat(ctx, `${getActorNameByUID(ctx, enemyUID)} cast for ${appliedDamage}!`);
 }
 
 export function Enemy_Heal_Self(ctx, enemyUID) {
@@ -8363,6 +8185,7 @@ export function SpawnEnemy(ctx, enemyData, slotIndex = 0) {
     uid,
     kind: 'enemy',
     name: enemyData.name || `Enemy_${uid}`,
+    expValue: enemyData.expValue ?? enemyData.EXP,
     hp: Number(enemyData.HP ?? 0),
     maxHP: Number(enemyData.HP ?? enemyData.maxHP ?? 0),
     combatPower: Number(
@@ -9577,11 +9400,7 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
   } else if (skillId === 'Enemy_MAG_AOE') {
     handled = true;
     g.IsAOEMatch = 1;
-    for (const h of getHeroes(ctx)) {
-      const dmg = CalculateDamage(ctx, actorUID, h.uid, 'magic');
-      const resist = applyRunaMagicResist(ctx, actorUID, h.uid, dmg, 'Enemy_MAG_AOE');
-      if (resist.finalDamage > 0) ApplyDamageToTarget(ctx, h.uid, resist.finalDamage);
-    }
+    resolveNativeEnemyArea(ctx, actorUID);
   }
 
   if (!handled) {
@@ -9708,7 +9527,7 @@ function recordEnemyTurnFlowOwner(g, decision, source) {
 
 export function EnemyTurn(ctx, enemyUID) {
   const g = getGlobals(ctx);
-  if (Number(g.SkillDraughtOpen || 0)) return;
+
   const activeEnemyUID = Number(enemyUID || GetCurrentTurn(ctx) || 0);
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
   const ownerHook = root && typeof root.__ORKA_ENEMY_TURN_FLOW_OWNER__ === 'function'
@@ -9730,7 +9549,6 @@ export function EnemyTurn(ctx, enemyUID) {
     ProcessTurn(ctx);
     return;
   }
-  ProcessEnemyTurnDamageOverTime(ctx, activeEnemyUID);
   const enemy = GetActorByUID(ctx, activeEnemyUID);
   const decision = resolveEnemyTurnFlowCompat({
     source: 'functionBank.EnemyTurn.afterDot',
@@ -9773,7 +9591,7 @@ export function HeroTurn(ctx, heroUID) {
     source: 'functionBank.HeroTurn.entry',
     heroUID,
     currentHeroUIDBefore: Number(g.CurrentHeroUID || 0),
-    skillDraughtOpen: Number(g.SkillDraughtOpen || 0),
+    skillDraughtOpen: 0,
     astralFlowAmpPoints: Number(g.AstralFlowAmpPoints || 0),
     astralFlowAmpMax: Number(g.AstralFlowAmpMax || 18),
     astralFlowAmpReady: Number(g.AstralFlowAmpReady || 0),
@@ -9877,8 +9695,8 @@ export function ProcessTurn(ctx) {
   const uid = GetCurrentTurn(ctx);
   const actor = GetActorByUID(ctx, uid);
   const g = getGlobals(ctx);
-  if (Number(g.SkillDraughtOpen || 0)) return;
-  if (g.BoardFillActive) return;
+
+
   resolvePendingEnemyDeaths(ctx);
   if (holdForEnemyRosterRefill(ctx)) return;
   recoverStaleActionInProgress(g, uid);
@@ -9908,6 +9726,8 @@ export function ProcessTurn(ctx) {
     });
     return;
   }
+  nativeTurnStarted(ctx, actor);
+  if (actor.hp <= 0) { AdvanceTurn(ctx); return; }
   g.DebugTurnCount = (g.DebugTurnCount || 0) + 1;
   console.log(`[DEBUG] matches=${g.DebugMatchCount || 0} turns=${g.DebugTurnCount}`);
   const dynamicCurrent = getDynamicInitiativeDefaultCurrent(g);
@@ -10491,11 +10311,7 @@ export function ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID = 0) {
     return resultValue || 1;
   }
   if (actionCode === ENEMY_JOB_ACTION_MAGIC_AOE) {
-    for (const h of getHeroes(ctx)) {
-      const dmg = CalculateDamage(ctx, enemyUID, h.uid, 'magic');
-      const resist = applyRunaMagicResist(ctx, enemyUID, h.uid, dmg, 'Enemy_MAG_AOE');
-      if (resist.finalDamage > 0) ApplyDamageToTarget(ctx, h.uid, resist.finalDamage);
-    }
+    resolveNativeEnemyArea(ctx, enemyUID);
     return resultValue || 1;
   }
   if (actionCode === ENEMY_JOB_ACTION_DRAIN_BUFF) {
@@ -10750,3 +10566,5 @@ export function RegisterPartyBuffSlot(ctx, buffType) {
   g.BuffIconPopAt = g.time || 0;
   g.BuffIconPopStacking = 0;
 }
+
+export function ResolveNativeCommandStep(ctx, hit) { return resolveNativeCommandStep(ctx, hit); }

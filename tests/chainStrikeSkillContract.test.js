@@ -117,7 +117,7 @@ function makeContext({
   };
 }
 
-test('Split is a one-off party draw skill in both function bank mirrors', () => {
+test.skip('[Paused roguelite cards/shared AF] Split is a one-off party draw skill in both function bank mirrors', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const def = mod.GetSkillDefinition(null, 'party_split');
@@ -155,7 +155,7 @@ test('Split is a one-off party draw skill in both function bank mirrors', () => 
   }
 });
 
-test('Split turns a red-lane attack into AOE while preserving the red target anchor', () => {
+test.skip('[Paused roguelite cards/shared AF] Split turns a red-lane attack into AOE while preserving the red target anchor', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const ctx = makeContext({ activeSkillIds: ['party_split'] });
@@ -176,7 +176,7 @@ test('Split turns a red-lane attack into AOE while preserving the red target anc
   }
 });
 
-test('Split Chain Strike I resolves from living saved red target anchor', () => {
+test.skip('[Paused roguelite cards/shared AF] Split Chain Strike I resolves from living saved red target anchor', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const ctx = makeContext({ activeSkillIds: ['party_split', 'party_chain_strike_i'] });
@@ -197,7 +197,7 @@ test('Split Chain Strike I resolves from living saved red target anchor', () => 
   }
 });
 
-test('Split Chain Strike II queues two bounces from the living red target anchor', () => {
+test.skip('[Paused roguelite cards/shared AF] Split Chain Strike II queues two bounces from the living red target anchor', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const mod = loadModule(runtimePath);
   const ctx = makeContext({ activeSkillIds: ['party_split', 'party_chain_strike_ii'] });
 
@@ -219,7 +219,7 @@ test('Split Chain Strike II queues two bounces from the living red target anchor
   assert.equal(ctx.state.globals.PartyChainStrikeIIProcs, 1);
 });
 
-test('Split Chain Strike falls back to the next living enemy when the saved root dies from AOE', () => {
+test.skip('[Paused roguelite cards/shared AF] Split Chain Strike falls back to the next living enemy when the saved root dies from AOE', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const mod = loadModule(runtimePath);
   const ctx = makeContext({
     activeSkillIds: ['party_split', 'party_chain_strike_i'],
@@ -239,7 +239,7 @@ test('Split Chain Strike falls back to the next living enemy when the saved root
   assert.equal(ctx.state.globals.ChainStrikeVisuals[0].targetUID, 202);
 });
 
-test('Split Chain Strike does not fire when Split AOE leaves no living enemies', () => {
+test.skip('[Paused roguelite cards/shared AF] Split Chain Strike does not fire when Split AOE leaves no living enemies', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const mod = loadModule(runtimePath);
   const ctx = makeContext({
     activeSkillIds: ['party_split', 'party_chain_strike_i'],
@@ -257,7 +257,7 @@ test('Split Chain Strike does not fire when Split AOE leaves no living enemies',
   assert.equal(ctx.state.globals.ChainStrikeVisuals, undefined);
 });
 
-test('Chain Strike I is a one-off active party draw in both function bank mirrors', () => {
+test.skip('[Paused roguelite cards/shared AF] Chain Strike I is a one-off active party draw in both function bank mirrors', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const def = mod.GetSkillDefinition(null, 'party_chain_strike_i');
@@ -296,7 +296,7 @@ test('Chain Strike I is a one-off active party draw in both function bank mirror
   }
 });
 
-test('Chain Strike I queues one bounce to the next living enemy without changing the selected target', () => {
+test.skip('[Paused roguelite cards/shared AF] Chain Strike I queues one bounce to the next living enemy without changing the selected target', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const ctx = makeContext({ active: true });
@@ -325,7 +325,7 @@ test('Chain Strike I queues one bounce to the next living enemy without changing
   }
 });
 
-test('Chain Strike I falls back to the same enemy when only one enemy is alive', () => {
+test.skip('[Paused roguelite cards/shared AF] Chain Strike I falls back to the same enemy when only one enemy is alive', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const mod = loadModule(runtimePath);
   const ctx = makeContext({ active: true, onlyOneEnemy: true });
 
@@ -338,7 +338,7 @@ test('Chain Strike I falls back to the same enemy when only one enemy is alive',
   assert.equal(ctx.state.globals.ChainStrikeVisuals[0].targetUID, 201);
 });
 
-test('pending HERO_SINGLE keeps player intent while Chain Strike I follows its bounce rule', () => {
+test.skip('[Paused roguelite cards/shared AF] pending HERO_SINGLE keeps player intent while Chain Strike I follows its bounce rule', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const mod = loadModule(runtimePath);
   const ctx = makeContext({ active: true, pending: true });
 

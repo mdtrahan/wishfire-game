@@ -16,8 +16,11 @@ module.exports = {
   activateSuperGemEffect,
   executePendingSuperGemAction,
 };`;
-  const context = { module: { exports: {} }, exports: {}, Math, Number, String, Array, Map };
+  const context = {
+    ...require('../web-runner/src/core/combatRules.mjs'),
+    ...require('../web-runner/modules/heroCommands.mjs'), module: { exports: {} }, exports: {}, Math, Number, String, Array, Map };
   vm.runInNewContext(src, context, { filename: modulePath });
+  context.resolveIncomingNativeHit = (ctx, ...args) => require('../web-runner/modules/heroCommands.mjs').resolveIncomingNativeHit({ ...ctx, callFunction: (name, ...values) => context[name](ctx, ...values) }, ...args);
   return context.module.exports;
 }
 
@@ -36,6 +39,10 @@ module.exports = {
   SelectSkillDraughtCard,
 };`;
   const context = {
+    ...require('../web-runner/src/core/combatRules.mjs'),
+    ...require('../web-runner/modules/heroCommands.mjs'),
+    ...require('../web-runner/src/core/personalFlow.mjs'),
+    ...require('../web-runner/modules/heroCommands.mjs'),
     console,
     Math,
     module: { exports: {} },
@@ -44,6 +51,7 @@ module.exports = {
   };
   vm.createContext(context);
   new vm.Script(transformed, { filename: modulePath }).runInContext(context);
+  context.resolveIncomingNativeHit = (ctx, ...args) => require('../web-runner/modules/heroCommands.mjs').resolveIncomingNativeHit({ ...ctx, callFunction: (name, ...values) => context[name](ctx, ...values) }, ...args);
   return context.module.exports;
 }
 
@@ -259,7 +267,7 @@ function assertCrimsonWardSkillCardCreatesPartyWard(modulePath) {
   assert.equal(firstVisuals[4].refreshCount, 1);
 }
 
-test('Crimson Ward skill-card selection creates one barrier visual per hero in both mirrors', () => {
+test.skip('[Paused roguelite cards/shared AF] Crimson Ward skill-card selection creates one barrier visual per hero in both mirrors', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   assertCrimsonWardSkillCardCreatesPartyWard(path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js'));
   assertCrimsonWardSkillCardCreatesPartyWard(path.join(repoRoot, 'Scripts', 'functionBank.js'));
 });
@@ -346,95 +354,14 @@ function makeDamageContext() {
   };
 }
 
-function assertShieldAbsorbsDamageBeforePartyHp(modulePath) {
-  const { ApplyDamageToTarget } = loadFunctionBank(modulePath);
-  const ctx = makeDamageContext();
-  const hero = ctx.state.entities[0];
-
-  assert.equal(ApplyDamageToTarget(ctx, hero.uid, 30), 0);
-  assert.equal(hero.hp, 100);
-  assert.equal(ctx.state.globals.PartyHP, 100);
-  assert.equal(ctx.state.globals.PartyTempHPShield, 12);
-  assert.equal(ctx.state.globals.PartyTempHPShieldStacks, 4);
-
-  assert.equal(ApplyDamageToTarget(ctx, hero.uid, 20), 8);
-  assert.equal(hero.hp, 92);
-  assert.equal(ctx.state.globals.PartyHP, 92);
-  assert.equal(ctx.state.globals.PartyTempHPShield, 0);
-  assert.equal(ctx.state.globals.PartyTempHPShieldStacks, 0);
-}
-
-test('party tempHP shield absorbs enemy damage before true party HP in both runtime mirrors', () => {
-  assertShieldAbsorbsDamageBeforePartyHp(path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js'));
-  assertShieldAbsorbsDamageBeforePartyHp(path.join(repoRoot, 'Scripts', 'functionBank.js'));
-});
-
-function assertShieldDamageTargetsWard(modulePath) {
-  const { ApplyDamageToTarget } = loadFunctionBank(modulePath);
-  const ctx = makeDamageContext();
-  const hero = ctx.state.entities[0];
-  ctx.state.globals.SpawnDamageText = 1;
-  ctx.state.globals.PartyWardBarrierPosByUID = {
-    [hero.uid]: { x: 32, y: 10 },
-  };
-  ctx.state.globals.PartyWardBarrierVisualsByUID = {
-    [hero.uid]: {
-      uid: hero.uid,
-      state: 'active',
-      baseAlpha: 0.82,
-      fadeOutDuration: 0.28,
-    },
-  };
-
-  assert.equal(ApplyDamageToTarget(ctx, hero.uid, 30), 0);
-  assert.equal(hero.hp, 100);
-  assert.equal(ctx.state.globals.PartyTempHPShield, 12);
-  assert.equal(ctx.state.globals.DamageTexts.length, 1);
-  assert.equal(ctx.state.globals.DamageTexts[0].kind, 'ward');
-  assert.equal(ctx.state.globals.DamageTexts[0].targetKind, 'ward');
-  assert.equal(ctx.state.globals.DamageTexts[0].amount, 30);
-  assert.equal(ctx.state.globals.DamageTexts[0].x, 32);
-  assert.equal(ctx.state.globals.DamageTexts[0].y, 10);
-  assert.ok(!ctx.state.globals.HitFlashByUID || !ctx.state.globals.HitFlashByUID[hero.uid]);
-  assert.equal(ctx.state.globals.PartyWardBarrierVisualsByUID[hero.uid].lastAbsorbed, 30);
-}
-
-test('absorbed hero damage spawns soft Ward floating text over the barrier in both mirrors', () => {
-  assertShieldDamageTargetsWard(path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js'));
-  assertShieldDamageTargetsWard(path.join(repoRoot, 'Scripts', 'functionBank.js'));
-});
-
-function assertShieldDepletionFadesWardBeforeAdvancing(modulePath) {
-  const { ApplyDamageToTarget } = loadFunctionBank(modulePath);
-  const ctx = makeDamageContext();
-  const hero = ctx.state.entities[0];
-  ctx.state.globals.time = 2;
-  ctx.state.globals.SpawnDamageText = 1;
-  ctx.state.globals.PartyTempHPShield = 12;
-  ctx.state.globals.PartyWardBarrierVisualsByUID = {
-    [hero.uid]: {
-      uid: hero.uid,
-      state: 'active',
-      baseAlpha: 0.82,
-      fadeOutDuration: 0.28,
-    },
-  };
-
-  assert.equal(ApplyDamageToTarget(ctx, hero.uid, 20), 8);
-  assert.equal(ctx.state.globals.PartyTempHPShield, 0);
-  assert.equal(ctx.state.globals.PartyWardBarrierVisualsByUID[hero.uid].state, 'fadeOut');
-  assert.equal(ctx.state.globals.PartyWardBarrierVisualsByUID[hero.uid].fadeOutStartedAt, 2);
-  assert.ok(Math.abs(ctx.state.globals.PartyWardBarrierFadeOutUntil - 2.28) < 1e-9);
-  assert.ok(Math.abs(ctx.state.globals.ActionLockUntil - 2.28) < 1e-9);
-  assert.equal(ctx.state.globals.DeferAdvance, 1);
-  assert.equal(ctx.state.globals.AdvanceAfterAction, 1);
-  assert.equal(ctx.state.globals.DamageTexts.some(text => text.kind === 'ward' && text.amount === 12), true);
-  assert.equal(ctx.state.globals.DamageTexts.some(text => text.kind === 'damage' && text.targetKind === 'hero' && text.amount === 8), true);
-}
-
-test('depleting Falie Ward starts a fade-out gate before combat advances in both mirrors', () => {
-  assertShieldDepletionFadesWardBeforeAdvancing(path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js'));
-  assertShieldDepletionFadesWardBeforeAdvancing(path.join(repoRoot, 'Scripts', 'functionBank.js'));
+test('paused shared shield cannot absorb native enemy damage in either mirror', () => {
+  for (const file of ['web-runner/modules/functionBank.js','Scripts/functionBank.js']) {
+    const {ApplyDamageToTarget}=loadFunctionBank(path.join(repoRoot,file));
+    const ctx=makeDamageContext();const hero=ctx.state.entities[0];
+    assert.equal(ApplyDamageToTarget(ctx,hero.uid,30),30);
+    assert.equal(hero.hp,70);
+    assert.equal(ctx.state.globals.PartyTempHPShield,42);
+  }
 });
 
 test('shared shield does not create a retired pooled health bar', () => {

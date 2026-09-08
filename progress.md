@@ -36,3 +36,8 @@ Validation complete for opening-to-combat scope: 54 focused tests pass. Full sui
 - Shared navigation migrated fully; removed unreachable Canvas nav handlers and updated route tests.
 - Candidate full suite: 826 pass, 3 inherited failures (heal bloom source contract, Kojonn red queued totals, Clear Skills unload); current main baseline has the same three failures.
 - Netlify linked site orka-alpha-mvp automatically builds GitHub main; runtime-only dist build replaces repository-root publication. Existing local main is 15 commits ahead of origin/main.
+
+ORKA-49k.7: personal charge and native queues implemented; party cards paused. Follow COMBAT_MIGRATION_PLAN.md for current rules and COMBAT_MIGRATION_REPORT.md for validation. Historical milestone economics are superseded.
+
+
+2026-09-08: Implemented canonical progression/kits/effects, independent action slots and battlefield targeting. Removed paused frame-tick callers. Final validation and checkpoint receipts are in COMBAT_MIGRATION_REPORT.md.

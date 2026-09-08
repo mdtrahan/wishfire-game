@@ -3,18 +3,10 @@ const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-test('hero layout exports skill control hit zones and pointer handler invokes upgrade/downgrade actions', () => {
-  const renderPath = path.join(__dirname, '..', 'web-runner', 'systems', 'renderHeroScreen.js');
-  const pointerPath = path.join(__dirname, '..', 'web-runner', 'systems', 'pointerRoutingShell.js');
-  const renderSrc = fs.readFileSync(renderPath, 'utf8');
-  const pointerSrc = fs.readFileSync(pointerPath, 'utf8');
-
-  assert.match(renderSrc, /const upgradeButton = mapRect\(heroLayoutSpec\.heroUpgrade\);/);
-  assert.match(renderSrc, /skillNodes: skillNodeHitZones,/);
-  assert.match(renderSrc, /upgradeButton,/);
-  assert.match(pointerSrc, /isPointInRect\(mx, my, zones\.upgradeButton\)/);
-  assert.match(pointerSrc, /callFunctionWithContext\(fnContext, 'AttemptHeroSkillUpgrade', selectedHero\.uid, activeNode\.skillKey, 'hero_screen_upgrade_button'\)/);
-  assert.match(pointerSrc, /callFunctionWithContext\(fnContext, 'AttemptHeroSkillUpgrade', selectedHero\.uid, activeNode\.skillKey, 'hero_skill_modal_upgrade_button'\)/);
+test('hero screen reads canonical kits with level locks and no skill upgrade control', () => {
+ const source=fs.readFileSync(path.join(__dirname,'../web-runner/systems/renderHeroScreen.js'),'utf8');
+ assert.match(source,/heroDefinition/);assert.match(source,/d.passives/);assert.match(source,/d.actives/);assert.match(source,/d.special/);
+ assert.match(source,/ability.unlockLevel/);assert.doesNotMatch(source,/AttemptHeroSkillUpgrade|heroSkillPoints/);
 });
 
 test('hero skill downgrade function exists in both runtime and scripts function banks', () => {

@@ -142,7 +142,7 @@ function domDebug(mod) {
   return JSON.parse(mod.__context.document.documentElement.getAttribute('data-skill-draw-debug'));
 }
 
-test('skill draw debug counters track card appearances, not selected/used skills', () => {
+test.skip('[Paused roguelite cards/shared AF] skill draw debug counters track card appearances, not selected/used skills', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const ctx = makeContext();

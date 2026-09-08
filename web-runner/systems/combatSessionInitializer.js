@@ -1,3 +1,5 @@
+import {attachHeroProgress, createHeroProgressStore} from '../src/core/heroProgression.mjs';
+import { initializePersonalFlow } from '../src/core/personalFlow.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import {
   DEV_TOOL_EMPTY_SLOT,
@@ -330,6 +332,17 @@ export function createCombatSessionInitializer({
       });
       runtimeDebugLogging.startupDebugLog(`[HP_FIX] hero=${v.name} maxHP=${maxHP}`);
     }
+    const heroes = state.entities.filter(actor => actor.kind === 'hero');
+    state.globals.HeroProgress ||= createHeroProgressStore();
+    for (const hero of heroes) attachHeroProgress(hero, state.globals.HeroProgress);
+    initializePersonalFlow(heroes);
+    state.globals.NativeBattleEnded = false;
+    state.globals.ProgressionBattle = {
+      id: globalThis.crypto.randomUUID(),
+      participants: heroes.map(hero => hero.heroInstanceKey),
+      defeated: {},
+      settled: false,
+    };
     if (partyMembers.escortMember) {
       const escortUID = state.entities.reduce((max, entity) => Math.max(max, Number(entity?.uid || 0)), 0) + 1;
       const escortEntity = {
@@ -353,7 +366,6 @@ export function createCombatSessionInitializer({
     gameState.partyHP = partyHP;
     gameState.partyMaxHP = partyMaxHP;
     callFunctionWithContext(fnContext, 'InitPartyHPFromHeroes');
-    callFunctionWithContext(fnContext, 'SetHeroSkillPointsForParty', 300, 'ORKA-spt-seed');
     state.globals.BattleStartMode = 'heroes';
     state.globals.BattleStartResolved = 1;
     state.globals.TeamPhaseType = 0;

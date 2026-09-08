@@ -154,7 +154,7 @@ test('enemy KO Astral Flow fixed binary table is shared by runtime and Scripts h
   }
 });
 
-test('enemy KO hook holds dead enemy visual until Astral Flow orbs are ready in both function bank mirrors', async () => {
+test.skip('[Paused roguelite cards/shared AF] enemy KO hook holds dead enemy visual until Astral Flow orbs are ready in both function bank mirrors', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, async () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = await loadFunctionBank(modulePath);
     const ctx = makeKillContext('High Gobloc');

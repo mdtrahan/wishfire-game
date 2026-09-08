@@ -90,7 +90,7 @@ test('combat HUD reads a pinned Astral Flow line until the 4-second lock expires
   assert.match(appSrc, /if \(pinnedLine && pinnedUntil > Number\(g\.time \|\| 0\)\) return pinnedLine;/);
 });
 
-test('combat renders Astral Flow separately from individual hero health', () => {
+test.skip('[Paused roguelite cards/shared AF] combat renders Astral Flow separately from individual hero health', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const runtimeSrc = read('web-runner/systems/renderRuntime.js');
   const meterSrc = read('web-runner/systems/renderAstralFlowMeter.mjs');
   assert.match(runtimeSrc, /renderAstralFlowMeter/);

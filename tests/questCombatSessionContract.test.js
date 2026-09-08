@@ -16,7 +16,7 @@ test('resurrection retains enemy progress, buffs and skills while reviving every
  assert.ok(calls.includes('ProcessTurn'));
  state.entities=state.entities.filter(e=>e.kind!=='enemy');
  state.globals.AstralFlowKoOrbQueue=[{}];assert.equal(session.isCleared(),false);
- state.globals.AstralFlowKoOrbQueue=[];assert.equal(session.isCleared(),true);
+ state.globals.NativeBattleEnded=false;assert.equal(session.isCleared(),false);
 });
 
 test('new battle clears combat conditions and Astral Flow while retaining gold and progression', async () => {

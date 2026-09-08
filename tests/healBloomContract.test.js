@@ -34,15 +34,11 @@ test('app heal path spawns heal bloom on hero sprites and renders it behind acto
   const spawnSrc = sliceBetween(appSrc, 'function spawnPendingDamageNumbers', 'const RUNTIME_FINGERPRINT');
   const renderSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
   assert.match(appSrc, /import\s+\{\s*createHealBloom\s*\}\s+from\s+'\.\/src\/core\/healBloomAnimation\.mjs';/);
-  assert.match(spawnSrc, /if \(d\.kind === 'heal' && d\.targetKind === 'hero' && !d\.healBloomSpawned\) \{/);
+  assert.ok(spawnSrc.includes("['hero', 'enemy'].includes(d.targetKind)"));
+  assert.doesNotMatch(spawnSrc, /d\.targetKind === 'bar'/);
   assert.match(spawnSrc, /d\.healBloomAnimation = createHealBloom\(\{/);
-  assert.match(spawnSrc, /else if \(d\.kind === 'heal' && d\.targetKind === 'enemy' && !d\.healBloomSpawned\) \{[\s\S]*d\.healBloomAnimation = createHealBloom\(\{[\s\S]*x: d\.x,[\s\S]*y: d\.baseY != null \? d\.baseY : d\.y,[\s\S]*gameState\.healBlooms\.push\(d\.healBloomAnimation\);[\s\S]*\} else if \(d\.kind === 'heal' && d\.targetKind === 'bar'/);
-  assert.match(spawnSrc, /else if \(d\.kind === 'heal' && d\.targetKind === 'bar' && !d\.healBloomSpawned\) \{/);
-  assert.match(spawnSrc, /const heroPositions = Array\.isArray\(state\.globals\.HeroIconPosByIndex\) \? state\.globals\.HeroIconPosByIndex : \[\];/);
-  assert.match(spawnSrc, /for \(const pos of heroPositions\) \{/);
   assert.match(spawnSrc, /gameState\.healBlooms = Array\.isArray\(gameState\.healBlooms\) \? gameState\.healBlooms : \[\];/);
   assert.match(spawnSrc, /gameState\.healBlooms\.push\(d\.healBloomAnimation\);/);
-  assert.match(spawnSrc, /if \(bloom\) gameState\.healBlooms\.push\(bloom\);/);
   assert.match(renderSrc, /const renderHealBlooms = \(\) => \{/);
   assert.match(renderSrc, /ctx\.fillRect\(-arm \/ 2, -length \/ 2, arm, length\);/);
   assert.match(renderSrc, /ctx\.fillRect\(-length \/ 2, -arm \/ 2, length, arm\);/);

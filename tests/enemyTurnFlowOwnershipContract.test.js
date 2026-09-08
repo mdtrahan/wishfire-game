@@ -42,7 +42,7 @@ test('EnemyTurn routes flow packet through Rust-owned resolver', () => {
     assert.match(src, /resolveEnemyTurnFlowCompat/);
     assert.match(src, /__ORKA_ENEMY_TURN_FLOW_OWNER__/);
     assert.match(src, /g\.LastEnemyTurnFlowOwner/);
-    assert.match(src, /ProcessEnemyTurnDamageOverTime\(ctx, activeEnemyUID\);[\s\S]*?const enemy = GetActorByUID\(ctx, activeEnemyUID\);[\s\S]*?const decision = resolveEnemyTurnFlowCompat\(\{/);
+    assert.match(src, /const enemy = GetActorByUID\(ctx, activeEnemyUID\);[\s\S]*?const decision = resolveEnemyTurnFlowCompat\(\{/);
     assert.match(src, /if \(Number\(decision\.shouldStartAction \|\| 0\) === 1\) \{\s+StartEnemyAction\(ctx, activeEnemyUID\);/);
   }
 });

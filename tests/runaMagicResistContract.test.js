@@ -16,11 +16,11 @@ test('runtime function bank defines Runa magic-resist trigger constants and help
   assert.match(src, /LastRunaMagicResist/);
 });
 
-test('enemy magic paths apply Runa resist helper in runtime bank', () => {
-  const src = read('web-runner/modules/functionBank.js');
-  assert.match(src, /const resist = applyRunaMagicResist\(ctx, enemyUID, targetHeroUID, dmg, 'Enemy_MAG_Single'\);/);
-  assert.match(src, /const resist = applyRunaMagicResist\(ctx, actorUID, h\.uid, dmg, 'Enemy_MAG_AOE'\);/);
-  assert.match(src, /const resist = applyRunaMagicResist\(ctx, enemyUID, h\.uid, dmg, 'Enemy_MAG_AOE'\);/);
+test('enemy magic resolves through canonical combat rules', () => {
+ const src=read('web-runner/modules/functionBank.js');
+ const body=src.slice(src.indexOf('export function Enemy_MAG_Single'),src.indexOf('export function Enemy_Heal_Self'));
+ assert.match(body,/magic:true/);assert.doesNotMatch(body,/applyRunaMagicResist/);
+ assert.match(src,/resolveNativeEnemyArea/);
 });
 
 test('Scripts mirror includes Runa magic-resist helper and usage', () => {

@@ -122,7 +122,7 @@ test('Destiny payload is mirrored and party scoped', () => {
   }
 });
 
-test('draw can force-select Destiny into the shared party session bucket', () => {
+test.skip('[Paused roguelite cards/shared AF] draw can force-select Destiny into the shared party session bucket', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const mod = loadModule(runtimePath);
   const ctx = makeContext();
 
@@ -144,7 +144,7 @@ test('draw can force-select Destiny into the shared party session bucket', () =>
   assert.equal(mod.IsPartySessionSkillActive(ctx, 'party_destiny'), true);
 });
 
-test('Destiny one-off draw is spent after exposure and forced draws fall back to eligible skills', () => {
+test.skip('[Paused roguelite cards/shared AF] Destiny one-off draw is spent after exposure and forced draws fall back to eligible skills', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const registryDestiny = mod.GetSkillDefinition(null, 'party_destiny');
@@ -195,7 +195,7 @@ test('Destiny one-off draw is spent after exposure and forced draws fall back to
   }
 });
 
-test('Destiny dev trigger activates session skill without rolling or healing', () => {
+test.skip('[Paused roguelite cards/shared AF] Destiny dev trigger activates session skill without rolling or healing', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const mod = loadModule(runtimePath);
   const ctx = makeContext({ active: false });
   ctx.state.entities[0].hp = 50;
@@ -216,7 +216,7 @@ test('Destiny dev trigger activates session skill without rolling or healing', (
   assert.doesNotMatch(ctx.state.globals.CombatLog.join('\n'), /Destiny restores/);
 });
 
-test('Destiny dev activation stays player-facing at full HP without a proc', () => {
+test.skip('[Paused roguelite cards/shared AF] Destiny dev activation stays player-facing at full HP without a proc', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const mod = loadModule(runtimePath);
   const ctx = makeContext({ active: false });
 
@@ -231,7 +231,7 @@ test('Destiny dev activation stays player-facing at full HP without a proc', () 
   assert.doesNotMatch(ctx.state.globals.CombatLog.join('\n'), /already at full HP/);
 });
 
-test('Destiny locked and miss cases trace without healing', () => {
+test.skip('[Paused roguelite cards/shared AF] Destiny locked and miss cases trace without healing', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const mod = loadModule(runtimePath);
 
   const lockedCtx = makeContext({ active: false });
@@ -259,7 +259,7 @@ test('Destiny locked and miss cases trace without healing', () => {
   assert.equal(mod.GetSkillProcTrace(missCtx, 1)[0].reason, 'proc_miss');
 });
 
-test('Destiny uses 32 percent proc threshold', () => {
+test.skip('[Paused roguelite cards/shared AF] Destiny uses 32 percent proc threshold', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const mod = loadModule(runtimePath);
 
   const hitCtx = makeContext({ active: true });
@@ -278,7 +278,7 @@ test('Destiny uses 32 percent proc threshold', () => {
   assert.equal(miss.roll.chancePct, 32);
 });
 
-test('Destiny deterministic success heals the hitting hero for 2.5 percent of their own max HP rounded up', () => {
+test.skip('[Paused roguelite cards/shared AF] Destiny deterministic success heals the hitting hero for 2.5 percent of their own max HP rounded up', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const mod = loadModule(runtimePath);
   const ctx = makeContext({ active: true });
   ctx.state.entities[0].hp = 50;
@@ -300,7 +300,7 @@ test('Destiny deterministic success heals the hitting hero for 2.5 percent of th
   assert.equal(trace.success, true);
 });
 
-test('Destiny resolves from enemy damage receive seam after hero hit', () => {
+test.skip('[Paused roguelite cards/shared AF] Destiny resolves from enemy damage receive seam after hero hit', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const mod = loadModule(runtimePath);
   const ctx = makeContext({ active: true });
   ctx.state.entities[0].hp = 40;
@@ -318,7 +318,7 @@ test('Destiny resolves from enemy damage receive seam after hero hit', () => {
   assert.equal(ctx.state.globals.LastPartyDestiny.reason, 'healed');
 });
 
-test('dev panel does not expose direct Destiny trigger', () => {
+test.skip('[Paused roguelite cards/shared AF] dev panel does not expose direct Destiny trigger', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const runtimeSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devToolingRuntime.js'), 'utf8');
   assert.doesNotMatch(runtimeSrc, /data-devtool-trigger-destiny/);
   assert.doesNotMatch(runtimeSrc, /devToolingDom\.triggerDestiny/);
@@ -329,7 +329,7 @@ test('dev panel does not expose direct Destiny trigger', () => {
   assert.match(runtimeSrc, /heroIndex \+ 1 === requestedUID/);
 });
 
-test('Clear Skills reset clears Destiny session state and proc readout counters in both mirrors', () => {
+test.skip('[Paused roguelite cards/shared AF] Clear Skills reset clears Destiny session state and proc readout counters in both mirrors', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const ctx = makeContext({ active: false });

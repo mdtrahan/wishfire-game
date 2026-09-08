@@ -96,7 +96,7 @@ function dotTickSeries(totalDamage, totalTicks = 3) {
   return ticks;
 }
 
-test('Faze is a mirrored party draw option that owns the tainted-ground payload', () => {
+test.skip('[Paused roguelite cards/shared AF] Faze is a mirrored party draw option that owns the tainted-ground payload', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const expectedExistingPartyIds = [
     'party_fresh_start',
     'party_second_chance',
@@ -184,7 +184,7 @@ test('Faze is a mirrored party draw option that owns the tainted-ground payload'
   }
 });
 
-test('repeated Faze refreshes pending per-enemy dot presentation instead of stacking it', () => {
+test.skip('[Paused roguelite cards/shared AF] repeated Faze refreshes pending per-enemy dot presentation instead of stacking it', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const { ctx } = makeContext();
@@ -229,7 +229,7 @@ test('repeated Faze refreshes pending per-enemy dot presentation instead of stac
   }
 });
 
-test('Faze activated by different heroes shares one visual pool per enemy and increments tick count', () => {
+test.skip('[Paused roguelite cards/shared AF] Faze activated by different heroes shares one visual pool per enemy and increments tick count', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const { ctx } = makeContext();
@@ -288,7 +288,7 @@ test('Faze activated by different heroes shares one visual pool per enemy and in
   }
 });
 
-test('Faze damage scaling is linear and capped by activation count', () => {
+test.skip('[Paused roguelite cards/shared AF] Faze damage scaling is linear and capped by activation count', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const { ctx } = makeContext();

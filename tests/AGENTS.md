@@ -40,4 +40,10 @@
 
 - Native command proof covers scheduled actor ownership, rejected/stale targets, animation handoff and exact loaded slots. Legacy board click/refill assertions are retired with their consumers. The UI lock checks card/editor containment and real prepared attacks for groups of one through six.
 - Full-recovery proof exercises both the app Town wrapper and Continue with zero through six loaded heroes, sparse slots, KO, stale UI health and retained encounter resources.
-- Self-heal checks must use differing actor and party maxima, actual groups 1–6, and KO/wrong-actor cases. Percentage recovery cannot grow with party size. Rounded AF checks cover four participants at 64% with six heroes and the 100% final tier.
+- Self-heal checks must use differing actor and party maxima, actual groups 1–6, and KO/wrong-actor cases. Percentage recovery cannot grow with party size. Personal FLOW checks cover attributed earning, full-charge consumption, queue order and paused party-card boundaries.
+
+- Personal FLOW replaces shared AF and pauses roguelite card acquisition/procs. Historical integration checks for those parked systems use explicit skip reasons; pure isolated math and active combat checks stay runnable. VM loaders that strip function-bank imports must supply the real personalFlow.mjs and heroCommands.mjs exports.
+
+- Migration coverage uses `combatRulesMigration`, `heroProgressionMigration` and `personalFlowContract` for canonical effects, growth and sequence settlement. VM function-bank harnesses must inject the real core/module imports.
+
+- Action capacity tests cover mixed 1/2/3 slots, affordability, removal and early commit. Browser proof exercises real target clicks and capacity auto-commit. Paused frame-based regeneration must not affect combat.

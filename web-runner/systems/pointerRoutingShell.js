@@ -86,16 +86,6 @@ export function createPointerRoutingShell({
     const pointer = getPointerPosition({ canvas, dpr, event });
     const { mx, my, rect } = pointer;
 
-    if (Number(state.globals.SkillDraughtOpen || 0)) {
-      const zones = Array.isArray(state.globals.SkillDraughtHitZones) ? state.globals.SkillDraughtHitZones : [];
-      const hit = zones.find((zone) => isPointInRect(mx, my, zone));
-      if (hit) {
-        callFunctionWithContext(fnContext, 'SelectSkillDraughtCard', Number(hit.index || 0));
-        drawFrame();
-      }
-      return { handled: true, mx, my, rect };
-    }
-
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
       ? layoutState.getActiveLayoutId()
       : null;

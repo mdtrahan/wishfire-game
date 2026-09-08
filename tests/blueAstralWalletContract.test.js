@@ -29,7 +29,7 @@ test('blue resolve increments Astral Flow wallet in runtime function bank', () =
 
 
 
-test('blue supergem opens one skill draw without resolving Astral Flow', () => {
+test.skip('[Paused roguelite cards/shared AF] blue supergem opens one skill draw without resolving Astral Flow', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const { activateSuperGemEffect } = loadSuperGemRuntime();
   const state = {
     globals: {

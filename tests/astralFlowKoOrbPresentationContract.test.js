@@ -363,7 +363,7 @@ test('Astral Flow KO orbs spill outward from the enemy and bounce multiple times
   assert.ok(thirdBounce.x > secondBounce.x);
 });
 
-test('runtime wiring keeps KO orb presentation outside app-level orchestration', () => {
+test.skip('[Paused roguelite cards/shared AF] runtime wiring keeps KO orb presentation outside app-level orchestration', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const appSrc = read('web-runner/app.js');
   const renderRuntimeSrc = read('web-runner/systems/renderRuntime.js');
 

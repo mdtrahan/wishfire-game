@@ -1,3 +1,4 @@
+import { getHeroFlowState } from '../src/core/personalFlow.mjs';
 import {
   DYNAMIC_INITIATIVE_AUTHORITY_BATTLE_ID,
   DYNAMIC_INITIATIVE_AUTHORITY_EXPERIMENT_ID,
@@ -173,7 +174,7 @@ export function registerDevBrowserTestHooks({
       },
       heroes: state.entities
         .filter(e => e.kind === 'hero')
-        .map(e => ({ uid: e.uid, name: e.name, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHP, combatPower: Number(e.combatPower || 0) })),
+        .map(e => ({ uid: e.uid, name: e.name, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHP, flow: getHeroFlowState(e), combatPower: Number(e.combatPower || 0) })),
       enemies: state.entities
         .filter(e => e.kind === 'enemy')
         .map(e => ({ uid: e.uid, name: e.name, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHP, slot: e.slotIndex, combatPower: Number(e.combatPower || 0) })),

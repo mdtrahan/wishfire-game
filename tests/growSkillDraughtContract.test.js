@@ -242,7 +242,7 @@ test('Grow is a mirrored deterministic tiered party draw card with cap metadata'
   }
 });
 
-test('Grow selection deterministically gives every party hero persistent Max HP tradeoff state', () => {
+test.skip('[Paused roguelite cards/shared AF] Grow selection deterministically gives every party hero persistent Max HP tradeoff state', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const ctx = makeContext();
@@ -295,7 +295,7 @@ test('Grow selection deterministically gives every party hero persistent Max HP 
   }
 });
 
-test('Grow selection applies to all living heroes while suppressing visible multiplier badges', () => {
+test.skip('[Paused roguelite cards/shared AF] Grow selection applies to all living heroes while suppressing visible multiplier badges', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const ctx = makeContext();
@@ -326,7 +326,7 @@ test('Grow render path keeps Power Amp badges silent', () => {
   assert.match(src, /if \(ampShowsBadge\) \{/);
 });
 
-test('Grow tier updates existing grown heroes without rerolling and leaves the pool after tier three', () => {
+test.skip('[Paused roguelite cards/shared AF] Grow tier updates existing grown heroes without rerolling and leaves the pool after tier three', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const ctx = makeContext();
@@ -387,7 +387,7 @@ test('Grow tier updates existing grown heroes without rerolling and leaves the p
   }
 });
 
-test('Grow tier updates remain percentage-based when natural Max HP increases', () => {
+test.skip('[Paused roguelite cards/shared AF] Grow tier updates remain percentage-based when natural Max HP increases', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const ctx = makeContext();
@@ -409,7 +409,7 @@ test('Grow tier updates remain percentage-based when natural Max HP increases', 
   }
 });
 
-test('Grow clears with the session skill draught reset', () => {
+test.skip('[Paused roguelite cards/shared AF] Grow clears with the session skill draught reset', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const ctx = makeContext();

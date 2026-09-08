@@ -21,6 +21,8 @@ module.exports = {
   const applyCalls = [];
   const slotCalls = [];
   const context = {
+    ...require('../web-runner/src/core/combatRules.mjs'),
+    ...require('../web-runner/modules/heroCommands.mjs'),
     console: {
       log() {},
       warn() {},

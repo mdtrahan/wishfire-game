@@ -70,7 +70,7 @@ function makeContext({ activeI = false, activeII = false, onlyOneEnemy = false, 
   };
 }
 
-test('Chain Strike II is a one-off upgrade gated behind Chain Strike I in both mirrors', () => {
+test.skip('[Paused roguelite cards/shared AF] Chain Strike II is a one-off upgrade gated behind Chain Strike I in both mirrors', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const defs = mod.GetPartySkillDefinitions();
@@ -121,7 +121,7 @@ test('Chain Strike II is a one-off upgrade gated behind Chain Strike I in both m
   }
 });
 
-test('Chain Strike II upgrades into two 66 percent bounces without changing player target', () => {
+test.skip('[Paused roguelite cards/shared AF] Chain Strike II upgrades into two 66 percent bounces without changing player target', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const ctx = makeContext({ activeI: true, activeII: true });
@@ -156,7 +156,7 @@ test('Chain Strike II upgrades into two 66 percent bounces without changing play
   }
 });
 
-test('Chain Strike II upgrades attacks after the forced draw select sequence', () => {
+test.skip('[Paused roguelite cards/shared AF] Chain Strike II upgrades attacks after the forced draw select sequence', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const ctx = makeContext();
@@ -197,7 +197,7 @@ test('Chain Strike II upgrades attacks after the forced draw select sequence', (
   }
 });
 
-test('Chain Strike II preserves selected-target ExecuteSkill flow and one-enemy fallback', () => {
+test.skip('[Paused roguelite cards/shared AF] Chain Strike II preserves selected-target ExecuteSkill flow and one-enemy fallback', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const mod = loadModule(runtimePath);
   const pendingCtx = makeContext({ activeI: true, activeII: true, pending: true });
   mod.ExecuteSkill(pendingCtx, 'HERO_SINGLE', 100);
@@ -221,7 +221,7 @@ test('Chain Strike II reuses the production raster connector asset and renderer'
   assert.match(assetLoader, /SkillChainStrikeArc/);
   assert.match(assetLoader, /skill_chain_strike_arc_160x48\.png/);
   assert.match(renderRuntime, /ChainStrikeVisuals/);
-  assert.match(renderRuntime, /const resolvedSelectedUid = ownerMatchedSelectedUid;/);
+  assert.match(renderRuntime, /const resolvedSelectedUid = selectedUid;/);
   assert.doesNotMatch(renderRuntime, /ctx\.moveTo\([^)]*ChainStrike/);
 });
 

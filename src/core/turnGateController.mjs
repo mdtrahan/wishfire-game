@@ -36,15 +36,15 @@ export function derivePresentationTurnBarrier({
     ? globals.PendingHeroHits.length > 0
     : !!globals.PendingHeroHits;
   const lanes = {
-    boardFill: Number(globals.BoardFillActive || 0) > 0,
-    refillBounce: !!(refillBounce && refillBounce.active),
-    yellowCasino: !!(yellowCasino && yellowCasino.active),
-    gemMerge: !!(gemMergeFx && gemMergeFx.active),
+    boardFill: false,
+    refillBounce: false,
+    yellowCasino: false,
+    gemMerge: false,
     textAnimating: !!globals.TextAnimating || Number(globals.TextAnimEndAt || 0) > now,
     heroAction: !!(globals.HeroAction && globals.HeroAction.active),
     enemyAction: !!(globals.EnemyAction && globals.EnemyAction.active),
-    skillDraught: Number(globals.SkillDraughtOpen || 0) > 0,
-    skillDraughtPending: Number(globals.SkillDraughtPendingOpen || 0) > 0,
+    skillDraught: false,
+    skillDraughtPending: false,
     pendingHeroHits,
     actionLock: Number(globals.ActionLockUntil || 0) > now,
     actionInProgress: !!globals.ActionInProgress,
@@ -64,7 +64,7 @@ export function derivePresentationTurnBarrier({
     ['action-in-progress', lanes.actionInProgress],
   ];
   const activePresentationLane = orderedLaneNames.find(([, active]) => active)?.[0] || null;
-  const refillPending = !!boardHasEmptySlots && !lanes.refillBounce && !enemyLineClearPressureActive;
+  const refillPending = false;
   const firstBlockingLane = activePresentationLane || (skillDraughtPending ? 'skill-draught-pending' : (refillPending ? 'refill-pending' : null));
   const presentationBlocked = !!activePresentationLane;
   const pendingTargetAction = !!globals.PendingSkillID && (

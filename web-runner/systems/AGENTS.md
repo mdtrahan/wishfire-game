@@ -9,7 +9,7 @@
 - `renderRuntime.js` owns a large partially purified runtime render path and remains high-risk.
 - `inputHandling.js` owns browser pointer/map input helpers.
 - `superGemRuntime.js` owns supergem board/effect runtime behavior.
-- `heroGemProgressStorage.js` owns localStorage-backed hero gem progression persistence.
+- `heroProgressStorage.js` owns versioned localStorage hero EXP/progression persistence.
 - `simulationCoreShadow.js` owns WASM loading, Rust owner markers, shadow checks, and mismatch diagnostics.
 - `devToolingControls.js` and runtime debug helpers own QA/dev surfaces.
 
@@ -27,10 +27,10 @@
 - Developer controls overlay the contained game stage; their presence must never reserve viewport width or shrink the Canvas.
 - Full-screen Canvas overlays use the 360x640 reference coordinate system and apply the active layout scale once to the whole overlay, including hit zones.
 - Combat Canvas text must derive its font size from the active layout scale through `combatPresentationScale.mjs` and fit its measured slot. Desktop font minimums must not override compact Canvas geometry.
-- Astral Flow uses an 8-unit reference height before layout scaling. Native hero cards use 5-unit HP fills; the pooled health bar is retired.
+- Native hero cards use 5-unit HP fills and 4-unit personal FLOW fills. The shared Astral Flow HUD and pooled health bar are retired.
 - Combat must not draw the legacy `radiatorPanels.track` backdrop. The jagged arena-floor asset is the sole ground plane behind combat actors.
 - `renderRuntime.js` should shrink over time. Do not add broad new gameplay branches there when a focused render module or gameplay module can own the change.
-- `heroGemProgressStorage.js` may use `window.localStorage`; SimulationCore packets and Rust-owned code must not.
+- `heroProgressStorage.js` may use `window.localStorage`; SimulationCore packets and Rust-owned code must not.
 - `simulationCoreShadow.js` must expose stable owner markers for Rust-owned rule families and should surface mismatches as diagnostics, not silent fallbacks.
 - Supergem runtime must preserve the product split between hero-specific supergem behavior and skill-card behavior.
 - Input gates must respect `CanPickGems`, hero/enemy turn phase, pending skill draught, and presentation barriers.
@@ -88,8 +88,14 @@
 
 - Combat initialization derives health totals from the initialized actors; it must not overwrite the total with full HP while actors remain injured. Party-damage owner wiring serializes six HP slots with actual member count.
 
-- heroCommandUI.mjs owns native command cards and draft editing below the arena. Set Action and Reload do not execute; stale manual targets reopen selection. Auto uses basic attacks and preserves Astral Flow. Cards fill left column first and leave capacity empty. The encounter Menu reveals existing navigation. Rendering the board and global attack button is retired; fresh combat starts after actor initialization.
-- renderAstralFlowMeter.mjs owns the slim upper-left meter and SPEED-sorted tiny portrait notches for actual members. Currency rules remain in gameplay owners. Hero lunges use display slots, so catalog identity does not collapse repeated or later formation positions.
+- heroCommandUI.mjs owns native clickable command cards and draft editing below the arena. Cards have two rows: an 18-unit cropped portrait and name at upper-left, a 48-unit personal FLOW gauge with italic label at upper-right, then HP and SP with green/blue underlines on one lower baseline. The 348x226 command host begins at (6,406), with three 58-unit rows. The living scheduled actor from GetCurrentTurn retains a steady cyan glow through its whole turn, including busy animation and queued actions; action permission never controls that highlight. Full FLOW glows gold. Cards fill the left column first and leave unused capacity empty. Native skill buttons and battlefield target taps support keyboard, mouse and touch. The editor Act executes the scheduled actor only; Reload prepares previous commands and execution revalidates resources and targets. Auto uses basic attacks. The encounter Menu reveals existing navigation. Rendering the board and global attack button is retired; fresh combat starts after actor initialization.
+- Personal FLOW currency rules belong to heroCommands.mjs and gameplay owners. The old shared meter and portrait milestones have no live HUD wiring. Hero lunges use display slots, so catalog identity does not collapse repeated or later formation positions.
 - Prepared commands belong to the combat session and member UIDs. Replacing actor objects while restoring the same session must preserve prepared selections; a new session or changed roster clears them.
 - Full-health recovery is owned by questCombatSession.mjs for both Town and Continue. Restore actual hero actors, then project HP through UpdateHeroHPUI; empty groups clear old totals. Continue alone retains its existing turn-restart sequence.
-- Native Actions retains self Heal at 7% of actor max HP. Set Action only prepares; the card execution label follows the selected command. Heal uses the existing action/turn completion path and cannot execute for an inactive hero. AF notches use the shared whole-percent tier helper, ending at 100%.
+
+- Hero-card SP fills are blue and FLOW fills are red, including ready state. Paid-skill availability reads current SP; FLOW readiness gates only FLOW actions.
+
+- `renderHeroScreen.js` consumes canonical hero definitions and owned progression; skill ranks and independent skill-point upgrades are retired. Show all level locks, passives, SP and personal FLOW special.
+- `questCombatSession.mjs` presents settled progression before allowing the victory return. Queue settlement and EXP computation remain core/module-owned.
+
+- Skill taps queue directly. Independent per-hero action slots auto-commit at capacity; ACT ends selection early. Battlefield selection persists; queued targets are snapshots. Removing entries restores reservations.

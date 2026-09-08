@@ -32,18 +32,19 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
     'hero-command-containment',
     'hero-command-column-order',
     'hero-command-scale',
+    'hero-command-two-row-layout',
+    'hero-command-active-highlight',
+    'gem-board-backdrop-absent',
     'hero-command-native-input',
     'hero-editor-containment',
     'damage-text-scale',
     'damage-text-density',
     'pooled-health-bar-absent',
-    'astral-progress-bar-height',
-    'skill-card-proportions',
-    'skill-card-count-parity',
-    'skill-card-draw-hit-geometry',
-    'skill-card-canvas-containment',
-    'skill-card-hit-routing',
-    'skill-title-scale',
+    'shared-astral-bar-absent',
+    'personal-flow-meters',
+    'party-card-draw-controls-absent',
+    'hero-command-personal-flow',
+    'hero-command-paid-sequence',
     'legacy-backdrop-absent',
   ]) {
     assert.match(gate, new RegExp(requiredEvidence), `missing ${requiredEvidence} invariant`);
@@ -73,7 +74,6 @@ test('pre-commit routes staged UI-owner changes through the full UI lock', () =>
   assert.match(hook, /npm run test:ui-lock/);
   assert.match(hook, /web-runner\/systems\/renderRuntime\.js/);
   assert.ok(hook.includes('web-runner/systems/heroCommandUI\\.mjs'));
-  assert.ok(hook.includes('web-runner/systems/renderAstralFlowMeter\\.mjs'));
   assert.match(hook, /web-runner\/systems\/devToolingRuntime\.js/);
   assert.match(hook, /web-runner\/systems\/combatPresentationScale\.mjs/);
   assert.match(hook, /web-runner\/systems\/appShellViewport\.js/);

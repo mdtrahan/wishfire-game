@@ -68,17 +68,9 @@ test('Kojonn heal supergem uses the shared critical heal path in either mirror',
   }
 });
 
-test('app processes turn-cadence party regens outside the timer tick lane', () => {
+test('paused card regeneration has no frame entrypoint', () => {
   const src = fs.readFileSync('web-runner/app.js', 'utf8');
-
-  assert.match(src, /function processTurnCadencePartyRegens\(\) \{/);
-  assert.match(src, /String\(regen\.cadence \|\| 'tick'\) !== 'turn'/);
-  assert.match(src, /appliedOnSerial: Number\(regen\.appliedOnTurnSerial \|\| 0\)/);
-  assert.match(src, /maybeResolvePartyRegenLifecycleOwner/);
-  assert.match(src, /__ORKA_PARTY_REGEN_LIFECYCLE_OWNER__/);
-  assert.match(src, /maybeResolvePartyRegenTickOwner/);
-  assert.match(src, /__ORKA_PARTY_REGEN_TICK_OWNER__/);
-  assert.match(src, /const jsNextFireSerial = gateTurn \+ Math\.max\(1, Math\.floor\(Number\(regen\.firesEveryTurns \|\| 1\) \|\| 1\)\);/);
-  assert.match(src, /regen\.nextFireTurnSerial = Number\(ownedTick\.nextFireSerial \|\| 0\);/);
-  assert.match(src, /syncSuperGemShapes\(\{ gameState, state, boardGeometry, reason: 'draw-frame' \}\);\n    processTurnCadencePartyRegens\(\);/);
+  const frame = src.slice(src.indexOf('  function drawFrame('));
+  assert.doesNotMatch(frame, /processTurnCadencePartyRegens\(\);/);
+  assert.doesNotMatch(frame, /syncTaintedGroundZones\(/);
 });

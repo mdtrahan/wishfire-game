@@ -145,9 +145,3 @@ test('damage floating text disperses upward and damage tiers scale by amount', (
   assert.match(renderSrc, /const damageTextType = kind === 'heal' \|\| kind === 'energy' \? 'heal' : 'damage';/);
   assert.match(renderSrc, /const isWeakDamage = damageTextType === 'damage' && Number\(d\.amount\) < 10;\\n\s*const isLargeDamage = damageTextType === 'damage' && Number\(d\.partyMaxHP\) > 0 && Number\(d\.amount\) > Number\(d\.partyMaxHP\) \* 0\.5;\\n\s*const fontBaseSize = isWeakDamage \? 22 \* 0\.75 : \(isLargeDamage \? 22 \* 1\.2 : \(d\.isCrit \? 26 : 22\)\);\\n\s*const fontSize = isWeakDamage \? scaleFont\(fontBaseSize\) : Math\.max\(scaleFont\(fontBaseSize\), 12\);/);
 });
-
-test('Kojonn dot paths explicitly arm dot floating-text kind before damage application', () => {
-  const src = `${read('web-runner/app.js')}\n${read('web-runner/systems/renderRuntime.js')}`;
-  const dotKindHooks = src.match(/(?:state\.globals|visualControlPatches)\.NextDamageTextKind = 'dot';/g) || [];
-  assert.ok(dotKindHooks.length >= 2, 'expected dot text kind to be armed for immediate and queued Kojonn dot damage');
-});

@@ -9,7 +9,7 @@ const shadowPath = path.join(repoRoot, 'web-runner', 'systems', 'simulationCoreS
 const packetPath = path.join(repoRoot, 'src', 'core', 'simulationCorePacket.cjs');
 const contractPath = path.join(repoRoot, 'governance', 'planning', 'simulation-core-rust-js-contract.md');
 const gatewayPath = path.join(repoRoot, 'src', 'core', 'combatRuntimeGateway.cjs');
-const heroGemStoragePath = path.join(repoRoot, 'web-runner', 'systems', 'heroGemProgressStorage.js');
+const heroGemStoragePath = path.join(repoRoot, 'web-runner', 'systems', 'heroProgressStorage.js');
 
 const requiredOwnerMarkers = [
   ['combat snapshot/save-load gate', '__ORKA_COMBAT_SNAPSHOT_OWNER__'],

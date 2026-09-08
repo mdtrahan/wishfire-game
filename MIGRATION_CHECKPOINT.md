@@ -118,3 +118,42 @@ This section supersedes earlier fractional-cost and unresolved-healing statement
 - New proof covers active-only healing for groups 1–6, KO/inactive rejection, no spillover, percentage basis, exact rounded examples, and real browser self-heal/turn handoff. Existing contract consumers use the renamed healing API.
 - Retrieval: jcodemunch query ApplyPartyHeal located both skillSheet owners. Targeted current reads verified Magic Fruit, Destiny, DoHeal, rewards and regen callers; no full app/functionBank reads. Current owning DOX, hot-file and validation rules were read.
 - Remaining AF work includes an explicit player spending/draw path. Normal AF income and card-draw price are still proposals; preserve existing KO income until tuning is selected. No new combo behavior, merge or deployment.
+
+## Revised direction: personal AF and stored SP sequences (ORKA-49k.7)
+
+The latest owner messages supersede earlier shared-gauge and milestone requirements. Each hero now owns a personal AF gauge on their card and glows when ready. SP (Special Points) budgets a stored skill sequence; a free basic Attack occupies the turn alone. Remove separate Attack/Actions card buttons and strengthen the active hero highlight. The active-turn glow and personal-special readiness must remain distinguishable.
+
+- Current runtime checkpoint remains d17fec6. The superseded uncommitted shared-AF spending implementation was discarded. A subsequent retirement script failed before any file write, so no resource or buff logic was removed.
+- COMBAT_MIGRATION_PLAN.md now describes personal resource ownership, card interaction, SP queue exclusivity and proposed role budgets: Fara 50, Hondo 50, Runa 70, Kaja 60. Values are initial tuning proposals, not measured balance.
+- Combat SP must have its own fields because the existing progression system already uses skill points. No progression balances were changed.
+- Owner questions pending: SP refills each turn versus persists; personal AF special uses the whole turn versus fits the queue; personal full gauge may buy a party buff versus specials only.
+- The old shared-bar browser preview does not demonstrate these new requirements. Runtime implementation of the new model has not started; no merge or deployment.
+
+## FLOW mode selection
+
+Owner requested six modes and one assignment for each current hero. Initially selected Rook/Fara, Warrior/Hondo, Tactician/Runa and Comrade/Kaja, with Stoic and Slayer reserved for additional loadouts. The Fara assignment is superseded by the owner correction below. Solo Kaja encounters load Warrior before battle. Runa requires an implemented enemy-debuff command. These are design assignments, not claims of implemented skill payloads. Gauge text is FLOW. The migration plan specifies event qualification, attribution and exclusions; gain rates remain tuning work. No runtime files changed in this selection pass.
+
+### Owner correction: Fara uses Stoic
+
+Fara is the pure tank and gains personal FLOW by taking hostile HP damage, including damage received while covering an ally. Rook moves to the reserve modes alongside Slayer. Hondo remains Warrior, Runa Tactician and Kaja Comrade. This updates the migration specification; personal FLOW accumulation is still awaiting implementation.
+
+### Owner revision: ten-mode FLOW role catalog
+
+The supplied role table supersedes the earlier six-mode limit and exclusions. The catalog is now Stoic, Warrior, Slayer, Healer, Tactician, Comrade, Dancer, Rook, Daredevil and Loner. Current hero assignments remain Fara/Stoic, Hondo/Warrior, Runa/Tactician and Kaja/Comrade. COMBAT_MIGRATION_PLAN.md records the supplied job mappings and earning triggers using FLOW terminology. This revision changes documentation only; catalog membership does not certify implemented earning mechanics or hero kits.
+
+### Personal FLOW runtime migration: ORKA-49k.7
+
+Owner requested completion and live testing. Personal FLOW/SP charge, current role kits and native command queues now replace the shared AF/milestone design. Party-card draws and proc eligibility are disconnected; historical definitions remain parked. The latest card layout follows the compact two-row reference. Full implementation and validation details are recorded in COMBAT_MIGRATION_REPORT.md. No external deployment or integration into root main is implied by a local preview.
+
+## SP/FLOW separation correction
+Owner clarified: fresh encounters grant full SP and zero FLOW. Independent actor balances now govern their respective commands. Role events earn FLOW only. SP is blue; FLOW is red. Post-use SP recovery remains unresolved after separating the resources.
+
+## Owner scope correction: SP economy deferred
+SP recovery and action-cost balancing are deferred and do not block migration completion. Full SP and zero FLOW on fresh combat remain required. The migration report records remaining skill-content and legacy-runtime work.
+
+## Consolidated progression and combat contract
+Owner authorized replacing all current skills with role-template kits: Fara Stoic, Hondo Warrior, Runa Tactician, Kaja Comrade. The active plan now includes 7 actives/6 passives/unique FLOW/basic attack, level-1 migration, individual victory EXP and cap 50, configurable unlocks/growth, SP 100/start 100/own-turn regen 5, exact-cost reservation/refunds, per-action targeting, status/periodic semantics, role-event attribution, Provoke/Cover and counter ordering. The clarification sequence is consolidated in COMBAT_MIGRATION_PLAN.md. Older preserve-three-skills, SP deferral, full-SP-drain, auto-retarget and periodic-tick FLOW directions are superseded. This checkpoint changes specification only; runtime implementation and final validation remain outstanding.
+
+## Runtime migration delivered: ORKA-49k.7
+
+Canonical progression, complete four-hero kits, personal FLOW, exact SP queue accounting, independent action capacity, combat resolution and hero-screen integration are implemented in the playable lane. Final validation: 791 Node tests passed, 73 historical tests skipped, 236/236 rendered invariants passed. See COMBAT_MIGRATION_REPORT.md for evidence and scope limits. Earlier documentation-only and SP-deferral checkpoints above are superseded. This is a local checkpoint; no merge or deployment.

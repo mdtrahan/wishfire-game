@@ -3,14 +3,9 @@ const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-test('pending enemy selector renders an actor-owned selection', () => {
+test('battlefield selector persists independently of the command actor', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
-
-  assert.match(src, /const selectedOwnerUID = Number\(state\.globals\.SelectedEnemyUIDOwner \|\| 0\);/);
-  assert.match(src, /const pendingActorUID = Number\(state\.globals\.PendingActor \|\| 0\);/);
-  assert.match(src, /const ownerMatchedSelectedUid = selectedOwnerUID === pendingActorUID \? selectedUid : 0;/);
-  assert.match(src, /const resolvedSelectedUid = ownerMatchedSelectedUid;/);
-  assert.match(src, /resolvedSelectedUid \? aliveEnemies\.filter\(e => Number\(e\.uid \|\| 0\) === resolvedSelectedUid\) : \[\]/);
+  assert.match(src, /const resolvedSelectedUid = selectedUid;/);
 });
 
 test('normal pending attack defaults to a living enemy, allows confirmation and preserves player choice', async () => {

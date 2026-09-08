@@ -538,3 +538,5 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - 2026-09-07, ORKA-49k.5: Once actor HP owns survival, recovery must mutate those actors before rebuilding presentation arrays. Copying max-health arrays only creates a healthy-looking projection. Exercise zero members as well as partial/full groups so stale health cannot survive a roster clear; reuse the same restoration owner for Town and Continue.
 
 - 2026-09-07, ORKA-49k.6: Migrating shared healing requires changing both recipient and percentage basis. Actor-only writes still over-heal if they scale from party max HP. Retire reverse HP projection and shared-bar text together, then exercise a real prepared command through turn completion.
+
+- Combat migration: action capacity, SP affordability and initiative are independent boundaries. Validate actual battlefield clicks and full-queue auto-commit through presentation completion. Generated renderer edits must preserve the array join and post-processing chain; edit the decoded body within that boundary. Paused effects need removed runtime callers, not just disabled acquisition.

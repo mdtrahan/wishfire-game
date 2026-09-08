@@ -85,6 +85,9 @@ Support ├── `agents/` (retired)
 - Follow the Escalation section in `governance/execution/implementation-gate.md`.
 - Do not write outside the repo without approval.
 
+## Combat Migration Specification
+- `COMBAT_MIGRATION_PLAN.md` owns the active hero-kit, EXP/progression, SP/FLOW and combat-resolution design. Keep confirmed owner decisions, tuning proposals and delivered runtime state distinct; `MIGRATION_CHECKPOINT.md` records superseded decisions and implementation receipts.
+
 ## Child DOX Index
 - `Scripts/AGENTS.md` - Construct-style runtime mirror and high-risk function parity.
 - `web-runner/AGENTS.md` - browser runtime shell, rendering/input systems, runtime data, and browser-shipped core rules.

@@ -63,13 +63,3 @@ test('renderer applies tone-aware hit-flash overlay to attacked combatants', () 
   const idleWhiteFlashes = renderRuntimeSrc.match(/ctx\.filter = 'brightness\(0\) invert\(1\)';/g) || [];
   assert.equal(idleWhiteFlashes.length, 0, 'expected legacy white hit-flash filters to be removed from runtime render paths');
 });
-
-test('Kojonn blight paths arm purple hit-flash tone for immediate and queued ticks', () => {
-  const src = read('web-runner/systems/renderRuntime.js');
-  const purpleHooks = src.match(/visualControlPatches\.NextHitFlashTone = 'purple';/g) || [];
-  assert.ok(purpleHooks.length >= 2, 'expected purple hit-flash tone to be armed for both immediate blight impact and queued DoT ticks');
-  assert.match(src, /callFunctionWithContext\(fnContext, 'ApplyDamageToTarget', dot\.targetUID, dmg, \{/);
-  assert.match(src, /isCrit: !!dot\.isCrit \|\| Number\(dot\.powerAmpMultiplier \|\| 0\) > 0,/);
-  assert.match(src, /callFunctionWithContext\(fnContext, 'ApplyDamageToTarget', hit\.targetUID, initialDotDamage, \{/);
-  assert.match(src, /isCrit: overTimeCrit,/);
-});

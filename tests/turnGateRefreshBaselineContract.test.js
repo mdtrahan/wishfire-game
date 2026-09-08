@@ -142,68 +142,13 @@ for (const modulePath of [
   test(`presentation barrier serializes refill, turn advance, action claim, and input restore in ${modulePath}`, async () => {
     const mod = await import(modulePath);
 
-    const refillPending = mod.derivePresentationTurnBarrier({
-      globals: { time: 10, TurnPhase: 0 },
-      boardHasEmptySlots: true,
+    const retiredBoard = mod.derivePresentationTurnBarrier({
+      globals: {time:10,TurnPhase:0,BoardFillActive:1},boardHasEmptySlots:true,
+      refillBounce:{active:true},gemMergeFx:{active:true},yellowCasino:{active:true},
     });
-    assert.equal(refillPending.canStartRefill, true);
-    assert.equal(refillPending.canAdvanceTurn, false);
-    assert.equal(refillPending.canClaimCombatAction, false);
-    assert.equal(refillPending.canResolvePendingTargetAction, false);
-    assert.equal(refillPending.canRestoreHeroInput, false);
-    assert.equal(refillPending.blockingLane, 'refill-pending');
-    assert.equal(refillPending.firstBlockingLane, 'refill-pending');
-
-    const pendingTarget = mod.derivePresentationTurnBarrier({
-      globals: {
-        time: 10,
-        TurnPhase: 1,
-        PendingSkillID: 'HERO_SINGLE',
-        PendingActor: 2,
-        IsPlayerBusy: 1,
-      },
-      boardHasEmptySlots: true,
-    });
-    assert.equal(pendingTarget.canStartRefill, true);
-    assert.equal(pendingTarget.canAdvanceTurn, false);
-    assert.equal(pendingTarget.canClaimCombatAction, false);
-    assert.equal(pendingTarget.canResolvePendingTargetAction, true);
-    assert.equal(pendingTarget.firstBlockingLane, 'refill-pending');
-
-    const pendingSuperGemTarget = mod.derivePresentationTurnBarrier({
-      globals: {
-        time: 10,
-        TurnPhase: 0,
-        PendingSkillID: 'HERO_SINGLE',
-        PendingSuperGemAction: { color: 1, actorUID: 2 },
-        IsPlayerBusy: 1,
-      },
-      boardHasEmptySlots: true,
-    });
-    assert.equal(pendingSuperGemTarget.canStartRefill, true);
-    assert.equal(pendingSuperGemTarget.canAdvanceTurn, false);
-    assert.equal(pendingSuperGemTarget.canClaimCombatAction, false);
-    assert.equal(pendingSuperGemTarget.canResolvePendingTargetAction, true);
-    assert.equal(pendingSuperGemTarget.firstBlockingLane, 'refill-pending');
-
-    const mergeHold = mod.derivePresentationTurnBarrier({
-      globals: { time: 10, TurnPhase: 0 },
-      gemMergeFx: { active: true },
-      boardHasEmptySlots: true,
-    });
-    assert.equal(mergeHold.canStartRefill, false);
-    assert.equal(mergeHold.canAdvanceTurn, false);
-    assert.equal(mergeHold.canClaimCombatAction, false);
-    assert.equal(mergeHold.canResolvePendingTargetAction, false);
-    assert.equal(mergeHold.firstBlockingLane, 'gem-merge');
-
-    const yellowHold = mod.derivePresentationTurnBarrier({
-      globals: { time: 10, TurnPhase: 0 },
-      yellowCasino: { active: true },
-    });
-    assert.equal(yellowHold.canStartRefill, false);
-    assert.equal(yellowHold.canAdvanceTurn, false);
-    assert.equal(yellowHold.firstBlockingLane, 'yellow-casino');
+    assert.equal(retiredBoard.canClaimCombatAction,true);
+    assert.equal(retiredBoard.canAdvanceTurn,true);
+    assert.equal(retiredBoard.blockingLane,null);
 
     const textEndHold = mod.derivePresentationTurnBarrier({
       globals: { time: 10, TurnPhase: 0, TextAnimEndAt: 11.5 },
@@ -213,35 +158,21 @@ for (const modulePath of [
     assert.equal(textEndHold.canClaimCombatAction, false);
     assert.equal(textEndHold.firstBlockingLane, 'text-animation');
 
-    const skillDraughtHold = mod.derivePresentationTurnBarrier({
-      globals: { time: 10, TurnPhase: 0, SkillDraughtOpen: 1 },
-      boardHasEmptySlots: true,
+    // Paused card state cannot block native combat; existing presentation gates still apply.
+    const withoutCardFlags = mod.derivePresentationTurnBarrier({
+      globals: { time: 10, TurnPhase: 0 }, boardHasEmptySlots: true,
     });
-    assert.equal(skillDraughtHold.canStartRefill, false);
-    assert.equal(skillDraughtHold.canAdvanceTurn, false);
-    assert.equal(skillDraughtHold.canClaimCombatAction, false);
-    assert.equal(skillDraughtHold.canResolvePendingTargetAction, false);
-    assert.equal(skillDraughtHold.canRestoreHeroInput, false);
-    assert.equal(skillDraughtHold.firstBlockingLane, 'skill-draught');
-
-    const pendingSkillDraught = mod.derivePresentationTurnBarrier({
-      globals: { time: 10, TurnPhase: 0, SkillDraughtPendingOpen: 1 },
-      boardHasEmptySlots: true,
-    });
-    assert.equal(pendingSkillDraught.lanes.skillDraughtPending, true);
-    assert.equal(pendingSkillDraught.canClaimSkillDraught, true);
-    assert.equal(pendingSkillDraught.canStartRefill, false);
-    assert.equal(pendingSkillDraught.canAdvanceTurn, false);
-    assert.equal(pendingSkillDraught.canClaimCombatAction, false);
-    assert.equal(pendingSkillDraught.canRestoreHeroInput, false);
-    assert.equal(pendingSkillDraught.firstBlockingLane, 'skill-draught-pending');
-
-    const pendingSkillDraughtDuringAnimation = mod.derivePresentationTurnBarrier({
-      globals: { time: 10, TurnPhase: 0, SkillDraughtPendingOpen: 1, TextAnimEndAt: 11 },
-      boardHasEmptySlots: true,
-    });
-    assert.equal(pendingSkillDraughtDuringAnimation.canClaimSkillDraught, false);
-    assert.equal(pendingSkillDraughtDuringAnimation.firstBlockingLane, 'text-animation');
+    for (const staleFlags of [{ SkillDraughtOpen: 1 }, { SkillDraughtPendingOpen: 1 }]) {
+      assert.deepEqual(mod.derivePresentationTurnBarrier({
+        globals: { time: 10, TurnPhase: 0, ...staleFlags }, boardHasEmptySlots: true,
+      }), withoutCardFlags);
+      const duringAnimation = mod.derivePresentationTurnBarrier({
+        globals: { time: 10, TurnPhase: 0, ...staleFlags, TextAnimEndAt: 11 },
+        boardHasEmptySlots: true,
+      });
+      assert.equal(duringAnimation.canClaimSkillDraught, false);
+      assert.equal(duringAnimation.firstBlockingLane, 'text-animation');
+    }
 
     const actionHold = mod.derivePresentationTurnBarrier({
       globals: {

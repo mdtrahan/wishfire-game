@@ -21,6 +21,10 @@ module.exports = {
   ApplyDamageToTarget,
 };`;
   const context = {
+    ...require('../web-runner/src/core/combatRules.mjs'),
+    ...require('../web-runner/modules/heroCommands.mjs'),
+    ...require('../web-runner/src/core/personalFlow.mjs'),
+    ...require('../web-runner/modules/heroCommands.mjs'),
     console,
     Math,
     module: { exports: {} },
@@ -49,6 +53,7 @@ module.exports = {
   };
   vm.createContext(context);
   new vm.Script(transformed, { filename: modulePath }).runInContext(context);
+  context.resolveIncomingNativeHit = (ctx, ...args) => require('../web-runner/modules/heroCommands.mjs').resolveIncomingNativeHit({ ...ctx, callFunction: (name, ...values) => context[name](ctx, ...values) }, ...args);
   return context.module.exports;
 }
 

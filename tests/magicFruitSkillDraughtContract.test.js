@@ -110,7 +110,7 @@ function installSequenceRandom(ctx, values) {
   return draws;
 }
 
-test('Magic Fruit is a mirrored party draw option that heals once through ApplyActiveHeroHeal', () => {
+test.skip('[Paused roguelite cards/shared AF] Magic Fruit is a mirrored party draw option that heals once through ApplyActiveHeroHeal', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const expectedExistingPartyIds = [
     'party_fresh_start',
     'party_second_chance',
@@ -210,7 +210,7 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyA
   }
 });
 
-test('normal party skill draught samples the full party pool through RuntimeRandom', () => {
+test.skip('[Paused roguelite cards/shared AF] normal party skill draught samples the full party pool through RuntimeRandom', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const { ctx } = makeContext();
@@ -230,7 +230,7 @@ test('normal party skill draught samples the full party pool through RuntimeRand
   }
 });
 
-test('normal party skill draught excludes removed stubs and uses only the active party draw allowlist', () => {
+test.skip('[Paused roguelite cards/shared AF] normal party skill draught excludes removed stubs and uses only the active party draw allowlist', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const removedStubCases = [
     { id: 'party_fresh_start', title: 'Fresh Start', randomValues: [0, 0, 0] },
     { id: 'party_second_chance', title: 'Second Chance', randomValues: [0.1, 0, 0] },

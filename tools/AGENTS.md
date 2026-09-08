@@ -15,7 +15,7 @@
 - Do not create a second batch game-test pipeline beside `npm run balance-harness` without explicit scope.
 - Keep `npm run test:ui-lock` presentation-only. It may arrange deterministic test state through `window.__codexGame`; it must not become a balance or gameplay simulation harness.
 - UI lock failures must name the viewport, invariant, measured value, allowed range, and JSON report path.
-- The UI lock runs reference, compact, live-narrow `233x452`, approved natural-preview, and compact-Retina viewports; it records requested and actual viewport/zoom/DPR metrics, covers stage containment, developer controls, transient combat controls, damage density, progress-bar height, skill-draught draw/hit routing, and can prove stage and panel rejection through `--prove-rejection`.
+- The UI lock runs reference, compact, live-narrow `233x452`, approved natural-preview, and compact-Retina viewports; it records requested and actual viewport/zoom/DPR metrics, covers stage containment, developer controls, transient combat controls, damage density, progress-bar height, personal FLOW and command queue routing, and can prove stage and panel rejection through `--prove-rejection`.
 - Treat Playwright/Chrome tools as support tools unless the user asks for that surface.
 - `serve_web.js` intentionally writes a runtime fingerprint at server start; account for that generated file in diffs.
 - Hot-file commit helpers own `.beads/hot-file-lock` metadata generation; do not hand-author scope files except when debugging the tooling.
@@ -37,5 +37,9 @@
 
 - build_runtime_release.mjs packages only tracked runtime files from web-runner/ and src/ into dist/, with commit and SHA-256 manifest. Netlify publishes dist/; checkpoints, governance reviews and generation prompts are excluded.
 
-- UI lock checks native hero commands, column-major capacity, individual HP, absent global attack/pooled health bars and the compact Astral Flow meter. Its group-size loop uses test actors only and exercises the actual action buttons through presentation completion.
+- UI lock checks native hero commands, column-major capacity, individual HP, absent global attack/pooled health bars and personal FLOW meters. Its group-size loop uses test actors only and exercises the native card/editor controls through presentation completion.
 - The native command UI gate prepares and executes self Heal, checks only the active hero recovers, and waits for the ordinary turn handoff.
+
+- The UI gate checks full-charge FLOW and a 45/50 SP queue through Act, single-turn completion, absent retired draw controls, and steady scheduled-actor highlighting through busy action frames.
+
+- The UI gate also verifies canonical hero-detail kit counts and overflow, and the production victory dialog after a native final hit.

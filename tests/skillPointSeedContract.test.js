@@ -11,8 +11,9 @@ test('party seed function exists in runtime functionBank', () => {
   assert.match(src, /store\[HERO_SKILL_SHARED_KEY\] = target;/);
 });
 
-test('combat init seeds party skill points to 300 for ORKA-spt lane', () => {
+test('combat init uses canonical resources without retired skill-point seeds', () => {
   const filePath = path.join(__dirname, '..', 'web-runner', 'systems', 'combatSessionInitializer.js');
   const src = fs.readFileSync(filePath, 'utf8');
-  assert.match(src, /callFunctionWithContext\(fnContext, 'SetHeroSkillPointsForParty', 300, 'ORKA-spt-seed'\);/);
+  assert.doesNotMatch(src, /SetHeroSkillPointsForParty/);
+  assert.match(src, /attachHeroProgress/);
 });

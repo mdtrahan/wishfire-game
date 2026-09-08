@@ -74,7 +74,7 @@ function makeContext() {
   };
 }
 
-test('Drain is retired from active skill draught draw surfaces', () => {
+test.skip('[Paused roguelite cards/shared AF] Drain is retired from active skill draught draw surfaces', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const retiredDoc = fs.readFileSync(retiredDocPath, 'utf8');
   assert.match(retiredDoc, /Status: retired/);
   assert.match(retiredDoc, /Historical note:/);

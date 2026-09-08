@@ -80,7 +80,7 @@ import {
   createPartyRegenLifecycleSimulationPacket,
   createPartyRegenTickSimulationPacket,
 } from './src/core/statusEffectRules.mjs';
-import * as heroGemProgressStorage from './systems/heroGemProgressStorage.js';
+import * as heroProgressStorage from './systems/heroProgressStorage.js';
 import * as runtimeDebugLogging from './systems/runtimeDebugLogging.js';
 import * as animationMath from './systems/animationMath.js';
 import * as inputHandling from './systems/inputHandling.js';
@@ -91,11 +91,9 @@ import * as renderBoard from './systems/renderBoard.js';
 import * as gemVisuals from './systems/gemVisuals.js';
 import * as renderCombatRuntime from './systems/renderCombatRuntime.js';
 import * as renderOverlays from './systems/renderOverlays.js';
-import * as renderSkillDraught from './systems/renderSkillDraughtOverlay.js';
 import * as renderRuntime from './systems/renderRuntime.js';
 import { createHeroCommandUI } from './systems/heroCommandUI.mjs';
 import * as partyStatOsd from './systems/partyStatOsd.js';
-import * as astralFlowKoOrbPresentation from './systems/astralFlowKoOrbPresentation.js';
 import * as superGemRuntime from './systems/superGemRuntime.js';
 import {
   createSimulationCoreSeededRng,
@@ -391,24 +389,6 @@ function canResolveDeferredAdvance({ hasEmpty = false, enemyLineClearPressureAct
   };
 }
 
-function canClaimPendingSkillDraught({ hasEmpty = false, enemyLineClearPressureActive = false } = {}) {
-  if (!Number(state.globals.SkillDraughtPendingOpen || 0)) return false;
-  if (Number(state.globals.SkillDraughtOpen || 0)) return false;
-  const currentTurnType = Number(callFunctionWithContext(fnContext, 'GetCurrentType') ?? -1);
-  if (currentTurnType !== 0) return false;
-  if (!state.globals.DeferAdvance || !state.globals.AdvanceAfterAction) return false;
-  if (Number(state.globals.ActionLockUntil || 0) > Number(state.globals.time || 0)) return false;
-  if (state.globals.IsPlayerBusy || state.globals.ActionInProgress || state.globals.PendingSkillID) return false;
-  const pendingBarrier = getPresentationTurnBarrier({ hasEmpty, enemyLineClearPressureActive });
-  return pendingBarrier.canClaimSkillDraught;
-}
-
-function claimPendingSkillDraughtAtHeroCheckpoint({ hasEmpty = false, enemyLineClearPressureActive = false } = {}) {
-  if (!canClaimPendingSkillDraught({ hasEmpty, enemyLineClearPressureActive })) return false;
-  const result = callFunctionWithContext(fnContext, 'ClaimPendingSkillDraught');
-  return !!(result && result.ok);
-}
-
 function isHitFlashActive(uid) {
   const flashes = state.globals.HitFlashByUID;
   if (!uid || !flashes || typeof flashes !== 'object') return false;
@@ -566,9 +546,7 @@ function spawnPendingDamageNumbers(projectToCanvas = null, presentationScale = 1
       : (d.kind === 'heal' ? 'heal' : (d.kind === 'ward' ? 'ward' : (d.kind === 'arcane_pulse' ? 'arcane_pulse' : 'damage')));
     const text = isEnergyText
       ? `+${formatDamageValue({ value: d.amount, type: 'heal', isCrit })}`
-      : (d.targetKind === 'bar'
-        ? formatDamageValue({ value: d.amount, type: 'heal', isCrit })
-        : formatDamageValue({ value: d.amount, type: domKind === 'heal' || domKind === 'energy' ? 'heal' : 'damage', isCrit }));
+      : formatDamageValue({ value: d.amount, type: domKind === 'heal' || domKind === 'energy' ? 'heal' : 'damage', isCrit });
     const animation = createDamageNumber({
       text,
       amount: d.amount,
@@ -600,24 +578,13 @@ function spawnPendingDamageNumbers(projectToCanvas = null, presentationScale = 1
       d.domSpawned = false;
       d.domAnimation = null;
     }
-    if (d.kind === 'heal' && d.targetKind === 'hero' && !d.healBloomSpawned) {
+    if (d.kind === 'heal' && ['hero', 'enemy'].includes(d.targetKind) && !d.healBloomSpawned) {
       d.healBloomSpawned = true;
       d.healBloomAnimation = createHealBloom({
         x: d.x,
         y: d.baseY != null ? d.baseY : d.y,
       });
       gameState.healBlooms.push(d.healBloomAnimation);
-    } else if (d.kind === 'heal' && d.targetKind === 'bar' && !d.healBloomSpawned) {
-      d.healBloomSpawned = true;
-      const heroPositions = Array.isArray(state.globals.HeroIconPosByIndex) ? state.globals.HeroIconPosByIndex : [];
-      for (const pos of heroPositions) {
-        if (!pos) continue;
-        const bloom = createHealBloom({
-          x: Number(pos.x || 0),
-          y: Number(pos.y || 0),
-        });
-        if (bloom) gameState.healBlooms.push(bloom);
-      }
     }
   }
 }
@@ -874,17 +841,6 @@ function getHeroStatValue(hero, key) {
   return 0;
 }
 
-function getHeroStarterSkillTitle(heroName) {
-  const key = String(heroName || '');
-  const byHero = {
-    Falie: 'Pummel',
-    Huun: 'Swipe',
-    Runa: 'Burst',
-    Kojonn: 'Faze',
-  };
-  return byHero[key] || 'Skill 1 Placeholder';
-}
-
 function getCombatPartyRenderRoster() {
   return (state.entities || [])
     .filter((entity) => entity && (entity.kind === 'hero' || entity.kind === 'escort'))
@@ -899,187 +855,6 @@ function getCombatPartyRenderRoster() {
     }));
 }
 
-function getHeroRoleLabel(hero) {
-  const heroName = String(hero && hero.name || '');
-  if (heroName === 'Kojonn') return 'Saboteur';
-  const type = String(hero && (hero.attackType || hero.stats?.attackType) || '').toLowerCase();
-  if (type === 'magic') return 'Arcanist';
-  return 'Vanguard';
-}
-
-function buildHeroSkillDescriptionLines(hero, skillState) {
-  const heroName = String(hero && hero.name || 'Hero');
-  const role = getHeroRoleLabel(hero);
-  const key = String(skillState && skillState.key || '');
-  const rank = Math.max(0, Math.floor(Number(skillState && skillState.rank) || 0));
-  const maxRank = Math.max(1, Math.floor(Number(skillState && skillState.maxRank) || 1));
-  const nextCost = Math.max(0, Math.floor(Number(skillState && skillState.nextCost) || 0));
-  const status = String(skillState && skillState.status || 'locked');
-  if (key === 'skill1') {
-    if (heroName === 'Kojonn') {
-      return [
-        `Faze: blight over time on all enemies.`,
-        `Rank ${rank}/${maxRank}  Next Cost ${nextCost} SP`,
-        `Status ${status}`,
-      ];
-    }
-    return [
-      `${heroName}'s signature ${role.toLowerCase()} move.`,
-      `Rank ${rank}/${maxRank}  Next Cost ${nextCost} SP`,
-      `Status ${status}`,
-    ];
-  }
-  if (key === 'skill2') {
-    if (heroName === 'Kojonn') {
-      return [
-        `Red match: rapid cluster burst on one target.`,
-        `Rank ${rank}/${maxRank}  Next Cost ${nextCost} SP`,
-        `Status ${status}`,
-      ];
-    }
-    return [
-      `Secondary lane ability for ${heroName}.`,
-      `Rank ${rank}/${maxRank}  Next Cost ${nextCost} SP`,
-      `Status ${status}`,
-    ];
-  }
-  return [
-    `Advanced technique for ${heroName}.`,
-    `Rank ${rank}/${maxRank}  Next Cost ${nextCost} SP`,
-    `Status ${status}`,
-  ];
-}
-
-function getHeroScreenSkillCards(hero) {
-  const heroIndex = Number(hero && hero.heroIndex);
-  const sourceEntries = [
-    {
-      title: getHeroStarterSkillTitle(hero && hero.name),
-      description: buildHeroSkillDescriptionLines(hero, { key: 'skill1', rank: 0, maxRank: 15, nextCost: 0, status: 'locked' }).join(' '),
-      badge: 'CS',
-      iconShape: 'circle',
-      spriteCrop: null,
-      actionable: true,
-    },
-    {
-      title: 'Skill 2',
-      description: buildHeroSkillDescriptionLines(hero, { key: 'skill2', rank: 0, maxRank: 15, nextCost: 0, status: 'locked' }).join(' '),
-      badge: 'CS',
-      iconShape: 'circle',
-      spriteCrop: null,
-      actionable: true,
-    },
-    {
-      title: 'Skill 3',
-      description: buildHeroSkillDescriptionLines(hero, { key: 'skill3', rank: 0, maxRank: 15, nextCost: 0, status: 'locked' }).join(' '),
-      badge: 'JS',
-      iconShape: 'diamond',
-      spriteCrop: null,
-      actionable: true,
-    },
-  ];
-  const fallbackSkillStates = sourceEntries.map((entry, idx) => ({
-    slot: idx,
-    key: `skill${idx + 1}`,
-    title: String(entry.title || `Skill ${idx + 1}`),
-    beadId: String(entry.beadId || ''),
-    beadDescription: String(entry.description || ''),
-    badge: String(entry.badge || (idx === 2 ? 'JS' : 'CS')),
-    iconShape: String(entry.iconShape || (idx === 2 ? 'diamond' : 'circle')),
-    spriteCrop: entry.spriteCrop || null,
-    actionable: entry.actionable !== false,
-    rank: 0,
-    maxRank: 15,
-    nextCost: 0,
-    status: entry.actionable === false ? 'pending' : 'locked',
-    costs: Array.from({ length: 15 }, (_, costIdx) => (costIdx + 1) * 5),
-  }));
-  while (fallbackSkillStates.length < 3) {
-    const idx = fallbackSkillStates.length;
-    fallbackSkillStates.push({
-      slot: idx,
-      key: `skill${idx + 1}`,
-      title: `Skill ${idx + 1}`,
-      beadId: '',
-      beadDescription: '',
-      badge: idx === 2 ? 'JS' : 'CS',
-      iconShape: idx === 2 ? 'diamond' : 'circle',
-      spriteCrop: null,
-      actionable: true,
-      rank: 0,
-      maxRank: 15,
-      nextCost: 0,
-      status: 'locked',
-      costs: Array.from({ length: 15 }, (_, costIdx) => (costIdx + 1) * 5),
-    });
-  }
-  const heroUID = Number(hero && hero.uid) || getHeroUIDByIndex(Number.isFinite(heroIndex) ? heroIndex : 0);
-  const stateMap = heroUID
-    ? (callFunctionWithContext(fnContext, 'GetAllHeroSkillStates', heroUID) || {})
-    : {};
-  const liveStates = Object.values(stateMap)
-    .filter((entry) => entry && typeof entry === 'object')
-    .map((entry, idx) => {
-      const directSlot = Math.floor(Number(entry.slot));
-      const fromKeyMatch = String(entry.key || '').match(/^skill(\d+)$/i);
-      const fromKeySlot = fromKeyMatch ? (Math.floor(Number(fromKeyMatch[1])) - 1) : NaN;
-      const slot = Number.isFinite(directSlot) && directSlot >= 0
-        ? directSlot
-        : (Number.isFinite(fromKeySlot) && fromKeySlot >= 0 ? fromKeySlot : idx);
-      return {
-        slot,
-        key: String(entry.key || ''),
-        title: String(entry.title || ''),
-        rank: Math.max(0, Math.floor(Number(entry.rank) || 0)),
-        maxRank: Math.max(0, Math.floor(Number(entry.maxRank) || 0)),
-        nextCost: Math.max(0, Math.floor(Number(entry.nextCost) || 0)),
-        status: String(entry.status || 'locked'),
-        costs: Array.isArray(entry.costs) ? entry.costs : null,
-      };
-    })
-    .sort((a, b) => a.slot - b.slot);
-  const liveBySlot = new Map();
-  for (const skill of liveStates) {
-    if (!skill || !Number.isFinite(skill.slot)) continue;
-    liveBySlot.set(skill.slot, skill);
-  }
-  return fallbackSkillStates.slice(0, 3).map((fallback, idx) => {
-    const live = liveBySlot.get(idx) || null;
-    const source = sourceEntries[idx] || fallbackSkillStates[idx] || {};
-    const beadDescription = String(source.description || fallback.beadDescription || '');
-    const sourcePending = source.actionable === false;
-    const livePending = live && (String(live.status || '') === 'pending' || Number(live.maxRank || 0) <= 0);
-    const actionable = !sourcePending && !livePending;
-    const rank = Math.max(0, Math.floor(Number((live && live.rank) ?? fallback.rank) || 0));
-    const maxRank = Math.max(0, Math.floor(Number((live && live.maxRank) ?? fallback.maxRank) || 0));
-    const nextCost = Math.max(0, Math.floor(Number((live && live.nextCost) ?? fallback.nextCost) || 0));
-    const skillState = {
-      key: String((live && live.key) || fallback.key || `skill${idx + 1}`),
-      rank,
-      maxRank,
-      nextCost,
-      status: actionable ? String((live && live.status) || fallback.status || 'locked') : 'pending',
-    };
-    return {
-      ...fallback,
-      ...(live || {}),
-      ...skillState,
-      slot: idx,
-      title: String((live && live.title) || source.title || fallback.title || `Skill ${idx + 1}`),
-      beadId: String(source.beadId || fallback.beadId || ''),
-      beadDescription,
-      badge: String(source.badge || fallback.badge || ''),
-      shape: String(source.iconShape || fallback.iconShape || (idx === 2 ? 'diamond' : 'circle')),
-      spriteCrop: source.spriteCrop || fallback.spriteCrop || null,
-      actionable,
-      costs: (live && Array.isArray(live.costs) ? live.costs : fallback.costs),
-      description: beadDescription || buildHeroSkillDescriptionLines(hero, skillState).join(' '),
-      rankLabel: `Lv${rank}`,
-      lines: buildHeroSkillDescriptionLines(hero, skillState),
-    };
-  });
-}
-
 function normalizeHeroSelectionIndex() {
   const roster = getHeroScreenRoster();
   const maxIndex = Math.max(0, roster.length - 1);
@@ -1090,21 +865,6 @@ function normalizeHeroSelectionIndex() {
     gameState.selectedHero = Math.max(0, Math.min(maxIndex, Math.floor(selected)));
   }
   return gameState.selectedHero;
-}
-
-function renderSkillDraughtOverlay(ctx, canvas, pixelRatio = 1) {
-  renderSkillDraught.renderSkillDraughtOverlay({
-    ctx,
-    canvas,
-    dpr: pixelRatio,
-    state,
-    draught: callFunctionWithContext(fnContext, 'GetSkillDraughtState') || {},
-  });
-}
-
-function getHeroClassLabel(heroName) {
-  const key = String(heroName || '').trim().toLowerCase();
-  return HERO_CLASS_LABELS[key] || 'Adventurer';
 }
 
 function renderHeroScreenLayoutV2({ ctx, canvas, dpr, gameState, fnContext, closeWinOvalImage, heroPortraitImages, heroSkillSpriteSheetImage, heroSkillIconImages = [] }) {
@@ -1120,12 +880,11 @@ function renderHeroScreenLayoutV2({ ctx, canvas, dpr, gameState, fnContext, clos
     heroSkillSpriteSheetImage,
     heroSkillIconImages,
     heroLayoutSpec,
-    getHeroClassLabel,
     getHeroScreenRoster,
     normalizeHeroSelectionIndex,
     getHeroUIDByIndex,
     callFunctionWithContext,
-    getHeroScreenSkillCards,
+    onClose: () => { gameState.storyEntry.phase = 'ladder'; return layoutState.requestLayoutChange('storyMock', 'hero-close-button'); },
   });
   uiState.setUIFields({
     heroScreenMode: heroRenderResult.mode,
@@ -2138,7 +1897,7 @@ async function main(){
     }
     uiState.setUIStateField('overlayVisible', false);
     initEntities(enemyRows, instances);
-    heroGemProgressStorage.restoreHeroGemProgressFromStorage({ callFunctionWithContext, fnContext, syncFromGlobals });
+    heroProgressStorage.restoreHeroProgressFromStorage({ callFunctionWithContext, fnContext, syncFromGlobals });
     assertCombatLayoutDev('StartRound');
     callFunctionWithContext(fnContext, 'StartRound');
     gameState.selectedGems = [];
@@ -2316,7 +2075,7 @@ async function main(){
       combatRuntimeGateway.resume(freshCombatStart ? null : (resumeSnapshot || null));
       if (needsCombatSeed) {
         initEntities(enemyRows, instances);
-        heroGemProgressStorage.restoreHeroGemProgressFromStorage({ callFunctionWithContext, fnContext, syncFromGlobals });
+        heroProgressStorage.restoreHeroProgressFromStorage({ callFunctionWithContext, fnContext, syncFromGlobals });
         assertCombatLayoutDev('StartRound');
         callFunctionWithContext(fnContext, 'StartRound');
         combatSessionSeeded = true;
@@ -2818,201 +2577,11 @@ async function main(){
     });
   }
 
-  function computePartyRegenLifecycleAction(payload = {}) {
-    if (Number(payload.remainingFires || 0) <= 0) return 1;
-    if (
-      Number(payload.hasTotalHealRemaining || 0) === 1
-      && Number(payload.totalHealRemaining || 0) <= 0
-    ) {
-      return 1;
-    }
-    if (Number(payload.currentSerial || 0) < Number(payload.nextFireSerial || 0)) return 0;
-    if (Number(payload.currentSerial || 0) <= Number(payload.appliedOnSerial || 0)) return 0;
-    if (Number(payload.lastProcessedSerial || 0) >= Number(payload.currentSerial || 0)) return 0;
-    return 2;
-  }
-
-  function maybeResolvePartyRegenLifecycleOwner(payload = {}) {
-    const root = typeof globalThis !== 'undefined' ? globalThis : null;
-    const hook = root && typeof root.__ORKA_PARTY_REGEN_LIFECYCLE_OWNER__ === 'function'
-      ? root.__ORKA_PARTY_REGEN_LIFECYCLE_OWNER__
-      : null;
-    if (typeof hook !== 'function') return null;
-    try {
-      const result = createPartyRegenLifecycleSimulationPacket({
-        ...payload,
-        ownerHook: hook,
-      });
-      const action = Number(result?.action);
-      if (!Number.isFinite(action)) return null;
-      state.globals.LastPartyRegenLifecycleOwner = {
-        owner: String(result?.owner || 'rust'),
-        action,
-      };
-      state.globals.LastPartyRegenLifecyclePacket = {
-        owner: String(result?.owner || 'rust'),
-        result: String(result?.simulationCoreResponse?.result || ''),
-        actionType: String(result?.simulationCoreRequest?.action?.type || ''),
-        source: String(payload.source || 'unknown'),
-      };
-      return state.globals.LastPartyRegenLifecycleOwner;
-    } catch (err) {
-      state.globals.LastPartyRegenLifecycleOwnerError = String(err?.message || err || 'unknown');
-      return null;
-    }
-  }
-
-  function maybeResolvePartyRegenTickOwner(payload = {}) {
-    const root = typeof globalThis !== 'undefined' ? globalThis : null;
-    const hook = root && typeof root.__ORKA_PARTY_REGEN_TICK_OWNER__ === 'function'
-      ? root.__ORKA_PARTY_REGEN_TICK_OWNER__
-      : null;
-    if (typeof hook !== 'function') return null;
-    try {
-      const result = createPartyRegenTickSimulationPacket({
-        ...payload,
-        ownerHook: hook,
-      });
-      const heal = Number(result?.heal);
-      const totalHealRemaining = Number(result?.totalHealRemaining);
-      const remainingFires = Number(result?.remainingFires);
-      const nextFireSerial = Number(result?.nextFireSerial);
-      if (
-        !Number.isFinite(heal)
-        || !Number.isFinite(totalHealRemaining)
-        || !Number.isFinite(remainingFires)
-        || !Number.isFinite(nextFireSerial)
-      ) {
-        return null;
-      }
-      state.globals.LastPartyRegenTickOwner = {
-        owner: String(result?.owner || 'rust'),
-        heal,
-        totalHealRemaining,
-        remainingFires,
-        nextFireSerial,
-      };
-      state.globals.LastPartyRegenTickPacket = {
-        owner: String(result?.owner || 'rust'),
-        result: String(result?.simulationCoreResponse?.result || ''),
-        actionType: String(result?.simulationCoreRequest?.action?.type || ''),
-        source: String(payload.source || 'unknown'),
-      };
-      return state.globals.LastPartyRegenTickOwner;
-    } catch (err) {
-      state.globals.LastPartyRegenTickOwnerError = String(err?.message || err || 'unknown');
-      return null;
-    }
-  }
-
-  function processTurnCadencePartyRegens() {
-    const currentTurnSerial = Number(state.globals.TurnSerial || 0);
-    if (currentTurnSerial <= Number(gameState._lastPartyRegenTurnSerial || 0)) return;
-    const regens = state.globals.PartyRegens;
-    if (!Array.isArray(regens) || regens.length === 0) {
-      gameState._lastPartyRegenTurnSerial = currentTurnSerial;
-      return;
-    }
-    for (let i = regens.length - 1; i >= 0; i--) {
-      const regen = regens[i];
-      if (!regen || Number(regen.remainingFires || 0) <= 0) {
-        regens.splice(i, 1);
-        continue;
-      }
-      if (String(regen.cadence || 'tick') !== 'turn') continue;
-      const hasTotalHealRemaining = regen.totalHealRemaining != null ? 1 : 0;
-      const totalHealRemainingBefore = hasTotalHealRemaining
-        ? Number(regen.totalHealRemaining || 0)
-        : 0;
-      const remainingFiresBefore = Number(regen.remainingFires || 0);
-      const gateTurn = Number(regen.nextFireTurnSerial || 0);
-      const lifecyclePayload = {
-        source: 'app.processTurnCadencePartyRegens',
-        remainingFires: remainingFiresBefore,
-        hasTotalHealRemaining,
-        totalHealRemaining: totalHealRemainingBefore,
-        currentSerial: currentTurnSerial,
-        nextFireSerial: gateTurn,
-        appliedOnSerial: Number(regen.appliedOnTurnSerial || 0),
-        lastProcessedSerial: Number(regen.lastProcessedTurnSerial || 0),
-      };
-      const jsLifecycleAction = computePartyRegenLifecycleAction(lifecyclePayload);
-      const ownedLifecycle = maybeResolvePartyRegenLifecycleOwner({
-        ...lifecyclePayload,
-        jsAction: jsLifecycleAction,
-      });
-      const lifecycleAction = ownedLifecycle && String(ownedLifecycle.owner || '') === 'rust'
-        ? Number(ownedLifecycle.action)
-        : jsLifecycleAction;
-      if (lifecycleAction === 1) {
-        regens.splice(i, 1);
-        continue;
-      }
-      if (lifecycleAction !== 2) continue;
-
-      let heal = 1;
-      let jsTotalHealRemaining = totalHealRemainingBefore;
-      if (hasTotalHealRemaining && remainingFiresBefore > 0) {
-        const remaining = Math.max(0, Math.floor(totalHealRemainingBefore));
-        const fires = Math.max(1, Math.floor(remainingFiresBefore));
-        const base = Math.floor(remaining / fires);
-        const remainder = remaining % fires;
-        heal = Math.max(1, base + (fires === 1 ? remainder : 0));
-        jsTotalHealRemaining = Math.max(0, remaining - heal);
-      } else {
-        heal = Math.max(1, Math.round(regen.healPerFire || 1));
-        jsTotalHealRemaining = 0;
-      }
-      const jsRemainingFires = Math.max(0, Math.floor(remainingFiresBefore) - 1);
-      const jsNextFireSerial = gateTurn + Math.max(1, Math.floor(Number(regen.firesEveryTurns || 1) || 1));
-      const ownedTick = maybeResolvePartyRegenTickOwner({
-        source: 'app.processTurnCadencePartyRegens',
-        totalHealRemaining: totalHealRemainingBefore,
-        remainingFires: remainingFiresBefore,
-        healPerFire: Number(regen.healPerFire || 0),
-        hasTotalHealRemaining,
-        nextFireSerial: gateTurn,
-        firesEvery: Number(regen.firesEveryTurns || 1),
-        distributionMode: 1,
-        jsHeal: heal,
-        jsTotalHealRemaining,
-        jsRemainingFires,
-        jsNextFireSerial,
-      });
-      if (ownedTick && String(ownedTick.owner || '') === 'rust') {
-        heal = Math.max(0, Number(ownedTick.heal || 0));
-        if (hasTotalHealRemaining) {
-          regen.totalHealRemaining = Math.max(0, Math.floor(Number(ownedTick.totalHealRemaining || 0)));
-        }
-        regen.remainingFires = Math.max(0, Math.floor(Number(ownedTick.remainingFires || 0)));
-        regen.nextFireTurnSerial = Number(ownedTick.nextFireSerial || 0);
-      } else {
-        if (hasTotalHealRemaining) regen.totalHealRemaining = jsTotalHealRemaining;
-        regen.remainingFires = jsRemainingFires;
-        regen.nextFireTurnSerial = jsNextFireSerial;
-      }
-
-      callFunctionWithContext(fnContext, 'ApplyActiveHeroHeal', heal);
-      regen.lastProcessedTurnSerial = currentTurnSerial;
-      if (regen.remainingFires <= 0) {
-        regens.splice(i, 1);
-      }
-    }
-    if (regens.length === 0) delete state.globals.PartyRegens;
-    gameState._lastPartyRegenTurnSerial = currentTurnSerial;
-  }
-
   function drawFrame(dtOverride){
+    renderHeroScreen.hideHeroScreen();
     if (freshCombatBootstrapped) goldProgress.sync();
     storyEntry.update();
     questUI.update();
-    syncSuperGemShapes({ gameState, state, boardGeometry, reason: 'draw-frame' });
-    processTurnCadencePartyRegens();
-    superGemRuntime.syncTaintedGroundZones({
-      state,
-      callFunctionWithContext,
-      fnContext,
-    });
     ensurePendingSingleTarget();
     const runtimeScope = {
       dtOverride,
@@ -3127,18 +2696,12 @@ async function main(){
       deriveDamageFloatFrameOffset,
       createPartyRegenTickSimulationPacket,
     };
-    astralFlowKoOrbPresentation.prepareAstralFlowKoOrbPresentation({
-      state,
-      worldToCanvas: (x, y) => combatActorWorldToCanvas(x, y, 'enemy'),
-      callFunctionWithContext,
-      fnContext,
-    });
     const result = renderRuntime.renderRuntime(runtimeScope);
     renderExistingNavigation(ctx, { worldToCanvas, layoutScale, gameState, layoutState, eventBus });
     heroCommandUI.update({
       visible: layoutState.getActiveLayoutId() === 'combat' && state.globals.GamePhase === 'RUNTIME',
       blocked: !!uiState.getUIState().overlayVisible || !!ensureDevToolingConfig().open
-        || !!state.globals.SkillDraughtOpen || !!gameState.storyEntry.modal || !!gameState.storyEntry.pending
+        || !!gameState.storyEntry.modal || !!gameState.storyEntry.pending
         || gameState.storyEntry.phase === 'defeat',
       worldToCanvas, layoutScale, portraits: heroPortraitImages,
     });
@@ -3154,14 +2717,6 @@ async function main(){
     if (result && result.visualControlPatches) {
       Object.assign(state.globals, result.visualControlPatches);
     }
-    astralFlowKoOrbPresentation.updateAndRenderAstralFlowKoOrbPresentation({
-      ctx,
-      state,
-      worldToCanvas,
-      callFunctionWithContext,
-      fnContext,
-    });
-    renderSkillDraughtOverlay(ctx, canvas, dpr);
     partyStatOsdRuntime.refresh();
     if (typeof runtimeScope.lastFrameTime === 'number') {
       lastFrameTime = runtimeScope.lastFrameTime;
@@ -3563,7 +3118,6 @@ function getStoryCardLiveLineState() {
       !(gameState.yellowCasino && gameState.yellowCasino.active)
     );
   }
-  const IDLE_AUTOPLAY_SKILL_DRAUGHT_HOLD_MS = 1400;
   function getCurrentIdleAutoplayHeroName() {
     const uid = resolveCurrentHeroUID({
       directUID: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || state.globals.CurrentHeroUID || 0),
@@ -3674,26 +3228,6 @@ function getStoryCardLiveLineState() {
     });
     return true;
   }
-  function autoResolveSkillDraughtForDevIdle() {
-    if (!state.globals.DevAutoplayActive) return false;
-    if (!Number(state.globals.SkillDraughtOpen || 0)) {
-      state.globals.DevAutoplaySkillDraughtSeenAt = 0;
-      return false;
-    }
-    const candidates = Array.isArray(state.globals.SkillDraughtCandidates) ? state.globals.SkillDraughtCandidates : [];
-    if (!candidates.length) return false;
-    const now = performance.now();
-    const seenAt = Number(state.globals.DevAutoplaySkillDraughtSeenAt || 0);
-    if (!seenAt) {
-      state.globals.DevAutoplaySkillDraughtSeenAt = now;
-      return true;
-    }
-    if (now - seenAt < IDLE_AUTOPLAY_SKILL_DRAUGHT_HOLD_MS) return true;
-    const randomIndex = Math.floor(Math.random() * candidates.length);
-    const result = callFunctionWithContext(fnContext, 'SelectSkillDraughtCard', randomIndex);
-    state.globals.DevAutoplaySkillDraughtSeenAt = 0;
-    return !!(result && result.ok);
-  }
   function resolveCombatOutcomeWithOwner({
     source = 'app.combatOutcome',
     energy = 0,
@@ -3750,7 +3284,6 @@ function getStoryCardLiveLineState() {
       busy: Number(state.globals.IsPlayerBusy || 0),
       boardFill: Number(state.globals.BoardFillActive || 0),
       pending: String(state.globals.PendingSkillID || ''),
-      skillDraughtOpen: Number(state.globals.SkillDraughtOpen || 0),
       gems: Array.isArray(gameState.gems) ? gameState.gems.length : 0,
       current: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0),
     });
@@ -3981,6 +3514,12 @@ function getStoryCardLiveLineState() {
       return;
     }
 
+    if (layoutState.getActiveLayoutId() === 'combat') {
+      const enemy = getEnemyHit(mx, my);
+      if (enemy && heroCommandUI.selectBattlefieldActor(enemy)) { drawFrame(); return; }
+      if (heroCommandUI.selectBattlefieldAlly(mx, my, combatActorWorldToCanvas, layoutScale)) { drawFrame(); return; }
+    }
+
     // Check for rendered element clicks (close button, etc)
     // First check modal objects if overlay is visible
     if (uiState.getUIState().overlayVisible) {
@@ -4087,22 +3626,11 @@ function getStoryCardLiveLineState() {
       hasEmpty,
       enemyLineClearPressureActive,
     });
-    const pendingSkillDraughtClaimed = claimPendingSkillDraughtAtHeroCheckpoint({
-      hasEmpty,
-      enemyLineClearPressureActive,
-    });
-    if (pendingSkillDraughtClaimed) {
-      runtimeDebugLogging.gemDebugLog('[SKILL_DRAUGHT_CLAIM]', {
-        reason: 'hero-end-checkpoint-before-refill',
-        heroUID: Number(state.globals.SkillDraughtHeroUID || 0),
-      }, state);
-    }
     const refillReady =
       phaseNow === 0 &&
       !state.globals.IsPlayerBusy &&
       !state.globals.PendingSkillID &&
       !state.globals.ActionInProgress &&
-      !pendingSkillDraughtClaimed &&
       refillStartBarrier.canStartRefill &&
       !(refill && refill.active);
     if (hasEmpty && !refillReady) {
@@ -4418,7 +3946,7 @@ function getStoryCardLiveLineState() {
     // Enemy turns are started by ProcessTurn; avoid double-triggering here.
     gameState.enemyTurnKicked = state.globals.TurnPhase === 2;
     updateIdleFarmEmissions(performance.now() / 1000);
-    heroGemProgressStorage.persistHeroGemProgressIfDirty({ stateGlobals: state.globals, callFunctionWithContext, fnContext });
+    heroProgressStorage.persistHeroProgressIfDirty({ stateGlobals: state.globals, callFunctionWithContext, fnContext });
     drawFrame();
     drawAstralWalletHUD();
     requestAnimationFrame(tick);

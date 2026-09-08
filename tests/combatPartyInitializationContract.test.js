@@ -10,7 +10,7 @@ const systems = path.join(__dirname, '..', 'web-runner', 'systems');
 function member(index, overrides = {}) {
   return {
     name: `Hero ${index}`, instanceName: `hero-${index}`,
-    baseHeroName: `definition-${index}`, heroInstanceKey: `owned-${index}`,
+    baseHeroName: ['Falie','Huun','Runa','Kojonn'][index%4], heroInstanceKey: `owned-${index}`,
     cloneOrdinal: 0, cloneLabel: '', canonicalIndex: index,
     hp: 20 + index, maxHP: 40 + index,
     ATK: 10 + index, DEF: 8, MAG: 12, RES: 9, SPD: 20 - index,
@@ -26,7 +26,9 @@ async function initialize(heroMembers, escortMember = null, withEnemy = false) {
     .replace(/^export /gm, '');
   // Match the existing browser-module test convention without changing module packaging.
   const context = {
-    module: { exports: {} }, resetCombatSessionConditions,
+    module: { exports: {} }, resetCombatSessionConditions, crypto:require('node:crypto').webcrypto,
+    ...require('../web-runner/src/core/heroProgression.mjs'),
+    ...require('../web-runner/src/core/personalFlow.mjs'),
     DEV_TOOL_EMPTY_SLOT: '', DEV_TOOL_RANDOM_ENEMY_SLOT: '__RANDOM__',
     runtimeDebugLogging: { startupDebugLog() {} },
   };
@@ -58,7 +60,7 @@ async function initialize(heroMembers, escortMember = null, withEnemy = false) {
     readEscortPartyConfig: () => escortMember,
     buildConfiguredCombatPartyMembers: () => ({ heroMembers, escortMember }),
     getConfiguredEnemySlots: () => ['TestEnemy'],
-    syncFromGlobals() {},
+    syncFromGlobals() { gameState.partyHP=Array(6).fill(0);gameState.partyMaxHP=Array(6).fill(0);for(const h of state.entities.filter(a=>a.kind==='hero')){gameState.partyHP[h.heroDisplaySlot]=h.hp;gameState.partyMaxHP[h.heroDisplaySlot]=h.maxHP;} },
   });
   init(withEnemy ? [{ name: 'TestEnemy', HP: 25, ATK: 5, DEF: 2 }] : []);
   return { state, gameState, calls };
@@ -78,14 +80,15 @@ for (let count = 1; count <= 6; count += 1) {
       assert.equal(actor.baseHeroName, input.baseHeroName);
       assert.equal(actor.name, input.instanceName);
       assert.equal(actor.heroIndex, input.canonicalIndex);
-      assert.equal(actor.hp, input.hp);
-      assert.equal(actor.maxHP, input.maxHP);
-      for (const stat of ['ATK', 'DEF', 'MAG', 'RES', 'SPD']) assert.equal(actor.stats[stat], input[stat]);
-      assert.equal(gameState.partyHP[i], input.hp);
-      assert.equal(gameState.partyMaxHP[i], input.maxHP);
+      const expected=require('../web-runner/src/core/heroProgression.mjs').newHeroProgress(input.baseHeroName);
+      assert.equal(actor.hp, expected.hp);
+      assert.equal(actor.maxHP, expected.maxHP);
+      for (const stat of ['ATK', 'DEF', 'MAG', 'RES', 'SPD']) assert.equal(actor.stats[stat], expected.stats[stat]);
+      assert.equal(gameState.partyHP[i], expected.hp);
+      assert.equal(gameState.partyMaxHP[i], expected.maxHP);
     });
     assert.equal(state.globals.NextUID, count + 1);
-    assert.equal(state.globals.PartyHP, members.reduce((sum, input) => sum + input.hp, 0));
+    assert.equal(state.globals.PartyHP, state.entities.reduce((sum, actor) => sum + actor.hp, 0));
     assert.equal(JSON.stringify(members), before);
     assert.ok(calls.includes('InitPartyHPFromHeroes'));
   });
@@ -96,19 +99,19 @@ test('sparse formation slots retain their indexes and exclude slots beyond six',
   const { state, gameState } = await initialize(slots);
   assert.deepEqual(Array.from(state.entities, actor => actor.uid), [2, 6]);
   assert.deepEqual(Array.from(state.entities, actor => actor.heroDisplaySlot), [1, 5]);
-  assert.deepEqual(Array.from(gameState.partyHP), [0, 21, 0, 0, 0, 25]);
-  assert.deepEqual(Array.from(gameState.partyMaxHP), [0, 41, 0, 0, 0, 45]);
+  assert.deepEqual(Array.from(gameState.partyHP), [0, 35, 0, 0, 0, 35]);
+  assert.deepEqual(Array.from(gameState.partyMaxHP), [0, 35, 0, 0, 0, 35]);
   assert.equal(state.globals.NextUID, 7);
 });
 
-test('fifth and sixth heroes keep existing HP sanitization', async () => {
+test('canonical progression owns HP for every configured hero', async () => {
   const { state } = await initialize([
     member(0, { hp: 0 }), member(1, { hp: -1 }),
     member(2, { hp: NaN }), member(3, { hp: 999 }),
     member(4, { maxHP: 0, hp: 9 }), member(5, { maxHP: 30, hp: 999 }),
   ]);
   assert.deepEqual(Array.from(state.entities, actor => [actor.hp, actor.maxHP]), [
-    [0, 40], [41, 41], [42, 42], [43, 43], [1, 1], [30, 30],
+    [46, 46], [35, 35], [30, 30], [40, 40], [46, 46], [35, 35],
   ]);
 });
 

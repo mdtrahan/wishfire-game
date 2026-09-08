@@ -65,7 +65,7 @@ test('dev tooling runtime owns modal/config while app keeps restart wiring', () 
   assert.match(src, /Save Staged/);
   assert.match(src, /data-devtool-restart/);
   assert.match(src, /Double Attack/);
-  assert.match(src, /Skill Draw Hero UID/);
+  assert.doesNotMatch(runtimeSrc, /Skill Draw Hero UID|Force Draw|Clear Skills|data-devtool-skill-id|Skill ID Legend/);
   assert.match(src, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(src, /data-devtool-control-grid/);
   assert.match(src, /#orka-dev-tooling-modal button \{/);
@@ -84,32 +84,9 @@ test('dev tooling runtime owns modal/config while app keeps restart wiring', () 
     closeButtonIndex < actionRowIndex && actionRowIndex < settingsGridIndex,
     'the action-button group must sit below Close and above every settings control',
   );
-  assert.match(runtimeSrc, /function collectDevToolSkillLegendRows\(\)/);
-  assert.match(runtimeSrc, /const DEV_TOOL_SKILL_ID_LEGEND = Object\.freeze\(\[/);
-  assert.match(runtimeSrc, /party_magic_fruit/);
-  assert.match(runtimeSrc, /party_crimson_ward/);
-  assert.match(runtimeSrc, /party_split/);
-  assert.match(runtimeSrc, /party_faze/);
-  assert.match(runtimeSrc, /party_destiny/);
-  assert.match(runtimeSrc, /party_chain_strike_i/);
-  assert.match(runtimeSrc, /party_chain_strike_ii/);
-  assert.match(runtimeSrc, /party_grow/);
-  assert.doesNotMatch(runtimeSrc, /callFunctionWithContext\(fnContext, 'GetPartySkillDefinitions'\)/);
-  assert.doesNotMatch(runtimeSrc, /GetHeroSkillDefinitions/);
-  assert.doesNotMatch(runtimeSrc, /ownerFallback/);
-  assert.doesNotMatch(runtimeSrc, /party_second_chance/);
-  assert.doesNotMatch(runtimeSrc, /party_weaken/);
-  assert.doesNotMatch(runtimeSrc, /party_blue_spark/);
-  assert.doesNotMatch(runtimeSrc, /party_hot_streak/);
-  assert.doesNotMatch(runtimeSrc, /party_momentum/);
-  assert.doesNotMatch(runtimeSrc, /party_guard_rail/);
-  assert.doesNotMatch(runtimeSrc, /party_chain_pop/);
-  assert.match(runtimeSrc, /data-devtool-skill-legend/);
   assert.match(runtimeSrc, /data-devtool-turn-order-qa-slot/);
   assert.match(runtimeSrc, /function refreshCombatTurnQaReadout\(\)/);
   assert.match(runtimeSrc, /renderCombatTurnQaReadoutHtml\(\{/);
-  assert.match(runtimeSrc, /Skill ID Legend/);
-  assert.match(runtimeSrc, /data-devtool-button-row[\s\S]*\$\{renderDevToolSkillLegendHtml\(\)\}/);
   assert.match(src, /data-devtool-double-attack-hero/);
   assert.match(src, /devToolingDom\.apply\.addEventListener\('click', \(\) => applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ closeModal: true \}\)\);/);
   assert.match(src, /devToolingDom\.refresh\.addEventListener\('click', \(\) => applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ closeModal: false \}\)\);/);
@@ -333,5 +310,5 @@ test('combat end clears staged dev overrides and autoplay while preserving gold'
   assert.equal(g.DevRewardDrops.length, 0);
   assert.equal(g.DevEnemySlots.join(','), '__RANDOM__,__RANDOM__,__RANDOM__');
   assert.deepEqual(removed, ['orka.dev_tooling_config.v1']);
-  assert.ok(calls.includes('ClearSessionSkillDraught'));
+  assert.ok(!calls.includes('ClearSessionSkillDraught'));
 });
