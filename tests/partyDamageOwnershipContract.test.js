@@ -12,7 +12,7 @@ const rustLibPath = path.join(__dirname, '..', 'rust', 'simulation_core', 'src',
 const wasmPath = path.join(__dirname, '..', 'web-runner', 'assets', 'simulation_core.wasm');
 const rulesPath = path.join(__dirname, '..', 'web-runner', 'src', 'core', 'partyDamageRules.mjs');
 
-function loadFunctionBank(modulePath) {
+function loadFunctionBank(modulePath, overrides = {}) {
   const original = fs.readFileSync(modulePath, 'utf8');
   const transformed = `${original
     .replace(/^import[\s\S]*?from\s+['"][^'"]+['"];\n/gm, '')
@@ -54,6 +54,7 @@ module.exports = {
       partyHp: 40,
     }),
   };
+  Object.assign(context, overrides);
   vm.createContext(context);
   new vm.Script(transformed, { filename: modulePath }).runInContext(context);
   return context.module.exports;
@@ -104,7 +105,7 @@ test('static simulation core wasm matches party damage accounting fixtures', asy
   assert.equal(exports.party_damage_after_shield_shadow(12, 5), 7);
   assert.equal(exports.party_damage_shield_after_shadow(12, 5), 0);
   assert.equal(exports.party_damage_hero_after_hp_shadow(9, 7), 2);
-  assert.equal(exports.party_damage_party_hp_after_shadow(4, 20, 16, 12, 8, 7), 28);
+  assert.equal(exports.party_damage_party_hp_after_shadow(4, 20, 16, 12, 8, 0, 0, 7), 28);
 });
 
 test('simulation core module exposes a Rust-owned party damage marker', () => {
@@ -142,7 +143,7 @@ test('party damage packet follows Rust owner when Rust and JS disagree', async (
 
   assert.equal(packet.owner, 'rust');
   assert.equal(packet.damageAfterShield, 4);
-  assert.deepEqual(packet.heroHp, [16, 12, 8, 4]);
+  assert.deepEqual(packet.heroHp, [16, 12, 8, 4, 0, 0]);
   assert.equal(packet.simulationCoreRequest.action.type, 'combat.partyDamage');
   assert.equal(packet.simulationCoreRequest.context.ruleFamily, 'partyDamage');
   assert.equal(packet.simulationCoreResponse.result, 'party_damage');
@@ -168,5 +169,35 @@ test('ApplyPartyDamage follows Rust owner when Rust and JS disagree', () => {
     assert.equal(ctx.state.globals.LastPartyDamageOwner.damageAfterShield, 4);
     assert.equal(ctx.state.globals.LastPartyDamagePacket.owner, 'rust');
     assert.equal(ctx.state.globals.LastPartyDamagePacket.actionType, 'combat.partyDamage');
+  }
+});
+
+test('party damage preserves loaded group size through the real JS/WASM owner', async () => {
+  const source = fs.readFileSync(shadowModulePath, 'utf8')
+    .replace(/^import[\s\S]*?from\s+['"][^'"]+['"];\n/gm, '')
+    .replace(/\bexport\s+/g, '');
+  const bridge = { console, document: undefined };
+  vm.createContext(bridge);
+  vm.runInContext(source, bridge);
+  const { instance } = await WebAssembly.instantiate(fs.readFileSync(wasmPath), {});
+  const rules = await import(pathToFileURL(rulesPath));
+  for (const modulePath of [runtimeFunctionBankPath, scriptsFunctionBankPath]) {
+    const mod = loadFunctionBank(modulePath, {
+      createPartyDamageSimulationPacket: rules.createPartyDamageSimulationPacket,
+      __ORKA_PARTY_DAMAGE_OWNER__: payload => bridge.createSimulationCorePartyDamageResolution(payload, { exportsOverride: instance.exports }),
+    });
+    for (let count = 1; count <= 6; count += 1) {
+      const ctx = makeContext();
+      ctx.state.entities = Array.from({ length: count }, (_, i) => ({
+        uid: 100 + i, kind: 'hero', heroIndex: i % 4, heroDisplaySlot: i, hp: 10 + i, maxHP: 20,
+      }));
+      mod.ApplyPartyDamage(ctx, 8);
+      const expected = Array.from({ length: count }, (_, i) => 7 + i);
+      assert.deepEqual(ctx.state.entities.map(hero => hero.hp), expected);
+      assert.equal(ctx.state.globals.PartyHP, expected.reduce((sum, hp) => sum + hp, 0));
+      assert.equal(ctx.state.globals.PartyTempHPShield, 0);
+      assert.equal(ctx.state.globals.LastPartyDamageOwner.owner, 'rust');
+      assert.equal(ctx.state.entities.length, count);
+    }
   }
 });

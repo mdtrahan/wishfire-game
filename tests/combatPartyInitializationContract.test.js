@@ -38,6 +38,11 @@ async function initialize(heroMembers, escortMember = null, withEnemy = false) {
     state, gameState, fnContext: {},
     callFunctionWithContext(_ctx, name, ...args) {
       calls.push(name);
+      if (name === 'InitPartyHPFromHeroes' || name === 'UpdateHeroHPUI') {
+        const heroes = state.entities.filter(actor => actor.kind === 'hero');
+        state.globals.PartyHP = heroes.reduce((total, hero) => total + hero.hp, 0);
+        state.globals.PartyMaxHP = heroes.reduce((total, hero) => total + hero.maxHP, 0);
+      }
       if (name === 'SpawnEnemy') state.entities.push({
         uid: state.globals.NextUID++, kind: 'enemy', name: args[0].name,
       });
@@ -80,6 +85,7 @@ for (let count = 1; count <= 6; count += 1) {
       assert.equal(gameState.partyMaxHP[i], input.maxHP);
     });
     assert.equal(state.globals.NextUID, count + 1);
+    assert.equal(state.globals.PartyHP, members.reduce((sum, input) => sum + input.hp, 0));
     assert.equal(JSON.stringify(members), before);
     assert.ok(calls.includes('InitPartyHPFromHeroes'));
   });

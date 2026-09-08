@@ -74,3 +74,13 @@ codebase-memory searched party formation symbols in Users-Mace-Codex-Orka. jcode
 
 ## Group-size clarification
 The current four heroes are sufficient. Any loaded group of 1–6 members is valid, including scripted solo or small-party encounters. Six is capacity. Empty positions create no actors or missing-member requirement. AF denominator and milestone count use the loaded group; KO preserves its milestone/slot within the encounter. Additional heroes and story scenarios are future content.
+
+## Third implementation receipt: ORKA-49k.3
+- Base checkpoint: `b852cf3`. Branch `codex/ORKA-49k.3-hero-hp-authority`; worktree `/Users/Mace/Codex-Orka/.worktrees/wt-ORKA-49k.3-hero-hp-authority`.
+- Preflight: READY 93% for damage/projection scope. Healing allocation question remains pending; no choice inferred from elapsed time.
+- Retrieval: jcodemunch found syncPartyHpTotalsFromHeroes and app health synchronization; current worktree reads traced all getHeroes callers, health-array writes, initializer, Destiny heal, party-damage core, Rust ABI and bridge. Indexed root predates stacked changes, so focused current source reads verified ownership. Full functionBank reads avoided.
+- Implemented: separate deployed roster from living actors; rebuild derived arrays by stable display slot and totals from actor HP; preserve KO slots and clear previous-group values. Single-target damage updates only its recipient and recomputes totals. KO recipients consume no shield and receive no Destiny revival. Initializer preserves configured HP. Party-damage owner and WASM handle actual groups through six while preserving shared barrier semantics.
+- Validation: 54 focused Node checks PASS; Rust 29 tests PASS; WASM rebuilt; git diff --check PASS. New sparse/KO projection and repeated-KO-hit cases failed before implementation. Real JS/WASM bulk-damage test covers every group size 1–6. Existing Magic Fruit value assertions normalize VM arrays while retaining exact expected HP and heal counts.
+- Remaining HP work: replace ApplyPartyHeal/SyncPartyHPToHeroes redistribution after the owner selects allocation. App legacy restorePartyToFullHP still restores presentation totals, while quest Continue correctly restores actors through questCombatSession; migrate the legacy restoration wrapper during command/lifecycle integration. Normal MP, special income, group/card prices, command UI and save conversion remain separate work.
+
+- Full suite after HP changes: 847/850 PASS; the same three inherited failures as parent b852cf3 (844/847). Output: `/tmp/orka-49k-hp-suite.log`. Final removal of an unreachable empty-party max-HP branch passed focused Magic Fruit and mirror checks.

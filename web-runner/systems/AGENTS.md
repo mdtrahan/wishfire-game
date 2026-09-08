@@ -85,3 +85,5 @@
 - Combat entry uses a 250ms eased blackout, 500ms black hold, then 1000ms eased reveal. Change layout under black; block pointer input throughout.
 
 - Enemy-target owner wiring serializes six hero records, preserving KO slots for Rust to filter. Pooled HP is diagnostic for combat outcome; fresh-encounter and Continue behavior remain unchanged.
+
+- Combat initialization derives health totals from the initialized actors; it must not overwrite the total with full HP while actors remain injured. Party-damage owner wiring serializes six HP slots with actual member count.

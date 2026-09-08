@@ -15,9 +15,11 @@ module.exports = {
   Enemy_MAG_Single,
   CalculateDamage,
   ApplyDamageToTarget,
+  UpdateHeroHPUI,
+  applyPartyDestinyActorHeal,
 };`;
   const context = {
-    console,
+    console: { log() {}, warn: console.warn, error: console.error },
     Math,
     module: { exports: {} },
     exports: {},
@@ -154,4 +156,44 @@ test('enemy magic single-target damage accounting uses applied post-clamp damage
   const repoRoot = path.join(__dirname, '..');
   runSingleTargetAccountingPasses(path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js'), 'magic');
   runSingleTargetAccountingPasses(path.join(repoRoot, 'Scripts', 'functionBank.js'), 'magic');
+});
+
+test('hero HP projections preserve KO and sparse slots and clear the previous group', () => {
+  for (const file of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
+    const mod = loadModule(path.join(__dirname, '..', file));
+    const ctx = makeCombatContext({ heroHp: 5 });
+    const hero = ctx.state.entities[0];
+    hero.heroDisplaySlot = 3;
+    hero.maxHP = 20;
+    ctx.state.entities.push({ ...hero, uid: 101, heroDisplaySlot: 1, hp: 0, maxHP: 30 });
+    ctx.state.globals.PartyHPByIndex = [99, 99, 99, 99, 99, 99];
+    mod.UpdateHeroHPUI(ctx);
+    assert.deepEqual(Array.from(ctx.state.globals.PartyHPByIndex), [0, 0, 0, 5], file);
+    assert.deepEqual(Array.from(ctx.state.globals.PartyMaxHPByIndex), [0, 30, 0, 20], file);
+    assert.equal(ctx.state.globals.PartyHP, 5);
+    assert.equal(ctx.state.globals.PartyMaxHP, 50);
+    ctx.state.entities.push({ ...hero, uid: 102, heroDisplaySlot: 5, hp: 7, maxHP: 40 });
+    mod.ApplyDamageToTarget(ctx, 100, 3);
+    assert.deepEqual(ctx.state.entities.filter(actor => actor.kind === 'hero').map(actor => actor.hp), [2, 0, 7]);
+    assert.deepEqual(Array.from(ctx.state.globals.PartyHPByIndex), [0, 0, 0, 2, 0, 7]);
+    assert.equal(ctx.state.globals.PartyHP, 9);
+    ctx.state.entities = [];
+    mod.UpdateHeroHPUI(ctx);
+    assert.equal(ctx.state.globals.PartyHP, 0);
+    assert.equal(ctx.state.globals.PartyMaxHP, 0);
+    assert.equal(ctx.state.globals.PartyHPByIndex.length, 0);
+  }
+});
+
+test('KO heroes consume no shield on repeated hits and Destiny does not revive them', () => {
+  for (const file of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
+    const mod = loadModule(path.join(__dirname, '..', file));
+    const ctx = makeCombatContext({ heroHp: 0 });
+    ctx.state.entities[0].maxHP = 40;
+    ctx.state.globals.PartyTempHPShield = 12;
+    assert.equal(mod.ApplyDamageToTarget(ctx, 100, 10), 0, file);
+    assert.equal(ctx.state.globals.PartyTempHPShield, 12);
+    assert.equal(mod.applyPartyDestinyActorHeal(ctx, 100, 8).appliedHeal, 0);
+    assert.equal(ctx.state.entities[0].hp, 0);
+  }
 });

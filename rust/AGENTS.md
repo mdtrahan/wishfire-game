@@ -32,3 +32,5 @@
 - Energy is a macro balance: quest entry spends it, combat actions do not. Purple recovery remains active. Combat defeat depends on living heroes; Continue preserves energy.
 
 - Combat outcome uses living hero count and turn eligibility uses individual actor HP. Enemy-target shadow exports accept six fixed hero records; update every JS caller and regenerate WASM with ABI changes.
+
+- Party-damage total-HP export accepts six hero HP values plus actual member count and damage. The shared barrier still absorbs once per party-wide damage event.

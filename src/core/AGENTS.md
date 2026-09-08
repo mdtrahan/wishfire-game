@@ -31,3 +31,5 @@
 - None.
 
 - Normal-turn eligibility uses the individual actor HP; pooled HP and pending-group markers never grant a KO actor a new action. Enemy-target owner packets support six formation slots.
+
+- Party-damage packets carry six HP entries and the actual loaded member count. Empty capacity contributes no damage recipient or health.

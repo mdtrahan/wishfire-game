@@ -2419,12 +2419,14 @@ pub fn party_damage_party_hp_after(
     hero1_hp: f64,
     hero2_hp: f64,
     hero3_hp: f64,
+    hero4_hp: f64,
+    hero5_hp: f64,
     damage_after_shield: f64,
 ) -> f64 {
-    let values = [hero0_hp, hero1_hp, hero2_hp, hero3_hp];
+    let values = [hero0_hp, hero1_hp, hero2_hp, hero3_hp, hero4_hp, hero5_hp];
     values
         .iter()
-        .take(combatant_count(hero_count))
+        .take(number_or_zero(hero_count).clamp(0.0, 6.0) as usize)
         .map(|hp| party_damage_hero_after_hp(*hp, damage_after_shield))
         .sum()
 }
@@ -2951,6 +2953,8 @@ pub extern "C" fn party_damage_party_hp_after_shadow(
     hero1_hp: f64,
     hero2_hp: f64,
     hero3_hp: f64,
+    hero4_hp: f64,
+    hero5_hp: f64,
     damage_after_shield: f64,
 ) -> f64 {
     party_damage_party_hp_after(
@@ -2959,6 +2963,8 @@ pub extern "C" fn party_damage_party_hp_after_shadow(
         hero1_hp,
         hero2_hp,
         hero3_hp,
+        hero4_hp,
+        hero5_hp,
         damage_after_shield,
     )
 }
@@ -3388,7 +3394,7 @@ mod single_hit_resolution_tests {
                 );
             }
             assert_eq!(
-                party_damage_party_hp_after(4.0, hp[0], hp[1], hp[2], hp[3], after_shield),
+                party_damage_party_hp_after(4.0, hp[0], hp[1], hp[2], hp[3], 0.0, 0.0, after_shield),
                 party_hp
             );
         }

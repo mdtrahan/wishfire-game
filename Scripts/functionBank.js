@@ -887,55 +887,53 @@ function updateGrowVisualForHero(g, heroUID, tierConfig, now) {
   return seeded;
 }
 
-function getHeroPartyIndex(hero) {
-  const heroIndex = Number(hero?.heroIndex);
-  return Number.isInteger(heroIndex) && heroIndex >= 0 ? heroIndex : -1;
+function getHeroPartyIndex(hero, fallback = -1) {
+  const index = Number(hero?.heroDisplaySlot ?? hero?.displaySlot ?? hero?.heroIndex ?? fallback);
+  return Number.isInteger(index) && index >= 0 && index < 6 ? index : -1;
 }
 
 function syncPartyHpTotalsFromHeroes(ctx) {
   const g = getGlobals(ctx);
-  const heroes = getHeroes(ctx);
-  if (!Array.isArray(g.PartyHPByIndex)) g.PartyHPByIndex = [];
-  if (!Array.isArray(g.PartyMaxHPByIndex)) g.PartyMaxHPByIndex = [];
-  for (const hero of heroes) {
-    const index = getHeroPartyIndex(hero);
-    if (index < 0) continue;
+  const heroes = getDeployedHeroes(ctx);
+  g.PartyHPByIndex = [];
+  g.PartyMaxHPByIndex = [];
+  heroes.forEach((hero, order) => {
+    const index = getHeroPartyIndex(hero, order);
+    if (index < 0) return;
     g.PartyHPByIndex[index] = Math.max(0, Number(hero.hp || 0));
     g.PartyMaxHPByIndex[index] = Math.max(0, Number(hero.maxHP || 0));
-  }
-  g.PartyHP = g.PartyHPByIndex.reduce((sum, value) => sum + Math.max(0, Number(value || 0)), 0);
-  g.PartyMaxHP = g.PartyMaxHPByIndex.reduce((sum, value) => sum + Math.max(0, Number(value || 0)), 0);
+  });
+  g.PartyHPByIndex = Array.from(g.PartyHPByIndex, value => value || 0);
+  g.PartyMaxHPByIndex = Array.from(g.PartyMaxHPByIndex, value => value || 0);
+  g.PartyHP = sum(heroes.map(hero => Math.max(0, Number(hero.hp || 0))));
+  g.PartyMaxHP = sum(heroes.map(hero => Math.max(0, Number(hero.maxHP || 0))));
 }
 
 function applyPartyMaxHPBonus(ctx, totalBonus) {
   const g = getGlobals(ctx);
   const bonus = Math.max(0, Math.floor(Number(totalBonus || 0)));
   if (bonus <= 0) return 0;
-  const heroes = getHeroes(ctx);
+  const heroes = getDeployedHeroes(ctx);
+  if (!heroes.length) return 0;
   const livingHeroes = heroes.filter(hero => hero && Number(hero.hp ?? 0) > 0);
   const targets = livingHeroes.length > 0 ? livingHeroes : heroes;
   if (!Array.isArray(g.PartyHPByIndex)) g.PartyHPByIndex = [];
   if (!Array.isArray(g.PartyMaxHPByIndex)) g.PartyMaxHPByIndex = [];
-  if (!targets.length) {
-    g.PartyMaxHP = Math.max(0, Number(g.PartyMaxHP || 0)) + bonus;
-    g.PartyHP = Math.min(g.PartyMaxHP, Math.max(0, Number(g.PartyHP || 0)));
-  } else {
-    const baseBonus = Math.floor(bonus / targets.length);
-    let remainder = bonus - (baseBonus * targets.length);
-    for (const hero of targets) {
-      const heroBonus = baseBonus + (remainder > 0 ? 1 : 0);
-      if (remainder > 0) remainder -= 1;
-      const index = getHeroPartyIndex(hero);
-      const currentMaxHP = Math.max(0, Number(hero.maxHP || (index >= 0 ? g.PartyMaxHPByIndex[index] : 0) || 0));
-      hero.maxHP = currentMaxHP + heroBonus;
-      hero.hp = Math.min(hero.maxHP, Math.max(0, Number(hero.hp || 0)));
-      if (index >= 0) {
-        g.PartyMaxHPByIndex[index] = hero.maxHP;
-        g.PartyHPByIndex[index] = hero.hp;
-      }
+  const baseBonus = Math.floor(bonus / targets.length);
+  let remainder = bonus - (baseBonus * targets.length);
+  for (const hero of targets) {
+    const heroBonus = baseBonus + (remainder > 0 ? 1 : 0);
+    if (remainder > 0) remainder -= 1;
+    const index = getHeroPartyIndex(hero);
+    const currentMaxHP = Math.max(0, Number(hero.maxHP || (index >= 0 ? g.PartyMaxHPByIndex[index] : 0) || 0));
+    hero.maxHP = currentMaxHP + heroBonus;
+    hero.hp = Math.min(hero.maxHP, Math.max(0, Number(hero.hp || 0)));
+    if (index >= 0) {
+      g.PartyMaxHPByIndex[index] = hero.maxHP;
+      g.PartyHPByIndex[index] = hero.hp;
     }
-    syncPartyHpTotalsFromHeroes(ctx);
   }
+  syncPartyHpTotalsFromHeroes(ctx);
   try { ctx.callFunction('UpdateHeroHPUI'); } catch (_) {}
   try { ctx.callFunction('UpdatePartyHPText'); } catch (_) {}
   try { ctx.callFunction('UpdatePartyHPBar'); } catch (_) {}
@@ -1681,7 +1679,7 @@ function activateGrowSkill(ctx, actorUID, sessionSkill = null) {
     Math.floor(Number(sessionSkill?.selectionCount || 0)),
   );
 
-  const heroes = getHeroes(ctx);
+  const heroes = getDeployedHeroes(ctx);
   const events = [];
   for (const hero of heroes) {
     const existing = getGrowStateForActor(ctx, hero.uid);
@@ -2822,21 +2820,15 @@ export function RollPartySkillProc(ctx, skillRef, fallbackChancePct = 0, eventNa
 }
 
 function applyPartyDestinyActorHeal(ctx, actorUID, healAmount) {
-  const g = getGlobals(ctx);
   const actor = GetActorByUID(ctx, actorUID);
   if (!actor || actor.kind !== 'hero') return { before: 0, after: 0, appliedHeal: 0, reason: 'source_not_hero' };
   const before = Math.max(0, Number(actor.hp || 0));
+  if (before <= 0) return { before, after: before, appliedHeal: 0, reason: 'source_ko' };
   const maxHP = Math.max(before, Number(actor.maxHP || actor.MaxHP || 0));
   const desired = Math.min(maxHP, before + Math.max(0, Math.floor(Number(healAmount || 0))));
   if (desired <= before) return { before, after: before, appliedHeal: 0 };
   actor.hp = desired;
-  const idx = Number(actor.heroIndex ?? -1);
-  if (Array.isArray(g.PartyHPByIndex) && idx >= 0) {
-    const beforeSlot = Math.max(0, Number(g.PartyHPByIndex[idx] ?? before));
-    const maxSlot = Array.isArray(g.PartyMaxHPByIndex) ? Number(g.PartyMaxHPByIndex[idx] ?? maxHP) : maxHP;
-    g.PartyHPByIndex[idx] = Math.min(Math.max(beforeSlot, maxSlot), beforeSlot + (desired - before));
-    g.PartyHP = sum(g.PartyHPByIndex || []);
-  }
+  syncPartyHpTotalsFromHeroes(ctx);
   if (ctx && typeof ctx.callFunction === 'function') {
     try { ctx.callFunction('UpdateHeroHPUI'); } catch (_) {}
     try { ctx.callFunction('UpdatePartyHPText'); } catch (_) {}
@@ -3987,14 +3979,12 @@ function clamp(min, value, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function getDeployedHeroes(ctx) {
+  return getEntities(ctx).filter(entity => entity && entity.kind === 'hero');
+}
+
 function getHeroes(ctx) {
-  const g = getGlobals(ctx);
-  const partyAlive = (g.PartyHP ?? 0) > 0;
-  return getEntities(ctx).filter(e => {
-    if (!e || e.kind !== 'hero') return false;
-    if (partyAlive) return true;
-    return (e.hp ?? 0) > 0;
-  });
+  return getDeployedHeroes(ctx).filter(hero => Number(hero.hp ?? 0) > 0);
 }
 
 function getEnemies(ctx) {
@@ -4062,7 +4052,7 @@ function getActorNameByUID(ctx, uid) {
     if (curActor && curActor.name) return curActor.name;
   }
   if (typeof uid === 'number') {
-    const hero = getHeroes(ctx).find(h => h.heroIndex === uid);
+    const hero = getDeployedHeroes(ctx).find(h => h.heroIndex === uid);
     if (hero && hero.name) return hero.name;
   }
   return '?';
@@ -6522,7 +6512,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   const sourceUID = Number(opts.sourceUID || opts.actorUID || 0);
   g.LastDamageSourceUID = sourceUID > 0 ? sourceUID : Number(GetCurrentTurn(ctx) || 0);
   const t = GetActorByUID(ctx, uid);
-  if (!t) return 0;
+  if (!t || Number(t.hp ?? 0) <= 0) return 0;
   const targetTraceHit = findMatchingPendingHeroHit(ctx, uid, dmg, (hit) => Number(hit.targetTraceSequence || 0) > 0);
   const suppressPartySkillHitHooks = shouldSuppressPartySkillHitHooks(ctx, uid, dmg, opts);
   const suppressHitFlash = shouldSuppressHitFlash(ctx, uid, dmg, opts);
@@ -6580,15 +6570,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
     })}`);
   }
   maybeShadowSingleHitResolution(ctx, t, incomingDamage, beforeHP, appliedDamage, afterHP, shieldAbsorbed);
-  if (t.kind === 'hero' && appliedDamage > 0) {
-    const idx = Number(t.heroIndex ?? 0);
-    if (Array.isArray(g.PartyHPByIndex)) {
-      g.PartyHPByIndex[idx] = Math.max(0, Number(g.PartyHPByIndex[idx] ?? beforeHP) - appliedDamage);
-      g.PartyHP = sum(g.PartyHPByIndex || []);
-    } else {
-      g.PartyHP = Math.max(0, Number(g.PartyHP ?? beforeHP) - appliedDamage);
-    }
-  }
+  if (t.kind === 'hero') syncPartyHpTotalsFromHeroes(ctx);
   runTraitHooks(ctx, 'damage_receive', {
     targetUID: Number(uid || 0),
     targetKind: String(t.kind || ''),
@@ -6700,21 +6682,11 @@ export function UpdateEnemyHPUI(ctx) {
 }
 
 export function UpdateHeroHPUI(ctx) {
-  const g = getGlobals(ctx);
-  const heroes = getHeroes(ctx);
-  g.PartyHPByIndex = heroes.map(h => h.hp ?? 0);
-  g.PartyMaxHPByIndex = heroes.map(h => h.maxHP ?? 0);
-  g.PartyHP = sum(g.PartyHPByIndex || []);
-  g.PartyMaxHP = sum(g.PartyMaxHPByIndex || []);
+  syncPartyHpTotalsFromHeroes(ctx);
 }
 
 export function InitPartyHPFromHeroes(ctx) {
-  const g = getGlobals(ctx);
-  const heroes = getHeroes(ctx);
-  g.PartyHP = sum(heroes.map(h => h.hp ?? 0));
-  g.PartyMaxHP = sum(heroes.map(h => h.maxHP ?? 0));
-  g.PartyHPByIndex = heroes.map(h => h.hp ?? 0);
-  g.PartyMaxHPByIndex = heroes.map(h => h.maxHP ?? 0);
+  syncPartyHpTotalsFromHeroes(ctx);
 }
 
 export function SyncPartyHPToHeroes(ctx) {
@@ -7367,9 +7339,9 @@ export function ApplyDamage(ctx, targetUID, dmg) {
 
 function collectPartyDamageOwnerSnapshot(ctx, dmg) {
   const g = getGlobals(ctx);
-  const heroes = getHeroes(ctx).slice(0, 4);
+  const heroes = getDeployedHeroes(ctx).slice(0, 6);
   const shieldResult = computePartyTempHPShieldAbsorption(g, dmg);
-  const heroHp = [0, 1, 2, 3].map((index) => Number(heroes[index]?.hp || 0));
+  const heroHp = [0, 1, 2, 3, 4, 5].map((index) => Number(heroes[index]?.hp || 0));
   const jsHeroHp = heroHp.map((hp, index) =>
     index < heroes.length ? Math.max(0, hp - shieldResult.damageAfterShield) : 0
   );
@@ -7399,9 +7371,9 @@ function maybeResolvePartyDamageOwner(ctx, snapshot) {
       ...snapshot,
       ownerHook: partyDamageOwnerHook,
     });
-    const heroCount = Math.max(0, Math.min(4, Math.floor(Number(snapshot.heroCount || 0))));
+    const heroCount = Math.max(0, Math.min(6, Math.floor(Number(snapshot.heroCount || 0))));
     const heroHp = Array.isArray(result?.heroHp)
-      ? [0, 1, 2, 3].map((index) => Number(result.heroHp[index] || 0))
+      ? [0, 1, 2, 3, 4, 5].map((index) => Number(result.heroHp[index] || 0))
       : [];
     if (heroHp.slice(0, heroCount).some((hp) => !Number.isFinite(hp))) return null;
     const owner = {
@@ -7435,6 +7407,7 @@ function maybeResolvePartyDamageOwner(ctx, snapshot) {
 }
 
 export function ApplyPartyDamage(ctx, dmg) {
+  if (!getHeroes(ctx).length) return 0;
   const g = getGlobals(ctx);
   const snapshot = collectPartyDamageOwnerSnapshot(ctx, dmg);
   const ownerResult = maybeResolvePartyDamageOwner(ctx, snapshot);
@@ -7446,7 +7419,7 @@ export function ApplyPartyDamage(ctx, dmg) {
   if (shieldResult.absorbed > 0 && Number(g.PartyTempHPShield || 0) <= 0) {
     startPartyWardBarrierFadeOut(ctx);
   }
-  const heroes = getHeroes(ctx);
+  const heroes = getDeployedHeroes(ctx).slice(0, 6);
   const nextHeroHp = ownerResult ? ownerResult.heroHp : snapshot.jsHeroHp;
   for (let index = 0; index < heroes.length; index += 1) {
     const h = heroes[index];

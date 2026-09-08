@@ -32,7 +32,7 @@ test('runtime initiative rosters use individual HP across six slots', () => {
       GetEffectiveStat: (_ctx, actor) => actor.stats.SPD,
     };
     vm.createContext(context);
-    vm.runInContext(['getHeroes', 'getEnemies', 'getInitiativeRoster', 'getDynamicInitiativeRoster']
+    vm.runInContext(['getDeployedHeroes', 'getHeroes', 'getEnemies', 'getInitiativeRoster', 'getDynamicInitiativeRoster']
       .map(name => extractFunctionSource(src, name)).join('\n'), context);
     for (let size = 1; size <= 6; size += 1) {
       const heroes = Array.from({ length: size }, (_, i) => ({

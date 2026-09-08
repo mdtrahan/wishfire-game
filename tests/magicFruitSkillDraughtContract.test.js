@@ -165,8 +165,8 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
     assert.equal(ctx.state.globals.PartyMaxHP, 116);
     assert.equal(ctx.state.entities[0].hp, 42);
     assert.equal(ctx.state.entities[0].maxHP, 116);
-    assert.deepEqual(ctx.state.globals.PartyHPByIndex, [42]);
-    assert.deepEqual(ctx.state.globals.PartyMaxHPByIndex, [116]);
+    assert.deepEqual(Array.from(ctx.state.globals.PartyHPByIndex), [42]);
+    assert.deepEqual(Array.from(ctx.state.globals.PartyMaxHPByIndex), [116]);
     assert.deepEqual(
       calls.filter(call => call.name === 'ApplyPartyHeal').map(call => call.args),
       [[32]]
@@ -199,8 +199,8 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
     assert.equal(ctx.state.globals.PartyMaxHP, 133);
     assert.equal(ctx.state.entities[0].hp, 79);
     assert.equal(ctx.state.entities[0].maxHP, 133);
-    assert.deepEqual(ctx.state.globals.PartyHPByIndex, [79]);
-    assert.deepEqual(ctx.state.globals.PartyMaxHPByIndex, [133]);
+    assert.deepEqual(Array.from(ctx.state.globals.PartyHPByIndex), [79]);
+    assert.deepEqual(Array.from(ctx.state.globals.PartyMaxHPByIndex), [133]);
     assert.deepEqual(
       calls.filter(call => call.name === 'ApplyPartyHeal').map(call => call.args),
       [[32], [37]]

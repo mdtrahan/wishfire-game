@@ -31,3 +31,5 @@
 - Energy is a macro balance: quest entry spends it, combat actions do not. Purple recovery remains active. Combat defeat depends on living heroes; Continue preserves energy.
 
 - Mirror individual-HP initiative and turn eligibility; KO actors receive no new turn-start hooks. Pooled HP must not determine actor survival.
+
+- Mirror deployed-versus-living hero enumeration and actor-owned HP totals by heroDisplaySlot. Damage cannot consume a barrier on a KO target; ordinary healing procs cannot revive.

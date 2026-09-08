@@ -35,3 +35,5 @@
 - Combat outcome ignores macro energy. Only living heroes determine defeat; energy is spent at quest entry and purple gems may restore it.
 
 - Combat defeat uses the living deployed hero count. Pooled HP is diagnostic. Individual actor HP gates new turns, including when old pending-group markers remain; enemy-target packets support six slots.
+
+- Party-damage packets support up to six actual members; match the root core and shipped Rust ABI, including zero-filled unused entries.

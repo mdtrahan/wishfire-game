@@ -529,3 +529,6 @@ Separate deployed party capacity from the number of authored hero definitions. V
 
 ## 2026-09-07 — ORKA-49k.2
 AF is spendable currency: each standalone special consumes one turn and 1/N of capacity, retaining the exact balance. Stored sequences are future scope. Individual-HP initiative/outcome and six-slot Rust targeting now have focused proof; pooled healing/bulk damage are still migration work.
+
+## 2026-09-07 — ORKA-49k.3
+Damage must update actor HP and derive totals; canonical heroIndex is identity, heroDisplaySlot owns health-card position. Keep KO actors in deployed roster projections and exclude them from living action/target lists. Ordinary Destiny healing cannot revive. Party-wide healing allocation remains an explicit pending owner question.

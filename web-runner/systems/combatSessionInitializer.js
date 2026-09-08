@@ -476,10 +476,8 @@ export function createCombatSessionInitializer({
       state.globals.InitialSpawn = 0;
     }
 
-    if (state.globals.PartyMaxHP > 0) {
-      state.globals.PartyHP = state.globals.PartyMaxHP;
-      syncFromGlobals();
-    }
+    callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
+    syncFromGlobals();
     callFunctionWithContext(fnContext, 'UpdateEnemyHPUI');
     if (state.globals.EnemyHPByIndex) {
       gameState.enemyHP = [...state.globals.EnemyHPByIndex];

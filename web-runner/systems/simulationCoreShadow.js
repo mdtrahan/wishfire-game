@@ -2866,11 +2866,11 @@ export function createSimulationCorePartyDamageResolution({
     incomingDamage: Number(incomingDamage || 0),
     shield: Number(shield || 0),
     heroCount: Number(heroCount || 0),
-    heroHp: [0, 1, 2, 3].map((index) => Number(heroes[index] || 0)),
+    heroHp: [0, 1, 2, 3, 4, 5].map((index) => Number(heroes[index] || 0)),
     jsAbsorbed: Number(jsAbsorbed || 0),
     jsDamageAfterShield: Number(jsDamageAfterShield || 0),
     jsShieldAfter: Number(jsShieldAfter || 0),
-    jsHeroHp: [0, 1, 2, 3].map((index) => Number(jsHeroes[index] || 0)),
+    jsHeroHp: [0, 1, 2, 3, 4, 5].map((index) => Number(jsHeroes[index] || 0)),
     jsPartyHp: Number(jsPartyHp || 0),
   };
   const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
@@ -2918,6 +2918,8 @@ export function createSimulationCorePartyDamageResolution({
     normalized.heroHp[1],
     normalized.heroHp[2],
     normalized.heroHp[3],
+    normalized.heroHp[4],
+    normalized.heroHp[5],
     rustDamageAfterShield,
   ));
   shadow.partyDamageOwnerChecks = Number(shadow.partyDamageOwnerChecks || 0) + 1;
