@@ -1135,11 +1135,11 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: 'party_guard_rail', owner: 'Party', slot: 3, title: 'Guard Rail', cardText: 'Reduce the impact of a dangerous hit.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On heavy hit taken', payloadImplemented: false },
   { id: 'party_blue_spark', owner: 'Party', slot: 4, title: 'Blue Spark', cardText: 'Turn blue water gains into a bonus for the whole party.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On blue water match', payloadImplemented: false },
   { id: 'party_weaken', owner: 'Party', slot: 5, title: 'Weaken', cardText: 'Lower enemy defense so your hits land harder.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On special hit', payloadImplemented: false },
-  { id: 'party_destiny', owner: 'Party', slot: 6, title: 'Destiny', cardText: 'Attacks have a chance to restore 2.5% health on impact.', risk: 'MED', growth: [32, 32, 32, 32], procPattern: 'On hit', payloadImplemented: true, drawClass: 'one_off', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'reject_after_selected' }, trigger: { event: 'hit_enemy', eligibility: 'active_party_skill_positive_hero_damage' }, effect: { kind: 'proc_heal', procChancePct: 32, healPctPartyMax: 2.5 }, qa: { proof: 'PartyDestinyAttempts/Procs/Heals/Misses and SkillDraughtTrace' } },
+  { id: 'party_destiny', owner: 'Party', slot: 6, title: 'Destiny', cardText: 'Attacks have a chance to restore 2.5% health on impact.', risk: 'MED', growth: [32, 32, 32, 32], procPattern: 'On hit', payloadImplemented: true, drawClass: 'one_off', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'reject_after_selected' }, trigger: { event: 'hit_enemy', eligibility: 'active_party_skill_positive_hero_damage' }, effect: { kind: 'proc_heal', procChancePct: 32, healPctActorMax: 2.5 }, qa: { proof: 'PartyDestinyAttempts/Procs/Heals/Misses and SkillDraughtTrace' } },
   { id: 'party_hot_streak', owner: 'Party', slot: 7, title: 'Hot Streak', cardText: 'Build up a better payoff with consecutive matches.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On consecutive matches', payloadImplemented: false },
   { id: 'party_last_push', owner: 'Party', slot: 8, title: 'Last Push', cardText: 'Gain a brief comeback burst when the party nears defeat.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On low party HP', payloadImplemented: false },
   { id: 'party_chain_pop', owner: 'Party', slot: 9, title: 'Chain Pop', cardText: 'Trigger an extra board effect from a match.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On match', payloadImplemented: false },
-  { id: 'party_magic_fruit', owner: 'Party', slot: 10, title: 'Magic Fruit', cardText: 'Heals party for 32% and raises max HP by 15% of current max HP', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'party_heal_max_hp', healPctPartyMax: 32, maxHpPctPartyMax: 15 }, qa: { proof: 'ApplyPartyHeal once per selection and PartyMaxHP increase' } },
+  { id: 'party_magic_fruit', owner: 'Party', slot: 10, title: 'Magic Fruit', cardText: 'Heals the active hero for 32% and raises party max HP by 15%', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'party_heal_max_hp', healPctActorMax: 32, maxHpPctPartyMax: 15 }, qa: { proof: 'ApplyActiveHeroHeal once per selection and PartyMaxHP increase' } },
   { id: 'party_crimson_ward', owner: 'Party', slot: 11, title: 'Crimson Ward', cardText: 'Grant a temporary party ward before true HP is damaged.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'party_temp_hp_shield', shieldPctPartyMax: 18, stacking: 'refresh_capped_shield' }, qa: { proof: 'PartyTempHPShield and ward visuals refresh' } },
   { id: 'party_faze', owner: 'Party', slot: 12, title: 'Faze', cardText: 'Blights the field, poisoning enemies for the remainder of the session.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'field_refresh', status: 'tainted_ground' }, qa: { proof: 'TaintedGroundZones and PendingHeroHits refresh' } },
   { id: 'party_grow', owner: 'Party', slot: 13, title: 'Grow', cardText: 'Grow all living heroes: more power, less Max HP.', risk: 'HIGH', growth: [8, 14, 20], procPattern: 'On selection', payloadImplemented: true, drawClass: 'tiered', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_until_cap' }, trigger: { event: 'selection', eligibility: 'all_living_heroes' }, effect: { kind: 'grow', maxTier: GROW_MAX_TIER, application: 'all_living_heroes', powerAmpPctByTier: GROW_TIERS.map(row => row.powerAmpPct), maxHpPenaltyPctByTier: GROW_TIERS.map(row => row.maxHpPenaltyPct) }, qa: { proof: 'GrowAcquisitionTrace and persistent PowerAmpVisualByUID state' } },
@@ -1514,9 +1514,11 @@ function activateMagicFruitSkill(ctx) {
   const g = getGlobals(ctx);
   const partyMaxHP = Math.max(0, Number(g.PartyMaxHP || 0));
   const maxHPBonus = Math.max(1, Math.floor(partyMaxHP * 15 / 100));
-  const healAmount = Math.max(1, Math.floor(partyMaxHP * 32 / 100));
+  const actor = GetActorByUID(ctx, GetCurrentTurn(ctx));
+  const healAmount = actor?.kind === 'hero' && actor.hp > 0
+    ? Math.max(1, Math.floor(Number(actor.maxHP || 0) * 32 / 100)) : 0;
   applyPartyMaxHPBonus(ctx, maxHPBonus);
-  ctx.callFunction('ApplyPartyHeal', healAmount);
+  ctx.callFunction('ApplyActiveHeroHeal', healAmount);
   return { healAmount, maxHPBonus };
 }
 
@@ -2930,8 +2932,7 @@ export function TryPartyDestiny(ctx, options = undefined) {
   }
   g.PartyDestinyProcs = Math.max(0, Math.floor(Number(g.PartyDestinyProcs || 0))) + 1;
   const sourceMaxHP = Math.max(0, Number(source.maxHP || source.MaxHP || 0));
-  const partyMaxHP = Math.max(0, Number(g.PartyMaxHP || 0));
-  const defaultHeal = Math.max(1, Math.ceil((partyMaxHP || sourceMaxHP) * 2.5 / 100));
+  const defaultHeal = Math.max(1, Math.ceil(sourceMaxHP * 2.5 / 100));
   const requestedHeal = Math.max(1, Math.floor(Number(opts.healAmount || defaultHeal)));
   const heal = applyPartyDestinyActorHeal(ctx, sourceUID, requestedHeal);
   if (heal.appliedHeal > 0) g.PartyDestinyHeals = Math.max(0, Math.floor(Number(g.PartyDestinyHeals || 0))) + 1;
@@ -3994,7 +3995,7 @@ function applyRewardPayload(ctx, payload) {
   }
   if (payload.type === 'HEAL_RANDOM') {
     const amt = Math.max(1, Math.floor(random01(ctx) * 40) + 1);
-    ctx.callFunction('ApplyPartyHeal', amt);
+    ctx.callFunction('ApplyActiveHeroHeal', amt);
     LogCombat(ctx, `Event reward: +${amt} HP`);
     return;
   }
@@ -6693,20 +6694,6 @@ export function UpdateHeroHPUI(ctx) {
 
 export function InitPartyHPFromHeroes(ctx) {
   syncPartyHpTotalsFromHeroes(ctx);
-}
-
-export function SyncPartyHPToHeroes(ctx) {
-  const g = getGlobals(ctx);
-  const heroes = getHeroes(ctx);
-  if (heroes.length === 0) return;
-  const totalMax = sum(heroes.map(h => h.maxHP ?? 0));
-  if (!totalMax) return;
-  const ratio = g.PartyMaxHP ? (g.PartyHP / g.PartyMaxHP) : 0;
-  for (const h of heroes) {
-    const maxHP = h.maxHP ?? 0;
-    h.hp = clamp(0, Math.floor(maxHP * ratio), maxHP);
-  }
-  UpdateHeroHPUI(ctx);
 }
 
 export function UpdatePartyHPText(ctx) {

@@ -138,7 +138,7 @@ test('Faze is a mirrored party draw option that owns the tainted-ground payload'
     assert.equal(selected.ok, true);
     assert.equal(selected.skill.id, 'party_faze');
     assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__[0].id, 'party_faze');
-    assert.equal(calls.some(call => call.name === 'ApplyPartyHeal'), false);
+    assert.equal(calls.some(call => call.name === 'ApplyActiveHeroHeal'), false);
 
     assert.equal(ctx.state.globals.PendingHeroHits.length, 2);
     assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.effectType === 'dot_apply'));

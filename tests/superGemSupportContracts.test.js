@@ -10,7 +10,7 @@ test('super-heal routes through DoHeal with explicit potency multiplier', () => 
   assert.match(skillSheetSrc, /const criticalHealMinPct = 32;/);
   assert.match(skillSheetSrc, /const criticalHealMaxPct = 42;/);
   assert.match(skillSheetSrc, /const criticalHealPercent = criticalHealMinPct \+ Math\.floor\(roll \* \(criticalHealMaxPct - criticalHealMinPct \+ 1\)\);/);
-  assert.match(skillSheetSrc, /heal = Math\.max\(1, Math\.ceil\(partyMaxHP \* criticalHealPercent \/ 100\)\);/);
+  assert.match(skillSheetSrc, /heal = Math\.max\(1, Math\.ceil\(actorMaxHP \* criticalHealPercent \/ 100\)\);/);
   assert.match(runtimeSrc, /const SUPER_GEM_HEAL_POTENCY = 6;/);
   assert.match(runtimeSrc, /callFunctionWithContext\(fnContext, 'DoHeal', actorUID, SUPER_GEM_HEAL_POTENCY\);/);
 });

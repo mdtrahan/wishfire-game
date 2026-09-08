@@ -19,7 +19,7 @@ This document defines the requested scope and the work required to deliver it. *
 - Preserve Astral Flow in the upper-left. It powers individual specials, smaller combinations and a full-group special.
 - Preserve player-selected, party-wide roguelite buffs earned through Astral Flow, including stacking rules and combat-session lifetime.
 - Keep the Astral Flow bar slim and text-free. Place tiny diamond face portraits directly on its notches, ordered by SPEED from fastest to slowest.
-- Display exactly one notch per deployed hero, evenly spaced at fractions of the full bar.
+- Display one notch per deployed hero using whole-percent segments floor(100/N), with the final milestone at 100%.
 - Reaching a SPEED-ordered milestone makes its pictured hero eligible for an AF special. With six members and 2/6 charge, only the first two milestone heroes qualify.
 - Astral Flow is one shared spendable balance. Early specials deplete it and trade progress toward full-bar opportunities for an immediate combat advantage. Full charge enables the card draw and full-party combination options. Preserve the player's choice of how to spend or save it.
 - Fill the six card positions down the left column, then down the right. Keep unused positions at the end of that order.
@@ -82,7 +82,7 @@ Allow long skill lists to scroll within the editor. Protect the footer and prima
 
 **Confirmed model:** heroes and enemies take ordinary turns in SPEED order. Retain the existing initiative foundation and adapt its command and individual-HP dependencies. The player selects and executes the scheduled hero's ordinary action; scheduled enemies act through their AI. There is no freely ordered party phase followed by a separate enemy phase.
 
-Basic Attack is the proposed initial command. The player may prepare commands for other heroes, but those heroes' ordinary execution buttons remain unavailable until their scheduled turn. Clearly distinguish normal-turn availability from milestone-based AF availability. Every standalone action, including an AF special, consumes a turn. Future stored sequences consume one turn when the sequence completes; stored sequences are outside the current implementation.
+Basic Attack is the proposed initial command. The player may prepare commands for other heroes, but those heroes' ordinary execution buttons remain unavailable until their scheduled turn. An AF milestone permits the hero's special during that hero's own scheduled turn; it never grants an off-turn action. Every standalone action, including an AF special, consumes a turn. Future stored sequences consume one turn when the sequence completes; stored sequences are outside the current implementation.
 
 Preparation is editable. Launch is a commitment:
 
@@ -118,7 +118,7 @@ Per-hero HP fields already exist, but current eligibility can continue to includ
 
 Incoming damage must identify its final recipient. Apply that hero's defenses, barrier and statuses. Resolve AOE separately for each eligible recipient. Cover determines redirection before damage and preserves attribution to the original attacker.
 
-Define Guard's protection window, provoke targeting and ally protection independently. Healing affects living heroes unless the command explicitly revives. Revival specifies restored HP, retained or cleared statuses and the normal-activation timing described above. Defeat occurs when every deployed hero is KO, subject to already committed revival effects.
+Define Guard's protection window, provoke targeting and ally protection independently. Combat healing restores only the active living hero, using that hero's own maximum for percentage healing. It never splits across the group. Explicit full-health recovery remains a separate lifecycle operation. Revival specifies restored HP, retained or cleared statuses and the normal-activation timing described above. Defeat occurs when every deployed hero is KO, subject to already committed revival effects.
 
 Define encounter carryover and rest recovery for HP, KO and the selected normal resource. Essential recovery must remain accessible to starter and intended solo parties.
 
@@ -130,30 +130,30 @@ Current main uses shared Energy for quest entry. Preserve this macro resource an
 
 ### Confirmed presentation
 
-For N deployed heroes, place milestone i at i/N of the usable fill length, including the final marker at 100%.
+For N deployed heroes, each partial milestone i is i × floor(100/N) percent of the usable fill length. The final milestone is 100%. Six heroes use 16% segments through the fifth milestone and a final milestone at 100%.
 
 | Party size | Milestones |
 | --- | --- |
 | 1 | 100% |
 | 2 | 50%, 100% |
-| 3 | 33⅓%, 66⅔%, 100% |
+| 3 | 33%, 66%, 100% |
 | 4 | 25%, 50%, 75%, 100% |
 | 5 | 20%, 40%, 60%, 80%, 100% |
-| 6 | 16⅔%, 33⅓%, 50%, 66⅔%, 83⅓%, 100% |
+| 6 | 16%, 32%, 48%, 64%, 80%, 100% |
 
-Use exact fractions internally. Each notch carries a tiny cropped diamond portrait, embedded in the slim upper-left bar. Add no permanent text there.
+Use these whole-percent thresholds for both availability and displayed notches. Each notch carries a tiny cropped diamond portrait, embedded in the slim upper-left bar. Add no permanent text there.
 
 Sort diamonds by SPEED descending. Card positions continue to follow formation order. For the current seed values, diamond order is Hondo, Kaja, Runa, Fara.
 
 ### Confirmed participation and shared currency
 
-Reaching a diamond makes its pictured hero eligible for an AF special. SPEED therefore affects which heroes become available first. A six-member party at 2/6 charge can use either of the first two milestone heroes or combine them, subject to the selected cost and actor-status rules. The remaining heroes require more charge.
+Reaching a diamond makes its pictured hero eligible for an AF special during that hero's scheduled turn. SPEED therefore affects which heroes become available first. A six-member party at 2/6 charge can use either of the first two milestone heroes or combine them, subject to the selected cost and actor-status rules. The remaining heroes require more charge.
 
 The participant selector must show eligible heroes, selected participants, targets, total cost and the resulting effects before commitment. Support a single participant, a smaller group and the full deployed group when eligible. Specials consume Astral Flow only.
 
-Early special use depletes the same balance that is being saved for a card draw or full-party combination. Each individual special costs exactly 1/N of the full bar, where N is the actual loaded group size for that encounter, excluding empty slots. A four-hero group has four milestones and a 25% individual-special cost; a solo hero has one milestone and a 100% cost. KO retains its existing slot and milestone meaning within that group. Subtract that cost from the current charge and retain the exact remainder. With six members, 22% minus 16⅔% leaves 5⅓%. Milestone positions govern hero eligibility; the special cost is one segment regardless of the hero’s milestone position. Stored sequences are future scope. Validate the current milestone eligibility and affordability when launching, including specials prepared earlier. Commit the cost once. Refresh milestone availability after each spend; do not bank permanent unlocks from previously reached diamonds.
+Early special use spends the same balance saved for a card draw or group action. An individual special costs floor(100/N)% of full capacity, based on the actual encounter group. Four heroes cost 25% each; six cost 16% each. KO retains the slot and denominator. For a future partial-group combo, add the participating heroes' costs; the full-group action uses 100%. At 64%, two of four heroes cost 50%, leaving 14%. At 64%, the first four of six heroes cost 64%, leaving zero. A full-group use at full charge leaves zero. These confirmed whole-percent rules supersede the earlier exact-fraction proposal. Revalidate milestone eligibility and affordability at launch, commit once, and preserve the remainder after partial spending. Only the scheduled active hero can launch a standalone special and it consumes that hero's turn. Group combos and stored sequences are future design work; do not implement them or grant actions to inactive heroes.
 
-At full charge, expose the card-draw and full-party combination options. The player chooses the resource's use. Exact full-bar spending amounts and the choice presentation remain to be specified; do not silently give both rewards from one expenditure. An eligible special remains a valid tactical choice even when the player could save for a larger reward. Avoid additional per-phase quotas, required special sequences or mandatory saving rules.
+At full charge, expose the card-draw and full-party combination options. The player chooses the resource's use. Full-group cost is 100%; card-draw cost and the choice presentation remain to be specified; do not silently give both rewards from one expenditure. An eligible special remains a valid tactical choice even when the player could save for a larger reward. Avoid additional per-phase quotas, required special sequences or mandatory saving rules.
 
 Author each hero's special contribution, including protection or recovery for support kits. Resolve group contributions in a declared order while presenting a coordinated attack. Six heroes have 63 nonempty subsets; compose combinations from their individual contributions instead of requiring a unique cinematic for every subset.
 
@@ -162,7 +162,7 @@ Author each hero's special contribution, including protection or recovery for su
 - Fix N to deployed count at encounter entry. KO does not reduce prices or remove denominator slots.
 - KO or incapacitated heroes cannot contribute unless their special explicitly permits it. Specify the resulting full-charge option when the whole deployed group cannot act.
 - Define when effective SPEED changes reorder the milestone portraits alongside the retained initiative system; formation order is a proposed tiebreaker.
-- Decide whether an eligible AF special can act outside its hero's normal turn, whether it consumes that turn, and where an interrupt enters the action sequence. Preserve immediate tactical opportunities without permitting an input to alter already resolved damage.
+- Only the active hero can use a standalone action, including an AF special. Every such action spends that actor's current turn. There are no off-turn hero activations or borrowed future turns. Combo execution remains future design work.
 - Handle formation changes between encounters through an approved charge carryover rule. Mid-encounter roster swaps are outside initial scope.
 
 ### Earning and spending the shared bar
@@ -184,7 +184,7 @@ Keep party scope, session lifetime, prerequisite rules, one-off suppression, tie
 | Upgrade | Required migration behavior |
 | --- | --- |
 | Crimson Ward | Retain party protection and capped refresh intent. Define whether protection is per hero or a shared barrier budget, with explicit consumption |
-| Magic Fruit | Preserve healing and maximum-HP growth across eligible heroes. Define rounding and KO treatment; revival requires an explicit rule |
+| Magic Fruit | Heal the active hero for 32% of their own maximum. Preserve the existing 15% party maximum-HP growth and acquisition behavior; ordinary healing cannot revive |
 | Destiny | Preserve positive-hit healing and one-off acquisition. Retain the originating hero through redirection and group resolution |
 | Faze | Retain its field function and reconcile expiry with the selected initiative clock |
 | Grow | Preserve three tiers and the power/max-HP tradeoff. Recalculate current HP proportionally; the stat conversion is not a damage event. Define revived-hero treatment |
@@ -200,7 +200,7 @@ Declare whether each upgrade reacts to normal attacks, skills, counters or AF co
 | Retired dependency | Work required |
 | --- | --- |
 | Red matches and match-size damage | Route normal attacks and skills into shared damage resolution; retire or explicitly convert match multipliers |
-| Green healing | Supply targeted and party recovery through approved commands, skills or consumables |
+| Green healing | Retained recovery heals the active hero only; no shared-pool redistribution |
 | Blue AF income | Implement the shared earning, milestone and spending rules in section 5 |
 | Purple Energy recovery | Implement the approved normal-resource and expedition-recovery rules |
 | Yellow gold | Move income to encounter rewards or bounded combat earnings |
@@ -220,6 +220,8 @@ Extend existing formation and selected-member initialization to one through six 
 Use separate identities for a hero definition, an owned copy and a temporary combat actor. Progression belongs to the persistent owned unit, independent of formation position or battle UID. Preserve the current mappings Falie→Fara, Huun→Hondo, Runa→Runa and Kojonn→Kaja when migrating saves.
 
 The sixteen existing hero-skill registry entries have no implemented payloads. Budget actual kit authoring and effects. Several entries describe passive or gem-dependent behavior and require redesign.
+
+**Current retained commands:** Attack and self Heal (7% of the active hero's maximum, one turn). Critical recovery retains its existing percentage range when an approved skill invokes it.
 
 **Proposed minimum kit budget:** common Attack/Guard, two role skills, one passive and one AF contribution per hero. Preserve Fara's protection, Hondo's physical/gold identity, Runa's magic/totems and Kaja's support/AF identity. Migrate the current four heroes. Future additions may fill slots five and six; their absence must never block combat. Review Runa's totems/Invert, Kaja's gem-cost bypass and all old initiative effects individually.
 
@@ -258,7 +260,7 @@ After migration, remove gem dispatch, geometry, selection, refill waits, obsolet
 
 Estimates cover the current four kits, capacity for groups up to six, reuse of current assets and simulation, a limited existing enemy set, and composable AF effects. Additional hero kits are separate future content work. They are preliminary person-weeks, pending confirmation through one playable encounter.
 
-The ranges below predate the selected SPEED-order and shared-currency rules. Re-estimate the affected work after defining AF interruption and validating reuse of the existing scheduler; these figures are not a revised commitment.
+The ranges below predate the selected SPEED-order and shared-currency rules. Re-estimate the affected work after validating active-actor AF commands with the existing scheduler; these figures are not a revised commitment.
 
 | Work package | Engineering effort | Completion condition |
 | --- | ---: | --- |
@@ -280,7 +282,7 @@ Begin with approved combat and AF rules, then implement one encounter with indiv
 - Every hero's damage, healing, cover, barriers and defeat state use individual HP.
 - Preparation spends nothing. Launch commits once. Duplicate clicks/taps, keyboard repeat, interruption and resume never duplicate costs, damage or rewards.
 - Ordinary actions follow SPEED order. Preparation and Repeat cannot bypass it. Incapacitation, counters, revival and final-enemy death cannot stall initiative or grant unintended ordinary activations.
-- Each AF bar has exactly N markers at i/N, with SPEED ordering independent of card order.
+- Each AF bar has N markers at i × floor(100/N)% for partial tiers and 100% for the final tier, with SPEED ordering independent of card order.
 - Solo specials, all participant counts and full-group activation obey current eligibility and charge. Specials require AF only.
 - At 2/6 charge with six heroes, only the first two milestone heroes qualify for specials. Spending reduces the shared balance and refreshes availability. There is no independent buff-progress balance or automatic reward that bypasses the chosen spend. Full charge exposes card-draw and group-combination options; validate their selected prices and overflow policy.
 - All nine party upgrades preserve acquisition classes, prerequisites, caps, attribution and intended triggers.
@@ -296,9 +298,9 @@ Begin with approved combat and AF rules, then implement one encounter with indiv
 | Decision | Proposed starting point |
 | --- | --- |
 | Normal resources | Individual MP and free Attack/Guard remain proposed. Preserve shared Energy as quest-entry currency. |
-| AF prices and income | Solo price is fixed at 1/N. Select group/card-draw prices, bounded earnings, cap and overflow for the confirmed shared balance |
+| AF prices and income | Solo costs floor(100/N)%; partial combos sum participants; full group costs 100%. Card-draw cost and new combat income tuning remain to be specified |
 | KO and revival | Fixed encounter denominator is proposed; select full-charge behavior with unavailable heroes and revival's initiative re-entry |
-| AF timing and carryover | Standalone actions consume a turn. Future stored sequences consume one turn upon completion. Preserve the current fresh-encounter charge reset; Continue retains the same encounter balance. |
+| AF timing and carryover | Only the scheduled active hero acts; a standalone action consumes their current turn. Group combos and stored sequences remain future design work. Preserve the current fresh-encounter charge reset; Continue retains the same encounter balance. |
 | SPEED updates | Retain SPEED initiative; select tie/reordering behavior for the queue and milestone portraits; verify existing initiative skills |
 | Small-party balance | Support intentional solo and smaller groups; determine encounter and reward scaling from measured play |
 | Collection launch | Choose roster size, duplicates, recruitment rules and whether paid acquisition is included |

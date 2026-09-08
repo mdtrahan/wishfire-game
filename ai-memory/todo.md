@@ -19,3 +19,5 @@ Beads issues: ORKA-8ri, ORKA-tk9, ORKA-03d, ORKA-b2c, ORKA-a09, ORKA-91y, ORKA-k
 - [ ] ORKA-49k.4: native command screen and basic-attack path implemented; browser proof covers prepared actions for actual groups of 1–6. AF presentation moved to its slim upper-left owner. Currency/specials, healing and retired board consumers remain under the parent migration.
 
 - [ ] ORKA-49k.5: full Town/Continue recovery uses actual hero HP and clears empty-group projections. Partial-heal allocation and AF turn ownership remain pending under ORKA-49k.
+
+- [ ] ORKA-49k.6: active-hero healing and rounded AF milestones; self Heal uses native commands. AF spending/draw integration remains subsequent work; group-combo execution is future design scope.

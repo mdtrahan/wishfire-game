@@ -278,7 +278,7 @@ test('Destiny uses 32 percent proc threshold', () => {
   assert.equal(miss.roll.chancePct, 32);
 });
 
-test('Destiny deterministic success heals the hitting hero for 2.5 percent party max HP rounded up', () => {
+test('Destiny deterministic success heals the hitting hero for 2.5 percent of their own max HP rounded up', () => {
   const mod = loadModule(runtimePath);
   const ctx = makeContext({ active: true });
   ctx.state.entities[0].hp = 50;
@@ -289,10 +289,10 @@ test('Destiny deterministic success heals the hitting hero for 2.5 percent party
   const result = mod.TryPartyDestiny(ctx, { sourceUID: 100, targetUID: 200, appliedDamage: 1, forcedRollPct: 0 });
   assert.equal(result.success, true);
   assert.equal(result.reason, 'healed');
-  assert.equal(result.requestedHeal, 4);
-  assert.equal(result.appliedHeal, 4);
-  assert.equal(ctx.state.entities[0].hp, 54);
-  assert.equal(ctx.state.globals.PartyHPByIndex[0], 54);
+  assert.equal(result.requestedHeal, 3);
+  assert.equal(result.appliedHeal, 3);
+  assert.equal(ctx.state.entities[0].hp, 53);
+  assert.equal(ctx.state.globals.PartyHPByIndex[0], 53);
 
   const trace = mod.GetSkillProcTrace(ctx, 1)[0];
   assert.equal(trace.scope, 'party');

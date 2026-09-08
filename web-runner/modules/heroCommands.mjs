@@ -1,6 +1,12 @@
 import { derivePresentationTurnBarrier } from '../src/core/turnGateController.mjs';
 import { capturePendingEnemyTargetIntent } from '../src/core/pendingSuperGemHandoff.mjs';
 
+export function getAstralFlowTierPercent(memberCount, tier) {
+  if (!Number.isInteger(memberCount) || memberCount < 1 || memberCount > 6
+    || !Number.isInteger(tier) || tier < 1 || tier > memberCount) return null;
+  return tier === memberCount ? 100 : Math.floor(100 / memberCount) * tier;
+}
+
 export function getHeroCommandSlots(entities) {
   const slots = Array(6).fill(null);
   for (const hero of entities) {
@@ -24,7 +30,8 @@ export function canUseHeroCommand(ctx, actorUID) {
 
 // The editor owns drafts. Only this commit boundary writes combat intent.
 export function executeHeroCommand(ctx, { actorUID, skillId = 'HERO_SINGLE', targetUID } = {}) {
-  if (skillId !== 'HERO_SINGLE' || !canUseHeroCommand(ctx, actorUID)) return false;
+  if (!['HERO_SINGLE', 'HERO_HEAL'].includes(skillId) || !canUseHeroCommand(ctx, actorUID)) return false;
+  if (skillId === 'HERO_HEAL') return ctx.callFunction('DoHeal', actorUID) === true;
   const target = ctx.state.entities.find(actor => actor.uid === targetUID && actor.kind === 'enemy' && Number(actor.hp) > 0);
   if (!target) return false;
   const g = ctx.state.globals;

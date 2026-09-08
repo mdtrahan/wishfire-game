@@ -37,6 +37,7 @@ export function createHeroCommandUI({ ctx, gameState, canvas }) {
     #hero-commands .editor h2{font-size:14px;margin:0}
     #hero-commands .editor button{min-height:32px;padding:5px 8px}
     #hero-commands .targets{display:flex;flex-direction:column;gap:4px;min-height:0;overflow:auto;flex:1}
+    #hero-commands .targets[hidden]{display:none}
     #hero-commands .editor footer{flex:none}
   `;
   document.head.append(style);
@@ -72,8 +73,17 @@ export function createHeroCommandUI({ ctx, gameState, canvas }) {
     editor?.remove(); editor = document.createElement('div'); editor.className = 'editor';
     editor.setAttribute('role', 'group'); editor.setAttribute('aria-label', `${heroName(hero)} actions`);
     const title = document.createElement('h2'); title.textContent = heroName(hero); editor.append(title);
-    const attack = button(editor, 'Attack', () => {}); attack.setAttribute('aria-pressed', 'true');
+    const choices = document.createElement('div'); choices.className = 'commands'; editor.append(choices);
+    const attack = button(choices, 'Attack', () => choose('HERO_SINGLE'));
+    const heal = button(choices, 'Heal 7%', () => choose('HERO_HEAL'));
     const targets = document.createElement('div'); targets.className = 'targets'; editor.append(targets);
+    function choose(skillId) {
+      draft.skillId = skillId;
+      attack.setAttribute('aria-pressed', String(skillId === 'HERO_SINGLE'));
+      heal.setAttribute('aria-pressed', String(skillId === 'HERO_HEAL'));
+      targets.hidden = skillId === 'HERO_HEAL';
+    }
+    choose(draft.skillId);
     const enemies = ctx.state.entities.filter(actor => actor.kind === 'enemy' && actor.hp > 0);
     if (!enemies.some(enemy => enemy.uid === draft.targetUID)) draft.targetUID = enemies[0]?.uid;
     for (const enemy of enemies) {
@@ -87,7 +97,7 @@ export function createHeroCommandUI({ ctx, gameState, canvas }) {
     const controls = document.createElement('footer'); editor.append(controls);
     button(controls, 'Back', closeEditor);
     const set = button(controls, 'Set Action', () => {
-      if (!ctx.state.entities.some(enemy => enemy.uid === draft.targetUID && enemy.kind === 'enemy' && enemy.hp > 0)) return;
+      if (draft.skillId !== 'HERO_HEAL' && !ctx.state.entities.some(enemy => enemy.uid === draft.targetUID && enemy.kind === 'enemy' && enemy.hp > 0)) return;
       prepared.set(hero.uid, { ...draft }); closeEditor();
     });
     set.dataset.set = '';
@@ -97,7 +107,7 @@ export function createHeroCommandUI({ ctx, gameState, canvas }) {
   function execute(hero, command = prepared.get(hero.uid)) {
     if (!available || draft || gameState.heroCommandsMenuOpen) return false;
     const enemies = ctx.state.entities.filter(actor => actor.kind === 'enemy' && actor.hp > 0);
-    if (command?.targetUID && !enemies.some(enemy => enemy.uid === command.targetUID)) {
+    if (command?.skillId !== 'HERO_HEAL' && command?.targetUID && !enemies.some(enemy => enemy.uid === command.targetUID)) {
       auto = false; repeat = null; openEditor(hero); return false;
     }
     const targetUID = command?.targetUID ?? enemies[0]?.uid;
@@ -154,13 +164,16 @@ export function createHeroCommandUI({ ctx, gameState, canvas }) {
         const image = portraits[hero.portraitName || hero.baseHeroName || hero.name];
         if (image?.src && card.querySelector('img').src !== image.src) card.querySelector('img').src = image.src;
         card.querySelector('[data-attack]').disabled = !available || !current || !!draft || !!gameState.heroCommandsMenuOpen;
+        const actionName = prepared.get(hero.uid)?.skillId === 'HERO_HEAL' ? 'Heal' : 'Attack';
+        card.querySelector('[data-attack]').textContent = actionName;
+        card.querySelector('[data-attack]').setAttribute('aria-label', `${heroName(hero)} ${actionName}`);
         card.querySelector('[data-actions]').disabled = !available || hero.hp <= 0 || !!draft || !!gameState.heroCommandsMenuOpen;
       });
       if (draft) {
         if (!members.some(hero => hero?.uid === draft.actorUID && hero.hp > 0)) closeEditor();
         else {
           for (const target of editor.querySelectorAll('[data-target]')) target.disabled = !ctx.state.entities.some(enemy => enemy.uid === Number(target.dataset.target) && enemy.hp > 0);
-          editor.querySelector('[data-set]').disabled = !ctx.state.entities.some(enemy => enemy.uid === draft.targetUID && enemy.kind === 'enemy' && enemy.hp > 0);
+          editor.querySelector('[data-set]').disabled = draft.skillId !== 'HERO_HEAL' && !ctx.state.entities.some(enemy => enemy.uid === draft.targetUID && enemy.kind === 'enemy' && enemy.hp > 0);
         }
       }
       if (returnFocusUID && !draft) {

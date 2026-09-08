@@ -42,9 +42,12 @@ function createHealContext({
     globals,
     callFunction(name, ...args) {
       calls.push({ name, args });
-      if (name === 'GetActorByUID') return { uid: args[0], name: actorName };
-      if (name === 'ApplyPartyHeal') {
-        globals.PartyHP = Math.min(globals.PartyMaxHP, globals.PartyHP + Number(args[0] || 0));
+      if (name === 'GetCurrentTurn') return 4;
+      if (name === 'GetActorByUID') return { uid: args[0], kind: 'hero', name: actorName, hp: globals.PartyHP, maxHP: globals.PartyMaxHP };
+      if (name === 'ApplyActiveHeroHeal') {
+        const before = globals.PartyHP;
+        globals.PartyHP = Math.min(globals.PartyMaxHP, before + Number(args[0] || 0));
+        return globals.PartyHP - before;
       }
       return undefined;
     },
@@ -52,7 +55,7 @@ function createHealContext({
   return { ctx, calls };
 }
 
-test('super-gem critical heal rolls within the tightened 32 to 42 percent party max HP band', () => {
+test('super-gem critical heal rolls within the tightened 32 to 42 percent active hero max HP band', () => {
   const DoHeal = loadDoHeal('web-runner/modules/skillSheet.js');
   const low = createHealContext({ partyHP: 10, partyMaxHP: 147, runtimeRandom: () => 0 });
   const high = createHealContext({ partyHP: 10, partyMaxHP: 147, runtimeRandom: () => 0.999 });
@@ -62,8 +65,8 @@ test('super-gem critical heal rolls within the tightened 32 to 42 percent party 
 
   assert.equal(low.ctx.globals.PartyHP, 58);
   assert.equal(high.ctx.globals.PartyHP, 72);
-  assert.ok(low.calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 48));
-  assert.ok(high.calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 62));
+  assert.ok(low.calls.some(call => call.name === 'ApplyActiveHeroHeal' && call.args[0] === 48));
+  assert.ok(high.calls.some(call => call.name === 'ApplyActiveHeroHeal' && call.args[0] === 62));
   assert.ok(high.calls.some(call => call.name === 'LogCombat' && call.args[0] === 'Falie used Magic Fruit!'));
 });
 
@@ -88,7 +91,7 @@ test('super-gem critical heal is not amplified beyond the rolled percent by chai
   DoHeal(ctx, 4, 6);
 
   assert.equal(ctx.globals.PartyHP, 72);
-  assert.ok(calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 62));
+  assert.ok(calls.some(call => call.name === 'ApplyActiveHeroHeal' && call.args[0] === 62));
   assert.equal(ctx.globals.ApplyChainToNextHeal, 0);
 });
 
@@ -103,7 +106,8 @@ test('heal super-gem activation routes to critical DoHeal and consumes turn paci
   const calls = [];
   const callFunctionWithContext = (_ctx, name, ...args) => {
     calls.push({ name, args });
-    if (name === 'GetActorByUID') return { uid: args[0], name: 'Falie' };
+    if (name === 'GetCurrentTurn') return 4;
+      if (name === 'GetActorByUID') return { uid: args[0], kind: 'hero', name: 'Falie', hp: globals.PartyHP, maxHP: globals.PartyMaxHP };
     if (name === 'DoHeal') {
       state.globals.DeferAdvance = 1;
       state.globals.AdvanceAfterAction = 1;

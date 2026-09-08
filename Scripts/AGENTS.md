@@ -33,3 +33,4 @@
 - Mirror individual-HP initiative and turn eligibility; KO actors receive no new turn-start hooks. Pooled HP must not determine actor survival.
 
 - Mirror deployed-versus-living hero enumeration and actor-owned HP totals by heroDisplaySlot. Damage cannot consume a barrier on a KO target; ordinary healing procs cannot revive.
+- Mirror active-hero healing and percentage amounts based on that hero maximum. The pooled ApplyPartyHeal/SyncPartyHPToHeroes API is retired; retain party max-HP buffs and explicit full recovery.

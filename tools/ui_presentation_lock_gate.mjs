@@ -772,6 +772,36 @@ async function captureCommandTurns(page, viewport, artifactDir) {
       && selectedTarget === targetUID
       && after.cards.filter(Boolean).length === count && after.cards[count-1] === before.actorUID
       && after.positions[count-1] != null, {before, prepared, after, selectedTarget, targetUID}, { preparesWithoutSpend:true, restoresTarget:true, attackCompletes:true, count }));
+    if (count === 6) {
+      await page.waitForFunction(() => document.querySelector('#hero-commands [data-attack]:enabled'), null, {timeout:15000});
+      const healingBefore = await page.evaluate(() => {
+        const game = window.__codexGame;
+        const uid = Number(document.querySelector('#hero-commands [data-attack]:enabled').closest('article').dataset.uid);
+        game.state.entities.find(actor => actor.uid === uid).hp = 2500;
+        game.callFunction('UpdateHeroHPUI'); game.stepFrames(1);
+        return { uid, slot:game.state.entities.filter(actor=>actor.kind==='hero').findIndex(actor=>actor.uid===uid),
+          hp:game.state.entities.filter(actor=>actor.kind==='hero').map(actor=>actor.hp),
+          turn:game.globals.TurnSerial, energy:game.globals.Player_Energy, flow:game.globals.AstralFlowAmpPoints };
+      });
+      const healingCard = page.locator(`#hero-commands article[data-uid="${healingBefore.uid}"]`);
+      await healingCard.locator('[data-actions]').click();
+      await page.getByRole('button', {name:'Heal 7%',exact:true}).click();
+      await page.getByRole('button', {name:'Set Action',exact:true}).click();
+      const healingPrepared = await page.evaluate(() => window.__codexGame.globals.TurnSerial);
+      await healingCard.getByRole('button', {name:/ Heal$/}).click();
+      const healingAfter = await page.evaluate(() => {
+        const game = window.__codexGame;
+        return {hp:game.state.entities.filter(actor=>actor.kind==='hero').map(actor=>actor.hp),
+          owner:game.globals.ActionOwnerUID, deferred:game.globals.DeferAdvance,
+          energy:game.globals.Player_Energy, flow:game.globals.AstralFlowAmpPoints};
+      });
+      await page.waitForFunction(turn => window.__codexGame.globals.TurnSerial > turn, healingBefore.turn, {timeout:15000});
+      results.push(invariant('hero-command-self-heal', healingPrepared === healingBefore.turn
+        && healingAfter.hp[healingBefore.slot] === 2850 && healingAfter.hp.every((hp,i)=>i===healingBefore.slot || hp===healingBefore.hp[i])
+        && healingAfter.owner === healingBefore.uid && healingAfter.deferred === 1
+        && healingAfter.energy === healingBefore.energy && healingAfter.flow === healingBefore.flow,
+        {healingBefore,healingPrepared,healingAfter}, {activeHeroOnly:true,percent:7,spendsTurn:true}));
+    }
     if (count === 1 || count === 6) await page.screenshot({path:path.join(artifactDir,`${viewport.name}-09-group-${count}.png`)});
   }
   return results;

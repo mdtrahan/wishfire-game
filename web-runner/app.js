@@ -2992,26 +2992,7 @@ async function main(){
         regen.nextFireTurnSerial = jsNextFireSerial;
       }
 
-      const beforeHP = state.globals.PartyHP || 0;
-      const prev = state.globals.SpawnDamageText;
-      const prevHero = state.globals.SuppressHeroHealText;
-      state.globals.SpawnDamageText = 0;
-      state.globals.SuppressHeroHealText = 1;
-      callFunctionWithContext(fnContext, 'ApplyPartyHeal', heal);
-      state.globals.SpawnDamageText = prev;
-      state.globals.SuppressHeroHealText = prevHero;
-      const afterHP = state.globals.PartyHP || 0;
-      const actualHeal = Math.max(0, afterHP - beforeHP);
-      const barPos = state.globals.PartyHPBarPosWorld;
-      if (actualHeal > 0 && barPos && barPos.w > 0 && barPos.h > 0) {
-        const left = barPos.x - barPos.w * barPos.ox;
-        const barW = barPos.w;
-        const barH = barPos.h;
-        const ratio = Math.max(0, Math.min(1, (state.globals.PartyHP || 0) / Math.max(1, state.globals.PartyMaxHP || 1)));
-        const textX = left + barW * ratio;
-        const textY = (barPos.y - barH * barPos.oy) + barH * 0.5;
-        callFunctionWithContext(fnContext, 'SpawnDamageText', actualHeal, textX, textY, 'heal', 'bar');
-      }
+      callFunctionWithContext(fnContext, 'ApplyActiveHeroHeal', heal);
       regen.lastProcessedTurnSerial = currentTurnSerial;
       if (regen.remainingFires <= 0) {
         regens.splice(i, 1);

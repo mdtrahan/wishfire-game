@@ -80,7 +80,7 @@ function makeContext() {
   const ctx = {
     state: { globals, entities: [hero] },
     callFunction(name, ...args) {
-      if (name === 'ApplyPartyHeal') {
+      if (name === 'ApplyActiveHeroHeal') {
         const heal = Math.max(0, Number(args[0] || 0));
         globals.PartyHP = Math.min(globals.PartyMaxHP, globals.PartyHP + heal);
         hero.hp = globals.PartyHP;

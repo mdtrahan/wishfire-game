@@ -23,10 +23,12 @@ function createKojonnHealContext({ runtimeRandom = () => 0 } = {}) {
     globals,
     callFunction(name, ...args) {
       calls.push({ name, args });
-      if (name === 'GetActorByUID') return { uid: args[0], name: 'Kojonn' };
-      if (name === 'ApplyPartyHeal') {
-        globals.PartyHP = Math.min(globals.PartyMaxHP, globals.PartyHP + Number(args[0] || 0));
-        return undefined;
+      if (name === 'GetCurrentTurn') return 4;
+      if (name === 'GetActorByUID') return { uid: args[0], name: 'Kojonn', kind: 'hero', hp: globals.PartyHP, maxHP: globals.PartyMaxHP };
+      if (name === 'ApplyActiveHeroHeal') {
+        const before = globals.PartyHP;
+        globals.PartyHP = Math.min(globals.PartyMaxHP, before + Number(args[0] || 0));
+        return globals.PartyHP - before;
       }
       return undefined;
     },
@@ -43,9 +45,8 @@ test('Kojonn normal heal-gem potency uses the shared regular heal path without r
 
     assert.equal(ctx.globals.PartyHP, 17, `${relPath} should restore the regular 7 percent heal`);
     assert.deepEqual(ctx.globals.PartyRegens || [], [], `${relPath} should not queue Kojonn regen`);
-    assert.ok(calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 7), `${relPath} should use shared ApplyPartyHeal`);
-    assert.ok(calls.some(call => call.name === 'SpawnDamageText' && call.args[0] === 7 && call.args[3] === 'heal' && call.args[4] === 'bar'), `${relPath} should use shared heal text`);
-    assert.ok(calls.some(call => call.name === 'LogCombat' && call.args[0] === 'Kojonn heals party for 7'), `${relPath} should use shared regular heal copy`);
+    assert.ok(calls.some(call => call.name === 'ApplyActiveHeroHeal' && call.args[0] === 7), `${relPath} should use shared ApplyActiveHeroHeal`);
+    assert.ok(calls.some(call => call.name === 'LogCombat' && call.args[0] === 'Kojonn heals for 7'), `${relPath} should use shared regular heal copy`);
     assert.ok(calls.every(call => !/Regen/.test(String(call.args[0] || ''))), `${relPath} should not log regen`);
     assert.equal(ctx.globals.DeferAdvance, 1, `${relPath} should still consume action pacing`);
     assert.equal(ctx.globals.AdvanceAfterAction, 1, `${relPath} should still advance after the action`);
@@ -62,8 +63,7 @@ test('Kojonn heal supergem uses the shared critical heal path in either mirror',
 
     assert.equal(ctx.globals.PartyHP, 52, `${relPath} should restore the shared 42 percent critical heal`);
     assert.deepEqual(ctx.globals.PartyRegens || [], [], `${relPath} should not queue Kojonn regen`);
-    assert.ok(calls.some(call => call.name === 'ApplyPartyHeal' && call.args[0] === 42), `${relPath} should use shared ApplyPartyHeal`);
-    assert.ok(calls.some(call => call.name === 'SpawnDamageText' && call.args[0] === 42 && call.args[3] === 'heal' && call.args[4] === 'bar'), `${relPath} should use shared heal text`);
+    assert.ok(calls.some(call => call.name === 'ApplyActiveHeroHeal' && call.args[0] === 42), `${relPath} should use shared ApplyActiveHeroHeal`);
     assert.ok(calls.some(call => call.name === 'LogCombat' && call.args[0] === 'Kojonn used Magic Fruit!'), `${relPath} should use Magic Fruit super-heal copy`);
   }
 });

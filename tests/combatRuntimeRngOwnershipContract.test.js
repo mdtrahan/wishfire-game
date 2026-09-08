@@ -139,9 +139,12 @@ function makeHealContext(runtimeRandom) {
     state: { globals },
     globals,
     callFunction(name, ...args) {
-      if (name === 'GetActorByUID') return { uid: args[0], name: 'Falie' };
-      if (name === 'ApplyPartyHeal') {
-        globals.PartyHP = Math.min(globals.PartyMaxHP, globals.PartyHP + Number(args[0] || 0));
+      if (name === 'GetCurrentTurn') return 4;
+      if (name === 'GetActorByUID') return { uid: args[0], kind: 'hero', name: 'Falie', hp: globals.PartyHP, maxHP: globals.PartyMaxHP };
+      if (name === 'ApplyActiveHeroHeal') {
+        const before = globals.PartyHP;
+        globals.PartyHP = Math.min(globals.PartyMaxHP, before + Number(args[0] || 0));
+        return globals.PartyHP - before;
       }
       return undefined;
     },

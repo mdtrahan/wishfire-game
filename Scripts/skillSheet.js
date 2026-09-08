@@ -53,32 +53,32 @@ export function Party_RES_UP(ctx, turns, actorUID, actorType, addAmt) {
   ctx.callFunction('RefreshPartyBuffUI');
 }
 
-export function ApplyPartyHeal(ctx, healAmount) {
+export function ApplyActiveHeroHeal(ctx, healAmount) {
   const g = getGlobals(ctx);
-  const before = g.PartyHP || 0;
-  const desiredHP = Math.min(g.PartyMaxHP || 0, (g.PartyHP || 0) + (healAmount || 0));
-  g.PartyHP = desiredHP;
-  ctx.callFunction('SyncPartyHPToHeroes');
+  const actor = ctx.callFunction('GetActorByUID', ctx.callFunction('GetCurrentTurn'));
+  if (!actor || actor.kind !== 'hero' || !(actor.hp > 0)) return 0;
+  const amount = Number(healAmount);
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  const before = actor.hp;
+  const maxHP = Math.max(before, Number(actor.maxHP || 0));
+  actor.hp = Math.min(maxHP, before + Math.floor(amount));
+  const delta = Math.max(0, actor.hp - before);
   ctx.callFunction('UpdateHeroHPUI');
-  // Preserve shared party HP after hero HP normalization
-  g.PartyHP = desiredHP;
   ctx.callFunction('UpdatePartyHPText');
   ctx.callFunction('UpdatePartyHPBar');
-  const delta = Math.max(0, (g.PartyHP || 0) - before);
   if (delta > 0 && !g.SuppressHeroHealText) {
-    const positions = g.HeroIconPosByIndex || [];
-    for (const pos of positions) {
-      if (pos) ctx.callFunction('SpawnDamageText', delta, pos.x, pos.y, 'heal', 'hero');
-    }
+    ctx.callFunction('SpawnDamageText', delta, actor.x, actor.y, 'heal', 'hero');
   }
+  return delta;
 }
 
 export function DoHeal(ctx, actorUID, potencyMultiplier = 1) {
   const g = getGlobals(ctx);
-  const partyMaxHP = Math.max(0, Number(g.PartyMaxHP || 0));
-  let heal = Math.max(1, Math.ceil(partyMaxHP * 7 / 100));
-  const potency = Math.max(1, Number(potencyMultiplier || 1));
   const actor = ctx.callFunction('GetActorByUID', actorUID);
+  if (Number(ctx.callFunction('GetCurrentTurn')) !== Number(actorUID) || !actor || actor.kind !== 'hero' || !(actor.hp > 0)) return false;
+  const actorMaxHP = Math.max(0, Number(actor.maxHP || 0));
+  let heal = Math.max(1, Math.ceil(actorMaxHP * 7 / 100));
+  const potency = Math.max(1, Number(potencyMultiplier || 1));
   const actorName = actor && actor.name ? actor.name : '?';
   if (potency > 1) {
     const criticalHealMinPct = 32;
@@ -90,35 +90,17 @@ export function DoHeal(ctx, actorUID, potencyMultiplier = 1) {
       ? rawRoll
       : (hasRuntimeRandom ? 0 : Math.random());
     const criticalHealPercent = criticalHealMinPct + Math.floor(roll * (criticalHealMaxPct - criticalHealMinPct + 1));
-    heal = Math.max(1, Math.ceil(partyMaxHP * criticalHealPercent / 100));
+    heal = Math.max(1, Math.ceil(actorMaxHP * criticalHealPercent / 100));
     if (g.ApplyChainToNextHeal === 1) g.ApplyChainToNextHeal = 0;
   } else if (g.ApplyChainToNextHeal === 1) {
     heal = Math.ceil(heal * (g.ChainMultiplier || 1));
     g.ApplyChainToNextHeal = 0;
   }
-  const beforeHP = g.PartyHP || 0;
-  const prevSpawn = g.SpawnDamageText;
-  const prevHero = g.SuppressHeroHealText;
-  g.SpawnDamageText = 0;
-  g.SuppressHeroHealText = 1;
-  ctx.callFunction('ApplyPartyHeal', heal);
-  g.SpawnDamageText = prevSpawn;
-  g.SuppressHeroHealText = prevHero;
-  const afterHP = g.PartyHP || 0;
-  const totalHeal = Math.max(0, afterHP - beforeHP);
-  const barPos = g.PartyHPBarPosWorld;
-  if (totalHeal > 0 && barPos && barPos.w > 0 && barPos.h > 0) {
-    const left = barPos.x - barPos.w * barPos.ox;
-    const barW = barPos.w;
-    const barH = barPos.h;
-    const ratio = Math.max(0, Math.min(1, (g.PartyHP || 0) / Math.max(1, g.PartyMaxHP || 1)));
-    const textX = left + barW * ratio;
-    const textY = (barPos.y - barH * barPos.oy) + barH * 0.5;
-    ctx.callFunction('SpawnDamageText', totalHeal, textX, textY, 'heal', 'bar');
-  }
-  ctx.callFunction('LogCombat', potency > 1 ? `${actorName} used Magic Fruit!` : `${actorName} heals party for ${totalHeal}`);
+  const totalHeal = ctx.callFunction('ApplyActiveHeroHeal', heal);
+  ctx.callFunction('LogCombat', potency > 1 ? `${actorName} used Magic Fruit!` : `${actorName} heals for ${totalHeal}`);
   g.ActionLockUntil = (g.time || 0) + (g.DamageTextDurationSec || 1.35);
   g.DeferAdvance = 1;
   g.AdvanceAfterAction = 1;
   g.ActionOwnerUID = actorUID;
+  return true;
 }

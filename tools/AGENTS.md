@@ -38,3 +38,4 @@
 - build_runtime_release.mjs packages only tracked runtime files from web-runner/ and src/ into dist/, with commit and SHA-256 manifest. Netlify publishes dist/; checkpoints, governance reviews and generation prompts are excluded.
 
 - UI lock checks native hero commands, column-major capacity, individual HP, absent global attack/pooled health bars and the compact Astral Flow meter. Its group-size loop uses test actors only and exercises the actual action buttons through presentation completion.
+- The native command UI gate prepares and executes self Heal, checks only the active hero recovers, and waits for the ordinary turn handoff.

@@ -536,3 +536,5 @@ Damage must update actor HP and derive totals; canonical heroIndex is identity, 
 Board removal must include bootstrap readiness: an invisible full-board gate can keep otherwise initialized combat in BOOTSTRAP. Command execution must use instance UID for ownership and formation display slot for presentation; catalog identity cannot locate a later or repeated member. Preserve prepared commands on rejected commits, and revalidate stale targets before spending.
 
 - 2026-09-07, ORKA-49k.5: Once actor HP owns survival, recovery must mutate those actors before rebuilding presentation arrays. Copying max-health arrays only creates a healthy-looking projection. Exercise zero members as well as partial/full groups so stale health cannot survive a roster clear; reuse the same restoration owner for Town and Continue.
+
+- 2026-09-07, ORKA-49k.6: Migrating shared healing requires changing both recipient and percentage basis. Actor-only writes still over-heal if they scale from party max HP. Retire reverse HP projection and shared-bar text together, then exercise a real prepared command through turn completion.

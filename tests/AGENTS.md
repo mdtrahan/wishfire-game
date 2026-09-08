@@ -40,3 +40,4 @@
 
 - Native command proof covers scheduled actor ownership, rejected/stale targets, animation handoff and exact loaded slots. Legacy board click/refill assertions are retired with their consumers. The UI lock checks card/editor containment and real prepared attacks for groups of one through six.
 - Full-recovery proof exercises both the app Town wrapper and Continue with zero through six loaded heroes, sparse slots, KO, stale UI health and retained encounter resources.
+- Self-heal checks must use differing actor and party maxima, actual groups 1–6, and KO/wrong-actor cases. Percentage recovery cannot grow with party size. Rounded AF checks cover four participants at 64% with six heroes and the 100% final tier.

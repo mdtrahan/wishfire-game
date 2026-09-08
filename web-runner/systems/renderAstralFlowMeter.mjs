@@ -1,4 +1,4 @@
-import { getHeroCommandSlots } from '../modules/heroCommands.mjs';
+import { getHeroCommandSlots, getAstralFlowTierPercent } from '../modules/heroCommands.mjs';
 
 export function renderAstralFlowMeter(ctx, { state, worldToCanvas, layoutScale, heroPortraitImages }) {
   const g = state.globals;
@@ -12,10 +12,11 @@ export function renderAstralFlowMeter(ctx, { state, worldToCanvas, layoutScale, 
   ctx.fillStyle = '#1e7bd6'; ctx.fillRect(pos.x, pos.y, w * ratio, h);
   ctx.strokeStyle = '#101010'; ctx.lineWidth = layoutScale; ctx.strokeRect(pos.x, pos.y, w, h);
   heroes.forEach((hero, index) => {
-    const x = pos.x + w * (index + 1) / heroes.length, y = pos.y + h / 2, r = 5 * layoutScale;
+    const threshold = getAstralFlowTierPercent(heroes.length, index + 1) / 100;
+    const x = pos.x + w * threshold, y = pos.y + h / 2, r = 5 * layoutScale;
     ctx.strokeStyle = '#bfbfbf'; ctx.beginPath(); ctx.moveTo(x, pos.y - layoutScale); ctx.lineTo(x, pos.y + h + layoutScale); ctx.stroke();
     ctx.save(); ctx.beginPath(); ctx.moveTo(x, y-r); ctx.lineTo(x+r, y); ctx.lineTo(x, y+r); ctx.lineTo(x-r, y); ctx.closePath();
-    ctx.fillStyle = ratio >= (index + 1) / heroes.length ? '#e4b650' : '#5e5e5e'; ctx.fill();
+    ctx.fillStyle = ratio >= threshold ? '#e4b650' : '#5e5e5e'; ctx.fill();
     ctx.clip();
     const image = heroPortraitImages[hero.baseHeroName || hero.name];
     if (image?.naturalWidth > 0) {
