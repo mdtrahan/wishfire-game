@@ -90,3 +90,4 @@
 
 - heroCommandUI.mjs owns native command cards and draft editing below the arena. Set Action and Reload do not execute; stale manual targets reopen selection. Auto uses basic attacks and preserves Astral Flow. Cards fill left column first and leave capacity empty. The encounter Menu reveals existing navigation. Rendering the board and global attack button is retired; fresh combat starts after actor initialization.
 - renderAstralFlowMeter.mjs owns the slim upper-left meter and SPEED-sorted tiny portrait notches for actual members. Currency rules remain in gameplay owners. Hero lunges use display slots, so catalog identity does not collapse repeated or later formation positions.
+- Prepared commands belong to the combat session and member UIDs. Replacing actor objects while restoring the same session must preserve prepared selections; a new session or changed roster clears them.

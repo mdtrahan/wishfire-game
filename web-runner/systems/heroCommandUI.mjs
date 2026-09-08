@@ -46,7 +46,7 @@ export function createHeroCommandUI({ ctx, gameState, canvas }) {
   const footer = document.createElement('footer');
   host.append(grid, footer);
   document.body.append(host);
-  let members = [], prepared = new Map(), previous = new Map(), draft = null, editor = null;
+  let members = [], prepared = new Map(), previous = new Map(), draft = null, editor = null, sessionId = null;
   let auto = false, repeat = null, available = false, returnFocusUID = null;
   const button = (parent, text, action) => {
     const el = document.createElement('button');
@@ -119,8 +119,12 @@ export function createHeroCommandUI({ ctx, gameState, canvas }) {
       host.style.left = `${rect.left + pos.x}px`; host.style.top = `${rect.top + pos.y}px`;
       host.style.transform = `scale(${layoutScale})`;
       const slots = getHeroCommandSlots(ctx.state.entities);
-      if (slots.some((hero, slot) => hero !== members[slot])) {
-        closeEditor(); prepared.clear(); previous.clear(); auto = false; repeat = null;
+      if (sessionId !== ctx.state.globals.CombatSessionId || slots.some((hero, slot) => hero !== members[slot])) {
+        closeEditor(); auto = false; repeat = null;
+        if (sessionId !== ctx.state.globals.CombatSessionId || slots.some((hero, slot) => hero?.uid !== members[slot]?.uid)) {
+          prepared.clear(); previous.clear();
+        }
+        sessionId = ctx.state.globals.CombatSessionId;
         members = slots;
         cards.forEach((card, slot) => {
           card.replaceChildren(); delete card.dataset.uid;

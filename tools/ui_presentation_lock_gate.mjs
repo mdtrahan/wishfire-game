@@ -744,10 +744,18 @@ async function captureCommandTurns(page, viewport, artifactDir) {
     }, count);
     const card = page.locator(`#hero-commands article[data-uid="${before.actorUID}"]`);
     await card.locator('[data-actions]').click();
+    const targetUID = before.hp.at(-1).uid;
+    await page.locator(`#hero-commands [data-target="${targetUID}"]`).click();
     await page.getByRole('button', {name:'Set Action',exact:true}).click();
     const prepared = await page.evaluate(() => ({ turn:window.__codexGame.globals.TurnSerial,
       energy:window.__codexGame.globals.Player_Energy, flow:window.__codexGame.globals.AstralFlowAmpPoints }));
+    await page.evaluate(() => {
+      const game = window.__codexGame;
+      game.state.entities = game.state.entities.map(actor => ({...actor}));
+      game.stepFrames(1);
+    });
     await card.locator('[data-attack]').click();
+    const selectedTarget = await page.evaluate(() => window.__codexGame.globals.SelectedEnemyUID);
     await page.waitForFunction(before => {
       const game = window.__codexGame;
       return before.hp.some(old => Number(game.state.entities.find(actor=>actor.uid===old.uid)?.hp) < old.hp)
@@ -761,8 +769,9 @@ async function captureCommandTurns(page, viewport, artifactDir) {
     }));
     results.push(invariant(`hero-command-group-${count}`, prepared.turn === before.turn && prepared.energy === before.energy
       && prepared.flow === before.flow && after.energy === before.energy && after.gems === 0
+      && selectedTarget === targetUID
       && after.cards.filter(Boolean).length === count && after.cards[count-1] === before.actorUID
-      && after.positions[count-1] != null, {before, prepared, after}, { preparesWithoutSpend:true, attackCompletes:true, count }));
+      && after.positions[count-1] != null, {before, prepared, after, selectedTarget, targetUID}, { preparesWithoutSpend:true, restoresTarget:true, attackCompletes:true, count }));
     if (count === 1 || count === 6) await page.screenshot({path:path.join(artifactDir,`${viewport.name}-09-group-${count}.png`)});
   }
   return results;
