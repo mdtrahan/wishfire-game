@@ -197,3 +197,52 @@ test('KO heroes consume no shield on repeated hits and Destiny does not revive t
     assert.equal(ctx.state.entities[0].hp, 0);
   }
 });
+
+test('Town and Continue recover actual hero HP for groups through six without reviving empty capacity', async () => {
+  const recovery = await import('../web-runner/systems/questCombatSession.mjs');
+  const runtime = loadModule(path.join(__dirname, '../web-runner/modules/functionBank.js'));
+  const app = fs.readFileSync(path.join(__dirname, '../web-runner/app.js'), 'utf8');
+  const extract = name => app.match(new RegExp(`function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}`))[0];
+  for (let count = 0; count <= 6; count++) {
+    for (const entry of ['town', 'continue']) {
+      const heroes = Array.from({ length: count }, (_, index) => ({
+        uid: 100 + index, kind: 'hero', heroDisplaySlot: count === 1 ? 5 : index,
+        hp: index % 2 ? 3 : 0, maxHP: 20 + index, isAlive: index % 2 === 1,
+      }));
+      const enemy = { uid: 200, kind: 'enemy', hp: 7, maxHP: 50 };
+      const state = { entities: [...heroes, enemy], globals: {
+        PartyHP: 999, PartyMaxHP: 999, PartyHPByIndex: [999], PartyMaxHPByIndex: [999],
+        PendingDeaths: Object.fromEntries([...heroes.map(hero => [hero.uid, true]), [200, true]]),
+        Player_Energy: 42, AstralFlowAmpPoints: 7, Skills: { ward: true },
+      } };
+      const gameState = { partyHP: [999], partyMaxHP: [999] };
+      const ctx = { state };
+      const calls = [];
+      const call = name => {
+        calls.push(name);
+        if (name === 'UpdateHeroHPUI') runtime.UpdateHeroHPUI(ctx);
+      };
+      const shell = vm.createContext({ state, gameState, fnContext: ctx,
+        restoreHeroesToFullHP: recovery.restoreHeroesToFullHP,
+        callFunctionWithContext: (_, name) => call(name),
+      });
+      vm.runInContext(`${extract('syncFromGlobals')}\n${extract('restorePartyToFullHP')}`, shell);
+      if (entry === 'town') shell.restorePartyToFullHP();
+      else recovery.createQuestCombatSession({ state, gameState, call, sync: shell.syncFromGlobals }).resurrect();
+      assert.deepEqual(state.entities, [...heroes, enemy]);
+      assert.equal(heroes.length, count);
+      assert.ok(heroes.every(hero => hero.hp === hero.maxHP && hero.isAlive));
+      assert.equal(enemy.hp, 7);
+      assert.deepEqual(state.globals.PendingDeaths, { 200: true });
+      assert.equal(state.globals.PartyHP, heroes.reduce((total, hero) => total + hero.maxHP, 0));
+      const slots = count === 1 ? [0, 0, 0, 0, 0, 20] : heroes.map(hero => hero.maxHP);
+      assert.deepEqual(Array.from(gameState.partyHP), slots);
+      assert.deepEqual(Array.from(gameState.partyMaxHP), slots);
+      assert.equal(state.globals.Player_Energy, 42);
+      assert.equal(state.globals.AstralFlowAmpPoints, 7);
+      assert.deepEqual(state.globals.Skills, { ward: true });
+      assert.equal(calls.filter(name => name === 'UpdateHeroHPUI').length, 1);
+      assert.equal(calls.includes('ProcessTurn'), entry === 'continue');
+    }
+  }
+});

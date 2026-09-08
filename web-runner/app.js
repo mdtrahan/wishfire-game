@@ -114,7 +114,7 @@ import { initializeStoryCardPresentationLayout } from './systems/storyCardPresen
 import { registerRuntimeLayouts } from './systems/runtimeLayoutRegistry.js';
 import { renderExistingNavigation } from './systems/renderExistingNavigation.mjs';
 import { createQuestLadderUI } from './systems/questLadderUI.mjs';
-import { createQuestCombatSession } from './systems/questCombatSession.mjs';
+import { createQuestCombatSession, restoreHeroesToFullHP } from './systems/questCombatSession.mjs';
 import { createCombatEntryTransition } from './systems/combatEntryTransition.mjs';
 import { createStoryEntryFlow } from './systems/storyEntryFlow.mjs';
 import { createSurfaceRenderRouter } from './systems/surfaceRenderRouter.js';
@@ -1260,31 +1260,16 @@ devToolingRuntime = createDevToolingRuntime({
   createCombatTurnRefreshBaseline,
 });
 
-function syncPartyTotals() {
-  state.globals.PartyHPByIndex = [...gameState.partyHP];
-  state.globals.PartyMaxHPByIndex = [...gameState.partyMaxHP];
-  state.globals.PartyHP = gameState.partyHP.reduce((a, b) => a + b, 0);
-  state.globals.PartyMaxHP = gameState.partyMaxHP.reduce((a, b) => a + b, 0);
-}
-
 function restorePartyToFullHP() {
-  if (Array.isArray(gameState.partyMaxHP) && gameState.partyMaxHP.length) {
-    gameState.partyHP = gameState.partyMaxHP.map((value) => Math.max(0, Number(value || 0)));
-    syncPartyTotals();
-    return;
-  }
-  if (state.globals.PartyMaxHPByIndex && state.globals.PartyMaxHPByIndex.length) {
-    state.globals.PartyHPByIndex = [...state.globals.PartyMaxHPByIndex];
-    state.globals.PartyHP = Number(state.globals.PartyMaxHP || 0);
-    syncFromGlobals();
-  }
+  restoreHeroesToFullHP({ state, call: name => callFunctionWithContext(fnContext, name) });
+  syncFromGlobals();
 }
 
 function syncFromGlobals() {
-  if (state.globals.PartyHPByIndex && state.globals.PartyHPByIndex.length) {
+  if (Array.isArray(state.globals.PartyHPByIndex)) {
     gameState.partyHP = [...state.globals.PartyHPByIndex];
   }
-  if (state.globals.PartyMaxHPByIndex && state.globals.PartyMaxHPByIndex.length) {
+  if (Array.isArray(state.globals.PartyMaxHPByIndex)) {
     gameState.partyMaxHP = [...state.globals.PartyMaxHPByIndex];
   }
   if (state.globals.EnemyHPByIndex && state.globals.EnemyHPByIndex.length) {

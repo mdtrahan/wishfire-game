@@ -1,4 +1,13 @@
 // Session lifecycle only. Damage, initiative and skill rules remain runtime-owned.
+export function restoreHeroesToFullHP({ state, call }) {
+  for (const hero of state.entities.filter(e => e?.kind === 'hero')) {
+    hero.hp = hero.maxHP;
+    hero.isAlive = true;
+    if (state.globals.PendingDeaths) delete state.globals.PendingDeaths[hero.uid];
+  }
+  call('UpdateHeroHPUI');
+}
+
 export function createQuestCombatSession({ state, gameState, call, sync }) {
   return {
     prepare() { state.globals.QuestFiniteEncounter = 1; },
@@ -9,12 +18,7 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
         && !state.globals.AstralFlowKoOrbPresentationActive;
     },
     resurrect() {
-      for (const hero of state.entities.filter(e => e?.kind === 'hero')) {
-        hero.hp = hero.maxHP;
-        hero.isAlive = true;
-        if (state.globals.PendingDeaths) delete state.globals.PendingDeaths[hero.uid];
-      }
-      call('UpdateHeroHPUI');
+      restoreHeroesToFullHP({ state, call });
       call('RebuildTurnOrderPreserveCurrent');
       state.globals.ActionInProgress = 0;
       state.globals.IsPlayerBusy = 0;
