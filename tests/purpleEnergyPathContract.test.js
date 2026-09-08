@@ -114,16 +114,7 @@ test('combat renderer omits the macro energy readout and bar', () => {
   assert.doesNotMatch(src, /const curE = Math/);
 });
 
-test('regular purple matches retain the action handoff call', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
-  const branch = src.match(/} else if \(color === 5\) \{[\s\S]*?\n  \}/);
-  assert.ok(branch, 'handleGemMatch should have a purple branch');
-  assert.match(branch[0], /const matchedCount = Math\.max\(0, Array\.isArray\(gameState\.selectedGems\) \? gameState\.selectedGems\.length : 0\);/);
-  assert.match(branch[0], /callFunctionWithContext\(fnContext, 'ResolveGemAction', 5, actorUID, matchedCount\);/);
-  assert.match(branch[0], /callFunctionWithContext\(fnContext, 'Sub_Energy', 1\);/);
-  assert.doesNotMatch(branch[0], /callFunctionWithContext\(fnContext, 'Sub_Energy', matchedCount\);/);
-  assert.doesNotMatch(branch[0], /callFunctionWithContext\(fnContext, 'Sub_Energy'\);/);
-});
+
 
 test('purple super gems use the purple energy path instead of fixed power amp', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'superGemRuntime.js'), 'utf8');

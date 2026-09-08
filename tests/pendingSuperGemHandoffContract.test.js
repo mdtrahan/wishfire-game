@@ -253,17 +253,3 @@ for (const modulePath of [
     assert.equal(globals.SelectedEnemyUIDOwner, 0);
   });
 }
-
-test('app routes manual and dev autoplay pending target handoffs through shared supergem recovery', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
-
-  assert.match(src, /capturePendingEnemyTargetIntent,[\s\S]*recoverPendingTargetActor,[\s\S]*resolvePendingSuperGemHandoff,[\s\S]*validatePendingEnemyTargetIntent,[\s\S]*from '\.\/src\/core\/pendingSuperGemHandoff\.mjs';/);
-  assert.match(src, /function resolvePendingTargetHandoff\(\{ actorUID, source \}\)/);
-  assert.match(src, /function recoverPendingTargetActorUID\(\)/);
-  assert.match(src, /const targetOwnerUID = recoverPendingTargetActorUID\(\);/);
-  assert.match(src, /capturePendingEnemyTargetIntent\(\{[\s\S]*actorUID: targetOwnerUID,[\s\S]*target: hit,/);
-  assert.match(src, /validatePendingEnemyTargetIntent\(\{[\s\S]*globals: state\.globals,[\s\S]*actorUID,/);
-  assert.match(src, /if \(!targetCheck\.ok\) \{[\s\S]*drawFrame\(\);[\s\S]*return;/);
-  assert.match(src, /resolvePendingTargetHandoff\(\{\s*actorUID,\s*source: 'dev-autoplay',\s*\}\)/s);
-  assert.match(src, /resolvePendingTargetHandoff\(\{\s*actorUID,\s*source: 'manual-button',\s*\}\)/s);
-});

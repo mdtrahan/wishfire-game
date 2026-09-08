@@ -50,7 +50,7 @@ fi
 # web-runner/systems/combatPresentationScale.mjs, web-runner/systems/appShellViewport.js,
 # web-runner/systems/surfaceRenderRouter.js, web-runner/systems/pointerRoutingShell.js,
 # and web-runner/src/core/damageNumberAnimation.mjs.
-UI_LOCK_OWNER_PATTERN='^(package\.json|tools/ui_presentation_lock_gate\.mjs|tests/uiPresentationLockGateContract\.test\.js|web-runner/index\.html|web-runner/app\.js|web-runner/src/core/damageNumberAnimation\.mjs|web-runner/systems/renderRuntime\.js|web-runner/systems/renderSkillDraughtOverlay\.js|web-runner/systems/devToolingRuntime\.js|web-runner/systems/combatPresentationScale\.mjs|web-runner/systems/appShellViewport\.js|web-runner/systems/surfaceRenderRouter\.js|web-runner/systems/pointerRoutingShell\.js)$'
+UI_LOCK_OWNER_PATTERN='^(package\.json|tools/ui_presentation_lock_gate\.mjs|tests/uiPresentationLockGateContract\.test\.js|web-runner/index\.html|web-runner/app\.js|web-runner/src/core/damageNumberAnimation\.mjs|web-runner/systems/renderRuntime\.js|web-runner/systems/heroCommandUI\.mjs|web-runner/systems/renderAstralFlowMeter\.mjs|web-runner/systems/renderSkillDraughtOverlay\.js|web-runner/systems/devToolingRuntime\.js|web-runner/systems/combatPresentationScale\.mjs|web-runner/systems/appShellViewport\.js|web-runner/systems/surfaceRenderRouter\.js|web-runner/systems/pointerRoutingShell\.js)$'
 UI_LOCK_STAGED_FILES="$(git diff --cached --name-only --diff-filter=ACMRD)"
 if printf '%s\n' "$UI_LOCK_STAGED_FILES" | grep -Eq "$UI_LOCK_OWNER_PATTERN"; then
   echo "UI presentation owner changed; running rendered UI lock..."

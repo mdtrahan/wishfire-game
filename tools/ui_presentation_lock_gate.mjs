@@ -22,6 +22,7 @@ const viewports = [
   { name: 'compact-retina', width: 216, height: 384, dpr: 2 },
 ];
 const focusedContracts = [
+  'tests/heroCommandsContract.test.js',
   'tests/uiPresentationLockGateContract.test.js',
   'tests/compactViewportContainmentContract.test.js',
   'tests/devToolingModalContract.test.js',
@@ -40,7 +41,6 @@ const APPROVED = Object.freeze({
     heroSelectorWidthRatio: 0.07314,
     heroPulseTolerance: 0.004,
     targetSelectorWidthRatio: 0.07217,
-    attackWidthRatio: 0.13713,
     controlTolerance: 0.002,
     progressHeightPx: 8,
     progressTolerancePx: 0.5,
@@ -499,6 +499,48 @@ async function captureCombat(page, viewport, artifactDir) {
     && /rgba\(240,\s*240,\s*240,\s*0\.92\)/.test(entry.fillStyle)
   ));
   await page.screenshot({ path: path.join(artifactDir, `${viewport.name}-05-hero-selector.png`) });
+  const commands = await page.evaluate(() => {
+    const host = document.getElementById('hero-commands');
+    const rect = host.getBoundingClientRect(), canvas = document.getElementById('view').getBoundingClientRect();
+    const cards = [...host.querySelectorAll('article')].map(card => ({
+      uid: Number(card.dataset.uid || 0), box: card.getBoundingClientRect().toJSON(),
+      portrait: card.querySelector('.face')?.getBoundingClientRect().toJSON(),
+      hp: card.querySelector('[data-hp]')?.textContent,
+      buttonHeight: card.querySelector('[data-attack]')?.getBoundingClientRect().height,
+      overflow: card.scrollWidth > card.clientWidth,
+    }));
+    return { box: rect.toJSON(), canvas: canvas.toJSON(), cards,
+      overflow: host.scrollWidth > host.clientWidth, visible: !host.hidden,
+      nativeButtons: host.querySelectorAll('button').length,
+      boardMembers: window.__codexGame.globals.Gems?.length || 0,
+    };
+  });
+  const scale = layoutScale;
+  const commandInvariants = [
+    invariant('hero-command-containment', commands.visible && !commands.overflow && commands.cards.every(card => !card.overflow)
+      && commands.box.left >= commands.canvas.left && commands.box.right <= commands.canvas.right + 1
+      && commands.box.bottom <= commands.canvas.bottom + 1, commands, { contained: true }),
+    invariant('hero-command-column-order', commands.cards.length === 6 && commands.cards.slice(0,4).every(card => card.uid > 0)
+      && commands.cards.slice(4).every(card => card.uid === 0)
+      && within(commands.cards[0].box.left, commands.cards[2].box.left, 1)
+      && commands.cards[2].box.top > commands.cards[1].box.top
+      && within(commands.cards[0].box.top, commands.cards[3].box.top, 1), commands.cards, { loaded: 4, empty: 2, fill: 'column' }),
+    invariant('hero-command-scale', commands.cards.filter(card => card.uid).every(card =>
+      within(card.box.height / scale, 76, .5) && within(card.buttonHeight / scale, 24, .5)
+      && within(card.portrait.width / scale, 20, .5)), commands.cards, { card: 76, button: 24, portrait: 20 }),
+    invariant('hero-command-native-input', commands.nativeButtons === 12 && commands.boardMembers === 0,
+      { buttons: commands.nativeButtons, gems: commands.boardMembers }, { buttons: 12, gems: 0 }),
+  ];
+  await page.getByRole('button', { name: 'Fara Actions', exact: true }).click();
+  await page.getByRole('button', { name: 'Set Action', exact: true }).waitFor({ state: 'visible' });
+  await page.screenshot({ path: path.join(artifactDir, `${viewport.name}-05b-action-editor.png`) });
+  const editorBounds = await page.locator('#hero-commands .editor').evaluate(el => ({
+    rect: el.getBoundingClientRect().toJSON(), overflow: el.scrollWidth > el.clientWidth,
+  }));
+  commandInvariants.push(invariant('hero-editor-containment', !editorBounds.overflow
+    && editorBounds.rect.left >= commands.box.left && editorBounds.rect.right <= commands.box.right + 1
+    && editorBounds.rect.bottom <= commands.box.bottom + 1, editorBounds, { contained: true }));
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
 
   await resetTrace(page);
   const targeting = await page.evaluate(() => {
@@ -615,7 +657,6 @@ async function captureCombat(page, viewport, artifactDir) {
   } : null;
   const heroSize = sizeResult(heroSelector);
   const targetSize = sizeResult(targetSelector);
-  const attackSize = sizeResult(attackButton);
   const damageRatio = damage.fontPx / canvasWidth;
   const damageDensity = (damage.backing?.width || 0) / Math.max(1, damage.rect?.width || 0);
   const skillCards = Array.isArray(skill.zones) ? skill.zones : [];
@@ -661,12 +702,13 @@ async function captureCombat(page, viewport, artifactDir) {
   const expectedDamageHeight = Math.max(12, Math.ceil(expectedDamageFontPx * 2.6));
 
   return [
+    ...commandInvariants,
     invariant('hero-selector-scale', heroSize && within(heroSize.widthRatio, APPROVED.combat.heroSelectorWidthRatio, APPROVED.combat.heroPulseTolerance), heroSize, APPROVED.combat),
     invariant('target-selector-scale', targetSize && within(targetSize.widthRatio, APPROVED.combat.targetSelectorWidthRatio, APPROVED.combat.controlTolerance), targetSize, APPROVED.combat),
-    invariant('attack-button-scale', attackSize && within(attackSize.widthRatio, APPROVED.combat.attackWidthRatio, APPROVED.combat.controlTolerance), attackSize, APPROVED.combat),
+    invariant('global-attack-absent', !attackButton, attackButton, { count: 0 }),
     invariant('damage-text-scale', within(damage.fontPx, expectedDamageFontPx, 0.1) && within(damage.rect?.width, expectedDamageWidth, 1) && within(damage.rect?.height, expectedDamageHeight, 1), { ...damage, fontRatio: damageRatio }, { fontPx: expectedDamageFontPx, cssWidth: expectedDamageWidth, cssHeight: expectedDamageHeight }),
     invariant('damage-text-density', between(damageDensity, viewport.dpr * 0.99, viewport.dpr * 1.01), { density: damageDensity, dpr: viewport.dpr, ...damage }, { density: [viewport.dpr * 0.99, viewport.dpr * 1.01] }),
-    invariant('party-progress-bar-height', within((partyHealthBar?.h || 0) / layoutScale, APPROVED.combat.progressHeightPx, APPROVED.combat.progressTolerancePx), { height: partyHealthBar?.h || 0, normalizedHeight: (partyHealthBar?.h || 0) / layoutScale }, APPROVED.combat),
+    invariant('pooled-health-bar-absent', !partyHealthBar, partyHealthBar, { count: 0 }),
     invariant('astral-progress-bar-height', within((ampBar?.h || 0) / layoutScale, APPROVED.combat.progressHeightPx, APPROVED.combat.progressTolerancePx), { height: ampBar?.h || 0, normalizedHeight: (ampBar?.h || 0) / layoutScale }, APPROVED.combat),
     invariant('skill-card-count-parity', skillCardDraws.length === skillCards.length && skillCards.length === 3, { draws: skillCardDraws.length, hitZones: skillCards.length }, { draws: 3, hitZones: 3 }),
     invariant('skill-card-proportions', skillCardGeometry.length === 3 && allSkillCardsMatchApprovedSize, skillCardGeometry, APPROVED.combat.skillCard),
@@ -676,6 +718,54 @@ async function captureCombat(page, viewport, artifactDir) {
     invariant('skill-title-scale', within(skillTitleCssPx / layoutScale, APPROVED.combat.skillTitlePx, APPROVED.combat.skillTitleTolerancePx), { cssFontPx: skillTitleCssPx, normalizedFontPx: skillTitleCssPx / layoutScale }, APPROVED.combat),
     invariant('legacy-backdrop-absent', legacyPanels.length === 0, { forbiddenPanelDraws: legacyPanels }, { forbiddenPanelDraws: 0 }),
   ];
+}
+
+async function captureCommandTurns(page, viewport, artifactDir) {
+  const results = [];
+  for (let count = 1; count <= 6; count++) {
+    const before = await page.evaluate(count => {
+      const game = window.__codexGame, g = game.globals;
+      const seed = game.state.entities.find(actor => actor.kind === 'hero');
+      const enemies = game.state.entities.filter(actor => actor.kind === 'enemy' && actor.hp > 0);
+      const heroes = Array.from({length:count}, (_,slot) => ({ ...seed, stats:{...seed.stats}, uid:100+slot, heroDisplaySlot:slot, hp:5000, maxHP:5000 }));
+      game.state.entities = [...heroes, ...enemies];
+      Object.assign(g, { GamePhase:'RUNTIME', BattleStartActive:0, TurnPhase:0, CurrentTurnIndex:0,
+        CurrentHeroUID:heroes.at(-1).uid, IsPlayerBusy:0, CanPickGems:1, ActionInProgress:0, ActionActorUID:0,
+        ActionLockUntil:0, DeferAdvance:0, AdvanceAfterAction:0, PendingSkillID:'', PendingActor:0,
+        SkillDraughtOpen:0, SkillDraughtPendingOpen:0, TextAnimating:0, TextAnimEndAt:0,
+        HeroAction:null, EnemyAction:null, PendingHeroHits:[], PendingDeaths:{},
+        TurnOrderArray:[{uid:heroes.at(-1).uid,type:0},...enemies.map(enemy=>({uid:enemy.uid,type:1}))],
+      });
+      game.callFunction('InitPartyHPFromHeroes');
+      game.callFunction('ProcessTurn');
+      game.stepFrames(2);
+      return { actorUID:heroes.at(-1).uid, hp:enemies.map(enemy=>({uid:enemy.uid,hp:enemy.hp})),
+        energy:g.Player_Energy, flow:g.AstralFlowAmpPoints, turn:g.TurnSerial };
+    }, count);
+    const card = page.locator(`#hero-commands article[data-uid="${before.actorUID}"]`);
+    await card.locator('[data-actions]').click();
+    await page.getByRole('button', {name:'Set Action',exact:true}).click();
+    const prepared = await page.evaluate(() => ({ turn:window.__codexGame.globals.TurnSerial,
+      energy:window.__codexGame.globals.Player_Energy, flow:window.__codexGame.globals.AstralFlowAmpPoints }));
+    await card.locator('[data-attack]').click();
+    await page.waitForFunction(before => {
+      const game = window.__codexGame;
+      return before.hp.some(old => Number(game.state.entities.find(actor=>actor.uid===old.uid)?.hp) < old.hp)
+        && !game.globals.HeroAction?.active;
+    }, before, {timeout:15000});
+    const after = await page.evaluate(() => ({
+      cards:[...document.querySelectorAll('#hero-commands article')].map(card=>Number(card.dataset.uid || 0)),
+      energy:window.__codexGame.globals.Player_Energy,
+      gems:window.__codexGame.globals.Gems.length,
+      positions:window.__codexGame.globals.HeroPortraitPosByIndex,
+    }));
+    results.push(invariant(`hero-command-group-${count}`, prepared.turn === before.turn && prepared.energy === before.energy
+      && prepared.flow === before.flow && after.energy === before.energy && after.gems === 0
+      && after.cards.filter(Boolean).length === count && after.cards[count-1] === before.actorUID
+      && after.positions[count-1] != null, {before, prepared, after}, { preparesWithoutSpend:true, attackCompletes:true, count }));
+    if (count === 1 || count === 6) await page.screenshot({path:path.join(artifactDir,`${viewport.name}-09-group-${count}.png`)});
+  }
+  return results;
 }
 
 async function runViewport(browser, baseUrl, viewport, artifactDir, { injectStageDrift = false } = {}) {
@@ -704,10 +794,12 @@ async function runViewport(browser, baseUrl, viewport, artifactDir, { injectStag
     const presentation = await captureStoryAndTown(page, viewport, artifactDir);
     const panelInvariants = await captureDevPanels(page, viewport, artifactDir, presentation.metrics);
     const combatInvariants = await captureCombat(page, viewport, artifactDir);
+    const commandTurnInvariants = injectStageDrift ? [] : await captureCommandTurns(page, viewport, artifactDir);
     const results = [
       ...presentation.invariants,
       ...panelInvariants,
       ...combatInvariants,
+      ...commandTurnInvariants,
       invariant('page-runtime-errors', pageErrors.length === 0, pageErrors, { count: 0 }),
     ];
     return { viewport, metrics: presentation.metrics, invariants: results };

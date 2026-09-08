@@ -37,3 +37,5 @@
 - Quest flow tests replace direct story-to-Town recovery expectations with ladder completion and Continue/Quit; gallery/map Back routes now return to the quest ladder.
 
 - Health contracts verify actual actor HP, stable sparse/KO slot projections, cleared previous-group totals, and real JS-to-WASM damage for every loaded size from one through six.
+
+- Native command proof covers scheduled actor ownership, rejected/stale targets, animation handoff and exact loaded slots. Legacy board click/refill assertions are retired with their consumers. The UI lock checks card/editor containment and real prepared attacks for groups of one through six.

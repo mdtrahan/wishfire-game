@@ -406,7 +406,6 @@ test('runtime input gates interpret CanPickGems numerically without changing pre
   const boardStateSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'superGemBoardState.mjs'), 'utf8');
 
   assert.match(appSrc, /isCanPickGemsReady/);
-  assert.match(appSrc, /!isCanPickGemsReady\(state\.globals\.CanPickGems\) \|\| !isHeroTurn/);
   assert.match(appSrc, /isCanPickGemsReady\(state\.globals\.CanPickGems\)/);
   assert.match(boardStateSrc, /isCanPickGemsReady\(globals\.CanPickGems\)/);
   assert.doesNotMatch(appSrc, /state\.globals\.CanPickGems === true/);

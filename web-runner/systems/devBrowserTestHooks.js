@@ -31,7 +31,6 @@ export function registerDevBrowserTestHooks({
   deriveDamageFloatFrameOffset,
   isBoardGemLocked,
   drawFrame,
-  handleGemMatch,
   toggleDevToolingModal,
   applyDevToolingConfig,
   runDevAutoplayUntilDepleted,
@@ -329,9 +328,6 @@ export function registerDevBrowserTestHooks({
             };
           }),
       };
-    },
-    forceMatch(color) {
-      handleGemMatch(color);
     },
     setEncounterRequest(input = {}) {
       const req = input && typeof input === 'object' ? input : {};

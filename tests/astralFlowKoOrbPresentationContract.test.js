@@ -381,7 +381,7 @@ test('runtime wiring keeps KO orb presentation outside app-level orchestration',
   assert.match(appSrc, /astralFlowKoOrbPresentation\.updateAndRenderAstralFlowKoOrbPresentation\(\{[\s\S]*ctx,[\s\S]*state,[\s\S]*worldToCanvas,[\s\S]*callFunctionWithContext,[\s\S]*fnContext,[\s\S]*\}\);/);
   assert.doesNotMatch(appSrc, /getEnemyKoAstralFlowOrbPresentation|CompleteAstralFlowKoOrbRewards|applyAstralFlowEnemyKoReward/);
 
-  assert.match(renderRuntimeSrc, /presentationPatches\.AstralFlowAmpBarCanvas = \{[\s\S]*x: ampX,[\s\S]*y: ampY,[\s\S]*w: ampW,[\s\S]*h: barH,[\s\S]*color: '#1e7bd6',[\s\S]*\};/);
+  assert.match(renderRuntimeSrc, /presentationPatches\.AstralFlowAmpBarCanvas = renderAstralFlowMeter/);
   assert.match(renderRuntimeSrc, /EnemyDeathVisualHoldByUID/);
   assert.match(renderRuntimeSrc, /\(e\.hp \?\? 0\) > 0 \|\| \(deathHoldByUID\[e\.uid\] && !deathHoldByUID\[e\.uid\]\.hiddenForOrb\)/);
 });

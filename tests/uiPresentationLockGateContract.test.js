@@ -28,10 +28,15 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
     'dev-panel-1-action-order',
     'hero-selector-scale',
     'target-selector-scale',
-    'attack-button-scale',
+    'global-attack-absent',
+    'hero-command-containment',
+    'hero-command-column-order',
+    'hero-command-scale',
+    'hero-command-native-input',
+    'hero-editor-containment',
     'damage-text-scale',
     'damage-text-density',
-    'party-progress-bar-height',
+    'pooled-health-bar-absent',
     'astral-progress-bar-height',
     'skill-card-proportions',
     'skill-card-count-parity',
@@ -67,6 +72,8 @@ test('pre-commit routes staged UI-owner changes through the full UI lock', () =>
   assert.match(hook, /git diff --cached --name-only --diff-filter=ACMRD/);
   assert.match(hook, /npm run test:ui-lock/);
   assert.match(hook, /web-runner\/systems\/renderRuntime\.js/);
+  assert.ok(hook.includes('web-runner/systems/heroCommandUI\\.mjs'));
+  assert.ok(hook.includes('web-runner/systems/renderAstralFlowMeter\\.mjs'));
   assert.match(hook, /web-runner\/systems\/devToolingRuntime\.js/);
   assert.match(hook, /web-runner\/systems\/combatPresentationScale\.mjs/);
   assert.match(hook, /web-runner\/systems\/appShellViewport\.js/);

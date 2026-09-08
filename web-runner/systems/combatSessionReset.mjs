@@ -14,6 +14,12 @@ export function resetCombatSessionConditions(globals, gameState) {
     PendingSkillID: '', PendingActor: 0, PendingSuperGemAction: null,
     SelectedEnemyUID: 0, SelectedEnemyUIDOwner: 0, PendingManualTargetIntent: null,
     DamageTexts: [], ChainStrikeVisuals: [], ArcanePulseVisuals: [],
+    Gems: [], BoardFillActive: 0, TapIndex: 0,
+  });
+  Object.assign(gameState, {
+    gems: [], grid: [], boardCreated: false, selectedGems: [], selectionLocked: false,
+    superGems: [], refillBounce: null, gemMergeFx: null, yellowCasino: null,
+    heroCommandsMenuOpen: false,
   });
   delete globals.HeroAction;
   delete globals.EnemyAction;

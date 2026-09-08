@@ -159,14 +159,3 @@ test('dev idle autoplay always takes an available heal supergem below 40 percent
     { row: 2, col: 0 },
   );
 });
-
-test('dev idle autoplay runtime delegates priority through the core module', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
-  assert.match(src, /from '\.\/src\/core\/idleAutoplayPriority\.mjs';/);
-  assert.match(src, /hasLivingEnemiesForIdleAutoplay\(\)/);
-  assert.match(src, /lockedCells: getLockedGemCellKeys\(\)/);
-  assert.match(src, /pickIdleAutoplayTriplet\(gameState\.gems, getIdleAutoplayPriorityContext\(\)\)/);
-  assert.match(src, /pickIdleAutoplaySuperGem\(gameState\.superGems, getIdleAutoplayPriorityContext\(\)\)/);
-  assert.match(src, /const beforeSuperGemProgressSig = getDevAutoplayProgressSig\(\);/);
-  assert.match(src, /played && getDevAutoplayProgressSig\(\) !== beforeSuperGemProgressSig/);
-});

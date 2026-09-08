@@ -437,15 +437,9 @@ test('depleting Falie Ward starts a fade-out gate before combat advances in both
   assertShieldDepletionFadesWardBeforeAdvancing(path.join(repoRoot, 'Scripts', 'functionBank.js'));
 });
 
-test('party shield render expression is light blue and right-edge aligned over the PartyHP bar', () => {
+test('shared shield does not create a retired pooled health bar', () => {
   const source = fs.readFileSync(path.join(repoRoot, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
-
-  assert.match(source, /#6CCBEE/);
-  assert.match(source, /PartyTempHPShield/);
-  assert.match(source, /Math\.min\(1, shieldValue \/ maxHP\)/);
-  assert.match(source, /PartyTempHPShieldBarCanvas/);
-  assert.match(source, /barX \+ barW - shieldW/);
-  assert.match(source, /fillRect\(barX \+ barW - shieldW, barY, shieldW, barH\)/);
+  assert.doesNotMatch(source, /PartyTempHPShieldBarCanvas/);
 });
 
 test('Ward barrier asset is loaded and rendered from the game assets path', () => {

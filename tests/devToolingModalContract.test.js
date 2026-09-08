@@ -180,11 +180,8 @@ test('editable dev tooling fields bypass gameplay keyboard shortcuts', () => {
     keydownSrc,
     /if \(ensureDevToolingConfig\(\)\.open\) \{[\s\S]*if \(!isEditableDomTarget\(ev\.target\)\) \{[\s\S]*return;[\s\S]*\}\s*return;\s*\}/,
   );
-  assert.ok(
-    keydownSrc.indexOf('return;\n    }\n    if (state.globals.DevTestMode)')
-      < keydownSrc.indexOf("ev.code === 'KeyA'"),
-    'editable modal targets must return before the KeyA gameplay shortcut',
-  );
+  assert.doesNotMatch(keydownSrc, /handleGemMatch/);
+  assert.match(keydownSrc, /closest\?\.\('#hero-commands'\)\) return/);
 });
 
 test('dev browser hooks expose an explicit dynamic initiative authority QA scenario', () => {
@@ -257,7 +254,7 @@ test('startup preload can prepare combat assets while story mock is active', () 
   assert.doesNotMatch(prepareSrc, /assertCombatLayoutDev\('prepareCombatSetupFromInstances'\)/);
   assert.match(src, /createCombatSessionInitializer/);
   assert.match(initializerSrc, /assertCombatLayoutDev\('initEntities'\)/);
-  assert.match(src, /assertCombatLayoutDev\('createGemBoard'\)/);
+  assert.doesNotMatch(src, /function createGemBoard\(/);
   assert.match(src, /assertCombatLayoutDev\('StartRound'\)/);
 });
 

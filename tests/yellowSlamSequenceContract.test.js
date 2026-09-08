@@ -34,19 +34,7 @@ function extractYellowBranch(src) {
   return src.slice(start, end);
 }
 
-test('regular yellow matches route empty-cell fill through shared bounce refill', () => {
-  const src = read('web-runner/app.js');
-  const branch = extractYellowBranch(src);
 
-  assert.match(branch, /callFunctionWithContext\(fnContext, 'ResolveGemAction', 3, actorUID, matchedYellowCount\);/);
-  assert.match(branch, /callFunctionWithContext\(fnContext, 'DestroyGem'\);/);
-  assert.match(branch, /callFunctionWithContext\(fnContext, 'ClearMatchState'\);/);
-  assert.match(branch, /syncGemsFromGlobals\(\);/);
-  assert.match(branch, /clearLocalSelection\(\);/);
-  assert.match(branch, /rebuildGridAndStartMatchRefill\(\);/);
-  assert.match(branch, /callFunctionWithContext\(fnContext, 'Sub_Energy'\);/);
-  assert.match(branch, /startYellowCasinoSequence\(actorUID, matchedYellowCount,/);
-});
 
 test('yellow casino sequence no longer owns unrelated board-yellow or empty-slot refill work', () => {
   const src = read('web-runner/app.js');

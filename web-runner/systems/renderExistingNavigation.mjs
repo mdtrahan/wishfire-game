@@ -34,10 +34,11 @@ export function renderExistingNavigation(ctx, { worldToCanvas, layoutScale, game
     document.body.append(host);
   }
   const entry = gameState.storyEntry;
-  host.hidden = entry.phase === 'opening';
+  const inCombat = layoutState.getActiveLayoutId() === 'combat';
+  host.hidden = entry.phase === 'opening' || (inCombat && !gameState.heroCommandsMenuOpen);
   host.inert = host.hidden || !!entry.pending || !!entry.modal || entry.phase === 'defeat';
   const canvasRect = ctx.canvas.getBoundingClientRect();
-  const pos = worldToCanvas(0, 580);
+  const pos = worldToCanvas(0, inCombat ? 520 : 580);
   host.style.left = `${canvasRect.left + pos.x}px`;
   host.style.top = `${canvasRect.top + pos.y}px`;
   host.style.transform = `scale(${layoutScale})`;

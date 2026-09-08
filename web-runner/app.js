@@ -93,6 +93,7 @@ import * as renderCombatRuntime from './systems/renderCombatRuntime.js';
 import * as renderOverlays from './systems/renderOverlays.js';
 import * as renderSkillDraught from './systems/renderSkillDraughtOverlay.js';
 import * as renderRuntime from './systems/renderRuntime.js';
+import { createHeroCommandUI } from './systems/heroCommandUI.mjs';
 import * as partyStatOsd from './systems/partyStatOsd.js';
 import * as astralFlowKoOrbPresentation from './systems/astralFlowKoOrbPresentation.js';
 import * as superGemRuntime from './systems/superGemRuntime.js';
@@ -1612,56 +1613,6 @@ function initEntities(enemyRows, layoutInstances) {
   return initCombatSessionEntities(enemyRows, layoutInstances);
 }
 
-// Create gem board with active colors (1-5: red, blue, yellow, heal, purple energy).
-function createGemBoard(gridBounds = null, { immediateFill = false } = {}) {
-  assertCombatLayoutDev('createGemBoard');
-  bootstrapDeterministicRefillPending = BOOTSTRAP_SEED != null;
-  gameState.gems = [];
-  gameState.grid = [];
-  resetSuperGemBoardState(gameState);
-  const g = boardGeometry;
-  
-  // Calculate board dimensions
-  const boardWidth = g.cols * g.cellSize + (g.cols - 1) * g.gap;
-  const boardHeight = g.rows * g.cellSize + (g.rows - 1) * g.gap;
-  
-  // If grid bounds provided, center the gem board within them
-  let startX = g.gx;
-  let startY = g.gy;
-  
-  if (gridBounds) {
-    const gridWidth = gridBounds.maxX - gridBounds.minX;
-    const gridHeight = gridBounds.maxY - gridBounds.minY;
-    startX = gridBounds.minX + (gridWidth - boardWidth) / 2;
-    startY = gridBounds.minY + (gridHeight - boardHeight) / 2;
-    runtimeDebugLogging.startupDebugLog(`[BOARD] Centered within grid bounds: (${startX.toFixed(1)}, ${startY.toFixed(1)})`);
-  }
-  
-  for (let c = 0; c < g.cols; c++) {
-    gameState.grid[c] = [];
-    for (let r = 0; r < g.rows; r++) {
-      gameState.grid[c][r] = 0;
-    }
-  }
-
-  gameState.selectedGems = [];
-  gameState.selectionLocked = false;
-  if (gameState.bootstrapRng && gameState.bootstrapRng.enabled) {
-    gameState.bootstrapRng.gemInitRemaining = g.cols * g.rows;
-  }
-  gameState.boardCreated = true;
-  setGemArray(gameState.gems);
-  state.globals.TapIndex = 0;
-  runtimeDebugLogging.startupDebugLog(`[BOARD] Created gem board: ${g.cols}x${g.rows} = ${gameState.gems.length} gems`);
-  if (immediateFill) {
-    refillGemBoard(gridBounds);
-    settleSuperGemShapes({ gameState, state, boardGeometry, reason: 'immediate-fill' });
-    state.globals.BoardFillActive = 0;
-    return;
-  }
-  startRefillBounce(0.31);
-}
-
 function rebuildGridFromGems() {
   const g = boardGeometry;
   gameState.grid = [];
@@ -1714,69 +1665,6 @@ function randomGemFrame() {
   return frame;
 }
 
-
-function refillGemBoard(gridBounds = null) {
-  const g = boardGeometry;
-  resolveSuperGemDecomposition({ gameState, state, reason: 'refill-gem-board' });
-  rebuildGridFromGems();
-  let hasEmpty = false;
-  for (let c = 0; c < g.cols; c++) {
-    for (let r = 0; r < g.rows; r++) {
-      if (gameState.grid[c][r] === 0) { hasEmpty = true; break; }
-    }
-    if (hasEmpty) break;
-  }
-  if (!hasEmpty) {
-    runtimeDebugLogging.startupDebugLog('[BOARD] Refill skipped (board full)');
-    return false;
-  }
-  const boardWidth = g.cols * g.cellSize + (g.cols - 1) * g.gap;
-  const boardHeight = g.rows * g.cellSize + (g.rows - 1) * g.gap;
-  let startX = g.gx;
-  let startY = g.gy;
-  if (gridBounds) {
-    const gridWidth = gridBounds.maxX - gridBounds.minX;
-    const gridHeight = gridBounds.maxY - gridBounds.minY;
-    startX = gridBounds.minX + (gridWidth - boardWidth) / 2;
-    startY = gridBounds.minY + (gridHeight - boardHeight) / 2;
-  }
-  for (let r = 0; r < g.rows; r++) {
-    for (let c = 0; c < g.cols; c++) {
-      if (gameState.grid[c][r] !== 0) continue;
-      const x = Math.floor(startX + c * (g.cellSize + g.gap) + g.cellSize / 2) + 0.5;
-      const y = Math.floor(startY + r * (g.cellSize + g.gap) + g.cellSize / 2) + 0.5;
-      const color = randomGemFrame();
-      gameState.gems.push({
-        uid: gameState.nextGemUID++,
-        cellC: c,
-        cellR: r,
-        color,
-        elementIndex: color,
-        x,
-        y,
-        worldX: x,
-        worldY: y,
-        width: g.cellSize,
-        height: g.cellSize,
-        selected: false,
-        Selected: 0,
-        flashUntil: 0
-      });
-      if (gameState.bootstrapRng && gameState.bootstrapRng.enabled && gameState.bootstrapRng.gemInitRemaining > 0) {
-        gameState.bootstrapRng.gemInitRemaining -= 1;
-      }
-      gameState.grid[c][r] = gameState.gems[gameState.gems.length - 1].uid;
-    }
-  }
-  gameState.boardCreated = true;
-  gameState.selectedGems = [];
-  gameState.selectionLocked = false;
-  setGemArray(gameState.gems);
-  settleSuperGemShapes({ gameState, state, boardGeometry, reason: 'refill-gem-board' });
-  state.globals.TapIndex = 0;
-  runtimeDebugLogging.startupDebugLog('[BOARD] Refilled missing gems');
-  return true;
-}
 
 const YELLOW_CASINO_TELEGRAPH_SEC = 0;
 const yellowMatchAnimationDuration = 0;
@@ -1995,45 +1883,6 @@ function hasEmptySlots() {
   return false;
 }
 
-function collectBoardCoverageIssues() {
-  const counts = new Map();
-  for (const g of (gameState.gems || [])) {
-    if (!g) continue;
-    const key = `${g.cellR},${g.cellC}`;
-    counts.set(key, (counts.get(key) || 0) + 1);
-  }
-  const missingCells = [];
-  const duplicates = [];
-  for (let r = 0; r < boardGeometry.rows; r++) {
-    for (let c = 0; c < boardGeometry.cols; c++) {
-      const key = `${r},${c}`;
-      const n = counts.get(key) || 0;
-      if (n === 0) missingCells.push({ r, c });
-      if (n > 1) duplicates.push({ r, c, count: n });
-    }
-  }
-  return { missingCells, duplicates };
-}
-
-function tryActivateRuntimePhase() {
-  if (state.globals.GamePhase !== 'BOOTSTRAP') return false;
-  const refill = gameState.refillBounce;
-  const casino = gameState.yellowCasino;
-  if (refill && refill.active) return false;
-  if (casino && casino.active) return false;
-  if (!Array.isArray(gameState.gems) || gameState.gems.length !== (boardGeometry.rows * boardGeometry.cols)) return false;
-
-  const coverage = collectBoardCoverageIssues();
-  if (coverage.missingCells.length > 0 || coverage.duplicates.length > 0) return false;
-
-  state.globals.GamePhase = 'RUNTIME';
-  state.globals.CanPickGems = true;
-  state.globals.BoardFillActive = 0;
-  state.globals.IsPlayerBusy = 0;
-  console.log('[GAME_PHASE] RUNTIME');
-  return true;
-}
-
 function getInstanceWorldCenter(typeName) {
   let inst = null;
   const hasAssetsLayout = typeof assetsLayout !== 'undefined' && assetsLayout && Array.isArray(assetsLayout.layers);
@@ -2090,189 +1939,6 @@ function startGemMergeFx({ target = null, scaleOut = true, startScale = 1, sourc
     startScale: Number.isFinite(Number(startScale)) ? Math.max(0.05, Number(startScale)) : 1,
     doneAt: null,
   };
-}
-
-function handleGemMatch(color) {
-  if (state.globals.GamePhase !== 'RUNTIME') {
-    return;
-  }
-  const g = state.globals;
-  g.DebugMatchCount = (g.DebugMatchCount || 0) + 1;
-  console.log(`[DEBUG] matches=${g.DebugMatchCount} turns=${g.DebugTurnCount || 0}`);
-  g.MatchedColorValue = color;
-  g.SuppressChainUI = 0;
-  state.globals.Gems = gameState.gems;
-  if (color == null) {
-    const clearLocalSelection = () => {
-      fnContext.setSelectedGemIndices([]);
-      gameState.selectionLocked = false;
-      if (gameState.gems) {
-        for (const gm of gameState.gems) {
-          gm.selected = false;
-          gm.Selected = 0;
-        }
-      }
-      state.globals.TapIndex = 0;
-    };
-    clearLocalSelection();
-    return;
-  }
-  // lock input while resolving a confirmed match/action
-  applyTurnGateGlobals({
-    CanPickGems: 0,
-    IsPlayerBusy: 1,
-    EnemyLineClearPressureActive: 0,
-  });
-
-  const currentTurnUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
-  const currentTurnActor = currentTurnUID > 0 ? callFunctionWithContext(fnContext, 'GetActorByUID', currentTurnUID) : null;
-  const actorUID = currentTurnActor && currentTurnActor.kind === 'hero'
-    ? currentTurnUID
-    : (getHeroUIDByIndex(gameState.selectedHero) || gameState.selectedHero || currentTurnUID);
-  beginTask011ActionCycle(color, actorUID);
-
-  const clearLocalSelection = () => {
-    fnContext.setSelectedGemIndices([]);
-    gameState.selectionLocked = false;
-    if (gameState.gems) {
-      for (const gm of gameState.gems) {
-        gm.selected = false;
-        gm.Selected = 0;
-      }
-    }
-    state.globals.TapIndex = 0;
-  };
-
-  const selectedLockedGem = (gameState.selectedGems || []).some((idx) => isBoardGemLocked(gameState.gems && gameState.gems[idx]));
-  if (selectedLockedGem) {
-    clearLocalSelection();
-    return;
-  }
-
-  const syncGemsFromGlobals = () => {
-    if (state.globals.Gems && Array.isArray(state.globals.Gems)) {
-      gameState.gems = state.globals.Gems;
-    }
-  };
-  const rebuildGridAndStartMatchRefill = () => {
-    rebuildGridFromGems();
-    if (hasEmptySlots() && !(gameState.refillBounce && gameState.refillBounce.active)) {
-      startRefillBounce();
-    }
-  };
-
-  if (color === 0 || color === 1) {
-    const matchedCount = Math.max(0, Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0);
-    g.TurnPhase = 1;
-    callFunctionWithContext(fnContext, 'UpdateChain', color);
-    g.IsAOEMatch = 0;
-    callFunctionWithContext(fnContext, 'ResolveGemAction', color, actorUID, matchedCount);
-    callFunctionWithContext(fnContext, 'DestroyGem');
-    callFunctionWithContext(fnContext, 'ClearMatchState');
-    syncGemsFromGlobals();
-    clearLocalSelection();
-    rebuildGridAndStartMatchRefill();
-    callFunctionWithContext(fnContext, 'Sub_Energy');
-    g.ApplyChainToNextDamage = g.ChainNumber >= 2 ? 1 : 0;
-  } else if (color === 2) {
-    const consumedBlue = Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0;
-    startGemMergeFx();
-    g.MatchedColorValue = 0;
-    g.IsAOEMatch = 0;
-    g.SuppressChainUI = 0;
-    g.BlueGemConsumedCount = Math.max(0, Number((gameState.selectedGems || []).length));
-    callFunctionWithContext(fnContext, 'UpdateChain', 2);
-    callFunctionWithContext(fnContext, 'ResolveGemAction', 2, actorUID, consumedBlue);
-    g.BlueGemConsumedCount = 0;
-    callFunctionWithContext(fnContext, 'DestroyGem');
-    callFunctionWithContext(fnContext, 'ClearMatchState');
-    syncGemsFromGlobals();
-    clearLocalSelection();
-    rebuildGridAndStartMatchRefill();
-    callFunctionWithContext(fnContext, 'Sub_Energy');
-    g.ApplyChainToNextDamage = 0;
-  } else if (color === 3) {
-    const selectedYellowGems = Array.isArray(gameState.selectedGems)
-      ? gameState.selectedGems
-        .map((selection) => {
-          if (selection == null) return null;
-          if (typeof selection === 'object') return selection;
-          const index = Number(selection);
-          return Number.isInteger(index) ? (gameState.gems && gameState.gems[index]) : null;
-        })
-        .filter((gm) => gm && !isBoardGemLocked(gm) && Number(gm.color ?? gm.elementIndex) === YELLOW_COLOR)
-      : [];
-    const matchedYellowCount = selectedYellowGems.length;
-    const goldTarget = getGoldLabelTargetWorld();
-    const actor = state.entities.find(e => e.uid === actorUID);
-    const actorName = actor ? (actor.name || 'Hero') : 'Hero';
-    const yellowMergeSources = selectedYellowGems
-      .map((gm) => ({
-        cellC: Number(gm.cellC || 0),
-        cellR: Number(gm.cellR || 0),
-        x: Number(gm.x || 0),
-        y: Number(gm.y || 0),
-        color: gm.color ?? gm.elementIndex,
-      }));
-    callFunctionWithContext(fnContext, 'ResolveGemAction', 3, actorUID, matchedYellowCount);
-    callFunctionWithContext(fnContext, 'LogCombat', `${actorName} used Wild Magic!`);
-    callFunctionWithContext(fnContext, 'DestroyGem');
-    callFunctionWithContext(fnContext, 'ClearMatchState');
-    syncGemsFromGlobals();
-    clearLocalSelection();
-    rebuildGridAndStartMatchRefill();
-    callFunctionWithContext(fnContext, 'Sub_Energy');
-    startYellowCasinoSequence(actorUID, matchedYellowCount, {
-      goldTarget,
-      mergeSources: yellowMergeSources,
-    });
-    if (!(gameState.yellowCasino && gameState.yellowCasino.active)) {
-      applyTurnGateIntent(createYellowSafetyNet, {
-        now: Number(state.globals.time || 0),
-        currentTurnUID: actorUID,
-      });
-    }
-  } else if (color === 4) {
-    const matchedCount = Math.max(0, Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0);
-    g.MatchedColorValue = 4;
-    g.IsAOEMatch = 0;
-    callFunctionWithContext(fnContext, 'UpdateChain', 4);
-    callFunctionWithContext(fnContext, 'DestroyGem');
-    callFunctionWithContext(fnContext, 'ClearMatchState');
-    syncGemsFromGlobals();
-    clearLocalSelection();
-    rebuildGridAndStartMatchRefill();
-    callFunctionWithContext(fnContext, 'Sub_Energy');
-    callFunctionWithContext(fnContext, 'ResolveGemAction', 4, actorUID, matchedCount);
-  } else if (color === 5) {
-    const matchedCount = Math.max(0, Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0);
-    callFunctionWithContext(fnContext, 'DestroyGem');
-    callFunctionWithContext(fnContext, 'ClearMatchState');
-    syncGemsFromGlobals();
-    clearLocalSelection();
-    rebuildGridAndStartMatchRefill();
-    callFunctionWithContext(fnContext, 'ResolveGemAction', 5, actorUID, matchedCount);
-    callFunctionWithContext(fnContext, 'Sub_Energy', 1);
-  }
-
-  console.log(
-    `[MATCH] post-resolve color=${color} TurnPhase=${g.TurnPhase} ` +
-    `IsPlayerBusy=${g.IsPlayerBusy} DeferAdvance=${g.DeferAdvance} ` +
-    `ActionLockUntil=${g.ActionLockUntil} PendingSkillID=${g.PendingSkillID || ''}`
-  );
-
-  gameState.boardCreated = gameState.gems.length > 0;
-  if (!gameState.boardCreated) {
-    combatRuntimeGateway.runCombatBoardInit(createGemBoard, gameState.gridBounds);
-  }
-  const immediateEnemyTurnBarrier = getPresentationTurnBarrier({
-    hasEmpty: hasEmptySlots(),
-    enemyLineClearPressureActive: !!state.globals.EnemyLineClearPressureActive,
-  });
-  if (state.globals.TurnPhase === 2 && immediateEnemyTurnBarrier.canClaimCombatAction) {
-    combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
-  }
-  syncFromGlobals();
 }
 
 function tryGetInstances(layout){
@@ -2490,7 +2156,6 @@ async function main(){
     heroGemProgressStorage.restoreHeroGemProgressFromStorage({ callFunctionWithContext, fnContext, syncFromGlobals });
     assertCombatLayoutDev('StartRound');
     callFunctionWithContext(fnContext, 'StartRound');
-    createGemBoard(gridBounds, { immediateFill: true });
     gameState.selectedGems = [];
     gameState.selectionLocked = false;
     initializeStoryCardLayout('dev-tool-refresh');
@@ -2669,8 +2334,8 @@ async function main(){
         heroGemProgressStorage.restoreHeroGemProgressFromStorage({ callFunctionWithContext, fnContext, syncFromGlobals });
         assertCombatLayoutDev('StartRound');
         callFunctionWithContext(fnContext, 'StartRound');
-        createGemBoard(gridBounds);
         combatSessionSeeded = true;
+        state.globals.GamePhase = 'RUNTIME';
         updateStartupLoadState({ active: false, phase: 'runtime', label: 'Ready', progress: 1 });
         if (runtimeDebugLogging.isGemDebugEnabled(state) && GEM_INTERACTIVITY_DIAGNOSTIC_QUERY) {
           setTimeout(() => {
@@ -2766,6 +2431,8 @@ async function main(){
     detachRuntimeInputListeners = null;
   }
   const runtimeListenerTeardowns = [];
+  const heroCommandUI = createHeroCommandUI({ ctx: fnContext, gameState, canvas });
+  runtimeListenerTeardowns.push(() => heroCommandUI.destroy());
 
   const viewportRuntime = createAppViewportRuntime({
     canvas,
@@ -3502,6 +3169,13 @@ async function main(){
     });
     const result = renderRuntime.renderRuntime(runtimeScope);
     renderExistingNavigation(ctx, { worldToCanvas, layoutScale, gameState, layoutState, eventBus });
+    heroCommandUI.update({
+      visible: layoutState.getActiveLayoutId() === 'combat' && state.globals.GamePhase === 'RUNTIME',
+      blocked: !!uiState.getUIState().overlayVisible || !!ensureDevToolingConfig().open
+        || !!state.globals.SkillDraughtOpen || !!gameState.storyEntry.modal || !!gameState.storyEntry.pending
+        || gameState.storyEntry.phase === 'defeat',
+      worldToCanvas, layoutScale, portraits: heroPortraitImages,
+    });
     if (result && result.overlayData) {
       state.globals.LastCombatOverlayData = result.overlayData;
     }
@@ -4183,40 +3857,9 @@ function getStoryCardLiveLineState() {
         lastProgressSig = progressSig;
         lastProgressAt = performance.now();
       }
-      if (autoResolvePendingSelectionForDevIdle()) {
-        await devSleep(90);
-        continue;
-      }
-      if (autoResolveSkillDraughtForDevIdle()) {
-        await devSleep(90);
-        continue;
-      }
-      if (isIdleAutoplayHeroWindow()) {
-        const superGemPick = pickIdleAutoplaySuperGem(gameState.superGems, getIdleAutoplayPriorityContext());
-        if (superGemPick) {
-          const beforeSuperGemProgressSig = getDevAutoplayProgressSig();
-          const played = clickGemCell(Number(superGemPick.row || 0), Number(superGemPick.col || 0));
-          await devSleep(90);
-          if (!isCurrentRun()) return getDevAutoplayState();
-          if (played && getDevAutoplayProgressSig() !== beforeSuperGemProgressSig) {
-            matchesPlayed += 1;
-            setDevAutoplayState({ active: true, stopRequested: false, lastReason: 'running', matchesPlayed, startedAt, endedAt: 0 });
-            continue;
-          }
-        }
-        const pick = pickIdleAutoplayTriplet(gameState.gems, getIdleAutoplayPriorityContext());
-        if (!pick) {
-          setDevAutoplayState({ active: false, stopRequested: false, lastReason: 'no_valid_triplet', matchesPlayed, endedAt: Number(state.globals.time || 0) });
-          return getDevAutoplayState();
-        }
-        const played = await playIdleAutoplayTriplet(pick, isCurrentRun);
-        if (!isCurrentRun()) return getDevAutoplayState();
-        if (played) {
-          matchesPlayed += 1;
-          setDevAutoplayState({ active: true, stopRequested: false, lastReason: 'running', matchesPlayed, startedAt, endedAt: 0 });
-        }
-        await devSleep(90);
-        continue;
+      if (heroCommandUI.playCurrent()) {
+        matchesPlayed += 1;
+        setDevAutoplayState({ active: true, stopRequested: false, lastReason: 'running', matchesPlayed, startedAt, endedAt: 0 });
       }
       if ((performance.now() - lastProgressAt) > 15000) {
         setDevAutoplayState({ active: false, stopRequested: false, lastReason: 'stalled', matchesPlayed, endedAt: Number(state.globals.time || 0) });
@@ -4372,358 +4015,6 @@ function getStoryCardLiveLineState() {
       return;
     }
 
-    // REFILL click: use actual AddMore object bounds at click time
-    const refillObj = rendered.find(r => r.inst.type === 'AddMore');
-    if (refillObj) {
-      const pos = worldToCanvas(refillObj.world.x || 0, refillObj.world.y || 0);
-      const w = (refillObj.world.width || 60) * layoutScale;
-      const h = (refillObj.world.height || 24) * layoutScale;
-      const dx = pos.x - w * refillObj.ox;
-      const dy = pos.y - h * refillObj.oy - (10 * layoutScale);
-      const pad = 6 * layoutScale;
-      if (mx >= dx - pad && mx <= dx + w + pad && my >= dy - pad && my <= dy + h + pad) {
-        return;
-      }
-    }
-
-    // Pending hero attack: click an enemy to execute
-    if (!uiState.getUIState().overlayVisible && state.globals.PendingSkillID) {
-      const btn = getAttackButtonBounds();
-      if (mx >= btn.dx && mx <= btn.dx + btn.w && my >= btn.dy && my <= btn.dy + btn.h) {
-        const enemyRosterStability = getEnemyRosterStabilitySnapshot();
-        if (!enemyRosterStability.stable) {
-          applyTurnGateIntent(createEnemyRosterRefillHold, {
-            now: Number(state.globals.time || 0),
-            currentTurnUID: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0),
-            preservePendingSkill: true,
-          });
-          drawFrame();
-          return;
-        }
-        const presentationBarrier = getPresentationTurnBarrier({
-          hasEmpty: hasEmptySlots(),
-          enemyLineClearPressureActive: !!state.globals.EnemyLineClearPressureActive,
-        });
-        if (!presentationBarrier.canResolvePendingTargetAction) {
-          drawFrame();
-          return;
-        }
-        const actorUID = recoverPendingTargetActorUID();
-        if (!(actorUID > 0)) {
-          drawFrame();
-          return;
-        }
-        if (String(state.globals.PendingSkillID || '') === 'HERO_SINGLE') {
-          const targetCheck = validatePendingEnemyTargetIntent({
-            globals: state.globals,
-            actorUID,
-            getActorByUID: (uid) => callFunctionWithContext(fnContext, 'GetActorByUID', uid),
-          });
-          logActionHandoffDebug('[MANUAL_TARGET_CONFIRM]', {
-            actorUID,
-            ok: !!targetCheck.ok,
-            reason: String(targetCheck.reason || ''),
-            targetUID: Number(targetCheck.targetUID || 0),
-          });
-          if (!targetCheck.ok) {
-            drawFrame();
-            return;
-          }
-          state.globals.SelectedEnemyUID = Number(targetCheck.targetUID || 0);
-          state.globals.SelectedEnemyUIDOwner = actorUID;
-          state.globals.ActiveManualTargetTraceSequence = Number(targetCheck.intent?.sequence || 0);
-        }
-        logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
-          stage: 'before',
-          source: 'manual-button',
-          actorUID,
-        });
-        const handoff = resolvePendingTargetHandoff({
-          actorUID,
-          source: 'manual-button',
-        });
-        const {
-          resolvedPendingSuperGem,
-          executeSkillResult,
-          recoveredRejectedPendingSuperGem,
-        } = handoff;
-        logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
-          stage: 'after-action-attempt-before-clear',
-          source: 'manual-button',
-          actorUID,
-          resolvedPendingSuperGem,
-          executeSkillResult,
-          recoveredRejectedPendingSuperGem,
-        });
-        logActionHandoffDebug('[PENDING_ATTACK_RESOLVE]', {
-          stage: 'after-clear',
-          source: 'manual-button',
-          actorUID,
-          resolvedPendingSuperGem,
-          executeSkillResult,
-          recoveredRejectedPendingSuperGem,
-        });
-        drawFrame();
-        return;
-      }
-      const hit = getEnemyHit(mx, my);
-      if (hit) {
-        const targetOwnerUID = recoverPendingTargetActorUID();
-        if (!(targetOwnerUID > 0)) {
-          drawFrame();
-          return;
-        }
-        const targetIntent = capturePendingEnemyTargetIntent({
-          globals: state.globals,
-          actorUID: targetOwnerUID,
-          target: hit,
-          now: Number(state.globals.time || 0),
-        });
-        logActionHandoffDebug('[MANUAL_TARGET_SELECT]', {
-          pointer: { x: Number(mx || 0), y: Number(my || 0) },
-          actorUID: targetOwnerUID,
-          targetUID: Number(hit.uid || 0),
-          targetName: String(hit.name || ''),
-          targetSlotIndex: Number(hit.slotIndex ?? -1),
-          targetTraceSequence: Number(targetIntent?.sequence || 0),
-        });
-        drawFrame();
-        return;
-      }
-    }
-    
-    // Check for gem clicks (only if board is created and overlay is not visible)
-    if (gameState.boardCreated && gameState.gems && !uiState.getUIState().overlayVisible) {
-      if (state.globals.GamePhase !== 'RUNTIME') {
-        return;
-      }
-      const isHeroTurn = callFunctionWithContext(fnContext, 'IsHeroTurn') === true;
-      if (!isCanPickGemsReady(state.globals.CanPickGems) || !isHeroTurn) {
-        runtimeDebugLogging.gemDebugLog('[GEM_REJECT]', {
-          reason: !isCanPickGemsReady(state.globals.CanPickGems) ? 'reject-gate-can-pick-false' : 'reject-gate-not-hero-turn',
-          globals: {
-            CanPickGems: state.globals.CanPickGems,
-            IsPlayerBusy: state.globals.IsPlayerBusy,
-            PendingSkillID: state.globals.PendingSkillID || '',
-            BoardFillActive: state.globals.BoardFillActive,
-            TurnPhase: state.globals.TurnPhase,
-            DeferAdvance: state.globals.DeferAdvance,
-            ActionLockUntil: state.globals.ActionLockUntil,
-            MatchedColorValue: state.globals.MatchedColorValue,
-            TapIndex: state.globals.TapIndex,
-          },
-        }, state);
-        return;
-      }
-      const tappedSuperGem = getSuperGemAtCanvasPoint({
-        gameState,
-        mx,
-        my,
-        boardGeometry,
-        layoutScale,
-        worldToCanvas,
-      });
-      if (tappedSuperGem) {
-        if (isSuperGemLockedByBoardGems(tappedSuperGem)) {
-          runtimeDebugLogging.gemDebugLog('[GEM_REJECT]', {
-            reason: 'reject-locked-super-gem-footprint',
-            cells: Array.isArray(tappedSuperGem.cells) ? tappedSuperGem.cells : [],
-          }, state);
-          return;
-        }
-        spendSuperGem({
-          superGem: tappedSuperGem,
-          gameState,
-          state,
-          reason: 'tap-surface',
-          callFunctionWithContext,
-          fnContext,
-          getHeroUIDByIndex,
-          beginTask011ActionCycle,
-          startGemMergeFx,
-          getGoldLabelTargetWorld,
-          setGemArray,
-          startRefillBounce,
-          activateSuperGemEffect: superGemRuntime.activateSuperGemEffect,
-          superGemCost: superGemRuntime.SUPER_GEM_COST,
-        });
-        drawFrame();
-        return;
-      }
-      for (let i = 0; i < gameState.gems.length; i++) {
-        const gem = gameState.gems[i];
-        const pos = worldToCanvas(gem.x, gem.y);
-        const gemRadius = (gem.width * layoutScale) * 0.48;
-        
-        // Check if click is within gem circle
-        const dx = mx - pos.x;
-        const dy = my - pos.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        
-        if (dist < gemRadius) {
-          runtimeDebugLogging.gemDebugLog('[GEM_ENTRY]', {
-            cellR: gem.cellR,
-            cellC: gem.cellC,
-            uid: gem.uid,
-            selectedGemsLength: Array.isArray(gameState.selectedGems) ? gameState.selectedGems.length : 0,
-            selectionLength: Array.isArray(gameState.selection) ? gameState.selection.length : 0,
-            globals: {
-              CanPickGems: state.globals.CanPickGems,
-              IsPlayerBusy: state.globals.IsPlayerBusy,
-              PendingSkillID: state.globals.PendingSkillID || '',
-              BoardFillActive: state.globals.BoardFillActive,
-              TurnPhase: state.globals.TurnPhase,
-              DeferAdvance: state.globals.DeferAdvance,
-              ActionLockUntil: state.globals.ActionLockUntil,
-              MatchedColorValue: state.globals.MatchedColorValue,
-              TapIndex: state.globals.TapIndex,
-            },
-          }, state);
-          if (gem.color == null && gem.elementIndex != null) {
-            gem.color = gem.elementIndex;
-          }
-          if (isBoardGemLocked(gem)) {
-            runtimeDebugLogging.gemDebugLog('[GEM_REJECT]', {
-              reason: 'reject-locked-gem',
-              row: gem.cellR,
-              col: gem.cellC,
-              countdown: Number(gem.lockCountdown ?? gem.LockCountdown ?? 0),
-              groupId: String(gem.lockGroupId || gem.LockGroupId || ''),
-            }, state);
-            return;
-          }
-          const tappedSuperGem = getSuperGemAtCell(gameState, gem.cellR, gem.cellC);
-          if (tappedSuperGem) {
-            if (isSuperGemLockedByBoardGems(tappedSuperGem)) {
-              runtimeDebugLogging.gemDebugLog('[GEM_REJECT]', {
-                reason: 'reject-locked-super-gem-footprint',
-                cells: Array.isArray(tappedSuperGem.cells) ? tappedSuperGem.cells : [],
-              }, state);
-              return;
-            }
-            spendSuperGem({
-              superGem: tappedSuperGem,
-              gameState,
-              state,
-              reason: 'tap-footprint',
-              callFunctionWithContext,
-              fnContext,
-              getHeroUIDByIndex,
-              beginTask011ActionCycle,
-              startGemMergeFx,
-              getGoldLabelTargetWorld,
-              setGemArray,
-              startRefillBounce,
-              activateSuperGemEffect: superGemRuntime.activateSuperGemEffect,
-              superGemCost: superGemRuntime.SUPER_GEM_COST,
-            });
-            drawFrame();
-            return;
-          }
-          if (gameState.selectionLocked && gameState.selectedGems.length < 3) {
-            gameState.selectionLocked = false;
-          }
-          if (gameState.selectionLocked || gameState.selectedGems.length >= 3) {
-            runtimeDebugLogging.gemDebugLog('[GEM_REJECT]', {
-              reason: gameState.selectionLocked ? 'reject-selection-locked' : 'reject-selection-cap-reached',
-              row: gem.cellR,
-              col: gem.cellC,
-              selectedGemsLength: gameState.selectedGems.length,
-              globals: {
-                CanPickGems: state.globals.CanPickGems,
-                IsPlayerBusy: state.globals.IsPlayerBusy,
-                PendingSkillID: state.globals.PendingSkillID || '',
-                BoardFillActive: state.globals.BoardFillActive,
-                TurnPhase: state.globals.TurnPhase,
-                DeferAdvance: state.globals.DeferAdvance,
-                ActionLockUntil: state.globals.ActionLockUntil,
-                MatchedColorValue: state.globals.MatchedColorValue,
-                TapIndex: state.globals.TapIndex,
-              },
-            }, state);
-            return;
-          }
-          
-          // Toggle selection
-          if (gem.selected) {
-            gem.selected = false;
-            gameState.selectedGems = gameState.selectedGems.filter(idx => idx !== i);
-            gem.Selected = 0;
-          } else {
-            if (gameState.selectedGems.length >= 3) {
-              runtimeDebugLogging.gemDebugLog('[GEM_REJECT]', {
-                reason: 'reject-selection-cap-guard',
-                row: gem.cellR,
-                col: gem.cellC,
-                selectedGemsLength: gameState.selectedGems.length,
-                globals: {
-                  CanPickGems: state.globals.CanPickGems,
-                  IsPlayerBusy: state.globals.IsPlayerBusy,
-                  PendingSkillID: state.globals.PendingSkillID || '',
-                  BoardFillActive: state.globals.BoardFillActive,
-                  TurnPhase: state.globals.TurnPhase,
-                  DeferAdvance: state.globals.DeferAdvance,
-                  ActionLockUntil: state.globals.ActionLockUntil,
-                  MatchedColorValue: state.globals.MatchedColorValue,
-                  TapIndex: state.globals.TapIndex,
-                },
-              }, state);
-              return;
-            }
-            gem.selected = true;
-            gameState.selectedGems.push(i);
-            gem.Selected = 1;
-            
-            // Check if we have 3 selected gems of same color
-            if (gameState.selectedGems.length === 3) {
-              gameState.selectionLocked = true;
-              const selectedColors = gameState.selectedGems.map(idx => {
-                const gm = gameState.gems[idx];
-                return (gm && gm.color != null) ? gm.color : (gm ? gm.elementIndex : null);
-              });
-              console.log(`[MATCH] Selected colors: ${selectedColors.join(',')}`);
-              if (selectedColors.some(c => c == null)) {
-                console.log('[MATCH] Invalid color detected, clearing selection');
-              }
-              if (selectedColors[0] === selectedColors[1] && selectedColors[1] === selectedColors[2] && !selectedColors.some(c => c == null)) {
-                console.log(`[MATCH] 3 gems matched! Color: ${selectedColors[0]}`);
-                handleGemMatch(selectedColors[0]);
-              } else {
-                console.log(`[MATCH] No match - colors: ${selectedColors.join(',')}`);
-                const now = performance.now();
-                for (const idx of gameState.selectedGems) {
-                  const gm = gameState.gems[idx];
-                  if (gm) gm.flashUntil = now + 250;
-                }
-                setTimeout(() => {
-                  callFunctionWithContext(fnContext, 'ClearMatchState');
-                  if (state.globals.Gems && Array.isArray(state.globals.Gems)) {
-                    gameState.gems = state.globals.Gems;
-                  }
-                  gameState.selectedGems = [];
-                  gameState.selectionLocked = false;
-                  if (gameState.gems) {
-                    for (const gm of gameState.gems) {
-                      gm.selected = false;
-                      gm.Selected = 0;
-                    }
-                  }
-                  state.globals.TapIndex = 0;
-                  drawFrame();
-                }, 250);
-              }
-            }
-          }
-
-          state.globals.TapIndex = Math.min(3, gameState.selectedGems.length);
-          setGemArray(gameState.gems);
-          
-          drawFrame();
-          return;
-        }
-      }
-    }
-    
     // Check for rendered element clicks (close button, etc)
     // First check modal objects if overlay is visible
     if (uiState.getUIState().overlayVisible) {
@@ -4778,15 +4069,7 @@ function getStoryCardLiveLineState() {
       }
       return;
     }
-    if (state.globals.DevTestMode) {
-      if (ev.code === 'KeyA') {
-        if (state.globals.CanPickGems && state.globals.TurnPhase === 0 && !state.globals.IsPlayerBusy) {
-          handleGemMatch(3);
-        }
-        ev.preventDefault();
-        return;
-      }
-    }
+    if (ev.target?.closest?.('#hero-commands')) return;
     if(ev.key === 'ArrowLeft') gameState.selectedHero = Math.max(0, gameState.selectedHero - 1);
     if(ev.key === 'ArrowRight') gameState.selectedHero = Math.min(Math.max(0, getConfiguredHeroCount() - 1), gameState.selectedHero + 1);
     if(ev.key === 'ArrowUp') gameState.selectedEnemy = Math.max(0, gameState.selectedEnemy - 1);
@@ -4820,9 +4103,6 @@ function getStoryCardLiveLineState() {
     if (ensureDevToolingConfig().open) {
       requestAnimationFrame(tick);
       return;
-    }
-    if (state.globals.GamePhase === 'BOOTSTRAP') {
-      tryActivateRuntimePhase();
     }
     const activeTurnType = callFunctionWithContext(fnContext, 'GetCurrentType');
     const heroInputActive =
@@ -5203,7 +4483,6 @@ function getStoryCardLiveLineState() {
     deriveDamageFloatFrameOffset,
     isBoardGemLocked,
     drawFrame,
-    handleGemMatch,
     toggleDevToolingModal,
     applyDevToolingConfig,
     runDevAutoplayUntilDepleted,

@@ -27,7 +27,7 @@
 - Developer controls overlay the contained game stage; their presence must never reserve viewport width or shrink the Canvas.
 - Full-screen Canvas overlays use the 360x640 reference coordinate system and apply the active layout scale once to the whole overlay, including hit zones.
 - Combat Canvas text must derive its font size from the active layout scale through `combatPresentationScale.mjs` and fit its measured slot. Desktop font minimums must not override compact Canvas geometry.
-- Party Health and Astral Flow progress fills use an 8-unit reference height before layout scaling.
+- Astral Flow uses an 8-unit reference height before layout scaling. Native hero cards use 5-unit HP fills; the pooled health bar is retired.
 - Combat must not draw the legacy `radiatorPanels.track` backdrop. The jagged arena-floor asset is the sole ground plane behind combat actors.
 - `renderRuntime.js` should shrink over time. Do not add broad new gameplay branches there when a focused render module or gameplay module can own the change.
 - `heroGemProgressStorage.js` may use `window.localStorage`; SimulationCore packets and Rust-owned code must not.
@@ -87,3 +87,6 @@
 - Enemy-target owner wiring serializes six hero records, preserving KO slots for Rust to filter. Pooled HP is diagnostic for combat outcome; fresh-encounter and Continue behavior remain unchanged.
 
 - Combat initialization derives health totals from the initialized actors; it must not overwrite the total with full HP while actors remain injured. Party-damage owner wiring serializes six HP slots with actual member count.
+
+- heroCommandUI.mjs owns native command cards and draft editing below the arena. Set Action and Reload do not execute; stale manual targets reopen selection. Auto uses basic attacks and preserves Astral Flow. Cards fill left column first and leave capacity empty. The encounter Menu reveals existing navigation. Rendering the board and global attack button is retired; fresh combat starts after actor initialization.
+- renderAstralFlowMeter.mjs owns the slim upper-left meter and SPEED-sorted tiny portrait notches for actual members. Currency rules remain in gameplay owners. Hero lunges use display slots, so catalog identity does not collapse repeated or later formation positions.

@@ -532,3 +532,5 @@ AF is spendable currency: each standalone special consumes one turn and 1/N of c
 
 ## 2026-09-07 — ORKA-49k.3
 Damage must update actor HP and derive totals; canonical heroIndex is identity, heroDisplaySlot owns health-card position. Keep KO actors in deployed roster projections and exclude them from living action/target lists. Ordinary Destiny healing cannot revive. Party-wide healing allocation remains an explicit pending owner question.
+# 2026-09-07 combat migration
+Board removal must include bootstrap readiness: an invisible full-board gate can keep otherwise initialized combat in BOOTSTRAP. Command execution must use instance UID for ownership and formation display slot for presentation; catalog identity cannot locate a later or repeated member. Preserve prepared commands on rejected commits, and revalidate stale targets before spending.
