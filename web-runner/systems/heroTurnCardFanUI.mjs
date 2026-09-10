@@ -105,17 +105,13 @@ const STYLE = `
   #hero-turn-card-fan .fan-card[data-slot="left"]{left:4px;transform:rotate(-7deg) translateY(8px);z-index:1}
   #hero-turn-card-fan .fan-card[data-slot="center"]{left:116px;top:2px;transform:rotate(0);z-index:3}
   #hero-turn-card-fan .fan-card[data-slot="right"]{left:228px;transform:rotate(7deg) translateY(8px);z-index:1}
-  #hero-turn-card-fan .fan-card:hover,#hero-turn-card-fan .fan-card:focus-visible{filter:brightness(1.18);box-shadow:0 0 0 2px #6ee7f8,0 5px 12px #000d;outline:0}
+  #hero-turn-card-fan .fan-card:hover,#hero-turn-card-fan .fan-card:focus-visible{z-index:6;filter:brightness(1.18);box-shadow:0 0 0 2px #6ee7f8,0 5px 12px #000d;outline:0}
   #hero-turn-card-fan .fan-card[data-selected="true"]{border-color:#f7e19b;box-shadow:0 0 0 3px #f7e19b,0 0 18px #f7c84a;filter:brightness(1.2);z-index:5}
   #hero-turn-card-fan .fan-card:disabled{cursor:default}
   #hero-turn-card-fan .fan-card-name{display:block;min-height:28px;font-size:13px;line-height:1.05;white-space:normal;overflow-wrap:anywhere}
   #hero-turn-card-fan .fan-card-rarity{color:var(--rarity);font-size:10px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
   #hero-turn-card-fan .fan-card-effect{margin-top:auto;min-height:29px;font-size:10px;line-height:1.15;white-space:normal;overflow-wrap:anywhere}
-  #hero-turn-card-fan .fan-hero{position:absolute;left:50%;bottom:0;display:flex;align-items:center;gap:6px;transform:translateX(-50%);padding:3px 8px 3px 3px;border:1px solid #4dd4e9aa;border-radius:24px;background:#07111ce8;pointer-events:none;white-space:nowrap}
-  #hero-turn-card-fan .fan-hero-portrait{width:30px;height:30px;border:2px solid #64e6f5;border-radius:50%;background:#12344a;object-fit:cover;animation:hero-turn-fan-pulse 1.3s ease-in-out infinite}
-  @keyframes hero-turn-fan-pulse{50%{box-shadow:0 0 0 4px #54e3f444,0 0 13px #54e3f4}}
-  #hero-turn-card-fan .fan-hero-name{font-size:10px;text-transform:uppercase}
-  @media(prefers-reduced-motion:reduce){#hero-turn-card-fan.is-opening,#hero-turn-card-fan.is-closing,#hero-turn-card-fan .fan-card{animation-duration:1ms}#hero-turn-card-fan .fan-hero-portrait{animation:none}}
+  @media(prefers-reduced-motion:reduce){#hero-turn-card-fan.is-opening,#hero-turn-card-fan.is-closing,#hero-turn-card-fan .fan-card{animation-duration:1ms}}
 `;
 
 function safeText(parent, className, value) {
@@ -144,18 +140,9 @@ export function createHeroTurnCardFanUI({
   host.hidden = true;
   host.tabIndex = -1;
   host.setAttribute('aria-label', 'Hero action cards');
-  const hero = document.createElement('div');
-  hero.className = 'fan-hero';
-  const portrait = document.createElement('img');
-  portrait.className = 'fan-hero-portrait';
-  portrait.alt = '';
-  portrait.draggable = false;
-  const heroName = document.createElement('span');
-  heroName.className = 'fan-hero-name';
-  hero.append(portrait, heroName);
   const cardsHost = document.createElement('div');
   cardsHost.className = 'fan-cards';
-  host.append(cardsHost, hero);
+  host.append(cardsHost);
   document.body.append(host);
 
   let state = { visible: false, blocked: false, cards: [], selectedCard: null };
@@ -226,12 +213,6 @@ export function createHeroTurnCardFanUI({
       host.dataset.open = 'true';
       host.dataset.heroUid = asText(source.heroUID ?? source.activeHeroUID ?? state.activeHeroUID);
       if (wasHidden) { host.classList.remove('is-opening'); void host.offsetWidth; host.classList.add('is-opening'); }
-      const active = source.activeHero ?? source.activeHeroName ?? source.heroUID ?? state.activeHero ?? {};
-      const activeRecord = typeof active === 'object' ? active : { name: active };
-      heroName.textContent = asText(activeRecord.name ?? activeRecord.displayName ?? activeRecord.baseHeroName ?? activeRecord.heroName ?? 'Active hero');
-      const src = activeRecord.portraitSrc ?? activeRecord.portraitUrl ?? activeRecord.portrait;
-      if (src) portrait.src = typeof src === 'string' ? src : asText(src.src);
-      portrait.alt = `${heroName.textContent} active`;
       renderCards();
       return true;
     },

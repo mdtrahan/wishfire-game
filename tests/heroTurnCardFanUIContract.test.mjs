@@ -70,6 +70,7 @@ test('eligible reopen cancels a pending close and interrupt clears the DOM marke
     ui.update({ open: true, activeHero: { name: 'Hondo' }, cards, layoutScale: 1 });
     assert.equal(ui.element.hidden, false);
     assert.equal(ui.element.inert, false);
+    assert.equal(ui.element.children.length, 1);
   } finally {
     ui.destroy();
     if (previousDocument === undefined) delete globalThis.document;
@@ -85,9 +86,42 @@ test('rarity palette remains presentation-only and configurable by card payload'
   assert.match(source, /data-slot="left"/);
   assert.match(source, /fan-card-effect[^}]*white-space:normal/);
   assert.match(source, /fan-card-name[^}]*overflow-wrap:anywhere/);
+  assert.match(source, /fan-card:hover,#hero-turn-card-fan \.fan-card:focus-visible\{z-index:6/);
+  assert.doesNotMatch(source, /fan-hero(?:-|\{|\s)/);
   assert.doesNotMatch(source, /fan-target|fan-back|is-targeting|validTargets/);
   assert.doesNotMatch(source, /fan-card-effect[^}]*text-overflow/);
   assert.doesNotMatch(source, /fan-card-effect[^}]*overflow:hidden/);
   assert.doesNotMatch(source, /fan-card-tempo|Tempo:/);
   assert.doesNotMatch(source, /\b(Odds|Pity|Energy|cost)\b/i);
+});
+
+test('card overlap raises the focused or hovered card without changing its hit area', () => {
+  const source = fs.readFileSync(path.join(process.cwd(), 'web-runner/systems/heroTurnCardFanUI.mjs'), 'utf8');
+  assert.match(source, /fan-card:hover,#hero-turn-card-fan \.fan-card:focus-visible\{z-index:6/);
+  assert.doesNotMatch(source, /fan-card:hover[^}]*width|fan-card:focus-visible[^}]*width/);
+  assert.doesNotMatch(source, /fan-card:hover[^}]*transform|fan-card:focus-visible[^}]*transform/);
+});
+
+test('card selection remains an accessible callback with no extra target controls', () => {
+  const previousDocument = globalThis.document;
+  globalThis.document = { head: new FakeNode('head'), body: new FakeNode('body'), createElement: tag => new FakeNode(tag) };
+  const canvas = { getBoundingClientRect: () => ({ left: 0, top: 0, width: 360, height: 640 }) };
+  const selected = [];
+  const ui = createHeroTurnCardFanUI({ canvas, select: index => selected.push(index) });
+  try {
+    ui.update({ open: true, cards: [
+      { id: 'a', name: 'A', rarity: 'Common', effect: 'Attack.' },
+      { id: 'b', name: 'B', rarity: 'Rare', effect: 'Guard.' },
+      { id: 'c', name: 'C', rarity: 'Epic', effect: 'Heal.' },
+    ] });
+    const cardsHost = ui.element.children[0];
+    assert.equal(cardsHost.children.length, 3);
+    cardsHost.children[1].onclick();
+    assert.deepEqual(selected, [1]);
+    assert.equal(ui.element.children.length, 1);
+  } finally {
+    ui.destroy();
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+  }
 });
