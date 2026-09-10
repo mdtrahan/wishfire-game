@@ -167,6 +167,7 @@ export function createHeroTurnCardFanUI({
     host.classList.remove('is-opening', 'is-closing');
     host.hidden = true;
     host.inert = true;
+    host.dataset.open = 'false';
     state = { ...state, visible: false, selectedCard: null };
   };
   const close = (reason = 'close') => {
@@ -208,6 +209,7 @@ export function createHeroTurnCardFanUI({
       const source = Object.keys(next).length ? next : (getState() || {});
       const visible = (source.visible ?? source.open ?? true) !== false && !source.blocked;
       if (!visible) { interrupt(); return false; }
+      clearCloseTimer();
       const wasHidden = host.hidden;
       state = {
         ...state,
