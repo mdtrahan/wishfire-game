@@ -12,7 +12,7 @@ export function rulesContext(ctx){
  return {actors:ctx.state.entities,state:g,flowRandom:()=>typeof g.FlowRandom==='function'?g.FlowRandom():Math.random(),random:()=>typeof g.RuntimeRandom==='function'?g.RuntimeRandom():Math.random(),
  calculateDamage:(a,t,mode)=>ctx.callFunction('CalculateDamage',a.uid,t.uid,mode),
  applyDamage:(a,t,amount,origin)=>{const before=t.hp;ctx.callFunction('ApplyDamageToTarget',t.uid,amount,{sourceUID:a.uid,nativeResolved:true,suppressPartySkillHitHooks:1,...origin});return before-t.hp;},
- onKO:actor=>{if(actor.kind==='enemy'){const battle=g.ProgressionBattle;if(battle)battle.defeated[actor.uid]=actor.expValue??PROGRESSION.enemyEXP;}},
+ onKO:actor=>{if(actor.kind==='enemy'){const battle=g.ProgressionBattle;if(battle){battle.defeated[actor.uid]=actor.expValue??PROGRESSION.enemyEXP;(battle.defeatedGold||={})[actor.uid]=Math.max(0,Math.floor(actor.goldValue??PROGRESSION.enemyGold));}}},
  isOver:()=>{
   const ended=!ctx.state.entities.some(a=>a.kind==='enemy'&&a.hp>0);
   if(ended)g.NativeBattleEnded=true;
@@ -74,8 +74,10 @@ export function resolveNativeEnemyArea(ctx,uid) {
 
 export function settleVictory(ctx) {
  const g=ctx.state.globals;
- if(!g.NativeBattleEnded||!g.ProgressionBattle||g.ProgressionBattle.settled)return;
+ if(!g.NativeBattleEnded||!g.ProgressionBattle||g.ProgressionBattle.settled||g.HeroProgress?.settledBattles?.includes(g.ProgressionBattle.id))return;
  cancelNativeSequence(ctx);
  g.ProgressionResults=settleBattleEXP(g.HeroProgress,g.ProgressionBattle,ctx.state.entities.filter(a=>a.kind==='hero'));
+ g.ProgressionBattle.goldReward=Object.values(g.ProgressionBattle.defeatedGold||{}).reduce((sum,value)=>sum+value,0);
+ g.goldTotal=Number(g.goldTotal||0)+g.ProgressionBattle.goldReward;
  g.HeroProgressDirty=true;
 }

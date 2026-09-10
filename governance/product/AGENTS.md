@@ -32,4 +32,6 @@
 ## Child DOX Index
 - None.
 
-- Personal FLOW is charged by randomly distributed combat orbs. Preserved archetype names now describe orb passives; direct role-based meter rewards are superseded.
+- Personal FLOW is charged by randomly distributed enemy-death orbs. Archetype accumulation modes and orb passives are retired.
+
+- Death-only FLOW supersedes attack/proc drops: enemy KO awards once; collection charges a random living hero after the original blue death-orb ground-bounce tween. Role events award nothing.

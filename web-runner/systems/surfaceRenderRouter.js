@@ -5,7 +5,6 @@ import * as renderMounts from './renderMounts.js';
 import * as renderCollectibles from './renderCollectibles.js';
 import * as renderRelics from './renderRelics.js';
 import * as renderPets from './renderPets.js';
-import * as renderIdleFarm from './renderIdleFarm.js';
 import * as renderEvolution from './renderEvolution.js';
 import * as renderHomestead from './renderHomestead.js';
 import * as renderChests from './renderChests.js';
@@ -31,7 +30,7 @@ export function createSurfaceRenderRouter({
   getFreshCombatBootstrapped,
   getStartupFingerprintLabel,
   getHeroScreenDeps,
-  getIdleFarmDeps,
+  renderAstralMarket,
   drawHUD,
 } = {}) {
   const getViewSize = () => {
@@ -109,19 +108,9 @@ export function createSurfaceRenderRouter({
       case 'petsLayout':
         applyLayoutResult(gameState.petsLayout, renderPets.renderPets(ctx, gameState, sharedDims));
         return;
-      case 'idleFarmLayout': {
-        const idleDeps = typeof getIdleFarmDeps === 'function' ? getIdleFarmDeps() : {};
-        applyLayoutResult(
-          gameState.idleFarmLayout,
-          renderIdleFarm.renderIdleFarm(
-            ctx,
-            gameState,
-            idleDeps,
-            { viewWidth, viewHeight },
-          ),
-        );
+      case 'idleFarmLayout':
+        renderAstralMarket();
         return;
-      }
       case 'evolutionLayout':
         applyLayoutResult(gameState.evolutionLayout, renderEvolution.renderEvolution(ctx, gameState, sharedDims));
         return;

@@ -1,0 +1,12 @@
+{
+  "hot_files": {
+    "web-runner/app.js": {
+      "functions": [
+        "drawFrame",
+        "__MODULE__"
+      ],
+      "staged_blob": "a30359e2c758f21fa72987f75968bfc75fcd8904"
+    }
+  },
+  "issue_id": "ORKA-49k.7"
+}

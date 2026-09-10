@@ -48,4 +48,14 @@
 
 - Action capacity tests cover mixed 1/2/3 slots, affordability, removal and early commit. Browser proof exercises real target clicks and capacity auto-commit. Paused frame-based regeneration must not affect combat.
 
-- flowOrbsContract covers baseline/failure RNG, independent random recipients, collection timing, passive caps, skill overrides, special ancestry and SP/CTB independence. Direct role-charge expectations are superseded.
+- flowOrbsContract covers enemy-death rewards, nonlethal/role exclusions, independent random recipients, ground-bounce/collection timing, special ancestry and SP/CTB independence. Direct role-charge expectations are superseded.
+
+- Death-only FLOW supersedes attack/proc drops: enemy KO awards once; collection charges a random living hero after the original blue death-orb ground-bounce tween. Role events award nothing.
+
+- Hero management browser proof covers overview disclosure, roster containment and separate canonical active/passive/FLOW categories.
+
+- equipmentMarketContract covers elapsed-time reconstruction, live/expired/duplicate/insufficient purchases, atomic save failure, shared loadouts, gear-stat reloads and once-only victory Gold. Retired idle-collector tests were removed with their runtime.
+
+- Run node --test tests/astralShopPresentation.test.mjs with localhost:8047 serving the owned checkout to check the shop shader, reduced motion, shared balances, Back navigation and compact/reference containment in isolated contexts.
+
+- Shop presentation test covers touch and mouse drop purchases without confirmation, exact wallet deduction, canonical inventory and green upgrade badges. Equipment contract tests cover equal, stronger, incompatible and tradeoff comparisons.

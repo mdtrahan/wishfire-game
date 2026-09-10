@@ -148,30 +148,15 @@ Routine periodic ticks generate no FLOW. This applies to both caster rewards and
 
 Silence blocks `magic`-tagged skills and FLOW specials at queue/execute checks. It does not inspect whether damage scales from MAG. `ignoresSilence = true` bypasses the restriction. Blind applies a configurable accuracy penalty only to `physical`-tagged actions unless `ignoresBlind = true`.
 
-## 7. FLOW orb contract
+## 7. Enemy-death FLOW orbs
 
-This section supersedes direct role-based charge. Each hero retains a 100-point personal FLOW gauge. Combat events spawn orbs; only collection increases FLOW. SP spending and action capacity never generate charge.
+The owner's death-only correction supersedes attack-drop chances and all role-triggered orb passives. Enemies award FLOW orbs only when defeated. Nonlethal attacks, damage received, healing, statuses, evasion, mitigation and turn-start conditions award none. Former role names remain historical metadata only.
 
-A successful normal damaging action has a 35% chance of one 10-FLOW orb, capped at one base drop per action across all targets and hits. Each queued skill gets its own check. Data in `FLOW_ORB_TUNING` and skill fields supports `limitOrbDropChance`, `limitOrbValue`, `limitOrbDropCount`, `orbChancePer` (`action` or `hit`), `maxDropsPerAction`, `guaranteedDrops` and `limitOrbChanceBonus`. Guaranteed and random base drops share the configured base cap. Passive bonus drops are separate.
+Each enemy death awards one guaranteed 10-FLOW orb by default. Central tuning and enemy `limitOrbDropCount` / `limitOrbValue` fields control the reward. Each enemy instance is rewarded once, including death from periodic damage. Multi-hit cannot duplicate a reward; multi-kills reward each defeated enemy.
 
-Each orb independently chooses a random living eligible hero, including heroes other than its generator. Full gauges remain eligible and clamp at 100, discarding excess. A recipient who becomes KO or ineligible before collection receives no charge; that flight dissipates. New encounters clear flights and begin at zero FLOW. FLOW-special ancestry excludes its caster from receiving its own generated orbs, including delayed descendants; other heroes remain eligible.
+Each orb independently chooses a random living eligible hero. Full gauges clamp at 100. A recipient who becomes KO/ineligible before arrival receives no charge. New encounters clear pending orbs. Existing special-source exclusions remain: a FLOW special cannot recharge its own caster from its kills.
 
-| Preserved passive name | Orb effect | Proc boundary |
-| --- | --- | --- |
-| Stoic | 25% chance of one bonus orb after hostile damage, including a lethal hit | Once per incoming action |
-| Warrior | Basic Attack chance gains 15 percentage points, reaching 50% | Base action cap |
-| Slayer | One guaranteed bonus orb plus 25% chance of a second | Per enemy killed |
-| Healer | 30% chance of one orb after actual immediate HP restoration, including self/revival | Once per healing action |
-| Tactician | 35% chance of one orb after a successful enemy debuff or actual refresh | Once per action |
-| Comrade | 15% chance of one orb when another ally takes hostile damage | Once per enemy action |
-| Dancer | 50% chance of one orb from actual defender evasion | Once per incoming action |
-| Rook | 35% chance of one orb when owned mitigation prevents at least 1 damage | Once per incoming action |
-| Daredevil | Add 25 percentage points to normal action chance at HP ≤25%, reaching 60% | Base action cap |
-| Loner | Normal action chance becomes 70% while sole living hero | Base action cap; sole hero receives orbs |
-
-All chances and the Rook minimum are centralized tuning. Role names and current assignments are preserved as orb passives. There is no simultaneous direct meter reward. Failed proc checks also consume that action's check. Rook credits the mitigation provider. Self/friendly/environmental damage is ineligible for Stoic, Comrade and Rook. Blind misses do not trigger Dancer. Pure HoT, overheal and routine periodic ticks create no orbs. A DoT kill can trigger living-source Slayer. Counters remain distinct actions and retain source exclusions.
-
-Orbs pop from the damaged enemy (or the relevant passive event source), then travel to the randomly assigned hero's arena portrait. Collection occurs after 0.14 seconds of release and 0.38 seconds of flight; a 0.12-second arrival flash follows. Use the game's gem artwork with a red glow. These events never own a turn barrier, action slot, SP reservation or initiative change. Orb RNG uses its own runtime stream so proc rolls cannot alter later combat rolls. Full FLOW retains the existing ready indication and manually selected special command.
+Reuse `getAstralFlowKoOrbFrame` from the existing blue death-orb presentation: 0.24-second spill, three diminishing ground bounces lasting 0.18/0.16/0.14 seconds, then a 0.46-second eased flight to the assigned hero. Apply charge at arrival, followed by a 0.18-second flash. Ground contact uses the enemy's half-height offset. Orbs never own CTB barriers, SP or action slots. Combat and EXP settle immediately on victory; the progression dialog waits for the last orbs to finish so their bounce remains visible.
 
 ## 8. Accuracy, Provoke and Cover
 
@@ -237,10 +222,20 @@ Use focused deterministic checks plus the existing browser QA harness. Cover the
 - Groups 1–6, full starting SP/zero FLOW, own-turn regeneration once, no regeneration on KO/revive/counter, independent resources and costs retained after partial execution.
 - Per-action targets, multicasting flag, affordability, invalid-target refunds, partial group validity, actor KO, all-skipped turn, and immediate victory cancellation before EXP.
 - Status refresh/stronger magnitude, self-turn expiry, KO clearing, snapshot periodic effects after caster KO, simultaneous DoT/HoT survival, and no routine tick FLOW.
-- FLOW deduplication, once-per-action orb passive checks, true HP restoration, hostile origin, lethal Stoic/Comrade timing, mitigation ownership and inherited special-source exclusion.
+- Death reward deduplication, multi-kills, no nonlethal/role drops, original ground bounce, collection timing and inherited special-source exclusion.
 - Tag-based Silence/Blind, accuracy versus evasion, Provoke recency, Cover recency/defense ownership, coverer KO fallback and partial-skill no-refund.
 - Counter timing, one per defender, current SPEED order, per-counter validity, no chains and no initiative/SP side effects.
 - Live browser proof for current hero kits, queued mixed targets, resources, progression results, defeat/revival and victory; persistent active glow and approved reference/compact/natural/Retina layout.
 - Retired board flags cannot block native combat; paused card content cannot grant live buffs; runtime mirrors preserve required current contracts.
 
 Update `COMBAT_MIGRATION_REPORT.md` with actual delivered scope, test counts, skipped historical checks and remaining issues after implementation. Earlier passing tests do not certify these newly consolidated requirements.
+
+## Results presentation
+
+The victory results panel measures 80% of the visible game canvas width and 80% of its height, preserving its aspect ratio. Center it horizontally and vertically within the canvas. Cover 100% of that canvas with a black overlay at 40% opacity behind the panel. Track canvas resizes; allow internal vertical scrolling without horizontal overflow.
+
+## Hero management presentation revision
+
+The current hero screen is replaced in place with HERO / GEAR / SKILLS for one selected canonical hero. Keep the portrait, name, level, HP/ATK summary and compact selectable roster visible across views. HERO shows EXP, three upcoming level unlocks and expandable full stats. SKILLS separates Active (seven), Passive (six) and FLOW (one special); Basic Attack is separately inspectable. Internal tags are not player-facing labels. The supplied role-charge examples do not restore retired FLOW generation: enemy-death orbs remain authoritative.
+
+GEAR must share canonical inventory with the requested Astral Flow equipment shop. The owner authorized placeholder high-fantasy items. Canonical slots are Weapon, Head, Armor, Boots and two Accessories. The shared persisted inventory feeds Gear and its loadouts feed canonical hero stats. Overview also exposes SP, existing CP and the named AF trait; role-based charging remains retired.

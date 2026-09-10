@@ -49,7 +49,6 @@ export function createDevToolingRuntime(deps = {}) {
     superGemRuntime,
     setGemArray,
     rebuildGridFromGems,
-    restartIdleFarmSession,
     hasEmptySlots,
     getPresentationTurnBarrier,
     getEnemyRosterStabilitySnapshot,
@@ -236,20 +235,6 @@ export function createDevToolingRuntime(deps = {}) {
     return sanitizeDevToolingConfig(state.globals.DevToolingConfig || {}).enemySlots.slice(0, 3);
   }
 
-  function syncIdleFarmDevLoadoutConfig(cfg = ensureDevToolingConfig()) {
-    const layout = gameState.idleFarmLayout || (gameState.idleFarmLayout = {});
-    const currentConfig = (layout.config && typeof layout.config === 'object') ? layout.config : {};
-    const heroNames = Array.isArray(cfg.heroSlots) ? cfg.heroSlots.map((value) => String(value || '').trim()).filter(Boolean) : [];
-    const rawEnemySlots = Array.isArray(cfg.enemySlots) ? cfg.enemySlots.map((value) => String(value || '').trim()) : [];
-    const activeEnemySlots = rawEnemySlots.filter((value) => value !== DEV_TOOL_EMPTY_SLOT);
-    layout.config = {
-      ...currentConfig,
-      heroNames,
-      enemySlots: Math.max(1, activeEnemySlots.length || Number(currentConfig.enemySlots || 1)),
-      enemyNames: rawEnemySlots.map((value) => (value === DEV_TOOL_RANDOM_ENEMY_SLOT ? '' : value)),
-    };
-    return layout.config;
-  }
 
   function readEscortPartyConfig() {
     const raw = state.globals && state.globals.EscortPartyConfig;
@@ -465,7 +450,6 @@ export function createDevToolingRuntime(deps = {}) {
     state.globals.DevDoubleAttackHolderUID = 0;
     state.globals.DevDoubleAttackChance = Number(next.doubleAttackChance || 1);
     persistDevToolingConfig(next);
-    syncIdleFarmDevLoadoutConfig(next);
     gameState.selectedHero = Math.min(gameState.selectedHero || 0, Math.max(0, next.heroSlots.filter(Boolean).length - 1));
     gameState.selectedEnemy = Math.min(gameState.selectedEnemy || 0, Math.max(0, next.enemySlots.filter((value) => String(value || '').trim() !== DEV_TOOL_EMPTY_SLOT).length - 1));
     const recolored = applyBoardGemColor(next.boardGemColor);
@@ -483,9 +467,7 @@ export function createDevToolingRuntime(deps = {}) {
       if (activeLayoutId === 'combat' && typeof devToolingRefreshHandler === 'function') {
         await devToolingRefreshHandler({ forceCombat: false, resetGame: false });
         appliedSessionChange = 'combat_refresh';
-      } else if (activeLayoutId === 'idleFarmLayout') {
-        restartIdleFarmSession(performance.now() / 1000);
-        appliedSessionChange = 'idle_restart';
+
       }
     }
     syncDevToolingDomFromConfig();
@@ -827,7 +809,6 @@ export function createDevToolingRuntime(deps = {}) {
     g.DevRewardDrops = [];
     g.DevRewardCount = cfg.rewardCount;
     syncConfiguredDoubleAttackHarness(cfg);
-    syncIdleFarmDevLoadoutConfig(cfg);
     devToolingPauseSnapshot = null;
     g.DevToolingPaused = 0;
     if (devToolingDom) {
@@ -955,7 +936,6 @@ export function createDevToolingRuntime(deps = {}) {
     getConfiguredEnemySlots,
     readEscortPartyConfig,
     buildConfiguredCombatPartyMembers,
-    syncIdleFarmDevLoadoutConfig,
     updateDevToolingStatus,
     applyDevToolingConfig,
     ensureDevToolingModal,

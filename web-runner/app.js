@@ -1,6 +1,7 @@
 import {advanceFlowOrbs} from './src/core/flowOrbs.mjs';
 import {renderFlowOrbs} from './systems/renderFlowOrbs.mjs';
-import { createGoldProgressStorage } from './systems/goldProgressStorage.mjs';
+import { createEquipmentStorage } from './systems/equipmentStorage.mjs';
+import { createAstralMarketUI } from './systems/astralMarketUI.mjs';
 import { state } from './modules/state.js';
 import { createContext, callFunctionWithContext } from './modules/functionRegistry.js';
 import { CombatRuntimeGateway } from './src/core/combatRuntimeGateway.js';
@@ -37,16 +38,7 @@ import {
   assignHeroToPartySlot,
   normalizePartyFormationSlots,
 } from './src/core/partyFormationRules.mjs';
-import {
-  applyIdleFarmRewardsToGlobals,
-  claimIdleFarmRewardsFromState,
-  ensureIdleFarmSessionState,
-  resetIdleFarmEmissionCadence,
-  restartIdleFarmSessionState,
-  startIdleFarmEmissionState,
-  updateIdleFarmEmissionState,
-  updateIdleFarmSessionState,
-} from './src/core/idleFarmRuntime.mjs';
+
 import {
   pickIdleAutoplaySuperGem,
   pickIdleAutoplayTriplet,
@@ -118,8 +110,7 @@ import { createQuestCombatSession, restoreHeroesToFullHP } from './systems/quest
 import { createCombatEntryTransition } from './systems/combatEntryTransition.mjs';
 import { createStoryEntryFlow } from './systems/storyEntryFlow.mjs';
 import { createSurfaceRenderRouter } from './systems/surfaceRenderRouter.js';
-import { createPointerRoutingShell } from './systems/pointerRoutingShell.js';
-import { createIdleFarmAppRuntime } from './systems/idleFarmAppRuntime.js';
+import { createPointerRoutingShell, returnToQuest } from './systems/pointerRoutingShell.js';
 import { loadRuntimeVisualAssets } from './systems/runtimeVisualAssetLoader.js';
 import { registerDevBrowserTestHooks } from './systems/devBrowserTestHooks.js';
 import {
@@ -695,20 +686,6 @@ function isEditableDomTarget(target) {
   return requireDevToolingRuntime().isEditableDomTarget(target);
 }
 
-const {
-  ensureIdleFarmSession,
-  startIdleFarmEmissions,
-  updateIdleFarmEmissions,
-  updateIdleFarmSession,
-  restartIdleFarmSession,
-  claimIdleFarmRewards,
-} = createIdleFarmAppRuntime({
-  gameState,
-  state,
-  getDevToolingConfig: ensureDevToolingConfig,
-  getFallbackRoster: () => CANONICAL_HERO_ROSTER.map((hero) => String(hero?.name || '')).filter(Boolean),
-  getNowSec: () => performance.now() / 1000,
-});
 
 function getTask015TraceStore() {
   return task015TraceState.getTask015TraceStore(gameState);
@@ -869,8 +846,9 @@ function normalizeHeroSelectionIndex() {
   return gameState.selectedHero;
 }
 
-function renderHeroScreenLayoutV2({ ctx, canvas, dpr, gameState, fnContext, closeWinOvalImage, heroPortraitImages, heroSkillSpriteSheetImage, heroSkillIconImages = [] }) {
+function renderHeroScreenLayoutV2({ equipmentProgress, ctx, canvas, dpr, gameState, fnContext, closeWinOvalImage, heroPortraitImages, heroSkillSpriteSheetImage, heroSkillIconImages = [] }) {
   const heroRenderResult = renderHeroScreen.renderHeroScreen({
+    equipmentProgress,
     ctx,
     canvas,
     dpr,
@@ -1013,7 +991,6 @@ devToolingRuntime = createDevToolingRuntime({
   superGemRuntime,
   setGemArray,
   rebuildGridFromGems,
-  restartIdleFarmSession,
   hasEmptySlots,
   getPresentationTurnBarrier,
   getEnemyRosterStabilitySnapshot,
@@ -2113,7 +2090,8 @@ async function main(){
   });
   combatRuntimeGateway.setLayoutState(layoutState);
   const questCombat = createQuestCombatSession({ state, gameState, call: name => callFunctionWithContext(fnContext, name), sync: syncFromGlobals });
-  const goldProgress = createGoldProgressStorage({ globals: state.globals, storage: window.localStorage });
+  const equipmentProgress = createEquipmentStorage({ globals: state.globals, getActors: () => state.entities, storage: window.localStorage });
+  const astralMarket = createAstralMarketUI({canvas, economy: equipmentProgress, getResources: () => gameState.storyEntry.progress, onBack: () => returnToQuest(gameState, layoutState, 'astral-market-back')});
   const storyEntry = createStoryEntryFlow({ gameState, layoutState, isReady: () => freshCombatBootstrapped, getEnemies: () => enemyRows, prepareEncounter: questCombat.prepare, resurrect: questCombat.resurrect, energyGlobals: state.globals, enterCombat: createCombatEntryTransition(canvas), onCombatEnd: () => devToolingRuntime.clearCombatSessionOverrides() });
   const questUI = createQuestLadderUI({ canvas, gameState, layoutState, flow: storyEntry, getGold: () => state.globals.goldTotal || 0 });
   registerRuntimeLayouts(layoutState, {
@@ -2124,8 +2102,6 @@ async function main(){
     gameState,
     normalizeHeroSelectionIndex,
     restorePartyToFullHP,
-    startIdleFarmEmissions,
-    restartIdleFarmSession,
     getNowSec: () => performance.now() / 1000,
   });
   const harnessEventBus = eventBus;
@@ -2541,6 +2517,7 @@ async function main(){
     getStartupFingerprintLabel: () => RUNTIME_FINGERPRINT.label,
     getHeroScreenDeps: () => ({
       fnContext,
+      equipmentProgress,
       closeWinOvalImage,
       heroPortraitImages,
       heroSkillSpriteSheetImage: null,
@@ -2550,16 +2527,7 @@ async function main(){
         heroSkillIconsBySlot[2] || null,
       ],
     }),
-    getIdleFarmDeps: () => ({
-      nowSec: performance.now() / 1000,
-      animationMath,
-      updateIdleFarmEmissions,
-      startIdleFarmEmissions,
-      updateIdleFarmSession,
-      ensureIdleFarmSession,
-      heroCapsuleImages,
-      enemySpriteImages,
-    }),
+    renderAstralMarket: () => astralMarket.draw(),
     drawHUD,
   });
 
@@ -2581,7 +2549,8 @@ async function main(){
 
   function drawFrame(dtOverride){
     renderHeroScreen.hideHeroScreen();
-    if (freshCombatBootstrapped) goldProgress.sync();
+    if (freshCombatBootstrapped) equipmentProgress.sync().catch(() => {});
+    if (layoutState.getActiveLayoutId() !== 'idleFarmLayout') astralMarket.hide();
     storyEntry.update();
     questUI.update();
     ensurePendingSingleTarget();
@@ -3500,8 +3469,6 @@ function getStoryCardLiveLineState() {
     drawFrame,
     handleMapDragStart,
     deriveEncounterRequestFromMapState,
-    restartIdleFarmSession,
-    claimIdleFarmRewards,
     getHeroScreenRoster,
     normalizeHeroSelectionIndex,
   });
@@ -3949,7 +3916,6 @@ function getStoryCardLiveLineState() {
     }
     // Enemy turns are started by ProcessTurn; avoid double-triggering here.
     gameState.enemyTurnKicked = state.globals.TurnPhase === 2;
-    updateIdleFarmEmissions(performance.now() / 1000);
     heroProgressStorage.persistHeroProgressIfDirty({ stateGlobals: state.globals, callFunctionWithContext, fnContext });
     drawFrame();
     drawAstralWalletHUD();

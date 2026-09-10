@@ -54,4 +54,6 @@
 
 - `heroCommands.mjs` reserves a legal sequence once, revalidates each action, refunds only unexecuted costs, and settles victory before progression. Ordinary counters never own a turn.
 
-- Resolved skill events call orb generation/passive checks with shared per-action deduplication. rulesContext supplies separate FlowRandom and RuntimeRandom streams. Personal meter charge occurs at orb collection only.
+- Enemy KO calls orb generation with per-enemy reward deduplication. rulesContext supplies separate FlowRandom and RuntimeRandom streams. Personal meter charge occurs at orb collection only.
+
+- Native victory awards each defeated enemy's goldValue (configurable fallback PROGRESSION.enemyGold) once at the same guarded settlement as EXP. Defeat gives no victory Gold. The shared equipment economy persists the resulting wallet.

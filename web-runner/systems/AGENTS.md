@@ -100,4 +100,32 @@
 
 - Skill taps queue directly. Independent per-hero action slots auto-commit at capacity; ACT ends selection early. Battlefield selection persists; queued targets are snapshots. Removing entries restores reservations.
 
-- renderFlowOrbs.mjs draws gem flights using the actor projection. Collection belongs to the core update; presentation never blocks CTB. Hero detail text describes orb passives and random distribution.
+- renderFlowOrbs.mjs draws gem flights using the actor projection. Collection belongs to the core update; presentation never blocks CTB. Hero detail text describes enemy-death orbs and random distribution.
+
+- Death-only FLOW supersedes attack/proc drops: enemy KO awards once; collection charges a random living hero after the original blue death-orb ground-bounce tween. Role events award nothing.
+
+- Enemy targeting triangles render only during hero turns and hide when combat ends. Keep SelectedEnemyUID intact across enemy turns so the next hero retains the player choice.
+
+- Victory results use 80% of the game canvas width and height, centered on that canvas. A separate canvas-sized black shade has 40% opacity; the native modal backdrop is transparent. ResizeObserver keeps panel/shade geometry current and cleanup removes both shade and observer.
+
+- Hero management uses HERO / GEAR / SKILLS with a persistent hero display and roster. Overview shows EXP and three upcoming unlocks; full stats use a disclosure control. Skills separates seven actives, six passives and the unique FLOW special. FLOW copy follows enemy-death orb rules. Gear uses the canonical equipment economy and loadouts.
+
+- equipmentStorage.mjs owns the single persisted Gold/equipment/loadout/market record. Import the legacy Gold value once, serialize purchases/equips with Web Locks, and save before applying mutations to runtime state. Equipment bonuses are derived from owned item IDs and projected to saved heroes and live actors; removing equipment never heals or revives.
+- astralMarketUI.mjs replaces the collector at idleFarmLayout. Only the active screen reconstructs/draws offers; leaving checkpoints time without running a hidden simulation. Item inspection never pauses expiration. No collector update/claim path remains.
+
+- Shop background uses an original pearly vertical-ribbon shader with rarity-color blooms following the timed item stream driven by the visible shop draw loop, capped to 360 pixels across and 30 FPS. Reduced motion freezes it; unavailable WebGL uses a static pearl gradient. resourceChrome.mjs shares the existing Quests wallet and curved SVG Back control with the shop; balances read canonical Gold and story-entry resources/energy.
+
+- Shop Back is left-aligned with its bottom five reference pixels above the purchase tray; keep inspection clear of its hit area.
+- Quests Back matches that lower screen position: its bottom is -3 reference pixels relative to the screen container ending 78 pixels above the game bottom. The shop presentation test compares both buttons' position and size.
+
+- drawPageBanner in chapterMapPresentation.mjs owns the brass arrow banner shared by Quests and Flow Shop; keep its gradient, outline and typography identical.
+
+- Flow Shop pointer dragging keeps a captured offer ID and uses the same atomic purchase as BUY when dropped into the compact lower tray. Expiration continues while dragging. Pointer cancellation/outside drops never spend. Gear uses rarity tiles and green upgrade badges for unequipped stat-dominant items against the selected hero slots.
+- An expired inspected offer disables purchase immediately, fades its details, and restores the default drop-to-buy hint. Selecting another live offer cancels the expired detail state.
+
+
+- Shared Back chrome uses a single thin gold edge and proportional padding/corner radius; avoid the older thick ridge treatment on Quests.
+
+- Flow Shop preserves the Quests header anchors: banner (0,48,112,24), resources (122,48,230,24) in the 360x640 frame. The stream spans the full game canvas behind the header and purchase controls, with clipping only at the outer screen edges. Do not stack or redistribute the shared header to fit its title.
+
+- Background lights come from live offer progress and rarity data only, anchored at each card's upper edge. Vertical pearl folds carry travelling sheen and narrow iridescent edges; each fold refracts the quality-color wash into its own reflection. Wake color exists only above that edge and fades upward inside its lane. Drag pointer/ghost coordinates never feed shader uniforms or alter stream scheduling.

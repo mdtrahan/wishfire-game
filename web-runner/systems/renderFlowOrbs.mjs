@@ -1,3 +1,4 @@
+import {getAstralFlowKoOrbFrame} from './astralFlowKoOrbPresentation.js';
 import {FLOW_ORB_TUNING as T} from '../src/core/heroDefinitions.mjs';
 
 // Canvas-logical positions share the actors' orientation/scale projection.
@@ -9,12 +10,9 @@ export function renderFlowOrbs(ctx, globals, actors, project, scale, gemImage) {
   const source = orb.sourceKind === 'hero' ? globals.HeroPortraitPosByIndex?.[orb.sourceSlot] || orb : orb;
   const start = project(source.x, source.y, orb.sourceKind), end = project(destination.x, destination.y, 'hero');
   const age = Math.max(0, Number(globals.time || 0) - orb.born);
-  const pop = Math.min(1, age / T.releaseSeconds);
-  const travel = Math.max(0, Math.min(1, (age - T.releaseSeconds) / T.flightSeconds));
-  const ease = travel * travel * (3 - 2 * travel);
-  const spread = ((orb.id % 5) - 2) * 5 * scale;
-  const x = start.x + (end.x - start.x) * ease + spread * Math.sin(pop * Math.PI / 2) * (1 - ease);
-  const y = start.y + (end.y - start.y) * ease - 16 * scale * Math.sin(pop * Math.PI / 2) * (1 - ease) - 10 * scale * Math.sin(travel * Math.PI);
+  const radius = 4.6 * scale;
+  const frame = getAstralFlowKoOrbFrame({source:start,ground:{x:start.x,y:start.y+orb.groundOffset*scale},target:end,radius,spillX:((orb.id%5)-2)*9*scale},globals.time,orb.born);
+  const {x,y} = frame;
   ctx.save();
   ctx.globalAlpha = orb.collected ? Math.max(0, 1 - (age - T.releaseSeconds - T.flightSeconds) / T.collectFlashSeconds) : 1;
   ctx.shadowColor = '#ff637e'; ctx.shadowBlur = 8 * scale;
@@ -22,7 +20,7 @@ export function renderFlowOrbs(ctx, globals, actors, project, scale, gemImage) {
   if (orb.collected) {
    ctx.beginPath();ctx.arc(end.x,end.y,(7 + (age-T.releaseSeconds-T.flightSeconds)*65)*scale,0,Math.PI*2);ctx.stroke();
   } else {
-   const r = (4 + 1.5 * Math.sin(pop * Math.PI)) * scale;
+   const r = frame.radius;
    if (gemImage?.complete && gemImage.naturalWidth) ctx.drawImage(gemImage,x-r,y-r,r*2,r*2);
    else {ctx.fillStyle='#ef4168';ctx.beginPath();ctx.moveTo(x,y-r);ctx.lineTo(x+r,y);ctx.lineTo(x,y+r);ctx.lineTo(x-r,y);ctx.closePath();ctx.fill();ctx.stroke();}
    ctx.fillStyle='#fff2f5';ctx.fillRect(x-r*.3,y-r*.5,1.5*scale,1.5*scale);

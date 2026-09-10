@@ -1,0 +1,164 @@
+{
+  "changed_functions": {
+    "COMBAT_MIGRATION_PLAN.md": [
+      "__MODULE__"
+    ],
+    "COMBAT_MIGRATION_REPORT.md": [
+      "__MODULE__"
+    ],
+    "MIGRATION_CHECKPOINT.md": [
+      "__MODULE__"
+    ],
+    "ai-memory/insights.md": [
+      "__MODULE__"
+    ],
+    "governance/product/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "governance/product/player-living-guide.md": [
+      "__MODULE__"
+    ],
+    "progress.md": [
+      "__MODULE__"
+    ],
+    "tests/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "tests/combatRulesMigration.test.js": [
+      "context"
+    ],
+    "tests/flowOrbsContract.test.js": [
+      "actor",
+      "battle",
+      "orbs",
+      "reasons",
+      "__MODULE__"
+    ],
+    "tools/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "tools/ui_presentation_lock_gate.mjs": [
+      "snapshot"
+    ],
+    "web-runner/app.js": [
+      "drawFrame",
+      "__MODULE__"
+    ],
+    "web-runner/modules/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/modules/heroCommands.mjs": [
+      "rulesContext"
+    ],
+    "web-runner/src/core/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/src/core/combatRules.mjs": [
+      "applyStatus",
+      "turnStart",
+      "damageTarget",
+      "accuracy",
+      "resolveSkill",
+      "amount",
+      "__MODULE__"
+    ],
+    "web-runner/src/core/flowOrbs.mjs": [
+      "clampChance",
+      "roll",
+      "eligible",
+      "excluded",
+      "spawnFlowOrbs",
+      "procFlowPassive",
+      "count",
+      "attackFlowOrbs",
+      "advanceFlowOrbs",
+      "__MODULE__"
+    ],
+    "web-runner/src/core/heroDefinitions.mjs": [
+      "__MODULE__"
+    ],
+    "web-runner/src/core/personalFlow.mjs": [],
+    "web-runner/systems/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/systems/combatSessionReset.mjs": [
+      "resetCombatSessionConditions"
+    ],
+    "web-runner/systems/renderFlowOrbs.mjs": [
+      "renderFlowOrbs",
+      "spread",
+      "r",
+      "__MODULE__"
+    ],
+    "web-runner/systems/renderHeroScreen.js": [
+      "button"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [
+      "web-runner/app.js"
+    ],
+    "staged_file_count": 24,
+    "staged_line_count": 245,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    "COMBAT_MIGRATION_PLAN.md",
+    "COMBAT_MIGRATION_REPORT.md",
+    "MIGRATION_CHECKPOINT.md",
+    "ai-memory/insights.md",
+    "governance/product/AGENTS.md",
+    "governance/product/player-living-guide.md",
+    "progress.md",
+    "tests/AGENTS.md",
+    "tests/combatRulesMigration.test.js",
+    "tests/flowOrbsContract.test.js",
+    "tools/AGENTS.md",
+    "tools/ui_presentation_lock_gate.mjs",
+    "web-runner/app.js",
+    "web-runner/modules/AGENTS.md",
+    "web-runner/modules/heroCommands.mjs",
+    "web-runner/src/core/AGENTS.md",
+    "web-runner/src/core/combatRules.mjs",
+    "web-runner/src/core/flowOrbs.mjs",
+    "web-runner/src/core/heroDefinitions.mjs",
+    "web-runner/src/core/personalFlow.mjs",
+    "web-runner/systems/AGENTS.md",
+    "web-runner/systems/combatSessionReset.mjs",
+    "web-runner/systems/renderFlowOrbs.mjs",
+    "web-runner/systems/renderHeroScreen.js"
+  ],
+  "issue_id": "ORKA-49k.7",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    "COMBAT_MIGRATION_PLAN.md": "fde1ef90ac480dbd53c85ec948c1fdc55e49184e",
+    "COMBAT_MIGRATION_REPORT.md": "a8f58da0c745607687736b7f0285fbf126cfe771",
+    "MIGRATION_CHECKPOINT.md": "c52ee0dfdbe3afc160fc47e1fecbe0c492b71cea",
+    "ai-memory/insights.md": "53c51f53aa4146ac8a99bb22f95ff607a56524a4",
+    "governance/product/AGENTS.md": "0e76613a0eb143e28403be97ed816f3bb61f7912",
+    "governance/product/player-living-guide.md": "13b2e3dfe29d5b215748f3f6fa0c0060ceeab016",
+    "progress.md": "3ba5404f28172b719685546fdf064f3e7d41d8e1",
+    "tests/AGENTS.md": "572ca020aaa10d0415b398f245803b5e6863a0e0",
+    "tests/combatRulesMigration.test.js": "2eac3dbd8655345a4b8e348c571bf66050f95e84",
+    "tests/flowOrbsContract.test.js": "36ab6d339eeb10e12b18af8641564128996d5865",
+    "tools/AGENTS.md": "24312b9d67c3bc32cdebe7d667c5e251327f6543",
+    "tools/ui_presentation_lock_gate.mjs": "b48f2a9d1fa55a4dbf11a414a1f979fffdff0350",
+    "web-runner/app.js": "a30359e2c758f21fa72987f75968bfc75fcd8904",
+    "web-runner/modules/AGENTS.md": "baba96086217af7c1ca46706c5d721b71dce871c",
+    "web-runner/modules/heroCommands.mjs": "27e88410bd26ef973da9376a4b742cf9fa3d1745",
+    "web-runner/src/core/AGENTS.md": "36a2d56a7fe873a139acab0fe82880c8acbb0bb6",
+    "web-runner/src/core/combatRules.mjs": "60fde8c5cb20c9eff5118981457c506d658a2887",
+    "web-runner/src/core/flowOrbs.mjs": "6ca4a6997bdb98282e8717e4f49f6b728e504fba",
+    "web-runner/src/core/heroDefinitions.mjs": "06903440d2ad2ccbc6185d84de927f9c952dc1d5",
+    "web-runner/src/core/personalFlow.mjs": "b0959afa94dd9d31e01a0e3d28cd2eaa76c8c415",
+    "web-runner/systems/AGENTS.md": "698fed0e1074947500d37de10f4819eba4fb1238",
+    "web-runner/systems/combatSessionReset.mjs": "8683d2b9df12e198515798d8da7d5f1c4f0ca571",
+    "web-runner/systems/renderFlowOrbs.mjs": "57abedc431e8b5b497ae56477cb89a48df0d91b1",
+    "web-runner/systems/renderHeroScreen.js": "0b225a23123727dc2ae910a950d9f6ea13adccff"
+  }
+}

@@ -1,19 +1,16 @@
 # Combat migration implementation report
 
-## Current revision: combat FLOW orbs
+## Current revision: results layout, death-only FLOW and ground bounce
 
-The direct role-charge system from the preceding checkpoint is replaced. Each living hero retains a personal 100 FLOW gauge. Normal damaging actions roll 35% for one 10-point orb, capped once per action across hits and targets. Every orb independently chooses a random living eligible hero. Charge is applied on arrival after a 0.52-second release/flight, with a short arrival flash. Orb animation never enters the turn barrier.
+Results now occupy 80% of the game canvas width and height, centered horizontally and vertically over a canvas-sized 40% black shade. Resize tracking preserves these proportions. Browser geometry gate: 250/250 passed at `test-results/ui-lock/2026-09-08T18-31-43-283Z/ui-lock-report.json`; all five viewport profiles include victory captures. Natural in-app proof:672×903 CSS viewport/DPR2,507×903 canvas,405.59×722.40 centered results panel; both ratios measured0.8000. Shade matched the complete canvas at rgba(0,0,0,0.4). No browser errors. The updated victory panel is left visible.
 
-The ten role names and current assignments now describe configurable orb passives. Stoic, Slayer, Healer, Tactician, Comrade, Dancer and Rook create bonus orbs from the existing qualifying events; Warrior, Daredevil and Loner modify base drop chances. Passive checks respect the owner's action caps, including one Healer/Tactician check per action, one Comrade check per enemy action, and intentional per-kill Slayer bonuses. All direct role-meter writes were removed.
+Enemy target triangles now render only during hero turns and hide at combat end. Target selection persists across enemy turns. Eight focused selector/command checks and renderer syntax validation passed.
 
-`flowOrbs.mjs` owns generation, random assignment and collection. The existing resolver supplies source attribution and action deduplication. `renderFlowOrbs.mjs` draws existing gem artwork with a red glow through the actors' orientation/scale projection. App wiring adds only update/render calls. Hero details now explain orb passives. Encounter reset clears flights. SP, action slots and SPEED scheduling retain their existing owners.
+Enemy defeat now awards FLOW orbs once per enemy. The default reward is one 10-FLOW orb; count/value remain configurable. Nonlethal attacks and all former role triggers generate no orbs. This supersedes the preceding attack-drop/passive implementation.
 
-Skill tuning supports chance/value/count, action or hit rolls, maximum base drops, guaranteed drops and chance bonuses. A full recipient clamps at 100. If a recipient becomes KO/ineligible during flight, that orb dissipates. FLOW-special source exclusions remain intact so a special cannot recharge its own caster. Passive orbs use the same random distribution.
+The renderer calls the original blue death-orb frame function, preserving its spill, three diminishing ground bounces and eased flight. Random living-hero distribution and charge on arrival remain. Victory settles combat and EXP immediately; the progression dialog waits until orb presentation finishes. SP, slots and CTB scheduling are unchanged.
 
-Validation for this revision: **803 Node tests passed, 0 failed, 73 unchanged historical skips**; app boundary **4 passed**. Browser gate: **241/241 passed**. Receipt: `test-results/ui-lock/2026-09-08T07-23-53-648Z/ui-lock-report.json`. Release/collection screenshots were inspected at reference and compact sizes. The in-app Browser was unavailable because the Mac was locked, so rendered proof uses the repository Playwright gate. Local preview remains on port 8047.
-
-The earlier checkpoint evidence below describes the base migration; its direct-role FLOW statements are superseded by this revision and section 7 of the migration plan.
-
+Validation: **799 Node tests passed, 0 failed, 73 unchanged historical skips**. Updated tests cover death-only generation, no role-event drops, duplicate prevention, multikills, delayed collection and reuse of the old tween. Browser gate: **241/241 passed**. Receipt: `test-results/ui-lock/2026-09-08T15-05-27-856Z/ui-lock-report.json`. Inspected the reference ground-bounce screenshot; captures cover all five viewport profiles. In-app inspection remained unavailable because the Mac was locked.
 
 Local implementation in `codex/ORKA-49k.7-astral-spending`. The preview is served from this worktree at `http://localhost:8047/web-runner/index.html`. Main and production have not been changed.
 
@@ -26,7 +23,7 @@ Local implementation in `codex/ORKA-49k.7-astral-spending`. The preview is serve
 | Turn selection | SPEED determines the acting hero. `actionSlotsPerTurn` limits the queue independently of SP and known skills. Current kits default to three slots as configurable tuning. Mixed capacities are supported. A full queue commits automatically; ACT commits early. |
 | SP | Encounters start at full SP. Living heroes regenerate five SP at their own turn start. Queues reserve their actual costs; unexecuted actions refund their costs. Remaining SP carries forward. Removing a draft entry restores its slot and reservation. |
 | Targeting | Battlefield clicks select enemies persistently. A single-target skill captures that selection when queued. AoE captures its defined group. There is no target dropdown or separate Queue button. Queued targets remain independent after later selection changes. |
-| FLOW | Each hero starts at zero with a red FLOW meter. Fara is Stoic, Hondo Warrior, Runa Tactician and Kaja Comrade. Ten role modes are defined. FLOW specials own the whole turn, preserve SP and cannot generate their caster's FLOW through their effects or reactions. |
+| FLOW | Each hero starts at zero with a red FLOW meter. Defeated enemies award orbs to random living heroes; former role modes are retired metadata. FLOW specials own the whole turn, preserve SP and cannot generate their caster's FLOW through their effects or reactions. |
 | Effects | Generic statuses, stronger-magnitude refresh, affected-unit turn durations, snapshot DoT/HoT and simultaneous periodic resolution. Routine ticks generate no FLOW; qualifying kill outcomes remain eligible. |
 | KO and revival | Ordinary statuses clear on KO, explicitly persistent effects survive, FLOW is preserved, and revival returns the actor to normal scheduling. |
 | Target resolution | Tag-based Silence and Blind, separate accuracy/evasion, newest Provoke, newest eligible Cover, covering defender's defenses, original-target fallback after coverer KO. |
@@ -65,3 +62,7 @@ Local checkpoint: the commit containing this report on `codex/ORKA-49k.7-astral-
 Costs, growth, FLOW rates and three-slot defaults are placeholder tuning. This pass does not certify final encounter balance. Only the four existing heroes are authored; one-to-six-member groups are valid. Commercial acquisition, extra heroes, multi-hero stored combinations, catch-up EXP and the paused roguelite card system remain outside this implementation.
 
 The lane is preserved for review. This report does not certify integration against current main or authorize deployment.
+
+## Hero management revision (in progress)
+
+The existing hero screen now uses HERO / GEAR / SKILLS, a persistent portrait and roster, concise level milestones, and expandable full stats. Active, passive and FLOW categories remain canonical. The owner subsequently authorized a placeholder equipment catalog. Gear now manages the same persisted inventory purchased through Astral Flow. See EQUIPMENT_MIGRATION_REPORT.md for scope and validation. Enemy-death FLOW remains authoritative.

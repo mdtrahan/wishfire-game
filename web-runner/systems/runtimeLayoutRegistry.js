@@ -52,8 +52,6 @@ export function registerRuntimeLayouts(layoutState, {
   gameState,
   normalizeHeroSelectionIndex,
   restorePartyToFullHP,
-  startIdleFarmEmissions,
-  restartIdleFarmSession,
   getNowSec,
 } = {}) {
   if (combatLayout) layoutState.registerLayout(combatLayout);
@@ -187,9 +185,6 @@ export function registerRuntimeLayouts(layoutState, {
     allowedTransitions: ['combat', 'storyMock', 'heroLayout', 'chestsLayout'],
     onEnter() {
       uiState.setUIStateField('overlayVisible', false);
-      const nowSec = typeof getNowSec === 'function' ? getNowSec() : performance.now() / 1000;
-      startIdleFarmEmissions(nowSec);
-      restartIdleFarmSession(nowSec);
     },
     onActive() {},
     onExit() { return null; },

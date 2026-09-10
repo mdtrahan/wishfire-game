@@ -10,12 +10,12 @@ Groups may contain one through six heroes. Each hero has their own HP, SP, level
 
 ## Current Heroes
 
-| Hero | Role | Orb passive |
-| --- | --- | --- |
-| Fara | Tank | 25% bonus-orb chance when damaged |
-| Hondo | Fighter | Basic Attack orb chance rises to 50% |
-| Runa | Controller | 35% orb chance after a successful debuff action |
-| Kaja | Support | 15% orb chance when another ally takes damage |
+| Hero | Role |
+| --- | --- |
+| Fara | Tank |
+| Hondo | Fighter |
+| Runa | Controller |
+| Kaja | Support |
 
 Every hero has seven active skills, six passives and one unique FLOW special. Abilities unlock as that hero levels. The hero screen shows current stats, costs, effects and future unlocks.
 
@@ -25,7 +25,7 @@ Every hero has seven active skills, six passives and one unique FLOW special. Ab
 
 **SP** pays for active skills. Heroes begin encounters with full SP and recover five SP at the start of their own living turn. Only executed actions spend SP. Unexecuted actions are refunded if their targets become invalid, their actor is KO'd or victory ends combat.
 
-**FLOW** begins at zero in every encounter. Damaging actions have a 35% chance to release one orb from an enemy. Each orb travels to a random living hero and grants 10 FLOW on arrival. Orb passives can improve these drops. When full, that hero can use their special. The red meter is labeled FLOW; the blue meter shows SP. Party-card draws are paused.
+**FLOW** begins at zero in every encounter. Defeated enemies release FLOW orbs. They spill onto the ground, bounce, then fly to randomly assigned living heroes. Each orb grants 10 FLOW on arrival. Attacks and role events do not award orbs. When full, that hero can use their special. The red meter is labeled FLOW; the blue meter shows SP. Party-card draws are paused.
 
 **Energy and Gold** belong to the wider quest economy. They do not set the number of skills a hero can queue.
 
@@ -40,3 +40,7 @@ Level-ups increase stats and unlock abilities. Living heroes gain the increase i
 Quests provide story and combat encounters. The HERO screen shows each owned hero's canonical progression and combat kit. Vault and other existing navigation remain available where implemented.
 
 The gem puzzle and shared Astral Flow milestones are retired. The roguelite party-card feature is paused. Current engineering rules are in [the combat migration plan](../../COMBAT_MIGRATION_PLAN.md).
+
+## Equipment and Astral Flow shop
+
+Victorious battles award configurable Gold per defeated enemy. Astral Flow is a four-track equipment shop using Gold; its previous idle collector is retired. Offers expire in real time while away and are reconstructed on return. Purchases enter the shared inventory under Hero → Gear. Equip Weapon, Head, Armor, Boots and two Accessories; their stats feed the canonical combat hero. Hero management exposes CP, SP and named AF traits while combat FLOW retains enemy-death orb charging. Placeholder equipment and prices remain centrally configurable.

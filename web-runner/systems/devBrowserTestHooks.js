@@ -117,7 +117,6 @@ export function registerDevBrowserTestHooks({
         heroGemUsage: state.globals.HeroGemUsage || null,
         heroGemMilestones: state.globals.HeroGemMilestones || null,
         heroGemProgressPersistedAt: state.globals.HeroGemProgressPersistedAt || 0,
-        idleFarmLastCollect: state.globals.IdleFarmLastCollect || null,
         powerAmpTelemetry: Array.isArray(state.globals.PowerAmpTelemetryTrace)
           ? state.globals.PowerAmpTelemetryTrace.slice(-40)
           : [],
@@ -129,11 +128,11 @@ export function registerDevBrowserTestHooks({
         enemySlotOptions: getDevToolEnemyOptions(),
         enemyTypeOptions: getDevToolEnemyOptions(),
       },
-      idleFarm: {
+      astralMarket: {
         active: layoutState && typeof layoutState.getActiveLayoutId === 'function'
           ? layoutState.getActiveLayoutId() === 'idleFarmLayout'
           : false,
-        state: gameState.idleFarmLayout || null,
+        state: state.globals.Equipment?.market || null,
       },
       mapLayout: {
         panX: Number(mapLayoutState.getMapLayoutState().panX || 0),

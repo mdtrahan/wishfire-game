@@ -34,14 +34,15 @@ test('new battle clears combat conditions and Astral Flow while retaining gold a
 });
 
 test('gold persists gains and spending across reloads without writing unchanged balances', async () => {
- const {createGoldProgressStorage}=await import('../web-runner/systems/goldProgressStorage.mjs');
+ const {createEquipmentStorage}=await import('../web-runner/systems/equipmentStorage.mjs');
+ const locks={request:async(k,fn)=>fn()},seed=()=>1,now=()=>100000;
  const values=new Map();let writes=0;
  const storage={getItem:k=>values.get(k)??null,setItem(k,v){values.set(k,v);writes++;}};
- const globals={goldTotal:27};const wallet=createGoldProgressStorage({globals,storage});
- wallet.sync();wallet.sync();assert.equal(writes,1);
- globals.goldTotal=19;wallet.sync();
- const reloaded={goldTotal:0};createGoldProgressStorage({globals:reloaded,storage}).sync();
- assert.equal(reloaded.goldTotal,19);assert.equal(writes,2);
+ const globals={goldTotal:27};const wallet=createEquipmentStorage({globals,storage,locks,seed,now});
+ await wallet.sync();await wallet.sync();assert.equal(writes,1);
+ globals.goldTotal=19;await wallet.sync();
+ const reloaded={goldTotal:0};await createEquipmentStorage({globals:reloaded,storage,locks,seed,now}).sync();
+ assert.equal(reloaded.goldTotal,19);assert.equal(writes,3);
 });
 
 

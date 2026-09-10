@@ -45,3 +45,9 @@
 - The UI gate also verifies canonical hero-detail kit counts and overflow, and the production victory dialog after a native final hit.
 
 - The UI gate captures enemy-to-nonattacker orb flight before charge and verifies collection, readiness and one-turn completion across its viewport profiles.
+
+- Death-only FLOW supersedes attack/proc drops: enemy KO awards once; collection charges a random living hero after the original blue death-orb ground-bounce tween. Role events award nothing.
+
+- Results presentation lock measures 80% canvas width/height, center alignment, full-canvas shade bounds and rgba black0.4 across every viewport profile.
+
+- The UI lock now drives an exact displayed shop offer through Gold purchase and Hero Gear equip at every profile, checking four tracks, containment, canonical ownership and stat effects. Test wallets are arranged only in isolated browser contexts.

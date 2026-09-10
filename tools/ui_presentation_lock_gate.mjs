@@ -735,6 +735,7 @@ async function captureCommandTurns(page, viewport, artifactDir) {
   await page.evaluate(() => {
     const g=window.__codexGame.globals;
     g.FlowRandom=()=>0;g.FlowOrbs=[];
+    for(const enemy of window.__codexGame.state.entities.filter(a=>a.kind==='enemy')) enemy.hp=1;
     window.__codexGame.state.entities.find(a=>a.uid===100).flow=90;
   });
   await open(orbBefore.actorUID);
@@ -746,7 +747,9 @@ async function captureCommandTurns(page, viewport, artifactDir) {
     return {orb:{...o},flow:game.state.entities.find(a=>a.uid===o.recipientUID).flow,age:g.time-o.born};
   });
   await page.screenshot({path:path.join(artifactDir,`${viewport.name}-orb-flight.png`)});
-  await page.waitForFunction(()=>window.__codexGame.globals.FlowOrbs?.some(o=>!o.collected&&window.__codexGame.globals.time-o.born>=.24));
+  await page.waitForFunction(()=>window.__codexGame.globals.FlowOrbs?.some(o=>!o.collected&&window.__codexGame.globals.time-o.born>=.3));
+  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-orb-bounce.png`)});
+  await page.waitForFunction(()=>window.__codexGame.globals.FlowOrbs?.some(o=>!o.collected&&window.__codexGame.globals.time-o.born>=.85));
   await page.screenshot({path:path.join(artifactDir,`${viewport.name}-orb-travel.png`)});
   await page.waitForFunction(()=>window.__codexGame.state.entities.find(a=>a.uid===100).flow===100);
   await settled(orbBefore);
@@ -797,7 +800,7 @@ async function captureCommandTurns(page, viewport, artifactDir) {
     const after=await snapshot(before.actorUID);
     results.push(invariant(`action-slots-auto-commit-${capacity}`,committed.pending&&after.turn===before.turn+1&&after.sp>0,{committed,after},{capacity,automatic:true,oneTurn:true}));
   }
-  if(viewport.name==='reference') {
+  {
     const before=await arrange(2);
     await page.evaluate(async()=>{
       const game=window.__codexGame,g=game.globals;
@@ -818,25 +821,65 @@ async function captureCommandTurns(page, viewport, artifactDir) {
       return {heroes:game.state.entities.filter(a=>a.kind==='hero').map(a=>({level:a.currentLevel,hp:a.hp,exp:a.currentEXP})),results:game.globals.ProgressionResults};
     });
     await page.getByRole('dialog',{name:'Battle progression'}).waitFor({state:'visible'});
-    await page.screenshot({path:path.join(artifactDir,'reference-victory-progression.png')});
+    await page.screenshot({path:path.join(artifactDir,`${viewport.name}-victory-progression.png`)});
+    const geometry=await page.evaluate(()=>{
+      const panel=document.querySelector('#battle-results'),shade=document.querySelector('#battle-results-shade');
+      return {canvas:document.querySelector('#view').getBoundingClientRect().toJSON(),panel:panel.getBoundingClientRect().toJSON(),shade:shade.getBoundingClientRect().toJSON(),darkness:getComputedStyle(shade).backgroundColor,overflow:panel.scrollWidth>panel.clientWidth};
+    });
+    const {canvas:c,panel:p,shade:d}=geometry;
+    results.push(invariant('results-canvas-relative-layout',Math.abs(p.width/c.width-.8)<.01&&Math.abs(p.height/c.height-.8)<.01&&Math.abs(p.x+p.width/2-c.x-c.width/2)<1&&Math.abs(p.y+p.height/2-c.y-c.height/2)<1&&Math.abs(d.width-c.width)<1&&Math.abs(d.height-c.height)<1&&Math.abs(d.x-c.x)<1&&Math.abs(d.y-c.y)<1&&geometry.darkness==='rgba(0, 0, 0, 0.4)'&&!geometry.overflow,geometry,{widthRatio:.8,heightRatio:.8,centered:true,combatShade:.4}));
     results.push(invariant('victory-progression-with-ko',progression.heroes.every(h=>h.level===6)&&progression.heroes[0].hp===0&&progression.results.every(r=>r.exp===3000&&r.unlocks.length>0),progression,{fullEXPForKO:true,level:6,unlocks:true}));
     await page.getByRole('dialog',{name:'Battle progression'}).getByRole('button',{name:'Continue',exact:true}).click();
   }
   const menu=page.getByRole('button',{name:'Menu',exact:true});
-  if(viewport.name!=='reference')await menu.click();
+
   await page.getByRole('button',{name:'HERO',exact:true}).click();
   await page.locator('#hero-details').waitFor({state:'visible'});
   const heroDetails=await page.locator('#hero-details').evaluate(el=>({overflow:el.scrollWidth>el.clientWidth,text:el.innerText}));
-  await page.getByRole('button',{name:'Skills',exact:true}).click();
+  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-hero-overview.png`)});
+  const rosterBounds=await page.locator('#hero-details').evaluate(el=>{const p=el.getBoundingClientRect(),r=el.querySelector('.roster').getBoundingClientRect();return {contained:r.bottom<=p.bottom&&r.left>=p.left&&r.right<=p.right,articles:el.querySelectorAll('article').length};});
+  results.push(invariant('hero-overview-disclosure',rosterBounds.contained&&rosterBounds.articles===0,rosterBounds,{contained:true,articles:0}));
+  await page.locator('#hero-details').getByRole('button',{name:'SKILLS',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelectorAll('#hero-details article').length===7);
   const activeCount=await page.locator('#hero-details article').count();
-  await page.getByRole('button',{name:'Passives',exact:true}).click();
+  await page.getByRole('button',{name:'Passive',exact:true}).click();
   await page.waitForFunction(()=>document.querySelectorAll('#hero-details article').length===6);
   const passiveCount=await page.locator('#hero-details article').count();
-  await page.getByRole('button',{name:'FLOW Special',exact:true}).click();
+  await page.locator('#hero-details').getByRole('button',{name:'FLOW',exact:true}).click();
   await page.waitForFunction(()=>document.querySelectorAll('#hero-details article').length===1);
   const specialCount=await page.locator('#hero-details article').count();
   await page.screenshot({path:path.join(artifactDir,`${viewport.name}-hero-details.png`)});
-  results.push(invariant('hero-detail-canonical-kit',!heroDetails.overflow&&activeCount===8&&passiveCount===6&&specialCount===1&&heroDetails.text.includes('Orb passive:'),{heroDetails,activeCount,passiveCount,specialCount},{overflow:false,activesPlusAttack:8,passives:6,special:1}));
+  results.push(invariant('hero-detail-canonical-kit',!heroDetails.overflow&&activeCount===7&&passiveCount===6&&specialCount===1&&heroDetails.text.includes('Coming next')&&!heroDetails.text.includes('How FLOW builds'),{heroDetails,activeCount,passiveCount,specialCount},{overflow:false,activeSkills:7,passives:6,special:1}));
+  await page.locator('#hero-details').getByRole('button',{name:'Back',exact:true}).click();
+  await page.evaluate(async()=>{
+    const {createMarket,marketOffers}=await import('/web-runner/src/core/astralMarket.mjs');
+    const {EQUIPMENT}=await import('/web-runner/src/core/equipment.mjs');
+    const key='wishfire.equipment-economy.v1',record=JSON.parse(localStorage.getItem(key));record.gold=5000;record.items=[];record.loadouts={};
+    let seed=1;do{record.market=createMarket(seed++,Date.now());}while(!marketOffers(record.market,Date.now()).some(o=>EQUIPMENT[o.equipmentId].type==='weapon'&&o.progress>.2&&o.progress<.65));
+    localStorage.setItem(key,JSON.stringify(record));
+  });
+  await page.getByRole('button',{name:'FLOW',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('#astral-market header')?.textContent.includes('5,000'));
+  const offer=await page.evaluate(async()=>{
+    const {EQUIPMENT}=await import('/web-runner/src/core/equipment.mjs');const {marketOffers}=await import('/web-runner/src/core/astralMarket.mjs');const g=window.__codexGame.globals;
+    const o=marketOffers(g.Equipment.market,Date.now()).find(o=>EQUIPMENT[o.equipmentId].type==='weapon'&&o.progress>.2&&o.progress<.7);return {...o,name:EQUIPMENT[o.equipmentId].name};
+  });
+  await page.locator(`[data-offer="${offer.id}"]`).click({force:true});
+  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-astral-market.png`)});
+  const marketGeometry=await page.locator('#astral-market').evaluate(p=>({overflow:p.scrollWidth>p.clientWidth,tracks:new Set([...p.querySelectorAll('.offer')].map(c=>c.style.getPropertyValue('--track'))).size,price:p.querySelector('[data-buy]').textContent}));
+  await page.locator('#astral-market [data-buy]').click();
+  await page.waitForFunction(id=>window.__codexGame.globals.Equipment.items.some(i=>i.instanceId===id),offer.id);
+  const purchase=await page.evaluate(()=>({gold:window.__codexGame.globals.goldTotal,items:window.__codexGame.globals.Equipment.items}));
+  results.push(invariant('astral-equipment-purchase',!marketGeometry.overflow&&marketGeometry.tracks===4&&marketGeometry.price.includes(String(offer.price))&&purchase.gold===5000-offer.price&&purchase.items.length===1&&purchase.items[0].equipmentId===offer.equipmentId,{marketGeometry,purchase,offer},{tracks:4,exactGold:true,exactItem:true}));
+  await page.locator('#astral-market').getByRole('button',{name:'Back',exact:true}).click();
+  await page.getByRole('button',{name:'HERO',exact:true}).click();
+  await page.locator('#hero-details').getByRole('button',{name:'GEAR',exact:true}).click();
+  await page.locator('.equipment-grid').getByRole('button',{name:`Inspect ${offer.name}`,exact:true}).click();
+  await page.locator('.equipment-detail').getByRole('button',{name:'Equip',exact:true}).click();
+  await page.waitForFunction(id=>Object.values(window.__codexGame.globals.Equipment.loadouts).some(l=>l.weapon===id),offer.id);
+  const equipped=await page.evaluate(()=>{const g=window.__codexGame.globals;const [heroId]=Object.entries(g.Equipment.loadouts).find(([,l])=>l.weapon);return {hero:g.HeroProgress.heroes[heroId],loadout:g.Equipment.loadouts[heroId],overflow:document.querySelector('#hero-details').scrollWidth>document.querySelector('#hero-details').clientWidth};});
+  results.push(invariant('gear-canonical-stat-effect',!equipped.overflow&&equipped.loadout.weapon===offer.id&&Object.values(equipped.hero.equipmentStats||{}).some(v=>v>0),equipped,{canonicalGearStats:true}));
+  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-hero-gear.png`)});
   return results;
 }
 

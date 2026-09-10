@@ -94,13 +94,9 @@ test('dev tooling runtime owns modal/config while app keeps restart wiring', () 
   assert.match(src, /devToolingDom\.autoplay\.addEventListener\('click', async \(\) => \{/);
   assert.match(src, /closeDevToolingModal\(\{ restorePauseSnapshot: true \}\);/);
   assert.match(src, /function syncConfiguredDoubleAttackHarness\(cfg = ensureDevToolingConfig\(\)\)/);
-  assert.match(src, /function syncIdleFarmDevLoadoutConfig\(cfg = ensureDevToolingConfig\(\)\)/);
   assert.match(src, /callFunctionWithContext\(fnContext, 'ConfigureActorExtraTurnSkill', actor\.uid, \{/);
-  assert.match(src, /syncIdleFarmDevLoadoutConfig\(next\);/);
   assert.match(src, /if \(activeLayoutId === 'combat' && typeof devToolingRefreshHandler === 'function'\) \{/);
   assert.match(src, /await devToolingRefreshHandler\(\{ forceCombat: false, resetGame: false \}\);/);
-  assert.match(src, /else if \(activeLayoutId === 'idleFarmLayout'\) \{/);
-  assert.match(src, /restartIdleFarmSession\(performance\.now\(\) \/ 1000\);/);
   assert.match(src, /Combat state unchanged/);
   assert.match(src, /config: ensureDevToolingConfig\(\)/);
   assert.match(src, /async function applyDevToolingConfig\(patch = \{\}, \{ closeModal = true \} = \{\}\)/);

@@ -45,3 +45,13 @@ ORKA-49k.7: personal charge and native queues implemented; party cards paused. F
 ## ORKA-49k.7 · FLOW orb conversion
 
 Owner requested replacing direct role charge with random-distribution orb collection while preserving ten role triggers as orb passives. Implemented capped base rolls, per-action passive checks, separate RNG, delayed collection and actor-projected gem flights. Full Node suite: 803 passed, 73 historical skips. Browser validation in progress.
+
+## FLOW correction: enemy death and original bounce
+
+Owner confirmed death-only rewards and requested the original blue death-orb ease/tween. Removed attack/passive drop paths and reused getAstralFlowKoOrbFrame. Full suite799 passed/73 historical skips; browser gate241/241 passed, including ground-bounce captures and production victory results.
+
+## Results canvas layout
+
+Owner approved 80% canvas width/height centered on both axes with full-canvas 40% black dimming. Implemented ResizeObserver layout and native modal backdrop isolation; browser gate250/250 passed across five viewport profiles.
+
+2026-09-08: Hero management and Astral Flow equipment loop implemented in ORKA-49k.7. Shared equipment/Gold persistence, six slots, 16 placeholder items, four real-time tracks, purchase/equip/stat integration, CP/SP/AF trait display, and once-only victory Gold. Removed idle collector runtime. Node 800 passed/0 failed/73 historical skips; browser 265/265 at test-results/ui-lock/2026-09-08T21-51-41-128Z/ui-lock-report.json. Natural hidden-expiration proof passed. See EQUIPMENT_MIGRATION_REPORT.md. Work remains uncommitted in the owned worktree.

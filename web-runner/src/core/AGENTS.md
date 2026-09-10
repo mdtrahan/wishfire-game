@@ -40,11 +40,18 @@
 
 - personalFlow.mjs owns browser-shipped personal charge and current hero skill budgets, shared with both function registries. It has no DOM or timer access. FLOW event attribution occurs only at resolved gameplay seams.
 
-- Combat SP and FLOW are independent actor balances: fresh encounters start full SP and zero FLOW; role events produce orbs only.
+- Combat SP and FLOW are independent actor balances: fresh encounters start full SP and zero FLOW; enemy defeat produces orbs only.
 
 - `heroDefinitions.mjs` is the single kit/tuning source for combat and hero detail UI. `heroProgression.mjs` owns individual EXP, stat growth and unlock evaluation; KO remains zero HP during growth.
 - `combatRules.mjs` resolves statuses, accuracy, Cover and reactions. Preserve action source ancestry, reject illegal actions before spending, and grant no routine periodic FLOW.
 
 - `actionSelection.mjs` owns action capacity and draft budgets independently of SP and CTB scheduling. High SP cannot increase the action count.
 
-- FLOW charging is owned only by flowOrbs.mjs collection. Role triggers produce capped orb passives; they never directly increase FLOW. Combat RNG and orb RNG remain separate. Session reset cancels pending flights.
+- FLOW charging is owned only by flowOrbs.mjs collection. Enemy KO produces a single configured reward; role triggers award nothing. Combat RNG and orb RNG remain separate. Session reset cancels pending flights.
+
+- Death-only FLOW supersedes attack/proc drops: enemy KO awards once; collection charges a random living hero after the original blue death-orb ground-bounce tween. Role events award nothing.
+
+- equipment.mjs is the canonical placeholder catalog, slots, rarity balance and loadout math. astralMarket.mjs reconstructs only the live offer window using persisted seed/epoch and a monotonic time floor. Each offer ID may be acquired once; revalidate price, expiration and Gold at commit.
+- Equipment stats are a derived projection used by levelStats, not a second inventory. Persist the projection with hero HP so loading HP above unequipped max does not truncate it before the authoritative equipment record reapplies.
+
+- isEquipmentUpgrade requires compatible item types, no lower stat and at least one higher stat; stat tradeoffs are not automatic upgrades. Empty compatible slots qualify.

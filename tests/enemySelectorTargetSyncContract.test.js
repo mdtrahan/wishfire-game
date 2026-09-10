@@ -29,3 +29,16 @@ test('normal pending attack defaults to a living enemy, allows confirmation and 
   state.globals.PendingSkillID='HERO_AOE';
   assert.equal(ensure(),0);
 });
+
+ test('enemy target triangle renders only on hero turns without clearing selection',()=>{
+  const vm=require('node:vm');
+  const src=fs.readFileSync(path.join(__dirname,'..','web-runner','systems','renderRuntime.js'),'utf8');
+  const guard=src.match(/if \((Number\(state.globals.TurnPhase\).*?state.globals.SelectedEnemyUID)\) \{/)[1];
+  const state={globals:{TurnPhase:0,SelectedEnemyUID:203,NativeBattleEnded:false}};
+  const visible=()=>!!vm.runInNewContext(guard,{state});
+  assert.equal(visible(),true);
+  state.globals.TurnPhase=1;assert.equal(visible(),false);assert.equal(state.globals.SelectedEnemyUID,203);
+  state.globals.TurnPhase=0;assert.equal(visible(),true);
+  state.globals.NativeBattleEnded=true;assert.equal(visible(),false);
+  state.globals.NativeBattleEnded=false;state.globals.SelectedEnemyUID=0;assert.equal(visible(),false);
+ });

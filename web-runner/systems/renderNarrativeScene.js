@@ -13,7 +13,7 @@ import {
   syncNarrativeSceneLine,
 } from './narrativeSceneController.mjs';
 import { computeNarrativeSceneViewport, transformNarrativeHitZones } from './narrativeSceneViewport.mjs';
-import { CHAPTER_ONE_MAP } from './chapterMapPresentation.mjs';
+import { CHAPTER_ONE_MAP, drawPageBanner } from './chapterMapPresentation.mjs';
 
 const imageCache = new Map();
 const PORTRAIT_STAGE_SCALE = 0.38;
@@ -437,28 +437,7 @@ export function renderStoryChapterMap(ctx, gameState, { viewWidth, viewHeight, m
     ctx.textBaseline = 'middle';
     ctx.lineJoin = 'round';
     const heading = map.heading;
-    const banner = ctx.createLinearGradient(0, heading.y, 0, heading.y + heading.h);
-    banner.addColorStop(0, '#a88d50');
-    banner.addColorStop(0.5, '#79643b');
-    banner.addColorStop(1, '#54452d');
-    ctx.beginPath();
-    ctx.moveTo(heading.x, heading.y);
-    ctx.lineTo(heading.x + heading.w - 12, heading.y);
-    ctx.lineTo(heading.x + heading.w, heading.y + heading.h / 2);
-    ctx.lineTo(heading.x + heading.w - 12, heading.y + heading.h);
-    ctx.lineTo(heading.x, heading.y + heading.h);
-    ctx.closePath();
-    ctx.fillStyle = banner;
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#e2c775';
-    ctx.stroke();
-    ctx.font = 'bold 13px sans-serif';
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = '#514021';
-    ctx.fillStyle = '#fff4dc';
-    ctx.strokeText(heading.text, heading.x + (heading.w - 8) / 2, heading.y + heading.h / 2);
-    ctx.fillText(heading.text, heading.x + (heading.w - 8) / 2, heading.y + heading.h / 2);
+    drawPageBanner(ctx, heading);
     if (isMap) {
     const divider = map.divider;
     ctx.strokeStyle = '#dbc17c';
