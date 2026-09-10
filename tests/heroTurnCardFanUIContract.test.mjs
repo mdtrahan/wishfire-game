@@ -5,8 +5,9 @@ import path from 'node:path';
 import { computeHeroTurnFanLayout, normalizeHeroTurnCards, RARITY_COLORS } from '../web-runner/systems/heroTurnCardFanUI.mjs';
 
 test('normalizes three distinct hero action cards and excludes Fortune cards', () => {
+  const completeEffect = 'Intercept the next attack against one ally, then counterattack its attacker for heavy damage.';
   const cards = normalizeHeroTurnCards([
-    { id: 'a', name: 'A', rarity: 'Common', effect: 'Hit' },
+    { id: 'a', name: 'A', rarity: 'Common', effect: completeEffect },
     { id: 'fortune', name: 'Fortune', kind: 'fortune', effect: 'Passive' },
     { id: 'a-duplicate', name: 'A', rarity: 'Rare', effect: 'Duplicate' },
     { id: 'b', name: 'B', rarity: 'Rare', effect: 'Guard', metadata: { tempo: 'Fast' } },
@@ -15,6 +16,7 @@ test('normalizes three distinct hero action cards and excludes Fortune cards', (
   ]);
   assert.deepEqual(cards.map(card => card.id), ['a', 'b', 'c']);
   assert.equal(cards[1].tempo, 'Fast');
+  assert.equal(cards[0].effect, completeEffect);
   assert.equal(cards.length, 3);
 });
 
@@ -39,5 +41,9 @@ test('rarity palette remains presentation-only and configurable by card payload'
   assert.match(source, /onTargetSelect/);
   assert.match(source, /onCancel/);
   assert.match(source, /data-slot="left"/);
+  assert.match(source, /fan-card-effect[^}]*white-space:normal/);
+  assert.match(source, /fan-card-name[^}]*overflow-wrap:anywhere/);
+  assert.doesNotMatch(source, /fan-card-effect[^}]*text-overflow/);
+  assert.doesNotMatch(source, /fan-card-effect[^}]*overflow:hidden/);
   assert.doesNotMatch(source, /\b(Odds|Pity|Energy|cost)\b/i);
 });

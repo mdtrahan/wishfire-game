@@ -101,17 +101,17 @@ const STYLE = `
   @keyframes hero-turn-card-center-in{from{transform:rotate(0) translateY(25px)}to{transform:rotate(0)}}
   @keyframes hero-turn-card-right-in{from{transform:rotate(0) translateY(30px)}to{transform:rotate(7deg) translateY(8px)}}
   @keyframes hero-turn-card-out{to{transform:rotate(0) translateY(25px)}}
-  #hero-turn-card-fan .fan-card{position:absolute;top:9px;width:116px;height:148px;padding:8px 8px 7px;border:2px solid var(--rarity,#737783);border-radius:9px;color:#fff;background:linear-gradient(155deg,#263345f2,#0b1019f5 65%,#06080c);box-shadow:inset 0 0 0 1px #ffffff22,0 4px 7px #000b;display:flex;flex-direction:column;gap:5px;text-align:left;pointer-events:auto;cursor:pointer;overflow:hidden;transition:filter 120ms ease,box-shadow 120ms ease,transform 120ms ease}
+  #hero-turn-card-fan .fan-card{position:absolute;top:9px;width:116px;height:148px;padding:8px 8px 7px;border:2px solid var(--rarity,#737783);border-radius:9px;color:#fff;background:linear-gradient(155deg,#263345f2,#0b1019f5 65%,#06080c);box-shadow:inset 0 0 0 1px #ffffff22,0 4px 7px #000b;display:flex;flex-direction:column;gap:5px;text-align:left;pointer-events:auto;cursor:pointer;overflow:visible;transition:filter 120ms ease,box-shadow 120ms ease,transform 120ms ease}
   #hero-turn-card-fan .fan-card[data-slot="left"]{left:4px;transform:rotate(-7deg) translateY(8px);z-index:1}
   #hero-turn-card-fan .fan-card[data-slot="center"]{left:116px;top:2px;transform:rotate(0);z-index:3}
   #hero-turn-card-fan .fan-card[data-slot="right"]{left:228px;transform:rotate(7deg) translateY(8px);z-index:1}
   #hero-turn-card-fan .fan-card:hover,#hero-turn-card-fan .fan-card:focus-visible{filter:brightness(1.18);box-shadow:0 0 0 2px #6ee7f8,0 5px 12px #000d;outline:0}
   #hero-turn-card-fan .fan-card[data-selected="true"]{border-color:#f7e19b;box-shadow:0 0 0 3px #f7e19b,0 0 18px #f7c84a;filter:brightness(1.2);z-index:5}
   #hero-turn-card-fan .fan-card:disabled{cursor:default}
-  #hero-turn-card-fan .fan-card-name{display:block;min-height:28px;font-size:13px;line-height:1.05;white-space:normal;overflow:hidden}
+  #hero-turn-card-fan .fan-card-name{display:block;min-height:28px;font-size:13px;line-height:1.05;white-space:normal;overflow-wrap:anywhere}
   #hero-turn-card-fan .fan-card-rarity{color:var(--rarity);font-size:10px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
-  #hero-turn-card-fan .fan-card-effect{margin-top:auto;min-height:29px;font-size:10px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #hero-turn-card-fan .fan-card-tempo{color:#a9d9df;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #hero-turn-card-fan .fan-card-effect{margin-top:auto;min-height:29px;font-size:10px;line-height:1.15;white-space:normal;overflow-wrap:anywhere}
+  #hero-turn-card-fan .fan-card-tempo{color:#a9d9df;font-size:9px;white-space:normal;overflow-wrap:anywhere}
   #hero-turn-card-fan .fan-hero{position:absolute;left:50%;bottom:0;display:flex;align-items:center;gap:6px;transform:translateX(-50%);padding:3px 8px 3px 3px;border:1px solid #4dd4e9aa;border-radius:24px;background:#07111ce8;pointer-events:none;white-space:nowrap}
   #hero-turn-card-fan .fan-hero-portrait{width:30px;height:30px;border:2px solid #64e6f5;border-radius:50%;background:#12344a;object-fit:cover;animation:hero-turn-fan-pulse 1.3s ease-in-out infinite}
   @keyframes hero-turn-fan-pulse{50%{box-shadow:0 0 0 4px #54e3f444,0 0 13px #54e3f4}}
