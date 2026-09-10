@@ -1,10 +1,7 @@
 const FAN_WIDTH = 348;
-const FAN_HEIGHT = 202;
+const FAN_HEIGHT = 190;
 const FAN_LEFT = 6;
-const FAN_TOP = 196;
-const CARD_BOTTOM = 160;
-const TARGET_BAND_TOP = 166;
-const TARGET_BAND_HEIGHT = 34;
+const FAN_TOP = 208;
 const SAFE_GUTTER = 8;
 
 export const HERO_TURN_CARD_FAN_REFERENCE = Object.freeze({
@@ -14,9 +11,6 @@ export const HERO_TURN_CARD_FAN_REFERENCE = Object.freeze({
   top: FAN_TOP,
   cardWidth: 116,
   cardHeight: 148,
-  cardBottom: CARD_BOTTOM,
-  targetBandTop: TARGET_BAND_TOP,
-  targetBandHeight: TARGET_BAND_HEIGHT,
 });
 
 export const RARITY_COLORS = Object.freeze({
@@ -92,16 +86,6 @@ export function computeHeroTurnFanLayout({
   };
 }
 
-export function computeHeroTurnTargetBand({ layoutScale = 1 } = {}) {
-  const scale = Math.max(0.01, Number(layoutScale) || 1);
-  return {
-    top: TARGET_BAND_TOP * scale,
-    height: TARGET_BAND_HEIGHT * scale,
-    cardBottom: CARD_BOTTOM * scale,
-    overlap: 0,
-  };
-}
-
 const STYLE = `
   #hero-turn-card-fan{position:fixed;box-sizing:border-box;width:${FAN_WIDTH}px;height:${FAN_HEIGHT}px;color:#fff;z-index:28;pointer-events:none;transform-origin:top left;font:600 12px/1.15 system-ui,sans-serif;filter:drop-shadow(0 4px 8px #000b)}
   #hero-turn-card-fan[hidden]{display:none}
@@ -131,14 +115,6 @@ const STYLE = `
   #hero-turn-card-fan .fan-hero-portrait{width:30px;height:30px;border:2px solid #64e6f5;border-radius:50%;background:#12344a;object-fit:cover;animation:hero-turn-fan-pulse 1.3s ease-in-out infinite}
   @keyframes hero-turn-fan-pulse{50%{box-shadow:0 0 0 4px #54e3f444,0 0 13px #54e3f4}}
   #hero-turn-card-fan .fan-hero-name{font-size:10px;text-transform:uppercase}
-  #hero-turn-card-fan.is-targeting .fan-card{pointer-events:none}
-  #hero-turn-card-fan.is-targeting .fan-hero{visibility:hidden}
-  #hero-turn-card-fan .fan-targets{position:absolute;left:0;right:0;top:${TARGET_BAND_TOP}px;min-height:${TARGET_BAND_HEIGHT}px;padding:1px 47px 1px 4px;display:flex;align-items:center;justify-content:flex-start;gap:5px;background:#07111cf5;border:1px solid #efc76eaa;border-radius:7px;pointer-events:auto;z-index:12}
-  #hero-turn-card-fan .fan-targets[hidden]{display:none}
-  #hero-turn-card-fan .fan-target{min-height:32px;min-width:0;flex:1 1 0;max-width:108px;padding:5px 8px;border:2px solid #efc76e;border-radius:7px;background:#201a12f5;color:#fff;font:600 11px/1 system-ui,sans-serif;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  #hero-turn-card-fan .fan-target:focus-visible{outline:2px solid #64d4ee;outline-offset:2px}
-  #hero-turn-card-fan .fan-back{position:absolute;right:4px;top:${TARGET_BAND_TOP}px;min-height:32px;padding:5px 8px;border:1px solid #a9d9df;border-radius:7px;background:#07111ce8;color:#fff;font:600 11px/1 system-ui,sans-serif;pointer-events:auto;cursor:pointer;z-index:13}
-  #hero-turn-card-fan .fan-back[hidden]{display:none}
   @media(prefers-reduced-motion:reduce){#hero-turn-card-fan.is-opening,#hero-turn-card-fan.is-closing,#hero-turn-card-fan .fan-card{animation-duration:1ms}#hero-turn-card-fan .fan-hero-portrait{animation:none}}
 `;
 
@@ -156,9 +132,7 @@ export function createHeroTurnCardFanUI({
   select,
   cancel,
   reopen,
-  getTargets,
   onCardSelect = () => undefined,
-  onTargetSelect = () => undefined,
   onCancel = () => undefined,
 } = {}) {
   if (!canvas || typeof document === 'undefined') throw new Error('Hero turn card fan needs a canvas and document');
@@ -181,15 +155,10 @@ export function createHeroTurnCardFanUI({
   hero.append(portrait, heroName);
   const cardsHost = document.createElement('div');
   cardsHost.className = 'fan-cards';
-  const targetsHost = document.createElement('div');
-  targetsHost.className = 'fan-targets';
-  targetsHost.hidden = true;
-  const back = document.createElement('button');
-  back.type = 'button'; back.className = 'fan-back'; back.textContent = 'Back'; back.hidden = true;
-  host.append(cardsHost, hero, targetsHost, back);
+  host.append(cardsHost, hero);
   document.body.append(host);
 
-  let state = { visible: false, blocked: false, cards: [], targeting: false, validTargets: [], selectedCard: null };
+  let state = { visible: false, blocked: false, cards: [], selectedCard: null };
   let closeTimer = 0;
 
   const clearCloseTimer = () => { if (closeTimer) { clearTimeout(closeTimer); closeTimer = 0; } };
@@ -198,10 +167,7 @@ export function createHeroTurnCardFanUI({
     host.classList.remove('is-opening', 'is-closing');
     host.hidden = true;
     host.inert = true;
-    state = { ...state, visible: false, targeting: false, selectedCard: null };
-    targetsHost.replaceChildren();
-    targetsHost.hidden = true;
-    back.hidden = true;
+    state = { ...state, visible: false, selectedCard: null };
   };
   const close = (reason = 'close') => {
     clearCloseTimer();
@@ -212,32 +178,12 @@ export function createHeroTurnCardFanUI({
     closeTimer = setTimeout(interrupt, 175);
     return reason;
   };
-  const renderTargets = () => {
-    targetsHost.replaceChildren();
-    const targets = Array.isArray(state.validTargets) ? state.validTargets : [];
-    targetsHost.hidden = !state.targeting || !targets.length;
-    back.hidden = !state.targeting;
-    for (const target of targets) {
-      const button = document.createElement('button');
-      button.type = 'button'; button.className = 'fan-target';
-      const targetId = target?.uid ?? target?.id;
-      button.dataset.uid = String(targetId ?? '');
-      button.textContent = asText(target?.name ?? target?.displayName ?? `Target ${targetId ?? ''}`);
-      button.setAttribute('aria-label', `Target ${button.textContent}`);
-      button.onclick = () => {
-        const index = state.cards.findIndex(card => card.id === state.selectedCard?.id);
-        if (typeof select === 'function') select(index, target?.uid ?? target?.id);
-        else onTargetSelect(target, state.selectedCard);
-      };
-      targetsHost.append(button);
-    }
-  };
   const renderCards = () => {
     cardsHost.replaceChildren();
     for (const [index, card] of state.cards.entries()) {
       const button = document.createElement('button');
       button.type = 'button'; button.className = 'fan-card';
-      button.disabled = state.targeting || state.blocked;
+      button.disabled = state.blocked;
       button.dataset.slot = index === 0 ? 'left' : index === 1 ? 'center' : 'right';
       button.dataset.cardId = card.id;
       button.dataset.selected = String(state.selectedCard?.id === card.id);
@@ -247,49 +193,16 @@ export function createHeroTurnCardFanUI({
       safeText(button, 'fan-card-rarity', card.rarity);
       safeText(button, 'fan-card-effect', card.effect || 'Action');
       button.onclick = () => {
-        if (state.targeting || state.blocked) return;
+        if (state.blocked) return;
         state = { ...state, selectedCard: card };
         renderCards();
         const index = state.cards.findIndex(item => item.id === card.id);
-        const result = typeof select === 'function' ? select(index) : onCardSelect(card);
-        const targets = typeof getTargets === 'function' ? getTargets(card) : result?.validTargets;
-        if (result?.targeting || targets?.length) {
-          state = { ...state, targeting: true, validTargets: targets || state.validTargets };
-          host.classList.add('is-targeting');
-          renderCards(); renderTargets();
-        }
+        if (typeof select === 'function') select(index);
+        else onCardSelect(card);
       };
       cardsHost.append(button);
     }
   };
-  const onKeyDown = event => {
-    if (event.key !== 'Escape' || host.hidden) return;
-    event.preventDefault(); event.stopPropagation();
-    if (state.targeting) {
-      const card = state.selectedCard;
-      state = { ...state, targeting: false, selectedCard: null };
-      host.classList.remove('is-targeting');
-      renderCards(); renderTargets();
-      if (typeof cancel === 'function') cancel();
-      onCancel({ reason: 'target-cancel', card });
-    } else {
-      const card = state.selectedCard;
-      if (typeof cancel === 'function') cancel();
-      onCancel({ reason: 'escape', card });
-      close('escape');
-    }
-  };
-  host.addEventListener('keydown', onKeyDown);
-  back.onclick = () => {
-    if (!state.targeting) return;
-    const card = state.selectedCard;
-    state = { ...state, targeting: false, selectedCard: null };
-    host.classList.remove('is-targeting');
-    renderCards(); renderTargets();
-    if (typeof cancel === 'function') cancel();
-    onCancel({ reason: 'back', card });
-  };
-
   return {
     update(next = {}) {
       const source = Object.keys(next).length ? next : (getState() || {});
@@ -302,15 +215,12 @@ export function createHeroTurnCardFanUI({
         visible: true,
         blocked: false,
         cards: normalizeHeroTurnCards(source.cards ?? source.cardFan ?? source.HeroTurnCardFanCards ?? state.cards),
-        validTargets: Array.isArray(source.validTargets ?? source.targets) ? (source.validTargets ?? source.targets) : state.validTargets,
         selectedCard: source.selectedCard ?? (Number.isInteger(source.selectedIndex) ? state.cards[source.selectedIndex] : state.selectedCard),
-        targeting: source.targeting ?? source.targetSelection ?? state.targeting,
       };
       const rect = canvas.getBoundingClientRect();
       const layout = computeHeroTurnFanLayout({ canvasRect: rect, layoutScale: source.layoutScale, viewportWidth: source.viewportWidth, viewportHeight: source.viewportHeight });
       Object.assign(host.style, { left: `${layout.left}px`, top: `${layout.top}px`, transform: `scale(${layout.scale})` });
       host.hidden = false; host.inert = false; host.classList.remove('is-closing');
-      host.classList.toggle('is-targeting', !!state.targeting);
       host.dataset.open = 'true';
       host.dataset.heroUid = asText(source.heroUID ?? source.activeHeroUID ?? state.activeHeroUID);
       if (wasHidden) { host.classList.remove('is-opening'); void host.offsetWidth; host.classList.add('is-opening'); }
@@ -320,13 +230,7 @@ export function createHeroTurnCardFanUI({
       const src = activeRecord.portraitSrc ?? activeRecord.portraitUrl ?? activeRecord.portrait;
       if (src) portrait.src = typeof src === 'string' ? src : asText(src.src);
       portrait.alt = `${heroName.textContent} active`;
-      renderCards(); renderTargets();
-      return true;
-    },
-    setTargeting(validTargets = [], selectedCard = state.selectedCard) {
-      state = { ...state, targeting: true, validTargets, selectedCard };
-      host.classList.add('is-targeting');
-      renderCards(); renderTargets();
+      renderCards();
       return true;
     },
     reopen(next) {
@@ -334,15 +238,6 @@ export function createHeroTurnCardFanUI({
       return this.update(next || getState());
     },
     cancel(reason = 'cancel') {
-      if (state.targeting) {
-        const card = state.selectedCard;
-        state = { ...state, targeting: false, selectedCard: null };
-        host.classList.remove('is-targeting');
-        renderCards(); renderTargets();
-        if (typeof cancel === 'function') cancel();
-        onCancel({ reason, card });
-        return true;
-      }
       if (typeof cancel === 'function') cancel();
       onCancel({ reason, card: state.selectedCard });
       close(reason);
@@ -350,8 +245,8 @@ export function createHeroTurnCardFanUI({
     },
     close,
     interrupt,
-    destroy() { clearCloseTimer(); host.removeEventListener('keydown', onKeyDown); host.remove(); style.remove(); },
+    destroy() { clearCloseTimer(); host.remove(); style.remove(); },
     get element() { return host; },
-    get state() { return { ...state, cards: [...state.cards], validTargets: [...state.validTargets] }; },
+    get state() { return { ...state, cards: [...state.cards] }; },
   };
 }

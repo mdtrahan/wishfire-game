@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { computeHeroTurnFanLayout, computeHeroTurnTargetBand, normalizeHeroTurnCards, RARITY_COLORS } from '../web-runner/systems/heroTurnCardFanUI.mjs';
+import { computeHeroTurnFanLayout, normalizeHeroTurnCards, RARITY_COLORS } from '../web-runner/systems/heroTurnCardFanUI.mjs';
 
 test('normalizes three distinct hero action cards and excludes Fortune cards', () => {
   const completeEffect = 'Intercept the next attack against one ally, then counterattack its attacker for heavy damage.';
@@ -34,24 +34,15 @@ test('fan layout stays inside measured viewport and retains reference scale', ()
   assert.ok(layout.top + layout.height <= 384 - 8 + 0.001);
 });
 
-test('target controls occupy a separate hit band below card bounds', () => {
-  const band = computeHeroTurnTargetBand({ layoutScale: 0.6 });
-  assert.equal(band.overlap, 0);
-  assert.ok(band.top > band.cardBottom);
-  assert.ok(band.height >= 32 * 0.6);
-});
-
 test('rarity palette remains presentation-only and configurable by card payload', () => {
   assert.deepEqual(Object.keys(RARITY_COLORS), ['Common', 'Rare', 'Epic', 'Legendary']);
   const source = fs.readFileSync(path.join(process.cwd(), 'web-runner/systems/heroTurnCardFanUI.mjs'), 'utf8');
   assert.match(source, /onCardSelect/);
-  assert.match(source, /onTargetSelect/);
   assert.match(source, /onCancel/);
   assert.match(source, /data-slot="left"/);
   assert.match(source, /fan-card-effect[^}]*white-space:normal/);
   assert.match(source, /fan-card-name[^}]*overflow-wrap:anywhere/);
-  assert.match(source, /fan-targets.*z-index:12/);
-  assert.match(source, /is-targeting \.fan-card\{pointer-events:none/);
+  assert.doesNotMatch(source, /fan-target|fan-back|is-targeting|validTargets/);
   assert.doesNotMatch(source, /fan-card-effect[^}]*text-overflow/);
   assert.doesNotMatch(source, /fan-card-effect[^}]*overflow:hidden/);
   assert.doesNotMatch(source, /fan-card-tempo|Tempo:/);
