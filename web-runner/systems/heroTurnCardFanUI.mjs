@@ -1,7 +1,10 @@
 const FAN_WIDTH = 348;
-const FAN_HEIGHT = 190;
+const FAN_HEIGHT = 202;
 const FAN_LEFT = 6;
-const FAN_TOP = 208;
+const FAN_TOP = 196;
+const CARD_BOTTOM = 160;
+const TARGET_BAND_TOP = 166;
+const TARGET_BAND_HEIGHT = 34;
 const SAFE_GUTTER = 8;
 
 export const HERO_TURN_CARD_FAN_REFERENCE = Object.freeze({
@@ -11,6 +14,9 @@ export const HERO_TURN_CARD_FAN_REFERENCE = Object.freeze({
   top: FAN_TOP,
   cardWidth: 116,
   cardHeight: 148,
+  cardBottom: CARD_BOTTOM,
+  targetBandTop: TARGET_BAND_TOP,
+  targetBandHeight: TARGET_BAND_HEIGHT,
 });
 
 export const RARITY_COLORS = Object.freeze({
@@ -86,6 +92,16 @@ export function computeHeroTurnFanLayout({
   };
 }
 
+export function computeHeroTurnTargetBand({ layoutScale = 1 } = {}) {
+  const scale = Math.max(0.01, Number(layoutScale) || 1);
+  return {
+    top: TARGET_BAND_TOP * scale,
+    height: TARGET_BAND_HEIGHT * scale,
+    cardBottom: CARD_BOTTOM * scale,
+    overlap: 0,
+  };
+}
+
 const STYLE = `
   #hero-turn-card-fan{position:fixed;box-sizing:border-box;width:${FAN_WIDTH}px;height:${FAN_HEIGHT}px;color:#fff;z-index:28;pointer-events:none;transform-origin:top left;font:600 12px/1.15 system-ui,sans-serif;filter:drop-shadow(0 4px 8px #000b)}
   #hero-turn-card-fan[hidden]{display:none}
@@ -111,16 +127,17 @@ const STYLE = `
   #hero-turn-card-fan .fan-card-name{display:block;min-height:28px;font-size:13px;line-height:1.05;white-space:normal;overflow-wrap:anywhere}
   #hero-turn-card-fan .fan-card-rarity{color:var(--rarity);font-size:10px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
   #hero-turn-card-fan .fan-card-effect{margin-top:auto;min-height:29px;font-size:10px;line-height:1.15;white-space:normal;overflow-wrap:anywhere}
-  #hero-turn-card-fan .fan-card-tempo{color:#a9d9df;font-size:9px;white-space:normal;overflow-wrap:anywhere}
   #hero-turn-card-fan .fan-hero{position:absolute;left:50%;bottom:0;display:flex;align-items:center;gap:6px;transform:translateX(-50%);padding:3px 8px 3px 3px;border:1px solid #4dd4e9aa;border-radius:24px;background:#07111ce8;pointer-events:none;white-space:nowrap}
   #hero-turn-card-fan .fan-hero-portrait{width:30px;height:30px;border:2px solid #64e6f5;border-radius:50%;background:#12344a;object-fit:cover;animation:hero-turn-fan-pulse 1.3s ease-in-out infinite}
   @keyframes hero-turn-fan-pulse{50%{box-shadow:0 0 0 4px #54e3f444,0 0 13px #54e3f4}}
   #hero-turn-card-fan .fan-hero-name{font-size:10px;text-transform:uppercase}
-  #hero-turn-card-fan .fan-targets{position:absolute;left:0;right:0;bottom:-1px;display:flex;justify-content:center;gap:5px;pointer-events:auto}
+  #hero-turn-card-fan.is-targeting .fan-card{pointer-events:none}
+  #hero-turn-card-fan.is-targeting .fan-hero{visibility:hidden}
+  #hero-turn-card-fan .fan-targets{position:absolute;left:0;right:0;top:${TARGET_BAND_TOP}px;min-height:${TARGET_BAND_HEIGHT}px;padding:1px 47px 1px 4px;display:flex;align-items:center;justify-content:flex-start;gap:5px;background:#07111cf5;border:1px solid #efc76eaa;border-radius:7px;pointer-events:auto;z-index:12}
   #hero-turn-card-fan .fan-targets[hidden]{display:none}
-  #hero-turn-card-fan .fan-target{min-height:32px;max-width:108px;padding:5px 8px;border:2px solid #efc76e;border-radius:7px;background:#201a12f5;color:#fff;font:600 11px/1 system-ui,sans-serif;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #hero-turn-card-fan .fan-target{min-height:32px;min-width:0;flex:1 1 0;max-width:108px;padding:5px 8px;border:2px solid #efc76e;border-radius:7px;background:#201a12f5;color:#fff;font:600 11px/1 system-ui,sans-serif;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   #hero-turn-card-fan .fan-target:focus-visible{outline:2px solid #64d4ee;outline-offset:2px}
-  #hero-turn-card-fan .fan-back{position:absolute;right:4px;bottom:1px;min-height:32px;padding:5px 8px;border:1px solid #a9d9df;border-radius:7px;background:#07111ce8;color:#fff;font:600 11px/1 system-ui,sans-serif;pointer-events:auto;cursor:pointer}
+  #hero-turn-card-fan .fan-back{position:absolute;right:4px;top:${TARGET_BAND_TOP}px;min-height:32px;padding:5px 8px;border:1px solid #a9d9df;border-radius:7px;background:#07111ce8;color:#fff;font:600 11px/1 system-ui,sans-serif;pointer-events:auto;cursor:pointer;z-index:13}
   #hero-turn-card-fan .fan-back[hidden]{display:none}
   @media(prefers-reduced-motion:reduce){#hero-turn-card-fan.is-opening,#hero-turn-card-fan.is-closing,#hero-turn-card-fan .fan-card{animation-duration:1ms}#hero-turn-card-fan .fan-hero-portrait{animation:none}}
 `;
@@ -220,6 +237,7 @@ export function createHeroTurnCardFanUI({
     for (const [index, card] of state.cards.entries()) {
       const button = document.createElement('button');
       button.type = 'button'; button.className = 'fan-card';
+      button.disabled = state.targeting || state.blocked;
       button.dataset.slot = index === 0 ? 'left' : index === 1 ? 'center' : 'right';
       button.dataset.cardId = card.id;
       button.dataset.selected = String(state.selectedCard?.id === card.id);
@@ -228,7 +246,6 @@ export function createHeroTurnCardFanUI({
       safeText(button, 'fan-card-name', card.name);
       safeText(button, 'fan-card-rarity', card.rarity);
       safeText(button, 'fan-card-effect', card.effect || 'Action');
-      if (card.tempo) safeText(button, 'fan-card-tempo', `Tempo: ${card.tempo}`);
       button.onclick = () => {
         if (state.targeting || state.blocked) return;
         state = { ...state, selectedCard: card };
@@ -238,7 +255,8 @@ export function createHeroTurnCardFanUI({
         const targets = typeof getTargets === 'function' ? getTargets(card) : result?.validTargets;
         if (result?.targeting || targets?.length) {
           state = { ...state, targeting: true, validTargets: targets || state.validTargets };
-          renderTargets();
+          host.classList.add('is-targeting');
+          renderCards(); renderTargets();
         }
       };
       cardsHost.append(button);
@@ -250,6 +268,7 @@ export function createHeroTurnCardFanUI({
     if (state.targeting) {
       const card = state.selectedCard;
       state = { ...state, targeting: false, selectedCard: null };
+      host.classList.remove('is-targeting');
       renderCards(); renderTargets();
       if (typeof cancel === 'function') cancel();
       onCancel({ reason: 'target-cancel', card });
@@ -265,6 +284,7 @@ export function createHeroTurnCardFanUI({
     if (!state.targeting) return;
     const card = state.selectedCard;
     state = { ...state, targeting: false, selectedCard: null };
+    host.classList.remove('is-targeting');
     renderCards(); renderTargets();
     if (typeof cancel === 'function') cancel();
     onCancel({ reason: 'back', card });
@@ -290,6 +310,7 @@ export function createHeroTurnCardFanUI({
       const layout = computeHeroTurnFanLayout({ canvasRect: rect, layoutScale: source.layoutScale, viewportWidth: source.viewportWidth, viewportHeight: source.viewportHeight });
       Object.assign(host.style, { left: `${layout.left}px`, top: `${layout.top}px`, transform: `scale(${layout.scale})` });
       host.hidden = false; host.inert = false; host.classList.remove('is-closing');
+      host.classList.toggle('is-targeting', !!state.targeting);
       host.dataset.open = 'true';
       host.dataset.heroUid = asText(source.heroUID ?? source.activeHeroUID ?? state.activeHeroUID);
       if (wasHidden) { host.classList.remove('is-opening'); void host.offsetWidth; host.classList.add('is-opening'); }
@@ -304,6 +325,7 @@ export function createHeroTurnCardFanUI({
     },
     setTargeting(validTargets = [], selectedCard = state.selectedCard) {
       state = { ...state, targeting: true, validTargets, selectedCard };
+      host.classList.add('is-targeting');
       renderCards(); renderTargets();
       return true;
     },
@@ -315,6 +337,7 @@ export function createHeroTurnCardFanUI({
       if (state.targeting) {
         const card = state.selectedCard;
         state = { ...state, targeting: false, selectedCard: null };
+        host.classList.remove('is-targeting');
         renderCards(); renderTargets();
         if (typeof cancel === 'function') cancel();
         onCancel({ reason, card });
