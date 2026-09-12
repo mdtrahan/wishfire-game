@@ -16,6 +16,7 @@ import {
   resumeSessionLevelUpRewards,
   settleDefeat,
   settleVictory,
+  executeHeroCommand,
 } from '../web-runner/modules/heroCommands.mjs';
 import { createHeroProgressStore, newHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
 import { releaseCombatStartToScheduler, resetCombatSessionConditions } from '../web-runner/systems/combatSessionReset.mjs';
@@ -133,6 +134,96 @@ test('shared ProcessTurn boundary holds every scheduler path while settlement or
   assert.equal(hasSessionLevelUpPresentationBarrier({ SessionLevelUpQueue: { status: 'complete' } }), false);
   const processTurn = source.slice(source.indexOf('export function ProcessTurn(ctx)'), source.indexOf('function isBoardFullyPopulatedForEnemyMutation'));
   assert.match(processTurn, /hasSessionLevelUpPresentationBarrier\(g\)[\s\S]*return;[\s\S]*resolvePendingEnemyDeaths\(ctx\)/);
+});
+
+function loadQaFixtureProcessTurnHarness({ tokenOwnerUID = 0 } = {}) {
+  const source = read('web-runner/modules/functionBank.js');
+  const processTurn = source.slice(source.indexOf('export function ProcessTurn(ctx)'), source.indexOf('function isBoardFullyPopulatedForEnemyMutation')).replace('export function', 'function');
+  const hero = { uid: 1, kind: 'hero', baseHeroName: 'Falie', hp: 40, maxHP: 40, sp: 100, spMax: 100, remainingActionSlots: 3, statuses: [] };
+  const enemy = { uid: 9, kind: 'enemy', hp: 30, maxHP: 30, statuses: [] };
+  const globals = {
+    QaFixtureHoldTurn: 1, GamePhase: 'RUNTIME', CombatSessionId: 1,
+    TurnPhase: 0, CurrentTurnIndex: 0, TurnOrderArray: [{ uid: hero.uid, type: 0 }],
+    QaFixtureExplicitAction: tokenOwnerUID ? 1 : undefined,
+    QaFixtureExplicitActionOwnerUID: tokenOwnerUID,
+    QaFixtureExplicitActionClaimed: 0,
+  };
+  if (!tokenOwnerUID) {
+    delete globals.QaFixtureExplicitAction;
+    delete globals.QaFixtureExplicitActionOwnerUID;
+  }
+  const state = { globals, entities: [hero, enemy] };
+  const ctx = {
+    state,
+    callFunction(name, ...args) {
+      if (name === 'GetEnemyRosterStability') return { stable: true };
+      if (name === 'GetCurrentTurn') return hero.uid;
+      if (name === 'StartHeroLunge') {
+        assert.equal(args[0], hero.uid);
+        globals.ActionInProgress = 1;
+        globals.IsPlayerBusy = 1;
+        globals.TurnPhase = 1;
+        return 1;
+      }
+      throw new Error(`unexpected exact command dependency: ${name}`);
+    },
+  };
+  const context = {
+    console: { log() {} },
+    GetCurrentType: () => 0,
+    GetCurrentTurn: () => hero.uid,
+    GetActorByUID: (_ctx, uid) => state.entities.find(entity => entity.uid === uid),
+    getGlobals: () => globals,
+    hasSessionLevelUpPresentationBarrier: () => false,
+    resolvePendingEnemyDeaths: () => {}, holdForEnemyRosterRefill: () => false,
+    recoverStaleActionInProgress: () => {}, logActionGateBlock: () => {},
+    nativeTurnStarted: () => {},
+    getDynamicInitiativeDefaultCurrent: () => false,
+    isTimeInitiative: () => false,
+    schedulerWriteQueue: () => {}, schedulerWriteIndex: () => {},
+    GetEffectiveStat: () => 1,
+    resolveProcessTurnActorEligibility: () => ({ code: 1 }), TURN_ACTOR_ELIGIBILITY_ACT: 1,
+    runTraitHooks: () => {},
+    HeroTurn: (runtimeCtx, uid) => executeHeroCommand(runtimeCtx, { actorUID: uid, targetUID: enemy.uid }),
+    AdvanceTurn: () => { throw new Error('held fixture should not advance'); },
+  };
+  vm.createContext(context);
+  vm.runInContext(`${processTurn}\nthis.ProcessTurn = ProcessTurn;`, context);
+  return { context, globals, hero, enemy, ctx };
+}
+
+test('QA fixture hold permits one owner-bound ProcessTurn through the real command seam', () => {
+  const source = read('web-runner/modules/functionBank.js');
+  const hooks = read('web-runner/systems/devBrowserTestHooks.js');
+  const processTurn = source.slice(source.indexOf('export function ProcessTurn(ctx)'), source.indexOf('function isBoardFullyPopulatedForEnemyMutation'));
+  assert.match(processTurn, /QaFixtureExplicitActionOwnerUID/);
+  assert.match(processTurn, /actor\?\.kind === 'hero'/);
+  assert.match(processTurn, /finishQaFixtureExplicitAction/);
+  assert.match(processTurn, /qaExplicitOwnerUID === Number\(uid \|\| 0\)/);
+  assert.match(processTurn, /nativeCommandOwner/);
+  assert.match(processTurn, /qaTrace\('qa-hold-blocked'\)/);
+  assert.match(hooks, /QaFixtureExplicitActionOwnerUID = Number\(ownerUID \|\| 0\)/);
+  assert.match(hooks, /delete state\.globals\.QaFixtureExplicitActionClaimed/);
+  assert.match(hooks, /if \(!state\.globals\.QaFixtureExplicitActionClaimed\)/);
+
+  const blocked = loadQaFixtureProcessTurnHarness();
+  blocked.context.ProcessTurn(blocked.ctx);
+  assert.equal(blocked.globals.NativeCommandSequence, undefined, 'automatic held ProcessTurn cannot create a command');
+  assert.equal(blocked.globals.QaFixtureProcessTurnGate.reason, 'qa-hold-blocked');
+
+  const matching = loadQaFixtureProcessTurnHarness({ tokenOwnerUID: 1 });
+  matching.context.ProcessTurn(matching.ctx);
+  assert.equal(matching.globals.NativeCommandSequence?.actorUID, 1, 'the matching selected hero creates the exact native command');
+  assert.equal(matching.globals.DebugTurnCount, 1, 'one ProcessTurn crosses the production trigger exactly once');
+  assert.equal(matching.globals.QaFixtureExplicitActionClaimed, 1);
+  assert.equal(matching.globals.QaFixtureExplicitAction, undefined, 'the allowance is gone before an await can run');
+  matching.context.ProcessTurn(matching.ctx);
+  assert.equal(matching.globals.QaFixtureProcessTurnGate.reason, 'qa-hold-blocked', 'a spent token cannot authorize a second command');
+
+  const wrongOwner = loadQaFixtureProcessTurnHarness({ tokenOwnerUID: 2 });
+  wrongOwner.context.ProcessTurn(wrongOwner.ctx);
+  assert.equal(wrongOwner.globals.NativeCommandSequence, undefined, 'a token for another actor cannot create a command');
+  assert.equal(wrongOwner.globals.QaFixtureProcessTurnGate.reason, 'qa-hold-blocked');
 });
 
 test('fresh-session reset clears level buffs, offers, settlement, and queue state', () => {
@@ -276,12 +367,12 @@ test('Battle B holds automatic scheduling through fixture evidence while permitt
   const fixtureRun = hooks.slice(hooks.indexOf("['QA run fixture'"), hooks.indexOf("['QA next battle'"));
   assert.match(nextBattle, /QaFixtureHoldTurn = 1/);
   assert.match(nextBattle, /QaFixtureBattleBaseline[\s\S]*catch \(error\) \{\s*delete state\.globals\.QaFixtureHoldTurn/);
-  assert.match(hooks, /const runQaFixtureProductionAction = async action => \{\s*state\.globals\.QaFixtureExplicitAction = 1/);
-  assert.match(fixtureRun, /await runQaFixtureProductionAction\(async \(\) => \{[\s\S]*callFunctionWithContext\(fnContext, 'ProcessTurn'\)[\s\S]*callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
+  assert.match(hooks, /const runQaFixtureProductionAction = async \(ownerUID, action\) => \{\s*state\.globals\.QaFixtureExplicitAction = 1/);
+  assert.match(fixtureRun, /await runQaFixtureProductionAction\(owner\.uid, async \(\) => \{[\s\S]*callFunctionWithContext\(fnContext, 'ProcessTurn'\)[\s\S]*callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
   assert.match(fixtureRun, /counterAfter !== counterBefore \+ 1/);
   assert.match(fixtureRun, /await runOwnerBasicAttempt\(attempt\)/);
   assert.match(fixtureRun, /finally \{[\s\S]*delete state\.globals\.QaFixtureHoldTurn/);
-  assert.match(commands, /if \(g\.QaFixtureHoldTurn && !g\.QaFixtureExplicitAction\) return;/);
+  assert.match(commands, /if \(g\.QaFixtureHoldTurn && !qaExplicitActionAllowed\)/);
   assert.match(app, /state\.globals\.DeferAdvance &&\s*!state\.globals\.QaFixtureHoldTurn/);
   assert.match(app, /state\.globals\.GamePhase === 'RUNTIME' &&\s*!state\.globals\.QaFixtureHoldTurn &&\s*!state\.globals\.BattleStartActive &&\s*currentTurnType === 1/);
 });

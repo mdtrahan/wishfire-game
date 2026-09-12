@@ -214,12 +214,24 @@ export function registerDevBrowserTestHooks({
       state.globals.SelectedEnemyUID = Number(target?.uid || 0);
       if (Number(callFunctionWithContext(fnContext, 'GetCurrentTurn')) !== Number(owner.uid)) throw new Error('QA fixture could not arrange the selected owner as current actor');
     };
-    const runQaFixtureProductionAction = async action => {
+    const runQaFixtureProductionAction = async (ownerUID, action) => {
       state.globals.QaFixtureExplicitAction = 1;
+      state.globals.QaFixtureExplicitActionOwnerUID = Number(ownerUID || 0);
+      state.globals.QaFixtureExplicitActionClaimed = 0;
       try {
-        return await action();
+        const result = action();
+        // ProcessTurn claims and removes its owner-bound token synchronously
+        // when it creates the native command. A direct production seam does
+        // not need a scheduler token, so revoke it before this wrapper awaits.
+        if (!state.globals.QaFixtureExplicitActionClaimed) {
+          delete state.globals.QaFixtureExplicitAction;
+          delete state.globals.QaFixtureExplicitActionOwnerUID;
+        }
+        return await result;
       } finally {
         delete state.globals.QaFixtureExplicitAction;
+        delete state.globals.QaFixtureExplicitActionOwnerUID;
+        delete state.globals.QaFixtureExplicitActionClaimed;
       }
     };
     const beginRewardSettlement = ({ overflow = false, multiHero = false } = {}) => {
@@ -381,12 +393,12 @@ export function registerDevBrowserTestHooks({
           installQaFixtureRuntimeRandom(QA_FIXTURE_RUNTIME_ENCOUNTER_SEED);
           const counterBefore = Number(activeStages && state.globals.SessionLevelBuffState?.heroes?.[String(owner.heroInstanceKey ?? owner.uid)]?.triggerCountersByEffectId?.[fixtureCard.effectId] || 0);
           const priorSequence = state.globals.NativeCommandSequence;
-          await runQaFixtureProductionAction(async () => {
+          await runQaFixtureProductionAction(owner.uid, async () => {
             callFunctionWithContext(fnContext, 'ProcessTurn');
             const started = await waitForFixtureAction(observed => observed.nativeCommandOwner === Number(owner.uid) && state.globals.NativeCommandSequence !== priorSequence);
-            if (!started.ok) throw new Error(`QA fixture ${fixture} owner basic did not start: ${JSON.stringify({ attempt, counterBefore, ...started.observed })}`);
+            if (!started.ok) throw new Error(`QA fixture ${fixture} owner basic did not start: ${JSON.stringify({ attempt, counterBefore, processGate: state.globals.QaFixtureProcessTurnGate || null, ...started.observed })}`);
             const completed = await waitForFixtureAction(observed => observed.nativeCommandOwner === 0 && observed.pendingHeroHits === 0 && !observed.actionInProgress && !observed.playerBusy);
-            if (!completed.ok) throw new Error(`QA fixture ${fixture} owner basic did not complete: ${JSON.stringify({ attempt, counterBefore, ...completed.observed })}`);
+            if (!completed.ok) throw new Error(`QA fixture ${fixture} owner basic did not complete: ${JSON.stringify({ attempt, counterBefore, processGate: state.globals.QaFixtureProcessTurnGate || null, ...completed.observed })}`);
             captureFreshVisuals();
             // The QA scheduling hold blocks automatic progression. Advance this
             // completed production turn once so the next explicit owner action
@@ -408,7 +420,7 @@ export function registerDevBrowserTestHooks({
             const enemy = livingEnemies()[0];
             if (!enemy) throw new Error('QA fixture counter has no living enemy');
             installQaFixtureRuntimeRandom(QA_FIXTURE_RUNTIME_ENCOUNTER_SEED);
-            await runQaFixtureProductionAction(() => callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', owner.uid));
+            await runQaFixtureProductionAction(enemy.uid, () => callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', owner.uid));
             captureFreshVisuals();
           } else {
             await runOwnerBasicAttempt(attempt);

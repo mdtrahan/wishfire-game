@@ -9959,13 +9959,53 @@ export function ProcessTurn(ctx) {
   const uid = GetCurrentTurn(ctx);
   const actor = GetActorByUID(ctx, uid);
   const g = getGlobals(ctx);
+  const qaTrace = (reason, extra = {}) => {
+    if (!g.QaFixtureHoldTurn && !g.QaFixtureExplicitAction) return;
+    g.QaFixtureProcessTurnGate = {
+      reason,
+      hold: !!g.QaFixtureHoldTurn,
+      explicit: !!g.QaFixtureExplicitAction,
+      uid: Number(uid || 0),
+      type: Number(type || -1),
+      actorKind: String(actor?.kind || ''),
+      actorHP: Number(actor?.hp || 0),
+      nativeBattleEnded: !!g.NativeBattleEnded,
+      nativeBattleStarted: !!g.NativeBattleStarted,
+      gamePhase: String(g.GamePhase || ''),
+      turnPhase: Number(g.TurnPhase || 0),
+      actionInProgress: !!g.ActionInProgress,
+      playerBusy: !!g.IsPlayerBusy,
+      ...extra,
+    };
+  };
+  qaTrace('entered');
 
   // Quest QA holds automatic Battle B scheduling while its fixture runner
-  // arranges one real production action and captures its evidence. That runner
-  // sets this one-call marker around its explicit action only.
-  if (g.QaFixtureHoldTurn && !g.QaFixtureExplicitAction) return;
-
+  // arranges one real production action and captures its evidence. The
+  // allowance is owner-bound and consumed only after HeroTurn creates its
+  // command, so an await inside the runner cannot authorize a callback.
+  const qaExplicitOwnerUID = Number(g.QaFixtureExplicitActionOwnerUID || 0);
+  const qaExplicitActionAllowed = !!g.QaFixtureHoldTurn
+    && !!g.QaFixtureExplicitAction
+    && !g.QaFixtureExplicitActionClaimed
+    && qaExplicitOwnerUID === Number(uid || 0)
+    && actor?.kind === 'hero'
+    && Number(actor?.hp || 0) > 0;
+  const finishQaFixtureExplicitAction = (reason, extra = {}) => {
+    if (!qaExplicitActionAllowed || g.QaFixtureExplicitActionClaimed) return false;
+    g.QaFixtureExplicitActionClaimed = 1;
+    delete g.QaFixtureExplicitAction;
+    delete g.QaFixtureExplicitActionOwnerUID;
+    qaTrace(reason, { explicitOwnerUID: qaExplicitOwnerUID, ...extra });
+    return true;
+  };
+  if (g.QaFixtureHoldTurn && !qaExplicitActionAllowed) {
+    qaTrace('qa-hold-blocked');
+    return;
+  }
   if (hasSessionLevelUpPresentationBarrier(g)) {
+    finishQaFixtureExplicitAction('qa-explicit-action-revoked', { blocker: 'session-level-up-presentation' });
+    qaTrace('session-level-up-presentation');
     logActionGateBlock(g, '[ACTION_GATE_BLOCK]', {
       source: 'ProcessTurn',
       reason: 'session-level-up-presentation',
@@ -9978,9 +10018,11 @@ export function ProcessTurn(ctx) {
   }
 
   resolvePendingEnemyDeaths(ctx);
-  if (holdForEnemyRosterRefill(ctx)) return;
+  if (holdForEnemyRosterRefill(ctx)) { finishQaFixtureExplicitAction('qa-explicit-action-revoked', { blocker: 'enemy-roster-refill' }); qaTrace('enemy-roster-refill'); return; }
   recoverStaleActionInProgress(g, uid);
   if (g.ActionInProgress) {
+    finishQaFixtureExplicitAction('qa-explicit-action-revoked', { blocker: 'action-in-progress' });
+    qaTrace('action-in-progress');
     logActionGateBlock(g, '[ACTION_GATE_BLOCK]', {
       source: 'ProcessTurn',
       reason: 'action-in-progress',
@@ -9994,6 +10036,8 @@ export function ProcessTurn(ctx) {
     return;
   }
   if (g.IsPlayerBusy && g.TurnPhase === 1) {
+    finishQaFixtureExplicitAction('qa-explicit-action-revoked', { blocker: 'busy-action-phase' });
+    qaTrace('busy-action-phase');
     logActionGateBlock(g, '[ACTION_GATE_BLOCK]', {
       source: 'ProcessTurn',
       reason: 'busy-action-phase',
@@ -10007,7 +10051,7 @@ export function ProcessTurn(ctx) {
     return;
   }
   nativeTurnStarted(ctx, actor);
-  if (actor.hp <= 0) { AdvanceTurn(ctx); return; }
+  if (actor.hp <= 0) { finishQaFixtureExplicitAction('qa-explicit-action-revoked', { blocker: 'actor-ko' }); AdvanceTurn(ctx); return; }
   g.DebugTurnCount = (g.DebugTurnCount || 0) + 1;
   console.log(`[DEBUG] matches=${g.DebugMatchCount || 0} turns=${g.DebugTurnCount}`);
   const dynamicCurrent = getDynamicInitiativeDefaultCurrent(g);
@@ -10058,14 +10102,26 @@ export function ProcessTurn(ctx) {
       blueBuffSequenceActive: 0,
     });
     if (heroEligibility.code === TURN_ACTOR_ELIGIBILITY_ACT) {
+      qaTrace('hero-eligible');
       runTraitHooks(ctx, 'turn_start', {
         actorUID: Number(uid || 0),
         actorKind: String(actor?.kind || ''),
         turnType: Number(type || 0),
         turnIndex: Number(g.CurrentTurnIndex || 0),
       });
+      const priorNativeCommand = g.NativeCommandSequence;
       HeroTurn(ctx, uid);
+      const commandStarted = g.NativeCommandSequence !== priorNativeCommand
+        && Number(g.NativeCommandSequence?.actorUID || 0) === Number(uid || 0);
+      finishQaFixtureExplicitAction(
+        commandStarted ? 'qa-explicit-action-claimed' : 'qa-explicit-action-revoked',
+        commandStarted
+          ? { nativeCommandOwner: Number(g.NativeCommandSequence?.actorUID || 0) }
+          : { blocker: 'hero-command-refused' },
+      );
     } else {
+      finishQaFixtureExplicitAction('qa-explicit-action-revoked', { blocker: 'hero-ineligible', eligibilityCode: Number(heroEligibility.code || 0) });
+      qaTrace('hero-ineligible', { eligibilityCode: Number(heroEligibility.code || 0) });
       if (actor && Number(actor.hp ?? 0) <= 0) {
         console.log(`[TURN] skip hero uid=${uid} HP=${actor.hp || 0}`);
       }
