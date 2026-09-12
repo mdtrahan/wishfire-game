@@ -294,11 +294,26 @@ export function registerDevBrowserTestHooks({
       if (Number(callFunctionWithContext(fnContext, 'GetCurrentTurn')) !== Number(owner.uid)) throw new Error('QA fixture could not arrange the selected owner as current actor');
     };
     const arrangeOwnerAsNextSchedulerActor = (owner, target) => {
-      const queue = state.globals.TurnOrderArray || [];
-      const ownerIndex = queue.findIndex(entry => Number(entry.uid) === Number(owner?.uid));
+      const findSchedulerPredecessor = () => {
+        const queue = state.globals.TurnOrderArray || [];
+        const ownerIndex = queue.findIndex(entry => Number(entry.uid) === Number(owner?.uid));
+        const predecessor = ownerIndex >= 0 && queue.length >= 2
+          ? queue[(ownerIndex - 1 + queue.length) % queue.length]
+          : null;
+        const predecessorActor = state.entities.find(entity => Number(entity.uid) === Number(predecessor?.uid));
+        return { queue, ownerIndex, predecessorActor };
+      };
+      let scheduler = findSchedulerPredecessor();
+      if (scheduler.ownerIndex < 0 || scheduler.queue.length < 2 || !scheduler.predecessorActor || Number(scheduler.predecessorActor.hp || 0) <= 0) {
+        // A completed fixture action can leave the production queue between
+        // roster removal and its next round rebuild. Repair that QA-only
+        // mirror through the existing production round seam before arranging
+        // the next owner action.
+        callFunctionWithContext(fnContext, 'StartRound');
+        scheduler = findSchedulerPredecessor();
+      }
+      const { queue, ownerIndex, predecessorActor } = scheduler;
       if (ownerIndex < 0 || queue.length < 2) throw new Error('QA fixture owner cannot be scheduled after a completed production turn');
-      const predecessor = queue[(ownerIndex - 1 + queue.length) % queue.length];
-      const predecessorActor = state.entities.find(entity => Number(entity.uid) === Number(predecessor?.uid));
       if (!predecessorActor || Number(predecessorActor.hp || 0) <= 0) throw new Error('QA fixture owner has no living scheduler predecessor');
       const initiative = state.globals.DynamicInitiative && typeof state.globals.DynamicInitiative === 'object'
         ? state.globals.DynamicInitiative

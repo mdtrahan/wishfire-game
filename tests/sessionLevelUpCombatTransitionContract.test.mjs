@@ -606,6 +606,7 @@ test('Battle B holds automatic scheduling through fixture evidence while permitt
   assert.match(hooks, /const runQaFixtureProductionAction = async \(ownerUID, action\) => \{\s*state\.globals\.QaFixtureExplicitAction = 1/);
   assert.match(hooks, /const arrangeOwnerAsNextSchedulerActor = \(owner, target\) => \{/);
   assert.match(fixtureRun, /const closeCompletedFixturePhase = async \(target, priorSequence\) => \{/);
+  assert.match(hooks, /callFunctionWithContext\(fnContext, 'StartRound'\)/, 'the QA fixture repairs a stale production queue through the existing round seam');
   assert.match(fixtureRun, /await runQaFixtureProductionAction\(owner\.uid, \(\) => \{[\s\S]*callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
   assert.match(fixtureRun, /const tokenUnclaimed = !!state\.globals\.QaFixtureExplicitAction && !state\.globals\.QaFixtureExplicitActionClaimed/);
   assert.match(fixtureRun, /postAdvance\.currentUID === Number\(owner\.uid\)[\s\S]*postAdvance\.phase === 0/);

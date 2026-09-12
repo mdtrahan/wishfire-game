@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { applySessionLevelBuffsAtBattleStart, resolveIncomingNativeHit, resolveNativeCommandStep, resolveSessionLevelBasicEffects, resolveSessionLevelCounter, rulesContext } from '../web-runner/modules/heroCommands.mjs';
 import { heroDefinition } from '../web-runner/src/core/heroDefinitions.mjs';
 import { turnEnd, turnStart } from '../web-runner/src/core/combatRules.mjs';
+import { SESSION_LEVEL_UP_BUFF_CARDS } from '../src/core/sessionLevelBuffCatalog.mjs';
+import { applyLevelUpBuffCard, createSessionLevelBuffState } from '../src/core/sessionLevelBuffOffers.mjs';
 
 const hero = { uid: 1, kind: 'hero', heroInstanceKey: 'hondo-1', baseHeroName: 'Huun', name: 'Huun', hp: 80, maxHP: 100, stats: { ATK: 20, MAG: 10, SPD: 10 }, sp: 100, spMax: 100, currentLevel: 1, statuses: [] };
 const enemy = { uid: 9, kind: 'enemy', hp: 200, maxHP: 200, stats: { ATK: 10, MAG: 10, SPD: 5 }, statuses: [] };
@@ -126,6 +128,45 @@ test('Orb cadence reaches its third distinct owner basic before emitting its vis
   assert.equal(ctx.state.globals.SessionLevelBuffState.heroes['hondo-1'].triggerCountersByEffectId.spectral_orb, 3);
   assert.equal(ctx.state.globals.ArcanePulseVisuals.length, 1);
   assert.equal(ctx.state.globals.ArcanePulseVisuals[0].amount, 4);
+});
+
+test('a T1 Orb cadence upgrades in session and resolves its T2 cadence in a later battle', () => {
+  const base = applyLevelUpBuffCard({
+    state: createSessionLevelBuffState(),
+    heroId: 'hondo-1',
+    cardId: 'spectral_orb_1',
+    cards: SESSION_LEVEL_UP_BUFF_CARDS,
+  });
+  assert.equal(base.status, 'applied');
+
+  const battleA = context([]);
+  battleA.ctx.state.globals.SessionLevelBuffState = base.state;
+  const battleAHP = battleA.target.hp;
+  for (let count = 0; count < 3; count += 1) resolveSessionLevelBasicEffects(battleA.ctx, battleA.rules, battleA.actor, [battleA.target.uid]);
+  assert.equal(battleA.target.hp, battleAHP - 4, 'Tier 1 Orb emits 4 magic damage on the third owner basic');
+  assert.equal(base.state.heroes['hondo-1'].triggerCountersByEffectId.spectral_orb, 3);
+
+  const upgraded = applyLevelUpBuffCard({
+    state: base.state,
+    heroId: 'hondo-1',
+    cardId: 'spectral_orb_2',
+    cards: SESSION_LEVEL_UP_BUFF_CARDS,
+  });
+  assert.equal(upgraded.status, 'applied');
+  assert.equal(upgraded.replacedStage, 1);
+  assert.equal(upgraded.state.heroes['hondo-1'].activeStageByEffectId.spectral_orb, 2);
+
+  const battleB = context([]);
+  battleB.ctx.state.globals.CombatSessionId = 2;
+  battleB.ctx.state.globals.SessionLevelBuffState = upgraded.state;
+  applySessionLevelBuffsAtBattleStart(battleB.ctx, battleB.rules);
+  const battleBHP = battleB.target.hp;
+  resolveSessionLevelBasicEffects(battleB.ctx, battleB.rules, battleB.actor, [battleB.target.uid]);
+  resolveSessionLevelBasicEffects(battleB.ctx, battleB.rules, battleB.actor, [battleB.target.uid]);
+  assert.equal(battleB.target.hp, battleBHP - 6, 'Tier 2 Orb emits 6 magic damage on the next completed Tier 2 cadence');
+  assert.equal(battleB.ctx.state.globals.ArcanePulseVisuals.length, 1);
+  assert.equal(battleB.ctx.state.globals.ArcanePulseVisuals[0].amount, 6);
+  assert.equal(battleB.ctx.state.globals.SessionLevelBuffState.heroes['hondo-1'].triggerCountersByEffectId.spectral_orb, 5);
 });
 
 test('Mirage Chain has no same-target fallback when only one enemy survives', () => {
