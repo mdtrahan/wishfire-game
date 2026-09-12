@@ -45,9 +45,10 @@ function loadQaFixtureIdentity() {
   const mapEnd = source.indexOf('\n});', mapStart) + 4;
   const resolver = extractFunctionSource(source, 'resolveQaLevelUpFixtureKey');
   const offerResolver = extractFunctionSource(source, 'resolveQaFixtureOfferCardId');
+  const ownerResolver = extractFunctionSource(source, 'resolveQaFixtureOwnerIdentity');
   assert.ok(mapStart >= 0 && mapEnd > mapStart, 'missing QA fixture identity map');
   const context = {}; vm.createContext(context);
-  vm.runInContext(`${source.slice(mapStart, mapEnd).replace('export const', 'const')}\n${resolver}\n${offerResolver}\nthis.identity = { QA_LEVEL_UP_FIXTURE_CARD_IDS, resolveQaLevelUpFixtureKey, resolveQaFixtureOfferCardId };`, context);
+  vm.runInContext(`${source.slice(mapStart, mapEnd).replace('export const', 'const')}\n${resolver}\n${offerResolver}\n${ownerResolver}\nthis.identity = { QA_LEVEL_UP_FIXTURE_CARD_IDS, resolveQaLevelUpFixtureKey, resolveQaFixtureOfferCardId, resolveQaFixtureOwnerIdentity };`, context);
   return context.identity;
 }
 
@@ -589,6 +590,28 @@ test('every QA fixture option resolves to its stable scenario and production car
   assert.equal(upgraded.state.heroes['hondo-1'].activeStageByEffectId.spectral_orb, 2);
 });
 
+test('QA fixture ownership follows a Fara Orb through UID churn with Hondo ambient', () => {
+  const { resolveQaFixtureOwnerIdentity } = loadQaFixtureIdentity();
+  const identity = resolveQaFixtureOwnerIdentity({
+    fixture: 'orb',
+    selectedCardId: 'spectral_orb_2',
+    cards: QA_LEVEL_UP_BUFF_CARDS,
+    sessionBuffState: {
+      heroes: {
+        'fara-1': { activeStageByEffectId: { spectral_orb: 2 } },
+        'hondo-1': { activeStageByEffectId: {} },
+      },
+    },
+    heroes: [
+      { kind: 'hero', uid: 1, heroInstanceKey: 'hondo-1' },
+      { kind: 'hero', uid: 7, heroInstanceKey: 'fara-1' },
+    ],
+  });
+  assert.equal(identity.ownerId, 'fara-1');
+  assert.equal(identity.cardId, 'spectral_orb_2');
+  assert.equal(identity.hero.heroInstanceKey, 'fara-1');
+});
+
 test('the QA fixture RNG seam reinstalls the production-derived stream for the current battle', () => {
   const app = read('web-runner/app.js');
   assert.match(app, /installQaFixtureRuntimeRandom: encounterSeed => installCombatRuntimeRandom\(deriveCombatRuntimeRngSeed\(encounterSeed\), 'quest-qa-fixture'\)/);
@@ -603,8 +626,11 @@ test('Battle B holds automatic scheduling through fixture evidence while permitt
   assert.match(nextBattle, /QaFixtureHoldTurn = 1/);
   assert.match(nextBattle, /QaFixtureHoldTurn = 1;[\s\S]*seedProductionEncounter\(\)/);
   assert.match(nextBattle, /QaFixtureBattleBaseline[\s\S]*catch \(error\) \{\s*delete state\.globals\.QaFixtureHoldTurn/);
+  assert.match(hooks, /const qaFixtureOwner = \(fixture, selectedCardId = cardSelect\.value\) => \{/);
+  assert.match(hooks, /resolveQaFixtureOwnerIdentity\(\{[\s\S]*SessionLevelBuffState[\s\S]*QaFixtureOwnerId/);
   assert.match(hooks, /const runQaFixtureProductionAction = async \(ownerUID, action\) => \{\s*state\.globals\.QaFixtureExplicitAction = 1/);
   assert.match(hooks, /const arrangeOwnerAsNextSchedulerActor = \(owner, target\) => \{/);
+  assert.match(fixtureRun, /const owner = qaFixtureOwner\(fixture, cardSelect\.value\)/);
   assert.match(fixtureRun, /const closeCompletedFixturePhase = async \(target, priorSequence\) => \{/);
   assert.match(hooks, /callFunctionWithContext\(fnContext, 'StartRound'\)/, 'the QA fixture repairs a stale production queue through the existing round seam');
   assert.match(fixtureRun, /await runQaFixtureProductionAction\(owner\.uid, \(\) => \{[\s\S]*callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);

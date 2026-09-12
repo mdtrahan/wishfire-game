@@ -51,6 +51,22 @@ export function resolveQaFixtureOfferCardId(fixture, options) {
     : defaultCardId;
 }
 
+export function resolveQaFixtureOwnerIdentity(options) {
+  const { fixture, selectedCardId, cards, sessionBuffState, heroes, preferredOwnerId = '' } = options || {};
+  const definitions = Array.isArray(cards) ? cards : [];
+  const selectedId = resolveQaFixtureOfferCardId(fixture, { selectedCardId, cards: definitions });
+  const card = definitions.find(candidate => candidate.cardId === selectedId);
+  if (!card) return null;
+  const eligibleOwnerIds = Object.entries(sessionBuffState?.heroes || {})
+    .filter(([, heroState]) => Number(heroState?.activeStageByEffectId?.[card.effectId] || 0) === Number(card.stage))
+    .map(([heroId]) => String(heroId));
+  const preferred = String(preferredOwnerId || '');
+  const ownerId = eligibleOwnerIds.includes(preferred) ? preferred : eligibleOwnerIds[0] || null;
+  if (!ownerId) return null;
+  const hero = (heroes || []).find(candidate => candidate?.kind === 'hero' && String(candidate.heroInstanceKey ?? candidate.uid ?? '') === ownerId) || null;
+  return { ownerId, cardId: card.cardId, hero };
+}
+
 export function deriveQaSettlementReward({ threshold, currentEXP, overflow = false, noLevel = false } = {}) {
   const liveThreshold = Math.max(1, Math.floor(Number(threshold) || 0));
   const liveCurrentEXP = Math.max(0, Math.floor(Number(currentEXP) || 0));
@@ -244,6 +260,17 @@ export function registerDevBrowserTestHooks({
       state.globals.SessionLevelUpQaOfferCards = pool;
       cardSelect.value = desired.cardId;
       tierSelect.value = String(desired.tier);
+    };
+    const qaFixtureOwner = (fixture, selectedCardId = cardSelect.value) => {
+      const identity = resolveQaFixtureOwnerIdentity({
+        fixture,
+        selectedCardId,
+        cards: SESSION_LEVEL_UP_BUFF_CARDS,
+        sessionBuffState: state.globals.SessionLevelBuffState,
+        heroes: state.entities,
+        preferredOwnerId: state.globals.QaFixtureOwnerId || state.globals.QaFixtureBattleBaseline?.ownerId || '',
+      });
+      return identity?.hero || null;
     };
     const seedProductionEncounter = () => {
       // combatSessionInitializer consumes this normal encounter input and installs
@@ -443,12 +470,19 @@ export function registerDevBrowserTestHooks({
       const battle = state.globals.ProgressionBattle || {};
       if (battle.outcome === 'defeat' || battle.defeatSettled) throw new Error('QA fixture offer cannot open after defeat');
       if (!claimQaSettlementHold()) throw new Error('QA fixture offer is already waiting for settlement cleanup');
+      const selectedOwner = qaHero();
+      if (!selectedOwner) {
+        releaseQaSettlementHold();
+        throw new Error('QA fixture offer requires a selected hero');
+      }
+      state.globals.QaFixtureOwnerId = String(selectedOwner.heroInstanceKey ?? selectedOwner.uid ?? '');
       try {
         setQaFixtureOfferPool(fixtureSelect.value);
         // The deterministic QA input below resolves the current production battle
         // as victory, then delegates EXP, queue, and offer creation to settleVictory.
         await beginRewardSettlement({ holdClaimed: true });
       } catch (error) {
+        delete state.globals.QaFixtureOwnerId;
         releaseQaSettlementHold();
         throw error;
       }
@@ -466,6 +500,7 @@ export function registerDevBrowserTestHooks({
         for (const hero of state.entities.filter(e => e.kind === 'hero')) hero.hp = 0;
         callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
         delete state.globals.QaFixtureBattleBaseline;
+        delete state.globals.QaFixtureOwnerId;
         releaseQaSettlementHold();
         delete state.globals.QaFixtureHoldTurn;
         delete state.globals.SessionLevelUpQaOfferCards;
@@ -498,7 +533,7 @@ export function registerDevBrowserTestHooks({
       }],
       ['QA run fixture', async () => {
         const fixture = resolveQaLevelUpFixtureKey(fixtureSelect.value);
-        const owner = qaHero();
+        const owner = qaFixtureOwner(fixture, cardSelect.value);
         const fixtureReleaseCountBefore = Number(state.globals.QaFixtureHoldReleaseCount || 0);
         let firstOwnerBasicEvidence = null;
         let fixtureTarget = null;
@@ -832,9 +867,9 @@ export function registerDevBrowserTestHooks({
       }],
       ['QA next battle', async () => {
         const fixture = resolveQaLevelUpFixtureKey(fixtureSelect.value);
-        const owner = qaHero();
+        const owner = qaFixtureOwner(fixture, cardSelect.value);
         const target = state.entities.find(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
-        if (!fixture || !owner) throw new Error('QA continuation requires a selected fixture and owner');
+        if (!fixture || !owner) throw new Error('QA continuation requires a selected fixture owner with its production buff');
         const priorBattle = state.globals.ProgressionBattle || {};
         if (priorBattle.outcome === 'defeat' || priorBattle.defeatSettled) throw new Error('QA continuation cannot start Battle B after defeat');
         // Keep the pre-transition values. Encounter replacement creates new
@@ -864,13 +899,14 @@ export function registerDevBrowserTestHooks({
           throw error;
         }
       }],
-      ['QA fresh session', () => { delete state.globals.QaFixtureBattleBaseline; releaseQaSettlementHold(); delete state.globals.QaFixtureHoldTurn; delete state.globals.SessionLevelUpQaOfferCards; resetCombatSessionConditions(state.globals, {}); if (typeof drawFrame === 'function') drawFrame(); }],
+      ['QA fresh session', () => { delete state.globals.QaFixtureBattleBaseline; delete state.globals.QaFixtureOwnerId; releaseQaSettlementHold(); delete state.globals.QaFixtureHoldTurn; delete state.globals.SessionLevelUpQaOfferCards; resetCombatSessionConditions(state.globals, {}); if (typeof drawFrame === 'function') drawFrame(); }],
       ['QA abandon', async () => {
         const navigated = await storyEntry.navigate('Quests');
         const quit = navigated && storyEntry.quitPausedCombat();
         if (!navigated || !quit) throw new Error('QA abandon requires the production Quests pause and Quit Battle flow');
         if (Object.keys(state.globals.SessionLevelBuffState?.heroes || {}).length || state.globals.SessionLevelUpSettlement || state.globals.SessionLevelUpQueue?.status === 'active' || state.globals.SessionLevelBuffCombatSessionId != null) throw new Error('QA abandon did not clear owned session level buffs');
         delete state.globals.QaFixtureBattleBaseline;
+        delete state.globals.QaFixtureOwnerId;
         releaseQaSettlementHold();
         delete state.globals.QaFixtureHoldTurn;
         delete state.globals.SessionLevelUpQaOfferCards;
