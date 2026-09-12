@@ -330,6 +330,12 @@ export function registerDevBrowserTestHooks({
       state.globals.QaSettlementHoldReleaseCount = Number(state.globals.QaSettlementHoldReleaseCount || 0) + 1;
       return true;
     };
+    const claimQaSettlementHold = () => {
+      if (state.globals.QaSettlementHoldActive) return false;
+      state.globals.QaFixtureHoldTurn = 1;
+      state.globals.QaSettlementHoldActive = 1;
+      return true;
+    };
     const qaSettlementRuntimeSnapshot = () => ({
       currentTurnUID: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0),
       actionInProgress: !!state.globals.ActionInProgress,
@@ -365,17 +371,16 @@ export function registerDevBrowserTestHooks({
       }
       window.setTimeout(() => monitorQaSettlementHold({ baselineHP, preSettlementState }), 25);
     };
-    const beginRewardSettlement = async ({ overflow = false, multiHero = false, noLevel = false } = {}) => {
-      if (state.globals.QaSettlementHoldActive) throw new Error('QA synthetic settlement is already waiting for cleanup');
-      state.globals.QaFixtureHoldTurn = 1;
-      state.globals.QaSettlementHoldActive = 1;
-      const quiescent = await waitForQaSettlementQuiescence({
+    const beginRewardSettlement = async ({ overflow = false, multiHero = false, noLevel = false, holdClaimed = false } = {}) => {
+      if (!holdClaimed && !claimQaSettlementHold()) throw new Error('QA synthetic settlement is already waiting for cleanup');
+      if (holdClaimed && !state.globals.QaSettlementHoldActive) throw new Error('QA synthetic settlement lost its claimed scheduler hold');
+      const actionCompletion = await waitForQaSettlementQuiescence({
         globals: state.globals,
         wait: ms => new Promise(resolve => window.setTimeout(resolve, ms)),
       });
-      if (!quiescent.ok || state.globals.NativeBattleEnded) {
+      if (!actionCompletion.ok || state.globals.NativeBattleEnded) {
         releaseQaSettlementHold();
-        throw new Error(`QA synthetic settlement could not start from a live quiescent battle: ${JSON.stringify(quiescent.observed)}`);
+        throw new Error(`QA synthetic settlement action completion timed out before a live settlement: ${JSON.stringify(actionCompletion.observed)}`);
       }
       const preSettlementState = qaSettlementRuntimeSnapshot();
       const selected = qaHero();
@@ -412,10 +417,16 @@ export function registerDevBrowserTestHooks({
     const beginQaFixtureOffer = async () => {
       const battle = state.globals.ProgressionBattle || {};
       if (battle.outcome === 'defeat' || battle.defeatSettled) throw new Error('QA fixture offer cannot open after defeat');
-      setQaFixtureOfferPool(fixtureSelect.value);
-      // The deterministic QA input below resolves the current production battle
-      // as victory, then delegates EXP, queue, and offer creation to settleVictory.
-      await beginRewardSettlement();
+      if (!claimQaSettlementHold()) throw new Error('QA fixture offer is already waiting for settlement cleanup');
+      try {
+        setQaFixtureOfferPool(fixtureSelect.value);
+        // The deterministic QA input below resolves the current production battle
+        // as victory, then delegates EXP, queue, and offer creation to settleVictory.
+        await beginRewardSettlement({ holdClaimed: true });
+      } catch (error) {
+        releaseQaSettlementHold();
+        throw error;
+      }
       if (state.globals.SessionLevelUpQueue?.status !== 'active') throw new Error('QA fixture victory did not create an active level-up queue');
     };
     for (const [label, action] of [
@@ -471,6 +482,8 @@ export function registerDevBrowserTestHooks({
         let healEvidence = null;
         let bounceEvidence = null;
         let counterEvidence = null;
+        let orbEvidence = null;
+        let ownerBasicAttempts = 0;
         let fixtureResult = null;
         delete state.globals.QaFixtureResult;
         try {
@@ -544,7 +557,7 @@ export function registerDevBrowserTestHooks({
           speed: { attempts: 1, observed: () => battleBaseline.ownerSpdUp === 0 && statusMagnitude(owner, 'spdUp') === .10 },
           bargain: { attempts: 1, observed: () => statusMagnitude(owner, 'atkUp') === .15 && Number(owner?.maxHP || 0) === Math.round(battleBaseline.ownerMaxHP * .90) },
           pulse: { attempts: 2, observed: () => newPulses().some(visual => Number(visual.sourceUID) === Number(owner?.uid) && Number(visual.amount) === 6 && enemyHPLoweredSinceRun(visual.targetUID)) },
-          orb: { attempts: orbCadence, observed: () => newPulses().some(visual => Number(visual.sourceUID) === Number(owner?.uid) && Number(visual.amount) === orbAmount && enemyHPLoweredSinceRun(visual.targetUID)) },
+          orb: { attempts: orbCadence, observed: () => orbEvidence?.actualBasicsToProc === orbCadence && orbEvidence?.amount === orbAmount && enemyHPLoweredSinceRun(orbEvidence?.targetUID) },
           venom: { attempts: 1, observed: () => venomApplied && venomTurnEvidence?.damage === 3 && venomTurnEvidence.markerVisibleBefore && venomTurnEvidence.markerVisibleAfterTick && venomTurnEvidence.markerAbsentAfterExpiry },
           heal: { attempts: 1, observed: () => healEvidence?.actualHeal === healEvidence?.expectedHeal && healEvidence?.atMaxHpCap && healEvidence?.bloomObserved && healEvidence?.ineligibleTriggerNoHeal },
           bounce: { attempts: 1, observed: () => bounceEvidence?.distinctTargets && bounceEvidence?.damagePercent === .50 && bounceEvidence?.actualSecondaryDamage === bounceEvidence?.resolvedSecondaryDamage && bounceEvidence?.chainStrikeObserved && bounceEvidence?.addedHitTriggeredNoSessionEffects },
@@ -670,6 +683,7 @@ export function registerDevBrowserTestHooks({
           const completed = await waitForFixtureAction(observed => observed.nativeCommandOwner === 0 && observed.pendingHeroHits === 0 && !observed.actionInProgress && !observed.playerBusy);
           if (!completed.ok) throw new Error(`QA fixture ${fixture} owner basic did not complete: ${JSON.stringify({ attempt, counterBefore, processGate: state.globals.QaFixtureProcessTurnGate || null, ...completed.observed })}`);
           captureFreshVisuals();
+          ownerBasicAttempts += 1;
           const counterAfter = Number(state.globals.SessionLevelBuffState?.heroes?.[String(owner.heroInstanceKey ?? owner.uid)]?.triggerCountersByEffectId?.[fixtureCard.effectId] || 0);
           if (counterAfter !== counterBefore + 1) throw new Error(`QA fixture ${fixture} owner basic did not advance its trigger counter: ${JSON.stringify({ attempt, counterBefore, counterAfter, ...fixtureActionObserved() })}`);
           if (!firstOwnerBasicEvidence) firstOwnerBasicEvidence = { counterBefore, counterAfter };
@@ -709,6 +723,10 @@ export function registerDevBrowserTestHooks({
             const primaryHPBefore = Number(primary?.hp || 0), secondaryHPBefore = Number(secondary?.hp || 0), ownerHPBefore = Number(owner?.hp || 0);
             await runOwnerBasicAttempt(attempt);
             const primaryHPAfter = Number(primary?.hp || 0), ownerHPAfter = Number(owner?.hp || 0), countersAfter = sessionTriggerCounters();
+            if (fixture === 'orb') {
+              const visual = newPulses().find(candidate => Number(candidate.sourceUID) === Number(owner.uid) && Number(candidate.amount) === orbAmount);
+              if (visual) orbEvidence = { actualBasicsToProc: ownerBasicAttempts, amount: Number(visual.amount || 0), targetUID: Number(visual.targetUID || 0) };
+            }
             if (fixture === 'heal') {
               const expectedHeal = Math.min(Number(owner.maxHP || 0), ownerHPBefore + Math.floor(Number(owner.maxHP || 0) * .05)) - ownerHPBefore;
               const bloomObserved = newDamageTexts().some(text => text.kind === 'heal' && Number(text.targetUID) === Number(owner.uid) && Number(text.amount) === expectedHeal);
@@ -751,6 +769,7 @@ export function registerDevBrowserTestHooks({
           heal: healEvidence,
           bounce: bounceEvidence,
           counter: counterEvidence,
+          orb: orbEvidence,
           schedulerReleaseCount: fixtureReleaseCountBefore,
         };
         state.globals.QaFixtureResult = fixtureResult;
@@ -772,6 +791,7 @@ export function registerDevBrowserTestHooks({
             heal: healEvidence,
             bounce: bounceEvidence,
             counter: counterEvidence,
+            orb: orbEvidence,
             schedulerReleaseCount: fixtureReleaseCountBefore,
           };
           fixtureResult.success = false;

@@ -77,11 +77,15 @@ function loadQaSettlementGuards() {
     let depth = 0;
     for (let index = braceStart; index < source.length; index += 1) {
       if (source[index] === '{') depth += 1;
-      if (source[index] === '}' && --depth === 0) return source.slice(start, index + 1);
+      if (source[index] === '}' && --depth === 0) {
+        const isAsync = source.slice(Math.max(0, start - 6), start) === 'async ';
+        return `${isAsync ? 'async ' : ''}${source.slice(start, index + 1)}`;
+      }
     }
     assert.fail(`unterminated ${name}`);
   };
   const quiescence = extractDefaultedFunction('qaSettlementQuiescenceSnapshot');
+  const waitForQuiescence = extractDefaultedFunction('waitForQaSettlementQuiescence');
   const snapshot = extractDefaultedFunction('qaSettlementHeroHealthSnapshot');
   const changed = extractDefaultedFunction('qaSettlementHeroHealthChanged');
   const context = {
@@ -90,7 +94,7 @@ function loadQaSettlementGuards() {
     Number,
   };
   vm.createContext(context);
-  vm.runInContext(`${quiescence}\n${snapshot}\n${changed}\nthis.guards = { qaSettlementQuiescenceSnapshot, qaSettlementHeroHealthSnapshot, qaSettlementHeroHealthChanged };`, context);
+  vm.runInContext(`${quiescence}\n${waitForQuiescence}\n${snapshot}\n${changed}\nthis.guards = { qaSettlementQuiescenceSnapshot, waitForQaSettlementQuiescence, qaSettlementHeroHealthSnapshot, qaSettlementHeroHealthChanged };`, context);
   return context.guards;
 }
 
@@ -217,7 +221,7 @@ test('QA fixture offers use the production victory settlement and reject only de
   const fixtureOffer = hooks.slice(hooks.indexOf('const beginQaFixtureOffer'), hooks.indexOf("['QA defeat'"));
   const commands = read('web-runner/modules/heroCommands.mjs');
   assert.match(fixtureOffer, /battle\.outcome === 'defeat' \|\| battle\.defeatSettled/);
-  assert.match(fixtureOffer, /setQaFixtureOfferPool\(fixtureSelect\.value\);[\s\S]*beginRewardSettlement\(\)/);
+  assert.match(fixtureOffer, /claimQaSettlementHold\(\)[\s\S]*setQaFixtureOfferPool\(fixtureSelect\.value\);[\s\S]*beginRewardSettlement\(\{ holdClaimed: true \}\)/);
   assert.match(fixtureOffer, /SessionLevelUpQueue\?\.status !== 'active'/);
   assert.match(hooks, /const reward = deriveQaSettlementReward\(\{[\s\S]*threshold: selected\.EXPToNextLevel,[\s\S]*currentEXP: selected\.currentEXP/);
   assert.match(hooks, /hero\.currentEXP = Math\.max\(0, expToNext - 53\)/);
@@ -245,12 +249,36 @@ test('QA settlement rewards use live thresholds for one overflow and a positive 
   assert.match(hooks, /\['QA no-level EXP', \(\) => beginRewardSettlement\(\{ noLevel: true \}\)\]/);
 });
 
-test('synthetic QA settlements hold scheduling until production is quiescent and preserve hero HP through settlement', () => {
-  const { qaSettlementQuiescenceSnapshot, qaSettlementHeroHealthSnapshot, qaSettlementHeroHealthChanged } = loadQaSettlementGuards();
+test('synthetic QA settlements hold scheduling until production is quiescent and preserve hero HP through settlement', async () => {
+  const { qaSettlementQuiescenceSnapshot, waitForQaSettlementQuiescence, qaSettlementHeroHealthSnapshot, qaSettlementHeroHealthChanged } = loadQaSettlementGuards();
   const globals = { ActionInProgress: 1, IsPlayerBusy: 1, PendingHeroHits: [{ targetUID: 1 }], presentationClear: false };
   assert.equal(qaSettlementQuiescenceSnapshot(globals).ok, false);
   Object.assign(globals, { ActionInProgress: 0, IsPlayerBusy: 0, PendingHeroHits: [], presentationClear: true });
   assert.equal(qaSettlementQuiescenceSnapshot(globals).ok, true);
+
+  const inFlight = { ActionInProgress: 1, IsPlayerBusy: 1, PendingHeroHits: [{ targetUID: 1 }], presentationClear: false, CurrentTurnUID: 7 };
+  let elapsed = 0;
+  const completed = await waitForQaSettlementQuiescence({
+    globals: inFlight,
+    timeoutMs: 100,
+    pollMs: 25,
+    now: () => elapsed,
+    wait: async () => {
+      elapsed += 25;
+      Object.assign(inFlight, { ActionInProgress: 0, IsPlayerBusy: 0, PendingHeroHits: [], presentationClear: true });
+    },
+  });
+  assert.equal(completed.ok, true, 'the hold waits for an in-flight hit to complete before settlement');
+  assert.equal(inFlight.CurrentTurnUID, 7, 'the wait itself does not advance the scheduler');
+  const blocked = await waitForQaSettlementQuiescence({
+    globals: { ActionInProgress: 1, IsPlayerBusy: 1, PendingHeroHits: [{ targetUID: 1 }], presentationClear: false },
+    timeoutMs: 50,
+    pollMs: 25,
+    now: () => elapsed,
+    wait: async () => { elapsed += 25; },
+  });
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.observed.presentationBlocker, 'text-animation');
 
   const heroes = [{ uid: 1, kind: 'hero', hp: 25 }, { uid: 2, kind: 'hero', hp: 40 }];
   const baseline = qaSettlementHeroHealthSnapshot(heroes);
@@ -260,7 +288,8 @@ test('synthetic QA settlements hold scheduling until production is quiescent and
 
   const hooks = read('web-runner/systems/devBrowserTestHooks.js');
   const settlement = hooks.slice(hooks.indexOf('const beginRewardSettlement'), hooks.indexOf('const beginQaFixtureOffer'));
-  assert.match(settlement, /QaFixtureHoldTurn = 1;[\s\S]*await waitForQaSettlementQuiescence/);
+  assert.match(settlement, /if \(!holdClaimed && !claimQaSettlementHold\(\)\)[\s\S]*const actionCompletion = await waitForQaSettlementQuiescence/);
+  assert.match(settlement, /QA synthetic settlement action completion timed out before a live settlement: \$\{JSON\.stringify\(actionCompletion\.observed\)\}/);
   assert.match(settlement, /const preSettlementState = qaSettlementRuntimeSnapshot\(\);[\s\S]*settleVictory\(fnContext\);[\s\S]*monitorQaSettlementHold\(\{ baselineHP: qaSettlementHeroHealthSnapshot\(state\.entities\), preSettlementState \}\)/);
   assert.match(hooks, /duringSettlement\.currentTurnUID !== preSettlementState\.currentTurnUID[\s\S]*duringSettlement\.damageTextCount > preSettlementState\.damageTextCount/);
   assert.match(hooks, /QaSettlementHoldReleaseCount = Number\(state\.globals\.QaSettlementHoldReleaseCount \|\| 0\) \+ 1/);
@@ -489,7 +518,8 @@ test('QA fixture scenarios use bounded production actions and require each obser
   assert.match(fixtureRun, /delete state\.globals\.SessionLevelBuffCombatSessionId/);
   assert.match(fixtureRun, /ownerHPBeforeIncomingHit: ownerHPBefore, ownerHPAfterIncomingDamage, ownerHPAfterCounterHeal/);
   assert.match(fixtureRun, /Number\(visual\.amount\) === 6/);
-  assert.match(fixtureRun, /Number\(visual\.amount\) === orbAmount/);
+  assert.match(fixtureRun, /orbEvidence\?\.actualBasicsToProc === orbCadence && orbEvidence\?\.amount === orbAmount/);
+  assert.match(fixtureRun, /actualBasicsToProc: ownerBasicAttempts, amount: Number\(visual\.amount \|\| 0\)/);
   assert.match(fixtureRun, /const resolvedPrimaryDamage = primaryHPBefore - primaryHPAfter/);
   assert.match(fixtureRun, /damagePercent: Number\(chain\?\.damagePercent \|\| 0\)/);
   assert.match(fixtureRun, /resolvedSecondaryDamage: Number\(chain\?\.resolvedDamage \|\| 0\)/);
@@ -575,7 +605,7 @@ test('Battle B holds automatic scheduling through fixture evidence while permitt
   assert.match(fixtureRun, /if \(!phaseClosed\.commandStarted\) \{[\s\S]*callFunctionWithContext\(fnContext, 'ProcessTurn'\)/);
   assert.match(fixtureRun, /const deferredAdvancePending = !!state\.globals\.DeferAdvance/);
   assert.match(fixtureRun, /resolveQaFixtureDeferredAdvance\(\);[\s\S]*!observed\.deferAdvance[\s\S]*await runQaFixtureProductionAction\(owner\.uid, \(\) => \{\s*callFunctionWithContext\(fnContext, 'ProcessTurn'\)/);
-  assert.match(fixtureRun, /const completed = await waitForFixtureAction\(observed => observed\.nativeCommandOwner === 0[\s\S]*captureFreshVisuals\(\);\s*const counterAfter/);
+  assert.match(fixtureRun, /const completed = await waitForFixtureAction\(observed => observed\.nativeCommandOwner === 0[\s\S]*captureFreshVisuals\(\);\s*ownerBasicAttempts \+= 1;\s*const counterAfter/);
   assert.doesNotMatch(fixtureRun, /owner basic did not complete:[\s\S]*callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
   assert.match(fixtureRun, /counterAfter !== counterBefore \+ 1/);
   assert.match(fixtureRun, /await runOwnerBasicAttempt\(attempt\)/);
@@ -601,7 +631,7 @@ test('the staged Orb QA workflow returns to victory settlement before the held T
   const nextBattle = hooks.slice(hooks.indexOf("['QA next battle'"), hooks.indexOf("['QA fresh session'"));
   assert.match(fixtureRun, /const orbCadence = Number\(fixtureCard\?\.formula\?\.everyCompletedBasics \|\| 3\)/);
   assert.match(fixtureRun, /const orbAmount = Number\(fixtureCard\?\.formula\?\.amount \|\| 4\)/);
-  assert.match(fixtureOffer, /beginRewardSettlement\(\)/);
+  assert.match(fixtureOffer, /claimQaSettlementHold\(\)[\s\S]*setQaFixtureOfferPool\(fixtureSelect\.value\)[\s\S]*beginRewardSettlement\(\{ holdClaimed: true \}\)/);
   assert.match(nextBattle, /QaFixtureHoldTurn = 1;[\s\S]*seedProductionEncounter\(\)/);
   assert.doesNotMatch(hooks, /QaFixtureOfferHold|QaFixtureOfferArmed|QaFixtureOfferStartTurnCount/);
 });
