@@ -22,6 +22,12 @@ export function resetCombatSessionConditions(globals, gameState, { preserveSessi
     EnemyDebuffPop: {}, EnemyDamageOverTime: [], HeroTempSkillStateByUID: {},
     EnemyGemLockActive: 0, EnemyGemLockGroups: {}, TaintedGroundZones: [],
     BlueBuffSequenceActive: 0, PendingDeaths: {}, PendingHeroHits: [],
+    // A new encounter may retain selected session buffs, never an outgoing
+    // action or its animation gates. BattleStartActive owns its short intro
+    // hold after this reset and releases into an otherwise idle scheduler.
+    IsPlayerBusy: 0, ActionInProgress: 0, ActionActorUID: 0, ActionOwnerUID: 0,
+    ActionLockUntil: 0, DeferAdvance: 0, AdvanceAfterAction: 0, GroupResolving: 0,
+    TextAnimEndAt: 0,
     SessionLevelUpQueue: { version: 1, status: 'complete', paused: false, currentIndex: 0, entries: [] },
     SessionLevelBuffState: retainedSessionLevelBuffState || { heroes: {} }, SessionLevelUpOffersByQueueIndex: {}, SessionLevelUpSettlement: null,
     PendingSkillID: '', PendingActor: 0, PendingSuperGemAction: null,

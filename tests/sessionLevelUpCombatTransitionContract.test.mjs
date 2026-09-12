@@ -322,3 +322,30 @@ test('QA continuation preserves its pre-transition permanent baseline until Batt
   assert.match(nextBattle, /storyEntry\.victory\(\)[\s\S]*waitForPlayableBattle[\s\S]*QaFixtureBattleBaseline = \{ \.\.\.preBattleBaseline/);
   assert.match(nextBattle, /liveOwnerUID/);
 });
+
+test('continuing Battle B clears outgoing action gates while retaining selected owner buffs', () => {
+  const selected = applyLevelUpBuffCard({
+    state: createSessionLevelBuffState(), heroId: 'fara-1', cardId: 'qa_atk_focus_1', cards: QA_LEVEL_UP_BUFF_CARDS,
+  });
+  const globals = {
+    ProgressionBattle: { outcome: 'victory' }, SessionLevelBuffState: selected.state,
+    IsPlayerBusy: 1, ActionInProgress: 1, ActionActorUID: 9, ActionOwnerUID: 9,
+    ActionLockUntil: 99, DeferAdvance: 1, AdvanceAfterAction: 1, TextAnimEndAt: 99,
+    PendingHeroHits: [{ heroUID: 1 }], EnemyAction: { active: true }, NativeCommandSequence: { actorUID: 1 },
+  };
+  resetCombatSessionConditions(globals, {}, { preserveSessionLevelBuffs: true });
+  assert.deepEqual(globals.SessionLevelBuffState, selected.state);
+  assert.equal(globals.IsPlayerBusy, 0);
+  assert.equal(globals.ActionInProgress, 0);
+  assert.equal(globals.ActionLockUntil, 0);
+  assert.equal(globals.PendingHeroHits.length, 0);
+  assert.equal(globals.EnemyAction, undefined);
+  assert.equal(globals.NativeCommandSequence, null);
+});
+
+test('the continuing-adventure initializer resets action transients before its Battle B scheduler intro', () => {
+  const initializer = read('web-runner/systems/combatSessionInitializer.js');
+  const reset = read('web-runner/systems/combatSessionReset.mjs');
+  assert.match(initializer, /resetCombatSessionConditions\(state\.globals, gameState, \{ preserveSessionLevelBuffs: continuingAdventure \}\)[\s\S]*state\.globals\.BattleStartActive = 1/);
+  assert.match(reset, /PendingHeroHits: \[\][\s\S]*IsPlayerBusy: 0, ActionInProgress: 0[\s\S]*ActionLockUntil: 0/);
+});
