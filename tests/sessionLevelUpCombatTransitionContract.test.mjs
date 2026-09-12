@@ -401,7 +401,7 @@ test('Battle B holds automatic scheduling through fixture evidence while permitt
   const nextBattle = hooks.slice(hooks.indexOf("['QA next battle'"), hooks.indexOf("['QA fresh session'"));
   const fixtureRun = hooks.slice(hooks.indexOf("['QA run fixture'"), hooks.indexOf("['QA next battle'"));
   assert.match(nextBattle, /QaFixtureHoldTurn = 1/);
-  assert.match(nextBattle, /QaFixtureBattleBaseline[\s\S]*catch \(error\) \{\s*delete state\.globals\.QaFixtureHoldTurn/);
+  assert.match(nextBattle, /QaFixtureBattleBaseline[\s\S]*catch \(error\) \{\s*clearQaFixtureOfferLifecycle\(\)/);
   assert.match(hooks, /const runQaFixtureProductionAction = async \(ownerUID, action\) => \{\s*state\.globals\.QaFixtureExplicitAction = 1/);
   assert.match(hooks, /const arrangeOwnerAsNextSchedulerActor = \(owner, target\) => \{/);
   assert.match(fixtureRun, /const closeCompletedFixturePhase = async \(target, priorSequence\) => \{/);
@@ -418,7 +418,7 @@ test('Battle B holds automatic scheduling through fixture evidence while permitt
   assert.doesNotMatch(fixtureRun, /owner basic did not complete:[\s\S]*callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
   assert.match(fixtureRun, /counterAfter !== counterBefore \+ 1/);
   assert.match(fixtureRun, /await runOwnerBasicAttempt\(attempt\)/);
-  assert.match(fixtureRun, /finally \{[\s\S]*delete state\.globals\.QaFixtureHoldTurn/);
+  assert.match(fixtureRun, /finally \{[\s\S]*clearQaFixtureOfferLifecycle\(\)/);
   assert.match(commands, /if \(g\.QaFixtureHoldTurn && !qaExplicitActionAllowed\)/);
   assert.match(app, /resolveQaFixtureDeferredAdvance: \(\) => \{[\s\S]*callFunctionWithContext\(fnContext, 'AdvanceTurn'\);[\s\S]*applyTurnGateIntent\(createDeferredAdvanceResolved\)/);
   assert.match(app, /state\.globals\.DeferAdvance &&\s*!state\.globals\.QaFixtureHoldTurn/);
@@ -439,7 +439,18 @@ test('the staged Orb QA workflow retains one offer hold through Tier 2 and relea
   assert.match(fixtureRun, /const orbCadence = Number\(fixtureCard\?\.formula\?\.everyCompletedBasics \|\| 3\)/);
   assert.match(fixtureRun, /const orbAmount = Number\(fixtureCard\?\.formula\?\.amount \|\| 4\)/);
   assert.match(fixtureRun, /retainQaFixtureOfferHold = fixture === 'orb'[\s\S]*Number\(fixtureCard\?\.stage \|\| 0\) === 1[\s\S]*QaFixtureOfferHold/);
-  assert.match(fixtureRun, /if \(!retainQaFixtureOfferHold\) \{[\s\S]*delete state\.globals\.QaFixtureHoldTurn;[\s\S]*delete state\.globals\.QaFixtureOfferHold/);
+  assert.match(fixtureRun, /if \(!retainQaFixtureOfferHold\) \{[\s\S]*clearQaFixtureOfferLifecycle\(\)/);
+});
+
+test('fresh QA fixture entry arms its hold before scheduler startup and rejects an ended or advanced offer', () => {
+  const hooks = read('web-runner/systems/devBrowserTestHooks.js');
+  const start = hooks.slice(hooks.indexOf("['QA start combat'"), hooks.indexOf("['QA defeat'"));
+  const offer = hooks.slice(hooks.indexOf('const beginQaFixtureOffer'), hooks.indexOf("['QA start combat'"));
+  assert.match(start, /QaFixtureHoldTurn = 1;[\s\S]*QaFixtureOfferHold = 1;[\s\S]*QaFixtureOfferArmed = 1;[\s\S]*startCombatForQA\(\)/);
+  assert.match(start, /QaFixtureOfferStartTurnCount = Number\(state\.globals\.DebugTurnCount \|\| 0\)/);
+  assert.match(offer, /NativeBattleEnded\) throw new Error\('QA fixture offer cannot open because the held combat already ended'/);
+  assert.match(offer, /QaFixtureOfferInitialSelectionComplete[\s\S]*DebugTurnCount[\s\S]*zero combat actions before selection/);
+  assert.match(offer, /catch \(error\) \{\s*clearQaFixtureOfferLifecycle\(\);\s*throw error/);
 });
 
 test('production effect visuals retain the fixture payload needed for current-run QA deltas', () => {
