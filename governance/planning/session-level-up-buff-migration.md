@@ -176,7 +176,7 @@ selector must record the rolled tier and use only that tier for one offer.
 deterministicTierAttempts(progress, rng):
   remaining = [1, 2, 3, 4]
   while remaining is not empty:
-    weights = nonNegative(tierWeights(progress)) restricted to remaining
+    weights = nonNegative(tierWeights(normalizedProgress, finalBossReached)) restricted to remaining
     if sum(weights) > 0:
       tier = weightedSample(remaining, weights, rng)
     else:
