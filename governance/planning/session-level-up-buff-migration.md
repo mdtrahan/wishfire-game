@@ -21,7 +21,8 @@ This contract records the approved product direction and guides later Beads. It 
 - Status: WIP checkpoint only.
 - Known gate result: 27 UI-lock contracts passed, then rendered capture crashed at `tools/ui_presentation_lock_gate.mjs:536` while reading `left` from an undefined value.
 - The checkpoint is not QA PASS or Integration Ready.
-- Migration Bead: pending. The installed `bd` CLI is `0.56.1` while the database reports `0.63.3`; creation currently fails because the `issues` schema lacks `crystallizes`.
+- Migration epic: `ORKA-yie`, open at P1.
+- Beads command: use `/opt/homebrew/bin/bd` while the shell-default `0.56.1` binary remains incompatible with the `0.63.3` database.
 
 ## Player Experience
 
