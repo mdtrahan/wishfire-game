@@ -215,6 +215,22 @@ export function registerDevBrowserTestHooks({
       state.globals.SelectedEnemyUID = Number(target?.uid || 0);
       if (Number(callFunctionWithContext(fnContext, 'GetCurrentTurn')) !== Number(owner.uid)) throw new Error('QA fixture could not arrange the selected owner as current actor');
     };
+    const arrangeOwnerAsNextSchedulerActor = (owner, target) => {
+      const queue = state.globals.TurnOrderArray || [];
+      const ownerIndex = queue.findIndex(entry => Number(entry.uid) === Number(owner?.uid));
+      if (ownerIndex < 0 || queue.length < 2) throw new Error('QA fixture owner cannot be scheduled after a completed production turn');
+      const predecessor = queue[(ownerIndex - 1 + queue.length) % queue.length];
+      const predecessorActor = state.entities.find(entity => Number(entity.uid) === Number(predecessor?.uid));
+      if (!predecessorActor || Number(predecessorActor.hp || 0) <= 0) throw new Error('QA fixture owner has no living scheduler predecessor');
+      const initiative = state.globals.DynamicInitiative && typeof state.globals.DynamicInitiative === 'object'
+        ? state.globals.DynamicInitiative
+        : (state.globals.DynamicInitiative = {});
+      initiative.active = 1;
+      initiative.current = { uid: Number(predecessorActor.uid), type: predecessorActor.kind === 'enemy' ? 1 : 0, name: String(predecessorActor.name || predecessorActor.uid) };
+      state.globals.InitiativeCurrentUID = Number(predecessorActor.uid);
+      state.globals.CurrentTurnIndex = (state.globals.TurnOrderArray || []).findIndex(entry => Number(entry.uid) === Number(predecessorActor.uid));
+      state.globals.SelectedEnemyUID = Number(target?.uid || 0);
+    };
     const runQaFixtureProductionAction = async (ownerUID, action) => {
       state.globals.QaFixtureExplicitAction = 1;
       state.globals.QaFixtureExplicitActionOwnerUID = Number(ownerUID || 0);
@@ -397,19 +413,13 @@ export function registerDevBrowserTestHooks({
             && Number(state.globals.ActionLockUntil || 0) <= now
             && !(Array.isArray(state.globals.PendingHeroHits) && state.globals.PendingHeroHits.length);
         };
-        const closeCompletedFixturePhase = async () => {
-          if (Number(state.globals.TurnPhase || 0) === 0) return { ok: true, closed: false };
+        const closeCompletedFixturePhase = async (target, priorSequence) => {
+          if (Number(state.globals.TurnPhase || 0) === 0) return { ok: true, commandStarted: false };
           if (!fixturePhaseIsClosable()) return { ok: false, observed: fixtureActionObserved() };
-          // Keep the scheduler transition authoritative. The QA hold prevents
-          // its automatic ProcessTurn claim from acting on the next actor.
-          callFunctionWithContext(fnContext, 'AdvanceTurn');
-          const startedAt = Date.now();
-          while (Date.now() - startedAt < 2600) {
-            const idle = await waitForFixtureIdle();
-            if (idle.ok && Number(state.globals.TurnPhase || 0) === 0) return { ok: true, closed: true };
-            await new Promise(resolve => window.setTimeout(resolve, 25));
-          }
-          return { ok: Number(state.globals.TurnPhase || 0) === 0, observed: fixtureActionObserved() };
+          arrangeOwnerAsNextSchedulerActor(owner, target);
+          await runQaFixtureProductionAction(owner.uid, () => callFunctionWithContext(fnContext, 'AdvanceTurn'));
+          const started = await waitForFixtureAction(observed => observed.nativeCommandOwner === Number(owner.uid) && state.globals.NativeCommandSequence !== priorSequence);
+          return { ok: started.ok, commandStarted: started.ok, observed: started.observed };
         };
         const waitForFixtureAction = async (predicate, timeoutMs = 2600) => {
           const startedAt = Date.now();
@@ -425,16 +435,20 @@ export function registerDevBrowserTestHooks({
         const runOwnerBasicAttempt = async attempt => {
           const currentTarget = targetForAttempt();
           if (!currentTarget) throw new Error(`QA fixture ${fixture} has no living target`);
-          arrangeOwnerTurn(owner, currentTarget);
-          const commandReady = await waitForOwnerCommandReady(currentTarget);
-          if (!commandReady.ok) throw new Error(`QA fixture ${fixture} owner command is not production-ready: ${JSON.stringify(commandReady.gate || state.globals.QaFixtureProcessTurnGate || null)}`);
           installQaFixtureRuntimeRandom(QA_FIXTURE_RUNTIME_ENCOUNTER_SEED);
           const counterBefore = Number(activeStages && state.globals.SessionLevelBuffState?.heroes?.[String(owner.heroInstanceKey ?? owner.uid)]?.triggerCountersByEffectId?.[fixtureCard.effectId] || 0);
           const priorSequence = state.globals.NativeCommandSequence;
+          const phaseClosed = await closeCompletedFixturePhase(currentTarget, priorSequence);
+          if (!phaseClosed.ok) throw new Error(`QA fixture ${fixture} cannot advance its completed turn to the selected owner: ${JSON.stringify({ attempt, processGate: state.globals.QaFixtureProcessTurnGate || null, ...phaseClosed.observed })}`);
+          if (!phaseClosed.commandStarted) {
+            arrangeOwnerTurn(owner, currentTarget);
+            const commandReady = await waitForOwnerCommandReady(currentTarget);
+            if (!commandReady.ok) throw new Error(`QA fixture ${fixture} owner command is not production-ready: ${JSON.stringify(commandReady.gate || state.globals.QaFixtureProcessTurnGate || null)}`);
+            await runQaFixtureProductionAction(owner.uid, () => callFunctionWithContext(fnContext, 'ProcessTurn'));
+          }
+          const started = await waitForFixtureAction(observed => observed.nativeCommandOwner === Number(owner.uid) && state.globals.NativeCommandSequence !== priorSequence);
+          if (!started.ok) throw new Error(`QA fixture ${fixture} owner basic did not start: ${JSON.stringify({ attempt, counterBefore, processGate: state.globals.QaFixtureProcessTurnGate || null, ...started.observed })}`);
           await runQaFixtureProductionAction(owner.uid, async () => {
-            callFunctionWithContext(fnContext, 'ProcessTurn');
-            const started = await waitForFixtureAction(observed => observed.nativeCommandOwner === Number(owner.uid) && state.globals.NativeCommandSequence !== priorSequence);
-            if (!started.ok) throw new Error(`QA fixture ${fixture} owner basic did not start: ${JSON.stringify({ attempt, counterBefore, processGate: state.globals.QaFixtureProcessTurnGate || null, ...started.observed })}`);
             const completed = await waitForFixtureAction(observed => observed.nativeCommandOwner === 0 && observed.pendingHeroHits === 0 && !observed.actionInProgress && !observed.playerBusy);
             if (!completed.ok) throw new Error(`QA fixture ${fixture} owner basic did not complete: ${JSON.stringify({ attempt, counterBefore, processGate: state.globals.QaFixtureProcessTurnGate || null, ...completed.observed })}`);
             captureFreshVisuals();
@@ -455,8 +469,6 @@ export function registerDevBrowserTestHooks({
           const idleBefore = await waitForFixtureIdle();
           if (!idleBefore.ok) throw new Error(`QA fixture ${fixture} cannot run while Battle B is gated: ${JSON.stringify(idleBefore.observed)}`);
           state.globals.QaFixtureHoldTurn = 1;
-          const phaseClosed = await closeCompletedFixturePhase();
-          if (!phaseClosed.ok) throw new Error(`QA fixture ${fixture} cannot close its completed production turn phase: ${JSON.stringify(phaseClosed.observed || fixtureActionObserved())}`);
           if (fixture === 'counter') {
             const enemy = livingEnemies()[0];
             if (!enemy) throw new Error('QA fixture counter has no living enemy');
