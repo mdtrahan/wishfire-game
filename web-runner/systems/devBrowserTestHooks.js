@@ -1,5 +1,5 @@
 import { getHeroFlowState } from '../src/core/personalFlow.mjs';
-import { chooseSessionLevelUpBuff, getSessionLevelUpBuffOffer, settleVictory } from '../modules/heroCommands.mjs';
+import { canUseHeroCommand, chooseSessionLevelUpBuff, getSessionLevelUpBuffOffer, settleVictory } from '../modules/heroCommands.mjs';
 import { QA_LEVEL_UP_BUFF_CARDS } from '../modules/sessionLevelUpBuffPresentation.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import {
@@ -61,13 +61,14 @@ export function qaPlayableBattleSnapshot({ entry, globals = {}, entities = [], c
     phase: entry?.phase, pending: !!entry?.pending, ended: !!globals.NativeBattleEnded,
     enemyActionActive, actionInProgress: !!globals.ActionInProgress,
     playerBusy: !!globals.IsPlayerBusy, battleStartActive: !!globals.BattleStartActive,
-    actionLocked, pendingHeroHits: Array.isArray(globals.PendingHeroHits) ? globals.PendingHeroHits.length : 0,
+    actionLocked, deferAdvance: !!globals.DeferAdvance,
+    pendingHeroHits: Array.isArray(globals.PendingHeroHits) ? globals.PendingHeroHits.length : 0,
     livingActors: livingActors.map(actor => Number(actor.uid)), currentUID: Number(currentUID || 0),
     currentActorLiving: !!currentActor,
   };
   return { ok: observed.phase === 'combat' && !observed.pending && !observed.ended
     && !observed.enemyActionActive && !observed.actionInProgress && !observed.playerBusy
-    && !observed.battleStartActive && !observed.actionLocked && observed.pendingHeroHits === 0
+    && !observed.battleStartActive && !observed.actionLocked && !observed.deferAdvance && observed.pendingHeroHits === 0
     && observed.livingActors.length > 0 && observed.currentActorLiving, observed };
 }
 
@@ -293,7 +294,6 @@ export function registerDevBrowserTestHooks({
       ['QA run fixture', async () => {
         const fixture = resolveQaLevelUpFixtureKey(fixtureSelect.value);
         const owner = qaHero();
-        state.globals.QaFixtureHoldTurn = 1;
         try {
         const livingEnemies = () => state.entities.filter(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
         const statusMagnitude = (actor, effect) => Number(actor?.statuses?.find(status => status.statusEffect === effect)?.magnitude || 0);
@@ -367,6 +367,19 @@ export function registerDevBrowserTestHooks({
           getCurrentUID: () => callFunctionWithContext(fnContext, 'GetCurrentTurn'),
           wait: ms => new Promise(resolve => window.setTimeout(resolve, ms)),
         });
+        const waitForOwnerCommandReady = async (target, timeoutMs = 2600) => {
+          const startedAt = Date.now();
+          let eligible = false;
+          while (Date.now() - startedAt < timeoutMs) {
+            arrangeOwnerTurn(owner, target);
+            eligible = canUseHeroCommand(fnContext, owner.uid);
+            if (eligible) return { ok: true };
+            await new Promise(resolve => window.setTimeout(resolve, 25));
+          }
+          arrangeOwnerTurn(owner, target);
+          eligible = canUseHeroCommand(fnContext, owner.uid);
+          return { ok: eligible, gate: state.globals.QaFixtureProcessTurnGate || null };
+        };
         const fixtureActionObserved = () => ({
           currentUID: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0),
           phase: Number(state.globals.TurnPhase || 0),
@@ -390,6 +403,8 @@ export function registerDevBrowserTestHooks({
           const currentTarget = targetForAttempt();
           if (!currentTarget) throw new Error(`QA fixture ${fixture} has no living target`);
           arrangeOwnerTurn(owner, currentTarget);
+          const commandReady = await waitForOwnerCommandReady(currentTarget);
+          if (!commandReady.ok) throw new Error(`QA fixture ${fixture} owner command is not production-ready: ${JSON.stringify(commandReady.gate || state.globals.QaFixtureProcessTurnGate || null)}`);
           installQaFixtureRuntimeRandom(QA_FIXTURE_RUNTIME_ENCOUNTER_SEED);
           const counterBefore = Number(activeStages && state.globals.SessionLevelBuffState?.heroes?.[String(owner.heroInstanceKey ?? owner.uid)]?.triggerCountersByEffectId?.[fixtureCard.effectId] || 0);
           const priorSequence = state.globals.NativeCommandSequence;
@@ -416,6 +431,7 @@ export function registerDevBrowserTestHooks({
         for (let attempt = 0; attempt < scenario.attempts && !scenario.observed(); attempt += 1) {
           const idleBefore = await waitForFixtureIdle();
           if (!idleBefore.ok) throw new Error(`QA fixture ${fixture} cannot run while Battle B is gated: ${JSON.stringify(idleBefore.observed)}`);
+          state.globals.QaFixtureHoldTurn = 1;
           if (fixture === 'counter') {
             const enemy = livingEnemies()[0];
             if (!enemy) throw new Error('QA fixture counter has no living enemy');

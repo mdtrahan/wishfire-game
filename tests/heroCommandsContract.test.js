@@ -37,6 +37,23 @@ test('native attack commits once for the scheduled living actor and never spends
   assert.equal(calls, 1); assert.equal(hero.sp, 100);
 });
 
+test('an arranged Battle B owner reports the exact presentation predicate before a QA fixture claims its turn', async () => {
+  const { canUseHeroCommand } = await import('../web-runner/modules/heroCommands.mjs');
+  const hero = { uid: 1, kind: 'hero', hp: 10 }, enemy = { uid: 9, kind: 'enemy', hp: 10 };
+  const g = { GamePhase: 'RUNTIME', NativeBattleStarted: 1, NativeBattleEnded: 0, TurnPhase: 0, CanPickGems: 1, QaFixtureHoldTurn: 1, QaFixtureExplicitAction: 1 };
+  const ctx = { state: { globals: g, entities: [hero, enemy] }, callFunction(name) {
+    if (name === 'GetCurrentTurn') return 1;
+    if (name === 'GetEnemyRosterStability') return { stable: true };
+    throw new Error(`unexpected ${name}`);
+  } };
+  assert.equal(canUseHeroCommand(ctx, 1), true);
+  assert.deepEqual(g.QaFixtureProcessTurnGate.failedCommandChecks, []);
+  g.DeferAdvance = 1;
+  assert.equal(canUseHeroCommand(ctx, 1), false);
+  assert.deepEqual(g.QaFixtureProcessTurnGate.failedCommandChecks, ['presentationClear']);
+  assert.equal(g.QaFixtureProcessTurnGate.sourceState.deferAdvance, 1);
+});
+
 test('a refused animation handoff restores combat intent', async () => {
   const { executeHeroCommand } = await import('../web-runner/modules/heroCommands.mjs');
   const g = { GamePhase: 'RUNTIME', TurnPhase: 0, SelectedEnemyUID: 0 };
