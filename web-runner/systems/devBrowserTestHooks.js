@@ -70,6 +70,28 @@ export function registerDevBrowserTestHooks({
         if (gameState.storyEntry.phase !== 'combat') return;
         for (const enemy of state.entities.filter(e => e.kind === 'enemy')) callFunctionWithContext(fnContext, 'KillEnemyByUID', enemy.uid);
       }],
+      ['QA low HP', () => {
+        const hero = state.entities.find(e => e.kind === 'hero'); if (!hero) return;
+        hero.hp = Math.floor(Number(hero.maxHP || 1) * .25); callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
+      }],
+      ['QA level-up Hondo', () => {
+        const hero = state.entities.find(e => e.kind === 'hero' && (e.baseHeroName === 'Huun' || e.name === 'Huun')); if (!hero) return;
+        const id = String(hero.heroInstanceKey || hero.uid); state.globals.SessionLevelBuffState = { heroes: {} };
+        state.globals.SessionLevelUpQueue = { version: 1, status: 'active', paused: false, currentIndex: 0, entries: [{ heroId: id, heroUID: hero.uid, earnedLevel: Number(hero.currentLevel || 1) + 1 }] };
+        state.globals.SessionLevelUpSettlement = { phase: 'active', startedAt: Number(state.globals.time || 0) - 2, fadeOutStartedAt: 0, rows: [{ heroId: id, heroUID: hero.uid, gainedEXP: 80, beforeEXP: 47, afterEXP: 27, expToNext: 100, fromLevel: Number(hero.currentLevel || 1), toLevel: Number(hero.currentLevel || 1) + 1 }] };
+        state.globals.RuntimeRandom = () => 0;
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
+      ['QA orb II', () => {
+        const hero = state.entities.find(e => e.kind === 'hero' && (e.baseHeroName === 'Huun' || e.name === 'Huun')); if (!hero) return;
+        const id = String(hero.heroInstanceKey || hero.uid); state.globals.SessionLevelBuffState = { heroes: { [id]: { activeStageByEffectId: { qa_pulse: 2 }, triggerCountersByEffectId: {}, completedEffectIds: [] } } }; state.globals.RuntimeRandom = () => 0;
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
+      ['QA ATK II', () => {
+        const hero = state.entities.find(e => e.kind === 'hero' && (e.baseHeroName === 'Huun' || e.name === 'Huun')); if (!hero) return;
+        const id = String(hero.heroInstanceKey || hero.uid); state.globals.SessionLevelBuffState = { heroes: { [id]: { activeStageByEffectId: { qa_atk_focus: 2 }, triggerCountersByEffectId: {}, completedEffectIds: [] } } };
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
     ]) {
       const button = document.createElement('button'); button.textContent = label;
       button.addEventListener('click', action); controls.append(button);

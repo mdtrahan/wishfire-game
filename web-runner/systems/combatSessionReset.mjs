@@ -18,6 +18,7 @@ export function resetCombatSessionConditions(globals, gameState) {
     EnemyGemLockActive: 0, EnemyGemLockGroups: {}, TaintedGroundZones: [],
     BlueBuffSequenceActive: 0, PendingDeaths: {}, PendingHeroHits: [],
     SessionLevelUpQueue: { version: 1, status: 'complete', paused: false, currentIndex: 0, entries: [] },
+    SessionLevelBuffState: { heroes: {} }, SessionLevelUpOffersByQueueIndex: {}, SessionLevelUpSettlement: null,
     PendingSkillID: '', PendingActor: 0, PendingSuperGemAction: null,
     SelectedEnemyUID: 0, SelectedEnemyUIDOwner: 0, PendingManualTargetIntent: null,
     DamageTexts: [], ChainStrikeVisuals: [], ArcanePulseVisuals: [],

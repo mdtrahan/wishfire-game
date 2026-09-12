@@ -63,7 +63,7 @@ export function applySessionLevelBuffsAtBattleStart(ctx,rules){
    if(formula.surface==='shield_percent_max_hp')shields.push(Number(formula.percent||0));
   }
   for(const [stat,magnitude] of Object.entries(statBonus))applyStatus(rules,hero,hero,{effectType:'status',statusEffect:`${stat}Up`,magnitude,duration:9999});
-  if(maxHpMultipliers.length){hero.maxHP=Math.max(1,Math.floor(maxHpMultipliers.reduce((value,multiplier)=>value*multiplier,Math.max(1,Number(hero.maxHP||1)))));hero.hp=Math.min(hero.maxHP,hero.hp);}
+  if(maxHpMultipliers.length){hero.maxHP=Math.max(1,Math.round(maxHpMultipliers.reduce((value,multiplier)=>value*multiplier,Math.max(1,Number(hero.maxHP||1)))));hero.hp=Math.min(hero.maxHP,hero.hp);}
   for(const magnitude of shields)applyStatus(rules,hero,hero,{effectType:'status',statusEffect:'barrier',magnitude,duration:9999});
  }
 }
@@ -71,10 +71,10 @@ export function resolveSessionLevelBasicEffects(ctx,rules,hero,targetIds){
  const g=ctx.state.globals,target=ctx.state.entities.find(actor=>Number(actor.uid)===Number(targetIds?.[0])&&actor.hp>0);
  if(!target)return;
  for(const card of getActiveSessionLevelUpBuffCards(g,hero)){const formula=card.formula||{};
-  if(formula.surface==='cadence_magic_damage'&&sessionBuffCounter(g,hero,card.effectId)%Math.max(1,Number(formula.everyCompletedBasics||1))===0)resolveSkill(rules,hero,{skillId:'session_spectral_orb',targetType:'enemy',tags:['magic'],effects:[{effectType:'damage',fixedDamage:Number(formula.amount||0)}]},[target.uid],{sessionBuffExtraHit:true});
+  if(formula.surface==='cadence_magic_damage'&&sessionBuffCounter(g,hero,card.effectId)%Math.max(1,Number(formula.everyCompletedBasics||1))===0){(g.ArcanePulseVisuals||(g.ArcanePulseVisuals=[])).push({sourceX:Number(hero.x||0),sourceY:Number(hero.y||0),targetX:Number(target.x||0),targetY:Number(target.y||0),startAt:Number(g.time||0),impactAt:Number(g.time||0)+.18,shape:'crescent_arc_blast',sourceUID:hero.uid,targetUID:target.uid});resolveSkill(rules,hero,{skillId:'session_spectral_orb',targetType:'enemy',tags:['magic'],effects:[{effectType:'damage',fixedDamage:Number(formula.amount||0)}]},[target.uid],{sessionBuffExtraHit:true});}
   if(formula.surface==='heal_percent_max_hp'&&sessionRandom(g)<Number(formula.chance||0))resolveSkill(rules,hero,{skillId:'session_inner_flow',targetType:'self',tags:['magic'],effects:[{effectType:'heal',recipient:'self',potency:Number(formula.percent||0)}]},[hero.uid],{sessionBuffExtraHit:true});
-  if(formula.surface==='status_on_basic'&&sessionRandom(g)<Number(formula.chance||0))resolveSkill(rules,hero,{skillId:'session_saffron_mark',targetType:'enemy',tags:['magic'],effects:[{effectType:'status',statusEffect:String(formula.statusId||'mark'),magnitude:1,duration:Number(formula.durationTurns||1)}]},[target.uid],{sessionBuffExtraHit:true});
-  if(formula.surface==='bounce_percent_damage'&&sessionRandom(g)<Number(formula.chance||0)){const bounce=ctx.state.entities.find(actor=>actor?.kind==='enemy'&&actor.hp>0&&actor.uid!==target.uid)||target;resolveSkill(rules,hero,{skillId:'session_mirage_chain',targetType:'enemy',tags:['physical'],effects:[{effectType:'damage',potency:Number(formula.damagePercent||0)}]},[bounce.uid],{sessionBuffExtraHit:true});}
+  if(formula.surface==='status_on_basic'&&sessionRandom(g)<Number(formula.chance||0))resolveSkill(rules,hero,{skillId:'session_saffron_mark',targetType:'enemy',tags:['magic'],effects:[{effectType:'status',statusEffect:'mark',magnitude:1,duration:Number(formula.durationTurns||1)},{effectType:'status',statusEffect:String(formula.statusId||'dot'),magnitude:1,duration:Number(formula.durationTurns||1),snapshotPotency:Number(formula.damagePerTurn||0)}]},[target.uid],{sessionBuffExtraHit:true});
+  if(formula.surface==='bounce_percent_damage'&&sessionRandom(g)<Number(formula.chance||0)){const bounce=ctx.state.entities.find(actor=>actor?.kind==='enemy'&&actor.hp>0&&actor.uid!==target.uid);if(bounce){(g.ChainStrikeVisuals||(g.ChainStrikeVisuals=[])).push({sourceUID:hero.uid,targetUID:bounce.uid,sourceX:Number(target.x||0),sourceY:Number(target.y||0),targetX:Number(bounce.x||0),targetY:Number(bounce.y||0),startAt:Number(g.time||0),impactAt:Number(g.time||0)+.18});resolveSkill(rules,hero,{skillId:'session_mirage_chain',targetType:'enemy',tags:['physical'],effects:[{effectType:'damage',potency:Number(formula.damagePercent||0)}]},[bounce.uid],{sessionBuffExtraHit:true});}}
  }
 }
 export function resolveSessionLevelCounter(ctx,rules,hero,source){

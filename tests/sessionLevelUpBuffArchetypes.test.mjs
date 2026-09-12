@@ -26,15 +26,33 @@ test('session buffs apply exact owner-only stat, max-HP, bargain, speed, and Cri
   assert.equal(target.statuses.length, 0, 'a hero buff never mutates another actor');
 });
 
+test('Max Vitality uses runtime rounding and turns 108 Max HP into 130', () => {
+  const { ctx, actor, rules } = context(['qa_max_vitality']);
+  actor.maxHP = actor.hp = 108;
+  applySessionLevelBuffsAtBattleStart(ctx, rules);
+  assert.equal(actor.maxHP, 130);
+});
+
 test('Spectral Orb, status, heal, and chain each produce an owner-scoped material combat result', () => {
   const { ctx, actor, target, rules } = context(['qa_pulse', 'qa_heal_on_basic', 'qa_status_on_basic', 'qa_bounce'], () => 0);
+  const secondEnemy = { ...structuredClone(target), uid: 10, hp: 200, x: 40 };
+  ctx.state.entities.push(secondEnemy);
   actor.hp = 50;
   resolveSessionLevelBasicEffects(ctx, rules, actor, [target.uid]);
   const afterFirst = target.hp;
   resolveSessionLevelBasicEffects(ctx, rules, actor, [target.uid]);
   assert.ok(target.hp < afterFirst, 'the second native basic fires Spectral Orb and chain damage');
   assert.ok(actor.hp > 50, 'Inner Flow heals its owner through the shared heal resolver');
-  assert.ok(target.statuses.some(status => status.statusEffect === 'qa_venom'), 'Saffron Mark leaves a visible status state');
+  assert.ok(target.statuses.some(status => status.statusEffect === 'mark') && target.statuses.some(status => status.statusEffect === 'dot' && status.snapshotPotency === 3), 'Saffron Mark reuses the readable marker and standard DOT payload');
+  assert.equal(ctx.state.globals.ArcanePulseVisuals.length, 1);
+  assert.equal(ctx.state.globals.ChainStrikeVisuals.at(-1).targetUID, 10);
+});
+
+test('Mirage Chain has no same-target fallback when only one enemy survives', () => {
+  const { ctx, actor, target, rules } = context(['qa_bounce'], () => 0);
+  resolveSessionLevelBasicEffects(ctx, rules, actor, [target.uid]);
+  assert.equal(target.hp, 200);
+  assert.equal(ctx.state.globals.ChainStrikeVisuals, undefined);
 });
 
 test('Glass Reprisal counterattacks and heals only after its owner takes damage', () => {

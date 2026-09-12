@@ -18,6 +18,7 @@ import {
   settleVictory,
 } from '../web-runner/modules/heroCommands.mjs';
 import { createHeroProgressStore, newHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
+import { resetCombatSessionConditions } from '../web-runner/systems/combatSessionReset.mjs';
 
 const read = file => fs.readFileSync(path.join(process.cwd(), file), 'utf8');
 
@@ -108,4 +109,13 @@ test('combat completion waits for the queue seam and resets its state for a fres
   const reset = read('web-runner/systems/combatSessionReset.mjs');
   assert.match(source, /SessionLevelUpQueue\?\.status !== 'active'/);
   assert.match(reset, /SessionLevelUpQueue: \{ version: 1, status: 'complete'/);
+});
+
+test('fresh-session reset clears level buffs, offers, settlement, and queue state', () => {
+  const globals = { SessionLevelBuffState: { heroes: { fara: { activeStageByEffectId: { qa_atk_focus: 1 } } } }, SessionLevelUpOffersByQueueIndex: { 0: {} }, SessionLevelUpSettlement: { rows: [{}] } };
+  resetCombatSessionConditions(globals, {});
+  assert.deepEqual(globals.SessionLevelBuffState, { heroes: {} });
+  assert.deepEqual(globals.SessionLevelUpOffersByQueueIndex, {});
+  assert.equal(globals.SessionLevelUpSettlement, null);
+  assert.equal(globals.SessionLevelUpQueue.status, 'complete');
 });

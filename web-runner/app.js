@@ -2722,6 +2722,11 @@ async function main(){
     });
     updateSessionLevelUpSettlement(state.globals, Number(state.globals.time || 0));
     const levelUpFanState = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
+    const dancingHeroUID = Number(levelUpFanState.queue?.heroUID || 0);
+    if (dancingHeroUID > 0) {
+      const offsets = state.globals.HeroLungeOffsetByUID || (state.globals.HeroLungeOffsetByUID = {});
+      offsets[dancingHeroUID] = Math.sin(Number(state.globals.time || 0) * 14) * 3;
+    } else if (state.globals.HeroLungeOffsetByUID) Object.keys(state.globals.HeroLungeOffsetByUID).forEach(uid => { if (!state.globals.HeroAction?.active) delete state.globals.HeroLungeOffsetByUID[uid]; });
     const activeFanState = levelUpFanState.open ? levelUpFanState : fanState;
     const fanHero = state.entities.find(actor => Number(actor?.uid || 0) === Number(activeFanState.heroUID || 0));
     const fanHeroBaseName = String(fanHero?.baseHeroName || fanHero?.name || '');

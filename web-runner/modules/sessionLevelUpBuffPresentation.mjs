@@ -3,17 +3,19 @@ import { heroDefinition } from '../src/core/heroDefinitions.mjs';
 import { acknowledgeSessionLevelUpEntry, currentSessionLevelUpEntry } from '../src/core/sessionLevelUpQueue.mjs';
 
 export const QA_LEVEL_UP_BUFF_CARDS = Object.freeze([
-  { cardId: 'qa_atk_focus_1', tier: 1, kind: 'stat', effectId: 'qa_atk_focus', stage: 1, name: 'ATK Focus', rarity: 'Common', effect: 'ATK +10%', formula: { surface: 'stat_percent', stat: 'atk', percent: 0.10 } },
+  { id: 'qa_atk_focus_1', cardId: 'qa_atk_focus_1', tier: 1, kind: 'stat', effectId: 'qa_atk_focus', stage: 1, name: 'ATK Focus', rarity: 'Common', effect: 'ATK +10%', formula: { surface: 'stat_percent', stat: 'atk', percent: 0.10 } },
+  { id: 'qa_atk_focus_2', cardId: 'qa_atk_focus_2', tier: 2, kind: 'stat', effectId: 'qa_atk_focus', stage: 2, requiresStage: 1, replacesStage: 1, name: 'ATK Focus II', rarity: 'Uncommon', effect: 'ATK +20%', formula: { surface: 'stat_percent', stat: 'atk', percent: 0.20 } },
   { cardId: 'qa_max_vitality_1', tier: 1, kind: 'stat', effectId: 'qa_max_vitality', stage: 1, name: 'Max Vitality', rarity: 'Common', effect: 'Max HP +20%', formula: { surface: 'stat_percent', stat: 'max_hp', percent: 0.20 } },
   { cardId: 'qa_opening_shield_1', tier: 1, kind: 'behavior', effectId: 'qa_opening_shield', stage: 1, name: 'Crimson Ward', rarity: 'Common', effect: 'Start battle with a 25% Max HP shield', formula: { surface: 'shield_percent_max_hp', percent: 0.25 } },
-  { cardId: 'qa_pulse_1', tier: 1, kind: 'behavior', effectId: 'qa_pulse', stage: 1, name: 'Spectral Orb', rarity: 'Common', effect: 'Every 2 basics: 6 magic damage', formula: { surface: 'cadence_magic_damage', everyCompletedBasics: 2, amount: 6 } },
+  { id: 'qa_pulse_1', cardId: 'qa_pulse_1', tier: 1, kind: 'behavior', effectId: 'qa_pulse', stage: 1, name: 'Spectral Orb', rarity: 'Common', effect: 'Every 2 basics: 6 magic damage', formula: { surface: 'cadence_magic_damage', everyCompletedBasics: 2, amount: 6 } },
+  { id: 'qa_pulse_2', cardId: 'qa_pulse_2', tier: 2, kind: 'behavior', effectId: 'qa_pulse', stage: 2, requiresStage: 1, replacesStage: 1, name: 'Spectral Orb II', rarity: 'Uncommon', effect: 'Every basic: 10 magic damage', formula: { surface: 'cadence_magic_damage', everyCompletedBasics: 1, amount: 10 } },
   { cardId: 'qa_heal_on_basic_1', tier: 1, kind: 'behavior', effectId: 'qa_heal_on_basic', stage: 1, name: 'Inner Flow', rarity: 'Common', effect: '15%: heal 5% Max HP', formula: { surface: 'heal_percent_max_hp', chance: 0.15, percent: 0.05 } },
-  { cardId: 'qa_status_on_basic_1', tier: 1, kind: 'behavior', effectId: 'qa_status_on_basic', stage: 1, name: 'Saffron Mark', rarity: 'Common', effect: '20%: mark for 2 turns', formula: { surface: 'status_on_basic', chance: 0.20, statusId: 'qa_venom', durationTurns: 2, damagePerTurn: 3 } },
+  { cardId: 'qa_status_on_basic_1', tier: 1, kind: 'behavior', effectId: 'qa_status_on_basic', stage: 1, name: 'Saffron Mark', rarity: 'Common', effect: '20%: Venom 3 damage for 2 turns', formula: { surface: 'status_on_basic', chance: 0.20, statusId: 'dot', durationTurns: 2, damagePerTurn: 3 } },
   { cardId: 'qa_bounce_1', tier: 1, kind: 'behavior', effectId: 'qa_bounce', stage: 1, name: 'Mirage Chain', rarity: 'Common', effect: '25%: bounce for 50% damage', formula: { surface: 'bounce_percent_damage', chance: 0.25, damagePercent: 0.50 } },
   { cardId: 'qa_counter_1', tier: 1, kind: 'behavior', effectId: 'qa_counter', stage: 1, name: 'Glass Reprisal', rarity: 'Common', effect: '20%: counter 40% ATK, heal 3%', formula: { surface: 'counter_percent_atk', chance: 0.20, damagePercent: 0.40, healPercentMaxHp: 0.03, maxPerDamagePackage: 1 } },
   { cardId: 'qa_speed_1', tier: 1, kind: 'stat', effectId: 'qa_speed', stage: 1, name: 'Swift Current', rarity: 'Common', effect: 'SPD +10%', formula: { surface: 'stat_percent', stat: 'spd', percent: 0.10 } },
   { cardId: 'qa_power_bargain_1', tier: 1, kind: 'bargain', effectId: 'qa_power_bargain', stage: 1, name: 'Sun Debt', rarity: 'Common', effect: 'ATK +15%, Max HP -10%', formula: { surface: 'bargain_percent', benefitStat: 'atk', benefitPercent: 0.15, penaltyStat: 'max_hp', penaltyPercent: -0.10 } },
-]);
+].map(card => Object.freeze({ ...card, id: card.cardId })));
 
 export const LOW_HP_WARNING_RATIO = 0.25;
 const EXP_FILL_SECONDS = 0.48;

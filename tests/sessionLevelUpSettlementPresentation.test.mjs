@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { beginSessionLevelUpSettlement, chooseSessionLevelUpBuff, getSessionLevelUpBuffPresentation, LOW_HP_WARNING_RATIO, QA_LEVEL_UP_BUFF_CARDS, settlementRowVisual, updateSessionLevelUpSettlement } from '../web-runner/modules/sessionLevelUpBuffPresentation.mjs';
+import { applyLevelUpBuffCard, getEligibleLevelUpBuffCards } from '../src/core/sessionLevelBuffOffers.mjs';
 
 const heroes = [
   { uid: 1, heroInstanceKey: 'fara-1', heroDisplaySlot: 0, name: 'Falie', sp: 8, spMax: 10 },
@@ -43,6 +44,7 @@ test('the queued hero alone receives one same-tier three-card QA offer and selec
   assert.equal(offer.open, true);
   assert.equal(offer.heroUID, 1);
   assert.equal(offer.cards.length, 3);
+  assert.ok(offer.cards.every(card => card.id === card.cardId));
   assert.deepEqual(new Set(offer.cards.map(card => card.tier)), new Set([1]));
   assert.ok(offer.cards.every(card => QA_LEVEL_UP_BUFF_CARDS.some(known => known.cardId === card.cardId)));
   const applied = chooseSessionLevelUpBuff(globals, heroes, offer.cards[0].cardId, 1);
@@ -50,4 +52,17 @@ test('the queued hero alone receives one same-tier three-card QA offer and selec
   assert.equal(globals.SessionLevelUpQueue.currentIndex, 1);
   assert.ok(globals.SessionLevelBuffState.heroes['fara-1']);
   assert.equal(globals.SessionLevelBuffState.heroes['hondo-2'], undefined);
+});
+
+test('displayed canonical card ids select their own record and QA T2 grants replace the prior stage', () => {
+  const state = { heroes: {} };
+  const first = applyLevelUpBuffCard({ state, heroId: 'fara-1', cardId: 'qa_atk_focus_1', cards: QA_LEVEL_UP_BUFF_CARDS });
+  assert.equal(first.status, 'applied');
+  const eligible = getEligibleLevelUpBuffCards({ state: first.state, heroId: 'fara-1', cards: QA_LEVEL_UP_BUFF_CARDS, tier: 2 });
+  assert.deepEqual(eligible.filter(card => card.effectId === 'qa_atk_focus').map(card => card.id), ['qa_atk_focus_2']);
+  const upgraded = applyLevelUpBuffCard({ state: first.state, heroId: 'fara-1', cardId: eligible[0].id, cards: QA_LEVEL_UP_BUFF_CARDS });
+  assert.equal(upgraded.replacedStage, 1);
+  assert.equal(upgraded.state.heroes['fara-1'].activeStageByEffectId.qa_atk_focus, 2);
+  const orbFirst = applyLevelUpBuffCard({ state: upgraded.state, heroId: 'fara-1', cardId: 'qa_pulse_1', cards: QA_LEVEL_UP_BUFF_CARDS });
+  assert.equal(applyLevelUpBuffCard({ state: orbFirst.state, heroId: 'fara-1', cardId: 'qa_pulse_2', cards: QA_LEVEL_UP_BUFF_CARDS }).status, 'applied');
 });
