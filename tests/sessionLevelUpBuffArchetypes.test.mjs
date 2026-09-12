@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applySessionLevelBuffsAtBattleStart, resolveSessionLevelBasicEffects, resolveSessionLevelCounter, rulesContext } from '../web-runner/modules/heroCommands.mjs';
+import { applySessionLevelBuffsAtBattleStart, resolveNativeCommandStep, resolveSessionLevelBasicEffects, resolveSessionLevelCounter, rulesContext } from '../web-runner/modules/heroCommands.mjs';
+import { heroDefinition } from '../web-runner/src/core/heroDefinitions.mjs';
 import { turnStart } from '../web-runner/src/core/combatRules.mjs';
 
 const hero = { uid: 1, kind: 'hero', heroInstanceKey: 'hondo-1', baseHeroName: 'Huun', name: 'Huun', hp: 80, maxHP: 100, stats: { ATK: 20, MAG: 10, SPD: 10 }, sp: 100, spMax: 100, currentLevel: 1, statuses: [] };
@@ -51,11 +52,40 @@ test('Spectral Orb, status, heal, and chain each produce an owner-scoped materia
   assert.equal(ctx.state.globals.ArcanePulseVisuals[0].targetUID, target.uid);
   assert.equal(ctx.state.globals.ArcanePulseVisuals[0].shape, 'crescent_arc_blast');
   assert.equal(ctx.state.globals.SessionLevelBuffState.heroes['hondo-1'].triggerCountersByEffectId.qa_pulse, 2, 'Pulse records both completed owner basics');
+  assert.equal(ctx.state.globals.SessionLevelBuffState.heroes['hondo-1'].triggerCountersByEffectId.qa_status_on_basic, 2, 'Venom records each completed owner basic');
   assert.equal(ctx.state.globals.ChainStrikeVisuals.at(-1).targetUID, 10);
   assert.equal(ctx.state.globals.ChainStrikeVisuals.at(-1).sourceTargetUID, target.uid);
   const beforeVenomTick = target.hp;
   turnStart(rules, target, 1);
   assert.equal(target.hp, beforeVenomTick - 3, 'qa_venom maps to the standardized DOT state and deals its exact payload');
+});
+
+test('a completed selected-owner native basic applies Venom once and ignores other actors and added hits', () => {
+  const { ctx, actor, target, rules } = context(['qa_status_on_basic'], () => 0);
+  const basic = heroDefinition(actor).basic;
+  const resolveAction = source => {
+    const sequence = { actorUID: source.uid, actions: [{ skill: basic, targetIds: [target.uid], spCost: 0 }], index: 0, sessionId: 1 };
+    ctx.state.globals.NativeCommandSequence = sequence;
+    return resolveNativeCommandStep(ctx, { sequence });
+  };
+  assert.equal(resolveAction(actor), true);
+  assert.equal(ctx.state.globals.SessionLevelBuffState.heroes['hondo-1'].triggerCountersByEffectId.qa_status_on_basic, 1);
+  assert.equal(target.statuses.filter(status => status.statusEffect === 'dot' && status.snapshotPotency === 3).length, 1);
+
+  const otherHero = { ...structuredClone(actor), uid: 2, heroInstanceKey: 'other-hero', hp: 80 };
+  const enemyActor = { ...structuredClone(target), uid: 3, kind: 'enemy', hp: 100 };
+  ctx.state.entities.push(otherHero, enemyActor);
+  assert.equal(resolveAction(otherHero), true);
+  assert.equal(resolveAction(enemyActor), true);
+  const addedHit = { actorUID: actor.uid, actions: [{ skill: { ...basic, skillId: 'session_spectral_orb' }, targetIds: [target.uid], spCost: 0 }], index: 0, sessionId: 1 };
+  ctx.state.globals.NativeCommandSequence = addedHit;
+  assert.equal(resolveNativeCommandStep(ctx, { sequence: addedHit }), true);
+  assert.equal(ctx.state.globals.SessionLevelBuffState.heroes['hondo-1'].triggerCountersByEffectId.qa_status_on_basic, 1);
+  assert.equal(target.statuses.filter(status => status.statusEffect === 'dot' && status.snapshotPotency === 3).length, 1);
+  const beforeDotTick = target.hp;
+  turnStart(rules, target, 2);
+  assert.equal(target.hp, beforeDotTick - 3, 'the standardized Venom DOT remains owned by the target enemy turn');
+  assert.equal(ctx.state.globals.SessionLevelBuffState.heroes['hondo-1'].triggerCountersByEffectId.qa_status_on_basic, 1);
 });
 
 test('Orb cadence reaches its third distinct owner basic before emitting its visual', () => {
