@@ -75,6 +75,12 @@ export function registerDevBrowserTestHooks({
       state.globals.SessionLevelUpPreferredCardId = String(cardSelect.value || '');
       state.globals.RuntimeRandom = () => 0;
     };
+    const seedProductionEncounter = () => {
+      // combatSessionInitializer consumes this normal encounter input and installs
+      // its own seeded production RuntimeRandom for the next battle.
+      state.globals.EncounterSeed = 7969171;
+      state.globals.EncounterSeedExplicit = 1;
+    };
     const beginRewardSettlement = ({ overflow = false, multiHero = false } = {}) => {
       const selected = qaHero(); if (!selected) return;
       setTierAndCard();
@@ -121,9 +127,19 @@ export function registerDevBrowserTestHooks({
         if (typeof drawFrame === 'function') drawFrame();
       }],
       ['QA native basic', () => callFunctionWithContext(fnContext, 'ProcessTurn')],
+      ['QA advance turn', () => { callFunctionWithContext(fnContext, 'AdvanceTurn'); callFunctionWithContext(fnContext, 'ProcessTurn'); }],
+      ['QA incoming hit', () => {
+        const hero = qaHero();
+        const enemy = state.entities.find(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
+        if (hero && enemy) callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', hero.uid);
+      }],
       ['QA next battle', async () => {
-        const continued = await layoutState.requestLayoutChange('combat', 'quest-qa-next-battle', { freshStart: true });
-        if (!continued || state.globals.NativeBattleEnded) throw new Error('QA continuation did not start a playable next battle');
+        seedProductionEncounter();
+        storyEntry.victory();
+        const cardIndex = gameState.storyEntry.cards.findIndex((card, index) => card.combat && index < gameState.storyEntry.progress.revealed);
+        if (!storyEntry.startCard(cardIndex) || !storyEntry.requestSkip() || !storyEntry.confirmSkip()) throw new Error('QA continuation could not enter the production StoryEntry combat transition');
+        for (let attempt = 0; attempt < 20 && gameState.storyEntry.pending; attempt += 1) await new Promise(resolve => window.setTimeout(resolve, 0));
+        if (gameState.storyEntry.phase !== 'combat' || gameState.storyEntry.pending || state.globals.NativeBattleEnded) throw new Error('QA continuation did not start a playable next battle');
         if (typeof drawFrame === 'function') drawFrame();
       }],
       ['QA fresh session', () => { resetCombatSessionConditions(state.globals, {}); if (typeof drawFrame === 'function') drawFrame(); }],
@@ -131,7 +147,7 @@ export function registerDevBrowserTestHooks({
         const navigated = await storyEntry.navigate('Quests');
         const quit = navigated && storyEntry.quitPausedCombat();
         if (!navigated || !quit) throw new Error('QA abandon requires the production Quests pause and Quit Battle flow');
-        if (Object.keys(state.globals.SessionLevelBuffState?.heroes || {}).length || state.globals.SessionLevelUpSettlement || state.globals.SessionLevelUpQueue?.status === 'active') throw new Error('QA abandon did not clear owned session level buffs');
+        if (Object.keys(state.globals.SessionLevelBuffState?.heroes || {}).length || state.globals.SessionLevelUpSettlement || state.globals.SessionLevelUpQueue?.status === 'active' || state.globals.SessionLevelBuffCombatSessionId != null) throw new Error('QA abandon did not clear owned session level buffs');
         if (typeof drawFrame === 'function') drawFrame();
       }],
     ]) {

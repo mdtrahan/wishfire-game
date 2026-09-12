@@ -161,3 +161,15 @@ test('initializer preserves only victory-owned buffs and the paused Quests quit 
   assert.match(app, /quest-navigation-quit', \{ clearSessionLevelBuffs: true \}/);
   assert.match(hooks, /navigate\('Quests'\)[\s\S]*quitPausedCombat\(\)/);
 });
+
+test('QA continuation enters Battle B through StoryEntry and effect controls invoke native production seams', () => {
+  const hooks = read('web-runner/systems/devBrowserTestHooks.js');
+  const nextBattle = hooks.slice(hooks.indexOf("['QA next battle'"), hooks.indexOf("['QA fresh session'"));
+  const effects = hooks.slice(hooks.indexOf("['QA native basic'"), hooks.indexOf("['QA next battle'"));
+  assert.match(hooks, /EncounterSeed = 7969171/);
+  assert.match(nextBattle, /storyEntry\.victory\(\)[\s\S]*storyEntry\.startCard\(cardIndex\)[\s\S]*storyEntry\.confirmSkip\(\)[\s\S]*storyEntry\.phase !== 'combat'/);
+  assert.doesNotMatch(nextBattle, /layoutState\.requestLayoutChange/);
+  assert.match(effects, /callFunctionWithContext\(fnContext, 'ProcessTurn'\)/);
+  assert.match(effects, /callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
+  assert.match(effects, /callFunctionWithContext\(fnContext, 'ExecuteEnemyJobSkill', enemy\.uid, 'Enemy_ATK_Single', hero\.uid\)/);
+});
