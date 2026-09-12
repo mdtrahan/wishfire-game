@@ -462,12 +462,20 @@ export function registerDevBrowserTestHooks({
       ['QA run fixture', async () => {
         const fixture = resolveQaLevelUpFixtureKey(fixtureSelect.value);
         const owner = qaHero();
+        const fixtureReleaseCountBefore = Number(state.globals.QaFixtureHoldReleaseCount || 0);
+        let firstOwnerBasicEvidence = null;
+        let fixtureTarget = null;
+        let venomApplied = false;
+        let venomTurnEvidence = null;
+        let fixtureResult = null;
+        delete state.globals.QaFixtureResult;
         try {
         const livingEnemies = () => state.entities.filter(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
         const statusMagnitude = (actor, effect) => Number(actor?.statuses?.find(status => status.statusEffect === effect)?.magnitude || 0);
         const battleBaseline = state.globals.QaFixtureBattleBaseline;
         const targetForAttempt = () => livingEnemies().slice().sort((left, right) => Number(right.hp || 0) - Number(left.hp || 0))[0] || null;
         const target = targetForAttempt();
+        fixtureTarget = target;
         // Heal and counter need room to produce a real current-run recovery delta.
         // This mirrors the low-HP QA control: it arranges input state, then the
         // production turn or incoming-hit seam owns every result.
@@ -525,8 +533,6 @@ export function registerDevBrowserTestHooks({
         const fixtureCard = QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === resolveQaFixtureOfferCardId(fixture, { selectedCardId: cardSelect.value, cards: QA_LEVEL_UP_BUFF_CARDS }));
         const orbCadence = Number(fixtureCard?.formula?.everyCompletedBasics || 3);
         const orbAmount = Number(fixtureCard?.formula?.amount || 4);
-        let venomApplied = false;
-        let venomTurnEvidence = null;
         const scenarios = {
           ward: { attempts: 1, observed: () => battleBaseline.ownerBarrier === 0 && statusMagnitude(owner, 'barrier') === .25 && Object.keys(state.globals.PartyWardBarrierVisualsByUID || {}).length > battleBaseline.wardVisualCount && !!state.globals.PartyWardBarrierVisualsByUID?.[owner?.uid] },
           stat: { attempts: 1, observed: () => battleBaseline.ownerAtkUp === 0 && statusMagnitude(owner, 'atkUp') === .10 },
@@ -661,6 +667,7 @@ export function registerDevBrowserTestHooks({
           captureFreshVisuals();
           const counterAfter = Number(state.globals.SessionLevelBuffState?.heroes?.[String(owner.heroInstanceKey ?? owner.uid)]?.triggerCountersByEffectId?.[fixtureCard.effectId] || 0);
           if (counterAfter !== counterBefore + 1) throw new Error(`QA fixture ${fixture} owner basic did not advance its trigger counter: ${JSON.stringify({ attempt, counterBefore, counterAfter, ...fixtureActionObserved() })}`);
+          if (!firstOwnerBasicEvidence) firstOwnerBasicEvidence = { counterBefore, counterAfter };
           captureFreshVisuals();
         };
         // The held current battle has not received its first production turn.
@@ -692,11 +699,50 @@ export function registerDevBrowserTestHooks({
           captureFreshVisuals();
           if (!idleAfter.ok) throw new Error(`QA fixture ${fixture} action did not complete: ${JSON.stringify(idleAfter.observed)}`);
         }
-        if (!scenario.observed()) throw new Error(`QA fixture ${fixture} did not produce its required observable production result: ${JSON.stringify({ ownerUID: owner.uid, venomTurnEvidence, enemies: livingEnemies().map(enemy => ({ uid: enemy.uid, hp: enemy.hp, statuses: enemy.statuses?.map(status => status.statusEffect) || [] })), pulses: state.globals.ArcanePulseVisuals?.length || 0, chains: state.globals.ChainStrikeVisuals?.length || 0 })}`);
+        const success = scenario.observed();
+        fixtureResult = {
+          fixture,
+          success,
+          ownerUID: Number(owner.uid || 0),
+          targetUID: Number(venomTurnEvidence?.targetUID || fixtureTarget?.uid || 0),
+          counterBeforeFirstOwnerBasic: firstOwnerBasicEvidence?.counterBefore ?? null,
+          counterAfterFirstOwnerBasic: firstOwnerBasicEvidence?.counterAfter ?? null,
+          markerVisibleWhileActive: venomTurnEvidence?.markerVisibleBefore ?? null,
+          targetHPBeforeNextTurn: venomTurnEvidence?.before ?? null,
+          targetHPAfterNextTurn: venomTurnEvidence?.after ?? null,
+          targetTurnTickDelta: venomTurnEvidence?.damage ?? null,
+          statusMarkerAbsentAfterExpiry: venomTurnEvidence?.markerAbsentAfterExpiry ?? null,
+          schedulerReleaseCount: fixtureReleaseCountBefore,
+        };
+        state.globals.QaFixtureResult = fixtureResult;
+        if (!success) throw new Error(`QA fixture ${fixture} did not produce its required observable production result: ${JSON.stringify({ ...fixtureResult, venomApplied, enemies: livingEnemies().map(enemy => ({ uid: enemy.uid, hp: enemy.hp, statuses: enemy.statuses?.map(status => status.statusEffect) || [] })), pulses: state.globals.ArcanePulseVisuals?.length || 0, chains: state.globals.ChainStrikeVisuals?.length || 0 })}`);
         if (typeof drawFrame === 'function') drawFrame();
+        } catch (error) {
+          fixtureResult ||= {
+            fixture,
+            success: false,
+            ownerUID: Number(owner?.uid || 0),
+            targetUID: Number(venomTurnEvidence?.targetUID || fixtureTarget?.uid || 0),
+            counterBeforeFirstOwnerBasic: firstOwnerBasicEvidence?.counterBefore ?? null,
+            counterAfterFirstOwnerBasic: firstOwnerBasicEvidence?.counterAfter ?? null,
+            markerVisibleWhileActive: venomTurnEvidence?.markerVisibleBefore ?? null,
+            targetHPBeforeNextTurn: venomTurnEvidence?.before ?? null,
+            targetHPAfterNextTurn: venomTurnEvidence?.after ?? null,
+            targetTurnTickDelta: venomTurnEvidence?.damage ?? null,
+            statusMarkerAbsentAfterExpiry: venomTurnEvidence?.markerAbsentAfterExpiry ?? null,
+            schedulerReleaseCount: fixtureReleaseCountBefore,
+          };
+          fixtureResult.success = false;
+          fixtureResult.error = String(error?.message || error);
+          state.globals.QaFixtureResult = fixtureResult;
+          throw error;
         } finally {
           delete state.globals.QaFixtureExplicitAction;
-          delete state.globals.QaFixtureHoldTurn;
+          if (state.globals.QaFixtureHoldTurn) {
+            state.globals.QaFixtureHoldReleaseCount = fixtureReleaseCountBefore + 1;
+            state.globals.QaFixtureResult = { ...(state.globals.QaFixtureResult || fixtureResult || {}), schedulerReleaseCount: state.globals.QaFixtureHoldReleaseCount };
+            delete state.globals.QaFixtureHoldTurn;
+          }
         }
       }],
       ['QA next battle', async () => {

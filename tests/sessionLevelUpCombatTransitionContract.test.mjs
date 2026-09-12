@@ -496,6 +496,12 @@ test('QA fixture scenarios use bounded production actions and require each obser
   assert.match(fixtureRun, /turnStart\(rulesContext\(fnContext\), target, firstSerial\)/);
   assert.match(fixtureRun, /venomTurnEvidence\?\.damage === 3/);
   assert.match(fixtureRun, /markerVisibleBefore[\s\S]*markerAbsentAfterExpiry/);
+  assert.match(fixtureRun, /delete state\.globals\.QaFixtureResult/);
+  assert.match(fixtureRun, /state\.globals\.QaFixtureResult = fixtureResult/);
+  assert.match(fixtureRun, /counterBeforeFirstOwnerBasic: firstOwnerBasicEvidence\?\.counterBefore/);
+  assert.match(fixtureRun, /targetTurnTickDelta: venomTurnEvidence\?\.damage/);
+  assert.match(fixtureRun, /statusMarkerAbsentAfterExpiry: venomTurnEvidence\?\.markerAbsentAfterExpiry/);
+  assert.match(fixtureRun, /QaFixtureHoldReleaseCount = fixtureReleaseCountBefore \+ 1/);
   assert.match(fixtureRun, /for \(let attempt = 0; attempt < scenario\.attempts/);
   assert.match(fixtureRun, /did not produce its required observable production result/);
   assert.doesNotMatch(fixtureRun, /seedProductionEncounter\(\)/);
