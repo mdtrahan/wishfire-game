@@ -703,9 +703,9 @@ export function registerDevBrowserTestHooks({
             const countersBefore = sessionTriggerCounters();
             const primary = targetForAttempt();
             const secondary = fixture === 'bounce' ? livingEnemies().find(enemy => Number(enemy.uid) !== Number(primary?.uid)) : null;
-            const secondaryHPBefore = Number(secondary?.hp || 0), ownerHPBefore = Number(owner?.hp || 0);
+            const primaryHPBefore = Number(primary?.hp || 0), secondaryHPBefore = Number(secondary?.hp || 0), ownerHPBefore = Number(owner?.hp || 0);
             await runOwnerBasicAttempt(attempt);
-            const ownerHPAfter = Number(owner?.hp || 0), countersAfter = sessionTriggerCounters();
+            const primaryHPAfter = Number(primary?.hp || 0), ownerHPAfter = Number(owner?.hp || 0), countersAfter = sessionTriggerCounters();
             if (fixture === 'heal') {
               const expectedHeal = Math.min(Number(owner.maxHP || 0), ownerHPBefore + Math.floor(Number(owner.maxHP || 0) * .05)) - ownerHPBefore;
               const bloomObserved = newDamageTexts().some(text => text.kind === 'heal' && Number(text.targetUID) === Number(owner.uid) && Number(text.amount) === expectedHeal);
@@ -714,10 +714,11 @@ export function registerDevBrowserTestHooks({
               healEvidence = { hpBefore: ownerHPBefore, hpAfter: ownerHPAfter, expectedHeal, actualHeal: ownerHPAfter - ownerHPBefore, atMaxHpCap: ownerHPAfter <= Number(owner.maxHP || 0), bloomObserved, ineligibleTriggerNoHeal: Number(owner.hp || 0) === noHealBefore };
             }
             if (fixture === 'bounce') {
-              const expectedSecondaryDamage = Math.floor(Number(callFunctionWithContext(fnContext, 'CalculateDamage', owner.uid, secondary?.uid, 'melee') || 0) * .50);
+              const resolvedPrimaryDamage = primaryHPBefore - primaryHPAfter;
+              const expectedSecondaryDamage = Math.floor(resolvedPrimaryDamage * .50);
               const chain = newChains().find(visual => Number(visual.sourceTargetUID) === Number(primary?.uid) && Number(visual.targetUID) === Number(secondary?.uid));
               const onlyBounceCounterAdvanced = Object.entries(countersAfter).every(([effectId, value]) => Number(value) === Number(countersBefore[effectId] || 0) + (effectId === fixtureCard.effectId ? 1 : 0));
-              bounceEvidence = { primaryUID: Number(primary?.uid || 0), secondaryUID: Number(secondary?.uid || 0), distinctTargets: Number(primary?.uid || 0) !== Number(secondary?.uid || 0), expectedSecondaryDamage, actualSecondaryDamage: secondaryHPBefore - Number(secondary?.hp || 0), chainStrikeObserved: !!chain, countersBefore, countersAfter, addedHitTriggeredNoSessionEffects: onlyBounceCounterAdvanced };
+              bounceEvidence = { primaryUID: Number(primary?.uid || 0), secondaryUID: Number(secondary?.uid || 0), distinctTargets: Number(primary?.uid || 0) !== Number(secondary?.uid || 0), primaryHPBefore, primaryHPAfter, resolvedPrimaryDamage, expectedSecondaryDamage, actualSecondaryDamage: secondaryHPBefore - Number(secondary?.hp || 0), chainStrikeObserved: !!chain, countersBefore, countersAfter, addedHitTriggeredNoSessionEffects: onlyBounceCounterAdvanced };
             }
             if (fixture === 'venom') {
               const venomTarget = livingEnemies().find(enemy => enemy.statuses?.some(status => status.statusEffect === 'dot' && Number(status.snapshotPotency || 0) === 3));

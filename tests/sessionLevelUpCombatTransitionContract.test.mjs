@@ -490,7 +490,9 @@ test('QA fixture scenarios use bounded production actions and require each obser
   assert.match(fixtureRun, /ownerHPDelta: ownerHPAfter - ownerHPBefore/);
   assert.match(fixtureRun, /Number\(visual\.amount\) === 6/);
   assert.match(fixtureRun, /Number\(visual\.amount\) === orbAmount/);
-  assert.match(fixtureRun, /expectedSecondaryDamage = Math\.floor\(Number\(callFunctionWithContext\(fnContext, 'CalculateDamage', owner\.uid, secondary\?\.uid, 'melee'\) \|\| 0\) \* \.50\)/);
+  assert.match(fixtureRun, /const resolvedPrimaryDamage = primaryHPBefore - primaryHPAfter/);
+  assert.match(fixtureRun, /const expectedSecondaryDamage = Math\.floor\(resolvedPrimaryDamage \* \.50\)/);
+  assert.match(fixtureRun, /primaryHPBefore, primaryHPAfter, resolvedPrimaryDamage/);
   assert.match(fixtureRun, /snapshotPotency === 3/);
   assert.match(fixtureRun, /const resolveQaVenomDotTurns = target => \{/);
   assert.match(fixtureRun, /turnStart\(rulesContext\(fnContext\), target, firstSerial\)/);
