@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applySessionLevelBuffsAtBattleStart, resolveNativeCommandStep, resolveSessionLevelBasicEffects, resolveSessionLevelCounter, rulesContext } from '../web-runner/modules/heroCommands.mjs';
+import { applySessionLevelBuffsAtBattleStart, resolveIncomingNativeHit, resolveNativeCommandStep, resolveSessionLevelBasicEffects, resolveSessionLevelCounter, rulesContext } from '../web-runner/modules/heroCommands.mjs';
 import { heroDefinition } from '../web-runner/src/core/heroDefinitions.mjs';
 import { turnEnd, turnStart } from '../web-runner/src/core/combatRules.mjs';
 
@@ -9,10 +9,11 @@ const enemy = { uid: 9, kind: 'enemy', hp: 200, maxHP: 200, stats: { ATK: 10, MA
 const effectState = effectIds => ({ heroes: { 'hondo-1': { activeStageByEffectId: Object.fromEntries(effectIds.map(id => [id, 1])), triggerCountersByEffectId: {}, completedEffectIds: [] } } });
 function context(effectIds, random = () => 0) {
   const actor = structuredClone(hero), target = structuredClone(enemy);
-  const globals = { CombatSessionId: 1, SessionLevelBuffState: effectState(effectIds), RuntimeRandom: random, time: 1 };
+  const globals = { CombatSessionId: 1, SessionLevelBuffState: effectState(effectIds), RuntimeRandom: random, time: 1, TurnSerial: 7, DamageTexts: [] };
   const ctx = { state: { globals, entities: [actor, target] }, callFunction(name, ...args) {
     if (name === 'CalculateDamage') return 20;
-    if (name === 'ApplyDamageToTarget') { const victim = ctx.state.entities.find(item => item.uid === args[0]); const amount = Number(args[1] || 0); victim.hp = Math.max(0, victim.hp - amount); return amount; }
+    if (name === 'ApplyDamageToTarget') { const victim = ctx.state.entities.find(item => item.uid === args[0]); const amount = Number(args[1] || 0); victim.hp = Math.max(0, victim.hp - amount); globals.DamageTexts.push({ amount, kind: 'damage', targetUID: Number(args[0]) }); return amount; }
+    if (name === 'SpawnDamageText') { globals.DamageTexts.push({ amount: Number(args[0] || 0), kind: args[3] }); return 1; }
     return 0;
   } };
   return { ctx, actor, target, rules: rulesContext(ctx) };
@@ -151,4 +152,21 @@ test('Glass Reprisal counterattacks and heals only after its owner takes damage'
   assert.equal(resolved, true);
   assert.ok(target.hp < 200);
   assert.ok(actor.hp > 40);
+});
+
+test('Glass Reprisal retains incoming, resolved counter, and capped-heal evidence without recursion', () => {
+  const { ctx, actor, target } = context(['qa_counter'], () => 0);
+  actor.hp = 50;
+  const ownerBeforeIncomingHit = actor.hp;
+  const attackerBefore = target.hp;
+  assert.equal(resolveIncomingNativeHit(ctx, target, actor, 10), true);
+  const incoming = ctx.state.globals.DamageTexts.find(text => text.kind === 'damage' && text.targetUID === actor.uid);
+  const counter = ctx.state.globals.DamageTexts.find(text => text.kind === 'damage' && text.targetUID === target.uid);
+  const heal = ctx.state.globals.DamageTexts.find(text => text.kind === 'heal' && text.targetUID === actor.uid);
+  const ownerAfterIncomingDamage = ownerBeforeIncomingHit - incoming.amount;
+  assert.equal(counter.amount, attackerBefore - target.hp, 'the emitted counter damage matches the mitigated attacker HP delta');
+  assert.equal(heal.amount, Math.min(actor.maxHP, ownerAfterIncomingDamage + Math.floor(actor.maxHP * .03)) - ownerAfterIncomingDamage);
+  assert.equal(actor.hp - ownerAfterIncomingDamage, heal.amount);
+  assert.equal(ctx.state.globals.TurnSerial, 7, 'the counter did not consume a normal turn');
+  assert.equal(ctx.state.globals.DamageTexts.filter(text => text.kind === 'damage' && text.targetUID === target.uid).length, 1, 'the intended counter is not recursion');
 });

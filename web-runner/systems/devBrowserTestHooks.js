@@ -548,7 +548,7 @@ export function registerDevBrowserTestHooks({
           venom: { attempts: 1, observed: () => venomApplied && venomTurnEvidence?.damage === 3 && venomTurnEvidence.markerVisibleBefore && venomTurnEvidence.markerVisibleAfterTick && venomTurnEvidence.markerAbsentAfterExpiry },
           heal: { attempts: 1, observed: () => healEvidence?.actualHeal === healEvidence?.expectedHeal && healEvidence?.atMaxHpCap && healEvidence?.bloomObserved && healEvidence?.ineligibleTriggerNoHeal },
           bounce: { attempts: 1, observed: () => bounceEvidence?.distinctTargets && bounceEvidence?.damagePercent === .50 && bounceEvidence?.actualSecondaryDamage === bounceEvidence?.resolvedSecondaryDamage && bounceEvidence?.chainStrikeObserved && bounceEvidence?.addedHitTriggeredNoSessionEffects },
-          counter: { attempts: 1, observed: () => counterEvidence?.actualCounterDamage === counterEvidence?.expectedCounterDamage && counterEvidence?.actualHeal === counterEvidence?.expectedHeal && counterEvidence?.counterPresentationObserved && counterEvidence?.turnSerialBefore === counterEvidence?.turnSerialAfter && counterEvidence?.recursionCount === 1 && counterEvidence?.otherHeroNoTrigger },
+          counter: { attempts: 1, observed: () => counterEvidence?.actualCounterDamage === counterEvidence?.resolvedCounterDamage && counterEvidence?.actualHeal === counterEvidence?.expectedHeal && counterEvidence?.counterPresentationObserved && counterEvidence?.turnSerialBefore === counterEvidence?.turnSerialAfter && counterEvidence?.counterCount === 1 && counterEvidence?.recursiveCounterCount === 0 && counterEvidence?.otherHeroNoTrigger },
         };
         const scenario = scenarios[fixture];
         const activeStages = state.globals.SessionLevelBuffState?.heroes?.[String(owner?.heroInstanceKey ?? owner?.uid ?? '')]?.activeStageByEffectId || {};
@@ -688,17 +688,20 @@ export function registerDevBrowserTestHooks({
             if (!enemy) throw new Error('QA fixture counter has no living enemy');
             installQaFixtureRuntimeRandom(QA_FIXTURE_RUNTIME_ENCOUNTER_SEED);
             const otherHero = state.entities.find(entity => entity.kind === 'hero' && Number(entity.uid) !== Number(owner.uid) && Number(entity.hp || 0) > 0);
-            const ownerHPBefore = Number(owner.hp || 0), enemyHPBefore = Number(enemy.hp || 0), turnSerialBefore = Number(state.globals.TurnSerial || 0);
-            const expectedCounterDamage = Math.floor(Number(callFunctionWithContext(fnContext, 'CalculateDamage', owner.uid, enemy.uid, 'melee') || 0) * .40);
-            const expectedHeal = Math.floor(Number(owner.maxHP || 0) * .03);
+            const ownerHPBefore = Number(owner.hp || 0), attackerHPBefore = Number(enemy.hp || 0), turnSerialBefore = Number(state.globals.TurnSerial || 0);
             await runQaFixtureProductionAction(enemy.uid, () => callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', owner.uid));
             captureFreshVisuals();
-            const ownerHPAfter = Number(owner.hp || 0), enemyHPAfter = Number(enemy.hp || 0);
-            const counterDamageTexts = newDamageTexts().filter(text => Number(text.targetUID) === Number(enemy.uid));
+            const ownerHPAfterCounterHeal = Number(owner.hp || 0), attackerHPAfter = Number(enemy.hp || 0);
+            const incomingDamageText = newDamageTexts().find(text => text.kind === 'damage' && Number(text.targetUID) === Number(owner.uid));
+            const counterDamageTexts = newDamageTexts().filter(text => text.kind === 'damage' && Number(text.targetUID) === Number(enemy.uid));
+            const counterDamageText = counterDamageTexts[0] || null;
+            const healText = newDamageTexts().find(text => text.kind === 'heal' && Number(text.targetUID) === Number(owner.uid));
+            const ownerHPAfterIncomingDamage = Math.max(0, ownerHPBefore - Number(incomingDamageText?.amount || 0));
+            const expectedHeal = Math.min(Number(owner.maxHP || 0), ownerHPAfterIncomingDamage + Math.floor(Number(owner.maxHP || 0) * .03)) - ownerHPAfterIncomingDamage;
             const ownerBeforeOther = Number(owner.hp || 0), enemyBeforeOther = Number(enemy.hp || 0);
             if (otherHero) await runQaFixtureProductionAction(enemy.uid, () => callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', otherHero.uid));
             captureFreshVisuals();
-            counterEvidence = { attackerUID: Number(enemy.uid), ownerHPDelta: ownerHPAfter - ownerHPBefore, enemyHPDelta: enemyHPBefore - enemyHPAfter, expectedCounterDamage, actualCounterDamage: enemyHPBefore - enemyHPAfter, expectedHeal, actualHeal: ownerHPAfter - ownerHPBefore, counterPresentationObserved: counterDamageTexts.length === 1 && newDamageTexts().some(text => text.kind === 'heal' && Number(text.targetUID) === Number(owner.uid) && Number(text.amount) === expectedHeal), turnSerialBefore, turnSerialAfter: Number(state.globals.TurnSerial || 0), recursionCount: counterDamageTexts.length, otherHeroNoTrigger: !!otherHero && Number(owner.hp || 0) === ownerBeforeOther && Number(enemy.hp || 0) === enemyBeforeOther };
+            counterEvidence = { attackerUID: Number(enemy.uid), ownerHPBeforeIncomingHit: ownerHPBefore, ownerHPAfterIncomingDamage, ownerHPAfterCounterHeal, ownerHPDelta: ownerHPAfterCounterHeal - ownerHPBefore, attackerHPBefore, attackerHPAfter, attackerHPDelta: attackerHPBefore - attackerHPAfter, resolvedCounterDamage: Number(counterDamageText?.amount || 0), actualCounterDamage: attackerHPBefore - attackerHPAfter, expectedHeal, actualHeal: ownerHPAfterCounterHeal - ownerHPAfterIncomingDamage, counterPresentationObserved: !!counterDamageText && Number(counterDamageText.amount || 0) === attackerHPBefore - attackerHPAfter && !!healText && Number(healText.amount || 0) === expectedHeal, turnSerialBefore, turnSerialAfter: Number(state.globals.TurnSerial || 0), counterCount: counterDamageTexts.length, recursiveCounterCount: Math.max(0, counterDamageTexts.length - 1), otherHeroNoTrigger: !!otherHero && Number(owner.hp || 0) === ownerBeforeOther && Number(enemy.hp || 0) === enemyBeforeOther };
           } else {
             const countersBefore = sessionTriggerCounters();
             const primary = targetForAttempt();

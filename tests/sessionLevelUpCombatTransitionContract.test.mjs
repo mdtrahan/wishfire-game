@@ -487,7 +487,7 @@ test('QA fixture scenarios use bounded production actions and require each obser
   assert.match(fixtureRun, /const idleBefore = await waitForFixtureIdle\(\{ allowDeferredAdvance: !!state\.globals\.QaFixtureHoldTurn \}\)/);
   assert.match(fixtureRun, /const idleAfter = await waitForFixtureIdle\(\{ allowDeferredAdvance: !!state\.globals\.QaFixtureHoldTurn \}\)/);
   assert.match(fixtureRun, /delete state\.globals\.SessionLevelBuffCombatSessionId/);
-  assert.match(fixtureRun, /ownerHPDelta: ownerHPAfter - ownerHPBefore/);
+  assert.match(fixtureRun, /ownerHPBeforeIncomingHit: ownerHPBefore, ownerHPAfterIncomingDamage, ownerHPAfterCounterHeal/);
   assert.match(fixtureRun, /Number\(visual\.amount\) === 6/);
   assert.match(fixtureRun, /Number\(visual\.amount\) === orbAmount/);
   assert.match(fixtureRun, /const resolvedPrimaryDamage = primaryHPBefore - primaryHPAfter/);
@@ -510,12 +510,13 @@ test('QA fixture scenarios use bounded production actions and require each obser
   assert.match(fixtureRun, /QA_FIXTURE_INELIGIBLE_PROC_ENCOUNTER_SEED/);
   assert.match(fixtureRun, /healEvidence\?\.actualHeal === healEvidence\?\.expectedHeal/);
   assert.match(fixtureRun, /bounceEvidence\?\.actualSecondaryDamage === bounceEvidence\?\.resolvedSecondaryDamage/);
-  assert.match(fixtureRun, /counterEvidence\?\.actualCounterDamage === counterEvidence\?\.expectedCounterDamage/);
+  assert.match(fixtureRun, /counterEvidence\?\.actualCounterDamage === counterEvidence\?\.resolvedCounterDamage/);
   assert.match(fixtureRun, /for \(let attempt = 0; attempt < scenario\.attempts && !scenario\.observed\(\); attempt \+= 1\)/);
   assert.match(fixtureRun, /ineligibleTriggerNoHeal/);
   assert.match(fixtureRun, /addedHitTriggeredNoSessionEffects/);
   assert.match(fixtureRun, /otherHeroNoTrigger/);
   assert.match(fixtureRun, /turnSerialBefore, turnSerialAfter/);
+  assert.match(fixtureRun, /counterCount: counterDamageTexts\.length, recursiveCounterCount: Math\.max\(0, counterDamageTexts\.length - 1\)/);
   assert.match(fixtureRun, /counterPresentationObserved/);
   assert.match(fixtureRun, /atMaxHpCap/);
   assert.match(fixtureRun, /for \(let attempt = 0; attempt < scenario\.attempts/);
