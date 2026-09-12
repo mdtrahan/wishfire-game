@@ -214,10 +214,10 @@ export function registerDevBrowserTestHooks({
       state.globals.SelectedEnemyUID = Number(target?.uid || 0);
       if (Number(callFunctionWithContext(fnContext, 'GetCurrentTurn')) !== Number(owner.uid)) throw new Error('QA fixture could not arrange the selected owner as current actor');
     };
-    const runQaFixtureProductionAction = action => {
+    const runQaFixtureProductionAction = async action => {
       state.globals.QaFixtureExplicitAction = 1;
       try {
-        return action();
+        return await action();
       } finally {
         delete state.globals.QaFixtureExplicitAction;
       }
@@ -355,6 +355,48 @@ export function registerDevBrowserTestHooks({
           getCurrentUID: () => callFunctionWithContext(fnContext, 'GetCurrentTurn'),
           wait: ms => new Promise(resolve => window.setTimeout(resolve, ms)),
         });
+        const fixtureActionObserved = () => ({
+          currentUID: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0),
+          phase: Number(state.globals.TurnPhase || 0),
+          actionInProgress: !!state.globals.ActionInProgress,
+          playerBusy: !!state.globals.IsPlayerBusy,
+          pendingHeroHits: Array.isArray(state.globals.PendingHeroHits) ? state.globals.PendingHeroHits.length : 0,
+          nativeCommandOwner: Number(state.globals.NativeCommandSequence?.actorUID || 0),
+        });
+        const waitForFixtureAction = async (predicate, timeoutMs = 2600) => {
+          const startedAt = Date.now();
+          let observed = fixtureActionObserved();
+          while (Date.now() - startedAt < timeoutMs) {
+            observed = fixtureActionObserved();
+            if (predicate(observed)) return { ok: true, observed };
+            await new Promise(resolve => window.setTimeout(resolve, 25));
+          }
+          observed = fixtureActionObserved();
+          return { ok: !!predicate(observed), observed };
+        };
+        const runOwnerBasicAttempt = async attempt => {
+          const currentTarget = targetForAttempt();
+          if (!currentTarget) throw new Error(`QA fixture ${fixture} has no living target`);
+          arrangeOwnerTurn(owner, currentTarget);
+          installQaFixtureRuntimeRandom(QA_FIXTURE_RUNTIME_ENCOUNTER_SEED);
+          const counterBefore = Number(activeStages && state.globals.SessionLevelBuffState?.heroes?.[String(owner.heroInstanceKey ?? owner.uid)]?.triggerCountersByEffectId?.[fixtureCard.effectId] || 0);
+          const priorSequence = state.globals.NativeCommandSequence;
+          await runQaFixtureProductionAction(async () => {
+            callFunctionWithContext(fnContext, 'ProcessTurn');
+            const started = await waitForFixtureAction(observed => observed.nativeCommandOwner === Number(owner.uid) && state.globals.NativeCommandSequence !== priorSequence);
+            if (!started.ok) throw new Error(`QA fixture ${fixture} owner basic did not start: ${JSON.stringify({ attempt, counterBefore, ...started.observed })}`);
+            const completed = await waitForFixtureAction(observed => observed.nativeCommandOwner === 0 && observed.pendingHeroHits === 0 && !observed.actionInProgress && !observed.playerBusy);
+            if (!completed.ok) throw new Error(`QA fixture ${fixture} owner basic did not complete: ${JSON.stringify({ attempt, counterBefore, ...completed.observed })}`);
+            captureFreshVisuals();
+            // The QA scheduling hold blocks automatic progression. Advance this
+            // completed production turn once so the next explicit owner action
+            // begins a fresh native command sequence.
+            callFunctionWithContext(fnContext, 'AdvanceTurn');
+          });
+          const counterAfter = Number(state.globals.SessionLevelBuffState?.heroes?.[String(owner.heroInstanceKey ?? owner.uid)]?.triggerCountersByEffectId?.[fixtureCard.effectId] || 0);
+          if (counterAfter !== counterBefore + 1) throw new Error(`QA fixture ${fixture} owner basic did not advance its trigger counter: ${JSON.stringify({ attempt, counterBefore, counterAfter, ...fixtureActionObserved() })}`);
+          captureFreshVisuals();
+        };
         // The held current battle has not received its first production turn.
         // Re-arm that battle-start sentinel so ProcessTurn below owns the card
         // application after all QA inputs are arranged.
@@ -366,19 +408,10 @@ export function registerDevBrowserTestHooks({
             const enemy = livingEnemies()[0];
             if (!enemy) throw new Error('QA fixture counter has no living enemy');
             installQaFixtureRuntimeRandom(QA_FIXTURE_RUNTIME_ENCOUNTER_SEED);
-            runQaFixtureProductionAction(() => callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', owner.uid));
+            await runQaFixtureProductionAction(() => callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', owner.uid));
             captureFreshVisuals();
           } else {
-            const currentTarget = targetForAttempt();
-            if (!currentTarget) throw new Error(`QA fixture ${fixture} has no living target`);
-            arrangeOwnerTurn(owner, currentTarget);
-            installQaFixtureRuntimeRandom(QA_FIXTURE_RUNTIME_ENCOUNTER_SEED);
-            runQaFixtureProductionAction(() => callFunctionWithContext(fnContext, 'ProcessTurn'));
-            // Snapshot immediately, then once after the native lunge resolves.
-            captureFreshVisuals();
-            const resolutionMs = fixture === 'ward' || fixture === 'stat' || fixture === 'maxhp' || fixture === 'speed' || fixture === 'bargain' ? 40 : 1010;
-            await new Promise(resolve => window.setTimeout(resolve, resolutionMs));
-            captureFreshVisuals();
+            await runOwnerBasicAttempt(attempt);
           }
           const idleAfter = await waitForFixtureIdle();
           captureFreshVisuals();

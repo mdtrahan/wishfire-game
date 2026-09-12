@@ -276,8 +276,10 @@ test('Battle B holds automatic scheduling through fixture evidence while permitt
   const fixtureRun = hooks.slice(hooks.indexOf("['QA run fixture'"), hooks.indexOf("['QA next battle'"));
   assert.match(nextBattle, /QaFixtureHoldTurn = 1/);
   assert.match(nextBattle, /QaFixtureBattleBaseline[\s\S]*catch \(error\) \{\s*delete state\.globals\.QaFixtureHoldTurn/);
-  assert.match(hooks, /const runQaFixtureProductionAction = action => \{\s*state\.globals\.QaFixtureExplicitAction = 1/);
-  assert.match(fixtureRun, /runQaFixtureProductionAction\(\(\) => callFunctionWithContext\(fnContext, 'ProcessTurn'\)\)/);
+  assert.match(hooks, /const runQaFixtureProductionAction = async action => \{\s*state\.globals\.QaFixtureExplicitAction = 1/);
+  assert.match(fixtureRun, /await runQaFixtureProductionAction\(async \(\) => \{[\s\S]*callFunctionWithContext\(fnContext, 'ProcessTurn'\)[\s\S]*callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
+  assert.match(fixtureRun, /counterAfter !== counterBefore \+ 1/);
+  assert.match(fixtureRun, /await runOwnerBasicAttempt\(attempt\)/);
   assert.match(fixtureRun, /finally \{[\s\S]*delete state\.globals\.QaFixtureHoldTurn/);
   assert.match(commands, /if \(g\.QaFixtureHoldTurn && !g\.QaFixtureExplicitAction\) return;/);
   assert.match(app, /state\.globals\.DeferAdvance &&\s*!state\.globals\.QaFixtureHoldTurn/);

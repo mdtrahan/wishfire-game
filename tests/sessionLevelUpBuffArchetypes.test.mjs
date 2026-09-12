@@ -50,11 +50,23 @@ test('Spectral Orb, status, heal, and chain each produce an owner-scoped materia
   assert.equal(ctx.state.globals.ArcanePulseVisuals.length, 1);
   assert.equal(ctx.state.globals.ArcanePulseVisuals[0].targetUID, target.uid);
   assert.equal(ctx.state.globals.ArcanePulseVisuals[0].shape, 'crescent_arc_blast');
+  assert.equal(ctx.state.globals.SessionLevelBuffState.heroes['hondo-1'].triggerCountersByEffectId.qa_pulse, 2, 'Pulse records both completed owner basics');
   assert.equal(ctx.state.globals.ChainStrikeVisuals.at(-1).targetUID, 10);
   assert.equal(ctx.state.globals.ChainStrikeVisuals.at(-1).sourceTargetUID, target.uid);
   const beforeVenomTick = target.hp;
   turnStart(rules, target, 1);
   assert.equal(target.hp, beforeVenomTick - 3, 'qa_venom maps to the standardized DOT state and deals its exact payload');
+});
+
+test('Orb cadence reaches its third distinct owner basic before emitting its visual', () => {
+  const { ctx, actor, target, rules } = context(['qa_orb_cadence']);
+  resolveSessionLevelBasicEffects(ctx, rules, actor, [target.uid]);
+  resolveSessionLevelBasicEffects(ctx, rules, actor, [target.uid]);
+  assert.equal(ctx.state.globals.ArcanePulseVisuals, undefined, 'Orb does not trigger before its third owner basic');
+  resolveSessionLevelBasicEffects(ctx, rules, actor, [target.uid]);
+  assert.equal(ctx.state.globals.SessionLevelBuffState.heroes['hondo-1'].triggerCountersByEffectId.qa_orb_cadence, 3);
+  assert.equal(ctx.state.globals.ArcanePulseVisuals.length, 1);
+  assert.equal(ctx.state.globals.ArcanePulseVisuals[0].amount, 4);
 });
 
 test('Mirage Chain has no same-target fallback when only one enemy survives', () => {
