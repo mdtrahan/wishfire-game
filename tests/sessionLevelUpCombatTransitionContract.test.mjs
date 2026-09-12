@@ -342,7 +342,7 @@ test('QA fixture scenarios use bounded production actions and require each obser
   const fixtureRun = hooks.slice(hooks.indexOf("['QA run fixture'"), hooks.indexOf("['QA next battle'"));
   assert.match(fixtureRun, /const scenarios = \{/);
   assert.match(fixtureRun, /pulse: \{ attempts: 2/);
-  assert.match(fixtureRun, /orb: \{ attempts: 3/);
+  assert.match(fixtureRun, /orb: \{ attempts: orbCadence/);
   assert.match(fixtureRun, /venom: \{ attempts: 1/);
   assert.match(fixtureRun, /bounce requires two distinct living enemies/);
   assert.match(fixtureRun, /visual\.targetUID\) !== Number\(visual\.sourceTargetUID\)/);
@@ -356,7 +356,7 @@ test('QA fixture scenarios use bounded production actions and require each obser
   assert.match(fixtureRun, /delete state\.globals\.SessionLevelBuffCombatSessionId/);
   assert.match(fixtureRun, /ownerWasHitSinceRun\(\)/);
   assert.match(fixtureRun, /Number\(visual\.amount\) === 6/);
-  assert.match(fixtureRun, /Number\(visual\.amount\) === 4/);
+  assert.match(fixtureRun, /Number\(visual\.amount\) === orbAmount/);
   assert.match(fixtureRun, /Number\(visual\.damagePercent\) === \.5/);
   assert.match(fixtureRun, /snapshotPotency === 3/);
   assert.match(fixtureRun, /for \(let attempt = 0; attempt < scenario\.attempts/);
@@ -431,6 +431,15 @@ test('the Phase 4 fixture table keeps Pulse, staged Orb, and Venom identities di
   assert.match(cards, /qa_orb_cadence_1[\s\S]*everyCompletedBasics: 3, amount: 4/);
   assert.match(cards, /qa_orb_cadence_2[\s\S]*requiresStage: 1, replacesStage: 1[\s\S]*everyCompletedBasics: 2, amount: 6/);
   assert.match(cards, /statusId: 'qa_venom'/);
+});
+
+test('the staged Orb QA workflow retains one offer hold through Tier 2 and releases it after the upgrade fixture', () => {
+  const hooks = read('web-runner/systems/devBrowserTestHooks.js');
+  const fixtureRun = hooks.slice(hooks.indexOf("['QA run fixture'"), hooks.indexOf("['QA next battle'"));
+  assert.match(fixtureRun, /const orbCadence = Number\(fixtureCard\?\.formula\?\.everyCompletedBasics \|\| 3\)/);
+  assert.match(fixtureRun, /const orbAmount = Number\(fixtureCard\?\.formula\?\.amount \|\| 4\)/);
+  assert.match(fixtureRun, /retainQaFixtureOfferHold = fixture === 'orb'[\s\S]*Number\(fixtureCard\?\.stage \|\| 0\) === 1[\s\S]*QaFixtureOfferHold/);
+  assert.match(fixtureRun, /if \(!retainQaFixtureOfferHold\) \{[\s\S]*delete state\.globals\.QaFixtureHoldTurn;[\s\S]*delete state\.globals\.QaFixtureOfferHold/);
 });
 
 test('production effect visuals retain the fixture payload needed for current-run QA deltas', () => {

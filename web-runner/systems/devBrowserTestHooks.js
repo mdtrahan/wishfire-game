@@ -342,6 +342,7 @@ export function registerDevBrowserTestHooks({
       ['QA run fixture', async () => {
         const fixture = resolveQaLevelUpFixtureKey(fixtureSelect.value);
         const owner = qaHero();
+        let retainQaFixtureOfferHold = false;
         try {
         const livingEnemies = () => state.entities.filter(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
         const statusMagnitude = (actor, effect) => Number(actor?.statuses?.find(status => status.statusEffect === effect)?.magnitude || 0);
@@ -388,6 +389,9 @@ export function registerDevBrowserTestHooks({
             && !hadMarkAndDot;
         });
         const ownerWasHitSinceRun = () => Number(owner?.hp || 0) < baseline.ownerHP;
+        const fixtureCard = QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === resolveQaFixtureOfferCardId(fixture, { selectedCardId: cardSelect.value, cards: QA_LEVEL_UP_BUFF_CARDS }));
+        const orbCadence = Number(fixtureCard?.formula?.everyCompletedBasics || 3);
+        const orbAmount = Number(fixtureCard?.formula?.amount || 4);
         const scenarios = {
           ward: { attempts: 1, observed: () => battleBaseline.ownerBarrier === 0 && statusMagnitude(owner, 'barrier') === .25 && Object.keys(state.globals.PartyWardBarrierVisualsByUID || {}).length > battleBaseline.wardVisualCount && !!state.globals.PartyWardBarrierVisualsByUID?.[owner?.uid] },
           stat: { attempts: 1, observed: () => battleBaseline.ownerAtkUp === 0 && statusMagnitude(owner, 'atkUp') === .10 },
@@ -395,14 +399,13 @@ export function registerDevBrowserTestHooks({
           speed: { attempts: 1, observed: () => battleBaseline.ownerSpdUp === 0 && statusMagnitude(owner, 'spdUp') === .10 },
           bargain: { attempts: 1, observed: () => statusMagnitude(owner, 'atkUp') === .15 && Number(owner?.maxHP || 0) === Math.round(battleBaseline.ownerMaxHP * .90) },
           pulse: { attempts: 2, observed: () => newPulses().some(visual => Number(visual.sourceUID) === Number(owner?.uid) && Number(visual.amount) === 6 && enemyHPLoweredSinceRun(visual.targetUID)) },
-          orb: { attempts: 3, observed: () => newPulses().some(visual => Number(visual.sourceUID) === Number(owner?.uid) && Number(visual.amount) === 4 && enemyHPLoweredSinceRun(visual.targetUID)) },
+          orb: { attempts: orbCadence, observed: () => newPulses().some(visual => Number(visual.sourceUID) === Number(owner?.uid) && Number(visual.amount) === orbAmount && enemyHPLoweredSinceRun(visual.targetUID)) },
           venom: { attempts: 1, observed: enemyMarkedSinceRun },
           heal: { attempts: 1, observed: () => newDamageTexts().some(text => text.kind === 'heal' && Number(text.targetUID) === Number(owner?.uid) && Number(text.amount) === Math.floor(baseline.ownerMaxHP * .05)) },
           bounce: { attempts: 1, observed: () => newChains().some(visual => Number(visual.sourceUID) === Number(owner?.uid) && Number(visual.damagePercent) === .5 && Number(visual.targetUID) !== Number(visual.sourceTargetUID) && enemyHPLoweredSinceRun(visual.targetUID)) },
           counter: { attempts: 1, observed: () => ownerWasHitSinceRun() && newDamageTexts().some(text => text.kind === 'heal' && Number(text.targetUID) === Number(owner?.uid) && Number(text.amount) === Math.floor(baseline.ownerMaxHP * .03)) && enemyChangedSinceRun() },
         };
         const scenario = scenarios[fixture];
-        const fixtureCard = QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === resolveQaFixtureOfferCardId(fixture, { selectedCardId: cardSelect.value, cards: QA_LEVEL_UP_BUFF_CARDS }));
         const activeStages = state.globals.SessionLevelBuffState?.heroes?.[String(owner?.heroInstanceKey ?? owner?.uid ?? '')]?.activeStageByEffectId || {};
         if (!owner || !scenario || !fixtureCard || !battleBaseline) throw new Error(`QA fixture ${fixture || fixtureSelect.value} has no selected owner, Battle B baseline, or scenario`);
         if (battleBaseline.fixture !== fixture || battleBaseline.ownerId !== String(owner.heroInstanceKey ?? owner.uid)) throw new Error(`QA fixture ${fixture} does not match the selected Battle B owner`);
@@ -547,11 +550,19 @@ export function registerDevBrowserTestHooks({
           if (!idleAfter.ok) throw new Error(`QA fixture ${fixture} action did not complete: ${JSON.stringify(idleAfter.observed)}`);
         }
         if (!scenario.observed()) throw new Error(`QA fixture ${fixture} did not produce its required observable production result: ${JSON.stringify({ ownerUID: owner.uid, enemies: livingEnemies().map(enemy => ({ uid: enemy.uid, hp: enemy.hp, statuses: enemy.statuses?.map(status => status.statusEffect) || [] })), pulses: state.globals.ArcanePulseVisuals?.length || 0, chains: state.globals.ChainStrikeVisuals?.length || 0 })}`);
+        // A successful base Orb cadence hands its existing fixture-offer hold
+        // directly to the staged Tier 2 offer. Every other completion and any
+        // error releases through the shared finally cleanup below.
+        retainQaFixtureOfferHold = fixture === 'orb'
+          && Number(fixtureCard?.stage || 0) === 1
+          && !!state.globals.QaFixtureOfferHold;
         if (typeof drawFrame === 'function') drawFrame();
         } finally {
           delete state.globals.QaFixtureExplicitAction;
-          delete state.globals.QaFixtureHoldTurn;
-          delete state.globals.QaFixtureOfferHold;
+          if (!retainQaFixtureOfferHold) {
+            delete state.globals.QaFixtureHoldTurn;
+            delete state.globals.QaFixtureOfferHold;
+          }
         }
       }],
       ['QA next battle', async () => {
