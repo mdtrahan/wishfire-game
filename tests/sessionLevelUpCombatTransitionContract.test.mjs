@@ -38,6 +38,17 @@ function extractFunctionSource(source, name) {
   assert.fail(`unterminated ${name}`);
 }
 
+function loadQaFixtureIdentity() {
+  const source = read('web-runner/systems/devBrowserTestHooks.js');
+  const mapStart = source.indexOf('export const QA_LEVEL_UP_FIXTURE_CARD_IDS');
+  const mapEnd = source.indexOf('\n});', mapStart) + 4;
+  const resolver = extractFunctionSource(source, 'resolveQaLevelUpFixtureKey');
+  assert.ok(mapStart >= 0 && mapEnd > mapStart, 'missing QA fixture identity map');
+  const context = {}; vm.createContext(context);
+  vm.runInContext(`${source.slice(mapStart, mapEnd).replace('export const', 'const')}\n${resolver}\nthis.identity = { QA_LEVEL_UP_FIXTURE_CARD_IDS, resolveQaLevelUpFixtureKey };`, context);
+  return context.identity;
+}
+
 test('level-up queue preserves party order, includes KO heroes, and creates one entry per earned level', () => {
   const queue = createSessionLevelUpQueue({
     heroes: [
@@ -218,9 +229,50 @@ test('QA fixture scenarios use bounded production actions and require each obser
   assert.match(fixtureRun, /bounce requires two distinct living enemies/);
   assert.match(fixtureRun, /visual\.targetUID\) !== Number\(visual\.sourceTargetUID\)/);
   assert.match(fixtureRun, /ExecuteEnemyJobSkill', enemy\.uid, 'Enemy_ATK_Single', owner\.uid/);
+  assert.match(fixtureRun, /arrangeOwnerTurn\(owner, currentTarget\)/);
+  assert.match(hooks, /initiative\.current = scheduledOwner/);
+  assert.match(hooks, /InitiativeCurrentUID = scheduledOwner\.uid/);
+  assert.match(fixtureRun, /installQaFixtureRuntimeRandom\(QA_FIXTURE_RUNTIME_ENCOUNTER_SEED\)/);
+  assert.match(fixtureRun, /delete state\.globals\.QaFixtureHoldTurn/);
+  assert.match(fixtureRun, /delete state\.globals\.SessionLevelBuffCombatSessionId/);
+  assert.match(fixtureRun, /ownerWasHitSinceRun\(\)/);
+  assert.match(fixtureRun, /Number\(visual\.amount\) === 6/);
+  assert.match(fixtureRun, /Number\(visual\.amount\) === 4/);
+  assert.match(fixtureRun, /Number\(visual\.damagePercent\) === \.5/);
+  assert.match(fixtureRun, /snapshotPotency === 3/);
   assert.match(fixtureRun, /for \(let attempt = 0; attempt < scenario\.attempts/);
   assert.match(fixtureRun, /did not produce its required observable production result/);
+  assert.doesNotMatch(fixtureRun, /seedProductionEncounter\(\)/);
   assert.doesNotMatch(fixtureRun, /resolveSessionLevelBasicEffects|resolveSessionLevelCounter|applySessionLevelBuffsAtBattleStart/);
+});
+
+test('every QA fixture option resolves to its stable scenario and production card identity', () => {
+  const { QA_LEVEL_UP_FIXTURE_CARD_IDS, resolveQaLevelUpFixtureKey } = loadQaFixtureIdentity();
+  const hooks = read('web-runner/systems/devBrowserTestHooks.js');
+  const fixtureRun = hooks.slice(hooks.indexOf("['QA run fixture'"), hooks.indexOf("['QA next battle'"));
+  const optionValues = [...hooks.matchAll(/new Option\(name, name\)/g)];
+  assert.equal(optionValues.length, 1, 'the selector must expose fixture keys, never card IDs');
+
+  for (const [fixture, cardId] of Object.entries(QA_LEVEL_UP_FIXTURE_CARD_IDS)) {
+    assert.equal(resolveQaLevelUpFixtureKey(fixture), fixture);
+    assert.equal(resolveQaLevelUpFixtureKey(cardId), fixture);
+    assert.match(fixtureRun, new RegExp(`\\b${fixture}: \\{`), `missing ${fixture} scenario`);
+    assert.match(hooks, new RegExp(`\\b${fixture}: '${cardId}'`), `missing ${fixture} card mapping`);
+  }
+  assert.equal(resolveQaLevelUpFixtureKey('missing-fixture'), null);
+});
+
+test('the QA fixture RNG seam reinstalls the production-derived stream for the current battle', () => {
+  const app = read('web-runner/app.js');
+  assert.match(app, /installQaFixtureRuntimeRandom: encounterSeed => installCombatRuntimeRandom\(deriveCombatRuntimeRngSeed\(encounterSeed\), 'quest-qa-fixture'\)/);
+});
+
+test('Battle B holds only QA scheduling until the fixture invokes ProcessTurn', () => {
+  const hooks = read('web-runner/systems/devBrowserTestHooks.js');
+  const commands = read('web-runner/modules/functionBank.js');
+  const nextBattle = hooks.slice(hooks.indexOf("['QA next battle'"), hooks.indexOf("['QA fresh session'"));
+  assert.match(nextBattle, /QaFixtureHoldTurn = 1/);
+  assert.match(commands, /if \(g\.QaFixtureHoldTurn\) return;/);
 });
 
 test('the Phase 4 fixture table keeps Pulse, staged Orb, and Venom identities distinct', () => {
@@ -229,4 +281,10 @@ test('the Phase 4 fixture table keeps Pulse, staged Orb, and Venom identities di
   assert.match(cards, /qa_orb_cadence_1[\s\S]*everyCompletedBasics: 3, amount: 4/);
   assert.match(cards, /qa_orb_cadence_2[\s\S]*requiresStage: 1, replacesStage: 1[\s\S]*everyCompletedBasics: 2, amount: 6/);
   assert.match(cards, /statusId: 'qa_venom'/);
+});
+
+test('production effect visuals retain the fixture payload needed for current-run QA deltas', () => {
+  const commands = read('web-runner/modules/heroCommands.mjs');
+  assert.match(commands, /shape:'crescent_arc_blast'[\s\S]*amount:Number\(formula\.amount\|\|0\)/);
+  assert.match(commands, /visual:'chain_strike',damagePercent:Number\(formula\.damagePercent\|\|0\)/);
 });

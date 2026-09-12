@@ -9960,6 +9960,11 @@ export function ProcessTurn(ctx) {
   const actor = GetActorByUID(ctx, uid);
   const g = getGlobals(ctx);
 
+  // Quest QA may hold Battle B until its fixture runner has arranged the
+  // scheduler inputs. The runner releases this flag before calling this same
+  // production function; ordinary sessions never set it.
+  if (g.QaFixtureHoldTurn) return;
+
   if (hasSessionLevelUpPresentationBarrier(g)) {
     logActionGateBlock(g, '[ACTION_GATE_BLOCK]', {
       source: 'ProcessTurn',

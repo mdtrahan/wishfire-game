@@ -4048,6 +4048,7 @@ function getStoryCardLiveLineState() {
     deriveDamageFloatFrameOffset,
     isBoardGemLocked,
     drawFrame,
+    installQaFixtureRuntimeRandom: encounterSeed => installCombatRuntimeRandom(deriveCombatRuntimeRngSeed(encounterSeed), 'quest-qa-fixture'),
     toggleDevToolingModal,
     applyDevToolingConfig,
     runDevAutoplayUntilDepleted,
