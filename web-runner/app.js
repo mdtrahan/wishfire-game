@@ -88,6 +88,7 @@ import * as renderOverlays from './systems/renderOverlays.js';
 import * as renderRuntime from './systems/renderRuntime.js';
 import { createHeroCommandUI } from './systems/heroCommandUI.mjs';
 import { createHeroTurnCardFanUI } from './systems/heroTurnCardFanUI.mjs';
+import { chooseSessionLevelUpBuff, getSessionLevelUpBuffPresentation, updateSessionLevelUpSettlement } from './modules/sessionLevelUpBuffPresentation.mjs';
 import { heroArtKey } from './state/heroArtAssets.mjs';
 import * as partyStatOsd from './systems/partyStatOsd.js';
 import * as superGemRuntime from './systems/superGemRuntime.js';
@@ -2183,7 +2184,10 @@ async function main(){
   const heroTurnCardFanUI = createHeroTurnCardFanUI({
     canvas,
     getState: () => ({ open: !!state.globals.HeroTurnCardFanOpen, cards: state.globals.HeroTurnCardFanCards, heroUID: state.globals.HeroTurnCardFanHeroUID }),
-    select: (index, targetUID) => callFunctionWithContext(fnContext, 'SelectHeroTurnCard', index, targetUID),
+    select: (index, targetUID) => {
+      const levelUp = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
+      return levelUp.open ? chooseSessionLevelUpBuff(state.globals, state.entities, levelUp.cards[index]?.cardId, Number(state.globals.time || 0)) : callFunctionWithContext(fnContext, 'SelectHeroTurnCard', index, targetUID);
+    },
     cancel: () => callFunctionWithContext(fnContext, 'CancelHeroTurnCardFan'),
     reopen: () => callFunctionWithContext(fnContext, 'ReopenHeroTurnCardFan'),
   });
@@ -2716,16 +2720,19 @@ async function main(){
         || gameState.storyEntry.phase === 'defeat',
       worldToCanvas, layoutScale, portraits: heroPortraitImages,
     });
-    const fanHero = state.entities.find(actor => Number(actor?.uid || 0) === Number(fanState.heroUID || 0));
+    updateSessionLevelUpSettlement(state.globals, Number(state.globals.time || 0));
+    const levelUpFanState = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
+    const activeFanState = levelUpFanState.open ? levelUpFanState : fanState;
+    const fanHero = state.entities.find(actor => Number(actor?.uid || 0) === Number(activeFanState.heroUID || 0));
     const fanHeroBaseName = String(fanHero?.baseHeroName || fanHero?.name || '');
     const fanHeroDisplayName = ({ Falie: 'Fara', Huun: 'Hondo', Kojonn: 'Kaja' })[fanHeroBaseName] || fanHeroBaseName;
     const fanHeroPortraitKey = heroArtKey(fanHero?.portraitName || fanHeroBaseName);
     const fanBlocked = !!uiState.getUIState().overlayVisible || !!ensureDevToolingConfig().open || !!gameState.heroCommandsMenuOpen || gameState.storyEntry.phase === 'defeat' || !!gameState.storyEntry.modal || !!gameState.storyEntry.pending;
     heroTurnCardFanUI.update({
-      open: activeLayoutId === 'combat' && !!fanState.open,
+      open: activeLayoutId === 'combat' && !!activeFanState.open,
       blocked: fanBlocked,
-      cards: fanState.cards,
-      heroUID: Number(fanState.heroUID || 0),
+      cards: activeFanState.cards,
+      heroUID: Number(activeFanState.heroUID || 0),
       activeHero: fanHero ? { ...fanHero, name: fanHeroDisplayName, displayName: fanHeroDisplayName, portraitName: fanHeroPortraitKey } : null,
       layoutScale,
       viewportWidth: window.innerWidth,

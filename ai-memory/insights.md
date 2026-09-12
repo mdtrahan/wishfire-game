@@ -32,6 +32,7 @@
 - Enemy board-pressure effects that run during autoplay should preserve board cardinality unless the turn/refill gates explicitly own the resulting empty cells. Prefer visible lock/disable state for temporary denial effects, and make autoplay skip disabled gems instead of trying to select through them.
 - Speed-based initiative must validate the live current-turn source, not just the displayed speed order. Dynamic authority/progress predictions are shadows unless they agree with the fixed-speed next actor; first handoff proof should include Skeleton 22 -> Huun 20.
 - Runtime asset cleanup must separate startup-critical visuals from background visuals. Production code should not request Figma/MCP/design-tool assets, and galleries, alternate enemies, buff frames, or debug/helper icons should not block the game-ready gate unless the current player path needs them.
+- EXP settlement must derive each visible fill from the awarded amount and the pre-award threshold. When a reward crosses a level, keep one bar, fill it to the threshold, reset it briefly, and carry the exact remainder before opening a queued choice. A zero-reward settlement still needs to fade and release the victory boundary.
 
 ## 2026-03-07 Regression Note
 - Hero selector render gate must treat hero-turn as `TurnPhase === 0` (not `1`) in web-runner runtime.

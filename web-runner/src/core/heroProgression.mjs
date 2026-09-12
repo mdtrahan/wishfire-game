@@ -12,14 +12,14 @@ export function levelStats(hero){
 export function refreshHeroStats(hero){const stats=levelStats(hero);hero.maxHP=stats.HP;delete stats.HP;hero.stats=stats;hero.maxLevel=heroDefinition(hero)?.maxLevel||PROGRESSION.maxLevel;hero.EXPToNextLevel=expToNextLevel(hero.currentLevel,{...PROGRESSION,maxLevel:hero.maxLevel});return hero;}
 export function newHeroProgress(key,instanceKey=key){const definition=heroDefinition(key);if(!definition)throw new Error('Unknown hero: '+key);const hero={heroInstanceKey:instanceKey,baseHeroName:definition.key,name:definition.key,currentLevel:1,currentEXP:0,maxLevel:definition.maxLevel,actionSlotsPerTurn:definition.actionSlotsPerTurn,sp:definition.startingSP,spMax:definition.maxSP,flow:0};refreshHeroStats(hero);hero.hp=hero.maxHP;return hero;}
 export function awardHeroEXP(hero,amount){
- const before={level:hero.currentLevel,hp:hero.maxHP,stats:{...hero.stats}};let exp=Math.max(0,Math.floor(Number(amount)||0));
- if(hero.currentLevel>=hero.maxLevel){hero.currentEXP=0;hero.EXPToNextLevel=0;return {hero:heroKey(hero),exp:0,fromLevel:before.level,toLevel:before.level,unlocks:[]};}
+ const before={level:hero.currentLevel,hp:hero.maxHP,stats:{...hero.stats},exp:Math.max(0,Number(hero.currentEXP||0)),expToNext:Math.max(0,Number(hero.EXPToNextLevel||0))};let exp=Math.max(0,Math.floor(Number(amount)||0));
+ if(hero.currentLevel>=hero.maxLevel){hero.currentEXP=0;hero.EXPToNextLevel=0;return {hero:heroKey(hero),exp:0,fromLevel:before.level,toLevel:before.level,expBefore:before.exp,expAfter:0,expToNextBefore:before.expToNext,unlocks:[]};}
  hero.currentEXP+=exp;
  while(hero.currentLevel<hero.maxLevel&&hero.currentEXP>=expToNextLevel(hero.currentLevel,{...PROGRESSION,maxLevel:hero.maxLevel})){
   hero.currentEXP-=expToNextLevel(hero.currentLevel,{...PROGRESSION,maxLevel:hero.maxLevel});const oldHP=hero.maxHP;hero.currentLevel++;refreshHeroStats(hero);if(hero.hp>0)hero.hp=Math.min(hero.maxHP,hero.hp+hero.maxHP-oldHP);
  }
  if(hero.currentLevel>=hero.maxLevel){hero.currentEXP=0;hero.EXPToNextLevel=0;}
- const d=heroDefinition(hero);return {hero:d.name,exp,fromLevel:before.level,toLevel:hero.currentLevel,statsBefore:before.stats,statsAfter:{...hero.stats},maxHPBefore:before.hp,maxHPAfter:hero.maxHP,unlocks:[...d.actives,...d.passives].filter(s=>s.unlockLevel>before.level&&s.unlockLevel<=hero.currentLevel).map(s=>s.displayName)};
+ const d=heroDefinition(hero);return {hero:d.name,exp,fromLevel:before.level,toLevel:hero.currentLevel,expBefore:before.exp,expAfter:Math.max(0,Number(hero.currentEXP||0)),expToNextBefore:before.expToNext,statsBefore:before.stats,statsAfter:{...hero.stats},maxHPBefore:before.hp,maxHPAfter:hero.maxHP,unlocks:[...d.actives,...d.passives].filter(s=>s.unlockLevel>before.level&&s.unlockLevel<=hero.currentLevel).map(s=>s.displayName)};
 }
 export function createHeroProgressStore(snapshot){
  const store={version:HERO_PROGRESS_VERSION,heroes:{},settledBattles:[]};

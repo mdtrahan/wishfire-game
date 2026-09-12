@@ -5,6 +5,7 @@ import {getHeroFlowState,getHeroSkillOptions} from '../src/core/personalFlow.mjs
 import {legalSkill,validTargets,resolveSkill,turnStart,turnEnd} from '../src/core/combatRules.mjs';
 import {derivePresentationTurnBarrier} from '../src/core/turnGateController.mjs';
 import {acknowledgeSessionLevelUpEntry,clearSessionLevelUpQueue,createSessionLevelUpQueue,currentSessionLevelUpEntry,pauseSessionLevelUpQueue,resumeSessionLevelUpQueue} from '../src/core/sessionLevelUpQueue.mjs';
+import {beginSessionLevelUpSettlement,chooseSessionLevelUpBuff as choosePresentedSessionLevelUpBuff,getSessionLevelUpBuffPresentation,updateSessionLevelUpSettlement} from './sessionLevelUpBuffPresentation.mjs';
 export {getHeroFlowState,getHeroSkillOptions};
 export function getHeroCommandSlots(entities){const slots=Array(6).fill(null);for(const hero of entities){const i=Number(hero.heroDisplaySlot??hero.displaySlot??hero.heroIndex);if(hero?.kind==='hero'&&Number.isInteger(i)&&i>=0&&i<6)slots[i]=hero;}return slots;}
 export function canUseHeroCommand(ctx,actorUID){const g=ctx.state.globals,hero=ctx.state.entities.find(a=>a.uid===actorUID&&a.kind==='hero');return !!hero&&hero.hp>0&&!g.NativeBattleEnded&&g.GamePhase==='RUNTIME'&&!g.BattleStartActive&&!g.IsPlayerBusy&&Number(g.TurnPhase)===0&&Number(ctx.callFunction('GetCurrentTurn'))===actorUID&&ctx.callFunction('GetEnemyRosterStability')?.stable===true&&derivePresentationTurnBarrier({globals:g}).canClaimCombatAction;}
@@ -113,6 +114,7 @@ export function settleDefeat(ctx) {
  clearHeroTurnCardFan(g);
  cancelNativeSequence(ctx);
  g.SessionLevelUpQueue=clearSessionLevelUpQueue();
+ delete g.SessionLevelUpSettlement;delete g.SessionLevelUpOffersByQueueIndex;
  g.NativeBattleEnded=true;
  if(g.ProgressionBattle){g.ProgressionBattle.outcome='defeat';g.ProgressionBattle.defeatSettled=true;g.ProgressionBattle.settled=true;g.ProgressionBattle.goldReward=0;g.ProgressionResults=[];}
  return true;
@@ -127,6 +129,7 @@ export function settleVictory(ctx) {
  const participants=heroes.filter(hero=>g.ProgressionBattle.participants.includes(hero.heroInstanceKey||hero.baseHeroName||hero.name));
  g.ProgressionResults=settleBattleEXP(g.HeroProgress,g.ProgressionBattle,participants);
  g.SessionLevelUpQueue=createSessionLevelUpQueue({heroes:participants,progressionResults:g.ProgressionResults});
+ beginSessionLevelUpSettlement(g,g.ProgressionResults,participants,Number(g.time||0));
  g.ProgressionBattle.outcome='victory';
  g.ProgressionBattle.goldReward=Object.values(g.ProgressionBattle.defeatedGold||{}).reduce((sum,value)=>sum+value,0);
  g.goldTotal=Number(g.goldTotal||0)+g.ProgressionBattle.goldReward;
@@ -137,3 +140,6 @@ export function getCurrentSessionLevelUpEntry(ctx){return currentSessionLevelUpE
 export function pauseSessionLevelUpRewards(ctx){const g=ctx.state.globals;g.SessionLevelUpQueue=pauseSessionLevelUpQueue(getSessionLevelUpQueueState(ctx));return g.SessionLevelUpQueue;}
 export function resumeSessionLevelUpRewards(ctx){const g=ctx.state.globals;g.SessionLevelUpQueue=resumeSessionLevelUpQueue(getSessionLevelUpQueueState(ctx));return g.SessionLevelUpQueue;}
 export function acknowledgeSessionLevelUpReward(ctx){const g=ctx.state.globals;g.SessionLevelUpQueue=acknowledgeSessionLevelUpEntry(getSessionLevelUpQueueState(ctx));return g.SessionLevelUpQueue;}
+export function getSessionLevelUpBuffOffer(ctx){return getSessionLevelUpBuffPresentation(ctx.state.globals,ctx.state.entities,ctx.state.globals.SessionLevelProgress||{});}
+export function chooseSessionLevelUpBuff(ctx,cardId){return choosePresentedSessionLevelUpBuff(ctx.state.globals,ctx.state.entities,cardId,Number(ctx.state.globals.time||0));}
+export function updateSessionLevelUpSettlementPresentation(ctx){return updateSessionLevelUpSettlement(ctx.state.globals,Number(ctx.state.globals.time||0));}

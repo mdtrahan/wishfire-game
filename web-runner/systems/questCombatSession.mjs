@@ -51,6 +51,7 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
       return state.globals.QuestFiniteEncounter === 1
         && state.globals.NativeBattleEnded === true
         && state.globals.SessionLevelUpQueue?.status !== 'active'
+        && !state.globals.SessionLevelUpSettlement
         && state.globals.ProgressionBattle?.outcome === 'victory'
         && showResults();
     },

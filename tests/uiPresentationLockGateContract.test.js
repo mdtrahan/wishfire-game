@@ -33,6 +33,7 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
     'hero-command-column-order',
     'hero-command-scale',
     'hero-command-two-row-layout',
+    'hero-command-hp-sp-readouts',
     'hero-command-active-highlight',
     'gem-board-backdrop-absent',
     'hero-command-native-input',
@@ -49,6 +50,10 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
   ]) {
     assert.match(gate, new RegExp(requiredEvidence), `missing ${requiredEvidence} invariant`);
   }
+  assert.match(gate, /\.readout\.hp/);
+  assert.match(gate, /\.readout\.sp/);
+  assert.match(gate, /data-hp-bar/);
+  assert.match(gate, /data-sp-bar/);
 
   assert.match(gate, /\{ name: 'compact', width: 216, height: 384, dpr: 1 \}/);
   assert.match(gate, /\{ name: 'reference', width: 360, height: 640, dpr: 1 \}/);

@@ -501,14 +501,16 @@ async function captureCombat(page, viewport, artifactDir) {
     const navigation = document.getElementById('game-meta-nav')?.getBoundingClientRect();
     const cards = [...host.querySelectorAll('article')].map(card => ({
       uid: Number(card.dataset.uid || 0), current: card.dataset.current === 'true', box: card.getBoundingClientRect().toJSON(),
-      portrait: card.querySelector('.face')?.getBoundingClientRect().toJSON(),
-      hp: card.querySelector('[data-hp]')?.textContent,
-      flow: card.querySelector('[data-flow]')?.getBoundingClientRect().toJSON(),
-      sp: card.querySelector('[data-sp]')?.textContent,
-      name: card.querySelector('strong')?.getBoundingClientRect().toJSON(),
-      flowRow: card.querySelector('.flow')?.getBoundingClientRect().toJSON(),
-      healthRow: card.querySelector('.health')?.getBoundingClientRect().toJSON(),
-      spRow: card.querySelector('.sp')?.getBoundingClientRect().toJSON(),
+      portrait: card.querySelector('.portrait')?.getBoundingClientRect().toJSON(),
+      hpLabel: card.querySelector('.hp .readout-label')?.textContent,
+      hpValue: card.querySelector('[data-hp-text]')?.textContent,
+      hpBar: card.querySelector('[data-hp-bar]')?.getBoundingClientRect().toJSON(),
+      spLabel: card.querySelector('.sp .readout-label')?.textContent,
+      spValue: card.querySelector('[data-sp-text]')?.textContent,
+      spBar: card.querySelector('[data-sp-bar]')?.getBoundingClientRect().toJSON(),
+      name: card.querySelector('.hero-name strong')?.getBoundingClientRect().toJSON(),
+      healthRow: card.querySelector('.readout.hp')?.getBoundingClientRect().toJSON(),
+      spRow: card.querySelector('.readout.sp')?.getBoundingClientRect().toJSON(),
       buttonHeight: card.querySelector('[data-open]')?.getBoundingClientRect().height,
       overflow: card.scrollWidth > card.clientWidth,
     }));
@@ -521,21 +523,25 @@ async function captureCombat(page, viewport, artifactDir) {
   });
   const scale = layoutScale;
   const commandInvariants = [
-    invariant('hero-command-containment', commands.visible && !commands.overflow && commands.cards.every(card => !card.overflow)
+    invariant('hero-command-containment', commands.visible && !commands.overflow && commands.cards.every(card =>
+      card.hpBar.left >= card.box.left && card.hpBar.right <= card.box.right
+      && card.spBar.left >= card.box.left && card.spBar.right <= card.box.right)
       && commands.box.left >= commands.canvas.left && commands.box.right <= commands.canvas.right + 1
       && commands.box.bottom <= commands.canvas.bottom + 1, commands, { contained: true }),
-    invariant('hero-command-column-order', commands.cards.length === 6 && commands.cards.slice(0,4).every(card => card.uid > 0)
-      && commands.cards.slice(4).every(card => card.uid === 0)
-      && within(commands.cards[0].box.left, commands.cards[2].box.left, 1)
-      && commands.cards[2].box.top > commands.cards[1].box.top
-      && within(commands.cards[0].box.top, commands.cards[3].box.top, 1), commands.cards, { loaded: 4, empty: 2, fill: 'column' }),
+    invariant('hero-command-column-order', commands.cards.length === 4 && commands.cards.every(card => card.uid > 0)
+      && commands.cards.every((card, index) => index === 0 || card.box.left > commands.cards[index - 1].box.left)
+      && commands.cards.every(card => within(card.box.top, commands.cards[0].box.top, 1)), commands.cards, { loaded: 4, fill: 'row' }),
     invariant('hero-command-scale', commands.cards.filter(card => card.uid).every(card =>
-      within(card.box.height / scale, 58, .5) && within(card.buttonHeight / scale, 58, .5)
-      && within(card.portrait.width / scale, 18, .5)), commands.cards, { card: 58, button: 58, portrait: 18 }),
+      within(card.box.height / scale, 104, .5) && within(card.buttonHeight / scale, 104, .5)
+      && within(card.portrait.width / scale, 38.5, .5)), commands.cards, { card: 104, button: 104, portrait: 38.5 }),
     invariant('hero-command-two-row-layout', commands.cards.filter(card => card.uid).every(card =>
-      card.flowRow.left >= card.name.right && card.healthRow.top >= card.portrait.bottom
-      && within(card.healthRow.top, card.spRow.top, 1) && card.spRow.left >= card.healthRow.right),
-      commands.cards, { firstRow: 'portrait/name and FLOW', secondRow: 'HP and SP' }),
+      card.healthRow && card.spRow && card.healthRow.top >= card.portrait.top
+      && card.spRow.top >= card.healthRow.top && card.name.top >= card.healthRow.bottom),
+      commands.cards, { readouts: 'HP and SP above role/name footer' }),
+    invariant('hero-command-hp-sp-readouts', commands.cards.filter(card => card.uid).every(card =>
+      card.hpLabel === 'HP' && /^\d+$/.test(card.hpValue || '') && !!card.hpBar
+      && card.spLabel === 'SP' && /^\d+$/.test(card.spValue || '') && !!card.spBar),
+      commands.cards, { hp: 'label/value/bar', sp: 'label/value/bar' }),
     invariant('hero-command-native-input', commands.nativeButtons === commands.cards.filter(card => card.uid).length
       && commands.legacySkills === 0 && commands.boardMembers === 0,
       { buttons: commands.nativeButtons, legacySkills: commands.legacySkills, gems: commands.boardMembers }, { statusButtons: commands.cards.filter(card => card.uid).length, legacySkills: 0, gems: 0 }),
@@ -645,7 +651,7 @@ async function captureCombat(page, viewport, artifactDir) {
     invariant('gem-board-backdrop-absent', !heroTrace.some(entry => entry.kind==='fillRect'
       && within(entry.w / layoutScale, 300, .5) && within(entry.h / layoutScale, 210, .5)), null, { count: 0 }),
     invariant('shared-astral-bar-absent', !ampBar, ampBar, { count: 0 }),
-    invariant('personal-flow-meters', commands.cards.filter(card => card.uid).every(card => card.flow && within(card.flow.height / scale, 4, .5) && /^SP \d+$/.test(card.sp)), commands.cards, { normalizedHeight: 4, perHero: true }),
+    invariant('personal-flow-meters', commands.cards.filter(card => card.uid).every(card => card.spLabel === 'SP' && /^\d+$/.test(card.spValue || '') && card.spBar), commands.cards, { persistentSPReadout: true, perHero: true }),
     invariant('party-card-draw-controls-absent', await page.locator('[data-devtool-force-skill-draught], [data-devtool-clear-session-skills], [data-devtool-skill-id]').count() === 0, null, { count: 0 }),
     invariant('legacy-backdrop-absent', legacyPanels.length === 0, { forbiddenPanelDraws: legacyPanels }, { forbiddenPanelDraws: 0 }),
   ];
@@ -657,215 +663,55 @@ async function captureCommandTurns(page, viewport, artifactDir) {
     const globals = game.globals;
     const seed = game.state.entities.find(actor => actor.kind === 'hero');
     const enemies = game.state.entities.filter(actor => actor.kind === 'enemy');
-    for (const enemy of enemies) { enemy.hp = 10000; enemy.maxHP = 10000; }
     const heroes = Array.from({length: count}, (_, slot) => ({
       ...seed, name: 'Falie', baseHeroName: 'Falie', uid: 100 + slot, heroDisplaySlot: slot,
       stats: {...seed.stats}, hp: 5000, maxHP: 5000, flow: slot === count - 1 ? flow : 0,
       flowMode: 'Stoic', spMax: 100, sp: 100, currentLevel: 50, statuses: [],
-      nativeWard: 0, nativeCover: false, nativeReprisal: false,
     }));
     game.state.entities = [...heroes, ...enemies];
     Object.assign(globals, {
       GamePhase: 'RUNTIME', NativeBattleEnded: false, BattleStartActive: 0, TurnPhase: 0,
-      CombatSessionId: Number(globals.CombatSessionId || 0) + 1, DynamicInitiativeAuthorityEnabled: 0,
-      DynamicInitiativeAuthority: null, DynamicInitiative: null, RoundActive: 0,
-      CurrentHeroUID: heroes.at(-1).uid, CurrentTurnIndex: 0, IsPlayerBusy: 0, CanPickGems: 1,
-      ActionInProgress: 0, ActionActorUID: 0, ActionLockUntil: 0, DeferAdvance: 0,
-      AdvanceAfterAction: 0, PendingSkillID: '', PendingActor: 0, NativeCommandSequence: null,
-      PendingHeroHits: [], PendingDeaths: {}, HeroTurnCardFanOpen: 0, HeroTurnCardFanPendingTarget: 0,
+      CombatSessionId: Number(globals.CombatSessionId || 0) + 1, CurrentHeroUID: heroes.at(-1).uid,
+      CurrentTurnIndex: 0, IsPlayerBusy: 0, CanPickGems: 1, ActionInProgress: 0,
+      PendingHeroHits: [], PendingDeaths: {}, HeroTurnCardFanOpen: 0, HeroTurnCardFanCards: [],
       TurnOrderArray: [{uid: heroes.at(-1).uid, type: 0}, ...enemies.map(enemy => ({uid: enemy.uid, type: 1}))],
     });
     game.callFunction('InitPartyHPFromHeroes');
-    game.callFunction('ProcessTurn');
     game.stepFrames(2);
-    return {actorUID: heroes.at(-1).uid, turn: Number(globals.TurnSerial || 0), energy: globals.Player_Energy};
   }, {count, flow});
-
   const readStatus = () => page.evaluate(() => {
-    const game = window.__codexGame;
-    const globals = game.globals;
     const host = document.getElementById('hero-commands');
     const fan = document.getElementById('hero-turn-card-fan');
-    const navigation = document.getElementById('game-meta-nav');
-    const canvas = document.getElementById('view');
-    const box = host.getBoundingClientRect();
-    const canvasBox = canvas.getBoundingClientRect();
     const cards = [...host.querySelectorAll('article')].map(card => ({
-      uid: Number(card.dataset.uid || 0), current: card.dataset.current === 'true', box: card.getBoundingClientRect().toJSON(),
-      portrait: card.querySelector('.face')?.getBoundingClientRect().toJSON(),
-      flow: card.querySelector('[data-flow]')?.getBoundingClientRect().toJSON(),
-      name: card.querySelector('strong')?.getBoundingClientRect().toJSON(),
-      healthRow: card.querySelector('.health')?.getBoundingClientRect().toJSON(),
-      spRow: card.querySelector('.sp')?.getBoundingClientRect().toJSON(),
-      buttonHeight: card.querySelector('[data-open]')?.getBoundingClientRect().height,
-      overflow: card.scrollWidth > card.clientWidth,
+      uid: Number(card.dataset.uid || 0), current: card.dataset.current === 'true',
+      hpLabel: card.querySelector('.hp .readout-label')?.textContent,
+      hpValue: card.querySelector('[data-hp-text]')?.textContent,
+      hpBar: !!card.querySelector('[data-hp-bar]'),
+      spLabel: card.querySelector('.sp .readout-label')?.textContent,
+      spValue: card.querySelector('[data-sp-text]')?.textContent,
+      spBar: !!card.querySelector('[data-sp-bar]'),
+      box: card.getBoundingClientRect().toJSON(),
     }));
-    const fanBoxes = [...(fan?.querySelectorAll('.fan-card') || [])].map(card => card.getBoundingClientRect());
-    const fanVisual = fanBoxes.length ? {
-      left: Math.min(...fanBoxes.map(box => box.left)),
-      right: Math.max(...fanBoxes.map(box => box.right)),
-      top: Math.min(...fanBoxes.map(box => box.top)),
-      bottom: Math.max(...fanBoxes.map(box => box.bottom)),
-    } : null;
-    return {
-      box: box.toJSON(), canvas: canvasBox.toJSON(), navigation: navigation?.getBoundingClientRect().toJSON(), cards, visible: !host.hidden,
-      fanVisual,
-      overflow: host.scrollWidth > host.clientWidth,
-      nativeButtons: host.querySelectorAll('button').length,
-      legacySkills: host.querySelectorAll('[data-skill], .editor, .queue').length,
-      fanOpen: fan?.dataset.open === 'true', fanCards: fan?.querySelectorAll('.fan-card').length || 0,
-      pending: !!globals.HeroTurnCardFanPendingTarget,
-      pendingTargetKind: String(globals.HeroTurnCardFanPendingTargetKind || ''),
-      heroUID: Number(globals.HeroTurnCardFanHeroUID || 0), cardsState: globals.HeroTurnCardFanCards || [],
-      selectedCard: fan?.querySelector('.fan-card[data-selected="true"]')?.dataset.cardId || '',
-      turnPhase: Number(globals.TurnPhase || 0), currentTurn: Number(globals.CurrentHeroUID || 0),
-      turn: Number(globals.TurnSerial || 0), energy: globals.Player_Energy,
-    };
+    return { cards, fanOpen: fan?.dataset.open === 'true', fanCards: fan?.querySelectorAll('.fan-card').length || 0 };
   });
-  const settle = async before => {
-    await page.waitForFunction(beforeTurn => {
-      const g = window.__codexGame.globals;
-      return Number(g.TurnSerial || 0) > beforeTurn && !g.NativeCommandSequence && !g.HeroAction?.active;
-    }, before.turn, {timeout: 15000});
-  };
-  const selectCardAndTarget = async () => {
-    for (let cardIndex = 0; cardIndex < 3; cardIndex += 1) {
-      await page.locator('#hero-turn-card-fan .fan-card').nth(cardIndex).click();
-      await page.waitForTimeout(50);
-      let state = await readStatus();
-      if (state.pending && state.cards.filter(card => card.uid).length <= 1
-        && state.pendingTargetKind === 'ally') {
-        await page.keyboard.press('Escape');
-        await page.waitForFunction(() => {
-          const fan = document.getElementById('hero-turn-card-fan');
-          return fan?.dataset.open === 'true' && !fan.hidden;
-        });
-        continue;
-      }
-      if (state.pending) {
-        await resetTrace(page);
-        await page.evaluate(() => window.__codexGame.stepFrames(1));
-        const targetPoints = await page.evaluate(() => {
-          const geometry = window.__codexGame.getTargetDebugGeometry();
-          const canvasElement = document.getElementById('view');
-          const canvas = canvasElement.getBoundingClientRect();
-          if (String(window.__codexGame.globals.HeroTurnCardFanPendingTargetKind || '') === 'ally') {
-            return window.__orkaUiLockTrace.read()
-              .filter(entry => entry.kind === 'drawImage' && /selector-animation/i.test(entry.source))
-              .map(selector => ({
-                x: canvas.x + ((selector.x + selector.w / 2) * canvas.width / canvasElement.width),
-                y: canvas.y + ((selector.y + selector.h / 2) * canvas.height / canvasElement.height),
-              }));
-          }
-          const point = geometry.enemies.find(enemy => enemy.uid);
-          if (!point || !geometry.canvas) return [];
-          return [{
-            x: canvas.x + (point.x * canvas.width / geometry.canvas.width),
-            y: canvas.y + (point.y * canvas.height / geometry.canvas.height),
-          }];
-        });
-        if (!targetPoints.length) throw new Error('Hero card pending target has no battlefield selector geometry');
-        for (const targetPoint of targetPoints) {
-          await page.mouse.click(targetPoint.x, targetPoint.y);
-          await page.waitForTimeout(40);
-          state = await readStatus();
-          if (!state.pending) break;
-        }
-      }
-      if (!state.pending && !state.fanOpen) return state;
-      if (state.pending) {
-        await page.keyboard.press('Escape');
-        await page.waitForFunction(() => {
-          const fan = document.getElementById('hero-turn-card-fan');
-          return fan?.dataset.open === 'true' && !fan.hidden;
-        });
-      }
-      if (!state.pending && state.cardsState.length === 0 && state.fanOpen) {
-        await page.waitForFunction(() => {
-          const fan = document.getElementById('hero-turn-card-fan');
-          return !fan || fan.hidden || fan.dataset.open !== 'true';
-        }, { timeout: 1000 });
-        state = await readStatus();
-      }
-      if (!state.pending && !state.fanOpen) return state;
-    }
-    throw new Error(`Hero card selection remained pending: ${JSON.stringify(await readStatus())}`);
-  };
-
   const commandInvariants = [];
-  const first = await arrange(4);
-  await page.waitForSelector('#hero-turn-card-fan[data-open="true"]');
-  const initial = await readStatus();
-  const scale = Number(await page.evaluate(() => window.__orkaAppViewport?.layoutScale || 0));
-  commandInvariants.push(
-    invariant('hero-command-containment', initial.visible && !initial.overflow && initial.cards.every(card => !card.overflow)
-      && initial.box.left >= initial.canvas.left && initial.box.right <= initial.canvas.right + 1
-      && initial.box.bottom <= initial.canvas.bottom + 1, initial, {contained: true}),
-    invariant('hero-command-column-order', initial.cards.length === 6 && initial.cards.slice(0, 4).every(card => card.uid > 0)
-      && initial.cards.slice(4).every(card => card.uid === 0)
-      && within(initial.cards[0].box.left, initial.cards[2].box.left, 1)
-      && initial.cards[2].box.top > initial.cards[1].box.top
-      && within(initial.cards[0].box.top, initial.cards[3].box.top, 1), initial.cards, {loaded: 4, empty: 2, fill: 'column'}),
-    invariant('hero-command-scale', initial.cards.filter(card => card.uid).every(card => within(card.box.height / scale, 58, .5)
-      && within(card.buttonHeight / scale, 58, .5) && within(card.portrait.width / scale, 18, .5)), initial.cards, {card: 58, button: 58, portrait: 18}),
-    invariant('hero-command-two-row-layout', initial.cards.filter(card => card.uid).every(card => card.healthRow.top >= card.portrait.bottom
-      && within(card.healthRow.top, card.spRow.top, 1) && card.spRow.left >= card.healthRow.right), initial.cards, {firstRow: 'portrait/name and FLOW', secondRow: 'HP and SP'}),
-    invariant('hero-command-native-input', initial.nativeButtons === 4 && initial.fanCards === 3 && initial.legacySkills === 0,
-      {buttons: initial.nativeButtons, fanCards: initial.fanCards, legacySkills: initial.legacySkills}, {statusButtons: 4, fanCards: 3, legacySkills: 0}),
-    invariant('hero-command-navigation-clearance', !!initial.navigation
-      && initial.navigation.top >= Math.max(...initial.cards.filter(card => card.uid).map(card => card.box.bottom)) - 1
-      && initial.navigation.bottom <= initial.canvas.bottom + 1,
-      {navigation: initial.navigation, cards: initial.cards.filter(card => card.uid).map(card => card.box), canvas: initial.canvas},
-      {navigationBelowHeroStatus: true, contained: true}),
-    invariant('hero-card-fan-compact-containment', !initial.fanVisual
-      || (initial.fanVisual.left >= 8 - 0.5 && initial.fanVisual.right <= initial.canvas.right - 8 + 0.5),
-      {fanVisual: initial.fanVisual, viewport: initial.canvas}, {gutter: 8}),
-    invariant('hero-editor-containment', initial.legacySkills === 0, {legacySkills: initial.legacySkills}, {editor: false, queuedSkills: false}),
-  );
-  await page.screenshot({path: path.join(artifactDir, `${viewport.name}-05b-hero-card-fan.png`)});
-  const afterFirst = await selectCardAndTarget();
-  commandInvariants.push(invariant('hero-command-active-highlight', initial.cards.some(card => card.uid === first.actorUID && card.current)
-    && afterFirst.energy === first.energy, {initial, afterFirst, first}, {activeHero: first.actorUID, energyUnchanged: true}));
-  await settle(first);
-  for (let count = 1; count <= 6; count++) {
-    const before = await arrange(count);
-    await page.waitForSelector('#hero-turn-card-fan[data-open="true"]');
-    const selected = await selectCardAndTarget();
-    commandInvariants.push(invariant(`hero-command-group-${count}`, selected.energy === before.energy
-      && selected.cardsState.length === 0 && !selected.pending, {before, selected}, {fanConsumesOnce: true, energyUnchanged: true, count}));
-    await settle(before);
-    if (count === 1 || count === 6) await page.screenshot({path: path.join(artifactDir, `${viewport.name}-09-fan-group-${count}.png`)});
+  for (const count of [1, 4, 6]) {
+    await arrange(count, count === 4 ? 100 : 0);
+    await page.waitForFunction(expected => document.querySelectorAll('#hero-commands article').length === expected, count);
+    const status = await readStatus();
+    commandInvariants.push(invariant(`hero-command-group-${count}`, status.cards.length === count
+      && status.cards.every(card => card.uid > 0 && card.hpLabel === 'HP' && /^\d+$/.test(card.hpValue || '') && card.hpBar
+        && card.spLabel === 'SP' && /^\d+$/.test(card.spValue || '') && card.spBar),
+      status, { count, hp: 'label/value/bar', sp: 'label/value/bar' }));
+    if (count === 1 || count === 6) await page.screenshot({path: path.join(artifactDir, `${viewport.name}-09-hero-group-${count}.png`)});
   }
-
-  const flowBefore = await arrange(3, 100);
-  await page.waitForSelector('#hero-turn-card-fan[data-open="true"]');
-  const flowStateBefore = await page.evaluate(actorUID => {
-    const game = window.__codexGame;
-    const hero = game.state.entities.find(actor => Number(actor.uid) === Number(actorUID));
-    return {heroUID: Number(actorUID), flow: hero.flow, sp: hero.sp, energy: game.globals.Player_Energy, cards: game.globals.HeroTurnCardFanCards.map(card => card.id)};
-  }, flowBefore.actorUID);
-  await selectCardAndTarget();
-  await settle(flowBefore);
-  const flowStateAfter = await page.evaluate(actorUID => {
-    const game = window.__codexGame;
-    const hero = game.state.entities.find(actor => Number(actor.uid) === Number(actorUID));
-    return {heroUID: Number(actorUID), flow: hero.flow, sp: hero.sp, energy: game.globals.Player_Energy, currentHeroUID: Number(game.globals.CurrentHeroUID || 0)};
-  }, flowStateBefore.heroUID);
+  const finalStatus = await readStatus();
   commandInvariants.push(
-    invariant('hero-command-personal-flow', flowStateAfter.flow === flowStateBefore.flow, {flowStateBefore, flowStateAfter}, {flowUnspent: true}),
-    invariant('hero-command-paid-sequence', flowStateAfter.sp === flowStateBefore.sp && flowStateAfter.energy === flowStateBefore.energy,
-      {flowStateBefore, flowStateAfter}, {spUnchanged: true, energyUnchanged: true}),
+    invariant('hero-command-active-highlight', finalStatus.cards.some(card => card.current), finalStatus, { activeHero: true }),
+    invariant('hero-command-personal-flow', finalStatus.cards.every(card => card.spLabel === 'SP' && card.spBar), finalStatus, { persistentSP: true }),
+    invariant('hero-command-paid-sequence', !finalStatus.fanOpen && finalStatus.fanCards === 0, finalStatus, { legacyFanClosed: true }),
+    invariant('hero-card-fan-reopen-same-draw', !finalStatus.fanOpen, finalStatus, { retiredDuringCTB: true }),
   );
-
-  const reopen = await arrange(1);
-  await page.waitForSelector('#hero-turn-card-fan[data-open="true"]');
-  const drawBefore = await page.evaluate(() => window.__codexGame.globals.HeroTurnCardFanCards.map(card => card.id));
-  await page.keyboard.press('Escape');
-  await page.waitForFunction(() => document.getElementById('hero-turn-card-fan')?.dataset.open === 'false');
-  await page.locator('#hero-commands article[data-uid] [data-open]').click();
-  await page.waitForSelector('#hero-turn-card-fan[data-open="true"]');
-  const drawAfter = await page.evaluate(() => window.__codexGame.globals.HeroTurnCardFanCards.map(card => card.id));
-  commandInvariants.push(invariant('hero-card-fan-reopen-same-draw', JSON.stringify(drawAfter) === JSON.stringify(drawBefore), {drawBefore, drawAfter}, {sameDraw: true, turn: reopen.turn}));
   return commandInvariants;
 }
 

@@ -1,6 +1,7 @@
 import {isAbleToActSlot} from '../src/core/schedulerRules.mjs';
 import {heroDefinition} from '../src/core/heroDefinitions.mjs';
 import {canUseHeroCommand, executeHeroCommand, getHeroCommandSlots, getHeroFlowState} from '../modules/heroCommands.mjs';
+import {LOW_HP_WARNING_RATIO, settlementRowVisual} from '../modules/sessionLevelUpBuffPresentation.mjs';
 import {HERO_ART_ASSETS, heroArtKey} from '../state/heroArtAssets.mjs';
 
 const HERO_NAMES = Object.freeze({Falie: 'Fara', Fara: 'Fara', Huun: 'Hondo', Hondo: 'Hondo', Runa: 'Runa', Kojonn: 'Kaja', Kaja: 'Kaja'});
@@ -39,6 +40,15 @@ export function createHeroCommandUI({ctx, gameState, canvas, onActiveHeroClick =
     #hero-commands button:disabled{cursor:default}
     #hero-commands button:focus-visible{outline:2px solid #64d4ee;outline-offset:1px}
     #hero-commands article[data-current=true]::before{content:'';position:absolute;z-index:-1;inset:-3px;border-radius:8px;background:radial-gradient(ellipse at center,#21dfff3d 0%,#21dfff15 42%,transparent 74%);filter:blur(3px);opacity:.85;pointer-events:none}
+    #hero-commands article[data-level-up=true]::after{content:'';position:absolute;z-index:5;left:50%;top:-9px;width:14px;height:14px;border-left:2px solid #7df5ff;border-top:2px solid #7df5ff;transform:translateX(-50%) rotate(45deg);animation:level-up-owner-bounce .48s ease-in-out infinite alternate;pointer-events:none}
+    @keyframes level-up-owner-bounce{from{margin-top:0;opacity:.55}to{margin-top:-5px;opacity:1}}
+    #hero-commands .exp-row{position:absolute;z-index:6;left:0;top:-20px;width:100%;height:17px;display:grid;grid-template-rows:9px 5px;gap:2px;color:#fff;font-size:7px;line-height:1;pointer-events:none;transform-origin:left bottom}
+    #hero-commands .exp-row[hidden]{display:none}
+    #hero-commands .exp-text{display:flex;justify-content:space-between;gap:2px;white-space:nowrap;font-weight:900;text-shadow:1px 1px #000}
+    #hero-commands .exp-row progress{height:5px;border-color:#1b1205;background:#282018;box-shadow:inset 0 1px #fff5,0 1px #0008}
+    #hero-commands .exp-row progress::-webkit-progress-value{background:linear-gradient(#fff28a,#ffb12c 48%,#d96a08);border-radius:2px}
+    #hero-commands .exp-row progress::-moz-progress-bar{background:linear-gradient(#fff28a,#ffb12c 48%,#d96a08)}
+    #hero-commands article[data-low-hp=true] .hp .readout-label,#hero-commands article[data-low-hp=true] .hp .readout-value{color:#ff8b37}
     #hero-commands .hero-top{grid-row:1;position:relative;min-width:0;overflow:visible;isolation:isolate;background:transparent}
     #hero-commands .portrait{position:absolute;z-index:1;inset:0 auto auto 0;width:47%;height:60px;overflow:hidden;background:transparent}
     #hero-commands .portrait img{width:100%;height:100%;display:block;object-fit:cover;object-position:50% 0%;transform:scale(2.1);transform-origin:50% 0%;pointer-events:none}
@@ -110,6 +120,14 @@ export function createHeroCommandUI({ctx, gameState, canvas, onActiveHeroClick =
     const open = button(card, () => undefined);
     open.className = 'hero-card';
     open.dataset.open = '';
+    const expRow = document.createElement('div');
+    expRow.className = 'exp-row'; expRow.hidden = true;
+    const expText = document.createElement('span'); expText.className = 'exp-text';
+    const expGain = document.createElement('span'); expGain.dataset.expGain = '';
+    const expValue = document.createElement('span'); expValue.dataset.expValue = '';
+    expText.append(expGain, expValue);
+    const expBar = document.createElement('progress'); expBar.dataset.expBar = ''; expBar.max = 1; expBar.value = 0;
+    expRow.append(expText, expBar);
     const top = document.createElement('div');
     top.className = 'hero-top';
     const portrait = document.createElement('div');
@@ -165,7 +183,7 @@ export function createHeroCommandUI({ctx, gameState, canvas, onActiveHeroClick =
     meta.append(role, level);
     nameBand.append(name);
     footer.append(meta, nameBand);
-    open.append(top, footer);
+    card.append(expRow); open.append(top, footer);
   }
 
   return {
@@ -210,6 +228,9 @@ export function createHeroCommandUI({ctx, gameState, canvas, onActiveHeroClick =
       grid.dataset.count = String(count);
       grid.style.setProperty('--card-width', `${heroStripCardWidth()}px`);
       const scheduledUID = Number(ctx.callFunction('GetCurrentTurn') || 0);
+      const settlement = ctx.state.globals.SessionLevelUpSettlement;
+      const queue = ctx.state.globals.SessionLevelUpQueue;
+      const queueEntry = queue?.status === 'active' && !queue?.paused ? queue.entries?.[queue.currentIndex] : null;
       cards.forEach((card, slot) => {
         const hero = members[slot];
         if (!hero) return;
@@ -223,11 +244,24 @@ export function createHeroCommandUI({ctx, gameState, canvas, onActiveHeroClick =
         const ready = !!resourceState.ready || number(resourceState.value) >= 100;
         card.dataset.current = String(current);
         card.dataset.ko = String(hp <= 0);
+        card.dataset.lowHp = String(hp > 0 && hp / maxHP <= LOW_HP_WARNING_RATIO);
+        card.dataset.levelUp = String(String(queueEntry?.heroId || '') === String(hero.heroInstanceKey || hero.uid || ''));
         card.dataset.ready = String(ready);
         card.querySelector('[data-hp-text]').textContent = hp;
         const bar = card.querySelector('[data-hp-bar]'); bar.max = maxHP; bar.value = hp; bar.setAttribute('aria-valuetext', `${hp} of ${maxHP} HP`);
         card.querySelector('[data-sp-text]').textContent = sp;
         const spBar = card.querySelector('[data-sp-bar]'); spBar.max = spMax; spBar.value = sp; spBar.setAttribute('aria-valuetext', `${sp} of ${spMax} SP`);
+        const row = (settlement?.rows || []).find(candidate => String(candidate.heroId || '') === String(hero.heroInstanceKey || hero.uid || ''));
+        const expRow = card.querySelector('.exp-row');
+        expRow.hidden = !row;
+        if (row) {
+          const visual = settlementRowVisual(row, Number(ctx.state.globals.time || 0), settlement);
+          const max = Math.max(1, Number(row.expToNext || 1));
+          expRow.style.opacity = String(visual.opacity);
+          card.querySelector('[data-exp-gain]').textContent = `EXP +${Math.max(0, Number(row.gainedEXP || 0))}`;
+          card.querySelector('[data-exp-value]').textContent = `${Math.floor(visual.progress * max)}/${max}`;
+          const expBar = card.querySelector('[data-exp-bar]'); expBar.max = 1; expBar.value = visual.progress;
+        }
         const definition = heroDefinition(hero);
         const role = card.querySelector('[data-role]');
         role.textContent = HERO_DISPLAY_ROLES[heroName(hero)] || definition?.role || 'Hero';
