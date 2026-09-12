@@ -1,5 +1,5 @@
 import { effectiveStat } from '../web-runner/src/core/combatRules.mjs';
-import { resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat } from '../web-runner/modules/heroCommands.mjs';
+import { executeHeroCommand, resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat } from '../web-runner/modules/heroCommands.mjs';
 import {
   openHeroTurnCardFan as importedOpenHeroTurnCardFan,
   reopenHeroTurnCardFan as importedReopenHeroTurnCardFan,
@@ -9651,7 +9651,10 @@ export function HeroTurn(ctx, heroUID) {
       }
     }
   }
-  if (activeHeroUID) openHeroTurnCardFan(ctx, activeHeroUID);
+  if (activeHeroUID) {
+    const target = getEntities(ctx).find(entity => entity?.kind === 'enemy' && Number(entity.hp || 0) > 0);
+    if (target) executeHeroCommand(ctx, { actorUID: activeHeroUID, targetUID: Number(target.uid) });
+  }
 }
 
 export function openHeroTurnCardFan(ctx, heroUID) { return importedOpenHeroTurnCardFan(ctx, heroUID); }

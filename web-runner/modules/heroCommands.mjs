@@ -4,6 +4,7 @@ import {heroDefinition,PROGRESSION} from '../src/core/heroDefinitions.mjs';
 import {getHeroFlowState,getHeroSkillOptions} from '../src/core/personalFlow.mjs';
 import {legalSkill,validTargets,resolveSkill,turnStart,turnEnd} from '../src/core/combatRules.mjs';
 import {derivePresentationTurnBarrier} from '../src/core/turnGateController.mjs';
+import {acknowledgeSessionLevelUpEntry,clearSessionLevelUpQueue,createSessionLevelUpQueue,currentSessionLevelUpEntry,pauseSessionLevelUpQueue,resumeSessionLevelUpQueue} from '../src/core/sessionLevelUpQueue.mjs';
 export {getHeroFlowState,getHeroSkillOptions};
 export function getHeroCommandSlots(entities){const slots=Array(6).fill(null);for(const hero of entities){const i=Number(hero.heroDisplaySlot??hero.displaySlot??hero.heroIndex);if(hero?.kind==='hero'&&Number.isInteger(i)&&i>=0&&i<6)slots[i]=hero;}return slots;}
 export function canUseHeroCommand(ctx,actorUID){const g=ctx.state.globals,hero=ctx.state.entities.find(a=>a.uid===actorUID&&a.kind==='hero');return !!hero&&hero.hp>0&&!g.NativeBattleEnded&&g.GamePhase==='RUNTIME'&&!g.BattleStartActive&&!g.IsPlayerBusy&&Number(g.TurnPhase)===0&&Number(ctx.callFunction('GetCurrentTurn'))===actorUID&&ctx.callFunction('GetEnemyRosterStability')?.stable===true&&derivePresentationTurnBarrier({globals:g}).canClaimCombatAction;}
@@ -111,6 +112,7 @@ export function settleDefeat(ctx) {
  const g=ctx.state.globals;
  clearHeroTurnCardFan(g);
  cancelNativeSequence(ctx);
+ g.SessionLevelUpQueue=clearSessionLevelUpQueue();
  g.NativeBattleEnded=true;
  if(g.ProgressionBattle){g.ProgressionBattle.outcome='defeat';g.ProgressionBattle.defeatSettled=true;g.ProgressionBattle.settled=true;g.ProgressionBattle.goldReward=0;g.ProgressionResults=[];}
  return true;
@@ -121,9 +123,17 @@ export function settleVictory(ctx) {
  clearHeroTurnCardFan(g);
  if(!g.NativeBattleEnded||!g.ProgressionBattle||g.ProgressionBattle.settled||g.HeroProgress?.settledBattles?.includes(g.ProgressionBattle.id))return;
  cancelNativeSequence(ctx);
- g.ProgressionResults=settleBattleEXP(g.HeroProgress,g.ProgressionBattle,ctx.state.entities.filter(a=>a.kind==='hero'));
+ const heroes=ctx.state.entities.filter(a=>a.kind==='hero');
+ const participants=heroes.filter(hero=>g.ProgressionBattle.participants.includes(hero.heroInstanceKey||hero.baseHeroName||hero.name));
+ g.ProgressionResults=settleBattleEXP(g.HeroProgress,g.ProgressionBattle,participants);
+ g.SessionLevelUpQueue=createSessionLevelUpQueue({heroes:participants,progressionResults:g.ProgressionResults});
  g.ProgressionBattle.outcome='victory';
  g.ProgressionBattle.goldReward=Object.values(g.ProgressionBattle.defeatedGold||{}).reduce((sum,value)=>sum+value,0);
  g.goldTotal=Number(g.goldTotal||0)+g.ProgressionBattle.goldReward;
  g.HeroProgressDirty=true;
 }
+export function getSessionLevelUpQueueState(ctx){return ctx.state.globals.SessionLevelUpQueue||clearSessionLevelUpQueue();}
+export function getCurrentSessionLevelUpEntry(ctx){return currentSessionLevelUpEntry(getSessionLevelUpQueueState(ctx));}
+export function pauseSessionLevelUpRewards(ctx){const g=ctx.state.globals;g.SessionLevelUpQueue=pauseSessionLevelUpQueue(getSessionLevelUpQueueState(ctx));return g.SessionLevelUpQueue;}
+export function resumeSessionLevelUpRewards(ctx){const g=ctx.state.globals;g.SessionLevelUpQueue=resumeSessionLevelUpQueue(getSessionLevelUpQueueState(ctx));return g.SessionLevelUpQueue;}
+export function acknowledgeSessionLevelUpReward(ctx){const g=ctx.state.globals;g.SessionLevelUpQueue=acknowledgeSessionLevelUpEntry(getSessionLevelUpQueueState(ctx));return g.SessionLevelUpQueue;}

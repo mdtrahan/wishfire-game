@@ -1,5 +1,5 @@
 import { effectiveStat } from '../src/core/combatRules.mjs';
-import { resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat } from './heroCommands.mjs';
+import { executeHeroCommand, resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat } from './heroCommands.mjs';
 import { state } from './state.js';
 import { MONSTER_KEYS, MONSTER_LOOT_TABLE, TOKEN, EMPTY } from './monsterLootTableEventTokens.js';
 import { ACTIVE_EVENT_IDS, LIVE_OPS_EVENTS, TOKEN_REGISTRY } from './liveOpsTokens.js';
@@ -9664,7 +9664,10 @@ export function HeroTurn(ctx, heroUID) {
       }
     }
   }
-  if (activeHeroUID) openHeroTurnCardFan(ctx, activeHeroUID);
+  if (activeHeroUID) {
+    const target = getEntities(ctx).find(entity => entity?.kind === 'enemy' && Number(entity.hp || 0) > 0);
+    if (target) executeHeroCommand(ctx, { actorUID: activeHeroUID, targetUID: Number(target.uid) });
+  }
 }
 
 function heroTurnCardName(actor) {
