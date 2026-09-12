@@ -214,6 +214,14 @@ export function registerDevBrowserTestHooks({
       state.globals.SelectedEnemyUID = Number(target?.uid || 0);
       if (Number(callFunctionWithContext(fnContext, 'GetCurrentTurn')) !== Number(owner.uid)) throw new Error('QA fixture could not arrange the selected owner as current actor');
     };
+    const runQaFixtureProductionAction = action => {
+      state.globals.QaFixtureExplicitAction = 1;
+      try {
+        return action();
+      } finally {
+        delete state.globals.QaFixtureExplicitAction;
+      }
+    };
     const beginRewardSettlement = ({ overflow = false, multiHero = false } = {}) => {
       const selected = qaHero(); if (!selected) return;
       setTierAndCard();
@@ -273,6 +281,8 @@ export function registerDevBrowserTestHooks({
       ['QA run fixture', async () => {
         const fixture = resolveQaLevelUpFixtureKey(fixtureSelect.value);
         const owner = qaHero();
+        state.globals.QaFixtureHoldTurn = 1;
+        try {
         const livingEnemies = () => state.entities.filter(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
         const statusMagnitude = (actor, effect) => Number(actor?.statuses?.find(status => status.statusEffect === effect)?.magnitude || 0);
         const battleBaseline = state.globals.QaFixtureBattleBaseline;
@@ -356,14 +366,14 @@ export function registerDevBrowserTestHooks({
             const enemy = livingEnemies()[0];
             if (!enemy) throw new Error('QA fixture counter has no living enemy');
             installQaFixtureRuntimeRandom(QA_FIXTURE_RUNTIME_ENCOUNTER_SEED);
-            callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', owner.uid);
+            runQaFixtureProductionAction(() => callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', owner.uid));
             captureFreshVisuals();
           } else {
             const currentTarget = targetForAttempt();
             if (!currentTarget) throw new Error(`QA fixture ${fixture} has no living target`);
             arrangeOwnerTurn(owner, currentTarget);
             installQaFixtureRuntimeRandom(QA_FIXTURE_RUNTIME_ENCOUNTER_SEED);
-            callFunctionWithContext(fnContext, 'ProcessTurn');
+            runQaFixtureProductionAction(() => callFunctionWithContext(fnContext, 'ProcessTurn'));
             // Snapshot immediately, then once after the native lunge resolves.
             captureFreshVisuals();
             const resolutionMs = fixture === 'ward' || fixture === 'stat' || fixture === 'maxhp' || fixture === 'speed' || fixture === 'bargain' ? 40 : 1010;
@@ -376,6 +386,10 @@ export function registerDevBrowserTestHooks({
         }
         if (!scenario.observed()) throw new Error(`QA fixture ${fixture} did not produce its required observable production result: ${JSON.stringify({ ownerUID: owner.uid, enemies: livingEnemies().map(enemy => ({ uid: enemy.uid, hp: enemy.hp, statuses: enemy.statuses?.map(status => status.statusEffect) || [] })), pulses: state.globals.ArcanePulseVisuals?.length || 0, chains: state.globals.ChainStrikeVisuals?.length || 0 })}`);
         if (typeof drawFrame === 'function') drawFrame();
+        } finally {
+          delete state.globals.QaFixtureExplicitAction;
+          delete state.globals.QaFixtureHoldTurn;
+        }
       }],
       ['QA next battle', async () => {
         const fixture = resolveQaLevelUpFixtureKey(fixtureSelect.value);
@@ -386,13 +400,13 @@ export function registerDevBrowserTestHooks({
         // actor objects, so post-init values cannot prove permanent buff deltas.
         const preBattleBaseline = { fixture, ...snapshotFixtureBaseline(owner, target) };
         state.globals.QaFixtureHoldTurn = 1;
+        try {
         seedProductionEncounter();
         storyEntry.victory();
         const cardIndex = gameState.storyEntry.cards.findIndex((card, index) => card.combat && index < gameState.storyEntry.progress.revealed);
         if (!storyEntry.startCard(cardIndex) || !storyEntry.requestSkip() || !storyEntry.confirmSkip()) throw new Error('QA continuation could not enter the production StoryEntry combat transition');
         const transition = await waitForQaStoryCombatPhase(gameState.storyEntry, { wait: ms => new Promise(resolve => window.setTimeout(resolve, ms)) });
         if (!transition.ok || state.globals.NativeBattleEnded) throw new Error(`QA continuation timed out after ${transition.elapsedMs}ms phase=${transition.observed.phase} pending=${transition.observed.pending}`);
-        delete state.globals.QaFixtureHoldTurn;
         const playable = await waitForPlayableBattle({
           entry: gameState.storyEntry, globals: state.globals, entities: state.entities,
           getCurrentUID: () => callFunctionWithContext(fnContext, 'GetCurrentTurn'),
@@ -404,6 +418,10 @@ export function registerDevBrowserTestHooks({
         if (!liveOwner || !liveTarget) throw new Error('QA continuation replaced the encounter without the selected owner and a living target');
         state.globals.QaFixtureBattleBaseline = { ...preBattleBaseline, ready: playable.observed, liveOwnerUID: Number(liveOwner.uid), liveTargetUID: Number(liveTarget.uid) };
         if (typeof drawFrame === 'function') drawFrame();
+        } catch (error) {
+          delete state.globals.QaFixtureHoldTurn;
+          throw error;
+        }
       }],
       ['QA fresh session', () => { delete state.globals.QaFixtureBattleBaseline; delete state.globals.QaFixtureHoldTurn; delete state.globals.SessionLevelUpQaOfferCards; resetCombatSessionConditions(state.globals, {}); if (typeof drawFrame === 'function') drawFrame(); }],
       ['QA abandon', async () => {

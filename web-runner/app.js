@@ -3822,6 +3822,7 @@ function getStoryCardLiveLineState() {
     if (
       state.globals.GamePhase === 'RUNTIME' &&
       state.globals.DeferAdvance &&
+      !state.globals.QaFixtureHoldTurn &&
       (state.globals.time || 0) >= (state.globals.ActionLockUntil || 0)
     ) {
       let deferredAdvanceState = canResolveDeferredAdvance({
@@ -3931,6 +3932,7 @@ function getStoryCardLiveLineState() {
     const currentTurnUID = callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0;
     if (
       state.globals.GamePhase === 'RUNTIME' &&
+      !state.globals.QaFixtureHoldTurn &&
       !state.globals.BattleStartActive &&
       currentTurnType === 1 &&
       state.globals.TurnPhase === 2 &&

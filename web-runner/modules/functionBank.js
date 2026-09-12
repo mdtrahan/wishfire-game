@@ -9960,10 +9960,10 @@ export function ProcessTurn(ctx) {
   const actor = GetActorByUID(ctx, uid);
   const g = getGlobals(ctx);
 
-  // Quest QA may hold Battle B until its fixture runner has arranged the
-  // scheduler inputs. The runner releases this flag before calling this same
-  // production function; ordinary sessions never set it.
-  if (g.QaFixtureHoldTurn) return;
+  // Quest QA holds automatic Battle B scheduling while its fixture runner
+  // arranges one real production action and captures its evidence. That runner
+  // sets this one-call marker around its explicit action only.
+  if (g.QaFixtureHoldTurn && !g.QaFixtureExplicitAction) return;
 
   if (hasSessionLevelUpPresentationBarrier(g)) {
     logActionGateBlock(g, '[ACTION_GATE_BLOCK]', {

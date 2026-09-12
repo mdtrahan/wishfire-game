@@ -268,12 +268,20 @@ test('the QA fixture RNG seam reinstalls the production-derived stream for the c
   assert.match(app, /installQaFixtureRuntimeRandom: encounterSeed => installCombatRuntimeRandom\(deriveCombatRuntimeRngSeed\(encounterSeed\), 'quest-qa-fixture'\)/);
 });
 
-test('Battle B holds only QA scheduling until the fixture invokes ProcessTurn', () => {
+test('Battle B holds automatic scheduling through fixture evidence while permitting one explicit production action', () => {
   const hooks = read('web-runner/systems/devBrowserTestHooks.js');
   const commands = read('web-runner/modules/functionBank.js');
+  const app = read('web-runner/app.js');
   const nextBattle = hooks.slice(hooks.indexOf("['QA next battle'"), hooks.indexOf("['QA fresh session'"));
+  const fixtureRun = hooks.slice(hooks.indexOf("['QA run fixture'"), hooks.indexOf("['QA next battle'"));
   assert.match(nextBattle, /QaFixtureHoldTurn = 1/);
-  assert.match(commands, /if \(g\.QaFixtureHoldTurn\) return;/);
+  assert.match(nextBattle, /QaFixtureBattleBaseline[\s\S]*catch \(error\) \{\s*delete state\.globals\.QaFixtureHoldTurn/);
+  assert.match(hooks, /const runQaFixtureProductionAction = action => \{\s*state\.globals\.QaFixtureExplicitAction = 1/);
+  assert.match(fixtureRun, /runQaFixtureProductionAction\(\(\) => callFunctionWithContext\(fnContext, 'ProcessTurn'\)\)/);
+  assert.match(fixtureRun, /finally \{[\s\S]*delete state\.globals\.QaFixtureHoldTurn/);
+  assert.match(commands, /if \(g\.QaFixtureHoldTurn && !g\.QaFixtureExplicitAction\) return;/);
+  assert.match(app, /state\.globals\.DeferAdvance &&\s*!state\.globals\.QaFixtureHoldTurn/);
+  assert.match(app, /state\.globals\.GamePhase === 'RUNTIME' &&\s*!state\.globals\.QaFixtureHoldTurn &&\s*!state\.globals\.BattleStartActive &&\s*currentTurnType === 1/);
 });
 
 test('the Phase 4 fixture table keeps Pulse, staged Orb, and Venom identities distinct', () => {

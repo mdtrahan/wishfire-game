@@ -121,6 +121,6 @@ test('battle start owns the first turn claim before enemy idle recovery can run'
   const src = read('web-runner/app.js');
   assert.match(
     src,
-    /state\.globals\.GamePhase === 'RUNTIME' &&\s+!state\.globals\.BattleStartActive &&\s+currentTurnType === 1/,
+    /state\.globals\.GamePhase === 'RUNTIME' &&\s+!state\.globals\.QaFixtureHoldTurn &&\s+!state\.globals\.BattleStartActive &&\s+currentTurnType === 1/,
   );
 });
