@@ -90,35 +90,168 @@ Examples:
 
 Each stage is selected once. A fully upgraded effect leaves the pool for that hero.
 
-## Initial Card Families
+## Phase 1 Product and Data Contract
 
-The 48-card test pool should cover direct formulas and automatic combat behaviors.
+Phase 1 reserves the data shape and the 48-card capacity. It does not name
+final cards, write player-facing copy, or claim the final pool is complete.
+Those decisions belong to Phase 5 after the mechanic has passed its QA fixture.
 
-### Direct Stats
+### Stable Card Definition
 
-- Max HP
-- ATK
-- MATK
-- DEF
-- RES
-- SPEED
+Each card is a record with these stable fields:
 
-### Automatic Combat Effects
+| Field | Meaning |
+| --- | --- |
+| `cardId` | Stable snake-case identifier. QA fixtures use the `qa_` prefix. Phase 5 assigns final production IDs. |
+| `tier` | Integer `1` through `4`. An offer contains one tier only. |
+| `kind` | `behavior`, `stat`, or `bargain`. |
+| `effectId` | Stable effect family. A hero owns stages by this key. |
+| `stage` | Positive integer within `effectId`; stage `1` is the grant. |
+| `requiresStage` | Prior stage required for this card, or `null` for a grant or independently eligible stat fallback. |
+| `replacesStage` | Stage removed when this card applies, or `null` for a first grant. |
+| `formula` | Typed numeric payload from the formula surfaces below. |
+| `trigger` | Named automatic event, or `passive` for a derived stat. |
+| `targetRule` | `self`, `trigger_target`, `next_living_enemy`, or another explicit automatic rule. Buff cards never request manual targeting. |
+| `sourceTag` | `session_level_buff`, retained on generated effects for recursion guards and debug proof. |
+| `fixture` | `true` only for internal QA cards. Fixtures cannot ship as final player-facing cards. |
 
-- Spectral Orb: periodic automatic projectile
-- Inner Flow: stronger automatic skill cadence or power
-- Crimson Ward: battle-start shield
-- Destiny: basic attacks may restore HP
-- Faze: basic attacks may inflict Venom or the final Wishfire equivalent
-- Chain Strike: basic attacks bounce to another enemy
-- Arcane Pulse: periodic automatic magic hit
-- Split: basic attacks deal splash damage
-- Battle-start lightning or another genie-magic strike
-- Low-HP power
-- Counterattack with bounded recovery
-- Stat bargains such as increased ATK with reduced Max HP
+`effectId` and `stage` are the replacement key. Applying a later stage sets
+that hero's active stage to the selected record. The prior record supplies no
+remaining chance, count, cadence, or stat value.
 
-Final card text must show exact numeric values. Artifact or account progression may later modify central values without changing the card's behavior.
+### Reserved Four-Tier Structure
+
+The final pool has exactly 48 records: 12 slots in each tier. Phase 1 reserves
+each tier's 12-slot capacity without assigning all final entries. Every tier
+reserves at least four independently eligible `stat` or `bargain` fallback
+slots, so three distinct same-tier choices remain possible while behavioral
+paths are unavailable. Tier 1 may contain behavioral grants. A behavioral
+record in tiers 2 through 4 must require the immediately preceding owned
+stage. Phase 5 assigns the final slot identities, names, copy, and values.
+
+Direct-stat families reserved for the final pool are `max_hp`, `atk`, `matk`,
+`def`, `res`, and `speed`. Behavioral capacity is reserved for periodic damage,
+automatic healing, status application, battle-start protection, bounce or
+splash damage, counterattack, low-health power, and bargains. This is a
+capacity map, not a promise that every listed behavior appears in every tier.
+
+### Formula Surfaces
+
+All percentages are decimal fractions. A record must name one surface and
+provide every numeric input it needs.
+
+| Surface | Required formula fields | Resolution |
+| --- | --- | --- |
+| `stat_percent` | `stat`, `percent` | `derivedStat = round(baseStat * product(1 + percent for active distinct effectIds affecting stat))`. Stages within one `effectId` replace before this product. `max_hp` changes the maximum only; current HP is retained and clamped to the new maximum. |
+| `flat_magic_damage` | `amount` | Deal exactly `amount` magic damage to the automatic target. |
+| `shield_percent_max_hp` | `percent` | At battle start, grant `round(owner.maxHp * percent)` shield to the owner. |
+| `heal_percent_max_hp` | `chance`, `percent` | On the named trigger, a roll below `chance` heals `round(owner.maxHp * percent)`. |
+| `status_on_basic` | `chance`, `statusId`, `durationTurns`, `damagePerTurn` | On a completed owner basic attack, a roll below `chance` applies the status to `trigger_target`. |
+| `cadence_magic_damage` | `everyCompletedBasics`, `amount` | After each multiple of `everyCompletedBasics` completed owner basic attacks, deal `amount` magic damage to `trigger_target`. |
+| `bounce_percent_damage` | `chance`, `damagePercent` | After a completed owner basic attack, a roll below `chance` deals `round(resolvedTriggerDamage * damagePercent)` physical damage to the next distinct living enemy in the established deterministic target order; no living second target means no bounce. |
+| `counter_percent_atk` | `chance`, `damagePercent`, `maxPerDamagePackage` | When the owner receives a direct enemy damage package with a source, a roll below `chance` deals `round(owner.atk * damagePercent)` physical damage to its source. A `session_level_buff` counter package cannot trigger another counter. |
+| `bargain_percent` | `benefitStat`, `benefitPercent`, `penaltyStat`, `penaltyPercent` | Apply both `stat_percent` modifiers under one effectId; each stage replaces both values together. |
+
+Rounding uses the runtime's existing combat rounding helper. Phase 2 must call
+that helper rather than introduce another rounding rule.
+
+### Tier and Progress Inputs
+
+Tier selection receives a deterministic random source and this session input:
+
+```text
+progress = {
+  completedMilestones: non-negative integer,
+  totalMilestonesToFinalBoss: positive integer,
+  finalBossReached: boolean,
+}
+normalizedProgress = clamp(completedMilestones / totalMilestonesToFinalBoss, 0, 1)
+```
+
+`tierWeights(normalizedProgress, finalBossReached)` is an injected table. Its
+values and rarity curve are intentionally uncommitted until playtesting. The
+selector must record the rolled tier and use only that tier for one offer.
+
+### Per-Hero State and Eligibility
+
+Session state is keyed by hero instance identity, never party-wide identity:
+
+```text
+heroSessionBuffs[heroInstanceId] = {
+  activeStageByEffectId: { [effectId]: stage },
+  completedEffectIds: set<effectId>,
+  triggerCountersByEffectId: { [effectId]: non-negative integer },
+}
+```
+
+```text
+buildOffer(hero, progress, rng):
+  for tier in deterministicTierAttempts(progress, rng):
+    behavioral = shuffle(eligibleBehavioral(hero, tier), rng)
+    chosen = takeFirstDistinct(behavioral, 3)
+    if chosen.length < 3:
+      fallback = shuffle(eligibleIndependentStatsOrBargains(hero, tier), rng)
+      chosen += takeFirstDistinct(excluding chosen, fallback, 3 - chosen.length)
+    if chosen.length == 3:
+      return { tier, cards: chosen }
+  return offerUnavailable
+
+eligibleBehavioral(hero, card):
+  owned = heroSessionBuffs[hero.id].activeStageByEffectId[card.effectId] ?? 0
+  required = card.requiresStage ?? 0
+  return card.kind == behavior
+     and required == owned
+     and card.stage == owned + 1
+
+eligibleIndependentStatsOrBargains(hero, card):
+  return card.kind in {stat, bargain}
+     and card.requiresStage == null
+     and card.effectId not in heroSessionBuffs[hero.id].completedEffectIds
+
+apply(hero, card):
+  remove card.replacesStage for card.effectId from hero state
+  set activeStageByEffectId[card.effectId] = card.stage
+  if card is the highest defined stage for effectId:
+    add card.effectId to completedEffectIds
+```
+
+The implementation may use equivalent data structures. It must preserve these
+results: a hero never sees an owned stage, a behavioral upgrade requires that
+same hero's prior stage, stat fallback is independent, no offer mixes tiers,
+and a failed tier rerolls as a whole. If all four tier attempts are
+unavailable, return `offerUnavailable`; never downgrade one slot or fabricate
+a duplicate.
+
+Direct-stat cards with `requiresStage: null` are independently eligible
+fallbacks. A later stat-stage card may use `requiresStage` and replacement
+semantics when Phase 5 explicitly defines it.
+
+### Neutral QA Fixtures
+
+These internal records prove formula surfaces. They are not final names, copy,
+or the completed 48-card pool.
+
+| Fixture effectId | Tier and stages | Exact payload |
+| --- | --- | --- |
+| `qa_atk_focus` | T1 stage 1; T2 stage 2 requires 1, replaces 1 | `stat_percent(atk, 0.10)` then `stat_percent(atk, 0.18)` |
+| `qa_max_vitality` | T1 stage 1 | `stat_percent(max_hp, 0.20)` |
+| `qa_opening_shield` | T1 stage 1 | `shield_percent_max_hp(0.25)` at battle start |
+| `qa_heal_on_basic` | T1 stage 1 | `heal_percent_max_hp(chance: 0.15, percent: 0.05)` on completed owner basic attack |
+| `qa_status_on_basic` | T1 stage 1 | `status_on_basic(chance: 0.20, statusId: qa_venom, durationTurns: 2, damagePerTurn: 3)` |
+| `qa_pulse` | T1 stage 1 | `cadence_magic_damage(everyCompletedBasics: 2, amount: 6)` |
+| `qa_bounce` | T1 stage 1 | `bounce_percent_damage(chance: 0.25, damagePercent: 0.50)` |
+| `qa_counter` | T1 stage 1 | `counter_percent_atk(chance: 0.20, damagePercent: 0.40, maxPerDamagePackage: 1)` |
+| `qa_power_bargain` | T1 stage 1 | `bargain_percent(benefitStat: atk, benefitPercent: 0.15, penaltyStat: max_hp, penaltyPercent: -0.10)` |
+| `qa_orb_cadence` | T1 stage 1; T2 stage 2 requires 1, replaces 1 | `cadence_magic_damage(everyCompletedBasics: 3, amount: 4)` then `cadence_magic_damage(everyCompletedBasics: 2, amount: 6)` |
+
+### Ownership, Lifetime, and Cleanup
+
+Only the hero that selects a record receives it. Effects read that hero's
+state and automatic trigger context; they never alter another hero's buff
+state. Buffs expire when the current adventure session ends, is abandoned, or
+restarts. Battle end preserves them only when the adventure continues. Magic
+Fruit is an encounter reward with existing healing behavior and does not enter
+this state, offer builder, tier roll, or level-up queue.
 
 ## Historical Wishfire Reuse
 
@@ -185,10 +318,13 @@ QA cards are internal fixtures. Remove their temporary copy or convert them into
 
 ### Phase 1: Product and Data Contract
 
-- Define the 48-card pool, four tiers, stage relationships, formulas, and player-facing copy.
-- Mark every behavioral card as grant or upgrade.
-- Identify pure stat fallback cards in every tier.
+- Define stable card fields, four 12-slot tier capacities, stage relationships,
+  formula surfaces, progress inputs, and neutral QA fixture values.
+- Reserve behavioral grant/upgrade capacity and four independently eligible
+  stat-or-bargain fallback slots in every tier.
 - Keep Magic Fruit in the event-reward lane.
+- Defer final Wishfire names, player-facing copy, exact production values, and
+  the completed 48-card pool to Phase 5.
 
 ### Phase 2: Deterministic Draw Rules
 
@@ -214,8 +350,9 @@ QA cards are internal fixtures. Remove their temporary copy or convert them into
 ### Phase 5: Wishfire Card Pool
 
 - Convert passing mechanics into final genie-magic cards.
-- Replace temporary reference terminology.
-- Add exact values and upgrade stages.
+- Assign the completed 48-card pool: final IDs, names, player-facing copy,
+  exact values, tier placement, and upgrade stages.
+- Replace temporary QA terminology and reject any borrowed reference language.
 - Check that every tier can always form a valid three-card offer.
 
 ### Phase 6: Live Verification
