@@ -38,6 +38,8 @@ When one or more heroes level up:
 6. Advance to the next queued level-up.
 7. Resume the adventure, continue its transition, or finish the session after the queue empties.
 
+Victory uses this same settlement presentation in combat. Temporary EXP rows fade in for participating heroes, show their gained EXP, fill through every crossed threshold, then fast-empty and refill the carried remainder when needed. Each earned level runs its dance and three-card choice in party order. After the queue completes and the EXP rows fade out, the adventure advances automatically. A victory without a level-up still plays its EXP rows and advances automatically. Victory has no result modal or Continue requirement. Defeat and its revive flow remain separate.
+
 If one hero earns several levels at once, enqueue one choice for each earned level unless a later product decision changes that rule.
 
 ## Buff Ownership and Lifetime
