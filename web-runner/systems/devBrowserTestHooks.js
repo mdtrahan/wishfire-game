@@ -281,6 +281,23 @@ export function registerDevBrowserTestHooks({
       settleVictory(fnContext);
       if (typeof drawFrame === 'function') drawFrame();
     };
+    const beginQaFixtureOffer = async () => {
+      state.globals.QaFixtureHoldTurn = 1;
+      state.globals.QaFixtureOfferHold = 1;
+      const boundary = await waitForPlayableBattle({
+        entry: gameState.storyEntry, globals: state.globals, entities: state.entities,
+        getCurrentUID: () => callFunctionWithContext(fnContext, 'GetCurrentTurn'),
+        allowDeferredAdvance: true,
+        wait: ms => new Promise(resolve => window.setTimeout(resolve, ms)),
+      });
+      if (!boundary.ok) {
+        delete state.globals.QaFixtureOfferHold;
+        delete state.globals.QaFixtureHoldTurn;
+        throw new Error(`QA fixture offer requires an idle production boundary: ${JSON.stringify(boundary.observed)}`);
+      }
+      setQaFixtureOfferPool(fixtureSelect.value);
+      beginRewardSettlement();
+    };
     for (const [label, action] of [
       ['QA start combat', () => {
         if (typeof storyEntry.startCombatForQA !== 'function') return;
@@ -294,6 +311,7 @@ export function registerDevBrowserTestHooks({
         callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
         delete state.globals.QaFixtureBattleBaseline;
         delete state.globals.QaFixtureHoldTurn;
+        delete state.globals.QaFixtureOfferHold;
         delete state.globals.SessionLevelUpQaOfferCards;
       }],
       ['QA clear monsters', () => {
@@ -305,7 +323,7 @@ export function registerDevBrowserTestHooks({
         hero.hp = Math.floor(Number(hero.maxHP || 1) * .25); callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
       }],
       ['QA EXP 47+80', () => beginRewardSettlement()],
-      ['QA fixture offer', () => { setQaFixtureOfferPool(fixtureSelect.value); beginRewardSettlement(); }],
+      ['QA fixture offer', async () => { await beginQaFixtureOffer(); }],
       ['QA overflow EXP', () => beginRewardSettlement({ overflow: true })],
       ['QA multi-hero EXP', () => beginRewardSettlement({ multiHero: true })],
       ['QA choose preferred', () => {
@@ -533,6 +551,7 @@ export function registerDevBrowserTestHooks({
         } finally {
           delete state.globals.QaFixtureExplicitAction;
           delete state.globals.QaFixtureHoldTurn;
+          delete state.globals.QaFixtureOfferHold;
         }
       }],
       ['QA next battle', async () => {
@@ -567,7 +586,7 @@ export function registerDevBrowserTestHooks({
           throw error;
         }
       }],
-      ['QA fresh session', () => { delete state.globals.QaFixtureBattleBaseline; delete state.globals.QaFixtureHoldTurn; delete state.globals.SessionLevelUpQaOfferCards; resetCombatSessionConditions(state.globals, {}); if (typeof drawFrame === 'function') drawFrame(); }],
+      ['QA fresh session', () => { delete state.globals.QaFixtureBattleBaseline; delete state.globals.QaFixtureHoldTurn; delete state.globals.QaFixtureOfferHold; delete state.globals.SessionLevelUpQaOfferCards; resetCombatSessionConditions(state.globals, {}); if (typeof drawFrame === 'function') drawFrame(); }],
       ['QA abandon', async () => {
         const navigated = await storyEntry.navigate('Quests');
         const quit = navigated && storyEntry.quitPausedCombat();
@@ -575,6 +594,7 @@ export function registerDevBrowserTestHooks({
         if (Object.keys(state.globals.SessionLevelBuffState?.heroes || {}).length || state.globals.SessionLevelUpSettlement || state.globals.SessionLevelUpQueue?.status === 'active' || state.globals.SessionLevelBuffCombatSessionId != null) throw new Error('QA abandon did not clear owned session level buffs');
         delete state.globals.QaFixtureBattleBaseline;
         delete state.globals.QaFixtureHoldTurn;
+        delete state.globals.QaFixtureOfferHold;
         delete state.globals.SessionLevelUpQaOfferCards;
         if (typeof drawFrame === 'function') drawFrame();
       }],

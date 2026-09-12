@@ -137,6 +137,15 @@ test('shared ProcessTurn boundary holds every scheduler path while settlement or
   assert.match(processTurn, /hasSessionLevelUpPresentationBarrier\(g\)[\s\S]*return;[\s\S]*resolvePendingEnemyDeaths\(ctx\)/);
 });
 
+test('staged QA offers claim the scheduler hold before settlement and retain it through card selection', () => {
+  const hooks = read('web-runner/systems/devBrowserTestHooks.js');
+  const fixtureOffer = hooks.slice(hooks.indexOf('const beginQaFixtureOffer'), hooks.indexOf("['QA defeat'"));
+  assert.match(fixtureOffer, /QaFixtureHoldTurn = 1;[\s\S]*QaFixtureOfferHold = 1/);
+  assert.match(fixtureOffer, /await waitForPlayableBattle\([\s\S]*allowDeferredAdvance: true[\s\S]*setQaFixtureOfferPool\(fixtureSelect\.value\);[\s\S]*beginRewardSettlement\(\)/);
+  assert.match(hooks, /\['QA fixture offer', async \(\) => \{ await beginQaFixtureOffer\(\); \}\]/);
+  assert.match(hooks, /finally \{[\s\S]*delete state\.globals\.QaFixtureHoldTurn;[\s\S]*delete state\.globals\.QaFixtureOfferHold/);
+});
+
 function loadQaFixtureProcessTurnHarness({ tokenOwnerUID = 0 } = {}) {
   const source = read('web-runner/modules/functionBank.js');
   const processTurn = source.slice(source.indexOf('export function ProcessTurn(ctx)'), source.indexOf('function isBoardFullyPopulatedForEnemyMutation')).replace('export function', 'function');
