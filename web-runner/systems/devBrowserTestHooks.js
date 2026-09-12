@@ -388,6 +388,29 @@ export function registerDevBrowserTestHooks({
           pendingHeroHits: Array.isArray(state.globals.PendingHeroHits) ? state.globals.PendingHeroHits.length : 0,
           nativeCommandOwner: Number(state.globals.NativeCommandSequence?.actorUID || 0),
         });
+        const fixturePhaseIsClosable = () => {
+          const now = Number(state.globals.time || 0);
+          return Number(state.globals.TurnPhase || 0) !== 0
+            && !state.globals.ActionInProgress
+            && !state.globals.IsPlayerBusy
+            && !(state.globals.EnemyAction && state.globals.EnemyAction.active)
+            && Number(state.globals.ActionLockUntil || 0) <= now
+            && !(Array.isArray(state.globals.PendingHeroHits) && state.globals.PendingHeroHits.length);
+        };
+        const closeCompletedFixturePhase = async () => {
+          if (Number(state.globals.TurnPhase || 0) === 0) return { ok: true, closed: false };
+          if (!fixturePhaseIsClosable()) return { ok: false, observed: fixtureActionObserved() };
+          // Keep the scheduler transition authoritative. The QA hold prevents
+          // its automatic ProcessTurn claim from acting on the next actor.
+          callFunctionWithContext(fnContext, 'AdvanceTurn');
+          const startedAt = Date.now();
+          while (Date.now() - startedAt < 2600) {
+            const idle = await waitForFixtureIdle();
+            if (idle.ok && Number(state.globals.TurnPhase || 0) === 0) return { ok: true, closed: true };
+            await new Promise(resolve => window.setTimeout(resolve, 25));
+          }
+          return { ok: Number(state.globals.TurnPhase || 0) === 0, observed: fixtureActionObserved() };
+        };
         const waitForFixtureAction = async (predicate, timeoutMs = 2600) => {
           const startedAt = Date.now();
           let observed = fixtureActionObserved();
@@ -432,6 +455,8 @@ export function registerDevBrowserTestHooks({
           const idleBefore = await waitForFixtureIdle();
           if (!idleBefore.ok) throw new Error(`QA fixture ${fixture} cannot run while Battle B is gated: ${JSON.stringify(idleBefore.observed)}`);
           state.globals.QaFixtureHoldTurn = 1;
+          const phaseClosed = await closeCompletedFixturePhase();
+          if (!phaseClosed.ok) throw new Error(`QA fixture ${fixture} cannot close its completed production turn phase: ${JSON.stringify(phaseClosed.observed || fixtureActionObserved())}`);
           if (fixture === 'counter') {
             const enemy = livingEnemies()[0];
             if (!enemy) throw new Error('QA fixture counter has no living enemy');

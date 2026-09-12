@@ -226,6 +226,23 @@ test('QA fixture hold permits one owner-bound ProcessTurn through the real comma
   assert.equal(wrongOwner.globals.QaFixtureProcessTurnGate.reason, 'qa-hold-blocked');
 });
 
+test('QA fixture hold closes an idle completed phase before its explicit owner command', () => {
+  const harness = loadQaFixtureProcessTurnHarness();
+  harness.globals.TurnPhase = 2;
+  harness.context.ProcessTurn(harness.ctx);
+  assert.equal(harness.globals.NativeCommandSequence, undefined, 'the hold blocks the completed enemy phase from claiming a command');
+  assert.equal(harness.globals.QaFixtureProcessTurnGate.reason, 'qa-hold-blocked');
+  // The fixture lifecycle delegates this transition to production AdvanceTurn;
+  // after it returns phase zero, the selected owner may claim exactly once.
+  harness.globals.TurnPhase = 0;
+  harness.globals.QaFixtureExplicitAction = 1;
+  harness.globals.QaFixtureExplicitActionOwnerUID = 1;
+  harness.globals.QaFixtureExplicitActionClaimed = 0;
+  harness.context.ProcessTurn(harness.ctx);
+  assert.equal(harness.globals.NativeCommandSequence?.actorUID, 1);
+  assert.equal(harness.globals.QaFixtureExplicitActionClaimed, 1);
+});
+
 test('fresh-session reset clears level buffs, offers, settlement, and queue state', () => {
   const globals = { SessionLevelBuffState: { heroes: { fara: { activeStageByEffectId: { qa_atk_focus: 1 } } } }, SessionLevelUpOffersByQueueIndex: { 0: {} }, SessionLevelUpSettlement: { rows: [{}] } };
   resetCombatSessionConditions(globals, {});
@@ -368,6 +385,9 @@ test('Battle B holds automatic scheduling through fixture evidence while permitt
   assert.match(nextBattle, /QaFixtureHoldTurn = 1/);
   assert.match(nextBattle, /QaFixtureBattleBaseline[\s\S]*catch \(error\) \{\s*delete state\.globals\.QaFixtureHoldTurn/);
   assert.match(hooks, /const runQaFixtureProductionAction = async \(ownerUID, action\) => \{\s*state\.globals\.QaFixtureExplicitAction = 1/);
+  assert.match(fixtureRun, /const closeCompletedFixturePhase = async \(\) => \{/);
+  assert.match(fixtureRun, /callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
+  assert.match(fixtureRun, /const phaseClosed = await closeCompletedFixturePhase\(\)/);
   assert.match(fixtureRun, /await runQaFixtureProductionAction\(owner\.uid, async \(\) => \{[\s\S]*callFunctionWithContext\(fnContext, 'ProcessTurn'\)[\s\S]*callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
   assert.match(fixtureRun, /counterAfter !== counterBefore \+ 1/);
   assert.match(fixtureRun, /await runOwnerBasicAttempt\(attempt\)/);
