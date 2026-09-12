@@ -324,11 +324,30 @@ export function registerDevBrowserTestHooks({
       state.globals.QaSettlementHoldReleaseCount = Number(state.globals.QaSettlementHoldReleaseCount || 0) + 1;
       return true;
     };
-    const monitorQaSettlementHold = baselineHP => {
+    const qaSettlementRuntimeSnapshot = () => ({
+      currentTurnUID: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0),
+      actionInProgress: !!state.globals.ActionInProgress,
+      playerBusy: !!state.globals.IsPlayerBusy,
+      pendingHeroHits: Array.isArray(state.globals.PendingHeroHits) ? state.globals.PendingHeroHits.length : 0,
+      damageTextCount: (state.globals.DamageTexts || []).length,
+    });
+    const monitorQaSettlementHold = ({ baselineHP, preSettlementState }) => {
       if (!state.globals.QaSettlementHoldActive) return;
       const settlementOpen = !!state.globals.SessionLevelUpSettlement || state.globals.SessionLevelUpQueue?.status === 'active';
       if (settlementOpen && qaSettlementHeroHealthChanged(state.entities, baselineHP)) {
         state.globals.QaSettlementHoldError = 'hero HP changed while synthetic settlement was held';
+        releaseQaSettlementHold();
+        return;
+      }
+      const duringSettlement = qaSettlementRuntimeSnapshot();
+      if (settlementOpen && (
+        duringSettlement.currentTurnUID !== preSettlementState.currentTurnUID
+        || duringSettlement.actionInProgress
+        || duringSettlement.playerBusy
+        || duringSettlement.pendingHeroHits > 0
+        || duringSettlement.damageTextCount > preSettlementState.damageTextCount
+      )) {
+        state.globals.QaSettlementHoldError = `combat advanced during synthetic settlement: ${JSON.stringify(duringSettlement)}`;
         releaseQaSettlementHold();
         return;
       }
@@ -338,7 +357,7 @@ export function registerDevBrowserTestHooks({
         releaseQaSettlementHold();
         return;
       }
-      window.setTimeout(() => monitorQaSettlementHold(baselineHP), 25);
+      window.setTimeout(() => monitorQaSettlementHold({ baselineHP, preSettlementState }), 25);
     };
     const beginRewardSettlement = async ({ overflow = false, multiHero = false, noLevel = false } = {}) => {
       if (state.globals.QaSettlementHoldActive) throw new Error('QA synthetic settlement is already waiting for cleanup');
@@ -352,6 +371,7 @@ export function registerDevBrowserTestHooks({
         releaseQaSettlementHold();
         throw new Error(`QA synthetic settlement could not start from a live quiescent battle: ${JSON.stringify(quiescent.observed)}`);
       }
+      const preSettlementState = qaSettlementRuntimeSnapshot();
       const selected = qaHero();
       if (!selected) {
         releaseQaSettlementHold();
@@ -378,7 +398,9 @@ export function registerDevBrowserTestHooks({
       state.globals.ProgressionBattle = { id: battleId, participants: participants.map(hero => hero.heroInstanceKey || hero.baseHeroName || hero.name), defeated: { qa_reward: reward }, defeatedGold: {}, settled: false };
       // This is the production EXP settlement path. Controls only seed its battle input.
       settleVictory(fnContext);
-      monitorQaSettlementHold(qaSettlementHeroHealthSnapshot(state.entities));
+      // Awarding EXP synchronously applies a living hero's deterministic max-HP
+      // growth delta. Everything after this point must remain frozen.
+      monitorQaSettlementHold({ baselineHP: qaSettlementHeroHealthSnapshot(state.entities), preSettlementState });
       if (typeof drawFrame === 'function') drawFrame();
     };
     const beginQaFixtureOffer = async () => {

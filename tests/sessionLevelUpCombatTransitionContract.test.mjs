@@ -18,11 +18,11 @@ import {
   settleVictory,
   executeHeroCommand,
 } from '../web-runner/modules/heroCommands.mjs';
-import { createHeroProgressStore, newHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
+import { awardHeroEXP, createHeroProgressStore, newHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
 import { releaseCombatStartToScheduler, resetCombatSessionConditions } from '../web-runner/systems/combatSessionReset.mjs';
 import { derivePresentationTurnBarrier, hasSessionLevelUpPresentationBarrier } from '../web-runner/src/core/turnGateController.mjs';
 import { applyLevelUpBuffCard, createSessionLevelBuffState, getEligibleLevelUpBuffCards } from '../src/core/sessionLevelBuffOffers.mjs';
-import { QA_LEVEL_UP_BUFF_CARDS } from '../web-runner/modules/sessionLevelUpBuffPresentation.mjs';
+import { beginSessionLevelUpSettlement, QA_LEVEL_UP_BUFF_CARDS } from '../web-runner/modules/sessionLevelUpBuffPresentation.mjs';
 import { applySessionLevelBuffsAtBattleStart, rulesContext } from '../web-runner/modules/heroCommands.mjs';
 
 const read = file => fs.readFileSync(path.join(process.cwd(), file), 'utf8');
@@ -261,8 +261,22 @@ test('synthetic QA settlements hold scheduling until production is quiescent and
   const hooks = read('web-runner/systems/devBrowserTestHooks.js');
   const settlement = hooks.slice(hooks.indexOf('const beginRewardSettlement'), hooks.indexOf('const beginQaFixtureOffer'));
   assert.match(settlement, /QaFixtureHoldTurn = 1;[\s\S]*await waitForQaSettlementQuiescence/);
-  assert.match(settlement, /monitorQaSettlementHold\(qaSettlementHeroHealthSnapshot\(state\.entities\)\)/);
+  assert.match(settlement, /const preSettlementState = qaSettlementRuntimeSnapshot\(\);[\s\S]*settleVictory\(fnContext\);[\s\S]*monitorQaSettlementHold\(\{ baselineHP: qaSettlementHeroHealthSnapshot\(state\.entities\), preSettlementState \}\)/);
+  assert.match(hooks, /duringSettlement\.currentTurnUID !== preSettlementState\.currentTurnUID[\s\S]*duringSettlement\.damageTextCount > preSettlementState\.damageTextCount/);
   assert.match(hooks, /QaSettlementHoldReleaseCount = Number\(state\.globals\.QaSettlementHoldReleaseCount \|\| 0\) \+ 1/);
+});
+
+test('living EXP level growth happens synchronously before the held settlement baseline, then HP remains stable', () => {
+  const hero = newHeroProgress('Falie');
+  hero.hp = 24;
+  const oldMaxHP = hero.maxHP;
+  const result = awardHeroEXP(hero, 100);
+  assert.equal(result.fromLevel, 1);
+  assert.equal(result.toLevel, 2);
+  assert.equal(hero.hp, 24 + hero.maxHP - oldMaxHP);
+  const postStartupHP = hero.hp;
+  beginSessionLevelUpSettlement({}, [result], [hero], 0);
+  assert.equal(hero.hp, postStartupHP);
 });
 
 function loadQaFixtureProcessTurnHarness({ tokenOwnerUID = 0 } = {}) {
