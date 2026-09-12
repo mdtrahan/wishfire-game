@@ -124,6 +124,35 @@ test('victory queues gained levels, the queue pauses battle completion, and defe
   assert.deepEqual(globals.SessionLevelBuffState, { heroes: {} });
 });
 
+test('a new victory identity starts its own queue and settlement while a duplicate stays idempotent', () => {
+  const hero = newHeroProgress('Falie', 'fara-1');
+  Object.assign(hero, { kind: 'hero', uid: 1, heroDisplaySlot: 0, currentEXP: 47, EXPToNextLevel: 100 });
+  const globals = {
+    NativeBattleEnded: true,
+    HeroProgress: createHeroProgressStore(),
+    SessionLevelBuffState: { heroes: {} },
+    ProgressionBattle: { id: 'victory-a', participants: ['fara-1'], defeated: { 9: 80 }, defeatedGold: {} },
+  };
+  const ctx = { state: { globals, entities: [hero] }, callFunction: () => {} };
+  settleVictory(ctx);
+  assert.equal(globals.SessionLevelUpQueue.status, 'active');
+  const firstGeneration = globals.SessionLevelUpOfferGeneration;
+  globals.SessionLevelUpQueue = { status: 'complete', paused: false, currentIndex: 1, entries: [] };
+  hero.currentEXP = Math.max(0, Number(hero.EXPToNextLevel) - 53);
+  globals.NativeBattleEnded = true;
+  globals.ProgressionBattle = { id: 'victory-b', participants: ['fara-1'], defeated: { 9: 80 }, defeatedGold: {} };
+  settleVictory(ctx);
+  assert.equal(globals.SessionLevelUpQueue.status, 'active');
+  assert.equal(globals.SessionLevelUpSettlement.phase, 'fadeIn');
+  assert.equal(globals.SessionLevelUpOfferGeneration, firstGeneration + 1);
+  const results = JSON.stringify(globals.ProgressionResults);
+  const queue = JSON.stringify(globals.SessionLevelUpQueue);
+  settleVictory(ctx);
+  assert.equal(JSON.stringify(globals.ProgressionResults), results);
+  assert.equal(JSON.stringify(globals.SessionLevelUpQueue), queue);
+  assert.deepEqual(globals.HeroProgress.settledBattles, ['victory-a', 'victory-b']);
+});
+
 test('combat completion waits for the queue seam and resets its state for a fresh session', () => {
   const source = read('web-runner/systems/questCombatSession.mjs');
   const reset = read('web-runner/systems/combatSessionReset.mjs');
@@ -147,6 +176,7 @@ test('QA fixture offers use the production victory settlement and reject only de
   assert.match(fixtureOffer, /battle\.outcome === 'defeat' \|\| battle\.defeatSettled/);
   assert.match(fixtureOffer, /advanceQaVictoryResult\(\);[\s\S]*setQaFixtureOfferPool\(fixtureSelect\.value\);[\s\S]*beginRewardSettlement\(\)/);
   assert.match(fixtureOffer, /SessionLevelUpQueue\?\.status !== 'active'/);
+  assert.match(hooks, /const expToNext = Math\.max\(1, Number\(hero\.EXPToNextLevel \|\| 100\)\);[\s\S]*hero\.currentEXP = overflow \? 0 : Math\.max\(0, expToNext - 53\)/);
   assert.match(hooks, /\['QA fixture offer', \(\) => beginQaFixtureOffer\(\)\]/);
   assert.match(commands, /export function settleVictory[\s\S]*if\(!g\.NativeBattleEnded[\s\S]*g\.ProgressionBattle\.outcome='victory'/);
   assert.match(commands, /export function settleDefeat[\s\S]*g\.ProgressionBattle\.outcome='defeat'[\s\S]*g\.ProgressionBattle\.defeatSettled=true/);

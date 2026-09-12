@@ -270,8 +270,11 @@ export function registerDevBrowserTestHooks({
       setTierAndCard();
       const participants = multiHero ? state.entities.filter(entity => entity.kind === 'hero') : [selected];
       for (const hero of participants) {
-        hero.currentEXP = overflow ? 0 : 47;
-        hero.EXPToNextLevel = 100;
+        const expToNext = Math.max(1, Number(hero.EXPToNextLevel || 100));
+        // Keep the original 47 + 80 proof at level one, then use each live
+        // level's production threshold so a later staged victory also crosses.
+        hero.currentEXP = overflow ? 0 : Math.max(0, expToNext - 53);
+        hero.EXPToNextLevel = expToNext;
       }
       const reward = overflow ? 280 : 80;
       const battleId = `quest-qa-level-up-${Date.now()}`;
