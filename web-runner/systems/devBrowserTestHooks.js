@@ -281,11 +281,25 @@ export function registerDevBrowserTestHooks({
       settleVictory(fnContext);
       if (typeof drawFrame === 'function') drawFrame();
     };
+    const advanceQaVictoryResult = () => {
+      const dialog = document.querySelector('#battle-results');
+      if (!dialog) return false;
+      const continueButton = [...dialog.querySelectorAll('button')].find(button => button.textContent === 'Continue');
+      if (!continueButton) throw new Error('QA continuation could not find the production victory Continue control');
+      continueButton.click();
+      if (document.querySelector('#battle-results')) throw new Error('QA continuation did not close the production victory result');
+      return true;
+    };
     const beginQaFixtureOffer = () => {
       const battle = state.globals.ProgressionBattle || {};
       if (battle.outcome === 'defeat' || battle.defeatSettled) throw new Error('QA fixture offer cannot open after defeat');
+      advanceQaVictoryResult();
       setQaFixtureOfferPool(fixtureSelect.value);
+      // The deterministic QA input below resolves the current production battle
+      // as victory, then delegates EXP, queue, and offer creation to settleVictory.
       beginRewardSettlement();
+      if (state.globals.SessionLevelUpQueue?.status !== 'active') throw new Error('QA fixture victory did not create an active level-up queue');
+      if (document.querySelector('#battle-results')) throw new Error('QA fixture victory left a prior result dialog open');
     };
     for (const [label, action] of [
       ['QA start combat', () => {
@@ -553,6 +567,7 @@ export function registerDevBrowserTestHooks({
         // Keep the pre-transition values. Encounter replacement creates new
         // actor objects, so post-init values cannot prove permanent buff deltas.
         const preBattleBaseline = { fixture, ...snapshotFixtureBaseline(owner, target) };
+        advanceQaVictoryResult();
         state.globals.QaFixtureHoldTurn = 1;
         try {
         seedProductionEncounter();

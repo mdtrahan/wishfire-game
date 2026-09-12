@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { beginSessionLevelUpSettlement, chooseSessionLevelUpBuff, getSessionLevelUpBuffPresentation, LOW_HP_WARNING_RATIO, QA_LEVEL_UP_BUFF_CARDS, settlementRowVisual, updateSessionLevelUpSettlement } from '../web-runner/modules/sessionLevelUpBuffPresentation.mjs';
 import { applyLevelUpBuffCard, getEligibleLevelUpBuffCards } from '../src/core/sessionLevelBuffOffers.mjs';
+import { createSessionLevelUpQueue } from '../web-runner/src/core/sessionLevelUpQueue.mjs';
 
 const heroes = [
   { uid: 1, heroInstanceKey: 'fara-1', heroDisplaySlot: 0, name: 'Falie', sp: 8, spMax: 10 },
@@ -62,6 +63,27 @@ test('the queued hero alone receives one same-tier three-card QA offer and selec
   globals.time = 2;
   const laterOffer = getSessionLevelUpBuffPresentation(globals, heroes);
   assert.notEqual(laterOffer.offerToken, firstOfferToken, 'a later settlement gets a fresh fan identity at queue index zero');
+});
+
+test('a completed settlement starts a fresh active queue for a staged T2 victory offer', () => {
+  const globals = {
+    time: 2,
+    RuntimeRandom: () => 0,
+    SessionLevelUpTierWeights: { 1: 0, 2: 1, 3: 0, 4: 0 },
+    SessionLevelBuffState: applyLevelUpBuffCard({ state: {}, heroId: 'fara-1', cardId: 'qa_orb_cadence_1', cards: QA_LEVEL_UP_BUFF_CARDS }).state,
+    SessionLevelUpQueue: { status: 'complete', paused: false, currentIndex: 1, entries: [] },
+  };
+  const results = [{ hero: 'Falie', exp: 80, expBefore: 47, expAfter: 27, expToNextBefore: 100, fromLevel: 2, toLevel: 3 }];
+  globals.SessionLevelUpQueue = createSessionLevelUpQueue({ heroes: [heroes[0]], progressionResults: results });
+  beginSessionLevelUpSettlement(globals, results, heroes, 0);
+  globals.time = 3;
+  getSessionLevelUpBuffPresentation(globals, heroes);
+  globals.time = 4;
+  const t2 = getSessionLevelUpBuffPresentation(globals, heroes);
+  assert.equal(globals.SessionLevelUpQueue.status, 'active');
+  assert.equal(t2.open, true);
+  assert.ok(t2.cards.some(card => card.cardId === 'qa_orb_cadence_2'));
+  assert.ok(t2.heroUID > 0, 'the fresh victory settlement retains a concrete owner');
 });
 
 test('displayed canonical card ids select their own record and QA T2 grants replace the prior stage', () => {

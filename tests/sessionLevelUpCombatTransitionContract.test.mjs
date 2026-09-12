@@ -145,7 +145,8 @@ test('QA fixture offers use the production victory settlement and reject only de
   const fixtureOffer = hooks.slice(hooks.indexOf('const beginQaFixtureOffer'), hooks.indexOf("['QA defeat'"));
   const commands = read('web-runner/modules/heroCommands.mjs');
   assert.match(fixtureOffer, /battle\.outcome === 'defeat' \|\| battle\.defeatSettled/);
-  assert.match(fixtureOffer, /setQaFixtureOfferPool\(fixtureSelect\.value\);[\s\S]*beginRewardSettlement\(\)/);
+  assert.match(fixtureOffer, /advanceQaVictoryResult\(\);[\s\S]*setQaFixtureOfferPool\(fixtureSelect\.value\);[\s\S]*beginRewardSettlement\(\)/);
+  assert.match(fixtureOffer, /SessionLevelUpQueue\?\.status !== 'active'/);
   assert.match(hooks, /\['QA fixture offer', \(\) => beginQaFixtureOffer\(\)\]/);
   assert.match(commands, /export function settleVictory[\s\S]*if\(!g\.NativeBattleEnded[\s\S]*g\.ProgressionBattle\.outcome='victory'/);
   assert.match(commands, /export function settleDefeat[\s\S]*g\.ProgressionBattle\.outcome='defeat'[\s\S]*g\.ProgressionBattle\.defeatSettled=true/);
@@ -407,6 +408,7 @@ test('Battle B holds automatic scheduling through fixture evidence while permitt
   const fixtureRun = hooks.slice(hooks.indexOf("['QA run fixture'"), hooks.indexOf("['QA next battle'"));
   assert.match(nextBattle, /QaFixtureHoldTurn = 1/);
   assert.match(nextBattle, /QaFixtureHoldTurn = 1;[\s\S]*seedProductionEncounter\(\)/);
+  assert.match(nextBattle, /advanceQaVictoryResult\(\);[\s\S]*QaFixtureHoldTurn = 1/);
   assert.match(nextBattle, /QaFixtureBattleBaseline[\s\S]*catch \(error\) \{\s*delete state\.globals\.QaFixtureHoldTurn/);
   assert.match(hooks, /const runQaFixtureProductionAction = async \(ownerUID, action\) => \{\s*state\.globals\.QaFixtureExplicitAction = 1/);
   assert.match(hooks, /const arrangeOwnerAsNextSchedulerActor = \(owner, target\) => \{/);
@@ -459,6 +461,7 @@ test('QA continuation transfers the hold to Battle B before scheduling and keeps
   assert.match(nextBattle, /catch \(error\) \{\s*delete state\.globals\.QaFixtureHoldTurn/);
   assert.match(nextBattle, /priorBattle\.outcome === 'defeat' \|\| priorBattle\.defeatSettled/);
   assert.match(offer, /battle\.outcome === 'defeat' \|\| battle\.defeatSettled/);
+  assert.match(hooks, /const advanceQaVictoryResult = \(\) => \{[\s\S]*continueButton\.click\(\)[\s\S]*did not close the production victory result/);
 });
 
 test('production effect visuals retain the fixture payload needed for current-run QA deltas', () => {
