@@ -1,6 +1,7 @@
 import { getHeroFlowState } from '../src/core/personalFlow.mjs';
 import { canUseHeroCommand, chooseSessionLevelUpBuff, getSessionLevelUpBuffOffer, rulesContext, settleVictory } from '../modules/heroCommands.mjs';
 import { SESSION_LEVEL_UP_BUFF_CARDS } from '../../src/core/sessionLevelBuffCatalog.mjs';
+import { getEligibleLevelUpBuffCards } from '../../src/core/sessionLevelBuffOffers.mjs';
 import { turnEnd, turnStart } from '../src/core/combatRules.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import { derivePresentationTurnBarrier } from '../src/core/turnGateController.mjs';
@@ -49,6 +50,23 @@ export function resolveQaFixtureOfferCardId(fixture, options) {
   return selectedCard && defaultCard && selectedCard.effectId === defaultCard.effectId
     ? selectedCard.cardId
     : defaultCardId;
+}
+
+export function buildQaFixtureOfferPool(options) {
+  const { fixture, selectedCardId, cards, eligibleCards } = options || {};
+  const definitions = Array.isArray(cards) ? cards : [];
+  const desiredId = resolveQaFixtureOfferCardId(fixture, { selectedCardId, cards: definitions });
+  const desired = definitions.find(card => card.cardId === desiredId);
+  if (!desired) return [];
+  const eligibleIds = new Set((eligibleCards || []).map(card => String(card?.cardId || '')));
+  const candidates = [
+    ...(eligibleIds.has(desired.cardId) ? [desired] : []),
+    ...definitions.filter(card => card.tier === desired.tier
+      && card.cardId !== desired.cardId
+      && (card.kind === 'stat' || card.kind === 'bargain')
+      && eligibleIds.has(card.cardId)),
+  ];
+  return candidates.slice(0, 3);
 }
 
 export function resolveQaFixtureOwnerIdentity(options) {
@@ -252,11 +270,25 @@ export function registerDevBrowserTestHooks({
       const desiredId = resolveQaFixtureOfferCardId(fixture, { selectedCardId: cardSelect.value, cards: SESSION_LEVEL_UP_BUFF_CARDS });
       const desired = SESSION_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === desiredId);
       if (!desired) throw new Error(`QA fixture ${fixture} has no offer card`);
-      const peers = SESSION_LEVEL_UP_BUFF_CARDS.filter(card => card.tier === desired.tier && card.cardId !== desired.cardId && (card.kind === 'stat' || card.kind === 'bargain'));
-      const pool = [desired, ...peers].slice(0, 3);
+      const selectedOwner = qaHero();
+      const eligibleCards = selectedOwner
+        ? getEligibleLevelUpBuffCards({
+          state: state.globals.SessionLevelBuffState,
+          heroId: String(selectedOwner.heroInstanceKey ?? selectedOwner.uid ?? ''),
+          cards: SESSION_LEVEL_UP_BUFF_CARDS,
+          tier: desired.tier,
+        })
+        : [];
+      const pool = buildQaFixtureOfferPool({
+        fixture,
+        selectedCardId: cardSelect.value,
+        cards: SESSION_LEVEL_UP_BUFF_CARDS,
+        eligibleCards,
+      });
       if (pool.length !== 3) throw new Error(`QA fixture ${fixture} cannot form three same-tier eligible cards`);
       // This QA-only pool is still passed to the production offer generator and
-      // normal selection/apply path. The production pool remains untouched.
+      // normal selection/apply path. Eligibility is resolved before the pool
+      // is capped so an ineligible requested stage cannot consume a slot.
       state.globals.SessionLevelUpQaOfferCards = pool;
       cardSelect.value = desired.cardId;
       tierSelect.value = String(desired.tier);

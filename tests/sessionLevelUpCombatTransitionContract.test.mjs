@@ -45,10 +45,11 @@ function loadQaFixtureIdentity() {
   const mapEnd = source.indexOf('\n});', mapStart) + 4;
   const resolver = extractFunctionSource(source, 'resolveQaLevelUpFixtureKey');
   const offerResolver = extractFunctionSource(source, 'resolveQaFixtureOfferCardId');
+  const poolBuilder = extractFunctionSource(source, 'buildQaFixtureOfferPool');
   const ownerResolver = extractFunctionSource(source, 'resolveQaFixtureOwnerIdentity');
   assert.ok(mapStart >= 0 && mapEnd > mapStart, 'missing QA fixture identity map');
   const context = {}; vm.createContext(context);
-  vm.runInContext(`${source.slice(mapStart, mapEnd).replace('export const', 'const')}\n${resolver}\n${offerResolver}\n${ownerResolver}\nthis.identity = { QA_LEVEL_UP_FIXTURE_CARD_IDS, resolveQaLevelUpFixtureKey, resolveQaFixtureOfferCardId, resolveQaFixtureOwnerIdentity };`, context);
+  vm.runInContext(`${source.slice(mapStart, mapEnd).replace('export const', 'const')}\n${resolver}\n${offerResolver}\n${poolBuilder}\n${ownerResolver}\nthis.identity = { QA_LEVEL_UP_FIXTURE_CARD_IDS, resolveQaLevelUpFixtureKey, resolveQaFixtureOfferCardId, buildQaFixtureOfferPool, resolveQaFixtureOwnerIdentity };`, context);
   return context.identity;
 }
 
@@ -612,6 +613,26 @@ test('QA fixture ownership follows a Fara Orb through UID churn with Hondo ambie
   assert.equal(identity.hero.heroInstanceKey, 'fara-1');
 });
 
+test('QA offer pool filters an ineligible Orb II before selecting three Rare fallbacks', () => {
+  const { buildQaFixtureOfferPool } = loadQaFixtureIdentity();
+  const eligibleCards = getEligibleLevelUpBuffCards({
+    state: createSessionLevelBuffState(),
+    heroId: 'fara-1',
+    cards: QA_LEVEL_UP_BUFF_CARDS,
+    tier: 2,
+  });
+  const pool = buildQaFixtureOfferPool({
+    fixture: 'orb',
+    selectedCardId: 'spectral_orb_2',
+    cards: QA_LEVEL_UP_BUFF_CARDS,
+    eligibleCards,
+  });
+  assert.equal(pool.length, 3);
+  assert.ok(pool.every(card => card.tier === 2 && card.rarity === 'Rare'));
+  assert.equal(pool.some(card => card.cardId === 'spectral_orb_2'), false);
+  assert.ok(pool.every(card => card.kind === 'stat' || card.kind === 'bargain'));
+});
+
 test('the QA fixture RNG seam reinstalls the production-derived stream for the current battle', () => {
   const app = read('web-runner/app.js');
   assert.match(app, /installQaFixtureRuntimeRandom: encounterSeed => installCombatRuntimeRandom\(deriveCombatRuntimeRngSeed\(encounterSeed\), 'quest-qa-fixture'\)/);
@@ -626,6 +647,8 @@ test('Battle B holds automatic scheduling through fixture evidence while permitt
   assert.match(nextBattle, /QaFixtureHoldTurn = 1/);
   assert.match(nextBattle, /QaFixtureHoldTurn = 1;[\s\S]*seedProductionEncounter\(\)/);
   assert.match(nextBattle, /QaFixtureBattleBaseline[\s\S]*catch \(error\) \{\s*delete state\.globals\.QaFixtureHoldTurn/);
+  assert.match(hooks, /const eligibleCards = selectedOwner[\s\S]*getEligibleLevelUpBuffCards\(\{/);
+  assert.match(hooks, /const pool = buildQaFixtureOfferPool\(\{/);
   assert.match(hooks, /const qaFixtureOwner = \(fixture, selectedCardId = cardSelect\.value\) => \{/);
   assert.match(hooks, /resolveQaFixtureOwnerIdentity\(\{[\s\S]*SessionLevelBuffState[\s\S]*QaFixtureOwnerId/);
   assert.match(hooks, /const runQaFixtureProductionAction = async \(ownerUID, action\) => \{\s*state\.globals\.QaFixtureExplicitAction = 1/);
