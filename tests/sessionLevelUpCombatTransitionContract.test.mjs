@@ -387,7 +387,10 @@ test('Battle B holds automatic scheduling through fixture evidence while permitt
   assert.match(hooks, /const runQaFixtureProductionAction = async \(ownerUID, action\) => \{\s*state\.globals\.QaFixtureExplicitAction = 1/);
   assert.match(hooks, /const arrangeOwnerAsNextSchedulerActor = \(owner, target\) => \{/);
   assert.match(fixtureRun, /const closeCompletedFixturePhase = async \(target, priorSequence\) => \{/);
-  assert.match(fixtureRun, /await runQaFixtureProductionAction\(owner\.uid, \(\) => callFunctionWithContext\(fnContext, 'AdvanceTurn'\)\)/);
+  assert.match(fixtureRun, /await runQaFixtureProductionAction\(owner\.uid, \(\) => \{[\s\S]*callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
+  assert.match(fixtureRun, /const tokenUnclaimed = !!state\.globals\.QaFixtureExplicitAction && !state\.globals\.QaFixtureExplicitActionClaimed/);
+  assert.match(fixtureRun, /postAdvance\.currentUID === Number\(owner\.uid\)[\s\S]*postAdvance\.phase === 0/);
+  assert.match(fixtureRun, /tokenUnclaimed && ownerReady[\s\S]*callFunctionWithContext\(fnContext, 'ProcessTurn'\)/);
   assert.match(fixtureRun, /callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
   assert.match(fixtureRun, /const phaseClosed = await closeCompletedFixturePhase\(currentTarget, priorSequence\)/);
   assert.match(fixtureRun, /if \(!phaseClosed\.commandStarted\) \{[\s\S]*callFunctionWithContext\(fnContext, 'ProcessTurn'\)/);

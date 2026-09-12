@@ -417,9 +417,23 @@ export function registerDevBrowserTestHooks({
           if (Number(state.globals.TurnPhase || 0) === 0) return { ok: true, commandStarted: false };
           if (!fixturePhaseIsClosable()) return { ok: false, observed: fixtureActionObserved() };
           arrangeOwnerAsNextSchedulerActor(owner, target);
-          await runQaFixtureProductionAction(owner.uid, () => callFunctionWithContext(fnContext, 'AdvanceTurn'));
+          let postAdvance = null;
+          await runQaFixtureProductionAction(owner.uid, () => {
+            callFunctionWithContext(fnContext, 'AdvanceTurn');
+            postAdvance = fixtureActionObserved();
+            const tokenUnclaimed = !!state.globals.QaFixtureExplicitAction && !state.globals.QaFixtureExplicitActionClaimed;
+            const ownerReady = postAdvance.currentUID === Number(owner.uid)
+              && postAdvance.phase === 0
+              && !postAdvance.actionInProgress
+              && !postAdvance.playerBusy
+              && postAdvance.pendingHeroHits === 0;
+            if (postAdvance.nativeCommandOwner !== Number(owner.uid) && tokenUnclaimed && ownerReady) {
+              callFunctionWithContext(fnContext, 'ProcessTurn');
+              postAdvance = fixtureActionObserved();
+            }
+          });
           const started = await waitForFixtureAction(observed => observed.nativeCommandOwner === Number(owner.uid) && state.globals.NativeCommandSequence !== priorSequence);
-          return { ok: started.ok, commandStarted: started.ok, observed: started.observed };
+          return { ok: started.ok, commandStarted: started.ok, observed: started.observed || postAdvance };
         };
         const waitForFixtureAction = async (predicate, timeoutMs = 2600) => {
           const startedAt = Date.now();
