@@ -22,6 +22,11 @@ const EXP_RESET_SECONDS = 0.08;
 const heroId = hero => String(hero?.heroInstanceKey ?? hero?.uid ?? '');
 const clamp = (value, min, max) => Math.max(min, Math.min(max, Number(value) || 0));
 
+export function getActiveSessionLevelUpBuffCards(globals, hero) {
+  const activeStages = globals?.SessionLevelBuffState?.heroes?.[heroId(hero)]?.activeStageByEffectId || {};
+  return QA_LEVEL_UP_BUFF_CARDS.filter(card => Number(activeStages[card.effectId] || 0) === Number(card.stage || 0));
+}
+
 export function beginSessionLevelUpSettlement(globals, results = [], heroes = [], now = 0) {
   const byHero = new Map((heroes || []).map(hero => [heroId(hero), hero]));
   globals.SessionLevelBuffState ||= createSessionLevelBuffState();

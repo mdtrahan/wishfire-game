@@ -1,11 +1,12 @@
 import {actionCapacity} from '../src/core/actionSelection.mjs';
+import {clearSessionLevelBuffState} from '../../src/core/sessionLevelBuffOffers.mjs';
 import {settleBattleEXP} from '../src/core/heroProgression.mjs';
 import {heroDefinition,PROGRESSION} from '../src/core/heroDefinitions.mjs';
 import {getHeroFlowState,getHeroSkillOptions} from '../src/core/personalFlow.mjs';
-import {legalSkill,validTargets,resolveSkill,turnStart,turnEnd} from '../src/core/combatRules.mjs';
+import {applyStatus,effectiveStat,legalSkill,statuses,validTargets,resolveSkill,turnStart,turnEnd} from '../src/core/combatRules.mjs';
 import {derivePresentationTurnBarrier} from '../src/core/turnGateController.mjs';
 import {acknowledgeSessionLevelUpEntry,clearSessionLevelUpQueue,createSessionLevelUpQueue,currentSessionLevelUpEntry,pauseSessionLevelUpQueue,resumeSessionLevelUpQueue} from '../src/core/sessionLevelUpQueue.mjs';
-import {beginSessionLevelUpSettlement,chooseSessionLevelUpBuff as choosePresentedSessionLevelUpBuff,getSessionLevelUpBuffPresentation,updateSessionLevelUpSettlement} from './sessionLevelUpBuffPresentation.mjs';
+import {beginSessionLevelUpSettlement,chooseSessionLevelUpBuff as choosePresentedSessionLevelUpBuff,getActiveSessionLevelUpBuffCards,getSessionLevelUpBuffPresentation,updateSessionLevelUpSettlement} from './sessionLevelUpBuffPresentation.mjs';
 export {getHeroFlowState,getHeroSkillOptions};
 export function getHeroCommandSlots(entities){const slots=Array(6).fill(null);for(const hero of entities){const i=Number(hero.heroDisplaySlot??hero.displaySlot??hero.heroIndex);if(hero?.kind==='hero'&&Number.isInteger(i)&&i>=0&&i<6)slots[i]=hero;}return slots;}
 export function canUseHeroCommand(ctx,actorUID){const g=ctx.state.globals,hero=ctx.state.entities.find(a=>a.uid===actorUID&&a.kind==='hero');return !!hero&&hero.hp>0&&!g.NativeBattleEnded&&g.GamePhase==='RUNTIME'&&!g.BattleStartActive&&!g.IsPlayerBusy&&Number(g.TurnPhase)===0&&Number(ctx.callFunction('GetCurrentTurn'))===actorUID&&ctx.callFunction('GetEnemyRosterStability')?.stable===true&&derivePresentationTurnBarrier({globals:g}).canClaimCombatAction;}
@@ -41,6 +42,45 @@ export function rulesContext(ctx){
   return ended;
  }};
 }
+
+const sessionBuffHeroId = hero => String(hero?.heroInstanceKey ?? hero?.uid ?? '');
+const sessionRandom = globals => typeof globals?.RuntimeRandom === 'function' ? Number(globals.RuntimeRandom()) : Math.random();
+const hasEffect = (globals, hero, effectId) => getActiveSessionLevelUpBuffCards(globals, hero).some(card => card.effectId === effectId);
+function sessionBuffCounter(globals, hero, effectId) {
+ const state=globals.SessionLevelBuffState?.heroes?.[sessionBuffHeroId(hero)];if(!state)return 0;
+ const counters=state.triggerCountersByEffectId||(state.triggerCountersByEffectId={});counters[effectId]=Math.max(0,Number(counters[effectId]||0))+1;return counters[effectId];
+}
+export function applySessionLevelBuffsAtBattleStart(ctx,rules){
+ const g=ctx.state.globals,session=Number(g.CombatSessionId||0);if(g.SessionLevelBuffCombatSessionId===session)return;
+ g.SessionLevelBuffCombatSessionId=session;
+ for(const hero of ctx.state.entities.filter(actor=>actor?.kind==='hero')){
+  const cards=getActiveSessionLevelUpBuffCards(g,hero);
+  const statBonus={},maxHpMultipliers=[],shields=[];
+  for(const card of cards){const formula=card.formula||{};
+   if(formula.surface==='stat_percent'&&formula.stat!=='max_hp')statBonus[String(formula.stat).toLowerCase()]=(statBonus[String(formula.stat).toLowerCase()]||0)+Number(formula.percent||0);
+   if(formula.surface==='stat_percent'&&formula.stat==='max_hp')maxHpMultipliers.push(1+Number(formula.percent||0));
+   if(formula.surface==='bargain_percent'){statBonus[String(formula.benefitStat).toLowerCase()]=(statBonus[String(formula.benefitStat).toLowerCase()]||0)+Number(formula.benefitPercent||0);maxHpMultipliers.push(1+Number(formula.penaltyPercent||0));}
+   if(formula.surface==='shield_percent_max_hp')shields.push(Number(formula.percent||0));
+  }
+  for(const [stat,magnitude] of Object.entries(statBonus))applyStatus(rules,hero,hero,{effectType:'status',statusEffect:`${stat}Up`,magnitude,duration:9999});
+  if(maxHpMultipliers.length){hero.maxHP=Math.max(1,Math.floor(maxHpMultipliers.reduce((value,multiplier)=>value*multiplier,Math.max(1,Number(hero.maxHP||1)))));hero.hp=Math.min(hero.maxHP,hero.hp);}
+  for(const magnitude of shields)applyStatus(rules,hero,hero,{effectType:'status',statusEffect:'barrier',magnitude,duration:9999});
+ }
+}
+export function resolveSessionLevelBasicEffects(ctx,rules,hero,targetIds){
+ const g=ctx.state.globals,target=ctx.state.entities.find(actor=>Number(actor.uid)===Number(targetIds?.[0])&&actor.hp>0);
+ if(!target)return;
+ for(const card of getActiveSessionLevelUpBuffCards(g,hero)){const formula=card.formula||{};
+  if(formula.surface==='cadence_magic_damage'&&sessionBuffCounter(g,hero,card.effectId)%Math.max(1,Number(formula.everyCompletedBasics||1))===0)resolveSkill(rules,hero,{skillId:'session_spectral_orb',targetType:'enemy',tags:['magic'],effects:[{effectType:'damage',fixedDamage:Number(formula.amount||0)}]},[target.uid],{sessionBuffExtraHit:true});
+  if(formula.surface==='heal_percent_max_hp'&&sessionRandom(g)<Number(formula.chance||0))resolveSkill(rules,hero,{skillId:'session_inner_flow',targetType:'self',tags:['magic'],effects:[{effectType:'heal',recipient:'self',potency:Number(formula.percent||0)}]},[hero.uid],{sessionBuffExtraHit:true});
+  if(formula.surface==='status_on_basic'&&sessionRandom(g)<Number(formula.chance||0))resolveSkill(rules,hero,{skillId:'session_saffron_mark',targetType:'enemy',tags:['magic'],effects:[{effectType:'status',statusEffect:String(formula.statusId||'mark'),magnitude:1,duration:Number(formula.durationTurns||1)}]},[target.uid],{sessionBuffExtraHit:true});
+  if(formula.surface==='bounce_percent_damage'&&sessionRandom(g)<Number(formula.chance||0)){const bounce=ctx.state.entities.find(actor=>actor?.kind==='enemy'&&actor.hp>0&&actor.uid!==target.uid)||target;resolveSkill(rules,hero,{skillId:'session_mirage_chain',targetType:'enemy',tags:['physical'],effects:[{effectType:'damage',potency:Number(formula.damagePercent||0)}]},[bounce.uid],{sessionBuffExtraHit:true});}
+ }
+}
+export function resolveSessionLevelCounter(ctx,rules,hero,source){
+ const card=getActiveSessionLevelUpBuffCards(ctx.state.globals,hero).find(candidate=>candidate.formula?.surface==='counter_percent_atk');if(!card||hero.hp<=0||source?.hp<=0||sessionRandom(ctx.state.globals)>=Number(card.formula.chance||0))return false;
+ return resolveSkill(rules,hero,{skillId:'session_glass_reprisal',targetType:'enemy',tags:['physical'],effects:[{effectType:'damage',potency:Number(card.formula.damagePercent||0)},{effectType:'heal',recipient:'self',potency:Number(card.formula.healPercentMaxHp||0)}]},[source.uid],{sessionBuffExtraHit:true,isCounter:true});
+}
 export function buildCommandActions(ctx,hero,{queue=[],flow=false,targetUID}={}){
  const d=heroDefinition(hero);if(!d)return null;const entries=flow?[{skillId:d.special.skillId,targetIds:queue[0]?.targetIds||[targetUID]}]:queue.length?queue:[{skillId:d.basic.skillId,targetIds:[targetUID]}];
  if(entries.length>actionCapacity(hero))return null;
@@ -73,7 +113,7 @@ export function resolveNativeCommandStep(ctx,hit){
   return resolved;
  }
  const action=s.actions[s.index];const executed=resolveSkill(rules,actor,action.skill,action.targetIds);
- if(executed){if(action.skill.isFlowSpecial)actor.flow=0;ctx.callFunction('LogCombat',`${heroDefinition(actor).name}: ${action.skill.displayName}`);}
+ if(executed){if(action.skill.skillId===heroDefinition(actor)?.basic?.skillId)resolveSessionLevelBasicEffects(ctx,rules,actor,action.targetIds);if(action.skill.isFlowSpecial)actor.flow=0;ctx.callFunction('LogCombat',`${heroDefinition(actor).name}: ${action.skill.displayName}`);}
  else actor.sp=Math.min(actor.spMax,actor.sp+action.spCost);
  s.index++;ctx.callFunction('UpdateHeroHPUI');ctx.callFunction('UpdateEnemyHPUI');
  if(actor.hp<=0||rules.isOver()){cancelNativeSequence(ctx);if(g.NativeBattleEnded)settleVictory(ctx);return true;}
@@ -83,6 +123,7 @@ export function resolveNativeCommandStep(ctx,hit){
 export function nativeTurnStarted(ctx,actor){
  if(!actor)return;
  const rules=rulesContext(ctx);
+ applySessionLevelBuffsAtBattleStart(ctx,rules);
  const serial=ctx.state.globals.TurnSerial||0;
  if(actor.hp>0&&actor.combatTurnSerial!==serial){actor.remainingActionSlots=actionCapacity(actor);actor.reservedSP=0;}
  turnStart(rules,actor,serial);
@@ -92,7 +133,8 @@ export function nativeTurnStarted(ctx,actor){
 }
 export function nativeTurnEnded(ctx,actor){if(!actor||actor.nativeEndedSerial===ctx.state.globals.TurnSerial)return;actor.nativeEndedSerial=ctx.state.globals.TurnSerial;turnEnd(actor);}
 export function resolveIncomingNativeHit(ctx,source,target,amount,options={}) {
- const rules=rulesContext(ctx);const result=resolveSkill(rules,source,{skillId:'enemy_attack',targetType:'enemy',tags:[options.magic?'magic':'physical'],effects:[{effectType:'damage',fixedDamage:amount,fixedTargetUID:target.uid}]},[target.uid]);
+ const rules=rulesContext(ctx),before=Number(target?.hp||0);const result=resolveSkill(rules,source,{skillId:'enemy_attack',targetType:'enemy',tags:[options.magic?'magic':'physical'],effects:[{effectType:'damage',fixedDamage:amount,fixedTargetUID:target.uid}]},[target.uid]);
+ if(result&&target?.kind==='hero'&&target.hp>0&&Number(target.hp||0)<before)resolveSessionLevelCounter(ctx,rules,target,source);
  if(!ctx.state.entities.some(actor=>actor?.kind==='hero'&&Number(actor.hp||0)>0))settleDefeat(ctx);
  else if(ctx.state.globals.NativeBattleEnded)settleVictory(ctx);
  return result;
@@ -115,6 +157,7 @@ export function settleDefeat(ctx) {
  cancelNativeSequence(ctx);
  g.SessionLevelUpQueue=clearSessionLevelUpQueue();
  delete g.SessionLevelUpSettlement;delete g.SessionLevelUpOffersByQueueIndex;
+ g.SessionLevelBuffState=clearSessionLevelBuffState();delete g.SessionLevelBuffCombatSessionId;
  g.NativeBattleEnded=true;
  if(g.ProgressionBattle){g.ProgressionBattle.outcome='defeat';g.ProgressionBattle.defeatSettled=true;g.ProgressionBattle.settled=true;g.ProgressionBattle.goldReward=0;g.ProgressionResults=[];}
  return true;

@@ -87,6 +87,7 @@ test('victory queues gained levels, the queue pauses battle completion, and defe
   Object.assign(hero, { kind: 'hero', uid: 1, heroDisplaySlot: 0 });
   const globals = {
     NativeBattleEnded: true, HeroProgress: createHeroProgressStore(), goldTotal: 0,
+    SessionLevelBuffState: { heroes: { 'fara-1': { activeStageByEffectId: { qa_atk_focus: 1 } } } },
     ProgressionBattle: { id: 'queue-victory', participants: ['fara-1'], defeated: { 9: 1000 }, defeatedGold: {} },
   };
   const ctx = { state: { globals, entities: [hero] }, callFunction: () => {} };
@@ -99,6 +100,7 @@ test('victory queues gained levels, the queue pauses battle completion, and defe
   assert.equal(getCurrentSessionLevelUpEntry(ctx).heroId, 'fara-1');
   settleDefeat(ctx);
   assert.equal(globals.SessionLevelUpQueue.status, 'complete');
+  assert.deepEqual(globals.SessionLevelBuffState, { heroes: {} });
 });
 
 test('combat completion waits for the queue seam and resets its state for a fresh session', () => {
