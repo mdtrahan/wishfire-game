@@ -2744,6 +2744,7 @@ async function main(){
       blocked: fanBlocked,
       cards: activeFanState.cards,
       heroUID: Number(activeFanState.heroUID || 0),
+      offerToken: levelUpFanState.open ? levelUpFanState.offerToken : '',
       activeHero: fanHero ? { ...fanHero, name: fanHeroDisplayName, displayName: fanHeroDisplayName, portraitName: fanHeroPortraitKey } : null,
       layoutScale,
       viewportWidth: window.innerWidth,

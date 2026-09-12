@@ -46,6 +46,7 @@ test('the queued hero alone receives one same-tier three-card QA offer and selec
   globals.time = 2;
   const offer = getSessionLevelUpBuffPresentation(globals, heroes);
   assert.equal(offer.open, true);
+  const firstOfferToken = offer.offerToken;
   assert.equal(offer.heroUID, 1);
   assert.equal(offer.cards.length, 3);
   assert.ok(offer.cards.every(card => card.id === card.cardId));
@@ -56,6 +57,11 @@ test('the queued hero alone receives one same-tier three-card QA offer and selec
   assert.equal(globals.SessionLevelUpQueue.currentIndex, 1);
   assert.ok(globals.SessionLevelBuffState.heroes['fara-1']);
   assert.equal(globals.SessionLevelBuffState.heroes['hondo-2'], undefined);
+  globals.SessionLevelUpQueue = { status: 'active', paused: false, currentIndex: 0, entries: [{ heroId: 'fara-1', heroUID: 1, earnedLevel: 3 }] };
+  beginSessionLevelUpSettlement(globals, [], heroes, 0);
+  globals.time = 2;
+  const laterOffer = getSessionLevelUpBuffPresentation(globals, heroes);
+  assert.notEqual(laterOffer.offerToken, firstOfferToken, 'a later settlement gets a fresh fan identity at queue index zero');
 });
 
 test('displayed canonical card ids select their own record and QA T2 grants replace the prior stage', () => {

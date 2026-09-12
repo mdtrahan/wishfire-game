@@ -182,6 +182,35 @@ test('card activation preserves stable nodes while the selected card resolves it
   }
 });
 
+test('a new level-up offer token replaces a selected prior offer and keeps the new cards clickable', () => {
+  const previousDocument = globalThis.document;
+  globalThis.document = { head: new FakeNode('head'), body: new FakeNode('body'), createElement: tag => new FakeNode(tag) };
+  const canvas = { getBoundingClientRect: () => ({ left: 0, top: 0, width: 360, height: 640 }) };
+  const selected = [];
+  const ui = createHeroTurnCardFanUI({ canvas, select: index => selected.push(index) });
+  try {
+    ui.update({ open: true, heroUID: 'hondo-1', offerToken: 'battle-a:0', cards: [
+      { id: 'qa_orb_cadence_1', name: 'Spectral Orb', rarity: 'Common', effect: 'Every 3 basics: 4 magic damage' },
+      { id: 'qa_speed_1', name: 'Swift Current', rarity: 'Common', effect: 'SPD +10%' },
+      { id: 'qa_max_vitality_1', name: 'Max Vitality', rarity: 'Common', effect: 'Max HP +20%' },
+    ] });
+    ui.element.children[0].children[0].onclick();
+    ui.update({ open: true, heroUID: 'hondo-1', offerToken: 'battle-b:0', cards: [
+      { id: 'qa_orb_cadence_2', name: 'Spectral Orb II', rarity: 'Rare', effect: 'Every 2 basics: 6 magic damage' },
+      { id: 'qa_speed_2', name: 'Swift Current II', rarity: 'Rare', effect: 'SPD +10%' },
+      { id: 'qa_max_vitality_2', name: 'Max Vitality II', rarity: 'Rare', effect: 'Max HP +20%' },
+    ] });
+    const cardsHost = ui.element.children[0];
+    assert.deepEqual(cardsHost.children.map(card => card.dataset.cardId), ['qa_orb_cadence_2', 'qa_speed_2', 'qa_max_vitality_2']);
+    cardsHost.children[0].onclick();
+    assert.deepEqual(selected, [0, 0]);
+  } finally {
+    ui.destroy();
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+  }
+});
+
 test('card activation survives the runtime draw being consumed during the cue', () => {
   const previousDocument = globalThis.document;
   globalThis.document = { head: new FakeNode('head'), body: new FakeNode('body'), createElement: tag => new FakeNode(tag) };

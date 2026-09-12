@@ -194,6 +194,7 @@ export function createHeroTurnCardFanUI({
   let selectionSuppressed = false;
   let selectionHeroUID = '';
   let selectionCardsSignature = '';
+  let selectionOfferToken = '';
   let renderedCardsSignature = '';
 
   const clearCloseTimer = () => { if (closeTimer) { clearTimeout(closeTimer); closeTimer = 0; } };
@@ -215,6 +216,7 @@ export function createHeroTurnCardFanUI({
     selectionSuppressed = false;
     selectionHeroUID = '';
     selectionCardsSignature = '';
+    selectionOfferToken = '';
     host.classList.remove('is-opening', 'is-closing');
     host.classList.remove('is-selecting');
     host.hidden = true;
@@ -229,6 +231,7 @@ export function createHeroTurnCardFanUI({
     selectionSuppressed = false;
     selectionHeroUID = '';
     selectionCardsSignature = '';
+    selectionOfferToken = '';
     host.classList.remove('is-opening');
     host.classList.remove('is-selecting');
     host.classList.add('is-closing');
@@ -300,6 +303,7 @@ export function createHeroTurnCardFanUI({
         selectionSuppressed = false;
         selectionHeroUID = asText(host.dataset.heroUid);
         selectionCardsSignature = cardsSignature(state.cards);
+        selectionOfferToken = asText(state.offerToken);
         host.classList.remove('is-opening', 'is-closing');
         host.classList.add('is-selecting');
         host.inert = true;
@@ -331,7 +335,10 @@ export function createHeroTurnCardFanUI({
       clearCloseTimer();
       const incomingCards = normalizeHeroTurnCards(source.cards ?? source.cardFan ?? source.HeroTurnCardFanCards ?? state.cards);
       const incomingHeroUID = asText(source.heroUID ?? source.activeHeroUID ?? state.activeHeroUID);
-      const sameSelectedDraw = incomingHeroUID === selectionHeroUID && cardsSignature(incomingCards) === selectionCardsSignature;
+      const incomingOfferToken = asText(source.offerToken);
+      const sameSelectedDraw = incomingHeroUID === selectionHeroUID
+        && incomingOfferToken === selectionOfferToken
+        && cardsSignature(incomingCards) === selectionCardsSignature;
       if (selectionSuppressed && sameSelectedDraw) return true;
       if (selectionActive) {
         // The native handoff consumes the runtime draw immediately. Keep the
@@ -351,6 +358,7 @@ export function createHeroTurnCardFanUI({
         blocked: false,
         cards: incomingCards,
         activeHero: source.activeHero ?? state.activeHero,
+        offerToken: incomingOfferToken,
         selectedCard: source.selectedCard ?? (Number.isInteger(source.selectedIndex) ? state.cards[source.selectedIndex] : state.selectedCard),
       };
       const rect = canvas.getBoundingClientRect();
@@ -365,6 +373,7 @@ export function createHeroTurnCardFanUI({
         selected: state.selectedCard?.id || '',
         blocked: !!state.blocked,
         hero: heroSignature(state.activeHero),
+        offerToken: state.offerToken,
       });
       if (nextCardsSignature !== renderedCardsSignature) renderCards();
       return true;
