@@ -10,6 +10,10 @@ function integerAtLeast(value, minimum = 0) {
   return Math.max(minimum, Math.floor(finiteNumber(value, minimum)));
 }
 
+function isPositiveInteger(value) {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0;
+}
+
 function normalizedRandom(rng) {
   const value = typeof rng === 'function' ? finiteNumber(rng(), 0) : 0;
   return value >= 0 && value < 1 ? value : 0;
@@ -22,12 +26,21 @@ function canonicalCards(cards) {
     .filter((card) => {
       if (seen.has(card.cardId)) return false;
       seen.add(card.cardId);
+      const hasRequirement = card.requiresStage != null;
+      const hasReplacement = card.replacesStage != null;
+      const isStageUpgrade = card.stage > 1;
       return TIER_ORDER.includes(card.tier)
         && ['behavior', 'stat', 'bargain'].includes(card.kind)
         && typeof card.effectId === 'string'
         && card.effectId.length > 0
-        && integerAtLeast(card.stage, 0) === card.stage
-        && card.stage >= 1;
+        && isPositiveInteger(card.stage)
+        && (!hasRequirement || isPositiveInteger(card.requiresStage))
+        && (!hasReplacement || isPositiveInteger(card.replacesStage))
+        && (hasRequirement === hasReplacement)
+        && (isStageUpgrade
+          ? card.requiresStage === card.stage - 1 && card.replacesStage === card.stage - 1
+          : !hasRequirement && !hasReplacement)
+        && (card.kind !== 'behavior' || card.tier === 1 || isStageUpgrade);
     })
     .slice()
     .sort((left, right) => left.cardId.localeCompare(right.cardId));
@@ -120,20 +133,22 @@ export function normalizeLevelUpProgress(progress = {}) {
   return { normalizedProgress, finalBossReached: Boolean(progress.finalBossReached) };
 }
 
-export function deterministicTierAttempts(progress = {}, rng = () => 0, tierWeights = () => ({})) {
+function* tierAttemptIterator(progress = {}, rng = () => 0, tierWeights = () => ({})) {
   const { normalizedProgress, finalBossReached } = normalizeLevelUpProgress(progress);
   const remaining = TIER_ORDER.slice();
-  const attempts = [];
   while (remaining.length > 0) {
     const allWeights = typeof tierWeights === 'function'
       ? tierWeights(normalizedProgress, finalBossReached)
       : tierWeights;
     const weights = weightsForRemaining(allWeights, remaining);
     const tier = weightedTier(remaining, weights, rng);
-    attempts.push(tier);
     remaining.splice(remaining.indexOf(tier), 1);
+    yield tier;
   }
-  return attempts;
+}
+
+export function deterministicTierAttempts(progress = {}, rng = () => 0, tierWeights = () => ({})) {
+  return [...tierAttemptIterator(progress, rng, tierWeights)];
 }
 
 export function createSessionLevelBuffState() {
@@ -151,9 +166,8 @@ export function getEligibleLevelUpBuffCards({ state, heroId, cards, tier } = {})
 
 export function buildLevelUpBuffOffer({ state, heroId, cards, progress, rng, tierWeights } = {}) {
   const normalizedCards = canonicalCards(cards);
-  const attempts = deterministicTierAttempts(progress, rng, tierWeights);
   const attemptedTiers = [];
-  for (const tier of attempts) {
+  for (const tier of tierAttemptIterator(progress, rng, tierWeights)) {
     attemptedTiers.push(tier);
     const eligible = getEligibleLevelUpBuffCards({ state, heroId, cards: normalizedCards, tier });
     const behavior = shuffle(eligible.filter(card => card.kind === 'behavior'), rng);

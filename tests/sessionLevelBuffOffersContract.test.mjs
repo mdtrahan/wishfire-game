@@ -65,11 +65,23 @@ test('offers three distinct cards for the leveled hero and fills a behavior gran
     .map(card => card.cardId).sort(), ['fortune', 'vitality']);
 });
 
+test('stops tier sampling after a valid first tier and only consumes its card-selection RNG', () => {
+  let calls = 0;
+  const offer = buildLevelUpBuffOffer({
+    state: createSessionLevelBuffState(), heroId: 'Fara', cards: CARDS, progress: {},
+    rng: () => { calls += 1; return 0; },
+    tierWeights: { 1: 0, 2: 0, 3: 1, 4: 0 },
+  });
+  assert.equal(offer.tier, 3);
+  assert.equal(calls, 3, 'one tier sample plus two Fisher-Yates card-selection samples');
+});
+
 test('gates next behavior, stat, and bargain stages while leaving pure same-tier stat fallback ungated', () => {
   const staged = [
     CARD('ward-1', 1, 'behavior', 'ward', 1), CARD('ward-2', 2, 'behavior', 'ward', 2, 1, 1),
     CARD('might-2', 2, 'stat', 'might', 2, 1, 1), CARD('trade-2', 2, 'bargain', 'trade', 2, 1, 1),
     CARD('pure-armor', 2, 'stat', 'armor', 1), CARD('invalid-free-behavior', 2, 'behavior', 'free', 1),
+    CARD('malformed-negative-prereq', 2, 'behavior', 'malformed', 1, -1),
   ];
   assert.deepEqual(getEligibleLevelUpBuffCards({ state: createSessionLevelBuffState(), heroId: 'Runa', cards: staged, tier: 2 })
     .map(card => card.cardId), ['pure-armor']);
@@ -80,6 +92,16 @@ test('gates next behavior, stat, and bargain stages while leaving pure same-tier
   };
   assert.deepEqual(getEligibleLevelUpBuffCards({ state, heroId: 'Runa', cards: staged, tier: 2 })
     .map(card => card.cardId).sort(), ['might-2', 'pure-armor', 'trade-2', 'ward-2']);
+});
+
+test('rejects a malformed T2 stage-1 behavior card with requiresStage -1', () => {
+  const malformed = CARD('malformed-negative-prereq', 2, 'behavior', 'malformed', 1, -1);
+  assert.deepEqual(getEligibleLevelUpBuffCards({
+    state: createSessionLevelBuffState(), heroId: 'Runa', cards: [malformed], tier: 2,
+  }), []);
+  assert.equal(applyLevelUpBuffCard({
+    state: createSessionLevelBuffState(), heroId: 'Runa', cardId: malformed.cardId, cards: [malformed],
+  }).status, 'rejected');
 });
 
 test('replaces prior stage per hero, keeps other heroes independent, and clears the session seam', () => {
