@@ -44,6 +44,21 @@ export function resolveQaFixtureOfferCardId(fixture, options) {
     ? selectedCard.cardId
     : defaultCardId;
 }
+
+export function deriveQaSettlementReward({ threshold, currentEXP, overflow = false, noLevel = false } = {}) {
+  const liveThreshold = Math.max(1, Math.floor(Number(threshold) || 0));
+  const liveCurrentEXP = Math.max(0, Math.floor(Number(currentEXP) || 0));
+  if (liveCurrentEXP >= liveThreshold) {
+    throw new Error(`QA settlement requires EXP below its live threshold: ${liveCurrentEXP}/${liveThreshold}`);
+  }
+  const remaining = liveThreshold - liveCurrentEXP;
+  if (noLevel) {
+    if (remaining <= 1) throw new Error(`QA no-level settlement needs room below its live threshold: ${liveCurrentEXP}/${liveThreshold}`);
+    return Math.max(1, Math.min(27, remaining - 1));
+  }
+  return overflow ? remaining + 27 : 80;
+}
+
 export async function waitForQaStoryCombatPhase(entry, {
   timeoutMs = QA_STORY_TRANSITION_TIMEOUT_MS,
   pollMs = 25,
@@ -265,18 +280,24 @@ export function registerDevBrowserTestHooks({
         delete state.globals.QaFixtureExplicitActionClaimed;
       }
     };
-    const beginRewardSettlement = ({ overflow = false, multiHero = false } = {}) => {
+    const beginRewardSettlement = ({ overflow = false, multiHero = false, noLevel = false } = {}) => {
       const selected = qaHero(); if (!selected) return;
       setTierAndCard();
       const participants = multiHero ? state.entities.filter(entity => entity.kind === 'hero') : [selected];
-      for (const hero of participants) {
-        const expToNext = Math.max(1, Number(hero.EXPToNextLevel || 100));
+      if (!overflow && !noLevel) {
+        for (const hero of participants) {
+          const expToNext = Math.max(1, Number(hero.EXPToNextLevel || 100));
         // Keep the original 47 + 80 proof at level one, then use each live
         // level's production threshold so a later staged victory also crosses.
-        hero.currentEXP = overflow ? 0 : Math.max(0, expToNext - 53);
-        hero.EXPToNextLevel = expToNext;
+          hero.currentEXP = Math.max(0, expToNext - 53);
+        }
       }
-      const reward = overflow ? 280 : 80;
+      const reward = deriveQaSettlementReward({
+        threshold: selected.EXPToNextLevel,
+        currentEXP: selected.currentEXP,
+        overflow,
+        noLevel,
+      });
       const battleId = `quest-qa-level-up-${Date.now()}`;
       state.globals.NativeBattleEnded = true;
       state.globals.ProgressionBattle = { id: battleId, participants: participants.map(hero => hero.heroInstanceKey || hero.baseHeroName || hero.name), defeated: { qa_reward: reward }, defeatedGold: {}, settled: false };
@@ -317,6 +338,7 @@ export function registerDevBrowserTestHooks({
         hero.hp = Math.floor(Number(hero.maxHP || 1) * .25); callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
       }],
       ['QA EXP 47+80', () => beginRewardSettlement()],
+      ['QA no-level EXP', () => beginRewardSettlement({ noLevel: true })],
       ['QA fixture offer', () => beginQaFixtureOffer()],
       ['QA overflow EXP', () => beginRewardSettlement({ overflow: true })],
       ['QA multi-hero EXP', () => beginRewardSettlement({ multiHero: true })],

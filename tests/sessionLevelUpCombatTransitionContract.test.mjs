@@ -51,6 +51,23 @@ function loadQaFixtureIdentity() {
   return context.identity;
 }
 
+function loadQaSettlementReward() {
+  const source = read('web-runner/systems/devBrowserTestHooks.js');
+  const start = source.indexOf('function deriveQaSettlementReward(');
+  assert.notEqual(start, -1, 'missing deriveQaSettlementReward');
+  const braceStart = source.indexOf('{', source.indexOf(') {', start));
+  let depth = 0; let end = -1;
+  for (let index = braceStart; index < source.length; index += 1) {
+    if (source[index] === '{') depth += 1;
+    if (source[index] === '}' && --depth === 0) { end = index + 1; break; }
+  }
+  assert.ok(end > braceStart, 'unterminated deriveQaSettlementReward');
+  const reward = source.slice(start, end);
+  const context = {}; vm.createContext(context);
+  vm.runInContext(`${reward};\nthis.deriveQaSettlementReward = deriveQaSettlementReward;`, context);
+  return context.deriveQaSettlementReward;
+}
+
 test('level-up queue preserves party order, includes KO heroes, and creates one entry per earned level', () => {
   const queue = createSessionLevelUpQueue({
     heroes: [
@@ -176,10 +193,30 @@ test('QA fixture offers use the production victory settlement and reject only de
   assert.match(fixtureOffer, /battle\.outcome === 'defeat' \|\| battle\.defeatSettled/);
   assert.match(fixtureOffer, /setQaFixtureOfferPool\(fixtureSelect\.value\);[\s\S]*beginRewardSettlement\(\)/);
   assert.match(fixtureOffer, /SessionLevelUpQueue\?\.status !== 'active'/);
-  assert.match(hooks, /const expToNext = Math\.max\(1, Number\(hero\.EXPToNextLevel \|\| 100\)\);[\s\S]*hero\.currentEXP = overflow \? 0 : Math\.max\(0, expToNext - 53\)/);
+  assert.match(hooks, /const reward = deriveQaSettlementReward\(\{[\s\S]*threshold: selected\.EXPToNextLevel,[\s\S]*currentEXP: selected\.currentEXP/);
+  assert.match(hooks, /hero\.currentEXP = Math\.max\(0, expToNext - 53\)/);
+  assert.doesNotMatch(fixtureOffer, /EXPToNextLevel\s*=/);
   assert.match(hooks, /\['QA fixture offer', \(\) => beginQaFixtureOffer\(\)\]/);
   assert.match(commands, /export function settleVictory[\s\S]*if\(!g\.NativeBattleEnded[\s\S]*g\.ProgressionBattle\.outcome='victory'/);
   assert.match(commands, /export function settleDefeat[\s\S]*g\.ProgressionBattle\.outcome='defeat'[\s\S]*g\.ProgressionBattle\.defeatSettled=true/);
+});
+
+test('QA settlement rewards use live thresholds for one overflow and a positive no-level EXP row', () => {
+  const deriveQaSettlementReward = loadQaSettlementReward();
+  const levelOneReward = deriveQaSettlementReward({ threshold: 100, currentEXP: 47, overflow: true });
+  assert.equal(levelOneReward, 80);
+  assert.equal(47 + levelOneReward - 100, 27);
+
+  const levelTwoReward = deriveQaSettlementReward({ threshold: 283, currentEXP: 230, overflow: true });
+  assert.equal(levelTwoReward, 80);
+  assert.equal(230 + levelTwoReward - 283, 27);
+
+  const noLevelReward = deriveQaSettlementReward({ threshold: 283, currentEXP: 100, noLevel: true });
+  assert.ok(noLevelReward > 0);
+  assert.ok(100 + noLevelReward < 283);
+
+  const hooks = read('web-runner/systems/devBrowserTestHooks.js');
+  assert.match(hooks, /\['QA no-level EXP', \(\) => beginRewardSettlement\(\{ noLevel: true \}\)\]/);
 });
 
 function loadQaFixtureProcessTurnHarness({ tokenOwnerUID = 0 } = {}) {
