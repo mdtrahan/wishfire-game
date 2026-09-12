@@ -68,6 +68,32 @@ function loadQaSettlementReward() {
   return context.deriveQaSettlementReward;
 }
 
+function loadQaSettlementGuards() {
+  const source = read('web-runner/systems/devBrowserTestHooks.js');
+  const extractDefaultedFunction = name => {
+    const start = source.indexOf(`function ${name}(`);
+    assert.notEqual(start, -1, `missing ${name}`);
+    const braceStart = source.indexOf('{', source.indexOf(') {', start));
+    let depth = 0;
+    for (let index = braceStart; index < source.length; index += 1) {
+      if (source[index] === '{') depth += 1;
+      if (source[index] === '}' && --depth === 0) return source.slice(start, index + 1);
+    }
+    assert.fail(`unterminated ${name}`);
+  };
+  const quiescence = extractDefaultedFunction('qaSettlementQuiescenceSnapshot');
+  const snapshot = extractDefaultedFunction('qaSettlementHeroHealthSnapshot');
+  const changed = extractDefaultedFunction('qaSettlementHeroHealthChanged');
+  const context = {
+    derivePresentationTurnBarrier: ({ globals }) => ({ canAdvanceTurn: !!globals.presentationClear, blockingLane: globals.presentationClear ? null : 'text-animation' }),
+    Object,
+    Number,
+  };
+  vm.createContext(context);
+  vm.runInContext(`${quiescence}\n${snapshot}\n${changed}\nthis.guards = { qaSettlementQuiescenceSnapshot, qaSettlementHeroHealthSnapshot, qaSettlementHeroHealthChanged };`, context);
+  return context.guards;
+}
+
 test('level-up queue preserves party order, includes KO heroes, and creates one entry per earned level', () => {
   const queue = createSessionLevelUpQueue({
     heroes: [
@@ -217,6 +243,26 @@ test('QA settlement rewards use live thresholds for one overflow and a positive 
 
   const hooks = read('web-runner/systems/devBrowserTestHooks.js');
   assert.match(hooks, /\['QA no-level EXP', \(\) => beginRewardSettlement\(\{ noLevel: true \}\)\]/);
+});
+
+test('synthetic QA settlements hold scheduling until production is quiescent and preserve hero HP through settlement', () => {
+  const { qaSettlementQuiescenceSnapshot, qaSettlementHeroHealthSnapshot, qaSettlementHeroHealthChanged } = loadQaSettlementGuards();
+  const globals = { ActionInProgress: 1, IsPlayerBusy: 1, PendingHeroHits: [{ targetUID: 1 }], presentationClear: false };
+  assert.equal(qaSettlementQuiescenceSnapshot(globals).ok, false);
+  Object.assign(globals, { ActionInProgress: 0, IsPlayerBusy: 0, PendingHeroHits: [], presentationClear: true });
+  assert.equal(qaSettlementQuiescenceSnapshot(globals).ok, true);
+
+  const heroes = [{ uid: 1, kind: 'hero', hp: 25 }, { uid: 2, kind: 'hero', hp: 40 }];
+  const baseline = qaSettlementHeroHealthSnapshot(heroes);
+  assert.equal(qaSettlementHeroHealthChanged(heroes, baseline), false);
+  heroes[1].hp = 39;
+  assert.equal(qaSettlementHeroHealthChanged(heroes, baseline), true);
+
+  const hooks = read('web-runner/systems/devBrowserTestHooks.js');
+  const settlement = hooks.slice(hooks.indexOf('const beginRewardSettlement'), hooks.indexOf('const beginQaFixtureOffer'));
+  assert.match(settlement, /QaFixtureHoldTurn = 1;[\s\S]*await waitForQaSettlementQuiescence/);
+  assert.match(settlement, /monitorQaSettlementHold\(qaSettlementHeroHealthSnapshot\(state\.entities\)\)/);
+  assert.match(hooks, /QaSettlementHoldReleaseCount = Number\(state\.globals\.QaSettlementHoldReleaseCount \|\| 0\) \+ 1/);
 });
 
 function loadQaFixtureProcessTurnHarness({ tokenOwnerUID = 0 } = {}) {

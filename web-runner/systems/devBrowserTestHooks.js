@@ -59,6 +59,43 @@ export function deriveQaSettlementReward({ threshold, currentEXP, overflow = fal
   return overflow ? remaining + 27 : 80;
 }
 
+export function qaSettlementQuiescenceSnapshot(globals = {}) {
+  const presentation = derivePresentationTurnBarrier({ globals });
+  const observed = {
+    actionInProgress: !!globals.ActionInProgress,
+    playerBusy: !!globals.IsPlayerBusy,
+    pendingHeroHits: Array.isArray(globals.PendingHeroHits) ? globals.PendingHeroHits.length : 0,
+    presentationClear: presentation.canAdvanceTurn,
+    presentationBlocker: presentation.blockingLane,
+  };
+  return { ok: !observed.actionInProgress && !observed.playerBusy && observed.pendingHeroHits === 0 && observed.presentationClear, observed };
+}
+
+export async function waitForQaSettlementQuiescence({
+  globals, timeoutMs = 3500, pollMs = 25,
+  now = () => Date.now(), wait = ms => new Promise(resolve => setTimeout(resolve, ms)),
+} = {}) {
+  const startedAt = now(); let latest = qaSettlementQuiescenceSnapshot(globals);
+  while (now() - startedAt < timeoutMs) {
+    latest = qaSettlementQuiescenceSnapshot(globals);
+    if (latest.ok) return { ok: true, elapsedMs: now() - startedAt, observed: latest.observed };
+    await wait(pollMs);
+  }
+  latest = qaSettlementQuiescenceSnapshot(globals);
+  return { ok: latest.ok, elapsedMs: now() - startedAt, observed: latest.observed };
+}
+
+export function qaSettlementHeroHealthSnapshot(entities = []) {
+  return Object.fromEntries((entities || [])
+    .filter(entity => entity?.kind === 'hero')
+    .map(hero => [String(hero.uid), Number(hero.hp || 0)]));
+}
+
+export function qaSettlementHeroHealthChanged(entities = [], baseline = {}) {
+  return (entities || []).filter(entity => entity?.kind === 'hero')
+    .some(hero => Number(hero.hp || 0) !== Number(baseline?.[String(hero.uid)]));
+}
+
 export async function waitForQaStoryCombatPhase(entry, {
   timeoutMs = QA_STORY_TRANSITION_TIMEOUT_MS,
   pollMs = 25,
@@ -280,8 +317,46 @@ export function registerDevBrowserTestHooks({
         delete state.globals.QaFixtureExplicitActionClaimed;
       }
     };
-    const beginRewardSettlement = ({ overflow = false, multiHero = false, noLevel = false } = {}) => {
-      const selected = qaHero(); if (!selected) return;
+    const releaseQaSettlementHold = () => {
+      if (!state.globals.QaSettlementHoldActive) return false;
+      delete state.globals.QaSettlementHoldActive;
+      delete state.globals.QaFixtureHoldTurn;
+      state.globals.QaSettlementHoldReleaseCount = Number(state.globals.QaSettlementHoldReleaseCount || 0) + 1;
+      return true;
+    };
+    const monitorQaSettlementHold = baselineHP => {
+      if (!state.globals.QaSettlementHoldActive) return;
+      const settlementOpen = !!state.globals.SessionLevelUpSettlement || state.globals.SessionLevelUpQueue?.status === 'active';
+      if (settlementOpen && qaSettlementHeroHealthChanged(state.entities, baselineHP)) {
+        state.globals.QaSettlementHoldError = 'hero HP changed while synthetic settlement was held';
+        releaseQaSettlementHold();
+        return;
+      }
+      const cleanedUp = state.globals.ProgressionBattle?.outcome === 'defeat' || state.globals.ProgressionBattle?.defeatSettled;
+      const autoAdvanced = gameState.storyEntry.phase !== 'combat';
+      if (cleanedUp || (!settlementOpen && autoAdvanced)) {
+        releaseQaSettlementHold();
+        return;
+      }
+      window.setTimeout(() => monitorQaSettlementHold(baselineHP), 25);
+    };
+    const beginRewardSettlement = async ({ overflow = false, multiHero = false, noLevel = false } = {}) => {
+      if (state.globals.QaSettlementHoldActive) throw new Error('QA synthetic settlement is already waiting for cleanup');
+      state.globals.QaFixtureHoldTurn = 1;
+      state.globals.QaSettlementHoldActive = 1;
+      const quiescent = await waitForQaSettlementQuiescence({
+        globals: state.globals,
+        wait: ms => new Promise(resolve => window.setTimeout(resolve, ms)),
+      });
+      if (!quiescent.ok || state.globals.NativeBattleEnded) {
+        releaseQaSettlementHold();
+        throw new Error(`QA synthetic settlement could not start from a live quiescent battle: ${JSON.stringify(quiescent.observed)}`);
+      }
+      const selected = qaHero();
+      if (!selected) {
+        releaseQaSettlementHold();
+        return;
+      }
       setTierAndCard();
       const participants = multiHero ? state.entities.filter(entity => entity.kind === 'hero') : [selected];
       if (!overflow && !noLevel) {
@@ -303,15 +378,16 @@ export function registerDevBrowserTestHooks({
       state.globals.ProgressionBattle = { id: battleId, participants: participants.map(hero => hero.heroInstanceKey || hero.baseHeroName || hero.name), defeated: { qa_reward: reward }, defeatedGold: {}, settled: false };
       // This is the production EXP settlement path. Controls only seed its battle input.
       settleVictory(fnContext);
+      monitorQaSettlementHold(qaSettlementHeroHealthSnapshot(state.entities));
       if (typeof drawFrame === 'function') drawFrame();
     };
-    const beginQaFixtureOffer = () => {
+    const beginQaFixtureOffer = async () => {
       const battle = state.globals.ProgressionBattle || {};
       if (battle.outcome === 'defeat' || battle.defeatSettled) throw new Error('QA fixture offer cannot open after defeat');
       setQaFixtureOfferPool(fixtureSelect.value);
       // The deterministic QA input below resolves the current production battle
       // as victory, then delegates EXP, queue, and offer creation to settleVictory.
-      beginRewardSettlement();
+      await beginRewardSettlement();
       if (state.globals.SessionLevelUpQueue?.status !== 'active') throw new Error('QA fixture victory did not create an active level-up queue');
     };
     for (const [label, action] of [
@@ -326,6 +402,7 @@ export function registerDevBrowserTestHooks({
         for (const hero of state.entities.filter(e => e.kind === 'hero')) hero.hp = 0;
         callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
         delete state.globals.QaFixtureBattleBaseline;
+        releaseQaSettlementHold();
         delete state.globals.QaFixtureHoldTurn;
         delete state.globals.SessionLevelUpQaOfferCards;
       }],
@@ -605,13 +682,14 @@ export function registerDevBrowserTestHooks({
           throw error;
         }
       }],
-      ['QA fresh session', () => { delete state.globals.QaFixtureBattleBaseline; delete state.globals.QaFixtureHoldTurn; delete state.globals.SessionLevelUpQaOfferCards; resetCombatSessionConditions(state.globals, {}); if (typeof drawFrame === 'function') drawFrame(); }],
+      ['QA fresh session', () => { delete state.globals.QaFixtureBattleBaseline; releaseQaSettlementHold(); delete state.globals.QaFixtureHoldTurn; delete state.globals.SessionLevelUpQaOfferCards; resetCombatSessionConditions(state.globals, {}); if (typeof drawFrame === 'function') drawFrame(); }],
       ['QA abandon', async () => {
         const navigated = await storyEntry.navigate('Quests');
         const quit = navigated && storyEntry.quitPausedCombat();
         if (!navigated || !quit) throw new Error('QA abandon requires the production Quests pause and Quit Battle flow');
         if (Object.keys(state.globals.SessionLevelBuffState?.heroes || {}).length || state.globals.SessionLevelUpSettlement || state.globals.SessionLevelUpQueue?.status === 'active' || state.globals.SessionLevelBuffCombatSessionId != null) throw new Error('QA abandon did not clear owned session level buffs');
         delete state.globals.QaFixtureBattleBaseline;
+        releaseQaSettlementHold();
         delete state.globals.QaFixtureHoldTurn;
         delete state.globals.SessionLevelUpQaOfferCards;
         if (typeof drawFrame === 'function') drawFrame();
