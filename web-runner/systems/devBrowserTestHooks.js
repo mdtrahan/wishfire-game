@@ -11,6 +11,23 @@ import {
   DYNAMIC_INITIATIVE_AUTHORITY_SEED,
 } from '../src/core/dynamicInitiativeAuthorityExperiment.mjs';
 
+export const QA_STORY_TRANSITION_TIMEOUT_MS = 1800;
+export async function waitForQaStoryCombatPhase(entry, {
+  timeoutMs = QA_STORY_TRANSITION_TIMEOUT_MS,
+  pollMs = 25,
+  now = () => Date.now(),
+  wait = ms => new Promise(resolve => setTimeout(resolve, ms)),
+} = {}) {
+  const startedAt = now();
+  let observed = { phase: entry?.phase, pending: !!entry?.pending };
+  while (now() - startedAt < timeoutMs) {
+    observed = { phase: entry?.phase, pending: !!entry?.pending };
+    if (observed.phase === 'combat' && !observed.pending) return { ok: true, elapsedMs: now() - startedAt, observed };
+    await wait(pollMs);
+  }
+  return { ok: false, elapsedMs: now() - startedAt, observed: { phase: entry?.phase, pending: !!entry?.pending } };
+}
+
 export function registerDevBrowserTestHooks({
   state,
   gameState,
@@ -64,6 +81,10 @@ export function registerDevBrowserTestHooks({
     for (const tier of [1, 2, 3, 4]) tierSelect.append(new Option(`Tier ${tier}`, String(tier)));
     const cardSelect = document.createElement('select');
     cardSelect.setAttribute('aria-label', 'QA preferred eligible card');
+    const fixtureSelect = document.createElement('select');
+    fixtureSelect.setAttribute('aria-label', 'QA production fixture');
+    const fixtureCards = { ward: 'qa_opening_shield_1', stat: 'qa_atk_focus_1', maxhp: 'qa_max_vitality_1', speed: 'qa_speed_1', bargain: 'qa_power_bargain_1', orb: 'qa_pulse_1', status: 'qa_status_on_basic_1', heal: 'qa_heal_on_basic_1', bounce: 'qa_bounce_1', counter: 'qa_counter_1' };
+    Object.entries(fixtureCards).forEach(([name, cardId]) => fixtureSelect.append(new Option(name, cardId)));
     const qaHero = () => {
       const heroes = state.entities.filter(entity => entity.kind === 'hero');
       if (!heroSelect.options.length) heroes.forEach(hero => heroSelect.append(new Option(hero.name || hero.baseHeroName || String(hero.uid), String(hero.uid))));
@@ -118,6 +139,7 @@ export function registerDevBrowserTestHooks({
         hero.hp = Math.floor(Number(hero.maxHP || 1) * .25); callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
       }],
       ['QA EXP 47+80', () => beginRewardSettlement()],
+      ['QA fixture offer', () => { cardSelect.value = fixtureSelect.value; tierSelect.value = '1'; beginRewardSettlement(); }],
       ['QA overflow EXP', () => beginRewardSettlement({ overflow: true })],
       ['QA multi-hero EXP', () => beginRewardSettlement({ multiHero: true })],
       ['QA choose preferred', () => {
@@ -133,13 +155,23 @@ export function registerDevBrowserTestHooks({
         const enemy = state.entities.find(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
         if (hero && enemy) callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', hero.uid);
       }],
+      ['QA run fixture', () => {
+        const fixture = String(fixtureSelect.value || '');
+        if (fixture === 'counter') {
+          const hero = qaHero(); const enemy = state.entities.find(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
+          if (hero && enemy) callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', hero.uid);
+          return;
+        }
+        // Native turns own cadence, proc, DOT, heal, bounce, and their presentation queues.
+        callFunctionWithContext(fnContext, 'ProcessTurn');
+      }],
       ['QA next battle', async () => {
         seedProductionEncounter();
         storyEntry.victory();
         const cardIndex = gameState.storyEntry.cards.findIndex((card, index) => card.combat && index < gameState.storyEntry.progress.revealed);
         if (!storyEntry.startCard(cardIndex) || !storyEntry.requestSkip() || !storyEntry.confirmSkip()) throw new Error('QA continuation could not enter the production StoryEntry combat transition');
-        for (let attempt = 0; attempt < 20 && gameState.storyEntry.pending; attempt += 1) await new Promise(resolve => window.setTimeout(resolve, 0));
-        if (gameState.storyEntry.phase !== 'combat' || gameState.storyEntry.pending || state.globals.NativeBattleEnded) throw new Error('QA continuation did not start a playable next battle');
+        const transition = await waitForQaStoryCombatPhase(gameState.storyEntry, { wait: ms => new Promise(resolve => window.setTimeout(resolve, ms)) });
+        if (!transition.ok || state.globals.NativeBattleEnded) throw new Error(`QA continuation timed out after ${transition.elapsedMs}ms phase=${transition.observed.phase} pending=${transition.observed.pending}`);
         if (typeof drawFrame === 'function') drawFrame();
       }],
       ['QA fresh session', () => { resetCombatSessionConditions(state.globals, {}); if (typeof drawFrame === 'function') drawFrame(); }],
@@ -154,7 +186,7 @@ export function registerDevBrowserTestHooks({
       const button = document.createElement('button'); button.textContent = label;
       button.addEventListener('click', action); controls.append(button);
     }
-    controls.prepend(cardSelect); controls.prepend(tierSelect); controls.prepend(heroSelect);
+    controls.prepend(fixtureSelect); controls.prepend(cardSelect); controls.prepend(tierSelect); controls.prepend(heroSelect);
     const updateQaOptions = () => {
       if (!heroSelect.options.length) qaHero();
       const cards = QA_LEVEL_UP_BUFF_CARDS;

@@ -167,9 +167,30 @@ test('QA continuation enters Battle B through StoryEntry and effect controls inv
   const nextBattle = hooks.slice(hooks.indexOf("['QA next battle'"), hooks.indexOf("['QA fresh session'"));
   const effects = hooks.slice(hooks.indexOf("['QA native basic'"), hooks.indexOf("['QA next battle'"));
   assert.match(hooks, /EncounterSeed = 7969171/);
-  assert.match(nextBattle, /storyEntry\.victory\(\)[\s\S]*storyEntry\.startCard\(cardIndex\)[\s\S]*storyEntry\.confirmSkip\(\)[\s\S]*storyEntry\.phase !== 'combat'/);
+  assert.match(nextBattle, /storyEntry\.victory\(\)[\s\S]*storyEntry\.startCard\(cardIndex\)[\s\S]*storyEntry\.confirmSkip\(\)[\s\S]*waitForQaStoryCombatPhase/);
   assert.doesNotMatch(nextBattle, /layoutState\.requestLayoutChange/);
   assert.match(effects, /callFunctionWithContext\(fnContext, 'ProcessTurn'\)/);
   assert.match(effects, /callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
   assert.match(effects, /callFunctionWithContext\(fnContext, 'ExecuteEnemyJobSkill', enemy\.uid, 'Enemy_ATK_Single', hero\.uid\)/);
+});
+
+test('QA StoryEntry wait never rejects during the documented transition window and resolves Battle B', async () => {
+  const source = read('web-runner/systems/devBrowserTestHooks.js');
+  const helperStart = source.indexOf('export async function waitForQaStoryCombatPhase');
+  const braceStart = source.indexOf(') {', helperStart) + 2;
+  let depth = 0; let helperEnd = braceStart;
+  for (; helperEnd < source.length; helperEnd += 1) { if (source[helperEnd] === '{') depth += 1; if (source[helperEnd] === '}' && --depth === 0) break; }
+  const helper = source.slice(helperStart, helperEnd + 1).replace('export async function', 'async function');
+  const context = {};
+  vm.createContext(context);
+  vm.runInContext(`${helper}\nthis.waitForQaStoryCombatPhase = waitForQaStoryCombatPhase;`, context);
+  let time = 0;
+  const entry = { phase: 'opening', pending: true };
+  const outcome = await context.waitForQaStoryCombatPhase(entry, {
+    timeoutMs: 1800, pollMs: 25, now: () => time,
+    wait: async ms => { time += ms; if (time >= 800) { entry.phase = 'combat'; entry.pending = false; } },
+  });
+  assert.equal(outcome.ok, true);
+  assert.ok(outcome.elapsedMs >= 750, 'the valid 750ms fade and hold window is never treated as a rejection');
+  assert.equal(entry.phase, 'combat');
 });
