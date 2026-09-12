@@ -132,6 +132,18 @@ test('Mirage Chain has no same-target fallback when only one enemy survives', ()
   assert.equal(ctx.state.globals.ChainStrikeVisuals, undefined);
 });
 
+test('Mirage Chain retains its production potency and resolved secondary damage', () => {
+  const { ctx, actor, target, rules } = context(['qa_bounce'], () => 0);
+  const secondary = { ...structuredClone(target), uid: 10, hp: 200, x: 40 };
+  ctx.state.entities.push(secondary);
+  const before = secondary.hp;
+  resolveSessionLevelBasicEffects(ctx, rules, actor, [target.uid]);
+  const visual = ctx.state.globals.ChainStrikeVisuals.at(-1);
+  assert.equal(visual.damagePercent, .50);
+  assert.equal(visual.resolvedDamage, before - secondary.hp);
+  assert.equal(visual.resolvedDamage, 10);
+});
+
 test('Glass Reprisal counterattacks and heals only after its owner takes damage', () => {
   const { ctx, actor, target, rules } = context(['qa_counter'], () => 0);
   actor.hp = 40;

@@ -547,7 +547,7 @@ export function registerDevBrowserTestHooks({
           orb: { attempts: orbCadence, observed: () => newPulses().some(visual => Number(visual.sourceUID) === Number(owner?.uid) && Number(visual.amount) === orbAmount && enemyHPLoweredSinceRun(visual.targetUID)) },
           venom: { attempts: 1, observed: () => venomApplied && venomTurnEvidence?.damage === 3 && venomTurnEvidence.markerVisibleBefore && venomTurnEvidence.markerVisibleAfterTick && venomTurnEvidence.markerAbsentAfterExpiry },
           heal: { attempts: 1, observed: () => healEvidence?.actualHeal === healEvidence?.expectedHeal && healEvidence?.atMaxHpCap && healEvidence?.bloomObserved && healEvidence?.ineligibleTriggerNoHeal },
-          bounce: { attempts: 1, observed: () => bounceEvidence?.distinctTargets && bounceEvidence?.actualSecondaryDamage === bounceEvidence?.expectedSecondaryDamage && bounceEvidence?.chainStrikeObserved && bounceEvidence?.addedHitTriggeredNoSessionEffects },
+          bounce: { attempts: 1, observed: () => bounceEvidence?.distinctTargets && bounceEvidence?.damagePercent === .50 && bounceEvidence?.actualSecondaryDamage === bounceEvidence?.resolvedSecondaryDamage && bounceEvidence?.chainStrikeObserved && bounceEvidence?.addedHitTriggeredNoSessionEffects },
           counter: { attempts: 1, observed: () => counterEvidence?.actualCounterDamage === counterEvidence?.expectedCounterDamage && counterEvidence?.actualHeal === counterEvidence?.expectedHeal && counterEvidence?.counterPresentationObserved && counterEvidence?.turnSerialBefore === counterEvidence?.turnSerialAfter && counterEvidence?.recursionCount === 1 && counterEvidence?.otherHeroNoTrigger },
         };
         const scenario = scenarios[fixture];
@@ -715,10 +715,9 @@ export function registerDevBrowserTestHooks({
             }
             if (fixture === 'bounce') {
               const resolvedPrimaryDamage = primaryHPBefore - primaryHPAfter;
-              const expectedSecondaryDamage = Math.floor(resolvedPrimaryDamage * .50);
               const chain = newChains().find(visual => Number(visual.sourceTargetUID) === Number(primary?.uid) && Number(visual.targetUID) === Number(secondary?.uid));
               const onlyBounceCounterAdvanced = Object.entries(countersAfter).every(([effectId, value]) => Number(value) === Number(countersBefore[effectId] || 0) + (effectId === fixtureCard.effectId ? 1 : 0));
-              bounceEvidence = { primaryUID: Number(primary?.uid || 0), secondaryUID: Number(secondary?.uid || 0), distinctTargets: Number(primary?.uid || 0) !== Number(secondary?.uid || 0), primaryHPBefore, primaryHPAfter, resolvedPrimaryDamage, expectedSecondaryDamage, actualSecondaryDamage: secondaryHPBefore - Number(secondary?.hp || 0), chainStrikeObserved: !!chain, countersBefore, countersAfter, addedHitTriggeredNoSessionEffects: onlyBounceCounterAdvanced };
+              bounceEvidence = { primaryUID: Number(primary?.uid || 0), secondaryUID: Number(secondary?.uid || 0), distinctTargets: Number(primary?.uid || 0) !== Number(secondary?.uid || 0), primaryHPBefore, primaryHPAfter, resolvedPrimaryDamage, damagePercent: Number(chain?.damagePercent || 0), resolvedSecondaryDamage: Number(chain?.resolvedDamage || 0), actualSecondaryDamage: secondaryHPBefore - Number(secondary?.hp || 0), chainStrikeObserved: !!chain, countersBefore, countersAfter, addedHitTriggeredNoSessionEffects: onlyBounceCounterAdvanced };
             }
             if (fixture === 'venom') {
               const venomTarget = livingEnemies().find(enemy => enemy.statuses?.some(status => status.statusEffect === 'dot' && Number(status.snapshotPotency || 0) === 3));

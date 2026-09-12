@@ -491,7 +491,10 @@ test('QA fixture scenarios use bounded production actions and require each obser
   assert.match(fixtureRun, /Number\(visual\.amount\) === 6/);
   assert.match(fixtureRun, /Number\(visual\.amount\) === orbAmount/);
   assert.match(fixtureRun, /const resolvedPrimaryDamage = primaryHPBefore - primaryHPAfter/);
-  assert.match(fixtureRun, /const expectedSecondaryDamage = Math\.floor\(resolvedPrimaryDamage \* \.50\)/);
+  assert.match(fixtureRun, /damagePercent: Number\(chain\?\.damagePercent \|\| 0\)/);
+  assert.match(fixtureRun, /resolvedSecondaryDamage: Number\(chain\?\.resolvedDamage \|\| 0\)/);
+  assert.match(fixtureRun, /bounceEvidence\?\.damagePercent === \.50/);
+  assert.match(fixtureRun, /actualSecondaryDamage === bounceEvidence\?\.resolvedSecondaryDamage/);
   assert.match(fixtureRun, /primaryHPBefore, primaryHPAfter, resolvedPrimaryDamage/);
   assert.match(fixtureRun, /snapshotPotency === 3/);
   assert.match(fixtureRun, /const resolveQaVenomDotTurns = target => \{/);
@@ -506,7 +509,7 @@ test('QA fixture scenarios use bounded production actions and require each obser
   assert.match(fixtureRun, /QaFixtureHoldReleaseCount = fixtureReleaseCountBefore \+ 1/);
   assert.match(fixtureRun, /QA_FIXTURE_INELIGIBLE_PROC_ENCOUNTER_SEED/);
   assert.match(fixtureRun, /healEvidence\?\.actualHeal === healEvidence\?\.expectedHeal/);
-  assert.match(fixtureRun, /bounceEvidence\?\.actualSecondaryDamage === bounceEvidence\?\.expectedSecondaryDamage/);
+  assert.match(fixtureRun, /bounceEvidence\?\.actualSecondaryDamage === bounceEvidence\?\.resolvedSecondaryDamage/);
   assert.match(fixtureRun, /counterEvidence\?\.actualCounterDamage === counterEvidence\?\.expectedCounterDamage/);
   assert.match(fixtureRun, /for \(let attempt = 0; attempt < scenario\.attempts && !scenario\.observed\(\); attempt \+= 1\)/);
   assert.match(fixtureRun, /ineligibleTriggerNoHeal/);
@@ -617,6 +620,7 @@ test('production effect visuals retain the fixture payload needed for current-ru
   const commands = read('web-runner/modules/heroCommands.mjs');
   assert.match(commands, /shape:'crescent_arc_blast'[\s\S]*amount:Number\(formula\.amount\|\|0\)/);
   assert.match(commands, /visual:'chain_strike',damagePercent:Number\(formula\.damagePercent\|\|0\)/);
+  assert.match(commands, /visual\.resolvedDamage=Math\.max\(0,before-Number\(bounce\.hp\|\|0\)\)/);
 });
 
 function loadQaPlayableBattleWait() {
