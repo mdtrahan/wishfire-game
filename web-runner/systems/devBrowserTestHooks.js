@@ -51,6 +51,40 @@ export async function waitForQaStoryCombatPhase(entry, {
   return { ok: false, elapsedMs: now() - startedAt, observed };
 }
 
+export function qaPlayableBattleSnapshot({ entry, globals = {}, entities = [], currentUID = 0 } = {}) {
+  const now = Number(globals.time || 0);
+  const livingActors = (entities || []).filter(actor => (actor?.kind === 'hero' || actor?.kind === 'enemy') && Number(actor.hp || 0) > 0);
+  const currentActor = livingActors.find(actor => Number(actor.uid) === Number(currentUID));
+  const enemyActionActive = !!(globals.EnemyAction && globals.EnemyAction.active);
+  const actionLocked = Number(globals.ActionLockUntil || 0) > now;
+  const observed = {
+    phase: entry?.phase, pending: !!entry?.pending, ended: !!globals.NativeBattleEnded,
+    enemyActionActive, actionInProgress: !!globals.ActionInProgress,
+    playerBusy: !!globals.IsPlayerBusy, battleStartActive: !!globals.BattleStartActive,
+    actionLocked, pendingHeroHits: Array.isArray(globals.PendingHeroHits) ? globals.PendingHeroHits.length : 0,
+    livingActors: livingActors.map(actor => Number(actor.uid)), currentUID: Number(currentUID || 0),
+    currentActorLiving: !!currentActor,
+  };
+  return { ok: observed.phase === 'combat' && !observed.pending && !observed.ended
+    && !observed.enemyActionActive && !observed.actionInProgress && !observed.playerBusy
+    && !observed.battleStartActive && !observed.actionLocked && observed.pendingHeroHits === 0
+    && observed.livingActors.length > 0 && observed.currentActorLiving, observed };
+}
+
+export async function waitForPlayableBattle({
+  entry, globals, entities, getCurrentUID = () => 0, timeoutMs = 3500, pollMs = 40,
+  now = () => Date.now(), wait = ms => new Promise(resolve => setTimeout(resolve, ms)),
+} = {}) {
+  const startedAt = now(); let latest = qaPlayableBattleSnapshot({ entry, globals, entities, currentUID: getCurrentUID() });
+  while (now() - startedAt < timeoutMs) {
+    latest = qaPlayableBattleSnapshot({ entry, globals, entities, currentUID: getCurrentUID() });
+    if (latest.ok) return { ok: true, elapsedMs: now() - startedAt, observed: latest.observed };
+    await wait(pollMs);
+  }
+  latest = qaPlayableBattleSnapshot({ entry, globals, entities, currentUID: getCurrentUID() });
+  return { ok: latest.ok, elapsedMs: now() - startedAt, observed: latest.observed };
+}
+
 export function registerDevBrowserTestHooks({
   state,
   gameState,
@@ -306,12 +340,18 @@ export function registerDevBrowserTestHooks({
         const enemies = livingEnemies();
         if (fixture === 'bounce' && enemies.length < 2) throw new Error('QA fixture bounce requires two distinct living enemies');
         if (typeof installQaFixtureRuntimeRandom !== 'function') throw new Error('QA fixture requires the production current-battle RNG seam');
-        delete state.globals.QaFixtureHoldTurn;
+        const waitForFixtureIdle = () => waitForPlayableBattle({
+          entry: gameState.storyEntry, globals: state.globals, entities: state.entities,
+          getCurrentUID: () => callFunctionWithContext(fnContext, 'GetCurrentTurn'),
+          wait: ms => new Promise(resolve => window.setTimeout(resolve, ms)),
+        });
         // The held current battle has not received its first production turn.
         // Re-arm that battle-start sentinel so ProcessTurn below owns the card
         // application after all QA inputs are arranged.
         delete state.globals.SessionLevelBuffCombatSessionId;
         for (let attempt = 0; attempt < scenario.attempts && !scenario.observed(); attempt += 1) {
+          const idleBefore = await waitForFixtureIdle();
+          if (!idleBefore.ok) throw new Error(`QA fixture ${fixture} cannot run while Battle B is gated: ${JSON.stringify(idleBefore.observed)}`);
           if (fixture === 'counter') {
             const enemy = livingEnemies()[0];
             if (!enemy) throw new Error('QA fixture counter has no living enemy');
@@ -330,6 +370,9 @@ export function registerDevBrowserTestHooks({
             await new Promise(resolve => window.setTimeout(resolve, resolutionMs));
             captureFreshVisuals();
           }
+          const idleAfter = await waitForFixtureIdle();
+          captureFreshVisuals();
+          if (!idleAfter.ok) throw new Error(`QA fixture ${fixture} action did not complete: ${JSON.stringify(idleAfter.observed)}`);
         }
         if (!scenario.observed()) throw new Error(`QA fixture ${fixture} did not produce its required observable production result: ${JSON.stringify({ ownerUID: owner.uid, enemies: livingEnemies().map(enemy => ({ uid: enemy.uid, hp: enemy.hp, statuses: enemy.statuses?.map(status => status.statusEffect) || [] })), pulses: state.globals.ArcanePulseVisuals?.length || 0, chains: state.globals.ChainStrikeVisuals?.length || 0 })}`);
         if (typeof drawFrame === 'function') drawFrame();
@@ -339,7 +382,9 @@ export function registerDevBrowserTestHooks({
         const owner = qaHero();
         const target = state.entities.find(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
         if (!fixture || !owner) throw new Error('QA continuation requires a selected fixture and owner');
-        state.globals.QaFixtureBattleBaseline = { fixture, ...snapshotFixtureBaseline(owner, target) };
+        // Keep the pre-transition values. Encounter replacement creates new
+        // actor objects, so post-init values cannot prove permanent buff deltas.
+        const preBattleBaseline = { fixture, ...snapshotFixtureBaseline(owner, target) };
         state.globals.QaFixtureHoldTurn = 1;
         seedProductionEncounter();
         storyEntry.victory();
@@ -347,6 +392,17 @@ export function registerDevBrowserTestHooks({
         if (!storyEntry.startCard(cardIndex) || !storyEntry.requestSkip() || !storyEntry.confirmSkip()) throw new Error('QA continuation could not enter the production StoryEntry combat transition');
         const transition = await waitForQaStoryCombatPhase(gameState.storyEntry, { wait: ms => new Promise(resolve => window.setTimeout(resolve, ms)) });
         if (!transition.ok || state.globals.NativeBattleEnded) throw new Error(`QA continuation timed out after ${transition.elapsedMs}ms phase=${transition.observed.phase} pending=${transition.observed.pending}`);
+        delete state.globals.QaFixtureHoldTurn;
+        const playable = await waitForPlayableBattle({
+          entry: gameState.storyEntry, globals: state.globals, entities: state.entities,
+          getCurrentUID: () => callFunctionWithContext(fnContext, 'GetCurrentTurn'),
+          wait: ms => new Promise(resolve => window.setTimeout(resolve, ms)),
+        });
+        if (!playable.ok) throw new Error(`QA continuation did not reach a playable Battle B: ${JSON.stringify(playable.observed)}`);
+        const liveOwner = state.entities.find(entity => entity.kind === 'hero' && String(entity.heroInstanceKey ?? entity.uid) === preBattleBaseline.ownerId);
+        const liveTarget = state.entities.find(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
+        if (!liveOwner || !liveTarget) throw new Error('QA continuation replaced the encounter without the selected owner and a living target');
+        state.globals.QaFixtureBattleBaseline = { ...preBattleBaseline, ready: playable.observed, liveOwnerUID: Number(liveOwner.uid), liveTargetUID: Number(liveTarget.uid) };
         if (typeof drawFrame === 'function') drawFrame();
       }],
       ['QA fresh session', () => { delete state.globals.QaFixtureBattleBaseline; delete state.globals.QaFixtureHoldTurn; delete state.globals.SessionLevelUpQaOfferCards; resetCombatSessionConditions(state.globals, {}); if (typeof drawFrame === 'function') drawFrame(); }],

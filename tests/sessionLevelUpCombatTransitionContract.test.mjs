@@ -233,7 +233,8 @@ test('QA fixture scenarios use bounded production actions and require each obser
   assert.match(hooks, /initiative\.current = scheduledOwner/);
   assert.match(hooks, /InitiativeCurrentUID = scheduledOwner\.uid/);
   assert.match(fixtureRun, /installQaFixtureRuntimeRandom\(QA_FIXTURE_RUNTIME_ENCOUNTER_SEED\)/);
-  assert.match(fixtureRun, /delete state\.globals\.QaFixtureHoldTurn/);
+  assert.match(fixtureRun, /const idleBefore = await waitForFixtureIdle\(\)/);
+  assert.match(fixtureRun, /const idleAfter = await waitForFixtureIdle\(\)/);
   assert.match(fixtureRun, /delete state\.globals\.SessionLevelBuffCombatSessionId/);
   assert.match(fixtureRun, /ownerWasHitSinceRun\(\)/);
   assert.match(fixtureRun, /Number\(visual\.amount\) === 6/);
@@ -287,4 +288,37 @@ test('production effect visuals retain the fixture payload needed for current-ru
   const commands = read('web-runner/modules/heroCommands.mjs');
   assert.match(commands, /shape:'crescent_arc_blast'[\s\S]*amount:Number\(formula\.amount\|\|0\)/);
   assert.match(commands, /visual:'chain_strike',damagePercent:Number\(formula\.damagePercent\|\|0\)/);
+});
+
+function loadQaPlayableBattleWait() {
+  const source = read('web-runner/systems/devBrowserTestHooks.js');
+  const start = source.indexOf('export function qaPlayableBattleSnapshot');
+  const end = source.indexOf('export function registerDevBrowserTestHooks', start);
+  assert.notEqual(start, -1, 'missing playable Battle B helper');
+  const context = {}; vm.createContext(context);
+  vm.runInContext(source.slice(start, end).replace('export function', 'function').replace('export async function', 'async function') + '\nthis.waitForPlayableBattle = waitForPlayableBattle;', context);
+  return context.waitForPlayableBattle;
+}
+
+test('QA waits through delayed encounter replacement and an enemy-action gate before allowing the owner turn', async () => {
+  const waitForPlayableBattle = loadQaPlayableBattleWait();
+  let time = 0;
+  const entry = { phase: 'combat', pending: false };
+  const globals = { time: 0, EnemyAction: { active: true }, ActionInProgress: 1, ActionLockUntil: 1 };
+  const entities = [{ uid: 7, kind: 'hero', hp: 50 }, { uid: 9, kind: 'enemy', hp: 50 }];
+  const result = await waitForPlayableBattle({
+    entry, globals, entities, getCurrentUID: () => 7, now: () => time, timeoutMs: 1000, pollMs: 20,
+    wait: async ms => { time += ms; globals.time = time / 1000; if (time >= 180) { globals.EnemyAction.active = false; globals.ActionInProgress = 0; globals.ActionLockUntil = 0; } },
+  });
+  assert.equal(result.ok, true);
+  assert.ok(result.elapsedMs >= 180);
+  assert.equal(result.observed.enemyActionActive, false);
+});
+
+test('QA continuation preserves its pre-transition permanent baseline until Battle B is playable', () => {
+  const hooks = read('web-runner/systems/devBrowserTestHooks.js');
+  const nextBattle = hooks.slice(hooks.indexOf("['QA next battle'"), hooks.indexOf("['QA fresh session'"));
+  assert.match(nextBattle, /const preBattleBaseline = \{ fixture, \.\.\.snapshotFixtureBaseline\(owner, target\) \}/);
+  assert.match(nextBattle, /storyEntry\.victory\(\)[\s\S]*waitForPlayableBattle[\s\S]*QaFixtureBattleBaseline = \{ \.\.\.preBattleBaseline/);
+  assert.match(nextBattle, /liveOwnerUID/);
 });
