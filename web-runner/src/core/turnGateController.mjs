@@ -315,7 +315,7 @@ export function createDeferredStaleActionRecovery(current = {}) {
   };
 }
 
-export function createEnemyTurnIdleRecovery(current = {}, { now = 0, currentTurnUID = 0 } = {}) {
+export function createEnemyTurnIdleRecovery(current = {}, { now = 0, currentTurnUID = 0, releaseDelay = 0.05 } = {}) {
   const base = normalizeTurnGateState(current);
   const safeNow = Number(now || 0);
   const owner = Number(base.ActionOwnerUID || currentTurnUID || 0);
@@ -326,7 +326,7 @@ export function createEnemyTurnIdleRecovery(current = {}, { now = 0, currentTurn
     DeferAdvance: 1,
     AdvanceAfterAction: 1,
     ActionOwnerUID: owner,
-    ActionLockUntil: Math.max(Number(base.ActionLockUntil || 0), safeNow + 0.05),
+    ActionLockUntil: Math.max(Number(base.ActionLockUntil || 0), safeNow + Math.max(0.05, Number(releaseDelay || 0))),
     ActionInProgress: 0,
     ActionActorUID: 0,
     PendingSkillID: '',
