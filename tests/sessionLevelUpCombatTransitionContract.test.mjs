@@ -59,7 +59,7 @@ test('queue pause/resume and acknowledgement form the Phase 4 presentation seam'
   assert.equal(acknowledgeSessionLevelUpEntry(queue).status, 'complete');
 });
 
-test('living hero CTB entry routes straight to the native basic-command seam without opening a fan', () => {
+test('living hero CTB entry routes one native basic attack to a living selection or stale fallback without opening a fan', () => {
   const source = read('web-runner/modules/functionBank.js');
   const calls = [];
   const context = {
@@ -72,10 +72,14 @@ test('living hero CTB entry routes straight to the native basic-command seam wit
   };
   vm.createContext(context);
   vm.runInContext(`${extractFunctionSource(source, 'HeroTurn')}\nthis.HeroTurn = HeroTurn;`, context);
-  const ctx = { state: { globals: { HeroTurnCardFanOpen: 0 }, entities: [{ uid: 1, kind: 'hero', hp: 10 }, { uid: 9, kind: 'enemy', hp: 10 }] } };
-  context.HeroTurn(ctx, 1);
-  assert.deepEqual(calls.map(command => [command.actorUID, command.targetUID]), [[1, 9]]);
-  assert.equal(ctx.state.globals.HeroTurnCardFanOpen, 0);
+  const entities = [{ uid: 1, kind: 'hero', hp: 10 }, { uid: 9, kind: 'enemy', hp: 10 }, { uid: 10, kind: 'enemy', hp: 10 }];
+  const selected = { state: { globals: { HeroTurnCardFanOpen: 0, SelectedEnemyUID: 10 }, entities } };
+  context.HeroTurn(selected, 1);
+  const stale = { state: { globals: { HeroTurnCardFanOpen: 0, SelectedEnemyUID: 99 }, entities } };
+  context.HeroTurn(stale, 1);
+  assert.deepEqual(calls.map(command => [command.actorUID, command.targetUID]), [[1, 10], [1, 9]]);
+  assert.equal(selected.state.globals.HeroTurnCardFanOpen, 0);
+  assert.equal(stale.state.globals.HeroTurnCardFanOpen, 0);
 });
 
 test('victory queues gained levels, the queue pauses battle completion, and defeat clears it', () => {

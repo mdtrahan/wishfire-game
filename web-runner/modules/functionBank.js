@@ -9665,7 +9665,10 @@ export function HeroTurn(ctx, heroUID) {
     }
   }
   if (activeHeroUID) {
-    const target = getEntities(ctx).find(entity => entity?.kind === 'enemy' && Number(entity.hp || 0) > 0);
+    const entities = getEntities(ctx);
+    const selectedUID = Number(g.SelectedEnemyUID || 0);
+    const selected = entities.find(entity => Number(entity?.uid || 0) === selectedUID && entity?.kind === 'enemy' && Number(entity.hp || 0) > 0);
+    const target = selected || entities.find(entity => entity?.kind === 'enemy' && Number(entity.hp || 0) > 0);
     if (target) executeHeroCommand(ctx, { actorUID: activeHeroUID, targetUID: Number(target.uid) });
   }
 }
