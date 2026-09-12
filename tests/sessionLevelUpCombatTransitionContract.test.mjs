@@ -21,7 +21,7 @@ import {
 import { createHeroProgressStore, newHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
 import { releaseCombatStartToScheduler, resetCombatSessionConditions } from '../web-runner/systems/combatSessionReset.mjs';
 import { derivePresentationTurnBarrier, hasSessionLevelUpPresentationBarrier } from '../web-runner/src/core/turnGateController.mjs';
-import { applyLevelUpBuffCard, createSessionLevelBuffState } from '../src/core/sessionLevelBuffOffers.mjs';
+import { applyLevelUpBuffCard, createSessionLevelBuffState, getEligibleLevelUpBuffCards } from '../src/core/sessionLevelBuffOffers.mjs';
 import { QA_LEVEL_UP_BUFF_CARDS } from '../web-runner/modules/sessionLevelUpBuffPresentation.mjs';
 import { applySessionLevelBuffsAtBattleStart, rulesContext } from '../web-runner/modules/heroCommands.mjs';
 
@@ -44,9 +44,10 @@ function loadQaFixtureIdentity() {
   const mapStart = source.indexOf('export const QA_LEVEL_UP_FIXTURE_CARD_IDS');
   const mapEnd = source.indexOf('\n});', mapStart) + 4;
   const resolver = extractFunctionSource(source, 'resolveQaLevelUpFixtureKey');
+  const offerResolver = extractFunctionSource(source, 'resolveQaFixtureOfferCardId');
   assert.ok(mapStart >= 0 && mapEnd > mapStart, 'missing QA fixture identity map');
   const context = {}; vm.createContext(context);
-  vm.runInContext(`${source.slice(mapStart, mapEnd).replace('export const', 'const')}\n${resolver}\nthis.identity = { QA_LEVEL_UP_FIXTURE_CARD_IDS, resolveQaLevelUpFixtureKey };`, context);
+  vm.runInContext(`${source.slice(mapStart, mapEnd).replace('export const', 'const')}\n${resolver}\n${offerResolver}\nthis.identity = { QA_LEVEL_UP_FIXTURE_CARD_IDS, resolveQaLevelUpFixtureKey, resolveQaFixtureOfferCardId };`, context);
   return context.identity;
 }
 
@@ -356,7 +357,7 @@ test('QA fixture scenarios use bounded production actions and require each obser
 });
 
 test('every QA fixture option resolves to its stable scenario and production card identity', () => {
-  const { QA_LEVEL_UP_FIXTURE_CARD_IDS, resolveQaLevelUpFixtureKey } = loadQaFixtureIdentity();
+  const { QA_LEVEL_UP_FIXTURE_CARD_IDS, resolveQaLevelUpFixtureKey, resolveQaFixtureOfferCardId } = loadQaFixtureIdentity();
   const hooks = read('web-runner/systems/devBrowserTestHooks.js');
   const fixtureRun = hooks.slice(hooks.indexOf("['QA run fixture'"), hooks.indexOf("['QA next battle'"));
   const optionValues = [...hooks.matchAll(/new Option\(name, name\)/g)];
@@ -369,6 +370,14 @@ test('every QA fixture option resolves to its stable scenario and production car
     assert.match(hooks, new RegExp(`\\b${fixture}: '${cardId}'`), `missing ${fixture} card mapping`);
   }
   assert.equal(resolveQaLevelUpFixtureKey('missing-fixture'), null);
+  assert.equal(resolveQaFixtureOfferCardId('orb', { cards: QA_LEVEL_UP_BUFF_CARDS }), 'qa_orb_cadence_1', 'Orb keeps its Tier 1 default');
+  assert.equal(resolveQaFixtureOfferCardId('orb', { selectedCardId: 'qa_orb_cadence_2', cards: QA_LEVEL_UP_BUFF_CARDS }), 'qa_orb_cadence_2', 'an explicit Orb upgrade drives its own offer');
+  const base = applyLevelUpBuffCard({ state: createSessionLevelBuffState(), heroId: 'hondo-1', cardId: 'qa_orb_cadence_1', cards: QA_LEVEL_UP_BUFF_CARDS });
+  const tierTwo = getEligibleLevelUpBuffCards({ state: base.state, heroId: 'hondo-1', cards: QA_LEVEL_UP_BUFF_CARDS, tier: 2 });
+  assert.ok(tierTwo.some(card => card.cardId === 'qa_orb_cadence_2'), 'Tier 2 Orb is eligible only after the real base grant');
+  const upgraded = applyLevelUpBuffCard({ state: base.state, heroId: 'hondo-1', cardId: 'qa_orb_cadence_2', cards: QA_LEVEL_UP_BUFF_CARDS });
+  assert.equal(upgraded.replacedStage, 1);
+  assert.equal(upgraded.state.heroes['hondo-1'].activeStageByEffectId.qa_orb_cadence, 2);
 });
 
 test('the QA fixture RNG seam reinstalls the production-derived stream for the current battle', () => {

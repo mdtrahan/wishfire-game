@@ -33,6 +33,17 @@ export function resolveQaLevelUpFixtureKey(value) {
   if (Object.prototype.hasOwnProperty.call(QA_LEVEL_UP_FIXTURE_CARD_IDS, normalized)) return normalized;
   return Object.entries(QA_LEVEL_UP_FIXTURE_CARD_IDS).find(([, cardId]) => cardId === normalized)?.[0] || null;
 }
+
+export function resolveQaFixtureOfferCardId(fixture, options) {
+  const selectedCardId = String(options?.selectedCardId || '');
+  const cards = Array.isArray(options?.cards) ? options.cards : [];
+  const defaultCardId = QA_LEVEL_UP_FIXTURE_CARD_IDS[resolveQaLevelUpFixtureKey(fixture)] || '';
+  const defaultCard = cards.find(card => card.cardId === defaultCardId);
+  const selectedCard = cards.find(card => card.cardId === String(selectedCardId || ''));
+  return selectedCard && defaultCard && selectedCard.effectId === defaultCard.effectId
+    ? selectedCard.cardId
+    : defaultCardId;
+}
 export async function waitForQaStoryCombatPhase(entry, {
   timeoutMs = QA_STORY_TRANSITION_TIMEOUT_MS,
   pollMs = 25,
@@ -158,7 +169,7 @@ export function registerDevBrowserTestHooks({
       state.globals.RuntimeRandom = () => 0;
     };
     const setQaFixtureOfferPool = fixture => {
-      const desiredId = QA_LEVEL_UP_FIXTURE_CARD_IDS[resolveQaLevelUpFixtureKey(fixture)] || String(cardSelect.value || '');
+      const desiredId = resolveQaFixtureOfferCardId(fixture, { selectedCardId: cardSelect.value, cards: QA_LEVEL_UP_BUFF_CARDS });
       const desired = QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === desiredId);
       if (!desired) throw new Error(`QA fixture ${fixture} has no offer card`);
       const peers = QA_LEVEL_UP_BUFF_CARDS.filter(card => card.tier === desired.tier && card.cardId !== desired.cardId && (card.kind === 'stat' || card.kind === 'bargain'));
@@ -373,7 +384,7 @@ export function registerDevBrowserTestHooks({
           counter: { attempts: 1, observed: () => ownerWasHitSinceRun() && newDamageTexts().some(text => text.kind === 'heal' && Number(text.targetUID) === Number(owner?.uid) && Number(text.amount) === Math.floor(baseline.ownerMaxHP * .03)) && enemyChangedSinceRun() },
         };
         const scenario = scenarios[fixture];
-        const fixtureCard = QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === QA_LEVEL_UP_FIXTURE_CARD_IDS[fixture]);
+        const fixtureCard = QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === resolveQaFixtureOfferCardId(fixture, { selectedCardId: cardSelect.value, cards: QA_LEVEL_UP_BUFF_CARDS }));
         const activeStages = state.globals.SessionLevelBuffState?.heroes?.[String(owner?.heroInstanceKey ?? owner?.uid ?? '')]?.activeStageByEffectId || {};
         if (!owner || !scenario || !fixtureCard || !battleBaseline) throw new Error(`QA fixture ${fixture || fixtureSelect.value} has no selected owner, Battle B baseline, or scenario`);
         if (battleBaseline.fixture !== fixture || battleBaseline.ownerId !== String(owner.heroInstanceKey ?? owner.uid)) throw new Error(`QA fixture ${fixture} does not match the selected Battle B owner`);
