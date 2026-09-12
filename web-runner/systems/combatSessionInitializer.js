@@ -269,7 +269,9 @@ export function createCombatSessionInitializer({
 }) {
   return function initCombatSessionEntities(enemyRows) {
     assertCombatLayoutDev('initEntities');
-    resetCombatSessionConditions(state.globals, gameState);
+    const continuingAdventure = state.globals.ProgressionBattle?.outcome === 'victory'
+      && Object.keys(state.globals.SessionLevelBuffState?.heroes || {}).length > 0;
+    resetCombatSessionConditions(state.globals, gameState, { preserveSessionLevelBuffs: continuingAdventure });
     state.entities = [];
     state.globals.EnemyData = (enemyRows || []).map((row) => ({
       ...row,

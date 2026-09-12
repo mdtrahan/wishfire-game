@@ -20,6 +20,9 @@ import {
 import { createHeroProgressStore, newHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
 import { resetCombatSessionConditions } from '../web-runner/systems/combatSessionReset.mjs';
 import { hasSessionLevelUpPresentationBarrier } from '../web-runner/src/core/turnGateController.mjs';
+import { applyLevelUpBuffCard, createSessionLevelBuffState } from '../src/core/sessionLevelBuffOffers.mjs';
+import { QA_LEVEL_UP_BUFF_CARDS } from '../web-runner/modules/sessionLevelUpBuffPresentation.mjs';
+import { applySessionLevelBuffsAtBattleStart, rulesContext } from '../web-runner/modules/heroCommands.mjs';
 
 const read = file => fs.readFileSync(path.join(process.cwd(), file), 'utf8');
 
@@ -128,4 +131,33 @@ test('fresh-session reset clears level buffs, offers, settlement, and queue stat
   assert.deepEqual(globals.SessionLevelUpOffersByQueueIndex, {});
   assert.equal(globals.SessionLevelUpSettlement, null);
   assert.equal(globals.SessionLevelUpQueue.status, 'complete');
+});
+
+test('a selected session buff survives the next battle of a continuing adventure and terminal reset clears it', () => {
+  const selected = applyLevelUpBuffCard({
+    state: createSessionLevelBuffState(), heroId: 'fara-1', cardId: 'qa_atk_focus_1', cards: QA_LEVEL_UP_BUFF_CARDS,
+  });
+  const globals = {
+    CombatSessionId: 1, ProgressionBattle: { outcome: 'victory' }, SessionLevelBuffState: selected.state,
+    SessionLevelUpQueue: { status: 'complete' }, SessionLevelUpSettlement: { rows: [] }, SessionLevelUpOffersByQueueIndex: { 0: {} },
+  };
+  resetCombatSessionConditions(globals, {}, { preserveSessionLevelBuffs: true });
+  assert.deepEqual(globals.SessionLevelBuffState, selected.state);
+  assert.equal(globals.SessionLevelUpQueue.status, 'complete');
+  assert.equal(globals.SessionLevelUpSettlement, null);
+  const hero = { uid: 1, kind: 'hero', heroInstanceKey: 'fara-1', hp: 100, maxHP: 100, stats: { ATK: 20 }, statuses: [] };
+  const ctx = { state: { globals: { ...globals, CombatSessionId: 2 }, entities: [hero] }, callFunction: () => 0 };
+  applySessionLevelBuffsAtBattleStart(ctx, rulesContext(ctx));
+  assert.equal(hero.statuses.find(status => status.statusEffect === 'atkUp')?.magnitude, .10, 'battle B reads battle A ownership for this hero only');
+  resetCombatSessionConditions(globals, {});
+  assert.deepEqual(globals.SessionLevelBuffState, { heroes: {} }, 'a new terminal session clears ownership');
+});
+
+test('initializer preserves only victory-owned buffs and the paused Quests quit route clears them', () => {
+  const initializer = read('web-runner/systems/combatSessionInitializer.js');
+  const app = read('web-runner/app.js');
+  const hooks = read('web-runner/systems/devBrowserTestHooks.js');
+  assert.match(initializer, /ProgressionBattle\?\.outcome === 'victory'[\s\S]*preserveSessionLevelBuffs: continuingAdventure/);
+  assert.match(app, /quest-navigation-quit', \{ clearSessionLevelBuffs: true \}/);
+  assert.match(hooks, /navigate\('Quests'\)[\s\S]*quitPausedCombat\(\)/);
 });

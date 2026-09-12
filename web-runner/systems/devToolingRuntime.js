@@ -1,6 +1,7 @@
 import * as devToolingControls from './devToolingControls.js';
 import { renderCombatTurnQaReadoutHtml } from './combatTurnQaReadout.mjs';
 import { normalizeCombatOrientation } from '../../src/core/combatOrientation.mjs';
+import { clearSessionLevelBuffState } from '../../src/core/sessionLevelBuffOffers.mjs';
 
 const DEV_TOOL_HOTKEY_LABEL = 'Ctrl+Shift+P';
 const DEV_TOOL_GEM_RANDOM = -1;
@@ -822,6 +823,13 @@ export function createDevToolingRuntime(deps = {}) {
     // in-flight native command before the next frame can reopen stale state.
     callFunctionWithContext(fnContext, 'CancelHeroTurnCardFan');
     state.globals.NativeCommandSequence = null;
+    if (options.clearSessionLevelBuffs) {
+      state.globals.SessionLevelBuffState = clearSessionLevelBuffState();
+      state.globals.SessionLevelUpQueue = { version: 1, status: 'complete', paused: false, currentIndex: 0, entries: [] };
+      state.globals.SessionLevelUpOffersByQueueIndex = {};
+      state.globals.SessionLevelUpSettlement = null;
+      delete state.globals.SessionLevelBuffCombatSessionId;
+    }
     const refill = gameState.refillBounce || (gameState.refillBounce = {});
     refill.active = false;
     refill.queue = [];

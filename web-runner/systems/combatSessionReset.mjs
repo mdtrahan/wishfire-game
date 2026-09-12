@@ -1,5 +1,10 @@
 // Called only when creating a battle. Resurrection resumes the existing instance.
-export function resetCombatSessionConditions(globals, gameState) {
+// A continuing adventure carries its chosen buffs into its next battle; terminal
+// callers use the default and clear them with the rest of the session state.
+export function resetCombatSessionConditions(globals, gameState, { preserveSessionLevelBuffs = false } = {}) {
+  const retainedSessionLevelBuffState = preserveSessionLevelBuffs
+    ? globals.SessionLevelBuffState
+    : { heroes: {} };
   for (const key of Object.keys(globals)) {
     if (/^(PartyBuff_|BuffTurns_|BuffExpire_|BuffRoll|BuffIconPop|BuffProg|PartyTempHPShield|PartyWardBarrier|PowerAmp)/.test(key)) delete globals[key];
   }
@@ -18,7 +23,7 @@ export function resetCombatSessionConditions(globals, gameState) {
     EnemyGemLockActive: 0, EnemyGemLockGroups: {}, TaintedGroundZones: [],
     BlueBuffSequenceActive: 0, PendingDeaths: {}, PendingHeroHits: [],
     SessionLevelUpQueue: { version: 1, status: 'complete', paused: false, currentIndex: 0, entries: [] },
-    SessionLevelBuffState: { heroes: {} }, SessionLevelUpOffersByQueueIndex: {}, SessionLevelUpSettlement: null,
+    SessionLevelBuffState: retainedSessionLevelBuffState || { heroes: {} }, SessionLevelUpOffersByQueueIndex: {}, SessionLevelUpSettlement: null,
     PendingSkillID: '', PendingActor: 0, PendingSuperGemAction: null,
     SelectedEnemyUID: 0, SelectedEnemyUIDOwner: 0, PendingManualTargetIntent: null,
     DamageTexts: [], ChainStrikeVisuals: [], ArcanePulseVisuals: [],
@@ -31,6 +36,7 @@ export function resetCombatSessionConditions(globals, gameState) {
   });
   delete globals.HeroAction;
   delete globals.EnemyAction;
+  delete globals.SessionLevelBuffCombatSessionId;
   delete gameState.partyHpTextRoll;
   delete gameState.healBlooms;
   gameState._lastPartyRegenTurnSerial = null;

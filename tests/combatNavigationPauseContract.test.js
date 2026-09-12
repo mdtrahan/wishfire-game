@@ -98,7 +98,9 @@ test('shared navigation and quest modal use the existing explicit control seams'
   assert.match(ladder, /button\('Quit Battle','combat-quit'\)[\s\S]*button\('Continue Battle','combat-continue'/);
   const app = read('web-runner/app.js');
   assert.match(app, /if \(layoutState\.getActiveLayoutId\(\) !== 'combat'\) \{\s*drawFrame\(\);\s*requestAnimationFrame\(tick\);/);
-  assert.match(app, /open: activeLayoutId === 'combat' && !!fanState\.open/);
+  assert.match(app, /const activeFanState = levelUpFanState\.open \? levelUpFanState : fanState;/,
+    'the established fan seam must present the level-up choice ahead of a legacy fan');
+  assert.match(app, /open: activeLayoutId === 'combat' && !!activeFanState\.open/);
   const pointerRouter = read('web-runner/systems/pointerRoutingShell.js');
   assert.match(pointerRouter, /entry\?\.phase === 'combat' \|\| entry\?\.combatPaused/);
   assert.match(pointerRouter, /entry\.modal = 'combat-pause'/);

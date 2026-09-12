@@ -121,8 +121,19 @@ export function registerDevBrowserTestHooks({
         if (typeof drawFrame === 'function') drawFrame();
       }],
       ['QA native basic', () => callFunctionWithContext(fnContext, 'ProcessTurn')],
+      ['QA next battle', async () => {
+        const continued = await layoutState.requestLayoutChange('combat', 'quest-qa-next-battle', { freshStart: true });
+        if (!continued || state.globals.NativeBattleEnded) throw new Error('QA continuation did not start a playable next battle');
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
       ['QA fresh session', () => { resetCombatSessionConditions(state.globals, {}); if (typeof drawFrame === 'function') drawFrame(); }],
-      ['QA abandon', () => { if (typeof storyEntry.navigate === 'function') storyEntry.navigate('town'); }],
+      ['QA abandon', async () => {
+        const navigated = await storyEntry.navigate('Quests');
+        const quit = navigated && storyEntry.quitPausedCombat();
+        if (!navigated || !quit) throw new Error('QA abandon requires the production Quests pause and Quit Battle flow');
+        if (Object.keys(state.globals.SessionLevelBuffState?.heroes || {}).length || state.globals.SessionLevelUpSettlement || state.globals.SessionLevelUpQueue?.status === 'active') throw new Error('QA abandon did not clear owned session level buffs');
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
     ]) {
       const button = document.createElement('button'); button.textContent = label;
       button.addEventListener('click', action); controls.append(button);
