@@ -111,6 +111,7 @@ export function registerDevBrowserTestHooks({
   isBoardGemLocked,
   drawFrame,
   installQaFixtureRuntimeRandom,
+  resolveQaFixtureDeferredAdvance,
   toggleDevToolingModal,
   applyDevToolingConfig,
   runDevAutoplayUntilDepleted,
@@ -403,6 +404,7 @@ export function registerDevBrowserTestHooks({
           actionInProgress: !!state.globals.ActionInProgress,
           playerBusy: !!state.globals.IsPlayerBusy,
           pendingHeroHits: Array.isArray(state.globals.PendingHeroHits) ? state.globals.PendingHeroHits.length : 0,
+          deferAdvance: !!state.globals.DeferAdvance,
           nativeCommandOwner: Number(state.globals.NativeCommandSequence?.actorUID || 0),
         });
         const fixturePhaseIsClosable = () => {
@@ -415,10 +417,30 @@ export function registerDevBrowserTestHooks({
             && !(Array.isArray(state.globals.PendingHeroHits) && state.globals.PendingHeroHits.length);
         };
         const closeCompletedFixturePhase = async (target, priorSequence) => {
-          if (Number(state.globals.TurnPhase || 0) === 0) return { ok: true, commandStarted: false };
+          const deferredAdvancePending = !!state.globals.DeferAdvance;
+          if (Number(state.globals.TurnPhase || 0) === 0 && !deferredAdvancePending) return { ok: true, commandStarted: false };
           if (!fixturePhaseIsClosable()) return { ok: false, observed: fixtureActionObserved() };
           arrangeOwnerAsNextSchedulerActor(owner, target);
           let postAdvance = null;
+          if (deferredAdvancePending) {
+            if (typeof resolveQaFixtureDeferredAdvance !== 'function') return { ok: false, observed: { ...fixtureActionObserved(), resolver: 'missing' } };
+            // The production scheduler owns DeferAdvance resolution. Consume
+            // that handoff before arming the next one-use owner token.
+            resolveQaFixtureDeferredAdvance();
+            const resolved = await waitForFixtureAction(observed => !observed.deferAdvance
+              && observed.currentUID === Number(owner.uid)
+              && observed.phase === 0
+              && !observed.actionInProgress
+              && !observed.playerBusy
+              && observed.pendingHeroHits === 0);
+            if (!resolved.ok) return { ok: false, observed: resolved.observed };
+            await runQaFixtureProductionAction(owner.uid, () => {
+              callFunctionWithContext(fnContext, 'ProcessTurn');
+              postAdvance = fixtureActionObserved();
+            });
+            const started = await waitForFixtureAction(observed => observed.nativeCommandOwner === Number(owner.uid) && state.globals.NativeCommandSequence !== priorSequence);
+            return { ok: started.ok, commandStarted: started.ok, observed: started.observed || postAdvance };
+          }
           await runQaFixtureProductionAction(owner.uid, () => {
             callFunctionWithContext(fnContext, 'AdvanceTurn');
             postAdvance = fixtureActionObserved();

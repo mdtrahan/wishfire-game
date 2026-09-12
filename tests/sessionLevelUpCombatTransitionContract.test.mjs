@@ -394,12 +394,15 @@ test('Battle B holds automatic scheduling through fixture evidence while permitt
   assert.match(fixtureRun, /callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
   assert.match(fixtureRun, /const phaseClosed = await closeCompletedFixturePhase\(currentTarget, priorSequence\)/);
   assert.match(fixtureRun, /if \(!phaseClosed\.commandStarted\) \{[\s\S]*callFunctionWithContext\(fnContext, 'ProcessTurn'\)/);
+  assert.match(fixtureRun, /const deferredAdvancePending = !!state\.globals\.DeferAdvance/);
+  assert.match(fixtureRun, /resolveQaFixtureDeferredAdvance\(\);[\s\S]*!observed\.deferAdvance[\s\S]*await runQaFixtureProductionAction\(owner\.uid, \(\) => \{\s*callFunctionWithContext\(fnContext, 'ProcessTurn'\)/);
   assert.match(fixtureRun, /const completed = await waitForFixtureAction\(observed => observed\.nativeCommandOwner === 0[\s\S]*captureFreshVisuals\(\);\s*const counterAfter/);
   assert.doesNotMatch(fixtureRun, /owner basic did not complete:[\s\S]*callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
   assert.match(fixtureRun, /counterAfter !== counterBefore \+ 1/);
   assert.match(fixtureRun, /await runOwnerBasicAttempt\(attempt\)/);
   assert.match(fixtureRun, /finally \{[\s\S]*delete state\.globals\.QaFixtureHoldTurn/);
   assert.match(commands, /if \(g\.QaFixtureHoldTurn && !qaExplicitActionAllowed\)/);
+  assert.match(app, /resolveQaFixtureDeferredAdvance: \(\) => \{[\s\S]*callFunctionWithContext\(fnContext, 'AdvanceTurn'\);[\s\S]*applyTurnGateIntent\(createDeferredAdvanceResolved\)/);
   assert.match(app, /state\.globals\.DeferAdvance &&\s*!state\.globals\.QaFixtureHoldTurn/);
   assert.match(app, /state\.globals\.GamePhase === 'RUNTIME' &&\s*!state\.globals\.QaFixtureHoldTurn &&\s*!state\.globals\.BattleStartActive &&\s*currentTurnType === 1/);
 });

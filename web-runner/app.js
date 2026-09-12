@@ -4056,6 +4056,12 @@ function getStoryCardLiveLineState() {
     isBoardGemLocked,
     drawFrame,
     installQaFixtureRuntimeRandom: encounterSeed => installCombatRuntimeRandom(deriveCombatRuntimeRngSeed(encounterSeed), 'quest-qa-fixture'),
+    resolveQaFixtureDeferredAdvance: () => {
+      if (!state.globals.DeferAdvance) return false;
+      callFunctionWithContext(fnContext, 'AdvanceTurn');
+      applyTurnGateIntent(createDeferredAdvanceResolved);
+      return true;
+    },
     toggleDevToolingModal,
     applyDevToolingConfig,
     runDevAutoplayUntilDepleted,
