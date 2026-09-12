@@ -2,6 +2,7 @@ import { getHeroFlowState } from '../src/core/personalFlow.mjs';
 import { canUseHeroCommand, chooseSessionLevelUpBuff, getSessionLevelUpBuffOffer, settleVictory } from '../modules/heroCommands.mjs';
 import { QA_LEVEL_UP_BUFF_CARDS } from '../modules/sessionLevelUpBuffPresentation.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
+import { derivePresentationTurnBarrier } from '../src/core/turnGateController.mjs';
 import {
   DYNAMIC_INITIATIVE_AUTHORITY_BATTLE_ID,
   DYNAMIC_INITIATIVE_AUTHORITY_EXPERIMENT_ID,
@@ -53,6 +54,7 @@ export async function waitForQaStoryCombatPhase(entry, {
 
 export function qaPlayableBattleSnapshot({ entry, globals = {}, entities = [], currentUID = 0, allowDeferredAdvance = false } = {}) {
   const now = Number(globals.time || 0);
+  const presentationBarrier = derivePresentationTurnBarrier({ globals });
   const livingActors = (entities || []).filter(actor => (actor?.kind === 'hero' || actor?.kind === 'enemy') && Number(actor.hp || 0) > 0);
   const currentActor = livingActors.find(actor => Number(actor.uid) === Number(currentUID));
   const enemyActionActive = !!(globals.EnemyAction && globals.EnemyAction.active);
@@ -61,14 +63,14 @@ export function qaPlayableBattleSnapshot({ entry, globals = {}, entities = [], c
     phase: entry?.phase, pending: !!entry?.pending, ended: !!globals.NativeBattleEnded,
     enemyActionActive, actionInProgress: !!globals.ActionInProgress,
     playerBusy: !!globals.IsPlayerBusy, battleStartActive: !!globals.BattleStartActive,
-    actionLocked, deferAdvance: !!globals.DeferAdvance,
+    actionLocked, deferAdvance: !!globals.DeferAdvance, presentationClear: presentationBarrier.canAdvanceTurn,
     pendingHeroHits: Array.isArray(globals.PendingHeroHits) ? globals.PendingHeroHits.length : 0,
     livingActors: livingActors.map(actor => Number(actor.uid)), currentUID: Number(currentUID || 0),
     currentActorLiving: !!currentActor,
   };
   return { ok: observed.phase === 'combat' && !observed.pending && !observed.ended
     && !observed.enemyActionActive && !observed.actionInProgress && !observed.playerBusy
-    && !observed.battleStartActive && !observed.actionLocked && (allowDeferredAdvance || !observed.deferAdvance) && observed.pendingHeroHits === 0
+    && !observed.battleStartActive && !observed.actionLocked && observed.presentationClear && (allowDeferredAdvance || !observed.deferAdvance) && observed.pendingHeroHits === 0
     && observed.livingActors.length > 0 && observed.currentActorLiving, observed };
 }
 
@@ -434,6 +436,8 @@ export function registerDevBrowserTestHooks({
               && !observed.playerBusy
               && observed.pendingHeroHits === 0);
             if (!resolved.ok) return { ok: false, observed: resolved.observed };
+            const commandReady = await waitForOwnerCommandReady(target);
+            if (!commandReady.ok) return { ok: false, observed: { ...fixtureActionObserved(), processGate: commandReady.gate || state.globals.QaFixtureProcessTurnGate || null } };
             await runQaFixtureProductionAction(owner.uid, () => {
               callFunctionWithContext(fnContext, 'ProcessTurn');
               postAdvance = fixtureActionObserved();

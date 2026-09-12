@@ -20,7 +20,7 @@ import {
 } from '../web-runner/modules/heroCommands.mjs';
 import { createHeroProgressStore, newHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
 import { releaseCombatStartToScheduler, resetCombatSessionConditions } from '../web-runner/systems/combatSessionReset.mjs';
-import { hasSessionLevelUpPresentationBarrier } from '../web-runner/src/core/turnGateController.mjs';
+import { derivePresentationTurnBarrier, hasSessionLevelUpPresentationBarrier } from '../web-runner/src/core/turnGateController.mjs';
 import { applyLevelUpBuffCard, createSessionLevelBuffState } from '../src/core/sessionLevelBuffOffers.mjs';
 import { QA_LEVEL_UP_BUFF_CARDS } from '../web-runner/modules/sessionLevelUpBuffPresentation.mjs';
 import { applySessionLevelBuffsAtBattleStart, rulesContext } from '../web-runner/modules/heroCommands.mjs';
@@ -427,6 +427,7 @@ function loadQaPlayableBattleWait() {
   const end = source.indexOf('export function registerDevBrowserTestHooks', start);
   assert.notEqual(start, -1, 'missing playable Battle B helper');
   const context = {}; vm.createContext(context);
+  context.derivePresentationTurnBarrier = derivePresentationTurnBarrier;
   vm.runInContext(source.slice(start, end).replace('export function', 'function').replace('export async function', 'async function') + '\nthis.waitForPlayableBattle = waitForPlayableBattle; this.qaPlayableBattleSnapshot = qaPlayableBattleSnapshot;', context);
   return { waitForPlayableBattle: context.waitForPlayableBattle, qaPlayableBattleSnapshot: context.qaPlayableBattleSnapshot };
 }
@@ -453,6 +454,15 @@ test('QA fixture hold accepts a completed owner action with its central deferred
   const entities = [{ uid: 7, kind: 'hero', hp: 50 }, { uid: 9, kind: 'enemy', hp: 50 }];
   assert.equal(qaPlayableBattleSnapshot({ entry, globals, entities, currentUID: 7 }).ok, false);
   assert.equal(qaPlayableBattleSnapshot({ entry, globals, entities, currentUID: 7, allowDeferredAdvance: true }).ok, true);
+});
+
+test('QA fixture hold waits for a lingering production text presentation before the next owner token', () => {
+  const { qaPlayableBattleSnapshot } = loadQaPlayableBattleWait();
+  const entry = { phase: 'combat', pending: false };
+  const globals = { DeferAdvance: 1, TextAnimEndAt: 10, time: 9 };
+  const entities = [{ uid: 7, kind: 'hero', hp: 50 }, { uid: 9, kind: 'enemy', hp: 50 }];
+  assert.equal(qaPlayableBattleSnapshot({ entry, globals, entities, currentUID: 7, allowDeferredAdvance: true }).ok, false);
+  assert.equal(qaPlayableBattleSnapshot({ entry, globals: { ...globals, time: 10 }, entities, currentUID: 7, allowDeferredAdvance: true }).ok, true);
 });
 
 test('QA continuation preserves its pre-transition permanent baseline until Battle B is playable', () => {
