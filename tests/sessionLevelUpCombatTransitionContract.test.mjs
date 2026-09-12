@@ -503,6 +503,10 @@ test('QA fixture scenarios use bounded production actions and require each obser
   assert.match(fixtureRun, /statusMarkerAbsentAfterExpiry: venomTurnEvidence\?\.markerAbsentAfterExpiry/);
   assert.match(fixtureRun, /QaFixtureHoldReleaseCount = fixtureReleaseCountBefore \+ 1/);
   assert.match(fixtureRun, /QA_FIXTURE_INELIGIBLE_PROC_ENCOUNTER_SEED/);
+  assert.match(fixtureRun, /healEvidence\?\.actualHeal === healEvidence\?\.expectedHeal/);
+  assert.match(fixtureRun, /bounceEvidence\?\.actualSecondaryDamage === bounceEvidence\?\.expectedSecondaryDamage/);
+  assert.match(fixtureRun, /counterEvidence\?\.actualCounterDamage === counterEvidence\?\.expectedCounterDamage/);
+  assert.match(fixtureRun, /for \(let attempt = 0; attempt < scenario\.attempts && !scenario\.observed\(\); attempt \+= 1\)/);
   assert.match(fixtureRun, /ineligibleTriggerNoHeal/);
   assert.match(fixtureRun, /addedHitTriggeredNoSessionEffects/);
   assert.match(fixtureRun, /otherHeroNoTrigger/);
