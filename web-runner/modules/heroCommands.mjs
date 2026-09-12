@@ -64,7 +64,7 @@ export function applySessionLevelBuffsAtBattleStart(ctx,rules){
   }
   for(const [stat,magnitude] of Object.entries(statBonus))applyStatus(rules,hero,hero,{effectType:'status',statusEffect:`${stat}Up`,magnitude,duration:9999});
   if(maxHpMultipliers.length){hero.maxHP=Math.max(1,Math.round(maxHpMultipliers.reduce((value,multiplier)=>value*multiplier,Math.max(1,Number(hero.maxHP||1)))));hero.hp=Math.min(hero.maxHP,hero.hp);}
-  for(const magnitude of shields)applyStatus(rules,hero,hero,{effectType:'status',statusEffect:'barrier',magnitude,duration:9999});
+  for(const magnitude of shields){const effect={effectType:'status',statusEffect:'barrier',magnitude,duration:9999};if(applyStatus(rules,hero,hero,effect))rules.onStatus?.(hero,hero,effect);}
  }
 }
 export function resolveSessionLevelBasicEffects(ctx,rules,hero,targetIds){

@@ -119,6 +119,19 @@ export function registerDevBrowserTestHooks({
       state.globals.SessionLevelUpPreferredCardId = String(cardSelect.value || '');
       state.globals.RuntimeRandom = () => 0;
     };
+    const setQaFixtureOfferPool = fixture => {
+      const desiredId = QA_LEVEL_UP_FIXTURE_CARD_IDS[resolveQaLevelUpFixtureKey(fixture)] || String(cardSelect.value || '');
+      const desired = QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === desiredId);
+      if (!desired) throw new Error(`QA fixture ${fixture} has no offer card`);
+      const peers = QA_LEVEL_UP_BUFF_CARDS.filter(card => card.tier === desired.tier && card.cardId !== desired.cardId && (card.kind === 'stat' || card.kind === 'bargain'));
+      const pool = [desired, ...peers].slice(0, 3);
+      if (pool.length !== 3) throw new Error(`QA fixture ${fixture} cannot form three same-tier eligible cards`);
+      // This QA-only pool is still passed to the production offer generator and
+      // normal selection/apply path. The production pool remains untouched.
+      state.globals.SessionLevelUpQaOfferCards = pool;
+      cardSelect.value = desired.cardId;
+      tierSelect.value = String(desired.tier);
+    };
     const seedProductionEncounter = () => {
       // combatSessionInitializer consumes this normal encounter input and installs
       // its own seeded production RuntimeRandom for the next battle.
@@ -196,6 +209,7 @@ export function registerDevBrowserTestHooks({
         callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
         delete state.globals.QaFixtureBattleBaseline;
         delete state.globals.QaFixtureHoldTurn;
+        delete state.globals.SessionLevelUpQaOfferCards;
       }],
       ['QA clear monsters', () => {
         if (gameState.storyEntry.phase !== 'combat') return;
@@ -206,7 +220,7 @@ export function registerDevBrowserTestHooks({
         hero.hp = Math.floor(Number(hero.maxHP || 1) * .25); callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
       }],
       ['QA EXP 47+80', () => beginRewardSettlement()],
-      ['QA fixture offer', () => { cardSelect.value = QA_LEVEL_UP_FIXTURE_CARD_IDS[resolveQaLevelUpFixtureKey(fixtureSelect.value)] || ''; tierSelect.value = '1'; beginRewardSettlement(); }],
+      ['QA fixture offer', () => { setQaFixtureOfferPool(fixtureSelect.value); beginRewardSettlement(); }],
       ['QA overflow EXP', () => beginRewardSettlement({ overflow: true })],
       ['QA multi-hero EXP', () => beginRewardSettlement({ multiHero: true })],
       ['QA choose preferred', () => {
@@ -237,10 +251,25 @@ export function registerDevBrowserTestHooks({
           owner.hp = Math.max(1, Math.floor(Number(owner.maxHP || 1) * .5));
           callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
         }
+        // QA owns only transient evidence buffers. Each production action below
+        // receives a fresh delta, so an old visual can never clear a scenario.
+        state.globals.ArcanePulseVisuals = [];
+        state.globals.ChainStrikeVisuals = [];
+        state.globals.DamageTexts = [];
         const baseline = snapshotFixtureBaseline(owner, target);
-        const newPulses = () => (state.globals.ArcanePulseVisuals || []).slice(baseline.pulseCount);
-        const newChains = () => (state.globals.ChainStrikeVisuals || []).slice(baseline.chainCount);
-        const newDamageTexts = () => (state.globals.DamageTexts || []).slice(baseline.damageTextCount);
+        const observedPulses = []; const observedChains = []; const observedDamageTexts = [];
+        let pulseCursor = 0; let chainCursor = 0; let damageTextCursor = 0;
+        const captureFreshVisuals = () => {
+          const pulses = state.globals.ArcanePulseVisuals || [];
+          const chains = state.globals.ChainStrikeVisuals || [];
+          const texts = state.globals.DamageTexts || [];
+          observedPulses.push(...pulses.slice(pulseCursor)); pulseCursor = pulses.length;
+          observedChains.push(...chains.slice(chainCursor)); chainCursor = chains.length;
+          observedDamageTexts.push(...texts.slice(damageTextCursor)); damageTextCursor = texts.length;
+        };
+        const newPulses = () => observedPulses;
+        const newChains = () => observedChains;
+        const newDamageTexts = () => observedDamageTexts;
         const enemyChangedSinceRun = () => state.entities.filter(entity => entity.kind === 'enemy').some(enemy => Number(enemy.hp || 0) < Number(baseline.enemies?.[enemy.uid]?.hp ?? enemy.hp));
         const enemyHPLoweredSinceRun = uid => {
           const enemy = state.entities.find(entity => Number(entity.uid) === Number(uid));
@@ -288,14 +317,19 @@ export function registerDevBrowserTestHooks({
             if (!enemy) throw new Error('QA fixture counter has no living enemy');
             installQaFixtureRuntimeRandom(QA_FIXTURE_RUNTIME_ENCOUNTER_SEED);
             callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', owner.uid);
+            captureFreshVisuals();
           } else {
             const currentTarget = targetForAttempt();
             if (!currentTarget) throw new Error(`QA fixture ${fixture} has no living target`);
             arrangeOwnerTurn(owner, currentTarget);
             installQaFixtureRuntimeRandom(QA_FIXTURE_RUNTIME_ENCOUNTER_SEED);
             callFunctionWithContext(fnContext, 'ProcessTurn');
+            // Snapshot immediately, then once after the native lunge resolves.
+            captureFreshVisuals();
+            const resolutionMs = fixture === 'ward' || fixture === 'stat' || fixture === 'maxhp' || fixture === 'speed' || fixture === 'bargain' ? 40 : 1010;
+            await new Promise(resolve => window.setTimeout(resolve, resolutionMs));
+            captureFreshVisuals();
           }
-          await new Promise(resolve => window.setTimeout(resolve, 1100));
         }
         if (!scenario.observed()) throw new Error(`QA fixture ${fixture} did not produce its required observable production result: ${JSON.stringify({ ownerUID: owner.uid, enemies: livingEnemies().map(enemy => ({ uid: enemy.uid, hp: enemy.hp, statuses: enemy.statuses?.map(status => status.statusEffect) || [] })), pulses: state.globals.ArcanePulseVisuals?.length || 0, chains: state.globals.ChainStrikeVisuals?.length || 0 })}`);
         if (typeof drawFrame === 'function') drawFrame();
@@ -315,7 +349,7 @@ export function registerDevBrowserTestHooks({
         if (!transition.ok || state.globals.NativeBattleEnded) throw new Error(`QA continuation timed out after ${transition.elapsedMs}ms phase=${transition.observed.phase} pending=${transition.observed.pending}`);
         if (typeof drawFrame === 'function') drawFrame();
       }],
-      ['QA fresh session', () => { delete state.globals.QaFixtureBattleBaseline; delete state.globals.QaFixtureHoldTurn; resetCombatSessionConditions(state.globals, {}); if (typeof drawFrame === 'function') drawFrame(); }],
+      ['QA fresh session', () => { delete state.globals.QaFixtureBattleBaseline; delete state.globals.QaFixtureHoldTurn; delete state.globals.SessionLevelUpQaOfferCards; resetCombatSessionConditions(state.globals, {}); if (typeof drawFrame === 'function') drawFrame(); }],
       ['QA abandon', async () => {
         const navigated = await storyEntry.navigate('Quests');
         const quit = navigated && storyEntry.quitPausedCombat();
@@ -323,6 +357,7 @@ export function registerDevBrowserTestHooks({
         if (Object.keys(state.globals.SessionLevelBuffState?.heroes || {}).length || state.globals.SessionLevelUpSettlement || state.globals.SessionLevelUpQueue?.status === 'active' || state.globals.SessionLevelBuffCombatSessionId != null) throw new Error('QA abandon did not clear owned session level buffs');
         delete state.globals.QaFixtureBattleBaseline;
         delete state.globals.QaFixtureHoldTurn;
+        delete state.globals.SessionLevelUpQaOfferCards;
         if (typeof drawFrame === 'function') drawFrame();
       }],
     ]) {

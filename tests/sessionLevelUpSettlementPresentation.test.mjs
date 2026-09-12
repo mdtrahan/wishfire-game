@@ -89,3 +89,23 @@ test('QA tier forcing drives the same gated offer builder after a real base gran
   assert.equal(offer.offer.tier, 2);
   assert.ok(offer.cards.some(card => card.cardId === 'qa_atk_focus_2'), 'the staged upgrade reaches the real deterministic offer');
 });
+
+
+test('the QA-only offer pool still uses the production generator and exposes the requested same-tier fixture', () => {
+  const requested = QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'qa_power_bargain_1');
+  const globals = {
+    time: 2, RuntimeRandom: () => 0,
+    SessionLevelUpTierWeights: { 1: 1, 2: 0, 3: 0, 4: 0 },
+    SessionLevelUpPreferredCardId: requested.cardId,
+    SessionLevelUpQaOfferCards: [requested, ...QA_LEVEL_UP_BUFF_CARDS.filter(card => card.tier === 1 && card.kind === 'stat').slice(0, 2)],
+    SessionLevelUpQueue: { status: 'active', paused: false, currentIndex: 0, entries: [{ heroId: 'fara-1', heroUID: 1, earnedLevel: 2 }] },
+  };
+  beginSessionLevelUpSettlement(globals, [], heroes, 0);
+  getSessionLevelUpBuffPresentation(globals, heroes);
+  globals.time = 3;
+  const presentation = getSessionLevelUpBuffPresentation(globals, heroes);
+  assert.equal(presentation.offer.status, 'offered');
+  assert.equal(presentation.cards.length, 3);
+  assert.ok(presentation.cards.some(card => card.cardId === requested.cardId));
+  assert.ok(presentation.cards.every(card => card.tier === 1));
+});

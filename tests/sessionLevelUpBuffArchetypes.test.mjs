@@ -24,6 +24,7 @@ test('session buffs apply exact owner-only stat, max-HP, bargain, speed, and Cri
   assert.equal(actor.statuses.find(status => status.statusEffect === 'atkUp').magnitude, .25);
   assert.equal(actor.statuses.find(status => status.statusEffect === 'spdUp').magnitude, .10);
   assert.equal(actor.statuses.find(status => status.statusEffect === 'barrier').remaining, 27);
+  assert.ok(ctx.state.globals.PartyWardBarrierVisualsByUID?.[actor.uid], 'battle-start Crimson Ward uses the production barrier presentation callback');
   assert.equal(target.statuses.length, 0, 'a hero buff never mutates another actor');
 });
 

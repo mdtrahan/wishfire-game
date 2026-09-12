@@ -123,7 +123,8 @@ export function getSessionLevelUpBuffPresentation(globals, heroes = [], progress
     if (Number(globals.time || 0) < Number(dance.endsAt || 0)) return { open: false, cards: [], heroUID: Number(entry.heroUID || 0), queue: entry, dancing: true };
   }
   const offers = globals.SessionLevelUpOffersByQueueIndex || (globals.SessionLevelUpOffersByQueueIndex = {});
-  if (!offers[key]) offers[key] = buildLevelUpBuffOffer({ state: globals.SessionLevelBuffState || createSessionLevelBuffState(), heroId: entry.heroId, cards: QA_LEVEL_UP_BUFF_CARDS, progress, rng: globals.RuntimeRandom, tierWeights: tierWeightsFor(globals, progress), preferredCardId: globals.SessionLevelUpPreferredCardId });
+  const offerCards = Array.isArray(globals?.SessionLevelUpQaOfferCards) ? globals.SessionLevelUpQaOfferCards : QA_LEVEL_UP_BUFF_CARDS;
+  if (!offers[key]) offers[key] = buildLevelUpBuffOffer({ state: globals.SessionLevelBuffState || createSessionLevelBuffState(), heroId: entry.heroId, cards: offerCards, progress, rng: globals.RuntimeRandom, tierWeights: tierWeightsFor(globals, progress), preferredCardId: globals.SessionLevelUpPreferredCardId });
   const offer = offers[key];
   const hero = heroes.find(candidate => heroId(candidate) === entry.heroId) || null;
   return { open: offer.status === 'offered', cards: offer.cards || [], heroUID: Number(hero?.uid || entry.heroUID || 0), queue: entry, offer };
