@@ -171,9 +171,11 @@ export function buildLevelUpBuffOffer({ state, heroId, cards, progress, rng, tie
     attemptedTiers.push(tier);
     const eligible = getEligibleLevelUpBuffCards({ state, heroId, cards: normalizedCards, tier });
     const behavior = shuffle(eligible.filter(card => card.kind === 'behavior'), rng);
-    const fallbacks = shuffle(eligible.filter(card => card.kind === 'stat' || card.kind === 'bargain'), rng);
     const offeredCards = behavior.slice(0, OFFER_SIZE);
-    offeredCards.push(...fallbacks.slice(0, OFFER_SIZE - offeredCards.length));
+    if (offeredCards.length < OFFER_SIZE) {
+      const fallbacks = shuffle(eligible.filter(card => card.kind === 'stat' || card.kind === 'bargain'), rng);
+      offeredCards.push(...fallbacks.slice(0, OFFER_SIZE - offeredCards.length));
+    }
     if (offeredCards.length === OFFER_SIZE) {
       return { status: 'offered', heroId: String(heroId), tier, cards: offeredCards, attemptedTiers };
     }

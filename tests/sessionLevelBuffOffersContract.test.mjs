@@ -76,6 +76,20 @@ test('stops tier sampling after a valid first tier and only consumes its card-se
   assert.equal(calls, 3, 'one tier sample plus two Fisher-Yates card-selection samples');
 });
 
+test('a complete three-behavior offer does not consume fallback RNG', () => {
+  const cards = [
+    CARD('a', 1, 'behavior', 'a', 1), CARD('b', 1, 'behavior', 'b', 1), CARD('c', 1, 'behavior', 'c', 1),
+    CARD('stat-a', 1, 'stat', 'stat-a', 1), CARD('stat-b', 1, 'stat', 'stat-b', 1),
+  ];
+  let calls = 0;
+  const offer = buildLevelUpBuffOffer({
+    state: createSessionLevelBuffState(), heroId: 'Fara', cards, progress: {},
+    rng: () => { calls += 1; return 0; }, tierWeights: { 1: 1, 2: 0, 3: 0, 4: 0 },
+  });
+  assert.deepEqual(offer.cards.map(card => card.cardId).sort(), ['a', 'b', 'c']);
+  assert.equal(calls, 3, 'one tier sample plus two behavior-shuffle samples');
+});
+
 test('gates next behavior, stat, and bargain stages while leaving pure same-tier stat fallback ungated', () => {
   const staged = [
     CARD('ward-1', 1, 'behavior', 'ward', 1), CARD('ward-2', 2, 'behavior', 'ward', 2, 1, 1),
