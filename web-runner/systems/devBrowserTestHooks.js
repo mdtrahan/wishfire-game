@@ -51,7 +51,7 @@ export async function waitForQaStoryCombatPhase(entry, {
   return { ok: false, elapsedMs: now() - startedAt, observed };
 }
 
-export function qaPlayableBattleSnapshot({ entry, globals = {}, entities = [], currentUID = 0 } = {}) {
+export function qaPlayableBattleSnapshot({ entry, globals = {}, entities = [], currentUID = 0, allowDeferredAdvance = false } = {}) {
   const now = Number(globals.time || 0);
   const livingActors = (entities || []).filter(actor => (actor?.kind === 'hero' || actor?.kind === 'enemy') && Number(actor.hp || 0) > 0);
   const currentActor = livingActors.find(actor => Number(actor.uid) === Number(currentUID));
@@ -68,21 +68,21 @@ export function qaPlayableBattleSnapshot({ entry, globals = {}, entities = [], c
   };
   return { ok: observed.phase === 'combat' && !observed.pending && !observed.ended
     && !observed.enemyActionActive && !observed.actionInProgress && !observed.playerBusy
-    && !observed.battleStartActive && !observed.actionLocked && !observed.deferAdvance && observed.pendingHeroHits === 0
+    && !observed.battleStartActive && !observed.actionLocked && (allowDeferredAdvance || !observed.deferAdvance) && observed.pendingHeroHits === 0
     && observed.livingActors.length > 0 && observed.currentActorLiving, observed };
 }
 
 export async function waitForPlayableBattle({
   entry, globals, entities, getCurrentUID = () => 0, timeoutMs = 3500, pollMs = 40,
-  now = () => Date.now(), wait = ms => new Promise(resolve => setTimeout(resolve, ms)),
+  now = () => Date.now(), wait = ms => new Promise(resolve => setTimeout(resolve, ms)), allowDeferredAdvance = false,
 } = {}) {
-  const startedAt = now(); let latest = qaPlayableBattleSnapshot({ entry, globals, entities, currentUID: getCurrentUID() });
+  const startedAt = now(); let latest = qaPlayableBattleSnapshot({ entry, globals, entities, currentUID: getCurrentUID(), allowDeferredAdvance });
   while (now() - startedAt < timeoutMs) {
-    latest = qaPlayableBattleSnapshot({ entry, globals, entities, currentUID: getCurrentUID() });
+    latest = qaPlayableBattleSnapshot({ entry, globals, entities, currentUID: getCurrentUID(), allowDeferredAdvance });
     if (latest.ok) return { ok: true, elapsedMs: now() - startedAt, observed: latest.observed };
     await wait(pollMs);
   }
-  latest = qaPlayableBattleSnapshot({ entry, globals, entities, currentUID: getCurrentUID() });
+  latest = qaPlayableBattleSnapshot({ entry, globals, entities, currentUID: getCurrentUID(), allowDeferredAdvance });
   return { ok: latest.ok, elapsedMs: now() - startedAt, observed: latest.observed };
 }
 
@@ -378,9 +378,10 @@ export function registerDevBrowserTestHooks({
         const enemies = livingEnemies();
         if (fixture === 'bounce' && enemies.length < 2) throw new Error('QA fixture bounce requires two distinct living enemies');
         if (typeof installQaFixtureRuntimeRandom !== 'function') throw new Error('QA fixture requires the production current-battle RNG seam');
-        const waitForFixtureIdle = () => waitForPlayableBattle({
+        const waitForFixtureIdle = ({ allowDeferredAdvance = false } = {}) => waitForPlayableBattle({
           entry: gameState.storyEntry, globals: state.globals, entities: state.entities,
           getCurrentUID: () => callFunctionWithContext(fnContext, 'GetCurrentTurn'),
+          allowDeferredAdvance,
           wait: ms => new Promise(resolve => window.setTimeout(resolve, ms)),
         });
         const waitForOwnerCommandReady = async (target, timeoutMs = 2600) => {
@@ -462,15 +463,9 @@ export function registerDevBrowserTestHooks({
           }
           const started = await waitForFixtureAction(observed => observed.nativeCommandOwner === Number(owner.uid) && state.globals.NativeCommandSequence !== priorSequence);
           if (!started.ok) throw new Error(`QA fixture ${fixture} owner basic did not start: ${JSON.stringify({ attempt, counterBefore, processGate: state.globals.QaFixtureProcessTurnGate || null, ...started.observed })}`);
-          await runQaFixtureProductionAction(owner.uid, async () => {
-            const completed = await waitForFixtureAction(observed => observed.nativeCommandOwner === 0 && observed.pendingHeroHits === 0 && !observed.actionInProgress && !observed.playerBusy);
-            if (!completed.ok) throw new Error(`QA fixture ${fixture} owner basic did not complete: ${JSON.stringify({ attempt, counterBefore, processGate: state.globals.QaFixtureProcessTurnGate || null, ...completed.observed })}`);
-            captureFreshVisuals();
-            // The QA scheduling hold blocks automatic progression. Advance this
-            // completed production turn once so the next explicit owner action
-            // begins a fresh native command sequence.
-            callFunctionWithContext(fnContext, 'AdvanceTurn');
-          });
+          const completed = await waitForFixtureAction(observed => observed.nativeCommandOwner === 0 && observed.pendingHeroHits === 0 && !observed.actionInProgress && !observed.playerBusy);
+          if (!completed.ok) throw new Error(`QA fixture ${fixture} owner basic did not complete: ${JSON.stringify({ attempt, counterBefore, processGate: state.globals.QaFixtureProcessTurnGate || null, ...completed.observed })}`);
+          captureFreshVisuals();
           const counterAfter = Number(state.globals.SessionLevelBuffState?.heroes?.[String(owner.heroInstanceKey ?? owner.uid)]?.triggerCountersByEffectId?.[fixtureCard.effectId] || 0);
           if (counterAfter !== counterBefore + 1) throw new Error(`QA fixture ${fixture} owner basic did not advance its trigger counter: ${JSON.stringify({ attempt, counterBefore, counterAfter, ...fixtureActionObserved() })}`);
           captureFreshVisuals();
@@ -480,7 +475,7 @@ export function registerDevBrowserTestHooks({
         // application after all QA inputs are arranged.
         delete state.globals.SessionLevelBuffCombatSessionId;
         for (let attempt = 0; attempt < scenario.attempts && !scenario.observed(); attempt += 1) {
-          const idleBefore = await waitForFixtureIdle();
+          const idleBefore = await waitForFixtureIdle({ allowDeferredAdvance: !!state.globals.QaFixtureHoldTurn });
           if (!idleBefore.ok) throw new Error(`QA fixture ${fixture} cannot run while Battle B is gated: ${JSON.stringify(idleBefore.observed)}`);
           state.globals.QaFixtureHoldTurn = 1;
           if (fixture === 'counter') {
@@ -492,7 +487,7 @@ export function registerDevBrowserTestHooks({
           } else {
             await runOwnerBasicAttempt(attempt);
           }
-          const idleAfter = await waitForFixtureIdle();
+          const idleAfter = await waitForFixtureIdle({ allowDeferredAdvance: !!state.globals.QaFixtureHoldTurn });
           captureFreshVisuals();
           if (!idleAfter.ok) throw new Error(`QA fixture ${fixture} action did not complete: ${JSON.stringify(idleAfter.observed)}`);
         }

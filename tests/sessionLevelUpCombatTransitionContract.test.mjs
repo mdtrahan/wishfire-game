@@ -341,8 +341,8 @@ test('QA fixture scenarios use bounded production actions and require each obser
   assert.match(hooks, /initiative\.current = scheduledOwner/);
   assert.match(hooks, /InitiativeCurrentUID = scheduledOwner\.uid/);
   assert.match(fixtureRun, /installQaFixtureRuntimeRandom\(QA_FIXTURE_RUNTIME_ENCOUNTER_SEED\)/);
-  assert.match(fixtureRun, /const idleBefore = await waitForFixtureIdle\(\)/);
-  assert.match(fixtureRun, /const idleAfter = await waitForFixtureIdle\(\)/);
+  assert.match(fixtureRun, /const idleBefore = await waitForFixtureIdle\(\{ allowDeferredAdvance: !!state\.globals\.QaFixtureHoldTurn \}\)/);
+  assert.match(fixtureRun, /const idleAfter = await waitForFixtureIdle\(\{ allowDeferredAdvance: !!state\.globals\.QaFixtureHoldTurn \}\)/);
   assert.match(fixtureRun, /delete state\.globals\.SessionLevelBuffCombatSessionId/);
   assert.match(fixtureRun, /ownerWasHitSinceRun\(\)/);
   assert.match(fixtureRun, /Number\(visual\.amount\) === 6/);
@@ -394,7 +394,8 @@ test('Battle B holds automatic scheduling through fixture evidence while permitt
   assert.match(fixtureRun, /callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
   assert.match(fixtureRun, /const phaseClosed = await closeCompletedFixturePhase\(currentTarget, priorSequence\)/);
   assert.match(fixtureRun, /if \(!phaseClosed\.commandStarted\) \{[\s\S]*callFunctionWithContext\(fnContext, 'ProcessTurn'\)/);
-  assert.match(fixtureRun, /The QA scheduling hold blocks automatic progression[\s\S]*callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
+  assert.match(fixtureRun, /const completed = await waitForFixtureAction\(observed => observed\.nativeCommandOwner === 0[\s\S]*captureFreshVisuals\(\);\s*const counterAfter/);
+  assert.doesNotMatch(fixtureRun, /owner basic did not complete:[\s\S]*callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
   assert.match(fixtureRun, /counterAfter !== counterBefore \+ 1/);
   assert.match(fixtureRun, /await runOwnerBasicAttempt\(attempt\)/);
   assert.match(fixtureRun, /finally \{[\s\S]*delete state\.globals\.QaFixtureHoldTurn/);
@@ -423,12 +424,12 @@ function loadQaPlayableBattleWait() {
   const end = source.indexOf('export function registerDevBrowserTestHooks', start);
   assert.notEqual(start, -1, 'missing playable Battle B helper');
   const context = {}; vm.createContext(context);
-  vm.runInContext(source.slice(start, end).replace('export function', 'function').replace('export async function', 'async function') + '\nthis.waitForPlayableBattle = waitForPlayableBattle;', context);
-  return context.waitForPlayableBattle;
+  vm.runInContext(source.slice(start, end).replace('export function', 'function').replace('export async function', 'async function') + '\nthis.waitForPlayableBattle = waitForPlayableBattle; this.qaPlayableBattleSnapshot = qaPlayableBattleSnapshot;', context);
+  return { waitForPlayableBattle: context.waitForPlayableBattle, qaPlayableBattleSnapshot: context.qaPlayableBattleSnapshot };
 }
 
 test('QA waits through delayed encounter replacement and an enemy-action gate before allowing the owner turn', async () => {
-  const waitForPlayableBattle = loadQaPlayableBattleWait();
+  const { waitForPlayableBattle } = loadQaPlayableBattleWait();
   let time = 0;
   const entry = { phase: 'combat', pending: false };
   const globals = { time: 0, EnemyAction: { active: true }, ActionInProgress: 1, ActionLockUntil: 1 };
@@ -440,6 +441,15 @@ test('QA waits through delayed encounter replacement and an enemy-action gate be
   assert.equal(result.ok, true);
   assert.ok(result.elapsedMs >= 180);
   assert.equal(result.observed.enemyActionActive, false);
+});
+
+test('QA fixture hold accepts a completed owner action with its central deferred advance pending', () => {
+  const { qaPlayableBattleSnapshot } = loadQaPlayableBattleWait();
+  const entry = { phase: 'combat', pending: false };
+  const globals = { DeferAdvance: 1 };
+  const entities = [{ uid: 7, kind: 'hero', hp: 50 }, { uid: 9, kind: 'enemy', hp: 50 }];
+  assert.equal(qaPlayableBattleSnapshot({ entry, globals, entities, currentUID: 7 }).ok, false);
+  assert.equal(qaPlayableBattleSnapshot({ entry, globals, entities, currentUID: 7, allowDeferredAdvance: true }).ok, true);
 });
 
 test('QA continuation preserves its pre-transition permanent baseline until Battle B is playable', () => {
