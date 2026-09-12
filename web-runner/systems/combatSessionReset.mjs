@@ -47,3 +47,15 @@ export function resetCombatSessionConditions(globals, gameState, { preserveSessi
   delete gameState.healBlooms;
   gameState._lastPartyRegenTurnSerial = null;
 }
+
+// StoryEntry keeps the combat screen masked until its reveal has completed.
+// The initializer owns the busy hold during that interval; this is its single
+// release point before a fresh scheduler may process its first turn.
+export function releaseCombatStartToScheduler(globals) {
+  if (globals.BattleStartProcessStarted) return false;
+  globals.BattleStartActive = 0;
+  globals.BattleStartClearedForSession = 1;
+  globals.BattleStartProcessStarted = 1;
+  globals.IsPlayerBusy = 0;
+  return true;
+}

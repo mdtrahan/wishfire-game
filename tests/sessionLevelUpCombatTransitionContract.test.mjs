@@ -18,7 +18,7 @@ import {
   settleVictory,
 } from '../web-runner/modules/heroCommands.mjs';
 import { createHeroProgressStore, newHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
-import { resetCombatSessionConditions } from '../web-runner/systems/combatSessionReset.mjs';
+import { releaseCombatStartToScheduler, resetCombatSessionConditions } from '../web-runner/systems/combatSessionReset.mjs';
 import { hasSessionLevelUpPresentationBarrier } from '../web-runner/src/core/turnGateController.mjs';
 import { applyLevelUpBuffCard, createSessionLevelBuffState } from '../src/core/sessionLevelBuffOffers.mjs';
 import { QA_LEVEL_UP_BUFF_CARDS } from '../web-runner/modules/sessionLevelUpBuffPresentation.mjs';
@@ -348,4 +348,29 @@ test('the continuing-adventure initializer resets action transients before its B
   const reset = read('web-runner/systems/combatSessionReset.mjs');
   assert.match(initializer, /resetCombatSessionConditions\(state\.globals, gameState, \{ preserveSessionLevelBuffs: continuingAdventure \}\)[\s\S]*state\.globals\.BattleStartActive = 1/);
   assert.match(reset, /PendingHeroHits: \[\][\s\S]*IsPlayerBusy: 0, ActionInProgress: 0[\s\S]*ActionLockUntil: 0/);
+});
+
+test('StoryEntry releases the initializer busy hold once after Battle B transition completion', () => {
+  const selected = applyLevelUpBuffCard({
+    state: createSessionLevelBuffState(), heroId: 'fara-1', cardId: 'qa_atk_focus_1', cards: QA_LEVEL_UP_BUFF_CARDS,
+  });
+  const globals = {
+    GamePhase: 'RUNTIME', ProgressionBattle: { outcome: 'victory' }, SessionLevelBuffState: selected.state,
+    IsPlayerBusy: 1, ActionInProgress: 1, PendingHeroHits: [{ heroUID: 9 }],
+  };
+  // Battle A reset runs first, then the Battle B initializer owns its intro hold.
+  resetCombatSessionConditions(globals, {}, { preserveSessionLevelBuffs: true });
+  assert.equal(globals.IsPlayerBusy, 0);
+  globals.BattleStartActive = 1;
+  globals.BattleStartClearedForSession = 0;
+  globals.BattleStartProcessStarted = 0;
+  globals.IsPlayerBusy = 1;
+  assert.equal(releaseCombatStartToScheduler(globals), true);
+  assert.equal(globals.IsPlayerBusy, 0);
+  assert.equal(globals.BattleStartActive, 0);
+  assert.equal(globals.BattleStartProcessStarted, 1);
+  assert.deepEqual(globals.SessionLevelBuffState, selected.state);
+  assert.equal(releaseCombatStartToScheduler(globals), false, 'the completion seam cannot release a second scheduler turn');
+  const app = read('web-runner/app.js');
+  assert.match(app, /createCombatEntryTransition\(canvas, \{ onComplete: \(\) => \{[\s\S]*releaseCombatStartToScheduler\(state\.globals\)[\s\S]*runCombatStep\(fnContext, 'ProcessTurn'\)/);
 });
