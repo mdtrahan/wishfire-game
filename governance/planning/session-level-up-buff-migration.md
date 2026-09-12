@@ -174,9 +174,12 @@ selector must record the rolled tier and use only that tier for one offer.
 
 ```text
 deterministicTierAttempts(progress, rng):
+  normalizedProgress = if progress.totalMilestonesToFinalBoss > 0
+    then clamp(progress.completedMilestones / progress.totalMilestonesToFinalBoss, 0, 1)
+    else 0
   remaining = [1, 2, 3, 4]
   while remaining is not empty:
-    weights = nonNegative(tierWeights(normalizedProgress, finalBossReached)) restricted to remaining
+    weights = nonNegative(tierWeights(normalizedProgress, progress.finalBossReached)) restricted to remaining
     if sum(weights) > 0:
       tier = weightedSample(remaining, weights, rng)
     else:
