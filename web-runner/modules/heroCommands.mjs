@@ -3,7 +3,7 @@ import {clearSessionLevelBuffState} from '../../src/core/sessionLevelBuffOffers.
 import {settleBattleEXP} from '../src/core/heroProgression.mjs';
 import {heroDefinition,PROGRESSION} from '../src/core/heroDefinitions.mjs';
 import {getHeroFlowState,getHeroSkillOptions} from '../src/core/personalFlow.mjs';
-import {applyStatus,effectiveStat,legalSkill,statuses,validTargets,resolveSkill,turnStart,turnEnd} from '../src/core/combatRules.mjs';
+import {applyStatus,legalSkill,validTargets,resolveSkill,turnStart,turnEnd} from '../src/core/combatRules.mjs';
 import {derivePresentationTurnBarrier} from '../src/core/turnGateController.mjs';
 import {acknowledgeSessionLevelUpEntry,clearSessionLevelUpQueue,createSessionLevelUpQueue,currentSessionLevelUpEntry,pauseSessionLevelUpQueue,resumeSessionLevelUpQueue} from '../src/core/sessionLevelUpQueue.mjs';
 import {beginSessionLevelUpSettlement,chooseSessionLevelUpBuff as choosePresentedSessionLevelUpBuff,getActiveSessionLevelUpBuffCards,getSessionLevelUpBuffPresentation,updateSessionLevelUpSettlement} from './sessionLevelUpBuffPresentation.mjs';
@@ -51,7 +51,9 @@ export function rulesContext(ctx){
 
 const sessionBuffHeroId = hero => String(hero?.heroInstanceKey ?? hero?.uid ?? '');
 const sessionRandom = globals => typeof globals?.RuntimeRandom === 'function' ? Number(globals.RuntimeRandom()) : Math.random();
-const hasEffect = (globals, hero, effectId) => getActiveSessionLevelUpBuffCards(globals, hero).some(card => card.effectId === effectId);
+const sessionStatStatus = Object.freeze({atk:'atkUp',matk:'magUp',mag:'magUp',def:'defUp',res:'resUp',speed:'spdUp',spd:'spdUp'});
+const sessionStatKey = stat => String(stat || '').toLowerCase();
+const sessionStatStatusFor = stat => sessionStatStatus[sessionStatKey(stat)] || `${sessionStatKey(stat)}Up`;
 function sessionBuffCounter(globals, hero, effectId) {
  const state=globals.SessionLevelBuffState?.heroes?.[sessionBuffHeroId(hero)];if(!state)return 0;
  const counters=state.triggerCountersByEffectId||(state.triggerCountersByEffectId={});counters[effectId]=Math.max(0,Number(counters[effectId]||0))+1;return counters[effectId];
@@ -61,14 +63,24 @@ export function applySessionLevelBuffsAtBattleStart(ctx,rules){
  g.SessionLevelBuffCombatSessionId=session;
  for(const hero of ctx.state.entities.filter(actor=>actor?.kind==='hero')){
   const cards=getActiveSessionLevelUpBuffCards(g,hero);
-  const statBonus={},maxHpMultipliers=[],shields=[];
+  const statFactors={},maxHpMultipliers=[],shields=[];
+  const addStatFactor=(stat,percent)=>{
+   const key=sessionStatKey(stat);if(!key)return;
+   (statFactors[key]||(statFactors[key]=[])).push(1+Number(percent||0));
+  };
   for(const card of cards){const formula=card.formula||{};
-   if(formula.surface==='stat_percent'&&formula.stat!=='max_hp')statBonus[String(formula.stat).toLowerCase()]=(statBonus[String(formula.stat).toLowerCase()]||0)+Number(formula.percent||0);
+   if(formula.surface==='stat_percent'&&formula.stat!=='max_hp')addStatFactor(formula.stat,formula.percent);
    if(formula.surface==='stat_percent'&&formula.stat==='max_hp')maxHpMultipliers.push(1+Number(formula.percent||0));
-   if(formula.surface==='bargain_percent'){statBonus[String(formula.benefitStat).toLowerCase()]=(statBonus[String(formula.benefitStat).toLowerCase()]||0)+Number(formula.benefitPercent||0);maxHpMultipliers.push(1+Number(formula.penaltyPercent||0));}
+   if(formula.surface==='bargain_percent'){
+    if(formula.benefitStat==='max_hp')maxHpMultipliers.push(1+Number(formula.benefitPercent||0));else addStatFactor(formula.benefitStat,formula.benefitPercent);
+    if(formula.penaltyStat==='max_hp')maxHpMultipliers.push(1+Number(formula.penaltyPercent||0));else addStatFactor(formula.penaltyStat,formula.penaltyPercent);
+   }
    if(formula.surface==='shield_percent_max_hp')shields.push(Number(formula.percent||0));
   }
-  for(const [stat,magnitude] of Object.entries(statBonus))applyStatus(rules,hero,hero,{effectType:'status',statusEffect:`${stat}Up`,magnitude,duration:9999});
+  for(const [stat,factors] of Object.entries(statFactors)){
+   const magnitude=factors.reduce((value,factor)=>value*factor,1)-1;
+   applyStatus(rules,hero,hero,{effectType:'status',statusEffect:sessionStatStatusFor(stat),magnitude,duration:9999});
+  }
   if(maxHpMultipliers.length){hero.maxHP=Math.max(1,Math.round(maxHpMultipliers.reduce((value,multiplier)=>value*multiplier,Math.max(1,Number(hero.maxHP||1)))));hero.hp=Math.min(hero.maxHP,hero.hp);}
   for(const magnitude of shields){const effect={effectType:'status',statusEffect:'barrier',magnitude,duration:9999};if(applyStatus(rules,hero,hero,effect))rules.onStatus?.(hero,hero,effect);}
  }
@@ -80,7 +92,7 @@ export function resolveSessionLevelBasicEffects(ctx,rules,hero,targetIds){
   const completedBasics=sessionBuffCounter(g,hero,card.effectId);
   if(formula.surface==='cadence_magic_damage'&&completedBasics%Math.max(1,Number(formula.everyCompletedBasics||1))===0){(g.ArcanePulseVisuals||(g.ArcanePulseVisuals=[])).push({sourceX:Number(hero.x||0),sourceY:Number(hero.y||0),targetX:Number(target.x||0),targetY:Number(target.y||0),startAt:Number(g.time||0),impactAt:Number(g.time||0)+.18,shape:'crescent_arc_blast',sourceUID:hero.uid,targetUID:target.uid,amount:Number(formula.amount||0)});resolveSkill(rules,hero,{skillId:'session_spectral_orb',targetType:'enemy',tags:['magic'],effects:[{effectType:'damage',fixedDamage:Number(formula.amount||0)}]},[target.uid],{sessionBuffExtraHit:true});}
   if(formula.surface==='heal_percent_max_hp'&&sessionRandom(g)<Number(formula.chance||0))resolveSkill(rules,hero,{skillId:'session_inner_flow',targetType:'self',tags:['magic'],effects:[{effectType:'heal',recipient:'self',potency:Number(formula.percent||0)}]},[hero.uid],{sessionBuffExtraHit:true});
-  if(formula.surface==='status_on_basic'&&sessionRandom(g)<Number(formula.chance||0))resolveSkill(rules,hero,{skillId:'session_saffron_mark',targetType:'enemy',tags:['magic'],effects:[{effectType:'status',statusEffect:'mark',magnitude:1,duration:Number(formula.durationTurns||1)},{effectType:'status',statusEffect:formula.statusId==='qa_venom'?'dot':String(formula.statusId||'dot'),magnitude:1,duration:Number(formula.durationTurns||1),snapshotPotency:Number(formula.damagePerTurn||0)}]},[target.uid],{sessionBuffExtraHit:true});
+  if(formula.surface==='status_on_basic'&&sessionRandom(g)<Number(formula.chance||0))resolveSkill(rules,hero,{skillId:'session_venom_sigil',targetType:'enemy',tags:['magic'],effects:[{effectType:'status',statusEffect:formula.statusId==='venom'?'dot':String(formula.statusId||'dot'),magnitude:1,duration:Number(formula.durationTurns||1),snapshotPotency:Number(formula.damagePerTurn||0)}]},[target.uid],{sessionBuffExtraHit:true});
   if(formula.surface==='bounce_percent_damage'&&sessionRandom(g)<Number(formula.chance||0)){const bounce=ctx.state.entities.find(actor=>actor?.kind==='enemy'&&actor.hp>0&&actor.uid!==target.uid);if(bounce){const visual={sourceUID:hero.uid,sourceTargetUID:target.uid,targetUID:bounce.uid,sourceX:Number(target.x||0),sourceY:Number(target.y||0),targetX:Number(bounce.x||0),targetY:Number(bounce.y||0),startAt:Number(g.time||0),impactAt:Number(g.time||0)+.18,duration:.28,skillId:'session_mirage_chain',visual:'chain_strike',damagePercent:Number(formula.damagePercent||0)};(g.ChainStrikeVisuals||(g.ChainStrikeVisuals=[])).push(visual);const before=Number(bounce.hp||0);resolveSkill(rules,hero,{skillId:'session_mirage_chain',targetType:'enemy',tags:['physical'],effects:[{effectType:'damage',potency:Number(formula.damagePercent||0)}]},[bounce.uid],{sessionBuffExtraHit:true});visual.resolvedDamage=Math.max(0,before-Number(bounce.hp||0));}}
  }
 }

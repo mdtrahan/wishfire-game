@@ -33,7 +33,7 @@
 - `npm run test:ui-lock` after changes to a listed UI presentation owner; inspect its compact, reference, natural-preview, and Retina screenshots before accepting new bounds.
 
 ## Child DOX Index
-- None.
+- `export_session_level_up_buff_contract.mjs` - deterministic adapter from the Wishfire session buff catalog to the validate-card-skills JSON contract.
 
 - build_runtime_release.mjs packages only tracked runtime files from web-runner/ and src/ into dist/, with commit and SHA-256 manifest. Netlify publishes dist/; checkpoints, governance reviews and generation prompts are excluded.
 

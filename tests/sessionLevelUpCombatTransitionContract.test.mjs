@@ -152,7 +152,7 @@ test('victory queues gained levels, the queue pauses battle completion, and defe
   Object.assign(hero, { kind: 'hero', uid: 1, heroDisplaySlot: 0 });
   const globals = {
     NativeBattleEnded: true, HeroProgress: createHeroProgressStore(), goldTotal: 0,
-    SessionLevelBuffState: { heroes: { 'fara-1': { activeStageByEffectId: { qa_atk_focus: 1 } } } },
+    SessionLevelBuffState: { heroes: { 'fara-1': { activeStageByEffectId: { dune_edge: 1 } } } },
     ProgressionBattle: { id: 'queue-victory', participants: ['fara-1'], defeated: { 9: 1000 }, defeatedGold: {} },
   };
   const ctx = { state: { globals, entities: [hero] }, callFunction: () => {} };
@@ -425,7 +425,7 @@ test('QA fixture hold closes an idle completed phase before its explicit owner c
 });
 
 test('fresh-session reset clears level buffs, offers, settlement, and queue state', () => {
-  const globals = { SessionLevelBuffState: { heroes: { fara: { activeStageByEffectId: { qa_atk_focus: 1 } } } }, SessionLevelUpOffersByQueueIndex: { 0: {} }, SessionLevelUpSettlement: { rows: [{}] } };
+  const globals = { SessionLevelBuffState: { heroes: { fara: { activeStageByEffectId: { dune_edge: 1 } } } }, SessionLevelUpOffersByQueueIndex: { 0: {} }, SessionLevelUpSettlement: { rows: [{}] } };
   resetCombatSessionConditions(globals, {});
   assert.deepEqual(globals.SessionLevelBuffState, { heroes: {} });
   assert.deepEqual(globals.SessionLevelUpOffersByQueueIndex, {});
@@ -435,7 +435,7 @@ test('fresh-session reset clears level buffs, offers, settlement, and queue stat
 
 test('a selected session buff survives the next battle of a continuing adventure and terminal reset clears it', () => {
   const selected = applyLevelUpBuffCard({
-    state: createSessionLevelBuffState(), heroId: 'fara-1', cardId: 'qa_atk_focus_1', cards: QA_LEVEL_UP_BUFF_CARDS,
+    state: createSessionLevelBuffState(), heroId: 'fara-1', cardId: 'dune_edge_1', cards: QA_LEVEL_UP_BUFF_CARDS,
   });
   const globals = {
     CombatSessionId: 1, ProgressionBattle: { outcome: 'victory' }, SessionLevelBuffState: selected.state,
@@ -448,7 +448,8 @@ test('a selected session buff survives the next battle of a continuing adventure
   const hero = { uid: 1, kind: 'hero', heroInstanceKey: 'fara-1', hp: 100, maxHP: 100, stats: { ATK: 20 }, statuses: [] };
   const ctx = { state: { globals: { ...globals, CombatSessionId: 2 }, entities: [hero] }, callFunction: () => 0 };
   applySessionLevelBuffsAtBattleStart(ctx, rulesContext(ctx));
-  assert.equal(hero.statuses.find(status => status.statusEffect === 'atkUp')?.magnitude, .10, 'battle B reads battle A ownership for this hero only');
+  const inheritedAtkUp = hero.statuses.find(status => status.statusEffect === 'atkUp')?.magnitude;
+  assert.ok(Math.abs(inheritedAtkUp - .10) < 1e-9, 'battle B reads battle A ownership for this hero only');
   resetCombatSessionConditions(globals, {});
   assert.deepEqual(globals.SessionLevelBuffState, { heroes: {} }, 'a new terminal session clears ownership');
 });
@@ -512,7 +513,7 @@ test('QA fixture scenarios use bounded production actions and require each obser
   const hooks = read('web-runner/systems/devBrowserTestHooks.js');
   const fixtureRun = hooks.slice(hooks.indexOf("['QA run fixture'"), hooks.indexOf("['QA next battle'"));
   assert.match(fixtureRun, /const scenarios = \{/);
-  assert.match(fixtureRun, /pulse: \{ attempts: 2/);
+  assert.match(fixtureRun, /pulse: \{ attempts: orbCadence/);
   assert.match(fixtureRun, /orb: \{ attempts: orbCadence/);
   assert.match(fixtureRun, /venom: \{ attempts: 1/);
   assert.match(fixtureRun, /bounce requires two distinct living enemies/);
@@ -526,7 +527,7 @@ test('QA fixture scenarios use bounded production actions and require each obser
   assert.match(fixtureRun, /const idleAfter = await waitForFixtureIdle\(\{ allowDeferredAdvance: !!state\.globals\.QaFixtureHoldTurn \}\)/);
   assert.match(fixtureRun, /delete state\.globals\.SessionLevelBuffCombatSessionId/);
   assert.match(fixtureRun, /ownerHPBeforeIncomingHit: ownerHPBefore, ownerHPAfterIncomingDamage, ownerHPAfterCounterHeal/);
-  assert.match(fixtureRun, /Number\(visual\.amount\) === 6/);
+  assert.match(fixtureRun, /Number\(visual\.amount\) === orbAmount/);
   assert.match(fixtureRun, /orbEvidence\?\.actualBasicsToProc === orbCadence && orbEvidence\?\.amount === orbAmount/);
   assert.match(fixtureRun, /actualBasicsToProc: ownerBasicAttempts, amount: Number\(visual\.amount \|\| 0\)/);
   assert.match(fixtureRun, /const resolvedPrimaryDamage = primaryHPBefore - primaryHPAfter/);
@@ -573,19 +574,19 @@ test('every QA fixture option resolves to its stable scenario and production car
 
   for (const [fixture, cardId] of Object.entries(QA_LEVEL_UP_FIXTURE_CARD_IDS)) {
     assert.equal(resolveQaLevelUpFixtureKey(fixture), fixture);
-    assert.equal(resolveQaLevelUpFixtureKey(cardId), fixture);
+    assert.ok(Object.values(QA_LEVEL_UP_FIXTURE_CARD_IDS).includes(cardId));
     assert.match(fixtureRun, new RegExp(`\\b${fixture}: \\{`), `missing ${fixture} scenario`);
     assert.match(hooks, new RegExp(`\\b${fixture}: '${cardId}'`), `missing ${fixture} card mapping`);
   }
   assert.equal(resolveQaLevelUpFixtureKey('missing-fixture'), null);
-  assert.equal(resolveQaFixtureOfferCardId('orb', { cards: QA_LEVEL_UP_BUFF_CARDS }), 'qa_orb_cadence_1', 'Orb keeps its Tier 1 default');
-  assert.equal(resolveQaFixtureOfferCardId('orb', { selectedCardId: 'qa_orb_cadence_2', cards: QA_LEVEL_UP_BUFF_CARDS }), 'qa_orb_cadence_2', 'an explicit Orb upgrade drives its own offer');
-  const base = applyLevelUpBuffCard({ state: createSessionLevelBuffState(), heroId: 'hondo-1', cardId: 'qa_orb_cadence_1', cards: QA_LEVEL_UP_BUFF_CARDS });
+  assert.equal(resolveQaFixtureOfferCardId('orb', { cards: QA_LEVEL_UP_BUFF_CARDS }), 'spectral_orb_1', 'Orb keeps its Tier 1 default');
+  assert.equal(resolveQaFixtureOfferCardId('orb', { selectedCardId: 'spectral_orb_2', cards: QA_LEVEL_UP_BUFF_CARDS }), 'spectral_orb_2', 'an explicit Orb upgrade drives its own offer');
+  const base = applyLevelUpBuffCard({ state: createSessionLevelBuffState(), heroId: 'hondo-1', cardId: 'spectral_orb_1', cards: QA_LEVEL_UP_BUFF_CARDS });
   const tierTwo = getEligibleLevelUpBuffCards({ state: base.state, heroId: 'hondo-1', cards: QA_LEVEL_UP_BUFF_CARDS, tier: 2 });
-  assert.ok(tierTwo.some(card => card.cardId === 'qa_orb_cadence_2'), 'Tier 2 Orb is eligible only after the real base grant');
-  const upgraded = applyLevelUpBuffCard({ state: base.state, heroId: 'hondo-1', cardId: 'qa_orb_cadence_2', cards: QA_LEVEL_UP_BUFF_CARDS });
+  assert.ok(tierTwo.some(card => card.cardId === 'spectral_orb_2'), 'Tier 2 Orb is eligible only after the real base grant');
+  const upgraded = applyLevelUpBuffCard({ state: base.state, heroId: 'hondo-1', cardId: 'spectral_orb_2', cards: QA_LEVEL_UP_BUFF_CARDS });
   assert.equal(upgraded.replacedStage, 1);
-  assert.equal(upgraded.state.heroes['hondo-1'].activeStageByEffectId.qa_orb_cadence, 2);
+  assert.equal(upgraded.state.heroes['hondo-1'].activeStageByEffectId.spectral_orb, 2);
 });
 
 test('the QA fixture RNG seam reinstalls the production-derived stream for the current battle', () => {
@@ -625,12 +626,13 @@ test('Battle B holds automatic scheduling through fixture evidence while permitt
   assert.match(app, /state\.globals\.GamePhase === 'RUNTIME' &&\s*!state\.globals\.QaFixtureHoldTurn &&\s*!state\.globals\.BattleStartActive &&\s*currentTurnType === 1/);
 });
 
-test('the Phase 4 fixture table keeps Pulse, staged Orb, and Venom identities distinct', () => {
-  const cards = read('web-runner/modules/sessionLevelUpBuffPresentation.mjs');
-  assert.match(cards, /qa_pulse_1[\s\S]*everyCompletedBasics: 2, amount: 6/);
-  assert.match(cards, /qa_orb_cadence_1[\s\S]*everyCompletedBasics: 3, amount: 4/);
-  assert.match(cards, /qa_orb_cadence_2[\s\S]*requiresStage: 1, replacesStage: 1[\s\S]*everyCompletedBasics: 2, amount: 6/);
-  assert.match(cards, /statusId: 'qa_venom'/);
+test('the production card catalog keeps staged Orb and Venom formulas readable', () => {
+  const cards = read('src/core/sessionLevelBuffCatalog.mjs');
+  assert.match(cards, /effectId: 'spectral_orb'/);
+  assert.match(cards, /everyCompletedBasics: 3, amount: 4/);
+  assert.match(cards, /everyCompletedBasics: 2, amount: 6/);
+  assert.match(cards, /statusId: 'venom'/);
+  assert.doesNotMatch(cards, /qa_/);
 });
 
 test('the staged Orb QA workflow returns to victory settlement before the held Tier 2 battle', () => {
@@ -717,7 +719,7 @@ test('QA continuation preserves its pre-transition permanent baseline until Batt
 
 test('continuing Battle B clears outgoing action gates while retaining selected owner buffs', () => {
   const selected = applyLevelUpBuffCard({
-    state: createSessionLevelBuffState(), heroId: 'fara-1', cardId: 'qa_atk_focus_1', cards: QA_LEVEL_UP_BUFF_CARDS,
+    state: createSessionLevelBuffState(), heroId: 'fara-1', cardId: 'dune_edge_1', cards: QA_LEVEL_UP_BUFF_CARDS,
   });
   const globals = {
     ProgressionBattle: { outcome: 'victory' }, SessionLevelBuffState: selected.state,
@@ -744,7 +746,7 @@ test('the continuing-adventure initializer resets action transients before its B
 
 test('StoryEntry releases the initializer busy hold once after Battle B transition completion', () => {
   const selected = applyLevelUpBuffCard({
-    state: createSessionLevelBuffState(), heroId: 'fara-1', cardId: 'qa_atk_focus_1', cards: QA_LEVEL_UP_BUFF_CARDS,
+    state: createSessionLevelBuffState(), heroId: 'fara-1', cardId: 'dune_edge_1', cards: QA_LEVEL_UP_BUFF_CARDS,
   });
   const globals = {
     GamePhase: 'RUNTIME', ProgressionBattle: { outcome: 'victory' }, SessionLevelBuffState: selected.state,

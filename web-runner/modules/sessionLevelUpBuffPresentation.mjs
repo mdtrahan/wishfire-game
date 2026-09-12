@@ -1,32 +1,10 @@
 import { applyLevelUpBuffCard, buildLevelUpBuffOffer, createSessionLevelBuffState } from '../../src/core/sessionLevelBuffOffers.mjs';
+import { SESSION_LEVEL_UP_BUFF_CARDS } from '../../src/core/sessionLevelBuffCatalog.mjs';
 import { heroDefinition } from '../src/core/heroDefinitions.mjs';
 import { acknowledgeSessionLevelUpEntry, currentSessionLevelUpEntry } from '../src/core/sessionLevelUpQueue.mjs';
 
-export const QA_LEVEL_UP_BUFF_CARDS = Object.freeze([
-  { id: 'qa_atk_focus_1', cardId: 'qa_atk_focus_1', tier: 1, kind: 'stat', effectId: 'qa_atk_focus', stage: 1, name: 'ATK Focus', rarity: 'Common', effect: 'ATK +10%', formula: { surface: 'stat_percent', stat: 'atk', percent: 0.10 } },
-  { id: 'qa_atk_focus_2', cardId: 'qa_atk_focus_2', tier: 2, kind: 'stat', effectId: 'qa_atk_focus', stage: 2, requiresStage: 1, replacesStage: 1, name: 'ATK Focus II', rarity: 'Uncommon', effect: 'ATK +18%', formula: { surface: 'stat_percent', stat: 'atk', percent: 0.18 } },
-  { cardId: 'qa_max_vitality_1', tier: 1, kind: 'stat', effectId: 'qa_max_vitality', stage: 1, name: 'Max Vitality', rarity: 'Common', effect: 'Max HP +20%', formula: { surface: 'stat_percent', stat: 'max_hp', percent: 0.20 } },
-  { cardId: 'qa_opening_shield_1', tier: 1, kind: 'behavior', effectId: 'qa_opening_shield', stage: 1, name: 'Crimson Ward', rarity: 'Common', effect: 'Start battle with a 25% Max HP shield', formula: { surface: 'shield_percent_max_hp', percent: 0.25 } },
-  { id: 'qa_pulse_1', cardId: 'qa_pulse_1', tier: 1, kind: 'behavior', effectId: 'qa_pulse', stage: 1, name: 'Arcane Pulse', rarity: 'Common', effect: 'Every 2 basics: 6 magic damage', formula: { surface: 'cadence_magic_damage', everyCompletedBasics: 2, amount: 6 } },
-  { id: 'qa_orb_cadence_1', cardId: 'qa_orb_cadence_1', tier: 1, kind: 'behavior', effectId: 'qa_orb_cadence', stage: 1, name: 'Spectral Orb', rarity: 'Common', effect: 'Every 3 basics: 4 magic damage', formula: { surface: 'cadence_magic_damage', everyCompletedBasics: 3, amount: 4 } },
-  { id: 'qa_orb_cadence_2', cardId: 'qa_orb_cadence_2', tier: 2, kind: 'behavior', effectId: 'qa_orb_cadence', stage: 2, requiresStage: 1, replacesStage: 1, name: 'Spectral Orb II', rarity: 'Uncommon', effect: 'Every 2 basics: 6 magic damage', formula: { surface: 'cadence_magic_damage', everyCompletedBasics: 2, amount: 6 } },
-  { cardId: 'qa_heal_on_basic_1', tier: 1, kind: 'behavior', effectId: 'qa_heal_on_basic', stage: 1, name: 'Inner Flow', rarity: 'Common', effect: '15%: heal 5% Max HP', formula: { surface: 'heal_percent_max_hp', chance: 0.15, percent: 0.05 } },
-  { cardId: 'qa_status_on_basic_1', tier: 1, kind: 'behavior', effectId: 'qa_status_on_basic', stage: 1, name: 'Saffron Mark', rarity: 'Common', effect: '20%: Venom 3 damage for 2 turns', formula: { surface: 'status_on_basic', chance: 0.20, statusId: 'qa_venom', durationTurns: 2, damagePerTurn: 3 } },
-  { cardId: 'qa_bounce_1', tier: 1, kind: 'behavior', effectId: 'qa_bounce', stage: 1, name: 'Mirage Chain', rarity: 'Common', effect: '25%: bounce for 50% damage', formula: { surface: 'bounce_percent_damage', chance: 0.25, damagePercent: 0.50 } },
-  { cardId: 'qa_counter_1', tier: 1, kind: 'behavior', effectId: 'qa_counter', stage: 1, name: 'Glass Reprisal', rarity: 'Common', effect: '20%: counter 40% ATK, heal 3%', formula: { surface: 'counter_percent_atk', chance: 0.20, damagePercent: 0.40, healPercentMaxHp: 0.03, maxPerDamagePackage: 1 } },
-  { cardId: 'qa_speed_1', tier: 1, kind: 'stat', effectId: 'qa_speed', stage: 1, name: 'Swift Current', rarity: 'Common', effect: 'SPD +10%', formula: { surface: 'stat_percent', stat: 'spd', percent: 0.10 } },
-  // These ungated same-tier stat fallbacks keep a real Tier 2 offer at three cards
-  // while an upgraded behavior or stat is grant-gated for its owner.
-  { cardId: 'qa_max_vitality_2', tier: 2, kind: 'stat', effectId: 'qa_max_vitality', stage: 2, requiresStage: 1, replacesStage: 1, name: 'Max Vitality II', rarity: 'Uncommon', effect: 'Max HP +20%', formula: { surface: 'stat_percent', stat: 'max_hp', percent: 0.20 } },
-  { cardId: 'qa_speed_2', tier: 2, kind: 'stat', effectId: 'qa_speed', stage: 2, requiresStage: 1, replacesStage: 1, name: 'Swift Current II', rarity: 'Uncommon', effect: 'SPD +10%', formula: { surface: 'stat_percent', stat: 'spd', percent: 0.10 } },
-  { cardId: 'qa_precision_3', tier: 3, kind: 'stat', effectId: 'qa_precision_3', stage: 1, name: 'Star Sight', rarity: 'Rare', effect: 'ATK +12%', formula: { surface: 'stat_percent', stat: 'atk', percent: 0.12 } },
-  { cardId: 'qa_vitality_3', tier: 3, kind: 'stat', effectId: 'qa_vitality_3', stage: 1, name: 'Veil of Vitality', rarity: 'Rare', effect: 'Max HP +15%', formula: { surface: 'stat_percent', stat: 'max_hp', percent: 0.15 } },
-  { cardId: 'qa_celerity_3', tier: 3, kind: 'stat', effectId: 'qa_celerity_3', stage: 1, name: 'Zephyr Step', rarity: 'Rare', effect: 'SPD +12%', formula: { surface: 'stat_percent', stat: 'spd', percent: 0.12 } },
-  { cardId: 'qa_precision_4', tier: 4, kind: 'stat', effectId: 'qa_precision_4', stage: 1, name: 'Crown Sight', rarity: 'Epic', effect: 'ATK +18%', formula: { surface: 'stat_percent', stat: 'atk', percent: 0.18 } },
-  { cardId: 'qa_vitality_4', tier: 4, kind: 'stat', effectId: 'qa_vitality_4', stage: 1, name: 'Crown of Vitality', rarity: 'Epic', effect: 'Max HP +20%', formula: { surface: 'stat_percent', stat: 'max_hp', percent: 0.20 } },
-  { cardId: 'qa_celerity_4', tier: 4, kind: 'stat', effectId: 'qa_celerity_4', stage: 1, name: 'Crown Step', rarity: 'Epic', effect: 'SPD +18%', formula: { surface: 'stat_percent', stat: 'spd', percent: 0.18 } },
-  { cardId: 'qa_power_bargain_1', tier: 1, kind: 'bargain', effectId: 'qa_power_bargain', stage: 1, name: 'Sun Debt', rarity: 'Common', effect: 'ATK +15%, Max HP -10%', formula: { surface: 'bargain_percent', benefitStat: 'atk', benefitPercent: 0.15, penaltyStat: 'max_hp', penaltyPercent: -0.10 } },
-].map(card => Object.freeze({ ...card, id: card.cardId })));
+export { SESSION_LEVEL_UP_BUFF_CARDS };
+export const QA_LEVEL_UP_BUFF_CARDS = SESSION_LEVEL_UP_BUFF_CARDS;
 
 export const LOW_HP_WARNING_RATIO = 0.25;
 const EXP_FILL_SECONDS = 0.48;
@@ -49,7 +27,7 @@ function tierWeightsFor(globals, progress) {
 
 export function getActiveSessionLevelUpBuffCards(globals, hero) {
   const activeStages = globals?.SessionLevelBuffState?.heroes?.[heroId(hero)]?.activeStageByEffectId || {};
-  return QA_LEVEL_UP_BUFF_CARDS.filter(card => Number(activeStages[card.effectId] || 0) === Number(card.stage || 0));
+  return SESSION_LEVEL_UP_BUFF_CARDS.filter(card => Number(activeStages[card.effectId] || 0) === Number(card.stage || 0));
 }
 
 export function beginSessionLevelUpSettlement(globals, results = [], heroes = [], now = 0) {
@@ -130,7 +108,7 @@ export function getSessionLevelUpBuffPresentation(globals, heroes = [], progress
     if (Number(globals.time || 0) < Number(dance.endsAt || 0)) return { open: false, cards: [], heroUID: Number(entry.heroUID || 0), queue: entry, dancing: true };
   }
   const offers = globals.SessionLevelUpOffersByQueueIndex || (globals.SessionLevelUpOffersByQueueIndex = {});
-  const offerCards = Array.isArray(globals?.SessionLevelUpQaOfferCards) ? globals.SessionLevelUpQaOfferCards : QA_LEVEL_UP_BUFF_CARDS;
+  const offerCards = Array.isArray(globals?.SessionLevelUpQaOfferCards) ? globals.SessionLevelUpQaOfferCards : SESSION_LEVEL_UP_BUFF_CARDS;
   if (!offers[key]) offers[key] = buildLevelUpBuffOffer({ state: globals.SessionLevelBuffState || createSessionLevelBuffState(), heroId: entry.heroId, cards: offerCards, progress, rng: globals.RuntimeRandom, tierWeights: tierWeightsFor(globals, progress), preferredCardId: globals.SessionLevelUpPreferredCardId });
   const offer = offers[key];
   const hero = heroes.find(candidate => heroId(candidate) === entry.heroId) || null;
@@ -141,7 +119,7 @@ export function getSessionLevelUpBuffPresentation(globals, heroes = [], progress
 export function chooseSessionLevelUpBuff(globals, heroes = [], cardId, now = 0) {
   const presentation = getSessionLevelUpBuffPresentation(globals, heroes, globals.SessionLevelProgress || {});
   if (!presentation.open) return { status: 'rejected' };
-  const applied = applyLevelUpBuffCard({ state: globals.SessionLevelBuffState, heroId: presentation.queue.heroId, cardId, cards: QA_LEVEL_UP_BUFF_CARDS });
+  const applied = applyLevelUpBuffCard({ state: globals.SessionLevelBuffState, heroId: presentation.queue.heroId, cardId, cards: SESSION_LEVEL_UP_BUFF_CARDS });
   if (applied.status !== 'applied') return applied;
   globals.SessionLevelBuffState = applied.state;
   globals.SessionLevelUpQueue = acknowledgeSessionLevelUpEntry(globals.SessionLevelUpQueue);

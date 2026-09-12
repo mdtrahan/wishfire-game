@@ -70,7 +70,7 @@ test('a completed settlement starts a fresh active queue for a staged T2 victory
     time: 2,
     RuntimeRandom: () => 0,
     SessionLevelUpTierWeights: { 1: 0, 2: 1, 3: 0, 4: 0 },
-    SessionLevelBuffState: applyLevelUpBuffCard({ state: {}, heroId: 'fara-1', cardId: 'qa_orb_cadence_1', cards: QA_LEVEL_UP_BUFF_CARDS }).state,
+    SessionLevelBuffState: applyLevelUpBuffCard({ state: {}, heroId: 'fara-1', cardId: 'spectral_orb_1', cards: QA_LEVEL_UP_BUFF_CARDS }).state,
     SessionLevelUpQueue: { status: 'complete', paused: false, currentIndex: 1, entries: [] },
   };
   const results = [{ hero: 'Falie', exp: 80, expBefore: 47, expAfter: 27, expToNextBefore: 100, fromLevel: 2, toLevel: 3 }];
@@ -82,52 +82,51 @@ test('a completed settlement starts a fresh active queue for a staged T2 victory
   const t2 = getSessionLevelUpBuffPresentation(globals, heroes);
   assert.equal(globals.SessionLevelUpQueue.status, 'active');
   assert.equal(t2.open, true);
-  assert.ok(t2.cards.some(card => card.cardId === 'qa_orb_cadence_2'));
+  assert.ok(t2.cards.some(card => card.cardId === 'spectral_orb_2'));
   assert.ok(t2.heroUID > 0, 'the fresh victory settlement retains a concrete owner');
 });
 
 test('displayed canonical card ids select their own record and QA T2 grants replace the prior stage', () => {
-  assert.equal(QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'qa_atk_focus_2').formula.percent, .18);
-  assert.deepEqual(QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'qa_pulse_1').formula, { surface: 'cadence_magic_damage', everyCompletedBasics: 2, amount: 6 });
-  assert.deepEqual(QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'qa_orb_cadence_1').formula, { surface: 'cadence_magic_damage', everyCompletedBasics: 3, amount: 4 });
-  assert.deepEqual(QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'qa_orb_cadence_2').formula, { surface: 'cadence_magic_damage', everyCompletedBasics: 2, amount: 6 });
+  assert.equal(QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'dune_edge_2').formula.percent, .18);
+  assert.deepEqual(QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'spectral_orb_1').formula, { surface: 'cadence_magic_damage', everyCompletedBasics: 3, amount: 4 });
+  assert.deepEqual(QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'spectral_orb_2').formula, { surface: 'cadence_magic_damage', everyCompletedBasics: 2, amount: 6 });
   const state = { heroes: {} };
-  const first = applyLevelUpBuffCard({ state, heroId: 'fara-1', cardId: 'qa_atk_focus_1', cards: QA_LEVEL_UP_BUFF_CARDS });
+  const first = applyLevelUpBuffCard({ state, heroId: 'fara-1', cardId: 'dune_edge_1', cards: QA_LEVEL_UP_BUFF_CARDS });
   assert.equal(first.status, 'applied');
   const eligible = getEligibleLevelUpBuffCards({ state: first.state, heroId: 'fara-1', cards: QA_LEVEL_UP_BUFF_CARDS, tier: 2 });
-  assert.deepEqual(eligible.filter(card => card.effectId === 'qa_atk_focus').map(card => card.id), ['qa_atk_focus_2']);
-  const upgraded = applyLevelUpBuffCard({ state: first.state, heroId: 'fara-1', cardId: eligible[0].id, cards: QA_LEVEL_UP_BUFF_CARDS });
+  assert.deepEqual(eligible.filter(card => card.effectId === 'dune_edge').map(card => card.id), ['dune_edge_2']);
+  const upgraded = applyLevelUpBuffCard({ state: first.state, heroId: 'fara-1', cardId: eligible.find(card => card.effectId === 'dune_edge').id, cards: QA_LEVEL_UP_BUFF_CARDS });
   assert.equal(upgraded.replacedStage, 1);
-  assert.equal(upgraded.state.heroes['fara-1'].activeStageByEffectId.qa_atk_focus, 2);
-  const orbFirst = applyLevelUpBuffCard({ state: upgraded.state, heroId: 'fara-1', cardId: 'qa_orb_cadence_1', cards: QA_LEVEL_UP_BUFF_CARDS });
-  assert.equal(applyLevelUpBuffCard({ state: orbFirst.state, heroId: 'fara-1', cardId: 'qa_orb_cadence_2', cards: QA_LEVEL_UP_BUFF_CARDS }).status, 'applied');
+  assert.equal(upgraded.state.heroes['fara-1'].activeStageByEffectId.dune_edge, 2);
+  const orbFirst = applyLevelUpBuffCard({ state: upgraded.state, heroId: 'fara-1', cardId: 'spectral_orb_1', cards: QA_LEVEL_UP_BUFF_CARDS });
+  assert.equal(applyLevelUpBuffCard({ state: orbFirst.state, heroId: 'fara-1', cardId: 'spectral_orb_2', cards: QA_LEVEL_UP_BUFF_CARDS }).status, 'applied');
 });
 
 test('QA Tier 2 through Tier 4 pools keep three same-tier cards while behavior upgrades remain gated', () => {
-  const orbBase = applyLevelUpBuffCard({ state: { heroes: {} }, heroId: 'fara-1', cardId: 'qa_orb_cadence_1', cards: QA_LEVEL_UP_BUFF_CARDS });
+  const orbBase = applyLevelUpBuffCard({ state: { heroes: {} }, heroId: 'fara-1', cardId: 'spectral_orb_1', cards: QA_LEVEL_UP_BUFF_CARDS });
   const tierTwo = buildLevelUpBuffOffer({
     state: orbBase.state, heroId: 'fara-1', cards: QA_LEVEL_UP_BUFF_CARDS, progress: {}, rng: () => 0,
-    tierWeights: { 1: 0, 2: 1, 3: 0, 4: 0 }, preferredCardId: 'qa_orb_cadence_2',
+    tierWeights: { 1: 0, 2: 1, 3: 0, 4: 0 }, preferredCardId: 'spectral_orb_2',
   });
   assert.equal(tierTwo.status, 'offered');
   assert.equal(tierTwo.tier, 2);
   assert.equal(tierTwo.cards.length, 3);
-  assert.ok(tierTwo.cards.some(card => card.cardId === 'qa_orb_cadence_2'));
+  assert.ok(tierTwo.cards.some(card => card.cardId === 'spectral_orb_2'));
   assert.equal(tierTwo.cards.filter(card => card.kind === 'stat').length, 2);
 
   const noOrbBase = getEligibleLevelUpBuffCards({ state: { heroes: {} }, heroId: 'fara-1', cards: QA_LEVEL_UP_BUFF_CARDS, tier: 2 });
-  assert.equal(noOrbBase.some(card => card.cardId === 'qa_orb_cadence_2'), false, 'behavior II stays grant-gated');
+  assert.equal(noOrbBase.some(card => card.cardId === 'spectral_orb_2'), false, 'behavior II stays grant-gated');
   for (const tier of [3, 4]) {
     const offer = buildLevelUpBuffOffer({ state: { heroes: {} }, heroId: 'fara-1', cards: QA_LEVEL_UP_BUFF_CARDS, progress: {}, rng: () => 0, tierWeights: { 1: 0, 2: 0, 3: tier === 3 ? 1 : 0, 4: tier === 4 ? 1 : 0 } });
     assert.equal(offer.status, 'offered');
     assert.equal(offer.tier, tier);
     assert.equal(offer.cards.length, 3);
-    assert.ok(offer.cards.every(card => card.tier === tier && card.kind === 'stat'));
+    assert.ok(offer.cards.every(card => card.tier === tier && ['stat', 'bargain'].includes(card.kind)));
   }
 });
 
 test('QA tier forcing drives the same gated offer builder after a real base grant', () => {
-  const initial = applyLevelUpBuffCard({ state: { heroes: {} }, heroId: 'fara-1', cardId: 'qa_atk_focus_1', cards: QA_LEVEL_UP_BUFF_CARDS });
+  const initial = applyLevelUpBuffCard({ state: { heroes: {} }, heroId: 'fara-1', cardId: 'dune_edge_1', cards: QA_LEVEL_UP_BUFF_CARDS });
   const globals = {
     time: 2, RuntimeRandom: () => 0, SessionLevelBuffState: initial.state,
     SessionLevelUpTierWeights: { 1: 0, 2: 1, 3: 0, 4: 0 },
@@ -138,12 +137,12 @@ test('QA tier forcing drives the same gated offer builder after a real base gran
   globals.time = 3;
   const offer = getSessionLevelUpBuffPresentation(globals, heroes);
   assert.equal(offer.offer.tier, 2);
-  assert.ok(offer.cards.some(card => card.cardId === 'qa_atk_focus_2'), 'the staged upgrade reaches the real deterministic offer');
+  assert.ok(offer.cards.some(card => card.cardId === 'dune_edge_2'), 'the staged upgrade reaches the real deterministic offer');
 });
 
 
 test('the QA-only offer pool still uses the production generator and exposes the requested same-tier fixture', () => {
-  const requested = QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'qa_power_bargain_1');
+  const requested = QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'sun_debt_1');
   const globals = {
     time: 2, RuntimeRandom: () => 0,
     SessionLevelUpTierWeights: { 1: 1, 2: 0, 3: 0, 4: 0 },

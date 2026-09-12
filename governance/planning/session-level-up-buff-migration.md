@@ -11,7 +11,7 @@ This contract records the approved product direction and guides later Beads. It 
 - **INTENDED:** Decisions approved by the owner during the September 2026 design review.
 - **OBSERVED:** Current or historical behavior found in the repository.
 - **REFERENCE:** Capybara Go progression patterns used to understand offer construction. Wishfire keeps its own setting, combat formulas, names, and presentation.
-- **UNTESTED:** Exact rarity odds, final card values, and session pacing remain subject to playtesting.
+- **UNTESTED:** Exact rarity odds, long-run pick rates, final encounter balance, and session pacing remain subject to playtesting.
 
 ## Rollback Checkpoint
 
@@ -23,6 +23,15 @@ This contract records the approved product direction and guides later Beads. It 
 - The checkpoint is not QA PASS or Integration Ready.
 - Migration epic: `ORKA-yie`, open at P1.
 - Beads command: use `/opt/homebrew/bin/bd` while the shell-default `0.56.1` binary remains incompatible with the `0.63.3` database.
+
+### Phase 5 rollback checkpoint
+
+- Accepted Phase 4 source branch: `bead/ORKA-yie.4-qa-archetype-mechanics`.
+- Verified commit: `e7a948175b644103f764bbfb86bc2d152bd97072`.
+- The Phase 5 worktree was created directly from that commit at
+  `.worktrees/wt-ORKA-yie.5-final-buff-pool` before any edits.
+- This commit remains the rollback point for the final pool lane. It is an
+  accepted Phase 4 checkpoint, not a Phase 5 QA or Integration Ready claim.
 
 ## Player Experience
 
@@ -386,6 +395,22 @@ QA cards are internal fixtures. Remove their temporary copy or convert them into
   exact values, tier placement, and upgrade stages.
 - Replace temporary QA terminology and reject any borrowed reference language.
 - Check that every tier can always form a valid three-card offer.
+
+Phase 5 is implemented in the shared catalog at
+[`src/core/sessionLevelBuffCatalog.mjs`](../../src/core/sessionLevelBuffCatalog.mjs)
+and documented in the [final pool reference](session-level-up-buff-pool.md).
+It contains 48 unique universal records, twelve per tier. Each tier contains
+six behavioral records and six stat-or-bargain fallbacks. Staged behavior
+upgrades require and replace the prior stage for the same hero. Staged stat
+cards can be selected directly at their tier and replace a lower owned stage.
+The final names and copy use Wishfire desert, spectral, and inner-flow
+language; temporary QA card identities are absent from the production pool.
+Magic Fruit remains outside this catalog as a story or NPC event reward.
+
+The canonical pool contract test covers counts, tier purity, ownership,
+eligibility, replacement, numeric copy, and proc limits. The deterministic
+snake-case adapter in `tools/export_session_level_up_buff_contract.mjs` was
+checked with `validate_card_skills.py` and returned `PASS`.
 
 ### Phase 6: Live Verification
 

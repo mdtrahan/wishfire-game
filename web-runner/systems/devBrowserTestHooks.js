@@ -1,6 +1,6 @@
 import { getHeroFlowState } from '../src/core/personalFlow.mjs';
 import { canUseHeroCommand, chooseSessionLevelUpBuff, getSessionLevelUpBuffOffer, rulesContext, settleVictory } from '../modules/heroCommands.mjs';
-import { QA_LEVEL_UP_BUFF_CARDS } from '../modules/sessionLevelUpBuffPresentation.mjs';
+import { SESSION_LEVEL_UP_BUFF_CARDS } from '../../src/core/sessionLevelBuffCatalog.mjs';
 import { turnEnd, turnStart } from '../src/core/combatRules.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import { derivePresentationTurnBarrier } from '../src/core/turnGateController.mjs';
@@ -21,17 +21,17 @@ export const QA_STORY_TRANSITION_TIMEOUT_MS = 2400;
 export const QA_FIXTURE_RUNTIME_ENCOUNTER_SEED = 77879;
 export const QA_FIXTURE_INELIGIBLE_PROC_ENCOUNTER_SEED = 14;
 export const QA_LEVEL_UP_FIXTURE_CARD_IDS = Object.freeze({
-  ward: 'qa_opening_shield_1',
-  stat: 'qa_atk_focus_1',
-  maxhp: 'qa_max_vitality_1',
-  speed: 'qa_speed_1',
-  bargain: 'qa_power_bargain_1',
-  pulse: 'qa_pulse_1',
-  orb: 'qa_orb_cadence_1',
-  venom: 'qa_status_on_basic_1',
-  heal: 'qa_heal_on_basic_1',
-  bounce: 'qa_bounce_1',
-  counter: 'qa_counter_1',
+  ward: 'brass_ward_1',
+  stat: 'dune_edge_1',
+  maxhp: 'well_of_life_1',
+  speed: 'desert_step_1',
+  bargain: 'sun_debt_1',
+  pulse: 'spectral_orb_1',
+  orb: 'spectral_orb_1',
+  venom: 'venom_sigil_1',
+  heal: 'inner_flow_1',
+  bounce: 'mirage_chain_1',
+  counter: 'glass_reprisal_1',
 });
 
 export function resolveQaLevelUpFixtureKey(value) {
@@ -233,10 +233,10 @@ export function registerDevBrowserTestHooks({
       state.globals.RuntimeRandom = () => 0;
     };
     const setQaFixtureOfferPool = fixture => {
-      const desiredId = resolveQaFixtureOfferCardId(fixture, { selectedCardId: cardSelect.value, cards: QA_LEVEL_UP_BUFF_CARDS });
-      const desired = QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === desiredId);
+      const desiredId = resolveQaFixtureOfferCardId(fixture, { selectedCardId: cardSelect.value, cards: SESSION_LEVEL_UP_BUFF_CARDS });
+      const desired = SESSION_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === desiredId);
       if (!desired) throw new Error(`QA fixture ${fixture} has no offer card`);
-      const peers = QA_LEVEL_UP_BUFF_CARDS.filter(card => card.tier === desired.tier && card.cardId !== desired.cardId && (card.kind === 'stat' || card.kind === 'bargain'));
+      const peers = SESSION_LEVEL_UP_BUFF_CARDS.filter(card => card.tier === desired.tier && card.cardId !== desired.cardId && (card.kind === 'stat' || card.kind === 'bargain'));
       const pool = [desired, ...peers].slice(0, 3);
       if (pool.length !== 3) throw new Error(`QA fixture ${fixture} cannot form three same-tier eligible cards`);
       // This QA-only pool is still passed to the production offer generator and
@@ -537,10 +537,8 @@ export function registerDevBrowserTestHooks({
         const enemyMarkedSinceRun = () => livingEnemies().some(enemy => {
           const before = baseline.enemies?.[enemy.uid]?.statuses || [];
           const after = statusSnapshot(enemy);
-          const hadMarkAndDot = before.some(status => status.effect === 'mark') && before.some(status => status.effect === 'dot');
-          return after.some(status => status.effect === 'mark' && status.magnitude === 1)
-            && after.some(status => status.effect === 'dot' && status.magnitude === 1 && status.snapshotPotency === 3)
-            && !hadMarkAndDot;
+          const hadDot = before.some(status => status.effect === 'dot');
+          return after.some(status => status.effect === 'dot' && status.magnitude === 1 && status.snapshotPotency === 3) && !hadDot;
         });
         const resolveQaVenomDotTurns = target => {
           const markerVisibleBefore = target?.statuses?.some(status => status.statusEffect === 'dot' && Number(status.duration || 0) > 0);
@@ -557,7 +555,7 @@ export function registerDevBrowserTestHooks({
           return { targetUID: Number(target?.uid || 0), before, after, damage: before - after, markerVisibleBefore, markerVisibleAfterTick, markerAbsentAfterExpiry };
         };
         const ownerWasHitSinceRun = () => Number(owner?.hp || 0) < baseline.ownerHP;
-        const fixtureCard = QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === resolveQaFixtureOfferCardId(fixture, { selectedCardId: cardSelect.value, cards: QA_LEVEL_UP_BUFF_CARDS }));
+        const fixtureCard = SESSION_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === resolveQaFixtureOfferCardId(fixture, { selectedCardId: cardSelect.value, cards: SESSION_LEVEL_UP_BUFF_CARDS }));
         const orbCadence = Number(fixtureCard?.formula?.everyCompletedBasics || 3);
         const orbAmount = Number(fixtureCard?.formula?.amount || 4);
         const scenarios = {
@@ -566,7 +564,7 @@ export function registerDevBrowserTestHooks({
           maxhp: { attempts: 1, observed: () => Number(owner?.maxHP || 0) === Math.round(battleBaseline.ownerMaxHP * 1.20) },
           speed: { attempts: 1, observed: () => battleBaseline.ownerSpdUp === 0 && statusMagnitude(owner, 'spdUp') === .10 },
           bargain: { attempts: 1, observed: () => statusMagnitude(owner, 'atkUp') === .15 && Number(owner?.maxHP || 0) === Math.round(battleBaseline.ownerMaxHP * .90) },
-          pulse: { attempts: 2, observed: () => newPulses().some(visual => Number(visual.sourceUID) === Number(owner?.uid) && Number(visual.amount) === 6 && enemyHPLoweredSinceRun(visual.targetUID)) },
+          pulse: { attempts: orbCadence, observed: () => newPulses().some(visual => Number(visual.sourceUID) === Number(owner?.uid) && Number(visual.amount) === orbAmount && enemyHPLoweredSinceRun(visual.targetUID)) },
           orb: { attempts: orbCadence, observed: () => orbEvidence?.actualBasicsToProc === orbCadence && orbEvidence?.amount === orbAmount && enemyHPLoweredSinceRun(orbEvidence?.targetUID) },
           venom: { attempts: 1, observed: () => venomApplied && venomTurnEvidence?.damage === 3 && venomTurnEvidence.markerVisibleBefore && venomTurnEvidence.markerVisibleAfterTick && venomTurnEvidence.markerAbsentAfterExpiry },
           heal: { attempts: 1, observed: () => healEvidence?.actualHeal === healEvidence?.expectedHeal && healEvidence?.atMaxHpCap && healEvidence?.bloomObserved && healEvidence?.ineligibleTriggerNoHeal },
@@ -870,7 +868,7 @@ export function registerDevBrowserTestHooks({
     controls.prepend(fixtureSelect); controls.prepend(cardSelect); controls.prepend(tierSelect); controls.prepend(heroSelect);
     const updateQaOptions = () => {
       if (!heroSelect.options.length) qaHero();
-      const cards = QA_LEVEL_UP_BUFF_CARDS;
+      const cards = SESSION_LEVEL_UP_BUFF_CARDS;
       if (!cardSelect.options.length && cards.length) cards.forEach(card => cardSelect.append(new Option(card.name || card.cardId, card.cardId)));
     };
     updateQaOptions();

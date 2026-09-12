@@ -6,6 +6,7 @@
 ## Ownership
 - Combat formulas, turn gates, scheduler rules, targeting, status effects, RNG, packet normalization, GameState envelope rules, input domains, and layout state primitives.
 - CommonJS entrypoints used by tests and compatibility surfaces.
+- `sessionLevelBuffCatalog.mjs` owns the final 48-card universal Wishfire session pool. Keep its typed numeric formulas, stage relationships, and player-facing copy aligned with `governance/planning/session-level-up-buff-pool.md`; `sessionLevelBuffOffers.mjs` owns eligibility and replacement resolution.
 
 ## Local Contracts
 - Keep rule modules deterministic and JSON-safe.

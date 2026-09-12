@@ -9,6 +9,7 @@
 - `functionBank.js` owns high-risk gameplay functions: turns, damage, gem actions, skill draw, enemy behavior, status effects, progression bridges, and Rust-owner packet routing.
 - `functionRegistry.js` owns context creation and function dispatch.
 - `mainSheet.js` and `skillSheet.js` own smaller Construct-era behavior surfaces used by the registry.
+- `sessionLevelUpBuffPresentation.mjs` consumes the shared production catalog and owns only level-up settlement, offer presentation, and selection routing. It must not define a second card pool.
 
 ## Local Contracts
 - `state.globals` is the live runtime envelope. New fields need a clear owner, reset/init behavior, tests, and debug/proof visibility when user-facing.
