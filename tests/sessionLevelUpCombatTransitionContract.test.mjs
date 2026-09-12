@@ -270,6 +270,13 @@ test('synthetic QA settlements hold scheduling until production is quiescent and
   });
   assert.equal(completed.ok, true, 'the hold waits for an in-flight hit to complete before settlement');
   assert.equal(inFlight.CurrentTurnUID, 7, 'the wait itself does not advance the scheduler');
+  const alreadyClear = await waitForQaSettlementQuiescence({
+    globals: { ActionInProgress: 0, IsPlayerBusy: 0, PendingHeroHits: [], presentationClear: true },
+    now: () => 0,
+    wait: async () => assert.fail('an already-clear settlement must not wait'),
+  });
+  assert.equal(alreadyClear.ok, true);
+  assert.equal(alreadyClear.elapsedMs, 0);
   const blocked = await waitForQaSettlementQuiescence({
     globals: { ActionInProgress: 1, IsPlayerBusy: 1, PendingHeroHits: [{ targetUID: 1 }], presentationClear: false },
     timeoutMs: 50,
@@ -279,6 +286,7 @@ test('synthetic QA settlements hold scheduling until production is quiescent and
   });
   assert.equal(blocked.ok, false);
   assert.equal(blocked.observed.presentationBlocker, 'text-animation');
+  assert.equal(blocked.observed.nativeBattleEnded, false);
 
   const heroes = [{ uid: 1, kind: 'hero', hp: 25 }, { uid: 2, kind: 'hero', hp: 40 }];
   const baseline = qaSettlementHeroHealthSnapshot(heroes);
@@ -289,7 +297,8 @@ test('synthetic QA settlements hold scheduling until production is quiescent and
   const hooks = read('web-runner/systems/devBrowserTestHooks.js');
   const settlement = hooks.slice(hooks.indexOf('const beginRewardSettlement'), hooks.indexOf('const beginQaFixtureOffer'));
   assert.match(settlement, /if \(!holdClaimed && !claimQaSettlementHold\(\)\)[\s\S]*const actionCompletion = await waitForQaSettlementQuiescence/);
-  assert.match(settlement, /QA synthetic settlement action completion timed out before a live settlement: \$\{JSON\.stringify\(actionCompletion\.observed\)\}/);
+  assert.match(settlement, /if \(!actionCompletion\.ok\)[\s\S]*QA synthetic settlement action completion timed out: \$\{JSON\.stringify\(actionCompletion\.observed\)\}/);
+  assert.match(settlement, /ProgressionBattle\?\.outcome === 'defeat' \|\| state\.globals\.ProgressionBattle\?\.defeatSettled/);
   assert.match(settlement, /const preSettlementState = qaSettlementRuntimeSnapshot\(\);[\s\S]*settleVictory\(fnContext\);[\s\S]*monitorQaSettlementHold\(\{ baselineHP: qaSettlementHeroHealthSnapshot\(state\.entities\), preSettlementState \}\)/);
   assert.match(hooks, /duringSettlement\.currentTurnUID !== preSettlementState\.currentTurnUID[\s\S]*duringSettlement\.damageTextCount > preSettlementState\.damageTextCount/);
   assert.match(hooks, /QaSettlementHoldReleaseCount = Number\(state\.globals\.QaSettlementHoldReleaseCount \|\| 0\) \+ 1/);

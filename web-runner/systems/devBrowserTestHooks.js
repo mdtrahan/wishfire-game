@@ -73,6 +73,10 @@ export function qaSettlementQuiescenceSnapshot(globals = {}) {
     pendingHeroHits: Array.isArray(globals.PendingHeroHits) ? globals.PendingHeroHits.length : 0,
     presentationClear: presentation.canAdvanceTurn,
     presentationBlocker: presentation.blockingLane,
+    turnPhase: Number(globals.TurnPhase || 0),
+    deferAdvance: !!globals.DeferAdvance,
+    nativeBattleEnded: !!globals.NativeBattleEnded,
+    progressionOutcome: String(globals.ProgressionBattle?.outcome || ''),
   };
   return { ok: !observed.actionInProgress && !observed.playerBusy && observed.pendingHeroHits === 0 && observed.presentationClear, observed };
 }
@@ -81,11 +85,13 @@ export async function waitForQaSettlementQuiescence({
   globals, timeoutMs = 3500, pollMs = 25,
   now = () => Date.now(), wait = ms => new Promise(resolve => setTimeout(resolve, ms)),
 } = {}) {
-  const startedAt = now(); let latest = qaSettlementQuiescenceSnapshot(globals);
+  const startedAt = now();
+  let latest = qaSettlementQuiescenceSnapshot(globals);
+  if (latest.ok) return { ok: true, elapsedMs: now() - startedAt, observed: latest.observed };
   while (now() - startedAt < timeoutMs) {
+    await wait(pollMs);
     latest = qaSettlementQuiescenceSnapshot(globals);
     if (latest.ok) return { ok: true, elapsedMs: now() - startedAt, observed: latest.observed };
-    await wait(pollMs);
   }
   latest = qaSettlementQuiescenceSnapshot(globals);
   return { ok: latest.ok, elapsedMs: now() - startedAt, observed: latest.observed };
@@ -378,9 +384,13 @@ export function registerDevBrowserTestHooks({
         globals: state.globals,
         wait: ms => new Promise(resolve => window.setTimeout(resolve, ms)),
       });
-      if (!actionCompletion.ok || state.globals.NativeBattleEnded) {
+      if (!actionCompletion.ok) {
         releaseQaSettlementHold();
-        throw new Error(`QA synthetic settlement action completion timed out before a live settlement: ${JSON.stringify(actionCompletion.observed)}`);
+        throw new Error(`QA synthetic settlement action completion timed out: ${JSON.stringify(actionCompletion.observed)}`);
+      }
+      if (state.globals.ProgressionBattle?.outcome === 'defeat' || state.globals.ProgressionBattle?.defeatSettled) {
+        releaseQaSettlementHold();
+        throw new Error(`QA synthetic settlement cannot begin after defeat: ${JSON.stringify(actionCompletion.observed)}`);
       }
       const preSettlementState = qaSettlementRuntimeSnapshot();
       const selected = qaHero();
