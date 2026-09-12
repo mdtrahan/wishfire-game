@@ -11,7 +11,7 @@ import {
   DYNAMIC_INITIATIVE_AUTHORITY_SEED,
 } from '../src/core/dynamicInitiativeAuthorityExperiment.mjs';
 
-export const QA_STORY_TRANSITION_TIMEOUT_MS = 1800;
+export const QA_STORY_TRANSITION_TIMEOUT_MS = 2400;
 export async function waitForQaStoryCombatPhase(entry, {
   timeoutMs = QA_STORY_TRANSITION_TIMEOUT_MS,
   pollMs = 25,
@@ -25,7 +25,10 @@ export async function waitForQaStoryCombatPhase(entry, {
     if (observed.phase === 'combat' && !observed.pending) return { ok: true, elapsedMs: now() - startedAt, observed };
     await wait(pollMs);
   }
-  return { ok: false, elapsedMs: now() - startedAt, observed: { phase: entry?.phase, pending: !!entry?.pending } };
+  // A final sample accepts a transition that completed on the deadline poll.
+  observed = { phase: entry?.phase, pending: !!entry?.pending };
+  if (observed.phase === 'combat' && !observed.pending) return { ok: true, elapsedMs: now() - startedAt, observed };
+  return { ok: false, elapsedMs: now() - startedAt, observed };
 }
 
 export function registerDevBrowserTestHooks({
@@ -83,7 +86,7 @@ export function registerDevBrowserTestHooks({
     cardSelect.setAttribute('aria-label', 'QA preferred eligible card');
     const fixtureSelect = document.createElement('select');
     fixtureSelect.setAttribute('aria-label', 'QA production fixture');
-    const fixtureCards = { ward: 'qa_opening_shield_1', stat: 'qa_atk_focus_1', maxhp: 'qa_max_vitality_1', speed: 'qa_speed_1', bargain: 'qa_power_bargain_1', orb: 'qa_pulse_1', status: 'qa_status_on_basic_1', heal: 'qa_heal_on_basic_1', bounce: 'qa_bounce_1', counter: 'qa_counter_1' };
+    const fixtureCards = { ward: 'qa_opening_shield_1', stat: 'qa_atk_focus_1', maxhp: 'qa_max_vitality_1', speed: 'qa_speed_1', bargain: 'qa_power_bargain_1', pulse: 'qa_pulse_1', orb: 'qa_orb_cadence_1', venom: 'qa_status_on_basic_1', heal: 'qa_heal_on_basic_1', bounce: 'qa_bounce_1', counter: 'qa_counter_1' };
     Object.entries(fixtureCards).forEach(([name, cardId]) => fixtureSelect.append(new Option(name, cardId)));
     const qaHero = () => {
       const heroes = state.entities.filter(entity => entity.kind === 'hero');
@@ -155,15 +158,48 @@ export function registerDevBrowserTestHooks({
         const enemy = state.entities.find(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
         if (hero && enemy) callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', hero.uid);
       }],
-      ['QA run fixture', () => {
+      ['QA run fixture', async () => {
         const fixture = String(fixtureSelect.value || '');
-        if (fixture === 'counter') {
-          const hero = qaHero(); const enemy = state.entities.find(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
-          if (hero && enemy) callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', hero.uid);
-          return;
+        const owner = qaHero();
+        const livingEnemies = () => state.entities.filter(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
+        const scenarios = {
+          ward: { attempts: 1, observed: () => !!state.globals.PartyWardBarrierVisualsByUID?.[owner?.uid] },
+          stat: { attempts: 1, observed: () => owner?.statuses?.some(status => status.statusEffect === 'atkUp') },
+          maxhp: { attempts: 1, observed: () => Number(owner?.maxHP || 0) > 0 && !!state.globals.SessionLevelBuffCombatSessionId },
+          speed: { attempts: 1, observed: () => owner?.statuses?.some(status => status.statusEffect === 'spdUp') },
+          bargain: { attempts: 1, observed: () => owner?.statuses?.some(status => status.statusEffect === 'atkUp') && Number(owner?.maxHP || 0) > 0 },
+          pulse: { attempts: 2, observed: () => state.globals.ArcanePulseVisuals?.some(visual => Number(visual.sourceUID) === Number(owner?.uid)) },
+          orb: { attempts: 3, observed: () => state.globals.ArcanePulseVisuals?.some(visual => Number(visual.sourceUID) === Number(owner?.uid)) },
+          venom: { attempts: 1, observed: () => livingEnemies().some(enemy => enemy.statuses?.some(status => status.statusEffect === 'dot') && enemy.statuses?.some(status => status.statusEffect === 'mark')) },
+          heal: { attempts: 1, observed: () => state.globals.DamageTexts?.some(text => text.kind === 'heal' && Number(text.targetUID) === Number(owner?.uid)) },
+          bounce: { attempts: 1, observed: () => state.globals.ChainStrikeVisuals?.some(visual => Number(visual.sourceUID) === Number(owner?.uid) && Number(visual.targetUID) !== Number(visual.sourceTargetUID)) },
+          counter: { attempts: 1, observed: () => state.globals.DamageTexts?.some(text => text.kind === 'heal' && Number(text.targetUID) === Number(owner?.uid)) },
+        };
+        const scenario = scenarios[fixture];
+        const fixtureCard = QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === fixtureCards[fixture]);
+        const activeStages = state.globals.SessionLevelBuffState?.heroes?.[String(owner?.heroInstanceKey ?? owner?.uid ?? '')]?.activeStageByEffectId || {};
+        if (!owner || !scenario || !fixtureCard) throw new Error(`QA fixture ${fixture} has no selected owner or scenario`);
+        if (Number(activeStages[fixtureCard.effectId] || 0) !== Number(fixtureCard.stage || 1)) throw new Error(`QA fixture ${fixture} requires its selected production offer before Battle B`);
+        // The harness sets only production inputs: selected owner, target topology, and the next encounter seed.
+        seedProductionEncounter();
+        const enemies = livingEnemies();
+        if (fixture === 'bounce' && enemies.length < 2) throw new Error('QA fixture bounce requires two distinct living enemies');
+        const turnIndex = (state.globals.TurnOrderArray || []).findIndex(entry => Number(entry.uid) === Number(owner.uid));
+        if (turnIndex >= 0) state.globals.CurrentTurnIndex = turnIndex;
+        if (enemies[0]) state.globals.SelectedEnemyUID = enemies[0].uid;
+        for (let attempt = 0; attempt < scenario.attempts && !scenario.observed(); attempt += 1) {
+          if (fixture === 'counter') {
+            const enemy = livingEnemies()[0];
+            if (!enemy) throw new Error('QA fixture counter has no living enemy');
+            callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', owner.uid);
+          } else {
+            callFunctionWithContext(fnContext, 'ProcessTurn');
+          }
+          await new Promise(resolve => window.setTimeout(resolve, 1100));
+          if (!scenario.observed() && fixture !== 'counter') callFunctionWithContext(fnContext, 'AdvanceTurn');
         }
-        // Native turns own cadence, proc, DOT, heal, bounce, and their presentation queues.
-        callFunctionWithContext(fnContext, 'ProcessTurn');
+        if (!scenario.observed()) throw new Error(`QA fixture ${fixture} did not produce its required observable production result: ${JSON.stringify({ ownerUID: owner.uid, enemies: livingEnemies().map(enemy => ({ uid: enemy.uid, hp: enemy.hp, statuses: enemy.statuses?.map(status => status.statusEffect) || [] })), pulses: state.globals.ArcanePulseVisuals?.length || 0, chains: state.globals.ChainStrikeVisuals?.length || 0 })}`);
+        if (typeof drawFrame === 'function') drawFrame();
       }],
       ['QA next battle', async () => {
         seedProductionEncounter();

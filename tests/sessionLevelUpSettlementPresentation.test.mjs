@@ -60,8 +60,9 @@ test('the queued hero alone receives one same-tier three-card QA offer and selec
 
 test('displayed canonical card ids select their own record and QA T2 grants replace the prior stage', () => {
   assert.equal(QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'qa_atk_focus_2').formula.percent, .18);
-  assert.deepEqual(QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'qa_pulse_1').formula, { surface: 'cadence_magic_damage', everyCompletedBasics: 3, amount: 4 });
-  assert.deepEqual(QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'qa_pulse_2').formula, { surface: 'cadence_magic_damage', everyCompletedBasics: 2, amount: 6 });
+  assert.deepEqual(QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'qa_pulse_1').formula, { surface: 'cadence_magic_damage', everyCompletedBasics: 2, amount: 6 });
+  assert.deepEqual(QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'qa_orb_cadence_1').formula, { surface: 'cadence_magic_damage', everyCompletedBasics: 3, amount: 4 });
+  assert.deepEqual(QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'qa_orb_cadence_2').formula, { surface: 'cadence_magic_damage', everyCompletedBasics: 2, amount: 6 });
   const state = { heroes: {} };
   const first = applyLevelUpBuffCard({ state, heroId: 'fara-1', cardId: 'qa_atk_focus_1', cards: QA_LEVEL_UP_BUFF_CARDS });
   assert.equal(first.status, 'applied');
@@ -70,8 +71,8 @@ test('displayed canonical card ids select their own record and QA T2 grants repl
   const upgraded = applyLevelUpBuffCard({ state: first.state, heroId: 'fara-1', cardId: eligible[0].id, cards: QA_LEVEL_UP_BUFF_CARDS });
   assert.equal(upgraded.replacedStage, 1);
   assert.equal(upgraded.state.heroes['fara-1'].activeStageByEffectId.qa_atk_focus, 2);
-  const orbFirst = applyLevelUpBuffCard({ state: upgraded.state, heroId: 'fara-1', cardId: 'qa_pulse_1', cards: QA_LEVEL_UP_BUFF_CARDS });
-  assert.equal(applyLevelUpBuffCard({ state: orbFirst.state, heroId: 'fara-1', cardId: 'qa_pulse_2', cards: QA_LEVEL_UP_BUFF_CARDS }).status, 'applied');
+  const orbFirst = applyLevelUpBuffCard({ state: upgraded.state, heroId: 'fara-1', cardId: 'qa_orb_cadence_1', cards: QA_LEVEL_UP_BUFF_CARDS });
+  assert.equal(applyLevelUpBuffCard({ state: orbFirst.state, heroId: 'fara-1', cardId: 'qa_orb_cadence_2', cards: QA_LEVEL_UP_BUFF_CARDS }).status, 'applied');
 });
 
 test('QA tier forcing drives the same gated offer builder after a real base grant', () => {

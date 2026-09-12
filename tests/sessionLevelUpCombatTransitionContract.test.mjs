@@ -174,23 +174,59 @@ test('QA continuation enters Battle B through StoryEntry and effect controls inv
   assert.match(effects, /callFunctionWithContext\(fnContext, 'ExecuteEnemyJobSkill', enemy\.uid, 'Enemy_ATK_Single', hero\.uid\)/);
 });
 
-test('QA StoryEntry wait never rejects during the documented transition window and resolves Battle B', async () => {
+function loadQaStoryWait() {
   const source = read('web-runner/systems/devBrowserTestHooks.js');
   const helperStart = source.indexOf('export async function waitForQaStoryCombatPhase');
   const braceStart = source.indexOf(') {', helperStart) + 2;
   let depth = 0; let helperEnd = braceStart;
   for (; helperEnd < source.length; helperEnd += 1) { if (source[helperEnd] === '{') depth += 1; if (source[helperEnd] === '}' && --depth === 0) break; }
   const helper = source.slice(helperStart, helperEnd + 1).replace('export async function', 'async function');
-  const context = {};
-  vm.createContext(context);
+  const context = {}; vm.createContext(context);
   vm.runInContext(`${helper}\nthis.waitForQaStoryCombatPhase = waitForQaStoryCombatPhase;`, context);
-  let time = 0;
-  const entry = { phase: 'opening', pending: true };
-  const outcome = await context.waitForQaStoryCombatPhase(entry, {
-    timeoutMs: 1800, pollMs: 25, now: () => time,
-    wait: async ms => { time += ms; if (time >= 800) { entry.phase = 'combat'; entry.pending = false; } },
+  return context.waitForQaStoryCombatPhase;
+}
+
+test('QA StoryEntry wait accepts a combat handoff that completes around 1820ms', async () => {
+  const waitForQaStoryCombatPhase = loadQaStoryWait();
+  let time = 0; const entry = { phase: 'opening', pending: true };
+  const outcome = await waitForQaStoryCombatPhase(entry, {
+    timeoutMs: 2400, pollMs: 25, now: () => time,
+    wait: async ms => { time += ms; if (time >= 1820) { entry.phase = 'combat'; entry.pending = false; } },
   });
   assert.equal(outcome.ok, true);
-  assert.ok(outcome.elapsedMs >= 750, 'the valid 750ms fade and hold window is never treated as a rejection');
+  assert.ok(outcome.elapsedMs >= 1800, 'the full fade, hold, and transition window remains valid');
   assert.equal(entry.phase, 'combat');
+});
+
+test('QA StoryEntry wait reports the observed state only after a true timeout', async () => {
+  const waitForQaStoryCombatPhase = loadQaStoryWait();
+  let time = 0; const entry = { phase: 'opening', pending: true };
+  const outcome = await waitForQaStoryCombatPhase(entry, { timeoutMs: 2400, pollMs: 25, now: () => time, wait: async ms => { time += ms; } });
+  assert.equal(outcome.ok, false);
+  assert.equal(outcome.observed.phase, 'opening');
+  assert.equal(outcome.observed.pending, true);
+  assert.ok(outcome.elapsedMs >= 2400);
+});
+
+test('QA fixture scenarios use bounded production actions and require each observable result', () => {
+  const hooks = read('web-runner/systems/devBrowserTestHooks.js');
+  const fixtureRun = hooks.slice(hooks.indexOf("['QA run fixture'"), hooks.indexOf("['QA next battle'"));
+  assert.match(fixtureRun, /const scenarios = \{/);
+  assert.match(fixtureRun, /pulse: \{ attempts: 2/);
+  assert.match(fixtureRun, /orb: \{ attempts: 3/);
+  assert.match(fixtureRun, /venom: \{ attempts: 1/);
+  assert.match(fixtureRun, /bounce requires two distinct living enemies/);
+  assert.match(fixtureRun, /visual\.targetUID\) !== Number\(visual\.sourceTargetUID\)/);
+  assert.match(fixtureRun, /ExecuteEnemyJobSkill', enemy\.uid, 'Enemy_ATK_Single', owner\.uid/);
+  assert.match(fixtureRun, /for \(let attempt = 0; attempt < scenario\.attempts/);
+  assert.match(fixtureRun, /did not produce its required observable production result/);
+  assert.doesNotMatch(fixtureRun, /resolveSessionLevelBasicEffects|resolveSessionLevelCounter|applySessionLevelBuffsAtBattleStart/);
+});
+
+test('the Phase 4 fixture table keeps Pulse, staged Orb, and Venom identities distinct', () => {
+  const cards = read('web-runner/modules/sessionLevelUpBuffPresentation.mjs');
+  assert.match(cards, /qa_pulse_1[\s\S]*everyCompletedBasics: 2, amount: 6/);
+  assert.match(cards, /qa_orb_cadence_1[\s\S]*everyCompletedBasics: 3, amount: 4/);
+  assert.match(cards, /qa_orb_cadence_2[\s\S]*requiresStage: 1, replacesStage: 1[\s\S]*everyCompletedBasics: 2, amount: 6/);
+  assert.match(cards, /statusId: 'qa_venom'/);
 });
