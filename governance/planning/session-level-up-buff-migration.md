@@ -149,7 +149,7 @@ provide every numeric input it needs.
 | `status_on_basic` | `chance`, `statusId`, `durationTurns`, `damagePerTurn` | On a completed owner basic attack, a roll below `chance` applies the status to `trigger_target`. |
 | `cadence_magic_damage` | `everyCompletedBasics`, `amount` | After each multiple of `everyCompletedBasics` completed owner basic attacks, deal `amount` magic damage to `trigger_target`. |
 | `bounce_percent_damage` | `chance`, `damagePercent` | After a completed owner basic attack, a roll below `chance` deals `round(resolvedTriggerDamage * damagePercent)` physical damage to the next distinct living enemy in the established deterministic target order; no living second target means no bounce. |
-| `counter_percent_atk` | `chance`, `damagePercent`, `maxPerDamagePackage` | When the owner receives a direct enemy damage package with a source, a roll below `chance` deals `round(owner.atk * damagePercent)` physical damage to its source. A `session_level_buff` counter package cannot trigger another counter. |
+| `counter_percent_atk` | `chance`, `damagePercent`, `healPercentMaxHp`, `maxPerDamagePackage` | When the owner receives a direct enemy damage package with a source, a roll below `chance` deals `round(owner.atk * damagePercent)` physical damage to its source, then heals the owner for `round(owner.maxHp * healPercentMaxHp)`. A `session_level_buff` counter package cannot trigger another counter. |
 | `bargain_percent` | `benefitStat`, `benefitPercent`, `penaltyStat`, `penaltyPercent` | Apply both `stat_percent` modifiers under one effectId; each stage replaces both values together. |
 
 Rounding uses the runtime's existing combat rounding helper. Phase 2 must call
@@ -172,6 +172,24 @@ normalizedProgress = clamp(completedMilestones / totalMilestonesToFinalBoss, 0, 
 values and rarity curve are intentionally uncommitted until playtesting. The
 selector must record the rolled tier and use only that tier for one offer.
 
+```text
+deterministicTierAttempts(progress, rng):
+  remaining = [1, 2, 3, 4]
+  while remaining is not empty:
+    weights = nonNegative(tierWeights(progress)) restricted to remaining
+    if sum(weights) > 0:
+      tier = weightedSample(remaining, weights, rng)
+    else:
+      tier = lowest(remaining)
+    yield tier
+    remove tier from remaining
+```
+
+The first yielded tier is the weighted sample. When that tier cannot form an
+offer, remove it and deterministically weighted-resample only among untried
+tiers. If every remaining weight is zero, use ascending-tier fallback. After
+four distinct failed tiers, return `offerUnavailable`.
+
 ### Per-Hero State and Eligibility
 
 Session state is keyed by hero instance identity, never party-wide identity:
@@ -190,7 +208,7 @@ buildOffer(hero, progress, rng):
     behavioral = shuffle(eligibleBehavioral(hero, tier), rng)
     chosen = takeFirstDistinct(behavioral, 3)
     if chosen.length < 3:
-      fallback = shuffle(eligibleIndependentStatsOrBargains(hero, tier), rng)
+      fallback = shuffle(eligibleStatsOrBargains(hero, tier), rng)
       chosen += takeFirstDistinct(excluding chosen, fallback, 3 - chosen.length)
     if chosen.length == 3:
       return { tier, cards: chosen }
@@ -203,10 +221,15 @@ eligibleBehavioral(hero, card):
      and required == owned
      and card.stage == owned + 1
 
-eligibleIndependentStatsOrBargains(hero, card):
+eligibleStatsOrBargains(hero, card):
+  owned = heroSessionBuffs[hero.id].activeStageByEffectId[card.effectId] ?? 0
+  required = card.requiresStage ?? 0
   return card.kind in {stat, bargain}
-     and card.requiresStage == null
      and card.effectId not in heroSessionBuffs[hero.id].completedEffectIds
+     and ((card.requiresStage == null and owned == 0 and card.stage == 1)
+       or (card.requiresStage != null
+         and required == owned
+         and card.stage == owned + 1))
 
 apply(hero, card):
   remove card.replacesStage for card.effectId from hero state
@@ -222,9 +245,11 @@ and a failed tier rerolls as a whole. If all four tier attempts are
 unavailable, return `offerUnavailable`; never downgrade one slot or fabricate
 a duplicate.
 
-Direct-stat cards with `requiresStage: null` are independently eligible
-fallbacks. A later stat-stage card may use `requiresStage` and replacement
-semantics when Phase 5 explicitly defines it.
+Pure stat-or-bargain cards with `requiresStage: null` are independently
+eligible fallbacks at any tier. A staged stat-or-bargain card uses the same
+next-stage rule as a behavioral upgrade, so `qa_atk_focus` stage 2 is eligible
+only for the hero who owns its stage 1. That constraint never gates the pure
+same-tier fallbacks.
 
 ### Neutral QA Fixtures
 
@@ -240,7 +265,7 @@ or the completed 48-card pool.
 | `qa_status_on_basic` | T1 stage 1 | `status_on_basic(chance: 0.20, statusId: qa_venom, durationTurns: 2, damagePerTurn: 3)` |
 | `qa_pulse` | T1 stage 1 | `cadence_magic_damage(everyCompletedBasics: 2, amount: 6)` |
 | `qa_bounce` | T1 stage 1 | `bounce_percent_damage(chance: 0.25, damagePercent: 0.50)` |
-| `qa_counter` | T1 stage 1 | `counter_percent_atk(chance: 0.20, damagePercent: 0.40, maxPerDamagePackage: 1)` |
+| `qa_counter` | T1 stage 1 | `counter_percent_atk(chance: 0.20, damagePercent: 0.40, healPercentMaxHp: 0.03, maxPerDamagePackage: 1)` |
 | `qa_power_bargain` | T1 stage 1 | `bargain_percent(benefitStat: atk, benefitPercent: 0.15, penaltyStat: max_hp, penaltyPercent: -0.10)` |
 | `qa_orb_cadence` | T1 stage 1; T2 stage 2 requires 1, replaces 1 | `cadence_magic_damage(everyCompletedBasics: 3, amount: 4)` then `cadence_magic_damage(everyCompletedBasics: 2, amount: 6)` |
 
@@ -251,7 +276,9 @@ state and automatic trigger context; they never alter another hero's buff
 state. Buffs expire when the current adventure session ends, is abandoned, or
 restarts. Battle end preserves them only when the adventure continues. Magic
 Fruit is an encounter reward with existing healing behavior and does not enter
-this state, offer builder, tier roll, or level-up queue.
+this state, offer builder, tier roll, or level-up queue. That event-only rule
+applies to Magic Fruit acquisition only; level-up buffs may heal or restore
+health through their own automatic formulas.
 
 ## Historical Wishfire Reuse
 
