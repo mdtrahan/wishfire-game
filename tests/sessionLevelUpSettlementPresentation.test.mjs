@@ -34,12 +34,16 @@ test('a crossed threshold fills one bar, resets that bar, carries its exact rema
   globals.time = .30;
   assert.equal(getSessionLevelUpBuffPresentation(globals, heroes).awaitingEXP, true);
   globals.time = .70;
-  assert.equal(getSessionLevelUpBuffPresentation(globals, heroes).open, true);
+  assert.equal(getSessionLevelUpBuffPresentation(globals, heroes).dancing, true, 'the actual owner dance begins after EXP finishes');
+  globals.time = 1.10;
+  assert.equal(getSessionLevelUpBuffPresentation(globals, heroes).open, true, 'cards reveal after the dance completes');
 });
 
 test('the queued hero alone receives one same-tier three-card QA offer and selection advances the queue', () => {
-  const globals = { RuntimeRandom: () => 0, SessionLevelUpQueue: { status: 'active', paused: false, currentIndex: 0, entries: [{ heroId: 'fara-1', heroUID: 1, earnedLevel: 2 }, { heroId: 'hondo-2', heroUID: 2, earnedLevel: 2 }] } };
+  const globals = { time: 1, RuntimeRandom: () => 0, SessionLevelUpTierWeights: { 1: 1, 2: 0, 3: 0, 4: 0 }, SessionLevelUpQueue: { status: 'active', paused: false, currentIndex: 0, entries: [{ heroId: 'fara-1', heroUID: 1, earnedLevel: 2 }, { heroId: 'hondo-2', heroUID: 2, earnedLevel: 2 }] } };
   beginSessionLevelUpSettlement(globals, [], heroes, 0);
+  getSessionLevelUpBuffPresentation(globals, heroes);
+  globals.time = 2;
   const offer = getSessionLevelUpBuffPresentation(globals, heroes);
   assert.equal(offer.open, true);
   assert.equal(offer.heroUID, 1);
@@ -55,6 +59,9 @@ test('the queued hero alone receives one same-tier three-card QA offer and selec
 });
 
 test('displayed canonical card ids select their own record and QA T2 grants replace the prior stage', () => {
+  assert.equal(QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'qa_atk_focus_2').formula.percent, .18);
+  assert.deepEqual(QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'qa_pulse_1').formula, { surface: 'cadence_magic_damage', everyCompletedBasics: 3, amount: 4 });
+  assert.deepEqual(QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'qa_pulse_2').formula, { surface: 'cadence_magic_damage', everyCompletedBasics: 2, amount: 6 });
   const state = { heroes: {} };
   const first = applyLevelUpBuffCard({ state, heroId: 'fara-1', cardId: 'qa_atk_focus_1', cards: QA_LEVEL_UP_BUFF_CARDS });
   assert.equal(first.status, 'applied');
@@ -65,4 +72,19 @@ test('displayed canonical card ids select their own record and QA T2 grants repl
   assert.equal(upgraded.state.heroes['fara-1'].activeStageByEffectId.qa_atk_focus, 2);
   const orbFirst = applyLevelUpBuffCard({ state: upgraded.state, heroId: 'fara-1', cardId: 'qa_pulse_1', cards: QA_LEVEL_UP_BUFF_CARDS });
   assert.equal(applyLevelUpBuffCard({ state: orbFirst.state, heroId: 'fara-1', cardId: 'qa_pulse_2', cards: QA_LEVEL_UP_BUFF_CARDS }).status, 'applied');
+});
+
+test('QA tier forcing drives the same gated offer builder after a real base grant', () => {
+  const initial = applyLevelUpBuffCard({ state: { heroes: {} }, heroId: 'fara-1', cardId: 'qa_atk_focus_1', cards: QA_LEVEL_UP_BUFF_CARDS });
+  const globals = {
+    time: 2, RuntimeRandom: () => 0, SessionLevelBuffState: initial.state,
+    SessionLevelUpTierWeights: { 1: 0, 2: 1, 3: 0, 4: 0 },
+    SessionLevelUpQueue: { status: 'active', paused: false, currentIndex: 0, entries: [{ heroId: 'fara-1', heroUID: 1, earnedLevel: 3 }] },
+  };
+  beginSessionLevelUpSettlement(globals, [], heroes, 0);
+  getSessionLevelUpBuffPresentation(globals, heroes);
+  globals.time = 3;
+  const offer = getSessionLevelUpBuffPresentation(globals, heroes);
+  assert.equal(offer.offer.tier, 2);
+  assert.ok(offer.cards.some(card => card.cardId === 'qa_atk_focus_2'), 'the staged upgrade reaches the real deterministic offer');
 });

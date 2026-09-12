@@ -1,4 +1,7 @@
 import { getHeroFlowState } from '../src/core/personalFlow.mjs';
+import { chooseSessionLevelUpBuff, getSessionLevelUpBuffOffer, settleVictory } from '../modules/heroCommands.mjs';
+import { QA_LEVEL_UP_BUFF_CARDS } from '../modules/sessionLevelUpBuffPresentation.mjs';
+import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import {
   DYNAMIC_INITIATIVE_AUTHORITY_BATTLE_ID,
   DYNAMIC_INITIATIVE_AUTHORITY_EXPERIMENT_ID,
@@ -54,6 +57,40 @@ export function registerDevBrowserTestHooks({
     const controls = document.createElement('div');
     controls.setAttribute('aria-label', 'Quest QA');
     controls.style.cssText = 'position:fixed;top:4px;left:4px;z-index:10001;display:flex;gap:4px';
+    const heroSelect = document.createElement('select');
+    heroSelect.setAttribute('aria-label', 'QA level-up hero');
+    const tierSelect = document.createElement('select');
+    tierSelect.setAttribute('aria-label', 'QA offer tier');
+    for (const tier of [1, 2, 3, 4]) tierSelect.append(new Option(`Tier ${tier}`, String(tier)));
+    const cardSelect = document.createElement('select');
+    cardSelect.setAttribute('aria-label', 'QA preferred eligible card');
+    const qaHero = () => {
+      const heroes = state.entities.filter(entity => entity.kind === 'hero');
+      if (!heroSelect.options.length) heroes.forEach(hero => heroSelect.append(new Option(hero.name || hero.baseHeroName || String(hero.uid), String(hero.uid))));
+      return heroes.find(hero => Number(hero.uid) === Number(heroSelect.value)) || heroes[0] || null;
+    };
+    const setTierAndCard = () => {
+      const tier = Number(tierSelect.value || 1);
+      state.globals.SessionLevelUpTierWeights = { 1: tier === 1 ? 1 : 0, 2: tier === 2 ? 1 : 0, 3: tier === 3 ? 1 : 0, 4: tier === 4 ? 1 : 0 };
+      state.globals.SessionLevelUpPreferredCardId = String(cardSelect.value || '');
+      state.globals.RuntimeRandom = () => 0;
+    };
+    const beginRewardSettlement = ({ overflow = false, multiHero = false } = {}) => {
+      const selected = qaHero(); if (!selected) return;
+      setTierAndCard();
+      const participants = multiHero ? state.entities.filter(entity => entity.kind === 'hero') : [selected];
+      for (const hero of participants) {
+        hero.currentEXP = overflow ? 0 : 47;
+        hero.EXPToNextLevel = 100;
+      }
+      const reward = overflow ? 280 : 80;
+      const battleId = `quest-qa-level-up-${Date.now()}`;
+      state.globals.NativeBattleEnded = true;
+      state.globals.ProgressionBattle = { id: battleId, participants: participants.map(hero => hero.heroInstanceKey || hero.baseHeroName || hero.name), defeated: { qa_reward: reward }, defeatedGold: {}, settled: false };
+      // This is the production EXP settlement path. Controls only seed its battle input.
+      settleVictory(fnContext);
+      if (typeof drawFrame === 'function') drawFrame();
+    };
     for (const [label, action] of [
       ['QA start combat', () => {
         if (typeof storyEntry.startCombatForQA !== 'function') return;
@@ -74,28 +111,29 @@ export function registerDevBrowserTestHooks({
         const hero = state.entities.find(e => e.kind === 'hero'); if (!hero) return;
         hero.hp = Math.floor(Number(hero.maxHP || 1) * .25); callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
       }],
-      ['QA level-up Hondo', () => {
-        const hero = state.entities.find(e => e.kind === 'hero' && (e.baseHeroName === 'Huun' || e.name === 'Huun')); if (!hero) return;
-        const id = String(hero.heroInstanceKey || hero.uid); state.globals.SessionLevelBuffState = { heroes: {} };
-        state.globals.SessionLevelUpQueue = { version: 1, status: 'active', paused: false, currentIndex: 0, entries: [{ heroId: id, heroUID: hero.uid, earnedLevel: Number(hero.currentLevel || 1) + 1 }] };
-        state.globals.SessionLevelUpSettlement = { phase: 'active', startedAt: Number(state.globals.time || 0) - 2, fadeOutStartedAt: 0, rows: [{ heroId: id, heroUID: hero.uid, gainedEXP: 80, beforeEXP: 47, afterEXP: 27, expToNext: 100, fromLevel: Number(hero.currentLevel || 1), toLevel: Number(hero.currentLevel || 1) + 1 }] };
-        state.globals.RuntimeRandom = () => 0;
+      ['QA EXP 47+80', () => beginRewardSettlement()],
+      ['QA overflow EXP', () => beginRewardSettlement({ overflow: true })],
+      ['QA multi-hero EXP', () => beginRewardSettlement({ multiHero: true })],
+      ['QA choose preferred', () => {
+        const offer = getSessionLevelUpBuffOffer(fnContext);
+        const selected = offer.cards?.find(card => card.cardId === cardSelect.value) || offer.cards?.[0];
+        if (selected) chooseSessionLevelUpBuff(fnContext, selected.cardId);
         if (typeof drawFrame === 'function') drawFrame();
       }],
-      ['QA orb II', () => {
-        const hero = state.entities.find(e => e.kind === 'hero' && (e.baseHeroName === 'Huun' || e.name === 'Huun')); if (!hero) return;
-        const id = String(hero.heroInstanceKey || hero.uid); state.globals.SessionLevelBuffState = { heroes: { [id]: { activeStageByEffectId: { qa_pulse: 2 }, triggerCountersByEffectId: {}, completedEffectIds: [] } } }; state.globals.RuntimeRandom = () => 0;
-        if (typeof drawFrame === 'function') drawFrame();
-      }],
-      ['QA ATK II', () => {
-        const hero = state.entities.find(e => e.kind === 'hero' && (e.baseHeroName === 'Huun' || e.name === 'Huun')); if (!hero) return;
-        const id = String(hero.heroInstanceKey || hero.uid); state.globals.SessionLevelBuffState = { heroes: { [id]: { activeStageByEffectId: { qa_atk_focus: 2 }, triggerCountersByEffectId: {}, completedEffectIds: [] } } };
-        if (typeof drawFrame === 'function') drawFrame();
-      }],
+      ['QA native basic', () => callFunctionWithContext(fnContext, 'ProcessTurn')],
+      ['QA fresh session', () => { resetCombatSessionConditions(state.globals, {}); if (typeof drawFrame === 'function') drawFrame(); }],
+      ['QA abandon', () => { if (typeof storyEntry.navigate === 'function') storyEntry.navigate('town'); }],
     ]) {
       const button = document.createElement('button'); button.textContent = label;
       button.addEventListener('click', action); controls.append(button);
     }
+    controls.prepend(cardSelect); controls.prepend(tierSelect); controls.prepend(heroSelect);
+    const updateQaOptions = () => {
+      if (!heroSelect.options.length) qaHero();
+      const cards = QA_LEVEL_UP_BUFF_CARDS;
+      if (!cardSelect.options.length && cards.length) cards.forEach(card => cardSelect.append(new Option(card.name || card.cardId, card.cardId)));
+    };
+    updateQaOptions();
     document.body.append(controls);
   }
   window.render_game_to_text = () => {

@@ -39,13 +39,17 @@ test('Spectral Orb, status, heal, and chain each produce an owner-scoped materia
   ctx.state.entities.push(secondEnemy);
   actor.hp = 50;
   resolveSessionLevelBasicEffects(ctx, rules, actor, [target.uid]);
-  const afterFirst = target.hp;
   resolveSessionLevelBasicEffects(ctx, rules, actor, [target.uid]);
-  assert.ok(target.hp < afterFirst, 'the second native basic fires Spectral Orb and chain damage');
+  const afterSecond = target.hp;
+  resolveSessionLevelBasicEffects(ctx, rules, actor, [target.uid]);
+  assert.ok(target.hp < afterSecond, 'the third native basic fires the T1 Spectral Orb cadence');
   assert.ok(actor.hp > 50, 'Inner Flow heals its owner through the shared heal resolver');
   assert.ok(target.statuses.some(status => status.statusEffect === 'mark') && target.statuses.some(status => status.statusEffect === 'dot' && status.snapshotPotency === 3), 'Saffron Mark reuses the readable marker and standard DOT payload');
   assert.equal(ctx.state.globals.ArcanePulseVisuals.length, 1);
+  assert.equal(ctx.state.globals.ArcanePulseVisuals[0].targetUID, target.uid);
+  assert.equal(ctx.state.globals.ArcanePulseVisuals[0].shape, 'crescent_arc_blast');
   assert.equal(ctx.state.globals.ChainStrikeVisuals.at(-1).targetUID, 10);
+  assert.equal(ctx.state.globals.ChainStrikeVisuals.at(-1).sourceTargetUID, target.uid);
 });
 
 test('Mirage Chain has no same-target fallback when only one enemy survives', () => {

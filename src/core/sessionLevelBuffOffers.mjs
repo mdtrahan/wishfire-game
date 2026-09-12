@@ -164,16 +164,25 @@ export function getEligibleLevelUpBuffCards({ state, heroId, cards, tier } = {})
   return canonicalCards(cards).filter(card => card.tier === tier && isEligibleCard(card, heroState));
 }
 
-export function buildLevelUpBuffOffer({ state, heroId, cards, progress, rng, tierWeights } = {}) {
+export function buildLevelUpBuffOffer({ state, heroId, cards, progress, rng, tierWeights, preferredCardId = '' } = {}) {
   const normalizedCards = canonicalCards(cards);
   const attemptedTiers = [];
   for (const tier of tierAttemptIterator(progress, rng, tierWeights)) {
     attemptedTiers.push(tier);
     const eligible = getEligibleLevelUpBuffCards({ state, heroId, cards: normalizedCards, tier });
-    const behavior = shuffle(eligible.filter(card => card.kind === 'behavior'), rng);
+    const preferred = eligible.find(card => card.cardId === preferredCardId) || null;
+    const preferredPool = cards => preferred && cards.some(card => card.cardId === preferred.cardId)
+      ? [preferred, ...cards.filter(card => card.cardId !== preferred.cardId)]
+      : cards;
+    const behavior = preferred && preferred.kind === 'behavior'
+      ? [preferred, ...shuffle(eligible.filter(card => card.kind === 'behavior' && card.cardId !== preferred.cardId), rng)]
+      : shuffle(preferredPool(eligible.filter(card => card.kind === 'behavior')), rng);
     const offeredCards = behavior.slice(0, OFFER_SIZE);
     if (offeredCards.length < OFFER_SIZE) {
-      const fallbacks = shuffle(eligible.filter(card => card.kind === 'stat' || card.kind === 'bargain'), rng);
+      const fallbackCards = eligible.filter(card => (card.kind === 'stat' || card.kind === 'bargain') && card.cardId !== preferred?.cardId);
+      const fallbacks = preferred && (preferred.kind === 'stat' || preferred.kind === 'bargain')
+        ? [preferred, ...shuffle(fallbackCards, rng)]
+        : shuffle(fallbackCards, rng);
       offeredCards.push(...fallbacks.slice(0, OFFER_SIZE - offeredCards.length));
     }
     if (offeredCards.length === OFFER_SIZE) {

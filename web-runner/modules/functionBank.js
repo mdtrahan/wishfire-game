@@ -18,6 +18,7 @@ import {
   createEnemyTurnGateBaseline,
   createHeroTurnGateBaseline,
   createYellowSafetyNet,
+  hasSessionLevelUpPresentationBarrier,
 } from '../src/core/turnGateController.mjs';
 import {
   TURN_ACTOR_ELIGIBILITY_ACT,
@@ -9959,6 +9960,17 @@ export function ProcessTurn(ctx) {
   const actor = GetActorByUID(ctx, uid);
   const g = getGlobals(ctx);
 
+  if (hasSessionLevelUpPresentationBarrier(g)) {
+    logActionGateBlock(g, '[ACTION_GATE_BLOCK]', {
+      source: 'ProcessTurn',
+      reason: 'session-level-up-presentation',
+      uid,
+      queueStatus: String(g.SessionLevelUpQueue?.status || 'complete'),
+      settlementPhase: String(g.SessionLevelUpSettlement?.phase || ''),
+      time: Number(g.time || 0),
+    });
+    return;
+  }
 
   resolvePendingEnemyDeaths(ctx);
   if (holdForEnemyRosterRefill(ctx)) return;

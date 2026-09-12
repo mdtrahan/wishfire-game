@@ -23,6 +23,13 @@ export function isCanPickGemsReady(value) {
   return Number(value) === 1;
 }
 
+// EXP settlement, the queued dance, and the player choice are one presentation
+// boundary. The scheduler must not resolve another actor until it has faded out.
+export function hasSessionLevelUpPresentationBarrier(globals = {}) {
+  return globals?.SessionLevelUpQueue?.status === 'active'
+    || !!globals?.SessionLevelUpSettlement;
+}
+
 export function derivePresentationTurnBarrier({
   globals = {},
   refillBounce = null,
@@ -36,6 +43,7 @@ export function derivePresentationTurnBarrier({
     ? globals.PendingHeroHits.length > 0
     : !!globals.PendingHeroHits;
   const lanes = {
+    levelUpSettlement: hasSessionLevelUpPresentationBarrier(globals),
     boardFill: false,
     refillBounce: false,
     yellowCasino: false,
@@ -51,6 +59,7 @@ export function derivePresentationTurnBarrier({
   };
   const skillDraughtPending = lanes.skillDraughtPending;
   const orderedLaneNames = [
+    ['level-up-settlement', lanes.levelUpSettlement],
     ['board-fill', lanes.boardFill],
     ['refill-bounce', lanes.refillBounce],
     ['yellow-casino', lanes.yellowCasino],

@@ -19,6 +19,7 @@ import {
 } from '../web-runner/modules/heroCommands.mjs';
 import { createHeroProgressStore, newHeroProgress } from '../web-runner/src/core/heroProgression.mjs';
 import { resetCombatSessionConditions } from '../web-runner/systems/combatSessionReset.mjs';
+import { hasSessionLevelUpPresentationBarrier } from '../web-runner/src/core/turnGateController.mjs';
 
 const read = file => fs.readFileSync(path.join(process.cwd(), file), 'utf8');
 
@@ -109,6 +110,15 @@ test('combat completion waits for the queue seam and resets its state for a fres
   const reset = read('web-runner/systems/combatSessionReset.mjs');
   assert.match(source, /SessionLevelUpQueue\?\.status !== 'active'/);
   assert.match(reset, /SessionLevelUpQueue: \{ version: 1, status: 'complete'/);
+});
+
+test('shared ProcessTurn boundary holds every scheduler path while settlement or an offer is active', () => {
+  const source = read('web-runner/modules/functionBank.js');
+  assert.equal(hasSessionLevelUpPresentationBarrier({ SessionLevelUpQueue: { status: 'active' } }), true);
+  assert.equal(hasSessionLevelUpPresentationBarrier({ SessionLevelUpSettlement: { phase: 'fadeOut' } }), true);
+  assert.equal(hasSessionLevelUpPresentationBarrier({ SessionLevelUpQueue: { status: 'complete' } }), false);
+  const processTurn = source.slice(source.indexOf('export function ProcessTurn(ctx)'), source.indexOf('function isBoardFullyPopulatedForEnemyMutation'));
+  assert.match(processTurn, /hasSessionLevelUpPresentationBarrier\(g\)[\s\S]*return;[\s\S]*resolvePendingEnemyDeaths\(ctx\)/);
 });
 
 test('fresh-session reset clears level buffs, offers, settlement, and queue state', () => {
