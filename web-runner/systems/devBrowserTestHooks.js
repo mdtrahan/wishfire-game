@@ -1,6 +1,7 @@
 import { getHeroFlowState } from '../src/core/personalFlow.mjs';
-import { canUseHeroCommand, chooseSessionLevelUpBuff, getSessionLevelUpBuffOffer, settleVictory } from '../modules/heroCommands.mjs';
+import { canUseHeroCommand, chooseSessionLevelUpBuff, getSessionLevelUpBuffOffer, rulesContext, settleVictory } from '../modules/heroCommands.mjs';
 import { QA_LEVEL_UP_BUFF_CARDS } from '../modules/sessionLevelUpBuffPresentation.mjs';
+import { turnEnd, turnStart } from '../src/core/combatRules.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import { derivePresentationTurnBarrier } from '../src/core/turnGateController.mjs';
 import {
@@ -506,10 +507,26 @@ export function registerDevBrowserTestHooks({
             && after.some(status => status.effect === 'dot' && status.magnitude === 1 && status.snapshotPotency === 3)
             && !hadMarkAndDot;
         });
+        const resolveQaVenomDotTurns = target => {
+          const markerVisibleBefore = target?.statuses?.some(status => status.statusEffect === 'dot' && Number(status.duration || 0) > 0);
+          const before = Number(target?.hp || 0);
+          const firstSerial = Math.max(Number(target?.combatTurnSerial || 0), Number(state.globals.TurnSerial || 0)) + 1;
+          turnStart(rulesContext(fnContext), target, firstSerial);
+          const after = Number(target?.hp || 0);
+          turnEnd(target);
+          const markerVisibleAfterTick = target?.statuses?.some(status => status.statusEffect === 'dot' && Number(status.duration || 0) > 0);
+          const expirySerial = firstSerial + 1;
+          turnStart(rulesContext(fnContext), target, expirySerial);
+          turnEnd(target);
+          const markerAbsentAfterExpiry = !target?.statuses?.some(status => status.statusEffect === 'dot' && Number(status.duration || 0) > 0);
+          return { targetUID: Number(target?.uid || 0), before, after, damage: before - after, markerVisibleBefore, markerVisibleAfterTick, markerAbsentAfterExpiry };
+        };
         const ownerWasHitSinceRun = () => Number(owner?.hp || 0) < baseline.ownerHP;
         const fixtureCard = QA_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === resolveQaFixtureOfferCardId(fixture, { selectedCardId: cardSelect.value, cards: QA_LEVEL_UP_BUFF_CARDS }));
         const orbCadence = Number(fixtureCard?.formula?.everyCompletedBasics || 3);
         const orbAmount = Number(fixtureCard?.formula?.amount || 4);
+        let venomApplied = false;
+        let venomTurnEvidence = null;
         const scenarios = {
           ward: { attempts: 1, observed: () => battleBaseline.ownerBarrier === 0 && statusMagnitude(owner, 'barrier') === .25 && Object.keys(state.globals.PartyWardBarrierVisualsByUID || {}).length > battleBaseline.wardVisualCount && !!state.globals.PartyWardBarrierVisualsByUID?.[owner?.uid] },
           stat: { attempts: 1, observed: () => battleBaseline.ownerAtkUp === 0 && statusMagnitude(owner, 'atkUp') === .10 },
@@ -518,7 +535,7 @@ export function registerDevBrowserTestHooks({
           bargain: { attempts: 1, observed: () => statusMagnitude(owner, 'atkUp') === .15 && Number(owner?.maxHP || 0) === Math.round(battleBaseline.ownerMaxHP * .90) },
           pulse: { attempts: 2, observed: () => newPulses().some(visual => Number(visual.sourceUID) === Number(owner?.uid) && Number(visual.amount) === 6 && enemyHPLoweredSinceRun(visual.targetUID)) },
           orb: { attempts: orbCadence, observed: () => newPulses().some(visual => Number(visual.sourceUID) === Number(owner?.uid) && Number(visual.amount) === orbAmount && enemyHPLoweredSinceRun(visual.targetUID)) },
-          venom: { attempts: 1, observed: enemyMarkedSinceRun },
+          venom: { attempts: 1, observed: () => venomApplied && venomTurnEvidence?.damage === 3 && venomTurnEvidence.markerVisibleBefore && venomTurnEvidence.markerVisibleAfterTick && venomTurnEvidence.markerAbsentAfterExpiry },
           heal: { attempts: 1, observed: () => newDamageTexts().some(text => text.kind === 'heal' && Number(text.targetUID) === Number(owner?.uid) && Number(text.amount) === Math.floor(baseline.ownerMaxHP * .05)) },
           bounce: { attempts: 1, observed: () => newChains().some(visual => Number(visual.sourceUID) === Number(owner?.uid) && Number(visual.damagePercent) === .5 && Number(visual.targetUID) !== Number(visual.sourceTargetUID) && enemyHPLoweredSinceRun(visual.targetUID)) },
           counter: { attempts: 1, observed: () => ownerWasHitSinceRun() && newDamageTexts().some(text => text.kind === 'heal' && Number(text.targetUID) === Number(owner?.uid) && Number(text.amount) === Math.floor(baseline.ownerMaxHP * .03)) && enemyChangedSinceRun() },
@@ -662,12 +679,20 @@ export function registerDevBrowserTestHooks({
             captureFreshVisuals();
           } else {
             await runOwnerBasicAttempt(attempt);
+            if (fixture === 'venom') {
+              const venomTarget = livingEnemies().find(enemy => enemy.statuses?.some(status => status.statusEffect === 'dot' && Number(status.snapshotPotency || 0) === 3));
+              if (!venomTarget) throw new Error('QA fixture venom did not apply standard DOT before its target turn');
+              venomApplied = enemyMarkedSinceRun();
+              if (typeof drawFrame === 'function') drawFrame();
+              venomTurnEvidence = resolveQaVenomDotTurns(venomTarget);
+              if (typeof drawFrame === 'function') drawFrame();
+            }
           }
           const idleAfter = await waitForFixtureIdle({ allowDeferredAdvance: !!state.globals.QaFixtureHoldTurn });
           captureFreshVisuals();
           if (!idleAfter.ok) throw new Error(`QA fixture ${fixture} action did not complete: ${JSON.stringify(idleAfter.observed)}`);
         }
-        if (!scenario.observed()) throw new Error(`QA fixture ${fixture} did not produce its required observable production result: ${JSON.stringify({ ownerUID: owner.uid, enemies: livingEnemies().map(enemy => ({ uid: enemy.uid, hp: enemy.hp, statuses: enemy.statuses?.map(status => status.statusEffect) || [] })), pulses: state.globals.ArcanePulseVisuals?.length || 0, chains: state.globals.ChainStrikeVisuals?.length || 0 })}`);
+        if (!scenario.observed()) throw new Error(`QA fixture ${fixture} did not produce its required observable production result: ${JSON.stringify({ ownerUID: owner.uid, venomTurnEvidence, enemies: livingEnemies().map(enemy => ({ uid: enemy.uid, hp: enemy.hp, statuses: enemy.statuses?.map(status => status.statusEffect) || [] })), pulses: state.globals.ArcanePulseVisuals?.length || 0, chains: state.globals.ChainStrikeVisuals?.length || 0 })}`);
         if (typeof drawFrame === 'function') drawFrame();
         } finally {
           delete state.globals.QaFixtureExplicitAction;

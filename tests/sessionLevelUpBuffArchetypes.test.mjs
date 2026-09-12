@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { applySessionLevelBuffsAtBattleStart, resolveNativeCommandStep, resolveSessionLevelBasicEffects, resolveSessionLevelCounter, rulesContext } from '../web-runner/modules/heroCommands.mjs';
 import { heroDefinition } from '../web-runner/src/core/heroDefinitions.mjs';
-import { turnStart } from '../web-runner/src/core/combatRules.mjs';
+import { turnEnd, turnStart } from '../web-runner/src/core/combatRules.mjs';
 
 const hero = { uid: 1, kind: 'hero', heroInstanceKey: 'hondo-1', baseHeroName: 'Huun', name: 'Huun', hp: 80, maxHP: 100, stats: { ATK: 20, MAG: 10, SPD: 10 }, sp: 100, spMax: 100, currentLevel: 1, statuses: [] };
 const enemy = { uid: 9, kind: 'enemy', hp: 200, maxHP: 200, stats: { ATK: 10, MAG: 10, SPD: 5 }, statuses: [] };
@@ -98,6 +98,20 @@ test('Venom keeps its production chance check while advancing exactly one owner 
   resolveSessionLevelBasicEffects(nonqualifying.ctx, nonqualifying.rules, nonqualifying.actor, [nonqualifying.target.uid]);
   assert.equal(nonqualifying.ctx.state.globals.SessionLevelBuffState.heroes['hondo-1'].triggerCountersByEffectId.qa_status_on_basic, 1, 'the completed owner basic still counts before its proc roll');
   assert.equal(nonqualifying.target.statuses.filter(status => status.statusEffect === 'dot').length, 0, 'a nonqualifying roll leaves the target without Venom');
+});
+
+test('Venom ticks exactly 3 damage on the target turn and its marker state expires with the DOT', () => {
+  const { ctx, actor, target, rules } = context(['qa_status_on_basic'], () => 0);
+  resolveSessionLevelBasicEffects(ctx, rules, actor, [target.uid]);
+  assert.equal(target.statuses.some(status => status.statusEffect === 'dot' && status.snapshotPotency === 3), true, 'the target owns the standardized Venom state before its turn');
+  const beforeTick = target.hp;
+  turnStart(rules, target, 1);
+  assert.equal(target.hp, beforeTick - 3, 'the target turn applies the DOT separately from the owner basic');
+  turnEnd(target);
+  assert.equal(target.statuses.some(status => status.statusEffect === 'dot'), true, 'the DOT remains visible until its configured duration expires');
+  turnStart(rules, target, 2);
+  turnEnd(target);
+  assert.equal(target.statuses.some(status => status.statusEffect === 'dot'), false, 'the status marker source clears when Venom expires');
 });
 
 test('Orb cadence reaches its third distinct owner basic before emitting its visual', () => {

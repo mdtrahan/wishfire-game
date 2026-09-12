@@ -66,10 +66,11 @@ test('AoE cards resolve the living enemy group without moving Mark to a fallback
   assert.equal(hasStatus(enemy9, 'mark'), false);
 });
 
-test('Mark rendering and card copy name a single enemy at the existing presentation seams', () => {
+test('Mark and standardized DOT rendering share the existing enemy status-icon seam', () => {
   const render = read('web-runner/systems/renderRuntime.js');
-  assert.match(render, /Persistent Mark uses the existing enemy status-icon seam/);
-  assert.match(render, /status\.statusEffect === 'mark'/);
+  assert.match(render, /Mark and standardized Venom DOT share this enemy status-icon seam/);
+  assert.match(render, /\['mark', 'dot'\]\.includes\(status\.statusEffect\)/);
+  assert.match(render, /Number\(status\.remaining \?\? status\.duration \?\? 1\) > 0/);
   assert.match(render, /ctx\.arc\(0, 0, radius/);
   assert.match(render, /ctx\.moveTo\(-radius \* 1\.35, 0\)/);
 

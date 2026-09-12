@@ -492,6 +492,10 @@ test('QA fixture scenarios use bounded production actions and require each obser
   assert.match(fixtureRun, /Number\(visual\.amount\) === orbAmount/);
   assert.match(fixtureRun, /Number\(visual\.damagePercent\) === \.5/);
   assert.match(fixtureRun, /snapshotPotency === 3/);
+  assert.match(fixtureRun, /const resolveQaVenomDotTurns = target => \{/);
+  assert.match(fixtureRun, /turnStart\(rulesContext\(fnContext\), target, firstSerial\)/);
+  assert.match(fixtureRun, /venomTurnEvidence\?\.damage === 3/);
+  assert.match(fixtureRun, /markerVisibleBefore[\s\S]*markerAbsentAfterExpiry/);
   assert.match(fixtureRun, /for \(let attempt = 0; attempt < scenario\.attempts/);
   assert.match(fixtureRun, /did not produce its required observable production result/);
   assert.doesNotMatch(fixtureRun, /seedProductionEncounter\(\)/);
