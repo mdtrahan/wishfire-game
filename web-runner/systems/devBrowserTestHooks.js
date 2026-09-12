@@ -13,7 +13,11 @@ import {
 } from '../src/core/dynamicInitiativeAuthorityExperiment.mjs';
 
 export const QA_STORY_TRANSITION_TIMEOUT_MS = 2400;
-export const QA_FIXTURE_RUNTIME_ENCOUNTER_SEED = 3720;
+// The production-derived stream for this encounter seed keeps its first eight
+// draws below the 20% QA proc threshold. Fixture setup can consume draws while
+// closing a prior phase, so this still exercises the normal chance resolver
+// when the selected owner's native command lands.
+export const QA_FIXTURE_RUNTIME_ENCOUNTER_SEED = 77879;
 export const QA_LEVEL_UP_FIXTURE_CARD_IDS = Object.freeze({
   ward: 'qa_opening_shield_1',
   stat: 'qa_atk_focus_1',

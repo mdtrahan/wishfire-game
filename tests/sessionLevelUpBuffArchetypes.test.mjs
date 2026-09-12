@@ -88,6 +88,18 @@ test('a completed selected-owner native basic applies Venom once and ignores oth
   assert.equal(ctx.state.globals.SessionLevelBuffState.heroes['hondo-1'].triggerCountersByEffectId.qa_status_on_basic, 1);
 });
 
+test('Venom keeps its production chance check while advancing exactly one owner counter', () => {
+  const qualifying = context(['qa_status_on_basic'], () => .1999);
+  resolveSessionLevelBasicEffects(qualifying.ctx, qualifying.rules, qualifying.actor, [qualifying.target.uid]);
+  assert.equal(qualifying.ctx.state.globals.SessionLevelBuffState.heroes['hondo-1'].triggerCountersByEffectId.qa_status_on_basic, 1);
+  assert.equal(qualifying.target.statuses.filter(status => status.statusEffect === 'dot' && status.snapshotPotency === 3).length, 1, 'a qualifying production roll applies one standardized Venom payload to the damaged enemy');
+
+  const nonqualifying = context(['qa_status_on_basic'], () => .20);
+  resolveSessionLevelBasicEffects(nonqualifying.ctx, nonqualifying.rules, nonqualifying.actor, [nonqualifying.target.uid]);
+  assert.equal(nonqualifying.ctx.state.globals.SessionLevelBuffState.heroes['hondo-1'].triggerCountersByEffectId.qa_status_on_basic, 1, 'the completed owner basic still counts before its proc roll');
+  assert.equal(nonqualifying.target.statuses.filter(status => status.statusEffect === 'dot').length, 0, 'a nonqualifying roll leaves the target without Venom');
+});
+
 test('Orb cadence reaches its third distinct owner basic before emitting its visual', () => {
   const { ctx, actor, target, rules } = context(['qa_orb_cadence']);
   resolveSessionLevelBasicEffects(ctx, rules, actor, [target.uid]);
