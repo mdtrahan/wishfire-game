@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { beginSessionLevelUpSettlement, chooseSessionLevelUpBuff, getSessionLevelUpBuffPresentation, LOW_HP_WARNING_RATIO, QA_LEVEL_UP_BUFF_CARDS, settlementRowVisual, updateSessionLevelUpSettlement } from '../web-runner/modules/sessionLevelUpBuffPresentation.mjs';
-import { applyLevelUpBuffCard, getEligibleLevelUpBuffCards } from '../src/core/sessionLevelBuffOffers.mjs';
+import { applyLevelUpBuffCard, buildLevelUpBuffOffer, getEligibleLevelUpBuffCards } from '../src/core/sessionLevelBuffOffers.mjs';
 import { createSessionLevelUpQueue } from '../web-runner/src/core/sessionLevelUpQueue.mjs';
 
 const heroes = [
@@ -101,6 +101,29 @@ test('displayed canonical card ids select their own record and QA T2 grants repl
   assert.equal(upgraded.state.heroes['fara-1'].activeStageByEffectId.qa_atk_focus, 2);
   const orbFirst = applyLevelUpBuffCard({ state: upgraded.state, heroId: 'fara-1', cardId: 'qa_orb_cadence_1', cards: QA_LEVEL_UP_BUFF_CARDS });
   assert.equal(applyLevelUpBuffCard({ state: orbFirst.state, heroId: 'fara-1', cardId: 'qa_orb_cadence_2', cards: QA_LEVEL_UP_BUFF_CARDS }).status, 'applied');
+});
+
+test('QA Tier 2 through Tier 4 pools keep three same-tier cards while behavior upgrades remain gated', () => {
+  const orbBase = applyLevelUpBuffCard({ state: { heroes: {} }, heroId: 'fara-1', cardId: 'qa_orb_cadence_1', cards: QA_LEVEL_UP_BUFF_CARDS });
+  const tierTwo = buildLevelUpBuffOffer({
+    state: orbBase.state, heroId: 'fara-1', cards: QA_LEVEL_UP_BUFF_CARDS, progress: {}, rng: () => 0,
+    tierWeights: { 1: 0, 2: 1, 3: 0, 4: 0 }, preferredCardId: 'qa_orb_cadence_2',
+  });
+  assert.equal(tierTwo.status, 'offered');
+  assert.equal(tierTwo.tier, 2);
+  assert.equal(tierTwo.cards.length, 3);
+  assert.ok(tierTwo.cards.some(card => card.cardId === 'qa_orb_cadence_2'));
+  assert.equal(tierTwo.cards.filter(card => card.kind === 'stat').length, 2);
+
+  const noOrbBase = getEligibleLevelUpBuffCards({ state: { heroes: {} }, heroId: 'fara-1', cards: QA_LEVEL_UP_BUFF_CARDS, tier: 2 });
+  assert.equal(noOrbBase.some(card => card.cardId === 'qa_orb_cadence_2'), false, 'behavior II stays grant-gated');
+  for (const tier of [3, 4]) {
+    const offer = buildLevelUpBuffOffer({ state: { heroes: {} }, heroId: 'fara-1', cards: QA_LEVEL_UP_BUFF_CARDS, progress: {}, rng: () => 0, tierWeights: { 1: 0, 2: 0, 3: tier === 3 ? 1 : 0, 4: tier === 4 ? 1 : 0 } });
+    assert.equal(offer.status, 'offered');
+    assert.equal(offer.tier, tier);
+    assert.equal(offer.cards.length, 3);
+    assert.ok(offer.cards.every(card => card.tier === tier && card.kind === 'stat'));
+  }
 });
 
 test('QA tier forcing drives the same gated offer builder after a real base grant', () => {

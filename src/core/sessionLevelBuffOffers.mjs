@@ -89,6 +89,9 @@ function isEligibleCard(card, heroState) {
   const required = requiredStage(card);
   const replacesStage = card.replacesStage == null ? null : integerAtLeast(card.replacesStage, 0);
   if (isPureFallback(card)) return ownedStage === 0;
+  // Same-tier stat cards stay available as fallbacks. A later stat stage may
+  // grant directly, or replace any lower stage the owner already has.
+  if (card.kind === 'stat' && card.stage > 1) return ownedStage < card.stage;
   if (card.kind === 'behavior' && card.tier > 1 && card.requiresStage == null) return false;
   if (replacesStage != null && replacesStage !== ownedStage) return false;
   return required === ownedStage && card.stage === ownedStage + 1;

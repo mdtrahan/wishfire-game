@@ -17,8 +17,14 @@ export const QA_LEVEL_UP_BUFF_CARDS = Object.freeze([
   { cardId: 'qa_speed_1', tier: 1, kind: 'stat', effectId: 'qa_speed', stage: 1, name: 'Swift Current', rarity: 'Common', effect: 'SPD +10%', formula: { surface: 'stat_percent', stat: 'spd', percent: 0.10 } },
   // These ungated same-tier stat fallbacks keep a real Tier 2 offer at three cards
   // while an upgraded behavior or stat is grant-gated for its owner.
-  { cardId: 'qa_max_vitality_2', tier: 2, kind: 'stat', effectId: 'qa_max_vitality_2', stage: 1, name: 'Max Vitality II', rarity: 'Uncommon', effect: 'Max HP +20%', formula: { surface: 'stat_percent', stat: 'max_hp', percent: 0.20 } },
-  { cardId: 'qa_speed_2', tier: 2, kind: 'stat', effectId: 'qa_speed_2', stage: 1, name: 'Swift Current II', rarity: 'Uncommon', effect: 'SPD +10%', formula: { surface: 'stat_percent', stat: 'spd', percent: 0.10 } },
+  { cardId: 'qa_max_vitality_2', tier: 2, kind: 'stat', effectId: 'qa_max_vitality', stage: 2, requiresStage: 1, replacesStage: 1, name: 'Max Vitality II', rarity: 'Uncommon', effect: 'Max HP +20%', formula: { surface: 'stat_percent', stat: 'max_hp', percent: 0.20 } },
+  { cardId: 'qa_speed_2', tier: 2, kind: 'stat', effectId: 'qa_speed', stage: 2, requiresStage: 1, replacesStage: 1, name: 'Swift Current II', rarity: 'Uncommon', effect: 'SPD +10%', formula: { surface: 'stat_percent', stat: 'spd', percent: 0.10 } },
+  { cardId: 'qa_precision_3', tier: 3, kind: 'stat', effectId: 'qa_precision_3', stage: 1, name: 'Star Sight', rarity: 'Rare', effect: 'ATK +12%', formula: { surface: 'stat_percent', stat: 'atk', percent: 0.12 } },
+  { cardId: 'qa_vitality_3', tier: 3, kind: 'stat', effectId: 'qa_vitality_3', stage: 1, name: 'Veil of Vitality', rarity: 'Rare', effect: 'Max HP +15%', formula: { surface: 'stat_percent', stat: 'max_hp', percent: 0.15 } },
+  { cardId: 'qa_celerity_3', tier: 3, kind: 'stat', effectId: 'qa_celerity_3', stage: 1, name: 'Zephyr Step', rarity: 'Rare', effect: 'SPD +12%', formula: { surface: 'stat_percent', stat: 'spd', percent: 0.12 } },
+  { cardId: 'qa_precision_4', tier: 4, kind: 'stat', effectId: 'qa_precision_4', stage: 1, name: 'Crown Sight', rarity: 'Epic', effect: 'ATK +18%', formula: { surface: 'stat_percent', stat: 'atk', percent: 0.18 } },
+  { cardId: 'qa_vitality_4', tier: 4, kind: 'stat', effectId: 'qa_vitality_4', stage: 1, name: 'Crown of Vitality', rarity: 'Epic', effect: 'Max HP +20%', formula: { surface: 'stat_percent', stat: 'max_hp', percent: 0.20 } },
+  { cardId: 'qa_celerity_4', tier: 4, kind: 'stat', effectId: 'qa_celerity_4', stage: 1, name: 'Crown Step', rarity: 'Epic', effect: 'SPD +18%', formula: { surface: 'stat_percent', stat: 'spd', percent: 0.18 } },
   { cardId: 'qa_power_bargain_1', tier: 1, kind: 'bargain', effectId: 'qa_power_bargain', stage: 1, name: 'Sun Debt', rarity: 'Common', effect: 'ATK +15%, Max HP -10%', formula: { surface: 'bargain_percent', benefitStat: 'atk', benefitPercent: 0.15, penaltyStat: 'max_hp', penaltyPercent: -0.10 } },
 ].map(card => Object.freeze({ ...card, id: card.cardId })));
 

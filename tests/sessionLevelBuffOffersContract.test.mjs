@@ -90,7 +90,7 @@ test('a complete three-behavior offer does not consume fallback RNG', () => {
   assert.equal(calls, 3, 'one tier sample plus two behavior-shuffle samples');
 });
 
-test('gates next behavior, stat, and bargain stages while leaving pure same-tier stat fallback ungated', () => {
+test('gates higher behavior and bargain stages while higher-tier stat fallbacks grant directly or replace lower stages', () => {
   const staged = [
     CARD('ward-1', 1, 'behavior', 'ward', 1), CARD('ward-2', 2, 'behavior', 'ward', 2, 1, 1),
     CARD('might-2', 2, 'stat', 'might', 2, 1, 1), CARD('trade-2', 2, 'bargain', 'trade', 2, 1, 1),
@@ -98,7 +98,11 @@ test('gates next behavior, stat, and bargain stages while leaving pure same-tier
     CARD('malformed-negative-prereq', 2, 'behavior', 'malformed', 1, -1),
   ];
   assert.deepEqual(getEligibleLevelUpBuffCards({ state: createSessionLevelBuffState(), heroId: 'Runa', cards: staged, tier: 2 })
-    .map(card => card.cardId), ['pure-armor']);
+    .map(card => card.cardId), ['might-2', 'pure-armor']);
+  const directStat = applyLevelUpBuffCard({ state: createSessionLevelBuffState(), heroId: 'Runa', cardId: 'might-2', cards: staged });
+  assert.equal(directStat.status, 'applied');
+  assert.equal(directStat.replacedStage, null);
+  assert.equal(directStat.state.heroes.Runa.activeStageByEffectId.might, 2);
   const state = {
     heroes: {
       Runa: { activeStageByEffectId: { ward: 1, might: 1, trade: 1 }, completedEffectIds: [], triggerCountersByEffectId: {} },
@@ -106,6 +110,9 @@ test('gates next behavior, stat, and bargain stages while leaving pure same-tier
   };
   assert.deepEqual(getEligibleLevelUpBuffCards({ state, heroId: 'Runa', cards: staged, tier: 2 })
     .map(card => card.cardId).sort(), ['might-2', 'pure-armor', 'trade-2', 'ward-2']);
+  const replacedStat = applyLevelUpBuffCard({ state, heroId: 'Runa', cardId: 'might-2', cards: staged });
+  assert.equal(replacedStat.status, 'applied');
+  assert.equal(replacedStat.replacedStage, 1);
 });
 
 test('rejects a malformed T2 stage-1 behavior card with requiresStage -1', () => {
