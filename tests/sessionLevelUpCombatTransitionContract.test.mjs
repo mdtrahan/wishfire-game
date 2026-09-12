@@ -478,7 +478,7 @@ test('QA fixture scenarios use bounded production actions and require each obser
   assert.match(fixtureRun, /orb: \{ attempts: orbCadence/);
   assert.match(fixtureRun, /venom: \{ attempts: 1/);
   assert.match(fixtureRun, /bounce requires two distinct living enemies/);
-  assert.match(fixtureRun, /visual\.targetUID\) !== Number\(visual\.sourceTargetUID\)/);
+  assert.match(fixtureRun, /distinctTargets: Number\(primary\?\.uid \|\| 0\) !== Number\(secondary\?\.uid \|\| 0\)/);
   assert.match(fixtureRun, /ExecuteEnemyJobSkill', enemy\.uid, 'Enemy_ATK_Single', owner\.uid/);
   assert.match(fixtureRun, /arrangeOwnerTurn\(owner, currentTarget\)/);
   assert.match(hooks, /initiative\.current = scheduledOwner/);
@@ -487,10 +487,10 @@ test('QA fixture scenarios use bounded production actions and require each obser
   assert.match(fixtureRun, /const idleBefore = await waitForFixtureIdle\(\{ allowDeferredAdvance: !!state\.globals\.QaFixtureHoldTurn \}\)/);
   assert.match(fixtureRun, /const idleAfter = await waitForFixtureIdle\(\{ allowDeferredAdvance: !!state\.globals\.QaFixtureHoldTurn \}\)/);
   assert.match(fixtureRun, /delete state\.globals\.SessionLevelBuffCombatSessionId/);
-  assert.match(fixtureRun, /ownerWasHitSinceRun\(\)/);
+  assert.match(fixtureRun, /ownerHPDelta: ownerHPAfter - ownerHPBefore/);
   assert.match(fixtureRun, /Number\(visual\.amount\) === 6/);
   assert.match(fixtureRun, /Number\(visual\.amount\) === orbAmount/);
-  assert.match(fixtureRun, /Number\(visual\.damagePercent\) === \.5/);
+  assert.match(fixtureRun, /expectedSecondaryDamage = Math\.floor\(Number\(callFunctionWithContext\(fnContext, 'CalculateDamage', owner\.uid, secondary\?\.uid, 'melee'\) \|\| 0\) \* \.50\)/);
   assert.match(fixtureRun, /snapshotPotency === 3/);
   assert.match(fixtureRun, /const resolveQaVenomDotTurns = target => \{/);
   assert.match(fixtureRun, /turnStart\(rulesContext\(fnContext\), target, firstSerial\)/);
@@ -502,6 +502,13 @@ test('QA fixture scenarios use bounded production actions and require each obser
   assert.match(fixtureRun, /targetTurnTickDelta: venomTurnEvidence\?\.damage/);
   assert.match(fixtureRun, /statusMarkerAbsentAfterExpiry: venomTurnEvidence\?\.markerAbsentAfterExpiry/);
   assert.match(fixtureRun, /QaFixtureHoldReleaseCount = fixtureReleaseCountBefore \+ 1/);
+  assert.match(fixtureRun, /QA_FIXTURE_INELIGIBLE_PROC_ENCOUNTER_SEED/);
+  assert.match(fixtureRun, /ineligibleTriggerNoHeal/);
+  assert.match(fixtureRun, /addedHitTriggeredNoSessionEffects/);
+  assert.match(fixtureRun, /otherHeroNoTrigger/);
+  assert.match(fixtureRun, /turnSerialBefore, turnSerialAfter/);
+  assert.match(fixtureRun, /counterPresentationObserved/);
+  assert.match(fixtureRun, /atMaxHpCap/);
   assert.match(fixtureRun, /for \(let attempt = 0; attempt < scenario\.attempts/);
   assert.match(fixtureRun, /did not produce its required observable production result/);
   assert.doesNotMatch(fixtureRun, /seedProductionEncounter\(\)/);

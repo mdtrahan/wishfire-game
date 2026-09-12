@@ -19,6 +19,7 @@ export const QA_STORY_TRANSITION_TIMEOUT_MS = 2400;
 // closing a prior phase, so this still exercises the normal chance resolver
 // when the selected owner's native command lands.
 export const QA_FIXTURE_RUNTIME_ENCOUNTER_SEED = 77879;
+export const QA_FIXTURE_INELIGIBLE_PROC_ENCOUNTER_SEED = 14;
 export const QA_LEVEL_UP_FIXTURE_CARD_IDS = Object.freeze({
   ward: 'qa_opening_shield_1',
   stat: 'qa_atk_focus_1',
@@ -467,6 +468,9 @@ export function registerDevBrowserTestHooks({
         let fixtureTarget = null;
         let venomApplied = false;
         let venomTurnEvidence = null;
+        let healEvidence = null;
+        let bounceEvidence = null;
+        let counterEvidence = null;
         let fixtureResult = null;
         delete state.globals.QaFixtureResult;
         try {
@@ -542,12 +546,13 @@ export function registerDevBrowserTestHooks({
           pulse: { attempts: 2, observed: () => newPulses().some(visual => Number(visual.sourceUID) === Number(owner?.uid) && Number(visual.amount) === 6 && enemyHPLoweredSinceRun(visual.targetUID)) },
           orb: { attempts: orbCadence, observed: () => newPulses().some(visual => Number(visual.sourceUID) === Number(owner?.uid) && Number(visual.amount) === orbAmount && enemyHPLoweredSinceRun(visual.targetUID)) },
           venom: { attempts: 1, observed: () => venomApplied && venomTurnEvidence?.damage === 3 && venomTurnEvidence.markerVisibleBefore && venomTurnEvidence.markerVisibleAfterTick && venomTurnEvidence.markerAbsentAfterExpiry },
-          heal: { attempts: 1, observed: () => newDamageTexts().some(text => text.kind === 'heal' && Number(text.targetUID) === Number(owner?.uid) && Number(text.amount) === Math.floor(baseline.ownerMaxHP * .05)) },
-          bounce: { attempts: 1, observed: () => newChains().some(visual => Number(visual.sourceUID) === Number(owner?.uid) && Number(visual.damagePercent) === .5 && Number(visual.targetUID) !== Number(visual.sourceTargetUID) && enemyHPLoweredSinceRun(visual.targetUID)) },
-          counter: { attempts: 1, observed: () => ownerWasHitSinceRun() && newDamageTexts().some(text => text.kind === 'heal' && Number(text.targetUID) === Number(owner?.uid) && Number(text.amount) === Math.floor(baseline.ownerMaxHP * .03)) && enemyChangedSinceRun() },
+          heal: { attempts: 1, observed: () => healEvidence?.actualHeal === healEvidence.expectedHeal && healEvidence.atMaxHpCap && healEvidence.bloomObserved && healEvidence.ineligibleTriggerNoHeal },
+          bounce: { attempts: 1, observed: () => bounceEvidence?.distinctTargets && bounceEvidence.actualSecondaryDamage === bounceEvidence.expectedSecondaryDamage && bounceEvidence.chainStrikeObserved && bounceEvidence.addedHitTriggeredNoSessionEffects },
+          counter: { attempts: 1, observed: () => counterEvidence?.actualCounterDamage === counterEvidence.expectedCounterDamage && counterEvidence.actualHeal === counterEvidence.expectedHeal && counterEvidence.counterPresentationObserved && counterEvidence.turnSerialBefore === counterEvidence.turnSerialAfter && counterEvidence.recursionCount === 1 && counterEvidence.otherHeroNoTrigger },
         };
         const scenario = scenarios[fixture];
         const activeStages = state.globals.SessionLevelBuffState?.heroes?.[String(owner?.heroInstanceKey ?? owner?.uid ?? '')]?.activeStageByEffectId || {};
+        const sessionTriggerCounters = () => ({ ...(state.globals.SessionLevelBuffState?.heroes?.[String(owner?.heroInstanceKey ?? owner?.uid ?? '')]?.triggerCountersByEffectId || {}) });
         if (!owner || !scenario || !fixtureCard || !battleBaseline) throw new Error(`QA fixture ${fixture || fixtureSelect.value} has no selected owner, Battle B baseline, or scenario`);
         if (battleBaseline.fixture !== fixture || battleBaseline.ownerId !== String(owner.heroInstanceKey ?? owner.uid)) throw new Error(`QA fixture ${fixture} does not match the selected Battle B owner`);
         if (Number(activeStages[fixtureCard.effectId] || 0) !== Number(fixtureCard.stage || 1)) throw new Error(`QA fixture ${fixture} requires its selected production offer before Battle B`);
@@ -646,10 +651,10 @@ export function registerDevBrowserTestHooks({
           observed = fixtureActionObserved();
           return { ok: !!predicate(observed), observed };
         };
-        const runOwnerBasicAttempt = async attempt => {
+        const runOwnerBasicAttempt = async (attempt, { encounterSeed = QA_FIXTURE_RUNTIME_ENCOUNTER_SEED } = {}) => {
           const currentTarget = targetForAttempt();
           if (!currentTarget) throw new Error(`QA fixture ${fixture} has no living target`);
-          installQaFixtureRuntimeRandom(QA_FIXTURE_RUNTIME_ENCOUNTER_SEED);
+          installQaFixtureRuntimeRandom(encounterSeed);
           const counterBefore = Number(activeStages && state.globals.SessionLevelBuffState?.heroes?.[String(owner.heroInstanceKey ?? owner.uid)]?.triggerCountersByEffectId?.[fixtureCard.effectId] || 0);
           const priorSequence = state.globals.NativeCommandSequence;
           const phaseClosed = await closeCompletedFixturePhase(currentTarget, priorSequence);
@@ -682,10 +687,38 @@ export function registerDevBrowserTestHooks({
             const enemy = livingEnemies()[0];
             if (!enemy) throw new Error('QA fixture counter has no living enemy');
             installQaFixtureRuntimeRandom(QA_FIXTURE_RUNTIME_ENCOUNTER_SEED);
+            const otherHero = state.entities.find(entity => entity.kind === 'hero' && Number(entity.uid) !== Number(owner.uid) && Number(entity.hp || 0) > 0);
+            const ownerHPBefore = Number(owner.hp || 0), enemyHPBefore = Number(enemy.hp || 0), turnSerialBefore = Number(state.globals.TurnSerial || 0);
+            const expectedCounterDamage = Math.floor(Number(callFunctionWithContext(fnContext, 'CalculateDamage', owner.uid, enemy.uid, 'melee') || 0) * .40);
+            const expectedHeal = Math.floor(Number(owner.maxHP || 0) * .03);
             await runQaFixtureProductionAction(enemy.uid, () => callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', owner.uid));
             captureFreshVisuals();
+            const ownerHPAfter = Number(owner.hp || 0), enemyHPAfter = Number(enemy.hp || 0);
+            const counterDamageTexts = newDamageTexts().filter(text => Number(text.targetUID) === Number(enemy.uid));
+            const ownerBeforeOther = Number(owner.hp || 0), enemyBeforeOther = Number(enemy.hp || 0);
+            if (otherHero) await runQaFixtureProductionAction(enemy.uid, () => callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', otherHero.uid));
+            captureFreshVisuals();
+            counterEvidence = { attackerUID: Number(enemy.uid), ownerHPDelta: ownerHPAfter - ownerHPBefore, enemyHPDelta: enemyHPBefore - enemyHPAfter, expectedCounterDamage, actualCounterDamage: enemyHPBefore - enemyHPAfter, expectedHeal, actualHeal: ownerHPAfter - ownerHPBefore, counterPresentationObserved: counterDamageTexts.length === 1 && newDamageTexts().some(text => text.kind === 'heal' && Number(text.targetUID) === Number(owner.uid) && Number(text.amount) === expectedHeal), turnSerialBefore, turnSerialAfter: Number(state.globals.TurnSerial || 0), recursionCount: counterDamageTexts.length, otherHeroNoTrigger: !!otherHero && Number(owner.hp || 0) === ownerBeforeOther && Number(enemy.hp || 0) === enemyBeforeOther };
           } else {
+            const countersBefore = sessionTriggerCounters();
+            const primary = targetForAttempt();
+            const secondary = fixture === 'bounce' ? livingEnemies().find(enemy => Number(enemy.uid) !== Number(primary?.uid)) : null;
+            const secondaryHPBefore = Number(secondary?.hp || 0), ownerHPBefore = Number(owner?.hp || 0);
             await runOwnerBasicAttempt(attempt);
+            const ownerHPAfter = Number(owner?.hp || 0), countersAfter = sessionTriggerCounters();
+            if (fixture === 'heal') {
+              const expectedHeal = Math.min(Number(owner.maxHP || 0), ownerHPBefore + Math.floor(Number(owner.maxHP || 0) * .05)) - ownerHPBefore;
+              const bloomObserved = newDamageTexts().some(text => text.kind === 'heal' && Number(text.targetUID) === Number(owner.uid) && Number(text.amount) === expectedHeal);
+              const noHealBefore = Number(owner.hp || 0);
+              await runOwnerBasicAttempt(attempt + 1, { encounterSeed: QA_FIXTURE_INELIGIBLE_PROC_ENCOUNTER_SEED });
+              healEvidence = { hpBefore: ownerHPBefore, hpAfter: ownerHPAfter, expectedHeal, actualHeal: ownerHPAfter - ownerHPBefore, atMaxHpCap: ownerHPAfter <= Number(owner.maxHP || 0), bloomObserved, ineligibleTriggerNoHeal: Number(owner.hp || 0) === noHealBefore };
+            }
+            if (fixture === 'bounce') {
+              const expectedSecondaryDamage = Math.floor(Number(callFunctionWithContext(fnContext, 'CalculateDamage', owner.uid, secondary?.uid, 'melee') || 0) * .50);
+              const chain = newChains().find(visual => Number(visual.sourceTargetUID) === Number(primary?.uid) && Number(visual.targetUID) === Number(secondary?.uid));
+              const onlyBounceCounterAdvanced = Object.entries(countersAfter).every(([effectId, value]) => Number(value) === Number(countersBefore[effectId] || 0) + (effectId === fixtureCard.effectId ? 1 : 0));
+              bounceEvidence = { primaryUID: Number(primary?.uid || 0), secondaryUID: Number(secondary?.uid || 0), distinctTargets: Number(primary?.uid || 0) !== Number(secondary?.uid || 0), expectedSecondaryDamage, actualSecondaryDamage: secondaryHPBefore - Number(secondary?.hp || 0), chainStrikeObserved: !!chain, countersBefore, countersAfter, addedHitTriggeredNoSessionEffects: onlyBounceCounterAdvanced };
+            }
             if (fixture === 'venom') {
               const venomTarget = livingEnemies().find(enemy => enemy.statuses?.some(status => status.statusEffect === 'dot' && Number(status.snapshotPotency || 0) === 3));
               if (!venomTarget) throw new Error('QA fixture venom did not apply standard DOT before its target turn');
@@ -712,6 +745,9 @@ export function registerDevBrowserTestHooks({
           targetHPAfterNextTurn: venomTurnEvidence?.after ?? null,
           targetTurnTickDelta: venomTurnEvidence?.damage ?? null,
           statusMarkerAbsentAfterExpiry: venomTurnEvidence?.markerAbsentAfterExpiry ?? null,
+          heal: healEvidence,
+          bounce: bounceEvidence,
+          counter: counterEvidence,
           schedulerReleaseCount: fixtureReleaseCountBefore,
         };
         state.globals.QaFixtureResult = fixtureResult;
@@ -730,6 +766,9 @@ export function registerDevBrowserTestHooks({
             targetHPAfterNextTurn: venomTurnEvidence?.after ?? null,
             targetTurnTickDelta: venomTurnEvidence?.damage ?? null,
             statusMarkerAbsentAfterExpiry: venomTurnEvidence?.markerAbsentAfterExpiry ?? null,
+            heal: healEvidence,
+            bounce: bounceEvidence,
+            counter: counterEvidence,
             schedulerReleaseCount: fixtureReleaseCountBefore,
           };
           fixtureResult.success = false;
