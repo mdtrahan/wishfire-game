@@ -45,6 +45,8 @@
 - `heroDefinitions.mjs` is the single kit/tuning source for combat and hero detail UI. `heroProgression.mjs` owns individual EXP, stat growth and unlock evaluation; KO remains zero HP during growth.
 - `combatRules.mjs` resolves statuses, accuracy, Cover and reactions. Preserve action source ancestry, reject illegal actions before spending, and grant no routine periodic FLOW.
 
+- Hero card single-enemy actions consume the current living battlefield selection on card tap, falling back to the first living enemy. Single-ally cards retain ally selection; self and group cards resolve immediately. Resolved hero-card healing reports only its actual HP delta to presentation, while barrier visuals project from the actor-owned barrier status.
+
 - `actionSelection.mjs` owns action capacity and draft budgets independently of SP and CTB scheduling. High SP cannot increase the action count.
 
 - FLOW charging is owned only by flowOrbs.mjs collection. Enemy KO produces a single configured reward; role triggers award nothing. Combat RNG and orb RNG remain separate. Session reset cancels pending flights.

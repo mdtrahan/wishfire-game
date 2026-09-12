@@ -109,6 +109,27 @@ test(`speed initiative ability gate classifies dead and disabled actors in ${sch
 });
 }
 
+for (const schedulerPath of ['src/core/schedulerRules.mjs', 'web-runner/src/core/schedulerRules.mjs']) {
+test(`speed initiative ability gate normalizes freeze and object statuses in ${schedulerPath}`, async () => {
+  const scheduler = await import(pathToFileURL(path.join(__dirname, '..', schedulerPath)).href);
+  for (const actor of [
+    { uid: 1, hp: 20, status: 'Frozen' },
+    { uid: 2, hp: 20, state: 'freeze' },
+    { uid: 3, hp: 20, statuses: [{ statusEffect: 'stunned' }] },
+    { uid: 4, hp: 20, statusEffects: [{ type: 'disabled' }] },
+    { uid: 5, hp: 20, ableToAct: false },
+  ]) assert.equal(scheduler.isAbleToActSlot(actor), false, `${schedulerPath} blocks ${actor.uid}`);
+  assert.equal(scheduler.isAbleToActSlot({ uid: 6, hp: 20, statuses: [{ statusEffect: 'haste' }] }), true);
+});
+}
+
+test('browser scheduler gate accepts scalar status effects and blocks truthy object flags', async () => {
+  const scheduler = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner/src/core/schedulerRules.mjs')).href);
+  assert.equal(scheduler.isAbleToActSlot({ uid: 7, hp: 20, statusEffects: 'frozen' }), false);
+  assert.equal(scheduler.isAbleToActSlot({ uid: 8, hp: 20, statuses: { paralyzed: true } }), false);
+  assert.equal(scheduler.isAbleToActSlot({ uid: 9, hp: 20, statusEffects: { status: 'haste' } }), true);
+});
+
 test('runtime default actor selection uses fixed effective-Speed cycling', () => {
   const initiativeDoc = fs.readFileSync(path.join(__dirname, '..', 'governance/planning/combat-initiative-paths.md'), 'utf8');
   const runtimeSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner/modules/functionBank.js'), 'utf8');

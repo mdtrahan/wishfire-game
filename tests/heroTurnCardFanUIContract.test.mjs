@@ -46,6 +46,8 @@ test('fan layout stays inside measured viewport and retains reference scale', ()
   assert.ok(layout.top >= 20 + 8);
   assert.ok(layout.left + layout.width <= 216 - 8 + 0.001);
   assert.ok(layout.top + layout.height <= 384 - 8 + 0.001);
+  assert.ok(layout.visualLeft >= 8 - 0.001);
+  assert.ok(layout.visualLeft + layout.visualWidth <= 216 - 8 + 0.001);
 });
 
 test('eligible reopen cancels a pending close and interrupt clears the DOM marker', async () => {
@@ -87,6 +89,12 @@ test('rarity palette remains presentation-only and configurable by card payload'
   assert.match(source, /fan-card-effect[^}]*white-space:normal/);
   assert.match(source, /fan-card-name[^}]*overflow-wrap:anywhere/);
   assert.match(source, /fan-card:hover,#hero-turn-card-fan \.fan-card:focus-visible\{z-index:6/);
+  assert.match(source, /is-selecting/);
+  assert.match(source, /hero-turn-card-splash/);
+  assert.match(source, /hero-turn-card-shimmer/);
+  assert.match(source, /hero-turn-card-fall-left\{0%\{opacity:1;transform:rotate\(-7deg\) translateY\(8px\)\}45%,100%\{opacity:0/);
+  assert.match(source, /hero-turn-card-activate\{0%\{transform:rotate\(0\) scale\(\.96\).*18%\{transform:rotate\(0\) scale\(1\.09\).*52%\{transform:rotate\(0\) scale\(1\.035\)/);
+  assert.match(source, /prefers-reduced-motion:reduce[^}]*is-selecting \.fan-card\[data-selected="true"\]::before/);
   assert.doesNotMatch(source, /fan-hero(?:-|\{|\s)/);
   assert.doesNotMatch(source, /fan-target|fan-back|is-targeting|validTargets/);
   assert.doesNotMatch(source, /fan-card-effect[^}]*text-overflow/);
@@ -109,7 +117,7 @@ test('card selection remains an accessible callback with no extra target control
   const selected = [];
   const ui = createHeroTurnCardFanUI({ canvas, select: index => selected.push(index) });
   try {
-    ui.update({ open: true, cards: [
+    ui.update({ open: true, heroUID: 'hondo-1', cards: [
       { id: 'a', name: 'A', rarity: 'Common', effect: 'Attack.' },
       { id: 'b', name: 'B', rarity: 'Rare', effect: 'Guard.' },
       { id: 'c', name: 'C', rarity: 'Epic', effect: 'Heal.' },
@@ -119,6 +127,82 @@ test('card selection remains an accessible callback with no extra target control
     cardsHost.children[1].onclick();
     assert.deepEqual(selected, [1]);
     assert.equal(ui.element.children.length, 1);
+  } finally {
+    ui.destroy();
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+  }
+});
+
+test('card activation preserves stable nodes while the selected card resolves its presentation', async () => {
+  const previousDocument = globalThis.document;
+  globalThis.document = { head: new FakeNode('head'), body: new FakeNode('body'), createElement: tag => new FakeNode(tag) };
+  const canvas = { getBoundingClientRect: () => ({ left: 0, top: 0, width: 360, height: 640 }) };
+  const selected = [];
+  const ui = createHeroTurnCardFanUI({ canvas, select: index => selected.push(index) });
+  try {
+    ui.update({ open: true, heroUID: 'hondo-1', cards: [
+      { id: 'a', name: 'A', rarity: 'Common', effect: 'Attack.' },
+      { id: 'b', name: 'B', rarity: 'Rare', effect: 'Guard.' },
+      { id: 'c', name: 'C', rarity: 'Epic', effect: 'Heal.' },
+    ] });
+    const cardsHost = ui.element.children[0];
+    const selectedNode = cardsHost.children[1];
+    selectedNode.onclick();
+    ui.update({ open: true, heroUID: 'hondo-1', cards: [
+      { id: 'a', name: 'A', rarity: 'Common', effect: 'Attack.' },
+      { id: 'b', name: 'B', rarity: 'Rare', effect: 'Guard.' },
+      { id: 'c', name: 'C', rarity: 'Epic', effect: 'Heal.' },
+    ] });
+    assert.deepEqual(selected, [1]);
+    assert.equal(cardsHost.children[1], selectedNode);
+    assert.equal(cardsHost.children.length, 3);
+    assert.equal(selectedNode.dataset.selected, 'true');
+    assert.equal(cardsHost.children[0].dataset.selected, 'false');
+    assert.equal(ui.element.hidden, false);
+    await new Promise(resolve => setTimeout(resolve, 380));
+    assert.equal(ui.element.hidden, true);
+    assert.equal(ui.element.dataset.open, 'false');
+    ui.update({ open: true, heroUID: 'hondo-1', cards: [
+      { id: 'a', name: 'A', rarity: 'Common', effect: 'Attack.' },
+      { id: 'b', name: 'B', rarity: 'Rare', effect: 'Guard.' },
+      { id: 'c', name: 'C', rarity: 'Epic', effect: 'Heal.' },
+    ] });
+    assert.equal(ui.element.hidden, true);
+    ui.reopen({ open: true, heroUID: 'hondo-1', cards: [
+      { id: 'a', name: 'A', rarity: 'Common', effect: 'Attack.' },
+      { id: 'b', name: 'B', rarity: 'Rare', effect: 'Guard.' },
+      { id: 'c', name: 'C', rarity: 'Epic', effect: 'Heal.' },
+    ] });
+    assert.equal(ui.element.hidden, false);
+  } finally {
+    ui.destroy();
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+  }
+});
+
+test('card activation survives the runtime draw being consumed during the cue', () => {
+  const previousDocument = globalThis.document;
+  globalThis.document = { head: new FakeNode('head'), body: new FakeNode('body'), createElement: tag => new FakeNode(tag) };
+  const canvas = { getBoundingClientRect: () => ({ left: 0, top: 0, width: 360, height: 640 }) };
+  let ui;
+  ui = createHeroTurnCardFanUI({
+    canvas,
+    select: () => ui.update({ open: false, heroUID: 'hondo-1', cards: [] }),
+  });
+  try {
+    ui.update({ open: true, heroUID: 'hondo-1', cards: [
+      { id: 'a', name: 'A', rarity: 'Common', effect: 'Attack.' },
+      { id: 'b', name: 'B', rarity: 'Rare', effect: 'Guard.' },
+      { id: 'c', name: 'C', rarity: 'Epic', effect: 'Heal.' },
+    ] });
+    const cardsHost = ui.element.children[0];
+    const selectedNode = cardsHost.children[1];
+    selectedNode.onclick();
+    assert.equal(cardsHost.children[1], selectedNode);
+    assert.equal(cardsHost.children.length, 3);
+    assert.equal(ui.element.hidden, false);
   } finally {
     ui.destroy();
     if (previousDocument === undefined) delete globalThis.document;

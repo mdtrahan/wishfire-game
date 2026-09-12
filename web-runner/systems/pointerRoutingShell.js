@@ -1,5 +1,12 @@
 export function returnToQuest(gameState, layoutState, reason) {
-  gameState.storyEntry.phase = 'ladder';
+  const entry = gameState.storyEntry;
+  if (entry?.phase === 'combat' || entry?.combatPaused) {
+    entry.combatPaused = true;
+    entry.phase = 'combat-paused';
+    entry.modal = 'combat-pause';
+  } else {
+    entry.phase = 'ladder';
+  }
   return layoutState.requestLayoutChange('storyMock', reason);
 }
 

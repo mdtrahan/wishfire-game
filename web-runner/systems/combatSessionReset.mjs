@@ -6,6 +6,10 @@ export function resetCombatSessionConditions(globals, gameState) {
   Object.assign(globals, {
     AstralFlowAmpPoints: 0, AstralFlowAmpReady: 0,
     FlowOrbs: [], FlowOrbSerial: 0, NativeCommandSequence: null, SessionSkillsByHeroUID: {},
+    HeroTurnCardFanOpen: 0, HeroTurnCardFanHeroUID: 0, HeroTurnCardFanCards: [],
+    HeroTurnCardFanStateByHeroName: {}, HeroTurnCardFanSessionId: Number(globals.CombatSessionId || 0),
+    HeroTurnCardFanTurnSerial: 0, HeroTurnCardFanSelectedCardId: '', HeroTurnCardFanTargetUID: 0,
+    HeroTurnCardFanPendingCardIndex: -1, HeroTurnCardFanPendingCardId: '', HeroTurnCardFanPendingTarget: 0, HeroTurnCardFanPendingTargetKind: '', HeroTurnCardFanPendingExcludeSelf: 0, HeroTurnCardFanBlockedCardId: '',
     SkillDraughtOpen: 0, SkillDraughtPendingOpen: 0, SkillDraughtCandidates: [], SkillDraughtHitZones: [],
     AstralFlowKoOrbPresentationActive: 0, AstralFlowKoOrbPresentationPending: 0,
     AstralFlowKoOrbQueue: [], PartyRegens: [], TrackBuffs: [], PartyBuffSlots: [],

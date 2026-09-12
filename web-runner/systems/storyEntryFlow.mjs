@@ -12,7 +12,7 @@ export function buildSyntheticQuestStages(enemies) {
     }));
 }
 
-export function createStoryEntryFlow({ gameState, layoutState, isReady, content = WISHFIRE_WARP_CROSSING_CONTENT, resurrect = () => {}, prepareEncounter = () => {}, getEnemies = () => [], onCombatEnd = () => {}, energyGlobals = { Player_Energy: 200 }, enterCombat = change => change() }) {
+export function createStoryEntryFlow({ gameState, layoutState, isReady, content = WISHFIRE_WARP_CROSSING_CONTENT, resurrect = () => {}, prepareEncounter = () => {}, getEnemies = () => [], onCombatEnd = () => {}, onCombatQuit = onCombatEnd, isCombatPauseEligible = () => true, energyGlobals = { Player_Energy: 200 }, enterCombat = change => change() }) {
   const scene = content.scenes[0];
   const handoff = scene.steps.findIndex(step => step.id === scene.combatHandoffStepId);
   if (handoff < 0) throw new Error('Opening scene requires an authored combat handoff step');
@@ -21,7 +21,7 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
     { id: 'warp-crossing', title: 'Main Story 1', kind: 'Story + combat', cost: 0, reward: 50, combat: true, content: segment(scene.steps.slice(0, handoff)) },
     { id: 'after-the-crossing', title: 'Main Story 2', kind: 'Story', cost: 0, reward: 50, combat: false, content: segment(scene.steps.slice(handoff + 1)) },
   ];
-  const entry = gameState.storyEntry = { phase: 'map', pending: false, error: null, combatUnlocked: false, activeCard: null, modal: null, cards,
+  const entry = gameState.storyEntry = { phase: 'map', pending: false, error: null, combatUnlocked: false, activeCard: null, modal: null, combatPaused: false, cards,
     progress: { get energy() { return energyGlobals.Player_Energy; }, set energy(value) { energyGlobals.Player_Energy = value; }, resources: 150, completed: [], revealed: 1 }, content: cards[0].content };
   const contains = (point, rect) => point && rect && point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h;
   async function go(target, reason, payload = {}) {
@@ -51,6 +51,7 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
     }
     entry.activeCard = null;
     entry.combatUnlocked = false;
+    entry.combatPaused = false;
     entry.phase = 'ladder';
     entry.modal = null;
     if (layoutState.getActiveLayoutId() !== 'storyMock') void go('storyMock', 'quest-card-complete');
@@ -64,6 +65,19 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
       void go('combat', 'story-combat-handoff', { freshStart: true });
     } else complete();
   }
+  async function startCombatForQA() {
+    const card = cards[0];
+    if (!isReady() || entry.pending || entry.phase === 'defeat' || !card?.combat) return false;
+    if (layoutState.getActiveLayoutId() === 'combat' && entry.phase === 'combat') return true;
+    entry.activeCard = 0;
+    entry.content = card.content;
+    entry.combatUnlocked = true;
+    entry.combatPaused = false;
+    entry.modal = null;
+    entry.error = null;
+    prepareEncounter();
+    return go('combat', 'quest-qa-direct-combat', { freshStart: true });
+  }
   function startCard(index) {
     if (!isReady() || entry.pending || entry.phase !== 'ladder' || !Number.isInteger(index) || index < 0 || index >= entry.progress.revealed) return false;
     const card = cards[index];
@@ -71,6 +85,7 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
     entry.progress.energy -= card.cost;
     entry.activeCard = index;
     entry.content = card.content;
+    entry.combatPaused = false;
     entry.phase = card.content ? 'opening' : 'ladder';
     entry.error = null;
     if (card.content) restartNarrativeScene(gameState, entry.content, scene.id);
@@ -111,6 +126,7 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
   function handlePointer(point) {
     if (!isReady() || entry.pending || entry.modal || layoutState.getActiveLayoutId() !== 'storyMock') return false;
     if (entry.phase === 'map') {
+      if (entry.combatPaused) return false;
       if (![entry.townHitZone, entry.startHitZone].some(rect => contains(point, rect))) return false;
       entry.phase = 'ladder'; return true;
     }
@@ -121,17 +137,35 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
   }
   async function navigate(label) {
     if (entry.pending || entry.modal || entry.phase === 'opening' || entry.phase === 'defeat') return false;
+    if ((entry.phase === 'combat' || entry.combatPaused) && label === 'Quests') {
+      if (!isCombatPauseEligible()) return false;
+      const previousPhase = entry.phase;
+      entry.phase = 'combat-paused';
+      entry.modal = 'combat-pause';
+      const changed = await go('storyMock', 'combat-pause-navigation');
+      if (!changed) {
+        entry.phase = previousPhase;
+        entry.modal = null;
+      }
+      return changed;
+    }
     const targets = { Hero: 'heroLayout', Vault: 'chestsLayout', AstralFlow: 'idleFarmLayout', Map: 'storyMock', Quests: 'storyMock' };
     const target = targets[label];
     if (!target) return false;
     if (target === 'storyMock') {
-      if (entry.phase === 'combat') { onCombatEnd(); entry.activeCard = null; entry.combatUnlocked = false; }
-      entry.phase = label === 'Map' ? 'map' : 'ladder';
+      if (entry.phase === 'combat' && !entry.combatPaused && label === 'Map') {
+        entry.combatPaused = true;
+        entry.phase = 'map';
+      } else if (!entry.combatPaused) {
+        entry.phase = label === 'Map' ? 'map' : 'ladder';
+      } else if (label === 'Map') {
+        entry.phase = 'map';
+      }
     }
     return go(target, 'quest-navigation');
   }
-  return { enter() {}, update, handlePointer, startCard, requestSkip, confirmSkip, cancelSkip, navigate,
-    allowedTransitions: () => entry.pending || (!entry.modal && entry.phase !== 'opening') ? ['combat', 'town', 'heroLayout', 'chestsLayout', 'idleFarmLayout', 'mapLayout'] : [],
+  return { enter() {}, update, handlePointer, startCard, startCombatForQA, requestSkip, confirmSkip, cancelSkip, navigate,
+    allowedTransitions: () => entry.pending || entry.modal === 'combat-pause' || (!entry.modal && entry.phase !== 'opening') ? ['combat', 'town', 'heroLayout', 'chestsLayout', 'idleFarmLayout', 'mapLayout'] : [],
     victory() { if (entry.phase === 'combat' && entry.activeCard !== null && !entry.pending) complete(); },
     defeat() {
       if (entry.phase !== 'combat' || entry.activeCard === null || entry.pending) return false;
@@ -146,6 +180,31 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
       resurrect();
       entry.progress.resources -= 30;
       entry.phase = 'combat';
+      return true;
+    },
+    async continuePausedCombat() {
+      if (entry.phase !== 'combat-paused' || entry.modal !== 'combat-pause' || entry.pending) return false;
+      const changed = await go('combat', 'combat-pause-continue');
+      if (!changed) {
+        entry.phase = 'combat-paused';
+        entry.modal = 'combat-pause';
+        return false;
+      }
+      entry.modal = null;
+      entry.phase = 'combat';
+      entry.combatPaused = false;
+      return true;
+    },
+    quitPausedCombat() {
+      if (entry.phase !== 'combat-paused' || entry.modal !== 'combat-pause' || entry.pending) return false;
+      onCombatQuit();
+      if (typeof layoutState.clearSnapshot === 'function') layoutState.clearSnapshot('combat');
+      entry.phase = 'ladder';
+      entry.modal = null;
+      entry.combatPaused = false;
+      entry.activeCard = null;
+      entry.combatUnlocked = false;
+      entry.error = null;
       return true;
     },
     quit() { if (entry.phase !== 'defeat' || entry.pending) return; onCombatEnd(); entry.phase = 'ladder'; entry.activeCard = null; entry.combatUnlocked = false; entry.error = null; },

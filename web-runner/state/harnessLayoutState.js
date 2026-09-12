@@ -82,6 +82,9 @@ export function createHarnessLayoutState({ eventBus, inputDomains }) {
     getSnapshot(layoutId) {
       return snapshotsByLayout.get(layoutId);
     },
+    clearSnapshot(layoutId) {
+      snapshotsByLayout.delete(layoutId);
+    },
     async activateInitialLayout(layoutId, payload = {}) {
       const targetLayout = layouts.get(layoutId);
       if (!targetLayout) throw new Error(`Missing layout: ${layoutId}`);

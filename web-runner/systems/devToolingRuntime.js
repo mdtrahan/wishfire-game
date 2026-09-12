@@ -818,6 +818,10 @@ export function createDevToolingRuntime(deps = {}) {
   }
 
   function resetCombatRuntimeForFreshSession(reason = 'combat-refresh', options = {}) {
+    // Quit and fresh-session transitions discard the visible fan and any
+    // in-flight native command before the next frame can reopen stale state.
+    callFunctionWithContext(fnContext, 'CancelHeroTurnCardFan');
+    state.globals.NativeCommandSequence = null;
     const refill = gameState.refillBounce || (gameState.refillBounce = {});
     refill.active = false;
     refill.queue = [];

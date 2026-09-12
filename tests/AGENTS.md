@@ -11,6 +11,7 @@
 
 ## Local Contracts
 - Story-entry checks exercise the shared layout registry and transition controller: deny early navigation, preserve pagination, hand off at the authored marker or Skip, stop Auto in combat, and retain Town recovery. Browser QA must exercise the visible Canvas controls too.
+- Paused-combat navigation checks must preserve the active card and snapshot through Continue, intercept Quests from any suspended screen, and clear the snapshot only on Quit without settlement or rewards.
 - Tests are often the clearest owner of regression-prone behavior. Read the relevant test before changing gameplay, rendering, persistence, or SimulationCore code.
 - Prefer focused deterministic tests over broad suite runs during development.
 - Static source assertions are allowed in this repo when they protect architecture boundaries, but avoid adding brittle source-shape checks when behavior can be tested directly.
@@ -38,7 +39,8 @@
 
 - Health contracts verify actual actor HP, stable sparse/KO slot projections, cleared previous-group totals, and real JS-to-WASM damage for every loaded size from one through six.
 
-- Native command proof covers scheduled actor ownership, rejected/stale targets, animation handoff and exact loaded slots. Legacy board click/refill assertions are retired with their consumers. The UI lock checks card/editor containment and real prepared attacks for groups of one through six.
+- Native command proof covers scheduled actor ownership, rejected/stale targets, animation handoff and exact loaded slots. Legacy board click/refill assertions are retired with their consumers. The UI lock checks decorative hero status-card containment, fan-only player actions and real battlefield selector targeting for groups of one through six.
+- Hero Turn Card Fan integration proof covers the shared lifecycle exports, persisted draw state, native command resolution, source-scoped taunt, one-shot interception, queue delay offsets, rewritten four-card effects, and reset/KO/battle-end clearing. Independent browser QA must exercise the full interruption matrix.
 - Full-recovery proof exercises both the app Town wrapper and Continue with zero through six loaded heroes, sparse slots, KO, stale UI health and retained encounter resources.
 - Self-heal checks must use differing actor and party maxima, actual groups 1–6, and KO/wrong-actor cases. Percentage recovery cannot grow with party size. Personal FLOW checks cover attributed earning, full-charge consumption, queue order and paused party-card boundaries.
 

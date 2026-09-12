@@ -79,3 +79,18 @@ test('snapshot/resume use authoritative turn-state adapters when provided', () =
   assert.deepEqual(combatState.turnQueue, [{ uid: 101, type: 0 }, { uid: 202, type: 1 }]);
   assert.equal(combatState.currentActorIndex, 1);
 });
+
+test('snapshot/resume restores the deterministic RNG seam without advancing it', () => {
+  const combatState = { acceptEvents: false, inputEnabled: false };
+  let rng = { seed: 19, draws: 7, owner: 'js', reason: 'enemy', lastValue: 0.42 };
+  const gateway = new CombatRuntimeGateway({
+    combatState,
+    getDeterministicRngState: () => rng,
+    setDeterministicRngState: next => { rng = next; },
+  });
+  const snapshot = gateway.suspend();
+  assert.deepEqual(snapshot.rngState, rng);
+  rng = { seed: 19, draws: 99, owner: 'js', reason: 'changed', lastValue: 0.1 };
+  gateway.resume(snapshot);
+  assert.deepEqual(rng, snapshot.rngState);
+});

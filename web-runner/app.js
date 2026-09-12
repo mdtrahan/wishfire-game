@@ -87,6 +87,8 @@ import * as renderCombatRuntime from './systems/renderCombatRuntime.js';
 import * as renderOverlays from './systems/renderOverlays.js';
 import * as renderRuntime from './systems/renderRuntime.js';
 import { createHeroCommandUI } from './systems/heroCommandUI.mjs';
+import { createHeroTurnCardFanUI } from './systems/heroTurnCardFanUI.mjs';
+import { heroArtKey } from './state/heroArtAssets.mjs';
 import * as partyStatOsd from './systems/partyStatOsd.js';
 import * as superGemRuntime from './systems/superGemRuntime.js';
 import {
@@ -744,6 +746,14 @@ const combatRuntimeGateway = new CombatRuntimeGateway({
       RuntimeRandomReason: String(g.RuntimeRandomReason || ''),
       RuntimeRandomLastValue: Number(g.RuntimeRandomLastValue || 0),
     };
+  },
+  setDeterministicRngState(rngState = {}) {
+    const g = (state && state.globals) ? state.globals : {};
+    g.RuntimeRandomSeed = Number(rngState.seed ?? rngState.RuntimeRandomSeed ?? 0);
+    g.RuntimeRandomDraws = Number(rngState.draws ?? rngState.RuntimeRandomDraws ?? 0);
+    g.RuntimeRandomOwner = String(rngState.owner ?? rngState.RuntimeRandomOwner ?? '');
+    g.RuntimeRandomReason = String(rngState.reason ?? rngState.RuntimeRandomReason ?? '');
+    g.RuntimeRandomLastValue = Number(rngState.lastValue ?? rngState.RuntimeRandomLastValue ?? 0);
   },
 });
 
@@ -2092,7 +2102,7 @@ async function main(){
   const questCombat = createQuestCombatSession({ state, gameState, call: name => callFunctionWithContext(fnContext, name), sync: syncFromGlobals });
   const equipmentProgress = createEquipmentStorage({ globals: state.globals, getActors: () => state.entities, storage: window.localStorage });
   const astralMarket = createAstralMarketUI({canvas, economy: equipmentProgress, getResources: () => gameState.storyEntry.progress, onBack: () => returnToQuest(gameState, layoutState, 'astral-market-back')});
-  const storyEntry = createStoryEntryFlow({ gameState, layoutState, isReady: () => freshCombatBootstrapped, getEnemies: () => enemyRows, prepareEncounter: questCombat.prepare, resurrect: questCombat.resurrect, energyGlobals: state.globals, enterCombat: createCombatEntryTransition(canvas), onCombatEnd: () => devToolingRuntime.clearCombatSessionOverrides() });
+  const storyEntry = createStoryEntryFlow({ gameState, layoutState, isReady: () => freshCombatBootstrapped, getEnemies: () => enemyRows, prepareEncounter: questCombat.prepare, resurrect: questCombat.resurrect, energyGlobals: state.globals, enterCombat: createCombatEntryTransition(canvas), onCombatEnd: () => devToolingRuntime.clearCombatSessionOverrides(), onCombatQuit: () => { devToolingRuntime.clearCombatSessionOverrides(); resetCombatRuntimeForFreshSession('quest-navigation-quit'); }, isCombatPauseEligible: () => state.globals.NativeBattleEnded !== true && state.globals.ProgressionBattle?.outcome !== 'victory' && state.globals.ProgressionBattle?.outcome !== 'defeat' });
   const questUI = createQuestLadderUI({ canvas, gameState, layoutState, flow: storyEntry, getGold: () => state.globals.goldTotal || 0 });
   registerRuntimeLayouts(layoutState, {
     storyEntry,
@@ -2153,8 +2163,31 @@ async function main(){
     detachRuntimeInputListeners = null;
   }
   const runtimeListenerTeardowns = [];
-  const heroCommandUI = createHeroCommandUI({ ctx: fnContext, gameState, canvas });
+  const heroCommandUI = createHeroCommandUI({
+    ctx: fnContext,
+    gameState,
+    canvas,
+    onBack: () => {
+      if (state.globals.HeroTurnCardFanPendingTarget) {
+        callFunctionWithContext(fnContext, 'CancelHeroTurnCardFan');
+        callFunctionWithContext(fnContext, 'ReopenHeroTurnCardFan');
+        drawFrame();
+      }
+    },
+    onActiveHeroClick: () => {
+      callFunctionWithContext(fnContext, 'ReopenHeroTurnCardFan');
+      drawFrame();
+    },
+  });
   runtimeListenerTeardowns.push(() => heroCommandUI.destroy());
+  const heroTurnCardFanUI = createHeroTurnCardFanUI({
+    canvas,
+    getState: () => ({ open: !!state.globals.HeroTurnCardFanOpen, cards: state.globals.HeroTurnCardFanCards, heroUID: state.globals.HeroTurnCardFanHeroUID }),
+    select: (index, targetUID) => callFunctionWithContext(fnContext, 'SelectHeroTurnCard', index, targetUID),
+    cancel: () => callFunctionWithContext(fnContext, 'CancelHeroTurnCardFan'),
+    reopen: () => callFunctionWithContext(fnContext, 'ReopenHeroTurnCardFan'),
+  });
+  runtimeListenerTeardowns.push(() => heroTurnCardFanUI.destroy());
 
   const viewportRuntime = createAppViewportRuntime({
     canvas,
@@ -2548,12 +2581,13 @@ async function main(){
   }
 
   function drawFrame(dtOverride){
+    const activeLayoutId = layoutState.getActiveLayoutId();
     renderHeroScreen.hideHeroScreen();
     if (freshCombatBootstrapped) equipmentProgress.sync().catch(() => {});
     if (layoutState.getActiveLayoutId() !== 'idleFarmLayout') astralMarket.hide();
     storyEntry.update();
     questUI.update();
-    ensurePendingSingleTarget();
+    if (activeLayoutId === 'combat') ensurePendingSingleTarget();
     const runtimeScope = {
       dtOverride,
       state,
@@ -2668,14 +2702,34 @@ async function main(){
       createPartyRegenTickSimulationPacket,
     };
     const result = renderRuntime.renderRuntime(runtimeScope);
-    advanceFlowOrbs(state.globals, state.entities);
+    if (activeLayoutId === 'combat') advanceFlowOrbs(state.globals, state.entities);
     renderExistingNavigation(ctx, { worldToCanvas, layoutScale, gameState, layoutState, eventBus });
+    const fanState = callFunctionWithContext(fnContext, 'GetHeroTurnCardFanState') || {
+      open: !!state.globals.HeroTurnCardFanOpen,
+      cards: state.globals.HeroTurnCardFanCards,
+      heroUID: state.globals.HeroTurnCardFanHeroUID,
+    };
     heroCommandUI.update({
       visible: layoutState.getActiveLayoutId() === 'combat' && state.globals.GamePhase === 'RUNTIME',
       blocked: !!uiState.getUIState().overlayVisible || !!ensureDevToolingConfig().open
         || !!gameState.storyEntry.modal || !!gameState.storyEntry.pending
         || gameState.storyEntry.phase === 'defeat',
       worldToCanvas, layoutScale, portraits: heroPortraitImages,
+    });
+    const fanHero = state.entities.find(actor => Number(actor?.uid || 0) === Number(fanState.heroUID || 0));
+    const fanHeroBaseName = String(fanHero?.baseHeroName || fanHero?.name || '');
+    const fanHeroDisplayName = ({ Falie: 'Fara', Huun: 'Hondo', Kojonn: 'Kaja' })[fanHeroBaseName] || fanHeroBaseName;
+    const fanHeroPortraitKey = heroArtKey(fanHero?.portraitName || fanHeroBaseName);
+    const fanBlocked = !!uiState.getUIState().overlayVisible || !!ensureDevToolingConfig().open || !!gameState.heroCommandsMenuOpen || gameState.storyEntry.phase === 'defeat' || !!gameState.storyEntry.modal || !!gameState.storyEntry.pending;
+    heroTurnCardFanUI.update({
+      open: activeLayoutId === 'combat' && !!fanState.open,
+      blocked: fanBlocked,
+      cards: fanState.cards,
+      heroUID: Number(fanState.heroUID || 0),
+      activeHero: fanHero ? { ...fanHero, name: fanHeroDisplayName, displayName: fanHeroDisplayName, portraitName: fanHeroPortraitKey } : null,
+      layoutScale,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
     });
     if (result && result.overlayData) {
       state.globals.LastCombatOverlayData = result.overlayData;
@@ -3262,6 +3316,9 @@ function getStoryCardLiveLineState() {
     });
   }
   function requestCombatFailureExit(reason = 'party_defeated') {
+    if (String(reason || '') === 'party_defeated' || String(reason || '') === 'no_living_heroes') {
+      callFunctionWithContext(fnContext, 'SettleCombatDefeat');
+    }
     if (storyEntry.defeat()) return true;
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
       ? layoutState.getActiveLayoutId()
@@ -3486,6 +3543,22 @@ function getStoryCardLiveLineState() {
     }
 
     if (layoutState.getActiveLayoutId() === 'combat') {
+      const pendingTarget = Number(state.globals.HeroTurnCardFanPendingTarget || 0) === 1;
+      const pendingTargetKind = String(state.globals.HeroTurnCardFanPendingTargetKind || '');
+      if (pendingTarget) {
+        if (pendingTargetKind === 'enemy') {
+          const enemyTarget = getEnemyHit(mx, my);
+          if (enemyTarget) {
+            if (heroCommandUI.selectBattlefieldActor(enemyTarget)) {
+              callFunctionWithContext(fnContext, 'SelectHeroTurnCard', state.globals.HeroTurnCardFanPendingCardIndex, enemyTarget.uid);
+            }
+          }
+        } else if (pendingTargetKind === 'ally' && heroCommandUI.selectBattlefieldAlly(mx, my, combatActorWorldToCanvas, layoutScale)) {
+          callFunctionWithContext(fnContext, 'SelectHeroTurnCard', state.globals.HeroTurnCardFanPendingCardIndex, state.globals.SelectedAllyUID);
+        }
+        drawFrame();
+        return;
+      }
       const enemy = getEnemyHit(mx, my);
       if (enemy && heroCommandUI.selectBattlefieldActor(enemy)) { drawFrame(); return; }
       if (heroCommandUI.selectBattlefieldAlly(mx, my, combatActorWorldToCanvas, layoutScale)) { drawFrame(); return; }
@@ -3545,6 +3618,15 @@ function getStoryCardLiveLineState() {
       }
       return;
     }
+    if (ev.key === 'Escape' && (state.globals.HeroTurnCardFanOpen || state.globals.HeroTurnCardFanPendingTarget)) {
+      const wasPendingTarget = !!state.globals.HeroTurnCardFanPendingTarget;
+      callFunctionWithContext(fnContext, 'CancelHeroTurnCardFan');
+      if (wasPendingTarget) callFunctionWithContext(fnContext, 'ReopenHeroTurnCardFan');
+      drawFrame();
+      ev.stopPropagation();
+      ev.preventDefault();
+      return;
+    }
     if (ev.target?.closest?.('#hero-commands')) return;
     if(ev.key === 'ArrowLeft') gameState.selectedHero = Math.max(0, gameState.selectedHero - 1);
     if(ev.key === 'ArrowRight') gameState.selectedHero = Math.min(Math.max(0, getConfiguredHeroCount() - 1), gameState.selectedHero + 1);
@@ -3577,6 +3659,11 @@ function getStoryCardLiveLineState() {
     frameCount++;
     if (gameState.storyEntry.phase === 'defeat') { drawFrame(); requestAnimationFrame(tick); return; }
     if (ensureDevToolingConfig().open) {
+      requestAnimationFrame(tick);
+      return;
+    }
+    if (layoutState.getActiveLayoutId() !== 'combat') {
+      drawFrame();
       requestAnimationFrame(tick);
       return;
     }
@@ -3892,6 +3979,7 @@ function getStoryCardLiveLineState() {
       currentTurnType === 0 &&
       state.globals.TurnPhase === 0 &&
       noRefillActive &&
+      !state.globals.HeroTurnCardFanOpen &&
       heroInputBarrier.canRestoreHeroInput &&
       enemyRosterStability.stable &&
       (!isCanPickGemsReady(state.globals.CanPickGems) || state.globals.BoardFillActive !== 0)

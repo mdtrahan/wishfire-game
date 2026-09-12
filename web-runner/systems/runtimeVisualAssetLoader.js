@@ -4,6 +4,7 @@ import {
   HERO_PACK_MINUS_PATH,
   HERO_PACK_PLUS_PATH,
 } from '../state/heroScreenConfig.js';
+import { heroArtPath } from '../state/heroArtAssets.mjs';
 
 export async function loadRuntimeImage(url, { resolveRuntimeImageUrl = (value) => value } = {}) {
   return new Promise((res) => {
@@ -104,7 +105,7 @@ export async function loadRuntimeVisualAssets({
   const loadCoreVisuals = async () => {
     const tasks = [];
     const heroPortraitLoads = ['Falie', 'Huun', 'Runa', 'Kojonn'].map(async (heroName) => {
-      heroPortraitImages[heroName] = await loadImage(assetUrl(`images/cap_${heroName}.png`));
+      heroPortraitImages[heroName] = await loadImage(assetUrl(heroArtPath(heroName)));
     });
     const wardBarrierLoad = (async () => {
       wardBarrierImage = await loadImage(assetUrl('images/falie_ward_84x62.png'));

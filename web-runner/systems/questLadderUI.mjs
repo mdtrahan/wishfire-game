@@ -16,7 +16,7 @@ export function createQuestLadderUI({ canvas, gameState, layoutState, flow, getG
   });
   const button = (label, action, className = '') => `<button class="${className}" data-action="${action}">${label}</button>`;
   host.addEventListener('keydown', event => {
-    if (!gameState.storyEntry.modal && gameState.storyEntry.phase !== 'defeat') return;
+    if (!gameState.storyEntry.modal && !['defeat', 'combat-paused'].includes(gameState.storyEntry.phase)) return;
     if (event.key === 'Escape' && gameState.storyEntry.modal === 'skip') { event.preventDefault(); flow.cancelSkip(); update(); }
     if (event.key === 'Tab') {
       const buttons = [...host.querySelectorAll('button:not(:disabled)')];
@@ -33,6 +33,8 @@ export function createQuestLadderUI({ canvas, gameState, layoutState, flow, getG
     else if (action === 'cancel') flow.cancelSkip();
     else if (action === 'skip') flow.confirmSkip();
     else if (action === 'continue') void flow.continueCombat();
+    else if (action === 'combat-continue') void flow.continuePausedCombat();
+    else if (action === 'combat-quit') flow.quitPausedCombat();
     else if (action === 'quit') flow.quit();
     update();
   });
@@ -61,6 +63,7 @@ export function createQuestLadderUI({ canvas, gameState, layoutState, flow, getG
       html += `</div><p class="error" role="status">${e.error || ''}</p><button class="back" data-action="nav:Map" aria-label="Back">${BACK_ICON}</button></section>`;
     }
     if (e.modal === 'skip') html += `<div class="shade"><section class="modal" role="dialog" aria-modal="true" aria-label="Skip story"><h2>Skip story?</h2><p>Are you sure you want to skip this story?</p><div class="actions">${button('Cancel','cancel')}${button('Skip','skip','primary')}</div></section></div>`;
+    if (e.phase === 'combat-paused') html += `<div class="shade"><section class="modal" role="dialog" aria-modal="true" aria-label="Paused battle"><h2>Battle paused</h2><p>Your battle is saved at this moment. Continue when you are ready.</p><div class="actions">${button('Quit Battle','combat-quit')}${button('Continue Battle','combat-continue','primary')}</div></section></div>`;
     if (e.phase === 'defeat') html += `<div class="shade defeat-shade"><div class="defeat-message" role="status">Heroes were defeated</div><section class="modal" role="dialog" aria-modal="true" aria-label="Continue battle"><h2>Continue?</h2><p>Revive all heroes with full HP. Keep your skills, buffs, and battle progress.</p><div class="wallet"><span>Resources ${e.progress.resources}</span><span>Cost 30</span></div><p class="error" role="status">${e.error || ''}</p><div class="actions">${button('Quit','quit')}${button('Continue · 30','continue','primary')}</div></section></div>`;
     if (e.phase === 'defeat' && !host.style.backgroundImage) host.style.backgroundImage = `url(${canvas.toDataURL()})`;
     if (e.phase !== 'defeat') host.style.backgroundImage = '';

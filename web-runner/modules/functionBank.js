@@ -1,5 +1,5 @@
 import { effectiveStat } from '../src/core/combatRules.mjs';
-import { resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit } from './heroCommands.mjs';
+import { resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat } from './heroCommands.mjs';
 import { state } from './state.js';
 import { MONSTER_KEYS, MONSTER_LOOT_TABLE, TOKEN, EMPTY } from './monsterLootTableEventTokens.js';
 import { ACTIVE_EVENT_IDS, LIVE_OPS_EVENTS, TOKEN_REGISTRY } from './liveOpsTokens.js';
@@ -42,6 +42,11 @@ import { resolveEnemyJobSkill as importedResolveEnemyJobSkill } from '../src/cor
 import { resolveStartEnemyAction as importedResolveStartEnemyAction } from '../src/core/startEnemyActionRules.mjs';
 import { resolveEnemyTurnFlow as importedResolveEnemyTurnFlow } from '../src/core/enemyTurnFlowRules.mjs';
 import { resolveHeroTurnEntry as importedResolveHeroTurnEntry } from '../src/core/heroTurnEntryRules.mjs';
+import {
+  createHeroTurnCardState,
+  drawHeroTurnCards,
+} from '../src/core/heroTurnCards.mjs';
+
 import { sanitizeInitiativeQueue, shouldAutoCorrectImproperRepeat } from '../src/core/initiativeGuards.mjs';
 import {
   pickEnemyTargetHeroFromRoster,
@@ -4200,6 +4205,8 @@ function buildDynamicInitiativeDefaultSpeedSelection(ctx, options = null) {
     return null;
   }
   const queue = buildFixedCycleSlots(roster, 0);
+  const delayResult = applyPendingTurnDelays(ctx, queue, currentUID);
+  queue.splice(0, queue.length, ...delayResult.queue);
   const completedUID = Number(currentUID || 0);
   const completedIndex = queue.findIndex(slot => Number(slot.uid || 0) === completedUID);
   const selectedIndex = completedIndex === -1 || completedIndex >= queue.length - 1 ? 0 : completedIndex + 1;
@@ -4232,6 +4239,30 @@ function buildDynamicInitiativeDefaultSpeedSelection(ctx, options = null) {
     eligibilitySkips: [],
     pendingDeaths: g.PendingDeaths || null,
   };
+}
+
+function applyPendingTurnDelays(ctx, queue, currentUID) {
+  const source = Array.isArray(queue) ? queue.slice() : [];
+  const currentIndex = source.findIndex(slot => Number(slot?.uid || 0) === Number(currentUID || 0));
+  if (currentIndex < 0 || source.length < 2) return { queue: source, applied: [] };
+  const current = source[currentIndex];
+  const future = source.slice(currentIndex + 1).concat(source.slice(0, currentIndex));
+  const decorated = future.map((slot, index) => {
+    const actor = GetActorByUID(ctx, Number(slot?.uid || 0));
+    const statuses = Array.isArray(actor?.statuses) ? actor.statuses : [];
+    const pending = actor?.kind === 'enemy'
+      ? statuses.find(status => status.statusEffect === 'delayNextTurn' && Number(status.duration || 0) > 0)
+      : null;
+    const shift = pending ? Math.max(1, Math.floor(Number(pending.delaySlots || 1))) : 0;
+    if (pending) actor.statuses = statuses.filter(status => status !== pending);
+    return { slot, index, shift, target: !!pending };
+  });
+  const applied = decorated.filter(entry => entry.target).map(entry => ({ uid: Number(entry.slot.uid || 0), slots: entry.shift }));
+  decorated.sort((a, b) => (a.index + a.shift) - (b.index + b.shift) || Number(a.target) - Number(b.target) || a.index - b.index);
+  const reordered = [current, ...decorated.map(entry => entry.slot)];
+  const next = new Array(source.length);
+  for (let index = 0; index < next.length; index += 1) next[(currentIndex + index) % next.length] = reordered[index];
+  return { queue: next, applied };
 }
 function getDynamicInitiativeSessionId(g) {
   const combatSessionId = Number(g.CombatSessionId || 0);
@@ -9633,7 +9664,233 @@ export function HeroTurn(ctx, heroUID) {
       }
     }
   }
+  if (activeHeroUID) openHeroTurnCardFan(ctx, activeHeroUID);
 }
+
+function heroTurnCardName(actor) {
+  return ({ Falie: 'Fara', Huun: 'Hondo', Runa: 'Runa', Kojonn: 'Kaja' })[
+    String(actor?.baseHeroName || actor?.name || '')
+  ] || String(actor?.baseHeroName || actor?.name || '');
+}
+
+function clearHeroTurnCardFan(g) {
+  g.HeroTurnCardFanOpen = 0;
+  g.HeroTurnCardFanHeroUID = 0;
+  g.HeroTurnCardFanCards = [];
+  g.HeroTurnCardFanSelectedCardId = '';
+  g.HeroTurnCardFanTargetUID = 0;
+  g.HeroTurnCardFanPendingCardIndex = -1;
+  g.HeroTurnCardFanPendingCardId = '';
+  g.HeroTurnCardFanPendingTarget = 0;
+  g.HeroTurnCardFanPendingTargetKind = '';
+  g.HeroTurnCardFanPendingExcludeSelf = 0;
+  g.HeroTurnCardFanBlockedCardId = '';
+}
+
+function cardSkillFromDefinition(card, actor, targetUID = 0) {
+  const supplied = card?.runtimeSkill || card?.skill || card?.combatSkill;
+  if (supplied && typeof supplied === 'object') {
+    const skill = { ...supplied, effects: (supplied.effects || []).map(effect => ({ ...effect })) };
+    if (targetUID && !['allAllies', 'allEnemies', 'self'].includes(skill.targetType)) skill.targetType = skill.targetType || 'enemy';
+    return skill;
+  }
+  const id = String(card?.id || card?.cardId || card?.name || '').toLowerCase().replace(/[^a-z0-9]/g, '').replace(/^(fara|hondo|runa|kaja)/, '');
+  const damageSkill = (targetType, tags = ['physical'], potency = 1, effects = []) => {
+    const conditional = effects.find(effect => effect?.ifTargetStatus) || {};
+    return { skillId: `hero_card:${id}`, displayName: card?.name || id, targetType, tags, effects: [{ effectType: 'damage', potency, ...conditional }, ...effects.filter(effect => effect?.effectType)] };
+  };
+  const statusSkill = (targetType, effect, tags = ['defensive']) => ({ skillId: `hero_card:${id}`, displayName: card?.name || id, targetType, tags, effects: [effect] });
+  const allyBarrier = (amount, targetType = 'ally') => statusSkill(targetType, { effectType: 'status', statusEffect: 'barrier', magnitude: amount, duration: 2 }, ['defensive']);
+  if (['brassstrike', 'alleyjab'].includes(id) || id.startsWith('basicattack')) return damageSkill('enemy');
+  if (id === 'sentinelstep') return damageSkill('enemy', ['physical'], 1, [{ effectType: 'status', statusEffect: 'barrier', magnitude: .2, duration: 2, recipient: 'self' }]);
+  if (['oathringward', 'lanternscreen'].includes(id)) return allyBarrier(.35);
+  if (id === 'sparespark') return { ...allyBarrier(.2), excludeSelf: true };
+  if (['gateofbrass', 'wardeddiagram'].includes(id)) return allyBarrier(.2, 'allAllies');
+  if (id === 'commandingchallenge') return statusSkill('enemy', { effectType: 'status', statusEffect: 'taunted', magnitude: 1, duration: 1, expiresOnSourceTurn: true }, ['physical', 'debuff']);
+  if (id === 'sandlock') return statusSkill('enemy', { effectType: 'status', statusEffect: 'delayNextTurn', delaySlots: 1, duration: 1 }, ['physical', 'debuff']);
+  if (id === 'wardinglamp') return statusSkill('allEnemies', { effectType: 'status', statusEffect: 'atkDown', magnitude: .25, duration: 1 }, ['defensive', 'debuff']);
+  if (id === 'sovereignsintercession') return {
+    skillId: `hero_card:${id}`,
+    displayName: card?.name || id,
+    targetType: 'ally',
+    tags: ['defensive'],
+    effects: [
+      { effectType: 'status', statusEffect: 'cover', magnitude: 1, duration: 2, coverOnce: true },
+      { effectType: 'status', statusEffect: 'counter', magnitude: 2, duration: 2, recipient: 'self', counterArmedByCover: true },
+    ],
+  };
+  if (id === 'rooftopcut') return damageSkill('enemy', ['physical'], 1, [{ effectType: 'status', statusEffect: 'mark', magnitude: 1, duration: 2 }]);
+  if (id === 'borrowedbreath') return damageSkill('enemy', ['physical'], 1, [{ ifTargetStatus: 'mark', conditionalMultiplier: 1.4 }]);
+  if (id === 'scorpionsting') return damageSkill('enemy', ['physical'], 1.4);
+  if (id === 'brokencrown') return damageSkill('enemy', ['physical'], 1.4, [{ ifTargetStatus: 'atkDown', conditionalMultiplier: 1.45 }]);
+  if (id === 'midnightverdict') return damageSkill('enemy', ['physical'], 2.2, [{ ifTargetStatus: 'mark', conditionalMultiplier: 1.35 }]);
+  if (id === 'coincharmfeint' || id === 'crackedseal') return statusSkill('enemy', { effectType: 'status', statusEffect: 'mark', magnitude: 1, duration: 2 }, ['debuff']);
+  if (id === 'smokepassage') return statusSkill('self', { effectType: 'status', statusEffect: 'evadeNext', magnitude: 1, duration: 2 });
+  if (id === 'blueember') return damageSkill('enemy', ['magic'], 1);
+  if (id === 'starfalllens') return damageSkill('enemy', ['magic'], 1.4);
+  if (id === 'ashenwind') return statusSkill('enemy', { effectType: 'status', statusEffect: 'dot', magnitude: 1, duration: 1, potency: 2 }, ['magic', 'debuff']);
+  if (id === 'dustboundhands') return statusSkill('enemy', { effectType: 'status', statusEffect: 'atkDown', magnitude: .25, duration: 1 }, ['magic', 'debuff']);
+  if (id === 'borrowedstarlight') return {
+    skillId: `hero_card:${id}`,
+    displayName: card?.name || id,
+    targetType: 'enemy',
+    tags: ['magic', 'debuff'],
+    effects: [
+      { effectType: 'status', statusEffect: 'delayNextTurn', delaySlots: 1, duration: 1 },
+      { effectType: 'status', statusEffect: 'atkDown', magnitude: .25, duration: 1 },
+    ],
+  };
+  if (id === 'observatoryflare') return damageSkill('allEnemies', ['magic'], 1.4);
+  if (id === 'sealedhorizon') return statusSkill('allEnemies', { effectType: 'status', statusEffect: 'delayNextTurn', delaySlots: 2, duration: 1 }, ['magic', 'debuff']);
+  if (['moonwellflask', 'mendingbeetle'].includes(id)) return statusSkill('ally', { effectType: id === 'mendingbeetle' ? 'status' : 'heal', ...(id === 'mendingbeetle' ? { statusEffect: 'hot', magnitude: .25, duration: 1, potency: .25 } : { potency: .2 }) }, ['magic']);
+  if (id === 'bottleddawn') return statusSkill('ally', { effectType: 'heal', potency: .5 }, ['magic']);
+  if (id === 'clearwaterkit') return statusSkill('ally', { effectType: 'cleanse' }, ['magic']);
+  if (id === 'lastlightreservoir') return {
+    skillId: `hero_card:${id}`,
+    displayName: card?.name || id,
+    targetType: 'allAllies',
+    tags: ['magic', 'support'],
+    effects: [
+      { effectType: 'heal', potency: .5 },
+      { effectType: 'cleanse' },
+    ],
+  };
+  return null;
+}
+
+function heroTurnCardTargets(ctx, actor, skill, targetUID = 0) {
+  const entities = getEntities(ctx);
+  if (skill.targetType === 'self') return [actor.uid];
+  if (skill.targetType === 'allAllies') return entities.filter(a => a.kind === actor.kind && a.hp > 0).map(a => a.uid);
+  if (skill.targetType === 'allEnemies') return entities.filter(a => a.kind !== actor.kind && a.hp > 0).map(a => a.uid);
+  const preferred = entities.find(a => Number(a.uid) === Number(targetUID) && a.hp > 0 && (
+    (skill.targetType === 'ally' && a.kind === actor.kind && (!skill.excludeSelf || Number(a.uid) !== Number(actor.uid))) ||
+    (skill.targetType === 'enemy' && a.kind !== actor.kind)
+  ));
+  return preferred ? [preferred.uid] : [];
+}
+
+export function getHeroTurnCardFanState(ctx) {
+  const g = getGlobals(ctx);
+  const active = GetActorByUID(ctx, g.HeroTurnCardFanHeroUID);
+  if ((g.HeroTurnCardFanOpen || g.HeroTurnCardFanPendingTarget) && (!active || active.kind !== 'hero' || active.hp <= 0 || g.NativeBattleEnded)) clearHeroTurnCardFan(g);
+  return {
+    open: !!g.HeroTurnCardFanOpen,
+    heroUID: Number(g.HeroTurnCardFanHeroUID || 0),
+    cards: Array.isArray(g.HeroTurnCardFanCards) ? [...g.HeroTurnCardFanCards] : [],
+    selectedCardId: String(g.HeroTurnCardFanSelectedCardId || ''),
+    targetUID: Number(g.HeroTurnCardFanTargetUID || 0),
+    pendingTarget: !!g.HeroTurnCardFanPendingTarget,
+    pendingCardIndex: Number.isInteger(g.HeroTurnCardFanPendingCardIndex) ? g.HeroTurnCardFanPendingCardIndex : Number(g.HeroTurnCardFanPendingCardIndex || -1),
+    pendingCardId: String(g.HeroTurnCardFanPendingCardId || ''),
+    pendingTargetKind: String(g.HeroTurnCardFanPendingTargetKind || ''),
+    pendingExcludeSelf: !!g.HeroTurnCardFanPendingExcludeSelf,
+  };
+}
+
+export function openHeroTurnCardFan(ctx, heroUID) {
+  const g = getGlobals(ctx), actor = GetActorByUID(ctx, heroUID);
+  if (!actor || actor.kind !== 'hero' || actor.hp <= 0 || Number(GetCurrentTurn(ctx)) !== Number(heroUID) || g.NativeBattleEnded) return false;
+  const hasActiveDecision = (g.HeroTurnCardFanOpen || g.HeroTurnCardFanPendingTarget)
+    && Number(g.HeroTurnCardFanHeroUID || 0) === Number(heroUID)
+    && Array.isArray(g.HeroTurnCardFanCards)
+    && g.HeroTurnCardFanCards.length > 0;
+  if (hasActiveDecision) return true;
+  const sessionId = Number(g.CombatSessionId || 0), turnSerial = Number(g.TurnSerial || 0), sameDraw = Number(g.HeroTurnCardFanSessionId || 0) === sessionId && Number(g.HeroTurnCardFanTurnSerial || 0) === turnSerial && Number(g.HeroTurnCardFanHeroUID || 0) === Number(heroUID) && Array.isArray(g.HeroTurnCardFanCards) && g.HeroTurnCardFanCards.length > 0;
+  if (!sameDraw) {
+    const name = heroTurnCardName(actor);
+    const prior = g.HeroTurnCardFanStateByHeroName?.[name] || createHeroTurnCardState();
+    const result = drawHeroTurnCards(name, prior, () => random01(ctx));
+    g.HeroTurnCardFanStateByHeroName = { ...(g.HeroTurnCardFanStateByHeroName || {}), [name]: result.state };
+    g.HeroTurnCardFanCards = Array.isArray(result.cards) ? result.cards : [];
+    g.HeroTurnCardFanSessionId = sessionId;
+    g.HeroTurnCardFanTurnSerial = turnSerial;
+  }
+  g.HeroTurnCardFanOpen = 1;
+  g.HeroTurnCardFanHeroUID = Number(heroUID);
+  g.HeroTurnCardFanSelectedCardId = '';
+  g.HeroTurnCardFanTargetUID = 0;
+  g.HeroTurnCardFanPendingCardIndex = -1;
+  g.HeroTurnCardFanPendingCardId = '';
+  g.HeroTurnCardFanPendingTarget = 0;
+  g.HeroTurnCardFanPendingTargetKind = '';
+  g.HeroTurnCardFanPendingExcludeSelf = 0;
+  g.HeroTurnCardFanBlockedCardId = '';
+  g.CanPickGems = 0;
+  return true;
+}
+
+export function reopenHeroTurnCardFan(ctx) { return openHeroTurnCardFan(ctx, getGlobals(ctx).HeroTurnCardFanHeroUID || GetCurrentTurn(ctx)); }
+
+export function cancelHeroTurnCardFan(ctx) {
+  const g = getGlobals(ctx);
+  if (!g.HeroTurnCardFanOpen && !g.HeroTurnCardFanPendingTarget) return false;
+  g.HeroTurnCardFanOpen = 0;
+  g.HeroTurnCardFanSelectedCardId = '';
+  g.HeroTurnCardFanTargetUID = 0;
+  g.HeroTurnCardFanPendingCardIndex = -1;
+  g.HeroTurnCardFanPendingCardId = '';
+  g.HeroTurnCardFanPendingTarget = 0;
+  g.HeroTurnCardFanPendingTargetKind = '';
+  g.HeroTurnCardFanPendingExcludeSelf = 0;
+  g.HeroTurnCardFanBlockedCardId = '';
+  return true;
+}
+
+export function selectHeroTurnCard(ctx, index, targetUID = 0) {
+  const g = getGlobals(ctx), fan = getHeroTurnCardFanState(ctx), actor = GetActorByUID(ctx, fan.heroUID);
+  const cardIndex = Number.isInteger(Number(index)) ? Number(index) : -1;
+  const card = fan.cards[cardIndex];
+  const pending = !!g.HeroTurnCardFanPendingTarget;
+  if ((!fan.open && !pending) || !actor || actor.hp <= 0 || Number(GetCurrentTurn(ctx)) !== Number(actor.uid) || Number(g.TurnPhase || 0) !== 0 || !card || g.NativeBattleEnded) return false;
+  if (pending && (cardIndex !== Number(g.HeroTurnCardFanPendingCardIndex) || String(card.id || card.cardId || '') !== String(g.HeroTurnCardFanPendingCardId || card.id || card.cardId || ''))) return false;
+  const skill = cardSkillFromDefinition(card, actor, targetUID);
+  if (!skill) return false;
+  let resolvedTargetUID = Number(targetUID || 0);
+  if (!resolvedTargetUID && skill.targetType === 'enemy') {
+    const selected = GetActorByUID(ctx, Number(g.SelectedEnemyUID || 0));
+    const validSelected = selected && selected.kind === 'enemy' && Number(selected.hp || 0) > 0;
+    const fallback = getEntities(ctx).find(entity => entity && entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
+    resolvedTargetUID = Number((validSelected ? selected : fallback)?.uid || 0);
+  }
+  if (!resolvedTargetUID && skill.targetType === 'ally') {
+    const selectedId = String(card.id || card.cardId || card.name || '');
+    g.HeroTurnCardFanOpen = 0;
+    g.HeroTurnCardFanSelectedCardId = selectedId;
+    g.HeroTurnCardFanTargetUID = Number(actor.uid);
+    g.SelectedAllyUID = Number(actor.uid);
+    g.HeroTurnCardFanPendingCardIndex = cardIndex;
+    g.HeroTurnCardFanPendingCardId = selectedId;
+    g.HeroTurnCardFanPendingTarget = 1;
+    g.HeroTurnCardFanPendingTargetKind = skill.targetType;
+    g.HeroTurnCardFanPendingExcludeSelf = skill.excludeSelf ? 1 : 0;
+    g.HeroTurnCardFanBlockedCardId = '';
+    g.CanPickGems = 0;
+    return true;
+  }
+  const targetIds = heroTurnCardTargets(ctx, actor, skill, resolvedTargetUID);
+  if (!targetIds.length) return false;
+  const selectedId = String(card.id || card.cardId || card.name || '');
+  g.NextHeroActionProfile = ['allAllies', 'allEnemies'].includes(skill.targetType) ? 'aoe' : 'single';
+  if (!StartHeroLunge(ctx, actor.uid)) return false;
+  if (skill.targetType === 'enemy' && targetIds.length === 1) {
+    g.SelectedEnemyUID = Number(targetIds[0]);
+    g.SelectedEnemyUIDOwner = Number(actor.uid);
+  }
+  g.HeroTurnCardFanOpen = 0; g.HeroTurnCardFanSelectedCardId = selectedId; g.HeroTurnCardFanTargetUID = Number(resolvedTargetUID || targetIds[0] || 0); g.HeroTurnCardFanCards = []; g.HeroTurnCardFanPendingCardIndex = -1; g.HeroTurnCardFanPendingCardId = ''; g.HeroTurnCardFanPendingTarget = 0; g.HeroTurnCardFanPendingTargetKind = ''; g.HeroTurnCardFanPendingExcludeSelf = 0; g.HeroTurnCardFanBlockedCardId = '';
+  const sequence = { kind: 'hero_turn_card', actorUID: actor.uid, cardId: selectedId, card, skill, targetIds, sessionId: Number(g.CombatSessionId || 0), turnSerial: Number(g.TurnSerial || 0) };
+  g.NativeCommandSequence = sequence;
+  g.PendingHeroHits = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
+  g.PendingHeroHits.push({ at: Number(g.time || 0) + .97, effectType: 'native_command', heroUID: actor.uid, sequence });
+  g.AdvanceAfterAction = 1; g.DeferAdvance = 1; g.ActionOwnerUID = actor.uid;
+  return true;
+}
+
+export const OpenHeroTurnCardFan = openHeroTurnCardFan;
+export const ReopenHeroTurnCardFan = reopenHeroTurnCardFan;
+export const CancelHeroTurnCardFan = cancelHeroTurnCardFan;
+export const SelectHeroTurnCard = selectHeroTurnCard;
+export const GetHeroTurnCardFanState = getHeroTurnCardFanState;
 
 function resolveProcessTurnActorEligibility(ctx, {
   source = 'functionBank.ProcessTurn',
@@ -10568,3 +10825,4 @@ export function RegisterPartyBuffSlot(ctx, buffType) {
 }
 
 export function ResolveNativeCommandStep(ctx, hit) { return resolveNativeCommandStep(ctx, hit); }
+export function SettleCombatDefeat(ctx) { return settleDefeat(ctx); }

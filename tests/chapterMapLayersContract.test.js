@@ -53,7 +53,7 @@ test('map and ladder share identical resource markup and dialogue hides it', asy
       gameState, layoutState: { getActiveLayoutId: () => 'storyMock' }, flow: {}, getGold: () => gold });
     ui.update();
     const mapHeader = host.innerHTML;
-    assert.match(mapHeader, /Quest resources/);
+    assert.match(mapHeader, /Resources/);
     assert.match(mapHeader, /Gold 12345/);
     assert.match(mapHeader, /12,345/);
     gameState.storyEntry.phase = 'ladder';

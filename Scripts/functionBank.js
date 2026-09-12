@@ -1,5 +1,12 @@
 import { effectiveStat } from '../web-runner/src/core/combatRules.mjs';
-import { resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit } from '../web-runner/modules/heroCommands.mjs';
+import { resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat } from '../web-runner/modules/heroCommands.mjs';
+import {
+  openHeroTurnCardFan as importedOpenHeroTurnCardFan,
+  reopenHeroTurnCardFan as importedReopenHeroTurnCardFan,
+  cancelHeroTurnCardFan as importedCancelHeroTurnCardFan,
+  selectHeroTurnCard as importedSelectHeroTurnCard,
+  getHeroTurnCardFanState as importedGetHeroTurnCardFanState,
+} from '../web-runner/modules/functionBank.js';
 import { state } from './state.js';
 import { MONSTER_KEYS, MONSTER_LOOT_TABLE, TOKEN, EMPTY } from './monsterLootTableEventTokens.js';
 import { ACTIVE_EVENT_IDS, LIVE_OPS_EVENTS, TOKEN_REGISTRY } from './liveOpsTokens.js';
@@ -4155,6 +4162,8 @@ function buildDynamicInitiativeDefaultSpeedSelection(ctx, options = null) {
     return null;
   }
   const queue = buildFixedCycleSlots(roster, 0);
+  const delayResult = applyPendingTurnDelays(ctx, queue, currentUID);
+  queue.splice(0, queue.length, ...delayResult.queue);
   const completedUID = Number(currentUID || 0);
   const completedIndex = queue.findIndex(slot => Number(slot.uid || 0) === completedUID);
   const selectedIndex = completedIndex === -1 || completedIndex >= queue.length - 1 ? 0 : completedIndex + 1;
@@ -4187,6 +4196,29 @@ function buildDynamicInitiativeDefaultSpeedSelection(ctx, options = null) {
     eligibilitySkips: [],
     pendingDeaths: g.PendingDeaths || null,
   };
+}
+function applyPendingTurnDelays(ctx, queue, currentUID) {
+  const source = Array.isArray(queue) ? queue.slice() : [];
+  const currentIndex = source.findIndex(slot => Number(slot?.uid || 0) === Number(currentUID || 0));
+  if (currentIndex < 0 || source.length < 2) return { queue: source, applied: [] };
+  const current = source[currentIndex];
+  const future = source.slice(currentIndex + 1).concat(source.slice(0, currentIndex));
+  const decorated = future.map((slot, index) => {
+    const actor = GetActorByUID(ctx, Number(slot?.uid || 0));
+    const statuses = Array.isArray(actor?.statuses) ? actor.statuses : [];
+    const pending = actor?.kind === 'enemy'
+      ? statuses.find(status => status.statusEffect === 'delayNextTurn' && Number(status.duration || 0) > 0)
+      : null;
+    const shift = pending ? Math.max(1, Math.floor(Number(pending.delaySlots || 1))) : 0;
+    if (pending) actor.statuses = statuses.filter(status => status !== pending);
+    return { slot, index, shift, target: !!pending };
+  });
+  const applied = decorated.filter(entry => entry.target).map(entry => ({ uid: Number(entry.slot.uid || 0), slots: entry.shift }));
+  decorated.sort((a, b) => (a.index + a.shift) - (b.index + b.shift) || Number(a.target) - Number(b.target) || a.index - b.index);
+  const reordered = [current, ...decorated.map(entry => entry.slot)];
+  const next = new Array(source.length);
+  for (let index = 0; index < next.length; index += 1) next[(currentIndex + index) % next.length] = reordered[index];
+  return { queue: next, applied };
 }
 function getDynamicInitiativeSessionId(g) {
   const combatSessionId = Number(g.CombatSessionId || 0);
@@ -9619,7 +9651,19 @@ export function HeroTurn(ctx, heroUID) {
       }
     }
   }
+  if (activeHeroUID) openHeroTurnCardFan(ctx, activeHeroUID);
 }
+
+export function openHeroTurnCardFan(ctx, heroUID) { return importedOpenHeroTurnCardFan(ctx, heroUID); }
+export function reopenHeroTurnCardFan(ctx) { return importedReopenHeroTurnCardFan(ctx); }
+export function cancelHeroTurnCardFan(ctx) { return importedCancelHeroTurnCardFan(ctx); }
+export function selectHeroTurnCard(ctx, index, targetUID = 0) { return importedSelectHeroTurnCard(ctx, index, targetUID); }
+export function getHeroTurnCardFanState(ctx) { return importedGetHeroTurnCardFanState(ctx); }
+export const OpenHeroTurnCardFan = openHeroTurnCardFan;
+export const ReopenHeroTurnCardFan = reopenHeroTurnCardFan;
+export const CancelHeroTurnCardFan = cancelHeroTurnCardFan;
+export const SelectHeroTurnCard = selectHeroTurnCard;
+export const GetHeroTurnCardFanState = getHeroTurnCardFanState;
 
 function resolveProcessTurnActorEligibility(ctx, {
   source = 'functionBank.ProcessTurn',
@@ -10554,3 +10598,4 @@ export function RegisterPartyBuffSlot(ctx, buffType) {
 }
 
 export function ResolveNativeCommandStep(ctx, hit) { return resolveNativeCommandStep(ctx, hit); }
+export function SettleCombatDefeat(ctx) { return settleDefeat(ctx); }

@@ -1,269 +1,260 @@
-import {selectionBudget, battlefieldTargets} from '../src/core/actionSelection.mjs';
+import {isAbleToActSlot} from '../src/core/schedulerRules.mjs';
 import {heroDefinition} from '../src/core/heroDefinitions.mjs';
-import {legalSkill} from '../src/core/combatRules.mjs';
-import { buildCommandActions, canUseHeroCommand, executeHeroCommand, getHeroCommandSlots, getHeroSkillOptions, getHeroFlowState } from '../modules/heroCommands.mjs';
+import {canUseHeroCommand, executeHeroCommand, getHeroCommandSlots, getHeroFlowState} from '../modules/heroCommands.mjs';
+import {HERO_ART_ASSETS, heroArtKey} from '../state/heroArtAssets.mjs';
 
-const names = { Falie: 'Fara', Huun: 'Hondo', Runa: 'Runa', Kojonn: 'Kaja' };
-const heroName = hero => names[hero.baseHeroName || hero.name] || hero.name;
-const copyCommand = command => ({ ...command, queue: command?.queue ? command.queue.map(action => ({...action, targetIds:[...action.targetIds]})) : undefined });
+const HERO_NAMES = Object.freeze({Falie: 'Fara', Fara: 'Fara', Huun: 'Hondo', Hondo: 'Hondo', Runa: 'Runa', Kojonn: 'Kaja', Kaja: 'Kaja'});
+const HERO_DISPLAY_ROLES = Object.freeze({Fara: 'TANK', Hondo: 'FIGHT', Runa: 'CTRL', Kaja: 'SUP'});
+const HERO_PORTRAIT_PATHS = Object.freeze(Object.fromEntries(
+  Object.entries(HERO_ART_ASSETS).map(([key, asset]) => [key, new URL(`../assets/${asset.path}`, import.meta.url).toString()]),
+));
+const HERO_PORTRAIT_CROPS = Object.freeze({
+  Falie: {position: '52% 0%', scale: 4.6, width: '47%'},
+  Huun: {position: '60% 0%', scale: 4.8, width: '47%'},
+  Runa: {position: '48% 0%', scale: 4.8, width: '47%'},
+  Kojonn: {position: '54% 0%', scale: 4.7, width: '47%'},
+});
+export const HERO_STRIP_VERSION = 'sample-status-v30';
+const heroName = hero => HERO_NAMES[hero?.baseHeroName || hero?.name] || hero?.name || 'Hero';
+const heroPortraitKey = hero => heroArtKey(hero);
+const number = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
+export const heroStripCardWidth = () => 82;
 
-export function createHeroCommandUI({ ctx, gameState, canvas }) {
+export function createHeroCommandUI({ctx, gameState, canvas, onActiveHeroClick = () => undefined}) {
   const host = document.createElement('section');
   host.id = 'hero-commands';
-  host.setAttribute('aria-label', 'Party commands');
+  host.dataset.heroStripVersion = HERO_STRIP_VERSION;
+  host.setAttribute('aria-label', 'Party status');
   const style = document.createElement('style');
   style.textContent = `
-    #hero-commands{position:fixed;transform-origin:top left;width:348px;height:226px;box-sizing:border-box;background:#080808;color:#fff;z-index:18;padding:4px;font:12px/1.2 system-ui}
+    #hero-commands{position:fixed;transform-origin:top left;width:354px;height:104px;box-sizing:border-box;background:transparent;color:#fff;z-index:18;padding:0;font:600 10px/1.05 system-ui,sans-serif;pointer-events:none}
     #hero-commands[hidden],#hero-commands [hidden]{display:none}
     #hero-commands *{box-sizing:border-box}
-    #hero-commands button{font:inherit;color:inherit;background:#141414;border:2px ridge #9f9f9f;border-radius:4px;min-width:0;cursor:pointer}
-    #hero-commands button:disabled{color:#858585;cursor:default;border-color:#555}
-    #hero-commands button:focus-visible{outline:2px solid #64d4ee;outline-offset:1px}
-    #hero-commands button[aria-pressed=true]{border-color:#64d4ee;background:#203035}
-    #hero-commands .party-grid{display:grid;grid-auto-flow:column;grid-template:repeat(3,58px)/repeat(2,minmax(0,1fr));gap:4px}
-    #hero-commands article{min-width:0;border:2px ridge #3e3e3e;border-radius:5px;background:linear-gradient(#151515,#050505)}
-    #hero-commands article:has(button){border:0}
-    #hero-commands .hero-card{width:100%;height:100%;text-align:left;padding:4px 5px;border:3px ridge #aaa;background:linear-gradient(#151515,#050505)}
-    #hero-commands article[data-current=true] .hero-card{color:white;border-color:#8ef5ff;background:radial-gradient(ellipse at center,#007aca,#003c70);box-shadow:inset 0 0 12px #16bfff,0 0 7px #27d4ff}
-    #hero-commands article[data-ready=true] .flow{filter:drop-shadow(0 0 3px #ffd873);color:#ffe08b}
-    #hero-commands article[data-ready=true] .flow progress::-webkit-progress-value{background:#ef4444}
-    #hero-commands article[data-ready=true] .flow progress::-moz-progress-bar{background:#ef4444}
+    #hero-commands .party-grid{display:flex;flex-wrap:nowrap;justify-content:flex-start;align-items:flex-start;gap:7px;width:349px;height:104px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+    #hero-commands .party-grid::-webkit-scrollbar{display:none}
+    #hero-commands .party-grid[data-count="1"],#hero-commands .party-grid[data-count="2"],#hero-commands .party-grid[data-count="3"]{justify-content:center}
+    #hero-commands article{position:relative;isolation:isolate;flex:0 0 var(--card-width,82px);width:var(--card-width,82px);height:104px;min-width:0;overflow:visible;border:0;background:transparent}
+    #hero-commands .hero-card{position:relative;width:100%;height:100%;display:grid;grid-template-rows:64px 40px;padding:0;border:0;background:transparent;color:#fff;text-align:left;pointer-events:auto;overflow:visible}
     #hero-commands article[data-ko=true]{filter:grayscale(1);opacity:.6}
-    #hero-commands header{display:flex;align-items:center;gap:4px;height:22px;overflow:hidden}
-    #hero-commands strong{font-size:10px;min-width:0;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    #hero-commands .face{width:18px;height:18px;flex:none;overflow:hidden}
-    #hero-commands .face img{width:100%;height:100%;object-fit:cover;object-position:50% 18%;transform:scale(1.5);transform-origin:50% 15%;pointer-events:none}
-    #hero-commands .vitals{display:grid;grid-template-columns:minmax(0,1fr) 55px;gap:7px;margin-top:2px}
-    #hero-commands .health,#hero-commands .sp{display:flex;flex-direction:column;gap:2px;font-size:10px;min-width:0}
-    #hero-commands progress{height:5px;width:100%;appearance:none;display:block;border:0;background:#303030}
-    #hero-commands progress::-webkit-progress-bar{background:#303030}
-    #hero-commands progress::-webkit-progress-value{background:#99d638}
-    #hero-commands progress::-moz-progress-bar{background:#99d638}
-    #hero-commands .health span{white-space:nowrap}
-    #hero-commands .sp span{white-space:nowrap;text-align:right}
-    #hero-commands .flow{display:flex;flex-direction:column;gap:2px;width:48px;flex:none;margin-left:auto;font-size:10px;font-weight:700;font-style:italic;text-align:right}
-    #hero-commands .flow progress{height:4px}
-    #hero-commands .flow progress::-webkit-progress-value{background:#ef4444}
-    #hero-commands .flow progress::-moz-progress-bar{background:#ef4444}
-    #hero-commands .sp progress::-webkit-progress-value{background:#3b82f6}
-    #hero-commands .sp progress::-moz-progress-bar{background:#3b82f6}
-    #hero-commands .commands{display:flex;flex-wrap:wrap;gap:4px}
-    #hero-commands footer{display:flex;gap:4px;height:32px;margin-top:4px}
-    #hero-commands footer button{flex:1;font-size:11px;text-transform:uppercase}
-    #hero-commands .editor{position:absolute;inset:4px;background:#080808;display:flex;flex-direction:column;gap:5px;padding:7px;border:3px ridge #aaa}
-    #hero-commands .editor h2{font-size:13px;margin:0;display:flex;justify-content:space-between;gap:8px}
-    #hero-commands .editor h2 span{font-size:10px;font-weight:400;white-space:nowrap}
-    #hero-commands .editor button{min-height:30px;padding:4px 6px;font-size:11px}
-    #hero-commands .editor-body{display:flex;flex-direction:column;gap:6px;min-height:0;overflow:auto;flex:1;padding:2px}
-    #hero-commands .skills{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
-    #hero-commands .skills button{display:flex;justify-content:space-between;gap:3px;text-align:left}
-    #hero-commands .queue{display:flex;flex-wrap:wrap;gap:4px;flex-shrink:0}
-    #hero-commands .queue:empty{display:none}
-    #hero-commands .editor footer{flex:none}
+    #hero-commands button:disabled{cursor:default}
+    #hero-commands button:focus-visible{outline:2px solid #64d4ee;outline-offset:1px}
+    #hero-commands article[data-current=true]::before{content:'';position:absolute;z-index:-1;inset:-3px;border-radius:8px;background:radial-gradient(ellipse at center,#21dfff3d 0%,#21dfff15 42%,transparent 74%);filter:blur(3px);opacity:.85;pointer-events:none}
+    #hero-commands .hero-top{grid-row:1;position:relative;min-width:0;overflow:visible;isolation:isolate;background:transparent}
+    #hero-commands .portrait{position:absolute;z-index:1;inset:0 auto auto 0;width:47%;height:60px;overflow:hidden;background:transparent}
+    #hero-commands .portrait img{width:100%;height:100%;display:block;object-fit:cover;object-position:50% 0%;transform:scale(2.1);transform-origin:50% 0%;pointer-events:none}
+    #hero-commands .portrait-fallback{display:grid;place-items:center;height:100%;padding:2px;color:#d9f8ff;font-size:8px;overflow-wrap:anywhere;text-align:center}
+    #hero-commands .readouts{position:absolute;z-index:2;top:2px;left:42%;width:55%;height:62px;display:flex;flex-direction:column;gap:6px;min-width:0}
+    #hero-commands .readout{display:grid;grid-template-rows:19px 8px;gap:0;min-width:0;padding:0 2px;border:0;background:transparent;line-height:1;overflow:hidden}
+    #hero-commands .readout.hp{transform:translateY(11px)}
+    #hero-commands .readout-text{display:flex;align-items:baseline;justify-content:space-between;gap:0;min-width:0;padding:4px 0 0;white-space:nowrap;transform:translateY(5px)}
+    #hero-commands .readout-label{display:inline-block;font-size:calc(9px * var(--compact-type-scale,1));font-weight:900;transform:scale(1.5);transform-origin:left bottom;text-shadow:1px 1px 0 #05060b,-1px 0 0 #05060b,0 -1px 0 #05060b,0 1px 0 #05060b}
+    #hero-commands .readout-value{display:inline-block;font-size:calc(20px * var(--compact-type-scale,1));font-weight:900;line-height:.75;letter-spacing:-1px;transform:scaleX(.85);transform-origin:right bottom;margin-right:0;text-shadow:2px 0 #05060b,-2px 0 #05060b,0 2px #05060b,0 -2px #05060b,1px 1px 0 #05060b,-1px -1px 0 #05060b}
+    #hero-commands progress{display:block;justify-self:stretch;width:100%;height:8px;appearance:none;border:1px solid #090a10;border-radius:3px;background:linear-gradient(#30323b,#11131a);box-shadow:inset 0 1px #fff9,inset 0 -2px #000b,0 1px #07090d;overflow:hidden}
+    #hero-commands progress::-webkit-progress-bar{background:linear-gradient(#30323b,#11131a);border-radius:3px}
+    #hero-commands .hp progress::-webkit-progress-value{background:linear-gradient(#eaff9c 0%,#a8ed52 30%,#559e17 70%,#245c08 100%);border-radius:2px}
+    #hero-commands .hp progress::-moz-progress-bar{background:linear-gradient(#eaff9c,#559e17 70%,#245c08);border-radius:2px}
+    #hero-commands .sp progress::-webkit-progress-value{background:linear-gradient(#c5f4ff 0%,#60d2ff 30%,#2274d4 70%,#123d8c 100%);border-radius:2px}
+    #hero-commands .sp progress::-moz-progress-bar{background:linear-gradient(#c5f4ff,#2274d4 70%,#123d8c);border-radius:2px}
+    #hero-commands footer{position:relative;z-index:3;grid-row:2;height:40px;display:grid;grid-template-rows:18px minmax(0,1fr);gap:1px;padding:0;border:0;background:transparent;color:#fff;overflow:visible}
+    #hero-commands footer .hero-meta,#hero-commands footer .hero-name{min-width:0;overflow:hidden;border:2px solid #c6c4da;border-radius:4px;background:linear-gradient(#3a3a45,#111119);box-shadow:inset 0 0 0 1px #252632,0 1px #07080d}
+    #hero-commands footer .hero-meta{display:flex;align-items:center;justify-content:center;gap:5px;padding:0 4px;border-bottom-color:#89899e;box-shadow:inset 0 -1px #20212c,0 1px #07080d}
+    #hero-commands footer .hero-name{display:grid;place-items:center;padding:0 4px;border-top-color:#eeedfc}
+    #hero-commands footer .role{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:calc(10px * var(--compact-type-scale,1));font-weight:900;text-shadow:1px 1px #000,-1px -1px #000;text-transform:uppercase}
+    #hero-commands footer .level{display:flex;align-items:baseline;gap:1px;flex:none;white-space:nowrap;text-shadow:1px 1px #000,-1px -1px #000}
+    #hero-commands footer .level-label{font-size:calc(10px * var(--compact-type-scale,1));font-weight:900}
+    #hero-commands footer .level-value{font-size:calc(22px * var(--compact-type-scale,1));font-weight:1000;line-height:.68;text-shadow:2px 0 #05060b,-2px 0 #05060b,0 2px #05060b,0 -2px #05060b;}
+    #hero-commands footer .hero-name strong{display:grid;place-items:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:calc(15px * var(--compact-type-scale,1));font-weight:900;line-height:1;text-shadow:1px 1px 0 #05060b,-1px 0 0 #05060b,0 -1px 0 #05060b,0 1px 0 #05060b;text-transform:uppercase}
   `;
   document.head.append(style);
   const grid = document.createElement('div');
   grid.className = 'party-grid';
-  const cards = Array.from({ length: 6 }, () => grid.appendChild(document.createElement('article')));
-  const footer = document.createElement('footer');
-  host.append(grid, footer);
+  host.append(grid);
   document.body.append(host);
-  let members = [], prepared = new Map(), previous = new Map(), draft = null, editor = null, sessionId = null;
-  let auto = false, repeat = null, available = false, returnFocusUID = null, refreshEditor = null, commitFullDraft = null;
-  const button = (parent, text, action) => {
-    const el = document.createElement('button');
-    el.type = 'button'; el.textContent = text; el.onclick = action; parent.append(el); return el;
+  let members = [];
+  let slotMembers = [];
+  let cards = [];
+  let sessionId = null;
+  let available = false;
+
+  const button = (parent, action) => {
+    const element = document.createElement('button');
+    element.type = 'button';
+    element.onclick = action;
+    parent.append(element);
+    return element;
   };
-  const autoButton = button(footer, 'Auto', () => { auto = !auto; repeat = null; });
-  const repeatButton = button(footer, 'Repeat', () => {
-    auto = false;
-    repeat = repeat ? null : new Set(members.filter(hero => hero && hero.hp > 0 && previous.has(hero.uid)).map(hero => hero.uid));
-  });
-  button(footer, 'Reload', () => { prepared = new Map([...previous].map(([uid, command]) => [uid, copyCommand(command)])); });
-  const menuButton = button(footer, 'Menu', () => { gameState.heroCommandsMenuOpen = !gameState.heroCommandsMenuOpen; auto = false; repeat = null; });
-  function closeEditor() {
-    returnFocusUID = draft?.actorUID ?? returnFocusUID;
-    editor?.remove(); editor = null; draft = null; refreshEditor = null; commitFullDraft = null;
-    grid.inert = false; footer.inert = false;
-  }
-  function validCommand(hero, command) {
-    return !!buildCommandActions(ctx, hero, command);
-  }
-  function openEditor(hero) {
-    if (!available || Number(hero.hp) <= 0) return;
-    auto = false; repeat = null;
-    grid.inert = true; footer.inert = true;
-    draft = { actorUID: hero.uid, skillId: 'HERO_SINGLE', ...copyCommand(prepared.get(hero.uid)) };
-    editor?.remove(); editor = document.createElement('div'); editor.className = 'editor';
-    editor.setAttribute('role', 'group'); editor.setAttribute('aria-label', `${heroName(hero)} actions`);
-    const title = document.createElement('h2'); title.textContent = heroName(hero);
-    const budget = document.createElement('span'); title.append(budget); editor.append(title);
-    const targetLabel = document.createElement('div'); editor.append(targetLabel);
-    const body = document.createElement('div'); body.className = 'editor-body'; editor.append(body);
-    const choices = document.createElement('div'); choices.className = 'commands'; body.append(choices);
-    const definition = heroDefinition(hero);
-    const options = getHeroSkillOptions(hero);
-    function selectSkill(skill) {
-      const targetIds = battlefieldTargets(ctx.state.entities, hero, skill, ctx.state.globals);
-      const action = {skillId:skill.skillId,targetIds};
-      const exclusive = skill.isFlowSpecial || skill === definition.basic;
-      const candidate = {...draft, flow:!!skill.isFlowSpecial, queue:exclusive || draft.flow || draft.queue?.some(a => a.skillId === definition.basic.skillId) ? [action] : [...(draft.queue||[]),action]};
-      if (!validCommand(hero,candidate)) return;
-      draft=candidate;
-      save();
-      if (selectionBudget(hero,draft.queue).remainingActionSlots === 0 && canUseHeroCommand(ctx,hero.uid)) commit();
-    }
-    const attack = button(choices, 'Attack', () => selectSkill(definition.basic));
-    const flowButton = button(choices, 'FLOW', () => selectSkill(definition.special)); flowButton.dataset.flowAction = '';
-    const skills = document.createElement('div'); skills.className = 'skills'; body.append(skills);
-    const skillButtons = options.map(skill => {
-      const el = button(skills, `${skill.displayName} · ${skill.spCost} SP`, () => selectSkill(skill));
-      el.title = skill.description; el.dataset.skill = skill.skillId; return {el,skill};
+
+  const selectActor = actor => {
+    if (!available || !actor || Number(actor.hp || 0) <= 0) return false;
+    ctx.state.globals[actor.kind === 'enemy' ? 'SelectedEnemyUID' : 'SelectedAllyUID'] = actor.uid;
+    return true;
+  };
+
+  function playCurrent() {
+    const actor = members.find(hero => hero && canUseHeroCommand(ctx, hero.uid));
+    if (!actor) return false;
+    const target = ctx.state.entities.find(entity => entity.kind === 'enemy' && entity.hp > 0);
+    const definition = heroDefinition(actor);
+    if (!target || !definition?.basic) return false;
+    return executeHeroCommand(ctx, {
+      actorUID: actor.uid,
+      queue: [{skillId: definition.basic.skillId, targetIds: [target.uid]}],
     });
-    const queue = document.createElement('div'); queue.className = 'queue'; queue.setAttribute('aria-label', 'Queued skills'); editor.append(queue);
-    const controls = document.createElement('footer'); editor.append(controls);
-    button(controls, 'Back', closeEditor);
-    function commit() {
-      if (!draft?.queue?.length || !canUseHeroCommand(ctx, hero.uid) || !validCommand(hero, draft)) return;
-      const command = copyCommand(draft); closeEditor(); execute(hero, command);
-    }
-    const act = button(controls, 'Act', commit);
-    act.dataset.act = '';
-    function save() {
-      prepared.set(hero.uid, copyCommand(draft));
-      const selection = selectionBudget(hero,draft.queue);
-      hero.remainingActionSlots=selection.remainingActionSlots;
-      hero.reservedSP=selection.reservedSP;
-      queue.replaceChildren();
-      (draft.queue || []).forEach((action, index) => {
-        const skillName = [definition.basic,...options,definition.special].find(skill => skill.skillId === action.skillId)?.displayName || action.skillId;
-        const targetNames = action.targetIds.map(uid => ctx.state.entities.find(a => a.uid === uid)).filter(Boolean).map(heroName).join(', ');
-        const name = `${skillName} → ${targetNames}`;
-        const remove = button(queue, `${index + 1}. ${name} ×`, () => { draft.queue.splice(index, 1); save(); });
-        remove.setAttribute('aria-label', `Remove queued ${name}, position ${index + 1}`);
-      });
-      refreshEditor?.();
-    }
-    refreshEditor = () => {
-      const flow = getHeroFlowState(hero);
-      const cost = (draft.queue || []).reduce((sum, action) => sum + (options.find(skill => skill.skillId === action.skillId)?.spCost || 0), 0);
-      const selection = selectionBudget(hero,draft.queue);
-      const target = ctx.state.entities.find(actor => actor.uid === ctx.state.globals.SelectedEnemyUID && actor.hp > 0);
-      budget.textContent = `${selection.queuedActions}/${selection.capacity} actions · ${selection.remainingActionSlots} left · ${selection.availableSP} SP`;
-      targetLabel.textContent = target ? `Target: ${target.name}` : 'No living enemy target';
-      attack.setAttribute('aria-pressed', String(draft.queue?.some(a=>a.skillId===definition.basic.skillId)||false));
-      flowButton.setAttribute('aria-pressed', String(!!draft.flow && !!draft.queue?.length)); flowButton.disabled = !flow.ready || !legalSkill(hero,definition.special);
-      for (const {el,skill} of skillButtons) {
-        el.disabled = selection.remainingActionSlots === 0 || !legalSkill(hero,skill) || cost + skill.spCost > flow.sp || (!skill.multiCast && draft.queue?.some(a => a.skillId === skill.skillId));
-        el.setAttribute('aria-pressed',String(draft.queue?.some(a=>a.skillId===skill.skillId)||false));
-      }
-      act.disabled = !available || !canUseHeroCommand(ctx, hero.uid) || !draft.queue?.length || !validCommand(hero, draft);
-    };
-    save();
-    commitFullDraft=()=>{if(draft?.queue?.length && selectionBudget(hero,draft.queue).remainingActionSlots===0 && canUseHeroCommand(ctx,hero.uid))commit();};
-    editor.onkeydown = event => { if (event.key === 'Escape') { event.stopPropagation(); closeEditor(); } };
-    host.append(editor); attack.focus();
   }
-  function execute(hero, command = prepared.get(hero.uid)) {
-    if (!available || draft || gameState.heroCommandsMenuOpen) return false;
-    const enemies = ctx.state.entities.filter(actor => actor.kind === 'enemy' && actor.hp > 0);
-    const targetUID = command?.targetUID ?? ctx.state.globals.SelectedEnemyUID ?? enemies[0]?.uid;
-    const next = { actorUID: hero.uid, skillId: 'HERO_SINGLE', ...copyCommand(command), targetUID };
-    if (!validCommand(hero, next)) { auto = false; repeat = null; openEditor(hero); return false; }
-    if (!executeHeroCommand(ctx, next)) { auto = false; repeat = null; return false; }
-    previous.set(hero.uid, copyCommand(next)); prepared.delete(hero.uid); return true;
+
+  function rebuildCard(card, hero) {
+    card.replaceChildren();
+    for (const key of Object.keys(card.dataset)) delete card.dataset[key];
+    if (!hero) return;
+    card.dataset.uid = hero.uid;
+    const open = button(card, () => undefined);
+    open.className = 'hero-card';
+    open.dataset.open = '';
+    const top = document.createElement('div');
+    top.className = 'hero-top';
+    const portrait = document.createElement('div');
+    portrait.className = 'portrait';
+    const image = document.createElement('img');
+    image.alt = '';
+    image.draggable = false;
+    const fallback = document.createElement('span');
+    fallback.className = 'portrait-fallback';
+    fallback.textContent = heroName(hero);
+    portrait.append(image, fallback);
+    const readouts = document.createElement('div');
+    readouts.className = 'readouts';
+    for (const [key, label] of [['hp', 'HP'], ['sp', 'SP']]) {
+      const readout = document.createElement('div');
+      readout.className = `readout ${key}`;
+      const text = document.createElement('span');
+      text.className = 'readout-text';
+      const readoutLabel = document.createElement('span');
+      readoutLabel.className = 'readout-label';
+      readoutLabel.textContent = label;
+      const value = document.createElement('strong');
+      value.className = 'readout-value';
+      value.dataset[`${key}Text`] = '';
+      text.append(readoutLabel, value);
+      const bar = document.createElement('progress');
+      bar.dataset[`${key}Bar`] = '';
+      bar.setAttribute('aria-label', `${heroName(hero)} ${label}`);
+      readout.append(text, bar);
+      readouts.append(readout);
+    }
+    top.append(portrait, readouts);
+    const footer = document.createElement('footer');
+    const meta = document.createElement('div');
+    meta.className = 'hero-meta';
+    const role = document.createElement('span');
+    role.className = 'role';
+    role.dataset.role = '';
+    const nameBand = document.createElement('div');
+    nameBand.className = 'hero-name';
+    const name = document.createElement('strong');
+    name.dataset.name = '';
+    const level = document.createElement('span');
+    level.className = 'level';
+    level.dataset.level = '';
+    const levelLabel = document.createElement('span');
+    levelLabel.className = 'level-label';
+    levelLabel.textContent = 'Lv';
+    const levelValue = document.createElement('strong');
+    levelValue.className = 'level-value';
+    levelValue.dataset.levelValue = '';
+    level.append(levelLabel, levelValue);
+    meta.append(role, level);
+    nameBand.append(name);
+    footer.append(meta, nameBand);
+    open.append(top, footer);
   }
+
   return {
-    selectBattlefieldActor(actor) {
-      if (!available || !actor || (actor.kind === 'enemy' && actor.hp <= 0)) return false;
-      ctx.state.globals[actor.kind === 'enemy' ? 'SelectedEnemyUID' : 'SelectedAllyUID'] = actor.uid;
-      refreshEditor?.();
-      return true;
-    },
+    selectBattlefieldActor: selectActor,
     selectBattlefieldAlly(mx, my, project, scale) {
       const hero = members.find(actor => {
-        if (!actor) return false;
+        if (!actor || Number(actor.hp || 0) <= 0) return false;
         const point = ctx.state.globals.HeroPortraitPosByIndex?.[actor.heroDisplaySlot ?? actor.heroIndex];
         if (!point) return false;
-        const pos = project(point.x, point.y, 'hero');
-        return Math.abs(mx-pos.x)<=20*scale && Math.abs(my-pos.y)<=25*scale;
+        const position = project(point.x, point.y, 'hero');
+        return Math.abs(mx - position.x) <= 20 * scale && Math.abs(my - position.y) <= 25 * scale;
       });
-      return hero ? this.selectBattlefieldActor(hero) : false;
+      return hero ? selectActor(hero) : false;
     },
-    playCurrent() {
-      const actor = members.find(hero => hero && canUseHeroCommand(ctx, hero.uid));
-      return actor ? execute(actor, { skillId: 'HERO_SINGLE' }) : false;
-    },
-    update({ visible, blocked, worldToCanvas, layoutScale, portraits }) {
+    playCurrent,
+    update({visible, blocked, worldToCanvas, layoutScale, portraits}) {
       host.hidden = !visible;
-      available = visible && !blocked;
+      available = !!visible && !blocked;
       host.inert = !available;
-      if (!visible) { auto = false; repeat = null; closeEditor(); gameState.heroCommandsMenuOpen = false; return; }
-      const pos = worldToCanvas(6, 406), rect = canvas.getBoundingClientRect();
-      host.style.left = `${rect.left + pos.x}px`; host.style.top = `${rect.top + pos.y}px`;
+      if (!visible) return;
+      const position = worldToCanvas(6, 406);
+      const rect = canvas.getBoundingClientRect();
+      host.style.left = `${rect.left + position.x}px`;
+      host.style.top = `${rect.top + position.y}px`;
       host.style.transform = `scale(${layoutScale})`;
-      const enemies = ctx.state.entities.filter(a => a.kind === 'enemy' && a.hp > 0);
-      if (!enemies.some(a => a.uid === ctx.state.globals.SelectedEnemyUID)) ctx.state.globals.SelectedEnemyUID = enemies[0]?.uid || 0;
+      host.style.setProperty('--compact-type-scale', String(1 / Math.max(.01, Number(layoutScale) || 1)));
       const slots = getHeroCommandSlots(ctx.state.entities);
-      if (sessionId !== ctx.state.globals.CombatSessionId || slots.some((hero, slot) => hero !== members[slot])) {
-        closeEditor(); auto = false; repeat = null;
-        if (sessionId !== ctx.state.globals.CombatSessionId || slots.some((hero, slot) => hero?.uid !== members[slot]?.uid)) { prepared.clear(); previous.clear(); }
+      const rosterChanged = sessionId !== ctx.state.globals.CombatSessionId || slots.some((hero, slot) => hero !== slotMembers[slot]);
+      if (rosterChanged) {
         sessionId = ctx.state.globals.CombatSessionId;
-        members = slots;
-        cards.forEach((card, slot) => {
-          card.replaceChildren(); for (const key of Object.keys(card.dataset)) delete card.dataset[key];
-          const hero = slots[slot]; if (!hero) return;
-          card.dataset.uid = hero.uid;
-          const open = button(card, '', () => openEditor(hero)); open.className = 'hero-card'; open.dataset.open = ''; open.setAttribute('aria-label', `${heroName(hero)} actions`);
-          const header = document.createElement('header');
-          const face = document.createElement('span'); face.className = 'face';
-          const image = document.createElement('img'); image.alt = ''; image.draggable = false; face.append(image);
-          const name = document.createElement('strong'); name.textContent = heroName(hero); header.append(face, name);
-          const health = document.createElement('div'); health.className = 'health';
-          const hp = document.createElement('span'); hp.dataset.hp = ''; health.append(hp);
-          const bar = document.createElement('progress'); bar.dataset.hpBar = ''; bar.setAttribute('aria-label', `${heroName(hero)} HP`); health.append(bar);
-          const flow = document.createElement('div'); flow.className = 'flow'; flow.textContent = 'FLOW';
-          const meter = document.createElement('progress'); meter.dataset.flow = ''; meter.setAttribute('aria-label', `${heroName(hero)} FLOW`); flow.append(meter);
-          const sp = document.createElement('div'); sp.className = 'sp';
-          const spText = document.createElement('span'); spText.dataset.sp = '';
-          const spBar = document.createElement('progress'); spBar.dataset.spBar = ''; spBar.setAttribute('aria-label', `${heroName(hero)} SP`); sp.append(spText, spBar);
-          header.append(flow);
-          const vitals = document.createElement('div'); vitals.className = 'vitals'; vitals.append(health, sp);
-          open.append(header, vitals);
+        slotMembers = slots;
+        members = slots.filter(Boolean);
+        grid.replaceChildren();
+        cards = members.map(hero => {
+          const card = document.createElement('article');
+          grid.append(card);
+          rebuildCard(card, hero);
+          return card;
         });
       }
-      const scheduledUID = Number(ctx.callFunction('GetCurrentTurn'));
+      const count = members.length;
+      grid.dataset.count = String(count);
+      grid.style.setProperty('--card-width', `${heroStripCardWidth()}px`);
+      const scheduledUID = Number(ctx.callFunction('GetCurrentTurn') || 0);
       cards.forEach((card, slot) => {
-        const hero = slots[slot]; if (!hero) return;
-        const current = hero.hp > 0 && scheduledUID === hero.uid, flow = getHeroFlowState(hero);
-        card.dataset.current = String(current); card.dataset.ko = String(hero.hp <= 0); card.dataset.ready = String(flow.ready);
-        const hpText = `HP ${Math.max(0, hero.hp)}/${hero.maxHP}`;
-        const hpLabel = card.querySelector('[data-hp]'); if (hpLabel.textContent !== hpText) hpLabel.textContent = hpText;
-        const bar = card.querySelector('[data-hp-bar]'); bar.max = Math.max(1, hero.maxHP); bar.value = Math.max(0, hero.hp);
-        const flowBar = card.querySelector('[data-flow]'); flowBar.max = flow.max; flowBar.value = flow.value;
-        card.querySelector('[data-sp]').textContent = `SP ${flow.sp}`;
-        const spBar = card.querySelector('[data-sp-bar]'); spBar.max = flow.spMax; spBar.value = flow.sp;
-        const image = portraits[hero.portraitName || hero.baseHeroName || hero.name];
-        if (image?.src && card.querySelector('img').src !== image.src) card.querySelector('img').src = image.src;
-        const open = card.querySelector('[data-open]'); open.setAttribute('aria-current', String(current)); open.disabled = !available || hero.hp <= 0 || !!draft || !!gameState.heroCommandsMenuOpen;
-        open.setAttribute('aria-label', `${heroName(hero)} actions${current ? ', active' : ''}${flow.ready ? ', FLOW ready' : ''}`);
+        const hero = members[slot];
+        if (!hero) return;
+        const eligible = isAbleToActSlot(hero);
+        const current = eligible && scheduledUID === Number(hero.uid);
+        const resourceState = getHeroFlowState(hero);
+        const maxHP = Math.max(1, number(hero.maxHP ?? hero.HP, 1));
+        const hp = Math.max(0, Math.min(maxHP, number(hero.hp ?? hero.HP)));
+        const spMax = Math.max(1, number(resourceState.spMax, 1));
+        const sp = Math.max(0, Math.min(spMax, number(resourceState.sp)));
+        const ready = !!resourceState.ready || number(resourceState.value) >= 100;
+        card.dataset.current = String(current);
+        card.dataset.ko = String(hp <= 0);
+        card.dataset.ready = String(ready);
+        card.querySelector('[data-hp-text]').textContent = hp;
+        const bar = card.querySelector('[data-hp-bar]'); bar.max = maxHP; bar.value = hp; bar.setAttribute('aria-valuetext', `${hp} of ${maxHP} HP`);
+        card.querySelector('[data-sp-text]').textContent = sp;
+        const spBar = card.querySelector('[data-sp-bar]'); spBar.max = spMax; spBar.value = sp; spBar.setAttribute('aria-valuetext', `${sp} of ${spMax} SP`);
+        const definition = heroDefinition(hero);
+        const role = card.querySelector('[data-role]');
+        role.textContent = HERO_DISPLAY_ROLES[heroName(hero)] || definition?.role || 'Hero';
+        role.title = definition?.role || 'Hero';
+        card.querySelector('[data-name]').textContent = heroName(hero);
+        card.querySelector('[data-level-value]').textContent = Math.max(1, Math.floor(number(hero.currentLevel, 1)));
+        const portraitKey = heroPortraitKey(hero);
+        const portraitCrop = HERO_PORTRAIT_CROPS[portraitKey] || {position: '50% 0%', scale: 4.7, width: '47%'};
+        const image = portraits?.[portraitKey];
+        const portraitSrc = HERO_PORTRAIT_PATHS[portraitKey] || image?.src;
+        const portrait = card.querySelector('.portrait');
+        portrait.dataset.portrait = portraitKey || '';
+        portrait.style.width = portraitCrop.width;
+        const portraitImage = portrait.querySelector('img');
+        portraitImage.style.objectPosition = portraitCrop.position;
+        portraitImage.style.transformOrigin = portraitCrop.position;
+        portraitImage.style.transform = `scale(${portraitCrop.scale})`;
+        const fallback = card.querySelector('.portrait-fallback');
+        portraitImage.onerror = () => { portraitImage.hidden = true; fallback.hidden = false; };
+        if (portraitSrc) { portraitImage.hidden = false; fallback.hidden = true; if (portraitImage.src !== portraitSrc) portraitImage.src = portraitSrc; }
+        else { portraitImage.hidden = true; fallback.hidden = false; }
+        const open = card.querySelector('[data-open]');
+        open.disabled = true;
+        open.setAttribute('aria-current', String(current));
+        open.setAttribute('aria-label', `${heroName(hero)} ${definition?.role || 'Hero'} status, level ${Math.max(1, Math.floor(number(hero.currentLevel, 1)))}${current ? ', active, reopen hero cards' : ''}${ready ? ', special ready' : ''}`);
+        if (current && grid.scrollWidth > grid.clientWidth) card.scrollIntoView({block: 'nearest', inline: 'nearest'});
       });
-      if (draft) {
-        if (!members.some(hero => hero?.uid === draft.actorUID && hero.hp > 0)) closeEditor();
-        else { refreshEditor?.(); commitFullDraft?.(); }
-      }
-      if (returnFocusUID && !draft) {
-        cards.find(card => Number(card.dataset.uid) === returnFocusUID)?.querySelector('[data-open]')?.focus(); returnFocusUID = null;
-      }
-      autoButton.setAttribute('aria-pressed', String(auto)); repeatButton.setAttribute('aria-pressed', String(!!repeat));
-      repeatButton.disabled = !previous.size || members.some(hero => hero?.hp > 0 && !previous.has(hero.uid));
-      menuButton.setAttribute('aria-expanded', String(!!gameState.heroCommandsMenuOpen));
-      if (repeat) for (const uid of repeat) if (!members.some(hero => hero?.uid === uid && hero.hp > 0)) repeat.delete(uid);
-      if (available && !draft && (auto || repeat?.size)) {
-        const actor = members.find(hero => hero && canUseHeroCommand(ctx, hero.uid));
-        if (actor && (auto || repeat.has(actor.uid)) && execute(actor, repeat ? previous.get(actor.uid) : { skillId: 'HERO_SINGLE' })) repeat?.delete(actor.uid);
-      }
-      if (repeat && !repeat.size) repeat = null;
     },
     destroy() { host.remove(); style.remove(); },
   };

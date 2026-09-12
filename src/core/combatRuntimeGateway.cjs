@@ -105,6 +105,7 @@ class CombatRuntimeGateway {
     applyAuthoritativeTurnState,
     combatSnapshotOwner,
     getDeterministicRngState,
+    setDeterministicRngState,
   } = {}) {
     this.combatState = combatState || {};
     this.eventBus = eventBus || null;
@@ -121,6 +122,9 @@ class CombatRuntimeGateway {
       : null;
     this.getDeterministicRngStateAdapter = typeof getDeterministicRngState === 'function'
       ? getDeterministicRngState
+      : null;
+    this.setDeterministicRngStateAdapter = typeof setDeterministicRngState === 'function'
+      ? setDeterministicRngState
       : null;
   }
 
@@ -198,6 +202,14 @@ class CombatRuntimeGateway {
       return normalizeSimulationRngState(this.getDeterministicRngStateAdapter() || {});
     }
     return normalizeSimulationRngState(this.combatState && this.combatState.rngState ? this.combatState.rngState : {});
+  }
+
+  setDeterministicRngState(rngState = {}) {
+    if (this.setDeterministicRngStateAdapter) {
+      this.setDeterministicRngStateAdapter(normalizeSimulationRngState(rngState));
+      return;
+    }
+    this.combatState.rngState = normalizeSimulationRngState(rngState);
   }
 
   createSimulationCoreRequest(action = {}, context = {}, turnStateOverride = null) {
@@ -349,6 +361,7 @@ class CombatRuntimeGateway {
       capturedAtTick: turnState.capturedAtTick,
       turnState,
       simulationCoreRequest,
+      rngState: this.getDeterministicRngState(),
       resumeToken,
       turnQueue: cloneJson(turnState.turnQueue),
       currentActorIndex: Number(turnState.currentActorIndex || 0),
@@ -428,6 +441,7 @@ class CombatRuntimeGateway {
       this.combatState.turnQueue = cloneJson(restoredTurnState.turnQueue);
       this.combatState.currentActorIndex = Number(restoredTurnState.currentActorIndex || 0);
     }
+    if (snapshot?.rngState) this.setDeterministicRngState(snapshot.rngState);
     this.resetGemInputState();
     const post = this.validateResumeCheckpoint(snapshot || null);
     this.emitCheckpointResult('post_resume', post, {

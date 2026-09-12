@@ -12,6 +12,7 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
   let resultDialog=null, acknowledgedBattle=null;
   function showResults() {
     const g=state.globals;
+    if (g.ProgressionBattle?.outcome !== 'victory') return false;
     if(acknowledgedBattle===g.ProgressionBattle?.id)return true;
     if(resultDialog || g.FlowOrbs?.length)return false;
     resultDialog=document.createElement('dialog');
@@ -49,10 +50,17 @@ export function createQuestCombatSession({ state, gameState, call, sync }) {
     isCleared() {
       return state.globals.QuestFiniteEncounter === 1
         && state.globals.NativeBattleEnded === true
+        && state.globals.ProgressionBattle?.outcome === 'victory'
         && showResults();
     },
     resurrect() {
       restoreHeroesToFullHP({ state, call });
+      state.globals.NativeBattleEnded = false;
+      if (state.globals.ProgressionBattle) {
+        state.globals.ProgressionBattle.outcome = 'active';
+        state.globals.ProgressionBattle.defeatSettled = false;
+        state.globals.ProgressionBattle.settled = false;
+      }
       call('RebuildTurnOrderPreserveCurrent');
       state.globals.ActionInProgress = 0;
       state.globals.IsPlayerBusy = 0;

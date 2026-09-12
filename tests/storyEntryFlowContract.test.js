@@ -60,6 +60,22 @@ test('loading blocks entry and developer shortcuts', async () => {
  assert.equal(s.flow.skip(),false);
  assert.equal(s.flow.startCard(0),false);
 });
+test('quest QA direct combat shortcut skips story presentation and uses the existing combat entry', async () => {
+ const s = await setup();
+ const hooks = fs.readFileSync(path.join(root, 'web-runner/systems/devBrowserTestHooks.js'), 'utf8');
+ assert.match(hooks, /get\('questQA'\) === '1'/);
+ assert.match(hooks, /'QA start combat'/);
+ assert.match(hooks, /storyEntry\.startCombatForQA\(\)/);
+ assert.equal(typeof s.flow.startCombatForQA, 'function');
+ const energy = s.gameState.storyEntry.progress.energy;
+ assert.equal(await s.flow.startCombatForQA(), true);
+ await flush();
+ assert.equal(s.layout.getActiveLayoutId(), 'combat');
+ assert.equal(s.gameState.storyEntry.phase, 'combat');
+ assert.equal(s.gameState.storyEntry.activeCard, 0);
+ assert.equal(s.gameState.storyEntry.progress.energy, energy);
+ assert.equal(s.gameState.narrativeScene, undefined);
+});
 test('Skip confirmation pauses flow; Cancel retains the current card and line', async () => {
  const s = await setup(); openLadder(s); s.flow.startCard(0);
  s.gameState.narrativeScene.auto = true;
@@ -175,5 +191,9 @@ test('combat end resets overrides once; Continue preserves the active session', 
  assert.equal(s.sessionEnds(),2,'story-only completion has no combat overrides to clear');
  s.flow.startCard(0); s.flow.requestSkip(); s.flow.confirmSkip(); await flush();
  await s.flow.navigate('Quests');
- assert.equal(s.sessionEnds(),3);
+ assert.equal(s.gameState.storyEntry.phase,'combat-paused');
+ assert.equal(s.gameState.storyEntry.modal,'combat-pause');
+ assert.equal(s.sessionEnds(),2,'pausing preserves the active combat session');
+ assert.equal(s.flow.quitPausedCombat(),true);
+ assert.equal(s.sessionEnds(),3,'quitting the paused battle clears the session once');
 });

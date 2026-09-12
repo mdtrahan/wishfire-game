@@ -479,6 +479,7 @@ async function captureCombat(page, viewport, artifactDir) {
     globals.ActionInProgress = 0;
     globals.PendingSkillID = '';
     globals.PendingActor = 0;
+    game.callFunction('CancelHeroTurnCardFan');
     game.stepFrames(1);
   });
   await resetTrace(page);
@@ -497,8 +498,9 @@ async function captureCombat(page, viewport, artifactDir) {
   const commands = await page.evaluate(() => {
     const host = document.getElementById('hero-commands');
     const rect = host.getBoundingClientRect(), canvas = document.getElementById('view').getBoundingClientRect();
+    const navigation = document.getElementById('game-meta-nav')?.getBoundingClientRect();
     const cards = [...host.querySelectorAll('article')].map(card => ({
-      uid: Number(card.dataset.uid || 0), box: card.getBoundingClientRect().toJSON(),
+      uid: Number(card.dataset.uid || 0), current: card.dataset.current === 'true', box: card.getBoundingClientRect().toJSON(),
       portrait: card.querySelector('.face')?.getBoundingClientRect().toJSON(),
       hp: card.querySelector('[data-hp]')?.textContent,
       flow: card.querySelector('[data-flow]')?.getBoundingClientRect().toJSON(),
@@ -510,9 +512,10 @@ async function captureCombat(page, viewport, artifactDir) {
       buttonHeight: card.querySelector('[data-open]')?.getBoundingClientRect().height,
       overflow: card.scrollWidth > card.clientWidth,
     }));
-    return { box: rect.toJSON(), canvas: canvas.toJSON(), cards,
+    return { box: rect.toJSON(), canvas: canvas.toJSON(), navigation: navigation?.toJSON(), cards,
       overflow: host.scrollWidth > host.clientWidth, visible: !host.hidden,
       nativeButtons: host.querySelectorAll('button').length,
+      legacySkills: host.querySelectorAll('[data-skill], .editor, .queue').length,
       boardMembers: window.__codexGame.globals.Gems?.length || 0,
     };
   });
@@ -533,19 +536,17 @@ async function captureCombat(page, viewport, artifactDir) {
       card.flowRow.left >= card.name.right && card.healthRow.top >= card.portrait.bottom
       && within(card.healthRow.top, card.spRow.top, 1) && card.spRow.left >= card.healthRow.right),
       commands.cards, { firstRow: 'portrait/name and FLOW', secondRow: 'HP and SP' }),
-    invariant('hero-command-native-input', commands.nativeButtons === 8 && commands.boardMembers === 0,
-      { buttons: commands.nativeButtons, gems: commands.boardMembers }, { buttons: 8, gems: 0 }),
+    invariant('hero-command-native-input', commands.nativeButtons === commands.cards.filter(card => card.uid).length
+      && commands.legacySkills === 0 && commands.boardMembers === 0,
+      { buttons: commands.nativeButtons, legacySkills: commands.legacySkills, gems: commands.boardMembers }, { statusButtons: commands.cards.filter(card => card.uid).length, legacySkills: 0, gems: 0 }),
+    invariant('hero-command-navigation-clearance', !!commands.navigation
+      && commands.navigation.top >= Math.max(...commands.cards.filter(card => card.uid).map(card => card.box.bottom)) - 1
+      && commands.navigation.bottom <= commands.canvas.bottom + 1,
+      { navigation: commands.navigation, cards: commands.cards.filter(card => card.uid).map(card => card.box), canvas: commands.canvas },
+      { navigationBelowHeroStatus: true, contained: true }),
   ];
-  await page.locator('#hero-commands article[data-uid] [data-open]').first().click();
-  await page.getByRole('button', { name: 'Act', exact: true }).waitFor({ state: 'visible' });
-  await page.screenshot({ path: path.join(artifactDir, `${viewport.name}-05b-action-editor.png`) });
-  const editorBounds = await page.locator('#hero-commands .editor').evaluate(el => ({
-    rect: el.getBoundingClientRect().toJSON(), overflow: el.scrollWidth > el.clientWidth,
-  }));
-  commandInvariants.push(invariant('hero-editor-containment', !editorBounds.overflow
-    && editorBounds.rect.left >= commands.box.left && editorBounds.rect.right <= commands.box.right + 1
-    && editorBounds.rect.bottom <= commands.box.bottom + 1, editorBounds, { contained: true }));
-  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  commandInvariants.push(invariant('hero-editor-containment', commands.legacySkills === 0,
+    { legacySkills: commands.legacySkills }, { editor: false, queuedSkills: false }));
 
   await resetTrace(page);
   const targeting = await page.evaluate(() => {
@@ -651,236 +652,221 @@ async function captureCombat(page, viewport, artifactDir) {
 }
 
 async function captureCommandTurns(page, viewport, artifactDir) {
-  const results = [];
   const arrange = async (count, flow = 0) => page.evaluate(({count, flow}) => {
-    const game = window.__codexGame, g = game.globals;
+    const game = window.__codexGame;
+    const globals = game.globals;
     const seed = game.state.entities.find(actor => actor.kind === 'hero');
     const enemies = game.state.entities.filter(actor => actor.kind === 'enemy');
     for (const enemy of enemies) { enemy.hp = 10000; enemy.maxHP = 10000; }
-    const heroes = Array.from({length:count}, (_,slot) => ({ ...seed, name:'Falie', baseHeroName:'Falie',
-      stats:{...seed.stats}, uid:100+slot, heroDisplaySlot:slot, hp:5000, maxHP:5000,
-      flow:slot === count-1 ? flow : 0, flowMode:'Stoic', spMax:100, sp:100, currentLevel:50, statuses:[], nativeWard:0,
-      nativeCover:false, nativeReprisal:false,
+    const heroes = Array.from({length: count}, (_, slot) => ({
+      ...seed, name: 'Falie', baseHeroName: 'Falie', uid: 100 + slot, heroDisplaySlot: slot,
+      stats: {...seed.stats}, hp: 5000, maxHP: 5000, flow: slot === count - 1 ? flow : 0,
+      flowMode: 'Stoic', spMax: 100, sp: 100, currentLevel: 50, statuses: [],
+      nativeWard: 0, nativeCover: false, nativeReprisal: false,
     }));
     game.state.entities = [...heroes, ...enemies];
-    Object.assign(g, { GamePhase:'RUNTIME', NativeBattleEnded:false, BattleStartActive:0, TurnPhase:0, CurrentTurnIndex:0,
-      CombatSessionId:Number(g.CombatSessionId || 0)+1,
-      DynamicInitiativeAuthorityEnabled:0, DynamicInitiativeAuthority:null, DynamicInitiative:null, RoundActive:0,
-      CurrentHeroUID:heroes.at(-1).uid, IsPlayerBusy:0, CanPickGems:1, ActionInProgress:0, ActionActorUID:0,
-      ActionLockUntil:0, DeferAdvance:0, AdvanceAfterAction:0, PendingSkillID:'', PendingActor:0,
-      SkillDraughtOpen:0, SkillDraughtPendingOpen:0, TextAnimating:0, TextAnimEndAt:0,
-      HeroAction:null, EnemyAction:null, PendingHeroHits:[], PendingDeaths:{}, NativeCommandSequence:null,
-      TurnOrderArray:[{uid:heroes.at(-1).uid,type:0},...enemies.map(enemy=>({uid:enemy.uid,type:1}))],
+    Object.assign(globals, {
+      GamePhase: 'RUNTIME', NativeBattleEnded: false, BattleStartActive: 0, TurnPhase: 0,
+      CombatSessionId: Number(globals.CombatSessionId || 0) + 1, DynamicInitiativeAuthorityEnabled: 0,
+      DynamicInitiativeAuthority: null, DynamicInitiative: null, RoundActive: 0,
+      CurrentHeroUID: heroes.at(-1).uid, CurrentTurnIndex: 0, IsPlayerBusy: 0, CanPickGems: 1,
+      ActionInProgress: 0, ActionActorUID: 0, ActionLockUntil: 0, DeferAdvance: 0,
+      AdvanceAfterAction: 0, PendingSkillID: '', PendingActor: 0, NativeCommandSequence: null,
+      PendingHeroHits: [], PendingDeaths: {}, HeroTurnCardFanOpen: 0, HeroTurnCardFanPendingTarget: 0,
+      TurnOrderArray: [{uid: heroes.at(-1).uid, type: 0}, ...enemies.map(enemy => ({uid: enemy.uid, type: 1}))],
     });
     game.callFunction('InitPartyHPFromHeroes');
     game.callFunction('ProcessTurn');
     game.stepFrames(2);
-    return {actorUID:heroes.at(-1).uid, hp:enemies.map(enemy=>({uid:enemy.uid,hp:enemy.hp})),
-      energy:g.Player_Energy, flow:heroes.at(-1).flow, turn:Number(g.TurnSerial || 0)};
-  }, {count,flow});
-  const open = async uid => page.locator(`#hero-commands article[data-uid="${uid}"] [data-open]`).click();
-  const settled = async before => {
-    try {
-      await page.waitForFunction(before => {
-        const g = window.__codexGame.globals;
-        return Number(g.TurnSerial || 0) > Number(before.turn || 0) && !g.NativeCommandSequence && !g.HeroAction?.active;
-      }, before, {timeout:15000});
-    } catch (error) {
-      const state = await page.evaluate(() => {
-        const g = window.__codexGame.globals;
-        return Object.fromEntries(['time','TurnSerial','TurnPhase','IsPlayerBusy','CanPickGems','ActionInProgress','ActionActorUID','ActionOwnerUID','ActionLockUntil','DeferAdvance','AdvanceAfterAction','PendingSkillID','HeroAction','EnemyAction','PendingHeroHits','NativeCommandSequence','CurrentTurnIndex','TurnOrderArray','SkillDraughtOpen','SkillDraughtPendingOpen','EnemyRosterRefillPending'].map(key=>[key,g[key]]));
-      });
-      await page.screenshot({path:path.join(artifactDir,`${viewport.name}-command-failure.png`)});
-      throw new Error(`Command did not complete: ${JSON.stringify({before,state})}`, {cause:error});
-    }
+    return {actorUID: heroes.at(-1).uid, turn: Number(globals.TurnSerial || 0), energy: globals.Player_Energy};
+  }, {count, flow});
+
+  const readStatus = () => page.evaluate(() => {
+    const game = window.__codexGame;
+    const globals = game.globals;
+    const host = document.getElementById('hero-commands');
+    const fan = document.getElementById('hero-turn-card-fan');
+    const navigation = document.getElementById('game-meta-nav');
+    const canvas = document.getElementById('view');
+    const box = host.getBoundingClientRect();
+    const canvasBox = canvas.getBoundingClientRect();
+    const cards = [...host.querySelectorAll('article')].map(card => ({
+      uid: Number(card.dataset.uid || 0), current: card.dataset.current === 'true', box: card.getBoundingClientRect().toJSON(),
+      portrait: card.querySelector('.face')?.getBoundingClientRect().toJSON(),
+      flow: card.querySelector('[data-flow]')?.getBoundingClientRect().toJSON(),
+      name: card.querySelector('strong')?.getBoundingClientRect().toJSON(),
+      healthRow: card.querySelector('.health')?.getBoundingClientRect().toJSON(),
+      spRow: card.querySelector('.sp')?.getBoundingClientRect().toJSON(),
+      buttonHeight: card.querySelector('[data-open]')?.getBoundingClientRect().height,
+      overflow: card.scrollWidth > card.clientWidth,
+    }));
+    const fanBoxes = [...(fan?.querySelectorAll('.fan-card') || [])].map(card => card.getBoundingClientRect());
+    const fanVisual = fanBoxes.length ? {
+      left: Math.min(...fanBoxes.map(box => box.left)),
+      right: Math.max(...fanBoxes.map(box => box.right)),
+      top: Math.min(...fanBoxes.map(box => box.top)),
+      bottom: Math.max(...fanBoxes.map(box => box.bottom)),
+    } : null;
+    return {
+      box: box.toJSON(), canvas: canvasBox.toJSON(), navigation: navigation?.getBoundingClientRect().toJSON(), cards, visible: !host.hidden,
+      fanVisual,
+      overflow: host.scrollWidth > host.clientWidth,
+      nativeButtons: host.querySelectorAll('button').length,
+      legacySkills: host.querySelectorAll('[data-skill], .editor, .queue').length,
+      fanOpen: fan?.dataset.open === 'true', fanCards: fan?.querySelectorAll('.fan-card').length || 0,
+      pending: !!globals.HeroTurnCardFanPendingTarget,
+      pendingTargetKind: String(globals.HeroTurnCardFanPendingTargetKind || ''),
+      heroUID: Number(globals.HeroTurnCardFanHeroUID || 0), cardsState: globals.HeroTurnCardFanCards || [],
+      selectedCard: fan?.querySelector('.fan-card[data-selected="true"]')?.dataset.cardId || '',
+      turnPhase: Number(globals.TurnPhase || 0), currentTurn: Number(globals.CurrentHeroUID || 0),
+      turn: Number(globals.TurnSerial || 0), energy: globals.Player_Energy,
+    };
+  });
+  const settle = async before => {
+    await page.waitForFunction(beforeTurn => {
+      const g = window.__codexGame.globals;
+      return Number(g.TurnSerial || 0) > beforeTurn && !g.NativeCommandSequence && !g.HeroAction?.active;
+    }, before.turn, {timeout: 15000});
   };
-  const snapshot = async uid => page.evaluate(uid => {
-    const game = window.__codexGame, g = game.globals;
-    const hero = game.state.entities.find(actor=>actor.uid===uid);
-    return {flow:hero.flow, sp:hero.sp, spMax:hero.spMax, turn:Number(g.TurnSerial || 0), owner:g.ActionOwnerUID,
-      deferred:g.DeferAdvance, energy:g.Player_Energy, pending:!!g.NativeCommandSequence,
-      busy:g.ActionInProgress, current:Number(document.querySelector('#hero-commands article[data-current="true"]')?.dataset.uid || 0),
-      hp:game.state.entities.filter(actor=>actor.kind==='hero').map(actor=>actor.hp),
-      cards:[...document.querySelectorAll('#hero-commands article')].map(card=>Number(card.dataset.uid || 0)),
-      gems:g.Gems.length, positions:g.HeroPortraitPosByIndex,
-      draw:Number(g.SkillDraughtOpen || 0), pendingDraw:Number(g.SkillDraughtPendingOpen || 0)};
-  },uid);
+  const selectCardAndTarget = async () => {
+    for (let cardIndex = 0; cardIndex < 3; cardIndex += 1) {
+      await page.locator('#hero-turn-card-fan .fan-card').nth(cardIndex).click();
+      await page.waitForTimeout(50);
+      let state = await readStatus();
+      if (state.pending && state.cards.filter(card => card.uid).length <= 1
+        && state.pendingTargetKind === 'ally') {
+        await page.keyboard.press('Escape');
+        await page.waitForFunction(() => {
+          const fan = document.getElementById('hero-turn-card-fan');
+          return fan?.dataset.open === 'true' && !fan.hidden;
+        });
+        continue;
+      }
+      if (state.pending) {
+        await resetTrace(page);
+        await page.evaluate(() => window.__codexGame.stepFrames(1));
+        const targetPoints = await page.evaluate(() => {
+          const geometry = window.__codexGame.getTargetDebugGeometry();
+          const canvasElement = document.getElementById('view');
+          const canvas = canvasElement.getBoundingClientRect();
+          if (String(window.__codexGame.globals.HeroTurnCardFanPendingTargetKind || '') === 'ally') {
+            return window.__orkaUiLockTrace.read()
+              .filter(entry => entry.kind === 'drawImage' && /selector-animation/i.test(entry.source))
+              .map(selector => ({
+                x: canvas.x + ((selector.x + selector.w / 2) * canvas.width / canvasElement.width),
+                y: canvas.y + ((selector.y + selector.h / 2) * canvas.height / canvasElement.height),
+              }));
+          }
+          const point = geometry.enemies.find(enemy => enemy.uid);
+          if (!point || !geometry.canvas) return [];
+          return [{
+            x: canvas.x + (point.x * canvas.width / geometry.canvas.width),
+            y: canvas.y + (point.y * canvas.height / geometry.canvas.height),
+          }];
+        });
+        if (!targetPoints.length) throw new Error('Hero card pending target has no battlefield selector geometry');
+        for (const targetPoint of targetPoints) {
+          await page.mouse.click(targetPoint.x, targetPoint.y);
+          await page.waitForTimeout(40);
+          state = await readStatus();
+          if (!state.pending) break;
+        }
+      }
+      if (!state.pending && !state.fanOpen) return state;
+      if (state.pending) {
+        await page.keyboard.press('Escape');
+        await page.waitForFunction(() => {
+          const fan = document.getElementById('hero-turn-card-fan');
+          return fan?.dataset.open === 'true' && !fan.hidden;
+        });
+      }
+      if (!state.pending && state.cardsState.length === 0 && state.fanOpen) {
+        await page.waitForFunction(() => {
+          const fan = document.getElementById('hero-turn-card-fan');
+          return !fan || fan.hidden || fan.dataset.open !== 'true';
+        }, { timeout: 1000 });
+        state = await readStatus();
+      }
+      if (!state.pending && !state.fanOpen) return state;
+    }
+    throw new Error(`Hero card selection remained pending: ${JSON.stringify(await readStatus())}`);
+  };
+
+  const commandInvariants = [];
+  const first = await arrange(4);
+  await page.waitForSelector('#hero-turn-card-fan[data-open="true"]');
+  const initial = await readStatus();
+  const scale = Number(await page.evaluate(() => window.__orkaAppViewport?.layoutScale || 0));
+  commandInvariants.push(
+    invariant('hero-command-containment', initial.visible && !initial.overflow && initial.cards.every(card => !card.overflow)
+      && initial.box.left >= initial.canvas.left && initial.box.right <= initial.canvas.right + 1
+      && initial.box.bottom <= initial.canvas.bottom + 1, initial, {contained: true}),
+    invariant('hero-command-column-order', initial.cards.length === 6 && initial.cards.slice(0, 4).every(card => card.uid > 0)
+      && initial.cards.slice(4).every(card => card.uid === 0)
+      && within(initial.cards[0].box.left, initial.cards[2].box.left, 1)
+      && initial.cards[2].box.top > initial.cards[1].box.top
+      && within(initial.cards[0].box.top, initial.cards[3].box.top, 1), initial.cards, {loaded: 4, empty: 2, fill: 'column'}),
+    invariant('hero-command-scale', initial.cards.filter(card => card.uid).every(card => within(card.box.height / scale, 58, .5)
+      && within(card.buttonHeight / scale, 58, .5) && within(card.portrait.width / scale, 18, .5)), initial.cards, {card: 58, button: 58, portrait: 18}),
+    invariant('hero-command-two-row-layout', initial.cards.filter(card => card.uid).every(card => card.healthRow.top >= card.portrait.bottom
+      && within(card.healthRow.top, card.spRow.top, 1) && card.spRow.left >= card.healthRow.right), initial.cards, {firstRow: 'portrait/name and FLOW', secondRow: 'HP and SP'}),
+    invariant('hero-command-native-input', initial.nativeButtons === 4 && initial.fanCards === 3 && initial.legacySkills === 0,
+      {buttons: initial.nativeButtons, fanCards: initial.fanCards, legacySkills: initial.legacySkills}, {statusButtons: 4, fanCards: 3, legacySkills: 0}),
+    invariant('hero-command-navigation-clearance', !!initial.navigation
+      && initial.navigation.top >= Math.max(...initial.cards.filter(card => card.uid).map(card => card.box.bottom)) - 1
+      && initial.navigation.bottom <= initial.canvas.bottom + 1,
+      {navigation: initial.navigation, cards: initial.cards.filter(card => card.uid).map(card => card.box), canvas: initial.canvas},
+      {navigationBelowHeroStatus: true, contained: true}),
+    invariant('hero-card-fan-compact-containment', !initial.fanVisual
+      || (initial.fanVisual.left >= 8 - 0.5 && initial.fanVisual.right <= initial.canvas.right - 8 + 0.5),
+      {fanVisual: initial.fanVisual, viewport: initial.canvas}, {gutter: 8}),
+    invariant('hero-editor-containment', initial.legacySkills === 0, {legacySkills: initial.legacySkills}, {editor: false, queuedSkills: false}),
+  );
+  await page.screenshot({path: path.join(artifactDir, `${viewport.name}-05b-hero-card-fan.png`)});
+  const afterFirst = await selectCardAndTarget();
+  commandInvariants.push(invariant('hero-command-active-highlight', initial.cards.some(card => card.uid === first.actorUID && card.current)
+    && afterFirst.energy === first.energy, {initial, afterFirst, first}, {activeHero: first.actorUID, energyUnchanged: true}));
+  await settle(first);
   for (let count = 1; count <= 6; count++) {
     const before = await arrange(count);
-    await open(before.actorUID);
-    const targetUID = before.hp.at(-1).uid;
-    const point = await page.evaluate(uid => window.__codexGame.getTargetDebugGeometry().enemies.find(enemy=>enemy.uid===uid), targetUID);
-    await page.locator('#view').click({position:{x:point.x,y:point.y}});
-    const selected = await page.evaluate(() => window.__codexGame.globals.SelectedEnemyUID);
-    if(selected!==targetUID) throw new Error(`Battlefield target click failed: ${selected} != ${targetUID}`);
-    await page.getByRole('button',{name:'Attack',exact:true}).click();
-    const prepared = await snapshot(before.actorUID);
-    await page.getByRole('button', {name:'Act',exact:true}).click();
-    const selectedTarget = await page.evaluate(() => window.__codexGame.globals.NativeCommandSequence?.actions[0]?.targetIds[0]);
-    const acting = await snapshot(before.actorUID);
-    results.push(invariant(`hero-command-active-highlight-${count}`, acting.busy===1 && acting.current===before.actorUID,
-      acting, {activeDuringOwnAction:true, actorUID:before.actorUID}));
-    await settled(before);
-    const after = await snapshot(before.actorUID);
-    const damaged = await page.evaluate(uid => window.__codexGame.state.entities.find(actor=>actor.uid===uid)?.hp,targetUID);
-    results.push(invariant(`hero-command-group-${count}`, prepared.turn === before.turn && prepared.energy === before.energy
-      && prepared.flow === before.flow && after.energy === before.energy && after.gems === 0
-      && selectedTarget === targetUID && damaged < before.hp.at(-1).hp
-      && after.cards.filter(Boolean).length === count && after.cards[count-1] === before.actorUID
-      && after.positions[count-1] != null, {before, prepared, after, selectedTarget, targetUID, damaged},
-      {preparesWithoutSpend:true,attackCompletes:true,count}));
-    if (count === 1 || count === 6) await page.screenshot({path:path.join(artifactDir,`${viewport.name}-09-group-${count}.png`)});
+    await page.waitForSelector('#hero-turn-card-fan[data-open="true"]');
+    const selected = await selectCardAndTarget();
+    commandInvariants.push(invariant(`hero-command-group-${count}`, selected.energy === before.energy
+      && selected.cardsState.length === 0 && !selected.pending, {before, selected}, {fanConsumesOnce: true, energyUnchanged: true, count}));
+    await settle(before);
+    if (count === 1 || count === 6) await page.screenshot({path: path.join(artifactDir, `${viewport.name}-09-fan-group-${count}.png`)});
   }
-  const orbBefore = await arrange(3);
-  await page.evaluate(() => {
-    const g=window.__codexGame.globals;
-    g.FlowRandom=()=>0;g.FlowOrbs=[];
-    for(const enemy of window.__codexGame.state.entities.filter(a=>a.kind==='enemy')) enemy.hp=1;
-    window.__codexGame.state.entities.find(a=>a.uid===100).flow=90;
-  });
-  await open(orbBefore.actorUID);
-  await page.getByRole('button',{name:'Attack',exact:true}).click();
-  await page.getByRole('button',{name:'Act',exact:true}).click();
-  await page.waitForFunction(()=>window.__codexGame.globals.FlowOrbs?.some(o=>!o.collected));
-  const flight=await page.evaluate(()=>{
-    const game=window.__codexGame,g=game.globals,o=g.FlowOrbs[0];
-    return {orb:{...o},flow:game.state.entities.find(a=>a.uid===o.recipientUID).flow,age:g.time-o.born};
-  });
-  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-orb-flight.png`)});
-  await page.waitForFunction(()=>window.__codexGame.globals.FlowOrbs?.some(o=>!o.collected&&window.__codexGame.globals.time-o.born>=.3));
-  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-orb-bounce.png`)});
-  await page.waitForFunction(()=>window.__codexGame.globals.FlowOrbs?.some(o=>!o.collected&&window.__codexGame.globals.time-o.born>=.85));
-  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-orb-travel.png`)});
-  await page.waitForFunction(()=>window.__codexGame.state.entities.find(a=>a.uid===100).flow===100);
-  await settled(orbBefore);
-  const collected=await page.evaluate(()=>({ready:document.querySelector('#hero-commands article[data-uid="100"]').dataset.ready,heroes:window.__codexGame.state.entities.filter(a=>a.kind==='hero').map(a=>({uid:a.uid,flow:a.flow,sp:a.sp})),turn:window.__codexGame.globals.TurnSerial}));
-  results.push(invariant('flow-orb-flight-and-collection',flight.flow===90&&flight.orb.recipientUID===100&&flight.orb.sourceKind==='enemy'&&flight.orb.value===10&&collected.ready==='true'&&collected.heroes.every(h=>h.sp===100)&&collected.turn===orbBefore.turn+1,{flight,collected},{visibleFlight:true,randomNonAttacker:true,chargeOnArrival:true,SPUnchanged:true,oneTurn:true}));
-  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-orb-collected.png`)});
-  await page.evaluate(()=>{delete window.__codexGame.globals.FlowRandom;});
-  const flowBefore = await arrange(6,100);
-  await open(flowBefore.actorUID);
-  await page.getByRole('button',{name:'FLOW',exact:true}).click();
-  const flowPrepared = await snapshot(flowBefore.actorUID);
-  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-10-flow-editor.png`)});
-  await page.getByRole('button',{name:'Act',exact:true}).focus();
-  await page.keyboard.press('Enter');
-  const flowCommitted = await snapshot(flowBefore.actorUID);
-  await settled(flowBefore);
-  const flowAfter = await snapshot(flowBefore.actorUID);
-  results.push(invariant('hero-command-personal-flow', flowPrepared.flow===100 && flowPrepared.turn===flowBefore.turn
-    && flowAfter.flow===0 && flowCommitted.owner===flowBefore.actorUID
-    && flowAfter.turn===flowBefore.turn+1 && !flowAfter.pending && !flowAfter.draw && !flowAfter.pendingDraw,
-    {flowBefore,flowPrepared,flowCommitted,flowAfter},{fullChargeConsumed:true,turns:1,keyboardAct:true,draw:false}));
 
-  const sequenceBefore = await arrange(6,0);
-  await open(sequenceBefore.actorUID);
-  await page.locator('#hero-commands [data-skill="guard"]').click();
-  await page.locator('#hero-commands [data-skill="provoke"]').click();
-  const queue = await page.locator('#hero-commands .queue').innerText();
-  const budget = await page.locator('#hero-commands .editor h2 span').innerText();
-  const sequencePrepared = await snapshot(sequenceBefore.actorUID);
-  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-11-paid-sequence.png`)});
-  await page.getByRole('button',{name:'Act',exact:true}).click();
-  const sequenceCommitted = await snapshot(sequenceBefore.actorUID);
-  await settled(sequenceBefore);
-  const sequenceAfter = await snapshot(sequenceBefore.actorUID);
-  results.push(invariant('hero-command-paid-sequence', sequencePrepared.flow===0 && sequencePrepared.sp===100 && sequencePrepared.turn===sequenceBefore.turn
-    && sequenceCommitted.flow===0 && sequenceCommitted.sp===80 && sequenceCommitted.owner===sequenceBefore.actorUID
-    && sequenceAfter.turn===sequenceBefore.turn+1 && !sequenceAfter.pending && !sequenceAfter.draw && !sequenceAfter.pendingDraw
-    && budget==='2/3 actions · 1 left · 80 SP' && /1\. Guard/.test(queue) && /2\. Provoke/.test(queue),
-    {sequenceBefore,sequencePrepared,sequenceCommitted,sequenceAfter,budget,queue},
-    {budget:20,spMax:100,remaining:80,turns:1,queueOrder:['guard','provoke'],draw:false}));
-  for (const capacity of [1,2,3]) {
-    const before = await arrange(3);
-    await page.evaluate(({uid,capacity})=>{const hero=window.__codexGame.state.entities.find(a=>a.uid===uid);hero.actionSlotsPerTurn=capacity;}, {uid:before.actorUID,capacity});
-    await open(before.actorUID);
-    for(const id of ['guard','provoke','cover'].slice(0,capacity)) await page.locator(`#hero-commands [data-skill="${id}"]`).click();
-    const committed=await snapshot(before.actorUID);
-    await settled(before);
-    const after=await snapshot(before.actorUID);
-    results.push(invariant(`action-slots-auto-commit-${capacity}`,committed.pending&&after.turn===before.turn+1&&after.sp>0,{committed,after},{capacity,automatic:true,oneTurn:true}));
-  }
-  {
-    const before=await arrange(2);
-    await page.evaluate(async()=>{
-      const game=window.__codexGame,g=game.globals;
-      const {createHeroProgressStore,newHeroProgress}=await import('./src/core/heroProgression.mjs');
-      const heroes=game.state.entities.filter(a=>a.kind==='hero');
-      Object.assign(heroes[0],newHeroProgress('Huun'));heroes[0].hp=0;
-      Object.assign(heroes[1],newHeroProgress('Falie'));
-      const enemies=game.state.entities.filter(a=>a.kind==='enemy').slice(0,1);enemies[0].hp=1;enemies[0].expValue=3000;enemies[0].slotIndex=0;game.state.entities=[...heroes,...enemies];g.EnemySlots=[enemies[0].uid+1];g.EnemyIDs=[enemies[0].uid];g.Slots=1;g.QuestFiniteEncounter=1;
-      g.HeroProgress=createHeroProgressStore();g.ProgressionBattle={id:'ui-victory',participants:['Huun','Falie'],defeated:{},settled:false};
-      g.SelectedEnemyUID=enemies[0].uid;
-    });
-    await open(before.actorUID);
-    await page.getByRole('button',{name:'Attack',exact:true}).click();
-    await page.getByRole('button',{name:'Act',exact:true}).click();
-    await page.waitForFunction(()=>window.__codexGame.globals.ProgressionBattle.settled);
-    const progression=await page.evaluate(async()=>{
-      const game=window.__codexGame;
-      return {heroes:game.state.entities.filter(a=>a.kind==='hero').map(a=>({level:a.currentLevel,hp:a.hp,exp:a.currentEXP})),results:game.globals.ProgressionResults};
-    });
-    await page.getByRole('dialog',{name:'Battle progression'}).waitFor({state:'visible'});
-    await page.screenshot({path:path.join(artifactDir,`${viewport.name}-victory-progression.png`)});
-    const geometry=await page.evaluate(()=>{
-      const panel=document.querySelector('#battle-results'),shade=document.querySelector('#battle-results-shade');
-      return {canvas:document.querySelector('#view').getBoundingClientRect().toJSON(),panel:panel.getBoundingClientRect().toJSON(),shade:shade.getBoundingClientRect().toJSON(),darkness:getComputedStyle(shade).backgroundColor,overflow:panel.scrollWidth>panel.clientWidth};
-    });
-    const {canvas:c,panel:p,shade:d}=geometry;
-    results.push(invariant('results-canvas-relative-layout',Math.abs(p.width/c.width-.8)<.01&&Math.abs(p.height/c.height-.8)<.01&&Math.abs(p.x+p.width/2-c.x-c.width/2)<1&&Math.abs(p.y+p.height/2-c.y-c.height/2)<1&&Math.abs(d.width-c.width)<1&&Math.abs(d.height-c.height)<1&&Math.abs(d.x-c.x)<1&&Math.abs(d.y-c.y)<1&&geometry.darkness==='rgba(0, 0, 0, 0.4)'&&!geometry.overflow,geometry,{widthRatio:.8,heightRatio:.8,centered:true,combatShade:.4}));
-    results.push(invariant('victory-progression-with-ko',progression.heroes.every(h=>h.level===6)&&progression.heroes[0].hp===0&&progression.results.every(r=>r.exp===3000&&r.unlocks.length>0),progression,{fullEXPForKO:true,level:6,unlocks:true}));
-    await page.getByRole('dialog',{name:'Battle progression'}).getByRole('button',{name:'Continue',exact:true}).click();
-  }
-  const menu=page.getByRole('button',{name:'Menu',exact:true});
+  const flowBefore = await arrange(3, 100);
+  await page.waitForSelector('#hero-turn-card-fan[data-open="true"]');
+  const flowStateBefore = await page.evaluate(actorUID => {
+    const game = window.__codexGame;
+    const hero = game.state.entities.find(actor => Number(actor.uid) === Number(actorUID));
+    return {heroUID: Number(actorUID), flow: hero.flow, sp: hero.sp, energy: game.globals.Player_Energy, cards: game.globals.HeroTurnCardFanCards.map(card => card.id)};
+  }, flowBefore.actorUID);
+  await selectCardAndTarget();
+  await settle(flowBefore);
+  const flowStateAfter = await page.evaluate(actorUID => {
+    const game = window.__codexGame;
+    const hero = game.state.entities.find(actor => Number(actor.uid) === Number(actorUID));
+    return {heroUID: Number(actorUID), flow: hero.flow, sp: hero.sp, energy: game.globals.Player_Energy, currentHeroUID: Number(game.globals.CurrentHeroUID || 0)};
+  }, flowStateBefore.heroUID);
+  commandInvariants.push(
+    invariant('hero-command-personal-flow', flowStateAfter.flow === flowStateBefore.flow, {flowStateBefore, flowStateAfter}, {flowUnspent: true}),
+    invariant('hero-command-paid-sequence', flowStateAfter.sp === flowStateBefore.sp && flowStateAfter.energy === flowStateBefore.energy,
+      {flowStateBefore, flowStateAfter}, {spUnchanged: true, energyUnchanged: true}),
+  );
 
-  await page.getByRole('button',{name:'HERO',exact:true}).click();
-  await page.locator('#hero-details').waitFor({state:'visible'});
-  const heroDetails=await page.locator('#hero-details').evaluate(el=>({overflow:el.scrollWidth>el.clientWidth,text:el.innerText}));
-  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-hero-overview.png`)});
-  const rosterBounds=await page.locator('#hero-details').evaluate(el=>{const p=el.getBoundingClientRect(),r=el.querySelector('.roster').getBoundingClientRect();return {contained:r.bottom<=p.bottom&&r.left>=p.left&&r.right<=p.right,articles:el.querySelectorAll('article').length};});
-  results.push(invariant('hero-overview-disclosure',rosterBounds.contained&&rosterBounds.articles===0,rosterBounds,{contained:true,articles:0}));
-  await page.locator('#hero-details').getByRole('button',{name:'SKILLS',exact:true}).click();
-  await page.waitForFunction(()=>document.querySelectorAll('#hero-details article').length===7);
-  const activeCount=await page.locator('#hero-details article').count();
-  await page.getByRole('button',{name:'Passive',exact:true}).click();
-  await page.waitForFunction(()=>document.querySelectorAll('#hero-details article').length===6);
-  const passiveCount=await page.locator('#hero-details article').count();
-  await page.locator('#hero-details').getByRole('button',{name:'FLOW',exact:true}).click();
-  await page.waitForFunction(()=>document.querySelectorAll('#hero-details article').length===1);
-  const specialCount=await page.locator('#hero-details article').count();
-  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-hero-details.png`)});
-  results.push(invariant('hero-detail-canonical-kit',!heroDetails.overflow&&activeCount===7&&passiveCount===6&&specialCount===1&&heroDetails.text.includes('Coming next')&&!heroDetails.text.includes('How FLOW builds'),{heroDetails,activeCount,passiveCount,specialCount},{overflow:false,activeSkills:7,passives:6,special:1}));
-  await page.locator('#hero-details').getByRole('button',{name:'Back',exact:true}).click();
-  await page.evaluate(async()=>{
-    const {createMarket,marketOffers}=await import('/web-runner/src/core/astralMarket.mjs');
-    const {EQUIPMENT}=await import('/web-runner/src/core/equipment.mjs');
-    const key='wishfire.equipment-economy.v1',record=JSON.parse(localStorage.getItem(key));record.gold=5000;record.items=[];record.loadouts={};
-    let seed=1;do{record.market=createMarket(seed++,Date.now());}while(!marketOffers(record.market,Date.now()).some(o=>EQUIPMENT[o.equipmentId].type==='weapon'&&o.progress>.2&&o.progress<.65));
-    localStorage.setItem(key,JSON.stringify(record));
-  });
-  await page.getByRole('button',{name:'FLOW',exact:true}).click();
-  await page.waitForFunction(()=>document.querySelector('#astral-market header')?.textContent.includes('5,000'));
-  const offer=await page.evaluate(async()=>{
-    const {EQUIPMENT}=await import('/web-runner/src/core/equipment.mjs');const {marketOffers}=await import('/web-runner/src/core/astralMarket.mjs');const g=window.__codexGame.globals;
-    const o=marketOffers(g.Equipment.market,Date.now()).find(o=>EQUIPMENT[o.equipmentId].type==='weapon'&&o.progress>.2&&o.progress<.7);return {...o,name:EQUIPMENT[o.equipmentId].name};
-  });
-  await page.locator(`[data-offer="${offer.id}"]`).click({force:true});
-  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-astral-market.png`)});
-  const marketGeometry=await page.locator('#astral-market').evaluate(p=>({overflow:p.scrollWidth>p.clientWidth,tracks:new Set([...p.querySelectorAll('.offer')].map(c=>c.style.getPropertyValue('--track'))).size,price:p.querySelector('[data-buy]').textContent}));
-  await page.locator('#astral-market [data-buy]').click();
-  await page.waitForFunction(id=>window.__codexGame.globals.Equipment.items.some(i=>i.instanceId===id),offer.id);
-  const purchase=await page.evaluate(()=>({gold:window.__codexGame.globals.goldTotal,items:window.__codexGame.globals.Equipment.items}));
-  results.push(invariant('astral-equipment-purchase',!marketGeometry.overflow&&marketGeometry.tracks===4&&marketGeometry.price.includes(String(offer.price))&&purchase.gold===5000-offer.price&&purchase.items.length===1&&purchase.items[0].equipmentId===offer.equipmentId,{marketGeometry,purchase,offer},{tracks:4,exactGold:true,exactItem:true}));
-  await page.locator('#astral-market').getByRole('button',{name:'Back',exact:true}).click();
-  await page.getByRole('button',{name:'HERO',exact:true}).click();
-  await page.locator('#hero-details').getByRole('button',{name:'GEAR',exact:true}).click();
-  await page.locator('.equipment-grid').getByRole('button',{name:`Inspect ${offer.name}`,exact:true}).click();
-  await page.locator('.equipment-detail').getByRole('button',{name:'Equip',exact:true}).click();
-  await page.waitForFunction(id=>Object.values(window.__codexGame.globals.Equipment.loadouts).some(l=>l.weapon===id),offer.id);
-  const equipped=await page.evaluate(()=>{const g=window.__codexGame.globals;const [heroId]=Object.entries(g.Equipment.loadouts).find(([,l])=>l.weapon);return {hero:g.HeroProgress.heroes[heroId],loadout:g.Equipment.loadouts[heroId],overflow:document.querySelector('#hero-details').scrollWidth>document.querySelector('#hero-details').clientWidth};});
-  results.push(invariant('gear-canonical-stat-effect',!equipped.overflow&&equipped.loadout.weapon===offer.id&&Object.values(equipped.hero.equipmentStats||{}).some(v=>v>0),equipped,{canonicalGearStats:true}));
-  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-hero-gear.png`)});
-  return results;
+  const reopen = await arrange(1);
+  await page.waitForSelector('#hero-turn-card-fan[data-open="true"]');
+  const drawBefore = await page.evaluate(() => window.__codexGame.globals.HeroTurnCardFanCards.map(card => card.id));
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => document.getElementById('hero-turn-card-fan')?.dataset.open === 'false');
+  await page.locator('#hero-commands article[data-uid] [data-open]').click();
+  await page.waitForSelector('#hero-turn-card-fan[data-open="true"]');
+  const drawAfter = await page.evaluate(() => window.__codexGame.globals.HeroTurnCardFanCards.map(card => card.id));
+  commandInvariants.push(invariant('hero-card-fan-reopen-same-draw', JSON.stringify(drawAfter) === JSON.stringify(drawBefore), {drawBefore, drawAfter}, {sameDraw: true, turn: reopen.turn}));
+  return commandInvariants;
 }
 
 async function runViewport(browser, baseUrl, viewport, artifactDir, { injectStageDrift = false } = {}) {

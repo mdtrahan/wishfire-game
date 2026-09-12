@@ -55,6 +55,12 @@ export function registerDevBrowserTestHooks({
     controls.setAttribute('aria-label', 'Quest QA');
     controls.style.cssText = 'position:fixed;top:4px;left:4px;z-index:10001;display:flex;gap:4px';
     for (const [label, action] of [
+      ['QA start combat', () => {
+        if (typeof storyEntry.startCombatForQA !== 'function') return;
+        void storyEntry.startCombatForQA().then(started => {
+          if (started && typeof drawFrame === 'function') drawFrame();
+        });
+      }],
       ['QA defeat', () => {
         if (gameState.storyEntry.phase !== 'combat') return;
         for (const hero of state.entities.filter(e => e.kind === 'hero')) hero.hp = 0;
@@ -315,8 +321,8 @@ export function registerDevBrowserTestHooks({
         enemies: state.entities
           .filter((entity) => entity?.kind === 'enemy' && Number(entity.hp || 0) > 0)
           .map((enemy) => {
-            const pos = typeof worldToCanvas === 'function'
-              ? worldToCanvas(Number(enemy.x || 0), Number(enemy.y || 0))
+            const pos = typeof combatActorWorldToCanvas === 'function'
+              ? combatActorWorldToCanvas(Number(enemy.x || 0), Number(enemy.y || 0), 'enemy')
               : { x: Number(enemy.x || 0), y: Number(enemy.y || 0) };
             return {
               uid: Number(enemy.uid || 0),

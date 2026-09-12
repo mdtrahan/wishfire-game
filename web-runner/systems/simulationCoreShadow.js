@@ -865,11 +865,11 @@ function runCombatOutcomeOwnerStartupCheck(shadow) {
     jsCode: 0,
   });
   createSimulationCoreCombatOutcomeResolution({
-    source: 'simulationCore.startup.combatOutcomeOwner.partyDefeated',
+    source: 'simulationCore.startup.combatOutcomeOwner.noLivingHeroes',
     energy: 10,
     partyHp: 0,
-    livingHeroes: 4,
-    jsCode: 2,
+    livingHeroes: 0,
+    jsCode: 3,
   });
 }
 
