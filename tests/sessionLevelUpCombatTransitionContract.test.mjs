@@ -110,6 +110,7 @@ test('victory queues gained levels, the queue pauses battle completion, and defe
   };
   const ctx = { state: { globals, entities: [hero] }, callFunction: () => {} };
   settleVictory(ctx);
+  assert.equal(globals.ProgressionBattle.outcome, 'victory');
   assert.equal(globals.SessionLevelUpQueue.status, 'active');
   assert.equal(getCurrentSessionLevelUpEntry(ctx).heroId, 'fara-1');
   pauseSessionLevelUpRewards(ctx);
@@ -117,6 +118,8 @@ test('victory queues gained levels, the queue pauses battle completion, and defe
   resumeSessionLevelUpRewards(ctx);
   assert.equal(getCurrentSessionLevelUpEntry(ctx).heroId, 'fara-1');
   settleDefeat(ctx);
+  assert.equal(globals.ProgressionBattle.outcome, 'defeat');
+  assert.equal(globals.ProgressionBattle.defeatSettled, true);
   assert.equal(globals.SessionLevelUpQueue.status, 'complete');
   assert.deepEqual(globals.SessionLevelBuffState, { heroes: {} });
 });
@@ -137,13 +140,15 @@ test('shared ProcessTurn boundary holds every scheduler path while settlement or
   assert.match(processTurn, /hasSessionLevelUpPresentationBarrier\(g\)[\s\S]*return;[\s\S]*resolvePendingEnemyDeaths\(ctx\)/);
 });
 
-test('staged QA offers claim the scheduler hold before settlement and retain it through card selection', () => {
+test('QA fixture offers use the production victory settlement and reject only defeat', () => {
   const hooks = read('web-runner/systems/devBrowserTestHooks.js');
   const fixtureOffer = hooks.slice(hooks.indexOf('const beginQaFixtureOffer'), hooks.indexOf("['QA defeat'"));
-  assert.match(fixtureOffer, /QaFixtureHoldTurn = 1;[\s\S]*QaFixtureOfferHold = 1/);
-  assert.match(fixtureOffer, /await waitForPlayableBattle\([\s\S]*allowDeferredAdvance: true[\s\S]*setQaFixtureOfferPool\(fixtureSelect\.value\);[\s\S]*beginRewardSettlement\(\)/);
-  assert.match(hooks, /\['QA fixture offer', async \(\) => \{ await beginQaFixtureOffer\(\); \}\]/);
-  assert.match(hooks, /finally \{[\s\S]*delete state\.globals\.QaFixtureHoldTurn;[\s\S]*delete state\.globals\.QaFixtureOfferHold/);
+  const commands = read('web-runner/modules/heroCommands.mjs');
+  assert.match(fixtureOffer, /battle\.outcome === 'defeat' \|\| battle\.defeatSettled/);
+  assert.match(fixtureOffer, /setQaFixtureOfferPool\(fixtureSelect\.value\);[\s\S]*beginRewardSettlement\(\)/);
+  assert.match(hooks, /\['QA fixture offer', \(\) => beginQaFixtureOffer\(\)\]/);
+  assert.match(commands, /export function settleVictory[\s\S]*if\(!g\.NativeBattleEnded[\s\S]*g\.ProgressionBattle\.outcome='victory'/);
+  assert.match(commands, /export function settleDefeat[\s\S]*g\.ProgressionBattle\.outcome='defeat'[\s\S]*g\.ProgressionBattle\.defeatSettled=true/);
 });
 
 function loadQaFixtureProcessTurnHarness({ tokenOwnerUID = 0 } = {}) {
@@ -401,7 +406,8 @@ test('Battle B holds automatic scheduling through fixture evidence while permitt
   const nextBattle = hooks.slice(hooks.indexOf("['QA next battle'"), hooks.indexOf("['QA fresh session'"));
   const fixtureRun = hooks.slice(hooks.indexOf("['QA run fixture'"), hooks.indexOf("['QA next battle'"));
   assert.match(nextBattle, /QaFixtureHoldTurn = 1/);
-  assert.match(nextBattle, /QaFixtureBattleBaseline[\s\S]*catch \(error\) \{\s*clearQaFixtureOfferLifecycle\(\)/);
+  assert.match(nextBattle, /QaFixtureHoldTurn = 1;[\s\S]*seedProductionEncounter\(\)/);
+  assert.match(nextBattle, /QaFixtureBattleBaseline[\s\S]*catch \(error\) \{\s*delete state\.globals\.QaFixtureHoldTurn/);
   assert.match(hooks, /const runQaFixtureProductionAction = async \(ownerUID, action\) => \{\s*state\.globals\.QaFixtureExplicitAction = 1/);
   assert.match(hooks, /const arrangeOwnerAsNextSchedulerActor = \(owner, target\) => \{/);
   assert.match(fixtureRun, /const closeCompletedFixturePhase = async \(target, priorSequence\) => \{/);
@@ -418,7 +424,7 @@ test('Battle B holds automatic scheduling through fixture evidence while permitt
   assert.doesNotMatch(fixtureRun, /owner basic did not complete:[\s\S]*callFunctionWithContext\(fnContext, 'AdvanceTurn'\)/);
   assert.match(fixtureRun, /counterAfter !== counterBefore \+ 1/);
   assert.match(fixtureRun, /await runOwnerBasicAttempt\(attempt\)/);
-  assert.match(fixtureRun, /finally \{[\s\S]*clearQaFixtureOfferLifecycle\(\)/);
+  assert.match(fixtureRun, /finally \{[\s\S]*delete state\.globals\.QaFixtureHoldTurn/);
   assert.match(commands, /if \(g\.QaFixtureHoldTurn && !qaExplicitActionAllowed\)/);
   assert.match(app, /resolveQaFixtureDeferredAdvance: \(\) => \{[\s\S]*callFunctionWithContext\(fnContext, 'AdvanceTurn'\);[\s\S]*applyTurnGateIntent\(createDeferredAdvanceResolved\)/);
   assert.match(app, /state\.globals\.DeferAdvance &&\s*!state\.globals\.QaFixtureHoldTurn/);
@@ -433,24 +439,26 @@ test('the Phase 4 fixture table keeps Pulse, staged Orb, and Venom identities di
   assert.match(cards, /statusId: 'qa_venom'/);
 });
 
-test('the staged Orb QA workflow retains one offer hold through Tier 2 and releases it after the upgrade fixture', () => {
+test('the staged Orb QA workflow returns to victory settlement before the held Tier 2 battle', () => {
   const hooks = read('web-runner/systems/devBrowserTestHooks.js');
   const fixtureRun = hooks.slice(hooks.indexOf("['QA run fixture'"), hooks.indexOf("['QA next battle'"));
+  const fixtureOffer = hooks.slice(hooks.indexOf('const beginQaFixtureOffer'), hooks.indexOf("['QA defeat'"));
+  const nextBattle = hooks.slice(hooks.indexOf("['QA next battle'"), hooks.indexOf("['QA fresh session'"));
   assert.match(fixtureRun, /const orbCadence = Number\(fixtureCard\?\.formula\?\.everyCompletedBasics \|\| 3\)/);
   assert.match(fixtureRun, /const orbAmount = Number\(fixtureCard\?\.formula\?\.amount \|\| 4\)/);
-  assert.match(fixtureRun, /retainQaFixtureOfferHold = fixture === 'orb'[\s\S]*Number\(fixtureCard\?\.stage \|\| 0\) === 1[\s\S]*QaFixtureOfferHold/);
-  assert.match(fixtureRun, /if \(!retainQaFixtureOfferHold\) \{[\s\S]*clearQaFixtureOfferLifecycle\(\)/);
+  assert.match(fixtureOffer, /beginRewardSettlement\(\)/);
+  assert.match(nextBattle, /QaFixtureHoldTurn = 1;[\s\S]*seedProductionEncounter\(\)/);
+  assert.doesNotMatch(hooks, /QaFixtureOfferHold|QaFixtureOfferArmed|QaFixtureOfferStartTurnCount/);
 });
 
-test('fresh QA fixture entry arms its hold before scheduler startup and rejects an ended or advanced offer', () => {
+test('QA continuation transfers the hold to Battle B before scheduling and keeps defeat terminal', () => {
   const hooks = read('web-runner/systems/devBrowserTestHooks.js');
-  const start = hooks.slice(hooks.indexOf("['QA start combat'"), hooks.indexOf("['QA defeat'"));
-  const offer = hooks.slice(hooks.indexOf('const beginQaFixtureOffer'), hooks.indexOf("['QA start combat'"));
-  assert.match(start, /QaFixtureHoldTurn = 1;[\s\S]*QaFixtureOfferHold = 1;[\s\S]*QaFixtureOfferArmed = 1;[\s\S]*startCombatForQA\(\)/);
-  assert.match(start, /QaFixtureOfferStartTurnCount = Number\(state\.globals\.DebugTurnCount \|\| 0\)/);
-  assert.match(offer, /NativeBattleEnded\) throw new Error\('QA fixture offer cannot open because the held combat already ended'/);
-  assert.match(offer, /QaFixtureOfferInitialSelectionComplete[\s\S]*DebugTurnCount[\s\S]*zero combat actions before selection/);
-  assert.match(offer, /catch \(error\) \{\s*clearQaFixtureOfferLifecycle\(\);\s*throw error/);
+  const nextBattle = hooks.slice(hooks.indexOf("['QA next battle'"), hooks.indexOf("['QA fresh session'"));
+  const offer = hooks.slice(hooks.indexOf('const beginQaFixtureOffer'), hooks.indexOf("['QA defeat'"));
+  assert.match(nextBattle, /QaFixtureHoldTurn = 1;[\s\S]*seedProductionEncounter\([\s\S]*storyEntry\.victory\(\)/);
+  assert.match(nextBattle, /catch \(error\) \{\s*delete state\.globals\.QaFixtureHoldTurn/);
+  assert.match(nextBattle, /priorBattle\.outcome === 'defeat' \|\| priorBattle\.defeatSettled/);
+  assert.match(offer, /battle\.outcome === 'defeat' \|\| battle\.defeatSettled/);
 });
 
 test('production effect visuals retain the fixture payload needed for current-run QA deltas', () => {

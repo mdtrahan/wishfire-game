@@ -281,54 +281,18 @@ export function registerDevBrowserTestHooks({
       settleVictory(fnContext);
       if (typeof drawFrame === 'function') drawFrame();
     };
-    const clearQaFixtureOfferLifecycle = () => {
-      delete state.globals.QaFixtureHoldTurn;
-      delete state.globals.QaFixtureOfferHold;
-      delete state.globals.QaFixtureOfferArmed;
-      delete state.globals.QaFixtureOfferStartTurnCount;
-      delete state.globals.QaFixtureOfferInitialSelectionComplete;
-    };
-    const beginQaFixtureOffer = async () => {
-      try {
-        if (!state.globals.QaFixtureOfferArmed) throw new Error('QA fixture offer requires a fresh held QA combat entry');
-        if (state.globals.NativeBattleEnded) throw new Error('QA fixture offer cannot open because the held combat already ended');
-        state.globals.QaFixtureHoldTurn = 1;
-        state.globals.QaFixtureOfferHold = 1;
-        const boundary = await waitForPlayableBattle({
-          entry: gameState.storyEntry, globals: state.globals, entities: state.entities,
-          getCurrentUID: () => callFunctionWithContext(fnContext, 'GetCurrentTurn'),
-          allowDeferredAdvance: true,
-          wait: ms => new Promise(resolve => window.setTimeout(resolve, ms)),
-        });
-        if (!boundary.ok) throw new Error(`QA fixture offer requires an idle production boundary: ${JSON.stringify(boundary.observed)}`);
-        if (state.globals.NativeBattleEnded) throw new Error('QA fixture offer cannot open because the held combat already ended');
-        if (!state.globals.QaFixtureOfferInitialSelectionComplete
-          && Number(state.globals.DebugTurnCount || 0) !== Number(state.globals.QaFixtureOfferStartTurnCount || 0)) {
-          throw new Error(`QA fixture offer requires zero combat actions before selection: ${JSON.stringify({ startTurns: state.globals.QaFixtureOfferStartTurnCount, currentTurns: state.globals.DebugTurnCount || 0 })}`);
-        }
-        setQaFixtureOfferPool(fixtureSelect.value);
-        beginRewardSettlement();
-      } catch (error) {
-        clearQaFixtureOfferLifecycle();
-        throw error;
-      }
+    const beginQaFixtureOffer = () => {
+      const battle = state.globals.ProgressionBattle || {};
+      if (battle.outcome === 'defeat' || battle.defeatSettled) throw new Error('QA fixture offer cannot open after defeat');
+      setQaFixtureOfferPool(fixtureSelect.value);
+      beginRewardSettlement();
     };
     for (const [label, action] of [
       ['QA start combat', () => {
         if (typeof storyEntry.startCombatForQA !== 'function') return;
-        state.globals.QaFixtureHoldTurn = 1;
-        state.globals.QaFixtureOfferHold = 1;
-        state.globals.QaFixtureOfferArmed = 1;
-        state.globals.QaFixtureOfferStartTurnCount = Number(state.globals.DebugTurnCount || 0);
-        state.globals.QaFixtureOfferInitialSelectionComplete = 0;
         void storyEntry.startCombatForQA().then(started => {
-          if (!started || state.globals.NativeBattleEnded) {
-            state.globals.QaFixtureOfferDiagnostic = 'fresh QA fixture combat ended before its offer could open';
-            clearQaFixtureOfferLifecycle();
-            return;
-          }
           if (started && typeof drawFrame === 'function') drawFrame();
-        }).catch(() => clearQaFixtureOfferLifecycle());
+        });
       }],
       ['QA defeat', () => {
         if (gameState.storyEntry.phase !== 'combat') return;
@@ -336,10 +300,6 @@ export function registerDevBrowserTestHooks({
         callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
         delete state.globals.QaFixtureBattleBaseline;
         delete state.globals.QaFixtureHoldTurn;
-        delete state.globals.QaFixtureOfferHold;
-        delete state.globals.QaFixtureOfferArmed;
-        delete state.globals.QaFixtureOfferStartTurnCount;
-        delete state.globals.QaFixtureOfferInitialSelectionComplete;
         delete state.globals.SessionLevelUpQaOfferCards;
       }],
       ['QA clear monsters', () => {
@@ -351,14 +311,13 @@ export function registerDevBrowserTestHooks({
         hero.hp = Math.floor(Number(hero.maxHP || 1) * .25); callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
       }],
       ['QA EXP 47+80', () => beginRewardSettlement()],
-      ['QA fixture offer', async () => { await beginQaFixtureOffer(); }],
+      ['QA fixture offer', () => beginQaFixtureOffer()],
       ['QA overflow EXP', () => beginRewardSettlement({ overflow: true })],
       ['QA multi-hero EXP', () => beginRewardSettlement({ multiHero: true })],
       ['QA choose preferred', () => {
         const offer = getSessionLevelUpBuffOffer(fnContext);
         const selected = offer.cards?.find(card => card.cardId === cardSelect.value) || offer.cards?.[0];
-        const choice = selected ? chooseSessionLevelUpBuff(fnContext, selected.cardId) : null;
-        if (choice?.status === 'applied' && state.globals.QaFixtureOfferArmed) state.globals.QaFixtureOfferInitialSelectionComplete = 1;
+        if (selected) chooseSessionLevelUpBuff(fnContext, selected.cardId);
         if (typeof drawFrame === 'function') drawFrame();
       }],
       ['QA native basic', () => callFunctionWithContext(fnContext, 'ProcessTurn')],
@@ -371,7 +330,6 @@ export function registerDevBrowserTestHooks({
       ['QA run fixture', async () => {
         const fixture = resolveQaLevelUpFixtureKey(fixtureSelect.value);
         const owner = qaHero();
-        let retainQaFixtureOfferHold = false;
         try {
         const livingEnemies = () => state.entities.filter(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
         const statusMagnitude = (actor, effect) => Number(actor?.statuses?.find(status => status.statusEffect === effect)?.magnitude || 0);
@@ -579,18 +537,10 @@ export function registerDevBrowserTestHooks({
           if (!idleAfter.ok) throw new Error(`QA fixture ${fixture} action did not complete: ${JSON.stringify(idleAfter.observed)}`);
         }
         if (!scenario.observed()) throw new Error(`QA fixture ${fixture} did not produce its required observable production result: ${JSON.stringify({ ownerUID: owner.uid, enemies: livingEnemies().map(enemy => ({ uid: enemy.uid, hp: enemy.hp, statuses: enemy.statuses?.map(status => status.statusEffect) || [] })), pulses: state.globals.ArcanePulseVisuals?.length || 0, chains: state.globals.ChainStrikeVisuals?.length || 0 })}`);
-        // A successful base Orb cadence hands its existing fixture-offer hold
-        // directly to the staged Tier 2 offer. Every other completion and any
-        // error releases through the shared finally cleanup below.
-        retainQaFixtureOfferHold = fixture === 'orb'
-          && Number(fixtureCard?.stage || 0) === 1
-          && !!state.globals.QaFixtureOfferHold;
         if (typeof drawFrame === 'function') drawFrame();
         } finally {
           delete state.globals.QaFixtureExplicitAction;
-          if (!retainQaFixtureOfferHold) {
-            clearQaFixtureOfferLifecycle();
-          }
+          delete state.globals.QaFixtureHoldTurn;
         }
       }],
       ['QA next battle', async () => {
@@ -598,6 +548,8 @@ export function registerDevBrowserTestHooks({
         const owner = qaHero();
         const target = state.entities.find(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
         if (!fixture || !owner) throw new Error('QA continuation requires a selected fixture and owner');
+        const priorBattle = state.globals.ProgressionBattle || {};
+        if (priorBattle.outcome === 'defeat' || priorBattle.defeatSettled) throw new Error('QA continuation cannot start Battle B after defeat');
         // Keep the pre-transition values. Encounter replacement creates new
         // actor objects, so post-init values cannot prove permanent buff deltas.
         const preBattleBaseline = { fixture, ...snapshotFixtureBaseline(owner, target) };
@@ -621,11 +573,11 @@ export function registerDevBrowserTestHooks({
         state.globals.QaFixtureBattleBaseline = { ...preBattleBaseline, ready: playable.observed, liveOwnerUID: Number(liveOwner.uid), liveTargetUID: Number(liveTarget.uid) };
         if (typeof drawFrame === 'function') drawFrame();
         } catch (error) {
-          clearQaFixtureOfferLifecycle();
+          delete state.globals.QaFixtureHoldTurn;
           throw error;
         }
       }],
-      ['QA fresh session', () => { delete state.globals.QaFixtureBattleBaseline; delete state.globals.QaFixtureHoldTurn; delete state.globals.QaFixtureOfferHold; delete state.globals.QaFixtureOfferArmed; delete state.globals.QaFixtureOfferStartTurnCount; delete state.globals.QaFixtureOfferInitialSelectionComplete; delete state.globals.SessionLevelUpQaOfferCards; resetCombatSessionConditions(state.globals, {}); if (typeof drawFrame === 'function') drawFrame(); }],
+      ['QA fresh session', () => { delete state.globals.QaFixtureBattleBaseline; delete state.globals.QaFixtureHoldTurn; delete state.globals.SessionLevelUpQaOfferCards; resetCombatSessionConditions(state.globals, {}); if (typeof drawFrame === 'function') drawFrame(); }],
       ['QA abandon', async () => {
         const navigated = await storyEntry.navigate('Quests');
         const quit = navigated && storyEntry.quitPausedCombat();
@@ -633,10 +585,6 @@ export function registerDevBrowserTestHooks({
         if (Object.keys(state.globals.SessionLevelBuffState?.heroes || {}).length || state.globals.SessionLevelUpSettlement || state.globals.SessionLevelUpQueue?.status === 'active' || state.globals.SessionLevelBuffCombatSessionId != null) throw new Error('QA abandon did not clear owned session level buffs');
         delete state.globals.QaFixtureBattleBaseline;
         delete state.globals.QaFixtureHoldTurn;
-        delete state.globals.QaFixtureOfferHold;
-        delete state.globals.QaFixtureOfferArmed;
-        delete state.globals.QaFixtureOfferStartTurnCount;
-        delete state.globals.QaFixtureOfferInitialSelectionComplete;
         delete state.globals.SessionLevelUpQaOfferCards;
         if (typeof drawFrame === 'function') drawFrame();
       }],
