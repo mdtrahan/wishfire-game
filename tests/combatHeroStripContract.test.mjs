@@ -60,6 +60,8 @@ test('combat hero strip keeps a compact free placed reference status block', () 
   assert.match(source, /\.sp progress::-webkit-progress-value/);
   assert.match(source, /\[data-hp-text\]'\)\.textContent = hp/);
   assert.match(source, /\[data-sp-text\]'\)\.textContent = sp/);
+  assert.match(source, /article\[data-low-hp=true\] \.readout-label,#hero-commands article\[data-low-hp=true\] \.readout-value,#hero-commands article\[data-low-hp=true\] footer \.role,#hero-commands article\[data-low-hp=true\] footer \.level,#hero-commands article\[data-low-hp=true\] footer \.hero-name strong\{color:#ff8b37\}/);
+  assert.match(source, /card\.dataset\.lowHp = String\(hp > 0 && hp \/ maxHP <= LOW_HP_WARNING_RATIO\)/);
   assert.doesNotMatch(source, /\[data-flow-(?:text|bar)\]/);
   assert.doesNotMatch(source, /FLOW ready/);
   assert.match(source, /className = 'hero-meta'/);

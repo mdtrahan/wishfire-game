@@ -49,7 +49,7 @@ export function createHeroCommandUI({ctx, gameState, canvas, onActiveHeroClick =
     #hero-commands .exp-row progress{height:5px;border-color:#1b1205;background:#282018;box-shadow:inset 0 1px #fff5,0 1px #0008}
     #hero-commands .exp-row progress::-webkit-progress-value{background:linear-gradient(#fff28a,#ffb12c 48%,#d96a08);border-radius:2px}
     #hero-commands .exp-row progress::-moz-progress-bar{background:linear-gradient(#fff28a,#ffb12c 48%,#d96a08)}
-    #hero-commands article[data-low-hp=true] .hp .readout-label,#hero-commands article[data-low-hp=true] .hp .readout-value{color:#ff8b37}
+    #hero-commands article[data-low-hp=true] .readout-label,#hero-commands article[data-low-hp=true] .readout-value,#hero-commands article[data-low-hp=true] footer .role,#hero-commands article[data-low-hp=true] footer .level,#hero-commands article[data-low-hp=true] footer .hero-name strong{color:#ff8b37}
     #hero-commands .hero-top{grid-row:1;position:relative;min-width:0;overflow:visible;isolation:isolate;background:transparent}
     #hero-commands .portrait{position:absolute;z-index:1;inset:0 auto auto 0;width:47%;height:60px;overflow:hidden;background:transparent}
     #hero-commands .portrait img{width:100%;height:100%;display:block;object-fit:cover;object-position:50% 0%;transform:scale(2.1);transform-origin:50% 0%;pointer-events:none}
