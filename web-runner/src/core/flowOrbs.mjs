@@ -27,6 +27,7 @@ export function spawnDirectedFlowOrb(ctx, source, recipient, value = T.limitOrbV
  const queue=ctx.state.FlowOrbs ||= [];
  const id=ctx.state.FlowOrbSerial=(ctx.state.FlowOrbSerial||0)+1;
  queue.push({id,recipientUID:recipient.uid,sourceUID:source.uid,sourceKind:source.kind,x:Number(source.x??source.originX??200),y:Number(source.y??source.originY??140),groundOffset:Math.max(1,Number(ctx.state.EnemySize||40))/2,sourceSlot:source.heroDisplaySlot??source.heroIndex,value:amount,reason,born:Number(ctx.state.time||0),sessionId:ctx.state.CombatSessionId});
+ ctx.state.FlowOrbAudit={...(ctx.state.FlowOrbAudit||{}),queuedRecipientUID:Number(recipient.uid||0),queuedValue:amount,queuedReason:String(reason||''),queuedCount:Number(ctx.state.FlowOrbAudit?.queuedCount||0)+1};
  return 1;
 }
 
@@ -39,6 +40,7 @@ export function advanceFlowOrbs(state, actors, now = Number(state.time || 0)) {
   if (!orb.collected && now - orb.born >= lifetime) {
    hero.flow = Math.min(T.flowMax, Math.max(0, hero.flow || 0) + orb.value);
    orb.collected = true;
+   state.FlowOrbAudit={...(state.FlowOrbAudit||{}),arrivedRecipientUID:Number(hero.uid||0),arrivedValue:Number(orb.value||0),arrivedReason:String(orb.reason||''),arrivedCount:Number(state.FlowOrbAudit?.arrivedCount||0)+1};
   }
   return now - orb.born < lifetime + T.collectFlashSeconds;
  });

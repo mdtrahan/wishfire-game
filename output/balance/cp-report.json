@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "levels": [
     1,
     2,
@@ -8674,11 +8674,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 10.9921875,
+      "averageActions": 11,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 1,
@@ -8686,11 +8691,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 10.85546875,
+      "averageActions": 10.6640625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 1,
@@ -8698,11 +8708,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 15.8046875,
+      "averageActions": 15.86328125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 1,
@@ -8710,11 +8725,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 14.640625,
+      "averageActions": 14.59375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 1,
@@ -8722,11 +8742,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 22.69140625,
+      "averageActions": 22.28125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 5,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 1,
@@ -8734,11 +8759,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 22.03125,
+      "averageActions": 22.86328125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 5,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 1,
@@ -8746,11 +8776,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 36.70703125,
+      "averageActions": 36.9765625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 7,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 1,
@@ -8758,11 +8793,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 36.1015625,
+      "averageActions": 35.93359375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 7,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 2,
@@ -8770,11 +8810,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 10.96875,
+      "averageActions": 11.02734375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 2,
@@ -8782,11 +8827,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 10.6484375,
+      "averageActions": 10.3984375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 2,
@@ -8794,11 +8844,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 15.796875,
+      "averageActions": 15.87109375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 2,
@@ -8806,11 +8861,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 14.61328125,
+      "averageActions": 14.76171875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 2,
@@ -8818,11 +8878,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 22.65625,
+      "averageActions": 22.28515625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 2,
@@ -8830,11 +8895,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 22.01171875,
+      "averageActions": 22.81640625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 5,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 2,
@@ -8842,11 +8912,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 37.55859375,
+      "averageActions": 37.3203125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 7,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 2,
@@ -8854,11 +8929,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 36.55078125,
+      "averageActions": 36.6015625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 7,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 3,
@@ -8866,11 +8946,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 10.984375,
+      "averageActions": 11.25,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 3,
@@ -8878,11 +8963,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 10.5,
+      "averageActions": 10.703125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 3,
@@ -8890,11 +8980,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 15.9296875,
+      "averageActions": 16.10546875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 3,
@@ -8902,35 +8997,50 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 14.6796875,
+      "averageActions": 14.67578125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 3,
       "tier": "elite",
       "path": "physical",
+      "runs": 256,
+      "winRate": 1,
+      "averageActions": 22.265625,
+      "averageCasualties": 0,
+      "maxLinkedBurst": 0,
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
+    },
+    {
+      "level": 3,
+      "tier": "elite",
+      "path": "magic",
       "runs": 256,
       "winRate": 1,
       "averageActions": 22.8515625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
-    },
-    {
-      "level": 3,
-      "tier": "elite",
-      "path": "magic",
-      "runs": 256,
-      "winRate": 1,
-      "averageActions": 22.04296875,
-      "averageCasualties": 0,
-      "maxEnemyBurst": 0,
-      "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 5,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 3,
@@ -8938,11 +9048,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 39.15625,
+      "averageActions": 37.66796875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 7,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 3,
@@ -8950,11 +9065,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 36.94140625,
+      "averageActions": 37.4921875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 7,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 4,
@@ -8962,11 +9082,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 11,
+      "averageActions": 11.1015625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 4,
@@ -8974,11 +9099,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 10.74609375,
+      "averageActions": 10.51171875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 4,
@@ -8986,11 +9116,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 15.984375,
+      "averageActions": 16.0078125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 4,
@@ -8998,11 +9133,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 14.890625,
+      "averageActions": 14.140625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 4,
@@ -9010,11 +9150,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 23.29296875,
+      "averageActions": 22.47265625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 4,
@@ -9022,11 +9167,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 22.03125,
+      "averageActions": 22.83984375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 5,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 4,
@@ -9034,11 +9184,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 38.1484375,
+      "averageActions": 37.12890625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 7,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 4,
@@ -9046,11 +9201,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 36.484375,
+      "averageActions": 36.2890625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 7,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 5,
@@ -9058,11 +9218,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 10.9765625,
+      "averageActions": 10.953125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 5,
@@ -9070,11 +9235,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 9.6328125,
+      "averageActions": 9.796875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 5,
@@ -9082,11 +9252,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 15.98046875,
+      "averageActions": 16.078125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 5,
@@ -9094,11 +9269,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 14.97265625,
+      "averageActions": 14.31640625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 5,
@@ -9106,11 +9286,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 23.4765625,
+      "averageActions": 22.4921875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 5,
@@ -9118,11 +9303,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 22.03125,
+      "averageActions": 22.8046875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 5,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 5,
@@ -9130,11 +9320,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 39.96484375,
+      "averageActions": 38.72265625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 7,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 5,
@@ -9142,11 +9337,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 37.1171875,
+      "averageActions": 37.84765625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 7,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 6,
@@ -9154,11 +9354,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 10.984375,
+      "averageActions": 10.96484375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 6,
@@ -9166,11 +9371,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 10.796875,
+      "averageActions": 10.4765625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 6,
@@ -9178,11 +9388,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 15.93359375,
+      "averageActions": 15.89453125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 6,
@@ -9190,11 +9405,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 14.83984375,
+      "averageActions": 14.23828125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 6,
@@ -9202,11 +9422,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 23.61328125,
+      "averageActions": 22.69921875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 6,
@@ -9214,11 +9439,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 22.00390625,
+      "averageActions": 22.96484375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 5,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 6,
@@ -9226,11 +9456,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 39.15234375,
+      "averageActions": 37.71875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 7,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 6,
@@ -9238,11 +9473,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 37.52734375,
+      "averageActions": 37.18359375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 7,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 7,
@@ -9250,11 +9490,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 10.99609375,
+      "averageActions": 11.43359375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 7,
@@ -9262,11 +9507,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 10.8515625,
+      "averageActions": 10.48046875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 7,
@@ -9274,11 +9524,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 15.98828125,
+      "averageActions": 16.25390625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 7,
@@ -9286,11 +9541,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 14.78125,
+      "averageActions": 14.3046875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 7,
@@ -9298,11 +9558,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 24.80859375,
+      "averageActions": 23.30078125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 7,
@@ -9310,11 +9575,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 22.2109375,
+      "averageActions": 22.9921875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 5,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 7,
@@ -9322,11 +9592,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 40.7265625,
+      "averageActions": 40.46875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 7,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 7,
@@ -9334,11 +9609,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 38.16015625,
+      "averageActions": 37.92578125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 7,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 8,
@@ -9346,11 +9626,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 10.984375,
+      "averageActions": 11.18359375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 8,
@@ -9358,11 +9643,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 10.19140625,
+      "averageActions": 9.9140625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 8,
@@ -9370,11 +9660,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 16,
+      "averageActions": 16.7265625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 8,
@@ -9382,11 +9677,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 15.546875,
+      "averageActions": 15.2265625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 8,
@@ -9394,11 +9694,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 24.29296875,
+      "averageActions": 22.7578125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 8,
@@ -9406,11 +9711,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 22.015625,
+      "averageActions": 22.93359375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 5,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 8,
@@ -9418,11 +9728,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 40.65625,
+      "averageActions": 40.3515625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 7,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 8,
@@ -9430,11 +9745,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 38.17578125,
+      "averageActions": 37.89453125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 7,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 9,
@@ -9442,11 +9762,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 11,
+      "averageActions": 11.078125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 9,
@@ -9454,11 +9779,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 10.296875,
+      "averageActions": 9.390625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 9,
@@ -9466,11 +9796,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 16,
+      "averageActions": 16.37890625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 9,
@@ -9478,11 +9813,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 14.8359375,
+      "averageActions": 14.28125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 9,
@@ -9490,11 +9830,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 25.12890625,
+      "averageActions": 23.7734375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 9,
@@ -9502,11 +9847,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 22.4296875,
+      "averageActions": 22.99609375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 5,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 9,
@@ -9514,11 +9864,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 41,
+      "averageActions": 41.1796875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 7,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 9,
@@ -9526,11 +9881,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 38.32421875,
+      "averageActions": 38,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 7,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 91,
@@ -9538,11 +9898,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 17.75390625,
+      "averageActions": 17.00390625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 91,
@@ -9550,11 +9915,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 17.20703125,
+      "averageActions": 16.1328125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 91,
@@ -9562,11 +9932,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 27.5859375,
+      "averageActions": 27.00390625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 91,
@@ -9574,11 +9949,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 24.109375,
+      "averageActions": 23.87890625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 91,
@@ -9586,11 +9966,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 47.265625,
+      "averageActions": 46.96875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 91,
@@ -9598,11 +9983,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 42.73046875,
+      "averageActions": 42.234375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 91,
@@ -9610,11 +10000,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 86.8046875,
+      "averageActions": 86.1640625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 8,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 91,
@@ -9622,11 +10017,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 76.078125,
+      "averageActions": 75.27734375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 8,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 92,
@@ -9634,11 +10034,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 17.23046875,
+      "averageActions": 17,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 92,
@@ -9646,11 +10051,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 17.33203125,
+      "averageActions": 16.2578125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 92,
@@ -9658,11 +10068,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 27.96484375,
+      "averageActions": 27.02734375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 92,
@@ -9670,11 +10085,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 24.8359375,
+      "averageActions": 24.26171875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 92,
@@ -9682,11 +10102,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 47.61328125,
+      "averageActions": 47.0234375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 92,
@@ -9694,11 +10119,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 43.0390625,
+      "averageActions": 42.90625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 92,
@@ -9706,11 +10136,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 87.2421875,
+      "averageActions": 86.890625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 8,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 92,
@@ -9718,11 +10153,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 77.7890625,
+      "averageActions": 77.40234375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 8,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 93,
@@ -9730,11 +10170,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 18.0625,
+      "averageActions": 17.0078125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 93,
@@ -9742,11 +10187,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 17.890625,
+      "averageActions": 17.14453125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 93,
@@ -9754,11 +10204,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 28.18359375,
+      "averageActions": 27.0625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 93,
@@ -9766,11 +10221,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 25.078125,
+      "averageActions": 24.328125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 93,
@@ -9778,11 +10238,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 47.7421875,
+      "averageActions": 47.01953125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 93,
@@ -9790,11 +10255,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 43.02734375,
+      "averageActions": 42.91796875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 93,
@@ -9802,11 +10272,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 87.484375,
+      "averageActions": 86.96875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 8,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 93,
@@ -9814,11 +10289,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 77.875,
+      "averageActions": 77.60546875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 8,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 94,
@@ -9826,11 +10306,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 18.37890625,
+      "averageActions": 17.0078125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 94,
@@ -9838,11 +10323,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 17.875,
+      "averageActions": 17.125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 94,
@@ -9850,11 +10340,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 28.39453125,
+      "averageActions": 27.0703125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 94,
@@ -9862,11 +10357,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 24.76953125,
+      "averageActions": 24.21875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 94,
@@ -9874,11 +10374,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 49.09765625,
+      "averageActions": 47.50390625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 94,
@@ -9886,11 +10391,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 43.19921875,
+      "averageActions": 43.046875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 94,
@@ -9898,11 +10408,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 88.92578125,
+      "averageActions": 87.50390625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 8,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 94,
@@ -9910,11 +10425,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 78.19921875,
+      "averageActions": 78.03515625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 8,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 95,
@@ -9922,11 +10442,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 18.51953125,
+      "averageActions": 17.0234375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 95,
@@ -9934,11 +10459,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 17.87109375,
+      "averageActions": 17.12109375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 95,
@@ -9946,11 +10476,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 29.40234375,
+      "averageActions": 27.4921875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 95,
@@ -9958,11 +10493,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 26.16796875,
+      "averageActions": 25.1796875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 95,
@@ -9970,11 +10510,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 49.390625,
+      "averageActions": 47.70703125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 95,
@@ -9982,11 +10527,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 43.21484375,
+      "averageActions": 43.046875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 95,
@@ -9994,11 +10544,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 89.0703125,
+      "averageActions": 87.62109375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 8,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 95,
@@ -10006,11 +10561,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 78.17578125,
+      "averageActions": 78.015625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 8,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 96,
@@ -10018,11 +10578,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 17.80078125,
+      "averageActions": 17.01171875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 96,
@@ -10030,11 +10595,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 17.859375,
+      "averageActions": 17.109375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 96,
@@ -10042,11 +10612,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 28.7734375,
+      "averageActions": 27.296875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 96,
@@ -10054,11 +10629,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 26.0234375,
+      "averageActions": 25.25390625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 96,
@@ -10066,11 +10646,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 48.5390625,
+      "averageActions": 47.38671875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 96,
@@ -10078,11 +10663,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 43.2109375,
+      "averageActions": 43.01171875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 96,
@@ -10090,11 +10680,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 89.80078125,
+      "averageActions": 88.72265625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 8,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 96,
@@ -10102,11 +10697,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 78.61328125,
+      "averageActions": 78.31640625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 8,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 97,
@@ -10114,11 +10714,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 18.80859375,
+      "averageActions": 17.140625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 97,
@@ -10126,11 +10731,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 17.9921875,
+      "averageActions": 17.72265625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 97,
@@ -10138,11 +10748,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 29.09375,
+      "averageActions": 27.42578125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 97,
@@ -10150,11 +10765,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 26.12890625,
+      "averageActions": 25.1640625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 7,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 97,
@@ -10162,11 +10782,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 50.02734375,
+      "averageActions": 48.5,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 97,
@@ -10174,11 +10799,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 43.63671875,
+      "averageActions": 43.23046875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 97,
@@ -10186,11 +10816,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 90.06640625,
+      "averageActions": 88.71484375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 8,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 97,
@@ -10198,11 +10833,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 78.6875,
+      "averageActions": 78.328125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 8,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 98,
@@ -10210,11 +10850,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 18.859375,
+      "averageActions": 17.11328125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 98,
@@ -10222,11 +10867,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 17.96875,
+      "averageActions": 17.55078125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 98,
@@ -10234,11 +10884,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 29.86328125,
+      "averageActions": 28.12890625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 98,
@@ -10246,11 +10901,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 27.21484375,
+      "averageActions": 26.18359375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 98,
@@ -10258,11 +10918,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 49.953125,
+      "averageActions": 48.21875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 98,
@@ -10270,11 +10935,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 43.52734375,
+      "averageActions": 43.203125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 98,
@@ -10282,11 +10952,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 91.55078125,
+      "averageActions": 90.55078125,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 8,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 98,
@@ -10294,11 +10969,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 79.5,
+      "averageActions": 79.0234375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 8,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 99,
@@ -10306,11 +10986,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 19.1015625,
+      "averageActions": 17.16796875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 99,
@@ -10318,11 +11003,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 17.96875,
+      "averageActions": 17.57421875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 99,
@@ -10330,11 +11020,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 30.00390625,
+      "averageActions": 28.3359375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 99,
@@ -10342,11 +11037,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 27.125,
+      "averageActions": 26.07421875,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 5,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 99,
@@ -10354,11 +11054,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 51.375,
+      "averageActions": 50.375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 3,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 99,
@@ -10366,11 +11071,16 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 43.93359375,
+      "averageActions": 43.640625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 4,
+        "Hondo": 0,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 99,
@@ -10378,11 +11088,16 @@
       "path": "physical",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 91.67578125,
+      "averageActions": 90.984375,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 8,
+        "Runa": 0,
+        "Kaja": 0
+      }
     },
     {
       "level": 99,
@@ -10390,25 +11105,33 @@
       "path": "magic",
       "runs": 256,
       "winRate": 1,
-      "averageActions": 79.23828125,
+      "averageActions": 78.87890625,
       "averageCasualties": 0,
-      "maxEnemyBurst": 0,
       "maxLinkedBurst": 0,
-      "linkedActions": 0
+      "linkedActions": 0,
+      "enemyBurstByHero": {
+        "Fara": 0,
+        "Hondo": 8,
+        "Runa": 0,
+        "Kaja": 0
+      }
     }
   ],
   "speed": {
-    "firstLinked": true,
-    "linkedTurnBlocked": true,
-    "nextOrdinaryTurnRelinks": true,
-    "exactThreshold": true,
-    "saturationStillOneLink": true,
+    "threshold": {
+      "atTwoTimes": true,
+      "belowTwoTimes": true
+    },
     "sequence": [
-      "hero",
-      "hero",
-      "enemy"
+      "ordinary",
+      "linked"
     ],
-    "latchClearedAfterLinked": true
+    "linkedSecondActionCount": 1,
+    "nonRecursive": true,
+    "latchReset": true,
+    "nextOrdinaryTurnRelinks": true,
+    "afAwardCount": 2,
+    "afTotal": 20
   },
   "safety": [
     {
@@ -10419,7 +11142,8 @@
       "heroCrit": 7,
       "linkedBurst": 14,
       "enemyHP": 45,
-      "heroHP": 75
+      "heroHP": 75,
+      "cap": 6
     },
     {
       "level": 1,
@@ -10429,7 +11153,8 @@
       "heroCrit": 10,
       "linkedBurst": 20,
       "enemyHP": 45,
-      "heroHP": 60
+      "heroHP": 60,
+      "cap": 5
     },
     {
       "level": 1,
@@ -10439,7 +11164,8 @@
       "heroCrit": 4,
       "linkedBurst": 8,
       "enemyHP": 45,
-      "heroHP": 60
+      "heroHP": 60,
+      "cap": 5
     },
     {
       "level": 1,
@@ -10449,7 +11175,8 @@
       "heroCrit": 4,
       "linkedBurst": 8,
       "enemyHP": 45,
-      "heroHP": 65
+      "heroHP": 65,
+      "cap": 5
     },
     {
       "level": 1,
@@ -10459,7 +11186,8 @@
       "heroCrit": 5,
       "linkedBurst": 10,
       "enemyHP": 62,
-      "heroHP": 75
+      "heroHP": 75,
+      "cap": 8
     },
     {
       "level": 1,
@@ -10469,7 +11197,8 @@
       "heroCrit": 9,
       "linkedBurst": 18,
       "enemyHP": 62,
-      "heroHP": 60
+      "heroHP": 60,
+      "cap": 6
     },
     {
       "level": 1,
@@ -10479,7 +11208,8 @@
       "heroCrit": 4,
       "linkedBurst": 8,
       "enemyHP": 62,
-      "heroHP": 60
+      "heroHP": 60,
+      "cap": 6
     },
     {
       "level": 1,
@@ -10489,7 +11219,8 @@
       "heroCrit": 4,
       "linkedBurst": 8,
       "enemyHP": 62,
-      "heroHP": 65
+      "heroHP": 65,
+      "cap": 7
     },
     {
       "level": 1,
@@ -10499,7 +11230,8 @@
       "heroCrit": 5,
       "linkedBurst": 10,
       "enemyHP": 85,
-      "heroHP": 75
+      "heroHP": 75,
+      "cap": 9
     },
     {
       "level": 1,
@@ -10509,7 +11241,8 @@
       "heroCrit": 9,
       "linkedBurst": 18,
       "enemyHP": 85,
-      "heroHP": 60
+      "heroHP": 60,
+      "cap": 8
     },
     {
       "level": 1,
@@ -10519,7 +11252,8 @@
       "heroCrit": 4,
       "linkedBurst": 8,
       "enemyHP": 85,
-      "heroHP": 60
+      "heroHP": 60,
+      "cap": 8
     },
     {
       "level": 1,
@@ -10529,7 +11263,8 @@
       "heroCrit": 4,
       "linkedBurst": 8,
       "enemyHP": 85,
-      "heroHP": 65
+      "heroHP": 65,
+      "cap": 8
     },
     {
       "level": 1,
@@ -10539,7 +11274,8 @@
       "heroCrit": 5,
       "linkedBurst": 10,
       "enemyHP": 130,
-      "heroHP": 75
+      "heroHP": 75,
+      "cap": 14
     },
     {
       "level": 1,
@@ -10549,7 +11285,8 @@
       "heroCrit": 9,
       "linkedBurst": 18,
       "enemyHP": 130,
-      "heroHP": 60
+      "heroHP": 60,
+      "cap": 11
     },
     {
       "level": 1,
@@ -10559,7 +11296,8 @@
       "heroCrit": 4,
       "linkedBurst": 8,
       "enemyHP": 130,
-      "heroHP": 60
+      "heroHP": 60,
+      "cap": 11
     },
     {
       "level": 1,
@@ -10569,7 +11307,8 @@
       "heroCrit": 4,
       "linkedBurst": 8,
       "enemyHP": 130,
-      "heroHP": 65
+      "heroHP": 65,
+      "cap": 12
     },
     {
       "level": 9,
@@ -10579,7 +11318,8 @@
       "heroCrit": 8,
       "linkedBurst": 16,
       "enemyHP": 66,
-      "heroHP": 139
+      "heroHP": 139,
+      "cap": 10
     },
     {
       "level": 9,
@@ -10589,7 +11329,8 @@
       "heroCrit": 17,
       "linkedBurst": 34,
       "enemyHP": 66,
-      "heroHP": 108
+      "heroHP": 108,
+      "cap": 8
     },
     {
       "level": 9,
@@ -10599,7 +11340,8 @@
       "heroCrit": 5,
       "linkedBurst": 10,
       "enemyHP": 66,
-      "heroHP": 100
+      "heroHP": 100,
+      "cap": 8
     },
     {
       "level": 9,
@@ -10609,7 +11351,8 @@
       "heroCrit": 5,
       "linkedBurst": 10,
       "enemyHP": 66,
-      "heroHP": 121
+      "heroHP": 121,
+      "cap": 9
     },
     {
       "level": 9,
@@ -10619,7 +11362,8 @@
       "heroCrit": 8,
       "linkedBurst": 16,
       "enemyHP": 91,
-      "heroHP": 139
+      "heroHP": 139,
+      "cap": 14
     },
     {
       "level": 9,
@@ -10629,7 +11373,8 @@
       "heroCrit": 15,
       "linkedBurst": 30,
       "enemyHP": 91,
-      "heroHP": 108
+      "heroHP": 108,
+      "cap": 11
     },
     {
       "level": 9,
@@ -10639,7 +11384,8 @@
       "heroCrit": 4,
       "linkedBurst": 8,
       "enemyHP": 91,
-      "heroHP": 100
+      "heroHP": 100,
+      "cap": 10
     },
     {
       "level": 9,
@@ -10649,7 +11395,8 @@
       "heroCrit": 5,
       "linkedBurst": 10,
       "enemyHP": 91,
-      "heroHP": 121
+      "heroHP": 121,
+      "cap": 13
     },
     {
       "level": 9,
@@ -10659,7 +11406,8 @@
       "heroCrit": 7,
       "linkedBurst": 14,
       "enemyHP": 125,
-      "heroHP": 139
+      "heroHP": 139,
+      "cap": 17
     },
     {
       "level": 9,
@@ -10669,7 +11417,8 @@
       "heroCrit": 14,
       "linkedBurst": 28,
       "enemyHP": 125,
-      "heroHP": 108
+      "heroHP": 108,
+      "cap": 13
     },
     {
       "level": 9,
@@ -10679,7 +11428,8 @@
       "heroCrit": 4,
       "linkedBurst": 8,
       "enemyHP": 125,
-      "heroHP": 100
+      "heroHP": 100,
+      "cap": 12
     },
     {
       "level": 9,
@@ -10689,7 +11439,8 @@
       "heroCrit": 5,
       "linkedBurst": 10,
       "enemyHP": 125,
-      "heroHP": 121
+      "heroHP": 121,
+      "cap": 15
     },
     {
       "level": 9,
@@ -10699,7 +11450,8 @@
       "heroCrit": 7,
       "linkedBurst": 14,
       "enemyHP": 192,
-      "heroHP": 139
+      "heroHP": 139,
+      "cap": 26
     },
     {
       "level": 9,
@@ -10709,7 +11461,8 @@
       "heroCrit": 13,
       "linkedBurst": 26,
       "enemyHP": 192,
-      "heroHP": 108
+      "heroHP": 108,
+      "cap": 20
     },
     {
       "level": 9,
@@ -10719,7 +11472,8 @@
       "heroCrit": 4,
       "linkedBurst": 8,
       "enemyHP": 192,
-      "heroHP": 100
+      "heroHP": 100,
+      "cap": 18
     },
     {
       "level": 9,
@@ -10729,7 +11483,8 @@
       "heroCrit": 4,
       "linkedBurst": 8,
       "enemyHP": 192,
-      "heroHP": 121
+      "heroHP": 121,
+      "cap": 22
     },
     {
       "level": 91,
@@ -10739,7 +11494,8 @@
       "heroCrit": 20,
       "linkedBurst": 40,
       "enemyHP": 288,
-      "heroHP": 795
+      "heroHP": 795,
+      "cap": 56
     },
     {
       "level": 91,
@@ -10749,7 +11505,8 @@
       "heroCrit": 52,
       "linkedBurst": 104,
       "enemyHP": 288,
-      "heroHP": 600
+      "heroHP": 600,
+      "cap": 43
     },
     {
       "level": 91,
@@ -10759,7 +11516,8 @@
       "heroCrit": 9,
       "linkedBurst": 18,
       "enemyHP": 288,
-      "heroHP": 510
+      "heroHP": 510,
+      "cap": 36
     },
     {
       "level": 91,
@@ -10769,7 +11527,8 @@
       "heroCrit": 12,
       "linkedBurst": 24,
       "enemyHP": 288,
-      "heroHP": 695
+      "heroHP": 695,
+      "cap": 49
     },
     {
       "level": 91,
@@ -10779,7 +11538,8 @@
       "heroCrit": 19,
       "linkedBurst": 38,
       "enemyHP": 396,
-      "heroHP": 795
+      "heroHP": 795,
+      "cap": 80
     },
     {
       "level": 91,
@@ -10789,7 +11549,8 @@
       "heroCrit": 45,
       "linkedBurst": 90,
       "enemyHP": 396,
-      "heroHP": 600
+      "heroHP": 600,
+      "cap": 60
     },
     {
       "level": 91,
@@ -10799,7 +11560,8 @@
       "heroCrit": 8,
       "linkedBurst": 16,
       "enemyHP": 396,
-      "heroHP": 510
+      "heroHP": 510,
+      "cap": 51
     },
     {
       "level": 91,
@@ -10809,7 +11571,8 @@
       "heroCrit": 10,
       "linkedBurst": 20,
       "enemyHP": 396,
-      "heroHP": 695
+      "heroHP": 695,
+      "cap": 70
     },
     {
       "level": 91,
@@ -10819,7 +11582,8 @@
       "heroCrit": 15,
       "linkedBurst": 30,
       "enemyHP": 544,
-      "heroHP": 795
+      "heroHP": 795,
+      "cap": 96
     },
     {
       "level": 91,
@@ -10829,7 +11593,8 @@
       "heroCrit": 37,
       "linkedBurst": 74,
       "enemyHP": 544,
-      "heroHP": 600
+      "heroHP": 600,
+      "cap": 72
     },
     {
       "level": 91,
@@ -10839,7 +11604,8 @@
       "heroCrit": 7,
       "linkedBurst": 14,
       "enemyHP": 544,
-      "heroHP": 510
+      "heroHP": 510,
+      "cap": 62
     },
     {
       "level": 91,
@@ -10849,7 +11615,8 @@
       "heroCrit": 8,
       "linkedBurst": 16,
       "enemyHP": 544,
-      "heroHP": 695
+      "heroHP": 695,
+      "cap": 84
     },
     {
       "level": 91,
@@ -10859,7 +11626,8 @@
       "heroCrit": 13,
       "linkedBurst": 26,
       "enemyHP": 831,
-      "heroHP": 795
+      "heroHP": 795,
+      "cap": 144
     },
     {
       "level": 91,
@@ -10869,7 +11637,8 @@
       "heroCrit": 30,
       "linkedBurst": 60,
       "enemyHP": 831,
-      "heroHP": 600
+      "heroHP": 600,
+      "cap": 108
     },
     {
       "level": 91,
@@ -10879,7 +11648,8 @@
       "heroCrit": 5,
       "linkedBurst": 10,
       "enemyHP": 831,
-      "heroHP": 510
+      "heroHP": 510,
+      "cap": 92
     },
     {
       "level": 91,
@@ -10889,7 +11659,8 @@
       "heroCrit": 7,
       "linkedBurst": 14,
       "enemyHP": 831,
-      "heroHP": 695
+      "heroHP": 695,
+      "cap": 126
     },
     {
       "level": 99,
@@ -10899,7 +11670,8 @@
       "heroCrit": 22,
       "linkedBurst": 44,
       "enemyHP": 309,
-      "heroHP": 859
+      "heroHP": 859,
+      "cap": 61
     },
     {
       "level": 99,
@@ -10909,7 +11681,8 @@
       "heroCrit": 53,
       "linkedBurst": 106,
       "enemyHP": 309,
-      "heroHP": 648
+      "heroHP": 648,
+      "cap": 46
     },
     {
       "level": 99,
@@ -10919,7 +11692,8 @@
       "heroCrit": 9,
       "linkedBurst": 18,
       "enemyHP": 309,
-      "heroHP": 550
+      "heroHP": 550,
+      "cap": 39
     },
     {
       "level": 99,
@@ -10929,7 +11703,8 @@
       "heroCrit": 12,
       "linkedBurst": 24,
       "enemyHP": 309,
-      "heroHP": 751
+      "heroHP": 751,
+      "cap": 53
     },
     {
       "level": 99,
@@ -10939,7 +11714,8 @@
       "heroCrit": 19,
       "linkedBurst": 38,
       "enemyHP": 426,
-      "heroHP": 859
+      "heroHP": 859,
+      "cap": 86
     },
     {
       "level": 99,
@@ -10949,7 +11725,8 @@
       "heroCrit": 47,
       "linkedBurst": 94,
       "enemyHP": 426,
-      "heroHP": 648
+      "heroHP": 648,
+      "cap": 65
     },
     {
       "level": 99,
@@ -10959,7 +11736,8 @@
       "heroCrit": 8,
       "linkedBurst": 16,
       "enemyHP": 426,
-      "heroHP": 550
+      "heroHP": 550,
+      "cap": 55
     },
     {
       "level": 99,
@@ -10969,7 +11747,8 @@
       "heroCrit": 10,
       "linkedBurst": 20,
       "enemyHP": 426,
-      "heroHP": 751
+      "heroHP": 751,
+      "cap": 76
     },
     {
       "level": 99,
@@ -10979,7 +11758,8 @@
       "heroCrit": 15,
       "linkedBurst": 30,
       "enemyHP": 584,
-      "heroHP": 859
+      "heroHP": 859,
+      "cap": 104
     },
     {
       "level": 99,
@@ -10989,7 +11769,8 @@
       "heroCrit": 37,
       "linkedBurst": 74,
       "enemyHP": 584,
-      "heroHP": 648
+      "heroHP": 648,
+      "cap": 78
     },
     {
       "level": 99,
@@ -10999,7 +11780,8 @@
       "heroCrit": 7,
       "linkedBurst": 14,
       "enemyHP": 584,
-      "heroHP": 550
+      "heroHP": 550,
+      "cap": 66
     },
     {
       "level": 99,
@@ -11009,7 +11791,8 @@
       "heroCrit": 8,
       "linkedBurst": 16,
       "enemyHP": 584,
-      "heroHP": 751
+      "heroHP": 751,
+      "cap": 91
     },
     {
       "level": 99,
@@ -11019,7 +11802,8 @@
       "heroCrit": 13,
       "linkedBurst": 26,
       "enemyHP": 894,
-      "heroHP": 859
+      "heroHP": 859,
+      "cap": 155
     },
     {
       "level": 99,
@@ -11029,7 +11813,8 @@
       "heroCrit": 32,
       "linkedBurst": 64,
       "enemyHP": 894,
-      "heroHP": 648
+      "heroHP": 648,
+      "cap": 117
     },
     {
       "level": 99,
@@ -11039,7 +11824,8 @@
       "heroCrit": 5,
       "linkedBurst": 10,
       "enemyHP": 894,
-      "heroHP": 550
+      "heroHP": 550,
+      "cap": 99
     },
     {
       "level": 99,
@@ -11049,7 +11835,8 @@
       "heroCrit": 8,
       "linkedBurst": 16,
       "enemyHP": 894,
-      "heroHP": 751
+      "heroHP": 751,
+      "cap": 136
     }
   ],
   "overflow": {
