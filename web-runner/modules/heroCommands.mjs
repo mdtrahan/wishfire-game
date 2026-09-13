@@ -106,18 +106,17 @@ export function buildCommandActions(ctx,hero,{queue=[],flow=false,targetUID}={})
  const seen=new Set(),actions=[];
  for(const entry of entries){if(!entry||typeof entry!=='object')return null;const skill=[d.basic,...d.actives,d.special].find(s=>s.skillId===entry.skillId);if(!skill||!legalSkill(hero,skill)||(!flow&&skill.isFlowSpecial)||(flow&&(hero.flow||0)<skill.meterRequirement))return null;
  if(seen.has(skill.skillId)&&!skill.multiCast)return null;seen.add(skill.skillId);if(entries.length>1&&skill.skillId===d.basic.skillId)return null;
- const ids=entry.targetIds||[entry.targetId??targetUID];if(!validTargets(ctx.state.entities,hero,skill,ids).length)return null;actions.push({skillId:skill.skillId,targetIds:[...new Set(ids)],spCost:skill.spCost,sequenceOrder:actions.length,skill});}
- if(actions.reduce((sum,a)=>sum+a.spCost,0)>(hero.sp||0))return null;return actions;
+ const ids=entry.targetIds||[entry.targetId??targetUID];if(!validTargets(ctx.state.entities,hero,skill,ids).length)return null;actions.push({skillId:skill.skillId,targetIds:[...new Set(ids)],sequenceOrder:actions.length,skill});}
+ return actions;
 }
 export function executeHeroCommand(ctx,command={}){
  const {actorUID}=command;if(!canUseHeroCommand(ctx,actorUID))return false;const hero=ctx.state.entities.find(a=>a.uid===actorUID),actions=buildCommandActions(ctx,hero,command);if(!actions)return false;
  const g=ctx.state.globals;if(ctx.callFunction('StartHeroLunge',actorUID)!==1)return false;
- hero.remainingActionSlots=0;hero.reservedSP=0;
- hero.sp-=actions.reduce((sum,a)=>sum+a.spCost,0);
+ hero.remainingActionSlots=0;
  const sequence={actorUID,actions,index:0,sessionId:g.CombatSessionId};g.NativeCommandSequence=sequence;
  g.PendingHeroHits=[{at:Number(g.time||0)+0.97,heroUID:actorUID,effectType:'native_command',sequence}];g.AdvanceAfterAction=1;g.ActionOwnerUID=actorUID;return true;
 }
-export function cancelNativeSequence(ctx){const g=ctx.state.globals,s=g.NativeCommandSequence;if(!s)return;const actor=ctx.state.entities.find(a=>a.uid===s.actorUID);if(actor)actor.sp=Math.min(actor.spMax,(actor.sp||0)+s.actions.slice(s.index).reduce((sum,a)=>sum+a.spCost,0));s.index=s.actions.length;delete g.NativeCommandSequence;}
+export function cancelNativeSequence(ctx){const g=ctx.state.globals,s=g.NativeCommandSequence;if(!s)return;s.index=s.actions.length;delete g.NativeCommandSequence;}
 export function resolveNativeCommandStep(ctx,hit){
  const g=ctx.state.globals,s=hit.sequence;if(!s||g.NativeCommandSequence!==s||s.sessionId!==g.CombatSessionId)return false;
  const actor=ctx.state.entities.find(a=>a.uid===s.actorUID);const rules=rulesContext(ctx);
@@ -133,7 +132,6 @@ export function resolveNativeCommandStep(ctx,hit){
  }
  const action=s.actions[s.index];const executed=resolveSkill(rules,actor,action.skill,action.targetIds);
  if(executed){if(action.skill.skillId===heroDefinition(actor)?.basic?.skillId)resolveSessionLevelBasicEffects(ctx,rules,actor,action.targetIds);if(action.skill.isFlowSpecial)actor.flow=0;ctx.callFunction('LogCombat',`${heroDefinition(actor).name}: ${action.skill.displayName}`);}
- else actor.sp=Math.min(actor.spMax,actor.sp+action.spCost);
  s.index++;ctx.callFunction('UpdateHeroHPUI');ctx.callFunction('UpdateEnemyHPUI');
  if(actor.hp<=0||rules.isOver()){cancelNativeSequence(ctx);if(g.NativeBattleEnded)settleVictory(ctx);return true;}
  if(s.index<s.actions.length)g.PendingHeroHits.push({...hit,at:Number(g.time||0)+0.4});else delete g.NativeCommandSequence;
@@ -144,7 +142,7 @@ export function nativeTurnStarted(ctx,actor){
  const rules=rulesContext(ctx);
  applySessionLevelBuffsAtBattleStart(ctx,rules);
  const serial=ctx.state.globals.TurnSerial||0;
- if(actor.hp>0&&actor.combatTurnSerial!==serial){actor.remainingActionSlots=actionCapacity(actor);actor.reservedSP=0;}
+ if(actor.hp>0&&actor.combatTurnSerial!==serial)actor.remainingActionSlots=actionCapacity(actor);
  turnStart(rules,actor,serial);
  if(actor.hp<=0&&actor.kind==='enemy')ctx.callFunction('KillEnemyByUID',actor.uid,actor.slotIndex??0);
  if(rules.isOver())settleVictory(ctx);

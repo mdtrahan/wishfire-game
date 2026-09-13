@@ -1,5 +1,5 @@
 import {dropEnemyFlowOrbs} from './flowOrbs.mjs';
-import {COMBAT_TUNING as T,heroDefinition} from './heroDefinitions.mjs';
+import {COMBAT_TUNING as T} from './heroDefinitions.mjs';
 import {unlockedPassives} from './heroProgression.mjs';
 const clamp=(v,min,max)=>Math.min(max,Math.max(min,v));
 const debuffs=new Set(['atkDown','defDown','magDown','resDown','spdDown','blind','silence','dot','taunted','delayNextTurn']);
@@ -45,7 +45,6 @@ export function turnStart(ctx,actor,serial){
  for(const s of periodic)if(s.statusEffect==='dot')damage+=s.snapshotPotency;else healing+=s.snapshotPotency;
  const beforeHP=actor.hp;actor.hp=clamp(actor.hp+healing-damage,0,actor.maxHP);const actualHealing=Math.max(0,actor.hp-beforeHP);if(actualHealing>0){const hot=periodic.find(s=>s.statusEffect==='hot');const source=ctx.actors?.find(a=>a.uid===hot?.sourceUID)||actor;ctx.onHeal?.(source,actor,actualHealing,hot||{effectType:'heal'});}
  if(actor.hp===0){const last=periodic.filter(s=>s.statusEffect==='dot').at(-1);if(last&&actor.kind==='enemy')dropEnemyFlowOrbs(ctx,actor,{flowOwnerUID:last.flowOwnerUID,excludedFlowUIDs:last.excludedFlowUIDs});resolveKO(actor);ctx.onKO?.(actor);return false;}
- actor.sp=clamp((actor.sp||0)+(heroDefinition(actor)?.passiveSPRegenPerTurn||0),0,actor.spMax||0);
  return true;
 }
 function damageTarget(ctx,source,target,amount,origin){
@@ -99,7 +98,6 @@ export function resolveSkill(ctx,source,skill,targetIds,origin={}){
 }
    }else if(effect.effectType==='cleanse')recipient.statuses=statuses(recipient).filter(s=>!debuffs.has(s.statusEffect));
    else if(effect.effectType==='dispel')recipient.statuses=statuses(recipient).filter(s=>debuffs.has(s.statusEffect));
-   else if(effect.effectType==='restoreSP')recipient.sp=clamp((recipient.sp||0)+effect.amount,0,recipient.spMax);
   }
  }
  if(!meta.isCounter&&!ctx.isOver?.()){

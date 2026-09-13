@@ -40,10 +40,8 @@ test('combat hero strip keeps a compact free placed reference status block', () 
   assert.match(source, /object-position:50% 0%;transform:scale\(2\.1\)/);
   assert.match(source, /\.hero-top\{grid-row:1;position:relative;min-width:0;overflow:visible;isolation:isolate;background:transparent\}/);
   assert.match(source, /\.readouts\{position:absolute;z-index:2;top:2px;left:42%;width:55%;height:62px;display:flex;flex-direction:column;gap:6px/);
-  assert.match(source, /for \(const \[key, label\] of \[\['hp', 'HP'\], \['sp', 'SP'\]\]\)/);
-  assert.doesNotMatch(source, /\[\['flow',\s*'FLOW'\]\]/);
-  assert.doesNotMatch(source, /data-flow-(?:text|bar)/);
-  assert.doesNotMatch(source, /\.flow(?:\s|\{|:)/);
+  assert.match(source, /for \(const \[key, label\] of \[\['hp', 'HP'\], \['af', 'AF'\]\]\)/);
+  assert.doesNotMatch(source, /\bSP\b/);
   assert.match(source, /className = 'readout-value'/);
   assert.match(source, /grid-template-rows:19px 8px/);
   assert.match(source, /readout-label\{display:inline-block;font-size:calc\(9px \* var\(--compact-type-scale,1\)\);font-weight:900;transform:scale\(1\.5\);transform-origin:left bottom/);
@@ -57,12 +55,12 @@ test('combat hero strip keeps a compact free placed reference status block', () 
   assert.match(source, /text-shadow:2px 0 #05060b,-2px 0 #05060b,0 2px #05060b,0 -2px #05060b/);
   assert.match(source, /box-shadow:inset 0 1px #fff9,inset 0 -2px #000b,0 1px #07090d/);
   assert.match(source, /\.hp progress::-webkit-progress-value/);
-  assert.match(source, /\.sp progress::-webkit-progress-value/);
+  assert.match(source, /\.af progress::-webkit-progress-value/);
   assert.match(source, /\[data-hp-text\]'\)\.textContent = hp/);
-  assert.match(source, /\[data-sp-text\]'\)\.textContent = sp/);
+  assert.match(source, /\[data-af-text\]'\)\.textContent = af/);
   assert.match(source, /article\[data-low-hp=true\] \.readout-label,#hero-commands article\[data-low-hp=true\] \.readout-value,#hero-commands article\[data-low-hp=true\] footer \.role,#hero-commands article\[data-low-hp=true\] footer \.level,#hero-commands article\[data-low-hp=true\] footer \.hero-name strong\{color:#ff8b37\}/);
   assert.match(source, /card\.dataset\.lowHp = String\(hp > 0 && hp \/ maxHP <= LOW_HP_WARNING_RATIO\)/);
-  assert.doesNotMatch(source, /\[data-flow-(?:text|bar)\]/);
+  assert.match(source, /\[data-af-bar\]/);
   assert.doesNotMatch(source, /FLOW ready/);
   assert.match(source, /className = 'hero-meta'/);
   assert.match(source, /nameBand\.className = 'hero-name'/);

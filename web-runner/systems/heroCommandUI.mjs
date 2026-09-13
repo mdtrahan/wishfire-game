@@ -64,8 +64,8 @@ export function createHeroCommandUI({ctx, gameState, canvas, onActiveHeroClick =
     #hero-commands progress::-webkit-progress-bar{background:linear-gradient(#30323b,#11131a);border-radius:3px}
     #hero-commands .hp progress::-webkit-progress-value{background:linear-gradient(#eaff9c 0%,#a8ed52 30%,#559e17 70%,#245c08 100%);border-radius:2px}
     #hero-commands .hp progress::-moz-progress-bar{background:linear-gradient(#eaff9c,#559e17 70%,#245c08);border-radius:2px}
-    #hero-commands .sp progress::-webkit-progress-value{background:linear-gradient(#c5f4ff 0%,#60d2ff 30%,#2274d4 70%,#123d8c 100%);border-radius:2px}
-    #hero-commands .sp progress::-moz-progress-bar{background:linear-gradient(#c5f4ff,#2274d4 70%,#123d8c);border-radius:2px}
+    #hero-commands .af progress::-webkit-progress-value{background:linear-gradient(#c5f4ff 0%,#60d2ff 30%,#2274d4 70%,#123d8c 100%);border-radius:2px}
+    #hero-commands .af progress::-moz-progress-bar{background:linear-gradient(#c5f4ff,#2274d4 70%,#123d8c);border-radius:2px}
     #hero-commands footer{position:relative;z-index:3;grid-row:2;height:40px;display:grid;grid-template-rows:18px minmax(0,1fr);gap:1px;padding:0;border:0;background:transparent;color:#fff;overflow:visible}
     #hero-commands footer .hero-meta,#hero-commands footer .hero-name{min-width:0;overflow:hidden;border:2px solid #c6c4da;border-radius:4px;background:linear-gradient(#3a3a45,#111119);box-shadow:inset 0 0 0 1px #252632,0 1px #07080d}
     #hero-commands footer .hero-meta{display:flex;align-items:center;justify-content:center;gap:5px;padding:0 4px;border-bottom-color:#89899e;box-shadow:inset 0 -1px #20212c,0 1px #07080d}
@@ -142,7 +142,7 @@ export function createHeroCommandUI({ctx, gameState, canvas, onActiveHeroClick =
     portrait.append(image, fallback);
     const readouts = document.createElement('div');
     readouts.className = 'readouts';
-    for (const [key, label] of [['hp', 'HP'], ['sp', 'SP']]) {
+    for (const [key, label] of [['hp', 'HP'], ['af', 'AF']]) {
       const readout = document.createElement('div');
       readout.className = `readout ${key}`;
       const text = document.createElement('span');
@@ -240,8 +240,8 @@ export function createHeroCommandUI({ctx, gameState, canvas, onActiveHeroClick =
         const resourceState = getHeroFlowState(hero);
         const maxHP = Math.max(1, number(hero.maxHP ?? hero.HP, 1));
         const hp = Math.max(0, Math.min(maxHP, number(hero.hp ?? hero.HP)));
-        const spMax = Math.max(1, number(resourceState.spMax, 1));
-        const sp = Math.max(0, Math.min(spMax, number(resourceState.sp)));
+        const afMax = Math.max(1, number(resourceState.max, 100));
+        const af = Math.max(0, Math.min(afMax, number(resourceState.value)));
         const ready = !!resourceState.ready || number(resourceState.value) >= 100;
         card.dataset.current = String(current);
         card.dataset.ko = String(hp <= 0);
@@ -250,8 +250,8 @@ export function createHeroCommandUI({ctx, gameState, canvas, onActiveHeroClick =
         card.dataset.ready = String(ready);
         card.querySelector('[data-hp-text]').textContent = hp;
         const bar = card.querySelector('[data-hp-bar]'); bar.max = maxHP; bar.value = hp; bar.setAttribute('aria-valuetext', `${hp} of ${maxHP} HP`);
-        card.querySelector('[data-sp-text]').textContent = sp;
-        const spBar = card.querySelector('[data-sp-bar]'); spBar.max = spMax; spBar.value = sp; spBar.setAttribute('aria-valuetext', `${sp} of ${spMax} SP`);
+        card.querySelector('[data-af-text]').textContent = af;
+        const afBar = card.querySelector('[data-af-bar]'); afBar.max = afMax; afBar.value = af; afBar.setAttribute('aria-valuetext', `${af} of ${afMax} AF`);
         const row = (settlement?.rows || []).find(candidate => String(candidate.heroId || '') === String(hero.heroInstanceKey || hero.uid || ''));
         const expRow = card.querySelector('.exp-row');
         expRow.hidden = !row;

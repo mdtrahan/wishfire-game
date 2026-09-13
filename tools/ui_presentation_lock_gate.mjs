@@ -505,12 +505,12 @@ async function captureCombat(page, viewport, artifactDir) {
       hpLabel: card.querySelector('.hp .readout-label')?.textContent,
       hpValue: card.querySelector('[data-hp-text]')?.textContent,
       hpBar: card.querySelector('[data-hp-bar]')?.getBoundingClientRect().toJSON(),
-      spLabel: card.querySelector('.sp .readout-label')?.textContent,
-      spValue: card.querySelector('[data-sp-text]')?.textContent,
-      spBar: card.querySelector('[data-sp-bar]')?.getBoundingClientRect().toJSON(),
+      afLabel: card.querySelector('.af .readout-label')?.textContent,
+      afValue: card.querySelector('[data-af-text]')?.textContent,
+      afBar: card.querySelector('[data-af-bar]')?.getBoundingClientRect().toJSON(),
       name: card.querySelector('.hero-name strong')?.getBoundingClientRect().toJSON(),
       healthRow: card.querySelector('.readout.hp')?.getBoundingClientRect().toJSON(),
-      spRow: card.querySelector('.readout.sp')?.getBoundingClientRect().toJSON(),
+      afRow: card.querySelector('.readout.af')?.getBoundingClientRect().toJSON(),
       buttonHeight: card.querySelector('[data-open]')?.getBoundingClientRect().height,
       overflow: card.scrollWidth > card.clientWidth,
     }));
@@ -525,7 +525,7 @@ async function captureCombat(page, viewport, artifactDir) {
   const commandInvariants = [
     invariant('hero-command-containment', commands.visible && !commands.overflow && commands.cards.every(card =>
       card.hpBar.left >= card.box.left && card.hpBar.right <= card.box.right
-      && card.spBar.left >= card.box.left && card.spBar.right <= card.box.right)
+      && card.afBar.left >= card.box.left && card.afBar.right <= card.box.right)
       && commands.box.left >= commands.canvas.left && commands.box.right <= commands.canvas.right + 1
       && commands.box.bottom <= commands.canvas.bottom + 1, commands, { contained: true }),
     invariant('hero-command-column-order', commands.cards.length === 4 && commands.cards.every(card => card.uid > 0)
@@ -535,13 +535,13 @@ async function captureCombat(page, viewport, artifactDir) {
       within(card.box.height / scale, 104, .5) && within(card.buttonHeight / scale, 104, .5)
       && within(card.portrait.width / scale, 38.5, .5)), commands.cards, { card: 104, button: 104, portrait: 38.5 }),
     invariant('hero-command-two-row-layout', commands.cards.filter(card => card.uid).every(card =>
-      card.healthRow && card.spRow && card.healthRow.top >= card.portrait.top
-      && card.spRow.top >= card.healthRow.top && card.name.top >= card.healthRow.bottom),
-      commands.cards, { readouts: 'HP and SP above role/name footer' }),
-    invariant('hero-command-hp-sp-readouts', commands.cards.filter(card => card.uid).every(card =>
+      card.healthRow && card.afRow && card.healthRow.top >= card.portrait.top
+      && card.afRow.top >= card.healthRow.top && card.name.top >= card.healthRow.bottom),
+      commands.cards, { readouts: 'HP and AF above role/name footer' }),
+    invariant('hero-command-hp-af-readouts', commands.cards.filter(card => card.uid).every(card =>
       card.hpLabel === 'HP' && /^\d+$/.test(card.hpValue || '') && !!card.hpBar
-      && card.spLabel === 'SP' && /^\d+$/.test(card.spValue || '') && !!card.spBar),
-      commands.cards, { hp: 'label/value/bar', sp: 'label/value/bar' }),
+      && card.afLabel === 'AF' && /^\d+$/.test(card.afValue || '') && !!card.afBar),
+      commands.cards, { hp: 'label/value/bar', af: 'label/value/bar' }),
     invariant('hero-command-native-input', commands.nativeButtons === commands.cards.filter(card => card.uid).length
       && commands.legacySkills === 0 && commands.boardMembers === 0,
       { buttons: commands.nativeButtons, legacySkills: commands.legacySkills, gems: commands.boardMembers }, { statusButtons: commands.cards.filter(card => card.uid).length, legacySkills: 0, gems: 0 }),
@@ -651,7 +651,7 @@ async function captureCombat(page, viewport, artifactDir) {
     invariant('gem-board-backdrop-absent', !heroTrace.some(entry => entry.kind==='fillRect'
       && within(entry.w / layoutScale, 300, .5) && within(entry.h / layoutScale, 210, .5)), null, { count: 0 }),
     invariant('shared-astral-bar-absent', !ampBar, ampBar, { count: 0 }),
-    invariant('personal-flow-meters', commands.cards.filter(card => card.uid).every(card => card.spLabel === 'SP' && /^\d+$/.test(card.spValue || '') && card.spBar), commands.cards, { persistentSPReadout: true, perHero: true }),
+    invariant('personal-af-meters', commands.cards.filter(card => card.uid).every(card => card.afLabel === 'AF' && /^\d+$/.test(card.afValue || '') && card.afBar), commands.cards, { persistentAFReadout: true, perHero: true }),
     invariant('party-card-draw-controls-absent', await page.locator('[data-devtool-force-skill-draught], [data-devtool-clear-session-skills], [data-devtool-skill-id]').count() === 0, null, { count: 0 }),
     invariant('legacy-backdrop-absent', legacyPanels.length === 0, { forbiddenPanelDraws: legacyPanels }, { forbiddenPanelDraws: 0 }),
   ];
@@ -666,7 +666,7 @@ async function captureCommandTurns(page, viewport, artifactDir) {
     const heroes = Array.from({length: count}, (_, slot) => ({
       ...seed, name: 'Falie', baseHeroName: 'Falie', uid: 100 + slot, heroDisplaySlot: slot,
       stats: {...seed.stats}, hp: 5000, maxHP: 5000, flow: slot === count - 1 ? flow : 0,
-      flowMode: 'Stoic', spMax: 100, sp: 100, currentLevel: 50, statuses: [],
+      flowMode: 'Stoic', currentLevel: 50, statuses: [],
     }));
     game.state.entities = [...heroes, ...enemies];
     Object.assign(globals, {
@@ -687,9 +687,9 @@ async function captureCommandTurns(page, viewport, artifactDir) {
       hpLabel: card.querySelector('.hp .readout-label')?.textContent,
       hpValue: card.querySelector('[data-hp-text]')?.textContent,
       hpBar: !!card.querySelector('[data-hp-bar]'),
-      spLabel: card.querySelector('.sp .readout-label')?.textContent,
-      spValue: card.querySelector('[data-sp-text]')?.textContent,
-      spBar: !!card.querySelector('[data-sp-bar]'),
+      afLabel: card.querySelector('.af .readout-label')?.textContent,
+      afValue: card.querySelector('[data-af-text]')?.textContent,
+      afBar: !!card.querySelector('[data-af-bar]'),
       box: card.getBoundingClientRect().toJSON(),
     }));
     return { cards, fanOpen: fan?.dataset.open === 'true', fanCards: fan?.querySelectorAll('.fan-card').length || 0 };
@@ -701,14 +701,14 @@ async function captureCommandTurns(page, viewport, artifactDir) {
     const status = await readStatus();
     commandInvariants.push(invariant(`hero-command-group-${count}`, status.cards.length === count
       && status.cards.every(card => card.uid > 0 && card.hpLabel === 'HP' && /^\d+$/.test(card.hpValue || '') && card.hpBar
-        && card.spLabel === 'SP' && /^\d+$/.test(card.spValue || '') && card.spBar),
-      status, { count, hp: 'label/value/bar', sp: 'label/value/bar' }));
+        && card.afLabel === 'AF' && /^\d+$/.test(card.afValue || '') && card.afBar),
+      status, { count, hp: 'label/value/bar', af: 'label/value/bar' }));
     if (count === 1 || count === 6) await page.screenshot({path: path.join(artifactDir, `${viewport.name}-09-hero-group-${count}.png`)});
   }
   const finalStatus = await readStatus();
   commandInvariants.push(
     invariant('hero-command-active-highlight', finalStatus.cards.some(card => card.current), finalStatus, { activeHero: true }),
-    invariant('hero-command-personal-flow', finalStatus.cards.every(card => card.spLabel === 'SP' && card.spBar), finalStatus, { persistentSP: true }),
+    invariant('hero-command-personal-af', finalStatus.cards.every(card => card.afLabel === 'AF' && card.afBar), finalStatus, { persistentAF: true }),
     invariant('hero-command-paid-sequence', !finalStatus.fanOpen && finalStatus.fanCards === 0, finalStatus, { legacyFanClosed: true }),
     invariant('hero-card-fan-reopen-same-draw', !finalStatus.fanOpen, finalStatus, { retiredDuringCTB: true }),
   );
