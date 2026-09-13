@@ -52,7 +52,7 @@
 
 - FLOW charging is owned only by flowOrbs.mjs collection. Enemy KO produces a single configured reward; role triggers award nothing. Combat RNG and orb RNG remain separate. Session reset cancels pending flights.
 
-- Death-only FLOW supersedes attack/proc drops: enemy KO awards once; collection charges a random living hero after the original blue death-orb ground-bounce tween. Role events award nothing.
+- Role-earned AF replaces death-lottery rewards: qualifying resolved role actions queue one directed blue orb, and AF changes only when that orb reaches its living recipient. Enemy KO does not assign AF.
 
 - equipment.mjs is the canonical placeholder catalog, slots, rarity balance and loadout math. astralMarket.mjs reconstructs only the live offer window using persisted seed/epoch and a monotonic time floor. Each offer ID may be acquired once; revalidate price, expiration and Gold at commit.
 - Equipment stats are a derived projection used by levelStats, not a second inventory. Persist the projection with hero HP so loading HP above unequipped max does not truncate it before the authoritative equipment record reapplies.

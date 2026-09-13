@@ -16,9 +16,18 @@ export function spawnFlowOrbs(ctx, source, count, origin = {}, value = T.limitOr
 }
 
 export function dropEnemyFlowOrbs(ctx, enemy, origin = {}) {
- if (!enemy || enemy.kind !== 'enemy' || enemy.hp > 0 || enemy.flowDeathRewarded) return 0;
- enemy.flowDeathRewarded = true;
- return spawnFlowOrbs(ctx, enemy, enemy.limitOrbDropCount ?? T.limitOrbDropCount, origin, enemy.limitOrbValue ?? T.limitOrbValue, 'enemy-death');
+ // AF comes from role actions. Enemy death remains a combat settlement event,
+ // not a random meter lottery.
+ return 0;
+}
+
+export function spawnDirectedFlowOrb(ctx, source, recipient, value = T.limitOrbValue, reason = 'role-award') {
+ if (!source || !recipient || recipient.kind !== 'hero' || Number(recipient.hp || 0) <= 0) return 0;
+ const amount=Math.max(0,Number(value)||0);if(amount<=0)return 0;
+ const queue=ctx.state.FlowOrbs ||= [];
+ const id=ctx.state.FlowOrbSerial=(ctx.state.FlowOrbSerial||0)+1;
+ queue.push({id,recipientUID:recipient.uid,sourceUID:source.uid,sourceKind:source.kind,x:Number(source.x??source.originX??200),y:Number(source.y??source.originY??140),groundOffset:Math.max(1,Number(ctx.state.EnemySize||40))/2,sourceSlot:source.heroDisplaySlot??source.heroIndex,value:amount,reason,born:Number(ctx.state.time||0),sessionId:ctx.state.CombatSessionId});
+ return 1;
 }
 
 export function advanceFlowOrbs(state, actors, now = Number(state.time || 0)) {

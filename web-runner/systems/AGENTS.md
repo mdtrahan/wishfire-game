@@ -90,7 +90,7 @@
 
 - Combat initialization derives health totals from the initialized actors; it must not overwrite the total with full HP while actors remain injured. Party-damage owner wiring serializes six HP slots with actual member count.
 
-- heroCommandUI.mjs owns decorative hero status cards only. Cards show the cropped portrait, HP and personal AF, with a steady cyan highlight for the scheduled living actor. AF reads canonical personal FLOW, starts each combat at zero, and only changes when an assigned blue enemy-KO orb reaches that hero. The retired command editor, native skill buttons, prepared queue controls, Auto, Reload and Menu entrypoints are absent from player presentation. Enemy and ally taps remain owned by the existing battlefield selectors while a targeted fan card is pending. The underlying heroCommands native resolver remains available to the fan and dev autoplay seams.
+- heroCommandUI.mjs owns decorative hero status cards only. Cards show the cropped portrait, HP and personal AF, with a steady cyan highlight for the scheduled living actor. AF reads canonical personal FLOW, starts each combat at zero, and only changes when that hero’s directed blue role-award orb reaches them. The retired command editor, native skill buttons, prepared queue controls, Auto, Reload and Menu entrypoints are absent from player presentation. Enemy and ally taps remain owned by the existing battlefield selectors while a targeted fan card is pending. The underlying heroCommands native resolver remains available to the fan and dev autoplay seams.
 - heroTurnCardFanUI.mjs presents the three drawn hero cards in a canvas-anchored overlay. Its callbacks use the function-bank fan lifecycle, preserve a cancelled draw for reopen, and interrupt on menu, modal, KO or battle settlement. Targeted cards hand off to the existing battlefield selectors through app integration; the fan owns no target controls. The overlay omits card Energy metadata from presentation. Selection keeps the three button nodes stable, cues the chosen card while the other two fall away, and clears that presentation on interruption without delaying the callback.
 - Personal FLOW currency rules belong to heroCommands.mjs and gameplay owners. The old shared meter and portrait milestones have no live HUD wiring. Hero lunges use display slots, so catalog identity does not collapse repeated or later formation positions.
 - Prepared commands belong to the combat session and member UIDs. Replacing actor objects while restoring the same session must preserve prepared selections; a new session or changed roster clears them.
@@ -106,7 +106,7 @@
 
 - renderFlowOrbs.mjs draws gem flights using the actor projection. Collection belongs to the core update; presentation never blocks CTB. Hero detail text describes enemy-death orbs and random distribution.
 
-- Death-only FLOW supersedes attack/proc drops: enemy KO awards once; collection charges a random living hero after the original blue death-orb ground-bounce tween. Role events award nothing.
+- Role-earned AF replaces death-lottery rewards: qualifying resolved role actions queue one directed blue orb, and AF changes only when that orb reaches its living recipient. Enemy KO does not assign AF.
 
 - Enemy targeting triangles render only during hero turns and hide when combat ends. Keep SelectedEnemyUID intact across enemy turns so the next hero retains the player choice.
 

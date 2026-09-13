@@ -9,7 +9,7 @@ export const ROLE_FLOW_VALUE=10;
 
 // One resolved action can award one role charge.  Callers pass aggregate action
 // facts so AoE and multi-hit never duplicate a role award.
-export function resolveRoleFlowAward({heroes=[],hero=null,event={}}={}){
+export function resolveRoleFlowAward({heroes=[],hero=null,event={},apply=true}={}){
  const recipient=hero&&Number(hero.hp||0)>0?hero:null;
  if(!recipient||Number(recipient.flow||0)>=100||event.miss||event.periodic||event.prevented||event.resisted||event.unchanged)return null;
  const mode=recipient.flowMode||heroDefinition(recipient)?.flowMode;
@@ -23,6 +23,7 @@ export function resolveRoleFlowAward({heroes=[],hero=null,event={}}={}){
   ||(mode==='Comrade'&&allyDamaged);
  if(!eligible)return null;
  const before=Math.max(0,Number(recipient.flow||0));
- recipient.flow=Math.min(100,before+ROLE_FLOW_VALUE);
- return {recipientUID:Number(recipient.uid||0),mode,value:recipient.flow-before,flow:recipient.flow,source:String(event.source||'role')};
+ const value=Math.min(ROLE_FLOW_VALUE,100-before);
+ if(apply)recipient.flow=before+value;
+ return {recipientUID:Number(recipient.uid||0),mode,value,flow:apply?recipient.flow:before+value,source:String(event.source||'role')};
 }

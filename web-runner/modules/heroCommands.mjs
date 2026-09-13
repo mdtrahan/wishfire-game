@@ -3,6 +3,7 @@ import {clearSessionLevelBuffState} from '../../src/core/sessionLevelBuffOffers.
 import {settleBattleEXP} from '../src/core/heroProgression.mjs';
 import {heroDefinition,PROGRESSION} from '../src/core/heroDefinitions.mjs';
 import {getHeroFlowState,getHeroSkillOptions,resolveRoleFlowAward} from '../src/core/personalFlow.mjs';
+import {spawnDirectedFlowOrb} from '../src/core/flowOrbs.mjs';
 import {applyStatus,legalSkill,validTargets,resolveSkill,turnStart,turnEnd} from '../src/core/combatRules.mjs';
 import {derivePresentationTurnBarrier} from '../src/core/turnGateController.mjs';
 import {acknowledgeSessionLevelUpEntry,clearSessionLevelUpQueue,createSessionLevelUpQueue,currentSessionLevelUpEntry,pauseSessionLevelUpQueue,resumeSessionLevelUpQueue} from '../src/core/sessionLevelUpQueue.mjs';
@@ -40,8 +41,8 @@ export function rulesContext(ctx){
  calculateDamage:(a,t,mode)=>ctx.callFunction('CalculateDamage',a.uid,t.uid,mode),
  applyDamage:(a,t,amount,origin)=>{const before=t.hp;ctx.callFunction('ApplyDamageToTarget',t.uid,amount,{sourceUID:a.uid,nativeResolved:true,suppressPartySkillHitHooks:1,...origin});return before-t.hp;},
  onHeal:(source,target,delta)=>{if(source?.kind==='hero'&&target?.kind==='hero'&&delta>0){const pos=heroPresentationPosition(target);const texts=Array.isArray(g.DamageTexts)?g.DamageTexts:null;const before=texts?.length||0;ctx.callFunction('SpawnDamageText',delta,pos.x,pos.y,'heal','hero');const emitted=Array.isArray(g.DamageTexts)&&g.DamageTexts.length>before?g.DamageTexts[g.DamageTexts.length-1]:null;if(emitted){emitted.targetUID=Number(target.uid||0);emitted.targetSlotIndex=Number(target.heroDisplaySlot??target.heroIndex??-1);}}},
- onDamage:(source,target,delta,origin)=>{if(origin?.roleAwarded)return;const heroes=ctx.state.entities.filter(actor=>actor?.kind==='hero');for(const hero of heroes){const event={source:'damage',hostileHpDamage:source?.kind==='enemy'?delta:0,hostileTargetUID:source?.kind==='enemy'?target?.uid:0,enemyHpDamage:source?.kind==='hero'?delta:0};if(resolveRoleFlowAward({heroes,hero,event})){origin.roleAwarded=true;break;}}},
- onStatus:(source,target,effect,meta={})=>{if(source?.kind==='hero'&&target?.kind==='hero'&&effect?.statusEffect==='barrier')ensureCardBarrierVisual(target);if(!meta.refreshed||source?.kind!=='hero')return;resolveRoleFlowAward({heroes:ctx.state.entities.filter(actor=>actor?.kind==='hero'),hero:source,event:{source:'status',newEligibleStatus:true}});},
+ onDamage:(source,target,delta)=>{const heroes=ctx.state.entities.filter(actor=>actor?.kind==='hero');for(const hero of heroes){const event={source:'damage',hostileHpDamage:source?.kind==='enemy'?delta:0,hostileTargetUID:source?.kind==='enemy'?target?.uid:0,enemyHpDamage:source?.kind==='hero'?delta:0};const award=resolveRoleFlowAward({heroes,hero,event,apply:false});if(award)spawnDirectedFlowOrb({state:g},source,hero,award.value,'role-action');}},
+ onStatus:(source,target,effect,meta={})=>{if(source?.kind==='hero'&&target?.kind==='hero'&&effect?.statusEffect==='barrier')ensureCardBarrierVisual(target);if(meta.refreshed||source?.kind!=='hero')return;const heroes=ctx.state.entities.filter(actor=>actor?.kind==='hero');const award=resolveRoleFlowAward({heroes,hero:source,event:{source:'status',newEligibleStatus:true},apply:false});if(award)spawnDirectedFlowOrb({state:g},source,source,award.value,'role-status');},
  onKO:actor=>{if(actor.kind==='enemy'){const battle=g.ProgressionBattle;if(battle){battle.defeated[actor.uid]=actor.expValue??PROGRESSION.enemyEXP;(battle.defeatedGold||={})[actor.uid]=Math.max(0,Math.floor(actor.goldValue??PROGRESSION.enemyGold));}}},
  isOver:()=>{
   const ended=!ctx.state.entities.some(a=>a.kind==='enemy'&&a.hp>0);

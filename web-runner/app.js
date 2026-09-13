@@ -94,6 +94,7 @@ import {
 } from './systems/runtimeAssetUrl.mjs';
 import { chooseSessionLevelUpBuff, getSessionLevelUpBuffPresentation, updateSessionLevelUpSettlement } from './modules/sessionLevelUpBuffPresentation.mjs';
 import { heroArtKey } from './state/heroArtAssets.mjs';
+import { computeCombatPower as canonicalCombatPower, normalizeCombatPowerActor } from './src/core/combatPower.mjs';
 import * as partyStatOsd from './systems/partyStatOsd.js';
 import * as superGemRuntime from './systems/superGemRuntime.js';
 import {
@@ -764,15 +765,11 @@ const combatRuntimeGateway = new CombatRuntimeGateway({
 });
 
 function computeCombatPower(atk, def, hp) {
-  const a = Number(atk || 0);
-  const d = Number(def || 0);
-  const h = Number(hp || 0);
-  const result = Math.round((a + d + (h / 10)) * 100) / 100;
+  const actor = atk && typeof atk === 'object' ? atk : { ATK: atk, DEF: def, HP: hp };
+  const result = canonicalCombatPower(actor);
   return shadowCombatPower({
     source: 'app.computeCombatPower',
-    atk: a,
-    def: d,
-    hp: h,
+    actor: normalizeCombatPowerActor(actor),
     jsValue: result,
   });
 }
@@ -796,7 +793,7 @@ function getHeroScreenRoster() {
       maxHP: Number(live?.maxHP || hero.maxHP || hero.hp || 0),
       combatPower: Number(
         live?.combatPower
-        || computeCombatPower(hero.ATK, hero.DEF, hero.maxHP || hero.hp)
+        || computeCombatPower({ ...hero, maxHP: hero.maxHP || hero.hp, stats: hero })
       ),
       attackType: live?.attackType || hero.attackType,
       stats: {

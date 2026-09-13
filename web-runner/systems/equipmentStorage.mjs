@@ -24,7 +24,7 @@ export function createEquipmentStorage({globals,getActors=()=>[],storage,locks=g
    if(JSON.stringify(hero.equipmentStats||{})!==JSON.stringify(stats)){
     hero.equipmentStats=stats;refreshHeroStats(hero);hero.hp=Math.min(hero.hp,hero.maxHP);globals.HeroProgressDirty=true;
    }
-   hero.combatPower=computeCombatPower(hero.stats?.ATK,hero.stats?.DEF,hero.maxHP);
+   hero.combatPower=computeCombatPower(hero);
   }
  }
  async function transact(change){

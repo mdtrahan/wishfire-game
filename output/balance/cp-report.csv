@@ -1,145 +1,145 @@
 id,kind,role,level,baseCP,currentCP
+Fara,hero,Tank,1,52,44
+Hondo,hero,DPS / Fighter,1,73.5,61.5
+Runa,hero,Controller,1,81.8,59.8
+Kaja,hero,Support / Guardian,1,57.4,47.4
 routine-1,enemy,routine,1,22.4,22.4
-routine-2,enemy,routine,2,23.7,23.7
-routine-3,enemy,routine,3,26.1,26.1
 hard-1,enemy,hard,1,31,31
-routine-4,enemy,routine,4,31,31
-hard-2,enemy,hard,2,32.8,32.8
-routine-5,enemy,routine,5,33.6,33.6
-hard-3,enemy,hard,3,36.7,36.7
-routine-6,enemy,routine,6,37.2,37.2
-routine-7,enemy,routine,7,41.8,41.8
-hard-4,enemy,hard,4,41.9,41.9
 elite-1,enemy,elite,1,43.4,43.4
-routine-8,enemy,routine,8,43.6,43.6
-hard-5,enemy,hard,5,46.1,46.1
-routine-9,enemy,routine,9,46.7,46.7
-elite-2,enemy,elite,2,47.6,47.6
-Fara,hero,Tank,1,52,52
-hard-6,enemy,hard,6,52.6,52.6
-elite-3,enemy,elite,3,54.8,54.8
-Fara,hero,Tank,2,55.1,55.1
-hard-7,enemy,hard,7,56.1,56.1
-Kaja,hero,Support / Guardian,1,57.4,57.4
-Fara,hero,Tank,3,60.1,60.1
-elite-4,enemy,elite,4,60.3,60.3
-Kaja,hero,Support / Guardian,2,61.7,61.7
-hard-8,enemy,hard,8,63.1,63.1
-Fara,hero,Tank,4,65,65
 boss-1,enemy,boss,1,65.2,65.2
-Kaja,hero,Support / Guardian,3,66.4,66.4
-hard-9,enemy,hard,9,66.7,66.7
-elite-5,enemy,elite,5,68.1,68.1
-Fara,hero,Tank,5,70.1,70.1
+Fara,hero,Tank,2,55.1,47.1
+Hondo,hero,DPS / Fighter,2,78.8,66.8
+Runa,hero,Controller,2,86.8,64.8
+Kaja,hero,Support / Guardian,2,61.7,51.7
+routine-2,enemy,routine,2,23.7,23.7
+hard-2,enemy,hard,2,32.8,32.8
+elite-2,enemy,elite,2,47.6,47.6
 boss-2,enemy,boss,2,72.8,72.8
-Kaja,hero,Support / Guardian,4,72.9,72.9
-Hondo,hero,DPS / Fighter,1,73.5,73.5
-Fara,hero,Tank,6,75.1,75.1
-elite-6,enemy,elite,6,76.5,76.5
-Fara,hero,Tank,7,78.3,78.3
-Hondo,hero,DPS / Fighter,2,78.8,78.8
-Kaja,hero,Support / Guardian,5,81.4,81.4
-Runa,hero,Controller,1,81.8,81.8
-elite-7,enemy,elite,7,82.4,82.4
+Fara,hero,Tank,3,60.1,52.1
+Hondo,hero,DPS / Fighter,3,84.8,72.8
+Runa,hero,Controller,3,92.2,70.2
+Kaja,hero,Support / Guardian,3,66.4,56.4
+routine-3,enemy,routine,3,26.1,26.1
+hard-3,enemy,hard,3,36.7,36.7
+elite-3,enemy,elite,3,54.8,54.8
 boss-3,enemy,boss,3,82.8,82.8
-Hondo,hero,DPS / Fighter,3,84.8,84.8
-Runa,hero,Controller,2,86.8,86.8
-Fara,hero,Tank,8,87.1,87.1
-Kaja,hero,Support / Guardian,6,88.2,88.2
-elite-8,enemy,elite,8,89.6,89.6
-Runa,hero,Controller,3,92.2,92.2
-Fara,hero,Tank,9,92.3,92.3
+Fara,hero,Tank,4,65,57
+Hondo,hero,DPS / Fighter,4,95.9,82.9
+Runa,hero,Controller,4,98,76
+Kaja,hero,Support / Guardian,4,72.9,62.9
+routine-4,enemy,routine,4,31,31
+hard-4,enemy,hard,4,41.9,41.9
+elite-4,enemy,elite,4,60.3,60.3
 boss-4,enemy,boss,4,92.8,92.8
-Kaja,hero,Support / Guardian,7,93.1,93.1
-elite-9,enemy,elite,9,95.7,95.7
-Hondo,hero,DPS / Fighter,4,95.9,95.9
-Kaja,hero,Support / Guardian,8,97.6,97.6
-Runa,hero,Controller,4,98,98
+Fara,hero,Tank,5,70.1,62.1
+Hondo,hero,DPS / Fighter,5,101.8,88.8
+Runa,hero,Controller,5,109.8,85.8
+Kaja,hero,Support / Guardian,5,81.4,70.4
+routine-5,enemy,routine,5,33.6,33.6
+hard-5,enemy,hard,5,46.1,46.1
+elite-5,enemy,elite,5,68.1,68.1
 boss-5,enemy,boss,5,101.1,101.1
-Hondo,hero,DPS / Fighter,5,101.8,101.8
-Hondo,hero,DPS / Fighter,6,108.2,108.2
-Kaja,hero,Support / Guardian,9,109.5,109.5
-Runa,hero,Controller,5,109.8,109.8
+Fara,hero,Tank,6,75.1,67.1
+Hondo,hero,DPS / Fighter,6,108.2,95.2
+Runa,hero,Controller,6,115.9,91.9
+Kaja,hero,Support / Guardian,6,88.2,77.2
+routine-6,enemy,routine,6,37.2,37.2
+hard-6,enemy,hard,6,52.6,52.6
+elite-6,enemy,elite,6,76.5,76.5
 boss-6,enemy,boss,6,114.2,114.2
-Runa,hero,Controller,6,115.9,115.9
-Hondo,hero,DPS / Fighter,7,120.5,120.5
-Runa,hero,Controller,7,121.6,121.6
+Fara,hero,Tank,7,78.3,70.3
+Hondo,hero,DPS / Fighter,7,120.5,106.5
+Runa,hero,Controller,7,121.6,97.6
+Kaja,hero,Support / Guardian,7,93.1,82.1
+routine-7,enemy,routine,7,41.8,41.8
+hard-7,enemy,hard,7,56.1,56.1
+elite-7,enemy,elite,7,82.4,82.4
 boss-7,enemy,boss,7,125.2,125.2
-Hondo,hero,DPS / Fighter,8,126.7,126.7
-Hondo,hero,DPS / Fighter,9,133,133
-Runa,hero,Controller,8,134.7,134.7
+Fara,hero,Tank,8,87.1,78.1
+Hondo,hero,DPS / Fighter,8,126.7,112.7
+Runa,hero,Controller,8,134.7,108.7
+Kaja,hero,Support / Guardian,8,97.6,86.6
+routine-8,enemy,routine,8,43.6,43.6
+hard-8,enemy,hard,8,63.1,63.1
+elite-8,enemy,elite,8,89.6,89.6
 boss-8,enemy,boss,8,136.8,136.8
-Runa,hero,Controller,9,141.1,141.1
+Fara,hero,Tank,9,92.3,83.3
+Hondo,hero,DPS / Fighter,9,133,119
+Runa,hero,Controller,9,141.1,115.1
+Kaja,hero,Support / Guardian,9,109.5,97.5
+routine-9,enemy,routine,9,46.7,46.7
+hard-9,enemy,hard,9,66.7,66.7
+elite-9,enemy,elite,9,95.7,95.7
 boss-9,enemy,boss,9,142.7,142.7
+Fara,hero,Tank,91,626.7,608.7
+Hondo,hero,DPS / Fighter,91,806.8,788.8
+Runa,hero,Controller,91,824.8,788.8
+Kaja,hero,Support / Guardian,91,728.1,710.1
 routine-91,enemy,routine,91,281.2,281.2
-routine-92,enemy,routine,92,282.4,282.4
-routine-93,enemy,routine,93,287.3,287.3
-routine-94,enemy,routine,94,288.8,288.8
-routine-95,enemy,routine,95,290.9,290.9
-routine-96,enemy,routine,96,295.2,295.2
-routine-97,enemy,routine,97,297.3,297.3
-routine-98,enemy,routine,98,298.5,298.5
-routine-99,enemy,routine,99,303.6,303.6
 hard-91,enemy,hard,91,392.5,392.5
-hard-92,enemy,hard,92,395.7,395.7
-hard-93,enemy,hard,93,401.4,401.4
-hard-94,enemy,hard,94,403.1,403.1
-hard-95,enemy,hard,95,409.1,409.1
-hard-96,enemy,hard,96,412,412
-hard-97,enemy,hard,97,416.8,416.8
-hard-98,enemy,hard,98,419.7,419.7
-hard-99,enemy,hard,99,424.5,424.5
 elite-91,enemy,elite,91,554.8,554.8
-elite-92,enemy,elite,92,562,562
-elite-93,enemy,elite,93,568.9,568.9
-elite-94,enemy,elite,94,573,573
-elite-95,enemy,elite,95,578.3,578.3
-elite-96,enemy,elite,96,585.6,585.6
-elite-97,enemy,elite,97,589.7,589.7
-elite-98,enemy,elite,98,596.6,596.6
-elite-99,enemy,elite,99,600.7,600.7
-Fara,hero,Tank,91,626.7,626.7
-Fara,hero,Tank,92,630,630
-Fara,hero,Tank,93,636.7,636.7
-Fara,hero,Tank,94,643.4,643.4
-Fara,hero,Tank,95,650.1,650.1
-Fara,hero,Tank,96,656.8,656.8
-Fara,hero,Tank,97,660.1,660.1
-Fara,hero,Tank,98,666.8,666.8
-Fara,hero,Tank,99,673.5,673.5
-Kaja,hero,Support / Guardian,91,728.1,728.1
-Kaja,hero,Support / Guardian,92,733.7,733.7
-Kaja,hero,Support / Guardian,93,739.9,739.9
-Kaja,hero,Support / Guardian,94,748.8,748.8
-Kaja,hero,Support / Guardian,95,754.4,754.4
-Kaja,hero,Support / Guardian,96,763.4,763.4
-Kaja,hero,Support / Guardian,97,769.5,769.5
-Kaja,hero,Support / Guardian,98,775.2,775.2
-Kaja,hero,Support / Guardian,99,784.1,784.1
-Hondo,hero,DPS / Fighter,91,806.8,806.8
-Hondo,hero,DPS / Fighter,92,813.7,813.7
-Hondo,hero,DPS / Fighter,93,821.6,821.6
-Runa,hero,Controller,91,824.8,824.8
-Hondo,hero,DPS / Fighter,94,829,829
-Runa,hero,Controller,92,831.9,831.9
-Hondo,hero,DPS / Fighter,95,836.4,836.4
-Runa,hero,Controller,93,839.4,839.4
-Hondo,hero,DPS / Fighter,96,844.3,844.3
-Runa,hero,Controller,94,847.3,847.3
 boss-91,enemy,boss,91,850.2,850.2
-Hondo,hero,DPS / Fighter,97,851.7,851.7
-Runa,hero,Controller,95,854.4,854.4
-Hondo,hero,DPS / Fighter,98,859.2,859.2
+Fara,hero,Tank,92,630,612
+Hondo,hero,DPS / Fighter,92,813.7,795.7
+Runa,hero,Controller,92,831.9,795.9
+Kaja,hero,Support / Guardian,92,733.7,715.7
+routine-92,enemy,routine,92,282.4,282.4
+hard-92,enemy,hard,92,395.7,395.7
+elite-92,enemy,elite,92,562,562
 boss-92,enemy,boss,92,859.6,859.6
-Runa,hero,Controller,96,862.3,862.3
-Hondo,hero,DPS / Fighter,99,866.6,866.6
+Fara,hero,Tank,93,636.7,618.7
+Hondo,hero,DPS / Fighter,93,821.6,803.6
+Runa,hero,Controller,93,839.4,803.4
+Kaja,hero,Support / Guardian,93,739.9,721.9
+routine-93,enemy,routine,93,287.3,287.3
+hard-93,enemy,hard,93,401.4,401.4
+elite-93,enemy,elite,93,568.9,568.9
 boss-93,enemy,boss,93,869,869
-Runa,hero,Controller,97,869.8,869.8
+Fara,hero,Tank,94,643.4,625.4
+Hondo,hero,DPS / Fighter,94,829,811
+Runa,hero,Controller,94,847.3,811.3
+Kaja,hero,Support / Guardian,94,748.8,730.8
+routine-94,enemy,routine,94,288.8,288.8
+hard-94,enemy,hard,94,403.1,403.1
+elite-94,enemy,elite,94,573,573
 boss-94,enemy,boss,94,875.2,875.2
-Runa,hero,Controller,98,876.8,876.8
+Fara,hero,Tank,95,650.1,632.1
+Hondo,hero,DPS / Fighter,95,836.4,818.4
+Runa,hero,Controller,95,854.4,818.4
+Kaja,hero,Support / Guardian,95,754.4,736.4
+routine-95,enemy,routine,95,290.9,290.9
+hard-95,enemy,hard,95,409.1,409.1
+elite-95,enemy,elite,95,578.3,578.3
 boss-95,enemy,boss,95,884.6,884.6
-Runa,hero,Controller,99,884.7,884.7
+Fara,hero,Tank,96,656.8,638.8
+Hondo,hero,DPS / Fighter,96,844.3,826.3
+Runa,hero,Controller,96,862.3,826.3
+Kaja,hero,Support / Guardian,96,763.4,745.4
+routine-96,enemy,routine,96,295.2,295.2
+hard-96,enemy,hard,96,412,412
+elite-96,enemy,elite,96,585.6,585.6
 boss-96,enemy,boss,96,894,894
+Fara,hero,Tank,97,660.1,642.1
+Hondo,hero,DPS / Fighter,97,851.7,833.7
+Runa,hero,Controller,97,869.8,833.8
+Kaja,hero,Support / Guardian,97,769.5,751.5
+routine-97,enemy,routine,97,297.3,297.3
+hard-97,enemy,hard,97,416.8,416.8
+elite-97,enemy,elite,97,589.7,589.7
 boss-97,enemy,boss,97,903,903
+Fara,hero,Tank,98,666.8,648.8
+Hondo,hero,DPS / Fighter,98,859.2,841.2
+Runa,hero,Controller,98,876.8,840.8
+Kaja,hero,Support / Guardian,98,775.2,757.2
+routine-98,enemy,routine,98,298.5,298.5
+hard-98,enemy,hard,98,419.7,419.7
+elite-98,enemy,elite,98,596.6,596.6
 boss-98,enemy,boss,98,909.6,909.6
+Fara,hero,Tank,99,673.5,655.5
+Hondo,hero,DPS / Fighter,99,866.6,848.6
+Runa,hero,Controller,99,884.7,848.7
+Kaja,hero,Support / Guardian,99,784.1,766.1
+routine-99,enemy,routine,99,303.6,303.6
+hard-99,enemy,hard,99,424.5,424.5
+elite-99,enemy,elite,99,600.7,600.7
 boss-99,enemy,boss,99,918.6,918.6

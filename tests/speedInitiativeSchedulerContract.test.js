@@ -170,3 +170,27 @@ test('runtime default actor selection uses fixed effective-Speed cycling', () =>
   assert.match(initiativeDoc, /Experiment And Follow-Up Lanes/);
   assert.match(initiativeDoc, /Do not flip this guard as cleanup\./);
 });
+
+test('2x Speed link schedules one immediate hero action in both live functionBank mirrors', async () => {
+  const rules = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner/src/core/dynamicInitiativeRules.mjs')).href);
+  const hero = { uid: 1, kind: 'hero', hp: 40, effectiveSpeed: 20 };
+  const enemies = [{ uid: 101, kind: 'enemy', hp: 30, effectiveSpeed: 10 }];
+  assert.equal(rules.resolveHeroSpeedMultiattack({ hero, enemies, alreadyLinked: false }), true);
+  assert.equal(rules.resolveHeroSpeedMultiattack({ hero, enemies, alreadyLinked: true }), false);
+  assert.equal(rules.resolveHeroSpeedMultiattack({ hero: { ...hero, hp: 0 }, enemies, alreadyLinked: false }), false);
+  assert.equal(rules.resolveHeroSpeedMultiattack({ hero: { ...hero, effectiveSpeed: 19 }, enemies, alreadyLinked: false }), false);
+
+  for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
+    const source = fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
+    const advance = extractFunctionSource(source, 'AdvanceTurn');
+    const ended = advance.indexOf('nativeTurnEnded(ctx, GetActorByUID(ctx, currentUID));');
+    const link = advance.indexOf("'speed_multiattack_link'");
+    assert.ok(ended >= 0 && ended < link, `${relPath} completes the first action before scheduling the link`);
+    assert.match(advance, /setDynamicInitiativeDefaultCurrent\(ctx, \{ uid: currentUID, type: 0,/);
+    assert.match(advance, /SpeedMultiattackLinkedActorUID = Number\(currentUID\)/);
+    assert.match(advance, /speedState\.actionCount = Number\(speedState\.actionCount \|\| 0\) \+ 1/);
+    assert.match(advance, /if \(currentType === 0 && Number\(g\.SpeedMultiattackLinkedActorUID \|\| 0\) === Number\(currentUID \|\| 0\)\) g\.SpeedMultiattackLinkedActorUID = 0/);
+    const linkedBlock = advance.slice(link - 700, link + 700);
+    assert.doesNotMatch(linkedBlock, /ProcessCurrentTurn\(ctx\)/);
+  }
+});

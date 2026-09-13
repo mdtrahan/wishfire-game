@@ -2653,15 +2653,17 @@ export function createSimulationCoreSeededRng(seed = 1, {
   };
 }
 
-export function shadowCombatPower({ source = 'unknown', atk = 0, def = 0, hp = 0, jsValue = 0 } = {}) {
+export function shadowCombatPower({ source = 'unknown', actor = null, atk = 0, def = 0, hp = 0, jsValue = 0 } = {}) {
   const shadow = getShadowState();
   if (shadow.status !== 'ready' || !shadow.exports) return jsValue;
-  const rustValue = Number(shadow.exports.combat_power_shadow(Number(atk || 0), Number(def || 0), Number(hp || 0)));
+  const input=actor&&typeof actor==='object'?actor:{atk,mag:0,def,res:0,hp,spd:0,level:1,expectedDirect:0,critChance:.01,critMultiplier:1.25,aoeDamage:0,extraTargets:0,sustain:0,control:0,proc:0,af:0,sequence:1};
+  const full=shadow.exports.combat_power_full_shadow;
+  const rustValue=typeof full==='function'
+    ? Number(full(Number(input.atk||0),Number(input.mag||0),Number(input.def||0),Number(input.res||0),Number(input.hp||0),Number(input.spd||0),Number(input.level||1),Number(input.expectedDirect||0),Number(input.critChance||0),Number(input.critMultiplier||1),Number(input.aoeDamage||0),Number(input.extraTargets||0),Number(input.sustain||0),Number(input.control||0),Number(input.proc||0),Number(input.af||0),Number(input.sequence||1)))
+    : Number(shadow.exports.combat_power_shadow(Number(atk || 0), Number(def || 0), Number(hp || 0)));
   shadow.lastCheck = {
     source,
-    atk: Number(atk || 0),
-    def: Number(def || 0),
-    hp: Number(hp || 0),
+    actor: input,
     jsValue,
     rustValue,
   };

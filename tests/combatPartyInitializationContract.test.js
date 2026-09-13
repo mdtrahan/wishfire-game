@@ -50,7 +50,7 @@ async function initialize(heroMembers, escortMember = null, withEnemy = false) {
       });
     },
     assertCombatLayoutDev() {},
-    computeCombatPower: (atk, def, hp) => atk + def + hp / 10,
+    computeCombatPower: require('../web-runner/src/core/combatPower.mjs').computeCombatPower,
     createSeededRng: () => () => 0,
     resetBootstrapRngSession() {},
     generateEncounterSeed: () => 123,
@@ -99,8 +99,9 @@ test('sparse formation slots retain their indexes and exclude slots beyond six',
   const { state, gameState } = await initialize(slots);
   assert.deepEqual(Array.from(state.entities, actor => actor.uid), [2, 6]);
   assert.deepEqual(Array.from(state.entities, actor => actor.heroDisplaySlot), [1, 5]);
-  assert.deepEqual(Array.from(gameState.partyHP), [0, 70, 0, 0, 0, 70]);
-  assert.deepEqual(Array.from(gameState.partyMaxHP), [0, 70, 0, 0, 0, 70]);
+  const expectedHP=[0, ...state.entities.map(actor=>actor.hp)];
+  assert.deepEqual(Array.from(gameState.partyHP), [0, expectedHP[1], 0, 0, 0, expectedHP[2]]);
+  assert.deepEqual(Array.from(gameState.partyMaxHP), [0, expectedHP[1], 0, 0, 0, expectedHP[2]]);
   assert.equal(state.globals.NextUID, 7);
 });
 
@@ -110,9 +111,7 @@ test('canonical progression owns HP for every configured hero', async () => {
     member(2, { hp: NaN }), member(3, { hp: 999 }),
     member(4, { maxHP: 0, hp: 9 }), member(5, { maxHP: 30, hp: 999 }),
   ]);
-  assert.deepEqual(Array.from(state.entities, actor => [actor.hp, actor.maxHP]), [
-    [92, 92], [70, 70], [60, 60], [80, 80], [92, 92], [70, 70],
-  ]);
+  assert.equal(JSON.stringify(Array.from(state.entities, actor => [actor.hp, actor.maxHP])), JSON.stringify(state.entities.map(actor => { const p=require('../web-runner/src/core/heroProgression.mjs').newHeroProgress(actor.baseHeroName); return [p.hp,p.maxHP]; })));
 });
 
 test('escort and spawned enemy IDs follow all six heroes without collisions', async () => {

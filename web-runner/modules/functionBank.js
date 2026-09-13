@@ -49,6 +49,8 @@ import {
   drawHeroTurnCards,
 } from '../src/core/heroTurnCards.mjs';
 import { resolveHeroAttackTarget } from '../../src/core/heroAttackTargetingRules.mjs';
+import { computeCombatPower as canonicalCombatPower } from '../src/core/combatPower.mjs';
+import { resolveHeroSpeedMultiattack } from '../src/core/dynamicInitiativeRules.mjs';
 
 import { sanitizeInitiativeQueue, shouldAutoCorrectImproperRepeat } from '../src/core/initiativeGuards.mjs';
 import {
@@ -232,10 +234,8 @@ function ensureEntities(ctx) {
 }
 
 function computeCombatPowerFromStats(atk, def, hp) {
-  const a = Number(atk || 0);
-  const d = Number(def || 0);
-  const h = Number(hp || 0);
-  return Math.round((a + d + (h / 10)) * 100) / 100;
+  const [mag = 0, res = 0, spd = 0, level = 1] = arguments.length > 3 ? [...arguments].slice(3) : [];
+  return canonicalCombatPower({ maxHP: hp, level, stats: { ATK: atk, DEF: def, MAG: mag, RES: res, SPD: spd } });
 }
 
 function normalizeLocaleTags(input) {
@@ -5063,7 +5063,26 @@ export function AdvanceTurn(ctx) {
   const completedActor = resolveCompletedHeroActionSchedulerActor(ctx);
   const currentUID = completedActor.uid;
   const currentType = completedActor.type;
+  const completedHero = currentType === 0 ? GetActorByUID(ctx, currentUID) : null;
   nativeTurnEnded(ctx, GetActorByUID(ctx, currentUID));
+  const linkedSpeedAction = resolveHeroSpeedMultiattack({
+    hero: completedHero && { ...completedHero, effectiveSpeed: GetEffectiveStat(ctx, completedHero, 'SPD') },
+    enemies: getEnemies(ctx).map(enemy => ({ ...enemy, effectiveSpeed: GetEffectiveStat(ctx, enemy, 'SPD') })),
+    alreadyLinked: Number(g.SpeedMultiattackLinkedActorUID || 0) === Number(currentUID || 0),
+  });
+  if (linkedSpeedAction) {
+    g.SpeedMultiattackLinkedActorUID = Number(currentUID);
+    g.SpeedMultiattackSequenceSerial = Number(g.SpeedMultiattackSequenceSerial || 0) + 1;
+    const speedState = syncDynamicInitiativeDefaultSession(ctx);
+    speedState.actionCount = Number(speedState.actionCount || 0) + 1;
+    speedState.lastActionSerial = Number(g.TurnSerial || 0);
+    speedState.lastSelectedUID = Number(currentUID);
+    speedState.lastSelectionReason = 'speed_multiattack_link';
+    setDynamicInitiativeDefaultCurrent(ctx, { uid: currentUID, type: 0, name: completedHero?.name || currentUID }, 'speed_multiattack_link');
+    recordTurnSchedulerEvent(ctx, 'speed_multiattack_link', { actorUID: Number(currentUID), sequenceSerial: Number(g.SpeedMultiattackSequenceSerial), actionCount: speedState.actionCount, queue: snapshotTurnOrderSlots(ctx) });
+    return;
+  }
+  if (currentType === 0 && Number(g.SpeedMultiattackLinkedActorUID || 0) === Number(currentUID || 0)) g.SpeedMultiattackLinkedActorUID = 0;
   const dynamicInitiativeCadenceEvents = [
     { event: 'action_completed', uid: Number(currentUID || 0), type: Number(currentType || 0) },
   ];
@@ -8263,18 +8282,15 @@ export function SpawnEnemy(ctx, enemyData, slotIndex = 0) {
     expValue: enemyData.expValue ?? enemyData.EXP,
     hp: Number(enemyData.HP ?? 0),
     maxHP: Number(enemyData.HP ?? enemyData.maxHP ?? 0),
-    combatPower: Number(
-      enemyData.CombatPower
-      ?? enemyData.combatPower
-      ?? computeCombatPowerFromStats(
+    combatPower: computeCombatPowerFromStats(
         enemyData.ATK,
         enemyData.DEF,
         enemyData.HP ?? enemyData.maxHP,
         enemyData.MAG,
         enemyData.RES,
-        enemyData.attackType,
+        enemyData.SPD,
+        enemyData.level ?? enemyData.currentLevel,
       ),
-    ),
     stats: {
       ATK: Number(enemyData.ATK ?? 0),
       DEF: Number(enemyData.DEF ?? 0),

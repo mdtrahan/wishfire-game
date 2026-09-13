@@ -1,5 +1,6 @@
 import {attachHeroProgress, createHeroProgressStore} from '../src/core/heroProgression.mjs';
 import { initializePersonalFlow } from '../src/core/personalFlow.mjs';
+import { computeCombatPower as canonicalCombatPower } from '../src/core/combatPower.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import {
   DEV_TOOL_EMPTY_SLOT,
@@ -16,17 +17,10 @@ function createDefaultSeededRng(seed = 1) {
   };
 }
 
-function defaultComputeCombatPower(atk, def, hp) {
-  const a = Number(atk || 0);
-  const d = Number(def || 0);
-  const h = Number(hp || 0);
-  return Math.round((a + d + (h / 10)) * 100) / 100;
-}
+function defaultComputeCombatPower(actor) { return canonicalCombatPower(actor); }
 
 export function resolveEnemyEncounterCombatPower(row, computeCombatPower = defaultComputeCombatPower) {
-  const explicit = Number(row?.EncounterCP ?? row?.encounterCP ?? row?.CombatPower ?? row?.combatPower);
-  if (Number.isFinite(explicit) && explicit > 0) return Math.round(explicit * 100) / 100;
-  return computeCombatPower(row?.ATK, row?.DEF, row?.HP);
+  return computeCombatPower({ ...row, maxHP: row?.HP ?? row?.maxHP, stats: row?.stats || row });
 }
 
 export function normalizeBiomeTags(input) {
@@ -319,7 +313,7 @@ export function createCombatSessionInitializer({
         heroCloneLabel: v.cloneLabel,
         hp,
         maxHP: partyMaxHP[i],
-        combatPower: computeCombatPower(v.ATK, v.DEF, partyMaxHP[i]),
+        combatPower: computeCombatPower({ ...v, maxHP: partyMaxHP[i], stats: { ATK: v.ATK, DEF: v.DEF, MAG: v.MAG, RES: v.RES, SPD: v.SPD } }),
         stats: {
           ATK: Number(v.ATK),
           DEF: Number(v.DEF),

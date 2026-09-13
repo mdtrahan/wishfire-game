@@ -1,9 +1,8 @@
 const number = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
-// CP is derived capability, never authored data.  It deliberately accepts the
-// former positional shape while runtime callers move to a full stat projection.
-export function computeCombatPower(actorOrAtk = {}, legacyDef = 0, legacyHp = 0) {
+// CP is derived capability, never authored data.
+export function normalizeCombatPowerActor(actorOrAtk = {}, legacyDef = 0, legacyHp = 0) {
   const actor = actorOrAtk && typeof actorOrAtk === 'object'
     ? actorOrAtk
     : { ATK: actorOrAtk, DEF: legacyDef, HP: legacyHp };
@@ -30,8 +29,15 @@ export function computeCombatPower(actorOrAtk = {}, legacyDef = 0, legacyHp = 0)
   const proc = Math.max(0, number(kit.proc));
   const af = Math.max(0, number(kit.afValue));
   const sequence = clamp(Math.floor(number(kit.sequenceActions ?? 1)), 1, 2);
-  const value = (5 * actionRate * ((expectedDirect + crit + aoe + sustain + control + proc + af) * sequence)) + (effectiveHP / 4);
-  return Math.round(value * 10) / 10;
+  return { atk, mag, def, res, hp, spd, level, expectedDirect, critChance: clamp(number(kit.critChance ?? 0.01), 0, 1), critMultiplier: clamp(number(kit.critMultiplier ?? 1.25), 1, 3), aoeDamage: Math.max(0, number(kit.aoeDamage)), extraTargets: Math.max(0, number(kit.extraTargets)), sustain, control, proc, af, sequence, actionRate, effectiveHP };
+}
+
+export function computeCombatPower(actorOrAtk = {}, legacyDef = 0, legacyHp = 0) {
+  const input=normalizeCombatPowerActor(actorOrAtk,legacyDef,legacyHp);
+  const crit=input.expectedDirect*input.critChance*(input.critMultiplier-1);
+  const aoe=input.aoeDamage*input.extraTargets;
+  const value=(5*input.actionRate*((input.expectedDirect+crit+aoe+input.sustain+input.control+input.proc+input.af)*input.sequence))+(input.effectiveHP/4);
+  return Math.round(value*10)/10;
 }
 
 export function computeEncounterCombatPower(actors = []) {

@@ -37,7 +37,7 @@ export function renderHeroScreen({equipmentProgress,canvas,gameState,fnContext,h
   const button=(parent,text,action)=>{const n=el('button',text,parent);n.type='button';n.onclick=action;return n;};
   const portrait=(owner,parent)=>{const def=heroDefinition(owner);const image=heroPortraitImages[owner.baseHeroName]||heroPortraitImages[def.key];if(image?.src){const img=el('img',null,parent);img.src=image.src;img.alt=def.name;}};
   const nav=el('nav');button(nav,'Back',onClose);
-  const identity=el('header');identity.className='identity';portrait(hero,identity);el('h1',d.name,identity);el('p',`Lv. ${hero.currentLevel} · ${d.role} · ${d.flowMode}`,identity);el('p',`CP ${computeCombatPower(hero.stats.ATK,hero.stats.DEF,hero.maxHP)}`,identity);el('p',`HP ${hero.maxHP} · ATK ${hero.stats.ATK} · AF ${Math.min(100,Math.max(0,Number(hero.flow||0)))}`,identity);
+  const identity=el('header');identity.className='identity';portrait(hero,identity);el('h1',d.name,identity);el('p',`Lv. ${hero.currentLevel} · ${d.role} · ${d.flowMode}`,identity);el('p',`CP ${computeCombatPower(hero)}`,identity);el('p',`HP ${hero.maxHP} · ATK ${hero.stats.ATK} · AF ${Math.min(100,Math.max(0,Number(hero.flow||0)))}`,identity);
   const tabs=el('nav');tabs.className='tabs';tabs.setAttribute('aria-label','Hero management');
   for(const [id,label] of [['hero','HERO'],['gear','GEAR'],['skills','SKILLS']]){const b=button(tabs,label,()=>{currentTab=id;});b.setAttribute('aria-pressed',String(currentTab===id));}
   const pane=el('div');pane.className='pane';pane.setAttribute('aria-label',`${currentTab} view`);
@@ -55,7 +55,7 @@ export function renderHeroScreen({equipmentProgress,canvas,gameState,fnContext,h
   }else{
    const categories=el('nav',null,pane);categories.className='tabs';categories.setAttribute('aria-label','Skill categories');
    for(const [id,label] of [['actives','Active'],['passives','Passive'],['special','FLOW']]){const b=button(categories,label,()=>{skillTab=id;});b.setAttribute('aria-pressed',String(skillTab===id));}
-   if(skillTab==='special'){el('h2',`${d.flowMode} · AF trait`,pane);el('h2','How FLOW builds',pane).style.marginTop='.8em';el('p',`Defeated enemies release orbs. Each orb grants ${FLOW_ORB_TUNING.limitOrbValue} FLOW to a random living hero.`,pane);}
+   if(skillTab==='special'){el('h2',`${d.flowMode} · AF trait`,pane);el('h2','How FLOW builds',pane).style.marginTop='.8em';el('p','Role actions send blue AF to the hero who earned it.',pane);}
    const entries=skillTab==='special'?[d.special]:skillTab==='actives'?d.actives:d.passives;
    for(const ability of entries){const item=el('article',null,pane);const locked=hero.currentLevel<ability.unlockLevel;if(locked)item.className='locked';el('h2',ability.displayName,item);
     if(ability.spCost!=null)el('small',ability.isFlowSpecial?'Full AF':'Action',item);
