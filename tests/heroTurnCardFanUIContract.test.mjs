@@ -99,10 +99,16 @@ test('mounts level-up cards before the opening animation can hide their first fr
     ] });
     const openingIndex = events.indexOf('section.class.add:is-opening');
     const cardMountIndex = events.findIndex(event => event === 'div.append:button');
+    const styleText = globalThis.document.head.children[0]?.textContent || '';
     assert.ok(cardMountIndex >= 0, `expected card mount event, got ${events.join(', ')}`);
     assert.ok(openingIndex >= 0, `expected opening event, got ${events.join(', ')}`);
     assert.ok(cardMountIndex < openingIndex, `cards must mount before opening animation: ${events.join(', ')}`);
+    assert.match(styleText, /#hero-turn-card-fan\.is-opening\{opacity:1;animation:none\}/,
+      'the parent stays visible while child cards perform the left-to-right reveal');
+    assert.match(styleText, /#hero-turn-card-fan\.is-closing\{animation:hero-turn-fan-close/,
+      'the parent close animation remains intact');
     assert.equal(ui.element.hidden, false);
+    assert.equal(ui.element.dataset.open, 'true');
     assert.equal(ui.element.children[0].children.length, 3);
   } finally {
     ui.destroy();

@@ -115,7 +115,7 @@ export function computeHeroTurnFanLayout({
 const STYLE = `
   #hero-turn-card-fan{position:fixed;box-sizing:border-box;width:${FAN_WIDTH}px;height:${FAN_HEIGHT}px;color:#fff;z-index:28;pointer-events:none;transform-origin:top left;font:600 12px/1.15 system-ui,sans-serif;filter:drop-shadow(0 4px 8px #000b)}
   #hero-turn-card-fan[hidden]{display:none}
-  #hero-turn-card-fan.is-opening{animation:hero-turn-fan-open 220ms cubic-bezier(.22,.8,.25,1) both}
+  #hero-turn-card-fan.is-opening{opacity:1;animation:none}
   #hero-turn-card-fan.is-closing{animation:hero-turn-fan-close 170ms ease-in both;pointer-events:none}
   @keyframes hero-turn-fan-open{from{opacity:0}to{opacity:1}}
   @keyframes hero-turn-fan-close{from{opacity:1}to{opacity:0}}
