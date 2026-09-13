@@ -88,6 +88,10 @@ import * as renderOverlays from './systems/renderOverlays.js';
 import * as renderRuntime from './systems/renderRuntime.js';
 import { createHeroCommandUI } from './systems/heroCommandUI.mjs';
 import { createHeroTurnCardFanUI } from './systems/heroTurnCardFanUI.mjs';
+import {
+  getEmbeddedJson,
+  runtimeAssetUrl,
+} from './systems/runtimeAssetUrl.mjs';
 import { chooseSessionLevelUpBuff, getSessionLevelUpBuffPresentation, updateSessionLevelUpSettlement } from './modules/sessionLevelUpBuffPresentation.mjs';
 import { heroArtKey } from './state/heroArtAssets.mjs';
 import * as partyStatOsd from './systems/partyStatOsd.js';
@@ -1085,6 +1089,8 @@ function withJsonCacheBust(url) {
 
 async function fetchJson(url){
   const requestUrl = String(url || '');
+  const embedded = getEmbeddedJson(requestUrl);
+  if (embedded !== undefined) return embedded;
   const parseResponseJson = async (res, urlForLog, categoryPrefix) => {
     try {
       return await res.json();
@@ -1181,9 +1187,8 @@ async function fetchJson(url){
   }
 }
 
-const assetBaseUrl = new URL('./assets/', import.meta.url);
 function assetUrl(path){
-  return new URL(String(path || ''), assetBaseUrl).toString();
+  return runtimeAssetUrl(path);
 }
 
 const runtimeImageBaseUrl = assetUrl('images/');

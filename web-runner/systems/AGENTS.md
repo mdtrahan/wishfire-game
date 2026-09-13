@@ -11,6 +11,7 @@
 - `superGemRuntime.js` owns supergem board/effect runtime behavior.
 - `heroProgressStorage.js` owns versioned localStorage hero EXP/progression persistence.
 - `simulationCoreShadow.js` owns WASM loading, Rust owner markers, shadow checks, and mismatch diagnostics.
+- `runtimeAssetUrl.mjs` owns document-base asset resolution and embedded offline JSON/WASM payload lookup; hosted runtime loading remains the default path.
 - `devToolingControls.js` and runtime debug helpers own QA/dev surfaces.
 
 ## Local Contracts

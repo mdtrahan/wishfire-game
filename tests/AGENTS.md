@@ -7,6 +7,7 @@
 ## Ownership
 - `*.test.js` files use Node's built-in test runner for contracts and static/runtime checks.
 - `*.spec.js` files cover browser-style flows where present.
+- `offlineBundleContract.test.js` protects the portable file:// release shape, embedded startup payloads, relative assets, manifest hashes, and separation from the hosted release.
 - `fixtures/` owns deterministic CSV cases shared by JS and Rust/WASM tests.
 
 ## Local Contracts

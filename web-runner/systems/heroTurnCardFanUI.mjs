@@ -1,4 +1,5 @@
 import { heroArtCrop, heroArtPath } from '../state/heroArtAssets.mjs';
+import { runtimeAssetUrl } from './runtimeAssetUrl.mjs';
 
 const FAN_WIDTH = 348;
 const FAN_HEIGHT = 190;
@@ -272,7 +273,7 @@ export function createHeroTurnCardFanUI({
       }
       const activeHero = state.activeHero || {};
       const portraitSrc = heroArtPath(activeHero)
-        ? new URL(`../assets/${heroArtPath(activeHero)}`, import.meta.url).toString()
+        ? runtimeAssetUrl(heroArtPath(activeHero))
         : asText(activeHero.portrait?.src);
       const portraitCrop = heroArtCrop(activeHero, 'card') || { position: '50% 24%', scale: 1.08 };
       const fallbackName = heroDisplayName(activeHero);

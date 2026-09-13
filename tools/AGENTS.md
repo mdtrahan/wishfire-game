@@ -9,6 +9,7 @@
 - `ui_presentation_lock_gate.mjs` is the canonical fail-closed rendered presentation gate for approved responsive UI seams.
 - Playwright doctor, launch matrix, and Chrome CDP helpers diagnose browser startup/control issues.
 - Rust build helper generates the browser WASM artifact.
+- `build_offline_release.mjs` reuses the hosted runtime staging pass, embeds the three startup JSON payloads and SimulationCore WASM, and emits the portable file:// artifact; it must leave the Netlify release path unchanged.
 - Hot-file, cleanup, archive, and Beads/Git visibility helpers support repo workflow.
 
 ## Local Contracts

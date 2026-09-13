@@ -1,4 +1,5 @@
 import { createSeededRngSimulationPacket } from '../src/core/seededRngRules.mjs';
+import { getEmbeddedWasmBytes } from './runtimeAssetUrl.mjs';
 
 const DEFAULT_WASM_URL = './assets/simulation_core.wasm';
 const SHADOW_STATE_KEY = '__ORKA_SIMULATION_CORE_SHADOW__';
@@ -587,6 +588,11 @@ function hasRequiredExports(exports) {
 }
 
 async function instantiateWasm(wasmUrl) {
+  const embeddedBytes = getEmbeddedWasmBytes(wasmUrl);
+  if (embeddedBytes) {
+    const result = await WebAssembly.instantiate(embeddedBytes, {});
+    return result.instance;
+  }
   if (WebAssembly.instantiateStreaming) {
     try {
       const result = await WebAssembly.instantiateStreaming(fetch(wasmUrl), {});

@@ -1,6 +1,7 @@
 import { ensureNarrativeState, getCurrentNarrativeLine } from '../src/core/narrativeRuntime.mjs';
 import { WISHFIRE_WARP_CROSSING_CONTENT } from '../src/core/wishfireWarpCrossingContent.mjs';
 import { playNarrativeAudioCue } from './narrativeAudio.mjs';
+import { runtimeAssetUrl } from './runtimeAssetUrl.mjs';
 import {
   beginNarrativeShotTransition,
   consumeNarrativeSceneAudioCue,
@@ -56,7 +57,7 @@ function resolveImage(assetRef) {
     const record = { image, loaded: false, failed: false };
     image.onload = () => { record.loaded = true; };
     image.onerror = () => { record.failed = true; };
-    image.src = new URL(`../${assetRef}`, import.meta.url).href;
+    image.src = runtimeAssetUrl(assetRef);
     imageCache.set(assetRef, record);
   }
   const record = imageCache.get(assetRef);

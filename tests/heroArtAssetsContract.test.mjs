@@ -33,7 +33,8 @@ test('battlefield consumes the cropped canonical hero source while enemy sprites
 test('action cards resolve the same full asset and apply its card crop', () => {
   const source = read('web-runner/systems/heroTurnCardFanUI.mjs');
   assert.match(source, /import \{ heroArtCrop, heroArtPath \} from '\.\.\/state\/heroArtAssets\.mjs';/);
-  assert.match(source, /new URL\(`\.\.\/assets\/\$\{heroArtPath\(activeHero\)\}`/);
+  assert.match(source, /import \{ runtimeAssetUrl \} from '\.\/runtimeAssetUrl\.mjs';/);
+  assert.match(source, /runtimeAssetUrl\(heroArtPath\(activeHero\)\)/);
   assert.match(source, /heroArtCrop\(activeHero, 'card'\)/);
   assert.match(source, /style\.objectPosition = portraitCrop\.position/);
   assert.match(source, /style\.transform = `scale\(\$\{portraitCrop\.scale\}\)`/);

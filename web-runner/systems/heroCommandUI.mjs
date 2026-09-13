@@ -3,11 +3,12 @@ import {heroDefinition} from '../src/core/heroDefinitions.mjs';
 import {canUseHeroCommand, executeHeroCommand, getHeroCommandSlots, getHeroFlowState} from '../modules/heroCommands.mjs';
 import {LOW_HP_WARNING_RATIO, settlementRowVisual} from '../modules/sessionLevelUpBuffPresentation.mjs';
 import {HERO_ART_ASSETS, heroArtKey} from '../state/heroArtAssets.mjs';
+import {runtimeAssetUrl} from './runtimeAssetUrl.mjs';
 
 const HERO_NAMES = Object.freeze({Falie: 'Fara', Fara: 'Fara', Huun: 'Hondo', Hondo: 'Hondo', Runa: 'Runa', Kojonn: 'Kaja', Kaja: 'Kaja'});
 const HERO_DISPLAY_ROLES = Object.freeze({Fara: 'TANK', Hondo: 'FIGHT', Runa: 'CTRL', Kaja: 'SUP'});
 const HERO_PORTRAIT_PATHS = Object.freeze(Object.fromEntries(
-  Object.entries(HERO_ART_ASSETS).map(([key, asset]) => [key, new URL(`../assets/${asset.path}`, import.meta.url).toString()]),
+  Object.entries(HERO_ART_ASSETS).map(([key, asset]) => [key, runtimeAssetUrl(asset.path)]),
 ));
 const HERO_PORTRAIT_CROPS = Object.freeze({
   Falie: {position: '52% 0%', scale: 4.6, width: '47%'},

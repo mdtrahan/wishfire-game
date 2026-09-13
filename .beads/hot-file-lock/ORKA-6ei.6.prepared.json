@@ -1,0 +1,13 @@
+{
+  "hot_files": {
+    "web-runner/app.js": {
+      "functions": [
+        "withJsonCacheBust",
+        "assetUrl",
+        "__MODULE__"
+      ],
+      "staged_blob": "c1fa4261f92e93c6ac5c4ab3736bdf03d371157e"
+    }
+  },
+  "issue_id": "ORKA-6ei.6"
+}
