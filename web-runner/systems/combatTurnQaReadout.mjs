@@ -164,6 +164,8 @@ export function buildCombatTurnQaReadout({
     };
   });
   const currentActor = getActorByUID(entities, currentUID);
+  const fixture = globals.DevSpeedLinkFixture || null;
+  const speedLinks = (globals.TurnSchedulerAudit?.events || []).filter(event => event?.kind === 'speed_multiattack_link');
   return {
     orderSource: order.source,
     currentUID,
@@ -175,6 +177,12 @@ export function buildCombatTurnQaReadout({
       currentUID,
     }),
     speedOrderAnswer: describeSpeedOrder(rows),
+    speedLink: fixture ? {
+      holderName: String(fixture.holderName || ''),
+      linkedSpeed: Number(fixture.linkedSpeed || 0),
+      links: speedLinks.length,
+      latchUID: Number(globals.SpeedMultiattackLinkedActorUID || 0),
+    } : null,
     rows,
   };
 }
@@ -197,6 +205,9 @@ export function renderCombatTurnQaReadoutHtml(args = {}) {
       </tr>
     `).join('')
     : '<tr><td colspan="6" style="padding:6px;border-top:1px solid #e2e8f0;color:#64748b;">No combat turn order available.</td></tr>';
+  const speedLink = readout.speedLink
+    ? `<div data-combat-turn-qa-speed-link style="color:#334155;">Speed link: ${escapeHtml(readout.speedLink.holderName)} SPD ${Math.round(readout.speedLink.linkedSpeed)}, links ${readout.speedLink.links}, latch ${readout.speedLink.latchUID || 'clear'}</div>`
+    : '';
   return `
     <section data-devtool-turn-order-qa style="display:flex;flex-direction:column;gap:8px;margin-top:14px;border-top:1px solid #cbd5e1;padding-top:12px;">
       <div style="display:flex;flex-direction:column;gap:4px;">
@@ -205,6 +216,7 @@ export function renderCombatTurnQaReadoutHtml(args = {}) {
         <div data-combat-turn-qa-current style="color:#334155;">Current: ${escapeHtml(readout.currentActorName)} (${Number(readout.currentUID || 0) || 'none'})</div>
         <div data-combat-turn-qa-reason style="color:#334155;">Why: ${escapeHtml(readout.currentTurnReason)}</div>
         <div data-combat-turn-qa-source style="color:#475569;">Visible order source: ${escapeHtml(readout.orderSource)}</div>
+        ${speedLink}
       </div>
       <table style="width:100%;min-width:0;table-layout:fixed;border-collapse:collapse;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;font-size:11px;overflow-wrap:anywhere;word-break:break-word;">
         <thead>

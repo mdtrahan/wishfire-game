@@ -6,6 +6,7 @@
 ## Ownership
 - `serve_web.js` serves the browser runner and writes `web-runner/runtime-fingerprint.js`.
 - `balance_harness.js` is the canonical batch game automation path.
+- `cp_balance_report.mjs` owns deterministic CP scaling simulations and writes bounded balance artifacts.
 - `ui_presentation_lock_gate.mjs` is the canonical fail-closed rendered presentation gate for approved responsive UI seams.
 - Playwright doctor, launch matrix, and Chrome CDP helpers diagnose browser startup/control issues.
 - Rust build helper generates the browser WASM artifact.

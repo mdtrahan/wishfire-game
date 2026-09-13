@@ -123,29 +123,36 @@ export function createDevToolingRuntime(deps = {}) {
 
   function syncConfiguredDoubleAttackHarness(cfg = ensureDevToolingConfig()) {
     const heroNames = getDevToolHeroOptions();
+    const originals = state.globals.DevSpeedLinkOriginalSPDByUID || {};
     for (const heroName of heroNames) {
       const actor = state.entities.find((entity) => entity && entity.kind === 'hero' && String(entity.name || '') === heroName);
       if (!actor) continue;
       callFunctionWithContext(fnContext, 'RemoveActorExtraTurnSkill', actor.uid);
+      if (Object.prototype.hasOwnProperty.call(originals, actor.uid) && actor.stats) actor.stats.SPD = Number(originals[actor.uid]);
     }
+    state.globals.DevSpeedLinkOriginalSPDByUID = {};
     const holderName = String(cfg.doubleAttackHeroName || '').trim();
     state.globals.DevDoubleAttackChance = Number(cfg.doubleAttackChance || 1);
     if (!holderName) {
       state.globals.DevDoubleAttackHolderName = '';
       state.globals.DevDoubleAttackHolderUID = 0;
+      state.globals.DevSpeedLinkFixture = null;
       return null;
     }
     const actor = state.entities.find((entity) => entity && entity.kind === 'hero' && String(entity.name || '') === holderName);
     if (!actor) {
       state.globals.DevDoubleAttackHolderName = '';
       state.globals.DevDoubleAttackHolderUID = 0;
+      state.globals.DevSpeedLinkFixture = null;
       return null;
     }
-    callFunctionWithContext(fnContext, 'ConfigureActorExtraTurnSkill', actor.uid, {
-      chance: Number(cfg.doubleAttackChance || 1),
-      traitId: 'double_attack',
-      skillId: 'DOUBLE_ATTACK',
-    });
+    const fastestEnemySpeed = Math.max(1, ...state.entities
+      .filter((entity) => entity && entity.kind === 'enemy' && Number(entity.hp || 0) > 0)
+      .map((entity) => Number(entity.stats?.SPD ?? entity.SPD ?? 0)));
+    const baseSpeed = Number(actor.stats?.SPD ?? actor.SPD ?? 0);
+    if (actor.stats) actor.stats.SPD = Math.max(baseSpeed, fastestEnemySpeed * 2);
+    state.globals.DevSpeedLinkOriginalSPDByUID = { [actor.uid]: baseSpeed };
+    state.globals.DevSpeedLinkFixture = { holderUID:Number(actor.uid || 0), holderName, baseSpeed, fastestEnemySpeed, linkedSpeed:Number(actor.stats?.SPD ?? actor.SPD ?? 0) };
     state.globals.DevDoubleAttackHolderName = holderName;
     state.globals.DevDoubleAttackHolderUID = Number(actor.uid || 0);
     return Number(actor.uid || 0);
@@ -457,9 +464,10 @@ export function createDevToolingRuntime(deps = {}) {
     const doubleAttackUID = syncConfiguredDoubleAttackHarness(next);
     const heroSlotsChanged = JSON.stringify(prev.heroSlots || []) !== JSON.stringify(next.heroSlots || []);
     const enemySlotsChanged = JSON.stringify(prev.enemySlots || []) !== JSON.stringify(next.enemySlots || []);
+    const speedFixtureChanged = prev.doubleAttackHeroName !== next.doubleAttackHeroName;
     const loadoutChanged = heroSlotsChanged || enemySlotsChanged;
     const orientationChanged = prev.combatOrientation !== next.combatOrientation;
-    const combatSetupChanged = loadoutChanged || orientationChanged;
+    const combatSetupChanged = loadoutChanged || orientationChanged || speedFixtureChanged;
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
       ? layoutState.getActiveLayoutId()
       : '';
@@ -471,6 +479,7 @@ export function createDevToolingRuntime(deps = {}) {
 
       }
     }
+    if (appliedSessionChange === 'combat_refresh') syncConfiguredDoubleAttackHarness(next);
     syncDevToolingDomFromConfig();
     if (closeModal) closeDevToolingModal({ restorePauseSnapshot: appliedSessionChange !== 'combat_refresh' });
     updateDevToolingStatus(
@@ -479,7 +488,7 @@ export function createDevToolingRuntime(deps = {}) {
       `Hero slots (staged): ${next.heroSlots.map((value) => value || 'Empty').join(', ')}\n` +
       `Enemy slots (staged): ${next.enemySlots.map((value) => value === DEV_TOOL_RANDOM_ENEMY_SLOT ? 'Random' : (value || 'Empty')).join(', ')}\n` +
       `Combat orientation: ${next.combatOrientation}\n` +
-      `Double Attack: ${next.doubleAttackHeroName || 'Off'}${doubleAttackUID ? ` (uid ${doubleAttackUID})` : ''}\n` +
+      `Speed Link Fixture: ${next.doubleAttackHeroName || 'Off'}${doubleAttackUID ? ` (uid ${doubleAttackUID})` : ''}\n` +
       `Reward (staged): ${next.rewardDrops || 'None'} x${next.rewardCount}\n` +
       `${combatSetupChanged ? `Combat setup applied: ${appliedSessionChange}` : 'Combat state unchanged'}`
     );
@@ -557,7 +566,7 @@ export function createDevToolingRuntime(deps = {}) {
       </div>
       <div data-devtool-button-row style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:14px;">
         <button type="button" data-devtool-apply style="border:1px solid #14532d;background:#1f8f4a;color:#fff;padding:6px 10px;border-radius:8px;font-weight:800;cursor:pointer;">Apply</button>
-        <button type="button" data-devtool-refresh style="border:1px solid #475569;background:#fff;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Save Staged</button>
+        <button type="button" data-devtool-refresh style="border:1px solid #475569;background:#fff;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Apply &amp; Refresh</button>
         <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">AutoPlay</button>
         <button type="button" data-devtool-restart style="border:1px solid #92400e;background:#fff7ed;color:#9a3412;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Restart</button>
       </div>
@@ -614,7 +623,7 @@ export function createDevToolingRuntime(deps = {}) {
         <label style="display:flex;flex-direction:column;gap:4px;">Reward Count
           <input data-devtool-reward-count type="number" min="0" max="99" step="1">
         </label>
-        <label style="display:flex;flex-direction:column;gap:4px;">Double Attack
+        <label style="display:flex;flex-direction:column;gap:4px;">Speed Link Fixture
           <select data-devtool-double-attack-hero></select>
         </label>
       </div>

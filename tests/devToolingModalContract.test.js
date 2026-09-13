@@ -62,9 +62,9 @@ test('dev tooling runtime owns modal/config while app keeps restart wiring', () 
   assert.match(src, /devToolingDom\.launcher\.addEventListener\('click', \(\) => toggleDevToolingModal\(true\)\);/);
   assert.doesNotMatch(src, /data-devtool-status/);
   assert.doesNotMatch(src, /Global runtime controls\. Hotkey:/);
-  assert.match(src, /Save Staged/);
+  assert.match(src, /Apply &amp; Refresh/);
   assert.match(src, /data-devtool-restart/);
-  assert.match(src, /Double Attack/);
+  assert.match(src, /Speed Link Fixture/);
   assert.doesNotMatch(runtimeSrc, /Skill Draw Hero UID|Force Draw|Clear Skills|data-devtool-skill-id|Skill ID Legend/);
   assert.match(src, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(src, /data-devtool-control-grid/);
@@ -94,7 +94,9 @@ test('dev tooling runtime owns modal/config while app keeps restart wiring', () 
   assert.match(src, /devToolingDom\.autoplay\.addEventListener\('click', async \(\) => \{/);
   assert.match(src, /closeDevToolingModal\(\{ restorePauseSnapshot: true \}\);/);
   assert.match(src, /function syncConfiguredDoubleAttackHarness\(cfg = ensureDevToolingConfig\(\)\)/);
-  assert.match(src, /callFunctionWithContext\(fnContext, 'ConfigureActorExtraTurnSkill', actor\.uid, \{/);
+  assert.match(src, /DevSpeedLinkFixture/);
+  assert.match(src, /fastestEnemySpeed \* 2/);
+  assert.match(src, /speedFixtureChanged/);
   assert.match(src, /if \(activeLayoutId === 'combat' && typeof devToolingRefreshHandler === 'function'\) \{/);
   assert.match(src, /await devToolingRefreshHandler\(\{ forceCombat: false, resetGame: false \}\);/);
   assert.match(src, /Combat state unchanged/);
@@ -116,7 +118,7 @@ test('dev tooling runtime owns modal/config while app keeps restart wiring', () 
   assert.doesNotMatch(src, /persistDevToolingConfig\(\{ \.\.\.resetCfg, open: false \}\);/);
   assert.doesNotMatch(src, /applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ refreshGame:/);
   assert.doesNotMatch(src, /applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ resetGame:/);
-  assert.match(src, /Double Attack: \$\{next\.doubleAttackHeroName \|\| 'Off'\}/);
+  assert.match(src, /Speed Link Fixture: \$\{next\.doubleAttackHeroName \|\| 'Off'\}/);
 
   const resetBlock = extractFunctionSource(appSrc, 'refreshCombatSessionFromDevTooling');
   assert.match(resetBlock, /if \(resetGame\) \{[\s\S]*return hardRestartRuntimeFromDevTooling\(\);[\s\S]*\}/);
@@ -307,4 +309,30 @@ test('combat end clears staged dev overrides and autoplay while preserving gold'
   assert.equal(g.DevEnemySlots.join(','), '__RANDOM__,__RANDOM__,__RANDOM__');
   assert.deepEqual(removed, ['orka.dev_tooling_config.v1']);
   assert.ok(!calls.includes('ClearSessionSkillDraught'));
+});
+
+test('Speed Link Fixture uses the existing dev selector to force one two-times-Speed threshold', async () => {
+  const vm = require('node:vm');
+  const src = fs.readFileSync(path.join(__dirname, '../web-runner/systems/devToolingRuntime.js'), 'utf8')
+    .replace(/^import .*;$/gm, '')
+    .replace(/export \{[\s\S]*?\};/, '')
+    .replace('export function createDevToolingRuntime', 'function createDevToolingRuntime');
+  const context = vm.createContext({ window: { addEventListener() {}, sessionStorage: { setItem() {} } }, document: { getElementById: () => null }, normalizeCombatOrientation: () => 'left-wise' });
+  vm.runInContext(src, context);
+  const state = { globals: { CombatOrientation: 'left-wise', DevToolingConfig: {} }, entities: [
+    { uid: 1, kind: 'hero', name: 'Hondo', hp: 40, stats: { SPD: 11 } },
+    { uid: 101, kind: 'enemy', hp: 40, stats: { SPD: 13 } },
+  ] };
+  const runtime = context.createDevToolingRuntime({
+    state, gameState: {}, CANONICAL_HERO_ROSTER: [{ name: 'Hondo' }],
+    callFunctionWithContext() {}, getLayoutState: () => ({ getActiveLayoutId: () => 'other' }),
+  });
+  await runtime.applyDevToolingConfig({ doubleAttackHeroName: 'Hondo' }, { closeModal: false });
+  assert.equal(state.entities[0].stats.SPD, 26);
+  assert.deepEqual(JSON.parse(JSON.stringify(state.globals.DevSpeedLinkFixture)), {
+    holderUID: 1, holderName: 'Hondo', baseSpeed: 11, fastestEnemySpeed: 13, linkedSpeed: 26,
+  });
+  await runtime.applyDevToolingConfig({ doubleAttackHeroName: '' }, { closeModal: false });
+  assert.equal(state.entities[0].stats.SPD, 11);
+  assert.equal(state.globals.DevSpeedLinkFixture, null);
 });

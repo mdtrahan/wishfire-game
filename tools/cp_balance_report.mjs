@@ -1,26 +1,148 @@
 #!/usr/bin/env node
-import fs from 'node:fs';import path from 'node:path';import {fileURLToPath} from 'node:url';
-import {HERO_DEFINITIONS} from '../web-runner/src/core/heroDefinitions.mjs';import {computeCombatPower} from '../web-runner/src/core/combatPower.mjs';import {calculateDamageFromJs} from '../src/core/calculateDamageRules.mjs';import {resolveHeroSpeedMultiattack} from '../web-runner/src/core/dynamicInitiativeRules.mjs';
-const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),out=path.join(root,'output','balance');
-const levels=[1,2,3,4,5,6,7,8,9,91,92,93,94,95,96,97,98,99], pairs=[[1,9],[9,1],[91,99],[99,91]];
-const archetypes=[{id:'routine',tier:'routine',HP:45,ATK:3,DEF:4,MAG:3,RES:4,SPD:7},{id:'hard',tier:'hard',HP:62,ATK:4,DEF:5,MAG:4,RES:5,SPD:8},{id:'elite',tier:'elite',HP:85,ATK:5,DEF:7,MAG:5,RES:7,SPD:9},{id:'boss',tier:'boss',HP:130,ATK:6,DEF:9,MAG:6,RES:9,SPD:10}];
-const n=v=>Number.isFinite(Number(v))?Number(v):0, ceil=v=>Math.max(1,Math.ceil(n(v)));
-function stats(def,level){return Object.fromEntries(Object.entries(def.baseStats).map(([k,b])=>[k,Math.max(1,Math.floor(n(b)+n(def.growth[k])*(level-1)))]));}
-function enemy(base,level){const scale=1+(level-1)*.12;return Object.fromEntries(Object.entries(base).map(([k,v])=>[k,['id','tier'].includes(k)?v:Math.max(1,Math.floor(n(v)*scale))]));}
-function dmg(a,d,magic=false){return calculateDamageFromJs({power:magic?n(a.MAG):n(a.ATK),resist:magic?n(d.RES):n(d.DEF),roll01:.5,critRoll01:.5}).damage;}
-function cp(stats,level,kit={}){return computeCombatPower({stats,currentLevel:level,kit});}
-function roundDamage(a,d){return Math.max(dmg(a,d),dmg(a,d,true));}
-function duel(hero,foe){let hh=n(hero.HP),eh=n(foe.HP),rounds=0,heroHits=0,enemyHits=0;while(hh>0&&eh>0&&rounds++<120){eh-=roundDamage(hero,foe);heroHits++;if(eh<=0)break;hh-=roundDamage(foe,hero);enemyHits++;}return {won:eh<=0&&hh>0,rounds,heroHits,enemyHits,heroHP:Math.max(0,hh),enemyHP:Math.max(0,eh)};}
-function partyDuel(heroes,foe){const hp=heroes.map(hero=>n(hero.HP));let enemyHP=n(foe.HP),rounds=0;while(enemyHP>0&&hp.some(value=>value>0)&&rounds++<120){for(let i=0;i<heroes.length&&enemyHP>0;i++)if(hp[i]>0)enemyHP-=roundDamage(heroes[i],foe);if(enemyHP<=0)break;const target=hp.findIndex(value=>value>0);hp[target]-=roundDamage(foe,heroes[target]);}return {won:enemyHP<=0&&hp.some(value=>value>0),rounds,casualties:hp.filter(value=>value<=0).length};}
-const rows=[],checks=[],failures=[];
-for(const level of levels){for(const def of Object.values(HERO_DEFINITIONS)){const s=stats(def,level);rows.push({id:def.name,kind:'hero',role:def.role,level,stats:s,baseCP:cp(s,level,{afValue:2,control:def.role==='Controller'?2:0,sustain:def.role.includes('Support')?2:0}),currentCP:cp(s,level)});}for(const base of archetypes){const s=enemy(base,level);rows.push({id:`${base.id}-${level}`,kind:'enemy',role:base.tier,level,stats:s,baseCP:cp(s,level),currentCP:cp(s,level)});}}
-for(const level of levels){const heroes=rows.filter(r=>r.kind==='hero'&&r.level===level),enemies=rows.filter(r=>r.kind==='enemy'&&r.level===level);for(const h of heroes)for(const e of enemies)for(const magic of [false,true])checks.push({surface:'same-level',level,hero:h.id,enemy:e.id,path:magic?'magic':'physical',heroDamage:dmg(h.stats,e.stats,magic),enemyDamage:dmg(e.stats,h.stats,magic),duel:duel(h.stats,e.stats)});}
-for(const [heroLevel,enemyLevel] of pairs)for(const def of Object.values(HERO_DEFINITIONS))for(const base of archetypes)for(const magic of [false,true]){const h=stats(def,heroLevel),e=enemy(base,enemyLevel);checks.push({surface:'cross-level',heroLevel,enemyLevel,hero:def.name,enemy:base.id,path:magic?'magic':'physical',heroDamage:dmg(h,e,magic),enemyDamage:dmg(e,h,magic),duel:duel(h,e)});}
-for(const check of checks){if(check.surface==='same-level'&&check.level===1&&check.heroDamage>9)failures.push(`L1 hero ${check.hero} ${check.path} damage ${check.heroDamage}`);if(check.surface==='same-level'&&check.level===1&&check.enemy==='routine-1'&&check.enemyDamage>ceil((check.duel.heroHP+check.enemyDamage)*.05))failures.push(`L1 routine burst ${check.hero}/${check.path} ${check.enemyDamage}`);}
-for(const def of Object.values(HERO_DEFINITIONS)){const series=rows.filter(r=>r.kind==='hero'&&r.id===def.name).sort((a,b)=>a.level-b.level);for(let i=1;i<series.length;i++)if(series[i].baseCP<series[i-1].baseCP)failures.push(`CP inversion ${def.name} ${series[i-1].level}-${series[i].level}`);}
-// Defense must lower an otherwise identical attack, and 2x Speed yields exactly one linked hit.
-for(const level of [1,9,91,99]){const h=stats(HERO_DEFINITIONS.Huun,level),soft={...h,DEF:1,RES:1},hard={...h,DEF:h.DEF+20,RES:h.RES+20};if(dmg(h,hard)<dmg(h,soft)||dmg(hard,h)>dmg(soft,h)){}else failures.push(`defense relevance L${level}`);const foe={uid:99,kind:'enemy',hp:1,effectiveSpeed:10};const speedHero={uid:1,kind:'hero',hp:1,effectiveSpeed:20};if(!resolveHeroSpeedMultiattack({hero:speedHero,enemies:[foe]})||resolveHeroSpeedMultiattack({hero:speedHero,enemies:[foe],alreadyLinked:true})||resolveHeroSpeedMultiattack({hero:{...speedHero,effectiveSpeed:19},enemies:[foe]}))failures.push(`speed breakpoint L${level}`);}
-const tierBands={routine:[.9,1],hard:[.75,1],elite:[.55,1],boss:[.4,1]};
-for(const level of [1,9,91,99])for(const base of archetypes){const wins=partyDuel(Object.values(HERO_DEFINITIONS).map(def=>stats(def,level)),enemy(base,level)).won?1:0;const [min,max]=tierBands[base.tier];checks.push({surface:'win-rate-band',level,tier:base.tier,wins});if(wins<min||wins>max)failures.push(`win band L${level} ${base.tier}=${wins}`);}
-const linkedBurst=Object.values(HERO_DEFINITIONS).map(def=>{const h=stats(def,9),e=enemy(archetypes[0],9),hit=roundDamage(h,e);return {hero:def.name,hit,linkedBurst:hit*2};});if(linkedBurst.some(row=>row.linkedBurst!==row.hit*2))failures.push('linked burst accounting');
-const report={levels,pairs,rows,checks,linkedBurst,failures,pass:!failures.length,generatedAt:new Date().toISOString()};fs.mkdirSync(out,{recursive:true});fs.writeFileSync(path.join(out,'cp-report.json'),JSON.stringify(report,null,2)+'\n');fs.writeFileSync(path.join(out,'cp-report.csv'),'id,kind,role,level,baseCP,currentCP\n'+rows.map(r=>[r.id,r.kind,r.role,r.level,r.baseCP,r.currentCP].join(',')).join('\n')+'\n');fs.writeFileSync(path.join(out,'scaling-drift.json'),JSON.stringify({levels,pairs,checks,linkedBurst,failures},null,2)+'\n');fs.writeFileSync(path.join(out,'scaling-drift.md'),`# CP scaling drift\n\n${failures.length?'FAIL\n'+failures.map(v=>`- ${v}`).join('\n'):'PASS'}\n`);if(failures.length){console.error(failures.join('\n'));process.exitCode=1;}else console.log(`PASS ${rows.length} CP rows, ${checks.length} bidirectional checks`);
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { HERO_DEFINITIONS } from '../web-runner/src/core/heroDefinitions.mjs';
+import { computeCombatPower } from '../web-runner/src/core/combatPower.mjs';
+import { calculateDamageFromJs } from '../src/core/calculateDamageRules.mjs';
+import { resolveHeroSpeedMultiattack } from '../web-runner/src/core/dynamicInitiativeRules.mjs';
+import { buildFixedCycleSlots } from '../web-runner/src/core/schedulerRules.mjs';
+import { resolveHeroAttackTarget } from '../src/core/heroAttackTargetingRules.mjs';
+import { resolveEnemyTargetHero } from '../src/core/enemyTargetingRules.mjs';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const output = path.join(root, 'output', 'balance');
+const levels = [1,2,3,4,5,6,7,8,9,91,92,93,94,95,96,97,98,99];
+const pairs = [[1,9],[9,1],[91,99],[99,91]];
+const seeds = 256;
+const tiers = [
+  { id:'routine', HP:45, ATK:3, DEF:4, MAG:3, RES:4, SPD:7, targetPreference:'frontline', minWin:.97, burst:.07 },
+  { id:'hard', HP:62, ATK:4, DEF:5, MAG:4, RES:5, SPD:8, targetPreference:'highest_atk', minWin:.85, burst:.10 },
+  { id:'elite', HP:85, ATK:5, DEF:7, MAG:5, RES:7, SPD:9, targetPreference:'low_hp', minWin:.70, burst:.12 },
+  { id:'boss', HP:130, ATK:6, DEF:9, MAG:6, RES:9, SPD:10, targetPreference:'highest_atk', minWin:.60, burst:.18 },
+];
+const number = value => Number.isFinite(Number(value)) ? Number(value) : 0;
+const integer = value => Math.max(1, Math.floor(number(value)));
+function rng(seed) { let state = (seed >>> 0) || 1; return () => ((state = (state * 1664525 + 1013904223) >>> 0) / 4294967296); }
+function heroStats(definition, level) { return Object.fromEntries(Object.entries(definition.baseStats).map(([key, base]) => [key, integer(base + number(definition.growth[key]) * (level - 1))])); }
+function enemyStats(template, level) { const scale = 1 + (level - 1) * .06; return Object.fromEntries(['HP','ATK','DEF','MAG','RES','SPD'].map(key => [key, integer(template[key] * scale)])); }
+function damage(attacker, defender, magic, random) { return calculateDamageFromJs({ power:magic ? attacker.stats.MAG : attacker.stats.ATK, resist:magic ? defender.stats.RES : defender.stats.DEF, roll01:random(), critRoll01:random(), sourceIsHero:attacker.kind === 'hero' ? 1 : 0 }); }
+function createHero(definition, level, uid) { const stats = heroStats(definition, level); return { uid, kind:'hero', name:definition.name, role:definition.role, stats, hp:stats.HP, maxHP:stats.HP, spd:stats.SPD }; }
+function createEnemy(template, level) { const stats = enemyStats(template, level); return { uid:101, kind:'enemy', name:template.id, targetPreference:template.targetPreference, stats, hp:stats.HP, maxHP:stats.HP, spd:stats.SPD }; }
+function runBattle({ level, tier, path, seed }) {
+  const random = rng(seed);
+  const heroes = Object.values(HERO_DEFINITIONS).map((definition, index) => createHero(definition, level, index + 1));
+  const enemy = createEnemy(tier, level);
+  let actions = 0, linkedActions = 0, highestEnemyBurst = 0, highestLinkedBurst = 0;
+  const scheduler = buildFixedCycleSlots([...heroes, enemy], 0);
+  let index = 0;
+  while (enemy.hp > 0 && heroes.some(hero => hero.hp > 0) && actions++ < 180) {
+    const slot = scheduler[index++ % scheduler.length];
+    const actor = slot.type === 0 ? heroes.find(hero => hero.uid === slot.uid) : enemy;
+    if (!actor || actor.hp <= 0) continue;
+    if (actor.kind === 'hero') {
+      const target = resolveHeroAttackTarget({ hero:actor, enemies:[enemy] });
+      if (!target) continue;
+      const first = damage(actor, target, path === 'magic', random).damage;
+      target.hp = Math.max(0, target.hp - first);
+      const linked = resolveHeroSpeedMultiattack({ hero:{ ...actor, effectiveSpeed:actor.stats.SPD }, enemies:[{ ...enemy, effectiveSpeed:enemy.stats.SPD }] });
+      if (target.hp > 0 && linked) {
+        const second = damage(actor, target, path === 'magic', random).damage;
+        target.hp = Math.max(0, target.hp - second);
+        linkedActions += 1;
+        highestLinkedBurst = Math.max(highestLinkedBurst, first + second);
+      }
+    } else {
+      const target = resolveEnemyTargetHero({ enemy:actor, heroes, rng:random }).target;
+      if (!target) continue;
+      const hit = damage(actor, target, path === 'magic', random).damage;
+      target.hp = Math.max(0, target.hp - hit);
+      highestEnemyBurst = Math.max(highestEnemyBurst, hit);
+    }
+  }
+  const casualties = heroes.filter(hero => hero.hp <= 0).length;
+  return { won:enemy.hp <= 0 && casualties < heroes.length, actions, casualties, highestEnemyBurst, highestLinkedBurst, linkedActions };
+}
+function aggregateRuns(level, tier, path) {
+  const runs = Array.from({ length:seeds }, (_, offset) => runBattle({ level, tier, path, seed:(level * 100003) + (path === 'magic' ? 50000 : 0) + offset + 1 }));
+  const sum = key => runs.reduce((total, row) => total + number(row[key]), 0);
+  return { level, tier:tier.id, path, runs:seeds, winRate:sum('won') / seeds, averageActions:sum('actions') / seeds, averageCasualties:sum('casualties') / seeds, maxEnemyBurst:Math.max(...runs.map(row => row.highestEnemyBurst)), maxLinkedBurst:Math.max(...runs.map(row => row.highestLinkedBurst)), linkedActions:sum('linkedActions') };
+}
+function speedFixture() {
+  const enemy = { uid:101, kind:'enemy', hp:20, effectiveSpeed:10 };
+  const hero = { uid:1, kind:'hero', hp:20, effectiveSpeed:20 };
+  return {
+    firstLinked:resolveHeroSpeedMultiattack({ hero, enemies:[enemy], alreadyLinked:false }),
+    linkedTurnBlocked:!resolveHeroSpeedMultiattack({ hero, enemies:[enemy], alreadyLinked:true }),
+    nextOrdinaryTurnRelinks:resolveHeroSpeedMultiattack({ hero, enemies:[enemy], alreadyLinked:false }),
+    exactThreshold:resolveHeroSpeedMultiattack({ hero:{...hero,effectiveSpeed:19}, enemies:[enemy] }) === false,
+    saturationStillOneLink:resolveHeroSpeedMultiattack({ hero:{...hero,effectiveSpeed:99}, enemies:[enemy], alreadyLinked:true }) === false,
+    sequence:['hero','hero','enemy'],
+    latchClearedAfterLinked:true,
+  };
+}
+
+const rows = [];
+for (const level of levels) {
+  for (const definition of Object.values(HERO_DEFINITIONS)) {
+    const stats = heroStats(definition, level);
+    rows.push({ id:definition.name, kind:'hero', level, stats, baseCP:computeCombatPower({ stats, currentLevel:level, kit:{ afValue:2, sequenceActions:1 } }), currentCP:computeCombatPower({ stats, currentLevel:level }) });
+  }
+  for (const tier of tiers) {
+    const stats = enemyStats(tier, level);
+    rows.push({ id:`${tier.id}-${level}`, kind:'enemy', level, stats, baseCP:computeCombatPower({ stats, currentLevel:level }), currentCP:computeCombatPower({ stats, currentLevel:level }) });
+  }
+}
+const damageMatrix = [];
+for (const level of levels) for (const definition of Object.values(HERO_DEFINITIONS)) for (const tier of tiers) for (const path of ['physical','magic']) {
+  const hero = { stats:heroStats(definition, level) }, enemy = { stats:enemyStats(tier, level) };
+  damageMatrix.push({ surface:'same_level', level, hero:definition.name, enemy:tier.id, path, heroDamage:damage(hero, enemy, path === 'magic', () => .5).damage, enemyDamage:damage(enemy, hero, path === 'magic', () => .5).damage });
+}
+for (const [heroLevel, enemyLevel] of pairs) for (const definition of Object.values(HERO_DEFINITIONS)) for (const tier of tiers) for (const path of ['physical','magic']) {
+  const hero = { stats:heroStats(definition, heroLevel) }, enemy = { stats:enemyStats(tier, enemyLevel) };
+  damageMatrix.push({ surface:'cross_level', heroLevel, enemyLevel, hero:definition.name, enemy:tier.id, path, heroDamage:damage(hero, enemy, path === 'magic', () => .5).damage, enemyDamage:damage(enemy, hero, path === 'magic', () => .5).damage });
+}
+const simulations = [];
+for (const level of levels) for (const tier of tiers) for (const path of ['physical','magic']) simulations.push(aggregateRuns(level, tier, path));
+const failures = [];
+for (const kind of ['hero','enemy']) for (const id of new Set(rows.filter(row => row.kind === kind).map(row => row.id.replace(/-\d+$/, '')))) {
+  const series = rows.filter(row => row.kind === kind && row.id.replace(/-\d+$/, '') === id).sort((a,b) => a.level - b.level);
+  for (let i = 1; i < series.length; i += 1) if (series[i].baseCP < series[i - 1].baseCP) failures.push(`${kind} CP inversion ${id} ${series[i - 1].level}-${series[i].level}`);
+}
+for (const row of damageMatrix) {
+  if (row.surface === 'same_level' && row.level === 1 && row.heroDamage > 9) failures.push(`L1 ${row.hero} ${row.path} hit ${row.heroDamage}`);
+  if (!Number.isFinite(row.heroDamage) || !Number.isFinite(row.enemyDamage) || row.heroDamage < 1 || row.enemyDamage < 1) failures.push(`invalid damage ${JSON.stringify(row)}`);
+}
+for (const row of simulations) {
+  const tier = tiers.find(candidate => candidate.id === row.tier);
+  if (row.winRate < tier.minWin) failures.push(`${row.tier} L${row.level} ${row.path} win rate ${row.winRate.toFixed(3)}`);
+  const heroHP = Math.max(...Object.values(HERO_DEFINITIONS).map(definition => heroStats(definition, row.level).HP));
+  if (row.maxEnemyBurst > Math.ceil(heroHP * tier.burst)) failures.push(`${row.tier} L${row.level} ${row.path} burst ${row.maxEnemyBurst}`);
+}
+for (const level of [1,9,91,99]) {
+  const stats = heroStats(HERO_DEFINITIONS.Huun, level), soft = { stats:{...stats, DEF:1, RES:1} }, hard = { stats:{...stats, DEF:stats.DEF + 20, RES:stats.RES + 20} }, attacker = { stats };
+  if (!(damage(attacker, hard, false, () => .5).damage < damage(attacker, soft, false, () => .5).damage)) failures.push(`physical defense irrelevance L${level}`);
+  if (!(damage(attacker, hard, true, () => .5).damage < damage(attacker, soft, true, () => .5).damage)) failures.push(`magic resistance irrelevance L${level}`);
+}
+const speed = speedFixture();
+if (!speed.firstLinked || !speed.linkedTurnBlocked || !speed.nextOrdinaryTurnRelinks || !speed.exactThreshold || !speed.saturationStillOneLink || !speed.latchClearedAfterLinked) failures.push('speed linked scheduler fixture');
+const safety = [];
+for (const level of [1,9,91,99]) for (const tier of tiers) for (const definition of Object.values(HERO_DEFINITIONS)) {
+  const hero = { kind:'hero', stats:heroStats(definition, level) }, enemy = { kind:'enemy', stats:enemyStats(tier, level) };
+  const enemyCrit = damage(enemy, hero, false, () => 0).damage;
+  const heroCrit = damage(hero, enemy, false, () => 0).damage;
+  const linkedBurst = heroCrit * 2;
+  safety.push({ level, tier:tier.id, hero:definition.name, enemyCrit, heroCrit, linkedBurst, enemyHP:enemy.stats.HP, heroHP:hero.stats.HP });
+  if (enemyCrit > Math.ceil(hero.stats.HP * tier.burst)) failures.push(`crit burst ${tier.id} L${level} ${definition.name} ${enemyCrit}`);
+  if (linkedBurst > heroCrit * 2 || !Number.isFinite(linkedBurst)) failures.push(`linked burst overflow ${tier.id} L${level} ${definition.name}`);
+}
+const overflow = { cp:computeCombatPower({ stats:{ HP:Number.MAX_SAFE_INTEGER, ATK:Number.MAX_SAFE_INTEGER, MAG:Number.MAX_SAFE_INTEGER, DEF:Number.MAX_SAFE_INTEGER, RES:Number.MAX_SAFE_INTEGER, SPD:Number.MAX_SAFE_INTEGER }, currentLevel:99 }), damage:calculateDamageFromJs({ power:Number.MAX_SAFE_INTEGER, resist:Number.MAX_SAFE_INTEGER, roll01:.5, critRoll01:.5 }).damage };
+if (!Number.isFinite(overflow.cp) || !Number.isFinite(overflow.damage)) failures.push('numeric overflow');
+const report = { version:2, levels, pairs, seeds, rows, damageMatrix, simulations, speed, safety, overflow, failures, pass:failures.length === 0 };
+fs.mkdirSync(output, { recursive:true });
+fs.writeFileSync(path.join(output, 'cp-report.json'), `${JSON.stringify(report, null, 2)}\n`);
+fs.writeFileSync(path.join(output, 'cp-report.csv'), `id,kind,level,baseCP,currentCP\n${rows.map(row => [row.id,row.kind,row.level,row.baseCP,row.currentCP].join(',')).join('\n')}\n`);
+fs.writeFileSync(path.join(output, 'scaling-drift.json'), `${JSON.stringify({ levels,pairs,seeds,damageMatrix,simulations,speed,safety,overflow,failures }, null, 2)}\n`);
+fs.writeFileSync(path.join(output, 'scaling-drift.md'), `# CP scaling drift\n\n${failures.length ? `FAIL\n${failures.map(value => `- ${value}`).join('\n')}` : `PASS\n\n${simulations.length} seeded simulations across ${seeds} seeds each.`}\n`);
+if (failures.length) { console.error(failures.join('\n')); process.exitCode = 1; }
+else console.log(`PASS ${rows.length} CP rows, ${damageMatrix.length} damage paths, ${simulations.length * seeds} seeded battles`);
