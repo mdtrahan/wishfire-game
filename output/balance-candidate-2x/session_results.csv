@@ -1,0 +1,7 @@
+session_id,seed,enemies_defeated,turns_survived,first_ko_side,first_ko_turn,first_ko_time,hero_casualties,deadlock_count,end_reason
+1,3235774465,2,48,enemy,6,17.82,Kojonn|Runa|Huun|Falie,0,party_defeated
+2,3235774466,3,78,enemy,8,22.657,Kojonn|Runa|Huun|Falie,0,party_defeated
+3,3235774467,3,84,enemy,9,25.123,Runa|Falie|Huun|Kojonn,0,party_defeated
+4,3235774468,4,60,enemy,5,15.378,Kojonn|Runa|Falie|Huun,0,party_defeated
+5,3235774469,2,44,enemy,8,22.648,Huun|Runa|Kojonn|Falie,0,party_defeated
+6,3235774470,2,55,hero,31,77.834,Runa|Huun|Falie|Kojonn,0,party_defeated

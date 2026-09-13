@@ -99,8 +99,8 @@ test('sparse formation slots retain their indexes and exclude slots beyond six',
   const { state, gameState } = await initialize(slots);
   assert.deepEqual(Array.from(state.entities, actor => actor.uid), [2, 6]);
   assert.deepEqual(Array.from(state.entities, actor => actor.heroDisplaySlot), [1, 5]);
-  assert.deepEqual(Array.from(gameState.partyHP), [0, 35, 0, 0, 0, 35]);
-  assert.deepEqual(Array.from(gameState.partyMaxHP), [0, 35, 0, 0, 0, 35]);
+  assert.deepEqual(Array.from(gameState.partyHP), [0, 70, 0, 0, 0, 70]);
+  assert.deepEqual(Array.from(gameState.partyMaxHP), [0, 70, 0, 0, 0, 70]);
   assert.equal(state.globals.NextUID, 7);
 });
 
@@ -111,7 +111,7 @@ test('canonical progression owns HP for every configured hero', async () => {
     member(4, { maxHP: 0, hp: 9 }), member(5, { maxHP: 30, hp: 999 }),
   ]);
   assert.deepEqual(Array.from(state.entities, actor => [actor.hp, actor.maxHP]), [
-    [46, 46], [35, 35], [30, 30], [40, 40], [46, 46], [35, 35],
+    [92, 92], [70, 70], [60, 60], [80, 80], [92, 92], [70, 70],
   ]);
 });
 

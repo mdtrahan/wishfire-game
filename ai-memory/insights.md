@@ -547,3 +547,8 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 ## 2026-09-12 - Completed Hero Actions Must Own Scheduler Handoffs
 - A deferred native action can finish after initiative has already exposed another living hero as current. Advance from the completed `ActionOwnerUID` before clearing the handoff; routing that mismatch straight to `ProcessTurn` leaves the active hero at phase 0 without a production action claim.
 - Keep the reconciliation conditional on a living enemy and living hero scheduler target. Terminal settlement and enemy-current recovery retain their existing paths.
+
+## 2026-09-13 - Balance Harnesses Must Enter Through Current Runtime Seams
+- A browser balance harness must use the current Canvas START hit target and native autoplay hook. Retired story coordinates, card waits, or gem state can make a valid runtime look unavailable.
+- Persist completed session metrics before browser teardown. Bound cleanup and retain an owned browser-process handle so a stalled close cannot erase evidence or orphan a browser.
+- Casualty variation means the first hero lost per session; counting every eventual death makes all party-loss runs look varied.

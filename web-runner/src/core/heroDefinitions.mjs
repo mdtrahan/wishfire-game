@@ -1,5 +1,5 @@
 // Initial balance tuning. Combat and the hero screen consume these same definitions.
-export const PROGRESSION = Object.freeze({ maxLevel:50, expBase:100, expExponent:1.5, maxSP:100, startingSP:100, passiveSPRegenPerTurn:5, activeLevels:[1,1,5,15,20,30,40], passiveLevels:[1,10,20,25,35,45], enemyEXP:25, enemyGold:10 });
+export const PROGRESSION = Object.freeze({ maxLevel:50, expBase:100, expExponent:1.5, heroHPScale:2, maxSP:100, startingSP:100, passiveSPRegenPerTurn:5, activeLevels:[1,1,5,15,20,30,40], passiveLevels:[1,10,20,25,35,45], enemyEXP:25, enemyGold:10 });
 export const FLOW_ORB_TUNING = Object.freeze({flowMax:100,limitOrbValue:10,limitOrbDropCount:1,releaseSeconds:.72,flightSeconds:.46,collectFlashSeconds:.18});
 export const FLOW_MODES = Object.freeze(Object.fromEntries(['Stoic','Warrior','Slayer','Healer','Tactician','Comrade','Dancer','Rook','Daredevil','Loner'].map(name=>[name,'Retired: FLOW comes from enemy-death orbs'])));
 export const COMBAT_TUNING = Object.freeze({ flowMax:FLOW_ORB_TUNING.flowMax, criticalHP:.25, blindPenalty:.35, accuracy:1, evasion:0, counterPotency:1 });
