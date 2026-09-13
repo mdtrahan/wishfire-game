@@ -5,13 +5,14 @@ import path from 'node:path';
 import { createHeroTurnCardFanUI, computeHeroTurnFanLayout, normalizeHeroTurnCards, RARITY_COLORS } from '../web-runner/systems/heroTurnCardFanUI.mjs';
 
 class FakeNode {
-  constructor(tag) {
+  constructor(tag, events = []) {
+    this.events = events;
     this.tagName = tag; this.children = []; this.dataset = {}; this.hidden = false; this.inert = false;
     this.style = { setProperty() {} };
-    this.classList = { add() {}, remove() {}, toggle() {} };
+    this.classList = { add: (...names) => names.forEach(name => { this.events.push(`${this.tagName}.class.add:${name}`); }), remove: (...names) => names.forEach(name => { this.events.push(`${this.tagName}.class.remove:${name}`); }), toggle() {} };
   }
-  append(...nodes) { this.children.push(...nodes.filter(Boolean)); }
-  replaceChildren(...nodes) { this.children = [...nodes]; }
+  append(...nodes) { this.events.push(`${this.tagName}.append:${nodes.filter(Boolean).map(node => node.tagName).join(',')}`); this.children.push(...nodes.filter(Boolean)); }
+  replaceChildren(...nodes) { this.events.push(`${this.tagName}.replaceChildren`); this.children = [...nodes]; }
   setAttribute() {}
   addEventListener() {}
   removeEventListener() {}
@@ -73,6 +74,36 @@ test('eligible reopen cancels a pending close and interrupt clears the DOM marke
     assert.equal(ui.element.hidden, false);
     assert.equal(ui.element.inert, false);
     assert.equal(ui.element.children.length, 1);
+  } finally {
+    ui.destroy();
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+  }
+});
+
+test('mounts level-up cards before the opening animation can hide their first frame', () => {
+  const previousDocument = globalThis.document;
+  const events = [];
+  globalThis.document = {
+    head: new FakeNode('head', events),
+    body: new FakeNode('body', events),
+    createElement: tag => new FakeNode(tag, events),
+  };
+  const canvas = { getBoundingClientRect: () => ({ left: 0, top: 0, width: 360, height: 640 }) };
+  const ui = createHeroTurnCardFanUI({ canvas });
+  try {
+    ui.update({ open: true, heroUID: 'falie-1', cards: [
+      { id: 'orb', name: 'Spectral Orb', rarity: 'Common', effect: 'Every 3 basics: 4 magic damage' },
+      { id: 'ward', name: 'Ward', rarity: 'Common', effect: 'DEF +10%' },
+      { id: 'flow', name: 'Inner Flow', rarity: 'Common', effect: '15%: heal 5% Max HP' },
+    ] });
+    const openingIndex = events.indexOf('section.class.add:is-opening');
+    const cardMountIndex = events.findIndex(event => event === 'div.append:button');
+    assert.ok(cardMountIndex >= 0, `expected card mount event, got ${events.join(', ')}`);
+    assert.ok(openingIndex >= 0, `expected opening event, got ${events.join(', ')}`);
+    assert.ok(cardMountIndex < openingIndex, `cards must mount before opening animation: ${events.join(', ')}`);
+    assert.equal(ui.element.hidden, false);
+    assert.equal(ui.element.children[0].children.length, 3);
   } finally {
     ui.destroy();
     if (previousDocument === undefined) delete globalThis.document;

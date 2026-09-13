@@ -362,13 +362,6 @@ export function createHeroTurnCardFanUI({
         offerToken: incomingOfferToken,
         selectedCard: source.selectedCard ?? (Number.isInteger(source.selectedIndex) ? state.cards[source.selectedIndex] : state.selectedCard),
       };
-      const rect = canvas.getBoundingClientRect();
-      const layout = computeHeroTurnFanLayout({ canvasRect: rect, layoutScale: source.layoutScale, viewportWidth: source.viewportWidth, viewportHeight: source.viewportHeight });
-      Object.assign(host.style, { left: `${layout.left}px`, top: `${layout.top}px`, transform: `scale(${layout.scale})` });
-      host.hidden = false; host.inert = false; host.classList.remove('is-closing');
-      host.dataset.open = 'true';
-      host.dataset.heroUid = asText(source.heroUID ?? source.activeHeroUID ?? state.activeHeroUID);
-      if (wasHidden) { host.classList.remove('is-opening'); void host.offsetWidth; host.classList.add('is-opening'); }
       const nextCardsSignature = JSON.stringify({
         cards: state.cards.map(card => [card.id, card.name, card.rarity, card.effect]),
         selected: state.selectedCard?.id || '',
@@ -376,7 +369,17 @@ export function createHeroTurnCardFanUI({
         hero: heroSignature(state.activeHero),
         offerToken: state.offerToken,
       });
+      // Mount the cards while the host is still hidden. This lets the opening
+      // animation see all three nodes from its first painted frame, including
+      // the faster startup path of the offline classic bundle.
       if (nextCardsSignature !== renderedCardsSignature) renderCards();
+      const rect = canvas.getBoundingClientRect();
+      const layout = computeHeroTurnFanLayout({ canvasRect: rect, layoutScale: source.layoutScale, viewportWidth: source.viewportWidth, viewportHeight: source.viewportHeight });
+      Object.assign(host.style, { left: `${layout.left}px`, top: `${layout.top}px`, transform: `scale(${layout.scale})` });
+      host.hidden = false; host.inert = false; host.classList.remove('is-closing');
+      host.dataset.open = 'true';
+      host.dataset.heroUid = asText(source.heroUID ?? source.activeHeroUID ?? state.activeHeroUID);
+      if (wasHidden) { host.classList.remove('is-opening'); void host.offsetWidth; host.classList.add('is-opening'); }
       return true;
     },
     reopen(next) {
