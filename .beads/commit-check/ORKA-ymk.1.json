@@ -1,0 +1,31 @@
+{
+  "changed_functions": {
+    "output/design-review/cp-progression-balance-plan.json": [
+      "__MODULE__"
+    ],
+    "output/design-review/cp-progression-balance-plan.md": [
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 2,
+    "staged_line_count": 1415,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    "output/design-review/cp-progression-balance-plan.json",
+    "output/design-review/cp-progression-balance-plan.md"
+  ],
+  "issue_id": "ORKA-ymk.1",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    "output/design-review/cp-progression-balance-plan.json": "b1ce0dcc1371afe2dd7686b984d508ff87be026b",
+    "output/design-review/cp-progression-balance-plan.md": "293b06c0d4a809ae342aa3ca649a76d04ad43299"
+  }
+}
