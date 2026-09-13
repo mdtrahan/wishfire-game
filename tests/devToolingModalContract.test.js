@@ -323,15 +323,18 @@ test('Speed Link Fixture uses the existing dev selector to force one two-times-S
     { uid: 1, kind: 'hero', name: 'Hondo', hp: 40, stats: { SPD: 11 } },
     { uid: 101, kind: 'enemy', hp: 40, stats: { SPD: 13 } },
   ] };
+  let refreshCalls = 0;
   const runtime = context.createDevToolingRuntime({
     state, gameState: {}, CANONICAL_HERO_ROSTER: [{ name: 'Hondo' }],
-    callFunctionWithContext() {}, getLayoutState: () => ({ getActiveLayoutId: () => 'other' }),
+    callFunctionWithContext() {}, getLayoutState: () => ({ getActiveLayoutId: () => 'combat' }),
   });
+  runtime.setRefreshHandler(async () => { refreshCalls += 1; });
   await runtime.applyDevToolingConfig({ doubleAttackHeroName: 'Hondo' }, { closeModal: false });
   assert.equal(state.entities[0].stats.SPD, 26);
   assert.deepEqual(JSON.parse(JSON.stringify(state.globals.DevSpeedLinkFixture)), {
     holderUID: 1, holderName: 'Hondo', baseSpeed: 11, fastestEnemySpeed: 13, linkedSpeed: 26,
   });
+  assert.equal(refreshCalls, 1, 'Apply & Refresh can stage Hondo through the existing Speed Link Fixture selector');
   await runtime.applyDevToolingConfig({ doubleAttackHeroName: '' }, { closeModal: false });
   assert.equal(state.entities[0].stats.SPD, 11);
   assert.equal(state.globals.DevSpeedLinkFixture, null);

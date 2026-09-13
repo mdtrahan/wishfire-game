@@ -1,4 +1,5 @@
 import { createSeededRngSimulationPacket } from '../src/core/seededRngRules.mjs';
+import { calculateDamageFromJs } from '../src/core/calculateDamageRules.mjs';
 import { getEmbeddedWasmBytes } from './runtimeAssetUrl.mjs';
 
 const DEFAULT_WASM_URL = './assets/simulation_core.wasm';
@@ -610,8 +611,7 @@ async function instantiateWasm(wasmUrl) {
 function runSingleHitOwnerStartupCheck(shadow) {
   if (!shadow || shadow.singleHitOwnerSmokeRan) return;
   shadow.singleHitOwnerSmokeRan = true;
-  createSimulationCoreSingleHitResolution({
-    source: 'simulationCore.startup.singleHitOwner',
+  const input = {
     power: 18,
     resist: 12,
     roll01: 0.5,
@@ -620,19 +620,25 @@ function runSingleHitOwnerStartupCheck(shadow) {
     heroAoe: 0,
     chainActive: 0,
     chainMultiplier: 1,
-    targetHp: 40,
-    shield: 0,
-    jsDamage: 14,
-    jsAppliedDamage: 14,
-    jsAfterHp: 26,
+  };
+  const jsDecision = calculateDamageFromJs(input);
+  const targetHp = 40;
+  const shield = 0;
+  createSimulationCoreSingleHitResolution({
+    source: 'simulationCore.startup.singleHitOwner',
+    ...input,
+    targetHp,
+    shield,
+    jsDamage: jsDecision.damage,
+    jsAppliedDamage: Math.max(0, Math.min(targetHp, jsDecision.damage - shield)),
+    jsAfterHp: Math.max(0, targetHp - Math.max(0, Math.min(targetHp, jsDecision.damage - shield))),
   });
 }
 
 function runCalculateDamageOwnerStartupCheck(shadow) {
   if (!shadow || shadow.calculateDamageOwnerSmokeRan) return;
   shadow.calculateDamageOwnerSmokeRan = true;
-  createSimulationCoreCalculateDamageResolution({
-    source: 'simulationCore.startup.calculateDamageOwner',
+  const input = {
     power: 30,
     resist: 10,
     roll01: 0.5,
@@ -641,7 +647,12 @@ function runCalculateDamageOwnerStartupCheck(shadow) {
     heroAoe: 0,
     chainActive: 0,
     chainMultiplier: 1,
-    jsDamage: 27,
+  };
+  const jsDecision = calculateDamageFromJs(input);
+  createSimulationCoreCalculateDamageResolution({
+    source: 'simulationCore.startup.calculateDamageOwner',
+    ...input,
+    jsDamage: jsDecision.damage,
   });
 }
 
