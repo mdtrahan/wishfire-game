@@ -40,7 +40,7 @@ async function setup(ready = true, enemies = []) {
 }
 
 
-function openLadder(s) {
+function enterQaNarrative(s) {
   s.gameState.storyEntry.phase = 'ladder';
 }
 test('player Start enters endless combat directly without a stage card or story scene', async () => {
@@ -76,8 +76,8 @@ test('quest QA direct combat shortcut skips story presentation and uses the exis
  assert.equal(s.gameState.storyEntry.progress.energy, energy);
  assert.equal(s.gameState.narrativeScene, undefined);
 });
-test('Skip confirmation pauses flow; Cancel retains the current card and line', async () => {
- const s = await setup(); openLadder(s); s.flow.startCard(0);
+test('QA narrative entry retains its skip controls without changing player Start', async () => {
+ const s = await setup(); enterQaNarrative(s); s.flow.startCard(0);
  s.gameState.narrativeScene.auto = true;
  assert.equal(s.flow.requestSkip(),true);
  s.flow.update(99999);
@@ -88,8 +88,8 @@ test('Skip confirmation pauses flow; Cancel retains the current card and line', 
  assert.equal(s.gameState.narrativeScene.auto,true);
  assert.equal(s.gameState.storyEntry.modal,null);
 });
-test('confirmed Skip starts internal combat; victory alone reveals next card and pays once', async () => {
- const s = await setup(); openLadder(s); s.flow.startCard(0);
+test('QA narrative completion retains its existing archival progression behavior', async () => {
+ const s = await setup(); enterQaNarrative(s); s.flow.startCard(0);
  s.flow.requestSkip(); s.flow.confirmSkip(); await flush();
  assert.equal(s.layout.getActiveLayoutId(),'combat');
  assert.equal(s.gameState.storyEntry.progress.revealed,1);
@@ -108,8 +108,8 @@ test('confirmed Skip starts internal combat; victory alone reveals next card and
  s.flow.startCard(1); s.flow.requestSkip(); s.flow.confirmSkip();
  assert.equal(s.gameState.storyEntry.progress.resources,250,'reward remains once only');
 });
-test('manual pages reach embedded combat without changing narrative text', async () => {
- const s=await setup();openLadder(s);s.flow.startCard(0);
+test('QA manual narrative pages reach embedded combat without changing narrative text', async () => {
+ const s=await setup();enterQaNarrative(s);s.flow.startCard(0);
  let pages=0;
  while(s.gameState.storyEntry.phase==='opening') {
   s.controller.advanceNarrativeScenePresentation(s.gameState,s.gameState.storyEntry.content,{forceCompleteTextFirst:false,nowSec:1000+pages});

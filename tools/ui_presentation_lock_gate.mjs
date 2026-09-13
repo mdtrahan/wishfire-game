@@ -280,7 +280,7 @@ async function readViewportMetrics(page) {
   });
 }
 
-async function captureStoryAndTown(page, viewport, artifactDir) {
+async function captureMapAndCombat(page, viewport, artifactDir) {
   await page.waitForFunction(() => window.__orkaUiLockTrace.read().some(e => e.kind === 'fillText' && e.text === 'QUESTS'));
   const story = latestText(await readTrace(page), /^QUESTS$/);
   const metrics = await readViewportMetrics(page);
@@ -290,10 +290,12 @@ async function captureStoryAndTown(page, viewport, artifactDir) {
   await page.screenshot({path:path.join(artifactDir,`${viewport.name}-01-map.png`)});
   const canvasBox = await page.locator('#view').boundingBox();
   await page.mouse.click(canvasBox.x + canvasBox.width * 184.5/360, canvasBox.y + canvasBox.height * 427/640);
-  await page.locator('#quest-ui .chapter h1').waitFor();
-  const town = await page.locator('#quest-ui .chapter h1').evaluate(el => ({text:el.textContent,font:getComputedStyle(el).font,fontSize:parseFloat(getComputedStyle(el).fontSize)}));
-  const townFontPx = town.fontSize * layoutScale;
-  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-02-ladder.png`)});
+  await page.locator('#hero-commands').waitFor();
+  const combat = await page.locator('#hero-commands').evaluate(el => ({
+    label: el.getAttribute('aria-label'),
+    heroCount: el.querySelectorAll('button').length,
+  }));
+  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-02-combat.png`)});
 
   const expectedStage = computeContainedStage(viewport);
   const pageFits = metrics.document.scrollWidth <= metrics.document.clientWidth;
@@ -332,7 +334,7 @@ async function captureStoryAndTown(page, viewport, artifactDir) {
         { scrollWidthAtMostClientWidth: true },
       ),
       invariant(
-        'stage-contained-reference-aspect',
+        'canvas-contained-reference-aspect',
         stageMatches,
         { canvas, appViewport: metrics.appViewport },
         { expectedStage, centered: true, backingMatchesDpr: true },
@@ -344,10 +346,10 @@ async function captureStoryAndTown(page, viewport, artifactDir) {
         APPROVED.text,
       ),
       invariant(
-        'chapter-text-scale',
-        within(townFontPx / layoutScale, 18, APPROVED.text.tolerancePx),
-        { text: town?.text || null, font: town?.font || null, normalizedFontPx: townFontPx / layoutScale },
-        APPROVED.text,
+        'combat-entry-landmark',
+        combat.label === 'Party status' && combat.heroCount > 0,
+        combat,
+        { label: 'Party status', heroCountAtLeast: 1 },
       ),
     ],
   };
@@ -738,7 +740,7 @@ async function runViewport(browser, baseUrl, viewport, artifactDir, { injectStag
     });
   }
   try {
-    const presentation = await captureStoryAndTown(page, viewport, artifactDir);
+    const presentation = await captureMapAndCombat(page, viewport, artifactDir);
     const panelInvariants = await captureDevPanels(page, viewport, artifactDir, presentation.metrics);
     const combatInvariants = await captureCombat(page, viewport, artifactDir);
     const commandTurnInvariants = injectStageDrift ? [] : await captureCommandTurns(page, viewport, artifactDir);
@@ -767,12 +769,12 @@ async function runRejectionProof(browser, baseUrl, artifactDir) {
     { injectStageDrift: true },
   );
   const failures = run.invariants.filter((entry) => !entry.pass);
-  const stageFailure = failures.find((entry) => entry.name === 'stage-contained-reference-aspect');
+  const canvasFailure = failures.find((entry) => entry.name === 'canvas-contained-reference-aspect');
   const panelFailure = failures.find((entry) => entry.name === 'dev-panel-1-containment');
-  if (!stageFailure || !panelFailure) {
-    throw new Error(`UI lock rejected no stage or panel drift: ${JSON.stringify(failures)}`);
+  if (!canvasFailure || !panelFailure) {
+    throw new Error(`UI lock rejected no canvas or panel drift: ${JSON.stringify(failures)}`);
   }
-  return { pass: true, expectedFailures: [stageFailure, panelFailure], allFailures: failures };
+  return { pass: true, expectedFailures: [canvasFailure, panelFailure], allFailures: failures };
 }
 
 async function runQuestViewport(browser, baseUrl, viewport, artifactDir) {

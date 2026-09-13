@@ -72,7 +72,7 @@ test('Continue returns to the same combat session and Quit clears its snapshot w
   await s.flow.navigate('Quests');
   assert.equal(s.flow.quitPausedCombat(), true);
   assert.equal(s.activeLayout, 'storyMock');
-  assert.equal(s.gameState.storyEntry.phase, 'ladder');
+  assert.equal(s.gameState.storyEntry.phase, 'map');
   assert.equal(s.gameState.storyEntry.activeCard, null);
   assert.equal(s.gameState.storyEntry.combatUnlocked, false);
   assert.equal(s.combatEnds, 0);

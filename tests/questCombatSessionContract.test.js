@@ -72,7 +72,7 @@ test('macro energy is charged only on entry and purple recovery shares the balan
  const gameState = {}; let layout = 'storyMock';
  const flow = createStoryEntryFlow({gameState,energyGlobals:globals,isReady:()=>true,
  layoutState:{getActiveLayoutId:()=>layout,requestLayoutChange:async id=>{layout=id;return true;}}});
- gameState.storyEntry.phase='ladder'; flow.startCard(0);
+ await flow.startCombatForQA();
  assert.equal(globals.Player_Energy,80);
  for (const file of ['Scripts/functionBank.js','web-runner/modules/functionBank.js']) {
   const src=fs.readFileSync(require('node:path').join(__dirname,'..',file),'utf8');
