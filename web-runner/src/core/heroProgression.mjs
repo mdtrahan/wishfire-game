@@ -7,7 +7,6 @@ export function levelStats(hero){
  const stats=Object.fromEntries(Object.entries(definition.baseStats).map(([key,base])=>[key,Math.floor(base+(definition.growth[key]||0)*((hero.currentLevel||1)-1))]));
  for(const p of unlockedPassives(hero))if(!Object.keys(p.conditions||{}).length&&p.trigger==='stat')stats[p.effect]*=1+p.magnitude;
  for(const [stat,value] of Object.entries(hero.equipmentStats||{}))if(stat in stats)stats[stat]+=value;
- stats.HP*=PROGRESSION.heroHPScale;
  return Object.fromEntries(Object.entries(stats).map(([k,v])=>[k,Math.max(1,Math.floor(v))]));
 }
 export function refreshHeroStats(hero){const stats=levelStats(hero);hero.maxHP=stats.HP;delete stats.HP;hero.stats=stats;hero.maxLevel=heroDefinition(hero)?.maxLevel||PROGRESSION.maxLevel;hero.EXPToNextLevel=expToNextLevel(hero.currentLevel,{...PROGRESSION,maxLevel:hero.maxLevel});return hero;}

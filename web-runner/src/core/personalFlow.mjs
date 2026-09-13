@@ -4,3 +4,25 @@ export const flowHeroKey=heroKey;
 export function initializePersonalFlow(heroes){for(const hero of heroes){const d=heroDefinition(hero);hero.flow=0;delete hero.sp;delete hero.spMax;hero.flowMode=d?.flowMode||'Warrior';hero.statuses=[];}}
 export function getHeroFlowState(hero){const value=Math.min(100,Math.max(0,hero.flow||0));return {value,max:100,ready:value>=100,mode:hero.flowMode||heroDefinition(hero)?.flowMode};}
 export function getHeroSkillOptions(hero){return (heroDefinition(hero)?.actives||[]).filter(s=>s.unlockLevel<=(hero.currentLevel||1));}
+
+export const ROLE_FLOW_VALUE=10;
+
+// One resolved action can award one role charge.  Callers pass aggregate action
+// facts so AoE and multi-hit never duplicate a role award.
+export function resolveRoleFlowAward({heroes=[],hero=null,event={}}={}){
+ const recipient=hero&&Number(hero.hp||0)>0?hero:null;
+ if(!recipient||Number(recipient.flow||0)>=100||event.miss||event.periodic||event.prevented||event.resisted||event.unchanged)return null;
+ const mode=recipient.flowMode||heroDefinition(recipient)?.flowMode;
+ const hostileDamage=Number(event.hostileHpDamage||0)>0;
+ const enemyDamage=Number(event.enemyHpDamage||0)>0;
+ const newStatus=event.newEligibleStatus===true;
+ const allyDamaged=Array.isArray(heroes)&&heroes.some(other=>other&&other!==recipient&&Number(other.hp||0)>0&&Number(other.uid)!==Number(recipient.uid)&&Number(event.hostileTargetUID||0)===Number(other.uid)&&hostileDamage);
+ const eligible=(mode==='Stoic'&&hostileDamage&&Number(event.hostileTargetUID||0)===Number(recipient.uid))
+  ||(mode==='Warrior'&&enemyDamage)
+  ||(mode==='Tactician'&&newStatus)
+  ||(mode==='Comrade'&&allyDamaged);
+ if(!eligible)return null;
+ const before=Math.max(0,Number(recipient.flow||0));
+ recipient.flow=Math.min(100,before+ROLE_FLOW_VALUE);
+ return {recipientUID:Number(recipient.uid||0),mode,value:recipient.flow-before,flow:recipient.flow,source:String(event.source||'role')};
+}

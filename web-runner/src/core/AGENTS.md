@@ -43,7 +43,7 @@
 - Combat SP and FLOW are independent actor balances: fresh encounters start full SP and zero FLOW; enemy defeat produces orbs only.
 
 - `heroDefinitions.mjs` is the single kit/tuning source for combat and hero detail UI. `heroProgression.mjs` owns individual EXP, stat growth and unlock evaluation; KO remains zero HP during growth.
-- `PROGRESSION.heroHPScale` is the single global hero durability seam. Apply it in `levelStats()` after HP passives and equipment so combat and hero-detail projections agree.
+- `heroDefinitions.mjs` owns role-shaped HP directly. Do not add a global hero HP multiplier; it hides role balance and breaks CP calibration.
 - `combatRules.mjs` resolves statuses, accuracy, Cover and reactions. Preserve action source ancestry, reject illegal actions before spending, and grant no routine periodic FLOW.
 
 - Hero card single-enemy actions consume the current living battlefield selection on card tap, falling back to the first living enemy. Single-ally cards retain ally selection; self and group cards resolve immediately. Resolved hero-card healing reports only its actual HP delta to presentation, while barrier visuals project from the actor-owned barrier status.

@@ -5437,15 +5437,14 @@ function calculateDamageFromJsFallback({
   const powerValue = Number(power || 0);
   const resistValue = Number(resist || 0);
   const isHero = Number(sourceIsHero || 0) === 1;
-  const roll = 0.8 + Number(roll01 || 0) * 0.4;
-  const rawDamage = isHero && Number(heroAoe || 0) !== 1
-    ? (powerValue - (resistValue * 0.35)) * roll
-    : (powerValue - resistValue / 2) * roll;
+  const roll = 0.9 + Number(roll01 || 0) * 0.2;
+  const rawDamage = (2 + (Math.max(0, powerValue) * .48)) * (20 / (20 + Math.max(0, resistValue))) * roll;
   const baseDamage = Math.max(1, Math.ceil(rawDamage));
   const crit = ApplyScaledCrit({
     baseValue: baseDamage,
-    relevantBuffTotal: powerValue,
+    relevantBuffTotal: 2.5,
     sourceType: isHero ? 'HERO' : 'ENEMY',
+    critThreshold: .01,
     rngRoll: critRoll01,
   });
   const postCritDamage = Math.max(1, Math.ceil(crit.value));

@@ -14,6 +14,7 @@
     "build:offline": "node tools/build_offline_release.mjs",
     "serve:qa": "node tools/serve_web.js --port 8000",
     "balance-harness": "node tools/balance_harness.js",
+    "balance:cp": "node tools/cp_balance_report.mjs",
     "chrome:cdp": "node tools/chrome_cdp_bootstrap.js",
     "playwright:doctor": "node tools/playwright_doctor.js",
     "playwright:launch-matrix": "node tools/playwright_launch_matrix.js"

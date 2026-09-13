@@ -56,6 +56,7 @@ function damageTarget(ctx,source,target,amount,origin){
  }
  const dealt=ctx.applyDamage(source,target,Math.max(0,Math.floor(remaining)),origin);
  const actual=Math.min(before,Math.max(0,Number(dealt)||before-target.hp));
+ if(actual>0)ctx.onDamage?.(source,target,actual,origin);
  if(target.hp<=0){if(target.kind==='enemy')dropEnemyFlowOrbs(ctx,target,origin);resolveKO(target);ctx.onKO?.(target);}
  return actual;
 }

@@ -45,33 +45,12 @@ function readFixtureCases() {
   });
 }
 
-function applyScaledCrit({ baseValue, relevantBuffTotal, sourceIsHero, critRoll01 }) {
-  const buff = Math.max(0, Number(relevantBuffTotal) || 0);
-  let critMultiplierRaw = 1.1;
-  if (buff > 0) {
-    critMultiplierRaw = Math.min(1 + (buff / 10), 3);
-  }
-  critMultiplierRaw = Math.min(3, critMultiplierRaw);
-  const critMultiplier = sourceIsHero
-    ? critMultiplierRaw
-    : 1 + ((critMultiplierRaw - 1) * 0.1);
-  return Number(critRoll01) <= 0.1 ? baseValue * critMultiplier : baseValue;
-}
-
 function computeSingleHitDamage(testCase) {
-  const roll = 0.8 + (Number(testCase.roll01) * 0.4);
+  const roll = 0.9 + (Number(testCase.roll01) * 0.2);
   const sourceIsHero = Number(testCase.sourceIsHero) === 1;
-  const heroAoe = Number(testCase.heroAoe) === 1;
-  const rawDamage = sourceIsHero && !heroAoe
-    ? Math.ceil((testCase.power - (testCase.resist * 0.35)) * roll)
-    : Math.ceil((testCase.power - (testCase.resist / 2)) * roll);
+  const rawDamage = Math.ceil((2 + (Math.max(0, testCase.power) * .48)) * (20 / (20 + Math.max(0, testCase.resist))) * roll);
   const baseDamage = Math.max(1, rawDamage);
-  let damage = Math.max(1, Math.ceil(applyScaledCrit({
-    baseValue: baseDamage,
-    relevantBuffTotal: testCase.power,
-    sourceIsHero,
-    critRoll01: testCase.critRoll01,
-  })));
+  let damage = Math.max(1, Math.ceil(Number(testCase.critRoll01) < .01 ? baseDamage * 1.25 : baseDamage));
   if (sourceIsHero && Number(testCase.chainActive) === 1) {
     damage = Math.ceil(damage * (Number(testCase.chainMultiplier) || 1));
   }

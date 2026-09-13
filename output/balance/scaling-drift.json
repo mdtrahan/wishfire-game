@@ -1,0 +1,5785 @@
+{
+  "levels": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    91,
+    92,
+    93,
+    94,
+    95,
+    96,
+    97,
+    98,
+    99
+  ],
+  "checks": [
+    {
+      "level": 1,
+      "hero": "Fara",
+      "enemy": "routine-1",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 3,
+      "heroHP": 75,
+      "enemyHP": 45
+    },
+    {
+      "level": 1,
+      "hero": "Fara",
+      "enemy": "routine-1",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 75,
+      "enemyHP": 45
+    },
+    {
+      "level": 1,
+      "hero": "Fara",
+      "enemy": "hard-1",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 3,
+      "heroHP": 75,
+      "enemyHP": 62
+    },
+    {
+      "level": 1,
+      "hero": "Fara",
+      "enemy": "hard-1",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 75,
+      "enemyHP": 62
+    },
+    {
+      "level": 1,
+      "hero": "Fara",
+      "enemy": "elite-1",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 75,
+      "enemyHP": 85
+    },
+    {
+      "level": 1,
+      "hero": "Fara",
+      "enemy": "elite-1",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 75,
+      "enemyHP": 85
+    },
+    {
+      "level": 1,
+      "hero": "Fara",
+      "enemy": "boss-1",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 75,
+      "enemyHP": 130
+    },
+    {
+      "level": 1,
+      "hero": "Fara",
+      "enemy": "boss-1",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 75,
+      "enemyHP": 130
+    },
+    {
+      "level": 1,
+      "hero": "Kaja",
+      "enemy": "routine-1",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 65,
+      "enemyHP": 45
+    },
+    {
+      "level": 1,
+      "hero": "Kaja",
+      "enemy": "routine-1",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 3,
+      "heroHP": 65,
+      "enemyHP": 45
+    },
+    {
+      "level": 1,
+      "hero": "Kaja",
+      "enemy": "hard-1",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 65,
+      "enemyHP": 62
+    },
+    {
+      "level": 1,
+      "hero": "Kaja",
+      "enemy": "hard-1",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 3,
+      "heroHP": 65,
+      "enemyHP": 62
+    },
+    {
+      "level": 1,
+      "hero": "Kaja",
+      "enemy": "elite-1",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 65,
+      "enemyHP": 85
+    },
+    {
+      "level": 1,
+      "hero": "Kaja",
+      "enemy": "elite-1",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 3,
+      "heroHP": 65,
+      "enemyHP": 85
+    },
+    {
+      "level": 1,
+      "hero": "Kaja",
+      "enemy": "boss-1",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 65,
+      "enemyHP": 130
+    },
+    {
+      "level": 1,
+      "hero": "Kaja",
+      "enemy": "boss-1",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 4,
+      "heroHP": 65,
+      "enemyHP": 130
+    },
+    {
+      "level": 1,
+      "hero": "Hondo",
+      "enemy": "routine-1",
+      "kind": "physical",
+      "heroDamage": 9,
+      "enemyDamage": 3,
+      "heroHP": 60,
+      "enemyHP": 45
+    },
+    {
+      "level": 1,
+      "hero": "Hondo",
+      "enemy": "routine-1",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 3,
+      "heroHP": 60,
+      "enemyHP": 45
+    },
+    {
+      "level": 1,
+      "hero": "Hondo",
+      "enemy": "hard-1",
+      "kind": "physical",
+      "heroDamage": 8,
+      "enemyDamage": 4,
+      "heroHP": 60,
+      "enemyHP": 62
+    },
+    {
+      "level": 1,
+      "hero": "Hondo",
+      "enemy": "hard-1",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 60,
+      "enemyHP": 62
+    },
+    {
+      "level": 1,
+      "hero": "Hondo",
+      "enemy": "elite-1",
+      "kind": "physical",
+      "heroDamage": 8,
+      "enemyDamage": 4,
+      "heroHP": 60,
+      "enemyHP": 85
+    },
+    {
+      "level": 1,
+      "hero": "Hondo",
+      "enemy": "elite-1",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 60,
+      "enemyHP": 85
+    },
+    {
+      "level": 1,
+      "hero": "Hondo",
+      "enemy": "boss-1",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 4,
+      "heroHP": 60,
+      "enemyHP": 130
+    },
+    {
+      "level": 1,
+      "hero": "Hondo",
+      "enemy": "boss-1",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 60,
+      "enemyHP": 130
+    },
+    {
+      "level": 1,
+      "hero": "Runa",
+      "enemy": "routine-1",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 3,
+      "heroHP": 60,
+      "enemyHP": 45
+    },
+    {
+      "level": 1,
+      "hero": "Runa",
+      "enemy": "routine-1",
+      "kind": "magic",
+      "heroDamage": 9,
+      "enemyDamage": 3,
+      "heroHP": 60,
+      "enemyHP": 45
+    },
+    {
+      "level": 1,
+      "hero": "Runa",
+      "enemy": "hard-1",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 60,
+      "enemyHP": 62
+    },
+    {
+      "level": 1,
+      "hero": "Runa",
+      "enemy": "hard-1",
+      "kind": "magic",
+      "heroDamage": 8,
+      "enemyDamage": 3,
+      "heroHP": 60,
+      "enemyHP": 62
+    },
+    {
+      "level": 1,
+      "hero": "Runa",
+      "enemy": "elite-1",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 60,
+      "enemyHP": 85
+    },
+    {
+      "level": 1,
+      "hero": "Runa",
+      "enemy": "elite-1",
+      "kind": "magic",
+      "heroDamage": 8,
+      "enemyDamage": 3,
+      "heroHP": 60,
+      "enemyHP": 85
+    },
+    {
+      "level": 1,
+      "hero": "Runa",
+      "enemy": "boss-1",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 60,
+      "enemyHP": 130
+    },
+    {
+      "level": 1,
+      "hero": "Runa",
+      "enemy": "boss-1",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 4,
+      "heroHP": 60,
+      "enemyHP": 130
+    },
+    {
+      "level": 2,
+      "hero": "Fara",
+      "enemy": "routine-2",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 3,
+      "heroHP": 83,
+      "enemyHP": 50
+    },
+    {
+      "level": 2,
+      "hero": "Fara",
+      "enemy": "routine-2",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 83,
+      "enemyHP": 50
+    },
+    {
+      "level": 2,
+      "hero": "Fara",
+      "enemy": "hard-2",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 3,
+      "heroHP": 83,
+      "enemyHP": 69
+    },
+    {
+      "level": 2,
+      "hero": "Fara",
+      "enemy": "hard-2",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 83,
+      "enemyHP": 69
+    },
+    {
+      "level": 2,
+      "hero": "Fara",
+      "enemy": "elite-2",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 83,
+      "enemyHP": 95
+    },
+    {
+      "level": 2,
+      "hero": "Fara",
+      "enemy": "elite-2",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 83,
+      "enemyHP": 95
+    },
+    {
+      "level": 2,
+      "hero": "Fara",
+      "enemy": "boss-2",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 83,
+      "enemyHP": 145
+    },
+    {
+      "level": 2,
+      "hero": "Fara",
+      "enemy": "boss-2",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 83,
+      "enemyHP": 145
+    },
+    {
+      "level": 2,
+      "hero": "Kaja",
+      "enemy": "routine-2",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 72,
+      "enemyHP": 50
+    },
+    {
+      "level": 2,
+      "hero": "Kaja",
+      "enemy": "routine-2",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 3,
+      "heroHP": 72,
+      "enemyHP": 50
+    },
+    {
+      "level": 2,
+      "hero": "Kaja",
+      "enemy": "hard-2",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 72,
+      "enemyHP": 69
+    },
+    {
+      "level": 2,
+      "hero": "Kaja",
+      "enemy": "hard-2",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 3,
+      "heroHP": 72,
+      "enemyHP": 69
+    },
+    {
+      "level": 2,
+      "hero": "Kaja",
+      "enemy": "elite-2",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 72,
+      "enemyHP": 95
+    },
+    {
+      "level": 2,
+      "hero": "Kaja",
+      "enemy": "elite-2",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 3,
+      "heroHP": 72,
+      "enemyHP": 95
+    },
+    {
+      "level": 2,
+      "hero": "Kaja",
+      "enemy": "boss-2",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 72,
+      "enemyHP": 145
+    },
+    {
+      "level": 2,
+      "hero": "Kaja",
+      "enemy": "boss-2",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 3,
+      "heroHP": 72,
+      "enemyHP": 145
+    },
+    {
+      "level": 2,
+      "hero": "Hondo",
+      "enemy": "routine-2",
+      "kind": "physical",
+      "heroDamage": 9,
+      "enemyDamage": 3,
+      "heroHP": 66,
+      "enemyHP": 50
+    },
+    {
+      "level": 2,
+      "hero": "Hondo",
+      "enemy": "routine-2",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 3,
+      "heroHP": 66,
+      "enemyHP": 50
+    },
+    {
+      "level": 2,
+      "hero": "Hondo",
+      "enemy": "hard-2",
+      "kind": "physical",
+      "heroDamage": 9,
+      "enemyDamage": 4,
+      "heroHP": 66,
+      "enemyHP": 69
+    },
+    {
+      "level": 2,
+      "hero": "Hondo",
+      "enemy": "hard-2",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 66,
+      "enemyHP": 69
+    },
+    {
+      "level": 2,
+      "hero": "Hondo",
+      "enemy": "elite-2",
+      "kind": "physical",
+      "heroDamage": 8,
+      "enemyDamage": 4,
+      "heroHP": 66,
+      "enemyHP": 95
+    },
+    {
+      "level": 2,
+      "hero": "Hondo",
+      "enemy": "elite-2",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 66,
+      "enemyHP": 95
+    },
+    {
+      "level": 2,
+      "hero": "Hondo",
+      "enemy": "boss-2",
+      "kind": "physical",
+      "heroDamage": 8,
+      "enemyDamage": 4,
+      "heroHP": 66,
+      "enemyHP": 145
+    },
+    {
+      "level": 2,
+      "hero": "Hondo",
+      "enemy": "boss-2",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 66,
+      "enemyHP": 145
+    },
+    {
+      "level": 2,
+      "hero": "Runa",
+      "enemy": "routine-2",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 3,
+      "heroHP": 65,
+      "enemyHP": 50
+    },
+    {
+      "level": 2,
+      "hero": "Runa",
+      "enemy": "routine-2",
+      "kind": "magic",
+      "heroDamage": 9,
+      "enemyDamage": 3,
+      "heroHP": 65,
+      "enemyHP": 50
+    },
+    {
+      "level": 2,
+      "hero": "Runa",
+      "enemy": "hard-2",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 65,
+      "enemyHP": 69
+    },
+    {
+      "level": 2,
+      "hero": "Runa",
+      "enemy": "hard-2",
+      "kind": "magic",
+      "heroDamage": 9,
+      "enemyDamage": 3,
+      "heroHP": 65,
+      "enemyHP": 69
+    },
+    {
+      "level": 2,
+      "hero": "Runa",
+      "enemy": "elite-2",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 65,
+      "enemyHP": 95
+    },
+    {
+      "level": 2,
+      "hero": "Runa",
+      "enemy": "elite-2",
+      "kind": "magic",
+      "heroDamage": 8,
+      "enemyDamage": 3,
+      "heroHP": 65,
+      "enemyHP": 95
+    },
+    {
+      "level": 2,
+      "hero": "Runa",
+      "enemy": "boss-2",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 65,
+      "enemyHP": 145
+    },
+    {
+      "level": 2,
+      "hero": "Runa",
+      "enemy": "boss-2",
+      "kind": "magic",
+      "heroDamage": 8,
+      "enemyDamage": 4,
+      "heroHP": 65,
+      "enemyHP": 145
+    },
+    {
+      "level": 3,
+      "hero": "Fara",
+      "enemy": "routine-3",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 2,
+      "heroHP": 91,
+      "enemyHP": 55
+    },
+    {
+      "level": 3,
+      "hero": "Fara",
+      "enemy": "routine-3",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 91,
+      "enemyHP": 55
+    },
+    {
+      "level": 3,
+      "hero": "Fara",
+      "enemy": "hard-3",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 3,
+      "heroHP": 91,
+      "enemyHP": 76
+    },
+    {
+      "level": 3,
+      "hero": "Fara",
+      "enemy": "hard-3",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 91,
+      "enemyHP": 76
+    },
+    {
+      "level": 3,
+      "hero": "Fara",
+      "enemy": "elite-3",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 3,
+      "heroHP": 91,
+      "enemyHP": 105
+    },
+    {
+      "level": 3,
+      "hero": "Fara",
+      "enemy": "elite-3",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 91,
+      "enemyHP": 105
+    },
+    {
+      "level": 3,
+      "hero": "Fara",
+      "enemy": "boss-3",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 91,
+      "enemyHP": 161
+    },
+    {
+      "level": 3,
+      "hero": "Fara",
+      "enemy": "boss-3",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 91,
+      "enemyHP": 161
+    },
+    {
+      "level": 3,
+      "hero": "Kaja",
+      "enemy": "routine-3",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 79,
+      "enemyHP": 55
+    },
+    {
+      "level": 3,
+      "hero": "Kaja",
+      "enemy": "routine-3",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 2,
+      "heroHP": 79,
+      "enemyHP": 55
+    },
+    {
+      "level": 3,
+      "hero": "Kaja",
+      "enemy": "hard-3",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 79,
+      "enemyHP": 76
+    },
+    {
+      "level": 3,
+      "hero": "Kaja",
+      "enemy": "hard-3",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 3,
+      "heroHP": 79,
+      "enemyHP": 76
+    },
+    {
+      "level": 3,
+      "hero": "Kaja",
+      "enemy": "elite-3",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 79,
+      "enemyHP": 105
+    },
+    {
+      "level": 3,
+      "hero": "Kaja",
+      "enemy": "elite-3",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 3,
+      "heroHP": 79,
+      "enemyHP": 105
+    },
+    {
+      "level": 3,
+      "hero": "Kaja",
+      "enemy": "boss-3",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 79,
+      "enemyHP": 161
+    },
+    {
+      "level": 3,
+      "hero": "Kaja",
+      "enemy": "boss-3",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 4,
+      "heroHP": 79,
+      "enemyHP": 161
+    },
+    {
+      "level": 3,
+      "hero": "Hondo",
+      "enemy": "routine-3",
+      "kind": "physical",
+      "heroDamage": 10,
+      "enemyDamage": 3,
+      "heroHP": 72,
+      "enemyHP": 55
+    },
+    {
+      "level": 3,
+      "hero": "Hondo",
+      "enemy": "routine-3",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 3,
+      "heroHP": 72,
+      "enemyHP": 55
+    },
+    {
+      "level": 3,
+      "hero": "Hondo",
+      "enemy": "hard-3",
+      "kind": "physical",
+      "heroDamage": 9,
+      "enemyDamage": 4,
+      "heroHP": 72,
+      "enemyHP": 76
+    },
+    {
+      "level": 3,
+      "hero": "Hondo",
+      "enemy": "hard-3",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 72,
+      "enemyHP": 76
+    },
+    {
+      "level": 3,
+      "hero": "Hondo",
+      "enemy": "elite-3",
+      "kind": "physical",
+      "heroDamage": 9,
+      "enemyDamage": 4,
+      "heroHP": 72,
+      "enemyHP": 105
+    },
+    {
+      "level": 3,
+      "hero": "Hondo",
+      "enemy": "elite-3",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 72,
+      "enemyHP": 105
+    },
+    {
+      "level": 3,
+      "hero": "Hondo",
+      "enemy": "boss-3",
+      "kind": "physical",
+      "heroDamage": 8,
+      "enemyDamage": 5,
+      "heroHP": 72,
+      "enemyHP": 161
+    },
+    {
+      "level": 3,
+      "hero": "Hondo",
+      "enemy": "boss-3",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 72,
+      "enemyHP": 161
+    },
+    {
+      "level": 3,
+      "hero": "Runa",
+      "enemy": "routine-3",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 3,
+      "heroHP": 70,
+      "enemyHP": 55
+    },
+    {
+      "level": 3,
+      "hero": "Runa",
+      "enemy": "routine-3",
+      "kind": "magic",
+      "heroDamage": 10,
+      "enemyDamage": 3,
+      "heroHP": 70,
+      "enemyHP": 55
+    },
+    {
+      "level": 3,
+      "hero": "Runa",
+      "enemy": "hard-3",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 70,
+      "enemyHP": 76
+    },
+    {
+      "level": 3,
+      "hero": "Runa",
+      "enemy": "hard-3",
+      "kind": "magic",
+      "heroDamage": 9,
+      "enemyDamage": 3,
+      "heroHP": 70,
+      "enemyHP": 76
+    },
+    {
+      "level": 3,
+      "hero": "Runa",
+      "enemy": "elite-3",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 70,
+      "enemyHP": 105
+    },
+    {
+      "level": 3,
+      "hero": "Runa",
+      "enemy": "elite-3",
+      "kind": "magic",
+      "heroDamage": 9,
+      "enemyDamage": 4,
+      "heroHP": 70,
+      "enemyHP": 105
+    },
+    {
+      "level": 3,
+      "hero": "Runa",
+      "enemy": "boss-3",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 70,
+      "enemyHP": 161
+    },
+    {
+      "level": 3,
+      "hero": "Runa",
+      "enemy": "boss-3",
+      "kind": "magic",
+      "heroDamage": 8,
+      "enemyDamage": 4,
+      "heroHP": 70,
+      "enemyHP": 161
+    },
+    {
+      "level": 4,
+      "hero": "Fara",
+      "enemy": "routine-4",
+      "kind": "physical",
+      "heroDamage": 6,
+      "enemyDamage": 3,
+      "heroHP": 99,
+      "enemyHP": 61
+    },
+    {
+      "level": 4,
+      "hero": "Fara",
+      "enemy": "routine-4",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 99,
+      "enemyHP": 61
+    },
+    {
+      "level": 4,
+      "hero": "Fara",
+      "enemy": "hard-4",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 3,
+      "heroHP": 99,
+      "enemyHP": 84
+    },
+    {
+      "level": 4,
+      "hero": "Fara",
+      "enemy": "hard-4",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 99,
+      "enemyHP": 84
+    },
+    {
+      "level": 4,
+      "hero": "Fara",
+      "enemy": "elite-4",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 3,
+      "heroHP": 99,
+      "enemyHP": 115
+    },
+    {
+      "level": 4,
+      "hero": "Fara",
+      "enemy": "elite-4",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 99,
+      "enemyHP": 115
+    },
+    {
+      "level": 4,
+      "hero": "Fara",
+      "enemy": "boss-4",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 99,
+      "enemyHP": 176
+    },
+    {
+      "level": 4,
+      "hero": "Fara",
+      "enemy": "boss-4",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 99,
+      "enemyHP": 176
+    },
+    {
+      "level": 4,
+      "hero": "Kaja",
+      "enemy": "routine-4",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 86,
+      "enemyHP": 61
+    },
+    {
+      "level": 4,
+      "hero": "Kaja",
+      "enemy": "routine-4",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 86,
+      "enemyHP": 61
+    },
+    {
+      "level": 4,
+      "hero": "Kaja",
+      "enemy": "hard-4",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 86,
+      "enemyHP": 84
+    },
+    {
+      "level": 4,
+      "hero": "Kaja",
+      "enemy": "hard-4",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 86,
+      "enemyHP": 84
+    },
+    {
+      "level": 4,
+      "hero": "Kaja",
+      "enemy": "elite-4",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 86,
+      "enemyHP": 115
+    },
+    {
+      "level": 4,
+      "hero": "Kaja",
+      "enemy": "elite-4",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 3,
+      "heroHP": 86,
+      "enemyHP": 115
+    },
+    {
+      "level": 4,
+      "hero": "Kaja",
+      "enemy": "boss-4",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 86,
+      "enemyHP": 176
+    },
+    {
+      "level": 4,
+      "hero": "Kaja",
+      "enemy": "boss-4",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 86,
+      "enemyHP": 176
+    },
+    {
+      "level": 4,
+      "hero": "Hondo",
+      "enemy": "routine-4",
+      "kind": "physical",
+      "heroDamage": 11,
+      "enemyDamage": 3,
+      "heroHP": 78,
+      "enemyHP": 61
+    },
+    {
+      "level": 4,
+      "hero": "Hondo",
+      "enemy": "routine-4",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 78,
+      "enemyHP": 61
+    },
+    {
+      "level": 4,
+      "hero": "Hondo",
+      "enemy": "hard-4",
+      "kind": "physical",
+      "heroDamage": 10,
+      "enemyDamage": 4,
+      "heroHP": 78,
+      "enemyHP": 84
+    },
+    {
+      "level": 4,
+      "hero": "Hondo",
+      "enemy": "hard-4",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 78,
+      "enemyHP": 84
+    },
+    {
+      "level": 4,
+      "hero": "Hondo",
+      "enemy": "elite-4",
+      "kind": "physical",
+      "heroDamage": 9,
+      "enemyDamage": 4,
+      "heroHP": 78,
+      "enemyHP": 115
+    },
+    {
+      "level": 4,
+      "hero": "Hondo",
+      "enemy": "elite-4",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 78,
+      "enemyHP": 115
+    },
+    {
+      "level": 4,
+      "hero": "Hondo",
+      "enemy": "boss-4",
+      "kind": "physical",
+      "heroDamage": 8,
+      "enemyDamage": 5,
+      "heroHP": 78,
+      "enemyHP": 176
+    },
+    {
+      "level": 4,
+      "hero": "Hondo",
+      "enemy": "boss-4",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 78,
+      "enemyHP": 176
+    },
+    {
+      "level": 4,
+      "hero": "Runa",
+      "enemy": "routine-4",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 75,
+      "enemyHP": 61
+    },
+    {
+      "level": 4,
+      "hero": "Runa",
+      "enemy": "routine-4",
+      "kind": "magic",
+      "heroDamage": 11,
+      "enemyDamage": 3,
+      "heroHP": 75,
+      "enemyHP": 61
+    },
+    {
+      "level": 4,
+      "hero": "Runa",
+      "enemy": "hard-4",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 75,
+      "enemyHP": 84
+    },
+    {
+      "level": 4,
+      "hero": "Runa",
+      "enemy": "hard-4",
+      "kind": "magic",
+      "heroDamage": 10,
+      "enemyDamage": 3,
+      "heroHP": 75,
+      "enemyHP": 84
+    },
+    {
+      "level": 4,
+      "hero": "Runa",
+      "enemy": "elite-4",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 75,
+      "enemyHP": 115
+    },
+    {
+      "level": 4,
+      "hero": "Runa",
+      "enemy": "elite-4",
+      "kind": "magic",
+      "heroDamage": 9,
+      "enemyDamage": 3,
+      "heroHP": 75,
+      "enemyHP": 115
+    },
+    {
+      "level": 4,
+      "hero": "Runa",
+      "enemy": "boss-4",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 75,
+      "enemyHP": 176
+    },
+    {
+      "level": 4,
+      "hero": "Runa",
+      "enemy": "boss-4",
+      "kind": "magic",
+      "heroDamage": 8,
+      "enemyDamage": 4,
+      "heroHP": 75,
+      "enemyHP": 176
+    },
+    {
+      "level": 5,
+      "hero": "Fara",
+      "enemy": "routine-5",
+      "kind": "physical",
+      "heroDamage": 6,
+      "enemyDamage": 3,
+      "heroHP": 107,
+      "enemyHP": 66
+    },
+    {
+      "level": 5,
+      "hero": "Fara",
+      "enemy": "routine-5",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 107,
+      "enemyHP": 66
+    },
+    {
+      "level": 5,
+      "hero": "Fara",
+      "enemy": "hard-5",
+      "kind": "physical",
+      "heroDamage": 6,
+      "enemyDamage": 3,
+      "heroHP": 107,
+      "enemyHP": 91
+    },
+    {
+      "level": 5,
+      "hero": "Fara",
+      "enemy": "hard-5",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 107,
+      "enemyHP": 91
+    },
+    {
+      "level": 5,
+      "hero": "Fara",
+      "enemy": "elite-5",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 3,
+      "heroHP": 107,
+      "enemyHP": 125
+    },
+    {
+      "level": 5,
+      "hero": "Fara",
+      "enemy": "elite-5",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 107,
+      "enemyHP": 125
+    },
+    {
+      "level": 5,
+      "hero": "Fara",
+      "enemy": "boss-5",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 3,
+      "heroHP": 107,
+      "enemyHP": 192
+    },
+    {
+      "level": 5,
+      "hero": "Fara",
+      "enemy": "boss-5",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 107,
+      "enemyHP": 192
+    },
+    {
+      "level": 5,
+      "hero": "Kaja",
+      "enemy": "routine-5",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 93,
+      "enemyHP": 66
+    },
+    {
+      "level": 5,
+      "hero": "Kaja",
+      "enemy": "routine-5",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 93,
+      "enemyHP": 66
+    },
+    {
+      "level": 5,
+      "hero": "Kaja",
+      "enemy": "hard-5",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 93,
+      "enemyHP": 91
+    },
+    {
+      "level": 5,
+      "hero": "Kaja",
+      "enemy": "hard-5",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 93,
+      "enemyHP": 91
+    },
+    {
+      "level": 5,
+      "hero": "Kaja",
+      "enemy": "elite-5",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 93,
+      "enemyHP": 125
+    },
+    {
+      "level": 5,
+      "hero": "Kaja",
+      "enemy": "elite-5",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 3,
+      "heroHP": 93,
+      "enemyHP": 125
+    },
+    {
+      "level": 5,
+      "hero": "Kaja",
+      "enemy": "boss-5",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 93,
+      "enemyHP": 192
+    },
+    {
+      "level": 5,
+      "hero": "Kaja",
+      "enemy": "boss-5",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 93,
+      "enemyHP": 192
+    },
+    {
+      "level": 5,
+      "hero": "Hondo",
+      "enemy": "routine-5",
+      "kind": "physical",
+      "heroDamage": 11,
+      "enemyDamage": 3,
+      "heroHP": 84,
+      "enemyHP": 66
+    },
+    {
+      "level": 5,
+      "hero": "Hondo",
+      "enemy": "routine-5",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 84,
+      "enemyHP": 66
+    },
+    {
+      "level": 5,
+      "hero": "Hondo",
+      "enemy": "hard-5",
+      "kind": "physical",
+      "heroDamage": 11,
+      "enemyDamage": 4,
+      "heroHP": 84,
+      "enemyHP": 91
+    },
+    {
+      "level": 5,
+      "hero": "Hondo",
+      "enemy": "hard-5",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 84,
+      "enemyHP": 91
+    },
+    {
+      "level": 5,
+      "hero": "Hondo",
+      "enemy": "elite-5",
+      "kind": "physical",
+      "heroDamage": 10,
+      "enemyDamage": 4,
+      "heroHP": 84,
+      "enemyHP": 125
+    },
+    {
+      "level": 5,
+      "hero": "Hondo",
+      "enemy": "elite-5",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 84,
+      "enemyHP": 125
+    },
+    {
+      "level": 5,
+      "hero": "Hondo",
+      "enemy": "boss-5",
+      "kind": "physical",
+      "heroDamage": 9,
+      "enemyDamage": 5,
+      "heroHP": 84,
+      "enemyHP": 192
+    },
+    {
+      "level": 5,
+      "hero": "Hondo",
+      "enemy": "boss-5",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 84,
+      "enemyHP": 192
+    },
+    {
+      "level": 5,
+      "hero": "Runa",
+      "enemy": "routine-5",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 80,
+      "enemyHP": 66
+    },
+    {
+      "level": 5,
+      "hero": "Runa",
+      "enemy": "routine-5",
+      "kind": "magic",
+      "heroDamage": 11,
+      "enemyDamage": 3,
+      "heroHP": 80,
+      "enemyHP": 66
+    },
+    {
+      "level": 5,
+      "hero": "Runa",
+      "enemy": "hard-5",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 80,
+      "enemyHP": 91
+    },
+    {
+      "level": 5,
+      "hero": "Runa",
+      "enemy": "hard-5",
+      "kind": "magic",
+      "heroDamage": 11,
+      "enemyDamage": 3,
+      "heroHP": 80,
+      "enemyHP": 91
+    },
+    {
+      "level": 5,
+      "hero": "Runa",
+      "enemy": "elite-5",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 80,
+      "enemyHP": 125
+    },
+    {
+      "level": 5,
+      "hero": "Runa",
+      "enemy": "elite-5",
+      "kind": "magic",
+      "heroDamage": 10,
+      "enemyDamage": 4,
+      "heroHP": 80,
+      "enemyHP": 125
+    },
+    {
+      "level": 5,
+      "hero": "Runa",
+      "enemy": "boss-5",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 80,
+      "enemyHP": 192
+    },
+    {
+      "level": 5,
+      "hero": "Runa",
+      "enemy": "boss-5",
+      "kind": "magic",
+      "heroDamage": 9,
+      "enemyDamage": 4,
+      "heroHP": 80,
+      "enemyHP": 192
+    },
+    {
+      "level": 6,
+      "hero": "Fara",
+      "enemy": "routine-6",
+      "kind": "physical",
+      "heroDamage": 6,
+      "enemyDamage": 2,
+      "heroHP": 115,
+      "enemyHP": 72
+    },
+    {
+      "level": 6,
+      "hero": "Fara",
+      "enemy": "routine-6",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 115,
+      "enemyHP": 72
+    },
+    {
+      "level": 6,
+      "hero": "Fara",
+      "enemy": "hard-6",
+      "kind": "physical",
+      "heroDamage": 6,
+      "enemyDamage": 3,
+      "heroHP": 115,
+      "enemyHP": 99
+    },
+    {
+      "level": 6,
+      "hero": "Fara",
+      "enemy": "hard-6",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 115,
+      "enemyHP": 99
+    },
+    {
+      "level": 6,
+      "hero": "Fara",
+      "enemy": "elite-6",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 3,
+      "heroHP": 115,
+      "enemyHP": 136
+    },
+    {
+      "level": 6,
+      "hero": "Fara",
+      "enemy": "elite-6",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 115,
+      "enemyHP": 136
+    },
+    {
+      "level": 6,
+      "hero": "Fara",
+      "enemy": "boss-6",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 4,
+      "heroHP": 115,
+      "enemyHP": 208
+    },
+    {
+      "level": 6,
+      "hero": "Fara",
+      "enemy": "boss-6",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 115,
+      "enemyHP": 208
+    },
+    {
+      "level": 6,
+      "hero": "Kaja",
+      "enemy": "routine-6",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 100,
+      "enemyHP": 72
+    },
+    {
+      "level": 6,
+      "hero": "Kaja",
+      "enemy": "routine-6",
+      "kind": "magic",
+      "heroDamage": 8,
+      "enemyDamage": 2,
+      "heroHP": 100,
+      "enemyHP": 72
+    },
+    {
+      "level": 6,
+      "hero": "Kaja",
+      "enemy": "hard-6",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 100,
+      "enemyHP": 99
+    },
+    {
+      "level": 6,
+      "hero": "Kaja",
+      "enemy": "hard-6",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 100,
+      "enemyHP": 99
+    },
+    {
+      "level": 6,
+      "hero": "Kaja",
+      "enemy": "elite-6",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 100,
+      "enemyHP": 136
+    },
+    {
+      "level": 6,
+      "hero": "Kaja",
+      "enemy": "elite-6",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 100,
+      "enemyHP": 136
+    },
+    {
+      "level": 6,
+      "hero": "Kaja",
+      "enemy": "boss-6",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 100,
+      "enemyHP": 208
+    },
+    {
+      "level": 6,
+      "hero": "Kaja",
+      "enemy": "boss-6",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 100,
+      "enemyHP": 208
+    },
+    {
+      "level": 6,
+      "hero": "Hondo",
+      "enemy": "routine-6",
+      "kind": "physical",
+      "heroDamage": 12,
+      "enemyDamage": 3,
+      "heroHP": 90,
+      "enemyHP": 72
+    },
+    {
+      "level": 6,
+      "hero": "Hondo",
+      "enemy": "routine-6",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 90,
+      "enemyHP": 72
+    },
+    {
+      "level": 6,
+      "hero": "Hondo",
+      "enemy": "hard-6",
+      "kind": "physical",
+      "heroDamage": 11,
+      "enemyDamage": 4,
+      "heroHP": 90,
+      "enemyHP": 99
+    },
+    {
+      "level": 6,
+      "hero": "Hondo",
+      "enemy": "hard-6",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 90,
+      "enemyHP": 99
+    },
+    {
+      "level": 6,
+      "hero": "Hondo",
+      "enemy": "elite-6",
+      "kind": "physical",
+      "heroDamage": 10,
+      "enemyDamage": 5,
+      "heroHP": 90,
+      "enemyHP": 136
+    },
+    {
+      "level": 6,
+      "hero": "Hondo",
+      "enemy": "elite-6",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 90,
+      "enemyHP": 136
+    },
+    {
+      "level": 6,
+      "hero": "Hondo",
+      "enemy": "boss-6",
+      "kind": "physical",
+      "heroDamage": 9,
+      "enemyDamage": 5,
+      "heroHP": 90,
+      "enemyHP": 208
+    },
+    {
+      "level": 6,
+      "hero": "Hondo",
+      "enemy": "boss-6",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 90,
+      "enemyHP": 208
+    },
+    {
+      "level": 6,
+      "hero": "Runa",
+      "enemy": "routine-6",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 85,
+      "enemyHP": 72
+    },
+    {
+      "level": 6,
+      "hero": "Runa",
+      "enemy": "routine-6",
+      "kind": "magic",
+      "heroDamage": 12,
+      "enemyDamage": 3,
+      "heroHP": 85,
+      "enemyHP": 72
+    },
+    {
+      "level": 6,
+      "hero": "Runa",
+      "enemy": "hard-6",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 85,
+      "enemyHP": 99
+    },
+    {
+      "level": 6,
+      "hero": "Runa",
+      "enemy": "hard-6",
+      "kind": "magic",
+      "heroDamage": 11,
+      "enemyDamage": 3,
+      "heroHP": 85,
+      "enemyHP": 99
+    },
+    {
+      "level": 6,
+      "hero": "Runa",
+      "enemy": "elite-6",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 85,
+      "enemyHP": 136
+    },
+    {
+      "level": 6,
+      "hero": "Runa",
+      "enemy": "elite-6",
+      "kind": "magic",
+      "heroDamage": 10,
+      "enemyDamage": 4,
+      "heroHP": 85,
+      "enemyHP": 136
+    },
+    {
+      "level": 6,
+      "hero": "Runa",
+      "enemy": "boss-6",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 85,
+      "enemyHP": 208
+    },
+    {
+      "level": 6,
+      "hero": "Runa",
+      "enemy": "boss-6",
+      "kind": "magic",
+      "heroDamage": 9,
+      "enemyDamage": 4,
+      "heroHP": 85,
+      "enemyHP": 208
+    },
+    {
+      "level": 7,
+      "hero": "Fara",
+      "enemy": "routine-7",
+      "kind": "physical",
+      "heroDamage": 6,
+      "enemyDamage": 3,
+      "heroHP": 123,
+      "enemyHP": 77
+    },
+    {
+      "level": 7,
+      "hero": "Fara",
+      "enemy": "routine-7",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 123,
+      "enemyHP": 77
+    },
+    {
+      "level": 7,
+      "hero": "Fara",
+      "enemy": "hard-7",
+      "kind": "physical",
+      "heroDamage": 6,
+      "enemyDamage": 3,
+      "heroHP": 123,
+      "enemyHP": 106
+    },
+    {
+      "level": 7,
+      "hero": "Fara",
+      "enemy": "hard-7",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 123,
+      "enemyHP": 106
+    },
+    {
+      "level": 7,
+      "hero": "Fara",
+      "enemy": "elite-7",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 3,
+      "heroHP": 123,
+      "enemyHP": 146
+    },
+    {
+      "level": 7,
+      "hero": "Fara",
+      "enemy": "elite-7",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 123,
+      "enemyHP": 146
+    },
+    {
+      "level": 7,
+      "hero": "Fara",
+      "enemy": "boss-7",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 4,
+      "heroHP": 123,
+      "enemyHP": 223
+    },
+    {
+      "level": 7,
+      "hero": "Fara",
+      "enemy": "boss-7",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 123,
+      "enemyHP": 223
+    },
+    {
+      "level": 7,
+      "hero": "Kaja",
+      "enemy": "routine-7",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 107,
+      "enemyHP": 77
+    },
+    {
+      "level": 7,
+      "hero": "Kaja",
+      "enemy": "routine-7",
+      "kind": "magic",
+      "heroDamage": 8,
+      "enemyDamage": 3,
+      "heroHP": 107,
+      "enemyHP": 77
+    },
+    {
+      "level": 7,
+      "hero": "Kaja",
+      "enemy": "hard-7",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 107,
+      "enemyHP": 106
+    },
+    {
+      "level": 7,
+      "hero": "Kaja",
+      "enemy": "hard-7",
+      "kind": "magic",
+      "heroDamage": 8,
+      "enemyDamage": 3,
+      "heroHP": 107,
+      "enemyHP": 106
+    },
+    {
+      "level": 7,
+      "hero": "Kaja",
+      "enemy": "elite-7",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 107,
+      "enemyHP": 146
+    },
+    {
+      "level": 7,
+      "hero": "Kaja",
+      "enemy": "elite-7",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 107,
+      "enemyHP": 146
+    },
+    {
+      "level": 7,
+      "hero": "Kaja",
+      "enemy": "boss-7",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 107,
+      "enemyHP": 223
+    },
+    {
+      "level": 7,
+      "hero": "Kaja",
+      "enemy": "boss-7",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 107,
+      "enemyHP": 223
+    },
+    {
+      "level": 7,
+      "hero": "Hondo",
+      "enemy": "routine-7",
+      "kind": "physical",
+      "heroDamage": 12,
+      "enemyDamage": 4,
+      "heroHP": 96,
+      "enemyHP": 77
+    },
+    {
+      "level": 7,
+      "hero": "Hondo",
+      "enemy": "routine-7",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 96,
+      "enemyHP": 77
+    },
+    {
+      "level": 7,
+      "hero": "Hondo",
+      "enemy": "hard-7",
+      "kind": "physical",
+      "heroDamage": 12,
+      "enemyDamage": 4,
+      "heroHP": 96,
+      "enemyHP": 106
+    },
+    {
+      "level": 7,
+      "hero": "Hondo",
+      "enemy": "hard-7",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 96,
+      "enemyHP": 106
+    },
+    {
+      "level": 7,
+      "hero": "Hondo",
+      "enemy": "elite-7",
+      "kind": "physical",
+      "heroDamage": 10,
+      "enemyDamage": 5,
+      "heroHP": 96,
+      "enemyHP": 146
+    },
+    {
+      "level": 7,
+      "hero": "Hondo",
+      "enemy": "elite-7",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 96,
+      "enemyHP": 146
+    },
+    {
+      "level": 7,
+      "hero": "Hondo",
+      "enemy": "boss-7",
+      "kind": "physical",
+      "heroDamage": 9,
+      "enemyDamage": 5,
+      "heroHP": 96,
+      "enemyHP": 223
+    },
+    {
+      "level": 7,
+      "hero": "Hondo",
+      "enemy": "boss-7",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 6,
+      "heroHP": 96,
+      "enemyHP": 223
+    },
+    {
+      "level": 7,
+      "hero": "Runa",
+      "enemy": "routine-7",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 90,
+      "enemyHP": 77
+    },
+    {
+      "level": 7,
+      "hero": "Runa",
+      "enemy": "routine-7",
+      "kind": "magic",
+      "heroDamage": 12,
+      "enemyDamage": 3,
+      "heroHP": 90,
+      "enemyHP": 77
+    },
+    {
+      "level": 7,
+      "hero": "Runa",
+      "enemy": "hard-7",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 4,
+      "heroHP": 90,
+      "enemyHP": 106
+    },
+    {
+      "level": 7,
+      "hero": "Runa",
+      "enemy": "hard-7",
+      "kind": "magic",
+      "heroDamage": 12,
+      "enemyDamage": 3,
+      "heroHP": 90,
+      "enemyHP": 106
+    },
+    {
+      "level": 7,
+      "hero": "Runa",
+      "enemy": "elite-7",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 90,
+      "enemyHP": 146
+    },
+    {
+      "level": 7,
+      "hero": "Runa",
+      "enemy": "elite-7",
+      "kind": "magic",
+      "heroDamage": 10,
+      "enemyDamage": 4,
+      "heroHP": 90,
+      "enemyHP": 146
+    },
+    {
+      "level": 7,
+      "hero": "Runa",
+      "enemy": "boss-7",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 90,
+      "enemyHP": 223
+    },
+    {
+      "level": 7,
+      "hero": "Runa",
+      "enemy": "boss-7",
+      "kind": "magic",
+      "heroDamage": 9,
+      "enemyDamage": 4,
+      "heroHP": 90,
+      "enemyHP": 223
+    },
+    {
+      "level": 8,
+      "hero": "Fara",
+      "enemy": "routine-8",
+      "kind": "physical",
+      "heroDamage": 6,
+      "enemyDamage": 2,
+      "heroHP": 131,
+      "enemyHP": 82
+    },
+    {
+      "level": 8,
+      "hero": "Fara",
+      "enemy": "routine-8",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 131,
+      "enemyHP": 82
+    },
+    {
+      "level": 8,
+      "hero": "Fara",
+      "enemy": "hard-8",
+      "kind": "physical",
+      "heroDamage": 6,
+      "enemyDamage": 3,
+      "heroHP": 131,
+      "enemyHP": 114
+    },
+    {
+      "level": 8,
+      "hero": "Fara",
+      "enemy": "hard-8",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 131,
+      "enemyHP": 114
+    },
+    {
+      "level": 8,
+      "hero": "Fara",
+      "enemy": "elite-8",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 3,
+      "heroHP": 131,
+      "enemyHP": 156
+    },
+    {
+      "level": 8,
+      "hero": "Fara",
+      "enemy": "elite-8",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 131,
+      "enemyHP": 156
+    },
+    {
+      "level": 8,
+      "hero": "Fara",
+      "enemy": "boss-8",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 4,
+      "heroHP": 131,
+      "enemyHP": 239
+    },
+    {
+      "level": 8,
+      "hero": "Fara",
+      "enemy": "boss-8",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 131,
+      "enemyHP": 239
+    },
+    {
+      "level": 8,
+      "hero": "Kaja",
+      "enemy": "routine-8",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 114,
+      "enemyHP": 82
+    },
+    {
+      "level": 8,
+      "hero": "Kaja",
+      "enemy": "routine-8",
+      "kind": "magic",
+      "heroDamage": 8,
+      "enemyDamage": 3,
+      "heroHP": 114,
+      "enemyHP": 82
+    },
+    {
+      "level": 8,
+      "hero": "Kaja",
+      "enemy": "hard-8",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 114,
+      "enemyHP": 114
+    },
+    {
+      "level": 8,
+      "hero": "Kaja",
+      "enemy": "hard-8",
+      "kind": "magic",
+      "heroDamage": 8,
+      "enemyDamage": 3,
+      "heroHP": 114,
+      "enemyHP": 114
+    },
+    {
+      "level": 8,
+      "hero": "Kaja",
+      "enemy": "elite-8",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 114,
+      "enemyHP": 156
+    },
+    {
+      "level": 8,
+      "hero": "Kaja",
+      "enemy": "elite-8",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 114,
+      "enemyHP": 156
+    },
+    {
+      "level": 8,
+      "hero": "Kaja",
+      "enemy": "boss-8",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 114,
+      "enemyHP": 239
+    },
+    {
+      "level": 8,
+      "hero": "Kaja",
+      "enemy": "boss-8",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 114,
+      "enemyHP": 239
+    },
+    {
+      "level": 8,
+      "hero": "Hondo",
+      "enemy": "routine-8",
+      "kind": "physical",
+      "heroDamage": 13,
+      "enemyDamage": 4,
+      "heroHP": 102,
+      "enemyHP": 82
+    },
+    {
+      "level": 8,
+      "hero": "Hondo",
+      "enemy": "routine-8",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 102,
+      "enemyHP": 82
+    },
+    {
+      "level": 8,
+      "hero": "Hondo",
+      "enemy": "hard-8",
+      "kind": "physical",
+      "heroDamage": 12,
+      "enemyDamage": 4,
+      "heroHP": 102,
+      "enemyHP": 114
+    },
+    {
+      "level": 8,
+      "hero": "Hondo",
+      "enemy": "hard-8",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 102,
+      "enemyHP": 114
+    },
+    {
+      "level": 8,
+      "hero": "Hondo",
+      "enemy": "elite-8",
+      "kind": "physical",
+      "heroDamage": 11,
+      "enemyDamage": 5,
+      "heroHP": 102,
+      "enemyHP": 156
+    },
+    {
+      "level": 8,
+      "hero": "Hondo",
+      "enemy": "elite-8",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 102,
+      "enemyHP": 156
+    },
+    {
+      "level": 8,
+      "hero": "Hondo",
+      "enemy": "boss-8",
+      "kind": "physical",
+      "heroDamage": 10,
+      "enemyDamage": 6,
+      "heroHP": 102,
+      "enemyHP": 239
+    },
+    {
+      "level": 8,
+      "hero": "Hondo",
+      "enemy": "boss-8",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 6,
+      "heroHP": 102,
+      "enemyHP": 239
+    },
+    {
+      "level": 8,
+      "hero": "Runa",
+      "enemy": "routine-8",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 95,
+      "enemyHP": 82
+    },
+    {
+      "level": 8,
+      "hero": "Runa",
+      "enemy": "routine-8",
+      "kind": "magic",
+      "heroDamage": 13,
+      "enemyDamage": 3,
+      "heroHP": 95,
+      "enemyHP": 82
+    },
+    {
+      "level": 8,
+      "hero": "Runa",
+      "enemy": "hard-8",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 95,
+      "enemyHP": 114
+    },
+    {
+      "level": 8,
+      "hero": "Runa",
+      "enemy": "hard-8",
+      "kind": "magic",
+      "heroDamage": 12,
+      "enemyDamage": 3,
+      "heroHP": 95,
+      "enemyHP": 114
+    },
+    {
+      "level": 8,
+      "hero": "Runa",
+      "enemy": "elite-8",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 95,
+      "enemyHP": 156
+    },
+    {
+      "level": 8,
+      "hero": "Runa",
+      "enemy": "elite-8",
+      "kind": "magic",
+      "heroDamage": 11,
+      "enemyDamage": 4,
+      "heroHP": 95,
+      "enemyHP": 156
+    },
+    {
+      "level": 8,
+      "hero": "Runa",
+      "enemy": "boss-8",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 6,
+      "heroHP": 95,
+      "enemyHP": 239
+    },
+    {
+      "level": 8,
+      "hero": "Runa",
+      "enemy": "boss-8",
+      "kind": "magic",
+      "heroDamage": 10,
+      "enemyDamage": 4,
+      "heroHP": 95,
+      "enemyHP": 239
+    },
+    {
+      "level": 9,
+      "hero": "Fara",
+      "enemy": "routine-9",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 2,
+      "heroHP": 139,
+      "enemyHP": 88
+    },
+    {
+      "level": 9,
+      "hero": "Fara",
+      "enemy": "routine-9",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 139,
+      "enemyHP": 88
+    },
+    {
+      "level": 9,
+      "hero": "Fara",
+      "enemy": "hard-9",
+      "kind": "physical",
+      "heroDamage": 6,
+      "enemyDamage": 3,
+      "heroHP": 139,
+      "enemyHP": 121
+    },
+    {
+      "level": 9,
+      "hero": "Fara",
+      "enemy": "hard-9",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 139,
+      "enemyHP": 121
+    },
+    {
+      "level": 9,
+      "hero": "Fara",
+      "enemy": "elite-9",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 3,
+      "heroHP": 139,
+      "enemyHP": 166
+    },
+    {
+      "level": 9,
+      "hero": "Fara",
+      "enemy": "elite-9",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 139,
+      "enemyHP": 166
+    },
+    {
+      "level": 9,
+      "hero": "Fara",
+      "enemy": "boss-9",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 4,
+      "heroHP": 139,
+      "enemyHP": 254
+    },
+    {
+      "level": 9,
+      "hero": "Fara",
+      "enemy": "boss-9",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 139,
+      "enemyHP": 254
+    },
+    {
+      "level": 9,
+      "hero": "Kaja",
+      "enemy": "routine-9",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 3,
+      "heroHP": 121,
+      "enemyHP": 88
+    },
+    {
+      "level": 9,
+      "hero": "Kaja",
+      "enemy": "routine-9",
+      "kind": "magic",
+      "heroDamage": 9,
+      "enemyDamage": 2,
+      "heroHP": 121,
+      "enemyHP": 88
+    },
+    {
+      "level": 9,
+      "hero": "Kaja",
+      "enemy": "hard-9",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 121,
+      "enemyHP": 121
+    },
+    {
+      "level": 9,
+      "hero": "Kaja",
+      "enemy": "hard-9",
+      "kind": "magic",
+      "heroDamage": 8,
+      "enemyDamage": 3,
+      "heroHP": 121,
+      "enemyHP": 121
+    },
+    {
+      "level": 9,
+      "hero": "Kaja",
+      "enemy": "elite-9",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 121,
+      "enemyHP": 166
+    },
+    {
+      "level": 9,
+      "hero": "Kaja",
+      "enemy": "elite-9",
+      "kind": "magic",
+      "heroDamage": 8,
+      "enemyDamage": 3,
+      "heroHP": 121,
+      "enemyHP": 166
+    },
+    {
+      "level": 9,
+      "hero": "Kaja",
+      "enemy": "boss-9",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 121,
+      "enemyHP": 254
+    },
+    {
+      "level": 9,
+      "hero": "Kaja",
+      "enemy": "boss-9",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 4,
+      "heroHP": 121,
+      "enemyHP": 254
+    },
+    {
+      "level": 9,
+      "hero": "Hondo",
+      "enemy": "routine-9",
+      "kind": "physical",
+      "heroDamage": 13,
+      "enemyDamage": 3,
+      "heroHP": 108,
+      "enemyHP": 88
+    },
+    {
+      "level": 9,
+      "hero": "Hondo",
+      "enemy": "routine-9",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 108,
+      "enemyHP": 88
+    },
+    {
+      "level": 9,
+      "hero": "Hondo",
+      "enemy": "hard-9",
+      "kind": "physical",
+      "heroDamage": 12,
+      "enemyDamage": 4,
+      "heroHP": 108,
+      "enemyHP": 121
+    },
+    {
+      "level": 9,
+      "hero": "Hondo",
+      "enemy": "hard-9",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 108,
+      "enemyHP": 121
+    },
+    {
+      "level": 9,
+      "hero": "Hondo",
+      "enemy": "elite-9",
+      "kind": "physical",
+      "heroDamage": 11,
+      "enemyDamage": 5,
+      "heroHP": 108,
+      "enemyHP": 166
+    },
+    {
+      "level": 9,
+      "hero": "Hondo",
+      "enemy": "elite-9",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 108,
+      "enemyHP": 166
+    },
+    {
+      "level": 9,
+      "hero": "Hondo",
+      "enemy": "boss-9",
+      "kind": "physical",
+      "heroDamage": 10,
+      "enemyDamage": 5,
+      "heroHP": 108,
+      "enemyHP": 254
+    },
+    {
+      "level": 9,
+      "hero": "Hondo",
+      "enemy": "boss-9",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 6,
+      "heroHP": 108,
+      "enemyHP": 254
+    },
+    {
+      "level": 9,
+      "hero": "Runa",
+      "enemy": "routine-9",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 100,
+      "enemyHP": 88
+    },
+    {
+      "level": 9,
+      "hero": "Runa",
+      "enemy": "routine-9",
+      "kind": "magic",
+      "heroDamage": 13,
+      "enemyDamage": 3,
+      "heroHP": 100,
+      "enemyHP": 88
+    },
+    {
+      "level": 9,
+      "hero": "Runa",
+      "enemy": "hard-9",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 4,
+      "heroHP": 100,
+      "enemyHP": 121
+    },
+    {
+      "level": 9,
+      "hero": "Runa",
+      "enemy": "hard-9",
+      "kind": "magic",
+      "heroDamage": 12,
+      "enemyDamage": 3,
+      "heroHP": 100,
+      "enemyHP": 121
+    },
+    {
+      "level": 9,
+      "hero": "Runa",
+      "enemy": "elite-9",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 5,
+      "heroHP": 100,
+      "enemyHP": 166
+    },
+    {
+      "level": 9,
+      "hero": "Runa",
+      "enemy": "elite-9",
+      "kind": "magic",
+      "heroDamage": 11,
+      "enemyDamage": 4,
+      "heroHP": 100,
+      "enemyHP": 166
+    },
+    {
+      "level": 9,
+      "hero": "Runa",
+      "enemy": "boss-9",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 6,
+      "heroHP": 100,
+      "enemyHP": 254
+    },
+    {
+      "level": 9,
+      "hero": "Runa",
+      "enemy": "boss-9",
+      "kind": "magic",
+      "heroDamage": 10,
+      "enemyDamage": 4,
+      "heroHP": 100,
+      "enemyHP": 254
+    },
+    {
+      "level": 91,
+      "hero": "Fara",
+      "enemy": "routine-91",
+      "kind": "physical",
+      "heroDamage": 12,
+      "enemyDamage": 2,
+      "heroHP": 795,
+      "enemyHP": 531
+    },
+    {
+      "level": 91,
+      "hero": "Fara",
+      "enemy": "routine-91",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 795,
+      "enemyHP": 531
+    },
+    {
+      "level": 91,
+      "hero": "Fara",
+      "enemy": "hard-91",
+      "kind": "physical",
+      "heroDamage": 11,
+      "enemyDamage": 3,
+      "heroHP": 795,
+      "enemyHP": 731
+    },
+    {
+      "level": 91,
+      "hero": "Fara",
+      "enemy": "hard-91",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 795,
+      "enemyHP": 731
+    },
+    {
+      "level": 91,
+      "hero": "Fara",
+      "enemy": "elite-91",
+      "kind": "physical",
+      "heroDamage": 8,
+      "enemyDamage": 4,
+      "heroHP": 795,
+      "enemyHP": 1002
+    },
+    {
+      "level": 91,
+      "hero": "Fara",
+      "enemy": "elite-91",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 795,
+      "enemyHP": 1002
+    },
+    {
+      "level": 91,
+      "hero": "Fara",
+      "enemy": "boss-91",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 4,
+      "heroHP": 795,
+      "enemyHP": 1533
+    },
+    {
+      "level": 91,
+      "hero": "Fara",
+      "enemy": "boss-91",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 6,
+      "heroHP": 795,
+      "enemyHP": 1533
+    },
+    {
+      "level": 91,
+      "hero": "Kaja",
+      "enemy": "routine-91",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 695,
+      "enemyHP": 531
+    },
+    {
+      "level": 91,
+      "hero": "Kaja",
+      "enemy": "routine-91",
+      "kind": "magic",
+      "heroDamage": 20,
+      "enemyDamage": 3,
+      "heroHP": 695,
+      "enemyHP": 531
+    },
+    {
+      "level": 91,
+      "hero": "Kaja",
+      "enemy": "hard-91",
+      "kind": "physical",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 695,
+      "enemyHP": 731
+    },
+    {
+      "level": 91,
+      "hero": "Kaja",
+      "enemy": "hard-91",
+      "kind": "magic",
+      "heroDamage": 18,
+      "enemyDamage": 3,
+      "heroHP": 695,
+      "enemyHP": 731
+    },
+    {
+      "level": 91,
+      "hero": "Kaja",
+      "enemy": "elite-91",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 695,
+      "enemyHP": 1002
+    },
+    {
+      "level": 91,
+      "hero": "Kaja",
+      "enemy": "elite-91",
+      "kind": "magic",
+      "heroDamage": 14,
+      "enemyDamage": 4,
+      "heroHP": 695,
+      "enemyHP": 1002
+    },
+    {
+      "level": 91,
+      "hero": "Kaja",
+      "enemy": "boss-91",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 6,
+      "heroHP": 695,
+      "enemyHP": 1533
+    },
+    {
+      "level": 91,
+      "hero": "Kaja",
+      "enemy": "boss-91",
+      "kind": "magic",
+      "heroDamage": 11,
+      "enemyDamage": 4,
+      "heroHP": 695,
+      "enemyHP": 1533
+    },
+    {
+      "level": 91,
+      "hero": "Hondo",
+      "enemy": "routine-91",
+      "kind": "physical",
+      "heroDamage": 30,
+      "enemyDamage": 5,
+      "heroHP": 600,
+      "enemyHP": 531
+    },
+    {
+      "level": 91,
+      "hero": "Hondo",
+      "enemy": "routine-91",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 600,
+      "enemyHP": 531
+    },
+    {
+      "level": 91,
+      "hero": "Hondo",
+      "enemy": "hard-91",
+      "kind": "physical",
+      "heroDamage": 26,
+      "enemyDamage": 6,
+      "heroHP": 600,
+      "enemyHP": 731
+    },
+    {
+      "level": 91,
+      "hero": "Hondo",
+      "enemy": "hard-91",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 7,
+      "heroHP": 600,
+      "enemyHP": 731
+    },
+    {
+      "level": 91,
+      "hero": "Hondo",
+      "enemy": "elite-91",
+      "kind": "physical",
+      "heroDamage": 20,
+      "enemyDamage": 7,
+      "heroHP": 600,
+      "enemyHP": 1002
+    },
+    {
+      "level": 91,
+      "hero": "Hondo",
+      "enemy": "elite-91",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 8,
+      "heroHP": 600,
+      "enemyHP": 1002
+    },
+    {
+      "level": 91,
+      "hero": "Hondo",
+      "enemy": "boss-91",
+      "kind": "physical",
+      "heroDamage": 16,
+      "enemyDamage": 9,
+      "heroHP": 600,
+      "enemyHP": 1533
+    },
+    {
+      "level": 91,
+      "hero": "Hondo",
+      "enemy": "boss-91",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 10,
+      "heroHP": 600,
+      "enemyHP": 1533
+    },
+    {
+      "level": 91,
+      "hero": "Runa",
+      "enemy": "routine-91",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 510,
+      "enemyHP": 531
+    },
+    {
+      "level": 91,
+      "hero": "Runa",
+      "enemy": "routine-91",
+      "kind": "magic",
+      "heroDamage": 30,
+      "enemyDamage": 3,
+      "heroHP": 510,
+      "enemyHP": 531
+    },
+    {
+      "level": 91,
+      "hero": "Runa",
+      "enemy": "hard-91",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 6,
+      "heroHP": 510,
+      "enemyHP": 731
+    },
+    {
+      "level": 91,
+      "hero": "Runa",
+      "enemy": "hard-91",
+      "kind": "magic",
+      "heroDamage": 26,
+      "enemyDamage": 4,
+      "heroHP": 510,
+      "enemyHP": 731
+    },
+    {
+      "level": 91,
+      "hero": "Runa",
+      "enemy": "elite-91",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 7,
+      "heroHP": 510,
+      "enemyHP": 1002
+    },
+    {
+      "level": 91,
+      "hero": "Runa",
+      "enemy": "elite-91",
+      "kind": "magic",
+      "heroDamage": 20,
+      "enemyDamage": 4,
+      "heroHP": 510,
+      "enemyHP": 1002
+    },
+    {
+      "level": 91,
+      "hero": "Runa",
+      "enemy": "boss-91",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 9,
+      "heroHP": 510,
+      "enemyHP": 1533
+    },
+    {
+      "level": 91,
+      "hero": "Runa",
+      "enemy": "boss-91",
+      "kind": "magic",
+      "heroDamage": 16,
+      "enemyDamage": 5,
+      "heroHP": 510,
+      "enemyHP": 1533
+    },
+    {
+      "level": 92,
+      "hero": "Fara",
+      "enemy": "routine-92",
+      "kind": "physical",
+      "heroDamage": 12,
+      "enemyDamage": 2,
+      "heroHP": 803,
+      "enemyHP": 536
+    },
+    {
+      "level": 92,
+      "hero": "Fara",
+      "enemy": "routine-92",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 803,
+      "enemyHP": 536
+    },
+    {
+      "level": 92,
+      "hero": "Fara",
+      "enemy": "hard-92",
+      "kind": "physical",
+      "heroDamage": 11,
+      "enemyDamage": 3,
+      "heroHP": 803,
+      "enemyHP": 739
+    },
+    {
+      "level": 92,
+      "hero": "Fara",
+      "enemy": "hard-92",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 803,
+      "enemyHP": 739
+    },
+    {
+      "level": 92,
+      "hero": "Fara",
+      "enemy": "elite-92",
+      "kind": "physical",
+      "heroDamage": 8,
+      "enemyDamage": 4,
+      "heroHP": 803,
+      "enemyHP": 1013
+    },
+    {
+      "level": 92,
+      "hero": "Fara",
+      "enemy": "elite-92",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 803,
+      "enemyHP": 1013
+    },
+    {
+      "level": 92,
+      "hero": "Fara",
+      "enemy": "boss-92",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 4,
+      "heroHP": 803,
+      "enemyHP": 1549
+    },
+    {
+      "level": 92,
+      "hero": "Fara",
+      "enemy": "boss-92",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 6,
+      "heroHP": 803,
+      "enemyHP": 1549
+    },
+    {
+      "level": 92,
+      "hero": "Kaja",
+      "enemy": "routine-92",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 702,
+      "enemyHP": 536
+    },
+    {
+      "level": 92,
+      "hero": "Kaja",
+      "enemy": "routine-92",
+      "kind": "magic",
+      "heroDamage": 21,
+      "enemyDamage": 3,
+      "heroHP": 702,
+      "enemyHP": 536
+    },
+    {
+      "level": 92,
+      "hero": "Kaja",
+      "enemy": "hard-92",
+      "kind": "physical",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 702,
+      "enemyHP": 739
+    },
+    {
+      "level": 92,
+      "hero": "Kaja",
+      "enemy": "hard-92",
+      "kind": "magic",
+      "heroDamage": 18,
+      "enemyDamage": 3,
+      "heroHP": 702,
+      "enemyHP": 739
+    },
+    {
+      "level": 92,
+      "hero": "Kaja",
+      "enemy": "elite-92",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 702,
+      "enemyHP": 1013
+    },
+    {
+      "level": 92,
+      "hero": "Kaja",
+      "enemy": "elite-92",
+      "kind": "magic",
+      "heroDamage": 14,
+      "enemyDamage": 4,
+      "heroHP": 702,
+      "enemyHP": 1013
+    },
+    {
+      "level": 92,
+      "hero": "Kaja",
+      "enemy": "boss-92",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 6,
+      "heroHP": 702,
+      "enemyHP": 1549
+    },
+    {
+      "level": 92,
+      "hero": "Kaja",
+      "enemy": "boss-92",
+      "kind": "magic",
+      "heroDamage": 11,
+      "enemyDamage": 4,
+      "heroHP": 702,
+      "enemyHP": 1549
+    },
+    {
+      "level": 92,
+      "hero": "Hondo",
+      "enemy": "routine-92",
+      "kind": "physical",
+      "heroDamage": 31,
+      "enemyDamage": 5,
+      "heroHP": 606,
+      "enemyHP": 536
+    },
+    {
+      "level": 92,
+      "hero": "Hondo",
+      "enemy": "routine-92",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 606,
+      "enemyHP": 536
+    },
+    {
+      "level": 92,
+      "hero": "Hondo",
+      "enemy": "hard-92",
+      "kind": "physical",
+      "heroDamage": 26,
+      "enemyDamage": 6,
+      "heroHP": 606,
+      "enemyHP": 739
+    },
+    {
+      "level": 92,
+      "hero": "Hondo",
+      "enemy": "hard-92",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 7,
+      "heroHP": 606,
+      "enemyHP": 739
+    },
+    {
+      "level": 92,
+      "hero": "Hondo",
+      "enemy": "elite-92",
+      "kind": "physical",
+      "heroDamage": 20,
+      "enemyDamage": 7,
+      "heroHP": 606,
+      "enemyHP": 1013
+    },
+    {
+      "level": 92,
+      "hero": "Hondo",
+      "enemy": "elite-92",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 8,
+      "heroHP": 606,
+      "enemyHP": 1013
+    },
+    {
+      "level": 92,
+      "hero": "Hondo",
+      "enemy": "boss-92",
+      "kind": "physical",
+      "heroDamage": 16,
+      "enemyDamage": 9,
+      "heroHP": 606,
+      "enemyHP": 1549
+    },
+    {
+      "level": 92,
+      "hero": "Hondo",
+      "enemy": "boss-92",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 10,
+      "heroHP": 606,
+      "enemyHP": 1549
+    },
+    {
+      "level": 92,
+      "hero": "Runa",
+      "enemy": "routine-92",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 515,
+      "enemyHP": 536
+    },
+    {
+      "level": 92,
+      "hero": "Runa",
+      "enemy": "routine-92",
+      "kind": "magic",
+      "heroDamage": 31,
+      "enemyDamage": 3,
+      "heroHP": 515,
+      "enemyHP": 536
+    },
+    {
+      "level": 92,
+      "hero": "Runa",
+      "enemy": "hard-92",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 6,
+      "heroHP": 515,
+      "enemyHP": 739
+    },
+    {
+      "level": 92,
+      "hero": "Runa",
+      "enemy": "hard-92",
+      "kind": "magic",
+      "heroDamage": 26,
+      "enemyDamage": 4,
+      "heroHP": 515,
+      "enemyHP": 739
+    },
+    {
+      "level": 92,
+      "hero": "Runa",
+      "enemy": "elite-92",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 7,
+      "heroHP": 515,
+      "enemyHP": 1013
+    },
+    {
+      "level": 92,
+      "hero": "Runa",
+      "enemy": "elite-92",
+      "kind": "magic",
+      "heroDamage": 20,
+      "enemyDamage": 4,
+      "heroHP": 515,
+      "enemyHP": 1013
+    },
+    {
+      "level": 92,
+      "hero": "Runa",
+      "enemy": "boss-92",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 9,
+      "heroHP": 515,
+      "enemyHP": 1549
+    },
+    {
+      "level": 92,
+      "hero": "Runa",
+      "enemy": "boss-92",
+      "kind": "magic",
+      "heroDamage": 16,
+      "enemyDamage": 5,
+      "heroHP": 515,
+      "enemyHP": 1549
+    },
+    {
+      "level": 93,
+      "hero": "Fara",
+      "enemy": "routine-93",
+      "kind": "physical",
+      "heroDamage": 12,
+      "enemyDamage": 2,
+      "heroHP": 811,
+      "enemyHP": 541
+    },
+    {
+      "level": 93,
+      "hero": "Fara",
+      "enemy": "routine-93",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 811,
+      "enemyHP": 541
+    },
+    {
+      "level": 93,
+      "hero": "Fara",
+      "enemy": "hard-93",
+      "kind": "physical",
+      "heroDamage": 11,
+      "enemyDamage": 3,
+      "heroHP": 811,
+      "enemyHP": 746
+    },
+    {
+      "level": 93,
+      "hero": "Fara",
+      "enemy": "hard-93",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 811,
+      "enemyHP": 746
+    },
+    {
+      "level": 93,
+      "hero": "Fara",
+      "enemy": "elite-93",
+      "kind": "physical",
+      "heroDamage": 8,
+      "enemyDamage": 4,
+      "heroHP": 811,
+      "enemyHP": 1023
+    },
+    {
+      "level": 93,
+      "hero": "Fara",
+      "enemy": "elite-93",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 811,
+      "enemyHP": 1023
+    },
+    {
+      "level": 93,
+      "hero": "Fara",
+      "enemy": "boss-93",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 4,
+      "heroHP": 811,
+      "enemyHP": 1565
+    },
+    {
+      "level": 93,
+      "hero": "Fara",
+      "enemy": "boss-93",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 6,
+      "heroHP": 811,
+      "enemyHP": 1565
+    },
+    {
+      "level": 93,
+      "hero": "Kaja",
+      "enemy": "routine-93",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 4,
+      "heroHP": 709,
+      "enemyHP": 541
+    },
+    {
+      "level": 93,
+      "hero": "Kaja",
+      "enemy": "routine-93",
+      "kind": "magic",
+      "heroDamage": 20,
+      "enemyDamage": 3,
+      "heroHP": 709,
+      "enemyHP": 541
+    },
+    {
+      "level": 93,
+      "hero": "Kaja",
+      "enemy": "hard-93",
+      "kind": "physical",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 709,
+      "enemyHP": 746
+    },
+    {
+      "level": 93,
+      "hero": "Kaja",
+      "enemy": "hard-93",
+      "kind": "magic",
+      "heroDamage": 17,
+      "enemyDamage": 3,
+      "heroHP": 709,
+      "enemyHP": 746
+    },
+    {
+      "level": 93,
+      "hero": "Kaja",
+      "enemy": "elite-93",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 709,
+      "enemyHP": 1023
+    },
+    {
+      "level": 93,
+      "hero": "Kaja",
+      "enemy": "elite-93",
+      "kind": "magic",
+      "heroDamage": 14,
+      "enemyDamage": 4,
+      "heroHP": 709,
+      "enemyHP": 1023
+    },
+    {
+      "level": 93,
+      "hero": "Kaja",
+      "enemy": "boss-93",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 6,
+      "heroHP": 709,
+      "enemyHP": 1565
+    },
+    {
+      "level": 93,
+      "hero": "Kaja",
+      "enemy": "boss-93",
+      "kind": "magic",
+      "heroDamage": 11,
+      "enemyDamage": 4,
+      "heroHP": 709,
+      "enemyHP": 1565
+    },
+    {
+      "level": 93,
+      "hero": "Hondo",
+      "enemy": "routine-93",
+      "kind": "physical",
+      "heroDamage": 31,
+      "enemyDamage": 5,
+      "heroHP": 612,
+      "enemyHP": 541
+    },
+    {
+      "level": 93,
+      "hero": "Hondo",
+      "enemy": "routine-93",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 612,
+      "enemyHP": 541
+    },
+    {
+      "level": 93,
+      "hero": "Hondo",
+      "enemy": "hard-93",
+      "kind": "physical",
+      "heroDamage": 26,
+      "enemyDamage": 6,
+      "heroHP": 612,
+      "enemyHP": 746
+    },
+    {
+      "level": 93,
+      "hero": "Hondo",
+      "enemy": "hard-93",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 7,
+      "heroHP": 612,
+      "enemyHP": 746
+    },
+    {
+      "level": 93,
+      "hero": "Hondo",
+      "enemy": "elite-93",
+      "kind": "physical",
+      "heroDamage": 20,
+      "enemyDamage": 7,
+      "heroHP": 612,
+      "enemyHP": 1023
+    },
+    {
+      "level": 93,
+      "hero": "Hondo",
+      "enemy": "elite-93",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 8,
+      "heroHP": 612,
+      "enemyHP": 1023
+    },
+    {
+      "level": 93,
+      "hero": "Hondo",
+      "enemy": "boss-93",
+      "kind": "physical",
+      "heroDamage": 16,
+      "enemyDamage": 9,
+      "heroHP": 612,
+      "enemyHP": 1565
+    },
+    {
+      "level": 93,
+      "hero": "Hondo",
+      "enemy": "boss-93",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 10,
+      "heroHP": 612,
+      "enemyHP": 1565
+    },
+    {
+      "level": 93,
+      "hero": "Runa",
+      "enemy": "routine-93",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 520,
+      "enemyHP": 541
+    },
+    {
+      "level": 93,
+      "hero": "Runa",
+      "enemy": "routine-93",
+      "kind": "magic",
+      "heroDamage": 31,
+      "enemyDamage": 3,
+      "heroHP": 520,
+      "enemyHP": 541
+    },
+    {
+      "level": 93,
+      "hero": "Runa",
+      "enemy": "hard-93",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 6,
+      "heroHP": 520,
+      "enemyHP": 746
+    },
+    {
+      "level": 93,
+      "hero": "Runa",
+      "enemy": "hard-93",
+      "kind": "magic",
+      "heroDamage": 26,
+      "enemyDamage": 4,
+      "heroHP": 520,
+      "enemyHP": 746
+    },
+    {
+      "level": 93,
+      "hero": "Runa",
+      "enemy": "elite-93",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 7,
+      "heroHP": 520,
+      "enemyHP": 1023
+    },
+    {
+      "level": 93,
+      "hero": "Runa",
+      "enemy": "elite-93",
+      "kind": "magic",
+      "heroDamage": 20,
+      "enemyDamage": 4,
+      "heroHP": 520,
+      "enemyHP": 1023
+    },
+    {
+      "level": 93,
+      "hero": "Runa",
+      "enemy": "boss-93",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 9,
+      "heroHP": 520,
+      "enemyHP": 1565
+    },
+    {
+      "level": 93,
+      "hero": "Runa",
+      "enemy": "boss-93",
+      "kind": "magic",
+      "heroDamage": 16,
+      "enemyDamage": 5,
+      "heroHP": 520,
+      "enemyHP": 1565
+    },
+    {
+      "level": 94,
+      "hero": "Fara",
+      "enemy": "routine-94",
+      "kind": "physical",
+      "heroDamage": 13,
+      "enemyDamage": 2,
+      "heroHP": 819,
+      "enemyHP": 547
+    },
+    {
+      "level": 94,
+      "hero": "Fara",
+      "enemy": "routine-94",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 819,
+      "enemyHP": 547
+    },
+    {
+      "level": 94,
+      "hero": "Fara",
+      "enemy": "hard-94",
+      "kind": "physical",
+      "heroDamage": 11,
+      "enemyDamage": 3,
+      "heroHP": 819,
+      "enemyHP": 753
+    },
+    {
+      "level": 94,
+      "hero": "Fara",
+      "enemy": "hard-94",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 819,
+      "enemyHP": 753
+    },
+    {
+      "level": 94,
+      "hero": "Fara",
+      "enemy": "elite-94",
+      "kind": "physical",
+      "heroDamage": 8,
+      "enemyDamage": 4,
+      "heroHP": 819,
+      "enemyHP": 1033
+    },
+    {
+      "level": 94,
+      "hero": "Fara",
+      "enemy": "elite-94",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 819,
+      "enemyHP": 1033
+    },
+    {
+      "level": 94,
+      "hero": "Fara",
+      "enemy": "boss-94",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 4,
+      "heroHP": 819,
+      "enemyHP": 1580
+    },
+    {
+      "level": 94,
+      "hero": "Fara",
+      "enemy": "boss-94",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 6,
+      "heroHP": 819,
+      "enemyHP": 1580
+    },
+    {
+      "level": 94,
+      "hero": "Kaja",
+      "enemy": "routine-94",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 716,
+      "enemyHP": 547
+    },
+    {
+      "level": 94,
+      "hero": "Kaja",
+      "enemy": "routine-94",
+      "kind": "magic",
+      "heroDamage": 21,
+      "enemyDamage": 3,
+      "heroHP": 716,
+      "enemyHP": 547
+    },
+    {
+      "level": 94,
+      "hero": "Kaja",
+      "enemy": "hard-94",
+      "kind": "physical",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 716,
+      "enemyHP": 753
+    },
+    {
+      "level": 94,
+      "hero": "Kaja",
+      "enemy": "hard-94",
+      "kind": "magic",
+      "heroDamage": 18,
+      "enemyDamage": 3,
+      "heroHP": 716,
+      "enemyHP": 753
+    },
+    {
+      "level": 94,
+      "hero": "Kaja",
+      "enemy": "elite-94",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 716,
+      "enemyHP": 1033
+    },
+    {
+      "level": 94,
+      "hero": "Kaja",
+      "enemy": "elite-94",
+      "kind": "magic",
+      "heroDamage": 14,
+      "enemyDamage": 4,
+      "heroHP": 716,
+      "enemyHP": 1033
+    },
+    {
+      "level": 94,
+      "hero": "Kaja",
+      "enemy": "boss-94",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 6,
+      "heroHP": 716,
+      "enemyHP": 1580
+    },
+    {
+      "level": 94,
+      "hero": "Kaja",
+      "enemy": "boss-94",
+      "kind": "magic",
+      "heroDamage": 11,
+      "enemyDamage": 4,
+      "heroHP": 716,
+      "enemyHP": 1580
+    },
+    {
+      "level": 94,
+      "hero": "Hondo",
+      "enemy": "routine-94",
+      "kind": "physical",
+      "heroDamage": 31,
+      "enemyDamage": 5,
+      "heroHP": 618,
+      "enemyHP": 547
+    },
+    {
+      "level": 94,
+      "hero": "Hondo",
+      "enemy": "routine-94",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 618,
+      "enemyHP": 547
+    },
+    {
+      "level": 94,
+      "hero": "Hondo",
+      "enemy": "hard-94",
+      "kind": "physical",
+      "heroDamage": 26,
+      "enemyDamage": 6,
+      "heroHP": 618,
+      "enemyHP": 753
+    },
+    {
+      "level": 94,
+      "hero": "Hondo",
+      "enemy": "hard-94",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 7,
+      "heroHP": 618,
+      "enemyHP": 753
+    },
+    {
+      "level": 94,
+      "hero": "Hondo",
+      "enemy": "elite-94",
+      "kind": "physical",
+      "heroDamage": 20,
+      "enemyDamage": 7,
+      "heroHP": 618,
+      "enemyHP": 1033
+    },
+    {
+      "level": 94,
+      "hero": "Hondo",
+      "enemy": "elite-94",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 8,
+      "heroHP": 618,
+      "enemyHP": 1033
+    },
+    {
+      "level": 94,
+      "hero": "Hondo",
+      "enemy": "boss-94",
+      "kind": "physical",
+      "heroDamage": 17,
+      "enemyDamage": 9,
+      "heroHP": 618,
+      "enemyHP": 1580
+    },
+    {
+      "level": 94,
+      "hero": "Hondo",
+      "enemy": "boss-94",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 10,
+      "heroHP": 618,
+      "enemyHP": 1580
+    },
+    {
+      "level": 94,
+      "hero": "Runa",
+      "enemy": "routine-94",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 525,
+      "enemyHP": 547
+    },
+    {
+      "level": 94,
+      "hero": "Runa",
+      "enemy": "routine-94",
+      "kind": "magic",
+      "heroDamage": 31,
+      "enemyDamage": 3,
+      "heroHP": 525,
+      "enemyHP": 547
+    },
+    {
+      "level": 94,
+      "hero": "Runa",
+      "enemy": "hard-94",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 6,
+      "heroHP": 525,
+      "enemyHP": 753
+    },
+    {
+      "level": 94,
+      "hero": "Runa",
+      "enemy": "hard-94",
+      "kind": "magic",
+      "heroDamage": 26,
+      "enemyDamage": 4,
+      "heroHP": 525,
+      "enemyHP": 753
+    },
+    {
+      "level": 94,
+      "hero": "Runa",
+      "enemy": "elite-94",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 7,
+      "heroHP": 525,
+      "enemyHP": 1033
+    },
+    {
+      "level": 94,
+      "hero": "Runa",
+      "enemy": "elite-94",
+      "kind": "magic",
+      "heroDamage": 20,
+      "enemyDamage": 4,
+      "heroHP": 525,
+      "enemyHP": 1033
+    },
+    {
+      "level": 94,
+      "hero": "Runa",
+      "enemy": "boss-94",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 9,
+      "heroHP": 525,
+      "enemyHP": 1580
+    },
+    {
+      "level": 94,
+      "hero": "Runa",
+      "enemy": "boss-94",
+      "kind": "magic",
+      "heroDamage": 17,
+      "enemyDamage": 5,
+      "heroHP": 525,
+      "enemyHP": 1580
+    },
+    {
+      "level": 95,
+      "hero": "Fara",
+      "enemy": "routine-95",
+      "kind": "physical",
+      "heroDamage": 12,
+      "enemyDamage": 2,
+      "heroHP": 827,
+      "enemyHP": 552
+    },
+    {
+      "level": 95,
+      "hero": "Fara",
+      "enemy": "routine-95",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 827,
+      "enemyHP": 552
+    },
+    {
+      "level": 95,
+      "hero": "Fara",
+      "enemy": "hard-95",
+      "kind": "physical",
+      "heroDamage": 11,
+      "enemyDamage": 3,
+      "heroHP": 827,
+      "enemyHP": 761
+    },
+    {
+      "level": 95,
+      "hero": "Fara",
+      "enemy": "hard-95",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 827,
+      "enemyHP": 761
+    },
+    {
+      "level": 95,
+      "hero": "Fara",
+      "enemy": "elite-95",
+      "kind": "physical",
+      "heroDamage": 8,
+      "enemyDamage": 4,
+      "heroHP": 827,
+      "enemyHP": 1043
+    },
+    {
+      "level": 95,
+      "hero": "Fara",
+      "enemy": "elite-95",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 827,
+      "enemyHP": 1043
+    },
+    {
+      "level": 95,
+      "hero": "Fara",
+      "enemy": "boss-95",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 4,
+      "heroHP": 827,
+      "enemyHP": 1596
+    },
+    {
+      "level": 95,
+      "hero": "Fara",
+      "enemy": "boss-95",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 6,
+      "heroHP": 827,
+      "enemyHP": 1596
+    },
+    {
+      "level": 95,
+      "hero": "Kaja",
+      "enemy": "routine-95",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 723,
+      "enemyHP": 552
+    },
+    {
+      "level": 95,
+      "hero": "Kaja",
+      "enemy": "routine-95",
+      "kind": "magic",
+      "heroDamage": 21,
+      "enemyDamage": 3,
+      "heroHP": 723,
+      "enemyHP": 552
+    },
+    {
+      "level": 95,
+      "hero": "Kaja",
+      "enemy": "hard-95",
+      "kind": "physical",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 723,
+      "enemyHP": 761
+    },
+    {
+      "level": 95,
+      "hero": "Kaja",
+      "enemy": "hard-95",
+      "kind": "magic",
+      "heroDamage": 18,
+      "enemyDamage": 3,
+      "heroHP": 723,
+      "enemyHP": 761
+    },
+    {
+      "level": 95,
+      "hero": "Kaja",
+      "enemy": "elite-95",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 723,
+      "enemyHP": 1043
+    },
+    {
+      "level": 95,
+      "hero": "Kaja",
+      "enemy": "elite-95",
+      "kind": "magic",
+      "heroDamage": 14,
+      "enemyDamage": 4,
+      "heroHP": 723,
+      "enemyHP": 1043
+    },
+    {
+      "level": 95,
+      "hero": "Kaja",
+      "enemy": "boss-95",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 6,
+      "heroHP": 723,
+      "enemyHP": 1596
+    },
+    {
+      "level": 95,
+      "hero": "Kaja",
+      "enemy": "boss-95",
+      "kind": "magic",
+      "heroDamage": 11,
+      "enemyDamage": 4,
+      "heroHP": 723,
+      "enemyHP": 1596
+    },
+    {
+      "level": 95,
+      "hero": "Hondo",
+      "enemy": "routine-95",
+      "kind": "physical",
+      "heroDamage": 31,
+      "enemyDamage": 5,
+      "heroHP": 624,
+      "enemyHP": 552
+    },
+    {
+      "level": 95,
+      "hero": "Hondo",
+      "enemy": "routine-95",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 624,
+      "enemyHP": 552
+    },
+    {
+      "level": 95,
+      "hero": "Hondo",
+      "enemy": "hard-95",
+      "kind": "physical",
+      "heroDamage": 26,
+      "enemyDamage": 6,
+      "heroHP": 624,
+      "enemyHP": 761
+    },
+    {
+      "level": 95,
+      "hero": "Hondo",
+      "enemy": "hard-95",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 7,
+      "heroHP": 624,
+      "enemyHP": 761
+    },
+    {
+      "level": 95,
+      "hero": "Hondo",
+      "enemy": "elite-95",
+      "kind": "physical",
+      "heroDamage": 20,
+      "enemyDamage": 7,
+      "heroHP": 624,
+      "enemyHP": 1043
+    },
+    {
+      "level": 95,
+      "hero": "Hondo",
+      "enemy": "elite-95",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 8,
+      "heroHP": 624,
+      "enemyHP": 1043
+    },
+    {
+      "level": 95,
+      "hero": "Hondo",
+      "enemy": "boss-95",
+      "kind": "physical",
+      "heroDamage": 17,
+      "enemyDamage": 9,
+      "heroHP": 624,
+      "enemyHP": 1596
+    },
+    {
+      "level": 95,
+      "hero": "Hondo",
+      "enemy": "boss-95",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 10,
+      "heroHP": 624,
+      "enemyHP": 1596
+    },
+    {
+      "level": 95,
+      "hero": "Runa",
+      "enemy": "routine-95",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 530,
+      "enemyHP": 552
+    },
+    {
+      "level": 95,
+      "hero": "Runa",
+      "enemy": "routine-95",
+      "kind": "magic",
+      "heroDamage": 31,
+      "enemyDamage": 3,
+      "heroHP": 530,
+      "enemyHP": 552
+    },
+    {
+      "level": 95,
+      "hero": "Runa",
+      "enemy": "hard-95",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 6,
+      "heroHP": 530,
+      "enemyHP": 761
+    },
+    {
+      "level": 95,
+      "hero": "Runa",
+      "enemy": "hard-95",
+      "kind": "magic",
+      "heroDamage": 26,
+      "enemyDamage": 4,
+      "heroHP": 530,
+      "enemyHP": 761
+    },
+    {
+      "level": 95,
+      "hero": "Runa",
+      "enemy": "elite-95",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 8,
+      "heroHP": 530,
+      "enemyHP": 1043
+    },
+    {
+      "level": 95,
+      "hero": "Runa",
+      "enemy": "elite-95",
+      "kind": "magic",
+      "heroDamage": 20,
+      "enemyDamage": 4,
+      "heroHP": 530,
+      "enemyHP": 1043
+    },
+    {
+      "level": 95,
+      "hero": "Runa",
+      "enemy": "boss-95",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 9,
+      "heroHP": 530,
+      "enemyHP": 1596
+    },
+    {
+      "level": 95,
+      "hero": "Runa",
+      "enemy": "boss-95",
+      "kind": "magic",
+      "heroDamage": 17,
+      "enemyDamage": 5,
+      "heroHP": 530,
+      "enemyHP": 1596
+    },
+    {
+      "level": 96,
+      "hero": "Fara",
+      "enemy": "routine-96",
+      "kind": "physical",
+      "heroDamage": 13,
+      "enemyDamage": 2,
+      "heroHP": 835,
+      "enemyHP": 558
+    },
+    {
+      "level": 96,
+      "hero": "Fara",
+      "enemy": "routine-96",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 835,
+      "enemyHP": 558
+    },
+    {
+      "level": 96,
+      "hero": "Fara",
+      "enemy": "hard-96",
+      "kind": "physical",
+      "heroDamage": 11,
+      "enemyDamage": 3,
+      "heroHP": 835,
+      "enemyHP": 768
+    },
+    {
+      "level": 96,
+      "hero": "Fara",
+      "enemy": "hard-96",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 835,
+      "enemyHP": 768
+    },
+    {
+      "level": 96,
+      "hero": "Fara",
+      "enemy": "elite-96",
+      "kind": "physical",
+      "heroDamage": 8,
+      "enemyDamage": 4,
+      "heroHP": 835,
+      "enemyHP": 1054
+    },
+    {
+      "level": 96,
+      "hero": "Fara",
+      "enemy": "elite-96",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 835,
+      "enemyHP": 1054
+    },
+    {
+      "level": 96,
+      "hero": "Fara",
+      "enemy": "boss-96",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 4,
+      "heroHP": 835,
+      "enemyHP": 1612
+    },
+    {
+      "level": 96,
+      "hero": "Fara",
+      "enemy": "boss-96",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 6,
+      "heroHP": 835,
+      "enemyHP": 1612
+    },
+    {
+      "level": 96,
+      "hero": "Kaja",
+      "enemy": "routine-96",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 4,
+      "heroHP": 730,
+      "enemyHP": 558
+    },
+    {
+      "level": 96,
+      "hero": "Kaja",
+      "enemy": "routine-96",
+      "kind": "magic",
+      "heroDamage": 21,
+      "enemyDamage": 3,
+      "heroHP": 730,
+      "enemyHP": 558
+    },
+    {
+      "level": 96,
+      "hero": "Kaja",
+      "enemy": "hard-96",
+      "kind": "physical",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 730,
+      "enemyHP": 768
+    },
+    {
+      "level": 96,
+      "hero": "Kaja",
+      "enemy": "hard-96",
+      "kind": "magic",
+      "heroDamage": 18,
+      "enemyDamage": 3,
+      "heroHP": 730,
+      "enemyHP": 768
+    },
+    {
+      "level": 96,
+      "hero": "Kaja",
+      "enemy": "elite-96",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 730,
+      "enemyHP": 1054
+    },
+    {
+      "level": 96,
+      "hero": "Kaja",
+      "enemy": "elite-96",
+      "kind": "magic",
+      "heroDamage": 14,
+      "enemyDamage": 4,
+      "heroHP": 730,
+      "enemyHP": 1054
+    },
+    {
+      "level": 96,
+      "hero": "Kaja",
+      "enemy": "boss-96",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 6,
+      "heroHP": 730,
+      "enemyHP": 1612
+    },
+    {
+      "level": 96,
+      "hero": "Kaja",
+      "enemy": "boss-96",
+      "kind": "magic",
+      "heroDamage": 11,
+      "enemyDamage": 4,
+      "heroHP": 730,
+      "enemyHP": 1612
+    },
+    {
+      "level": 96,
+      "hero": "Hondo",
+      "enemy": "routine-96",
+      "kind": "physical",
+      "heroDamage": 31,
+      "enemyDamage": 5,
+      "heroHP": 630,
+      "enemyHP": 558
+    },
+    {
+      "level": 96,
+      "hero": "Hondo",
+      "enemy": "routine-96",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 630,
+      "enemyHP": 558
+    },
+    {
+      "level": 96,
+      "hero": "Hondo",
+      "enemy": "hard-96",
+      "kind": "physical",
+      "heroDamage": 26,
+      "enemyDamage": 6,
+      "heroHP": 630,
+      "enemyHP": 768
+    },
+    {
+      "level": 96,
+      "hero": "Hondo",
+      "enemy": "hard-96",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 7,
+      "heroHP": 630,
+      "enemyHP": 768
+    },
+    {
+      "level": 96,
+      "hero": "Hondo",
+      "enemy": "elite-96",
+      "kind": "physical",
+      "heroDamage": 20,
+      "enemyDamage": 7,
+      "heroHP": 630,
+      "enemyHP": 1054
+    },
+    {
+      "level": 96,
+      "hero": "Hondo",
+      "enemy": "elite-96",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 8,
+      "heroHP": 630,
+      "enemyHP": 1054
+    },
+    {
+      "level": 96,
+      "hero": "Hondo",
+      "enemy": "boss-96",
+      "kind": "physical",
+      "heroDamage": 17,
+      "enemyDamage": 9,
+      "heroHP": 630,
+      "enemyHP": 1612
+    },
+    {
+      "level": 96,
+      "hero": "Hondo",
+      "enemy": "boss-96",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 10,
+      "heroHP": 630,
+      "enemyHP": 1612
+    },
+    {
+      "level": 96,
+      "hero": "Runa",
+      "enemy": "routine-96",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 535,
+      "enemyHP": 558
+    },
+    {
+      "level": 96,
+      "hero": "Runa",
+      "enemy": "routine-96",
+      "kind": "magic",
+      "heroDamage": 31,
+      "enemyDamage": 3,
+      "heroHP": 535,
+      "enemyHP": 558
+    },
+    {
+      "level": 96,
+      "hero": "Runa",
+      "enemy": "hard-96",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 6,
+      "heroHP": 535,
+      "enemyHP": 768
+    },
+    {
+      "level": 96,
+      "hero": "Runa",
+      "enemy": "hard-96",
+      "kind": "magic",
+      "heroDamage": 26,
+      "enemyDamage": 4,
+      "heroHP": 535,
+      "enemyHP": 768
+    },
+    {
+      "level": 96,
+      "hero": "Runa",
+      "enemy": "elite-96",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 8,
+      "heroHP": 535,
+      "enemyHP": 1054
+    },
+    {
+      "level": 96,
+      "hero": "Runa",
+      "enemy": "elite-96",
+      "kind": "magic",
+      "heroDamage": 20,
+      "enemyDamage": 4,
+      "heroHP": 535,
+      "enemyHP": 1054
+    },
+    {
+      "level": 96,
+      "hero": "Runa",
+      "enemy": "boss-96",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 9,
+      "heroHP": 535,
+      "enemyHP": 1612
+    },
+    {
+      "level": 96,
+      "hero": "Runa",
+      "enemy": "boss-96",
+      "kind": "magic",
+      "heroDamage": 17,
+      "enemyDamage": 5,
+      "heroHP": 535,
+      "enemyHP": 1612
+    },
+    {
+      "level": 97,
+      "hero": "Fara",
+      "enemy": "routine-97",
+      "kind": "physical",
+      "heroDamage": 12,
+      "enemyDamage": 2,
+      "heroHP": 843,
+      "enemyHP": 563
+    },
+    {
+      "level": 97,
+      "hero": "Fara",
+      "enemy": "routine-97",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 843,
+      "enemyHP": 563
+    },
+    {
+      "level": 97,
+      "hero": "Fara",
+      "enemy": "hard-97",
+      "kind": "physical",
+      "heroDamage": 11,
+      "enemyDamage": 3,
+      "heroHP": 843,
+      "enemyHP": 776
+    },
+    {
+      "level": 97,
+      "hero": "Fara",
+      "enemy": "hard-97",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 843,
+      "enemyHP": 776
+    },
+    {
+      "level": 97,
+      "hero": "Fara",
+      "enemy": "elite-97",
+      "kind": "physical",
+      "heroDamage": 8,
+      "enemyDamage": 4,
+      "heroHP": 843,
+      "enemyHP": 1064
+    },
+    {
+      "level": 97,
+      "hero": "Fara",
+      "enemy": "elite-97",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 843,
+      "enemyHP": 1064
+    },
+    {
+      "level": 97,
+      "hero": "Fara",
+      "enemy": "boss-97",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 4,
+      "heroHP": 843,
+      "enemyHP": 1627
+    },
+    {
+      "level": 97,
+      "hero": "Fara",
+      "enemy": "boss-97",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 6,
+      "heroHP": 843,
+      "enemyHP": 1627
+    },
+    {
+      "level": 97,
+      "hero": "Kaja",
+      "enemy": "routine-97",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 737,
+      "enemyHP": 563
+    },
+    {
+      "level": 97,
+      "hero": "Kaja",
+      "enemy": "routine-97",
+      "kind": "magic",
+      "heroDamage": 21,
+      "enemyDamage": 3,
+      "heroHP": 737,
+      "enemyHP": 563
+    },
+    {
+      "level": 97,
+      "hero": "Kaja",
+      "enemy": "hard-97",
+      "kind": "physical",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 737,
+      "enemyHP": 776
+    },
+    {
+      "level": 97,
+      "hero": "Kaja",
+      "enemy": "hard-97",
+      "kind": "magic",
+      "heroDamage": 18,
+      "enemyDamage": 3,
+      "heroHP": 737,
+      "enemyHP": 776
+    },
+    {
+      "level": 97,
+      "hero": "Kaja",
+      "enemy": "elite-97",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 737,
+      "enemyHP": 1064
+    },
+    {
+      "level": 97,
+      "hero": "Kaja",
+      "enemy": "elite-97",
+      "kind": "magic",
+      "heroDamage": 14,
+      "enemyDamage": 4,
+      "heroHP": 737,
+      "enemyHP": 1064
+    },
+    {
+      "level": 97,
+      "hero": "Kaja",
+      "enemy": "boss-97",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 6,
+      "heroHP": 737,
+      "enemyHP": 1627
+    },
+    {
+      "level": 97,
+      "hero": "Kaja",
+      "enemy": "boss-97",
+      "kind": "magic",
+      "heroDamage": 11,
+      "enemyDamage": 4,
+      "heroHP": 737,
+      "enemyHP": 1627
+    },
+    {
+      "level": 97,
+      "hero": "Hondo",
+      "enemy": "routine-97",
+      "kind": "physical",
+      "heroDamage": 31,
+      "enemyDamage": 5,
+      "heroHP": 636,
+      "enemyHP": 563
+    },
+    {
+      "level": 97,
+      "hero": "Hondo",
+      "enemy": "routine-97",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 636,
+      "enemyHP": 563
+    },
+    {
+      "level": 97,
+      "hero": "Hondo",
+      "enemy": "hard-97",
+      "kind": "physical",
+      "heroDamage": 26,
+      "enemyDamage": 6,
+      "heroHP": 636,
+      "enemyHP": 776
+    },
+    {
+      "level": 97,
+      "hero": "Hondo",
+      "enemy": "hard-97",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 7,
+      "heroHP": 636,
+      "enemyHP": 776
+    },
+    {
+      "level": 97,
+      "hero": "Hondo",
+      "enemy": "elite-97",
+      "kind": "physical",
+      "heroDamage": 20,
+      "enemyDamage": 7,
+      "heroHP": 636,
+      "enemyHP": 1064
+    },
+    {
+      "level": 97,
+      "hero": "Hondo",
+      "enemy": "elite-97",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 8,
+      "heroHP": 636,
+      "enemyHP": 1064
+    },
+    {
+      "level": 97,
+      "hero": "Hondo",
+      "enemy": "boss-97",
+      "kind": "physical",
+      "heroDamage": 17,
+      "enemyDamage": 9,
+      "heroHP": 636,
+      "enemyHP": 1627
+    },
+    {
+      "level": 97,
+      "hero": "Hondo",
+      "enemy": "boss-97",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 10,
+      "heroHP": 636,
+      "enemyHP": 1627
+    },
+    {
+      "level": 97,
+      "hero": "Runa",
+      "enemy": "routine-97",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 540,
+      "enemyHP": 563
+    },
+    {
+      "level": 97,
+      "hero": "Runa",
+      "enemy": "routine-97",
+      "kind": "magic",
+      "heroDamage": 31,
+      "enemyDamage": 3,
+      "heroHP": 540,
+      "enemyHP": 563
+    },
+    {
+      "level": 97,
+      "hero": "Runa",
+      "enemy": "hard-97",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 6,
+      "heroHP": 540,
+      "enemyHP": 776
+    },
+    {
+      "level": 97,
+      "hero": "Runa",
+      "enemy": "hard-97",
+      "kind": "magic",
+      "heroDamage": 26,
+      "enemyDamage": 4,
+      "heroHP": 540,
+      "enemyHP": 776
+    },
+    {
+      "level": 97,
+      "hero": "Runa",
+      "enemy": "elite-97",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 7,
+      "heroHP": 540,
+      "enemyHP": 1064
+    },
+    {
+      "level": 97,
+      "hero": "Runa",
+      "enemy": "elite-97",
+      "kind": "magic",
+      "heroDamage": 20,
+      "enemyDamage": 4,
+      "heroHP": 540,
+      "enemyHP": 1064
+    },
+    {
+      "level": 97,
+      "hero": "Runa",
+      "enemy": "boss-97",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 9,
+      "heroHP": 540,
+      "enemyHP": 1627
+    },
+    {
+      "level": 97,
+      "hero": "Runa",
+      "enemy": "boss-97",
+      "kind": "magic",
+      "heroDamage": 17,
+      "enemyDamage": 5,
+      "heroHP": 540,
+      "enemyHP": 1627
+    },
+    {
+      "level": 98,
+      "hero": "Fara",
+      "enemy": "routine-98",
+      "kind": "physical",
+      "heroDamage": 13,
+      "enemyDamage": 2,
+      "heroHP": 851,
+      "enemyHP": 568
+    },
+    {
+      "level": 98,
+      "hero": "Fara",
+      "enemy": "routine-98",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 851,
+      "enemyHP": 568
+    },
+    {
+      "level": 98,
+      "hero": "Fara",
+      "enemy": "hard-98",
+      "kind": "physical",
+      "heroDamage": 11,
+      "enemyDamage": 3,
+      "heroHP": 851,
+      "enemyHP": 783
+    },
+    {
+      "level": 98,
+      "hero": "Fara",
+      "enemy": "hard-98",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 851,
+      "enemyHP": 783
+    },
+    {
+      "level": 98,
+      "hero": "Fara",
+      "enemy": "elite-98",
+      "kind": "physical",
+      "heroDamage": 8,
+      "enemyDamage": 4,
+      "heroHP": 851,
+      "enemyHP": 1074
+    },
+    {
+      "level": 98,
+      "hero": "Fara",
+      "enemy": "elite-98",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 851,
+      "enemyHP": 1074
+    },
+    {
+      "level": 98,
+      "hero": "Fara",
+      "enemy": "boss-98",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 4,
+      "heroHP": 851,
+      "enemyHP": 1643
+    },
+    {
+      "level": 98,
+      "hero": "Fara",
+      "enemy": "boss-98",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 6,
+      "heroHP": 851,
+      "enemyHP": 1643
+    },
+    {
+      "level": 98,
+      "hero": "Kaja",
+      "enemy": "routine-98",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 744,
+      "enemyHP": 568
+    },
+    {
+      "level": 98,
+      "hero": "Kaja",
+      "enemy": "routine-98",
+      "kind": "magic",
+      "heroDamage": 21,
+      "enemyDamage": 3,
+      "heroHP": 744,
+      "enemyHP": 568
+    },
+    {
+      "level": 98,
+      "hero": "Kaja",
+      "enemy": "hard-98",
+      "kind": "physical",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 744,
+      "enemyHP": 783
+    },
+    {
+      "level": 98,
+      "hero": "Kaja",
+      "enemy": "hard-98",
+      "kind": "magic",
+      "heroDamage": 18,
+      "enemyDamage": 3,
+      "heroHP": 744,
+      "enemyHP": 783
+    },
+    {
+      "level": 98,
+      "hero": "Kaja",
+      "enemy": "elite-98",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 744,
+      "enemyHP": 1074
+    },
+    {
+      "level": 98,
+      "hero": "Kaja",
+      "enemy": "elite-98",
+      "kind": "magic",
+      "heroDamage": 14,
+      "enemyDamage": 4,
+      "heroHP": 744,
+      "enemyHP": 1074
+    },
+    {
+      "level": 98,
+      "hero": "Kaja",
+      "enemy": "boss-98",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 6,
+      "heroHP": 744,
+      "enemyHP": 1643
+    },
+    {
+      "level": 98,
+      "hero": "Kaja",
+      "enemy": "boss-98",
+      "kind": "magic",
+      "heroDamage": 11,
+      "enemyDamage": 4,
+      "heroHP": 744,
+      "enemyHP": 1643
+    },
+    {
+      "level": 98,
+      "hero": "Hondo",
+      "enemy": "routine-98",
+      "kind": "physical",
+      "heroDamage": 31,
+      "enemyDamage": 5,
+      "heroHP": 642,
+      "enemyHP": 568
+    },
+    {
+      "level": 98,
+      "hero": "Hondo",
+      "enemy": "routine-98",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 642,
+      "enemyHP": 568
+    },
+    {
+      "level": 98,
+      "hero": "Hondo",
+      "enemy": "hard-98",
+      "kind": "physical",
+      "heroDamage": 26,
+      "enemyDamage": 6,
+      "heroHP": 642,
+      "enemyHP": 783
+    },
+    {
+      "level": 98,
+      "hero": "Hondo",
+      "enemy": "hard-98",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 7,
+      "heroHP": 642,
+      "enemyHP": 783
+    },
+    {
+      "level": 98,
+      "hero": "Hondo",
+      "enemy": "elite-98",
+      "kind": "physical",
+      "heroDamage": 20,
+      "enemyDamage": 8,
+      "heroHP": 642,
+      "enemyHP": 1074
+    },
+    {
+      "level": 98,
+      "hero": "Hondo",
+      "enemy": "elite-98",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 8,
+      "heroHP": 642,
+      "enemyHP": 1074
+    },
+    {
+      "level": 98,
+      "hero": "Hondo",
+      "enemy": "boss-98",
+      "kind": "physical",
+      "heroDamage": 17,
+      "enemyDamage": 9,
+      "heroHP": 642,
+      "enemyHP": 1643
+    },
+    {
+      "level": 98,
+      "hero": "Hondo",
+      "enemy": "boss-98",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 10,
+      "heroHP": 642,
+      "enemyHP": 1643
+    },
+    {
+      "level": 98,
+      "hero": "Runa",
+      "enemy": "routine-98",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 545,
+      "enemyHP": 568
+    },
+    {
+      "level": 98,
+      "hero": "Runa",
+      "enemy": "routine-98",
+      "kind": "magic",
+      "heroDamage": 31,
+      "enemyDamage": 3,
+      "heroHP": 545,
+      "enemyHP": 568
+    },
+    {
+      "level": 98,
+      "hero": "Runa",
+      "enemy": "hard-98",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 6,
+      "heroHP": 545,
+      "enemyHP": 783
+    },
+    {
+      "level": 98,
+      "hero": "Runa",
+      "enemy": "hard-98",
+      "kind": "magic",
+      "heroDamage": 26,
+      "enemyDamage": 4,
+      "heroHP": 545,
+      "enemyHP": 783
+    },
+    {
+      "level": 98,
+      "hero": "Runa",
+      "enemy": "elite-98",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 8,
+      "heroHP": 545,
+      "enemyHP": 1074
+    },
+    {
+      "level": 98,
+      "hero": "Runa",
+      "enemy": "elite-98",
+      "kind": "magic",
+      "heroDamage": 20,
+      "enemyDamage": 4,
+      "heroHP": 545,
+      "enemyHP": 1074
+    },
+    {
+      "level": 98,
+      "hero": "Runa",
+      "enemy": "boss-98",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 9,
+      "heroHP": 545,
+      "enemyHP": 1643
+    },
+    {
+      "level": 98,
+      "hero": "Runa",
+      "enemy": "boss-98",
+      "kind": "magic",
+      "heroDamage": 17,
+      "enemyDamage": 5,
+      "heroHP": 545,
+      "enemyHP": 1643
+    },
+    {
+      "level": 99,
+      "hero": "Fara",
+      "enemy": "routine-99",
+      "kind": "physical",
+      "heroDamage": 13,
+      "enemyDamage": 2,
+      "heroHP": 859,
+      "enemyHP": 574
+    },
+    {
+      "level": 99,
+      "hero": "Fara",
+      "enemy": "routine-99",
+      "kind": "magic",
+      "heroDamage": 7,
+      "enemyDamage": 3,
+      "heroHP": 859,
+      "enemyHP": 574
+    },
+    {
+      "level": 99,
+      "hero": "Fara",
+      "enemy": "hard-99",
+      "kind": "physical",
+      "heroDamage": 11,
+      "enemyDamage": 3,
+      "heroHP": 859,
+      "enemyHP": 791
+    },
+    {
+      "level": 99,
+      "hero": "Fara",
+      "enemy": "hard-99",
+      "kind": "magic",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 859,
+      "enemyHP": 791
+    },
+    {
+      "level": 99,
+      "hero": "Fara",
+      "enemy": "elite-99",
+      "kind": "physical",
+      "heroDamage": 8,
+      "enemyDamage": 4,
+      "heroHP": 859,
+      "enemyHP": 1084
+    },
+    {
+      "level": 99,
+      "hero": "Fara",
+      "enemy": "elite-99",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 859,
+      "enemyHP": 1084
+    },
+    {
+      "level": 99,
+      "hero": "Fara",
+      "enemy": "boss-99",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 4,
+      "heroHP": 859,
+      "enemyHP": 1658
+    },
+    {
+      "level": 99,
+      "hero": "Fara",
+      "enemy": "boss-99",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 6,
+      "heroHP": 859,
+      "enemyHP": 1658
+    },
+    {
+      "level": 99,
+      "hero": "Kaja",
+      "enemy": "routine-99",
+      "kind": "physical",
+      "heroDamage": 7,
+      "enemyDamage": 4,
+      "heroHP": 751,
+      "enemyHP": 574
+    },
+    {
+      "level": 99,
+      "hero": "Kaja",
+      "enemy": "routine-99",
+      "kind": "magic",
+      "heroDamage": 21,
+      "enemyDamage": 3,
+      "heroHP": 751,
+      "enemyHP": 574
+    },
+    {
+      "level": 99,
+      "hero": "Kaja",
+      "enemy": "hard-99",
+      "kind": "physical",
+      "heroDamage": 6,
+      "enemyDamage": 4,
+      "heroHP": 751,
+      "enemyHP": 791
+    },
+    {
+      "level": 99,
+      "hero": "Kaja",
+      "enemy": "hard-99",
+      "kind": "magic",
+      "heroDamage": 18,
+      "enemyDamage": 3,
+      "heroHP": 751,
+      "enemyHP": 791
+    },
+    {
+      "level": 99,
+      "hero": "Kaja",
+      "enemy": "elite-99",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 751,
+      "enemyHP": 1084
+    },
+    {
+      "level": 99,
+      "hero": "Kaja",
+      "enemy": "elite-99",
+      "kind": "magic",
+      "heroDamage": 14,
+      "enemyDamage": 4,
+      "heroHP": 751,
+      "enemyHP": 1084
+    },
+    {
+      "level": 99,
+      "hero": "Kaja",
+      "enemy": "boss-99",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 6,
+      "heroHP": 751,
+      "enemyHP": 1658
+    },
+    {
+      "level": 99,
+      "hero": "Kaja",
+      "enemy": "boss-99",
+      "kind": "magic",
+      "heroDamage": 11,
+      "enemyDamage": 4,
+      "heroHP": 751,
+      "enemyHP": 1658
+    },
+    {
+      "level": 99,
+      "hero": "Hondo",
+      "enemy": "routine-99",
+      "kind": "physical",
+      "heroDamage": 31,
+      "enemyDamage": 5,
+      "heroHP": 648,
+      "enemyHP": 574
+    },
+    {
+      "level": 99,
+      "hero": "Hondo",
+      "enemy": "routine-99",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 648,
+      "enemyHP": 574
+    },
+    {
+      "level": 99,
+      "hero": "Hondo",
+      "enemy": "hard-99",
+      "kind": "physical",
+      "heroDamage": 27,
+      "enemyDamage": 6,
+      "heroHP": 648,
+      "enemyHP": 791
+    },
+    {
+      "level": 99,
+      "hero": "Hondo",
+      "enemy": "hard-99",
+      "kind": "magic",
+      "heroDamage": 5,
+      "enemyDamage": 7,
+      "heroHP": 648,
+      "enemyHP": 791
+    },
+    {
+      "level": 99,
+      "hero": "Hondo",
+      "enemy": "elite-99",
+      "kind": "physical",
+      "heroDamage": 20,
+      "enemyDamage": 7,
+      "heroHP": 648,
+      "enemyHP": 1084
+    },
+    {
+      "level": 99,
+      "hero": "Hondo",
+      "enemy": "elite-99",
+      "kind": "magic",
+      "heroDamage": 4,
+      "enemyDamage": 8,
+      "heroHP": 648,
+      "enemyHP": 1084
+    },
+    {
+      "level": 99,
+      "hero": "Hondo",
+      "enemy": "boss-99",
+      "kind": "physical",
+      "heroDamage": 17,
+      "enemyDamage": 9,
+      "heroHP": 648,
+      "enemyHP": 1658
+    },
+    {
+      "level": 99,
+      "hero": "Hondo",
+      "enemy": "boss-99",
+      "kind": "magic",
+      "heroDamage": 3,
+      "enemyDamage": 10,
+      "heroHP": 648,
+      "enemyHP": 1658
+    },
+    {
+      "level": 99,
+      "hero": "Runa",
+      "enemy": "routine-99",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 5,
+      "heroHP": 550,
+      "enemyHP": 574
+    },
+    {
+      "level": 99,
+      "hero": "Runa",
+      "enemy": "routine-99",
+      "kind": "magic",
+      "heroDamage": 31,
+      "enemyDamage": 3,
+      "heroHP": 550,
+      "enemyHP": 574
+    },
+    {
+      "level": 99,
+      "hero": "Runa",
+      "enemy": "hard-99",
+      "kind": "physical",
+      "heroDamage": 5,
+      "enemyDamage": 6,
+      "heroHP": 550,
+      "enemyHP": 791
+    },
+    {
+      "level": 99,
+      "hero": "Runa",
+      "enemy": "hard-99",
+      "kind": "magic",
+      "heroDamage": 27,
+      "enemyDamage": 4,
+      "heroHP": 550,
+      "enemyHP": 791
+    },
+    {
+      "level": 99,
+      "hero": "Runa",
+      "enemy": "elite-99",
+      "kind": "physical",
+      "heroDamage": 4,
+      "enemyDamage": 8,
+      "heroHP": 550,
+      "enemyHP": 1084
+    },
+    {
+      "level": 99,
+      "hero": "Runa",
+      "enemy": "elite-99",
+      "kind": "magic",
+      "heroDamage": 20,
+      "enemyDamage": 4,
+      "heroHP": 550,
+      "enemyHP": 1084
+    },
+    {
+      "level": 99,
+      "hero": "Runa",
+      "enemy": "boss-99",
+      "kind": "physical",
+      "heroDamage": 3,
+      "enemyDamage": 9,
+      "heroHP": 550,
+      "enemyHP": 1658
+    },
+    {
+      "level": 99,
+      "hero": "Runa",
+      "enemy": "boss-99",
+      "kind": "magic",
+      "heroDamage": 17,
+      "enemyDamage": 5,
+      "heroHP": 550,
+      "enemyHP": 1658
+    }
+  ],
+  "failures": []
+}

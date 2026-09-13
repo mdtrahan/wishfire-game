@@ -2340,28 +2340,14 @@ pub fn single_hit_damage(
     chain_multiplier: f64,
 ) -> f64 {
     let source_is_hero = number_or_zero(source_is_hero) == 1.0;
-    let hero_aoe = number_or_zero(hero_aoe) == 1.0;
-    let roll = 0.8 + (unit_interval_or_half(roll01) * 0.4);
+    let _hero_aoe = number_or_zero(hero_aoe) == 1.0;
+    let roll = 0.9 + (unit_interval_or_half(roll01) * 0.2);
     let power = number_or_zero(power);
     let resist = number_or_zero(resist);
-    let raw_damage = if source_is_hero && !hero_aoe {
-        (power - (resist * 0.35)) * roll
-    } else {
-        (power - (resist / 2.0)) * roll
-    };
+    let raw_damage = (2.0 + (power.max(0.0) * 0.48)) * (20.0 / (20.0 + resist.max(0.0))) * roll;
     let base_damage = raw_damage.ceil().max(1.0);
-    let buff = power.max(0.0);
-    let mut crit_multiplier_raw = 1.1;
-    if buff > 0.0 {
-        crit_multiplier_raw = (1.0 + (buff / 10.0)).min(3.0);
-    }
-    crit_multiplier_raw = crit_multiplier_raw.min(3.0);
-    let crit_multiplier = if source_is_hero {
-        crit_multiplier_raw
-    } else {
-        1.0 + ((crit_multiplier_raw - 1.0) * 0.1)
-    };
-    let crit_value = if number_or_zero(crit_roll01) <= 0.1 {
+    let crit_multiplier = 1.25;
+    let crit_value = if number_or_zero(crit_roll01) < 0.01 {
         base_damage * crit_multiplier
     } else {
         base_damage
@@ -3309,16 +3295,16 @@ mod single_hit_resolution_tests {
     fn mirrors_current_single_hit_resolution_cases() {
         let cases = [
             (
-                18.0, 12.0, 0.5, 0.9, 1.0, 0.0, 0.0, 1.0, 40.0, 0.0, 14.0, 14.0, 26.0,
+                18.0, 12.0, 0.5, 0.9, 1.0, 0.0, 0.0, 1.0, 40.0, 0.0, 7.0, 7.0, 33.0,
             ),
             (
-                30.0, 20.0, 0.25, 0.05, 0.0, 0.0, 0.0, 1.0, 5.0, 0.0, 22.0, 5.0, 0.0,
+                30.0, 20.0, 0.25, 0.05, 0.0, 0.0, 0.0, 1.0, 5.0, 0.0, 8.0, 5.0, 0.0,
             ),
             (
-                28.0, 14.0, 0.75, 0.11, 1.0, 1.0, 1.0, 1.5, 20.0, 0.0, 36.0, 20.0, 0.0,
+                28.0, 14.0, 0.75, 0.11, 1.0, 1.0, 1.0, 1.5, 20.0, 0.0, 15.0, 15.0, 5.0,
             ),
             (
-                18.0, 10.0, 0.0, 0.9, 0.0, 0.0, 0.0, 1.0, 16.0, 6.0, 11.0, 5.0, 11.0,
+                18.0, 10.0, 0.0, 0.9, 0.0, 0.0, 0.0, 1.0, 16.0, 6.0, 7.0, 1.0, 15.0,
             ),
         ];
 

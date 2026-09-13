@@ -42,6 +42,14 @@ function actorHp(actor = {}) {
   return numberOr(actor?.hp ?? actor?.HP, 1);
 }
 
+export function resolveHeroSpeedMultiattack({hero=null,enemies=[],alreadyLinked=false}={}) {
+  if (alreadyLinked || !hero || normalizeType(hero) !== 0 || actorHp(hero) <= 0) return false;
+  const fastest = (Array.isArray(enemies) ? enemies : [])
+    .filter(enemy => normalizeType(enemy) === 1 && actorHp(enemy) > 0)
+    .reduce((speed, enemy) => Math.max(speed, actorSpeed(enemy)), 0);
+  return fastest > 0 && actorSpeed(hero) >= fastest * 2;
+}
+
 function statusValueString(value) {
   if (value && typeof value === 'object') {
     return String(value.id ?? value.status ?? value.state ?? value.name ?? '').toLowerCase();
