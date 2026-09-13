@@ -12,7 +12,7 @@ export function buildSyntheticQuestStages(enemies) {
     }));
 }
 
-export function createStoryEntryFlow({ gameState, layoutState, isReady, content = WISHFIRE_WARP_CROSSING_CONTENT, resurrect = () => {}, prepareEncounter = () => {}, getEnemies = () => [], onCombatEnd = () => {}, onCombatQuit = onCombatEnd, isCombatPauseEligible = () => true, closeTransientSurface = () => {}, energyGlobals = { Player_Energy: 200 }, enterCombat = change => change() }) {
+export function createStoryEntryFlow({ gameState, layoutState, isReady, content = WISHFIRE_WARP_CROSSING_CONTENT, resurrect = () => {}, prepareEncounter = () => {}, getEnemies = () => [], onCombatEnd = () => {}, onCombatQuit = onCombatEnd, isCombatPauseEligible = () => true, closeTransientSurface = () => {}, recordQaPauseSnapshot = () => {}, energyGlobals = { Player_Energy: 200 }, enterCombat = change => change() }) {
   const scene = content.scenes[0];
   const handoff = scene.steps.findIndex(step => step.id === scene.combatHandoffStepId);
   if (handoff < 0) throw new Error('Opening scene requires an authored combat handoff step');
@@ -139,6 +139,7 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
       const previousPhase = entry.phase;
       const previousPaused = entry.combatPaused;
       entry.combatPaused = true;
+      recordQaPauseSnapshot(previousPaused ? 'paused' : 'departure');
       entry.phase = 'combat-paused';
       entry.modal = 'combat-pause';
       closeTransientSurface();
@@ -153,7 +154,10 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
     const targets = { Hero: 'heroLayout', Vault: 'chestsLayout', AstralFlow: 'idleFarmLayout', Map: 'storyMock', Quests: 'storyMock' };
     const target = targets[label];
     if (!target) return false;
-    if (entry.phase === 'combat' && label !== 'Quests') entry.combatPaused = true;
+    if (entry.phase === 'combat' && label !== 'Quests') {
+      entry.combatPaused = true;
+      recordQaPauseSnapshot('departure');
+    }
     if (target === 'storyMock') {
       if (entry.phase === 'combat' && !entry.combatPaused && label === 'Map') {
         entry.combatPaused = true;
@@ -196,6 +200,7 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
       entry.modal = null;
       entry.phase = 'combat';
       entry.combatPaused = false;
+      recordQaPauseSnapshot('resume');
       return true;
     },
     quitPausedCombat() {

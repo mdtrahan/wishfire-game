@@ -1,4 +1,5 @@
 import { getHeroFlowState } from '../src/core/personalFlow.mjs';
+import { serializeQaPauseCombatSnapshot } from '../src/core/qaPauseSnapshot.mjs';
 import { canUseHeroCommand, chooseSessionLevelUpBuff, getSessionLevelUpBuffOffer, rulesContext, settleVictory } from '../modules/heroCommands.mjs';
 import { SESSION_LEVEL_UP_BUFF_CARDS } from '../../src/core/sessionLevelBuffCatalog.mjs';
 import { getEligibleLevelUpBuffCards } from '../../src/core/sessionLevelBuffOffers.mjs';
@@ -15,6 +16,7 @@ import {
 } from '../src/core/dynamicInitiativeAuthorityExperiment.mjs';
 
 export const QA_STORY_TRANSITION_TIMEOUT_MS = 2400;
+
 // The production-derived stream for this encounter seed keeps its first eight
 // draws below the 20% QA proc threshold. Fixture setup can consume draws while
 // closing a prior phase, so this still exercises the normal chance resolver
@@ -242,6 +244,21 @@ export function registerDevBrowserTestHooks({
   if (typeof window === 'undefined') return;
 
   if (new URLSearchParams(window.location.search).get('questQA') === '1') {
+    const pauseSnapshot = document.createElement('div');
+    pauseSnapshot.id = 'quest-qa-pause-snapshot';
+    pauseSnapshot.hidden = true;
+    const pauseSnapshots = { departure: null, current: null, resume: null };
+    gameState.publishQaPauseSnapshot = stage => {
+      const snapshot = serializeQaPauseCombatSnapshot({
+        state,
+        getCurrentTurn: () => callFunctionWithContext(fnContext, 'GetCurrentTurn'),
+      });
+      if (stage === 'departure') pauseSnapshots.departure = snapshot;
+      if (stage === 'resume') pauseSnapshots.resume = snapshot;
+      pauseSnapshots.current = snapshot;
+      pauseSnapshot.dataset.qaPauseSnapshot = JSON.stringify(pauseSnapshots);
+      pauseSnapshot.dataset.qaPauseStage = String(stage || 'current');
+    };
     const controls = document.createElement('div');
     controls.setAttribute('aria-label', 'Quest QA');
     controls.style.cssText = 'position:fixed;top:4px;left:4px;z-index:10001;display:flex;gap:4px';
@@ -955,7 +972,7 @@ export function registerDevBrowserTestHooks({
       if (!cardSelect.options.length && cards.length) cards.forEach(card => cardSelect.append(new Option(card.name || card.cardId, card.cardId)));
     };
     updateQaOptions();
-    document.body.append(controls);
+    document.body.append(pauseSnapshot, controls);
   }
   window.render_game_to_text = () => {
     const currentUID = callFunctionWithContext(fnContext, 'GetCurrentTurn');
