@@ -33,3 +33,5 @@ test('battlefield selection is captured per action and AoE uses its group',()=>{
  const single=battlefieldTargets(ctx.state.entities,h,{targetType:'enemy'},g);assert.deepEqual(single,[3]);g.SelectedEnemyUID=2;assert.deepEqual(single,[3]);
  assert.deepEqual(battlefieldTargets(ctx.state.entities,h,{targetType:'allEnemies'},g),[2,3]);
 });
+
+test('three-hit Combo queues one Warrior AF orb for its resolved action',()=>{const {h,e,g,ctx}=battle();h.flow=0;assert.equal(commands.executeHeroCommand(ctx,{actorUID:1,queue:[{skillId:'combo',targetIds:[2]}]}),true);commands.resolveNativeCommandStep(ctx,g.PendingHeroHits.shift());assert.equal(g.FlowOrbs.length,1);assert.equal(g.FlowOrbs[0].value,10);assert.equal(h.flow,0);advanceFlowOrbs(g,ctx.state.entities,2);assert.equal(h.flow,10);});

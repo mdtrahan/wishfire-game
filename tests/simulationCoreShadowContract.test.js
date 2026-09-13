@@ -55,5 +55,7 @@ test('static simulation core wasm exposes the canonical combat power shadow expo
   assert.equal(typeof result.instance.exports.combat_power_shadow, 'function');
   assert.equal(typeof result.instance.exports.combat_power_full_shadow, 'function');
   assert.equal(typeof result.instance.exports.single_hit_damage_shadow, 'function');
-  assert.equal(result.instance.exports.combat_power_full_shadow(10, 4, 5, 4, 100, 10, 1, 0, .01, 1.25, 0, 0, 0, 0, 0, 0, 1), 55.9);
+  assert.equal(result.instance.exports.combat_power_full_shadow(10, 4, 5, 4, 100, 10, 1, 0, .01, 1.25, 0, 0, 0, 0, 0, 0, 1), 30.6);
 });
+
+test('CP shadow diagnostic records compared full-stat fields for an explicit zero direct packet', () => { const source=fs.readFileSync(shadowModulePath,'utf8'); assert.match(source,/actor: input,\n    jsValue,\n    rustValue/); assert.match(source,/combat_power_full_shadow/); });

@@ -41,11 +41,11 @@ fn positive_floor_or_one(value: f64) -> f64 {
 
 pub fn combat_power_full(atk:f64, mag:f64, def:f64, res:f64, hp:f64, spd:f64, level:f64, direct:f64, crit_chance:f64, crit_multiplier:f64, aoe_damage:f64, extra_targets:f64, sustain:f64, control:f64, proc:f64, af:f64, sequence:f64) -> f64 {
     let level=positive_floor_or_one(level);
-    let atk=number_or_zero(atk).max(0.0); let mag=number_or_zero(mag).max(0.0);
+    let _atk=number_or_zero(atk).max(0.0); let _mag=number_or_zero(mag).max(0.0);
     let def=number_or_zero(def).max(0.0); let res=number_or_zero(res).max(0.0);
     let hp=number_or_zero(hp).max(1.0); let spd=number_or_zero(spd).max(0.0);
-    let guard=20.0+(1.5*(level-1.0)); let benchmark=7.0+(0.9*(level-1.0));
-    let expected=if direct.is_finite() && direct>0.0 {direct} else {(2.0+(0.48*atk.max(mag)))*guard/(guard+benchmark)};
+    let guard=20.0+(1.5*(level-1.0));
+    let expected=number_or_zero(direct);
     let crit=expected*number_or_zero(crit_chance).clamp(0.0,1.0)*(number_or_zero(crit_multiplier).clamp(1.0,3.0)-1.0);
     let action_rate=(spd/10.0).clamp(0.6,1.8);
     let effective_hp=hp*(1.0+(((def+res)/2.0)/guard));
