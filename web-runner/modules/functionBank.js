@@ -48,6 +48,7 @@ import {
   createHeroTurnCardState,
   drawHeroTurnCards,
 } from '../src/core/heroTurnCards.mjs';
+import { resolveHeroAttackTarget } from '../../src/core/heroAttackTargetingRules.mjs';
 
 import { sanitizeInitiativeQueue, shouldAutoCorrectImproperRepeat } from '../src/core/initiativeGuards.mjs';
 import {
@@ -9452,7 +9453,7 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     const preferred = pendingManualTarget && g.SelectedEnemyUID ? GetActorByUID(ctx, g.SelectedEnemyUID) : null;
     const target = preferred && preferred.kind === 'enemy' && (preferred.hp ?? 0) > 0
       ? preferred
-      : randomPick(ctx, enemies);
+      : resolveHeroAttackTarget({ hero: actor, enemies, randomPick: candidates => randomPick(ctx, candidates) });
     if (target) {
       resolvedTargetUID = Number(target.uid || 0);
       HeroAttackSingle(ctx, actorUID, target.uid);

@@ -19,6 +19,7 @@
 - Use `CanPickGems` through numeric readiness helpers such as `isCanPickGemsReady`; do not rely on strict boolean checks.
 - Personal FLOW owns combat charge. Roguelite card acquisition and proc entrypoints are paused; stale draw fields must not block combat. Parked definitions do not authorize reactivation.
 - Native wards, Cover, Reprisal, Rally and weakness are actor-owned combat effects; card-session records cannot activate them.
+- HERO_SINGLE keeps a valid owner-matched manual enemy selection; its automatic fallback delegates to the shared role-targeting rule.
 - Supergem behavior is separate from skill-card selection. Kojonn's Faze is not a green gem or green supergem trigger, and retired green supergem state must fail closed.
 - Once a rule family is Rust-owned, route through the owner packet/shadow seam and apply the returned decision instead of recomputing the outcome.
 

@@ -49,6 +49,7 @@ import { resolveEnemyJobSkill as importedResolveEnemyJobSkill } from '../src/cor
 import { resolveStartEnemyAction as importedResolveStartEnemyAction } from '../src/core/startEnemyActionRules.mjs';
 import { resolveEnemyTurnFlow as importedResolveEnemyTurnFlow } from '../src/core/enemyTurnFlowRules.mjs';
 import { resolveHeroTurnEntry as importedResolveHeroTurnEntry } from '../src/core/heroTurnEntryRules.mjs';
+import { resolveHeroAttackTarget } from '../src/core/heroAttackTargetingRules.mjs';
 import {
   pickEnemyTargetHeroFromRoster,
   resolveEnemyTargetHero,
@@ -9395,7 +9396,7 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     const preferred = pendingManualTarget && g.SelectedEnemyUID ? GetActorByUID(ctx, g.SelectedEnemyUID) : null;
     const target = preferred && preferred.kind === 'enemy' && (preferred.hp ?? 0) > 0
       ? preferred
-      : randomPick(ctx, enemies);
+      : resolveHeroAttackTarget({ hero: actor, enemies, randomPick: candidates => randomPick(ctx, candidates) });
     if (target) {
       resolvedTargetUID = Number(target.uid || 0);
       HeroAttackSingle(ctx, actorUID, target.uid);
