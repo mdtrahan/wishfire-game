@@ -321,6 +321,9 @@ test('living EXP level growth happens synchronously before the held settlement b
 
 function loadQaFixtureProcessTurnHarness({ tokenOwnerUID = 0 } = {}) {
   const source = read('web-runner/modules/functionBank.js');
+  const getEntities = extractFunctionSource(source, 'getEntities');
+  const getEnemies = extractFunctionSource(source, 'getEnemies');
+  const completedActorResolver = extractFunctionSource(source, 'resolveCompletedHeroActionSchedulerActor');
   const processTurn = source.slice(source.indexOf('export function ProcessTurn(ctx)'), source.indexOf('function isBoardFullyPopulatedForEnemyMutation')).replace('export function', 'function');
   const hero = { uid: 1, kind: 'hero', baseHeroName: 'Falie', hp: 40, maxHP: 40, sp: 100, spMax: 100, remainingActionSlots: 3, statuses: [] };
   const enemy = { uid: 9, kind: 'enemy', hp: 30, maxHP: 30, statuses: [] };
@@ -371,7 +374,7 @@ function loadQaFixtureProcessTurnHarness({ tokenOwnerUID = 0 } = {}) {
     AdvanceTurn: () => { throw new Error('held fixture should not advance'); },
   };
   vm.createContext(context);
-  vm.runInContext(`${processTurn}\nthis.ProcessTurn = ProcessTurn;`, context);
+  vm.runInContext(`${getEntities}\n${getEnemies}\n${completedActorResolver}\n${processTurn}\nthis.ProcessTurn = ProcessTurn;`, context);
   return { context, globals, hero, enemy, ctx };
 }
 
