@@ -17,6 +17,7 @@ import {
   createEnemyRosterRefillHold,
   createEnemyTurnGateBaseline,
   createHeroTurnGateBaseline,
+  createDeferredAdvanceResolved,
   createYellowSafetyNet,
   hasSessionLevelUpPresentationBarrier,
 } from '../src/core/turnGateController.mjs';
@@ -5022,14 +5023,56 @@ function recordHeroTeamTurnProgress(ctx, currentUID, currentType) {
   g.HeroTeamTurnSeenByUID = {};
 }
 
+function resolveCompletedHeroActionSchedulerActor(ctx) {
+  const g = getGlobals(ctx);
+  const scheduledUID = Number(GetCurrentTurn(ctx) || 0);
+  const scheduledActor = scheduledUID > 0 ? GetActorByUID(ctx, scheduledUID) : null;
+  const ownerUID = Number(g.ActionOwnerUID || 0);
+  const ownerActor = ownerUID > 0 ? GetActorByUID(ctx, ownerUID) : null;
+  const livingEnemy = getEnemies(ctx).some(enemy => enemy && Number(enemy.hp ?? 0) > 0);
+  const ownerHandoffIsStale =
+    livingEnemy &&
+    Number(g.DeferAdvance || 0) > 0 &&
+    Number(g.AdvanceAfterAction || 0) > 0 &&
+    Number(g.ActionInProgress || 0) === 0 &&
+    Number(g.IsPlayerBusy || 0) === 0 &&
+    ownerUID > 0 &&
+    ownerUID !== scheduledUID &&
+    ownerActor?.kind === 'hero' &&
+    scheduledActor?.kind === 'hero' &&
+    Number(scheduledActor.hp ?? 0) > 0;
+  if (ownerHandoffIsStale) {
+    return {
+      uid: ownerUID,
+      type: 0,
+      scheduledUID,
+      reconciled: true,
+    };
+  }
+  return {
+    uid: scheduledUID,
+    type: Number(GetCurrentType(ctx) || 0) === 1 ? 1 : 0,
+    scheduledUID,
+    reconciled: false,
+  };
+}
+
 export function AdvanceTurn(ctx) {
   const g = getGlobals(ctx);
-  const currentUID = GetCurrentTurn(ctx);
-  const currentType = GetCurrentType(ctx);
+  const completedActor = resolveCompletedHeroActionSchedulerActor(ctx);
+  const currentUID = completedActor.uid;
+  const currentType = completedActor.type;
   nativeTurnEnded(ctx, GetActorByUID(ctx, currentUID));
   const dynamicInitiativeCadenceEvents = [
     { event: 'action_completed', uid: Number(currentUID || 0), type: Number(currentType || 0) },
   ];
+  if (completedActor.reconciled) {
+    dynamicInitiativeCadenceEvents.push({
+      event: 'completed_action_owner_reconciled',
+      ownerUID: Number(currentUID || 0),
+      scheduledUID: Number(completedActor.scheduledUID || 0),
+    });
+  }
   const heroTeamTurnSerialBefore = Number(g.HeroTeamTurnSerial || 0);
   recordHeroTeamTurnProgress(ctx, currentUID, currentType);
   if (currentType === 0 && currentUID) {
@@ -9955,9 +9998,9 @@ function resolveProcessTurnActorEligibility(ctx, {
 }
 
 export function ProcessTurn(ctx) {
-  const type = GetCurrentType(ctx);
-  const uid = GetCurrentTurn(ctx);
-  const actor = GetActorByUID(ctx, uid);
+  let type = GetCurrentType(ctx);
+  let uid = GetCurrentTurn(ctx);
+  let actor = GetActorByUID(ctx, uid);
   const g = getGlobals(ctx);
   const qaTrace = (reason, extra = {}) => {
     if (!g.QaFixtureHoldTurn && !g.QaFixtureExplicitAction) return;
@@ -10049,6 +10092,21 @@ export function ProcessTurn(ctx) {
       time: Number(g.time || 0),
     });
     return;
+  }
+  const completedActor = resolveCompletedHeroActionSchedulerActor(ctx);
+  if (completedActor.reconciled) {
+    // A native action owns the handoff even when initiative exposed the next
+    // living hero before presentation release reached this seam.
+    AdvanceTurn(ctx);
+    if (holdForEnemyRosterRefill(ctx)) return;
+    applyTurnGateIntent(g, createDeferredAdvanceResolved);
+    type = GetCurrentType(ctx);
+    uid = GetCurrentTurn(ctx);
+    actor = GetActorByUID(ctx, uid);
+    qaTrace('completed-action-owner-reconciled', {
+      completedOwnerUID: Number(completedActor.uid || 0),
+      scheduledUID: Number(completedActor.scheduledUID || 0),
+    });
   }
   nativeTurnStarted(ctx, actor);
   if (actor.hp <= 0) { finishQaFixtureExplicitAction('qa-explicit-action-revoked', { blocker: 'actor-ko' }); AdvanceTurn(ctx); return; }

@@ -543,3 +543,7 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Combat migration: action capacity, SP affordability and initiative are independent boundaries. Validate actual battlefield clicks and full-queue auto-commit through presentation completion. Generated renderer edits must preserve the array join and post-processing chain; edit the decoded body within that boundary. Paused effects need removed runtime callers, not just disabled acquisition.
 
 - Orb rewards must separate event qualification, per-action proc caps, recipient assignment and collection. Keep probability draws outside the combat RNG stream; use the same action identity for failed as well as successful proc checks.
+
+## 2026-09-12 - Completed Hero Actions Must Own Scheduler Handoffs
+- A deferred native action can finish after initiative has already exposed another living hero as current. Advance from the completed `ActionOwnerUID` before clearing the handoff; routing that mismatch straight to `ProcessTurn` leaves the active hero at phase 0 without a production action claim.
+- Keep the reconciliation conditional on a living enemy and living hero scheduler target. Terminal settlement and enemy-current recovery retain their existing paths.
