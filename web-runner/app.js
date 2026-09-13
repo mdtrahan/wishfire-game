@@ -2108,8 +2108,8 @@ async function main(){
   combatRuntimeGateway.setLayoutState(layoutState);
   const questCombat = createQuestCombatSession({ state, gameState, call: name => callFunctionWithContext(fnContext, name), sync: syncFromGlobals });
   const equipmentProgress = createEquipmentStorage({ globals: state.globals, getActors: () => state.entities, storage: window.localStorage });
-  const astralMarket = createAstralMarketUI({canvas, economy: equipmentProgress, getResources: () => gameState.storyEntry.progress, onBack: () => returnToQuest(gameState, layoutState, 'astral-market-back')});
-  const storyEntry = createStoryEntryFlow({ gameState, layoutState, isReady: () => freshCombatBootstrapped, getEnemies: () => enemyRows, prepareEncounter: questCombat.prepare, resurrect: questCombat.resurrect, energyGlobals: state.globals, enterCombat: createCombatEntryTransition(canvas, { onComplete: () => {
+  const astralMarket = createAstralMarketUI({canvas, economy: equipmentProgress, getResources: () => gameState.storyEntry.progress, onBack: () => storyEntry.navigate('Quests')});
+  const storyEntry = createStoryEntryFlow({ gameState, layoutState, isReady: () => freshCombatBootstrapped, getEnemies: () => enemyRows, prepareEncounter: questCombat.prepare, resurrect: questCombat.resurrect, closeTransientSurface: () => astralMarket.hide(), energyGlobals: state.globals, enterCombat: createCombatEntryTransition(canvas, { onComplete: () => {
     if (releaseCombatStartToScheduler(state.globals) && state.globals.GamePhase === 'RUNTIME') {
       combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
     }
@@ -3683,6 +3683,11 @@ function getStoryCardLiveLineState() {
     frameCount++;
     if (gameState.storyEntry.phase === 'defeat') { drawFrame(); requestAnimationFrame(tick); return; }
     if (ensureDevToolingConfig().open) {
+      requestAnimationFrame(tick);
+      return;
+    }
+    if (gameState.storyEntry.combatPaused) {
+      if (layoutState.getActiveLayoutId() !== 'combat') drawFrame();
       requestAnimationFrame(tick);
       return;
     }

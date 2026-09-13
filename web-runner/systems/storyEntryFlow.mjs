@@ -12,7 +12,7 @@ export function buildSyntheticQuestStages(enemies) {
     }));
 }
 
-export function createStoryEntryFlow({ gameState, layoutState, isReady, content = WISHFIRE_WARP_CROSSING_CONTENT, resurrect = () => {}, prepareEncounter = () => {}, getEnemies = () => [], onCombatEnd = () => {}, onCombatQuit = onCombatEnd, isCombatPauseEligible = () => true, energyGlobals = { Player_Energy: 200 }, enterCombat = change => change() }) {
+export function createStoryEntryFlow({ gameState, layoutState, isReady, content = WISHFIRE_WARP_CROSSING_CONTENT, resurrect = () => {}, prepareEncounter = () => {}, getEnemies = () => [], onCombatEnd = () => {}, onCombatQuit = onCombatEnd, isCombatPauseEligible = () => true, closeTransientSurface = () => {}, energyGlobals = { Player_Energy: 200 }, enterCombat = change => change() }) {
   const scene = content.scenes[0];
   const handoff = scene.steps.findIndex(step => step.id === scene.combatHandoffStepId);
   if (handoff < 0) throw new Error('Opening scene requires an authored combat handoff step');
@@ -137,12 +137,16 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
     if ((entry.phase === 'combat' || entry.combatPaused) && label === 'Quests') {
       if (!isCombatPauseEligible()) return false;
       const previousPhase = entry.phase;
+      const previousPaused = entry.combatPaused;
+      entry.combatPaused = true;
       entry.phase = 'combat-paused';
       entry.modal = 'combat-pause';
+      closeTransientSurface();
       const changed = await go('storyMock', 'combat-pause-navigation');
       if (!changed) {
         entry.phase = previousPhase;
         entry.modal = null;
+        entry.combatPaused = previousPaused;
       }
       return changed;
     }
@@ -162,6 +166,7 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
     }
     return go(target, 'quest-navigation');
   }
+  entry.openPausedBattleGate = () => navigate('Quests');
   return { enter() {}, update, handlePointer, startCard, startCombat, startCombatForQA, requestSkip, confirmSkip, cancelSkip, navigate,
     allowedTransitions: () => entry.pending || entry.modal === 'combat-pause' || (!entry.modal && entry.phase !== 'opening') ? ['combat', 'town', 'heroLayout', 'chestsLayout', 'idleFarmLayout', 'mapLayout'] : [],
     victory() { if (entry.phase === 'combat' && entry.activeCard !== null && !entry.pending) complete(); },

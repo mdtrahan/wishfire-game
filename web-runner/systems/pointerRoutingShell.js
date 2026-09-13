@@ -1,5 +1,8 @@
 export function returnToQuest(gameState, layoutState, reason) {
   const entry = gameState.storyEntry;
+  if (typeof entry?.openPausedBattleGate === 'function' && (entry.phase === 'combat' || entry.combatPaused)) {
+    return entry.openPausedBattleGate();
+  }
   if (entry?.phase === 'combat' || entry?.combatPaused) {
     entry.combatPaused = true;
     entry.phase = 'combat-paused';

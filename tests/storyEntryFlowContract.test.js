@@ -189,13 +189,15 @@ test('every enabled non-combat destination pauses before its shared Quests resum
   const { createStoryEntryFlow } = await import('../web-runner/systems/storyEntryFlow.mjs');
   let active = 'combat';
   const gameState = {};
+  const routePauseStates = [];
   const flow = createStoryEntryFlow({ gameState, isReady: () => true, layoutState: {
     getActiveLayoutId: () => active,
-    async requestLayoutChange(target) { active = target; return true; },
+    async requestLayoutChange(target) { routePauseStates.push(gameState.storyEntry.combatPaused); active = target; return true; },
   } });
   gameState.storyEntry.phase = 'combat';
   assert.equal(await flow.navigate(label), true, `${label} opens while preserving combat`);
   assert.equal(gameState.storyEntry.combatPaused, true, `${label} marks the exact battle paused`);
+  assert.equal(routePauseStates[0], true, `${label} pauses before its layout routes`);
   assert.equal(await flow.navigate('Quests'), true, `${label} returns through Quests`);
   assert.equal(gameState.storyEntry.phase, 'combat-paused');
   assert.equal(gameState.storyEntry.modal, 'combat-pause');
