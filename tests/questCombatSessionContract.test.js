@@ -19,13 +19,15 @@ test('resurrection retains enemy progress, buffs and skills while reviving every
  state.globals.NativeBattleEnded=false;assert.equal(session.isCleared(),false);
 });
 
-test('victory auto-advances only after EXP settlement work completes, without a result dialog or Continue action', async () => {
+test('endless sessions never surface a finite-victory completion path', async () => {
  const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
  const state={entities:[],globals:{QuestFiniteEncounter:1,NativeBattleEnded:true,ProgressionBattle:{id:'victory-auto',outcome:'victory'},SessionLevelUpQueue:{status:'complete'},SessionLevelUpSettlement:null,FlowOrbs:[]}};
  const session=createQuestCombatSession({state,gameState:{},call(){},sync(){}});
- assert.equal(session.isCleared(),true);
+ session.prepare();
+ assert.equal(state.globals.QuestFiniteEncounter,0);
+ assert.equal(session.isCleared(),false);
  state.globals.SessionLevelUpSettlement={phase:'active'};
- assert.equal(session.isCleared(),false, 'EXP rows finish before the adventure advances');
+ assert.equal(session.isCleared(),false, 'EXP rows do not create a finite completion');
  state.globals.SessionLevelUpSettlement=null;
  state.globals.SessionLevelUpQueue={status:'active'};
  assert.equal(session.isCleared(),false, 'queued hero choices stay sequential');

@@ -65,7 +65,7 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
       void go('combat', 'story-combat-handoff', { freshStart: true });
     } else complete();
   }
-  async function startCombatForQA() {
+  async function startCombat(reason = 'player-start') {
     const card = cards[0];
     if (!isReady() || entry.pending || entry.phase === 'defeat' || !card?.combat) return false;
     if (layoutState.getActiveLayoutId() === 'combat' && entry.phase === 'combat') return true;
@@ -76,7 +76,10 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
     entry.modal = null;
     entry.error = null;
     prepareEncounter();
-    return go('combat', 'quest-qa-direct-combat', { freshStart: true });
+    return go('combat', reason, { freshStart: true });
+  }
+  async function startCombatForQA() {
+    return startCombat('quest-qa-direct-combat');
   }
   function startCard(index) {
     if (!isReady() || entry.pending || entry.phase !== 'ladder' || !Number.isInteger(index) || index < 0 || index >= entry.progress.revealed) return false;
@@ -93,12 +96,6 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
     return true;
   }
   function update(nowSec) {
-    if (cards.length === 2 && isReady()) {
-      const stages = buildSyntheticQuestStages(getEnemies());
-      const midpoint = Math.ceil(stages.length / 2);
-      cards.splice(1, 0, ...stages.slice(0, midpoint));
-      cards.push(...stages.slice(midpoint));
-    }
     if (layoutState.getActiveLayoutId() !== 'storyMock' || !isReady() || entry.pending || entry.modal || entry.phase !== 'opening') return;
     updateNarrativeSceneAuto(gameState, entry.content, nowSec);
     if (gameState.narrativeScene?.completed) finishStory();
@@ -128,7 +125,7 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
     if (entry.phase === 'map') {
       if (entry.combatPaused) return false;
       if (![entry.townHitZone, entry.startHitZone].some(rect => contains(point, rect))) return false;
-      entry.phase = 'ladder'; return true;
+      void startCombat('player-start'); return true;
     }
     if (entry.phase !== 'opening') return false;
     if (contains(point, gameState.narrativeScene?.hitZones?.skip)) return requestSkip();
@@ -152,19 +149,20 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
     const targets = { Hero: 'heroLayout', Vault: 'chestsLayout', AstralFlow: 'idleFarmLayout', Map: 'storyMock', Quests: 'storyMock' };
     const target = targets[label];
     if (!target) return false;
+    if (entry.phase === 'combat' && label !== 'Quests') entry.combatPaused = true;
     if (target === 'storyMock') {
       if (entry.phase === 'combat' && !entry.combatPaused && label === 'Map') {
         entry.combatPaused = true;
         entry.phase = 'map';
       } else if (!entry.combatPaused) {
-        entry.phase = label === 'Map' ? 'map' : 'ladder';
+        entry.phase = 'map';
       } else if (label === 'Map') {
         entry.phase = 'map';
       }
     }
     return go(target, 'quest-navigation');
   }
-  return { enter() {}, update, handlePointer, startCard, startCombatForQA, requestSkip, confirmSkip, cancelSkip, navigate,
+  return { enter() {}, update, handlePointer, startCard, startCombat, startCombatForQA, requestSkip, confirmSkip, cancelSkip, navigate,
     allowedTransitions: () => entry.pending || entry.modal === 'combat-pause' || (!entry.modal && entry.phase !== 'opening') ? ['combat', 'town', 'heroLayout', 'chestsLayout', 'idleFarmLayout', 'mapLayout'] : [],
     victory() { if (entry.phase === 'combat' && entry.activeCard !== null && !entry.pending) complete(); },
     defeat() {
@@ -199,7 +197,7 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
       if (entry.phase !== 'combat-paused' || entry.modal !== 'combat-pause' || entry.pending) return false;
       onCombatQuit();
       if (typeof layoutState.clearSnapshot === 'function') layoutState.clearSnapshot('combat');
-      entry.phase = 'ladder';
+      entry.phase = 'map';
       entry.modal = null;
       entry.combatPaused = false;
       entry.activeCard = null;
@@ -207,7 +205,7 @@ export function createStoryEntryFlow({ gameState, layoutState, isReady, content 
       entry.error = null;
       return true;
     },
-    quit() { if (entry.phase !== 'defeat' || entry.pending) return; onCombatEnd(); entry.phase = 'ladder'; entry.activeCard = null; entry.combatUnlocked = false; entry.error = null; },
+    quit() { if (entry.phase !== 'defeat' || entry.pending) return; onCombatEnd(); entry.phase = 'map'; entry.activeCard = null; entry.combatUnlocked = false; entry.error = null; },
     // Existing developer scenarios intentionally bypass presentation controls.
     skip() {
       if (!isReady() || entry.pending) return false;

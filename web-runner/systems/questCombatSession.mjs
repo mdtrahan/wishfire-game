@@ -10,15 +10,10 @@ export function restoreHeroesToFullHP({ state, call }) {
 
 export function createQuestCombatSession({ state, gameState, call, sync }) {
   return {
-    prepare() { state.globals.QuestFiniteEncounter = 1; },
-    isCleared() {
-      return state.globals.QuestFiniteEncounter === 1
-        && state.globals.NativeBattleEnded === true
-        && state.globals.SessionLevelUpQueue?.status !== 'active'
-        && !state.globals.SessionLevelUpSettlement
-        && !state.globals.FlowOrbs?.length
-        && state.globals.ProgressionBattle?.outcome === 'victory';
-    },
+    // Player sessions replenish the existing enemy slots. Authored finite
+    // encounters remain available to QA through their explicit setup hooks.
+    prepare() { state.globals.QuestFiniteEncounter = 0; },
+    isCleared() { return false; },
     resurrect() {
       restoreHeroesToFullHP({ state, call });
       state.globals.NativeBattleEnded = false;

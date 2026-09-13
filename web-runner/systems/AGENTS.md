@@ -100,6 +100,7 @@
 
 - `renderHeroScreen.js` consumes canonical hero definitions and owned progression; skill ranks and independent skill-point upgrades are retired. Show all level locks, passives and personal AF.
 - `questCombatSession.mjs` presents settled progression before allowing the victory return. Queue settlement and EXP computation remain core/module-owned.
+- Player Start enters an endless combat session through `storyEntryFlow.mjs`; it sets `QuestFiniteEncounter` to zero and never inserts Quest Ladder stages or opening dialogue. QA may still reach retained story hooks explicitly.
 
 - Skill taps queue directly. Independent per-hero action slots auto-commit at capacity; ACT ends selection early. Battlefield selection persists; queued targets are snapshots. Removing entries restores reservations.
 

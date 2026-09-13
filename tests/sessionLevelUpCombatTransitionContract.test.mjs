@@ -202,10 +202,11 @@ test('a new victory identity starts its own queue and settlement while a duplica
   assert.deepEqual(globals.HeroProgress.settledBattles, ['victory-a', 'victory-b']);
 });
 
-test('combat completion waits for the queue seam and resets its state for a fresh session', () => {
+test('endless combat never exposes a finite clear while level-up presentation remains scheduler-gated', () => {
   const source = read('web-runner/systems/questCombatSession.mjs');
   const reset = read('web-runner/systems/combatSessionReset.mjs');
-  assert.match(source, /SessionLevelUpQueue\?\.status !== 'active'/);
+  assert.match(source, /isCleared\(\) \{ return false; \}/);
+  assert.doesNotMatch(source, /SessionLevelUpQueue\?\.status !== 'active'/);
   assert.match(reset, /SessionLevelUpQueue: \{ version: 1, status: 'complete'/);
 });
 
