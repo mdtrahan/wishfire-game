@@ -2326,6 +2326,20 @@ async function main(){
     const defeated = callFunctionWithContext(fnContext, 'SettleCombatDefeat');
     return { ok: true, defeated, readout: qaReadSessionBuffState() };
   };
+  const qaResolveEnemyBasicHit = heroUID => {
+    const presentation = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
+    if (presentation.open) return { ok: false, reason: 'choiceActive', readout: qaReadSessionBuffState() };
+    const target = state.entities.find(actor => actor?.kind === 'hero' && Number(actor.uid || 0) === Number(heroUID || 0) && Number(actor.hp || 0) > 0);
+    const enemy = state.entities.find(actor => actor?.kind === 'enemy' && Number(actor.hp || 0) > 0);
+    if (!target || !enemy) return { ok: false, reason: !target ? 'heroUnavailable' : 'enemyUnavailable', readout: qaReadSessionBuffState() };
+    const preHP = Number(target.hp || 0), wardBefore = Number(state.globals.PartyTempHPShield || 0), orbCountBefore = (state.globals.FlowOrbs || []).length;
+    const requested = Math.max(1, Number(callFunctionWithContext(fnContext, 'CalculateDamage', enemy.uid, target.uid, 'melee') || 1));
+    const applied = Number(callFunctionWithContext(fnContext, 'ApplyDamageToTarget', target.uid, requested, { sourceUID: enemy.uid }) || 0);
+    const kaja = state.entities.find(actor => String(actor?.baseHeroName || actor?.name || '') === 'Kojonn' || String(actor?.name || '') === 'Kaja');
+    const result = { ok: true, enemyUID: Number(enemy.uid || 0), targetUID: Number(target.uid || 0), preHP, postHP: Number(target.hp || 0), requested, applied, wardAbsorbed: Math.max(0, wardBefore - Number(state.globals.PartyTempHPShield || 0)), wardRemaining: Number(state.globals.PartyTempHPShield || 0), kajaRecipientUID: Number(state.globals.FlowOrbAudit?.roleRecipientUID || 0), kajaAF: Number(kaja?.flow || 0), deathGemCount: Math.max(0, (state.globals.FlowOrbs || []).length - orbCountBefore) };
+    state.globals.QaEnemyBasicHit = result;
+    return { ...result, readout: qaReadSessionBuffState() };
+  };
   const qaChooseAstralFlowSpecial = specialId => {
     const presentation = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
     const index = (presentation.cards || []).findIndex(card => String(card?.specialId || '') === String(specialId || ''));
@@ -4238,6 +4252,7 @@ function getStoryCardLiveLineState() {
     qaGrantDawnChorus,
     qaSetDawnChorusRoll,
     qaTriggerDawnChorusDefeat,
+    qaResolveEnemyBasicHit,
     qaChooseAstralFlowSpecial,
     qaPauseResumeSessionBuffOffer,
     qaReadSessionBuffState,

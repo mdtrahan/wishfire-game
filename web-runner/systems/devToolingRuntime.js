@@ -2,6 +2,7 @@ import * as devToolingControls from './devToolingControls.js';
 import { renderCombatTurnQaReadoutHtml } from './combatTurnQaReadout.mjs';
 import { normalizeCombatOrientation } from '../../src/core/combatOrientation.mjs';
 import { clearSessionLevelBuffState } from '../../src/core/sessionLevelBuffOffers.mjs';
+import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 
 const DEV_TOOL_HOTKEY_LABEL = 'Ctrl+Shift+P';
 const DEV_TOOL_GEM_RANDOM = -1;
@@ -833,11 +834,10 @@ export function createDevToolingRuntime(deps = {}) {
     callFunctionWithContext(fnContext, 'CancelHeroTurnCardFan');
     state.globals.NativeCommandSequence = null;
     if (options.clearSessionLevelBuffs) {
+      // Fresh quit/start uses the same session-effect reset as the initializer.
+      // Layout pause/resume skips this branch and preserves its exact snapshot.
+      resetCombatSessionConditions(state.globals, gameState);
       state.globals.SessionLevelBuffState = clearSessionLevelBuffState();
-      state.globals.SessionLevelUpQueue = { version: 1, status: 'complete', paused: false, currentIndex: 0, entries: [] };
-      state.globals.SessionLevelUpOffersByQueueIndex = {};
-      state.globals.SessionLevelUpSettlement = null;
-      delete state.globals.SessionLevelBuffCombatSessionId;
     }
     const refill = gameState.refillBounce || (gameState.refillBounce = {});
     refill.active = false;

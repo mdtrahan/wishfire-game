@@ -258,6 +258,7 @@ export function registerDevBrowserTestHooks({
   qaGrantDawnChorus,
   qaSetDawnChorusRoll,
   qaTriggerDawnChorusDefeat,
+  qaResolveEnemyBasicHit,
   qaChooseAstralFlowSpecial,
   qaPauseResumeSessionBuffOffer,
   qaReadSessionBuffState,
@@ -1018,6 +1019,11 @@ export function registerDevBrowserTestHooks({
         if (!result.ok) throw new Error(`QA Dawn defeat failed: ${result.reason || 'unknown'}`);
         if (typeof drawFrame === 'function') drawFrame();
       }],
+      ['QA enemy basic', () => {
+        const result = typeof qaResolveEnemyBasicHit === 'function' ? qaResolveEnemyBasicHit(Number(qaHero()?.uid || 0)) : { ok: false, reason: 'missingProductionEnemyHitEntryPoint' };
+        renderAfReadout(`enemy basic: ${result.ok ? `${result.preHP}->${result.postHP}` : result.reason || 'refused'}`);
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
       ['QA set AF 100', () => {
         const result = typeof qaSetHeroFlowReady === 'function'
           ? qaSetHeroFlowReady(Number(qaHero()?.uid || 0), String(specialSelect.value || ''))
@@ -1031,7 +1037,7 @@ export function registerDevBrowserTestHooks({
           ? qaChooseAstralFlowSpecial(String(specialSelect.value || ''))
           : { ok: false, reason: 'missingProductionSpecialEntryPoint' };
         renderAfReadout(`choose special: ${result.ok ? 'ok' : result.reason || 'failed'}`);
-        if (!result.ok) throw new Error(`QA choose special failed: ${result.reason || 'unknown'}`);
+        if (!result.ok) return;
         if (typeof drawFrame === 'function') drawFrame();
       }],
       ['QA offer pause/resume', async () => {

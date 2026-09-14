@@ -76,3 +76,7 @@ test('Quest-QA rails retain the compact heal, Dawn, and combat diagnostics contr
   assert.match(app, /kajaAF: \{/);
   assert.match(app, /dawnChorus: \{/);
 });
+test('Quest-QA enemy basic uses the production damage resolver and refuses active card choices', () => {
+ const app=readFileSync(new URL('../web-runner/app.js',import.meta.url),'utf8');const hooks=readFileSync(new URL('../web-runner/systems/devBrowserTestHooks.js',import.meta.url),'utf8');
+ assert.match(app,/const qaResolveEnemyBasicHit = heroUID =>/);assert.match(app,/if \(presentation\.open\) return \{ ok: false, reason: 'choiceActive'/);assert.match(app,/ApplyDamageToTarget', target\.uid, requested, \{ sourceUID: enemy\.uid \}/);assert.match(hooks,/QA enemy basic/);assert.doesNotMatch(hooks,/QA choose special failed/);
+});

@@ -26,3 +26,8 @@ test('fresh reset clears combat-quality diagnostics and live effects with the se
  const globals={SessionLevelBuffState:{heroes:{fara:{}}},QaLastAstralFlowSpecial:{id:'chain_strike_ii'},LastAstralFlowSpecial:{id:'chain_strike_ii'},QaFixtureHeal:{ok:true},FlowOrbAudit:{roleRecipientUID:4},LastPartyChainStrike:{},PartyTempHPShield:9,PendingFlowThresholds:[{token:'flow-1-1'}],DawnChorusAttempted:1,DawnChorusSucceeded:1,DawnChorusOwnedRank:4,DawnChorusLastRoll:{},QaPreferredAstralFlowSpecialId:'faze'};
  resetCombatSessionConditions(globals,{});for(const key of ['QaLastAstralFlowSpecial','LastAstralFlowSpecial','QaFixtureHeal','FlowOrbAudit','LastPartyChainStrike','PartyTempHPShield','DawnChorusAttempted','DawnChorusSucceeded','DawnChorusOwnedRank','DawnChorusLastRoll','QaPreferredAstralFlowSpecialId'])assert.equal(globals[key],undefined);assert.deepEqual(globals.PendingFlowThresholds,[]);
 });
+test('production quit/fresh runtime delegates clear-session state to the shared reset owner', async () => {
+ const src=await import('node:fs/promises').then(fs=>fs.readFile(new URL('../web-runner/systems/devToolingRuntime.js',import.meta.url),'utf8'));
+ assert.match(src,/import \{ resetCombatSessionConditions \} from '\.\/combatSessionReset\.mjs';/);
+ assert.match(src,/if \(options\.clearSessionLevelBuffs\) \{[\s\S]*resetCombatSessionConditions\(state\.globals, gameState\)/);
+});
