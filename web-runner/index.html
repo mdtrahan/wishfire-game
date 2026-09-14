@@ -121,11 +121,33 @@
       pointer-events:auto;
       touch-action:auto;
     }
+    html:has(.quest-qa-controls[data-qa-layout="dock"]),
+    body:has(.quest-qa-controls[data-qa-layout="dock"]){
+      overflow-x:hidden;
+      overflow-y:auto;
+      overscroll-behavior:auto;
+    }
+    body:has(.quest-qa-controls[data-qa-layout="dock"]){
+      position:static;
+      inset:auto;
+      height:auto;
+      min-height:100dvh;
+      touch-action:auto;
+    }
     .quest-qa-controls[data-qa-layout="dock"]{
+      position:static;
+      inset:auto;
       display:grid;
       grid-template-columns:repeat(2,minmax(0,1fr));
       align-items:start;
       gap:4px;
+      width:100%;
+      height:auto;
+      min-height:0;
+      max-height:none;
+      margin:0;
+      padding:8px;
+      overflow:visible;
     }
     .quest-qa-controls[data-qa-layout="dock"] .quest-qa-rail{
       width:auto;

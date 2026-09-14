@@ -38,6 +38,24 @@ function extractExportedFunction(src, name) {
   assert.fail(`unterminated ${name}`);
 }
 
+function rect(left, top, right, bottom) {
+  return { left, top, right, bottom };
+}
+
+function overlaps(first, second) {
+  return first.left < second.right
+    && first.right > second.left
+    && first.top < second.bottom
+    && first.bottom > second.top;
+}
+
+function assertContained(bounds, viewport) {
+  assert.ok(bounds.left >= 0);
+  assert.ok(bounds.top >= 0);
+  assert.ok(bounds.right <= viewport.width);
+  assert.ok(bounds.bottom >= bounds.top);
+}
+
 test('developer controls never shrink the game stage', () => {
   const src = read('web-runner/systems/appShellViewport.js');
   const computeScale = new Function(`${extractExportedFunction(src, 'computeAppControlScale')}; return computeAppControlScale;`)();
@@ -212,4 +230,35 @@ test('questQA controls use fixed side rails with a contained compact dock', () =
   assert.match(hooks, /document\.body\.append\(pauseSnapshot, controls\);/);
   assert.doesNotMatch(hooks, /top:4px;left:4px;z-index:10001/);
   assert.doesNotMatch(hooks, /top:32px;left:4px;z-index:10001/);
+});
+
+test('compact questQA dock flows below the stage without horizontal overflow', () => {
+  const html = read('web-runner/index.html');
+  const viewport = { width: 240, height: 384 };
+  const stage = rect(12, 0, 228, 384);
+  const dock = rect(0, 384, 240, 768);
+  const leftRail = rect(8, 392, 118, 760);
+  const rightRail = rect(122, 392, 232, 760);
+
+  assert.match(html, /html:has\(\.quest-qa-controls\[data-qa-layout="dock"\]\)/);
+  assert.match(html, /body:has\(\.quest-qa-controls\[data-qa-layout="dock"\]\)\{[\s\S]*position:static;[\s\S]*height:auto;/);
+  assert.match(html, /body:has\(\.quest-qa-controls\[data-qa-layout="dock"\]\)[\s\S]*overflow-y:auto;/);
+  assert.match(html, /\.quest-qa-controls\[data-qa-layout="dock"\]\{[\s\S]*position:static;[\s\S]*width:100%;[\s\S]*max-height:none;[\s\S]*overflow:visible;/);
+
+  assertContained(dock, viewport);
+  assertContained(leftRail, viewport);
+  assertContained(rightRail, viewport);
+  assert.ok(dock.top >= stage.bottom);
+  assert.equal(overlaps(leftRail, stage), false);
+  assert.equal(overlaps(rightRail, stage), false);
+  assert.equal(overlaps(leftRail, rightRail), false);
+
+  const desktopStage = rect(286.5, 0, 781.5, 880);
+  const desktopLeftRail = rect(8, 48, 192, 225);
+  const desktopRightRail = rect(876, 225, 1060, 880);
+  const diagnostics = rect(881, 61, 1055, 221);
+  assert.equal(overlaps(desktopLeftRail, desktopStage), false);
+  assert.equal(overlaps(desktopRightRail, desktopStage), false);
+  assert.equal(overlaps(desktopRightRail, diagnostics), false);
+  assert.equal(desktopRightRail.top, diagnostics.bottom + 4);
 });

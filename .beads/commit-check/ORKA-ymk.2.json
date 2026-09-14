@@ -1,30 +1,18 @@
 {
   "changed_functions": {
-    "tests/AGENTS.md": [
-      "__MODULE__"
-    ],
     "tests/compactViewportContainmentContract.test.js": [
-      "extractExportedFunction"
+      "rect",
+      "overlaps",
+      "assertContained"
     ],
     "web-runner/index.html": [
       "__MODULE__"
-    ],
-    "web-runner/systems/AGENTS.md": [
-      "__MODULE__"
-    ],
-    "web-runner/systems/devBrowserTestHooks.js": [
-      "computeQuestQaControlLayout",
-      "registerDevBrowserTestHooks",
-      "beginQaFixtureOffer",
-      "runOwnerBasicAttempt",
-      "syncQaControlsLayout",
-      "updateQaOptions"
     ]
   },
   "details": {
     "hot_files_touched": [],
-    "staged_file_count": 5,
-    "staged_line_count": 166,
+    "staged_file_count": 2,
+    "staged_line_count": 71,
     "thresholds": {
       "file_count": 3,
       "hot_files_always_significant": true,
@@ -32,20 +20,14 @@
     }
   },
   "files": [
-    "tests/AGENTS.md",
     "tests/compactViewportContainmentContract.test.js",
-    "web-runner/index.html",
-    "web-runner/systems/AGENTS.md",
-    "web-runner/systems/devBrowserTestHooks.js"
+    "web-runner/index.html"
   ],
   "issue_id": "ORKA-ymk.2",
   "out_of_scope_hot_file_touch": false,
-  "significant": true,
+  "significant": false,
   "staged_blobs": {
-    "tests/AGENTS.md": "5ff8a60e7aa7024316f985039d56fea89a27f645",
-    "tests/compactViewportContainmentContract.test.js": "bf25b77f2ee41753e0cae0de3340bb8200d40098",
-    "web-runner/index.html": "fda0b0dfb26f13d519b53ef89cc810eb3519c4a4",
-    "web-runner/systems/AGENTS.md": "f05aecd6468f71feafac1030e638f546c6f4a357",
-    "web-runner/systems/devBrowserTestHooks.js": "7e8515f93fb2b133cbda64d8adb116a88dc7eaa1"
+    "tests/compactViewportContainmentContract.test.js": "27087c7257ef907605f7545c5b2aee04f47bba53",
+    "web-runner/index.html": "56eedb7e21e62329c2c5b3b34d6f1527e575d1c2"
   }
 }
