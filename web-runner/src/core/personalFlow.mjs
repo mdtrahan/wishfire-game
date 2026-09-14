@@ -2,7 +2,7 @@ import {FLOW_MODES,heroDefinition,heroKey} from './heroDefinitions.mjs';
 export {FLOW_MODES};
 export const flowHeroKey=heroKey;
 export function initializePersonalFlow(heroes){for(const hero of heroes){const d=heroDefinition(hero);hero.flow=0;delete hero.sp;delete hero.spMax;hero.flowMode=d?.flowMode||'Warrior';hero.statuses=[];}}
-export function getHeroFlowState(hero){const value=Math.min(100,Math.max(0,hero.flow||0));return {value,max:100,ready:value>=100,mode:hero.flowMode||heroDefinition(hero)?.flowMode};}
+export function getHeroFlowState(hero){const value=Math.min(100,Math.max(0,hero.flow||0));return {value,max:100,ready:value>=100,mode:heroDefinition(hero)?.flowMode||hero.flowMode};}
 export function getHeroSkillOptions(hero){return (heroDefinition(hero)?.actives||[]).filter(s=>s.unlockLevel<=(hero.currentLevel||1));}
 
 export const ROLE_FLOW_VALUE=10;
@@ -21,11 +21,10 @@ export function recordFlowThreshold(state,hero,before,after){
 export function resolveRoleFlowAward({heroes=[],hero=null,event={},apply=true}={}){
  const recipient=hero&&Number(hero.hp||0)>0?hero:null;
  if(!recipient||Number(recipient.flow||0)>=100||event.miss||event.periodic||event.prevented||event.resisted||event.unchanged)return null;
- const definitionMode=heroDefinition(recipient)?.flowMode;
- const explicitSupport=/^(support|guardian|support\s*\/\s*guardian)$/i.test(String(recipient.role||recipient.combatRole||''));
- // Canonical hero identity owns the AF role. Runtime copies can retain stale
- // flowMode fields across fixtures, so Huun can never become the Comrade recipient.
- const mode=definitionMode||(explicitSupport?'Comrade':recipient.flowMode);
+ // The canonical hero definition owns role AF. Runtime actor copies are mutable
+ // combat state and may retain a stale flowMode from an earlier QA fixture.
+ const mode=heroDefinition(recipient)?.flowMode;
+ if(!mode)return null;
  const hostileDamage=Number(event.hostileHpDamage||0)>0;
  const enemyDamage=Number(event.enemyHpDamage||0)>0;
  const newStatus=event.newEligibleStatus===true;

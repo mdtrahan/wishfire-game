@@ -37,7 +37,7 @@ test('battlefield selection is captured per action and AoE uses its group',()=>{
 test('Hondo three-hit Combo awards +10 once immediately with no orb',()=>{const {h,g,ctx}=battle();h.flow=0;assert.equal(commands.executeHeroCommand(ctx,{actorUID:1,queue:[{skillId:'combo',targetIds:[2]}]}),true);commands.resolveNativeCommandStep(ctx,g.PendingHeroHits.shift());assert.equal(h.flow,10);assert.equal(g.FlowOrbs,undefined);});
 test('each separately resolved linked action awards another immediate +10',()=>{const {h,g,ctx}=battle();h.actionSlotsPerTurn=2;assert.equal(commands.executeHeroCommand(ctx,{actorUID:1,queue:[{skillId:'power_attack',targetIds:[2]},{skillId:'combo',targetIds:[2]}]}),true);commands.resolveNativeCommandStep(ctx,g.PendingHeroHits.shift());assert.equal(h.flow,10);commands.resolveNativeCommandStep(ctx,g.PendingHeroHits.shift());assert.equal(h.flow,20);assert.equal(g.FlowOrbs,undefined);});
 test('Kaja Comrade receives one AF award when another hero is lethally hit',()=>{
- const kaja={uid:4,hp:40,flow:0,flowMode:'Comrade'},ally={uid:1,hp:0,flow:0,flowMode:'Warrior'};
+ const kaja={uid:4,name:'Kaja',baseHeroName:'Kojonn',hp:40,flow:0,flowMode:'Comrade'},ally={uid:1,name:'Fara',baseHeroName:'Falie',hp:0,flow:0,flowMode:'Warrior'};
  const award=flow.resolveRoleFlowAward({heroes:[kaja,ally],hero:kaja,event:{hostileHpDamage:40,hostileTargetUID:1,hostileTargetWasLiving:true}});
  assert.equal(award?.value,10);assert.equal(kaja.flow,10);
  assert.equal(flow.resolveRoleFlowAward({heroes:[kaja,ally],hero:kaja,event:{hostileHpDamage:40,hostileTargetUID:4,hostileTargetWasLiving:true}}),null);

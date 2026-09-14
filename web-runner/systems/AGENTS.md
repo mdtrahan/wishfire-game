@@ -27,6 +27,7 @@
 - Late combat overlays must resolve authored asset dimensions after `assetsLayout` loads, then apply the active layout scale through `combatPresentationScale.mjs`. DOM overlays use that same scale instead of fixed CSS dimensions.
 - Developer panels may scroll vertically at compact viewports. Their transformed shells must opt out of flex shrink and finish with 16px physical viewport gutters; every child keeps `scrollWidth <= clientWidth`.
 - Quest-QA controls are query-gated and use fixed side-gutter rails from measured Canvas bounds; when gutters are too narrow they use a contained scrollable two-column dock below the diagnostics z-order.
+- Quest-QA scenario controls start from one shared fresh-session reset and remain behind the existing dev-tooling pause plus fixture turn hold until explicit QA resume. Opening choices and AF specials keep their production selection callbacks.
 - Dev Panel 1 keeps Close in the upper-right header. Its action-button row follows that header and precedes every settings field and dropdown while retaining compact-width wrapping.
 - Developer controls overlay the contained game stage; their presence must never reserve viewport width or shrink the Canvas.
 - Full-screen Canvas overlays use the 360x640 reference coordinate system and apply the active layout scale once to the whole overlay, including hit zones.

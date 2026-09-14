@@ -4,7 +4,6 @@ import { canUseHeroCommand, chooseSessionLevelUpBuff, getSessionLevelUpBuffOffer
 import { SESSION_LEVEL_UP_BUFF_CARDS } from '../../src/core/sessionLevelBuffCatalog.mjs';
 import { getEligibleLevelUpBuffCards } from '../../src/core/sessionLevelBuffOffers.mjs';
 import { turnEnd, turnStart } from '../src/core/combatRules.mjs';
-import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import { derivePresentationTurnBarrier } from '../src/core/turnGateController.mjs';
 import {
   DYNAMIC_INITIATIVE_AUTHORITY_BATTLE_ID,
@@ -253,6 +252,9 @@ export function registerDevBrowserTestHooks({
   getAttackButtonBounds,
   worldToCanvas,
   canvas,
+  qaResetScenario,
+  qaResumeScenario,
+  qaRunAstralFlowSpecial,
   qaSetHeroFlowReady,
   qaFixtureHeal,
   qaGrantDawnChorus,
@@ -315,6 +317,11 @@ export function registerDevBrowserTestHooks({
       const detail = typeof qaReadSessionBuffState === 'function' ? qaReadSessionBuffState() : {};
       afReadout.textContent = `${message}${message ? '\n' : ''}${JSON.stringify(detail)}`;
       afReadout.dataset.qaAstralFlow = JSON.stringify(detail);
+    };
+    const requireQaScenarioPaused = ({ allowChoice = false } = {}) => {
+      if (!(state.globals.QaScenarioPaused && state.globals.QaFixtureHoldTurn && state.globals.DevToolingPaused)) throw new Error('QA scenario must be reset and paused first');
+      const readout = typeof qaReadSessionBuffState === 'function' ? qaReadSessionBuffState() : {};
+      if (!allowChoice && Array.isArray(readout.offerIds) && readout.offerIds.length) throw new Error('choiceActive');
     };
     const qaHero = () => {
       const heroes = state.entities.filter(entity => entity.kind === 'hero');
@@ -467,7 +474,7 @@ export function registerDevBrowserTestHooks({
     const releaseQaSettlementHold = () => {
       if (!state.globals.QaSettlementHoldActive) return false;
       delete state.globals.QaSettlementHoldActive;
-      delete state.globals.QaFixtureHoldTurn;
+      if (!state.globals.QaScenarioPaused) delete state.globals.QaFixtureHoldTurn;
       state.globals.QaSettlementHoldReleaseCount = Number(state.globals.QaSettlementHoldReleaseCount || 0) + 1;
       return true;
     };
@@ -560,6 +567,7 @@ export function registerDevBrowserTestHooks({
       if (typeof drawFrame === 'function') drawFrame();
     };
     const beginQaFixtureOffer = async () => {
+      requireQaScenarioPaused();
       const battle = state.globals.ProgressionBattle || {};
       if (battle.outcome === 'defeat' || battle.defeatSettled) throw new Error('QA fixture offer cannot open after defeat');
       if (!claimQaSettlementHold()) throw new Error('QA fixture offer is already waiting for settlement cleanup');
@@ -626,6 +634,7 @@ export function registerDevBrowserTestHooks({
         if (hero && enemy) callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', hero.uid);
       }],
       ['QA run fixture', async () => {
+        requireQaScenarioPaused();
         const fixture = resolveQaLevelUpFixtureKey(fixtureSelect.value);
         const owner = qaFixtureOwner(fixture, cardSelect.value);
         const fixtureReleaseCountBefore = Number(state.globals.QaFixtureHoldReleaseCount || 0);
@@ -951,7 +960,7 @@ export function registerDevBrowserTestHooks({
           throw error;
         } finally {
           delete state.globals.QaFixtureExplicitAction;
-          if (state.globals.QaFixtureHoldTurn) {
+          if (state.globals.QaFixtureHoldTurn && !state.globals.QaScenarioPaused) {
             state.globals.QaFixtureHoldReleaseCount = fixtureReleaseCountBefore + 1;
             state.globals.QaFixtureResult = { ...(state.globals.QaFixtureResult || fixtureResult || {}), schedulerReleaseCount: state.globals.QaFixtureHoldReleaseCount };
             delete state.globals.QaFixtureHoldTurn;
@@ -1003,12 +1012,12 @@ export function registerDevBrowserTestHooks({
         renderAfReadout(`Dawn rank: ${result.ok ? result.rank : result.reason || 'failed'}`);
         if (!result.ok) throw new Error(`QA Dawn rank failed: ${result.reason || 'unknown'}`);
       }],
-      ['QA Dawn success', () => {
+      ['QA Dawn forced success', () => {
         const result = typeof qaSetDawnChorusRoll === 'function' ? qaSetDawnChorusRoll(false) : { ok: false, reason: 'missingDawnRollEntryPoint' };
         renderAfReadout(`Dawn success roll: ${result.ok ? result.roll : result.reason || 'failed'}`);
         if (!result.ok) throw new Error(`QA Dawn success failed: ${result.reason || 'unknown'}`);
       }],
-      ['QA Dawn equal fail', () => {
+      ['QA Dawn forced equal', () => {
         const result = typeof qaSetDawnChorusRoll === 'function' ? qaSetDawnChorusRoll(true) : { ok: false, reason: 'missingDawnRollEntryPoint' };
         renderAfReadout(`Dawn equal roll: ${result.ok ? result.roll : result.reason || 'failed'}`);
         if (!result.ok) throw new Error(`QA Dawn equal failed: ${result.reason || 'unknown'}`);
@@ -1040,6 +1049,14 @@ export function registerDevBrowserTestHooks({
         if (!result.ok) return;
         if (typeof drawFrame === 'function') drawFrame();
       }],
+      ['QA run special', () => {
+        const result = typeof qaRunAstralFlowSpecial === 'function'
+          ? qaRunAstralFlowSpecial(Number(qaHero()?.uid || 0), String(specialSelect.value || ''))
+          : { ok: false, reason: 'missingTransactionalSpecialEntryPoint' };
+        renderAfReadout(`run special: ${result.ok ? 'ok' : result.reason || 'failed'}`);
+        if (!result.ok && result.reason !== 'choiceActive') throw new Error(`QA run special failed: ${result.reason || 'assertionFailed'}`);
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
       ['QA offer pause/resume', async () => {
         const result = typeof qaPauseResumeSessionBuffOffer === 'function'
           ? await qaPauseResumeSessionBuffOffer()
@@ -1048,7 +1065,16 @@ export function registerDevBrowserTestHooks({
         if (!result.ok) throw new Error('QA offer pause/resume failed through the production layout path');
         if (typeof drawFrame === 'function') drawFrame();
       }],
-      ['QA fresh session', () => { delete state.globals.QaFixtureBattleBaseline; delete state.globals.QaFixtureOwnerId; releaseQaSettlementHold(); delete state.globals.QaFixtureHoldTurn; delete state.globals.SessionLevelUpQaOfferCards; resetCombatSessionConditions(state.globals, {}); if (typeof drawFrame === 'function') drawFrame(); }],
+      ['QA fresh session', () => {
+        const result = typeof qaResetScenario === 'function' ? qaResetScenario() : { ok: false, reason: 'missingScenarioResetEntryPoint' };
+        renderAfReadout(`fresh session paused: ${result.ok ? 'ok' : result.reason || 'failed'}`);
+        if (!result.ok) throw new Error(`QA fresh session failed: ${result.reason || 'unknown'}`);
+      }],
+      ['QA resume', () => {
+        const result = typeof qaResumeScenario === 'function' ? qaResumeScenario() : { ok: false, reason: 'missingScenarioResumeEntryPoint' };
+        renderAfReadout(`resume: ${result.ok ? 'ok' : result.reason || 'refused'}`);
+        if (!result.ok && result.reason !== 'choiceActive') throw new Error(`QA resume failed: ${result.reason || 'unknown'}`);
+      }],
       ['QA abandon', async () => {
         const navigated = await storyEntry.navigate('Quests');
         const quit = navigated && storyEntry.quitPausedCombat();

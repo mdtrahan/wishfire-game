@@ -191,7 +191,7 @@ function aggregateProductionLevel(level, runCount) {
 }
 
 function speedFixture() {
-  const hero = { uid:1, kind:'hero', hp:40, effectiveSpeed:20, flow:0, flowMode:'Warrior' };
+  const hero = { uid:1, kind:'hero', name:'Huun', baseHeroName:'Huun', hp:40, effectiveSpeed:20, flow:0, flowMode:'Warrior' };
   const enemy = { uid:101, kind:'enemy', hp:40, effectiveSpeed:10 };
   const events = [], actionQueue = ['ordinary'];
   let latchUID = 0;

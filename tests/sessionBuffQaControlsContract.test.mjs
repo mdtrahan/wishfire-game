@@ -2,8 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { recordFlowThreshold } from '../web-runner/src/core/personalFlow.mjs';
-import { beginFreshSessionBuffQueue, chooseSessionLevelUpBuff, claimSessionBuffQueueResume, getSessionLevelUpBuffPresentation, reconcileSessionFlowThresholds } from '../web-runner/modules/sessionLevelUpBuffPresentation.mjs';
+import { beginFreshSessionBuffQueue, chooseSessionLevelUpBuff, claimSessionBuffQueueResume, getSessionLevelUpBuffPresentation, reconcileSessionFlowThresholds, SESSION_LEVEL_UP_BUFF_CARDS } from '../web-runner/modules/sessionLevelUpBuffPresentation.mjs';
 import { hasSessionLevelUpPresentationBarrier } from '../web-runner/src/core/turnGateController.mjs';
+import { resetCombatSessionConditions } from '../web-runner/systems/combatSessionReset.mjs';
 
 const hooks = readFileSync(new URL('../web-runner/systems/devBrowserTestHooks.js', import.meta.url), 'utf8');
 const app = readFileSync(new URL('../web-runner/app.js', import.meta.url), 'utf8');
@@ -15,6 +16,9 @@ test('Quest-QA AF controls are query-gated and use production callback seams', (
   assert.match(hooks, /qaPauseResumeSessionBuffOffer\(\)/);
   assert.match(hooks, /QA set AF 100/);
   assert.match(hooks, /QA choose special/);
+  assert.match(hooks, /QA run special/);
+  assert.match(hooks, /QA fresh session/);
+  assert.match(hooks, /QA resume/);
   assert.match(hooks, /QA offer pause\/resume/);
 });
 
@@ -27,6 +31,10 @@ test('app QA entrypoints use canonical threshold, fan selection, and layout navi
   assert.match(app, /await storyEntry\.navigate\('Quests'\)/);
   assert.match(app, /await storyEntry\.continuePausedCombat\(\)/);
   assert.match(app, /QaPreferredAstralFlowSpecialId/);
+  assert.match(app, /const qaResetScenario = \(\) =>/);
+  assert.match(app, /pauseGameplayForDevTooling\(\)/);
+  assert.match(app, /const qaResumeScenario = \(\) =>/);
+  assert.match(app, /const qaRunAstralFlowSpecial = \(heroUID, specialId\) =>/);
 });
 
 
@@ -63,8 +71,8 @@ test('app-boundary QA sequence opens, selects, resets, and resumes Fara’s AF s
 test('Quest-QA rails retain the compact heal, Dawn, and combat diagnostics controls', () => {
   assert.match(hooks, /QA fixture heal/);
   assert.match(hooks, /QA Dawn rank/);
-  assert.match(hooks, /QA Dawn success/);
-  assert.match(hooks, /QA Dawn equal fail/);
+  assert.match(hooks, /QA Dawn forced success/);
+  assert.match(hooks, /QA Dawn forced equal/);
   assert.match(hooks, /QA Dawn defeat/);
   assert.match(hooks, /qaFixtureHeal\(\)/);
   assert.match(hooks, /qaGrantDawnChorus\(Number\(tierSelect\.value \|\| 1\)\)/);
@@ -75,8 +83,52 @@ test('Quest-QA rails retain the compact heal, Dawn, and combat diagnostics contr
   assert.match(app, /ward: \{ remaining:/);
   assert.match(app, /kajaAF: \{/);
   assert.match(app, /dawnChorus: \{/);
+  assert.match(app, /requiredOrder: 'rank → forced roll → defeat'/);
+  assert.match(app, /if \(!state\.globals\.QaDawnRollArmed\) return \{ ok: false, reason: 'forcedRollRequired' \}/);
 });
 test('Quest-QA enemy basic uses the production damage resolver and refuses active card choices', () => {
  const app=readFileSync(new URL('../web-runner/app.js',import.meta.url),'utf8');const hooks=readFileSync(new URL('../web-runner/systems/devBrowserTestHooks.js',import.meta.url),'utf8');
- assert.match(app,/const qaResolveEnemyBasicHit = heroUID =>/);assert.match(app,/if \(presentation\.open\) return \{ ok: false, reason: 'choiceActive'/);assert.match(app,/ApplyDamageToTarget', target\.uid, requested, \{ sourceUID: enemy\.uid \}/);assert.match(hooks,/QA enemy basic/);assert.doesNotMatch(hooks,/QA choose special failed/);
+ assert.match(app,/const qaResolveEnemyBasicHit = heroUID =>/);assert.match(app,/const guard = qaScenarioPauseGuard\(\)/);assert.match(app,/reason: 'choiceActive'/);assert.match(app,/ApplyDamageToTarget', target\.uid, requested, \{ sourceUID: enemy\.uid \}/);assert.match(hooks,/QA enemy basic/);assert.doesNotMatch(hooks,/QA choose special failed/);
+});
+
+test('AF threshold offers ignore a stale generic QA fixture pool', () => {
+  const party = [{ uid: 1, kind: 'hero', heroInstanceKey: 'falie#1', baseHeroName: 'Falie', hp: 40, maxHP: 40, flow: 0, currentLevel: 1 }];
+  const globals = { CombatSessionId: 4, RuntimeRandom: () => 0 };
+  beginFreshSessionBuffQueue(globals, party);
+  const opening = getSessionLevelUpBuffPresentation(globals, party);
+  assert.equal(chooseSessionLevelUpBuff(globals, party, opening.cards[0].cardId).status, 'applied');
+  claimSessionBuffQueueResume(globals);
+  globals.SessionLevelUpQaOfferCards = [SESSION_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'dune_edge_1')];
+  globals.QaPreferredAstralFlowSpecialId = 'chain_strike_ii';
+  party[0].flow = 100;
+  recordFlowThreshold(globals, party[0], 99, 100);
+  reconcileSessionFlowThresholds(globals, party);
+  const offer = getSessionLevelUpBuffPresentation(globals, party);
+  assert.equal(offer.cards[0].presentation.kind, 'hero_signature');
+  assert.ok(offer.cards.some(card => card.specialId === 'chain_strike_ii'));
+  assert.equal(offer.cards.some(card => card.cardId === 'dune_edge_1'), false);
+});
+
+test('fresh combat reset clears prior QA effects while a new opening offer remains legitimate', () => {
+  const globals = {
+    CombatSessionId: 9, QaLastAstralFlowSpecial: { id: 'magic_fruit' }, LastAstralFlowSpecial: { id: 'chain_strike_ii' },
+    LastAstralFlowChainStrikeII: { hitCount: 3 }, LastCrimsonWard: { added: 40 }, QaEnemyBasicHit: { applied: 2 },
+    FlowOrbAudit: { roleRecipientUID: 2 }, QaDawnRollArmed: 1, DawnChorusLastRoll: { chance: .1 },
+  };
+  resetCombatSessionConditions(globals, {});
+  for (const key of ['QaLastAstralFlowSpecial', 'LastAstralFlowSpecial', 'LastAstralFlowChainStrikeII', 'LastCrimsonWard', 'QaEnemyBasicHit', 'FlowOrbAudit', 'QaDawnRollArmed', 'DawnChorusLastRoll']) assert.equal(globals[key], undefined);
+  const party = [{ uid: 1, kind: 'hero', heroInstanceKey: 'falie#1', baseHeroName: 'Falie', hp: 40, maxHP: 40 }];
+  globals.RuntimeRandom = () => 0;
+  beginFreshSessionBuffQueue(globals, party);
+  assert.ok(getSessionLevelUpBuffPresentation(globals, party).cards.length > 0);
+});
+
+test('transactional QA heal measures the production HP delta before its bloom is emitted', () => {
+  const healStart = app.indexOf('const qaFixtureHeal = () =>');
+  const healEnd = app.indexOf('const qaGrantDawnChorus = rank =>', healStart);
+  const body = app.slice(healStart, healEnd);
+  assert.ok(body.indexOf('const before = Number(selected.hp || 0)') < body.indexOf("'DoHeal', selected.uid"));
+  assert.ok(body.indexOf("'DoHeal', selected.uid") < body.indexOf('const after = Number(selected.hp || 0)'));
+  assert.match(body, /actualDelta: Math\.max\(0, after - before\)/);
+  assert.doesNotMatch(body.slice(body.indexOf('const before = Number(selected.hp || 0)')), /selected\.hp\s*=/);
 });

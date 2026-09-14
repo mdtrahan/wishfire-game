@@ -13,7 +13,7 @@ function loadModule() {
     .replace(/\bexport\s+/g, '')}
 
 module.exports = { ExecuteAstralFlowSpecial, ProcessAstralFlowDestinyRegen, ApplyDamageToTarget };`;
-  const context = { console: { log() {}, warn() {}, error() {} }, Math, module: { exports: {} }, exports: {}, state: { globals: {}, entities: [] }, effectiveStat: () => 10 };
+  const context = { ...require('../web-runner/modules/heroCommands.mjs'), console: { log() {}, warn() {}, error() {} }, Math, module: { exports: {} }, exports: {}, state: { globals: {}, entities: [] }, effectiveStat: () => 10 };
   vm.createContext(context);
   new vm.Script(transformed, { filename: modulePath }).runInContext(context);
   return context.module.exports;
@@ -31,7 +31,8 @@ function makeContext() {
     { uid: 11, kind: 'enemy', name: 'Ghoul A', hp: 80, maxHP: 80, x: 8, y: 2 },
     { uid: 12, kind: 'enemy', name: 'Ghoul B', hp: 80, maxHP: 80, x: 9, y: 3 },
   ];
-  return { state: { globals, entities: [...heroes, ...enemies] }, callFunction() {} };
+  const state = { globals, entities: [...heroes, ...enemies] };
+  return { state, callFunction(name, ...args) { if (name === 'SpawnDamageText') globals.DamageTexts.push({ amount: args[0], x: args[1], y: args[2], kind: args[3], targetKind: args[4] }); } };
 }
 
 test('Magic Fruit divides a 30-percent caster-Max-HP pool among living heroes in roster order', () => {
@@ -42,6 +43,7 @@ test('Magic Fruit divides a 30-percent caster-Max-HP pool among living heroes in
   assert.equal(result.pool, 30);
   assert.deepEqual(JSON.parse(JSON.stringify(result.heals.map(row => [row.heroUID, row.requested]))), [[1, 10], [2, 10], [4, 10]]);
   assert.deepEqual(ctx.state.entities.filter(actor => actor.kind === 'hero').map(hero => hero.hp), [20, 30, 0, 40]);
+  assert.deepEqual(ctx.state.globals.DamageTexts.map(text => [text.targetUID, text.amount, text.kind]), [[1, 10, 'heal'], [2, 10, 'heal'], [4, 10, 'heal']]);
 });
 
 test('Destiny gives each living hero three personal-turn 8-percent Max-HP ticks and survives Kaja defeat', () => {

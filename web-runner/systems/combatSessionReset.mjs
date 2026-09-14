@@ -45,7 +45,13 @@ export function resetCombatSessionConditions(globals, gameState, { preserveSessi
   delete globals.SessionLevelBuffCombatSessionId;
   // QA readouts mirror live combat state and must never survive abandonment or
   // a fresh session. Encounter continuation deliberately retains session buffs.
-  for (const key of ['QaLastAstralFlowSpecial', 'LastAstralFlowSpecial', 'QaFixtureHeal', 'FlowOrbAudit', 'LastPartyChainStrike', 'PartyChainStrikeIIProcs', 'PartyChainStrikeIProcs']) delete globals[key];
+  for (const key of [
+    'QaLastAstralFlowSpecial', 'LastAstralFlowSpecial', 'QaFixtureHeal', 'QaEnemyBasicHit',
+    'FlowOrbAudit', 'LastPartyChainStrike', 'LastAstralFlowChainStrikeII',
+    'PartyChainStrikeIIProcs', 'PartyChainStrikeIProcs', 'AstralFlowMagicFruitLast',
+    'AstralFlowDestinyRegensByUID', 'LastCrimsonWard', 'QaDawnRollArmed',
+    'QaScenarioPaused', 'QaScenarioResetCount', 'QaSelectedHeroUID',
+  ]) delete globals[key];
   if (!preserveSessionLevelBuffs) {
     for (const key of ['DawnChorusAttempted', 'DawnChorusSucceeded', 'DawnChorusLastRoll', 'DawnChorusOwnedRank', 'QaPreferredAstralFlowSpecialId']) delete globals[key];
   }

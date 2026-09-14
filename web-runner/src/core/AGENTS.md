@@ -38,7 +38,7 @@
 
 - Party-damage packets support up to six actual members; match the root core and shipped Rust ABI, including zero-filled unused entries.
 
-- personalFlow.mjs owns browser-shipped personal charge and current hero skill budgets, shared with both function registries. It has no DOM or timer access. FLOW event attribution occurs only at resolved gameplay seams.
+- personalFlow.mjs owns browser-shipped personal charge and current hero skill budgets, shared with both function registries. It has no DOM or timer access. FLOW event attribution occurs only at resolved gameplay seams, and the canonical hero definition owns each role mode instead of mutable actor copies.
 
 - Combat SP and FLOW are independent actor balances: fresh encounters start full SP and zero FLOW; enemy defeat produces orbs only.
 

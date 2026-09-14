@@ -42,6 +42,7 @@ module.exports = {
     ...require('../web-runner/src/core/combatRules.mjs'),
     ...require('../web-runner/modules/heroCommands.mjs'),
     ...require('../web-runner/src/core/personalFlow.mjs'),
+    ...require('../src/core/heroAttackTargetingRules.mjs'),
     ...require('../web-runner/modules/heroCommands.mjs'),
     console,
     Math,
@@ -354,13 +355,13 @@ function makeDamageContext() {
   };
 }
 
-test('paused shared shield cannot absorb native enemy damage in either mirror', () => {
+test('paused shared shield absorbs native enemy damage before hero HP in either mirror', () => {
   for (const file of ['web-runner/modules/functionBank.js','Scripts/functionBank.js']) {
     const {ApplyDamageToTarget}=loadFunctionBank(path.join(repoRoot,file));
     const ctx=makeDamageContext();const hero=ctx.state.entities[0];
-    assert.equal(ApplyDamageToTarget(ctx,hero.uid,30),30);
-    assert.equal(hero.hp,70);
-    assert.equal(ctx.state.globals.PartyTempHPShield,42);
+    assert.equal(ApplyDamageToTarget(ctx,hero.uid,30),0);
+    assert.equal(hero.hp,100);
+    assert.equal(ctx.state.globals.PartyTempHPShield,12);
   }
 });
 

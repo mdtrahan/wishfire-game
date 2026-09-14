@@ -46,7 +46,7 @@
 - Full-recovery proof exercises both the app Town wrapper and Continue with zero through six loaded heroes, sparse slots, KO, stale UI health and retained encounter resources.
 - Self-heal checks must use differing actor and party maxima, actual groups 1–6, and KO/wrong-actor cases. Percentage recovery cannot grow with party size. Personal FLOW checks cover attributed earning, full-charge consumption, queue order and paused party-card boundaries.
 
-- Personal FLOW replaces shared AF and pauses roguelite card acquisition/procs. Historical integration checks for those parked systems use explicit skip reasons; pure isolated math and active combat checks stay runnable. VM loaders that strip function-bank imports must supply the real personalFlow.mjs and heroCommands.mjs exports.
+- Personal FLOW replaces shared AF and pauses roguelite card acquisition/procs. Historical integration checks for those parked systems use explicit skip reasons; pure isolated math and active combat checks stay runnable. VM loaders that strip function-bank imports must supply the real personalFlow.mjs, heroCommands.mjs, and any shared targeting exports exercised by the loaded path. Production-party regressions must construct the configured canonical roster before testing UID and role attribution.
 
 - Migration coverage uses `combatRulesMigration`, `heroProgressionMigration` and `personalFlowContract` for canonical effects, growth and sequence settlement. VM function-bank harnesses must inject the real core/module imports.
 

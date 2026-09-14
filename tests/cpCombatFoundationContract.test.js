@@ -18,14 +18,14 @@ test('hero-only two-times Speed grants one linked extra action',async()=>{
 
 test('role AF awards once from aggregate qualifying action facts',async()=>{
  const {resolveRoleFlowAward}=await flow();
- const fara={uid:1,hp:20,flow:0,flowMode:'Stoic'};
+ const fara={uid:1,name:'Falie',baseHeroName:'Falie',hp:20,flow:0,flowMode:'Stoic'};
  assert.equal(resolveRoleFlowAward({heroes:[fara],hero:fara,event:{hostileHpDamage:3,hostileTargetUID:1}}).value,10);
  assert.equal(resolveRoleFlowAward({heroes:[fara],hero:fara,event:{hostileHpDamage:3,hostileTargetUID:1,periodic:true}}),null);
- const hondo={uid:2,hp:20,flow:0,flowMode:'Warrior'};
+ const hondo={uid:2,name:'Huun',baseHeroName:'Huun',hp:20,flow:0,flowMode:'Warrior'};
  assert.equal(resolveRoleFlowAward({heroes:[hondo],hero:hondo,event:{enemyHpDamage:4}}).value,10);
- const runa={uid:3,hp:20,flow:0,flowMode:'Tactician'};
+ const runa={uid:3,name:'Runa',baseHeroName:'Runa',hp:20,flow:0,flowMode:'Tactician'};
  assert.equal(resolveRoleFlowAward({heroes:[runa],hero:runa,event:{newEligibleStatus:true}}).value,10);
- const kaja={uid:4,hp:20,flow:0,flowMode:'Comrade'},ally={uid:5,hp:20};
+ const kaja={uid:4,name:'Kojonn',baseHeroName:'Kojonn',hp:20,flow:0,flowMode:'Comrade'},ally={uid:5,hp:20};
  assert.equal(resolveRoleFlowAward({heroes:[kaja,ally],hero:kaja,event:{hostileHpDamage:3,hostileTargetUID:5}}).value,10);
 });
 

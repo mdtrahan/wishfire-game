@@ -18,6 +18,28 @@ function member(index, overrides = {}) {
   };
 }
 
+function productionPartyMembers() {
+  const configSource = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'state', 'heroScreenConfig.js'), 'utf8')
+    .replace(/^export \{[^\n]+\} from [^\n]+\n/gm, '')
+    .replace(/^export \{[^\n]+\};\n/gm, '')
+    .replace(/^export /gm, '');
+  const configContext = { module: { exports: {} } };
+  vm.runInNewContext(`${configSource}\nmodule.exports = { CANONICAL_HERO_ROSTER };`, configContext);
+  const runtimeSource = fs.readFileSync(path.join(systems, 'devToolingRuntime.js'), 'utf8')
+    .replace(/^import[\s\S]*?from\s+['"][^'"]+['"];\n/gm, '')
+    .replace(/^export \{[\s\S]*?\};\n/gm, '')
+    .replace(/^export /gm, '');
+  const runtimeContext = { module: { exports: {} }, normalizeCombatOrientation: value => value || 'left-wise', window: { addEventListener() {} }, document: { getElementById() { return null; } } };
+  vm.runInNewContext(`${runtimeSource}\nmodule.exports = { createDevToolingRuntime };`, runtimeContext);
+  const runtime = runtimeContext.module.exports.createDevToolingRuntime({
+    state: { globals: {}, entities: [] }, gameState: {},
+    CANONICAL_HERO_ROSTER: configContext.module.exports.CANONICAL_HERO_ROSTER,
+    getLayoutState: () => null,
+  });
+  const slots = runtime.createDefaultDevToolingConfig().heroSlots;
+  return runtime.buildConfiguredCombatPartyMembers(slots).heroMembers;
+}
+
 async function initialize(heroMembers, escortMember = null, withEnemy = false) {
   const { resetCombatSessionConditions } = await import(pathToFileURL(path.join(systems, 'combatSessionReset.mjs')));
   const filename = path.join(systems, 'combatSessionInitializer.js');
@@ -105,6 +127,46 @@ test('fresh combat initialization creates one explicit neutral party opening ent
       source: 'opening_party', participantHeroIds: ['owned-0', 'owned-1', 'owned-2', 'owned-3'],
     }],
   });
+});
+
+test('production starting party maps canonical identities and awards Comrade only to Kaja on a real enemy basic hit', async () => {
+  const { state } = await initialize(productionPartyMembers());
+  const commands = require('../web-runner/modules/heroCommands.mjs');
+  const definitions = require('../web-runner/src/core/heroDefinitions.mjs');
+  const mapping = state.entities.map((hero, index) => {
+    const definition = definitions.heroDefinition(hero);
+    return [index, hero.uid, hero.name, definition.name, definition.role, definition.key, definition.flowMode];
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(mapping)), [
+    [0, 1, 'Falie', 'Fara', 'Tank', 'Falie', 'Stoic'],
+    [1, 2, 'Huun', 'Hondo', 'DPS / Fighter', 'Huun', 'Warrior'],
+    [2, 3, 'Runa', 'Runa', 'Controller', 'Runa', 'Tactician'],
+    [3, 4, 'Kojonn', 'Kaja', 'Support / Guardian', 'Kojonn', 'Comrade'],
+  ]);
+  const [fara, hondo, , kaja] = state.entities;
+  hondo.flowMode = 'Comrade';
+  kaja.flowMode = 'Warrior';
+  const enemy = { uid: 19, kind: 'enemy', name: 'High Gobloc', hp: 50, maxHP: 50, stats: { ATK: 1 }, statuses: [] };
+  state.entities.push(enemy);
+  const ctx = { state, callFunction(name, ...args) {
+    if (name === 'CalculateDamage') return 2;
+    if (name === 'ApplyDamageToTarget') {
+      const target = state.entities.find(actor => Number(actor.uid) === Number(args[0]));
+      const applied = Math.min(Number(target.hp || 0), Number(args[1] || 0));
+      target.hp -= applied;
+      return applied;
+    }
+    if (name === 'GetEnemyRosterStability') return { stable: true };
+    if (name === 'SpawnDamageText' || name === 'UpdateHeroHPUI') return true;
+    return 0;
+  } };
+  assert.equal(commands.resolveIncomingNativeHit(ctx, enemy, fara, 2), true);
+  assert.equal(hondo.flow, 0);
+  assert.equal(kaja.flow, 10);
+  kaja.flow = 0;
+  assert.equal(commands.resolveIncomingNativeHit(ctx, enemy, kaja, 2), true);
+  assert.equal(hondo.flow, 0);
+  assert.equal(kaja.flow, 0);
 });
 
 test('sparse formation slots retain their indexes and exclude slots beyond six', async () => {
