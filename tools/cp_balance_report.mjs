@@ -9,6 +9,7 @@ import { resolveHeroSpeedMultiattack } from '../src/core/dynamicInitiativeRules.
 import { resolveHeroAttackTarget } from '../src/core/heroAttackTargetingRules.mjs';
 import { resolveEnemyTargetHero } from '../src/core/enemyTargetingRules.mjs';
 import { resolveRoleFlowAward } from '../web-runner/src/core/personalFlow.mjs';
+import { ROUTINE_ENEMY_TEMPLATE } from '../web-runner/src/core/routineEnemyScaling.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const output = path.join(root, 'output', 'balance');
@@ -16,7 +17,7 @@ const levels = [1,2,3,4,5,6,7,8,9,91,92,93,94,95,96,97,98,99];
 const pairs = [[1,9],[9,1],[91,99],[99,91]];
 const seeds = 256;
 const tiers = [
-  { id:'routine', HP:45, ATK:3, DEF:4, MAG:3, RES:4, SPD:7, targetPreference:'frontline', minWin:.97, burst:.07, maxActions:45 },
+  { id:'routine', ...ROUTINE_ENEMY_TEMPLATE, targetPreference:'frontline', minWin:.97, burst:.07, maxActions:45 },
   { id:'hard', HP:62, ATK:4, DEF:5, MAG:4, RES:5, SPD:8, targetPreference:'highest_atk', minWin:.85, burst:.10, maxActions:65 },
   { id:'elite', HP:85, ATK:5, DEF:7, MAG:5, RES:7, SPD:9, targetPreference:'low_hp', minWin:.70, burst:.12, maxActions:90 },
   { id:'boss', HP:130, ATK:6, DEF:9, MAG:6, RES:9, SPD:10, targetPreference:'highest_atk', minWin:.60, burst:.18, maxActions:120 },

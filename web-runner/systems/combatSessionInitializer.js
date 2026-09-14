@@ -2,6 +2,7 @@ import {attachHeroProgress, createHeroProgressStore} from '../src/core/heroProgr
 import { initializePersonalFlow } from '../src/core/personalFlow.mjs';
 import { createSessionOpeningBuffQueue } from '../src/core/sessionLevelUpQueue.mjs';
 import { computeCombatPower as canonicalCombatPower } from '../src/core/combatPower.mjs';
+import { scaleRoutineEnemy } from '../src/core/routineEnemyScaling.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import {
   DEV_TOOL_EMPTY_SLOT,
@@ -277,7 +278,10 @@ export function createCombatSessionInitializer({
       && Object.keys(state.globals.SessionLevelBuffState?.heroes || {}).length > 0;
     resetCombatSessionConditions(state.globals, gameState, { preserveSessionLevelBuffs: continuingAdventure });
     state.entities = [];
-    state.globals.EnemyData = (enemyRows || []).map((row) => ({
+    const routineLevel=Number(state.globals.PartyLevel||1);
+    state.globals.EnemyData = (enemyRows || []).map((rawRow) => {
+      const row=scaleRoutineEnemy(rawRow,routineLevel);
+      return ({
       ...row,
       faction: normalizeFaction(row?.faction),
       enemyRole: normalizeEnemyRole(row?.enemyRole || row?.role),
@@ -286,7 +290,7 @@ export function createCombatSessionInitializer({
       biomeTags: normalizeBiomeTags(row?.biomes || row?.biome || 'all'),
       localeTags: normalizeBiomeTags(row?.localeTags || row?.locale_tags || row?.locale || row?.biomes || row?.biome || 'all'),
       CombatPower: resolveEnemyEncounterCombatPower(row, computeCombatPower),
-    }));
+    });});
     const mappedEnemyData = state.globals.EnemyData;
     state.globals.DevToolEnemyCatalog = [...new Set(state.globals.EnemyData.map((row) => String(row?.name || row?.EnemyName || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
     state.globals.CombatSessionId = Number(state.globals.CombatSessionId || 0) + 1;
