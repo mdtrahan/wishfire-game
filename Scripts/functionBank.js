@@ -1490,6 +1490,137 @@ function activateMagicFruitSkill(ctx) {
   return { healAmount, maxHPBonus };
 }
 
+function livingHeroTargets(ctx) {
+  return getHeroes(ctx)
+    .filter(hero => hero && hero.kind === 'hero' && Number(hero.hp || 0) > 0)
+    .slice()
+    .sort((left, right) => Number(left.heroDisplaySlot ?? left.heroIndex ?? left.uid) - Number(right.heroDisplaySlot ?? right.heroIndex ?? right.uid));
+}
+
+function applyAstralFlowMagicFruit(ctx, actorUID) {
+  const actor = GetActorByUID(ctx, actorUID);
+  if (!actor || actor.kind !== 'hero' || Number(actor.hp || 0) <= 0) return { ok: false, reason: 'actorUnavailable' };
+  const recipients = livingHeroTargets(ctx);
+  if (!recipients.length) return { ok: false, reason: 'noLivingHeroes' };
+  const pool = Math.max(1, Math.floor(Math.max(0, Number(actor.maxHP || actor.MaxHP || 0)) * 0.30));
+  const base = Math.floor(pool / recipients.length);
+  let remainder = pool % recipients.length;
+  const heals = [];
+  for (const hero of recipients) {
+    const requested = base + (remainder > 0 ? 1 : 0);
+    if (remainder > 0) remainder -= 1;
+    const before = Math.max(0, Number(hero.hp || 0));
+    const maxHP = Math.max(before, Number(hero.maxHP || hero.MaxHP || 0));
+    hero.hp = Math.min(maxHP, before + requested);
+    const applied = Math.max(0, Number(hero.hp || 0) - before);
+    if (applied > 0) SpawnDamageText(ctx, applied, hero.x, hero.y, 'heal', 'hero');
+    heals.push({ heroUID: Number(hero.uid || 0), requested, applied });
+  }
+  syncPartyHpTotalsFromHeroes(ctx);
+  UpdateHeroHPUI(ctx);
+  LogCombat(ctx, `${actor.name || 'Hero'} shared Magic Fruit with the party.`);
+  return { ok: true, pool, heals };
+}
+
+function astralFlowSpecialTarget(ctx) {
+  const g = getGlobals(ctx);
+  const selected = GetActorByUID(ctx, Number(g.SelectedEnemyUID || 0));
+  if (selected && selected.kind === 'enemy' && Number(selected.hp || 0) > 0) return selected;
+  return getChainStrikeLivingEnemies(ctx)[0] || null;
+}
+
+function queueAstralFlowArcanePulse(ctx, actorUID) {
+  const actor = GetActorByUID(ctx, actorUID);
+  const target = astralFlowSpecialTarget(ctx);
+  if (!actor || actor.kind !== 'hero' || Number(actor.hp || 0) <= 0 || !target) return { ok: false, reason: 'targetUnavailable' };
+  const g = getGlobals(ctx);
+  const now = Number(g.time || 0);
+  const startAt = now + 0.12;
+  const impactAt = startAt + 0.24;
+  const damage = Math.max(1, Math.floor(PARTY_ARCANE_PULSE_DAMAGE));
+  g.PendingHeroHits = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
+  g.PendingHeroHits.push({
+    at: impactAt, heroUID: Number(actorUID || 0), targetUID: Number(target.uid || 0), dmg: damage, finalDmg: damage,
+    powerAmpMultiplier: 0, powerAmpLifecycleId: 0, consumePowerAmp: 0, sourceUID: Number(actorUID || 0),
+    suppressPartySkillHitHooks: 1, suppressHitFlash: 1, damageTextKind: 'arcane_pulse', presentationClearAt: impactAt + PARTY_ARCANE_PULSE_DAMAGE_TEXT_CLEAR_SEC,
+    suppressAttackSkillBounds: 1, bonusDamageOnly: 1, effectType: 'arcane_pulse', actionName: 'Arcane Pulse',
+    generatedBySkillId: PARTY_ARCANE_PULSE_ID, astralFlowSpecial: 1, arcanePulseDamage: damage, arcanePulseVisual: PARTY_ARCANE_PULSE_VISUAL_KEY,
+    calcPath: 'magicCalc', heroName: String(actor.name || 'Hero'), heroType: 'magic', sequence: 'astral_flow_special', msg: `Arcane Pulse strikes ${target.name || '?'} for ${damage}!`,
+  });
+  queueArcanePulseVisual(ctx, actorUID, target.uid, startAt, impactAt);
+  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), impactAt + PARTY_ARCANE_PULSE_DAMAGE_TEXT_CLEAR_SEC);
+  g.DeferAdvance = 1;
+  g.AdvanceAfterAction = 1;
+  return { ok: true, targetUID: Number(target.uid || 0), damage };
+}
+
+function activateAstralFlowDestiny(ctx, actorUID) {
+  const g = getGlobals(ctx);
+  const targets = livingHeroTargets(ctx);
+  if (!targets.length) return { ok: false, reason: 'noLivingHeroes' };
+  const activatedAtTurnSerial = Number(g.TurnSerial || 0);
+  const regens = g.AstralFlowDestinyRegensByUID && typeof g.AstralFlowDestinyRegensByUID === 'object'
+    ? g.AstralFlowDestinyRegensByUID : {};
+  for (const hero of targets) {
+    regens[Number(hero.uid || 0)] = {
+      targetUID: Number(hero.uid || 0), sourceUID: Number(actorUID || 0), remainingTicks: 3, healPct: 0.08,
+      activatedAtTurnSerial, lastProcessedTurnSerial: activatedAtTurnSerial,
+    };
+  }
+  g.AstralFlowDestinyRegensByUID = regens;
+  g.PartyRegens = Object.values(regens).map(regen => ({ ...regen, remainingFires: regen.remainingTicks, effectName: 'Destiny' }));
+  LogCombat(ctx, 'Destiny blesses every living hero.');
+  return { ok: true, targetUIDs: targets.map(hero => Number(hero.uid || 0)) };
+}
+
+export function ExecuteAstralFlowSpecial(ctx, specialId, actorUID) {
+  const actor = GetActorByUID(ctx, actorUID);
+  if (!actor || actor.kind !== 'hero' || Number(actor.hp || 0) <= 0) return { ok: false, reason: 'actorUnavailable' };
+  const g = getGlobals(ctx);
+  const id = String(specialId || '');
+  let result;
+  if (id === 'crimson_ward') {
+    result = activateCrimsonWardSkill(ctx) ? { ok: true } : { ok: false, reason: 'wardFailed' };
+    if (result.ok) g.PartyTempHPShieldSourceUID = Number(actorUID || 0);
+  } else if (id === 'magic_fruit') {
+    result = applyAstralFlowMagicFruit(ctx, actorUID);
+  } else if (id === 'faze') {
+    const totalDamage = activateFazeSkill(ctx, actorUID);
+    for (const zone of g.TaintedGroundZones || []) {
+      if (Number(zone?.sourceUID || 0) === Number(actorUID || 0)) zone.astralFlowSpecial = 1;
+    }
+    if (Array.isArray(g.PendingHeroHits)) for (const hit of g.PendingHeroHits) {
+      if (String(hit?.actionName || '') === 'Faze' && Number(hit.heroUID || 0) === Number(actorUID || 0)) hit.astralFlowSpecial = 1;
+    }
+    result = totalDamage > 0 ? { ok: true, totalDamage } : { ok: false, reason: 'noEnemies' };
+  } else if (id === 'chain_strike_ii') {
+    const target = astralFlowSpecialTarget(ctx);
+    const originalDamage = target ? CalculateDamage(ctx, actorUID, target.uid, actor.attackType === 'magic' ? 'magic' : 'melee') : 0;
+    g.AstralFlowSpecialChainStrikeII = 1;
+    const queued = target && queuePartyChainStrikeBounce(ctx, { heroUID: actorUID, sourceTargetUID: target.uid, originalDamage, mode: actor.attackType === 'magic' ? 'magic' : 'melee', actorName: actor.name });
+    delete g.AstralFlowSpecialChainStrikeII;
+    if (queued && Array.isArray(g.PendingHeroHits)) for (const hit of g.PendingHeroHits) {
+      if (String(hit?.actionName || '') === 'Chain Strike II' && Number(hit.heroUID || 0) === Number(actorUID || 0)) hit.astralFlowSpecial = 1;
+    }
+    result = queued ? { ok: true, targetUID: Number(target.uid || 0) } : { ok: false, reason: 'targetUnavailable' };
+  } else if (id === 'split') {
+    const target = astralFlowSpecialTarget(ctx);
+    if (target) {
+      HeroAttackSplit(ctx, actorUID, target.uid);
+      if (Array.isArray(g.PendingHeroHits)) for (const hit of g.PendingHeroHits) {
+        if (String(hit?.actionName || '') === 'Split' && Number(hit.heroUID || 0) === Number(actorUID || 0)) hit.astralFlowSpecial = 1;
+      }
+      result = { ok: true, targetUID: Number(target.uid || 0) };
+    } else result = { ok: false, reason: 'targetUnavailable' };
+  } else if (id === 'arcane_pulse') {
+    result = queueAstralFlowArcanePulse(ctx, actorUID);
+  } else if (id === 'destiny') {
+    result = activateAstralFlowDestiny(ctx, actorUID);
+  } else result = { ok: false, reason: 'unknownSpecial' };
+  if (result.ok) g.LastAstralFlowSpecial = { id, actorUID: Number(actorUID || 0), at: Number(g.time || 0), ...result };
+  return result;
+}
+
 function getFazeHeroTeamTurnSpan(ctx) {
   const g = getGlobals(ctx);
   if (Array.isArray(g.TurnOrderArray) && g.TurnOrderArray.length > 0) {
@@ -5100,6 +5231,7 @@ export function AdvanceTurn(ctx) {
   dynamicInitiativeCadenceEvents.push({ event: 'turn_serial_increment', turnSerial: Number(g.TurnSerial || 0) });
   const pendingDeathsBefore = Object.keys(g.PendingDeaths || {}).length;
   resolvePendingEnemyDeaths(ctx);
+  if (typeof clearDefeatedAstralFlowSpecials === 'function') clearDefeatedAstralFlowSpecials(ctx);
   dynamicInitiativeCadenceEvents.push({
     event: 'pending_death_resolution',
     before: pendingDeathsBefore,
@@ -7350,6 +7482,14 @@ function queueChainStrikeVisual(g, sourceTargetUID, targetUID, startAt, impactAt
 }
 
 function getActiveChainStrikeTier(ctx) {
+  if (Number(getGlobals(ctx).AstralFlowSpecialChainStrikeII || 0) === 1) {
+    return {
+      skillId: PARTY_CHAIN_STRIKE_II_ID,
+      actionName: 'Chain Strike II',
+      damagePct: PARTY_CHAIN_STRIKE_II_DAMAGE_PCT,
+      maxBounces: 2,
+    };
+  }
   if (IsPartySessionSkillActive(ctx, PARTY_CHAIN_STRIKE_II_ID)) {
     return {
       skillId: PARTY_CHAIN_STRIKE_II_ID,
@@ -9729,6 +9869,57 @@ function resolveProcessTurnActorEligibility(ctx, {
   return result;
 }
 
+function clearDefeatedAstralFlowSpecials(ctx) {
+  const g = getGlobals(ctx);
+  const defeated = new Set(getEntities(ctx)
+    .filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) <= 0)
+    .map(actor => Number(actor.uid || 0))
+    .filter(uid => uid > 0));
+  if (!defeated.size) return;
+  if (Number(g.PartyTempHPShieldSourceUID || 0) > 0 && defeated.has(Number(g.PartyTempHPShieldSourceUID || 0))) {
+    g.PartyTempHPShield = 0;
+    g.PartyTempHPShieldStacks = 0;
+    startPartyWardBarrierFadeOut(ctx);
+    delete g.PartyTempHPShieldSourceUID;
+  }
+  if (Array.isArray(g.TaintedGroundZones)) {
+    g.TaintedGroundZones = g.TaintedGroundZones.filter(zone => !(Number(zone?.astralFlowSpecial || 0) === 1 && defeated.has(Number(zone?.sourceUID || 0))));
+  }
+  if (Array.isArray(g.PendingHeroHits)) {
+    g.PendingHeroHits = g.PendingHeroHits.filter(hit => !(Number(hit?.astralFlowSpecial || 0) === 1 && defeated.has(Number(hit?.heroUID || hit?.sourceUID || 0))));
+  }
+}
+
+function processAstralFlowDestinyAtHeroTurn(ctx, heroUID) {
+  const g = getGlobals(ctx);
+  const regens = g.AstralFlowDestinyRegensByUID;
+  if (!regens || typeof regens !== 'object') return false;
+  const uid = Number(heroUID || 0);
+  const regen = regens[uid];
+  const actor = GetActorByUID(ctx, uid);
+  const turnSerial = Number(g.TurnSerial || 0);
+  if (!regen || !actor || actor.kind !== 'hero' || Number(actor.hp || 0) <= 0 || Number(regen.remainingTicks || 0) <= 0) return false;
+  if (turnSerial <= Number(regen.activatedAtTurnSerial || 0) || Number(regen.lastProcessedTurnSerial || -1) === turnSerial) return false;
+  const amount = Math.max(1, Math.floor(Math.max(0, Number(actor.maxHP || actor.MaxHP || 0)) * Number(regen.healPct || 0.08)));
+  const before = Math.max(0, Number(actor.hp || 0));
+  actor.hp = Math.min(Math.max(before, Number(actor.maxHP || actor.MaxHP || 0)), before + amount);
+  const applied = Math.max(0, Number(actor.hp || 0) - before);
+  regen.remainingTicks = Math.max(0, Number(regen.remainingTicks || 0) - 1);
+  regen.lastProcessedTurnSerial = turnSerial;
+  if (applied > 0) SpawnDamageText(ctx, applied, actor.x, actor.y, 'heal', 'hero');
+  syncPartyHpTotalsFromHeroes(ctx);
+  UpdateHeroHPUI(ctx);
+  LogCombat(ctx, `Destiny restores ${applied} HP to ${actor.name || 'the hero'}.`);
+  if (regen.remainingTicks <= 0) delete regens[uid];
+  g.PartyRegens = Object.values(regens).map(entry => ({ ...entry, remainingFires: Number(entry.remainingTicks || 0), effectName: 'Destiny' }));
+  if (!Object.keys(regens).length) delete g.AstralFlowDestinyRegensByUID;
+  return true;
+}
+
+export function ProcessAstralFlowDestinyRegen(ctx, heroUID) {
+  return processAstralFlowDestinyAtHeroTurn(ctx, heroUID);
+}
+
 export function ProcessTurn(ctx) {
   const type = GetCurrentType(ctx);
   const uid = GetCurrentTurn(ctx);
@@ -9817,6 +10008,7 @@ export function ProcessTurn(ctx) {
       blueBuffSequenceActive: 0,
     });
     if (heroEligibility.code === TURN_ACTOR_ELIGIBILITY_ACT) {
+      if (typeof processAstralFlowDestinyAtHeroTurn === 'function') processAstralFlowDestinyAtHeroTurn(ctx, uid);
       runTraitHooks(ctx, 'turn_start', {
         actorUID: Number(uid || 0),
         actorKind: String(actor?.kind || ''),

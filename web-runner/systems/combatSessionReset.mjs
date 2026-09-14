@@ -29,7 +29,7 @@ export function resetCombatSessionConditions(globals, gameState, { preserveSessi
     ActionLockUntil: 0, DeferAdvance: 0, AdvanceAfterAction: 0, GroupResolving: 0,
     TextAnimEndAt: 0,
     SessionLevelUpQueue: { version: 1, status: 'complete', paused: false, currentIndex: 0, entries: [] },
-    SessionLevelBuffState: retainedSessionLevelBuffState || { heroes: {} }, SessionLevelUpOffersByQueueIndex: {}, SessionLevelUpSettlement: null,
+    SessionLevelBuffState: retainedSessionLevelBuffState || { heroes: {} }, SessionLevelUpOffersByQueueIndex: {}, SessionLevelUpSettlement: null, SessionLevelUpQueuedFlowThresholdTokens: [], SessionLevelUpQueueResumeRequested: 0,
     PendingSkillID: '', PendingActor: 0, PendingSuperGemAction: null,
     SelectedEnemyUID: 0, SelectedEnemyUIDOwner: 0, PendingManualTargetIntent: null,
     DamageTexts: [], ChainStrikeVisuals: [], ArcanePulseVisuals: [],

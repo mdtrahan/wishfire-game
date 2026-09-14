@@ -35,6 +35,51 @@ export function createSessionLevelUpQueue({ heroes = [], progressionResults = []
   return { version: 1, status: entries.length ? 'active' : 'complete', paused: false, currentIndex: 0, entries };
 }
 
+export function createSessionOpeningBuffQueue({ heroes = [] } = {}) {
+  const entries = (Array.isArray(heroes) ? heroes : [])
+    .map((hero, index) => ({ hero, index }))
+    .filter(({ hero }) => hero && Number(hero.hp || 0) > 0)
+    .sort((left, right) => partyOrder(left.hero, left.index) - partyOrder(right.hero, right.index) || left.index - right.index)
+    .map(({ hero, index }) => ({
+      heroId: heroId(hero, index),
+      heroUID: positiveInteger(hero?.uid),
+      earnedLevel: positiveInteger(hero?.currentLevel, 1),
+      earnedLevelIndex: 0,
+      source: 'opening',
+    }));
+  return { version: 1, status: entries.length ? 'active' : 'complete', paused: false, currentIndex: 0, entries };
+}
+
+export function enqueueSessionFlowThresholds(queue = {}, { heroes = [], thresholds = [] } = {}) {
+  const entries = Array.isArray(queue.entries) ? queue.entries.slice() : [];
+  const queuedTokens = new Set(entries.map(entry => String(entry?.thresholdToken || '')).filter(Boolean));
+  const roster = new Map((Array.isArray(heroes) ? heroes : []).map((hero, index) => [Number(hero?.uid || 0), { hero, index }]));
+  const additions = (Array.isArray(thresholds) ? thresholds : [])
+    .filter(signal => signal && !queuedTokens.has(String(signal.token || '')))
+    .map((signal, index) => ({ signal, index, rosterEntry: roster.get(Number(signal.heroUID || 0)) }))
+    .filter(({ signal, rosterEntry }) => String(signal.token || '') && rosterEntry?.hero)
+    .sort((left, right) => partyOrder(left.rosterEntry.hero, left.rosterEntry.index) - partyOrder(right.rosterEntry.hero, right.rosterEntry.index)
+      || Number(left.signal.triggerOrder || 0) - Number(right.signal.triggerOrder || 0)
+      || left.index - right.index)
+    .map(({ signal, rosterEntry }) => ({
+      heroId: heroId(rosterEntry.hero, rosterEntry.index),
+      heroUID: positiveInteger(rosterEntry.hero?.uid),
+      earnedLevel: positiveInteger(rosterEntry.hero?.currentLevel, 1),
+      earnedLevelIndex: 0,
+      source: 'flow_threshold',
+      thresholdToken: String(signal.token),
+      triggerOrder: positiveInteger(signal.triggerOrder),
+    }));
+  if (!additions.length) return { ...queue, entries };
+  entries.push(...additions);
+  const currentIndex = Math.max(0, Math.floor(Number(queue.currentIndex) || 0));
+  return { ...queue, version: 1, status: currentIndex < entries.length ? 'active' : 'complete', paused: Boolean(queue.paused), currentIndex, entries };
+}
+
+export function isSessionFlowThresholdEntry(entry = {}) {
+  return String(entry?.source || '') === 'flow_threshold' && String(entry?.thresholdToken || '') !== '';
+}
+
 export function currentSessionLevelUpEntry(queue = {}) {
   const entries = Array.isArray(queue.entries) ? queue.entries : [];
   const index = Math.max(0, Math.floor(Number(queue.currentIndex) || 0));

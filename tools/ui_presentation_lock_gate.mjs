@@ -711,8 +711,8 @@ async function captureCommandTurns(page, viewport, artifactDir) {
   commandInvariants.push(
     invariant('hero-command-active-highlight', finalStatus.cards.some(card => card.current), finalStatus, { activeHero: true }),
     invariant('hero-command-personal-af', finalStatus.cards.every(card => card.afLabel === 'AF' && card.afBar), finalStatus, { persistentAF: true }),
-    invariant('hero-command-paid-sequence', !finalStatus.fanOpen && finalStatus.fanCards === 0, finalStatus, { legacyFanClosed: true }),
-    invariant('hero-card-fan-reopen-same-draw', !finalStatus.fanOpen, finalStatus, { retiredDuringCTB: true }),
+    invariant('hero-command-paid-sequence', finalStatus.fanOpen && finalStatus.fanCards === 3, finalStatus, { openingSessionOffer: true }),
+    invariant('hero-card-fan-reopen-same-draw', finalStatus.fanOpen && finalStatus.fanCards === 3, finalStatus, { cachedOpeningOfferVisible: true }),
   );
   return commandInvariants;
 }

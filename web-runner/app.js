@@ -92,7 +92,7 @@ import {
   getEmbeddedJson,
   runtimeAssetUrl,
 } from './systems/runtimeAssetUrl.mjs';
-import { chooseSessionLevelUpBuff, getSessionLevelUpBuffPresentation, updateSessionLevelUpSettlement } from './modules/sessionLevelUpBuffPresentation.mjs';
+import { chooseSessionLevelUpBuff, claimSessionBuffQueueResume, getSessionLevelUpBuffPresentation, updateSessionLevelUpSettlement } from './modules/sessionLevelUpBuffPresentation.mjs';
 import { heroArtKey } from './state/heroArtAssets.mjs';
 import { computeCombatPower as canonicalCombatPower, normalizeCombatPowerActor } from './src/core/combatPower.mjs';
 import * as partyStatOsd from './systems/partyStatOsd.js';
@@ -2194,7 +2194,15 @@ async function main(){
     getState: () => ({ open: !!state.globals.HeroTurnCardFanOpen, cards: state.globals.HeroTurnCardFanCards, heroUID: state.globals.HeroTurnCardFanHeroUID }),
     select: (index, targetUID) => {
       const levelUp = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
-      return levelUp.open ? chooseSessionLevelUpBuff(state.globals, state.entities, levelUp.cards[index]?.cardId, Number(state.globals.time || 0)) : callFunctionWithContext(fnContext, 'SelectHeroTurnCard', index, targetUID);
+      return levelUp.open
+        ? chooseSessionLevelUpBuff(
+          state.globals,
+          state.entities,
+          levelUp.cards[index]?.cardId,
+          Number(state.globals.time || 0),
+          (card, hero) => callFunctionWithContext(fnContext, 'ExecuteAstralFlowSpecial', card.specialId, hero.uid),
+        )
+        : callFunctionWithContext(fnContext, 'SelectHeroTurnCard', index, targetUID);
     },
     cancel: () => callFunctionWithContext(fnContext, 'CancelHeroTurnCardFan'),
     reopen: () => callFunctionWithContext(fnContext, 'ReopenHeroTurnCardFan'),
@@ -2730,6 +2738,9 @@ async function main(){
     });
     updateSessionLevelUpSettlement(state.globals, Number(state.globals.time || 0));
     const levelUpFanState = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
+    if (activeLayoutId === 'combat' && state.globals.GamePhase === 'RUNTIME' && claimSessionBuffQueueResume(state.globals)) {
+      combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+    }
     const dancingHeroUID = levelUpFanState.dancing ? Number(levelUpFanState.queue?.heroUID || 0) : 0;
     if (dancingHeroUID > 0) {
       const offsets = state.globals.HeroLungeOffsetByUID || (state.globals.HeroLungeOffsetByUID = {});

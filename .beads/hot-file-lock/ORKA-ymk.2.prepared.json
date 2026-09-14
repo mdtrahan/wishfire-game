@@ -1,0 +1,46 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "livingHeroTargets",
+        "applyAstralFlowMagicFruit",
+        "astralFlowSpecialTarget",
+        "queueAstralFlowArcanePulse",
+        "activateAstralFlowDestiny",
+        "ExecuteAstralFlowSpecial",
+        "AdvanceTurn",
+        "getActiveChainStrikeTier",
+        "clearDefeatedAstralFlowSpecials",
+        "processAstralFlowDestinyAtHeroTurn",
+        "ProcessAstralFlowDestinyRegen",
+        "ProcessTurn"
+      ],
+      "staged_blob": "283785831cb93ac4cfee78ac8b9435a128035746"
+    },
+    "web-runner/app.js": {
+      "functions": [
+        "validateCombatSnapshot",
+        "drawFrame",
+        "__MODULE__"
+      ],
+      "staged_blob": "a204efd56430ff5885ade45e21d27ab4aaf748b4"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "livingHeroTargets",
+        "applyAstralFlowMagicFruit",
+        "astralFlowSpecialTarget",
+        "queueAstralFlowArcanePulse",
+        "activateAstralFlowDestiny",
+        "ExecuteAstralFlowSpecial",
+        "getActiveChainStrikeTier",
+        "clearDefeatedAstralFlowSpecials",
+        "processAstralFlowDestinyAtHeroTurn",
+        "ProcessAstralFlowDestinyRegen",
+        "finishQaFixtureExplicitAction"
+      ],
+      "staged_blob": "68eb1b0b55875c79293721d09c759e726b68c71d"
+    }
+  },
+  "issue_id": "ORKA-ymk.2"
+}
