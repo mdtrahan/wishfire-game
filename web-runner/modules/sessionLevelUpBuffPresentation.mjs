@@ -205,11 +205,17 @@ export function chooseSessionLevelUpBuff(globals, heroes = [], cardId, now = 0, 
       : { ok: true, deferred: true };
     if (!result || result.ok === false) return { status: 'rejected', reason: String(result?.reason || 'specialRejected') };
     hero.flow = 0;
+    const afterFlowReset = typeof result.afterOwnerFlowReset === 'function'
+      ? result.afterOwnerFlowReset()
+      : null;
+    const execution = { ...result };
+    delete execution.afterOwnerFlowReset;
+    if (afterFlowReset) execution.afterFlowReset = afterFlowReset;
     globals.PendingFlowThresholds = (globals.PendingFlowThresholds || [])
       .filter(signal => String(signal?.token || '') !== String(presentation.queue.thresholdToken));
     globals.SessionLevelUpQueue = acknowledgeSessionLevelUpEntry(globals.SessionLevelUpQueue);
     if (globals.SessionLevelUpQueue.status === 'complete') globals.SessionLevelUpQueueResumeRequested = 1;
-    return { status: 'applied', card, special: true, execution: result };
+    return { status: 'applied', card, special: true, execution };
   }
   const partyEntry = isSessionOpeningPartyEntry(presentation.queue);
   const participantHeroIds = new Set((presentation.queue.participantHeroIds || []).map(String));

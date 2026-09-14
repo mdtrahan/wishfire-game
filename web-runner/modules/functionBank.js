@@ -1653,13 +1653,16 @@ export function ExecuteAstralFlowSpecial(ctx, specialId, actorUID) {
     if (!target || damage <= 0) result = { ok: false, reason: 'targetUnavailable' };
     else {
       const now = Number(g.time || 0);
+      const newlyDefeatedEnemyUIDs = [];
       g.LastAstralFlowChainStrikeII = { primaryTargetUID: Number(target.uid || 0), primary: null, bounces: [], hits: [], hitCount: 0, coefficient: ASTRAL_FLOW_CHAIN_STRIKE_II_DAMAGE_PCT };
       const resolve = (enemy, primary, sourceTargetUID) => {
         if (!enemy || enemy.kind !== 'enemy' || Number(enemy.hp || 0) <= 0) return null;
         const beforeHP = Number(enemy.hp || 0);
         if (!primary) queueChainStrikeVisual(g, sourceTargetUID, enemy.uid, now, now + 0.28, PARTY_CHAIN_STRIKE_II_ID);
-        const applied = ApplyDamageToTarget(ctx, enemy.uid, damage, { sourceUID: Number(actorUID || 0) });
-        return recordAstralFlowChainStrikeIIHit(g, { targetUID: Number(enemy.uid || 0), preHP: beforeHP, postHP: Number(enemy.hp || 0), damage: applied, primary });
+        const applied = ApplyDamageToTarget(ctx, enemy.uid, damage, { sourceUID: Number(actorUID || 0), deferEnemyDefeatTransition: 1 });
+        const hit = recordAstralFlowChainStrikeIIHit(g, { targetUID: Number(enemy.uid || 0), preHP: beforeHP, postHP: Number(enemy.hp || 0), damage: applied, primary });
+        if (beforeHP > 0 && Number(enemy.hp || 0) === 0) newlyDefeatedEnemyUIDs.push(Number(enemy.uid || 0));
+        return hit;
       };
       resolve(target, true, Number(target.uid || 0));
       let sourceTargetUID = Number(target.uid || 0);
@@ -1669,7 +1672,22 @@ export function ExecuteAstralFlowSpecial(ctx, specialId, actorUID) {
         resolve(bounce, false, sourceTargetUID);
         sourceTargetUID = Number(bounce.uid || 0);
       }
-      result = { ok: true, targetUID: Number(target.uid || 0), hitCount: Number(g.LastAstralFlowChainStrikeII.hitCount || 0) };
+      result = {
+        ok: true,
+        targetUID: Number(target.uid || 0),
+        hitCount: Number(g.LastAstralFlowChainStrikeII.hitCount || 0),
+        afterOwnerFlowReset: () => {
+          const queuedBefore = Number(g.FlowOrbAudit?.queuedEnemyDeathCount || 0);
+          let transitionedCount = 0;
+          for (const enemyUID of newlyDefeatedEnemyUIDs) {
+            const defeatedEnemy = GetActorByUID(ctx, enemyUID);
+            if (resolveActorDefeatTransition(ctx, defeatedEnemy, Number(actorUID || 0))) transitionedCount += 1;
+          }
+          const enemyDeathGemCount = Math.max(0, Number(g.FlowOrbAudit?.queuedEnemyDeathCount || 0) - queuedBefore);
+          g.LastAstralFlowChainStrikeII.enemyDeathGemCount = enemyDeathGemCount;
+          return { transitionedCount, enemyDeathGemCount };
+        },
+      };
     }
   } else if (id === 'split') {
     const target = astralFlowSpecialTarget(ctx);
@@ -1685,7 +1703,10 @@ export function ExecuteAstralFlowSpecial(ctx, specialId, actorUID) {
   } else if (id === 'destiny') {
     result = activateAstralFlowDestiny(ctx, actorUID);
   } else result = { ok: false, reason: 'unknownSpecial' };
-  if (result.ok) g.LastAstralFlowSpecial = { id, actorUID: Number(actorUID || 0), at: Number(g.time || 0), ...result };
+  if (result.ok) {
+    const { afterOwnerFlowReset: _afterOwnerFlowReset, ...telemetry } = result;
+    g.LastAstralFlowSpecial = { id, actorUID: Number(actorUID || 0), at: Number(g.time || 0), ...telemetry };
+  }
   return result;
 }
 
@@ -3240,7 +3261,19 @@ function queueAstralFlowKoOrbPresentation(ctx, enemy, reward, options = {}) {
 }
 
 export function AwardEnemyKoAstralFlow(ctx, enemy, options = {}) {
-  const spawned = dropEnemyFlowOrbs({ actors:ensureEntities(ctx), state:getGlobals(ctx), flowRandom:()=>random01(ctx) }, enemy, options);
+  const g = getGlobals(ctx);
+  const spawned = dropEnemyFlowOrbs({ actors:ensureEntities(ctx), state:g, flowRandom:()=>random01(ctx) }, enemy, options);
+  if (spawned > 0) {
+    const queued = (g.FlowOrbs || []).slice(-spawned);
+    const last = queued[queued.length - 1] || null;
+    const audit = g.FlowOrbAudit || {};
+    g.FlowOrbAudit = {
+      ...audit,
+      queuedRecipientUID: Number(last?.recipientUID || 0),
+      queuedCount: Number(audit.queuedCount || 0) + spawned,
+      queuedEnemyDeathCount: Number(audit.queuedEnemyDeathCount || 0) + queued.filter(orb => orb?.reason === 'enemy-death').length,
+    };
+  }
   return { ok:false, spawned, reason:spawned ? 'enemy_death_flow_orb' : 'no_living_flow_recipient' };
 }
 
@@ -6602,6 +6635,26 @@ function getPendingDamageTextKind(ctx, uid, dmg, options = undefined) {
   return hit ? String(hit.damageTextKind || '') : '';
 }
 
+function resolveActorDefeatTransition(ctx, target, killerUID = 0) {
+  const g = getGlobals(ctx);
+  if (!target || Number(target.hp ?? 0) !== 0 || target.isAlive === false || Number(target.pendingOfficialDeath || 0)) return false;
+  const resolvedKillerUID = Number(killerUID || g.LastDamageSourceUID || GetCurrentTurn(ctx) || 0);
+  if (target.kind === 'enemy') {
+    target.pendingOfficialDeath = 1;
+    target.deathState = 'pending_attack';
+  } else {
+    target.isAlive = false;
+  }
+  if ((g.RoundActive && g.GroupResolving) || (isTimeInitiative(ctx) && g.GroupResolving)) {
+    g.PendingDeaths = g.PendingDeaths || {};
+    g.PendingDeaths[target.uid] = { group: Number(g.RoundGroupIndex || 0), killerUID: resolvedKillerUID };
+  } else if (target.kind === 'enemy') {
+    AwardMonsterDrop(ctx, target.name || target.key || target.type || '', null, resolvedKillerUID);
+    KillEnemyByUID(ctx, target.uid, target.slotIndex ?? 0);
+  }
+  return true;
+}
+
 export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   const g = getGlobals(ctx);
   const opts = options && typeof options === 'object' ? options : {};
@@ -6740,26 +6793,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
     }
   }
   delete g.NextDamageTextKind;
-  if (t.hp === 0 && t.isAlive !== false && !Number(t.pendingOfficialDeath || 0)) {
-    if (t.kind === 'enemy') {
-      t.pendingOfficialDeath = 1;
-      t.deathState = 'pending_attack';
-    } else {
-      t.isAlive = false;
-    }
-    if ((g.RoundActive && g.GroupResolving) || (isTimeInitiative(ctx) && g.GroupResolving)) {
-      g.PendingDeaths = g.PendingDeaths || {};
-      g.PendingDeaths[t.uid] = {
-        group: Number(g.RoundGroupIndex || 0),
-        killerUID: Number(g.LastDamageSourceUID || 0),
-      };
-    } else {
-      if (t.kind === 'enemy') {
-        AwardMonsterDrop(ctx, t.name || t.key || t.type || '', null, Number(g.LastDamageSourceUID || 0));
-        KillEnemyByUID(ctx, t.uid, t.slotIndex ?? 0);
-      }
-    }
-  }
+  if (!Number(opts.deferEnemyDefeatTransition || 0)) resolveActorDefeatTransition(ctx, t, Number(g.LastDamageSourceUID || 0));
   UpdateEnemyHPUI(ctx);
   UpdateHeroHPUI(ctx);
   maybeShadowTurnSummary(ctx, 'functionBank.ApplyDamageToTarget');

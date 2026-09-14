@@ -12,8 +12,8 @@ function loadModule() {
     .replace(/^import[\s\S]*?from\s+['"][^'"]+['"];\n/gm, '')
     .replace(/\bexport\s+/g, '')}
 
-module.exports = { ExecuteAstralFlowSpecial, ProcessAstralFlowDestinyRegen, ApplyDamageToTarget };`;
-  const context = { ...require('../web-runner/modules/heroCommands.mjs'), console: { log() {}, warn() {}, error() {} }, Math, module: { exports: {} }, exports: {}, state: { globals: {}, entities: [] }, effectiveStat: () => 10 };
+module.exports = { ExecuteAstralFlowSpecial, ProcessAstralFlowDestinyRegen, ApplyDamageToTarget, resolvePendingEnemyDeaths };`;
+  const context = { ...require('../web-runner/modules/heroCommands.mjs'), ...require('../web-runner/src/core/flowOrbs.mjs'), EMPTY: 'EMPTY', setTimeout: () => 0, clearTimeout() {}, console: { log() {}, warn() {}, error() {} }, Math, module: { exports: {} }, exports: {}, state: { globals: {}, entities: [] }, effectiveStat: () => 10 };
   vm.createContext(context);
   new vm.Script(transformed, { filename: modulePath }).runInContext(context);
   return context.module.exports;
@@ -26,7 +26,7 @@ function makeContext() {
     { uid: 3, kind: 'hero', name: 'Runa', heroDisplaySlot: 2, hp: 0, maxHP: 70, x: 3, y: 3 },
     { uid: 4, kind: 'hero', name: 'Kaja', heroDisplaySlot: 3, hp: 30, maxHP: 50, x: 4, y: 4 },
   ];
-  const globals = { time: 1, TurnSerial: 10, CombatLog: [], CombatActionLines: ['', '', '', ''], DamageTexts: [] };
+  const globals = { time: 1, CombatSessionId: 1, RuntimeRandom: () => 0, LootDropRateBps: 0, TurnSerial: 10, CombatLog: [], CombatActionLines: ['', '', '', ''], DamageTexts: [], FlowOrbs: [] };
   const enemies = [
     { uid: 11, kind: 'enemy', name: 'Ghoul A', hp: 80, maxHP: 80, x: 8, y: 2 },
     { uid: 12, kind: 'enemy', name: 'Ghoul B', hp: 80, maxHP: 80, x: 9, y: 3 },
@@ -101,4 +101,77 @@ test('Chain Strike II resolves immediately at the 396-percent payload and retarg
   const result=mod.ExecuteAstralFlowSpecial(ctx,'chain_strike_ii',2);assert.equal(result.ok,true);
   const primary=ctx.state.globals.LastAstralFlowChainStrikeII.primary;assert.equal(primary.targetUID,11);assert.equal(primary.coefficient,396);assert.ok(primary.damage>0);assert.equal(primary.preHP,5000);assert.equal(primary.postHP,5000-primary.damage);
   ctx.state.entities.find(actor=>actor.uid===11).hp=0;ctx.state.globals.SelectedEnemyUID=11;const rerun=mod.ExecuteAstralFlowSpecial(ctx,'chain_strike_ii',2);assert.equal(rerun.ok,true);assert.equal(rerun.targetUID,12);assert.equal(ctx.state.globals.LastAstralFlowChainStrikeII.primary.targetUID,12);
+});
+
+test('Chain Strike II defers each new KO until owner AF reset, emits one canonical gem per kill, and dedupes cleanup', async () => {
+  const { beginFreshSessionBuffQueue, chooseSessionLevelUpBuff, claimSessionBuffQueueResume, getSessionLevelUpBuffPresentation, reconcileSessionFlowThresholds } = await import('../web-runner/modules/sessionLevelUpBuffPresentation.mjs');
+  const { recordFlowThreshold } = await import('../web-runner/src/core/personalFlow.mjs');
+  const { advanceFlowOrbs } = await import('../web-runner/src/core/flowOrbs.mjs');
+  const { FLOW_ORB_TUNING } = await import('../web-runner/src/core/heroDefinitions.mjs');
+  const mod = loadModule();
+  const ctx = makeContext();
+  const kaja = ctx.state.entities.find(actor => actor.uid === 4);
+  const heroes = ctx.state.entities.filter(actor => actor.kind === 'hero');
+  for (const hero of heroes) hero.flowEligible = hero.uid === 4;
+  const thirdEnemy = { uid: 13, kind: 'enemy', name: 'Ghoul C', hp: 1, maxHP: 1, x: 10, y: 4 };
+  ctx.state.entities.push(thirdEnemy);
+  for (const enemy of ctx.state.entities.filter(actor => actor.kind === 'enemy')) { enemy.hp = 1; enemy.maxHP = 1; }
+  ctx.state.globals.SelectedEnemyUID = 11;
+  beginFreshSessionBuffQueue(ctx.state.globals, heroes);
+  let offer = getSessionLevelUpBuffPresentation(ctx.state.globals, heroes);
+  assert.equal(chooseSessionLevelUpBuff(ctx.state.globals, heroes, offer.cards[0].cardId).status, 'applied');
+  claimSessionBuffQueueResume(ctx.state.globals);
+  ctx.state.globals.QaPreferredAstralFlowSpecialId = 'chain_strike_ii';
+  kaja.flow = 100;
+  recordFlowThreshold(ctx.state.globals, kaja, 99, 100);
+  reconcileSessionFlowThresholds(ctx.state.globals, heroes);
+  offer = getSessionLevelUpBuffPresentation(ctx.state.globals, heroes);
+  const chain = offer.cards.find(card => card.specialId === 'chain_strike_ii');
+  const selected = chooseSessionLevelUpBuff(ctx.state.globals, heroes, chain.cardId, 1, () => {
+    const execution = mod.ExecuteAstralFlowSpecial(ctx, 'chain_strike_ii', 4);
+    assert.equal(ctx.state.globals.FlowOrbs.length, 0);
+    assert.deepEqual(JSON.parse(JSON.stringify(ctx.state.globals.LastAstralFlowChainStrikeII.hits.map(hit => [hit.preHP, hit.postHP]))), [[1, 0], [1, 0], [1, 0]]);
+    return execution;
+  });
+  assert.equal(selected.status, 'applied');
+  assert.equal(kaja.flow, 0);
+  assert.deepEqual(JSON.parse(JSON.stringify(selected.execution.afterFlowReset)), { transitionedCount: 3, enemyDeathGemCount: 3 });
+  assert.equal(ctx.state.globals.FlowOrbs.length, 3);
+  assert.deepEqual(ctx.state.globals.FlowOrbs.map(orb => orb.reason), ['enemy-death', 'enemy-death', 'enemy-death']);
+  assert.equal(ctx.state.globals.FlowOrbAudit.queuedEnemyDeathCount, 3);
+  assert.equal(ctx.state.entities.filter(actor => actor.kind === 'enemy').length, 0);
+  mod.resolvePendingEnemyDeaths(ctx);
+  assert.equal(ctx.state.globals.FlowOrbs.length, 3);
+  advanceFlowOrbs(ctx.state.globals, ctx.state.entities, 1 + FLOW_ORB_TUNING.releaseSeconds);
+  assert.equal(kaja.flow, 0);
+  advanceFlowOrbs(ctx.state.globals, ctx.state.entities, 1 + FLOW_ORB_TUNING.releaseSeconds + FLOW_ORB_TUNING.flightSeconds + 0.001);
+  assert.equal(kaja.flow, 30);
+  assert.equal(ctx.state.globals.FlowOrbAudit.arrivedEnemyDeathCount, 3);
+});
+
+test('Chain Strike II emits no death gem for nonlethal or already-dead targets', () => {
+  const mod = loadModule();
+  const ctx = makeContext();
+  ctx.state.entities.find(actor => actor.uid === 11).hp = 5000;
+  ctx.state.entities.find(actor => actor.uid === 12).hp = 0;
+  ctx.state.globals.SelectedEnemyUID = 11;
+  const result = mod.ExecuteAstralFlowSpecial(ctx, 'chain_strike_ii', 4);
+  assert.equal(result.ok, true);
+  assert.equal(ctx.state.globals.FlowOrbs.length, 0);
+  const completed = result.afterOwnerFlowReset();
+  assert.deepEqual(JSON.parse(JSON.stringify(completed)), { transitionedCount: 0, enemyDeathGemCount: 0 });
+  assert.equal(ctx.state.globals.FlowOrbs.length, 0);
+});
+
+test('the shared lethal transition emits one enemy-death gem once', () => {
+  const mod = loadModule();
+  const ctx = makeContext();
+  ctx.state.entities.find(actor => actor.uid === 11).hp = 1;
+  ctx.state.entities.find(actor => actor.uid === 12).hp = 0;
+  assert.equal(mod.ApplyDamageToTarget(ctx, 11, 20, { sourceUID: 4 }), 1);
+  assert.equal(ctx.state.globals.FlowOrbs.length, 1);
+  assert.equal(ctx.state.globals.FlowOrbAudit.queuedEnemyDeathCount, 1);
+  assert.equal(mod.ApplyDamageToTarget(ctx, 11, 20, { sourceUID: 4 }), 0);
+  mod.resolvePendingEnemyDeaths(ctx);
+  assert.equal(ctx.state.globals.FlowOrbs.length, 1);
 });

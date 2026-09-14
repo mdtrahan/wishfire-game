@@ -84,7 +84,7 @@ test('Quest-QA rails retain the compact heal, Dawn, and combat diagnostics contr
   assert.match(app, /const qaSetDawnChorusRoll = equality =>/);
   assert.match(app, /const qaTriggerDawnChorusDefeat = \(\) =>/);
   assert.match(app, /ward: \{ remaining:/);
-  assert.match(app, /kajaAF: state\.globals\.QaKajaFlowAudit/);
+  assert.match(app, /kajaAF: \{ \.\.\.kajaAudit, enemyDeathGemCount:/);
   assert.match(app, /dawnChorus: \{/);
   assert.match(app, /requiredOrder: 'rank → forced roll → defeat'/);
   assert.match(app, /if \(!state\.globals\.QaDawnRollArmed\) return \{ ok: false, reason: 'forcedRollRequired' \}/);
@@ -133,7 +133,7 @@ test('Quest-QA scenario pause preserves the combat presentation and reports isol
   assert.match(app, /count: Number\(priorKajaAudit\.count \|\| 0\) \+ \(kajaDelta > 0 \? 1 : 0\)/);
   assert.match(app, /hondoBefore, hondoAfter/);
   assert.match(app, /roleGainGemCount:/);
-  assert.match(app, /enemyDeathGemCount: 0/);
+  assert.match(app, /queuedEnemyDeathCount/);
   assert.match(app, /reason: 'combatLayoutRequired'/);
   assert.match(app, /reason: 'choiceRequired'/);
   assert.match(hooks, /result\.reason !== 'choiceActive'/);

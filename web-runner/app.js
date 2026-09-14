@@ -2232,6 +2232,7 @@ async function main(){
     const presentation = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
     const hero = state.entities.find(actor => Number(actor?.uid || 0) === Number(presentation.heroUID || 0));
     const lastSpecial = state.globals.QaLastAstralFlowSpecial || state.globals.LastAstralFlowSpecial || null;
+    const kajaAudit = state.globals.QaKajaFlowAudit || { source: 'resolved-action', recipientUID: 4, count: 0, value: 0, hondoBefore: 0, hondoAfter: 0, roleGainGemCount: 0 };
     return {
       scenarioPaused: !!(state.globals.QaScenarioPaused && state.globals.QaFixtureHoldTurn && state.globals.DevToolingPaused),
       party: state.entities.filter(actor => actor?.kind === 'hero').map((actor, index) => {
@@ -2259,7 +2260,7 @@ async function main(){
         pulseTargets: (state.globals.ArcanePulseVisuals || []).map(row => Number(row?.targetUID || 0)),
         fazeZones: (state.globals.TaintedGroundZones || []).map(row => Number(row?.targetUID || row?.enemyUID || 0)),
       },
-      kajaAF: state.globals.QaKajaFlowAudit || { source: 'resolved-action', recipientUID: 4, count: 0, value: 0, hondoBefore: 0, hondoAfter: 0, roleGainGemCount: 0, enemyDeathGemCount: 0 },
+      kajaAF: { ...kajaAudit, enemyDeathGemCount: Number(state.globals.FlowOrbAudit?.queuedEnemyDeathCount || 0) },
       dawnChorus: { requiredOrder: 'rank → forced roll → defeat', rollArmed: !!state.globals.QaDawnRollArmed, ownedRank: Number(state.globals.DawnChorusOwnedRank || 0), chance: Number(state.globals.DawnChorusLastRoll?.chance || 0), attempted: Number(state.globals.DawnChorusAttempted || 0), succeeded: Number(state.globals.DawnChorusSucceeded || 0), revived: state.entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0).map(actor => ({ uid: Number(actor.uid || 0), hp: Number(actor.hp || 0) })), rng: state.globals.DawnChorusLastRoll || null },
     };
   };
