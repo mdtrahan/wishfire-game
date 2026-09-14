@@ -8,6 +8,8 @@ import { resetCombatSessionConditions } from '../web-runner/systems/combatSessio
 
 const hooks = readFileSync(new URL('../web-runner/systems/devBrowserTestHooks.js', import.meta.url), 'utf8');
 const app = readFileSync(new URL('../web-runner/app.js', import.meta.url), 'utf8');
+const devTooling = readFileSync(new URL('../web-runner/systems/devToolingRuntime.js', import.meta.url), 'utf8');
+const renderRuntime = readFileSync(new URL('../web-runner/systems/renderRuntime.js', import.meta.url), 'utf8');
 
 test('Quest-QA AF controls are query-gated and use production callback seams', () => {
   assert.match(hooks, /new URLSearchParams\(window\.location\.search\)\.get\('questQA'\) === '1'/);
@@ -31,7 +33,8 @@ test('app QA entrypoints use canonical threshold, fan selection, and layout navi
   assert.match(app, /await storyEntry\.navigate\('Quests'\)/);
   assert.match(app, /await storyEntry\.continuePausedCombat\(\)/);
   assert.match(app, /QaPreferredAstralFlowSpecialId/);
-  assert.match(app, /const qaResetScenario = \(\) =>/);
+  assert.match(app, /const qaResetScenario = async \(\) =>/);
+  assert.match(app, /await layoutState\.requestLayoutChange\('combat', 'quest-qa-scenario-reset'\)/);
   assert.match(app, /pauseGameplayForDevTooling\(\)/);
   assert.match(app, /const qaResumeScenario = \(\) =>/);
   assert.match(app, /const qaRunAstralFlowSpecial = \(heroUID, specialId\) =>/);
@@ -81,7 +84,7 @@ test('Quest-QA rails retain the compact heal, Dawn, and combat diagnostics contr
   assert.match(app, /const qaSetDawnChorusRoll = equality =>/);
   assert.match(app, /const qaTriggerDawnChorusDefeat = \(\) =>/);
   assert.match(app, /ward: \{ remaining:/);
-  assert.match(app, /kajaAF: \{/);
+  assert.match(app, /kajaAF: state\.globals\.QaKajaFlowAudit/);
   assert.match(app, /dawnChorus: \{/);
   assert.match(app, /requiredOrder: 'rank → forced roll → defeat'/);
   assert.match(app, /if \(!state\.globals\.QaDawnRollArmed\) return \{ ok: false, reason: 'forcedRollRequired' \}/);
@@ -113,14 +116,31 @@ test('fresh combat reset clears prior QA effects while a new opening offer remai
   const globals = {
     CombatSessionId: 9, QaLastAstralFlowSpecial: { id: 'magic_fruit' }, LastAstralFlowSpecial: { id: 'chain_strike_ii' },
     LastAstralFlowChainStrikeII: { hitCount: 3 }, LastCrimsonWard: { added: 40 }, QaEnemyBasicHit: { applied: 2 },
-    FlowOrbAudit: { roleRecipientUID: 2 }, QaDawnRollArmed: 1, DawnChorusLastRoll: { chance: .1 },
+    FlowOrbAudit: { roleRecipientUID: 2 }, QaKajaFlowAudit: { count: 9 }, QaDawnRollArmed: 1, DawnChorusLastRoll: { chance: .1 },
+    PartyTempHPShield: 18, LastPartyWardBarrierAbsorbed: 7, LastPartyWardBarrierHitUID: 4, PartyWardBarrierFadeOutUntil: 91,
   };
   resetCombatSessionConditions(globals, {});
-  for (const key of ['QaLastAstralFlowSpecial', 'LastAstralFlowSpecial', 'LastAstralFlowChainStrikeII', 'LastCrimsonWard', 'QaEnemyBasicHit', 'FlowOrbAudit', 'QaDawnRollArmed', 'DawnChorusLastRoll']) assert.equal(globals[key], undefined);
+  for (const key of ['QaLastAstralFlowSpecial', 'LastAstralFlowSpecial', 'LastAstralFlowChainStrikeII', 'LastCrimsonWard', 'QaEnemyBasicHit', 'FlowOrbAudit', 'QaKajaFlowAudit', 'QaDawnRollArmed', 'DawnChorusLastRoll', 'PartyTempHPShield', 'LastPartyWardBarrierAbsorbed', 'LastPartyWardBarrierHitUID', 'PartyWardBarrierFadeOutUntil']) assert.equal(globals[key], undefined);
   const party = [{ uid: 1, kind: 'hero', heroInstanceKey: 'falie#1', baseHeroName: 'Falie', hp: 40, maxHP: 40 }];
   globals.RuntimeRandom = () => 0;
   beginFreshSessionBuffQueue(globals, party);
   assert.ok(getSessionLevelUpBuffPresentation(globals, party).cards.length > 0);
+});
+
+test('Quest-QA scenario pause preserves the combat presentation and reports isolated Kaja awards', () => {
+  assert.match(app, /gameState\.storyEntry\.phase = 'combat'/);
+  assert.match(app, /QaKajaFlowAudit = \{ source: 'resolved-action', recipientUID: 4, count: 0/);
+  assert.match(app, /count: Number\(priorKajaAudit\.count \|\| 0\) \+ \(kajaDelta > 0 \? 1 : 0\)/);
+  assert.match(app, /hondoBefore, hondoAfter/);
+  assert.match(app, /roleGainGemCount:/);
+  assert.match(app, /enemyDeathGemCount: 0/);
+  assert.match(app, /reason: 'combatLayoutRequired'/);
+  assert.match(app, /reason: 'choiceRequired'/);
+  assert.match(hooks, /result\.reason !== 'choiceActive'/);
+  assert.match(hooks, /Promise\.resolve\(\)[\s\S]*\.then\(action\)[\s\S]*\.catch\(error => renderAfReadout/);
+  assert.match(devTooling, /else if \(state\.globals\.QaScenarioPaused\)/);
+  assert.match(devTooling, /if \(state\.globals\.QaScenarioPaused\) state\.globals\.DevToolingPaused = 1/);
+  assert.match(renderRuntime, /DevToolingPaused && !\(state\.globals\.QaScenarioPaused && state\.globals\.QaFixtureHoldTurn\)/);
 });
 
 test('transactional QA heal measures the production HP delta before its bloom is emitted', () => {

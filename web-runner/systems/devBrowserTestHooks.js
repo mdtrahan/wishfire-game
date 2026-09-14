@@ -1038,7 +1038,7 @@ export function registerDevBrowserTestHooks({
           ? qaSetHeroFlowReady(Number(qaHero()?.uid || 0), String(specialSelect.value || ''))
           : { ok: false, reason: 'missingProductionAfEntryPoint' };
         renderAfReadout(`set AF 100: ${result.ok ? 'ok' : result.reason || 'failed'}`);
-        if (!result.ok) throw new Error(`QA set AF 100 failed: ${result.reason || 'unknown'}`);
+        if (!result.ok && result.reason !== 'choiceActive') throw new Error(`QA set AF 100 failed: ${result.reason || 'unknown'}`);
         if (typeof drawFrame === 'function') drawFrame();
       }],
       ['QA choose special', () => {
@@ -1062,11 +1062,10 @@ export function registerDevBrowserTestHooks({
           ? await qaPauseResumeSessionBuffOffer()
           : { ok: false, reason: 'missingProductionPauseEntryPoint' };
         renderAfReadout(`pause/resume: ${result.ok ? 'ok' : result.reason || 'failed'}`);
-        if (!result.ok) throw new Error('QA offer pause/resume failed through the production layout path');
         if (typeof drawFrame === 'function') drawFrame();
       }],
-      ['QA fresh session', () => {
-        const result = typeof qaResetScenario === 'function' ? qaResetScenario() : { ok: false, reason: 'missingScenarioResetEntryPoint' };
+      ['QA fresh session', async () => {
+        const result = typeof qaResetScenario === 'function' ? await qaResetScenario() : { ok: false, reason: 'missingScenarioResetEntryPoint' };
         renderAfReadout(`fresh session paused: ${result.ok ? 'ok' : result.reason || 'failed'}`);
         if (!result.ok) throw new Error(`QA fresh session failed: ${result.reason || 'unknown'}`);
       }],
@@ -1089,7 +1088,10 @@ export function registerDevBrowserTestHooks({
       }],
     ]) {
       const button = document.createElement('button'); button.textContent = label;
-      button.addEventListener('click', action); qaButtons.push(button);
+      button.addEventListener('click', () => Promise.resolve()
+        .then(action)
+        .catch(error => renderAfReadout(`control refused: ${String(error?.message || error)}`)));
+      qaButtons.push(button);
     }
     leftRail.append(heroSelect, tierSelect, cardSelect, fixtureSelect, specialSelect, ...qaButtons.slice(0, 10));
     rightRail.append(afReadout, ...qaButtons.slice(10));

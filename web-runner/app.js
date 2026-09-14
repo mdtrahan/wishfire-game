@@ -2259,7 +2259,7 @@ async function main(){
         pulseTargets: (state.globals.ArcanePulseVisuals || []).map(row => Number(row?.targetUID || 0)),
         fazeZones: (state.globals.TaintedGroundZones || []).map(row => Number(row?.targetUID || row?.enemyUID || 0)),
       },
-      kajaAF: { source: String(state.globals.FlowOrbAudit?.source || 'resolved-action'), recipientUID: Number(state.globals.FlowOrbAudit?.roleRecipientUID || 0), count: Number(state.globals.FlowOrbAudit?.roleAwardCount || 0), value: Number(state.globals.FlowOrbAudit?.roleValue || 0) },
+      kajaAF: state.globals.QaKajaFlowAudit || { source: 'resolved-action', recipientUID: 4, count: 0, value: 0, hondoBefore: 0, hondoAfter: 0, roleGainGemCount: 0, enemyDeathGemCount: 0 },
       dawnChorus: { requiredOrder: 'rank → forced roll → defeat', rollArmed: !!state.globals.QaDawnRollArmed, ownedRank: Number(state.globals.DawnChorusOwnedRank || 0), chance: Number(state.globals.DawnChorusLastRoll?.chance || 0), attempted: Number(state.globals.DawnChorusAttempted || 0), succeeded: Number(state.globals.DawnChorusSucceeded || 0), revived: state.entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0).map(actor => ({ uid: Number(actor.uid || 0), hp: Number(actor.hp || 0) })), rng: state.globals.DawnChorusLastRoll || null },
     };
   };
@@ -2269,8 +2269,16 @@ async function main(){
     if (!allowChoice && presentation.open) return { ok: false, reason: 'choiceActive', readout: qaReadSessionBuffState() };
     return null;
   };
-  const qaResetScenario = () => {
+  const qaResetScenario = async () => {
     if (!freshCombatBootstrapped || !Array.isArray(enemyRows) || !enemyRows.length) return { ok: false, reason: 'combatAssetsUnavailable' };
+    try {
+      if (layoutState.getActiveLayoutId() !== 'combat') {
+        await layoutState.requestLayoutChange('combat', 'quest-qa-scenario-reset');
+      }
+    } catch (error) {
+      return { ok: false, reason: 'combatLayoutUnavailable', detail: String(error?.message || error) };
+    }
+    gameState.storyEntry.phase = 'combat';
     const resetCount = Number(state.globals.QaScenarioResetCount || 0) + 1;
     const devRuntime = requireDevToolingRuntime();
     devRuntime.clearCombatSessionOverrides();
@@ -2300,6 +2308,7 @@ async function main(){
     state.globals.QaFixtureHoldTurn = 1;
     state.globals.QaScenarioPaused = 1;
     state.globals.QaScenarioResetCount = resetCount;
+    state.globals.QaKajaFlowAudit = { source: 'resolved-action', recipientUID: 4, count: 0, value: 0, hondoBefore: 0, hondoAfter: 0, roleGainGemCount: 0, enemyDeathGemCount: 0 };
     state.globals.QaSelectedHeroUID = Number(state.entities.find(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0)?.uid || 0);
     state.globals.SelectedEnemyUID = Number(state.entities.find(actor => actor?.kind === 'enemy' && Number(actor.hp || 0) > 0)?.uid || 0);
     initializeStoryCardLayout('quest-qa-scenario-reset');
@@ -2411,11 +2420,24 @@ async function main(){
     const target = state.entities.find(actor => actor?.kind === 'hero' && Number(actor.uid || 0) === Number(heroUID || 0) && Number(actor.hp || 0) > 0);
     const enemy = state.entities.find(actor => actor?.kind === 'enemy' && Number(actor.hp || 0) > 0);
     if (!target || !enemy) return { ok: false, reason: !target ? 'heroUnavailable' : 'enemyUnavailable', readout: qaReadSessionBuffState() };
+    const kaja = state.entities.find(actor => Number(actor?.uid || 0) === 4);
+    const hondo = state.entities.find(actor => Number(actor?.uid || 0) === 2);
     const preHP = Number(target.hp || 0), wardBefore = Number(state.globals.PartyTempHPShield || 0), orbCountBefore = (state.globals.FlowOrbs || []).length;
+    const kajaBefore = Number(kaja?.flow || 0), hondoBefore = Number(hondo?.flow || 0);
     const requested = Math.max(1, Number(callFunctionWithContext(fnContext, 'CalculateDamage', enemy.uid, target.uid, 'melee') || 1));
     const applied = Number(callFunctionWithContext(fnContext, 'ApplyDamageToTarget', target.uid, requested, { sourceUID: enemy.uid }) || 0);
-    const kaja = state.entities.find(actor => String(actor?.baseHeroName || actor?.name || '') === 'Kojonn' || String(actor?.name || '') === 'Kaja');
-    const result = { ok: true, enemyUID: Number(enemy.uid || 0), targetUID: Number(target.uid || 0), preHP, postHP: Number(target.hp || 0), requested, applied, wardAbsorbed: Math.max(0, wardBefore - Number(state.globals.PartyTempHPShield || 0)), wardRemaining: Number(state.globals.PartyTempHPShield || 0), kajaRecipientUID: Number(state.globals.FlowOrbAudit?.roleRecipientUID || 0), kajaAF: Number(kaja?.flow || 0), deathGemCount: Math.max(0, (state.globals.FlowOrbs || []).length - orbCountBefore) };
+    const kajaAfter = Number(kaja?.flow || 0), hondoAfter = Number(hondo?.flow || 0);
+    const kajaDelta = Math.max(0, kajaAfter - kajaBefore);
+    const priorKajaAudit = state.globals.QaKajaFlowAudit || { count: 0, value: 0 };
+    state.globals.QaKajaFlowAudit = {
+      source: 'resolved-action', recipientUID: 4,
+      count: Number(priorKajaAudit.count || 0) + (kajaDelta > 0 ? 1 : 0),
+      value: Number(priorKajaAudit.value || 0) + kajaDelta,
+      hondoBefore, hondoAfter,
+      roleGainGemCount: Math.max(0, (state.globals.FlowOrbs || []).length - orbCountBefore),
+      enemyDeathGemCount: 0,
+    };
+    const result = { ok: true, enemyUID: Number(enemy.uid || 0), targetUID: Number(target.uid || 0), preHP, postHP: Number(target.hp || 0), requested, applied, wardAbsorbed: Math.max(0, wardBefore - Number(state.globals.PartyTempHPShield || 0)), wardRemaining: Number(state.globals.PartyTempHPShield || 0), kajaRecipientUID: 4, kajaAF: kajaAfter, hondoBefore, hondoAfter, roleGainGemCount: state.globals.QaKajaFlowAudit.roleGainGemCount, enemyDeathGemCount: 0 };
     state.globals.QaEnemyBasicHit = result;
     return { ...result, readout: qaReadSessionBuffState() };
   };
@@ -2468,6 +2490,8 @@ async function main(){
   };
   const qaPauseResumeSessionBuffOffer = async () => {
     const before = qaReadSessionBuffState();
+    if (layoutState.getActiveLayoutId() !== 'combat' || gameState.storyEntry?.phase !== 'combat') return { ok: false, reason: 'combatLayoutRequired', before, after: before };
+    if (!getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {}).open) return { ok: false, reason: 'choiceRequired', before, after: before };
     const departed = await storyEntry.navigate('Quests');
     const resumed = departed ? await storyEntry.continuePausedCombat() : false;
     return { ok: !!(departed && resumed), before, after: qaReadSessionBuffState(), departed, resumed };

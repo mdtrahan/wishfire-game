@@ -47,6 +47,10 @@ export function renderRuntime(deps) {
       "pha * 0.16;\n          ctx.translate(frontRadius, 0);\n          ctx.scale(1.85, 0.48);\n          ctx.drawImage(img, -textureSize / 2, -textureSize / 2, textureSize, textureSize);\n          ctx.restore();\n        }\n        ctx.restore();\n        return true;\n      });\n    };\n    renderArcanePulseVisuals();\n\n    // Render non-hero damage text above gameplay\n    renderDamageTexts(d => d.targetKind !== 'hero');\n\n    // draw HUD overlay (game state)\n    drawHUD();\n\n    runtimeArtifacts.presentationPatches = Object.keys(presentationPatches).length ? presentationPatches : null;\n    runtimeArtifacts.visualControlPatches = Object.keys(visualControlPatches).length ? visualControlPatches : null;\n    return runtimeArtifacts;\n",
     ].join("")
       .replace(
+        "if (state.globals.DevToolingPaused) {",
+        "if (state.globals.DevToolingPaused && !(state.globals.QaScenarioPaused && state.globals.QaFixtureHoldTurn)) {",
+      )
+      .replace(
         "spawnPendingDamageNumbers(worldToCanvas);",
         "spawnPendingDamageNumbers(projectCombatDamageWorldToCanvas, layoutScale);",
       )

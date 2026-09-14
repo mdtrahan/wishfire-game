@@ -47,9 +47,11 @@ export function resetCombatSessionConditions(globals, gameState, { preserveSessi
   // a fresh session. Encounter continuation deliberately retains session buffs.
   for (const key of [
     'QaLastAstralFlowSpecial', 'LastAstralFlowSpecial', 'QaFixtureHeal', 'QaEnemyBasicHit',
-    'FlowOrbAudit', 'LastPartyChainStrike', 'LastAstralFlowChainStrikeII',
+    'FlowOrbAudit', 'QaKajaFlowAudit', 'LastPartyChainStrike', 'LastAstralFlowChainStrikeII',
     'PartyChainStrikeIIProcs', 'PartyChainStrikeIProcs', 'AstralFlowMagicFruitLast',
     'AstralFlowDestinyRegensByUID', 'LastCrimsonWard', 'QaDawnRollArmed',
+    'LastPartyWardBarrierAbsorbed', 'LastPartyWardBarrierHitUID',
+    'PartyWardBarrierFadeOutUntil', 'PartyTempHPShield',
     'QaScenarioPaused', 'QaScenarioResetCount', 'QaSelectedHeroUID',
   ]) delete globals[key];
   if (!preserveSessionLevelBuffs) {

@@ -785,6 +785,8 @@ export function createDevToolingRuntime(deps = {}) {
     if (restorePauseSnapshot) {
       if (isDev2DiagnosticsOpen()) {
         state.globals.DevToolingPaused = 1;
+      } else if (state.globals.QaScenarioPaused) {
+        state.globals.DevToolingPaused = 1;
       } else {
         resumeGameplayFromDevTooling();
       }
@@ -926,7 +928,8 @@ export function createDevToolingRuntime(deps = {}) {
       return;
     }
     if (!ensureDevToolingConfig().open) {
-      resumeGameplayFromDevTooling();
+      if (state.globals.QaScenarioPaused) state.globals.DevToolingPaused = 1;
+      else resumeGameplayFromDevTooling();
     }
   });
   if (isDev2DiagnosticsOpen()) {
