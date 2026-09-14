@@ -396,9 +396,10 @@ export function createCombatSessionInitializer({
       state.globals.EncounterSeed = encounterSeed;
       state.globals.EncounterSeedExplicit = 0;
       installCombatRuntimeRandom(deriveCombatRuntimeRngSeed(encounterSeed), 'initEntities');
+      const startingPartyCP = computeEncounterTotalCP(heroes.map(hero => ({ combatPower: computeCombatPower(hero) })));
       const encounterRequest = {
         pool: mappedEnemyData,
-        targetCP: Number(state.globals.EncounterTargetCP || 120),
+        targetCP: Number(state.globals.EncounterTargetCP || (startingPartyCP * 0.52)),
         locale: String(state.globals.EncounterLocale || state.globals.CurrentLocale || 'clouds'),
         maxSlots: Number(state.globals.EncounterMaxSlots || 3),
         policy: String(state.globals.EncounterPolicy || 'mixed'),
@@ -485,7 +486,7 @@ export function createCombatSessionInitializer({
           faction: String(pick.faction || 'wishless'),
           enemyRole: String(pick.enemyRole || 'fodder'),
           localeTags: Array.isArray(pick.localeTags) ? pick.localeTags : ['all'],
-          CombatPower: Number(pick.CombatPower || pick.combatPower || resolveEnemyEncounterCombatPower(pick, computeCombatPower)),
+          CombatPower: resolveEnemyEncounterCombatPower(pick, computeCombatPower),
         }, slotIndex);
       }
       state.globals.InitialSpawn = 0;

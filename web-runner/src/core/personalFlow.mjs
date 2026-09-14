@@ -25,7 +25,7 @@ export function resolveRoleFlowAward({heroes=[],hero=null,event={},apply=true}={
  const hostileDamage=Number(event.hostileHpDamage||0)>0;
  const enemyDamage=Number(event.enemyHpDamage||0)>0;
  const newStatus=event.newEligibleStatus===true;
- const allyDamaged=Array.isArray(heroes)&&heroes.some(other=>other&&other!==recipient&&Number(other.hp||0)>0&&Number(other.uid)!==Number(recipient.uid)&&Number(event.hostileTargetUID||0)===Number(other.uid)&&hostileDamage);
+ const allyDamaged=Array.isArray(heroes)&&heroes.some(other=>other&&other!==recipient&&Number(other.uid)!==Number(recipient.uid)&&Number(event.hostileTargetUID||0)===Number(other.uid)&&event.hostileTargetWasLiving!==false&&hostileDamage);
  const eligible=(mode==='Stoic'&&hostileDamage&&Number(event.hostileTargetUID||0)===Number(recipient.uid))
   ||(mode==='Warrior'&&enemyDamage)
   ||(mode==='Tactician'&&newStatus)
