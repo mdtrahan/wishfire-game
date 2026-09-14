@@ -271,13 +271,12 @@ export function createHeroTurnCardFanUI({
         button._fanCardRarity = textNode('fan-card-rarity', card.rarity);
         button.append(portrait, button._fanCardName, button._fanCardEffect, button._fanCardRarity);
       }
-      const activeHero = state.activeHero || {};
-      const portraitSrc = heroArtPath(activeHero)
-        ? runtimeAssetUrl(heroArtPath(activeHero))
-        : asText(activeHero.portrait?.src);
-      const portraitCrop = heroArtCrop(activeHero, 'card') || { position: '50% 24%', scale: 1.08 };
-      const fallbackName = heroDisplayName(activeHero);
-      button._fanCardPortraitFallback.textContent = fallbackName;
+      const signatureHero = card.presentation?.kind === 'hero_signature' ? (state.activeHero || {}) : null;
+      const portraitSrc = signatureHero && heroArtPath(signatureHero)
+        ? runtimeAssetUrl(heroArtPath(signatureHero))
+        : asText(signatureHero?.portrait?.src);
+      const portraitCrop = signatureHero ? (heroArtCrop(signatureHero, 'card') || { position: '50% 24%', scale: 1.08 }) : null;
+      button._fanCardPortraitFallback.textContent = signatureHero ? heroDisplayName(signatureHero) : 'Power';
       button._fanCardPortraitImage.onerror = () => {
         button._fanCardPortraitImage.hidden = true;
         button._fanCardPortraitFallback.hidden = false;

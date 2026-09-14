@@ -185,14 +185,14 @@ test('a T1 Orb cadence upgrades in session and resolves its T2 cadence in a late
   assert.equal(battleB.ctx.state.globals.SessionLevelBuffState.heroes['hondo-1'].triggerCountersByEffectId.spectral_orb, 5);
 });
 
-test('Mirage Chain has no same-target fallback when only one enemy survives', () => {
+test('Chain Strike has no same-target fallback when only one enemy survives', () => {
   const { ctx, actor, target, rules } = context(['mirage_chain'], () => 0);
   resolveSessionLevelBasicEffects(ctx, rules, actor, [target.uid]);
   assert.equal(target.hp, 200);
   assert.equal(ctx.state.globals.ChainStrikeVisuals, undefined);
 });
 
-test('Mirage Chain retains its production potency and resolved secondary damage', () => {
+test('Chain Strike retains its production potency and resolved secondary damage', () => {
   const { ctx, actor, target, rules } = context(['mirage_chain'], () => 0);
   const secondary = { ...structuredClone(target), uid: 10, hp: 200, x: 40 };
   ctx.state.entities.push(secondary);

@@ -188,7 +188,7 @@ const behaviorCards = [
   }),
   ...stagedFamily({
     effectId: 'mirage_chain',
-    names: ['Mirage Chain', 'Mirage Chain II', 'Mirage Chain III', 'Mirage Chain IV'],
+    names: ['Chain Strike', 'Chain Strike II', 'Chain Strike III', 'Chain Strike IV'],
     kind: 'behavior',
     formulas: [
       { surface: 'bounce_percent_damage', chance: 0.25, damagePercent: 0.50 },

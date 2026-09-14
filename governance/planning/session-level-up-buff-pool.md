@@ -30,7 +30,7 @@ the hero already owns one. A direct stat or bargain card has no prerequisite.
 | `spectral_orb_1` | Spectral Orb | behavior | Every 3 completed basics: 4 magic damage | grant |
 | `inner_flow_1` | Inner Flow | behavior | 15%: heal 5% Max HP | grant |
 | `venom_sigil_1` | Venom Sigil | behavior | 20%: Venom for 3 damage, 2 turns | grant |
-| `mirage_chain_1` | Mirage Chain | behavior | 25%: bounce for 50% damage | grant |
+| `mirage_chain_1` | Chain Strike | behavior | 25%: bounce for 50% damage | grant |
 | `glass_reprisal_1` | Glass Reprisal | behavior | 20%: counter for 40% ATK, heal 3% Max HP | grant |
 | `brass_ward_1` | Brass Ward | behavior | Start battle with a 25% Max HP shield | grant |
 | `dune_edge_1` | Dune Edge | stat | ATK +10% | direct stat grant |
@@ -47,7 +47,7 @@ the hero already owns one. A direct stat or bargain card has no prerequisite.
 | `spectral_orb_2` | Spectral Orb II | behavior | Every 2 completed basics: 6 magic damage | requires/replaces stage 1 |
 | `inner_flow_2` | Inner Flow II | behavior | 25%: heal 6% Max HP | requires/replaces stage 1 |
 | `venom_sigil_2` | Venom Sigil II | behavior | 30%: Venom for 4 damage, 2 turns | requires/replaces stage 1 |
-| `mirage_chain_2` | Mirage Chain II | behavior | 35%: bounce for 60% damage | requires/replaces stage 1 |
+| `mirage_chain_2` | Chain Strike II | behavior | 35%: bounce for 60% damage | requires/replaces stage 1 |
 | `glass_reprisal_2` | Glass Reprisal II | behavior | 30%: counter for 50% ATK, heal 4% Max HP | requires/replaces stage 1 |
 | `brass_ward_2` | Brass Ward II | behavior | Start battle with a 35% Max HP shield | requires/replaces stage 1 |
 | `dune_edge_2` | Dune Edge II | stat | ATK +18% | direct staged stat; replaces lower |
@@ -64,7 +64,7 @@ the hero already owns one. A direct stat or bargain card has no prerequisite.
 | `spectral_orb_3` | Spectral Orb III | behavior | Every 2 completed basics: 10 magic damage | requires/replaces stage 2 |
 | `inner_flow_3` | Inner Flow III | behavior | 35%: heal 8% Max HP | requires/replaces stage 2 |
 | `venom_sigil_3` | Venom Sigil III | behavior | 40%: Venom for 5 damage, 3 turns | requires/replaces stage 2 |
-| `mirage_chain_3` | Mirage Chain III | behavior | 45%: bounce for 75% damage | requires/replaces stage 2 |
+| `mirage_chain_3` | Chain Strike III | behavior | 45%: bounce for 75% damage | requires/replaces stage 2 |
 | `glass_reprisal_3` | Glass Reprisal III | behavior | 40%: counter for 65% ATK, heal 5% Max HP | requires/replaces stage 2 |
 | `brass_ward_3` | Brass Ward III | behavior | Start battle with a 50% Max HP shield | requires/replaces stage 2 |
 | `dune_edge_3` | Dune Edge III | stat | ATK +28% | direct staged stat; replaces lower |
@@ -81,7 +81,7 @@ the hero already owns one. A direct stat or bargain card has no prerequisite.
 | `spectral_orb_4` | Spectral Orb IV | behavior | Every completed basic: 12 magic damage | requires/replaces stage 3 |
 | `inner_flow_4` | Inner Flow IV | behavior | 45%: heal 10% Max HP | requires/replaces stage 3 |
 | `venom_sigil_4` | Venom Sigil IV | behavior | 50%: Venom for 7 damage, 3 turns | requires/replaces stage 3 |
-| `mirage_chain_4` | Mirage Chain IV | behavior | 55%: bounce for 90% damage | requires/replaces stage 3 |
+| `mirage_chain_4` | Chain Strike IV | behavior | 55%: bounce for 90% damage | requires/replaces stage 3 |
 | `glass_reprisal_4` | Glass Reprisal IV | behavior | 50%: counter for 80% ATK, heal 6% Max HP | requires/replaces stage 3 |
 | `brass_ward_4` | Brass Ward IV | behavior | Start battle with a 65% Max HP shield | requires/replaces stage 3 |
 | `dune_edge_4` | Dune Edge IV | stat | ATK +40% | direct staged stat; replaces lower |
@@ -103,7 +103,7 @@ MAG combat stat and Speed maps to the existing SPD status surface.
 Behavior cards resolve from existing native seams. Spectral Orb emits a fixed
 magic packet after its completed-basic cadence. Inner Flow heals its owner.
 Venom Sigil applies the existing DOT state with the displayed Venom payload;
-it does not require a Mark or Weaken condition. Mirage Chain resolves one
+it does not require a Mark or Weaken condition. Chain Strike resolves one
 distinct secondary enemy when one exists. Glass Reprisal is one counter package
 per incoming damage package and its generated hit cannot trigger session
 buffs. Brass Ward applies the established battle-start barrier presentation.

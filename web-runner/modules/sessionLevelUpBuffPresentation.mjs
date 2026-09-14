@@ -17,6 +17,18 @@ const heroId = hero => String(hero?.heroInstanceKey ?? hero?.uid ?? '');
 const clamp = (value, min, max) => Math.max(min, Math.min(max, Number(value) || 0));
 const isPowerBuffCard = isUniversalSessionPowerBuffCard;
 
+// Session power cards and shared AF specials remain neutral. Only a triggering
+// hero's guaranteed AF signature owns the existing hero card presentation.
+function presentOfferCards(cards = [], hero = null, flowThreshold = false) {
+  return (Array.isArray(cards) ? cards : []).map((card, index) => {
+    const signature = flowThreshold && index === 0;
+    const presentation = signature
+      ? Object.freeze({ kind: 'hero_signature', heroUID: Number(hero?.uid || 0), heroName: String(hero?.baseHeroName || hero?.name || '') })
+      : Object.freeze({ kind: 'neutral' });
+    return Object.freeze({ ...card, presentation });
+  });
+}
+
 function tierWeightsFor(globals, progress) {
   const normalizedProgress = Number(progress?.totalMilestonesToFinalBoss || 0) > 0
     ? clamp(Number(progress.completedMilestones || 0) / Number(progress.totalMilestonesToFinalBoss), 0, 1)
@@ -171,7 +183,8 @@ export function getSessionLevelUpBuffPresentation(globals, heroes = [], progress
   }
   const offer = offers[key];
   const offerToken = `${Number(globals.SessionLevelUpOfferGeneration || 0)}:${key}:${entry.heroId}:${entry.earnedLevel}`;
-  return { open: offer.status === 'offered', cards: offer.cards || [], heroUID: Number(hero?.uid || entry.heroUID || 0), queue: entry, offer, offerToken };
+  const flowThreshold = isSessionFlowThresholdEntry(entry);
+  return { open: offer.status === 'offered', cards: presentOfferCards(offer.cards, hero, flowThreshold), heroUID: Number(hero?.uid || entry.heroUID || 0), queue: entry, offer, offerToken };
 }
 
 export function chooseSessionLevelUpBuff(globals, heroes = [], cardId, now = 0, executeSpecial = null) {
