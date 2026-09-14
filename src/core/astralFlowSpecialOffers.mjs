@@ -4,6 +4,8 @@ const PARTY_SPECIALS = Object.freeze([
   Object.freeze({ cardId: 'af_faze', specialId: 'faze', name: 'Faze', description: 'Blight every living enemy.' }),
 ]);
 
+const HERO_SIGNATURE_ALIASES = Object.freeze({ falie: 'fara', huun: 'hondo', kojonn: 'kaja' });
+
 const SIGNATURES_BY_HERO = Object.freeze({
   fara: Object.freeze({ cardId: 'af_crimson_ward', specialId: 'crimson_ward', name: 'Crimson Ward', description: 'Shield every living hero.' }),
   hondo: Object.freeze({ cardId: 'af_split', specialId: 'split', name: 'Split', description: 'Strike every living enemy.' }),
@@ -17,9 +19,10 @@ function normalizedRandom(rng) {
 }
 
 function canonicalHeroName(hero = {}) {
-  return String(hero.baseHeroName || hero.heroName || hero.name || hero.heroInstanceKey || '')
+  const key = String(hero.baseHeroName || hero.heroName || hero.name || hero.heroInstanceKey || '')
     .trim().toLowerCase()
     .split(/[-_\s]/)[0];
+  return HERO_SIGNATURE_ALIASES[key] || key;
 }
 
 export function getAstralFlowSignature(hero = {}) {

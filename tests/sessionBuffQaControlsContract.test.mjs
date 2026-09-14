@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { recordFlowThreshold } from '../web-runner/src/core/personalFlow.mjs';
+import { beginFreshSessionBuffQueue, chooseSessionLevelUpBuff, claimSessionBuffQueueResume, getSessionLevelUpBuffPresentation, reconcileSessionFlowThresholds } from '../web-runner/modules/sessionLevelUpBuffPresentation.mjs';
+import { hasSessionLevelUpPresentationBarrier } from '../web-runner/src/core/turnGateController.mjs';
 
 const hooks = readFileSync(new URL('../web-runner/systems/devBrowserTestHooks.js', import.meta.url), 'utf8');
 const app = readFileSync(new URL('../web-runner/app.js', import.meta.url), 'utf8');
@@ -22,4 +25,37 @@ test('app QA entrypoints use canonical threshold, fan selection, and layout navi
   assert.match(app, /await storyEntry\.navigate\('Quests'\)/);
   assert.match(app, /await storyEntry\.continuePausedCombat\(\)/);
   assert.match(app, /QaPreferredAstralFlowSpecialId/);
+});
+
+
+test('app-boundary QA sequence opens, selects, resets, and resumes Fara’s AF special after four legacy-name opening choices', () => {
+  const party = [
+    { uid: 1, kind: 'hero', heroInstanceKey: 'falie#1', baseHeroName: 'Falie', hp: 40, maxHP: 40, flow: 0, heroDisplaySlot: 0, currentLevel: 1 },
+    { uid: 2, kind: 'hero', heroInstanceKey: 'huun#1', baseHeroName: 'Huun', hp: 35, maxHP: 35, flow: 0, heroDisplaySlot: 1, currentLevel: 1 },
+    { uid: 3, kind: 'hero', heroInstanceKey: 'runa#1', baseHeroName: 'Runa', hp: 30, maxHP: 30, flow: 0, heroDisplaySlot: 2, currentLevel: 1 },
+    { uid: 4, kind: 'hero', heroInstanceKey: 'kojonn#1', baseHeroName: 'Kojonn', hp: 45, maxHP: 45, flow: 0, heroDisplaySlot: 3, currentLevel: 1 },
+  ];
+  const globals = { CombatSessionId: 7, RuntimeRandom: () => 0, SessionLevelUpTierWeights: { 1: 1, 2: 0, 3: 0, 4: 0 } };
+  beginFreshSessionBuffQueue(globals, party);
+  for (let index = 0; index < party.length; index += 1) {
+    const opening = getSessionLevelUpBuffPresentation(globals, party);
+    assert.equal(chooseSessionLevelUpBuff(globals, party, opening.cards[0].cardId).status, 'applied');
+  }
+  assert.equal(globals.SessionLevelUpQueue.status, 'complete');
+  claimSessionBuffQueueResume(globals);
+  globals.QaPreferredAstralFlowSpecialId = 'chain_strike_ii';
+  const fara = party[0];
+  const before = Math.min(99, Math.max(0, Number(fara.flow || 0)));
+  fara.flow = 100;
+  assert.ok(recordFlowThreshold(globals, fara, before, fara.flow));
+  reconcileSessionFlowThresholds(globals, party);
+  const fan = getSessionLevelUpBuffPresentation(globals, party);
+  assert.equal(hasSessionLevelUpPresentationBarrier(globals), true);
+  assert.deepEqual(fan.cards.map(card => card.specialId), ['crimson_ward', 'chain_strike_ii', 'magic_fruit']);
+  assert.equal(fan.open, true);
+  assert.equal(chooseSessionLevelUpBuff(globals, party, fan.cards[0].cardId, 0, () => ({ ok: true, effect: 'ward' })).status, 'applied');
+  assert.equal(fara.flow, 0);
+  assert.equal(hasSessionLevelUpPresentationBarrier(globals), false);
+  assert.equal(claimSessionBuffQueueResume(globals), true);
+  assert.equal(claimSessionBuffQueueResume(globals), false);
 });
