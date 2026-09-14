@@ -92,7 +92,7 @@ import {
   getEmbeddedJson,
   runtimeAssetUrl,
 } from './systems/runtimeAssetUrl.mjs';
-import { chooseSessionLevelUpBuff, claimSessionBuffQueueResume, getSessionLevelUpBuffPresentation, restoreSessionBuffChoiceState, serializeSessionBuffChoiceState, updateSessionLevelUpSettlement } from './modules/sessionLevelUpBuffPresentation.mjs';
+import { chooseSessionLevelUpBuff, claimSessionBuffQueueResume, getSessionLevelUpBuffPresentation, reconcileSessionFlowThresholds, restoreSessionBuffChoiceState, serializeSessionBuffChoiceState, updateSessionLevelUpSettlement } from './modules/sessionLevelUpBuffPresentation.mjs';
 import { recordFlowThreshold } from './src/core/personalFlow.mjs';
 import { heroArtKey } from './state/heroArtAssets.mjs';
 import { computeCombatPower as canonicalCombatPower, normalizeCombatPowerActor } from './src/core/combatPower.mjs';
@@ -2254,9 +2254,14 @@ async function main(){
     if (!hero || Number(hero.hp || 0) <= 0) return { ok: false, reason: 'heroUnavailable' };
     state.globals.QaSelectedHeroUID = Number(hero.uid || 0);
     state.globals.QaPreferredAstralFlowSpecialId = String(preferredSpecialId || '');
-    const before = Math.max(0, Number(hero.flow || 0));
+    // A prior uncaptured cap must still pass through the one canonical
+    // threshold signal. Lower only the QA seed to its pre-cap edge, then cap.
+    const before = Math.min(99, Math.max(0, Number(hero.flow || 0)));
     hero.flow = 100;
     const threshold = recordFlowThreshold(state.globals, hero, before, hero.flow);
+    // Reconcile before ProcessTurn observes the presentation barrier. This
+    // bridge is shared by role/death thresholds through the frame path below.
+    reconcileSessionFlowThresholds(state.globals, state.entities);
     combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
     const presentation = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
     return { ok: !!threshold, threshold, presentation, readout: qaReadSessionBuffState() };
@@ -2804,6 +2809,9 @@ async function main(){
       worldToCanvas, layoutScale, portraits: heroPortraitImages,
     });
     updateSessionLevelUpSettlement(state.globals, Number(state.globals.time || 0));
+    // Thresholds are produced by resolved role actions and enemy-death orbs.
+    // Reconcile before fan rendering and any subsequent scheduler handoff.
+    reconcileSessionFlowThresholds(state.globals, state.entities);
     const levelUpFanState = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
     if (activeLayoutId === 'combat' && state.globals.GamePhase === 'RUNTIME' && claimSessionBuffQueueResume(state.globals)) {
       combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');

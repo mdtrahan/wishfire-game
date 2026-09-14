@@ -174,3 +174,29 @@ test('resume handoff records one consumed scheduler release', () => {
   assert.equal(claimSessionBuffQueueResume(globals), false);
   assert.equal(globals.SessionLevelUpQueueResumeConsumed, 1);
 });
+
+
+test('shipped AF bridge turns a capped Fara token after the opening queue into a cached fan offer and resumes once', () => {
+  const party = heroes();
+  party[0].flow = 100;
+  const globals = {
+    CombatSessionId: 3,
+    RuntimeRandom: () => 0,
+    SessionLevelBuffState: { heroes: {} },
+    SessionLevelUpQueue: { version: 1, status: 'complete', paused: false, currentIndex: 4, entries: party.map(hero => ({ heroId: hero.heroInstanceKey, heroUID: hero.uid, source: 'opening' })) },
+    SessionLevelUpOffersByQueueIndex: {},
+  };
+  const token = { heroUID: 1, triggerOrder: 1, token: 'flow-3-1' };
+  globals.PendingFlowThresholds = [token];
+  reconcileSessionFlowThresholds(globals, party);
+  const fan = getSessionLevelUpBuffPresentation(globals, party);
+  assert.equal(globals.SessionLevelUpQueue.status, 'active');
+  assert.equal(fan.open, true);
+  assert.deepEqual(fan.cards.map(card => card.specialId), ['crimson_ward', 'magic_fruit', 'chain_strike_ii']);
+  const selected = chooseSessionLevelUpBuff(globals, party, fan.cards[0].cardId, 0, () => ({ ok: true, effect: 'ward' }));
+  assert.equal(selected.status, 'applied');
+  assert.equal(party[0].flow, 0);
+  assert.deepEqual(globals.PendingFlowThresholds, []);
+  assert.equal(claimSessionBuffQueueResume(globals), true);
+  assert.equal(claimSessionBuffQueueResume(globals), false);
+});
