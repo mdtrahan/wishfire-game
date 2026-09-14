@@ -105,6 +105,28 @@ test('offline manifest hashes every generated file and records the exact source 
   }
 });
 
+test('missing or failed bundler preserves the last playable offline artifact', () => {
+  const sentinel = path.join(output, 'preservation-sentinel.txt');
+  fs.writeFileSync(sentinel, 'keep\n');
+  try {
+    assert.throws(() => execFileSync(process.execPath, ['tools/build_offline_release.mjs'], {
+      cwd: root,
+      env: { ...process.env, ORKA_OFFLINE_ESBUILD: path.join(root, 'missing-esbuild') },
+      stdio: 'pipe',
+    }), /Offline release requires the repository esbuild dev dependency/);
+    assert.throws(() => execFileSync(process.execPath, ['tools/build_offline_release.mjs'], {
+      cwd: root,
+      env: { ...process.env, ORKA_OFFLINE_ESBUILD: process.execPath },
+      stdio: 'pipe',
+    }));
+    assert.equal(fs.readFileSync(sentinel, 'utf8'), 'keep\n');
+    assert.ok(fs.existsSync(path.join(output, 'wishfire.bundle.js')));
+    assert.ok(fs.existsSync(path.join(output, 'release-manifest.json')));
+  } finally {
+    fs.rmSync(sentinel, { force: true });
+  }
+});
+
 test('hosted release contract remains a separate module/data release', () => {
   const netlify = fs.readFileSync(path.join(root, 'netlify.toml'), 'utf8');
   const hostedIndex = fs.readFileSync(path.join(root, 'web-runner', 'index.html'), 'utf8');

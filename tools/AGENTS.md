@@ -12,6 +12,7 @@
 - Playwright doctor, launch matrix, and Chrome CDP helpers diagnose browser startup/control issues.
 - Rust build helper generates the browser WASM artifact.
 - `build_offline_release.mjs` reuses the hosted runtime staging pass, embeds the three startup JSON payloads and SimulationCore WASM, and emits the portable file:// artifact; it must leave the Netlify release path unchanged.
+- Offline builds must validate dependencies before touching `dist-offline`, assemble in a sibling candidate directory, and replace the prior playable artifact only after the bundle and manifest are complete.
 - Hot-file, cleanup, archive, and Beads/Git visibility helpers support repo workflow.
 
 ## Local Contracts

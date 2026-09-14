@@ -558,3 +558,7 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - Emit heal presentation only after an actor HP mutation and compute the shown amount from the actual positive delta. A shared `DamageTexts` heal record keeps the app-owned bloom consistent across card, special, and enemy heal paths.
 - Shared wards must sit in the common hero-damage resolver, including native-resolved packets. Any bypass makes role FLOW accounting and shield visuals disagree with real HP loss.
 - Defeat interception marks its seeded attempt before rolling. A revival effect must return control without clearing session state or rebuilding initiative.
+
+## 2026-09-14 - Release Builders Must Preserve The Last Good Artifact
+- Validate required build tools before touching release output. Assemble into a sibling candidate directory and replace the last playable artifact only after the bundle and manifest are complete.
+- A missing-dependency regression check must seed the existing artifact, force the dependency failure, and prove the prior files survive.
