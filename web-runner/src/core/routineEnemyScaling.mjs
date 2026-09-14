@@ -1,6 +1,6 @@
 export const ENEMY_COMBAT_TIER_PROFILES = Object.freeze({
-  fodder: Object.freeze({ HP: 10, ATK: 1, DEF: 1, MAG: 1, RES: 1, SPD: 8 }),
-  routine: Object.freeze({ HP: 14, ATK: 2, DEF: 2, MAG: 2, RES: 2, SPD: 8 }),
+  fodder: Object.freeze({ HP: 21, ATK: 1, DEF: 1, MAG: 1, RES: 1, SPD: 8 }),
+  routine: Object.freeze({ HP: 30, ATK: 2, DEF: 2, MAG: 2, RES: 2, SPD: 8 }),
   hard: Object.freeze({ HP: 62, ATK: 4, DEF: 5, MAG: 4, RES: 5, SPD: 8 }),
   elite: Object.freeze({ HP: 85, ATK: 5, DEF: 7, MAG: 5, RES: 7, SPD: 9 }),
   boss: Object.freeze({ HP: 130, ATK: 6, DEF: 9, MAG: 6, RES: 9, SPD: 10 }),
