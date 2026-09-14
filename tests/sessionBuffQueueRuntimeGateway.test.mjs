@@ -53,7 +53,7 @@ test('gateway snapshot restores cached queue offers, threshold tokens, hero AF, 
   assert.deepEqual(getSessionLevelUpBuffPresentation(globals, heroes).cards, opening.cards);
   assert.equal(heroes[1].flow, 100);
   assert.equal(globals.RuntimeRandomDraws, 9);
-  assert.equal(snapshot.sessionState.choiceState.SessionLevelUpQueue.entries.length, 5);
+  assert.equal(snapshot.sessionState.choiceState.SessionLevelUpQueue.entries.length, 2);
   assert.deepEqual(globals.PendingFlowThresholds, [{ heroUID: 2, triggerOrder: 1, token: 'flow-1-1' }]);
 });
 
@@ -62,10 +62,8 @@ test('navigation snapshot preserves the final-choice resume request until the ap
   const globals = { RuntimeRandom: () => 0, SessionLevelUpTierWeights: { 1: 1, 2: 0, 3: 0, 4: 0 } };
   const heroes = party();
   beginFreshSessionBuffQueue(globals, heroes);
-  for (let index = 0; index < 4; index += 1) {
-    const offer = getSessionLevelUpBuffPresentation(globals, heroes);
-    assert.equal(chooseSessionLevelUpBuff(globals, heroes, offer.cards[0].cardId).status, 'applied');
-  }
+  const offer = getSessionLevelUpBuffPresentation(globals, heroes);
+  assert.equal(chooseSessionLevelUpBuff(globals, heroes, offer.cards[0].cardId).status, 'applied');
   assert.equal(globals.SessionLevelUpQueue.status, 'complete');
   assert.equal(globals.SessionLevelUpQueueResumeRequested, 1);
   const gateway = new CombatRuntimeGateway({

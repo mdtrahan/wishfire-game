@@ -84,7 +84,7 @@ export function applySessionLevelBuffsAtBattleStart(ctx,rules){
  g.SessionLevelBuffCombatSessionId=session;
  for(const hero of ctx.state.entities.filter(actor=>actor?.kind==='hero')){
   const cards=getActiveSessionLevelUpBuffCards(g,hero);
-  const statFactors={},maxHpMultipliers=[],shields=[];
+  const statFactors={},maxHpMultipliers=[];
   const addStatFactor=(stat,percent)=>{
    const key=sessionStatKey(stat);if(!key)return;
    (statFactors[key]||(statFactors[key]=[])).push(1+Number(percent||0));
@@ -96,14 +96,12 @@ export function applySessionLevelBuffsAtBattleStart(ctx,rules){
     if(formula.benefitStat==='max_hp')maxHpMultipliers.push(1+Number(formula.benefitPercent||0));else addStatFactor(formula.benefitStat,formula.benefitPercent);
     if(formula.penaltyStat==='max_hp')maxHpMultipliers.push(1+Number(formula.penaltyPercent||0));else addStatFactor(formula.penaltyStat,formula.penaltyPercent);
    }
-   if(formula.surface==='shield_percent_max_hp')shields.push(Number(formula.percent||0));
   }
   for(const [stat,factors] of Object.entries(statFactors)){
    const magnitude=factors.reduce((value,factor)=>value*factor,1)-1;
    applyStatus(rules,hero,hero,{effectType:'status',statusEffect:sessionStatStatusFor(stat),magnitude,duration:9999});
   }
   if(maxHpMultipliers.length){hero.maxHP=Math.max(1,Math.round(maxHpMultipliers.reduce((value,multiplier)=>value*multiplier,Math.max(1,Number(hero.maxHP||1)))));hero.hp=Math.min(hero.maxHP,hero.hp);}
-  for(const magnitude of shields){const effect={effectType:'status',statusEffect:'barrier',magnitude,duration:9999};if(applyStatus(rules,hero,hero,effect))rules.onStatus?.(hero,hero,effect);}
  }
 }
 export function resolveSessionLevelBasicEffects(ctx,rules,hero,targetIds){

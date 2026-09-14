@@ -8,11 +8,12 @@ buff pool. The runtime source of truth is
 The offer and replacement rules remain owned by
 [`src/core/sessionLevelBuffOffers.mjs`](../../src/core/sessionLevelBuffOffers.mjs).
 
-- **INTENDED:** every level-up presents three cards from one selected tier;
-  the selected card belongs to the leveling hero for the current adventure.
-- **OBSERVED:** the catalog contains 48 unique cards, twelve in each tier;
-  focused runtime tests cover offer health, ownership, replacement, and
-  automatic combat resolution.
+- **INTENDED:** fresh sessions present one neutral three-card party offer before combat.
+  Every later level-up presents three cards from one selected tier for that hero.
+- **OBSERVED:** the catalog contains 44 unique cards, eleven in each tier. The
+  active universal offer allowlist contains 40 cards, ten in each tier, because
+  Inner Flow remains outside the production draw pool. Focused runtime tests
+  cover offer health, ownership, replacement, and automatic combat resolution.
 - **UNTESTED:** long-run pick rates, encounter balance, and player preference
   still need live playtesting.
 
@@ -32,7 +33,6 @@ the hero already owns one. A direct stat or bargain card has no prerequisite.
 | `venom_sigil_1` | Venom Sigil | behavior | 20%: Venom for 3 damage, 2 turns | grant |
 | `mirage_chain_1` | Chain Strike | behavior | 25%: bounce for 50% damage | grant |
 | `glass_reprisal_1` | Glass Reprisal | behavior | 20%: counter for 40% ATK, heal 3% Max HP | grant |
-| `brass_ward_1` | Brass Ward | behavior | Start battle with a 25% Max HP shield | grant |
 | `dune_edge_1` | Dune Edge | stat | ATK +10% | direct stat grant |
 | `astral_reservoir_1` | Astral Reservoir | stat | MATK +10% | direct stat grant |
 | `sandstone_guard_1` | Sandstone Guard | stat | DEF +10% | direct stat grant |
@@ -49,7 +49,6 @@ the hero already owns one. A direct stat or bargain card has no prerequisite.
 | `venom_sigil_2` | Venom Sigil II | behavior | 30%: Venom for 4 damage, 2 turns | requires/replaces stage 1 |
 | `mirage_chain_2` | Chain Strike II | behavior | 35%: bounce for 60% damage | requires/replaces stage 1 |
 | `glass_reprisal_2` | Glass Reprisal II | behavior | 30%: counter for 50% ATK, heal 4% Max HP | requires/replaces stage 1 |
-| `brass_ward_2` | Brass Ward II | behavior | Start battle with a 35% Max HP shield | requires/replaces stage 1 |
 | `dune_edge_2` | Dune Edge II | stat | ATK +18% | direct staged stat; replaces lower |
 | `astral_reservoir_2` | Astral Reservoir II | stat | MATK +18% | direct staged stat; replaces lower |
 | `sandstone_guard_2` | Sandstone Guard II | stat | DEF +18% | direct staged stat; replaces lower |
@@ -66,7 +65,6 @@ the hero already owns one. A direct stat or bargain card has no prerequisite.
 | `venom_sigil_3` | Venom Sigil III | behavior | 40%: Venom for 5 damage, 3 turns | requires/replaces stage 2 |
 | `mirage_chain_3` | Chain Strike III | behavior | 45%: bounce for 75% damage | requires/replaces stage 2 |
 | `glass_reprisal_3` | Glass Reprisal III | behavior | 40%: counter for 65% ATK, heal 5% Max HP | requires/replaces stage 2 |
-| `brass_ward_3` | Brass Ward III | behavior | Start battle with a 50% Max HP shield | requires/replaces stage 2 |
 | `dune_edge_3` | Dune Edge III | stat | ATK +28% | direct staged stat; replaces lower |
 | `astral_reservoir_3` | Astral Reservoir III | stat | MATK +28% | direct staged stat; replaces lower |
 | `sandstone_guard_3` | Sandstone Guard III | stat | DEF +28% | direct staged stat; replaces lower |
@@ -83,7 +81,6 @@ the hero already owns one. A direct stat or bargain card has no prerequisite.
 | `venom_sigil_4` | Venom Sigil IV | behavior | 50%: Venom for 7 damage, 3 turns | requires/replaces stage 3 |
 | `mirage_chain_4` | Chain Strike IV | behavior | 55%: bounce for 90% damage | requires/replaces stage 3 |
 | `glass_reprisal_4` | Glass Reprisal IV | behavior | 50%: counter for 80% ATK, heal 6% Max HP | requires/replaces stage 3 |
-| `brass_ward_4` | Brass Ward IV | behavior | Start battle with a 65% Max HP shield | requires/replaces stage 3 |
 | `dune_edge_4` | Dune Edge IV | stat | ATK +40% | direct staged stat; replaces lower |
 | `astral_reservoir_4` | Astral Reservoir IV | stat | MATK +40% | direct staged stat; replaces lower |
 | `sandstone_guard_4` | Sandstone Guard IV | stat | DEF +40% | direct staged stat; replaces lower |
@@ -94,8 +91,8 @@ the hero already owns one. A direct stat or bargain card has no prerequisite.
 ## Runtime contract
 
 All cards use `lane: shared_card`, `lifetime: session`, and shared session
-ownership. The selected hero is the only reader of that hero's active stage
-state. A stage replacement leaves one active formula for the effect family.
+ownership. A level-up selection belongs to the leveling hero. The one opening
+selection applies its chosen card to every living starting hero. A stage replacement leaves one active formula for the effect family.
 Stat multipliers combine as a product across distinct active effect families;
 `max_hp` changes the maximum and clamps current HP. MATK maps to the existing
 MAG combat stat and Speed maps to the existing SPD status surface.
@@ -106,14 +103,16 @@ Venom Sigil applies the existing DOT state with the displayed Venom payload;
 it does not require a Mark or Weaken condition. Chain Strike resolves one
 distinct secondary enemy when one exists. Glass Reprisal is one counter package
 per incoming damage package and its generated hit cannot trigger session
-buffs. Brass Ward applies the established battle-start barrier presentation.
+buffs.
 
 Generated behavior effects carry `allowGenerated: false`,
 `excludeSelfGenerated: true`, `procDepthCap: 0`, and no spawned entities.
 Counter cards declare `maxPerDamagePackage: 1`. These limits preserve native
 hero delivery and keep automatic effects out of a recursive action loop.
 
-Every tier has six behavior or upgrade records and six fallback records. A
+The catalog has five behavior or upgrade records and six fallback records in
+each tier. Inner Flow stays outside the universal offering path, leaving four
+behavior or upgrade records and six fallbacks in each active offer tier. A
 fresh hero has at least six eligible stat or bargain fallbacks in each tier;
 after a fallback is owned, the remaining same-tier fallbacks still keep a
 three-card offer. If a hero has exhausted the tier, the deterministic offer

@@ -23,27 +23,31 @@ const heroes = () => [
 
 const tierOne = { 1: 1, 2: 0, 3: 0, 4: 0 };
 
-test('fresh sessions hold four cached universal opening offers in roster order', () => {
+test('fresh sessions hold one cached neutral opening offer and apply it to every living starting hero', () => {
   const party = heroes();
   const globals = { RuntimeRandom: () => 0, SessionLevelUpTierWeights: tierOne };
   beginFreshSessionBuffQueue(globals, party);
-  assert.deepEqual(globals.SessionLevelUpQueue.entries.map(entry => entry.heroId), ['fara-1', 'hondo-2', 'runa-3', 'kaja-4']);
+  assert.deepEqual(globals.SessionLevelUpQueue.entries, [{
+    heroId: '__party_session__', heroUID: 0, earnedLevel: 0, earnedLevelIndex: 0,
+    source: 'opening_party', participantHeroIds: ['fara-1', 'hondo-2', 'runa-3', 'kaja-4'],
+  }]);
   const first = getSessionLevelUpBuffPresentation(globals, party);
   const rerender = getSessionLevelUpBuffPresentation(globals, party);
   assert.equal(first.open, true);
+  assert.equal(first.heroUID, 0);
   assert.equal(first.cards.length, 3);
   assert.strictEqual(first.offer, rerender.offer);
   assert.ok(first.cards.every(isUniversalSessionPowerBuffCard));
-  for (let index = 0; index < 4; index += 1) {
-    const offer = getSessionLevelUpBuffPresentation(globals, party);
-    assert.equal(offer.heroUID, index + 1);
-    assert.equal(chooseSessionLevelUpBuff(globals, party, offer.cards[0].cardId).status, 'applied');
-  }
+  const selected = chooseSessionLevelUpBuff(globals, party, first.cards[0].cardId);
+  assert.equal(selected.status, 'applied');
+  assert.equal(selected.partyWide, true);
+  assert.deepEqual(selected.affectedHeroIds, ['fara-1', 'hondo-2', 'runa-3', 'kaja-4']);
   assert.equal(globals.SessionLevelUpQueue.status, 'complete');
   assert.equal(globals.SessionLevelUpQueueResumeRequested, 1);
   assert.equal(claimSessionBuffQueueResume(globals), true);
   assert.equal(claimSessionBuffQueueResume(globals), false);
   assert.deepEqual(Object.keys(globals.SessionLevelBuffState.heroes).sort(), ['fara-1', 'hondo-2', 'kaja-4', 'runa-3']);
+  for (const hero of party) assert.equal(globals.SessionLevelBuffState.heroes[hero.heroInstanceKey].activeStageByEffectId[first.cards[0].effectId], first.cards[0].stage);
 });
 
 test('one explicit universal power-buff allowlist admits persistent offense and rejects relief or direct action cards', () => {
@@ -51,9 +55,12 @@ test('one explicit universal power-buff allowlist admits persistent offense and 
   assert.ok(UNIVERSAL_SESSION_POWER_BUFF_IDS.includes('mirage_chain_1'));
   assert.ok(UNIVERSAL_SESSION_POWER_BUFF_IDS.includes('glass_reprisal_1'));
   assert.equal(UNIVERSAL_SESSION_POWER_BUFF_IDS.includes('inner_flow_1'), false);
+  assert.equal(UNIVERSAL_SESSION_POWER_BUFF_IDS.some(id => id.startsWith('brass_ward_')), false);
+  assert.equal(SESSION_LEVEL_UP_BUFF_CARDS.some(card => card.effectId === 'brass_ward' || /Brass Ward/.test(card.name)), false);
   assert.equal(isUniversalSessionPowerBuffCard({ cardId: 'af_magic_fruit' }), false);
   assert.equal(isUniversalSessionPowerBuffCard({ cardId: 'af_split' }), false);
   assert.equal(isUniversalSessionPowerBuffCard({ cardId: 'retired_turn_attack' }), false);
+  assert.equal(UNIVERSAL_SESSION_POWER_BUFF_CARDS.length, 40);
   assert.equal(UNIVERSAL_SESSION_POWER_BUFF_CARDS.length, UNIVERSAL_SESSION_POWER_BUFF_IDS.length);
   assert.equal(SESSION_LEVEL_UP_BUFF_CARDS.filter(card => card.effectId === 'inner_flow').every(isUniversalSessionPowerBuffCard), false);
 });
@@ -183,7 +190,7 @@ test('shipped AF bridge turns a capped Fara token after the opening queue into a
     CombatSessionId: 3,
     RuntimeRandom: () => 0,
     SessionLevelBuffState: { heroes: {} },
-    SessionLevelUpQueue: { version: 1, status: 'complete', paused: false, currentIndex: 4, entries: party.map(hero => ({ heroId: hero.heroInstanceKey, heroUID: hero.uid, source: 'opening' })) },
+    SessionLevelUpQueue: { version: 1, status: 'complete', paused: false, currentIndex: 1, entries: [{ heroId: '__party_session__', heroUID: 0, source: 'opening_party', participantHeroIds: party.map(hero => hero.heroInstanceKey) }] },
     SessionLevelUpOffersByQueueIndex: {},
   };
   const token = { heroUID: 1, triggerOrder: 1, token: 'flow-3-1' };
@@ -208,13 +215,8 @@ test('post-opening AF threshold resolves its recreated live hero by UID and neve
     RuntimeRandom: () => 0,
     SessionLevelBuffState: { heroes: {} },
     SessionLevelUpQueue: {
-      version: 1, status: 'complete', paused: false, currentIndex: 4,
-      entries: [
-        { heroId: 'stale-fara-instance', heroUID: 1, source: 'opening' },
-        { heroId: 'hondo-2', heroUID: 2, source: 'opening' },
-        { heroId: 'runa-3', heroUID: 3, source: 'opening' },
-        { heroId: 'kaja-4', heroUID: 4, source: 'opening' },
-      ],
+      version: 1, status: 'complete', paused: false, currentIndex: 1,
+      entries: [{ heroId: '__party_session__', heroUID: 0, source: 'opening_party', participantHeroIds: party.map(hero => hero.heroInstanceKey) }],
     },
     PendingFlowThresholds: [{ heroUID: 1, triggerOrder: 1, token: 'post-opening-fara' }],
   };

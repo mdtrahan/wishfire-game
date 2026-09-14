@@ -2,7 +2,7 @@ import { applyLevelUpBuffCard, buildLevelUpBuffOffer, createSessionLevelBuffStat
 import { SESSION_LEVEL_UP_BUFF_CARDS, UNIVERSAL_SESSION_POWER_BUFF_CARDS, isUniversalSessionPowerBuffCard } from '../../src/core/sessionLevelBuffCatalog.mjs';
 import { buildAstralFlowSpecialOffer } from '../../src/core/astralFlowSpecialOffers.mjs';
 import { heroDefinition } from '../src/core/heroDefinitions.mjs';
-import { acknowledgeSessionLevelUpEntry, createSessionOpeningBuffQueue, currentSessionLevelUpEntry, enqueueSessionFlowThresholds, isSessionFlowThresholdEntry } from '../src/core/sessionLevelUpQueue.mjs';
+import { acknowledgeSessionLevelUpEntry, createSessionOpeningBuffQueue, currentSessionLevelUpEntry, enqueueSessionFlowThresholds, isSessionFlowThresholdEntry, isSessionOpeningPartyEntry } from '../src/core/sessionLevelUpQueue.mjs';
 
 export { SESSION_LEVEL_UP_BUFF_CARDS };
 export const QA_LEVEL_UP_BUFF_CARDS = SESSION_LEVEL_UP_BUFF_CARDS;
@@ -211,11 +211,25 @@ export function chooseSessionLevelUpBuff(globals, heroes = [], cardId, now = 0, 
     if (globals.SessionLevelUpQueue.status === 'complete') globals.SessionLevelUpQueueResumeRequested = 1;
     return { status: 'applied', card, special: true, execution: result };
   }
-  const applied = applyLevelUpBuffCard({ state: globals.SessionLevelBuffState, heroId: presentation.queue.heroId, cardId, cards: UNIVERSAL_SESSION_POWER_BUFF_CARDS });
+  const partyEntry = isSessionOpeningPartyEntry(presentation.queue);
+  const participantHeroIds = new Set((presentation.queue.participantHeroIds || []).map(String));
+  const recipients = partyEntry
+    ? heroes.filter(hero => hero?.kind === 'hero' && Number(hero.hp || 0) > 0 && participantHeroIds.has(heroId(hero)))
+    : [];
+  if (partyEntry && !recipients.length) return { status: 'rejected', reason: 'noLivingOpeningParty' };
+  let nextState = globals.SessionLevelBuffState;
+  const applications = partyEntry
+    ? recipients.map(hero => {
+      const applied = applyLevelUpBuffCard({ state: nextState, heroId: heroId(hero), cardId, cards: UNIVERSAL_SESSION_POWER_BUFF_CARDS });
+      if (applied.status === 'applied') nextState = applied.state;
+      return applied;
+    })
+    : [applyLevelUpBuffCard({ state: nextState, heroId: presentation.queue.heroId, cardId, cards: UNIVERSAL_SESSION_POWER_BUFF_CARDS })];
+  const applied = applications.find(result => result.status !== 'applied') || applications[0];
   if (applied.status !== 'applied') return applied;
-  globals.SessionLevelBuffState = applied.state;
+  globals.SessionLevelBuffState = nextState;
   globals.SessionLevelUpQueue = acknowledgeSessionLevelUpEntry(globals.SessionLevelUpQueue);
   if (globals.SessionLevelUpQueue.status === 'complete') globals.SessionLevelUpQueueResumeRequested = 1;
   if (globals.SessionLevelUpQueue.status === 'complete' && globals.SessionLevelUpSettlement) { globals.SessionLevelUpSettlement.phase = 'fadeOut'; globals.SessionLevelUpSettlement.fadeOutStartedAt = Number(now || 0); }
-  return applied;
+  return partyEntry ? { ...applied, partyWide: true, affectedHeroIds: recipients.map(heroId) } : applied;
 }

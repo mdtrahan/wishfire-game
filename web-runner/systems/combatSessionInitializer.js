@@ -1,5 +1,6 @@
 import {attachHeroProgress, createHeroProgressStore} from '../src/core/heroProgression.mjs';
 import { initializePersonalFlow } from '../src/core/personalFlow.mjs';
+import { createSessionOpeningBuffQueue } from '../src/core/sessionLevelUpQueue.mjs';
 import { computeCombatPower as canonicalCombatPower } from '../src/core/combatPower.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import {
@@ -336,10 +337,7 @@ export function createCombatSessionInitializer({
       state.globals.SessionLevelBuffState = { heroes: {} };
       state.globals.SessionLevelUpOffersByQueueIndex = {};
       state.globals.SessionLevelUpOfferGeneration = Number(state.globals.SessionLevelUpOfferGeneration || 0) + 1;
-      state.globals.SessionLevelUpQueue = {
-        version: 1, status: heroes.length ? 'active' : 'complete', paused: false, currentIndex: 0,
-        entries: heroes.map(hero => ({ heroId: String(hero.heroInstanceKey ?? hero.uid), heroUID: Number(hero.uid || 0), earnedLevel: Number(hero.currentLevel || 1), earnedLevelIndex: 0, source: 'opening' })),
-      };
+      state.globals.SessionLevelUpQueue = createSessionOpeningBuffQueue({ heroes });
     }
     state.globals.NativeBattleEnded = false;
     state.globals.ProgressionBattle = {

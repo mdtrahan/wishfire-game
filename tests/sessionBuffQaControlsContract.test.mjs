@@ -28,7 +28,7 @@ test('app QA entrypoints use canonical threshold, fan selection, and layout navi
 });
 
 
-test('app-boundary QA sequence opens, selects, resets, and resumes Fara’s AF special after four legacy-name opening choices', () => {
+test('app-boundary QA sequence opens, selects, resets, and resumes Fara’s AF special after the neutral party opening choice', () => {
   const party = [
     { uid: 1, kind: 'hero', heroInstanceKey: 'falie#1', baseHeroName: 'Falie', hp: 40, maxHP: 40, flow: 0, heroDisplaySlot: 0, currentLevel: 1 },
     { uid: 2, kind: 'hero', heroInstanceKey: 'huun#1', baseHeroName: 'Huun', hp: 35, maxHP: 35, flow: 0, heroDisplaySlot: 1, currentLevel: 1 },
@@ -37,10 +37,8 @@ test('app-boundary QA sequence opens, selects, resets, and resumes Fara’s AF s
   ];
   const globals = { CombatSessionId: 7, RuntimeRandom: () => 0, SessionLevelUpTierWeights: { 1: 1, 2: 0, 3: 0, 4: 0 } };
   beginFreshSessionBuffQueue(globals, party);
-  for (let index = 0; index < party.length; index += 1) {
-    const opening = getSessionLevelUpBuffPresentation(globals, party);
-    assert.equal(chooseSessionLevelUpBuff(globals, party, opening.cards[0].cardId).status, 'applied');
-  }
+  const opening = getSessionLevelUpBuffPresentation(globals, party);
+  assert.equal(chooseSessionLevelUpBuff(globals, party, opening.cards[0].cardId).status, 'applied');
   assert.equal(globals.SessionLevelUpQueue.status, 'complete');
   claimSessionBuffQueueResume(globals);
   globals.QaPreferredAstralFlowSpecialId = 'chain_strike_ii';

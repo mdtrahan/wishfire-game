@@ -16,15 +16,15 @@ const cardById = id => SESSION_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 
 const cardsForEffect = effectId => SESSION_LEVEL_UP_BUFF_CARDS.filter(card => card.effectId === effectId).sort((a, b) => a.stage - b.stage);
 const freshState = () => createSessionLevelBuffState();
 
-test('Wishfire session pool is exactly 48 universal cards with twelve cards in every tier', () => {
-  assert.equal(SESSION_LEVEL_UP_BUFF_CARDS.length, 48);
-  assert.deepEqual(SESSION_LEVEL_UP_BUFF_POOL_SUMMARY, { total: 48, byTier: { 1: 12, 2: 12, 3: 12, 4: 12 } });
-  assert.deepEqual(new Set(SESSION_LEVEL_UP_BUFF_CARDS.map(card => card.cardId)).size, 48);
+test('Wishfire session pool is exactly 44 universal cards with eleven cards in every tier', () => {
+  assert.equal(SESSION_LEVEL_UP_BUFF_CARDS.length, 44);
+  assert.deepEqual(SESSION_LEVEL_UP_BUFF_POOL_SUMMARY, { total: 44, byTier: { 1: 11, 2: 11, 3: 11, 4: 11 } });
+  assert.deepEqual(new Set(SESSION_LEVEL_UP_BUFF_CARDS.map(card => card.cardId)).size, 44);
   for (const tier of tiers) {
     const cards = SESSION_LEVEL_UP_BUFF_CARDS.filter(card => card.tier === tier);
-    assert.equal(cards.length, 12);
+    assert.equal(cards.length, 11);
     assert.equal(new Set(cards.map(card => card.rarity)).size, 1);
-    assert.ok(cards.filter(card => card.kind === 'behavior').length >= 3);
+    assert.equal(cards.filter(card => card.kind === 'behavior').length, 5);
     assert.ok(cards.filter(card => card.kind === 'stat' || card.kind === 'bargain').length >= 3);
   }
 });
@@ -164,4 +164,10 @@ test('ownership is per hero and procs are bounded to native combat events', () =
   assert.equal(venom.formula.statusId, 'venom');
   assert.equal(venom.trigger.event, 'basic_attack_completed');
   assert.ok(venom.compatibleAttackTags.includes('basic_attack'));
+});
+
+
+test('Brass Ward is absent from the active catalog and the original Crimson Ward party skill remains separate', () => {
+  assert.equal(SESSION_LEVEL_UP_BUFF_CARDS.some(card => /brass ward/i.test(`${card.cardId} ${card.name}`)), false);
+  assert.equal(SESSION_LEVEL_UP_BUFF_CARDS.some(card => card.effectId === 'brass_ward'), false);
 });

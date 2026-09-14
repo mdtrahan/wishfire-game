@@ -24,7 +24,6 @@ export const QA_STORY_TRANSITION_TIMEOUT_MS = 2400;
 export const QA_FIXTURE_RUNTIME_ENCOUNTER_SEED = 77879;
 export const QA_FIXTURE_INELIGIBLE_PROC_ENCOUNTER_SEED = 14;
 export const QA_LEVEL_UP_FIXTURE_CARD_IDS = Object.freeze({
-  ward: 'brass_ward_1',
   stat: 'dune_edge_1',
   maxhp: 'well_of_life_1',
   speed: 'desert_step_1',
@@ -676,7 +675,6 @@ export function registerDevBrowserTestHooks({
         const orbCadence = Number(fixtureCard?.formula?.everyCompletedBasics || 3);
         const orbAmount = Number(fixtureCard?.formula?.amount || 4);
         const scenarios = {
-          ward: { attempts: 1, observed: () => battleBaseline.ownerBarrier === 0 && statusMagnitude(owner, 'barrier') === .25 && Object.keys(state.globals.PartyWardBarrierVisualsByUID || {}).length > battleBaseline.wardVisualCount && !!state.globals.PartyWardBarrierVisualsByUID?.[owner?.uid] },
           stat: { attempts: 1, observed: () => battleBaseline.ownerAtkUp === 0 && statusMagnitude(owner, 'atkUp') === .10 },
           maxhp: { attempts: 1, observed: () => Number(owner?.maxHP || 0) === Math.round(battleBaseline.ownerMaxHP * 1.20) },
           speed: { attempts: 1, observed: () => battleBaseline.ownerSpdUp === 0 && statusMagnitude(owner, 'spdUp') === .10 },

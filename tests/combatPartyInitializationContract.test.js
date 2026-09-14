@@ -29,6 +29,7 @@ async function initialize(heroMembers, escortMember = null, withEnemy = false) {
     module: { exports: {} }, resetCombatSessionConditions, crypto:require('node:crypto').webcrypto,
     ...require('../web-runner/src/core/heroProgression.mjs'),
     ...require('../web-runner/src/core/personalFlow.mjs'),
+    ...require('../web-runner/src/core/sessionLevelUpQueue.mjs'),
     DEV_TOOL_EMPTY_SLOT: '', DEV_TOOL_RANDOM_ENEMY_SLOT: '__RANDOM__',
     runtimeDebugLogging: { startupDebugLog() {} },
   };
@@ -93,6 +94,17 @@ for (let count = 1; count <= 6; count += 1) {
     assert.ok(calls.includes('InitPartyHPFromHeroes'));
   });
 }
+
+test('fresh combat initialization creates one explicit neutral party opening entry', async () => {
+  const { state } = await initialize([member(0), member(1), member(2), member(3)]);
+  assert.deepEqual(JSON.parse(JSON.stringify(state.globals.SessionLevelUpQueue)), {
+    version: 1, status: 'active', paused: false, currentIndex: 0,
+    entries: [{
+      heroId: '__party_session__', heroUID: 0, earnedLevel: 0, earnedLevelIndex: 0,
+      source: 'opening_party', participantHeroIds: ['owned-0', 'owned-1', 'owned-2', 'owned-3'],
+    }],
+  });
+});
 
 test('sparse formation slots retain their indexes and exclude slots beyond six', async () => {
   const slots = [null, member(1), null, null, null, member(5), member(6)];

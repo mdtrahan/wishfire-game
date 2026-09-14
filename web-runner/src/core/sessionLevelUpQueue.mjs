@@ -36,18 +36,25 @@ export function createSessionLevelUpQueue({ heroes = [], progressionResults = []
 }
 
 export function createSessionOpeningBuffQueue({ heroes = [] } = {}) {
-  const entries = (Array.isArray(heroes) ? heroes : [])
+  const participants = (Array.isArray(heroes) ? heroes : [])
     .map((hero, index) => ({ hero, index }))
     .filter(({ hero }) => hero && Number(hero.hp || 0) > 0)
-    .sort((left, right) => partyOrder(left.hero, left.index) - partyOrder(right.hero, right.index) || left.index - right.index)
-    .map(({ hero, index }) => ({
-      heroId: heroId(hero, index),
-      heroUID: positiveInteger(hero?.uid),
-      earnedLevel: positiveInteger(hero?.currentLevel, 1),
-      earnedLevelIndex: 0,
-      source: 'opening',
-    }));
+    .sort((left, right) => partyOrder(left.hero, left.index) - partyOrder(right.hero, right.index) || left.index - right.index);
+  const participantHeroIds = participants.map(({ hero, index }) => heroId(hero, index));
+  const entries = participantHeroIds.length ? [{
+    heroId: '__party_session__',
+    heroUID: 0,
+    earnedLevel: 0,
+    earnedLevelIndex: 0,
+    source: 'opening_party',
+    participantHeroIds,
+  }] : [];
   return { version: 1, status: entries.length ? 'active' : 'complete', paused: false, currentIndex: 0, entries };
+}
+
+export function isSessionOpeningPartyEntry(entry = {}) {
+  return String(entry?.source || '') === 'opening_party'
+    && String(entry?.heroId || '') === '__party_session__';
 }
 
 export function enqueueSessionFlowThresholds(queue = {}, { heroes = [], thresholds = [] } = {}) {

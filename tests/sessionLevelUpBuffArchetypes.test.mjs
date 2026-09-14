@@ -22,14 +22,12 @@ function context(effectIds, random = () => 0) {
   return { ctx, actor, target, rules: rulesContext(ctx) };
 }
 
-test('session buffs apply exact owner-only stat, max-HP, bargain, speed, and Crimson Ward state at battle start', () => {
-  const { ctx, actor, target, rules } = context(['dune_edge', 'well_of_life', 'desert_step', 'sun_debt', 'brass_ward']);
+test('session buffs apply exact owner-only stat, max-HP, bargain, and speed state at battle start', () => {
+  const { ctx, actor, target, rules } = context(['dune_edge', 'well_of_life', 'desert_step', 'sun_debt']);
   applySessionLevelBuffsAtBattleStart(ctx, rules);
   assert.equal(actor.maxHP, 108, '120% max HP followed by the 10% bargain cost');
   assert.ok(Math.abs(actor.statuses.find(status => status.statusEffect === 'atkUp').magnitude - .265) < 1e-9);
   assert.ok(Math.abs(actor.statuses.find(status => status.statusEffect === 'spdUp').magnitude - .10) < 1e-9);
-  assert.equal(actor.statuses.find(status => status.statusEffect === 'barrier').remaining, 27);
-  assert.ok(ctx.state.globals.PartyWardBarrierVisualsByUID?.[actor.uid], 'battle-start Crimson Ward uses the production barrier presentation callback');
   assert.equal(target.statuses.length, 0, 'a hero buff never mutates another actor');
 });
 
