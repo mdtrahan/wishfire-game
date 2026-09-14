@@ -10,8 +10,8 @@ The offer and replacement rules remain owned by
 
 - **INTENDED:** fresh sessions present one neutral three-card party offer before combat.
   Every later level-up presents three cards from one selected tier for that hero.
-- **OBSERVED:** the catalog contains 44 unique cards, eleven in each tier. The
-  active universal offer allowlist contains 40 cards, ten in each tier, because
+- **OBSERVED:** the catalog contains 48 unique cards, twelve in each tier. The
+  active universal offer allowlist contains 44 cards, eleven in each tier, because
   Inner Flow remains outside the production draw pool. Focused runtime tests
   cover offer health, ownership, replacement, and automatic combat resolution.
 - **UNTESTED:** long-run pick rates, encounter balance, and player preference

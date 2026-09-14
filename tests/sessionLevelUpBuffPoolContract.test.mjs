@@ -16,15 +16,15 @@ const cardById = id => SESSION_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 
 const cardsForEffect = effectId => SESSION_LEVEL_UP_BUFF_CARDS.filter(card => card.effectId === effectId).sort((a, b) => a.stage - b.stage);
 const freshState = () => createSessionLevelBuffState();
 
-test('Wishfire session pool is exactly 44 universal cards with eleven cards in every tier', () => {
-  assert.equal(SESSION_LEVEL_UP_BUFF_CARDS.length, 44);
-  assert.deepEqual(SESSION_LEVEL_UP_BUFF_POOL_SUMMARY, { total: 44, byTier: { 1: 11, 2: 11, 3: 11, 4: 11 } });
-  assert.deepEqual(new Set(SESSION_LEVEL_UP_BUFF_CARDS.map(card => card.cardId)).size, 44);
+test('Wishfire session pool includes Dawn Chorus in a balanced 48-card catalog', () => {
+  assert.equal(SESSION_LEVEL_UP_BUFF_CARDS.length, 48);
+  assert.deepEqual(SESSION_LEVEL_UP_BUFF_POOL_SUMMARY, { total: 48, byTier: { 1: 12, 2: 12, 3: 12, 4: 12 } });
+  assert.deepEqual(new Set(SESSION_LEVEL_UP_BUFF_CARDS.map(card => card.cardId)).size, 48);
   for (const tier of tiers) {
     const cards = SESSION_LEVEL_UP_BUFF_CARDS.filter(card => card.tier === tier);
-    assert.equal(cards.length, 11);
+    assert.equal(cards.length, 12);
     assert.equal(new Set(cards.map(card => card.rarity)).size, 1);
-    assert.equal(cards.filter(card => card.kind === 'behavior').length, 5);
+    assert.equal(cards.filter(card => card.kind === 'behavior').length, 6);
     assert.ok(cards.filter(card => card.kind === 'stat' || card.kind === 'bargain').length >= 3);
   }
 });
@@ -77,6 +77,9 @@ test('every card is shared session content with readable numeric copy and no ret
         break;
       case 'counter_percent_atk':
         assert.match(card.effect, new RegExp(`${Math.round(formula.chance * 100)}%: counter for ${Math.round(formula.damagePercent * 100)}% ATK, heal ${Math.round(formula.healPercentMaxHp * 100)}% Max HP`));
+        break;
+      case 'party_defeat_raise':
+        assert.match(card.effect, new RegExp(`${Math.round(formula.chance * 100)}%: revive party at ${Math.round(formula.revivePercent * 100)}% Max HP`));
         break;
       default:
         assert.fail(`unknown formula surface ${formula.surface}`);
@@ -154,7 +157,7 @@ test('ownership is per hero and procs are bounded to native combat events', () =
   assert.equal(getEligibleLevelUpBuffCards({ state: owned.state, heroId: 'hondo-1', cards: SESSION_LEVEL_UP_BUFF_CARDS, tier: 1 }).some(card => card.cardId === first.cardId), true);
 
   for (const card of SESSION_LEVEL_UP_BUFF_CARDS.filter(candidate => candidate.kind === 'behavior')) {
-    assert.ok(card.tests.includes('proc_recursion'));
+    assert.ok(card.formula.surface === 'party_defeat_raise' ? card.tests.includes('defeat_intercept') : card.tests.includes('proc_recursion'));
     assert.deepEqual(card.trigger.sourceTags, ['hero_native']);
     assert.equal(card.effects.spawnsEntities, false);
     assert.equal(card.limits.procDepthCap, 0);

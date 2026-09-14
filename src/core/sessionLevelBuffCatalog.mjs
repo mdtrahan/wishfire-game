@@ -16,6 +16,7 @@ const TRIGGER_BY_SURFACE = Object.freeze({
   status_on_basic: 'basic_attack_completed',
   bounce_percent_damage: 'basic_attack_completed',
   counter_percent_atk: 'direct_damage_received',
+  party_defeat_raise: 'party_defeat',
 });
 const TAGS_BY_SURFACE = Object.freeze({
   stat_percent: ['all_attacks'],
@@ -26,6 +27,7 @@ const TAGS_BY_SURFACE = Object.freeze({
   status_on_basic: ['basic_attack', 'direct_damage'],
   bounce_percent_damage: ['basic_attack', 'direct_damage'],
   counter_percent_atk: ['direct_damage_received'],
+  party_defeat_raise: ['party_defeat'],
 });
 const AXES_BY_SURFACE = Object.freeze({
   stat_percent: formula => [String(formula.stat)],
@@ -36,6 +38,7 @@ const AXES_BY_SURFACE = Object.freeze({
   status_on_basic: () => ['status', 'damage'],
   bounce_percent_damage: () => ['coverage', 'damage'],
   counter_percent_atk: () => ['retaliation', 'sustain'],
+  party_defeat_raise: () => ['party_defeat', 'recovery'],
 });
 const formulaCopy = formula => {
   switch (formula.surface) {
@@ -62,6 +65,8 @@ const formulaCopy = formula => {
       return `${Math.round(formula.chance * 100)}%: bounce for ${Math.round(formula.damagePercent * 100)}% damage`;
     case 'counter_percent_atk':
       return `${Math.round(formula.chance * 100)}%: counter for ${Math.round(formula.damagePercent * 100)}% ATK, heal ${Math.round(formula.healPercentMaxHp * 100)}% Max HP`;
+    case 'party_defeat_raise':
+      return `${Math.round(formula.chance * 100)}%: revive party at ${Math.round(formula.revivePercent * 100)}% Max HP`;
     default:
       return '';
   }
@@ -144,6 +149,20 @@ function stagedFamily({ effectId, names, formulas, kind, nativeOutputMultipliers
 }
 
 const behaviorCards = [
+  ...stagedFamily({
+    effectId: 'dawn_chorus',
+    names: ['Dawn Chorus', 'Dawn Chorus II', 'Dawn Chorus III', 'Dawn Chorus IV'],
+    kind: 'behavior',
+    formulas: [
+      { surface: 'party_defeat_raise', chance: 0.02, revivePercent: 0.15 },
+      { surface: 'party_defeat_raise', chance: 0.03, revivePercent: 0.20 },
+      { surface: 'party_defeat_raise', chance: 0.04, revivePercent: 0.25 },
+      { surface: 'party_defeat_raise', chance: 0.05, revivePercent: 0.30 },
+    ],
+    nativeOutputMultipliers: [1, 1, 1, 1],
+    coverageMultipliers: [1, 1, 1, 1],
+    tests: [...REQUIRED_TESTS, 'defeat_intercept'],
+  }),
   ...stagedFamily({
     effectId: 'spectral_orb',
     names: ['Spectral Orb', 'Spectral Orb II', 'Spectral Orb III', 'Spectral Orb IV'],
@@ -321,10 +340,10 @@ export const SESSION_LEVEL_UP_BUFF_CARDS = Object.freeze([1, 2, 3, 4].flatMap(by
 // direct active cards, relief cards, signatures, and retired turn cards out by
 // omission; offer generation and application use this same ID list.
 export const UNIVERSAL_SESSION_POWER_BUFF_IDS = Object.freeze([
-  'spectral_orb_1', 'venom_sigil_1', 'mirage_chain_1', 'glass_reprisal_1', 'dune_edge_1', 'astral_reservoir_1', 'sandstone_guard_1', 'desert_step_1', 'well_of_life_1', 'sun_debt_1',
-  'spectral_orb_2', 'venom_sigil_2', 'mirage_chain_2', 'glass_reprisal_2', 'dune_edge_2', 'astral_reservoir_2', 'sandstone_guard_2', 'desert_step_2', 'oasis_mirror_2', 'glass_debt_2',
-  'spectral_orb_3', 'venom_sigil_3', 'mirage_chain_3', 'glass_reprisal_3', 'dune_edge_3', 'astral_reservoir_3', 'sandstone_guard_3', 'desert_step_3', 'well_of_life_3', 'star_debt_3',
-  'spectral_orb_4', 'venom_sigil_4', 'mirage_chain_4', 'glass_reprisal_4', 'dune_edge_4', 'astral_reservoir_4', 'sandstone_guard_4', 'desert_step_4', 'oasis_mirror_4', 'last_wish_4',
+  'dawn_chorus_1', 'spectral_orb_1', 'venom_sigil_1', 'mirage_chain_1', 'glass_reprisal_1', 'dune_edge_1', 'astral_reservoir_1', 'sandstone_guard_1', 'desert_step_1', 'well_of_life_1', 'sun_debt_1',
+  'dawn_chorus_2', 'spectral_orb_2', 'venom_sigil_2', 'mirage_chain_2', 'glass_reprisal_2', 'dune_edge_2', 'astral_reservoir_2', 'sandstone_guard_2', 'desert_step_2', 'oasis_mirror_2', 'glass_debt_2',
+  'dawn_chorus_3', 'spectral_orb_3', 'venom_sigil_3', 'mirage_chain_3', 'glass_reprisal_3', 'dune_edge_3', 'astral_reservoir_3', 'sandstone_guard_3', 'desert_step_3', 'well_of_life_3', 'star_debt_3',
+  'dawn_chorus_4', 'spectral_orb_4', 'venom_sigil_4', 'mirage_chain_4', 'glass_reprisal_4', 'dune_edge_4', 'astral_reservoir_4', 'sandstone_guard_4', 'desert_step_4', 'oasis_mirror_4', 'last_wish_4',
 ]);
 const UNIVERSAL_SESSION_POWER_BUFF_ID_SET = new Set(UNIVERSAL_SESSION_POWER_BUFF_IDS);
 export const isUniversalSessionPowerBuffCard = card => UNIVERSAL_SESSION_POWER_BUFF_ID_SET.has(String(card?.cardId || ''));

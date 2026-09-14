@@ -1,5 +1,5 @@
 import { effectiveStat } from '../web-runner/src/core/combatRules.mjs';
-import { executeHeroCommand, resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat } from '../web-runner/modules/heroCommands.mjs';
+import { executeHeroCommand, resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat, emitResolvedHealEvent } from '../web-runner/modules/heroCommands.mjs';
 import {
   openHeroTurnCardFan as importedOpenHeroTurnCardFan,
   reopenHeroTurnCardFan as importedReopenHeroTurnCardFan,
@@ -94,6 +94,13 @@ import {
   isDynamicInitiativeAuthorityExperimentEnabled,
   validateDynamicInitiativeAuthoritySelection,
 } from '../src/core/dynamicInitiativeAuthorityExperiment.mjs';
+function emitHealPresentation(ctx, source, target, beforeHP, options = {}) {
+  if (typeof emitResolvedHealEvent === 'function') return emitResolvedHealEvent(ctx, source, target, beforeHP, options);
+  const delta = Math.max(0, Number(target?.hp || 0) - Math.max(0, Number(beforeHP || 0)));
+  if (delta > 0) SpawnDamageText(ctx, delta, Number(target?.x || 0), Number(target?.y || 0), 'heal', target?.kind || null);
+  return delta;
+}
+
 const POWER_AMP_OUTCOMES = [
   { key: 'HERO_2X', multiplier: 2, chance: 0.62 },
   { key: 'HERO_3X', multiplier: 3, chance: 0.34 },
@@ -111,6 +118,7 @@ const PARTY_CHAIN_STRIKE_I_ID = 'party_chain_strike_i';
 const PARTY_CHAIN_STRIKE_I_DAMAGE_PCT = 33;
 const PARTY_CHAIN_STRIKE_II_ID = 'party_chain_strike_ii';
 const PARTY_CHAIN_STRIKE_II_DAMAGE_PCT = 66;
+const ASTRAL_FLOW_CHAIN_STRIKE_II_DAMAGE_PCT = PARTY_CHAIN_STRIKE_II_DAMAGE_PCT * 6;
 const PARTY_CHAIN_STRIKE_VISUAL_KEY = 'chain_arc_ribbon';
 const PARTY_CHAIN_STRIKE_VISUAL_ASSET = 'SkillChainStrikeArc';
 const PARTY_SPLIT_ID = 'party_split';
@@ -1513,7 +1521,7 @@ function applyAstralFlowMagicFruit(ctx, actorUID) {
     const maxHP = Math.max(before, Number(hero.maxHP || hero.MaxHP || 0));
     hero.hp = Math.min(maxHP, before + requested);
     const applied = Math.max(0, Number(hero.hp || 0) - before);
-    if (applied > 0) SpawnDamageText(ctx, applied, hero.x, hero.y, 'heal', 'hero');
+    if (applied > 0) emitHealPresentation(ctx, actor, hero, before);
     heals.push({ heroUID: Number(hero.uid || 0), requested, applied });
   }
   syncPartyHpTotalsFromHeroes(ctx);
@@ -6521,7 +6529,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   const suppressDamageText = shouldSuppressDamageText(ctx, uid, dmg, opts);
   const beforeHP = Number(t.hp ?? 0);
   let incomingDamage = Math.max(0, Number(dmg || 0));
-  const shieldBefore = opts.nativeResolved ? 0 : (t.kind === 'hero' ? Math.max(0, Number(g.PartyTempHPShield || 0)) : 0);
+  const shieldBefore = t.kind === 'hero' ? Math.max(0, Number(g.PartyTempHPShield || 0)) : 0;
   const jsShieldAbsorbed = t.kind === 'hero' ? Math.min(shieldBefore, incomingDamage) : 0;
   const jsDamageToHP = Math.max(0, incomingDamage - jsShieldAbsorbed);
   const jsAfterHp = Math.max(0, beforeHP - jsDamageToHP);
@@ -6540,7 +6548,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   }
   let damageToHP = incomingDamage;
   let shieldAbsorbed = 0;
-  if (t.kind === 'hero' && !opts.nativeResolved) {
+  if (t.kind === 'hero') {
     const shieldResult = absorbPartyTempHPShield(g, damageToHP);
     damageToHP = shieldResult.damageAfterShield;
     shieldAbsorbed = shieldResult.absorbed;
@@ -7486,7 +7494,7 @@ function getActiveChainStrikeTier(ctx) {
     return {
       skillId: PARTY_CHAIN_STRIKE_II_ID,
       actionName: 'Chain Strike II',
-      damagePct: PARTY_CHAIN_STRIKE_II_DAMAGE_PCT,
+      damagePct: ASTRAL_FLOW_CHAIN_STRIKE_II_DAMAGE_PCT,
       maxBounces: 2,
     };
   }
@@ -8076,8 +8084,9 @@ export function Enemy_Heal_Self(ctx, enemyUID) {
     highOffset: 4,
   });
   const heal = healInfo.finalHeal;
+  const beforeHP = Number(enemy.hp || 0);
   enemy.hp = Math.min(enemy.maxHP ?? enemy.hp, (enemy.hp ?? 0) + heal);
-  SpawnDamageText(ctx, heal, enemy.x ?? 0, enemy.y ?? 0, 'heal', 'enemy');
+  const appliedHeal = emitHealPresentation(ctx, enemy, enemy, beforeHP);
   traceEnemyHealRoll(ctx, {
     enemyUID,
     enemyName: String(enemy.name || 'Enemy'),
@@ -8089,8 +8098,8 @@ export function Enemy_Heal_Self(ctx, enemyUID) {
   LogCombat(
     ctx,
     healInfo.didCrit
-      ? `${enemy.name || 'Enemy'} critically healed for ${heal}!`
-      : `${enemy.name || 'Enemy'} healed for ${heal}!`,
+      ? `${enemy.name || 'Enemy'} critically healed for ${appliedHeal}!`
+      : `${enemy.name || 'Enemy'} healed for ${appliedHeal}!`,
   );
 }
 
@@ -8112,8 +8121,9 @@ export function Enemy_Heal_Allies(ctx, enemyUID) {
     return;
   }
   for (const ally of allies) {
+    const beforeHP = Number(ally.hp || 0);
     ally.hp = Math.min(ally.maxHP ?? ally.hp, (ally.hp ?? 0) + heal);
-    SpawnDamageText(ctx, heal, ally.x ?? 0, ally.y ?? 0, 'heal', 'enemy');
+    emitHealPresentation(ctx, healer, ally, beforeHP);
   }
   traceEnemyHealRoll(ctx, {
     enemyUID,
@@ -8155,8 +8165,9 @@ export function Enemy_Heal_Ally(ctx, enemyUID, targetEnemyUID = 0) {
     highOffset: 3,
   });
   const heal = healInfo.finalHeal;
+  const beforeHP = Number(target.hp || 0);
   target.hp = Math.min(target.maxHP ?? target.hp, (target.hp ?? 0) + heal);
-  SpawnDamageText(ctx, heal, target.x ?? 0, target.y ?? 0, 'heal', 'enemy');
+  const appliedHeal = emitHealPresentation(ctx, healer, target, beforeHP);
   traceEnemyHealRoll(ctx, {
     enemyUID,
     enemyName: String(healer.name || 'Enemy'),
@@ -8168,8 +8179,8 @@ export function Enemy_Heal_Ally(ctx, enemyUID, targetEnemyUID = 0) {
   LogCombat(
     ctx,
     healInfo.didCrit
-      ? `Chimerilass critically heals ${target.name || 'ally'} for ${heal}!`
-      : `Chimerilass heals ${target.name || 'ally'} for ${heal}!`,
+      ? `Chimerilass critically heals ${target.name || 'ally'} for ${appliedHeal}!`
+      : `Chimerilass heals ${target.name || 'ally'} for ${appliedHeal}!`,
   );
 }
 
@@ -9906,7 +9917,7 @@ function processAstralFlowDestinyAtHeroTurn(ctx, heroUID) {
   const applied = Math.max(0, Number(actor.hp || 0) - before);
   regen.remainingTicks = Math.max(0, Number(regen.remainingTicks || 0) - 1);
   regen.lastProcessedTurnSerial = turnSerial;
-  if (applied > 0) SpawnDamageText(ctx, applied, actor.x, actor.y, 'heal', 'hero');
+  if (applied > 0) emitHealPresentation(ctx, actor, actor, before);
   syncPartyHpTotalsFromHeroes(ctx);
   UpdateHeroHPUI(ctx);
   LogCombat(ctx, `Destiny restores ${applied} HP to ${actor.name || 'the hero'}.`);
@@ -10472,7 +10483,9 @@ export function Enemy_Wipe(ctx, enemyUID) {
       const share = baseShare + (remainder > 0 ? 1 : 0);
       if (remainder > 0) remainder -= 1;
       if ((enemy.hp || 0) <= 0) continue;
+      const beforeHP = Number(enemy.hp || 0);
       enemy.hp = Math.min(enemy.maxHP || enemy.hp || 0, (enemy.hp || 0) + share);
+      emitHealPresentation(ctx, GetActorByUID(ctx, enemyUID), enemy, beforeHP);
     }
     UpdateEnemyHPUI(ctx);
   }

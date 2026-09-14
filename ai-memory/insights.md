@@ -553,3 +553,8 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 - A browser balance harness must use the current Canvas START hit target and native autoplay hook. Retired story coordinates, card waits, or gem state can make a valid runtime look unavailable.
 - Persist completed session metrics before browser teardown. Bound cleanup and retain an owned browser-process handle so a stalled close cannot erase evidence or orphan a browser.
 - Casualty variation means the first hero lost per session; counting every eventual death makes all party-loss runs look varied.
+
+## 2026-09-14 - Resolved Health Changes Own Presentation
+- Emit heal presentation only after an actor HP mutation and compute the shown amount from the actual positive delta. A shared `DamageTexts` heal record keeps the app-owned bloom consistent across card, special, and enemy heal paths.
+- Shared wards must sit in the common hero-damage resolver, including native-resolved packets. Any bypass makes role FLOW accounting and shield visuals disagree with real HP loss.
+- Defeat interception marks its seeded attempt before rolling. A revival effect must return control without clearing session state or rebuilding initiative.

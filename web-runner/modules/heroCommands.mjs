@@ -9,6 +9,19 @@ import {acknowledgeSessionLevelUpEntry,clearSessionLevelUpQueue,createSessionLev
 import {beginSessionLevelUpSettlement,chooseSessionLevelUpBuff as choosePresentedSessionLevelUpBuff,getActiveSessionLevelUpBuffCards,getSessionLevelUpBuffPresentation,updateSessionLevelUpSettlement} from './sessionLevelUpBuffPresentation.mjs';
 export {getHeroFlowState,getHeroSkillOptions};
 export function getHeroCommandSlots(entities){const slots=Array(6).fill(null);for(const hero of entities){const i=Number(hero.heroDisplaySlot??hero.displaySlot??hero.heroIndex);if(hero?.kind==='hero'&&Number.isInteger(i)&&i>=0&&i<6)slots[i]=hero;}return slots;}
+export function emitResolvedHealEvent(ctx, source, target, beforeHP, { allowRevive = false } = {}) {
+ const before=Math.max(0,Number(beforeHP||0)),after=Math.max(0,Number(target?.hp||0));
+ const delta=Math.max(0,after-before);
+ if(!target||delta<=0||(!allowRevive&&before<=0)||!['hero','enemy'].includes(String(target.kind||'')))return 0;
+ const g=ctx.state.globals,slot=Number(target.heroDisplaySlot??target.heroIndex??-1);
+ const positions=target.kind==='hero'?(g.HeroPortraitPosByIndex||g.HeroIconPosByIndex):null;
+ const pos=target.kind==='hero'&&Array.isArray(positions)&&positions[slot]?positions[slot]:target;
+ const texts=Array.isArray(g.DamageTexts)?g.DamageTexts:[];const count=texts.length;
+ ctx.callFunction('SpawnDamageText',delta,Number(pos?.x||0),Number(pos?.y||0),'heal',target.kind);
+ const emitted=Array.isArray(g.DamageTexts)&&g.DamageTexts.length>count?g.DamageTexts.at(-1):null;
+ if(emitted){emitted.targetUID=Number(target.uid||0);emitted.targetSlotIndex=slot;}
+ return delta;
+}
 export function canUseHeroCommand(ctx,actorUID){
  const g=ctx.state.globals,hero=ctx.state.entities.find(a=>a.uid===actorUID&&a.kind==='hero'),roster=ctx.callFunction('GetEnemyRosterStability'),barrier=derivePresentationTurnBarrier({globals:g}),currentTurn=Number(ctx.callFunction('GetCurrentTurn'));
  const checks={heroExists:!!hero,heroLiving:Number(hero?.hp||0)>0,nativeBattleOpen:!g.NativeBattleEnded,runtimeReady:g.GamePhase==='RUNTIME',battleStartInactive:!g.BattleStartActive,idle:!g.IsPlayerBusy,turnPhase:Number(g.TurnPhase)===0,currentActor:currentTurn===Number(actorUID),rosterStable:roster?.stable===true,presentationClear:barrier.canClaimCombatAction};
@@ -39,7 +52,7 @@ export function rulesContext(ctx,roleEvents=null){
  return {actors:ctx.state.entities,state:g,flowRandom:()=>typeof g.FlowRandom==='function'?g.FlowRandom():Math.random(),random:()=>typeof g.RuntimeRandom==='function'?g.RuntimeRandom():Math.random(),
  calculateDamage:(a,t,mode)=>ctx.callFunction('CalculateDamage',a.uid,t.uid,mode),
  applyDamage:(a,t,amount,origin)=>{const before=t.hp;ctx.callFunction('ApplyDamageToTarget',t.uid,amount,{sourceUID:a.uid,nativeResolved:true,suppressPartySkillHitHooks:1,...origin});return before-t.hp;},
- onHeal:(source,target,delta)=>{if(source?.kind==='hero'&&target?.kind==='hero'&&delta>0){const pos=heroPresentationPosition(target);const texts=Array.isArray(g.DamageTexts)?g.DamageTexts:null;const before=texts?.length||0;ctx.callFunction('SpawnDamageText',delta,pos.x,pos.y,'heal','hero');const emitted=Array.isArray(g.DamageTexts)&&g.DamageTexts.length>before?g.DamageTexts[g.DamageTexts.length-1]:null;if(emitted){emitted.targetUID=Number(target.uid||0);emitted.targetSlotIndex=Number(target.heroDisplaySlot??target.heroIndex??-1);}}},
+ onHeal:(source,target,delta)=>{if(delta>0)emitResolvedHealEvent(ctx,source,target,Math.max(0,Number(target?.hp||0)-Number(delta||0)),{allowRevive:true});},
  onDamage:(source,target,delta,meta={})=>{if(roleEvents&&delta>0)roleEvents.push({type:'damage',sourceUID:Number(source?.uid||0),sourceKind:source?.kind,targetUID:Number(target?.uid||0),targetKind:target?.kind,delta:Number(delta||0),targetWasLiving:meta.targetWasLiving!==false});},
  onStatus:(source,target,effect,meta={})=>{if(source?.kind==='hero'&&target?.kind==='hero'&&effect?.statusEffect==='barrier')ensureCardBarrierVisual(target);if(roleEvents&&!meta.refreshed&&source?.kind==='hero')roleEvents.push({type:'status',sourceUID:Number(source.uid||0),targetUID:Number(target?.uid||0)});},
  onKO:actor=>{if(actor.kind==='enemy'){const battle=g.ProgressionBattle;if(battle){battle.defeated[actor.uid]=actor.expValue??PROGRESSION.enemyEXP;(battle.defeatedGold||={})[actor.uid]=Math.max(0,Math.floor(actor.goldValue??PROGRESSION.enemyGold));}}},
@@ -187,8 +200,31 @@ function clearHeroTurnCardFan(g) {
  g.HeroTurnCardFanOpen=0;g.HeroTurnCardFanHeroUID=0;g.HeroTurnCardFanCards=[];g.HeroTurnCardFanSelectedCardId='';g.HeroTurnCardFanTargetUID=0;g.HeroTurnCardFanPendingCardIndex=-1;g.HeroTurnCardFanPendingCardId='';g.HeroTurnCardFanPendingTarget=0;g.HeroTurnCardFanPendingTargetKind='';g.HeroTurnCardFanPendingExcludeSelf=0;
 }
 
+function tryDawnChorus(ctx) {
+ const g=ctx.state.globals;
+ if(g.DawnChorusAttempted)return false;
+ const heroes=ctx.state.entities.filter(actor=>actor?.kind==='hero');
+ if(!heroes.length||heroes.some(hero=>Number(hero.hp||0)>0))return false;
+ const candidates=heroes.flatMap(hero=>getActiveSessionLevelUpBuffCards(g,hero))
+  .filter(card=>card?.formula?.surface==='party_defeat_raise')
+  .sort((left,right)=>Number(right.stage||0)-Number(left.stage||0));
+ const card=candidates[0];if(!card)return false;
+ g.DawnChorusAttempted=1;
+ const roll=typeof g.RuntimeRandom==='function'?Number(g.RuntimeRandom()):Math.random();
+ const chance=Math.max(0,Number(card.formula?.chance||0));
+ g.DawnChorusLastRoll={cardId:String(card.cardId||''),roll,chance,success:roll<chance};
+ if(!(roll<chance))return false;
+ const revivePercent=Math.max(0,Number(card.formula?.revivePercent||0));
+ for(const hero of heroes){const before=Math.max(0,Number(hero.hp||0));hero.hp=Math.max(1,Math.floor(Math.max(1,Number(hero.maxHP||0))*revivePercent));hero.isAlive=true;emitResolvedHealEvent(ctx,null,hero,before,{allowRevive:true});}
+ g.DawnChorusSucceeded=1;g.NativeBattleEnded=false;
+ if(g.ProgressionBattle){g.ProgressionBattle.outcome='active';g.ProgressionBattle.defeatSettled=false;g.ProgressionBattle.settled=false;}
+ ctx.callFunction('UpdateHeroHPUI');ctx.callFunction('LogCombat','Dawn Chorus revives the party.');
+ return true;
+}
+
 export function settleDefeat(ctx) {
  const g=ctx.state.globals;
+ if(tryDawnChorus(ctx))return false;
  clearHeroTurnCardFan(g);
  cancelNativeSequence(ctx);
  g.SessionLevelUpQueue=clearSessionLevelUpQueue();

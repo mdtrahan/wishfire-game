@@ -1,6 +1,6 @@
 const PARTY_SPECIALS = Object.freeze([
   Object.freeze({ cardId: 'af_magic_fruit', specialId: 'magic_fruit', name: 'Magic Fruit', description: 'Restore a shared healing pool equal to 30% of the caster\'s Max HP.' }),
-  Object.freeze({ cardId: 'af_chain_strike_ii', specialId: 'chain_strike_ii', name: 'Chain Strike II', description: 'Strike twice through the enemy line.' }),
+  Object.freeze({ cardId: 'af_chain_strike_ii', specialId: 'chain_strike_ii', name: 'Chain Strike II', description: 'Deal 396% ATK damage through the enemy line twice.' }),
   Object.freeze({ cardId: 'af_faze', specialId: 'faze', name: 'Faze', description: 'Blight every living enemy.' }),
 ]);
 

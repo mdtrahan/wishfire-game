@@ -60,7 +60,7 @@ test('one explicit universal power-buff allowlist admits persistent offense and 
   assert.equal(isUniversalSessionPowerBuffCard({ cardId: 'af_magic_fruit' }), false);
   assert.equal(isUniversalSessionPowerBuffCard({ cardId: 'af_split' }), false);
   assert.equal(isUniversalSessionPowerBuffCard({ cardId: 'retired_turn_attack' }), false);
-  assert.equal(UNIVERSAL_SESSION_POWER_BUFF_CARDS.length, 40);
+  assert.equal(UNIVERSAL_SESSION_POWER_BUFF_CARDS.length, 44);
   assert.equal(UNIVERSAL_SESSION_POWER_BUFF_CARDS.length, UNIVERSAL_SESSION_POWER_BUFF_IDS.length);
   assert.equal(SESSION_LEVEL_UP_BUFF_CARDS.filter(card => card.effectId === 'inner_flow').every(isUniversalSessionPowerBuffCard), false);
 });
