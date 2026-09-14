@@ -239,12 +239,9 @@ export function buildEncounterByBudget({
   }
 
   const finalCP = computeEncounterTotalCP(selected);
-  const routineRatio = Number(partyCP) > 0 ? finalCP / Number(partyCP) : 0;
-  const outsideRoutineBand = normalizedPolicy === 'mixed' && Number(partyCP) > 0 && (routineRatio < 0.18 || routineRatio > 0.23);
-  const underfilled = selected.length < slots || finalCP < target || outsideRoutineBand;
+  const underfilled = selected.length < slots || finalCP < target;
   if (selected.length < slots) reasonCodes.push('underfilled_slots');
   if (finalCP < target) reasonCodes.push('underfilled_cp');
-  if (outsideRoutineBand) reasonCodes.push('outside_routine_cp_band');
   return {
     selected,
     finalCP,

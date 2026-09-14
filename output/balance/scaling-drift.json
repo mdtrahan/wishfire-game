@@ -12084,6 +12084,117 @@
       "linkedActions": 0
     }
   ],
+  "fodderSurvival": [
+    {
+      "level": 1,
+      "hp": 21,
+      "maxSingleHit": 11,
+      "focusedFirstCycle": 29
+    },
+    {
+      "level": 2,
+      "hp": 22,
+      "maxSingleHit": 12,
+      "focusedFirstCycle": 31
+    },
+    {
+      "level": 3,
+      "hp": 23,
+      "maxSingleHit": 14,
+      "focusedFirstCycle": 35
+    },
+    {
+      "level": 4,
+      "hp": 24,
+      "maxSingleHit": 15,
+      "focusedFirstCycle": 38
+    },
+    {
+      "level": 5,
+      "hp": 26,
+      "maxSingleHit": 16,
+      "focusedFirstCycle": 40
+    },
+    {
+      "level": 6,
+      "hp": 27,
+      "maxSingleHit": 17,
+      "focusedFirstCycle": 44
+    },
+    {
+      "level": 7,
+      "hp": 28,
+      "maxSingleHit": 18,
+      "focusedFirstCycle": 46
+    },
+    {
+      "level": 8,
+      "hp": 29,
+      "maxSingleHit": 19,
+      "focusedFirstCycle": 49
+    },
+    {
+      "level": 9,
+      "hp": 31,
+      "maxSingleHit": 20,
+      "focusedFirstCycle": 52
+    },
+    {
+      "level": 91,
+      "hp": 134,
+      "maxSingleHit": 129,
+      "focusedFirstCycle": 274
+    },
+    {
+      "level": 92,
+      "hp": 135,
+      "maxSingleHit": 130,
+      "focusedFirstCycle": 277
+    },
+    {
+      "level": 93,
+      "hp": 136,
+      "maxSingleHit": 131,
+      "focusedFirstCycle": 279
+    },
+    {
+      "level": 94,
+      "hp": 138,
+      "maxSingleHit": 132,
+      "focusedFirstCycle": 282
+    },
+    {
+      "level": 95,
+      "hp": 139,
+      "maxSingleHit": 133,
+      "focusedFirstCycle": 284
+    },
+    {
+      "level": 96,
+      "hp": 140,
+      "maxSingleHit": 135,
+      "focusedFirstCycle": 287
+    },
+    {
+      "level": 97,
+      "hp": 141,
+      "maxSingleHit": 136,
+      "focusedFirstCycle": 289
+    },
+    {
+      "level": 98,
+      "hp": 143,
+      "maxSingleHit": 137,
+      "focusedFirstCycle": 293
+    },
+    {
+      "level": 99,
+      "hp": 144,
+      "maxSingleHit": 138,
+      "focusedFirstCycle": 295
+    }
+  ],
+  "routineStrongHitCount": 3,
   "speed": {
     "threshold": {
       "atTwoTimes": true,
