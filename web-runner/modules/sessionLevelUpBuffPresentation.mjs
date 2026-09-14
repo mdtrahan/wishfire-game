@@ -56,6 +56,7 @@ export function serializeSessionBuffChoiceState(globals = {}) {
     SessionLevelUpQueue: globals.SessionLevelUpQueue || null,
     SessionLevelUpOffersByQueueIndex: globals.SessionLevelUpOffersByQueueIndex || {},
     SessionLevelUpOfferGeneration: Number(globals.SessionLevelUpOfferGeneration || 0),
+    SessionLevelUpQueueResumeRequested: Number(globals.SessionLevelUpQueueResumeRequested || 0) ? 1 : 0,
     PendingFlowThresholds: globals.PendingFlowThresholds || [],
     CombatSessionId: Number(globals.CombatSessionId || 0),
     CurrentTurnIndex: Number(globals.CurrentTurnIndex || 0),

@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { applySessionLevelBuffsAtBattleStart, resolveIncomingNativeHit, resolveNativeCommandStep, resolveSessionLevelBasicEffects, resolveSessionLevelCounter, rulesContext } from '../web-runner/modules/heroCommands.mjs';
 import { heroDefinition } from '../web-runner/src/core/heroDefinitions.mjs';
 import { turnEnd, turnStart } from '../web-runner/src/core/combatRules.mjs';
-import { SESSION_LEVEL_UP_BUFF_CARDS } from '../src/core/sessionLevelBuffCatalog.mjs';
+import { SESSION_LEVEL_UP_BUFF_CARDS, UNIVERSAL_SESSION_POWER_BUFF_CARDS, isUniversalSessionPowerBuffCard } from '../src/core/sessionLevelBuffCatalog.mjs';
 import { applyLevelUpBuffCard, createSessionLevelBuffState } from '../src/core/sessionLevelBuffOffers.mjs';
+import { chooseSessionLevelUpBuff, getSessionLevelUpBuffPresentation } from '../web-runner/modules/sessionLevelUpBuffPresentation.mjs';
 
 const hero = { uid: 1, kind: 'hero', heroInstanceKey: 'hondo-1', baseHeroName: 'Huun', name: 'Huun', hp: 80, maxHP: 100, stats: { ATK: 20, MAG: 10, SPD: 10 }, sp: 100, spMax: 100, currentLevel: 1, statuses: [] };
 const enemy = { uid: 9, kind: 'enemy', hp: 200, maxHP: 200, stats: { ATK: 10, MAG: 10, SPD: 5 }, statuses: [] };
@@ -39,8 +40,8 @@ test('Max Vitality uses runtime rounding and turns 108 Max HP into 130', () => {
   assert.equal(actor.maxHP, 130);
 });
 
-test('Spectral Orb, status, heal, and chain each produce an owner-scoped material combat result', () => {
-  const { ctx, actor, target, rules } = context(['spectral_orb', 'inner_flow', 'venom_sigil', 'mirage_chain'], () => 0);
+test('Spectral Orb, status, and chain each produce an owner-scoped material combat result', () => {
+  const { ctx, actor, target, rules } = context(['spectral_orb', 'venom_sigil', 'mirage_chain'], () => 0);
   const secondEnemy = { ...structuredClone(target), uid: 10, hp: 200, x: 40 };
   ctx.state.entities.push(secondEnemy);
   actor.hp = 50;
@@ -51,7 +52,6 @@ test('Spectral Orb, status, heal, and chain each produce an owner-scoped materia
   resolveSessionLevelBasicEffects(ctx, rules, actor, [target.uid]);
   assert.ok(target.hp < 200, 'the third native basic fires the T1 Spectral Orb cadence');
   assert.equal(target.hp, afterSecond - 4, 'the observable orb result uses its exact magic payload');
-  assert.ok(actor.hp > 50, 'Inner Flow heals its owner through the shared heal resolver');
   assert.ok(target.statuses.some(status => status.statusEffect === 'dot' && status.snapshotPotency === 3), 'Venom uses the standard DOT payload without a tactical marker dependency');
   assert.equal(ctx.state.globals.ArcanePulseVisuals.length, 1);
   assert.equal(ctx.state.globals.ArcanePulseVisuals[0].targetUID, target.uid);
@@ -63,6 +63,22 @@ test('Spectral Orb, status, heal, and chain each produce an owner-scoped materia
   const beforeVenomTick = target.hp;
   turnStart(rules, target, 1);
   assert.equal(target.hp, beforeVenomTick - 3, 'Venom maps to the standardized DOT state and deals its exact payload');
+});
+
+test('Inner Flow remains a legacy helper only and cannot be offered or applied by the production opening path', () => {
+  const innerFlow = SESSION_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === 'inner_flow_1');
+  assert.ok(innerFlow);
+  assert.equal(isUniversalSessionPowerBuffCard(innerFlow), false);
+  assert.equal(UNIVERSAL_SESSION_POWER_BUFF_CARDS.includes(innerFlow), false);
+  const globals = {
+    RuntimeRandom: () => 0,
+    SessionLevelUpQueue: { status: 'active', paused: false, currentIndex: 0, entries: [{ heroId: 'hondo-1', heroUID: 1, earnedLevel: 1, source: 'opening' }] },
+    SessionLevelBuffState: createSessionLevelBuffState(),
+  };
+  const presentation = getSessionLevelUpBuffPresentation(globals, [structuredClone(hero)]);
+  assert.ok(presentation.cards.every(isUniversalSessionPowerBuffCard));
+  assert.equal(chooseSessionLevelUpBuff(globals, [structuredClone(hero)], innerFlow.cardId).status, 'rejected');
+  assert.equal(applyLevelUpBuffCard({ state: createSessionLevelBuffState(), heroId: 'hondo-1', cardId: innerFlow.cardId, cards: UNIVERSAL_SESSION_POWER_BUFF_CARDS }).status, 'rejected');
 });
 
 test('a completed selected-owner native basic applies Venom once and ignores other actors and added hits', () => {

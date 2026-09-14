@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
-import { beginFreshSessionBuffQueue, getSessionLevelUpBuffPresentation, restoreSessionBuffChoiceState, serializeSessionBuffChoiceState } from '../web-runner/modules/sessionLevelUpBuffPresentation.mjs';
+import { beginFreshSessionBuffQueue, chooseSessionLevelUpBuff, claimSessionBuffQueueResume, getSessionLevelUpBuffPresentation, restoreSessionBuffChoiceState, serializeSessionBuffChoiceState } from '../web-runner/modules/sessionLevelUpBuffPresentation.mjs';
 
 const party = () => [
   { uid: 1, kind: 'hero', heroInstanceKey: 'fara-1', heroDisplaySlot: 0, hp: 40, maxHP: 40, flow: 0 },
@@ -55,4 +55,31 @@ test('gateway snapshot restores cached queue offers, threshold tokens, hero AF, 
   assert.equal(globals.RuntimeRandomDraws, 9);
   assert.equal(snapshot.sessionState.choiceState.SessionLevelUpQueue.entries.length, 5);
   assert.deepEqual(globals.PendingFlowThresholds, [{ heroUID: 2, triggerOrder: 1, token: 'flow-1-1' }]);
+});
+
+test('navigation snapshot preserves the final-choice resume request until the app consumes it exactly once', () => {
+  const CombatRuntimeGateway = loadProductionGateway();
+  const globals = { RuntimeRandom: () => 0, SessionLevelUpTierWeights: { 1: 1, 2: 0, 3: 0, 4: 0 } };
+  const heroes = party();
+  beginFreshSessionBuffQueue(globals, heroes);
+  for (let index = 0; index < 4; index += 1) {
+    const offer = getSessionLevelUpBuffPresentation(globals, heroes);
+    assert.equal(chooseSessionLevelUpBuff(globals, heroes, offer.cards[0].cardId).status, 'applied');
+  }
+  assert.equal(globals.SessionLevelUpQueue.status, 'complete');
+  assert.equal(globals.SessionLevelUpQueueResumeRequested, 1);
+  const gateway = new CombatRuntimeGateway({
+    combatState: { acceptEvents: true, inputEnabled: true },
+    getAuthoritativeTurnState: () => ({ turnQueue: [{ uid: 1, type: 0 }], currentActorIndex: 0, capturedAtTick: 7 }),
+    getSessionState: () => ({ choiceState: serializeSessionBuffChoiceState(globals), heroFlow: heroes.map(hero => ({ uid: hero.uid, flow: hero.flow })) }),
+    applySessionState: snapshot => restoreSessionBuffChoiceState(globals, snapshot.choiceState),
+  });
+  const snapshot = JSON.parse(JSON.stringify(gateway.suspend()));
+  globals.SessionLevelUpQueueResumeRequested = 0;
+  gateway.resume(snapshot);
+  let processTurnCalls = 0;
+  if (claimSessionBuffQueueResume(globals)) processTurnCalls += 1;
+  if (claimSessionBuffQueueResume(globals)) processTurnCalls += 1;
+  assert.equal(processTurnCalls, 1);
+  assert.equal(globals.SessionLevelUpQueueResumeRequested, 0);
 });
