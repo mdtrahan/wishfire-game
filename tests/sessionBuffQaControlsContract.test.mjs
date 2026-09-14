@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { recordFlowThreshold } from '../web-runner/src/core/personalFlow.mjs';
 import { beginFreshSessionBuffQueue, chooseSessionLevelUpBuff, claimSessionBuffQueueResume, getSessionLevelUpBuffPresentation, reconcileSessionFlowThresholds, SESSION_LEVEL_UP_BUFF_CARDS } from '../web-runner/modules/sessionLevelUpBuffPresentation.mjs';
-import { hasSessionLevelUpPresentationBarrier } from '../web-runner/src/core/turnGateController.mjs';
+import { COMBAT_CHOICE_MODE, createSessionOfferInputGate, deriveCombatChoiceInput, deriveCombatChoiceMode, hasSessionLevelUpPresentationBarrier } from '../web-runner/src/core/turnGateController.mjs';
 import { resetCombatSessionConditions } from '../web-runner/systems/combatSessionReset.mjs';
 
 const hooks = readFileSync(new URL('../web-runner/systems/devBrowserTestHooks.js', import.meta.url), 'utf8');
@@ -42,9 +42,10 @@ test('Quest-QA AF controls are query-gated and use production callback seams', (
 test('app QA entrypoints use canonical threshold, fan selection, and layout navigation', () => {
   assert.match(app, /recordFlowThreshold\(state\.globals, hero, before, hero\.flow\)/);
   assert.match(app, /combatRuntimeGateway\.runCombatStep\(fnContext, 'ProcessTurn'\)/);
-  assert.match(app, /const selectHeroTurnCardFan = \(index, targetUID\) =>/);
+  assert.match(app, /const selectHeroTurnCardFan = \(index, offerToken = ''\) =>/);
   assert.match(app, /select: selectHeroTurnCardFan/);
-  assert.match(app, /const result = selectHeroTurnCardFan\(index\);/);
+  assert.match(app, /deriveCombatChoiceMode\(state\.globals\) === COMBAT_CHOICE_MODE\.OFFER/);
+  assert.match(app, /if \(deriveCombatChoiceMode\(state\.globals\) === COMBAT_CHOICE_MODE\.OFFER\) return;/);
   assert.match(app, /await storyEntry\.navigate\('Quests'\)/);
   assert.match(app, /await storyEntry\.continuePausedCombat\(\)/);
   assert.match(app, /QaPreferredAstralFlowSpecialId/);
@@ -53,6 +54,41 @@ test('app QA entrypoints use canonical threshold, fan selection, and layout navi
   assert.match(app, /pauseGameplayForDevTooling\(\)/);
   assert.match(app, /const qaResumeScenario = \(\) =>/);
   assert.match(app, /const qaRunAstralFlowSpecial = \(heroUID, specialId\) =>/);
+});
+
+test('a session offer owns input, rejects stale selection, and releases exactly one scheduler resume', () => {
+  const party = [
+    { uid: 1, kind: 'hero', heroInstanceKey: 'fara-1', heroDisplaySlot: 0, hp: 40, maxHP: 40, flow: 0 },
+    { uid: 2, kind: 'hero', heroInstanceKey: 'hondo-2', heroDisplaySlot: 1, hp: 35, maxHP: 35, flow: 0 },
+  ];
+  const globals = {
+    RuntimeRandom: () => 0,
+    SessionLevelUpTierWeights: { 1: 1, 2: 0, 3: 0, 4: 0 },
+    HeroTurnCardFanOpen: 1,
+    HeroTurnCardFanCards: [{ cardId: 'retired' }],
+    HeroTurnCardFanPendingTarget: 1,
+    HeroTurnCardFanPendingTargetKind: 'enemy',
+    PendingSkillID: 'retired_attack',
+    SelectedAllyUID: 2,
+    SelectedEnemyUIDOwner: 1,
+  };
+  beginFreshSessionBuffQueue(globals, party);
+  const offer = getSessionLevelUpBuffPresentation(globals, party);
+  assert.equal(deriveCombatChoiceMode(globals), COMBAT_CHOICE_MODE.OFFER);
+  assert.equal(deriveCombatChoiceInput(globals).acceptsBattlefieldTarget, false);
+  assert.equal(globals.HeroTurnCardFanOpen, 0);
+  assert.deepEqual(globals.HeroTurnCardFanCards, []);
+  assert.equal(globals.PendingSkillID, '');
+  const before = JSON.stringify(globals.SessionLevelUpQueue);
+  assert.deepEqual(chooseSessionLevelUpBuff(globals, party, offer.cards[0].cardId, 0, null, 'stale-token'), { status: 'rejected', reason: 'staleOffer' });
+  assert.equal(JSON.stringify(globals.SessionLevelUpQueue), before);
+  assert.equal(chooseSessionLevelUpBuff(globals, party, offer.cards[0].cardId, 0, null, offer.offerToken).status, 'applied');
+  assert.equal(claimSessionBuffQueueResume(globals), true);
+  assert.equal(claimSessionBuffQueueResume(globals), false);
+  assert.equal(deriveCombatChoiceMode(globals), COMBAT_CHOICE_MODE.AUTOCOMBAT);
+  assert.equal(deriveCombatChoiceInput({ PendingSkillID: 'native_skill', TurnPhase: 1 }).acceptsBattlefieldTarget, true);
+  const isolated = createSessionOfferInputGate({ HeroTurnCardFanOpen: 1 }, 'current');
+  assert.equal(isolated.SessionOfferInputToken, 'current');
 });
 
 

@@ -24,6 +24,8 @@ import {
   createYellowSequenceCompletion,
   createYellowSequenceGate,
   createYellowSequenceSkip,
+  COMBAT_CHOICE_MODE,
+  deriveCombatChoiceMode,
 } from './src/core/turnGateController.mjs';
 import {
   YELLOW_COLOR,
@@ -2193,6 +2195,7 @@ async function main(){
     gameState,
     canvas,
     onBack: () => {
+      if (deriveCombatChoiceMode(state.globals) !== COMBAT_CHOICE_MODE.AUTOCOMBAT) return;
       if (state.globals.HeroTurnCardFanPendingTarget) {
         callFunctionWithContext(fnContext, 'CancelHeroTurnCardFan');
         callFunctionWithContext(fnContext, 'ReopenHeroTurnCardFan');
@@ -2200,22 +2203,23 @@ async function main(){
       }
     },
     onActiveHeroClick: () => {
+      if (deriveCombatChoiceMode(state.globals) !== COMBAT_CHOICE_MODE.AUTOCOMBAT) return;
       callFunctionWithContext(fnContext, 'ReopenHeroTurnCardFan');
       drawFrame();
     },
   });
   runtimeListenerTeardowns.push(() => heroCommandUI.destroy());
-  const selectHeroTurnCardFan = (index, targetUID) => {
+  const selectHeroTurnCardFan = (index, offerToken = '') => {
     const levelUp = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
-    return levelUp.open
-      ? chooseSessionLevelUpBuff(
-        state.globals,
-        state.entities,
-        levelUp.cards[index]?.cardId,
-        Number(state.globals.time || 0),
-        (card, hero) => callFunctionWithContext(fnContext, 'ExecuteAstralFlowSpecial', card.specialId, hero.uid),
-      )
-      : callFunctionWithContext(fnContext, 'SelectHeroTurnCard', index, targetUID);
+    if (!levelUp.open || deriveCombatChoiceMode(state.globals) !== COMBAT_CHOICE_MODE.OFFER) return { status: 'rejected', reason: 'offerUnavailable' };
+    return chooseSessionLevelUpBuff(
+      state.globals,
+      state.entities,
+      levelUp.cards[index]?.cardId,
+      Number(state.globals.time || 0),
+      (card, hero) => callFunctionWithContext(fnContext, 'ExecuteAstralFlowSpecial', card.specialId, hero.uid),
+      offerToken,
+    );
   };
   const heroTurnCardFanUI = createHeroTurnCardFanUI({
     canvas,
@@ -3021,7 +3025,8 @@ async function main(){
     };
     heroCommandUI.update({
       visible: layoutState.getActiveLayoutId() === 'combat' && state.globals.GamePhase === 'RUNTIME',
-      blocked: !!uiState.getUIState().overlayVisible || !!ensureDevToolingConfig().open
+      blocked: deriveCombatChoiceMode(state.globals) !== COMBAT_CHOICE_MODE.AUTOCOMBAT
+        || !!uiState.getUIState().overlayVisible || !!ensureDevToolingConfig().open
         || !!gameState.storyEntry.modal || !!gameState.storyEntry.pending
         || gameState.storyEntry.phase === 'defeat',
       worldToCanvas, layoutScale, portraits: heroPortraitImages,
@@ -3040,7 +3045,7 @@ async function main(){
       // The same portrait transform used by a native lunge makes the queued owner dance before cards reveal.
       offsets[dancingHeroUID] = Math.sin(Number(state.globals.time || 0) * 18) * 3.5;
     } else if (state.globals.HeroLungeOffsetByUID) Object.keys(state.globals.HeroLungeOffsetByUID).forEach(uid => { if (!state.globals.HeroAction?.active) delete state.globals.HeroLungeOffsetByUID[uid]; });
-    const activeFanState = levelUpFanState.open ? levelUpFanState : fanState;
+    const activeFanState = levelUpFanState;
     const fanHero = state.entities.find(actor => Number(actor?.uid || 0) === Number(activeFanState.heroUID || 0));
     const fanHeroBaseName = String(fanHero?.baseHeroName || fanHero?.name || '');
     const fanHeroDisplayName = ({ Falie: 'Fara', Huun: 'Hondo', Kojonn: 'Kaja' })[fanHeroBaseName] || fanHeroBaseName;
@@ -3869,6 +3874,7 @@ function getStoryCardLiveLineState() {
     }
 
     if (layoutState.getActiveLayoutId() === 'combat') {
+      if (deriveCombatChoiceMode(state.globals) === COMBAT_CHOICE_MODE.OFFER) return;
       const pendingTarget = Number(state.globals.HeroTurnCardFanPendingTarget || 0) === 1;
       const pendingTargetKind = String(state.globals.HeroTurnCardFanPendingTargetKind || '');
       if (pendingTarget) {
@@ -3942,6 +3948,11 @@ function getStoryCardLiveLineState() {
         ev.preventDefault();
         return;
       }
+      return;
+    }
+    if (ev.key === 'Escape' && deriveCombatChoiceMode(state.globals) === COMBAT_CHOICE_MODE.OFFER) {
+      ev.stopPropagation();
+      ev.preventDefault();
       return;
     }
     if (ev.key === 'Escape' && (state.globals.HeroTurnCardFanOpen || state.globals.HeroTurnCardFanPendingTarget)) {

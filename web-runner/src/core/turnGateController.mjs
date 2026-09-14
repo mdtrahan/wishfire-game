@@ -23,6 +23,74 @@ export function isCanPickGemsReady(value) {
   return Number(value) === 1;
 }
 
+export const COMBAT_CHOICE_MODE = Object.freeze({
+  AUTOCOMBAT: 'AUTOCOMBAT',
+  OFFER: 'OFFER',
+  RESOLVING_GLOBAL_BUFF: 'RESOLVING_GLOBAL_BUFF',
+  RESOLVING_ATTACK_SPECIAL: 'RESOLVING_ATTACK_SPECIAL',
+  TARGETING: 'TARGETING',
+  PAUSED_NAV: 'PAUSED_NAV',
+  END: 'END',
+});
+
+// One session offer owns input until its queue entry has either been applied
+// or explicitly refused. Legacy hero-card state must never compete with it.
+export function deriveCombatChoiceMode(globals = {}) {
+  if (globals.NativeBattleEnded || ['victory', 'defeat'].includes(String(globals.ProgressionBattle?.outcome || ''))) return COMBAT_CHOICE_MODE.END;
+  if (globals.SessionLevelUpQueue?.paused || globals.PausedCombatSnapshot) return COMBAT_CHOICE_MODE.PAUSED_NAV;
+  if (globals.SessionOfferResolution === 'global') return COMBAT_CHOICE_MODE.RESOLVING_GLOBAL_BUFF;
+  if (globals.SessionOfferResolution === 'attack') return COMBAT_CHOICE_MODE.RESOLVING_ATTACK_SPECIAL;
+  if (hasSessionLevelUpPresentationBarrier(globals)) return COMBAT_CHOICE_MODE.OFFER;
+  if (globals.PendingSkillID && (Number(globals.TurnPhase || 0) === 1 || globals.PendingSuperGemAction)) return COMBAT_CHOICE_MODE.TARGETING;
+  return COMBAT_CHOICE_MODE.AUTOCOMBAT;
+}
+
+export function deriveCombatChoiceInput(globals = {}) {
+  const mode = deriveCombatChoiceMode(globals);
+  return {
+    mode,
+    acceptsOfferCard: mode === COMBAT_CHOICE_MODE.OFFER,
+    acceptsBattlefieldTarget: mode === COMBAT_CHOICE_MODE.TARGETING,
+    acceptsLegacyHeroFan: false,
+    canResumeCTB: mode === COMBAT_CHOICE_MODE.AUTOCOMBAT,
+  };
+}
+
+export function createSessionOfferInputGate(current = {}, offerToken = '') {
+  const base = normalizeTurnGateState(current);
+  return {
+    ...base,
+    CombatChoiceMode: COMBAT_CHOICE_MODE.OFFER,
+    SessionOfferResolution: '',
+    SessionOfferInputToken: String(offerToken || ''),
+    CanPickGems: 0,
+    PendingSkillID: '',
+    PendingActor: 0,
+    PendingSuperGemAction: null,
+    SelectedAllyUID: 0,
+    SelectedEnemyUIDOwner: 0,
+    HeroTurnCardFanOpen: 0,
+    HeroTurnCardFanHeroUID: 0,
+    HeroTurnCardFanCards: [],
+    HeroTurnCardFanSelectedCardId: '',
+    HeroTurnCardFanTargetUID: 0,
+    HeroTurnCardFanPendingCardIndex: -1,
+    HeroTurnCardFanPendingCardId: '',
+    HeroTurnCardFanPendingTarget: 0,
+    HeroTurnCardFanPendingTargetKind: '',
+    HeroTurnCardFanPendingExcludeSelf: 0,
+  };
+}
+
+export function releaseSessionOfferInputGate(current = {}, { resolution = '' } = {}) {
+  return {
+    ...normalizeTurnGateState(current),
+    CombatChoiceMode: COMBAT_CHOICE_MODE.AUTOCOMBAT,
+    SessionOfferResolution: String(resolution || ''),
+    SessionOfferInputToken: '',
+  };
+}
+
 // EXP settlement, the queued dance, and the player choice are one presentation
 // boundary. The scheduler must not resolve another actor until it has faded out.
 export function hasSessionLevelUpPresentationBarrier(globals = {}) {

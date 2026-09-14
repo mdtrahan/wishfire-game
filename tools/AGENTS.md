@@ -7,7 +7,7 @@
 - `serve_web.js` serves the browser runner and writes `web-runner/runtime-fingerprint.js`.
 - `balance_harness.js` is the canonical batch game automation path.
 - `cp_balance_report.mjs` owns deterministic CP scaling simulations and writes bounded balance artifacts.
-- Its production-catalog section runs 256 fixed L1 seeds plus 32 seeds at L5, L9, L91, and L99, recording the first actual enemy HP transition to zero separately from total encounter actions.
+- Its production-catalog section runs 256 fixed seeds at every Lv1–9 and Lv91–99 balance surface, recording the first actual enemy HP transition to zero separately from total encounter actions.
 - `ui_presentation_lock_gate.mjs` is the canonical fail-closed rendered presentation gate for approved responsive UI seams.
 - Playwright doctor, launch matrix, and Chrome CDP helpers diagnose browser startup/control issues.
 - Rust build helper generates the browser WASM artifact.

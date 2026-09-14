@@ -37,7 +37,7 @@ test('CP balance report runs seeded combat through canonical rules',()=>{
  assert.deepEqual(report.levels,[1,2,3,4,5,6,7,8,9,91,92,93,94,95,96,97,98,99]);
  assert.deepEqual(report.pairs,[[1,9],[9,1],[91,99],[99,91]]);
  assert.equal(report.seeds,256);
- assert.equal(report.simulations.length,18*4*2);
+ assert.equal(report.simulations.length,18*5*2);
  assert.equal(report.speed.threshold.atTwoTimes,true);
  assert.equal(report.speed.threshold.belowTwoTimes,true);
  assert.equal(report.speed.linkedSecondActionCount,1);

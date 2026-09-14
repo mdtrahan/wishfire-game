@@ -224,9 +224,11 @@ export function buildEncounterByBudget({
       if (!pushPick(fodder)) break;
     }
   } else {
+    const ordinaryEligible = eligible.filter(row => ['fodder', 'routine'].includes(String(row?.combatTier || row?.routineTier || 'routine').toLowerCase()));
+    const mixedEligible = ordinaryEligible.length ? ordinaryEligible : eligible;
     while (selected.length < slots) {
       const remaining = target - computeEncounterTotalCP(selected);
-      let pick = pickBest(eligible, remaining, 'mixed_any');
+      let pick = pickBest(mixedEligible, remaining, 'mixed_any');
       if (!pick) pick = pickBest(byRole.fodder, remaining, 'fodder');
       if (!pick) pick = pickBest(byRole.bodyguard, remaining, 'bodyguard');
       if (!pick) pick = pickBest(byRole.commander, remaining, 'commander');
@@ -238,7 +240,7 @@ export function buildEncounterByBudget({
 
   const finalCP = computeEncounterTotalCP(selected);
   const routineRatio = Number(partyCP) > 0 ? finalCP / Number(partyCP) : 0;
-  const outsideRoutineBand = normalizedPolicy === 'mixed' && Number(partyCP) > 0 && (routineRatio < 0.25 || routineRatio > 0.35);
+  const outsideRoutineBand = normalizedPolicy === 'mixed' && Number(partyCP) > 0 && (routineRatio < 0.13 || routineRatio > 0.18);
   const underfilled = selected.length < slots || finalCP < target || outsideRoutineBand;
   if (selected.length < slots) reasonCodes.push('underfilled_slots');
   if (finalCP < target) reasonCodes.push('underfilled_cp');

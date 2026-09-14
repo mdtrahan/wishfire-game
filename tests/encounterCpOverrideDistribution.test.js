@@ -114,7 +114,8 @@ test('canonical EncounterCP derives fresh-start encounter appearances without au
   }
   const totalSlots = iterations * 3;
   const pct = (name) => counts[name] / totalSlots;
-  assert.ok(pct('Skeleton') > 0, 'catalog candidates remain selectable');
+  assert.ok(pct('Skeleton') > 0, 'ordinary catalog candidates remain selectable');
+  for (const name of ['High Orc', 'Chimerilass', 'Troll', 'Djinn', 'Marid']) assert.equal(counts[name], 0, `${name} is excluded from ordinary mixed packs`);
   assert.ok(Object.values(counts).reduce((sum, value) => sum + value, 0) <= totalSlots);
   const { scaleRoutineEnemy } = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'routineEnemyScaling.mjs')).href);
   const { computeCombatPower:canonicalCombatPower } = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'combatPower.mjs')).href);
@@ -131,7 +132,8 @@ test('canonical EncounterCP derives fresh-start encounter appearances without au
   const partyCP = helpers.computeEncounterTotalCP(heroCP);
   const targetCP = partyCP * .30;
   const bounded = helpers.buildEncounterByBudget({pool:productionRows,targetCP,partyCP,locale:'clouds',maxSlots:3,policy:'mixed',seed:77});
-  assert.ok(bounded.finalCP / partyCP >= .25 && bounded.finalCP / partyCP <= .35, `routine party ratio ${bounded.finalCP / partyCP}`);
-  assert.ok(bounded.finalCP / targetCP >= .85 && bounded.finalCP / targetCP <= 1.15, `routine target fill ${bounded.finalCP / targetCP}`);
+  assert.ok(bounded.finalCP / partyCP >= .13 && bounded.finalCP / partyCP <= .18, `routine party ratio ${bounded.finalCP / partyCP}`);
+  assert.ok(bounded.finalCP / targetCP >= .43 && bounded.finalCP / targetCP <= .60, `routine target fill ${bounded.finalCP / targetCP}`);
+  assert.ok(bounded.selected.every((row) => ['fodder', 'routine'].includes(row.combatTier)), 'mixed builder selects only ordinary tiers');
   assert.equal(bounded.reasonCodes.includes('outside_routine_cp_band'), false);
 });

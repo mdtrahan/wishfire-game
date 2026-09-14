@@ -3,6 +3,7 @@ import { SESSION_LEVEL_UP_BUFF_CARDS, UNIVERSAL_SESSION_POWER_BUFF_CARDS, isUniv
 import { buildAstralFlowSpecialOffer } from '../../src/core/astralFlowSpecialOffers.mjs';
 import { heroDefinition } from '../src/core/heroDefinitions.mjs';
 import { acknowledgeSessionLevelUpEntry, createSessionOpeningBuffQueue, currentSessionLevelUpEntry, enqueueSessionFlowThresholds, isSessionFlowThresholdEntry, isSessionOpeningPartyEntry } from '../src/core/sessionLevelUpQueue.mjs';
+import { createSessionOfferInputGate, releaseSessionOfferInputGate } from '../src/core/turnGateController.mjs';
 
 export { SESSION_LEVEL_UP_BUFF_CARDS };
 export const QA_LEVEL_UP_BUFF_CARDS = SESSION_LEVEL_UP_BUFF_CARDS;
@@ -90,6 +91,7 @@ export function restoreSessionBuffChoiceState(globals, snapshot = {}) {
 export function claimSessionBuffQueueResume(globals = {}) {
   if (!globals.SessionLevelUpQueueResumeRequested || globals.SessionLevelUpQueue?.status !== 'complete' || globals.SessionLevelUpSettlement) return false;
   globals.SessionLevelUpQueueResumeRequested = 0;
+  globals.SessionOfferResolution = '';
   globals.SessionLevelUpQueueResumeConsumed = Number(globals.SessionLevelUpQueueResumeConsumed || 0) + 1;
   return true;
 }
@@ -189,12 +191,17 @@ export function getSessionLevelUpBuffPresentation(globals, heroes = [], progress
   const offer = offers[key];
   const offerToken = `${Number(globals.SessionLevelUpOfferGeneration || 0)}:${key}:${entry.heroId}:${entry.earnedLevel}`;
   const flowThreshold = isSessionFlowThresholdEntry(entry);
-  return { open: offer.status === 'offered', cards: presentOfferCards(offer.cards, hero, flowThreshold), heroUID: Number(hero?.uid || entry.heroUID || 0), queue: entry, offer, offerToken };
+  const open = offer.status === 'offered';
+  if (open && String(globals.SessionOfferInputToken || '') !== offerToken) {
+    Object.assign(globals, createSessionOfferInputGate(globals, offerToken));
+  }
+  return { open, cards: presentOfferCards(offer.cards, hero, flowThreshold), heroUID: Number(hero?.uid || entry.heroUID || 0), queue: entry, offer, offerToken };
 }
 
-export function chooseSessionLevelUpBuff(globals, heroes = [], cardId, now = 0, executeSpecial = null) {
+export function chooseSessionLevelUpBuff(globals, heroes = [], cardId, now = 0, executeSpecial = null, offerToken = '') {
   const presentation = getSessionLevelUpBuffPresentation(globals, heroes, globals.SessionLevelProgress || {});
   if (!presentation.open) return { status: 'rejected' };
+  if (offerToken && String(offerToken) !== String(presentation.offerToken)) return { status: 'rejected', reason: 'staleOffer' };
   if (isSessionFlowThresholdEntry(presentation.queue)) {
     const card = presentation.cards.find(candidate => String(candidate?.cardId || '') === String(cardId || '')) || null;
     const hero = heroes.find(candidate => Number(candidate?.uid || 0) === Number(presentation.queue.heroUID || 0)
@@ -214,6 +221,7 @@ export function chooseSessionLevelUpBuff(globals, heroes = [], cardId, now = 0, 
     globals.PendingFlowThresholds = (globals.PendingFlowThresholds || [])
       .filter(signal => String(signal?.token || '') !== String(presentation.queue.thresholdToken));
     globals.SessionLevelUpQueue = acknowledgeSessionLevelUpEntry(globals.SessionLevelUpQueue);
+    Object.assign(globals, releaseSessionOfferInputGate(globals, { resolution: 'attack' }));
     if (globals.SessionLevelUpQueue.status === 'complete') globals.SessionLevelUpQueueResumeRequested = 1;
     return { status: 'applied', card, special: true, execution };
   }
@@ -230,11 +238,16 @@ export function chooseSessionLevelUpBuff(globals, heroes = [], cardId, now = 0, 
       if (applied.status === 'applied') nextState = applied.state;
       return applied;
     })
-    : [applyLevelUpBuffCard({ state: nextState, heroId: presentation.queue.heroId, cardId, cards: UNIVERSAL_SESSION_POWER_BUFF_CARDS })];
+    : [(() => {
+      const applied = applyLevelUpBuffCard({ state: nextState, heroId: presentation.queue.heroId, cardId, cards: UNIVERSAL_SESSION_POWER_BUFF_CARDS });
+      if (applied.status === 'applied') nextState = applied.state;
+      return applied;
+    })()];
   const applied = applications.find(result => result.status !== 'applied') || applications[0];
   if (applied.status !== 'applied') return applied;
   globals.SessionLevelBuffState = nextState;
   globals.SessionLevelUpQueue = acknowledgeSessionLevelUpEntry(globals.SessionLevelUpQueue);
+  Object.assign(globals, releaseSessionOfferInputGate(globals, { resolution: 'global' }));
   if (globals.SessionLevelUpQueue.status === 'complete') globals.SessionLevelUpQueueResumeRequested = 1;
   if (globals.SessionLevelUpQueue.status === 'complete' && globals.SessionLevelUpSettlement) { globals.SessionLevelUpSettlement.phase = 'fadeOut'; globals.SessionLevelUpSettlement.fadeOutStartedAt = Number(now || 0); }
   return partyEntry ? { ...applied, partyWide: true, affectedHeroIds: recipients.map(heroId) } : applied;

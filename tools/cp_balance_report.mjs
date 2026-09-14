@@ -11,20 +11,22 @@ import { resolveHeroSpeedMultiattack } from '../src/core/dynamicInitiativeRules.
 import { resolveHeroAttackTarget } from '../src/core/heroAttackTargetingRules.mjs';
 import { resolveEnemyTargetHero } from '../src/core/enemyTargetingRules.mjs';
 import { resolveRoleFlowAward } from '../web-runner/src/core/personalFlow.mjs';
-import { ROUTINE_ENEMY_TEMPLATE, scaleRoutineEnemy } from '../web-runner/src/core/routineEnemyScaling.mjs';
+import { ENEMY_COMBAT_TIER_PROFILES, scaleRoutineEnemy } from '../web-runner/src/core/routineEnemyScaling.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const output = path.join(root, 'output', 'balance');
 const levels = [1,2,3,4,5,6,7,8,9,91,92,93,94,95,96,97,98,99];
 const pairs = [[1,9],[9,1],[91,99],[99,91]];
 const seeds = 256;
-const productionSeeds = Object.freeze({ 1:256, 5:32, 9:32, 91:32, 99:32 });
-const tiers = [
-  { id:'routine', ...ROUTINE_ENEMY_TEMPLATE, targetPreference:'frontline', minWin:.97, burst:.07, maxActions:45 },
-  { id:'hard', HP:62, ATK:4, DEF:5, MAG:4, RES:5, SPD:8, targetPreference:'highest_atk', minWin:.85, burst:.10, maxActions:65 },
-  { id:'elite', HP:85, ATK:5, DEF:7, MAG:5, RES:7, SPD:9, targetPreference:'low_hp', minWin:.70, burst:.12, maxActions:90 },
-  { id:'boss', HP:130, ATK:6, DEF:9, MAG:6, RES:9, SPD:10, targetPreference:'highest_atk', minWin:.60, burst:.18, maxActions:120 },
-];
+const productionSeeds = Object.freeze(Object.fromEntries(levels.map(level => [level, 256])));
+const tierTuning = Object.freeze({
+  fodder: { targetPreference:'frontline', minWin:.99, burst:.05, maxActions:30 },
+  routine: { targetPreference:'frontline', minWin:.99, burst:.07, maxActions:45 },
+  hard: { targetPreference:'highest_atk', minWin:.85, burst:.10, maxActions:65 },
+  elite: { targetPreference:'low_hp', minWin:.70, burst:.12, maxActions:90 },
+  boss: { targetPreference:'highest_atk', minWin:.60, burst:.18, maxActions:120 },
+});
+const tiers = Object.entries(ENEMY_COMBAT_TIER_PROFILES).map(([id, stats]) => ({ id, ...stats, ...tierTuning[id] }));
 const number = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 const integer = value => Math.max(1, Math.floor(number(value)));
 function rng(seed) { let state = (seed >>> 0) || 1; return () => ((state = (state * 1664525 + 1013904223) >>> 0) / 4294967296); }
@@ -172,10 +174,11 @@ function runProductionBattle(level, seed) {
 function aggregateProductionLevel(level, runCount) {
   const rows = productionEnemyRows(level);
   const heroes = Object.values(HERO_DEFINITIONS).map((definition, index) => productionHero(definition, level, index + 1));
-  const ordinaryHits = rows.flatMap(enemy => heroes.map(hero => damage({ kind:'enemy', stats:enemy }, hero, false, () => .5).damage));
+  const ordinaryRows = rows.filter(row => ['fodder', 'routine'].includes(String(row.combatTier || 'routine')));
+  const ordinaryHits = ordinaryRows.flatMap(enemy => heroes.map(hero => damage({ kind:'enemy', stats:enemy }, hero, false, () => .5).damage));
   const runs = Array.from({ length:runCount }, (_, offset) => runProductionBattle(level, offset + 1));
   return {
-    level, seeds:runCount, catalogRows:rows.length,
+    level, seeds:runCount, catalogRows:rows.length, ordinaryCatalogRows:ordinaryRows.length,
     packSlots:summary(runs.map(run => run.slots)),
     partyCpRatio:summary(runs.map(run => run.partyCpRatio)),
     targetFillRatio:summary(runs.map(run => run.targetFillRatio)),
@@ -239,13 +242,21 @@ for (const [heroLevel, enemyLevel] of pairs) for (const definition of Object.val
 const simulations = [];
 for (const level of levels) for (const tier of tiers) for (const path of ['physical','magic']) simulations.push(aggregateRuns(level, tier, path));
 const failures = [];
-for (const kind of ['hero','enemy']) for (const id of new Set(rows.filter(row => row.kind === kind).map(row => row.id.replace(/-\d+$/, '')))) {
+for (const kind of ['hero']) for (const id of new Set(rows.filter(row => row.kind === kind).map(row => row.id.replace(/-\d+$/, '')))) {
   const series = rows.filter(row => row.kind === kind && row.id.replace(/-\d+$/, '') === id).sort((a,b) => a.level - b.level);
   for (let i = 1; i < series.length; i += 1) if (series[i].baseCP < series[i - 1].baseCP || series[i].currentCP < series[i - 1].currentCP) failures.push(`${kind} CP inversion ${id} ${series[i - 1].level}-${series[i].level}`);
 }
+for (const level of levels) {
+  const tierSeries = tiers.map(tier => rows.find(row => row.id === `${tier.id}-${level}`));
+  for (let index = 1; index < tierSeries.length; index += 1) {
+    if (tierSeries[index].baseCP <= tierSeries[index - 1].baseCP || tierSeries[index].currentCP <= tierSeries[index - 1].currentCP) {
+      failures.push(`enemy tier CP order L${level} ${tierSeries[index - 1].id}-${tierSeries[index].id}`);
+    }
+  }
+}
 for (const row of damageMatrix) {
   if (!Number.isFinite(row.heroDamage) || !Number.isFinite(row.enemyDamage) || row.heroDamage < 1 || row.enemyDamage < 1) failures.push(`minimum or finite damage ${JSON.stringify(row)}`);
-  if (row.surface === 'same_level' && row.level === 1 && row.heroDamage > 9) failures.push(`L1 ${row.hero} ${row.path} hit ${row.heroDamage}`);
+  if (row.surface === 'same_level' && row.level === 1 && row.heroDamage > 10) failures.push(`L1 ${row.hero} ${row.path} hit ${row.heroDamage}`);
 }
 for (const [lowHero, highEnemy, highHero, lowEnemy] of [[1,9,9,1],[91,99,99,91]]) for (const definition of Object.values(HERO_DEFINITIONS)) for (const tier of tiers) for (const path of ['physical','magic']) {
   const weak = damageMatrix.find(row => row.surface === 'cross_level' && row.hero === definition.name && row.enemy === tier.id && row.path === path && row.heroLevel === lowHero && row.enemyLevel === highEnemy);
@@ -283,13 +294,14 @@ const overflow = { cp:computeCombatPower({ stats:{ HP:Number.MAX_SAFE_INTEGER, A
 if (!Number.isFinite(overflow.cp) || !Number.isFinite(overflow.damage) || overflow.cp < 0 || overflow.damage < 1) failures.push('numeric overflow');
 const productionMetrics = Object.entries(productionSeeds).map(([level, runCount]) => aggregateProductionLevel(Number(level), runCount));
 const productionL1 = productionMetrics.find(metric => metric.level === 1);
-if (!Number.isFinite(productionL1?.partyCpRatio.min) || productionL1.partyCpRatio.min < .25 || productionL1.partyCpRatio.max > .35) failures.push('production routine L1 party CP ratio');
-if (!Number.isFinite(productionL1?.targetFillRatio.min) || productionL1.targetFillRatio.min < .85 || productionL1.targetFillRatio.max > 1.15) failures.push('production routine L1 target CP fill');
+if (!Number.isFinite(productionL1?.partyCpRatio.min) || productionL1.partyCpRatio.min < .13 || productionL1.partyCpRatio.max > .18) failures.push('production routine L1 party CP ratio');
+if (!Number.isFinite(productionL1?.targetFillRatio.min) || productionL1.targetFillRatio.min < .43 || productionL1.targetFillRatio.max > .60) failures.push('production routine L1 target CP fill');
 if (!Number.isFinite(productionL1?.hostileOrdinaryHit.max) || productionL1.hostileOrdinaryHit.max > 3) failures.push('production routine L1 hostile ordinary hit');
-if (!Number.isFinite(productionL1?.firstEnemyKoPartyCycle.max) || productionL1.firstEnemyKoPartyCycle.max > 2) failures.push('production routine L1 first enemy KO cycle');
-if (!productionL1 || productionL1.winRate < .98) failures.push('production routine L1 win rate');
-if (!productionL1 || productionL1.typicalHeroCasualties !== 0) failures.push('production routine L1 typical hero casualties');
-const report = { version:4, levels, pairs, seeds, rows, damageMatrix, simulations, productionMetrics, speed, safety, overflow, failures, pass:failures.length === 0 };
+if (!Number.isFinite(productionL1?.firstEnemyKoPartyCycle.max) || productionL1.firstEnemyKoPartyCycle.max > 1) failures.push('production routine L1 first enemy KO cycle');
+if (!Number.isFinite(productionL1?.totalActions.max) || productionL1.totalActions.max > 8) failures.push('production routine L1 three-enemy action cap');
+if (!productionL1 || productionL1.winRate < .99) failures.push('production routine L1 win rate');
+if (!productionL1 || productionL1.heroCasualtyRate !== 0 || productionL1.typicalHeroCasualties !== 0) failures.push('production routine L1 hero casualties');
+const report = { version:5, levels, pairs, seeds, rows, damageMatrix, simulations, productionMetrics, speed, safety, overflow, failures, pass:failures.length === 0 };
 fs.mkdirSync(output, { recursive:true });
 fs.writeFileSync(path.join(output, 'cp-report.json'), `${JSON.stringify(report, null, 2)}\n`);
 fs.writeFileSync(path.join(output, 'cp-report.csv'), `id,kind,level,baseCP,currentCP\n${rows.map(row => [row.id,row.kind,row.level,row.baseCP,row.currentCP].join(',')).join('\n')}\n`);

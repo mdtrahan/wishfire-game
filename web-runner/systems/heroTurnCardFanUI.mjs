@@ -310,7 +310,7 @@ export function createHeroTurnCardFanUI({
         clearSelectionTimer();
         selectionTimer = setTimeout(finishSelection, CARD_SELECTION_DURATION + 24);
         const index = state.cards.findIndex(item => item.id === card.id);
-        if (typeof select === 'function') select(index);
+        if (typeof select === 'function') select(index, selectionOfferToken);
         else onCardSelect(card);
       };
     }
