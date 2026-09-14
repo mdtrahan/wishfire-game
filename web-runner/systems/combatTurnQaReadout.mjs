@@ -187,10 +187,14 @@ export function buildCombatTurnQaReadout({
       threshold: Math.max(0, Number(fixture.fastestEnemySpeed || 0) * 2),
     } : null,
     flowOrb: {
+      roleRecipientUID: Number(orbAudit.roleRecipientUID || 0),
+      roleAwardCount: Number(orbAudit.roleAwardCount || 0),
       queuedRecipientUID: Number(orbAudit.queuedRecipientUID || 0),
       queuedCount: Number(orbAudit.queuedCount || 0),
       arrivedRecipientUID: Number(orbAudit.arrivedRecipientUID || 0),
       arrivedCount: Number(orbAudit.arrivedCount || 0),
+      arrivedEnemyDeathCount: Number(orbAudit.arrivedEnemyDeathCount || 0),
+      pendingThresholds: (globals.PendingFlowThresholds || []).map(signal => ({heroUID:Number(signal.heroUID || 0),triggerOrder:Number(signal.triggerOrder || 0),token:String(signal.token || '')})),
     },
     shadowMismatchCount: Array.isArray(shadow.mismatches) ? shadow.mismatches.length : 0,
     rows,
@@ -227,7 +231,9 @@ export function renderCombatTurnQaReadoutHtml(args = {}) {
         <div data-combat-turn-qa-reason style="color:#334155;">Why: ${escapeHtml(readout.currentTurnReason)}</div>
         <div data-combat-turn-qa-source style="color:#475569;">Visible order source: ${escapeHtml(readout.orderSource)}</div>
         ${speedLink}
-        <div data-combat-turn-qa-flow-orb style="color:#334155;">AF orb queued: hero ${readout.flowOrb.queuedRecipientUID || 'none'} (${readout.flowOrb.queuedCount}); arrived: hero ${readout.flowOrb.arrivedRecipientUID || 'none'} (${readout.flowOrb.arrivedCount})</div>
+        <div data-combat-turn-qa-role-flow style="color:#334155;">Role AF immediate: hero ${readout.flowOrb.roleRecipientUID || 'none'} (${readout.flowOrb.roleAwardCount})</div>
+        <div data-combat-turn-qa-flow-orb style="color:#334155;">Enemy-death blue orb queued: hero ${readout.flowOrb.queuedRecipientUID || 'none'} (${readout.flowOrb.queuedCount}); arrived: hero ${readout.flowOrb.arrivedRecipientUID || 'none'} (${readout.flowOrb.arrivedEnemyDeathCount})</div>
+        <div data-combat-turn-qa-flow-threshold style="color:#334155;">Pending 100-AF signals: ${readout.flowOrb.pendingThresholds.map(signal=>`${signal.heroUID}#${signal.triggerOrder}`).join(', ') || 'none'}</div>
         <div data-combat-turn-qa-shadow-mismatches style="color:#334155;">SimulationCore shadow mismatches: ${readout.shadowMismatchCount}</div>
       </div>
       <table style="width:100%;min-width:0;table-layout:fixed;border-collapse:collapse;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;font-size:11px;overflow-wrap:anywhere;word-break:break-word;">

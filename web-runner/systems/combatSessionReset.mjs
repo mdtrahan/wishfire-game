@@ -10,7 +10,7 @@ export function resetCombatSessionConditions(globals, gameState, { preserveSessi
   }
   Object.assign(globals, {
     AstralFlowAmpPoints: 0, AstralFlowAmpReady: 0,
-    FlowOrbs: [], FlowOrbSerial: 0, NativeCommandSequence: null, SessionSkillsByHeroUID: {},
+    FlowOrbs: [], FlowOrbSerial: 0, FlowThresholdSerial: 0, PendingFlowThresholds: [], NativeCommandSequence: null, SessionSkillsByHeroUID: {},
     HeroTurnCardFanOpen: 0, HeroTurnCardFanHeroUID: 0, HeroTurnCardFanCards: [],
     HeroTurnCardFanStateByHeroName: {}, HeroTurnCardFanSessionId: Number(globals.CombatSessionId || 0),
     HeroTurnCardFanTurnSerial: 0, HeroTurnCardFanSelectedCardId: '', HeroTurnCardFanTargetUID: 0,

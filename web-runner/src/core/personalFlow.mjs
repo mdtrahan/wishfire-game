@@ -7,6 +7,15 @@ export function getHeroSkillOptions(hero){return (heroDefinition(hero)?.actives|
 
 export const ROLE_FLOW_VALUE=10;
 
+export function recordFlowThreshold(state,hero,before,after){
+ if(!state||!hero||Number(before||0)>=100||Number(after||0)<100)return null;
+ const triggerOrder=state.FlowThresholdSerial=(Number(state.FlowThresholdSerial||0)+1);
+ const signal={heroUID:Number(hero.uid||0),triggerOrder,token:`flow-${Number(state.CombatSessionId||0)}-${triggerOrder}`};
+ (state.PendingFlowThresholds ||= []).push(signal);
+ state.FlowThresholdAudit={heroUID:signal.heroUID,triggerOrder:signal.triggerOrder,token:signal.token,count:Number(state.FlowThresholdAudit?.count||0)+1};
+ return signal;
+}
+
 // One resolved action can award one role charge.  Callers pass aggregate action
 // facts so AoE and multi-hit never duplicate a role award.
 export function resolveRoleFlowAward({heroes=[],hero=null,event={},apply=true}={}){
@@ -25,5 +34,5 @@ export function resolveRoleFlowAward({heroes=[],hero=null,event={},apply=true}={
  const before=Math.max(0,Number(recipient.flow||0));
  const value=Math.min(ROLE_FLOW_VALUE,100-before);
  if(apply)recipient.flow=before+value;
- return {recipientUID:Number(recipient.uid||0),mode,value,flow:apply?recipient.flow:before+value,source:String(event.source||'role')};
+ return {recipientUID:Number(recipient.uid||0),mode,before,value,flow:apply?recipient.flow:before+value,source:String(event.source||'role')};
 }

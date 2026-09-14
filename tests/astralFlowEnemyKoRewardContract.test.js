@@ -210,6 +210,7 @@ test('function bank mirrors keep KO reward integration narrow', () => {
   for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
     const src = read(relPath);
     assert.match(src, /applyAstralFlowEnemyKoReward/);
+	    assert.match(src, /import \{ dropEnemyFlowOrbs \} from/);
 	    assert.match(src, /export function AwardEnemyKoAstralFlow\(ctx, enemy, options = \{\}\)/);
 	    assert.match(src, /AwardEnemyKoAstralFlow\(ctx, deadEnemy, \{[\s\S]*killerUID: Number\(currentUID \|\| 0\),[\s\S]*\}\);/);
 	    assert.match(src, /export function BeginAstralFlowKoOrbEnemyDeaths\(ctx\)/);
@@ -229,8 +230,10 @@ test('function bank mirrors keep KO reward integration narrow', () => {
 	      'KO orb reward completion must not create a fresh deferred turn handoff'
 	    );
     const awardStart = src.indexOf('export function AwardEnemyKoAstralFlow');
-    const nextFunction = src.indexOf('\nfunction shouldResetAstralFlowAmpOnHeroTurn', awardStart);
-    const awardBody = src.slice(awardStart, nextFunction);
+    const awardEnd = src.indexOf('\nexport function CompleteAstralFlowKoOrbRewards', awardStart);
+    const awardBody = src.slice(awardStart, awardEnd);
+    assert.match(awardBody, /dropEnemyFlowOrbs\(/);
+    assert.doesNotMatch(awardBody, /QueueSkillDraughtForHero|SkillDraught/);
     assert.doesNotMatch(awardBody, /SpawnDamageText|displayText|'astral_flow'|"astral_flow"/);
   }
   for (const relPath of ['src/core/astralFlowEnemyKoRewards.mjs', 'web-runner/src/core/astralFlowEnemyKoRewards.mjs']) {

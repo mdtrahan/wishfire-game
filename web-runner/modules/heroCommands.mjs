@@ -2,8 +2,7 @@ import {actionCapacity} from '../src/core/actionSelection.mjs';
 import {clearSessionLevelBuffState} from '../../src/core/sessionLevelBuffOffers.mjs';
 import {settleBattleEXP} from '../src/core/heroProgression.mjs';
 import {heroDefinition,PROGRESSION} from '../src/core/heroDefinitions.mjs';
-import {getHeroFlowState,getHeroSkillOptions,resolveRoleFlowAward} from '../src/core/personalFlow.mjs';
-import {spawnDirectedFlowOrb} from '../src/core/flowOrbs.mjs';
+import {getHeroFlowState,getHeroSkillOptions,recordFlowThreshold,resolveRoleFlowAward} from '../src/core/personalFlow.mjs';
 import {applyStatus,legalSkill,validTargets,resolveSkill,turnStart,turnEnd} from '../src/core/combatRules.mjs';
 import {derivePresentationTurnBarrier} from '../src/core/turnGateController.mjs';
 import {acknowledgeSessionLevelUpEntry,clearSessionLevelUpQueue,createSessionLevelUpQueue,currentSessionLevelUpEntry,pauseSessionLevelUpQueue,resumeSessionLevelUpQueue} from '../src/core/sessionLevelUpQueue.mjs';
@@ -17,7 +16,7 @@ export function canUseHeroCommand(ctx,actorUID){
  if(g.QaFixtureHoldTurn||g.QaFixtureExplicitAction)g.QaFixtureProcessTurnGate={...(g.QaFixtureProcessTurnGate||{}),reason:allowed?'hero-command-eligible':'hero-command-gate',commandChecks:checks,failedCommandChecks:Object.entries(checks).filter(([,value])=>!value).map(([key])=>key),sourceState:{nativeBattleStarted:!!g.NativeBattleStarted,nativeBattleEnded:!!g.NativeBattleEnded,gamePhase:String(g.GamePhase||''),battleStartActive:!!g.BattleStartActive,isPlayerBusy:!!g.IsPlayerBusy,actionInProgress:!!g.ActionInProgress,turnPhase:Number(g.TurnPhase||0),currentTurn,actorUID:Number(actorUID||0),canPickGems:Number(g.CanPickGems||0),deferAdvance:Number(g.DeferAdvance||0),pendingHeroHits:Array.isArray(g.PendingHeroHits)?g.PendingHeroHits.length:0,actionLockUntil:Number(g.ActionLockUntil||0),time:Number(g.time||0)},roster,barrier};
  return allowed;
 }
-export function rulesContext(ctx){
+export function rulesContext(ctx,roleEvents=null){
  const g=ctx.state.globals;g.statusOrder=g.statusOrder||0;
  const heroPresentationPosition = target => {
   const index = Number(target?.heroDisplaySlot ?? target?.heroIndex ?? -1);
@@ -41,14 +40,34 @@ export function rulesContext(ctx){
  calculateDamage:(a,t,mode)=>ctx.callFunction('CalculateDamage',a.uid,t.uid,mode),
  applyDamage:(a,t,amount,origin)=>{const before=t.hp;ctx.callFunction('ApplyDamageToTarget',t.uid,amount,{sourceUID:a.uid,nativeResolved:true,suppressPartySkillHitHooks:1,...origin});return before-t.hp;},
  onHeal:(source,target,delta)=>{if(source?.kind==='hero'&&target?.kind==='hero'&&delta>0){const pos=heroPresentationPosition(target);const texts=Array.isArray(g.DamageTexts)?g.DamageTexts:null;const before=texts?.length||0;ctx.callFunction('SpawnDamageText',delta,pos.x,pos.y,'heal','hero');const emitted=Array.isArray(g.DamageTexts)&&g.DamageTexts.length>before?g.DamageTexts[g.DamageTexts.length-1]:null;if(emitted){emitted.targetUID=Number(target.uid||0);emitted.targetSlotIndex=Number(target.heroDisplaySlot??target.heroIndex??-1);}}},
- onDamage:(source,target,delta,origin={})=>{const heroes=ctx.state.entities.filter(actor=>actor?.kind==='hero');const awarded=origin.roleAFAwardedUIDs ||= new Set();for(const hero of heroes){if(awarded.has(hero.uid))continue;const event={source:'damage',hostileHpDamage:source?.kind==='enemy'?delta:0,hostileTargetUID:source?.kind==='enemy'?target?.uid:0,enemyHpDamage:source?.kind==='hero'?delta:0};const award=resolveRoleFlowAward({heroes,hero,event,apply:false});if(award){awarded.add(hero.uid);spawnDirectedFlowOrb({state:g},source,hero,award.value,'role-action');}}},
- onStatus:(source,target,effect,meta={})=>{if(source?.kind==='hero'&&target?.kind==='hero'&&effect?.statusEffect==='barrier')ensureCardBarrierVisual(target);if(meta.refreshed||source?.kind!=='hero')return;const heroes=ctx.state.entities.filter(actor=>actor?.kind==='hero');const award=resolveRoleFlowAward({heroes,hero:source,event:{source:'status',newEligibleStatus:true},apply:false});if(award)spawnDirectedFlowOrb({state:g},source,source,award.value,'role-status');},
+ onDamage:(source,target,delta)=>{if(roleEvents&&delta>0)roleEvents.push({type:'damage',sourceUID:Number(source?.uid||0),sourceKind:source?.kind,targetUID:Number(target?.uid||0),targetKind:target?.kind,delta:Number(delta||0)});},
+ onStatus:(source,target,effect,meta={})=>{if(source?.kind==='hero'&&target?.kind==='hero'&&effect?.statusEffect==='barrier')ensureCardBarrierVisual(target);if(roleEvents&&!meta.refreshed&&source?.kind==='hero')roleEvents.push({type:'status',sourceUID:Number(source.uid||0),targetUID:Number(target?.uid||0)});},
  onKO:actor=>{if(actor.kind==='enemy'){const battle=g.ProgressionBattle;if(battle){battle.defeated[actor.uid]=actor.expValue??PROGRESSION.enemyEXP;(battle.defeatedGold||={})[actor.uid]=Math.max(0,Math.floor(actor.goldValue??PROGRESSION.enemyGold));}}},
  isOver:()=>{
   const ended=!ctx.state.entities.some(a=>a.kind==='enemy'&&a.hp>0);
   if(ended)g.NativeBattleEnded=true;
   return ended;
  }};
+}
+
+function awardResolvedRoleFlow(ctx,events){
+ const heroes=ctx.state.entities.filter(actor=>actor?.kind==='hero');
+ for(const hero of heroes){
+  const hostile=events.find(event=>event.type==='damage'&&event.sourceKind==='enemy'&&event.targetUID===Number(hero.uid));
+  const enemyDamage=events.some(event=>event.type==='damage'&&event.sourceUID===Number(hero.uid)&&event.targetKind==='enemy');
+  const status=events.some(event=>event.type==='status'&&event.sourceUID===Number(hero.uid));
+  const award=resolveRoleFlowAward({heroes,hero,event:{source:'resolved-action',hostileHpDamage:hostile?.delta||0,hostileTargetUID:hostile?.targetUID||0,enemyHpDamage:enemyDamage?1:0,newEligibleStatus:status},apply:true});
+  if(!award)continue;
+  const threshold=recordFlowThreshold(ctx.state.globals,hero,award.before,award.flow);
+  const audit=ctx.state.globals.FlowOrbAudit||{};
+  ctx.state.globals.FlowOrbAudit={...audit,roleRecipientUID:award.recipientUID,roleValue:award.value,roleAwardCount:Number(audit.roleAwardCount||0)+1,pendingThresholdToken:threshold?.token||audit.pendingThresholdToken||''};
+ }
+}
+
+function resolveRoleAction(ctx,source,skill,targetIds,origin={}){
+ const events=[];const rules=rulesContext(ctx,events);const resolved=resolveSkill(rules,source,skill,targetIds,origin);
+ if(resolved)awardResolvedRoleFlow(ctx,events);
+ return {resolved,rules};
 }
 
 const sessionBuffHeroId = hero => String(hero?.heroInstanceKey ?? hero?.uid ?? '');
@@ -125,14 +144,14 @@ export function resolveNativeCommandStep(ctx,hit){
  if(!actor||actor.hp<=0||rules.isOver()){cancelNativeSequence(ctx);return false;}
   if(s.kind==='hero_turn_card'){
   const targetIds=Array.isArray(s.targetIds)?s.targetIds:[];
-  const resolved=resolveSkill(rules,actor,s.skill,targetIds);
+  const {resolved}=resolveRoleAction(ctx,actor,s.skill,targetIds);
   if(resolved)ctx.callFunction('LogCombat',`${heroDefinition(actor).name}: ${s.card?.name || s.cardId || 'Hero action'}`);
   delete g.NativeCommandSequence;
   ctx.callFunction('UpdateHeroHPUI');ctx.callFunction('UpdateEnemyHPUI');
   if(actor.hp<=0||rules.isOver()){if(g.NativeBattleEnded)settleVictory(ctx);return true;}
   return resolved;
  }
- const action=s.actions[s.index];const executed=resolveSkill(rules,actor,action.skill,action.targetIds);
+ const action=s.actions[s.index];const {resolved:executed}=resolveRoleAction(ctx,actor,action.skill,action.targetIds);
  if(executed){if(action.skill.skillId===heroDefinition(actor)?.basic?.skillId)resolveSessionLevelBasicEffects(ctx,rules,actor,action.targetIds);if(action.skill.isFlowSpecial)actor.flow=0;ctx.callFunction('LogCombat',`${heroDefinition(actor).name}: ${action.skill.displayName}`);}
  s.index++;ctx.callFunction('UpdateHeroHPUI');ctx.callFunction('UpdateEnemyHPUI');
  if(actor.hp<=0||rules.isOver()){cancelNativeSequence(ctx);if(g.NativeBattleEnded)settleVictory(ctx);return true;}
@@ -152,7 +171,7 @@ export function nativeTurnStarted(ctx,actor){
 }
 export function nativeTurnEnded(ctx,actor){if(!actor||actor.nativeEndedSerial===ctx.state.globals.TurnSerial)return;actor.nativeEndedSerial=ctx.state.globals.TurnSerial;turnEnd(actor);}
 export function resolveIncomingNativeHit(ctx,source,target,amount,options={}) {
- const rules=rulesContext(ctx),before=Number(target?.hp||0);const result=resolveSkill(rules,source,{skillId:'enemy_attack',targetType:'enemy',tags:[options.magic?'magic':'physical'],effects:[{effectType:'damage',fixedDamage:amount,fixedTargetUID:target.uid}]},[target.uid]);
+ const before=Number(target?.hp||0);const {resolved:result,rules}=resolveRoleAction(ctx,source,{skillId:'enemy_attack',targetType:'enemy',tags:[options.magic?'magic':'physical'],effects:[{effectType:'damage',fixedDamage:amount,fixedTargetUID:target.uid}]},[target.uid]);
  if(result&&target?.kind==='hero'&&target.hp>0&&Number(target.hp||0)<before)resolveSessionLevelCounter(ctx,rules,target,source);
  if(!ctx.state.entities.some(actor=>actor?.kind==='hero'&&Number(actor.hp||0)>0))settleDefeat(ctx);
  else if(ctx.state.globals.NativeBattleEnded)settleVictory(ctx);
@@ -160,7 +179,7 @@ export function resolveIncomingNativeHit(ctx,source,target,amount,options={}) {
 }
 export function resolveNativeEnemyArea(ctx,uid) {
  const source=ctx.state.entities.find(a=>a.uid===uid);if(!source)return false;
- const result=resolveSkill(rulesContext(ctx),source,{skillId:'enemy_magic_area',targetType:'allEnemies',tags:['magic'],effects:[{effectType:'damage'}]},ctx.state.entities.filter(a=>a.kind==='hero'&&a.hp>0).map(a=>a.uid));
+ const {resolved:result}=resolveRoleAction(ctx,source,{skillId:'enemy_magic_area',targetType:'allEnemies',tags:['magic'],effects:[{effectType:'damage'}]},ctx.state.entities.filter(a=>a.kind==='hero'&&a.hp>0).map(a=>a.uid));
  if(!ctx.state.entities.some(actor=>actor?.kind==='hero'&&Number(actor.hp||0)>0))settleDefeat(ctx);
  else if(ctx.state.globals.NativeBattleEnded)settleVictory(ctx);
  return result;

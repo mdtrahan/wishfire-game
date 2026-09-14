@@ -22,6 +22,7 @@
 
 ## Regression Triggers
 - Before starting combat-system beads, scan acceptance + code for: `buff`, `debuff`, `duration`, `turns`, `stack`.
+- AF timing belongs at the resolved-action and enemy-death transfer seams: role awards mutate only the acting hero immediately, while a killed enemy's blue transfer mutates its assigned living recipient only on arrival. Keep threshold signals append-only until the session queue owner consumes them.
 - If these imply outdated model assumptions, pause and rewrite bead scope before coding.
 - When render extraction moves visual helpers behind a dependency scope, verify app-to-renderer predicates are live state readers rather than false stubs; status overlays keyed by effect names should accept stable prefixes such as `Blight*`.
 - When removing a hero-specific heal expression, route that hero through the shared heal body; do not replace the special branch with a guard that still consumes action pacing but skips `ApplyPartyHeal`.

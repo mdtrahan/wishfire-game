@@ -83,6 +83,7 @@ import {
   applyAstralFlowEnemyKoReward,
   getEnemyKoAstralFlowOrbPresentation,
 } from '../src/core/astralFlowEnemyKoRewards.mjs';
+import { dropEnemyFlowOrbs } from '../src/core/flowOrbs.mjs';
 import {
   advanceDynamicInitiativeShadow,
   compareDynamicInitiativeShadowSelection,
@@ -3082,7 +3083,8 @@ function queueAstralFlowKoOrbPresentation(ctx, enemy, reward, options = {}) {
 }
 
 export function AwardEnemyKoAstralFlow(ctx, enemy, options = {}) {
-  return { ok: false, reason: 'personal_flow_owns_rewards' };
+  const spawned = dropEnemyFlowOrbs({ actors:ensureEntities(ctx), state:getGlobals(ctx), flowRandom:()=>random01(ctx) }, enemy, options);
+  return { ok:false, spawned, reason:spawned ? 'enemy_death_flow_orb' : 'no_living_flow_recipient' };
 }
 
 export function CompleteAstralFlowKoOrbRewards(ctx) {

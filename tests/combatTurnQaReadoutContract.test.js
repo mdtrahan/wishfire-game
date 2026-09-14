@@ -50,7 +50,11 @@ test('combat QA readout exposes linked-speed, directed-AF, and shadow evidence',
   const readout = buildCombatTurnQaReadout({ state });
   assert.equal(readout.speedLink.threshold, 20);
   assert.equal(readout.speedLink.links, 1);
-  assert.deepEqual(readout.flowOrb, { queuedRecipientUID:1, queuedCount:2, arrivedRecipientUID:1, arrivedCount:1 });
+  assert.deepEqual(readout.flowOrb, { roleRecipientUID:0, roleAwardCount:0, queuedRecipientUID:1, queuedCount:2, arrivedRecipientUID:1, arrivedCount:1, arrivedEnemyDeathCount:0, pendingThresholds:[] });
   assert.equal(readout.shadowMismatchCount, 1);
-  assert.match(renderCombatTurnQaReadoutHtml({ state }), /CTB timestamp order is preserved/);
+  const html=renderCombatTurnQaReadoutHtml({ state });
+  assert.match(html, /CTB timestamp order is preserved/);
+  assert.match(html, /Role AF immediate/);
+  assert.match(html, /Enemy-death blue orb queued/);
+  assert.match(html, /Pending 100-AF signals/);
 });

@@ -50,9 +50,8 @@
 
 - `actionSelection.mjs` owns action capacity and draft budgets independently of SP and CTB scheduling. High SP cannot increase the action count.
 
-- FLOW charging is owned only by flowOrbs.mjs collection. Enemy KO produces a single configured reward; role triggers award nothing. Combat RNG and orb RNG remain separate. Session reset cancels pending flights.
-
-- Role-earned AF replaces death-lottery rewards: qualifying resolved role actions queue one directed blue orb, and AF changes only when that orb reaches its living recipient. Enemy KO does not assign AF.
+- Qualifying resolved role actions charge only their eligible living hero immediately, once per action, capped at 100. They emit no gem. Enemy KO produces one blue flowOrbs.mjs transfer for one deterministically assigned living hero; collection applies its AF once. Combat RNG and orb RNG remain separate. Session reset cancels pending flights.
+- Reaching 100 AF records one deterministic pending threshold signal. AF stays full until the session queue owner consumes it; falling below 100 rearms the next threshold.
 
 - equipment.mjs is the canonical placeholder catalog, slots, rarity balance and loadout math. astralMarket.mjs reconstructs only the live offer window using persisted seed/epoch and a monotonic time floor. Each offer ID may be acquired once; revalidate price, expiration and Gold at commit.
 - Equipment stats are a derived projection used by levelStats, not a second inventory. Persist the projection with hero HP so loading HP above unequipped max does not truncate it before the authoritative equipment record reapplies.

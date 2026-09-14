@@ -1,9 +1,10 @@
 import {FLOW_ORB_TUNING as T} from './heroDefinitions.mjs';
+import {recordFlowThreshold} from './personalFlow.mjs';
 const roll = ctx => (ctx.flowRandom || ctx.random)();
 const eligible = (actor, origin) => actor.kind === 'hero' && actor.hp > 0 && actor.flowEligible !== false && actor.uid !== origin.flowOwnerUID && !origin.excludedFlowUIDs?.includes(actor.uid);
 // One record per orb: assignment happens now; the only charge writer runs at collection.
-export function spawnFlowOrbs(ctx, source, count, origin = {}, value = T.limitOrbValue, reason = 'enemy-death') {
- if (!Number.isFinite(count) || !Number.isFinite(value) || count <= 0 || value <= 0) return 0;
+function spawnFlowOrbs(ctx, source, count, origin = {}, value = T.limitOrbValue, reason = 'enemy-death') {
+ if (source?.kind!=='enemy'||!Number.isFinite(count) || !Number.isFinite(value) || count <= 0 || value <= 0) return 0;
  const recipients = ctx.actors.filter(actor => eligible(actor, origin));
  if (!recipients.length) return 0;
  const queue = ctx.state.FlowOrbs ||= [];
@@ -16,19 +17,10 @@ export function spawnFlowOrbs(ctx, source, count, origin = {}, value = T.limitOr
 }
 
 export function dropEnemyFlowOrbs(ctx, enemy, origin = {}) {
- // AF comes from role actions. Enemy death remains a combat settlement event,
- // not a random meter lottery.
- return 0;
-}
-
-export function spawnDirectedFlowOrb(ctx, source, recipient, value = T.limitOrbValue, reason = 'role-award') {
- if (!source || !recipient || recipient.kind !== 'hero' || Number(recipient.hp || 0) <= 0) return 0;
- const amount=Math.max(0,Number(value)||0);if(amount<=0)return 0;
- const queue=ctx.state.FlowOrbs ||= [];
- const id=ctx.state.FlowOrbSerial=(ctx.state.FlowOrbSerial||0)+1;
- queue.push({id,recipientUID:recipient.uid,sourceUID:source.uid,sourceKind:source.kind,x:Number(source.x??source.originX??200),y:Number(source.y??source.originY??140),groundOffset:Math.max(1,Number(ctx.state.EnemySize||40))/2,sourceSlot:source.heroDisplaySlot??source.heroIndex,value:amount,reason,born:Number(ctx.state.time||0),sessionId:ctx.state.CombatSessionId});
- ctx.state.FlowOrbAudit={...(ctx.state.FlowOrbAudit||{}),queuedRecipientUID:Number(recipient.uid||0),queuedValue:amount,queuedReason:String(reason||''),queuedCount:Number(ctx.state.FlowOrbAudit?.queuedCount||0)+1};
- return 1;
+ if(!enemy||enemy.kind!=='enemy'||enemy.flowDeathOrbSpawned)return 0;
+ const spawned=spawnFlowOrbs(ctx,enemy,1,origin,T.limitOrbValue,'enemy-death');
+ if(spawned)enemy.flowDeathOrbSpawned=true;
+ return spawned;
 }
 
 export function advanceFlowOrbs(state, actors, now = Number(state.time || 0)) {
@@ -38,9 +30,11 @@ export function advanceFlowOrbs(state, actors, now = Number(state.time || 0)) {
   const hero = actors.find(a => a.uid === orb.recipientUID);
   if (!hero || hero.hp <= 0 || hero.flowEligible === false) return false;
   if (!orb.collected && now - orb.born >= lifetime) {
-   hero.flow = Math.min(T.flowMax, Math.max(0, hero.flow || 0) + orb.value);
+   const before=Math.min(T.flowMax,Math.max(0,Number(hero.flow||0)));
+   hero.flow = Math.min(T.flowMax, before + orb.value);
    orb.collected = true;
-   state.FlowOrbAudit={...(state.FlowOrbAudit||{}),arrivedRecipientUID:Number(hero.uid||0),arrivedValue:Number(orb.value||0),arrivedReason:String(orb.reason||''),arrivedCount:Number(state.FlowOrbAudit?.arrivedCount||0)+1};
+   const threshold=recordFlowThreshold(state,hero,before,hero.flow);
+   state.FlowOrbAudit={...(state.FlowOrbAudit||{}),arrivedRecipientUID:Number(hero.uid||0),arrivedValue:Number(orb.value||0),arrivedReason:String(orb.reason||''),arrivedCount:Number(state.FlowOrbAudit?.arrivedCount||0)+1,arrivedEnemyDeathCount:Number(state.FlowOrbAudit?.arrivedEnemyDeathCount||0)+(orb.reason==='enemy-death'?1:0),pendingThresholdToken:threshold?.token||state.FlowOrbAudit?.pendingThresholdToken||''};
   }
   return now - orb.born < lifetime + T.collectFlashSeconds;
  });

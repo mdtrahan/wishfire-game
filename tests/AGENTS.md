@@ -51,9 +51,7 @@
 
 - Action capacity tests cover mixed 1/2/3 slots, affordability, removal and early commit. Browser proof exercises real target clicks and capacity auto-commit. Paused frame-based regeneration must not affect combat.
 
-- flowOrbsContract covers enemy-death rewards, nonlethal/role exclusions, independent random recipients, ground-bounce/collection timing, special ancestry and SP/CTB independence. Direct role-charge expectations are superseded.
-
-- Death-only FLOW supersedes attack/proc drops: enemy KO awards once; collection charges a random living hero after the original blue death-orb ground-bounce tween. Role events award nothing.
+- flowOrbsContract covers enemy-death blue transfers, deterministic living recipients, ground-bounce/collection timing, threshold signals, and dead-recipient safety. personalFlowContract covers immediate once-per-action role charge with no orb.
 
 - Hero management browser proof covers overview disclosure, roster containment and separate canonical active/passive/FLOW categories.
 
