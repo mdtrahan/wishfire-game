@@ -95,7 +95,7 @@ import {
   validateDynamicInitiativeAuthoritySelection,
 } from '../src/core/dynamicInitiativeAuthorityExperiment.mjs';
 function emitHealPresentation(ctx, source, target, beforeHP, options = {}) {
-  if (typeof emitResolvedHealEvent === 'function') return emitResolvedHealEvent(ctx, source, target, beforeHP, options);
+  if (typeof emitResolvedHealEvent === 'function' && ctx && typeof ctx.callFunction === 'function') return emitResolvedHealEvent(ctx, source, target, beforeHP, options);
   const delta = Math.max(0, Number(target?.hp || 0) - Math.max(0, Number(beforeHP || 0)));
   if (delta > 0) SpawnDamageText(ctx, delta, Number(target?.x || 0), Number(target?.y || 0), 'heal', target?.kind || null);
   return delta;
@@ -2861,7 +2861,8 @@ function applyPartyDestinyActorHeal(ctx, actorUID, healAmount) {
     try { ctx.callFunction('UpdatePartyHPText'); } catch (_) {}
     try { ctx.callFunction('UpdatePartyHPBar'); } catch (_) {}
   }
-  return { before, after: Number(actor.hp || 0), appliedHeal: Math.max(0, Number(actor.hp || 0) - before) };
+  const appliedHeal = emitHealPresentation(ctx, actor, actor, before);
+  return { before, after: Number(actor.hp || 0), appliedHeal };
 }
 
 export function TryPartyDestiny(ctx, options = undefined) {

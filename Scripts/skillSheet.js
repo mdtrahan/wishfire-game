@@ -1,7 +1,15 @@
 import { state } from './state.js';
+import { emitResolvedHealEvent } from '../web-runner/modules/heroCommands.mjs';
 
 function getGlobals(ctx) {
   return (ctx && ctx.state ? ctx.state.globals : state.globals);
+}
+
+function emitActiveHeroHeal(ctx, actor, beforeHP) {
+  if (typeof emitResolvedHealEvent === 'function') return emitResolvedHealEvent(ctx, actor, actor, beforeHP);
+  const delta = Math.max(0, Number(actor?.hp || 0) - Math.max(0, Number(beforeHP || 0)));
+  if (delta > 0) ctx.callFunction('SpawnDamageText', delta, actor.x, actor.y, 'heal', 'hero');
+  return delta;
 }
 
 export function Party_DEF_UP(ctx, turns, actorUID, actorType, addAmt) {
@@ -66,9 +74,7 @@ export function ApplyActiveHeroHeal(ctx, healAmount) {
   ctx.callFunction('UpdateHeroHPUI');
   ctx.callFunction('UpdatePartyHPText');
   ctx.callFunction('UpdatePartyHPBar');
-  if (delta > 0 && !g.SuppressHeroHealText) {
-    ctx.callFunction('SpawnDamageText', delta, actor.x, actor.y, 'heal', 'hero');
-  }
+  if (delta > 0 && !g.SuppressHeroHealText) emitActiveHeroHeal(ctx, actor, before);
   return delta;
 }
 
