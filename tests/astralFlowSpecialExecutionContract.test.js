@@ -12,7 +12,7 @@ function loadModule() {
     .replace(/^import[\s\S]*?from\s+['"][^'"]+['"];\n/gm, '')
     .replace(/\bexport\s+/g, '')}
 
-module.exports = { ExecuteAstralFlowSpecial, ProcessAstralFlowDestinyRegen };`;
+module.exports = { ExecuteAstralFlowSpecial, ProcessAstralFlowDestinyRegen, ApplyDamageToTarget };`;
   const context = { console: { log() {}, warn() {}, error() {} }, Math, module: { exports: {} }, exports: {}, state: { globals: {}, entities: [] }, effectiveStat: () => 10 };
   vm.createContext(context);
   new vm.Script(transformed, { filename: modulePath }).runInContext(context);
@@ -85,7 +85,21 @@ test('each non-healing AF special queues its existing AoE or targeted effect wit
     if (specialId === 'crimson_ward') assert.ok(Number(ctx.state.globals.PartyTempHPShield || 0) > 0);
     if (specialId === 'split') assert.equal(ctx.state.globals.PendingHeroHits.filter(hit => hit.actionName === 'Split').length, 2);
     if (specialId === 'arcane_pulse') assert.equal(ctx.state.globals.PendingHeroHits.filter(hit => hit.effectType === 'arcane_pulse').length, 1);
-    if (specialId === 'chain_strike_ii') assert.ok(ctx.state.globals.PendingHeroHits.some(hit => hit.actionName === 'Chain Strike II'));
+    if (specialId === 'chain_strike_ii') {
+      const primary=ctx.state.globals.PendingHeroHits.find(hit => hit.chainStrikeIIPrimary === 1);
+      assert.ok(primary);assert.equal(primary.chainStrikeDamagePct,396);assert.equal(primary.retargetOnDeath,1);
+      assert.equal(ctx.state.globals.LastAstralFlowChainStrikeII.primary.coefficient,396);
+    }
     if (specialId === 'faze') assert.equal(ctx.state.globals.TaintedGroundZones.length, 2);
   }
+});
+
+test('Chain Strike II records its live primary result at the 396-percent payload and never starts on a dead target', () => {
+  const mod=loadModule();const ctx=makeContext();ctx.state.globals.SelectedEnemyUID=11;
+  const result=mod.ExecuteAstralFlowSpecial(ctx,'chain_strike_ii',2);assert.equal(result.ok,true);
+  const primary=ctx.state.globals.PendingHeroHits.find(hit=>hit.chainStrikeIIPrimary===1);assert.ok(primary);assert.equal(primary.targetUID,11);assert.equal(primary.chainStrikeDamagePct,396);
+  ctx.state.globals.time=2;const target=ctx.state.entities.find(actor=>actor.uid===11);const before=target.hp;
+  mod.ApplyDamageToTarget(ctx,primary.targetUID,primary.finalDmg,{sourceUID:2});
+  assert.deepEqual(JSON.parse(JSON.stringify(ctx.state.globals.LastAstralFlowChainStrikeII.primary)),{targetUID:11,preHP:before,postHP:target.hp,damage:before-target.hp,coefficient:396,primary:true});
+  target.hp=0;ctx.state.globals.SelectedEnemyUID=11;const rerun=mod.ExecuteAstralFlowSpecial(ctx,'chain_strike_ii',2);assert.equal(rerun.ok,true);assert.equal(rerun.targetUID,12);
 });

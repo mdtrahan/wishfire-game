@@ -21,7 +21,11 @@ export function recordFlowThreshold(state,hero,before,after){
 export function resolveRoleFlowAward({heroes=[],hero=null,event={},apply=true}={}){
  const recipient=hero&&Number(hero.hp||0)>0?hero:null;
  if(!recipient||Number(recipient.flow||0)>=100||event.miss||event.periodic||event.prevented||event.resisted||event.unchanged)return null;
- const mode=recipient.flowMode||heroDefinition(recipient)?.flowMode;
+ const definitionMode=heroDefinition(recipient)?.flowMode;
+ const explicitSupport=/^(support|guardian|support\s*\/\s*guardian)$/i.test(String(recipient.role||recipient.combatRole||''));
+ // Canonical hero identity owns the AF role. Runtime copies can retain stale
+ // flowMode fields across fixtures, so Huun can never become the Comrade recipient.
+ const mode=definitionMode||(explicitSupport?'Comrade':recipient.flowMode);
  const hostileDamage=Number(event.hostileHpDamage||0)>0;
  const enemyDamage=Number(event.enemyHpDamage||0)>0;
  const newStatus=event.newEligibleStatus===true;

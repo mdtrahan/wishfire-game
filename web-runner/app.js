@@ -2246,7 +2246,9 @@ async function main(){
         ward: { remaining: Number(state.globals.PartyTempHPShield || 0), absorbed: Number(state.globals.LastPartyWardBarrierAbsorbed || 0), lastTargetUID: Number(state.globals.LastPartyWardBarrierHitUID || 0), fadeOutUntil: Number(state.globals.PartyWardBarrierFadeOutUntil || 0) },
         destinyTicks: state.globals.AstralFlowDestinyRegensByUID || {},
         magicFruit: state.globals.AstralFlowMagicFruitLast || null,
-        chainTargets: (state.globals.ChainStrikeVisuals || []).map(row => ({ targetUID: Number(row?.targetUID || 0), preHP: Number(row?.beforeHP || 0), postHP: Number(row?.afterHP || 0), damage: Number(row?.resolvedDamage || 0), coefficient: Number(row?.damagePercent || 0) })),
+        chainTargets: (state.globals.LastAstralFlowChainStrikeII?.hits || []).map(row => ({ targetUID: Number(row?.targetUID || 0), preHP: Number(row?.preHP || 0), postHP: Number(row?.postHP || 0), damage: Number(row?.damage || 0), coefficient: Number(row?.coefficient || 396), primary: !!row?.primary })),
+        chainPrimary: state.globals.LastAstralFlowChainStrikeII?.primary || null,
+        chainHitCount: Number(state.globals.LastAstralFlowChainStrikeII?.hitCount || 0),
         pulseTargets: (state.globals.ArcanePulseVisuals || []).map(row => Number(row?.targetUID || 0)),
         fazeZones: (state.globals.TaintedGroundZones || []).map(row => Number(row?.targetUID || row?.enemyUID || 0)),
       },
@@ -2295,7 +2297,8 @@ async function main(){
     let nextState = state.globals.SessionLevelBuffState || { heroes: {} };
     for (const hero of heroes) {
       const heroId = String(hero.heroInstanceKey ?? hero.uid ?? '');
-      for (let current = 1; current <= stage; current += 1) {
+      const ownedStage = Number(nextState?.heroes?.[heroId]?.activeStageByEffectId?.dawn_chorus || 0);
+      for (let current = ownedStage + 1; current <= stage; current += 1) {
         const card = SESSION_LEVEL_UP_BUFF_CARDS.find(candidate => candidate.effectId === 'dawn_chorus' && Number(candidate.stage) === current);
         const applied = applyLevelUpBuffCard({ state: nextState, heroId, cardId: card?.cardId, cards: SESSION_LEVEL_UP_BUFF_CARDS });
         if (applied.status !== 'applied') return { ok: false, reason: applied.reason || 'dawnGrantRejected', stage: current };

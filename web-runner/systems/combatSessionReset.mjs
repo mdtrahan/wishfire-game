@@ -43,6 +43,12 @@ export function resetCombatSessionConditions(globals, gameState, { preserveSessi
   delete globals.HeroAction;
   delete globals.EnemyAction;
   delete globals.SessionLevelBuffCombatSessionId;
+  // QA readouts mirror live combat state and must never survive abandonment or
+  // a fresh session. Encounter continuation deliberately retains session buffs.
+  for (const key of ['QaLastAstralFlowSpecial', 'LastAstralFlowSpecial', 'QaFixtureHeal', 'FlowOrbAudit', 'LastPartyChainStrike', 'PartyChainStrikeIIProcs', 'PartyChainStrikeIProcs']) delete globals[key];
+  if (!preserveSessionLevelBuffs) {
+    for (const key of ['DawnChorusAttempted', 'DawnChorusSucceeded', 'DawnChorusLastRoll', 'DawnChorusOwnedRank', 'QaPreferredAstralFlowSpecialId']) delete globals[key];
+  }
   delete gameState.partyHpTextRoll;
   delete gameState.healBlooms;
   gameState._lastPartyRegenTurnSerial = null;

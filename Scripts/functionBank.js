@@ -1604,13 +1604,20 @@ export function ExecuteAstralFlowSpecial(ctx, specialId, actorUID) {
   } else if (id === 'chain_strike_ii') {
     const target = astralFlowSpecialTarget(ctx);
     const originalDamage = target ? CalculateDamage(ctx, actorUID, target.uid, actor.attackType === 'magic' ? 'magic' : 'melee') : 0;
+    const primaryDamage = Math.max(0, Math.ceil(Number(originalDamage || 0) * (ASTRAL_FLOW_CHAIN_STRIKE_II_DAMAGE_PCT / 100)));
+    if (target && primaryDamage > 0) {
+      const now = Number(g.time || 0);
+      g.PendingHeroHits = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
+      g.PendingHeroHits.push({ at: now + 0.97, heroUID: Number(actorUID || 0), sourceUID: Number(actorUID || 0), targetUID: Number(target.uid || 0), dmg: primaryDamage, finalDmg: primaryDamage, calcPath: actor.attackType === 'magic' ? 'magicCalc' : 'meleeCalc', heroName: actor.name, heroType: actor.attackType, effectType: 'chain_strike_primary', actionName: 'Chain Strike II', generatedBySkillId: PARTY_CHAIN_STRIKE_II_ID, chainStrikeDamagePct: ASTRAL_FLOW_CHAIN_STRIKE_II_DAMAGE_PCT, chainStrikeIIPrimary: 1, astralFlowChainStrikeII: 1, astralFlowSpecial: 1, retargetOnDeath: 1, msg: `Chain Strike strikes ${target.name || '?'} for ${primaryDamage}!` });
+      g.LastAstralFlowChainStrikeII = { primaryTargetUID: Number(target.uid || 0), primary: { targetUID: Number(target.uid || 0), preHP: null, postHP: null, damage: 0, coefficient: ASTRAL_FLOW_CHAIN_STRIKE_II_DAMAGE_PCT, primary: true }, bounces: [], hits: [], hitCount: 0, coefficient: ASTRAL_FLOW_CHAIN_STRIKE_II_DAMAGE_PCT };
+    }
     g.AstralFlowSpecialChainStrikeII = 1;
-    const queued = target && queuePartyChainStrikeBounce(ctx, { heroUID: actorUID, sourceTargetUID: target.uid, originalDamage, mode: actor.attackType === 'magic' ? 'magic' : 'melee', actorName: actor.name });
+    const queued = target && primaryDamage > 0 && queuePartyChainStrikeBounce(ctx, { heroUID: actorUID, sourceTargetUID: target.uid, originalDamage, mode: actor.attackType === 'magic' ? 'magic' : 'melee', actorName: actor.name });
     delete g.AstralFlowSpecialChainStrikeII;
-    if (queued && Array.isArray(g.PendingHeroHits)) for (const hit of g.PendingHeroHits) {
+    if ((queued || primaryDamage > 0) && Array.isArray(g.PendingHeroHits)) for (const hit of g.PendingHeroHits) {
       if (String(hit?.actionName || '') === 'Chain Strike II' && Number(hit.heroUID || 0) === Number(actorUID || 0)) hit.astralFlowSpecial = 1;
     }
-    result = queued ? { ok: true, targetUID: Number(target.uid || 0) } : { ok: false, reason: 'targetUnavailable' };
+    result = primaryDamage > 0 ? { ok: true, targetUID: Number(target.uid || 0) } : { ok: false, reason: 'targetUnavailable' };
   } else if (id === 'split') {
     const target = astralFlowSpecialTarget(ctx);
     if (target) {
@@ -6525,6 +6532,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
     return Math.max(0, before - t.hp);
   }
   const targetTraceHit = findMatchingPendingHeroHit(ctx, uid, dmg, (hit) => Number(hit.targetTraceSequence || 0) > 0);
+  const chainStrikeIIHit = findMatchingPendingHeroHit(ctx, uid, dmg, (hit) => Number(hit.astralFlowChainStrikeII || 0) === 1);
   const suppressPartySkillHitHooks = shouldSuppressPartySkillHitHooks(ctx, uid, dmg, opts);
   const suppressHitFlash = shouldSuppressHitFlash(ctx, uid, dmg, opts);
   const suppressDamageText = shouldSuppressDamageText(ctx, uid, dmg, opts);
@@ -6567,6 +6575,15 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   }
   const afterHP = Number(t.hp ?? 0);
   const appliedDamage = Math.max(0, beforeHP - afterHP);
+  if (chainStrikeIIHit) {
+    const telemetry = g.LastAstralFlowChainStrikeII && typeof g.LastAstralFlowChainStrikeII === 'object'
+      ? g.LastAstralFlowChainStrikeII : (g.LastAstralFlowChainStrikeII = { hits: [], hitCount: 0 });
+    const record = { targetUID: Number(uid || 0), preHP: beforeHP, postHP: afterHP, damage: appliedDamage, coefficient: Number(chainStrikeIIHit.chainStrikeDamagePct || 396), primary: Number(chainStrikeIIHit.chainStrikeIIPrimary || 0) === 1 };
+    (telemetry.hits ||= []).push(record);
+    telemetry.hitCount = (telemetry.hits || []).filter(hit => Number(hit.damage || 0) > 0).length;
+    if (record.primary) telemetry.primary = record;
+    else (telemetry.bounces ||= []).push(record);
+  }
   g.LastDamageSourceUID = source?.uid || g.LastDamageSourceUID;
 
   if ((g.DevTestMode === true || g.DebugGemsMode === true) && targetTraceHit) {
@@ -7570,6 +7587,7 @@ function queuePartyChainStrikeBounce(ctx, {
       actionName: activeTier.actionName,
       generatedBySkillId: activeTier.skillId,
       chainStrikeDamagePct: activeTier.damagePct,
+      astralFlowChainStrikeII: activeTier.skillId === PARTY_CHAIN_STRIKE_II_ID ? 1 : 0,
       chainStrikeBounceIndex: bounceIndex + 1,
       chainStrikeBounceCount: maxBounces,
       chainStrikeSourceTargetUID: chainSourceUID,

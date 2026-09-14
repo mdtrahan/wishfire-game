@@ -21,3 +21,8 @@ test('Dawn Chorus fails when roll equals chance', () => {
 test('Chain Strike II copy matches its 396-percent AF payload', () => {
  const card=ASTRAL_FLOW_PARTY_SPECIALS.find(card=>card.specialId==='chain_strike_ii');assert.match(card.description,/396% ATK damage/);
 });
+test('fresh reset clears combat-quality diagnostics and live effects with the session state', async () => {
+ const { resetCombatSessionConditions } = await import('../web-runner/systems/combatSessionReset.mjs');
+ const globals={SessionLevelBuffState:{heroes:{fara:{}}},QaLastAstralFlowSpecial:{id:'chain_strike_ii'},LastAstralFlowSpecial:{id:'chain_strike_ii'},QaFixtureHeal:{ok:true},FlowOrbAudit:{roleRecipientUID:4},LastPartyChainStrike:{},PartyTempHPShield:9,PendingFlowThresholds:[{token:'flow-1-1'}],DawnChorusAttempted:1,DawnChorusSucceeded:1,DawnChorusOwnedRank:4,DawnChorusLastRoll:{},QaPreferredAstralFlowSpecialId:'faze'};
+ resetCombatSessionConditions(globals,{});for(const key of ['QaLastAstralFlowSpecial','LastAstralFlowSpecial','QaFixtureHeal','FlowOrbAudit','LastPartyChainStrike','PartyTempHPShield','DawnChorusAttempted','DawnChorusSucceeded','DawnChorusOwnedRank','DawnChorusLastRoll','QaPreferredAstralFlowSpecialId'])assert.equal(globals[key],undefined);assert.deepEqual(globals.PendingFlowThresholds,[]);
+});

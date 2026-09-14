@@ -60,3 +60,13 @@ test('live Kaja alias earns one Comrade AF award through the native enemy damage
  assert.equal(g.FlowOrbAudit.roleRecipientUID,4);
  assert.equal(g.FlowOrbAudit.roleAwardCount,2,'Falie Stoic and Kaja Comrade each receive one legal role award');
 });
+
+test('live initialized names keep Comrade AF on Kojonn even when Huun carries a stale flowMode',()=>{
+ const fara={uid:1,kind:'hero',name:'Falie',baseHeroName:'Falie',role:'Tank',hp:82,maxHP:82,flow:0,flowMode:'Stoic',stats:{DEF:1},statuses:[]};
+ const hondo={uid:2,kind:'hero',name:'Huun',baseHeroName:'Huun',role:'Damage',hp:35,maxHP:35,flow:0,flowMode:'Comrade',stats:{DEF:1},statuses:[]};
+ const runa={uid:3,kind:'hero',name:'Runa',baseHeroName:'Runa',role:'Control',hp:30,maxHP:30,flow:0,flowMode:'Tactician',stats:{DEF:1},statuses:[]};
+ const kaja={uid:4,kind:'hero',name:'Kojonn',baseHeroName:'Kojonn',role:'Support / Guardian',hp:40,maxHP:40,flow:0,flowMode:'Warrior',stats:{DEF:1},statuses:[]};
+ const gobloc={uid:19,kind:'enemy',name:'High Gobloc',hp:40,maxHP:40,stats:{ATK:1},statuses:[]}; const g={CombatSessionId:41,DamageTexts:[]};
+ const ctx={state:{globals:g,entities:[fara,hondo,runa,kaja,gobloc]},callFunction(name,...args){if(name==='CalculateDamage')return 2;if(name==='ApplyDamageToTarget'){const target=ctx.state.entities.find(a=>a.uid===args[0]);target.hp=Math.max(0,target.hp-args[1]);return args[1];}if(name==='GetEnemyRosterStability')return {stable:true};if(name==='SpawnDamageText')g.DamageTexts.push(args);}};
+ assert.equal(commands.resolveIncomingNativeHit(ctx,gobloc,fara,62),true);assert.equal(fara.hp,20);assert.equal(hondo.flow,0);assert.equal(kaja.flow,10);assert.equal(g.FlowOrbAudit.roleRecipientUID,4);
+});
