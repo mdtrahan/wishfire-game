@@ -2260,6 +2260,7 @@ async function main(){
         pulseTargets: (state.globals.ArcanePulseVisuals || []).map(row => Number(row?.targetUID || 0)),
         fazeZones: (state.globals.TaintedGroundZones || []).map(row => Number(row?.targetUID || row?.enemyUID || 0)),
       },
+      enemyLowHp: state.globals.QaEnemyLowHpFixture || null,
       kajaAF: { ...kajaAudit, enemyDeathGemCount: Number(state.globals.FlowOrbAudit?.queuedEnemyDeathCount || 0) },
       dawnChorus: { requiredOrder: 'rank → forced roll → defeat', rollArmed: !!state.globals.QaDawnRollArmed, ownedRank: Number(state.globals.DawnChorusOwnedRank || 0), chance: Number(state.globals.DawnChorusLastRoll?.chance || 0), attempted: Number(state.globals.DawnChorusAttempted || 0), succeeded: Number(state.globals.DawnChorusSucceeded || 0), revived: state.entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0).map(actor => ({ uid: Number(actor.uid || 0), hp: Number(actor.hp || 0) })), rng: state.globals.DawnChorusLastRoll || null },
     };

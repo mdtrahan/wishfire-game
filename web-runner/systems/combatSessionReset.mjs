@@ -46,7 +46,7 @@ export function resetCombatSessionConditions(globals, gameState, { preserveSessi
   // QA readouts mirror live combat state and must never survive abandonment or
   // a fresh session. Encounter continuation deliberately retains session buffs.
   for (const key of [
-    'QaLastAstralFlowSpecial', 'LastAstralFlowSpecial', 'QaFixtureHeal', 'QaEnemyBasicHit',
+    'QaLastAstralFlowSpecial', 'LastAstralFlowSpecial', 'QaFixtureHeal', 'QaEnemyLowHpFixture', 'QaEnemyBasicHit',
     'FlowOrbAudit', 'QaKajaFlowAudit', 'LastPartyChainStrike', 'LastAstralFlowChainStrikeII',
     'PartyChainStrikeIIProcs', 'PartyChainStrikeIProcs', 'AstralFlowMagicFruitLast',
     'AstralFlowDestinyRegensByUID', 'LastCrimsonWard', 'QaDawnRollArmed',

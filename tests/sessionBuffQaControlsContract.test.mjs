@@ -11,6 +11,21 @@ const app = readFileSync(new URL('../web-runner/app.js', import.meta.url), 'utf8
 const devTooling = readFileSync(new URL('../web-runner/systems/devToolingRuntime.js', import.meta.url), 'utf8');
 const renderRuntime = readFileSync(new URL('../web-runner/systems/renderRuntime.js', import.meta.url), 'utf8');
 
+function extractExportedFunction(source, name) {
+  const start = source.indexOf(`export function ${name}`);
+  assert.notEqual(start, -1, `missing ${name}`);
+  const braceStart = source.indexOf(') {', start) + 2;
+  assert.ok(braceStart > 1, `missing body for ${name}`);
+  let depth = 0;
+  for (let index = braceStart; index < source.length; index += 1) {
+    if (source[index] === '{') depth += 1;
+    if (source[index] === '}' && --depth === 0) return source.slice(start + 'export '.length, index + 1);
+  }
+  assert.fail(`unterminated ${name}`);
+}
+
+const applyQaEnemyLowHpFixture = new Function(`${extractExportedFunction(hooks, 'applyQaEnemyLowHpFixture')}; return applyQaEnemyLowHpFixture;`)();
+
 test('Quest-QA AF controls are query-gated and use production callback seams', () => {
   assert.match(hooks, /new URLSearchParams\(window\.location\.search\)\.get\('questQA'\) === '1'/);
   assert.match(hooks, /qaSetHeroFlowReady\(Number\(qaHero\(\)\?\.uid \|\| 0\), String\(specialSelect\.value \|\| ''\)\)/);
@@ -73,6 +88,7 @@ test('app-boundary QA sequence opens, selects, resets, and resumes Fara’s AF s
 
 test('Quest-QA rails retain the compact heal, Dawn, and combat diagnostics controls', () => {
   assert.match(hooks, /QA fixture heal/);
+  assert.match(hooks, /QA enemies 1 HP/);
   assert.match(hooks, /QA Dawn rank/);
   assert.match(hooks, /QA Dawn forced success/);
   assert.match(hooks, /QA Dawn forced equal/);
@@ -88,6 +104,53 @@ test('Quest-QA rails retain the compact heal, Dawn, and combat diagnostics contr
   assert.match(app, /dawnChorus: \{/);
   assert.match(app, /requiredOrder: 'rank → forced roll → defeat'/);
   assert.match(app, /if \(!state\.globals\.QaDawnRollArmed\) return \{ ok: false, reason: 'forcedRollRequired' \}/);
+});
+
+test('Quest-QA enemy low-HP fixture refuses invalid states without mutation', () => {
+  const entities = [{ uid: 1, kind: 'hero', hp: 20 }, { uid: 11, kind: 'enemy', hp: 30, maxHP: 30 }];
+  const snapshot = JSON.parse(JSON.stringify(entities));
+  assert.equal(applyQaEnemyLowHpFixture({ globals: {}, entities }).reason, 'scenarioNotPaused');
+  const paused = { QaScenarioPaused: 1, QaFixtureHoldTurn: 1, DevToolingPaused: 1 };
+  assert.equal(applyQaEnemyLowHpFixture({ globals: paused, entities, choiceActive: true }).reason, 'choiceActive');
+  assert.equal(applyQaEnemyLowHpFixture({ globals: { ...paused, ProgressionBattle: { outcome: 'defeat' } }, entities }).reason, 'defeatAlreadySettled');
+  assert.equal(applyQaEnemyLowHpFixture({ globals: paused, entities: [entities[0]] }).reason, 'noLivingEnemies');
+  assert.deepEqual(entities, snapshot);
+});
+
+test('Quest-QA enemy low-HP fixture changes only living enemy current HP and records evidence', () => {
+  const globals = {
+    QaScenarioPaused: 1, QaFixtureHoldTurn: 1, DevToolingPaused: 1,
+    FlowOrbs: [{ id: 8 }], FlowOrbAudit: { queuedEnemyDeathCount: 1 },
+    DamageTexts: [{ amount: 4 }], ChainStrikeVisuals: [{ id: 3 }], goldTotal: 12,
+  };
+  const entities = [
+    { uid: 1, kind: 'hero', hp: 20, maxHP: 20, flow: 40 },
+    { uid: 11, kind: 'enemy', hp: 30, maxHP: 30, x: 100, y: 40, name: 'A', isAlive: true, pendingOfficialDeath: 0 },
+    { uid: 12, kind: 'enemy', hp: 7, maxHP: 50, x: 120, y: 60, name: 'B', isAlive: true, pendingOfficialDeath: 0 },
+    { uid: 13, kind: 'enemy', hp: 0, maxHP: 80, x: 140, y: 80, name: 'C', isAlive: false, pendingOfficialDeath: 1 },
+  ];
+  const sideEffectsBefore = JSON.parse(JSON.stringify({
+    FlowOrbs: globals.FlowOrbs, FlowOrbAudit: globals.FlowOrbAudit, DamageTexts: globals.DamageTexts,
+    ChainStrikeVisuals: globals.ChainStrikeVisuals, goldTotal: globals.goldTotal,
+  }));
+  const result = applyQaEnemyLowHpFixture({ globals, entities });
+  assert.deepEqual(result, {
+    ok: true,
+    affectedUIDs: [11, 12],
+    hpChanges: [{ uid: 11, beforeHP: 30, afterHP: 1 }, { uid: 12, beforeHP: 7, afterHP: 1 }],
+  });
+  assert.deepEqual(entities, [
+    { uid: 1, kind: 'hero', hp: 20, maxHP: 20, flow: 40 },
+    { uid: 11, kind: 'enemy', hp: 1, maxHP: 30, x: 100, y: 40, name: 'A', isAlive: true, pendingOfficialDeath: 0 },
+    { uid: 12, kind: 'enemy', hp: 1, maxHP: 50, x: 120, y: 60, name: 'B', isAlive: true, pendingOfficialDeath: 0 },
+    { uid: 13, kind: 'enemy', hp: 0, maxHP: 80, x: 140, y: 80, name: 'C', isAlive: false, pendingOfficialDeath: 1 },
+  ]);
+  assert.deepEqual({
+    FlowOrbs: globals.FlowOrbs, FlowOrbAudit: globals.FlowOrbAudit, DamageTexts: globals.DamageTexts,
+    ChainStrikeVisuals: globals.ChainStrikeVisuals, goldTotal: globals.goldTotal,
+  }, sideEffectsBefore);
+  assert.deepEqual(globals.QaEnemyLowHpFixture, result);
+  assert.match(app, /enemyLowHp: state\.globals\.QaEnemyLowHpFixture \|\| null/);
 });
 test('Quest-QA enemy basic uses the production damage resolver and refuses active card choices', () => {
  const app=readFileSync(new URL('../web-runner/app.js',import.meta.url),'utf8');const hooks=readFileSync(new URL('../web-runner/systems/devBrowserTestHooks.js',import.meta.url),'utf8');
@@ -115,12 +178,12 @@ test('AF threshold offers ignore a stale generic QA fixture pool', () => {
 test('fresh combat reset clears prior QA effects while a new opening offer remains legitimate', () => {
   const globals = {
     CombatSessionId: 9, QaLastAstralFlowSpecial: { id: 'magic_fruit' }, LastAstralFlowSpecial: { id: 'chain_strike_ii' },
-    LastAstralFlowChainStrikeII: { hitCount: 3 }, LastCrimsonWard: { added: 40 }, QaEnemyBasicHit: { applied: 2 },
+    LastAstralFlowChainStrikeII: { hitCount: 3 }, LastCrimsonWard: { added: 40 }, QaEnemyLowHpFixture: { affectedUIDs: [11] }, QaEnemyBasicHit: { applied: 2 },
     FlowOrbAudit: { roleRecipientUID: 2 }, QaKajaFlowAudit: { count: 9 }, QaDawnRollArmed: 1, DawnChorusLastRoll: { chance: .1 },
     PartyTempHPShield: 18, LastPartyWardBarrierAbsorbed: 7, LastPartyWardBarrierHitUID: 4, PartyWardBarrierFadeOutUntil: 91,
   };
   resetCombatSessionConditions(globals, {});
-  for (const key of ['QaLastAstralFlowSpecial', 'LastAstralFlowSpecial', 'LastAstralFlowChainStrikeII', 'LastCrimsonWard', 'QaEnemyBasicHit', 'FlowOrbAudit', 'QaKajaFlowAudit', 'QaDawnRollArmed', 'DawnChorusLastRoll', 'PartyTempHPShield', 'LastPartyWardBarrierAbsorbed', 'LastPartyWardBarrierHitUID', 'PartyWardBarrierFadeOutUntil']) assert.equal(globals[key], undefined);
+  for (const key of ['QaLastAstralFlowSpecial', 'LastAstralFlowSpecial', 'LastAstralFlowChainStrikeII', 'LastCrimsonWard', 'QaEnemyLowHpFixture', 'QaEnemyBasicHit', 'FlowOrbAudit', 'QaKajaFlowAudit', 'QaDawnRollArmed', 'DawnChorusLastRoll', 'PartyTempHPShield', 'LastPartyWardBarrierAbsorbed', 'LastPartyWardBarrierHitUID', 'PartyWardBarrierFadeOutUntil']) assert.equal(globals[key], undefined);
   const party = [{ uid: 1, kind: 'hero', heroInstanceKey: 'falie#1', baseHeroName: 'Falie', hp: 40, maxHP: 40 }];
   globals.RuntimeRandom = () => 0;
   beginFreshSessionBuffQueue(globals, party);

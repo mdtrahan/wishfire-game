@@ -30,6 +30,20 @@ export function computeQuestQaControlLayout({ viewportWidth, canvasLeft, canvasR
   };
 }
 
+export function applyQaEnemyLowHpFixture({ globals = {}, entities = [], choiceActive = false } = {}) {
+  if (!(globals.QaScenarioPaused && globals.QaFixtureHoldTurn && globals.DevToolingPaused)) return { ok: false, reason: 'scenarioNotPaused' };
+  if (choiceActive) return { ok: false, reason: 'choiceActive' };
+  const heroes = entities.filter(actor => actor?.kind === 'hero');
+  if (globals.ProgressionBattle?.outcome === 'defeat' || (heroes.length > 0 && heroes.every(hero => Number(hero.hp || 0) <= 0))) return { ok: false, reason: 'defeatAlreadySettled' };
+  const enemies = entities.filter(actor => actor?.kind === 'enemy' && Number(actor.hp || 0) > 0 && actor.isAlive !== false && !Number(actor.pendingOfficialDeath || 0));
+  if (!enemies.length) return { ok: false, reason: 'noLivingEnemies' };
+  const hpChanges = enemies.map(enemy => ({ uid: Number(enemy.uid || 0), beforeHP: Number(enemy.hp || 0), afterHP: 1 }));
+  for (const enemy of enemies) enemy.hp = 1;
+  const result = { ok: true, affectedUIDs: hpChanges.map(change => change.uid), hpChanges };
+  globals.QaEnemyLowHpFixture = result;
+  return result;
+}
+
 // The production-derived stream for this encounter seed keeps its first eight
 // draws below the 20% QA proc threshold. Fixture setup can consume draws while
 // closing a prior phase, so this still exercises the normal chance resolver
@@ -1005,6 +1019,12 @@ export function registerDevBrowserTestHooks({
         const result = typeof qaFixtureHeal === 'function' ? qaFixtureHeal() : { ok: false, reason: 'missingProductionHealEntryPoint' };
         renderAfReadout(`fixture heal: ${result.ok ? 'ok' : result.reason || 'failed'}`);
         if (!result.ok) throw new Error(`QA fixture heal failed: ${result.reason || 'unknown'}`);
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
+      ['QA enemies 1 HP', () => {
+        const detail = typeof qaReadSessionBuffState === 'function' ? qaReadSessionBuffState() : {};
+        const result = applyQaEnemyLowHpFixture({ globals: state.globals, entities: state.entities, choiceActive: Array.isArray(detail.offerIds) && detail.offerIds.length > 0 });
+        renderAfReadout(`enemies 1 HP: ${result.ok ? result.affectedUIDs.join(',') : result.reason || 'refused'}`);
         if (typeof drawFrame === 'function') drawFrame();
       }],
       ['QA Dawn rank', () => {
