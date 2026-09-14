@@ -488,7 +488,7 @@
           "reading": "Magic offense and speed create higher threat despite lower durability."
         }
       ],
-      "bands": {"routine":[0.45,0.60],"hard":[0.61,0.75],"elite":[0.76,0.90],"boss":[0.91,1.05],"aboveBossOptInCatalogOnlyPendingReview":[1.06,1.12]},
+      "bands": {"routine":[0.25,0.35],"hard":[0.61,0.75],"elite":[0.76,0.90],"boss":[0.91,1.05],"aboveBossOptInCatalogOnlyPendingReview":[1.06,1.12]},
       "level1MixedExample": {"status":"withdrawn; regenerate under approved safety bands"}
     },
     "damageMatricesLevel1": {"status":"replaced by acceptance targets", "routineHardEnemyBasicDamage":[1,4], "routineMaxTargetHPFraction":0.05, "doubleDigits":"elite/boss only; telegraph required above 12% target max HP"},

@@ -18,6 +18,7 @@ async function loadEncounterHelpers() {
   const script = `${transformed}
 module.exports = {
   buildEncounterByBudget,
+  computeEncounterTotalCP,
   normalizeBiomeTags,
   normalizeEnemyRole,
   normalizeFaction,
@@ -115,6 +116,22 @@ test('canonical EncounterCP derives fresh-start encounter appearances without au
   const pct = (name) => counts[name] / totalSlots;
   assert.ok(pct('Skeleton') > 0, 'catalog candidates remain selectable');
   assert.ok(Object.values(counts).reduce((sum, value) => sum + value, 0) <= totalSlots);
-  const bounded = helpers.buildEncounterByBudget({pool:rows,targetCP:120,partyCP:240,locale:'clouds',maxSlots:3,policy:'mixed',seed:77});
-  assert.ok(bounded.finalCP / 240 >= .45 && bounded.finalCP / 240 <= .60, `routine ratio ${bounded.finalCP / 240}`);
+  const { scaleRoutineEnemy } = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'routineEnemyScaling.mjs')).href);
+  const { computeCombatPower:canonicalCombatPower } = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'combatPower.mjs')).href);
+  const { HERO_DEFINITIONS } = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'heroDefinitions.mjs')).href);
+  const { levelStats } = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'heroProgression.mjs')).href);
+  const productionRows = rows.map((rawRow) => {
+    const row = scaleRoutineEnemy(rawRow, 1);
+    return { ...row, CombatPower:helpers.resolveEnemyEncounterCombatPower(row) };
+  });
+  const heroCP = Object.values(HERO_DEFINITIONS).map((definition) => {
+    const { HP, ...stats } = levelStats({ baseHeroName:definition.key, currentLevel:1, equipmentStats:{} });
+    return { combatPower:canonicalCombatPower({ stats, maxHP:HP, currentLevel:1 }) };
+  });
+  const partyCP = helpers.computeEncounterTotalCP(heroCP);
+  const targetCP = partyCP * .30;
+  const bounded = helpers.buildEncounterByBudget({pool:productionRows,targetCP,partyCP,locale:'clouds',maxSlots:3,policy:'mixed',seed:77});
+  assert.ok(bounded.finalCP / partyCP >= .25 && bounded.finalCP / partyCP <= .35, `routine party ratio ${bounded.finalCP / partyCP}`);
+  assert.ok(bounded.finalCP / targetCP >= .85 && bounded.finalCP / targetCP <= 1.15, `routine target fill ${bounded.finalCP / targetCP}`);
+  assert.equal(bounded.reasonCodes.includes('outside_routine_cp_band'), false);
 });

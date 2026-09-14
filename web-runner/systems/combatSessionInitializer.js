@@ -238,7 +238,7 @@ export function buildEncounterByBudget({
 
   const finalCP = computeEncounterTotalCP(selected);
   const routineRatio = Number(partyCP) > 0 ? finalCP / Number(partyCP) : 0;
-  const outsideRoutineBand = normalizedPolicy === 'mixed' && Number(partyCP) > 0 && (routineRatio < 0.45 || routineRatio > 0.60);
+  const outsideRoutineBand = normalizedPolicy === 'mixed' && Number(partyCP) > 0 && (routineRatio < 0.25 || routineRatio > 0.35);
   const underfilled = selected.length < slots || finalCP < target || outsideRoutineBand;
   if (selected.length < slots) reasonCodes.push('underfilled_slots');
   if (finalCP < target) reasonCodes.push('underfilled_cp');
@@ -412,7 +412,7 @@ export function createCombatSessionInitializer({
       const startingPartyCP = computeEncounterTotalCP(heroes.map(hero => ({ combatPower: computeCombatPower(hero) })));
       const encounterRequest = {
         pool: mappedEnemyData,
-        targetCP: Number(state.globals.EncounterTargetCP || (startingPartyCP * 0.52)),
+        targetCP: Number(state.globals.EncounterTargetCP || (startingPartyCP * 0.30)),
         partyCP: startingPartyCP,
         locale: String(state.globals.EncounterLocale || state.globals.CurrentLocale || 'clouds'),
         maxSlots: Number(state.globals.EncounterMaxSlots || 3),

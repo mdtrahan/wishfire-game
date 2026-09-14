@@ -30,6 +30,7 @@ async function initialize(heroMembers, escortMember = null, withEnemy = false) {
     ...require('../web-runner/src/core/heroProgression.mjs'),
     ...require('../web-runner/src/core/personalFlow.mjs'),
     ...require('../web-runner/src/core/sessionLevelUpQueue.mjs'),
+    ...require('../web-runner/src/core/routineEnemyScaling.mjs'),
     DEV_TOOL_EMPTY_SLOT: '', DEV_TOOL_RANDOM_ENEMY_SLOT: '__RANDOM__',
     runtimeDebugLogging: { startupDebugLog() {} },
   };

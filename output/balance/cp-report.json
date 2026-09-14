@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "levels": [
     1,
     2,
@@ -106,14 +106,14 @@
       "level": 1,
       "stats": {
         "HP": 45,
-        "ATK": 3,
+        "ATK": 2,
         "DEF": 4,
-        "MAG": 3,
+        "MAG": 2,
         "RES": 4,
         "SPD": 7
       },
-      "baseCP": 22.4,
-      "currentCP": 22.4
+      "baseCP": 21.2,
+      "currentCP": 21.2
     },
     {
       "id": "hard-1",
@@ -226,14 +226,14 @@
       "level": 2,
       "stats": {
         "HP": 47,
-        "ATK": 3,
+        "ATK": 2,
         "DEF": 4,
-        "MAG": 3,
+        "MAG": 2,
         "RES": 4,
         "SPD": 7
       },
-      "baseCP": 22.8,
-      "currentCP": 22.8
+      "baseCP": 21.5,
+      "currentCP": 21.5
     },
     {
       "id": "hard-2",
@@ -346,14 +346,14 @@
       "level": 3,
       "stats": {
         "HP": 50,
-        "ATK": 3,
+        "ATK": 2,
         "DEF": 4,
-        "MAG": 3,
+        "MAG": 2,
         "RES": 4,
         "SPD": 7
       },
-      "baseCP": 23.4,
-      "currentCP": 23.4
+      "baseCP": 22.2,
+      "currentCP": 22.2
     },
     {
       "id": "hard-3",
@@ -466,14 +466,14 @@
       "level": 4,
       "stats": {
         "HP": 53,
-        "ATK": 3,
+        "ATK": 2,
         "DEF": 4,
-        "MAG": 3,
+        "MAG": 2,
         "RES": 4,
         "SPD": 8
       },
-      "baseCP": 25.3,
-      "currentCP": 25.3
+      "baseCP": 23.9,
+      "currentCP": 23.9
     },
     {
       "id": "hard-4",
@@ -586,14 +586,14 @@
       "level": 5,
       "stats": {
         "HP": 55,
-        "ATK": 3,
+        "ATK": 2,
         "DEF": 4,
-        "MAG": 3,
+        "MAG": 2,
         "RES": 4,
         "SPD": 8
       },
-      "baseCP": 25.7,
-      "currentCP": 25.7
+      "baseCP": 24.3,
+      "currentCP": 24.3
     },
     {
       "id": "hard-5",
@@ -706,14 +706,14 @@
       "level": 6,
       "stats": {
         "HP": 58,
-        "ATK": 3,
+        "ATK": 2,
         "DEF": 5,
-        "MAG": 3,
+        "MAG": 2,
         "RES": 5,
         "SPD": 9
       },
-      "baseCP": 28.1,
-      "currentCP": 28.1
+      "baseCP": 26.6,
+      "currentCP": 26.6
     },
     {
       "id": "hard-6",
@@ -826,14 +826,14 @@
       "level": 7,
       "stats": {
         "HP": 61,
-        "ATK": 4,
+        "ATK": 2,
         "DEF": 5,
-        "MAG": 4,
+        "MAG": 2,
         "RES": 5,
         "SPD": 9
       },
-      "baseCP": 30.3,
-      "currentCP": 30.3
+      "baseCP": 27.2,
+      "currentCP": 27.2
     },
     {
       "id": "hard-7",
@@ -946,14 +946,14 @@
       "level": 8,
       "stats": {
         "HP": 63,
-        "ATK": 4,
+        "ATK": 2,
         "DEF": 5,
-        "MAG": 4,
+        "MAG": 2,
         "RES": 5,
         "SPD": 9
       },
-      "baseCP": 30.6,
-      "currentCP": 30.6
+      "baseCP": 27.6,
+      "currentCP": 27.6
     },
     {
       "id": "hard-8",
@@ -1066,14 +1066,14 @@
       "level": 9,
       "stats": {
         "HP": 66,
-        "ATK": 4,
+        "ATK": 2,
         "DEF": 5,
-        "MAG": 4,
+        "MAG": 2,
         "RES": 5,
         "SPD": 10
       },
-      "baseCP": 32.7,
-      "currentCP": 32.7
+      "baseCP": 29.4,
+      "currentCP": 29.4
     },
     {
       "id": "hard-9",
@@ -1186,14 +1186,14 @@
       "level": 91,
       "stats": {
         "HP": 288,
-        "ATK": 19,
+        "ATK": 12,
         "DEF": 25,
-        "MAG": 19,
+        "MAG": 12,
         "RES": 25,
         "SPD": 44
       },
-      "baseCP": 147.6,
-      "currentCP": 147.6
+      "baseCP": 128.3,
+      "currentCP": 128.3
     },
     {
       "id": "hard-91",
@@ -1306,14 +1306,14 @@
       "level": 92,
       "stats": {
         "HP": 290,
-        "ATK": 19,
+        "ATK": 12,
         "DEF": 25,
-        "MAG": 19,
+        "MAG": 12,
         "RES": 25,
         "SPD": 45
       },
-      "baseCP": 148.1,
-      "currentCP": 148.1
+      "baseCP": 128.7,
+      "currentCP": 128.7
     },
     {
       "id": "hard-92",
@@ -1426,14 +1426,14 @@
       "level": 93,
       "stats": {
         "HP": 293,
-        "ATK": 19,
+        "ATK": 13,
         "DEF": 26,
-        "MAG": 19,
+        "MAG": 13,
         "RES": 26,
         "SPD": 45
       },
-      "baseCP": 149.3,
-      "currentCP": 149.3
+      "baseCP": 132.7,
+      "currentCP": 132.7
     },
     {
       "id": "hard-93",
@@ -1546,14 +1546,14 @@
       "level": 94,
       "stats": {
         "HP": 296,
-        "ATK": 19,
+        "ATK": 13,
         "DEF": 26,
-        "MAG": 19,
+        "MAG": 13,
         "RES": 26,
         "SPD": 46
       },
-      "baseCP": 150,
-      "currentCP": 150
+      "baseCP": 133.5,
+      "currentCP": 133.5
     },
     {
       "id": "hard-94",
@@ -1666,14 +1666,14 @@
       "level": 95,
       "stats": {
         "HP": 298,
-        "ATK": 19,
+        "ATK": 13,
         "DEF": 26,
-        "MAG": 19,
+        "MAG": 13,
         "RES": 26,
         "SPD": 46
       },
-      "baseCP": 150.5,
-      "currentCP": 150.5
+      "baseCP": 133.9,
+      "currentCP": 133.9
     },
     {
       "id": "hard-95",
@@ -1786,14 +1786,14 @@
       "level": 96,
       "stats": {
         "HP": 301,
-        "ATK": 20,
+        "ATK": 13,
         "DEF": 26,
-        "MAG": 20,
+        "MAG": 13,
         "RES": 26,
         "SPD": 46
       },
-      "baseCP": 154,
-      "currentCP": 154
+      "baseCP": 134.7,
+      "currentCP": 134.7
     },
     {
       "id": "hard-96",
@@ -1906,14 +1906,14 @@
       "level": 97,
       "stats": {
         "HP": 304,
-        "ATK": 20,
+        "ATK": 13,
         "DEF": 27,
-        "MAG": 20,
+        "MAG": 13,
         "RES": 27,
         "SPD": 47
       },
-      "baseCP": 155.2,
-      "currentCP": 155.2
+      "baseCP": 135.9,
+      "currentCP": 135.9
     },
     {
       "id": "hard-97",
@@ -2026,14 +2026,14 @@
       "level": 98,
       "stats": {
         "HP": 306,
-        "ATK": 20,
+        "ATK": 13,
         "DEF": 27,
-        "MAG": 20,
+        "MAG": 13,
         "RES": 27,
         "SPD": 47
       },
-      "baseCP": 155.7,
-      "currentCP": 155.7
+      "baseCP": 136.3,
+      "currentCP": 136.3
     },
     {
       "id": "hard-98",
@@ -2146,14 +2146,14 @@
       "level": 99,
       "stats": {
         "HP": 309,
-        "ATK": 20,
+        "ATK": 13,
         "DEF": 27,
-        "MAG": 20,
+        "MAG": 13,
         "RES": 27,
         "SPD": 48
       },
-      "baseCP": 156.4,
-      "currentCP": 156.4
+      "baseCP": 137.1,
+      "currentCP": 137.1
     },
     {
       "id": "hard-99",
@@ -2209,7 +2209,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 5,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -2362,7 +2362,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 9,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -2434,7 +2434,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 6,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -2497,7 +2497,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 5,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -2650,7 +2650,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 9,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -2722,7 +2722,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 6,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -2794,7 +2794,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 4,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -2938,7 +2938,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 10,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -3082,7 +3082,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 4,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -3226,7 +3226,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 11,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -3289,7 +3289,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 4,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -3370,7 +3370,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 4,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -3577,7 +3577,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 4,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -3658,7 +3658,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 4,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -3865,7 +3865,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 4,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -3946,7 +3946,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 4,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -4090,7 +4090,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 13,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -4153,7 +4153,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 4,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -4234,7 +4234,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 4,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -4378,7 +4378,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 14,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -4441,7 +4441,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 4,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -4522,7 +4522,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 5,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -4585,7 +4585,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 14,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -4729,7 +4729,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 5,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -4801,7 +4801,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 18,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -4873,7 +4873,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 45,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -4882,7 +4882,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 8,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -4945,7 +4945,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 8,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -4954,7 +4954,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 45,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -5026,7 +5026,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 30,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -5089,7 +5089,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 18,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -5161,7 +5161,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 46,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -5170,7 +5170,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 8,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -5233,7 +5233,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 8,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -5242,7 +5242,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 46,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -5314,7 +5314,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 30,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -5377,7 +5377,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 18,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -5449,7 +5449,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 45,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -5521,7 +5521,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 8,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -5602,7 +5602,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 30,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -5665,7 +5665,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 18,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -5737,7 +5737,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 45,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -5809,7 +5809,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 8,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -5890,7 +5890,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 30,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -5953,7 +5953,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 18,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -6025,7 +6025,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 46,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -6097,7 +6097,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 8,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -6178,7 +6178,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 31,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -6241,7 +6241,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 19,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -6313,7 +6313,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 46,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -6385,7 +6385,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 8,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -6466,7 +6466,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 31,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -6529,7 +6529,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 18,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -6601,7 +6601,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 46,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -6673,7 +6673,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 8,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -6754,7 +6754,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 31,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -6817,7 +6817,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 19,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -6889,7 +6889,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 46,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -6961,7 +6961,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 8,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -6970,7 +6970,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 46,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -7042,7 +7042,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 31,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -7105,7 +7105,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 19,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -7177,7 +7177,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 46,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -7249,7 +7249,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 8,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "same_level",
@@ -7258,7 +7258,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 46,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -7330,7 +7330,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 31,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "same_level",
@@ -7394,7 +7394,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 5,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "cross_level",
@@ -7474,7 +7474,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 8,
-      "enemyDamage": 4
+      "enemyDamage": 3
     },
     {
       "surface": "cross_level",
@@ -7484,7 +7484,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 3,
-      "enemyDamage": 4
+      "enemyDamage": 3
     },
     {
       "surface": "cross_level",
@@ -7554,7 +7554,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 3,
-      "enemyDamage": 4
+      "enemyDamage": 3
     },
     {
       "surface": "cross_level",
@@ -7564,7 +7564,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 8,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "cross_level",
@@ -7644,7 +7644,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 6,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "cross_level",
@@ -7794,7 +7794,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 15,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "cross_level",
@@ -8034,7 +8034,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 17,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "cross_level",
@@ -8114,7 +8114,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 43,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "cross_level",
@@ -8194,7 +8194,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 7,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "cross_level",
@@ -8284,7 +8284,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 29,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "cross_level",
@@ -8354,7 +8354,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 20,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "cross_level",
@@ -8434,7 +8434,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 49,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "cross_level",
@@ -8444,7 +8444,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 8,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "cross_level",
@@ -8514,7 +8514,7 @@
       "enemy": "routine",
       "path": "physical",
       "heroDamage": 8,
-      "enemyDamage": 3
+      "enemyDamage": 2
     },
     {
       "surface": "cross_level",
@@ -8524,7 +8524,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 49,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "cross_level",
@@ -8604,7 +8604,7 @@
       "enemy": "routine",
       "path": "magic",
       "heroDamage": 33,
-      "enemyDamage": 2
+      "enemyDamage": 1
     },
     {
       "surface": "cross_level",
@@ -8815,7 +8815,7 @@
       "maxLinkedBurst": 0,
       "linkedActions": 0,
       "enemyBurstByHero": {
-        "Fara": 4,
+        "Fara": 3,
         "Hondo": 0,
         "Runa": 0,
         "Kaja": 0
@@ -8951,7 +8951,7 @@
       "maxLinkedBurst": 0,
       "linkedActions": 0,
       "enemyBurstByHero": {
-        "Fara": 4,
+        "Fara": 3,
         "Hondo": 0,
         "Runa": 0,
         "Kaja": 0
@@ -9104,7 +9104,7 @@
       "maxLinkedBurst": 0,
       "linkedActions": 0,
       "enemyBurstByHero": {
-        "Fara": 4,
+        "Fara": 3,
         "Hondo": 0,
         "Runa": 0,
         "Kaja": 0
@@ -9240,7 +9240,7 @@
       "maxLinkedBurst": 0,
       "linkedActions": 0,
       "enemyBurstByHero": {
-        "Fara": 4,
+        "Fara": 3,
         "Hondo": 0,
         "Runa": 0,
         "Kaja": 0
@@ -9376,7 +9376,7 @@
       "maxLinkedBurst": 0,
       "linkedActions": 0,
       "enemyBurstByHero": {
-        "Fara": 4,
+        "Fara": 3,
         "Hondo": 0,
         "Runa": 0,
         "Kaja": 0
@@ -9512,7 +9512,7 @@
       "maxLinkedBurst": 0,
       "linkedActions": 0,
       "enemyBurstByHero": {
-        "Fara": 4,
+        "Fara": 3,
         "Hondo": 0,
         "Runa": 0,
         "Kaja": 0
@@ -9648,7 +9648,7 @@
       "maxLinkedBurst": 0,
       "linkedActions": 0,
       "enemyBurstByHero": {
-        "Fara": 4,
+        "Fara": 3,
         "Hondo": 0,
         "Runa": 0,
         "Kaja": 0
@@ -9784,7 +9784,7 @@
       "maxLinkedBurst": 0,
       "linkedActions": 0,
       "enemyBurstByHero": {
-        "Fara": 4,
+        "Fara": 3,
         "Hondo": 0,
         "Runa": 0,
         "Kaja": 0
@@ -9903,7 +9903,7 @@
       "maxLinkedBurst": 0,
       "linkedActions": 0,
       "enemyBurstByHero": {
-        "Fara": 3,
+        "Fara": 2,
         "Hondo": 0,
         "Runa": 0,
         "Kaja": 0
@@ -10039,7 +10039,7 @@
       "maxLinkedBurst": 0,
       "linkedActions": 0,
       "enemyBurstByHero": {
-        "Fara": 3,
+        "Fara": 2,
         "Hondo": 0,
         "Runa": 0,
         "Kaja": 0
@@ -10175,7 +10175,7 @@
       "maxLinkedBurst": 0,
       "linkedActions": 0,
       "enemyBurstByHero": {
-        "Fara": 3,
+        "Fara": 2,
         "Hondo": 0,
         "Runa": 0,
         "Kaja": 0
@@ -10311,7 +10311,7 @@
       "maxLinkedBurst": 0,
       "linkedActions": 0,
       "enemyBurstByHero": {
-        "Fara": 3,
+        "Fara": 2,
         "Hondo": 0,
         "Runa": 0,
         "Kaja": 0
@@ -10447,7 +10447,7 @@
       "maxLinkedBurst": 0,
       "linkedActions": 0,
       "enemyBurstByHero": {
-        "Fara": 3,
+        "Fara": 2,
         "Hondo": 0,
         "Runa": 0,
         "Kaja": 0
@@ -10583,7 +10583,7 @@
       "maxLinkedBurst": 0,
       "linkedActions": 0,
       "enemyBurstByHero": {
-        "Fara": 3,
+        "Fara": 2,
         "Hondo": 0,
         "Runa": 0,
         "Kaja": 0
@@ -10719,7 +10719,7 @@
       "maxLinkedBurst": 0,
       "linkedActions": 0,
       "enemyBurstByHero": {
-        "Fara": 3,
+        "Fara": 2,
         "Hondo": 0,
         "Runa": 0,
         "Kaja": 0
@@ -10855,7 +10855,7 @@
       "maxLinkedBurst": 0,
       "linkedActions": 0,
       "enemyBurstByHero": {
-        "Fara": 3,
+        "Fara": 2,
         "Hondo": 0,
         "Runa": 0,
         "Kaja": 0
@@ -10991,7 +10991,7 @@
       "maxLinkedBurst": 0,
       "linkedActions": 0,
       "enemyBurstByHero": {
-        "Fara": 3,
+        "Fara": 2,
         "Hondo": 0,
         "Runa": 0,
         "Kaja": 0
@@ -11117,6 +11117,228 @@
       }
     }
   ],
+  "productionMetrics": [
+    {
+      "level": 1,
+      "seeds": 256,
+      "catalogRows": 10,
+      "packSlots": {
+        "min": 3,
+        "median": 3,
+        "max": 3
+      },
+      "partyCpRatio": {
+        "min": 0.2769,
+        "median": 0.2769,
+        "max": 0.2769
+      },
+      "targetFillRatio": {
+        "min": 0.923,
+        "median": 0.923,
+        "max": 0.923
+      },
+      "hostileOrdinaryHit": {
+        "min": 2,
+        "median": 3,
+        "max": 3
+      },
+      "firstEnemyKoAction": {
+        "min": 10,
+        "median": 10,
+        "max": 11
+      },
+      "firstEnemyKoPartyCycle": {
+        "min": 2,
+        "median": 2,
+        "max": 2
+      },
+      "totalActions": {
+        "min": 27,
+        "median": 28,
+        "max": 30
+      },
+      "winRate": 1,
+      "heroCasualtyRate": 0,
+      "typicalHeroCasualties": 0,
+      "linkedActions": 0
+    },
+    {
+      "level": 5,
+      "seeds": 32,
+      "catalogRows": 10,
+      "packSlots": {
+        "min": 3,
+        "median": 3,
+        "max": 3
+      },
+      "partyCpRatio": {
+        "min": 0.2268,
+        "median": 0.2268,
+        "max": 0.2268
+      },
+      "targetFillRatio": {
+        "min": 0.7561,
+        "median": 0.7561,
+        "max": 0.7561
+      },
+      "hostileOrdinaryHit": {
+        "min": 2,
+        "median": 2.5,
+        "max": 3
+      },
+      "firstEnemyKoAction": {
+        "min": 10,
+        "median": 10,
+        "max": 10
+      },
+      "firstEnemyKoPartyCycle": {
+        "min": 2,
+        "median": 2,
+        "max": 2
+      },
+      "totalActions": {
+        "min": 27,
+        "median": 27,
+        "max": 27
+      },
+      "winRate": 1,
+      "heroCasualtyRate": 0,
+      "typicalHeroCasualties": 0,
+      "linkedActions": 0
+    },
+    {
+      "level": 9,
+      "seeds": 32,
+      "catalogRows": 10,
+      "packSlots": {
+        "min": 3,
+        "median": 3,
+        "max": 3
+      },
+      "partyCpRatio": {
+        "min": 0.2086,
+        "median": 0.2086,
+        "max": 0.2086
+      },
+      "targetFillRatio": {
+        "min": 0.6955,
+        "median": 0.6955,
+        "max": 0.6955
+      },
+      "hostileOrdinaryHit": {
+        "min": 2,
+        "median": 2,
+        "max": 3
+      },
+      "firstEnemyKoAction": {
+        "min": 9,
+        "median": 10,
+        "max": 10
+      },
+      "firstEnemyKoPartyCycle": {
+        "min": 2,
+        "median": 2,
+        "max": 2
+      },
+      "totalActions": {
+        "min": 22,
+        "median": 27,
+        "max": 27
+      },
+      "winRate": 1,
+      "heroCasualtyRate": 0,
+      "typicalHeroCasualties": 0,
+      "linkedActions": 0
+    },
+    {
+      "level": 91,
+      "seeds": 32,
+      "catalogRows": 10,
+      "packSlots": {
+        "min": 3,
+        "median": 3,
+        "max": 3
+      },
+      "partyCpRatio": {
+        "min": 0.1665,
+        "median": 0.1665,
+        "max": 0.1665
+      },
+      "targetFillRatio": {
+        "min": 0.555,
+        "median": 0.555,
+        "max": 0.555
+      },
+      "hostileOrdinaryHit": {
+        "min": 1,
+        "median": 2,
+        "max": 2
+      },
+      "firstEnemyKoAction": {
+        "min": 10,
+        "median": 10,
+        "max": 11
+      },
+      "firstEnemyKoPartyCycle": {
+        "min": 2,
+        "median": 2,
+        "max": 2
+      },
+      "totalActions": {
+        "min": 28,
+        "median": 31,
+        "max": 31
+      },
+      "winRate": 1,
+      "heroCasualtyRate": 0,
+      "typicalHeroCasualties": 0,
+      "linkedActions": 0
+    },
+    {
+      "level": 99,
+      "seeds": 32,
+      "catalogRows": 10,
+      "packSlots": {
+        "min": 3,
+        "median": 3,
+        "max": 3
+      },
+      "partyCpRatio": {
+        "min": 0.1711,
+        "median": 0.1711,
+        "max": 0.1711
+      },
+      "targetFillRatio": {
+        "min": 0.5702,
+        "median": 0.5702,
+        "max": 0.5702
+      },
+      "hostileOrdinaryHit": {
+        "min": 1,
+        "median": 2,
+        "max": 2
+      },
+      "firstEnemyKoAction": {
+        "min": 10,
+        "median": 10.5,
+        "max": 11
+      },
+      "firstEnemyKoPartyCycle": {
+        "min": 2,
+        "median": 2,
+        "max": 2
+      },
+      "totalActions": {
+        "min": 31,
+        "median": 31,
+        "max": 33
+      },
+      "winRate": 1,
+      "heroCasualtyRate": 0,
+      "typicalHeroCasualties": 0,
+      "linkedActions": 0
+    }
+  ],
   "speed": {
     "threshold": {
       "atTwoTimes": true,
@@ -11171,7 +11393,7 @@
       "level": 1,
       "tier": "routine",
       "hero": "Kaja",
-      "enemyCrit": 4,
+      "enemyCrit": 3,
       "heroCrit": 4,
       "linkedBurst": 8,
       "enemyHP": 45,
@@ -11325,7 +11547,7 @@
       "level": 9,
       "tier": "routine",
       "hero": "Hondo",
-      "enemyCrit": 4,
+      "enemyCrit": 3,
       "heroCrit": 17,
       "linkedBurst": 34,
       "enemyHP": 66,
@@ -11336,7 +11558,7 @@
       "level": 9,
       "tier": "routine",
       "hero": "Runa",
-      "enemyCrit": 4,
+      "enemyCrit": 3,
       "heroCrit": 5,
       "linkedBurst": 10,
       "enemyHP": 66,
@@ -11347,7 +11569,7 @@
       "level": 9,
       "tier": "routine",
       "hero": "Kaja",
-      "enemyCrit": 4,
+      "enemyCrit": 3,
       "heroCrit": 5,
       "linkedBurst": 10,
       "enemyHP": 66,
@@ -11490,7 +11712,7 @@
       "level": 91,
       "tier": "routine",
       "hero": "Fara",
-      "enemyCrit": 3,
+      "enemyCrit": 2,
       "heroCrit": 20,
       "linkedBurst": 40,
       "enemyHP": 288,
@@ -11501,7 +11723,7 @@
       "level": 91,
       "tier": "routine",
       "hero": "Hondo",
-      "enemyCrit": 4,
+      "enemyCrit": 3,
       "heroCrit": 52,
       "linkedBurst": 104,
       "enemyHP": 288,
@@ -11512,7 +11734,7 @@
       "level": 91,
       "tier": "routine",
       "hero": "Runa",
-      "enemyCrit": 4,
+      "enemyCrit": 3,
       "heroCrit": 9,
       "linkedBurst": 18,
       "enemyHP": 288,
@@ -11666,7 +11888,7 @@
       "level": 99,
       "tier": "routine",
       "hero": "Fara",
-      "enemyCrit": 3,
+      "enemyCrit": 2,
       "heroCrit": 22,
       "linkedBurst": 44,
       "enemyHP": 309,
@@ -11677,7 +11899,7 @@
       "level": 99,
       "tier": "routine",
       "hero": "Hondo",
-      "enemyCrit": 4,
+      "enemyCrit": 3,
       "heroCrit": 53,
       "linkedBurst": 106,
       "enemyHP": 309,
@@ -11688,7 +11910,7 @@
       "level": 99,
       "tier": "routine",
       "hero": "Runa",
-      "enemyCrit": 4,
+      "enemyCrit": 3,
       "heroCrit": 9,
       "linkedBurst": 18,
       "enemyHP": 309,

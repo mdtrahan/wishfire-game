@@ -348,7 +348,7 @@ These replace the withdrawn sample matrices. They are approval targets for the h
 
 | Surface | EncounterCP / starting-party BaseCP | Player-facing fixed-seed win rate with opening buffs | Enemy basic typical damage at L1 | Maximum single hostile action | Hero margin and recovery reading |
 |---|---:|---:|---:|---:|---|
-| Routine | 0.45–0.60 | 97–100% | 1–3 | 5% target max HP | Party reaches event recovery with three or more heroes alive in 95% of seeds. |
+| Routine | 0.25–0.35 | 97–100% | 1–3 | 5% target max HP | Party reaches event recovery with three or more heroes alive in 95% of seeds. |
 | Hard | 0.61–0.75 | 85–95% | 2–4 | 8% target max HP | Attrition is visible; story/event recovery repairs it before a failure spiral. |
 | Elite | 0.76–0.90 | 70–85% | 3–5 | 12% target max HP | Defeat is possible after poor build choices or sustained pressure. |
 | Boss | 0.91–1.05 | 60–75% | 3–6 | 18% target max HP, telegraphed above 12% | The intended session peak; no untelegraphed burst removes a healthy fragile hero. |
@@ -451,7 +451,7 @@ The extra gap from Runa's future control or status kit is added through `control
 
 | Encounter label | EncounterCP / starting party BaseCP |
 |---|---:|
-| Routine | 0.45–0.60 |
+| Routine | 0.25–0.35 |
 | Hard | 0.61–0.75 |
 | Elite | 0.76–0.90 |
 | Boss | 0.91–1.05 |
