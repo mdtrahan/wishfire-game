@@ -178,3 +178,38 @@ test('combat renderer and attack hit target consume shared transient sizing', ()
   assert.match(render, /selectorAsset \? selectorAsset\.width : 26/);
   assert.match(render, /const fontSize = computeCombatDamageFontSize\(\{/);
 });
+
+test('questQA controls use fixed side rails with a contained compact dock', () => {
+  const html = read('web-runner/index.html');
+  const hooks = read('web-runner/systems/devBrowserTestHooks.js');
+  const computeLayout = new Function(`${extractExportedFunction(hooks, 'computeQuestQaControlLayout')}; return computeQuestQaControlLayout;`)();
+
+  assert.deepEqual(computeLayout({ viewportWidth: 1068, canvasLeft: 286.5, canvasRight: 781.5 }), {
+    mode: 'rails', railWidth: 184, leftGutter: 286.5, rightGutter: 286.5,
+  });
+  assert.equal(computeLayout({ viewportWidth: 216, canvasLeft: 0, canvasRight: 216 }).mode, 'dock');
+  assert.equal(computeLayout({ viewportWidth: 316, canvasLeft: 31, canvasRight: 285 }).mode, 'dock');
+
+  assert.match(html, /\.quest-qa-controls\{[\s\S]*position:fixed;[\s\S]*z-index:9990;/);
+  assert.match(html, /\.quest-qa-controls\{[\s\S]*overflow:hidden;[\s\S]*pointer-events:none;/);
+  assert.match(html, /\.quest-qa-rail\{[\s\S]*overflow-x:hidden;[\s\S]*overflow-y:auto;/);
+  assert.match(html, /\.quest-qa-controls\[data-qa-layout="dock"\]\{[\s\S]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(html, /\.quest-qa-controls\[data-qa-layout="dock"\] \.quest-qa-rail\{[\s\S]*width:auto;[\s\S]*max-width:none;/);
+  assert.match(html, /\.dev2-diagnostics\{[\s\S]*z-index:10001;/);
+  assert.match(html, /<canvas id="view" width="360" height="640"><\/canvas>/);
+
+  assert.match(hooks, /controls\.id = 'quest-qa-controls';/);
+  assert.match(hooks, /controls\.className = 'quest-qa-controls';/);
+  assert.match(hooks, /controls\.dataset\.qaLayout = 'dock';/);
+  assert.match(hooks, /leftRail\.className = 'quest-qa-rail quest-qa-rail-left';/);
+  assert.match(hooks, /rightRail\.className = 'quest-qa-rail quest-qa-rail-right';/);
+  assert.match(hooks, /leftRail\.append\(heroSelect, tierSelect, cardSelect, fixtureSelect, specialSelect, \.\.\.qaButtons\.slice\(0, 10\)\);/);
+  assert.match(hooks, /rightRail\.append\(afReadout, \.\.\.qaButtons\.slice\(10\)\);/);
+  assert.match(hooks, /controls\.append\(leftRail, rightRail\);/);
+  assert.match(hooks, /canvas\?\.getBoundingClientRect\?\.\(\)/);
+  assert.match(hooks, /const layout = computeQuestQaControlLayout\(/);
+  assert.match(hooks, /window\.addEventListener\('resize', syncQaControlsLayout\);/);
+  assert.match(hooks, /document\.body\.append\(pauseSnapshot, controls\);/);
+  assert.doesNotMatch(hooks, /top:4px;left:4px;z-index:10001/);
+  assert.doesNotMatch(hooks, /top:32px;left:4px;z-index:10001/);
+});

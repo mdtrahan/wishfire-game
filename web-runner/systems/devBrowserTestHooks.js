@@ -17,6 +17,20 @@ import {
 
 export const QA_STORY_TRANSITION_TIMEOUT_MS = 2400;
 
+export function computeQuestQaControlLayout({ viewportWidth, canvasLeft, canvasRight } = {}) {
+  const width = Math.max(0, Number(viewportWidth) || 0);
+  const leftGutter = Math.max(0, Number(canvasLeft) || 0);
+  const rightEdge = Number.isFinite(Number(canvasRight)) ? Number(canvasRight) : width;
+  const rightGutter = Math.max(0, width - rightEdge);
+  const railWidth = Math.min(184, Math.min(leftGutter, rightGutter) - 16);
+  return {
+    mode: railWidth >= 132 ? 'rails' : 'dock',
+    railWidth: Math.max(0, railWidth),
+    leftGutter,
+    rightGutter,
+  };
+}
+
 // The production-derived stream for this encounter seed keeps its first eight
 // draws below the 20% QA proc threshold. Fixture setup can consume draws while
 // closing a prior phase, so this still exercises the normal chance resolver
@@ -263,8 +277,16 @@ export function registerDevBrowserTestHooks({
       pauseSnapshot.dataset.qaPauseStage = String(stage || 'current');
     };
     const controls = document.createElement('div');
+    controls.id = 'quest-qa-controls';
+    controls.className = 'quest-qa-controls';
+    controls.dataset.qaLayout = 'dock';
     controls.setAttribute('aria-label', 'Quest QA');
-    controls.style.cssText = 'position:fixed;top:4px;left:4px;z-index:10001;display:flex;gap:4px';
+    const leftRail = document.createElement('div');
+    leftRail.className = 'quest-qa-rail quest-qa-rail-left';
+    leftRail.setAttribute('aria-label', 'Quest QA setup controls');
+    const rightRail = document.createElement('div');
+    rightRail.className = 'quest-qa-rail quest-qa-rail-right';
+    rightRail.setAttribute('aria-label', 'Quest QA combat controls');
     const heroSelect = document.createElement('select');
     heroSelect.setAttribute('aria-label', 'QA level-up hero');
     const tierSelect = document.createElement('select');
@@ -282,8 +304,8 @@ export function registerDevBrowserTestHooks({
       ['destiny', 'Destiny'], ['magic_fruit', 'Magic Fruit'], ['chain_strike_ii', 'Chain Strike II'], ['faze', 'Faze'],
     ]) specialSelect.append(new Option(label, id));
     const afReadout = document.createElement('output');
+    afReadout.className = 'quest-qa-readout';
     afReadout.setAttribute('aria-label', 'QA Astral Flow readout');
-    afReadout.style.cssText = 'position:fixed;top:32px;left:4px;z-index:10001;max-width:330px;white-space:pre-wrap;font:10px/1.25 ui-monospace,monospace;background:#111;color:#d1fae5;padding:4px';
     const renderAfReadout = (message = '') => {
       const detail = typeof qaReadSessionBuffState === 'function' ? qaReadSessionBuffState() : {};
       afReadout.textContent = `${message}${message ? '\n' : ''}${JSON.stringify(detail)}`;
@@ -554,6 +576,7 @@ export function registerDevBrowserTestHooks({
       }
       if (state.globals.SessionLevelUpQueue?.status !== 'active') throw new Error('QA fixture victory did not create an active level-up queue');
     };
+    const qaButtons = [];
     for (const [label, action] of [
       ['QA start combat', () => {
         if (typeof storyEntry.startCombatForQA !== 'function') return;
@@ -1003,9 +1026,24 @@ export function registerDevBrowserTestHooks({
       }],
     ]) {
       const button = document.createElement('button'); button.textContent = label;
-      button.addEventListener('click', action); controls.append(button);
+      button.addEventListener('click', action); qaButtons.push(button);
     }
-    controls.prepend(fixtureSelect); controls.prepend(cardSelect); controls.prepend(tierSelect); controls.prepend(specialSelect); controls.prepend(heroSelect);
+    leftRail.append(heroSelect, tierSelect, cardSelect, fixtureSelect, specialSelect, ...qaButtons.slice(0, 10));
+    rightRail.append(afReadout, ...qaButtons.slice(10));
+    controls.append(leftRail, rightRail);
+    const syncQaControlsLayout = () => {
+      const rect = canvas?.getBoundingClientRect?.();
+      const layout = computeQuestQaControlLayout({
+        viewportWidth: window.innerWidth,
+        canvasLeft: rect?.left,
+        canvasRight: rect?.right,
+      });
+      controls.dataset.qaLayout = layout.mode;
+      if (layout.mode === 'rails') controls.style.setProperty('--orka-qa-rail-width', `${layout.railWidth}px`);
+      else controls.style.removeProperty('--orka-qa-rail-width');
+    };
+    syncQaControlsLayout();
+    window.addEventListener('resize', syncQaControlsLayout);
     const updateQaOptions = () => {
       if (!heroSelect.options.length) qaHero();
       const cards = SESSION_LEVEL_UP_BUFF_CARDS;
@@ -1013,7 +1051,7 @@ export function registerDevBrowserTestHooks({
     };
     updateQaOptions();
     renderAfReadout();
-    document.body.append(pauseSnapshot, controls, afReadout);
+    document.body.append(pauseSnapshot, controls);
   }
   window.render_game_to_text = () => {
     const currentUID = callFunctionWithContext(fnContext, 'GetCurrentTurn');
