@@ -68,7 +68,8 @@ export function generateEncounterSeed() {
 }
 
 export function computeEncounterTotalCP(picks) {
-  return (picks || []).reduce((sum, row) => sum + Number(row?.CombatPower || row?.combatPower || 0), 0);
+  const values = (picks || []).map(row => Number(row?.CombatPower || row?.combatPower || 0)).filter(value => value > 0);
+  return Math.round(values.reduce((sum, value) => sum + value, 0) * (1 + (0.05 * Math.max(0, values.length - 1))) * 10) / 10;
 }
 
 export function buildEncounterSpawnPlan(picks, { policy = 'mixed' } = {}) {
@@ -137,6 +138,7 @@ export function deriveEncounterPoolNames({ pool, locale = 'all', faction = '' } 
 export function buildEncounterByBudget({
   pool,
   targetCP,
+  partyCP = 0,
   locale = 'all',
   maxSlots = 3,
   policy = 'mixed',
@@ -195,9 +197,13 @@ export function buildEncounterByBudget({
   };
 
   const pushPick = (row) => {
-    if (!row || selected.length >= slots) return;
+    if (!row || selected.length >= slots) return false;
+    const beforeError = Math.abs(target - computeEncounterTotalCP(selected));
+    const nextError = Math.abs(target - computeEncounterTotalCP([...selected, row]));
+    if (selected.length && nextError > beforeError) { reasonCodes.push('candidate_worsens_target_error'); return false; }
     selected.push(row);
     usedNames.add(String(row.name || ''));
+    return true;
   };
 
   const normalizedPolicy = String(policy || 'mixed').trim().toLowerCase();
@@ -214,7 +220,7 @@ export function buildEncounterByBudget({
       const remaining = target - computeEncounterTotalCP(selected);
       const fodder = pickBest(byRole.fodder, remaining, 'fodder');
       if (!fodder) break;
-      pushPick(fodder);
+      if (!pushPick(fodder)) break;
     }
   } else {
     while (selected.length < slots) {
@@ -225,14 +231,17 @@ export function buildEncounterByBudget({
       if (!pick) pick = pickBest(byRole.commander, remaining, 'commander');
       if (!pick) pick = pickBest(eligible, remaining, 'fallback_any');
       if (!pick) break;
-      pushPick(pick);
+      if (!pushPick(pick)) break;
     }
   }
 
   const finalCP = computeEncounterTotalCP(selected);
-  const underfilled = selected.length < slots || finalCP < target;
+  const routineRatio = Number(partyCP) > 0 ? finalCP / Number(partyCP) : 0;
+  const outsideRoutineBand = normalizedPolicy === 'mixed' && Number(partyCP) > 0 && (routineRatio < 0.45 || routineRatio > 0.60);
+  const underfilled = selected.length < slots || finalCP < target || outsideRoutineBand;
   if (selected.length < slots) reasonCodes.push('underfilled_slots');
   if (finalCP < target) reasonCodes.push('underfilled_cp');
+  if (outsideRoutineBand) reasonCodes.push('outside_routine_cp_band');
   return {
     selected,
     finalCP,
@@ -400,6 +409,7 @@ export function createCombatSessionInitializer({
       const encounterRequest = {
         pool: mappedEnemyData,
         targetCP: Number(state.globals.EncounterTargetCP || (startingPartyCP * 0.52)),
+        partyCP: startingPartyCP,
         locale: String(state.globals.EncounterLocale || state.globals.CurrentLocale || 'clouds'),
         maxSlots: Number(state.globals.EncounterMaxSlots || 3),
         policy: String(state.globals.EncounterPolicy || 'mixed'),
