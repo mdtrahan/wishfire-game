@@ -139,7 +139,7 @@ test('shared navigation and quest modal use the existing explicit control seams'
   assert.match(app, /if \(gameState\.storyEntry\.combatPaused\) \{\s*(?:gameState\.publishQaPauseSnapshot\?\.\('paused'\);\s*)?if \(layoutState\.getActiveLayoutId\(\) !== 'combat'\) drawFrame\(\);\s*requestAnimationFrame\(tick\);\s*return;/,
     'the animation tick must freeze simulation while a combat session is paused');
   assert.match(app, /if \(layoutState\.getActiveLayoutId\(\) !== 'combat'\) \{\s*drawFrame\(\);\s*requestAnimationFrame\(tick\);/);
-  assert.match(app, /const activeFanState = levelUpFanState\.open \? levelUpFanState : fanState;/,
+  assert.match(app, /const activeFanState = levelUpFanState;/,
     'the established fan seam must present the level-up choice ahead of a legacy fan');
   assert.match(app, /open: activeLayoutId === 'combat' && !!activeFanState\.open/);
   const pointerRouter = read('web-runner/systems/pointerRoutingShell.js');

@@ -12,7 +12,8 @@ test('runtime bootstraps canonical derived CP without authored overrides', () =>
   assert.match(appSrc, /createCombatSessionInitializer\(\{[\s\S]*computeCombatPower,/);
   assert.match(initializerSrc, /export function resolveEnemyEncounterCombatPower\(row, computeCombatPower = defaultComputeCombatPower\)/);
   assert.match(initializerSrc, /combatPower: computeCombatPower\(\{ \.\.\.v, maxHP: partyMaxHP\[i\]/);
-  assert.match(initializerSrc, /state\.globals\.EnemyData = \(enemyRows \|\| \[\]\)\.map\(\(row\) => \(\{/);
+  assert.match(initializerSrc, /const row=scaleRoutineEnemy\(rawRow,routineLevel\);/);
+  assert.match(initializerSrc, /state\.globals\.EnemyData = \(enemyRows \|\| \[\]\)\.map\(\(rawRow\) => \{/);
   assert.match(initializerSrc, /CombatPower: resolveEnemyEncounterCombatPower\(row, computeCombatPower\)/);
 });
 

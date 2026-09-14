@@ -3018,11 +3018,6 @@ async function main(){
     const result = renderRuntime.renderRuntime(runtimeScope);
     if (activeLayoutId === 'combat') advanceFlowOrbs(state.globals, state.entities);
     renderExistingNavigation(ctx, { worldToCanvas, layoutScale, gameState, layoutState, eventBus });
-    const fanState = callFunctionWithContext(fnContext, 'GetHeroTurnCardFanState') || {
-      open: !!state.globals.HeroTurnCardFanOpen,
-      cards: state.globals.HeroTurnCardFanCards,
-      heroUID: state.globals.HeroTurnCardFanHeroUID,
-    };
     heroCommandUI.update({
       visible: layoutState.getActiveLayoutId() === 'combat' && state.globals.GamePhase === 'RUNTIME',
       blocked: deriveCombatChoiceMode(state.globals) !== COMBAT_CHOICE_MODE.AUTOCOMBAT
