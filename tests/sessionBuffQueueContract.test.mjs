@@ -200,3 +200,27 @@ test('shipped AF bridge turns a capped Fara token after the opening queue into a
   assert.equal(claimSessionBuffQueueResume(globals), true);
   assert.equal(claimSessionBuffQueueResume(globals), false);
 });
+
+
+test('post-opening AF threshold resolves its recreated live hero by UID and never produces an empty special offer', () => {
+  const party = heroes();
+  const globals = {
+    RuntimeRandom: () => 0,
+    SessionLevelBuffState: { heroes: {} },
+    SessionLevelUpQueue: {
+      version: 1, status: 'complete', paused: false, currentIndex: 4,
+      entries: [
+        { heroId: 'stale-fara-instance', heroUID: 1, source: 'opening' },
+        { heroId: 'hondo-2', heroUID: 2, source: 'opening' },
+        { heroId: 'runa-3', heroUID: 3, source: 'opening' },
+        { heroId: 'kaja-4', heroUID: 4, source: 'opening' },
+      ],
+    },
+    PendingFlowThresholds: [{ heroUID: 1, triggerOrder: 1, token: 'post-opening-fara' }],
+  };
+  reconcileSessionFlowThresholds(globals, party);
+  const fan = getSessionLevelUpBuffPresentation(globals, party);
+  assert.equal(fan.open, true);
+  assert.deepEqual(fan.cards.map(card => card.specialId), ['crimson_ward', 'magic_fruit', 'chain_strike_ii']);
+  assert.equal(fan.cards[0].presentation.heroUID, 1);
+});

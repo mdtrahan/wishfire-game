@@ -173,7 +173,12 @@ export function getSessionLevelUpBuffPresentation(globals, heroes = [], progress
     if (Number(globals.time || 0) < Number(dance.endsAt || 0)) return { open: false, cards: [], heroUID: Number(entry.heroUID || 0), queue: entry, dancing: true };
   }
   const offers = globals.SessionLevelUpOffersByQueueIndex || (globals.SessionLevelUpOffersByQueueIndex = {});
-  const hero = heroes.find(candidate => heroId(candidate) === entry.heroId) || null;
+  // Navigation/encounter restoration can retain the queue's stable owner
+  // string while recreating the runtime hero instance. UID is the canonical
+  // live-owner fallback for opening and AF threshold queue entries.
+  const hero = heroes.find(candidate => heroId(candidate) === entry.heroId)
+    || heroes.find(candidate => Number(candidate?.uid || 0) === Number(entry.heroUID || 0))
+    || null;
   const offerCards = (Array.isArray(globals?.SessionLevelUpQaOfferCards) ? globals.SessionLevelUpQaOfferCards : UNIVERSAL_SESSION_POWER_BUFF_CARDS)
     .filter(isPowerBuffCard);
   if (!offers[key]) {
