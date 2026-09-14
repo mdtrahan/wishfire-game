@@ -107,7 +107,7 @@
 
 - Skill taps queue directly. Independent per-hero action slots auto-commit at capacity; ACT ends selection early. Battlefield selection persists; queued targets are snapshots. Removing entries restores reservations.
 
-- renderFlowOrbs.mjs draws gem flights using the actor projection. Collection belongs to the core update; presentation never blocks CTB. Hero detail text describes enemy-death orbs and random distribution.
+- renderFlowOrbs.mjs draws the shared 650ms gem flight using the actor projection. Collection belongs to the core update at impact; presentation never blocks CTB. Hero detail text describes enemy-death orbs and random distribution.
 
 - Qualifying resolved role actions increase the eligible hero's AF directly. Enemy KOs may emit the one blue AF gem, which assigns its arrival award to a living recipient; no other action emits that gem.
 

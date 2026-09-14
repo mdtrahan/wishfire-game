@@ -52,7 +52,7 @@
 
 - Action capacity tests cover mixed 1/2/3 slots, affordability, removal and early commit. Browser proof exercises real target clicks and capacity auto-commit. Paused frame-based regeneration must not affect combat.
 
-- flowOrbsContract covers enemy-death blue transfers, deterministic living recipients, ground-bounce/collection timing, threshold signals, and dead-recipient safety. personalFlowContract covers immediate once-per-action role charge with no orb.
+- flowOrbsContract covers enemy-death blue transfers, deterministic living recipients, the three-gem spawn/early/mid/pre-impact/arrival/post-arrival timeline, ground-bounce/collection timing, threshold signals, and dead-recipient safety. personalFlowContract covers immediate once-per-action role charge with no orb.
 - Immediate AF multi-kill tests prove damage records before the owner FLOW reset, then route every newly defeated enemy through the shared KO transition. They cover one kill, multi-kill, nonlethal and already-dead targets, cleanup deduplication, and arrival-only AF.
 - Quest-QA enemy HP setup tests cover every refusal state, exact living-enemy HP mutation, preserved enemy identity and placement, and the absence of damage, AF, gem, reward or animation side effects.
 
