@@ -2,11 +2,16 @@
   "hot_files": {
     "web-runner/app.js": {
       "functions": [
-        "g",
-        "globals",
+        "validateCombatSnapshot",
+        "qaReadSessionBuffState",
+        "qaSetHeroFlowReady",
+        "qaChooseAstralFlowSpecial",
+        "index",
+        "qaPauseResumeSessionBuffOffer",
+        "rosterHoldKeptDeferredAdvance",
         "__MODULE__"
       ],
-      "staged_blob": "0ed89ce3705dbe50112dcb647a7f2511a9f801cd"
+      "staged_blob": "962b923cd48a711f10bc7023016dee8838627ee3"
     }
   },
   "issue_id": "ORKA-ymk.2"

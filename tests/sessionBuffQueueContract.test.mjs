@@ -151,3 +151,26 @@ test('fresh condition reset clears session-owned queue and threshold remnants wi
   assert.deepEqual(globals.SessionLevelBuffState, { heroes: {} });
   assert.equal(globals.SessionLevelUpQueue.status, 'complete');
 });
+
+
+test('QA preferred party special remains inside the live signature plus two-distinct-special offer', () => {
+  const offer = buildAstralFlowSpecialOffer({ hero: heroes()[2], rng: () => 0, preferredSpecialId: 'magic_fruit' });
+  assert.equal(offer.cards[0].specialId, 'arcane_pulse');
+  assert.ok(offer.cards.slice(1).some(card => card.specialId === 'magic_fruit'));
+  assert.equal(new Set(offer.cards.slice(1).map(card => card.specialId)).size, 2);
+});
+
+test('QA preferred special does not alter production offer randomness when omitted', () => {
+  const hero = heroes()[0];
+  const normal = buildAstralFlowSpecialOffer({ hero, rng: () => 0.8 });
+  const explicitEmpty = buildAstralFlowSpecialOffer({ hero, rng: () => 0.8, preferredSpecialId: '' });
+  assert.deepEqual(normal.cards.map(card => card.specialId), explicitEmpty.cards.map(card => card.specialId));
+});
+
+test('resume handoff records one consumed scheduler release', () => {
+  const globals = { SessionLevelUpQueueResumeRequested: 1, SessionLevelUpQueue: { status: 'complete' } };
+  assert.equal(claimSessionBuffQueueResume(globals), true);
+  assert.equal(globals.SessionLevelUpQueueResumeConsumed, 1);
+  assert.equal(claimSessionBuffQueueResume(globals), false);
+  assert.equal(globals.SessionLevelUpQueueResumeConsumed, 1);
+});

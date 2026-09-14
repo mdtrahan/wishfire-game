@@ -240,6 +240,10 @@ export function registerDevBrowserTestHooks({
   getAttackButtonBounds,
   worldToCanvas,
   canvas,
+  qaSetHeroFlowReady,
+  qaChooseAstralFlowSpecial,
+  qaPauseResumeSessionBuffOffer,
+  qaReadSessionBuffState,
 }) {
   if (typeof window === 'undefined') return;
 
@@ -272,6 +276,20 @@ export function registerDevBrowserTestHooks({
     const fixtureSelect = document.createElement('select');
     fixtureSelect.setAttribute('aria-label', 'QA production fixture');
     Object.keys(QA_LEVEL_UP_FIXTURE_CARD_IDS).forEach(name => fixtureSelect.append(new Option(name, name)));
+    const specialSelect = document.createElement('select');
+    specialSelect.setAttribute('aria-label', 'QA preferred AF special');
+    for (const [id, label] of [
+      ['crimson_ward', 'Crimson Ward'], ['split', 'Split'], ['arcane_pulse', 'Arcane Pulse'],
+      ['destiny', 'Destiny'], ['magic_fruit', 'Magic Fruit'], ['chain_strike_ii', 'Chain Strike II'], ['faze', 'Faze'],
+    ]) specialSelect.append(new Option(label, id));
+    const afReadout = document.createElement('output');
+    afReadout.setAttribute('aria-label', 'QA Astral Flow readout');
+    afReadout.style.cssText = 'position:fixed;top:32px;left:4px;z-index:10001;max-width:330px;white-space:pre-wrap;font:10px/1.25 ui-monospace,monospace;background:#111;color:#d1fae5;padding:4px';
+    const renderAfReadout = (message = '') => {
+      const detail = typeof qaReadSessionBuffState === 'function' ? qaReadSessionBuffState() : {};
+      afReadout.textContent = `${message}${message ? '\n' : ''}${JSON.stringify(detail)}`;
+      afReadout.dataset.qaAstralFlow = JSON.stringify(detail);
+    };
     const qaHero = () => {
       const heroes = state.entities.filter(entity => entity.kind === 'hero');
       if (!heroSelect.options.length) heroes.forEach(hero => heroSelect.append(new Option(hero.name || hero.baseHeroName || String(hero.uid), String(hero.uid))));
@@ -948,6 +966,30 @@ export function registerDevBrowserTestHooks({
           throw error;
         }
       }],
+      ['QA set AF 100', () => {
+        const result = typeof qaSetHeroFlowReady === 'function'
+          ? qaSetHeroFlowReady(Number(qaHero()?.uid || 0), String(specialSelect.value || ''))
+          : { ok: false, reason: 'missingProductionAfEntryPoint' };
+        renderAfReadout(`set AF 100: ${result.ok ? 'ok' : result.reason || 'failed'}`);
+        if (!result.ok) throw new Error(`QA set AF 100 failed: ${result.reason || 'unknown'}`);
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
+      ['QA choose special', () => {
+        const result = typeof qaChooseAstralFlowSpecial === 'function'
+          ? qaChooseAstralFlowSpecial(String(specialSelect.value || ''))
+          : { ok: false, reason: 'missingProductionSpecialEntryPoint' };
+        renderAfReadout(`choose special: ${result.ok ? 'ok' : result.reason || 'failed'}`);
+        if (!result.ok) throw new Error(`QA choose special failed: ${result.reason || 'unknown'}`);
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
+      ['QA offer pause/resume', async () => {
+        const result = typeof qaPauseResumeSessionBuffOffer === 'function'
+          ? await qaPauseResumeSessionBuffOffer()
+          : { ok: false, reason: 'missingProductionPauseEntryPoint' };
+        renderAfReadout(`pause/resume: ${result.ok ? 'ok' : result.reason || 'failed'}`);
+        if (!result.ok) throw new Error('QA offer pause/resume failed through the production layout path');
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
       ['QA fresh session', () => { delete state.globals.QaFixtureBattleBaseline; delete state.globals.QaFixtureOwnerId; releaseQaSettlementHold(); delete state.globals.QaFixtureHoldTurn; delete state.globals.SessionLevelUpQaOfferCards; resetCombatSessionConditions(state.globals, {}); if (typeof drawFrame === 'function') drawFrame(); }],
       ['QA abandon', async () => {
         const navigated = await storyEntry.navigate('Quests');
@@ -965,14 +1007,15 @@ export function registerDevBrowserTestHooks({
       const button = document.createElement('button'); button.textContent = label;
       button.addEventListener('click', action); controls.append(button);
     }
-    controls.prepend(fixtureSelect); controls.prepend(cardSelect); controls.prepend(tierSelect); controls.prepend(heroSelect);
+    controls.prepend(fixtureSelect); controls.prepend(cardSelect); controls.prepend(tierSelect); controls.prepend(specialSelect); controls.prepend(heroSelect);
     const updateQaOptions = () => {
       if (!heroSelect.options.length) qaHero();
       const cards = SESSION_LEVEL_UP_BUFF_CARDS;
       if (!cardSelect.options.length && cards.length) cards.forEach(card => cardSelect.append(new Option(card.name || card.cardId, card.cardId)));
     };
     updateQaOptions();
-    document.body.append(pauseSnapshot, controls);
+    renderAfReadout();
+    document.body.append(pauseSnapshot, controls, afReadout);
   }
   window.render_game_to_text = () => {
     const currentUID = callFunctionWithContext(fnContext, 'GetCurrentTurn');

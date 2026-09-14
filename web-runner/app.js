@@ -93,6 +93,7 @@ import {
   runtimeAssetUrl,
 } from './systems/runtimeAssetUrl.mjs';
 import { chooseSessionLevelUpBuff, claimSessionBuffQueueResume, getSessionLevelUpBuffPresentation, restoreSessionBuffChoiceState, serializeSessionBuffChoiceState, updateSessionLevelUpSettlement } from './modules/sessionLevelUpBuffPresentation.mjs';
+import { recordFlowThreshold } from './src/core/personalFlow.mjs';
 import { heroArtKey } from './state/heroArtAssets.mjs';
 import { computeCombatPower as canonicalCombatPower, normalizeCombatPowerActor } from './src/core/combatPower.mjs';
 import * as partyStatOsd from './systems/partyStatOsd.js';
@@ -2222,6 +2223,59 @@ async function main(){
   });
   runtimeListenerTeardowns.push(() => heroTurnCardFanUI.destroy());
 
+  // Quest-QA only seeds the canonical AF threshold and invokes the same fan
+  // selection callback used by player input. It never fabricates offer state.
+  const qaReadSessionBuffState = () => {
+    const presentation = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
+    const hero = state.entities.find(actor => Number(actor?.uid || 0) === Number(presentation.heroUID || 0));
+    return {
+      selectedHeroUID: Number(state.globals.QaSelectedHeroUID || presentation.heroUID || 0),
+      selectedHeroAF: Number(hero?.flow || 0),
+      offerIds: (presentation.cards || []).map(card => String(card.cardId || '')),
+      queueIndex: Number(state.globals.SessionLevelUpQueue?.currentIndex || 0),
+      rngDraws: Number(state.globals.RuntimeRandomDraws || 0),
+      resumeRequested: Number(state.globals.SessionLevelUpQueueResumeRequested || 0),
+      resumeConsumed: Number(state.globals.SessionLevelUpQueueResumeConsumed || 0),
+      ctbActorUID: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0),
+      chosenSpecial: String(state.globals.QaLastAstralFlowSpecial?.id || state.globals.LastAstralFlowSpecial?.id || ''),
+      execution: state.globals.QaLastAstralFlowSpecial || state.globals.LastAstralFlowSpecial || null,
+      specialEffects: {
+        wardTargets: Object.keys(state.globals.PartyWardBarrierVisualsByUID || {}).map(Number),
+        destinyTicks: state.globals.AstralFlowDestinyRegensByUID || {},
+        magicFruit: state.globals.AstralFlowMagicFruitLast || null,
+        chainTargets: (state.globals.ChainStrikeVisuals || []).map(row => Number(row?.targetUID || 0)),
+        pulseTargets: (state.globals.ArcanePulseVisuals || []).map(row => Number(row?.targetUID || 0)),
+        fazeZones: (state.globals.TaintedGroundZones || []).map(row => Number(row?.targetUID || row?.enemyUID || 0)),
+      },
+    };
+  };
+  const qaSetHeroFlowReady = (heroUID, preferredSpecialId = '') => {
+    const hero = state.entities.find(actor => actor?.kind === 'hero' && Number(actor.uid || 0) === Number(heroUID || 0));
+    if (!hero || Number(hero.hp || 0) <= 0) return { ok: false, reason: 'heroUnavailable' };
+    state.globals.QaSelectedHeroUID = Number(hero.uid || 0);
+    state.globals.QaPreferredAstralFlowSpecialId = String(preferredSpecialId || '');
+    const before = Math.max(0, Number(hero.flow || 0));
+    hero.flow = 100;
+    const threshold = recordFlowThreshold(state.globals, hero, before, hero.flow);
+    combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+    const presentation = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
+    return { ok: !!threshold, threshold, presentation, readout: qaReadSessionBuffState() };
+  };
+  const qaChooseAstralFlowSpecial = specialId => {
+    const presentation = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
+    const index = (presentation.cards || []).findIndex(card => String(card?.specialId || '') === String(specialId || ''));
+    if (index < 0) return { ok: false, reason: 'specialUnavailable', readout: qaReadSessionBuffState() };
+    const result = heroTurnCardFanUI.select(index);
+    state.globals.QaLastAstralFlowSpecial = result?.execution || result || null;
+    return { ok: result?.status === 'applied', result, readout: qaReadSessionBuffState() };
+  };
+  const qaPauseResumeSessionBuffOffer = async () => {
+    const before = qaReadSessionBuffState();
+    const departed = await storyEntry.navigate('Quests');
+    const resumed = departed ? await storyEntry.continuePausedCombat() : false;
+    return { ok: !!(departed && resumed), before, after: qaReadSessionBuffState(), departed, resumed };
+  };
+
   const viewportRuntime = createAppViewportRuntime({
     canvas,
     layoutW,
@@ -4111,6 +4165,10 @@ function getStoryCardLiveLineState() {
     getAttackButtonBounds,
     worldToCanvas,
     canvas,
+    qaSetHeroFlowReady,
+    qaChooseAstralFlowSpecial,
+    qaPauseResumeSessionBuffOffer,
+    qaReadSessionBuffState,
   });
 }
 

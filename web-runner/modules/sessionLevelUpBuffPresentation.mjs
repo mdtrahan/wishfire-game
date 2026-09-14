@@ -78,6 +78,7 @@ export function restoreSessionBuffChoiceState(globals, snapshot = {}) {
 export function claimSessionBuffQueueResume(globals = {}) {
   if (!globals.SessionLevelUpQueueResumeRequested || globals.SessionLevelUpQueue?.status !== 'complete' || globals.SessionLevelUpSettlement) return false;
   globals.SessionLevelUpQueueResumeRequested = 0;
+  globals.SessionLevelUpQueueResumeConsumed = Number(globals.SessionLevelUpQueueResumeConsumed || 0) + 1;
   return true;
 }
 
@@ -165,7 +166,7 @@ export function getSessionLevelUpBuffPresentation(globals, heroes = [], progress
     .filter(isPowerBuffCard);
   if (!offers[key]) {
     offers[key] = isSessionFlowThresholdEntry(entry)
-      ? buildAstralFlowSpecialOffer({ hero, rng: globals.RuntimeRandom })
+      ? buildAstralFlowSpecialOffer({ hero, rng: globals.RuntimeRandom, preferredSpecialId: globals.QaPreferredAstralFlowSpecialId })
       : buildLevelUpBuffOffer({ state: globals.SessionLevelBuffState || createSessionLevelBuffState(), heroId: entry.heroId, cards: offerCards, progress, rng: globals.RuntimeRandom, tierWeights: tierWeightsFor(globals, progress), preferredCardId: globals.SessionLevelUpPreferredCardId });
   }
   const offer = offers[key];

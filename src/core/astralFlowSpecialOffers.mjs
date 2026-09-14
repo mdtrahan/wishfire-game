@@ -26,11 +26,16 @@ export function getAstralFlowSignature(hero = {}) {
   return SIGNATURES_BY_HERO[canonicalHeroName(hero)] || null;
 }
 
-export function buildAstralFlowSpecialOffer({ hero, rng } = {}) {
+export function buildAstralFlowSpecialOffer({ hero, rng, preferredSpecialId = '' } = {}) {
   const signature = getAstralFlowSignature(hero);
   if (!signature) return { status: 'offerUnavailable', cards: [] };
   const remaining = PARTY_SPECIALS.slice();
   const selected = [];
+  const preferred = remaining.find(card => card.specialId === String(preferredSpecialId || ''));
+  if (preferred) {
+    selected.push(preferred);
+    remaining.splice(remaining.indexOf(preferred), 1);
+  }
   while (selected.length < 2 && remaining.length) {
     const index = Math.floor(normalizedRandom(rng) * remaining.length);
     selected.push(remaining.splice(index, 1)[0]);

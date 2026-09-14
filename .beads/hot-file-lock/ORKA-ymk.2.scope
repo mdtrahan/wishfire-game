@@ -1,1 +1,1 @@
-web-runner/app.js:g,globals,__MODULE__
+web-runner/app.js:validateCombatSnapshot,qaReadSessionBuffState,qaSetHeroFlowReady,qaChooseAstralFlowSpecial,index,qaPauseResumeSessionBuffOffer,rosterHoldKeptDeferredAdvance,__MODULE__
