@@ -331,6 +331,18 @@ const byTier = tier => [
 ];
 
 export const SESSION_LEVEL_UP_BUFF_CARDS = Object.freeze([1, 2, 3, 4].flatMap(byTier));
+// The opening/session queue consumes only this named production pool.  Keep
+// direct active cards, relief cards, signatures, and retired turn cards out by
+// omission; offer generation and application use this same ID list.
+export const UNIVERSAL_SESSION_POWER_BUFF_IDS = Object.freeze([
+  'spectral_orb_1', 'venom_sigil_1', 'mirage_chain_1', 'glass_reprisal_1', 'brass_ward_1', 'dune_edge_1', 'astral_reservoir_1', 'sandstone_guard_1', 'desert_step_1', 'well_of_life_1', 'sun_debt_1',
+  'spectral_orb_2', 'venom_sigil_2', 'mirage_chain_2', 'glass_reprisal_2', 'brass_ward_2', 'dune_edge_2', 'astral_reservoir_2', 'sandstone_guard_2', 'desert_step_2', 'oasis_mirror_2', 'glass_debt_2',
+  'spectral_orb_3', 'venom_sigil_3', 'mirage_chain_3', 'glass_reprisal_3', 'brass_ward_3', 'dune_edge_3', 'astral_reservoir_3', 'sandstone_guard_3', 'desert_step_3', 'well_of_life_3', 'star_debt_3',
+  'spectral_orb_4', 'venom_sigil_4', 'mirage_chain_4', 'glass_reprisal_4', 'brass_ward_4', 'dune_edge_4', 'astral_reservoir_4', 'sandstone_guard_4', 'desert_step_4', 'oasis_mirror_4', 'last_wish_4',
+]);
+const UNIVERSAL_SESSION_POWER_BUFF_ID_SET = new Set(UNIVERSAL_SESSION_POWER_BUFF_IDS);
+export const isUniversalSessionPowerBuffCard = card => UNIVERSAL_SESSION_POWER_BUFF_ID_SET.has(String(card?.cardId || ''));
+export const UNIVERSAL_SESSION_POWER_BUFF_CARDS = Object.freeze(SESSION_LEVEL_UP_BUFF_CARDS.filter(isUniversalSessionPowerBuffCard));
 export const SESSION_LEVEL_UP_BUFF_POOL_SUMMARY = Object.freeze({
   total: SESSION_LEVEL_UP_BUFF_CARDS.length,
   byTier: Object.freeze(Object.fromEntries([1, 2, 3, 4].map(tier => [tier, byTier(tier).length]))),

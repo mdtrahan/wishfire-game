@@ -106,6 +106,8 @@ class CombatRuntimeGateway {
     combatSnapshotOwner,
     getDeterministicRngState,
     setDeterministicRngState,
+    getSessionState,
+    applySessionState,
   } = {}) {
     this.combatState = combatState || {};
     this.eventBus = eventBus || null;
@@ -126,6 +128,8 @@ class CombatRuntimeGateway {
     this.setDeterministicRngStateAdapter = typeof setDeterministicRngState === 'function'
       ? setDeterministicRngState
       : null;
+    this.getSessionStateAdapter = typeof getSessionState === 'function' ? getSessionState : null;
+    this.applySessionStateAdapter = typeof applySessionState === 'function' ? applySessionState : null;
   }
 
   setLayoutState(layoutState) {
@@ -365,6 +369,7 @@ class CombatRuntimeGateway {
       resumeToken,
       turnQueue: cloneJson(turnState.turnQueue),
       currentActorIndex: Number(turnState.currentActorIndex || 0),
+      sessionState: this.getSessionStateAdapter ? cloneJson(this.getSessionStateAdapter() || {}) : null,
     };
     const checkpoint = this.evaluateCheckpoint(CHECKPOINT_IDS.SNAPSHOT_EMIT, { snapshot });
     this.emitCheckpointResult('snapshot_emit', checkpoint, {
@@ -442,6 +447,7 @@ class CombatRuntimeGateway {
       this.combatState.currentActorIndex = Number(restoredTurnState.currentActorIndex || 0);
     }
     if (snapshot?.rngState) this.setDeterministicRngState(snapshot.rngState);
+    if (snapshot?.sessionState && this.applySessionStateAdapter) this.applySessionStateAdapter(cloneJson(snapshot.sessionState));
     this.resetGemInputState();
     const post = this.validateResumeCheckpoint(snapshot || null);
     this.emitCheckpointResult('post_resume', post, {

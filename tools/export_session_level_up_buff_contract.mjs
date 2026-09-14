@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { SESSION_LEVEL_UP_BUFF_CARDS } from '../src/core/sessionLevelBuffCatalog.mjs';
+import { UNIVERSAL_SESSION_POWER_BUFF_CARDS } from '../src/core/sessionLevelBuffCatalog.mjs';
 
 const heroes = [
   { id: 'fara', native_features: ['emitter:fara_native', 'stat:fara_profile'], attack_tags: ['hero_native', 'all_attacks', 'basic_attack', 'direct_damage', 'direct_damage_received'] },
@@ -53,7 +53,7 @@ const contract = {
   schema_version: 1,
   defaults: { max_proc_depth: 2, pick_rate_alarm: [0.2, 0.6] },
   heroes,
-  cards: SESSION_LEVEL_UP_BUFF_CARDS.map(contractCard),
+  cards: UNIVERSAL_SESSION_POWER_BUFF_CARDS.map(contractCard),
 };
 
 const output = `${JSON.stringify(contract, null, 2)}\n`;

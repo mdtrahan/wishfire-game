@@ -27,6 +27,7 @@ export function isCanPickGemsReady(value) {
 // boundary. The scheduler must not resolve another actor until it has faded out.
 export function hasSessionLevelUpPresentationBarrier(globals = {}) {
   return globals?.SessionLevelUpQueue?.status === 'active'
+    || (Array.isArray(globals?.PendingFlowThresholds) && globals.PendingFlowThresholds.length > 0)
     || !!globals?.SessionLevelUpSettlement;
 }
 

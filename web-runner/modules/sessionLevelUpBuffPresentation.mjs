@@ -1,5 +1,5 @@
 import { applyLevelUpBuffCard, buildLevelUpBuffOffer, createSessionLevelBuffState } from '../../src/core/sessionLevelBuffOffers.mjs';
-import { SESSION_LEVEL_UP_BUFF_CARDS } from '../../src/core/sessionLevelBuffCatalog.mjs';
+import { SESSION_LEVEL_UP_BUFF_CARDS, UNIVERSAL_SESSION_POWER_BUFF_CARDS, isUniversalSessionPowerBuffCard } from '../../src/core/sessionLevelBuffCatalog.mjs';
 import { buildAstralFlowSpecialOffer } from '../../src/core/astralFlowSpecialOffers.mjs';
 import { heroDefinition } from '../src/core/heroDefinitions.mjs';
 import { acknowledgeSessionLevelUpEntry, createSessionOpeningBuffQueue, currentSessionLevelUpEntry, enqueueSessionFlowThresholds, isSessionFlowThresholdEntry } from '../src/core/sessionLevelUpQueue.mjs';
@@ -15,7 +15,7 @@ const DEFAULT_TIER_WEIGHTS = Object.freeze({ 1: 70, 2: 20, 3: 7, 4: 3 });
 
 const heroId = hero => String(hero?.heroInstanceKey ?? hero?.uid ?? '');
 const clamp = (value, min, max) => Math.max(min, Math.min(max, Number(value) || 0));
-const isPowerBuffCard = card => card?.formula?.surface !== 'heal_percent_max_hp';
+const isPowerBuffCard = isUniversalSessionPowerBuffCard;
 
 function tierWeightsFor(globals, progress) {
   const normalizedProgress = Number(progress?.totalMilestonesToFinalBoss || 0) > 0
@@ -29,7 +29,7 @@ function tierWeightsFor(globals, progress) {
 
 export function getActiveSessionLevelUpBuffCards(globals, hero) {
   const activeStages = globals?.SessionLevelBuffState?.heroes?.[heroId(hero)]?.activeStageByEffectId || {};
-  return SESSION_LEVEL_UP_BUFF_CARDS.filter(card => Number(activeStages[card.effectId] || 0) === Number(card.stage || 0));
+  return UNIVERSAL_SESSION_POWER_BUFF_CARDS.filter(card => Number(activeStages[card.effectId] || 0) === Number(card.stage || 0));
 }
 
 export function beginFreshSessionBuffQueue(globals, heroes = []) {
@@ -160,7 +160,7 @@ export function getSessionLevelUpBuffPresentation(globals, heroes = [], progress
   }
   const offers = globals.SessionLevelUpOffersByQueueIndex || (globals.SessionLevelUpOffersByQueueIndex = {});
   const hero = heroes.find(candidate => heroId(candidate) === entry.heroId) || null;
-  const offerCards = (Array.isArray(globals?.SessionLevelUpQaOfferCards) ? globals.SessionLevelUpQaOfferCards : SESSION_LEVEL_UP_BUFF_CARDS)
+  const offerCards = (Array.isArray(globals?.SessionLevelUpQaOfferCards) ? globals.SessionLevelUpQaOfferCards : UNIVERSAL_SESSION_POWER_BUFF_CARDS)
     .filter(isPowerBuffCard);
   if (!offers[key]) {
     offers[key] = isSessionFlowThresholdEntry(entry)
@@ -191,7 +191,7 @@ export function chooseSessionLevelUpBuff(globals, heroes = [], cardId, now = 0, 
     if (globals.SessionLevelUpQueue.status === 'complete') globals.SessionLevelUpQueueResumeRequested = 1;
     return { status: 'applied', card, special: true, execution: result };
   }
-  const applied = applyLevelUpBuffCard({ state: globals.SessionLevelBuffState, heroId: presentation.queue.heroId, cardId, cards: SESSION_LEVEL_UP_BUFF_CARDS.filter(isPowerBuffCard) });
+  const applied = applyLevelUpBuffCard({ state: globals.SessionLevelBuffState, heroId: presentation.queue.heroId, cardId, cards: UNIVERSAL_SESSION_POWER_BUFF_CARDS });
   if (applied.status !== 'applied') return applied;
   globals.SessionLevelBuffState = applied.state;
   globals.SessionLevelUpQueue = acknowledgeSessionLevelUpEntry(globals.SessionLevelUpQueue);

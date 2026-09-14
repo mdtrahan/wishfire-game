@@ -13,7 +13,7 @@ function loadModule() {
     .replace(/\bexport\s+/g, '')}
 
 module.exports = { ExecuteAstralFlowSpecial, ProcessAstralFlowDestinyRegen };`;
-  const context = { console: { log() {}, warn() {}, error() {} }, Math, module: { exports: {} }, exports: {}, state: { globals: {}, entities: [] } };
+  const context = { console: { log() {}, warn() {}, error() {} }, Math, module: { exports: {} }, exports: {}, state: { globals: {}, entities: [] }, effectiveStat: () => 10 };
   vm.createContext(context);
   new vm.Script(transformed, { filename: modulePath }).runInContext(context);
   return context.module.exports;
@@ -27,7 +27,11 @@ function makeContext() {
     { uid: 4, kind: 'hero', name: 'Kaja', heroDisplaySlot: 3, hp: 30, maxHP: 50, x: 4, y: 4 },
   ];
   const globals = { time: 1, TurnSerial: 10, CombatLog: [], CombatActionLines: ['', '', '', ''], DamageTexts: [] };
-  return { state: { globals, entities: heroes }, callFunction() {} };
+  const enemies = [
+    { uid: 11, kind: 'enemy', name: 'Ghoul A', hp: 80, maxHP: 80, x: 8, y: 2 },
+    { uid: 12, kind: 'enemy', name: 'Ghoul B', hp: 80, maxHP: 80, x: 9, y: 3 },
+  ];
+  return { state: { globals, entities: [...heroes, ...enemies] }, callFunction() {} };
 }
 
 test('Magic Fruit divides a 30-percent caster-Max-HP pool among living heroes in roster order', () => {
@@ -37,7 +41,7 @@ test('Magic Fruit divides a 30-percent caster-Max-HP pool among living heroes in
   assert.equal(result.ok, true);
   assert.equal(result.pool, 30);
   assert.deepEqual(JSON.parse(JSON.stringify(result.heals.map(row => [row.heroUID, row.requested]))), [[1, 10], [2, 10], [4, 10]]);
-  assert.deepEqual(ctx.state.entities.map(hero => hero.hp), [20, 30, 0, 40]);
+  assert.deepEqual(ctx.state.entities.filter(actor => actor.kind === 'hero').map(hero => hero.hp), [20, 30, 0, 40]);
 });
 
 test('Destiny gives each living hero three personal-turn 8-percent Max-HP ticks and survives Kaja defeat', () => {
@@ -66,5 +70,22 @@ test('special runtime maps the four signature ids and keeps the retired Destiny 
     assert.match(src, /id === 'destiny'/);
     assert.match(src, /remainingTicks: 3, healPct: 0\.08/);
     assert.doesNotMatch(src, /ExecuteAstralFlowSpecial[\s\S]{0,5000}TryPartyDestiny/);
+  }
+});
+
+test('each non-healing AF special queues its existing AoE or targeted effect with one-use ownership', () => {
+  const mod = loadModule();
+  for (const [specialId, actorUID] of [['crimson_ward', 1], ['split', 2], ['arcane_pulse', 3], ['chain_strike_ii', 2], ['faze', 1]]) {
+    const ctx = makeContext();
+    ctx.state.entities.find(actor => actor.uid === 3).hp = 30;
+    const result = mod.ExecuteAstralFlowSpecial(ctx, specialId, actorUID);
+    assert.equal(result.ok, true, specialId);
+    assert.equal(ctx.state.globals.LastAstralFlowSpecial.id, specialId);
+    assert.equal(ctx.state.globals.LastAstralFlowSpecial.actorUID, actorUID);
+    if (specialId === 'crimson_ward') assert.ok(Number(ctx.state.globals.PartyTempHPShield || 0) > 0);
+    if (specialId === 'split') assert.equal(ctx.state.globals.PendingHeroHits.filter(hit => hit.actionName === 'Split').length, 2);
+    if (specialId === 'arcane_pulse') assert.equal(ctx.state.globals.PendingHeroHits.filter(hit => hit.effectType === 'arcane_pulse').length, 1);
+    if (specialId === 'chain_strike_ii') assert.ok(ctx.state.globals.PendingHeroHits.some(hit => hit.actionName === 'Chain Strike II'));
+    if (specialId === 'faze') assert.equal(ctx.state.globals.TaintedGroundZones.length, 2);
   }
 });

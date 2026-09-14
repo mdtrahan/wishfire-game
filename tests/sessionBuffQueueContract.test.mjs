@@ -12,6 +12,7 @@ import {
 import { resetCombatSessionConditions } from '../web-runner/systems/combatSessionReset.mjs';
 import { pauseSessionLevelUpQueue, resumeSessionLevelUpQueue } from '../src/core/sessionLevelUpQueue.mjs';
 import { buildAstralFlowSpecialOffer } from '../src/core/astralFlowSpecialOffers.mjs';
+import { SESSION_LEVEL_UP_BUFF_CARDS, UNIVERSAL_SESSION_POWER_BUFF_CARDS, UNIVERSAL_SESSION_POWER_BUFF_IDS, isUniversalSessionPowerBuffCard } from '../src/core/sessionLevelBuffCatalog.mjs';
 
 const heroes = () => [
   { uid: 1, kind: 'hero', heroInstanceKey: 'fara-1', heroDisplaySlot: 0, currentLevel: 1, hp: 40, maxHP: 40, flow: 70 },
@@ -32,7 +33,7 @@ test('fresh sessions hold four cached universal opening offers in roster order',
   assert.equal(first.open, true);
   assert.equal(first.cards.length, 3);
   assert.strictEqual(first.offer, rerender.offer);
-  assert.ok(first.cards.every(card => card.formula.surface !== 'heal_percent_max_hp'));
+  assert.ok(first.cards.every(isUniversalSessionPowerBuffCard));
   for (let index = 0; index < 4; index += 1) {
     const offer = getSessionLevelUpBuffPresentation(globals, party);
     assert.equal(offer.heroUID, index + 1);
@@ -43,6 +44,18 @@ test('fresh sessions hold four cached universal opening offers in roster order',
   assert.equal(claimSessionBuffQueueResume(globals), true);
   assert.equal(claimSessionBuffQueueResume(globals), false);
   assert.deepEqual(Object.keys(globals.SessionLevelBuffState.heroes).sort(), ['fara-1', 'hondo-2', 'kaja-4', 'runa-3']);
+});
+
+test('one explicit universal power-buff allowlist admits persistent offense and rejects relief or direct action cards', () => {
+  assert.ok(UNIVERSAL_SESSION_POWER_BUFF_IDS.includes('spectral_orb_1'));
+  assert.ok(UNIVERSAL_SESSION_POWER_BUFF_IDS.includes('mirage_chain_1'));
+  assert.ok(UNIVERSAL_SESSION_POWER_BUFF_IDS.includes('glass_reprisal_1'));
+  assert.equal(UNIVERSAL_SESSION_POWER_BUFF_IDS.includes('inner_flow_1'), false);
+  assert.equal(isUniversalSessionPowerBuffCard({ cardId: 'af_magic_fruit' }), false);
+  assert.equal(isUniversalSessionPowerBuffCard({ cardId: 'af_split' }), false);
+  assert.equal(isUniversalSessionPowerBuffCard({ cardId: 'retired_turn_attack' }), false);
+  assert.equal(UNIVERSAL_SESSION_POWER_BUFF_CARDS.length, UNIVERSAL_SESSION_POWER_BUFF_IDS.length);
+  assert.equal(SESSION_LEVEL_UP_BUFF_CARDS.filter(card => card.effectId === 'inner_flow').every(isUniversalSessionPowerBuffCard), false);
 });
 
 test('100 AF threshold choice queues once, waits for selection, resets only its owner, and acknowledges the token', () => {

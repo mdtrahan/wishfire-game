@@ -92,7 +92,7 @@ import {
   getEmbeddedJson,
   runtimeAssetUrl,
 } from './systems/runtimeAssetUrl.mjs';
-import { chooseSessionLevelUpBuff, claimSessionBuffQueueResume, getSessionLevelUpBuffPresentation, updateSessionLevelUpSettlement } from './modules/sessionLevelUpBuffPresentation.mjs';
+import { chooseSessionLevelUpBuff, claimSessionBuffQueueResume, getSessionLevelUpBuffPresentation, restoreSessionBuffChoiceState, serializeSessionBuffChoiceState, updateSessionLevelUpSettlement } from './modules/sessionLevelUpBuffPresentation.mjs';
 import { heroArtKey } from './state/heroArtAssets.mjs';
 import { computeCombatPower as canonicalCombatPower, normalizeCombatPowerActor } from './src/core/combatPower.mjs';
 import * as partyStatOsd from './systems/partyStatOsd.js';
@@ -761,6 +761,19 @@ const combatRuntimeGateway = new CombatRuntimeGateway({
     g.RuntimeRandomOwner = String(rngState.owner ?? rngState.RuntimeRandomOwner ?? '');
     g.RuntimeRandomReason = String(rngState.reason ?? rngState.RuntimeRandomReason ?? '');
     g.RuntimeRandomLastValue = Number(rngState.lastValue ?? rngState.RuntimeRandomLastValue ?? 0);
+  },
+  getSessionState() {
+    const globals = (state && state.globals) ? state.globals : {};
+    return {
+      choiceState: serializeSessionBuffChoiceState(globals),
+      heroFlow: (state?.entities || []).filter(actor => actor?.kind === 'hero').map(actor => ({ uid: Number(actor.uid || 0), flow: Number(actor.flow || 0) })),
+    };
+  },
+  applySessionState(snapshot = {}) {
+    const globals = (state && state.globals) ? state.globals : {};
+    restoreSessionBuffChoiceState(globals, snapshot.choiceState || {});
+    const flows = new Map((snapshot.heroFlow || []).map(entry => [Number(entry?.uid || 0), Number(entry?.flow || 0)]));
+    for (const actor of state?.entities || []) if (actor?.kind === 'hero' && flows.has(Number(actor.uid || 0))) actor.flow = flows.get(Number(actor.uid || 0));
   },
 });
 

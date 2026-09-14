@@ -213,6 +213,7 @@ test('endless combat never exposes a finite clear while level-up presentation re
 test('shared ProcessTurn boundary holds every scheduler path while settlement or an offer is active', () => {
   const source = read('web-runner/modules/functionBank.js');
   assert.equal(hasSessionLevelUpPresentationBarrier({ SessionLevelUpQueue: { status: 'active' } }), true);
+  assert.equal(hasSessionLevelUpPresentationBarrier({ PendingFlowThresholds: [{ heroUID: 2, token: 'flow-1-1' }] }), true);
   assert.equal(hasSessionLevelUpPresentationBarrier({ SessionLevelUpSettlement: { phase: 'fadeOut' } }), true);
   assert.equal(hasSessionLevelUpPresentationBarrier({ SessionLevelUpQueue: { status: 'complete' } }), false);
   const processTurn = source.slice(source.indexOf('export function ProcessTurn(ctx)'), source.indexOf('function isBoardFullyPopulatedForEnemyMutation'));
