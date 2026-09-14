@@ -254,6 +254,10 @@ export function registerDevBrowserTestHooks({
   worldToCanvas,
   canvas,
   qaSetHeroFlowReady,
+  qaFixtureHeal,
+  qaGrantDawnChorus,
+  qaSetDawnChorusRoll,
+  qaTriggerDawnChorusDefeat,
   qaChooseAstralFlowSpecial,
   qaPauseResumeSessionBuffOffer,
   qaReadSessionBuffState,
@@ -986,6 +990,33 @@ export function registerDevBrowserTestHooks({
           delete state.globals.QaFixtureHoldTurn;
           throw error;
         }
+      }],
+      ['QA fixture heal', () => {
+        const result = typeof qaFixtureHeal === 'function' ? qaFixtureHeal() : { ok: false, reason: 'missingProductionHealEntryPoint' };
+        renderAfReadout(`fixture heal: ${result.ok ? 'ok' : result.reason || 'failed'}`);
+        if (!result.ok) throw new Error(`QA fixture heal failed: ${result.reason || 'unknown'}`);
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
+      ['QA Dawn rank', () => {
+        const result = typeof qaGrantDawnChorus === 'function' ? qaGrantDawnChorus(Number(tierSelect.value || 1)) : { ok: false, reason: 'missingDawnGrantEntryPoint' };
+        renderAfReadout(`Dawn rank: ${result.ok ? result.rank : result.reason || 'failed'}`);
+        if (!result.ok) throw new Error(`QA Dawn rank failed: ${result.reason || 'unknown'}`);
+      }],
+      ['QA Dawn success', () => {
+        const result = typeof qaSetDawnChorusRoll === 'function' ? qaSetDawnChorusRoll(false) : { ok: false, reason: 'missingDawnRollEntryPoint' };
+        renderAfReadout(`Dawn success roll: ${result.ok ? result.roll : result.reason || 'failed'}`);
+        if (!result.ok) throw new Error(`QA Dawn success failed: ${result.reason || 'unknown'}`);
+      }],
+      ['QA Dawn equal fail', () => {
+        const result = typeof qaSetDawnChorusRoll === 'function' ? qaSetDawnChorusRoll(true) : { ok: false, reason: 'missingDawnRollEntryPoint' };
+        renderAfReadout(`Dawn equal roll: ${result.ok ? result.roll : result.reason || 'failed'}`);
+        if (!result.ok) throw new Error(`QA Dawn equal failed: ${result.reason || 'unknown'}`);
+      }],
+      ['QA Dawn defeat', () => {
+        const result = typeof qaTriggerDawnChorusDefeat === 'function' ? qaTriggerDawnChorusDefeat() : { ok: false, reason: 'missingDawnDefeatEntryPoint' };
+        renderAfReadout(`Dawn defeat: ${result.ok ? 'ok' : result.reason || 'failed'}`);
+        if (!result.ok) throw new Error(`QA Dawn defeat failed: ${result.reason || 'unknown'}`);
+        if (typeof drawFrame === 'function') drawFrame();
       }],
       ['QA set AF 100', () => {
         const result = typeof qaSetHeroFlowReady === 'function'

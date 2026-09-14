@@ -42,3 +42,21 @@ test('Kaja Comrade receives one AF award when another hero is lethally hit',()=>
  assert.equal(award?.value,10);assert.equal(kaja.flow,10);
  assert.equal(flow.resolveRoleFlowAward({heroes:[kaja,ally],hero:kaja,event:{hostileHpDamage:40,hostileTargetUID:4,hostileTargetWasLiving:true}}),null);
 });
+
+test('live Kaja alias earns one Comrade AF award through the native enemy damage path when Falie is hit',()=>{
+ const fara={uid:1,kind:'hero',name:'Fara',baseHeroName:'Falie',hp:82,maxHP:82,flow:0,flowMode:'Stoic',stats:{DEF:1},statuses:[]};
+ const kaja={uid:4,kind:'hero',name:'Kaja',baseHeroName:'Kojonn',heroInstanceKey:'kojonn#1',hp:40,maxHP:40,flow:0,flowMode:'Comrade',stats:{DEF:1},statuses:[]};
+ const gobloc={uid:19,kind:'enemy',name:'High Gobloc',hp:40,maxHP:40,stats:{ATK:1},statuses:[]};
+ const g={CombatSessionId:41,DamageTexts:[]};
+ const liveCtx={state:{globals:g,entities:[fara,kaja,gobloc]},callFunction(name,...args){
+  if(name==='CalculateDamage')return 2;
+  if(name==='ApplyDamageToTarget'){const target=liveCtx.state.entities.find(actor=>Number(actor.uid)===Number(args[0]));target.hp=Math.max(0,target.hp-Number(args[1]||0));return Number(args[1]||0);}
+  if(name==='GetEnemyRosterStability')return {stable:true};
+  if(name==='SpawnDamageText')g.DamageTexts.push(args);
+ }};
+ assert.equal(commands.resolveIncomingNativeHit(liveCtx,gobloc,fara,2),true);
+ assert.equal(fara.hp,80);
+ assert.equal(kaja.flow,10);
+ assert.equal(g.FlowOrbAudit.roleRecipientUID,4);
+ assert.equal(g.FlowOrbAudit.roleAwardCount,2,'Falie Stoic and Kaja Comrade each receive one legal role award');
+});

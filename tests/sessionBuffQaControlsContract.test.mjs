@@ -21,7 +21,9 @@ test('Quest-QA AF controls are query-gated and use production callback seams', (
 test('app QA entrypoints use canonical threshold, fan selection, and layout navigation', () => {
   assert.match(app, /recordFlowThreshold\(state\.globals, hero, before, hero\.flow\)/);
   assert.match(app, /combatRuntimeGateway\.runCombatStep\(fnContext, 'ProcessTurn'\)/);
-  assert.match(app, /heroTurnCardFanUI\.select\(index\)/);
+  assert.match(app, /const selectHeroTurnCardFan = \(index, targetUID\) =>/);
+  assert.match(app, /select: selectHeroTurnCardFan/);
+  assert.match(app, /const result = selectHeroTurnCardFan\(index\);/);
   assert.match(app, /await storyEntry\.navigate\('Quests'\)/);
   assert.match(app, /await storyEntry\.continuePausedCombat\(\)/);
   assert.match(app, /QaPreferredAstralFlowSpecialId/);
@@ -56,4 +58,21 @@ test('app-boundary QA sequence opens, selects, resets, and resumes Fara’s AF s
   assert.equal(hasSessionLevelUpPresentationBarrier(globals), false);
   assert.equal(claimSessionBuffQueueResume(globals), true);
   assert.equal(claimSessionBuffQueueResume(globals), false);
+});
+
+test('Quest-QA rails retain the compact heal, Dawn, and combat diagnostics controls', () => {
+  assert.match(hooks, /QA fixture heal/);
+  assert.match(hooks, /QA Dawn rank/);
+  assert.match(hooks, /QA Dawn success/);
+  assert.match(hooks, /QA Dawn equal fail/);
+  assert.match(hooks, /QA Dawn defeat/);
+  assert.match(hooks, /qaFixtureHeal\(\)/);
+  assert.match(hooks, /qaGrantDawnChorus\(Number\(tierSelect\.value \|\| 1\)\)/);
+  assert.match(app, /const qaFixtureHeal = \(\) =>/);
+  assert.match(app, /const qaGrantDawnChorus = rank =>/);
+  assert.match(app, /const qaSetDawnChorusRoll = equality =>/);
+  assert.match(app, /const qaTriggerDawnChorusDefeat = \(\) =>/);
+  assert.match(app, /ward: \{ remaining:/);
+  assert.match(app, /kajaAF: \{/);
+  assert.match(app, /dawnChorus: \{/);
 });

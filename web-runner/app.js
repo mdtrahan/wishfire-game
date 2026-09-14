@@ -92,7 +92,8 @@ import {
   getEmbeddedJson,
   runtimeAssetUrl,
 } from './systems/runtimeAssetUrl.mjs';
-import { chooseSessionLevelUpBuff, claimSessionBuffQueueResume, getSessionLevelUpBuffPresentation, reconcileSessionFlowThresholds, restoreSessionBuffChoiceState, serializeSessionBuffChoiceState, updateSessionLevelUpSettlement } from './modules/sessionLevelUpBuffPresentation.mjs';
+import { chooseSessionLevelUpBuff, claimSessionBuffQueueResume, getSessionLevelUpBuffPresentation, reconcileSessionFlowThresholds, restoreSessionBuffChoiceState, serializeSessionBuffChoiceState, updateSessionLevelUpSettlement, SESSION_LEVEL_UP_BUFF_CARDS } from './modules/sessionLevelUpBuffPresentation.mjs';
+import { applyLevelUpBuffCard } from '../src/core/sessionLevelBuffOffers.mjs';
 import { recordFlowThreshold } from './src/core/personalFlow.mjs';
 import { heroArtKey } from './state/heroArtAssets.mjs';
 import { computeCombatPower as canonicalCombatPower, normalizeCombatPowerActor } from './src/core/combatPower.mjs';
@@ -2203,21 +2204,22 @@ async function main(){
     },
   });
   runtimeListenerTeardowns.push(() => heroCommandUI.destroy());
+  const selectHeroTurnCardFan = (index, targetUID) => {
+    const levelUp = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
+    return levelUp.open
+      ? chooseSessionLevelUpBuff(
+        state.globals,
+        state.entities,
+        levelUp.cards[index]?.cardId,
+        Number(state.globals.time || 0),
+        (card, hero) => callFunctionWithContext(fnContext, 'ExecuteAstralFlowSpecial', card.specialId, hero.uid),
+      )
+      : callFunctionWithContext(fnContext, 'SelectHeroTurnCard', index, targetUID);
+  };
   const heroTurnCardFanUI = createHeroTurnCardFanUI({
     canvas,
     getState: () => ({ open: !!state.globals.HeroTurnCardFanOpen, cards: state.globals.HeroTurnCardFanCards, heroUID: state.globals.HeroTurnCardFanHeroUID }),
-    select: (index, targetUID) => {
-      const levelUp = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
-      return levelUp.open
-        ? chooseSessionLevelUpBuff(
-          state.globals,
-          state.entities,
-          levelUp.cards[index]?.cardId,
-          Number(state.globals.time || 0),
-          (card, hero) => callFunctionWithContext(fnContext, 'ExecuteAstralFlowSpecial', card.specialId, hero.uid),
-        )
-        : callFunctionWithContext(fnContext, 'SelectHeroTurnCard', index, targetUID);
-    },
+    select: selectHeroTurnCardFan,
     cancel: () => callFunctionWithContext(fnContext, 'CancelHeroTurnCardFan'),
     reopen: () => callFunctionWithContext(fnContext, 'ReopenHeroTurnCardFan'),
   });
@@ -2241,12 +2243,15 @@ async function main(){
       execution: state.globals.QaLastAstralFlowSpecial || state.globals.LastAstralFlowSpecial || null,
       specialEffects: {
         wardTargets: Object.keys(state.globals.PartyWardBarrierVisualsByUID || {}).map(Number),
+        ward: { remaining: Number(state.globals.PartyTempHPShield || 0), absorbed: Number(state.globals.LastPartyWardBarrierAbsorbed || 0), lastTargetUID: Number(state.globals.LastPartyWardBarrierHitUID || 0), fadeOutUntil: Number(state.globals.PartyWardBarrierFadeOutUntil || 0) },
         destinyTicks: state.globals.AstralFlowDestinyRegensByUID || {},
         magicFruit: state.globals.AstralFlowMagicFruitLast || null,
-        chainTargets: (state.globals.ChainStrikeVisuals || []).map(row => Number(row?.targetUID || 0)),
+        chainTargets: (state.globals.ChainStrikeVisuals || []).map(row => ({ targetUID: Number(row?.targetUID || 0), preHP: Number(row?.beforeHP || 0), postHP: Number(row?.afterHP || 0), damage: Number(row?.resolvedDamage || 0), coefficient: Number(row?.damagePercent || 0) })),
         pulseTargets: (state.globals.ArcanePulseVisuals || []).map(row => Number(row?.targetUID || 0)),
         fazeZones: (state.globals.TaintedGroundZones || []).map(row => Number(row?.targetUID || row?.enemyUID || 0)),
       },
+      kajaAF: { source: String(state.globals.FlowOrbAudit?.source || 'resolved-action'), recipientUID: Number(state.globals.FlowOrbAudit?.roleRecipientUID || 0), count: Number(state.globals.FlowOrbAudit?.roleAwardCount || 0), value: Number(state.globals.FlowOrbAudit?.roleValue || 0) },
+      dawnChorus: { ownedRank: Number(state.globals.DawnChorusOwnedRank || 0), chance: Number(state.globals.DawnChorusLastRoll?.chance || 0), attempted: Number(state.globals.DawnChorusAttempted || 0), succeeded: Number(state.globals.DawnChorusSucceeded || 0), revived: state.entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0).map(actor => ({ uid: Number(actor.uid || 0), hp: Number(actor.hp || 0) })), rng: state.globals.DawnChorusLastRoll || null },
     };
   };
   const qaSetHeroFlowReady = (heroUID, preferredSpecialId = '') => {
@@ -2266,11 +2271,63 @@ async function main(){
     const presentation = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
     return { ok: !!threshold, threshold, presentation, readout: qaReadSessionBuffState() };
   };
+  const qaFixtureHeal = () => {
+    const heroes = state.entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
+    const selected = heroes.find(hero => Number(hero.uid || 0) === Number(state.globals.QaSelectedHeroUID || 0)) || heroes[0] || null;
+    if (!selected || heroes.length < 2) return { ok: false, reason: 'requiresTwoLivingHeroes' };
+    const other = heroes.find(hero => Number(hero.uid || 0) !== Number(selected.uid || 0));
+    selected.hp = Math.max(1, Number(selected.maxHP || 1) - Math.max(2, Math.floor(Number(selected.maxHP || 1) * .2)));
+    other.hp = Math.max(1, Number(other.maxHP || 1) - Math.max(2, Math.floor(Number(other.maxHP || 1) * .25)));
+    const initiative = state.globals.DynamicInitiative && typeof state.globals.DynamicInitiative === 'object' ? state.globals.DynamicInitiative : (state.globals.DynamicInitiative = {});
+    initiative.active = 1;
+    initiative.current = { uid: Number(selected.uid || 0), type: 0, name: String(selected.name || '') };
+    state.globals.InitiativeCurrentUID = Number(selected.uid || 0);
+    const before = Number(selected.hp || 0);
+    const started = callFunctionWithContext(fnContext, 'DoHeal', selected.uid);
+    const after = Number(selected.hp || 0);
+    const result = { ok: !!started, selectedHeroUID: Number(selected.uid || 0), damagedHeroUIDs: [Number(selected.uid || 0), Number(other.uid || 0)], before, after, actualDelta: Math.max(0, after - before) };
+    state.globals.QaFixtureHeal = result;
+    return result;
+  };
+  const qaGrantDawnChorus = rank => {
+    const stage = Math.max(1, Math.min(4, Math.floor(Number(rank || 1))));
+    const heroes = state.entities.filter(actor => actor?.kind === 'hero');
+    let nextState = state.globals.SessionLevelBuffState || { heroes: {} };
+    for (const hero of heroes) {
+      const heroId = String(hero.heroInstanceKey ?? hero.uid ?? '');
+      for (let current = 1; current <= stage; current += 1) {
+        const card = SESSION_LEVEL_UP_BUFF_CARDS.find(candidate => candidate.effectId === 'dawn_chorus' && Number(candidate.stage) === current);
+        const applied = applyLevelUpBuffCard({ state: nextState, heroId, cardId: card?.cardId, cards: SESSION_LEVEL_UP_BUFF_CARDS });
+        if (applied.status !== 'applied') return { ok: false, reason: applied.reason || 'dawnGrantRejected', stage: current };
+        nextState = applied.state;
+      }
+    }
+    state.globals.SessionLevelBuffState = nextState;
+    state.globals.DawnChorusOwnedRank = stage;
+    return { ok: true, rank: stage, heroUIDs: heroes.map(hero => Number(hero.uid || 0)) };
+  };
+  const qaSetDawnChorusRoll = equality => {
+    const rank = Math.max(1, Number(state.globals.DawnChorusOwnedRank || 1));
+    const card = SESSION_LEVEL_UP_BUFF_CARDS.find(candidate => candidate.effectId === 'dawn_chorus' && Number(candidate.stage) === rank);
+    const chance = Number(card?.formula?.chance || 0);
+    state.globals.RuntimeRandom = () => equality ? chance : Math.max(0, chance - .000001);
+    state.globals.DawnChorusAttempted = 0;
+    state.globals.DawnChorusSucceeded = 0;
+    delete state.globals.DawnChorusLastRoll;
+    return { ok: !!card, rank, chance, roll: equality ? chance : Math.max(0, chance - .000001) };
+  };
+  const qaTriggerDawnChorusDefeat = () => {
+    const heroes = state.entities.filter(actor => actor?.kind === 'hero');
+    if (!heroes.length) return { ok: false, reason: 'noHeroes' };
+    for (const hero of heroes) hero.hp = 0;
+    const defeated = callFunctionWithContext(fnContext, 'SettleCombatDefeat');
+    return { ok: true, defeated, readout: qaReadSessionBuffState() };
+  };
   const qaChooseAstralFlowSpecial = specialId => {
     const presentation = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
     const index = (presentation.cards || []).findIndex(card => String(card?.specialId || '') === String(specialId || ''));
     if (index < 0) return { ok: false, reason: 'specialUnavailable', readout: qaReadSessionBuffState() };
-    const result = heroTurnCardFanUI.select(index);
+    const result = selectHeroTurnCardFan(index);
     state.globals.QaLastAstralFlowSpecial = result?.execution || result || null;
     return { ok: result?.status === 'applied', result, readout: qaReadSessionBuffState() };
   };
@@ -4174,6 +4231,10 @@ function getStoryCardLiveLineState() {
     worldToCanvas,
     canvas,
     qaSetHeroFlowReady,
+    qaFixtureHeal,
+    qaGrantDawnChorus,
+    qaSetDawnChorusRoll,
+    qaTriggerDawnChorusDefeat,
     qaChooseAstralFlowSpecial,
     qaPauseResumeSessionBuffOffer,
     qaReadSessionBuffState,

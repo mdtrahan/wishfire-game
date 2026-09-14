@@ -65,15 +65,15 @@ export function rulesContext(ctx,roleEvents=null){
 
 function awardResolvedRoleFlow(ctx,events){
  const heroes=ctx.state.entities.filter(actor=>actor?.kind==='hero');
+ const hostile=events.find(event=>event.type==='damage'&&event.sourceKind==='enemy'&&event.targetKind==='hero');
  for(const hero of heroes){
-  const hostile=events.find(event=>event.type==='damage'&&event.sourceKind==='enemy'&&event.targetUID===Number(hero.uid));
   const enemyDamage=events.some(event=>event.type==='damage'&&event.sourceUID===Number(hero.uid)&&event.targetKind==='enemy');
   const status=events.some(event=>event.type==='status'&&event.sourceUID===Number(hero.uid));
   const award=resolveRoleFlowAward({heroes,hero,event:{source:'resolved-action',hostileHpDamage:hostile?.delta||0,hostileTargetUID:hostile?.targetUID||0,hostileTargetWasLiving:hostile?.targetWasLiving===true,enemyHpDamage:enemyDamage?1:0,newEligibleStatus:status},apply:true});
   if(!award)continue;
   const threshold=recordFlowThreshold(ctx.state.globals,hero,award.before,award.flow);
   const audit=ctx.state.globals.FlowOrbAudit||{};
-  ctx.state.globals.FlowOrbAudit={...audit,roleRecipientUID:award.recipientUID,roleValue:award.value,roleAwardCount:Number(audit.roleAwardCount||0)+1,pendingThresholdToken:threshold?.token||audit.pendingThresholdToken||''};
+  ctx.state.globals.FlowOrbAudit={...audit,source:award.source,roleRecipientUID:award.recipientUID,roleValue:award.value,roleAwardCount:Number(audit.roleAwardCount||0)+1,pendingThresholdToken:threshold?.token||audit.pendingThresholdToken||''};
  }
 }
 
@@ -209,6 +209,7 @@ function tryDawnChorus(ctx) {
   .filter(card=>card?.formula?.surface==='party_defeat_raise')
   .sort((left,right)=>Number(right.stage||0)-Number(left.stage||0));
  const card=candidates[0];if(!card)return false;
+ g.DawnChorusOwnedRank=Number(card.stage||0);
  g.DawnChorusAttempted=1;
  const roll=typeof g.RuntimeRandom==='function'?Number(g.RuntimeRandom()):Math.random();
  const chance=Math.max(0,Number(card.formula?.chance||0));
