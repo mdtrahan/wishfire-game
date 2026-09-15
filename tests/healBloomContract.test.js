@@ -29,7 +29,7 @@ test('heal bloom module uses heavy plus glyph particles and GSAP timelines', () 
   assert.match(src, /const rotation = random\(-20, 20\);/);
 });
 
-test('app heal path spawns heal bloom on hero sprites and renders it behind actors', () => {
+test('app heal path spawns an illustrated bloom on healed actors and group rain for simultaneous heals', () => {
   const appSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
   const spawnSrc = sliceBetween(appSrc, 'function spawnPendingDamageNumbers', 'const RUNTIME_FINGERPRINT');
   const renderSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
@@ -40,8 +40,9 @@ test('app heal path spawns heal bloom on hero sprites and renders it behind acto
   assert.match(spawnSrc, /gameState\.healBlooms = Array\.isArray\(gameState\.healBlooms\) \? gameState\.healBlooms : \[\];/);
   assert.match(spawnSrc, /gameState\.healBlooms\.push\(d\.healBloomAnimation\);/);
   assert.match(renderSrc, /const renderHealBlooms = \(\) => \{/);
-  assert.match(renderSrc, /ctx\.fillRect\(-arm \/ 2, -length \/ 2, arm, length\);/);
-  assert.match(renderSrc, /ctx\.fillRect\(-length \/ 2, -arm \/ 2, length, arm\);/);
+  assert.match(renderSrc, /images\.CombatHealBloom/);
+  assert.match(renderSrc, /activeBlooms\.length > 1 && images\.CombatGroupHealRain/);
+  assert.doesNotMatch(renderSrc, /ctx\.fillRect\(-arm \/ 2, -length \/ 2, arm, length\);/);
   assert.match(renderSrc, /renderHealBlooms\(\);[\s\S]*\/\/ Render hero portraits/);
 });
 
