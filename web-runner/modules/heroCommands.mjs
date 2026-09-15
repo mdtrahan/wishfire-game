@@ -69,7 +69,8 @@ function awardResolvedRoleFlow(ctx,events){
  for(const hero of heroes){
   const enemyDamage=events.some(event=>event.type==='damage'&&event.sourceUID===Number(hero.uid)&&event.targetKind==='enemy');
   const status=events.some(event=>event.type==='status'&&event.sourceUID===Number(hero.uid));
-  const award=resolveRoleFlowAward({heroes,hero,event:{source:'resolved-action',hostileHpDamage:hostile?.delta||0,hostileTargetUID:hostile?.targetUID||0,hostileTargetWasLiving:hostile?.targetWasLiving===true,enemyHpDamage:enemyDamage?1:0,newEligibleStatus:status},apply:true});
+  const magicPressure=enemyDamage&&events.some(event=>event.type==='magic-action'&&event.sourceUID===Number(hero.uid));
+  const award=resolveRoleFlowAward({heroes,hero,event:{source:'resolved-action',hostileHpDamage:hostile?.delta||0,hostileTargetUID:hostile?.targetUID||0,hostileTargetWasLiving:hostile?.targetWasLiving===true,enemyHpDamage:enemyDamage?1:0,newEligibleStatus:status,successfulMagicPressure:magicPressure},apply:true});
   if(!award)continue;
   const threshold=recordFlowThreshold(ctx.state.globals,hero,award.before,award.flow);
   if(threshold&&ctx.state.globals.QaLiveDestinyTrace){ctx.state.globals.QaLiveDestinyTrace.status='offer-pending';ctx.state.globals.QaLiveDestinyTrace.events.push({event:'natural-role-threshold',at:Number(ctx.state.globals.time||0),heroUID:Number(hero.uid||0),before:award.before,after:award.flow,token:threshold.token});}
@@ -80,6 +81,7 @@ function awardResolvedRoleFlow(ctx,events){
 
 function resolveRoleAction(ctx,source,skill,targetIds,origin={}){
  const events=[];const rules=rulesContext(ctx,events);const resolved=resolveSkill(rules,source,skill,targetIds,origin);
+ if(resolved&&source?.kind==='hero'&&skill?.tags?.includes('magic'))events.push({type:'magic-action',sourceUID:Number(source.uid||0)});
  if(resolved)awardResolvedRoleFlow(ctx,events);
  return {resolved,rules};
 }

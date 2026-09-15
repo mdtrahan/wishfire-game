@@ -1,7 +1,7 @@
 // Initial balance tuning. Combat and the hero screen consume these same definitions.
 export const PROGRESSION = Object.freeze({ maxLevel:99, expBase:100, expExponent:1.5, maxSP:100, startingSP:100, passiveSPRegenPerTurn:5, activeLevels:[1,1,5,15,20,30,40], passiveLevels:[1,10,20,25,35,45], enemyEXP:25, enemyGold:10 });
 export const FLOW_ORB_TUNING = Object.freeze({flowMax:100,limitOrbValue:10,limitOrbDropCount:1,releaseSeconds:.72,flightSeconds:.65,collectFlashSeconds:.18});
-export const FLOW_MODES = Object.freeze({Stoic:'Take hostile HP damage.',Warrior:'Deal positive enemy HP damage.',Tactician:'Apply a new eligible status.',Comrade:'Another living ally takes hostile HP damage.'});
+export const FLOW_MODES = Object.freeze({Stoic:'Take hostile HP damage.',Warrior:'Deal positive enemy HP damage.',Tactician:'Deal magic damage or apply a new eligible status.',Comrade:'Another living ally takes hostile HP damage.'});
 export const COMBAT_TUNING = Object.freeze({ flowMax:FLOW_ORB_TUNING.flowMax, criticalHP:.25, blindPenalty:.35, accuracy:1, evasion:0, counterPotency:1 });
 const status=(statusEffect,magnitude,duration=2,extra={})=>({effectType:'status',statusEffect,magnitude,duration,...extra});
 const damage=(potency=1,hits=1)=>({effectType:'damage',potency,hits});
