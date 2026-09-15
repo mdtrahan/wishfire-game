@@ -38,7 +38,7 @@ Vertical effects reveal in their direction of travel. Eruptions grow from the gr
 | Marid basic (`MAG 22 > ATK 8`) | Enemy rest anchor; aqua crescent emission | Aqua-blue | Aqua splash with brief mist | 1 | 1 | 0 | 0 | KEEP asset; live proof pending |
 | Chimerilass basic (`MAG 26 > ATK 8`) | Target-centered rose-gold magical eruption | Rose-gold | Upward burst and falling motes | 1 | 1 | 0 | 0 | KEEP asset; live proof pending |
 | Split | Hero rest anchor; broad painted slash across enemy line | Red-orange | Slash covers every damaged enemy | 1 | 1 | 0 | 0 | KEEP |
-| Party and session Chain Strike tiers | First contact; illustrated ribbon bounces between targets | Cyan-white | Ribbon contact on each bounce | 1 | 1 | 0 | 0 | KEEP shared `ChainStrikeVisuals` path |
+| Party and session Chain Strike tiers | First contact; illustrated ribbon bounces between targets | Cyan-white | Ribbon contact on each bounce | 1 | 1 | 1 | 1 | KEEP; AF card reveal and ordinary-session capture verified |
 | Arcane Pulse / Spectral Orb tiers | Hero rest anchor; illustrated crescent charges then travels straight | Violet-cyan | Matching painted contact burst and short trail | 1 | 1 | 0 | 0 | Shared `ArcanePulseVisuals`; legacy procedural arcs disconnected |
 | Venom Sigil tiers | Enemy ground origin; poison sigil reveals upward | Purple-magenta | Rising venom wisps; subsequent DOT numbers retain their status palette | 1 | 1 | 0 | 0 | Session behavior proc |
 | Glass Reprisal tiers | Countering hero rest anchor; glass-shard crescent travels to attacker | Cyan-white | Blue-white contact splash plus shared staged self-heal | 1 | 1 | 0 | 0 | One sequence per resolved counter package |

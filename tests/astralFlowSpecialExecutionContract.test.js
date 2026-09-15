@@ -95,11 +95,14 @@ test('each non-healing AF special queues its existing AoE or targeted effect wit
       assert.equal(ctx.state.globals.PendingHeroHits.filter(hit => hit.effectType === 'arcane_pulse').length, 1);
       assert.equal(ctx.state.globals.ArcanePulseVisuals[0].sourceX, 44);
       assert.equal(ctx.state.globals.ArcanePulseVisuals[0].sourceY, 156);
+      assert.equal(ctx.state.globals.ArcanePulseVisuals[0].startAt, 1.38);
     }
     if (specialId === 'chain_strike_ii') {
       const telemetry=ctx.state.globals.LastAstralFlowChainStrikeII;
       assert.equal(telemetry.primary.coefficient,396);assert.ok(telemetry.primary.damage>0);
       assert.ok(telemetry.hitCount>0);assert.equal((ctx.state.globals.PendingHeroHits || []).some(hit => hit.actionName === 'Chain Strike II'),false);
+      assert.ok(ctx.state.globals.ChainStrikeVisuals.length > 0);
+      assert.ok(ctx.state.globals.ChainStrikeVisuals.every(visual => visual.startAt === 1.38));
     }
     if (specialId === 'faze') assert.equal(ctx.state.globals.TaintedGroundZones.length, 2);
   }

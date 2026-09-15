@@ -65,6 +65,7 @@
 - Party KO settles the native defeat terminal through the existing outcome path, records `ProgressionBattle.outcome=defeat` with no victory EXP or Gold, clears pending fan/native command state, and resets settlement plus the terminal marker when Continue resurrects the encounter.
 - Resolved healing emits one `DamageTexts` heal record with the actual positive HP delta; the app-owned bloom follows that record. Crimson Ward consumes its shared ward before every hostile hero HP change. Dawn Chorus checks its owned seeded session roll once at full-party defeat and restores the party only on success.
 - Arcane Pulse visual packets source from the casting hero's rendered resting sprite base. They never average the party formation or inherit lunge displacement.
+- Transient Astral Flow attack visuals begin after the card-selection fan clears so their illustrated delivery remains visible in ordinary combat.
 - Turn-start Destiny healing runs only after the scheduled hero has claimed its native command. Its bloom and combat text must not activate the presentation barrier before that same command starts.
 - `ApplyActiveHeroHeal` and `DoHeal` use `emitResolvedHealEvent` through their mirrored skill-sheet helper. The local fallback only supports stripped-import contract harnesses; shipped runtime never bypasses the shared emitter.
 - Hero damage packets declare only their attack VFX kind. Magic basic attackers keep their resting position while the presentation system carries the projectile to the target; both function-bank mirrors must remain identical.

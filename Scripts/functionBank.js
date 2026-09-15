@@ -119,6 +119,7 @@ const PARTY_CHAIN_STRIKE_I_DAMAGE_PCT = 33;
 const PARTY_CHAIN_STRIKE_II_ID = 'party_chain_strike_ii';
 const PARTY_CHAIN_STRIKE_II_DAMAGE_PCT = 66;
 const ASTRAL_FLOW_CHAIN_STRIKE_II_DAMAGE_PCT = PARTY_CHAIN_STRIKE_II_DAMAGE_PCT * 6;
+const ASTRAL_FLOW_CARD_REVEAL_DELAY_SEC = 0.38;
 const PARTY_CHAIN_STRIKE_VISUAL_KEY = 'chain_arc_ribbon';
 const PARTY_CHAIN_STRIKE_VISUAL_ASSET = 'SkillChainStrikeArc';
 const PARTY_SPLIT_ID = 'party_split';
@@ -1543,7 +1544,7 @@ function queueAstralFlowArcanePulse(ctx, actorUID) {
   if (!actor || actor.kind !== 'hero' || Number(actor.hp || 0) <= 0 || !target) return { ok: false, reason: 'targetUnavailable' };
   const g = getGlobals(ctx);
   const now = Number(g.time || 0);
-  const startAt = now + 0.12;
+  const startAt = now + ASTRAL_FLOW_CARD_REVEAL_DELAY_SEC;
   const impactAt = startAt + 0.24;
   const damage = Math.max(1, Math.floor(PARTY_ARCANE_PULSE_DAMAGE));
   g.PendingHeroHits = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
@@ -1615,7 +1616,10 @@ export function ExecuteAstralFlowSpecial(ctx, specialId, actorUID) {
       const resolve = (enemy, primary, sourceTargetUID) => {
         if (!enemy || enemy.kind !== 'enemy' || Number(enemy.hp || 0) <= 0) return null;
         const beforeHP = Number(enemy.hp || 0);
-        if (!primary) queueChainStrikeVisual(g, sourceTargetUID, enemy.uid, now, now + 0.28, PARTY_CHAIN_STRIKE_II_ID);
+        if (!primary) {
+          const visualStartAt = now + ASTRAL_FLOW_CARD_REVEAL_DELAY_SEC;
+          queueChainStrikeVisual(g, sourceTargetUID, enemy.uid, visualStartAt, visualStartAt + 0.28, PARTY_CHAIN_STRIKE_II_ID);
+        }
         const applied = ApplyDamageToTarget(ctx, enemy.uid, damage, { sourceUID: Number(actorUID || 0), deferEnemyDefeatTransition: 1 });
         const hit = recordAstralFlowChainStrikeIIHit(g, { targetUID: Number(enemy.uid || 0), preHP: beforeHP, postHP: Number(enemy.hp || 0), damage: applied, primary });
         if (beforeHP > 0 && Number(enemy.hp || 0) === 0) newlyDefeatedEnemyUIDs.push(Number(enemy.uid || 0));
