@@ -38,6 +38,17 @@ const entityAnchor = (state, uid) => {
   } : null;
 };
 
+const enemyGroupAnchor = (state) => {
+  const anchors = (state.entities || [])
+    .filter(entity => entity?.kind === 'enemy' && Number(entity.hp ?? 1) > 0)
+    .map(entity => entityAnchor(state, entity.uid))
+    .filter(Boolean);
+  return anchors.length ? {
+    x: anchors.reduce((sum, point) => sum + point.x, 0) / anchors.length,
+    y: anchors.reduce((sum, point) => sum + point.y, 0) / anchors.length,
+  } : null;
+};
+
 export function queueCombatAttackImpactVfx(state, hit, target, now) {
   if ((!hit?.attackVfxKind && !hit?.impactVfxKind) || !target) return;
   const g = state.globals || {};
@@ -63,37 +74,106 @@ const drawTravel = (ctx, image, from, to, progress, width, layoutScale, lob = 0)
   ctx.restore();
 };
 
+const drawVerticalReveal = (ctx, image, pos, progress, width, alpha, direction = 'down') => {
+  if (!image || !pos) return;
+  const reveal = Math.max(0.08, Math.min(1, progress * 1.18));
+  const sourceH = Math.max(1, image.height * reveal);
+  const sourceY = direction === 'up' ? image.height - sourceH : 0;
+  const height = width * (image.height / Math.max(1, image.width));
+  const shownH = height * reveal;
+  const destY = direction === 'up' ? pos.y - shownH : pos.y - height * 0.72;
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+  ctx.drawImage(image, 0, sourceY, image.width, sourceH, pos.x - width / 2, destY, width, shownH);
+  ctx.restore();
+};
+
+const renderArcanePulseVfx = (ctx, { state, images, worldToCanvas, layoutScale }) => {
+  const pulses = Array.isArray(state.globals?.ArcanePulseVisuals) ? state.globals.ArcanePulseVisuals : [];
+  if (!pulses.length || !images.SkillArcanePulse) return;
+  const now = Number(state.globals.time || 0);
+  state.globals.ArcanePulseVisuals = pulses.filter((pulse) => {
+    const startAt = Number(pulse?.startAt || 0);
+    const impactAt = Math.max(startAt + 0.01, Number(pulse?.impactAt || startAt));
+    const endAt = impactAt + 0.3;
+    if (!pulse || now > endAt) return false;
+    if (now < startAt) return true;
+    const source = worldToCanvas(Number(pulse.sourceX || 0), Number(pulse.sourceY || 0));
+    const target = worldToCanvas(Number(pulse.targetX || 0), Number(pulse.targetY || 0));
+    const travel = Math.max(0, Math.min(1, (now - startAt) / (impactAt - startAt)));
+    const charge = Math.min(1, travel / 0.18);
+    const move = Math.max(0, Math.min(1, (travel - 0.18) / 0.82));
+    const eased = 1 - Math.pow(1 - move, 3);
+    const x = source.x + (target.x - source.x) * eased;
+    const y = source.y + (target.y - source.y) * eased;
+    const angle = Math.atan2(target.y - source.y, target.x - source.x);
+    const width = Math.max(54, 76 * layoutScale) * (0.5 + charge * 0.5);
+    if (now < impactAt) {
+      for (const [trail, opacity] of [[0.13, 0.12], [0.07, 0.22]]) {
+        const prior = Math.max(0, eased - trail);
+        ctx.save();
+        ctx.globalAlpha = opacity * move;
+        ctx.translate(source.x + (target.x - source.x) * prior, source.y + (target.y - source.y) * prior);
+        ctx.rotate(angle);
+        ctx.drawImage(images.SkillArcanePulse, -width * 0.55, -width * 0.36, width, width * 0.72);
+        ctx.restore();
+      }
+      ctx.save();
+      ctx.globalAlpha = 0.35 + charge * 0.65;
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      ctx.drawImage(images.SkillArcanePulse, -width * 0.55, -width * 0.36, width, width * 0.72);
+      ctx.restore();
+    } else if (images.CombatImpactPurple) {
+      const impact = Math.max(0, Math.min(1, (now - impactAt) / 0.3));
+      const size = Math.max(52, 70 * layoutScale) * (0.72 + impact * 0.42);
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, 1 - impact);
+      ctx.drawImage(images.CombatImpactPurple, target.x - size / 2, target.y - size / 3, size, size * 0.66);
+      ctx.restore();
+    }
+    return true;
+  });
+};
+
 const renderEnemyMagic = (ctx, { state, images, worldToCanvas, layoutScale }) => {
   const action = state.globals?.EnemyAction;
   if (!action?.active || !['LUNGE', 'HIT'].includes(action.state)) return;
   const actor = (state.entities || []).find(entity => entity?.kind === 'enemy' && Number(entity.uid) === Number(action.uid));
-  const profile = combatVfxProfileForActor(actor);
+  const skillId = String(action.skillId || '');
+  if (skillId.startsWith('Enemy_Heal_')) return;
+  const profile = skillId === 'Enemy_Scathe' ? { delivery: 'scathe_crackle', impact: 'purple' }
+    : skillId === 'Enemy_Sweep' ? { delivery: 'sweep_crescent', impact: 'blue' }
+      : skillId === 'Enemy_Wipe' ? { delivery: 'wipe_wash', impact: 'heal' }
+        : combatVfxProfileForActor(actor);
   if (profile.delivery === 'melee') return;
   const sourcePoint = entityAnchor(state, actor?.uid);
-  const targetPoint = entityAnchor(state, action.targetUID);
+  const targetPoint = profile.delivery === 'wipe_wash' ? enemyGroupAnchor(state) : entityAnchor(state, action.targetUID);
   if (!sourcePoint || !targetPoint) return;
   const source = worldToCanvas(sourcePoint.x, sourcePoint.y);
   const target = worldToCanvas(targetPoint.x, targetPoint.y);
   const progress = action.state === 'HIT' ? 1 : Math.max(0, Math.min(1, Number(action.visualProgress || 0)));
   const hitFade = action.state === 'HIT' ? Math.max(0, 1 - Number(action.timer || 0) / 0.22) : 1;
-  if (profile.delivery === 'marid_crescent' || profile.delivery === 'magic_orb') {
-    drawTravel(ctx, projectileAsset(images, profile.delivery), source, target, progress, Math.max(46, 62 * layoutScale), layoutScale);
+  if (profile.delivery === 'marid_crescent' || profile.delivery === 'magic_orb' || profile.delivery === 'sweep_crescent') {
+    const image = profile.delivery === 'sweep_crescent' ? images.CombatSweepCrescent : projectileAsset(images, profile.delivery);
+    drawTravel(ctx, image, source, target, progress, Math.max(46, 62 * layoutScale), layoutScale);
     return;
   }
-  const image = profile.delivery === 'djinn_rain' ? images.CombatDjinnRain : images.CombatChimerilassEruption;
+  const image = profile.delivery === 'djinn_rain' ? images.CombatDjinnRain
+    : profile.delivery === 'scathe_crackle' ? images.CombatScatheCrackle
+      : profile.delivery === 'wipe_wash' ? images.CombatWipeWash
+        : images.CombatChimerilassEruption;
   if (!image) return;
   const pulse = Math.sin(Math.max(0.05, progress) * Math.PI * 0.72);
-  const width = Math.max(70, (profile.delivery === 'djinn_rain' ? 88 : 78) * layoutScale) * (0.78 + progress * 0.22);
-  const height = width * (image.height / Math.max(1, image.width));
-  ctx.save();
-  ctx.globalAlpha = Math.max(0, Math.min(1, pulse * 1.28 * hitFade));
-  ctx.drawImage(image, target.x - width / 2, target.y - height * 0.72, width, height);
-  ctx.restore();
+  const width = Math.max(70, (profile.delivery === 'wipe_wash' ? 104 : profile.delivery === 'djinn_rain' || profile.delivery === 'scathe_crackle' ? 88 : 78) * layoutScale) * (0.78 + progress * 0.22);
+  const direction = profile.delivery === 'chimerilass_eruption' ? 'up' : 'down';
+  drawVerticalReveal(ctx, image, target, progress, width, pulse * 1.28 * hitFade, direction);
 };
 
 export function renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layoutScale = 1 }) {
   const g = state.globals || {};
   const now = Number(g.time || 0);
+  renderArcanePulseVfx(ctx, { state, images, worldToCanvas, layoutScale });
   const pending = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
   for (const hit of pending) {
     const kind = String(hit?.attackVfxKind || '');

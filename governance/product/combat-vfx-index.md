@@ -13,6 +13,8 @@ Every damaging action declares these beats:
 3. **Contact**: a color-matched splash on every damaged target.
 4. **Residue**: optional field, sparks, flame, mist, or glow lasting less than the next action unless the gameplay effect persists.
 
+Vertical effects reveal in their direction of travel. Eruptions grow from the ground upward; rain, washes, and crackle descend from their origin. Healing stages a ground sigil, rising fountain, and falling motes instead of scaling one complete sprite in and out.
+
 `MAG > ATK` selects ranged magic for a basic attack. Other basic attacks use melee contact. Named skills may override delivery because their gameplay meaning is more specific than the basic classifier.
 
 ## Completion values
@@ -37,16 +39,17 @@ Every damaging action declares these beats:
 | Chimerilass basic (`MAG 26 > ATK 8`) | Target-centered rose-gold magical eruption | Rose-gold | Upward burst and falling motes | 1 | 1 | 0 | 0 | KEEP asset; live proof pending |
 | Split | Hero rest anchor; broad painted slash across enemy line | Red-orange | Slash covers every damaged enemy | 1 | 1 | 0 | 0 | KEEP |
 | Chain Strike I / II | First contact; illustrated ribbon bounces between targets | Cyan-white | Ribbon contact on each bounce | 1 | 1 | 0 | 0 | KEEP |
-| Arcane Pulse | Hero rest anchor; crescent-shaped magic emission | Violet-cyan | Crescent impact on selected enemy | 1 | 1 | 0 | 0 | Preserve timing; polish raster later |
+| Arcane Pulse | Hero rest anchor; illustrated crescent charges then travels straight | Violet-cyan | Matching painted contact burst and short trail | 1 | 1 | 0 | 0 | Legacy procedural arcs disconnected |
 | Faze / Blight | Enemy ground origin; tainted field | Purple | Purple damage floats and persistent ground haze | 1 | 1 | 1 | 1 | KEEP |
 | Crimson Ward | Hero group origin; shield bloom | Crimson | Ward absorbs damage before HP | 1 | 1 | 1 | 1 | KEEP |
-| Magic Fruit | Target-centered heal bloom | Green-gold | Heal bloom and green value | 1 | 1 | 1 | 1 | KEEP |
-| Destiny heal proc | Target-centered heal bloom | Green-gold | Heal bloom and green value | 1 | 1 | 0 | 0 | Share heal family; live proof pending |
-| Enemy single heal | Target-centered heal bloom | Mint-gold | Heal bloom and green value | 1 | 1 | 0 | 0 | Share heal family; live proof pending |
-| Enemy group heal / Wipe | Cloud above enemy group; healing rain | Mint-gold | Heal bloom on every restored enemy | 1 | 1 | 0 | 0 | KEEP asset; live proof pending |
-| Enemy Scathe | Enemy-centered charge; electric lines crackle across affected gems | Violet-white | Sizzle at locked cells | 0 | 0 | 0 | 0 | Board-control family |
-| Enemy Sweep | Enemy-centered aqua crescent sweeps across affected gem line | Aqua-white | Mist at locked cells | 0 | 0 | 0 | 0 | Board-control family |
-| Enemy Wipe purge | Overhead cloud; downward green-gold wash | Mint-gold | Brief cleanse shimmer before heal rain | 1 | 1 | 0 | 0 | Paired with group heal; live proof pending |
+| Magic Fruit | Ground sigil; rising fountain | Green-gold | Falling motes and green value | 1 | 1 | 1 | 1 | KEEP staged family |
+| Destiny heal proc | Ground sigil; rising fountain | Green-gold | Falling motes and green value | 1 | 1 | 1 | 1 | KEEP; observed in ordinary autoplay |
+| Enemy single heal | Ground sigil; rising fountain | Mint-gold | Falling motes and green value | 1 | 1 | 0 | 0 | Share staged heal family; live proof pending |
+| Enemy group heal / Wipe | Progressive cloud rain above enemy group | Mint-gold | Fountain and motes on every restored enemy | 1 | 1 | 0 | 0 | Live proof pending |
+| Enemy Scathe | Enemy rest anchor; electric lines crackle around the chosen hero | Violet-white | Target-centered sizzle while the board lock resolves | 1 | 1 | 0 | 0 | Named skill overrides basic Djinn rain |
+| Enemy Sweep | Enemy rest anchor; aqua crescent sweeps toward the chosen hero | Aqua-white | Crescent carries its own misty contact while the board lock resolves | 1 | 1 | 0 | 0 | Named skill overrides basic Marid crescent |
+| Enemy Wipe purge | Cloud above the living enemy group; downward green-gold wash | Mint-gold | Wash precedes per-target heal blooms | 1 | 1 | 0 | 0 | Named skill overrides Chimerilass eruption |
+| Enemy Drain Buff | Enemy self origin; blue energy drawn inward | Blue-violet | Brief defensive aura | 0 | 0 | 0 | 0 | Dormant until a shipping enemy can select it |
 | Barrier / defensive status | Target-centered spectral hand or shield presses into place | Skill affinity color | Short glow; persistent status icon/barrier art | 0 | 0 | 0 | 0 | Use only where status is visible |
 | Fire AOE or ground effect | Target group ground origin; magical brushfire | Orange-magenta | Flame splash plus momentary brushfire | 0 | 0 | 0 | 0 | Do not replace Faze |
 | Heavy magical strike | Cloud or orb manifests overhead; spectral hand smashes downward | Skill affinity color | Comical squash splash | 0 | 0 | 0 | 0 | Reserved family |
@@ -59,7 +62,7 @@ Generate and integrate in this order so each pass closes a visible production ga
 2. Enemy melee impacts on heroes through the shared presentation event.
 3. Djinn rain/crackle, Marid crescent/mist, and Chimerilass eruption/motes.
 4. Shared single-target heal bloom and group healing rain.
-5. Scathe, Sweep, Wipe, brushfire, spectral-hand, and electric-line families when their shipping gameplay triggers are reachable.
+5. Drain Buff when a shipping enemy can select it; brushfire and spectral-hand families when an active skill needs them.
 
 ## Acceptance
 
