@@ -31,8 +31,8 @@ Vertical effects reveal in their direction of travel. Eruptions grow from the gr
 | --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- |
 | Fara basic | Rest anchor; melee lunge | Orange-red | Orange-red contact flare | 1 | 1 | 1 | 1 | KEEP |
 | Hondo basic and speed multiattack | Rest anchor; melee lunge per hit | Orange-red | Orange-red contact flare per hit | 1 | 1 | 1 | 1 | KEEP |
-| Runa basic | Rest anchor; straight blue bolt | Cyan-blue | Blue painted splash | 1 | 1 | 0 | 0 | KEEP |
-| Kaja basic | Rest anchor; floating purple orb | Violet-purple | Purple painted splash | 1 | 1 | 0 | 0 | KEEP |
+| Runa basic | Rest anchor; straight blue bolt | Cyan-blue | Blue painted splash | 1 | 1 | 1 | 1 | KEEP; ordinary-session capture |
+| Kaja basic | Rest anchor; floating purple orb | Violet-purple | Purple painted splash | 1 | 1 | 1 | 1 | KEEP; ordinary-session capture |
 | Physical enemy basic (`MAG <= ATK`) | Enemy rest anchor; contact strike | Orange-red | Orange-red contact flare on hero | 1 | 1 | 1 | 1 | KEEP |
 | Djinn basic (`MAG 28 > ATK 6`) | Cloud manifests above hero; violet energy rains down | Violet-blue | Electric crackle and violet splash | 1 | 1 | 0 | 0 | KEEP asset; live proof pending |
 | Marid basic (`MAG 22 > ATK 8`) | Enemy rest anchor; aqua crescent emission | Aqua-blue | Aqua splash with brief mist | 1 | 1 | 0 | 0 | KEEP asset; live proof pending |
