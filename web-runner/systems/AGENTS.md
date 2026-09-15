@@ -24,6 +24,7 @@
 - The dev-tool orientation control stages the next combat orientation and uses the existing fresh combat-refresh path when changed during combat; never flip a live combat frame in place.
 - Right-wise rendering consumes the shared formation projection: both teams use the same `-40` logical-X translation after reflection, heroes keep canonical Y, and enemy-attached visuals share the one block-Y midpoint-alignment offset. The offset is fixed from structural enemy slot anchors for the combat layout; do not recenter from living entities after death or refill.
 - Render modules may read state and draw presentation; they must not become owners of deterministic combat rules.
+- Hero rendering publishes each caster's resting sprite-base anchor before applying lunge offsets so attached effects such as Arcane Pulse remain planted.
 - Late combat overlays must resolve authored asset dimensions after `assetsLayout` loads, then apply the active layout scale through `combatPresentationScale.mjs`. DOM overlays use that same scale instead of fixed CSS dimensions.
 - Developer panels may scroll vertically at compact viewports. Their transformed shells must opt out of flex shrink and finish with 16px physical viewport gutters; every child keeps `scrollWidth <= clientWidth`.
 - Quest-QA controls are query-gated and use fixed side-gutter rails from measured Canvas bounds; when gutters are too narrow they use a contained scrollable two-column dock below the diagnostics z-order.

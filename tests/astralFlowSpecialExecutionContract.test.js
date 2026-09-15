@@ -72,13 +72,18 @@ test('special runtime maps the four signature ids and keeps the retired Destiny 
     assert.match(src, /id === 'destiny'/);
     assert.match(src, /remainingTicks: 3, healPct: 0\.08/);
     assert.doesNotMatch(src, /ExecuteAstralFlowSpecial[\s\S]{0,5000}TryPartyDestiny/);
+    assert.match(src, /resolveArcanePulseHeroBaseSource/);
   }
+  const renderSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
+  assert.match(renderSrc, /restBaseByUID\[hero\.uid\] = \{ x: baseX, y: yWorld \+ hWorld \/ 2 \}/);
+  assert.match(renderSrc, /presentationPatches\.HeroRestBasePosByUID = restBaseByUID/);
 });
 
 test('each non-healing AF special queues its existing AoE or targeted effect with one-use ownership', () => {
   const mod = loadModule();
   for (const [specialId, actorUID] of [['crimson_ward', 1], ['split', 2], ['arcane_pulse', 3], ['chain_strike_ii', 2], ['faze', 1]]) {
     const ctx = makeContext();
+    ctx.state.globals.HeroRestBasePosByUID = { 3: { x: 44, y: 156 } };
     ctx.state.entities.find(actor => actor.uid === 3).hp = 30;
     const result = mod.ExecuteAstralFlowSpecial(ctx, specialId, actorUID);
     assert.equal(result.ok, true, specialId);
@@ -86,7 +91,11 @@ test('each non-healing AF special queues its existing AoE or targeted effect wit
     assert.equal(ctx.state.globals.LastAstralFlowSpecial.actorUID, actorUID);
     if (specialId === 'crimson_ward') assert.ok(Number(ctx.state.globals.PartyTempHPShield || 0) > 0);
     if (specialId === 'split') assert.equal(ctx.state.globals.PendingHeroHits.filter(hit => hit.actionName === 'Split').length, 2);
-    if (specialId === 'arcane_pulse') assert.equal(ctx.state.globals.PendingHeroHits.filter(hit => hit.effectType === 'arcane_pulse').length, 1);
+    if (specialId === 'arcane_pulse') {
+      assert.equal(ctx.state.globals.PendingHeroHits.filter(hit => hit.effectType === 'arcane_pulse').length, 1);
+      assert.equal(ctx.state.globals.ArcanePulseVisuals[0].sourceX, 44);
+      assert.equal(ctx.state.globals.ArcanePulseVisuals[0].sourceY, 156);
+    }
     if (specialId === 'chain_strike_ii') {
       const telemetry=ctx.state.globals.LastAstralFlowChainStrikeII;
       assert.equal(telemetry.primary.coefficient,396);assert.ok(telemetry.primary.damage>0);

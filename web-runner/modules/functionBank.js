@@ -2615,60 +2615,28 @@ export function IsPartySessionSkillActive(ctx, skillRef) {
   return false;
 }
 
-function centerFinitePositions(positions) {
-  const clean = Array.isArray(positions)
-    ? positions.filter(pos => pos && Number.isFinite(Number(pos.x)) && Number.isFinite(Number(pos.y)))
-    : [];
-  if (!clean.length) return null;
-  const xs = clean.map(pos => Number(pos.x));
-  const ys = clean.map(pos => Number(pos.y));
-  return {
-    x: (Math.min(...xs) + Math.max(...xs)) / 2,
-    y: (Math.min(...ys) + Math.max(...ys)) / 2,
-  };
-}
-
-function resolveArcanePulsePartySource(ctx, fallbackHero = null) {
+function resolveArcanePulseHeroBaseSource(ctx, hero = null) {
   const g = getGlobals(ctx);
-  const cachedSource = centerFinitePositions([
-    ...(Array.isArray(g.HeroPortraitPosByIndex) ? g.HeroPortraitPosByIndex : []),
-    ...(Array.isArray(g.HeroIconPosByIndex) ? g.HeroIconPosByIndex : []),
-  ]);
-  if (cachedSource) return cachedSource;
-
-  const partyActors = getEntities(ctx)
-    .filter(actor => actor && (actor.kind === 'hero' || actor.kind === 'escort') && Number(actor.hp ?? 1) > 0);
-  const entitySource = centerFinitePositions(partyActors);
-  if (entitySource) return entitySource;
-
-  const rect = g.EnemyAreaRect || null;
-  const minX = Number(rect?.minX);
-  const minY = Number(rect?.minY);
-  const maxY = Number(rect?.maxY);
-  const enemySize = Math.max(1, Number(g.EnemySize || 40));
-  if (Number.isFinite(minX) && Number.isFinite(minY) && Number.isFinite(maxY) && partyActors.length > 0) {
-    const gap = 8;
-    const heroCount = Math.max(1, partyActors.length);
-    const availableH = Math.max(0, maxY - minY);
-    const heroHWorld = Math.max(1, Math.min(enemySize, (availableH - gap * Math.max(0, heroCount - 1)) / heroCount));
-    const heroSpacing = heroHWorld + gap;
-    const baseXWorld = Math.max(heroHWorld / 2 + 12, minX - enemySize * 0.9) - 90;
-    const offsetWorld = heroHWorld * 0.35;
-    const formationPositions = partyActors.map((_, index) => ({
-      x: baseXWorld + (index % 2 === 0 ? offsetWorld : -offsetWorld),
-      y: minY + (heroHWorld / 2) + index * heroSpacing,
-    }));
-    const formationSource = centerFinitePositions(formationPositions);
-    if (formationSource) return formationSource;
+  const uid = Number(hero?.uid || 0);
+  const restBase = g.HeroRestBasePosByUID && g.HeroRestBasePosByUID[uid];
+  if (restBase && Number.isFinite(Number(restBase.x)) && Number.isFinite(Number(restBase.y))) {
+    return { x: Number(restBase.x), y: Number(restBase.y) };
   }
 
-  const heroX = Number(fallbackHero?.x);
-  const heroY = Number(fallbackHero?.y);
-  if (Number.isFinite(heroX) && Number.isFinite(heroY)) return { x: heroX, y: heroY };
-  const rectCenterY = Number.isFinite(minY) && Number.isFinite(maxY) ? (minY + maxY) / 2 : Number(g.EnemyAreaY0);
+  const displaySlot = Number(hero?.heroDisplaySlot ?? hero?.heroIndex);
+  const cachedCenter = Number.isInteger(displaySlot)
+    ? ((g.HeroPortraitPosByIndex || [])[displaySlot] || (g.HeroIconPosByIndex || [])[displaySlot])
+    : null;
+  const spriteHeight = Math.max(1, Number(g.EnemySize || 40));
+  if (cachedCenter && Number.isFinite(Number(cachedCenter.x)) && Number.isFinite(Number(cachedCenter.y))) {
+    return { x: Number(cachedCenter.x), y: Number(cachedCenter.y) + spriteHeight / 2 };
+  }
+
+  const heroX = Number(hero?.originX ?? hero?.x);
+  const heroY = Number(hero?.originY ?? hero?.y);
   return {
-    x: Number.isFinite(heroX) ? heroX : (Number.isFinite(minX) ? Math.max(enemySize / 2 + 12, minX - enemySize * 0.9) - 90 : 0),
-    y: Number.isFinite(rectCenterY) ? rectCenterY : (Number.isFinite(heroY) ? heroY : 0),
+    x: Number.isFinite(heroX) ? heroX : 0,
+    y: Number.isFinite(heroY) ? heroY + spriteHeight / 2 : 0,
   };
 }
 
@@ -2680,7 +2648,7 @@ function queueArcanePulseVisual(ctx, heroUID, targetUID, startAt, impactAt) {
   if (!Array.isArray(g.ArcanePulseVisuals)) g.ArcanePulseVisuals = [];
   const targetX = Number(target?.x ?? 0);
   const targetY = Number(target?.y ?? 0);
-  const partySource = resolveArcanePulsePartySource(ctx, hero);
+  const heroSource = resolveArcanePulseHeroBaseSource(ctx, hero);
   const visual = {
     id: `arcane-pulse-${Number(g.ArcanePulseVisualSerial || 0) + 1}`,
     skillId: PARTY_ARCANE_PULSE_ID,
@@ -2692,8 +2660,8 @@ function queueArcanePulseVisual(ctx, heroUID, targetUID, startAt, impactAt) {
     duration: Math.max(0.2, Number(impactAt || 0) - Number(startAt || 0)),
     shape: 'crescent_arc_blast',
     sequence: 'attack_then_bonus_pulse',
-    sourceX: Number(partySource.x || 0),
-    sourceY: Number(partySource.y || 0),
+    sourceX: Number(heroSource.x || 0),
+    sourceY: Number(heroSource.y || 0),
     targetX,
     targetY,
   };

@@ -58,6 +58,7 @@
 - AF-choice scheduler coverage preserves an already-owned deferred handoff and forbids a second queue resume. Live browser proof must confirm Destiny healing cannot prevent each following hero from starting a native command.
 - Quest-QA enemy HP setup tests cover every refusal state, exact living-enemy HP mutation, preserved enemy identity and placement, and the absence of damage, AF, gem, reward or animation side effects.
 - Faze presentation proof covers live purple-hit and `dot` damage-text state before each deferred Blight damage call; palette contracts and in-app QA must show a purple number over every living enemy at impact.
+- Arcane Pulse presentation proof binds the queued visual source to the casting hero's rendered resting sprite base and keeps it independent of lunge offsets.
 
 - Hero management browser proof covers overview disclosure, roster containment and separate canonical active/passive/FLOW categories.
 

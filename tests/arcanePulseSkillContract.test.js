@@ -562,7 +562,7 @@ test('Arcane Pulse has raster asset and browser-visible render hooks', () => {
   assert.match(rendererSrc, /damageTextKind: hit\.damageTextKind/);
   assert.match(rendererSrc, /ApplyDamageToTarget', hit\.targetUID, finalDmg, damageOptions/);
   assert.match(rendererSrc, /crescent_arc_blast/);
-  assert.match(appSrc, /d\.kind === 'arcane_pulse' \? 'arcane_pulse' : 'damage'/);
+  assert.match(appSrc, /d\.kind === 'arcane_pulse' \? 'arcane_pulse' : \(d\.kind === 'dot' \? 'dot' : 'damage'\)/);
   assert.match(damageNumberSrc, /const isArcanePulse = normalizedKind === 'arcane_pulse';/);
   assert.match(damageNumberSrc, /#3DA5FF/);
   assert.match(rendererSrc, /drawCrescentArc/);

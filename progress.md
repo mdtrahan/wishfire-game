@@ -67,3 +67,5 @@ Owner approved 80% canvas width/height centered on both axes with full-canvas 40
 2026-09-14: ORKA-krv restores Faze's enemy damage floats. The deferred Blight resolver again publishes purple-hit and damage-text state before applying damage, matching the earlier working runtime order. Focused contracts passed 25/25; fresh in-app QA showed a `1` floating over each of three living enemies at Faze impact.
 
 2026-09-14: ORKA-krv now preserves Faze's `dot` kind through the DOM and Canvas damage-number renderers and colors it with the existing Blight purple palette. Focused contracts passed 17/17 with 4 intentional skips; fresh in-app QA showed purple `2` floats over all three living enemies at Faze impact.
+
+2026-09-14: ORKA-t3r replaces Arcane Pulse's party-midpoint source with the casting hero's rendered resting sprite-base anchor. The renderer publishes that point before lunge offsets; both function-bank mirrors consume it. Focused contracts passed 9/9 with 18 paused-system skips; fresh in-app QA showed Runa's Pulse curving from her planted base toward the selected enemy.
