@@ -166,6 +166,7 @@ export async function loadRuntimeVisualAssets({
       (async () => { images.CombatWipeWash = await loadImage(assetUrl('images/vfx_wipe_wash.png')); })(),
       (async () => { images.CombatMagicAoeBrushfire = await loadImage(assetUrl('images/vfx_magic_aoe_brushfire.png')); })(),
       (async () => { images.CombatDrainBuffOrb = await loadImage(assetUrl('images/vfx_drain_buff_orb.png')); })(),
+      (async () => { images.CombatGrowSpectralHands = await loadImage(assetUrl('images/vfx_grow_spectral_hands.png')); })(),
       (async () => { images.CombatHealBloom = await loadImage(assetUrl('images/vfx_heal_bloom_illustrated.png')); })(),
       (async () => { images.CombatHealSigil = await loadImage(assetUrl('images/vfx_heal_sigil.png')); })(),
       (async () => { images.CombatHealFountain = await loadImage(assetUrl('images/vfx_heal_fountain.png')); })(),

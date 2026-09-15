@@ -42,6 +42,7 @@ Vertical effects reveal in their direction of travel. Eruptions grow from the gr
 | Arcane Pulse | Hero rest anchor; illustrated crescent charges then travels straight | Violet-cyan | Matching painted contact burst and short trail | 1 | 1 | 0 | 0 | Legacy procedural arcs disconnected |
 | Faze / Blight | Enemy ground origin; tainted field | Purple | Purple damage floats and persistent ground haze | 1 | 1 | 1 | 1 | KEEP |
 | Crimson Ward | Hero group origin; shield bloom | Crimson | Ward absorbs damage before HP | 1 | 1 | 1 | 1 | KEEP |
+| Grow | Each living hero's ground origin; spectral genie hands lift upward during the initial power increase | Turquoise-gold | Hands fade while the existing session-long scale state remains | 1 | 1 | 0 | 0 | Preserve established hero scaling behavior |
 | Magic Fruit | Ground sigil; rising fountain | Green-gold | Falling motes and green value | 1 | 1 | 1 | 1 | KEEP staged family |
 | Destiny heal proc | Ground sigil; rising fountain | Green-gold | Falling motes and green value | 1 | 1 | 1 | 1 | KEEP; observed in ordinary autoplay |
 | Enemy single heal | Ground sigil; rising fountain | Mint-gold | Falling motes and green value | 1 | 1 | 0 | 0 | Share staged heal family; live proof pending |

@@ -144,3 +144,4 @@
 - Named enemy skills override that basic profile: Scathe crackles on its target, Sweep emits its own crescent, Wipe washes the enemy group, and heal skills rely on resolved heal blooms instead of offensive imagery.
 - Shipping enemy magic AOE and Drain Buff use their own brushfire and inward-orb sequences rather than a generic caster profile.
 - Vertical magic reveals progressively along its travel direction. Heal presentation stages a ground sigil, rising fountain, and falling motes; Arcane Pulse renders its illustrated charge, straight travel, trail, and matched contact in `combatAttackVfxPresentation.mjs`.
+- Grow preserves its established hero scale state and adds one short bottom-up spectral-hand lift from each living hero's ground anchor.

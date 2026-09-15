@@ -99,6 +99,22 @@ const drawVerticalReveal = (ctx, image, pos, progress, width, alpha, direction =
   ctx.restore();
 };
 
+const renderGrowVfx = (ctx, { state, images, worldToCanvas, layoutScale }) => {
+  if (!images.CombatGrowSpectralHands) return;
+  const now = Number(state.globals?.time || 0);
+  for (const [uid, visual] of Object.entries(state.globals?.PowerAmpVisualByUID || {})) {
+    if (visual?.source !== 'party_grow') continue;
+    const age = now - Number(visual.startAt || 0);
+    if (age < 0 || age >= 0.75) continue;
+    const anchor = entityAnchor(state, uid);
+    if (!anchor) continue;
+    const progress = Math.min(1, age / 0.5);
+    const alpha = age < 0.5 ? 0.82 : 0.82 * (0.75 - age) / 0.25;
+    const pos = worldToCanvas(anchor.x, anchor.y);
+    drawVerticalReveal(ctx, images.CombatGrowSpectralHands, { x: pos.x, y: pos.y + 28 * layoutScale }, progress, Math.max(76, 92 * layoutScale), alpha, 'up');
+  }
+};
+
 const renderArcanePulseVfx = (ctx, { state, images, worldToCanvas, layoutScale }) => {
   const pulses = Array.isArray(state.globals?.ArcanePulseVisuals) ? state.globals.ArcanePulseVisuals : [];
   if (!pulses.length || !images.SkillArcanePulse) return;
@@ -200,6 +216,7 @@ const renderEnemyMagic = (ctx, { state, images, worldToCanvas, layoutScale }) =>
 export function renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layoutScale = 1 }) {
   const g = state.globals || {};
   const now = Number(g.time || 0);
+  renderGrowVfx(ctx, { state, images, worldToCanvas, layoutScale });
   renderArcanePulseVfx(ctx, { state, images, worldToCanvas, layoutScale });
   const pending = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
   for (const hit of pending) {

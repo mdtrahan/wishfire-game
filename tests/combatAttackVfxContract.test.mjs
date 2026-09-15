@@ -56,6 +56,7 @@ test('transparent raster VFX assets are loaded', () => {
     ['CombatWipeWash', 'vfx_wipe_wash.png'],
     ['CombatMagicAoeBrushfire', 'vfx_magic_aoe_brushfire.png'],
     ['CombatDrainBuffOrb', 'vfx_drain_buff_orb.png'],
+    ['CombatGrowSpectralHands', 'vfx_grow_spectral_hands.png'],
     ['SkillArcanePulse', 'vfx_arcane_pulse_crescent.png'],
     ['CombatHealBloom', 'vfx_heal_bloom_illustrated.png'],
     ['CombatHealSigil', 'vfx_heal_sigil.png'],
@@ -162,6 +163,32 @@ test('Arcane Pulse stages illustrated charge, travel, and matching contact', () 
   state.globals.time = 1.5;
   renderCombatAttackVfx(ctx, { state, images, worldToCanvas: (x, y) => ({ x, y }), layoutScale: 1 });
   assert.ok(draws.includes('pulse-impact'));
+});
+
+test('Grow raises illustrated spectral hands from each affected hero', () => {
+  const draws = [];
+  const ctx = {
+    save() {}, restore() {}, translate() {}, rotate() {},
+    drawImage(image) { draws.push(image.id); },
+    set globalAlpha(value) {},
+  };
+  const state = {
+    globals: {
+      time: 1.25,
+      EnemySize: 40,
+      PendingHeroHits: [],
+      HeroRestBasePosByUID: { 1: { x: 60, y: 180 } },
+      PowerAmpVisualByUID: { 1: { source: 'party_grow', startAt: 1 } },
+    },
+    entities: [{ uid: 1, kind: 'hero', name: 'Fara', hp: 40 }],
+  };
+  renderCombatAttackVfx(ctx, {
+    state,
+    images: { CombatGrowSpectralHands: { id: 'grow', width: 160, height: 192 } },
+    worldToCanvas: (x, y) => ({ x, y }),
+    layoutScale: 1,
+  });
+  assert.deepEqual(draws, ['grow']);
 });
 
 test('enemy damage wiring queues a typed hero impact after the shipping skill call', () => {
