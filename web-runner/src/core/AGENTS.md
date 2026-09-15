@@ -17,6 +17,7 @@
 - Presentation helper modules may touch Canvas-like drawing inputs, but must not own gameplay state transitions.
 - DOM presentation helpers accept viewport-projected sizes from their caller; they must not invent fixed CSS sizes that bypass the Canvas layout scale.
 - DOM child canvases keep CSS dimensions in logical pixels and multiply backing-store dimensions by `devicePixelRatio` before drawing.
+- Damage-number palettes preserve semantic kinds; Blight `dot` text uses the shared purple affliction palette in both DOM and Canvas paths.
 - New deterministic rule changes need focused contract tests and, when applicable, fixture rows.
 
 ## Work Guidance

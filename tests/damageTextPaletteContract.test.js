@@ -39,7 +39,7 @@ test('app preloads the combat text font before rendering damage numbers', () => 
   assert.match(renderSrc, /isDamageTextFontReady\(\)/);
 });
 
-test('dom and canvas fallback preserve energy floating text as a readout effect', () => {
+test('dom and canvas fallback preserve energy and Blight damage text palettes', () => {
   const appSrc = read('web-runner/app.js');
   const renderSrc = read('web-runner/systems/renderRuntime.js');
   assert.match(appSrc, /const isEnergyText = d\.targetKind === 'energy' \|\| d\.kind === 'energy';/);
@@ -49,10 +49,17 @@ test('dom and canvas fallback preserve energy floating text as a readout effect'
   assert.match(appSrc, /const text = isEnergyText/);
   assert.match(appSrc, /\?\s*`\+\$\{formatDamageValue\(\{ value: d\.amount, type: 'heal', isCrit \}\)\}`/);
   assert.match(appSrc, /kind: domKind,/);
-  assert.match(renderSrc, /const kind = d\.kind === 'heal' \|\| d\.kind === 'energy' \|\| d\.kind === 'ward' \|\| d\.kind === 'arcane_pulse' \? d\.kind : 'damage';/);
+  assert.match(appSrc, /d\.kind === 'dot' \? 'dot' : 'damage'/);
+  assert.match(renderSrc, /const kind = d\.kind === 'heal' \|\| d\.kind === 'energy' \|\| d\.kind === 'ward' \|\| d\.kind === 'arcane_pulse' \|\| d\.kind === 'dot' \? d\.kind : 'damage';/);
   assert.match(renderSrc, /const xOffset = d\.targetKind === 'hero' \? -10 : \(d\.targetKind === 'ward' \? 0 : \(d\.canvasAnchored \? 0 : 10\)\);/);
   assert.match(renderSrc, /d\.targetKind === 'bar' \|\| d\.targetKind === 'energy'/);
   assert.match(renderSrc, /if \(kind === 'energy'\) \{/);
+  assert.match(renderSrc, /else if \(kind === 'dot'\) \{/);
+  assert.match(renderSrc, /grad\.addColorStop\(0, '#E4C3FF'\);/);
+  assert.match(renderSrc, /grad\.addColorStop\(1, '#8D37FF'\);/);
+  const animationSrc = read('web-runner/src/core/damageNumberAnimation.mjs');
+  assert.match(animationSrc, /const isDot = normalizedKind === 'dot';/);
+  assert.match(animationSrc, /\? \['#E4C3FF', '#8D37FF'\]/);
 });
 
 test('damage floating text has explicit global recency layers across spawn and render paths', () => {

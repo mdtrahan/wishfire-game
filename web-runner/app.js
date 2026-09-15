@@ -551,7 +551,7 @@ function spawnPendingDamageNumbers(projectToCanvas = null, presentationScale = 1
     const isEnergyText = d.targetKind === 'energy' || d.kind === 'energy';
     const domKind = isEnergyText
       ? 'energy'
-      : (d.kind === 'heal' ? 'heal' : (d.kind === 'ward' ? 'ward' : (d.kind === 'arcane_pulse' ? 'arcane_pulse' : 'damage')));
+      : (d.kind === 'heal' ? 'heal' : (d.kind === 'ward' ? 'ward' : (d.kind === 'arcane_pulse' ? 'arcane_pulse' : (d.kind === 'dot' ? 'dot' : 'damage'))));
     const text = isEnergyText
       ? `+${formatDamageValue({ value: d.amount, type: 'heal', isCrit })}`
       : formatDamageValue({ value: d.amount, type: domKind === 'heal' || domKind === 'energy' ? 'heal' : 'damage', isCrit });

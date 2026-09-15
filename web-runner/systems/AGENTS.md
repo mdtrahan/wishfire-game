@@ -131,7 +131,7 @@
 - Flow Shop pointer dragging keeps a captured offer ID and uses the same atomic purchase as BUY when dropped into the compact lower tray. Expiration continues while dragging. Pointer cancellation/outside drops never spend. Gear uses rarity tiles and green upgrade badges for unequipped stat-dominant items against the selected hero slots.
 - An expired inspected offer disables purchase immediately, fades its details, and restores the default drop-to-buy hint. Selecting another live offer cancels the expired detail state.
 
-- Faze's initial Blight hit must publish its purple flash and damage-text kind to live globals before `ApplyDamageToTarget`; deferred end-of-frame patches arrive too late for that resolved hit.
+- Faze's initial Blight hit must publish its purple flash and `dot` damage-text kind to live globals before `ApplyDamageToTarget`; both DOM and Canvas damage-number paths preserve that kind with the Blight purple palette. Deferred end-of-frame patches arrive too late for that resolved hit.
 
 
 - Shared Back chrome uses a single thin gold edge and proportional padding/corner radius; avoid the older thick ridge treatment on Quests.

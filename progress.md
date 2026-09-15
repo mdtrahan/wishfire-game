@@ -65,3 +65,5 @@ Owner approved 80% canvas width/height centered on both axes with full-canvas 40
 2026-09-14: ORKA-1uo makes Runa's Tactician AF reachable in native autoplay. Successful magic damage now qualifies alongside new status application, with one immediate 10-point award per resolved action and no role gem. Focused contracts passed 29/29; fresh in-app combat showed Runa at 10 AF after her first basic while combat continued.
 
 2026-09-14: ORKA-krv restores Faze's enemy damage floats. The deferred Blight resolver again publishes purple-hit and damage-text state before applying damage, matching the earlier working runtime order. Focused contracts passed 25/25; fresh in-app QA showed a `1` floating over each of three living enemies at Faze impact.
+
+2026-09-14: ORKA-krv now preserves Faze's `dot` kind through the DOM and Canvas damage-number renderers and colors it with the existing Blight purple palette. Focused contracts passed 17/17 with 4 intentional skips; fresh in-app QA showed purple `2` floats over all three living enemies at Faze impact.
