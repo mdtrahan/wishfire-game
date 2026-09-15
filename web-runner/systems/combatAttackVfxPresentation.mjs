@@ -49,6 +49,17 @@ const enemyGroupAnchor = (state) => {
   } : null;
 };
 
+const heroGroupAnchor = (state) => {
+  const anchors = (state.entities || [])
+    .filter(entity => entity?.kind === 'hero' && Number(entity.hp ?? 1) > 0)
+    .map(entity => entityAnchor(state, entity.uid))
+    .filter(Boolean);
+  return anchors.length ? {
+    x: anchors.reduce((sum, point) => sum + point.x, 0) / anchors.length,
+    y: anchors.reduce((sum, point) => sum + point.y, 0) / anchors.length,
+  } : null;
+};
+
 export function queueCombatAttackImpactVfx(state, hit, target, now) {
   if ((!hit?.attackVfxKind && !hit?.impactVfxKind) || !target) return;
   const g = state.globals || {};
@@ -145,10 +156,15 @@ const renderEnemyMagic = (ctx, { state, images, worldToCanvas, layoutScale }) =>
   const profile = skillId === 'Enemy_Scathe' ? { delivery: 'scathe_crackle', impact: 'purple' }
     : skillId === 'Enemy_Sweep' ? { delivery: 'sweep_crescent', impact: 'blue' }
       : skillId === 'Enemy_Wipe' ? { delivery: 'wipe_wash', impact: 'heal' }
+        : skillId === 'Enemy_MAG_AOE' ? { delivery: 'magic_aoe_brushfire', impact: 'rose' }
+          : skillId === 'Enemy_Drain_Buff' ? { delivery: 'drain_buff_orb', impact: 'none' }
         : combatVfxProfileForActor(actor);
   if (profile.delivery === 'melee') return;
   const sourcePoint = entityAnchor(state, actor?.uid);
-  const targetPoint = profile.delivery === 'wipe_wash' ? enemyGroupAnchor(state) : entityAnchor(state, action.targetUID);
+  const targetPoint = profile.delivery === 'wipe_wash' ? enemyGroupAnchor(state)
+    : profile.delivery === 'magic_aoe_brushfire' ? heroGroupAnchor(state)
+      : profile.delivery === 'drain_buff_orb' ? sourcePoint
+        : entityAnchor(state, action.targetUID);
   if (!sourcePoint || !targetPoint) return;
   const source = worldToCanvas(sourcePoint.x, sourcePoint.y);
   const target = worldToCanvas(targetPoint.x, targetPoint.y);
@@ -159,15 +175,26 @@ const renderEnemyMagic = (ctx, { state, images, worldToCanvas, layoutScale }) =>
     drawTravel(ctx, image, source, target, progress, Math.max(46, 62 * layoutScale), layoutScale);
     return;
   }
+  if (profile.delivery === 'drain_buff_orb') {
+    if (!images.CombatDrainBuffOrb) return;
+    const size = Math.max(68, 92 * layoutScale) * (1.16 - progress * 0.2);
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, (0.35 + progress * 0.75) * hitFade);
+    ctx.drawImage(images.CombatDrainBuffOrb, target.x - size / 2, target.y - size / 2, size, size);
+    ctx.restore();
+    return;
+  }
   const image = profile.delivery === 'djinn_rain' ? images.CombatDjinnRain
     : profile.delivery === 'scathe_crackle' ? images.CombatScatheCrackle
       : profile.delivery === 'wipe_wash' ? images.CombatWipeWash
+        : profile.delivery === 'magic_aoe_brushfire' ? images.CombatMagicAoeBrushfire
         : images.CombatChimerilassEruption;
   if (!image) return;
   const pulse = Math.sin(Math.max(0.05, progress) * Math.PI * 0.72);
-  const width = Math.max(70, (profile.delivery === 'wipe_wash' ? 104 : profile.delivery === 'djinn_rain' || profile.delivery === 'scathe_crackle' ? 88 : 78) * layoutScale) * (0.78 + progress * 0.22);
-  const direction = profile.delivery === 'chimerilass_eruption' ? 'up' : 'down';
-  drawVerticalReveal(ctx, image, target, progress, width, pulse * 1.28 * hitFade, direction);
+  const width = Math.max(70, (profile.delivery === 'magic_aoe_brushfire' ? 210 : profile.delivery === 'wipe_wash' ? 104 : profile.delivery === 'djinn_rain' || profile.delivery === 'scathe_crackle' ? 88 : 78) * layoutScale) * (0.78 + progress * 0.22);
+  const direction = profile.delivery === 'chimerilass_eruption' || profile.delivery === 'magic_aoe_brushfire' ? 'up' : 'down';
+  const groundedTarget = profile.delivery === 'magic_aoe_brushfire' ? { x: target.x, y: target.y + 18 * layoutScale } : target;
+  drawVerticalReveal(ctx, image, groundedTarget, progress, width, pulse * 1.28 * hitFade, direction);
 };
 
 export function renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layoutScale = 1 }) {

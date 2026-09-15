@@ -49,7 +49,8 @@ Vertical effects reveal in their direction of travel. Eruptions grow from the gr
 | Enemy Scathe | Enemy rest anchor; electric lines crackle around the chosen hero | Violet-white | Target-centered sizzle while the board lock resolves | 1 | 1 | 0 | 0 | Named skill overrides basic Djinn rain |
 | Enemy Sweep | Enemy rest anchor; aqua crescent sweeps toward the chosen hero | Aqua-white | Crescent carries its own misty contact while the board lock resolves | 1 | 1 | 0 | 0 | Named skill overrides basic Marid crescent |
 | Enemy Wipe purge | Cloud above the living enemy group; downward green-gold wash | Mint-gold | Wash precedes per-target heal blooms | 1 | 1 | 0 | 0 | Named skill overrides Chimerilass eruption |
-| Enemy Drain Buff | Enemy self origin; blue energy drawn inward | Blue-violet | Brief defensive aura | 0 | 0 | 0 | 0 | Dormant until a shipping enemy can select it |
+| Enemy magic AOE | Living hero group ground origin; broad magical brushfire erupts upward | Orange-magenta | Rose contact splash on every damaged hero and brief ground flame | 1 | 1 | 0 | 0 | Shipping `Enemy_MAG_AOE` path |
+| Enemy Drain Buff | Enemy self origin; blue-violet ribbons draw inward to an orb | Blue-violet | Brief translucent defensive aura | 1 | 1 | 0 | 0 | Shipping `Enemy_Drain_Buff` path |
 | Barrier / defensive status | Target-centered spectral hand or shield presses into place | Skill affinity color | Short glow; persistent status icon/barrier art | 0 | 0 | 0 | 0 | Use only where status is visible |
 | Fire AOE or ground effect | Target group ground origin; magical brushfire | Orange-magenta | Flame splash plus momentary brushfire | 0 | 0 | 0 | 0 | Do not replace Faze |
 | Heavy magical strike | Cloud or orb manifests overhead; spectral hand smashes downward | Skill affinity color | Comical squash splash | 0 | 0 | 0 | 0 | Reserved family |
@@ -62,7 +63,7 @@ Generate and integrate in this order so each pass closes a visible production ga
 2. Enemy melee impacts on heroes through the shared presentation event.
 3. Djinn rain/crackle, Marid crescent/mist, and Chimerilass eruption/motes.
 4. Shared single-target heal bloom and group healing rain.
-5. Drain Buff when a shipping enemy can select it; brushfire and spectral-hand families when an active skill needs them.
+5. Spectral-hand family when an active skill needs it.
 
 ## Acceptance
 

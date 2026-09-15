@@ -54,6 +54,8 @@ test('transparent raster VFX assets are loaded', () => {
     ['CombatScatheCrackle', 'vfx_scathe_crackle.png'],
     ['CombatSweepCrescent', 'vfx_sweep_crescent.png'],
     ['CombatWipeWash', 'vfx_wipe_wash.png'],
+    ['CombatMagicAoeBrushfire', 'vfx_magic_aoe_brushfire.png'],
+    ['CombatDrainBuffOrb', 'vfx_drain_buff_orb.png'],
     ['SkillArcanePulse', 'vfx_arcane_pulse_crescent.png'],
     ['CombatHealBloom', 'vfx_heal_bloom_illustrated.png'],
     ['CombatHealSigil', 'vfx_heal_sigil.png'],
@@ -117,6 +119,8 @@ test('named enemy skills override basic magic without painting attack VFX over h
     CombatScatheCrackle: { id: 'scathe', width: 128, height: 192 },
     CombatSweepCrescent: { id: 'sweep', width: 192, height: 128 },
     CombatWipeWash: { id: 'wipe', width: 160, height: 192 },
+    CombatMagicAoeBrushfire: { id: 'aoe-fire', width: 256, height: 128 },
+    CombatDrainBuffOrb: { id: 'drain', width: 160, height: 160 },
   };
   const state = {
     globals: { time: 1, EnemySize: 40, PendingHeroHits: [], HeroRestBasePosByUID: { 1: { x: 60, y: 180 } } },
@@ -127,11 +131,11 @@ test('named enemy skills override basic magic without painting attack VFX over h
       { uid: 14, kind: 'enemy', name: 'Chimerilass', x: 250, y: 250, hp: 20, stats: { ATK: 8, MAG: 26 } },
     ],
   };
-  for (const [uid, skillId] of [[12, 'Enemy_Scathe'], [13, 'Enemy_Sweep'], [14, 'Enemy_Wipe'], [14, 'Enemy_Heal_Allies']]) {
+  for (const [uid, skillId] of [[12, 'Enemy_Scathe'], [13, 'Enemy_Sweep'], [14, 'Enemy_Wipe'], [14, 'Enemy_MAG_AOE'], [14, 'Enemy_Drain_Buff'], [14, 'Enemy_Heal_Allies']]) {
     state.globals.EnemyAction = { active: true, uid, targetUID: 1, skillId, state: 'LUNGE', visualProgress: 0.6, timer: 0.1 };
     renderCombatAttackVfx(ctx, { state, images, worldToCanvas: (x, y) => ({ x, y }), layoutScale: 1 });
   }
-  assert.deepEqual(draws, ['scathe', 'sweep', 'wipe']);
+  assert.deepEqual(draws, ['scathe', 'sweep', 'wipe', 'aoe-fire', 'drain']);
 });
 
 test('Arcane Pulse stages illustrated charge, travel, and matching contact', () => {
@@ -163,5 +167,6 @@ test('Arcane Pulse stages illustrated charge, travel, and matching contact', () 
 test('enemy damage wiring queues a typed hero impact after the shipping skill call', () => {
   assert.match(renderer, /const heroHpBefore = new Map/);
   assert.match(renderer, /ApplyEnemySkill[\s\S]*heroHpBefore\.get\(hero\.uid\)[\s\S]*queueCombatAttackImpactVfx/);
+  assert.match(renderer, /enemyAction\.skillId === 'Enemy_MAG_AOE' \? 'rose'/);
   assert.match(renderer, /enemyUsesRangedMagic \? enemy\.originX/);
 });
