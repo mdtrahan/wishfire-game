@@ -12,6 +12,8 @@ const loader = fs.readFileSync(path.join(root, 'web-runner/systems/runtimeVisual
 const renderer = fs.readFileSync(path.join(root, 'web-runner/systems/renderRuntime.js'), 'utf8');
 const qaHooks = fs.readFileSync(path.join(root, 'web-runner/systems/devBrowserTestHooks.js'), 'utf8');
 const heroCommands = fs.readFileSync(path.join(root, 'web-runner/modules/heroCommands.mjs'), 'utf8');
+const runtimeState = fs.readFileSync(path.join(root, 'web-runner/modules/state.js'), 'utf8');
+const sessionReset = fs.readFileSync(path.join(root, 'web-runner/systems/combatSessionReset.mjs'), 'utf8');
 
 test('attack packets declare mirrored illustrated presentation and magic heroes stay at rest', () => {
   for (const source of [runtimeBank, scriptsBank]) {
@@ -57,6 +59,8 @@ test('transparent raster VFX assets are loaded', () => {
     ['CombatMagicAoeBrushfire', 'vfx_magic_aoe_brushfire.png'],
     ['CombatDrainBuffOrb', 'vfx_drain_buff_orb.png'],
     ['CombatGrowSpectralHands', 'vfx_grow_spectral_hands.png'],
+    ['CombatVenomSigil', 'vfx_venom_sigil.png'],
+    ['CombatGlassReprisal', 'vfx_glass_reprisal.png'],
     ['SkillArcanePulse', 'vfx_arcane_pulse_crescent.png'],
     ['CombatHealBloom', 'vfx_heal_bloom_illustrated.png'],
     ['CombatHealSigil', 'vfx_heal_sigil.png'],
@@ -189,6 +193,46 @@ test('Grow raises illustrated spectral hands from each affected hero', () => {
     layoutScale: 1,
   });
   assert.deepEqual(draws, ['grow']);
+});
+
+test('session Venom and Glass Reprisal emit their illustrated sequences', () => {
+  assert.match(heroCommands, /kind:'venom_sigil'/);
+  assert.match(heroCommands, /kind:'glass_reprisal'/);
+  assert.match(runtimeState, /SessionBuffCombatVisuals: \[\]/);
+  assert.match(sessionReset, /SessionBuffCombatVisuals: \[\]/);
+  const draws = [];
+  const ctx = {
+    save() {}, restore() {}, translate() {}, rotate() {},
+    drawImage(image) { draws.push(image.id); },
+    set globalAlpha(value) {},
+  };
+  const state = {
+    globals: {
+      time: 1.3,
+      EnemySize: 40,
+      PendingHeroHits: [],
+      HeroRestBasePosByUID: { 1: { x: 60, y: 180 } },
+      SessionBuffCombatVisuals: [
+        { kind: 'venom_sigil', sourceUID: 1, targetUID: 10, startAt: 1 },
+        { kind: 'glass_reprisal', sourceUID: 1, targetUID: 10, startAt: 1 },
+      ],
+    },
+    entities: [
+      { uid: 1, kind: 'hero', name: 'Fara', hp: 40 },
+      { uid: 10, kind: 'enemy', name: 'Gobloc', x: 250, y: 160, hp: 20 },
+    ],
+  };
+  renderCombatAttackVfx(ctx, {
+    state,
+    images: {
+      CombatVenomSigil: { id: 'venom', width: 160, height: 128 },
+      CombatGlassReprisal: { id: 'reprisal', width: 192, height: 96 },
+      CombatImpactBlue: { id: 'blue-impact', width: 96, height: 64 },
+    },
+    worldToCanvas: (x, y) => ({ x, y }),
+    layoutScale: 1,
+  });
+  assert.deepEqual(new Set(draws), new Set(['venom', 'reprisal', 'blue-impact']));
 });
 
 test('enemy damage wiring queues a typed hero impact after the shipping skill call', () => {

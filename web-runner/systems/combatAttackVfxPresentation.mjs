@@ -115,6 +115,36 @@ const renderGrowVfx = (ctx, { state, images, worldToCanvas, layoutScale }) => {
   }
 };
 
+const renderSessionBuffCombatVfx = (ctx, { state, images, worldToCanvas, layoutScale }) => {
+  const now = Number(state.globals?.time || 0);
+  const visuals = Array.isArray(state.globals?.SessionBuffCombatVisuals) ? state.globals.SessionBuffCombatVisuals : [];
+  state.globals.SessionBuffCombatVisuals = visuals.filter((visual) => {
+    const age = now - Number(visual?.startAt || 0);
+    if (!visual || age >= 0.58) return false;
+    if (age < 0) return true;
+    const sourcePoint = entityAnchor(state, visual.sourceUID);
+    const targetPoint = entityAnchor(state, visual.targetUID);
+    if (!targetPoint) return true;
+    const target = worldToCanvas(targetPoint.x, targetPoint.y);
+    if (visual.kind === 'venom_sigil' && images.CombatVenomSigil) {
+      const progress = Math.min(1, age / 0.38);
+      drawVerticalReveal(ctx, images.CombatVenomSigil, { x: target.x, y: target.y + 20 * layoutScale }, progress, Math.max(72, 94 * layoutScale), Math.max(0, 1 - age / 0.58), 'up');
+    } else if (visual.kind === 'glass_reprisal' && sourcePoint && images.CombatGlassReprisal) {
+      const progress = Math.min(1, age / 0.32);
+      drawTravel(ctx, images.CombatGlassReprisal, worldToCanvas(sourcePoint.x, sourcePoint.y), target, progress, Math.max(54, 76 * layoutScale), layoutScale);
+      if (age >= 0.28 && images.CombatImpactBlue) {
+        const contact = Math.min(1, (age - 0.28) / 0.3);
+        const size = Math.max(44, 60 * layoutScale) * (0.72 + contact * 0.3);
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 1 - contact);
+        ctx.drawImage(images.CombatImpactBlue, target.x - size / 2, target.y - size / 3, size, size * 0.66);
+        ctx.restore();
+      }
+    }
+    return true;
+  });
+};
+
 const renderArcanePulseVfx = (ctx, { state, images, worldToCanvas, layoutScale }) => {
   const pulses = Array.isArray(state.globals?.ArcanePulseVisuals) ? state.globals.ArcanePulseVisuals : [];
   if (!pulses.length || !images.SkillArcanePulse) return;
@@ -217,6 +247,7 @@ export function renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layou
   const g = state.globals || {};
   const now = Number(g.time || 0);
   renderGrowVfx(ctx, { state, images, worldToCanvas, layoutScale });
+  renderSessionBuffCombatVfx(ctx, { state, images, worldToCanvas, layoutScale });
   renderArcanePulseVfx(ctx, { state, images, worldToCanvas, layoutScale });
   const pending = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
   for (const hit of pending) {

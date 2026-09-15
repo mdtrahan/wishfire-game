@@ -145,3 +145,4 @@
 - Shipping enemy magic AOE and Drain Buff use their own brushfire and inward-orb sequences rather than a generic caster profile.
 - Vertical magic reveals progressively along its travel direction. Heal presentation stages a ground sigil, rising fountain, and falling motes; Arcane Pulse renders its illustrated charge, straight travel, trail, and matched contact in `combatAttackVfxPresentation.mjs`.
 - Grow preserves its established hero scale state and adds one short bottom-up spectral-hand lift from each living hero's ground anchor.
+- Session behavior procs publish semantic visuals: Spectral Orb shares Arcane Pulse, Chain Strike shares its ribbon, Venom reveals a ground sigil upward, Glass Reprisal travels as a glass crescent with matching contact, and Dawn Chorus shares staged revival healing.

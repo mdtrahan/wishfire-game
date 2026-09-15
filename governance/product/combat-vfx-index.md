@@ -38,8 +38,11 @@ Vertical effects reveal in their direction of travel. Eruptions grow from the gr
 | Marid basic (`MAG 22 > ATK 8`) | Enemy rest anchor; aqua crescent emission | Aqua-blue | Aqua splash with brief mist | 1 | 1 | 0 | 0 | KEEP asset; live proof pending |
 | Chimerilass basic (`MAG 26 > ATK 8`) | Target-centered rose-gold magical eruption | Rose-gold | Upward burst and falling motes | 1 | 1 | 0 | 0 | KEEP asset; live proof pending |
 | Split | Hero rest anchor; broad painted slash across enemy line | Red-orange | Slash covers every damaged enemy | 1 | 1 | 0 | 0 | KEEP |
-| Chain Strike I / II | First contact; illustrated ribbon bounces between targets | Cyan-white | Ribbon contact on each bounce | 1 | 1 | 0 | 0 | KEEP |
-| Arcane Pulse | Hero rest anchor; illustrated crescent charges then travels straight | Violet-cyan | Matching painted contact burst and short trail | 1 | 1 | 0 | 0 | Legacy procedural arcs disconnected |
+| Party and session Chain Strike tiers | First contact; illustrated ribbon bounces between targets | Cyan-white | Ribbon contact on each bounce | 1 | 1 | 0 | 0 | KEEP shared `ChainStrikeVisuals` path |
+| Arcane Pulse / Spectral Orb tiers | Hero rest anchor; illustrated crescent charges then travels straight | Violet-cyan | Matching painted contact burst and short trail | 1 | 1 | 0 | 0 | Shared `ArcanePulseVisuals`; legacy procedural arcs disconnected |
+| Venom Sigil tiers | Enemy ground origin; poison sigil reveals upward | Purple-magenta | Rising venom wisps; subsequent DOT numbers retain their status palette | 1 | 1 | 0 | 0 | Session behavior proc |
+| Glass Reprisal tiers | Countering hero rest anchor; glass-shard crescent travels to attacker | Cyan-white | Blue-white contact splash plus shared staged self-heal | 1 | 1 | 0 | 0 | One sequence per resolved counter package |
+| Dawn Chorus tiers | Every defeated hero's ground origin; shared revival fountain | Green-gold | Sigil, rising light, falling motes and restored HP text | 1 | 1 | 0 | 0 | Session defeat intercept; opening draw excludes it |
 | Faze / Blight | Enemy ground origin; tainted field | Purple | Purple damage floats and persistent ground haze | 1 | 1 | 1 | 1 | KEEP |
 | Crimson Ward | Hero group origin; shield bloom | Crimson | Ward absorbs damage before HP | 1 | 1 | 1 | 1 | KEEP |
 | Grow | Each living hero's ground origin; spectral genie hands lift upward during the initial power increase | Turquoise-gold | Hands fade while the existing session-long scale state remains | 1 | 1 | 0 | 0 | Preserve established hero scaling behavior |
@@ -52,20 +55,14 @@ Vertical effects reveal in their direction of travel. Eruptions grow from the gr
 | Enemy Wipe purge | Cloud above the living enemy group; downward green-gold wash | Mint-gold | Wash precedes per-target heal blooms | 1 | 1 | 0 | 0 | Named skill overrides Chimerilass eruption |
 | Enemy magic AOE | Living hero group ground origin; broad magical brushfire erupts upward | Orange-magenta | Rose contact splash on every damaged hero and brief ground flame | 1 | 1 | 0 | 0 | Shipping `Enemy_MAG_AOE` path |
 | Enemy Drain Buff | Enemy self origin; blue-violet ribbons draw inward to an orb | Blue-violet | Brief translucent defensive aura | 1 | 1 | 0 | 0 | Shipping `Enemy_Drain_Buff` path |
-| Barrier / defensive status | Target-centered spectral hand or shield presses into place | Skill affinity color | Short glow; persistent status icon/barrier art | 0 | 0 | 0 | 0 | Use only where status is visible |
-| Fire AOE or ground effect | Target group ground origin; magical brushfire | Orange-magenta | Flame splash plus momentary brushfire | 0 | 0 | 0 | 0 | Do not replace Faze |
 | Heavy magical strike | Cloud or orb manifests overhead; spectral hand smashes downward | Skill affinity color | Comical squash splash | 0 | 0 | 0 | 0 | Reserved family |
 
 ## Asset queue
 
-Generate and integrate in this order so each pass closes a visible production gap:
-
-1. Blue and purple contact splashes for Runa and Kaja.
-2. Enemy melee impacts on heroes through the shared presentation event.
-3. Djinn rain/crackle, Marid crescent/mist, and Chimerilass eruption/motes.
-4. Shared single-target heal bloom and group healing rain.
-5. Spectral-hand family when an active skill needs it.
+No unassigned production asset remains. The live-proof queue is every row with `Wire=1` and `Live=0`; the reserved heavy-strike family waits for a shipping skill.
 
 ## Acceptance
 
 Automated contracts may prove classification, packet fields, asset loading, and sequence timing. Final completion follows `live-production-game-qa`: ordinary player URL, shipping runtime path, visible capture of the transient sequence, and clean browser console. QA fixtures remain diagnostic.
+
+`Inner Flow` remains outside the production offer allowlist. Existing saved session state that activates it resolves through the shared staged healing family.

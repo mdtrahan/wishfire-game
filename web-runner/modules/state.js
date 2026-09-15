@@ -219,6 +219,7 @@ export const state = {
     BoardFillActive: 0,
     PowerAmpVisualByUID: {},
     PowerAmpFadeByUID: {},
+    SessionBuffCombatVisuals: [],
   },
 };
 
