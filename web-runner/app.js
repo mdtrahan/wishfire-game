@@ -26,6 +26,7 @@ import {
   createYellowSequenceSkip,
   COMBAT_CHOICE_MODE,
   deriveCombatChoiceMode,
+  releaseSessionOfferInputGate,
 } from './src/core/turnGateController.mjs';
 import {
   YELLOW_COLOR,
@@ -2329,6 +2330,7 @@ async function main(){
     delete state.globals.QaFixtureHoldTurn;
     delete state.globals.QaScenarioPaused;
     requireDevToolingRuntime().resumeGameplayFromDevTooling();
+    Object.assign(state.globals, releaseSessionOfferInputGate(state.globals));
     claimSessionBuffQueueResume(state.globals);
     combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
     return { ok: true, readout: qaReadSessionBuffState() };

@@ -64,6 +64,10 @@ export function createSessionOfferInputGate(current = {}, offerToken = '') {
     SessionOfferResolution: '',
     SessionOfferInputToken: String(offerToken || ''),
     CanPickGems: 0,
+    IsPlayerBusy: 0,
+    ActionLockUntil: 0,
+    ActionInProgress: 0,
+    ActionActorUID: 0,
     PendingSkillID: '',
     PendingActor: 0,
     PendingSuperGemAction: null,
@@ -88,6 +92,10 @@ export function releaseSessionOfferInputGate(current = {}, { resolution = '' } =
     CombatChoiceMode: COMBAT_CHOICE_MODE.AUTOCOMBAT,
     SessionOfferResolution: String(resolution || ''),
     SessionOfferInputToken: '',
+    IsPlayerBusy: 0,
+    ActionLockUntil: 0,
+    ActionInProgress: 0,
+    ActionActorUID: 0,
   };
 }
 

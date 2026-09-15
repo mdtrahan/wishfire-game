@@ -25,7 +25,7 @@ const tierOne = { 1: 1, 2: 0, 3: 0, 4: 0 };
 
 test('fresh sessions hold one cached neutral opening offer and apply it to every living starting hero', () => {
   const party = heroes();
-  const globals = { RuntimeRandom: () => 0, SessionLevelUpTierWeights: tierOne };
+  const globals = { RuntimeRandom: () => 0, SessionLevelUpTierWeights: tierOne, SessionLevelUpPreferredCardId: 'dawn_chorus_1' };
   beginFreshSessionBuffQueue(globals, party);
   assert.deepEqual(globals.SessionLevelUpQueue.entries, [{
     heroId: '__party_session__', heroUID: 0, earnedLevel: 0, earnedLevelIndex: 0,
@@ -38,6 +38,7 @@ test('fresh sessions hold one cached neutral opening offer and apply it to every
   assert.equal(first.cards.length, 3);
   assert.strictEqual(first.offer, rerender.offer);
   assert.ok(first.cards.every(isUniversalSessionPowerBuffCard));
+  assert.equal(first.cards.some(card => card.effectId === 'dawn_chorus'), false);
   const selected = chooseSessionLevelUpBuff(globals, party, first.cards[0].cardId);
   assert.equal(selected.status, 'applied');
   assert.equal(selected.partyWide, true);

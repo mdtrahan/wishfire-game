@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { recordFlowThreshold } from '../web-runner/src/core/personalFlow.mjs';
 import { beginFreshSessionBuffQueue, chooseSessionLevelUpBuff, claimSessionBuffQueueResume, getSessionLevelUpBuffPresentation, reconcileSessionFlowThresholds, SESSION_LEVEL_UP_BUFF_CARDS } from '../web-runner/modules/sessionLevelUpBuffPresentation.mjs';
-import { COMBAT_CHOICE_MODE, createSessionOfferInputGate, deriveCombatChoiceInput, deriveCombatChoiceMode, hasSessionLevelUpPresentationBarrier } from '../web-runner/src/core/turnGateController.mjs';
+import { COMBAT_CHOICE_MODE, createSessionOfferInputGate, deriveCombatChoiceInput, deriveCombatChoiceMode, hasSessionLevelUpPresentationBarrier, releaseSessionOfferInputGate } from '../web-runner/src/core/turnGateController.mjs';
 import { resetCombatSessionConditions } from '../web-runner/systems/combatSessionReset.mjs';
 
 const hooks = readFileSync(new URL('../web-runner/systems/devBrowserTestHooks.js', import.meta.url), 'utf8');
@@ -64,6 +64,13 @@ test('a session offer owns input, rejects stale selection, and releases exactly 
   const globals = {
     RuntimeRandom: () => 0,
     SessionLevelUpTierWeights: { 1: 1, 2: 0, 3: 0, 4: 0 },
+    IsPlayerBusy: 1,
+    DeferAdvance: 1,
+    AdvanceAfterAction: 1,
+    ActionLockUntil: 999,
+    ActionOwnerUID: 2,
+    ActionInProgress: 1,
+    ActionActorUID: 2,
     HeroTurnCardFanOpen: 1,
     HeroTurnCardFanCards: [{ cardId: 'retired' }],
     HeroTurnCardFanPendingTarget: 1,
@@ -79,16 +86,38 @@ test('a session offer owns input, rejects stale selection, and releases exactly 
   assert.equal(globals.HeroTurnCardFanOpen, 0);
   assert.deepEqual(globals.HeroTurnCardFanCards, []);
   assert.equal(globals.PendingSkillID, '');
+  assert.equal(globals.IsPlayerBusy, 0);
+  assert.equal(globals.ActionInProgress, 0);
+  assert.equal(globals.ActionActorUID, 0);
+  assert.equal(globals.ActionLockUntil, 0);
+  assert.equal(globals.DeferAdvance, 1);
+  assert.equal(globals.AdvanceAfterAction, 1);
+  assert.equal(globals.ActionOwnerUID, 2);
   const before = JSON.stringify(globals.SessionLevelUpQueue);
   assert.deepEqual(chooseSessionLevelUpBuff(globals, party, offer.cards[0].cardId, 0, null, 'stale-token'), { status: 'rejected', reason: 'staleOffer' });
   assert.equal(JSON.stringify(globals.SessionLevelUpQueue), before);
   assert.equal(chooseSessionLevelUpBuff(globals, party, offer.cards[0].cardId, 0, null, offer.offerToken).status, 'applied');
   assert.equal(claimSessionBuffQueueResume(globals), true);
   assert.equal(claimSessionBuffQueueResume(globals), false);
+  assert.equal(globals.IsPlayerBusy, 0);
+  assert.equal(globals.ActionInProgress, 0);
   assert.equal(deriveCombatChoiceMode(globals), COMBAT_CHOICE_MODE.AUTOCOMBAT);
   assert.equal(deriveCombatChoiceInput({ PendingSkillID: 'native_skill', TurnPhase: 1 }).acceptsBattlefieldTarget, true);
   const isolated = createSessionOfferInputGate({ HeroTurnCardFanOpen: 1 }, 'current');
   assert.equal(isolated.SessionOfferInputToken, 'current');
+  const resumed = releaseSessionOfferInputGate({
+    IsPlayerBusy: 1, ActionInProgress: 1, ActionActorUID: 2, ActionLockUntil: 999,
+    DeferAdvance: 1, AdvanceAfterAction: 1, ActionOwnerUID: 2,
+  });
+  assert.equal(resumed.IsPlayerBusy, 0);
+  assert.equal(resumed.ActionInProgress, 0);
+  assert.equal(resumed.ActionActorUID, 0);
+  assert.equal(resumed.ActionLockUntil, 0);
+  assert.equal(resumed.DeferAdvance, 1);
+  assert.equal(resumed.AdvanceAfterAction, 1);
+  assert.equal(resumed.ActionOwnerUID, 2);
+  const qaResume = app.slice(app.indexOf('const qaResumeScenario = () =>'), app.indexOf('const qaSetHeroFlowReady', app.indexOf('const qaResumeScenario = () =>')));
+  assert.ok(qaResume.indexOf('resumeGameplayFromDevTooling()') < qaResume.indexOf('releaseSessionOfferInputGate(state.globals)'));
 });
 
 

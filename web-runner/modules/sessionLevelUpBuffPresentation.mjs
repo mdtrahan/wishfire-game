@@ -181,8 +181,10 @@ export function getSessionLevelUpBuffPresentation(globals, heroes = [], progress
   const hero = heroes.find(candidate => heroId(candidate) === entry.heroId)
     || heroes.find(candidate => Number(candidate?.uid || 0) === Number(entry.heroUID || 0))
     || null;
+  const openingParty = isSessionOpeningPartyEntry(entry);
   const offerCards = (Array.isArray(globals?.SessionLevelUpQaOfferCards) ? globals.SessionLevelUpQaOfferCards : UNIVERSAL_SESSION_POWER_BUFF_CARDS)
-    .filter(isPowerBuffCard);
+    .filter(isPowerBuffCard)
+    .filter(card => !openingParty || card.effectId !== 'dawn_chorus');
   if (!offers[key]) {
     offers[key] = isSessionFlowThresholdEntry(entry)
       ? buildAstralFlowSpecialOffer({ hero, rng: globals.RuntimeRandom, preferredSpecialId: globals.QaPreferredAstralFlowSpecialId })

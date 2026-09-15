@@ -52,6 +52,8 @@
 
 - Qualifying resolved role actions charge only their eligible living hero immediately, once per action, capped at 100. They emit no gem. Enemy KO produces one blue flowOrbs.mjs transfer for one deterministically assigned living hero; collection applies its AF once after the shared 650ms flight. Combat RNG and orb RNG remain separate. Session reset cancels pending flights.
 - Reaching 100 AF records one deterministic pending threshold signal. AF stays full until the session queue owner consumes it; falling below 100 rearms the next threshold.
+- A session offer clears transient busy, action, and animation locks when it takes input ownership. Preserve the completed-action owner and deferred-advance fields so closing the offer resumes CTB exactly once.
+- The fresh-session party offer excludes defeat-triggered revive cards because the party enters fully restored. Later level-up offers may include them.
 
 - equipment.mjs is the canonical placeholder catalog, slots, rarity balance and loadout math. astralMarket.mjs reconstructs only the live offer window using persisted seed/epoch and a monotonic time floor. Each offer ID may be acquired once; revalidate price, expiration and Gold at commit.
 - Equipment stats are a derived projection used by levelStats, not a second inventory. Persist the projection with hero HP so loading HP above unequipped max does not truncate it before the authoritative equipment record reapplies.
