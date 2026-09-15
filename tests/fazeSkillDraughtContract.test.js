@@ -7,6 +7,7 @@ const vm = require('node:vm');
 const repoRoot = path.join(__dirname, '..');
 const runtimePath = path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js');
 const scriptsPath = path.join(repoRoot, 'Scripts', 'functionBank.js');
+const renderPath = path.join(repoRoot, 'web-runner', 'systems', 'renderRuntime.js');
 
 function loadModule(modulePath) {
   const original = fs.readFileSync(modulePath, 'utf8');
@@ -95,6 +96,15 @@ function dotTickSeries(totalDamage, totalTicks = 3) {
   }
   return ticks;
 }
+
+test('Faze publishes its damage presentation before resolving each hit', () => {
+  const src = fs.readFileSync(renderPath, 'utf8');
+  const dotApplyStart = src.indexOf("if (hit.effectType === 'dot_apply') {");
+  const dotApplyEnd = src.indexOf('pending.splice(i, 1);', dotApplyStart);
+  const dotApply = src.slice(dotApplyStart, dotApplyEnd);
+  assert.match(dotApply, /state\.globals\.NextHitFlashTone = 'purple';\\n\s*state\.globals\.NextDamageTextKind = 'dot';[\s\S]*ApplyDamageToTarget/);
+  assert.doesNotMatch(dotApply, /visualControlPatches\.NextDamageTextKind/);
+});
 
 test.skip('[Paused roguelite cards/shared AF] Faze is a mirrored party draw option that owns the tainted-ground payload', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const expectedExistingPartyIds = [

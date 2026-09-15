@@ -57,6 +57,7 @@
 - Immediate AF multi-kill tests prove damage records before the owner FLOW reset, then route every newly defeated enemy through the shared KO transition. They cover one kill, multi-kill, nonlethal and already-dead targets, cleanup deduplication, and arrival-only AF.
 - AF-choice scheduler coverage preserves an already-owned deferred handoff and forbids a second queue resume. Live browser proof must confirm Destiny healing cannot prevent each following hero from starting a native command.
 - Quest-QA enemy HP setup tests cover every refusal state, exact living-enemy HP mutation, preserved enemy identity and placement, and the absence of damage, AF, gem, reward or animation side effects.
+- Faze presentation proof covers live purple-hit and damage-text state before each deferred Blight damage call; in-app QA must show a number over every living enemy at impact.
 
 - Hero management browser proof covers overview disclosure, roster containment and separate canonical active/passive/FLOW categories.
 
