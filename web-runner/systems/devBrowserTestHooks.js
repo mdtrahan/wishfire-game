@@ -642,6 +642,14 @@ export function registerDevBrowserTestHooks({
         if (typeof drawFrame === 'function') drawFrame();
       }],
       ['QA native basic', () => callFunctionWithContext(fnContext, 'ProcessTurn')],
+      ['QA chosen basic', () => {
+        requireQaScenarioPaused();
+        const hero = qaHero();
+        const target = state.entities.find(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
+        if (!hero || !target) throw new Error('QA chosen basic requires a living hero and enemy');
+        callFunctionWithContext(fnContext, 'HeroAttackSingle', hero.uid, target.uid);
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
       ['QA advance turn', () => { callFunctionWithContext(fnContext, 'AdvanceTurn'); callFunctionWithContext(fnContext, 'ProcessTurn'); }],
       ['QA incoming hit', () => {
         const hero = qaHero();

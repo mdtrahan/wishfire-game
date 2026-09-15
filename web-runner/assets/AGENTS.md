@@ -34,3 +34,4 @@
 - Navigation badges in images/navigation are transparent 128px object-only illustrations designed to read at 40–50px: bold silhouettes, broad color blocks, minimal interior detail; preserve six labels and hide the shared menu during dialogue. Generation prompts accompany the assets.
 
 - Never bake UI into gameplay backgrounds: headings, dividers, chapter labels, map tokens and buttons must be independent rendered layers. Baked UI is allowed only in mockups or simulated screenshots.
+- Combat VFX rasters use transparent backgrounds, bold silhouettes, broad color blocks and minimal interior detail so their impression reads during sub-second attacks.

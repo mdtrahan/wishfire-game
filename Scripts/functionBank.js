@@ -7674,6 +7674,13 @@ function splitDamageAcrossLivingTargets(totalDamage, targetCount) {
   });
 }
 
+function combatAttackVfxKind(actor) {
+  const key = String(actor?.baseHeroName || actor?.name || '');
+  if (key === 'Runa') return 'runa_bolt';
+  if (key === 'Kojonn' || key === 'Kaja') return 'kaja_orb';
+  return 'impact';
+}
+
 function HeroAttackSplit(ctx, heroUID, rootTargetUID) {
   const actor = GetActorByUID(ctx, heroUID);
   const actorName = actor ? (actor.name || '?') : '?';
@@ -7710,6 +7717,8 @@ function HeroAttackSplit(ctx, heroUID, rootTargetUID) {
       consumePowerAmp: ampMult > 0 && index === 0 ? 1 : 0,
       effectType: 'damage',
       actionName: 'Split',
+      attackVfxKind: 'split',
+      attackVfxPrimary: index === 0 ? 1 : 0,
       generatedBySkillId: PARTY_SPLIT_ID,
       splitRootTargetUID: Number(rootTargetUID || 0),
       calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
@@ -7790,6 +7799,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
           calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
           heroName: actorName,
           heroType: mode,
+          attackVfxKind: combatAttackVfxKind(actor),
           targetTraceSequence: Number(g.ActiveManualTargetTraceSequence || 0),
         });
       }
@@ -7815,6 +7825,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
     calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
     heroName: actorName,
     heroType: mode,
+    attackVfxKind: combatAttackVfxKind(actor),
     targetTraceSequence: Number(g.ActiveManualTargetTraceSequence || 0),
     msg: `${actorName} hit ${target.name || '?'} for ${finalDmg}!`,
   });
@@ -10790,7 +10801,9 @@ export function StartHeroLunge(ctx, actorUID) {
     delete g.NextHeroActionProfile;
     return 0;
   }
-  const profile = String(g.NextHeroActionProfile || 'single');
+  const requestedProfile = String(g.NextHeroActionProfile || 'single');
+  const actor = GetActorByUID(ctx, actorUID);
+  const profile = actor?.attackType === 'magic' ? 'ranged' : requestedProfile;
   delete g.NextHeroActionProfile;
   g.ActionInProgress = 1;
   g.ActionActorUID = actorUID;

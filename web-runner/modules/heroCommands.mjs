@@ -144,12 +144,17 @@ export function buildCommandActions(ctx,hero,{queue=[],flow=false,targetUID}={})
  const ids=entry.targetIds||[entry.targetId??targetUID];if(!validTargets(ctx.state.entities,hero,skill,ids).length)return null;actions.push({skillId:skill.skillId,targetIds:[...new Set(ids)],sequenceOrder:actions.length,skill});}
  return actions;
 }
+function nativeBasicAttackVfx(hero,action){
+ const definition=heroDefinition(hero);if(action?.skill?.skillId!==definition?.basic?.skillId)return {};
+ const name=String(definition?.name||hero?.name||'');
+ return {attackVfxKind:name==='Runa'?'runa_bolt':name==='Kaja'?'kaja_orb':'impact',targetUID:Number(action.targetIds?.[0]||0),attackVfxTargetUIDs:[...(action.targetIds||[])]};
+}
 export function executeHeroCommand(ctx,command={}){
  const {actorUID}=command;if(!canUseHeroCommand(ctx,actorUID))return false;const hero=ctx.state.entities.find(a=>a.uid===actorUID),actions=buildCommandActions(ctx,hero,command);if(!actions)return false;
  const g=ctx.state.globals;if(ctx.callFunction('StartHeroLunge',actorUID)!==1)return false;
  hero.remainingActionSlots=0;
  const sequence={actorUID,actions,index:0,sessionId:g.CombatSessionId};g.NativeCommandSequence=sequence;
- g.PendingHeroHits=[{at:Number(g.time||0)+0.97,heroUID:actorUID,effectType:'native_command',sequence}];g.AdvanceAfterAction=1;g.ActionOwnerUID=actorUID;return true;
+ g.PendingHeroHits=[{at:Number(g.time||0)+0.97,heroUID:actorUID,effectType:'native_command',sequence,...nativeBasicAttackVfx(hero,actions[0])}];g.AdvanceAfterAction=1;g.ActionOwnerUID=actorUID;return true;
 }
 export function cancelNativeSequence(ctx){const g=ctx.state.globals,s=g.NativeCommandSequence;if(!s)return;s.index=s.actions.length;delete g.NativeCommandSequence;}
 export function resolveNativeCommandStep(ctx,hit){
@@ -169,7 +174,7 @@ export function resolveNativeCommandStep(ctx,hit){
  if(executed){if(action.skill.skillId===heroDefinition(actor)?.basic?.skillId)resolveSessionLevelBasicEffects(ctx,rules,actor,action.targetIds);if(action.skill.isFlowSpecial)actor.flow=0;ctx.callFunction('LogCombat',`${heroDefinition(actor).name}: ${action.skill.displayName}`);}
  s.index++;ctx.callFunction('UpdateHeroHPUI');ctx.callFunction('UpdateEnemyHPUI');
  if(actor.hp<=0||rules.isOver()){cancelNativeSequence(ctx);if(g.NativeBattleEnded)settleVictory(ctx);return true;}
- if(s.index<s.actions.length)g.PendingHeroHits.push({...hit,at:Number(g.time||0)+0.4});else delete g.NativeCommandSequence;
+ if(s.index<s.actions.length)g.PendingHeroHits.push({at:Number(g.time||0)+0.4,heroUID:s.actorUID,effectType:'native_command',sequence:s,...nativeBasicAttackVfx(actor,s.actions[s.index])});else delete g.NativeCommandSequence;
  return true;
 }
 export function nativeTurnStarted(ctx,actor){
