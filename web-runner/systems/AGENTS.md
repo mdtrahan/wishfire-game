@@ -100,6 +100,7 @@
 - Full-health recovery is owned by questCombatSession.mjs for both Town and Continue. Restore actual hero actors, then project HP through UpdateHeroHPUI; empty groups clear old totals. Continue alone retains its existing turn-restart sequence.
 
 - Hero-card AF fills are blue. Active combat never spends, regenerates, or gates actions on SP.
+- Quest-QA keeps an active-combat Kaja Destiny condition that reaches 100 AF through his natural Comrade trigger and records the bounded scheduler trace through the next hero actions.
 
 - `renderHeroScreen.js` consumes canonical hero definitions and owned progression; skill ranks and independent skill-point upgrades are retired. Show all level locks, passives and personal AF.
 - `questCombatSession.mjs` presents settled progression before allowing the victory return. Queue settlement and EXP computation remain core/module-owned.

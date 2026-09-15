@@ -209,6 +209,28 @@ test('shipped AF bridge turns a capped Fara token after the opening queue into a
   assert.equal(claimSessionBuffQueueResume(globals), false);
 });
 
+test('live AF choice leaves its owned deferred handoff as the only scheduler resume', () => {
+  const party = heroes();
+  party[3].flow = 100;
+  const globals = {
+    RuntimeRandom: () => 0,
+    SessionLevelBuffState: { heroes: {} },
+    SessionLevelUpQueue: { version: 1, status: 'complete', paused: false, currentIndex: 0, entries: [] },
+    PendingFlowThresholds: [{ heroUID: 4, triggerOrder: 1, token: 'flow-live-kaja' }],
+    DeferAdvance: 1,
+    AdvanceAfterAction: 1,
+    ActionOwnerUID: 7,
+  };
+  reconcileSessionFlowThresholds(globals, party);
+  const fan = getSessionLevelUpBuffPresentation(globals, party);
+  const destiny = fan.cards.find(card => card.specialId === 'destiny');
+  assert.ok(destiny);
+  assert.equal(chooseSessionLevelUpBuff(globals, party, destiny.cardId, 0, () => ({ ok: true })).status, 'applied');
+  assert.equal(globals.DeferAdvance, 1);
+  assert.equal(globals.ActionOwnerUID, 7);
+  assert.equal(claimSessionBuffQueueResume(globals), false);
+});
+
 
 test('post-opening AF threshold resolves its recreated live hero by UID and never produces an empty special offer', () => {
   const party = heroes();

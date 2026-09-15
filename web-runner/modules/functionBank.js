@@ -10288,7 +10288,13 @@ export function ProcessTurn(ctx) {
   let actor = GetActorByUID(ctx, uid);
   const g = getGlobals(ctx);
   const qaTrace = (reason, extra = {}) => {
-    if (!g.QaFixtureHoldTurn && !g.QaFixtureExplicitAction) return;
+    if (!g.QaFixtureHoldTurn && !g.QaFixtureExplicitAction && !g.QaLiveDestinyTrace) return;
+    if (g.QaLiveDestinyTrace) {
+      const events = g.QaLiveDestinyTrace.events ||= [];
+      events.push({ event: `process-turn:${reason}`, at: Number(g.time || 0), uid: Number(uid || 0), type: Number.isFinite(Number(type)) ? Number(type) : -1, turnPhase: Number(g.TurnPhase || 0), actionInProgress: Number(g.ActionInProgress || 0), playerBusy: Number(g.IsPlayerBusy || 0), deferAdvance: Number(g.DeferAdvance || 0), advanceAfterAction: Number(g.AdvanceAfterAction || 0), actionOwnerUID: Number(g.ActionOwnerUID || 0), actionActorUID: Number(g.ActionActorUID || 0), ...extra });
+      if (events.length > 24) events.splice(0, events.length - 24);
+      console.log(`[QA_LIVE_DESTINY] ${JSON.stringify(events.at(-1))}`);
+    }
     g.QaFixtureProcessTurnGate = {
       reason,
       hold: !!g.QaFixtureHoldTurn,
@@ -10447,7 +10453,6 @@ export function ProcessTurn(ctx) {
     });
     if (heroEligibility.code === TURN_ACTOR_ELIGIBILITY_ACT) {
       qaTrace('hero-eligible');
-      if (typeof processAstralFlowDestinyAtHeroTurn === 'function') processAstralFlowDestinyAtHeroTurn(ctx, uid);
       runTraitHooks(ctx, 'turn_start', {
         actorUID: Number(uid || 0),
         actorKind: String(actor?.kind || ''),
@@ -10458,6 +10463,8 @@ export function ProcessTurn(ctx) {
       HeroTurn(ctx, uid);
       const commandStarted = g.NativeCommandSequence !== priorNativeCommand
         && Number(g.NativeCommandSequence?.actorUID || 0) === Number(uid || 0);
+      if (commandStarted && typeof processAstralFlowDestinyAtHeroTurn === 'function') processAstralFlowDestinyAtHeroTurn(ctx, uid);
+      qaTrace(commandStarted ? 'native-command-started' : 'native-command-refused');
       finishQaFixtureExplicitAction(
         commandStarted ? 'qa-explicit-action-claimed' : 'qa-explicit-action-revoked',
         commandStarted

@@ -72,6 +72,7 @@ function awardResolvedRoleFlow(ctx,events){
   const award=resolveRoleFlowAward({heroes,hero,event:{source:'resolved-action',hostileHpDamage:hostile?.delta||0,hostileTargetUID:hostile?.targetUID||0,hostileTargetWasLiving:hostile?.targetWasLiving===true,enemyHpDamage:enemyDamage?1:0,newEligibleStatus:status},apply:true});
   if(!award)continue;
   const threshold=recordFlowThreshold(ctx.state.globals,hero,award.before,award.flow);
+  if(threshold&&ctx.state.globals.QaLiveDestinyTrace){ctx.state.globals.QaLiveDestinyTrace.status='offer-pending';ctx.state.globals.QaLiveDestinyTrace.events.push({event:'natural-role-threshold',at:Number(ctx.state.globals.time||0),heroUID:Number(hero.uid||0),before:award.before,after:award.flow,token:threshold.token});}
   const audit=ctx.state.globals.FlowOrbAudit||{};
   ctx.state.globals.FlowOrbAudit={...audit,source:award.source,roleRecipientUID:award.recipientUID,roleValue:award.value,roleAwardCount:Number(audit.roleAwardCount||0)+1,pendingThresholdToken:threshold?.token||audit.pendingThresholdToken||''};
  }

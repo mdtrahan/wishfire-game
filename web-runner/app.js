@@ -2213,7 +2213,8 @@ async function main(){
   const selectHeroTurnCardFan = (index, offerToken = '') => {
     const levelUp = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
     if (!levelUp.open || deriveCombatChoiceMode(state.globals) !== COMBAT_CHOICE_MODE.OFFER) return { status: 'rejected', reason: 'offerUnavailable' };
-    return chooseSessionLevelUpBuff(
+    if (state.globals.QaLiveDestinyTrace) state.globals.QaLiveDestinyTrace.events.push({ event: 'card-tap', at: Number(state.globals.time || 0), cardId: String(levelUp.cards[index]?.cardId || ''), gate: getActionHandoffSnapshot() });
+    const result = chooseSessionLevelUpBuff(
       state.globals,
       state.entities,
       levelUp.cards[index]?.cardId,
@@ -2221,6 +2222,8 @@ async function main(){
       (card, hero) => callFunctionWithContext(fnContext, 'ExecuteAstralFlowSpecial', card.specialId, hero.uid),
       offerToken,
     );
+    if (state.globals.QaLiveDestinyTrace) state.globals.QaLiveDestinyTrace.events.push({ event: 'card-applied', at: Number(state.globals.time || 0), status: String(result?.status || ''), gate: getActionHandoffSnapshot() });
+    return result;
   };
   const heroTurnCardFanUI = createHeroTurnCardFanUI({
     canvas,
@@ -2254,6 +2257,7 @@ async function main(){
       ctbActorUID: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0),
       chosenSpecial: String(lastSpecial?.id || ''),
       execution: lastSpecial,
+      liveDestinyTrace: state.globals.QaLiveDestinyTrace || null,
       specialEffects: {
         wardTargets: Object.keys(state.globals.PartyWardBarrierVisualsByUID || {}).map(Number),
         ward: { remaining: Number(state.globals.PartyTempHPShield || 0), absorbed: Number(state.globals.LastPartyWardBarrierAbsorbed || 0), lastTargetUID: Number(state.globals.LastPartyWardBarrierHitUID || 0), fadeOutUntil: Number(state.globals.PartyWardBarrierFadeOutUntil || 0) },
@@ -2353,6 +2357,17 @@ async function main(){
     combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
     const presentation = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
     return { ok: !!threshold, threshold, presentation, readout: qaReadSessionBuffState() };
+  };
+  const qaArmLiveKajaDestiny = () => {
+    if (state.globals.QaLiveDestinyTrace) return { ok: true, inspect: true, trace: state.globals.QaLiveDestinyTrace };
+    if (state.globals.GamePhase !== 'RUNTIME' || layoutState.getActiveLayoutId() !== 'combat') return { ok: false, reason: 'combatNotRunning' };
+    if (state.globals.QaScenarioPaused || state.globals.DevToolingPaused || getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {}).open) return { ok: false, reason: 'combatNotActive' };
+    const hero = state.entities.find(actor => actor?.kind === 'hero' && heroDefinition(actor)?.key === 'Kojonn' && Number(actor.hp || 0) > 0);
+    if (!hero) return { ok: false, reason: 'kajaUnavailable' };
+    hero.flow = 90;
+    state.globals.QaPreferredAstralFlowSpecialId = 'af_destiny';
+    state.globals.QaLiveDestinyTrace = { status: 'armed', heroUID: Number(hero.uid || 0), events: [{ event: 'armed-at-90', at: Number(state.globals.time || 0), gate: getActionHandoffSnapshot() }] };
+    return { ok: true, heroUID: Number(hero.uid || 0), flow: Number(hero.flow || 0) };
   };
   const qaFixtureHeal = () => {
     const guard = qaScenarioPauseGuard();
@@ -3034,6 +3049,7 @@ async function main(){
     reconcileSessionFlowThresholds(state.globals, state.entities);
     const levelUpFanState = getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {});
     if (activeLayoutId === 'combat' && state.globals.GamePhase === 'RUNTIME' && claimSessionBuffQueueResume(state.globals)) {
+      if (state.globals.QaLiveDestinyTrace) state.globals.QaLiveDestinyTrace.events.push({ event: 'resume-claimed', at: Number(state.globals.time || 0), gate: getActionHandoffSnapshot() });
       combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
     }
     const dancingHeroUID = levelUpFanState.dancing ? Number(levelUpFanState.queue?.heroUID || 0) : 0;
@@ -4403,6 +4419,7 @@ function getStoryCardLiveLineState() {
     qaResumeScenario,
     qaRunAstralFlowSpecial,
     qaSetHeroFlowReady,
+    qaArmLiveKajaDestiny,
     qaFixtureHeal,
     qaGrantDawnChorus,
     qaSetDawnChorusRoll,

@@ -224,7 +224,10 @@ export function chooseSessionLevelUpBuff(globals, heroes = [], cardId, now = 0, 
       .filter(signal => String(signal?.token || '') !== String(presentation.queue.thresholdToken));
     globals.SessionLevelUpQueue = acknowledgeSessionLevelUpEntry(globals.SessionLevelUpQueue);
     Object.assign(globals, releaseSessionOfferInputGate(globals, { resolution: 'attack' }));
-    if (globals.SessionLevelUpQueue.status === 'complete') globals.SessionLevelUpQueueResumeRequested = 1;
+    if (globals.SessionLevelUpQueue.status === 'complete') {
+      if (globals.DeferAdvance && globals.AdvanceAfterAction && globals.ActionOwnerUID) globals.SessionOfferResolution = '';
+      else globals.SessionLevelUpQueueResumeRequested = 1;
+    }
     return { status: 'applied', card, special: true, execution };
   }
   const partyEntry = isSessionOpeningPartyEntry(presentation.queue);
@@ -250,7 +253,10 @@ export function chooseSessionLevelUpBuff(globals, heroes = [], cardId, now = 0, 
   globals.SessionLevelBuffState = nextState;
   globals.SessionLevelUpQueue = acknowledgeSessionLevelUpEntry(globals.SessionLevelUpQueue);
   Object.assign(globals, releaseSessionOfferInputGate(globals, { resolution: 'global' }));
-  if (globals.SessionLevelUpQueue.status === 'complete') globals.SessionLevelUpQueueResumeRequested = 1;
+  if (globals.SessionLevelUpQueue.status === 'complete') {
+    if (globals.DeferAdvance && globals.AdvanceAfterAction && globals.ActionOwnerUID) globals.SessionOfferResolution = '';
+    else globals.SessionLevelUpQueueResumeRequested = 1;
+  }
   if (globals.SessionLevelUpQueue.status === 'complete' && globals.SessionLevelUpSettlement) { globals.SessionLevelUpSettlement.phase = 'fadeOut'; globals.SessionLevelUpSettlement.fadeOutStartedAt = Number(now || 0); }
   return partyEntry ? { ...applied, partyWide: true, affectedHeroIds: recipients.map(heroId) } : applied;
 }

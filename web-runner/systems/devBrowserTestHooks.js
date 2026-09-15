@@ -270,6 +270,7 @@ export function registerDevBrowserTestHooks({
   qaResumeScenario,
   qaRunAstralFlowSpecial,
   qaSetHeroFlowReady,
+  qaArmLiveKajaDestiny,
   qaFixtureHeal,
   qaGrantDawnChorus,
   qaSetDawnChorusRoll,
@@ -1060,6 +1061,11 @@ export function registerDevBrowserTestHooks({
         renderAfReadout(`set AF 100: ${result.ok ? 'ok' : result.reason || 'failed'}`);
         if (!result.ok && result.reason !== 'choiceActive') throw new Error(`QA set AF 100 failed: ${result.reason || 'unknown'}`);
         if (typeof drawFrame === 'function') drawFrame();
+      }],
+      ['QA live Kaja Destiny', () => {
+        const result = typeof qaArmLiveKajaDestiny === 'function' ? qaArmLiveKajaDestiny() : { ok: false, reason: 'missingLiveDestinyEntryPoint' };
+        renderAfReadout(`live Kaja Destiny: ${result.ok ? 'armed at 90 AF' : result.reason || 'failed'}`);
+        if (!result.ok) throw new Error(`QA live Kaja Destiny failed: ${result.reason || 'unknown'}`);
       }],
       ['QA choose special', () => {
         const result = typeof qaChooseAstralFlowSpecial === 'function'

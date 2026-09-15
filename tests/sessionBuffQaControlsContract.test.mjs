@@ -10,6 +10,7 @@ const hooks = readFileSync(new URL('../web-runner/systems/devBrowserTestHooks.js
 const app = readFileSync(new URL('../web-runner/app.js', import.meta.url), 'utf8');
 const devTooling = readFileSync(new URL('../web-runner/systems/devToolingRuntime.js', import.meta.url), 'utf8');
 const renderRuntime = readFileSync(new URL('../web-runner/systems/renderRuntime.js', import.meta.url), 'utf8');
+const functionBank = readFileSync(new URL('../web-runner/modules/functionBank.js', import.meta.url), 'utf8');
 
 function extractExportedFunction(source, name) {
   const start = source.indexOf(`export function ${name}`);
@@ -37,6 +38,12 @@ test('Quest-QA AF controls are query-gated and use production callback seams', (
   assert.match(hooks, /QA fresh session/);
   assert.match(hooks, /QA resume/);
   assert.match(hooks, /QA offer pause\/resume/);
+  assert.match(hooks, /QA live Kaja Destiny/);
+});
+
+test('Destiny turn healing cannot block the native command it accompanies', () => {
+  const processTurn = extractExportedFunction(functionBank, 'ProcessTurn');
+  assert.ok(processTurn.indexOf('HeroTurn(ctx, uid)') < processTurn.indexOf('processAstralFlowDestinyAtHeroTurn(ctx, uid)'));
 });
 
 test('app QA entrypoints use canonical threshold, fan selection, and layout navigation', () => {
@@ -56,7 +63,7 @@ test('app QA entrypoints use canonical threshold, fan selection, and layout navi
   assert.match(app, /const qaRunAstralFlowSpecial = \(heroUID, specialId\) =>/);
 });
 
-test('a session offer owns input, rejects stale selection, and releases exactly one scheduler resume', () => {
+test('a session offer owns input, rejects stale selection, and preserves its existing scheduler handoff', () => {
   const party = [
     { uid: 1, kind: 'hero', heroInstanceKey: 'fara-1', heroDisplaySlot: 0, hp: 40, maxHP: 40, flow: 0 },
     { uid: 2, kind: 'hero', heroInstanceKey: 'hondo-2', heroDisplaySlot: 1, hp: 35, maxHP: 35, flow: 0 },
@@ -97,7 +104,6 @@ test('a session offer owns input, rejects stale selection, and releases exactly 
   assert.deepEqual(chooseSessionLevelUpBuff(globals, party, offer.cards[0].cardId, 0, null, 'stale-token'), { status: 'rejected', reason: 'staleOffer' });
   assert.equal(JSON.stringify(globals.SessionLevelUpQueue), before);
   assert.equal(chooseSessionLevelUpBuff(globals, party, offer.cards[0].cardId, 0, null, offer.offerToken).status, 'applied');
-  assert.equal(claimSessionBuffQueueResume(globals), true);
   assert.equal(claimSessionBuffQueueResume(globals), false);
   assert.equal(globals.IsPlayerBusy, 0);
   assert.equal(globals.ActionInProgress, 0);
