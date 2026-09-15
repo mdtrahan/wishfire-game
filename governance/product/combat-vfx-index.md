@@ -39,15 +39,15 @@ Vertical effects reveal in their direction of travel. Eruptions grow from the gr
 | Chimerilass basic (`MAG 26 > ATK 8`) | Target-centered rose-gold magical eruption | Rose-gold | Upward burst and falling motes | 1 | 1 | 0 | 0 | KEEP asset; live proof pending |
 | Split | Hero rest anchor; broad painted slash across enemy line | Red-orange | Slash covers every damaged enemy | 1 | 1 | 0 | 0 | KEEP |
 | Party and session Chain Strike tiers | First contact; illustrated ribbon bounces between targets | Cyan-white | Ribbon contact on each bounce | 1 | 1 | 1 | 1 | KEEP; AF card reveal and ordinary-session capture verified |
-| Arcane Pulse / Spectral Orb tiers | Hero rest anchor; illustrated crescent charges then travels straight | Violet-cyan | Matching painted contact burst and short trail | 1 | 1 | 0 | 0 | Shared `ArcanePulseVisuals`; legacy procedural arcs disconnected |
+| Arcane Pulse / Spectral Orb tiers | Hero rest anchor; illustrated crescent charges then travels straight | Blue-cyan | Directional contact flare splashes back from the target; short trail | 1 | 1 | 1 | 1 | Human-approved isolated production-path QA; shared `ArcanePulseVisuals`; legacy procedural arcs disconnected |
 | Venom Sigil tiers | Enemy ground origin; poison sigil reveals upward | Purple-magenta | Rising venom wisps; subsequent DOT numbers retain their status palette | 1 | 1 | 0 | 0 | Session behavior proc |
 | Glass Reprisal tiers | Countering hero rest anchor; glass-shard crescent travels to attacker | Cyan-white | Blue-white contact splash plus shared staged self-heal | 1 | 1 | 0 | 0 | One sequence per resolved counter package |
 | Dawn Chorus tiers | Every defeated hero's ground origin; shared revival fountain | Green-gold | Sigil, rising light, falling motes and restored HP text | 1 | 1 | 0 | 0 | Session defeat intercept; opening draw excludes it |
 | Faze / Blight | Enemy ground origin; tainted field | Purple | Purple damage floats and persistent ground haze | 1 | 1 | 1 | 1 | KEEP |
 | Crimson Ward | Hero group origin; shield bloom | Crimson | Ward absorbs damage before HP | 1 | 1 | 1 | 1 | KEEP |
 | Grow | Each living hero's ground origin; spectral genie hands lift upward during the initial power increase | Turquoise-gold | Hands fade while the existing session-long scale state remains | 1 | 1 | 0 | 0 | Preserve established hero scaling behavior |
-| Magic Fruit | Ground sigil; rising fountain | Green-gold | Falling motes and green value | 1 | 1 | 1 | 1 | KEEP staged family |
-| Destiny heal proc | Ground sigil; rising fountain | Green-gold | Falling motes and green value | 1 | 1 | 1 | 1 | KEEP; observed in ordinary autoplay |
+| Magic Fruit | Ground sigil; rising fountain | Green-gold | Falling motes and green value | 1 | 1 | 0 | 0 | Human review rejected violent motion and incorrect anchor; isolated revision next |
+| Destiny heal proc | Ground sigil; rising fountain | Green-gold | Falling motes and green value | 1 | 1 | 0 | 0 | Shares the rejected heal family; isolated revision pending |
 | Enemy single heal | Ground sigil; rising fountain | Mint-gold | Falling motes and green value | 1 | 1 | 0 | 0 | Share staged heal family; live proof pending |
 | Enemy group heal / Wipe | Progressive cloud rain above enemy group | Mint-gold | Fountain and motes on every restored enemy | 1 | 1 | 0 | 0 | Live proof pending |
 | Enemy Scathe | Enemy rest anchor; electric lines crackle around the chosen hero | Violet-white | Target-centered sizzle while the board lock resolves | 1 | 1 | 0 | 0 | Named skill overrides basic Djinn rain |

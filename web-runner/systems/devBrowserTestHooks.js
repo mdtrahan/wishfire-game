@@ -1091,6 +1091,21 @@ export function registerDevBrowserTestHooks({
         if (!result.ok && result.reason !== 'choiceActive') throw new Error(`QA run special failed: ${result.reason || 'assertionFailed'}`);
         if (typeof drawFrame === 'function') drawFrame();
       }],
+      ['QA Arcane replay', async () => {
+        if (!state.globals.ArcanePulseTestScenario) await window.__codexGame.setupArcanePulseScenario();
+        const result = window.__codexGame.replayArcanePulseScenario();
+        renderAfReadout(`Arcane Pulse: ${result.ok ? 'replaying' : result.reason || 'failed'}`);
+      }],
+      ['QA weak hit', async () => {
+        if (!state.globals.ArcanePulseTestScenario) await window.__codexGame.setupArcanePulseScenario();
+        const result = window.__codexGame.replayHitTierScenario('weak');
+        renderAfReadout(`weak hit: ${result.ok ? 'replaying' : result.reason || 'failed'}`);
+      }],
+      ['QA regular hit', async () => {
+        if (!state.globals.ArcanePulseTestScenario) await window.__codexGame.setupArcanePulseScenario();
+        const result = window.__codexGame.replayHitTierScenario('regular');
+        renderAfReadout(`regular hit: ${result.ok ? 'replaying' : result.reason || 'failed'}`);
+      }],
       ['QA offer pause/resume', async () => {
         const result = typeof qaPauseResumeSessionBuffOffer === 'function'
           ? await qaPauseResumeSessionBuffOffer()
@@ -1767,6 +1782,63 @@ export function registerDevBrowserTestHooks({
       drawFrame();
       return { ok: true, ...g.ChainStrikeIITestScenario };
     },
+    async setupArcanePulseScenario() {
+      const base = await window.__codexGame.setupChainStrikeIIScenario();
+      if (!base?.ok) return base;
+      const g = state.globals;
+      const heroes = state.entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
+      const hero = heroes.find(actor => String(actor.name || actor.baseHeroName || '').toLowerCase() === 'runa') || heroes[0];
+      const enemy = state.entities.find(actor => actor?.kind === 'enemy' && Number(actor.hp || 0) > 0);
+      if (!hero || !enemy) return { ok: false, reason: 'missing_hero_or_enemy' };
+      state.entities.splice(0, state.entities.length, hero, enemy);
+      g.SessionSkillsByHeroUID = {
+        __party_shared__: [{ id: 'party_arcane_pulse', definitionId: 'party_arcane_pulse', title: 'Arcane Pulse', owner: 'Party', selectionCount: 1 }],
+      };
+      g.TurnOrderArray = [{ uid: Number(hero.uid || 0), type: 0, spd: Number(hero.stats?.SPD ?? hero.SPD ?? 10), name: String(hero.name || '') }];
+      g.CurrentTurnIndex = 0;
+      g.PendingHeroHits = [];
+      g.ArcanePulseVisuals = [];
+      g.ChainStrikeVisuals = [];
+      g.DamageTexts = [];
+      g.SessionLevelUpQueue = null;
+      g.SessionLevelUpSettlement = null;
+      g.PendingFlowThresholds = [];
+      g.PendingActor = Number(hero.uid || 0);
+      g.SelectedEnemyUID = Number(enemy.uid || 0);
+      g.SelectedEnemyUIDOwner = Number(hero.uid || 0);
+      g.ArcanePulseTestScenario = { id: 'arcane-pulse', heroUID: Number(hero.uid || 0), enemyUID: Number(enemy.uid || 0) };
+      drawFrame();
+      return { ok: true, ...g.ArcanePulseTestScenario };
+    },
+    replayArcanePulseScenario(tier = '') {
+      const scenario = state.globals.ArcanePulseTestScenario;
+      if (!scenario) return { ok: false, reason: 'scenario_not_ready' };
+      const enemy = state.entities.find(actor => Number(actor?.uid || 0) === Number(scenario.enemyUID || 0));
+      if (!enemy) return { ok: false, reason: 'enemy_not_ready' };
+      if (tier === 'weak') enemy.maxHP = enemy.hp = 300;
+      if (tier === 'regular') enemy.maxHP = enemy.hp = 160;
+      state.globals.PendingHeroHits = [];
+      state.globals.ArcanePulseVisuals = [];
+      state.globals.DamageTexts = [];
+      const result = callFunctionWithContext(fnContext, 'ExecuteAstralFlowSpecial', 'arcane_pulse', scenario.heroUID);
+      drawFrame();
+      return result;
+    },
+    replayHitTierScenario(tier) {
+      const scenario = state.globals.ArcanePulseTestScenario;
+      if (!scenario) return { ok: false, reason: 'scenario_not_ready' };
+      const enemy = state.entities.find(actor => Number(actor?.uid || 0) === Number(scenario.enemyUID || 0));
+      if (!enemy) return { ok: false, reason: 'enemy_not_ready' };
+      enemy.maxHP = enemy.hp = tier === 'weak' ? 1000 : 100;
+      state.globals.SessionSkillsByHeroUID = {};
+      state.globals.PendingHeroHits = [];
+      state.globals.CombatImpactVisuals = [];
+      state.globals.ArcanePulseVisuals = [];
+      state.globals.DamageTexts = [];
+      const accepted = callFunctionWithContext(fnContext, 'HeroAttackSingle', scenario.heroUID, scenario.enemyUID);
+      drawFrame();
+      return { ok: accepted !== false, tier };
+    },
     stopDevAutoplay() {
       state.globals.DevAutoplayStopRequested = 1;
       return getDevAutoplayState();
@@ -1829,6 +1901,9 @@ export function registerDevBrowserTestHooks({
     }
     if (scenario === 'chain-strike-ii' || scenario === 'chainstrike2') {
       void window.__codexGame.setupChainStrikeIIScenario();
+    }
+    if (scenario === 'arcane-pulse' || scenario === 'arcanepulse') {
+      void window.__codexGame.setupArcanePulseScenario();
     }
   } catch (_) {}
   window.__auditBoard = () => assertBoardIntegrity('manual');

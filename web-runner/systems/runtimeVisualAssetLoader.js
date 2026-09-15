@@ -151,6 +151,7 @@ export async function loadRuntimeVisualAssets({
       gemVisualLoads,
       (async () => { heroSelectorImage = await loadImage(assetUrl('images/h_selector-animation 1-000.png')); })(),
       (async () => { images.SkillArcanePulse = await loadImage(assetUrl('images/vfx_arcane_pulse_crescent.png')); })(),
+      (async () => { images.CombatArcanePulseImpact = await loadImage(assetUrl('images/vfx_arcane_pulse_impact.png')); })(),
       (async () => { images.CombatHitFlare = await loadImage(assetUrl('images/vfx_hit_flare.png')); })(),
       (async () => { images.CombatImpactBlue = await loadImage(assetUrl('images/vfx_impact_blue.png')); })(),
       (async () => { images.CombatImpactPurple = await loadImage(assetUrl('images/vfx_impact_purple.png')); })(),

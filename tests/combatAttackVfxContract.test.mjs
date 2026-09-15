@@ -41,6 +41,28 @@ test('basic attack VFX follows actor stats with named magic identities', () => {
   assert.deepEqual(combatVfxProfileForActor({ name: 'Chimerilass', stats: { ATK: 30, MAG: 2 } }), { delivery: 'melee', impact: 'melee' });
 });
 
+test('hit impacts use the small white tier only for non-critical damage at or below five percent Max HP', () => {
+  const draws = [];
+  const filters = ['none'];
+  const ctx = {
+    save() { filters.push(this.filter); },
+    restore() { this.filter = filters.pop(); },
+    drawImage(image, x, y, width) { draws.push({ image: image.id, width, filter: this.filter }); },
+    filter: 'none',
+    set globalAlpha(value) {},
+  };
+  const target = { uid: 10, kind: 'enemy', x: 250, y: 150, maxHP: 100 };
+  const state = { globals: { time: 1, PendingHeroHits: [] }, entities: [{ uid: 1, kind: 'hero', name: 'Runa' }, target] };
+  queueCombatAttackImpactVfx(state, { heroUID: 1, attackVfxKind: 'runa_bolt', finalDmg: 5 }, target, 1);
+  queueCombatAttackImpactVfx(state, { heroUID: 1, attackVfxKind: 'runa_bolt', finalDmg: 6 }, target, 1);
+  queueCombatAttackImpactVfx(state, { heroUID: 1, attackVfxKind: 'runa_bolt', finalDmg: 5, didCrit: true }, target, 1);
+  assert.deepEqual(state.globals.CombatImpactVisuals.map(impact => impact.weak), [true, false, false]);
+  renderCombatAttackVfx(ctx, { state, images: { CombatImpactBlue: { id: 'blue-impact' } }, worldToCanvas: (x, y) => ({ x, y }), layoutScale: 1 });
+  assert.match(draws[0].filter, /grayscale/);
+  assert.ok(draws[0].width < draws[1].width);
+  assert.equal(draws[2].filter, 'none');
+});
+
 test('transparent raster VFX assets are loaded', () => {
   for (const [key, name] of [
     ['CombatHitFlare', 'vfx_hit_flare.png'],
@@ -62,6 +84,7 @@ test('transparent raster VFX assets are loaded', () => {
     ['CombatVenomSigil', 'vfx_venom_sigil.png'],
     ['CombatGlassReprisal', 'vfx_glass_reprisal.png'],
     ['SkillArcanePulse', 'vfx_arcane_pulse_crescent.png'],
+    ['CombatArcanePulseImpact', 'vfx_arcane_pulse_impact.png'],
     ['CombatHealBloom', 'vfx_heal_bloom_illustrated.png'],
     ['CombatHealSigil', 'vfx_heal_sigil.png'],
     ['CombatHealFountain', 'vfx_heal_fountain.png'],
@@ -145,14 +168,15 @@ test('named enemy skills override basic magic without painting attack VFX over h
 
 test('Arcane Pulse stages illustrated charge, travel, and matching contact', () => {
   const draws = [];
+  const scales = [];
   const ctx = {
-    save() {}, restore() {}, translate() {}, rotate() {},
+    save() {}, restore() {}, translate() {}, rotate() {}, scale(x, y) { scales.push([x, y]); },
     drawImage(image) { draws.push(image.id); },
     set globalAlpha(value) {},
   };
   const images = {
     SkillArcanePulse: { id: 'pulse' },
-    CombatImpactPurple: { id: 'pulse-impact' },
+    CombatArcanePulseImpact: { id: 'pulse-impact' },
   };
   const state = {
     globals: {
@@ -164,9 +188,21 @@ test('Arcane Pulse stages illustrated charge, travel, and matching contact', () 
   };
   renderCombatAttackVfx(ctx, { state, images, worldToCanvas: (x, y) => ({ x, y }), layoutScale: 1 });
   assert.ok(draws.filter(id => id === 'pulse').length >= 2, 'travel includes the illustrated front and its residue');
+  assert.ok(scales.every(([x, y]) => x === -1 && y === 1), 'the crescent artwork faces its rightward travel direction');
+  const travelScaleCount = scales.length;
   state.globals.time = 1.5;
   renderCombatAttackVfx(ctx, { state, images, worldToCanvas: (x, y) => ({ x, y }), layoutScale: 1 });
   assert.ok(draws.includes('pulse-impact'));
+  assert.ok(scales.length > travelScaleCount, 'the contact flare flips to splash back from the target');
+  assert.deepEqual(scales.at(-1), [-1, 1]);
+  const impactsBeforeLingerCheck = draws.filter(id => id === 'pulse-impact').length;
+  state.globals.time = 1.85;
+  renderCombatAttackVfx(ctx, { state, images, worldToCanvas: (x, y) => ({ x, y }), layoutScale: 1 });
+  assert.ok(draws.filter(id => id === 'pulse-impact').length > impactsBeforeLingerCheck, 'contact remains readable for nearly half a second');
+  for (const source of [runtimeBank, scriptsBank]) {
+    assert.match(source, /const PARTY_ARCANE_PULSE_TRAVEL_SEC = 0\.34;/);
+    assert.match(source, /impactAt = startAt \+ PARTY_ARCANE_PULSE_TRAVEL_SEC/);
+  }
 });
 
 test('Grow raises illustrated spectral hands from each affected hero', () => {

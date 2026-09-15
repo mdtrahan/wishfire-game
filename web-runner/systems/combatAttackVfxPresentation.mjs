@@ -1,4 +1,5 @@
 const stat = (actor, key) => Number(actor?.stats?.[key] ?? actor?.[key.toLowerCase()] ?? actor?.[key] ?? 0);
+const ARCANE_PULSE_IMPACT_SEC = 0.5;
 
 export function combatVfxProfileForActor(actor) {
   const name = String(actor?.name || '').trim().toLowerCase();
@@ -65,9 +66,12 @@ export function queueCombatAttackImpactVfx(state, hit, target, now) {
   const g = state.globals || {};
   const actor = (state.entities || []).find(entity => Number(entity?.uid || 0) === Number(hit.heroUID || hit.actorUID || 0));
   const kind = String(hit.impactVfxKind || combatVfxProfileForActor(actor).impact);
+  const damage = Math.max(0, Number(hit.finalDmg ?? hit.dmg ?? hit.damage ?? 0));
+  const maxHP = Math.max(0, Number(target.maxHP ?? target.max ?? 0));
+  const weak = !hit.didCrit && !hit.isCrit && maxHP > 0 && damage > 0 && damage <= maxHP * 0.05;
   const targetPoint = entityAnchor(state, target.uid) || { x: Number(target.x || 0), y: Number(target.y || 0) };
   const impacts = Array.isArray(g.CombatImpactVisuals) ? g.CombatImpactVisuals : [];
-  impacts.push({ x: targetPoint.x, y: targetPoint.y, kind, startAt: Number(now || g.time || 0) });
+  impacts.push({ x: targetPoint.x, y: targetPoint.y, kind, weak, startAt: Number(now || g.time || 0) });
   if (impacts.length > 24) impacts.splice(0, impacts.length - 24);
   g.CombatImpactVisuals = impacts;
 }
@@ -77,10 +81,12 @@ const drawTravel = (ctx, image, from, to, progress, width, layoutScale, lob = 0)
   const eased = 1 - Math.pow(1 - progress, 2);
   const x = from.x + (to.x - from.x) * eased;
   const y = from.y + (to.y - from.y) * eased - Math.sin(progress * Math.PI) * lob * layoutScale;
+  const angle = Math.atan2(to.y - from.y, to.x - from.x);
+  const frontOffset = width * 0.38 * eased;
   ctx.save();
   ctx.globalAlpha = Math.min(1, Math.sin(Math.min(1, progress * 1.35) * Math.PI * 0.5) * 1.15);
-  ctx.translate(x, y);
-  ctx.rotate(Math.atan2(to.y - from.y, to.x - from.x));
+  ctx.translate(x - Math.cos(angle) * frontOffset, y - Math.sin(angle) * frontOffset);
+  ctx.rotate(angle);
   ctx.drawImage(image, -width * 0.62, -width * 0.33, width, width * 0.66);
   ctx.restore();
 };
@@ -152,7 +158,7 @@ const renderArcanePulseVfx = (ctx, { state, images, worldToCanvas, layoutScale }
   state.globals.ArcanePulseVisuals = pulses.filter((pulse) => {
     const startAt = Number(pulse?.startAt || 0);
     const impactAt = Math.max(startAt + 0.01, Number(pulse?.impactAt || startAt));
-    const endAt = impactAt + 0.3;
+    const endAt = impactAt + ARCANE_PULSE_IMPACT_SEC;
     if (!pulse || now > endAt) return false;
     if (now < startAt) return true;
     const source = worldToCanvas(Number(pulse.sourceX || 0), Number(pulse.sourceY || 0));
@@ -164,7 +170,7 @@ const renderArcanePulseVfx = (ctx, { state, images, worldToCanvas, layoutScale }
     const x = source.x + (target.x - source.x) * eased;
     const y = source.y + (target.y - source.y) * eased;
     const angle = Math.atan2(target.y - source.y, target.x - source.x);
-    const width = Math.max(54, 76 * layoutScale) * (0.5 + charge * 0.5);
+    const width = Math.max(81, 114 * layoutScale) * (0.5 + charge * 0.5);
     if (now < impactAt) {
       for (const [trail, opacity] of [[0.13, 0.12], [0.07, 0.22]]) {
         const prior = Math.max(0, eased - trail);
@@ -172,6 +178,7 @@ const renderArcanePulseVfx = (ctx, { state, images, worldToCanvas, layoutScale }
         ctx.globalAlpha = opacity * move;
         ctx.translate(source.x + (target.x - source.x) * prior, source.y + (target.y - source.y) * prior);
         ctx.rotate(angle);
+        ctx.scale(-1, 1);
         ctx.drawImage(images.SkillArcanePulse, -width * 0.55, -width * 0.36, width, width * 0.72);
         ctx.restore();
       }
@@ -179,14 +186,19 @@ const renderArcanePulseVfx = (ctx, { state, images, worldToCanvas, layoutScale }
       ctx.globalAlpha = 0.35 + charge * 0.65;
       ctx.translate(x, y);
       ctx.rotate(angle);
+      ctx.scale(-1, 1);
       ctx.drawImage(images.SkillArcanePulse, -width * 0.55, -width * 0.36, width, width * 0.72);
       ctx.restore();
-    } else if (images.CombatImpactPurple) {
-      const impact = Math.max(0, Math.min(1, (now - impactAt) / 0.3));
-      const size = Math.max(52, 70 * layoutScale) * (0.72 + impact * 0.42);
+    } else if (images.CombatArcanePulseImpact) {
+      const impact = Math.max(0, Math.min(1, (now - impactAt) / ARCANE_PULSE_IMPACT_SEC));
+      const width = Math.max(70, 96 * layoutScale) * (0.82 + impact * 0.18);
+      const height = width * 0.64;
       ctx.save();
       ctx.globalAlpha = Math.max(0, 1 - impact);
-      ctx.drawImage(images.CombatImpactPurple, target.x - size / 2, target.y - size / 3, size, size * 0.66);
+      ctx.translate(target.x, target.y);
+      ctx.rotate(angle);
+      ctx.scale(-1, 1);
+      ctx.drawImage(images.CombatArcanePulseImpact, -width * 0.42, -height / 2, width, height);
       ctx.restore();
     }
     return true;
@@ -298,9 +310,10 @@ export function renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layou
     if (age < 0.32 && flare) {
       const t = Math.max(0, age / 0.32);
       const pos = worldToCanvas(Number(impact.x || 0), Number(impact.y || 0));
-      const size = Math.max(42, 62 * layoutScale) * (0.62 + Math.min(1, t * 2) * 0.5);
+      const size = Math.max(impact.weak ? 24 : 42, (impact.weak ? 36 : 62) * layoutScale) * (0.62 + Math.min(1, t * 2) * 0.5);
       ctx.save();
       ctx.globalAlpha = t < 0.25 ? 1 : Math.max(0, (1 - t) / 0.75);
+      if (impact.weak) ctx.filter = 'grayscale(1) brightness(3)';
       ctx.drawImage(flare, pos.x - size / 2, pos.y - size / 3, size, size * 0.66);
       ctx.restore();
     }

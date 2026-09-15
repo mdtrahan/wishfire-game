@@ -1161,6 +1161,7 @@ const FAZE_TAINTED_GROUND_MAX_STACK_COUNT = 4;
 const PARTY_ARCANE_PULSE_ID = 'party_arcane_pulse';
 const PARTY_ARCANE_PULSE_DAMAGE = 12;
 const PARTY_ARCANE_PULSE_TRIGGER_EVERY = 2;
+const PARTY_ARCANE_PULSE_TRAVEL_SEC = 0.34;
 const PARTY_ARCANE_PULSE_VISUAL_KEY = 'arcane_pulse_burst';
 const PARTY_ARCANE_PULSE_DAMAGE_TEXT_CLEAR_SEC = 0.18 + 0.7 + 0.45;
 function cloneSkillMetadata(value) {
@@ -1545,7 +1546,7 @@ function queueAstralFlowArcanePulse(ctx, actorUID) {
   const g = getGlobals(ctx);
   const now = Number(g.time || 0);
   const startAt = now + ASTRAL_FLOW_CARD_REVEAL_DELAY_SEC;
-  const impactAt = startAt + 0.24;
+  const impactAt = startAt + PARTY_ARCANE_PULSE_TRAVEL_SEC;
   const damage = Math.max(1, Math.floor(PARTY_ARCANE_PULSE_DAMAGE));
   g.PendingHeroHits = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
   g.PendingHeroHits.push({
@@ -2657,7 +2658,7 @@ function queuePartyArcanePulse(ctx, { heroUID = 0, targetUID = 0, applyAt = 0, a
   const now = Number(g.time || 0);
   const normalImpactAt = Number(applyAt || now);
   const startAt = Math.max(now + 0.2, normalImpactAt + 0.24);
-  const pulseAt = startAt + 0.24;
+  const pulseAt = startAt + PARTY_ARCANE_PULSE_TRAVEL_SEC;
   const visualClearAt = pulseAt + PARTY_ARCANE_PULSE_DAMAGE_TEXT_CLEAR_SEC;
   const damage = Math.max(1, Math.floor(PARTY_ARCANE_PULSE_DAMAGE));
   g.PendingHeroHits = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
