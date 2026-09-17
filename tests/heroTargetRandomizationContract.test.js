@@ -64,14 +64,22 @@ function createContext({ pending = false, selectedOwnerUID = null, hero = {}, en
 }
 
 for (const modulePath of mirrors) {
-  test(`automatic HERO_SINGLE uses the tank rule in ${path.relative(repoRoot, modulePath)}`, async () => {
+  test(`shipping HeroTurn draws a fresh random target for each actor in ${path.relative(repoRoot, modulePath)}`, () => {
+    const source = fs.readFileSync(modulePath, 'utf8');
+    const heroTurn = source.slice(source.indexOf('export function HeroTurn('), source.indexOf('function heroTurnCardName('));
+    assert.match(heroTurn, /resolveHeroAttackTarget\(\{ hero, enemies: entities\.filter\(entity => entity\?\.kind === 'enemy'\), randomPick: candidates => randomPick\(ctx, candidates\) \}\)/);
+    assert.doesNotMatch(heroTurn, /const target = selected \|\| entities\.find/);
+    assert.match(heroTurn, /g\.SelectedEnemyUIDOwner = activeHeroUID/);
+  });
+
+  test(`automatic HERO_SINGLE uses the runtime random target in ${path.relative(repoRoot, modulePath)}`, async () => {
     const { ExecuteSkill } = await loadFunctionBank(modulePath);
     const ctx = createContext({ pending: false });
 
     ExecuteSkill(ctx, 'HERO_SINGLE', 101);
 
     assert.equal(ctx.state.globals.PendingHeroHits.length, 1);
-    assert.equal(ctx.state.globals.PendingHeroHits[0].targetUID, 201);
+    assert.equal(ctx.state.globals.PendingHeroHits[0].targetUID, 202);
   });
 
   test(`pending HERO_SINGLE preserves selected enemy in ${path.relative(repoRoot, modulePath)}`, async () => {
@@ -96,36 +104,36 @@ for (const modulePath of mirrors) {
   });
 
   for (const scenario of [
-    { role: 'Tank', hero: { role: 'Tank' }, expected: 203, enemies: [
+    { role: 'Tank', hero: { role: 'Tank' }, enemies: [
       { uid: 201, kind: 'enemy', hp: 90, maxHP: 100, stats: { DEF: 4 } },
       { uid: 202, kind: 'enemy', hp: 95, maxHP: 100, stats: { DEF: 1 } },
       { uid: 203, kind: 'enemy', hp: 95, maxHP: 100, stats: { DEF: 8 } },
     ] },
-    { role: 'Fighter', hero: { role: 'DPS / Fighter' }, expected: 202, enemies: [
+    { role: 'Fighter', hero: { role: 'DPS / Fighter' }, enemies: [
       { uid: 201, kind: 'enemy', hp: 20, maxHP: 100, stats: { ATK: 4 } },
       { uid: 202, kind: 'enemy', hp: 20, maxHP: 100, stats: { ATK: 8 } },
       { uid: 203, kind: 'enemy', hp: 30, maxHP: 100, stats: { ATK: 99 } },
     ] },
-    { role: 'Controller', hero: { role: 'Controller' }, expected: 203, enemies: [
+    { role: 'Controller', hero: { role: 'Controller' }, enemies: [
       { uid: 201, kind: 'enemy', hp: 90, maxHP: 100, stats: { SPD: 8, MAG: 4 } },
       { uid: 202, kind: 'enemy', hp: 90, maxHP: 100, stats: { SPD: 10, MAG: 2 } },
       { uid: 203, kind: 'enemy', hp: 90, maxHP: 100, stats: { SPD: 10, MAG: 9 } },
     ] },
-    { role: 'Support', hero: { role: 'Support / Guardian' }, expected: 202, enemies: [
+    { role: 'Support', hero: { role: 'Support / Guardian' }, enemies: [
       { uid: 201, kind: 'enemy', hp: 30, maxHP: 100, stats: { MAG: 4 } },
       { uid: 202, kind: 'enemy', hp: 30, maxHP: 100, stats: { MAG: 8 } },
       { uid: 203, kind: 'enemy', hp: 40, maxHP: 100, stats: { MAG: 99 } },
     ] },
   ]) {
-    test(`${scenario.role} HERO_SINGLE targeting is deterministic in ${path.relative(repoRoot, modulePath)}`, async () => {
+    test(`${scenario.role} HERO_SINGLE targeting follows runtime random in ${path.relative(repoRoot, modulePath)}`, async () => {
       const { ExecuteSkill } = await loadFunctionBank(modulePath);
       const ctx = createContext({ hero: scenario.hero, enemies: scenario.enemies });
       ExecuteSkill(ctx, 'HERO_SINGLE', 101);
-      assert.equal(ctx.state.globals.PendingHeroHits[0].targetUID, scenario.expected);
+      assert.equal(ctx.state.globals.PendingHeroHits[0].targetUID, scenario.enemies.at(-1).uid);
     });
   }
 
-  test(`unknown roles retain random fallback and dead enemies are excluded in ${path.relative(repoRoot, modulePath)}`, async () => {
+  test(`random targeting excludes dead enemies in ${path.relative(repoRoot, modulePath)}`, async () => {
     const { ExecuteSkill } = await loadFunctionBank(modulePath);
     const ctx = createContext({ hero: { role: 'Mystery' }, enemies: [
       { uid: 201, kind: 'enemy', hp: 0, maxHP: 100, stats: { ATK: 99 } },

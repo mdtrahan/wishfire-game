@@ -51,6 +51,19 @@ test('fresh sessions hold one cached neutral opening offer and apply it to every
   for (const hero of party) assert.equal(globals.SessionLevelBuffState.heroes[hero.heroInstanceKey].activeStageByEffectId[first.cards[0].effectId], first.cards[0].stage);
 });
 
+test('opening Chain Strike selection closes its offer and releases combat exactly once', () => {
+  const party = heroes();
+  const globals = { RuntimeRandom: () => 0, SessionLevelUpTierWeights: tierOne, SessionLevelUpPreferredCardId: 'mirage_chain_1' };
+  beginFreshSessionBuffQueue(globals, party);
+  const offer = getSessionLevelUpBuffPresentation(globals, party);
+  const chainStrike = offer.cards.find(card => card.cardId === 'mirage_chain_1');
+  assert.ok(chainStrike);
+  assert.equal(chooseSessionLevelUpBuff(globals, party, chainStrike.cardId, 0, null, offer.offerToken).status, 'applied');
+  assert.equal(getSessionLevelUpBuffPresentation(globals, party).open, false);
+  assert.equal(claimSessionBuffQueueResume(globals), true);
+  assert.equal(claimSessionBuffQueueResume(globals), false);
+});
+
 test('one explicit universal power-buff allowlist admits persistent offense and rejects relief or direct action cards', () => {
   assert.ok(UNIVERSAL_SESSION_POWER_BUFF_IDS.includes('spectral_orb_1'));
   assert.ok(UNIVERSAL_SESSION_POWER_BUFF_IDS.includes('mirage_chain_1'));

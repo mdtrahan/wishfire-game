@@ -32,7 +32,7 @@ export function resetCombatSessionConditions(globals, gameState, { preserveSessi
     SessionLevelBuffState: retainedSessionLevelBuffState || { heroes: {} }, SessionLevelUpOffersByQueueIndex: {}, SessionLevelUpSettlement: null, SessionLevelUpQueuedFlowThresholdTokens: [], SessionLevelUpQueueResumeRequested: 0,
     PendingSkillID: '', PendingActor: 0, PendingSuperGemAction: null,
     SelectedEnemyUID: 0, SelectedEnemyUIDOwner: 0, PendingManualTargetIntent: null,
-    DamageTexts: [], ChainStrikeVisuals: [], ArcanePulseVisuals: [], CombatImpactVisuals: [], SessionBuffCombatVisuals: [],
+    DamageTexts: [], ChainStrikeVisuals: [], ArcanePulseVisuals: [], CombatImpactRequests: [], CombatImpactVisuals: [], SessionBuffCombatVisuals: [],
     Gems: [], BoardFillActive: 0, TapIndex: 0,
   });
   Object.assign(gameState, {

@@ -591,6 +591,8 @@ function spawnPendingDamageNumbers(projectToCanvas = null, presentationScale = 1
       d.healBloomAnimation = createHealBloom({
         x: d.x,
         y: d.baseY != null ? d.baseY : d.y,
+        targetUID: d.targetUID,
+        presentation: d.healPresentation,
       });
       gameState.healBlooms.push(d.healBloomAnimation);
     }
@@ -4402,6 +4404,7 @@ function getStoryCardLiveLineState() {
     },
     toggleDevToolingModal,
     applyDevToolingConfig,
+    resumeGameplayFromDevTooling: () => requireDevToolingRuntime().resumeGameplayFromDevTooling(),
     runDevAutoplayUntilDepleted,
     getLatestCombatActionLine,
     getLatestStoryCardActionLine,

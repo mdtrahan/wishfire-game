@@ -55,6 +55,7 @@ test('combat hero strip keeps a compact free placed reference status block', () 
   assert.match(source, /text-shadow:2px 0 #05060b,-2px 0 #05060b,0 2px #05060b,0 -2px #05060b/);
   assert.match(source, /box-shadow:inset 0 1px #fff9,inset 0 -2px #000b,0 1px #07090d/);
   assert.match(source, /\.hp progress::-webkit-progress-value/);
+  assert.match(source, /\.hp progress::-webkit-progress-value\{[^}]*transition:width \.45s ease-out/);
   assert.match(source, /\.af progress::-webkit-progress-value/);
   assert.match(source, /\[data-hp-text\]'\)\.textContent = hp/);
   assert.match(source, /\[data-af-text\]'\)\.textContent = af/);

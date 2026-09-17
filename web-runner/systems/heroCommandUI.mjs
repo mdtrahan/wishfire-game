@@ -62,7 +62,7 @@ export function createHeroCommandUI({ctx, gameState, canvas, onActiveHeroClick =
     #hero-commands .readout-value{display:inline-block;font-size:calc(20px * var(--compact-type-scale,1));font-weight:900;line-height:.75;letter-spacing:-1px;transform:scaleX(.85);transform-origin:right bottom;margin-right:0;text-shadow:2px 0 #05060b,-2px 0 #05060b,0 2px #05060b,0 -2px #05060b,1px 1px 0 #05060b,-1px -1px 0 #05060b}
     #hero-commands progress{display:block;justify-self:stretch;width:100%;height:8px;appearance:none;border:1px solid #090a10;border-radius:3px;background:linear-gradient(#30323b,#11131a);box-shadow:inset 0 1px #fff9,inset 0 -2px #000b,0 1px #07090d;overflow:hidden}
     #hero-commands progress::-webkit-progress-bar{background:linear-gradient(#30323b,#11131a);border-radius:3px}
-    #hero-commands .hp progress::-webkit-progress-value{background:linear-gradient(#eaff9c 0%,#a8ed52 30%,#559e17 70%,#245c08 100%);border-radius:2px}
+    #hero-commands .hp progress::-webkit-progress-value{background:linear-gradient(#eaff9c 0%,#a8ed52 30%,#559e17 70%,#245c08 100%);border-radius:2px;transition:width .45s ease-out}
     #hero-commands .hp progress::-moz-progress-bar{background:linear-gradient(#eaff9c,#559e17 70%,#245c08);border-radius:2px}
     #hero-commands .af progress::-webkit-progress-value{background:linear-gradient(#c5f4ff 0%,#60d2ff 30%,#2274d4 70%,#123d8c 100%);border-radius:2px}
     #hero-commands .af progress::-moz-progress-bar{background:linear-gradient(#c5f4ff,#2274d4 70%,#123d8c);border-radius:2px}

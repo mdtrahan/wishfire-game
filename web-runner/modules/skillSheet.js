@@ -5,8 +5,8 @@ function getGlobals(ctx) {
   return (ctx && ctx.state ? ctx.state.globals : state.globals);
 }
 
-function emitActiveHeroHeal(ctx, actor, beforeHP) {
-  if (typeof emitResolvedHealEvent === 'function') return emitResolvedHealEvent(ctx, actor, actor, beforeHP);
+function emitActiveHeroHeal(ctx, actor, beforeHP, presentation = 'minor') {
+  if (typeof emitResolvedHealEvent === 'function') return emitResolvedHealEvent(ctx, actor, actor, beforeHP, { presentation });
   const delta = Math.max(0, Number(actor?.hp || 0) - Math.max(0, Number(beforeHP || 0)));
   if (delta > 0) ctx.callFunction('SpawnDamageText', delta, actor.x, actor.y, 'heal', 'hero');
   return delta;
@@ -61,7 +61,7 @@ export function Party_RES_UP(ctx, turns, actorUID, actorType, addAmt) {
   ctx.callFunction('RefreshPartyBuffUI');
 }
 
-export function ApplyActiveHeroHeal(ctx, healAmount) {
+export function ApplyActiveHeroHeal(ctx, healAmount, presentation = 'minor') {
   const g = getGlobals(ctx);
   const actor = ctx.callFunction('GetActorByUID', ctx.callFunction('GetCurrentTurn'));
   if (!actor || actor.kind !== 'hero' || !(actor.hp > 0)) return 0;
@@ -74,7 +74,7 @@ export function ApplyActiveHeroHeal(ctx, healAmount) {
   ctx.callFunction('UpdateHeroHPUI');
   ctx.callFunction('UpdatePartyHPText');
   ctx.callFunction('UpdatePartyHPBar');
-  if (delta > 0 && !g.SuppressHeroHealText) emitActiveHeroHeal(ctx, actor, before);
+  if (delta > 0 && !g.SuppressHeroHealText) emitActiveHeroHeal(ctx, actor, before, presentation);
   return delta;
 }
 
@@ -102,7 +102,7 @@ export function DoHeal(ctx, actorUID, potencyMultiplier = 1) {
     heal = Math.ceil(heal * (g.ChainMultiplier || 1));
     g.ApplyChainToNextHeal = 0;
   }
-  const totalHeal = ctx.callFunction('ApplyActiveHeroHeal', heal);
+  const totalHeal = ctx.callFunction('ApplyActiveHeroHeal', heal, 'major');
   ctx.callFunction('LogCombat', potency > 1 ? `${actorName} used Magic Fruit!` : `${actorName} heals for ${totalHeal}`);
   g.ActionLockUntil = (g.time || 0) + (g.DamageTextDurationSec || 1.35);
   g.DeferAdvance = 1;

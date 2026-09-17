@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { emitResolvedHealEvent } from '../web-runner/modules/heroCommands.mjs';
+import { emitResolvedHealEvent, rulesContext } from '../web-runner/modules/heroCommands.mjs';
 
 function loadApplyActiveHeroHeal(path) {
   const source = fs.readFileSync(path, 'utf8')
@@ -36,7 +36,7 @@ for (const [label, apply] of [['runtime', applyRuntimeHeal], ['Construct mirror'
   test(`${label} active heal emits only its actual resolved delta through the shared presentation path`, () => {
     const { ctx, hero, globals, calls } = makeContext();
     assert.equal(apply(ctx, 8), 1);
-    assert.deepEqual(globals.DamageTexts, [{ amount: 1, x: 44, y: 55, kind: 'heal', targetKind: 'hero', targetUID: 7, targetSlotIndex: 0 }]);
+    assert.deepEqual(globals.DamageTexts, [{ amount: 1, x: 21, y: 34, kind: 'heal', targetKind: 'hero', targetUID: 7, targetSlotIndex: 0, healPresentation: 'minor' }]);
     assert.equal(apply(ctx, 8), 0, 'full health must not emit a heal event');
     assert.equal(globals.DamageTexts.length, 1);
     assert.equal(calls.filter(call => call.name === 'SpawnDamageText').length, 1);
@@ -48,6 +48,24 @@ test('both active-heal surfaces import the shared resolved-heal emitter', () => 
   for (const file of ['web-runner/modules/skillSheet.js', 'Scripts/skillSheet.js']) {
     const source = fs.readFileSync(file, 'utf8');
     assert.match(source, /import \{ emitResolvedHealEvent \}/, file);
-    assert.match(source, /emitResolvedHealEvent\(ctx, actor, actor, beforeHP\)/, file);
+    assert.match(source, /emitResolvedHealEvent\(ctx, actor, actor, beforeHP, \{ presentation \}\)/, file);
+  }
+});
+
+test('explicit heal presentation can opt into the major animation tier', () => {
+  const { ctx, globals } = makeContext();
+  assert.equal(applyRuntimeHeal(ctx, 1, 'major'), 1);
+  assert.equal(globals.DamageTexts[0].healPresentation, 'major');
+});
+
+test('resolved heal effects keep HoT minor and cast heals major', () => {
+  for (const [meta, expected] of [
+    [{ effectType: 'heal', statusEffect: 'hot' }, 'minor'],
+    [{ effectType: 'heal' }, 'major'],
+  ]) {
+    const { ctx, hero, globals } = makeContext();
+    hero.hp = 10;
+    rulesContext(ctx).onHeal(hero, hero, 1, meta);
+    assert.equal(globals.DamageTexts[0].healPresentation, expected);
   }
 });

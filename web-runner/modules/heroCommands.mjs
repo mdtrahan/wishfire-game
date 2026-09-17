@@ -9,17 +9,17 @@ import {acknowledgeSessionLevelUpEntry,clearSessionLevelUpQueue,createSessionLev
 import {beginSessionLevelUpSettlement,chooseSessionLevelUpBuff as choosePresentedSessionLevelUpBuff,getActiveSessionLevelUpBuffCards,getSessionLevelUpBuffPresentation,updateSessionLevelUpSettlement} from './sessionLevelUpBuffPresentation.mjs';
 export {getHeroFlowState,getHeroSkillOptions};
 export function getHeroCommandSlots(entities){const slots=Array(6).fill(null);for(const hero of entities){const i=Number(hero.heroDisplaySlot??hero.displaySlot??hero.heroIndex);if(hero?.kind==='hero'&&Number.isInteger(i)&&i>=0&&i<6)slots[i]=hero;}return slots;}
-export function emitResolvedHealEvent(ctx, source, target, beforeHP, { allowRevive = false } = {}) {
+export function emitResolvedHealEvent(ctx, source, target, beforeHP, { allowRevive = false, presentation = 'minor' } = {}) {
  const before=Math.max(0,Number(beforeHP||0)),after=Math.max(0,Number(target?.hp||0));
  const delta=Math.max(0,after-before);
  if(!target||delta<=0||(!allowRevive&&before<=0)||!['hero','enemy'].includes(String(target.kind||'')))return 0;
  const g=ctx.state.globals,slot=Number(target.heroDisplaySlot??target.heroIndex??-1);
- const positions=target.kind==='hero'?(g.HeroPortraitPosByIndex||g.HeroIconPosByIndex):null;
- const pos=target.kind==='hero'&&Array.isArray(positions)&&positions[slot]?positions[slot]:target;
+ const rest=target.kind==='hero'?(g.HeroRestFeetPosByUID?.[Number(target.uid||0)]||g.HeroRestBasePosByUID?.[Number(target.uid||0)]):null;
+ const pos=rest&&Number.isFinite(Number(rest.x))&&Number.isFinite(Number(rest.y))?rest:target;
  const texts=Array.isArray(g.DamageTexts)?g.DamageTexts:[];const count=texts.length;
  ctx.callFunction('SpawnDamageText',delta,Number(pos?.x||0),Number(pos?.y||0),'heal',target.kind);
  const emitted=Array.isArray(g.DamageTexts)&&g.DamageTexts.length>count?g.DamageTexts.at(-1):null;
- if(emitted){emitted.targetUID=Number(target.uid||0);emitted.targetSlotIndex=slot;}
+ if(emitted){emitted.targetUID=Number(target.uid||0);emitted.targetSlotIndex=slot;emitted.healPresentation=presentation==='major'?'major':'minor';}
  return delta;
 }
 export function canUseHeroCommand(ctx,actorUID){
@@ -52,7 +52,7 @@ export function rulesContext(ctx,roleEvents=null){
  return {actors:ctx.state.entities,state:g,flowRandom:()=>typeof g.FlowRandom==='function'?g.FlowRandom():Math.random(),random:()=>typeof g.RuntimeRandom==='function'?g.RuntimeRandom():Math.random(),
  calculateDamage:(a,t,mode)=>ctx.callFunction('CalculateDamage',a.uid,t.uid,mode),
  applyDamage:(a,t,amount,origin)=>{const before=t.hp;ctx.callFunction('ApplyDamageToTarget',t.uid,amount,{sourceUID:a.uid,nativeResolved:true,suppressPartySkillHitHooks:1,...origin});return before-t.hp;},
- onHeal:(source,target,delta)=>{if(delta>0)emitResolvedHealEvent(ctx,source,target,Math.max(0,Number(target?.hp||0)-Number(delta||0)),{allowRevive:true});},
+ onHeal:(source,target,delta,meta={})=>{if(delta>0)emitResolvedHealEvent(ctx,source,target,Math.max(0,Number(target?.hp||0)-Number(delta||0)),{allowRevive:true,presentation:meta.healPresentation==='minor'||meta.statusEffect==='hot'?'minor':['heal','revive'].includes(meta.effectType)?'major':'minor'});},
  onDamage:(source,target,delta,meta={})=>{if(roleEvents&&delta>0)roleEvents.push({type:'damage',sourceUID:Number(source?.uid||0),sourceKind:source?.kind,targetUID:Number(target?.uid||0),targetKind:target?.kind,delta:Number(delta||0),targetWasLiving:meta.targetWasLiving!==false});},
  onStatus:(source,target,effect,meta={})=>{if(source?.kind==='hero'&&target?.kind==='hero'&&effect?.statusEffect==='barrier')ensureCardBarrierVisual(target);if(roleEvents&&!meta.refreshed&&source?.kind==='hero')roleEvents.push({type:'status',sourceUID:Number(source.uid||0),targetUID:Number(target?.uid||0)});},
  onKO:actor=>{if(actor.kind==='enemy'){const battle=g.ProgressionBattle;if(battle){battle.defeated[actor.uid]=actor.expValue??PROGRESSION.enemyEXP;(battle.defeatedGold||={})[actor.uid]=Math.max(0,Math.floor(actor.goldValue??PROGRESSION.enemyGold));}}},
@@ -83,7 +83,7 @@ function resolveRoleAction(ctx,source,skill,targetIds,origin={}){
  const events=[];const rules=rulesContext(ctx,events);const resolved=resolveSkill(rules,source,skill,targetIds,origin);
  if(resolved&&source?.kind==='hero'&&skill?.tags?.includes('magic'))events.push({type:'magic-action',sourceUID:Number(source.uid||0)});
  if(resolved)awardResolvedRoleFlow(ctx,events);
- return {resolved,rules};
+ return {resolved,rules,events};
 }
 
 const sessionBuffHeroId = hero => String(hero?.heroInstanceKey ?? hero?.uid ?? '');
@@ -126,7 +126,7 @@ export function resolveSessionLevelBasicEffects(ctx,rules,hero,targetIds){
  for(const card of getActiveSessionLevelUpBuffCards(g,hero)){const formula=card.formula||{};
   const completedBasics=sessionBuffCounter(g,hero,card.effectId);
   if(formula.surface==='cadence_magic_damage'&&completedBasics%Math.max(1,Number(formula.everyCompletedBasics||1))===0){(g.ArcanePulseVisuals||(g.ArcanePulseVisuals=[])).push({sourceX:Number(hero.x||0),sourceY:Number(hero.y||0),targetX:Number(target.x||0),targetY:Number(target.y||0),startAt:Number(g.time||0),impactAt:Number(g.time||0)+.18,shape:'crescent_arc_blast',sourceUID:hero.uid,targetUID:target.uid,amount:Number(formula.amount||0)});resolveSkill(rules,hero,{skillId:'session_spectral_orb',targetType:'enemy',tags:['magic'],effects:[{effectType:'damage',fixedDamage:Number(formula.amount||0)}]},[target.uid],{sessionBuffExtraHit:true});}
-  if(formula.surface==='heal_percent_max_hp'&&sessionRandom(g)<Number(formula.chance||0))resolveSkill(rules,hero,{skillId:'session_inner_flow',targetType:'self',tags:['magic'],effects:[{effectType:'heal',recipient:'self',potency:Number(formula.percent||0)}]},[hero.uid],{sessionBuffExtraHit:true});
+  if(formula.surface==='heal_percent_max_hp'&&sessionRandom(g)<Number(formula.chance||0))resolveSkill(rules,hero,{skillId:'session_inner_flow',targetType:'self',tags:['magic'],effects:[{effectType:'heal',recipient:'self',potency:Number(formula.percent||0),healPresentation:'minor'}]},[hero.uid],{sessionBuffExtraHit:true});
   if(formula.surface==='status_on_basic'&&sessionRandom(g)<Number(formula.chance||0)){(g.SessionBuffCombatVisuals||(g.SessionBuffCombatVisuals=[])).push({kind:'venom_sigil',sourceUID:hero.uid,targetUID:target.uid,startAt:Number(g.time||0)});resolveSkill(rules,hero,{skillId:'session_venom_sigil',targetType:'enemy',tags:['magic'],effects:[{effectType:'status',statusEffect:formula.statusId==='venom'?'dot':String(formula.statusId||'dot'),magnitude:1,duration:Number(formula.durationTurns||1),snapshotPotency:Number(formula.damagePerTurn||0)}]},[target.uid],{sessionBuffExtraHit:true});}
   if(formula.surface==='bounce_percent_damage'&&sessionRandom(g)<Number(formula.chance||0)){const bounce=ctx.state.entities.find(actor=>actor?.kind==='enemy'&&actor.hp>0&&actor.uid!==target.uid);if(bounce){const visual={sourceUID:hero.uid,sourceTargetUID:target.uid,targetUID:bounce.uid,sourceX:Number(target.x||0),sourceY:Number(target.y||0),targetX:Number(bounce.x||0),targetY:Number(bounce.y||0),startAt:Number(g.time||0),impactAt:Number(g.time||0)+.18,duration:.28,skillId:'session_mirage_chain',visual:'chain_strike',damagePercent:Number(formula.damagePercent||0)};(g.ChainStrikeVisuals||(g.ChainStrikeVisuals=[])).push(visual);const before=Number(bounce.hp||0);resolveSkill(rules,hero,{skillId:'session_mirage_chain',targetType:'enemy',tags:['physical'],effects:[{effectType:'damage',potency:Number(formula.damagePercent||0)}]},[bounce.uid],{sessionBuffExtraHit:true});visual.resolvedDamage=Math.max(0,before-Number(bounce.hp||0));}}
  }
@@ -134,7 +134,7 @@ export function resolveSessionLevelBasicEffects(ctx,rules,hero,targetIds){
 export function resolveSessionLevelCounter(ctx,rules,hero,source){
  const card=getActiveSessionLevelUpBuffCards(ctx.state.globals,hero).find(candidate=>candidate.formula?.surface==='counter_percent_atk');if(!card||hero.hp<=0||source?.hp<=0||sessionRandom(ctx.state.globals)>=Number(card.formula.chance||0))return false;
  (ctx.state.globals.SessionBuffCombatVisuals||(ctx.state.globals.SessionBuffCombatVisuals=[])).push({kind:'glass_reprisal',sourceUID:hero.uid,targetUID:source.uid,startAt:Number(ctx.state.globals.time||0)});
- return resolveSkill(rules,hero,{skillId:'session_glass_reprisal',targetType:'enemy',tags:['physical'],effects:[{effectType:'damage',potency:Number(card.formula.damagePercent||0)},{effectType:'heal',recipient:'self',potency:Number(card.formula.healPercentMaxHp||0)}]},[source.uid],{sessionBuffExtraHit:true,isCounter:true});
+ return resolveSkill(rules,hero,{skillId:'session_glass_reprisal',targetType:'enemy',tags:['physical'],effects:[{effectType:'damage',potency:Number(card.formula.damagePercent||0)},{effectType:'heal',recipient:'self',potency:Number(card.formula.healPercentMaxHp||0),healPresentation:'minor'}]},[source.uid],{sessionBuffExtraHit:true,isCounter:true});
 }
 export function buildCommandActions(ctx,hero,{queue=[],flow=false,targetUID}={}){
  const d=heroDefinition(hero);if(!d)return null;const entries=flow?[{skillId:d.special.skillId,targetIds:queue[0]?.targetIds||[targetUID]}]:queue.length?queue:[{skillId:d.basic.skillId,targetIds:[targetUID]}];
@@ -171,8 +171,8 @@ export function resolveNativeCommandStep(ctx,hit){
   if(actor.hp<=0||rules.isOver()){if(g.NativeBattleEnded)settleVictory(ctx);return true;}
   return resolved;
  }
- const action=s.actions[s.index];const {resolved:executed}=resolveRoleAction(ctx,actor,action.skill,action.targetIds);
- if(executed){if(action.skill.skillId===heroDefinition(actor)?.basic?.skillId)resolveSessionLevelBasicEffects(ctx,rules,actor,action.targetIds);if(action.skill.isFlowSpecial)actor.flow=0;ctx.callFunction('LogCombat',`${heroDefinition(actor).name}: ${action.skill.displayName}`);}
+ const action=s.actions[s.index];const {resolved:executed,events}=resolveRoleAction(ctx,actor,action.skill,action.targetIds);
+ if(executed){if(action.skill.skillId===heroDefinition(actor)?.basic?.skillId){hit.finalDmg=events.filter(event=>event.type==='damage'&&event.sourceUID===Number(actor.uid)&&action.targetIds.some(uid=>Number(uid)===Number(event.targetUID))).reduce((sum,event)=>sum+Number(event.delta||0),0);resolveSessionLevelBasicEffects(ctx,rules,actor,action.targetIds);}if(action.skill.isFlowSpecial)actor.flow=0;ctx.callFunction('LogCombat',`${heroDefinition(actor).name}: ${action.skill.displayName}`);}
  s.index++;ctx.callFunction('UpdateHeroHPUI');ctx.callFunction('UpdateEnemyHPUI');
  if(actor.hp<=0||rules.isOver()){cancelNativeSequence(ctx);if(g.NativeBattleEnded)settleVictory(ctx);return true;}
  if(s.index<s.actions.length)g.PendingHeroHits.push({at:Number(g.time||0)+0.4,heroUID:s.actorUID,effectType:'native_command',sequence:s,...nativeBasicAttackVfx(actor,s.actions[s.index])});else delete g.NativeCommandSequence;

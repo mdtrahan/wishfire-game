@@ -1539,7 +1539,7 @@ function activateMagicFruitSkill(ctx) {
   const healAmount = actor?.kind === 'hero' && actor.hp > 0
     ? Math.max(1, Math.floor(Number(actor.maxHP || 0) * 32 / 100)) : 0;
   applyPartyMaxHPBonus(ctx, maxHPBonus);
-  ctx.callFunction('ApplyActiveHeroHeal', healAmount);
+  ctx.callFunction('ApplyActiveHeroHeal', healAmount, 'major');
   return { healAmount, maxHPBonus };
 }
 
@@ -1566,7 +1566,7 @@ function applyAstralFlowMagicFruit(ctx, actorUID) {
     const maxHP = Math.max(before, Number(hero.maxHP || hero.MaxHP || 0));
     hero.hp = Math.min(maxHP, before + requested);
     const applied = Math.max(0, Number(hero.hp || 0) - before);
-    if (applied > 0) emitHealPresentation(ctx, actor, hero, before);
+    if (applied > 0) emitHealPresentation(ctx, actor, hero, before, { presentation: 'major' });
     heals.push({ heroUID: Number(hero.uid || 0), requested, applied });
   }
   syncPartyHpTotalsFromHeroes(ctx);
@@ -1656,6 +1656,7 @@ export function ExecuteAstralFlowSpecial(ctx, specialId, actorUID) {
     else {
       const now = Number(g.time || 0);
       const newlyDefeatedEnemyUIDs = [];
+      g.CombatImpactRequests = Array.isArray(g.CombatImpactRequests) ? g.CombatImpactRequests : [];
       g.LastAstralFlowChainStrikeII = { primaryTargetUID: Number(target.uid || 0), primary: null, bounces: [], hits: [], hitCount: 0, coefficient: ASTRAL_FLOW_CHAIN_STRIKE_II_DAMAGE_PCT };
       const resolve = (enemy, primary, sourceTargetUID) => {
         if (!enemy || enemy.kind !== 'enemy' || Number(enemy.hp || 0) <= 0) return null;
@@ -1665,6 +1666,11 @@ export function ExecuteAstralFlowSpecial(ctx, specialId, actorUID) {
           queueChainStrikeVisual(g, sourceTargetUID, enemy.uid, visualStartAt, visualStartAt + 0.28, PARTY_CHAIN_STRIKE_II_ID);
         }
         const applied = ApplyDamageToTarget(ctx, enemy.uid, damage, { sourceUID: Number(actorUID || 0), deferEnemyDefeatTransition: 1 });
+        if (applied > 0) g.CombatImpactRequests.push({
+          at: now + ASTRAL_FLOW_CARD_REVEAL_DELAY_SEC + (primary ? 0 : 0.28),
+          heroUID: Number(actorUID || 0), targetUID: Number(enemy.uid || 0),
+          attackVfxKind: 'impact', finalDmg: applied,
+        });
         const hit = recordAstralFlowChainStrikeIIHit(g, { targetUID: Number(enemy.uid || 0), preHP: beforeHP, postHP: Number(enemy.hp || 0), damage: applied, primary });
         if (beforeHP > 0 && Number(enemy.hp || 0) === 0) newlyDefeatedEnemyUIDs.push(Number(enemy.uid || 0));
         return hit;
@@ -7666,6 +7672,7 @@ function queuePartyChainStrikeBounce(ctx, {
       calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
       heroName: actorName,
       heroType: mode,
+      attackVfxKind: combatAttackVfxKind(actor),
       effectType: 'chain_bounce',
       actionName: activeTier.actionName,
       generatedBySkillId: activeTier.skillId,
@@ -7954,6 +7961,7 @@ export function HeroAttackAOE(ctx, heroUID) {
       calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
       heroName: actorName,
       heroType: mode,
+      attackVfxKind: combatAttackVfxKind(actor),
     };
     g.PendingHeroHits.push(packet);
   }
@@ -8206,7 +8214,7 @@ export function Enemy_Heal_Self(ctx, enemyUID) {
   const heal = healInfo.finalHeal;
   const beforeHP = Number(enemy.hp || 0);
   enemy.hp = Math.min(enemy.maxHP ?? enemy.hp, (enemy.hp ?? 0) + heal);
-  const appliedHeal = emitHealPresentation(ctx, enemy, enemy, beforeHP);
+  const appliedHeal = emitHealPresentation(ctx, enemy, enemy, beforeHP, { presentation: 'major' });
   traceEnemyHealRoll(ctx, {
     enemyUID,
     enemyName: String(enemy.name || 'Enemy'),
@@ -8243,7 +8251,7 @@ export function Enemy_Heal_Allies(ctx, enemyUID) {
   for (const ally of allies) {
     const beforeHP = Number(ally.hp || 0);
     ally.hp = Math.min(ally.maxHP ?? ally.hp, (ally.hp ?? 0) + heal);
-    emitHealPresentation(ctx, healer, ally, beforeHP);
+    emitHealPresentation(ctx, healer, ally, beforeHP, { presentation: 'major' });
   }
   traceEnemyHealRoll(ctx, {
     enemyUID,
@@ -8287,7 +8295,7 @@ export function Enemy_Heal_Ally(ctx, enemyUID, targetEnemyUID = 0) {
   const heal = healInfo.finalHeal;
   const beforeHP = Number(target.hp || 0);
   target.hp = Math.min(target.maxHP ?? target.hp, (target.hp ?? 0) + heal);
-  const appliedHeal = emitHealPresentation(ctx, healer, target, beforeHP);
+  const appliedHeal = emitHealPresentation(ctx, healer, target, beforeHP, { presentation: 'major' });
   traceEnemyHealRoll(ctx, {
     enemyUID,
     enemyName: String(healer.name || 'Enemy'),
@@ -9928,10 +9936,13 @@ export function HeroTurn(ctx, heroUID) {
   }
   if (activeHeroUID) {
     const entities = getEntities(ctx);
-    const selectedUID = Number(g.SelectedEnemyUID || 0);
-    const selected = entities.find(entity => Number(entity?.uid || 0) === selectedUID && entity?.kind === 'enemy' && Number(entity.hp || 0) > 0);
-    const target = selected || entities.find(entity => entity?.kind === 'enemy' && Number(entity.hp || 0) > 0);
-    if (target) executeHeroCommand(ctx, { actorUID: activeHeroUID, targetUID: Number(target.uid) });
+    const hero = entities.find(entity => Number(entity?.uid || 0) === activeHeroUID && entity?.kind === 'hero');
+    const target = resolveHeroAttackTarget({ hero, enemies: entities.filter(entity => entity?.kind === 'enemy'), randomPick: candidates => randomPick(ctx, candidates) });
+    if (target) {
+      g.SelectedEnemyUID = Number(target.uid || 0);
+      g.SelectedEnemyUIDOwner = activeHeroUID;
+      executeHeroCommand(ctx, { actorUID: activeHeroUID, targetUID: Number(target.uid) });
+    }
   }
 }
 
@@ -10915,7 +10926,7 @@ export function Enemy_Wipe(ctx, enemyUID) {
       if ((enemy.hp || 0) <= 0) continue;
       const beforeHP = Number(enemy.hp || 0);
       enemy.hp = Math.min(enemy.maxHP || enemy.hp || 0, (enemy.hp || 0) + share);
-      emitHealPresentation(ctx, GetActorByUID(ctx, enemyUID), enemy, beforeHP);
+      emitHealPresentation(ctx, GetActorByUID(ctx, enemyUID), enemy, beforeHP, { presentation: 'major' });
     }
     UpdateEnemyHPUI(ctx);
   }

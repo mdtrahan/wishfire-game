@@ -59,6 +59,121 @@ export function renderRuntime(deps) {
         "spawnPendingDamageNumbers(projectCombatDamageWorldToCanvas, layoutScale);",
       )
       .replace(
+        "const sigilW = Math.max(48, 66 * layoutScale);",
+        "const sigilW = Math.max(36, 46 * layoutScale);",
+      )
+      .replace(
+        "const width = Math.max(54, 72 * layoutScale);",
+        "const width = Math.max(38, 48 * layoutScale);",
+      )
+      .replace(
+        "const width = Math.max(46, 62 * layoutScale);",
+        "const width = Math.max(34, 46 * layoutScale);",
+      )
+      .replace(
+        "const renderHealBlooms = () => {",
+        "const renderHealBlooms = (layer = 'back') => {",
+      )
+      .replace(
+        "if (activeBlooms.length > 1 && images.CombatGroupHealRain) {",
+        "if (layer === 'back' && activeBlooms.length > 1 && images.CombatGroupHealRain) {",
+      )
+      .replace(
+        "if (images.CombatHealSigil) {",
+        "if (layer === 'back' && images.CombatHealSigil) {",
+      )
+      .replace(
+        "if (images.CombatHealFountain) {",
+        "if (layer === 'back' && images.CombatHealFountain) {",
+      )
+      .replace(
+        `if (images.CombatHealMotes && stage.progress > 0.34) {
+            const moteT = Math.min(1, (stage.progress - 0.34) / 0.66);
+            const width = Math.max(34, 46 * layoutScale);
+            const height = width * (images.CombatHealMotes.height / Math.max(1, images.CombatHealMotes.width));
+            ctx.save();
+            ctx.globalAlpha = stage.opacity * moteT;
+            ctx.drawImage(images.CombatHealMotes, basePos.x - width / 2, basePos.y - height * (0.92 - moteT * 0.18), width, height);
+            ctx.restore();
+          }`,
+        `const targetUID = Number(bloom.targetUID || 0);
+          const restFeet = state.globals.HeroRestFeetPosByUID?.[targetUID];
+          const anchor = restFeet ? worldToCanvas(Number(restFeet.x || 0), Number(restFeet.y || 0)) : basePos;
+          const heroHeight = Number(state.globals.HeroRenderHeightByUID?.[targetUID] || state.globals.EnemySize || 40) * layoutScale;
+          const heroWidth = Number(state.globals.HeroRenderWidthByUID?.[targetUID] || state.globals.EnemySize || 40) * layoutScale;
+          if (bloom.presentation === 'major' && images.CombatHealSwirl && stage.progress > 0.01) {
+            const frameCount = 10;
+            const frameWidth = images.CombatHealSwirl.width / frameCount;
+            const frameHeight = images.CombatHealSwirl.height;
+            const frameIndex = Math.max(0, Math.min(frameCount - 1, Math.floor(stage.progress * frameCount)));
+            const sourceX = frameIndex * frameWidth;
+            const drawSize = Math.max(1, heroHeight * 1.25);
+            const drawWidth = Math.max(heroHeight * 1.9, heroWidth * 1.55);
+            const drawX = anchor.x - drawWidth / 2;
+            const drawY = anchor.y - drawSize * 0.78;
+            const splitY = frameHeight * 0.7;
+            ctx.save();
+            if (layer === 'back') {
+              ctx.globalAlpha = Math.max(0, Math.min(1, stage.opacity * 1.14));
+              ctx.drawImage(images.CombatHealSwirl, sourceX, 0, frameWidth, splitY, drawX, drawY, drawWidth, drawSize * 0.7);
+            } else {
+              ctx.globalAlpha = Math.max(0, Math.min(1, stage.opacity * 1.14));
+              ctx.drawImage(images.CombatHealSwirl, sourceX, splitY, frameWidth, frameHeight - splitY, drawX, drawY + drawSize * 0.7, drawWidth, drawSize * 0.3);
+              if (images.CombatHealBurst && stage.progress < 0.42) {
+                const burstFrames = 4;
+                const burstFrameWidth = images.CombatHealBurst.width / burstFrames;
+                const burstFrame = Math.min(burstFrames - 1, Math.floor((stage.progress / 0.42) * burstFrames));
+                const burstWidth = Math.max(heroHeight * 1.25, heroWidth * 1.15);
+                const burstHeight = heroHeight * 0.58;
+                ctx.drawImage(images.CombatHealBurst, burstFrame * burstFrameWidth, 0, burstFrameWidth, images.CombatHealBurst.height, anchor.x - burstWidth / 2, anchor.y - heroHeight * 0.43, burstWidth, burstHeight);
+              }
+            }
+            ctx.restore();
+          }
+          if (layer === 'front') {
+            const moteParticles = (bloom.particles || []).filter(particle => particle && Number(particle.opacity || 0) > 0.02).slice(0, 7);
+            for (let i = 0; i < moteParticles.length; i += 1) {
+              const particle = moteParticles[i];
+              const moteX = anchor.x + Number(particle.x || 0) * 0.8 * layoutScale;
+              const moteY = anchor.y - heroHeight * 0.12 + Number(particle.y || 0) * 0.65 * layoutScale;
+              const moteSize = Math.max(1.5, heroHeight * 0.035);
+              ctx.save();
+              ctx.translate(moteX, moteY);
+              ctx.globalAlpha = Math.max(0, Math.min(0.9, Number(particle.opacity || 0)));
+              ctx.fillStyle = '#B9FFD0';
+              ctx.strokeStyle = '#58D98D';
+              ctx.lineWidth = Math.max(1, heroHeight * 0.018);
+              ctx.shadowColor = '#8CFFB0';
+              ctx.shadowBlur = Math.max(3, heroHeight * 0.08);
+              ctx.beginPath();
+              ctx.arc(0, 0, moteSize, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+              ctx.restore();
+            }
+          }`,
+      )
+      .replace(
+        "renderHealBlooms();\n\n    // Render hero portraits",
+        "renderHealBlooms('back');\n\n    // Render hero portraits",
+      )
+      .replace(
+        "    // Render hero damage/heal text above hero sprites\n    renderDamageTexts(d => d.targetKind === 'hero');",
+        "    renderHealBlooms('front');\n\n    // Render hero damage/heal text above hero sprites\n    renderDamageTexts(d => d.targetKind === 'hero');",
+      )
+      .replace(
+        "const restBaseByUID = {};",
+        "const restBaseByUID = {};\n        const restFeetByUID = {};\n        const renderHeightByUID = {};\n        const renderWidthByUID = {};",
+      )
+      .replace(
+        "if (hero && Number(hero.uid || 0) > 0) restBaseByUID[hero.uid] = { x: baseX, y: yWorld };",
+        "if (hero && Number(hero.uid || 0) > 0) {\n            restBaseByUID[hero.uid] = { x: baseX, y: yWorld };\n            restFeetByUID[hero.uid] = { x: baseX, y: yWorld + hWorld / 2 };\n            renderHeightByUID[hero.uid] = hWorld;\n            renderWidthByUID[hero.uid] = wWorld;\n          }",
+      )
+      .replace(
+        "presentationPatches.HeroRestBasePosByUID = restBaseByUID;",
+        "presentationPatches.HeroRestBasePosByUID = restBaseByUID;\n        presentationPatches.HeroRestFeetPosByUID = restFeetByUID;\n        presentationPatches.HeroRenderHeightByUID = renderHeightByUID;\n        presentationPatches.HeroRenderWidthByUID = renderWidthByUID;",
+      )
+      .replace(
         "const barH = partyBar.h;",
         "const barH = Math.min(partyBar.h, 8 * layoutScale);",
       )

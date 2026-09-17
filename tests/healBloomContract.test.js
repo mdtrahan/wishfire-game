@@ -11,7 +11,7 @@ function sliceBetween(src, startMarker, endMarker) {
   return src.slice(start, end);
 }
 
-test('heal bloom module uses heavy plus glyph particles and GSAP timelines', () => {
+test('heal bloom module uses a staggered upward GSAP fountain instead of a radial burst', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'healBloomAnimation.mjs'), 'utf8');
   assert.match(src, /import\s+\{\s*gsap\s*\}\s+from\s+'\.\/gsapShim\.mjs';/);
   assert.match(src, /glyph: '➕',/);
@@ -19,36 +19,72 @@ test('heal bloom module uses heavy plus glyph particles and GSAP timelines', () 
   assert.match(src, /color: '#A0FE0B',/);
   assert.match(src, /const total = Math\.max\(8, Math\.min\(14, Math\.floor\(Number\(count \|\| 12\)\)\)\);/);
   assert.match(src, /const HEAL_BLOOM_WIDTH_SCALE = 0\.8;/);
-  assert.match(src, /const dx = Math\.cos\(angle\) \* distance \* HEAL_BLOOM_WIDTH_SCALE;/);
+  assert.match(src, /targetUID: Number\(targetUID \|\| 0\),/);
+  assert.match(src, /presentation: presentation === 'major' \? 'major' : 'minor',/);
   assert.match(src, /const tl = gsap\.timeline\(\);/);
-  assert.match(src, /ease: 'back\.out\(1\.6\)'/);
-  assert.match(src, /ease: 'power2\.out'/);
+  assert.match(src, /const dx = random\(-24, 24\) \* HEAL_BLOOM_WIDTH_SCALE;/);
+  assert.match(src, /const dy = -random\(44, 78\);/);
+  assert.match(src, /const delay = \(i \/ total\) \* 0\.22;/);
+  assert.match(src, /const riseDuration = 1\.05 - delay;/);
+  assert.doesNotMatch(src, /tl\.delay\(delay\)/);
+  assert.match(src, /ease: 'sine\.out',\n\s*\}, delay\);/);
+  assert.match(src, /duration: riseDuration,/);
   assert.match(src, /ease: 'sine\.out'/);
-  assert.match(src, /ease: 'power1\.out'/);
-  assert.match(src, /const delay = random\(0, 0\.15\);/);
-  assert.match(src, /const rotation = random\(-20, 20\);/);
+  assert.match(src, /ease: 'sine\.inOut'/);
+  assert.doesNotMatch(src, /back\.out|power2\.out/);
+  assert.match(src, /const rotation = random\(-12, 12\);/);
 });
 
-test('app heal path stages a sigil, rising fountain, motes, and progressive group rain', () => {
+test('app heal path plays a ten-frame green swirl with Faze-style front motes', () => {
   const appSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
   const spawnSrc = sliceBetween(appSrc, 'function spawnPendingDamageNumbers', 'const RUNTIME_FINGERPRINT');
   const renderSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
   assert.match(appSrc, /import\s+\{\s*createHealBloom\s*\}\s+from\s+'\.\/src\/core\/healBloomAnimation\.mjs';/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'modules', 'heroCommands.mjs'), 'utf8'), /HeroRestFeetPosByUID/);
   assert.ok(spawnSrc.includes("['hero', 'enemy'].includes(d.targetKind)"));
   assert.doesNotMatch(spawnSrc, /d\.targetKind === 'bar'/);
   assert.match(spawnSrc, /d\.healBloomAnimation = createHealBloom\(\{/);
+  assert.match(spawnSrc, /targetUID: d\.targetUID,/);
+  assert.match(spawnSrc, /presentation: d\.healPresentation,/);
   assert.match(spawnSrc, /gameState\.healBlooms = Array\.isArray\(gameState\.healBlooms\) \? gameState\.healBlooms : \[\];/);
   assert.match(spawnSrc, /gameState\.healBlooms\.push\(d\.healBloomAnimation\);/);
-  assert.match(renderSrc, /const renderHealBlooms = \(\) => \{/);
-  assert.match(renderSrc, /images\.CombatHealSigil/);
-  assert.match(renderSrc, /images\.CombatHealFountain/);
-  assert.match(renderSrc, /images\.CombatHealMotes/);
+  assert.match(renderSrc, /const renderHealBlooms = \(layer = 'back'\) => \{/);
+  assert.match(renderSrc, /bloom\.presentation === 'major' && images\.CombatHealSwirl/);
+  assert.match(renderSrc, /const frameCount = 10;/);
+  assert.match(renderSrc, /Math\.floor\(stage\.progress \* frameCount\)/);
+  assert.match(renderSrc, /if \(layer === 'back'\) \{[\s\S]*ctx\.drawImage\(images\.CombatHealSwirl/);
+  assert.match(renderSrc, /const splitY = frameHeight \* 0\.7;/);
+  assert.match(renderSrc, /drawY \+ drawSize \* 0\.7, drawWidth, drawSize \* 0\.3/);
+  assert.match(renderSrc, /HeroRestFeetPosByUID\?\.\[targetUID\]/);
+  assert.match(renderSrc, /HeroRenderHeightByUID\?\.\[targetUID\]/);
+  assert.match(renderSrc, /HeroRenderWidthByUID\?\.\[targetUID\]/);
+  assert.match(renderSrc, /const drawY = anchor\.y - drawSize \* 0\.78;/);
+  assert.match(renderSrc, /const drawWidth = Math\.max\(heroHeight \* 1\.9, heroWidth \* 1\.55\);/);
+  assert.match(renderSrc, /images\.CombatHealBurst && stage\.progress < 0\.42/);
+  assert.match(renderSrc, /const burstFrames = 4;/);
+  assert.match(renderSrc, /anchor\.y - heroHeight \* 0\.43/);
+  assert.match(renderSrc, /const burstWidth = Math\.max\(heroHeight \* 1\.25, heroWidth \* 1\.15\);/);
+  assert.match(renderSrc, /\.filter\(particle => particle && Number\(particle\.opacity \|\| 0\) > 0\.02\)\.slice\(0, 7\)/);
+  assert.match(renderSrc, /if \(layer === 'front'\) \{/);
+  assert.match(renderSrc, /ctx\.fillStyle = '#B9FFD0';/);
+  assert.match(renderSrc, /Number\(particle\.x \|\| 0\) \* 0\.8 \* layoutScale/);
+  assert.match(renderSrc, /`if \(images\.CombatHealMotes && stage\.progress > 0\.34\) \{\n\s*const moteT[\s\S]*const width = Math\.max\(34, 46 \* layoutScale\);/);
+  assert.match(renderSrc, /"const width = Math\.max\(54, 72 \* layoutScale\);",[\s\S]*"const width = Math\.max\(38, 48 \* layoutScale\);"/);
   assert.match(renderSrc, /const bloomStage = \(bloom\) => \{/);
-  assert.match(renderSrc, /const reveal = Math\.max\(0\.12, Math\.min\(1, progress \* 1\.35\)\);/);
-  assert.match(renderSrc, /activeBlooms\.length > 1 && images\.CombatGroupHealRain/);
   assert.doesNotMatch(renderSrc, /images\.CombatHealBloom/);
   assert.doesNotMatch(renderSrc, /ctx\.fillRect\(-arm \/ 2, -length \/ 2, arm, length\);/);
-  assert.match(renderSrc, /renderHealBlooms\(\);[\s\S]*\/\/ Render hero portraits/);
+  assert.match(renderSrc, /renderHealBlooms\('back'\);[\s\S]*\/\/ Render hero portraits/);
+  assert.match(renderSrc, /renderHealBlooms\('front'\);[\s\S]*\/\/ Render hero damage\/heal text/);
+  assert.match(renderSrc, /HeroRestFeetPosByUID/);
+  const hooksSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js'), 'utf8');
+  assert.match(hooksSrc, /setupHealBloomScenario/);
+  assert.match(hooksSrc, /replayHealBloomScenario/);
+  assert.match(hooksSrc, /captureHealBloomFrames/);
+  assert.match(hooksSrc, /canvas\.toDataURL\('image\/webp', 0\.8\)/);
+  assert.match(hooksSrc, /window\.requestAnimationFrame\(onFrame\)/);
+  assert.match(hooksSrc, /sawActive && activeCount === 0/);
+  assert.match(hooksSrc, /Live QA heal replay: every browser frame/);
+  assert.match(hooksSrc, /scenario === 'heal-bloom'/);
 });
 
 test('party regen uses a persistent hero shimmer instead of a tint overlay', () => {

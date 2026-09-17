@@ -62,6 +62,25 @@ test('a refused animation handoff restores combat intent', async () => {
   assert.equal(g.SelectedEnemyUID, 0); assert.equal(g.PendingSkillID, undefined); assert.equal(g.PendingActor, undefined);
 });
 
+test('native basic attacks expose their resolved damage to impact presentation', async () => {
+  const { resolveNativeCommandStep } = await import('../web-runner/modules/heroCommands.mjs');
+  const { heroDefinition } = await import('../web-runner/src/core/heroDefinitions.mjs');
+  const hero = { uid: 1, name: 'Runa', kind: 'hero', hp: 60, maxHP: 60, flow: 0, level: 1, stats: { MAG: 16 } };
+  const enemy = { uid: 9, name: 'Gobloc', kind: 'enemy', hp: 100, maxHP: 100, statuses: [] };
+  const action = { skillId: 'basic_attack', targetIds: [9], skill: heroDefinition(hero).basic };
+  const sequence = { actorUID: 1, actions: [action], index: 0, sessionId: 1 };
+  const hit = { heroUID: 1, targetUID: 9, effectType: 'native_command', sequence };
+  const globals = { CombatSessionId: 1, NativeCommandSequence: sequence, time: 1, RuntimeRandom: () => 0.5 };
+  const ctx = { state: { globals, entities: [hero, enemy] }, callFunction(name, ...args) {
+    if (name === 'CalculateDamage') return 6;
+    if (name === 'ApplyDamageToTarget') { enemy.hp -= Number(args[1] || 0); return Number(args[1] || 0); }
+    if (['LogCombat', 'UpdateHeroHPUI', 'UpdateEnemyHPUI'].includes(name)) return;
+    throw new Error(`unexpected ${name}`);
+  } };
+  assert.equal(resolveNativeCommandStep(ctx, hit), true);
+  assert.equal(hit.finalDmg, 6);
+});
+
 
 test('native queued render events dispatch once while unrelated damage stays queued', () => {
   const fs = require('node:fs'), vm = require('node:vm');

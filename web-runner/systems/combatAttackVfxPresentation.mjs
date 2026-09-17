@@ -1,5 +1,16 @@
 const stat = (actor, key) => Number(actor?.stats?.[key] ?? actor?.[key.toLowerCase()] ?? actor?.[key] ?? 0);
 const ARCANE_PULSE_IMPACT_SEC = 0.5;
+const IMPACT_VISIBLE_CENTER_X = Object.freeze({
+  melee: (31 + 183) / (2 * 192),
+  blue: (66 + 144) / (2 * 192),
+  purple: (58 + 138) / (2 * 192),
+  rose: (45 + 150) / (2 * 192),
+  arcanePulse: (406 + 1378) / (2 * 1536),
+});
+const contactPointTowardSource = (source, target, distance) => ({
+  x: target.x + Math.sign(Number(source?.x || 0) - Number(target.x || 0)) * distance,
+  y: target.y,
+});
 
 export function combatVfxProfileForActor(actor) {
   const name = String(actor?.name || '').trim().toLowerCase();
@@ -33,9 +44,12 @@ const entityAnchor = (state, uid) => {
   const actor = (state.entities || []).find(entity => entity && Number(entity.uid || 0) === Number(uid || 0));
   const rest = actor?.kind === 'hero' && g.HeroRestBasePosByUID?.[Number(uid || 0)];
   const size = Math.max(24, Number(g.EnemySize || 40));
+  const spacing = Number(g.Spacing || (size + Number(g.enemyGAP || 8)));
+  const actorX = actor?.originX != null ? actor.originX : (actor?.x != null ? actor.x : Number(g.X0 || 200));
+  const actorY = actor?.originY != null ? actor.originY : (actor?.y != null ? actor.y : Number(g.EnemyAreaY0 || 140) + Number(actor?.slotIndex || 0) * spacing);
   return actor ? {
-    x: Number(rest?.x ?? actor.originX ?? actor.x ?? 0),
-    y: Number(rest?.y ?? actor.originY ?? actor.y ?? 0) - size * 0.34,
+    x: Number(rest?.x ?? actorX),
+    y: Number(rest?.y ?? actorY) - size * 0.34,
   } : null;
 };
 
@@ -65,13 +79,34 @@ export function queueCombatAttackImpactVfx(state, hit, target, now) {
   if ((!hit?.attackVfxKind && !hit?.impactVfxKind) || !target) return;
   const g = state.globals || {};
   const actor = (state.entities || []).find(entity => Number(entity?.uid || 0) === Number(hit.heroUID || hit.actorUID || 0));
-  const kind = String(hit.impactVfxKind || combatVfxProfileForActor(actor).impact);
+  const delivery = String(hit.attackVfxKind || '');
+  const kind = String(hit.impactVfxKind
+    || (delivery === 'runa_bolt' ? 'blue' : delivery === 'kaja_orb' ? 'purple' : '')
+    || combatVfxProfileForActor(actor).impact);
   const damage = Math.max(0, Number(hit.finalDmg ?? hit.dmg ?? hit.damage ?? 0));
   const maxHP = Math.max(0, Number(target.maxHP ?? target.max ?? 0));
   const weak = !hit.didCrit && !hit.isCrit && maxHP > 0 && damage > 0 && damage <= maxHP * 0.05;
-  const targetPoint = entityAnchor(state, target.uid) || { x: Number(target.x || 0), y: Number(target.y || 0) };
+  const impactScale = !weak && (delivery === 'runa_bolt' || delivery === 'kaja_orb') ? 1.6 : 1;
+  const targetCenter = entityAnchor(state, target.uid) || { x: Number(target.x || 0), y: Number(target.y || 0) };
+  const sourcePoint = entityAnchor(state, actor?.uid);
+  const targetPoint = sourcePoint
+    ? contactPointTowardSource(sourcePoint, targetCenter, Math.max(24, Number(g.EnemySize || 40)) * 0.3)
+    : targetCenter;
+  const targetRestCenter = target.kind === 'hero' && g.HeroRestBasePosByUID?.[Number(target.uid || 0)];
+  const targetVerticalCenter = Number(targetRestCenter?.y
+    ?? target.originY
+    ?? target.y
+    ?? targetPoint.y
+    ?? 0);
   const impacts = Array.isArray(g.CombatImpactVisuals) ? g.CombatImpactVisuals : [];
-  impacts.push({ x: targetPoint.x, y: targetPoint.y, kind, weak, startAt: Number(now || g.time || 0) });
+  impacts.push({
+    x: targetPoint.x,
+    y: weak ? targetVerticalCenter : targetPoint.y,
+    kind,
+    weak,
+    impactScale,
+    startAt: Number(now || g.time || 0),
+  });
   if (impacts.length > 24) impacts.splice(0, impacts.length - 24);
   g.CombatImpactVisuals = impacts;
 }
@@ -137,13 +172,15 @@ const renderSessionBuffCombatVfx = (ctx, { state, images, worldToCanvas, layoutS
       drawVerticalReveal(ctx, images.CombatVenomSigil, { x: target.x, y: target.y + 20 * layoutScale }, progress, Math.max(72, 94 * layoutScale), Math.max(0, 1 - age / 0.58), 'up');
     } else if (visual.kind === 'glass_reprisal' && sourcePoint && images.CombatGlassReprisal) {
       const progress = Math.min(1, age / 0.32);
-      drawTravel(ctx, images.CombatGlassReprisal, worldToCanvas(sourcePoint.x, sourcePoint.y), target, progress, Math.max(54, 76 * layoutScale), layoutScale);
+      const source = worldToCanvas(sourcePoint.x, sourcePoint.y);
+      const contactTarget = contactPointTowardSource(source, target, Math.max(24, Number(state.globals?.EnemySize || 40)) * 0.3 * layoutScale);
+      drawTravel(ctx, images.CombatGlassReprisal, source, contactTarget, progress, Math.max(54, 76 * layoutScale), layoutScale);
       if (age >= 0.28 && images.CombatImpactBlue) {
         const contact = Math.min(1, (age - 0.28) / 0.3);
         const size = Math.max(44, 60 * layoutScale) * (0.72 + contact * 0.3);
         ctx.save();
         ctx.globalAlpha = Math.max(0, 1 - contact);
-        ctx.drawImage(images.CombatImpactBlue, target.x - size / 2, target.y - size / 3, size, size * 0.66);
+        ctx.drawImage(images.CombatImpactBlue, contactTarget.x - size * IMPACT_VISIBLE_CENTER_X.blue, contactTarget.y - size / 3, size, size * 0.66);
         ctx.restore();
       }
     }
@@ -162,7 +199,8 @@ const renderArcanePulseVfx = (ctx, { state, images, worldToCanvas, layoutScale }
     if (!pulse || now > endAt) return false;
     if (now < startAt) return true;
     const source = worldToCanvas(Number(pulse.sourceX || 0), Number(pulse.sourceY || 0));
-    const target = worldToCanvas(Number(pulse.targetX || 0), Number(pulse.targetY || 0));
+    const targetCenter = worldToCanvas(Number(pulse.targetX || 0), Number(pulse.targetY || 0));
+    const target = contactPointTowardSource(source, targetCenter, Math.max(24, Number(state.globals?.EnemySize || 40)) * 0.3 * layoutScale);
     const travel = Math.max(0, Math.min(1, (now - startAt) / (impactAt - startAt)));
     const charge = Math.min(1, travel / 0.18);
     const move = Math.max(0, Math.min(1, (travel - 0.18) / 0.82));
@@ -198,7 +236,7 @@ const renderArcanePulseVfx = (ctx, { state, images, worldToCanvas, layoutScale }
       ctx.translate(target.x, target.y);
       ctx.rotate(angle);
       ctx.scale(-1, 1);
-      ctx.drawImage(images.CombatArcanePulseImpact, -width * 0.42, -height / 2, width, height);
+      ctx.drawImage(images.CombatArcanePulseImpact, -width * IMPACT_VISIBLE_CENTER_X.arcanePulse, -height / 2, width, height);
       ctx.restore();
     }
     return true;
@@ -258,6 +296,13 @@ const renderEnemyMagic = (ctx, { state, images, worldToCanvas, layoutScale }) =>
 export function renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layoutScale = 1 }) {
   const g = state.globals || {};
   const now = Number(g.time || 0);
+  const impactRequests = Array.isArray(g.CombatImpactRequests) ? g.CombatImpactRequests : [];
+  g.CombatImpactRequests = impactRequests.filter((request) => {
+    if (now < Number(request?.at || 0)) return true;
+    const target = (state.entities || []).find(entity => Number(entity?.uid || 0) === Number(request?.targetUID || 0));
+    queueCombatAttackImpactVfx(state, request, target, now);
+    return false;
+  });
   renderGrowVfx(ctx, { state, images, worldToCanvas, layoutScale });
   renderSessionBuffCombatVfx(ctx, { state, images, worldToCanvas, layoutScale });
   renderArcanePulseVfx(ctx, { state, images, worldToCanvas, layoutScale });
@@ -306,15 +351,25 @@ export function renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layou
   const impacts = Array.isArray(g.CombatImpactVisuals) ? g.CombatImpactVisuals : [];
   g.CombatImpactVisuals = impacts.filter((impact) => {
     const age = now - Number(impact.startAt || 0);
-    const flare = impactAsset(images, impact.kind);
+    const flare = impact.weak ? images.CombatWeakGlanceRing : impactAsset(images, impact.kind);
     if (age < 0.32 && flare) {
       const t = Math.max(0, age / 0.32);
       const pos = worldToCanvas(Number(impact.x || 0), Number(impact.y || 0));
-      const size = Math.max(impact.weak ? 24 : 42, (impact.weak ? 36 : 62) * layoutScale) * (0.62 + Math.min(1, t * 2) * 0.5);
+      const size = Math.max(impact.weak ? 34 : 42, (impact.weak ? 46 : 62) * layoutScale)
+        * (0.62 + Math.min(1, t * 2) * 0.5)
+        * Math.max(1, Number(impact.impactScale || 1));
+      if (impact.weak) {
+        ctx.save();
+        ctx.globalAlpha = t < 0.25 ? 0.92 : Math.max(0, (1 - t) / 0.75) * 0.92;
+        ctx.drawImage(flare, pos.x - size / 2, pos.y - size / 2, size, size);
+        ctx.restore();
+        return age < 0.32;
+      }
+      const visibleCenterX = impact.weak ? IMPACT_VISIBLE_CENTER_X.melee
+        : IMPACT_VISIBLE_CENTER_X[impact.kind] || IMPACT_VISIBLE_CENTER_X.melee;
       ctx.save();
       ctx.globalAlpha = t < 0.25 ? 1 : Math.max(0, (1 - t) / 0.75);
-      if (impact.weak) ctx.filter = 'grayscale(1) brightness(3)';
-      ctx.drawImage(flare, pos.x - size / 2, pos.y - size / 3, size, size * 0.66);
+      ctx.drawImage(flare, pos.x - size * visibleCenterX, pos.y - size / 3, size, size * 0.66);
       ctx.restore();
     }
     return age < 0.32;

@@ -103,6 +103,9 @@ test('each non-healing AF special queues its existing AoE or targeted effect wit
       assert.ok(telemetry.hitCount>0);assert.equal((ctx.state.globals.PendingHeroHits || []).some(hit => hit.actionName === 'Chain Strike II'),false);
       assert.ok(ctx.state.globals.ChainStrikeVisuals.length > 0);
       assert.ok(ctx.state.globals.ChainStrikeVisuals.every(visual => visual.startAt === 1.38));
+      assert.equal(ctx.state.globals.CombatImpactRequests.length, telemetry.hitCount);
+      assert.deepEqual(ctx.state.globals.CombatImpactRequests.map(hit => hit.targetUID), telemetry.hits.map(hit => hit.targetUID));
+      assert.ok(ctx.state.globals.CombatImpactRequests.every(hit => hit.attackVfxKind === 'impact'));
     }
     if (specialId === 'faze') assert.equal(ctx.state.globals.TaintedGroundZones.length, 2);
   }

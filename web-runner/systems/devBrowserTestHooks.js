@@ -225,6 +225,32 @@ export async function waitForPlayableBattle({
   return { ok: latest.ok, elapsedMs: now() - startedAt, observed: latest.observed };
 }
 
+function showLiveHealFrameReport(frames, sourceUrl) {
+  document.getElementById('qa-live-heal-report')?.remove();
+  const report = document.createElement('section');
+  report.id = 'qa-live-heal-report';
+  report.style.cssText = 'position:fixed;inset:0;z-index:2147483647;overflow:auto;background:#10131a;color:#f4f7ff;padding:18px;font:14px/1.35 system-ui,sans-serif';
+  const elapsed = frames.length > 1 ? frames.at(-1).ms - frames[0].ms : 0;
+  report.innerHTML = `<header style="position:sticky;top:0;z-index:1;background:#10131a;padding:0 0 14px"><button type="button" style="float:right;font:inherit;padding:8px 12px">Close report</button><h1 style="margin:0 0 6px;font-size:22px">Live QA heal replay: every browser frame</h1><div>${frames.length} frames captured from the visible game canvas over ${Math.round(elapsed)} ms</div><code style="font-size:11px">${sourceUrl}</code></header><div data-frame-grid style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px"></div>`;
+  report.querySelector('button').addEventListener('click', () => report.remove());
+  const grid = report.querySelector('[data-frame-grid]');
+  frames.forEach((frame, index) => {
+    const figure = document.createElement('figure');
+    figure.style.cssText = 'margin:0;background:#080a0f;border:1px solid #374052;padding:8px';
+    const image = new Image();
+    image.src = frame.image;
+    image.alt = `Live heal replay frame ${index}`;
+    image.style.cssText = 'display:block;width:100%;height:auto;background:#000';
+    const yRange = frame.activeParticles ? `${frame.minY.toFixed(1)} to ${frame.maxY.toFixed(1)}` : 'none';
+    const caption = document.createElement('figcaption');
+    caption.textContent = `Frame ${index}  |  +${Math.round(frame.ms - frames[0].ms)} ms  |  blooms ${frame.activeBlooms}  |  particles ${frame.activeParticles}  |  live Y ${yRange}`;
+    caption.style.cssText = 'padding-top:7px;font:12px/1.35 ui-monospace,monospace';
+    figure.append(image, caption);
+    grid.append(figure);
+  });
+  document.body.append(report);
+}
+
 export function registerDevBrowserTestHooks({
   state,
   gameState,
@@ -253,6 +279,7 @@ export function registerDevBrowserTestHooks({
   resolveQaFixtureDeferredAdvance,
   toggleDevToolingModal,
   applyDevToolingConfig,
+  resumeGameplayFromDevTooling,
   runDevAutoplayUntilDepleted,
   getLatestCombatActionLine,
   getLatestStoryCardActionLine,
@@ -1096,6 +1123,15 @@ export function registerDevBrowserTestHooks({
         const result = window.__codexGame.replayArcanePulseScenario();
         renderAfReadout(`Arcane Pulse: ${result.ok ? 'replaying' : result.reason || 'failed'}`);
       }],
+      ['QA heal replay', async () => {
+        if (!state.globals.HealBloomTestScenario) await window.__codexGame.setupHealBloomScenario();
+        const result = window.__codexGame.replayHealBloomScenario();
+        renderAfReadout(`Heal fountain: ${result.ok ? 'replaying' : result.reason || 'failed'}`);
+      }],
+      ['QA live heal frames', async () => {
+        const result = await window.__codexGame.captureHealBloomFrames();
+        renderAfReadout(`Live heal frames: ${result.ok ? result.frameCount : result.reason || 'failed'}`);
+      }],
       ['QA weak hit', async () => {
         if (!state.globals.ArcanePulseTestScenario) await window.__codexGame.setupArcanePulseScenario();
         const result = window.__codexGame.replayHitTierScenario('weak');
@@ -1700,6 +1736,9 @@ export function registerDevBrowserTestHooks({
         }, { closeModal: false });
       }
       const g = state.globals;
+      delete g.QaFixtureHoldTurn;
+      delete g.QaScenarioPaused;
+      resumeGameplayFromDevTooling();
       const heroes = state.entities.filter(actor => actor && actor.kind === 'hero');
       const enemies = state.entities.filter(actor => actor && actor.kind === 'enemy');
       const hero = heroes.find(actor => Number(actor.hp || 0) > 0) || heroes[0] || null;
@@ -1720,6 +1759,10 @@ export function registerDevBrowserTestHooks({
         enemy.isAlive = true;
         enemy.slotIndex = i;
       }
+      g.EnemyIDs = livingEnemies.map(enemy => Number(enemy.uid || 0));
+      g.EnemySlots = g.EnemyIDs.map(uid => uid > 0 ? uid + 1 : 0);
+      g.PendingEnemyRespawnSlots = livingEnemies.map(() => 0);
+      g.PendingEnemyRespawnTimerActive = 0;
 
       g.SessionSkillsByHeroUID = {
         ...(g.SessionSkillsByHeroUID && typeof g.SessionSkillsByHeroUID === 'object' ? g.SessionSkillsByHeroUID : {}),
@@ -1738,27 +1781,20 @@ export function registerDevBrowserTestHooks({
       g.RoundGroups = [];
       g.RoundGroupIndex = 0;
       g.RoundMemberIndex = 0;
-      g.TurnOrderArray = [
-        { uid: Number(hero.uid || 0), type: 0, spd: Number(hero.stats?.SPD ?? hero.SPD ?? 10), name: String(hero.name || '') },
-        ...livingEnemies.map(enemy => ({
-          uid: Number(enemy.uid || 0),
-          type: 1,
-          spd: Number(enemy.stats?.SPD ?? enemy.SPD ?? 5),
-          name: String(enemy.name || ''),
-        })),
-      ];
-      g.CurrentTurnIndex = 0;
+      g.SessionLevelUpQueue = null;
+      g.SessionLevelUpSettlement = null;
+      g.PendingFlowThresholds = [];
       g.PendingHeroHits = [];
       g.ChainStrikeVisuals = [];
       g.DamageTexts = [];
-      g.PendingSkillID = 'HERO_SINGLE';
-      g.PendingActor = Number(hero.uid || 0);
-      g.SelectedEnemyUID = Number(livingEnemies[0].uid || 0);
-      g.SelectedEnemyUIDOwner = Number(hero.uid || 0);
+      g.PendingSkillID = '';
+      g.PendingActor = 0;
+      g.SelectedEnemyUID = 0;
+      g.SelectedEnemyUIDOwner = 0;
       g.CanPickGems = 0;
-      g.IsPlayerBusy = 1;
-      g.TurnPhase = 1;
-      g.HideHeroSelector = 1;
+      g.IsPlayerBusy = 0;
+      g.TurnPhase = 0;
+      g.HideHeroSelector = 0;
       g.DeferAdvance = 0;
       g.AdvanceAfterAction = 0;
       g.ActionInProgress = 0;
@@ -1768,6 +1804,7 @@ export function registerDevBrowserTestHooks({
       g.BattleStartActive = 0;
       g.BattleStartShown = 0;
       g.BattleStartClearedForSession = 1;
+      g.BattleStartProcessStarted = 1;
       g.ChainStrikeIITestScenario = {
         id: 'chain-strike-ii',
         heroUID: Number(hero.uid || 0),
@@ -1777,8 +1814,10 @@ export function registerDevBrowserTestHooks({
         expectedBouncePct: 66,
         expectedBounceCount: 2,
         layoutId: layoutState && typeof layoutState.getActiveLayoutId === 'function' ? layoutState.getActiveLayoutId() : '',
-        expectedFlow: 'click an enemy, press ATTACK, then pendingHeroHits should contain original hit plus two Chain Strike II bounces',
+        expectedFlow: 'production autoplay advances and each hero basic queues up to two Chain Strike II bounces',
       };
+      callFunctionWithContext(fnContext, 'StartRound');
+      callFunctionWithContext(fnContext, 'ProcessTurn');
       drawFrame();
       return { ok: true, ...g.ChainStrikeIITestScenario };
     },
@@ -1823,6 +1862,68 @@ export function registerDevBrowserTestHooks({
       const result = callFunctionWithContext(fnContext, 'ExecuteAstralFlowSpecial', 'arcane_pulse', scenario.heroUID);
       drawFrame();
       return result;
+    },
+    async setupHealBloomScenario() {
+      const base = await window.__codexGame.setupArcanePulseScenario();
+      if (!base?.ok) return base;
+      const hero = state.entities.find(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
+      if (!hero) return { ok: false, reason: 'hero_not_ready' };
+      hero.maxHP = Math.max(120, Number(hero.maxHP || 0));
+      hero.hp = Math.max(1, Math.floor(hero.maxHP * 0.35));
+      state.globals.DamageTexts = [];
+      gameState.healBlooms = [];
+      state.globals.HealBloomTestScenario = { id: 'heal-bloom', heroUID: Number(hero.uid || 0) };
+      drawFrame();
+      return { ok: true, ...state.globals.HealBloomTestScenario };
+    },
+    replayHealBloomScenario() {
+      const scenario = state.globals.HealBloomTestScenario;
+      if (!scenario) return { ok: false, reason: 'scenario_not_ready' };
+      const hero = state.entities.find(actor => Number(actor?.uid || 0) === Number(scenario.heroUID || 0));
+      if (!hero) return { ok: false, reason: 'hero_not_ready' };
+      hero.hp = Math.max(1, Math.floor(Number(hero.maxHP || 1) * 0.35));
+      state.globals.DamageTexts = [];
+      gameState.healBlooms = [];
+      const result = callFunctionWithContext(fnContext, 'ExecuteAstralFlowSpecial', 'magic_fruit', hero.uid);
+      drawFrame();
+      return result;
+    },
+    async captureHealBloomFrames() {
+      const setup = await window.__codexGame.setupHealBloomScenario();
+      if (!setup?.ok) return setup;
+      if (!canvas || typeof canvas.toDataURL !== 'function') return { ok: false, reason: 'canvas_not_ready' };
+      const frames = [];
+      const startedAt = performance.now();
+      const capture = (now) => {
+        const activeBlooms = (gameState.healBlooms || []).filter(bloom => bloom && !bloom.complete);
+        const particles = activeBlooms.flatMap(bloom => (bloom.particles || []).filter(particle => particle && !particle.complete && Number(particle.opacity || 0) > 0.001));
+        const ys = particles.map(particle => Number(particle.y || 0));
+        frames.push({
+          ms: now,
+          image: canvas.toDataURL('image/webp', 0.8),
+          activeBlooms: activeBlooms.length,
+          activeParticles: particles.length,
+          minY: ys.length ? Math.min(...ys) : 0,
+          maxY: ys.length ? Math.max(...ys) : 0,
+        });
+        return activeBlooms.length;
+      };
+      drawFrame();
+      capture(startedAt);
+      const replay = window.__codexGame.replayHealBloomScenario();
+      if (!replay?.ok) return replay;
+      await new Promise(resolve => {
+        let sawActive = false;
+        const onFrame = now => {
+          const activeCount = capture(now);
+          sawActive ||= activeCount > 0;
+          if ((sawActive && activeCount === 0) || now - startedAt >= 3000) return resolve();
+          window.requestAnimationFrame(onFrame);
+        };
+        window.requestAnimationFrame(onFrame);
+      });
+      showLiveHealFrameReport(frames, window.location.href);
+      return { ok: true, frameCount: frames.length, elapsedMs: frames.at(-1).ms - frames[0].ms };
     },
     replayHitTierScenario(tier) {
       const scenario = state.globals.ArcanePulseTestScenario;
@@ -1904,6 +2005,12 @@ export function registerDevBrowserTestHooks({
     }
     if (scenario === 'arcane-pulse' || scenario === 'arcanepulse') {
       void window.__codexGame.setupArcanePulseScenario();
+    }
+    if (scenario === 'heal-bloom' || scenario === 'healbloom') {
+      void window.__codexGame.setupHealBloomScenario();
+    }
+    if (scenario === 'heal-live-report') {
+      void window.__codexGame.captureHealBloomFrames();
     }
   } catch (_) {}
   window.__auditBoard = () => assertBoardIntegrity('manual');
