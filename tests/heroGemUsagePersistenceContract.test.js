@@ -7,21 +7,13 @@ function read(relPath) {
   return fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
 }
 
-test('hero gem progress persistence seam exists in app runtime', () => {
-  const appSrc = read('web-runner/app.js');
-  const storageSrc = read('web-runner/systems/heroGemProgressStorage.js');
-  assert.match(appSrc, /import \* as heroGemProgressStorage from '\.\/systems\/heroGemProgressStorage\.js';/);
-  assert.match(appSrc, /heroGemProgressStorage\.restoreHeroGemProgressFromStorage/);
-  assert.match(appSrc, /heroGemProgressStorage\.persistHeroGemProgressIfDirty/);
-  assert.match(storageSrc, /const HERO_GEM_PROGRESS_STORAGE_KEY = 'orka\.hero_gem_progress\.v1';/);
-  assert.match(storageSrc, /function readPersistedHeroGemProgress\(\)/);
-  assert.match(storageSrc, /window\.localStorage\.getItem\(HERO_GEM_PROGRESS_STORAGE_KEY\)/);
-  assert.match(storageSrc, /export function writePersistedHeroGemProgress\(snapshot\)/);
-  assert.match(storageSrc, /window\.localStorage\.setItem\(HERO_GEM_PROGRESS_STORAGE_KEY, JSON\.stringify\(snapshot\)\)/);
-  assert.match(storageSrc, /export function restoreHeroGemProgressFromStorage/);
-  assert.match(storageSrc, /callFunctionWithContext\(fnContext, 'LoadHeroGemProgressSnapshot', snapshot\);/);
-  assert.match(storageSrc, /export function persistHeroGemProgressIfDirty/);
-  assert.match(storageSrc, /callFunctionWithContext\(fnContext, 'GetHeroGemProgressSnapshot'\);/);
+test('canonical hero progress is persisted by the browser storage owner', () => {
+ const app=read('web-runner/app.js'),storage=read('web-runner/systems/heroProgressStorage.js');
+ assert.match(app,/heroProgressStorage.restoreHeroProgressFromStorage/);
+ assert.match(app,/heroProgressStorage.persistHeroProgressIfDirty/);
+ assert.match(storage,/orka.hero_progress.v2/);
+ assert.match(storage,/createHeroProgressStore/);
+ assert.doesNotMatch(storage,/LoadHeroGemProgressSnapshot/);
 });
 
 for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {

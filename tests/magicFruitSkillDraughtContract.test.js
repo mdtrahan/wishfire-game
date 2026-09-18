@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const repoRoot = path.join(__dirname, '..');
 const runtimePath = path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js');
 const scriptsPath = path.join(repoRoot, 'Scripts', 'functionBank.js');
-const magicFruitText = 'Heals party for 32% and raises max HP by 15% of current max HP';
+const magicFruitText = 'Heals the active hero for 32% and raises party max HP by 15%';
 const legalPartyDrawIds = [
   'party_crimson_ward',
   'party_magic_fruit',
@@ -59,6 +59,8 @@ function makeContext() {
   const calls = [];
   const globals = {
     time: 0,
+    TurnOrderArray: [{ uid: 100, type: 0 }],
+    CurrentTurnIndex: 0,
     PartyHP: 10,
     PartyMaxHP: 101,
     PartyHPByIndex: [10],
@@ -81,7 +83,7 @@ function makeContext() {
     state: { globals, entities: [hero] },
     callFunction(name, ...args) {
       calls.push({ name, args });
-      if (name === 'ApplyPartyHeal') {
+      if (name === 'ApplyActiveHeroHeal') {
         const heal = Math.max(0, Number(args[0] || 0));
         globals.PartyHP = Math.min(globals.PartyMaxHP, globals.PartyHP + heal);
         hero.hp = globals.PartyHP;
@@ -108,7 +110,7 @@ function installSequenceRandom(ctx, values) {
   return draws;
 }
 
-test('Magic Fruit is a mirrored party draw option that heals once through ApplyPartyHeal', () => {
+test.skip('[Paused roguelite cards/shared AF] Magic Fruit is a mirrored party draw option that heals once through ApplyActiveHeroHeal', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const expectedExistingPartyIds = [
     'party_fresh_start',
     'party_second_chance',
@@ -125,8 +127,8 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
   for (const filePath of [runtimePath, scriptsPath]) {
     const src = fs.readFileSync(filePath, 'utf8');
     assert.match(src, /id: 'party_magic_fruit'[\s\S]*title: 'Magic Fruit'/);
-    assert.match(src, /cardText: 'Heals party for 32% and raises max HP by 15% of current max HP'/);
-    assert.match(src, /effect: \{ kind: 'party_heal_max_hp', healPctPartyMax: 32, maxHpPctPartyMax: 15 \}/);
+    assert.match(src, /cardText: 'Heals the active hero for 32% and raises party max HP by 15%'/);
+    assert.match(src, /effect: \{ kind: 'party_heal_max_hp', healPctActorMax: 32, maxHpPctPartyMax: 15 \}/);
     assert.match(src, /payloadImplemented: true/);
   }
 
@@ -165,10 +167,10 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
     assert.equal(ctx.state.globals.PartyMaxHP, 116);
     assert.equal(ctx.state.entities[0].hp, 42);
     assert.equal(ctx.state.entities[0].maxHP, 116);
-    assert.deepEqual(ctx.state.globals.PartyHPByIndex, [42]);
-    assert.deepEqual(ctx.state.globals.PartyMaxHPByIndex, [116]);
+    assert.deepEqual(Array.from(ctx.state.globals.PartyHPByIndex), [42]);
+    assert.deepEqual(Array.from(ctx.state.globals.PartyMaxHPByIndex), [116]);
     assert.deepEqual(
-      calls.filter(call => call.name === 'ApplyPartyHeal').map(call => call.args),
+      calls.filter(call => call.name === 'ApplyActiveHeroHeal').map(call => call.args),
       [[32]]
     );
 
@@ -180,7 +182,7 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
     const selectedAgain = mod.SelectSkillDraughtCard(ctx, 0);
     assert.equal(selectedAgain.ok, false);
     assert.equal(selectedAgain.reason, 'draught_closed');
-    assert.equal(calls.filter(call => call.name === 'ApplyPartyHeal').length, 1);
+    assert.equal(calls.filter(call => call.name === 'ApplyActiveHeroHeal').length, 1);
     assert.equal(ctx.state.globals.PartyHP, 42);
     assert.equal(ctx.state.globals.PartyMaxHP, 116);
 
@@ -194,21 +196,21 @@ test('Magic Fruit is a mirrored party draw option that heals once through ApplyP
     assert.equal(selectedRepeat.skill.selectionCount, 2);
     assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__.length, 2);
     assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__[1].rank, 0);
-    assert.equal(calls.filter(call => call.name === 'ApplyPartyHeal').length, 2);
+    assert.equal(calls.filter(call => call.name === 'ApplyActiveHeroHeal').length, 2);
     assert.equal(ctx.state.globals.PartyHP, 79);
     assert.equal(ctx.state.globals.PartyMaxHP, 133);
     assert.equal(ctx.state.entities[0].hp, 79);
     assert.equal(ctx.state.entities[0].maxHP, 133);
-    assert.deepEqual(ctx.state.globals.PartyHPByIndex, [79]);
-    assert.deepEqual(ctx.state.globals.PartyMaxHPByIndex, [133]);
+    assert.deepEqual(Array.from(ctx.state.globals.PartyHPByIndex), [79]);
+    assert.deepEqual(Array.from(ctx.state.globals.PartyMaxHPByIndex), [133]);
     assert.deepEqual(
-      calls.filter(call => call.name === 'ApplyPartyHeal').map(call => call.args),
+      calls.filter(call => call.name === 'ApplyActiveHeroHeal').map(call => call.args),
       [[32], [37]]
     );
   }
 });
 
-test('normal party skill draught samples the full party pool through RuntimeRandom', () => {
+test.skip('[Paused roguelite cards/shared AF] normal party skill draught samples the full party pool through RuntimeRandom', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const { ctx } = makeContext();
@@ -228,7 +230,7 @@ test('normal party skill draught samples the full party pool through RuntimeRand
   }
 });
 
-test('normal party skill draught excludes removed stubs and uses only the active party draw allowlist', () => {
+test.skip('[Paused roguelite cards/shared AF] normal party skill draught excludes removed stubs and uses only the active party draw allowlist', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const removedStubCases = [
     { id: 'party_fresh_start', title: 'Fresh Start', randomValues: [0, 0, 0] },
     { id: 'party_second_chance', title: 'Second Chance', randomValues: [0.1, 0, 0] },

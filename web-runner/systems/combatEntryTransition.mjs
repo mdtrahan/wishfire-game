@@ -1,5 +1,5 @@
 // Keep the old screen visible until black; reveal combat only after the hold.
-export function createCombatEntryTransition(canvas) {
+export function createCombatEntryTransition(canvas, { onComplete = () => {} } = {}) {
   return async change => {
     const shade = document.createElement('div');
     shade.setAttribute('aria-label', 'Entering combat');
@@ -18,6 +18,7 @@ export function createCombatEntryTransition(canvas) {
       await animate([{opacity:1},{opacity:1}], 500);
       const changed = await change();
       await animate([{opacity:1},{opacity:0}], 1000);
+      if (changed) await onComplete();
       return changed;
     } finally {
       observer.disconnect();

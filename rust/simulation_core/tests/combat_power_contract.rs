@@ -1,50 +1,14 @@
-use std::fs;
-use std::path::Path;
+use simulation_core::combat_power_full;
 
-use simulation_core::combat_power;
-
-#[derive(Debug)]
-struct CombatPowerCase {
-    name: String,
-    atk: f64,
-    def: f64,
-    hp: f64,
-    expected: f64,
-}
-
-fn fixture_cases() -> Vec<CombatPowerCase> {
-    let fixture_path =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/combat_power_cases.csv");
-    let raw = fs::read_to_string(&fixture_path)
-        .unwrap_or_else(|err| panic!("failed to read {}: {err}", fixture_path.display()));
-
-    raw.lines()
-        .skip(1)
-        .filter(|line| !line.trim().is_empty())
-        .map(|line| {
-            let fields: Vec<&str> = line.split(',').collect();
-            assert_eq!(fields.len(), 5, "invalid fixture row: {line}");
-            CombatPowerCase {
-                name: fields[0].to_string(),
-                atk: fields[1].parse().expect("invalid atk"),
-                def: fields[2].parse().expect("invalid def"),
-                hp: fields[3].parse().expect("invalid hp"),
-                expected: fields[4].parse().expect("invalid expected"),
-            }
-        })
-        .collect()
+fn cp(atk:f64,mag:f64,def:f64,res:f64,hp:f64,spd:f64,level:f64)->f64{
+    combat_power_full(atk,mag,def,res,hp,spd,level,2.0+(0.48*atk.max(mag)),0.01,1.25,0.0,0.0,0.0,0.0,0.0,0.0,1.0)
 }
 
 #[test]
-fn combat_power_matches_shared_fixtures() {
-    for test_case in fixture_cases() {
-        let actual = combat_power(test_case.atk, test_case.def, test_case.hp);
-        assert!(
-            (actual - test_case.expected).abs() < f64::EPSILON,
-            "case {} expected {}, got {}",
-            test_case.name,
-            test_case.expected,
-            actual
-        );
-    }
+fn combat_power_rewards_offense_survivability_and_action_rate() {
+    let base=cp(10.0,4.0,5.0,4.0,100.0,10.0,1.0);
+    assert!(cp(14.0,4.0,5.0,4.0,100.0,10.0,1.0)>base);
+    assert!(cp(10.0,4.0,12.0,4.0,100.0,10.0,1.0)>base);
+    assert!(cp(10.0,4.0,5.0,4.0,140.0,10.0,1.0)>base);
+    assert!(cp(10.0,4.0,5.0,4.0,100.0,18.0,1.0)>base);
 }

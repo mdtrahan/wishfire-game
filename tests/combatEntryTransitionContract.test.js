@@ -11,3 +11,15 @@ test('combat changes under black after 250ms fade and 500ms hold, then reveals f
   assert.equal(calls[1][0][1].opacity,1);
  } finally {delete global.document;delete global.ResizeObserver;}
 });
+
+test('scheduler handoff runs once only after the reveal completes', async () => {
+ const calls=[];
+ global.document={createElement:()=>({style:{},setAttribute(){},animate(_frames,options){calls.push(options.duration);return {finished:Promise.resolve()};},remove(){calls.push('remove');}}),body:{append(){}}};
+ global.ResizeObserver=class {observe(){} disconnect(){}};
+ try {
+  const {createCombatEntryTransition}=await import('../web-runner/systems/combatEntryTransition.mjs');
+  const enter=createCombatEntryTransition({getBoundingClientRect:()=>({left:0,top:0,width:360,height:640})},{onComplete:()=>calls.push('scheduler')});
+  await enter(async()=>{calls.push('change');return true;});
+  assert.deepEqual(calls,[250,500,'change',1000,'scheduler','remove']);
+ } finally {delete global.document;delete global.ResizeObserver;}
+});

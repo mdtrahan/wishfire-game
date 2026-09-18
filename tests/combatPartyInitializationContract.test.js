@@ -1,0 +1,202 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const { pathToFileURL } = require('node:url');
+const vm = require('node:vm');
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+const systems = path.join(__dirname, '..', 'web-runner', 'systems');
+
+function member(index, overrides = {}) {
+  return {
+    name: `Hero ${index}`, instanceName: `hero-${index}`,
+    baseHeroName: ['Falie','Huun','Runa','Kojonn'][index%4], heroInstanceKey: `owned-${index}`,
+    cloneOrdinal: 0, cloneLabel: '', canonicalIndex: index,
+    hp: 20 + index, maxHP: 40 + index,
+    ATK: 10 + index, DEF: 8, MAG: 12, RES: 9, SPD: 20 - index,
+    attackType: 'melee', ...overrides,
+  };
+}
+
+function productionPartyMembers() {
+  const configSource = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'state', 'heroScreenConfig.js'), 'utf8')
+    .replace(/^export \{[^\n]+\} from [^\n]+\n/gm, '')
+    .replace(/^export \{[^\n]+\};\n/gm, '')
+    .replace(/^export /gm, '');
+  const configContext = { module: { exports: {} } };
+  vm.runInNewContext(`${configSource}\nmodule.exports = { CANONICAL_HERO_ROSTER };`, configContext);
+  const runtimeSource = fs.readFileSync(path.join(systems, 'devToolingRuntime.js'), 'utf8')
+    .replace(/^import[\s\S]*?from\s+['"][^'"]+['"];\n/gm, '')
+    .replace(/^export \{[\s\S]*?\};\n/gm, '')
+    .replace(/^export /gm, '');
+  const runtimeContext = { module: { exports: {} }, normalizeCombatOrientation: value => value || 'left-wise', window: { addEventListener() {} }, document: { getElementById() { return null; } } };
+  vm.runInNewContext(`${runtimeSource}\nmodule.exports = { createDevToolingRuntime };`, runtimeContext);
+  const runtime = runtimeContext.module.exports.createDevToolingRuntime({
+    state: { globals: {}, entities: [] }, gameState: {},
+    CANONICAL_HERO_ROSTER: configContext.module.exports.CANONICAL_HERO_ROSTER,
+    getLayoutState: () => null,
+  });
+  const slots = runtime.createDefaultDevToolingConfig().heroSlots;
+  return runtime.buildConfiguredCombatPartyMembers(slots).heroMembers;
+}
+
+async function initialize(heroMembers, escortMember = null, withEnemy = false) {
+  const { resetCombatSessionConditions } = await import(pathToFileURL(path.join(systems, 'combatSessionReset.mjs')));
+  const filename = path.join(systems, 'combatSessionInitializer.js');
+  const source = fs.readFileSync(filename, 'utf8')
+    .replace(/^import[\s\S]*?from\s+['"][^'"]+['"];\n/gm, '')
+    .replace(/^export /gm, '');
+  // Match the existing browser-module test convention without changing module packaging.
+  const context = {
+    module: { exports: {} }, resetCombatSessionConditions, crypto:require('node:crypto').webcrypto,
+    ...require('../web-runner/src/core/heroProgression.mjs'),
+    ...require('../web-runner/src/core/personalFlow.mjs'),
+    ...require('../web-runner/src/core/sessionLevelUpQueue.mjs'),
+    ...require('../web-runner/src/core/routineEnemyScaling.mjs'),
+    DEV_TOOL_EMPTY_SLOT: '', DEV_TOOL_RANDOM_ENEMY_SLOT: '__RANDOM__',
+    runtimeDebugLogging: { startupDebugLog() {} },
+  };
+  vm.runInNewContext(source + '\nmodule.exports = { createCombatSessionInitializer };', context, { filename });
+  const state = { globals: {}, entities: [] };
+  const gameState = {};
+  const calls = [];
+  const init = context.module.exports.createCombatSessionInitializer({
+    state, gameState, fnContext: {},
+    callFunctionWithContext(_ctx, name, ...args) {
+      calls.push(name);
+      if (name === 'InitPartyHPFromHeroes' || name === 'UpdateHeroHPUI') {
+        const heroes = state.entities.filter(actor => actor.kind === 'hero');
+        state.globals.PartyHP = heroes.reduce((total, hero) => total + hero.hp, 0);
+        state.globals.PartyMaxHP = heroes.reduce((total, hero) => total + hero.maxHP, 0);
+      }
+      if (name === 'SpawnEnemy') state.entities.push({
+        uid: state.globals.NextUID++, kind: 'enemy', name: args[0].name,
+      });
+    },
+    assertCombatLayoutDev() {},
+    computeCombatPower: require('../web-runner/src/core/combatPower.mjs').computeCombatPower,
+    createSeededRng: () => () => 0,
+    resetBootstrapRngSession() {},
+    generateEncounterSeed: () => 123,
+    deriveCombatRuntimeRngSeed: seed => seed,
+    installCombatRuntimeRandom() {},
+    getConfiguredHeroSlots: () => heroMembers.map(hero => hero?.instanceName || ''),
+    readEscortPartyConfig: () => escortMember,
+    buildConfiguredCombatPartyMembers: () => ({ heroMembers, escortMember }),
+    getConfiguredEnemySlots: () => ['TestEnemy'],
+    syncFromGlobals() { gameState.partyHP=Array(6).fill(0);gameState.partyMaxHP=Array(6).fill(0);for(const h of state.entities.filter(a=>a.kind==='hero')){gameState.partyHP[h.heroDisplaySlot]=h.hp;gameState.partyMaxHP[h.heroDisplaySlot]=h.maxHP;} },
+  });
+  init(withEnemy ? [{ name: 'TestEnemy', HP: 25, ATK: 5, DEF: 2 }] : []);
+  return { state, gameState, calls };
+}
+
+for (let count = 1; count <= 6; count += 1) {
+  test(`initializer constructs every member of a ${count}-hero configured party`, async () => {
+    const members = Array.from({ length: count }, (_, i) => member(i));
+    const before = JSON.stringify(members);
+    const { state, gameState, calls } = await initialize(members);
+    assert.equal(state.entities.length, count);
+    members.forEach((input, i) => {
+      const actor = state.entities[i];
+      assert.equal(actor.uid, i + 1);
+      assert.equal(actor.heroDisplaySlot, i);
+      assert.equal(actor.heroInstanceKey, input.heroInstanceKey);
+      assert.equal(actor.baseHeroName, input.baseHeroName);
+      assert.equal(actor.name, input.instanceName);
+      assert.equal(actor.heroIndex, input.canonicalIndex);
+      const expected=require('../web-runner/src/core/heroProgression.mjs').newHeroProgress(input.baseHeroName);
+      assert.equal(actor.hp, expected.hp);
+      assert.equal(actor.maxHP, expected.maxHP);
+      for (const stat of ['ATK', 'DEF', 'MAG', 'RES', 'SPD']) assert.equal(actor.stats[stat], expected.stats[stat]);
+      assert.equal(gameState.partyHP[i], expected.hp);
+      assert.equal(gameState.partyMaxHP[i], expected.maxHP);
+    });
+    assert.equal(state.globals.NextUID, count + 1);
+    assert.equal(state.globals.PartyHP, state.entities.reduce((sum, actor) => sum + actor.hp, 0));
+    assert.equal(JSON.stringify(members), before);
+    assert.ok(calls.includes('InitPartyHPFromHeroes'));
+  });
+}
+
+test('fresh combat initialization creates one explicit neutral party opening entry', async () => {
+  const { state } = await initialize([member(0), member(1), member(2), member(3)]);
+  assert.deepEqual(JSON.parse(JSON.stringify(state.globals.SessionLevelUpQueue)), {
+    version: 1, status: 'active', paused: false, currentIndex: 0,
+    entries: [{
+      heroId: '__party_session__', heroUID: 0, earnedLevel: 0, earnedLevelIndex: 0,
+      source: 'opening_party', participantHeroIds: ['owned-0', 'owned-1', 'owned-2', 'owned-3'],
+    }],
+  });
+});
+
+test('production starting party maps canonical identities and awards Comrade only to Kaja on a real enemy basic hit', async () => {
+  const { state } = await initialize(productionPartyMembers());
+  const commands = require('../web-runner/modules/heroCommands.mjs');
+  const definitions = require('../web-runner/src/core/heroDefinitions.mjs');
+  const mapping = state.entities.map((hero, index) => {
+    const definition = definitions.heroDefinition(hero);
+    return [index, hero.uid, hero.name, definition.name, definition.role, definition.key, definition.flowMode];
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(mapping)), [
+    [0, 1, 'Falie', 'Fara', 'Tank', 'Falie', 'Stoic'],
+    [1, 2, 'Huun', 'Hondo', 'DPS / Fighter', 'Huun', 'Warrior'],
+    [2, 3, 'Runa', 'Runa', 'Controller', 'Runa', 'Tactician'],
+    [3, 4, 'Kojonn', 'Kaja', 'Support / Guardian', 'Kojonn', 'Comrade'],
+  ]);
+  const [fara, hondo, , kaja] = state.entities;
+  hondo.flowMode = 'Comrade';
+  kaja.flowMode = 'Warrior';
+  const enemy = { uid: 19, kind: 'enemy', name: 'High Gobloc', hp: 50, maxHP: 50, stats: { ATK: 1 }, statuses: [] };
+  state.entities.push(enemy);
+  const ctx = { state, callFunction(name, ...args) {
+    if (name === 'CalculateDamage') return 2;
+    if (name === 'ApplyDamageToTarget') {
+      const target = state.entities.find(actor => Number(actor.uid) === Number(args[0]));
+      const applied = Math.min(Number(target.hp || 0), Number(args[1] || 0));
+      target.hp -= applied;
+      return applied;
+    }
+    if (name === 'GetEnemyRosterStability') return { stable: true };
+    if (name === 'SpawnDamageText' || name === 'UpdateHeroHPUI') return true;
+    return 0;
+  } };
+  assert.equal(commands.resolveIncomingNativeHit(ctx, enemy, fara, 2), true);
+  assert.equal(hondo.flow, 0);
+  assert.equal(kaja.flow, 10);
+  kaja.flow = 0;
+  assert.equal(commands.resolveIncomingNativeHit(ctx, enemy, kaja, 2), true);
+  assert.equal(hondo.flow, 0);
+  assert.equal(kaja.flow, 0);
+});
+
+test('sparse formation slots retain their indexes and exclude slots beyond six', async () => {
+  const slots = [null, member(1), null, null, null, member(5), member(6)];
+  const { state, gameState } = await initialize(slots);
+  assert.deepEqual(Array.from(state.entities, actor => actor.uid), [2, 6]);
+  assert.deepEqual(Array.from(state.entities, actor => actor.heroDisplaySlot), [1, 5]);
+  const expectedHP=[0, ...state.entities.map(actor=>actor.hp)];
+  assert.deepEqual(Array.from(gameState.partyHP), [0, expectedHP[1], 0, 0, 0, expectedHP[2]]);
+  assert.deepEqual(Array.from(gameState.partyMaxHP), [0, expectedHP[1], 0, 0, 0, expectedHP[2]]);
+  assert.equal(state.globals.NextUID, 7);
+});
+
+test('canonical progression owns HP for every configured hero', async () => {
+  const { state } = await initialize([
+    member(0, { hp: 0 }), member(1, { hp: -1 }),
+    member(2, { hp: NaN }), member(3, { hp: 999 }),
+    member(4, { maxHP: 0, hp: 9 }), member(5, { maxHP: 30, hp: 999 }),
+  ]);
+  assert.equal(JSON.stringify(Array.from(state.entities, actor => [actor.hp, actor.maxHP])), JSON.stringify(state.entities.map(actor => { const p=require('../web-runner/src/core/heroProgression.mjs').newHeroProgress(actor.baseHeroName); return [p.hp,p.maxHP]; })));
+});
+
+test('escort and spawned enemy IDs follow all six heroes without collisions', async () => {
+  const { state } = await initialize(
+    Array.from({ length: 6 }, (_, i) => member(i)),
+    { name: 'Escort', baseHeroName: 'escort', kind: 'escort', hp: 20, maxHP: 20, heroDisplaySlot: 6 },
+    true,
+  );
+  assert.deepEqual(Array.from(state.entities, actor => actor.uid), [1, 2, 3, 4, 5, 6, 7, 8]);
+  assert.equal(state.globals.EscortNPCState.uid, 7);
+  assert.equal(state.entities[7].kind, 'enemy');
+  assert.equal(state.globals.NextUID, 9);
+});

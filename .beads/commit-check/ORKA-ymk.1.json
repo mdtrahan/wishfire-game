@@ -1,0 +1,94 @@
+{
+  "changed_functions": {
+    "output/balance/cp-report.csv": [
+      "__MODULE__"
+    ],
+    "output/balance/cp-report.json": [
+      "__MODULE__"
+    ],
+    "output/balance/scaling-drift.json": [
+      "__MODULE__"
+    ],
+    "output/balance/scaling-drift.md": [
+      "__MODULE__"
+    ],
+    "output/design-review/cp-progression-balance-plan.json": [
+      "__MODULE__"
+    ],
+    "output/design-review/cp-progression-balance-plan.md": [
+      "__MODULE__"
+    ],
+    "tests/combatPartyInitializationContract.test.js": [
+      "member"
+    ],
+    "tests/encounterCpOverrideDistribution.test.js": [
+      "pct",
+      "__MODULE__"
+    ],
+    "tools/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "tools/cp_balance_report.mjs": [
+      "loadProductionEncounterHelpers",
+      "readProductionEnemyRows",
+      "productionHero",
+      "summary",
+      "round",
+      "sum",
+      "productionEnemyRows",
+      "runProductionBattle",
+      "recordEnemyHit",
+      "aggregateProductionLevel",
+      "speedFixture",
+      "__MODULE__"
+    ],
+    "web-runner/systems/AGENTS.md": [
+      "__MODULE__"
+    ],
+    "web-runner/systems/combatSessionInitializer.js": [
+      "pushPick",
+      "encounterSeed"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 12,
+    "staged_line_count": 927,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    "output/balance/cp-report.csv",
+    "output/balance/cp-report.json",
+    "output/balance/scaling-drift.json",
+    "output/balance/scaling-drift.md",
+    "output/design-review/cp-progression-balance-plan.json",
+    "output/design-review/cp-progression-balance-plan.md",
+    "tests/combatPartyInitializationContract.test.js",
+    "tests/encounterCpOverrideDistribution.test.js",
+    "tools/AGENTS.md",
+    "tools/cp_balance_report.mjs",
+    "web-runner/systems/AGENTS.md",
+    "web-runner/systems/combatSessionInitializer.js"
+  ],
+  "issue_id": "ORKA-ymk.1",
+  "out_of_scope_hot_file_touch": false,
+  "significant": true,
+  "staged_blobs": {
+    "output/balance/cp-report.csv": "56630209a1484685e9ed284b38b4cc86dd88a0e3",
+    "output/balance/cp-report.json": "68ec3e3be8fcf30945bfbec1368a06dc46dc27c8",
+    "output/balance/scaling-drift.json": "719b33588f008114635d7a9d543cd655deae242b",
+    "output/balance/scaling-drift.md": "7f8a4f31add5bf2628dc1c416b286ffae0f74b8e",
+    "output/design-review/cp-progression-balance-plan.json": "3dde2c4aa0349930d3250469bddca4b375f5918c",
+    "output/design-review/cp-progression-balance-plan.md": "d3c86946797a06c10b9b63dd8a26a5fd74876b0d",
+    "tests/combatPartyInitializationContract.test.js": "6b69905140a940c820c1679c8a7462862c344c0a",
+    "tests/encounterCpOverrideDistribution.test.js": "35c51a8fa88ed16b748a9ca9c43ca8926cd8bb76",
+    "tools/AGENTS.md": "e32768f4619874792cead28f8482e65f2a508bfa",
+    "tools/cp_balance_report.mjs": "ccf13d844f2bb3995a2aca79bc883e4271007d3c",
+    "web-runner/systems/AGENTS.md": "1c164db78d1e23ee54d25f2b022b270f74172ea8",
+    "web-runner/systems/combatSessionInitializer.js": "6af05599a25e7d1925e23349f490e350084fb53a"
+  }
+}

@@ -30,11 +30,11 @@ function heroFromRow(row, index) {
 }
 
 function heroesFromRow(row) {
-  return [0, 1, 2, 3].map((index) => heroFromRow(row, index));
+  return [0, 1, 2, 3, 4, 5].map((index) => heroFromRow(row, index));
 }
 
 function wasmArgsFromRow(row, rules) {
-  const heroes = [0, 1, 2, 3].flatMap((index) => [
+  const heroes = [0, 1, 2, 3, 4, 5].flatMap((index) => [
     toNumber(row, `hero${index}Uid`),
     toNumber(row, `hero${index}Hp`),
     toNumber(row, `hero${index}MaxHp`),

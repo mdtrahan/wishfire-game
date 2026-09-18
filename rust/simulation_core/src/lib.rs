@@ -39,12 +39,22 @@ fn positive_floor_or_one(value: f64) -> f64 {
     normalized.floor().max(1.0)
 }
 
-pub fn combat_power(atk: f64, def: f64, hp: f64) -> f64 {
-    let a = number_or_zero(atk);
-    let d = number_or_zero(def);
-    let h = number_or_zero(hp);
+pub fn combat_power_full(atk:f64, mag:f64, def:f64, res:f64, hp:f64, spd:f64, level:f64, direct:f64, crit_chance:f64, crit_multiplier:f64, aoe_damage:f64, extra_targets:f64, sustain:f64, control:f64, proc:f64, af:f64, sequence:f64) -> f64 {
+    let level=positive_floor_or_one(level);
+    let _atk=number_or_zero(atk).max(0.0); let _mag=number_or_zero(mag).max(0.0);
+    let def=number_or_zero(def).max(0.0); let res=number_or_zero(res).max(0.0);
+    let hp=number_or_zero(hp).max(1.0); let spd=number_or_zero(spd).max(0.0);
+    let guard=20.0+(1.5*(level-1.0));
+    let expected=number_or_zero(direct);
+    let crit=expected*number_or_zero(crit_chance).clamp(0.0,1.0)*(number_or_zero(crit_multiplier).clamp(1.0,3.0)-1.0);
+    let action_rate=(spd/10.0).clamp(0.6,1.8);
+    let effective_hp=hp*(1.0+(((def+res)/2.0)/guard));
+    let value=(5.0*action_rate*((expected+crit+(number_or_zero(aoe_damage).max(0.0)*number_or_zero(extra_targets).max(0.0))+number_or_zero(sustain).max(0.0)+number_or_zero(control).max(0.0)+number_or_zero(proc).max(0.0)+number_or_zero(af).max(0.0))*positive_floor_or_one(sequence).min(2.0)))+(effective_hp/4.0);
+    round_like_js(value*10.0)/10.0
+}
 
-    round_like_js((a + d + (h / 10.0)) * 100.0) / 100.0
+pub fn combat_power(atk: f64, def: f64, hp: f64) -> f64 {
+    combat_power_full(atk,0.0,def,0.0,hp,0.0,1.0,0.0,0.01,1.25,0.0,0.0,0.0,0.0,0.0,0.0,1.0)
 }
 
 fn finite_integer(value: f64) -> bool {
@@ -142,10 +152,7 @@ pub fn effective_stat_value(
     value.max(0.0)
 }
 
-pub fn combat_outcome_code(_energy: f64, party_hp: f64, living_heroes: f64) -> f64 {
-    if number_or_zero(party_hp) <= 0.0 {
-        return 2.0;
-    }
+pub fn combat_outcome_code(_energy: f64, _party_hp: f64, living_heroes: f64) -> f64 {
     if number_or_zero(living_heroes) <= 0.0 {
         return 3.0;
     }
@@ -156,19 +163,16 @@ pub fn turn_actor_eligibility_code(
     turn_type: f64,
     actor_exists: f64,
     actor_hp: f64,
-    party_hp: f64,
-    round_active: f64,
-    pending_group_matches: f64,
+    _party_hp: f64,
+    _round_active: f64,
+    _pending_group_matches: f64,
     blue_buff_sequence_active: f64,
 ) -> f64 {
-    let is_round_pending =
-        number_or_zero(round_active) == 1.0 && number_or_zero(pending_group_matches) == 1.0;
-
     if number_or_zero(turn_type) == 0.0 {
         if number_or_zero(actor_exists) != 1.0 {
             return 0.0;
         }
-        if number_or_zero(party_hp) > 0.0 || is_round_pending {
+        if number_or_zero(actor_hp) > 0.0 {
             return 1.0;
         }
         return 0.0;
@@ -181,7 +185,7 @@ pub fn turn_actor_eligibility_code(
         if number_or_zero(actor_exists) != 1.0 {
             return 0.0;
         }
-        if number_or_zero(actor_hp) > 0.0 || is_round_pending {
+        if number_or_zero(actor_hp) > 0.0 {
             return 1.0;
         }
     }
@@ -814,8 +818,20 @@ fn enemy_target_choice_pair(
     hero3_atk: f64,
     hero3_slot: f64,
     hero3_role_code: f64,
+    hero4_uid: f64,
+    hero4_hp: f64,
+    hero4_max_hp: f64,
+    hero4_atk: f64,
+    hero4_slot: f64,
+    hero4_role_code: f64,
+    hero5_uid: f64,
+    hero5_hp: f64,
+    hero5_max_hp: f64,
+    hero5_atk: f64,
+    hero5_slot: f64,
+    hero5_role_code: f64,
 ) -> (f64, f64, f64) {
-    let mut heroes = Vec::with_capacity(4);
+    let mut heroes = Vec::with_capacity(6);
     enemy_target_push_hero(
         &mut heroes,
         hero0_uid,
@@ -851,6 +867,24 @@ fn enemy_target_choice_pair(
         hero3_atk,
         hero3_slot,
         hero3_role_code,
+    );
+    enemy_target_push_hero(
+        &mut heroes,
+        hero4_uid,
+        hero4_hp,
+        hero4_max_hp,
+        hero4_atk,
+        hero4_slot,
+        hero4_role_code,
+    );
+    enemy_target_push_hero(
+        &mut heroes,
+        hero5_uid,
+        hero5_hp,
+        hero5_max_hp,
+        hero5_atk,
+        hero5_slot,
+        hero5_role_code,
     );
     enemy_target_choice_from_heroes(preference_code, roll, &heroes)
 }
@@ -882,6 +916,18 @@ pub fn enemy_target_selected_uid(
     hero3_atk: f64,
     hero3_slot: f64,
     hero3_role_code: f64,
+    hero4_uid: f64,
+    hero4_hp: f64,
+    hero4_max_hp: f64,
+    hero4_atk: f64,
+    hero4_slot: f64,
+    hero4_role_code: f64,
+    hero5_uid: f64,
+    hero5_hp: f64,
+    hero5_max_hp: f64,
+    hero5_atk: f64,
+    hero5_slot: f64,
+    hero5_role_code: f64,
 ) -> f64 {
     enemy_target_choice_pair(
         preference_code,
@@ -910,6 +956,18 @@ pub fn enemy_target_selected_uid(
         hero3_atk,
         hero3_slot,
         hero3_role_code,
+        hero4_uid,
+        hero4_hp,
+        hero4_max_hp,
+        hero4_atk,
+        hero4_slot,
+        hero4_role_code,
+        hero5_uid,
+        hero5_hp,
+        hero5_max_hp,
+        hero5_atk,
+        hero5_slot,
+        hero5_role_code,
     )
     .0
 }
@@ -941,6 +999,18 @@ pub fn enemy_target_mode_code(
     hero3_atk: f64,
     hero3_slot: f64,
     hero3_role_code: f64,
+    hero4_uid: f64,
+    hero4_hp: f64,
+    hero4_max_hp: f64,
+    hero4_atk: f64,
+    hero4_slot: f64,
+    hero4_role_code: f64,
+    hero5_uid: f64,
+    hero5_hp: f64,
+    hero5_max_hp: f64,
+    hero5_atk: f64,
+    hero5_slot: f64,
+    hero5_role_code: f64,
 ) -> f64 {
     enemy_target_choice_pair(
         preference_code,
@@ -969,6 +1039,18 @@ pub fn enemy_target_mode_code(
         hero3_atk,
         hero3_slot,
         hero3_role_code,
+        hero4_uid,
+        hero4_hp,
+        hero4_max_hp,
+        hero4_atk,
+        hero4_slot,
+        hero4_role_code,
+        hero5_uid,
+        hero5_hp,
+        hero5_max_hp,
+        hero5_atk,
+        hero5_slot,
+        hero5_role_code,
     )
     .1
 }
@@ -1000,6 +1082,18 @@ pub fn enemy_target_roll_index(
     hero3_atk: f64,
     hero3_slot: f64,
     hero3_role_code: f64,
+    hero4_uid: f64,
+    hero4_hp: f64,
+    hero4_max_hp: f64,
+    hero4_atk: f64,
+    hero4_slot: f64,
+    hero4_role_code: f64,
+    hero5_uid: f64,
+    hero5_hp: f64,
+    hero5_max_hp: f64,
+    hero5_atk: f64,
+    hero5_slot: f64,
+    hero5_role_code: f64,
 ) -> f64 {
     enemy_target_choice_pair(
         preference_code,
@@ -1028,6 +1122,18 @@ pub fn enemy_target_roll_index(
         hero3_atk,
         hero3_slot,
         hero3_role_code,
+        hero4_uid,
+        hero4_hp,
+        hero4_max_hp,
+        hero4_atk,
+        hero4_slot,
+        hero4_role_code,
+        hero5_uid,
+        hero5_hp,
+        hero5_max_hp,
+        hero5_atk,
+        hero5_slot,
+        hero5_role_code,
     )
     .2
 }
@@ -1433,6 +1539,11 @@ pub extern "C" fn combat_power_shadow(atk: f64, def: f64, hp: f64) -> f64 {
 }
 
 #[no_mangle]
+pub extern "C" fn combat_power_full_shadow(atk:f64, mag:f64, def:f64, res:f64, hp:f64, spd:f64, level:f64, direct:f64, crit_chance:f64, crit_multiplier:f64, aoe_damage:f64, extra_targets:f64, sustain:f64, control:f64, proc:f64, af:f64, sequence:f64) -> f64 {
+    combat_power_full(atk,mag,def,res,hp,spd,level,direct,crit_chance,crit_multiplier,aoe_damage,extra_targets,sustain,control,proc,af,sequence)
+}
+
+#[no_mangle]
 pub extern "C" fn effective_stat_value_shadow(
     base: f64,
     party_buff: f64,
@@ -1776,6 +1887,18 @@ pub extern "C" fn enemy_target_selected_uid_shadow(
     hero3_atk: f64,
     hero3_slot: f64,
     hero3_role_code: f64,
+    hero4_uid: f64,
+    hero4_hp: f64,
+    hero4_max_hp: f64,
+    hero4_atk: f64,
+    hero4_slot: f64,
+    hero4_role_code: f64,
+    hero5_uid: f64,
+    hero5_hp: f64,
+    hero5_max_hp: f64,
+    hero5_atk: f64,
+    hero5_slot: f64,
+    hero5_role_code: f64,
 ) -> f64 {
     enemy_target_selected_uid(
         preference_code,
@@ -1804,6 +1927,18 @@ pub extern "C" fn enemy_target_selected_uid_shadow(
         hero3_atk,
         hero3_slot,
         hero3_role_code,
+        hero4_uid,
+        hero4_hp,
+        hero4_max_hp,
+        hero4_atk,
+        hero4_slot,
+        hero4_role_code,
+        hero5_uid,
+        hero5_hp,
+        hero5_max_hp,
+        hero5_atk,
+        hero5_slot,
+        hero5_role_code,
     )
 }
 
@@ -1835,6 +1970,18 @@ pub extern "C" fn enemy_target_mode_code_shadow(
     hero3_atk: f64,
     hero3_slot: f64,
     hero3_role_code: f64,
+    hero4_uid: f64,
+    hero4_hp: f64,
+    hero4_max_hp: f64,
+    hero4_atk: f64,
+    hero4_slot: f64,
+    hero4_role_code: f64,
+    hero5_uid: f64,
+    hero5_hp: f64,
+    hero5_max_hp: f64,
+    hero5_atk: f64,
+    hero5_slot: f64,
+    hero5_role_code: f64,
 ) -> f64 {
     enemy_target_mode_code(
         preference_code,
@@ -1863,6 +2010,18 @@ pub extern "C" fn enemy_target_mode_code_shadow(
         hero3_atk,
         hero3_slot,
         hero3_role_code,
+        hero4_uid,
+        hero4_hp,
+        hero4_max_hp,
+        hero4_atk,
+        hero4_slot,
+        hero4_role_code,
+        hero5_uid,
+        hero5_hp,
+        hero5_max_hp,
+        hero5_atk,
+        hero5_slot,
+        hero5_role_code,
     )
 }
 
@@ -1894,6 +2053,18 @@ pub extern "C" fn enemy_target_roll_index_shadow(
     hero3_atk: f64,
     hero3_slot: f64,
     hero3_role_code: f64,
+    hero4_uid: f64,
+    hero4_hp: f64,
+    hero4_max_hp: f64,
+    hero4_atk: f64,
+    hero4_slot: f64,
+    hero4_role_code: f64,
+    hero5_uid: f64,
+    hero5_hp: f64,
+    hero5_max_hp: f64,
+    hero5_atk: f64,
+    hero5_slot: f64,
+    hero5_role_code: f64,
 ) -> f64 {
     enemy_target_roll_index(
         preference_code,
@@ -1922,6 +2093,18 @@ pub extern "C" fn enemy_target_roll_index_shadow(
         hero3_atk,
         hero3_slot,
         hero3_role_code,
+        hero4_uid,
+        hero4_hp,
+        hero4_max_hp,
+        hero4_atk,
+        hero4_slot,
+        hero4_role_code,
+        hero5_uid,
+        hero5_hp,
+        hero5_max_hp,
+        hero5_atk,
+        hero5_slot,
+        hero5_role_code,
     )
 }
 
@@ -2172,28 +2355,14 @@ pub fn single_hit_damage(
     chain_multiplier: f64,
 ) -> f64 {
     let source_is_hero = number_or_zero(source_is_hero) == 1.0;
-    let hero_aoe = number_or_zero(hero_aoe) == 1.0;
-    let roll = 0.8 + (unit_interval_or_half(roll01) * 0.4);
+    let _hero_aoe = number_or_zero(hero_aoe) == 1.0;
+    let roll = 0.9 + (unit_interval_or_half(roll01) * 0.2);
     let power = number_or_zero(power);
     let resist = number_or_zero(resist);
-    let raw_damage = if source_is_hero && !hero_aoe {
-        (power - (resist * 0.35)) * roll
-    } else {
-        (power - (resist / 2.0)) * roll
-    };
+    let raw_damage = (2.0 + (power.max(0.0) * 0.48)) * (20.0 / (20.0 + resist.max(0.0))) * roll;
     let base_damage = raw_damage.ceil().max(1.0);
-    let buff = power.max(0.0);
-    let mut crit_multiplier_raw = 1.1;
-    if buff > 0.0 {
-        crit_multiplier_raw = (1.0 + (buff / 10.0)).min(3.0);
-    }
-    crit_multiplier_raw = crit_multiplier_raw.min(3.0);
-    let crit_multiplier = if source_is_hero {
-        crit_multiplier_raw
-    } else {
-        1.0 + ((crit_multiplier_raw - 1.0) * 0.1)
-    };
-    let crit_value = if number_or_zero(crit_roll01) <= 0.1 {
+    let crit_multiplier = 1.25;
+    let crit_value = if number_or_zero(crit_roll01) < 0.01 {
         base_damage * crit_multiplier
     } else {
         base_damage
@@ -2251,12 +2420,14 @@ pub fn party_damage_party_hp_after(
     hero1_hp: f64,
     hero2_hp: f64,
     hero3_hp: f64,
+    hero4_hp: f64,
+    hero5_hp: f64,
     damage_after_shield: f64,
 ) -> f64 {
-    let values = [hero0_hp, hero1_hp, hero2_hp, hero3_hp];
+    let values = [hero0_hp, hero1_hp, hero2_hp, hero3_hp, hero4_hp, hero5_hp];
     values
         .iter()
-        .take(combatant_count(hero_count))
+        .take(number_or_zero(hero_count).clamp(0.0, 6.0) as usize)
         .map(|hp| party_damage_hero_after_hp(*hp, damage_after_shield))
         .sum()
 }
@@ -2783,6 +2954,8 @@ pub extern "C" fn party_damage_party_hp_after_shadow(
     hero1_hp: f64,
     hero2_hp: f64,
     hero3_hp: f64,
+    hero4_hp: f64,
+    hero5_hp: f64,
     damage_after_shield: f64,
 ) -> f64 {
     party_damage_party_hp_after(
@@ -2791,6 +2964,8 @@ pub extern "C" fn party_damage_party_hp_after_shadow(
         hero1_hp,
         hero2_hp,
         hero3_hp,
+        hero4_hp,
+        hero5_hp,
         damage_after_shield,
     )
 }
@@ -3135,16 +3310,16 @@ mod single_hit_resolution_tests {
     fn mirrors_current_single_hit_resolution_cases() {
         let cases = [
             (
-                18.0, 12.0, 0.5, 0.9, 1.0, 0.0, 0.0, 1.0, 40.0, 0.0, 14.0, 14.0, 26.0,
+                18.0, 12.0, 0.5, 0.9, 1.0, 0.0, 0.0, 1.0, 40.0, 0.0, 7.0, 7.0, 33.0,
             ),
             (
-                30.0, 20.0, 0.25, 0.05, 0.0, 0.0, 0.0, 1.0, 5.0, 0.0, 22.0, 5.0, 0.0,
+                30.0, 20.0, 0.25, 0.05, 0.0, 0.0, 0.0, 1.0, 5.0, 0.0, 8.0, 5.0, 0.0,
             ),
             (
-                28.0, 14.0, 0.75, 0.11, 1.0, 1.0, 1.0, 1.5, 20.0, 0.0, 36.0, 20.0, 0.0,
+                28.0, 14.0, 0.75, 0.11, 1.0, 1.0, 1.0, 1.5, 20.0, 0.0, 15.0, 15.0, 5.0,
             ),
             (
-                18.0, 10.0, 0.0, 0.9, 0.0, 0.0, 0.0, 1.0, 16.0, 6.0, 11.0, 5.0, 11.0,
+                18.0, 10.0, 0.0, 0.9, 0.0, 0.0, 0.0, 1.0, 16.0, 6.0, 7.0, 1.0, 15.0,
             ),
         ];
 
@@ -3220,7 +3395,7 @@ mod single_hit_resolution_tests {
                 );
             }
             assert_eq!(
-                party_damage_party_hp_after(4.0, hp[0], hp[1], hp[2], hp[3], after_shield),
+                party_damage_party_hp_after(4.0, hp[0], hp[1], hp[2], hp[3], 0.0, 0.0, after_shield),
                 party_hp
             );
         }
@@ -3777,11 +3952,11 @@ mod single_hit_resolution_tests {
             (10.0, 40.0, 4.0, 0.0),
             (0.0, 40.0, 4.0, 0.0),
             (-1.0, 40.0, 4.0, 0.0),
-            (10.0, 0.0, 4.0, 2.0),
-            (10.0, -3.0, 4.0, 2.0),
+            (10.0, 0.0, 4.0, 0.0),
+            (10.0, -3.0, 4.0, 0.0),
             (10.0, 12.0, 0.0, 3.0),
-            (0.0, 0.0, 0.0, 2.0),
-            (5.0, 0.0, 0.0, 2.0),
+            (0.0, 0.0, 0.0, 3.0),
+            (5.0, 0.0, 0.0, 3.0),
         ];
 
         for (energy, party_hp, living_heroes, expected) in cases {
@@ -3854,12 +4029,12 @@ mod single_hit_resolution_tests {
         let cases = [
             (0.0, 0.0, 0.0, 40.0, 0.0, 0.0, 0.0, 0.0),
             (0.0, 1.0, 10.0, 40.0, 0.0, 0.0, 0.0, 1.0),
-            (0.0, 1.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0),
-            (0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0),
+            (0.0, 1.0, 10.0, 0.0, 0.0, 0.0, 0.0, 1.0),
+            (0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0),
             (1.0, 0.0, 0.0, 40.0, 0.0, 0.0, 0.0, 0.0),
             (1.0, 1.0, 12.0, 40.0, 0.0, 0.0, 0.0, 1.0),
             (1.0, 1.0, 0.0, 40.0, 0.0, 0.0, 0.0, 0.0),
-            (1.0, 1.0, 0.0, 40.0, 1.0, 1.0, 0.0, 1.0),
+            (1.0, 1.0, 0.0, 40.0, 1.0, 1.0, 0.0, 0.0),
             (1.0, 1.0, 12.0, 40.0, 0.0, 0.0, 1.0, 2.0),
             (2.0, 1.0, 12.0, 40.0, 0.0, 0.0, 0.0, 0.0),
         ];
@@ -4267,6 +4442,8 @@ mod single_hit_resolution_tests {
                     heroes[3].3,
                     heroes[3].4,
                     heroes[3].5,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                 ),
                 expected_uid
             );
@@ -4298,6 +4475,8 @@ mod single_hit_resolution_tests {
                     heroes[3].3,
                     heroes[3].4,
                     heroes[3].5,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                 ),
                 expected_mode
             );
@@ -4329,6 +4508,8 @@ mod single_hit_resolution_tests {
                     heroes[3].3,
                     heroes[3].4,
                     heroes[3].5,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                 ),
                 expected_roll_index
             );

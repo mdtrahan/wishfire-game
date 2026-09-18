@@ -15,9 +15,15 @@ module.exports = {
   Enemy_MAG_Single,
   CalculateDamage,
   ApplyDamageToTarget,
+  UpdateHeroHPUI,
+  applyPartyDestinyActorHeal,
 };`;
   const context = {
-    console,
+    ...require('../web-runner/src/core/combatRules.mjs'),
+    ...require('../web-runner/modules/heroCommands.mjs'),
+    ...require('../web-runner/src/core/personalFlow.mjs'),
+    ...require('../web-runner/modules/heroCommands.mjs'),
+    console: { log() {}, warn: console.warn, error: console.error },
     Math,
     module: { exports: {} },
     exports: {},
@@ -25,6 +31,7 @@ module.exports = {
   };
   vm.createContext(context);
   new vm.Script(transformed, { filename: modulePath }).runInContext(context);
+  context.resolveIncomingNativeHit = (ctx, ...args) => require('../web-runner/modules/heroCommands.mjs').resolveIncomingNativeHit({ ...ctx, callFunction: (name, ...values) => context[name](ctx, ...values) }, ...args);
   return context.module.exports;
 }
 
@@ -154,4 +161,93 @@ test('enemy magic single-target damage accounting uses applied post-clamp damage
   const repoRoot = path.join(__dirname, '..');
   runSingleTargetAccountingPasses(path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js'), 'magic');
   runSingleTargetAccountingPasses(path.join(repoRoot, 'Scripts', 'functionBank.js'), 'magic');
+});
+
+test('hero HP projections preserve KO and sparse slots and clear the previous group', () => {
+  for (const file of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
+    const mod = loadModule(path.join(__dirname, '..', file));
+    const ctx = makeCombatContext({ heroHp: 5 });
+    const hero = ctx.state.entities[0];
+    hero.heroDisplaySlot = 3;
+    hero.maxHP = 20;
+    ctx.state.entities.push({ ...hero, uid: 101, heroDisplaySlot: 1, hp: 0, maxHP: 30 });
+    ctx.state.globals.PartyHPByIndex = [99, 99, 99, 99, 99, 99];
+    mod.UpdateHeroHPUI(ctx);
+    assert.deepEqual(Array.from(ctx.state.globals.PartyHPByIndex), [0, 0, 0, 5], file);
+    assert.deepEqual(Array.from(ctx.state.globals.PartyMaxHPByIndex), [0, 30, 0, 20], file);
+    assert.equal(ctx.state.globals.PartyHP, 5);
+    assert.equal(ctx.state.globals.PartyMaxHP, 50);
+    ctx.state.entities.push({ ...hero, uid: 102, heroDisplaySlot: 5, hp: 7, maxHP: 40 });
+    mod.ApplyDamageToTarget(ctx, 100, 3);
+    assert.deepEqual(ctx.state.entities.filter(actor => actor.kind === 'hero').map(actor => actor.hp), [2, 0, 7]);
+    assert.deepEqual(Array.from(ctx.state.globals.PartyHPByIndex), [0, 0, 0, 2, 0, 7]);
+    assert.equal(ctx.state.globals.PartyHP, 9);
+    ctx.state.entities = [];
+    mod.UpdateHeroHPUI(ctx);
+    assert.equal(ctx.state.globals.PartyHP, 0);
+    assert.equal(ctx.state.globals.PartyMaxHP, 0);
+    assert.equal(ctx.state.globals.PartyHPByIndex.length, 0);
+  }
+});
+
+test('KO heroes consume no shield on repeated hits and Destiny does not revive them', () => {
+  for (const file of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
+    const mod = loadModule(path.join(__dirname, '..', file));
+    const ctx = makeCombatContext({ heroHp: 0 });
+    ctx.state.entities[0].maxHP = 40;
+    ctx.state.globals.PartyTempHPShield = 12;
+    assert.equal(mod.ApplyDamageToTarget(ctx, 100, 10), 0, file);
+    assert.equal(ctx.state.globals.PartyTempHPShield, 12);
+    assert.equal(mod.applyPartyDestinyActorHeal(ctx, 100, 8).appliedHeal, 0);
+    assert.equal(ctx.state.entities[0].hp, 0);
+  }
+});
+
+test('Town and Continue recover actual hero HP for groups through six without reviving empty capacity', async () => {
+  const recovery = await import('../web-runner/systems/questCombatSession.mjs');
+  const runtime = loadModule(path.join(__dirname, '../web-runner/modules/functionBank.js'));
+  const app = fs.readFileSync(path.join(__dirname, '../web-runner/app.js'), 'utf8');
+  const extract = name => app.match(new RegExp(`function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}`))[0];
+  for (let count = 0; count <= 6; count++) {
+    for (const entry of ['town', 'continue']) {
+      const heroes = Array.from({ length: count }, (_, index) => ({
+        uid: 100 + index, kind: 'hero', heroDisplaySlot: count === 1 ? 5 : index,
+        hp: index % 2 ? 3 : 0, maxHP: 20 + index, isAlive: index % 2 === 1,
+      }));
+      const enemy = { uid: 200, kind: 'enemy', hp: 7, maxHP: 50 };
+      const state = { entities: [...heroes, enemy], globals: {
+        PartyHP: 999, PartyMaxHP: 999, PartyHPByIndex: [999], PartyMaxHPByIndex: [999],
+        PendingDeaths: Object.fromEntries([...heroes.map(hero => [hero.uid, true]), [200, true]]),
+        Player_Energy: 42, AstralFlowAmpPoints: 7, Skills: { ward: true },
+      } };
+      const gameState = { partyHP: [999], partyMaxHP: [999] };
+      const ctx = { state };
+      const calls = [];
+      const call = name => {
+        calls.push(name);
+        if (name === 'UpdateHeroHPUI') runtime.UpdateHeroHPUI(ctx);
+      };
+      const shell = vm.createContext({ state, gameState, fnContext: ctx,
+        restoreHeroesToFullHP: recovery.restoreHeroesToFullHP,
+        callFunctionWithContext: (_, name) => call(name),
+      });
+      vm.runInContext(`${extract('syncFromGlobals')}\n${extract('restorePartyToFullHP')}`, shell);
+      if (entry === 'town') shell.restorePartyToFullHP();
+      else recovery.createQuestCombatSession({ state, gameState, call, sync: shell.syncFromGlobals }).resurrect();
+      assert.deepEqual(state.entities, [...heroes, enemy]);
+      assert.equal(heroes.length, count);
+      assert.ok(heroes.every(hero => hero.hp === hero.maxHP && hero.isAlive));
+      assert.equal(enemy.hp, 7);
+      assert.deepEqual(state.globals.PendingDeaths, { 200: true });
+      assert.equal(state.globals.PartyHP, heroes.reduce((total, hero) => total + hero.maxHP, 0));
+      const slots = count === 1 ? [0, 0, 0, 0, 0, 20] : heroes.map(hero => hero.maxHP);
+      assert.deepEqual(Array.from(gameState.partyHP), slots);
+      assert.deepEqual(Array.from(gameState.partyMaxHP), slots);
+      assert.equal(state.globals.Player_Energy, 42);
+      assert.equal(state.globals.AstralFlowAmpPoints, 7);
+      assert.deepEqual(state.globals.Skills, { ward: true });
+      assert.equal(calls.filter(name => name === 'UpdateHeroHPUI').length, 1);
+      assert.equal(calls.includes('ProcessTurn'), entry === 'continue');
+    }
+  }
 });

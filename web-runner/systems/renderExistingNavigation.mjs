@@ -36,7 +36,14 @@ export function renderExistingNavigation(ctx, { worldToCanvas, layoutScale, game
   const entry = gameState.storyEntry;
   host.hidden = entry.phase === 'opening';
   host.inert = host.hidden || !!entry.pending || !!entry.modal || entry.phase === 'defeat';
+  // Hero details fills the stage at z-index 30. Raise the shared nav only on
+  // that surface so its buttons retain ownership of the bottom band while
+  // paused Quest modals stay above the nav layer.
+  host.style.zIndex = layoutState.getActiveLayoutId() === 'heroLayout' ? '32' : '19';
   const canvasRect = ctx.canvas.getBoundingClientRect();
+  // Keep the shared navigation at its established bottom anchor in combat.
+  // The hero status cards own the space above it; combat only changes the
+  // active destination label, not the navigation geometry.
   const pos = worldToCanvas(0, 580);
   host.style.left = `${canvasRect.left + pos.x}px`;
   host.style.top = `${canvasRect.top + pos.y}px`;

@@ -37,6 +37,8 @@ module.exports = {
   PickEnemySkill,
 };`;
   const context = {
+    ...require('../web-runner/src/core/combatRules.mjs'),
+    ...require('../web-runner/modules/heroCommands.mjs'),
     console,
     Math: mathThatFailsOnRandom(),
     module: { exports: {} },

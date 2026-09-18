@@ -1,0 +1,13 @@
+{
+  "hot_files": {
+    "web-runner/app.js": {
+      "functions": [
+        "qaSetHeroFlowReady",
+        "drawFrame",
+        "__MODULE__"
+      ],
+      "staged_blob": "d347a61bd3fe36e8d21e327e950a8518746d2450"
+    }
+  },
+  "issue_id": "ORKA-ymk.2"
+}

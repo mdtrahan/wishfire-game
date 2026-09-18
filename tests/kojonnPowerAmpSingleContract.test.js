@@ -44,6 +44,9 @@ function buildHeroAttackSingle(fnSource, deps) {
     'ensureActorRedAttackSkillStore',
     'LogCombat',
     'queuePartyArcanePulse',
+    'IsPartySessionSkillActive',
+    'PARTY_SPLIT_ID',
+    'combatAttackVfxKind',
     `return (${body});`
   )(
     deps.getActorNameByUID,
@@ -55,7 +58,10 @@ function buildHeroAttackSingle(fnSource, deps) {
     deps.getGlobals,
     deps.ensureActorRedAttackSkillStore,
     deps.LogCombat,
-    deps.queuePartyArcanePulse
+    deps.queuePartyArcanePulse,
+    deps.IsPartySessionSkillActive,
+    'party_split',
+    deps.combatAttackVfxKind
   );
 }
 
@@ -83,6 +89,8 @@ function runKojonnSingleCase(src, ampMult) {
     }),
     LogCombat: (_ctx, msg) => logs.push(String(msg)),
     queuePartyArcanePulse: () => false,
+    IsPartySessionSkillActive: new Function(`${extractFunctionSource(src, 'IsPartySessionSkillActive').replace(/^export\s+/, '')}; return IsPartySessionSkillActive;`)(),
+    combatAttackVfxKind: new Function(`${extractFunctionSource(src, 'combatAttackVfxKind')}; return combatAttackVfxKind;`)(),
   });
 
   fn(ctx, actor.uid, target.uid);

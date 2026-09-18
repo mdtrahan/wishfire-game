@@ -1,0 +1,273 @@
+{
+  "aggregate": {
+    "sessionCount": 6,
+    "seeds": [
+      3235774465,
+      3235774466,
+      3235774467,
+      3235774468,
+      3235774469,
+      3235774470
+    ],
+    "averageEnemiesDefeated": 2.67,
+    "medianEnemiesDefeated": 2.5,
+    "minimumEnemiesDefeated": 2,
+    "averageTurnsSurvived": 61.5,
+    "medianTurnsSurvived": 57.5,
+    "partyDefeats": 6,
+    "deadlockCount": 0,
+    "casualtyDistribution": {
+      "Kojonn": 6,
+      "Runa": 6,
+      "Huun": 6,
+      "Falie": 6
+    },
+    "firstHeroCasualtyDistribution": {
+      "Kojonn": 3,
+      "Runa": 2,
+      "Huun": 1
+    },
+    "firstKoSides": {
+      "enemy": 5,
+      "hero": 1
+    },
+    "endReasons": {
+      "party_defeated": 6
+    },
+    "acceptance": {
+      "everySeedDefeatsOne": true,
+      "zeroDeadlocks": true,
+      "medianDefeatsMultiple": true,
+      "somePartyDefeats": true,
+      "variedHeroCasualties": true
+    },
+    "bounds": {
+      "maxWaves": 5,
+      "enemiesPerWave": 3
+    }
+  },
+  "sessions": [
+    {
+      "sessionId": 1,
+      "seed": 3235774465,
+      "enemiesDefeated": 2,
+      "wavesCompleted": 0.67,
+      "turnsSurvived": 48,
+      "firstKoSide": "enemy",
+      "firstKoTurn": 6,
+      "firstKoTime": 17.82,
+      "heroCasualties": [
+        "Kojonn",
+        "Runa",
+        "Huun",
+        "Falie"
+      ],
+      "livingHeroes": 0,
+      "deadlockCount": 0,
+      "endReason": "party_defeated",
+      "initialHeroes": [
+        {
+          "uid": 1,
+          "name": "Falie"
+        },
+        {
+          "uid": 2,
+          "name": "Huun"
+        },
+        {
+          "uid": 3,
+          "name": "Runa"
+        },
+        {
+          "uid": 4,
+          "name": "Kojonn"
+        }
+      ]
+    },
+    {
+      "sessionId": 2,
+      "seed": 3235774466,
+      "enemiesDefeated": 3,
+      "wavesCompleted": 1,
+      "turnsSurvived": 78,
+      "firstKoSide": "enemy",
+      "firstKoTurn": 8,
+      "firstKoTime": 22.657,
+      "heroCasualties": [
+        "Kojonn",
+        "Runa",
+        "Huun",
+        "Falie"
+      ],
+      "livingHeroes": 0,
+      "deadlockCount": 0,
+      "endReason": "party_defeated",
+      "initialHeroes": [
+        {
+          "uid": 1,
+          "name": "Falie"
+        },
+        {
+          "uid": 2,
+          "name": "Huun"
+        },
+        {
+          "uid": 3,
+          "name": "Runa"
+        },
+        {
+          "uid": 4,
+          "name": "Kojonn"
+        }
+      ]
+    },
+    {
+      "sessionId": 3,
+      "seed": 3235774467,
+      "enemiesDefeated": 3,
+      "wavesCompleted": 1,
+      "turnsSurvived": 84,
+      "firstKoSide": "enemy",
+      "firstKoTurn": 9,
+      "firstKoTime": 25.123,
+      "heroCasualties": [
+        "Runa",
+        "Falie",
+        "Huun",
+        "Kojonn"
+      ],
+      "livingHeroes": 0,
+      "deadlockCount": 0,
+      "endReason": "party_defeated",
+      "initialHeroes": [
+        {
+          "uid": 1,
+          "name": "Falie"
+        },
+        {
+          "uid": 2,
+          "name": "Huun"
+        },
+        {
+          "uid": 3,
+          "name": "Runa"
+        },
+        {
+          "uid": 4,
+          "name": "Kojonn"
+        }
+      ]
+    },
+    {
+      "sessionId": 4,
+      "seed": 3235774468,
+      "enemiesDefeated": 4,
+      "wavesCompleted": 1.33,
+      "turnsSurvived": 60,
+      "firstKoSide": "enemy",
+      "firstKoTurn": 5,
+      "firstKoTime": 15.378,
+      "heroCasualties": [
+        "Kojonn",
+        "Runa",
+        "Falie",
+        "Huun"
+      ],
+      "livingHeroes": 0,
+      "deadlockCount": 0,
+      "endReason": "party_defeated",
+      "initialHeroes": [
+        {
+          "uid": 1,
+          "name": "Falie"
+        },
+        {
+          "uid": 2,
+          "name": "Huun"
+        },
+        {
+          "uid": 3,
+          "name": "Runa"
+        },
+        {
+          "uid": 4,
+          "name": "Kojonn"
+        }
+      ]
+    },
+    {
+      "sessionId": 5,
+      "seed": 3235774469,
+      "enemiesDefeated": 2,
+      "wavesCompleted": 0.67,
+      "turnsSurvived": 44,
+      "firstKoSide": "enemy",
+      "firstKoTurn": 8,
+      "firstKoTime": 22.648,
+      "heroCasualties": [
+        "Huun",
+        "Runa",
+        "Kojonn",
+        "Falie"
+      ],
+      "livingHeroes": 0,
+      "deadlockCount": 0,
+      "endReason": "party_defeated",
+      "initialHeroes": [
+        {
+          "uid": 1,
+          "name": "Falie"
+        },
+        {
+          "uid": 2,
+          "name": "Huun"
+        },
+        {
+          "uid": 3,
+          "name": "Runa"
+        },
+        {
+          "uid": 4,
+          "name": "Kojonn"
+        }
+      ]
+    },
+    {
+      "sessionId": 6,
+      "seed": 3235774470,
+      "enemiesDefeated": 2,
+      "wavesCompleted": 0.67,
+      "turnsSurvived": 55,
+      "firstKoSide": "hero",
+      "firstKoTurn": 31,
+      "firstKoTime": 77.834,
+      "heroCasualties": [
+        "Runa",
+        "Huun",
+        "Falie",
+        "Kojonn"
+      ],
+      "livingHeroes": 0,
+      "deadlockCount": 0,
+      "endReason": "party_defeated",
+      "initialHeroes": [
+        {
+          "uid": 1,
+          "name": "Falie"
+        },
+        {
+          "uid": 2,
+          "name": "Huun"
+        },
+        {
+          "uid": 3,
+          "name": "Runa"
+        },
+        {
+          "uid": 4,
+          "name": "Kojonn"
+        }
+      ]
+    }
+  ]
+}

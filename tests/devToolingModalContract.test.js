@@ -62,10 +62,10 @@ test('dev tooling runtime owns modal/config while app keeps restart wiring', () 
   assert.match(src, /devToolingDom\.launcher\.addEventListener\('click', \(\) => toggleDevToolingModal\(true\)\);/);
   assert.doesNotMatch(src, /data-devtool-status/);
   assert.doesNotMatch(src, /Global runtime controls\. Hotkey:/);
-  assert.match(src, /Save Staged/);
+  assert.match(src, /Apply &amp; Refresh/);
   assert.match(src, /data-devtool-restart/);
-  assert.match(src, /Double Attack/);
-  assert.match(src, /Skill Draw Hero UID/);
+  assert.match(src, /Speed Link Fixture/);
+  assert.doesNotMatch(runtimeSrc, /Skill Draw Hero UID|Force Draw|Clear Skills|data-devtool-skill-id|Skill ID Legend/);
   assert.match(src, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(src, /data-devtool-control-grid/);
   assert.match(src, /#orka-dev-tooling-modal button \{/);
@@ -84,32 +84,9 @@ test('dev tooling runtime owns modal/config while app keeps restart wiring', () 
     closeButtonIndex < actionRowIndex && actionRowIndex < settingsGridIndex,
     'the action-button group must sit below Close and above every settings control',
   );
-  assert.match(runtimeSrc, /function collectDevToolSkillLegendRows\(\)/);
-  assert.match(runtimeSrc, /const DEV_TOOL_SKILL_ID_LEGEND = Object\.freeze\(\[/);
-  assert.match(runtimeSrc, /party_magic_fruit/);
-  assert.match(runtimeSrc, /party_crimson_ward/);
-  assert.match(runtimeSrc, /party_split/);
-  assert.match(runtimeSrc, /party_faze/);
-  assert.match(runtimeSrc, /party_destiny/);
-  assert.match(runtimeSrc, /party_chain_strike_i/);
-  assert.match(runtimeSrc, /party_chain_strike_ii/);
-  assert.match(runtimeSrc, /party_grow/);
-  assert.doesNotMatch(runtimeSrc, /callFunctionWithContext\(fnContext, 'GetPartySkillDefinitions'\)/);
-  assert.doesNotMatch(runtimeSrc, /GetHeroSkillDefinitions/);
-  assert.doesNotMatch(runtimeSrc, /ownerFallback/);
-  assert.doesNotMatch(runtimeSrc, /party_second_chance/);
-  assert.doesNotMatch(runtimeSrc, /party_weaken/);
-  assert.doesNotMatch(runtimeSrc, /party_blue_spark/);
-  assert.doesNotMatch(runtimeSrc, /party_hot_streak/);
-  assert.doesNotMatch(runtimeSrc, /party_momentum/);
-  assert.doesNotMatch(runtimeSrc, /party_guard_rail/);
-  assert.doesNotMatch(runtimeSrc, /party_chain_pop/);
-  assert.match(runtimeSrc, /data-devtool-skill-legend/);
   assert.match(runtimeSrc, /data-devtool-turn-order-qa-slot/);
   assert.match(runtimeSrc, /function refreshCombatTurnQaReadout\(\)/);
   assert.match(runtimeSrc, /renderCombatTurnQaReadoutHtml\(\{/);
-  assert.match(runtimeSrc, /Skill ID Legend/);
-  assert.match(runtimeSrc, /data-devtool-button-row[\s\S]*\$\{renderDevToolSkillLegendHtml\(\)\}/);
   assert.match(src, /data-devtool-double-attack-hero/);
   assert.match(src, /devToolingDom\.apply\.addEventListener\('click', \(\) => applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ closeModal: true \}\)\);/);
   assert.match(src, /devToolingDom\.refresh\.addEventListener\('click', \(\) => applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ closeModal: false \}\)\);/);
@@ -117,13 +94,11 @@ test('dev tooling runtime owns modal/config while app keeps restart wiring', () 
   assert.match(src, /devToolingDom\.autoplay\.addEventListener\('click', async \(\) => \{/);
   assert.match(src, /closeDevToolingModal\(\{ restorePauseSnapshot: true \}\);/);
   assert.match(src, /function syncConfiguredDoubleAttackHarness\(cfg = ensureDevToolingConfig\(\)\)/);
-  assert.match(src, /function syncIdleFarmDevLoadoutConfig\(cfg = ensureDevToolingConfig\(\)\)/);
-  assert.match(src, /callFunctionWithContext\(fnContext, 'ConfigureActorExtraTurnSkill', actor\.uid, \{/);
-  assert.match(src, /syncIdleFarmDevLoadoutConfig\(next\);/);
+  assert.match(src, /DevSpeedLinkFixture/);
+  assert.match(src, /fastestEnemySpeed \* 2/);
+  assert.match(src, /speedFixtureChanged/);
   assert.match(src, /if \(activeLayoutId === 'combat' && typeof devToolingRefreshHandler === 'function'\) \{/);
   assert.match(src, /await devToolingRefreshHandler\(\{ forceCombat: false, resetGame: false \}\);/);
-  assert.match(src, /else if \(activeLayoutId === 'idleFarmLayout'\) \{/);
-  assert.match(src, /restartIdleFarmSession\(performance\.now\(\) \/ 1000\);/);
   assert.match(src, /Combat state unchanged/);
   assert.match(src, /config: ensureDevToolingConfig\(\)/);
   assert.match(src, /async function applyDevToolingConfig\(patch = \{\}, \{ closeModal = true \} = \{\}\)/);
@@ -143,7 +118,7 @@ test('dev tooling runtime owns modal/config while app keeps restart wiring', () 
   assert.doesNotMatch(src, /persistDevToolingConfig\(\{ \.\.\.resetCfg, open: false \}\);/);
   assert.doesNotMatch(src, /applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ refreshGame:/);
   assert.doesNotMatch(src, /applyDevToolingConfig\(readDevToolingDomConfigPatch\(\), \{ resetGame:/);
-  assert.match(src, /Double Attack: \$\{next\.doubleAttackHeroName \|\| 'Off'\}/);
+  assert.match(src, /Speed Link Fixture: \$\{next\.doubleAttackHeroName \|\| 'Off'\}/);
 
   const resetBlock = extractFunctionSource(appSrc, 'refreshCombatSessionFromDevTooling');
   assert.match(resetBlock, /if \(resetGame\) \{[\s\S]*return hardRestartRuntimeFromDevTooling\(\);[\s\S]*\}/);
@@ -180,11 +155,8 @@ test('editable dev tooling fields bypass gameplay keyboard shortcuts', () => {
     keydownSrc,
     /if \(ensureDevToolingConfig\(\)\.open\) \{[\s\S]*if \(!isEditableDomTarget\(ev\.target\)\) \{[\s\S]*return;[\s\S]*\}\s*return;\s*\}/,
   );
-  assert.ok(
-    keydownSrc.indexOf('return;\n    }\n    if (state.globals.DevTestMode)')
-      < keydownSrc.indexOf("ev.code === 'KeyA'"),
-    'editable modal targets must return before the KeyA gameplay shortcut',
-  );
+  assert.doesNotMatch(keydownSrc, /handleGemMatch/);
+  assert.match(keydownSrc, /closest\?\.\('#hero-commands'\)\) return/);
 });
 
 test('dev browser hooks expose an explicit dynamic initiative authority QA scenario', () => {
@@ -257,7 +229,7 @@ test('startup preload can prepare combat assets while story mock is active', () 
   assert.doesNotMatch(prepareSrc, /assertCombatLayoutDev\('prepareCombatSetupFromInstances'\)/);
   assert.match(src, /createCombatSessionInitializer/);
   assert.match(initializerSrc, /assertCombatLayoutDev\('initEntities'\)/);
-  assert.match(src, /assertCombatLayoutDev\('createGemBoard'\)/);
+  assert.doesNotMatch(src, /function createGemBoard\(/);
   assert.match(src, /assertCombatLayoutDev\('StartRound'\)/);
 });
 
@@ -336,5 +308,34 @@ test('combat end clears staged dev overrides and autoplay while preserving gold'
   assert.equal(g.DevRewardDrops.length, 0);
   assert.equal(g.DevEnemySlots.join(','), '__RANDOM__,__RANDOM__,__RANDOM__');
   assert.deepEqual(removed, ['orka.dev_tooling_config.v1']);
-  assert.ok(calls.includes('ClearSessionSkillDraught'));
+  assert.ok(!calls.includes('ClearSessionSkillDraught'));
+});
+
+test('Speed Link Fixture uses the existing dev selector to force one two-times-Speed threshold', async () => {
+  const vm = require('node:vm');
+  const src = fs.readFileSync(path.join(__dirname, '../web-runner/systems/devToolingRuntime.js'), 'utf8')
+    .replace(/^import .*;$/gm, '')
+    .replace(/export \{[\s\S]*?\};/, '')
+    .replace('export function createDevToolingRuntime', 'function createDevToolingRuntime');
+  const context = vm.createContext({ window: { addEventListener() {}, sessionStorage: { setItem() {} } }, document: { getElementById: () => null }, normalizeCombatOrientation: () => 'left-wise' });
+  vm.runInContext(src, context);
+  const state = { globals: { CombatOrientation: 'left-wise', DevToolingConfig: {} }, entities: [
+    { uid: 1, kind: 'hero', name: 'Hondo', hp: 40, stats: { SPD: 11 } },
+    { uid: 101, kind: 'enemy', hp: 40, stats: { SPD: 13 } },
+  ] };
+  let refreshCalls = 0;
+  const runtime = context.createDevToolingRuntime({
+    state, gameState: {}, CANONICAL_HERO_ROSTER: [{ name: 'Hondo' }],
+    callFunctionWithContext() {}, getLayoutState: () => ({ getActiveLayoutId: () => 'combat' }),
+  });
+  runtime.setRefreshHandler(async () => { refreshCalls += 1; });
+  await runtime.applyDevToolingConfig({ doubleAttackHeroName: 'Hondo' }, { closeModal: false });
+  assert.equal(state.entities[0].stats.SPD, 26);
+  assert.deepEqual(JSON.parse(JSON.stringify(state.globals.DevSpeedLinkFixture)), {
+    holderUID: 1, holderName: 'Hondo', baseSpeed: 11, fastestEnemySpeed: 13, linkedSpeed: 26,
+  });
+  assert.equal(refreshCalls, 1, 'Apply & Refresh can stage Hondo through the existing Speed Link Fixture selector');
+  await runtime.applyDevToolingConfig({ doubleAttackHeroName: '' }, { closeModal: false });
+  assert.equal(state.entities[0].stats.SPD, 11);
+  assert.equal(state.globals.DevSpeedLinkFixture, null);
 });

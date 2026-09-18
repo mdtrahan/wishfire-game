@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
 const path = require('node:path');
 
-test('map overlays move independently and the ladder retains the page banner with the same world token', async () => {
+test('map overlays move independently while non-map phases keep map controls inert', async () => {
   const file = path.resolve(__dirname, '../web-runner/systems/renderNarrativeScene.js');
   const source = fs.readFileSync(file, 'utf8')
     .replace(/from '(\.[^']+)'/g, (_, ref) => `from '${new URL(ref, pathToFileURL(file)).href}'`)
@@ -38,7 +38,7 @@ test('map overlays move independently and the ladder retains the page banner wit
   } finally { global.Image = originalImage; }
 });
 
-test('map and ladder share identical resource markup and dialogue hides it', async () => {
+test('the player map exposes resources while archival ladder markup stays outside player flow', async () => {
   const { createQuestLadderUI } = await import('../web-runner/systems/questLadderUI.mjs');
   const originalDocument = global.document;
   let host;
@@ -53,22 +53,20 @@ test('map and ladder share identical resource markup and dialogue hides it', asy
       gameState, layoutState: { getActiveLayoutId: () => 'storyMock' }, flow: {}, getGold: () => gold });
     ui.update();
     const mapHeader = host.innerHTML;
-    assert.match(mapHeader, /Quest resources/);
+    assert.match(mapHeader, /Resources/);
     assert.match(mapHeader, /Gold 12345/);
     assert.match(mapHeader, /12,345/);
     gameState.storyEntry.phase = 'ladder';
     ui.update();
     assert.equal(host.innerHTML.slice(0, host.innerHTML.indexOf('<section')), mapHeader);
+    assert.match(host.innerHTML, /aria-label="Quests"/);
     gameState.storyEntry.cards.push({id:'story-1'}, {id:'story-2'});
     ui.update();
     assert.match(host.innerHTML, /0\/2/);
-    gameState.storyEntry.cards.push(...Array.from({length:10}, (_, i) => ({id:`stage-${i + 1}`})));
+    gameState.storyEntry.progress.completed.push('story-1');
     ui.update();
-    assert.match(host.innerHTML, /0\/12/);
-    gameState.storyEntry.progress.completed.push('story-1', 'stage-1');
-    ui.update();
-    assert.match(host.innerHTML, /value="2" max="12"/);
-    assert.match(host.innerHTML, /2\/12/);
+    assert.match(host.innerHTML, /value="1" max="2"/);
+    assert.match(host.innerHTML, /1\/2/);
     gold = 12000;
     ui.update();
     assert.match(host.innerHTML, /Gold 12000/);

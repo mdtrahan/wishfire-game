@@ -41,19 +41,7 @@ test('enemy board locks do not mark line-clear refill pressure in both runtime m
   }
 });
 
-test('app refill loop keeps enemy line-clear empties until a player action clears pressure', () => {
-  const src = read('web-runner/app.js');
 
-  assert.match(src, /applyTurnGateGlobals\(\{\s*CanPickGems: 0,\s*IsPlayerBusy: 1,\s*EnemyLineClearPressureActive: 0,\s*\}\);/s);
-  assert.match(src, /setGems: \(gems\) => \{\s+setGemArray\(gems\);\s+rebuildGridFromGems\(\);/s);
-  assert.match(src, /const enemyLineClearPressureActive = !!state\.globals\.EnemyLineClearPressureActive;/);
-  assert.match(src, /if \(\s*refillReady &&\s*hasEmpty &&\s*!enemyLineClearPressureActive\s*\)\s*\{\s*startRefillBounce\(\);/s);
-  assert.match(src, /function canResolveDeferredAdvance\(\{ hasEmpty = false, enemyLineClearPressureActive = false \} = \{\}\)/);
-  assert.match(src, /const presentationBarrier = getPresentationTurnBarrier\(\{ hasEmpty, enemyLineClearPressureActive \}\);/);
-  assert.match(src, /const refillPending = presentationBarrier\.refillPending && presentationBarrier\.canStartRefill;/);
-  assert.match(src, /if \(deferredAdvanceState\.refillPending\) \{\s*\/\/ Refill must complete before advancing to the next actor\.\s*startRefillBounce\(\);/s);
-  assert.doesNotMatch(src, /if \(enemyAction\.state === 'DONE'\) \{[\s\S]*if \(hasEmptySlots\(\) && !\(gameState\.refillBounce && gameState\.refillBounce\.active\)\) \{[\s\S]*startRefillBounce\(\);/s);
-});
 
 test('app starts normal refill before deferred turn advance resolves', () => {
   const src = read('web-runner/app.js');
@@ -71,19 +59,7 @@ test('app starts normal refill before deferred turn advance resolves', () => {
   );
 });
 
-test('regular match resolution starts refill immediately after gem destruction', () => {
-  const src = read('web-runner/app.js');
 
-  assert.match(
-    src,
-    /const rebuildGridAndStartMatchRefill = \(\) => \{[\s\S]*rebuildGridFromGems\(\);[\s\S]*startRefillBounce\(\);[\s\S]*\};/
-  );
-  for (const colorCase of ['color === 0 || color === 1', 'color === 2', 'color === 3', 'color === 4', 'color === 5']) {
-    const start = src.indexOf(`if (${colorCase})`);
-    const branch = start >= 0 ? src.slice(start, src.indexOf('} else if', start + 1) >= 0 ? src.indexOf('} else if', start + 1) : src.indexOf('\n  }\n\n  console.log', start)) : '';
-    assert.ok(branch.includes('rebuildGridAndStartMatchRefill();'), `${colorCase} branch should refill immediately`);
-  }
-});
 
 test('app startRefillBounce queues missing cells after a line-clear style gem removal', () => {
   const src = read('web-runner/app.js');

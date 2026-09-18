@@ -6,6 +6,7 @@
 ## Ownership
 - Combat formulas, turn gates, scheduler rules, targeting, status effects, RNG, packet normalization, GameState envelope rules, input domains, and layout state primitives.
 - CommonJS entrypoints used by tests and compatibility surfaces.
+- `sessionLevelBuffCatalog.mjs` owns the final 48-card universal Wishfire session pool. Keep its typed numeric formulas, stage relationships, and player-facing copy aligned with `governance/planning/session-level-up-buff-pool.md`; `sessionLevelBuffOffers.mjs` owns eligibility and replacement resolution.
 
 ## Local Contracts
 - Keep rule modules deterministic and JSON-safe.
@@ -13,6 +14,7 @@
 - Speed-based interleaved initiative is canonical for normal combat; team-phase helpers are compatibility/shadow surfaces unless a bead explicitly changes the product decision.
 - SimulationCore packet shapes must exclude browser-owned presentation/storage state.
 - If Rust owns a rule family, JS code should preserve packet/diagnostic compatibility and avoid acting as final authority.
+- `heroAttackTargetingRules.mjs` owns living-enemy random HERO_SINGLE fallback targeting; manual target ownership remains in functionBank.
 - CJS mirrors such as `simulationCorePacket.cjs`, `gameStateEnvelopeRules.cjs`, and `combatRuntimeGateway.cjs` must stay aligned with their intended test/runtime consumers.
 - `combatOrientation.mjs` owns presentation-only left/right normalization and formation projection. Right-wise reflects then translates both formations `-40` logical X; heroes keep Y while enemies receive one derived block-Y offset aligning team formation midpoints. Derive that enemy offset from the fixed slot grid, never the currently living roster, so death and refill cannot move survivors. Do not put orientation in SimulationCore packets or mutate canonical actor coordinates.
 
@@ -29,3 +31,9 @@
 
 ## Child DOX Index
 - None.
+
+- Normal-turn eligibility uses the individual actor HP; pooled HP and pending-group markers never grant a KO actor a new action. Enemy-target owner packets support six formation slots.
+
+- Party-damage packets carry six HP entries and the actual loaded member count. Empty capacity contributes no damage recipient or health.
+
+- Presentation barriers ignore retired SkillDraught open/pending flags. Animation, pending-hit and refill barriers remain enforced.

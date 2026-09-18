@@ -1,6 +1,8 @@
 import * as devToolingControls from './devToolingControls.js';
 import { renderCombatTurnQaReadoutHtml } from './combatTurnQaReadout.mjs';
 import { normalizeCombatOrientation } from '../../src/core/combatOrientation.mjs';
+import { clearSessionLevelBuffState } from '../../src/core/sessionLevelBuffOffers.mjs';
+import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 
 const DEV_TOOL_HOTKEY_LABEL = 'Ctrl+Shift+P';
 const DEV_TOOL_GEM_RANDOM = -1;
@@ -27,16 +29,6 @@ const DEV_TOOL_REWARD_OPTIONS = Object.freeze([
 const DEV_TOOLING_STORAGE_KEY = 'orka.dev_tooling_config.v1';
 const DEV_TOOL_EMPTY_SLOT = '';
 const DEV_TOOL_RANDOM_ENEMY_SLOT = '__RANDOM__';
-const DEV_TOOL_SKILL_ID_LEGEND = Object.freeze([
-  { title: 'Magic Fruit', id: 'party_magic_fruit' },
-  { title: 'Crimson Ward', id: 'party_crimson_ward' },
-  { title: 'Split', id: 'party_split' },
-  { title: 'Faze', id: 'party_faze' },
-  { title: 'Destiny', id: 'party_destiny' },
-  { title: 'Chain Strike I', id: 'party_chain_strike_i' },
-  { title: 'Chain Strike II', id: 'party_chain_strike_ii' },
-  { title: 'Grow', id: 'party_grow' },
-]);
 export {
   DEV_TOOL_HOTKEY_LABEL,
   DEV_TOOL_GEM_RANDOM,
@@ -59,7 +51,6 @@ export function createDevToolingRuntime(deps = {}) {
     superGemRuntime,
     setGemArray,
     rebuildGridFromGems,
-    restartIdleFarmSession,
     hasEmptySlots,
     getPresentationTurnBarrier,
     getEnemyRosterStabilitySnapshot,
@@ -133,29 +124,36 @@ export function createDevToolingRuntime(deps = {}) {
 
   function syncConfiguredDoubleAttackHarness(cfg = ensureDevToolingConfig()) {
     const heroNames = getDevToolHeroOptions();
+    const originals = state.globals.DevSpeedLinkOriginalSPDByUID || {};
     for (const heroName of heroNames) {
       const actor = state.entities.find((entity) => entity && entity.kind === 'hero' && String(entity.name || '') === heroName);
       if (!actor) continue;
       callFunctionWithContext(fnContext, 'RemoveActorExtraTurnSkill', actor.uid);
+      if (Object.prototype.hasOwnProperty.call(originals, actor.uid) && actor.stats) actor.stats.SPD = Number(originals[actor.uid]);
     }
+    state.globals.DevSpeedLinkOriginalSPDByUID = {};
     const holderName = String(cfg.doubleAttackHeroName || '').trim();
     state.globals.DevDoubleAttackChance = Number(cfg.doubleAttackChance || 1);
     if (!holderName) {
       state.globals.DevDoubleAttackHolderName = '';
       state.globals.DevDoubleAttackHolderUID = 0;
+      state.globals.DevSpeedLinkFixture = null;
       return null;
     }
     const actor = state.entities.find((entity) => entity && entity.kind === 'hero' && String(entity.name || '') === holderName);
     if (!actor) {
       state.globals.DevDoubleAttackHolderName = '';
       state.globals.DevDoubleAttackHolderUID = 0;
+      state.globals.DevSpeedLinkFixture = null;
       return null;
     }
-    callFunctionWithContext(fnContext, 'ConfigureActorExtraTurnSkill', actor.uid, {
-      chance: Number(cfg.doubleAttackChance || 1),
-      traitId: 'double_attack',
-      skillId: 'DOUBLE_ATTACK',
-    });
+    const fastestEnemySpeed = Math.max(1, ...state.entities
+      .filter((entity) => entity && entity.kind === 'enemy' && Number(entity.hp || 0) > 0)
+      .map((entity) => Number(entity.stats?.SPD ?? entity.SPD ?? 0)));
+    const baseSpeed = Number(actor.stats?.SPD ?? actor.SPD ?? 0);
+    if (actor.stats) actor.stats.SPD = Math.max(baseSpeed, fastestEnemySpeed * 2);
+    state.globals.DevSpeedLinkOriginalSPDByUID = { [actor.uid]: baseSpeed };
+    state.globals.DevSpeedLinkFixture = { holderUID:Number(actor.uid || 0), holderName, baseSpeed, fastestEnemySpeed, linkedSpeed:Number(actor.stats?.SPD ?? actor.SPD ?? 0) };
     state.globals.DevDoubleAttackHolderName = holderName;
     state.globals.DevDoubleAttackHolderUID = Number(actor.uid || 0);
     return Number(actor.uid || 0);
@@ -246,77 +244,6 @@ export function createDevToolingRuntime(deps = {}) {
     return sanitizeDevToolingConfig(state.globals.DevToolingConfig || {}).enemySlots.slice(0, 3);
   }
 
-  function resolveDevToolingSkillHeroUID(rawValue = '') {
-    const heroes = state.entities.filter(actor => actor?.kind === 'hero');
-    const requested = Number(rawValue || 0);
-    if (Number.isFinite(requested) && requested > 0) {
-      const requestedUID = Math.floor(requested);
-      const exactActor = heroes.find(actor => Number(actor?.uid || 0) === requestedUID) || null;
-      if (exactActor) return requestedUID;
-      const slotActor = heroes.find((actor, index) => {
-        const displaySlot = Number(actor?.heroDisplaySlot);
-        const heroIndex = Number(actor?.heroIndex);
-        return (Number.isInteger(displaySlot) && displaySlot + 1 === requestedUID)
-          || (Number.isInteger(heroIndex) && heroIndex + 1 === requestedUID)
-          || index + 1 === requestedUID;
-      }) || null;
-      if (slotActor) return Number(slotActor.uid || 0);
-    }
-    const currentUID = Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0);
-    const currentActor = heroes.find(actor => Number(actor?.uid || 0) === currentUID) || null;
-    if (currentActor) return currentUID;
-    const fallbackHero = heroes.find(actor => Number(actor?.hp || 0) > 0) || heroes[0] || null;
-    return Number(fallbackHero?.uid || 0);
-  }
-
-  function escapeDevToolingHtml(value) {
-    return String(value ?? '').replace(/[&<>"']/g, ch => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;',
-    }[ch]));
-  }
-
-  function collectDevToolSkillLegendRows() {
-    return DEV_TOOL_SKILL_ID_LEGEND.map(row => ({ ...row }));
-  }
-
-  function renderDevToolSkillLegendHtml() {
-    const rows = collectDevToolSkillLegendRows();
-    const rowHtml = rows.length
-      ? rows.map(row => `
-        <div data-devtool-skill-legend-row style="display:grid;grid-template-columns:minmax(88px,1fr) minmax(128px,1.2fr);gap:6px;align-items:center;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;padding:6px;font-size:11px;line-height:1.25;">
-          <span style="font-weight:700;color:#111827;overflow-wrap:anywhere;">${escapeDevToolingHtml(row.title)}</span>
-          <code data-devtool-skill-id-label style="font:700 11px/1.25 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;color:#312e81;overflow-wrap:anywhere;">${escapeDevToolingHtml(row.id)}</code>
-        </div>
-      `).join('')
-      : '<div style="font-size:11px;color:#475569;">No skill IDs available.</div>';
-    return `
-      <section data-devtool-skill-legend style="display:flex;flex-direction:column;gap:8px;margin-top:14px;border-top:1px solid #e2e8f0;padding-top:12px;">
-        <div style="font-weight:800;">Skill ID Legend</div>
-        <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:6px;max-height:150px;overflow:auto;padding-right:4px;">
-          ${rowHtml}
-        </div>
-      </section>
-    `;
-  }
-
-  function syncIdleFarmDevLoadoutConfig(cfg = ensureDevToolingConfig()) {
-    const layout = gameState.idleFarmLayout || (gameState.idleFarmLayout = {});
-    const currentConfig = (layout.config && typeof layout.config === 'object') ? layout.config : {};
-    const heroNames = Array.isArray(cfg.heroSlots) ? cfg.heroSlots.map((value) => String(value || '').trim()).filter(Boolean) : [];
-    const rawEnemySlots = Array.isArray(cfg.enemySlots) ? cfg.enemySlots.map((value) => String(value || '').trim()) : [];
-    const activeEnemySlots = rawEnemySlots.filter((value) => value !== DEV_TOOL_EMPTY_SLOT);
-    layout.config = {
-      ...currentConfig,
-      heroNames,
-      enemySlots: Math.max(1, activeEnemySlots.length || Number(currentConfig.enemySlots || 1)),
-      enemyNames: rawEnemySlots.map((value) => (value === DEV_TOOL_RANDOM_ENEMY_SLOT ? '' : value)),
-    };
-    return layout.config;
-  }
 
   function readEscortPartyConfig() {
     const raw = state.globals && state.globals.EscortPartyConfig;
@@ -432,10 +359,9 @@ export function createDevToolingRuntime(deps = {}) {
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
       ? layoutState.getActiveLayoutId()
       : 'unknown';
-    const skillDraught = getSkillDraughtDevSummary();
     const suffix = message ? `\n${message}` : '';
     devToolingDom.status.textContent =
-      `Hotkey: ${DEV_TOOL_HOTKEY_LABEL}\nActive Layout: ${activeLayoutId}\nIdle Mode: ${autoplayActive ? 'ACTIVE' : 'idle'}\nSkill Draw: ${skillDraught}\nApply: writes only the selected condition; no combat reset, turn advance, or loadout refresh${suffix}`;
+      `Hotkey: ${DEV_TOOL_HOTKEY_LABEL}\nActive Layout: ${activeLayoutId}\nIdle Mode: ${autoplayActive ? 'ACTIVE' : 'idle'}\nApply: writes only the selected condition; no combat reset, turn advance, or loadout refresh${suffix}`;
   }
 
   function refreshCombatTurnQaReadout() {
@@ -445,14 +371,6 @@ export function createDevToolingRuntime(deps = {}) {
       callFunctionWithContext,
       fnContext,
     });
-  }
-
-  function getSkillDraughtDevSummary() {
-    const draught = callFunctionWithContext(fnContext, 'GetSkillDraughtState') || {};
-    const sessionSkills = draught.sessionSkillsByHeroUID || {};
-    const learnedCount = Object.values(sessionSkills).reduce((total, row) => total + (Array.isArray(row) ? row.length : 0), 0);
-    const open = Number(draught.open || 0) ? 'open' : 'closed';
-    return `${open}, hero ${Number(draught.heroUID || 0)}, candidates ${(draught.candidates || []).length}, session ${learnedCount}`;
   }
 
   function populateDevToolSlotSelect(selectEl, { choices = [], includeRandom = false, selected = '' } = {}) {
@@ -497,9 +415,6 @@ export function createDevToolingRuntime(deps = {}) {
     devToolingDom.rewardDrops.value = String(cfg.rewardDrops || '');
     devToolingDom.rewardCount.value = String(cfg.rewardCount);
     populateDevToolSlotSelect(devToolingDom.doubleAttackHero, { choices: getDevToolHeroOptions(), includeRandom: false, selected: cfg.doubleAttackHeroName || DEV_TOOL_EMPTY_SLOT });
-    if (devToolingDom.skillHero && !devToolingDom.skillHero.value) {
-      devToolingDom.skillHero.value = String(callFunctionWithContext(fnContext, 'GetCurrentTurn') || '');
-    }
     updateDevToolingStatus();
   }
 
@@ -544,16 +459,16 @@ export function createDevToolingRuntime(deps = {}) {
     state.globals.DevDoubleAttackHolderUID = 0;
     state.globals.DevDoubleAttackChance = Number(next.doubleAttackChance || 1);
     persistDevToolingConfig(next);
-    syncIdleFarmDevLoadoutConfig(next);
     gameState.selectedHero = Math.min(gameState.selectedHero || 0, Math.max(0, next.heroSlots.filter(Boolean).length - 1));
     gameState.selectedEnemy = Math.min(gameState.selectedEnemy || 0, Math.max(0, next.enemySlots.filter((value) => String(value || '').trim() !== DEV_TOOL_EMPTY_SLOT).length - 1));
     const recolored = applyBoardGemColor(next.boardGemColor);
     const doubleAttackUID = syncConfiguredDoubleAttackHarness(next);
     const heroSlotsChanged = JSON.stringify(prev.heroSlots || []) !== JSON.stringify(next.heroSlots || []);
     const enemySlotsChanged = JSON.stringify(prev.enemySlots || []) !== JSON.stringify(next.enemySlots || []);
+    const speedFixtureChanged = prev.doubleAttackHeroName !== next.doubleAttackHeroName;
     const loadoutChanged = heroSlotsChanged || enemySlotsChanged;
     const orientationChanged = prev.combatOrientation !== next.combatOrientation;
-    const combatSetupChanged = loadoutChanged || orientationChanged;
+    const combatSetupChanged = loadoutChanged || orientationChanged || speedFixtureChanged;
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
       ? layoutState.getActiveLayoutId()
       : '';
@@ -562,11 +477,10 @@ export function createDevToolingRuntime(deps = {}) {
       if (activeLayoutId === 'combat' && typeof devToolingRefreshHandler === 'function') {
         await devToolingRefreshHandler({ forceCombat: false, resetGame: false });
         appliedSessionChange = 'combat_refresh';
-      } else if (activeLayoutId === 'idleFarmLayout') {
-        restartIdleFarmSession(performance.now() / 1000);
-        appliedSessionChange = 'idle_restart';
+
       }
     }
+    if (appliedSessionChange === 'combat_refresh') syncConfiguredDoubleAttackHarness(next);
     syncDevToolingDomFromConfig();
     if (closeModal) closeDevToolingModal({ restorePauseSnapshot: appliedSessionChange !== 'combat_refresh' });
     updateDevToolingStatus(
@@ -575,7 +489,7 @@ export function createDevToolingRuntime(deps = {}) {
       `Hero slots (staged): ${next.heroSlots.map((value) => value || 'Empty').join(', ')}\n` +
       `Enemy slots (staged): ${next.enemySlots.map((value) => value === DEV_TOOL_RANDOM_ENEMY_SLOT ? 'Random' : (value || 'Empty')).join(', ')}\n` +
       `Combat orientation: ${next.combatOrientation}\n` +
-      `Double Attack: ${next.doubleAttackHeroName || 'Off'}${doubleAttackUID ? ` (uid ${doubleAttackUID})` : ''}\n` +
+      `Speed Link Fixture: ${next.doubleAttackHeroName || 'Off'}${doubleAttackUID ? ` (uid ${doubleAttackUID})` : ''}\n` +
       `Reward (staged): ${next.rewardDrops || 'None'} x${next.rewardCount}\n` +
       `${combatSetupChanged ? `Combat setup applied: ${appliedSessionChange}` : 'Combat state unchanged'}`
     );
@@ -653,11 +567,9 @@ export function createDevToolingRuntime(deps = {}) {
       </div>
       <div data-devtool-button-row style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:14px;">
         <button type="button" data-devtool-apply style="border:1px solid #14532d;background:#1f8f4a;color:#fff;padding:6px 10px;border-radius:8px;font-weight:800;cursor:pointer;">Apply</button>
-        <button type="button" data-devtool-refresh style="border:1px solid #475569;background:#fff;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Save Staged</button>
+        <button type="button" data-devtool-refresh style="border:1px solid #475569;background:#fff;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Apply &amp; Refresh</button>
         <button type="button" data-devtool-autoplay style="border:1px solid #1d4ed8;background:#eff6ff;color:#1e3a8a;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">AutoPlay</button>
         <button type="button" data-devtool-restart style="border:1px solid #92400e;background:#fff7ed;color:#9a3412;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Restart</button>
-        <button type="button" data-devtool-force-skill-draught style="border:1px solid #4c1d95;background:#f5f3ff;color:#4c1d95;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Force Draw</button>
-        <button type="button" data-devtool-clear-session-skills style="border:1px solid #7f1d1d;background:#fef2f2;color:#7f1d1d;padding:6px 10px;border-radius:8px;font-weight:700;cursor:pointer;">Clear Skills</button>
       </div>
       <div data-devtool-control-grid style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;">
         <div style="display:flex;flex-direction:column;gap:4px;">
@@ -687,7 +599,7 @@ export function createDevToolingRuntime(deps = {}) {
             <select data-devtool-enemy-slot="2"></select>
           </label>
         </div>
-        <label style="display:flex;flex-direction:column;gap:4px;">Board Gem Color
+        <label hidden>Board Gem Color
           <select data-devtool-board-color>
             ${DEV_TOOL_GEM_OPTIONS.map((row) => `<option value="${row.value}">${row.label}</option>`).join('')}
           </select>
@@ -712,18 +624,11 @@ export function createDevToolingRuntime(deps = {}) {
         <label style="display:flex;flex-direction:column;gap:4px;">Reward Count
           <input data-devtool-reward-count type="number" min="0" max="99" step="1">
         </label>
-        <label style="display:flex;flex-direction:column;gap:4px;">Double Attack
+        <label style="display:flex;flex-direction:column;gap:4px;">Speed Link Fixture
           <select data-devtool-double-attack-hero></select>
-        </label>
-        <label style="display:flex;flex-direction:column;gap:4px;">Skill Draw Hero UID / Slot
-          <input data-devtool-skill-hero type="number" min="0" step="1">
-        </label>
-        <label style="display:flex;flex-direction:column;gap:4px;">Skill Draw Skill ID
-          <input data-devtool-skill-id type="text" placeholder="optional">
         </label>
       </div>
       <div data-devtool-turn-order-qa-slot></div>
-      ${renderDevToolSkillLegendHtml()}
     `;
     root.appendChild(panel);
     document.body.appendChild(root);
@@ -766,10 +671,6 @@ export function createDevToolingRuntime(deps = {}) {
       rewardDrops: panel.querySelector('[data-devtool-reward-drops]'),
       rewardCount: panel.querySelector('[data-devtool-reward-count]'),
       doubleAttackHero: panel.querySelector('[data-devtool-double-attack-hero]'),
-      skillHero: panel.querySelector('[data-devtool-skill-hero]'),
-      skillId: panel.querySelector('[data-devtool-skill-id]'),
-      forceSkillDraught: panel.querySelector('[data-devtool-force-skill-draught]'),
-      clearSessionSkills: panel.querySelector('[data-devtool-clear-session-skills]'),
       turnOrderQaSlot: panel.querySelector('[data-devtool-turn-order-qa-slot]'),
       status: null,
     };
@@ -792,16 +693,6 @@ export function createDevToolingRuntime(deps = {}) {
       if (typeof devToolingAutoplayHandler === 'function') {
         await devToolingAutoplayHandler();
       }
-    });
-    devToolingDom.forceSkillDraught.addEventListener('click', () => {
-      const heroUID = resolveDevToolingSkillHeroUID(devToolingDom.skillHero?.value || '');
-      const skillId = String(devToolingDom.skillId?.value || '').trim();
-      callFunctionWithContext(fnContext, 'ForceAstralFlowSkillDraught', heroUID, skillId);
-      closeDevToolingModal({ restorePauseSnapshot: true });
-    });
-    devToolingDom.clearSessionSkills.addEventListener('click', () => {
-      callFunctionWithContext(fnContext, 'ClearSessionSkillDraught');
-      updateDevToolingStatus('Session skill draw cleared');
     });
     root.addEventListener('click', (ev) => {
       if (ev.target === root) toggleDevToolingModal(false);
@@ -894,6 +785,8 @@ export function createDevToolingRuntime(deps = {}) {
     if (restorePauseSnapshot) {
       if (isDev2DiagnosticsOpen()) {
         state.globals.DevToolingPaused = 1;
+      } else if (state.globals.QaScenarioPaused) {
+        state.globals.DevToolingPaused = 1;
       } else {
         resumeGameplayFromDevTooling();
       }
@@ -910,7 +803,6 @@ export function createDevToolingRuntime(deps = {}) {
     g.DevAutoplayRunId = Number(g.DevAutoplayRunId || 0) + 1;
     g.DevAutoplayActive = 0;
     g.DevAutoplayStopRequested = 0;
-    g.DevAutoplaySkillDraughtSeenAt = 0;
     g.DevAutoplayMatchesPlayed = 0;
     g.DevAutoplayStartedAt = 0;
     g.DevAutoplayEndedAt = 0;
@@ -930,19 +822,25 @@ export function createDevToolingRuntime(deps = {}) {
     g.DevRewardDrops = [];
     g.DevRewardCount = cfg.rewardCount;
     syncConfiguredDoubleAttackHarness(cfg);
-    syncIdleFarmDevLoadoutConfig(cfg);
-    callFunctionWithContext(fnContext, 'ClearSessionSkillDraught');
     devToolingPauseSnapshot = null;
     g.DevToolingPaused = 0;
     if (devToolingDom) {
       devToolingDom.root.style.display = 'none';
       syncDevToolingDomFromConfig();
-      devToolingDom.skillHero.value = '';
-      devToolingDom.skillId.value = '';
     }
   }
 
   function resetCombatRuntimeForFreshSession(reason = 'combat-refresh', options = {}) {
+    // Quit and fresh-session transitions discard the visible fan and any
+    // in-flight native command before the next frame can reopen stale state.
+    callFunctionWithContext(fnContext, 'CancelHeroTurnCardFan');
+    state.globals.NativeCommandSequence = null;
+    if (options.clearSessionLevelBuffs) {
+      // Fresh quit/start uses the same session-effect reset as the initializer.
+      // Layout pause/resume skips this branch and preserves its exact snapshot.
+      resetCombatSessionConditions(state.globals, gameState);
+      state.globals.SessionLevelBuffState = clearSessionLevelBuffState();
+    }
     const refill = gameState.refillBounce || (gameState.refillBounce = {});
     refill.active = false;
     refill.queue = [];
@@ -1030,7 +928,8 @@ export function createDevToolingRuntime(deps = {}) {
       return;
     }
     if (!ensureDevToolingConfig().open) {
-      resumeGameplayFromDevTooling();
+      if (state.globals.QaScenarioPaused) state.globals.DevToolingPaused = 1;
+      else resumeGameplayFromDevTooling();
     }
   });
   if (isDev2DiagnosticsOpen()) {
@@ -1061,7 +960,6 @@ export function createDevToolingRuntime(deps = {}) {
     getConfiguredEnemySlots,
     readEscortPartyConfig,
     buildConfiguredCombatPartyMembers,
-    syncIdleFarmDevLoadoutConfig,
     updateDevToolingStatus,
     applyDevToolingConfig,
     ensureDevToolingModal,

@@ -107,7 +107,7 @@ function makeContext({ heroName = 'Falie', heroUID = 100, rollUnit = 0, activeDe
   return { ctx, state, hero, enemies, functionBank, callFunctionWithContext };
 }
 
-test('red super-gem cluster remains subject to Chain Strike II and Destiny per real hit', () => {
+test.skip('[Paused roguelite cards/shared AF] red super-gem cluster remains subject to Chain Strike II and Destiny per real hit', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const runtime = loadSuperGemRuntime();
   const { ctx, state, hero, functionBank, callFunctionWithContext } = makeContext({ heroName: 'Falie', rollUnit: 0 });
 
@@ -145,7 +145,7 @@ test('red super-gem cluster remains subject to Chain Strike II and Destiny per r
   assert.equal(state.globals.PartyDestinyHeals, 3);
 });
 
-test('Huun yellow goldstrike queues Chain Strike II bounds for single and jackpot attacks', () => {
+test.skip('[Paused roguelite cards/shared AF] Huun yellow goldstrike queues Chain Strike II bounds for single and jackpot attacks', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const runtime = loadSuperGemRuntime();
   const single = makeContext({ heroName: 'Huun', heroUID: 102, rollUnit: 0.6, activeDestiny: false });
 

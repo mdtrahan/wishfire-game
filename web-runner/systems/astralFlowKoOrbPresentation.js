@@ -2,7 +2,7 @@ const ASTRAL_FLOW_ORB_SPILL_SEC = 0.24;
 const ASTRAL_FLOW_ORB_BOUNCE_ONE_SEC = 0.18;
 const ASTRAL_FLOW_ORB_BOUNCE_TWO_SEC = 0.16;
 const ASTRAL_FLOW_ORB_BOUNCE_THREE_SEC = 0.14;
-const ASTRAL_FLOW_ORB_FLY_SEC = 0.46;
+const ASTRAL_FLOW_ORB_FLY_SEC = 0.52;
 const ASTRAL_FLOW_ORB_DISSOLVE_SEC = 0.18;
 const ASTRAL_FLOW_ORB_TOTAL_SEC = ASTRAL_FLOW_ORB_SPILL_SEC
   + ASTRAL_FLOW_ORB_BOUNCE_ONE_SEC
@@ -221,6 +221,8 @@ function hasPendingAttackPresentation(globals) {
   const now = numberOr(globals.time, 0);
   if (Array.isArray(globals.PendingHeroHits) && globals.PendingHeroHits.length > 0) return true;
   if (Array.isArray(globals.ChainStrikeVisuals) && globals.ChainStrikeVisuals.length > 0) return true;
+  if (Array.isArray(globals.CombatImpactRequests) && globals.CombatImpactRequests.length > 0) return true;
+  if (Array.isArray(globals.CombatImpactVisuals) && globals.CombatImpactVisuals.length > 0) return true;
   if (Array.isArray(globals.ArcanePulseVisuals) && globals.ArcanePulseVisuals.length > 0) return true;
   if (globals.HeroAction && globals.HeroAction.active) return true;
   if (globals.EnemyAction && globals.EnemyAction.active) return true;

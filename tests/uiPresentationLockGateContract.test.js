@@ -16,10 +16,10 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
   const gate = fs.readFileSync(gatePath, 'utf8');
   for (const requiredEvidence of [
     'quests-banner-text-scale',
-    'chapter-text-scale',
+    'combat-entry-landmark',
     'actual-viewport-metrics',
     'page-horizontal-overflow',
-    'stage-contained-reference-aspect',
+    'canvas-contained-reference-aspect',
     'dev-launcher-scale',
     'dev-panel-1-containment',
     'dev-panel-1-title-single-line',
@@ -28,21 +28,32 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
     'dev-panel-1-action-order',
     'hero-selector-scale',
     'target-selector-scale',
-    'attack-button-scale',
+    'global-attack-absent',
+    'hero-command-containment',
+    'hero-command-column-order',
+    'hero-command-scale',
+    'hero-command-two-row-layout',
+    'hero-command-hp-af-readouts',
+    'hero-command-active-highlight',
+    'gem-board-backdrop-absent',
+    'hero-command-native-input',
+    'hero-editor-containment',
     'damage-text-scale',
     'damage-text-density',
-    'party-progress-bar-height',
-    'astral-progress-bar-height',
-    'skill-card-proportions',
-    'skill-card-count-parity',
-    'skill-card-draw-hit-geometry',
-    'skill-card-canvas-containment',
-    'skill-card-hit-routing',
-    'skill-title-scale',
+    'pooled-health-bar-absent',
+    'shared-astral-bar-absent',
+    'personal-af-meters',
+    'party-card-draw-controls-absent',
+    'hero-command-personal-af',
+    'hero-command-paid-sequence',
     'legacy-backdrop-absent',
   ]) {
     assert.match(gate, new RegExp(requiredEvidence), `missing ${requiredEvidence} invariant`);
   }
+  assert.match(gate, /\.readout\.hp/);
+  assert.match(gate, /\.readout\.af/);
+  assert.match(gate, /data-hp-bar/);
+  assert.match(gate, /data-af-bar/);
 
   assert.match(gate, /\{ name: 'compact', width: 216, height: 384, dpr: 1 \}/);
   assert.match(gate, /\{ name: 'reference', width: 360, height: 640, dpr: 1 \}/);
@@ -67,6 +78,7 @@ test('pre-commit routes staged UI-owner changes through the full UI lock', () =>
   assert.match(hook, /git diff --cached --name-only --diff-filter=ACMRD/);
   assert.match(hook, /npm run test:ui-lock/);
   assert.match(hook, /web-runner\/systems\/renderRuntime\.js/);
+  assert.ok(hook.includes('web-runner/systems/heroCommandUI\\.mjs'));
   assert.match(hook, /web-runner\/systems\/devToolingRuntime\.js/);
   assert.match(hook, /web-runner\/systems\/combatPresentationScale\.mjs/);
   assert.match(hook, /web-runner\/systems\/appShellViewport\.js/);

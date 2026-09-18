@@ -186,7 +186,7 @@ test('runtime projects actor visuals, hit regions, and action anchors without mu
   assert.match(app, /createCombatFormationProjection/);
   assert.match(app, /deriveCombatFormationAnchors/);
   assert.match(app, /const pos = combatActorWorldToCanvas\(x, y, 'enemy'\)/);
-  assert.match(app, /worldToCanvas: \(x, y\) => combatActorWorldToCanvas\(x, y, 'enemy'\)/);
+  assert.doesNotMatch(app, /prepareAstralFlowKoOrbPresentation/);
   assert.match(app, /orientCombatWorldOffsetX\(Number\(d\.floatVectorX/);
 
   assert.match(render, /spawnPendingDamageNumbers\(projectCombatDamageWorldToCanvas\)/);

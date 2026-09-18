@@ -22,3 +22,5 @@
 
 ## Child DOX Index
 - None.
+
+- Combat migration fixtures require individual HP eligibility even with stale pool totals and pending groups. Enemy-target rows contain six hero records and exercise slots five/six, preferences and KO exclusion.

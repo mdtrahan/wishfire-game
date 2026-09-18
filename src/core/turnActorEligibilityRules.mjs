@@ -86,18 +86,17 @@ export function turnActorEligibilityCodeFromJs({
   blueBuffSequenceActive = 0,
 } = {}) {
   const type = Number(turnType || 0);
-  const isRoundPending = Number(roundActive || 0) === 1 && Number(pendingGroupMatches || 0) === 1;
 
   if (type === 0) {
     if (Number(actorExists || 0) !== 1) return TURN_ACTOR_ELIGIBILITY_SKIP;
-    if (Number(partyHp || 0) > 0 || isRoundPending) return TURN_ACTOR_ELIGIBILITY_ACT;
+    if (Number(actorHp || 0) > 0) return TURN_ACTOR_ELIGIBILITY_ACT;
     return TURN_ACTOR_ELIGIBILITY_SKIP;
   }
 
   if (type === 1) {
     if (Number(blueBuffSequenceActive || 0) === 1) return TURN_ACTOR_ELIGIBILITY_HOLD;
     if (Number(actorExists || 0) !== 1) return TURN_ACTOR_ELIGIBILITY_SKIP;
-    if (Number(actorHp || 0) > 0 || isRoundPending) return TURN_ACTOR_ELIGIBILITY_ACT;
+    if (Number(actorHp || 0) > 0) return TURN_ACTOR_ELIGIBILITY_ACT;
   }
 
   return TURN_ACTOR_ELIGIBILITY_SKIP;

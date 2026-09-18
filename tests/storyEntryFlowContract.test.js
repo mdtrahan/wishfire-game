@@ -40,19 +40,19 @@ async function setup(ready = true, enemies = []) {
 }
 
 
-function openLadder(s) {
-  s.gameState.storyEntry.startHitZone = { x: 111.4, y: 405, w: 146.2, h: 44 };
-  assert.equal(s.flow.handlePointer({ x: 180, y: 428 }), true);
+function enterQaNarrative(s) {
+  s.gameState.storyEntry.phase = 'ladder';
 }
-test('map opens ladder; only revealed cards can start and energy is charged once', async () => {
- const s = await setup(); openLadder(s);
- assert.equal(s.gameState.storyEntry.phase, 'ladder');
- assert.equal(s.flow.startCard(1), false);
- assert.equal(s.flow.startCard(0), true);
- assert.equal(s.flow.startCard(0), false);
+test('player Start enters endless combat directly without a stage card or story scene', async () => {
+ const s = await setup();
+ s.gameState.storyEntry.startHitZone = { x: 111.4, y: 405, w: 146.2, h: 44 };
+ assert.equal(s.flow.handlePointer({ x: 180, y: 428 }), true);
+ await flush();
+ assert.equal(s.layout.getActiveLayoutId(), 'combat');
+ assert.equal(s.gameState.storyEntry.phase, 'combat');
+ assert.equal(s.gameState.narrativeScene, undefined);
  assert.equal(s.gameState.storyEntry.progress.energy, 200);
- assert.equal(s.gameState.narrative.stepIndex, 0);
- assert.equal(s.layout.canTransitionTo('combat').allowed, false);
+ assert.equal(s.gameState.storyEntry.cards.length, 2);
 });
 test('loading blocks entry and developer shortcuts', async () => {
  const s = await setup(false);
@@ -60,8 +60,24 @@ test('loading blocks entry and developer shortcuts', async () => {
  assert.equal(s.flow.skip(),false);
  assert.equal(s.flow.startCard(0),false);
 });
-test('Skip confirmation pauses flow; Cancel retains the current card and line', async () => {
- const s = await setup(); openLadder(s); s.flow.startCard(0);
+test('quest QA direct combat shortcut skips story presentation and uses the existing combat entry', async () => {
+ const s = await setup();
+ const hooks = fs.readFileSync(path.join(root, 'web-runner/systems/devBrowserTestHooks.js'), 'utf8');
+ assert.match(hooks, /get\('questQA'\) === '1'/);
+ assert.match(hooks, /'QA start combat'/);
+ assert.match(hooks, /storyEntry\.startCombatForQA\(\)/);
+ assert.equal(typeof s.flow.startCombatForQA, 'function');
+ const energy = s.gameState.storyEntry.progress.energy;
+ assert.equal(await s.flow.startCombatForQA(), true);
+ await flush();
+ assert.equal(s.layout.getActiveLayoutId(), 'combat');
+ assert.equal(s.gameState.storyEntry.phase, 'combat');
+ assert.equal(s.gameState.storyEntry.activeCard, 0);
+ assert.equal(s.gameState.storyEntry.progress.energy, energy);
+ assert.equal(s.gameState.narrativeScene, undefined);
+});
+test('QA narrative entry retains its skip controls without changing player Start', async () => {
+ const s = await setup(); enterQaNarrative(s); s.flow.startCard(0);
  s.gameState.narrativeScene.auto = true;
  assert.equal(s.flow.requestSkip(),true);
  s.flow.update(99999);
@@ -72,8 +88,8 @@ test('Skip confirmation pauses flow; Cancel retains the current card and line', 
  assert.equal(s.gameState.narrativeScene.auto,true);
  assert.equal(s.gameState.storyEntry.modal,null);
 });
-test('confirmed Skip starts internal combat; victory alone reveals next card and pays once', async () => {
- const s = await setup(); openLadder(s); s.flow.startCard(0);
+test('QA narrative completion retains its existing archival progression behavior', async () => {
+ const s = await setup(); enterQaNarrative(s); s.flow.startCard(0);
  s.flow.requestSkip(); s.flow.confirmSkip(); await flush();
  assert.equal(s.layout.getActiveLayoutId(),'combat');
  assert.equal(s.gameState.storyEntry.progress.revealed,1);
@@ -92,8 +108,8 @@ test('confirmed Skip starts internal combat; victory alone reveals next card and
  s.flow.startCard(1); s.flow.requestSkip(); s.flow.confirmSkip();
  assert.equal(s.gameState.storyEntry.progress.resources,250,'reward remains once only');
 });
-test('manual pages reach embedded combat without changing narrative text', async () => {
- const s=await setup();openLadder(s);s.flow.startCard(0);
+test('QA manual narrative pages reach embedded combat without changing narrative text', async () => {
+ const s=await setup();enterQaNarrative(s);s.flow.startCard(0);
  let pages=0;
  while(s.gameState.storyEntry.phase==='opening') {
   s.controller.advanceNarrativeScenePresentation(s.gameState,s.gameState.storyEntry.content,{forceCompleteTextFirst:false,nowSec:1000+pages});
@@ -111,11 +127,11 @@ test('defeat waits for resource Continue or Quit without completion or unlock', 
  assert.equal(s.layout.getActiveLayoutId(),'combat');
  s.flow.defeat();await flush();s.gameState.storyEntry.progress.resources=0;
  assert.equal(await s.flow.continueCombat(),false);
- s.flow.quit();assert.equal(s.gameState.storyEntry.phase,'ladder');
+ s.flow.quit();assert.equal(s.gameState.storyEntry.phase,'map');
  assert.equal(s.gameState.storyEntry.progress.completed.length,0);
 });
 
-test('synthetic roster stages sort by CP, use existing thumbnails, and unlock one battle at a time', async () => {
+test('synthetic roster stages remain QA helpers and never enter the player card list', async () => {
  const { buildSyntheticQuestStages } = await import('../web-runner/systems/storyEntryFlow.mjs');
  const table = JSON.parse(fs.readFileSync(path.join(root, 'web-runner/assets/enemies.json')));
  const names = table.data.find(column => column[0][0] === 'name');
@@ -131,28 +147,14 @@ test('synthetic roster stages sort by CP, use existing thumbnails, and unlock on
    assert.ok(fs.existsSync(path.join(root,'web-runner',decodeURIComponent(stage.thumbnail))));
    if(i) assert.ok(stage.cp >= stages[i-1].cp);
  }
- const s = await setup(true,enemies); s.flow.update(); openLadder(s);
- assert.deepEqual(s.gameState.storyEntry.cards.map(c=>c.title),['Main Story 1',...stages.slice(0,5).map(c=>c.title),'Main Story 2',...stages.slice(5).map(c=>c.title)]);
- for(let i=0;i<12;i++) {
-   assert.equal(s.gameState.storyEntry.progress.revealed,i+1);
-   assert.equal(s.flow.startCard(i+1),false);
-   assert.equal(s.flow.startCard(i),true);
-   const card = s.gameState.storyEntry.cards[i];
-   if(card.content) { s.flow.requestSkip(); s.flow.confirmSkip(); }
-   await flush();
-   if(card.combat) {
-     assert.equal(s.gameState.storyEntry.phase,'combat');
-     s.flow.victory(); await flush();
-   }
- }
- assert.equal(s.gameState.storyEntry.progress.completed.length,12);
- assert.equal(s.gameState.storyEntry.progress.resources,750);
+ const s = await setup(true,enemies); s.flow.update();
+ assert.deepEqual(s.gameState.storyEntry.cards.map(c=>c.title),['Main Story 1','Main Story 2']);
 });
 
 test('Quests from the map changes the view without requesting the same layout', async () => {
  const s = await setup();
  assert.equal(await s.flow.navigate('Quests'), true);
- assert.equal(s.gameState.storyEntry.phase, 'ladder');
+ assert.equal(s.gameState.storyEntry.phase, 'map');
  assert.equal(s.gameState.storyEntry.error, null);
  assert.equal(await s.flow.navigate('Quests'), true);
  assert.equal(s.gameState.storyEntry.error, null);
@@ -173,7 +175,34 @@ test('combat end resets overrides once; Continue preserves the active session', 
  assert.equal(s.sessionEnds(),2);
  s.flow.startCard(1); s.flow.requestSkip(); s.flow.confirmSkip();
  assert.equal(s.sessionEnds(),2,'story-only completion has no combat overrides to clear');
- s.flow.startCard(0); s.flow.requestSkip(); s.flow.confirmSkip(); await flush();
+ await s.flow.startCombatForQA(); await flush();
  await s.flow.navigate('Quests');
- assert.equal(s.sessionEnds(),3);
+ assert.equal(s.gameState.storyEntry.phase,'combat-paused');
+ assert.equal(s.gameState.storyEntry.modal,'combat-pause');
+ assert.equal(s.sessionEnds(),2,'pausing preserves the active combat session');
+ assert.equal(s.flow.quitPausedCombat(),true);
+ assert.equal(s.sessionEnds(),3,'quitting the paused battle clears the session once');
+});
+
+test('every enabled non-combat destination pauses before its shared Quests resume-or-quit gate', async () => {
+ for (const label of ['Hero', 'Vault', 'AstralFlow', 'Map']) {
+  const { createStoryEntryFlow } = await import('../web-runner/systems/storyEntryFlow.mjs');
+  let active = 'combat';
+  const gameState = {};
+  const routePauseStates = [];
+  const flow = createStoryEntryFlow({ gameState, isReady: () => true, layoutState: {
+    getActiveLayoutId: () => active,
+    async requestLayoutChange(target) { routePauseStates.push(gameState.storyEntry.combatPaused); active = target; return true; },
+  } });
+  gameState.storyEntry.phase = 'combat';
+  assert.equal(await flow.navigate(label), true, `${label} opens while preserving combat`);
+  assert.equal(gameState.storyEntry.combatPaused, true, `${label} marks the exact battle paused`);
+  assert.equal(routePauseStates[0], true, `${label} pauses before its layout routes`);
+  assert.equal(await flow.navigate('Quests'), true, `${label} returns through Quests`);
+  assert.equal(gameState.storyEntry.phase, 'combat-paused');
+  assert.equal(gameState.storyEntry.modal, 'combat-pause');
+  assert.equal(await flow.continuePausedCombat(), true);
+  assert.equal(active, 'combat');
+  assert.equal(gameState.storyEntry.combatPaused, false);
+ }
 });

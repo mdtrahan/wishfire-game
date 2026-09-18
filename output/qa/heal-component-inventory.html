@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Heal Animation Component Inventory</title>
+  <style>
+    :root { color-scheme: dark; --ink:#f3f6fa; --muted:#aab5c4; --panel:#151a23; --line:#344054; --green:#71f29a; --warn:#ffb454; --bad:#ff6b6b; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:#090c12; color:var(--ink); font:15px/1.42 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    main { width:min(1180px, calc(100% - 32px)); margin:24px auto 48px; }
+    h1 { margin:0 0 6px; font-size:32px; }
+    h2 { margin:28px 0 12px; font-size:20px; }
+    p { margin:4px 0; }
+    code { color:#c4d7ff; font-size:12px; overflow-wrap:anywhere; }
+    .lede { color:var(--muted); max-width:900px; }
+    .finding { margin:20px 0; padding:16px 18px; border:2px solid var(--bad); border-radius:12px; background:#32191d; }
+    .finding strong { color:#ffd1d1; font-size:18px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(235px,1fr)); gap:14px; }
+    .card { border:1px solid var(--line); border-radius:12px; background:var(--panel); overflow:hidden; }
+    .preview { min-height:190px; display:grid; place-items:center; padding:16px; background-color:#27303d; background-image:linear-gradient(45deg,#202733 25%,transparent 25%),linear-gradient(-45deg,#202733 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#202733 75%),linear-gradient(-45deg,transparent 75%,#202733 75%); background-size:24px 24px; background-position:0 0,0 12px,12px -12px,-12px 0; }
+    .preview img { display:block; max-width:100%; max-height:210px; object-fit:contain; image-rendering:auto; }
+    .meta { padding:12px 14px 15px; }
+    .tag { display:inline-block; margin-bottom:7px; padding:3px 8px; border-radius:999px; background:#223d2d; color:var(--green); font-size:11px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; }
+    .tag.group { background:#4a2d14; color:var(--warn); }
+    .tag.off { background:#2b303a; color:#aab5c4; }
+    .meta h3 { margin:0 0 5px; font-size:17px; }
+    .meta p { color:var(--muted); font-size:13px; }
+    .crop { width:230px; height:55px; overflow:hidden; position:relative; }
+    .crop img { position:absolute; width:230px; max-height:none; left:0; top:-38px; }
+    .motes { position:relative; width:190px; height:180px; }
+    .motes i { position:absolute; width:11px; height:11px; border-radius:50%; background:#b7ff90; box-shadow:0 0 12px 4px #4dff9a; }
+    .motes i:nth-child(1){left:34px;top:126px}.motes i:nth-child(2){left:72px;top:92px}.motes i:nth-child(3){left:116px;top:113px}.motes i:nth-child(4){left:142px;top:60px}.motes i:nth-child(5){left:53px;top:45px}.motes i:nth-child(6){left:101px;top:20px}
+    .heal-number { color:#36ee76; font:bold 44px/1 Arial,sans-serif; text-shadow:-2px -2px 0 #07130b,2px -2px 0 #07130b,-2px 2px 0 #07130b,2px 2px 0 #07130b; }
+    table { width:100%; border-collapse:collapse; border:1px solid var(--line); background:var(--panel); }
+    th,td { padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+    th { color:#c7d2e2; background:#1d2430; }
+    td { color:var(--muted); }
+    .danger { color:#ffb0b0; font-weight:800; }
+    .note { margin-top:14px; color:var(--muted); font-size:13px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Heal Animation Component Inventory</h1>
+  <p class="lede">Code-backed inventory for the current <code>heal-up-sync-v9</code> runtime. The checkerboard reveals each source image's transparent area. Labels below describe the shipping render path rather than a separate mock.</p>
+
+  <div class="finding">
+    <strong>Disparity found</strong>
+    <p>The one-hero QA replay never renders the party-only layer. A real party heal such as Magic Fruit can render <code>vfx_group_heal_rain.png</code>, whose artwork contains three downward beams. That is the clearest source of the green rain visible in play.</p>
+  </div>
+
+  <h2>Active in the single-hero heal replay</h2>
+  <section class="grid">
+    <article class="card">
+      <div class="preview"><img src="../../web-runner/assets/images/vfx_heal_sigil.png" alt="Green ground sigil source asset"></div>
+      <div class="meta"><span class="tag">Active · back</span><h3>Ground sigil</h3><code>vfx_heal_sigil.png · 256×85</code><p>Drawn behind the hero at the resting foot position.</p></div>
+    </article>
+    <article class="card">
+      <div class="preview"><img src="../../web-runner/assets/images/vfx_heal_fountain.png" alt="Green fountain source asset"></div>
+      <div class="meta"><span class="tag">Active · back</span><h3>Fountain body</h3><code>vfx_heal_fountain.png · 256×384</code><p>Revealed upward behind the hero. The wide lower glow and stacked rings are baked into this one image.</p></div>
+    </article>
+    <article class="card">
+      <div class="preview"><div class="crop"><img src="../../web-runner/assets/images/vfx_heal_sigil.png" alt="Lower half crop of the green sigil"></div></div>
+      <div class="meta"><span class="tag">Active · front</span><h3>Rising front ring</h3><code>lower 50% of vfx_heal_sigil.png</code><p>The sigil is reused as a cropped ring that rises in front of the hero.</p></div>
+    </article>
+    <article class="card">
+      <div class="preview"><div class="motes" aria-label="Procedural green circular motes"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="meta"><span class="tag">Active · front</span><h3>Procedural motes</h3><code>Canvas circles · no image file</code><p>Selected particle positions become soft green dots rising in front of the hero.</p></div>
+    </article>
+    <article class="card">
+      <div class="preview"><div class="heal-number">36</div></div>
+      <div class="meta"><span class="tag">Active · DOM</span><h3>Heal value</h3><code>.damage-number · kind: heal</code><p>Green numeric feedback floats above the hero as a separate DOM layer.</p></div>
+    </article>
+  </section>
+
+  <h2>Active only when more than one hero heals</h2>
+  <section class="grid">
+    <article class="card">
+      <div class="preview"><img src="../../web-runner/assets/images/vfx_group_heal_rain.png" alt="Group heal rain source asset"></div>
+      <div class="meta"><span class="tag group">Group only · back</span><h3>Group Heal Rain</h3><code>vfx_group_heal_rain.png · 160×192</code><p class="danger">The three downward light columns are part of the source image. Render condition: <code>activeBlooms.length &gt; 1</code>.</p></div>
+    </article>
+  </section>
+
+  <h2>Retired or inactive assets</h2>
+  <section class="grid">
+    <article class="card">
+      <div class="preview"><img src="../../web-runner/assets/images/vfx_heal_motes.png" alt="Unused illustrated heal motes source asset"></div>
+      <div class="meta"><span class="tag off">Removed from loader</span><h3>Illustrated gems</h3><code>vfx_heal_motes.png · 128×192</code><p>The downward-pointing gem cluster remains as an archived file, but the runtime no longer loads it and cannot draw it.</p></div>
+    </article>
+    <article class="card">
+      <div class="preview"><img src="../../web-runner/assets/images/vfx_heal_bloom_illustrated.png" alt="Unused illustrated heal bloom source asset"></div>
+      <div class="meta"><span class="tag off">Inactive</span><h3>Illustrated bloom</h3><code>vfx_heal_bloom_illustrated.png · 192×192</code><p>Loaded into <code>CombatHealBloom</code>, but the current renderer never draws it.</p></div>
+    </article>
+  </section>
+
+  <h2>Runtime layer order</h2>
+  <table>
+    <thead><tr><th>Order</th><th>Layer</th><th>Visible components</th><th>Condition</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Canvas back</td><td>Group Heal Rain, ground sigil, fountain body</td><td>Rain requires 2+ active blooms; sigil and fountain require one active bloom.</td></tr>
+      <tr><td>2</td><td>Canvas actor</td><td>Hero sprite</td><td>Normal hero render.</td></tr>
+      <tr><td>3</td><td>Canvas front</td><td>Rising sigil crop, procedural motes</td><td>Progress thresholds 0.16 and 0.12.</td></tr>
+      <tr><td>4</td><td>DOM overlay</td><td>Green healing value</td><td>Heal feedback event.</td></tr>
+    </tbody>
+  </table>
+  <p class="note">This sheet inventories source images and generated layers. It does not claim the animation has passed visual QA.</p>
+</main>
+</body>
+</html>

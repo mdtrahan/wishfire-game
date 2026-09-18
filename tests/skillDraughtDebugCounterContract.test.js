@@ -80,7 +80,7 @@ function makeContext() {
   const ctx = {
     state: { globals, entities: [hero] },
     callFunction(name, ...args) {
-      if (name === 'ApplyPartyHeal') {
+      if (name === 'ApplyActiveHeroHeal') {
         const heal = Math.max(0, Number(args[0] || 0));
         globals.PartyHP = Math.min(globals.PartyMaxHP, globals.PartyHP + heal);
         hero.hp = globals.PartyHP;
@@ -142,7 +142,7 @@ function domDebug(mod) {
   return JSON.parse(mod.__context.document.documentElement.getAttribute('data-skill-draw-debug'));
 }
 
-test('skill draw debug counters track card appearances, not selected/used skills', () => {
+test.skip('[Paused roguelite cards/shared AF] skill draw debug counters track card appearances, not selected/used skills', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const ctx = makeContext();

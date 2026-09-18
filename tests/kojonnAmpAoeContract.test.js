@@ -43,6 +43,7 @@ function buildHeroAttackAOE(fnSource, deps) {
     'GetEffectiveStat',
     'CalculateDamage',
     'LogCombat',
+    'combatAttackVfxKind',
     `return (${body});`
   )(
     deps.GetActorByUID,
@@ -53,7 +54,8 @@ function buildHeroAttackAOE(fnSource, deps) {
     deps.getEnemies,
     deps.GetEffectiveStat,
     deps.CalculateDamage,
-    deps.LogCombat
+    deps.LogCombat,
+    deps.combatAttackVfxKind
   );
 }
 
@@ -82,6 +84,7 @@ function runKojonnAoeCase(src, ampMult) {
     GetEffectiveStat: () => 0,
     CalculateDamage: () => 16,
     LogCombat: (_ctx, msg) => logs.push(String(msg)),
+    combatAttackVfxKind: () => 'kaja_orb',
   });
 
   fn(ctx, actor.uid);
@@ -103,6 +106,7 @@ test('Kojonn direct AOE uses shared direct-damage packets in both mirrors', () =
     assert.ok(base.pending.every((hit) => hit.effectType === 'damage'), `${relPath} should emit direct damage packets`);
     assert.ok(amped.pending.every((hit) => hit.effectType === 'damage'), `${relPath} should keep direct damage packets when amped`);
     assert.ok(base.pending.every((hit) => hit.calcPath === 'magicCalc'), `${relPath} should use generic magic calc path`);
+    assert.ok(base.pending.every((hit) => hit.attackVfxKind === 'kaja_orb'), `${relPath} should carry one purple impact per target`);
     assert.ok(base.pending.every((hit) => Number(hit.finalDmg) === 16), `${relPath} should keep base per-target damage`);
     assert.ok(amped.pending.every((hit) => Number(hit.finalDmg) === 48), `${relPath} should apply amp per target`);
     assert.equal(base.logs[0], 'Kojonn used AOE on all enemies for 48!');

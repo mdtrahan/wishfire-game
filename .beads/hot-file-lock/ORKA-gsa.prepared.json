@@ -1,0 +1,19 @@
+{
+  "hot_files": {
+    "Scripts/functionBank.js": {
+      "functions": [
+        "ExecuteSkill",
+        "__MODULE__"
+      ],
+      "staged_blob": "1e15fcb47e6d273c1cfd571139115a35d7aaad92"
+    },
+    "web-runner/modules/functionBank.js": {
+      "functions": [
+        "ExecuteSkill",
+        "__MODULE__"
+      ],
+      "staged_blob": "d9a2fc0a068b4ff72e927f7eda7917135e2e1e66"
+    }
+  },
+  "issue_id": "ORKA-gsa"
+}

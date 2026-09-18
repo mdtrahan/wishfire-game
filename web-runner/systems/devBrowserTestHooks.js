@@ -1,3 +1,10 @@
+import { getHeroFlowState } from '../src/core/personalFlow.mjs';
+import { serializeQaPauseCombatSnapshot } from '../src/core/qaPauseSnapshot.mjs';
+import { canUseHeroCommand, chooseSessionLevelUpBuff, getSessionLevelUpBuffOffer, rulesContext, settleVictory } from '../modules/heroCommands.mjs';
+import { SESSION_LEVEL_UP_BUFF_CARDS } from '../../src/core/sessionLevelBuffCatalog.mjs';
+import { getEligibleLevelUpBuffCards } from '../../src/core/sessionLevelBuffOffers.mjs';
+import { turnEnd, turnStart } from '../src/core/combatRules.mjs';
+import { derivePresentationTurnBarrier } from '../src/core/turnGateController.mjs';
 import {
   DYNAMIC_INITIATIVE_AUTHORITY_BATTLE_ID,
   DYNAMIC_INITIATIVE_AUTHORITY_EXPERIMENT_ID,
@@ -6,6 +13,243 @@ import {
   DYNAMIC_INITIATIVE_AUTHORITY_PROOF_HP,
   DYNAMIC_INITIATIVE_AUTHORITY_SEED,
 } from '../src/core/dynamicInitiativeAuthorityExperiment.mjs';
+
+export const QA_STORY_TRANSITION_TIMEOUT_MS = 2400;
+
+export function computeQuestQaControlLayout({ viewportWidth, canvasLeft, canvasRight } = {}) {
+  const width = Math.max(0, Number(viewportWidth) || 0);
+  const leftGutter = Math.max(0, Number(canvasLeft) || 0);
+  const rightEdge = Number.isFinite(Number(canvasRight)) ? Number(canvasRight) : width;
+  const rightGutter = Math.max(0, width - rightEdge);
+  const railWidth = Math.min(184, Math.min(leftGutter, rightGutter) - 16);
+  return {
+    mode: railWidth >= 132 ? 'rails' : 'dock',
+    railWidth: Math.max(0, railWidth),
+    leftGutter,
+    rightGutter,
+  };
+}
+
+export function applyQaEnemyLowHpFixture({ globals = {}, entities = [], choiceActive = false } = {}) {
+  if (!(globals.QaScenarioPaused && globals.QaFixtureHoldTurn && globals.DevToolingPaused)) return { ok: false, reason: 'scenarioNotPaused' };
+  if (choiceActive) return { ok: false, reason: 'choiceActive' };
+  const heroes = entities.filter(actor => actor?.kind === 'hero');
+  if (globals.ProgressionBattle?.outcome === 'defeat' || (heroes.length > 0 && heroes.every(hero => Number(hero.hp || 0) <= 0))) return { ok: false, reason: 'defeatAlreadySettled' };
+  const enemies = entities.filter(actor => actor?.kind === 'enemy' && Number(actor.hp || 0) > 0 && actor.isAlive !== false && !Number(actor.pendingOfficialDeath || 0));
+  if (!enemies.length) return { ok: false, reason: 'noLivingEnemies' };
+  const hpChanges = enemies.map(enemy => ({ uid: Number(enemy.uid || 0), beforeHP: Number(enemy.hp || 0), afterHP: 1 }));
+  for (const enemy of enemies) enemy.hp = 1;
+  const result = { ok: true, affectedUIDs: hpChanges.map(change => change.uid), hpChanges };
+  globals.QaEnemyLowHpFixture = result;
+  return result;
+}
+
+// The production-derived stream for this encounter seed keeps its first eight
+// draws below the 20% QA proc threshold. Fixture setup can consume draws while
+// closing a prior phase, so this still exercises the normal chance resolver
+// when the selected owner's native command lands.
+export const QA_FIXTURE_RUNTIME_ENCOUNTER_SEED = 77879;
+export const QA_FIXTURE_INELIGIBLE_PROC_ENCOUNTER_SEED = 14;
+export const QA_LEVEL_UP_FIXTURE_CARD_IDS = Object.freeze({
+  stat: 'dune_edge_1',
+  maxhp: 'well_of_life_1',
+  speed: 'desert_step_1',
+  bargain: 'sun_debt_1',
+  pulse: 'spectral_orb_1',
+  orb: 'spectral_orb_1',
+  venom: 'venom_sigil_1',
+  heal: 'inner_flow_1',
+  bounce: 'mirage_chain_1',
+  counter: 'glass_reprisal_1',
+});
+
+export function resolveQaLevelUpFixtureKey(value) {
+  const normalized = String(value || '');
+  if (Object.prototype.hasOwnProperty.call(QA_LEVEL_UP_FIXTURE_CARD_IDS, normalized)) return normalized;
+  return Object.entries(QA_LEVEL_UP_FIXTURE_CARD_IDS).find(([, cardId]) => cardId === normalized)?.[0] || null;
+}
+
+export function resolveQaFixtureOfferCardId(fixture, options) {
+  const selectedCardId = String(options?.selectedCardId || '');
+  const cards = Array.isArray(options?.cards) ? options.cards : [];
+  const defaultCardId = QA_LEVEL_UP_FIXTURE_CARD_IDS[resolveQaLevelUpFixtureKey(fixture)] || '';
+  const defaultCard = cards.find(card => card.cardId === defaultCardId);
+  const selectedCard = cards.find(card => card.cardId === String(selectedCardId || ''));
+  return selectedCard && defaultCard && selectedCard.effectId === defaultCard.effectId
+    ? selectedCard.cardId
+    : defaultCardId;
+}
+
+export function buildQaFixtureOfferPool(options) {
+  const { fixture, selectedCardId, cards, eligibleCards } = options || {};
+  const definitions = Array.isArray(cards) ? cards : [];
+  const desiredId = resolveQaFixtureOfferCardId(fixture, { selectedCardId, cards: definitions });
+  const desired = definitions.find(card => card.cardId === desiredId);
+  if (!desired) return [];
+  const eligibleIds = new Set((eligibleCards || []).map(card => String(card?.cardId || '')));
+  const candidates = [
+    ...(eligibleIds.has(desired.cardId) ? [desired] : []),
+    ...definitions.filter(card => card.tier === desired.tier
+      && card.cardId !== desired.cardId
+      && (card.kind === 'stat' || card.kind === 'bargain')
+      && eligibleIds.has(card.cardId)),
+  ];
+  return candidates.slice(0, 3);
+}
+
+export function resolveQaFixtureOwnerIdentity(options) {
+  const { fixture, selectedCardId, cards, sessionBuffState, heroes, preferredOwnerId = '' } = options || {};
+  const definitions = Array.isArray(cards) ? cards : [];
+  const selectedId = resolveQaFixtureOfferCardId(fixture, { selectedCardId, cards: definitions });
+  const card = definitions.find(candidate => candidate.cardId === selectedId);
+  if (!card) return null;
+  const eligibleOwnerIds = Object.entries(sessionBuffState?.heroes || {})
+    .filter(([, heroState]) => Number(heroState?.activeStageByEffectId?.[card.effectId] || 0) === Number(card.stage))
+    .map(([heroId]) => String(heroId));
+  const preferred = String(preferredOwnerId || '');
+  const ownerId = eligibleOwnerIds.includes(preferred) ? preferred : eligibleOwnerIds[0] || null;
+  if (!ownerId) return null;
+  const hero = (heroes || []).find(candidate => candidate?.kind === 'hero' && String(candidate.heroInstanceKey ?? candidate.uid ?? '') === ownerId) || null;
+  return { ownerId, cardId: card.cardId, hero };
+}
+
+export function deriveQaSettlementReward({ threshold, currentEXP, overflow = false, noLevel = false } = {}) {
+  const liveThreshold = Math.max(1, Math.floor(Number(threshold) || 0));
+  const liveCurrentEXP = Math.max(0, Math.floor(Number(currentEXP) || 0));
+  if (liveCurrentEXP >= liveThreshold) {
+    throw new Error(`QA settlement requires EXP below its live threshold: ${liveCurrentEXP}/${liveThreshold}`);
+  }
+  const remaining = liveThreshold - liveCurrentEXP;
+  if (noLevel) {
+    if (remaining <= 1) throw new Error(`QA no-level settlement needs room below its live threshold: ${liveCurrentEXP}/${liveThreshold}`);
+    return Math.max(1, Math.min(27, remaining - 1));
+  }
+  return overflow ? remaining + 27 : 80;
+}
+
+export function qaSettlementQuiescenceSnapshot(globals = {}) {
+  const presentation = derivePresentationTurnBarrier({ globals });
+  const observed = {
+    actionInProgress: !!globals.ActionInProgress,
+    playerBusy: !!globals.IsPlayerBusy,
+    pendingHeroHits: Array.isArray(globals.PendingHeroHits) ? globals.PendingHeroHits.length : 0,
+    presentationClear: presentation.canAdvanceTurn,
+    presentationBlocker: presentation.blockingLane,
+    turnPhase: Number(globals.TurnPhase || 0),
+    deferAdvance: !!globals.DeferAdvance,
+    nativeBattleEnded: !!globals.NativeBattleEnded,
+    progressionOutcome: String(globals.ProgressionBattle?.outcome || ''),
+  };
+  return { ok: !observed.actionInProgress && !observed.playerBusy && observed.pendingHeroHits === 0 && observed.presentationClear, observed };
+}
+
+export async function waitForQaSettlementQuiescence({
+  globals, timeoutMs = 3500, pollMs = 25,
+  now = () => Date.now(), wait = ms => new Promise(resolve => setTimeout(resolve, ms)),
+} = {}) {
+  const startedAt = now();
+  let latest = qaSettlementQuiescenceSnapshot(globals);
+  if (latest.ok) return { ok: true, elapsedMs: now() - startedAt, observed: latest.observed };
+  while (now() - startedAt < timeoutMs) {
+    await wait(pollMs);
+    latest = qaSettlementQuiescenceSnapshot(globals);
+    if (latest.ok) return { ok: true, elapsedMs: now() - startedAt, observed: latest.observed };
+  }
+  latest = qaSettlementQuiescenceSnapshot(globals);
+  return { ok: latest.ok, elapsedMs: now() - startedAt, observed: latest.observed };
+}
+
+export function qaSettlementHeroHealthSnapshot(entities = []) {
+  return Object.fromEntries((entities || [])
+    .filter(entity => entity?.kind === 'hero')
+    .map(hero => [String(hero.uid), Number(hero.hp || 0)]));
+}
+
+export function qaSettlementHeroHealthChanged(entities = [], baseline = {}) {
+  return (entities || []).filter(entity => entity?.kind === 'hero')
+    .some(hero => Number(hero.hp || 0) !== Number(baseline?.[String(hero.uid)]));
+}
+
+export async function waitForQaStoryCombatPhase(entry, {
+  timeoutMs = QA_STORY_TRANSITION_TIMEOUT_MS,
+  pollMs = 25,
+  now = () => Date.now(),
+  wait = ms => new Promise(resolve => setTimeout(resolve, ms)),
+} = {}) {
+  const startedAt = now();
+  let observed = { phase: entry?.phase, pending: !!entry?.pending };
+  while (now() - startedAt < timeoutMs) {
+    observed = { phase: entry?.phase, pending: !!entry?.pending };
+    if (observed.phase === 'combat' && !observed.pending) return { ok: true, elapsedMs: now() - startedAt, observed };
+    await wait(pollMs);
+  }
+  // A final sample accepts a transition that completed on the deadline poll.
+  observed = { phase: entry?.phase, pending: !!entry?.pending };
+  if (observed.phase === 'combat' && !observed.pending) return { ok: true, elapsedMs: now() - startedAt, observed };
+  return { ok: false, elapsedMs: now() - startedAt, observed };
+}
+
+export function qaPlayableBattleSnapshot({ entry, globals = {}, entities = [], currentUID = 0, allowDeferredAdvance = false } = {}) {
+  const now = Number(globals.time || 0);
+  const presentationBarrier = derivePresentationTurnBarrier({ globals });
+  const livingActors = (entities || []).filter(actor => (actor?.kind === 'hero' || actor?.kind === 'enemy') && Number(actor.hp || 0) > 0);
+  const currentActor = livingActors.find(actor => Number(actor.uid) === Number(currentUID));
+  const enemyActionActive = !!(globals.EnemyAction && globals.EnemyAction.active);
+  const actionLocked = Number(globals.ActionLockUntil || 0) > now;
+  const observed = {
+    phase: entry?.phase, pending: !!entry?.pending, ended: !!globals.NativeBattleEnded,
+    enemyActionActive, actionInProgress: !!globals.ActionInProgress,
+    playerBusy: !!globals.IsPlayerBusy, battleStartActive: !!globals.BattleStartActive,
+    actionLocked, deferAdvance: !!globals.DeferAdvance, presentationClear: presentationBarrier.canAdvanceTurn,
+    pendingHeroHits: Array.isArray(globals.PendingHeroHits) ? globals.PendingHeroHits.length : 0,
+    livingActors: livingActors.map(actor => Number(actor.uid)), currentUID: Number(currentUID || 0),
+    currentActorLiving: !!currentActor,
+  };
+  return { ok: observed.phase === 'combat' && !observed.pending && !observed.ended
+    && !observed.enemyActionActive && !observed.actionInProgress && !observed.playerBusy
+    && !observed.battleStartActive && !observed.actionLocked && observed.presentationClear && (allowDeferredAdvance || !observed.deferAdvance) && observed.pendingHeroHits === 0
+    && observed.livingActors.length > 0 && observed.currentActorLiving, observed };
+}
+
+export async function waitForPlayableBattle({
+  entry, globals, entities, getCurrentUID = () => 0, timeoutMs = 3500, pollMs = 40,
+  now = () => Date.now(), wait = ms => new Promise(resolve => setTimeout(resolve, ms)), allowDeferredAdvance = false,
+} = {}) {
+  const startedAt = now(); let latest = qaPlayableBattleSnapshot({ entry, globals, entities, currentUID: getCurrentUID(), allowDeferredAdvance });
+  while (now() - startedAt < timeoutMs) {
+    latest = qaPlayableBattleSnapshot({ entry, globals, entities, currentUID: getCurrentUID(), allowDeferredAdvance });
+    if (latest.ok) return { ok: true, elapsedMs: now() - startedAt, observed: latest.observed };
+    await wait(pollMs);
+  }
+  latest = qaPlayableBattleSnapshot({ entry, globals, entities, currentUID: getCurrentUID(), allowDeferredAdvance });
+  return { ok: latest.ok, elapsedMs: now() - startedAt, observed: latest.observed };
+}
+
+function showLiveHealFrameReport(frames, sourceUrl) {
+  document.getElementById('qa-live-heal-report')?.remove();
+  const report = document.createElement('section');
+  report.id = 'qa-live-heal-report';
+  report.style.cssText = 'position:fixed;inset:0;z-index:2147483647;overflow:auto;background:#10131a;color:#f4f7ff;padding:18px;font:14px/1.35 system-ui,sans-serif';
+  const elapsed = frames.length > 1 ? frames.at(-1).ms - frames[0].ms : 0;
+  report.innerHTML = `<header style="position:sticky;top:0;z-index:1;background:#10131a;padding:0 0 14px"><button type="button" style="float:right;font:inherit;padding:8px 12px">Close report</button><h1 style="margin:0 0 6px;font-size:22px">Live QA heal replay: every browser frame</h1><div>${frames.length} frames captured from the visible game canvas over ${Math.round(elapsed)} ms</div><code style="font-size:11px">${sourceUrl}</code></header><div data-frame-grid style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px"></div>`;
+  report.querySelector('button').addEventListener('click', () => report.remove());
+  const grid = report.querySelector('[data-frame-grid]');
+  frames.forEach((frame, index) => {
+    const figure = document.createElement('figure');
+    figure.style.cssText = 'margin:0;background:#080a0f;border:1px solid #374052;padding:8px';
+    const image = new Image();
+    image.src = frame.image;
+    image.alt = `Live heal replay frame ${index}`;
+    image.style.cssText = 'display:block;width:100%;height:auto;background:#000';
+    const yRange = frame.activeParticles ? `${frame.minY.toFixed(1)} to ${frame.maxY.toFixed(1)}` : 'none';
+    const caption = document.createElement('figcaption');
+    caption.textContent = `Frame ${index}  |  +${Math.round(frame.ms - frames[0].ms)} ms  |  blooms ${frame.activeBlooms}  |  particles ${frame.activeParticles}  |  live Y ${yRange}`;
+    caption.style.cssText = 'padding-top:7px;font:12px/1.35 ui-monospace,monospace';
+    figure.append(image, caption);
+    grid.append(figure);
+  });
+  document.body.append(report);
+}
 
 export function registerDevBrowserTestHooks({
   state,
@@ -31,9 +275,11 @@ export function registerDevBrowserTestHooks({
   deriveDamageFloatFrameOffset,
   isBoardGemLocked,
   drawFrame,
-  handleGemMatch,
+  installQaFixtureRuntimeRandom,
+  resolveQaFixtureDeferredAdvance,
   toggleDevToolingModal,
   applyDevToolingConfig,
+  resumeGameplayFromDevTooling,
   runDevAutoplayUntilDepleted,
   getLatestCombatActionLine,
   getLatestStoryCardActionLine,
@@ -47,28 +293,915 @@ export function registerDevBrowserTestHooks({
   getAttackButtonBounds,
   worldToCanvas,
   canvas,
+  qaResetScenario,
+  qaResumeScenario,
+  qaRunAstralFlowSpecial,
+  qaSetHeroFlowReady,
+  qaArmLiveKajaDestiny,
+  qaFixtureHeal,
+  qaGrantDawnChorus,
+  qaSetDawnChorusRoll,
+  qaTriggerDawnChorusDefeat,
+  qaResolveEnemyBasicHit,
+  qaChooseAstralFlowSpecial,
+  qaPauseResumeSessionBuffOffer,
+  qaReadSessionBuffState,
 }) {
   if (typeof window === 'undefined') return;
 
   if (new URLSearchParams(window.location.search).get('questQA') === '1') {
+    const pauseSnapshot = document.createElement('div');
+    pauseSnapshot.id = 'quest-qa-pause-snapshot';
+    pauseSnapshot.hidden = true;
+    const pauseSnapshots = { departure: null, current: null, resume: null };
+    gameState.publishQaPauseSnapshot = stage => {
+      const snapshot = serializeQaPauseCombatSnapshot({
+        state,
+        getCurrentTurn: () => callFunctionWithContext(fnContext, 'GetCurrentTurn'),
+      });
+      if (stage === 'departure') pauseSnapshots.departure = snapshot;
+      if (stage === 'resume') pauseSnapshots.resume = snapshot;
+      pauseSnapshots.current = snapshot;
+      pauseSnapshot.dataset.qaPauseSnapshot = JSON.stringify(pauseSnapshots);
+      pauseSnapshot.dataset.qaPauseStage = String(stage || 'current');
+    };
     const controls = document.createElement('div');
+    controls.id = 'quest-qa-controls';
+    controls.className = 'quest-qa-controls';
+    controls.dataset.qaLayout = 'dock';
     controls.setAttribute('aria-label', 'Quest QA');
-    controls.style.cssText = 'position:fixed;top:4px;left:4px;z-index:10001;display:flex;gap:4px';
+    const leftRail = document.createElement('div');
+    leftRail.className = 'quest-qa-rail quest-qa-rail-left';
+    leftRail.setAttribute('aria-label', 'Quest QA setup controls');
+    const rightRail = document.createElement('div');
+    rightRail.className = 'quest-qa-rail quest-qa-rail-right';
+    rightRail.setAttribute('aria-label', 'Quest QA combat controls');
+    const heroSelect = document.createElement('select');
+    heroSelect.setAttribute('aria-label', 'QA level-up hero');
+    const tierSelect = document.createElement('select');
+    tierSelect.setAttribute('aria-label', 'QA offer tier');
+    for (const tier of [1, 2, 3, 4]) tierSelect.append(new Option(`Tier ${tier}`, String(tier)));
+    const cardSelect = document.createElement('select');
+    cardSelect.setAttribute('aria-label', 'QA preferred eligible card');
+    const fixtureSelect = document.createElement('select');
+    fixtureSelect.setAttribute('aria-label', 'QA production fixture');
+    Object.keys(QA_LEVEL_UP_FIXTURE_CARD_IDS).forEach(name => fixtureSelect.append(new Option(name, name)));
+    const specialSelect = document.createElement('select');
+    specialSelect.setAttribute('aria-label', 'QA preferred AF special');
+    for (const [id, label] of [
+      ['crimson_ward', 'Crimson Ward'], ['split', 'Split'], ['arcane_pulse', 'Arcane Pulse'],
+      ['destiny', 'Destiny'], ['magic_fruit', 'Magic Fruit'], ['chain_strike_ii', 'Chain Strike II'], ['faze', 'Faze'],
+    ]) specialSelect.append(new Option(label, id));
+    const afReadout = document.createElement('output');
+    afReadout.className = 'quest-qa-readout';
+    afReadout.setAttribute('aria-label', 'QA Astral Flow readout');
+    const renderAfReadout = (message = '') => {
+      const detail = typeof qaReadSessionBuffState === 'function' ? qaReadSessionBuffState() : {};
+      afReadout.textContent = `${message}${message ? '\n' : ''}${JSON.stringify(detail)}`;
+      afReadout.dataset.qaAstralFlow = JSON.stringify(detail);
+    };
+    const requireQaScenarioPaused = ({ allowChoice = false } = {}) => {
+      if (!(state.globals.QaScenarioPaused && state.globals.QaFixtureHoldTurn && state.globals.DevToolingPaused)) throw new Error('QA scenario must be reset and paused first');
+      const readout = typeof qaReadSessionBuffState === 'function' ? qaReadSessionBuffState() : {};
+      if (!allowChoice && Array.isArray(readout.offerIds) && readout.offerIds.length) throw new Error('choiceActive');
+    };
+    const qaHero = () => {
+      const heroes = state.entities.filter(entity => entity.kind === 'hero');
+      if (!heroSelect.options.length) heroes.forEach(hero => heroSelect.append(new Option(hero.name || hero.baseHeroName || String(hero.uid), String(hero.uid))));
+      return heroes.find(hero => Number(hero.uid) === Number(heroSelect.value)) || heroes[0] || null;
+    };
+    const setTierAndCard = () => {
+      const tier = Number(tierSelect.value || 1);
+      state.globals.SessionLevelUpTierWeights = { 1: tier === 1 ? 1 : 0, 2: tier === 2 ? 1 : 0, 3: tier === 3 ? 1 : 0, 4: tier === 4 ? 1 : 0 };
+      state.globals.SessionLevelUpPreferredCardId = String(cardSelect.value || '');
+      state.globals.RuntimeRandom = () => 0;
+    };
+    const setQaFixtureOfferPool = fixture => {
+      const desiredId = resolveQaFixtureOfferCardId(fixture, { selectedCardId: cardSelect.value, cards: SESSION_LEVEL_UP_BUFF_CARDS });
+      const desired = SESSION_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === desiredId);
+      if (!desired) throw new Error(`QA fixture ${fixture} has no offer card`);
+      const selectedOwner = qaHero();
+      const eligibleCards = selectedOwner
+        ? getEligibleLevelUpBuffCards({
+          state: state.globals.SessionLevelBuffState,
+          heroId: String(selectedOwner.heroInstanceKey ?? selectedOwner.uid ?? ''),
+          cards: SESSION_LEVEL_UP_BUFF_CARDS,
+          tier: desired.tier,
+        })
+        : [];
+      const pool = buildQaFixtureOfferPool({
+        fixture,
+        selectedCardId: cardSelect.value,
+        cards: SESSION_LEVEL_UP_BUFF_CARDS,
+        eligibleCards,
+      });
+      if (pool.length !== 3) throw new Error(`QA fixture ${fixture} cannot form three same-tier eligible cards`);
+      // This QA-only pool is still passed to the production offer generator and
+      // normal selection/apply path. Eligibility is resolved before the pool
+      // is capped so an ineligible requested stage cannot consume a slot.
+      state.globals.SessionLevelUpQaOfferCards = pool;
+      cardSelect.value = desired.cardId;
+      tierSelect.value = String(desired.tier);
+    };
+    const qaFixtureOwner = (fixture, selectedCardId = cardSelect.value) => {
+      const identity = resolveQaFixtureOwnerIdentity({
+        fixture,
+        selectedCardId,
+        cards: SESSION_LEVEL_UP_BUFF_CARDS,
+        sessionBuffState: state.globals.SessionLevelBuffState,
+        heroes: state.entities,
+        preferredOwnerId: state.globals.QaFixtureOwnerId || state.globals.QaFixtureBattleBaseline?.ownerId || '',
+      });
+      return identity?.hero || null;
+    };
+    const seedProductionEncounter = () => {
+      // combatSessionInitializer consumes this normal encounter input and installs
+      // its own seeded production RuntimeRandom for the next battle.
+      state.globals.EncounterSeed = 7969171;
+      state.globals.EncounterSeedExplicit = 1;
+      state.globals.EncounterMaxSlots = 3;
+    };
+    const statusSnapshot = actor => (actor?.statuses || []).map(status => ({
+      effect: String(status.statusEffect || ''),
+      magnitude: Number(status.magnitude || 0),
+      snapshotPotency: Number(status.snapshotPotency || 0),
+    }));
+    const snapshotFixtureBaseline = (owner, target) => ({
+      ownerId: String(owner?.heroInstanceKey ?? owner?.uid ?? ''),
+      ownerMaxHP: Number(owner?.maxHP || 0),
+      ownerHP: Number(owner?.hp || 0),
+      ownerAtkUp: Number(owner?.statuses?.find(status => status.statusEffect === 'atkUp')?.magnitude || 0),
+      ownerSpdUp: Number(owner?.statuses?.find(status => status.statusEffect === 'spdUp')?.magnitude || 0),
+      ownerBarrier: Number(owner?.statuses?.find(status => status.statusEffect === 'barrier')?.magnitude || 0),
+      targetId: Number(target?.uid || 0),
+      targetHP: Number(target?.hp || 0),
+      targetStatuses: statusSnapshot(target),
+      enemies: Object.fromEntries(state.entities.filter(entity => entity.kind === 'enemy').map(enemy => [Number(enemy.uid), {
+        hp: Number(enemy.hp || 0),
+        statuses: statusSnapshot(enemy),
+      }])),
+      wardVisualCount: Object.keys(state.globals.PartyWardBarrierVisualsByUID || {}).length,
+      pulseCount: (state.globals.ArcanePulseVisuals || []).length,
+      chainCount: (state.globals.ChainStrikeVisuals || []).length,
+      damageTextCount: (state.globals.DamageTexts || []).length,
+    });
+    const arrangeOwnerTurn = (owner, target) => {
+      const turnIndex = (state.globals.TurnOrderArray || []).findIndex(entry => Number(entry.uid) === Number(owner?.uid));
+      if (turnIndex < 0) throw new Error('QA fixture owner is absent from the production turn order');
+      // Dynamic initiative owns GetCurrentTurn in this build. Arrange its normal
+      // scheduler inputs alongside the legacy queue index, then ProcessTurn
+      // remains the only action-producing production seam.
+      const scheduledOwner = { uid: Number(owner.uid), type: 0, name: String(owner.name || owner.uid) };
+      const initiative = state.globals.DynamicInitiative && typeof state.globals.DynamicInitiative === 'object'
+        ? state.globals.DynamicInitiative
+        : (state.globals.DynamicInitiative = {});
+      initiative.active = 1;
+      initiative.current = scheduledOwner;
+      state.globals.InitiativeCurrentUID = scheduledOwner.uid;
+      state.globals.CurrentTurnIndex = turnIndex;
+      state.globals.SelectedEnemyUID = Number(target?.uid || 0);
+      if (Number(callFunctionWithContext(fnContext, 'GetCurrentTurn')) !== Number(owner.uid)) throw new Error('QA fixture could not arrange the selected owner as current actor');
+    };
+    const arrangeOwnerAsNextSchedulerActor = (owner, target) => {
+      const findSchedulerPredecessor = () => {
+        const queue = state.globals.TurnOrderArray || [];
+        const ownerIndex = queue.findIndex(entry => Number(entry.uid) === Number(owner?.uid));
+        const predecessor = ownerIndex >= 0 && queue.length >= 2
+          ? queue[(ownerIndex - 1 + queue.length) % queue.length]
+          : null;
+        const predecessorActor = state.entities.find(entity => Number(entity.uid) === Number(predecessor?.uid));
+        return { queue, ownerIndex, predecessorActor };
+      };
+      let scheduler = findSchedulerPredecessor();
+      if (scheduler.ownerIndex < 0 || scheduler.queue.length < 2 || !scheduler.predecessorActor || Number(scheduler.predecessorActor.hp || 0) <= 0) {
+        // A completed fixture action can leave the production queue between
+        // roster removal and its next round rebuild. Repair that QA-only
+        // mirror through the existing production round seam before arranging
+        // the next owner action.
+        callFunctionWithContext(fnContext, 'StartRound');
+        scheduler = findSchedulerPredecessor();
+      }
+      const { queue, ownerIndex, predecessorActor } = scheduler;
+      if (ownerIndex < 0 || queue.length < 2) throw new Error('QA fixture owner cannot be scheduled after a completed production turn');
+      if (!predecessorActor || Number(predecessorActor.hp || 0) <= 0) throw new Error('QA fixture owner has no living scheduler predecessor');
+      const initiative = state.globals.DynamicInitiative && typeof state.globals.DynamicInitiative === 'object'
+        ? state.globals.DynamicInitiative
+        : (state.globals.DynamicInitiative = {});
+      initiative.active = 1;
+      initiative.current = { uid: Number(predecessorActor.uid), type: predecessorActor.kind === 'enemy' ? 1 : 0, name: String(predecessorActor.name || predecessorActor.uid) };
+      state.globals.InitiativeCurrentUID = Number(predecessorActor.uid);
+      state.globals.CurrentTurnIndex = (state.globals.TurnOrderArray || []).findIndex(entry => Number(entry.uid) === Number(predecessorActor.uid));
+      state.globals.SelectedEnemyUID = Number(target?.uid || 0);
+    };
+    const runQaFixtureProductionAction = async (ownerUID, action) => {
+      state.globals.QaFixtureExplicitAction = 1;
+      state.globals.QaFixtureExplicitActionOwnerUID = Number(ownerUID || 0);
+      state.globals.QaFixtureExplicitActionClaimed = 0;
+      try {
+        const result = action();
+        // ProcessTurn claims and removes its owner-bound token synchronously
+        // when it creates the native command. A direct production seam does
+        // not need a scheduler token, so revoke it before this wrapper awaits.
+        if (!state.globals.QaFixtureExplicitActionClaimed) {
+          delete state.globals.QaFixtureExplicitAction;
+          delete state.globals.QaFixtureExplicitActionOwnerUID;
+        }
+        return await result;
+      } finally {
+        delete state.globals.QaFixtureExplicitAction;
+        delete state.globals.QaFixtureExplicitActionOwnerUID;
+        delete state.globals.QaFixtureExplicitActionClaimed;
+      }
+    };
+    const releaseQaSettlementHold = () => {
+      if (!state.globals.QaSettlementHoldActive) return false;
+      delete state.globals.QaSettlementHoldActive;
+      if (!state.globals.QaScenarioPaused) delete state.globals.QaFixtureHoldTurn;
+      state.globals.QaSettlementHoldReleaseCount = Number(state.globals.QaSettlementHoldReleaseCount || 0) + 1;
+      return true;
+    };
+    const claimQaSettlementHold = () => {
+      if (state.globals.QaSettlementHoldActive) return false;
+      state.globals.QaFixtureHoldTurn = 1;
+      state.globals.QaSettlementHoldActive = 1;
+      return true;
+    };
+    const qaSettlementRuntimeSnapshot = () => ({
+      currentTurnUID: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0),
+      actionInProgress: !!state.globals.ActionInProgress,
+      playerBusy: !!state.globals.IsPlayerBusy,
+      pendingHeroHits: Array.isArray(state.globals.PendingHeroHits) ? state.globals.PendingHeroHits.length : 0,
+      damageTextCount: (state.globals.DamageTexts || []).length,
+    });
+    const monitorQaSettlementHold = ({ baselineHP, preSettlementState }) => {
+      if (!state.globals.QaSettlementHoldActive) return;
+      const settlementOpen = !!state.globals.SessionLevelUpSettlement || state.globals.SessionLevelUpQueue?.status === 'active';
+      if (settlementOpen && qaSettlementHeroHealthChanged(state.entities, baselineHP)) {
+        state.globals.QaSettlementHoldError = 'hero HP changed while synthetic settlement was held';
+        releaseQaSettlementHold();
+        return;
+      }
+      const duringSettlement = qaSettlementRuntimeSnapshot();
+      if (settlementOpen && (
+        duringSettlement.currentTurnUID !== preSettlementState.currentTurnUID
+        || duringSettlement.actionInProgress
+        || duringSettlement.playerBusy
+        || duringSettlement.pendingHeroHits > 0
+        || duringSettlement.damageTextCount > preSettlementState.damageTextCount
+      )) {
+        state.globals.QaSettlementHoldError = `combat advanced during synthetic settlement: ${JSON.stringify(duringSettlement)}`;
+        releaseQaSettlementHold();
+        return;
+      }
+      const cleanedUp = state.globals.ProgressionBattle?.outcome === 'defeat' || state.globals.ProgressionBattle?.defeatSettled;
+      const autoAdvanced = gameState.storyEntry.phase !== 'combat';
+      if (cleanedUp || (!settlementOpen && autoAdvanced)) {
+        releaseQaSettlementHold();
+        return;
+      }
+      window.setTimeout(() => monitorQaSettlementHold({ baselineHP, preSettlementState }), 25);
+    };
+    const beginRewardSettlement = async ({ overflow = false, multiHero = false, noLevel = false, holdClaimed = false } = {}) => {
+      if (!holdClaimed && !claimQaSettlementHold()) throw new Error('QA synthetic settlement is already waiting for cleanup');
+      if (holdClaimed && !state.globals.QaSettlementHoldActive) throw new Error('QA synthetic settlement lost its claimed scheduler hold');
+      const actionCompletion = await waitForQaSettlementQuiescence({
+        globals: state.globals,
+        wait: ms => new Promise(resolve => window.setTimeout(resolve, ms)),
+      });
+      if (!actionCompletion.ok) {
+        releaseQaSettlementHold();
+        throw new Error(`QA synthetic settlement action completion timed out: ${JSON.stringify(actionCompletion.observed)}`);
+      }
+      if (state.globals.ProgressionBattle?.outcome === 'defeat' || state.globals.ProgressionBattle?.defeatSettled) {
+        releaseQaSettlementHold();
+        throw new Error(`QA synthetic settlement cannot begin after defeat: ${JSON.stringify(actionCompletion.observed)}`);
+      }
+      const preSettlementState = qaSettlementRuntimeSnapshot();
+      const selected = qaHero();
+      if (!selected) {
+        releaseQaSettlementHold();
+        return;
+      }
+      setTierAndCard();
+      const participants = multiHero ? state.entities.filter(entity => entity.kind === 'hero') : [selected];
+      if (!overflow && !noLevel) {
+        for (const hero of participants) {
+          const expToNext = Math.max(1, Number(hero.EXPToNextLevel || 100));
+        // Keep the original 47 + 80 proof at level one, then use each live
+        // level's production threshold so a later staged victory also crosses.
+          hero.currentEXP = Math.max(0, expToNext - 53);
+        }
+      }
+      const reward = deriveQaSettlementReward({
+        threshold: selected.EXPToNextLevel,
+        currentEXP: selected.currentEXP,
+        overflow,
+        noLevel,
+      });
+      const battleId = `quest-qa-level-up-${Date.now()}`;
+      state.globals.NativeBattleEnded = true;
+      state.globals.ProgressionBattle = { id: battleId, participants: participants.map(hero => hero.heroInstanceKey || hero.baseHeroName || hero.name), defeated: { qa_reward: reward }, defeatedGold: {}, settled: false };
+      // This is the production EXP settlement path. Controls only seed its battle input.
+      settleVictory(fnContext);
+      // Awarding EXP synchronously applies a living hero's deterministic max-HP
+      // growth delta. Everything after this point must remain frozen.
+      monitorQaSettlementHold({ baselineHP: qaSettlementHeroHealthSnapshot(state.entities), preSettlementState });
+      if (typeof drawFrame === 'function') drawFrame();
+    };
+    const beginQaFixtureOffer = async () => {
+      requireQaScenarioPaused();
+      const battle = state.globals.ProgressionBattle || {};
+      if (battle.outcome === 'defeat' || battle.defeatSettled) throw new Error('QA fixture offer cannot open after defeat');
+      if (!claimQaSettlementHold()) throw new Error('QA fixture offer is already waiting for settlement cleanup');
+      const selectedOwner = qaHero();
+      if (!selectedOwner) {
+        releaseQaSettlementHold();
+        throw new Error('QA fixture offer requires a selected hero');
+      }
+      state.globals.QaFixtureOwnerId = String(selectedOwner.heroInstanceKey ?? selectedOwner.uid ?? '');
+      try {
+        setQaFixtureOfferPool(fixtureSelect.value);
+        // The deterministic QA input below resolves the current production battle
+        // as victory, then delegates EXP, queue, and offer creation to settleVictory.
+        await beginRewardSettlement({ holdClaimed: true });
+      } catch (error) {
+        delete state.globals.QaFixtureOwnerId;
+        releaseQaSettlementHold();
+        throw error;
+      }
+      if (state.globals.SessionLevelUpQueue?.status !== 'active') throw new Error('QA fixture victory did not create an active level-up queue');
+    };
+    const qaButtons = [];
     for (const [label, action] of [
+      ['QA start combat', () => {
+        if (typeof storyEntry.startCombatForQA !== 'function') return;
+        void storyEntry.startCombatForQA().then(started => {
+          if (started && typeof drawFrame === 'function') drawFrame();
+        });
+      }],
       ['QA defeat', () => {
         if (gameState.storyEntry.phase !== 'combat') return;
         for (const hero of state.entities.filter(e => e.kind === 'hero')) hero.hp = 0;
         callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
+        delete state.globals.QaFixtureBattleBaseline;
+        delete state.globals.QaFixtureOwnerId;
+        releaseQaSettlementHold();
+        delete state.globals.QaFixtureHoldTurn;
+        delete state.globals.SessionLevelUpQaOfferCards;
       }],
       ['QA clear monsters', () => {
         if (gameState.storyEntry.phase !== 'combat') return;
         for (const enemy of state.entities.filter(e => e.kind === 'enemy')) callFunctionWithContext(fnContext, 'KillEnemyByUID', enemy.uid);
       }],
+      ['QA low HP', () => {
+        const hero = state.entities.find(e => e.kind === 'hero'); if (!hero) return;
+        hero.hp = Math.floor(Number(hero.maxHP || 1) * .25); callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
+      }],
+      ['QA EXP 47+80', () => beginRewardSettlement()],
+      ['QA no-level EXP', () => beginRewardSettlement({ noLevel: true })],
+      ['QA fixture offer', () => beginQaFixtureOffer()],
+      ['QA overflow EXP', () => beginRewardSettlement({ overflow: true })],
+      ['QA multi-hero EXP', () => beginRewardSettlement({ multiHero: true })],
+      ['QA choose preferred', () => {
+        const offer = getSessionLevelUpBuffOffer(fnContext);
+        const selected = offer.cards?.find(card => card.cardId === cardSelect.value) || offer.cards?.[0];
+        if (selected) chooseSessionLevelUpBuff(fnContext, selected.cardId);
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
+      ['QA native basic', () => callFunctionWithContext(fnContext, 'ProcessTurn')],
+      ['QA chosen basic', () => {
+        requireQaScenarioPaused();
+        const hero = qaHero();
+        const target = state.entities.find(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
+        if (!hero || !target) throw new Error('QA chosen basic requires a living hero and enemy');
+        callFunctionWithContext(fnContext, 'HeroAttackSingle', hero.uid, target.uid);
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
+      ['QA advance turn', () => { callFunctionWithContext(fnContext, 'AdvanceTurn'); callFunctionWithContext(fnContext, 'ProcessTurn'); }],
+      ['QA incoming hit', () => {
+        const hero = qaHero();
+        const enemy = state.entities.find(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
+        if (hero && enemy) callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', hero.uid);
+      }],
+      ['QA run fixture', async () => {
+        requireQaScenarioPaused();
+        const fixture = resolveQaLevelUpFixtureKey(fixtureSelect.value);
+        const owner = qaFixtureOwner(fixture, cardSelect.value);
+        const fixtureReleaseCountBefore = Number(state.globals.QaFixtureHoldReleaseCount || 0);
+        let firstOwnerBasicEvidence = null;
+        let fixtureTarget = null;
+        let venomApplied = false;
+        let venomTurnEvidence = null;
+        let healEvidence = null;
+        let bounceEvidence = null;
+        let counterEvidence = null;
+        let orbEvidence = null;
+        let ownerBasicAttempts = 0;
+        let fixtureResult = null;
+        delete state.globals.QaFixtureResult;
+        try {
+        const livingEnemies = () => state.entities.filter(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
+        const statusMagnitude = (actor, effect) => Number(actor?.statuses?.find(status => status.statusEffect === effect)?.magnitude || 0);
+        const battleBaseline = state.globals.QaFixtureBattleBaseline;
+        const targetForAttempt = () => livingEnemies().slice().sort((left, right) => Number(right.hp || 0) - Number(left.hp || 0))[0] || null;
+        const target = targetForAttempt();
+        fixtureTarget = target;
+        // Heal and counter need room to produce a real current-run recovery delta.
+        // This mirrors the low-HP QA control: it arranges input state, then the
+        // production turn or incoming-hit seam owns every result.
+        if ((fixture === 'heal' || fixture === 'counter') && owner) {
+          owner.hp = Math.max(1, Math.floor(Number(owner.maxHP || 1) * .5));
+          callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
+        }
+        // QA owns only transient evidence buffers. Each production action below
+        // receives a fresh delta, so an old visual can never clear a scenario.
+        state.globals.ArcanePulseVisuals = [];
+        state.globals.ChainStrikeVisuals = [];
+        state.globals.DamageTexts = [];
+        const baseline = snapshotFixtureBaseline(owner, target);
+        const observedPulses = []; const observedChains = []; const observedDamageTexts = [];
+        let pulseCursor = 0; let chainCursor = 0; let damageTextCursor = 0;
+        const captureFreshVisuals = () => {
+          const pulses = state.globals.ArcanePulseVisuals || [];
+          const chains = state.globals.ChainStrikeVisuals || [];
+          const texts = state.globals.DamageTexts || [];
+          observedPulses.push(...pulses.slice(pulseCursor)); pulseCursor = pulses.length;
+          observedChains.push(...chains.slice(chainCursor)); chainCursor = chains.length;
+          observedDamageTexts.push(...texts.slice(damageTextCursor)); damageTextCursor = texts.length;
+        };
+        const newPulses = () => observedPulses;
+        const newChains = () => observedChains;
+        const newDamageTexts = () => observedDamageTexts;
+        const enemyChangedSinceRun = () => state.entities.filter(entity => entity.kind === 'enemy').some(enemy => Number(enemy.hp || 0) < Number(baseline.enemies?.[enemy.uid]?.hp ?? enemy.hp));
+        const enemyHPLoweredSinceRun = uid => {
+          const enemy = state.entities.find(entity => Number(entity.uid) === Number(uid));
+          return !!enemy && Number(enemy.hp || 0) < Number(baseline.enemies?.[enemy.uid]?.hp ?? enemy.hp);
+        };
+        const enemyMarkedSinceRun = () => livingEnemies().some(enemy => {
+          const before = baseline.enemies?.[enemy.uid]?.statuses || [];
+          const after = statusSnapshot(enemy);
+          const hadDot = before.some(status => status.effect === 'dot');
+          return after.some(status => status.effect === 'dot' && status.magnitude === 1 && status.snapshotPotency === 3) && !hadDot;
+        });
+        const resolveQaVenomDotTurns = target => {
+          const markerVisibleBefore = target?.statuses?.some(status => status.statusEffect === 'dot' && Number(status.duration || 0) > 0);
+          const before = Number(target?.hp || 0);
+          const firstSerial = Math.max(Number(target?.combatTurnSerial || 0), Number(state.globals.TurnSerial || 0)) + 1;
+          turnStart(rulesContext(fnContext), target, firstSerial);
+          const after = Number(target?.hp || 0);
+          turnEnd(target);
+          const markerVisibleAfterTick = target?.statuses?.some(status => status.statusEffect === 'dot' && Number(status.duration || 0) > 0);
+          const expirySerial = firstSerial + 1;
+          turnStart(rulesContext(fnContext), target, expirySerial);
+          turnEnd(target);
+          const markerAbsentAfterExpiry = !target?.statuses?.some(status => status.statusEffect === 'dot' && Number(status.duration || 0) > 0);
+          return { targetUID: Number(target?.uid || 0), before, after, damage: before - after, markerVisibleBefore, markerVisibleAfterTick, markerAbsentAfterExpiry };
+        };
+        const ownerWasHitSinceRun = () => Number(owner?.hp || 0) < baseline.ownerHP;
+        const fixtureCard = SESSION_LEVEL_UP_BUFF_CARDS.find(card => card.cardId === resolveQaFixtureOfferCardId(fixture, { selectedCardId: cardSelect.value, cards: SESSION_LEVEL_UP_BUFF_CARDS }));
+        const orbCadence = Number(fixtureCard?.formula?.everyCompletedBasics || 3);
+        const orbAmount = Number(fixtureCard?.formula?.amount || 4);
+        const scenarios = {
+          stat: { attempts: 1, observed: () => battleBaseline.ownerAtkUp === 0 && statusMagnitude(owner, 'atkUp') === .10 },
+          maxhp: { attempts: 1, observed: () => Number(owner?.maxHP || 0) === Math.round(battleBaseline.ownerMaxHP * 1.20) },
+          speed: { attempts: 1, observed: () => battleBaseline.ownerSpdUp === 0 && statusMagnitude(owner, 'spdUp') === .10 },
+          bargain: { attempts: 1, observed: () => statusMagnitude(owner, 'atkUp') === .15 && Number(owner?.maxHP || 0) === Math.round(battleBaseline.ownerMaxHP * .90) },
+          pulse: { attempts: orbCadence, observed: () => newPulses().some(visual => Number(visual.sourceUID) === Number(owner?.uid) && Number(visual.amount) === orbAmount && enemyHPLoweredSinceRun(visual.targetUID)) },
+          orb: { attempts: orbCadence, observed: () => orbEvidence?.actualBasicsToProc === orbCadence && orbEvidence?.amount === orbAmount && enemyHPLoweredSinceRun(orbEvidence?.targetUID) },
+          venom: { attempts: 1, observed: () => venomApplied && venomTurnEvidence?.damage === 3 && venomTurnEvidence.markerVisibleBefore && venomTurnEvidence.markerVisibleAfterTick && venomTurnEvidence.markerAbsentAfterExpiry },
+          heal: { attempts: 1, observed: () => healEvidence?.actualHeal === healEvidence?.expectedHeal && healEvidence?.atMaxHpCap && healEvidence?.bloomObserved && healEvidence?.ineligibleTriggerNoHeal },
+          bounce: { attempts: 1, observed: () => bounceEvidence?.distinctTargets && bounceEvidence?.damagePercent === .50 && bounceEvidence?.actualSecondaryDamage === bounceEvidence?.resolvedSecondaryDamage && bounceEvidence?.chainStrikeObserved && bounceEvidence?.addedHitTriggeredNoSessionEffects },
+          counter: { attempts: 1, observed: () => counterEvidence?.actualCounterDamage === counterEvidence?.resolvedCounterDamage && counterEvidence?.actualHeal === counterEvidence?.expectedHeal && counterEvidence?.counterPresentationObserved && counterEvidence?.turnSerialBefore === counterEvidence?.turnSerialAfter && counterEvidence?.counterCount === 1 && counterEvidence?.recursiveCounterCount === 0 && counterEvidence?.otherHeroNoTrigger },
+        };
+        const scenario = scenarios[fixture];
+        const activeStages = state.globals.SessionLevelBuffState?.heroes?.[String(owner?.heroInstanceKey ?? owner?.uid ?? '')]?.activeStageByEffectId || {};
+        const sessionTriggerCounters = () => ({ ...(state.globals.SessionLevelBuffState?.heroes?.[String(owner?.heroInstanceKey ?? owner?.uid ?? '')]?.triggerCountersByEffectId || {}) });
+        if (!owner || !scenario || !fixtureCard || !battleBaseline) throw new Error(`QA fixture ${fixture || fixtureSelect.value} has no selected owner, Battle B baseline, or scenario`);
+        if (battleBaseline.fixture !== fixture || battleBaseline.ownerId !== String(owner.heroInstanceKey ?? owner.uid)) throw new Error(`QA fixture ${fixture} does not match the selected Battle B owner`);
+        if (Number(activeStages[fixtureCard.effectId] || 0) !== Number(fixtureCard.stage || 1)) throw new Error(`QA fixture ${fixture} requires its selected production offer before Battle B`);
+        const enemies = livingEnemies();
+        if (fixture === 'bounce' && enemies.length < 2) throw new Error('QA fixture bounce requires two distinct living enemies');
+        if (typeof installQaFixtureRuntimeRandom !== 'function') throw new Error('QA fixture requires the production current-battle RNG seam');
+        const waitForFixtureIdle = ({ allowDeferredAdvance = false } = {}) => waitForPlayableBattle({
+          entry: gameState.storyEntry, globals: state.globals, entities: state.entities,
+          getCurrentUID: () => callFunctionWithContext(fnContext, 'GetCurrentTurn'),
+          allowDeferredAdvance,
+          wait: ms => new Promise(resolve => window.setTimeout(resolve, ms)),
+        });
+        const waitForOwnerCommandReady = async (target, timeoutMs = 2600) => {
+          const startedAt = Date.now();
+          let eligible = false;
+          while (Date.now() - startedAt < timeoutMs) {
+            arrangeOwnerTurn(owner, target);
+            eligible = canUseHeroCommand(fnContext, owner.uid);
+            if (eligible) return { ok: true };
+            await new Promise(resolve => window.setTimeout(resolve, 25));
+          }
+          arrangeOwnerTurn(owner, target);
+          eligible = canUseHeroCommand(fnContext, owner.uid);
+          return { ok: eligible, gate: state.globals.QaFixtureProcessTurnGate || null };
+        };
+        const fixtureActionObserved = () => ({
+          currentUID: Number(callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0),
+          phase: Number(state.globals.TurnPhase || 0),
+          actionInProgress: !!state.globals.ActionInProgress,
+          playerBusy: !!state.globals.IsPlayerBusy,
+          pendingHeroHits: Array.isArray(state.globals.PendingHeroHits) ? state.globals.PendingHeroHits.length : 0,
+          deferAdvance: !!state.globals.DeferAdvance,
+          nativeCommandOwner: Number(state.globals.NativeCommandSequence?.actorUID || 0),
+        });
+        const fixturePhaseIsClosable = () => {
+          const now = Number(state.globals.time || 0);
+          return Number(state.globals.TurnPhase || 0) !== 0
+            && !state.globals.ActionInProgress
+            && !state.globals.IsPlayerBusy
+            && !(state.globals.EnemyAction && state.globals.EnemyAction.active)
+            && Number(state.globals.ActionLockUntil || 0) <= now
+            && !(Array.isArray(state.globals.PendingHeroHits) && state.globals.PendingHeroHits.length);
+        };
+        const closeCompletedFixturePhase = async (target, priorSequence) => {
+          const deferredAdvancePending = !!state.globals.DeferAdvance;
+          if (Number(state.globals.TurnPhase || 0) === 0 && !deferredAdvancePending) return { ok: true, commandStarted: false };
+          if (!fixturePhaseIsClosable()) return { ok: false, observed: fixtureActionObserved() };
+          arrangeOwnerAsNextSchedulerActor(owner, target);
+          let postAdvance = null;
+          if (deferredAdvancePending) {
+            if (typeof resolveQaFixtureDeferredAdvance !== 'function') return { ok: false, observed: { ...fixtureActionObserved(), resolver: 'missing' } };
+            // The production scheduler owns DeferAdvance resolution. Consume
+            // that handoff before arming the next one-use owner token.
+            resolveQaFixtureDeferredAdvance();
+            const resolved = await waitForFixtureAction(observed => !observed.deferAdvance
+              && observed.currentUID === Number(owner.uid)
+              && observed.phase === 0
+              && !observed.actionInProgress
+              && !observed.playerBusy
+              && observed.pendingHeroHits === 0);
+            if (!resolved.ok) return { ok: false, observed: resolved.observed };
+            const commandReady = await waitForOwnerCommandReady(target);
+            if (!commandReady.ok) return { ok: false, observed: { ...fixtureActionObserved(), processGate: commandReady.gate || state.globals.QaFixtureProcessTurnGate || null } };
+            await runQaFixtureProductionAction(owner.uid, () => {
+              callFunctionWithContext(fnContext, 'ProcessTurn');
+              postAdvance = fixtureActionObserved();
+            });
+            const started = await waitForFixtureAction(observed => observed.nativeCommandOwner === Number(owner.uid) && state.globals.NativeCommandSequence !== priorSequence);
+            return { ok: started.ok, commandStarted: started.ok, observed: started.observed || postAdvance };
+          }
+          await runQaFixtureProductionAction(owner.uid, () => {
+            callFunctionWithContext(fnContext, 'AdvanceTurn');
+            postAdvance = fixtureActionObserved();
+            const tokenUnclaimed = !!state.globals.QaFixtureExplicitAction && !state.globals.QaFixtureExplicitActionClaimed;
+            const ownerReady = postAdvance.currentUID === Number(owner.uid)
+              && postAdvance.phase === 0
+              && !postAdvance.actionInProgress
+              && !postAdvance.playerBusy
+              && postAdvance.pendingHeroHits === 0;
+            if (postAdvance.nativeCommandOwner !== Number(owner.uid) && tokenUnclaimed && ownerReady) {
+              callFunctionWithContext(fnContext, 'ProcessTurn');
+              postAdvance = fixtureActionObserved();
+            }
+          });
+          const started = await waitForFixtureAction(observed => observed.nativeCommandOwner === Number(owner.uid) && state.globals.NativeCommandSequence !== priorSequence);
+          return { ok: started.ok, commandStarted: started.ok, observed: started.observed || postAdvance };
+        };
+        const waitForFixtureAction = async (predicate, timeoutMs = 2600) => {
+          const startedAt = Date.now();
+          let observed = fixtureActionObserved();
+          while (Date.now() - startedAt < timeoutMs) {
+            observed = fixtureActionObserved();
+            if (predicate(observed)) return { ok: true, observed };
+            await new Promise(resolve => window.setTimeout(resolve, 25));
+          }
+          observed = fixtureActionObserved();
+          return { ok: !!predicate(observed), observed };
+        };
+        const runOwnerBasicAttempt = async (attempt, { encounterSeed = QA_FIXTURE_RUNTIME_ENCOUNTER_SEED } = {}) => {
+          const currentTarget = targetForAttempt();
+          if (!currentTarget) throw new Error(`QA fixture ${fixture} has no living target`);
+          installQaFixtureRuntimeRandom(encounterSeed);
+          const counterBefore = Number(activeStages && state.globals.SessionLevelBuffState?.heroes?.[String(owner.heroInstanceKey ?? owner.uid)]?.triggerCountersByEffectId?.[fixtureCard.effectId] || 0);
+          const priorSequence = state.globals.NativeCommandSequence;
+          const phaseClosed = await closeCompletedFixturePhase(currentTarget, priorSequence);
+          if (!phaseClosed.ok) throw new Error(`QA fixture ${fixture} cannot advance its completed turn to the selected owner: ${JSON.stringify({ attempt, processGate: state.globals.QaFixtureProcessTurnGate || null, ...phaseClosed.observed })}`);
+          if (!phaseClosed.commandStarted) {
+            arrangeOwnerTurn(owner, currentTarget);
+            const commandReady = await waitForOwnerCommandReady(currentTarget);
+            if (!commandReady.ok) throw new Error(`QA fixture ${fixture} owner command is not production-ready: ${JSON.stringify(commandReady.gate || state.globals.QaFixtureProcessTurnGate || null)}`);
+            await runQaFixtureProductionAction(owner.uid, () => callFunctionWithContext(fnContext, 'ProcessTurn'));
+          }
+          const started = await waitForFixtureAction(observed => observed.nativeCommandOwner === Number(owner.uid) && state.globals.NativeCommandSequence !== priorSequence);
+          if (!started.ok) throw new Error(`QA fixture ${fixture} owner basic did not start: ${JSON.stringify({ attempt, counterBefore, processGate: state.globals.QaFixtureProcessTurnGate || null, ...started.observed })}`);
+          const completed = await waitForFixtureAction(observed => observed.nativeCommandOwner === 0 && observed.pendingHeroHits === 0 && !observed.actionInProgress && !observed.playerBusy);
+          if (!completed.ok) throw new Error(`QA fixture ${fixture} owner basic did not complete: ${JSON.stringify({ attempt, counterBefore, processGate: state.globals.QaFixtureProcessTurnGate || null, ...completed.observed })}`);
+          captureFreshVisuals();
+          ownerBasicAttempts += 1;
+          const counterAfter = Number(state.globals.SessionLevelBuffState?.heroes?.[String(owner.heroInstanceKey ?? owner.uid)]?.triggerCountersByEffectId?.[fixtureCard.effectId] || 0);
+          if (counterAfter !== counterBefore + 1) throw new Error(`QA fixture ${fixture} owner basic did not advance its trigger counter: ${JSON.stringify({ attempt, counterBefore, counterAfter, ...fixtureActionObserved() })}`);
+          if (!firstOwnerBasicEvidence) firstOwnerBasicEvidence = { counterBefore, counterAfter };
+          captureFreshVisuals();
+        };
+        // The held current battle has not received its first production turn.
+        // Re-arm that battle-start sentinel so ProcessTurn below owns the card
+        // application after all QA inputs are arranged.
+        delete state.globals.SessionLevelBuffCombatSessionId;
+        for (let attempt = 0; attempt < scenario.attempts && !scenario.observed(); attempt += 1) {
+          const idleBefore = await waitForFixtureIdle({ allowDeferredAdvance: !!state.globals.QaFixtureHoldTurn });
+          if (!idleBefore.ok) throw new Error(`QA fixture ${fixture} cannot run while Battle B is gated: ${JSON.stringify(idleBefore.observed)}`);
+          state.globals.QaFixtureHoldTurn = 1;
+          if (fixture === 'counter') {
+            const enemy = livingEnemies()[0];
+            if (!enemy) throw new Error('QA fixture counter has no living enemy');
+            installQaFixtureRuntimeRandom(QA_FIXTURE_RUNTIME_ENCOUNTER_SEED);
+            const otherHero = state.entities.find(entity => entity.kind === 'hero' && Number(entity.uid) !== Number(owner.uid) && Number(entity.hp || 0) > 0);
+            const ownerHPBefore = Number(owner.hp || 0), attackerHPBefore = Number(enemy.hp || 0), turnSerialBefore = Number(state.globals.TurnSerial || 0);
+            await runQaFixtureProductionAction(enemy.uid, () => callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', owner.uid));
+            captureFreshVisuals();
+            const ownerHPAfterCounterHeal = Number(owner.hp || 0), attackerHPAfter = Number(enemy.hp || 0);
+            const incomingDamageText = newDamageTexts().find(text => text.kind === 'damage' && Number(text.targetUID) === Number(owner.uid));
+            const counterDamageTexts = newDamageTexts().filter(text => text.kind === 'damage' && Number(text.targetUID) === Number(enemy.uid));
+            const counterDamageText = counterDamageTexts[0] || null;
+            const healText = newDamageTexts().find(text => text.kind === 'heal' && Number(text.targetUID) === Number(owner.uid));
+            const ownerHPAfterIncomingDamage = Math.max(0, ownerHPBefore - Number(incomingDamageText?.amount || 0));
+            const expectedHeal = Math.min(Number(owner.maxHP || 0), ownerHPAfterIncomingDamage + Math.floor(Number(owner.maxHP || 0) * .03)) - ownerHPAfterIncomingDamage;
+            const ownerBeforeOther = Number(owner.hp || 0), enemyBeforeOther = Number(enemy.hp || 0);
+            if (otherHero) await runQaFixtureProductionAction(enemy.uid, () => callFunctionWithContext(fnContext, 'ExecuteEnemyJobSkill', enemy.uid, 'Enemy_ATK_Single', otherHero.uid));
+            captureFreshVisuals();
+            counterEvidence = { attackerUID: Number(enemy.uid), ownerHPBeforeIncomingHit: ownerHPBefore, ownerHPAfterIncomingDamage, ownerHPAfterCounterHeal, ownerHPDelta: ownerHPAfterCounterHeal - ownerHPBefore, attackerHPBefore, attackerHPAfter, attackerHPDelta: attackerHPBefore - attackerHPAfter, resolvedCounterDamage: Number(counterDamageText?.amount || 0), actualCounterDamage: attackerHPBefore - attackerHPAfter, expectedHeal, actualHeal: ownerHPAfterCounterHeal - ownerHPAfterIncomingDamage, counterPresentationObserved: !!counterDamageText && Number(counterDamageText.amount || 0) === attackerHPBefore - attackerHPAfter && !!healText && Number(healText.amount || 0) === expectedHeal, turnSerialBefore, turnSerialAfter: Number(state.globals.TurnSerial || 0), counterCount: counterDamageTexts.length, recursiveCounterCount: Math.max(0, counterDamageTexts.length - 1), otherHeroNoTrigger: !!otherHero && Number(owner.hp || 0) === ownerBeforeOther && Number(enemy.hp || 0) === enemyBeforeOther };
+          } else {
+            const countersBefore = sessionTriggerCounters();
+            const primary = targetForAttempt();
+            const secondary = fixture === 'bounce' ? livingEnemies().find(enemy => Number(enemy.uid) !== Number(primary?.uid)) : null;
+            const primaryHPBefore = Number(primary?.hp || 0), secondaryHPBefore = Number(secondary?.hp || 0), ownerHPBefore = Number(owner?.hp || 0);
+            await runOwnerBasicAttempt(attempt);
+            const primaryHPAfter = Number(primary?.hp || 0), ownerHPAfter = Number(owner?.hp || 0), countersAfter = sessionTriggerCounters();
+            if (fixture === 'orb') {
+              const visual = newPulses().find(candidate => Number(candidate.sourceUID) === Number(owner.uid) && Number(candidate.amount) === orbAmount);
+              if (visual) orbEvidence = { actualBasicsToProc: ownerBasicAttempts, amount: Number(visual.amount || 0), targetUID: Number(visual.targetUID || 0) };
+            }
+            if (fixture === 'heal') {
+              const expectedHeal = Math.min(Number(owner.maxHP || 0), ownerHPBefore + Math.floor(Number(owner.maxHP || 0) * .05)) - ownerHPBefore;
+              const bloomObserved = newDamageTexts().some(text => text.kind === 'heal' && Number(text.targetUID) === Number(owner.uid) && Number(text.amount) === expectedHeal);
+              const noHealBefore = Number(owner.hp || 0);
+              await runOwnerBasicAttempt(attempt + 1, { encounterSeed: QA_FIXTURE_INELIGIBLE_PROC_ENCOUNTER_SEED });
+              healEvidence = { hpBefore: ownerHPBefore, hpAfter: ownerHPAfter, expectedHeal, actualHeal: ownerHPAfter - ownerHPBefore, atMaxHpCap: ownerHPAfter <= Number(owner.maxHP || 0), bloomObserved, ineligibleTriggerNoHeal: Number(owner.hp || 0) === noHealBefore };
+            }
+            if (fixture === 'bounce') {
+              const resolvedPrimaryDamage = primaryHPBefore - primaryHPAfter;
+              const chain = newChains().find(visual => Number(visual.sourceTargetUID) === Number(primary?.uid) && Number(visual.targetUID) === Number(secondary?.uid));
+              const onlyBounceCounterAdvanced = Object.entries(countersAfter).every(([effectId, value]) => Number(value) === Number(countersBefore[effectId] || 0) + (effectId === fixtureCard.effectId ? 1 : 0));
+              bounceEvidence = { primaryUID: Number(primary?.uid || 0), secondaryUID: Number(secondary?.uid || 0), distinctTargets: Number(primary?.uid || 0) !== Number(secondary?.uid || 0), primaryHPBefore, primaryHPAfter, resolvedPrimaryDamage, damagePercent: Number(chain?.damagePercent || 0), resolvedSecondaryDamage: Number(chain?.resolvedDamage || 0), actualSecondaryDamage: secondaryHPBefore - Number(secondary?.hp || 0), chainStrikeObserved: !!chain, countersBefore, countersAfter, addedHitTriggeredNoSessionEffects: onlyBounceCounterAdvanced };
+            }
+            if (fixture === 'venom') {
+              const venomTarget = livingEnemies().find(enemy => enemy.statuses?.some(status => status.statusEffect === 'dot' && Number(status.snapshotPotency || 0) === 3));
+              if (!venomTarget) throw new Error('QA fixture venom did not apply standard DOT before its target turn');
+              venomApplied = enemyMarkedSinceRun();
+              if (typeof drawFrame === 'function') drawFrame();
+              venomTurnEvidence = resolveQaVenomDotTurns(venomTarget);
+              if (typeof drawFrame === 'function') drawFrame();
+            }
+          }
+          const idleAfter = await waitForFixtureIdle({ allowDeferredAdvance: !!state.globals.QaFixtureHoldTurn });
+          captureFreshVisuals();
+          if (!idleAfter.ok) throw new Error(`QA fixture ${fixture} action did not complete: ${JSON.stringify(idleAfter.observed)}`);
+        }
+        const success = scenario.observed();
+        fixtureResult = {
+          fixture,
+          success,
+          ownerUID: Number(owner.uid || 0),
+          targetUID: Number(venomTurnEvidence?.targetUID || fixtureTarget?.uid || 0),
+          counterBeforeFirstOwnerBasic: firstOwnerBasicEvidence?.counterBefore ?? null,
+          counterAfterFirstOwnerBasic: firstOwnerBasicEvidence?.counterAfter ?? null,
+          markerVisibleWhileActive: venomTurnEvidence?.markerVisibleBefore ?? null,
+          targetHPBeforeNextTurn: venomTurnEvidence?.before ?? null,
+          targetHPAfterNextTurn: venomTurnEvidence?.after ?? null,
+          targetTurnTickDelta: venomTurnEvidence?.damage ?? null,
+          statusMarkerAbsentAfterExpiry: venomTurnEvidence?.markerAbsentAfterExpiry ?? null,
+          heal: healEvidence,
+          bounce: bounceEvidence,
+          counter: counterEvidence,
+          orb: orbEvidence,
+          schedulerReleaseCount: fixtureReleaseCountBefore,
+        };
+        state.globals.QaFixtureResult = fixtureResult;
+        if (!success) throw new Error(`QA fixture ${fixture} did not produce its required observable production result: ${JSON.stringify({ ...fixtureResult, venomApplied, enemies: livingEnemies().map(enemy => ({ uid: enemy.uid, hp: enemy.hp, statuses: enemy.statuses?.map(status => status.statusEffect) || [] })), pulses: state.globals.ArcanePulseVisuals?.length || 0, chains: state.globals.ChainStrikeVisuals?.length || 0 })}`);
+        if (typeof drawFrame === 'function') drawFrame();
+        } catch (error) {
+          fixtureResult ||= {
+            fixture,
+            success: false,
+            ownerUID: Number(owner?.uid || 0),
+            targetUID: Number(venomTurnEvidence?.targetUID || fixtureTarget?.uid || 0),
+            counterBeforeFirstOwnerBasic: firstOwnerBasicEvidence?.counterBefore ?? null,
+            counterAfterFirstOwnerBasic: firstOwnerBasicEvidence?.counterAfter ?? null,
+            markerVisibleWhileActive: venomTurnEvidence?.markerVisibleBefore ?? null,
+            targetHPBeforeNextTurn: venomTurnEvidence?.before ?? null,
+            targetHPAfterNextTurn: venomTurnEvidence?.after ?? null,
+            targetTurnTickDelta: venomTurnEvidence?.damage ?? null,
+            statusMarkerAbsentAfterExpiry: venomTurnEvidence?.markerAbsentAfterExpiry ?? null,
+            heal: healEvidence,
+            bounce: bounceEvidence,
+            counter: counterEvidence,
+            orb: orbEvidence,
+            schedulerReleaseCount: fixtureReleaseCountBefore,
+          };
+          fixtureResult.success = false;
+          fixtureResult.error = String(error?.message || error);
+          state.globals.QaFixtureResult = fixtureResult;
+          throw error;
+        } finally {
+          delete state.globals.QaFixtureExplicitAction;
+          if (state.globals.QaFixtureHoldTurn && !state.globals.QaScenarioPaused) {
+            state.globals.QaFixtureHoldReleaseCount = fixtureReleaseCountBefore + 1;
+            state.globals.QaFixtureResult = { ...(state.globals.QaFixtureResult || fixtureResult || {}), schedulerReleaseCount: state.globals.QaFixtureHoldReleaseCount };
+            delete state.globals.QaFixtureHoldTurn;
+          }
+        }
+      }],
+      ['QA next battle', async () => {
+        const fixture = resolveQaLevelUpFixtureKey(fixtureSelect.value);
+        const owner = qaFixtureOwner(fixture, cardSelect.value);
+        const target = state.entities.find(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
+        if (!fixture || !owner) throw new Error('QA continuation requires a selected fixture owner with its production buff');
+        const priorBattle = state.globals.ProgressionBattle || {};
+        if (priorBattle.outcome === 'defeat' || priorBattle.defeatSettled) throw new Error('QA continuation cannot start Battle B after defeat');
+        // Keep the pre-transition values. Encounter replacement creates new
+        // actor objects, so post-init values cannot prove permanent buff deltas.
+        const preBattleBaseline = { fixture, ...snapshotFixtureBaseline(owner, target) };
+        state.globals.QaFixtureHoldTurn = 1;
+        try {
+        seedProductionEncounter();
+        storyEntry.victory();
+        const cardIndex = gameState.storyEntry.cards.findIndex((card, index) => card.combat && index < gameState.storyEntry.progress.revealed);
+        if (!storyEntry.startCard(cardIndex) || !storyEntry.requestSkip() || !storyEntry.confirmSkip()) throw new Error('QA continuation could not enter the production StoryEntry combat transition');
+        const transition = await waitForQaStoryCombatPhase(gameState.storyEntry, { wait: ms => new Promise(resolve => window.setTimeout(resolve, ms)) });
+        if (!transition.ok || state.globals.NativeBattleEnded) throw new Error(`QA continuation timed out after ${transition.elapsedMs}ms phase=${transition.observed.phase} pending=${transition.observed.pending}`);
+        const playable = await waitForPlayableBattle({
+          entry: gameState.storyEntry, globals: state.globals, entities: state.entities,
+          getCurrentUID: () => callFunctionWithContext(fnContext, 'GetCurrentTurn'),
+          wait: ms => new Promise(resolve => window.setTimeout(resolve, ms)),
+        });
+        if (!playable.ok) throw new Error(`QA continuation did not reach a playable Battle B: ${JSON.stringify(playable.observed)}`);
+        const liveOwner = state.entities.find(entity => entity.kind === 'hero' && String(entity.heroInstanceKey ?? entity.uid) === preBattleBaseline.ownerId);
+        const liveTarget = state.entities.find(entity => entity.kind === 'enemy' && Number(entity.hp || 0) > 0);
+        if (!liveOwner || !liveTarget) throw new Error('QA continuation replaced the encounter without the selected owner and a living target');
+        state.globals.QaFixtureBattleBaseline = { ...preBattleBaseline, ready: playable.observed, liveOwnerUID: Number(liveOwner.uid), liveTargetUID: Number(liveTarget.uid) };
+        if (typeof drawFrame === 'function') drawFrame();
+        } catch (error) {
+          delete state.globals.QaFixtureHoldTurn;
+          throw error;
+        }
+      }],
+      ['QA fixture heal', () => {
+        const result = typeof qaFixtureHeal === 'function' ? qaFixtureHeal() : { ok: false, reason: 'missingProductionHealEntryPoint' };
+        renderAfReadout(`fixture heal: ${result.ok ? 'ok' : result.reason || 'failed'}`);
+        if (!result.ok) throw new Error(`QA fixture heal failed: ${result.reason || 'unknown'}`);
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
+      ['QA enemies 1 HP', () => {
+        const detail = typeof qaReadSessionBuffState === 'function' ? qaReadSessionBuffState() : {};
+        const result = applyQaEnemyLowHpFixture({ globals: state.globals, entities: state.entities, choiceActive: Array.isArray(detail.offerIds) && detail.offerIds.length > 0 });
+        renderAfReadout(`enemies 1 HP: ${result.ok ? result.affectedUIDs.join(',') : result.reason || 'refused'}`);
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
+      ['QA Dawn rank', () => {
+        const result = typeof qaGrantDawnChorus === 'function' ? qaGrantDawnChorus(Number(tierSelect.value || 1)) : { ok: false, reason: 'missingDawnGrantEntryPoint' };
+        renderAfReadout(`Dawn rank: ${result.ok ? result.rank : result.reason || 'failed'}`);
+        if (!result.ok) throw new Error(`QA Dawn rank failed: ${result.reason || 'unknown'}`);
+      }],
+      ['QA Dawn forced success', () => {
+        const result = typeof qaSetDawnChorusRoll === 'function' ? qaSetDawnChorusRoll(false) : { ok: false, reason: 'missingDawnRollEntryPoint' };
+        renderAfReadout(`Dawn success roll: ${result.ok ? result.roll : result.reason || 'failed'}`);
+        if (!result.ok) throw new Error(`QA Dawn success failed: ${result.reason || 'unknown'}`);
+      }],
+      ['QA Dawn forced equal', () => {
+        const result = typeof qaSetDawnChorusRoll === 'function' ? qaSetDawnChorusRoll(true) : { ok: false, reason: 'missingDawnRollEntryPoint' };
+        renderAfReadout(`Dawn equal roll: ${result.ok ? result.roll : result.reason || 'failed'}`);
+        if (!result.ok) throw new Error(`QA Dawn equal failed: ${result.reason || 'unknown'}`);
+      }],
+      ['QA Dawn defeat', () => {
+        const result = typeof qaTriggerDawnChorusDefeat === 'function' ? qaTriggerDawnChorusDefeat() : { ok: false, reason: 'missingDawnDefeatEntryPoint' };
+        renderAfReadout(`Dawn defeat: ${result.ok ? 'ok' : result.reason || 'failed'}`);
+        if (!result.ok) throw new Error(`QA Dawn defeat failed: ${result.reason || 'unknown'}`);
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
+      ['QA enemy basic', () => {
+        const result = typeof qaResolveEnemyBasicHit === 'function' ? qaResolveEnemyBasicHit(Number(qaHero()?.uid || 0)) : { ok: false, reason: 'missingProductionEnemyHitEntryPoint' };
+        renderAfReadout(`enemy basic: ${result.ok ? `${result.preHP}->${result.postHP}` : result.reason || 'refused'}`);
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
+      ['QA set AF 100', () => {
+        const result = typeof qaSetHeroFlowReady === 'function'
+          ? qaSetHeroFlowReady(Number(qaHero()?.uid || 0), String(specialSelect.value || ''))
+          : { ok: false, reason: 'missingProductionAfEntryPoint' };
+        renderAfReadout(`set AF 100: ${result.ok ? 'ok' : result.reason || 'failed'}`);
+        if (!result.ok && result.reason !== 'choiceActive') throw new Error(`QA set AF 100 failed: ${result.reason || 'unknown'}`);
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
+      ['QA live Kaja Destiny', () => {
+        const result = typeof qaArmLiveKajaDestiny === 'function' ? qaArmLiveKajaDestiny() : { ok: false, reason: 'missingLiveDestinyEntryPoint' };
+        renderAfReadout(`live Kaja Destiny: ${result.ok ? 'armed at 90 AF' : result.reason || 'failed'}`);
+        if (!result.ok) throw new Error(`QA live Kaja Destiny failed: ${result.reason || 'unknown'}`);
+      }],
+      ['QA choose special', () => {
+        const result = typeof qaChooseAstralFlowSpecial === 'function'
+          ? qaChooseAstralFlowSpecial(String(specialSelect.value || ''))
+          : { ok: false, reason: 'missingProductionSpecialEntryPoint' };
+        renderAfReadout(`choose special: ${result.ok ? 'ok' : result.reason || 'failed'}`);
+        if (!result.ok) return;
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
+      ['QA run special', () => {
+        const result = typeof qaRunAstralFlowSpecial === 'function'
+          ? qaRunAstralFlowSpecial(Number(qaHero()?.uid || 0), String(specialSelect.value || ''))
+          : { ok: false, reason: 'missingTransactionalSpecialEntryPoint' };
+        renderAfReadout(`run special: ${result.ok ? 'ok' : result.reason || 'failed'}`);
+        if (!result.ok && result.reason !== 'choiceActive') throw new Error(`QA run special failed: ${result.reason || 'assertionFailed'}`);
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
+      ['QA Arcane replay', async () => {
+        if (!state.globals.ArcanePulseTestScenario) await window.__codexGame.setupArcanePulseScenario();
+        const result = window.__codexGame.replayArcanePulseScenario();
+        renderAfReadout(`Arcane Pulse: ${result.ok ? 'replaying' : result.reason || 'failed'}`);
+      }],
+      ['QA heal replay', async () => {
+        if (!state.globals.HealBloomTestScenario) await window.__codexGame.setupHealBloomScenario();
+        const result = window.__codexGame.replayHealBloomScenario();
+        renderAfReadout(`Heal fountain: ${result.ok ? 'replaying' : result.reason || 'failed'}`);
+      }],
+      ['QA live heal frames', async () => {
+        const result = await window.__codexGame.captureHealBloomFrames();
+        renderAfReadout(`Live heal frames: ${result.ok ? result.frameCount : result.reason || 'failed'}`);
+      }],
+      ['QA weak hit', async () => {
+        if (!state.globals.ArcanePulseTestScenario) await window.__codexGame.setupArcanePulseScenario();
+        const result = window.__codexGame.replayHitTierScenario('weak');
+        renderAfReadout(`weak hit: ${result.ok ? 'replaying' : result.reason || 'failed'}`);
+      }],
+      ['QA regular hit', async () => {
+        if (!state.globals.ArcanePulseTestScenario) await window.__codexGame.setupArcanePulseScenario();
+        const result = window.__codexGame.replayHitTierScenario('regular');
+        renderAfReadout(`regular hit: ${result.ok ? 'replaying' : result.reason || 'failed'}`);
+      }],
+      ['QA offer pause/resume', async () => {
+        const result = typeof qaPauseResumeSessionBuffOffer === 'function'
+          ? await qaPauseResumeSessionBuffOffer()
+          : { ok: false, reason: 'missingProductionPauseEntryPoint' };
+        renderAfReadout(`pause/resume: ${result.ok ? 'ok' : result.reason || 'failed'}`);
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
+      ['QA fresh session', async () => {
+        const result = typeof qaResetScenario === 'function' ? await qaResetScenario() : { ok: false, reason: 'missingScenarioResetEntryPoint' };
+        renderAfReadout(`fresh session paused: ${result.ok ? 'ok' : result.reason || 'failed'}`);
+        if (!result.ok) throw new Error(`QA fresh session failed: ${result.reason || 'unknown'}`);
+      }],
+      ['QA resume', () => {
+        const result = typeof qaResumeScenario === 'function' ? qaResumeScenario() : { ok: false, reason: 'missingScenarioResumeEntryPoint' };
+        renderAfReadout(`resume: ${result.ok ? 'ok' : result.reason || 'refused'}`);
+        if (!result.ok && result.reason !== 'choiceActive') throw new Error(`QA resume failed: ${result.reason || 'unknown'}`);
+      }],
+      ['QA abandon', async () => {
+        const navigated = await storyEntry.navigate('Quests');
+        const quit = navigated && storyEntry.quitPausedCombat();
+        if (!navigated || !quit) throw new Error('QA abandon requires the production Quests pause and Quit Battle flow');
+        if (Object.keys(state.globals.SessionLevelBuffState?.heroes || {}).length || state.globals.SessionLevelUpSettlement || state.globals.SessionLevelUpQueue?.status === 'active' || state.globals.SessionLevelBuffCombatSessionId != null) throw new Error('QA abandon did not clear owned session level buffs');
+        delete state.globals.QaFixtureBattleBaseline;
+        delete state.globals.QaFixtureOwnerId;
+        releaseQaSettlementHold();
+        delete state.globals.QaFixtureHoldTurn;
+        delete state.globals.SessionLevelUpQaOfferCards;
+        if (typeof drawFrame === 'function') drawFrame();
+      }],
     ]) {
       const button = document.createElement('button'); button.textContent = label;
-      button.addEventListener('click', action); controls.append(button);
+      button.addEventListener('click', () => Promise.resolve()
+        .then(action)
+        .catch(error => renderAfReadout(`control refused: ${String(error?.message || error)}`)));
+      qaButtons.push(button);
     }
-    document.body.append(controls);
+    leftRail.append(heroSelect, tierSelect, cardSelect, fixtureSelect, specialSelect, ...qaButtons.slice(0, 10));
+    rightRail.append(afReadout, ...qaButtons.slice(10));
+    controls.append(leftRail, rightRail);
+    const syncQaControlsLayout = () => {
+      const rect = canvas?.getBoundingClientRect?.();
+      const layout = computeQuestQaControlLayout({
+        viewportWidth: window.innerWidth,
+        canvasLeft: rect?.left,
+        canvasRight: rect?.right,
+      });
+      controls.dataset.qaLayout = layout.mode;
+      if (layout.mode === 'rails') controls.style.setProperty('--orka-qa-rail-width', `${layout.railWidth}px`);
+      else controls.style.removeProperty('--orka-qa-rail-width');
+    };
+    syncQaControlsLayout();
+    window.addEventListener('resize', syncQaControlsLayout);
+    const updateQaOptions = () => {
+      if (!heroSelect.options.length) qaHero();
+      const cards = SESSION_LEVEL_UP_BUFF_CARDS;
+      if (!cardSelect.options.length && cards.length) cards.forEach(card => cardSelect.append(new Option(card.name || card.cardId, card.cardId)));
+    };
+    updateQaOptions();
+    renderAfReadout();
+    document.body.append(pauseSnapshot, controls);
   }
   window.render_game_to_text = () => {
     const currentUID = callFunctionWithContext(fnContext, 'GetCurrentTurn');
@@ -117,7 +1250,6 @@ export function registerDevBrowserTestHooks({
         heroGemUsage: state.globals.HeroGemUsage || null,
         heroGemMilestones: state.globals.HeroGemMilestones || null,
         heroGemProgressPersistedAt: state.globals.HeroGemProgressPersistedAt || 0,
-        idleFarmLastCollect: state.globals.IdleFarmLastCollect || null,
         powerAmpTelemetry: Array.isArray(state.globals.PowerAmpTelemetryTrace)
           ? state.globals.PowerAmpTelemetryTrace.slice(-40)
           : [],
@@ -129,11 +1261,11 @@ export function registerDevBrowserTestHooks({
         enemySlotOptions: getDevToolEnemyOptions(),
         enemyTypeOptions: getDevToolEnemyOptions(),
       },
-      idleFarm: {
+      astralMarket: {
         active: layoutState && typeof layoutState.getActiveLayoutId === 'function'
           ? layoutState.getActiveLayoutId() === 'idleFarmLayout'
           : false,
-        state: gameState.idleFarmLayout || null,
+        state: state.globals.Equipment?.market || null,
       },
       mapLayout: {
         panX: Number(mapLayoutState.getMapLayoutState().panX || 0),
@@ -160,7 +1292,13 @@ export function registerDevBrowserTestHooks({
         isPlayerBusy: state.globals.IsPlayerBusy,
         turnPhase: state.globals.TurnPhase ?? 0,
         deferAdvance: state.globals.DeferAdvance ?? 0,
+        advanceAfterAction: state.globals.AdvanceAfterAction ?? 0,
+        actionInProgress: state.globals.ActionInProgress ?? 0,
+        actionActorUID: state.globals.ActionActorUID ?? 0,
+        actionOwnerUID: state.globals.ActionOwnerUID ?? 0,
         actionLockUntil: state.globals.ActionLockUntil ?? 0,
+        flowOrbCount: Array.isArray(state.globals.FlowOrbs) ? state.globals.FlowOrbs.length : 0,
+        enemyDeathHoldUIDs: Object.keys(state.globals.EnemyDeathVisualHoldByUID || {}).map(Number),
         pendingSkillId: state.globals.PendingSkillID || null,
         overlayVisible: uiState.getUIState().overlayVisible,
         layoutId: layoutState && typeof layoutState.getActiveLayoutId === 'function'
@@ -174,7 +1312,7 @@ export function registerDevBrowserTestHooks({
       },
       heroes: state.entities
         .filter(e => e.kind === 'hero')
-        .map(e => ({ uid: e.uid, name: e.name, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHP, combatPower: Number(e.combatPower || 0) })),
+        .map(e => ({ uid: e.uid, name: e.name, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHP, flow: getHeroFlowState(e), combatPower: Number(e.combatPower || 0) })),
       enemies: state.entities
         .filter(e => e.kind === 'enemy')
         .map(e => ({ uid: e.uid, name: e.name, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHP, slot: e.slotIndex, combatPower: Number(e.combatPower || 0) })),
@@ -230,6 +1368,16 @@ export function registerDevBrowserTestHooks({
         impactAt: Number(visual.impactAt || 0),
         asset: String(visual.asset || ''),
         visual: String(visual.visual || ''),
+      })),
+      combatImpacts: (state.globals.CombatImpactVisuals || []).map(impact => ({
+        ownerUID: Number(impact.ownerUID || 0),
+        targetUID: Number(impact.targetUID || 0),
+        targetKind: String(impact.targetKind || ''),
+        kind: String(impact.kind || ''),
+        weak: !!impact.weak,
+        mirrorX: !!impact.mirrorX,
+        x: Number(impact.x || 0),
+        y: Number(impact.y || 0),
       })),
       qaScenario: state.globals.ChainStrikeIITestScenario || null,
       arcanePulseVisuals: (state.globals.ArcanePulseVisuals || []).map(pulse => ({
@@ -316,8 +1464,8 @@ export function registerDevBrowserTestHooks({
         enemies: state.entities
           .filter((entity) => entity?.kind === 'enemy' && Number(entity.hp || 0) > 0)
           .map((enemy) => {
-            const pos = typeof worldToCanvas === 'function'
-              ? worldToCanvas(Number(enemy.x || 0), Number(enemy.y || 0))
+            const pos = typeof combatActorWorldToCanvas === 'function'
+              ? combatActorWorldToCanvas(Number(enemy.x || 0), Number(enemy.y || 0), 'enemy')
               : { x: Number(enemy.x || 0), y: Number(enemy.y || 0) };
             return {
               uid: Number(enemy.uid || 0),
@@ -329,9 +1477,6 @@ export function registerDevBrowserTestHooks({
             };
           }),
       };
-    },
-    forceMatch(color) {
-      handleGemMatch(color);
     },
     setEncounterRequest(input = {}) {
       const req = input && typeof input === 'object' ? input : {};
@@ -607,6 +1752,9 @@ export function registerDevBrowserTestHooks({
         }, { closeModal: false });
       }
       const g = state.globals;
+      delete g.QaFixtureHoldTurn;
+      delete g.QaScenarioPaused;
+      resumeGameplayFromDevTooling();
       const heroes = state.entities.filter(actor => actor && actor.kind === 'hero');
       const enemies = state.entities.filter(actor => actor && actor.kind === 'enemy');
       const hero = heroes.find(actor => Number(actor.hp || 0) > 0) || heroes[0] || null;
@@ -627,6 +1775,10 @@ export function registerDevBrowserTestHooks({
         enemy.isAlive = true;
         enemy.slotIndex = i;
       }
+      g.EnemyIDs = livingEnemies.map(enemy => Number(enemy.uid || 0));
+      g.EnemySlots = g.EnemyIDs.map(uid => uid > 0 ? uid + 1 : 0);
+      g.PendingEnemyRespawnSlots = livingEnemies.map(() => 0);
+      g.PendingEnemyRespawnTimerActive = 0;
 
       g.SessionSkillsByHeroUID = {
         ...(g.SessionSkillsByHeroUID && typeof g.SessionSkillsByHeroUID === 'object' ? g.SessionSkillsByHeroUID : {}),
@@ -645,27 +1797,20 @@ export function registerDevBrowserTestHooks({
       g.RoundGroups = [];
       g.RoundGroupIndex = 0;
       g.RoundMemberIndex = 0;
-      g.TurnOrderArray = [
-        { uid: Number(hero.uid || 0), type: 0, spd: Number(hero.stats?.SPD ?? hero.SPD ?? 10), name: String(hero.name || '') },
-        ...livingEnemies.map(enemy => ({
-          uid: Number(enemy.uid || 0),
-          type: 1,
-          spd: Number(enemy.stats?.SPD ?? enemy.SPD ?? 5),
-          name: String(enemy.name || ''),
-        })),
-      ];
-      g.CurrentTurnIndex = 0;
+      g.SessionLevelUpQueue = null;
+      g.SessionLevelUpSettlement = null;
+      g.PendingFlowThresholds = [];
       g.PendingHeroHits = [];
       g.ChainStrikeVisuals = [];
       g.DamageTexts = [];
-      g.PendingSkillID = 'HERO_SINGLE';
-      g.PendingActor = Number(hero.uid || 0);
-      g.SelectedEnemyUID = Number(livingEnemies[0].uid || 0);
-      g.SelectedEnemyUIDOwner = Number(hero.uid || 0);
+      g.PendingSkillID = '';
+      g.PendingActor = 0;
+      g.SelectedEnemyUID = 0;
+      g.SelectedEnemyUIDOwner = 0;
       g.CanPickGems = 0;
-      g.IsPlayerBusy = 1;
-      g.TurnPhase = 1;
-      g.HideHeroSelector = 1;
+      g.IsPlayerBusy = 0;
+      g.TurnPhase = 0;
+      g.HideHeroSelector = 0;
       g.DeferAdvance = 0;
       g.AdvanceAfterAction = 0;
       g.ActionInProgress = 0;
@@ -675,6 +1820,7 @@ export function registerDevBrowserTestHooks({
       g.BattleStartActive = 0;
       g.BattleStartShown = 0;
       g.BattleStartClearedForSession = 1;
+      g.BattleStartProcessStarted = 1;
       g.ChainStrikeIITestScenario = {
         id: 'chain-strike-ii',
         heroUID: Number(hero.uid || 0),
@@ -684,10 +1830,131 @@ export function registerDevBrowserTestHooks({
         expectedBouncePct: 66,
         expectedBounceCount: 2,
         layoutId: layoutState && typeof layoutState.getActiveLayoutId === 'function' ? layoutState.getActiveLayoutId() : '',
-        expectedFlow: 'click an enemy, press ATTACK, then pendingHeroHits should contain original hit plus two Chain Strike II bounces',
+        expectedFlow: 'production autoplay advances and each hero basic queues up to two Chain Strike II bounces',
       };
+      callFunctionWithContext(fnContext, 'StartRound');
+      callFunctionWithContext(fnContext, 'ProcessTurn');
       drawFrame();
       return { ok: true, ...g.ChainStrikeIITestScenario };
+    },
+    async setupArcanePulseScenario() {
+      const base = await window.__codexGame.setupChainStrikeIIScenario();
+      if (!base?.ok) return base;
+      const g = state.globals;
+      const heroes = state.entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
+      const hero = heroes.find(actor => String(actor.name || actor.baseHeroName || '').toLowerCase() === 'runa') || heroes[0];
+      const enemy = state.entities.find(actor => actor?.kind === 'enemy' && Number(actor.hp || 0) > 0);
+      if (!hero || !enemy) return { ok: false, reason: 'missing_hero_or_enemy' };
+      state.entities.splice(0, state.entities.length, hero, enemy);
+      g.SessionSkillsByHeroUID = {
+        __party_shared__: [{ id: 'party_arcane_pulse', definitionId: 'party_arcane_pulse', title: 'Arcane Pulse', owner: 'Party', selectionCount: 1 }],
+      };
+      g.TurnOrderArray = [{ uid: Number(hero.uid || 0), type: 0, spd: Number(hero.stats?.SPD ?? hero.SPD ?? 10), name: String(hero.name || '') }];
+      g.CurrentTurnIndex = 0;
+      g.PendingHeroHits = [];
+      g.ArcanePulseVisuals = [];
+      g.ChainStrikeVisuals = [];
+      g.DamageTexts = [];
+      g.SessionLevelUpQueue = null;
+      g.SessionLevelUpSettlement = null;
+      g.PendingFlowThresholds = [];
+      g.PendingActor = Number(hero.uid || 0);
+      g.SelectedEnemyUID = Number(enemy.uid || 0);
+      g.SelectedEnemyUIDOwner = Number(hero.uid || 0);
+      g.ArcanePulseTestScenario = { id: 'arcane-pulse', heroUID: Number(hero.uid || 0), enemyUID: Number(enemy.uid || 0) };
+      drawFrame();
+      return { ok: true, ...g.ArcanePulseTestScenario };
+    },
+    replayArcanePulseScenario(tier = '') {
+      const scenario = state.globals.ArcanePulseTestScenario;
+      if (!scenario) return { ok: false, reason: 'scenario_not_ready' };
+      const enemy = state.entities.find(actor => Number(actor?.uid || 0) === Number(scenario.enemyUID || 0));
+      if (!enemy) return { ok: false, reason: 'enemy_not_ready' };
+      if (tier === 'weak') enemy.maxHP = enemy.hp = 300;
+      if (tier === 'regular') enemy.maxHP = enemy.hp = 160;
+      state.globals.PendingHeroHits = [];
+      state.globals.ArcanePulseVisuals = [];
+      state.globals.DamageTexts = [];
+      const result = callFunctionWithContext(fnContext, 'ExecuteAstralFlowSpecial', 'arcane_pulse', scenario.heroUID);
+      drawFrame();
+      return result;
+    },
+    async setupHealBloomScenario() {
+      const base = await window.__codexGame.setupArcanePulseScenario();
+      if (!base?.ok) return base;
+      const hero = state.entities.find(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0);
+      if (!hero) return { ok: false, reason: 'hero_not_ready' };
+      hero.maxHP = Math.max(120, Number(hero.maxHP || 0));
+      hero.hp = Math.max(1, Math.floor(hero.maxHP * 0.35));
+      state.globals.DamageTexts = [];
+      gameState.healBlooms = [];
+      state.globals.HealBloomTestScenario = { id: 'heal-bloom', heroUID: Number(hero.uid || 0) };
+      drawFrame();
+      return { ok: true, ...state.globals.HealBloomTestScenario };
+    },
+    replayHealBloomScenario() {
+      const scenario = state.globals.HealBloomTestScenario;
+      if (!scenario) return { ok: false, reason: 'scenario_not_ready' };
+      const hero = state.entities.find(actor => Number(actor?.uid || 0) === Number(scenario.heroUID || 0));
+      if (!hero) return { ok: false, reason: 'hero_not_ready' };
+      hero.hp = Math.max(1, Math.floor(Number(hero.maxHP || 1) * 0.35));
+      state.globals.DamageTexts = [];
+      gameState.healBlooms = [];
+      const result = callFunctionWithContext(fnContext, 'ExecuteAstralFlowSpecial', 'magic_fruit', hero.uid);
+      drawFrame();
+      return result;
+    },
+    async captureHealBloomFrames() {
+      const setup = await window.__codexGame.setupHealBloomScenario();
+      if (!setup?.ok) return setup;
+      if (!canvas || typeof canvas.toDataURL !== 'function') return { ok: false, reason: 'canvas_not_ready' };
+      const frames = [];
+      const startedAt = performance.now();
+      const capture = (now) => {
+        const activeBlooms = (gameState.healBlooms || []).filter(bloom => bloom && !bloom.complete);
+        const particles = activeBlooms.flatMap(bloom => (bloom.particles || []).filter(particle => particle && !particle.complete && Number(particle.opacity || 0) > 0.001));
+        const ys = particles.map(particle => Number(particle.y || 0));
+        frames.push({
+          ms: now,
+          image: canvas.toDataURL('image/webp', 0.8),
+          activeBlooms: activeBlooms.length,
+          activeParticles: particles.length,
+          minY: ys.length ? Math.min(...ys) : 0,
+          maxY: ys.length ? Math.max(...ys) : 0,
+        });
+        return activeBlooms.length;
+      };
+      drawFrame();
+      capture(startedAt);
+      const replay = window.__codexGame.replayHealBloomScenario();
+      if (!replay?.ok) return replay;
+      await new Promise(resolve => {
+        let sawActive = false;
+        const onFrame = now => {
+          const activeCount = capture(now);
+          sawActive ||= activeCount > 0;
+          if ((sawActive && activeCount === 0) || now - startedAt >= 3000) return resolve();
+          window.requestAnimationFrame(onFrame);
+        };
+        window.requestAnimationFrame(onFrame);
+      });
+      showLiveHealFrameReport(frames, window.location.href);
+      return { ok: true, frameCount: frames.length, elapsedMs: frames.at(-1).ms - frames[0].ms };
+    },
+    replayHitTierScenario(tier) {
+      const scenario = state.globals.ArcanePulseTestScenario;
+      if (!scenario) return { ok: false, reason: 'scenario_not_ready' };
+      const enemy = state.entities.find(actor => Number(actor?.uid || 0) === Number(scenario.enemyUID || 0));
+      if (!enemy) return { ok: false, reason: 'enemy_not_ready' };
+      enemy.maxHP = enemy.hp = tier === 'weak' ? 1000 : 100;
+      state.globals.SessionSkillsByHeroUID = {};
+      state.globals.PendingHeroHits = [];
+      state.globals.CombatImpactVisuals = [];
+      state.globals.ArcanePulseVisuals = [];
+      state.globals.DamageTexts = [];
+      const accepted = callFunctionWithContext(fnContext, 'HeroAttackSingle', scenario.heroUID, scenario.enemyUID);
+      drawFrame();
+      return { ok: accepted !== false, tier };
     },
     stopDevAutoplay() {
       state.globals.DevAutoplayStopRequested = 1;
@@ -751,6 +2018,15 @@ export function registerDevBrowserTestHooks({
     }
     if (scenario === 'chain-strike-ii' || scenario === 'chainstrike2') {
       void window.__codexGame.setupChainStrikeIIScenario();
+    }
+    if (scenario === 'arcane-pulse' || scenario === 'arcanepulse') {
+      void window.__codexGame.setupArcanePulseScenario();
+    }
+    if (scenario === 'heal-bloom' || scenario === 'healbloom') {
+      void window.__codexGame.setupHealBloomScenario();
+    }
+    if (scenario === 'heal-live-report') {
+      void window.__codexGame.captureHealBloomFrames();
     }
   } catch (_) {}
   window.__auditBoard = () => assertBoardIntegrity('manual');

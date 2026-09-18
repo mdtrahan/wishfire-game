@@ -48,12 +48,12 @@ function createFallbackSimulationCoreResponse({
 
 function normalizeHeroHp(heroHp) {
   const values = Array.isArray(heroHp) ? heroHp : [];
-  return [0, 1, 2, 3].map((index) => Math.max(0, numberOr(values[index], 0)));
+  return [0, 1, 2, 3, 4, 5].map((index) => Math.max(0, numberOr(values[index], 0)));
 }
 
 function normalizeHeroCount(value) {
   const normalized = Math.floor(numberOr(value, 0));
-  return Math.max(0, Math.min(4, normalized));
+  return Math.max(0, Math.min(6, normalized));
 }
 
 function normalizePartyDamageInput({

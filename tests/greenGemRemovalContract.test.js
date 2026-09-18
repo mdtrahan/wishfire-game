@@ -26,7 +26,7 @@ test('frame-zero green no longer forms active super gems while heal remains acti
   assert.doesNotMatch(rulesSrc, /SUPER_GEM_COLORS = new Set\(\[0, 1, 2, 3, 4, 5\]\)/);
   assert.match(rulesSrc, /SUPER_GEM_COLORS = new Set\(\[1, 2, 3, 4, 5\]\)/);
   assert.match(rulesSrc, /const palette = \[1, 2, 3, 4, 5\];/);
-  assert.match(runtimeSrc, /if \(color === 0\) return false;/);
+  assert.match(runtimeSrc, /if \(color === 0 \|\| color === 2\) return false;/);
 });
 
 test('frame-zero green has no active visual assets while heal visuals remain active', () => {

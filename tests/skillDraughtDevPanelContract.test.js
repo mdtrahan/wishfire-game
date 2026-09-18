@@ -86,7 +86,7 @@ test('blue meter full opens draw once instead of resetting on hero turn', () => 
   assert.match(shouldResetSrc, /if \(Number\(g\.SkillDraughtOpen \|\| 0\)\) return false;/);
 });
 
-test('app claims pending skill draw only at the hero end-of-turn checkpoint', () => {
+test.skip('[Paused roguelite cards/shared AF] app claims pending skill draw only at the hero end-of-turn checkpoint', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const appSrc = fs.readFileSync(appPath, 'utf8');
   assert.match(appSrc, /function canClaimPendingSkillDraught\(/);
   assert.match(appSrc, /currentTurnType === 0/);
@@ -101,7 +101,7 @@ test('app claims pending skill draw only at the hero end-of-turn checkpoint', ()
   assert.match(appSrc, /!pendingSkillDraughtClaimed &&[\s\S]*refillStartBarrier\.canStartRefill/);
 });
 
-test('dev panel wires mandatory draw controls', () => {
+test.skip('[Paused roguelite cards/shared AF] dev panel wires mandatory draw controls', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const devToolingSrc = fs.readFileSync(devToolingRuntimePath, 'utf8');
   assert.match(devToolingSrc, /data-devtool-skill-hero/);
   assert.match(devToolingSrc, /data-devtool-skill-id/);
@@ -252,7 +252,7 @@ test('fresh combat session clears selected session skills without touching progr
   assert.doesNotMatch(initSrc, /HeroSkillPointsByHeroId = \{\}/);
 });
 
-test('draw render uses dimmed combat background and exactly three horizontal cards', () => {
+test.skip('[Paused roguelite cards/shared AF] draw render uses dimmed combat background and exactly three horizontal cards', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const appSrc = fs.readFileSync(appPath, 'utf8');
   const pointerSrc = fs.readFileSync(pointerRoutingPath, 'utf8');
   const renderSrc = fs.readFileSync(renderOverlayPath, 'utf8');

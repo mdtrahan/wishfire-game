@@ -11,7 +11,7 @@ const superGemRuntimePath = path.join(repoRoot, 'web-runner', 'systems', 'superG
 const loaderPath = path.join(repoRoot, 'web-runner', 'systems', 'runtimeVisualAssetLoader.js');
 const rendererPath = path.join(repoRoot, 'web-runner', 'systems', 'renderRuntime.js');
 const browserHooksPath = path.join(repoRoot, 'web-runner', 'systems', 'devBrowserTestHooks.js');
-const assetPath = path.join(repoRoot, 'web-runner', 'assets', 'images', 'skill_arcane_pulse_96x96.png');
+const assetPath = path.join(repoRoot, 'web-runner', 'assets', 'images', 'vfx_arcane_pulse_crescent.png');
 
 function loadFunctionBank(modulePath) {
   const original = fs.readFileSync(modulePath, 'utf8');
@@ -207,7 +207,7 @@ function makeSuperGemArcaneContext(mod) {
 for (const modulePath of [runtimePath, scriptsPath]) {
   const rel = path.relative(repoRoot, modulePath);
 
-  test(`Arcane Pulse is a one-off active party draw in ${rel}`, () => {
+  test.skip(`[Paused roguelite cards/shared AF] Arcane Pulse is a one-off active party draw in ${rel}`, { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
     const mod = loadFunctionBank(modulePath);
     const def = mod.GetSkillDefinition(null, 'party_arcane_pulse');
     assert.equal(def.title, 'Arcane Pulse');
@@ -233,7 +233,7 @@ for (const modulePath of [runtimePath, scriptsPath]) {
     assert.equal(mod.GetSkillDraughtState(ctx).lastForcedSkillSuppressedReason, 'one_off_already_selected');
   });
 
-  test(`Arcane Pulse triggers every other normal hero attack on the selected target in ${rel}`, () => {
+  test.skip(`[Paused roguelite cards/shared AF] Arcane Pulse triggers every other normal hero attack on the selected target in ${rel}`, { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
     const mod = loadFunctionBank(modulePath);
     const ctx = makeContext();
     selectArcanePulse(mod, ctx);
@@ -294,7 +294,7 @@ for (const modulePath of [runtimePath, scriptsPath]) {
     );
   });
 
-  test(`Arcane Pulse triggers after Split red AOE attacks in ${rel}`, () => {
+  test.skip(`[Paused roguelite cards/shared AF] Arcane Pulse triggers after Split red AOE attacks in ${rel}`, { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
     const mod = loadFunctionBank(modulePath);
     const ctx = makeContext();
     selectPartySkill(mod, ctx, 'party_arcane_pulse');
@@ -320,7 +320,7 @@ for (const modulePath of [runtimePath, scriptsPath]) {
     );
   });
 
-  test(`Arcane Pulse uses cached party midpoint when live hero y coordinates are missing in ${rel}`, () => {
+  test.skip(`[Paused roguelite cards/shared AF] Arcane Pulse uses cached party midpoint when live hero y coordinates are missing in ${rel}`, { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
     const mod = loadFunctionBank(modulePath);
     const ctx = makeContext();
     selectArcanePulse(mod, ctx);
@@ -345,7 +345,7 @@ for (const modulePath of [runtimePath, scriptsPath]) {
     assert.notEqual(visual.sourceY, visual.targetY);
   });
 
-  test(`Arcane Pulse uses party formation midpoint instead of enemy y when cached positions are absent in ${rel}`, () => {
+  test.skip(`[Paused roguelite cards/shared AF] Arcane Pulse uses party formation midpoint instead of enemy y when cached positions are absent in ${rel}`, { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
     const mod = loadFunctionBank(modulePath);
     const ctx = makeContext();
     selectArcanePulse(mod, ctx);
@@ -368,7 +368,7 @@ for (const modulePath of [runtimePath, scriptsPath]) {
     assert.notEqual(visual.sourceY, visual.targetY);
   });
 
-  test(`Arcane Pulse follows ExecuteSkill's pending selected target in ${rel}`, () => {
+  test.skip(`[Paused roguelite cards/shared AF] Arcane Pulse follows ExecuteSkill's pending selected target in ${rel}`, { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
     const mod = loadFunctionBank(modulePath);
     const ctx = makeContext({ pending: true });
     selectArcanePulse(mod, ctx);
@@ -383,7 +383,7 @@ for (const modulePath of [runtimePath, scriptsPath]) {
     assert.equal(hits[1].effectType, 'arcane_pulse');
   });
 
-  test(`Arcane Pulse bonus damage does not trigger Destiny in ${rel}`, () => {
+  test.skip(`[Paused roguelite cards/shared AF] Arcane Pulse bonus damage does not trigger Destiny in ${rel}`, { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
     const mod = loadFunctionBank(modulePath);
     const ctx = makeContext();
     ctx.state.globals.TurnOrderArray = [{ uid: 100, type: 0 }];
@@ -434,7 +434,7 @@ for (const modulePath of [runtimePath, scriptsPath]) {
     assert.ok((ctx.state.globals.DamageTexts || []).length > 0, 'normal hits should still show damage text feedback');
   });
 
-  test(`Arcane Pulse triggers last inside generated double-attack followup lanes in ${rel}`, () => {
+  test.skip(`[Paused roguelite cards/shared AF] Arcane Pulse triggers last inside generated double-attack followup lanes in ${rel}`, { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
     const src = fs.readFileSync(modulePath, 'utf8');
     assert.match(src, /function queueConfiguredDoubleAttackFollowUp/);
     assert.doesNotMatch(src, /SuppressArcanePulseForGeneratedAttack/);
@@ -469,7 +469,7 @@ for (const modulePath of [runtimePath, scriptsPath]) {
   });
 }
 
-test('Arcane Pulse queues after red supergem cluster attacks', () => {
+test.skip('[Paused roguelite cards/shared AF] Arcane Pulse queues after red supergem cluster attacks', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const runtime = loadSuperGemRuntime();
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadFunctionBank(modulePath);
@@ -506,7 +506,7 @@ test('Arcane Pulse queues after red supergem cluster attacks', () => {
   }
 });
 
-test('Arcane Pulse queues after Huun yellow supergem Goldstrike attacks', () => {
+test.skip('[Paused roguelite cards/shared AF] Arcane Pulse queues after Huun yellow supergem Goldstrike attacks', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const runtime = loadSuperGemRuntime();
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadFunctionBank(modulePath);
@@ -553,7 +553,7 @@ test('Arcane Pulse has raster asset and browser-visible render hooks', () => {
   const hooksSrc = fs.readFileSync(browserHooksPath, 'utf8');
   const appSrc = fs.readFileSync(path.join(repoRoot, 'web-runner/app.js'), 'utf8');
   const damageNumberSrc = fs.readFileSync(path.join(repoRoot, 'web-runner/src/core/damageNumberAnimation.mjs'), 'utf8');
-  assert.match(loaderSrc, /skill_arcane_pulse_96x96\.png/);
+  assert.match(loaderSrc, /vfx_arcane_pulse_crescent\.png/);
   assert.match(loaderSrc, /SkillArcanePulse/);
   assert.match(rendererSrc, /renderArcanePulseVisuals/);
   assert.match(rendererSrc, /images\.SkillArcanePulse/);
@@ -562,7 +562,7 @@ test('Arcane Pulse has raster asset and browser-visible render hooks', () => {
   assert.match(rendererSrc, /damageTextKind: hit\.damageTextKind/);
   assert.match(rendererSrc, /ApplyDamageToTarget', hit\.targetUID, finalDmg, damageOptions/);
   assert.match(rendererSrc, /crescent_arc_blast/);
-  assert.match(appSrc, /d\.kind === 'arcane_pulse' \? 'arcane_pulse' : 'damage'/);
+  assert.match(appSrc, /d\.kind === 'arcane_pulse' \? 'arcane_pulse' : \(d\.kind === 'dot' \? 'dot' : 'damage'\)/);
   assert.match(damageNumberSrc, /const isArcanePulse = normalizedKind === 'arcane_pulse';/);
   assert.match(damageNumberSrc, /#3DA5FF/);
   assert.match(rendererSrc, /drawCrescentArc/);

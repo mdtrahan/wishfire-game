@@ -90,20 +90,12 @@ test('combat HUD reads a pinned Astral Flow line until the 4-second lock expires
   assert.match(appSrc, /if \(pinnedLine && pinnedUntil > Number\(g\.time \|\| 0\)\) return pinnedLine;/);
 });
 
-test('combat renderer keeps HP green and draws a blue Astral Flow amp bar beneath it', () => {
+test.skip('[Paused roguelite cards/shared AF] combat renders Astral Flow separately from individual hero health', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const runtimeSrc = read('web-runner/systems/renderRuntime.js');
-  assert.doesNotMatch(runtimeSrc, /PartyHPBarHealFlashUntil/);
-  assert.match(runtimeSrc, /ctx\.fillStyle = '#A0FE0B';/);
-  assert.match(runtimeSrc, /const partyHpText = rendered\.find\(r => r\.inst\.type === 'PartyHP_text'\);/);
-  assert.match(runtimeSrc, /const ampX = partyHpText \? Math\.min\(barX, partyHpText\.dx\) : barX;/);
-  assert.match(runtimeSrc, /const ampRight = partyHpText \? Math\.max\(barX \+ barW, partyHpText\.dx \+ partyHpText\.w\) : \(barX \+ barW\);/);
-  assert.match(runtimeSrc, /const ampW = Math\.max\(barW, ampRight - ampX\);/);
-  assert.match(runtimeSrc, /const ampMax = Math\.max\(1, Number\(state\.globals\.AstralFlowAmpMax \|\| 18\)\);/);
-  assert.match(runtimeSrc, /const ampRatio = Math\.max\(0, Math\.min\(1, Number\(state\.globals\.AstralFlowAmpPoints \|\| 0\) \/ ampMax\)\);/);
-  assert.match(runtimeSrc, /const ampGap = Math\.max\(4, Math\.round\(barH \* 0\.55\)\);/);
-  assert.match(runtimeSrc, /const ampY = barY \+ barH \+ ampGap;/);
-  assert.match(runtimeSrc, /ctx\.fillStyle = '#1e7bd6';/);
-  assert.match(runtimeSrc, /ctx\.fillRect\(ampX, ampY, ampW \* ampRatio, barH\);/);
+  const meterSrc = read('web-runner/systems/renderAstralFlowMeter.mjs');
+  assert.match(runtimeSrc, /renderAstralFlowMeter/);
+  assert.match(meterSrc, /#1e7bd6/);
+  assert.doesNotMatch(runtimeSrc, /PartyHPBarHealFlashUntil|hpBarRoll/);
 });
 
 test('battle start messaging avoids random ambush copy', () => {

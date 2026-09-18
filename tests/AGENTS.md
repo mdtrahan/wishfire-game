@@ -7,10 +7,13 @@
 ## Ownership
 - `*.test.js` files use Node's built-in test runner for contracts and static/runtime checks.
 - `*.spec.js` files cover browser-style flows where present.
+- `offlineBundleContract.test.js` protects the portable file:// release shape, embedded startup payloads, relative assets, manifest hashes, and separation from the hosted release.
 - `fixtures/` owns deterministic CSV cases shared by JS and Rust/WASM tests.
 
 ## Local Contracts
 - Story-entry checks exercise the shared layout registry and transition controller: deny early navigation, preserve pagination, hand off at the authored marker or Skip, stop Auto in combat, and retain Town recovery. Browser QA must exercise the visible Canvas controls too.
+- Quest-QA layout contracts cover fixed rail containment, the compact dock fallback, Canvas geometry preservation, diagnostics z-order, zero horizontal overflow, Combat-layout scenario setup, pause ownership, fresh telemetry reset, and isolated role-award readouts.
+- Paused-combat navigation checks must preserve the active card and snapshot through Continue, intercept Quests from any suspended screen, and clear the snapshot only on Quit without settlement or rewards.
 - Tests are often the clearest owner of regression-prone behavior. Read the relevant test before changing gameplay, rendering, persistence, or SimulationCore code.
 - Prefer focused deterministic tests over broad suite runs during development.
 - Static source assertions are allowed in this repo when they protect architecture boundaries, but avoid adding brittle source-shape checks when behavior can be tested directly.
@@ -35,3 +38,34 @@
 - Story entry proof covers map-only startup, town hit gating, first-page preservation, Skip, authored combat handoff, and Town recovery.
 
 - Quest flow tests replace direct story-to-Town recovery expectations with ladder completion and Continue/Quit; gallery/map Back routes now return to the quest ladder.
+
+- Health contracts verify actual actor HP, stable sparse/KO slot projections, cleared previous-group totals, and real JS-to-WASM damage for every loaded size from one through six.
+
+- Native command proof covers scheduled actor ownership, rejected/stale targets, missing-actor handoff, animation handoff and exact loaded slots. Legacy board click/refill assertions are retired with their consumers. The UI lock checks decorative hero status-card containment, fan-only player actions and real battlefield selector targeting for groups of one through six.
+- Hero Turn Card Fan integration proof covers the shared lifecycle exports, persisted draw state, native command resolution, source-scoped taunt, one-shot interception, queue delay offsets, rewritten four-card effects, and reset/KO/battle-end clearing. Independent browser QA must exercise the full interruption matrix.
+- Full-recovery proof exercises both the app Town wrapper and Continue with zero through six loaded heroes, sparse slots, KO, stale UI health and retained encounter resources.
+- Self-heal checks must use differing actor and party maxima, actual groups 1–6, and KO/wrong-actor cases. Percentage recovery cannot grow with party size. Personal FLOW checks cover attributed earning, full-charge consumption, queue order and paused party-card boundaries.
+
+- Personal FLOW replaces shared AF and pauses roguelite card acquisition/procs. Historical integration checks for those parked systems use explicit skip reasons; pure isolated math and active combat checks stay runnable. VM loaders that strip function-bank imports must supply the real personalFlow.mjs, heroCommands.mjs, and any shared targeting exports exercised by the loaded path. Production-party regressions must construct the configured canonical roster before testing UID and role attribution.
+
+- Migration coverage uses `combatRulesMigration`, `heroProgressionMigration` and `personalFlowContract` for canonical effects, growth and sequence settlement. VM function-bank harnesses must inject the real core/module imports.
+
+- Action capacity tests cover mixed 1/2/3 slots, affordability, removal and early commit. Browser proof exercises real target clicks and capacity auto-commit. Paused frame-based regeneration must not affect combat.
+
+- flowOrbsContract covers enemy-death blue transfers, deterministic living recipients, the three-gem spawn/early/mid/pre-impact/arrival/post-arrival timeline, ground-bounce/collection timing, threshold signals, and dead-recipient safety. personalFlowContract covers immediate once-per-action role charge with no orb.
+- Presentation serialization contracts keep attack motion before damage floats, heal art before heal floats, FLOW delivery after both, and defeated targets visible from their lethal native command through the completed package.
+- Impact contracts keep weak rings at each rendered sprite midpoint, place common non-weak contacts 17% of actor size above it, and verify that Venom plus enemy heal eruptions begin at the target's feet. Spectral Orb must travel as the counter-clockwise drain orb before its G01 blue contact.
+- personalFlowContract proves Runa's successful native magic basic grants one Tactician AF step while producing no enemy-death gem.
+- Immediate AF multi-kill tests prove damage records before the owner FLOW reset, then route every newly defeated enemy through the shared KO transition. They cover one kill, multi-kill, nonlethal and already-dead targets, cleanup deduplication, arrival-only AF, and same-frame non-finite wave replacement after FLOW delivery.
+- AF-choice scheduler coverage preserves an already-owned deferred handoff and forbids a second queue resume. Live browser proof must confirm Destiny healing cannot prevent each following hero from starting a native command.
+- Quest-QA enemy HP setup tests cover every refusal state, exact living-enemy HP mutation, preserved enemy identity and placement, and the absence of damage, AF, gem, reward or animation side effects.
+- Faze presentation proof covers live purple-hit and `dot` damage-text state before each deferred Blight damage call; palette contracts and in-app QA must show a purple number over every living enemy at impact.
+- Arcane Pulse presentation proof binds the queued visual source to the casting hero's rendered resting sprite base and keeps it independent of lunge offsets.
+
+- Hero management browser proof covers overview disclosure, roster containment and separate canonical active/passive/FLOW categories.
+
+- equipmentMarketContract covers elapsed-time reconstruction, live/expired/duplicate/insufficient purchases, atomic save failure, shared loadouts, gear-stat reloads and once-only victory Gold. Retired idle-collector tests were removed with their runtime.
+
+- Run node --test tests/astralShopPresentation.test.mjs with localhost:8047 serving the owned checkout to check the shop shader, reduced motion, shared balances, Back navigation and compact/reference containment in isolated contexts.
+
+- Shop presentation test covers touch and mouse drop purchases without confirmation, exact wallet deduction, canonical inventory and green upgrade badges. FLOW Back returns to the main shell; open Quests explicitly before comparing the shared wallet. Equipment contract tests cover equal, stronger, incompatible and tradeoff comparisons.

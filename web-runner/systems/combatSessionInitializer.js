@@ -1,5 +1,9 @@
+import {attachHeroProgress, createHeroProgressStore} from '../src/core/heroProgression.mjs';
+import { initializePersonalFlow } from '../src/core/personalFlow.mjs';
+import { createSessionOpeningBuffQueue } from '../src/core/sessionLevelUpQueue.mjs';
+import { computeCombatPower as canonicalCombatPower } from '../src/core/combatPower.mjs';
+import { scaleRoutineEnemy } from '../src/core/routineEnemyScaling.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
-import { CANONICAL_HERO_ROSTER } from '../state/heroScreenConfig.js';
 import {
   DEV_TOOL_EMPTY_SLOT,
   DEV_TOOL_RANDOM_ENEMY_SLOT,
@@ -15,17 +19,10 @@ function createDefaultSeededRng(seed = 1) {
   };
 }
 
-function defaultComputeCombatPower(atk, def, hp) {
-  const a = Number(atk || 0);
-  const d = Number(def || 0);
-  const h = Number(hp || 0);
-  return Math.round((a + d + (h / 10)) * 100) / 100;
-}
+function defaultComputeCombatPower(actor) { return canonicalCombatPower(actor); }
 
 export function resolveEnemyEncounterCombatPower(row, computeCombatPower = defaultComputeCombatPower) {
-  const explicit = Number(row?.EncounterCP ?? row?.encounterCP ?? row?.CombatPower ?? row?.combatPower);
-  if (Number.isFinite(explicit) && explicit > 0) return Math.round(explicit * 100) / 100;
-  return computeCombatPower(row?.ATK, row?.DEF, row?.HP);
+  return computeCombatPower({ ...row, maxHP: row?.HP ?? row?.maxHP, stats: row?.stats || row });
 }
 
 export function normalizeBiomeTags(input) {
@@ -72,7 +69,8 @@ export function generateEncounterSeed() {
 }
 
 export function computeEncounterTotalCP(picks) {
-  return (picks || []).reduce((sum, row) => sum + Number(row?.CombatPower || row?.combatPower || 0), 0);
+  const values = (picks || []).map(row => Number(row?.CombatPower || row?.combatPower || 0)).filter(value => value > 0);
+  return Math.round(values.reduce((sum, value) => sum + value, 0) * (1 + (0.05 * Math.max(0, values.length - 1))) * 10) / 10;
 }
 
 export function buildEncounterSpawnPlan(picks, { policy = 'mixed' } = {}) {
@@ -141,6 +139,7 @@ export function deriveEncounterPoolNames({ pool, locale = 'all', faction = '' } 
 export function buildEncounterByBudget({
   pool,
   targetCP,
+  partyCP = 0,
   locale = 'all',
   maxSlots = 3,
   policy = 'mixed',
@@ -199,9 +198,13 @@ export function buildEncounterByBudget({
   };
 
   const pushPick = (row) => {
-    if (!row || selected.length >= slots) return;
+    if (!row || selected.length >= slots) return false;
+    const beforeError = Math.abs(target - computeEncounterTotalCP(selected));
+    const nextError = Math.abs(target - computeEncounterTotalCP([...selected, row]));
+    if (selected.length && nextError > beforeError) { reasonCodes.push('candidate_worsens_target_error'); return false; }
     selected.push(row);
     usedNames.add(String(row.name || ''));
+    return true;
   };
 
   const normalizedPolicy = String(policy || 'mixed').trim().toLowerCase();
@@ -218,18 +221,20 @@ export function buildEncounterByBudget({
       const remaining = target - computeEncounterTotalCP(selected);
       const fodder = pickBest(byRole.fodder, remaining, 'fodder');
       if (!fodder) break;
-      pushPick(fodder);
+      if (!pushPick(fodder)) break;
     }
   } else {
+    const ordinaryEligible = eligible.filter(row => ['fodder', 'routine'].includes(String(row?.combatTier || row?.routineTier || 'routine').toLowerCase()));
+    const mixedEligible = ordinaryEligible.length ? ordinaryEligible : eligible;
     while (selected.length < slots) {
       const remaining = target - computeEncounterTotalCP(selected);
-      let pick = pickBest(eligible, remaining, 'mixed_any');
+      let pick = pickBest(mixedEligible, remaining, 'mixed_any');
       if (!pick) pick = pickBest(byRole.fodder, remaining, 'fodder');
       if (!pick) pick = pickBest(byRole.bodyguard, remaining, 'bodyguard');
       if (!pick) pick = pickBest(byRole.commander, remaining, 'commander');
       if (!pick) pick = pickBest(eligible, remaining, 'fallback_any');
       if (!pick) break;
-      pushPick(pick);
+      if (!pushPick(pick)) break;
     }
   }
 
@@ -268,9 +273,14 @@ export function createCombatSessionInitializer({
 }) {
   return function initCombatSessionEntities(enemyRows) {
     assertCombatLayoutDev('initEntities');
-    resetCombatSessionConditions(state.globals, gameState);
+    const continuingAdventure = state.globals.ProgressionBattle?.outcome === 'victory'
+      && Object.keys(state.globals.SessionLevelBuffState?.heroes || {}).length > 0;
+    resetCombatSessionConditions(state.globals, gameState, { preserveSessionLevelBuffs: continuingAdventure });
     state.entities = [];
-    state.globals.EnemyData = (enemyRows || []).map((row) => ({
+    const routineLevel=Number(state.globals.PartyLevel||1);
+    state.globals.EnemyData = (enemyRows || []).map((rawRow) => {
+      const row=scaleRoutineEnemy(rawRow,routineLevel);
+      return ({
       ...row,
       faction: normalizeFaction(row?.faction),
       enemyRole: normalizeEnemyRole(row?.enemyRole || row?.role),
@@ -279,7 +289,7 @@ export function createCombatSessionInitializer({
       biomeTags: normalizeBiomeTags(row?.biomes || row?.biome || 'all'),
       localeTags: normalizeBiomeTags(row?.localeTags || row?.locale_tags || row?.locale || row?.biomes || row?.biome || 'all'),
       CombatPower: resolveEnemyEncounterCombatPower(row, computeCombatPower),
-    }));
+    });});
     const mappedEnemyData = state.globals.EnemyData;
     state.globals.DevToolEnemyCatalog = [...new Set(state.globals.EnemyData.map((row) => String(row?.name || row?.EnemyName || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
     state.globals.CombatSessionId = Number(state.globals.CombatSessionId || 0) + 1;
@@ -292,7 +302,7 @@ export function createCombatSessionInitializer({
     const escortConfig = readEscortPartyConfig();
     const partyMembers = buildConfiguredCombatPartyMembers(configuredHeroSlots, escortConfig);
     const heroSlotRoster = partyMembers.heroMembers;
-    for (let i = 0; i < CANONICAL_HERO_ROSTER.length; i += 1) {
+    for (let i = 0; i < Math.min(heroSlotRoster.length, 6); i += 1) {
       const v = heroSlotRoster[i];
       if (!v) {
         partyHP[i] = 0;
@@ -301,7 +311,7 @@ export function createCombatSessionInitializer({
       }
       let maxHP = Number(v.maxHP);
       if (!Number.isFinite(maxHP) || maxHP <= 0) maxHP = 1;
-      let hp = Number(v.hp);
+      let hp = continuingAdventure ? Number(v.hp) : maxHP;
       if (!Number.isFinite(hp) || hp < 0) hp = maxHP;
       if (hp > maxHP) hp = maxHP;
       partyHP[i] = hp;
@@ -316,7 +326,7 @@ export function createCombatSessionInitializer({
         heroCloneLabel: v.cloneLabel,
         hp,
         maxHP: partyMaxHP[i],
-        combatPower: computeCombatPower(v.ATK, v.DEF, partyMaxHP[i]),
+        combatPower: computeCombatPower({ ...v, maxHP: partyMaxHP[i], stats: { ATK: v.ATK, DEF: v.DEF, MAG: v.MAG, RES: v.RES, SPD: v.SPD } }),
         stats: {
           ATK: Number(v.ATK),
           DEF: Number(v.DEF),
@@ -331,6 +341,23 @@ export function createCombatSessionInitializer({
       });
       runtimeDebugLogging.startupDebugLog(`[HP_FIX] hero=${v.name} maxHP=${maxHP}`);
     }
+    const heroes = state.entities.filter(actor => actor.kind === 'hero');
+    state.globals.HeroProgress ||= createHeroProgressStore();
+    for (const hero of heroes) attachHeroProgress(hero, state.globals.HeroProgress);
+    initializePersonalFlow(heroes);
+    if (!continuingAdventure) {
+      state.globals.SessionLevelBuffState = { heroes: {} };
+      state.globals.SessionLevelUpOffersByQueueIndex = {};
+      state.globals.SessionLevelUpOfferGeneration = Number(state.globals.SessionLevelUpOfferGeneration || 0) + 1;
+      state.globals.SessionLevelUpQueue = createSessionOpeningBuffQueue({ heroes });
+    }
+    state.globals.NativeBattleEnded = false;
+    state.globals.ProgressionBattle = {
+      id: globalThis.crypto.randomUUID(),
+      participants: heroes.map(hero => hero.heroInstanceKey),
+      defeated: {},
+      settled: false,
+    };
     if (partyMembers.escortMember) {
       const escortUID = state.entities.reduce((max, entity) => Math.max(max, Number(entity?.uid || 0)), 0) + 1;
       const escortEntity = {
@@ -354,7 +381,6 @@ export function createCombatSessionInitializer({
     gameState.partyHP = partyHP;
     gameState.partyMaxHP = partyMaxHP;
     callFunctionWithContext(fnContext, 'InitPartyHPFromHeroes');
-    callFunctionWithContext(fnContext, 'SetHeroSkillPointsForParty', 300, 'ORKA-spt-seed');
     state.globals.BattleStartMode = 'heroes';
     state.globals.BattleStartResolved = 1;
     state.globals.TeamPhaseType = 0;
@@ -382,9 +408,11 @@ export function createCombatSessionInitializer({
       state.globals.EncounterSeed = encounterSeed;
       state.globals.EncounterSeedExplicit = 0;
       installCombatRuntimeRandom(deriveCombatRuntimeRngSeed(encounterSeed), 'initEntities');
+      const startingPartyCP = computeEncounterTotalCP(heroes.map(hero => ({ combatPower: computeCombatPower(hero) })));
       const encounterRequest = {
         pool: mappedEnemyData,
-        targetCP: Number(state.globals.EncounterTargetCP || 120),
+        targetCP: Number(state.globals.EncounterTargetCP || (startingPartyCP * 0.30)),
+        partyCP: startingPartyCP,
         locale: String(state.globals.EncounterLocale || state.globals.CurrentLocale || 'clouds'),
         maxSlots: Number(state.globals.EncounterMaxSlots || 3),
         policy: String(state.globals.EncounterPolicy || 'mixed'),
@@ -471,16 +499,14 @@ export function createCombatSessionInitializer({
           faction: String(pick.faction || 'wishless'),
           enemyRole: String(pick.enemyRole || 'fodder'),
           localeTags: Array.isArray(pick.localeTags) ? pick.localeTags : ['all'],
-          CombatPower: Number(pick.CombatPower || pick.combatPower || resolveEnemyEncounterCombatPower(pick, computeCombatPower)),
+          CombatPower: resolveEnemyEncounterCombatPower(pick, computeCombatPower),
         }, slotIndex);
       }
       state.globals.InitialSpawn = 0;
     }
 
-    if (state.globals.PartyMaxHP > 0) {
-      state.globals.PartyHP = state.globals.PartyMaxHP;
-      syncFromGlobals();
-    }
+    callFunctionWithContext(fnContext, 'UpdateHeroHPUI');
+    syncFromGlobals();
     callFunctionWithContext(fnContext, 'UpdateEnemyHPUI');
     if (state.globals.EnemyHPByIndex) {
       gameState.enemyHP = [...state.globals.EnemyHPByIndex];

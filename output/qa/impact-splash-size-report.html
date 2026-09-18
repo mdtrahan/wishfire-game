@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wishfire Impact Splash Size Report</title>
+<style>
+  :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #0b0d12; color: #f4f6fb; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: radial-gradient(circle at 50% 0, #263049 0, #11151f 32rem, #090b10 70rem); }
+  main { width: 100%; max-width: 1480px; margin: 0 auto; padding: 34px 38px 42px; }
+  header { display: grid; grid-template-columns: 1fr auto; gap: 28px; align-items: end; border-bottom: 1px solid #46506a; padding-bottom: 20px; }
+  h1 { margin: 0 0 8px; font: 750 34px/1.05 Georgia, serif; letter-spacing: .01em; }
+  header p { margin: 0; max-width: 920px; color: #bcc6da; font-size: 15px; line-height: 1.45; }
+  .legend { display: flex; gap: 18px; color: #aab5ca; font-size: 13px; white-space: nowrap; }
+  .key { display: inline-flex; align-items: center; gap: 7px; }
+  .swatch { width: 22px; height: 14px; border: 1px dashed #7ed7ff; background: #7ed7ff14; }
+  .swatch.visible { border: 0; background: #f6d06b; border-radius: 50%; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 14px; margin-top: 18px; }
+  article { min-width: 0; border: 1px solid #38435a; border-radius: 14px; overflow: hidden; background: linear-gradient(180deg, #171c28, #0e121b); }
+  .card-head { min-height: 90px; padding: 15px 16px 10px; border-bottom: 1px solid #30394c; }
+  h2 { margin: 0 0 5px; font-size: 18px; line-height: 1.1; }
+  .use { min-height: 34px; color: #aab5c9; font-size: 12.5px; line-height: 1.35; }
+  .stage { position: relative; height: 238px; overflow: hidden; background: linear-gradient(#222b39 0 64%, #171b22 64%); }
+  .ground { position: absolute; left: 15px; right: 15px; top: 64%; height: 1px; background: #64708a; opacity: .55; }
+  .anchor { position: absolute; left: calc(50% - 36px); top: 52%; width: 6px; height: 6px; margin: -3px; border: 1px solid #fff; border-radius: 50%; z-index: 8; }
+  .target { position: absolute; left: 50%; top: 52%; width: 95px; height: 135px; transform: translate(-50%, -42%); opacity: .45; z-index: 1; }
+  .target::before { content: ""; position: absolute; width: 46px; height: 46px; left: 24px; top: 0; border-radius: 50%; background: #8e99ad; }
+  .target::after { content: ""; position: absolute; width: 76px; height: 91px; left: 9px; top: 38px; border-radius: 32px 32px 17px 17px; background: #7b879d; box-shadow: -23px 13px 0 -14px #7b879d, 23px 13px 0 -14px #7b879d; }
+  .drawbox { position: absolute; left: calc(50% + var(--x, 0) * 3px); top: 52%; width: calc(var(--w) * 3px); height: calc(var(--h) * 3px); transform: translate(-50%, -50%); border: 1px dashed #7ed7ff; background: #7ed7ff0a; z-index: 3; }
+  .drawbox img { width: 100%; height: 100%; display: block; opacity: var(--alpha); }
+  .drawbox.weak img { filter: grayscale(1) brightness(3); }
+  .drawbox.reverse img { transform: scaleX(-1); }
+  .stats { padding: 11px 15px 14px; font-size: 12.5px; line-height: 1.42; color: #c6cede; font-variant-numeric: tabular-nums; }
+  .stats b { color: #fff; font-weight: 700; }
+  .stats .visible { color: #f6d06b; }
+  .special { border-color: #67779b; }
+  .special .card-head { background: #25304a; }
+  .table-wrap { margin-top: 16px; border: 1px solid #38435a; border-radius: 14px; overflow: auto; }
+  table { border-collapse: collapse; width: 100%; background: #10141d; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 10px 13px; border-bottom: 1px solid #2c3445; text-align: left; }
+  th { background: #1c2331; color: #e9edf6; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; }
+  td { color: #c2cad9; }
+  tbody tr:last-child td { border-bottom: 0; }
+  .foot { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 15px; color: #aeb8cb; font-size: 12.5px; line-height: 1.45; }
+  .foot strong { color: #f3f5fa; }
+  code { color: #a8dcff; }
+  @media (max-width: 760px) {
+    main { padding: 24px 18px 32px; }
+    header { grid-template-columns: 1fr; gap: 13px; }
+    .legend { white-space: normal; }
+    .foot { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Impact splash size comparison</h1>
+      <p>Current shipped runtime at the 360×640 reference layout. Every preview places contact on the torso side facing a left-side attacker. Art is enlarged 3× for inspection; labels give real logical-pixel dimensions.</p>
+    </div>
+    <div class="legend"><span class="key"><i class="swatch"></i> canvas draw box</span><span class="key"><i class="swatch visible"></i> visible painted pixels</span></div>
+  </header>
+
+  <section class="grid">
+    <article>
+      <div class="card-head"><h2>Weak hit · universal white</h2><div class="use">Non-crit damage ≤ 5% target Max HP</div></div>
+      <div class="stage"><i class="ground"></i><i class="target"></i><div class="drawbox weak" style="--w:40.32;--h:26.61;--x:-14.31;--alpha:.667"><img src="../../web-runner/assets/images/vfx_hit_flare.png" alt="Weak white impact"></div><i class="anchor"></i></div>
+      <div class="stats"><b>Comparison frame:</b> 40.3 × 26.6 px<br><span class="visible"><b>Visible paint:</b> 31.9 × 24.1 px</span><br>Same source as physical, white-filtered</div>
+    </article>
+
+    <article>
+      <div class="card-head"><h2>Physical · regular / crit</h2><div class="use">Melee and physical impacts above the weak threshold</div></div>
+      <div class="stage"><i class="ground"></i><i class="target"></i><div class="drawbox" style="--w:69.44;--h:45.83;--x:-15.98;--alpha:.667"><img src="../../web-runner/assets/images/vfx_hit_flare.png" alt="Physical red orange impact"></div><i class="anchor"></i></div>
+      <div class="stats"><b>Comparison frame:</b> 69.4 × 45.8 px<br><span class="visible"><b>Visible paint:</b> 55.0 × 41.5 px</span><br>Baseline visible area: 1.00×</div>
+    </article>
+
+    <article>
+      <div class="card-head"><h2>Runa / blue magic</h2><div class="use">Runa, Marid, Sweep, and blue-routed regular hits</div></div>
+      <div class="stage"><i class="ground"></i><i class="target"></i><div class="drawbox" style="--w:111.10;--h:73.33;--x:-17.21;--alpha:.667"><img src="../../web-runner/assets/images/vfx_impact_blue.png" alt="Blue magic impact"></div><i class="anchor"></i></div>
+      <div class="stats"><b>Comparison frame:</b> 111.1 × 73.3 px<br><span class="visible"><b>Visible paint:</b> 45.1 × 44.7 px</span><br>Hero basic scale: 1.60× shared regular</div>
+    </article>
+
+    <article>
+      <div class="card-head"><h2>Kaja / purple magic</h2><div class="use">Kaja, Djinn, Scathe, and generic magic regular hits</div></div>
+      <div class="stage"><i class="ground"></i><i class="target"></i><div class="drawbox" style="--w:111.10;--h:73.33;--x:-13.16;--alpha:.667"><img src="../../web-runner/assets/images/vfx_impact_purple.png" alt="Purple magic impact"></div><i class="anchor"></i></div>
+      <div class="stats"><b>Comparison frame:</b> 111.1 × 73.3 px<br><span class="visible"><b>Visible paint:</b> 46.3 × 37.8 px</span><br>Hero basic scale: 1.60× shared regular</div>
+    </article>
+
+    <article>
+      <div class="card-head"><h2>Rose magic</h2><div class="use">Chimerilass and rose-routed regular magic hits</div></div>
+      <div class="stage"><i class="ground"></i><i class="target"></i><div class="drawbox" style="--w:69.44;--h:45.83;--x:-12.54;--alpha:.667"><img src="../../web-runner/assets/images/vfx_impact_rose.png" alt="Rose magic impact"></div><i class="anchor"></i></div>
+      <div class="stats"><b>Comparison frame:</b> 69.4 × 45.8 px<br><span class="visible"><b>Visible paint:</b> 38.0 × 32.2 px</span><br>Visible area: 0.54× physical</div>
+    </article>
+
+    <article>
+      <div class="card-head"><h2>Glass Reprisal contact</h2><div class="use">Blue asset on the dedicated counterattack path</div></div>
+      <div class="stage"><i class="ground"></i><i class="target"></i><div class="drawbox" style="--w:52.20;--h:34.45;--x:-14.45;--alpha:.5"><img src="../../web-runner/assets/images/vfx_impact_blue.png" alt="Glass Reprisal blue impact"></div><i class="anchor"></i></div>
+      <div class="stats"><b>Comparison frame:</b> 52.2 × 34.5 px<br><span class="visible"><b>Visible paint:</b> 21.2 × 21.0 px</span><br>Max geometry: 61.2 × 40.4 px at 0 opacity</div>
+    </article>
+
+    <article class="special">
+      <div class="card-head"><h2>Arcane Pulse · special</h2><div class="use">Dedicated directional impact after the crescent lands</div></div>
+      <div class="stage"><i class="ground"></i><i class="target"></i><div class="drawbox reverse" style="--w:87.36;--h:55.91;--x:-4.95;--alpha:.5"><img src="../../web-runner/assets/images/vfx_arcane_pulse_impact.png" alt="Arcane Pulse impact"></div><i class="anchor"></i></div>
+      <div class="stats"><b>Comparison frame:</b> 87.4 × 55.9 px<br><span class="visible"><b>Visible paint:</b> 55.3 × 48.1 px</span><br>Starts 78.7 × 50.4; ends 96.0 × 61.4 at 0 opacity</div>
+    </article>
+  </section>
+
+  <section class="table-wrap">
+    <table>
+      <thead><tr><th>Effect</th><th>Source asset</th><th>Source pixels</th><th>Alpha bounds in source</th><th>Runtime comparison box</th><th>Visible footprint</th></tr></thead>
+      <tbody>
+        <tr><td>Weak white</td><td><code>vfx_hit_flare.png</code></td><td>192×128</td><td>152×116</td><td>40.3×26.6</td><td>31.9×24.1</td></tr>
+        <tr><td>Physical regular / crit</td><td><code>vfx_hit_flare.png</code></td><td>192×128</td><td>152×116</td><td>69.4×45.8</td><td>55.0×41.5</td></tr>
+        <tr><td>Runa blue regular</td><td><code>vfx_impact_blue.png</code></td><td>192×128</td><td>78×78</td><td>111.1×73.3</td><td>45.1×44.7</td></tr>
+        <tr><td>Kaja purple regular</td><td><code>vfx_impact_purple.png</code></td><td>192×128</td><td>80×66</td><td>111.1×73.3</td><td>46.3×37.8</td></tr>
+        <tr><td>Rose regular</td><td><code>vfx_impact_rose.png</code></td><td>192×128</td><td>105×90</td><td>69.4×45.8</td><td>38.0×32.2</td></tr>
+        <tr><td>Glass Reprisal</td><td><code>vfx_impact_blue.png</code></td><td>192×128</td><td>78×78</td><td>52.2×34.5</td><td>21.2×21.0</td></tr>
+        <tr><td>Arcane Pulse special</td><td><code>vfx_arcane_pulse_impact.png</code></td><td>1536×1024</td><td>972×881</td><td>87.4×55.9</td><td>55.3×48.1</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="foot">
+    <div><strong>How comparison frames were chosen.</strong> Generic splashes use their 50%-life frame, where scale has reached its runtime maximum and opacity is 0.667. Glass Reprisal and Arcane Pulse use 50%-life frames at 0.5 opacity. This avoids comparing fully transparent end frames.</div>
+    <div><strong>Current revision.</strong> Every painted alpha center meets the white anchor, 12 logical pixels toward the attacker. Runa blue and Kaja purple hero impacts are 60% larger. Arcane Pulse is shown with its runtime horizontal reversal.</div>
+  </section>
+</main>
+</body>
+</html>

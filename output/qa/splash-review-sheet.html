@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wishfire Splashes</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: #090b10; }
+  main { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; max-width: 1000px; margin: auto; padding: 14px; }
+  figure { position: relative; height: 250px; margin: 0; overflow: hidden; border: 1px solid #303849; border-radius: 12px; background: #171c27; }
+  figcaption { position: absolute; z-index: 2; top: 12px; left: 12px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #eef3ff; color: #111827; font: 800 15px/1 system-ui, sans-serif; }
+  img { position: absolute; left: 50%; top: 43%; width: calc(var(--w) * 2.25px); height: calc(var(--h) * 2.25px); transform: translate(-50%, -50%) var(--flip, scaleX(1)); object-fit: fill; opacity: var(--alpha, .85); }
+  .meta { position: absolute; left: 12px; right: 12px; bottom: 10px; color: #d8deeb; font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .meta b { color: #fff; }
+  .weak { filter: grayscale(1) brightness(3); }
+  @media (max-width: 560px) { main { grid-template-columns: repeat(2, minmax(0, 1fr)); } figure { height: 225px; } img { width: calc(var(--w) * 1.7px); height: calc(var(--h) * 1.7px); } .meta { font-size: 9px; } }
+</style>
+</head>
+<body>
+<main>
+  <figure style="--w:40.32;--h:26.61;--alpha:.8"><figcaption>1</figcaption><img class="weak" src="../../web-runner/assets/images/vfx_hit_flare.png" alt=""><div class="meta"><b>CombatHitFlare / weak</b><br>Non-crit hit ≤5% Max HP<br>40.3 × 26.6 px</div></figure>
+  <figure style="--w:69.44;--h:45.83"><figcaption>2</figcaption><img src="../../web-runner/assets/images/vfx_hit_flare.png" alt=""><div class="meta"><b>CombatHitFlare / melee</b><br>Physical regular hit or crit; neutral impact<br>69.4 × 45.8 px</div></figure>
+  <figure style="--w:111.10;--h:73.33"><figcaption>3</figcaption><img src="../../web-runner/assets/images/vfx_impact_blue.png" alt=""><div class="meta"><b>CombatImpactBlue</b><br>Runa, Marid, Sweep regular hit<br>111.1 × 73.3 px</div></figure>
+  <figure style="--w:111.10;--h:73.33"><figcaption>4</figcaption><img src="../../web-runner/assets/images/vfx_impact_purple.png" alt=""><div class="meta"><b>CombatImpactPurple</b><br>Kaja, Djinn, Scathe, generic magic hit<br>111.1 × 73.3 px</div></figure>
+  <figure style="--w:69.44;--h:45.83"><figcaption>5</figcaption><img src="../../web-runner/assets/images/vfx_impact_rose.png" alt=""><div class="meta"><b>CombatImpactRose</b><br>Chimerilass and rose magic hit<br>69.4 × 45.8 px</div></figure>
+  <figure style="--w:52.20;--h:34.45;--alpha:.7"><figcaption>6</figcaption><img src="../../web-runner/assets/images/vfx_impact_blue.png" alt=""><div class="meta"><b>CombatImpactBlue / Glass Reprisal</b><br>Glass Reprisal contact<br>52.2 × 34.5 px</div></figure>
+  <figure style="--w:87.36;--h:55.91;--flip:scaleX(-1)"><figcaption>7</figcaption><img src="../../web-runner/assets/images/vfx_arcane_pulse_impact.png" alt=""><div class="meta"><b>CombatArcanePulseImpact</b><br>Arcane Pulse contact<br>87.4 × 55.9 px</div></figure>
+</main>
+</body>
+</html>

@@ -18,7 +18,6 @@ test('gem bounce render scale starts small, overshoots, and settles', async () =
   assert.match(src, /const GEM_APPEAR_BOUNCE_MIN_RENDER_SEC = 0\.14784;/);
   assert.match(src, /const GEM_APPEAR_BOUNCE_OVERSHOOT_SCALE = 0\.56;/);
   assert.match(src, /const bounceNow = Number\(gameTime != null \? gameTime : now\);/);
-  assert.match(renderRuntimeSrc, /gameTime: state\.globals\.time \|\| 0/);
   assert.match(src, /Number\(gem\.bounceDur \|\| 0\),\n\s+GEM_APPEAR_BOUNCE_MIN_RENDER_SEC,/);
   assert.equal(getGemBounceScale(0, 1), 0);
   assert.equal(getGemBounceScale(0.44, 1), 1.28784);

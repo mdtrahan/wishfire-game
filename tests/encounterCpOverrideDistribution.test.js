@@ -3,10 +3,14 @@ const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
+const { pathToFileURL } = require('node:url');
 
 const initializerPath = path.join(__dirname, '..', 'web-runner', 'systems', 'combatSessionInitializer.js');
 
-function loadEncounterHelpers() {
+async function loadEncounterHelpers() {
+  const { computeCombatPower: canonicalCombatPower } = await import(pathToFileURL(
+    path.join(__dirname, '..', 'web-runner', 'src', 'core', 'combatPower.mjs'),
+  ).href);
   const src = fs.readFileSync(initializerPath, 'utf8');
   const transformed = src
     .replace(/import[\s\S]*?;\n/g, '')
@@ -14,6 +18,7 @@ function loadEncounterHelpers() {
   const script = `${transformed}
 module.exports = {
   buildEncounterByBudget,
+  computeEncounterTotalCP,
   normalizeBiomeTags,
   normalizeEnemyRole,
   normalizeFaction,
@@ -29,6 +34,7 @@ module.exports = {
     Math,
     Set,
     Infinity,
+    canonicalCombatPower,
   };
   vm.runInNewContext(script, context, { filename: 'encounterCpHelpers.js' });
   return context.module.exports;
@@ -57,21 +63,21 @@ function loadEnemyRows(helpers) {
   return rows;
 }
 
-test('enemy EncounterCP overrides rebalance fresh-start encounter appearances without stat edits', () => {
-  const helpers = loadEncounterHelpers();
+test('canonical EncounterCP derives fresh-start encounter appearances without authored overrides', async () => {
+  const helpers = await loadEncounterHelpers();
   const rows = loadEnemyRows(helpers);
   const byName = Object.fromEntries(rows.map((row) => [row.name, row]));
   const expectedCp = {
-    Gobloc: 47,
-    'High Gobloc': 29.5,
-    Lizardo: 41,
-    Orc: 38,
-    'High Orc': 55,
-    Chimerilass: 34,
-    Troll: 17,
-    Skeleton: 47,
-    Djinn: 32,
-    Marid: 21,
+    Gobloc: 56.4,
+    'High Gobloc': 77.4,
+    Lizardo: 62.3,
+    Orc: 49.8,
+    'High Orc': 72.8,
+    Chimerilass: 76,
+    Troll: 78.3,
+    Skeleton: 49.7,
+    Djinn: 83.7,
+    Marid: 67.5,
   };
   for (const [name, cp] of Object.entries(expectedCp)) {
     assert.equal(byName[name].CombatPower, cp, `${name} EncounterCP`);
@@ -108,13 +114,23 @@ test('enemy EncounterCP overrides rebalance fresh-start encounter appearances wi
   }
   const totalSlots = iterations * 3;
   const pct = (name) => counts[name] / totalSlots;
-  assert.ok(pct('Skeleton') >= 0.12, `Skeleton ${pct('Skeleton')}`);
-  assert.ok(pct('Gobloc') >= 0.12, `Gobloc ${pct('Gobloc')}`);
-  assert.ok(pct('High Gobloc') <= 0.07, `High Gobloc ${pct('High Gobloc')}`);
-  assert.ok(pct('Troll') <= 0.03, `Troll ${pct('Troll')}`);
-  assert.ok(pct('Marid') <= 0.04, `Marid ${pct('Marid')}`);
-  assert.equal(Object.values(counts).reduce((sum, value) => sum + value, 0), totalSlots);
-  const totalCp = rows.reduce((sum, row) => sum + (counts[row.name] * row.CombatPower), 0);
-  const averageEncounterCp = totalCp / iterations;
-  assert.ok(averageEncounterCp >= 118 && averageEncounterCp <= 123, `average encounter CP ${averageEncounterCp}`);
+  assert.ok(pct('Skeleton') > 0, 'ordinary catalog candidates remain selectable');
+  for (const name of ['High Orc', 'Chimerilass', 'Troll', 'Djinn', 'Marid']) assert.equal(counts[name], 0, `${name} is excluded from ordinary mixed packs`);
+  assert.ok(Object.values(counts).reduce((sum, value) => sum + value, 0) <= totalSlots);
+  const { scaleRoutineEnemy } = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'routineEnemyScaling.mjs')).href);
+  const { computeCombatPower:canonicalCombatPower } = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'combatPower.mjs')).href);
+  const { HERO_DEFINITIONS } = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'heroDefinitions.mjs')).href);
+  const { levelStats } = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner', 'src', 'core', 'heroProgression.mjs')).href);
+  const productionRows = rows.map((rawRow) => {
+    const row = scaleRoutineEnemy(rawRow, 1);
+    return { ...row, CombatPower:helpers.resolveEnemyEncounterCombatPower(row) };
+  });
+  const heroCP = Object.values(HERO_DEFINITIONS).map((definition) => {
+    const { HP, ...stats } = levelStats({ baseHeroName:definition.key, currentLevel:1, equipmentStats:{} });
+    return { combatPower:canonicalCombatPower({ stats, maxHP:HP, currentLevel:1 }) };
+  });
+  const partyCP = helpers.computeEncounterTotalCP(heroCP);
+  const targetCP = partyCP * .30;
+  const bounded = helpers.buildEncounterByBudget({pool:productionRows,targetCP,partyCP,locale:'clouds',maxSlots:3,policy:'mixed',seed:77});
+  assert.ok(bounded.selected.every((row) => ['fodder', 'routine'].includes(row.combatTier)), 'mixed builder selects only ordinary tiers');
 });

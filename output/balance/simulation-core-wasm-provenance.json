@@ -1,0 +1,6 @@
+{
+  "source": "rust/simulation_core/src/lib.rs",
+  "sourceSha256": "bc7ea1fe5804246f8f1ad073e67134196f9e9e85f821dde845f01b2fd7fe066b",
+  "binary": "web-runner/assets/simulation_core.wasm",
+  "binarySha256": "85278f918fdb66de32e158e014f13efd11135c6d929979dc152c3032b2469ed7"
+}

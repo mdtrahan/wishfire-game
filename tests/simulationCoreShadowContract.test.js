@@ -33,6 +33,7 @@ test('simulation core can be built as a static wasm asset', () => {
 
   assert.match(cargoSrc, /crate-type = \["cdylib", "rlib"\]/);
   assert.match(rustSrc, /extern "C" fn combat_power_shadow/);
+  assert.match(rustSrc, /extern "C" fn combat_power_full_shadow/);
   assert.match(rustSrc, /extern "C" fn single_hit_damage_shadow/);
   assert.match(serveSrc, /'\.wasm':'application\/wasm'/);
 });
@@ -48,10 +49,13 @@ test('serve runtime fingerprint prefers branch bead id before live Beads fallbac
   assert.match(serveSrc, /fromHistory[\s\S]*ORKA-\[A-Za-z0-9\]\+\(\?:\\\.\[0-9\]\+\)\?/);
 });
 
-test('static simulation core wasm exposes the combat power shadow export', async () => {
+test('static simulation core wasm exposes the canonical combat power shadow export', async () => {
   const bytes = fs.readFileSync(wasmPath);
   const result = await WebAssembly.instantiate(bytes, {});
   assert.equal(typeof result.instance.exports.combat_power_shadow, 'function');
+  assert.equal(typeof result.instance.exports.combat_power_full_shadow, 'function');
   assert.equal(typeof result.instance.exports.single_hit_damage_shadow, 'function');
-  assert.equal(result.instance.exports.combat_power_shadow(10, 5, 100), 25);
+  assert.equal(result.instance.exports.combat_power_full_shadow(10, 4, 5, 4, 100, 10, 1, 0, .01, 1.25, 0, 0, 0, 0, 0, 0, 1), 30.6);
 });
+
+test('CP shadow diagnostic records compared full-stat fields for an explicit zero direct packet', () => { const source=fs.readFileSync(shadowModulePath,'utf8'); assert.match(source,/actor: input,\n    jsValue,\n    rustValue/); assert.match(source,/combat_power_full_shadow/); });

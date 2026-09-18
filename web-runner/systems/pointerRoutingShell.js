@@ -1,5 +1,15 @@
-function returnToQuest(gameState, layoutState, reason) {
-  gameState.storyEntry.phase = 'ladder';
+export function returnToQuest(gameState, layoutState, reason) {
+  const entry = gameState.storyEntry;
+  if (typeof entry?.openPausedBattleGate === 'function' && (entry.phase === 'combat' || entry.combatPaused)) {
+    return entry.openPausedBattleGate();
+  }
+  if (entry?.phase === 'combat' || entry?.combatPaused) {
+    entry.combatPaused = true;
+    entry.phase = 'combat-paused';
+    entry.modal = 'combat-pause';
+  } else {
+    entry.phase = 'ladder';
+  }
   return layoutState.requestLayoutChange('storyMock', reason);
 }
 
@@ -76,8 +86,6 @@ export function createPointerRoutingShell({
   drawFrame,
   handleMapDragStart,
   deriveEncounterRequestFromMapState,
-  restartIdleFarmSession,
-  claimIdleFarmRewards,
   getHeroScreenRoster,
   normalizeHeroSelectionIndex,
 }) {
@@ -85,16 +93,6 @@ export function createPointerRoutingShell({
     const dpr = typeof getDpr === 'function' ? getDpr() : 1;
     const pointer = getPointerPosition({ canvas, dpr, event });
     const { mx, my, rect } = pointer;
-
-    if (Number(state.globals.SkillDraughtOpen || 0)) {
-      const zones = Array.isArray(state.globals.SkillDraughtHitZones) ? state.globals.SkillDraughtHitZones : [];
-      const hit = zones.find((zone) => isPointInRect(mx, my, zone));
-      if (hit) {
-        callFunctionWithContext(fnContext, 'SelectSkillDraughtCard', Number(hit.index || 0));
-        drawFrame();
-      }
-      return { handled: true, mx, my, rect };
-    }
 
     const activeLayoutId = layoutState && typeof layoutState.getActiveLayoutId === 'function'
       ? layoutState.getActiveLayoutId()
@@ -112,35 +110,6 @@ export function createPointerRoutingShell({
     }
     if (activeLayoutId === 'town') {
       inputDomains.emit('town', 'layout:town:click', { x: mx, y: my });
-      drawFrame();
-      return { handled: true, mx, my, rect };
-    }
-    if (activeLayoutId === 'idleFarmLayout') {
-      const zones = (gameState.idleFarmLayout && gameState.idleFarmLayout.hitZones) || {};
-      if (isPointInRect(mx, my, zones.restartBtn)) {
-        restartIdleFarmSession(performance.now() / 1000);
-        drawFrame();
-        return { handled: true, mx, my, rect };
-      }
-      if (isPointInRect(mx, my, zones.collectBtn)) {
-        claimIdleFarmRewards();
-        drawFrame();
-        return { handled: true, mx, my, rect };
-      }
-      if (isPointInRect(mx, my, zones.combatBack)) {
-        returnToQuest(gameState, layoutState, 'idle-farm-back-combat').catch((err) => {
-          console.error('[LAYOUT_PHASE1] idleFarm->combat failed', err);
-        });
-        drawFrame();
-        return { handled: true, mx, my, rect };
-      }
-      if (isPointInRect(mx, my, zones.baseBack)) {
-        layoutState.requestLayoutChange('storyMock', 'idle-farm-back-base').catch((err) => {
-          console.error('[LAYOUT_PHASE1] idleFarm->storyMock failed', err);
-        });
-        drawFrame();
-        return { handled: true, mx, my, rect };
-      }
       drawFrame();
       return { handled: true, mx, my, rect };
     }

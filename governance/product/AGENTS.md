@@ -6,14 +6,14 @@
 ## Ownership
 - `player-living-guide.md` is the player-facing source for how Wishfire works.
 - `hero-and-party-skills.md`, `hero-and-party-skill-pseudocode.md`, and `skill-bead-map.md` own skill design, implementation-start language, and bead mapping.
+- `combat-vfx-index.md` owns the attack-to-impact visual inventory, completion gates, and preserve list for combat effects.
 - `vault-progression.md` owns Vault/relic passive progression lanes.
 - Supergem and skill isolation docs own regression-prone boundaries between gem effects and skill-card systems.
 
 ## Local Contracts
 - The player guide changes only when the user asks for it to change.
-- Wishfire is a puzzle battle game where the player chooses any three gems of the same active color; the gems do not need to touch or form a line.
-- Gem color truths: red attacks, blue builds Astral Flow, yellow gathers gold/Goldstrike context, light green heals, purple restores Energy.
-- Astral Flow fills a skill-card draw path; skill-card draw classes are `one_off`, `tiered`, and `repeatable`.
+- Current combat uses individual SPEED turns, per-hero action slots, SP and personal FLOW. The migration plan at the repository root supersedes historical gem/card mechanics.
+- The player guide and canonical hero definitions describe current combat. Historical hero-and-party skill documents retain paused content only.
 - Affinity is passive and progression-facing. It is not a combat meter or separate in-battle progression track.
 - Vault/relic passives are not live draw skill cards.
 - Supergems and skill-card selection are separate systems unless a doc and test explicitly connect them.
@@ -32,3 +32,7 @@
 
 ## Child DOX Index
 - None.
+
+- Personal FLOW is charged by randomly distributed enemy-death orbs. Archetype accumulation modes and orb passives are retired.
+
+- Death-only FLOW supersedes attack/proc drops: enemy KO awards once; collection charges a random living hero after the original blue death-orb ground-bounce tween. Role events award nothing.

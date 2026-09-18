@@ -159,8 +159,7 @@ test('hero skill progress config uses canonical ids and no placeholder slots', (
   }
 });
 
-test('registry bead does not wire canonical definitions into unfinished hero skill cards', () => {
-  const appSrc = fs.readFileSync(appPath, 'utf8');
-  const cardsSrc = extractFunctionSource(appSrc, 'getHeroScreenSkillCards');
-  assert.doesNotMatch(cardsSrc, /GetHeroSkillDefinitionCardsForHero/);
+test('hero screen uses the migrated canonical definitions', () => {
+ const src=fs.readFileSync(path.join(__dirname,'../web-runner/systems/renderHeroScreen.js'),'utf8');
+ assert.match(src,/heroDefinition/);assert.match(src,/g.HeroProgress.heroes/);
 });

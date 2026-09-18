@@ -16,7 +16,26 @@ test('resurrection retains enemy progress, buffs and skills while reviving every
  assert.ok(calls.includes('ProcessTurn'));
  state.entities=state.entities.filter(e=>e.kind!=='enemy');
  state.globals.AstralFlowKoOrbQueue=[{}];assert.equal(session.isCleared(),false);
- state.globals.AstralFlowKoOrbQueue=[];assert.equal(session.isCleared(),true);
+ state.globals.NativeBattleEnded=false;assert.equal(session.isCleared(),false);
+});
+
+test('endless sessions never surface a finite-victory completion path', async () => {
+ const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
+ const state={entities:[],globals:{QuestFiniteEncounter:1,NativeBattleEnded:true,ProgressionBattle:{id:'victory-auto',outcome:'victory'},SessionLevelUpQueue:{status:'complete'},SessionLevelUpSettlement:null,FlowOrbs:[]}};
+ const session=createQuestCombatSession({state,gameState:{},call(){},sync(){}});
+ session.prepare();
+ assert.equal(state.globals.QuestFiniteEncounter,0);
+ assert.equal(session.isCleared(),false);
+ state.globals.SessionLevelUpSettlement={phase:'active'};
+ assert.equal(session.isCleared(),false, 'EXP rows do not create a finite completion');
+ state.globals.SessionLevelUpSettlement=null;
+ state.globals.SessionLevelUpQueue={status:'active'};
+ assert.equal(session.isCleared(),false, 'queued hero choices stay sequential');
+ state.globals.SessionLevelUpQueue={status:'complete'};
+ state.globals.FlowOrbs=[{}];
+ assert.equal(session.isCleared(),false, 'remaining victory presentation clears before auto-advance');
+ const src=require('node:fs').readFileSync(require('node:path').join(__dirname,'../web-runner/systems/questCombatSession.mjs'),'utf8');
+ assert.doesNotMatch(src,/battle-results|showResults|Continue/);
 });
 
 test('new battle clears combat conditions and Astral Flow while retaining gold and progression', async () => {
@@ -34,14 +53,15 @@ test('new battle clears combat conditions and Astral Flow while retaining gold a
 });
 
 test('gold persists gains and spending across reloads without writing unchanged balances', async () => {
- const {createGoldProgressStorage}=await import('../web-runner/systems/goldProgressStorage.mjs');
+ const {createEquipmentStorage}=await import('../web-runner/systems/equipmentStorage.mjs');
+ const locks={request:async(k,fn)=>fn()},seed=()=>1,now=()=>100000;
  const values=new Map();let writes=0;
  const storage={getItem:k=>values.get(k)??null,setItem(k,v){values.set(k,v);writes++;}};
- const globals={goldTotal:27};const wallet=createGoldProgressStorage({globals,storage});
- wallet.sync();wallet.sync();assert.equal(writes,1);
- globals.goldTotal=19;wallet.sync();
- const reloaded={goldTotal:0};createGoldProgressStorage({globals:reloaded,storage}).sync();
- assert.equal(reloaded.goldTotal,19);assert.equal(writes,2);
+ const globals={goldTotal:27};const wallet=createEquipmentStorage({globals,storage,locks,seed,now});
+ await wallet.sync();await wallet.sync();assert.equal(writes,1);
+ globals.goldTotal=19;await wallet.sync();
+ const reloaded={goldTotal:0};await createEquipmentStorage({globals:reloaded,storage,locks,seed,now}).sync();
+ assert.equal(reloaded.goldTotal,19);assert.equal(writes,3);
 });
 
 
@@ -52,7 +72,7 @@ test('macro energy is charged only on entry and purple recovery shares the balan
  const gameState = {}; let layout = 'storyMock';
  const flow = createStoryEntryFlow({gameState,energyGlobals:globals,isReady:()=>true,
  layoutState:{getActiveLayoutId:()=>layout,requestLayoutChange:async id=>{layout=id;return true;}}});
- gameState.storyEntry.phase='ladder'; flow.startCard(0);
+ await flow.startCombatForQA();
  assert.equal(globals.Player_Energy,80);
  for (const file of ['Scripts/functionBank.js','web-runner/modules/functionBank.js']) {
   const src=fs.readFileSync(require('node:path').join(__dirname,'..',file),'utf8');

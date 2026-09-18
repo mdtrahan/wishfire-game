@@ -1,0 +1,671 @@
+{
+  "document": {
+    "title": "Wishfire CP and Progression Balance Plan",
+    "status": "approved_for_implementation",
+    "candidateCommit": "3349a8e852c26727487a669940be13a7b57092a2",
+    "implementationClaimed": false,
+    "implementationAuthorized": true,
+    "implementationAuthorizedOn": "2026-09-13",
+    "implementationAuthority": "User approval; parent Bead ORKA-ymk with sequential child Beads",
+    "rejectionReasons": ["Unsafe low-level enemy burst and weak hero margin.", "Pre-buff boss loss was treated as player-facing.", "Opening boundary was not a full mobile-roguelite reset.", "Dragon Quest reference lacked a specific title/version."]
+  },
+  "reviewDecisions": [
+    "Use the revised safety-first CP and burst contract.",
+    "Make Runa and Kaja basic attacks magical.",
+    "Remove heroHPScale 2 and absorb durability into base and growth stats.",
+    "Calculate encounter CP from stats instead of using explicit row overrides.",
+    "Use full-reset session initialization and opening choices before the first scheduler action; dialogue remains independently authored.",
+    "Use routine, hard, elite, boss, and above-boss bands as harness targets.",
+    "Use Capybara Go gameplay-loop parity as the baseline with only documented Wishfire departures.",
+    "Implement through the sequential children of ORKA-ymk."
+  ],
+  "reviewAssumptions": {
+    "currentStats": "Provisional diagnostic data, not protected content.",
+    "approvedConstraints": [
+      "Preserve hero roles and identity.",
+      "Preserve autoplay CTB combat flow.",
+      "Preserve one opening offer per starting hero before the first combat turn, session-long buffs, and independently authored dialogue/events.",
+      "Use Capybara Go session continuity, event order, story feed, next-step advance, and decision-gate rhythm unless a documented Wishfire departure overrides it."
+    ],
+    "replaceableTuning": [
+      "Hero base stats and growth",
+      "Enemy archetype values",
+      "Crit settings",
+      "CP weights and overrides",
+      "Encounter budgets and bands"
+    ]
+  },
+  "inspirations": [
+    {
+      "source": "Dragon Quest I, original Famicom combat analysis",
+      "urls": [
+      "https://wikiwiki.jp/dqdic3rd/%E3%80%90%E3%81%93%E3%81%86%E3%81%92%E3%81%8D%E3%80%91",
+      "https://gcgx.games/dq1-2/battle.html"
+      ],
+    "claimSummary": "Specialist version-specific references describe DQ I attack-versus-defence math, bounded randomness, and a rare defense-ignoring critical pattern.",
+      "observedPattern": "Legible physical attack-versus-defence pacing with infrequent dramatic critical hits.",
+      "wishfireBorrows": "Numeric feel only: small early numbers, legible physical offense-versus-defence, bounded randomness, and rare critical identity.",
+      "wishfireChanges": "Wishfire copies no DQ I formula, party model, role growth, magic balance, recovery loop, targeting, encounter curve, or CP; it uses its own smooth mitigation, burst caps, and candidate 1% 1.25x crits.",
+      "autoplayFit": "Small readable exchanges let players parse automation; rare spikes remain exciting."
+    },
+    {
+      "source": "Dragon Quest III, original Famicom party structure",
+      "urls": ["https://www.dragonquest.jp/roto-trilogy/dq3/system/index.html"],
+      "claimSummary": "Square Enix describes a party of up to four adventurers. Broader original-Famicom mechanical conclusions remain design inference.",
+      "observedPattern": "A four-member party supports legible physical, magical, defensive, and support identities.",
+      "wishfireBorrows": "Four-member role-party structure only.",
+      "wishfireChanges": "Wishfire copies no formulas, grind curve, inventory pressure, vocation/class system, or authored party composition.",
+      "autoplayFit": "Role contrast supports readable automated action and target philosophy."
+    },
+    {
+      "source": "Final Fantasy X CTB system",
+      "urls": ["https://www.jp.square-enix.com/ffx_x-2HD/sp/system/", "https://strategywiki.org/wiki/Final_Fantasy_X/Overdrive_Modes"],
+      "claimSummary": "Square Enix describes next-action time as depending on Speed and action, with order visible in CTB.",
+      "observedPattern": "Speed and action delay determine effective turn access.",
+      "wishfireBorrows": "Visible CTB/action-rate reasoning and Stoic/Warrior/Tactician/Comrade AF trigger families.",
+      "wishfireChanges": "Autoplay scores Speed inside Wishfire CP and uses the locked blue-gem AF attribution.",
+      "autoplayFit": "Fast roles have real value when their individual hit is smaller."
+    },
+    {
+      "source": "Fire Emblem: Shadow Dragon manual",
+      "urls": ["https://www.nintendo.com/eu/media/downloads/games_8/emanuals/nintendo_ds_21/Manual_NintendoDS_FireEmblemShadowDragon_EN.pdf"],
+      "claimSummary": "Nintendo's manual presents a combat forecast with damage, HP, and potential double attacks.",
+      "observedPattern": "Readable damage and survival forecasting before a combat commitment.",
+      "wishfireBorrows": "Forecast discipline: validate expected damage, hits-to-KO, and danger bands.",
+      "wishfireChanges": "Continuous guard formula and CP bands replace the grid, weapon, and counterattack model.",
+      "autoplayFit": "The simulator can reject encounter packs that make automated deaths opaque or unfair."
+    },
+    {
+      "source": "Capybara Go skills reference",
+      "urls": ["https://capybara-go.game-vault.net/wiki/Skills"],
+      "claimSummary": "Community reference documents one-of-three level-up offers, tiered event rewards, and base-plus upgrade skills.",
+      "observedPattern": "Three-choice offers establish a persistent run build with vertical upgrades.",
+      "wishfireBorrows": "Continuous-session pace, favorable player margin, opening/session power choices, event recovery, step progression, exploration gates, and behavioral parity.",
+    "wishfireChanges": "Every starting hero chooses before the first scheduler action; buffs are universal genie-magic effects and dialogue/events remain independent interruptions.",
+      "autoplayFit": "Players establish build direction before watching the party act."
+    },
+    {
+      "source": "Capybara Go encounters reference",
+      "urls": ["https://capybara-go.game-vault.net/wiki/Encounters"],
+      "claimSummary": "Community documentation describes Chapter Adventure encounters during a journey, including camps, huts, spirits, elite choices, demons, wheels, and branch choices.",
+      "observedPattern": "Chapter progression interleaves combat with exploration events and optional choices.",
+      "wishfireBorrows": "A seeded path can contain combat and distinct exploration gates.",
+      "wishfireChanges": "Wishfire uses its own genie-magic events, no copied currencies or wheel rules, and reserves recovery for story events.",
+      "autoplayFit": "Exploration landmarks create variation between automated fights."
+    },
+    {
+      "source": "Capybara Go skills reference",
+      "urls": ["https://capybara-go.game-vault.net/wiki/Skills"],
+      "claimSummary": "Community documentation says level-ups and Adventure events can grant skills; examples include Forest Sprite sacrifices, elite chests, Demon pacts, Angels, and wheels.",
+      "observedPattern": "Event gates can change the source or tier of a power offer.",
+      "wishfireBorrows": "Power offers may appear at level-up and exploration gates while builds persist through the session.",
+      "wishfireChanges": "Wishfire retains its per-hero opening offer and universal genie-magic buffs.",
+      "autoplayFit": "Build choices remain legible without asking for moment-to-moment combat input."
+    },
+    {
+      "source": "Archero 2 official Google Play listing and Campaign reference",
+      "urls": ["https://play.google.com/store/apps/details?hl=en-US&id=com.xq.archeroii", "https://archero-2.game-vault.net/wiki/Campaign"],
+      "claimSummary": "The official listing advertises rarer skill choices; the community campaign reference describes 50 rooms and bosses every tenth room.",
+      "observedPattern": "A visible multi-step chapter can place planned boss milestones within a longer run.",
+      "wishfireBorrows": "No active design ownership.",
+      "wishfireChanges": "Capybara Go, not Archero 2, governs Wishfire's step progression and exploration gates; Wishfire uses configurable positive integer N.",
+      "autoplayFit": "Historical contrast only."
+    }
+  ],
+  "referenceOwnershipMatrix": [
+    {"source":"Dragon Quest I original Famicom","owns":"Early numeric feel only: small damage, legible offense/defence, bounded randomness, rare crit identity.","exclusions":"Party balance, roles, encounter difficulty, recovery, magic, targeting, CP, and formulas."},
+    {"source":"Dragon Quest II","owns":"Historical exclusion only: its early small-party model is too shallow for Wishfire.","exclusions":"Formulas, pacing, party structure, and balance basis."},
+    {"source":"Dragon Quest III original Famicom","owns":"Four-member role-party structure supported by the official four-adventurer overview.","exclusions":"Formulas, grind, inventory pressure, class/vocation system, and party composition."},
+    {"source":"Final Fantasy X","owns":"Visible CTB/action-rate reasoning and Stoic/Warrior/Tactician/Comrade AF trigger families.","exclusions":"Wishfire CP, session pace, targeting, card pool, and recovery system."},
+    {"source":"Capybara Go","owns":"Continuous-session pace, favorable margin, power choices, event recovery, step progression, exploration gates, behavioral parity.","exclusions":"Genie-world fiction, four-hero combat roles, CTB mechanics, and Wishfire formulas."},
+    {"source":"Wishfire","owns":"CP, burst ceilings, target philosophies, autoplay tuning, Speed-based multiattack and its CTB/attack-count contract, genie reskin, dialogue, and validation harness.","exclusions":"No external formula is copied."}
+  ],
+  "current": {
+    "sources": {
+      "heroDefinitions": "web-runner/src/core/heroDefinitions.mjs:2,10-63",
+      "heroProgression": "web-runner/src/core/heroProgression.mjs:3-23,37-47",
+      "olderRoster": "web-runner/state/heroScreenConfig.js:1-5",
+      "sharedDamage": "src/core/calculateDamageRules.mjs:58-100",
+      "runtimeDamage": "web-runner/modules/functionBank.js:5395-5512,6110-6180",
+      "rustDamage": "rust/simulation_core/src/lib.rs:2332-2374",
+      "combatStatuses": "web-runner/src/core/combatRules.mjs:8-11,20-109",
+      "initiative": "src/core/dynamicInitiativeRules.mjs:185-255",
+      "combatPower": "web-runner/src/core/combatPower.mjs:1-6",
+      "encounterBuilder": "web-runner/systems/combatSessionInitializer.js:19-30,142-249,270-285,388-420",
+      "enemyData": "web-runner/assets/enemies.json:1",
+      "queue": "src/core/sessionLevelUpQueue.mjs:16-66",
+      "offers": "src/core/sessionLevelBuffOffers.mjs:22-46,87-98,139-227",
+      "presentation": "web-runner/modules/sessionLevelUpBuffPresentation.mjs:33-47,93-127",
+      "battleBuffApplication": "web-runner/modules/heroCommands.mjs:61-101,140-148",
+      "combatEntry": "web-runner/app.js:2041-2098,2113-2117"
+    },
+    "parameters": {
+      "heroHPScale": 2,
+      "expBase": 100,
+      "expExponent": 1.5,
+      "critChance": 0.1,
+      "varianceMin": 0.8,
+      "varianceMax": 1.2,
+      "heroSingleResistCoefficient": 0.35,
+      "enemyAndHeroAoeResistCoefficient": 0.5,
+      "combatPowerFormula": "ATK + DEF + HP / 10",
+      "defaultEncounterTargetCP": 120
+    },
+    "heroesLevel1": [
+      {"id":"Falie","displayName":"Fara","role":"Tank","basicMode":"physical","HP":92,"ATK":10,"MAG":4,"DEF":8,"RES":6,"SPD":8,"critChance":0.1},
+      {"id":"Huun","displayName":"Hondo","role":"DPS / Fighter","basicMode":"physical","HP":70,"ATK":15,"MAG":4,"DEF":5,"RES":4,"SPD":12,"critChance":0.1},
+      {"id":"Runa","displayName":"Runa","role":"Controller","basicMode":"physical","HP":60,"ATK":5,"MAG":15,"DEF":4,"RES":9,"SPD":10,"critChance":0.1},
+      {"id":"Kojonn","displayName":"Kaja","role":"Support / Guardian","basicMode":"physical","HP":80,"ATK":6,"MAG":10,"DEF":6,"RES":11,"SPD":11,"critChance":0.1}
+    ],
+    "heroCheckpoints": {
+      "1": {"Fara":{"HP":92,"ATK":10,"DEF":8},"Hondo":{"HP":70,"ATK":15,"DEF":5},"Runa":{"HP":60,"MAG":15,"RES":9},"Kaja":{"HP":80,"MAG":10,"RES":11}},
+      "5": {"Fara":{"HP":162,"ATK":14,"DEF":16},"Hondo":{"HP":118,"ATK":24,"DEF":9},"Runa":{"HP":100,"MAG":24,"RES":15},"Kaja":{"HP":128,"MAG":16,"RES":18}},
+      "10": {"Fara":{"HP":250,"ATK":20,"DEF":28},"Hondo":{"HP":195,"ATK":36,"DEF":14},"Runa":{"HP":150,"MAG":36,"RES":24},"Kaja":{"HP":206,"MAG":24,"RES":28}},
+      "20": {"Fara":{"HP":426,"ATK":32,"DEF":50},"Hondo":{"HP":327,"ATK":60,"DEF":24},"Runa":{"HP":250,"MAG":60,"RES":40},"Kaja":{"HP":338,"MAG":40,"RES":48}}
+    },
+    "enemiesLevel1": [
+      {"name":"Gobloc","HP":40,"ATK":10,"MAG":5,"DEF":8,"RES":6,"SPD":17,"explicitCP":47,"formulaCP":22},
+      {"name":"High Gobloc","HP":70,"ATK":14,"MAG":8,"DEF":14,"RES":12,"SPD":15,"explicitCP":29.5,"formulaCP":35},
+      {"name":"Lizardo","HP":65,"ATK":18,"MAG":4,"DEF":10,"RES":6,"SPD":10,"explicitCP":41,"formulaCP":34.5},
+      {"name":"Orc","HP":60,"ATK":15,"MAG":6,"DEF":12,"RES":8,"SPD":8,"explicitCP":38,"formulaCP":33},
+      {"name":"High Orc","HP":95,"ATK":18,"MAG":10,"DEF":20,"RES":16,"SPD":7,"explicitCP":55,"formulaCP":47.5},
+      {"name":"Chimerilass","HP":80,"ATK":8,"MAG":26,"DEF":10,"RES":16,"SPD":8,"explicitCP":34,"formulaCP":26},
+      {"name":"Troll","HP":105,"ATK":20,"MAG":6,"DEF":22,"RES":18,"SPD":5,"explicitCP":17,"formulaCP":52.5},
+      {"name":"Skeleton","HP":35,"ATK":8,"MAG":4,"DEF":5,"RES":4,"SPD":22,"explicitCP":47,"formulaCP":16.5},
+      {"name":"Djinn","HP":55,"ATK":6,"MAG":28,"DEF":6,"RES":14,"SPD":11,"explicitCP":32,"formulaCP":17.5},
+      {"name":"Marid","HP":60,"ATK":8,"MAG":22,"DEF":10,"RES":18,"SPD":9,"explicitCP":21,"formulaCP":24}
+    ],
+    "damageFormula": {
+      "heroSingle": "ceil(max(1, (power - 0.35 * resist) * random(0.8,1.2)))",
+      "enemyAndHeroAoe": "ceil(max(1, (power - 0.50 * resist) * random(0.8,1.2)))",
+      "heroCritMultiplier": "min(1 + power / 10, 3)",
+      "enemyCritMultiplier": "1 + (heroCritMultiplier - 1) * 0.1",
+      "dot": "snapshot MAG * potency; no defense, variance, or crit"
+    },
+    "damageMatrices": {
+      "cellFormat": "normalMin/normalTypical/normalMax|typicalRollCrit",
+      "heroToEnemy": {
+        "Fara":{"Gobloc":"6/8/9|16","Troll":"2/3/3|6","Skeleton":"7/9/10|18","Djinn":"7/8/10|16"},
+        "Hondo":{"Gobloc":"10/13/15|33","Troll":"6/8/9|20","Skeleton":"11/14/16|35","Djinn":"11/13/16|33"},
+        "Runa":{"Gobloc":"2/3/3|5","Troll":"1/1/1|2","Skeleton":"3/4/4|6","Djinn":"3/3/4|5"},
+        "Kaja":{"Gobloc":"3/4/4|7","Troll":"1/1/1|2","Skeleton":"4/5/6|8","Djinn":"4/4/5|7"}
+      },
+      "enemyToHero": {
+        "Gobloc":{"Fara":"5/6/8|7","Hondo":"6/8/9|9","Runa":"7/8/10|9","Kaja":"6/7/9|8"},
+        "Troll":{"Fara":"13/16/20|20","Hondo":"14/18/21|22","Runa":"15/18/22|22","Kaja":"14/17/21|21"},
+        "Skeleton":{"Fara":"4/4/5|5","Hondo":"5/6/7|7","Runa":"5/6/8|7","Kaja":"4/5/6|6"},
+        "Djinn":{"Fara":"20/25/30|30","Hondo":"21/26/32|32","Runa":"19/24/29|29","Kaja":"18/23/27|28"}
+      }
+    },
+    "harness": {
+      "seeds": [3235774465,3235774466,3235774467,3235774468,3235774469,3235774470],
+      "baseline": {"averageEnemiesDefeated":1.33,"medianEnemiesDefeated":1.5,"minimumEnemiesDefeated":0,"averageTurnsSurvived":30.5,"medianTurnsSurvived":27.5,"partyDefeats":6,"deadlocks":0},
+      "candidate2x": {"averageEnemiesDefeated":2.67,"medianEnemiesDefeated":2.5,"minimumEnemiesDefeated":2,"averageTurnsSurvived":61.5,"medianTurnsSurvived":57.5,"partyDefeats":6,"deadlocks":0},
+      "conclusion": "The patch doubled fight length and improved enemy defeats without repairing damage relationships or party outcomes."
+    },
+    "diagnosis": {
+      "formulaDefects": [
+        "Runa and Kaja physical basics ignore their primary MAG stat.",
+        "Hero and enemy mitigation coefficients differ.",
+        "Crit multiplier depends on power and differs by side.",
+        "CP ignores MAG, RES, SPD, crit, and attack mode.",
+        "DOT bypasses ordinary mitigation and needs a separate budget."
+      ],
+      "statBudgetDefects": [
+        "Enemy level-one offense spans 8 to 28 while hero basic offense spans 5 to 15.",
+        "Djinn MAG 28 produces 18 to 32 normal damage.",
+        "Defensive enemies reduce Runa and Kaja basics to one damage.",
+        "The default target CP 120 exceeds current party formula CP 89.2.",
+        "Explicit CP values are non-monotonic relative to stats."
+      ]
+    },
+    "sessionPath": {
+      "status": "approved for implementation on 2026-09-13",
+      "stepCount": {
+        "type": "positive integer",
+        "presets": [5, 10, 20, 60],
+        "notFixedStandards": true
+      },
+      "purpose": "A varied adventure sequence where combat is one step type among exploration gates.",
+      "parityBaseline": {
+        "baseline": "Capybara Go gameplay-loop parity governs session continuity, event order, story feed, next-step advance, and decision-gate rhythm.",
+        "documentedWishfireDepartures": ["four-character party", "autoplay CTB", "one cached sequential three-card buff choice per starting hero", "role-specific Astral Flow special buildup and release", "Wishfire genie-world dialogue and events", "configurable positive integer N"],
+        "scope": "Behavior and state only; no copied art, UI, names, text, currencies, assets, or numerical tables."
+      },
+      "screenshotEvidence": [
+        {"path":"/Users/Mace/Downloads/Screenshot 2026-09-13 at 11.27.47.png","observed":"Session/adventure start with visible Day/step track and opening story text.","wishfireRule":"Begin one session feed with opening dialogue available before the first combat action."},
+        {"path":"/Users/Mace/Downloads/Screenshot 2026-09-13 at 11.28.31.png","observed":"Opening same-tier three-skill power selection.","wishfireRule":"Every starting hero receives one cached sequential three-card power choice."},
+        {"path":"/Users/Mace/Downloads/Screenshot 2026-09-13 at 11.29.19.png","observed":"Persistent story-progress feed and explicit Next Day/step advance.","wishfireRule":"Show explicit next-step advance before route progress changes."},
+        {"path":"/Users/Mace/Downloads/Screenshot 2026-09-13 at 11.30.06.png","observed":"Combat offered as a leave-or-battle decision gate.","wishfireRule":"Authored combat may be selectable, mandatory, or absent."},
+        {"path":"/Users/Mace/Downloads/Screenshot 2026-09-13 at 11.30.34.png","observed":"Combat executes inside the same adventure/day flow, then returns to the journey.","wishfireRule":"Combat resolves one step and returns to the same feed and state."},
+        {"path":"/Users/Mace/Downloads/Screenshot 2026-09-13 at 11.31.22.png","observed":"Side minigame/activity insertion represented by treasure digging.","wishfireRule":"A side activity occupies an authored step and returns through the same result and advance path."},
+        {"path":"/Users/Mace/Downloads/Screenshot 2026-09-13 at 11.33.17.png","observed":"NPC bargain shows power, cost, and accept/refuse.","wishfireRule":"A bargain discloses benefit and cost before accept/refuse mutates session state."}
+      ],
+      "canonicalLoop": ["resolve current day or step event", "show narrative result or choice in persistent session feed", "optionally enter combat or side activity", "apply result to same session state", "show next-step control and updated route progress", "advance exactly once"],
+      "stepTypes": ["combat", "elite", "boss", "npc", "dialogue", "treasure", "boon", "fated_gift", "dire_bargain", "vendor", "spirit", "end_milestone"],
+      "playerFacingTerms": {
+        "fated_gift": "Provisional name for a true one-option grant, used only where content requires it.",
+        "dire_bargain": "Provisional name for an explicit power-with-cost accept/refuse offer; benefit and cost appear together.",
+        "hobsonsChoice": "Design shorthand only. The observed NPC bargain is an accept/refuse trade, not a Hobson's choice."
+      },
+      "minimumSchema": {
+        "session": ["sessionId", "seed", "stepCount", "stepIndex", "milestones", "steps", "sessionState"],
+        "step": ["id", "type", "status", "stepSeed", "encounterId optional", "eventId optional", "cachedChoiceIds optional", "next"],
+        "sessionStates": ["opening_offer", "step_ready", "combat_active", "event_active", "paused", "complete", "abandoned"]
+      },
+      "stateBoundary": {
+        "sessionPersistent": ["seed, step skeleton, and declared milestone schedule", "permanent-derived roster", "session buffs", "earned EXP and rewards", "selected event outcomes", "AF", "opening offer audit tokens"],
+        "encounterOnly": ["enemy roster", "CTB queue", "target memory", "statuses and ticks", "shields", "pending actions", "combat log", "exact interruption snapshot"],
+        "entryRule": "A later combat step creates fresh encounter-only state while keeping session-persistent state.",
+        "interruptionRule": "An attached combat event preserves the exact encounter snapshot until it resumes."
+      },
+      "states": [
+        {"id":"step_ready","behavior":"Read the current cached step without RNG.","exit":"combat, event, or completion."},
+        {"id":"combat_active","behavior":"Build only this step's encounter and release CTB.","exit":"Victory completes the step; an attached interruption snapshots combat."},
+        {"id":"event_active","behavior":"Present cached dialogue, NPC, chest, boon, fated gift, dire bargain, vendor, or spirit content.","exit":"Resume attached interruption without advancing stepIndex, or complete standalone event step."},
+        {"id":"step_complete","behavior":"Record result and advance exactly once.","exit":"Next step or complete after end milestone."},
+        {"id":"paused","behavior":"Freeze session runner and exact combat snapshot when one exists.","exit":"Resume same state or abandon."},
+        {"id":"complete","behavior":"Finalize the authored session outcome once.","exit":"Map."}
+      ],
+      "eventPlacement": {
+        "replaceCombatStep": "A standalone event consumes its own path position, starts no combat, and increments stepIndex once at completion.",
+        "interruptCombatStep": "Dialogue or event attached to combat pauses CTB, resumes the identical combat state, and never increments stepIndex.",
+        "opening": "Opening dialogue remains independently authored; all starting heroes complete cached offers before the first scheduler action.",
+        "combatGate": "Authored combat is selectable, mandatory, or absent. Combat and side activities return to the same session feed and route state after resolution."
+      },
+      "determinismAndSafety": {
+        "construction": "Seed resolves only the step skeleton, types, and deterministic per-step seeds at initialization. On first entry, evaluate current build, prior choices, HP, and milestones using that step seed, then cache selected content or offer before presentation.",
+        "fallback": "Combat-family slots use seeded same-family fallback, then basic combat. Required exploration slots use seeded same-family fallback, then guaranteed baseline boon or treasure. Required exploration never converts to combat; shown content never rerolls.",
+        "endConstraint": "Final step is end_milestone. Each session template declares visible milestone positions; validator enforces only those declarations and final end milestone.",
+        "milestoneSchedule": "N controls session length only. A template may declare question, combat, boss, or other visible milestones at arbitrary positions, such as Day 1/6/7/15.",
+        "combatStreak": "No more than three combat-family steps consecutively; guaranteed baseline boon or treasure makes this unconditional.",
+        "eventStreak": "No more than two non-combat steps consecutively before combat-family play unless authored narrative chain permits it.",
+        "progress": "Show stepIndex/stepCount, current landmark/type, and next locked milestone."
+      },
+      "proofMatrix": {
+        "5": "Opening offers, event gate, combat-family step, and end milestone finish in seed order.",
+        "10": "Declared milestone/end constraint, combat streak rule, and attached mid-combat dialogue pause/resume pass.",
+        "15": "Screenshot-parity route validates declared Day 1/6/7/15 milestones, explicit advance, combat return, and end milestone.",
+        "20": "Seeded branch and event selection remain stable through rerender, pause, and resume.",
+        "60": "Declared milestone schedule, no duplicate completion, bounded state, and final completion after step 60 pass.",
+        "13": "Positive-integer validation, deterministic skeleton, safe fallbacks, and final-step indexing pass."
+      },
+      "parityChecklist": [
+        "One continuous session feed persists across story, combat, and side activities.",
+        "Every resolved step exposes an explicit next-step advance before route progress changes.",
+        "Combat can be a selectable gate, a mandatory event result, or absent.",
+        "Combat and side activities return to the same session state rather than a quest ladder.",
+        "NPC bargains show benefit, cost, and accept/refuse before mutation.",
+        "Opening buff choices and AF specials use the approved Wishfire departures."
+      ],
+      "unresolvedProductDecisions": [
+        "Which event types and named content ship in the first authored catalog?",
+        "May a dire bargain always be declined, or do some story branches force a cost?",
+        "Which visible milestone schedules should the first session templates declare?",
+        "What permanent rewards survive a completed or abandoned session beyond currently approved progression?",
+        "Are fated_gift and dire_bargain final player-facing names, or should genie-world narrative replace them?"
+      ]
+    }
+  },
+  "proposed": {
+    "inventedForWishfire": {
+      "status": "new synthesis; not copied formulas",
+      "contracts": [
+        "Symmetric physical and magic direct-damage formula",
+        "Wishfire CP from expected threat, burst, effective HP, and action rate",
+        "Recovered Speed-based multiattack with linked scheduler insertion, full-sequence CP/burst accounting, and bounded hero-only access",
+        "Encounter construction through CP ratio bands",
+        "Per-starting-hero opening buff queue before the first scheduler action",
+        "Four-hero target philosophies, autoplay tuning, genie-world reskin, dialogue, and validation harness",
+        "Independently authored dialogue/event interruptions"
+      ]
+    },
+    "directDamage": {
+      "guardScale": "20 + 1.25 * (attackerLevel - 1)",
+      "base": "1 + 0.34 * offense",
+      "mitigated": "base * guardScale / (guardScale + defense)",
+      "normalDamage": "max(1, round(mitigated * potency * element * variance))",
+      "variance": "0.95 + 0.10 * seededRoll",
+      "physicalPair": "ATK versus DEF",
+      "magicPair": "MAG versus RES",
+      "critChance": 0.01,
+      "critMultiplier": 1.25,
+      "normalElementMultiplier": 1,
+      "weaknessMultiplier": 1.5,
+      "basicPotency": 1,
+      "statusDamage": "Burn and Venom use card-defined fixed stage values; no crit or variance.",
+      "ownershipRationale": "Wishfire-owned formula. DQ I supplies desired small-number readability only, never coefficients, progression, magic rules, party model, encounter curve, or recovery assumptions.",
+      "burstContract": "Each hostile kit declares maxSingleActionDamage and maxTargetHPFraction after all crit, variance, multi-hit, proc, action-status damage, and every strike in an uninterruptible sequence. The resolver rejects a ceiling above the actor's encounter surface."
+    },
+    "progression": {
+      "statFormula": "round(base + growth * (level - 1))",
+      "expToNext": "ceil(100 * level ^ 1.5)",
+      "automaticLegacyPassiveMultipliers": false,
+      "heroHPScale": 1,
+      "recommendationFor2xPatch": "remove_and_absorb_into_explicit_base_and_growth"
+    },
+    "heroes": [
+      {"name":"Fara","role":"Tank","basicMode":"physical","base":{"HP":48,"ATK":10,"MAG":5,"DEF":12,"RES":9,"SPD":8},"growth":{"HP":4,"ATK":1,"MAG":0.4,"DEF":1.2,"RES":0.9,"SPD":0.1}},
+      {"name":"Hondo","role":"DPS / Fighter","basicMode":"physical","base":{"HP":38,"ATK":14,"MAG":5,"DEF":7,"RES":6,"SPD":12},"growth":{"HP":3.2,"ATK":1.4,"MAG":0.4,"DEF":0.7,"RES":0.6,"SPD":0.2}},
+      {"name":"Runa","role":"Controller","basicMode":"magic","base":{"HP":34,"ATK":6,"MAG":14,"DEF":6,"RES":10,"SPD":10},"growth":{"HP":2.8,"ATK":0.5,"MAG":1.4,"DEF":0.6,"RES":1,"SPD":0.15}},
+      {"name":"Kaja","role":"Support / Guardian","basicMode":"magic","base":{"HP":42,"ATK":7,"MAG":11,"DEF":8,"RES":12,"SPD":10},"growth":{"HP":3.5,"ATK":0.7,"MAG":1.1,"DEF":0.8,"RES":1.2,"SPD":0.15}}
+    ],
+    "roleSculpting": {
+      "structuralReference": "DQ III official four-adventurer overview informs the need for four distinct roles; Wishfire role stats, growth, targeting, kit value, CTB rate, AF, and balance are design inference.",
+      "exclusions": "No DQ III formulas, grind curve, inventory pressure, vocation/class system, or party composition transfers.",
+      "Fara": "Tank: highest DEF and durable HP, restrained direct offense; effective HP and Cover/Shield sustain carry CP.",
+      "Hondo": "Physical damage: highest ATK and growth, lower durability; direct damage, crit, and offensive procs carry CP.",
+      "Runa": "Magic control: highest MAG and growth, low-to-medium HP with RES/Speed; magic, status prevention, and delay carry CP.",
+      "Kaja": "Support: restrained direct damage with defensible survivability; healing, shields, ally protection, and special contribution carry CP.",
+      "sameLevelRule": "Roles do not require equal stat totals or equal BaseCP."
+    },
+    "astralFlowReview": {
+      "source": "https://strategywiki.org/wiki/Final_Fantasy_X/Overdrive_Modes",
+      "authoritativeTargetDesign": {
+        "Fara_Stoic": "takes hostile HP damage, including valid Cover interception",
+        "Hondo_Warrior": "deals positive damage to an enemy",
+        "Runa_Tactician": "successfully applies an eligible enemy status",
+        "Kaja_Comrade": "a living ally takes hostile HP damage"
+      },
+      "supersedes": "Historical random living-hero enemy-death orb assignment.",
+      "visualFeedback": "Existing blue AF gem originates at the qualifying event, flies to the earning hero, and credits AF on arrival.",
+      "gainRate": {"defaultAFPerQualifyingResolvedAction": 10, "configurablePerRole": true, "maxAF": 100},
+      "onePerActionSemantics": {
+        "Fara": "One after hostile action causes HP loss, including Cover; multi-hit aggregates.",
+        "Hondo": "One after action deals any positive damage; multi-hit and AoE aggregate.",
+        "Runa": "One after action applies at least one new eligible status.",
+        "Kaja": "One after action causes any other living ally to lose HP."
+      },
+      "exclusions": ["miss", "zero damage", "fully prevented damage", "resisted status", "unchanged status refresh", "periodic tick", "AF-special self-refill", "full AF recipient", "legacy randomized death-orb assignment"],
+      "forbidden": "Generic damage-dealt AF meter",
+      "cpRule": "AF contributes only through expected special-release net value within the encounter horizon."
+    },
+    "checkpoints": {
+      "1": {"partyCP":178.5,"Fara":{"HP":48,"ATK":10,"DEF":12},"Hondo":{"HP":38,"ATK":14,"DEF":7},"Runa":{"HP":34,"MAG":14,"RES":10},"Kaja":{"HP":42,"MAG":11,"RES":12}},
+      "5": {"partyCP":240.1,"Fara":{"HP":64,"ATK":14,"DEF":17},"Hondo":{"HP":51,"ATK":20,"DEF":10},"Runa":{"HP":45,"MAG":20,"RES":14},"Kaja":{"HP":56,"MAG":15,"RES":17}},
+      "10": {"partyCP":319.4,"Fara":{"HP":84,"ATK":19,"DEF":23},"Hondo":{"HP":67,"ATK":27,"DEF":13},"Runa":{"HP":59,"MAG":27,"RES":19},"Kaja":{"HP":74,"MAG":21,"RES":23}},
+      "20": {"partyCP":504.4,"Fara":{"HP":124,"ATK":29,"DEF":35},"Hondo":{"HP":99,"ATK":41,"DEF":20},"Runa":{"HP":87,"MAG":41,"RES":29},"Kaja":{"HP":109,"MAG":32,"RES":35}}
+    },
+    "enemyArchetypes": [
+      {"name":"Fodder","HP":28,"mainOffense":8,"DEF":6,"RES":6,"SPD":10,"CP":31.1},
+      {"name":"Balanced","HP":40,"mainOffense":10,"DEF":8,"RES":7,"SPD":10,"CP":39.3},
+      {"name":"Striker","HP":34,"mainOffense":12,"DEF":6,"RES":5,"SPD":12,"CP":45.8},
+      {"name":"Wall","HP":54,"mainOffense":8,"DEF":12,"RES":9,"SPD":7,"CP":36},
+      {"name":"Caster","HP":34,"mainOffense":12,"offenseStat":"MAG","DEF":5,"RES":9,"SPD":10,"CP":40.6},
+      {"name":"Commander","HP":72,"mainOffense":14,"DEF":12,"RES":12,"SPD":9,"CP":58.3}
+    ],
+    "enemyScaling": {
+      "HP": "round(baseHP * (1 + 0.11 * (level - 1)))",
+      "ATK_MAG_DEF_RES": "round(baseStat * (1 + 0.07 * (level - 1)))",
+      "SPD": "round(baseSPD + 0.12 * (level - 1))"
+    },
+    "combatPower": {
+      "authoringContract": "BaseCP is absolute permanent content power derived from level, stats, and kit. Explicit CP overrides are forbidden.",
+      "terminology": {
+        "level": "Progression depth from EXP. It selects the expected stat band and neutral benchmark.",
+        "combatPower": "Realized combat prowess or threat from actual stats, action frequency, and kit contribution.",
+        "sameLevelRule": "Equal level never requires equal CP; roles may differ in HP, offense, mitigation, Speed, control, healing, AoE, and procs."
+      },
+      "baseCP": "Derived before session buffs; used to sort and place authored content.",
+      "currentCP": "Recalculated from the same inputs after session buffs; used in live simulation and telemetry.",
+      "encounterCP": "sum(enemy CurrentCP) * (1 + 0.05 * (enemyCount - 1))",
+      "guardScale": "directDamage.guardScale = 20 + 1.25 * (level - 1)",
+      "benchmarkDefense": "round(7 + 0.9 * (level - 1))",
+      "neutralHit": "directDamage resolver(mainOffense, benchmarkDefense, level, normal potency, normal element, neutral variance)",
+      "ctbActionRate": "clamp(SPD / 10, 0.60, 1.80); the sole ordinary Speed throughput factor.",
+      "speedMultiattack": {
+        "status": "Recovered historical rule retained as a target design; current code labels its automatic ratio retired.",
+        "historicalEvidence": [
+          "Scripts/functionBank.js at 5944eba^: TryGrantSpeedExtraTurn grants a hero one explicit scheduler insertion when effective SPD is at least SpeedDoubleRatio times the highest living enemy SPD.",
+          "web-runner/modules/functionBank.js at 5944eba^ mirrors the same rule; state.js supplies SpeedDoubleRatio default 2.0 and ExtraTurnGranted latch.",
+          "d84fe6c labels SpeedDoubleRatio legacy; current TryGrantSpeedExtraTurn aliases skill-driven TryGrantConfiguredExtraTurn."
+        ],
+        "trigger": "Living hero effective SPD >= 2.0 * highest living enemy effective SPD.",
+        "semantics": "One linked explicit scheduler insertion directly after the normal action; this is not an extra hit inside that action.",
+        "sequenceCount": "Derived 2 when the trigger passes, otherwise 1.",
+        "latch": "ExtraTurnGranted[heroUID] blocks another grant until the current hero turn advances.",
+        "enemyAccess": "Hero-only. A future enemy exception requires approved kit data and passing its encounter-surface full-sequence burst ceiling.",
+        "cpRule": "ctbActionRate is multiplied by per-strike kit value times sequence count once; full linked-sequence damage supplies maxSingleActionDamage and maxTargetHPFraction.",
+        "afRule": "Each separately scheduled strike may gain AF once through its role trigger; multi-hit inside either strike still gains once, so the linked sequence gains at most twice.",
+        "presentation": ["Grouped 2 HITS or equivalent sequence badge", "Two distinct lunge, impact, and damage-text beats", "One grouped sequence indicator"]
+      },
+      "effectiveHP": "HP * (1 + ((DEF + RES) / 2) / guardScale)",
+      "kitValue": {
+        "expectedDirectDamage": "Expected primary-target damage per strike against the neutral defender.",
+        "critBonus": "expectedDirectDamage * critChance * (critMultiplier - 1)",
+        "aoeBonus": "expectedAoEDamage * (expectedTargets - 1)",
+        "sustain": "0.60 * (expectedHeal + expectedShieldAbsorb)",
+        "control": "expectedDelayedEnemyActions * neutralEnemyThreat",
+        "statusProc": "expectedDotDamage + expectedDebuffPrevention + expectedProcDamage",
+        "afContribution": "expectedAFGainPerAction / 100 * expectedSpecialNetValue",
+        "perStrikeTotal": "expectedDirectDamage + critBonus + aoeBonus + sustain + control + statusProc + afContribution",
+        "sequenceTotal": "perStrikeTotal * speedSequenceCount",
+        "burstValue": "0.35 * maxSingleActionDamage, where maxSingleActionDamage is the full uninterruptible sequence",
+        "total": "sequenceTotal + burstValue",
+        "schema": {
+          "requiredFields": ["actionMix", "expectedDirectDamage", "critChance", "critMultiplier", "expectedAoEDamage", "expectedTargets", "expectedHeal", "expectedShieldAbsorb", "expectedDelayedEnemyActions", "neutralEnemyThreat", "expectedDotDamage", "expectedDebuffPrevention", "expectedProcDamage", "speedSequenceCount", "maxSingleActionDamage", "maxTargetHPFraction", "afSource", "afGainPerQualifyingResolvedAction", "expectedAFGainPerAction", "expectedSpecialNetValue"],
+          "actionMix": "Array of action id, weight, and physical or magic path; weights sum to one.",
+          "zeroMeans": "Effect unused; missing field fails validation.",
+          "measurementRule": "Expected inputs are measured with the actual role-targeting policy and its recorded target distribution.",
+          "burstRule": "maxSingleActionDamage and maxTargetHPFraction aggregate crit, variance, multi-hit, proc, action-status damage, and every strike in one uninterruptible Speed sequence; the actor's CP surface ceiling must pass.",
+          "afRule": "AF source must be Stoic, Warrior, Tactician, or Comrade. Qualifying multi-hit/AoE results aggregate to one resolved action; separately scheduled Speed strikes can each qualify once; contribution is zero unless the special can release within the simulated horizon."
+        }
+      },
+      "actorBaseCP": "roundToTenth(5 * ctbActionRate * kitValue.total + effectiveHP / 4)",
+      "partyCP": "sum(livingHeroCP)",
+      "includeSessionBuffsInBudget": false,
+      "catalog": {
+        "outputs": ["output/balance/cp-report.json", "output/balance/cp-report.csv"],
+        "sort": "BaseCP ascending, then content id",
+        "entryFields": ["id", "contentLane", "targetBaseCP", "derivedBaseCP", "currentCP", "kitBreakdown", "weakerNeighbor", "strongerNeighbor"],
+        "validator": "cp:validate",
+        "validatorFailsOn": ["missing kit input", "explicit CP override", "target tolerance failure", "surface-burst breach", "BaseCP and damage/burst/durability ordering mismatch", "non-increasing BaseCP in ordered lane", "adjacent boss gap below minimum"],
+        "derivedTargetTolerance": 0.03,
+        "minimumAdjacentBossGap": 0.05,
+        "insertionRule": "Choose targetBaseCP strictly between adjacent neighbors, tune stats or kit, then rerun simulation calibration."
+      },
+      "workedSameLevelExample": [
+        {
+          "hero": "Fara",
+          "role": "Tank",
+          "level": 1,
+          "directPlusCritKitValue": 5.11,
+          "ctbActionRate": 0.8,
+          "offenseCP": 20.45,
+          "effectiveHPQuarter": 18.3,
+          "baseCP": 38.8,
+          "reading": "Defence and HP carry almost half of BaseCP."
+        },
+        {
+          "hero": "Runa",
+          "role": "Controller Mage",
+          "level": 1,
+          "directPlusCritKitValue": 6.56,
+          "ctbActionRate": 1,
+          "offenseCP": 32.78,
+          "effectiveHPQuarter": 11.9,
+          "baseCP": 44.7,
+          "reading": "Magic offense and speed create higher threat despite lower durability."
+        }
+      ],
+      "bands": {"routine":[0.25,0.35],"hard":[0.61,0.75],"elite":[0.76,0.90],"boss":[0.91,1.05],"aboveBossOptInCatalogOnlyPendingReview":[1.06,1.12]},
+      "level1MixedExample": {"status":"withdrawn; regenerate under approved safety bands"}
+    },
+    "damageMatricesLevel1": {"status":"replaced by acceptance targets", "routineHardEnemyBasicDamage":[1,4], "routineMaxTargetHPFraction":0.05, "doubleDigits":"elite/boss only; telegraph required above 12% target max HP"},
+    "sameLevelExamples": {"status":"replaced by safety relation targets", "balancedEnemyHeroActions":[6,9], "balancedEnemyActionsToFragileHeroMinimum":16, "balancedEnemyActionsToFaraMinimum":22},
+    "acceptance": {
+      "behavioralParityRationale": "Capybara Go informs continuous-session pace, player advantage, event recovery, and session power choices; Wishfire owns numeric bands and validation.",
+      "level1HeroNonCritRange": [1,9],
+      "level1RoutineHardEnemyNonCritRange": [1,4],
+      "level1NonCritCoverageMinimum": 0.95,
+      "level1FodderKoHeroActions": [4,7],
+      "level1BalancedKoHeroActions": [6,9],
+      "level1RoutineFirstFragileHeroKoMinimumEnemyActions": 16,
+      "level1RoutineFirstFaraKoMinimumEnemyActions": 22,
+      "sameLevelBalancedSingleHeroHits": [6,9],
+      "partyCyclesPerBalancedEnemy": [2,4],
+      "routineWinRate": [0.97,1],
+      "hardWinRate": [0.85,0.95],
+      "eliteWinRate": [0.70,0.85],
+      "bossWinRate": [0.60,0.75],
+      "aboveBossOptInCatalogOnlyPendingReviewWinRate": [0.55,0.70],
+      "playerFacingBandsUseOpeningBuffs": true,
+      "preBuffBossRule": "Diagnostic only; never a player-facing loss target.",
+      "surfaceBurstCeilings": {"routine":0.05,"hard":0.08,"elite":0.12,"boss":0.18,"aboveBossOptIn":0.25},
+      "telegraphRequiredAboveTargetHPFraction": 0.12,
+      "minimumSeedsPerCheckpoint": 30,
+      "deadlocks": 0,
+      "exactJsRustParity": true,
+      "scaling": {
+        "referenceScope": "Capybara Go defines behavioral parity for continuous player-advantaged sessions; FFX checks CTB/action-rate and role-trigger AF; DQ I contributes small-number readability; DQ III contributes four-role structural contrast. Wishfire owns all formula, target, burst, win, recovery, and parity validation.",
+        "lowLevelAbsoluteNonCritRange": [1, 9],
+        "lowLevelSampledLevels": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+        "highLevelSampledLevels": [91, 92, 93, 94, 95, 96, 97, 98, 99],
+        "crossLevelPairs": [[1, 9], [9, 1], [91, 99], [99, 91]],
+        "bidirectionalPaths": ["physical attacker and defender", "magic attacker and defender"],
+        "participants": ["every hero role", "fodder", "balanced", "striker", "wall", "caster", "commander", "representative elite", "representative boss"],
+        "targetingRule": "All TTK and casualty simulations use the actual role-targeting policy.",
+        "astralFlowRule": "At every sampled level, each role earns 10 configurable AF only through its approved one-per-resolved-action trigger, credits special-release value only when reachable, and uses the blue gem from that event to that hero. Each separately scheduled Speed strike can qualify once; multi-hit within a strike cannot multiply AF.",
+        "speedMultiattackRule": "At every sampled level, check the recovered 2.0 effective-SPD threshold, derived sequence count, linked insertion, latch, full-sequence burst ceiling, CTB throughput, integer boundaries, and no double-counting in CP.",
+        "offerModes": ["no-buff diagnostic", "fixed Common opening offers", "seeded real offers"],
+        "seededOfferPolicies": ["offensive", "defensive", "neutral"],
+        "preBuffBossRule": "Diagnostic only; never player flow.",
+        "highLevelRule": "Validate bounded same-level TTK, damage-to-HP ratios, and CP relationships; do not require single-digit damage.",
+        "monotonicBaseCP": "BaseCP(level + 1) must exceed BaseCP(level) for each combatant's own progression.",
+        "sameLevelRule": "Same-level roles may differ in BaseCP and CurrentCP.",
+        "currentCPRule": "An applied session buff changes CurrentCP in the expected direction and leaves BaseCP unchanged.",
+        "failureConditions": ["defence mitigation below approved floor", "ordinary damage pinned to minimum", "Speed clamps most actors", "recovered Speed threshold has wrong sequence count or linked insertion", "CTB throughput double-counts a Speed sequence", "normal crits become routine one-shots", "full-sequence burst ceiling failure", "damage, burst, durability, or CP monotonicity failure", "CP neighbor inversion", "integer overflow", "casualty or win-rate band failure"],
+        "reportOutputs": ["output/balance/scaling-drift-report.json", "output/balance/scaling-drift-report.md"]
+      }
+    },
+    "numericalReviewIssues": [
+      "Current data lacks kit CP schema inputs and an authoritative role-target policy binding for the harness.",
+      "Routine win-rate suite must record no-buff, fixed Common, and seeded real-offer modes with offensive, defensive, and neutral selection policies.",
+      "Pre-buff boss evaluation is diagnostic only and never changes the player-facing opening queue.",
+      "The initial 10-AF role rate needs seed calibration against each role's trigger frequency and special horizon.",
+      "Recovery-event cadence must preserve approved retention bands because cards, inventory, and emergency healing are excluded.",
+      "User review must decide whether above-boss content ships now or remains catalog-only."
+    ],
+    "openingDraw": {
+      "queuePolicy": "one entry per starting hero in display order; there is no dead-at-session-start branch",
+      "offerPolicy": "three eligible cards from one tier using existing tier and prerequisite rules",
+      "buffLifetime": "session",
+      "states": [
+        {"id":"session_init","entry":"new session","behavior":"load permanent data, fully restore every hero, clear all combat/session state, create fresh seeded RNG, and enable independent content insertion; hold scheduler","exit":"opening dialogue/event or build opening queue"},
+        {"id":"opening_offer","entry":"current queue entry","behavior":"build and cache one three-card offer","exit":"valid player choice"},
+        {"id":"opening_apply","entry":"valid choice","behavior":"apply buff and acknowledge queue entry","exit":"next hero or complete"},
+        {"id":"opening_complete","entry":"queue complete","behavior":"apply choices and battle-start surfaces once","exit":"release scheduler and call ProcessTurn once only when no content interruption is active"},
+        {"id":"content_interrupt","entry":"authored opening, milestone, vendor, mysterious-spirit, story, or end-session event","behavior":"mid-combat entry snapshots exact session/combat state and pauses CTB","exit":"resume exact snapshot or continue opening scheduler gate"},
+        {"id":"paused","entry":"leave combat","behavior":"preserve queue index, cached offer, RNG, and chosen buffs","exit":"resume same offer or abandon"},
+        {"id":"abandoned","entry":"quit paused combat","behavior":"clear queue, offers, buffs, snapshot, and battle","exit":"map"}
+      ],
+      "initializationOrder": ["load permanent progression, roster, equipment, and unlocked catalog only", "derive fresh level stats and set HP to max", "clear lastHP, statuses, Burn/Venom ticks, shields, AF, pending actions, CTB, target memory, logs, buffs, offers, queue, and session RNG", "create new seeded session RNG", "create session shell", "enable independently authored opening dialogue/event insertion", "build cached offer for every starting hero", "apply each choice", "apply battle-start surfaces", "release scheduler only when opening queue completes and no content interruption is active"],
+      "insertAfter": "web-runner/app.js permanent progression restore",
+      "insertBefore": "first releaseCombatStartToScheduler and first ProcessTurn",
+      "reuse": ["sessionLevelUpQueue shape","buildLevelUpBuffOffer","existing fan renderer","chooseSessionLevelUpBuff","turn gate"],
+      "forbidden": ["fake EXP settlement","ordinary-turn card draws","attack cards","relief or healing cards","new menu"],
+      "determinism": [
+        "Generate each offer only when its queue index has no cached offer.",
+        "Same new-session seed, permanent roster, and catalog produce identical queue and cards.",
+        "Pause, resume, and rerender consume no offer RNG.",
+        "Rejected choices leave queue, offer, buffs, and scheduler gate unchanged."
+      ]
+    }
+  },
+  "implementation": {
+    "phases": [
+      {
+        "id": 1,
+        "name": "shared_math_and_parity",
+        "files": ["src/core/calculateDamageRules.mjs","web-runner/src/core/calculateDamageRules.mjs","rust/simulation_core/src/lib.rs","web-runner/modules/functionBank.js","Scripts/functionBank.js","Speed-threshold scheduler and multiattack presentation callers/mirrors","web-runner/src/core/combatPower.mjs","web-runner/systems/combatSessionInitializer.js"]
+      },
+      {
+        "id": 2,
+        "name": "data_and_progression",
+        "files": ["web-runner/src/core/heroDefinitions.mjs","web-runner/src/core/heroProgression.mjs","web-runner/state/heroScreenConfig.js","web-runner/assets/enemies.json"]
+      },
+      {
+        "id": 3,
+        "name": "opening_draw_integration",
+        "files": ["src/core/sessionLevelUpQueue.mjs","web-runner/src/core/sessionLevelUpQueue.mjs","web-runner/modules/sessionLevelUpBuffPresentation.mjs","web-runner/modules/heroCommands.mjs","web-runner/systems/combatSessionReset.mjs","web-runner/systems/storyEntryFlow.mjs","web-runner/app.js"]
+      },
+      {
+        "id": 4,
+        "name": "configurable_session_path",
+        "files": ["one seeded session-step data owner and browser mirror", "web-runner/systems/storyEntryFlow.mjs", "web-runner/systems/combatSessionReset.mjs", "existing interruption/pause owner only where exact combat snapshots require it"]
+      }
+    ],
+    "outOfScope": ["UI redesign","ordinary-turn cards","attack cards","relief or healing cards","new menus","quest ladder expansion","artwork"],
+    "testMatrix": [
+      "Exact shared JS, browser JS, runtime fallback, Construct mirror, and Rust damage fixtures.",
+      "Hero and representative enemy/boss stat fixtures for every level 1-9 and 91-99.",
+      "Enemy CP and seeded encounter composition fixtures.",
+      "Level-one min, typical, max, and crit damage bands.",
+      "Per-actor maximum full-sequence damage and target-HP-fraction ceiling checks after all modifiers.",
+      "Recovered Speed threshold, linked scheduler insertion, sequence count, latch, CTB throughput, full-sequence burst, integer boundary, and grouped combat-feedback checks at levels 1-9 and 91-99.",
+      "Bidirectional physical and magic attack/defence matrix for every sampled level and L1↔9/L91↔99 edges.",
+      "Thirty fixed seeds per sampled checkpoint using the actual role-targeting policy for encounter CP, TTK, casualty, win-rate, rounding, overflow, and deadlock bands.",
+      "AF trigger/rate/boundary suite for every hero role at levels 1-9 and 91-99, including multi-hit/AoE aggregation, separately scheduled Speed-strike cap of two per linked sequence, Cover, missed/resisted/prevented exclusions, caps, gem attribution, and unreachable-special zero contribution cases.",
+      "No-buff diagnostic, fixed Common opening-offer, and seeded real-offer harness modes; seeded offers run offensive, defensive, and neutral selection policies.",
+      "BaseCP monotonicity, CurrentCP-after-buff direction, and ordered-lane neighbor inversion validation.",
+      "Generated CP catalog and low/high scaling-drift report validation.",
+      "Fresh-session initialization order: every starting hero restored; lastHP, statuses, DOT ticks, shields, AF, actions, CTB, buffs, offers, queue, and session RNG cleared before a new seed.",
+      "Opening queue order and one choice per starting hero before the first scheduler action; dialogue/event insertion stays independent.",
+      "Opening, milestone, and end-session dialogue/event insertion plus exact mid-combat interruption/resume state.",
+      "Stable offer under rerender and pause/resume.",
+      "Abandon clears all opening state and session buffs.",
+      "Configurable session-path proof for N=5,10,15,20,60,13 covers declared milestones, event replacement, attached interruption/resume, caching, end constraint, fallbacks, and step indexing.",
+      "Production-path browser proof through opening dialogue, opening draw, first autoplay action, a qualified Speed sequence, and a mid-combat interruption/resume."
+    ],
+    "definitionOfDone": [
+      "All formula owners return identical seeded results.",
+      "Canonical hero stats match approved checkpoint tables.",
+      "All enemy CP derives from current stats and compositions meet tolerance.",
+      "CP, expected damage, burst ceiling, durability, and encounter outcomes rise monotonically in their authored lanes.",
+      "Bidirectional low/high scaling, actual role-targeting, offer-mode, CP monotonicity, Speed-sequence breakpoint/count, CTB throughput, full-sequence burst, rounding/overflow, damage, win rate, TTK, casualty, and deadlock bands pass.",
+      "Each role's approved 10-AF configurable trigger is attributed exactly once per resolved action at low and high level; separately scheduled Speed strikes can each qualify once, gem origin/recipient matches credit, and AF never becomes a generic damage-dealt meter.",
+      "A qualified living hero receives exactly one linked extra scheduled action at the recovered two-times-Speed threshold; the latch prevents recursion and grouped visual feedback proves both strikes.",
+      "A full session reset completes before every starting-hero opening choice; only the first scheduler action remains blocked until choices complete.",
+      "Opening and mid-combat dialogue/event interruptions preserve and resume exact combat/session state; pause and resume restore the exact pending offer and state.",
+      "Configurable positive-integer sessions pass the N=5,10,15,20,60,13 proof matrix with declared milestones, deterministic steps, and cached choices.",
+      "Abandon clears the battle with no reward or penalty.",
+      "CP catalog, scaling-drift report, change report, and production-path evidence are attached before design-review handoff."
+    ],
+    "risks": [
+      "CP bands must be rerun after any target-policy change.",
+      "Saved heroes must recalculate derived stats after passive and HP-scale removal.",
+      "Offer generation must not reroll during render or resume.",
+      "One integration owner must update all formula mirrors together."
+    ],
+    "changeReportTemplate": [
+      "Candidate commit",
+      "Rollback commit or tag",
+      "Scope implemented",
+      "Files changed",
+      "Formula before",
+      "Formula after",
+      "Observed hero checkpoints",
+      "Observed enemy archetypes and CP",
+      "Observed role-stat/CP and AF-trigger evidence",
+      "Observed Speed threshold, linked-action count, full-sequence burst, AF gain count, and feedback evidence",
+      "Observed encounter ratios",
+      "Observed opening-draw transitions",
+      "Fresh-session reset ordering and cleared-state evidence",
+      "Tests added or changed",
+      "Tests run and exact results",
+      "Harness seeds and aggregates",
+      "Per-surface hero advantage, win rate, burst ceiling, and recovery-event result",
+      "Targeting policy and offer mode/selection policy",
+      "AF source, trigger counts, expected special-release contribution, and unreachable-special cases",
+      "Bidirectional scale matrix and L1↔9/L91↔99 edge results",
+      "Scaling-drift report path and result",
+      "CP catalog path, neighbor insertion range, and monotonicity result",
+      "Production-path browser evidence",
+      "JS and Rust parity evidence",
+      "Differences from approved plan",
+      "Known risks or defects",
+      "Session step count, skeleton, event choices, interruption/resume, and fallback evidence",
+      "Definition of Done status by item"
+    ]
+  }
+}

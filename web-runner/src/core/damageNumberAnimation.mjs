@@ -83,6 +83,7 @@ export function createDamageNumber({
   const isEnergy = normalizedKind === 'energy';
   const isWard = normalizedKind === 'ward';
   const isArcanePulse = normalizedKind === 'arcane_pulse';
+  const isDot = normalizedKind === 'dot';
   const fallbackVector = deriveDamageFloatVector({
     angleDeg,
     travel: isEnergy ? DAMAGE_FLOAT_ENERGY_TRAVEL : DAMAGE_FLOAT_DEFAULT_TRAVEL,
@@ -102,9 +103,11 @@ export function createDamageNumber({
         ? ['#FFD1EB', '#FF94CC']
     : (isArcanePulse
         ? ['#BFEFFF', '#3DA5FF']
+    : (isDot
+        ? ['#E4C3FF', '#8D37FF']
     : (isHeal
         ? ['#86eb2e', '#9fdfff']
-        : ['#fbfdce', '#f7f8d4'])));
+        : ['#fbfdce', '#f7f8d4']))));
   const timelines = [];
 
   const cleanup = () => {

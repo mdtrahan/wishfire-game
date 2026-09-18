@@ -22,6 +22,7 @@ const viewports = [
   { name: 'compact-retina', width: 216, height: 384, dpr: 2 },
 ];
 const focusedContracts = [
+  'tests/heroCommandsContract.test.js',
   'tests/uiPresentationLockGateContract.test.js',
   'tests/compactViewportContainmentContract.test.js',
   'tests/devToolingModalContract.test.js',
@@ -40,13 +41,7 @@ const APPROVED = Object.freeze({
     heroSelectorWidthRatio: 0.07314,
     heroPulseTolerance: 0.004,
     targetSelectorWidthRatio: 0.07217,
-    attackWidthRatio: 0.13713,
     controlTolerance: 0.002,
-    progressHeightPx: 8,
-    progressTolerancePx: 0.5,
-    skillCard: { width: 96.8, height: 179.2, strokeSafeInsetPx: 2, tolerancePx: 0.5 },
-    skillTitlePx: 30,
-    skillTitleTolerancePx: 0.5,
   },
 });
 const proveRejection = process.argv.includes('--prove-rejection');
@@ -285,7 +280,7 @@ async function readViewportMetrics(page) {
   });
 }
 
-async function captureStoryAndTown(page, viewport, artifactDir) {
+async function captureMapAndCombat(page, viewport, artifactDir) {
   await page.waitForFunction(() => window.__orkaUiLockTrace.read().some(e => e.kind === 'fillText' && e.text === 'QUESTS'));
   const story = latestText(await readTrace(page), /^QUESTS$/);
   const metrics = await readViewportMetrics(page);
@@ -295,10 +290,12 @@ async function captureStoryAndTown(page, viewport, artifactDir) {
   await page.screenshot({path:path.join(artifactDir,`${viewport.name}-01-map.png`)});
   const canvasBox = await page.locator('#view').boundingBox();
   await page.mouse.click(canvasBox.x + canvasBox.width * 184.5/360, canvasBox.y + canvasBox.height * 427/640);
-  await page.locator('#quest-ui .chapter h1').waitFor();
-  const town = await page.locator('#quest-ui .chapter h1').evaluate(el => ({text:el.textContent,font:getComputedStyle(el).font,fontSize:parseFloat(getComputedStyle(el).fontSize)}));
-  const townFontPx = town.fontSize * layoutScale;
-  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-02-ladder.png`)});
+  await page.locator('#hero-commands').waitFor();
+  const combat = await page.locator('#hero-commands').evaluate(el => ({
+    label: el.getAttribute('aria-label'),
+    heroCount: el.querySelectorAll('button').length,
+  }));
+  await page.screenshot({path:path.join(artifactDir,`${viewport.name}-02-combat.png`)});
 
   const expectedStage = computeContainedStage(viewport);
   const pageFits = metrics.document.scrollWidth <= metrics.document.clientWidth;
@@ -337,7 +334,7 @@ async function captureStoryAndTown(page, viewport, artifactDir) {
         { scrollWidthAtMostClientWidth: true },
       ),
       invariant(
-        'stage-contained-reference-aspect',
+        'canvas-contained-reference-aspect',
         stageMatches,
         { canvas, appViewport: metrics.appViewport },
         { expectedStage, centered: true, backingMatchesDpr: true },
@@ -349,10 +346,10 @@ async function captureStoryAndTown(page, viewport, artifactDir) {
         APPROVED.text,
       ),
       invariant(
-        'chapter-text-scale',
-        within(townFontPx / layoutScale, 18, APPROVED.text.tolerancePx),
-        { text: town?.text || null, font: town?.font || null, normalizedFontPx: townFontPx / layoutScale },
-        APPROVED.text,
+        'combat-entry-landmark',
+        combat.label === 'Party status' && combat.heroCount > 0,
+        combat,
+        { label: 'Party status', heroCountAtLeast: 1 },
       ),
     ],
   };
@@ -484,6 +481,7 @@ async function captureCombat(page, viewport, artifactDir) {
     globals.ActionInProgress = 0;
     globals.PendingSkillID = '';
     globals.PendingActor = 0;
+    game.callFunction('CancelHeroTurnCardFan');
     game.stepFrames(1);
   });
   await resetTrace(page);
@@ -499,6 +497,64 @@ async function captureCombat(page, viewport, artifactDir) {
     && /rgba\(240,\s*240,\s*240,\s*0\.92\)/.test(entry.fillStyle)
   ));
   await page.screenshot({ path: path.join(artifactDir, `${viewport.name}-05-hero-selector.png`) });
+  const commands = await page.evaluate(() => {
+    const host = document.getElementById('hero-commands');
+    const rect = host.getBoundingClientRect(), canvas = document.getElementById('view').getBoundingClientRect();
+    const navigation = document.getElementById('game-meta-nav')?.getBoundingClientRect();
+    const cards = [...host.querySelectorAll('article')].map(card => ({
+      uid: Number(card.dataset.uid || 0), current: card.dataset.current === 'true', box: card.getBoundingClientRect().toJSON(),
+      portrait: card.querySelector('.portrait')?.getBoundingClientRect().toJSON(),
+      hpLabel: card.querySelector('.hp .readout-label')?.textContent,
+      hpValue: card.querySelector('[data-hp-text]')?.textContent,
+      hpBar: card.querySelector('[data-hp-bar]')?.getBoundingClientRect().toJSON(),
+      afLabel: card.querySelector('.af .readout-label')?.textContent,
+      afValue: card.querySelector('[data-af-text]')?.textContent,
+      afBar: card.querySelector('[data-af-bar]')?.getBoundingClientRect().toJSON(),
+      name: card.querySelector('.hero-name strong')?.getBoundingClientRect().toJSON(),
+      healthRow: card.querySelector('.readout.hp')?.getBoundingClientRect().toJSON(),
+      afRow: card.querySelector('.readout.af')?.getBoundingClientRect().toJSON(),
+      buttonHeight: card.querySelector('[data-open]')?.getBoundingClientRect().height,
+      overflow: card.scrollWidth > card.clientWidth,
+    }));
+    return { box: rect.toJSON(), canvas: canvas.toJSON(), navigation: navigation?.toJSON(), cards,
+      overflow: host.scrollWidth > host.clientWidth, visible: !host.hidden,
+      nativeButtons: host.querySelectorAll('button').length,
+      legacySkills: host.querySelectorAll('[data-skill], .editor, .queue').length,
+      boardMembers: window.__codexGame.globals.Gems?.length || 0,
+    };
+  });
+  const scale = layoutScale;
+  const commandInvariants = [
+    invariant('hero-command-containment', commands.visible && !commands.overflow && commands.cards.every(card =>
+      card.hpBar.left >= card.box.left && card.hpBar.right <= card.box.right
+      && card.afBar.left >= card.box.left && card.afBar.right <= card.box.right)
+      && commands.box.left >= commands.canvas.left && commands.box.right <= commands.canvas.right + 1
+      && commands.box.bottom <= commands.canvas.bottom + 1, commands, { contained: true }),
+    invariant('hero-command-column-order', commands.cards.length === 4 && commands.cards.every(card => card.uid > 0)
+      && commands.cards.every((card, index) => index === 0 || card.box.left > commands.cards[index - 1].box.left)
+      && commands.cards.every(card => within(card.box.top, commands.cards[0].box.top, 1)), commands.cards, { loaded: 4, fill: 'row' }),
+    invariant('hero-command-scale', commands.cards.filter(card => card.uid).every(card =>
+      within(card.box.height / scale, 104, .5) && within(card.buttonHeight / scale, 104, .5)
+      && within(card.portrait.width / scale, 38.5, .5)), commands.cards, { card: 104, button: 104, portrait: 38.5 }),
+    invariant('hero-command-two-row-layout', commands.cards.filter(card => card.uid).every(card =>
+      card.healthRow && card.afRow && card.healthRow.top >= card.portrait.top
+      && card.afRow.top >= card.healthRow.top && card.name.top >= card.healthRow.bottom),
+      commands.cards, { readouts: 'HP and AF above role/name footer' }),
+    invariant('hero-command-hp-af-readouts', commands.cards.filter(card => card.uid).every(card =>
+      card.hpLabel === 'HP' && /^\d+$/.test(card.hpValue || '') && !!card.hpBar
+      && card.afLabel === 'AF' && /^\d+$/.test(card.afValue || '') && !!card.afBar),
+      commands.cards, { hp: 'label/value/bar', af: 'label/value/bar' }),
+    invariant('hero-command-native-input', commands.nativeButtons === commands.cards.filter(card => card.uid).length
+      && commands.legacySkills === 0 && commands.boardMembers === 0,
+      { buttons: commands.nativeButtons, legacySkills: commands.legacySkills, gems: commands.boardMembers }, { statusButtons: commands.cards.filter(card => card.uid).length, legacySkills: 0, gems: 0 }),
+    invariant('hero-command-navigation-clearance', !!commands.navigation
+      && commands.navigation.top >= Math.max(...commands.cards.filter(card => card.uid).map(card => card.box.bottom)) - 1
+      && commands.navigation.bottom <= commands.canvas.bottom + 1,
+      { navigation: commands.navigation, cards: commands.cards.filter(card => card.uid).map(card => card.box), canvas: commands.canvas },
+      { navigationBelowHeroStatus: true, contained: true }),
+  ];
+  commandInvariants.push(invariant('hero-editor-containment', commands.legacySkills === 0,
+    { legacySkills: commands.legacySkills }, { editor: false, queuedSkills: false }));
 
   await resetTrace(page);
   const targeting = await page.evaluate(() => {
@@ -570,41 +626,6 @@ async function captureCombat(page, viewport, artifactDir) {
   });
   await page.screenshot({ path: path.join(artifactDir, `${viewport.name}-07-damage-text.png`) });
 
-  await resetTrace(page);
-  await page.evaluate(() => {
-    window.__codexGame.toggleDevToolingModal(true);
-    document.querySelector('[data-devtool-force-skill-draught]')?.click();
-    window.__codexGame.stepFrames(1);
-  });
-  await page.waitForFunction(() => (
-    window.__orkaUiLockTrace.read().some((entry) => entry.kind === 'fillText' && entry.text === 'Choose a Skill')
-  ));
-  const skillTrace = await readTrace(page);
-  const skillTitle = latestText(skillTrace, /^Choose a Skill$/);
-  const skillCardDrawsRaw = skillTrace.filter((entry) => (
-    entry.kind === 'roundRect'
-    && within(entry.w, APPROVED.combat.skillCard.width, APPROVED.combat.skillCard.tolerancePx)
-    && within(entry.h, APPROVED.combat.skillCard.height, APPROVED.combat.skillCard.tolerancePx)
-  ));
-  const skill = await page.evaluate(() => ({
-    dpr: window.devicePixelRatio,
-    zones: window.__codexGame.globals.SkillDraughtHitZones,
-  }));
-  await page.screenshot({ path: path.join(artifactDir, `${viewport.name}-08-skill-draught.png`) });
-
-  const skillHitZone = skill.zones?.[0] || null;
-  const skillCanvas = await page.locator('#view').boundingBox();
-  if (!skillHitZone || !skillCanvas) throw new Error('Skill draught is missing a scaled hit zone or Canvas box');
-  await page.mouse.click(
-    skillCanvas.x + skillHitZone.x + skillHitZone.w / 2,
-    skillCanvas.y + skillHitZone.y + skillHitZone.h / 2,
-  );
-  await page.waitForFunction(() => Number(window.__codexGame.globals.SkillDraughtOpen || 0) === 0);
-  const skillRoute = await page.evaluate(() => ({
-    open: Number(window.__codexGame.globals.SkillDraughtOpen || 0),
-    zones: window.__codexGame.globals.SkillDraughtHitZones,
-  }));
-
   const canvasWidth = Number(targeting?.canvas?.width || 0);
   const sizeResult = (entry) => entry ? {
     source: entry.source,
@@ -615,67 +636,96 @@ async function captureCombat(page, viewport, artifactDir) {
   } : null;
   const heroSize = sizeResult(heroSelector);
   const targetSize = sizeResult(targetSelector);
-  const attackSize = sizeResult(attackButton);
   const damageRatio = damage.fontPx / canvasWidth;
   const damageDensity = (damage.backing?.width || 0) / Math.max(1, damage.rect?.width || 0);
-  const skillCards = Array.isArray(skill.zones) ? skill.zones : [];
-  // Rendering can occur more than once while the modal settles. The final
-  // complete frame shares the live hit-zone geometry we are proving.
-  const skillCardDraws = skillCardDrawsRaw.slice(-skillCards.length);
-  const skillTitleCssPx = parseFontPx(skillTitle?.font) * Number(skillTitle?.transformA || 1) / Math.max(1, Number(skill.dpr || 1));
-  const skillCardGeometry = skillCards.map((hitZone, index) => {
-    const draw = skillCardDraws[index] || null;
-    const dpr = Math.max(1, Number(skill.dpr || 1));
-    const scaleX = Number(draw?.transformA || 0) / dpr;
-    const scaleY = Number(draw?.transformD || 0) / dpr;
-    const offsetX = Number(draw?.transformE || 0) / dpr;
-    const offsetY = Number(draw?.transformF || 0) / dpr;
-    const drawMatchesHit = draw
-      && within(hitZone.x, draw.x * scaleX + offsetX, 0.5)
-      && within(hitZone.y, draw.y * scaleY + offsetY, 0.5)
-      && within(hitZone.w, draw.w * scaleX, 0.5)
-      && within(hitZone.h, draw.h * scaleY, 0.5);
-    const normalizedWidth = hitZone.w / layoutScale;
-    const normalizedHeight = hitZone.h / layoutScale;
-    return {
-      draw,
-      hitZone,
-      cssScale: { x: scaleX, y: scaleY },
-      normalizedWidth,
-      normalizedHeight,
-      aspect: hitZone.h / hitZone.w,
-      drawMatchesHit,
-      fullyInsideCanvas: hitZone.x >= APPROVED.combat.skillCard.strokeSafeInsetPx * layoutScale
-        && hitZone.y >= APPROVED.combat.skillCard.strokeSafeInsetPx * layoutScale
-        && hitZone.x + hitZone.w <= canvasWidth - APPROVED.combat.skillCard.strokeSafeInsetPx * layoutScale
-        && hitZone.y + hitZone.h <= Number(targeting?.canvas?.height || 0) - APPROVED.combat.skillCard.strokeSafeInsetPx * layoutScale,
-    };
-  });
-  const allSkillCardsMatchApprovedSize = skillCardGeometry.every((card) => (
-    within(card.normalizedWidth, APPROVED.combat.skillCard.width, APPROVED.combat.skillCard.tolerancePx)
-    && within(card.normalizedHeight, APPROVED.combat.skillCard.height, APPROVED.combat.skillCard.tolerancePx)
-    && within(card.aspect, APPROVED.combat.skillCard.height / APPROVED.combat.skillCard.width, 0.01)
-  ));
   const expectedDamageFontPx = Math.max(4, Math.round(14 * layoutScale));
   const expectedDamageWidth = Math.ceil(expectedDamageFontPx * 3.12);
   const expectedDamageHeight = Math.max(12, Math.ceil(expectedDamageFontPx * 2.6));
 
   return [
+    ...commandInvariants,
     invariant('hero-selector-scale', heroSize && within(heroSize.widthRatio, APPROVED.combat.heroSelectorWidthRatio, APPROVED.combat.heroPulseTolerance), heroSize, APPROVED.combat),
     invariant('target-selector-scale', targetSize && within(targetSize.widthRatio, APPROVED.combat.targetSelectorWidthRatio, APPROVED.combat.controlTolerance), targetSize, APPROVED.combat),
-    invariant('attack-button-scale', attackSize && within(attackSize.widthRatio, APPROVED.combat.attackWidthRatio, APPROVED.combat.controlTolerance), attackSize, APPROVED.combat),
+    invariant('global-attack-absent', !attackButton, attackButton, { count: 0 }),
     invariant('damage-text-scale', within(damage.fontPx, expectedDamageFontPx, 0.1) && within(damage.rect?.width, expectedDamageWidth, 1) && within(damage.rect?.height, expectedDamageHeight, 1), { ...damage, fontRatio: damageRatio }, { fontPx: expectedDamageFontPx, cssWidth: expectedDamageWidth, cssHeight: expectedDamageHeight }),
     invariant('damage-text-density', between(damageDensity, viewport.dpr * 0.99, viewport.dpr * 1.01), { density: damageDensity, dpr: viewport.dpr, ...damage }, { density: [viewport.dpr * 0.99, viewport.dpr * 1.01] }),
-    invariant('party-progress-bar-height', within((partyHealthBar?.h || 0) / layoutScale, APPROVED.combat.progressHeightPx, APPROVED.combat.progressTolerancePx), { height: partyHealthBar?.h || 0, normalizedHeight: (partyHealthBar?.h || 0) / layoutScale }, APPROVED.combat),
-    invariant('astral-progress-bar-height', within((ampBar?.h || 0) / layoutScale, APPROVED.combat.progressHeightPx, APPROVED.combat.progressTolerancePx), { height: ampBar?.h || 0, normalizedHeight: (ampBar?.h || 0) / layoutScale }, APPROVED.combat),
-    invariant('skill-card-count-parity', skillCardDraws.length === skillCards.length && skillCards.length === 3, { draws: skillCardDraws.length, hitZones: skillCards.length }, { draws: 3, hitZones: 3 }),
-    invariant('skill-card-proportions', skillCardGeometry.length === 3 && allSkillCardsMatchApprovedSize, skillCardGeometry, APPROVED.combat.skillCard),
-    invariant('skill-card-draw-hit-geometry', skillCardGeometry.length === 3 && skillCardGeometry.every((card) => card.drawMatchesHit), skillCardGeometry, { sharedCanvasTransform: true }),
-    invariant('skill-card-canvas-containment', skillCardGeometry.length === 3 && skillCardGeometry.every((card) => card.fullyInsideCanvas), skillCardGeometry, { strokeSafeInsetPx: APPROVED.combat.skillCard.strokeSafeInsetPx }),
-    invariant('skill-card-hit-routing', skillRoute.open === 0 && skillRoute.zones.length === 0, { before: skillHitZone, after: skillRoute }, { selectionClosesDraught: true, hitZonesCleared: true }),
-    invariant('skill-title-scale', within(skillTitleCssPx / layoutScale, APPROVED.combat.skillTitlePx, APPROVED.combat.skillTitleTolerancePx), { cssFontPx: skillTitleCssPx, normalizedFontPx: skillTitleCssPx / layoutScale }, APPROVED.combat),
+    invariant('pooled-health-bar-absent', !partyHealthBar, partyHealthBar, { count: 0 }),
+    invariant('gem-board-backdrop-absent', !heroTrace.some(entry => entry.kind==='fillRect'
+      && within(entry.w / layoutScale, 300, .5) && within(entry.h / layoutScale, 210, .5)), null, { count: 0 }),
+    invariant('shared-astral-bar-absent', !ampBar, ampBar, { count: 0 }),
+    invariant('personal-af-meters', commands.cards.filter(card => card.uid).every(card => card.afLabel === 'AF' && /^\d+$/.test(card.afValue || '') && card.afBar), commands.cards, { persistentAFReadout: true, perHero: true }),
+    invariant('party-card-draw-controls-absent', await page.locator('[data-devtool-force-skill-draught], [data-devtool-clear-session-skills], [data-devtool-skill-id]').count() === 0, null, { count: 0 }),
     invariant('legacy-backdrop-absent', legacyPanels.length === 0, { forbiddenPanelDraws: legacyPanels }, { forbiddenPanelDraws: 0 }),
   ];
+}
+
+async function captureCommandTurns(page, viewport, artifactDir) {
+  const arrange = async (count, flow = 0) => page.evaluate(({count, flow}) => {
+    const game = window.__codexGame;
+    const globals = game.globals;
+    const seed = game.state.entities.find(actor => actor.kind === 'hero');
+    const enemies = game.state.entities.filter(actor => actor.kind === 'enemy');
+    const heroes = Array.from({length: count}, (_, slot) => ({
+      ...seed, name: 'Falie', baseHeroName: 'Falie', uid: 100 + slot, heroInstanceKey: `qa:command:${slot}`, heroDisplaySlot: slot,
+      stats: {...seed.stats}, hp: 5000, maxHP: 5000, flow: slot === count - 1 ? flow : 0,
+      flowMode: 'Stoic', currentLevel: 50, statuses: [],
+    }));
+    game.state.entities = [...heroes, ...enemies];
+    Object.assign(globals, {
+      GamePhase: 'RUNTIME', NativeBattleEnded: false, BattleStartActive: 0, TurnPhase: 0,
+      CombatSessionId: Number(globals.CombatSessionId || 0) + 1, CurrentHeroUID: heroes.at(-1).uid,
+      CurrentTurnIndex: 0, IsPlayerBusy: 0, CanPickGems: 1, ActionInProgress: 0,
+      PendingHeroHits: [], PendingDeaths: {}, FlowOrbs: [], AstralFlowKoOrbQueue: [],
+      CombatImpactRequests: [], CombatImpactVisuals: [], ChainStrikeVisuals: [], ArcanePulseVisuals: [],
+      AstralFlowKoOrbPresentationState: null, AstralFlowKoOrbPresentationActive: 0, AstralFlowKoOrbPresentationPending: 0,
+      HeroAction: null, EnemyAction: null, DamageTexts: [], TextAnimating: 0, TextAnimEndAt: 0, ActionLockUntil: 0,
+      HeroTurnCardFanOpen: 0, HeroTurnCardFanCards: [],
+      SessionLevelBuffState: {heroes: {}}, SessionLevelUpOffersByQueueIndex: {},
+      SessionLevelUpOfferGeneration: Number(globals.SessionLevelUpOfferGeneration || 0) + 1, SessionLevelUpSettlement: null,
+      SessionOfferInputToken: '', SessionOfferResolution: '', SessionLevelUpQueueResumeRequested: 0, PendingFlowThresholds: [],
+      SessionLevelUpQueue: {version: 1, status: 'active', paused: false, currentIndex: 0, entries: [{
+        heroId: '__party_session__', heroUID: 0, earnedLevel: 0, earnedLevelIndex: 0,
+        source: 'opening_party', participantHeroIds: heroes.map(hero => hero.heroInstanceKey),
+      }]},
+      TurnOrderArray: [{uid: heroes.at(-1).uid, type: 0}, ...enemies.map(enemy => ({uid: enemy.uid, type: 1}))],
+    });
+    game.callFunction('InitPartyHPFromHeroes');
+    game.stepFrames(2);
+  }, {count, flow});
+  const readStatus = () => page.evaluate(() => {
+    const host = document.getElementById('hero-commands');
+    const fan = document.getElementById('hero-turn-card-fan');
+    const cards = [...host.querySelectorAll('article')].map(card => ({
+      uid: Number(card.dataset.uid || 0), current: card.dataset.current === 'true',
+      hpLabel: card.querySelector('.hp .readout-label')?.textContent,
+      hpValue: card.querySelector('[data-hp-text]')?.textContent,
+      hpBar: !!card.querySelector('[data-hp-bar]'),
+      afLabel: card.querySelector('.af .readout-label')?.textContent,
+      afValue: card.querySelector('[data-af-text]')?.textContent,
+      afBar: !!card.querySelector('[data-af-bar]'),
+      box: card.getBoundingClientRect().toJSON(),
+    }));
+    return { cards, fanOpen: fan?.dataset.open === 'true', fanCards: fan?.querySelectorAll('.fan-card').length || 0 };
+  });
+  const commandInvariants = [];
+  for (const count of [1, 4, 6]) {
+    await arrange(count, count === 4 ? 100 : 0);
+    await page.waitForFunction(expected => document.querySelectorAll('#hero-commands article').length === expected, count);
+    const status = await readStatus();
+    commandInvariants.push(invariant(`hero-command-group-${count}`, status.cards.length === count
+      && status.cards.every(card => card.uid > 0 && card.hpLabel === 'HP' && /^\d+$/.test(card.hpValue || '') && card.hpBar
+        && card.afLabel === 'AF' && /^\d+$/.test(card.afValue || '') && card.afBar),
+      status, { count, hp: 'label/value/bar', af: 'label/value/bar' }));
+    if (count === 1 || count === 6) await page.screenshot({path: path.join(artifactDir, `${viewport.name}-09-hero-group-${count}.png`)});
+  }
+  const finalStatus = await readStatus();
+  commandInvariants.push(
+    invariant('hero-command-active-highlight', finalStatus.cards.some(card => card.current), finalStatus, { activeHero: true }),
+    invariant('hero-command-personal-af', finalStatus.cards.every(card => card.afLabel === 'AF' && card.afBar), finalStatus, { persistentAF: true }),
+    invariant('hero-command-paid-sequence', finalStatus.fanOpen && finalStatus.fanCards === 3, finalStatus, { openingSessionOffer: true }),
+    invariant('hero-card-fan-reopen-same-draw', finalStatus.fanOpen && finalStatus.fanCards === 3, finalStatus, { cachedOpeningOfferVisible: true }),
+  );
+  return commandInvariants;
 }
 
 async function runViewport(browser, baseUrl, viewport, artifactDir, { injectStageDrift = false } = {}) {
@@ -701,13 +751,15 @@ async function runViewport(browser, baseUrl, viewport, artifactDir, { injectStag
     });
   }
   try {
-    const presentation = await captureStoryAndTown(page, viewport, artifactDir);
+    const presentation = await captureMapAndCombat(page, viewport, artifactDir);
     const panelInvariants = await captureDevPanels(page, viewport, artifactDir, presentation.metrics);
     const combatInvariants = await captureCombat(page, viewport, artifactDir);
+    const commandTurnInvariants = injectStageDrift ? [] : await captureCommandTurns(page, viewport, artifactDir);
     const results = [
       ...presentation.invariants,
       ...panelInvariants,
       ...combatInvariants,
+      ...commandTurnInvariants,
       invariant('page-runtime-errors', pageErrors.length === 0, pageErrors, { count: 0 }),
     ];
     return { viewport, metrics: presentation.metrics, invariants: results };
@@ -728,12 +780,12 @@ async function runRejectionProof(browser, baseUrl, artifactDir) {
     { injectStageDrift: true },
   );
   const failures = run.invariants.filter((entry) => !entry.pass);
-  const stageFailure = failures.find((entry) => entry.name === 'stage-contained-reference-aspect');
+  const canvasFailure = failures.find((entry) => entry.name === 'canvas-contained-reference-aspect');
   const panelFailure = failures.find((entry) => entry.name === 'dev-panel-1-containment');
-  if (!stageFailure || !panelFailure) {
-    throw new Error(`UI lock rejected no stage or panel drift: ${JSON.stringify(failures)}`);
+  if (!canvasFailure || !panelFailure) {
+    throw new Error(`UI lock rejected no canvas or panel drift: ${JSON.stringify(failures)}`);
   }
-  return { pass: true, expectedFailures: [stageFailure, panelFailure], allFailures: failures };
+  return { pass: true, expectedFailures: [canvasFailure, panelFailure], allFailures: failures };
 }
 
 async function runQuestViewport(browser, baseUrl, viewport, artifactDir) {
@@ -795,7 +847,7 @@ async function runQuestViewport(browser, baseUrl, viewport, artifactDir) {
       if (!column) throw new Error(`Quest card column drift at ${viewport.name}, Stage ${i}`);
       const enemy = await card.locator('img').getAttribute('alt');
       await card.click();
-      await page.waitForFunction(() => window.__codexGame.globals.AstralFlowAmpPoints===0);
+      await page.waitForFunction(() => window.__codexGame.state.entities.filter(actor => actor.kind === 'hero').every(hero => Number(hero.flow || 0) === 0));
       await page.waitForFunction(name => window.__codexGame.state.entities.filter(e=>e.kind==='enemy').length===1 && window.__codexGame.state.entities.some(e=>e.kind==='enemy' && e.name===name),enemy);
       await page.locator('[aria-label="Entering combat"]').waitFor({state:'hidden'});
       await page.getByRole('button',{name:'QA clear monsters',exact:true}).click();

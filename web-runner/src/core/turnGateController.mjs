@@ -23,6 +23,111 @@ export function isCanPickGemsReady(value) {
   return Number(value) === 1;
 }
 
+export const COMBAT_CHOICE_MODE = Object.freeze({
+  AUTOCOMBAT: 'AUTOCOMBAT',
+  OFFER: 'OFFER',
+  RESOLVING_GLOBAL_BUFF: 'RESOLVING_GLOBAL_BUFF',
+  RESOLVING_ATTACK_SPECIAL: 'RESOLVING_ATTACK_SPECIAL',
+  TARGETING: 'TARGETING',
+  PAUSED_NAV: 'PAUSED_NAV',
+  END: 'END',
+});
+
+// One session offer owns input until its queue entry has either been applied
+// or explicitly refused. Legacy hero-card state must never compete with it.
+export function deriveCombatChoiceMode(globals = {}) {
+  if (globals.NativeBattleEnded || ['victory', 'defeat'].includes(String(globals.ProgressionBattle?.outcome || ''))) return COMBAT_CHOICE_MODE.END;
+  if (globals.SessionLevelUpQueue?.paused || globals.PausedCombatSnapshot) return COMBAT_CHOICE_MODE.PAUSED_NAV;
+  if (globals.SessionOfferResolution === 'global') return COMBAT_CHOICE_MODE.RESOLVING_GLOBAL_BUFF;
+  if (globals.SessionOfferResolution === 'attack') return COMBAT_CHOICE_MODE.RESOLVING_ATTACK_SPECIAL;
+  if (hasSessionLevelUpPresentationBarrier(globals)) return COMBAT_CHOICE_MODE.OFFER;
+  if (globals.PendingSkillID && (Number(globals.TurnPhase || 0) === 1 || globals.PendingSuperGemAction)) return COMBAT_CHOICE_MODE.TARGETING;
+  return COMBAT_CHOICE_MODE.AUTOCOMBAT;
+}
+
+export function deriveCombatChoiceInput(globals = {}) {
+  const mode = deriveCombatChoiceMode(globals);
+  return {
+    mode,
+    acceptsOfferCard: mode === COMBAT_CHOICE_MODE.OFFER,
+    acceptsBattlefieldTarget: mode === COMBAT_CHOICE_MODE.TARGETING,
+    acceptsLegacyHeroFan: false,
+    canResumeCTB: mode === COMBAT_CHOICE_MODE.AUTOCOMBAT,
+  };
+}
+
+export function createSessionOfferInputGate(current = {}, offerToken = '') {
+  const base = normalizeTurnGateState(current);
+  return {
+    ...base,
+    CombatChoiceMode: COMBAT_CHOICE_MODE.OFFER,
+    SessionOfferResolution: '',
+    SessionOfferInputToken: String(offerToken || ''),
+    CanPickGems: 0,
+    IsPlayerBusy: 0,
+    ActionLockUntil: 0,
+    ActionInProgress: 0,
+    ActionActorUID: 0,
+    PendingSkillID: '',
+    PendingActor: 0,
+    PendingSuperGemAction: null,
+    SelectedAllyUID: 0,
+    SelectedEnemyUIDOwner: 0,
+    HeroTurnCardFanOpen: 0,
+    HeroTurnCardFanHeroUID: 0,
+    HeroTurnCardFanCards: [],
+    HeroTurnCardFanSelectedCardId: '',
+    HeroTurnCardFanTargetUID: 0,
+    HeroTurnCardFanPendingCardIndex: -1,
+    HeroTurnCardFanPendingCardId: '',
+    HeroTurnCardFanPendingTarget: 0,
+    HeroTurnCardFanPendingTargetKind: '',
+    HeroTurnCardFanPendingExcludeSelf: 0,
+  };
+}
+
+export function releaseSessionOfferInputGate(current = {}, { resolution = '' } = {}) {
+  return {
+    ...normalizeTurnGateState(current),
+    CombatChoiceMode: COMBAT_CHOICE_MODE.AUTOCOMBAT,
+    SessionOfferResolution: String(resolution || ''),
+    SessionOfferInputToken: '',
+    IsPlayerBusy: 0,
+    ActionLockUntil: 0,
+    ActionInProgress: 0,
+    ActionActorUID: 0,
+  };
+}
+
+// EXP settlement, the queued dance, and the player choice are one presentation
+// boundary. The scheduler must not resolve another actor until it has faded out.
+export function hasSessionLevelUpPresentationBarrier(globals = {}) {
+  return globals?.SessionLevelUpQueue?.status === 'active'
+    || (Array.isArray(globals?.PendingFlowThresholds) && globals.PendingFlowThresholds.length > 0)
+    || !!globals?.SessionLevelUpSettlement;
+}
+
+export function hasActiveCombatEffects(globals = {}) {
+  return [
+    globals.CombatImpactRequests,
+    globals.CombatImpactVisuals,
+    globals.ChainStrikeVisuals,
+    globals.ArcanePulseVisuals,
+    globals.SessionBuffCombatVisuals,
+    globals.DamageTexts,
+  ].some(entries => Array.isArray(entries) && entries.length > 0);
+}
+
+export function hasActiveAttackPresentation(globals = {}) {
+  const now = Number(globals.time || 0);
+  return hasActiveCombatEffects(globals)
+    || (Array.isArray(globals.PendingHeroHits) && globals.PendingHeroHits.length > 0)
+    || !!globals.HeroAction?.active
+    || !!globals.EnemyAction?.active
+    || !!globals.TextAnimating
+    || Number(globals.TextAnimEndAt || 0) > now;
+}
+
 export function derivePresentationTurnBarrier({
   globals = {},
   refillBounce = null,
@@ -36,21 +141,26 @@ export function derivePresentationTurnBarrier({
     ? globals.PendingHeroHits.length > 0
     : !!globals.PendingHeroHits;
   const lanes = {
-    boardFill: Number(globals.BoardFillActive || 0) > 0,
-    refillBounce: !!(refillBounce && refillBounce.active),
-    yellowCasino: !!(yellowCasino && yellowCasino.active),
-    gemMerge: !!(gemMergeFx && gemMergeFx.active),
+    levelUpSettlement: hasSessionLevelUpPresentationBarrier(globals),
+    boardFill: false,
+    refillBounce: false,
+    yellowCasino: false,
+    gemMerge: false,
     textAnimating: !!globals.TextAnimating || Number(globals.TextAnimEndAt || 0) > now,
     heroAction: !!(globals.HeroAction && globals.HeroAction.active),
     enemyAction: !!(globals.EnemyAction && globals.EnemyAction.active),
-    skillDraught: Number(globals.SkillDraughtOpen || 0) > 0,
-    skillDraughtPending: Number(globals.SkillDraughtPendingOpen || 0) > 0,
+    skillDraught: false,
+    skillDraughtPending: false,
     pendingHeroHits,
+    combatEffects: hasActiveCombatEffects(globals),
+    flowOrbs: Array.isArray(globals.FlowOrbs) && globals.FlowOrbs.length > 0,
+    pendingEnemyDeaths: Object.keys(globals.EnemyDeathVisualHoldByUID || {}).length > 0,
     actionLock: Number(globals.ActionLockUntil || 0) > now,
     actionInProgress: !!globals.ActionInProgress,
   };
   const skillDraughtPending = lanes.skillDraughtPending;
   const orderedLaneNames = [
+    ['level-up-settlement', lanes.levelUpSettlement],
     ['board-fill', lanes.boardFill],
     ['refill-bounce', lanes.refillBounce],
     ['yellow-casino', lanes.yellowCasino],
@@ -60,11 +170,14 @@ export function derivePresentationTurnBarrier({
     ['enemy-action', lanes.enemyAction],
     ['skill-draught', lanes.skillDraught],
     ['pending-hero-hits', lanes.pendingHeroHits],
+    ['combat-effects', lanes.combatEffects],
+    ['flow-orbs', lanes.flowOrbs],
+    ['pending-enemy-deaths', lanes.pendingEnemyDeaths],
     ['action-lock', lanes.actionLock],
     ['action-in-progress', lanes.actionInProgress],
   ];
   const activePresentationLane = orderedLaneNames.find(([, active]) => active)?.[0] || null;
-  const refillPending = !!boardHasEmptySlots && !lanes.refillBounce && !enemyLineClearPressureActive;
+  const refillPending = false;
   const firstBlockingLane = activePresentationLane || (skillDraughtPending ? 'skill-draught-pending' : (refillPending ? 'refill-pending' : null));
   const presentationBlocked = !!activePresentationLane;
   const pendingTargetAction = !!globals.PendingSkillID && (
@@ -306,7 +419,7 @@ export function createDeferredStaleActionRecovery(current = {}) {
   };
 }
 
-export function createEnemyTurnIdleRecovery(current = {}, { now = 0, currentTurnUID = 0 } = {}) {
+export function createEnemyTurnIdleRecovery(current = {}, { now = 0, currentTurnUID = 0, releaseDelay = 0.05 } = {}) {
   const base = normalizeTurnGateState(current);
   const safeNow = Number(now || 0);
   const owner = Number(base.ActionOwnerUID || currentTurnUID || 0);
@@ -317,7 +430,7 @@ export function createEnemyTurnIdleRecovery(current = {}, { now = 0, currentTurn
     DeferAdvance: 1,
     AdvanceAfterAction: 1,
     ActionOwnerUID: owner,
-    ActionLockUntil: Math.max(Number(base.ActionLockUntil || 0), safeNow + 0.05),
+    ActionLockUntil: Math.max(Number(base.ActionLockUntil || 0), safeNow + Math.max(0.05, Number(releaseDelay || 0))),
     ActionInProgress: 0,
     ActionActorUID: 0,
     PendingSkillID: '',

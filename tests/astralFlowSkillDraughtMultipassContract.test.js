@@ -63,7 +63,7 @@ function claimReadyGlobals({ time, actionLockUntil, heroUID = 42 }) {
   };
 }
 
-test('app skill draught claim gate preserves hero turn type zero', () => {
+test.skip('[Paused roguelite cards/shared AF] app skill draught claim gate preserves hero turn type zero', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const appSrc = read('web-runner/app.js');
   assert.match(
     appSrc,
@@ -76,7 +76,7 @@ test('app skill draught claim gate preserves hero turn type zero', () => {
 });
 
 for (const core of corePairs) {
-  test(`full Astral Flow blue merges claim the draw after the short handoff in ${core.name}`, async () => {
+  test.skip(`[Paused roguelite cards/shared AF] full Astral Flow blue merges claim the draw after the short handoff in ${core.name}`, { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, async () => {
     const { gemActionFromJs } = await import(pathToFileURL(core.rulesPath));
     const { derivePresentationTurnBarrier } = await import(pathToFileURL(core.gatePath));
 
@@ -139,7 +139,7 @@ for (const core of corePairs) {
     }
   });
 
-  test(`skill draw pending and open barriers pause refill, turn advance, and actions in ${core.name}`, async () => {
+  test.skip(`[Paused roguelite cards/shared AF] skill draw pending and open barriers pause refill, turn advance, and actions in ${core.name}`, { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, async () => {
     const { derivePresentationTurnBarrier } = await import(pathToFileURL(core.gatePath));
     const pending = derivePresentationTurnBarrier({
       globals: claimReadyGlobals({ time: 75, actionLockUntil: 74.9 }),
@@ -166,7 +166,7 @@ for (const core of corePairs) {
   });
 }
 
-test('blue supergem draw is claimable after the same short handoff across repeated live-like runs', async () => {
+test.skip('[Paused roguelite cards/shared AF] blue supergem draw is claimable after the same short handoff across repeated live-like runs', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, async () => {
   const { activateSuperGemEffect } = loadSuperGemRuntime();
   const { derivePresentationTurnBarrier } = await import(pathToFileURL(corePairs[1].gatePath));
 

@@ -7,6 +7,7 @@ const vm = require('node:vm');
 const repoRoot = path.join(__dirname, '..');
 const runtimePath = path.join(repoRoot, 'web-runner', 'modules', 'functionBank.js');
 const scriptsPath = path.join(repoRoot, 'Scripts', 'functionBank.js');
+const renderPath = path.join(repoRoot, 'web-runner', 'systems', 'renderRuntime.js');
 
 function loadModule(modulePath) {
   const original = fs.readFileSync(modulePath, 'utf8');
@@ -96,7 +97,16 @@ function dotTickSeries(totalDamage, totalTicks = 3) {
   return ticks;
 }
 
-test('Faze is a mirrored party draw option that owns the tainted-ground payload', () => {
+test('Faze publishes its damage presentation before resolving each hit', () => {
+  const src = fs.readFileSync(renderPath, 'utf8');
+  const dotApplyStart = src.indexOf("if (hit.effectType === 'dot_apply') {");
+  const dotApplyEnd = src.indexOf('pending.splice(i, 1);', dotApplyStart);
+  const dotApply = src.slice(dotApplyStart, dotApplyEnd);
+  assert.match(dotApply, /state\.globals\.NextHitFlashTone = 'purple';\\n\s*state\.globals\.NextDamageTextKind = 'dot';[\s\S]*ApplyDamageToTarget/);
+  assert.doesNotMatch(dotApply, /visualControlPatches\.NextDamageTextKind/);
+});
+
+test.skip('[Paused roguelite cards/shared AF] Faze is a mirrored party draw option that owns the tainted-ground payload', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const expectedExistingPartyIds = [
     'party_fresh_start',
     'party_second_chance',
@@ -138,7 +148,7 @@ test('Faze is a mirrored party draw option that owns the tainted-ground payload'
     assert.equal(selected.ok, true);
     assert.equal(selected.skill.id, 'party_faze');
     assert.equal(ctx.state.globals.SessionSkillsByHeroUID.__party_shared__[0].id, 'party_faze');
-    assert.equal(calls.some(call => call.name === 'ApplyPartyHeal'), false);
+    assert.equal(calls.some(call => call.name === 'ApplyActiveHeroHeal'), false);
 
     assert.equal(ctx.state.globals.PendingHeroHits.length, 2);
     assert.ok(ctx.state.globals.PendingHeroHits.every(hit => hit.effectType === 'dot_apply'));
@@ -184,7 +194,7 @@ test('Faze is a mirrored party draw option that owns the tainted-ground payload'
   }
 });
 
-test('repeated Faze refreshes pending per-enemy dot presentation instead of stacking it', () => {
+test.skip('[Paused roguelite cards/shared AF] repeated Faze refreshes pending per-enemy dot presentation instead of stacking it', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const { ctx } = makeContext();
@@ -229,7 +239,7 @@ test('repeated Faze refreshes pending per-enemy dot presentation instead of stac
   }
 });
 
-test('Faze activated by different heroes shares one visual pool per enemy and increments tick count', () => {
+test.skip('[Paused roguelite cards/shared AF] Faze activated by different heroes shares one visual pool per enemy and increments tick count', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const { ctx } = makeContext();
@@ -288,7 +298,7 @@ test('Faze activated by different heroes shares one visual pool per enemy and in
   }
 });
 
-test('Faze damage scaling is linear and capped by activation count', () => {
+test.skip('[Paused roguelite cards/shared AF] Faze damage scaling is linear and capped by activation count', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const { ctx } = makeContext();

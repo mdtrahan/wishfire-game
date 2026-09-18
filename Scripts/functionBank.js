@@ -1,3 +1,12 @@
+import { effectiveStat } from '../web-runner/src/core/combatRules.mjs';
+import { executeHeroCommand, resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat, emitResolvedHealEvent } from '../web-runner/modules/heroCommands.mjs';
+import {
+  openHeroTurnCardFan as importedOpenHeroTurnCardFan,
+  reopenHeroTurnCardFan as importedReopenHeroTurnCardFan,
+  cancelHeroTurnCardFan as importedCancelHeroTurnCardFan,
+  selectHeroTurnCard as importedSelectHeroTurnCard,
+  getHeroTurnCardFanState as importedGetHeroTurnCardFanState,
+} from '../web-runner/modules/functionBank.js';
 import { state } from './state.js';
 import { MONSTER_KEYS, MONSTER_LOOT_TABLE, TOKEN, EMPTY } from './monsterLootTableEventTokens.js';
 import { ACTIVE_EVENT_IDS, LIVE_OPS_EVENTS, TOKEN_REGISTRY } from './liveOpsTokens.js';
@@ -16,6 +25,7 @@ import {
   createEnemyTurnGateBaseline,
   createHeroTurnGateBaseline,
   createYellowSafetyNet,
+  hasActiveAttackPresentation,
 } from '../src/core/turnGateController.mjs';
 import {
   TURN_ACTOR_ELIGIBILITY_ACT,
@@ -40,6 +50,9 @@ import { resolveEnemyJobSkill as importedResolveEnemyJobSkill } from '../src/cor
 import { resolveStartEnemyAction as importedResolveStartEnemyAction } from '../src/core/startEnemyActionRules.mjs';
 import { resolveEnemyTurnFlow as importedResolveEnemyTurnFlow } from '../src/core/enemyTurnFlowRules.mjs';
 import { resolveHeroTurnEntry as importedResolveHeroTurnEntry } from '../src/core/heroTurnEntryRules.mjs';
+import { resolveHeroAttackTarget } from '../src/core/heroAttackTargetingRules.mjs';
+import { computeCombatPower as canonicalCombatPower } from '../web-runner/src/core/combatPower.mjs';
+import { resolveHeroSpeedMultiattack } from '../src/core/dynamicInitiativeRules.mjs';
 import {
   pickEnemyTargetHeroFromRoster,
   resolveEnemyTargetHero,
@@ -70,6 +83,7 @@ import {
   applyAstralFlowEnemyKoReward,
   getEnemyKoAstralFlowOrbPresentation,
 } from '../src/core/astralFlowEnemyKoRewards.mjs';
+import { dropEnemyFlowOrbs } from '../web-runner/src/core/flowOrbs.mjs';
 import {
   advanceDynamicInitiativeShadow,
   compareDynamicInitiativeShadowSelection,
@@ -81,6 +95,13 @@ import {
   isDynamicInitiativeAuthorityExperimentEnabled,
   validateDynamicInitiativeAuthoritySelection,
 } from '../src/core/dynamicInitiativeAuthorityExperiment.mjs';
+function emitHealPresentation(ctx, source, target, beforeHP, options = {}) {
+  if (typeof emitResolvedHealEvent === 'function' && ctx && typeof ctx.callFunction === 'function') return emitResolvedHealEvent(ctx, source, target, beforeHP, options);
+  const delta = Math.max(0, Number(target?.hp || 0) - Math.max(0, Number(beforeHP || 0)));
+  if (delta > 0) SpawnDamageText(ctx, delta, Number(target?.x || 0), Number(target?.y || 0), 'heal', target?.kind || null);
+  return delta;
+}
+
 const POWER_AMP_OUTCOMES = [
   { key: 'HERO_2X', multiplier: 2, chance: 0.62 },
   { key: 'HERO_3X', multiplier: 3, chance: 0.34 },
@@ -98,6 +119,8 @@ const PARTY_CHAIN_STRIKE_I_ID = 'party_chain_strike_i';
 const PARTY_CHAIN_STRIKE_I_DAMAGE_PCT = 33;
 const PARTY_CHAIN_STRIKE_II_ID = 'party_chain_strike_ii';
 const PARTY_CHAIN_STRIKE_II_DAMAGE_PCT = 66;
+const ASTRAL_FLOW_CHAIN_STRIKE_II_DAMAGE_PCT = PARTY_CHAIN_STRIKE_II_DAMAGE_PCT * 6;
+const ASTRAL_FLOW_CARD_REVEAL_DELAY_SEC = 0.38;
 const PARTY_CHAIN_STRIKE_VISUAL_KEY = 'chain_arc_ribbon';
 const PARTY_CHAIN_STRIKE_VISUAL_ASSET = 'SkillChainStrikeArc';
 const PARTY_SPLIT_ID = 'party_split';
@@ -221,10 +244,8 @@ function ensureEntities(ctx) {
 }
 
 function computeCombatPowerFromStats(atk, def, hp) {
-  const a = Number(atk || 0);
-  const d = Number(def || 0);
-  const h = Number(hp || 0);
-  return Math.round((a + d + (h / 10)) * 100) / 100;
+  const [mag = 0, res = 0, spd = 0, level = 1] = arguments.length > 3 ? [...arguments].slice(3) : [];
+  return canonicalCombatPower({ maxHP: hp, level, stats: { ATK: atk, DEF: def, MAG: mag, RES: res, SPD: spd } });
 }
 
 function normalizeLocaleTags(input) {
@@ -887,55 +908,53 @@ function updateGrowVisualForHero(g, heroUID, tierConfig, now) {
   return seeded;
 }
 
-function getHeroPartyIndex(hero) {
-  const heroIndex = Number(hero?.heroIndex);
-  return Number.isInteger(heroIndex) && heroIndex >= 0 ? heroIndex : -1;
+function getHeroPartyIndex(hero, fallback = -1) {
+  const index = Number(hero?.heroDisplaySlot ?? hero?.displaySlot ?? hero?.heroIndex ?? fallback);
+  return Number.isInteger(index) && index >= 0 && index < 6 ? index : -1;
 }
 
 function syncPartyHpTotalsFromHeroes(ctx) {
   const g = getGlobals(ctx);
-  const heroes = getHeroes(ctx);
-  if (!Array.isArray(g.PartyHPByIndex)) g.PartyHPByIndex = [];
-  if (!Array.isArray(g.PartyMaxHPByIndex)) g.PartyMaxHPByIndex = [];
-  for (const hero of heroes) {
-    const index = getHeroPartyIndex(hero);
-    if (index < 0) continue;
+  const heroes = getDeployedHeroes(ctx);
+  g.PartyHPByIndex = [];
+  g.PartyMaxHPByIndex = [];
+  heroes.forEach((hero, order) => {
+    const index = getHeroPartyIndex(hero, order);
+    if (index < 0) return;
     g.PartyHPByIndex[index] = Math.max(0, Number(hero.hp || 0));
     g.PartyMaxHPByIndex[index] = Math.max(0, Number(hero.maxHP || 0));
-  }
-  g.PartyHP = g.PartyHPByIndex.reduce((sum, value) => sum + Math.max(0, Number(value || 0)), 0);
-  g.PartyMaxHP = g.PartyMaxHPByIndex.reduce((sum, value) => sum + Math.max(0, Number(value || 0)), 0);
+  });
+  g.PartyHPByIndex = Array.from(g.PartyHPByIndex, value => value || 0);
+  g.PartyMaxHPByIndex = Array.from(g.PartyMaxHPByIndex, value => value || 0);
+  g.PartyHP = sum(heroes.map(hero => Math.max(0, Number(hero.hp || 0))));
+  g.PartyMaxHP = sum(heroes.map(hero => Math.max(0, Number(hero.maxHP || 0))));
 }
 
 function applyPartyMaxHPBonus(ctx, totalBonus) {
   const g = getGlobals(ctx);
   const bonus = Math.max(0, Math.floor(Number(totalBonus || 0)));
   if (bonus <= 0) return 0;
-  const heroes = getHeroes(ctx);
+  const heroes = getDeployedHeroes(ctx);
+  if (!heroes.length) return 0;
   const livingHeroes = heroes.filter(hero => hero && Number(hero.hp ?? 0) > 0);
   const targets = livingHeroes.length > 0 ? livingHeroes : heroes;
   if (!Array.isArray(g.PartyHPByIndex)) g.PartyHPByIndex = [];
   if (!Array.isArray(g.PartyMaxHPByIndex)) g.PartyMaxHPByIndex = [];
-  if (!targets.length) {
-    g.PartyMaxHP = Math.max(0, Number(g.PartyMaxHP || 0)) + bonus;
-    g.PartyHP = Math.min(g.PartyMaxHP, Math.max(0, Number(g.PartyHP || 0)));
-  } else {
-    const baseBonus = Math.floor(bonus / targets.length);
-    let remainder = bonus - (baseBonus * targets.length);
-    for (const hero of targets) {
-      const heroBonus = baseBonus + (remainder > 0 ? 1 : 0);
-      if (remainder > 0) remainder -= 1;
-      const index = getHeroPartyIndex(hero);
-      const currentMaxHP = Math.max(0, Number(hero.maxHP || (index >= 0 ? g.PartyMaxHPByIndex[index] : 0) || 0));
-      hero.maxHP = currentMaxHP + heroBonus;
-      hero.hp = Math.min(hero.maxHP, Math.max(0, Number(hero.hp || 0)));
-      if (index >= 0) {
-        g.PartyMaxHPByIndex[index] = hero.maxHP;
-        g.PartyHPByIndex[index] = hero.hp;
-      }
+  const baseBonus = Math.floor(bonus / targets.length);
+  let remainder = bonus - (baseBonus * targets.length);
+  for (const hero of targets) {
+    const heroBonus = baseBonus + (remainder > 0 ? 1 : 0);
+    if (remainder > 0) remainder -= 1;
+    const index = getHeroPartyIndex(hero);
+    const currentMaxHP = Math.max(0, Number(hero.maxHP || (index >= 0 ? g.PartyMaxHPByIndex[index] : 0) || 0));
+    hero.maxHP = currentMaxHP + heroBonus;
+    hero.hp = Math.min(hero.maxHP, Math.max(0, Number(hero.hp || 0)));
+    if (index >= 0) {
+      g.PartyMaxHPByIndex[index] = hero.maxHP;
+      g.PartyHPByIndex[index] = hero.hp;
     }
-    syncPartyHpTotalsFromHeroes(ctx);
   }
+  syncPartyHpTotalsFromHeroes(ctx);
   try { ctx.callFunction('UpdateHeroHPUI'); } catch (_) {}
   try { ctx.callFunction('UpdatePartyHPText'); } catch (_) {}
   try { ctx.callFunction('UpdatePartyHPBar'); } catch (_) {}
@@ -1094,11 +1113,11 @@ const PARTY_SKILL_DEFINITIONS = Object.freeze([
   { id: 'party_guard_rail', owner: 'Party', slot: 3, title: 'Guard Rail', cardText: 'Reduce the impact of a dangerous hit.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On heavy hit taken', payloadImplemented: false },
   { id: 'party_blue_spark', owner: 'Party', slot: 4, title: 'Blue Spark', cardText: 'Turn blue water gains into a bonus for the whole party.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On blue water match', payloadImplemented: false },
   { id: 'party_weaken', owner: 'Party', slot: 5, title: 'Weaken', cardText: 'Lower enemy defense so your hits land harder.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On special hit', payloadImplemented: false },
-  { id: 'party_destiny', owner: 'Party', slot: 6, title: 'Destiny', cardText: 'Attacks have a chance to restore 2.5% health on impact.', risk: 'MED', growth: [32, 32, 32, 32], procPattern: 'On hit', payloadImplemented: true, drawClass: 'one_off', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'reject_after_selected' }, trigger: { event: 'hit_enemy', eligibility: 'active_party_skill_positive_hero_damage' }, effect: { kind: 'proc_heal', procChancePct: 32, healPctPartyMax: 2.5 }, qa: { proof: 'PartyDestinyAttempts/Procs/Heals/Misses and SkillDraughtTrace' } },
+  { id: 'party_destiny', owner: 'Party', slot: 6, title: 'Destiny', cardText: 'Attacks have a chance to restore 2.5% health on impact.', risk: 'MED', growth: [32, 32, 32, 32], procPattern: 'On hit', payloadImplemented: true, drawClass: 'one_off', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'reject_after_selected' }, trigger: { event: 'hit_enemy', eligibility: 'active_party_skill_positive_hero_damage' }, effect: { kind: 'proc_heal', procChancePct: 32, healPctActorMax: 2.5 }, qa: { proof: 'PartyDestinyAttempts/Procs/Heals/Misses and SkillDraughtTrace' } },
   { id: 'party_hot_streak', owner: 'Party', slot: 7, title: 'Hot Streak', cardText: 'Build up a better payoff with consecutive matches.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On consecutive matches', payloadImplemented: false },
   { id: 'party_last_push', owner: 'Party', slot: 8, title: 'Last Push', cardText: 'Gain a brief comeback burst when the party nears defeat.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On low party HP', payloadImplemented: false },
   { id: 'party_chain_pop', owner: 'Party', slot: 9, title: 'Chain Pop', cardText: 'Trigger an extra board effect from a match.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On match', payloadImplemented: false },
-  { id: 'party_magic_fruit', owner: 'Party', slot: 10, title: 'Magic Fruit', cardText: 'Heals party for 32% and raises max HP by 15% of current max HP', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'party_heal_max_hp', healPctPartyMax: 32, maxHpPctPartyMax: 15 }, qa: { proof: 'ApplyPartyHeal once per selection and PartyMaxHP increase' } },
+  { id: 'party_magic_fruit', owner: 'Party', slot: 10, title: 'Magic Fruit', cardText: 'Heals the active hero for 32% and raises party max HP by 15%', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'party_heal_max_hp', healPctActorMax: 32, maxHpPctPartyMax: 15 }, qa: { proof: 'ApplyActiveHeroHeal once per selection and PartyMaxHP increase' } },
   { id: 'party_crimson_ward', owner: 'Party', slot: 11, title: 'Crimson Ward', cardText: 'Grant a temporary party ward before true HP is damaged.', risk: 'MED', growth: [4, 4, 5, 5], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'party_temp_hp_shield', shieldPctPartyMax: 18, stacking: 'refresh_capped_shield' }, qa: { proof: 'PartyTempHPShield and ward visuals refresh' } },
   { id: 'party_faze', owner: 'Party', slot: 12, title: 'Faze', cardText: 'Blights the field, poisoning enemies for the remainder of the session.', risk: 'HIGH', growth: [2, 2, 3, 3], procPattern: 'On selection', payloadImplemented: true, drawClass: 'repeatable', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_repeat' }, trigger: { event: 'selection', eligibility: 'selected_from_skill_draught' }, effect: { kind: 'field_refresh', status: 'tainted_ground' }, qa: { proof: 'TaintedGroundZones and PendingHeroHits refresh' } },
   { id: 'party_grow', owner: 'Party', slot: 13, title: 'Grow', cardText: 'Grow all living heroes: more power, less Max HP.', risk: 'HIGH', growth: [8, 14, 20], procPattern: 'On selection', payloadImplemented: true, drawClass: 'tiered', selection: { sessionBucket: HERO_SKILL_SHARED_KEY, duplicatePolicy: 'allow_until_cap' }, trigger: { event: 'selection', eligibility: 'all_living_heroes' }, effect: { kind: 'grow', maxTier: GROW_MAX_TIER, application: 'all_living_heroes', powerAmpPctByTier: GROW_TIERS.map(row => row.powerAmpPct), maxHpPenaltyPctByTier: GROW_TIERS.map(row => row.maxHpPenaltyPct) }, qa: { proof: 'GrowAcquisitionTrace and persistent PowerAmpVisualByUID state' } },
@@ -1143,6 +1162,7 @@ const FAZE_TAINTED_GROUND_MAX_STACK_COUNT = 4;
 const PARTY_ARCANE_PULSE_ID = 'party_arcane_pulse';
 const PARTY_ARCANE_PULSE_DAMAGE = 12;
 const PARTY_ARCANE_PULSE_TRIGGER_EVERY = 2;
+const PARTY_ARCANE_PULSE_TRAVEL_SEC = 0.34;
 const PARTY_ARCANE_PULSE_VISUAL_KEY = 'arcane_pulse_burst';
 const PARTY_ARCANE_PULSE_DAMAGE_TEXT_CLEAR_SEC = 0.18 + 0.7 + 0.45;
 function cloneSkillMetadata(value) {
@@ -1473,10 +1493,205 @@ function activateMagicFruitSkill(ctx) {
   const g = getGlobals(ctx);
   const partyMaxHP = Math.max(0, Number(g.PartyMaxHP || 0));
   const maxHPBonus = Math.max(1, Math.floor(partyMaxHP * 15 / 100));
-  const healAmount = Math.max(1, Math.floor(partyMaxHP * 32 / 100));
+  const actor = GetActorByUID(ctx, GetCurrentTurn(ctx));
+  const healAmount = actor?.kind === 'hero' && actor.hp > 0
+    ? Math.max(1, Math.floor(Number(actor.maxHP || 0) * 32 / 100)) : 0;
   applyPartyMaxHPBonus(ctx, maxHPBonus);
-  ctx.callFunction('ApplyPartyHeal', healAmount);
+  ctx.callFunction('ApplyActiveHeroHeal', healAmount, 'major');
+  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), Number(g.time || 0) + 1.5);
+  g.DeferAdvance = 1;
+  g.AdvanceAfterAction = 1;
+  g.ActionOwnerUID = Number(actor?.uid || 0);
   return { healAmount, maxHPBonus };
+}
+
+function livingHeroTargets(ctx) {
+  return getHeroes(ctx)
+    .filter(hero => hero && hero.kind === 'hero' && Number(hero.hp || 0) > 0)
+    .slice()
+    .sort((left, right) => Number(left.heroDisplaySlot ?? left.heroIndex ?? left.uid) - Number(right.heroDisplaySlot ?? right.heroIndex ?? right.uid));
+}
+
+function applyAstralFlowMagicFruit(ctx, actorUID) {
+  const g = getGlobals(ctx);
+  const actor = GetActorByUID(ctx, actorUID);
+  if (!actor || actor.kind !== 'hero' || Number(actor.hp || 0) <= 0) return { ok: false, reason: 'actorUnavailable' };
+  const recipients = livingHeroTargets(ctx);
+  if (!recipients.length) return { ok: false, reason: 'noLivingHeroes' };
+  const pool = Math.max(1, Math.floor(Math.max(0, Number(actor.maxHP || actor.MaxHP || 0)) * 0.30));
+  const base = Math.floor(pool / recipients.length);
+  let remainder = pool % recipients.length;
+  const heals = [];
+  for (const hero of recipients) {
+    const requested = base + (remainder > 0 ? 1 : 0);
+    if (remainder > 0) remainder -= 1;
+    const before = Math.max(0, Number(hero.hp || 0));
+    const maxHP = Math.max(before, Number(hero.maxHP || hero.MaxHP || 0));
+    hero.hp = Math.min(maxHP, before + requested);
+    const applied = Math.max(0, Number(hero.hp || 0) - before);
+    if (applied > 0) emitHealPresentation(ctx, actor, hero, before, { presentation: 'major' });
+    heals.push({ heroUID: Number(hero.uid || 0), requested, applied });
+  }
+  syncPartyHpTotalsFromHeroes(ctx);
+  UpdateHeroHPUI(ctx);
+  LogCombat(ctx, `${actor.name || 'Hero'} shared Magic Fruit with the party.`);
+  const presentationReleaseAt = Number(g.time || 0) + 1.5;
+  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), presentationReleaseAt);
+  g.DeferAdvance = 1;
+  g.AdvanceAfterAction = 1;
+  g.ActionOwnerUID = Number(actorUID || 0);
+  return { ok: true, pool, heals, presentationReleaseAt };
+}
+
+function astralFlowSpecialTarget(ctx) {
+  const g = getGlobals(ctx);
+  const selected = GetActorByUID(ctx, Number(g.SelectedEnemyUID || 0));
+  if (selected && selected.kind === 'enemy' && Number(selected.hp || 0) > 0) return selected;
+  return getChainStrikeLivingEnemies(ctx)[0] || null;
+}
+
+function queueAstralFlowArcanePulse(ctx, actorUID) {
+  const actor = GetActorByUID(ctx, actorUID);
+  const target = astralFlowSpecialTarget(ctx);
+  if (!actor || actor.kind !== 'hero' || Number(actor.hp || 0) <= 0 || !target) return { ok: false, reason: 'targetUnavailable' };
+  const g = getGlobals(ctx);
+  const now = Number(g.time || 0);
+  const startAt = now + ASTRAL_FLOW_CARD_REVEAL_DELAY_SEC;
+  const impactAt = startAt + PARTY_ARCANE_PULSE_TRAVEL_SEC;
+  const damage = Math.max(1, Math.floor(PARTY_ARCANE_PULSE_DAMAGE));
+  g.PendingHeroHits = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
+  g.PendingHeroHits.push({
+    at: impactAt, heroUID: Number(actorUID || 0), targetUID: Number(target.uid || 0), dmg: damage, finalDmg: damage,
+    powerAmpMultiplier: 0, powerAmpLifecycleId: 0, consumePowerAmp: 0, sourceUID: Number(actorUID || 0),
+    suppressPartySkillHitHooks: 1, suppressHitFlash: 1, damageTextKind: 'arcane_pulse', presentationClearAt: impactAt + PARTY_ARCANE_PULSE_DAMAGE_TEXT_CLEAR_SEC,
+    suppressAttackSkillBounds: 1, bonusDamageOnly: 1, effectType: 'arcane_pulse', actionName: 'Arcane Pulse',
+    generatedBySkillId: PARTY_ARCANE_PULSE_ID, astralFlowSpecial: 1, arcanePulseDamage: damage, arcanePulseVisual: PARTY_ARCANE_PULSE_VISUAL_KEY,
+    calcPath: 'magicCalc', heroName: String(actor.name || 'Hero'), heroType: 'magic', sequence: 'astral_flow_special', msg: `Arcane Pulse strikes ${target.name || '?'} for ${damage}!`,
+  });
+  queueArcanePulseVisual(ctx, actorUID, target.uid, startAt, impactAt);
+  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), impactAt + PARTY_ARCANE_PULSE_DAMAGE_TEXT_CLEAR_SEC);
+  g.DeferAdvance = 1;
+  g.AdvanceAfterAction = 1;
+  return { ok: true, targetUID: Number(target.uid || 0), damage, presentationReleaseAt: impactAt + PARTY_ARCANE_PULSE_DAMAGE_TEXT_CLEAR_SEC };
+}
+
+function activateAstralFlowDestiny(ctx, actorUID) {
+  const g = getGlobals(ctx);
+  const targets = livingHeroTargets(ctx);
+  if (!targets.length) return { ok: false, reason: 'noLivingHeroes' };
+  const activatedAtTurnSerial = Number(g.TurnSerial || 0);
+  const regens = g.AstralFlowDestinyRegensByUID && typeof g.AstralFlowDestinyRegensByUID === 'object'
+    ? g.AstralFlowDestinyRegensByUID : {};
+  for (const hero of targets) {
+    regens[Number(hero.uid || 0)] = {
+      targetUID: Number(hero.uid || 0), sourceUID: Number(actorUID || 0), remainingTicks: 3, healPct: 0.08,
+      activatedAtTurnSerial, lastProcessedTurnSerial: activatedAtTurnSerial,
+    };
+  }
+  g.AstralFlowDestinyRegensByUID = regens;
+  g.PartyRegens = Object.values(regens).map(regen => ({ ...regen, remainingFires: regen.remainingTicks, effectName: 'Destiny' }));
+  LogCombat(ctx, 'Destiny blesses every living hero.');
+  return { ok: true, targetUIDs: targets.map(hero => Number(hero.uid || 0)) };
+}
+
+export function ExecuteAstralFlowSpecial(ctx, specialId, actorUID) {
+  const actor = GetActorByUID(ctx, actorUID);
+  if (!actor || actor.kind !== 'hero' || Number(actor.hp || 0) <= 0) return { ok: false, reason: 'actorUnavailable' };
+  const g = getGlobals(ctx);
+  const id = String(specialId || '');
+  let result;
+  if (id === 'crimson_ward') {
+    result = activateCrimsonWardSkill(ctx) ? { ok: true } : { ok: false, reason: 'wardFailed' };
+    if (result.ok) g.PartyTempHPShieldSourceUID = Number(actorUID || 0);
+  } else if (id === 'magic_fruit') {
+    result = applyAstralFlowMagicFruit(ctx, actorUID);
+  } else if (id === 'faze') {
+    const totalDamage = activateFazeSkill(ctx, actorUID);
+    for (const zone of g.TaintedGroundZones || []) {
+      if (Number(zone?.sourceUID || 0) === Number(actorUID || 0)) zone.astralFlowSpecial = 1;
+    }
+    if (Array.isArray(g.PendingHeroHits)) for (const hit of g.PendingHeroHits) {
+      if (String(hit?.actionName || '') === 'Faze' && Number(hit.heroUID || 0) === Number(actorUID || 0)) hit.astralFlowSpecial = 1;
+    }
+    result = totalDamage > 0 ? { ok: true, totalDamage } : { ok: false, reason: 'noEnemies' };
+  } else if (id === 'chain_strike_ii') {
+    const target = astralFlowSpecialTarget(ctx);
+    const originalDamage = target ? CalculateDamage(ctx, actorUID, target.uid, actor.attackType === 'magic' ? 'magic' : 'melee') : 0;
+    const damage = Math.max(0, Math.ceil(Number(originalDamage || 0) * (ASTRAL_FLOW_CHAIN_STRIKE_II_DAMAGE_PCT / 100)));
+    if (!target || damage <= 0) result = { ok: false, reason: 'targetUnavailable' };
+    else {
+      const now = Number(g.time || 0);
+      const targets = [target];
+      let sourceTargetUID = Number(target.uid || 0);
+      for (let index = 0; index < 2; index += 1) {
+        const bounce = resolveChainStrikeBounceTarget(ctx, sourceTargetUID);
+        if (!bounce || targets.some(enemy => Number(enemy.uid || 0) === Number(bounce.uid || 0))) break;
+        targets.push(bounce);
+        sourceTargetUID = Number(bounce.uid || 0);
+      }
+      g.PendingHeroHits = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
+      g.LastAstralFlowChainStrikeII = { primaryTargetUID: Number(target.uid || 0), primary: null, bounces: [], hits: [], hitCount: 0, coefficient: ASTRAL_FLOW_CHAIN_STRIKE_II_DAMAGE_PCT };
+      g.NextHeroActionProfile = 'aoe';
+      StartHeroLunge(ctx, actorUID, { allowOutOfTurn: true });
+      let sourceUID = Number(actorUID || 0);
+      let startAt = now + ASTRAL_FLOW_CARD_REVEAL_DELAY_SEC;
+      let lastImpactAt = startAt;
+      for (const [index, enemy] of targets.entries()) {
+        const impactAt = startAt + 0.28;
+        queueChainStrikeVisual(g, sourceUID, enemy.uid, startAt, impactAt, PARTY_CHAIN_STRIKE_II_ID);
+        g.PendingHeroHits.push({
+          at: impactAt,
+          heroUID: Number(actorUID || 0),
+          sourceUID: Number(actorUID || 0),
+          targetUID: Number(enemy.uid || 0),
+          dmg: damage,
+          finalDmg: damage,
+          suppressPartySkillHitHooks: 1,
+          attackVfxKind: 'impact',
+          actionName: 'Chain Strike II',
+          generatedBySkillId: PARTY_CHAIN_STRIKE_II_ID,
+          astralFlowSpecial: 1,
+          astralFlowChainStrikeII: 1,
+          chainStrikeDamagePct: ASTRAL_FLOW_CHAIN_STRIKE_II_DAMAGE_PCT,
+          chainStrikeIIPrimary: index === 0 ? 1 : 0,
+          damageTextNotBefore: impactAt + 0.32,
+          msg: `Chain Strike II hits ${enemy.name || '?'} for ${damage}!`,
+        });
+        sourceUID = Number(enemy.uid || 0);
+        lastImpactAt = impactAt;
+        startAt = impactAt + 0.28;
+      }
+      const presentationReleaseAt = lastImpactAt + 0.32 + PARTY_ARCANE_PULSE_DAMAGE_TEXT_CLEAR_SEC;
+      g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), presentationReleaseAt);
+      g.DeferAdvance = 1;
+      g.AdvanceAfterAction = 1;
+      g.ActionOwnerUID = Number(actorUID || 0);
+      result = {
+        ok: true,
+        targetUID: Number(target.uid || 0),
+        hitCount: targets.length,
+        presentationReleaseAt,
+      };
+    }
+  } else if (id === 'split') {
+    const target = astralFlowSpecialTarget(ctx);
+    if (target) {
+      HeroAttackSplit(ctx, actorUID, target.uid);
+      if (Array.isArray(g.PendingHeroHits)) for (const hit of g.PendingHeroHits) {
+        if (String(hit?.actionName || '') === 'Split' && Number(hit.heroUID || 0) === Number(actorUID || 0)) hit.astralFlowSpecial = 1;
+      }
+      result = { ok: true, targetUID: Number(target.uid || 0) };
+    } else result = { ok: false, reason: 'targetUnavailable' };
+  } else if (id === 'arcane_pulse') {
+    result = queueAstralFlowArcanePulse(ctx, actorUID);
+  } else if (id === 'destiny') {
+    result = activateAstralFlowDestiny(ctx, actorUID);
+  } else result = { ok: false, reason: 'unknownSpecial' };
+  if (result.ok) {
+    const { afterOwnerFlowReset: _afterOwnerFlowReset, ...telemetry } = result;
+    g.LastAstralFlowSpecial = { id, actorUID: Number(actorUID || 0), at: Number(g.time || 0), ...telemetry };
+  }
+  return result;
 }
 
 function getFazeHeroTeamTurnSpan(ctx) {
@@ -1681,7 +1896,7 @@ function activateGrowSkill(ctx, actorUID, sessionSkill = null) {
     Math.floor(Number(sessionSkill?.selectionCount || 0)),
   );
 
-  const heroes = getHeroes(ctx);
+  const heroes = getDeployedHeroes(ctx);
   const events = [];
   for (const hero of heroes) {
     const existing = getGrowStateForActor(ctx, hero.uid);
@@ -1744,130 +1959,23 @@ export function GetSkillDraughtState(ctx) {
 }
 
 export function OpenSkillDraughtForHero(ctx, heroUID, forcedSkillId = '') {
-  const g = ensureSkillDraughtState(ctx);
-  const uid = Number(heroUID || 0);
-  const actor = GetActorByUID(ctx, uid);
-  if (!actor) {
-    appendSkillDraughtTrace(g, 'open_rejected', { heroUID: uid, reason: 'hero_not_found' });
-    return { ok: false, reason: 'hero_not_found', candidates: [] };
-  }
-  const drawResult = buildSkillDraughtCandidates(ctx, uid, forcedSkillId);
-  const candidates = Array.isArray(drawResult?.candidates) ? drawResult.candidates : [];
-  const forcedSkillSuppressedReason = String(drawResult?.forcedSkillSuppressedReason || '');
-  g.SkillDraughtLastForcedSkillSuppressedReason = forcedSkillSuppressedReason;
-  if (!candidates.length) {
-    appendSkillDraughtTrace(g, 'open_rejected', {
-      heroUID: uid,
-      reason: 'no_drawable_candidates',
-      forcedSkillId: String(drawResult?.forcedSkillId || ''),
-      forcedSkillSuppressedReason,
-    });
-    return { ok: false, reason: 'no_drawable_candidates', candidates: [], forcedSkillSuppressedReason };
-  }
-  g.SkillDraughtOpen = 1;
-  g.SkillDraughtHeroUID = uid;
-  g.SkillDraughtPendingOpen = 0;
-  g.SkillDraughtPendingHeroUID = 0;
-  g.SkillDraughtPendingForcedSkillId = '';
-  g.SkillDraughtCandidates = candidates;
-  g.SkillDraughtHitZones = [];
-  g.SkillDraughtSelectedSkillId = '';
-  markOneOffSkillDrawExposures(g, candidates);
-  recordSkillDrawAppearances(g, candidates);
-  appendSkillDraughtTrace(g, 'open', {
-    heroUID: uid,
-    forcedSkillId: String(drawResult?.forcedSkillId || ''),
-    forcedSkillSuppressedReason,
-    candidateIds: candidates.map(candidate => candidate.id),
-  });
-  LogCombat(ctx, 'The party found new skills.');
-  return { ok: true, heroUID: uid, forcedSkillSuppressedReason, candidates: candidates.map(candidate => ({ ...candidate })) };
+  // Party-card acquisition and procs are paused by the JRPG migration.
+  return false;
 }
 
 export function QueueSkillDraughtForHero(ctx, heroUID, forcedSkillId = '') {
-  const g = ensureSkillDraughtState(ctx);
-  const uid = Number(heroUID || 0);
-  const actor = GetActorByUID(ctx, uid);
-  if (!actor) {
-    appendSkillDraughtTrace(g, 'queue_rejected', { heroUID: uid, reason: 'hero_not_found' });
-    return { ok: false, reason: 'hero_not_found' };
-  }
-  g.SkillDraughtPendingOpen = 1;
-  g.SkillDraughtPendingHeroUID = uid;
-  g.SkillDraughtPendingForcedSkillId = String(forcedSkillId || '');
-  appendSkillDraughtTrace(g, 'queue', { heroUID: uid, forcedSkillId: g.SkillDraughtPendingForcedSkillId });
-  return { ok: true, heroUID: uid, pendingOpen: 1 };
+  // Party-card acquisition and procs are paused by the JRPG migration.
+  return false;
 }
 
 export function ClaimPendingSkillDraught(ctx) {
-  const g = ensureSkillDraughtState(ctx);
-  if (Number(g.SkillDraughtOpen || 0)) return { ok: false, reason: 'draught_open' };
-  if (!Number(g.SkillDraughtPendingOpen || 0)) return { ok: false, reason: 'no_pending_draught' };
-  const uid = Number(g.SkillDraughtPendingHeroUID || 0);
-  const forcedSkillId = String(g.SkillDraughtPendingForcedSkillId || '');
-  const result = OpenSkillDraughtForHero(ctx, uid, forcedSkillId);
-  if (result && result.ok) return { ...result, claimed: true };
-  g.SkillDraughtPendingOpen = 0;
-  g.SkillDraughtPendingHeroUID = 0;
-  g.SkillDraughtPendingForcedSkillId = '';
-  appendSkillDraughtTrace(g, 'claim_rejected', { heroUID: uid, reason: String(result?.reason || 'open_failed') });
-  return result || { ok: false, reason: 'open_failed' };
+  // Party-card acquisition and procs are paused by the JRPG migration.
+  return false;
 }
 
 export function SelectSkillDraughtCard(ctx, candidateIndex = 0) {
-  const g = ensureSkillDraughtState(ctx);
-  if (!Number(g.SkillDraughtOpen || 0)) return { ok: false, reason: 'draught_closed' };
-  const index = Math.max(0, Math.floor(Number(candidateIndex) || 0));
-  const candidate = g.SkillDraughtCandidates.find(row => Number(row.index) === index) || g.SkillDraughtCandidates[index] || null;
-  if (!candidate) return { ok: false, reason: 'candidate_not_found' };
-  const uid = Number(g.SkillDraughtHeroUID || 0);
-  const def = getSkillDefinitionById(candidate.id) || candidate;
-  const key = getSkillSessionBucketKey(def, uid);
-  if (!Array.isArray(g.SessionSkillsByHeroUID[key])) g.SessionSkillsByHeroUID[key] = [];
-  const skillId = String(candidate.id || def?.id || '').trim().toLowerCase();
-  const existingSelections = countSessionSkillSelections(g.SessionSkillsByHeroUID[key], skillId);
-  const suppressionReason = getSkillDrawSuppressionReason(g, def, uid, { ignoreExposure: true });
-  if (suppressionReason) {
-    appendSkillDraughtTrace(g, 'select_rejected', {
-      heroUID: uid,
-      skillId,
-      reason: suppressionReason,
-    });
-    return { ok: false, reason: suppressionReason, skillId };
-  }
-  const sessionSkill = makeSessionSkillRecord(
-    candidate,
-    def,
-    key,
-    existingSelections + 1,
-    'skill_draught',
-    Number(g.time || 0),
-  );
-  g.SessionSkillsByHeroUID[key].push(sessionSkill);
-  g.SkillDraughtSelectedSkillId = sessionSkill.id;
-  g.SkillDraughtOpen = 0;
-  g.SkillDraughtCandidates = [];
-  g.SkillDraughtHitZones = [];
-  g.AstralFlowAmpPoints = 0;
-  g.AstralFlowAmpReady = 0;
-  UpdateAstralFlowAmpBar(ctx);
-  if (sessionSkill.id === 'party_magic_fruit') activateMagicFruitSkill(ctx);
-  if (sessionSkill.id === 'party_crimson_ward') activateCrimsonWardSkill(ctx);
-  if (sessionSkill.id === 'party_faze') activateFazeSkill(ctx, uid);
-  if (sessionSkill.id === 'party_grow') activateGrowSkill(ctx, uid, sessionSkill);
-  const scope = String(sessionSkill.owner || '').toLowerCase() === 'party' ? 'party' : 'hero';
-  appendSkillDraughtTrace(g, 'select', {
-    heroUID: uid,
-    skillId: sessionSkill.id,
-    scope,
-    skillDrawAllowed: isAllowedSkillDrawCallId(sessionSkill.id) ? 1 : 0,
-  });
-  g.CombatActionPinnedLine = '';
-  g.CombatActionPinnedUntil = 0;
-  LogCombat(ctx, scope === 'party'
-    ? `${sessionSkill.title} activated.`
-    : `${getActorNameByUID(ctx, uid)} activated ${sessionSkill.title}.`);
-  return { ok: true, heroUID: uid, skill: { ...sessionSkill } };
+  // Party-card acquisition and procs are paused by the JRPG migration.
+  return false;
 }
 
 export function ClearSessionSkillDraught(ctx) {
@@ -1898,12 +2006,8 @@ export function ClearSessionSkillDraught(ctx) {
 }
 
 export function ForceAstralFlowSkillDraught(ctx, heroUID, forcedSkillId = '') {
-  const g = ensureAstralFlowAmpState(ctx);
-  const ampMax = Math.max(1, Number(g.AstralFlowAmpMax || 18));
-  g.AstralFlowAmpPoints = ampMax;
-  g.AstralFlowAmpReady = 1;
-  UpdateAstralFlowAmpBar(ctx);
-  return OpenSkillDraughtForHero(ctx, heroUID, forcedSkillId);
+  // Party-card acquisition and procs are paused by the JRPG migration.
+  return false;
 }
 
 function resolveHeroSkillPointIdentity(ctx, heroRef) {
@@ -2486,83 +2590,37 @@ function appendSkillProcTrace(g, entry) {
 }
 
 export function IsHeroSessionSkillActive(ctx, heroUID, skillRef) {
-  const g = ensureSkillDraughtState(ctx);
-  const skillId = normalizeSkillProcId(skillRef).toLowerCase();
-  if (!skillId) return false;
-  const bucket = g.SessionSkillsByHeroUID[String(Number(heroUID || 0))] || g.SessionSkillsByHeroUID[String(heroUID || '')] || [];
-  if (!Array.isArray(bucket)) return false;
-  return bucket.some(entry => {
-    const id = String((entry && (entry.id || entry.key || entry.definitionId)) || '').trim().toLowerCase();
-    return id === skillId;
-  });
+  // Party-card acquisition and procs are paused by the JRPG migration.
+  return false;
 }
 
 export function IsPartySessionSkillActive(ctx, skillRef) {
-  const g = ensureSkillDraughtState(ctx);
-  const skillId = normalizeSkillProcId(skillRef).toLowerCase();
-  if (!skillId) return false;
-  const bucket = g.SessionSkillsByHeroUID[HERO_SKILL_SHARED_KEY] || [];
-  if (!Array.isArray(bucket)) return false;
-  return bucket.some(entry => {
-    const id = String((entry && (entry.id || entry.key || entry.definitionId)) || '').trim().toLowerCase();
-    return id === skillId;
-  });
+  // Party-card acquisition and procs are paused by the JRPG migration.
+  return false;
 }
 
-function centerFinitePositions(positions) {
-  const clean = Array.isArray(positions)
-    ? positions.filter(pos => pos && Number.isFinite(Number(pos.x)) && Number.isFinite(Number(pos.y)))
-    : [];
-  if (!clean.length) return null;
-  const xs = clean.map(pos => Number(pos.x));
-  const ys = clean.map(pos => Number(pos.y));
-  return {
-    x: (Math.min(...xs) + Math.max(...xs)) / 2,
-    y: (Math.min(...ys) + Math.max(...ys)) / 2,
-  };
-}
-
-function resolveArcanePulsePartySource(ctx, fallbackHero = null) {
+function resolveArcanePulseHeroBaseSource(ctx, hero = null) {
   const g = getGlobals(ctx);
-  const cachedSource = centerFinitePositions([
-    ...(Array.isArray(g.HeroPortraitPosByIndex) ? g.HeroPortraitPosByIndex : []),
-    ...(Array.isArray(g.HeroIconPosByIndex) ? g.HeroIconPosByIndex : []),
-  ]);
-  if (cachedSource) return cachedSource;
-
-  const partyActors = getEntities(ctx)
-    .filter(actor => actor && (actor.kind === 'hero' || actor.kind === 'escort') && Number(actor.hp ?? 1) > 0);
-  const entitySource = centerFinitePositions(partyActors);
-  if (entitySource) return entitySource;
-
-  const rect = g.EnemyAreaRect || null;
-  const minX = Number(rect?.minX);
-  const minY = Number(rect?.minY);
-  const maxY = Number(rect?.maxY);
-  const enemySize = Math.max(1, Number(g.EnemySize || 40));
-  if (Number.isFinite(minX) && Number.isFinite(minY) && Number.isFinite(maxY) && partyActors.length > 0) {
-    const gap = 8;
-    const heroCount = Math.max(1, partyActors.length);
-    const availableH = Math.max(0, maxY - minY);
-    const heroHWorld = Math.max(1, Math.min(enemySize, (availableH - gap * Math.max(0, heroCount - 1)) / heroCount));
-    const heroSpacing = heroHWorld + gap;
-    const baseXWorld = Math.max(heroHWorld / 2 + 12, minX - enemySize * 0.9) - 90;
-    const offsetWorld = heroHWorld * 0.35;
-    const formationPositions = partyActors.map((_, index) => ({
-      x: baseXWorld + (index % 2 === 0 ? offsetWorld : -offsetWorld),
-      y: minY + (heroHWorld / 2) + index * heroSpacing,
-    }));
-    const formationSource = centerFinitePositions(formationPositions);
-    if (formationSource) return formationSource;
+  const uid = Number(hero?.uid || 0);
+  const restBase = g.HeroRestBasePosByUID && g.HeroRestBasePosByUID[uid];
+  if (restBase && Number.isFinite(Number(restBase.x)) && Number.isFinite(Number(restBase.y))) {
+    return { x: Number(restBase.x), y: Number(restBase.y) };
   }
 
-  const heroX = Number(fallbackHero?.x);
-  const heroY = Number(fallbackHero?.y);
-  if (Number.isFinite(heroX) && Number.isFinite(heroY)) return { x: heroX, y: heroY };
-  const rectCenterY = Number.isFinite(minY) && Number.isFinite(maxY) ? (minY + maxY) / 2 : Number(g.EnemyAreaY0);
+  const displaySlot = Number(hero?.heroDisplaySlot ?? hero?.heroIndex);
+  const cachedCenter = Number.isInteger(displaySlot)
+    ? ((g.HeroPortraitPosByIndex || [])[displaySlot] || (g.HeroIconPosByIndex || [])[displaySlot])
+    : null;
+  const spriteHeight = Math.max(1, Number(g.EnemySize || 40));
+  if (cachedCenter && Number.isFinite(Number(cachedCenter.x)) && Number.isFinite(Number(cachedCenter.y))) {
+    return { x: Number(cachedCenter.x), y: Number(cachedCenter.y) + spriteHeight / 2 };
+  }
+
+  const heroX = Number(hero?.originX ?? hero?.x);
+  const heroY = Number(hero?.originY ?? hero?.y);
   return {
-    x: Number.isFinite(heroX) ? heroX : (Number.isFinite(minX) ? Math.max(enemySize / 2 + 12, minX - enemySize * 0.9) - 90 : 0),
-    y: Number.isFinite(rectCenterY) ? rectCenterY : (Number.isFinite(heroY) ? heroY : 0),
+    x: Number.isFinite(heroX) ? heroX : 0,
+    y: Number.isFinite(heroY) ? heroY + spriteHeight / 2 : 0,
   };
 }
 
@@ -2574,7 +2632,7 @@ function queueArcanePulseVisual(ctx, heroUID, targetUID, startAt, impactAt) {
   if (!Array.isArray(g.ArcanePulseVisuals)) g.ArcanePulseVisuals = [];
   const targetX = Number(target?.x ?? 0);
   const targetY = Number(target?.y ?? 0);
-  const partySource = resolveArcanePulsePartySource(ctx, hero);
+  const heroSource = resolveArcanePulseHeroBaseSource(ctx, hero);
   const visual = {
     id: `arcane-pulse-${Number(g.ArcanePulseVisualSerial || 0) + 1}`,
     skillId: PARTY_ARCANE_PULSE_ID,
@@ -2586,8 +2644,8 @@ function queueArcanePulseVisual(ctx, heroUID, targetUID, startAt, impactAt) {
     duration: Math.max(0.2, Number(impactAt || 0) - Number(startAt || 0)),
     shape: 'crescent_arc_blast',
     sequence: 'attack_then_bonus_pulse',
-    sourceX: Number(partySource.x || 0),
-    sourceY: Number(partySource.y || 0),
+    sourceX: Number(heroSource.x || 0),
+    sourceY: Number(heroSource.y || 0),
     targetX,
     targetY,
   };
@@ -2622,7 +2680,7 @@ function queuePartyArcanePulse(ctx, { heroUID = 0, targetUID = 0, applyAt = 0, a
   const now = Number(g.time || 0);
   const normalImpactAt = Number(applyAt || now);
   const startAt = Math.max(now + 0.2, normalImpactAt + 0.24);
-  const pulseAt = startAt + 0.24;
+  const pulseAt = startAt + PARTY_ARCANE_PULSE_TRAVEL_SEC;
   const visualClearAt = pulseAt + PARTY_ARCANE_PULSE_DAMAGE_TEXT_CLEAR_SEC;
   const damage = Math.max(1, Math.floor(PARTY_ARCANE_PULSE_DAMAGE));
   g.PendingHeroHits = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
@@ -2822,27 +2880,22 @@ export function RollPartySkillProc(ctx, skillRef, fallbackChancePct = 0, eventNa
 }
 
 function applyPartyDestinyActorHeal(ctx, actorUID, healAmount) {
-  const g = getGlobals(ctx);
   const actor = GetActorByUID(ctx, actorUID);
   if (!actor || actor.kind !== 'hero') return { before: 0, after: 0, appliedHeal: 0, reason: 'source_not_hero' };
   const before = Math.max(0, Number(actor.hp || 0));
+  if (before <= 0) return { before, after: before, appliedHeal: 0, reason: 'source_ko' };
   const maxHP = Math.max(before, Number(actor.maxHP || actor.MaxHP || 0));
   const desired = Math.min(maxHP, before + Math.max(0, Math.floor(Number(healAmount || 0))));
   if (desired <= before) return { before, after: before, appliedHeal: 0 };
   actor.hp = desired;
-  const idx = Number(actor.heroIndex ?? -1);
-  if (Array.isArray(g.PartyHPByIndex) && idx >= 0) {
-    const beforeSlot = Math.max(0, Number(g.PartyHPByIndex[idx] ?? before));
-    const maxSlot = Array.isArray(g.PartyMaxHPByIndex) ? Number(g.PartyMaxHPByIndex[idx] ?? maxHP) : maxHP;
-    g.PartyHPByIndex[idx] = Math.min(Math.max(beforeSlot, maxSlot), beforeSlot + (desired - before));
-    g.PartyHP = sum(g.PartyHPByIndex || []);
-  }
+  syncPartyHpTotalsFromHeroes(ctx);
   if (ctx && typeof ctx.callFunction === 'function') {
     try { ctx.callFunction('UpdateHeroHPUI'); } catch (_) {}
     try { ctx.callFunction('UpdatePartyHPText'); } catch (_) {}
     try { ctx.callFunction('UpdatePartyHPBar'); } catch (_) {}
   }
-  return { before, after: Number(actor.hp || 0), appliedHeal: Math.max(0, Number(actor.hp || 0) - before) };
+  const appliedHeal = emitHealPresentation(ctx, actor, actor, before);
+  return { before, after: Number(actor.hp || 0), appliedHeal };
 }
 
 export function TryPartyDestiny(ctx, options = undefined) {
@@ -2895,8 +2948,7 @@ export function TryPartyDestiny(ctx, options = undefined) {
   }
   g.PartyDestinyProcs = Math.max(0, Math.floor(Number(g.PartyDestinyProcs || 0))) + 1;
   const sourceMaxHP = Math.max(0, Number(source.maxHP || source.MaxHP || 0));
-  const partyMaxHP = Math.max(0, Number(g.PartyMaxHP || 0));
-  const defaultHeal = Math.max(1, Math.ceil((partyMaxHP || sourceMaxHP) * 2.5 / 100));
+  const defaultHeal = Math.max(1, Math.ceil(sourceMaxHP * 2.5 / 100));
   const requestedHeal = Math.max(1, Math.floor(Number(opts.healAmount || defaultHeal)));
   const heal = applyPartyDestinyActorHeal(ctx, sourceUID, requestedHeal);
   if (heal.appliedHeal > 0) g.PartyDestinyHeals = Math.max(0, Math.floor(Number(g.PartyDestinyHeals || 0))) + 1;
@@ -2908,47 +2960,8 @@ export function TryPartyDestiny(ctx, options = undefined) {
 }
 
 export function TriggerPartyDestinyDev(ctx, sourceUID = 0) {
-  const g = ensureSkillProcRuntime(ctx);
-  ensureSkillDraughtState(ctx);
-  const source = GetActorByUID(ctx, sourceUID) || getHeroes(ctx).find(hero => Number(hero?.hp || 0) > 0) || null;
-  if (!source) return { ok: false, success: false, reason: 'source_not_found', appliedHeal: 0 };
-  if (!Array.isArray(g.SessionSkillsByHeroUID[HERO_SKILL_SHARED_KEY])) g.SessionSkillsByHeroUID[HERO_SKILL_SHARED_KEY] = [];
-  const hasDestiny = g.SessionSkillsByHeroUID[HERO_SKILL_SHARED_KEY].some(entry =>
-    String((entry && (entry.id || entry.key || entry.definitionId)) || '').trim().toLowerCase() === 'party_destiny'
-  );
-  if (!hasDestiny) {
-    const destinyDef = getSkillDefinitionById('party_destiny');
-    g.SessionSkillsByHeroUID[HERO_SKILL_SHARED_KEY].push(makeSessionSkillRecord(
-      {
-        id: 'party_destiny',
-        key: 'party_destiny',
-        title: 'Destiny',
-        description: 'Attacks can restore HP.',
-        owner: 'Party',
-      },
-      destinyDef,
-      HERO_SKILL_SHARED_KEY,
-      1,
-      'dev_trigger',
-      Number(g.time || 0),
-    ));
-    g.SkillDraughtOneOffExposureBySkillId.party_destiny = 1;
-  }
-  g.PartyDestinyAttempts = 0;
-  g.PartyDestinyProcs = 0;
-  g.PartyDestinyHeals = 0;
-  g.PartyDestinyMisses = 0;
-  g.PartyDestinyLastResult = 'activated';
-  g.LastPartyDestiny = {
-    success: false,
-    reason: 'activated',
-    sourceUID: Number(source.uid || 0),
-    targetUID: 0,
-    appliedHeal: 0,
-  };
-  LogCombat(ctx, 'Chance to restore HP when attacking enemies activated!');
-  logPartyDestinyQa(ctx, 'activated', { sourceUID: Number(source.uid || 0) });
-  return { ok: true, success: true, reason: 'activated', sourceUID: Number(source.uid || 0), appliedHeal: 0 };
+  // Party-card acquisition and procs are paused by the JRPG migration.
+  return false;
 }
 
 export function GetSkillProcTrace(ctx, limit = 40) {
@@ -3200,21 +3213,20 @@ function queueAstralFlowKoOrbPresentation(ctx, enemy, reward, options = {}) {
 }
 
 export function AwardEnemyKoAstralFlow(ctx, enemy, options = {}) {
-  const g = ensureAstralFlowAmpState(ctx);
-  ensureAstralFlowWallet(ctx);
-  const reward = applyAstralFlowEnemyKoReward({
-    enemyName: enemy?.name || enemy?.key || enemy?.type || '',
-    astralFlowAmpPoints: g.AstralFlowAmpPoints,
-    astralFlowAmpMax: g.AstralFlowAmpMax,
-    astralFlowAmpReady: g.AstralFlowAmpReady,
-    astralFlowWallet: g.AstralFlowWallet,
-  });
-  if (Number(reward.rewardPercent || 0) <= 0) return { ok: false, reason: 'no_enemy_ko_astral_flow_reward', reward };
-
-  const presentation = queueAstralFlowKoOrbPresentation(ctx, enemy, reward, options);
-  if (!presentation) return { ok: false, reason: 'no_enemy_ko_astral_flow_orbs', reward };
-
-  return { ok: true, reward, presentation };
+  const g = getGlobals(ctx);
+  const spawned = dropEnemyFlowOrbs({ actors:ensureEntities(ctx), state:g, flowRandom:()=>random01(ctx) }, enemy, options);
+  if (spawned > 0) {
+    const queued = (g.FlowOrbs || []).slice(-spawned);
+    const last = queued[queued.length - 1] || null;
+    const audit = g.FlowOrbAudit || {};
+    g.FlowOrbAudit = {
+      ...audit,
+      queuedRecipientUID: Number(last?.recipientUID || 0),
+      queuedCount: Number(audit.queuedCount || 0) + spawned,
+      queuedEnemyDeathCount: Number(audit.queuedEnemyDeathCount || 0) + queued.filter(orb => orb?.reason === 'enemy-death').length,
+    };
+  }
+  return { ok:false, spawned, reason:spawned ? 'enemy_death_flow_orb' : 'no_living_flow_recipient' };
 }
 
 export function CompleteAstralFlowKoOrbRewards(ctx) {
@@ -3300,23 +3312,16 @@ export function BeginAstralFlowKoOrbEnemyDeaths(ctx) {
   const holds = g.EnemyDeathVisualHoldByUID && typeof g.EnemyDeathVisualHoldByUID === 'object'
     ? g.EnemyDeathVisualHoldByUID
     : {};
-  let hiddenCount = 0;
+  let heldCount = 0;
   for (const event of queue) {
     const uid = Number(event?.enemyUID || 0);
     if (!uid || !holds[uid]) continue;
-    const enemy = GetActorByUID(ctx, uid);
-    holds[uid].hiddenForOrb = 1;
-    if (enemy) {
-      enemy.pendingOfficialDeath = 1;
-      enemy.deathState = 'payout';
-      enemy.deathVisualHiddenForOrb = 1;
-    }
-    hiddenCount += 1;
+    heldCount += 1;
   }
-  return { ok: hiddenCount > 0, hiddenCount };
+  return { ok: heldCount > 0, heldCount };
 }
 
-function commitEnemyDeathRemoval(ctx, enemyUID, fallbackSlotIndex = 0, currentUID = 0) {
+function commitEnemyDeathRemoval(ctx, enemyUID, fallbackSlotIndex = 0, currentUID = 0, scheduleRespawn = true) {
   const g = getGlobals(ctx);
   const targetUID = Number(enemyUID || 0);
   if (!targetUID) return false;
@@ -3345,12 +3350,15 @@ function commitEnemyDeathRemoval(ctx, enemyUID, fallbackSlotIndex = 0, currentUI
       currentUID: Number(currentUID || GetCurrentTurn(ctx) || 0),
     });
   }
+  g.DeferAdvance = 1;
+  g.AdvanceAfterAction = 1;
+  if (!Number(g.ActionOwnerUID || 0)) g.ActionOwnerUID = Number(currentUID || GetCurrentTurn(ctx) || 0);
   if (isTimeInitiative(ctx)) {
     schedulerApplyRemovalCompaction(ctx, targetUID, slotIndex, Number(currentUID || GetCurrentTurn(ctx) || 0));
   }
   UpdateEnemyHPUI(ctx);
   const respawnDelay = Math.max(0.4, (g.DamageTextDurationSec || 1.35));
-  scheduleEnemyRespawnWindow(ctx, slotIndex, respawnDelay);
+  if (scheduleRespawn) scheduleEnemyRespawnWindow(ctx, slotIndex, respawnDelay);
   return true;
 }
 
@@ -3368,6 +3376,26 @@ export function CommitAstralFlowKoOrbEnemyDeaths(ctx) {
     const currentUID = Number(event?.killerUID || holds[uid].currentUID || GetCurrentTurn(ctx) || 0);
     if (commitEnemyDeathRemoval(ctx, uid, slotIndex, currentUID)) committedCount += 1;
   }
+  return { ok: committedCount > 0, committedCount };
+}
+
+export function CommitPendingEnemyDeaths(ctx) {
+  const g = getGlobals(ctx);
+  const holds = g.EnemyDeathVisualHoldByUID && typeof g.EnemyDeathVisualHoldByUID === 'object'
+    ? g.EnemyDeathVisualHoldByUID
+    : {};
+  if (hasActiveAttackPresentation(g)) return { ok: false, committedCount: 0, reason: 'attack_presentation_active' };
+  if (Array.isArray(g.FlowOrbs) && g.FlowOrbs.length > 0) return { ok: false, committedCount: 0, reason: 'flow_delivery_active' };
+  const chainStrikeIIDeathUIDs = new Set((g.LastAstralFlowChainStrikeII?.hits || []).map(hit => Number(hit?.targetUID || 0)));
+  const refillImmediately = Array.isArray(g.EnemyData) && g.EnemyData.length > 0
+    && Object.keys(holds).some(uid => chainStrikeIIDeathUIDs.has(Number(uid || 0)));
+  let committedCount = 0;
+  for (const [uidKey, hold] of Object.entries(holds)) {
+    const uid = Number(uidKey || 0);
+    if (!uid) continue;
+    if (commitEnemyDeathRemoval(ctx, uid, Number(hold?.slotIndex || 0), Number(hold?.currentUID || 0), !refillImmediately)) committedCount += 1;
+  }
+  if (refillImmediately && committedCount > 0) finalizeEnemyRespawnWindow(ctx);
   return { ok: committedCount > 0, committedCount };
 }
 
@@ -3959,7 +3987,7 @@ function applyRewardPayload(ctx, payload) {
   }
   if (payload.type === 'HEAL_RANDOM') {
     const amt = Math.max(1, Math.floor(random01(ctx) * 40) + 1);
-    ctx.callFunction('ApplyPartyHeal', amt);
+    ctx.callFunction('ApplyActiveHeroHeal', amt);
     LogCombat(ctx, `Event reward: +${amt} HP`);
     return;
   }
@@ -3987,14 +4015,12 @@ function clamp(min, value, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function getDeployedHeroes(ctx) {
+  return getEntities(ctx).filter(entity => entity && entity.kind === 'hero');
+}
+
 function getHeroes(ctx) {
-  const g = getGlobals(ctx);
-  const partyAlive = (g.PartyHP ?? 0) > 0;
-  return getEntities(ctx).filter(e => {
-    if (!e || e.kind !== 'hero') return false;
-    if (partyAlive) return true;
-    return (e.hp ?? 0) > 0;
-  });
+  return getDeployedHeroes(ctx).filter(hero => Number(hero.hp ?? 0) > 0);
 }
 
 function getEnemies(ctx) {
@@ -4062,7 +4088,7 @@ function getActorNameByUID(ctx, uid) {
     if (curActor && curActor.name) return curActor.name;
   }
   if (typeof uid === 'number') {
-    const hero = getHeroes(ctx).find(h => h.heroIndex === uid);
+    const hero = getDeployedHeroes(ctx).find(h => h.heroIndex === uid);
     if (hero && hero.name) return hero.name;
   }
   return '?';
@@ -4147,17 +4173,13 @@ function isTimeInitiative(ctx) {
 }
 
 function getInitiativeRoster(ctx) {
-  const g = getGlobals(ctx);
   const roster = [];
   const seen = new Set();
-  const partyAlive = (g.PartyHP || 0) > 0;
-  if (partyAlive) {
-    for (const h of getHeroes(ctx)) {
-      if (seen.has(h.uid)) continue;
-      const spd = GetEffectiveStat(ctx, h, 'SPD');
-      roster.push({ uid: h.uid, type: 0, spd });
-      seen.add(h.uid);
-    }
+  for (const h of getHeroes(ctx)) {
+    if (Number(h.hp ?? 0) <= 0 || seen.has(h.uid)) continue;
+    const spd = GetEffectiveStat(ctx, h, 'SPD');
+    roster.push({ uid: h.uid, type: 0, spd });
+    seen.add(h.uid);
   }
   for (const e of getEnemies(ctx)) {
     if ((e.hp ?? 0) <= 0) continue;
@@ -4184,7 +4206,7 @@ function ensureDynamicInitiativeShadowState(g) { if (!g.DynamicInitiativeShadow 
 function getDynamicInitiativeThreshold(g) { const threshold = Number(g.DynamicInitiativeThreshold || g.InitiativeThreshold || 100); return Number.isFinite(threshold) && threshold > 0 ? threshold : 100; }
 function getDynamicInitiativeBattleId(g) { const id = Number(g.BattleId || g.BattleUID || g.EncounterUID || g.EncounterId || 0); return Number.isFinite(id) ? id : 0; }
 function getDynamicInitiativeActorSnapshot(ctx, uid, typeHint = null) { const actor = Number(uid || 0) > 0 ? GetActorByUID(ctx, Number(uid || 0)) : null; const type = typeHint != null ? Number(typeHint || 0) : (actor && actor.kind === 'enemy' ? 1 : 0); if (!actor && !(Number(uid || 0) > 0)) return null; return { uid: Number(uid || actor?.uid || 0), type: type === 1 ? 1 : 0, name: actor ? String(actor.name || actor.uid || uid) : String(uid || ''), speed: actor ? GetEffectiveStat(ctx, actor, 'SPD') : 0, hp: actor ? Number(actor.hp ?? 1) : 0, stunned: !!actor?.stunned, disabled: !!actor?.disabled, pendingDeath: !!actor?.pendingDeath || !!actor?.deathPending, status: actor?.status, state: actor?.state, statuses: Array.isArray(actor?.statuses) ? actor.statuses : [], statusEffects: Array.isArray(actor?.statusEffects) ? actor.statusEffects : [] }; }
-function getDynamicInitiativeRoster(ctx) { const g = getGlobals(ctx), actors = [], seen = new Set(), partyAlive = Number(g.PartyHP || 0) > 0; if (partyAlive) { for (const hero of getHeroes(ctx)) { const uid = Number(hero?.uid || 0); if (!(uid > 0) || seen.has(uid)) continue; seen.add(uid); actors.push({ uid, type: 0, name: String(hero.name || uid), speed: GetEffectiveStat(ctx, hero, 'SPD'), hp: Number(hero.hp ?? 1) > 0 ? Number(hero.hp ?? 1) : 1, stunned: !!hero.stunned, disabled: !!hero.disabled, status: hero.status, state: hero.state, statuses: Array.isArray(hero.statuses) ? hero.statuses : [], statusEffects: Array.isArray(hero.statusEffects) ? hero.statusEffects : [] }); } } for (const enemy of getEnemies(ctx)) { const uid = Number(enemy?.uid || 0); if (!(uid > 0) || seen.has(uid)) continue; seen.add(uid); actors.push({ uid, type: 1, name: String(enemy.name || uid), speed: GetEffectiveStat(ctx, enemy, 'SPD'), hp: Number(enemy.hp ?? 0), stunned: !!enemy.stunned, disabled: !!enemy.disabled, pendingDeath: !!enemy.pendingDeath || !!enemy.deathPending, status: enemy.status, state: enemy.state, statuses: Array.isArray(enemy.statuses) ? enemy.statuses : [], statusEffects: Array.isArray(enemy.statusEffects) ? enemy.statusEffects : [] }); } return actors; }
+function getDynamicInitiativeRoster(ctx) { const actors = [], seen = new Set(); for (const hero of getHeroes(ctx)) { const uid = Number(hero?.uid || 0); if (!(uid > 0) || Number(hero.hp ?? 0) <= 0 || seen.has(uid)) continue; seen.add(uid); actors.push({ uid, type: 0, name: String(hero.name || uid), speed: GetEffectiveStat(ctx, hero, 'SPD'), hp: Number(hero.hp ?? 0), stunned: !!hero.stunned, disabled: !!hero.disabled, status: hero.status, state: hero.state, statuses: Array.isArray(hero.statuses) ? hero.statuses : [], statusEffects: Array.isArray(hero.statusEffects) ? hero.statusEffects : [] }); } for (const enemy of getEnemies(ctx)) { const uid = Number(enemy?.uid || 0); if (!(uid > 0) || seen.has(uid)) continue; seen.add(uid); actors.push({ uid, type: 1, name: String(enemy.name || uid), speed: GetEffectiveStat(ctx, enemy, 'SPD'), hp: Number(enemy.hp ?? 0), stunned: !!enemy.stunned, disabled: !!enemy.disabled, pendingDeath: !!enemy.pendingDeath || !!enemy.deathPending, status: enemy.status, state: enemy.state, statuses: Array.isArray(enemy.statuses) ? enemy.statuses : [], statusEffects: Array.isArray(enemy.statusEffects) ? enemy.statusEffects : [] }); } return actors; }
 function recordDynamicInitiativeShadowAfterAction(ctx, currentUID, currentType, cadenceEvents = []) {
   const g = getGlobals(ctx);
   if (g.DynamicInitiativeShadowDisabled) return null;
@@ -4344,6 +4366,8 @@ function buildDynamicInitiativeDefaultSpeedSelection(ctx, options = null) {
     return null;
   }
   const queue = buildFixedCycleSlots(roster, 0);
+  const delayResult = applyPendingTurnDelays(ctx, queue, currentUID);
+  queue.splice(0, queue.length, ...delayResult.queue);
   const completedUID = Number(currentUID || 0);
   const completedIndex = queue.findIndex(slot => Number(slot.uid || 0) === completedUID);
   const selectedIndex = completedIndex === -1 || completedIndex >= queue.length - 1 ? 0 : completedIndex + 1;
@@ -4376,6 +4400,29 @@ function buildDynamicInitiativeDefaultSpeedSelection(ctx, options = null) {
     eligibilitySkips: [],
     pendingDeaths: g.PendingDeaths || null,
   };
+}
+function applyPendingTurnDelays(ctx, queue, currentUID) {
+  const source = Array.isArray(queue) ? queue.slice() : [];
+  const currentIndex = source.findIndex(slot => Number(slot?.uid || 0) === Number(currentUID || 0));
+  if (currentIndex < 0 || source.length < 2) return { queue: source, applied: [] };
+  const current = source[currentIndex];
+  const future = source.slice(currentIndex + 1).concat(source.slice(0, currentIndex));
+  const decorated = future.map((slot, index) => {
+    const actor = GetActorByUID(ctx, Number(slot?.uid || 0));
+    const statuses = Array.isArray(actor?.statuses) ? actor.statuses : [];
+    const pending = actor?.kind === 'enemy'
+      ? statuses.find(status => status.statusEffect === 'delayNextTurn' && Number(status.duration || 0) > 0)
+      : null;
+    const shift = pending ? Math.max(1, Math.floor(Number(pending.delaySlots || 1))) : 0;
+    if (pending) actor.statuses = statuses.filter(status => status !== pending);
+    return { slot, index, shift, target: !!pending };
+  });
+  const applied = decorated.filter(entry => entry.target).map(entry => ({ uid: Number(entry.slot.uid || 0), slots: entry.shift }));
+  decorated.sort((a, b) => (a.index + a.shift) - (b.index + b.shift) || Number(a.target) - Number(b.target) || a.index - b.index);
+  const reordered = [current, ...decorated.map(entry => entry.slot)];
+  const next = new Array(source.length);
+  for (let index = 0; index < next.length; index += 1) next[(currentIndex + index) % next.length] = reordered[index];
+  return { queue: next, applied };
 }
 function getDynamicInitiativeSessionId(g) {
   const combatSessionId = Number(g.CombatSessionId || 0);
@@ -4952,6 +4999,10 @@ function resolvePendingEnemyDeaths(ctx) {
   g.PendingDeaths = pending;
 }
 
+export function ResolvePendingEnemyDeaths(ctx) {
+  resolvePendingEnemyDeaths(ctx);
+}
+
 export function BuildTurnOrder(ctx) {
   const g = getGlobals(ctx);
   if (isTimeInitiative(ctx)) {
@@ -5205,6 +5256,11 @@ export function AdvanceTurn(ctx) {
   const g = getGlobals(ctx);
   const currentUID = GetCurrentTurn(ctx);
   const currentType = GetCurrentType(ctx);
+  const completedHero = currentType === 0 ? GetActorByUID(ctx, currentUID) : null;
+  nativeTurnEnded(ctx, GetActorByUID(ctx, currentUID));
+  const linkedSpeedAction = resolveHeroSpeedMultiattack({ hero: completedHero && { ...completedHero, effectiveSpeed: GetEffectiveStat(ctx, completedHero, 'SPD') }, enemies: getEnemies(ctx).filter(enemy => enemy.kind === 'enemy').map(enemy => ({ ...enemy, effectiveSpeed: GetEffectiveStat(ctx, enemy, 'SPD') })), alreadyLinked: Number(g.SpeedMultiattackLinkedActorUID || 0) === Number(currentUID || 0) });
+  if (linkedSpeedAction) { g.SpeedMultiattackLinkedActorUID = Number(currentUID); g.SpeedMultiattackSequenceSerial = Number(g.SpeedMultiattackSequenceSerial || 0) + 1; const speedState = syncDynamicInitiativeDefaultSession(ctx); speedState.actionCount = Number(speedState.actionCount || 0) + 1; speedState.lastActionSerial = Number(g.TurnSerial || 0); speedState.lastSelectedUID = Number(currentUID); speedState.lastSelectionReason = 'speed_multiattack_link'; setDynamicInitiativeDefaultCurrent(ctx, { uid: currentUID, type: 0, name: completedHero?.name || currentUID }, 'speed_multiattack_link'); recordTurnSchedulerEvent(ctx, 'speed_multiattack_link', { actorUID: Number(currentUID), sequenceSerial: Number(g.SpeedMultiattackSequenceSerial), actionCount: speedState.actionCount, queue: snapshotTurnOrderSlots(ctx) }); return; }
+  if (currentType === 0 && Number(g.SpeedMultiattackLinkedActorUID || 0) === Number(currentUID || 0)) g.SpeedMultiattackLinkedActorUID = 0;
   const dynamicInitiativeCadenceEvents = [
     { event: 'action_completed', uid: Number(currentUID || 0), type: Number(currentType || 0) },
   ];
@@ -5249,6 +5305,7 @@ export function AdvanceTurn(ctx) {
   dynamicInitiativeCadenceEvents.push({ event: 'turn_serial_increment', turnSerial: Number(g.TurnSerial || 0) });
   const pendingDeathsBefore = Object.keys(g.PendingDeaths || {}).length;
   resolvePendingEnemyDeaths(ctx);
+  if (typeof clearDefeatedAstralFlowSpecials === 'function') clearDefeatedAstralFlowSpecials(ctx);
   dynamicInitiativeCadenceEvents.push({
     event: 'pending_death_resolution',
     before: pendingDeathsBefore,
@@ -5513,7 +5570,7 @@ export function GetEffectiveStat(ctx, inst, stat) {
   if (!inst) return 0;
   const g = getGlobals(ctx);
   const actorKind = String(inst.kind || '');
-  const base = Number(inst.stats?.[stat] ?? inst[stat] ?? 0);
+  const base = effectiveStat(inst, stat, Number(inst.stats?.[stat] ?? inst[stat] ?? 0));
   const partyBuff = actorKind === 'hero' ? partyBuffForStat(g, stat) : 0;
   const debuffs = actorKind === 'enemy' ? g?.EnemyDebuffs?.[inst.uid] : null;
   const directEnemyDebuff = debuffs && debuffs[stat] ? Number(debuffs[stat] || 0) : 0;
@@ -5592,15 +5649,14 @@ function calculateDamageFromJsFallback({
   const powerValue = Number(power || 0);
   const resistValue = Number(resist || 0);
   const isHero = Number(sourceIsHero || 0) === 1;
-  const roll = 0.8 + Number(roll01 || 0) * 0.4;
-  const rawDamage = isHero && Number(heroAoe || 0) !== 1
-    ? (powerValue - (resistValue * 0.35)) * roll
-    : (powerValue - resistValue / 2) * roll;
+  const roll = 0.9 + Number(roll01 || 0) * 0.2;
+  const rawDamage = (2 + (Math.max(0, powerValue) * .48)) * (20 / (20 + Math.max(0, resistValue))) * roll;
   const baseDamage = Math.max(1, Math.ceil(rawDamage));
   const crit = ApplyScaledCrit({
     baseValue: baseDamage,
-    relevantBuffTotal: powerValue,
+    relevantBuffTotal: 2.5,
     sourceType: isHero ? 'HERO' : 'ENEMY',
+    critThreshold: .01,
     rngRoll: critRoll01,
   });
   const postCritDamage = Math.max(1, Math.ceil(crit.value));
@@ -6478,6 +6534,17 @@ function startPartyWardBarrierFadeOut(ctx) {
   return until;
 }
 
+function recordAstralFlowChainStrikeIIHit(g, record = {}) {
+  const telemetry = g.LastAstralFlowChainStrikeII && typeof g.LastAstralFlowChainStrikeII === 'object'
+    ? g.LastAstralFlowChainStrikeII : (g.LastAstralFlowChainStrikeII = { hits: [], hitCount: 0 });
+  const normalized = { targetUID: Number(record.targetUID || 0), preHP: Number(record.preHP || 0), postHP: Number(record.postHP || 0), damage: Math.max(0, Number(record.damage || 0)), coefficient: Number(record.coefficient || ASTRAL_FLOW_CHAIN_STRIKE_II_DAMAGE_PCT), primary: !!record.primary };
+  (telemetry.hits ||= []).push(normalized);
+  telemetry.hitCount = telemetry.hits.filter(hit => Number(hit.damage || 0) > 0).length;
+  if (normalized.primary) telemetry.primary = normalized;
+  else (telemetry.bounces ||= []).push(normalized);
+  return normalized;
+}
+
 function findMatchingPendingHeroHit(ctx, uid, dmg, predicate = undefined) {
   const g = getGlobals(ctx);
   const pending = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
@@ -6520,14 +6587,42 @@ function getPendingDamageTextKind(ctx, uid, dmg, options = undefined) {
   return hit ? String(hit.damageTextKind || '') : '';
 }
 
+function resolveActorDefeatTransition(ctx, target, killerUID = 0, options = undefined) {
+  const g = getGlobals(ctx);
+  const opts = options && typeof options === 'object' ? options : {};
+  if (!target || Number(target.hp ?? 0) !== 0 || target.isAlive === false || Number(target.pendingOfficialDeath || 0)) return false;
+  const resolvedKillerUID = Number(killerUID || g.LastDamageSourceUID || GetCurrentTurn(ctx) || 0);
+  if (target.kind === 'enemy') {
+    target.pendingOfficialDeath = 1;
+    target.deathState = 'pending_attack';
+  } else {
+    target.isAlive = false;
+  }
+  if (!Number(opts.forceImmediateEnemyHold || 0) && ((g.RoundActive && g.GroupResolving) || (isTimeInitiative(ctx) && g.GroupResolving))) {
+    g.PendingDeaths = g.PendingDeaths || {};
+    g.PendingDeaths[target.uid] = { group: Number(g.RoundGroupIndex || 0), killerUID: resolvedKillerUID };
+  } else if (target.kind === 'enemy') {
+    AwardMonsterDrop(ctx, target.name || target.key || target.type || '', null, resolvedKillerUID);
+    KillEnemyByUID(ctx, target.uid, target.slotIndex ?? 0);
+  }
+  return true;
+}
+
 export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   const g = getGlobals(ctx);
   const opts = options && typeof options === 'object' ? options : {};
   const sourceUID = Number(opts.sourceUID || opts.actorUID || 0);
   g.LastDamageSourceUID = sourceUID > 0 ? sourceUID : Number(GetCurrentTurn(ctx) || 0);
-  const t = GetActorByUID(ctx, uid);
-  if (!t) return 0;
+  let t = GetActorByUID(ctx, uid);
+  if (!t || Number(t.hp ?? 0) <= 0) return 0;
+  const source = GetActorByUID(ctx, g.LastDamageSourceUID);
+  if (source?.kind === 'enemy' && t.kind === 'hero' && !opts.nativeResolved) {
+    const before = t.hp;
+    resolveIncomingNativeHit(ctx, source, t, Math.max(0, Number(dmg) || 0), opts);
+    return Math.max(0, before - t.hp);
+  }
   const targetTraceHit = findMatchingPendingHeroHit(ctx, uid, dmg, (hit) => Number(hit.targetTraceSequence || 0) > 0);
+  const chainStrikeIIHit = findMatchingPendingHeroHit(ctx, uid, dmg, (hit) => Number(hit.astralFlowChainStrikeII || 0) === 1);
   const suppressPartySkillHitHooks = shouldSuppressPartySkillHitHooks(ctx, uid, dmg, opts);
   const suppressHitFlash = shouldSuppressHitFlash(ctx, uid, dmg, opts);
   const suppressDamageText = shouldSuppressDamageText(ctx, uid, dmg, opts);
@@ -6570,6 +6665,9 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   }
   const afterHP = Number(t.hp ?? 0);
   const appliedDamage = Math.max(0, beforeHP - afterHP);
+  if (chainStrikeIIHit) recordAstralFlowChainStrikeIIHit(g, { targetUID: Number(uid || 0), preHP: beforeHP, postHP: afterHP, damage: appliedDamage, coefficient: Number(chainStrikeIIHit.chainStrikeDamagePct || 396), primary: Number(chainStrikeIIHit.chainStrikeIIPrimary || 0) === 1 });
+  g.LastDamageSourceUID = source?.uid || g.LastDamageSourceUID;
+
   if ((g.DevTestMode === true || g.DebugGemsMode === true) && targetTraceHit) {
     console.log(`[TARGET_DAMAGE_JSON] ${JSON.stringify({
       sequence: Number(targetTraceHit.targetTraceSequence || 0),
@@ -6584,15 +6682,7 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
     })}`);
   }
   maybeShadowSingleHitResolution(ctx, t, incomingDamage, beforeHP, appliedDamage, afterHP, shieldAbsorbed);
-  if (t.kind === 'hero' && appliedDamage > 0) {
-    const idx = Number(t.heroIndex ?? 0);
-    if (Array.isArray(g.PartyHPByIndex)) {
-      g.PartyHPByIndex[idx] = Math.max(0, Number(g.PartyHPByIndex[idx] ?? beforeHP) - appliedDamage);
-      g.PartyHP = sum(g.PartyHPByIndex || []);
-    } else {
-      g.PartyHP = Math.max(0, Number(g.PartyHP ?? beforeHP) - appliedDamage);
-    }
-  }
+  if (t.kind === 'hero') syncPartyHpTotalsFromHeroes(ctx);
   runTraitHooks(ctx, 'damage_receive', {
     targetUID: Number(uid || 0),
     targetKind: String(t.kind || ''),
@@ -6647,35 +6737,18 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   }
   if (appliedDamage > 0 && dx != null && dy != null && g.SpawnDamageText !== 0 && !suppressDamageText) {
     const damageTextKind = String(g.NextDamageTextKind || getPendingDamageTextKind(ctx, uid, dmg, opts) || 'damage');
-    SpawnDamageText(ctx, appliedDamage, dx, dy, damageTextKind, t.kind || null);
+    SpawnDamageText(ctx, appliedDamage, dx, dy, damageTextKind, t.kind || null, opts.damageTextNotBefore);
     const damageText = Array.isArray(g.DamageTexts) ? g.DamageTexts[g.DamageTexts.length - 1] : null;
     if (damageText) {
       damageText.targetUID = Number(uid || 0);
       damageText.targetSlotIndex = Number(t.slotIndex ?? -1);
       damageText.targetTraceSequence = Number(targetTraceHit?.targetTraceSequence || 0);
+      damageText.hpBefore = beforeHP;
+      damageText.hpAfter = afterHP;
     }
   }
   delete g.NextDamageTextKind;
-  if (t.hp === 0 && t.isAlive !== false && !Number(t.pendingOfficialDeath || 0)) {
-    if (t.kind === 'enemy') {
-      t.pendingOfficialDeath = 1;
-      t.deathState = 'pending_attack';
-    } else {
-      t.isAlive = false;
-    }
-    if ((g.RoundActive && g.GroupResolving) || (isTimeInitiative(ctx) && g.GroupResolving)) {
-      g.PendingDeaths = g.PendingDeaths || {};
-      g.PendingDeaths[t.uid] = {
-        group: Number(g.RoundGroupIndex || 0),
-        killerUID: Number(g.LastDamageSourceUID || 0),
-      };
-    } else {
-      if (t.kind === 'enemy') {
-        AwardMonsterDrop(ctx, t.name || t.key || t.type || '', null, Number(g.LastDamageSourceUID || 0));
-        KillEnemyByUID(ctx, t.uid, t.slotIndex ?? 0);
-      }
-    }
-  }
+  if (!Number(opts.deferEnemyDefeatTransition || 0)) resolveActorDefeatTransition(ctx, t, Number(g.LastDamageSourceUID || 0), { forceImmediateEnemyHold: chainStrikeIIHit ? 1 : 0 });
   UpdateEnemyHPUI(ctx);
   UpdateHeroHPUI(ctx);
   maybeShadowTurnSummary(ctx, 'functionBank.ApplyDamageToTarget');
@@ -6704,35 +6777,11 @@ export function UpdateEnemyHPUI(ctx) {
 }
 
 export function UpdateHeroHPUI(ctx) {
-  const g = getGlobals(ctx);
-  const heroes = getHeroes(ctx);
-  g.PartyHPByIndex = heroes.map(h => h.hp ?? 0);
-  g.PartyMaxHPByIndex = heroes.map(h => h.maxHP ?? 0);
-  g.PartyHP = sum(g.PartyHPByIndex || []);
-  g.PartyMaxHP = sum(g.PartyMaxHPByIndex || []);
+  syncPartyHpTotalsFromHeroes(ctx);
 }
 
 export function InitPartyHPFromHeroes(ctx) {
-  const g = getGlobals(ctx);
-  const heroes = getHeroes(ctx);
-  g.PartyHP = sum(heroes.map(h => h.hp ?? 0));
-  g.PartyMaxHP = sum(heroes.map(h => h.maxHP ?? 0));
-  g.PartyHPByIndex = heroes.map(h => h.hp ?? 0);
-  g.PartyMaxHPByIndex = heroes.map(h => h.maxHP ?? 0);
-}
-
-export function SyncPartyHPToHeroes(ctx) {
-  const g = getGlobals(ctx);
-  const heroes = getHeroes(ctx);
-  if (heroes.length === 0) return;
-  const totalMax = sum(heroes.map(h => h.maxHP ?? 0));
-  if (!totalMax) return;
-  const ratio = g.PartyMaxHP ? (g.PartyHP / g.PartyMaxHP) : 0;
-  for (const h of heroes) {
-    const maxHP = h.maxHP ?? 0;
-    h.hp = clamp(0, Math.floor(maxHP * ratio), maxHP);
-  }
-  UpdateHeroHPUI(ctx);
+  syncPartyHpTotalsFromHeroes(ctx);
 }
 
 export function UpdatePartyHPText(ctx) {
@@ -7371,9 +7420,9 @@ export function ApplyDamage(ctx, targetUID, dmg) {
 
 function collectPartyDamageOwnerSnapshot(ctx, dmg) {
   const g = getGlobals(ctx);
-  const heroes = getHeroes(ctx).slice(0, 4);
+  const heroes = getDeployedHeroes(ctx).slice(0, 6);
   const shieldResult = computePartyTempHPShieldAbsorption(g, dmg);
-  const heroHp = [0, 1, 2, 3].map((index) => Number(heroes[index]?.hp || 0));
+  const heroHp = [0, 1, 2, 3, 4, 5].map((index) => Number(heroes[index]?.hp || 0));
   const jsHeroHp = heroHp.map((hp, index) =>
     index < heroes.length ? Math.max(0, hp - shieldResult.damageAfterShield) : 0
   );
@@ -7403,9 +7452,9 @@ function maybeResolvePartyDamageOwner(ctx, snapshot) {
       ...snapshot,
       ownerHook: partyDamageOwnerHook,
     });
-    const heroCount = Math.max(0, Math.min(4, Math.floor(Number(snapshot.heroCount || 0))));
+    const heroCount = Math.max(0, Math.min(6, Math.floor(Number(snapshot.heroCount || 0))));
     const heroHp = Array.isArray(result?.heroHp)
-      ? [0, 1, 2, 3].map((index) => Number(result.heroHp[index] || 0))
+      ? [0, 1, 2, 3, 4, 5].map((index) => Number(result.heroHp[index] || 0))
       : [];
     if (heroHp.slice(0, heroCount).some((hp) => !Number.isFinite(hp))) return null;
     const owner = {
@@ -7439,6 +7488,7 @@ function maybeResolvePartyDamageOwner(ctx, snapshot) {
 }
 
 export function ApplyPartyDamage(ctx, dmg) {
+  if (!getHeroes(ctx).length) return 0;
   const g = getGlobals(ctx);
   const snapshot = collectPartyDamageOwnerSnapshot(ctx, dmg);
   const ownerResult = maybeResolvePartyDamageOwner(ctx, snapshot);
@@ -7450,7 +7500,7 @@ export function ApplyPartyDamage(ctx, dmg) {
   if (shieldResult.absorbed > 0 && Number(g.PartyTempHPShield || 0) <= 0) {
     startPartyWardBarrierFadeOut(ctx);
   }
-  const heroes = getHeroes(ctx);
+  const heroes = getDeployedHeroes(ctx).slice(0, 6);
   const nextHeroHp = ownerResult ? ownerResult.heroHp : snapshot.jsHeroHp;
   for (let index = 0; index < heroes.length; index += 1) {
     const h = heroes[index];
@@ -7523,6 +7573,14 @@ function queueChainStrikeVisual(g, sourceTargetUID, targetUID, startAt, impactAt
 }
 
 function getActiveChainStrikeTier(ctx) {
+  if (Number(getGlobals(ctx).AstralFlowSpecialChainStrikeII || 0) === 1) {
+    return {
+      skillId: PARTY_CHAIN_STRIKE_II_ID,
+      actionName: 'Chain Strike II',
+      damagePct: ASTRAL_FLOW_CHAIN_STRIKE_II_DAMAGE_PCT,
+      maxBounces: 2,
+    };
+  }
   if (IsPartySessionSkillActive(ctx, PARTY_CHAIN_STRIKE_II_ID)) {
     return {
       skillId: PARTY_CHAIN_STRIKE_II_ID,
@@ -7590,10 +7648,12 @@ function queuePartyChainStrikeBounce(ctx, {
       calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
       heroName: actorName,
       heroType: mode,
+      attackVfxKind: combatAttackVfxKind(actor),
       effectType: 'chain_bounce',
       actionName: activeTier.actionName,
       generatedBySkillId: activeTier.skillId,
       chainStrikeDamagePct: activeTier.damagePct,
+      astralFlowChainStrikeII: activeTier.skillId === PARTY_CHAIN_STRIKE_II_ID ? 1 : 0,
       chainStrikeBounceIndex: bounceIndex + 1,
       chainStrikeBounceCount: maxBounces,
       chainStrikeSourceTargetUID: chainSourceUID,
@@ -7665,6 +7725,13 @@ function splitDamageAcrossLivingTargets(totalDamage, targetCount) {
   });
 }
 
+function combatAttackVfxKind(actor) {
+  const key = String(actor?.baseHeroName || actor?.name || '');
+  if (key === 'Runa') return 'runa_bolt';
+  if (key === 'Kojonn' || key === 'Kaja') return 'kaja_orb';
+  return 'impact';
+}
+
 function HeroAttackSplit(ctx, heroUID, rootTargetUID) {
   const actor = GetActorByUID(ctx, heroUID);
   const actorName = actor ? (actor.name || '?') : '?';
@@ -7701,6 +7768,8 @@ function HeroAttackSplit(ctx, heroUID, rootTargetUID) {
       consumePowerAmp: ampMult > 0 && index === 0 ? 1 : 0,
       effectType: 'damage',
       actionName: 'Split',
+      attackVfxKind: 'split',
+      attackVfxPrimary: index === 0 ? 1 : 0,
       generatedBySkillId: PARTY_SPLIT_ID,
       splitRootTargetUID: Number(rootTargetUID || 0),
       calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
@@ -7781,6 +7850,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
           calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
           heroName: actorName,
           heroType: mode,
+          attackVfxKind: combatAttackVfxKind(actor),
           targetTraceSequence: Number(g.ActiveManualTargetTraceSequence || 0),
         });
       }
@@ -7806,6 +7876,7 @@ export function HeroAttackSingle(ctx, heroUID, targetUID) {
     calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
     heroName: actorName,
     heroType: mode,
+    attackVfxKind: combatAttackVfxKind(actor),
     targetTraceSequence: Number(g.ActiveManualTargetTraceSequence || 0),
     msg: `${actorName} hit ${target.name || '?'} for ${finalDmg}!`,
   });
@@ -7859,6 +7930,7 @@ export function HeroAttackAOE(ctx, heroUID) {
       calcPath: mode === 'magic' ? 'magicCalc' : 'meleeCalc',
       heroName: actorName,
       heroType: mode,
+      attackVfxKind: combatAttackVfxKind(actor),
     };
     g.PendingHeroHits.push(packet);
   }
@@ -8087,7 +8159,7 @@ export function ProcessEnemyTurnDamageOverTime(ctx, enemyUID) {
 
 export function Enemy_ATK_Single(ctx, enemyUID, targetHeroUID) {
   const dmg = CalculateDamage(ctx, enemyUID, targetHeroUID, 'melee');
-  const appliedDamage = ApplyDamageToTarget(ctx, targetHeroUID, dmg);
+  const appliedDamage = ApplyDamageToTarget(ctx, targetHeroUID, dmg, {sourceUID:enemyUID});
   const enemyName = getActorNameByUID(ctx, enemyUID);
   const heroName = getActorNameByUID(ctx, targetHeroUID);
   LogCombat(ctx, `${enemyName} hit ${heroName} for ${appliedDamage}!`);
@@ -8095,19 +8167,8 @@ export function Enemy_ATK_Single(ctx, enemyUID, targetHeroUID) {
 
 export function Enemy_MAG_Single(ctx, enemyUID, targetHeroUID) {
   const dmg = CalculateDamage(ctx, enemyUID, targetHeroUID, 'magic');
-  const resist = applyRunaMagicResist(ctx, enemyUID, targetHeroUID, dmg, 'Enemy_MAG_Single');
-  const appliedDamage = resist.finalDamage > 0
-    ? ApplyDamageToTarget(ctx, targetHeroUID, resist.finalDamage)
-    : 0;
-  const enemyName = getActorNameByUID(ctx, enemyUID);
-  const heroName = getActorNameByUID(ctx, targetHeroUID);
-  if (resist.mode === 'nullify') {
-    LogCombat(ctx, `${heroName} nullified ${enemyName}'s magic!`);
-  } else if (resist.mode === 'heavy_resist') {
-    LogCombat(ctx, `${heroName} heavily resisted magic! (${dmg}->${appliedDamage})`);
-  } else {
-    LogCombat(ctx, `${enemyName} cast on ${heroName} for ${appliedDamage}!`);
-  }
+  const appliedDamage = ApplyDamageToTarget(ctx, targetHeroUID, dmg, {sourceUID:enemyUID,magic:true});
+  LogCombat(ctx, `${getActorNameByUID(ctx, enemyUID)} cast for ${appliedDamage}!`);
 }
 
 export function Enemy_Heal_Self(ctx, enemyUID) {
@@ -8120,8 +8181,9 @@ export function Enemy_Heal_Self(ctx, enemyUID) {
     highOffset: 4,
   });
   const heal = healInfo.finalHeal;
+  const beforeHP = Number(enemy.hp || 0);
   enemy.hp = Math.min(enemy.maxHP ?? enemy.hp, (enemy.hp ?? 0) + heal);
-  SpawnDamageText(ctx, heal, enemy.x ?? 0, enemy.y ?? 0, 'heal', 'enemy');
+  const appliedHeal = emitHealPresentation(ctx, enemy, enemy, beforeHP, { presentation: 'major' });
   traceEnemyHealRoll(ctx, {
     enemyUID,
     enemyName: String(enemy.name || 'Enemy'),
@@ -8133,8 +8195,8 @@ export function Enemy_Heal_Self(ctx, enemyUID) {
   LogCombat(
     ctx,
     healInfo.didCrit
-      ? `${enemy.name || 'Enemy'} critically healed for ${heal}!`
-      : `${enemy.name || 'Enemy'} healed for ${heal}!`,
+      ? `${enemy.name || 'Enemy'} critically healed for ${appliedHeal}!`
+      : `${enemy.name || 'Enemy'} healed for ${appliedHeal}!`,
   );
 }
 
@@ -8156,8 +8218,9 @@ export function Enemy_Heal_Allies(ctx, enemyUID) {
     return;
   }
   for (const ally of allies) {
+    const beforeHP = Number(ally.hp || 0);
     ally.hp = Math.min(ally.maxHP ?? ally.hp, (ally.hp ?? 0) + heal);
-    SpawnDamageText(ctx, heal, ally.x ?? 0, ally.y ?? 0, 'heal', 'enemy');
+    emitHealPresentation(ctx, healer, ally, beforeHP, { presentation: 'major' });
   }
   traceEnemyHealRoll(ctx, {
     enemyUID,
@@ -8199,8 +8262,9 @@ export function Enemy_Heal_Ally(ctx, enemyUID, targetEnemyUID = 0) {
     highOffset: 3,
   });
   const heal = healInfo.finalHeal;
+  const beforeHP = Number(target.hp || 0);
   target.hp = Math.min(target.maxHP ?? target.hp, (target.hp ?? 0) + heal);
-  SpawnDamageText(ctx, heal, target.x ?? 0, target.y ?? 0, 'heal', 'enemy');
+  const appliedHeal = emitHealPresentation(ctx, healer, target, beforeHP, { presentation: 'major' });
   traceEnemyHealRoll(ctx, {
     enemyUID,
     enemyName: String(healer.name || 'Enemy'),
@@ -8212,8 +8276,8 @@ export function Enemy_Heal_Ally(ctx, enemyUID, targetEnemyUID = 0) {
   LogCombat(
     ctx,
     healInfo.didCrit
-      ? `Chimerilass critically heals ${target.name || 'ally'} for ${heal}!`
-      : `Chimerilass heals ${target.name || 'ally'} for ${heal}!`,
+      ? `Chimerilass critically heals ${target.name || 'ally'} for ${appliedHeal}!`
+      : `Chimerilass heals ${target.name || 'ally'} for ${appliedHeal}!`,
   );
 }
 
@@ -8393,20 +8457,18 @@ export function SpawnEnemy(ctx, enemyData, slotIndex = 0) {
     uid,
     kind: 'enemy',
     name: enemyData.name || `Enemy_${uid}`,
+    expValue: enemyData.expValue ?? enemyData.EXP,
     hp: Number(enemyData.HP ?? 0),
     maxHP: Number(enemyData.HP ?? enemyData.maxHP ?? 0),
-    combatPower: Number(
-      enemyData.CombatPower
-      ?? enemyData.combatPower
-      ?? computeCombatPowerFromStats(
+    combatPower: computeCombatPowerFromStats(
         enemyData.ATK,
         enemyData.DEF,
         enemyData.HP ?? enemyData.maxHP,
         enemyData.MAG,
         enemyData.RES,
-        enemyData.attackType,
+        enemyData.SPD,
+        enemyData.level ?? enemyData.currentLevel,
       ),
-    ),
     stats: {
       ATK: Number(enemyData.ATK ?? 0),
       DEF: Number(enemyData.DEF ?? 0),
@@ -8457,7 +8519,7 @@ export function KillEnemyAt(ctx, slotIndex) {
   const astralFlowAward = AwardEnemyKoAstralFlow(ctx, deadEnemy, {
     killerUID: Number(currentUID || 0),
   });
-  if (astralFlowAward && astralFlowAward.ok && markEnemyDeathVisualHold(ctx, deadEnemy, slotIndex, currentUID)) {
+  if (markEnemyDeathVisualHold(ctx, deadEnemy, slotIndex, currentUID)) {
     g.IsPlayerBusy = 1;
     UpdateEnemyHPUI(ctx);
     return;
@@ -8498,7 +8560,7 @@ export function KillEnemyByUID(ctx, enemyUID, fallbackSlotIndex = 0) {
   const astralFlowAward = AwardEnemyKoAstralFlow(ctx, deadEnemy, {
     killerUID: Number(currentUID || 0),
   });
-  if (astralFlowAward && astralFlowAward.ok && markEnemyDeathVisualHold(ctx, deadEnemy, slotIndex, currentUID)) {
+  if (markEnemyDeathVisualHold(ctx, deadEnemy, slotIndex, currentUID)) {
     g.IsPlayerBusy = 1;
     UpdateEnemyHPUI(ctx);
     return;
@@ -9584,7 +9646,7 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
     const preferred = pendingManualTarget && g.SelectedEnemyUID ? GetActorByUID(ctx, g.SelectedEnemyUID) : null;
     const target = preferred && preferred.kind === 'enemy' && (preferred.hp ?? 0) > 0
       ? preferred
-      : randomPick(ctx, enemies);
+      : resolveHeroAttackTarget({ hero: actor, enemies, randomPick: candidates => randomPick(ctx, candidates) });
     if (target) {
       resolvedTargetUID = Number(target.uid || 0);
       HeroAttackSingle(ctx, actorUID, target.uid);
@@ -9607,11 +9669,7 @@ export function ExecuteSkill(ctx, skillId, actorUID) {
   } else if (skillId === 'Enemy_MAG_AOE') {
     handled = true;
     g.IsAOEMatch = 1;
-    for (const h of getHeroes(ctx)) {
-      const dmg = CalculateDamage(ctx, actorUID, h.uid, 'magic');
-      const resist = applyRunaMagicResist(ctx, actorUID, h.uid, dmg, 'Enemy_MAG_AOE');
-      if (resist.finalDamage > 0) ApplyDamageToTarget(ctx, h.uid, resist.finalDamage);
-    }
+    resolveNativeEnemyArea(ctx, actorUID);
   }
 
   if (!handled) {
@@ -9738,7 +9796,7 @@ function recordEnemyTurnFlowOwner(g, decision, source) {
 
 export function EnemyTurn(ctx, enemyUID) {
   const g = getGlobals(ctx);
-  if (Number(g.SkillDraughtOpen || 0)) return;
+
   const activeEnemyUID = Number(enemyUID || GetCurrentTurn(ctx) || 0);
   const root = typeof globalThis !== 'undefined' ? globalThis : null;
   const ownerHook = root && typeof root.__ORKA_ENEMY_TURN_FLOW_OWNER__ === 'function'
@@ -9760,7 +9818,6 @@ export function EnemyTurn(ctx, enemyUID) {
     ProcessTurn(ctx);
     return;
   }
-  ProcessEnemyTurnDamageOverTime(ctx, activeEnemyUID);
   const enemy = GetActorByUID(ctx, activeEnemyUID);
   const decision = resolveEnemyTurnFlowCompat({
     source: 'functionBank.EnemyTurn.afterDot',
@@ -9803,7 +9860,7 @@ export function HeroTurn(ctx, heroUID) {
     source: 'functionBank.HeroTurn.entry',
     heroUID,
     currentHeroUIDBefore: Number(g.CurrentHeroUID || 0),
-    skillDraughtOpen: Number(g.SkillDraughtOpen || 0),
+    skillDraughtOpen: 0,
     astralFlowAmpPoints: Number(g.AstralFlowAmpPoints || 0),
     astralFlowAmpMax: Number(g.AstralFlowAmpMax || 18),
     astralFlowAmpReady: Number(g.AstralFlowAmpReady || 0),
@@ -9845,7 +9902,28 @@ export function HeroTurn(ctx, heroUID) {
       }
     }
   }
+  if (activeHeroUID) {
+    const entities = getEntities(ctx);
+    const hero = entities.find(entity => Number(entity?.uid || 0) === activeHeroUID && entity?.kind === 'hero');
+    const target = resolveHeroAttackTarget({ hero, enemies: entities.filter(entity => entity?.kind === 'enemy'), randomPick: candidates => randomPick(ctx, candidates) });
+    if (target) {
+      g.SelectedEnemyUID = Number(target.uid || 0);
+      g.SelectedEnemyUIDOwner = activeHeroUID;
+      executeHeroCommand(ctx, { actorUID: activeHeroUID, targetUID: Number(target.uid) });
+    }
+  }
 }
+
+export function openHeroTurnCardFan(ctx, heroUID) { return importedOpenHeroTurnCardFan(ctx, heroUID); }
+export function reopenHeroTurnCardFan(ctx) { return importedReopenHeroTurnCardFan(ctx); }
+export function cancelHeroTurnCardFan(ctx) { return importedCancelHeroTurnCardFan(ctx); }
+export function selectHeroTurnCard(ctx, index, targetUID = 0) { return importedSelectHeroTurnCard(ctx, index, targetUID); }
+export function getHeroTurnCardFanState(ctx) { return importedGetHeroTurnCardFanState(ctx); }
+export const OpenHeroTurnCardFan = openHeroTurnCardFan;
+export const ReopenHeroTurnCardFan = reopenHeroTurnCardFan;
+export const CancelHeroTurnCardFan = cancelHeroTurnCardFan;
+export const SelectHeroTurnCard = selectHeroTurnCard;
+export const GetHeroTurnCardFanState = getHeroTurnCardFanState;
 
 function resolveProcessTurnActorEligibility(ctx, {
   source = 'functionBank.ProcessTurn',
@@ -9902,13 +9980,64 @@ function resolveProcessTurnActorEligibility(ctx, {
   return result;
 }
 
+function clearDefeatedAstralFlowSpecials(ctx) {
+  const g = getGlobals(ctx);
+  const defeated = new Set(getEntities(ctx)
+    .filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) <= 0)
+    .map(actor => Number(actor.uid || 0))
+    .filter(uid => uid > 0));
+  if (!defeated.size) return;
+  if (Number(g.PartyTempHPShieldSourceUID || 0) > 0 && defeated.has(Number(g.PartyTempHPShieldSourceUID || 0))) {
+    g.PartyTempHPShield = 0;
+    g.PartyTempHPShieldStacks = 0;
+    startPartyWardBarrierFadeOut(ctx);
+    delete g.PartyTempHPShieldSourceUID;
+  }
+  if (Array.isArray(g.TaintedGroundZones)) {
+    g.TaintedGroundZones = g.TaintedGroundZones.filter(zone => !(Number(zone?.astralFlowSpecial || 0) === 1 && defeated.has(Number(zone?.sourceUID || 0))));
+  }
+  if (Array.isArray(g.PendingHeroHits)) {
+    g.PendingHeroHits = g.PendingHeroHits.filter(hit => !(Number(hit?.astralFlowSpecial || 0) === 1 && defeated.has(Number(hit?.heroUID || hit?.sourceUID || 0))));
+  }
+}
+
+function processAstralFlowDestinyAtHeroTurn(ctx, heroUID) {
+  const g = getGlobals(ctx);
+  const regens = g.AstralFlowDestinyRegensByUID;
+  if (!regens || typeof regens !== 'object') return false;
+  const uid = Number(heroUID || 0);
+  const regen = regens[uid];
+  const actor = GetActorByUID(ctx, uid);
+  const turnSerial = Number(g.TurnSerial || 0);
+  if (!regen || !actor || actor.kind !== 'hero' || Number(actor.hp || 0) <= 0 || Number(regen.remainingTicks || 0) <= 0) return false;
+  if (turnSerial <= Number(regen.activatedAtTurnSerial || 0) || Number(regen.lastProcessedTurnSerial || -1) === turnSerial) return false;
+  const amount = Math.max(1, Math.floor(Math.max(0, Number(actor.maxHP || actor.MaxHP || 0)) * Number(regen.healPct || 0.08)));
+  const before = Math.max(0, Number(actor.hp || 0));
+  actor.hp = Math.min(Math.max(before, Number(actor.maxHP || actor.MaxHP || 0)), before + amount);
+  const applied = Math.max(0, Number(actor.hp || 0) - before);
+  regen.remainingTicks = Math.max(0, Number(regen.remainingTicks || 0) - 1);
+  regen.lastProcessedTurnSerial = turnSerial;
+  if (applied > 0) emitHealPresentation(ctx, actor, actor, before);
+  syncPartyHpTotalsFromHeroes(ctx);
+  UpdateHeroHPUI(ctx);
+  LogCombat(ctx, `Destiny restores ${applied} HP to ${actor.name || 'the hero'}.`);
+  if (regen.remainingTicks <= 0) delete regens[uid];
+  g.PartyRegens = Object.values(regens).map(entry => ({ ...entry, remainingFires: Number(entry.remainingTicks || 0), effectName: 'Destiny' }));
+  if (!Object.keys(regens).length) delete g.AstralFlowDestinyRegensByUID;
+  return true;
+}
+
+export function ProcessAstralFlowDestinyRegen(ctx, heroUID) {
+  return processAstralFlowDestinyAtHeroTurn(ctx, heroUID);
+}
+
 export function ProcessTurn(ctx) {
   const type = GetCurrentType(ctx);
   const uid = GetCurrentTurn(ctx);
   const actor = GetActorByUID(ctx, uid);
   const g = getGlobals(ctx);
-  if (Number(g.SkillDraughtOpen || 0)) return;
-  if (g.BoardFillActive) return;
+
+
   resolvePendingEnemyDeaths(ctx);
   if (holdForEnemyRosterRefill(ctx)) return;
   recoverStaleActionInProgress(g, uid);
@@ -9938,6 +10067,9 @@ export function ProcessTurn(ctx) {
     });
     return;
   }
+  if (!actor) { AdvanceTurn(ctx); return; }
+  nativeTurnStarted(ctx, actor);
+  if (actor.hp <= 0) { AdvanceTurn(ctx); return; }
   g.DebugTurnCount = (g.DebugTurnCount || 0) + 1;
   console.log(`[DEBUG] matches=${g.DebugMatchCount || 0} turns=${g.DebugTurnCount}`);
   const dynamicCurrent = getDynamicInitiativeDefaultCurrent(g);
@@ -9970,12 +10102,6 @@ export function ProcessTurn(ctx) {
     const cpSuffix = type === 1 ? ` CP: ${Math.round(cp)}` : '';
     console.log(`[TURN] idx=${g.CurrentTurnIndex} ${actor.name || uid} type=${type} SPD: ${Math.round(eff)}${cpSuffix}`);
   }
-  runTraitHooks(ctx, 'turn_start', {
-    actorUID: Number(uid || 0),
-    actorKind: String(actor?.kind || ''),
-    turnType: Number(type || 0),
-    turnIndex: Number(g.CurrentTurnIndex || 0),
-  });
 
   if (type === 0) {
     g.GroupResolving = 1;
@@ -9983,7 +10109,6 @@ export function ProcessTurn(ctx) {
       g.ActiveGroupIndex = g.RoundGroupIndex || 0;
     }
     const pendingGroup = g.PendingDeaths ? g.PendingDeaths[uid] : null;
-    const partyAlive = (g.PartyHP || 0) > 0;
     const heroEligibility = resolveProcessTurnActorEligibility(ctx, {
       source: 'functionBank.ProcessTurn.hero',
       turnType: type,
@@ -9995,10 +10120,17 @@ export function ProcessTurn(ctx) {
       blueBuffSequenceActive: 0,
     });
     if (heroEligibility.code === TURN_ACTOR_ELIGIBILITY_ACT) {
+      if (typeof processAstralFlowDestinyAtHeroTurn === 'function') processAstralFlowDestinyAtHeroTurn(ctx, uid);
+      runTraitHooks(ctx, 'turn_start', {
+        actorUID: Number(uid || 0),
+        actorKind: String(actor?.kind || ''),
+        turnType: Number(type || 0),
+        turnIndex: Number(g.CurrentTurnIndex || 0),
+      });
       HeroTurn(ctx, uid);
     } else {
-      if (actor && !partyAlive) {
-        console.log(`[TURN] skip hero uid=${uid} partyHP=${g.PartyHP || 0}`);
+      if (actor && Number(actor.hp ?? 0) <= 0) {
+        console.log(`[TURN] skip hero uid=${uid} HP=${actor.hp || 0}`);
       }
       AdvanceTurn(ctx);
       if (holdForEnemyRosterRefill(ctx)) return;
@@ -10025,6 +10157,12 @@ export function ProcessTurn(ctx) {
     });
     if (enemyEligibility.code === TURN_ACTOR_ELIGIBILITY_HOLD) return;
     if (enemyEligibility.code === TURN_ACTOR_ELIGIBILITY_ACT) {
+      runTraitHooks(ctx, 'turn_start', {
+        actorUID: Number(uid || 0),
+        actorKind: String(actor?.kind || ''),
+        turnType: Number(type || 0),
+        turnIndex: Number(g.CurrentTurnIndex || 0),
+      });
       EnemyTurn(ctx, uid);
     } else {
       AdvanceTurn(ctx);
@@ -10446,7 +10584,9 @@ export function Enemy_Wipe(ctx, enemyUID) {
       const share = baseShare + (remainder > 0 ? 1 : 0);
       if (remainder > 0) remainder -= 1;
       if ((enemy.hp || 0) <= 0) continue;
+      const beforeHP = Number(enemy.hp || 0);
       enemy.hp = Math.min(enemy.maxHP || enemy.hp || 0, (enemy.hp || 0) + share);
+      emitHealPresentation(ctx, GetActorByUID(ctx, enemyUID), enemy, beforeHP, { presentation: 'major' });
     }
     UpdateEnemyHPUI(ctx);
   }
@@ -10516,11 +10656,7 @@ export function ExecuteEnemyJobSkill(ctx, enemyUID, skillId, targetUID = 0) {
     return resultValue || 1;
   }
   if (actionCode === ENEMY_JOB_ACTION_MAGIC_AOE) {
-    for (const h of getHeroes(ctx)) {
-      const dmg = CalculateDamage(ctx, enemyUID, h.uid, 'magic');
-      const resist = applyRunaMagicResist(ctx, enemyUID, h.uid, dmg, 'Enemy_MAG_AOE');
-      if (resist.finalDamage > 0) ApplyDamageToTarget(ctx, h.uid, resist.finalDamage);
-    }
+    resolveNativeEnemyArea(ctx, enemyUID);
     return resultValue || 1;
   }
   if (actionCode === ENEMY_JOB_ACTION_DRAIN_BUFF) {
@@ -10543,6 +10679,7 @@ export function StartEnemyAction(ctx, enemyUID) {
   if (g.ActionInProgress && g.ActionActorUID && g.ActionActorUID !== enemyUID) return;
   g.ActionInProgress = 1;
   g.ActionActorUID = enemyUID;
+  g.ActionOwnerUID = Number(enemyUID || 0);
   if (enemy.originX == null) enemy.originX = SlotX(ctx, enemy.slotIndex ?? 0);
   if (enemy.originY == null) enemy.originY = SlotY(ctx, enemy.slotIndex ?? 0);
   if (enemy.x == null) enemy.x = enemy.originX;
@@ -10579,11 +10716,12 @@ export function StartEnemyAction(ctx, enemyUID) {
     actionApplied: Number(decision.actionApplied || 0) === 1,
     targetUID: Number(decision.targetUID || 0),
     skillId: String(decision.skillId || skillId || ''),
+    stationary: /^Enemy_Heal_/.test(String(decision.skillId || skillId || '')),
     forwardX: Number(decision.forwardX ?? ((enemy.originX ?? enemy.x ?? 0) - 55)),
   };
 }
 
-export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind = null) {
+export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind = null, notBeforeOverride = null) {
   const g = getGlobals(ctx);
   g.DamageTexts = g.DamageTexts || [];
   const textKind = String(kind || 'damage');
@@ -10635,6 +10773,14 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
   const riseInSec = 0.18;
   const holdSec = 0.7;
   const fadeSec = 0.45;
+  const now = Number(g.time || 0);
+  const pendingHitEnd = Math.max(0, ...(g.PendingHeroHits || []).map(hit => Number(hit?.at || 0) + 0.32));
+  const impactEnd = Math.max(0, ...(g.CombatImpactVisuals || []).map(impact => Number(impact?.startAt || 0) + 0.32));
+  const chainEnd = Math.max(0, ...(g.ChainStrikeVisuals || []).map(visual => Number(visual?.startAt || 0) + Number(visual?.duration || 0.28) + 0.18));
+  const hasNotBeforeOverride = Number.isFinite(Number(notBeforeOverride));
+  const notBefore = hasNotBeforeOverride
+    ? Math.max(now, Number(notBeforeOverride))
+    : (textKind === 'heal' ? now : Math.max(now, Number(g.ActionLockUntil || 0), pendingHitEnd, impactEnd, chainEnd));
   g.DamageTextLayerSeq = Number(g.DamageTextLayerSeq || 0) + 1;
   const zIndex = g.DamageTextLayerSeq;
   g.DamageTexts.push({
@@ -10660,9 +10806,17 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
     opacity: 1,
     riseInSec,
     holdSec,
-    fadeSec
+    fadeSec,
+    notBefore
   });
-  g.TextAnimEndAt = Math.max(g.TextAnimEndAt || 0, (g.time || 0) + riseInSec + holdSec + fadeSec);
+  g.TextAnimEndAt = Math.max(g.TextAnimEndAt || 0, notBefore + riseInSec + holdSec + fadeSec);
+  const actionOwnerUID = Number(g.ActionActorUID || g.ActionOwnerUID || 0);
+  if (actionOwnerUID && (g.ActionInProgress || g.HeroAction?.active || g.EnemyAction?.active)) {
+    g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), Number(g.TextAnimEndAt || 0));
+    g.DeferAdvance = 1;
+    g.AdvanceAfterAction = 1;
+    g.ActionOwnerUID = actionOwnerUID;
+  }
 }
 
 export function StartBuffRoll(ctx) {
@@ -10694,14 +10848,14 @@ export function StartBuffRoll(ctx) {
   g.ActionOwnerUID = g.ActionOwnerUID || g.PendingActor || g.BuffRollActor || GetCurrentTurn(ctx);
 }
 
-export function StartHeroLunge(ctx, actorUID) {
+export function StartHeroLunge(ctx, actorUID, options = {}) {
   const g = getGlobals(ctx);
   if (!actorUID) {
     delete g.NextHeroActionProfile;
     return 0;
   }
   const currentTurnUID = Number(GetCurrentTurn(ctx) || 0);
-  if (currentTurnUID && Number(actorUID || 0) !== currentTurnUID) {
+  if (!options.allowOutOfTurn && currentTurnUID && Number(actorUID || 0) !== currentTurnUID) {
     logActionGateBlock(g, '[ACTION_HANDOFF_REFUSED]', {
       source: 'StartHeroLunge',
       reason: 'actor-not-current-turn',
@@ -10721,10 +10875,13 @@ export function StartHeroLunge(ctx, actorUID) {
     delete g.NextHeroActionProfile;
     return 0;
   }
-  const profile = String(g.NextHeroActionProfile || 'single');
+  const requestedProfile = String(g.NextHeroActionProfile || 'single');
+  const actor = GetActorByUID(ctx, actorUID);
+  const profile = actor?.attackType === 'magic' ? 'ranged' : requestedProfile;
   delete g.NextHeroActionProfile;
   g.ActionInProgress = 1;
   g.ActionActorUID = actorUID;
+  g.ActionOwnerUID = Number(actorUID || 0);
   g.IsPlayerBusy = 1;
   g.CanPickGems = 0;
   g.TurnPhase = 1;
@@ -10737,6 +10894,9 @@ export function StartHeroLunge(ctx, actorUID) {
   g.HeroAction = {
     uid: actorUID,
     profile,
+    stationary: profile === 'ranged',
+    homeX: Number(g.HeroRestBasePosByUID?.[Number(actorUID || 0)]?.x ?? actor?.x ?? 0),
+    homeY: Number(g.HeroRestBasePosByUID?.[Number(actorUID || 0)]?.y ?? actor?.y ?? 0),
     state: 'ADVANCE',
     timer: 0,
     active: true,
@@ -10775,3 +10935,6 @@ export function RegisterPartyBuffSlot(ctx, buffType) {
   g.BuffIconPopAt = g.time || 0;
   g.BuffIconPopStacking = 0;
 }
+
+export function ResolveNativeCommandStep(ctx, hit) { return resolveNativeCommandStep(ctx, hit); }
+export function SettleCombatDefeat(ctx) { return settleDefeat(ctx); }

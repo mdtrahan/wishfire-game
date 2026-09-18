@@ -9,21 +9,25 @@
 - `functionBank.js` owns high-risk gameplay functions: turns, damage, gem actions, skill draw, enemy behavior, status effects, progression bridges, and Rust-owner packet routing.
 - `functionRegistry.js` owns context creation and function dispatch.
 - `mainSheet.js` and `skillSheet.js` own smaller Construct-era behavior surfaces used by the registry.
+- `sessionLevelUpBuffPresentation.mjs` consumes the shared production catalog and owns opening/100-AF queue reconciliation, level-up settlement, offer presentation, and selection routing. It must not define a second card pool.
 
 ## Local Contracts
 - `state.globals` is the live runtime envelope. New fields need a clear owner, reset/init behavior, tests, and debug/proof visibility when user-facing.
 - `Scripts/functionBank.js` mirrors selected high-risk functions. Do not drift mirrored functions without a test and explicit bead scope.
 - Combat uses speed-based interleaved initiative for normal combat. Do not force strict `Heroes -> Enemies -> Heroes` team phases unless a future bead explicitly changes that product decision.
+- A completed native hero action owns its deferred scheduler handoff through `ProcessTurn`. If presentation release exposes another living hero first, reconcile from `ActionOwnerUID` before advancing; retain enemy-roster holds and terminal settlement guards. If the resulting scheduler UID has no live entity, advance before native turn setup.
+- A late enemy-death removal must retain or create that deferred handoff; clearing the defeated actor after FLOW delivery cannot leave `IsPlayerBusy` without `DeferAdvance`.
 - Use `CanPickGems` through numeric readiness helpers such as `isCanPickGemsReady`; do not rely on strict boolean checks.
-- Astral Flow fills the SkillDraught path. Skill cards must declare `one_off`, `tiered`, or `repeatable`, and one-off exposure/selection must suppress duplicates.
-- Active party draw behavior is party-scoped. Do not couple party skills such as Crimson Ward to a hero supergem unless the product docs and tests explicitly say so.
+- Personal FLOW owns combat charge. Roguelite card acquisition and proc entrypoints are paused; stale draw fields must not block combat. Parked definitions do not authorize reactivation.
+- Native wards, Cover, Reprisal, Rally and weakness are actor-owned combat effects; card-session records cannot activate them.
+- HERO_SINGLE keeps a valid owner-matched manual enemy selection; its automatic fallback delegates to the shared role-targeting rule.
 - Supergem behavior is separate from skill-card selection. Kojonn's Faze is not a green gem or green supergem trigger, and retired green supergem state must fail closed.
 - Once a rule family is Rust-owned, route through the owner packet/shadow seam and apply the returned decision instead of recomputing the outcome.
 
 ## Work Guidance
 - Start gameplay edits by locating the current function and its contract test. Add or update the contract before changing behavior when practical.
 - Keep local helper names aligned with product docs and tests; avoid aliases like old placeholder skill names unless a compatibility test requires them.
-- For progression changes, verify whether the owner is runtime session state, hero gem persistence, skill points, Vault/relic progression, or token wallet.
+- For progression changes, verify whether the owner is runtime session state, hero EXP persistence, Vault/relic progression, or token wallet.
 - Keep debug/dev-panel controls mutating only the intended QA state; side-panel readouts should remain informational.
 
 ## Verification
@@ -40,4 +44,37 @@
 
 - QuestFiniteEncounter is set for authored quest combat and suppresses enemy replenishment at the existing death-removal and respawn seams. It must not alter damage, skills or initiative. Quest resurrection restores heroes while retaining skills, buffs and enemy progress.
 
-- Energy is a macro balance: quest entry spends it, combat actions do not. Purple recovery remains active. Combat defeat depends on party HP/living heroes; Continue preserves energy.
+- Energy is a macro balance: quest entry spends it, combat actions do not. Purple recovery remains active. Combat defeat depends on living heroes; Continue preserves energy.
+
+- Initiative rosters and turn-start hooks exclude KO actors independently of pooled HP. Keep HP roster enumeration separate from acting/target eligibility while the remaining HP writers migrate.
+
+- Hero entity HP/maxHP owns health. getDeployedHeroes retains KO identity and fixed display slots; getHeroes returns living targets. Rebuild health projections from the deployed roster, clearing stale arrays. Damage and Destiny ignore KO recipients; ApplyPartyDamage handles up to six actual members through its Rust owner.
+
+- heroCommands.mjs commits native commands through the existing lunge and shared damage path. Validate the scheduled living actor, living target, enemy roster stability and presentation barrier before writing intent. A refused handoff keeps the draft unspent. Command slots preserve loaded display positions through KO; six is capacity.
+- ApplyActiveHeroHeal replaces pooled healing: resolve the scheduled living hero, clamp healing to that actor, and reproject totals. DoHeal rejects non-active/KO actors and retains its turn-spending sequence. Percentage recovery uses the recipient maximum. Magic Fruit keeps party max-HP growth while healing only the active hero.
+- heroCommands.mjs commits one ordered native sequence after full validation and spends personal charge only after the lunge accepts. FLOW overrides the queue; the normal presentation barrier advances once. Active-turn ownership remains with the scheduled actor through animation.
+- heroCommands.mjs reports successful magic pressure from the same resolved damage action. This lets Runa's Controller basic earn one Tactician AF award without creating an enemy-death gem.
+- `ActionOwnerUID` and `ActionLockUntil` are the single presentation handoff boundary. Every resolved heal, hit, bloom, or special effect must extend the current action through its final visible frame before `ProcessTurn` can claim another action. A cross-actor heal preserves that action owner; a heal emitted after a hero command claim delays that hero's motion and queued hits until the bloom releases.
+- Defeated enemies remain renderable through the complete attack package, including every Chain Strike target, impact and damage float. Their FLOW gem delivery follows that package and must finish before removal or another actor action. A lethal native command creates the held death state in the same resolution step that reaches zero HP. Starting gem delivery preserves that state so the sprite cannot leave and re-enter the scene.
+- A lethal AF Chain Strike II hit creates its visual death hold immediately even while the group resolver is active. Its non-finite encounter batch refills in the same frame as post-FLOW death removal, with no empty-roster delay before the replacement wave.
+- Opening-session Chain Strike II is one immediate AF attack. Selecting it must not install the `mirage_chain` session passive on any hero.
+- Session and AF card offers remain queued while any prior combat presentation is visible. In particular, enemy-death AF gems must finish their collection flash before a threshold offer may open.
+
+- Paid sequences reserve only their actual SP costs after accepted launch; FLOW specials empty FLOW and preserve SP. Neither resource is projected from the other.
+
+- `heroCommands.mjs` reserves a legal sequence once, revalidates each action, refunds only unexecuted costs, and settles victory before progression. Ordinary counters never own a turn.
+- Hero Turn Card Fan state is session and turn serial scoped. Cancel preserves the drawn cards for reopen, while selection consumes the fan through the existing native lunge and command sequence. A single-enemy card consumes the current living battlefield selection on card tap, falling back to the first living enemy; single-ally cards retain the existing battlefield ally selector, while self and group cards resolve immediately. Commanding Challenge applies a selected-enemy taunt that expires on the source hero's next turn. Sandlock and Sealed Horizon use one-shot queue delay offsets that preserve actor Speed and the delayed occurrence. Rooftop Cut, Borrowed Breath, Borrowed Starlight and Spare Spark use supported mark, conditional damage, delay, weaken and shield effects without a separate resource economy. Hero-card healing emits presentation from the actual resolved HP delta, and barrier visuals project from actor-owned barrier state through the existing ward asset.
+
+- Enemy KO calls orb generation through the shared defeat transition with per-enemy reward deduplication. Immediate AF specials may defer that transition only until their owner FLOW reset completes; damage telemetry records first. rulesContext supplies separate FlowRandom and RuntimeRandom streams. Personal meter charge occurs at orb collection only.
+
+- Native victory awards each defeated enemy's goldValue (configurable fallback PROGRESSION.enemyGold) once at the same guarded settlement as EXP. Defeat gives no victory Gold. The shared equipment economy persists the resulting wallet.
+- Party KO settles the native defeat terminal through the existing outcome path, records `ProgressionBattle.outcome=defeat` with no victory EXP or Gold, clears pending fan/native command state, and resets settlement plus the terminal marker when Continue resurrects the encounter.
+- Resolved healing emits one `DamageTexts` heal record with the actual positive HP delta; the app-owned bloom follows that record. Crimson Ward consumes its shared ward before every hostile hero HP change. Dawn Chorus checks its owned seeded session roll once at full-party defeat and restores the party only on success.
+- Arcane Pulse visual packets source from the casting hero's rendered resting sprite base. They never average the party formation or inherit lunge displacement.
+- Transient Astral Flow attack visuals begin after the card-selection fan clears so their illustrated delivery remains visible in ordinary combat.
+- Turn-start Destiny healing runs only after the scheduled hero has claimed its native command. Its bloom and combat text must not activate the presentation barrier before that same command starts.
+- `ApplyActiveHeroHeal` and `DoHeal` use `emitResolvedHealEvent` through their mirrored skill-sheet helper. The local fallback only supports stripped-import contract harnesses; shipped runtime never bypasses the shared emitter.
+- Hero damage packets declare only their attack VFX kind. Magic basic attackers keep their resting position while the presentation system carries the projectile to the target; both function-bank mirrors must remain identical.
+- Native basic command resolution writes the actual dealt damage onto its presentation packet so impact tiers compare against target max HP without estimating combat math.
+- Chain Strike and hero AOE damage packets carry the attacking hero's VFX kind on every target packet so each resolved target receives its own contact splash. The party-owned AF Chain Strike II sequence uses one neutral impact identity for its primary hit and bounces; the selecting hero must not recolor it.
+- `HeroTurn` must draw a fresh living-enemy target for each automatic hero action. `SelectedEnemyUID` records that actor's choice for presentation and follow-up effects; it must not become the next hero's targeting input.

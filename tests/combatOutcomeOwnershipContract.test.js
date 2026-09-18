@@ -14,6 +14,7 @@ test('simulation core module exposes a Rust-owned combat outcome marker', () => 
   assert.match(shadowSrc, /window\.__ORKA_COMBAT_OUTCOME_OWNER__/);
   assert.match(shadowSrc, /export function createSimulationCoreCombatOutcomeResolution/);
   assert.match(shadowSrc, /simulationCore\.startup\.combatOutcomeOwner/);
+  assert.match(shadowSrc, /combatOutcomeOwner\.noLivingHeroes[\s\S]*livingHeroes:\s*0[\s\S]*jsCode:\s*3/);
   assert.match(shadowSrc, /combatOutcomeOwnerChecks/);
   assert.match(shadowSrc, /dataset\.simCoreShadowCombatOutcomeOwner/);
 });

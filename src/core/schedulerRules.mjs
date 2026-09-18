@@ -42,19 +42,26 @@ export function isAbleToActSlot(actor = {}) {
   if (Number(actor.hp ?? actor.HP ?? 1) <= 0) return false;
   if (actor.isAlive === false) return false;
   if (actor.ableToAct === false) return false;
-  if (actor.disabled || actor.stunned || actor.stopped || actor.paralyzed) return false;
+  if (actor.disabled || actor.stunned || actor.stopped || actor.frozen || actor.freeze || actor.paralyzed) return false;
+  const normalizeStatus = value => {
+    if (!value || typeof value !== 'object') return `|${String(value || '').toLowerCase()}|`;
+    return `|${[value.statusEffect, value.status, value.type, value.name, value.key]
+      .map(entry => String(entry || '').toLowerCase()).join('|')}|`;
+  };
   const statusValues = [
     actor.status,
     actor.state,
     ...(Array.isArray(actor.statuses) ? actor.statuses : []),
     ...(Array.isArray(actor.statusEffects) ? actor.statusEffects : []),
-  ].map(value => String(value || '').toLowerCase());
+  ].map(normalizeStatus);
   return !statusValues.some(value => (
-    value === 'dead'
-    || value === 'disabled'
-    || value === 'stopped'
-    || value === 'paralyzed'
-    || value === 'stunned'
+    value.includes('|dead|')
+    || value.includes('|disabled|')
+    || value.includes('|stopped|')
+    || value.includes('|frozen|')
+    || value.includes('|freeze|')
+    || value.includes('|paralyzed|')
+    || value.includes('|stunned|')
   ));
 }
 

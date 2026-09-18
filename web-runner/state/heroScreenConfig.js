@@ -10,13 +10,7 @@ export const HERO_CLASS_LABELS = Object.freeze({
   runa: 'Mystic',
   kojonn: 'Arcanist',
 });
-// Deterministic gate metric used for progression/access comparisons.
-export function computeCombatPower(atk, def, hp) {
-  const a = Number(atk || 0);
-  const d = Number(def || 0);
-  const h = Number(hp || 0);
-  return Math.round((a + d + (h / 10)) * 100) / 100;
-}
+export {computeCombatPower} from '../src/core/combatPower.mjs';
 export const HERO_STAT_KEYS = ['ATK', 'DEF', 'MAG', 'RES', 'SPD', 'HP'];
 export const HERO_PACK_PLUS_PATH = 'images/plus.png';
 export const HERO_PACK_MINUS_PATH = 'images/minus.png';

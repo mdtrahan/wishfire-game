@@ -29,23 +29,6 @@ function getActorName(callFunctionWithContext, fnContext, actorUID) {
   return String(actor && actor.name || 'Hero');
 }
 
-function clearBlueGemBuffPresentationState(globals) {
-  globals.BuffRollApplyStat = 0;
-  globals.BuffRollSkillID = '';
-  globals.BuffRollActor = 0;
-  globals.BuffRollType = 0;
-  globals.BlueBuffSequenceActive = 0;
-  globals.BuffRollActive = 0;
-  globals.BuffRollDoneAt = 0;
-  globals.BuffIconPopType = -1;
-  globals.BuffIconPopAt = 0;
-  globals.BuffIconPopStacking = 0;
-  globals.TrackBuffs = [-1, -1, -1, -1];
-  globals.PartyBuffSlots = [];
-  globals.PartyBuffUI = { atk: false, def: false, mag: false, res: false };
-  globals.BuffFrames = [-1, -1, -1, -1];
-}
-
 function getNextSuperGemBatchId(state) {
   const next = Math.max(1, Number(state?.globals?.NextSuperGemBatchId || 1));
   state.globals.NextSuperGemBatchId = next + 1;
@@ -916,29 +899,11 @@ export function activateSuperGemEffect({
   if (!superGem || !state || !state.globals) return false;
   const rng = getRuntimeRandom(state);
   const color = Number(superGem.baseColor);
-  if (color === 0) return false;
+  if (color === 0 || color === 2) return false;
   if (!(actorUID > 0)) return false;
   state.globals.HideHeroSelector = color === 1 ? 0 : 1;
   if (color === 1) {
     return armPendingSuperGemAttack({ superGem, actorUID, state, selectedEnemyUID });
-  }
-  if (color === 2) {
-    if (typeof startGemMergeFx === 'function') {
-      startGemMergeFx({ sourceItems });
-    }
-    const consumedBlue = randomIntInclusive(4, 6, rng);
-    callFunctionWithContext(fnContext, 'RegisterHeroGemUsage', actorUID, 2, consumedBlue);
-    callFunctionWithContext(fnContext, 'LogGemIntent', 2, 'BLUE', 'Skill_Draught', 'supergem-routing', actorUID);
-    state.globals.IsAOEMatch = 0;
-    clearBlueGemBuffPresentationState(state.globals);
-    callFunctionWithContext(fnContext, 'QueueSkillDraughtForHero', actorUID);
-    state.globals.CanPickGems = 0;
-    state.globals.IsPlayerBusy = 0;
-    state.globals.ActionOwnerUID = actorUID;
-    state.globals.ActionLockUntil = Math.max(Number(state.globals.ActionLockUntil || 0), Number(state.globals.time || 0) + 0.32);
-    state.globals.DeferAdvance = 1;
-    state.globals.AdvanceAfterAction = 1;
-    return true;
   }
   if (color === 3) {
     const huunUID = resolveHuunGoldstrikeActorUID({

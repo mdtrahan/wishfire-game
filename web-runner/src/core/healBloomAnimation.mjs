@@ -9,7 +9,10 @@ function random(min, max) {
 export function createHealBloom({
   x,
   y,
+  targetUID = 0,
+  ownerUID = 0,
   count = 12,
+  presentation = 'minor',
 }) {
   const total = Math.max(8, Math.min(14, Math.floor(Number(count || 12))));
   const particles = [];
@@ -17,6 +20,9 @@ export function createHealBloom({
   const animation = {
     x: Number(x || 0),
     y: Number(y || 0),
+    targetUID: Number(targetUID || 0),
+    ownerUID: Number(ownerUID || targetUID || 0),
+    presentation: presentation === 'major' ? 'major' : 'minor',
     particles,
     timelines,
     complete: false,
@@ -27,12 +33,11 @@ export function createHealBloom({
   };
 
   for (let i = 0; i < total; i += 1) {
-    const angle = random(0, Math.PI * 2);
-    const distance = random(40, 90);
-    const dx = Math.cos(angle) * distance * HEAL_BLOOM_WIDTH_SCALE;
-    const dy = Math.sin(angle) * distance * 0.7;
-    const delay = random(0, 0.15);
-    const rotation = random(-20, 20);
+    const dx = random(-24, 24) * HEAL_BLOOM_WIDTH_SCALE;
+    const dy = -random(44, 78);
+    const delay = (i / total) * 0.22;
+    const riseDuration = 1.05 - delay;
+    const rotation = random(-12, 12);
     const particle = {
       glyph: '➕',
       x: 0,
@@ -47,35 +52,30 @@ export function createHealBloom({
     particles.push(particle);
 
     const tl = gsap.timeline();
-    tl.delay(delay);
     tl.to(particle, {
-      scale: 1.2,
-      opacity: 1,
-      duration: 0.12,
-      ease: 'back.out(1.6)',
-    });
+      scale: 0.82,
+      opacity: 0.86,
+      duration: 0.14,
+      ease: 'sine.out',
+    }, delay);
     tl.to(particle, {
       x: dx,
       y: dy,
       scale: 1,
-      duration: 0.28,
-      ease: 'power2.out',
-    });
-    tl.to(particle, {
-      y: '-=20',
-      duration: 0.5,
+      duration: riseDuration,
       ease: 'sine.out',
     });
     tl.to(particle, {
+      y: '-=8',
       opacity: 0,
-      scale: 0.8,
-      duration: 0.4,
-      ease: 'power1.out',
+      scale: 0.86,
+      duration: 0.3,
+      ease: 'sine.inOut',
       onComplete: () => {
         particle.complete = true;
         if (particles.every((entry) => entry.complete)) animation.complete = true;
       },
-    }, 0.7);
+    });
     timelines.push(tl);
   }
 

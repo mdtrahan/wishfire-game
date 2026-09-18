@@ -39,7 +39,7 @@ test('app preloads the combat text font before rendering damage numbers', () => 
   assert.match(renderSrc, /isDamageTextFontReady\(\)/);
 });
 
-test('dom and canvas fallback preserve energy floating text as a readout effect', () => {
+test('dom and canvas fallback preserve energy and Blight damage text palettes', () => {
   const appSrc = read('web-runner/app.js');
   const renderSrc = read('web-runner/systems/renderRuntime.js');
   assert.match(appSrc, /const isEnergyText = d\.targetKind === 'energy' \|\| d\.kind === 'energy';/);
@@ -49,10 +49,17 @@ test('dom and canvas fallback preserve energy floating text as a readout effect'
   assert.match(appSrc, /const text = isEnergyText/);
   assert.match(appSrc, /\?\s*`\+\$\{formatDamageValue\(\{ value: d\.amount, type: 'heal', isCrit \}\)\}`/);
   assert.match(appSrc, /kind: domKind,/);
-  assert.match(renderSrc, /const kind = d\.kind === 'heal' \|\| d\.kind === 'energy' \|\| d\.kind === 'ward' \|\| d\.kind === 'arcane_pulse' \? d\.kind : 'damage';/);
+  assert.match(appSrc, /d\.kind === 'dot' \? 'dot' : 'damage'/);
+  assert.match(renderSrc, /const kind = d\.kind === 'heal' \|\| d\.kind === 'energy' \|\| d\.kind === 'ward' \|\| d\.kind === 'arcane_pulse' \|\| d\.kind === 'dot' \? d\.kind : 'damage';/);
   assert.match(renderSrc, /const xOffset = d\.targetKind === 'hero' \? -10 : \(d\.targetKind === 'ward' \? 0 : \(d\.canvasAnchored \? 0 : 10\)\);/);
   assert.match(renderSrc, /d\.targetKind === 'bar' \|\| d\.targetKind === 'energy'/);
   assert.match(renderSrc, /if \(kind === 'energy'\) \{/);
+  assert.match(renderSrc, /else if \(kind === 'dot'\) \{/);
+  assert.match(renderSrc, /grad\.addColorStop\(0, '#E4C3FF'\);/);
+  assert.match(renderSrc, /grad\.addColorStop\(1, '#8D37FF'\);/);
+  const animationSrc = read('web-runner/src/core/damageNumberAnimation.mjs');
+  assert.match(animationSrc, /const isDot = normalizedKind === 'dot';/);
+  assert.match(animationSrc, /\? \['#E4C3FF', '#8D37FF'\]/);
 });
 
 test('damage floating text has explicit global recency layers across spawn and render paths', () => {
@@ -144,10 +151,4 @@ test('damage floating text disperses upward and damage tiers scale by amount', (
   assert.match(renderSrc, /baseY \+ floatOffset\.y/);
   assert.match(renderSrc, /const damageTextType = kind === 'heal' \|\| kind === 'energy' \? 'heal' : 'damage';/);
   assert.match(renderSrc, /const isWeakDamage = damageTextType === 'damage' && Number\(d\.amount\) < 10;\\n\s*const isLargeDamage = damageTextType === 'damage' && Number\(d\.partyMaxHP\) > 0 && Number\(d\.amount\) > Number\(d\.partyMaxHP\) \* 0\.5;\\n\s*const fontBaseSize = isWeakDamage \? 22 \* 0\.75 : \(isLargeDamage \? 22 \* 1\.2 : \(d\.isCrit \? 26 : 22\)\);\\n\s*const fontSize = isWeakDamage \? scaleFont\(fontBaseSize\) : Math\.max\(scaleFont\(fontBaseSize\), 12\);/);
-});
-
-test('Kojonn dot paths explicitly arm dot floating-text kind before damage application', () => {
-  const src = `${read('web-runner/app.js')}\n${read('web-runner/systems/renderRuntime.js')}`;
-  const dotKindHooks = src.match(/(?:state\.globals|visualControlPatches)\.NextDamageTextKind = 'dot';/g) || [];
-  assert.ok(dotKindHooks.length >= 2, 'expected dot text kind to be armed for immediate and queued Kojonn dot damage');
 });

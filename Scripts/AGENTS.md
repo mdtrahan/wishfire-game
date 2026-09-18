@@ -28,4 +28,15 @@
 ## Child DOX Index
 - None.
 
-- Energy is a macro balance: quest entry spends it, combat actions do not. Purple recovery remains active. Combat defeat depends on party HP/living heroes; Continue preserves energy.
+- Energy is a macro balance: quest entry spends it, combat actions do not. Purple recovery remains active. Combat defeat depends on living heroes; Continue preserves energy.
+
+- Mirror individual-HP initiative and turn eligibility; KO actors receive no new turn-start hooks. Pooled HP must not determine actor survival.
+
+- Mirror deployed-versus-living hero enumeration and actor-owned HP totals by heroDisplaySlot. Damage cannot consume a barrier on a KO target; ordinary healing procs cannot revive.
+- Mirror active-hero healing and percentage amounts based on that hero maximum. The pooled ApplyPartyHeal/SyncPartyHPToHeroes API is retired; retain party max-HP buffs and explicit full recovery.
+- Mirror Arcane Pulse's caster-specific resting sprite-base source; never restore the retired party-midpoint source.
+- Mirror the post-card-reveal start time for transient Astral Flow attack visuals.
+- Mirror per-target attack VFX metadata for Chain Strike and hero AOE damage packets, including the neutral impact identity across every party-owned AF Chain Strike II hit.
+
+- Mirror personal FLOW damage attribution and paused party-card entrypoints. Shared AF KO rewards are retired; qualifying role actions use the directed blue-orb seam while enemy-death completion remains reward-neutral.
+- Keep automatic `HeroTurn` target selection aligned with the browser mirror: draw a fresh living enemy per acting hero and record the result only after selection.

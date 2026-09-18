@@ -2,8 +2,10 @@ name,energy,partyHp,livingHeroes,expectedCode
 continue,10,40,4,0
 energy_zero,0,40,4,0
 energy_negative,-1,40,4,0
-party_defeated,10,0,4,2
-party_negative,10,-3,4,2
+living_with_stale_zero_pool,10,0,4,0
+living_with_stale_negative_pool,10,-3,4,0
 no_living_heroes,10,12,0,3
-party_defeated_without_energy,0,0,0,2
-party_priority,5,0,0,2
+all_ko_without_energy,0,0,0,3
+all_ko,5,0,0,3
+six_living,10,0,6,0
+last_survivor,10,0,1,0

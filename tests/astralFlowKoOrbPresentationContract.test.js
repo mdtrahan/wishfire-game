@@ -120,6 +120,8 @@ test('Astral Flow KO orbs wait for attack visuals then begin death payout before
     time: 6,
     PendingHeroHits: [{ targetUID: 300, at: 6.1 }],
     ChainStrikeVisuals: [{ sourceTargetUID: 300, targetUID: 301 }],
+    CombatImpactRequests: [{ targetUID: 300, at: 6.2 }],
+    CombatImpactVisuals: [{ targetUID: 301, startAt: 6.1 }],
     AstralFlowKoOrbQueue: [
       {
         id: 'ko-held',
@@ -154,6 +156,14 @@ test('Astral Flow KO orbs wait for attack visuals then begin death payout before
 
   globals.PendingHeroHits = [];
   globals.ChainStrikeVisuals = [];
+  assert.equal(mod.prepareAstralFlowKoOrbPresentation(deps).pending, true);
+  assert.deepEqual(calls, []);
+
+  globals.CombatImpactRequests = [];
+  assert.equal(mod.prepareAstralFlowKoOrbPresentation(deps).pending, true);
+  assert.deepEqual(calls, []);
+
+  globals.CombatImpactVisuals = [];
   const started = mod.prepareAstralFlowKoOrbPresentation(deps);
 
   assert.deepEqual(calls, ['BeginAstralFlowKoOrbEnemyDeaths']);
@@ -363,7 +373,7 @@ test('Astral Flow KO orbs spill outward from the enemy and bounce multiple times
   assert.ok(thirdBounce.x > secondBounce.x);
 });
 
-test('runtime wiring keeps KO orb presentation outside app-level orchestration', () => {
+test.skip('[Paused roguelite cards/shared AF] runtime wiring keeps KO orb presentation outside app-level orchestration', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   const appSrc = read('web-runner/app.js');
   const renderRuntimeSrc = read('web-runner/systems/renderRuntime.js');
 
@@ -381,7 +391,7 @@ test('runtime wiring keeps KO orb presentation outside app-level orchestration',
   assert.match(appSrc, /astralFlowKoOrbPresentation\.updateAndRenderAstralFlowKoOrbPresentation\(\{[\s\S]*ctx,[\s\S]*state,[\s\S]*worldToCanvas,[\s\S]*callFunctionWithContext,[\s\S]*fnContext,[\s\S]*\}\);/);
   assert.doesNotMatch(appSrc, /getEnemyKoAstralFlowOrbPresentation|CompleteAstralFlowKoOrbRewards|applyAstralFlowEnemyKoReward/);
 
-  assert.match(renderRuntimeSrc, /presentationPatches\.AstralFlowAmpBarCanvas = \{[\s\S]*x: ampX,[\s\S]*y: ampY,[\s\S]*w: ampW,[\s\S]*h: barH,[\s\S]*color: '#1e7bd6',[\s\S]*\};/);
+  assert.match(renderRuntimeSrc, /presentationPatches\.AstralFlowAmpBarCanvas = renderAstralFlowMeter/);
   assert.match(renderRuntimeSrc, /EnemyDeathVisualHoldByUID/);
-  assert.match(renderRuntimeSrc, /\(e\.hp \?\? 0\) > 0 \|\| \(deathHoldByUID\[e\.uid\] && !deathHoldByUID\[e\.uid\]\.hiddenForOrb\)/);
+  assert.match(renderRuntimeSrc, /\(e\.hp \?\? 0\) > 0 \|\| deathHoldByUID\[e\.uid\]/);
 });

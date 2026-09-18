@@ -1,100 +1,46 @@
 # Wishfire Player Living Guide
 
-This is a guide on the game Wishfire. It explains what is here, how to play, and what the main parts of the game mean.
+## Combat
 
-## How To Play
+SPEED determines whose turn comes next. Tap an enemy in the arena to select it, then open a hero's card and choose a skill. Each selection fills an action slot and reserves its SP. The hero acts automatically when all slots are filled. Press ACT to use fewer actions. Removing a queued skill restores its slot and reserved SP.
 
-Wishfire is a puzzle battle game. Your heroes fight by choosing gem colors.
+Each queued skill keeps the target chosen for it. Group skills affect their defined group. A basic Attack uses the whole turn by itself. A full FLOW special also takes the whole turn.
 
-On your turn, choose any three gems of the same active color. They do not need to touch or form a line. Each active color gives your party a different kind of move. Sometimes you will also choose which enemy to hit.
+Groups may contain one through six heroes. Each hero has their own HP, SP, level and FLOW. A KO'd hero cannot act until revived. Empty formation slots do not need replacement heroes.
 
-Supergems are bigger, rarer gems. Matching them can unlock a hero's special skill.
+## Current Heroes
 
-The goal is simple: read the board, pick the best color, protect your party, and wear down the enemy team.
+| Hero | Role |
+| --- | --- |
+| Fara | Tank |
+| Hondo | Fighter |
+| Runa | Controller |
+| Kaja | Support |
 
-## Abilities
-
-Match gems to trigger hero skills. Each color behaves differently.
-
-### Matching Gems
-
-- Red gems trigger an attack focused on one enemy.
-- Blue gems fill your Astral Flow meter.
-- Yellow gems gather gold for yellow skills.
-- Light green gems recover party health.
-- Purple gems restore Energy.
-
-Supergems can unlock special hero skills. Falie can turn red into Temporary Shield. Huun can turn yellow into Goldstrike. Kojonn's Faze is not triggered by a green gem or green supergem.
-
-## The Cast
-
-Your party has four heroes. Each one has a role, a color they control, and a way they help the party control the fight.
-
-### Falie
-
-Falie is a defensive hero. Her role is to help the party survive strong, frequent enemy attacks.
-
-Falie's special gem skill is Temporary Shield. Falie shields the party so enemy attacks hit the shield before hurting party health.
-
-### Huun
-
-Huun is a melee damage hero. His role is to turn gold and timing into stronger attacks.
-
-Huun's special gem skill is Goldstrike. Huun throws gold at an enemy with a small chance to hit them harder.
-
-### Runa
-
-Runa is a magic damage hero. Her role is to change the shape of battle with totem magic.
-
-Runa controls blue. Blue choices help build the kind of magical flow Runa wants.
-
-### Kojonn
-
-Kojonn is a support hero. His role is to increase the party's combat abilities.
-
-Kojonn's special gem skill is Faze. Kojonn blights the field so enemies take damage over a set amount of time.
-
-## Enemies
-
-Enemies are the danger pushing back against every choice.
-
-They attack on their turns, damage the party, and sometimes use special moves like healing, draining, magic, or disruption. Some enemies are best handled quickly. Others make you decide whether to heal, build power, or take a risk for a bigger attack.
-
-When an enemy runs out of health, it is beaten for the fight.
+Every hero has seven active skills, six passives and one unique FLOW special. Abilities unlock as that hero levels. The hero screen shows current stats, costs, effects and future unlocks.
 
 ## Resources
 
-Resources are what you carry through the battle.
+**HP** belongs to each hero. Healing restores the affected hero's missing HP. KO heroes retain their FLOW.
 
-### Party HP
+**SP** pays for active skills. Heroes begin encounters with full SP and recover five SP at the start of their own living turn. Only executed actions spend SP. Unexecuted actions are refunded if their targets become invalid, their actor is KO'd or victory ends combat.
 
-Party HP is your survival. If it falls too low, the fight becomes dangerous. Healing restores it. Shields can protect it.
+**FLOW** begins at zero in every encounter. Defeated enemies release FLOW orbs. They spill onto the ground, bounce, then fly to randomly assigned living heroes. Each orb grants 10 FLOW on arrival. Attacks and role events do not award orbs. When full, that hero can use their special. The red meter is labeled FLOW; the blue meter shows SP. Party-card draws are paused.
 
-### Energy
+**Energy and Gold** belong to the wider quest economy. They do not set the number of skills a hero can queue.
 
-Energy is the party's push to keep going. Purple choices help restore it.
+## Progression
 
-### Gold
+Victory grants each participating hero the full EXP value of the defeated enemies, including heroes who finish KO'd. Unused heroes receive none. Newly acquired heroes start at level 1 with zero EXP.
 
-Gold is treasure, but it can also matter in battle. Huun can turn gold value into attack power.
+Level-ups increase stats and unlock abilities. Living heroes gain the increase in maximum HP without receiving a full heal. KO heroes stay at zero HP. The current level cap is 50. Victory results show earned EXP, level changes and unlocks.
 
-### Astral Flow
+## Navigation
 
-Astral Flow grows from blue gem matches. When the Astral Flow meter fills, the current hero can choose a new party skill. Party skills help everyone and last until the battle session ends.
+Quests provide story and combat encounters. The HERO screen shows each owned hero's canonical progression and combat kit. Vault and other existing navigation remain available where implemented.
 
-## Places And Progression
+The gem puzzle and shared Astral Flow milestones are retired. The roguelite party-card feature is paused. Current engineering rules are in [the combat migration plan](../../COMBAT_MIGRATION_PLAN.md).
 
-Wishfire is more than one battle screen.
+## Equipment and Astral Flow shop
 
-You can enter combat from the story screen, visit the hero screen, look at the map, and move through Vault rooms.
-
-Some places are still early and may not have much to do yet.
-
-## Quick Memory
-
-- Pick three gems of one color.
-- Each color has a job.
-- Each hero can make colors feel different.
-- Supergems can unlock special hero skills.
-- Protect party HP while building stronger turns.
-- This guide changes only when the user asks for it to change.
+Victorious battles award configurable Gold per defeated enemy. Astral Flow is a four-track equipment shop using Gold; its previous idle collector is retired. Offers expire in real time while away and are reconstructed on return. Purchases enter the shared inventory under Hero → Gear. Equip Weapon, Head, Armor, Boots and two Accessories; their stats feed the canonical combat hero. Hero management exposes CP, SP and named AF traits while combat FLOW retains enemy-death orb charging. Placeholder equipment and prices remain centrally configurable.

@@ -1,0 +1,33 @@
+{
+  "changed_functions": {
+    "tests/compactViewportContainmentContract.test.js": [
+      "rect",
+      "overlaps",
+      "assertContained"
+    ],
+    "web-runner/index.html": [
+      "__MODULE__"
+    ]
+  },
+  "details": {
+    "hot_files_touched": [],
+    "staged_file_count": 2,
+    "staged_line_count": 71,
+    "thresholds": {
+      "file_count": 3,
+      "hot_files_always_significant": true,
+      "line_count": 80
+    }
+  },
+  "files": [
+    "tests/compactViewportContainmentContract.test.js",
+    "web-runner/index.html"
+  ],
+  "issue_id": "ORKA-ymk.2",
+  "out_of_scope_hot_file_touch": false,
+  "significant": false,
+  "staged_blobs": {
+    "tests/compactViewportContainmentContract.test.js": "27087c7257ef907605f7545c5b2aee04f47bba53",
+    "web-runner/index.html": "56eedb7e21e62329c2c5b3b34d6f1527e575d1c2"
+  }
+}

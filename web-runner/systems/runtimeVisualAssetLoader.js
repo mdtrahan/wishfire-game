@@ -4,6 +4,7 @@ import {
   HERO_PACK_MINUS_PATH,
   HERO_PACK_PLUS_PATH,
 } from '../state/heroScreenConfig.js';
+import { heroArtPath } from '../state/heroArtAssets.mjs';
 
 export async function loadRuntimeImage(url, { resolveRuntimeImageUrl = (value) => value } = {}) {
   return new Promise((res) => {
@@ -103,8 +104,8 @@ export async function loadRuntimeVisualAssets({
 
   const loadCoreVisuals = async () => {
     const tasks = [];
-    const heroPortraitLoads = ['Falie', 'Huun', 'Runa', 'Kojonn'].map(async (heroName) => {
-      heroPortraitImages[heroName] = await loadImage(assetUrl(`images/cap_${heroName}.png`));
+    const heroPortraitLoads = ['Fara', 'Hondo', 'Runa', 'Kaja'].map(async (heroName) => {
+      heroPortraitImages[heroName] = await loadImage(assetUrl(heroArtPath(heroName)));
     });
     const wardBarrierLoad = (async () => {
       wardBarrierImage = await loadImage(assetUrl('images/falie_ward_84x62.png'));
@@ -149,7 +150,34 @@ export async function loadRuntimeVisualAssets({
       ...heroCapsuleLoads,
       gemVisualLoads,
       (async () => { heroSelectorImage = await loadImage(assetUrl('images/h_selector-animation 1-000.png')); })(),
-      (async () => { images.SkillArcanePulse = await loadImage(assetUrl('images/skill_arcane_pulse_96x96.png')); })(),
+      (async () => { images.SkillArcanePulse = await loadImage(assetUrl('images/vfx_arcane_pulse_crescent.png')); })(),
+      (async () => { images.CombatArcanePulseImpact = await loadImage(assetUrl('images/vfx_arcane_pulse_impact.png')); })(),
+      (async () => { images.CombatHealSwirl = await loadImage(assetUrl('images/vfx_heal_swirl_10.png')); })(),
+      (async () => { images.CombatHealBurst = await loadImage(assetUrl('images/vfx_heal_burst_4.png')); })(),
+      (async () => { images.CombatHitFlare = await loadImage(assetUrl('images/vfx_hit_flare.png')); })(),
+      (async () => { images.CombatWeakGlanceRing = await loadImage(assetUrl('images/vfx_weak_glance_ring.png')); })(),
+      (async () => { images.CombatImpactBlue = await loadImage(assetUrl('images/vfx_impact_blue.png')); })(),
+      (async () => { images.CombatImpactPurple = await loadImage(assetUrl('images/vfx_impact_purple.png')); })(),
+      (async () => { images.CombatImpactRose = await loadImage(assetUrl('images/vfx_impact_rose.png')); })(),
+      (async () => { images.CombatImpactG01Blue = await loadImage(assetUrl('images/vfx_impact_g01_blue.png')); })(),
+      (async () => { images.CombatImpactG03Blue = await loadImage(assetUrl('images/vfx_impact_g03_blue.png')); })(),
+      (async () => { images.CombatImpactG03Purple = await loadImage(assetUrl('images/vfx_impact_g03_purple.png')); })(),
+      (async () => { images.CombatImpactG03Original = await loadImage(assetUrl('images/vfx_impact_g03_original.png')); })(),
+      (async () => { images.CombatImpactG04Original = await loadImage(assetUrl('images/vfx_impact_g04_original.png')); })(),
+      (async () => { images.CombatSplitSlash = await loadImage(assetUrl('images/vfx_split_slash.png')); })(),
+      (async () => { images.CombatRunaBolt = await loadImage(assetUrl('images/vfx_runa_bolt.png')); })(),
+      (async () => { images.CombatKajaOrb = await loadImage(assetUrl('images/vfx_kaja_orb.png')); })(),
+      (async () => { images.CombatDjinnRain = await loadImage(assetUrl('images/vfx_djinn_rain.png')); })(),
+      (async () => { images.CombatMaridCrescent = await loadImage(assetUrl('images/vfx_marid_crescent.png')); })(),
+      (async () => { images.CombatChimerilassEruption = await loadImage(assetUrl('images/vfx_chimerilass_eruption.png')); })(),
+      (async () => { images.CombatScatheCrackle = await loadImage(assetUrl('images/vfx_scathe_crackle.png')); })(),
+      (async () => { images.CombatSweepCrescent = await loadImage(assetUrl('images/vfx_sweep_crescent.png')); })(),
+      (async () => { images.CombatWipeWash = await loadImage(assetUrl('images/vfx_wipe_wash.png')); })(),
+      (async () => { images.CombatMagicAoeBrushfire = await loadImage(assetUrl('images/vfx_magic_aoe_brushfire.png')); })(),
+      (async () => { images.CombatDrainBuffOrb = await loadImage(assetUrl('images/vfx_drain_buff_orb.png')); })(),
+      (async () => { images.CombatGrowSpectralHands = await loadImage(assetUrl('images/vfx_grow_spectral_hands.png')); })(),
+      (async () => { images.CombatVenomSigil = await loadImage(assetUrl('images/vfx_venom_sigil.png')); })(),
+      (async () => { images.CombatGlassReprisal = await loadImage(assetUrl('images/vfx_glass_reprisal.png')); })(),
       (async () => { mapBackgroundImage = await loadImage(assetUrl('images/genielands-geography.png')); })(),
       (async () => { mapCaveImage = await loadImage(assetUrl('images/map_cave_46.png')); })(),
       (async () => { mapPortalImage = await loadImage(assetUrl('images/map_warp_portal_46x52.png')); })(),

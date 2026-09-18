@@ -68,22 +68,13 @@ export function calculateDamageFromJs({
   const powerValue = numberOr(power, 0);
   const resistValue = numberOr(resist, 0);
   const isHero = Number(sourceIsHero || 0) === 1;
-  const isHeroAoe = Number(heroAoe || 0) === 1;
-  const roll = 0.8 + (unitIntervalOrHalf(roll01) * 0.4);
-  const rawDamage = isHero && !isHeroAoe
-    ? (powerValue - (resistValue * 0.35)) * roll
-    : (powerValue - (resistValue / 2)) * roll;
+  const roll = 0.9 + (unitIntervalOrHalf(roll01) * 0.2);
+  // The same bounded attack/guard curve applies in both directions.  Damage kind
+  // selects ATK/DEF or MAG/RES before this contract receives its inputs.
+  const rawDamage = (2 + (Math.max(0, powerValue) * 0.48)) * (20 / (20 + Math.max(0, resistValue))) * roll;
   const baseDamage = ceilAtLeastOne(rawDamage);
-  const buff = Math.max(0, powerValue);
-  let critMultiplierRaw = 1.1;
-  if (buff > 0) {
-    critMultiplierRaw = Math.min(1 + (buff / 10), 3);
-  }
-  critMultiplierRaw = Math.min(3, critMultiplierRaw);
-  const critMultiplier = isHero
-    ? critMultiplierRaw
-    : 1 + ((critMultiplierRaw - 1) * 0.1);
-  const didCrit = numberOr(critRoll01, 0) <= 0.1;
+  const critMultiplier = 1.25;
+  const didCrit = numberOr(critRoll01, 1) < 0.01;
   const postCritDamage = ceilAtLeastOne(didCrit ? baseDamage * critMultiplier : baseDamage);
   const shouldChain = isHero && Number(chainActive || 0) === 1;
   const multiplier = numberOr(chainMultiplier, 1) || 1;

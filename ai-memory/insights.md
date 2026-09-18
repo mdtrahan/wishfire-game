@@ -22,6 +22,7 @@
 
 ## Regression Triggers
 - Before starting combat-system beads, scan acceptance + code for: `buff`, `debuff`, `duration`, `turns`, `stack`.
+- AF timing belongs at the resolved-action and enemy-death transfer seams: role awards mutate only the acting hero immediately, while a killed enemy's blue transfer mutates its assigned living recipient only on arrival. Keep threshold signals append-only until the session queue owner consumes them.
 - If these imply outdated model assumptions, pause and rewrite bead scope before coding.
 - When render extraction moves visual helpers behind a dependency scope, verify app-to-renderer predicates are live state readers rather than false stubs; status overlays keyed by effect names should accept stable prefixes such as `Blight*`.
 - When removing a hero-specific heal expression, route that hero through the shared heal body; do not replace the special branch with a guard that still consumes action pacing but skips `ApplyPartyHeal`.
@@ -32,6 +33,7 @@
 - Enemy board-pressure effects that run during autoplay should preserve board cardinality unless the turn/refill gates explicitly own the resulting empty cells. Prefer visible lock/disable state for temporary denial effects, and make autoplay skip disabled gems instead of trying to select through them.
 - Speed-based initiative must validate the live current-turn source, not just the displayed speed order. Dynamic authority/progress predictions are shadows unless they agree with the fixed-speed next actor; first handoff proof should include Skeleton 22 -> Huun 20.
 - Runtime asset cleanup must separate startup-critical visuals from background visuals. Production code should not request Figma/MCP/design-tool assets, and galleries, alternate enemies, buff frames, or debug/helper icons should not block the game-ready gate unless the current player path needs them.
+- EXP settlement must derive each visible fill from the awarded amount and the pre-award threshold. When a reward crosses a level, keep one bar, fill it to the threshold, reset it briefly, and carry the exact remainder before opening a queued choice. A zero-reward settlement still needs to fade and release the victory boundary.
 
 ## 2026-03-07 Regression Note
 - Hero selector render gate must treat hero-turn as `TurnPhase === 0` (not `1`) in web-runner runtime.
@@ -523,3 +525,43 @@ Pre-build state preserved in output/ORKA-aoq-checkpoint/pre-quest-ladder with pe
 The pre-publication archive preserves 64 owned files with verified SHA-256 hashes. Navigation migration tests should exercise the shared route and dialogue gate instead of requiring retired Canvas text objects. Keep checkpoint archives and QA-only review pages out of runtime deployments.
 
 - Gameplay backgrounds must contain scenery only. Keep changing chapter labels, navigation titles, decorative UI and location tokens as separate layers, and derive interaction bounds from their placement data. Flattening a mockup into a runtime background prevents chapter updates and leaks labels beneath overlays.
+
+## 2026-09-07: Combat migration boundary
+Separate deployed party capacity from the number of authored hero definitions. Validate actual initialized actors, slot identity and UID allocation; a six-slot helper alone does not prove six-hero gameplay. Keep unresolved AF spending and interruption decisions out of unrelated foundation changes.
+
+## 2026-09-07 — ORKA-49k.2
+AF is spendable currency: each standalone special consumes one turn and 1/N of capacity, retaining the exact balance. Stored sequences are future scope. Individual-HP initiative/outcome and six-slot Rust targeting now have focused proof; pooled healing/bulk damage are still migration work.
+
+## 2026-09-07 — ORKA-49k.3
+Damage must update actor HP and derive totals; canonical heroIndex is identity, heroDisplaySlot owns health-card position. Keep KO actors in deployed roster projections and exclude them from living action/target lists. Ordinary Destiny healing cannot revive. Party-wide healing allocation remains an explicit pending owner question.
+# 2026-09-07 combat migration
+Board removal must include bootstrap readiness: an invisible full-board gate can keep otherwise initialized combat in BOOTSTRAP. Command execution must use instance UID for ownership and formation display slot for presentation; catalog identity cannot locate a later or repeated member. Preserve prepared commands on rejected commits, and revalidate stale targets before spending.
+
+- 2026-09-07, ORKA-49k.5: Once actor HP owns survival, recovery must mutate those actors before rebuilding presentation arrays. Copying max-health arrays only creates a healthy-looking projection. Exercise zero members as well as partial/full groups so stale health cannot survive a roster clear; reuse the same restoration owner for Town and Continue.
+
+- 2026-09-07, ORKA-49k.6: Migrating shared healing requires changing both recipient and percentage basis. Actor-only writes still over-heal if they scale from party max HP. Retire reverse HP projection and shared-bar text together, then exercise a real prepared command through turn completion.
+
+- Combat migration: action capacity, SP affordability and initiative are independent boundaries. Validate actual battlefield clicks and full-queue auto-commit through presentation completion. Generated renderer edits must preserve the array join and post-processing chain; edit the decoded body within that boundary. Paused effects need removed runtime callers, not just disabled acquisition.
+
+- Orb rewards must separate event qualification, per-action proc caps, recipient assignment and collection. Keep probability draws outside the combat RNG stream; use the same action identity for failed as well as successful proc checks.
+
+## 2026-09-12 - Completed Hero Actions Must Own Scheduler Handoffs
+- A deferred native action can finish after initiative has already exposed another living hero as current. Advance from the completed `ActionOwnerUID` before clearing the handoff; routing that mismatch straight to `ProcessTurn` leaves the active hero at phase 0 without a production action claim.
+- Keep the reconciliation conditional on a living enemy and living hero scheduler target. Terminal settlement and enemy-current recovery retain their existing paths.
+
+## 2026-09-13 - Balance Harnesses Must Enter Through Current Runtime Seams
+- A browser balance harness must use the current Canvas START hit target and native autoplay hook. Retired story coordinates, card waits, or gem state can make a valid runtime look unavailable.
+- Persist completed session metrics before browser teardown. Bound cleanup and retain an owned browser-process handle so a stalled close cannot erase evidence or orphan a browser.
+- Casualty variation means the first hero lost per session; counting every eventual death makes all party-loss runs look varied.
+
+## 2026-09-14 - Resolved Health Changes Own Presentation
+- Emit heal presentation only after an actor HP mutation and compute the shown amount from the actual positive delta. A shared `DamageTexts` heal record keeps the app-owned bloom consistent across card, special, and enemy heal paths.
+- 2026-09-17, ORKA-7p7: Treat actor motion and effect lifetime as one owner-scoped presentation sequence. Stationary ranged/heal actions must use the stored slot-home anchor, while melee retreat and scheduler handoff wait for the action's final owned visual to complete.
+- 2026-09-17, ORKA-7p7: A cross-actor heal can animate on a hero while an enemy owns the current action. Extend the shared presentation boundary through the bloom without changing its owner; when a turn heal follows command claim, delay both hero motion and its queued hit.
+- Shared wards must sit in the common hero-damage resolver, including native-resolved packets. Any bypass makes role FLOW accounting and shield visuals disagree with real HP loss.
+- Defeat interception marks its seeded attempt before rolling. A revival effect must return control without clearing session state or rebuilding initiative.
+
+## 2026-09-14 - Release Builders Must Preserve The Last Good Artifact
+- Validate required build tools before touching release output. Assemble into a sibling candidate directory and replace the last playable artifact only after the bundle and manifest are complete.
+- A missing-dependency regression check must seed the existing artifact, force the dependency failure, and prove the prior files survive.
+- 2026-09-18: Opening-session cards that execute an immediate AF special must not also persist the similarly named session-buff family. Chain Strike II is one attack; storing `mirage_chain` made later random hero basics look like a hidden toggle with silent expiry.

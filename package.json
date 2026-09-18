@@ -11,8 +11,10 @@
     "test:hot-file-gate": "bash tools/run_hot_file_regression_gate.sh",
     "test:ui-lock": "node tools/ui_presentation_lock_gate.mjs",
     "rust:build-wasm": "node tools/build_simulation_core_wasm.js",
+    "build:offline": "node tools/build_offline_release.mjs",
     "serve:qa": "node tools/serve_web.js --port 8000",
     "balance-harness": "node tools/balance_harness.js",
+    "balance:cp": "node tools/cp_balance_report.mjs",
     "chrome:cdp": "node tools/chrome_cdp_bootstrap.js",
     "playwright:doctor": "node tools/playwright_doctor.js",
     "playwright:launch-matrix": "node tools/playwright_launch_matrix.js"
@@ -22,6 +24,7 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "esbuild": "^0.28.2",
     "playwright": "^1.58.2"
   }
 }

@@ -73,23 +73,8 @@ test('party regen tick owner follows Rust when Rust and JS disagree', () => {
   assert.equal(decision.nextFireSerial, 12);
 });
 
-test('browser party regen cadence routes deterministic tick state through Rust owner hook', () => {
-  const appSrc = fs.readFileSync(appPath, 'utf8');
-  const renderRuntimeSrc = fs.readFileSync(renderRuntimePath, 'utf8');
-
-  assert.match(appSrc, /__ORKA_PARTY_REGEN_TICK_OWNER__/);
-  assert.match(appSrc, /createPartyRegenLifecycleSimulationPacket/);
-  assert.match(appSrc, /createPartyRegenTickSimulationPacket/);
-  assert.match(appSrc, /LastPartyRegenTickOwner/);
-  assert.match(appSrc, /LastPartyRegenLifecyclePacket/);
-  assert.match(appSrc, /LastPartyRegenTickPacket/);
-  assert.match(appSrc, /ownedTick[\s\S]*owner[\s\S]*rust/);
-  assert.match(appSrc, /regen\.totalHealRemaining = Math\.max\(0, Math\.floor\(Number\(ownedTick\.totalHealRemaining/);
-  assert.match(appSrc, /regen\.remainingFires = Math\.max\(0, Math\.floor\(Number\(ownedTick\.remainingFires/);
-  assert.match(appSrc, /regen\.nextFireTurnSerial = Number\(ownedTick\.nextFireSerial/);
-
-  assert.match(renderRuntimeSrc, /__ORKA_PARTY_REGEN_TICK_OWNER__/);
-  assert.match(renderRuntimeSrc, /createPartyRegenTickSimulationPacket/);
-  assert.match(renderRuntimeSrc, /LastPartyRegenTickPacket/);
-  assert.match(renderRuntimeSrc, /regen\.nextFireTick = Number\(ownedTick\.nextFireSerial/);
+test('paused regeneration has no browser cadence processor', () => {
+  const appSrc=fs.readFileSync(appPath,'utf8'),renderSrc=fs.readFileSync(renderRuntimePath,'utf8');
+  assert.doesNotMatch(appSrc,/function processTurnCadencePartyRegens/);
+  assert.doesNotMatch(renderSrc,/__ORKA_PARTY_REGEN_TICK_OWNER__/);
 });

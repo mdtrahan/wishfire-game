@@ -14,6 +14,10 @@ export function drawCombatActorSprite(ctx, image, {
   height,
   pivotX,
   orientation,
+  sourceX,
+  sourceY,
+  sourceWidth,
+  sourceHeight,
 } = {}) {
   if (!ctx || !image) return null;
   const x = Number(drawX);
@@ -22,6 +26,12 @@ export function drawCombatActorSprite(ctx, image, {
   const h = Number(height);
   const pivot = Number(pivotX);
   if (![x, y, w, h, pivot].every(Number.isFinite)) return null;
+  const sourceRect = [sourceX, sourceY, sourceWidth, sourceHeight].map(Number);
+  const hasSourceRect = sourceRect.every(Number.isFinite) && sourceRect[2] > 0 && sourceRect[3] > 0;
+  const draw = () => {
+    if (hasSourceRect) ctx.drawImage(image, sourceRect[0], sourceRect[1], sourceRect[2], sourceRect[3], x, y, w, h);
+    else ctx.drawImage(image, x, y, w, h);
+  };
 
   const mirrored = shouldMirrorCombatActorSprite(orientation);
   if (mirrored) {
@@ -29,10 +39,10 @@ export function drawCombatActorSprite(ctx, image, {
     ctx.translate(pivot, 0);
     ctx.scale(-1, 1);
     ctx.translate(-pivot, 0);
-    ctx.drawImage(image, x, y, w, h);
+    draw();
     ctx.restore();
   } else {
-    ctx.drawImage(image, x, y, w, h);
+    draw();
   }
 
   return {

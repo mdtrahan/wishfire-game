@@ -17,8 +17,9 @@ test('runtime function bank defines Huun execution bonus constants and resolver'
 
 test('enemy death pipeline carries killer credit into AwardMonsterDrop', () => {
   const src = read('web-runner/modules/functionBank.js');
-  assert.match(src, /g\.PendingDeaths\[t\.uid\] = \{\s*group: Number\(g\.RoundGroupIndex \|\| 0\),\s*killerUID: Number\(g\.LastDamageSourceUID \|\| 0\),\s*\};/);
-  assert.match(src, /AwardMonsterDrop\(ctx, t\.name \|\| t\.key \|\| t\.type \|\| '', null, Number\(g\.LastDamageSourceUID \|\| 0\)\);/);
+  assert.match(src, /const resolvedKillerUID = Number\(killerUID \|\| g\.LastDamageSourceUID \|\| GetCurrentTurn\(ctx\) \|\| 0\);/);
+  assert.match(src, /g\.PendingDeaths\[target\.uid\] = \{ group: Number\(g\.RoundGroupIndex \|\| 0\), killerUID: resolvedKillerUID \};/);
+  assert.match(src, /AwardMonsterDrop\(ctx, target\.name \|\| target\.key \|\| target\.type \|\| '', null, resolvedKillerUID\);/);
   assert.match(src, /AwardMonsterDrop\(ctx, actor\.name \|\| actor\.key \|\| actor\.type \|\| '', null, killerUID\);/);
 });
 

@@ -86,7 +86,7 @@ function plain(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-test('Clear Skills fully unloads staged session skills and visible skill effects in both mirrors', () => {
+test.skip('[Paused roguelite cards/shared AF] Clear Skills fully unloads staged session skills and visible skill effects in both mirrors', { skip: 'ORKA-49k.7: shared AF and roguelite card acquisition/procs are paused for personal FLOW' }, () => {
   for (const modulePath of [runtimePath, scriptsPath]) {
     const mod = loadModule(modulePath);
     const ctx = makeContext();

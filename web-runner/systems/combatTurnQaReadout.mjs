@@ -164,6 +164,10 @@ export function buildCombatTurnQaReadout({
     };
   });
   const currentActor = getActorByUID(entities, currentUID);
+  const fixture = globals.DevSpeedLinkFixture || null;
+  const speedLinks = (globals.TurnSchedulerAudit?.events || []).filter(event => event?.kind === 'speed_multiattack_link');
+  const orbAudit = globals.FlowOrbAudit || {};
+  const shadow = globalThis.__ORKA_SIMULATION_CORE_SHADOW__ || {};
   return {
     orderSource: order.source,
     currentUID,
@@ -175,6 +179,24 @@ export function buildCombatTurnQaReadout({
       currentUID,
     }),
     speedOrderAnswer: describeSpeedOrder(rows),
+    speedLink: fixture ? {
+      holderName: String(fixture.holderName || ''),
+      linkedSpeed: Number(fixture.linkedSpeed || 0),
+      links: speedLinks.length,
+      latchUID: Number(globals.SpeedMultiattackLinkedActorUID || 0),
+      threshold: Math.max(0, Number(fixture.fastestEnemySpeed || 0) * 2),
+    } : null,
+    flowOrb: {
+      roleRecipientUID: Number(orbAudit.roleRecipientUID || 0),
+      roleAwardCount: Number(orbAudit.roleAwardCount || 0),
+      queuedRecipientUID: Number(orbAudit.queuedRecipientUID || 0),
+      queuedCount: Number(orbAudit.queuedCount || 0),
+      arrivedRecipientUID: Number(orbAudit.arrivedRecipientUID || 0),
+      arrivedCount: Number(orbAudit.arrivedCount || 0),
+      arrivedEnemyDeathCount: Number(orbAudit.arrivedEnemyDeathCount || 0),
+      pendingThresholds: (globals.PendingFlowThresholds || []).map(signal => ({heroUID:Number(signal.heroUID || 0),triggerOrder:Number(signal.triggerOrder || 0),token:String(signal.token || '')})),
+    },
+    shadowMismatchCount: Array.isArray(shadow.mismatches) ? shadow.mismatches.length : 0,
     rows,
   };
 }
@@ -197,14 +219,22 @@ export function renderCombatTurnQaReadoutHtml(args = {}) {
       </tr>
     `).join('')
     : '<tr><td colspan="6" style="padding:6px;border-top:1px solid #e2e8f0;color:#64748b;">No combat turn order available.</td></tr>';
+  const speedLink = readout.speedLink
+    ? `<div data-combat-turn-qa-speed-link style="color:#334155;">Speed link: ${escapeHtml(readout.speedLink.holderName)} SPD ${Math.round(readout.speedLink.linkedSpeed)}/${Math.round(readout.speedLink.threshold)}, linked second actions ${readout.speedLink.links}, latch ${readout.speedLink.latchUID || 'clear'}</div>`
+    : '';
   return `
     <section data-devtool-turn-order-qa style="display:flex;flex-direction:column;gap:8px;margin-top:14px;border-top:1px solid #cbd5e1;padding-top:12px;">
       <div style="display:flex;flex-direction:column;gap:4px;">
         <div style="font-weight:800;">Combat Turn QA</div>
-        <div data-combat-turn-qa-answer style="font-weight:700;color:#0f172a;">Is combat sorted by Speed? ${escapeHtml(readout.speedOrderAnswer)}</div>
+        <div data-combat-turn-qa-answer style="font-weight:700;color:#0f172a;">CTB timestamp order is preserved. Speed link threshold: 2× fastest living enemy.</div>
         <div data-combat-turn-qa-current style="color:#334155;">Current: ${escapeHtml(readout.currentActorName)} (${Number(readout.currentUID || 0) || 'none'})</div>
         <div data-combat-turn-qa-reason style="color:#334155;">Why: ${escapeHtml(readout.currentTurnReason)}</div>
         <div data-combat-turn-qa-source style="color:#475569;">Visible order source: ${escapeHtml(readout.orderSource)}</div>
+        ${speedLink}
+        <div data-combat-turn-qa-role-flow style="color:#334155;">Role AF immediate: hero ${readout.flowOrb.roleRecipientUID || 'none'} (${readout.flowOrb.roleAwardCount})</div>
+        <div data-combat-turn-qa-flow-orb style="color:#334155;">Enemy-death blue orb queued: hero ${readout.flowOrb.queuedRecipientUID || 'none'} (${readout.flowOrb.queuedCount}); arrived: hero ${readout.flowOrb.arrivedRecipientUID || 'none'} (${readout.flowOrb.arrivedEnemyDeathCount})</div>
+        <div data-combat-turn-qa-flow-threshold style="color:#334155;">Pending 100-AF signals: ${readout.flowOrb.pendingThresholds.map(signal=>`${signal.heroUID}#${signal.triggerOrder}`).join(', ') || 'none'}</div>
+        <div data-combat-turn-qa-shadow-mismatches style="color:#334155;">SimulationCore shadow mismatches: ${readout.shadowMismatchCount}</div>
       </div>
       <table style="width:100%;min-width:0;table-layout:fixed;border-collapse:collapse;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;font-size:11px;overflow-wrap:anywhere;word-break:break-word;">
         <thead>

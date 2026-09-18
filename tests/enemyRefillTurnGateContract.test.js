@@ -281,14 +281,8 @@ test('app pending attack and hero pickability honor enemy roster refill gate', (
   assert.match(src, /function hasPendingEnemyDeathResolution/);
   assert.match(src, /pendingEnemyDeathResolution/);
 
-  const pendingAttackStart = src.indexOf('// Pending hero attack: click an enemy to execute');
-  assert.notEqual(pendingAttackStart, -1, 'missing pending attack click block');
-  const pendingAttackIdx = src.indexOf("source: 'manual-button'", pendingAttackStart);
-  assert.notEqual(pendingAttackIdx, -1, 'missing pending attack shared handoff call');
-  const beforePendingAttack = src.slice(pendingAttackStart, pendingAttackIdx);
-  assert.match(beforePendingAttack, /const enemyRosterStability = getEnemyRosterStabilitySnapshot\(\);/);
-  assert.match(beforePendingAttack, /if \(!enemyRosterStability\.stable\)/);
-  assert.doesNotMatch(beforePendingAttack, /state\.globals\.PendingSkillID = '';/);
+  const commandSrc = read('web-runner/modules/heroCommands.mjs');
+  assert.match(commandSrc, /GetEnemyRosterStability/);
 
   const deferredHoldStart = src.indexOf('!deferredAdvanceState.enemyRosterStability.stable');
   assert.notEqual(deferredHoldStart, -1, 'missing deferred roster refill hold');
@@ -443,7 +437,6 @@ test('runtime action handoff diagnostics cover dev pending-selection failure poi
   assert.match(debugSrc, /\[TURNPHASE1_STUCK\]/);
   assert.match(debugSrc, /\[ACTION_HANDOFF_REFUSED\]/);
   assert.match(appSrc, /logActionHandoffDebug\('\[DEV_AUTOPLAY_RESOLVE\]'[\s\S]*stage: 'after-action-attempt-before-clear'/);
-  assert.match(appSrc, /logActionHandoffDebug\('\[PENDING_ATTACK_RESOLVE\]'[\s\S]*stage: 'after-action-attempt-before-clear'/);
   assert.match(appSrc, /runtimeDebugLogging\.gemDebugLog\('\[TURNPHASE1_STUCK\]'/);
   assert.match(superGemSrc, /logActionHandoff\(state, '\[ACTION_HANDOFF_CLAIM\]'/);
   assert.match(superGemSrc, /logActionHandoff\(state, '\[PENDING_SUPERGEM_REJECT\]'/);

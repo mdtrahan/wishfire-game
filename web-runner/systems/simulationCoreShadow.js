@@ -1,4 +1,6 @@
 import { createSeededRngSimulationPacket } from '../src/core/seededRngRules.mjs';
+import { calculateDamageFromJs } from '../src/core/calculateDamageRules.mjs';
+import { getEmbeddedWasmBytes } from './runtimeAssetUrl.mjs';
 
 const DEFAULT_WASM_URL = './assets/simulation_core.wasm';
 const SHADOW_STATE_KEY = '__ORKA_SIMULATION_CORE_SHADOW__';
@@ -587,6 +589,11 @@ function hasRequiredExports(exports) {
 }
 
 async function instantiateWasm(wasmUrl) {
+  const embeddedBytes = getEmbeddedWasmBytes(wasmUrl);
+  if (embeddedBytes) {
+    const result = await WebAssembly.instantiate(embeddedBytes, {});
+    return result.instance;
+  }
   if (WebAssembly.instantiateStreaming) {
     try {
       const result = await WebAssembly.instantiateStreaming(fetch(wasmUrl), {});
@@ -604,8 +611,7 @@ async function instantiateWasm(wasmUrl) {
 function runSingleHitOwnerStartupCheck(shadow) {
   if (!shadow || shadow.singleHitOwnerSmokeRan) return;
   shadow.singleHitOwnerSmokeRan = true;
-  createSimulationCoreSingleHitResolution({
-    source: 'simulationCore.startup.singleHitOwner',
+  const input = {
     power: 18,
     resist: 12,
     roll01: 0.5,
@@ -614,19 +620,25 @@ function runSingleHitOwnerStartupCheck(shadow) {
     heroAoe: 0,
     chainActive: 0,
     chainMultiplier: 1,
-    targetHp: 40,
-    shield: 0,
-    jsDamage: 14,
-    jsAppliedDamage: 14,
-    jsAfterHp: 26,
+  };
+  const jsDecision = calculateDamageFromJs(input);
+  const targetHp = 40;
+  const shield = 0;
+  createSimulationCoreSingleHitResolution({
+    source: 'simulationCore.startup.singleHitOwner',
+    ...input,
+    targetHp,
+    shield,
+    jsDamage: jsDecision.damage,
+    jsAppliedDamage: Math.max(0, Math.min(targetHp, jsDecision.damage - shield)),
+    jsAfterHp: Math.max(0, targetHp - Math.max(0, Math.min(targetHp, jsDecision.damage - shield))),
   });
 }
 
 function runCalculateDamageOwnerStartupCheck(shadow) {
   if (!shadow || shadow.calculateDamageOwnerSmokeRan) return;
   shadow.calculateDamageOwnerSmokeRan = true;
-  createSimulationCoreCalculateDamageResolution({
-    source: 'simulationCore.startup.calculateDamageOwner',
+  const input = {
     power: 30,
     resist: 10,
     roll01: 0.5,
@@ -635,7 +647,12 @@ function runCalculateDamageOwnerStartupCheck(shadow) {
     heroAoe: 0,
     chainActive: 0,
     chainMultiplier: 1,
-    jsDamage: 27,
+  };
+  const jsDecision = calculateDamageFromJs(input);
+  createSimulationCoreCalculateDamageResolution({
+    source: 'simulationCore.startup.calculateDamageOwner',
+    ...input,
+    jsDamage: jsDecision.damage,
   });
 }
 
@@ -865,11 +882,11 @@ function runCombatOutcomeOwnerStartupCheck(shadow) {
     jsCode: 0,
   });
   createSimulationCoreCombatOutcomeResolution({
-    source: 'simulationCore.startup.combatOutcomeOwner.partyDefeated',
+    source: 'simulationCore.startup.combatOutcomeOwner.noLivingHeroes',
     energy: 10,
     partyHp: 0,
-    livingHeroes: 4,
-    jsCode: 2,
+    livingHeroes: 0,
+    jsCode: 3,
   });
 }
 
@@ -2043,7 +2060,7 @@ export function createSimulationCoreHeroTurnEntryResolution({
 
 function normalizeEnemyTargetHeroes(heroes = []) {
   const source = Array.isArray(heroes) ? heroes : [];
-  return Array.from({ length: 4 }, (_, index) => {
+  return Array.from({ length: 6 }, (_, index) => {
     const hero = source[index] || {};
     const hp = Math.max(0, Number(hero?.hp || 0));
     return {
@@ -2647,15 +2664,17 @@ export function createSimulationCoreSeededRng(seed = 1, {
   };
 }
 
-export function shadowCombatPower({ source = 'unknown', atk = 0, def = 0, hp = 0, jsValue = 0 } = {}) {
+export function shadowCombatPower({ source = 'unknown', actor = null, atk = 0, def = 0, hp = 0, jsValue = 0 } = {}) {
   const shadow = getShadowState();
   if (shadow.status !== 'ready' || !shadow.exports) return jsValue;
-  const rustValue = Number(shadow.exports.combat_power_shadow(Number(atk || 0), Number(def || 0), Number(hp || 0)));
+  const input=actor&&typeof actor==='object'?actor:{atk,mag:0,def,res:0,hp,spd:0,level:1,expectedDirect:0,critChance:.01,critMultiplier:1.25,aoeDamage:0,extraTargets:0,sustain:0,control:0,proc:0,af:0,sequence:1};
+  const full=shadow.exports.combat_power_full_shadow;
+  const rustValue=typeof full==='function'
+    ? Number(full(Number(input.atk||0),Number(input.mag||0),Number(input.def||0),Number(input.res||0),Number(input.hp||0),Number(input.spd||0),Number(input.level||1),Number(input.expectedDirect||0),Number(input.critChance||0),Number(input.critMultiplier||1),Number(input.aoeDamage||0),Number(input.extraTargets||0),Number(input.sustain||0),Number(input.control||0),Number(input.proc||0),Number(input.af||0),Number(input.sequence||1)))
+    : Number(shadow.exports.combat_power_shadow(Number(atk || 0), Number(def || 0), Number(hp || 0)));
   shadow.lastCheck = {
     source,
-    atk: Number(atk || 0),
-    def: Number(def || 0),
-    hp: Number(hp || 0),
+    actor: input,
     jsValue,
     rustValue,
   };
@@ -2866,11 +2885,11 @@ export function createSimulationCorePartyDamageResolution({
     incomingDamage: Number(incomingDamage || 0),
     shield: Number(shield || 0),
     heroCount: Number(heroCount || 0),
-    heroHp: [0, 1, 2, 3].map((index) => Number(heroes[index] || 0)),
+    heroHp: [0, 1, 2, 3, 4, 5].map((index) => Number(heroes[index] || 0)),
     jsAbsorbed: Number(jsAbsorbed || 0),
     jsDamageAfterShield: Number(jsDamageAfterShield || 0),
     jsShieldAfter: Number(jsShieldAfter || 0),
-    jsHeroHp: [0, 1, 2, 3].map((index) => Number(jsHeroes[index] || 0)),
+    jsHeroHp: [0, 1, 2, 3, 4, 5].map((index) => Number(jsHeroes[index] || 0)),
     jsPartyHp: Number(jsPartyHp || 0),
   };
   const exports = exportsOverride || (shadow.status === 'ready' ? shadow.exports : null);
@@ -2918,6 +2937,8 @@ export function createSimulationCorePartyDamageResolution({
     normalized.heroHp[1],
     normalized.heroHp[2],
     normalized.heroHp[3],
+    normalized.heroHp[4],
+    normalized.heroHp[5],
     rustDamageAfterShield,
   ));
   shadow.partyDamageOwnerChecks = Number(shadow.partyDamageOwnerChecks || 0) + 1;

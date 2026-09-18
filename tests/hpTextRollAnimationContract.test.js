@@ -75,24 +75,11 @@ test('HP text roll helper starts stable then rolls damage and healing toward can
   }
 });
 
-test('combat renderer uses HP text roll state only for PartyHP_text presentation', () => {
-  const renderSrc = read('web-runner/systems/renderRuntime.js');
-  const functionBankSrc = read('web-runner/modules/functionBank.js');
-  const scriptsFunctionBankSrc = read('Scripts/functionBank.js');
-
-  assert.match(renderSrc, /import\s+\{\s*updateHpTextRollState\s*\}\s+from\s+'..\/src\/core\/hpTextRollAnimation\.mjs';/);
-  assert.match(renderSrc, /gameState\.partyHpTextRoll = gameState\.partyHpTextRoll \|\| \{\};/);
-  assert.match(renderSrc, /const hpTextRoll = updateHpTextRollState\(gameState\.partyHpTextRoll, \{/);
-  assert.match(renderSrc, /currentHp: cur,/);
-  assert.match(renderSrc, /maxHp: max,/);
-  assert.match(renderSrc, /now: state\.globals\.time \|\| 0,/);
-  assert.match(renderSrc, /text = hpTextRoll\.text;/);
-  assert.match(renderSrc, /const hpBarRoll = updateHpTextRollState\(gameState\.partyHpTextRoll, \{/);
-  assert.match(renderSrc, /currentHp: state\.globals\.PartyHP \|\| 0,/);
-  assert.match(renderSrc, /maxHp: maxHP,/);
-  assert.match(renderSrc, /const ratio = Math\.max\(0, Math\.min\(1, hpBarRoll\.displayHp \/ maxHP\)\);/);
-  assert.doesNotMatch(renderSrc, /const ratio = Math\.max\(0, Math\.min\(1, \(state\.globals\.PartyHP \|\| 0\) \/ maxHP\)\);/);
-
-  assert.doesNotMatch(functionBankSrc, /hpTextRoll|HP_TEXT_ROLL|updateHpTextRollState/);
-  assert.doesNotMatch(scriptsFunctionBankSrc, /hpTextRoll|HP_TEXT_ROLL|updateHpTextRollState/);
+test('combat health presentation reads hero HP while simulation stays independent of rolling text', () => {
+  const commandSrc = read('web-runner/systems/heroCommandUI.mjs');
+  assert.match(commandSrc, /const hp = Math.max\(0, Math.min\(maxHP, number\(hero.hp \?\? hero.HP\)\)\);[\s\S]*bar.value = hp/,
+    'the current strip clamps the canonical hero HP before rendering');
+  for (const file of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
+    assert.doesNotMatch(read(file), /hpTextRoll|HP_TEXT_ROLL|updateHpTextRollState/);
+  }
 });

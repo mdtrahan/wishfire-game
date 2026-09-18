@@ -14,7 +14,6 @@ test('Kojonn Faze queues a recovered 3-turn Blight package from the extracted ru
   assert.match(renderRuntimeSrc, /firesEveryTurns: 1,/);
   assert.match(renderRuntimeSrc, /startAfterTurns: 1,/);
   assert.match(renderRuntimeSrc, /logMessage: String\(hit\.msg \|\| ''\),/);
-  assert.match(renderRuntimeSrc, /if \(String\(dot\.cadence \|\| 'tick'\) === 'turn'\) continue;/);
 });
 
 test('Kojonn Blight queue payload supports turn cadence and source-target reset in both mirrors', () => {
@@ -46,7 +45,7 @@ test('Kojonn Blight queue payload supports turn cadence and source-target reset 
   }
 });
 
-test('turn-cadence Blight only fires on the afflicted enemy turn in both mirrors', () => {
+test('retired Blight has no enemy turn entrypoint in either mirror', () => {
   for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
     const src = read(relPath);
     assert.match(src, /export function ProcessEnemyTurnDamageOverTime\(ctx, enemyUID\) \{/);
@@ -58,7 +57,7 @@ test('turn-cadence Blight only fires on the afflicted enemy turn in both mirrors
     assert.match(src, /g\.NextDamageTextKind = 'dot';/);
     assert.match(src, /g\.NextHitFlashTone = 'purple';/);
     assert.match(src, /const activeEnemyUID = Number\(enemyUID \|\| GetCurrentTurn\(ctx\) \|\| 0\);/);
-    assert.match(src, /ProcessEnemyTurnDamageOverTime\(ctx, activeEnemyUID\);[\s\S]*?const enemy = GetActorByUID\(ctx, activeEnemyUID\);[\s\S]*?StartEnemyAction\(ctx, activeEnemyUID\);/);
+    assert.doesNotMatch(src, /ProcessEnemyTurnDamageOverTime\(ctx, activeEnemyUID\);/);
   }
 
   const appSrc = read('web-runner/app.js');

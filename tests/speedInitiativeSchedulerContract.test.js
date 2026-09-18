@@ -22,6 +22,37 @@ function extractFunctionSource(src, name) {
   assert.fail(`unterminated ${name}`);
 }
 
+test('runtime initiative rosters use individual HP across six slots', () => {
+  const vm = require('node:vm');
+  for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
+    const src = fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
+    const context = {
+      getGlobals: ctx => ctx.globals,
+      getEntities: ctx => ctx.entities,
+      GetEffectiveStat: (_ctx, actor) => actor.stats.SPD,
+    };
+    vm.createContext(context);
+    vm.runInContext(['getDeployedHeroes', 'getHeroes', 'getEnemies', 'getInitiativeRoster', 'getDynamicInitiativeRoster']
+      .map(name => extractFunctionSource(src, name)).join('\n'), context);
+    for (let size = 1; size <= 6; size += 1) {
+      const heroes = Array.from({ length: size }, (_, i) => ({
+        uid: i + 1, kind: 'hero', hp: 10, stats: { SPD: 12 - i },
+      }));
+      for (const PartyHP of [0, 50]) {
+        const ctx = { globals: { PartyHP }, entities: [...heroes, { uid: 100, kind: 'enemy', hp: 10, stats: { SPD: 8 } }] };
+        for (const ko of [false, true]) {
+          heroes[0].hp = ko ? 0 : 10;
+          const expected = [...heroes.filter(hero => hero.hp > 0).map(hero => hero.uid), 100];
+          for (const name of ['getInitiativeRoster', 'getDynamicInitiativeRoster']) {
+            assert.deepEqual(Array.from(context[name](ctx), actor => actor.uid), expected, `${relPath} ${name} size=${size} pool=${PartyHP} ko=${ko}`);
+          }
+          assert.equal(heroes[0].hp, ko ? 0 : 10);
+        }
+      }
+    }
+  }
+});
+
 for (const schedulerPath of ['src/core/schedulerRules.mjs', 'web-runner/src/core/schedulerRules.mjs']) {
 test(`speed initiative scheduler can weave heroes and enemies by SPD in ${schedulerPath}`, async () => {
   const scheduler = await import(pathToFileURL(path.join(__dirname, '..', schedulerPath)).href);
@@ -78,6 +109,27 @@ test(`speed initiative ability gate classifies dead and disabled actors in ${sch
 });
 }
 
+for (const schedulerPath of ['src/core/schedulerRules.mjs', 'web-runner/src/core/schedulerRules.mjs']) {
+test(`speed initiative ability gate normalizes freeze and object statuses in ${schedulerPath}`, async () => {
+  const scheduler = await import(pathToFileURL(path.join(__dirname, '..', schedulerPath)).href);
+  for (const actor of [
+    { uid: 1, hp: 20, status: 'Frozen' },
+    { uid: 2, hp: 20, state: 'freeze' },
+    { uid: 3, hp: 20, statuses: [{ statusEffect: 'stunned' }] },
+    { uid: 4, hp: 20, statusEffects: [{ type: 'disabled' }] },
+    { uid: 5, hp: 20, ableToAct: false },
+  ]) assert.equal(scheduler.isAbleToActSlot(actor), false, `${schedulerPath} blocks ${actor.uid}`);
+  assert.equal(scheduler.isAbleToActSlot({ uid: 6, hp: 20, statuses: [{ statusEffect: 'haste' }] }), true);
+});
+}
+
+test('browser scheduler gate accepts scalar status effects and blocks truthy object flags', async () => {
+  const scheduler = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner/src/core/schedulerRules.mjs')).href);
+  assert.equal(scheduler.isAbleToActSlot({ uid: 7, hp: 20, statusEffects: 'frozen' }), false);
+  assert.equal(scheduler.isAbleToActSlot({ uid: 8, hp: 20, statuses: { paralyzed: true } }), false);
+  assert.equal(scheduler.isAbleToActSlot({ uid: 9, hp: 20, statusEffects: { status: 'haste' } }), true);
+});
+
 test('runtime default actor selection uses fixed effective-Speed cycling', () => {
   const initiativeDoc = fs.readFileSync(path.join(__dirname, '..', 'governance/planning/combat-initiative-paths.md'), 'utf8');
   const runtimeSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner/modules/functionBank.js'), 'utf8');
@@ -117,4 +169,28 @@ test('runtime default actor selection uses fixed effective-Speed cycling', () =>
   assert.match(initiativeDoc, /Shadow And SimulationCore Ownership/);
   assert.match(initiativeDoc, /Experiment And Follow-Up Lanes/);
   assert.match(initiativeDoc, /Do not flip this guard as cleanup\./);
+});
+
+test('2x Speed link schedules one immediate hero action in both live functionBank mirrors', async () => {
+  const rules = await import(pathToFileURL(path.join(__dirname, '..', 'web-runner/src/core/dynamicInitiativeRules.mjs')).href);
+  const hero = { uid: 1, kind: 'hero', hp: 40, effectiveSpeed: 20 };
+  const enemies = [{ uid: 101, kind: 'enemy', hp: 30, effectiveSpeed: 10 }];
+  assert.equal(rules.resolveHeroSpeedMultiattack({ hero, enemies, alreadyLinked: false }), true);
+  assert.equal(rules.resolveHeroSpeedMultiattack({ hero, enemies, alreadyLinked: true }), false);
+  assert.equal(rules.resolveHeroSpeedMultiattack({ hero: { ...hero, hp: 0 }, enemies, alreadyLinked: false }), false);
+  assert.equal(rules.resolveHeroSpeedMultiattack({ hero: { ...hero, effectiveSpeed: 19 }, enemies, alreadyLinked: false }), false);
+
+  for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
+    const source = fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
+    const advance = extractFunctionSource(source, 'AdvanceTurn');
+    const ended = advance.indexOf('nativeTurnEnded(ctx, GetActorByUID(ctx, currentUID));');
+    const link = advance.indexOf("'speed_multiattack_link'");
+    assert.ok(ended >= 0 && ended < link, `${relPath} completes the first action before scheduling the link`);
+    assert.match(advance, /setDynamicInitiativeDefaultCurrent\(ctx, \{ uid: currentUID, type: 0,/);
+    assert.match(advance, /SpeedMultiattackLinkedActorUID = Number\(currentUID\)/);
+    assert.match(advance, /speedState\.actionCount = Number\(speedState\.actionCount \|\| 0\) \+ 1/);
+    assert.match(advance, /if \(currentType === 0 && Number\(g\.SpeedMultiattackLinkedActorUID \|\| 0\) === Number\(currentUID \|\| 0\)\) g\.SpeedMultiattackLinkedActorUID = 0/);
+    const linkedBlock = advance.slice(link - 700, link + 700);
+    assert.doesNotMatch(linkedBlock, /ProcessCurrentTurn\(ctx\)/);
+  }
 });

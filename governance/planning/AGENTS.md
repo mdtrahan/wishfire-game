@@ -27,4 +27,4 @@
 - For SimulationCore boundary changes, run Rust/WASM and focused ownership tests named in the relevant plan.
 
 ## Child DOX Index
-- None.
+- `session-level-up-buff-pool.md` - final 48-card universal Wishfire session buff catalog, stage rules, runtime limits, and deterministic validation.
