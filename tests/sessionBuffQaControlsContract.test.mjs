@@ -89,6 +89,10 @@ test('a session offer owns input, rejects stale selection, and preserves its exi
     SelectedEnemyUIDOwner: 1,
   };
   beginFreshSessionBuffQueue(globals, party);
+  const waiting = getSessionLevelUpBuffPresentation(globals, party);
+  assert.equal(waiting.awaitingPresentation, true);
+  assert.equal(globals.HeroTurnCardFanOpen, 1);
+  globals.time = 1000;
   const offer = getSessionLevelUpBuffPresentation(globals, party);
   assert.equal(deriveCombatChoiceMode(globals), COMBAT_CHOICE_MODE.OFFER);
   assert.equal(deriveCombatChoiceInput(globals).acceptsBattlefieldTarget, false);

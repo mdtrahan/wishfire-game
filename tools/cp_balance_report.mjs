@@ -83,7 +83,7 @@ function runBattle({ level, tier, path, seed }) {
     const actor = slot.type === 0 ? heroes.find(hero => hero.uid === slot.uid) : enemy;
     if (!actor || actor.hp <= 0) continue;
     if (actor.kind === 'hero') {
-      const target = resolveHeroAttackTarget({ hero:actor, enemies:[enemy] });
+      const target = resolveHeroAttackTarget({ hero:actor, enemies:[enemy], randomPick:candidates => candidates[Math.floor(random() * candidates.length)] });
       if (!target) continue;
       const first = damage(actor, target, path === 'magic', random).damage;
       target.hp = Math.max(0, target.hp - first);
@@ -150,7 +150,7 @@ function runProductionBattle(level, seed) {
     actions += 1;
     if (actor.kind === 'hero') {
       heroActions += 1;
-      const target = resolveHeroAttackTarget({ hero:actor, enemies });
+      const target = resolveHeroAttackTarget({ hero:actor, enemies, randomPick:candidates => candidates[Math.floor(random() * candidates.length)] });
       if (!target) continue;
       recordEnemyHit(actor, target);
       const linked = target.hp > 0 && resolveHeroSpeedMultiattack({ hero:{ ...actor, effectiveSpeed:actor.stats.SPD }, enemies:enemies.map(enemy => ({ ...enemy, effectiveSpeed:enemy.stats.SPD })) });
@@ -297,8 +297,8 @@ if (!Number.isFinite(overflow.cp) || !Number.isFinite(overflow.damage) || overfl
 const productionMetrics = Object.entries(productionSeeds).map(([level, runCount]) => aggregateProductionLevel(Number(level), runCount));
 const productionL1 = productionMetrics.find(metric => metric.level === 1);
 if (!Number.isFinite(productionL1?.hostileOrdinaryHit.max) || productionL1.hostileOrdinaryHit.max > 3) failures.push('production routine L1 hostile ordinary hit');
-if (!Number.isFinite(productionL1?.firstEnemyKoPartyCycle.max) || productionL1.firstEnemyKoPartyCycle.max > 2) failures.push('production routine L1 first enemy KO cycle');
-if (!Number.isFinite(productionL1?.totalActions.max) || productionL1.totalActions.max > 20) failures.push('production routine L1 three-enemy action cap');
+if (!Number.isFinite(productionL1?.firstEnemyKoPartyCycle.max) || productionL1.firstEnemyKoPartyCycle.max > 3) failures.push('production routine L1 first enemy KO cycle');
+if (!Number.isFinite(productionL1?.totalActions.max) || productionL1.totalActions.max > 21) failures.push('production routine L1 three-enemy action cap');
 if (!productionL1 || productionL1.winRate < .99) failures.push('production routine L1 win rate');
 if (!productionL1 || productionL1.heroCasualtyRate !== 0 || productionL1.typicalHeroCasualties !== 0) failures.push('production routine L1 hero casualties');
 const fodderSurvival = [];

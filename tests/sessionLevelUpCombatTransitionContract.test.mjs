@@ -24,6 +24,7 @@ import { derivePresentationTurnBarrier, hasSessionLevelUpPresentationBarrier } f
 import { applyLevelUpBuffCard, createSessionLevelBuffState, getEligibleLevelUpBuffCards } from '../src/core/sessionLevelBuffOffers.mjs';
 import { beginSessionLevelUpSettlement, QA_LEVEL_UP_BUFF_CARDS } from '../web-runner/modules/sessionLevelUpBuffPresentation.mjs';
 import { applySessionLevelBuffsAtBattleStart, rulesContext } from '../web-runner/modules/heroCommands.mjs';
+import { resolveHeroAttackTarget } from '../src/core/heroAttackTargetingRules.mjs';
 
 const read = file => fs.readFileSync(path.join(process.cwd(), file), 'utf8');
 
@@ -126,7 +127,7 @@ test('queue pause/resume and acknowledgement form the Phase 4 presentation seam'
   assert.equal(acknowledgeSessionLevelUpEntry(queue).status, 'complete');
 });
 
-test('living hero CTB entry routes one native basic attack to a living selection or stale fallback without opening a fan', () => {
+test('living hero CTB entry routes one native basic attack to a fresh living target without opening a fan', () => {
   const source = read('web-runner/modules/functionBank.js');
   const calls = [];
   const context = {
@@ -136,6 +137,8 @@ test('living hero CTB entry routes one native basic attack to a living selection
     recordHeroTurnEntryOwner: () => {}, applyTurnGateIntent: () => {}, createHeroTurnGateBaseline: () => ({}),
     UpdateAstralFlowAmpBar: () => {}, getEntities: ctx => ctx.state.entities,
     executeHeroCommand: (ctx, command) => calls.push(command),
+    resolveHeroAttackTarget,
+    randomPick: (_ctx, candidates) => candidates[0],
   };
   vm.createContext(context);
   vm.runInContext(`${extractFunctionSource(source, 'HeroTurn')}\nthis.HeroTurn = HeroTurn;`, context);
@@ -144,7 +147,7 @@ test('living hero CTB entry routes one native basic attack to a living selection
   context.HeroTurn(selected, 1);
   const stale = { state: { globals: { HeroTurnCardFanOpen: 0, SelectedEnemyUID: 99 }, entities } };
   context.HeroTurn(stale, 1);
-  assert.deepEqual(calls.map(command => [command.actorUID, command.targetUID]), [[1, 10], [1, 9]]);
+  assert.deepEqual(calls.map(command => [command.actorUID, command.targetUID]), [[1, 9], [1, 9]]);
   assert.equal(selected.state.globals.HeroTurnCardFanOpen, 0);
   assert.equal(stale.state.globals.HeroTurnCardFanOpen, 0);
 });

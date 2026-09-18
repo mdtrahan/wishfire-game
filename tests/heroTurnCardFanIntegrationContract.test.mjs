@@ -148,7 +148,7 @@ test('hero card healing and barriers emit presentation from the real resolved de
   const rules = rulesContext(ctx);
   assert.equal(resolveSkill(rules, hero, { skillId: 'hero_card:heal', targetType: 'ally', effects: [{ effectType: 'heal', potency: .5 }] }, [hero.uid]), true);
   assert.deepEqual(calls.map(call => call.slice(0, 5)), [['SpawnDamageText', 2, 12, 34, 'heal']]);
-  assert.deepEqual(globals.DamageTexts[0], { amount: 2, x: 12, y: 34, kind: 'heal', targetKind: 'hero', targetUID: 1, targetSlotIndex: 0 });
+  assert.deepEqual(globals.DamageTexts[0], { amount: 2, x: 12, y: 34, kind: 'heal', targetKind: 'hero', targetUID: 1, targetSlotIndex: 0, ownerUID: 1, healPresentation: 'major', notBefore: 5.5 });
   assert.equal(resolveSkill(rules, hero, { skillId: 'hero_card:ward', targetType: 'ally', effects: [{ effectType: 'status', statusEffect: 'barrier', magnitude: .2, duration: 2 }] }, [ally.uid]), true);
   assert.equal(ally.statuses.find(status => status.statusEffect === 'barrier')?.remaining, 4);
   assert.equal(globals.PartyWardBarrierVisualsByUID[2].source, 'hero_turn_card');

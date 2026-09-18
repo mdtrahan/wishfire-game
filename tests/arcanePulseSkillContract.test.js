@@ -11,7 +11,7 @@ const superGemRuntimePath = path.join(repoRoot, 'web-runner', 'systems', 'superG
 const loaderPath = path.join(repoRoot, 'web-runner', 'systems', 'runtimeVisualAssetLoader.js');
 const rendererPath = path.join(repoRoot, 'web-runner', 'systems', 'renderRuntime.js');
 const browserHooksPath = path.join(repoRoot, 'web-runner', 'systems', 'devBrowserTestHooks.js');
-const assetPath = path.join(repoRoot, 'web-runner', 'assets', 'images', 'skill_arcane_pulse_96x96.png');
+const assetPath = path.join(repoRoot, 'web-runner', 'assets', 'images', 'vfx_arcane_pulse_crescent.png');
 
 function loadFunctionBank(modulePath) {
   const original = fs.readFileSync(modulePath, 'utf8');
@@ -553,7 +553,7 @@ test('Arcane Pulse has raster asset and browser-visible render hooks', () => {
   const hooksSrc = fs.readFileSync(browserHooksPath, 'utf8');
   const appSrc = fs.readFileSync(path.join(repoRoot, 'web-runner/app.js'), 'utf8');
   const damageNumberSrc = fs.readFileSync(path.join(repoRoot, 'web-runner/src/core/damageNumberAnimation.mjs'), 'utf8');
-  assert.match(loaderSrc, /skill_arcane_pulse_96x96\.png/);
+  assert.match(loaderSrc, /vfx_arcane_pulse_crescent\.png/);
   assert.match(loaderSrc, /SkillArcanePulse/);
   assert.match(rendererSrc, /renderArcanePulseVisuals/);
   assert.match(rendererSrc, /images\.SkillArcanePulse/);

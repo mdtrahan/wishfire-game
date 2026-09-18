@@ -26,6 +26,7 @@
 - Hot-file commit helpers own `.beads/hot-file-lock` metadata generation; do not hand-author scope files except when debugging the tooling.
 - Tooling should not mutate runtime gameplay state except through explicit test/harness interfaces.
 - The balance harness enters through the current Canvas START hit target, fixes the encounter seed, and drives native autoplay. It writes completed metrics before bounded cleanup and force-closes only browser/server processes it owns.
+- Seeded CP simulations must pass their seeded picker into shared hero targeting; omitting it produces idle heroes rather than a deterministic target choice.
 
 ## Work Guidance
 - Keep command output bounded and failure messages classifiable.

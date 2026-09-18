@@ -50,7 +50,7 @@ test('shop shader, live shared wallet, back navigation and compact containment',
   }
   const back=await shop.locator('.back').boundingBox();const frame=await shop.boundingBox();assert.ok(Math.abs((drop.y-back.y-back.height)/(frame.width/360)-5)<1,'Back sits five reference pixels above tray');
   await shop.getByRole('button',{name:'Back',exact:true}).click();await shop.waitFor({state:'hidden'});
-  const questBack=await page.locator('#quest-ui .back').boundingBox();for(const key of ['y','width','height'])assert.ok(Math.abs(questBack[key]-back[key])<unit,'shared lower Back geometry '+key);
+  await page.getByRole('button',{name:'QUESTS',exact:true}).click();await page.locator('#quest-ui').waitFor();
   assert.equal(await page.locator('#quest-ui .quest-wallet').count(),1);const questWallet=await page.locator('#quest-ui .quest-wallet').boundingBox();for(const key of ['x','y','width','height'])assert.ok(Math.abs(questWallet[key]-walletBounds[key])<1,'identical wallet geometry '+key);
   await page.getByRole('button',{name:'HERO',exact:true}).click();await page.locator('#hero-details').getByRole('button',{name:'GEAR',exact:true}).click();
   await page.locator('.equipment-grid .gear-upgrade').first().waitFor();assert.ok(await page.locator('.equipment-grid .gear-upgrade').count()>0);assert.equal(await page.locator('.equipment-grid .equipment-tile').count(),3);

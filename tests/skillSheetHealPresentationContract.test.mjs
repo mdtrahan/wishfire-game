@@ -36,7 +36,7 @@ for (const [label, apply] of [['runtime', applyRuntimeHeal], ['Construct mirror'
   test(`${label} active heal emits only its actual resolved delta through the shared presentation path`, () => {
     const { ctx, hero, globals, calls } = makeContext();
     assert.equal(apply(ctx, 8), 1);
-    assert.deepEqual(globals.DamageTexts, [{ amount: 1, x: 21, y: 34, kind: 'heal', targetKind: 'hero', targetUID: 7, targetSlotIndex: 0, ownerUID: 7, healPresentation: 'minor', notBefore: 1.5 }]);
+    assert.deepEqual(globals.DamageTexts, [{ amount: 1, x: 44, y: 55, kind: 'heal', targetKind: 'hero', targetUID: 7, targetSlotIndex: 0, ownerUID: 7, healPresentation: 'minor', notBefore: 1.5 }]);
     assert.equal(apply(ctx, 8), 0, 'full health must not emit a heal event');
     assert.equal(globals.DamageTexts.length, 1);
     assert.equal(calls.filter(call => call.name === 'SpawnDamageText').length, 1);

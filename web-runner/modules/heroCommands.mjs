@@ -15,7 +15,9 @@ export function emitResolvedHealEvent(ctx, source, target, beforeHP, { allowRevi
  if(!target||delta<=0||(!allowRevive&&before<=0)||!['hero','enemy'].includes(String(target.kind||'')))return 0;
  const g=ctx.state.globals,slot=Number(target.heroDisplaySlot??target.heroIndex??-1);
  const rest=target.kind==='hero'?(g.HeroRestFeetPosByUID?.[Number(target.uid||0)]||g.HeroRestBasePosByUID?.[Number(target.uid||0)]):null;
- const pos=rest&&Number.isFinite(Number(rest.x))&&Number.isFinite(Number(rest.y))?rest:target;
+ const portraits=target.kind==='hero'?(g.HeroPortraitPosByIndex||g.HeroIconPosByIndex):null;
+ const portrait=Array.isArray(portraits)&&slot>=0?portraits[slot]:null;
+ const pos=[rest,portrait,target].find(candidate=>candidate&&Number.isFinite(Number(candidate.x))&&Number.isFinite(Number(candidate.y)))||target;
  const texts=Array.isArray(g.DamageTexts)?g.DamageTexts:[];const count=texts.length;
  ctx.callFunction('SpawnDamageText',delta,Number(pos?.x||0),Number(pos?.y||0),'heal',target.kind);
  const emitted=Array.isArray(g.DamageTexts)&&g.DamageTexts.length>count?g.DamageTexts.at(-1):null;
