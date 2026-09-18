@@ -58,9 +58,21 @@ test('opening Chain Strike selection closes its offer and releases combat exactl
   const offer = getSessionLevelUpBuffPresentation(globals, party);
   const chainStrike = offer.cards.find(card => card.cardId === 'mirage_chain_1');
   assert.ok(chainStrike);
-  assert.equal(chooseSessionLevelUpBuff(globals, party, chainStrike.cardId, 0, null, offer.offerToken).status, 'applied');
+  let executed = null;
+  const selected = chooseSessionLevelUpBuff(globals, party, chainStrike.cardId, 0, (card, hero) => {
+    executed = { specialId: card.specialId, heroUID: hero.uid };
+    globals.HeroAction = { active: true, uid: hero.uid };
+    return { ok: true, hitCount: 3, presentationReleaseAt: 1.4 };
+  }, offer.offerToken);
+  assert.equal(selected.status, 'applied');
+  assert.deepEqual(executed, { specialId: 'chain_strike_ii', heroUID: 1 });
+  assert.equal(selected.openingExecution.hitCount, 3);
+  assert.equal(globals.ActionOwnerUID, 1);
+  assert.equal(globals.ActionActorUID, 1);
+  assert.equal(globals.ActionInProgress, 1);
+  assert.deepEqual(globals.SessionLevelBuffState, { heroes: {} }, 'opening Chain Strike II is one attack, not a session passive');
   assert.equal(getSessionLevelUpBuffPresentation(globals, party).open, false);
-  assert.equal(claimSessionBuffQueueResume(globals), true);
+  assert.equal(claimSessionBuffQueueResume(globals), false, 'the owned attack releases the scheduler after its presentation');
   assert.equal(claimSessionBuffQueueResume(globals), false);
 });
 
@@ -106,6 +118,30 @@ test('100 AF threshold choice queues once, waits for selection, resets only its 
   assert.deepEqual(globals.PendingFlowThresholds, []);
   assert.equal(claimSessionBuffQueueResume(globals), true);
   assert.equal(claimSessionBuffQueueResume(globals), false);
+});
+
+test('AF choice waits for its triggering gem and attack presentation to finish', () => {
+  const party = heroes();
+  party[1].flow = 100;
+  const globals = {
+    time: 4,
+    RuntimeRandom: () => 0,
+    SessionLevelBuffState: { heroes: {} },
+    SessionLevelUpQueue: { version: 1, status: 'complete', paused: false, currentIndex: 0, entries: [] },
+    PendingFlowThresholds: [{ heroUID: 2, triggerOrder: 1, token: 'flow-serial-1' }],
+    FlowOrbs: [{ id: 1, recipientUID: 2, collected: true }],
+  };
+
+  assert.equal(getSessionLevelUpBuffPresentation(globals, party).awaitingPresentation, true);
+  assert.equal(globals.SessionOfferInputToken, undefined);
+  globals.FlowOrbs = [];
+  globals.CombatImpactVisuals = [{ ownerUID: 2 }];
+  assert.equal(getSessionLevelUpBuffPresentation(globals, party).awaitingPresentation, true);
+  globals.CombatImpactVisuals = [];
+  globals.ActionLockUntil = 4.1;
+  assert.equal(getSessionLevelUpBuffPresentation(globals, party).awaitingPresentation, true);
+  globals.time = 4.11;
+  assert.equal(getSessionLevelUpBuffPresentation(globals, party).open, true);
 });
 
 test('AF special offers cache their signature and party-special RNG across rerenders', () => {

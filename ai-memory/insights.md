@@ -557,9 +557,11 @@ Board removal must include bootstrap readiness: an invisible full-board gate can
 ## 2026-09-14 - Resolved Health Changes Own Presentation
 - Emit heal presentation only after an actor HP mutation and compute the shown amount from the actual positive delta. A shared `DamageTexts` heal record keeps the app-owned bloom consistent across card, special, and enemy heal paths.
 - 2026-09-17, ORKA-7p7: Treat actor motion and effect lifetime as one owner-scoped presentation sequence. Stationary ranged/heal actions must use the stored slot-home anchor, while melee retreat and scheduler handoff wait for the action's final owned visual to complete.
+- 2026-09-17, ORKA-7p7: A cross-actor heal can animate on a hero while an enemy owns the current action. Extend the shared presentation boundary through the bloom without changing its owner; when a turn heal follows command claim, delay both hero motion and its queued hit.
 - Shared wards must sit in the common hero-damage resolver, including native-resolved packets. Any bypass makes role FLOW accounting and shield visuals disagree with real HP loss.
 - Defeat interception marks its seeded attempt before rolling. A revival effect must return control without clearing session state or rebuilding initiative.
 
 ## 2026-09-14 - Release Builders Must Preserve The Last Good Artifact
 - Validate required build tools before touching release output. Assemble into a sibling candidate directory and replace the last playable artifact only after the bundle and manifest are complete.
 - A missing-dependency regression check must seed the existing artifact, force the dependency failure, and prove the prior files survive.
+- 2026-09-18: Opening-session cards that execute an immediate AF special must not also persist the similarly named session-buff family. Chain Strike II is one attack; storing `mirage_chain` made later random hero basics look like a hidden toggle with silent expiry.

@@ -158,6 +158,16 @@ for (const modulePath of [
     assert.equal(textEndHold.canClaimCombatAction, false);
     assert.equal(textEndHold.firstBlockingLane, 'text-animation');
 
+    const effectHold = mod.derivePresentationTurnBarrier({ globals: { time: 10, TurnPhase: 0, CombatImpactVisuals: [{ targetUID: 2 }] } });
+    assert.equal(effectHold.canAdvanceTurn, false);
+    assert.equal(effectHold.firstBlockingLane, 'combat-effects');
+    const orbHold = mod.derivePresentationTurnBarrier({ globals: { time: 10, TurnPhase: 0, FlowOrbs: [{ sourceUID: 2 }] } });
+    assert.equal(orbHold.canClaimCombatAction, false);
+    assert.equal(orbHold.firstBlockingLane, 'flow-orbs');
+    const deathHold = mod.derivePresentationTurnBarrier({ globals: { time: 10, TurnPhase: 0, EnemyDeathVisualHoldByUID: { 2: { slotIndex: 0 } } } });
+    assert.equal(deathHold.canClaimCombatAction, false);
+    assert.equal(deathHold.firstBlockingLane, 'pending-enemy-deaths');
+
     // Paused card state cannot block native combat; existing presentation gates still apply.
     const withoutCardFlags = mod.derivePresentationTurnBarrier({
       globals: { time: 10, TurnPhase: 0 }, boardHasEmptySlots: true,

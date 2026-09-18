@@ -107,6 +107,27 @@ export function hasSessionLevelUpPresentationBarrier(globals = {}) {
     || !!globals?.SessionLevelUpSettlement;
 }
 
+export function hasActiveCombatEffects(globals = {}) {
+  return [
+    globals.CombatImpactRequests,
+    globals.CombatImpactVisuals,
+    globals.ChainStrikeVisuals,
+    globals.ArcanePulseVisuals,
+    globals.SessionBuffCombatVisuals,
+    globals.DamageTexts,
+  ].some(entries => Array.isArray(entries) && entries.length > 0);
+}
+
+export function hasActiveAttackPresentation(globals = {}) {
+  const now = Number(globals.time || 0);
+  return hasActiveCombatEffects(globals)
+    || (Array.isArray(globals.PendingHeroHits) && globals.PendingHeroHits.length > 0)
+    || !!globals.HeroAction?.active
+    || !!globals.EnemyAction?.active
+    || !!globals.TextAnimating
+    || Number(globals.TextAnimEndAt || 0) > now;
+}
+
 export function derivePresentationTurnBarrier({
   globals = {},
   refillBounce = null,
@@ -131,6 +152,9 @@ export function derivePresentationTurnBarrier({
     skillDraught: false,
     skillDraughtPending: false,
     pendingHeroHits,
+    combatEffects: hasActiveCombatEffects(globals),
+    flowOrbs: Array.isArray(globals.FlowOrbs) && globals.FlowOrbs.length > 0,
+    pendingEnemyDeaths: Object.keys(globals.EnemyDeathVisualHoldByUID || {}).length > 0,
     actionLock: Number(globals.ActionLockUntil || 0) > now,
     actionInProgress: !!globals.ActionInProgress,
   };
@@ -146,6 +170,9 @@ export function derivePresentationTurnBarrier({
     ['enemy-action', lanes.enemyAction],
     ['skill-draught', lanes.skillDraught],
     ['pending-hero-hits', lanes.pendingHeroHits],
+    ['combat-effects', lanes.combatEffects],
+    ['flow-orbs', lanes.flowOrbs],
+    ['pending-enemy-deaths', lanes.pendingEnemyDeaths],
     ['action-lock', lanes.actionLock],
     ['action-in-progress', lanes.actionInProgress],
   ];

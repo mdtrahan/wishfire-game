@@ -5,14 +5,15 @@ import {ASTRAL_FLOW_METER_BLUE} from '../src/core/astralFlowEnemyKoRewards.mjs';
 // Canvas-logical positions share the actors' orientation/scale projection.
 export function renderFlowOrbs(ctx, globals, actors, project, scale, gemImage) {
  for (const orb of globals.FlowOrbs || []) {
+  if (orb.releasedAt == null) continue;
   const hero = actors.find(a => a.uid === orb.recipientUID);
   const destination = hero && globals.HeroPortraitPosByIndex?.[hero.heroDisplaySlot ?? hero.heroIndex];
   if (!destination) continue;
   const source = orb.sourceKind === 'hero' ? globals.HeroPortraitPosByIndex?.[orb.sourceSlot] || orb : orb;
   const start = project(source.x, source.y, orb.sourceKind), end = project(destination.x, destination.y, 'hero');
-  const age = Math.max(0, Number(globals.time || 0) - orb.born);
+  const age = Math.max(0, Number(globals.time || 0) - orb.releasedAt);
   const radius = 4.6 * scale;
-  const frame = getAstralFlowKoOrbFrame({source:start,ground:{x:start.x,y:start.y+orb.groundOffset*scale},target:end,radius,spillX:((orb.id%5)-2)*9*scale},globals.time,orb.born);
+  const frame = getAstralFlowKoOrbFrame({source:start,ground:{x:start.x,y:start.y+orb.groundOffset*scale},target:end,radius,spillX:((orb.id%5)-2)*9*scale},globals.time,orb.releasedAt);
   const {x,y} = frame;
   ctx.save();
   ctx.globalAlpha = orb.collected ? Math.max(0, 1 - (age - T.releaseSeconds - T.flightSeconds) / T.collectFlashSeconds) : 1;

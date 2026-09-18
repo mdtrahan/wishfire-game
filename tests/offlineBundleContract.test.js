@@ -80,7 +80,7 @@ test('offline resolver maps document assets and embedded payloads without networ
   };
   try {
     const resolver = await import(pathToFileURL(path.join(root, 'web-runner', 'systems', 'runtimeAssetUrl.mjs')).href);
-    assert.equal(resolver.runtimeAssetUrl('images/Falie.png'), 'file:///offline/assets/images/Falie.png');
+    assert.equal(resolver.runtimeAssetUrl('images/Fara.png'), 'file:///offline/assets/images/Fara.png');
     assert.deepEqual(resolver.getEmbeddedJson('file:///offline/assets/layouts.json'), { version: 1 });
     assert.deepEqual([...resolver.getEmbeddedWasmBytes('./assets/simulation_core.wasm')], [0, 97, 115, 109]);
   } finally {

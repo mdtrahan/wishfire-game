@@ -23,14 +23,14 @@ test('combat hero strip keeps a compact free placed reference status block', () 
   assert.match(source, /HERO_PORTRAIT_PATHS = Object\.freeze/);
   assert.match(source, /Object\.entries\(HERO_ART_ASSETS\)/);
   assert.deepEqual(Object.fromEntries(Object.entries(HERO_ART_ASSETS).map(([key, asset]) => [key, asset.path])), {
-    Falie: 'images/Falie.png', Huun: 'images/Huun.png', Runa: 'images/Runa.png', Kojonn: 'images/Kojonn.png',
+    Fara: 'images/Fara.png', Hondo: 'images/Hondo.png', Runa: 'images/Runa.png', Kaja: 'images/Kaja.png',
   });
   assert.doesNotMatch(source, /cap_/);
   assert.match(source, /HERO_PORTRAIT_CROPS = Object\.freeze/);
-  assert.match(source, /Falie: \{position: '52% 0%', scale: 4\.6, width: '47%'\}/);
-  assert.match(source, /Huun: \{position: '60% 0%', scale: 4\.8, width: '47%'\}/);
+  assert.match(source, /Fara: \{position: '52% 0%', scale: 4\.6, width: '47%'\}/);
+  assert.match(source, /Hondo: \{position: '60% 0%', scale: 4\.8, width: '47%'\}/);
   assert.match(source, /Runa: \{position: '48% 0%', scale: 4\.8, width: '47%'\}/);
-  assert.match(source, /Kojonn: \{position: '54% 0%', scale: 4\.7, width: '47%'\}/);
+  assert.match(source, /Kaja: \{position: '54% 0%', scale: 4\.7, width: '47%'\}/);
   assert.match(source, /padding:0;font:600 10px/);
   assert.match(source, /flex:0 0 var\(--card-width,82px\)/);
   assert.match(source, /height:104px/);

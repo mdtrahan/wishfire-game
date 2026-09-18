@@ -162,10 +162,12 @@ test('ProcessTurn reconciles the owner mismatch before starting the next living 
   const advanceIndex = processTurn.indexOf('AdvanceTurn(ctx);', guardIndex);
   const holdIndex = processTurn.indexOf('if (holdForEnemyRosterRefill(ctx)) return;', advanceIndex);
   const clearIndex = processTurn.indexOf('applyTurnGateIntent(g, createDeferredAdvanceResolved);', holdIndex);
+  const missingActorIndex = processTurn.indexOf("if (!actor) { qaTrace('missing-actor-advanced'); AdvanceTurn(ctx); return; }");
   const nativeStartIndex = processTurn.indexOf('nativeTurnStarted(ctx, actor);');
   assert.ok(guardIndex >= 0, 'ProcessTurn must inspect completed action ownership');
   assert.ok(advanceIndex > guardIndex && advanceIndex < holdIndex, 'owner mismatch must advance from the completed owner');
   assert.ok(holdIndex > advanceIndex && holdIndex < clearIndex, 'roster refill hold must remain before handoff release');
   assert.ok(clearIndex > holdIndex && clearIndex < nativeStartIndex, 'handoff release must precede the next native turn');
+  assert.ok(missingActorIndex > clearIndex && missingActorIndex < nativeStartIndex, 'a missing scheduled actor must advance before native turn setup');
   assert.match(processTurn, /type = GetCurrentType\(ctx\);[\s\S]*uid = GetCurrentTurn\(ctx\);[\s\S]*actor = GetActorByUID\(ctx, uid\);/);
 });

@@ -19,7 +19,26 @@ export function emitResolvedHealEvent(ctx, source, target, beforeHP, { allowRevi
  const texts=Array.isArray(g.DamageTexts)?g.DamageTexts:[];const count=texts.length;
  ctx.callFunction('SpawnDamageText',delta,Number(pos?.x||0),Number(pos?.y||0),'heal',target.kind);
  const emitted=Array.isArray(g.DamageTexts)&&g.DamageTexts.length>count?g.DamageTexts.at(-1):null;
- if(emitted){emitted.targetUID=Number(target.uid||0);emitted.targetSlotIndex=slot;emitted.healPresentation=presentation==='major'?'major':'minor';}
+ const now = Number(g.time || 0), bloomReleaseAt = now + 1.5;
+ if(emitted){emitted.targetUID=Number(target.uid||0);emitted.targetSlotIndex=slot;emitted.ownerUID=Number(source?.uid||target.uid||0);emitted.healPresentation=presentation==='major'?'major':'minor';emitted.notBefore=bloomReleaseAt;}
+ const presentationReleaseAt = bloomReleaseAt + .18 + .7 + .45;
+ g.TextAnimEndAt = Math.max(Number(g.TextAnimEndAt||0), presentationReleaseAt);
+ g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), presentationReleaseAt);
+ const actionOwnerUID = Number(g.ActionActorUID || g.ActionOwnerUID || 0);
+ if (actionOwnerUID) {
+  g.DeferAdvance = 1;
+  g.AdvanceAfterAction = 1;
+  g.ActionOwnerUID = actionOwnerUID;
+ }
+ const ownerUID = Number(source?.uid || 0), heroAction = g.HeroAction;
+ if (ownerUID && heroAction?.active && Number(heroAction.uid || 0) === ownerUID && heroAction.state === 'ADVANCE') {
+  const priorStartAfter = Math.max(now, Number(heroAction.presentationStartAfter || now));
+  const delay = Math.max(0, presentationReleaseAt - priorStartAfter);
+  heroAction.presentationStartAfter = Math.max(priorStartAfter, presentationReleaseAt);
+  if (delay > 0) for (const hit of g.PendingHeroHits || []) {
+   if (Number(hit?.heroUID || 0) === ownerUID && Number(hit.at || 0) >= now) hit.at = Number(hit.at || 0) + delay;
+  }
+ }
  return delta;
 }
 export function canUseHeroCommand(ctx,actorUID){
@@ -125,10 +144,10 @@ export function resolveSessionLevelBasicEffects(ctx,rules,hero,targetIds){
  if(!target)return;
  for(const card of getActiveSessionLevelUpBuffCards(g,hero)){const formula=card.formula||{};
   const completedBasics=sessionBuffCounter(g,hero,card.effectId);
-  if(formula.surface==='cadence_magic_damage'&&completedBasics%Math.max(1,Number(formula.everyCompletedBasics||1))===0){(g.ArcanePulseVisuals||(g.ArcanePulseVisuals=[])).push({sourceX:Number(hero.x||0),sourceY:Number(hero.y||0),targetX:Number(target.x||0),targetY:Number(target.y||0),startAt:Number(g.time||0),impactAt:Number(g.time||0)+.18,shape:'crescent_arc_blast',sourceUID:hero.uid,targetUID:target.uid,amount:Number(formula.amount||0)});resolveSkill(rules,hero,{skillId:'session_spectral_orb',targetType:'enemy',tags:['magic'],effects:[{effectType:'damage',fixedDamage:Number(formula.amount||0)}]},[target.uid],{sessionBuffExtraHit:true});}
+  if(formula.surface==='cadence_magic_damage'&&completedBasics%Math.max(1,Number(formula.everyCompletedBasics||1))===0){(g.ArcanePulseVisuals||(g.ArcanePulseVisuals=[])).push({skillId:'session_spectral_orb',sourceX:Number(hero.x||0),sourceY:Number(hero.y||0),targetX:Number(target.x||0),targetY:Number(target.y||0),startAt:Number(g.time||0),impactAt:Number(g.time||0)+.18,shape:'crescent_arc_blast',sourceUID:hero.uid,targetUID:target.uid,amount:Number(formula.amount||0)});resolveSkill(rules,hero,{skillId:'session_spectral_orb',targetType:'enemy',tags:['magic'],effects:[{effectType:'damage',fixedDamage:Number(formula.amount||0)}]},[target.uid],{sessionBuffExtraHit:true});}
   if(formula.surface==='heal_percent_max_hp'&&sessionRandom(g)<Number(formula.chance||0))resolveSkill(rules,hero,{skillId:'session_inner_flow',targetType:'self',tags:['magic'],effects:[{effectType:'heal',recipient:'self',potency:Number(formula.percent||0),healPresentation:'minor'}]},[hero.uid],{sessionBuffExtraHit:true});
   if(formula.surface==='status_on_basic'&&sessionRandom(g)<Number(formula.chance||0)){(g.SessionBuffCombatVisuals||(g.SessionBuffCombatVisuals=[])).push({kind:'venom_sigil',sourceUID:hero.uid,targetUID:target.uid,startAt:Number(g.time||0)});resolveSkill(rules,hero,{skillId:'session_venom_sigil',targetType:'enemy',tags:['magic'],effects:[{effectType:'status',statusEffect:formula.statusId==='venom'?'dot':String(formula.statusId||'dot'),magnitude:1,duration:Number(formula.durationTurns||1),snapshotPotency:Number(formula.damagePerTurn||0)}]},[target.uid],{sessionBuffExtraHit:true});}
-  if(formula.surface==='bounce_percent_damage'&&sessionRandom(g)<Number(formula.chance||0)){const bounce=ctx.state.entities.find(actor=>actor?.kind==='enemy'&&actor.hp>0&&actor.uid!==target.uid);if(bounce){const visual={sourceUID:hero.uid,sourceTargetUID:target.uid,targetUID:bounce.uid,sourceX:Number(target.x||0),sourceY:Number(target.y||0),targetX:Number(bounce.x||0),targetY:Number(bounce.y||0),startAt:Number(g.time||0),impactAt:Number(g.time||0)+.18,duration:.28,skillId:'session_mirage_chain',visual:'chain_strike',damagePercent:Number(formula.damagePercent||0)};(g.ChainStrikeVisuals||(g.ChainStrikeVisuals=[])).push(visual);const before=Number(bounce.hp||0);resolveSkill(rules,hero,{skillId:'session_mirage_chain',targetType:'enemy',tags:['physical'],effects:[{effectType:'damage',potency:Number(formula.damagePercent||0)}]},[bounce.uid],{sessionBuffExtraHit:true});visual.resolvedDamage=Math.max(0,before-Number(bounce.hp||0));}}
+  if(formula.surface==='bounce_percent_damage'&&sessionRandom(g)<Number(formula.chance||0)){const bounce=ctx.state.entities.find(actor=>actor?.kind==='enemy'&&actor.hp>0&&actor.uid!==target.uid);if(bounce){const now=Number(g.time||0),visual={sourceUID:hero.uid,sourceTargetUID:target.uid,targetUID:bounce.uid,sourceX:Number(target.x||0),sourceY:Number(target.y||0),targetX:Number(bounce.x||0),targetY:Number(bounce.y||0),startAt:now,impactAt:now+.18,duration:.28,skillId:'session_mirage_chain',visual:'chain_strike',damagePercent:Number(formula.damagePercent||0)};(g.ChainStrikeVisuals||(g.ChainStrikeVisuals=[])).push(visual);const before=Number(bounce.hp||0);resolveSkill(rules,hero,{skillId:'session_mirage_chain',targetType:'enemy',tags:['physical'],effects:[{effectType:'damage',potency:Number(formula.damagePercent||0)}]},[bounce.uid],{sessionBuffExtraHit:true});visual.resolvedDamage=Math.max(0,before-Number(bounce.hp||0));if(visual.resolvedDamage>0){(g.CombatImpactRequests||(g.CombatImpactRequests=[])).push({at:visual.impactAt,heroUID:Number(hero.uid||0),targetUID:Number(bounce.uid||0),attackVfxKind:'impact',actionName:'Chain Strike',finalDmg:visual.resolvedDamage});g.ActionLockUntil=Math.max(Number(g.ActionLockUntil||0),visual.impactAt+.32);g.DeferAdvance=1;g.AdvanceAfterAction=1;g.ActionOwnerUID=Number(hero.uid||0);}}}
  }
 }
 export function resolveSessionLevelCounter(ctx,rules,hero,source){
@@ -172,7 +191,7 @@ export function resolveNativeCommandStep(ctx,hit){
   return resolved;
  }
  const action=s.actions[s.index];const {resolved:executed,events}=resolveRoleAction(ctx,actor,action.skill,action.targetIds);
- if(executed){if(action.skill.skillId===heroDefinition(actor)?.basic?.skillId){hit.finalDmg=events.filter(event=>event.type==='damage'&&event.sourceUID===Number(actor.uid)&&action.targetIds.some(uid=>Number(uid)===Number(event.targetUID))).reduce((sum,event)=>sum+Number(event.delta||0),0);resolveSessionLevelBasicEffects(ctx,rules,actor,action.targetIds);}if(action.skill.isFlowSpecial)actor.flow=0;ctx.callFunction('LogCombat',`${heroDefinition(actor).name}: ${action.skill.displayName}`);}
+ if(executed){if(action.skill.skillId===heroDefinition(actor)?.basic?.skillId){hit.finalDmg=events.filter(event=>event.type==='damage'&&event.sourceUID===Number(actor.uid)&&action.targetIds.some(uid=>Number(uid)===Number(event.targetUID))).reduce((sum,event)=>sum+Number(event.delta||0),0);resolveSessionLevelBasicEffects(ctx,rules,actor,action.targetIds);}if(action.skill.isFlowSpecial)actor.flow=0;ctx.callFunction('LogCombat',`${heroDefinition(actor).name}: ${action.skill.displayName}`);if(Object.keys(g.PendingDeaths||{}).length)ctx.callFunction('ResolvePendingEnemyDeaths');}
  s.index++;ctx.callFunction('UpdateHeroHPUI');ctx.callFunction('UpdateEnemyHPUI');
  if(actor.hp<=0||rules.isOver()){cancelNativeSequence(ctx);if(g.NativeBattleEnded)settleVictory(ctx);return true;}
  if(s.index<s.actions.length)g.PendingHeroHits.push({at:Number(g.time||0)+0.4,heroUID:s.actorUID,effectType:'native_command',sequence:s,...nativeBasicAttackVfx(actor,s.actions[s.index])});else delete g.NativeCommandSequence;

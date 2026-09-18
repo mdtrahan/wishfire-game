@@ -61,6 +61,8 @@ test('app QA entrypoints use canonical threshold, fan selection, and layout navi
   assert.match(app, /pauseGameplayForDevTooling\(\)/);
   assert.match(app, /const qaResumeScenario = \(\) =>/);
   assert.match(app, /const qaRunAstralFlowSpecial = \(heroUID, specialId\) =>/);
+  assert.match(app, /const scheduledChainHits = \(state\.globals\.PendingHeroHits \|\| \[\]\)\.filter/);
+  assert.match(app, /scheduledChainHits\.length === Number\(execution\?\.hitCount \|\| 0\)/);
 });
 
 test('a session offer owns input, rejects stale selection, and preserves its existing scheduler handoff', () => {

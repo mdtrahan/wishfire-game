@@ -200,6 +200,18 @@ test('Chain Strike retains its production potency and resolved secondary damage'
   assert.equal(visual.damagePercent, .50);
   assert.equal(visual.resolvedDamage, before - secondary.hp);
   assert.equal(visual.resolvedDamage, 10);
+  assert.deepEqual(ctx.state.globals.CombatImpactRequests, [{
+    at: 1.18,
+    heroUID: actor.uid,
+    targetUID: secondary.uid,
+    attackVfxKind: 'impact',
+    actionName: 'Chain Strike',
+    finalDmg: 10,
+  }]);
+  assert.equal(ctx.state.globals.ActionLockUntil, 1.5);
+  assert.equal(ctx.state.globals.ActionOwnerUID, actor.uid);
+  assert.equal(ctx.state.globals.DeferAdvance, 1);
+  assert.equal(ctx.state.globals.AdvanceAfterAction, 1);
 });
 
 test('Glass Reprisal counterattacks and heals only after its owner takes damage', () => {

@@ -104,7 +104,7 @@ export function DoHeal(ctx, actorUID, potencyMultiplier = 1) {
   }
   const totalHeal = ctx.callFunction('ApplyActiveHeroHeal', heal, 'major');
   ctx.callFunction('LogCombat', potency > 1 ? `${actorName} used Magic Fruit!` : `${actorName} heals for ${totalHeal}`);
-  g.ActionLockUntil = (g.time || 0) + (g.DamageTextDurationSec || 1.35);
+  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), (g.time || 0) + (g.DamageTextDurationSec || 1.35));
   g.DeferAdvance = 1;
   g.AdvanceAfterAction = 1;
   g.ActionOwnerUID = actorUID;

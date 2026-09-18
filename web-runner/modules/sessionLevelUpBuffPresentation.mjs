@@ -17,6 +17,39 @@ const DEFAULT_TIER_WEIGHTS = Object.freeze({ 1: 70, 2: 20, 3: 7, 4: 3 });
 const heroId = hero => String(hero?.heroInstanceKey ?? hero?.uid ?? '');
 const clamp = (value, min, max) => Math.max(min, Math.min(max, Number(value) || 0));
 const isPowerBuffCard = isUniversalSessionPowerBuffCard;
+const restoreSpecialPresentationGate = (globals, result, ownerUID, now) => {
+  const presentationReleaseAt = Number(result?.presentationReleaseAt || 0);
+  if (presentationReleaseAt <= Number(now || 0)) return;
+  globals.ActionLockUntil = Math.max(Number(globals.ActionLockUntil || 0), presentationReleaseAt);
+  globals.DeferAdvance = 1;
+  globals.AdvanceAfterAction = 1;
+  globals.ActionOwnerUID = Number(ownerUID || 0);
+  if (globals.HeroAction?.active && Number(globals.HeroAction.uid || 0) === Number(ownerUID || 0)) {
+    globals.ActionInProgress = 1;
+    globals.ActionActorUID = Number(ownerUID || 0);
+    globals.IsPlayerBusy = 1;
+  }
+};
+const hasPriorCombatPresentation = (globals = {}) => {
+  const now = Number(globals.time || 0);
+  return [
+    globals.FlowOrbs,
+    globals.AstralFlowKoOrbQueue,
+    globals.PendingHeroHits,
+    globals.CombatImpactRequests,
+    globals.CombatImpactVisuals,
+    globals.ChainStrikeVisuals,
+    globals.ArcanePulseVisuals,
+  ].some(queue => Array.isArray(queue) && queue.length > 0)
+    || !!globals.AstralFlowKoOrbPresentationState
+    || Number(globals.AstralFlowKoOrbPresentationActive || 0) > 0
+    || Number(globals.AstralFlowKoOrbPresentationPending || 0) > 0
+    || !!globals.HeroAction?.active
+    || !!globals.EnemyAction?.active
+    || !!globals.TextAnimating
+    || Number(globals.TextAnimEndAt || 0) > now
+    || Number(globals.ActionLockUntil || 0) > now;
+};
 
 // Session power cards and shared AF specials remain neutral. Only a triggering
 // hero's guaranteed AF signature owns the existing hero card presentation.
@@ -160,6 +193,9 @@ export function getSessionLevelUpBuffPresentation(globals, heroes = [], progress
   reconcileSessionFlowThresholds(globals, heroes);
   const entry = currentSessionLevelUpEntry(globals?.SessionLevelUpQueue || {});
   if (!entry) return { open: false, cards: [], heroUID: 0, queue: null };
+  if (hasPriorCombatPresentation(globals)) {
+    return { open: false, cards: [], heroUID: Number(entry.heroUID || 0), queue: entry, awaitingPresentation: true };
+  }
   const settlementRow = (globals.SessionLevelUpSettlement?.rows || []).find(row => String(row.heroId) === String(entry.heroId));
   if (settlementRow && !settlementRowVisual(settlementRow, globals.time, globals.SessionLevelUpSettlement).complete) {
     return { open: false, cards: [], heroUID: Number(entry.heroUID || 0), queue: entry, awaitingEXP: true };
@@ -224,6 +260,7 @@ export function chooseSessionLevelUpBuff(globals, heroes = [], cardId, now = 0, 
       .filter(signal => String(signal?.token || '') !== String(presentation.queue.thresholdToken));
     globals.SessionLevelUpQueue = acknowledgeSessionLevelUpEntry(globals.SessionLevelUpQueue);
     Object.assign(globals, releaseSessionOfferInputGate(globals, { resolution: 'attack' }));
+    restoreSpecialPresentationGate(globals, result, hero.uid, now);
     if (globals.SessionLevelUpQueue.status === 'complete') {
       if (globals.DeferAdvance && globals.AdvanceAfterAction && globals.ActionOwnerUID) globals.SessionOfferResolution = '';
       else globals.SessionLevelUpQueueResumeRequested = 1;
@@ -236,8 +273,12 @@ export function chooseSessionLevelUpBuff(globals, heroes = [], cardId, now = 0, 
     ? heroes.filter(hero => hero?.kind === 'hero' && Number(hero.hp || 0) > 0 && participantHeroIds.has(heroId(hero)))
     : [];
   if (partyEntry && !recipients.length) return { status: 'rejected', reason: 'noLivingOpeningParty' };
+  const selectedCard = presentation.cards.find(card => String(card?.cardId || '') === String(cardId || '')) || null;
+  const openingChainStrike = partyEntry && selectedCard?.effectId === 'mirage_chain' && typeof executeSpecial === 'function';
   let nextState = globals.SessionLevelBuffState;
-  const applications = partyEntry
+  const applications = openingChainStrike
+    ? [{ status: 'applied', state: nextState }]
+    : partyEntry
     ? recipients.map(hero => {
       const applied = applyLevelUpBuffCard({ state: nextState, heroId: heroId(hero), cardId, cards: UNIVERSAL_SESSION_POWER_BUFF_CARDS });
       if (applied.status === 'applied') nextState = applied.state;
@@ -250,13 +291,21 @@ export function chooseSessionLevelUpBuff(globals, heroes = [], cardId, now = 0, 
     })()];
   const applied = applications.find(result => result.status !== 'applied') || applications[0];
   if (applied.status !== 'applied') return applied;
+  const openingOwner = partyEntry
+    ? recipients.find(hero => Number(hero.uid || 0) === Number(globals.ActionOwnerUID || globals.ActionActorUID || globals.PendingActor || 0)) || recipients[0]
+    : null;
+  const openingExecution = openingChainStrike
+    ? executeSpecial({ ...selectedCard, specialId: 'chain_strike_ii' }, openingOwner)
+    : null;
+  if (openingExecution?.ok === false) return { status: 'rejected', reason: String(openingExecution.reason || 'specialRejected') };
   globals.SessionLevelBuffState = nextState;
   globals.SessionLevelUpQueue = acknowledgeSessionLevelUpEntry(globals.SessionLevelUpQueue);
   Object.assign(globals, releaseSessionOfferInputGate(globals, { resolution: 'global' }));
+  if (openingExecution) restoreSpecialPresentationGate(globals, openingExecution, openingOwner.uid, now);
   if (globals.SessionLevelUpQueue.status === 'complete') {
     if (globals.DeferAdvance && globals.AdvanceAfterAction && globals.ActionOwnerUID) globals.SessionOfferResolution = '';
     else globals.SessionLevelUpQueueResumeRequested = 1;
   }
   if (globals.SessionLevelUpQueue.status === 'complete' && globals.SessionLevelUpSettlement) { globals.SessionLevelUpSettlement.phase = 'fadeOut'; globals.SessionLevelUpSettlement.fadeOutStartedAt = Number(now || 0); }
-  return partyEntry ? { ...applied, partyWide: true, affectedHeroIds: recipients.map(heroId) } : applied;
+  return partyEntry ? { ...applied, partyWide: true, affectedHeroIds: recipients.map(heroId), openingExecution } : applied;
 }

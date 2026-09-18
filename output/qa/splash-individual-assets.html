@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Individual Impact Assets</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 12px; background: #0d111b; color: #f6f8ff; font: 700 13px system-ui, sans-serif; }
+    main { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-width: 900px; margin: auto; }
+    figure { margin: 0; padding: 7px; min-width: 0; border: 1px solid #354057; border-radius: 10px; background: #171d2a; }
+    img { display: block; width: 100%; aspect-ratio: 1; object-fit: contain; background: #49554f; }
+    figcaption { padding-top: 5px; }
+  </style>
+</head>
+<body>
+  <main id="assets"></main>
+  <script>
+    const root = 'splash-candidates/individual-assets/';
+    document.querySelector('#assets').innerHTML = Array.from({ length: 16 }, (_, i) => {
+      const id = `G${String(i + 1).padStart(2, '0')}`;
+      return `<figure><img src="${root}${id.toLowerCase()}.png" alt="${id}"><figcaption>${id}</figcaption></figure>`;
+    }).join('');
+  </script>
+</body>
+</html>

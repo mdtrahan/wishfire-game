@@ -14,40 +14,40 @@ const freezeHeroArt = ({ key, displayName, combat, card, strip }) => Object.free
  * source files; aliases are accepted at the boundary for display objects.
  */
 export const HERO_ART_ASSETS = Object.freeze({
-  Falie: freezeHeroArt({
-    key: 'Falie',
+  Fara: freezeHeroArt({
+    key: 'Fara',
     displayName: 'Fara',
-    combat: { x: 0.08, y: 0, width: 0.84, height: 0.48 },
+    combat: { x: 0, y: 0, width: 1, height: 1 },
     card: { position: '54% 8%', scale: 1.16 },
     strip: { position: '54% 7%', scale: 2.35, width: '38%' },
   }),
-  Huun: freezeHeroArt({
-    key: 'Huun',
+  Hondo: freezeHeroArt({
+    key: 'Hondo',
     displayName: 'Hondo',
-    combat: { x: 0.04, y: 0, width: 0.92, height: 0.52 },
+    combat: { x: 0, y: 0, width: 1, height: 1 },
     card: { position: '57% 8%', scale: 1.16 },
     strip: { position: '57% 7%', scale: 2.35, width: '38%' },
   }),
   Runa: freezeHeroArt({
     key: 'Runa',
     displayName: 'Runa',
-    combat: { x: 0.04, y: 0, width: 0.92, height: 0.52 },
+    combat: { x: 0, y: 0, width: 1, height: 1 },
     card: { position: '50% 7%', scale: 1.17 },
     strip: { position: '50% 6%', scale: 2.4, width: '38%' },
   }),
-  Kojonn: freezeHeroArt({
-    key: 'Kojonn',
+  Kaja: freezeHeroArt({
+    key: 'Kaja',
     displayName: 'Kaja',
-    combat: { x: 0.03, y: 0, width: 0.94, height: 0.52 },
+    combat: { x: 0, y: 0, width: 1, height: 1 },
     card: { position: '53% 8%', scale: 1.17 },
     strip: { position: '53% 6%', scale: 2.4, width: '34%' },
   }),
 });
 
 const HERO_ART_ALIASES = Object.freeze({
-  Fara: 'Falie',
-  Hondo: 'Huun',
-  Kaja: 'Kojonn',
+  Falie: 'Fara',
+  Huun: 'Hondo',
+  Kojonn: 'Kaja',
 });
 
 export function heroArtKey(heroOrName) {

@@ -542,6 +542,18 @@ function spawnPendingDamageNumbers(projectToCanvas = null, presentationScale = 1
   for (const entry of layeredTexts) {
     const d = entry.d;
     if (!d || d.domSpawned) continue;
+    if (d.kind === 'heal' && ['hero', 'enemy'].includes(d.targetKind) && !d.healBloomSpawned) {
+      d.healBloomSpawned = true;
+      d.healBloomAnimation = createHealBloom({
+        x: d.x,
+        y: d.baseY != null ? d.baseY : d.y,
+        targetUID: d.targetUID,
+        ownerUID: d.ownerUID,
+        presentation: d.healPresentation,
+      });
+      gameState.healBlooms.push(d.healBloomAnimation);
+    }
+    if (Number(d.notBefore || 0) > Number(state.globals.time || 0)) continue;
     d.domSpawned = true;
     const xOffset = d.targetKind === 'hero' ? -10 : (d.targetKind === 'ward' ? 0 : (d.canvasAnchored ? 0 : 10));
     const pos = d.canvasAnchored
@@ -585,16 +597,6 @@ function spawnPendingDamageNumbers(projectToCanvas = null, presentationScale = 1
     } else {
       d.domSpawned = false;
       d.domAnimation = null;
-    }
-    if (d.kind === 'heal' && ['hero', 'enemy'].includes(d.targetKind) && !d.healBloomSpawned) {
-      d.healBloomSpawned = true;
-      d.healBloomAnimation = createHealBloom({
-        x: d.x,
-        y: d.baseY != null ? d.baseY : d.y,
-        targetUID: d.targetUID,
-        presentation: d.healPresentation,
-      });
-      gameState.healBlooms.push(d.healBloomAnimation);
     }
   }
 }
@@ -2272,6 +2274,8 @@ async function main(){
         fazeZones: (state.globals.TaintedGroundZones || []).map(row => Number(row?.targetUID || row?.enemyUID || 0)),
       },
       enemyLowHp: state.globals.QaEnemyLowHpFixture || null,
+      enemyRoster: state.entities.filter(actor => actor?.kind === 'enemy').map(actor => ({ uid: Number(actor.uid || 0), hp: Number(actor.hp || 0), slot: Number(actor.slotIndex || 0), held: Number(actor.deathVisualHold || 0) })),
+      enemyRefill: { dataCount: Number(state.globals.EnemyData?.length || 0), encounterNames: state.globals.EncounterPoolNames || [], locale: String(state.globals.EncounterLocale || state.globals.CurrentLocale || 'all'), slots: state.globals.EnemySlots || [], ids: state.globals.EnemyIDs || [], pending: state.globals.PendingEnemyRespawnSlots || [], timer: Number(state.globals.PendingEnemyRespawnTimerActive || 0), finite: Number(state.globals.QuestFiniteEncounter || 0), holdUIDs: Object.keys(state.globals.EnemyDeathVisualHoldByUID || {}).map(Number) },
       kajaAF: { ...kajaAudit, enemyDeathGemCount: Number(state.globals.FlowOrbAudit?.queuedEnemyDeathCount || 0) },
       dawnChorus: { requiredOrder: 'rank → forced roll → defeat', rollArmed: !!state.globals.QaDawnRollArmed, ownedRank: Number(state.globals.DawnChorusOwnedRank || 0), chance: Number(state.globals.DawnChorusLastRoll?.chance || 0), attempted: Number(state.globals.DawnChorusAttempted || 0), succeeded: Number(state.globals.DawnChorusSucceeded || 0), revived: state.entities.filter(actor => actor?.kind === 'hero' && Number(actor.hp || 0) > 0).map(actor => ({ uid: Number(actor.uid || 0), hp: Number(actor.hp || 0) })), rng: state.globals.DawnChorusLastRoll || null },
     };
@@ -2504,10 +2508,11 @@ async function main(){
     const chosen = qaChooseAstralFlowSpecial(specialId);
     const fanClosed = !getSessionLevelUpBuffPresentation(state.globals, state.entities, state.globals.SessionLevelProgress || {}).open;
     const execution = chosen?.result?.execution || null;
+    const scheduledChainHits = (state.globals.PendingHeroHits || []).filter(hit => Number(hit?.astralFlowChainStrikeII || 0) === 1);
     const effectApplied = String(specialId || '') === 'crimson_ward'
       ? Number(state.globals.LastCrimsonWard?.added || 0) > 0
       : String(specialId || '') === 'chain_strike_ii'
-        ? Number(state.globals.LastAstralFlowChainStrikeII?.hitCount || 0) > 0 && Number(state.globals.LastAstralFlowChainStrikeII?.coefficient || 0) === 396
+        ? Number(execution?.hitCount || 0) > 0 && scheduledChainHits.length === Number(execution?.hitCount || 0) && scheduledChainHits.every(hit => Number(hit?.chainStrikeDamagePct || 0) === 396)
         : String(specialId || '') === 'magic_fruit'
           ? (execution?.heals || []).some(row => Number(row?.applied || 0) > 0 && Number(state.entities.find(actor => Number(actor.uid || 0) === Number(row.heroUID || 0))?.hp || 0) - Number(healingBefore[Number(row.heroUID || 0)] || 0) === Number(row.applied || 0))
           : !!execution?.ok;
@@ -3034,8 +3039,11 @@ async function main(){
       deriveDamageFloatFrameOffset,
       createPartyRegenTickSimulationPacket,
     };
+    if (activeLayoutId === 'combat') {
+      advanceFlowOrbs(state.globals, state.entities);
+      callFunctionWithContext(fnContext, 'CommitPendingEnemyDeaths');
+    }
     const result = renderRuntime.renderRuntime(runtimeScope);
-    if (activeLayoutId === 'combat') advanceFlowOrbs(state.globals, state.entities);
     renderExistingNavigation(ctx, { worldToCanvas, layoutScale, gameState, layoutState, eventBus });
     heroCommandUI.update({
       visible: layoutState.getActiveLayoutId() === 'combat' && state.globals.GamePhase === 'RUNTIME',

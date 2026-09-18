@@ -36,7 +36,7 @@ for (const [label, apply] of [['runtime', applyRuntimeHeal], ['Construct mirror'
   test(`${label} active heal emits only its actual resolved delta through the shared presentation path`, () => {
     const { ctx, hero, globals, calls } = makeContext();
     assert.equal(apply(ctx, 8), 1);
-    assert.deepEqual(globals.DamageTexts, [{ amount: 1, x: 21, y: 34, kind: 'heal', targetKind: 'hero', targetUID: 7, targetSlotIndex: 0, healPresentation: 'minor' }]);
+    assert.deepEqual(globals.DamageTexts, [{ amount: 1, x: 21, y: 34, kind: 'heal', targetKind: 'hero', targetUID: 7, targetSlotIndex: 0, ownerUID: 7, healPresentation: 'minor', notBefore: 1.5 }]);
     assert.equal(apply(ctx, 8), 0, 'full health must not emit a heal event');
     assert.equal(globals.DamageTexts.length, 1);
     assert.equal(calls.filter(call => call.name === 'SpawnDamageText').length, 1);
@@ -56,6 +56,81 @@ test('explicit heal presentation can opt into the major animation tier', () => {
   const { ctx, globals } = makeContext();
   assert.equal(applyRuntimeHeal(ctx, 1, 'major'), 1);
   assert.equal(globals.DamageTexts[0].healPresentation, 'major');
+});
+
+test('active heal keeps its actor-owned presentation lock through the bloom', () => {
+  const { ctx, hero, globals } = makeContext();
+  globals.time = 2;
+  globals.ActionInProgress = 1;
+  globals.ActionActorUID = hero.uid;
+  globals.ActionLockUntil = 2.2;
+
+  hero.hp = 10;
+  assert.equal(emitResolvedHealEvent(ctx, hero, hero, 5, { presentation: 'major' }), 5);
+  assert.equal(globals.ActionLockUntil, 4.83);
+  assert.equal(globals.DeferAdvance, 1);
+  assert.equal(globals.AdvanceAfterAction, 1);
+  assert.equal(globals.ActionOwnerUID, hero.uid);
+});
+
+test('cross-actor heal keeps the current action owner and blocks handoff through the motes', () => {
+  const { ctx, hero, globals } = makeContext();
+  globals.time = 2;
+  globals.ActionInProgress = 1;
+  globals.ActionActorUID = 99;
+  globals.ActionOwnerUID = 99;
+  hero.hp = 10;
+
+  assert.equal(emitResolvedHealEvent(ctx, hero, hero, 5, { presentation: 'minor' }), 5);
+  assert.equal(globals.ActionLockUntil, 4.83);
+  assert.equal(globals.ActionOwnerUID, 99);
+  assert.equal(globals.DeferAdvance, 1);
+  assert.equal(globals.AdvanceAfterAction, 1);
+});
+
+test('turn heal holds an already-claimed hero at home and delays its queued hit once', () => {
+  const { ctx, hero, globals } = makeContext();
+  globals.time = 2;
+  globals.ActionInProgress = 1;
+  globals.ActionActorUID = hero.uid;
+  globals.ActionOwnerUID = hero.uid;
+  globals.HeroAction = { uid: hero.uid, state: 'ADVANCE', active: true };
+  globals.PendingHeroHits = [{ heroUID: hero.uid, at: 2.97 }, { heroUID: 99, at: 2.97 }];
+  hero.hp = 10;
+
+  assert.equal(emitResolvedHealEvent(ctx, hero, hero, 5, { presentation: 'minor' }), 5);
+  assert.equal(globals.HeroAction.presentationStartAfter, 4.83);
+  assert.ok(Math.abs(globals.PendingHeroHits[0].at - 5.8) < 1e-9);
+  assert.equal(globals.PendingHeroHits[1].at, 2.97);
+
+  hero.hp = 15;
+  assert.equal(emitResolvedHealEvent(ctx, hero, hero, 10, { presentation: 'minor' }), 5);
+  assert.ok(
+    Math.abs(globals.PendingHeroHits[0].at - 5.8) < 1e-9,
+    'same-frame party heals must not stack action delay',
+  );
+});
+
+test('resolved Chimerilass self-heal text uses the stored home anchor', () => {
+  const hero = { uid: 17, kind: 'hero', name: 'Chimerilass', hp: 10, maxHP: 30, x: 420, y: 310, heroDisplaySlot: 2 };
+  const globals = {
+    time: 1,
+    DamageTexts: [],
+    HeroRestFeetPosByUID: { 17: { x: 88, y: 144 } },
+    ActionInProgress: 1,
+    ActionActorUID: 17,
+  };
+  const ctx = {
+    state: { globals, entities: [hero] },
+    callFunction(name, ...args) {
+      if (name === 'SpawnDamageText') globals.DamageTexts.push({ amount: args[0], x: args[1], y: args[2], kind: args[3], targetKind: args[4] });
+    },
+  };
+
+  hero.hp = 20;
+  assert.equal(emitResolvedHealEvent(ctx, hero, hero, 10, { presentation: 'major' }), 10);
+  assert.deepEqual([globals.DamageTexts[0].x, globals.DamageTexts[0].y], [88, 144]);
+  assert.equal(globals.DamageTexts[0].ownerUID, 17);
 });
 
 test('resolved heal effects keep HoT minor and cast heals major', () => {

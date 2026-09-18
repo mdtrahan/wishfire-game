@@ -25,6 +25,7 @@ import {
   createEnemyTurnGateBaseline,
   createHeroTurnGateBaseline,
   createYellowSafetyNet,
+  hasActiveAttackPresentation,
 } from '../src/core/turnGateController.mjs';
 import {
   TURN_ACTOR_ELIGIBILITY_ACT,
@@ -1497,6 +1498,10 @@ function activateMagicFruitSkill(ctx) {
     ? Math.max(1, Math.floor(Number(actor.maxHP || 0) * 32 / 100)) : 0;
   applyPartyMaxHPBonus(ctx, maxHPBonus);
   ctx.callFunction('ApplyActiveHeroHeal', healAmount, 'major');
+  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), Number(g.time || 0) + 1.5);
+  g.DeferAdvance = 1;
+  g.AdvanceAfterAction = 1;
+  g.ActionOwnerUID = Number(actor?.uid || 0);
   return { healAmount, maxHPBonus };
 }
 
@@ -1508,6 +1513,7 @@ function livingHeroTargets(ctx) {
 }
 
 function applyAstralFlowMagicFruit(ctx, actorUID) {
+  const g = getGlobals(ctx);
   const actor = GetActorByUID(ctx, actorUID);
   if (!actor || actor.kind !== 'hero' || Number(actor.hp || 0) <= 0) return { ok: false, reason: 'actorUnavailable' };
   const recipients = livingHeroTargets(ctx);
@@ -1529,7 +1535,12 @@ function applyAstralFlowMagicFruit(ctx, actorUID) {
   syncPartyHpTotalsFromHeroes(ctx);
   UpdateHeroHPUI(ctx);
   LogCombat(ctx, `${actor.name || 'Hero'} shared Magic Fruit with the party.`);
-  return { ok: true, pool, heals };
+  const presentationReleaseAt = Number(g.time || 0) + 1.5;
+  g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), presentationReleaseAt);
+  g.DeferAdvance = 1;
+  g.AdvanceAfterAction = 1;
+  g.ActionOwnerUID = Number(actorUID || 0);
+  return { ok: true, pool, heals, presentationReleaseAt };
 }
 
 function astralFlowSpecialTarget(ctx) {
@@ -1561,7 +1572,7 @@ function queueAstralFlowArcanePulse(ctx, actorUID) {
   g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), impactAt + PARTY_ARCANE_PULSE_DAMAGE_TEXT_CLEAR_SEC);
   g.DeferAdvance = 1;
   g.AdvanceAfterAction = 1;
-  return { ok: true, targetUID: Number(target.uid || 0), damage };
+  return { ok: true, targetUID: Number(target.uid || 0), damage, presentationReleaseAt: impactAt + PARTY_ARCANE_PULSE_DAMAGE_TEXT_CLEAR_SEC };
 }
 
 function activateAstralFlowDestiny(ctx, actorUID) {
@@ -1604,57 +1615,62 @@ export function ExecuteAstralFlowSpecial(ctx, specialId, actorUID) {
     }
     result = totalDamage > 0 ? { ok: true, totalDamage } : { ok: false, reason: 'noEnemies' };
   } else if (id === 'chain_strike_ii') {
-    // AF specials resolve inside the choice barrier. They never wait for the
-    // triggering hero to receive another CTB turn or native basic command.
     const target = astralFlowSpecialTarget(ctx);
     const originalDamage = target ? CalculateDamage(ctx, actorUID, target.uid, actor.attackType === 'magic' ? 'magic' : 'melee') : 0;
     const damage = Math.max(0, Math.ceil(Number(originalDamage || 0) * (ASTRAL_FLOW_CHAIN_STRIKE_II_DAMAGE_PCT / 100)));
     if (!target || damage <= 0) result = { ok: false, reason: 'targetUnavailable' };
     else {
       const now = Number(g.time || 0);
-      const newlyDefeatedEnemyUIDs = [];
-      g.CombatImpactRequests = Array.isArray(g.CombatImpactRequests) ? g.CombatImpactRequests : [];
-      g.LastAstralFlowChainStrikeII = { primaryTargetUID: Number(target.uid || 0), primary: null, bounces: [], hits: [], hitCount: 0, coefficient: ASTRAL_FLOW_CHAIN_STRIKE_II_DAMAGE_PCT };
-      const resolve = (enemy, primary, sourceTargetUID) => {
-        if (!enemy || enemy.kind !== 'enemy' || Number(enemy.hp || 0) <= 0) return null;
-        const beforeHP = Number(enemy.hp || 0);
-        if (!primary) {
-          const visualStartAt = now + ASTRAL_FLOW_CARD_REVEAL_DELAY_SEC;
-          queueChainStrikeVisual(g, sourceTargetUID, enemy.uid, visualStartAt, visualStartAt + 0.28, PARTY_CHAIN_STRIKE_II_ID);
-        }
-        const applied = ApplyDamageToTarget(ctx, enemy.uid, damage, { sourceUID: Number(actorUID || 0), deferEnemyDefeatTransition: 1 });
-        if (applied > 0) g.CombatImpactRequests.push({
-          at: now + ASTRAL_FLOW_CARD_REVEAL_DELAY_SEC + (primary ? 0 : 0.28),
-          heroUID: Number(actorUID || 0), targetUID: Number(enemy.uid || 0),
-          attackVfxKind: 'impact', finalDmg: applied,
-        });
-        const hit = recordAstralFlowChainStrikeIIHit(g, { targetUID: Number(enemy.uid || 0), preHP: beforeHP, postHP: Number(enemy.hp || 0), damage: applied, primary });
-        if (beforeHP > 0 && Number(enemy.hp || 0) === 0) newlyDefeatedEnemyUIDs.push(Number(enemy.uid || 0));
-        return hit;
-      };
-      resolve(target, true, Number(target.uid || 0));
+      const targets = [target];
       let sourceTargetUID = Number(target.uid || 0);
       for (let index = 0; index < 2; index += 1) {
         const bounce = resolveChainStrikeBounceTarget(ctx, sourceTargetUID);
-        if (!bounce) break;
-        resolve(bounce, false, sourceTargetUID);
+        if (!bounce || targets.some(enemy => Number(enemy.uid || 0) === Number(bounce.uid || 0))) break;
+        targets.push(bounce);
         sourceTargetUID = Number(bounce.uid || 0);
       }
+      g.PendingHeroHits = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits : [];
+      g.LastAstralFlowChainStrikeII = { primaryTargetUID: Number(target.uid || 0), primary: null, bounces: [], hits: [], hitCount: 0, coefficient: ASTRAL_FLOW_CHAIN_STRIKE_II_DAMAGE_PCT };
+      g.NextHeroActionProfile = 'aoe';
+      StartHeroLunge(ctx, actorUID, { allowOutOfTurn: true });
+      let sourceUID = Number(actorUID || 0);
+      let startAt = now + ASTRAL_FLOW_CARD_REVEAL_DELAY_SEC;
+      let lastImpactAt = startAt;
+      for (const [index, enemy] of targets.entries()) {
+        const impactAt = startAt + 0.28;
+        queueChainStrikeVisual(g, sourceUID, enemy.uid, startAt, impactAt, PARTY_CHAIN_STRIKE_II_ID);
+        g.PendingHeroHits.push({
+          at: impactAt,
+          heroUID: Number(actorUID || 0),
+          sourceUID: Number(actorUID || 0),
+          targetUID: Number(enemy.uid || 0),
+          dmg: damage,
+          finalDmg: damage,
+          suppressPartySkillHitHooks: 1,
+          attackVfxKind: 'impact',
+          actionName: 'Chain Strike II',
+          generatedBySkillId: PARTY_CHAIN_STRIKE_II_ID,
+          astralFlowSpecial: 1,
+          astralFlowChainStrikeII: 1,
+          chainStrikeDamagePct: ASTRAL_FLOW_CHAIN_STRIKE_II_DAMAGE_PCT,
+          chainStrikeIIPrimary: index === 0 ? 1 : 0,
+          damageTextNotBefore: impactAt + 0.32,
+          msg: `Chain Strike II hits ${enemy.name || '?'} for ${damage}!`,
+        });
+        sourceUID = Number(enemy.uid || 0);
+        lastImpactAt = impactAt;
+        startAt = impactAt + 0.28;
+      }
+      const presentationReleaseAt = lastImpactAt + 0.32 + PARTY_ARCANE_PULSE_DAMAGE_TEXT_CLEAR_SEC;
+      g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), presentationReleaseAt);
+      g.DeferAdvance = 1;
+      g.AdvanceAfterAction = 1;
+      g.ActionOwnerUID = Number(actorUID || 0);
       result = {
         ok: true,
         targetUID: Number(target.uid || 0),
-        hitCount: Number(g.LastAstralFlowChainStrikeII.hitCount || 0),
-        afterOwnerFlowReset: () => {
-          const queuedBefore = Number(g.FlowOrbAudit?.queuedEnemyDeathCount || 0);
-          let transitionedCount = 0;
-          for (const enemyUID of newlyDefeatedEnemyUIDs) {
-            const defeatedEnemy = GetActorByUID(ctx, enemyUID);
-            if (resolveActorDefeatTransition(ctx, defeatedEnemy, Number(actorUID || 0))) transitionedCount += 1;
-          }
-          const enemyDeathGemCount = Math.max(0, Number(g.FlowOrbAudit?.queuedEnemyDeathCount || 0) - queuedBefore);
-          g.LastAstralFlowChainStrikeII.enemyDeathGemCount = enemyDeathGemCount;
-          return { transitionedCount, enemyDeathGemCount };
-        },
+        hitCount: targets.length,
+        presentationReleaseAt,
       };
     }
   } else if (id === 'split') {
@@ -3296,23 +3312,16 @@ export function BeginAstralFlowKoOrbEnemyDeaths(ctx) {
   const holds = g.EnemyDeathVisualHoldByUID && typeof g.EnemyDeathVisualHoldByUID === 'object'
     ? g.EnemyDeathVisualHoldByUID
     : {};
-  let hiddenCount = 0;
+  let heldCount = 0;
   for (const event of queue) {
     const uid = Number(event?.enemyUID || 0);
     if (!uid || !holds[uid]) continue;
-    const enemy = GetActorByUID(ctx, uid);
-    holds[uid].hiddenForOrb = 1;
-    if (enemy) {
-      enemy.pendingOfficialDeath = 1;
-      enemy.deathState = 'payout';
-      enemy.deathVisualHiddenForOrb = 1;
-    }
-    hiddenCount += 1;
+    heldCount += 1;
   }
-  return { ok: hiddenCount > 0, hiddenCount };
+  return { ok: heldCount > 0, heldCount };
 }
 
-function commitEnemyDeathRemoval(ctx, enemyUID, fallbackSlotIndex = 0, currentUID = 0) {
+function commitEnemyDeathRemoval(ctx, enemyUID, fallbackSlotIndex = 0, currentUID = 0, scheduleRespawn = true) {
   const g = getGlobals(ctx);
   const targetUID = Number(enemyUID || 0);
   if (!targetUID) return false;
@@ -3341,12 +3350,15 @@ function commitEnemyDeathRemoval(ctx, enemyUID, fallbackSlotIndex = 0, currentUI
       currentUID: Number(currentUID || GetCurrentTurn(ctx) || 0),
     });
   }
+  g.DeferAdvance = 1;
+  g.AdvanceAfterAction = 1;
+  if (!Number(g.ActionOwnerUID || 0)) g.ActionOwnerUID = Number(currentUID || GetCurrentTurn(ctx) || 0);
   if (isTimeInitiative(ctx)) {
     schedulerApplyRemovalCompaction(ctx, targetUID, slotIndex, Number(currentUID || GetCurrentTurn(ctx) || 0));
   }
   UpdateEnemyHPUI(ctx);
   const respawnDelay = Math.max(0.4, (g.DamageTextDurationSec || 1.35));
-  scheduleEnemyRespawnWindow(ctx, slotIndex, respawnDelay);
+  if (scheduleRespawn) scheduleEnemyRespawnWindow(ctx, slotIndex, respawnDelay);
   return true;
 }
 
@@ -3364,6 +3376,26 @@ export function CommitAstralFlowKoOrbEnemyDeaths(ctx) {
     const currentUID = Number(event?.killerUID || holds[uid].currentUID || GetCurrentTurn(ctx) || 0);
     if (commitEnemyDeathRemoval(ctx, uid, slotIndex, currentUID)) committedCount += 1;
   }
+  return { ok: committedCount > 0, committedCount };
+}
+
+export function CommitPendingEnemyDeaths(ctx) {
+  const g = getGlobals(ctx);
+  const holds = g.EnemyDeathVisualHoldByUID && typeof g.EnemyDeathVisualHoldByUID === 'object'
+    ? g.EnemyDeathVisualHoldByUID
+    : {};
+  if (hasActiveAttackPresentation(g)) return { ok: false, committedCount: 0, reason: 'attack_presentation_active' };
+  if (Array.isArray(g.FlowOrbs) && g.FlowOrbs.length > 0) return { ok: false, committedCount: 0, reason: 'flow_delivery_active' };
+  const chainStrikeIIDeathUIDs = new Set((g.LastAstralFlowChainStrikeII?.hits || []).map(hit => Number(hit?.targetUID || 0)));
+  const refillImmediately = Array.isArray(g.EnemyData) && g.EnemyData.length > 0
+    && Object.keys(holds).some(uid => chainStrikeIIDeathUIDs.has(Number(uid || 0)));
+  let committedCount = 0;
+  for (const [uidKey, hold] of Object.entries(holds)) {
+    const uid = Number(uidKey || 0);
+    if (!uid) continue;
+    if (commitEnemyDeathRemoval(ctx, uid, Number(hold?.slotIndex || 0), Number(hold?.currentUID || 0), !refillImmediately)) committedCount += 1;
+  }
+  if (refillImmediately && committedCount > 0) finalizeEnemyRespawnWindow(ctx);
   return { ok: committedCount > 0, committedCount };
 }
 
@@ -4967,6 +4999,10 @@ function resolvePendingEnemyDeaths(ctx) {
   g.PendingDeaths = pending;
 }
 
+export function ResolvePendingEnemyDeaths(ctx) {
+  resolvePendingEnemyDeaths(ctx);
+}
+
 export function BuildTurnOrder(ctx) {
   const g = getGlobals(ctx);
   if (isTimeInitiative(ctx)) {
@@ -6551,8 +6587,9 @@ function getPendingDamageTextKind(ctx, uid, dmg, options = undefined) {
   return hit ? String(hit.damageTextKind || '') : '';
 }
 
-function resolveActorDefeatTransition(ctx, target, killerUID = 0) {
+function resolveActorDefeatTransition(ctx, target, killerUID = 0, options = undefined) {
   const g = getGlobals(ctx);
+  const opts = options && typeof options === 'object' ? options : {};
   if (!target || Number(target.hp ?? 0) !== 0 || target.isAlive === false || Number(target.pendingOfficialDeath || 0)) return false;
   const resolvedKillerUID = Number(killerUID || g.LastDamageSourceUID || GetCurrentTurn(ctx) || 0);
   if (target.kind === 'enemy') {
@@ -6561,7 +6598,7 @@ function resolveActorDefeatTransition(ctx, target, killerUID = 0) {
   } else {
     target.isAlive = false;
   }
-  if ((g.RoundActive && g.GroupResolving) || (isTimeInitiative(ctx) && g.GroupResolving)) {
+  if (!Number(opts.forceImmediateEnemyHold || 0) && ((g.RoundActive && g.GroupResolving) || (isTimeInitiative(ctx) && g.GroupResolving))) {
     g.PendingDeaths = g.PendingDeaths || {};
     g.PendingDeaths[target.uid] = { group: Number(g.RoundGroupIndex || 0), killerUID: resolvedKillerUID };
   } else if (target.kind === 'enemy') {
@@ -6700,16 +6737,18 @@ export function ApplyDamageToTarget(ctx, uid, dmg, options = undefined) {
   }
   if (appliedDamage > 0 && dx != null && dy != null && g.SpawnDamageText !== 0 && !suppressDamageText) {
     const damageTextKind = String(g.NextDamageTextKind || getPendingDamageTextKind(ctx, uid, dmg, opts) || 'damage');
-    SpawnDamageText(ctx, appliedDamage, dx, dy, damageTextKind, t.kind || null);
+    SpawnDamageText(ctx, appliedDamage, dx, dy, damageTextKind, t.kind || null, opts.damageTextNotBefore);
     const damageText = Array.isArray(g.DamageTexts) ? g.DamageTexts[g.DamageTexts.length - 1] : null;
     if (damageText) {
       damageText.targetUID = Number(uid || 0);
       damageText.targetSlotIndex = Number(t.slotIndex ?? -1);
       damageText.targetTraceSequence = Number(targetTraceHit?.targetTraceSequence || 0);
+      damageText.hpBefore = beforeHP;
+      damageText.hpAfter = afterHP;
     }
   }
   delete g.NextDamageTextKind;
-  if (!Number(opts.deferEnemyDefeatTransition || 0)) resolveActorDefeatTransition(ctx, t, Number(g.LastDamageSourceUID || 0));
+  if (!Number(opts.deferEnemyDefeatTransition || 0)) resolveActorDefeatTransition(ctx, t, Number(g.LastDamageSourceUID || 0), { forceImmediateEnemyHold: chainStrikeIIHit ? 1 : 0 });
   UpdateEnemyHPUI(ctx);
   UpdateHeroHPUI(ctx);
   maybeShadowTurnSummary(ctx, 'functionBank.ApplyDamageToTarget');
@@ -8480,7 +8519,7 @@ export function KillEnemyAt(ctx, slotIndex) {
   const astralFlowAward = AwardEnemyKoAstralFlow(ctx, deadEnemy, {
     killerUID: Number(currentUID || 0),
   });
-  if (astralFlowAward && astralFlowAward.ok && markEnemyDeathVisualHold(ctx, deadEnemy, slotIndex, currentUID)) {
+  if (markEnemyDeathVisualHold(ctx, deadEnemy, slotIndex, currentUID)) {
     g.IsPlayerBusy = 1;
     UpdateEnemyHPUI(ctx);
     return;
@@ -8521,7 +8560,7 @@ export function KillEnemyByUID(ctx, enemyUID, fallbackSlotIndex = 0) {
   const astralFlowAward = AwardEnemyKoAstralFlow(ctx, deadEnemy, {
     killerUID: Number(currentUID || 0),
   });
-  if (astralFlowAward && astralFlowAward.ok && markEnemyDeathVisualHold(ctx, deadEnemy, slotIndex, currentUID)) {
+  if (markEnemyDeathVisualHold(ctx, deadEnemy, slotIndex, currentUID)) {
     g.IsPlayerBusy = 1;
     UpdateEnemyHPUI(ctx);
     return;
@@ -10028,6 +10067,7 @@ export function ProcessTurn(ctx) {
     });
     return;
   }
+  if (!actor) { AdvanceTurn(ctx); return; }
   nativeTurnStarted(ctx, actor);
   if (actor.hp <= 0) { AdvanceTurn(ctx); return; }
   g.DebugTurnCount = (g.DebugTurnCount || 0) + 1;
@@ -10639,6 +10679,7 @@ export function StartEnemyAction(ctx, enemyUID) {
   if (g.ActionInProgress && g.ActionActorUID && g.ActionActorUID !== enemyUID) return;
   g.ActionInProgress = 1;
   g.ActionActorUID = enemyUID;
+  g.ActionOwnerUID = Number(enemyUID || 0);
   if (enemy.originX == null) enemy.originX = SlotX(ctx, enemy.slotIndex ?? 0);
   if (enemy.originY == null) enemy.originY = SlotY(ctx, enemy.slotIndex ?? 0);
   if (enemy.x == null) enemy.x = enemy.originX;
@@ -10675,11 +10716,12 @@ export function StartEnemyAction(ctx, enemyUID) {
     actionApplied: Number(decision.actionApplied || 0) === 1,
     targetUID: Number(decision.targetUID || 0),
     skillId: String(decision.skillId || skillId || ''),
+    stationary: /^Enemy_Heal_/.test(String(decision.skillId || skillId || '')),
     forwardX: Number(decision.forwardX ?? ((enemy.originX ?? enemy.x ?? 0) - 55)),
   };
 }
 
-export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind = null) {
+export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind = null, notBeforeOverride = null) {
   const g = getGlobals(ctx);
   g.DamageTexts = g.DamageTexts || [];
   const textKind = String(kind || 'damage');
@@ -10731,6 +10773,14 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
   const riseInSec = 0.18;
   const holdSec = 0.7;
   const fadeSec = 0.45;
+  const now = Number(g.time || 0);
+  const pendingHitEnd = Math.max(0, ...(g.PendingHeroHits || []).map(hit => Number(hit?.at || 0) + 0.32));
+  const impactEnd = Math.max(0, ...(g.CombatImpactVisuals || []).map(impact => Number(impact?.startAt || 0) + 0.32));
+  const chainEnd = Math.max(0, ...(g.ChainStrikeVisuals || []).map(visual => Number(visual?.startAt || 0) + Number(visual?.duration || 0.28) + 0.18));
+  const hasNotBeforeOverride = Number.isFinite(Number(notBeforeOverride));
+  const notBefore = hasNotBeforeOverride
+    ? Math.max(now, Number(notBeforeOverride))
+    : (textKind === 'heal' ? now : Math.max(now, Number(g.ActionLockUntil || 0), pendingHitEnd, impactEnd, chainEnd));
   g.DamageTextLayerSeq = Number(g.DamageTextLayerSeq || 0) + 1;
   const zIndex = g.DamageTextLayerSeq;
   g.DamageTexts.push({
@@ -10756,9 +10806,17 @@ export function SpawnDamageText(ctx, amount, x, y, kind = 'damage', targetKind =
     opacity: 1,
     riseInSec,
     holdSec,
-    fadeSec
+    fadeSec,
+    notBefore
   });
-  g.TextAnimEndAt = Math.max(g.TextAnimEndAt || 0, (g.time || 0) + riseInSec + holdSec + fadeSec);
+  g.TextAnimEndAt = Math.max(g.TextAnimEndAt || 0, notBefore + riseInSec + holdSec + fadeSec);
+  const actionOwnerUID = Number(g.ActionActorUID || g.ActionOwnerUID || 0);
+  if (actionOwnerUID && (g.ActionInProgress || g.HeroAction?.active || g.EnemyAction?.active)) {
+    g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), Number(g.TextAnimEndAt || 0));
+    g.DeferAdvance = 1;
+    g.AdvanceAfterAction = 1;
+    g.ActionOwnerUID = actionOwnerUID;
+  }
 }
 
 export function StartBuffRoll(ctx) {
@@ -10790,14 +10848,14 @@ export function StartBuffRoll(ctx) {
   g.ActionOwnerUID = g.ActionOwnerUID || g.PendingActor || g.BuffRollActor || GetCurrentTurn(ctx);
 }
 
-export function StartHeroLunge(ctx, actorUID) {
+export function StartHeroLunge(ctx, actorUID, options = {}) {
   const g = getGlobals(ctx);
   if (!actorUID) {
     delete g.NextHeroActionProfile;
     return 0;
   }
   const currentTurnUID = Number(GetCurrentTurn(ctx) || 0);
-  if (currentTurnUID && Number(actorUID || 0) !== currentTurnUID) {
+  if (!options.allowOutOfTurn && currentTurnUID && Number(actorUID || 0) !== currentTurnUID) {
     logActionGateBlock(g, '[ACTION_HANDOFF_REFUSED]', {
       source: 'StartHeroLunge',
       reason: 'actor-not-current-turn',
@@ -10823,6 +10881,7 @@ export function StartHeroLunge(ctx, actorUID) {
   delete g.NextHeroActionProfile;
   g.ActionInProgress = 1;
   g.ActionActorUID = actorUID;
+  g.ActionOwnerUID = Number(actorUID || 0);
   g.IsPlayerBusy = 1;
   g.CanPickGems = 0;
   g.TurnPhase = 1;
@@ -10835,6 +10894,9 @@ export function StartHeroLunge(ctx, actorUID) {
   g.HeroAction = {
     uid: actorUID,
     profile,
+    stationary: profile === 'ranged',
+    homeX: Number(g.HeroRestBasePosByUID?.[Number(actorUID || 0)]?.x ?? actor?.x ?? 0),
+    homeY: Number(g.HeroRestBasePosByUID?.[Number(actorUID || 0)]?.y ?? actor?.y ?? 0),
     state: 'ADVANCE',
     timer: 0,
     active: true,

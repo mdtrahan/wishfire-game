@@ -182,13 +182,26 @@ test.skip('[Paused roguelite cards/shared AF] enemy KO hook holds dead enemy vis
 	    assert.equal(heldEnemy.pendingOfficialDeath, 1);
 	    assert.equal(heldEnemy.deathState, 'pending_attack');
 	    assert.notEqual(heldEnemy.isAlive, false);
+	    const heldStateBeforeGem = {
+	      pendingOfficialDeath: heldEnemy.pendingOfficialDeath,
+	      deathState: heldEnemy.deathState,
+	      deathVisualHold: heldEnemy.deathVisualHold,
+	      hp: heldEnemy.hp,
+	      isAlive: heldEnemy.isAlive,
+	    };
 
 	    const begun = mod.BeginAstralFlowKoOrbEnemyDeaths(ctx);
 	    assert.equal(begun.ok, true);
-	    assert.equal(begun.hiddenCount, 1);
-	    assert.equal(g.EnemyDeathVisualHoldByUID[300].hiddenForOrb, 1);
-	    assert.equal(heldEnemy.deathState, 'payout');
-	    assert.equal(heldEnemy.deathVisualHiddenForOrb, 1);
+	    assert.equal(begun.heldCount, 1);
+	    assert.equal(g.EnemyDeathVisualHoldByUID[300].hiddenForOrb, undefined);
+	    assert.deepEqual({
+	      pendingOfficialDeath: heldEnemy.pendingOfficialDeath,
+	      deathState: heldEnemy.deathState,
+	      deathVisualHold: heldEnemy.deathVisualHold,
+	      hp: heldEnemy.hp,
+	      isAlive: heldEnemy.isAlive,
+	    }, heldStateBeforeGem, 'gem delivery must preserve the defeated enemy visual state');
+	    assert.equal(heldEnemy.deathVisualHiddenForOrb, undefined);
 	    assert.equal(ctx.state.entities.some(entity => entity && entity.uid === 300), true);
 	    assert.equal(g.EnemySlots[0], 301);
 
@@ -216,6 +229,14 @@ test('function bank mirrors keep KO reward integration narrow', () => {
 	    assert.match(src, /export function BeginAstralFlowKoOrbEnemyDeaths\(ctx\)/);
 	    assert.match(src, /export function CommitAstralFlowKoOrbEnemyDeaths\(ctx\)/);
 	    assert.match(src, /export function CompleteAstralFlowKoOrbRewards\(ctx\)/);
+	    const beginStart = src.indexOf('export function BeginAstralFlowKoOrbEnemyDeaths');
+	    const beginEnd = src.indexOf('\nfunction commitEnemyDeathRemoval', beginStart);
+	    const beginBody = src.slice(beginStart, beginEnd);
+	    assert.doesNotMatch(
+	      beginBody,
+	      /deathState\s*=|pendingOfficialDeath\s*=|deathVisualHiddenForOrb\s*=/,
+	      'gem startup must not re-enter or mutate a defeated enemy visual state'
+	    );
 	    const completeStart = src.indexOf('export function CompleteAstralFlowKoOrbRewards');
 	    const completeEnd = src.indexOf('\nfunction ensureEnemyDeathVisualHoldMap', completeStart);
 	    const completeBody = src.slice(completeStart, completeEnd);
@@ -248,7 +269,7 @@ test('damage text rendering keeps the pre-bead numeric text path', () => {
   assert.doesNotMatch(appSrc, /displayText|High Orc|EncounterCP|AwardEnemyKoAstralFlow|applyAstralFlowEnemyKoReward|astral_flow/);
   for (const relPath of ['web-runner/modules/functionBank.js', 'Scripts/functionBank.js']) {
     const src = read(relPath);
-    assert.match(src, /export function SpawnDamageText\(ctx, amount, x, y, kind = 'damage', targetKind = null\)/);
+    assert.match(src, /export function SpawnDamageText\(ctx, amount, x, y, kind = 'damage', targetKind = null, notBeforeOverride = null\)/);
     const spawnStart = src.indexOf('export function SpawnDamageText');
     const spawnEnd = src.indexOf('\nexport function StartBuffRoll', spawnStart);
     const spawnBody = src.slice(spawnStart, spawnEnd);

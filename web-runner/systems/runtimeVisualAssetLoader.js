@@ -104,7 +104,7 @@ export async function loadRuntimeVisualAssets({
 
   const loadCoreVisuals = async () => {
     const tasks = [];
-    const heroPortraitLoads = ['Falie', 'Huun', 'Runa', 'Kojonn'].map(async (heroName) => {
+    const heroPortraitLoads = ['Fara', 'Hondo', 'Runa', 'Kaja'].map(async (heroName) => {
       heroPortraitImages[heroName] = await loadImage(assetUrl(heroArtPath(heroName)));
     });
     const wardBarrierLoad = (async () => {
@@ -159,6 +159,11 @@ export async function loadRuntimeVisualAssets({
       (async () => { images.CombatImpactBlue = await loadImage(assetUrl('images/vfx_impact_blue.png')); })(),
       (async () => { images.CombatImpactPurple = await loadImage(assetUrl('images/vfx_impact_purple.png')); })(),
       (async () => { images.CombatImpactRose = await loadImage(assetUrl('images/vfx_impact_rose.png')); })(),
+      (async () => { images.CombatImpactG01Blue = await loadImage(assetUrl('images/vfx_impact_g01_blue.png')); })(),
+      (async () => { images.CombatImpactG03Blue = await loadImage(assetUrl('images/vfx_impact_g03_blue.png')); })(),
+      (async () => { images.CombatImpactG03Purple = await loadImage(assetUrl('images/vfx_impact_g03_purple.png')); })(),
+      (async () => { images.CombatImpactG03Original = await loadImage(assetUrl('images/vfx_impact_g03_original.png')); })(),
+      (async () => { images.CombatImpactG04Original = await loadImage(assetUrl('images/vfx_impact_g04_original.png')); })(),
       (async () => { images.CombatSplitSlash = await loadImage(assetUrl('images/vfx_split_slash.png')); })(),
       (async () => { images.CombatRunaBolt = await loadImage(assetUrl('images/vfx_runa_bolt.png')); })(),
       (async () => { images.CombatKajaOrb = await loadImage(assetUrl('images/vfx_kaja_orb.png')); })(),

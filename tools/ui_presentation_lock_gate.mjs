@@ -666,7 +666,7 @@ async function captureCommandTurns(page, viewport, artifactDir) {
     const seed = game.state.entities.find(actor => actor.kind === 'hero');
     const enemies = game.state.entities.filter(actor => actor.kind === 'enemy');
     const heroes = Array.from({length: count}, (_, slot) => ({
-      ...seed, name: 'Falie', baseHeroName: 'Falie', uid: 100 + slot, heroDisplaySlot: slot,
+      ...seed, name: 'Falie', baseHeroName: 'Falie', uid: 100 + slot, heroInstanceKey: `qa:command:${slot}`, heroDisplaySlot: slot,
       stats: {...seed.stats}, hp: 5000, maxHP: 5000, flow: slot === count - 1 ? flow : 0,
       flowMode: 'Stoic', currentLevel: 50, statuses: [],
     }));
@@ -675,7 +675,18 @@ async function captureCommandTurns(page, viewport, artifactDir) {
       GamePhase: 'RUNTIME', NativeBattleEnded: false, BattleStartActive: 0, TurnPhase: 0,
       CombatSessionId: Number(globals.CombatSessionId || 0) + 1, CurrentHeroUID: heroes.at(-1).uid,
       CurrentTurnIndex: 0, IsPlayerBusy: 0, CanPickGems: 1, ActionInProgress: 0,
-      PendingHeroHits: [], PendingDeaths: {}, HeroTurnCardFanOpen: 0, HeroTurnCardFanCards: [],
+      PendingHeroHits: [], PendingDeaths: {}, FlowOrbs: [], AstralFlowKoOrbQueue: [],
+      CombatImpactRequests: [], CombatImpactVisuals: [], ChainStrikeVisuals: [], ArcanePulseVisuals: [],
+      AstralFlowKoOrbPresentationState: null, AstralFlowKoOrbPresentationActive: 0, AstralFlowKoOrbPresentationPending: 0,
+      HeroAction: null, EnemyAction: null, DamageTexts: [], TextAnimating: 0, TextAnimEndAt: 0, ActionLockUntil: 0,
+      HeroTurnCardFanOpen: 0, HeroTurnCardFanCards: [],
+      SessionLevelBuffState: {heroes: {}}, SessionLevelUpOffersByQueueIndex: {},
+      SessionLevelUpOfferGeneration: Number(globals.SessionLevelUpOfferGeneration || 0) + 1, SessionLevelUpSettlement: null,
+      SessionOfferInputToken: '', SessionOfferResolution: '', SessionLevelUpQueueResumeRequested: 0, PendingFlowThresholds: [],
+      SessionLevelUpQueue: {version: 1, status: 'active', paused: false, currentIndex: 0, entries: [{
+        heroId: '__party_session__', heroUID: 0, earnedLevel: 0, earnedLevelIndex: 0,
+        source: 'opening_party', participantHeroIds: heroes.map(hero => hero.heroInstanceKey),
+      }]},
       TurnOrderArray: [{uid: heroes.at(-1).uid, type: 0}, ...enemies.map(enemy => ({uid: enemy.uid, type: 1}))],
     });
     game.callFunction('InitPartyHPFromHeroes');

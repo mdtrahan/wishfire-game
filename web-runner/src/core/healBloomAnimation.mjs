@@ -10,6 +10,7 @@ export function createHealBloom({
   x,
   y,
   targetUID = 0,
+  ownerUID = 0,
   count = 12,
   presentation = 'minor',
 }) {
@@ -20,6 +21,7 @@ export function createHealBloom({
     x: Number(x || 0),
     y: Number(y || 0),
     targetUID: Number(targetUID || 0),
+    ownerUID: Number(ownerUID || targetUID || 0),
     presentation: presentation === 'major' ? 'major' : 'minor',
     particles,
     timelines,

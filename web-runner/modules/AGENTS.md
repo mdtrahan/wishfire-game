@@ -15,7 +15,8 @@
 - `state.globals` is the live runtime envelope. New fields need a clear owner, reset/init behavior, tests, and debug/proof visibility when user-facing.
 - `Scripts/functionBank.js` mirrors selected high-risk functions. Do not drift mirrored functions without a test and explicit bead scope.
 - Combat uses speed-based interleaved initiative for normal combat. Do not force strict `Heroes -> Enemies -> Heroes` team phases unless a future bead explicitly changes that product decision.
-- A completed native hero action owns its deferred scheduler handoff through `ProcessTurn`. If presentation release exposes another living hero first, reconcile from `ActionOwnerUID` before advancing; retain enemy-roster holds and terminal settlement guards.
+- A completed native hero action owns its deferred scheduler handoff through `ProcessTurn`. If presentation release exposes another living hero first, reconcile from `ActionOwnerUID` before advancing; retain enemy-roster holds and terminal settlement guards. If the resulting scheduler UID has no live entity, advance before native turn setup.
+- A late enemy-death removal must retain or create that deferred handoff; clearing the defeated actor after FLOW delivery cannot leave `IsPlayerBusy` without `DeferAdvance`.
 - Use `CanPickGems` through numeric readiness helpers such as `isCanPickGemsReady`; do not rely on strict boolean checks.
 - Personal FLOW owns combat charge. Roguelite card acquisition and proc entrypoints are paused; stale draw fields must not block combat. Parked definitions do not authorize reactivation.
 - Native wards, Cover, Reprisal, Rally and weakness are actor-owned combat effects; card-session records cannot activate them.
@@ -53,6 +54,11 @@
 - ApplyActiveHeroHeal replaces pooled healing: resolve the scheduled living hero, clamp healing to that actor, and reproject totals. DoHeal rejects non-active/KO actors and retains its turn-spending sequence. Percentage recovery uses the recipient maximum. Magic Fruit keeps party max-HP growth while healing only the active hero.
 - heroCommands.mjs commits one ordered native sequence after full validation and spends personal charge only after the lunge accepts. FLOW overrides the queue; the normal presentation barrier advances once. Active-turn ownership remains with the scheduled actor through animation.
 - heroCommands.mjs reports successful magic pressure from the same resolved damage action. This lets Runa's Controller basic earn one Tactician AF award without creating an enemy-death gem.
+- `ActionOwnerUID` and `ActionLockUntil` are the single presentation handoff boundary. Every resolved heal, hit, bloom, or special effect must extend the current action through its final visible frame before `ProcessTurn` can claim another action. A cross-actor heal preserves that action owner; a heal emitted after a hero command claim delays that hero's motion and queued hits until the bloom releases.
+- Defeated enemies remain renderable through the complete attack package, including every Chain Strike target, impact and damage float. Their FLOW gem delivery follows that package and must finish before removal or another actor action. A lethal native command creates the held death state in the same resolution step that reaches zero HP. Starting gem delivery preserves that state so the sprite cannot leave and re-enter the scene.
+- A lethal AF Chain Strike II hit creates its visual death hold immediately even while the group resolver is active. Its non-finite encounter batch refills in the same frame as post-FLOW death removal, with no empty-roster delay before the replacement wave.
+- Opening-session Chain Strike II is one immediate AF attack. Selecting it must not install the `mirage_chain` session passive on any hero.
+- Session and AF card offers remain queued while any prior combat presentation is visible. In particular, enemy-death AF gems must finish their collection flash before a threshold offer may open.
 
 - Paid sequences reserve only their actual SP costs after accepted launch; FLOW specials empty FLOW and preserve SP. Neither resource is projected from the other.
 

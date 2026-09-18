@@ -19,6 +19,7 @@
 - Do not create a second batch game-test pipeline beside `npm run balance-harness` without explicit scope.
 - Keep `npm run test:ui-lock` presentation-only. It may arrange deterministic test state through `window.__codexGame`; it must not become a balance or gameplay simulation harness.
 - UI lock failures must name the viewport, invariant, measured value, allowed range, and JSON report path.
+- Command/fan UI-lock fixtures clear prior damage floats and presentation queues before arranging an opening offer; production serialization correctly keeps that offer hidden while an earlier float or effect still owns the stage.
 - The UI lock runs reference, compact, live-narrow `233x452`, approved natural-preview, and compact-Retina viewports; it records requested and actual viewport/zoom/DPR metrics, covers stage containment, developer controls, transient combat controls, damage density, progress-bar height, personal FLOW and command queue routing, and can prove stage and panel rejection through `--prove-rejection`.
 - Treat Playwright/Chrome tools as support tools unless the user asks for that surface.
 - `serve_web.js` intentionally writes a runtime fingerprint at server start; account for that generated file in diffs.

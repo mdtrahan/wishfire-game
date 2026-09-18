@@ -5,17 +5,42 @@ const IMPACT_VISIBLE_CENTER_X = Object.freeze({
   blue: (66 + 144) / (2 * 192),
   purple: (58 + 138) / (2 * 192),
   rose: (45 + 150) / (2 * 192),
+  g01_blue: 0.65,
+  g03_blue: 0.91,
+  g03_purple: 0.91,
+  g03_original: 0.91,
+  g04_original: 0.7,
   arcanePulse: (406 + 1378) / (2 * 1536),
 });
+export const IMPACT_PAINTED_WIDTH_LIMIT = 55;
+export const APPROVED_IMPACT_DRAW_SCALE = Object.freeze({
+  g03_blue: 0.68,
+  g03_purple: 0.68,
+  g03_original: 0.82,
+  g04_original: 0.82,
+});
+const IMPACT_PAINTED_WIDTH_RATIO = Object.freeze({
+  g03_blue: 293 / 307,
+  g03_purple: 297 / 307,
+  g03_original: 275 / 307,
+  g04_original: 290 / 306,
+});
+const compliantImpactScale = kind => {
+  const requested = Number(APPROVED_IMPACT_DRAW_SCALE[kind] || 1);
+  const paintedRatio = IMPACT_PAINTED_WIDTH_RATIO[kind];
+  return paintedRatio ? Math.min(requested, IMPACT_PAINTED_WIDTH_LIMIT / (62 * 1.12 * paintedRatio)) : requested;
+};
 const contactPointTowardSource = (source, target, distance) => ({
   x: target.x + Math.sign(Number(source?.x || 0) - Number(target.x || 0)) * distance,
   y: target.y,
 });
+const torsoSideOffset = state => Math.max(24, Number(state.globals?.EnemySize || 40)) * 0.04;
+const commonImpactYOffset = state => Math.max(24, Number(state.globals?.EnemySize || 40)) * 0.17;
 
 export function combatVfxProfileForActor(actor) {
   const name = String(actor?.name || '').trim().toLowerCase();
-  if (name === 'runa') return { delivery: 'runa_bolt', impact: 'blue' };
-  if (name === 'kojonn' || name === 'kaja') return { delivery: 'kaja_orb', impact: 'purple' };
+  if (name === 'runa') return { delivery: 'runa_bolt', impact: 'g03_blue' };
+  if (name === 'kojonn' || name === 'kaja') return { delivery: 'kaja_orb', impact: 'g03_purple' };
   if (stat(actor, 'MAG') > stat(actor, 'ATK')) {
     if (name === 'djinn') return { delivery: 'djinn_rain', impact: 'purple' };
     if (name === 'marid') return { delivery: 'marid_crescent', impact: 'blue' };
@@ -33,7 +58,12 @@ const projectileAsset = (images, kind) => (
 );
 
 const impactAsset = (images, kind) => (
-  kind === 'blue' ? images.CombatImpactBlue
+  kind === 'g01_blue' ? images.CombatImpactG01Blue
+    : kind === 'g03_blue' ? images.CombatImpactG03Blue
+      : kind === 'g03_purple' ? images.CombatImpactG03Purple
+        : kind === 'g03_original' ? images.CombatImpactG03Original
+          : kind === 'g04_original' ? images.CombatImpactG04Original
+            : kind === 'blue' ? images.CombatImpactBlue
     : kind === 'purple' ? images.CombatImpactPurple
       : kind === 'rose' ? images.CombatImpactRose
         : images.CombatHitFlare
@@ -43,14 +73,29 @@ const entityAnchor = (state, uid) => {
   const g = state.globals || {};
   const actor = (state.entities || []).find(entity => entity && Number(entity.uid || 0) === Number(uid || 0));
   const rest = actor?.kind === 'hero' && g.HeroRestBasePosByUID?.[Number(uid || 0)];
+  const feet = actor?.kind === 'hero' && g.HeroRestFeetPosByUID?.[Number(uid || 0)];
+  const renderHeight = actor?.kind === 'hero' && Number(g.HeroRenderHeightByUID?.[Number(uid || 0)] || 0);
   const size = Math.max(24, Number(g.EnemySize || 40));
   const spacing = Number(g.Spacing || (size + Number(g.enemyGAP || 8)));
   const actorX = actor?.originX != null ? actor.originX : (actor?.x != null ? actor.x : Number(g.X0 || 200));
   const actorY = actor?.originY != null ? actor.originY : (actor?.y != null ? actor.y : Number(g.EnemyAreaY0 || 140) + Number(actor?.slotIndex || 0) * spacing);
+  if (actor?.kind === 'hero' && feet && renderHeight > 0) return {
+    x: Number(feet.x),
+    y: Number(feet.y) - renderHeight / 2,
+  };
   return actor ? {
     x: Number(rest?.x ?? actorX),
-    y: Number(rest?.y ?? actorY) - size * 0.34,
+    y: actor.kind === 'hero' && rest ? Number(rest.y) : Number(actorY),
   } : null;
+};
+
+const entityFeetAnchor = (state, uid) => {
+  const g = state.globals || {};
+  const actor = (state.entities || []).find(entity => entity && Number(entity.uid || 0) === Number(uid || 0));
+  if (!actor) return null;
+  if (actor.kind === 'hero') return g.HeroRestFeetPosByUID?.[Number(uid || 0)] || entityAnchor(state, uid);
+  const center = entityAnchor(state, uid);
+  return center ? { x: center.x, y: center.y + Math.max(24, Number(g.EnemySize || 40)) / 2 } : null;
 };
 
 const enemyGroupAnchor = (state) => {
@@ -80,33 +125,43 @@ export function queueCombatAttackImpactVfx(state, hit, target, now) {
   const g = state.globals || {};
   const actor = (state.entities || []).find(entity => Number(entity?.uid || 0) === Number(hit.heroUID || hit.actorUID || 0));
   const delivery = String(hit.attackVfxKind || '');
+  const actionName = String(hit.actionName || '');
+  const actionImpact = actionName === 'Split' ? 'g03_original'
+    : actionName.startsWith('Chain Strike') ? 'g04_original'
+      : '';
   const kind = String(hit.impactVfxKind
-    || (delivery === 'runa_bolt' ? 'blue' : delivery === 'kaja_orb' ? 'purple' : '')
+    || actionImpact
+    || (delivery === 'runa_bolt' ? 'g03_blue' : delivery === 'kaja_orb' ? 'g03_purple' : '')
     || combatVfxProfileForActor(actor).impact);
   const damage = Math.max(0, Number(hit.finalDmg ?? hit.dmg ?? hit.damage ?? 0));
   const maxHP = Math.max(0, Number(target.maxHP ?? target.max ?? 0));
   const weak = !hit.didCrit && !hit.isCrit && maxHP > 0 && damage > 0 && damage <= maxHP * 0.05;
-  const impactScale = !weak && (delivery === 'runa_bolt' || delivery === 'kaja_orb') ? 1.6 : 1;
+  const impactScale = weak ? 1 : compliantImpactScale(kind);
   const targetCenter = entityAnchor(state, target.uid) || { x: Number(target.x || 0), y: Number(target.y || 0) };
   const sourcePoint = entityAnchor(state, actor?.uid);
   const targetPoint = sourcePoint
-    ? contactPointTowardSource(sourcePoint, targetCenter, Math.max(24, Number(g.EnemySize || 40)) * 0.3)
+    ? contactPointTowardSource(sourcePoint, targetCenter, torsoSideOffset(state))
     : targetCenter;
-  const targetRestCenter = target.kind === 'hero' && g.HeroRestBasePosByUID?.[Number(target.uid || 0)];
-  const targetVerticalCenter = Number(targetRestCenter?.y
-    ?? target.originY
-    ?? target.y
-    ?? targetPoint.y
-    ?? 0);
   const impacts = Array.isArray(g.CombatImpactVisuals) ? g.CombatImpactVisuals : [];
   impacts.push({
+    ownerUID: Number(hit.heroUID || hit.actorUID || 0),
+    targetUID: Number(target.uid || 0),
+    targetKind: String(target.kind || ''),
+    mirrorX: target.kind === 'hero',
     x: targetPoint.x,
-    y: weak ? targetVerticalCenter : targetPoint.y,
+    y: weak ? targetPoint.y : targetPoint.y - commonImpactYOffset(state),
     kind,
     weak,
     impactScale,
     startAt: Number(now || g.time || 0),
   });
+  const ownerUID = Number(hit.heroUID || hit.actorUID || 0);
+  if (ownerUID && Number(g.ActionActorUID || 0) === ownerUID && (g.ActionInProgress || g.HeroAction?.active || g.EnemyAction?.active)) {
+    g.ActionLockUntil = Math.max(Number(g.ActionLockUntil || 0), Number(now || g.time || 0) + 0.32);
+    g.DeferAdvance = 1;
+    g.AdvanceAfterAction = 1;
+    g.ActionOwnerUID = ownerUID;
+  }
   if (impacts.length > 24) impacts.splice(0, impacts.length - 24);
   g.CombatImpactVisuals = impacts;
 }
@@ -164,16 +219,18 @@ const renderSessionBuffCombatVfx = (ctx, { state, images, worldToCanvas, layoutS
     if (!visual || age >= 0.58) return false;
     if (age < 0) return true;
     const sourcePoint = entityAnchor(state, visual.sourceUID);
-    const targetPoint = entityAnchor(state, visual.targetUID);
+    const targetPoint = visual.kind === 'venom_sigil'
+      ? entityFeetAnchor(state, visual.targetUID)
+      : entityAnchor(state, visual.targetUID);
     if (!targetPoint) return true;
     const target = worldToCanvas(targetPoint.x, targetPoint.y);
     if (visual.kind === 'venom_sigil' && images.CombatVenomSigil) {
       const progress = Math.min(1, age / 0.38);
-      drawVerticalReveal(ctx, images.CombatVenomSigil, { x: target.x, y: target.y + 20 * layoutScale }, progress, Math.max(72, 94 * layoutScale), Math.max(0, 1 - age / 0.58), 'up');
+      drawVerticalReveal(ctx, images.CombatVenomSigil, target, progress, Math.max(72, 94 * layoutScale), Math.max(0, 1 - age / 0.58), 'up');
     } else if (visual.kind === 'glass_reprisal' && sourcePoint && images.CombatGlassReprisal) {
       const progress = Math.min(1, age / 0.32);
       const source = worldToCanvas(sourcePoint.x, sourcePoint.y);
-      const contactTarget = contactPointTowardSource(source, target, Math.max(24, Number(state.globals?.EnemySize || 40)) * 0.3 * layoutScale);
+      const contactTarget = contactPointTowardSource(source, target, torsoSideOffset(state) * layoutScale);
       drawTravel(ctx, images.CombatGlassReprisal, source, contactTarget, progress, Math.max(54, 76 * layoutScale), layoutScale);
       if (age >= 0.28 && images.CombatImpactBlue) {
         const contact = Math.min(1, (age - 0.28) / 0.3);
@@ -190,7 +247,7 @@ const renderSessionBuffCombatVfx = (ctx, { state, images, worldToCanvas, layoutS
 
 const renderArcanePulseVfx = (ctx, { state, images, worldToCanvas, layoutScale }) => {
   const pulses = Array.isArray(state.globals?.ArcanePulseVisuals) ? state.globals.ArcanePulseVisuals : [];
-  if (!pulses.length || !images.SkillArcanePulse) return;
+  if (!pulses.length) return;
   const now = Number(state.globals.time || 0);
   state.globals.ArcanePulseVisuals = pulses.filter((pulse) => {
     const startAt = Number(pulse?.startAt || 0);
@@ -200,7 +257,7 @@ const renderArcanePulseVfx = (ctx, { state, images, worldToCanvas, layoutScale }
     if (now < startAt) return true;
     const source = worldToCanvas(Number(pulse.sourceX || 0), Number(pulse.sourceY || 0));
     const targetCenter = worldToCanvas(Number(pulse.targetX || 0), Number(pulse.targetY || 0));
-    const target = contactPointTowardSource(source, targetCenter, Math.max(24, Number(state.globals?.EnemySize || 40)) * 0.3 * layoutScale);
+    const target = contactPointTowardSource(source, targetCenter, torsoSideOffset(state) * layoutScale);
     const travel = Math.max(0, Math.min(1, (now - startAt) / (impactAt - startAt)));
     const charge = Math.min(1, travel / 0.18);
     const move = Math.max(0, Math.min(1, (travel - 0.18) / 0.82));
@@ -209,35 +266,49 @@ const renderArcanePulseVfx = (ctx, { state, images, worldToCanvas, layoutScale }
     const y = source.y + (target.y - source.y) * eased;
     const angle = Math.atan2(target.y - source.y, target.x - source.x);
     const width = Math.max(81, 114 * layoutScale) * (0.5 + charge * 0.5);
+    const spectralOrb = pulse.skillId === 'session_spectral_orb';
     if (now < impactAt) {
-      for (const [trail, opacity] of [[0.13, 0.12], [0.07, 0.22]]) {
-        const prior = Math.max(0, eased - trail);
+      if (spectralOrb && images.CombatDrainBuffOrb) {
+        const orbSize = Math.max(46, 62 * layoutScale) * (0.86 + charge * 0.14);
         ctx.save();
-        ctx.globalAlpha = opacity * move;
-        ctx.translate(source.x + (target.x - source.x) * prior, source.y + (target.y - source.y) * prior);
+        ctx.globalAlpha = 0.35 + charge * 0.65;
+        ctx.translate(x, y);
+        ctx.rotate(-eased * Math.PI * 2);
+        ctx.drawImage(images.CombatDrainBuffOrb, -orbSize / 2, -orbSize / 2, orbSize, orbSize);
+        ctx.restore();
+      } else if (images.SkillArcanePulse) {
+        for (const [trail, opacity] of [[0.13, 0.12], [0.07, 0.22]]) {
+          const prior = Math.max(0, eased - trail);
+          ctx.save();
+          ctx.globalAlpha = opacity * move;
+          ctx.translate(source.x + (target.x - source.x) * prior, source.y + (target.y - source.y) * prior);
+          ctx.rotate(angle);
+          ctx.scale(-1, 1);
+          ctx.drawImage(images.SkillArcanePulse, -width * 0.55, -width * 0.36, width, width * 0.72);
+          ctx.restore();
+        }
+        ctx.save();
+        ctx.globalAlpha = 0.35 + charge * 0.65;
+        ctx.translate(x, y);
         ctx.rotate(angle);
         ctx.scale(-1, 1);
         ctx.drawImage(images.SkillArcanePulse, -width * 0.55, -width * 0.36, width, width * 0.72);
         ctx.restore();
       }
-      ctx.save();
-      ctx.globalAlpha = 0.35 + charge * 0.65;
-      ctx.translate(x, y);
-      ctx.rotate(angle);
-      ctx.scale(-1, 1);
-      ctx.drawImage(images.SkillArcanePulse, -width * 0.55, -width * 0.36, width, width * 0.72);
-      ctx.restore();
-    } else if (images.CombatArcanePulseImpact) {
-      const impact = Math.max(0, Math.min(1, (now - impactAt) / ARCANE_PULSE_IMPACT_SEC));
-      const width = Math.max(70, 96 * layoutScale) * (0.82 + impact * 0.18);
-      const height = width * 0.64;
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, 1 - impact);
-      ctx.translate(target.x, target.y);
-      ctx.rotate(angle);
-      ctx.scale(-1, 1);
-      ctx.drawImage(images.CombatArcanePulseImpact, -width * IMPACT_VISIBLE_CENTER_X.arcanePulse, -height / 2, width, height);
-      ctx.restore();
+    } else {
+      const image = spectralOrb ? images.CombatImpactG01Blue : images.CombatArcanePulseImpact;
+      if (image) {
+        const impact = Math.max(0, Math.min(1, (now - impactAt) / ARCANE_PULSE_IMPACT_SEC));
+        const impactWidth = (spectralOrb ? Math.max(42, 52 * layoutScale) : Math.max(70, 96 * layoutScale)) * (0.82 + impact * 0.18);
+        const height = impactWidth * (Number(image.height || 64) / Math.max(1, Number(image.width || 100)));
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 1 - impact);
+        ctx.translate(target.x, target.y);
+        ctx.rotate(angle);
+        if (!spectralOrb) ctx.scale(-1, 1);
+        ctx.drawImage(image, -impactWidth * (spectralOrb ? IMPACT_VISIBLE_CENTER_X.g01_blue : IMPACT_VISIBLE_CENTER_X.arcanePulse), -height / 2, impactWidth, height);
+        ctx.restore();
+      }
     }
     return true;
   });
@@ -357,19 +428,32 @@ export function renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layou
       const pos = worldToCanvas(Number(impact.x || 0), Number(impact.y || 0));
       const size = Math.max(impact.weak ? 34 : 42, (impact.weak ? 46 : 62) * layoutScale)
         * (0.62 + Math.min(1, t * 2) * 0.5)
-        * Math.max(1, Number(impact.impactScale || 1));
+        * Math.max(0.1, Number(impact.impactScale || 1));
       if (impact.weak) {
         ctx.save();
         ctx.globalAlpha = t < 0.25 ? 0.92 : Math.max(0, (1 - t) / 0.75) * 0.92;
-        ctx.drawImage(flare, pos.x - size / 2, pos.y - size / 2, size, size);
+        if (impact.mirrorX) {
+          ctx.translate(pos.x, pos.y);
+          ctx.scale(-1, 1);
+          ctx.drawImage(flare, -size / 2, -size / 2, size, size);
+        } else {
+          ctx.drawImage(flare, pos.x - size / 2, pos.y - size / 2, size, size);
+        }
         ctx.restore();
         return age < 0.32;
       }
       const visibleCenterX = impact.weak ? IMPACT_VISIBLE_CENTER_X.melee
         : IMPACT_VISIBLE_CENTER_X[impact.kind] || IMPACT_VISIBLE_CENTER_X.melee;
+      const height = size * (Number(flare.height || 66) / Math.max(1, Number(flare.width || 100)));
       ctx.save();
       ctx.globalAlpha = t < 0.25 ? 1 : Math.max(0, (1 - t) / 0.75);
-      ctx.drawImage(flare, pos.x - size * visibleCenterX, pos.y - size / 3, size, size * 0.66);
+      if (impact.mirrorX) {
+        ctx.translate(pos.x, pos.y);
+        ctx.scale(-1, 1);
+        ctx.drawImage(flare, -size * visibleCenterX, -height / 2, size, height);
+      } else {
+        ctx.drawImage(flare, pos.x - size * visibleCenterX, pos.y - height / 2, size, height);
+      }
       ctx.restore();
     }
     return age < 0.32;

@@ -11,10 +11,10 @@ const HERO_PORTRAIT_PATHS = Object.freeze(Object.fromEntries(
   Object.entries(HERO_ART_ASSETS).map(([key, asset]) => [key, runtimeAssetUrl(asset.path)]),
 ));
 const HERO_PORTRAIT_CROPS = Object.freeze({
-  Falie: {position: '52% 0%', scale: 4.6, width: '47%'},
-  Huun: {position: '60% 0%', scale: 4.8, width: '47%'},
+  Fara: {position: '52% 0%', scale: 4.6, width: '47%'},
+  Hondo: {position: '60% 0%', scale: 4.8, width: '47%'},
   Runa: {position: '48% 0%', scale: 4.8, width: '47%'},
-  Kojonn: {position: '54% 0%', scale: 4.7, width: '47%'},
+  Kaja: {position: '54% 0%', scale: 4.7, width: '47%'},
 });
 export const HERO_STRIP_VERSION = 'sample-status-v30';
 const heroName = hero => HERO_NAMES[hero?.baseHeroName || hero?.name] || hero?.name || 'Hero';

@@ -51,9 +51,10 @@
 
 - `actionSelection.mjs` owns action capacity and draft budgets independently of SP and CTB scheduling. High SP cannot increase the action count.
 
-- Qualifying resolved role actions charge only their eligible living hero immediately, once per action, capped at 100. Tactician qualifies through successful magic damage or a new eligible status, so Runa's native basic has a normal role path. Role awards emit no gem. Enemy KO produces one blue flowOrbs.mjs transfer for one deterministically assigned living hero; collection applies its AF once after the shared 650ms flight. Combat RNG and orb RNG remain separate. Session reset cancels pending flights.
+- Qualifying resolved role actions charge only their eligible living hero immediately, once per action, capped at 100. Tactician qualifies through successful magic damage or a new eligible status, so Runa's native basic has a normal role path. Role awards emit no gem. Enemy KO produces one blue flowOrbs.mjs transfer for one deterministically assigned living hero; collection applies its AF once after the shared 520ms flight. Combat RNG and orb RNG remain separate. Session reset cancels pending flights.
 - Reaching 100 AF records one deterministic pending threshold signal. AF stays full until the session queue owner consumes it; falling below 100 rearms the next threshold.
 - A session offer clears transient busy, action, and animation locks when it takes input ownership. Preserve the completed-action owner and deferred-advance fields so closing the offer resumes CTB exactly once.
+- Combat presentation has one owner at a time. Attack motion and impacts finish before damage floats; heal art finishes before heal floats; enemy-death FLOW delivery starts after those floats and blocks the next actor through collection. A held enemy death remains a presentation lane until removal commits, preventing a new actor claim between gem completion and refill.
 - The fresh-session party offer excludes defeat-triggered revive cards because the party enters fully restored. Later level-up offers may include them.
 
 - equipment.mjs is the canonical placeholder catalog, slots, rarity balance and loadout math. astralMarket.mjs reconstructs only the live offer window using persisted seed/epoch and a monotonic time floor. Each offer ID may be acquired once; revalidate price, expiration and Gold at commit.

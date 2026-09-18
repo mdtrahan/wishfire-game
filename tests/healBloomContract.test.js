@@ -20,6 +20,7 @@ test('heal bloom module uses a staggered upward GSAP fountain instead of a radia
   assert.match(src, /const total = Math\.max\(8, Math\.min\(14, Math\.floor\(Number\(count \|\| 12\)\)\)\);/);
   assert.match(src, /const HEAL_BLOOM_WIDTH_SCALE = 0\.8;/);
   assert.match(src, /targetUID: Number\(targetUID \|\| 0\),/);
+  assert.match(src, /ownerUID: Number\(ownerUID \|\| targetUID \|\| 0\),/);
   assert.match(src, /presentation: presentation === 'major' \? 'major' : 'minor',/);
   assert.match(src, /const tl = gsap\.timeline\(\);/);
   assert.match(src, /const dx = random\(-24, 24\) \* HEAL_BLOOM_WIDTH_SCALE;/);
@@ -35,6 +36,16 @@ test('heal bloom module uses a staggered upward GSAP fountain instead of a radia
   assert.match(src, /const rotation = random\(-12, 12\);/);
 });
 
+test('heal bloom marks its owner and clears after the final particle completes', async () => {
+  const { createHealBloom } = await import('../web-runner/src/core/healBloomAnimation.mjs');
+  const animation = createHealBloom({ x: 88, y: 144, targetUID: 17, ownerUID: 3, count: 8, presentation: 'major' });
+  assert.equal(animation.targetUID, 17);
+  assert.equal(animation.ownerUID, 3);
+  assert.equal(animation.complete, false);
+  await new Promise(resolve => setTimeout(resolve, 1600));
+  assert.equal(animation.complete, true);
+});
+
 test('app heal path plays a ten-frame green swirl with Faze-style front motes', () => {
   const appSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'app.js'), 'utf8');
   const spawnSrc = sliceBetween(appSrc, 'function spawnPendingDamageNumbers', 'const RUNTIME_FINGERPRINT');
@@ -45,6 +56,7 @@ test('app heal path plays a ten-frame green swirl with Faze-style front motes', 
   assert.doesNotMatch(spawnSrc, /d\.targetKind === 'bar'/);
   assert.match(spawnSrc, /d\.healBloomAnimation = createHealBloom\(\{/);
   assert.match(spawnSrc, /targetUID: d\.targetUID,/);
+  assert.match(spawnSrc, /ownerUID: d\.ownerUID,/);
   assert.match(spawnSrc, /presentation: d\.healPresentation,/);
   assert.match(spawnSrc, /gameState\.healBlooms = Array\.isArray\(gameState\.healBlooms\) \? gameState\.healBlooms : \[\];/);
   assert.match(spawnSrc, /gameState\.healBlooms\.push\(d\.healBloomAnimation\);/);
@@ -56,6 +68,9 @@ test('app heal path plays a ten-frame green swirl with Faze-style front motes', 
   assert.match(renderSrc, /const splitY = frameHeight \* 0\.7;/);
   assert.match(renderSrc, /drawY \+ drawSize \* 0\.7, drawWidth, drawSize \* 0\.3/);
   assert.match(renderSrc, /HeroRestFeetPosByUID\?\.\[targetUID\]/);
+  assert.match(renderSrc, /const enemyFeet = targetActor\?\.kind === 'enemy'/);
+  assert.match(renderSrc, /targetActor\.originY \?\? targetActor\.y \?\? 0\) \+ Math\.max\(24, Number\(state\.globals\.EnemySize \|\| 40\)\) \/ 2/);
+  assert.match(renderSrc, /const targetFeet = restFeet \|\| enemyFeet;/);
   assert.match(renderSrc, /HeroRenderHeightByUID\?\.\[targetUID\]/);
   assert.match(renderSrc, /HeroRenderWidthByUID\?\.\[targetUID\]/);
   assert.match(renderSrc, /const drawY = anchor\.y - drawSize \* 0\.78;/);

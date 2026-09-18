@@ -2,6 +2,7 @@ import {renderHeroGear} from './heroGearUI.mjs';
 import {computeCombatPower} from '../src/core/combatPower.mjs';
 import {heroDefinition,FLOW_ORB_TUNING} from '../src/core/heroDefinitions.mjs';
 import {createHeroProgressStore} from '../src/core/heroProgression.mjs';
+import {heroArtKey} from '../state/heroArtAssets.mjs';
 let host, content, lastKey, currentTab='hero', skillTab='actives';
 export function hideHeroScreen(){if(host)host.hidden=true;}
 export function renderHeroScreen({equipmentProgress,canvas,gameState,fnContext,heroPortraitImages,onClose}) {
@@ -35,7 +36,7 @@ export function renderHeroScreen({equipmentProgress,canvas,gameState,fnContext,h
  if(key!==lastKey){lastKey=key;const focused=content.contains(document.activeElement)?document.activeElement:null;const focusLabel=focused?.getAttribute('aria-label')||focused?.textContent;content.replaceChildren();
   const el=(tag,text,parent=content)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;parent.append(n);return n;};
   const button=(parent,text,action)=>{const n=el('button',text,parent);n.type='button';n.onclick=action;return n;};
-  const portrait=(owner,parent)=>{const def=heroDefinition(owner);const image=heroPortraitImages[owner.baseHeroName]||heroPortraitImages[def.key];if(image?.src){const img=el('img',null,parent);img.src=image.src;img.alt=def.name;}};
+  const portrait=(owner,parent)=>{const def=heroDefinition(owner);const image=heroPortraitImages[heroArtKey(owner)];if(image?.src){const img=el('img',null,parent);img.src=image.src;img.alt=def.name;}};
   const nav=el('nav');button(nav,'Back',onClose);
   const identity=el('header');identity.className='identity';portrait(hero,identity);el('h1',d.name,identity);el('p',`Lv. ${hero.currentLevel} · ${d.role} · ${d.flowMode}`,identity);el('p',`CP ${computeCombatPower(hero)}`,identity);el('p',`HP ${hero.maxHP} · ATK ${hero.stats.ATK} · AF ${Math.min(100,Math.max(0,Number(hero.flow||0)))}`,identity);
   const tabs=el('nav');tabs.className='tabs';tabs.setAttribute('aria-label','Hero management');

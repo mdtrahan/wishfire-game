@@ -81,6 +81,38 @@ test('native basic attacks expose their resolved damage to impact presentation',
   assert.equal(hit.finalDmg, 6);
 });
 
+test('native lethal attacks create the enemy death hold before the next render', async () => {
+  const { resolveNativeCommandStep } = await import('../web-runner/modules/heroCommands.mjs');
+  const { heroDefinition } = await import('../web-runner/src/core/heroDefinitions.mjs');
+  const hero = { uid: 1, name: 'Huun', kind: 'hero', hp: 60, maxHP: 60, flow: 0, level: 1, stats: { ATK: 16 } };
+  const enemy = { uid: 9, name: 'Gobloc', kind: 'enemy', hp: 5, maxHP: 100, statuses: [] };
+  const action = { skillId: 'basic_attack', targetIds: [9], skill: heroDefinition(hero).basic };
+  const sequence = { actorUID: 1, actions: [action], index: 0, sessionId: 1 };
+  const globals = { CombatSessionId: 1, NativeCommandSequence: sequence, time: 1, RuntimeRandom: () => 0.5 };
+  const calls = [];
+  const ctx = { state: { globals, entities: [hero, enemy] }, callFunction(name, ...args) {
+    if (name === 'CalculateDamage') return 6;
+    if (name === 'ApplyDamageToTarget') {
+      enemy.hp = Math.max(0, enemy.hp - Number(args[1] || 0));
+      if (enemy.hp === 0) globals.PendingDeaths = { 9: { killerUID: 1 } };
+      return 5;
+    }
+    if (name === 'ResolvePendingEnemyDeaths') {
+      calls.push(name);
+      enemy.pendingOfficialDeath = 1;
+      globals.PendingDeaths = {};
+      return;
+    }
+    if (['LogCombat', 'UpdateHeroHPUI', 'UpdateEnemyHPUI'].includes(name)) return;
+    throw new Error(`unexpected ${name}`);
+  } };
+  assert.equal(resolveNativeCommandStep(ctx, { sequence }), true);
+  assert.equal(enemy.hp, 0);
+  assert.equal(enemy.pendingOfficialDeath, 1);
+  assert.deepEqual(calls, ['ResolvePendingEnemyDeaths']);
+  assert.deepEqual(globals.PendingDeaths, {});
+});
+
 
 test('native queued render events dispatch once while unrelated damage stays queued', () => {
   const fs = require('node:fs'), vm = require('node:vm');
