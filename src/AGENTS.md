@@ -11,6 +11,7 @@
 ## Local Contracts
 - Prefer shared deterministic logic here before adding new browser-shell behavior.
 - Keep shared code free of DOM, Canvas, localStorage, deployment, and browser-global dependencies unless a child AGENTS.md explicitly permits it.
+- `core/combatOrientation.mjs` owns the 360-wide combat arena contract: hero visible right edge 106, melee enemy visible left edge 167, ranged/boss home X 225-283, hero attack range X 299, and shared spawn/home visible Y 71-276. Action animation may leave the Y band.
 - When shared behavior is mirrored into `web-runner/src/core/`, keep tests aligned and update both surfaces in one bead unless scoped otherwise.
 
 ## Work Guidance

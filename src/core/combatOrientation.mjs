@@ -1,6 +1,22 @@
 export const COMBAT_ORIENTATION_LEFT_WISE = 'left-wise';
 export const COMBAT_ORIENTATION_RIGHT_WISE = 'right-wise';
 export const RIGHT_WISE_FORMATION_TRANSLATE_X = -40;
+export const COMBAT_ARENA_REFERENCE_WIDTH = 360;
+export const COMBAT_ARENA_BOUNDS = Object.freeze({
+  heroRightEdgeX: 106,
+  meleeLeftEdgeX: 167,
+  rangedMinX: 225,
+  rangedMaxX: 283,
+  attackStartX: 299,
+  visibleTopY: 71,
+  visibleBottomY: 276,
+});
+
+export function deriveCombatArenaBounds(layoutW = COMBAT_ARENA_REFERENCE_WIDTH) {
+  const width = Number(layoutW);
+  const scale = Number.isFinite(width) && width > 0 ? width / COMBAT_ARENA_REFERENCE_WIDTH : 1;
+  return Object.fromEntries(Object.entries(COMBAT_ARENA_BOUNDS).map(([key, value]) => [key, value * scale]));
+}
 
 export function normalizeCombatOrientation(value) {
   const normalized = String(value ?? '').trim().toLowerCase();
@@ -41,19 +57,20 @@ export function deriveCombatFormationAnchors({ globals = {}, entities = [], hero
   const rect = globals?.EnemyAreaRect;
   const count = Math.max(0, Math.floor(Number(heroCount) || 0));
   const enemySize = Number(globals?.EnemySize || 40);
-  const enemyGap = Number(globals?.enemyGAP || 8);
-  const enemySpacing = Number(globals?.Spacing || (enemySize + enemyGap));
+  const arenaBounds = deriveCombatArenaBounds();
   const heroYs = [];
+  let heroH = 0;
   if (rect && count > 0) {
     const minY = Number(rect.minY);
     const maxY = Number(rect.maxY);
     if (Number.isFinite(minY) && Number.isFinite(maxY)) {
       const gap = 8;
       const availableH = maxY - minY;
-      const heroH = Math.min(enemySize, (availableH - gap * Math.max(0, count - 1)) / count);
-      const heroSpacing = heroH + gap;
+      heroH = Math.min(enemySize, (availableH - gap * Math.max(0, count - 1)) / count);
+      const firstY = arenaBounds.visibleTopY + heroH * 1.05;
+      const lastY = arenaBounds.visibleBottomY - heroH * 0.5;
       for (let index = 0; index < count; index += 1) {
-        heroYs.push(minY + (heroH / 2) + index * heroSpacing);
+        heroYs.push(count === 1 ? (firstY + lastY) / 2 : firstY + index * ((lastY - firstY) / (count - 1)));
       }
     }
   }
@@ -70,11 +87,12 @@ export function deriveCombatFormationAnchors({ globals = {}, entities = [], hero
       return Number.isFinite(slot) && slot >= 0 ? Math.max(highest, Math.floor(slot) + 1) : highest;
     }, 0);
   const enemySlotCount = Math.max(1, Math.floor(configuredSlotCounts[0] || observedSlotCount || 3));
-  const enemyY0 = Number(globals?.EnemyAreaY0 || 140);
-  const enemyYs = Number.isFinite(enemyY0) && Number.isFinite(enemySpacing)
-    ? Array.from({ length: enemySlotCount }, (_, slot) => enemyY0 + slot * enemySpacing)
-    : [];
-  return { heroYs, enemyYs };
+  const firstEnemyY = arenaBounds.visibleTopY + enemySize / 2;
+  const lastEnemyY = arenaBounds.visibleBottomY - enemySize / 2;
+  const enemyYs = Array.from({ length: enemySlotCount }, (_, slot) => (
+    enemySlotCount === 1 ? (firstEnemyY + lastEnemyY) / 2 : firstEnemyY + slot * ((lastEnemyY - firstEnemyY) / (enemySlotCount - 1))
+  ));
+  return { heroYs, enemyYs, heroH, arenaBounds };
 }
 
 export function createCombatFormationProjection({
@@ -87,9 +105,7 @@ export function createCombatFormationProjection({
   const rightWise = normalizedOrientation === COMBAT_ORIENTATION_RIGHT_WISE;
   const heroMidY = finiteMidpoint(heroYs);
   const enemyMidY = finiteMidpoint(enemyYs);
-  const enemyTranslateY = rightWise && Number.isFinite(heroMidY) && Number.isFinite(enemyMidY)
-    ? heroMidY - enemyMidY
-    : 0;
+  const enemyTranslateY = 0;
   const translateX = rightWise ? RIGHT_WISE_FORMATION_TRANSLATE_X : 0;
   return {
     orientation: normalizedOrientation,

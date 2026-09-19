@@ -36,4 +36,5 @@
 - Mirror active-hero healing and percentage amounts based on that hero maximum. The pooled ApplyPartyHeal/SyncPartyHPToHeroes API is retired; retain party max-HP buffs and explicit full recovery.
 - Mirror Arcane Pulse's caster-specific resting sprite-base source; never restore the retired party-midpoint source.
 - Mirror per-target attack VFX metadata for native hero AOE damage packets.
+- Mirror the enemy scheduler exclusion for targetable stream walkers; they may receive hero attacks after crossing the range line and may act only after reaching home.
 - Keep automatic `HeroTurn` target selection aligned with the browser mirror: draw a fresh living enemy per acting hero and record the result only after selection.

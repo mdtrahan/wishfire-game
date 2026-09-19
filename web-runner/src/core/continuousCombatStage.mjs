@@ -1,4 +1,5 @@
 import { computeCombatPower } from './combatPower.mjs';
+import { deriveCombatArenaBounds } from '../../../src/core/combatOrientation.mjs';
 
 export const CONTINUOUS_COMBAT_PACK_INTERVAL_SEC = 15;
 export const CONTINUOUS_COMBAT_PACK_CP_STEP = 0.06;
@@ -29,48 +30,51 @@ export function configureContinuousCombatProduction(globals, { productionPath = 
 }
 
 function streamGeometry(globals, lane = 1) {
-  const rect = globals.EnemyAreaRect || {};
+  const bounds = deriveCombatArenaBounds();
   const enemySize = Math.max(20, Number(globals.EnemySize || 40));
-  const minX = Number.isFinite(Number(rect.minX)) ? Number(rect.minX) : Number(globals.X0 || 220) - enemySize * 1.5;
-  const maxX = Number.isFinite(Number(rect.maxX)) ? Number(rect.maxX) : Number(globals.X0 || 220) + enemySize * 1.5;
-  const minY = Number.isFinite(Number(rect.minY)) ? Number(rect.minY) : Number(globals.EnemyAreaY0 || 120);
-  const maxY = Number.isFinite(Number(rect.maxY)) ? Number(rect.maxY) : minY + enemySize * 3 + 16;
+  const laneIndex = Math.max(0, Math.min(2, Number(lane) || 0));
+  const firstY = bounds.visibleTopY + enemySize / 2;
+  const lastY = bounds.visibleBottomY - enemySize / 2;
   return {
-    spawnX: maxX + enemySize * 0.9,
-    engageX: minX + enemySize * 0.75,
-    y: minY + ((Math.max(0, Math.min(2, lane)) + 0.5) * ((maxY - minY) / 3)),
+    spawnX: 360 + enemySize * 1.5,
+    y: firstY + laneIndex * ((lastY - firstY) / 2),
     walkSpeed: Math.max(34, enemySize * 0.9),
     enemySize,
+    bounds,
   };
 }
 
 const PACK_ENTRY_DELAY_SEC = Object.freeze([0, 0.62, 1.55]);
 const PACK_SPAWN_OFFSET = Object.freeze([0, 0.72, 0.28]);
 const PACK_WALK_SPEED_SCALE = Object.freeze([1, 0.84, 1.13]);
-const PACK_ENGAGEMENT_OFFSET = Object.freeze([0, 0.42, 0.9]);
+const RANGED_ENEMY_NAMES = new Set(['marid', 'djinn', 'chimerilass']);
 
-function meleeEngagementX(globals, fallback, line = 0) {
-  const heroPositions = Object.values(globals.HeroRestBasePosByUID || {});
-  const heroFrontX = Math.max(...heroPositions.map(pos => Number(pos?.x)).filter(Number.isFinite));
-  if (!Number.isFinite(heroFrontX)) return fallback;
-  const closest = Math.min(fallback, heroFrontX + Math.max(20, Number(globals.EnemySize || 40)) * 1.5);
-  return Number(line || 0) % 2 === 0 ? closest : closest + (fallback - closest) * 0.5;
+function meleeHomeX(bounds, enemySize, packIndex, order) {
+  const closest = bounds.meleeLeftEdgeX + enemySize / 2;
+  const far = Math.min(bounds.rangedMinX - 5, closest + enemySize * 0.3);
+  return (order % 2 === 0 ? closest + order : far) + packIndex * 0.8 + order * 0.2;
+}
+
+function rangedHomeX(bounds, packIndex, order, boss) {
+  if (boss) return (bounds.rangedMinX + bounds.rangedMaxX) / 2;
+  const slot = (packIndex * 3 + order) % 5;
+  return bounds.rangedMinX + (slot + 1) * ((bounds.rangedMaxX - bounds.rangedMinX) / 6);
 }
 
 export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1, rank = 0, packIndex = 0, entryOrder = lane } = {}) {
   if (!enemy) return null;
   const geometry = streamGeometry(globals, lane);
   const order = Math.max(0, Number(entryOrder || 0)) % 3;
-  const delivery = Number(enemy.MAG ?? enemy.mag ?? enemy.stats?.MAG ?? 0) > Number(enemy.ATK ?? enemy.atk ?? enemy.stats?.ATK ?? 0)
-    ? 'ranged'
-    : 'melee';
+  const delivery = RANGED_ENEMY_NAMES.has(String(enemy.name || '').trim().toLowerCase()) ? 'ranged' : 'melee';
   const meleeLine = order % 2;
-  const formationOffset = geometry.enemySize * (PACK_ENGAGEMENT_OFFSET[Math.max(0, Number(packIndex || 0)) % 3] + order * 0.04);
-  const preferredEngageX = delivery === 'melee' ? meleeEngagementX(globals, geometry.engageX, meleeLine) : geometry.engageX;
-  const engageX = preferredEngageX + formationOffset;
+  const normalizedPackIndex = Math.max(0, Number(packIndex || 0));
+  const boss = String(enemy.enemyRole || enemy.role || '').toLowerCase() === 'boss';
+  const engageX = delivery === 'melee'
+    ? meleeHomeX(geometry.bounds, geometry.enemySize, normalizedPackIndex, order)
+    : rangedHomeX(geometry.bounds, normalizedPackIndex, order, boss);
   Object.assign(enemy, {
     streamState: 'approaching', streamLane: lane, streamRank: rank, streamPackIndex: packIndex,
-    streamDelivery: delivery, streamMeleeLine: meleeLine, streamEngagementOffset: formationOffset,
+    streamDelivery: delivery, streamMeleeLine: meleeLine,
     streamEngageX: engageX, streamWalkSpeed: geometry.walkSpeed * PACK_WALK_SPEED_SCALE[order],
     streamStartAt: Number(globals.time || 0) + PACK_ENTRY_DELAY_SEC[order],
     x: geometry.spawnX + geometry.enemySize * PACK_SPAWN_OFFSET[order], y: geometry.y, originX: engageX, originY: geometry.y,
@@ -196,35 +200,38 @@ function updateApproachingEnemies(globals, entities, now) {
   const prior = Number(state?.lastUpdatedAt || now);
   const dt = Math.max(0, Math.min(0.1, now - prior));
   if (state) state.lastUpdatedAt = now;
-  let engaged = 0;
+  let becameAvailable = 0;
   const packsReached = new Set();
   for (const enemy of entities || []) {
-    if (enemy?.kind !== 'enemy' || Number(enemy.hp || 0) <= 0 || enemy.streamState !== 'approaching') continue;
+    if (enemy?.kind !== 'enemy' || Number(enemy.hp || 0) <= 0 || !['approaching', 'in_range'].includes(enemy.streamState)) continue;
     if (now < Number(enemy.streamStartAt || 0)) continue;
-    const engageX = enemy.streamDelivery === 'melee'
-      ? meleeEngagementX(globals, streamGeometry(globals, Number(enemy.streamLane || 1)).engageX, Number(enemy.streamMeleeLine || 0)) + Number(enemy.streamEngagementOffset || 0)
-      : Number(enemy.streamEngageX || enemy.originX || enemy.x || 0);
+    const geometry = streamGeometry(globals, Number(enemy.streamLane || 1));
+    const engageX = Number(enemy.streamEngageX || enemy.originX || enemy.x || 0);
     enemy.streamEngageX = engageX;
     enemy.originX = engageX;
     enemy.x = Math.max(engageX, Number(enemy.x || 0) - Number(enemy.streamWalkSpeed || 40) * dt);
     enemy.y = Number(enemy.originY ?? enemy.y ?? 0);
+    if (enemy.streamState === 'approaching' && enemy.x <= geometry.bounds.attackStartX) {
+      enemy.streamState = 'in_range';
+      becameAvailable += 1;
+    }
     if (enemy.x > engageX) continue;
     enemy.x = engageX;
     enemy.originX = engageX;
     enemy.streamState = 'engaged';
     packsReached.add(Number(enemy.streamPackIndex || 0));
-    engaged += 1;
+    becameAvailable += 1;
   }
   for (const packIndex of packsReached) {
     const packStillApproaching = (entities || []).some(enemy => enemy?.kind === 'enemy'
       && Number(enemy.hp || 0) > 0
       && Number(enemy.streamPackIndex || 0) === packIndex
-      && enemy.streamState === 'approaching');
+      && enemy.streamState !== 'engaged');
     if (!packStillApproaching && Number(state?.stageIndex || 0) === packIndex) {
       state.nextEmissionAt = now + CONTINUOUS_COMBAT_PACK_INTERVAL_SEC;
     }
   }
-  return engaged;
+  return becameAvailable;
 }
 
 export function maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier, call, runCombatStep } = {}) {

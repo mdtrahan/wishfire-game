@@ -22,7 +22,7 @@ test('combat orientation input is defensive and defaults left-wise', async () =>
   assert.equal(rules.readCombatOrientationFromSearch(''), 'left-wise');
 });
 
-test('right-wise geometry reflects and translates formations as whole blocks', async () => {
+test('right-wise geometry reflects X while preserving shared Y homes', async () => {
   const rules = await loadRules();
   const layoutW = 960;
   const actorSets = [
@@ -68,18 +68,13 @@ test('right-wise geometry reflects and translates formations as whole blocks', a
         assert.equal(left.actors[i].y, right.actors[i].y);
       }
     }
-    const rightHeroYs = right.actors.filter((actor) => actor.kind === 'hero').map((actor) => actor.y);
-    const rightEnemyYs = right.actors.filter((actor) => actor.kind === 'enemy').map((actor) => actor.y);
-    if (rightHeroYs.length && rightEnemyYs.length) {
-      const midpoint = (values) => (Math.min(...values) + Math.max(...values)) / 2;
-      assert.equal(midpoint(rightEnemyYs), midpoint(rightHeroYs));
-    }
+    assert.equal(right.enemyTranslateY, 0);
   }
   assert.equal(rules.orientCombatWorldOffsetX(18, 'right-wise'), -18);
   assert.equal(rules.orientCombatWorldOffsetX(18, 'left-wise'), 18);
 });
 
-test('runtime-shaped formation anchors preserve hero Y and align the enemy block midpoint', async () => {
+test('runtime-shaped formation anchors keep both factions inside the shared visible band', async () => {
   const rules = await loadRules();
   const globals = {
     EnemyAreaRect: { minY: 38.638, maxY: 203.974 },
@@ -102,13 +97,18 @@ test('runtime-shaped formation anchors preserve hero Y and align the enemy block
   });
 
   assert.equal(anchors.heroYs.length, 4);
-  assert.deepEqual(anchors.enemyYs, [60.791, 115.791, 170.791]);
-  assert.ok(Math.abs(projection.enemyTranslateY - 5.515) < 0.001);
+  assert.deepEqual(rules.deriveCombatArenaBounds(360), rules.COMBAT_ARENA_BOUNDS);
+  assert.deepEqual(anchors.enemyYs, [91, 173.5, 256]);
+  assert.equal(anchors.heroYs[0] + anchors.heroH / 2 - anchors.heroH * 1.55, anchors.arenaBounds.visibleTopY);
+  assert.equal(anchors.heroYs.at(-1) + anchors.heroH / 2, anchors.arenaBounds.visibleBottomY);
+  assert.equal(anchors.enemyYs[0] - globals.EnemySize / 2, anchors.arenaBounds.visibleTopY);
+  assert.equal(anchors.enemyYs.at(-1) + globals.EnemySize / 2, anchors.arenaBounds.visibleBottomY);
+  assert.equal(projection.enemyTranslateY, 0);
   assert.equal(projection.project(68, anchors.heroYs[0], 'hero').y, anchors.heroYs[0]);
   const shiftedEnemyYs = anchors.enemyYs.map((y) => projection.project(290, y, 'enemy').y);
   assert.equal(shiftedEnemyYs[1] - shiftedEnemyYs[0], anchors.enemyYs[1] - anchors.enemyYs[0]);
   assert.equal(shiftedEnemyYs[2] - shiftedEnemyYs[1], anchors.enemyYs[2] - anchors.enemyYs[1]);
-  assert.ok(Math.abs(projection.heroMidY - (projection.enemyMidY + projection.enemyTranslateY)) < 1e-9);
+  assert.equal(shiftedEnemyYs[1], anchors.enemyYs[1]);
 });
 
 test('enemy death and refill never change surviving right-wise slot projections', async () => {
@@ -151,8 +151,8 @@ test('enemy death and refill never change surviving right-wise slot projections'
   });
 
   for (const snapshot of snapshots) {
-    assert.deepEqual(snapshot.anchors.enemyYs, [60.791, 115.791, 170.791]);
-    assert.ok(Math.abs(snapshot.projection.enemyTranslateY - 5.515) < 0.001);
+    assert.deepEqual(snapshot.anchors.enemyYs, [91, 173.5, 256]);
+    assert.equal(snapshot.projection.enemyTranslateY, 0);
   }
   assert.deepEqual(snapshots[1].positions.get(7), snapshots[0].positions.get(7));
   assert.deepEqual(snapshots[1].positions.get(8), snapshots[0].positions.get(8));

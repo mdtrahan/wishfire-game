@@ -23,7 +23,7 @@
 - Narrative rendering preserves the existing two-sentence pages and solo/pair shots. Scene startup, Auto advancement, and layout changes belong to the controller/entry flow, outside `renderNarrativeScene.js`.
 - Combat actor orientation must project canonical left-wise anchors through `src/core/combatOrientation.mjs`; mirror actor-attached x offsets, never combat rules or canonical positions. Right-wise actor sprite pixels mirror about each oriented pivot so both teams face inward and asymmetric art remains visually reflected.
 - The dev-tool orientation control stages the next combat orientation and uses the existing fresh combat-refresh path when changed during combat; never flip a live combat frame in place.
-- Right-wise rendering consumes the shared formation projection: both teams use the same `-40` logical-X translation after reflection, heroes keep canonical Y, and enemy-attached visuals share the one block-Y midpoint-alignment offset. The offset is fixed from structural enemy slot anchors for the combat layout; do not recenter from living entities after death or refill.
+- Right-wise rendering consumes the shared formation projection: both teams use the same `-40` logical-X translation after reflection and preserve the shared canonical Y homes. Structural formation anchors do not recenter after death or refill.
 - Render modules may read state and draw presentation; they must not become owners of deterministic combat rules.
 - Hero rendering publishes each caster's resting sprite-base anchor before applying lunge offsets so attached effects such as Arcane Pulse remain planted.
 - Impact presentation uses the pale diffused glance ring for non-critical damage at or below 5% target max HP. Keep that ring at the target's rendered midpoint on Y while retaining the attacker-facing contact X. Stronger physical basics use the red-orange melee flare on the common contact line, 17% of actor size above that midpoint.
@@ -98,6 +98,7 @@
 - Combat initialization derives health totals from the initialized actors; it must not overwrite the total with full HP while actors remain injured. Party-damage owner wiring serializes six HP slots with actual member count.
 
 - Combat has no hero status-card strip. `renderRuntime.js` draws the full-body hero sprites at one shared arena scale and anchors each compact HP bar from the sprite feet so the gap remains correct when art dimensions change. Names, roles, levels and AF stay off the battlefield. Narrative quest cards remain separate.
+- Combat home geometry uses the shared 360-wide arena contract. Hero sprites stop at visible X 106; hero and enemy spawn/home sprites fit within visible Y 71-276. Temporary action animation may leave that Y band.
 - Cooldown and readiness rules belong to the deterministic combat owners. Hero lunges use display slots, so catalog identity does not collapse repeated or later formation positions.
 - Prepared commands belong to the combat session and member UIDs. Replacing actor objects while restoring the same session must preserve prepared selections; a new session or changed roster clears them.
 - Full-health recovery is owned by questCombatSession.mjs for both Town and Continue. Restore actual hero actors, then project HP through UpdateHeroHPUI; empty groups clear old totals. Continue alone retains its existing turn-restart sequence.

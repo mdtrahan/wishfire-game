@@ -37,9 +37,9 @@ test('stream enemies begin off-stage and become engaged only after walking to th
   const globals = { EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 }, EnemySize: 40 };
   const enemy = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', hp: 10 }, { lane: 1, rank: 0, packIndex: 0 });
   assert.equal(enemy.streamState, 'approaching');
-  assert.ok(enemy.x > globals.EnemyAreaRect.maxX);
-  assert.equal(enemy.y, 150);
-  assert.ok(enemy.streamEngageX < globals.EnemyAreaRect.maxX);
+  assert.ok(enemy.x > 360);
+  assert.equal(enemy.y, 173.5);
+  assert.ok(enemy.streamEngageX >= 167);
 });
 
 test('pack members enter with deterministic stagger instead of marching in unison', () => {
@@ -55,7 +55,7 @@ test('pack members enter with deterministic stagger instead of marching in uniso
   assert.notEqual(enemies[1].x, enemies[2].x);
 });
 
-test('melee enemies alternate between two buffered lines while ranged enemies retain the old line', () => {
+test('melee and ranged enemies stop inside their annotated home bands', () => {
   const globals = {
     time: 0,
     EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 },
@@ -64,14 +64,16 @@ test('melee enemies alternate between two buffered lines while ranged enemies re
   };
   const melee = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', hp: 10, ATK: 10, MAG: 2 }, { entryOrder: 0 });
   const farMelee = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', hp: 10, ATK: 10, MAG: 2 }, { entryOrder: 1 });
-  const ranged = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', hp: 10, ATK: 2, MAG: 10 }, { entryOrder: 2 });
-  const laterRanged = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', hp: 10, ATK: 2, MAG: 10 }, { entryOrder: 2, rank: 4 });
+  const ranged = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', name: 'Djinn', hp: 10, ATK: 2, MAG: 10 }, { entryOrder: 2 });
+  const laterRanged = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', name: 'Marid', hp: 10, ATK: 2, MAG: 10 }, { entryOrder: 2, rank: 4 });
+  const highMagicMelee = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', name: 'Gobloc', hp: 10, ATK: 2, MAG: 99 }, { entryOrder: 0 });
   assert.equal(melee.streamDelivery, 'melee');
-  assert.equal(melee.streamEngageX, 128);
-  assert.equal(farMelee.streamEngageX, 160.6);
+  assert.equal(melee.streamEngageX, 187);
+  assert.equal(farMelee.streamEngageX, 199.2);
   assert.equal(ranged.streamDelivery, 'ranged');
-  assert.equal(ranged.streamEngageX, 193.2);
-  assert.equal(laterRanged.streamEngageX, 193.2);
+  assert.equal(ranged.streamEngageX, 254);
+  assert.equal(laterRanged.streamEngageX, 254);
+  assert.equal(highMagicMelee.streamDelivery, 'melee');
 });
 
 test('overlapping packs reserve distinct engagement X positions', () => {
@@ -130,7 +132,7 @@ test('walking completes deterministically and wakes the cooldown scheduler', () 
     EnemyAreaRect: { minX: 160, maxX: 200, minY: 60, maxY: 180 }, EnemySize: 40,
     EnemyData: rows, EnemySlots: [2], PendingDeaths: {}, ActionInProgress: 0, IsPlayerBusy: 0,
   };
-  const enemy = activateContinuousCombatSpawnedEnemy(globals, { uid: 1, kind: 'enemy', hp: 10 }, { lane: 1 });
+  const enemy = activateContinuousCombatSpawnedEnemy(globals, { uid: 1, kind: 'enemy', hp: 10 }, { lane: 1, entryOrder: 0 });
   enemy.x = enemy.streamEngageX + 1;
   globals.ContinuousCombatStage.lastUpdatedAt = 0.9;
   globals.time = 1;
@@ -139,6 +141,23 @@ test('walking completes deterministically and wakes the cooldown scheduler', () 
   assert.equal(enemy.streamState, 'engaged');
   assert.equal(enemy.x, enemy.streamEngageX);
   assert.equal(globals.ContinuousCombatStage.nextEmissionAt, 16);
+  assert.equal(resumed, 1);
+});
+
+test('heroes can target an approaching enemy after it crosses the cyan range line', () => {
+  const globals = {
+    ContinuousCombatStageLoop: 1,
+    ContinuousCombatStage: { ...createContinuousCombatStageState(1), nextEmissionAt: 99, lastUpdatedAt: 0.9, spawnSerial: 1 },
+    GamePhase: 'RUNTIME', BattleStartActive: 0, time: 1,
+    EnemySize: 40, EnemyData: rows, EnemySlots: [2], PendingDeaths: {}, ActionInProgress: 0, IsPlayerBusy: 0,
+  };
+  const enemy = activateContinuousCombatSpawnedEnemy(globals, { uid: 1, kind: 'enemy', hp: 10 }, { lane: 1, entryOrder: 0 });
+  enemy.x = 300;
+  let resumed = 0;
+  maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], presentationBarrier: { lanes: {} }, call() {}, runCombatStep(name) { if (name === 'ProcessTurn') resumed += 1; } });
+  assert.equal(enemy.streamState, 'in_range');
+  assert.ok(enemy.x <= 299);
+  assert.ok(enemy.x > enemy.streamEngageX);
   assert.equal(resumed, 1);
 });
 
@@ -155,11 +174,12 @@ test('queryless production marks the initial pack as approaching and disables AF
   assert.equal(globals.ContinuousCombatStage.nextEmissionAt, 15);
 });
 
-test('runtime source keeps approaching enemies untargetable and assigns motion by attack role', async () => {
+test('runtime source targets in-range walkers while keeping them out of the enemy scheduler', async () => {
   const fs = await import('node:fs');
   const source = fs.readFileSync(new URL('../web-runner/modules/functionBank.js', import.meta.url), 'utf8');
   const heroCommands = fs.readFileSync(new URL('../web-runner/modules/heroCommands.mjs', import.meta.url), 'utf8');
   assert.match(source, /e\.streamState !== 'approaching'/);
+  assert.match(source, /enemy\.streamState === 'in_range'/);
   assert.doesNotMatch(source, /stationary: enemy\.streamState === 'engaged'/);
   assert.match(source, /stationary: Number\(g\.ContinuousCombatStageLoop \|\| 0\) === 1 \|\| profile === 'ranged'/);
   assert.match(source, /stationary: Number\(g\.ContinuousCombatStageLoop \|\| 0\) === 1 \|\| \/\^Enemy_Heal_/);
