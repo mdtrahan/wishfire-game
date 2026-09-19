@@ -28,7 +28,7 @@ export function configureContinuousCombatProduction(globals, { productionPath = 
   return true;
 }
 
-function streamGeometry(globals, lane = 1, rank = 0) {
+function streamGeometry(globals, lane = 1) {
   const rect = globals.EnemyAreaRect || {};
   const enemySize = Math.max(20, Number(globals.EnemySize || 40));
   const minX = Number.isFinite(Number(rect.minX)) ? Number(rect.minX) : Number(globals.X0 || 220) - enemySize * 1.5;
@@ -36,21 +36,41 @@ function streamGeometry(globals, lane = 1, rank = 0) {
   const minY = Number.isFinite(Number(rect.minY)) ? Number(rect.minY) : Number(globals.EnemyAreaY0 || 120);
   const maxY = Number.isFinite(Number(rect.maxY)) ? Number(rect.maxY) : minY + enemySize * 3 + 16;
   return {
-    spawnX: maxX + enemySize * (0.9 + rank * 0.35),
-    engageX: minX + enemySize * (0.75 + rank * 0.38),
+    spawnX: maxX + enemySize * 0.9,
+    engageX: minX + enemySize * 0.75,
     y: minY + ((Math.max(0, Math.min(2, lane)) + 0.5) * ((maxY - minY) / 3)),
     walkSpeed: Math.max(34, enemySize * 0.9),
+    enemySize,
   };
+}
+
+const PACK_ENTRY_DELAY_SEC = Object.freeze([0, 0.62, 1.55]);
+const PACK_SPAWN_OFFSET = Object.freeze([0, 0.72, 0.28]);
+const PACK_WALK_SPEED_SCALE = Object.freeze([1, 0.84, 1.13]);
+
+function meleeEngagementX(globals, fallback, line = 0) {
+  const heroPositions = Object.values(globals.HeroRestBasePosByUID || {});
+  const heroFrontX = Math.max(...heroPositions.map(pos => Number(pos?.x)).filter(Number.isFinite));
+  if (!Number.isFinite(heroFrontX)) return fallback;
+  const closest = Math.min(fallback, heroFrontX + Math.max(20, Number(globals.EnemySize || 40)) * 1.5);
+  return Number(line || 0) % 2 === 0 ? closest : closest + (fallback - closest) * 0.5;
 }
 
 export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1, rank = 0, packIndex = 0, entryOrder = lane } = {}) {
   if (!enemy) return null;
-  const geometry = streamGeometry(globals, lane, rank);
+  const geometry = streamGeometry(globals, lane);
+  const order = Math.max(0, Number(entryOrder || 0)) % 3;
+  const delivery = Number(enemy.MAG ?? enemy.mag ?? enemy.stats?.MAG ?? 0) > Number(enemy.ATK ?? enemy.atk ?? enemy.stats?.ATK ?? 0)
+    ? 'ranged'
+    : 'melee';
+  const meleeLine = order % 2;
+  const engageX = delivery === 'melee' ? meleeEngagementX(globals, geometry.engageX, meleeLine) : geometry.engageX;
   Object.assign(enemy, {
     streamState: 'approaching', streamLane: lane, streamRank: rank, streamPackIndex: packIndex,
-    streamEngageX: geometry.engageX, streamWalkSpeed: geometry.walkSpeed * (1 + (Number(entryOrder || 0) % 3) * 0.035),
-    streamStartAt: Number(globals.time || 0) + Math.max(0, Number(entryOrder || 0)) * 0.34,
-    x: geometry.spawnX, y: geometry.y, originX: geometry.engageX, originY: geometry.y,
+    streamDelivery: delivery, streamMeleeLine: meleeLine,
+    streamEngageX: engageX, streamWalkSpeed: geometry.walkSpeed * PACK_WALK_SPEED_SCALE[order],
+    streamStartAt: Number(globals.time || 0) + PACK_ENTRY_DELAY_SEC[order],
+    x: geometry.spawnX + geometry.enemySize * PACK_SPAWN_OFFSET[order], y: geometry.y, originX: engageX, originY: geometry.y,
   });
   return enemy;
 }
@@ -178,7 +198,11 @@ function updateApproachingEnemies(globals, entities, now) {
   for (const enemy of entities || []) {
     if (enemy?.kind !== 'enemy' || Number(enemy.hp || 0) <= 0 || enemy.streamState !== 'approaching') continue;
     if (now < Number(enemy.streamStartAt || 0)) continue;
-    const engageX = Number(enemy.streamEngageX || enemy.originX || enemy.x || 0);
+    const engageX = enemy.streamDelivery === 'melee'
+      ? meleeEngagementX(globals, streamGeometry(globals, Number(enemy.streamLane || 1)).engageX, Number(enemy.streamMeleeLine || 0))
+      : Number(enemy.streamEngageX || enemy.originX || enemy.x || 0);
+    enemy.streamEngageX = engageX;
+    enemy.originX = engageX;
     enemy.x = Math.max(engageX, Number(enemy.x || 0) - Number(enemy.streamWalkSpeed || 40) * dt);
     enemy.y = Number(enemy.originY ?? enemy.y ?? 0);
     if (enemy.x > engageX) continue;

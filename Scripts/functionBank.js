@@ -9982,9 +9982,6 @@ export function StartEnemyAction(ctx, enemyUID) {
   };
   if (!Number(decision.active || 0)) return;
   const originX = Number(enemy.originX ?? enemy.x ?? 0);
-  const targetX = Number(g.HeroRestBasePosByUID?.[Number(targetUID || 0)]?.x ?? target?.x ?? originX - 55);
-  const contactGap = Math.max(12, Number(g.EnemySize || 40) * 0.45);
-  const meleeContactX = targetX + (Math.sign(originX - targetX) || 1) * contactGap;
   g.EnemyAction = {
     active: true,
     uid: Number(decision.uid || enemyUID || 0),
@@ -9993,8 +9990,8 @@ export function StartEnemyAction(ctx, enemyUID) {
     actionApplied: Number(decision.actionApplied || 0) === 1,
     targetUID: Number(decision.targetUID || 0),
     skillId: String(decision.skillId || skillId || ''),
-    stationary: /^Enemy_Heal_/.test(String(decision.skillId || skillId || '')),
-    forwardX: meleeContactX,
+    stationary: Number(g.ContinuousCombatStageLoop || 0) === 1 || /^Enemy_Heal_/.test(String(decision.skillId || skillId || '')),
+    forwardX: originX,
   };
 }
 

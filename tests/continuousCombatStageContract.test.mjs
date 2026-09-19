@@ -49,8 +49,29 @@ test('pack members enter with deterministic stagger instead of marching in uniso
     { kind: 'enemy', hp: 10 },
     { lane: entryOrder, entryOrder },
   ));
-  assert.deepEqual(enemies.map(enemy => enemy.streamStartAt), [3, 3.34, 3.68]);
-  assert.ok(enemies[0].streamWalkSpeed < enemies[1].streamWalkSpeed);
+  assert.deepEqual(enemies.map(enemy => enemy.streamStartAt), [3, 3.62, 4.55]);
+  assert.ok(enemies[1].streamWalkSpeed < enemies[0].streamWalkSpeed);
+  assert.ok(enemies[2].streamWalkSpeed > enemies[0].streamWalkSpeed);
+  assert.notEqual(enemies[1].x, enemies[2].x);
+});
+
+test('melee enemies alternate between two buffered lines while ranged enemies retain the old line', () => {
+  const globals = {
+    time: 0,
+    EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 },
+    EnemySize: 40,
+    HeroRestBasePosByUID: { 1: { x: 68 }, 2: { x: 40 } },
+  };
+  const melee = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', hp: 10, ATK: 10, MAG: 2 }, { entryOrder: 0 });
+  const farMelee = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', hp: 10, ATK: 10, MAG: 2 }, { entryOrder: 1 });
+  const ranged = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', hp: 10, ATK: 2, MAG: 10 }, { entryOrder: 2 });
+  const laterRanged = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', hp: 10, ATK: 2, MAG: 10 }, { entryOrder: 2, rank: 4 });
+  assert.equal(melee.streamDelivery, 'melee');
+  assert.equal(melee.streamEngageX, 128);
+  assert.equal(farMelee.streamEngageX, 159);
+  assert.equal(ranged.streamDelivery, 'ranged');
+  assert.equal(ranged.streamEngageX, 190);
+  assert.equal(laterRanged.streamEngageX, 190);
 });
 
 test('timed packs emit while survivors remain and boss waits for a clear field', () => {
@@ -124,7 +145,8 @@ test('runtime source keeps approaching enemies untargetable and assigns motion b
   assert.match(source, /e\.streamState !== 'approaching'/);
   assert.doesNotMatch(source, /stationary: enemy\.streamState === 'engaged'/);
   assert.match(source, /stationary: Number\(g\.ContinuousCombatStageLoop \|\| 0\) === 1 \|\| profile === 'ranged'/);
-  assert.match(source, /const meleeContactX = targetX/);
+  assert.match(source, /stationary: Number\(g\.ContinuousCombatStageLoop \|\| 0\) === 1 \|\| \/\^Enemy_Heal_/);
+  assert.match(source, /forwardX: originX/);
   assert.match(source, /!actors\.some\(actor => Number\(actor\?\.type \|\| 0\) === 1\)/);
   assert.match(heroCommands, /noLivingEnemy&&streamComplete/);
 });
