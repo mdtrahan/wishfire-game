@@ -27,10 +27,12 @@ test('battlefield consumes each complete canonical hero sprite while enemy sprit
   assert.match(source, /const img = heroPortraitImages\[heroArt\?\.key \|\| entry\.portraitName\];/);
   assert.match(source, /resolveHeroArtSourceRect\(img, heroArt\.combat\)/);
   assert.match(source, /drawHeroSprite = \(\) => drawCombatActorSprite\(ctx, img, \{[\s\S]*\.\.\.sourceRect/);
-  assert.match(source, /const scaledW = w \* heroScale \* 1\.25;[\s\S]*const scaledH = h \* heroScale \* 1\.25;/);
+  assert.match(source, /const scaledW = w \* heroScale \* 1\.55;[\s\S]*const scaledH = h \* heroScale \* 1\.55;/);
   assert.match(compiledBody, /restBaseByUID\[hero\.uid\] = \{ x: baseX, y: yWorld \};/);
   assert.match(compiledBody, /restFeetByUID\[hero\.uid\] = \{ x: baseX, y: yWorld \+ hWorld \/ 2 \};/);
   assert.match(compiledBody, /renderHeightByUID\[hero\.uid\] = scaledH \/ layoutScale;/);
+  assert.match(compiledBody, /const footAnchor = state\.globals\.HeroRestFeetPosByUID\?\.\[uid\] \|\| anchor;/);
+  assert.match(compiledBody, /const barY = Math\.round\(footPos\.y - actorHeight - 10 \* layoutScale\);/);
   assert.match(source, /drawCombatActorSprite\(ctx, sprite, \{ drawX, drawY, width: enemyW, height: enemyH, pivotX: pos\.x, orientation: activeCombatOrientation \}\)/);
   assert.deepEqual(resolveHeroArtSourceRect({ width: 100, height: 200 }, heroArtAsset('Fara').combat), {
     sourceX: 0, sourceY: 0, sourceWidth: 100, sourceHeight: 200,
