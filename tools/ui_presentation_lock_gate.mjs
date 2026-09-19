@@ -37,12 +37,6 @@ const APPROVED = Object.freeze({
     tolerancePx: 0.8,
   },
   panels: { gutterPx: 32, widthTolerancePx: 1.5, actionHeightPx: 28, actionTolerancePx: 0.5 },
-  combat: {
-    heroSelectorWidthRatio: 0.07314,
-    heroPulseTolerance: 0.004,
-    targetSelectorWidthRatio: 0.07217,
-    controlTolerance: 0.002,
-  },
 });
 const proveRejection = process.argv.includes('--prove-rejection');
 
@@ -495,7 +489,7 @@ async function captureCombat(page, viewport, artifactDir) {
     && entry.canvasId === 'view'
     && /rgba\(240,\s*240,\s*240,\s*0\.92\)/.test(entry.fillStyle)
   ));
-  await page.screenshot({ path: path.join(artifactDir, `${viewport.name}-05-hero-selector.png`) });
+  await page.screenshot({ path: path.join(artifactDir, `${viewport.name}-05-hero-combat.png`) });
   const combatUi = await page.evaluate(() => ({
     heroCount: window.__codexGame.state.entities.filter(actor => actor?.kind === 'hero').length,
     enemyCount: window.__codexGame.state.entities.filter(actor => actor?.kind === 'enemy' && Number(actor.hp || 0) > 0).length,
@@ -528,12 +522,16 @@ async function captureCombat(page, viewport, artifactDir) {
     globals.CanPickGems = 0;
     globals.IsPlayerBusy = 1;
     game.stepFrames(2);
-    return game.getTargetDebugGeometry();
+    return {
+      ...game.getTargetDebugGeometry(),
+      selectedEnemyUID: Number(globals.SelectedEnemyUID || 0),
+      expectedEnemyUID: Number(enemy?.uid || 0),
+    };
   });
   const targetTrace = await readTrace(page);
   const targetSelector = latestImage(targetTrace, /heroselect|selector/i);
   const attackButton = latestImage(targetTrace, /attackbutton|atk_down/i);
-  await page.screenshot({ path: path.join(artifactDir, `${viewport.name}-06-target-and-attack.png`) });
+  await page.screenshot({ path: path.join(artifactDir, `${viewport.name}-06-target-state.png`) });
 
   await resetTrace(page);
   await page.evaluate(() => {
@@ -582,15 +580,6 @@ async function captureCombat(page, viewport, artifactDir) {
   await page.screenshot({ path: path.join(artifactDir, `${viewport.name}-07-damage-text.png`) });
 
   const canvasWidth = Number(targeting?.canvas?.width || 0);
-  const sizeResult = (entry) => entry ? {
-    source: entry.source,
-    width: entry.w,
-    height: entry.h,
-    widthRatio: entry.w / canvasWidth,
-    heightRatio: entry.h / Number(targeting?.canvas?.height || 1),
-  } : null;
-  const heroSize = sizeResult(heroSelector);
-  const targetSize = sizeResult(targetSelector);
   const damageRatio = damage.fontPx / canvasWidth;
   const damageDensity = (damage.backing?.width || 0) / Math.max(1, damage.rect?.width || 0);
   const expectedDamageFontPx = Math.max(4, Math.round(14 * layoutScale));
@@ -599,8 +588,8 @@ async function captureCombat(page, viewport, artifactDir) {
 
   return [
     ...commandInvariants,
-    invariant('hero-selector-scale', heroSize && within(heroSize.widthRatio, APPROVED.combat.heroSelectorWidthRatio, APPROVED.combat.heroPulseTolerance), heroSize, APPROVED.combat),
-    invariant('target-selector-scale', targetSize && within(targetSize.widthRatio, APPROVED.combat.targetSelectorWidthRatio, APPROVED.combat.controlTolerance), targetSize, APPROVED.combat),
+    invariant('battlefield-selectors-absent', !heroSelector && !targetSelector, { heroSelector, targetSelector }, { count: 0 }),
+    invariant('target-state-preserved-without-selector', targeting.selectedEnemyUID > 0 && targeting.selectedEnemyUID === targeting.expectedEnemyUID, targeting, { selectedEnemyUID: targeting.expectedEnemyUID }),
     invariant('global-attack-absent', !attackButton, attackButton, { count: 0 }),
     invariant('damage-text-scale', within(damage.fontPx, expectedDamageFontPx, 0.1) && within(damage.rect?.width, expectedDamageWidth, 1) && within(damage.rect?.height, expectedDamageHeight, 1), { ...damage, fontRatio: damageRatio }, { fontPx: expectedDamageFontPx, cssWidth: expectedDamageWidth, cssHeight: expectedDamageHeight }),
     invariant('damage-text-density', between(damageDensity, viewport.dpr * 0.99, viewport.dpr * 1.01), { density: damageDensity, dpr: viewport.dpr, ...damage }, { density: [viewport.dpr * 0.99, viewport.dpr * 1.01] }),

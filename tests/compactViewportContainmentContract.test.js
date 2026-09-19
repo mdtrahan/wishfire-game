@@ -157,19 +157,12 @@ test('combat transient controls and damage text share the compact layout scale',
     'systems',
     'combatPresentationScale.mjs',
   )).href);
-  const selector = scaleModule.computeScaledCombatControlSize({
-    sourceWidth: 25.98198162828327,
-    sourceHeight: 13.510630446707303,
-    layoutScale: 0.703,
-  });
   const attack = scaleModule.computeScaledCombatControlSize({
     sourceWidth: 49.36675579151819,
     sourceHeight: 24.683377895759094,
     layoutScale: 0.703,
   });
 
-  assert.ok(Math.abs(selector.width - 18.265) < 0.001);
-  assert.ok(Math.abs(selector.height - 9.498) < 0.001);
   assert.ok(Math.abs(attack.width - 34.705) < 0.001);
   assert.ok(Math.abs(attack.height - 17.353) < 0.001);
   assert.deepEqual(scaleModule.computeScaledCombatControlSize({
@@ -181,7 +174,7 @@ test('combat transient controls and damage text share the compact layout scale',
   assert.equal(scaleModule.computeCombatDamageFontSize({ amount: 4, partyMaxHP: 147, isCrit: false, damageType: 'damage', layoutScale: 0.703 }), 8);
 });
 
-test('combat renderer and attack hit target consume shared transient sizing', () => {
+test('combat renderer and attack hit target consume shared presentation sizing', () => {
   const app = read('web-runner/app.js');
   const render = read('web-runner/systems/renderRuntime.js');
   assert.match(app, /computeScaledCombatControlSize\(\{/);
@@ -190,7 +183,7 @@ test('combat renderer and attack hit target consume shared transient sizing', ()
   assert.match(app, /function spawnPendingDamageNumbers\(projectToCanvas = null, presentationScale = 1\)/);
   assert.match(render, /spawnPendingDamageNumbers\(projectCombatDamageWorldToCanvas, layoutScale\);/);
   assert.match(render, /deps\.computeCombatDamageFontSize = computeCombatDamageFontSize/);
-  assert.match(render, /selectorAsset \? selectorAsset\.width : 26/);
+  assert.doesNotMatch(render, /selectorAsset|selectorImg/);
   assert.match(render, /const fontSize = computeCombatDamageFontSize\(\{/);
 });
 

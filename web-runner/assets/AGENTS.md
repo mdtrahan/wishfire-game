@@ -15,6 +15,7 @@
 - Treat `layouts.json` as large structured data from the retired Construct surface. Use JSON-aware edits and keep gameplay rules in code/product docs.
 - Asset filenames are often referenced directly by render code and tests; rename only with a full reference search.
 - Hero art files use the current display names `Fara.png`, `Hondo.png`, `Runa.png`, and `Kaja.png`; they are transparent full-body combat sprites. Legacy hero IDs resolve through `state/heroArtAssets.mjs` and never own filenames.
+- Battlefield selectors have no raster assets; actor readiness and enemy targeting are state-owned and render no marker.
 - Do not store secrets or environment-specific paths in assets.
 
 ## Work Guidance

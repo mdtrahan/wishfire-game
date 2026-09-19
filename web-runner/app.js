@@ -32,10 +32,7 @@ import {
   YELLOW_REFILL_TARGETS,
   pickYellowReassignTarget,
 } from './src/core/yellowRefillRules.mjs';
-import {
-  resolveCurrentHeroUID,
-  shouldRenderHeroTurnSelector,
-} from './src/core/heroSelectorRules.mjs';
+import { resolveCurrentHeroUID } from './src/core/heroSelectorRules.mjs';
 import {
   assignHeroToPartySlot,
   normalizePartyFormationSlots,
@@ -1718,6 +1715,8 @@ function tryGetInstances(layout){
 function shouldSuppressCombatLayoutInstance(instance) {
   if (!instance || typeof instance.type !== 'string') return false;
   return (instance.layerName === 'BoardBG' && instance.type === 'Sprite5')
+    || instance.type === 'Selector'
+    || instance.type === 'heroSelect'
     || instance.type === 'BuffText'
     || instance.type === 'buffIcon1'
     || instance.type === 'buffIcon2'
@@ -1840,7 +1839,6 @@ async function main(){
   let heroPortraitImages = {};
   let wardBarrierImage = null;
   let heroSkillIconsBySlot = [];
-  let heroSelectorImage = null;
   let gemFrameImages = [];
   let superGemFrameImages = [];
   let superGemRainbowImage = null;
@@ -1959,7 +1957,7 @@ async function main(){
       : 0;
     runtimeDebugLogging.startupDebugLog('[LAYOUT_AUDIT] gemInstanceCount', gemInstanceCount);
     const typesNeeded = Array.from(new Set(instances.map(i=>i.type)));
-    ['Enemy_Sprite', 'Bar_Fill', 'Bar_Yellow', 'Bar_Back', 'PartyHP_Bar', 'Gem', 'AttackButton', 'Selector'].forEach(t => {
+    ['Enemy_Sprite', 'Bar_Fill', 'Bar_Yellow', 'Bar_Back', 'PartyHP_Bar', 'Gem', 'AttackButton'].forEach(t => {
       if (!typesNeeded.includes(t)) typesNeeded.push(t);
     });
     const objectTypeData = await fetchJson(assetUrl('objectTypes.json')) || { types: {} };
@@ -1995,7 +1993,6 @@ async function main(){
         heroPortraitImages,
         wardBarrierImage,
         heroSkillIconsBySlot,
-        heroSelectorImage,
         gemFrameImages,
         superGemFrameImages,
         superGemRainbowImage,
@@ -2477,21 +2474,11 @@ async function main(){
 
   const assetSizes = {
     AttackButton: null,
-    Selector: null,
   };
 
   function refreshCombatOverlayAssetSizes() {
     assetSizes.AttackButton = (() => {
       const inst = findAssetInstance('AttackButton');
-      return inst && inst.world ? {
-        width: inst.world.width,
-        height: inst.world.height,
-        originX: inst.world.originX,
-        originY: inst.world.originY
-      } : null;
-    })();
-    assetSizes.Selector = (() => {
-      const inst = findAssetInstance('Selector');
       return inst && inst.world ? {
         width: inst.world.width,
         height: inst.world.height,
@@ -2710,8 +2697,6 @@ async function main(){
       combatRuntimeGateway,
       runtimeDebugLogging,
       callFunctionWithContext,
-      resolveCurrentHeroUID,
-      shouldRenderHeroTurnSelector,
       formatDamageValue,
       isDamageTextFontReady,
       getStoryCardLiveLineState,
@@ -2755,7 +2740,6 @@ async function main(){
       heroPortraitImages,
       wardBarrierImage,
       heroSkillIconsBySlot,
-      heroSelectorImage,
       heroCapsuleImages,
       enemySpriteImages,
       gemFrameImages,
@@ -2773,7 +2757,6 @@ async function main(){
       combatAreaTurnOrderTextTypes: (typeof combatAreaTurnOrderTextTypes !== 'undefined' ? combatAreaTurnOrderTextTypes : new Set()),
       movedRadiatorTextTypes: (typeof movedRadiatorTextTypes !== 'undefined' ? movedRadiatorTextTypes : new Set()),
       navTextTypes: (typeof navTextTypes !== 'undefined' ? navTextTypes : new Set()),
-      heroSelectorImageLoaded: heroSelectorImage,
       images,
       assetSizes,
       DAMAGE_TEXT_FONT,

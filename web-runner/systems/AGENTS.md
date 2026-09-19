@@ -113,7 +113,7 @@
 - renderFlowOrbs.mjs draws the shared 520ms gem flight using the actor projection. Collection belongs to the core update at impact; presentation never blocks CTB. Hero detail text describes enemy-death orbs and random distribution.
 
 
-- Enemy targeting triangles render only during hero turns and hide when combat ends. Keep SelectedEnemyUID intact across enemy turns so the next hero retains the player choice.
+- Battlefield actor and enemy selectors are retired. Keep `SelectedEnemyUID` and target ownership intact so cooldown actions retain valid targets without drawing a marker.
 
 - Victory results use 80% of the game canvas width and height, centered on that canvas. A separate canvas-sized black shade has 40% opacity; the native modal backdrop is transparent. ResizeObserver keeps panel/shade geometry current and cleanup removes both shade and observer.
 

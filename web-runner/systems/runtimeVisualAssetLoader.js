@@ -30,7 +30,6 @@ export async function loadRuntimeVisualAssets({
   const heroPortraitImages = {};
   let wardBarrierImage = null;
   let heroSkillIconsBySlot = [];
-  let heroSelectorImage = null;
   let gemFrameImages = [];
   let superGemFrameImages = [];
   let superGemRainbowImage = null;
@@ -149,7 +148,6 @@ export async function loadRuntimeVisualAssets({
       ...heroSkillIconLoads,
       ...heroCapsuleLoads,
       gemVisualLoads,
-      (async () => { heroSelectorImage = await loadImage(assetUrl('images/h_selector-animation 1-000.png')); })(),
       (async () => { images.SkillArcanePulse = await loadImage(assetUrl('images/vfx_arcane_pulse_crescent.png')); })(),
       (async () => { images.CombatArcanePulseImpact = await loadImage(assetUrl('images/vfx_arcane_pulse_impact.png')); })(),
       (async () => { images.CombatHealSwirl = await loadImage(assetUrl('images/vfx_heal_swirl_10.png')); })(),
@@ -253,7 +251,6 @@ export async function loadRuntimeVisualAssets({
     heroPortraitImages,
     wardBarrierImage,
     heroSkillIconsBySlot,
-    heroSelectorImage,
     gemFrameImages,
     superGemFrameImages,
     superGemRainbowImage,
