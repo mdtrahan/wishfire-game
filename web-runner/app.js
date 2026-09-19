@@ -3971,6 +3971,20 @@ function getStoryCardLiveLineState() {
       requestAnimationFrame(tick);
       return;
     }
+    if (
+      Number(state.globals.ContinuousCombatStageLoop || 0) === 1 &&
+      state.globals.GamePhase === 'RUNTIME' &&
+      !state.globals.BattleStartActive &&
+      !state.globals.ActionInProgress &&
+      !state.globals.IsPlayerBusy &&
+      !state.globals.DeferAdvance &&
+      getPresentationTurnBarrier({
+        hasEmpty: hasEmptySlots(),
+        enemyLineClearPressureActive,
+      }).canClaimCombatAction
+    ) {
+      combatRuntimeGateway.runCombatStep(fnContext, 'ProcessTurn');
+    }
     if (gameState.storyEntry.phase === 'combat' && questCombat.isCleared()) storyEntry.victory();
     const currentTurnType = callFunctionWithContext(fnContext, 'GetCurrentType');
     trackTask011EnemyBoundary(currentTurnType);

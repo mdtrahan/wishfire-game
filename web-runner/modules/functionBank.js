@@ -49,9 +49,11 @@ import { resolveHeroAttackTarget } from '../../src/core/heroAttackTargetingRules
 import { computeCombatPower as canonicalCombatPower } from '../src/core/combatPower.mjs';
 import {
   resolveHeroSpeedMultiattack,
+  buildDynamicInitiativeRoster,
   applyDynamicInitiativeActionCompleted,
   selectDynamicInitiativeTurn,
 } from '../src/core/dynamicInitiativeRules.mjs';
+import { selectRealtimeReadyActor } from '../src/core/realtimeCooldown.mjs';
 
 import { sanitizeInitiativeQueue, shouldAutoCorrectImproperRepeat } from '../src/core/initiativeGuards.mjs';
 import {
@@ -3658,6 +3660,7 @@ function ensureDynamicInitiativeDefaultState(g) {
       active: 0,
       current: null,
       progress: {},
+      readyAt: {},
       queue: [],
       openingPolicy: null,
       openingPolicyInitialized: false,
@@ -3668,6 +3671,7 @@ function ensureDynamicInitiativeDefaultState(g) {
     };
   }
   if (!g.DynamicInitiative.progress || typeof g.DynamicInitiative.progress !== 'object') g.DynamicInitiative.progress = {};
+  if (!g.DynamicInitiative.readyAt || typeof g.DynamicInitiative.readyAt !== 'object') g.DynamicInitiative.readyAt = {};
   if (!Array.isArray(g.DynamicInitiative.queue)) g.DynamicInitiative.queue = [];
   if (!Array.isArray(g.DynamicInitiative.traces)) g.DynamicInitiative.traces = [];
   return g.DynamicInitiative;
@@ -3677,6 +3681,7 @@ function resetDynamicInitiativeDefaultState(g, sessionId = 0, reason = '') {
   state.active = 0;
   state.current = null;
   state.progress = {};
+  state.readyAt = {};
   state.queue = [];
   state.openingPolicy = null;
   state.openingPolicyInitialized = false;
@@ -3769,70 +3774,31 @@ function buildDynamicInitiativeDefaultSpeedSelection(ctx, options = null) {
     return null;
   }
   if (Number(g.ContinuousCombatStageLoop || 0) === 1) {
-    const actors = getDynamicInitiativeRoster(ctx);
+    const actorRoster = buildDynamicInitiativeRoster(getDynamicInitiativeRoster(ctx), { pendingDeaths: g.PendingDeaths || null });
+    const actors = actorRoster.eligible;
     if (!actors.some(actor => Number(actor?.type || 0) === 1)) return null;
-    let progress = { ...(state.progress || {}) };
-    if (currentUID > 0) {
-      progress = applyDynamicInitiativeActionCompleted({
-        actors,
-        progress,
-        pendingDeaths: g.PendingDeaths || null,
-      }).progress;
-    }
-    let progressBeforeSelection = { ...progress };
-    let selected = selectDynamicInitiativeTurn({
+    const readiness = selectRealtimeReadyActor({
       actors,
-      progress,
-      pendingDeaths: g.PendingDeaths || null,
-      threshold: getDynamicInitiativeThreshold(g),
-    });
-    let chargePasses = 0;
-    while (!selected.turn && chargePasses < 1000) {
-      progress = applyDynamicInitiativeActionCompleted({
-        actors,
-        progress,
-        pendingDeaths: g.PendingDeaths || null,
-      }).progress;
-      progressBeforeSelection = { ...progress };
-      selected = selectDynamicInitiativeTurn({
-        actors,
-        progress,
-        pendingDeaths: g.PendingDeaths || null,
-        threshold: getDynamicInitiativeThreshold(g),
-      });
-      chargePasses += 1;
-    }
-    if (!selected.turn) return null;
-    state.progress = { ...(selected.progress || {}) };
-    const queue = speedGaugeQueueFromTrace(ctx, actors, { progressBeforeSelection });
-    schedulerWriteQueue(ctx, queue);
-    const selectedIndex = queue.findIndex(slot => Number(slot.uid || 0) === Number(selected.actor.uid || 0));
-    if (selectedIndex >= 0) schedulerWriteIndex(ctx, selectedIndex);
-    const threshold = Number(selected.threshold || getDynamicInitiativeThreshold(g));
-    const selectedUID = Number(selected.actor.uid || 0);
-    const selectedAfter = Number(selected.progress?.[String(selectedUID)] || 0);
-    return {
-      battleId: getDynamicInitiativeBattleId(g),
-      actionSerial: Number(g.TurnSerial || 0),
-      source,
-      selectedActor: selected.actor,
-      selectionReason: 'readiness_threshold',
-      speedOrder: dynamicSpeedOrderForTrace(ctx, queue),
-      selectedIndex,
+      readyAt: state.readyAt,
+      now: Number(g.time || 0),
       completedUID: currentUID,
-      cadenceEvents: Array.isArray(cadenceEvents) ? cadenceEvents.slice() : [],
-      progressBeforeSelection,
-      progressAfterSelection: selected.progress,
-      thresholdSubtraction: {
-        uid: selectedUID,
-        before: Number(progressBeforeSelection[String(selectedUID)] || 0),
-        threshold,
-        after: selectedAfter,
-        applied: Number(progressBeforeSelection[String(selectedUID)] || 0) >= threshold
-          && selectedAfter === Number(progressBeforeSelection[String(selectedUID)] || 0) - threshold,
-      },
-      eligibilitySkips: selected.skipped,
-      pendingDeaths: g.PendingDeaths || null,
+    });
+    state.readyAt = readiness.readyAt;
+    if (!readiness.selected) {
+      state.current = null;
+      g.InitiativeCurrentUID = 0;
+      return null;
+    }
+    const queue = speedGaugeQueueFromTrace(ctx, actors, { progressBeforeSelection: {} });
+    schedulerWriteQueue(ctx, queue);
+    const selectedIndex = queue.findIndex(slot => Number(slot.uid || 0) === Number(readiness.selected.uid || 0));
+    if (selectedIndex >= 0) schedulerWriteIndex(ctx, selectedIndex);
+    return {
+      battleId: getDynamicInitiativeBattleId(g), actionSerial: Number(g.TurnSerial || 0), source,
+      selectedActor: readiness.selected, selectionReason: 'realtime_cooldown',
+      speedOrder: dynamicSpeedOrderForTrace(ctx, queue), selectedIndex, completedUID: currentUID,
+      cadenceEvents: cadenceEvents.slice(), progressBeforeSelection: {}, progressAfterSelection: {},
+      thresholdSubtraction: null, eligibilitySkips: actorRoster.skipped, pendingDeaths: g.PendingDeaths || null,
     };
   }
   const queue = buildFixedCycleSlots(roster, 0);
@@ -4463,6 +4429,7 @@ export function GetCurrentTurn(ctx) {
   if (authorityCurrent) return authorityCurrent.uid;
   const dynamicCurrent = getDynamicInitiativeDefaultCurrent(g);
   if (dynamicCurrent) return dynamicCurrent.uid;
+  if (Number(g.ContinuousCombatStageLoop || 0) === 1) return 0;
   if (isTimeInitiative(ctx)) {
     return g.InitiativeCurrentUID || 0;
   }
@@ -4482,6 +4449,7 @@ export function GetCurrentType(ctx) {
   if (authorityCurrent) return authorityCurrent.type;
   const dynamicCurrent = getDynamicInitiativeDefaultCurrent(g);
   if (dynamicCurrent) return dynamicCurrent.type;
+  if (Number(g.ContinuousCombatStageLoop || 0) === 1) return -1;
   if (isTimeInitiative(ctx)) {
     const actor = GetActorByUID(ctx, g.InitiativeCurrentUID || 0);
     return actor && actor.kind === 'enemy' ? 1 : 0;
@@ -4697,7 +4665,7 @@ export function AdvanceTurn(ctx) {
   const currentType = completedActor.type;
   const completedHero = currentType === 0 ? GetActorByUID(ctx, currentUID) : null;
   nativeTurnEnded(ctx, GetActorByUID(ctx, currentUID));
-  const linkedSpeedAction = resolveHeroSpeedMultiattack({
+  const linkedSpeedAction = Number(g.ContinuousCombatStageLoop || 0) === 1 ? false : resolveHeroSpeedMultiattack({
     hero: completedHero && { ...completedHero, effectiveSpeed: GetEffectiveStat(ctx, completedHero, 'SPD') },
     enemies: getEnemies(ctx).map(enemy => ({ ...enemy, effectiveSpeed: GetEffectiveStat(ctx, enemy, 'SPD') })),
     alreadyLinked: Number(g.SpeedMultiattackLinkedActorUID || 0) === Number(currentUID || 0),
@@ -9422,10 +9390,14 @@ function resolveProcessTurnActorEligibility(ctx, {
 }
 
 export function ProcessTurn(ctx) {
+  const g = getGlobals(ctx);
+  if (Number(g.ContinuousCombatStageLoop || 0) === 1 && !getDynamicInitiativeDefaultCurrent(g)) {
+    const prediction = buildDynamicInitiativeDefaultSpeedSelection(ctx, { source: 'realtime_tick' });
+    if (!prediction || !applyDynamicInitiativeDefaultSelection(ctx, prediction)) return;
+  }
   let type = GetCurrentType(ctx);
   let uid = GetCurrentTurn(ctx);
   let actor = GetActorByUID(ctx, uid);
-  const g = getGlobals(ctx);
   const qaTrace = (reason, extra = {}) => {
     if (!g.QaFixtureHoldTurn && !g.QaFixtureExplicitAction && !g.QaLiveDestinyTrace) return;
     if (g.QaLiveDestinyTrace) {
@@ -10190,6 +10162,10 @@ export function StartEnemyAction(ctx, enemyUID) {
     jsSkillCode: Number(decision.jsDecision?.skillCode ?? decision.skillCode ?? -1),
   };
   if (!Number(decision.active || 0)) return;
+  const originX = Number(enemy.originX ?? enemy.x ?? 0);
+  const targetX = Number(g.HeroRestBasePosByUID?.[Number(targetUID || 0)]?.x ?? target?.x ?? originX - 55);
+  const contactGap = Math.max(12, Number(g.EnemySize || 40) * 0.45);
+  const meleeContactX = targetX + (Math.sign(originX - targetX) || 1) * contactGap;
   g.EnemyAction = {
     active: true,
     uid: Number(decision.uid || enemyUID || 0),
@@ -10198,8 +10174,8 @@ export function StartEnemyAction(ctx, enemyUID) {
     actionApplied: Number(decision.actionApplied || 0) === 1,
     targetUID: Number(decision.targetUID || 0),
     skillId: String(decision.skillId || skillId || ''),
-    stationary: enemy.streamState === 'engaged' || /^Enemy_Heal_/.test(String(decision.skillId || skillId || '')),
-    forwardX: Number(decision.forwardX ?? ((enemy.originX ?? enemy.x ?? 0) - 55)),
+    stationary: /^Enemy_Heal_/.test(String(decision.skillId || skillId || '')),
+    forwardX: meleeContactX,
   };
 }
 
@@ -10376,7 +10352,7 @@ export function StartHeroLunge(ctx, actorUID, options = {}) {
   g.HeroAction = {
     uid: actorUID,
     profile,
-    stationary: profile === 'ranged',
+    stationary: Number(g.ContinuousCombatStageLoop || 0) === 1 || profile === 'ranged',
     homeX: Number(g.HeroRestBasePosByUID?.[Number(actorUID || 0)]?.x ?? actor?.x ?? 0),
     homeY: Number(g.HeroRestBasePosByUID?.[Number(actorUID || 0)]?.y ?? actor?.y ?? 0),
     state: 'ADVANCE',

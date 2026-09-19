@@ -53,7 +53,7 @@
 - `actionSelection.mjs` owns action capacity and draft budgets independently of SP and CTB scheduling. High SP cannot increase the action count.
 
 - Queryless production selects actions through deterministic initiative and cooldown readiness. Combat presentation never waits on a meter threshold or card choice.
-- Queryless production emits fodder packs from off-stage on a shallow linear CP ramp. The next cadence starts when a pack reaches its engagement boundary; survivors may overlap later packs, while bosses wait for a clear field.
+- Queryless production emits staggered fodder packs from off-stage on a shallow linear CP ramp. The next cadence starts when a pack reaches its engagement boundary; survivors may overlap later packs, while bosses wait for a clear field.
 - The production action handoff clears transient busy, action, and animation locks only after the presentation barrier releases. Preserve the completed-action owner and deferred-advance fields so the readiness scheduler resumes exactly once.
 - Combat presentation has one owner at a time. Attack motion and impacts finish before damage floats; heal art finishes before heal floats; enemy-death FLOW delivery starts after those floats and blocks the next actor through collection. A held enemy death remains a presentation lane until removal commits, preventing a new actor claim between gem completion and refill.
 - A fresh session enters with the restored party and deterministic actor cooldown state. Defeat recovery remains owned by the encounter session.

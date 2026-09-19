@@ -45,7 +45,8 @@ import { resolveEnemyTurnFlow as importedResolveEnemyTurnFlow } from '../src/cor
 import { resolveHeroTurnEntry as importedResolveHeroTurnEntry } from '../src/core/heroTurnEntryRules.mjs';
 import { resolveHeroAttackTarget } from '../src/core/heroAttackTargetingRules.mjs';
 import { computeCombatPower as canonicalCombatPower } from '../web-runner/src/core/combatPower.mjs';
-import { resolveHeroSpeedMultiattack } from '../src/core/dynamicInitiativeRules.mjs';
+import { resolveHeroSpeedMultiattack, buildDynamicInitiativeRoster } from '../src/core/dynamicInitiativeRules.mjs';
+import { selectRealtimeReadyActor } from '../web-runner/src/core/realtimeCooldown.mjs';
 import {
   pickEnemyTargetHeroFromRoster,
   resolveEnemyTargetHero,
@@ -3603,6 +3604,7 @@ function ensureDynamicInitiativeDefaultState(g) {
       active: 0,
       current: null,
       progress: {},
+      readyAt: {},
       queue: [],
       openingPolicy: null,
       openingPolicyInitialized: false,
@@ -3613,6 +3615,7 @@ function ensureDynamicInitiativeDefaultState(g) {
     };
   }
   if (!g.DynamicInitiative.progress || typeof g.DynamicInitiative.progress !== 'object') g.DynamicInitiative.progress = {};
+  if (!g.DynamicInitiative.readyAt || typeof g.DynamicInitiative.readyAt !== 'object') g.DynamicInitiative.readyAt = {};
   if (!Array.isArray(g.DynamicInitiative.queue)) g.DynamicInitiative.queue = [];
   if (!Array.isArray(g.DynamicInitiative.traces)) g.DynamicInitiative.traces = [];
   return g.DynamicInitiative;
@@ -3622,6 +3625,7 @@ function resetDynamicInitiativeDefaultState(g, sessionId = 0, reason = '') {
   state.active = 0;
   state.current = null;
   state.progress = {};
+  state.readyAt = {};
   state.queue = [];
   state.openingPolicy = null;
   state.openingPolicyInitialized = false;
@@ -3712,6 +3716,29 @@ function buildDynamicInitiativeDefaultSpeedSelection(ctx, options = null) {
   if (!roster.length) {
     resetDynamicInitiativeDefaultState(g, getDynamicInitiativeSessionId(g), 'empty_speed_roster');
     return null;
+  }
+  if (Number(g.ContinuousCombatStageLoop || 0) === 1) {
+    const actorRoster = buildDynamicInitiativeRoster(getDynamicInitiativeRoster(ctx), { pendingDeaths: g.PendingDeaths || null });
+    const actors = actorRoster.eligible;
+    if (!actors.some(actor => Number(actor?.type || 0) === 1)) return null;
+    const readiness = selectRealtimeReadyActor({ actors, readyAt: state.readyAt, now: Number(g.time || 0), completedUID: currentUID });
+    state.readyAt = readiness.readyAt;
+    if (!readiness.selected) {
+      state.current = null;
+      g.InitiativeCurrentUID = 0;
+      return null;
+    }
+    const queue = speedGaugeQueueFromTrace(ctx, actors, { progressBeforeSelection: {} });
+    schedulerWriteQueue(ctx, queue);
+    const selectedIndex = queue.findIndex(slot => Number(slot.uid || 0) === Number(readiness.selected.uid || 0));
+    if (selectedIndex >= 0) schedulerWriteIndex(ctx, selectedIndex);
+    return {
+      battleId: getDynamicInitiativeBattleId(g), actionSerial: Number(g.TurnSerial || 0), source,
+      selectedActor: readiness.selected, selectionReason: 'realtime_cooldown',
+      speedOrder: dynamicSpeedOrderForTrace(ctx, queue), selectedIndex, completedUID: currentUID,
+      cadenceEvents: cadenceEvents.slice(), progressBeforeSelection: {}, progressAfterSelection: {},
+      thresholdSubtraction: null, eligibilitySkips: actorRoster.skipped, pendingDeaths: g.PendingDeaths || null,
+    };
   }
   const queue = buildFixedCycleSlots(roster, 0);
   const delayResult = applyPendingTurnDelays(ctx, queue, currentUID);
@@ -4407,6 +4434,7 @@ export function GetCurrentTurn(ctx) {
   if (authorityCurrent) return authorityCurrent.uid;
   const dynamicCurrent = getDynamicInitiativeDefaultCurrent(g);
   if (dynamicCurrent) return dynamicCurrent.uid;
+  if (Number(g.ContinuousCombatStageLoop || 0) === 1) return 0;
   if (isTimeInitiative(ctx)) {
     return g.InitiativeCurrentUID || 0;
   }
@@ -4426,6 +4454,7 @@ export function GetCurrentType(ctx) {
   if (authorityCurrent) return authorityCurrent.type;
   const dynamicCurrent = getDynamicInitiativeDefaultCurrent(g);
   if (dynamicCurrent) return dynamicCurrent.type;
+  if (Number(g.ContinuousCombatStageLoop || 0) === 1) return -1;
   if (isTimeInitiative(ctx)) {
     const actor = GetActorByUID(ctx, g.InitiativeCurrentUID || 0);
     return actor && actor.kind === 'enemy' ? 1 : 0;
@@ -4606,7 +4635,7 @@ export function AdvanceTurn(ctx) {
   const currentType = GetCurrentType(ctx);
   const completedHero = currentType === 0 ? GetActorByUID(ctx, currentUID) : null;
   nativeTurnEnded(ctx, GetActorByUID(ctx, currentUID));
-  const linkedSpeedAction = resolveHeroSpeedMultiattack({ hero: completedHero && { ...completedHero, effectiveSpeed: GetEffectiveStat(ctx, completedHero, 'SPD') }, enemies: getEnemies(ctx).filter(enemy => enemy.kind === 'enemy').map(enemy => ({ ...enemy, effectiveSpeed: GetEffectiveStat(ctx, enemy, 'SPD') })), alreadyLinked: Number(g.SpeedMultiattackLinkedActorUID || 0) === Number(currentUID || 0) });
+  const linkedSpeedAction = Number(g.ContinuousCombatStageLoop || 0) === 1 ? false : resolveHeroSpeedMultiattack({ hero: completedHero && { ...completedHero, effectiveSpeed: GetEffectiveStat(ctx, completedHero, 'SPD') }, enemies: getEnemies(ctx).filter(enemy => enemy.kind === 'enemy').map(enemy => ({ ...enemy, effectiveSpeed: GetEffectiveStat(ctx, enemy, 'SPD') })), alreadyLinked: Number(g.SpeedMultiattackLinkedActorUID || 0) === Number(currentUID || 0) });
   if (linkedSpeedAction) { g.SpeedMultiattackLinkedActorUID = Number(currentUID); g.SpeedMultiattackSequenceSerial = Number(g.SpeedMultiattackSequenceSerial || 0) + 1; const speedState = syncDynamicInitiativeDefaultSession(ctx); speedState.actionCount = Number(speedState.actionCount || 0) + 1; speedState.lastActionSerial = Number(g.TurnSerial || 0); speedState.lastSelectedUID = Number(currentUID); speedState.lastSelectionReason = 'speed_multiattack_link'; setDynamicInitiativeDefaultCurrent(ctx, { uid: currentUID, type: 0, name: completedHero?.name || currentUID }, 'speed_multiattack_link'); recordTurnSchedulerEvent(ctx, 'speed_multiattack_link', { actorUID: Number(currentUID), sequenceSerial: Number(g.SpeedMultiattackSequenceSerial), actionCount: speedState.actionCount, queue: snapshotTurnOrderSlots(ctx) }); return; }
   if (currentType === 0 && Number(g.SpeedMultiattackLinkedActorUID || 0) === Number(currentUID || 0)) g.SpeedMultiattackLinkedActorUID = 0;
   const dynamicInitiativeCadenceEvents = [
@@ -9273,10 +9302,14 @@ function resolveProcessTurnActorEligibility(ctx, {
 }
 
 export function ProcessTurn(ctx) {
+  const g = getGlobals(ctx);
+  if (Number(g.ContinuousCombatStageLoop || 0) === 1 && !getDynamicInitiativeDefaultCurrent(g)) {
+    const prediction = buildDynamicInitiativeDefaultSpeedSelection(ctx, { source: 'realtime_tick' });
+    if (!prediction || !applyDynamicInitiativeDefaultSelection(ctx, prediction)) return;
+  }
   const type = GetCurrentType(ctx);
   const uid = GetCurrentTurn(ctx);
   const actor = GetActorByUID(ctx, uid);
-  const g = getGlobals(ctx);
 
 
   resolvePendingEnemyDeaths(ctx);
@@ -9948,6 +9981,10 @@ export function StartEnemyAction(ctx, enemyUID) {
     jsSkillCode: Number(decision.jsDecision?.skillCode ?? decision.skillCode ?? -1),
   };
   if (!Number(decision.active || 0)) return;
+  const originX = Number(enemy.originX ?? enemy.x ?? 0);
+  const targetX = Number(g.HeroRestBasePosByUID?.[Number(targetUID || 0)]?.x ?? target?.x ?? originX - 55);
+  const contactGap = Math.max(12, Number(g.EnemySize || 40) * 0.45);
+  const meleeContactX = targetX + (Math.sign(originX - targetX) || 1) * contactGap;
   g.EnemyAction = {
     active: true,
     uid: Number(decision.uid || enemyUID || 0),
@@ -9956,8 +9993,8 @@ export function StartEnemyAction(ctx, enemyUID) {
     actionApplied: Number(decision.actionApplied || 0) === 1,
     targetUID: Number(decision.targetUID || 0),
     skillId: String(decision.skillId || skillId || ''),
-    stationary: enemy.streamState === 'engaged' || /^Enemy_Heal_/.test(String(decision.skillId || skillId || '')),
-    forwardX: Number(decision.forwardX ?? ((enemy.originX ?? enemy.x ?? 0) - 55)),
+    stationary: /^Enemy_Heal_/.test(String(decision.skillId || skillId || '')),
+    forwardX: meleeContactX,
   };
 }
 
@@ -10134,7 +10171,7 @@ export function StartHeroLunge(ctx, actorUID, options = {}) {
   g.HeroAction = {
     uid: actorUID,
     profile,
-    stationary: profile === 'ranged',
+    stationary: Number(g.ContinuousCombatStageLoop || 0) === 1 || profile === 'ranged',
     homeX: Number(g.HeroRestBasePosByUID?.[Number(actorUID || 0)]?.x ?? actor?.x ?? 0),
     homeY: Number(g.HeroRestBasePosByUID?.[Number(actorUID || 0)]?.y ?? actor?.y ?? 0),
     state: 'ADVANCE',

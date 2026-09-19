@@ -42,6 +42,17 @@ test('stream enemies begin off-stage and become engaged only after walking to th
   assert.ok(enemy.streamEngageX < globals.EnemyAreaRect.maxX);
 });
 
+test('pack members enter with deterministic stagger instead of marching in unison', () => {
+  const globals = { time: 3, EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 }, EnemySize: 40 };
+  const enemies = [0, 1, 2].map(entryOrder => activateContinuousCombatSpawnedEnemy(
+    globals,
+    { kind: 'enemy', hp: 10 },
+    { lane: entryOrder, entryOrder },
+  ));
+  assert.deepEqual(enemies.map(enemy => enemy.streamStartAt), [3, 3.34, 3.68]);
+  assert.ok(enemies[0].streamWalkSpeed < enemies[1].streamWalkSpeed);
+});
+
 test('timed packs emit while survivors remain and boss waits for a clear field', () => {
   const globals = {
     ContinuousCombatStageLoop: 1,
@@ -106,12 +117,14 @@ test('queryless production marks the initial pack as approaching and disables AF
   assert.equal(globals.ContinuousCombatStage.nextEmissionAt, 15);
 });
 
-test('runtime source keeps approaching enemies untargetable and engaged enemies stationary', async () => {
+test('runtime source keeps approaching enemies untargetable and assigns motion by attack role', async () => {
   const fs = await import('node:fs');
   const source = fs.readFileSync(new URL('../web-runner/modules/functionBank.js', import.meta.url), 'utf8');
   const heroCommands = fs.readFileSync(new URL('../web-runner/modules/heroCommands.mjs', import.meta.url), 'utf8');
   assert.match(source, /e\.streamState !== 'approaching'/);
-  assert.match(source, /stationary: enemy\.streamState === 'engaged'/);
+  assert.doesNotMatch(source, /stationary: enemy\.streamState === 'engaged'/);
+  assert.match(source, /stationary: Number\(g\.ContinuousCombatStageLoop \|\| 0\) === 1 \|\| profile === 'ranged'/);
+  assert.match(source, /const meleeContactX = targetX/);
   assert.match(source, /!actors\.some\(actor => Number\(actor\?\.type \|\| 0\) === 1\)/);
   assert.match(heroCommands, /noLivingEnemy&&streamComplete/);
 });

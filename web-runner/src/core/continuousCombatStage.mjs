@@ -43,12 +43,13 @@ function streamGeometry(globals, lane = 1, rank = 0) {
   };
 }
 
-export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1, rank = 0, packIndex = 0 } = {}) {
+export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1, rank = 0, packIndex = 0, entryOrder = lane } = {}) {
   if (!enemy) return null;
   const geometry = streamGeometry(globals, lane, rank);
   Object.assign(enemy, {
     streamState: 'approaching', streamLane: lane, streamRank: rank, streamPackIndex: packIndex,
-    streamEngageX: geometry.engageX, streamWalkSpeed: geometry.walkSpeed,
+    streamEngageX: geometry.engageX, streamWalkSpeed: geometry.walkSpeed * (1 + (Number(entryOrder || 0) % 3) * 0.035),
+    streamStartAt: Number(globals.time || 0) + Math.max(0, Number(entryOrder || 0)) * 0.34,
     x: geometry.spawnX, y: geometry.y, originX: geometry.engageX, originY: geometry.y,
   });
   return enemy;
@@ -65,12 +66,13 @@ export function finalizeContinuousCombatProduction(globals, entities = []) {
   globals.AstralFlowKoOrbQueue = [];
   globals.AstralFlowKoOrbPresentationPending = 0;
   globals.AstralFlowKoOrbPresentationActive = 0;
+  let enemyOrder = 0;
   for (const actor of Array.isArray(entities) ? entities : []) {
     if (actor?.kind === 'hero') {
       actor.flow = 0;
       actor.flowReady = false;
     } else if (actor?.kind === 'enemy') {
-      activateContinuousCombatSpawnedEnemy(globals, actor, { lane: Number(actor.slotIndex ?? 1), rank: 0, packIndex: 0 });
+      activateContinuousCombatSpawnedEnemy(globals, actor, { lane: Number(actor.slotIndex ?? 1), rank: 0, packIndex: 0, entryOrder: enemyOrder++ });
     }
   }
   if (globals.ContinuousCombatStage) {
@@ -148,6 +150,7 @@ export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase
     lane: lanes[index] ?? 1,
     rank: Math.floor(Number(slotBase || 0) / 3),
     packIndex: Number(stageState?.stageIndex || 0),
+    entryOrder: index,
   })).filter(entry => entry.row?.name && Number.isInteger(entry.slotIndex));
 }
 
@@ -174,6 +177,7 @@ function updateApproachingEnemies(globals, entities, now) {
   const packsReached = new Set();
   for (const enemy of entities || []) {
     if (enemy?.kind !== 'enemy' || Number(enemy.hp || 0) <= 0 || enemy.streamState !== 'approaching') continue;
+    if (now < Number(enemy.streamStartAt || 0)) continue;
     const engageX = Number(enemy.streamEngageX || enemy.originX || enemy.x || 0);
     enemy.x = Math.max(engageX, Number(enemy.x || 0) - Number(enemy.streamWalkSpeed || 40) * dt);
     enemy.y = Number(enemy.originY ?? enemy.y ?? 0);
