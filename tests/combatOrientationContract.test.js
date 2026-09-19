@@ -111,6 +111,17 @@ test('runtime-shaped formation anchors keep both factions inside the shared visi
   assert.equal(shiftedEnemyYs[1], anchors.enemyYs[1]);
 });
 
+test('combat reference grid covers the logical canvas in ten-pixel increments', async () => {
+  const rules = await loadRules();
+  const grid = rules.deriveCombatReferenceGrid(360, 640);
+  assert.equal(grid.vertical.length, 37);
+  assert.equal(grid.horizontal.length, 65);
+  assert.equal(grid.centerX, 180);
+  assert.deepEqual(grid.vertical.filter(line => line.major).map(line => line.value), [0, 50, 100, 150, 200, 250, 300, 350]);
+  assert.equal(grid.vertical.at(-1).value, 360);
+  assert.equal(grid.horizontal.at(-1).value, 640);
+});
+
 test('enemy death and refill never change surviving right-wise slot projections', async () => {
   const rules = await loadRules();
   const globals = {

@@ -37,7 +37,7 @@
 - Full-screen Canvas overlays use the 360x640 reference coordinate system and apply the active layout scale once to the whole overlay, including hit zones.
 - Combat Canvas text must derive its font size from the active layout scale through `combatPresentationScale.mjs` and fit its measured slot. Desktop font minimums must not override compact Canvas geometry.
 - Hero status presentation uses actor-owned HP and readiness state. The shared Astral Flow HUD and pooled health bar are retired.
-- Combat must not draw the legacy `radiatorPanels.track` backdrop. The jagged arena-floor asset is the sole ground plane behind combat actors.
+- Combat draws neither the legacy `radiatorPanels.track` backdrop nor the `EnemyArea` texture. The `EnemyArea` layer position triggers one full-canvas logical reference grid behind combat actors.
 - `renderRuntime.js` should shrink over time. Do not add broad new gameplay branches there when a focused render module or gameplay module can own the change.
 - `heroProgressStorage.js` may use `window.localStorage`; SimulationCore packets and Rust-owned code must not.
 - `simulationCoreShadow.js` must expose stable owner markers for Rust-owned rule families and should surface mismatches as diagnostics, not silent fallbacks.

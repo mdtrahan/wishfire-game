@@ -18,6 +18,18 @@ export function deriveCombatArenaBounds(layoutW = COMBAT_ARENA_REFERENCE_WIDTH) 
   return Object.fromEntries(Object.entries(COMBAT_ARENA_BOUNDS).map(([key, value]) => [key, value * scale]));
 }
 
+export function deriveCombatReferenceGrid(layoutW = 360, layoutH = 640, step = 10, majorStep = 50) {
+  const width = Math.max(0, Number(layoutW) || 0);
+  const height = Math.max(0, Number(layoutH) || 0);
+  const spacing = Math.max(1, Number(step) || 10);
+  const majorSpacing = Math.max(spacing, Number(majorStep) || 50);
+  const axis = limit => Array.from({ length: Math.floor(limit / spacing) + 1 }, (_, index) => {
+    const value = index * spacing;
+    return { value, major: value % majorSpacing === 0 };
+  });
+  return { vertical: axis(width), horizontal: axis(height), centerX: width / 2 };
+}
+
 export function normalizeCombatOrientation(value) {
   const normalized = String(value ?? '').trim().toLowerCase();
   return normalized === COMBAT_ORIENTATION_RIGHT_WISE
