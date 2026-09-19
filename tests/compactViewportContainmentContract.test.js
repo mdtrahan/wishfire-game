@@ -114,13 +114,10 @@ test('developer panels permit vertical scrolling without horizontal overflow', (
   assert.match(devTooling, /data-devtool-title[\s\S]*white-space:nowrap/);
 });
 
-test('skill cards, progress bars, and damage bitmaps obey the presentation scale', () => {
-  const skill = read('web-runner/systems/renderSkillDraughtOverlay.js');
+test('progress bars and damage bitmaps obey the presentation scale', () => {
   const damage = read('web-runner/src/core/damageNumberAnimation.mjs');
   const render = read('web-runner/systems/renderRuntime.js');
 
-  assert.match(skill, /const layoutScale = Math\.min\(viewW \/ 360, viewH \/ 640\)/);
-  assert.match(skill, /ctx\.scale\(layoutScale, layoutScale\)/);
   assert.match(damage, /document\.defaultView\?\.devicePixelRatio/);
   assert.match(damage, /numberText\.width = Math\.ceil\(approxWidth \* pixelRatio\)/);
   assert.match(render, /const barH = Math\.min\(partyBar\.h, 8 \* layoutScale\)/);
@@ -197,7 +194,7 @@ test('combat renderer and attack hit target consume shared transient sizing', ()
   assert.match(render, /const fontSize = computeCombatDamageFontSize\(\{/);
 });
 
-test('questQA controls use fixed side rails with a contained compact dock', () => {
+test('retired questQA route shows one contained notice', () => {
   const html = read('web-runner/index.html');
   const hooks = read('web-runner/systems/devBrowserTestHooks.js');
   const computeLayout = new Function(`${extractExportedFunction(hooks, 'computeQuestQaControlLayout')}; return computeQuestQaControlLayout;`)();
@@ -219,26 +216,18 @@ test('questQA controls use fixed side rails with a contained compact dock', () =
   assert.match(hooks, /controls\.id = 'quest-qa-controls';/);
   assert.match(hooks, /controls\.className = 'quest-qa-controls';/);
   assert.match(hooks, /controls\.dataset\.qaLayout = 'dock';/);
-  assert.match(hooks, /leftRail\.className = 'quest-qa-rail quest-qa-rail-left';/);
-  assert.match(hooks, /rightRail\.className = 'quest-qa-rail quest-qa-rail-right';/);
-  assert.match(hooks, /leftRail\.append\(heroSelect, tierSelect, cardSelect, fixtureSelect, specialSelect, \.\.\.qaButtons\.slice\(0, 10\)\);/);
-  assert.match(hooks, /rightRail\.append\(afReadout, \.\.\.qaButtons\.slice\(10\)\);/);
-  assert.match(hooks, /controls\.append\(leftRail, rightRail\);/);
-  assert.match(hooks, /canvas\?\.getBoundingClientRect\?\.\(\)/);
-  assert.match(hooks, /const layout = computeQuestQaControlLayout\(/);
-  assert.match(hooks, /window\.addEventListener\('resize', syncQaControlsLayout\);/);
+  assert.match(hooks, /Combat QA controls are retired; use the normal queryless runtime\./);
+  assert.match(hooks, /controls\.append\(readout\);/);
   assert.match(hooks, /document\.body\.append\(pauseSnapshot, controls\);/);
   assert.doesNotMatch(hooks, /top:4px;left:4px;z-index:10001/);
   assert.doesNotMatch(hooks, /top:32px;left:4px;z-index:10001/);
 });
 
-test('compact questQA dock flows below the stage without horizontal overflow', () => {
+test('compact questQA notice flows below the stage without horizontal overflow', () => {
   const html = read('web-runner/index.html');
   const viewport = { width: 240, height: 384 };
   const stage = rect(12, 0, 228, 384);
   const dock = rect(0, 384, 240, 768);
-  const leftRail = rect(8, 392, 118, 760);
-  const rightRail = rect(122, 392, 232, 760);
 
   assert.match(html, /html:has\(\.quest-qa-controls\[data-qa-layout="dock"\]\)/);
   assert.match(html, /body:has\(\.quest-qa-controls\[data-qa-layout="dock"\]\)\{[\s\S]*position:static;[\s\S]*height:auto;/);
@@ -246,19 +235,5 @@ test('compact questQA dock flows below the stage without horizontal overflow', (
   assert.match(html, /\.quest-qa-controls\[data-qa-layout="dock"\]\{[\s\S]*position:static;[\s\S]*width:100%;[\s\S]*max-height:none;[\s\S]*overflow:visible;/);
 
   assertContained(dock, viewport);
-  assertContained(leftRail, viewport);
-  assertContained(rightRail, viewport);
   assert.ok(dock.top >= stage.bottom);
-  assert.equal(overlaps(leftRail, stage), false);
-  assert.equal(overlaps(rightRail, stage), false);
-  assert.equal(overlaps(leftRail, rightRail), false);
-
-  const desktopStage = rect(286.5, 0, 781.5, 880);
-  const desktopLeftRail = rect(8, 48, 192, 225);
-  const desktopRightRail = rect(876, 225, 1060, 880);
-  const diagnostics = rect(881, 61, 1055, 221);
-  assert.equal(overlaps(desktopLeftRail, desktopStage), false);
-  assert.equal(overlaps(desktopRightRail, desktopStage), false);
-  assert.equal(overlaps(desktopRightRail, diagnostics), false);
-  assert.equal(desktopRightRail.top, diagnostics.bottom + 4);
 });

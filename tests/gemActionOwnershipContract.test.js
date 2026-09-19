@@ -39,7 +39,7 @@ test('gem action resolver follows Rust owner when Rust and JS disagree', async (
       blueWalletAfter: 11,
       blueAmpPointsAfter: 9,
       blueAmpReadyAfter: 0,
-      blueOpenDraught: 0,
+      blueAmpReadyTriggered: 0,
       actionLockUntil: 10.32,
       purpleEnergyAmount: 12,
     }),

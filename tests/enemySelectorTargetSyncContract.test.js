@@ -30,20 +30,6 @@ test('normal pending attack defaults to a living enemy, allows confirmation and 
   assert.equal(ensure(),0);
 });
 
- test('enemy target triangle renders for hero-card pending targets without clearing selection',()=>{
-  const vm=require('node:vm');
-  const src=fs.readFileSync(path.join(__dirname,'..','web-runner','systems','renderRuntime.js'),'utf8');
-  assert.match(src, /heroCardFanPendingEnemy/);
-  const guard=src.match(/(if \(Number\(state\.globals\.TurnPhase\).*?heroCardFanPendingEnemy\)\) \{)/)[1];
-  const state={globals:{TurnPhase:0,SelectedEnemyUID:203,NativeBattleEnded:false}};
-  const visible=()=>!!vm.runInNewContext(`(() => { const heroCardFanPendingEnemy = Number(state.globals.HeroTurnCardFanPendingTarget || 0) === 1 && String(state.globals.HeroTurnCardFanPendingTargetKind || '') === 'enemy'; ${guard} return true; } return false; })()`,{state});
-  assert.equal(visible(),true);
-  state.globals.TurnPhase=1;assert.equal(visible(),false);assert.equal(state.globals.SelectedEnemyUID,203);
-  state.globals.TurnPhase=0;assert.equal(visible(),true);
-  state.globals.NativeBattleEnded=true;assert.equal(visible(),false);
-  state.globals.NativeBattleEnded=false;state.globals.SelectedEnemyUID=0;state.globals.HeroTurnCardFanPendingTarget=1;state.globals.HeroTurnCardFanPendingTargetKind='enemy';assert.equal(visible(),true);
- });
-
 test('target debug geometry uses the same combat projection as enemy hit testing', () => {
   const vm = require('node:vm');
   const src = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js'), 'utf8');

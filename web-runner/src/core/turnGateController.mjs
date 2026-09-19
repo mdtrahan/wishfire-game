@@ -26,20 +26,14 @@ export function isCanPickGemsReady(value) {
 export const COMBAT_CHOICE_MODE = Object.freeze({
   AUTOCOMBAT: 'AUTOCOMBAT',
   OFFER: 'OFFER',
-  RESOLVING_GLOBAL_BUFF: 'RESOLVING_GLOBAL_BUFF',
-  RESOLVING_ATTACK_SPECIAL: 'RESOLVING_ATTACK_SPECIAL',
   TARGETING: 'TARGETING',
   PAUSED_NAV: 'PAUSED_NAV',
   END: 'END',
 });
 
-// One session offer owns input until its queue entry has either been applied
-// or explicitly refused. Legacy hero-card state must never compete with it.
 export function deriveCombatChoiceMode(globals = {}) {
   if (globals.NativeBattleEnded || ['victory', 'defeat'].includes(String(globals.ProgressionBattle?.outcome || ''))) return COMBAT_CHOICE_MODE.END;
-  if (globals.SessionLevelUpQueue?.paused || globals.PausedCombatSnapshot) return COMBAT_CHOICE_MODE.PAUSED_NAV;
-  if (globals.SessionOfferResolution === 'global') return COMBAT_CHOICE_MODE.RESOLVING_GLOBAL_BUFF;
-  if (globals.SessionOfferResolution === 'attack') return COMBAT_CHOICE_MODE.RESOLVING_ATTACK_SPECIAL;
+  if (globals.PausedCombatSnapshot) return COMBAT_CHOICE_MODE.PAUSED_NAV;
   if (hasSessionLevelUpPresentationBarrier(globals)) return COMBAT_CHOICE_MODE.OFFER;
   if (globals.PendingSkillID && (Number(globals.TurnPhase || 0) === 1 || globals.PendingSuperGemAction)) return COMBAT_CHOICE_MODE.TARGETING;
   return COMBAT_CHOICE_MODE.AUTOCOMBAT;
@@ -49,62 +43,18 @@ export function deriveCombatChoiceInput(globals = {}) {
   const mode = deriveCombatChoiceMode(globals);
   return {
     mode,
-    acceptsOfferCard: mode === COMBAT_CHOICE_MODE.OFFER,
+    acceptsSettlement: mode === COMBAT_CHOICE_MODE.OFFER,
     acceptsBattlefieldTarget: mode === COMBAT_CHOICE_MODE.TARGETING,
-    acceptsLegacyHeroFan: false,
     canResumeCTB: mode === COMBAT_CHOICE_MODE.AUTOCOMBAT,
-  };
-}
-
-export function createSessionOfferInputGate(current = {}, offerToken = '') {
-  const base = normalizeTurnGateState(current);
-  return {
-    ...base,
-    CombatChoiceMode: COMBAT_CHOICE_MODE.OFFER,
-    SessionOfferResolution: '',
-    SessionOfferInputToken: String(offerToken || ''),
-    CanPickGems: 0,
-    IsPlayerBusy: 0,
-    ActionLockUntil: 0,
-    ActionInProgress: 0,
-    ActionActorUID: 0,
-    PendingSkillID: '',
-    PendingActor: 0,
-    PendingSuperGemAction: null,
-    SelectedAllyUID: 0,
-    SelectedEnemyUIDOwner: 0,
-    HeroTurnCardFanOpen: 0,
-    HeroTurnCardFanHeroUID: 0,
-    HeroTurnCardFanCards: [],
-    HeroTurnCardFanSelectedCardId: '',
-    HeroTurnCardFanTargetUID: 0,
-    HeroTurnCardFanPendingCardIndex: -1,
-    HeroTurnCardFanPendingCardId: '',
-    HeroTurnCardFanPendingTarget: 0,
-    HeroTurnCardFanPendingTargetKind: '',
-    HeroTurnCardFanPendingExcludeSelf: 0,
-  };
-}
-
-export function releaseSessionOfferInputGate(current = {}, { resolution = '' } = {}) {
-  return {
-    ...normalizeTurnGateState(current),
-    CombatChoiceMode: COMBAT_CHOICE_MODE.AUTOCOMBAT,
-    SessionOfferResolution: String(resolution || ''),
-    SessionOfferInputToken: '',
-    IsPlayerBusy: 0,
-    ActionLockUntil: 0,
-    ActionInProgress: 0,
-    ActionActorUID: 0,
   };
 }
 
 // EXP settlement, the queued dance, and the player choice are one presentation
 // boundary. The scheduler must not resolve another actor until it has faded out.
 export function hasSessionLevelUpPresentationBarrier(globals = {}) {
-  return globals?.SessionLevelUpQueue?.status === 'active'
-    || (Array.isArray(globals?.PendingFlowThresholds) && globals.PendingFlowThresholds.length > 0)
-    || !!globals?.SessionLevelUpSettlement;
+  // XP settlement remains a visible presentation boundary. Combat card offers
+  // and threshold pauses have been retired from the runtime.
+  return !!globals?.SessionLevelUpSettlement;
 }
 
 export function hasActiveCombatEffects(globals = {}) {
@@ -113,7 +63,6 @@ export function hasActiveCombatEffects(globals = {}) {
     globals.CombatImpactVisuals,
     globals.ChainStrikeVisuals,
     globals.ArcanePulseVisuals,
-    globals.SessionBuffCombatVisuals,
     globals.DamageTexts,
   ].some(entries => Array.isArray(entries) && entries.length > 0);
 }
@@ -149,8 +98,6 @@ export function derivePresentationTurnBarrier({
     textAnimating: !!globals.TextAnimating || Number(globals.TextAnimEndAt || 0) > now,
     heroAction: !!(globals.HeroAction && globals.HeroAction.active),
     enemyAction: !!(globals.EnemyAction && globals.EnemyAction.active),
-    skillDraught: false,
-    skillDraughtPending: false,
     pendingHeroHits,
     combatEffects: hasActiveCombatEffects(globals),
     flowOrbs: Array.isArray(globals.FlowOrbs) && globals.FlowOrbs.length > 0,
@@ -158,7 +105,6 @@ export function derivePresentationTurnBarrier({
     actionLock: Number(globals.ActionLockUntil || 0) > now,
     actionInProgress: !!globals.ActionInProgress,
   };
-  const skillDraughtPending = lanes.skillDraughtPending;
   const orderedLaneNames = [
     ['level-up-settlement', lanes.levelUpSettlement],
     ['board-fill', lanes.boardFill],
@@ -168,7 +114,6 @@ export function derivePresentationTurnBarrier({
     ['text-animation', lanes.textAnimating],
     ['hero-action', lanes.heroAction],
     ['enemy-action', lanes.enemyAction],
-    ['skill-draught', lanes.skillDraught],
     ['pending-hero-hits', lanes.pendingHeroHits],
     ['combat-effects', lanes.combatEffects],
     ['flow-orbs', lanes.flowOrbs],
@@ -178,7 +123,7 @@ export function derivePresentationTurnBarrier({
   ];
   const activePresentationLane = orderedLaneNames.find(([, active]) => active)?.[0] || null;
   const refillPending = false;
-  const firstBlockingLane = activePresentationLane || (skillDraughtPending ? 'skill-draught-pending' : (refillPending ? 'refill-pending' : null));
+  const firstBlockingLane = activePresentationLane || (refillPending ? 'refill-pending' : null);
   const presentationBlocked = !!activePresentationLane;
   const pendingTargetAction = !!globals.PendingSkillID && (
     Number(globals.TurnPhase || 0) === 1 ||
@@ -189,14 +134,12 @@ export function derivePresentationTurnBarrier({
     refillPending,
     blockingLane: firstBlockingLane,
     firstBlockingLane,
-    canClaimSkillDraught: skillDraughtPending && !presentationBlocked,
-    canStartRefill: !presentationBlocked && !skillDraughtPending,
-    canAdvanceTurn: !presentationBlocked && !skillDraughtPending && !refillPending,
-    canClaimCombatAction: !presentationBlocked && !skillDraughtPending && !refillPending && !globals.DeferAdvance,
+    canStartRefill: !presentationBlocked,
+    canAdvanceTurn: !presentationBlocked && !refillPending,
+    canClaimCombatAction: !presentationBlocked && !refillPending && !globals.DeferAdvance,
     canResolvePendingTargetAction: pendingTargetAction && !presentationBlocked && !globals.DeferAdvance,
     canRestoreHeroInput: (
       !presentationBlocked &&
-      !skillDraughtPending &&
       !refillPending &&
       !globals.DeferAdvance &&
       !globals.PendingSkillID &&

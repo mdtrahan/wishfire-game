@@ -168,22 +168,6 @@ for (const modulePath of [
     assert.equal(deathHold.canClaimCombatAction, false);
     assert.equal(deathHold.firstBlockingLane, 'pending-enemy-deaths');
 
-    // Paused card state cannot block native combat; existing presentation gates still apply.
-    const withoutCardFlags = mod.derivePresentationTurnBarrier({
-      globals: { time: 10, TurnPhase: 0 }, boardHasEmptySlots: true,
-    });
-    for (const staleFlags of [{ SkillDraughtOpen: 1 }, { SkillDraughtPendingOpen: 1 }]) {
-      assert.deepEqual(mod.derivePresentationTurnBarrier({
-        globals: { time: 10, TurnPhase: 0, ...staleFlags }, boardHasEmptySlots: true,
-      }), withoutCardFlags);
-      const duringAnimation = mod.derivePresentationTurnBarrier({
-        globals: { time: 10, TurnPhase: 0, ...staleFlags, TextAnimEndAt: 11 },
-        boardHasEmptySlots: true,
-      });
-      assert.equal(duringAnimation.canClaimSkillDraught, false);
-      assert.equal(duringAnimation.firstBlockingLane, 'text-animation');
-    }
-
     const actionHold = mod.derivePresentationTurnBarrier({
       globals: {
         time: 10,

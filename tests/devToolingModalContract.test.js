@@ -156,7 +156,7 @@ test('editable dev tooling fields bypass gameplay keyboard shortcuts', () => {
     /if \(ensureDevToolingConfig\(\)\.open\) \{[\s\S]*if \(!isEditableDomTarget\(ev\.target\)\) \{[\s\S]*return;[\s\S]*\}\s*return;\s*\}/,
   );
   assert.doesNotMatch(keydownSrc, /handleGemMatch/);
-  assert.match(keydownSrc, /closest\?\.\('#hero-commands'\)\) return/);
+  assert.doesNotMatch(keydownSrc, /hero-commands/);
 });
 
 test('dev browser hooks expose an explicit dynamic initiative authority QA scenario', () => {

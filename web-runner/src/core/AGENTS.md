@@ -19,6 +19,7 @@
 - DOM child canvases keep CSS dimensions in logical pixels and multiply backing-store dimensions by `devicePixelRatio` before drawing.
 - Damage-number palettes preserve semantic kinds; Blight `dot` text uses the shared purple affliction palette in both DOM and Canvas paths.
 - New deterministic rule changes need focused contract tests and, when applicable, fixture rows.
+- `continuousCombatStage.mjs` owns the queryless production stage sequence and its deterministic spawn plans. It may advance only after the shared presentation barrier and enemy-death holds clear; it must not create a second scheduler.
 
 ## Work Guidance
 - Prefer extracting deterministic decisions here or in root `src/core/` instead of adding branches to `app.js` or render modules.
@@ -47,15 +48,14 @@
 - `heroDefinitions.mjs` owns role-shaped HP directly. Do not add a global hero HP multiplier; it hides role balance and breaks CP calibration.
 - `combatRules.mjs` resolves statuses, accuracy, Cover and reactions. Preserve action source ancestry, reject illegal actions before spending, and grant no routine periodic FLOW.
 
-- Hero card single-enemy actions consume the current living battlefield selection on card tap, falling back to the first living enemy. Single-ally cards retain ally selection; self and group cards resolve immediately. Resolved hero-card healing reports only its actual HP delta to presentation, while barrier visuals project from the actor-owned barrier status.
+- Native hero actions resolve living targets and healing through `heroCommands`; narrative quest cards remain outside the combat core. Resolved healing reports only its actual HP delta to presentation, while barrier visuals project from the actor-owned barrier status.
 
 - `actionSelection.mjs` owns action capacity and draft budgets independently of SP and CTB scheduling. High SP cannot increase the action count.
 
-- Qualifying resolved role actions charge only their eligible living hero immediately, once per action, capped at 100. Tactician qualifies through successful magic damage or a new eligible status, so Runa's native basic has a normal role path. Role awards emit no gem. Enemy KO produces one blue flowOrbs.mjs transfer for one deterministically assigned living hero; collection applies its AF once after the shared 520ms flight. Combat RNG and orb RNG remain separate. Session reset cancels pending flights.
-- Reaching 100 AF records one deterministic pending threshold signal. AF stays full until the session queue owner consumes it; falling below 100 rearms the next threshold.
-- A session offer clears transient busy, action, and animation locks when it takes input ownership. Preserve the completed-action owner and deferred-advance fields so closing the offer resumes CTB exactly once.
+- Queryless production selects actions through deterministic initiative and cooldown readiness. Combat presentation never waits on a meter threshold or card choice.
+- The production action handoff clears transient busy, action, and animation locks only after the presentation barrier releases. Preserve the completed-action owner and deferred-advance fields so the readiness scheduler resumes exactly once.
 - Combat presentation has one owner at a time. Attack motion and impacts finish before damage floats; heal art finishes before heal floats; enemy-death FLOW delivery starts after those floats and blocks the next actor through collection. A held enemy death remains a presentation lane until removal commits, preventing a new actor claim between gem completion and refill.
-- The fresh-session party offer excludes defeat-triggered revive cards because the party enters fully restored. Later level-up offers may include them.
+- A fresh session enters with the restored party and deterministic actor cooldown state. Defeat recovery remains owned by the encounter session.
 
 - equipment.mjs is the canonical placeholder catalog, slots, rarity balance and loadout math. astralMarket.mjs reconstructs only the live offer window using persisted seed/epoch and a monotonic time floor. Each offer ID may be acquired once; revalidate price, expiration and Gold at commit.
 - Equipment stats are a derived projection used by levelStats, not a second inventory. Persist the projection with hero HP so loading HP above unequipped max does not truncate it before the authoritative equipment record reapplies.

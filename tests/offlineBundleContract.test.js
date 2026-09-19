@@ -57,7 +57,6 @@ test('embedded JSON and WASM branches precede hosted fetch fallbacks', () => {
 });
 
 test('offline artifact retains relative presentation assets and omits JSON/WASM sidecars', () => {
-  assert.ok(fs.existsSync(path.join(output, 'assets', 'images', 'navigation', 'flow.png')));
   assert.ok(fs.existsSync(path.join(output, 'assets', 'fonts', 'Bungee-Regular.ttf')));
   const sidecars = listFiles(path.join(output, 'assets')).filter((file) => /\.(json|wasm)$/i.test(file));
   assert.deepEqual(sidecars, []);

@@ -66,7 +66,7 @@ function createContext({ pending = false, selectedOwnerUID = null, hero = {}, en
 for (const modulePath of mirrors) {
   test(`shipping HeroTurn draws a fresh random target for each actor in ${path.relative(repoRoot, modulePath)}`, () => {
     const source = fs.readFileSync(modulePath, 'utf8');
-    const heroTurn = source.slice(source.indexOf('export function HeroTurn('), source.indexOf('function heroTurnCardName('));
+    const heroTurn = source.slice(source.indexOf('export function HeroTurn('));
     assert.match(heroTurn, /resolveHeroAttackTarget\(\{ hero, enemies: entities\.filter\(entity => entity\?\.kind === 'enemy'\), randomPick: candidates => randomPick\(ctx, candidates\) \}\)/);
     assert.doesNotMatch(heroTurn, /const target = selected \|\| entities\.find/);
     assert.match(heroTurn, /g\.SelectedEnemyUIDOwner = activeHeroUID/);

@@ -31,7 +31,6 @@ async function initializeContinuousScenario(page) {
     const setup = await game.setupChainStrikeIIScenario();
     if (!setup?.ok) return setup;
     const g = game.globals;
-    g.SessionSkillsByHeroUID = {};
     g.PendingHeroHits = [];
     g.ChainStrikeVisuals = [];
     g.ArcanePulseVisuals = [];

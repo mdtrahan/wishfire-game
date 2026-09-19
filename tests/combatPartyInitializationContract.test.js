@@ -50,8 +50,6 @@ async function initialize(heroMembers, escortMember = null, withEnemy = false) {
   const context = {
     module: { exports: {} }, resetCombatSessionConditions, crypto:require('node:crypto').webcrypto,
     ...require('../web-runner/src/core/heroProgression.mjs'),
-    ...require('../web-runner/src/core/personalFlow.mjs'),
-    ...require('../web-runner/src/core/sessionLevelUpQueue.mjs'),
     ...require('../web-runner/src/core/routineEnemyScaling.mjs'),
     DEV_TOOL_EMPTY_SLOT: '', DEV_TOOL_RANDOM_ENEMY_SLOT: '__RANDOM__',
     runtimeDebugLogging: { startupDebugLog() {} },
@@ -118,55 +116,19 @@ for (let count = 1; count <= 6; count += 1) {
   });
 }
 
-test('fresh combat initialization creates one explicit neutral party opening entry', async () => {
-  const { state } = await initialize([member(0), member(1), member(2), member(3)]);
-  assert.deepEqual(JSON.parse(JSON.stringify(state.globals.SessionLevelUpQueue)), {
-    version: 1, status: 'active', paused: false, currentIndex: 0,
-    entries: [{
-      heroId: '__party_session__', heroUID: 0, earnedLevel: 0, earnedLevelIndex: 0,
-      source: 'opening_party', participantHeroIds: ['owned-0', 'owned-1', 'owned-2', 'owned-3'],
-    }],
-  });
-});
-
-test('production starting party maps canonical identities and awards Comrade only to Kaja on a real enemy basic hit', async () => {
+test('production starting party maps canonical identities', async () => {
   const { state } = await initialize(productionPartyMembers());
-  const commands = require('../web-runner/modules/heroCommands.mjs');
   const definitions = require('../web-runner/src/core/heroDefinitions.mjs');
   const mapping = state.entities.map((hero, index) => {
     const definition = definitions.heroDefinition(hero);
-    return [index, hero.uid, hero.name, definition.name, definition.role, definition.key, definition.flowMode];
+    return [index, hero.uid, hero.name, definition.name, definition.role, definition.key];
   });
   assert.deepEqual(JSON.parse(JSON.stringify(mapping)), [
-    [0, 1, 'Falie', 'Fara', 'Tank', 'Falie', 'Stoic'],
-    [1, 2, 'Huun', 'Hondo', 'DPS / Fighter', 'Huun', 'Warrior'],
-    [2, 3, 'Runa', 'Runa', 'Controller', 'Runa', 'Tactician'],
-    [3, 4, 'Kojonn', 'Kaja', 'Support / Guardian', 'Kojonn', 'Comrade'],
+    [0, 1, 'Falie', 'Fara', 'Tank', 'Falie'],
+    [1, 2, 'Huun', 'Hondo', 'DPS / Fighter', 'Huun'],
+    [2, 3, 'Runa', 'Runa', 'Controller', 'Runa'],
+    [3, 4, 'Kojonn', 'Kaja', 'Support / Guardian', 'Kojonn'],
   ]);
-  const [fara, hondo, , kaja] = state.entities;
-  hondo.flowMode = 'Comrade';
-  kaja.flowMode = 'Warrior';
-  const enemy = { uid: 19, kind: 'enemy', name: 'High Gobloc', hp: 50, maxHP: 50, stats: { ATK: 1 }, statuses: [] };
-  state.entities.push(enemy);
-  const ctx = { state, callFunction(name, ...args) {
-    if (name === 'CalculateDamage') return 2;
-    if (name === 'ApplyDamageToTarget') {
-      const target = state.entities.find(actor => Number(actor.uid) === Number(args[0]));
-      const applied = Math.min(Number(target.hp || 0), Number(args[1] || 0));
-      target.hp -= applied;
-      return applied;
-    }
-    if (name === 'GetEnemyRosterStability') return { stable: true };
-    if (name === 'SpawnDamageText' || name === 'UpdateHeroHPUI') return true;
-    return 0;
-  } };
-  assert.equal(commands.resolveIncomingNativeHit(ctx, enemy, fara, 2), true);
-  assert.equal(hondo.flow, 0);
-  assert.equal(kaja.flow, 10);
-  kaja.flow = 0;
-  assert.equal(commands.resolveIncomingNativeHit(ctx, enemy, kaja, 2), true);
-  assert.equal(hondo.flow, 0);
-  assert.equal(kaja.flow, 0);
 });
 
 test('sparse formation slots retain their indexes and exclude slots beyond six', async () => {

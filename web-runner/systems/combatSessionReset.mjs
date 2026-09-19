@@ -1,21 +1,13 @@
 // Called only when creating a battle. Resurrection resumes the existing instance.
 // A continuing adventure carries its chosen buffs into its next battle; terminal
 // callers use the default and clear them with the rest of the session state.
-export function resetCombatSessionConditions(globals, gameState, { preserveSessionLevelBuffs = false } = {}) {
-  const retainedSessionLevelBuffState = preserveSessionLevelBuffs
-    ? globals.SessionLevelBuffState
-    : { heroes: {} };
+export function resetCombatSessionConditions(globals, gameState) {
   for (const key of Object.keys(globals)) {
     if (/^(PartyBuff_|BuffTurns_|BuffExpire_|BuffRoll|BuffIconPop|BuffProg|PartyTempHPShield|PartyWardBarrier|PowerAmp)/.test(key)) delete globals[key];
   }
   Object.assign(globals, {
     AstralFlowAmpPoints: 0, AstralFlowAmpReady: 0,
-    FlowOrbs: [], FlowOrbSerial: 0, FlowThresholdSerial: 0, PendingFlowThresholds: [], NativeCommandSequence: null, SessionSkillsByHeroUID: {},
-    HeroTurnCardFanOpen: 0, HeroTurnCardFanHeroUID: 0, HeroTurnCardFanCards: [],
-    HeroTurnCardFanStateByHeroName: {}, HeroTurnCardFanSessionId: Number(globals.CombatSessionId || 0),
-    HeroTurnCardFanTurnSerial: 0, HeroTurnCardFanSelectedCardId: '', HeroTurnCardFanTargetUID: 0,
-    HeroTurnCardFanPendingCardIndex: -1, HeroTurnCardFanPendingCardId: '', HeroTurnCardFanPendingTarget: 0, HeroTurnCardFanPendingTargetKind: '', HeroTurnCardFanPendingExcludeSelf: 0, HeroTurnCardFanBlockedCardId: '',
-    SkillDraughtOpen: 0, SkillDraughtPendingOpen: 0, SkillDraughtCandidates: [], SkillDraughtHitZones: [],
+    FlowOrbs: [], FlowOrbSerial: 0, FlowThresholdSerial: 0, PendingFlowThresholds: [], NativeCommandSequence: null,
     AstralFlowKoOrbPresentationActive: 0, AstralFlowKoOrbPresentationPending: 0,
     AstralFlowKoOrbQueue: [], PartyRegens: [], TrackBuffs: [], PartyBuffSlots: [],
     PartyBuffUI: {}, EnemyDebuffs: {}, EnemyDebuffSlots: {}, EnemyDebuffTurns: {},
@@ -28,11 +20,10 @@ export function resetCombatSessionConditions(globals, gameState, { preserveSessi
     IsPlayerBusy: 0, ActionInProgress: 0, ActionActorUID: 0, ActionOwnerUID: 0,
     ActionLockUntil: 0, DeferAdvance: 0, AdvanceAfterAction: 0, GroupResolving: 0,
     TextAnimEndAt: 0,
-    SessionLevelUpQueue: { version: 1, status: 'complete', paused: false, currentIndex: 0, entries: [] },
-    SessionLevelBuffState: retainedSessionLevelBuffState || { heroes: {} }, SessionLevelUpOffersByQueueIndex: {}, SessionLevelUpSettlement: null, SessionLevelUpQueuedFlowThresholdTokens: [], SessionLevelUpQueueResumeRequested: 0,
+    SessionLevelUpSettlement: null,
     PendingSkillID: '', PendingActor: 0, PendingSuperGemAction: null,
     SelectedEnemyUID: 0, SelectedEnemyUIDOwner: 0, PendingManualTargetIntent: null,
-    DamageTexts: [], ChainStrikeVisuals: [], ArcanePulseVisuals: [], CombatImpactRequests: [], CombatImpactVisuals: [], SessionBuffCombatVisuals: [],
+    DamageTexts: [], ChainStrikeVisuals: [], ArcanePulseVisuals: [], CombatImpactRequests: [], CombatImpactVisuals: [],
     Gems: [], BoardFillActive: 0, TapIndex: 0,
   });
   Object.assign(gameState, {
@@ -42,21 +33,17 @@ export function resetCombatSessionConditions(globals, gameState, { preserveSessi
   });
   delete globals.HeroAction;
   delete globals.EnemyAction;
-  delete globals.SessionLevelBuffCombatSessionId;
   // QA readouts mirror live combat state and must never survive abandonment or
   // a fresh session. Encounter continuation deliberately retains session buffs.
   for (const key of [
-    'QaLastAstralFlowSpecial', 'LastAstralFlowSpecial', 'QaFixtureHeal', 'QaEnemyLowHpFixture', 'QaEnemyBasicHit',
-    'FlowOrbAudit', 'QaKajaFlowAudit', 'LastPartyChainStrike', 'LastAstralFlowChainStrikeII',
+    'QaLastAstralFlowSpecial', 'LastAstralFlowSpecial', 'QaFixtureHeal', 'QaEnemyLowHpFixture',
+    'FlowOrbAudit', 'LastPartyChainStrike', 'LastAstralFlowChainStrikeII',
     'PartyChainStrikeIIProcs', 'PartyChainStrikeIProcs', 'AstralFlowMagicFruitLast',
     'AstralFlowDestinyRegensByUID', 'LastCrimsonWard', 'QaDawnRollArmed',
     'LastPartyWardBarrierAbsorbed', 'LastPartyWardBarrierHitUID',
     'PartyWardBarrierFadeOutUntil', 'PartyTempHPShield',
     'QaScenarioPaused', 'QaScenarioResetCount', 'QaSelectedHeroUID',
   ]) delete globals[key];
-  if (!preserveSessionLevelBuffs) {
-    for (const key of ['DawnChorusAttempted', 'DawnChorusSucceeded', 'DawnChorusLastRoll', 'DawnChorusOwnedRank', 'QaPreferredAstralFlowSpecialId']) delete globals[key];
-  }
   delete gameState.partyHpTextRoll;
   delete gameState.healBlooms;
   gameState._lastPartyRegenTurnSerial = null;

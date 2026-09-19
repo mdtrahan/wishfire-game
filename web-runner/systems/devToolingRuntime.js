@@ -1,7 +1,6 @@
 import * as devToolingControls from './devToolingControls.js';
 import { renderCombatTurnQaReadoutHtml } from './combatTurnQaReadout.mjs';
 import { normalizeCombatOrientation } from '../../src/core/combatOrientation.mjs';
-import { clearSessionLevelBuffState } from '../../src/core/sessionLevelBuffOffers.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 
 const DEV_TOOL_HOTKEY_LABEL = 'Ctrl+Shift+P';
@@ -831,15 +830,10 @@ export function createDevToolingRuntime(deps = {}) {
   }
 
   function resetCombatRuntimeForFreshSession(reason = 'combat-refresh', options = {}) {
-    // Quit and fresh-session transitions discard the visible fan and any
-    // in-flight native command before the next frame can reopen stale state.
-    callFunctionWithContext(fnContext, 'CancelHeroTurnCardFan');
+    // Quit and fresh-session transitions discard any in-flight native command.
     state.globals.NativeCommandSequence = null;
-    if (options.clearSessionLevelBuffs) {
-      // Fresh quit/start uses the same session-effect reset as the initializer.
-      // Layout pause/resume skips this branch and preserves its exact snapshot.
+    if (options.clearSessionSettlement) {
       resetCombatSessionConditions(state.globals, gameState);
-      state.globals.SessionLevelBuffState = clearSessionLevelBuffState();
     }
     const refill = gameState.refillBounce || (gameState.refillBounce = {});
     refill.active = false;

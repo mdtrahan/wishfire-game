@@ -12,8 +12,6 @@ const loader = fs.readFileSync(path.join(root, 'web-runner/systems/runtimeVisual
 const renderer = fs.readFileSync(path.join(root, 'web-runner/systems/renderRuntime.js'), 'utf8');
 const qaHooks = fs.readFileSync(path.join(root, 'web-runner/systems/devBrowserTestHooks.js'), 'utf8');
 const heroCommands = fs.readFileSync(path.join(root, 'web-runner/modules/heroCommands.mjs'), 'utf8');
-const runtimeState = fs.readFileSync(path.join(root, 'web-runner/modules/state.js'), 'utf8');
-const sessionReset = fs.readFileSync(path.join(root, 'web-runner/systems/combatSessionReset.mjs'), 'utf8');
 
 test('attack packets declare mirrored illustrated presentation and magic heroes stay at rest', () => {
   for (const source of [runtimeBank, scriptsBank]) {
@@ -22,14 +20,13 @@ test('attack packets declare mirrored illustrated presentation and magic heroes 
     assert.match(source, /attackVfxKind: 'split'/);
     assert.match(source, /attackVfxPrimary: index === 0 \? 1 : 0/);
     assert.match(source, /attackVfxKind: combatAttackVfxKind\(actor\),[\s\S]{0,120}effectType: 'chain_bounce'/);
-    assert.match(source, /g\.PendingHeroHits\.push\(\{[\s\S]{0,420}actionName: 'Chain Strike II'/);
+    assert.match(source, /actionName: 'Chain Strike II'/);
     assert.match(source, /function HeroAttackAOE[\s\S]{0,2500}attackVfxKind: combatAttackVfxKind\(actor\)/);
     assert.match(source, /const profile = actor\?\.attackType === 'magic' \? 'ranged' : requestedProfile/);
   }
   assert.match(renderer, /queueCombatAttackImpactVfx\(state, hit, targetEntity, now\)/);
   assert.match(fs.readFileSync(path.join(root, 'web-runner/systems/combatAttackVfxPresentation.mjs'), 'utf8'), /CombatImpactRequests[\s\S]*queueCombatAttackImpactVfx\(state, request, target, now\)/);
   assert.match(renderer, /renderCombatAttackVfx\(ctx, \{ state, images, worldToCanvas, layoutScale \}\)/);
-  assert.match(qaHooks, /\['QA chosen basic',[\s\S]*'HeroAttackSingle', hero\.uid, target\.uid/);
   assert.match(heroCommands, /nativeBasicAttackVfx/);
   assert.match(heroCommands, /attackVfxTargetUIDs/);
   assert.match(renderer, /ResolveNativeCommandStep[\s\S]*queueCombatAttackImpactVfx/);
@@ -359,7 +356,7 @@ test('Arcane Pulse stages illustrated charge, travel, and matching contact', () 
   assert.ok(draws.filter(draw => draw.id === 'pulse-impact').length > impactsBeforeLingerCheck, 'contact remains readable for nearly half a second');
   for (const source of [runtimeBank, scriptsBank]) {
     assert.match(source, /const PARTY_ARCANE_PULSE_TRAVEL_SEC = 0\.34;/);
-    assert.match(source, /impactAt = startAt \+ PARTY_ARCANE_PULSE_TRAVEL_SEC/);
+    assert.match(source, /pulseAt = startAt \+ PARTY_ARCANE_PULSE_TRAVEL_SEC/);
   }
 });
 
@@ -406,7 +403,6 @@ test('Spectral Orb spins the drain orb counter-clockwise in flight, then uses th
   assert.deepEqual(draws.map(draw => draw.id), ['g01-blue']);
   assert.ok(draws[0].width <= 52);
   assert.deepEqual(scales, []);
-  assert.match(heroCommands, /skillId:'session_spectral_orb'[\s\S]{0,220}shape:'crescent_arc_blast'/);
   assert.match(qaHooks, /combatImpacts:[\s\S]{0,320}targetUID:/);
 });
 
@@ -434,48 +430,6 @@ test('Grow raises illustrated spectral hands from each affected hero', () => {
     layoutScale: 1,
   });
   assert.deepEqual(draws, ['grow']);
-});
-
-test('session Venom and Glass Reprisal emit their illustrated sequences', () => {
-  assert.match(heroCommands, /kind:'venom_sigil'/);
-  assert.match(heroCommands, /kind:'glass_reprisal'/);
-  assert.match(runtimeState, /SessionBuffCombatVisuals: \[\]/);
-  assert.match(sessionReset, /SessionBuffCombatVisuals: \[\]/);
-  const draws = [];
-  const ctx = {
-    save() {}, restore() {}, translate() {}, rotate() {},
-    drawImage(image, ...args) { draws.push({ id: image.id, args }); },
-    set globalAlpha(value) {},
-  };
-  const state = {
-    globals: {
-      time: 1.3,
-      EnemySize: 40,
-      PendingHeroHits: [],
-      HeroRestBasePosByUID: { 1: { x: 60, y: 180 } },
-      SessionBuffCombatVisuals: [
-        { kind: 'venom_sigil', sourceUID: 1, targetUID: 10, startAt: 1 },
-        { kind: 'glass_reprisal', sourceUID: 1, targetUID: 10, startAt: 1 },
-      ],
-    },
-    entities: [
-      { uid: 1, kind: 'hero', name: 'Fara', hp: 40 },
-      { uid: 10, kind: 'enemy', name: 'Gobloc', x: 250, y: 160, hp: 20 },
-    ],
-  };
-  renderCombatAttackVfx(ctx, {
-    state,
-    images: {
-      CombatVenomSigil: { id: 'venom', width: 160, height: 128 },
-      CombatGlassReprisal: { id: 'reprisal', width: 192, height: 96 },
-      CombatImpactBlue: { id: 'blue-impact', width: 96, height: 64 },
-    },
-    worldToCanvas: (x, y) => ({ x, y }),
-    layoutScale: 1,
-  });
-  assert.deepEqual(new Set(draws.map(draw => draw.id)), new Set(['venom', 'reprisal', 'blue-impact']));
-  const venom = draws.find(draw => draw.id === 'venom');
-  assert.ok(Math.abs(venom.args[5] + venom.args[7] - 180) < 1e-9, 'Venom reveals upward from the enemy feet');
 });
 
 test('enemy damage wiring queues a typed hero impact after the shipping skill call', () => {

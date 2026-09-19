@@ -290,10 +290,10 @@ async function captureMapAndCombat(page, viewport, artifactDir) {
   await page.screenshot({path:path.join(artifactDir,`${viewport.name}-01-map.png`)});
   const canvasBox = await page.locator('#view').boundingBox();
   await page.mouse.click(canvasBox.x + canvasBox.width * 184.5/360, canvasBox.y + canvasBox.height * 427/640);
-  await page.locator('#hero-commands').waitFor();
-  const combat = await page.locator('#hero-commands').evaluate(el => ({
-    label: el.getAttribute('aria-label'),
-    heroCount: el.querySelectorAll('button').length,
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text())?.flags?.layoutId === 'combat');
+  const combat = await page.evaluate(() => ({
+    heroCount: window.__codexGame.state.entities.filter(actor => actor?.kind === 'hero').length,
+    heroCardHostPresent: !!document.getElementById('hero-commands'),
   }));
   await page.screenshot({path:path.join(artifactDir,`${viewport.name}-02-combat.png`)});
 
@@ -347,9 +347,9 @@ async function captureMapAndCombat(page, viewport, artifactDir) {
       ),
       invariant(
         'combat-entry-landmark',
-        combat.label === 'Party status' && combat.heroCount > 0,
+        combat.heroCount > 0 && !combat.heroCardHostPresent,
         combat,
-        { label: 'Party status', heroCountAtLeast: 1 },
+        { heroCountAtLeast: 1, heroCardHostPresent: false },
       ),
     ],
   };
@@ -481,7 +481,6 @@ async function captureCombat(page, viewport, artifactDir) {
     globals.ActionInProgress = 0;
     globals.PendingSkillID = '';
     globals.PendingActor = 0;
-    game.callFunction('CancelHeroTurnCardFan');
     game.stepFrames(1);
   });
   await resetTrace(page);
@@ -497,64 +496,20 @@ async function captureCombat(page, viewport, artifactDir) {
     && /rgba\(240,\s*240,\s*240,\s*0\.92\)/.test(entry.fillStyle)
   ));
   await page.screenshot({ path: path.join(artifactDir, `${viewport.name}-05-hero-selector.png`) });
-  const commands = await page.evaluate(() => {
-    const host = document.getElementById('hero-commands');
-    const rect = host.getBoundingClientRect(), canvas = document.getElementById('view').getBoundingClientRect();
-    const navigation = document.getElementById('game-meta-nav')?.getBoundingClientRect();
-    const cards = [...host.querySelectorAll('article')].map(card => ({
-      uid: Number(card.dataset.uid || 0), current: card.dataset.current === 'true', box: card.getBoundingClientRect().toJSON(),
-      portrait: card.querySelector('.portrait')?.getBoundingClientRect().toJSON(),
-      hpLabel: card.querySelector('.hp .readout-label')?.textContent,
-      hpValue: card.querySelector('[data-hp-text]')?.textContent,
-      hpBar: card.querySelector('[data-hp-bar]')?.getBoundingClientRect().toJSON(),
-      afLabel: card.querySelector('.af .readout-label')?.textContent,
-      afValue: card.querySelector('[data-af-text]')?.textContent,
-      afBar: card.querySelector('[data-af-bar]')?.getBoundingClientRect().toJSON(),
-      name: card.querySelector('.hero-name strong')?.getBoundingClientRect().toJSON(),
-      healthRow: card.querySelector('.readout.hp')?.getBoundingClientRect().toJSON(),
-      afRow: card.querySelector('.readout.af')?.getBoundingClientRect().toJSON(),
-      buttonHeight: card.querySelector('[data-open]')?.getBoundingClientRect().height,
-      overflow: card.scrollWidth > card.clientWidth,
-    }));
-    return { box: rect.toJSON(), canvas: canvas.toJSON(), navigation: navigation?.toJSON(), cards,
-      overflow: host.scrollWidth > host.clientWidth, visible: !host.hidden,
-      nativeButtons: host.querySelectorAll('button').length,
-      legacySkills: host.querySelectorAll('[data-skill], .editor, .queue').length,
-      boardMembers: window.__codexGame.globals.Gems?.length || 0,
-    };
-  });
-  const scale = layoutScale;
+  const combatUi = await page.evaluate(() => ({
+    heroCount: window.__codexGame.state.entities.filter(actor => actor?.kind === 'hero').length,
+    enemyCount: window.__codexGame.state.entities.filter(actor => actor?.kind === 'enemy' && Number(actor.hp || 0) > 0).length,
+    heroCardHostPresent: !!document.getElementById('hero-commands'),
+    afReadoutPresent: !!document.querySelector('.readout.af, [data-af-bar], [data-af-text]'),
+  }));
+  const actorHealthBars = heroTrace.filter(entry => (
+    entry.kind === 'fillRect' && entry.fillStyle.toLowerCase() === '#30343b'
+  ));
   const commandInvariants = [
-    invariant('hero-command-containment', commands.visible && !commands.overflow && commands.cards.every(card =>
-      card.hpBar.left >= card.box.left && card.hpBar.right <= card.box.right
-      && card.afBar.left >= card.box.left && card.afBar.right <= card.box.right)
-      && commands.box.left >= commands.canvas.left && commands.box.right <= commands.canvas.right + 1
-      && commands.box.bottom <= commands.canvas.bottom + 1, commands, { contained: true }),
-    invariant('hero-command-column-order', commands.cards.length === 4 && commands.cards.every(card => card.uid > 0)
-      && commands.cards.every((card, index) => index === 0 || card.box.left > commands.cards[index - 1].box.left)
-      && commands.cards.every(card => within(card.box.top, commands.cards[0].box.top, 1)), commands.cards, { loaded: 4, fill: 'row' }),
-    invariant('hero-command-scale', commands.cards.filter(card => card.uid).every(card =>
-      within(card.box.height / scale, 104, .5) && within(card.buttonHeight / scale, 104, .5)
-      && within(card.portrait.width / scale, 38.5, .5)), commands.cards, { card: 104, button: 104, portrait: 38.5 }),
-    invariant('hero-command-two-row-layout', commands.cards.filter(card => card.uid).every(card =>
-      card.healthRow && card.afRow && card.healthRow.top >= card.portrait.top
-      && card.afRow.top >= card.healthRow.top && card.name.top >= card.healthRow.bottom),
-      commands.cards, { readouts: 'HP and AF above role/name footer' }),
-    invariant('hero-command-hp-af-readouts', commands.cards.filter(card => card.uid).every(card =>
-      card.hpLabel === 'HP' && /^\d+$/.test(card.hpValue || '') && !!card.hpBar
-      && card.afLabel === 'AF' && /^\d+$/.test(card.afValue || '') && !!card.afBar),
-      commands.cards, { hp: 'label/value/bar', af: 'label/value/bar' }),
-    invariant('hero-command-native-input', commands.nativeButtons === commands.cards.filter(card => card.uid).length
-      && commands.legacySkills === 0 && commands.boardMembers === 0,
-      { buttons: commands.nativeButtons, legacySkills: commands.legacySkills, gems: commands.boardMembers }, { statusButtons: commands.cards.filter(card => card.uid).length, legacySkills: 0, gems: 0 }),
-    invariant('hero-command-navigation-clearance', !!commands.navigation
-      && commands.navigation.top >= Math.max(...commands.cards.filter(card => card.uid).map(card => card.box.bottom)) - 1
-      && commands.navigation.bottom <= commands.canvas.bottom + 1,
-      { navigation: commands.navigation, cards: commands.cards.filter(card => card.uid).map(card => card.box), canvas: commands.canvas },
-      { navigationBelowHeroStatus: true, contained: true }),
+    invariant('hero-combat-card-ui-absent', !combatUi.heroCardHostPresent, combatUi, { heroCardHostPresent: false }),
+    invariant('actor-health-bars-present', actorHealthBars.length >= combatUi.heroCount + combatUi.enemyCount,
+      { count: actorHealthBars.length, ...combatUi }, { minimum: combatUi.heroCount + combatUi.enemyCount }),
   ];
-  commandInvariants.push(invariant('hero-editor-containment', commands.legacySkills === 0,
-    { legacySkills: commands.legacySkills }, { editor: false, queuedSkills: false }));
 
   await resetTrace(page);
   const targeting = await page.evaluate(() => {
@@ -653,79 +608,9 @@ async function captureCombat(page, viewport, artifactDir) {
     invariant('gem-board-backdrop-absent', !heroTrace.some(entry => entry.kind==='fillRect'
       && within(entry.w / layoutScale, 300, .5) && within(entry.h / layoutScale, 210, .5)), null, { count: 0 }),
     invariant('shared-astral-bar-absent', !ampBar, ampBar, { count: 0 }),
-    invariant('personal-af-meters', commands.cards.filter(card => card.uid).every(card => card.afLabel === 'AF' && /^\d+$/.test(card.afValue || '') && card.afBar), commands.cards, { persistentAFReadout: true, perHero: true }),
-    invariant('party-card-draw-controls-absent', await page.locator('[data-devtool-force-skill-draught], [data-devtool-clear-session-skills], [data-devtool-skill-id]').count() === 0, null, { count: 0 }),
+    invariant('personal-af-ui-absent', !combatUi.afReadoutPresent, combatUi, { afUi: false }),
     invariant('legacy-backdrop-absent', legacyPanels.length === 0, { forbiddenPanelDraws: legacyPanels }, { forbiddenPanelDraws: 0 }),
   ];
-}
-
-async function captureCommandTurns(page, viewport, artifactDir) {
-  const arrange = async (count, flow = 0) => page.evaluate(({count, flow}) => {
-    const game = window.__codexGame;
-    const globals = game.globals;
-    const seed = game.state.entities.find(actor => actor.kind === 'hero');
-    const enemies = game.state.entities.filter(actor => actor.kind === 'enemy');
-    const heroes = Array.from({length: count}, (_, slot) => ({
-      ...seed, name: 'Falie', baseHeroName: 'Falie', uid: 100 + slot, heroInstanceKey: `qa:command:${slot}`, heroDisplaySlot: slot,
-      stats: {...seed.stats}, hp: 5000, maxHP: 5000, flow: slot === count - 1 ? flow : 0,
-      flowMode: 'Stoic', currentLevel: 50, statuses: [],
-    }));
-    game.state.entities = [...heroes, ...enemies];
-    Object.assign(globals, {
-      GamePhase: 'RUNTIME', NativeBattleEnded: false, BattleStartActive: 0, TurnPhase: 0,
-      CombatSessionId: Number(globals.CombatSessionId || 0) + 1, CurrentHeroUID: heroes.at(-1).uid,
-      CurrentTurnIndex: 0, IsPlayerBusy: 0, CanPickGems: 1, ActionInProgress: 0,
-      PendingHeroHits: [], PendingDeaths: {}, FlowOrbs: [], AstralFlowKoOrbQueue: [],
-      CombatImpactRequests: [], CombatImpactVisuals: [], ChainStrikeVisuals: [], ArcanePulseVisuals: [],
-      AstralFlowKoOrbPresentationState: null, AstralFlowKoOrbPresentationActive: 0, AstralFlowKoOrbPresentationPending: 0,
-      HeroAction: null, EnemyAction: null, DamageTexts: [], TextAnimating: 0, TextAnimEndAt: 0, ActionLockUntil: 0,
-      HeroTurnCardFanOpen: 0, HeroTurnCardFanCards: [],
-      SessionLevelBuffState: {heroes: {}}, SessionLevelUpOffersByQueueIndex: {},
-      SessionLevelUpOfferGeneration: Number(globals.SessionLevelUpOfferGeneration || 0) + 1, SessionLevelUpSettlement: null,
-      SessionOfferInputToken: '', SessionOfferResolution: '', SessionLevelUpQueueResumeRequested: 0, PendingFlowThresholds: [],
-      SessionLevelUpQueue: {version: 1, status: 'active', paused: false, currentIndex: 0, entries: [{
-        heroId: '__party_session__', heroUID: 0, earnedLevel: 0, earnedLevelIndex: 0,
-        source: 'opening_party', participantHeroIds: heroes.map(hero => hero.heroInstanceKey),
-      }]},
-      TurnOrderArray: [{uid: heroes.at(-1).uid, type: 0}, ...enemies.map(enemy => ({uid: enemy.uid, type: 1}))],
-    });
-    game.callFunction('InitPartyHPFromHeroes');
-    game.stepFrames(2);
-  }, {count, flow});
-  const readStatus = () => page.evaluate(() => {
-    const host = document.getElementById('hero-commands');
-    const fan = document.getElementById('hero-turn-card-fan');
-    const cards = [...host.querySelectorAll('article')].map(card => ({
-      uid: Number(card.dataset.uid || 0), current: card.dataset.current === 'true',
-      hpLabel: card.querySelector('.hp .readout-label')?.textContent,
-      hpValue: card.querySelector('[data-hp-text]')?.textContent,
-      hpBar: !!card.querySelector('[data-hp-bar]'),
-      afLabel: card.querySelector('.af .readout-label')?.textContent,
-      afValue: card.querySelector('[data-af-text]')?.textContent,
-      afBar: !!card.querySelector('[data-af-bar]'),
-      box: card.getBoundingClientRect().toJSON(),
-    }));
-    return { cards, fanOpen: fan?.dataset.open === 'true', fanCards: fan?.querySelectorAll('.fan-card').length || 0 };
-  });
-  const commandInvariants = [];
-  for (const count of [1, 4, 6]) {
-    await arrange(count, count === 4 ? 100 : 0);
-    await page.waitForFunction(expected => document.querySelectorAll('#hero-commands article').length === expected, count);
-    const status = await readStatus();
-    commandInvariants.push(invariant(`hero-command-group-${count}`, status.cards.length === count
-      && status.cards.every(card => card.uid > 0 && card.hpLabel === 'HP' && /^\d+$/.test(card.hpValue || '') && card.hpBar
-        && card.afLabel === 'AF' && /^\d+$/.test(card.afValue || '') && card.afBar),
-      status, { count, hp: 'label/value/bar', af: 'label/value/bar' }));
-    if (count === 1 || count === 6) await page.screenshot({path: path.join(artifactDir, `${viewport.name}-09-hero-group-${count}.png`)});
-  }
-  const finalStatus = await readStatus();
-  commandInvariants.push(
-    invariant('hero-command-active-highlight', finalStatus.cards.some(card => card.current), finalStatus, { activeHero: true }),
-    invariant('hero-command-personal-af', finalStatus.cards.every(card => card.afLabel === 'AF' && card.afBar), finalStatus, { persistentAF: true }),
-    invariant('hero-command-paid-sequence', finalStatus.fanOpen && finalStatus.fanCards === 3, finalStatus, { openingSessionOffer: true }),
-    invariant('hero-card-fan-reopen-same-draw', finalStatus.fanOpen && finalStatus.fanCards === 3, finalStatus, { cachedOpeningOfferVisible: true }),
-  );
-  return commandInvariants;
 }
 
 async function runViewport(browser, baseUrl, viewport, artifactDir, { injectStageDrift = false } = {}) {
@@ -754,7 +639,7 @@ async function runViewport(browser, baseUrl, viewport, artifactDir, { injectStag
     const presentation = await captureMapAndCombat(page, viewport, artifactDir);
     const panelInvariants = await captureDevPanels(page, viewport, artifactDir, presentation.metrics);
     const combatInvariants = await captureCombat(page, viewport, artifactDir);
-    const commandTurnInvariants = injectStageDrift ? [] : await captureCommandTurns(page, viewport, artifactDir);
+    const commandTurnInvariants = [];
     const results = [
       ...presentation.invariants,
       ...panelInvariants,

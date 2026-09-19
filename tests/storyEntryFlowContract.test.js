@@ -60,12 +60,12 @@ test('loading blocks entry and developer shortcuts', async () => {
  assert.equal(s.flow.skip(),false);
  assert.equal(s.flow.startCard(0),false);
 });
-test('quest QA direct combat shortcut skips story presentation and uses the existing combat entry', async () => {
+test('retired quest QA connector leaves the underlying test entry available', async () => {
  const s = await setup();
  const hooks = fs.readFileSync(path.join(root, 'web-runner/systems/devBrowserTestHooks.js'), 'utf8');
  assert.match(hooks, /get\('questQA'\) === '1'/);
- assert.match(hooks, /'QA start combat'/);
- assert.match(hooks, /storyEntry\.startCombatForQA\(\)/);
+ assert.doesNotMatch(hooks, /'QA start combat'/);
+ assert.doesNotMatch(hooks, /storyEntry\.startCombatForQA\(\)/);
  assert.equal(typeof s.flow.startCombatForQA, 'function');
  const energy = s.gameState.storyEntry.progress.energy;
  assert.equal(await s.flow.startCombatForQA(), true);

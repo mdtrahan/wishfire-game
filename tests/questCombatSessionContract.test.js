@@ -21,7 +21,7 @@ test('resurrection retains enemy progress, buffs and skills while reviving every
 
 test('endless sessions never surface a finite-victory completion path', async () => {
  const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
- const state={entities:[],globals:{QuestFiniteEncounter:1,NativeBattleEnded:true,ProgressionBattle:{id:'victory-auto',outcome:'victory'},SessionLevelUpQueue:{status:'complete'},SessionLevelUpSettlement:null,FlowOrbs:[]}};
+ const state={entities:[],globals:{QuestFiniteEncounter:1,NativeBattleEnded:true,ProgressionBattle:{id:'victory-auto',outcome:'victory'},SessionLevelUpSettlement:null,FlowOrbs:[]}};
  const session=createQuestCombatSession({state,gameState:{},call(){},sync(){}});
  session.prepare();
  assert.equal(state.globals.QuestFiniteEncounter,0);
@@ -29,9 +29,6 @@ test('endless sessions never surface a finite-victory completion path', async ()
  state.globals.SessionLevelUpSettlement={phase:'active'};
  assert.equal(session.isCleared(),false, 'EXP rows do not create a finite completion');
  state.globals.SessionLevelUpSettlement=null;
- state.globals.SessionLevelUpQueue={status:'active'};
- assert.equal(session.isCleared(),false, 'queued hero choices stay sequential');
- state.globals.SessionLevelUpQueue={status:'complete'};
  state.globals.FlowOrbs=[{}];
  assert.equal(session.isCleared(),false, 'remaining victory presentation clears before auto-advance');
  const src=require('node:fs').readFileSync(require('node:path').join(__dirname,'../web-runner/systems/questCombatSession.mjs'),'utf8');

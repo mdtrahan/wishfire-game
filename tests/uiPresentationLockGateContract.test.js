@@ -29,31 +29,21 @@ test('UI lock command covers the approved DOM and Canvas presentation seams', ()
     'hero-selector-scale',
     'target-selector-scale',
     'global-attack-absent',
-    'hero-command-containment',
-    'hero-command-column-order',
-    'hero-command-scale',
-    'hero-command-two-row-layout',
-    'hero-command-hp-af-readouts',
-    'hero-command-active-highlight',
+    'hero-combat-card-ui-absent',
+    'actor-health-bars-present',
     'gem-board-backdrop-absent',
-    'hero-command-native-input',
-    'hero-editor-containment',
     'damage-text-scale',
     'damage-text-density',
     'pooled-health-bar-absent',
     'shared-astral-bar-absent',
-    'personal-af-meters',
-    'party-card-draw-controls-absent',
-    'hero-command-personal-af',
-    'hero-command-paid-sequence',
+    'personal-af-ui-absent',
     'legacy-backdrop-absent',
   ]) {
     assert.match(gate, new RegExp(requiredEvidence), `missing ${requiredEvidence} invariant`);
   }
-  assert.match(gate, /\.readout\.hp/);
-  assert.match(gate, /\.readout\.af/);
-  assert.match(gate, /data-hp-bar/);
-  assert.match(gate, /data-af-bar/);
+  assert.match(gate, /heroCardHostPresent/);
+  assert.match(gate, /actorHealthBars/);
+  assert.match(gate, /fillStyle\.toLowerCase\(\) === '#30343b'/);
 
   assert.match(gate, /\{ name: 'compact', width: 216, height: 384, dpr: 1 \}/);
   assert.match(gate, /\{ name: 'reference', width: 360, height: 640, dpr: 1 \}/);
@@ -78,11 +68,9 @@ test('pre-commit routes staged UI-owner changes through the full UI lock', () =>
   assert.match(hook, /git diff --cached --name-only --diff-filter=ACMRD/);
   assert.match(hook, /npm run test:ui-lock/);
   assert.match(hook, /web-runner\/systems\/renderRuntime\.js/);
-  assert.ok(hook.includes('web-runner/systems/heroCommandUI\\.mjs'));
   assert.match(hook, /web-runner\/systems\/devToolingRuntime\.js/);
   assert.match(hook, /web-runner\/systems\/combatPresentationScale\.mjs/);
   assert.match(hook, /web-runner\/systems\/appShellViewport\.js/);
-  assert.match(hook, /web-runner\/systems\/renderSkillDraughtOverlay\.js/);
   assert.match(hook, /web-runner\/app\.js/);
   assert.match(hook, /web-runner\/systems\/surfaceRenderRouter\.js/);
   assert.match(hook, /web-runner\/systems\/pointerRoutingShell\.js/);

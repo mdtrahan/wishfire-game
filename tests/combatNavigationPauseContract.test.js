@@ -139,9 +139,6 @@ test('shared navigation and quest modal use the existing explicit control seams'
   assert.match(app, /if \(gameState\.storyEntry\.combatPaused\) \{\s*(?:gameState\.publishQaPauseSnapshot\?\.\('paused'\);\s*)?if \(layoutState\.getActiveLayoutId\(\) !== 'combat'\) drawFrame\(\);\s*requestAnimationFrame\(tick\);\s*return;/,
     'the animation tick must freeze simulation while a combat session is paused');
   assert.match(app, /if \(layoutState\.getActiveLayoutId\(\) !== 'combat'\) \{\s*drawFrame\(\);\s*requestAnimationFrame\(tick\);/);
-  assert.match(app, /const activeFanState = levelUpFanState;/,
-    'the established fan seam must present the level-up choice ahead of a legacy fan');
-  assert.match(app, /open: activeLayoutId === 'combat' && !!activeFanState\.open/);
   const pointerRouter = read('web-runner/systems/pointerRoutingShell.js');
   assert.match(pointerRouter, /typeof entry\?\.openPausedBattleGate === 'function'/,
     'secondary close buttons must delegate to the shared paused-battle route');
@@ -150,8 +147,6 @@ test('shared navigation and quest modal use the existing explicit control seams'
   assert.match(nav, /host\.style\.zIndex = layoutState\.getActiveLayoutId\(\) === 'heroLayout' \? '32' : '19'/,
     'shared navigation must rise above the full-screen Hero details surface only on Hero');
   const devRuntime = read('web-runner/systems/devToolingRuntime.js');
-  assert.match(devRuntime, /callFunctionWithContext\(fnContext, 'CancelHeroTurnCardFan'\)/,
-    'quitting a paused battle clears the visible fan before fresh-session reset');
   assert.match(devRuntime, /state\.globals\.NativeCommandSequence = null/,
     'quitting a paused battle discards an in-flight native sequence');
 });

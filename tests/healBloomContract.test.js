@@ -91,15 +91,6 @@ test('app heal path plays a ten-frame green swirl with Faze-style front motes', 
   assert.match(renderSrc, /renderHealBlooms\('back'\);[\s\S]*\/\/ Render hero portraits/);
   assert.match(renderSrc, /renderHealBlooms\('front'\);[\s\S]*\/\/ Render hero damage\/heal text/);
   assert.match(renderSrc, /HeroRestFeetPosByUID/);
-  const hooksSrc = fs.readFileSync(path.join(__dirname, '..', 'web-runner', 'systems', 'devBrowserTestHooks.js'), 'utf8');
-  assert.match(hooksSrc, /setupHealBloomScenario/);
-  assert.match(hooksSrc, /replayHealBloomScenario/);
-  assert.match(hooksSrc, /captureHealBloomFrames/);
-  assert.match(hooksSrc, /canvas\.toDataURL\('image\/webp', 0\.8\)/);
-  assert.match(hooksSrc, /window\.requestAnimationFrame\(onFrame\)/);
-  assert.match(hooksSrc, /sawActive && activeCount === 0/);
-  assert.match(hooksSrc, /Live QA heal replay: every browser frame/);
-  assert.match(hooksSrc, /scenario === 'heal-bloom'/);
 });
 
 test('party regen uses a persistent hero shimmer instead of a tint overlay', () => {

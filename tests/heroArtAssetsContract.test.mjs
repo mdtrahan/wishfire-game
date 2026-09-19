@@ -9,12 +9,11 @@ import { heroArtAsset, heroArtPath, resolveHeroArtSourceRect } from '../web-runn
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf8');
 
-test('one canonical hero-art mapping resolves V9 strip, battlefield, and action-card names', () => {
+test('one canonical hero-art mapping resolves strip and battlefield names', () => {
   for (const [name, asset] of Object.entries({ Fara: 'Fara', Hondo: 'Hondo', Runa: 'Runa', Kaja: 'Kaja', Falie: 'Fara', Huun: 'Hondo', Kojonn: 'Kaja' })) {
     assert.equal(heroArtAsset(name)?.key, asset);
     assert.equal(heroArtPath(name), `images/${asset}.png`);
     assert.ok(heroArtAsset(name)?.combat);
-    assert.ok(heroArtAsset(name)?.card);
     assert.ok(heroArtAsset(name)?.strip);
   }
 });
@@ -36,14 +35,4 @@ test('battlefield consumes each complete canonical hero sprite while enemy sprit
   assert.deepEqual(resolveHeroArtSourceRect({ width: 100, height: 200 }, heroArtAsset('Fara').combat), {
     sourceX: 0, sourceY: 0, sourceWidth: 100, sourceHeight: 200,
   });
-});
-
-test('action cards resolve the same full asset and apply its card crop', () => {
-  const source = read('web-runner/systems/heroTurnCardFanUI.mjs');
-  assert.match(source, /import \{ heroArtCrop, heroArtPath \} from '\.\.\/state\/heroArtAssets\.mjs';/);
-  assert.match(source, /import \{ runtimeAssetUrl \} from '\.\/runtimeAssetUrl\.mjs';/);
-  assert.match(source, /runtimeAssetUrl\(heroArtPath\(signatureHero\)\)/);
-  assert.match(source, /heroArtCrop\(signatureHero, 'card'\)/);
-  assert.match(source, /style\.objectPosition = portraitCrop\.position/);
-  assert.match(source, /style\.transform = `scale\(\$\{portraitCrop\.scale\}\)`/);
 });

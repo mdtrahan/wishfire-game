@@ -1,8 +1,7 @@
 import {attachHeroProgress, createHeroProgressStore} from '../src/core/heroProgression.mjs';
-import { initializePersonalFlow } from '../src/core/personalFlow.mjs';
-import { createSessionOpeningBuffQueue } from '../src/core/sessionLevelUpQueue.mjs';
 import { computeCombatPower as canonicalCombatPower } from '../src/core/combatPower.mjs';
 import { scaleRoutineEnemy } from '../src/core/routineEnemyScaling.mjs';
+import { buildContinuousCombatSpawnPlan } from '../src/core/continuousCombatStage.mjs';
 import { resetCombatSessionConditions } from './combatSessionReset.mjs';
 import {
   DEV_TOOL_EMPTY_SLOT,
@@ -270,12 +269,13 @@ export function createCombatSessionInitializer({
   buildConfiguredCombatPartyMembers,
   getConfiguredEnemySlots,
   syncFromGlobals,
+  beforeInit = null,
+  afterInit = null,
 }) {
   return function initCombatSessionEntities(enemyRows) {
+    beforeInit?.();
     assertCombatLayoutDev('initEntities');
-    const continuingAdventure = state.globals.ProgressionBattle?.outcome === 'victory'
-      && Object.keys(state.globals.SessionLevelBuffState?.heroes || {}).length > 0;
-    resetCombatSessionConditions(state.globals, gameState, { preserveSessionLevelBuffs: continuingAdventure });
+    resetCombatSessionConditions(state.globals, gameState);
     state.entities = [];
     const routineLevel=Number(state.globals.PartyLevel||1);
     state.globals.EnemyData = (enemyRows || []).map((rawRow) => {
@@ -293,7 +293,6 @@ export function createCombatSessionInitializer({
     const mappedEnemyData = state.globals.EnemyData;
     state.globals.DevToolEnemyCatalog = [...new Set(state.globals.EnemyData.map((row) => String(row?.name || row?.EnemyName || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
     state.globals.CombatSessionId = Number(state.globals.CombatSessionId || 0) + 1;
-    callFunctionWithContext(fnContext, 'ClearSessionSkillDraught');
     resetBootstrapRngSession();
 
     const partyHP = [];
@@ -311,7 +310,7 @@ export function createCombatSessionInitializer({
       }
       let maxHP = Number(v.maxHP);
       if (!Number.isFinite(maxHP) || maxHP <= 0) maxHP = 1;
-      let hp = continuingAdventure ? Number(v.hp) : maxHP;
+      let hp = maxHP;
       if (!Number.isFinite(hp) || hp < 0) hp = maxHP;
       if (hp > maxHP) hp = maxHP;
       partyHP[i] = hp;
@@ -344,13 +343,6 @@ export function createCombatSessionInitializer({
     const heroes = state.entities.filter(actor => actor.kind === 'hero');
     state.globals.HeroProgress ||= createHeroProgressStore();
     for (const hero of heroes) attachHeroProgress(hero, state.globals.HeroProgress);
-    initializePersonalFlow(heroes);
-    if (!continuingAdventure) {
-      state.globals.SessionLevelBuffState = { heroes: {} };
-      state.globals.SessionLevelUpOffersByQueueIndex = {};
-      state.globals.SessionLevelUpOfferGeneration = Number(state.globals.SessionLevelUpOfferGeneration || 0) + 1;
-      state.globals.SessionLevelUpQueue = createSessionOpeningBuffQueue({ heroes });
-    }
     state.globals.NativeBattleEnded = false;
     state.globals.ProgressionBattle = {
       id: globalThis.crypto.randomUUID(),
@@ -429,7 +421,21 @@ export function createCombatSessionInitializer({
       const hasManualEnemyLayout = configuredEnemySlots.some((value) => String(value || '').trim() !== DEV_TOOL_RANDOM_ENEMY_SLOT);
       let encounter = null;
       let spawnPlan = [];
-      if (hasManualEnemyLayout) {
+      const authoredContinuousPlan = Number(state.globals.ContinuousCombatStageLoop || 0) === 1
+        ? buildContinuousCombatSpawnPlan(mappedEnemyData, state.globals.ContinuousCombatStage)
+        : [];
+      if (authoredContinuousPlan.length) {
+        spawnPlan = authoredContinuousPlan;
+        encounter = {
+          selected: spawnPlan.map((entry) => entry.row),
+          finalCP: spawnPlan.reduce((sum, entry) => sum + Number(entry?.row?.CombatPower || entry?.row?.combatPower || 0), 0),
+          targetCP: Number(encounterRequest.targetCP || 0),
+          deltaCP: 0,
+          slotsUsed: spawnPlan.length,
+          underfilled: false,
+          reasonCodes: ['continuous_stage_authored'],
+        };
+      } else if (hasManualEnemyLayout) {
         const randomSlotIndexes = [];
         for (let slotIndex = 0; slotIndex < configuredEnemySlots.length; slotIndex += 1) {
           const slotValue = String(configuredEnemySlots[slotIndex] || '').trim();
@@ -512,5 +518,6 @@ export function createCombatSessionInitializer({
       gameState.enemyHP = [...state.globals.EnemyHPByIndex];
       gameState.enemyMaxHP = [...state.globals.EnemyMaxHPByIndex];
     }
+    afterInit?.();
   };
 }

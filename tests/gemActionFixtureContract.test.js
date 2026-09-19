@@ -44,7 +44,7 @@ function assertDecision(decision, row, prefix = '') {
   assert.equal(decision.blueWalletAfter, toNumber(row, 'expectedBlueWalletAfter'), `${prefix}${row.name} wallet`);
   assert.equal(decision.blueAmpPointsAfter, toNumber(row, 'expectedBlueAmpPointsAfter'), `${prefix}${row.name} amp`);
   assert.equal(decision.blueAmpReadyAfter, toNumber(row, 'expectedBlueAmpReadyAfter'), `${prefix}${row.name} ready`);
-  assert.equal(decision.blueOpenDraught, toNumber(row, 'expectedBlueOpenDraught'), `${prefix}${row.name} draught`);
+  assert.equal(decision.blueAmpReadyTriggered, toNumber(row, 'expectedBlueAmpReadyTriggered'), `${prefix}${row.name} readiness`);
   assert.equal(decision.actionLockUntil, toNumber(row, 'expectedActionLockUntil'), `${prefix}${row.name} lock`);
   assert.equal(decision.purpleEnergyAmount, toNumber(row, 'expectedPurpleEnergyAmount'), `${prefix}${row.name} purple`);
 }
@@ -70,13 +70,13 @@ test('Rust simulation core declares gem action shadow exports', () => {
   assert.match(rustSrc, /extern "C" fn gem_action_purple_energy_amount_shadow/);
 });
 
-test('browser startup gem-action smoke check matches current blue draught handoff fixture', () => {
+test('browser startup gem-action smoke check matches current blue readiness handoff fixture', () => {
   const rows = parseCsvRows(fs.readFileSync(fixturePath, 'utf8'));
-  const draughtRow = rows.find(row => row.name === 'blue_opens_draught');
-  assert.ok(draughtRow, 'blue_opens_draught fixture exists');
+  const readinessRow = rows.find(row => row.name === 'blue_reaches_amp_ready');
+  assert.ok(readinessRow, 'blue_reaches_amp_ready fixture exists');
 
   const shadowSrc = fs.readFileSync(simulationCoreShadowPath, 'utf8');
-  assert.match(shadowSrc, new RegExp(`jsActionLockUntil:\\s*${draughtRow.expectedActionLockUntil.replace('.', '\\.')}`));
+  assert.match(shadowSrc, new RegExp(`jsActionLockUntil:\\s*${readinessRow.expectedActionLockUntil.replace('.', '\\.')}`));
   assert.doesNotMatch(shadowSrc, /jsActionLockUntil:\s*14\b/);
 });
 
@@ -97,14 +97,14 @@ test('static simulation core wasm matches gem action fixtures', async () => {
   assert.equal(typeof exports.gem_action_blue_wallet_after_shadow, 'function');
   assert.equal(typeof exports.gem_action_blue_amp_points_after_shadow, 'function');
   assert.equal(typeof exports.gem_action_blue_amp_ready_after_shadow, 'function');
-  assert.equal(typeof exports.gem_action_blue_open_draught_shadow, 'function');
+  assert.equal(typeof exports.gem_action_blue_amp_ready_triggered_shadow, 'function');
   assert.equal(typeof exports.gem_action_action_lock_until_shadow, 'function');
   assert.equal(typeof exports.gem_action_purple_energy_amount_shadow, 'function');
 
   for (const row of rows) {
     const payload = payloadFromRow(row);
     const routeCode = Number(exports.gem_action_route_code_shadow(payload.gemColor));
-    const blueOpenDraught = Number(exports.gem_action_blue_open_draught_shadow(
+    const blueAmpReadyTriggered = Number(exports.gem_action_blue_amp_ready_triggered_shadow(
       payload.consumedCount,
       payload.astralFlowAmpPoints,
       payload.astralFlowAmpMax,
@@ -134,13 +134,13 @@ test('static simulation core wasm matches gem action fixtures', async () => {
         payload.astralFlowAmpMax,
         payload.astralFlowAmpReady,
       )),
-      blueOpenDraught,
+      blueAmpReadyTriggered,
       actionLockUntil: Number(exports.gem_action_action_lock_until_shadow(
         routeCode,
         payload.actionLockUntil,
         payload.time,
         payload.textAnimEndAt,
-        blueOpenDraught,
+        blueAmpReadyTriggered,
       )),
       purpleEnergyAmount: Number(exports.gem_action_purple_energy_amount_shadow(payload.purpleRoll01)),
     }, row, 'wasm ');

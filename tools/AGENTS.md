@@ -40,11 +40,10 @@
 - `npm run test:ui-lock` after changes to a listed UI presentation owner; inspect its compact, reference, natural-preview, and Retina screenshots before accepting new bounds.
 
 ## Child DOX Index
-- `export_session_level_up_buff_contract.mjs` - deterministic adapter from the Wishfire session buff catalog to the validate-card-skills JSON contract.
 
 - build_runtime_release.mjs packages only tracked runtime files from web-runner/ and src/ into dist/, with commit and SHA-256 manifest. Netlify publishes dist/; checkpoints, governance reviews and generation prompts are excluded.
 
-- UI lock checks native hero commands, column-major capacity, individual HP, absent global attack/pooled health bars and personal FLOW meters. Its group-size loop uses test actors only and exercises the native card/editor controls through presentation completion.
+- UI lock checks that combat hero cards and AF readouts stay absent, that hero and enemy HP bars remain actor-anchored, and that combat controls stay within the Canvas.
 - The native command UI gate prepares and executes self Heal, checks only the active hero recovers, and waits for the ordinary turn handoff.
 
 - The UI gate checks full-charge FLOW and a 45/50 SP queue through Act, single-turn completion, absent retired draw controls, and steady scheduled-actor highlighting through busy action frames.

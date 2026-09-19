@@ -49,6 +49,4 @@ test('direct AOE hero lunge profile gets extra hold and retreat breathing room',
     assert.match(src, /const totalDur = profile === 'aoe'\s+\? 0\.14 \+ 0\.75 \+ 0\.24 \+ 0\.42\s+: 0\.14 \+ 0\.75 \+ 0\.16 \+ 0\.26;/s);
     assert.match(src, /const hitDelay = Math\.max\(0\.14 \+ 0\.75 \+ 0\.18, 1\.07\);/);
   }
-  assert.match(runtimeSrc, /const healingPresentation = Array\.isArray\(skill\.effects\)/);
-  assert.match(runtimeSrc, /g\.NextHeroActionProfile = healingPresentation \|\| skill\.tags\?\.includes\('magic'\)/);
 });

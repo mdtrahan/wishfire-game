@@ -581,88 +581,6 @@ pub fn hero_turn_entry_current_hero_uid_after(hero_uid: f64, current_hero_uid_be
     }
 }
 
-pub fn hero_turn_entry_should_reset_astral_flow(
-    skill_draught_open: f64,
-    amp_ready: f64,
-    amp_points: f64,
-    amp_max: f64,
-    time: f64,
-    pinned_until: f64,
-) -> f64 {
-    if number_or_zero(skill_draught_open) != 0.0 {
-        return 0.0;
-    }
-    if number_or_zero(amp_ready) == 0.0 {
-        return 0.0;
-    }
-    let max_input = number_or_zero(amp_max);
-    let max_value = if max_input == 0.0 { 18.0 } else { max_input }.max(1.0);
-    if number_or_zero(amp_points).max(0.0) < max_value {
-        return 0.0;
-    }
-    if number_or_zero(time) >= number_or_zero(pinned_until) {
-        1.0
-    } else {
-        0.0
-    }
-}
-
-pub fn hero_turn_entry_amp_points_after(
-    skill_draught_open: f64,
-    amp_ready: f64,
-    amp_points: f64,
-    amp_max: f64,
-    time: f64,
-    pinned_until: f64,
-) -> f64 {
-    if hero_turn_entry_should_reset_astral_flow(
-        skill_draught_open,
-        amp_ready,
-        amp_points,
-        amp_max,
-        time,
-        pinned_until,
-    ) == 1.0
-    {
-        0.0
-    } else {
-        number_or_zero(amp_points).max(0.0)
-    }
-}
-
-pub fn hero_turn_entry_amp_ready_after(
-    skill_draught_open: f64,
-    amp_ready: f64,
-    amp_points: f64,
-    amp_max: f64,
-    time: f64,
-    pinned_until: f64,
-) -> f64 {
-    if hero_turn_entry_should_reset_astral_flow(
-        skill_draught_open,
-        amp_ready,
-        amp_points,
-        amp_max,
-        time,
-        pinned_until,
-    ) == 1.0
-    {
-        0.0
-    } else if number_or_zero(amp_ready) != 0.0 {
-        1.0
-    } else {
-        0.0
-    }
-}
-
-pub fn hero_turn_entry_clear_pinned_action(should_reset: f64) -> f64 {
-    if number_or_zero(should_reset) != 0.0 {
-        1.0
-    } else {
-        0.0
-    }
-}
-
 #[derive(Clone, Copy)]
 struct EnemyTargetHero {
     uid: f64,
@@ -1359,7 +1277,7 @@ pub fn gem_action_blue_wallet_after(current_wallet: f64, consumed_count: f64) ->
     number_or_zero(current_wallet).max(0.0) + gem_action_consumed_count(consumed_count)
 }
 
-pub fn gem_action_blue_open_draught(
+pub fn gem_action_blue_amp_ready_triggered(
     consumed_count: f64,
     current_amp_points: f64,
     amp_max: f64,
@@ -1399,7 +1317,7 @@ pub fn gem_action_blue_amp_ready_after(
     amp_ready: f64,
 ) -> f64 {
     if number_or_zero(amp_ready) == 1.0
-        || gem_action_blue_open_draught(consumed_count, current_amp_points, amp_max, amp_ready)
+        || gem_action_blue_amp_ready_triggered(consumed_count, current_amp_points, amp_max, amp_ready)
             == 1.0
     {
         1.0
@@ -1413,7 +1331,7 @@ pub fn gem_action_action_lock_until(
     current_lock_until: f64,
     time: f64,
     text_anim_end_at: f64,
-    _blue_open_draught: f64,
+    _blue_amp_ready_triggered: f64,
 ) -> f64 {
     let route = number_or_zero(route_code);
     let current = if current_lock_until.is_finite() {
@@ -1795,68 +1713,6 @@ pub extern "C" fn hero_turn_entry_current_hero_uid_after_shadow(
     current_hero_uid_before: f64,
 ) -> f64 {
     hero_turn_entry_current_hero_uid_after(hero_uid, current_hero_uid_before)
-}
-
-#[no_mangle]
-pub extern "C" fn hero_turn_entry_should_reset_astral_flow_shadow(
-    skill_draught_open: f64,
-    amp_ready: f64,
-    amp_points: f64,
-    amp_max: f64,
-    time: f64,
-    pinned_until: f64,
-) -> f64 {
-    hero_turn_entry_should_reset_astral_flow(
-        skill_draught_open,
-        amp_ready,
-        amp_points,
-        amp_max,
-        time,
-        pinned_until,
-    )
-}
-
-#[no_mangle]
-pub extern "C" fn hero_turn_entry_amp_points_after_shadow(
-    skill_draught_open: f64,
-    amp_ready: f64,
-    amp_points: f64,
-    amp_max: f64,
-    time: f64,
-    pinned_until: f64,
-) -> f64 {
-    hero_turn_entry_amp_points_after(
-        skill_draught_open,
-        amp_ready,
-        amp_points,
-        amp_max,
-        time,
-        pinned_until,
-    )
-}
-
-#[no_mangle]
-pub extern "C" fn hero_turn_entry_amp_ready_after_shadow(
-    skill_draught_open: f64,
-    amp_ready: f64,
-    amp_points: f64,
-    amp_max: f64,
-    time: f64,
-    pinned_until: f64,
-) -> f64 {
-    hero_turn_entry_amp_ready_after(
-        skill_draught_open,
-        amp_ready,
-        amp_points,
-        amp_max,
-        time,
-        pinned_until,
-    )
-}
-
-#[no_mangle]
-pub extern "C" fn hero_turn_entry_clear_pinned_action_shadow(should_reset: f64) -> f64 {
-    hero_turn_entry_clear_pinned_action(should_reset)
 }
 
 #[no_mangle]
@@ -2267,13 +2123,13 @@ pub extern "C" fn gem_action_blue_amp_ready_after_shadow(
 }
 
 #[no_mangle]
-pub extern "C" fn gem_action_blue_open_draught_shadow(
+pub extern "C" fn gem_action_blue_amp_ready_triggered_shadow(
     consumed_count: f64,
     current_amp_points: f64,
     amp_max: f64,
     amp_ready: f64,
 ) -> f64 {
-    gem_action_blue_open_draught(consumed_count, current_amp_points, amp_max, amp_ready)
+    gem_action_blue_amp_ready_triggered(consumed_count, current_amp_points, amp_max, amp_ready)
 }
 
 #[no_mangle]
@@ -2282,14 +2138,14 @@ pub extern "C" fn gem_action_action_lock_until_shadow(
     current_lock_until: f64,
     time: f64,
     text_anim_end_at: f64,
-    blue_open_draught: f64,
+    blue_amp_ready_triggered: f64,
 ) -> f64 {
     gem_action_action_lock_until(
         route_code,
         current_lock_until,
         time,
         text_anim_end_at,
-        blue_open_draught,
+        blue_amp_ready_triggered,
     )
 }
 
@@ -4323,53 +4179,10 @@ mod single_hit_resolution_tests {
 
     #[test]
     fn mirrors_current_hero_turn_entry_cases() {
-        let cases = [
-            // hero_uid, current_before, draught_open, amp_points, amp_max, ready, time, pinned, accept, current_after, reset, points_after, ready_after, clear
-            (
-                0.0, 77.0, 0.0, 0.0, 18.0, 0.0, 0.0, 0.0, 0.0, 77.0, 0.0, 0.0, 0.0, 0.0,
-            ),
-            (
-                101.0, 77.0, 0.0, 7.0, 18.0, 0.0, 10.0, 0.0, 1.0, 101.0, 0.0, 7.0, 0.0, 0.0,
-            ),
-            (
-                101.0, 77.0, 0.0, 18.0, 18.0, 1.0, 15.0, 14.0, 1.0, 101.0, 1.0, 0.0, 0.0, 1.0,
-            ),
-            (
-                101.0, 77.0, 0.0, 18.0, 18.0, 1.0, 12.0, 14.0, 1.0, 101.0, 0.0, 18.0, 1.0, 0.0,
-            ),
-            (
-                101.0, 77.0, 1.0, 18.0, 18.0, 1.0, 15.0, 14.0, 1.0, 101.0, 0.0, 18.0, 1.0, 0.0,
-            ),
-            (
-                101.0, 77.0, 0.0, 18.0, 0.0, 1.0, 15.0, 14.0, 1.0, 101.0, 1.0, 0.0, 0.0, 1.0,
-            ),
-        ];
-
-        for (
-            hero_uid,
-            current_before,
-            draught_open,
-            amp_points,
-            amp_max,
-            ready,
-            time,
-            pinned,
-            expected_accept,
-            expected_current_after,
-            expected_reset,
-            expected_points_after,
-            expected_ready_after,
-            expected_clear,
-        ) in cases
-        {
-            let reset = hero_turn_entry_should_reset_astral_flow(
-                draught_open,
-                ready,
-                amp_points,
-                amp_max,
-                time,
-                pinned,
-            );
+        for (hero_uid, current_before, expected_accept, expected_current_after) in [
+            (0.0, 77.0, 0.0, 77.0),
+            (101.0, 77.0, 1.0, 101.0),
+        ] {
             assert_eq!(hero_turn_entry_turn_phase(), 0.0);
             assert_eq!(hero_turn_entry_hide_hero_selector(), 0.0);
             assert_eq!(hero_turn_entry_accept_hero_uid(hero_uid), expected_accept);
@@ -4377,30 +4190,6 @@ mod single_hit_resolution_tests {
                 hero_turn_entry_current_hero_uid_after(hero_uid, current_before),
                 expected_current_after
             );
-            assert_eq!(reset, expected_reset);
-            assert_eq!(
-                hero_turn_entry_amp_points_after(
-                    draught_open,
-                    ready,
-                    amp_points,
-                    amp_max,
-                    time,
-                    pinned,
-                ),
-                expected_points_after
-            );
-            assert_eq!(
-                hero_turn_entry_amp_ready_after(
-                    draught_open,
-                    ready,
-                    amp_points,
-                    amp_max,
-                    time,
-                    pinned,
-                ),
-                expected_ready_after
-            );
-            assert_eq!(hero_turn_entry_clear_pinned_action(reset), expected_clear);
         }
     }
 
@@ -4667,7 +4456,7 @@ mod single_hit_resolution_tests {
         ) in cases
         {
             let actual_route = gem_action_route_code(color);
-            let actual_open = gem_action_blue_open_draught(consumed, amp, max, ready);
+            let actual_open = gem_action_blue_amp_ready_triggered(consumed, amp, max, ready);
             assert_eq!(actual_route, route);
             assert_eq!(gem_action_pending_skill_code(actual_route), pending);
             assert_eq!(gem_action_set_aoe(actual_route), set_aoe);

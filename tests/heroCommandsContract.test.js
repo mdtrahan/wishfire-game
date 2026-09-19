@@ -14,7 +14,7 @@ test('one through six actual heroes retain their command positions, including KO
 test('native attack commits once for the scheduled living actor and never spends on a rejected command', async () => {
   const { executeHeroCommand, canUseHeroCommand } = await import('../web-runner/modules/heroCommands.mjs');
   const hero = { uid: 1, name:'Huun', sp:100, spMax:100, kind: 'hero', hp: 10 }, enemy = { uid: 9, kind: 'enemy', hp: 10 };
-  const g = { GamePhase: 'RUNTIME', time: 5, TurnPhase: 0, SkillDraughtOpen: 1, SkillDraughtPendingOpen: 1 };
+  const g = { GamePhase: 'RUNTIME', time: 5, TurnPhase: 0 };
   let calls = 0;
   const ctx = { state: { globals: g, entities: [hero, enemy] }, callFunction(name, skill, actorUID) {
     if (name === 'GetCurrentTurn') return 1;
@@ -135,15 +135,4 @@ test('native queued render events dispatch once while unrelated damage stays que
   assert.equal(calls[0][1], 'ResolveNativeCommandStep');
   assert.equal(pending.length, 1);
   assert.equal(pending[0].effectType, 'damage');
-});
-
-test('retired blue supergems cannot acquire party cards or consume an action', () => {
-  const fs = require('node:fs'), vm = require('node:vm');
-  const source = fs.readFileSync(require('node:path').join(__dirname, '../web-runner/systems/superGemRuntime.js'), 'utf8')
-    .replaceAll('export function', 'function').replace(/export \{[^}]+\};/g, '');
-  const activate = vm.runInNewContext(source + ';activateSuperGemEffect');
-  const state = { globals: {} };
-  assert.equal(activate({state, superGem:{baseColor:2}, actorUID:1,
-    callFunctionWithContext() { throw Error('retired draw invoked'); }}), false);
-  assert.deepEqual(state, {globals:{}});
 });

@@ -6,7 +6,7 @@
 ## Ownership
 - Combat formulas, turn gates, scheduler rules, targeting, status effects, RNG, packet normalization, GameState envelope rules, input domains, and layout state primitives.
 - CommonJS entrypoints used by tests and compatibility surfaces.
-- `sessionLevelBuffCatalog.mjs` owns the final 48-card universal Wishfire session pool. Keep its typed numeric formulas, stage relationships, and player-facing copy aligned with `governance/planning/session-level-up-buff-pool.md`; `sessionLevelBuffOffers.mjs` owns eligibility and replacement resolution.
+- Session level-up owns visible XP settlement only. Retired combat-card catalogs and offer queues have no production owner.
 
 ## Local Contracts
 - Keep rule modules deterministic and JSON-safe.
@@ -36,4 +36,4 @@
 
 - Party-damage packets carry six HP entries and the actual loaded member count. Empty capacity contributes no damage recipient or health.
 
-- Presentation barriers ignore retired SkillDraught open/pending flags. Animation, pending-hit and refill barriers remain enforced.
+- Presentation barriers ignore retired combat-card flags. Animation, pending-hit and refill barriers remain enforced.

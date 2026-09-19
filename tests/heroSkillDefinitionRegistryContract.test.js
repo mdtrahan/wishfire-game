@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const runtimePath = path.join(__dirname, '..', 'web-runner', 'modules', 'functionBank.js');
 const scriptsPath = path.join(__dirname, '..', 'Scripts', 'functionBank.js');
 const appPath = path.join(__dirname, '..', 'web-runner', 'app.js');
-const activePartyDrawIds = [
+const implementedPartySkillIds = [
   'party_crimson_ward',
   'party_magic_fruit',
   'party_destiny',
@@ -41,7 +41,6 @@ test('canonical skill registry exposes all hero and party definitions without pa
     'GetHeroSkillDefinitions',
     'GetPartySkillDefinitions',
     'GetSkillDefinition',
-    'GetHeroSkillDefinitionCardsForHero',
   ];
   for (const name of requiredExports) {
     assert.match(src, new RegExp(`export function ${name}\\(`), `missing ${name}`);
@@ -90,7 +89,7 @@ test('canonical skill registry exposes all hero and party definitions without pa
   assert.match(src, /procPattern: 'On defend'/);
 });
 
-test('active party draw definitions expose mirrored class metadata through public APIs', () => {
+test('implemented party skills expose mirrored cooldown metadata through public APIs', () => {
   for (const filePath of [runtimePath, scriptsPath]) {
     const original = fs.readFileSync(filePath, 'utf8');
     const transformed = `${original
@@ -110,39 +109,24 @@ module.exports = {
     };
     require('node:vm').runInNewContext(transformed, context, { filename: filePath });
     const mod = context.module.exports;
-    const allowedClasses = new Set(['one_off', 'tiered', 'repeatable']);
-    const expectedClasses = {
-      party_crimson_ward: 'repeatable',
-      party_magic_fruit: 'repeatable',
-      party_destiny: 'one_off',
-      party_faze: 'repeatable',
-      party_grow: 'tiered',
-      party_chain_strike_i: 'one_off',
-      party_chain_strike_ii: 'one_off',
-      party_arcane_pulse: 'one_off',
-    };
     const partyDefs = mod.GetPartySkillDefinitions();
 
-    for (const id of activePartyDrawIds) {
+    for (const id of implementedPartySkillIds) {
       const def = partyDefs.find(row => row.id === id);
       assert.ok(def, `${id} should be in party registry`);
-      assert.equal(def.drawClass, expectedClasses[id]);
-      assert.ok(allowedClasses.has(def.drawClass), `${id} has invalid drawClass`);
-      assert.equal(typeof def.selection.sessionBucket, 'string');
-      assert.equal(typeof def.selection.duplicatePolicy, 'string');
+      assert.equal(typeof def.description, 'string');
+      assert.equal(Object.prototype.hasOwnProperty.call(def, 'drawClass'), false);
+      assert.equal(Object.prototype.hasOwnProperty.call(def, 'selection'), false);
       assert.equal(typeof def.trigger.event, 'string');
       assert.equal(typeof def.effect.kind, 'string');
       assert.equal(typeof def.qa.proof, 'string');
 
       const single = mod.GetSkillDefinition(null, id);
-      assert.deepEqual(single.selection, def.selection);
       assert.deepEqual(single.trigger, def.trigger);
       assert.deepEqual(single.effect, def.effect);
       assert.deepEqual(single.qa, def.qa);
-      assert.equal(single.drawClass, def.drawClass);
-
-      def.selection.duplicatePolicy = 'mutated_in_test';
-      assert.notEqual(mod.GetSkillDefinition(null, id).selection.duplicatePolicy, 'mutated_in_test');
+      def.trigger.event = 'mutated_in_test';
+      assert.notEqual(mod.GetSkillDefinition(null, id).trigger.event, 'mutated_in_test');
     }
   }
 });
