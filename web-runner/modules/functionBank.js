@@ -3425,7 +3425,7 @@ function getHeroes(ctx) {
 }
 
 function getEnemies(ctx) {
-  return getEntities(ctx).filter(e => e && e.kind === 'enemy' && (e.hp ?? 0) > 0);
+  return getEntities(ctx).filter(e => e && e.kind === 'enemy' && (e.hp ?? 0) > 0 && e.streamState !== 'approaching');
 }
 
 function nextUID(ctx) {
@@ -3770,6 +3770,7 @@ function buildDynamicInitiativeDefaultSpeedSelection(ctx, options = null) {
   }
   if (Number(g.ContinuousCombatStageLoop || 0) === 1) {
     const actors = getDynamicInitiativeRoster(ctx);
+    if (!actors.some(actor => Number(actor?.type || 0) === 1)) return null;
     let progress = { ...(state.progress || {}) };
     if (currentUID > 0) {
       progress = applyDynamicInitiativeActionCompleted({
@@ -10197,7 +10198,7 @@ export function StartEnemyAction(ctx, enemyUID) {
     actionApplied: Number(decision.actionApplied || 0) === 1,
     targetUID: Number(decision.targetUID || 0),
     skillId: String(decision.skillId || skillId || ''),
-    stationary: /^Enemy_Heal_/.test(String(decision.skillId || skillId || '')),
+    stationary: enemy.streamState === 'engaged' || /^Enemy_Heal_/.test(String(decision.skillId || skillId || '')),
     forwardX: Number(decision.forwardX ?? ((enemy.originX ?? enemy.x ?? 0) - 55)),
   };
 }

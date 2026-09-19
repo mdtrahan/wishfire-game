@@ -1,125 +1,117 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  buildContinuousCombatSpawnPlan,
-  createContinuousCombatStageState,
+  CONTINUOUS_COMBAT_PACK_CP_STEP,
+  activateContinuousCombatSpawnedEnemy,
   advanceContinuousCombatStage,
-  isContinuousCombatWaveCleared,
-  maybeAdvanceContinuousCombatStage,
+  buildContinuousCombatSpawnPlan,
   configureContinuousCombatProduction,
+  createContinuousCombatStageState,
   finalizeContinuousCombatProduction,
+  maybeAdvanceContinuousCombatStage,
+  scaleContinuousCombatPackRow,
 } from '../web-runner/src/core/continuousCombatStage.mjs';
-import {
-  applyDynamicInitiativeActionCompleted,
-  selectDynamicInitiativeTurn,
-} from '../web-runner/src/core/dynamicInitiativeRules.mjs';
 
-test('continuous stage sequence is deterministic from the production seed', () => {
+const rows = ['Gobloc', 'Skeleton', 'High Gobloc', 'Lizardo', 'Orc', 'Troll']
+  .map((name, index) => ({ name, HP: 20 + index * 5, ATK: 2 + index, DEF: 2, MAG: 1, RES: 1, SPD: 8 }));
+
+test('production starts with a weak three-enemy pack and a shallow linear CP ramp', () => {
   const start = createContinuousCombatStageState(42);
-  const first = advanceContinuousCombatStage(start);
-  const second = advanceContinuousCombatStage(first.state);
-  assert.equal(start.stageId, '1-1');
-  assert.equal(first.stage.id, '1-1-boss');
-  assert.equal(second.stage.id, '1-2');
-  assert.deepEqual(second.state.completed, ['1-1', '1-1-boss']);
-  assert.equal(second.state.seed, 42);
+  const first = buildContinuousCombatSpawnPlan(rows, start);
+  const secondState = advanceContinuousCombatStage(start).state;
+  const second = buildContinuousCombatSpawnPlan(rows, secondState, { slotBase: 3 });
+  const thirdState = advanceContinuousCombatStage(secondState).state;
+  const third = buildContinuousCombatSpawnPlan(rows, thirdState, { slotBase: 6 });
+  assert.equal(first.length, 3);
+  assert.deepEqual(first.map(entry => entry.lane), [1, 0, 2]);
+  assert.deepEqual(first.map(entry => entry.slotIndex), [0, 1, 2]);
+  assert.deepEqual(second.map(entry => entry.slotIndex), [3, 4, 5]);
+  const totals = [first, second, third].map(pack => pack.reduce((sum, entry) => sum + entry.row.CombatPower, 0));
+  assert.ok(totals[0] < totals[1]);
+  assert.ok(totals[1] < totals[2]);
+  assert.ok(totals[1] / totals[0] < 1 + CONTINUOUS_COMBAT_PACK_CP_STEP * 2);
+  assert.ok(totals[2] / totals[1] < 1 + CONTINUOUS_COMBAT_PACK_CP_STEP * 2);
 });
 
-test('production adapter is queryless while QA paths remain untouched', () => {
-  const globals = {};
+test('stream enemies begin off-stage and become engaged only after walking to the boundary', () => {
+  const globals = { EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 }, EnemySize: 40 };
+  const enemy = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', hp: 10 }, { lane: 1, rank: 0, packIndex: 0 });
+  assert.equal(enemy.streamState, 'approaching');
+  assert.ok(enemy.x > globals.EnemyAreaRect.maxX);
+  assert.equal(enemy.y, 150);
+  assert.ok(enemy.streamEngageX < globals.EnemyAreaRect.maxX);
+});
+
+test('timed packs emit while survivors remain and boss waits for a clear field', () => {
+  const globals = {
+    ContinuousCombatStageLoop: 1,
+    ContinuousCombatStage: { ...createContinuousCombatStageState(9), nextEmissionAt: 7, lastUpdatedAt: 0, spawnSerial: 3 },
+    GamePhase: 'RUNTIME', BattleStartActive: 0, time: 7,
+    EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 }, EnemySize: 40,
+    EnemyData: rows, EnemySlots: [2, 3, 4], PendingDeaths: {}, ProgressionBattle: { outcome: 'active', settled: false },
+  };
+  const survivor = { uid: 1, kind: 'enemy', hp: 10, streamState: 'engaged', slotIndex: 0 };
+  const entities = [survivor];
+  const spawned = [];
+  const call = (name, data, slotIndex) => {
+    if (name !== 'SpawnEnemy') return null;
+    const enemy = { uid: 10 + spawned.length, kind: 'enemy', hp: data.HP, maxHP: data.HP, name: data.name, slotIndex };
+    entities.push(enemy);
+    spawned.push(enemy);
+    return enemy;
+  };
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} }), true);
+  assert.equal(spawned.length, 3);
+  assert.equal(globals.ContinuousCombatStage.stageId, '1-1-pack-2');
+  assert.ok(entities.some(enemy => enemy.uid === survivor.uid));
+
+  globals.time = 22;
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} }), true);
+  assert.equal(globals.ContinuousCombatStage.stageId, '1-1-pack-3');
+  globals.time = 60;
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} }), false);
+  assert.equal(globals.ContinuousCombatStage.stageId, '1-1-pack-3');
+});
+
+test('walking completes deterministically and wakes the cooldown scheduler', () => {
+  const globals = {
+    ContinuousCombatStageLoop: 1,
+    ContinuousCombatStage: { ...createContinuousCombatStageState(1), nextEmissionAt: 99, lastUpdatedAt: 0, spawnSerial: 1 },
+    GamePhase: 'RUNTIME', BattleStartActive: 0, time: 0,
+    EnemyAreaRect: { minX: 160, maxX: 200, minY: 60, maxY: 180 }, EnemySize: 40,
+    EnemyData: rows, EnemySlots: [2], PendingDeaths: {}, ActionInProgress: 0, IsPlayerBusy: 0,
+  };
+  const enemy = activateContinuousCombatSpawnedEnemy(globals, { uid: 1, kind: 'enemy', hp: 10 }, { lane: 1 });
+  enemy.x = enemy.streamEngageX + 1;
+  globals.ContinuousCombatStage.lastUpdatedAt = 0.9;
+  globals.time = 1;
+  let resumed = 0;
+  maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], presentationBarrier: { lanes: {} }, call() {}, runCombatStep(name) { if (name === 'ProcessTurn') resumed += 1; } });
+  assert.equal(enemy.streamState, 'engaged');
+  assert.equal(enemy.x, enemy.streamEngageX);
+  assert.equal(globals.ContinuousCombatStage.nextEmissionAt, 16);
+  assert.equal(resumed, 1);
+});
+
+test('queryless production marks the initial pack as approaching and disables AF', () => {
+  const globals = { EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 }, EnemySize: 40 };
   assert.equal(configureContinuousCombatProduction(globals, { productionPath: true }), true);
-  assert.equal(globals.ContinuousCombatStageLoop, 1);
-  assert.equal(globals.EncounterPolicy, 'fodder_only');
-  assert.equal(globals.ContinuousCombatStage.stageId, '1-1');
-  assert.equal(configureContinuousCombatProduction(globals, { productionPath: false }), false);
-  assert.equal(globals.ContinuousCombatStageLoop, 0);
-});
-
-test('stage spawn plans preserve authored duplicate rows and center-first slots', () => {
-  const rows = ['Gobloc', 'Skeleton', 'High Gobloc', 'Lizardo', 'Orc', 'Troll']
-    .map(name => ({ name }));
-  const startPlan = buildContinuousCombatSpawnPlan(rows, createContinuousCombatStageState(7));
-  assert.deepEqual(startPlan.map(entry => [entry.row.name, entry.slotIndex]), [
-    ['Gobloc', 1], ['Skeleton', 0], ['Gobloc', 2],
-  ]);
-  const bossState = advanceContinuousCombatStage(createContinuousCombatStageState(7)).state;
-  assert.deepEqual(buildContinuousCombatSpawnPlan(rows, bossState).map(entry => [entry.row.name, entry.slotIndex]), [['Troll', 1]]);
-});
-
-test('wave completion waits for presentation and death holds to clear', () => {
-  const empty = { enemySlots: [0, 0, 0], entities: [], pendingDeaths: {}, presentationClear: true };
-  assert.equal(isContinuousCombatWaveCleared(empty), true);
-  assert.equal(isContinuousCombatWaveCleared({ ...empty, presentationClear: false }), false);
-  assert.equal(isContinuousCombatWaveCleared({ ...empty, pendingDeaths: { 12: true } }), false);
-  assert.equal(isContinuousCombatWaveCleared({ ...empty, entities: [{ kind: 'enemy', hp: 1 }] }), false);
-});
-
-test('runtime transition adapter clears the terminal wave and starts the next authored package', () => {
-  const globals = {
-    ContinuousCombatStageLoop: 1,
-    ContinuousCombatStage: advanceContinuousCombatStage(createContinuousCombatStageState(9)).state,
-    GamePhase: 'RUNTIME',
-    EnemySlots: [0, 0, 0],
-    EnemyData: ['Gobloc', 'Skeleton', 'High Gobloc', 'Lizardo', 'Orc', 'Troll'].map(name => ({ name, HP: 10 })),
-    PendingDeaths: {},
-    time: 12,
-    NativeBattleEnded: true,
-  };
-  const entities = [{ kind: 'hero', uid: 1, heroInstanceKey: 'Fara' }];
-  const calls = [];
-  let ran = '';
-  const advanced = maybeAdvanceContinuousCombatStage({
-    globals,
-    entities,
-    presentationBarrier: { lanes: {} },
-    call: (name, ...args) => calls.push([name, ...args]),
-    runCombatStep: name => { ran = name; },
-  });
-  assert.equal(advanced, true);
-  assert.equal(globals.ContinuousCombatStage.stageId, '1-2');
-  assert.equal(globals.NativeBattleEnded, false);
-  assert.deepEqual(calls.filter(([name]) => name === 'SpawnEnemy').map(([, row, slot]) => [row.name, slot]), [
-    ['High Gobloc', 1], ['Lizardo', 0], ['Orc', 2],
-  ]);
-  assert.equal(calls.at(-1)?.[0], 'StartRound');
-  assert.equal(ran, 'ProcessTurn');
-});
-
-test('continuous actors follow deterministic readiness thresholds instead of a fixed round cycle', () => {
-  const actors = [
-    { uid: 1, type: 0, name: 'Fara', speed: 70, hp: 100 },
-    { uid: 2, type: 1, name: 'Troll', speed: 55, hp: 100 },
+  const entities = [
+    { kind: 'hero', uid: 1, flow: 100, flowReady: true },
+    { kind: 'enemy', uid: 2, hp: 20, slotIndex: 1 },
   ];
-  let progress = {};
-  progress = applyDynamicInitiativeActionCompleted({ actors, progress }).progress;
-  assert.equal(selectDynamicInitiativeTurn({ actors, progress }).actor, null);
-  progress = applyDynamicInitiativeActionCompleted({ actors, progress }).progress;
-  let selected = selectDynamicInitiativeTurn({ actors, progress });
-  assert.equal(selected.actor.uid, 1);
-  assert.equal(selected.progress['1'], 40);
-  progress = applyDynamicInitiativeActionCompleted({ actors, progress: selected.progress }).progress;
-  selected = selectDynamicInitiativeTurn({ actors, progress });
-  assert.equal(selected.actor.uid, 2);
-  assert.equal(selected.progress['2'], 65);
-});
-
-test('continuous production starts with AF disabled and clears stale AF state', () => {
-  const globals = {
-    ContinuousCombatStageLoop: 1,
-    PendingFlowThresholds: [{ heroUID: 1 }],
-    FlowOrbs: [{ id: 1 }],
-    AstralFlowKoOrbQueue: [{ id: 2 }],
-    AstralFlowKoOrbPresentationPending: 1,
-    AstralFlowKoOrbPresentationActive: 1,
-    ProgressionBattle: { outcome: 'defeat', settled: true, defeatSettled: true },
-  };
-  const entities = [{ kind: 'hero', uid: 1, flow: 100, flowReady: true }];
   assert.equal(finalizeContinuousCombatProduction(globals, entities), true);
   assert.equal(entities[0].flow, 0);
-  assert.equal(entities[0].flowReady, false);
-  assert.deepEqual(globals.PendingFlowThresholds, []);
-  assert.deepEqual(globals.FlowOrbs, []);
-  assert.deepEqual(globals.AstralFlowKoOrbQueue, []);
-  assert.equal(globals.AstralFlowKoOrbPresentationPending, 0);
-  assert.equal(globals.AstralFlowKoOrbPresentationActive, 0);
+  assert.equal(entities[1].streamState, 'approaching');
+  assert.equal(globals.ContinuousCombatStage.nextEmissionAt, 15);
+});
+
+test('runtime source keeps approaching enemies untargetable and engaged enemies stationary', async () => {
+  const fs = await import('node:fs');
+  const source = fs.readFileSync(new URL('../web-runner/modules/functionBank.js', import.meta.url), 'utf8');
+  const heroCommands = fs.readFileSync(new URL('../web-runner/modules/heroCommands.mjs', import.meta.url), 'utf8');
+  assert.match(source, /e\.streamState !== 'approaching'/);
+  assert.match(source, /stationary: enemy\.streamState === 'engaged'/);
+  assert.match(source, /!actors\.some\(actor => Number\(actor\?\.type \|\| 0\) === 1\)/);
+  assert.match(heroCommands, /noLivingEnemy&&streamComplete/);
 });

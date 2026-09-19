@@ -3372,7 +3372,7 @@ function getHeroes(ctx) {
 }
 
 function getEnemies(ctx) {
-  return getEntities(ctx).filter(e => e && e.kind === 'enemy' && (e.hp ?? 0) > 0);
+  return getEntities(ctx).filter(e => e && e.kind === 'enemy' && (e.hp ?? 0) > 0 && e.streamState !== 'approaching');
 }
 
 function nextUID(ctx) {
@@ -9956,7 +9956,7 @@ export function StartEnemyAction(ctx, enemyUID) {
     actionApplied: Number(decision.actionApplied || 0) === 1,
     targetUID: Number(decision.targetUID || 0),
     skillId: String(decision.skillId || skillId || ''),
-    stationary: /^Enemy_Heal_/.test(String(decision.skillId || skillId || '')),
+    stationary: enemy.streamState === 'engaged' || /^Enemy_Heal_/.test(String(decision.skillId || skillId || '')),
     forwardX: Number(decision.forwardX ?? ((enemy.originX ?? enemy.x ?? 0) - 55)),
   };
 }

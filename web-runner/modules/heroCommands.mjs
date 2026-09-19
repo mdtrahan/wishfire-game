@@ -67,7 +67,9 @@ export function rulesContext(ctx,roleEvents=null){
  onStatus:(source,target,effect,meta={})=>{if(roleEvents&&!meta.refreshed&&source?.kind==='hero')roleEvents.push({type:'status',sourceUID:Number(source.uid||0),targetUID:Number(target?.uid||0)});},
  onKO:actor=>{if(actor.kind==='enemy'){const battle=g.ProgressionBattle;if(battle){battle.defeated[actor.uid]=actor.expValue??PROGRESSION.enemyEXP;(battle.defeatedGold||={})[actor.uid]=Math.max(0,Math.floor(actor.goldValue??PROGRESSION.enemyGold));}}},
  isOver:()=>{
-  const ended=!ctx.state.entities.some(a=>a.kind==='enemy'&&a.hp>0);
+  const noLivingEnemy=!ctx.state.entities.some(a=>a.kind==='enemy'&&a.hp>0);
+  const streamComplete=Number(g.ContinuousCombatStageLoop||0)!==1||Number(g.ContinuousCombatStageComplete||0)===1;
+  const ended=noLivingEnemy&&streamComplete;
   if(ended)g.NativeBattleEnded=true;
   return ended;
  }};
