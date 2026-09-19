@@ -47,6 +47,7 @@ function streamGeometry(globals, lane = 1) {
 const PACK_ENTRY_DELAY_SEC = Object.freeze([0, 0.62, 1.55]);
 const PACK_SPAWN_OFFSET = Object.freeze([0, 0.72, 0.28]);
 const PACK_WALK_SPEED_SCALE = Object.freeze([1, 0.84, 1.13]);
+const PACK_ENGAGEMENT_OFFSET = Object.freeze([0, 0.42, 0.9]);
 
 function meleeEngagementX(globals, fallback, line = 0) {
   const heroPositions = Object.values(globals.HeroRestBasePosByUID || {});
@@ -64,10 +65,12 @@ export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1,
     ? 'ranged'
     : 'melee';
   const meleeLine = order % 2;
-  const engageX = delivery === 'melee' ? meleeEngagementX(globals, geometry.engageX, meleeLine) : geometry.engageX;
+  const formationOffset = geometry.enemySize * (PACK_ENGAGEMENT_OFFSET[Math.max(0, Number(packIndex || 0)) % 3] + order * 0.04);
+  const preferredEngageX = delivery === 'melee' ? meleeEngagementX(globals, geometry.engageX, meleeLine) : geometry.engageX;
+  const engageX = preferredEngageX + formationOffset;
   Object.assign(enemy, {
     streamState: 'approaching', streamLane: lane, streamRank: rank, streamPackIndex: packIndex,
-    streamDelivery: delivery, streamMeleeLine: meleeLine,
+    streamDelivery: delivery, streamMeleeLine: meleeLine, streamEngagementOffset: formationOffset,
     streamEngageX: engageX, streamWalkSpeed: geometry.walkSpeed * PACK_WALK_SPEED_SCALE[order],
     streamStartAt: Number(globals.time || 0) + PACK_ENTRY_DELAY_SEC[order],
     x: geometry.spawnX + geometry.enemySize * PACK_SPAWN_OFFSET[order], y: geometry.y, originX: engageX, originY: geometry.y,
@@ -199,7 +202,7 @@ function updateApproachingEnemies(globals, entities, now) {
     if (enemy?.kind !== 'enemy' || Number(enemy.hp || 0) <= 0 || enemy.streamState !== 'approaching') continue;
     if (now < Number(enemy.streamStartAt || 0)) continue;
     const engageX = enemy.streamDelivery === 'melee'
-      ? meleeEngagementX(globals, streamGeometry(globals, Number(enemy.streamLane || 1)).engageX, Number(enemy.streamMeleeLine || 0))
+      ? meleeEngagementX(globals, streamGeometry(globals, Number(enemy.streamLane || 1)).engageX, Number(enemy.streamMeleeLine || 0)) + Number(enemy.streamEngagementOffset || 0)
       : Number(enemy.streamEngageX || enemy.originX || enemy.x || 0);
     enemy.streamEngageX = engageX;
     enemy.originX = engageX;
