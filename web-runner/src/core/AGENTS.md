@@ -50,6 +50,7 @@
 - `heroDefinitions.mjs` is the single kit/tuning source for combat and hero detail UI. `heroProgression.mjs` owns individual EXP, stat growth and unlock evaluation; KO remains zero HP during growth.
 - `heroDefinitions.mjs` owns role-shaped HP directly. Do not add a global hero HP multiplier; it hides role balance and breaks CP calibration.
 - `combatRules.mjs` resolves statuses, accuracy, Cover and reactions. Preserve action source ancestry, reject illegal actions before spending, and grant no routine periodic FLOW.
+- `routineEnemyScaling.mjs` preserves each enemy row's authored combat stats and applies only the level curve. Tier profiles are fallbacks for missing values, not replacements that make ordinary enemies disposable.
 
 - Native hero actions resolve living targets and healing through `heroCommands`; narrative quest cards remain outside the combat core. Resolved healing reports only its actual HP delta to presentation, while barrier visuals project from the actor-owned barrier status.
 

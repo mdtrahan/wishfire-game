@@ -17,6 +17,6 @@ export function scaleRoutineEnemy(row = {}, level = 1) {
   const tier = enemyCombatTier(row);
   const scale = 1 + (Math.max(1, Number(level) || 1) - 1) * .06;
   const stats = Object.fromEntries(Object.entries(ENEMY_COMBAT_TIER_PROFILES[tier])
-    .map(([key, value]) => [key, Math.max(1, Math.floor(value * scale))]));
+    .map(([key, fallback]) => [key, Math.max(1, Math.floor(Number(row[key] ?? fallback) * scale))]));
   return { ...row, ...stats, HP: stats.HP, maxHP: stats.HP, combatTier: tier, routineTier: tier };
 }
