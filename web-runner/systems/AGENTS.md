@@ -99,7 +99,7 @@
 
 - Combat has no hero status-card strip. `renderRuntime.js` draws the full-body hero sprites at one shared arena scale and anchors each compact HP bar from the sprite feet so the gap remains correct when art dimensions change. Names, roles, levels and AF stay off the battlefield. Narrative quest cards remain separate.
 - Combat home geometry uses the shared 360-wide arena contract. Hero sprites stop at visible X 106; hero and enemy spawn/home sprites fit within visible Y 170-375. The highest hero HP bar begins below grid Y 150. Temporary action animation may leave that Y band.
-- The combat boss control is hidden during normal waves. At the boss gate it appears as a 50x50 graphic centered at world-grid X 150, Y 50. Its draw and pointer boxes use the same `worldToCanvas` projection as the reference grid.
+- The combat boss control is hidden during normal waves. At the boss gate its 50x50 graphic is centered on the game grid's horizontal midpoint, X 180, and vertically centered on Y 50. Its draw and pointer boxes use the same `worldToCanvas` projection as the reference grid.
 - Cooldown and readiness rules belong to the deterministic combat owners. Hero lunges use display slots, so catalog identity does not collapse repeated or later formation positions.
 - Prepared commands belong to the combat session and member UIDs. Replacing actor objects while restoring the same session must preserve prepared selections; a new session or changed roster clears them.
 - Full-health recovery is owned by questCombatSession.mjs for both Town and Continue. Restore actual hero actors, then project HP through UpdateHeroHPUI; empty groups clear old totals. Continue alone retains its existing turn-restart sequence.

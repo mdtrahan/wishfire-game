@@ -1,6 +1,6 @@
 import { continuousCombatBossControlState } from '../src/core/continuousCombatStage.mjs';
 
-const CONTROL = Object.freeze({ centerX: 150, centerY: 50, w: 50, h: 50 });
+const CONTROL = Object.freeze({ centerX: 180, centerY: 50, w: 50, h: 50 });
 const COLOR = '#f7c948';
 
 export function combatBossControlRect(worldToCanvas) {
