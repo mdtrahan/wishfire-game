@@ -3,11 +3,12 @@ export const COMBAT_ORIENTATION_RIGHT_WISE = 'right-wise';
 export const RIGHT_WISE_FORMATION_TRANSLATE_X = -40;
 export const COMBAT_ARENA_REFERENCE_WIDTH = 360;
 export const COMBAT_ARENA_BOUNDS = Object.freeze({
+  heroBackCenterX: 40,
   heroRightEdgeX: 106,
   meleeLeftEdgeX: 167,
   rangedMinX: 225,
   rangedMaxX: 283,
-  attackStartX: 299,
+  attackStartX: 330,
   visibleTopY: 71,
   visibleBottomY: 276,
 });

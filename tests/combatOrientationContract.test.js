@@ -98,11 +98,12 @@ test('runtime-shaped formation anchors keep both factions inside the shared visi
 
   assert.equal(anchors.heroYs.length, 4);
   assert.deepEqual(rules.deriveCombatArenaBounds(360), {
+    heroBackCenterX: 40,
     heroRightEdgeX: 106,
     meleeLeftEdgeX: 167,
     rangedMinX: 225,
     rangedMaxX: 283,
-    attackStartX: 299,
+    attackStartX: 330,
     visibleTopY: 71,
     visibleBottomY: 276,
   });
@@ -117,6 +118,8 @@ test('runtime-shaped formation anchors keep both factions inside the shared visi
   assert.equal(shiftedEnemyYs[1] - shiftedEnemyYs[0], anchors.enemyYs[1] - anchors.enemyYs[0]);
   assert.equal(shiftedEnemyYs[2] - shiftedEnemyYs[1], anchors.enemyYs[2] - anchors.enemyYs[1]);
   assert.equal(shiftedEnemyYs[1], anchors.enemyYs[1]);
+  const renderer = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
+  assert.match(renderer, /i % 2 === 0\\n\s+\? combatFormationAnchors\.arenaBounds\.heroRightEdgeX[\s\S]{0,160}: combatFormationAnchors\.arenaBounds\.heroBackCenterX/);
 });
 
 test('combat reference grid covers the logical canvas in ten-pixel increments', async () => {

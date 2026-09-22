@@ -20,7 +20,7 @@
 - Damage-number palettes preserve semantic kinds; Blight `dot` text uses the shared purple affliction palette in both DOM and Canvas paths.
 - New deterministic rule changes need focused contract tests and, when applicable, fixture rows.
 - `continuousCombatStage.mjs` owns the queryless production stage sequence and its deterministic spawn plans. It may advance only after the shared presentation barrier and enemy-death holds clear; it must not create a second scheduler.
-- Approaching enemies become hero-targetable at the shared arena attack line while continuing to walk. They join the enemy action scheduler only after reaching their melee or ranged home X.
+- Approaching enemies use deterministic non-row Y deltas, become hero-targetable at the shared arena attack line while continuing to walk, and join the enemy action scheduler only after reaching their melee or ranged home X.
 - Marid, Djinn and Chimerilass use ranged homes. Every other enemy uses melee homes.
 
 ## Work Guidance

@@ -77,8 +77,8 @@ const entityAnchor = (state, uid) => {
   const renderHeight = actor?.kind === 'hero' && Number(g.HeroRenderHeightByUID?.[Number(uid || 0)] || 0);
   const size = Math.max(24, Number(g.EnemySize || 40));
   const spacing = Number(g.Spacing || (size + Number(g.enemyGAP || 8)));
-  const actorX = actor?.originX != null ? actor.originX : (actor?.x != null ? actor.x : Number(g.X0 || 200));
-  const actorY = actor?.originY != null ? actor.originY : (actor?.y != null ? actor.y : Number(g.EnemyAreaY0 || 140) + Number(actor?.slotIndex || 0) * spacing);
+  const actorX = actor?.x != null ? actor.x : (actor?.originX != null ? actor.originX : Number(g.X0 || 200));
+  const actorY = actor?.y != null ? actor.y : (actor?.originY != null ? actor.originY : Number(g.EnemyAreaY0 || 140) + Number(actor?.slotIndex || 0) * spacing);
   if (actor?.kind === 'hero' && feet && renderHeight > 0) return {
     x: Number(feet.x),
     y: Number(feet.y) - renderHeight / 2,

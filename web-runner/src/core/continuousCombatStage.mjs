@@ -29,15 +29,18 @@ export function configureContinuousCombatProduction(globals, { productionPath = 
   return true;
 }
 
-function streamGeometry(globals, lane = 1) {
+function streamGeometry(globals, { packIndex = 0, rank = 0, order = 0 } = {}) {
   const bounds = deriveCombatArenaBounds();
   const enemySize = Math.max(20, Number(globals.EnemySize || 40));
-  const laneIndex = Math.max(0, Math.min(2, Number(lane) || 0));
   const firstY = bounds.visibleTopY + enemySize / 2;
   const lastY = bounds.visibleBottomY - enemySize / 2;
+  const stateSeed = Number(globals.ContinuousCombatStage?.seed || globals.EncounterSeed || 1) >>> 0;
+  const sequenceIndex = (stateSeed % 7) * 9 + Math.max(Number(rank) * 3, Number(packIndex) * 3) + Number(order) + 1;
+  const placementSlot = (sequenceIndex * 5 + stateSeed) % 9;
   return {
     spawnX: 360 + enemySize * 1.5,
-    y: firstY + laneIndex * ((lastY - firstY) / 2),
+    y: firstY + (placementSlot / 8) * (lastY - firstY),
+    placementSlot,
     walkSpeed: Math.max(34, enemySize * 0.9),
     enemySize,
     bounds,
@@ -49,10 +52,13 @@ const PACK_SPAWN_OFFSET = Object.freeze([0, 0.72, 0.28]);
 const PACK_WALK_SPEED_SCALE = Object.freeze([1, 0.84, 1.13]);
 const RANGED_ENEMY_NAMES = new Set(['marid', 'djinn', 'chimerilass']);
 
-function meleeHomeX(bounds, enemySize, packIndex, order) {
+function meleeHomeX(bounds, enemySize, placementSlot) {
   const closest = bounds.meleeLeftEdgeX + enemySize / 2;
-  const far = Math.min(bounds.rangedMinX - 5, closest + enemySize * 0.3);
-  return (order % 2 === 0 ? closest + order : far) + packIndex * 0.8 + order * 0.2;
+  const span = Math.max(1, Math.floor(bounds.rangedMinX - 5 - closest));
+  const xFraction = placementSlot % 2 === 0
+    ? 0.05 + Math.floor(placementSlot / 2) * 0.05
+    : 0.95 - Math.floor(placementSlot / 2) * 0.05;
+  return closest + xFraction * span;
 }
 
 function rangedHomeX(bounds, packIndex, order, boss) {
@@ -63,17 +69,17 @@ function rangedHomeX(bounds, packIndex, order, boss) {
 
 export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1, rank = 0, packIndex = 0, entryOrder = lane } = {}) {
   if (!enemy) return null;
-  const geometry = streamGeometry(globals, lane);
   const order = Math.max(0, Number(entryOrder || 0)) % 3;
+  const geometry = streamGeometry(globals, { packIndex, rank, order });
   const delivery = RANGED_ENEMY_NAMES.has(String(enemy.name || '').trim().toLowerCase()) ? 'ranged' : 'melee';
   const meleeLine = order % 2;
   const normalizedPackIndex = Math.max(0, Number(packIndex || 0));
   const boss = String(enemy.enemyRole || enemy.role || '').toLowerCase() === 'boss';
   const engageX = delivery === 'melee'
-    ? meleeHomeX(geometry.bounds, geometry.enemySize, normalizedPackIndex, order)
+    ? meleeHomeX(geometry.bounds, geometry.enemySize, geometry.placementSlot)
     : rangedHomeX(geometry.bounds, normalizedPackIndex, order, boss);
   Object.assign(enemy, {
-    streamState: 'approaching', streamLane: lane, streamRank: rank, streamPackIndex: packIndex,
+    streamState: 'approaching', streamLane: lane, streamRank: rank, streamPackIndex: packIndex, streamEntryOrder: order,
     streamDelivery: delivery, streamMeleeLine: meleeLine,
     streamEngageX: engageX, streamWalkSpeed: geometry.walkSpeed * PACK_WALK_SPEED_SCALE[order],
     streamStartAt: Number(globals.time || 0) + PACK_ENTRY_DELAY_SEC[order],
@@ -205,7 +211,11 @@ function updateApproachingEnemies(globals, entities, now) {
   for (const enemy of entities || []) {
     if (enemy?.kind !== 'enemy' || Number(enemy.hp || 0) <= 0 || !['approaching', 'in_range'].includes(enemy.streamState)) continue;
     if (now < Number(enemy.streamStartAt || 0)) continue;
-    const geometry = streamGeometry(globals, Number(enemy.streamLane || 1));
+    const geometry = streamGeometry(globals, {
+      packIndex: Number(enemy.streamPackIndex || 0),
+      rank: Number(enemy.streamRank || 0),
+      order: Number(enemy.streamEntryOrder ?? enemy.streamLane ?? 0),
+    });
     const engageX = Number(enemy.streamEngageX || enemy.originX || enemy.x || 0);
     enemy.streamEngageX = engageX;
     enemy.originX = engageX;

@@ -438,3 +438,35 @@ test('enemy damage wiring queues a typed hero impact after the shipping skill ca
   assert.match(renderer, /enemyAction\.skillId === 'Enemy_MAG_AOE' \? 'rose'/);
   assert.match(renderer, /enemyUsesRangedMagic \? enemy\.originX/);
 });
+
+test('hero projectiles follow a moving target current position', () => {
+  const translations = [];
+  const ctx = {
+    save() {}, restore() {}, rotate() {}, drawImage() {},
+    translate(x, y) { translations.push([x, y]); },
+    set globalAlpha(value) {},
+  };
+  const target = { uid: 2, kind: 'enemy', hp: 10, x: 250, y: 150, originX: 190, originY: 90 };
+  const state = {
+    globals: {
+      time: 0.74,
+      EnemySize: 40,
+      HeroRestBasePosByUID: { 1: { x: 60, y: 150 } },
+      PendingHeroHits: [{ at: 1, heroUID: 1, targetUID: 2, attackVfxKind: 'runa_bolt' }],
+    },
+    entities: [{ uid: 1, kind: 'hero', hp: 10 }, target],
+  };
+  const render = () => renderCombatAttackVfx(ctx, {
+    state,
+    images: { CombatRunaBolt: { width: 64, height: 32 } },
+    worldToCanvas: (x, y) => ({ x, y }),
+    layoutScale: 1,
+  });
+  render();
+  const firstX = translations.at(-1)[0];
+  target.x = 300;
+  target.y = 180;
+  render();
+  assert.ok(translations.at(-1)[0] > firstX);
+  assert.ok(translations.at(-1)[1] > translations.at(-2)[1]);
+});

@@ -2,12 +2,13 @@ const finite = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(
 
 export function realtimeCooldownSeconds(actor) {
   const speed = Math.max(1, finite(actor?.speed ?? actor?.spd ?? actor?.SPD, 1));
+  if (Number(actor?.type || 0) === 0) return 1 + Math.max(0, Math.min(1, (speed - 8) / 4)) * 0.2;
   return Math.max(1.6, Math.min(5, 32 / speed));
 }
 
 const initialCooldownPhase = uid => (((Number(uid || 0) * 2654435761) >>> 0) / 0x100000000);
 
-export function selectRealtimeReadyActor({ actors = [], readyAt = {}, now = 0, completedUID = 0 } = {}) {
+export function selectRealtimeReadyActor({ actors = [], readyAt = {}, now = 0, completedUID = 0, selectionEnabled = true } = {}) {
   const living = actors.filter(actor => Number(actor?.uid || 0) > 0 && Number(actor?.hp || 0) > 0);
   const nextReadyAt = {};
   const completedKey = String(Number(completedUID || 0));
@@ -16,10 +17,12 @@ export function selectRealtimeReadyActor({ actors = [], readyAt = {}, now = 0, c
     const prior = finite(readyAt[key], NaN);
     nextReadyAt[key] = Number.isFinite(prior)
       ? prior
-      : finite(now) + 0.2 + initialCooldownPhase(actor.uid) * realtimeCooldownSeconds(actor);
+      : finite(now) + (Number(actor?.type || 0) === 0
+        ? realtimeCooldownSeconds(actor)
+        : 0.2 + initialCooldownPhase(actor.uid) * realtimeCooldownSeconds(actor));
     if (key === completedKey) nextReadyAt[key] = finite(now) + realtimeCooldownSeconds(actor);
   }
-  const selected = living
+  const selected = selectionEnabled && living
     .filter(actor => nextReadyAt[String(actor.uid)] <= finite(now))
     .sort((a, b) => nextReadyAt[String(a.uid)] - nextReadyAt[String(b.uid)] || Number(a.uid) - Number(b.uid))[0] || null;
   if (selected) nextReadyAt[String(selected.uid)] = Number.MAX_SAFE_INTEGER;

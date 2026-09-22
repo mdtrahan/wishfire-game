@@ -22,14 +22,12 @@ test('real-time cooldowns advance from wall time and only reset the actor that c
   assert.notEqual(secondReady.selected.uid, firstUID);
 });
 
-test('initial cooldown phases interleave factions instead of preserving roster order', () => {
-  const actors = [
-    { uid: 1, type: 0, hp: 10, speed: 10 },
-    { uid: 2, type: 0, hp: 10, speed: 10 },
-    { uid: 3, type: 1, hp: 10, speed: 10 },
-    { uid: 4, type: 1, hp: 10, speed: 10 },
-  ];
-  const { readyAt } = selectRealtimeReadyActor({ actors, now: 5 });
-  const order = actors.slice().sort((a, b) => readyAt[a.uid] - readyAt[b.uid]).map(actor => actor.type);
-  assert.notDeepEqual(order, [0, 0, 1, 1]);
+test('hero basics use independent one-to-1.2 second cooldowns and pre-arm before a target arrives', () => {
+  const actors = [8, 10, 11, 12].map((speed, index) => ({ uid: index + 1, type: 0, hp: 10, speed }));
+  assert.deepEqual(actors.map(realtimeCooldownSeconds), [1, 1.1, 1.15, 1.2]);
+  const waiting = selectRealtimeReadyActor({ actors, now: 5, selectionEnabled: false });
+  assert.equal(waiting.selected, null);
+  assert.deepEqual(Object.values(waiting.readyAt), [6, 6.1, 6.15, 6.2]);
+  const released = selectRealtimeReadyActor({ actors, readyAt: waiting.readyAt, now: 6.2 });
+  assert.equal(released.selected.uid, 1);
 });

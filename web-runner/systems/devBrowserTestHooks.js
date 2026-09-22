@@ -366,7 +366,11 @@ export function registerDevBrowserTestHooks({
         .map(e => ({ uid: e.uid, name: e.name, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHP, flow: getHeroFlowState(e), combatPower: Number(e.combatPower || 0) })),
       enemies: state.entities
         .filter(e => e.kind === 'enemy')
-        .map(e => ({ uid: e.uid, name: e.name, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHP, slot: e.slotIndex, combatPower: Number(e.combatPower || 0) })),
+        .map(e => ({
+          uid: e.uid, name: e.name, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHP, slot: e.slotIndex,
+          streamState: e.streamState || null, streamEngageX: Number(e.streamEngageX || 0),
+          streamStartAt: Number(e.streamStartAt || 0), combatPower: Number(e.combatPower || 0),
+        })),
       damageTexts: (state.globals.DamageTexts || []).map(d => {
         const riseSec = Math.max(0.001, Number(d.riseInSec || 0.18));
         const phase = Number(d.phase || 0);
