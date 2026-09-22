@@ -48,7 +48,7 @@
 - Continuous-production coverage proves deterministic stage order, concurrent per-hero basic readiness, enemy cooldown ownership and clean skill presentation barriers. Combat-card modules, assets, connectors and UI must remain absent. Production-party regressions must construct the configured canonical roster before testing UID and role attribution.
 - Enemy-stream coverage fixes the single-X staggered emitter, bounded varied Y homes, Y-based sprite depth, fifteen-second post-engagement cadence, shallow linear CP rise, survivor overlap, role-shaped attack motion and boss clear gate.
 
-- Migration coverage uses `combatRulesMigration`, `heroProgressionMigration` and `continuousCombatStageContract` for canonical effects, growth and stage settlement. VM function-bank harnesses must inject the real core/module imports.
+- Migration coverage uses `combatRulesMigration`, `heroProgressionMigration` and `continuousCombatStageContract` for canonical effects, growth, infinite stage wrapping, and immediate no-reward enemy removal. VM function-bank harnesses must inject the real core/module imports.
 
 - Action capacity tests cover mixed 1/2/3 slots, affordability, removal and early commit. Browser proof exercises real target clicks and capacity auto-commit. Paused frame-based regeneration must not affect combat.
 

@@ -15,7 +15,7 @@ export const CONTINUOUS_COMBAT_STAGES = Object.freeze([
 
 export function createContinuousCombatStageState(seed = 1) {
   const normalizedSeed = Number(seed) >>> 0 || 1;
-  return { seed: normalizedSeed, stageIndex: 0, stageId: CONTINUOUS_COMBAT_STAGES[0].id, transitions: 0, completed: [], nextEmissionAt: 0, lastUpdatedAt: 0, spawnSerial: 0 };
+  return { seed: normalizedSeed, stageIndex: 0, stageId: CONTINUOUS_COMBAT_STAGES[0].id, transitions: 0, cycles: 0, completed: [], nextEmissionAt: 0, lastUpdatedAt: 0, spawnSerial: 0 };
 }
 
 export function configureContinuousCombatProduction(globals, { productionPath = false } = {}) {
@@ -122,9 +122,10 @@ export function advanceContinuousCombatStage(stageState) {
   const nextIndex = currentIndex + 1;
   const completed = Array.isArray(stageState?.completed) ? [...stageState.completed] : [];
   if (current && !completed.includes(current.id)) completed.push(current.id);
-  if (nextIndex >= CONTINUOUS_COMBAT_STAGES.length) return { done: true, stage: null, state: { ...stageState, transitions: Number(stageState?.transitions || 0) + 1, completed } };
-  const next = CONTINUOUS_COMBAT_STAGES[nextIndex];
-  return { done: false, stage: next, state: { ...stageState, stageIndex: nextIndex, stageId: next.id, transitions: Number(stageState?.transitions || 0) + 1, completed } };
+  const wrapped = nextIndex >= CONTINUOUS_COMBAT_STAGES.length;
+  const resolvedIndex = wrapped ? 0 : nextIndex;
+  const next = CONTINUOUS_COMBAT_STAGES[resolvedIndex];
+  return { done: false, stage: next, state: { ...stageState, stageIndex: resolvedIndex, stageId: next.id, transitions: Number(stageState?.transitions || 0) + 1, cycles: Number(stageState?.cycles || 0) + (wrapped ? 1 : 0), completed: wrapped ? [] : completed } };
 }
 
 function scaleContinuousCombatRow(row, scale) {
@@ -254,13 +255,6 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
     pendingDeaths: globals.EnemyDeathVisualHoldByUID || globals.PendingDeaths,
     presentationClear: presentationIsClear(globals, presentationBarrier),
   });
-  if (transition.done) {
-    if (clear) {
-      globals.ContinuousCombatStageComplete = 1;
-      globals.ContinuousCombatStageLoop = 0;
-    }
-    return false;
-  }
   const timerReady = now >= Number(stageState.nextEmissionAt || 0);
   if (transition.stage.waitForClear ? !clear : !timerReady) return false;
 

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CONTINUOUS_COMBAT_PACK_CP_STEP,
+  CONTINUOUS_COMBAT_STAGES,
   activateContinuousCombatSpawnedEnemy,
   advanceContinuousCombatStage,
   buildContinuousCombatSpawnPlan,
@@ -31,6 +32,22 @@ test('production starts with a weak three-enemy pack and a shallow linear CP ram
   assert.ok(totals[1] < totals[2]);
   assert.ok(totals[1] / totals[0] < 1 + CONTINUOUS_COMBAT_PACK_CP_STEP * 2);
   assert.ok(totals[2] / totals[1] < 1 + CONTINUOUS_COMBAT_PACK_CP_STEP * 2);
+});
+
+test('the final stage wraps to the opening pack and keeps the stream alive', () => {
+  const finalIndex = CONTINUOUS_COMBAT_STAGES.length - 1;
+  const transition = advanceContinuousCombatStage({
+    ...createContinuousCombatStageState(42),
+    stageIndex: finalIndex,
+    stageId: CONTINUOUS_COMBAT_STAGES[finalIndex].id,
+    transitions: finalIndex,
+    completed: ['1-1-pack-1', '1-1-pack-2', '1-1-pack-3', '1-1-boss'],
+  });
+  assert.equal(transition.done, false);
+  assert.equal(transition.stage.id, '1-1-pack-1');
+  assert.equal(transition.state.stageIndex, 0);
+  assert.equal(transition.state.cycles, 1);
+  assert.deepEqual(transition.state.completed, []);
 });
 
 test('stream enemies begin off-stage and become engaged only after walking to the boundary', () => {
@@ -196,6 +213,7 @@ test('runtime source targets in-range walkers while keeping them out of the enem
   assert.match(source, /export function TickRealtimeHeroBasics/);
   assert.match(source, /hit\.realtimeBasic = 1/);
   assert.match(heroCommands, /noLivingEnemy&&streamComplete/);
+  assert.match(source, /Number\(astralFlowAward\?\.spawned \|\| 0\) > 0 && markEnemyDeathVisualHold/);
   const renderer = fs.readFileSync(new URL('../web-runner/systems/renderRuntime.js', import.meta.url), 'utf8');
   assert.match(renderer, /enemiesToDraw = .*\.sort\(\(a, b\) => Number\(b\.y/);
 });

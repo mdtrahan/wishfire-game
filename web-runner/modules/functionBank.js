@@ -7998,7 +7998,7 @@ export function KillEnemyAt(ctx, slotIndex) {
   const astralFlowAward = AwardEnemyKoAstralFlow(ctx, deadEnemy, {
     killerUID: Number(currentUID || 0),
   });
-  if (markEnemyDeathVisualHold(ctx, deadEnemy, slotIndex, currentUID)) {
+  if (Number(astralFlowAward?.spawned || 0) > 0 && markEnemyDeathVisualHold(ctx, deadEnemy, slotIndex, currentUID)) {
     g.IsPlayerBusy = 1;
     UpdateEnemyHPUI(ctx);
     return;
@@ -8039,7 +8039,7 @@ export function KillEnemyByUID(ctx, enemyUID, fallbackSlotIndex = 0) {
   const astralFlowAward = AwardEnemyKoAstralFlow(ctx, deadEnemy, {
     killerUID: Number(currentUID || 0),
   });
-  if (markEnemyDeathVisualHold(ctx, deadEnemy, slotIndex, currentUID)) {
+  if (Number(astralFlowAward?.spawned || 0) > 0 && markEnemyDeathVisualHold(ctx, deadEnemy, slotIndex, currentUID)) {
     g.IsPlayerBusy = 1;
     UpdateEnemyHPUI(ctx);
     return;
