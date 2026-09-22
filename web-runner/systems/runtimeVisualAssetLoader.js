@@ -167,6 +167,7 @@ export async function loadRuntimeVisualAssets({
       (async () => { images.CombatKajaOrb = await loadImage(assetUrl('images/vfx_kaja_orb.png')); })(),
       (async () => { images.CombatDjinnRain = await loadImage(assetUrl('images/vfx_djinn_rain.png')); })(),
       (async () => { images.CombatMaridCrescent = await loadImage(assetUrl('images/vfx_marid_crescent.png')); })(),
+      (async () => { images.CombatMeleeCrescent = await loadImage(assetUrl('images/vfx_melee_crescent_g09.png')); })(),
       (async () => { images.CombatChimerilassEruption = await loadImage(assetUrl('images/vfx_chimerilass_eruption.png')); })(),
       (async () => { images.CombatScatheCrackle = await loadImage(assetUrl('images/vfx_scathe_crackle.png')); })(),
       (async () => { images.CombatSweepCrescent = await loadImage(assetUrl('images/vfx_sweep_crescent.png')); })(),

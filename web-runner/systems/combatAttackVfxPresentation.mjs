@@ -54,6 +54,7 @@ const projectileAsset = (images, kind) => (
   kind === 'runa_bolt' ? images.CombatRunaBolt
     : kind === 'kaja_orb' || kind === 'magic_orb' ? images.CombatKajaOrb
       : kind === 'marid_crescent' ? images.CombatMaridCrescent
+        : kind === 'melee_crescent' ? images.CombatMeleeCrescent
         : null
 );
 
@@ -121,6 +122,7 @@ const heroGroupAnchor = (state) => {
 };
 
 export function queueCombatAttackImpactVfx(state, hit, target, now) {
+  if (Number(hit?.suppressImpactVfx || 0) === 1) return;
   if ((!hit?.attackVfxKind && !hit?.impactVfxKind) || !target) return;
   const g = state.globals || {};
   const actor = (state.entities || []).find(entity => Number(entity?.uid || 0) === Number(hit.heroUID || hit.actorUID || 0));
@@ -376,7 +378,7 @@ export function renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layou
       worldToCanvas(sourcePoint.x, sourcePoint.y),
       worldToCanvas(targetPoint.x, targetPoint.y),
       progress,
-      Math.max(34, (kind === 'kaja_orb' ? 50 : 46) * layoutScale),
+      Math.max(28, (kind === 'melee_crescent' ? 34 : kind === 'kaja_orb' ? 50 : 46) * layoutScale),
       layoutScale,
       kind === 'kaja_orb' ? 7 : 0,
     );

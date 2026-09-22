@@ -2,7 +2,7 @@ const finite = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(
 
 export function realtimeCooldownSeconds(actor) {
   const speed = Math.max(1, finite(actor?.speed ?? actor?.spd ?? actor?.SPD, 1));
-  if (Number(actor?.type || 0) === 0) return 1 + Math.max(0, Math.min(1, (speed - 8) / 4)) * 0.2;
+  if (Number(actor?.type || 0) === 0) return 0.5 + Math.max(0, Math.min(1, (speed - 8) / 4)) * 0.2;
   return Math.max(1.6, Math.min(5, 32 / speed));
 }
 
@@ -27,4 +27,12 @@ export function selectRealtimeReadyActor({ actors = [], readyAt = {}, now = 0, c
     .sort((a, b) => nextReadyAt[String(a.uid)] - nextReadyAt[String(b.uid)] || Number(a.uid) - Number(b.uid))[0] || null;
   if (selected) nextReadyAt[String(selected.uid)] = Number.MAX_SAFE_INTEGER;
   return { selected, readyAt: nextReadyAt };
+}
+
+export function collectRealtimeReadyActors({ actors = [], readyAt = {}, now = 0, selectionEnabled = true } = {}) {
+  const armed = selectRealtimeReadyActor({ actors, readyAt, now, selectionEnabled: false });
+  const ready = selectionEnabled
+    ? actors.filter(actor => Number(actor?.hp || 0) > 0 && armed.readyAt[String(actor.uid)] <= finite(now))
+    : [];
+  return { ready, readyAt: armed.readyAt };
 }

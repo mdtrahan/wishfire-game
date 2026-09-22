@@ -100,7 +100,7 @@ test('runtime-shaped formation anchors keep both factions inside the shared visi
   assert.deepEqual(rules.deriveCombatArenaBounds(360), {
     heroBackCenterX: 40,
     heroRightEdgeX: 106,
-    meleeLeftEdgeX: 167,
+    meleeLeftEdgeX: 130,
     rangedMinX: 225,
     rangedMaxX: 283,
     attackStartX: 330,

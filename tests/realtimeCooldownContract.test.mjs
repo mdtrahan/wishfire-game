@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { realtimeCooldownSeconds, selectRealtimeReadyActor } from '../web-runner/src/core/realtimeCooldown.mjs';
+import { collectRealtimeReadyActors, realtimeCooldownSeconds, selectRealtimeReadyActor } from '../web-runner/src/core/realtimeCooldown.mjs';
 
 test('real-time cooldowns advance from wall time and only reset the actor that completed', () => {
   const actors = [
@@ -22,12 +22,12 @@ test('real-time cooldowns advance from wall time and only reset the actor that c
   assert.notEqual(secondReady.selected.uid, firstUID);
 });
 
-test('hero basics use independent one-to-1.2 second cooldowns and pre-arm before a target arrives', () => {
+test('hero basics use independent 0.5-to-0.7 second cooldowns and can fire together', () => {
   const actors = [8, 10, 11, 12].map((speed, index) => ({ uid: index + 1, type: 0, hp: 10, speed }));
-  assert.deepEqual(actors.map(realtimeCooldownSeconds), [1, 1.1, 1.15, 1.2]);
+  assert.deepEqual(actors.map(realtimeCooldownSeconds), [0.5, 0.6, 0.65, 0.7]);
   const waiting = selectRealtimeReadyActor({ actors, now: 5, selectionEnabled: false });
   assert.equal(waiting.selected, null);
-  assert.deepEqual(Object.values(waiting.readyAt), [6, 6.1, 6.15, 6.2]);
-  const released = selectRealtimeReadyActor({ actors, readyAt: waiting.readyAt, now: 6.2 });
-  assert.equal(released.selected.uid, 1);
+  assert.deepEqual(Object.values(waiting.readyAt), [5.5, 5.6, 5.65, 5.7]);
+  const released = collectRealtimeReadyActors({ actors, readyAt: waiting.readyAt, now: 5.7 });
+  assert.deepEqual(released.ready.map(actor => actor.uid), [1, 2, 3, 4]);
 });

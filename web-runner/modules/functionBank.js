@@ -53,7 +53,7 @@ import {
   applyDynamicInitiativeActionCompleted,
   selectDynamicInitiativeTurn,
 } from '../src/core/dynamicInitiativeRules.mjs';
-import { selectRealtimeReadyActor } from '../src/core/realtimeCooldown.mjs';
+import { collectRealtimeReadyActors, realtimeCooldownSeconds, selectRealtimeReadyActor } from '../src/core/realtimeCooldown.mjs';
 
 import { sanitizeInitiativeQueue, shouldAutoCorrectImproperRepeat } from '../src/core/initiativeGuards.mjs';
 import {
@@ -3775,7 +3775,7 @@ function buildDynamicInitiativeDefaultSpeedSelection(ctx, options = null) {
   }
   if (Number(g.ContinuousCombatStageLoop || 0) === 1) {
     const actorRoster = buildDynamicInitiativeRoster(getDynamicInitiativeRoster(ctx), { pendingDeaths: g.PendingDeaths || null });
-    const actors = actorRoster.eligible;
+    const actors = actorRoster.eligible.filter(actor => Number(actor.type || 0) === 1);
     const targetAvailable = getEnemies(ctx).some(enemy => Number(enemy?.hp || 0) > 0 && enemy.streamState !== 'approaching');
     const readiness = selectRealtimeReadyActor({
       actors,
@@ -7178,7 +7178,29 @@ function combatAttackVfxKind(actor) {
   const key = String(actor?.baseHeroName || actor?.name || '');
   if (key === 'Runa') return 'runa_bolt';
   if (key === 'Kojonn' || key === 'Kaja') return 'kaja_orb';
-  return 'impact';
+  return 'melee_crescent';
+}
+
+export function TickRealtimeHeroBasics(ctx) {
+  const g = getGlobals(ctx);
+  if (Number(g.ContinuousCombatStageLoop || 0) !== 1 || g.GamePhase !== 'RUNTIME' || g.BattleStartActive || g.NativeBattleEnded) return 0;
+  const enemies = getEnemies(ctx).filter(enemy => Number(enemy?.hp || 0) > 0 && enemy.streamState !== 'approaching');
+  const heroes = getEntities(ctx).filter(hero => hero?.kind === 'hero' && Number(hero.hp || 0) > 0);
+  const readiness = collectRealtimeReadyActors({ actors: heroes, readyAt: g.RealtimeHeroBasicReadyAt, now: g.time, selectionEnabled: enemies.length > 0 });
+  g.RealtimeHeroBasicReadyAt = readiness.readyAt;
+  for (const hero of readiness.ready) {
+    const target = resolveHeroAttackTarget({ hero, enemies, randomPick: candidates => randomPick(ctx, candidates) });
+    if (!target) continue;
+    const before = Array.isArray(g.PendingHeroHits) ? g.PendingHeroHits.length : 0;
+    HeroAttackSingle(ctx, hero.uid, target.uid);
+    for (const hit of (g.PendingHeroHits || []).slice(before)) {
+      hit.realtimeBasic = 1;
+      hit.suppressImpactVfx = 1;
+      hit.retargetOnDeath = 1;
+    }
+    g.RealtimeHeroBasicReadyAt[String(hero.uid)] = Number(g.time || 0) + realtimeCooldownSeconds(hero);
+  }
+  return readiness.ready.length;
 }
 
 function HeroAttackSplit(ctx, heroUID, rootTargetUID) {

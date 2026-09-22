@@ -39,7 +39,7 @@ test('stream enemies begin off-stage and become engaged only after walking to th
   assert.equal(enemy.streamState, 'approaching');
   assert.ok(enemy.x > 360);
   assert.ok(enemy.y >= 91 && enemy.y <= 256);
-  assert.ok(enemy.streamEngageX >= 167);
+  assert.equal(enemy.streamEngageX, 130);
 });
 
 test('pack members enter with deterministic stagger instead of marching in unison', () => {
@@ -52,7 +52,7 @@ test('pack members enter with deterministic stagger instead of marching in uniso
   assert.deepEqual(enemies.map(enemy => enemy.streamStartAt), [3, 3.62, 4.55]);
   assert.ok(enemies[1].streamWalkSpeed < enemies[0].streamWalkSpeed);
   assert.ok(enemies[2].streamWalkSpeed > enemies[0].streamWalkSpeed);
-  assert.notEqual(enemies[1].x, enemies[2].x);
+  assert.equal(new Set(enemies.map(enemy => enemy.x)).size, 1);
   assert.equal(new Set(enemies.map(enemy => enemy.y)).size, 3);
   assert.ok(enemies.every(enemy => enemy.y >= 91 && enemy.y <= 256));
 });
@@ -70,16 +70,15 @@ test('melee and ranged enemies stop inside their annotated home bands', () => {
   const laterRanged = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', name: 'Marid', hp: 10, ATK: 2, MAG: 10 }, { entryOrder: 2, rank: 4 });
   const highMagicMelee = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', name: 'Gobloc', hp: 10, ATK: 2, MAG: 99 }, { entryOrder: 0 });
   assert.equal(melee.streamDelivery, 'melee');
-  assert.ok(melee.streamEngageX >= 187 && melee.streamEngageX <= 220);
-  assert.ok(farMelee.streamEngageX >= 187 && farMelee.streamEngageX <= 220);
-  assert.notEqual(melee.streamEngageX, farMelee.streamEngageX);
+  assert.equal(melee.streamEngageX, 130);
+  assert.equal(farMelee.streamEngageX, 130);
   assert.equal(ranged.streamDelivery, 'ranged');
   assert.equal(ranged.streamEngageX, 254);
   assert.equal(laterRanged.streamEngageX, 254);
   assert.equal(highMagicMelee.streamDelivery, 'melee');
 });
 
-test('overlapping packs reserve distinct engagement X positions', () => {
+test('overlapping packs share one emitter and retain distinct bounded Y positions', () => {
   const globals = {
     time: 0,
     EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 },
@@ -91,11 +90,12 @@ test('overlapping packs reserve distinct engagement X positions', () => {
     { kind: 'enemy', hp: 10, ATK: 10, MAG: 2 },
     { packIndex, entryOrder, lane: entryOrder },
   )));
-  assert.equal(new Set(enemies.map(enemy => enemy.streamEngageX)).size, enemies.length);
+  assert.equal(new Set(enemies.map(enemy => enemy.x)).size, 1);
+  assert.equal(new Set(enemies.map(enemy => enemy.streamEngageX)).size, 1);
   assert.equal(new Set(enemies.map(enemy => enemy.y)).size, enemies.length);
   for (let left = 0; left < enemies.length; left += 1) {
     for (let right = left + 1; right < enemies.length; right += 1) {
-      assert.ok(Math.hypot(enemies[left].streamEngageX - enemies[right].streamEngageX, enemies[left].y - enemies[right].y) > 18);
+      assert.ok(Math.abs(enemies[left].y - enemies[right].y) > 0.5);
     }
   }
 });
@@ -192,5 +192,10 @@ test('runtime source targets in-range walkers while keeping them out of the enem
   assert.match(source, /stationary: Number\(g\.ContinuousCombatStageLoop \|\| 0\) === 1 \|\| \/\^Enemy_Heal_/);
   assert.match(source, /forwardX: originX/);
   assert.match(source, /selectionEnabled: targetAvailable/);
+  assert.match(source, /actorRoster\.eligible\.filter\(actor => Number\(actor\.type \|\| 0\) === 1\)/);
+  assert.match(source, /export function TickRealtimeHeroBasics/);
+  assert.match(source, /hit\.realtimeBasic = 1/);
   assert.match(heroCommands, /noLivingEnemy&&streamComplete/);
+  const renderer = fs.readFileSync(new URL('../web-runner/systems/renderRuntime.js', import.meta.url), 'utf8');
+  assert.match(renderer, /enemiesToDraw = .*\.sort\(\(a, b\) => Number\(b\.y/);
 });

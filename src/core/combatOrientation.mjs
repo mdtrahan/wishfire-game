@@ -5,7 +5,7 @@ export const COMBAT_ARENA_REFERENCE_WIDTH = 360;
 export const COMBAT_ARENA_BOUNDS = Object.freeze({
   heroBackCenterX: 40,
   heroRightEdgeX: 106,
-  meleeLeftEdgeX: 167,
+  meleeLeftEdgeX: 130,
   rangedMinX: 225,
   rangedMaxX: 283,
   attackStartX: 330,

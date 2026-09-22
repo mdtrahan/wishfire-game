@@ -85,6 +85,15 @@ test('hit impacts route weak hits to the glance ring and stronger ranged hits to
   assert.deepEqual(draws.slice(1).map(draw => draw.filter), ['none', 'none', 'none', 'none']);
 });
 
+test('regular basics keep their delivery art and suppress contact splashes', () => {
+  const target = { uid: 10, kind: 'enemy', x: 250, y: 150, maxHP: 100 };
+  const state = { globals: {}, entities: [{ uid: 1, kind: 'hero', name: 'Fara' }, target] };
+  queueCombatAttackImpactVfx(state, { heroUID: 1, attackVfxKind: 'melee_crescent', suppressImpactVfx: 1, finalDmg: 12 }, target, 1);
+  assert.equal(state.globals.CombatImpactVisuals, undefined);
+  assert.match(runtimeBank, /hit\.suppressImpactVfx = 1/);
+  assert.match(renderer, /\['Enemy_ATK_Single', 'Enemy_MAG_Single'\]\.includes\(enemyAction\.skillId\)/);
+});
+
 test('approved splash sheet assignments route by hero and action identity', () => {
   const draws = [];
   const ctx = {
@@ -224,6 +233,7 @@ test('transparent raster VFX assets are loaded', () => {
     ['CombatKajaOrb', 'vfx_kaja_orb.png'],
     ['CombatDjinnRain', 'vfx_djinn_rain.png'],
     ['CombatMaridCrescent', 'vfx_marid_crescent.png'],
+    ['CombatMeleeCrescent', 'vfx_melee_crescent_g09.png'],
     ['CombatChimerilassEruption', 'vfx_chimerilass_eruption.png'],
     ['CombatScatheCrackle', 'vfx_scathe_crackle.png'],
     ['CombatSweepCrescent', 'vfx_sweep_crescent.png'],
