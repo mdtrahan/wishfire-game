@@ -18,6 +18,18 @@ import {
 const rows = ['Gobloc', 'Skeleton', 'High Gobloc', 'Lizardo', 'Orc', 'High Orc', 'Chimerilass', 'Djinn', 'Troll']
   .map((name, index) => ({ name, HP: 20 + index * 5, ATK: 2 + index, DEF: 2, MAG: 1, RES: 1, SPD: 8 }));
 
+test('continuous combat ignores retired enemy-slot refill holds in both runtime banks', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { getEnemyRosterStability } = await import('../web-runner/src/core/enemyRosterStability.mjs');
+  const entities = [{ kind: 'enemy', uid: 2, hp: 10 }];
+  assert.equal(getEnemyRosterStability({ enemySlots: [99], enemyIds: [98], pendingRespawnSlots: [1], entities }).stable, false);
+  assert.equal(getEnemyRosterStability({ entities }).stable, true);
+  for (const path of ['../web-runner/modules/functionBank.js', '../Scripts/functionBank.js']) {
+    const source = readFileSync(new URL(path, import.meta.url), 'utf8');
+    assert.match(source, /if \(Number\(g\.ContinuousCombatStageLoop \|\| 0\) === 1\) return getEnemyRosterStability\(\{ entities: getEntities\(ctx\) \}\);/);
+  }
+});
+
 test('wave size falls from five to four to three as average enemy CP rises', () => {
   const start = createContinuousCombatStageState(42);
   const first = buildContinuousCombatSpawnPlan(rows, start);
@@ -99,6 +111,44 @@ test('stream enemies begin off-stage and become engaged only after walking to th
   assert.ok(enemy.x > 360);
   assert.ok(enemy.y >= 190 && enemy.y <= 355);
   assert.equal(enemy.streamEngageX, 130);
+});
+
+test('boss walks to its own home and holds position for attacks', () => {
+  const globals = {
+    ContinuousCombatStageLoop: 1,
+    ContinuousCombatStage: { ...createContinuousCombatStageState(1), bossActive: true, lastUpdatedAt: 0.9 },
+    GamePhase: 'RUNTIME', BattleStartActive: 0, time: 1, EnemySize: 40,
+    EnemyData: rows, PendingDeaths: {}, ActionInProgress: 0, IsPlayerBusy: 0,
+  };
+  const boss = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', name: 'Troll', enemyRole: 'boss', hp: 10 }, { entryOrder: 0 });
+  assert.ok(boss.x > 360);
+  assert.equal(boss.streamEngageX, 290);
+  assert.equal(boss.originY, 290);
+  boss.x = 291;
+  let resumed = 0;
+  globals.time = 1.1;
+  maybeAdvanceContinuousCombatStage({ globals, entities: [boss], presentationBarrier: { lanes: {} }, call() {}, runCombatStep() { resumed += 1; } });
+  assert.equal(boss.streamState, 'engaged');
+  assert.equal(boss.x, 290);
+  assert.equal(boss.y, 290);
+  assert.equal(resumed, 1);
+  globals.time = 1.2;
+  maybeAdvanceContinuousCombatStage({ globals, entities: [boss], presentationBarrier: { lanes: {} }, call() {}, runCombatStep() { resumed += 1; } });
+  assert.equal(boss.x, 290);
+  assert.equal(boss.y, 290);
+});
+
+test('engaged enemy cooldowns keep ticking while hero projectiles are in flight', () => {
+  const globals = {
+    ContinuousCombatStageLoop: 1,
+    ContinuousCombatStage: { ...createContinuousCombatStageState(1), bossActive: true },
+    GamePhase: 'RUNTIME', BattleStartActive: 0, time: 2,
+    PendingHeroHits: [{ targetUID: 1 }], ActionInProgress: 0, IsPlayerBusy: 0,
+  };
+  const boss = { kind: 'enemy', hp: 10, streamState: 'engaged', x: 290, y: 290 };
+  let enemyTimerChecks = 0;
+  maybeAdvanceContinuousCombatStage({ globals, entities: [boss], presentationBarrier: { lanes: { pendingHeroHits: true } }, call() {}, runCombatStep() { enemyTimerChecks += 1; } });
+  assert.equal(enemyTimerChecks, 1);
 });
 
 test('five-enemy packs enter with deterministic stagger instead of marching in unison', () => {
@@ -205,7 +255,7 @@ test('an armed available gate replaces the next farming pack with the boss after
   const call = (name, data, slotIndex) => {
     if (name === 'SettleContinuousCombatRewards') return [];
     if (name !== 'SpawnEnemy') return null;
-    const enemy = { uid: 20, kind: 'enemy', hp: data.HP, maxHP: data.HP, name: data.name, slotIndex };
+    const enemy = { uid: 20, kind: 'enemy', hp: data.HP, maxHP: data.HP, name: data.name, enemyRole: data.enemyRole, slotIndex };
     entities.push(enemy);
     spawned.push(enemy);
     return enemy;
@@ -214,6 +264,9 @@ test('an armed available gate replaces the next farming pack with the boss after
   assert.equal(globals.ContinuousCombatStage.bossActive, true);
   assert.equal(spawned.length, 1);
   assert.equal(spawned[0].name, 'Troll');
+  assert.equal(spawned[0].enemyRole, 'boss');
+  assert.equal(spawned[0].streamEngageX, 290);
+  assert.equal(spawned[0].originY, 290);
 });
 
 test('walking completes deterministically and wakes the cooldown scheduler', () => {

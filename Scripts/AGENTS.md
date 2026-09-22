@@ -13,6 +13,7 @@
 - Do not edit mirrored high-risk functions in only one runtime path. Check `tests/functionBankParityContract.test.js` before changing function-bank behavior.
 - Keep names and state vocabulary compatible with `web-runner/modules/` unless a bead explicitly authorizes a migration.
 - Deterministic gameplay rules should move toward shared `src/core/` or Rust SimulationCore seams, not deeper into the mirror.
+- Mirror the production stream's bypass of retired enemy-slot refill holds in `GetEnemyRosterStability`.
 - Avoid using this folder as a dumping ground for new browser UI, rendering, storage, or tooling behavior.
 
 ## Work Guidance

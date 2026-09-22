@@ -67,9 +67,9 @@ function streamGeometry(globals, { packIndex = 0, rank = 0, order = 0 } = {}) {
 const PACK_ENTRY_DELAY_SEC = Object.freeze([0, 0.4, 0.92, 1.48, 2.12]);
 const PACK_WALK_SPEED_SCALE = Object.freeze([1, 0.9, 1.12, 0.82, 1.17]);
 const RANGED_ENEMY_NAMES = new Set(['marid', 'djinn', 'chimerilass']);
+const BOSS_HOME = Object.freeze({ x: 290, y: 290 });
 
-function rangedHomeX(bounds, packIndex, order, boss) {
-  if (boss) return (bounds.rangedMinX + bounds.rangedMaxX) / 2;
+function rangedHomeX(bounds, packIndex, order) {
   const slot = (packIndex * 3 + order) % 5;
   return bounds.rangedMinX + (slot + 1) * ((bounds.rangedMaxX - bounds.rangedMinX) / 6);
 }
@@ -82,15 +82,16 @@ export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1,
   const meleeLine = order % 2;
   const normalizedPackIndex = Math.max(0, Number(packIndex || 0));
   const boss = String(enemy.enemyRole || enemy.role || '').toLowerCase() === 'boss';
-  const engageX = delivery === 'melee'
+  const engageX = boss ? BOSS_HOME.x : delivery === 'melee'
     ? geometry.bounds.meleeLeftEdgeX
-    : rangedHomeX(geometry.bounds, normalizedPackIndex, order, boss);
+    : rangedHomeX(geometry.bounds, normalizedPackIndex, order);
+  const homeY = boss ? BOSS_HOME.y : geometry.y;
   Object.assign(enemy, {
     streamState: 'approaching', streamLane: lane, streamRank: rank, streamPackIndex: packIndex, streamEntryOrder: order,
     streamDelivery: delivery, streamMeleeLine: meleeLine,
     streamEngageX: engageX, streamWalkSpeed: geometry.walkSpeed * PACK_WALK_SPEED_SCALE[order],
     streamStartAt: Number(globals.time || 0) + PACK_ENTRY_DELAY_SEC[order],
-    x: geometry.spawnX, y: geometry.y, originX: engageX, originY: geometry.y,
+    x: geometry.spawnX, y: homeY, originX: engageX, originY: homeY,
   });
   return enemy;
 }
@@ -284,7 +285,7 @@ function spawnContinuousCombatStage({ globals, entities, call, state }) {
   };
   for (const entry of plan) {
     const stage = getContinuousCombatStage(state);
-    const enemy = call('SpawnEnemy', { ...entry.row, enemyRole: String(entry.row.enemyRole || entry.row.role || stage?.kind || 'fodder') }, entry.slotIndex);
+    const enemy = call('SpawnEnemy', { ...entry.row, enemyRole: stage?.kind === 'boss' ? 'boss' : String(entry.row.enemyRole || entry.row.role || 'fodder') }, entry.slotIndex);
     activateContinuousCombatSpawnedEnemy(globals, enemy, entry);
   }
   call('UpdateEnemyHPUI');
@@ -354,7 +355,9 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   const now = Number(globals.time || 0);
   const newlyEngaged = updateApproachingEnemies(globals, entities, now);
   if (globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) call('TickRealtimeHeroBasics');
-  if (newlyEngaged > 0 && !globals.ActionInProgress && !globals.IsPlayerBusy && globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) {
+  if ((newlyEngaged > 0 || entities?.some(enemy => enemy?.kind === 'enemy' && Number(enemy.hp || 0) > 0 && enemy.streamState === 'engaged'))
+    && !globals.ActionInProgress && !globals.IsPlayerBusy && !globals.DeferAdvance
+    && globals.GamePhase === 'RUNTIME' && !globals.BattleStartActive) {
     globals.NativeBattleEnded = false;
     runCombatStep('ProcessTurn');
   }

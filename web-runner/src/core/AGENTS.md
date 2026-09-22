@@ -23,6 +23,8 @@
 - Approaching enemies become hero-targetable at the shared arena attack line while continuing to walk, and join the enemy action scheduler only after reaching their melee or ranged home X. Enemy sprites draw from larger Y to smaller Y so the lower numeric Y appears in front.
 - Hero basics use independent 0.6-0.84 second clocks and may resolve together. Enemy actions retain their own cooldown scheduler.
 - Marid, Djinn and Chimerilass use ranged homes. Every other enemy uses melee homes.
+- Armed bosses enter from off-stage and hold the combat-grid home at X 290, Y 290 before joining the enemy action scheduler.
+- Engaged enemy cooldowns keep ticking while hero basic projectiles are pending; their actions do not wait for the old presentation barrier.
 
 ## Work Guidance
 - Prefer extracting deterministic decisions here or in root `src/core/` instead of adding branches to `app.js` or render modules.

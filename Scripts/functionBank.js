@@ -423,6 +423,7 @@ function hasActiveAstralFlowKoOrbPayout(g) {
 
 export function GetEnemyRosterStability(ctx) {
   const g = getGlobals(ctx);
+  if (Number(g.ContinuousCombatStageLoop || 0) === 1) return getEnemyRosterStability({ entities: getEntities(ctx) });
   const stability = getEnemyRosterStability({
     enemySlots: Array.isArray(g.EnemySlots) ? g.EnemySlots : [],
     enemyIds: Array.isArray(g.EnemyIDs) ? g.EnemyIDs : [],
