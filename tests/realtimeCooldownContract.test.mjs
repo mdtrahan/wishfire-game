@@ -22,12 +22,12 @@ test('real-time cooldowns advance from wall time and only reset the actor that c
   assert.notEqual(secondReady.selected.uid, firstUID);
 });
 
-test('hero basics use independent 0.5-to-0.7 second cooldowns and can fire together', () => {
+test('hero basics use independent 0.6-to-0.84 second cooldowns and can fire together', () => {
   const actors = [8, 10, 11, 12].map((speed, index) => ({ uid: index + 1, type: 0, hp: 10, speed }));
-  assert.deepEqual(actors.map(realtimeCooldownSeconds), [0.5, 0.6, 0.65, 0.7]);
+  assert.deepEqual(actors.map(realtimeCooldownSeconds), [0.6, 0.72, 0.78, 0.84]);
   const waiting = selectRealtimeReadyActor({ actors, now: 5, selectionEnabled: false });
   assert.equal(waiting.selected, null);
-  assert.deepEqual(Object.values(waiting.readyAt), [5.5, 5.6, 5.65, 5.7]);
-  const released = collectRealtimeReadyActors({ actors, readyAt: waiting.readyAt, now: 5.7 });
+  assert.deepEqual(Object.values(waiting.readyAt), [5.6, 5.72, 5.78, 5.84]);
+  const released = collectRealtimeReadyActors({ actors, readyAt: waiting.readyAt, now: 5.84 });
   assert.deepEqual(released.ready.map(actor => actor.uid), [1, 2, 3, 4]);
 });

@@ -2,7 +2,7 @@ const finite = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(
 
 export function realtimeCooldownSeconds(actor) {
   const speed = Math.max(1, finite(actor?.speed ?? actor?.spd ?? actor?.SPD, 1));
-  if (Number(actor?.type || 0) === 0) return 0.5 + Math.max(0, Math.min(1, (speed - 8) / 4)) * 0.2;
+  if (Number(actor?.type || 0) === 0) return (0.5 + Math.max(0, Math.min(1, (speed - 8) / 4)) * 0.2) * 1.2;
   return Math.max(1.6, Math.min(5, 32 / speed));
 }
 

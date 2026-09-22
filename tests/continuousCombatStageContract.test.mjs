@@ -13,20 +13,22 @@ import {
   scaleContinuousCombatPackRow,
 } from '../web-runner/src/core/continuousCombatStage.mjs';
 
-const rows = ['Gobloc', 'Skeleton', 'High Gobloc', 'Lizardo', 'Orc', 'Troll']
+const rows = ['Gobloc', 'Skeleton', 'High Gobloc', 'Lizardo', 'Orc', 'High Orc', 'Chimerilass', 'Djinn', 'Troll']
   .map((name, index) => ({ name, HP: 20 + index * 5, ATK: 2 + index, DEF: 2, MAG: 1, RES: 1, SPD: 8 }));
 
-test('production starts with a weak three-enemy pack and a shallow linear CP ramp', () => {
+test('wave size falls from five to four to three as average enemy CP rises', () => {
   const start = createContinuousCombatStageState(42);
   const first = buildContinuousCombatSpawnPlan(rows, start);
   const secondState = advanceContinuousCombatStage(start).state;
-  const second = buildContinuousCombatSpawnPlan(rows, secondState, { slotBase: 3 });
+  const second = buildContinuousCombatSpawnPlan(rows, secondState, { slotBase: 5 });
   const thirdState = advanceContinuousCombatStage(secondState).state;
-  const third = buildContinuousCombatSpawnPlan(rows, thirdState, { slotBase: 6 });
-  assert.equal(first.length, 3);
-  assert.deepEqual(first.map(entry => entry.lane), [1, 0, 2]);
-  assert.deepEqual(first.map(entry => entry.slotIndex), [0, 1, 2]);
-  assert.deepEqual(second.map(entry => entry.slotIndex), [3, 4, 5]);
+  const third = buildContinuousCombatSpawnPlan(rows, thirdState, { slotBase: 9 });
+  assert.deepEqual([first.length, second.length, third.length], [5, 4, 3]);
+  assert.deepEqual(first.map(entry => entry.lane), [1, 0, 2, 0, 2]);
+  assert.deepEqual(first.map(entry => entry.slotIndex), [0, 1, 2, 3, 4]);
+  assert.deepEqual(second.map(entry => entry.slotIndex), [5, 6, 7, 8]);
+  assert.ok(second.some(entry => ['Gobloc', 'Skeleton'].includes(entry.row.name)));
+  assert.ok(second.some(entry => ['High Gobloc', 'Lizardo'].includes(entry.row.name)));
   const totals = [first, second, third].map(pack => pack.reduce((sum, entry) => sum + entry.row.CombatPower, 0));
   assert.ok(totals[0] < totals[1]);
   assert.ok(totals[1] < totals[2]);
@@ -59,18 +61,18 @@ test('stream enemies begin off-stage and become engaged only after walking to th
   assert.equal(enemy.streamEngageX, 130);
 });
 
-test('pack members enter with deterministic stagger instead of marching in unison', () => {
+test('five-enemy packs enter with deterministic stagger instead of marching in unison', () => {
   const globals = { time: 3, EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 }, EnemySize: 40 };
-  const enemies = [0, 1, 2].map(entryOrder => activateContinuousCombatSpawnedEnemy(
+  const enemies = [0, 1, 2, 3, 4].map(entryOrder => activateContinuousCombatSpawnedEnemy(
     globals,
     { kind: 'enemy', hp: 10 },
     { lane: entryOrder, entryOrder },
   ));
-  assert.deepEqual(enemies.map(enemy => enemy.streamStartAt), [3, 3.62, 4.55]);
+  assert.deepEqual(enemies.map(enemy => enemy.streamStartAt), [3, 3.4, 3.92, 4.48, 5.12]);
   assert.ok(enemies[1].streamWalkSpeed < enemies[0].streamWalkSpeed);
   assert.ok(enemies[2].streamWalkSpeed > enemies[0].streamWalkSpeed);
   assert.equal(new Set(enemies.map(enemy => enemy.x)).size, 1);
-  assert.equal(new Set(enemies.map(enemy => enemy.y)).size, 3);
+  assert.equal(new Set(enemies.map(enemy => enemy.y)).size, 5);
   assert.ok(enemies.every(enemy => enemy.y >= 91 && enemy.y <= 256));
 });
 
@@ -120,7 +122,7 @@ test('overlapping packs share one emitter and retain distinct bounded Y position
 test('timed packs emit while survivors remain and boss waits for a clear field', () => {
   const globals = {
     ContinuousCombatStageLoop: 1,
-    ContinuousCombatStage: { ...createContinuousCombatStageState(9), nextEmissionAt: 7, lastUpdatedAt: 0, spawnSerial: 3 },
+    ContinuousCombatStage: { ...createContinuousCombatStageState(9), nextEmissionAt: 7, lastUpdatedAt: 0, spawnSerial: 5 },
     GamePhase: 'RUNTIME', BattleStartActive: 0, time: 7,
     EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 }, EnemySize: 40,
     EnemyData: rows, EnemySlots: [2, 3, 4], PendingDeaths: {}, ProgressionBattle: { outcome: 'active', settled: false },
@@ -136,14 +138,14 @@ test('timed packs emit while survivors remain and boss waits for a clear field',
     return enemy;
   };
   assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} }), true);
-  assert.equal(spawned.length, 3);
+  assert.equal(spawned.length, 4);
   assert.equal(globals.ContinuousCombatStage.stageId, '1-1-pack-2');
   assert.ok(entities.some(enemy => enemy.uid === survivor.uid));
 
-  globals.time = 22;
+  globals.time = 17;
   assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} }), true);
   assert.equal(globals.ContinuousCombatStage.stageId, '1-1-pack-3');
-  globals.time = 60;
+  globals.time = 40;
   assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} }), false);
   assert.equal(globals.ContinuousCombatStage.stageId, '1-1-pack-3');
 });
@@ -164,7 +166,7 @@ test('walking completes deterministically and wakes the cooldown scheduler', () 
   maybeAdvanceContinuousCombatStage({ globals, entities: [enemy], presentationBarrier: { lanes: {} }, call() {}, runCombatStep(name) { if (name === 'ProcessTurn') resumed += 1; } });
   assert.equal(enemy.streamState, 'engaged');
   assert.equal(enemy.x, enemy.streamEngageX);
-  assert.equal(globals.ContinuousCombatStage.nextEmissionAt, 16);
+  assert.equal(globals.ContinuousCombatStage.nextEmissionAt, 11);
   assert.equal(resumed, 1);
 });
 
@@ -195,7 +197,7 @@ test('queryless production marks the initial pack as approaching and disables AF
   assert.equal(finalizeContinuousCombatProduction(globals, entities), true);
   assert.equal(entities[0].flow, 0);
   assert.equal(entities[1].streamState, 'approaching');
-  assert.equal(globals.ContinuousCombatStage.nextEmissionAt, 15);
+  assert.equal(globals.ContinuousCombatStage.nextEmissionAt, 10);
 });
 
 test('runtime source targets in-range walkers while keeping them out of the enemy scheduler', async () => {

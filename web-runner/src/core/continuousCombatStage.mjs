@@ -1,14 +1,14 @@
 import { computeCombatPower } from './combatPower.mjs';
 import { deriveCombatArenaBounds } from '../../../src/core/combatOrientation.mjs';
 
-export const CONTINUOUS_COMBAT_PACK_INTERVAL_SEC = 15;
+export const CONTINUOUS_COMBAT_PACK_INTERVAL_SEC = 10;
 export const CONTINUOUS_COMBAT_PACK_CP_STEP = 0.06;
 
 // One shallow linear ramp. Timed overlap supplies pressure without stat spikes.
 export const CONTINUOUS_COMBAT_STAGES = Object.freeze([
-  Object.freeze({ id: '1-1-pack-1', kind: 'fodder', enemyNames: Object.freeze(['Gobloc', 'Skeleton', 'Gobloc']), cpStep: 0 }),
-  Object.freeze({ id: '1-1-pack-2', kind: 'fodder', enemyNames: Object.freeze(['Gobloc', 'Skeleton', 'High Gobloc']), cpStep: 1 }),
-  Object.freeze({ id: '1-1-pack-3', kind: 'fodder', enemyNames: Object.freeze(['High Gobloc', 'Lizardo', 'Orc']), cpStep: 2 }),
+  Object.freeze({ id: '1-1-pack-1', kind: 'fodder', enemyNames: Object.freeze(['Gobloc', 'Skeleton']), cpStep: 0 }),
+  Object.freeze({ id: '1-1-pack-2', kind: 'fodder', enemyNames: Object.freeze(['Gobloc', 'High Gobloc', 'Skeleton', 'Lizardo']), cpStep: 1 }),
+  Object.freeze({ id: '1-1-pack-3', kind: 'fodder', enemyNames: Object.freeze(['High Orc', 'Chimerilass', 'Djinn']), cpStep: 2 }),
   Object.freeze({ id: '1-1-boss', kind: 'boss', enemyNames: Object.freeze(['Troll']), cpStep: 3, waitForClear: true }),
   Object.freeze({ id: '1-2-pack-1', kind: 'fodder', enemyNames: Object.freeze(['Gobloc', 'High Gobloc', 'Skeleton']), cpStep: 0, waitForClear: true }),
 ]);
@@ -23,7 +23,7 @@ export function configureContinuousCombatProduction(globals, { productionPath = 
   globals.ContinuousCombatStageLoop = enabled ? 1 : 0;
   if (!enabled) return false;
   globals.EncounterPolicy = 'fodder_only';
-  globals.EncounterMaxSlots = 3;
+  globals.EncounterMaxSlots = 5;
   globals.ContinuousCombatStageComplete = 0;
   globals.ContinuousCombatStage = createContinuousCombatStageState(globals.EncounterSeed || 1);
   return true;
@@ -46,8 +46,8 @@ function streamGeometry(globals, { packIndex = 0, rank = 0, order = 0 } = {}) {
   };
 }
 
-const PACK_ENTRY_DELAY_SEC = Object.freeze([0, 0.62, 1.55]);
-const PACK_WALK_SPEED_SCALE = Object.freeze([1, 0.84, 1.13]);
+const PACK_ENTRY_DELAY_SEC = Object.freeze([0, 0.4, 0.92, 1.48, 2.12]);
+const PACK_WALK_SPEED_SCALE = Object.freeze([1, 0.9, 1.12, 0.82, 1.17]);
 const RANGED_ENEMY_NAMES = new Set(['marid', 'djinn', 'chimerilass']);
 
 function rangedHomeX(bounds, packIndex, order, boss) {
@@ -58,7 +58,7 @@ function rangedHomeX(bounds, packIndex, order, boss) {
 
 export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1, rank = 0, packIndex = 0, entryOrder = lane } = {}) {
   if (!enemy) return null;
-  const order = Math.max(0, Number(entryOrder || 0)) % 3;
+  const order = Math.max(0, Math.floor(Number(entryOrder || 0))) % PACK_ENTRY_DELAY_SEC.length;
   const geometry = streamGeometry(globals, { packIndex, rank, order });
   const delivery = RANGED_ENEMY_NAMES.has(String(enemy.name || '').trim().toLowerCase()) ? 'ranged' : 'melee';
   const meleeLine = order % 2;
@@ -154,21 +154,34 @@ function findPackScale(rows, targetCP) {
   return high;
 }
 
+function expandWaveRows(stage, byName, catalogRows) {
+  const pool = stage.enemyNames.map(name => byName.get(name)).filter(Boolean);
+  if (stage.kind === 'boss' || !pool.length) return pool;
+  const bossNames = new Set(CONTINUOUS_COMBAT_STAGES.filter(candidate => candidate.kind === 'boss').flatMap(candidate => candidate.enemyNames));
+  const catalogCP = catalogRows.filter(row => String(row?.combatTier || '').toLowerCase() !== 'boss' && !bossNames.has(String(row?.name || row?.EnemyName || ''))).map(computeCombatPower);
+  const minCP = Math.min(...catalogCP);
+  const maxCP = Math.max(...catalogCP);
+  const averageCP = pool.reduce((sum, row) => sum + computeCombatPower(row), 0) / pool.length;
+  const strength = maxCP > minCP ? (averageCP - minCP) / (maxCP - minCP) : 0.5;
+  const size = strength <= 0.2 ? 5 : strength >= 0.6 ? 3 : 4;
+  return Array.from({ length: size }, (_, index) => pool[index % pool.length]);
+}
+
 export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase = 0 } = {}) {
   const stage = getContinuousCombatStage(stageState);
   const rows = Array.isArray(enemyRows) ? enemyRows : [];
   if (!stage || !rows.length) return [];
   const byName = new Map(rows.map(row => [String(row?.name || row?.EnemyName || '').trim(), row]));
-  const selectedRows = stage.enemyNames.map(name => byName.get(name)).filter(Boolean);
-  const baselineRows = CONTINUOUS_COMBAT_STAGES[0].enemyNames.map(name => byName.get(name)).filter(Boolean);
+  const selectedRows = expandWaveRows(stage, byName, rows);
+  const baselineRows = expandWaveRows(CONTINUOUS_COMBAT_STAGES[0], byName, rows);
   const totalCP = entries => entries.reduce((sum, row) => sum + computeCombatPower(row), 0);
   const linearTarget = totalCP(baselineRows) * (1 + Math.max(0, Number(stage.cpStep || 0)) * CONTINUOUS_COMBAT_PACK_CP_STEP);
   const packScale = stage.kind === 'boss'
     ? 1 + Number(stage.cpStep || 0) * CONTINUOUS_COMBAT_PACK_CP_STEP
     : Number(stage.cpStep || 0) === 0 ? 1 : findPackScale(selectedRows, linearTarget);
-  const lanes = stage.enemyNames.length === 1 ? [1] : [1, 0, 2];
-  return stage.enemyNames.map((name, index) => ({
-    row: scaleContinuousCombatRow(byName.get(name), packScale),
+  const lanes = selectedRows.length === 1 ? [1] : [1, 0, 2, 0, 2];
+  return selectedRows.map((row, index) => ({
+    row: scaleContinuousCombatRow(row, packScale),
     slotIndex: Number(slotBase || 0) + index,
     lane: lanes[index] ?? 1,
     rank: Math.floor(Number(slotBase || 0) / 3),

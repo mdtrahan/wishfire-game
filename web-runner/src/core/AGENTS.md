@@ -19,9 +19,9 @@
 - DOM child canvases keep CSS dimensions in logical pixels and multiply backing-store dimensions by `devicePixelRatio` before drawing.
 - Damage-number palettes preserve semantic kinds; Blight `dot` text uses the shared purple affliction palette in both DOM and Canvas paths.
 - New deterministic rule changes need focused contract tests and, when applicable, fixture rows.
-- `continuousCombatStage.mjs` owns the queryless production stage sequence, one off-stage X emitter, bounded deterministic-random Y homes, and the independent hero-basic timer tick. The final stage wraps to the opening pack indefinitely; stages that require a clear field still wait for active attack presentation to finish.
+- `continuousCombatStage.mjs` owns the queryless production stage sequence, one off-stage X emitter, bounded deterministic-random Y homes, and the independent hero-basic timer tick. Low, mixed, and high CP pools emit five, four, and three enemies on a ten-second post-engagement cadence. The final stage wraps to the opening pack indefinitely; stages that require a clear field still wait for active attack presentation to finish.
 - Approaching enemies become hero-targetable at the shared arena attack line while continuing to walk, and join the enemy action scheduler only after reaching their melee or ranged home X. Enemy sprites draw from larger Y to smaller Y so the lower numeric Y appears in front.
-- Hero basics use independent 0.5-0.7 second clocks and may resolve together. Enemy actions retain their own cooldown scheduler.
+- Hero basics use independent 0.6-0.84 second clocks and may resolve together. Enemy actions retain their own cooldown scheduler.
 - Marid, Djinn and Chimerilass use ranged homes. Every other enemy uses melee homes.
 
 ## Work Guidance
