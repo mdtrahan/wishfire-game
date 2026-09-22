@@ -9,8 +9,8 @@ export const COMBAT_ARENA_BOUNDS = Object.freeze({
   rangedMinX: 225,
   rangedMaxX: 283,
   attackStartX: 330,
-  visibleTopY: 71,
-  visibleBottomY: 276,
+  visibleTopY: 170,
+  visibleBottomY: 375,
 });
 
 export function deriveCombatArenaBounds(layoutW = COMBAT_ARENA_REFERENCE_WIDTH) {

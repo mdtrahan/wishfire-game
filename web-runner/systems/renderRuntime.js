@@ -51,6 +51,10 @@ export function renderRuntime(deps) {
       "pha * 0.16;\n          ctx.translate(frontRadius, 0);\n          ctx.scale(1.85, 0.48);\n          ctx.drawImage(img, -textureSize / 2, -textureSize / 2, textureSize, textureSize);\n          ctx.restore();\n        }\n        ctx.restore();\n        return true;\n      });\n    };\n    renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layoutScale });\n\n    // Render non-hero damage text above gameplay\n    renderDamageTexts(d => d.targetKind !== 'hero');\n\n    // draw HUD overlay (game state)\n    drawHUD();\n\n    runtimeArtifacts.presentationPatches = Object.keys(presentationPatches).length ? presentationPatches : null;\n    runtimeArtifacts.visualControlPatches = Object.keys(visualControlPatches).length ? visualControlPatches : null;\n    return runtimeArtifacts;\n",
     ].join("")
       .replace(
+        "    // draw HUD overlay (game state)\n    drawHUD();",
+        "    if (images.CombatBossButton) ctx.drawImage(images.CombatBossButton, 150, 50, 50, 50);\n\n    // draw HUD overlay (game state)\n    drawHUD();",
+      )
+      .replace(
         "if (state.globals.DevToolingPaused) {",
         "if (state.globals.DevToolingPaused && !(state.globals.QaScenarioPaused && state.globals.QaFixtureHoldTurn)) {",
       )

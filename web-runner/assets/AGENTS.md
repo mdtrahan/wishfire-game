@@ -37,3 +37,4 @@
 
 - Never bake UI into gameplay backgrounds: headings, dividers, chapter labels, map tokens and buttons must be independent rendered layers. Baked UI is allowed only in mockups or simulated screenshots.
 - Combat VFX rasters use transparent backgrounds, bold silhouettes, broad color blocks and minimal interior detail so their impression reads during sub-second attacks.
+- `images/boss_button.png` is the 50px combat boss control graphic rendered at reference-canvas X 150, Y 50.

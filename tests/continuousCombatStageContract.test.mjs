@@ -57,7 +57,7 @@ test('stream enemies begin off-stage and become engaged only after walking to th
   const enemy = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', hp: 10 }, { lane: 1, rank: 0, packIndex: 0 });
   assert.equal(enemy.streamState, 'approaching');
   assert.ok(enemy.x > 360);
-  assert.ok(enemy.y >= 91 && enemy.y <= 256);
+  assert.ok(enemy.y >= 190 && enemy.y <= 355);
   assert.equal(enemy.streamEngageX, 130);
 });
 
@@ -73,7 +73,7 @@ test('five-enemy packs enter with deterministic stagger instead of marching in u
   assert.ok(enemies[2].streamWalkSpeed > enemies[0].streamWalkSpeed);
   assert.equal(new Set(enemies.map(enemy => enemy.x)).size, 1);
   assert.equal(new Set(enemies.map(enemy => enemy.y)).size, 5);
-  assert.ok(enemies.every(enemy => enemy.y >= 91 && enemy.y <= 256));
+  assert.ok(enemies.every(enemy => enemy.y >= 190 && enemy.y <= 355));
 });
 
 test('melee and ranged enemies stop inside their annotated home bands', () => {

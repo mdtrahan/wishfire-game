@@ -177,6 +177,7 @@ export async function loadRuntimeVisualAssets({
       (async () => { images.CombatGrowSpectralHands = await loadImage(assetUrl('images/vfx_grow_spectral_hands.png')); })(),
       (async () => { images.CombatVenomSigil = await loadImage(assetUrl('images/vfx_venom_sigil.png')); })(),
       (async () => { images.CombatGlassReprisal = await loadImage(assetUrl('images/vfx_glass_reprisal.png')); })(),
+      (async () => { images.CombatBossButton = await loadImage(assetUrl('images/boss_button.png')); })(),
       (async () => { mapBackgroundImage = await loadImage(assetUrl('images/genielands-geography.png')); })(),
       (async () => { mapCaveImage = await loadImage(assetUrl('images/map_cave_46.png')); })(),
       (async () => { mapPortalImage = await loadImage(assetUrl('images/map_warp_portal_46x52.png')); })(),

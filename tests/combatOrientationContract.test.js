@@ -104,10 +104,11 @@ test('runtime-shaped formation anchors keep both factions inside the shared visi
     rangedMinX: 225,
     rangedMaxX: 283,
     attackStartX: 330,
-    visibleTopY: 71,
-    visibleBottomY: 276,
+    visibleTopY: 170,
+    visibleBottomY: 375,
   });
-  assert.deepEqual(anchors.enemyYs, [91, 173.5, 256]);
+  assert.deepEqual(anchors.enemyYs, [190, 272.5, 355]);
+  assert.equal(anchors.arenaBounds.visibleTopY - 10, 160);
   assert.equal(anchors.heroYs[0] + anchors.heroH / 2 - anchors.heroH * 1.55, anchors.arenaBounds.visibleTopY);
   assert.equal(anchors.heroYs.at(-1) + anchors.heroH / 2, anchors.arenaBounds.visibleBottomY);
   assert.equal(anchors.enemyYs[0] - globals.EnemySize / 2, anchors.arenaBounds.visibleTopY);
@@ -173,7 +174,7 @@ test('enemy death and refill never change surviving right-wise slot projections'
   });
 
   for (const snapshot of snapshots) {
-    assert.deepEqual(snapshot.anchors.enemyYs, [91, 173.5, 256]);
+    assert.deepEqual(snapshot.anchors.enemyYs, [190, 272.5, 355]);
     assert.equal(snapshot.projection.enemyTranslateY, 0);
   }
   assert.deepEqual(snapshots[1].positions.get(7), snapshots[0].positions.get(7));
