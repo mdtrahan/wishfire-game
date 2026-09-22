@@ -97,7 +97,15 @@ test('runtime-shaped formation anchors keep both factions inside the shared visi
   });
 
   assert.equal(anchors.heroYs.length, 4);
-  assert.deepEqual(rules.deriveCombatArenaBounds(360), rules.COMBAT_ARENA_BOUNDS);
+  assert.deepEqual(rules.deriveCombatArenaBounds(360), {
+    heroRightEdgeX: 106,
+    meleeLeftEdgeX: 167,
+    rangedMinX: 225,
+    rangedMaxX: 283,
+    attackStartX: 299,
+    visibleTopY: 71,
+    visibleBottomY: 276,
+  });
   assert.deepEqual(anchors.enemyYs, [91, 173.5, 256]);
   assert.equal(anchors.heroYs[0] + anchors.heroH / 2 - anchors.heroH * 1.55, anchors.arenaBounds.visibleTopY);
   assert.equal(anchors.heroYs.at(-1) + anchors.heroH / 2, anchors.arenaBounds.visibleBottomY);
