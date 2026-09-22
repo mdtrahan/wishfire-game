@@ -5,11 +5,13 @@ import {
   CONTINUOUS_COMBAT_STAGES,
   activateContinuousCombatSpawnedEnemy,
   advanceContinuousCombatStage,
+  armContinuousCombatBoss,
   buildContinuousCombatSpawnPlan,
   configureContinuousCombatProduction,
   createContinuousCombatStageState,
   finalizeContinuousCombatProduction,
   maybeAdvanceContinuousCombatStage,
+  resetContinuousCombatAfterDefeat,
   scaleContinuousCombatPackRow,
 } from '../web-runner/src/core/continuousCombatStage.mjs';
 
@@ -36,20 +38,58 @@ test('wave size falls from five to four to three as average enemy CP rises', () 
   assert.ok(totals[2] / totals[1] < 1 + CONTINUOUS_COMBAT_PACK_CP_STEP * 2);
 });
 
-test('the final stage wraps to the opening pack and keeps the stream alive', () => {
-  const finalIndex = CONTINUOUS_COMBAT_STAGES.length - 1;
+test('stage-owned linear scaling raises later waves and makes the boss a group-level spike', () => {
+  const early = createContinuousCombatStageState(42, { region: 1, stage: 1 });
+  const late = createContinuousCombatStageState(42, { region: 1, stage: 10 });
+  const earlyPlan = buildContinuousCombatSpawnPlan(rows, early);
+  const latePlan = buildContinuousCombatSpawnPlan(rows, late);
+  const bossState = { ...late, wave: 4, bossAvailable: true, bossArmed: true, bossActive: true };
+  const bossPlan = buildContinuousCombatSpawnPlan(rows, bossState);
+  const total = plan => plan.reduce((sum, entry) => sum + entry.row.CombatPower, 0);
+  assert.ok(total(latePlan) > total(earlyPlan) * 1.6);
+  assert.equal(bossPlan.length, 1);
+  assert.ok(total(bossPlan) > total(latePlan));
+});
+
+test('four normal waves unlock the boss gate and loop back to wave one', () => {
   const transition = advanceContinuousCombatStage({
     ...createContinuousCombatStageState(42),
-    stageIndex: finalIndex,
-    stageId: CONTINUOUS_COMBAT_STAGES[finalIndex].id,
-    transitions: finalIndex,
-    completed: ['1-1-pack-1', '1-1-pack-2', '1-1-pack-3', '1-1-boss'],
+    wave: 4,
   });
   assert.equal(transition.done, false);
-  assert.equal(transition.stage.id, '1-1-pack-1');
-  assert.equal(transition.state.stageIndex, 0);
-  assert.equal(transition.state.cycles, 1);
-  assert.deepEqual(transition.state.completed, []);
+  assert.equal(transition.stage.id, '1-1-wave-1');
+  assert.equal(transition.state.wave, 1);
+  assert.equal(transition.state.bossAvailable, true);
+});
+
+test('boss victory advances the checkpoint and wraps stage ten into the next region', () => {
+  const transition = advanceContinuousCombatStage({
+    ...createContinuousCombatStageState(42, { region: 2, stage: 10 }),
+    bossAvailable: true,
+    bossArmed: true,
+    bossActive: true,
+  });
+  assert.equal(transition.stage.id, '3-1-wave-1');
+  assert.equal(transition.state.region, 3);
+  assert.equal(transition.state.stage, 1);
+  assert.equal(transition.state.wave, 1);
+  assert.equal(transition.state.bossArmed, true);
+  assert.equal(transition.state.bossAvailable, false);
+  assert.equal(transition.state.clearedBosses, 1);
+});
+
+test('boss control arms only at the gate and defeat resets the current stage', () => {
+  const globals = { time: 12, ContinuousCombatStage: createContinuousCombatStageState(42, { region: 2, stage: 4 }) };
+  assert.equal(armContinuousCombatBoss(globals), false);
+  globals.ContinuousCombatStage.bossAvailable = true;
+  assert.equal(armContinuousCombatBoss(globals), true);
+  assert.equal(globals.ContinuousCombatStage.bossArmed, true);
+  assert.equal(resetContinuousCombatAfterDefeat(globals), true);
+  assert.equal(globals.ContinuousCombatStage.region, 2);
+  assert.equal(globals.ContinuousCombatStage.stage, 4);
+  assert.equal(globals.ContinuousCombatStage.wave, 1);
+  assert.equal(globals.ContinuousCombatStage.bossAvailable, false);
+  assert.equal(globals.ContinuousCombatStage.bossArmed, false);
 });
 
 test('stream enemies begin off-stage and become engaged only after walking to the boundary', () => {
@@ -119,7 +159,7 @@ test('overlapping packs share one emitter and retain distinct bounded Y position
   }
 });
 
-test('timed packs emit while survivors remain and boss waits for a clear field', () => {
+test('timed packs emit while survivors remain and the fourth pack waits for a clear field', () => {
   const globals = {
     ContinuousCombatStageLoop: 1,
     ContinuousCombatStage: { ...createContinuousCombatStageState(9), nextEmissionAt: 7, lastUpdatedAt: 0, spawnSerial: 5 },
@@ -137,17 +177,43 @@ test('timed packs emit while survivors remain and boss waits for a clear field',
     spawned.push(enemy);
     return enemy;
   };
-  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} }), true);
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: { flowOrbs: true } }, call, runCombatStep() {} }), true);
   assert.equal(spawned.length, 4);
-  assert.equal(globals.ContinuousCombatStage.stageId, '1-1-pack-2');
+  assert.equal(globals.ContinuousCombatStage.wave, 2);
   assert.ok(entities.some(enemy => enemy.uid === survivor.uid));
 
   globals.time = 17;
   assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} }), true);
-  assert.equal(globals.ContinuousCombatStage.stageId, '1-1-pack-3');
+  assert.equal(globals.ContinuousCombatStage.wave, 3);
+  globals.time = 27;
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} }), true);
+  assert.equal(globals.ContinuousCombatStage.wave, 4);
   globals.time = 40;
   assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} }), false);
-  assert.equal(globals.ContinuousCombatStage.stageId, '1-1-pack-3');
+  assert.equal(globals.ContinuousCombatStage.wave, 4);
+});
+
+test('an armed available gate replaces the next farming pack with the boss after clear', () => {
+  const globals = {
+    ContinuousCombatStageLoop: 1,
+    ContinuousCombatStage: { ...createContinuousCombatStageState(9), wave: 2, bossAvailable: true, bossArmed: true, nextEmissionAt: 99 },
+    GamePhase: 'RUNTIME', BattleStartActive: 0, time: 7,
+    EnemySize: 40, EnemyData: rows, EnemySlots: [999], PendingDeaths: {}, ProgressionBattle: { outcome: 'active', settled: false },
+  };
+  const entities = [];
+  const spawned = [];
+  const call = (name, data, slotIndex) => {
+    if (name === 'SettleContinuousCombatRewards') return [];
+    if (name !== 'SpawnEnemy') return null;
+    const enemy = { uid: 20, kind: 'enemy', hp: data.HP, maxHP: data.HP, name: data.name, slotIndex };
+    entities.push(enemy);
+    spawned.push(enemy);
+    return enemy;
+  };
+  assert.equal(maybeAdvanceContinuousCombatStage({ globals, entities, presentationBarrier: { lanes: {} }, call, runCombatStep() {} }), true);
+  assert.equal(globals.ContinuousCombatStage.bossActive, true);
+  assert.equal(spawned.length, 1);
+  assert.equal(spawned[0].name, 'Troll');
 });
 
 test('walking completes deterministically and wakes the cooldown scheduler', () => {

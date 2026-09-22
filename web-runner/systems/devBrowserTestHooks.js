@@ -292,6 +292,15 @@ export function registerDevBrowserTestHooks({
         orientation: String(state.globals.CombatOrientation || 'left-wise'),
         geometry: state.globals.CombatOrientationGeometry || null,
       },
+      continuousProgression: state.globals.ContinuousCombatStage ? {
+        region: Number(state.globals.ContinuousCombatStage.region || 1),
+        stage: Number(state.globals.ContinuousCombatStage.stage || 1),
+        wave: Number(state.globals.ContinuousCombatStage.wave || 1),
+        bossAvailable: !!state.globals.ContinuousCombatStage.bossAvailable,
+        bossArmed: !!state.globals.ContinuousCombatStage.bossArmed,
+        bossActive: !!state.globals.ContinuousCombatStage.bossActive,
+        clearedBosses: Number(state.globals.ContinuousCombatStage.clearedBosses || 0),
+      } : null,
       resources: {
         energy: state.globals.Player_Energy || 0,
         maxEnergy: state.globals.Player_maxEnergy || 0,

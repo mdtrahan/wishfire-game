@@ -1,5 +1,5 @@
 import { effectiveStat } from '../web-runner/src/core/combatRules.mjs';
-import { executeHeroCommand, resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat, emitResolvedHealEvent } from '../web-runner/modules/heroCommands.mjs';
+import { executeHeroCommand, resolveNativeCommandStep, nativeTurnStarted, nativeTurnEnded, resolveNativeEnemyArea, resolveIncomingNativeHit, settleDefeat, settleContinuousCombatRewards, emitResolvedHealEvent } from '../web-runner/modules/heroCommands.mjs';
 import { state } from './state.js';
 import { MONSTER_KEYS, MONSTER_LOOT_TABLE, TOKEN, EMPTY } from './monsterLootTableEventTokens.js';
 import { ACTIVE_EVENT_IDS, LIVE_OPS_EVENTS, TOKEN_REGISTRY } from './liveOpsTokens.js';
@@ -10212,3 +10212,4 @@ export function RegisterPartyBuffSlot(ctx, buffType) {
 
 export function ResolveNativeCommandStep(ctx, hit) { return resolveNativeCommandStep(ctx, hit); }
 export function SettleCombatDefeat(ctx) { return settleDefeat(ctx); }
+export function SettleContinuousCombatRewards(ctx) { return settleContinuousCombatRewards(ctx); }

@@ -10,6 +10,7 @@ import {
 import { drawCombatActorSprite } from './combatActorSpritePresentation.mjs';
 import { heroArtAsset, resolveHeroArtSourceRect } from '../state/heroArtAssets.mjs';
 import { combatVfxProfileForActor, queueCombatAttackImpactVfx, renderCombatAttackVfx } from './combatAttackVfxPresentation.mjs';
+import { drawCombatBossControl } from './renderCombatBossControl.mjs';
 import {
   computeCombatDamageFontSize,
   computeViewportFontSize,
@@ -32,6 +33,7 @@ export function renderRuntime(deps) {
   deps.combatVfxProfileForActor = combatVfxProfileForActor;
   deps.queueCombatAttackImpactVfx = queueCombatAttackImpactVfx;
   deps.renderCombatAttackVfx = renderCombatAttackVfx;
+  deps.drawCombatBossControl = drawCombatBossControl;
   deps.computeCombatDamageFontSize = computeCombatDamageFontSize;
   deps.computeViewportFontSize = computeViewportFontSize;
   deps.fitCanvasText = fitCanvasText;
@@ -52,7 +54,7 @@ export function renderRuntime(deps) {
     ].join("")
       .replace(
         "    // draw HUD overlay (game state)\n    drawHUD();",
-        "    if (images.CombatBossButton) ctx.drawImage(images.CombatBossButton, 150, 50, 50, 50);\n\n    // draw HUD overlay (game state)\n    drawHUD();",
+        "    drawCombatBossControl(ctx, { state, images });\n\n    // draw HUD overlay (game state)\n    drawHUD();",
       )
       .replace(
         "if (state.globals.DevToolingPaused) {",

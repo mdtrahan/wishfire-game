@@ -19,7 +19,7 @@
 - DOM child canvases keep CSS dimensions in logical pixels and multiply backing-store dimensions by `devicePixelRatio` before drawing.
 - Damage-number palettes preserve semantic kinds; Blight `dot` text uses the shared purple affliction palette in both DOM and Canvas paths.
 - New deterministic rule changes need focused contract tests and, when applicable, fixture rows.
-- `continuousCombatStage.mjs` owns the queryless production stage sequence, one off-stage X emitter, bounded deterministic-random Y homes, and the independent hero-basic timer tick. Low, mixed, and high CP pools emit five, four, and three enemies on a ten-second post-engagement cadence. The final stage wraps to the opening pack indefinitely; stages that require a clear field still wait for active attack presentation to finish.
+- `continuousCombatStage.mjs` owns the queryless production stage sequence, one off-stage X emitter, bounded deterministic-random Y homes, and the independent hero-basic timer tick. Each region has ten stages; every stage loops four normal waves until its boss is armed and cleared. Low, mixed, and high CP pools emit five, four, and three enemies on a ten-second post-engagement cadence. Clear-field transitions wait for active attack presentation to finish.
 - Approaching enemies become hero-targetable at the shared arena attack line while continuing to walk, and join the enemy action scheduler only after reaching their melee or ranged home X. Enemy sprites draw from larger Y to smaller Y so the lower numeric Y appears in front.
 - Hero basics use independent 0.6-0.84 second clocks and may resolve together. Enemy actions retain their own cooldown scheduler.
 - Marid, Djinn and Chimerilass use ranged homes. Every other enemy uses melee homes.
@@ -57,7 +57,7 @@
 - `actionSelection.mjs` owns action capacity and draft budgets independently of SP and CTB scheduling. High SP cannot increase the action count.
 
 - Queryless production selects actions through deterministic initiative and cooldown readiness. Combat presentation never waits on a meter threshold or card choice.
-- Queryless production emits staggered fodder packs from off-stage on a shallow linear CP ramp. The next cadence starts when a pack reaches its engagement boundary; survivors may overlap later packs, while bosses wait for a clear field.
+- Queryless production emits staggered fodder packs from off-stage on a shallow stage-owned linear CP ramp. Hero level does not scale enemies. The next cadence starts when a pack reaches its engagement boundary; survivors may overlap later packs, while bosses wait for a clear field.
 - The production action handoff clears transient busy, action, and animation locks only after the presentation barrier releases. Preserve the completed-action owner and deferred-advance fields so the readiness scheduler resumes exactly once.
 - Combat presentation has one owner at a time. Attack motion and impacts finish before damage floats; heal art finishes before heal floats; enemy-death FLOW delivery starts after those floats and blocks the next actor through collection. A held enemy death remains a presentation lane until removal commits, preventing a new actor claim between gem completion and refill.
 - A fresh session enters with the restored party and deterministic actor cooldown state. Defeat recovery remains owned by the encounter session.

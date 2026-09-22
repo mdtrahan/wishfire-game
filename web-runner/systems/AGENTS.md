@@ -17,7 +17,7 @@
 ## Local Contracts
 - Combat initialization consumes supplied hero members through slot 5, preserving sparse formation indexes and instance identity. Catalog size must not cap deployed members; escort and enemy UIDs follow the instantiated heroes. This initializer capacity does not expand the configuration UI or define new hero content.
 - Production mixed encounters draw only fodder/routine catalog tiers and remain within a 13–18% party-CP band so the party clears ordinary packs decisively; hard, elite and boss tiers require an explicit encounter policy.
-- The queryless production auto-combat slice uses the authored continuous stage adapter: 1-1 fodder, 1-1 boss, then entry to 1-2. It reuses the existing time-initiative scheduler and serialized action barrier; QA query paths retain their existing encounter controls.
+- The queryless production auto-combat slice uses the authored continuous stage adapter: four repeating fodder waves unlock each boss, an armed boss clear advances to the next stage, and stage ten advances the region. It reuses the existing time-initiative scheduler and serialized action barrier; QA query paths retain their existing encounter controls.
 - `storyEntryFlow.mjs` owns quest card flow. Confirmed Skip advances within the current card; embedded combat begins immediately. Defeat waits for Continue or Quit; Quit returns to Quests.
 - Active combat can leave through the shared navigation at a synchronous frame boundary. Layout snapshots preserve CTB, the current fan and pending target state; Quests uses the existing ladder modal for Continue Battle or Quit Battle, and only Quit clears the combat snapshot and resets a fresh session.
 - Narrative rendering preserves the existing two-sentence pages and solo/pair shots. Scene startup, Auto advancement, and layout changes belong to the controller/entry flow, outside `renderNarrativeScene.js`.
@@ -99,7 +99,7 @@
 
 - Combat has no hero status-card strip. `renderRuntime.js` draws the full-body hero sprites at one shared arena scale and anchors each compact HP bar from the sprite feet so the gap remains correct when art dimensions change. Names, roles, levels and AF stay off the battlefield. Narrative quest cards remain separate.
 - Combat home geometry uses the shared 360-wide arena contract. Hero sprites stop at visible X 106; hero and enemy spawn/home sprites fit within visible Y 170-375. The highest hero HP bar begins below grid Y 150. Temporary action animation may leave that Y band.
-- The combat boss control graphic renders at reference-canvas X 150, Y 50 with a 50x50 size.
+- The combat boss control is hidden during normal waves. At the boss gate it appears as a 50x50 graphic centered at reference-canvas X 150, Y 50.
 - Cooldown and readiness rules belong to the deterministic combat owners. Hero lunges use display slots, so catalog identity does not collapse repeated or later formation positions.
 - Prepared commands belong to the combat session and member UIDs. Replacing actor objects while restoring the same session must preserve prepared selections; a new session or changed roster clears them.
 - Full-health recovery is owned by questCombatSession.mjs for both Town and Continue. Restore actual hero actors, then project HP through UpdateHeroHPUI; empty groups clear old totals. Continue alone retains its existing turn-restart sequence.

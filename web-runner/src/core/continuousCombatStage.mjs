@@ -3,19 +3,37 @@ import { deriveCombatArenaBounds } from '../../../src/core/combatOrientation.mjs
 
 export const CONTINUOUS_COMBAT_PACK_INTERVAL_SEC = 10;
 export const CONTINUOUS_COMBAT_PACK_CP_STEP = 0.06;
+export const CONTINUOUS_COMBAT_WAVES_PER_STAGE = 4;
+export const CONTINUOUS_COMBAT_STAGES_PER_REGION = 10;
 
-// One shallow linear ramp. Timed overlap supplies pressure without stat spikes.
+// Four normal packs form one repeatable stage. The boss is a gate rather than
+// a fifth timed pack.
 export const CONTINUOUS_COMBAT_STAGES = Object.freeze([
-  Object.freeze({ id: '1-1-pack-1', kind: 'fodder', enemyNames: Object.freeze(['Gobloc', 'Skeleton']), cpStep: 0 }),
-  Object.freeze({ id: '1-1-pack-2', kind: 'fodder', enemyNames: Object.freeze(['Gobloc', 'High Gobloc', 'Skeleton', 'Lizardo']), cpStep: 1 }),
-  Object.freeze({ id: '1-1-pack-3', kind: 'fodder', enemyNames: Object.freeze(['High Orc', 'Chimerilass', 'Djinn']), cpStep: 2 }),
-  Object.freeze({ id: '1-1-boss', kind: 'boss', enemyNames: Object.freeze(['Troll']), cpStep: 3, waitForClear: true }),
-  Object.freeze({ id: '1-2-pack-1', kind: 'fodder', enemyNames: Object.freeze(['Gobloc', 'High Gobloc', 'Skeleton']), cpStep: 0, waitForClear: true }),
+  Object.freeze({ wave: 1, kind: 'fodder', enemyNames: Object.freeze(['Gobloc', 'Skeleton']) }),
+  Object.freeze({ wave: 2, kind: 'fodder', enemyNames: Object.freeze(['Gobloc', 'High Gobloc', 'Skeleton', 'Lizardo']) }),
+  Object.freeze({ wave: 3, kind: 'fodder', enemyNames: Object.freeze(['High Orc', 'Chimerilass', 'Djinn']) }),
+  Object.freeze({ wave: 4, kind: 'fodder', enemyNames: Object.freeze(['Orc', 'High Orc', 'Chimerilass', 'Djinn']) }),
+  Object.freeze({ wave: 0, kind: 'boss', enemyNames: Object.freeze(['Troll']), waitForClear: true }),
 ]);
 
-export function createContinuousCombatStageState(seed = 1) {
+export function createContinuousCombatStageState(seed = 1, { region = 1, stage = 1 } = {}) {
   const normalizedSeed = Number(seed) >>> 0 || 1;
-  return { seed: normalizedSeed, stageIndex: 0, stageId: CONTINUOUS_COMBAT_STAGES[0].id, transitions: 0, cycles: 0, completed: [], nextEmissionAt: 0, lastUpdatedAt: 0, spawnSerial: 0 };
+  const normalizedRegion = Math.max(1, Math.floor(Number(region) || 1));
+  const normalizedStage = Math.max(1, Math.min(CONTINUOUS_COMBAT_STAGES_PER_REGION, Math.floor(Number(stage) || 1)));
+  return {
+    seed: normalizedSeed,
+    region: normalizedRegion,
+    stage: normalizedStage,
+    wave: 1,
+    bossAvailable: false,
+    bossArmed: false,
+    bossActive: false,
+    transitions: 0,
+    clearedBosses: 0,
+    nextEmissionAt: 0,
+    lastUpdatedAt: 0,
+    spawnSerial: 0,
+  };
 }
 
 export function configureContinuousCombatProduction(globals, { productionPath = false } = {}) {
@@ -112,20 +130,72 @@ export function finalizeContinuousCombatProduction(globals, entities = []) {
 }
 
 export function getContinuousCombatStage(stageState) {
-  const index = Math.max(0, Math.min(CONTINUOUS_COMBAT_STAGES.length - 1, Math.floor(Number(stageState?.stageIndex ?? 0))));
-  return CONTINUOUS_COMBAT_STAGES[index] || null;
+  const region = Math.max(1, Math.floor(Number(stageState?.region) || 1));
+  const stage = Math.max(1, Math.min(CONTINUOUS_COMBAT_STAGES_PER_REGION, Math.floor(Number(stageState?.stage) || 1)));
+  const bossActive = !!stageState?.bossActive;
+  const wave = Math.max(1, Math.min(CONTINUOUS_COMBAT_WAVES_PER_STAGE, Math.floor(Number(stageState?.wave) || 1)));
+  const template = bossActive
+    ? CONTINUOUS_COMBAT_STAGES[CONTINUOUS_COMBAT_STAGES.length - 1]
+    : CONTINUOUS_COMBAT_STAGES[wave - 1];
+  return template ? { ...template, id: `${region}-${stage}-${bossActive ? 'boss' : `wave-${wave}`}`, region, stage, wave } : null;
 }
 
 export function advanceContinuousCombatStage(stageState) {
   const current = getContinuousCombatStage(stageState);
-  const currentIndex = Math.max(0, Math.min(CONTINUOUS_COMBAT_STAGES.length - 1, Math.floor(Number(stageState?.stageIndex ?? 0))));
-  const nextIndex = currentIndex + 1;
-  const completed = Array.isArray(stageState?.completed) ? [...stageState.completed] : [];
-  if (current && !completed.includes(current.id)) completed.push(current.id);
-  const wrapped = nextIndex >= CONTINUOUS_COMBAT_STAGES.length;
-  const resolvedIndex = wrapped ? 0 : nextIndex;
-  const next = CONTINUOUS_COMBAT_STAGES[resolvedIndex];
-  return { done: false, stage: next, state: { ...stageState, stageIndex: resolvedIndex, stageId: next.id, transitions: Number(stageState?.transitions || 0) + 1, cycles: Number(stageState?.cycles || 0) + (wrapped ? 1 : 0), completed: wrapped ? [] : completed } };
+  const transitions = Number(stageState?.transitions || 0) + 1;
+  if (stageState?.bossActive) {
+    const currentStage = Math.max(1, Math.floor(Number(stageState?.stage) || 1));
+    const nextRegion = currentStage >= CONTINUOUS_COMBAT_STAGES_PER_REGION
+      ? Math.max(1, Math.floor(Number(stageState?.region) || 1)) + 1
+      : Math.max(1, Math.floor(Number(stageState?.region) || 1));
+    const nextStage = currentStage >= CONTINUOUS_COMBAT_STAGES_PER_REGION ? 1 : currentStage + 1;
+    const state = {
+      ...stageState,
+      region: nextRegion,
+      stage: nextStage,
+      wave: 1,
+      bossAvailable: false,
+      bossActive: false,
+      transitions,
+      clearedBosses: Number(stageState?.clearedBosses || 0) + 1,
+    };
+    return { done: false, stage: getContinuousCombatStage(state), state, clearedBoss: current?.id || '' };
+  }
+  const currentWave = Math.max(1, Math.min(CONTINUOUS_COMBAT_WAVES_PER_STAGE, Math.floor(Number(stageState?.wave) || 1)));
+  const state = currentWave >= CONTINUOUS_COMBAT_WAVES_PER_STAGE
+    ? { ...stageState, wave: 1, bossAvailable: true, transitions }
+    : { ...stageState, wave: currentWave + 1, transitions };
+  return { done: false, stage: getContinuousCombatStage(state), state };
+}
+
+export function armContinuousCombatBoss(globals) {
+  const state = globals?.ContinuousCombatStage;
+  if (!state || !state.bossAvailable || state.bossActive) return false;
+  state.bossArmed = true;
+  return true;
+}
+
+export function resetContinuousCombatAfterDefeat(globals) {
+  const state = globals?.ContinuousCombatStage;
+  if (!state) return false;
+  globals.ContinuousCombatStage = {
+    ...state,
+    wave: 1,
+    bossAvailable: false,
+    bossArmed: false,
+    bossActive: false,
+    transitions: Number(state.transitions || 0) + 1,
+    nextEmissionAt: Number(globals.time || 0) + CONTINUOUS_COMBAT_PACK_INTERVAL_SEC,
+    lastUpdatedAt: Number(globals.time || 0),
+  };
+  return true;
+}
+
+export function continuousCombatBossControlState(stageState) {
+  if (stageState?.bossActive) return 'active';
+  if (stageState?.bossArmed) return 'armed';
+  if (stageState?.bossAvailable) return 'available';
+  return 'locked';
 }
 
 function scaleContinuousCombatRow(row, scale) {
@@ -144,7 +214,7 @@ export function scaleContinuousCombatPackRow(row, cpStep = 0) {
 
 function findPackScale(rows, targetCP) {
   let low = 0.25;
-  let high = 2;
+  let high = 50;
   for (let i = 0; i < 16; i += 1) {
     const scale = (low + high) / 2;
     const total = rows.reduce((sum, row) => sum + scaleContinuousCombatRow(row, scale).CombatPower, 0);
@@ -175,33 +245,63 @@ export function buildContinuousCombatSpawnPlan(enemyRows, stageState, { slotBase
   const selectedRows = expandWaveRows(stage, byName, rows);
   const baselineRows = expandWaveRows(CONTINUOUS_COMBAT_STAGES[0], byName, rows);
   const totalCP = entries => entries.reduce((sum, row) => sum + computeCombatPower(row), 0);
-  const linearTarget = totalCP(baselineRows) * (1 + Math.max(0, Number(stage.cpStep || 0)) * CONTINUOUS_COMBAT_PACK_CP_STEP);
-  const packScale = stage.kind === 'boss'
-    ? 1 + Number(stage.cpStep || 0) * CONTINUOUS_COMBAT_PACK_CP_STEP
-    : Number(stage.cpStep || 0) === 0 ? 1 : findPackScale(selectedRows, linearTarget);
+  const stageOrdinal = (Math.max(1, Number(stage.region || 1)) - 1) * CONTINUOUS_COMBAT_STAGES_PER_REGION
+    + Math.max(0, Number(stage.stage || 1) - 1);
+  const waveStep = stage.kind === 'boss' ? CONTINUOUS_COMBAT_WAVES_PER_STAGE - 1 : Math.max(0, Number(stage.wave || 1) - 1);
+  const progressionScale = 1 + stageOrdinal * 0.08 + waveStep * 0.04;
+  const linearTarget = totalCP(baselineRows) * progressionScale * (stage.kind === 'boss' ? 1.35 : 1);
+  const packScale = selectedRows.length ? findPackScale(selectedRows, linearTarget) : 1;
   const lanes = selectedRows.length === 1 ? [1] : [1, 0, 2, 0, 2];
   return selectedRows.map((row, index) => ({
     row: scaleContinuousCombatRow(row, packScale),
     slotIndex: Number(slotBase || 0) + index,
     lane: lanes[index] ?? 1,
     rank: Math.floor(Number(slotBase || 0) / 3),
-    packIndex: Number(stageState?.stageIndex || 0),
+    packIndex: Number(stageState?.transitions || 0),
     entryOrder: index,
   })).filter(entry => entry.row?.name && Number.isInteger(entry.slotIndex));
 }
 
+function restoreContinuousCombatHeroes(globals, entities, call) {
+  for (const hero of Array.isArray(entities) ? entities : []) {
+    if (hero?.kind !== 'hero') continue;
+    hero.hp = Number(hero.maxHP || hero.hp || 1);
+    hero.isAlive = true;
+    if (globals.PendingDeaths) delete globals.PendingDeaths[hero.uid];
+  }
+  call('UpdateHeroHPUI');
+}
+
+function spawnContinuousCombatStage({ globals, entities, call, state }) {
+  const slotBase = Number(state.spawnSerial || 0);
+  const plan = buildContinuousCombatSpawnPlan(globals.EnemyData, state, { slotBase });
+  if (!plan.length) return false;
+  globals.ContinuousCombatStage = {
+    ...state,
+    nextEmissionAt: Number(globals.time || 0) + CONTINUOUS_COMBAT_PACK_INTERVAL_SEC,
+    lastUpdatedAt: Number(globals.time || 0),
+    spawnSerial: slotBase + plan.length,
+  };
+  for (const entry of plan) {
+    const stage = getContinuousCombatStage(state);
+    const enemy = call('SpawnEnemy', { ...entry.row, enemyRole: String(entry.row.enemyRole || entry.row.role || stage?.kind || 'fodder') }, entry.slotIndex);
+    activateContinuousCombatSpawnedEnemy(globals, enemy, entry);
+  }
+  call('UpdateEnemyHPUI');
+  return true;
+}
+
 function presentationIsClear(globals, presentationBarrier) {
   const lanes = presentationBarrier?.lanes || {};
-  return !Object.entries(lanes).some(([name, active]) => name !== 'levelUpSettlement' && active)
+  return !Object.entries(lanes).some(([name, active]) => !['levelUpSettlement', 'flowOrbs'].includes(name) && active)
     && !globals.ActionInProgress
     && !(Array.isArray(globals.PendingHeroHits) && globals.PendingHeroHits.length)
     && Object.keys(globals.EnemyDeathVisualHoldByUID || {}).length === 0;
 }
 
-export function isContinuousCombatWaveCleared({ enemySlots = [], entities = [], pendingDeaths = {}, presentationClear = false } = {}) {
+export function isContinuousCombatWaveCleared({ entities = [], pendingDeaths = {}, presentationClear = false } = {}) {
   const livingEnemy = entities.some(entity => entity?.kind === 'enemy' && Number(entity.hp || 0) > 0);
-  const occupiedSlot = (Array.isArray(enemySlots) ? enemySlots : []).some(value => Number(value || 0) > 0);
-  return !!presentationClear && !livingEnemy && !occupiedSlot && Object.keys(pendingDeaths || {}).length === 0;
+  return !!presentationClear && !livingEnemy && Object.keys(pendingDeaths || {}).length === 0;
 }
 
 function updateApproachingEnemies(globals, entities, now) {
@@ -261,7 +361,6 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
   if (globals.GamePhase !== 'RUNTIME' || globals.BattleStartActive) return false;
 
   const current = getContinuousCombatStage(stageState);
-  const transition = advanceContinuousCombatStage(stageState);
   const clear = isContinuousCombatWaveCleared({
     enemySlots: globals.EnemySlots,
     entities,
@@ -269,22 +368,35 @@ export function maybeAdvanceContinuousCombatStage({ globals, entities, presentat
     presentationClear: presentationIsClear(globals, presentationBarrier),
   });
   const timerReady = now >= Number(stageState.nextEmissionAt || 0);
-  if (transition.stage.waitForClear ? !clear : !timerReady) return false;
+  let transition = null;
 
-  const slotBase = Number(stageState.spawnSerial || 0);
-  const plan = buildContinuousCombatSpawnPlan(globals.EnemyData, transition.state, { slotBase });
-  if (!plan.length) return false;
-  globals.ContinuousCombatStage = { ...transition.state, nextEmissionAt: now + CONTINUOUS_COMBAT_PACK_INTERVAL_SEC, lastUpdatedAt: now, spawnSerial: slotBase + plan.length };
+  if (stageState.bossActive) {
+    if (!clear) return false;
+    call('SettleContinuousCombatRewards');
+    transition = advanceContinuousCombatStage(stageState);
+    restoreContinuousCombatHeroes(globals, entities, call);
+  } else if (stageState.bossAvailable && stageState.bossArmed) {
+    if (!clear) return false;
+    call('SettleContinuousCombatRewards');
+    const state = { ...stageState, bossActive: true, transitions: Number(stageState.transitions || 0) + 1 };
+    transition = { state, stage: getContinuousCombatStage(state) };
+  } else if (Number(stageState.wave || 1) >= CONTINUOUS_COMBAT_WAVES_PER_STAGE) {
+    if (!clear) return false;
+    call('SettleContinuousCombatRewards');
+    transition = advanceContinuousCombatStage(stageState);
+    if (transition.state.bossArmed) {
+      transition.state = { ...transition.state, bossActive: true };
+      transition.stage = getContinuousCombatStage(transition.state);
+    } else {
+      restoreContinuousCombatHeroes(globals, entities, call);
+    }
+  } else {
+    if (!timerReady) return false;
+    transition = advanceContinuousCombatStage(stageState);
+  }
+
+  if (!transition?.stage || !spawnContinuousCombatStage({ globals, entities, call, state: transition.state })) return false;
   globals.ContinuousCombatStageLastTransition = { from: current?.id || '', to: transition.stage.id, at: now };
   globals.NativeBattleEnded = false;
-  if (globals.ProgressionBattle) {
-    globals.ProgressionBattle.outcome = 'active';
-    globals.ProgressionBattle.settled = false;
-  }
-  for (const entry of plan) {
-    const enemy = call('SpawnEnemy', { ...entry.row, enemyRole: String(entry.row.enemyRole || entry.row.role || transition.stage.kind) }, entry.slotIndex);
-    activateContinuousCombatSpawnedEnemy(globals, enemy, entry);
-  }
-  call('UpdateEnemyHPUI');
   return true;
 }

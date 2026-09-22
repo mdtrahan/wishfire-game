@@ -35,6 +35,33 @@ test('endless sessions never surface a finite-victory completion path', async ()
  assert.doesNotMatch(src,/battle-results|showResults|Continue/);
 });
 
+test('continuous defeat is free, disarms the boss gate and restarts wave one at full health', async () => {
+ const {createQuestCombatSession}=await import('../web-runner/systems/questCombatSession.mjs');
+ const enemyRows=['Gobloc','Skeleton'].map((name,index)=>({name,HP:20+index*2,ATK:2,DEF:2,MAG:1,RES:1,SPD:8,CombatPower:20+index}));
+ const state={entities:[{uid:1,kind:'hero',heroInstanceKey:'Hondo',hp:0,maxHP:42,isAlive:false},{uid:9,kind:'enemy',hp:30,maxHP:30}],globals:{
+  ContinuousCombatStageLoop:1,ContinuousCombatStage:{seed:1,region:2,stage:3,wave:4,bossAvailable:true,bossArmed:true,bossActive:true,transitions:8,clearedBosses:12,nextEmissionAt:0,lastUpdatedAt:0,spawnSerial:9},
+  EnemyData:enemyRows,EnemySlots:[9],PendingDeaths:{1:true,9:true},EnemyDeathVisualHoldByUID:{9:true},time:5,ProgressionBattle:{id:'run',participants:['Hondo'],defeated:{},settled:false},
+ }};
+ const gameState={combatFailExitRequested:true};const calls=[];
+ const call=(name,data,slotIndex)=>{
+  calls.push(name);
+  if(name!=='SpawnEnemy')return null;
+  const enemy={uid:20+slotIndex,kind:'enemy',name:data.name,hp:data.HP,maxHP:data.HP,slotIndex};state.entities.push(enemy);return enemy;
+ };
+ const session=createQuestCombatSession({state,gameState,call,sync(){}});
+ assert.equal(session.recoverContinuousDefeat(),true);
+ assert.equal(state.globals.ContinuousCombatStage.region,2);
+ assert.equal(state.globals.ContinuousCombatStage.stage,3);
+ assert.equal(state.globals.ContinuousCombatStage.wave,1);
+ assert.equal(state.globals.ContinuousCombatStage.bossAvailable,false);
+ assert.equal(state.globals.ContinuousCombatStage.bossArmed,false);
+ assert.equal(state.entities[0].hp,42);
+ assert.ok(state.entities.slice(1).every(actor=>actor.kind==='enemy'&&actor.streamState==='approaching'));
+ assert.ok(calls.includes('SettleContinuousCombatRewards'));
+ assert.equal(calls.includes('ProcessTurn'),false);
+ assert.equal(gameState.combatFailExitRequested,false);
+});
+
 test('new battle clears combat conditions and Astral Flow while retaining gold and progression', async () => {
  const {resetCombatSessionConditions}=await import('../web-runner/systems/combatSessionReset.mjs');
  const g={goldTotal:321,HeroGemUsage:{RED:9},AstralFlowAmpPoints:12,AstralFlowAmpReady:1,

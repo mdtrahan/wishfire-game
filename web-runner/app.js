@@ -125,6 +125,7 @@ import {
   generateEncounterSeed,
 } from './systems/combatSessionInitializer.js';
 import {
+  armContinuousCombatBoss,
   configureContinuousCombatProduction,
   finalizeContinuousCombatProduction,
   maybeAdvanceContinuousCombatStage,
@@ -2123,7 +2124,7 @@ async function main(){
     inputDomains,
   });
   combatRuntimeGateway.setLayoutState(layoutState);
-  const questCombat = createQuestCombatSession({ state, gameState, call: name => callFunctionWithContext(fnContext, name), sync: syncFromGlobals });
+  const questCombat = createQuestCombatSession({ state, gameState, call: (name, ...args) => callFunctionWithContext(fnContext, name, ...args), sync: syncFromGlobals });
   const equipmentProgress = createEquipmentStorage({ globals: state.globals, getActors: () => state.entities, storage: window.localStorage });
   const astralMarket = createAstralMarketUI({canvas, economy: equipmentProgress, getResources: () => gameState.storyEntry.progress, onBack: () => storyEntry.navigate('Quests')});
   const qaPauseSnapshotEnabled = new URLSearchParams(window.location.search).get('questQA') === '1';
@@ -3385,6 +3386,12 @@ function getStoryCardLiveLineState() {
     });
   }
   function requestCombatFailureExit(reason = 'party_defeated') {
+    if (
+      Number(state.globals.ContinuousCombatStageLoop || 0) === 1 &&
+      (String(reason || '') === 'party_defeated' || String(reason || '') === 'no_living_heroes')
+    ) {
+      return questCombat.recoverContinuousDefeat();
+    }
     if (String(reason || '') === 'party_defeated' || String(reason || '') === 'no_living_heroes') {
       callFunctionWithContext(fnContext, 'SettleCombatDefeat');
     }
@@ -3597,6 +3604,7 @@ function getStoryCardLiveLineState() {
     deriveEncounterRequestFromMapState,
     getHeroScreenRoster,
     normalizeHeroSelectionIndex,
+    onBossButtonClick: () => armContinuousCombatBoss(state.globals),
   });
 
   // pointer handler for nav menu and overlay (more responsive than click)

@@ -66,7 +66,7 @@
 - Enemy KO uses the shared defeat transition with per-enemy reward deduplication. Damage telemetry records before death removal and stage handoff.
 
 - Native victory awards each defeated enemy's goldValue (configurable fallback PROGRESSION.enemyGold) once at the same guarded settlement as EXP. Defeat gives no victory Gold. The shared equipment economy persists the resulting wallet.
-- Party KO settles the native defeat terminal through the existing outcome path, records `ProgressionBattle.outcome=defeat` with no victory EXP or Gold, clears pending fan/native command state, and resets settlement plus the terminal marker when Continue resurrects the encounter.
+- In continuous production combat, party KO settles earned kills, clears transient combat state, disarms boss progression, fully heals the party, and restarts Wave 1 of the current stage without a resource cost or defeat menu. Other modes retain the native defeat terminal path.
 - Resolved healing emits one `DamageTexts` heal record with the actual positive HP delta; the app-owned bloom follows that record. Crimson Ward consumes its shared ward before every hostile hero HP change. Dawn Chorus checks its owned seeded session roll once at full-party defeat and restores the party only on success.
 - Arcane Pulse visual packets source from the casting hero's rendered resting sprite base. They never average the party formation or inherit lunge displacement.
 - Transient Astral Flow attack visuals begin after the owning action claims the presentation lane and remain visible through delivery.
