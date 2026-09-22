@@ -3588,6 +3588,7 @@ function getStoryCardLiveLineState() {
   const pointerRoutingShell = createPointerRoutingShell({
     canvas,
     getDpr: () => dpr,
+    worldToCanvas,
     state,
     gameState,
     uiState,

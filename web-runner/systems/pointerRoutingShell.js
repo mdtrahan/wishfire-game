@@ -74,6 +74,7 @@ function routeCardGalleryLayout({
 export function createPointerRoutingShell({
   canvas,
   getDpr,
+  worldToCanvas,
   state,
   gameState,
   uiState,
@@ -101,7 +102,7 @@ export function createPointerRoutingShell({
       ? layoutState.getActiveLayoutId()
       : null;
 
-    if (activeLayoutId === 'combat' && isPointInRect(mx, my, combatBossControlRect())) {
+    if (activeLayoutId === 'combat' && isPointInRect(mx, my, combatBossControlRect(worldToCanvas))) {
       if (onBossButtonClick()) drawFrame();
       return { handled: true, mx, my, rect };
     }

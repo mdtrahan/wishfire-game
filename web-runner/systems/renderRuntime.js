@@ -54,7 +54,7 @@ export function renderRuntime(deps) {
     ].join("")
       .replace(
         "    // draw HUD overlay (game state)\n    drawHUD();",
-        "    drawCombatBossControl(ctx, { state, images });\n\n    // draw HUD overlay (game state)\n    drawHUD();",
+        "    drawCombatBossControl(ctx, { state, images, worldToCanvas });\n\n    // draw HUD overlay (game state)\n    drawHUD();",
       )
       .replace(
         "if (state.globals.DevToolingPaused) {",
