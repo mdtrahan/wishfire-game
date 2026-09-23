@@ -1,5 +1,5 @@
 import { computeCombatPower } from './combatPower.mjs';
-import { deriveCombatArenaBounds } from '../../../src/core/combatOrientation.mjs';
+import { deriveCombatArenaBounds, deriveCombatFormationAnchors } from '../../../src/core/combatOrientation.mjs';
 
 export const CONTINUOUS_COMBAT_PACK_INTERVAL_SEC = 10;
 export const CONTINUOUS_COMBAT_PACK_CP_STEP = 0.06;
@@ -54,10 +54,11 @@ function streamGeometry(globals, { packIndex = 0, rank = 0, order = 0 } = {}) {
   const lastY = bounds.visibleBottomY - enemySize / 2;
   const stateSeed = Number(globals.ContinuousCombatStage?.seed || globals.EncounterSeed || 1) >>> 0;
   const sequenceIndex = Math.max(Number(rank) * 3, Number(packIndex) * 3) + Number(order) + 1;
-  const yFraction = ((stateSeed * 0.61803398875) + (sequenceIndex * 0.38196601125)) % 1;
+  const heroYs = deriveCombatFormationAnchors({ globals, heroCount: 4 }).heroYs;
+  const laneIndex = (Math.floor(stateSeed % 4) + sequenceIndex) % 4;
   return {
     spawnX: 360 + enemySize * 1.5,
-    y: firstY + yFraction * (lastY - firstY),
+    y: heroYs[laneIndex] ?? (firstY + lastY) / 2,
     walkSpeed: Math.max(34, enemySize * 0.9) * 0.7,
     enemySize,
     bounds,
@@ -83,7 +84,7 @@ export function activateContinuousCombatSpawnedEnemy(globals, enemy, { lane = 1,
   const normalizedPackIndex = Math.max(0, Number(packIndex || 0));
   const boss = String(enemy.enemyRole || enemy.role || '').toLowerCase() === 'boss';
   const engageX = boss ? BOSS_HOME.x : delivery === 'melee'
-    ? geometry.bounds.meleeLeftEdgeX
+    ? geometry.bounds.meleeLeftEdgeX + (order >= 4 ? geometry.enemySize + 8 : 0)
     : rangedHomeX(geometry.bounds, normalizedPackIndex, order);
   const homeY = boss ? BOSS_HOME.y : geometry.y;
   Object.assign(enemy, {

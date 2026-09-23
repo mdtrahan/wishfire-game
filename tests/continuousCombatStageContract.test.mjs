@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { deriveCombatFormationAnchors } from '../src/core/combatOrientation.mjs';
 import {
   CONTINUOUS_COMBAT_PACK_CP_STEP,
   CONTINUOUS_COMBAT_STAGES,
@@ -163,8 +164,8 @@ test('five-enemy packs enter with deterministic stagger instead of marching in u
   assert.ok(enemies[1].streamWalkSpeed < enemies[0].streamWalkSpeed);
   assert.ok(enemies[2].streamWalkSpeed > enemies[0].streamWalkSpeed);
   assert.equal(new Set(enemies.map(enemy => enemy.x)).size, 1);
-  assert.equal(new Set(enemies.map(enemy => enemy.y)).size, 5);
-  assert.ok(enemies.every(enemy => enemy.y >= 190 && enemy.y <= 355));
+  assert.equal(new Set(enemies.map(enemy => enemy.y)).size, 4);
+  assert.deepEqual(new Set(enemies.map(enemy => enemy.y)), new Set(deriveCombatFormationAnchors({ globals, heroCount: 4 }).heroYs));
 });
 
 test('melee and ranged enemies stop inside their annotated home bands', () => {
@@ -188,26 +189,28 @@ test('melee and ranged enemies stop inside their annotated home bands', () => {
   assert.equal(highMagicMelee.streamDelivery, 'melee');
 });
 
-test('overlapping packs share one emitter and retain distinct bounded Y positions', () => {
+test('enemy packs enter on hero Y lanes while a fifth melee enemy uses a separate X home', () => {
   const globals = {
     time: 0,
     EnemyAreaRect: { minX: 160, maxX: 300, minY: 60, maxY: 240 },
     EnemySize: 40,
     HeroRestBasePosByUID: { 1: { x: 68 } },
   };
-  const enemies = [0, 1, 2].flatMap(packIndex => [0, 1, 2].map(entryOrder => activateContinuousCombatSpawnedEnemy(
+  const enemies = [0, 1, 2].flatMap(packIndex => [0, 1, 2, 3].map(entryOrder => activateContinuousCombatSpawnedEnemy(
     globals,
     { kind: 'enemy', hp: 10, ATK: 10, MAG: 2 },
     { packIndex, entryOrder, lane: entryOrder },
   )));
   assert.equal(new Set(enemies.map(enemy => enemy.x)).size, 1);
   assert.equal(new Set(enemies.map(enemy => enemy.streamEngageX)).size, 1);
-  assert.equal(new Set(enemies.map(enemy => enemy.y)).size, enemies.length);
-  for (let left = 0; left < enemies.length; left += 1) {
-    for (let right = left + 1; right < enemies.length; right += 1) {
-      assert.ok(Math.abs(enemies[left].y - enemies[right].y) > 0.5);
-    }
+  const heroYs = deriveCombatFormationAnchors({ globals, heroCount: 4 }).heroYs;
+  assert.equal(new Set(enemies.map(enemy => enemy.y)).size, 4);
+  for (let packIndex = 0; packIndex < 3; packIndex += 1) {
+    assert.deepEqual(new Set(enemies.slice(packIndex * 4, packIndex * 4 + 4).map(enemy => enemy.y)), new Set(heroYs));
   }
+  const fifth = activateContinuousCombatSpawnedEnemy(globals, { kind: 'enemy', hp: 10 }, { entryOrder: 4 });
+  assert.equal(fifth.y, enemies[0].y);
+  assert.ok(fifth.streamEngageX - enemies[0].streamEngageX >= 40);
 });
 
 test('timed packs emit while survivors remain and the fourth pack waits for a clear field', () => {
