@@ -28,9 +28,9 @@ test('hero basics start within a staggered 1.5-second window then use independen
   const waiting = selectRealtimeReadyActor({ actors, now: 5, selectionEnabled: false });
   assert.equal(waiting.selected, null);
   const openingTimes = Object.values(waiting.readyAt);
-  assert.ok(openingTimes.every(time => time >= 5 && time < 6.5));
+  assert.ok(openingTimes.every((time, index) => time >= 5 + realtimeCooldownSeconds(actors[index]) && time < 6.5 + realtimeCooldownSeconds(actors[index])));
   assert.equal(new Set(openingTimes).size, 4);
-  const released = collectRealtimeReadyActors({ actors, readyAt: waiting.readyAt, now: 6.5 });
+  const released = collectRealtimeReadyActors({ actors, readyAt: waiting.readyAt, now: 7.5 });
   assert.deepEqual(released.ready.map(actor => actor.uid), [1, 2, 3, 4]);
 });
 
@@ -41,4 +41,15 @@ test('an engaged enemy attacks on arrival and waits for its own cooldown afterwa
   const afterAttack = selectRealtimeReadyActor({ actors: [enemy], readyAt: arrival.readyAt, now: 4, completedUID: 9 });
   assert.equal(afterAttack.selected, null);
   assert.equal(afterAttack.readyAt['9'], 4 + realtimeCooldownSeconds(enemy));
+});
+
+test('hero opening timers start when a target enters range, not while the lane is empty', () => {
+  const actors = [1, 2, 3, 4].map(uid => ({ uid, type: 0, hp: 10, speed: 10 }));
+  const idle = collectRealtimeReadyActors({ actors, now: 1, selectionEnabled: false });
+  assert.deepEqual(idle, { ready: [], readyAt: {} });
+  const armed = collectRealtimeReadyActors({ actors, readyAt: idle.readyAt, now: 8 });
+  assert.deepEqual(armed.ready, []);
+  const times = Object.values(armed.readyAt);
+  assert.ok(times.every((time, index) => time > 8 + realtimeCooldownSeconds(actors[index]) && time < 9.5 + realtimeCooldownSeconds(actors[index])));
+  assert.equal(new Set(times).size, 4);
 });

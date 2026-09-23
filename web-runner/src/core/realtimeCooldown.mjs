@@ -18,7 +18,7 @@ export function selectRealtimeReadyActor({ actors = [], readyAt = {}, now = 0, c
     nextReadyAt[key] = Number.isFinite(prior)
       ? prior
       : Number(actor?.type || 0) === 0
-        ? finite(now) + initialCooldownPhase(actor.uid) * 1.5
+        ? finite(now) + realtimeCooldownSeconds(actor) + initialCooldownPhase(actor.uid) * 1.5
         : finite(now);
     if (key === completedKey) nextReadyAt[key] = finite(now) + realtimeCooldownSeconds(actor);
   }
@@ -30,9 +30,8 @@ export function selectRealtimeReadyActor({ actors = [], readyAt = {}, now = 0, c
 }
 
 export function collectRealtimeReadyActors({ actors = [], readyAt = {}, now = 0, selectionEnabled = true } = {}) {
+  if (!selectionEnabled) return { ready: [], readyAt: {} };
   const armed = selectRealtimeReadyActor({ actors, readyAt, now, selectionEnabled: false });
-  const ready = selectionEnabled
-    ? actors.filter(actor => Number(actor?.hp || 0) > 0 && armed.readyAt[String(actor.uid)] <= finite(now))
-    : [];
+  const ready = actors.filter(actor => Number(actor?.hp || 0) > 0 && armed.readyAt[String(actor.uid)] <= finite(now));
   return { ready, readyAt: armed.readyAt };
 }

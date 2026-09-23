@@ -25,7 +25,7 @@
 - Marid, Djinn and Chimerilass use ranged homes. Every other enemy uses melee homes.
 - Armed bosses enter from off-stage and hold the combat-grid home at X 290, Y 290 before joining the enemy action scheduler.
 - Engaged enemy cooldowns keep ticking while hero basic projectiles are pending; their actions do not wait for the old presentation barrier.
-- Hero basics use a deterministic stagger within 1.5 seconds for the first attack, then their normal per-actor cooldown. Engaged enemies are ready on arrival and re-arm after each completed attack.
+- When a target enters range after an empty lane, each hero waits for its own cooldown plus a deterministic stagger within 1.5 seconds before its first attack. Engaged enemies are ready on arrival and re-arm after each completed attack.
 
 ## Work Guidance
 - Prefer extracting deterministic decisions here or in root `src/core/` instead of adding branches to `app.js` or render modules.
