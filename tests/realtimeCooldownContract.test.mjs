@@ -22,12 +22,23 @@ test('real-time cooldowns advance from wall time and only reset the actor that c
   assert.notEqual(secondReady.selected.uid, firstUID);
 });
 
-test('hero basics use independent 0.6-to-0.84 second cooldowns and can fire together', () => {
+test('hero basics start within a staggered 1.5-second window then use independent cooldowns', () => {
   const actors = [8, 10, 11, 12].map((speed, index) => ({ uid: index + 1, type: 0, hp: 10, speed }));
   assert.deepEqual(actors.map(realtimeCooldownSeconds), [0.6, 0.72, 0.78, 0.84]);
   const waiting = selectRealtimeReadyActor({ actors, now: 5, selectionEnabled: false });
   assert.equal(waiting.selected, null);
-  assert.deepEqual(Object.values(waiting.readyAt), [5.6, 5.72, 5.78, 5.84]);
-  const released = collectRealtimeReadyActors({ actors, readyAt: waiting.readyAt, now: 5.84 });
+  const openingTimes = Object.values(waiting.readyAt);
+  assert.ok(openingTimes.every(time => time >= 5 && time < 6.5));
+  assert.equal(new Set(openingTimes).size, 4);
+  const released = collectRealtimeReadyActors({ actors, readyAt: waiting.readyAt, now: 6.5 });
   assert.deepEqual(released.ready.map(actor => actor.uid), [1, 2, 3, 4]);
+});
+
+test('an engaged enemy attacks on arrival and waits for its own cooldown afterward', () => {
+  const enemy = { uid: 9, type: 1, hp: 10, speed: 8 };
+  const arrival = selectRealtimeReadyActor({ actors: [enemy], now: 4 });
+  assert.equal(arrival.selected.uid, 9);
+  const afterAttack = selectRealtimeReadyActor({ actors: [enemy], readyAt: arrival.readyAt, now: 4, completedUID: 9 });
+  assert.equal(afterAttack.selected, null);
+  assert.equal(afterAttack.readyAt['9'], 4 + realtimeCooldownSeconds(enemy));
 });

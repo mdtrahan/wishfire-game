@@ -58,7 +58,7 @@ function streamGeometry(globals, { packIndex = 0, rank = 0, order = 0 } = {}) {
   return {
     spawnX: 360 + enemySize * 1.5,
     y: firstY + yFraction * (lastY - firstY),
-    walkSpeed: Math.max(34, enemySize * 0.9),
+    walkSpeed: Math.max(34, enemySize * 0.9) * 0.7,
     enemySize,
     bounds,
   };

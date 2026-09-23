@@ -168,13 +168,12 @@ export function queueCombatAttackImpactVfx(state, hit, target, now) {
   g.CombatImpactVisuals = impacts;
 }
 
-const drawTravel = (ctx, image, from, to, progress, width, layoutScale, lob = 0) => {
+const drawTravel = (ctx, image, from, to, progress, width) => {
   if (!image || !from || !to) return;
-  const eased = 1 - Math.pow(1 - progress, 2);
-  const x = from.x + (to.x - from.x) * eased;
-  const y = from.y + (to.y - from.y) * eased - Math.sin(progress * Math.PI) * lob * layoutScale;
+  const x = from.x + (to.x - from.x) * progress;
+  const y = from.y + (to.y - from.y) * progress;
   const angle = Math.atan2(to.y - from.y, to.x - from.x);
-  const frontOffset = width * 0.38 * eased;
+  const frontOffset = width * 0.38 * progress;
   ctx.save();
   ctx.globalAlpha = Math.min(1, Math.sin(Math.min(1, progress * 1.35) * Math.PI * 0.5) * 1.15);
   ctx.translate(x - Math.cos(angle) * frontOffset, y - Math.sin(angle) * frontOffset);
@@ -229,9 +228,8 @@ const renderArcanePulseVfx = (ctx, { state, images, worldToCanvas, layoutScale }
     const travel = Math.max(0, Math.min(1, (now - startAt) / (impactAt - startAt)));
     const charge = Math.min(1, travel / 0.18);
     const move = Math.max(0, Math.min(1, (travel - 0.18) / 0.82));
-    const eased = 1 - Math.pow(1 - move, 3);
-    const x = source.x + (target.x - source.x) * eased;
-    const y = source.y + (target.y - source.y) * eased;
+    const x = source.x + (target.x - source.x) * move;
+    const y = source.y + (target.y - source.y) * move;
     const angle = Math.atan2(target.y - source.y, target.x - source.x);
     const width = Math.max(81, 114 * layoutScale) * (0.5 + charge * 0.5);
     const spectralOrb = pulse.skillId === 'session_spectral_orb';
@@ -241,12 +239,12 @@ const renderArcanePulseVfx = (ctx, { state, images, worldToCanvas, layoutScale }
         ctx.save();
         ctx.globalAlpha = 0.35 + charge * 0.65;
         ctx.translate(x, y);
-        ctx.rotate(-eased * Math.PI * 2);
+        ctx.rotate(-move * Math.PI * 2);
         ctx.drawImage(images.CombatDrainBuffOrb, -orbSize / 2, -orbSize / 2, orbSize, orbSize);
         ctx.restore();
       } else if (images.SkillArcanePulse) {
         for (const [trail, opacity] of [[0.13, 0.12], [0.07, 0.22]]) {
-          const prior = Math.max(0, eased - trail);
+          const prior = Math.max(0, move - trail);
           ctx.save();
           ctx.globalAlpha = opacity * move;
           ctx.translate(source.x + (target.x - source.x) * prior, source.y + (target.y - source.y) * prior);
@@ -307,7 +305,7 @@ const renderEnemyMagic = (ctx, { state, images, worldToCanvas, layoutScale }) =>
   const hitFade = action.state === 'HIT' ? Math.max(0, 1 - Number(action.timer || 0) / 0.22) : 1;
   if (profile.delivery === 'marid_crescent' || profile.delivery === 'magic_orb' || profile.delivery === 'sweep_crescent') {
     const image = profile.delivery === 'sweep_crescent' ? images.CombatSweepCrescent : projectileAsset(images, profile.delivery);
-    drawTravel(ctx, image, source, target, progress, Math.max(46, 62 * layoutScale), layoutScale);
+    drawTravel(ctx, image, source, target, progress, Math.max(46, 62 * layoutScale));
     return;
   }
   if (profile.delivery === 'drain_buff_orb') {
@@ -379,8 +377,6 @@ export function renderCombatAttackVfx(ctx, { state, images, worldToCanvas, layou
       worldToCanvas(targetPoint.x, targetPoint.y),
       progress,
       Math.max(28, (kind === 'melee_crescent' ? 34 : kind === 'kaja_orb' ? 50 : 46) * layoutScale),
-      layoutScale,
-      kind === 'kaja_orb' ? 7 : 0,
     );
   }
 

@@ -297,6 +297,36 @@ test('ranged projectiles, enemy magic, Split, and typed impacts render through t
   assert.deepEqual(new Set(draws.map(image => image.id)), new Set(['runa', 'kaja', 'split', 'g03-blue', 'scathe']));
 });
 
+test('hero projectiles cover equal distances in equal time through impact', () => {
+  const positions = [];
+  const ctx = {
+    save() {}, restore() {}, rotate() {}, drawImage() {},
+    translate(x, y) { positions.push([x, y]); },
+    set globalAlpha(value) {},
+  };
+  const state = {
+    globals: {
+      time: 1.61,
+      EnemySize: 40,
+      HeroRestBasePosByUID: { 1: { x: 50, y: 100 } },
+      PendingHeroHits: [{ at: 2, heroUID: 1, targetUID: 2, attackVfxKind: 'kaja_orb' }],
+    },
+    entities: [{ uid: 1, kind: 'hero' }, { uid: 2, kind: 'enemy', x: 250, y: 140 }],
+  };
+  const render = () => renderCombatAttackVfx(ctx, {
+    state, images: { CombatKajaOrb: { id: 'kaja' } },
+    worldToCanvas: (x, y) => ({ x, y }), layoutScale: 1,
+  });
+  render();
+  state.globals.time = 1.87;
+  render();
+  assert.equal(positions.length, 2);
+  for (const axis of [0, 1]) {
+    const start = axis === 0 ? 50 : 100;
+    assert.ok(Math.abs((positions[1][axis] - start) - 3 * (positions[0][axis] - start)) < 1e-8);
+  }
+});
+
 test('named enemy skills override basic magic without painting attack VFX over heals', () => {
   const draws = [];
   const ctx = {

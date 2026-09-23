@@ -111,6 +111,7 @@ test('stream enemies begin off-stage and become engaged only after walking to th
   assert.ok(enemy.x > 360);
   assert.ok(enemy.y >= 190 && enemy.y <= 355);
   assert.equal(enemy.streamEngageX, 130);
+  assert.equal(enemy.streamWalkSpeed, Math.max(34, 40 * 0.9) * 0.7 * 0.9);
 });
 
 test('boss walks to its own home and holds position for attacks', () => {
@@ -337,4 +338,6 @@ test('runtime source targets in-range walkers while keeping them out of the enem
   assert.match(source, /Number\(astralFlowAward\?\.spawned \|\| 0\) > 0 && markEnemyDeathVisualHold/);
   const renderer = fs.readFileSync(new URL('../web-runner/systems/renderRuntime.js', import.meta.url), 'utf8');
   assert.match(renderer, /enemiesToDraw = .*\.sort\(\(a, b\) => Number\(b\.y/);
+  assert.match(renderer, /const completeEnemyTurn = .*'AdvanceTurn'/);
+  assert.match(renderer, /!pendingHit && !pendingImpact && !pendingBloom && \(Number\(state\.globals\.ContinuousCombatStageLoop/);
 });

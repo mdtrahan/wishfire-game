@@ -231,7 +231,11 @@ export function renderRuntime(deps) {
       )
       .replace(
         "if (hero && Number(hero.uid || 0) > 0) restBaseByUID[hero.uid] = { x: baseX, y: yWorld + hWorld / 2 };",
-        "if (hero && Number(hero.uid || 0) > 0) {\n            restBaseByUID[hero.uid] = { x: baseX, y: yWorld };\n            restFeetByUID[hero.uid] = { x: baseX, y: yWorld + hWorld / 2 };\n          }",
+        "if (hero && Number(hero.uid || 0) > 0) {\n            restBaseByUID[hero.uid] = { x: baseX, y: yWorld };\n            restFeetByUID[hero.uid] = { x: baseX, y: yWorld + hWorld * 1.55 / 2 };\n          }",
+      )
+      .replace(
+        "const footY = pos.y + h / 2;",
+        "const footY = pos.y + h * 1.55 / 2;",
       )
       .replace(
         "const scaledH = h * heroScale * 1.55;",
@@ -379,7 +383,19 @@ export function renderRuntime(deps) {
       )
       .replace(
         "        const enemyUsesRangedMagic = enemyVfxProfile.delivery !== 'melee';",
-        "        const enemyUsesRangedMagic = !!enemyAction.stationary || String(enemyAction.skillId || '').startsWith('Enemy_Heal_') || enemyVfxProfile.delivery !== 'melee';\n        const enemyPresentationComplete = () => {\n          const ownerUID = Number(enemy.uid || 0);\n          const pendingHit = (state.globals.PendingHeroHits || []).some(hit => Number(hit?.heroUID || hit?.actorUID || 0) === ownerUID);\n          const pendingImpact = (state.globals.CombatImpactVisuals || []).some(impact => Number(impact?.ownerUID || 0) === ownerUID);\n          const pendingBloom = (gameState.healBlooms || []).some(bloom => Number(bloom?.ownerUID || bloom?.targetUID || 0) === ownerUID && !bloom.complete);\n          return !pendingHit && !pendingImpact && !pendingBloom && Number(state.globals.ActionLockUntil || 0) <= Number(state.globals.time || 0);\n        };",
+        "        const enemyUsesRangedMagic = !!enemyAction.stationary || String(enemyAction.skillId || '').startsWith('Enemy_Heal_') || enemyVfxProfile.delivery !== 'melee';\n        const enemyPresentationComplete = () => {\n          const ownerUID = Number(enemy.uid || 0);\n          const pendingHit = (state.globals.PendingHeroHits || []).some(hit => Number(hit?.heroUID || hit?.actorUID || 0) === ownerUID);\n          const pendingImpact = (state.globals.CombatImpactVisuals || []).some(impact => Number(impact?.ownerUID || 0) === ownerUID);\n          const pendingBloom = (gameState.healBlooms || []).some(bloom => Number(bloom?.ownerUID || bloom?.targetUID || 0) === ownerUID && !bloom.complete);\n          return !pendingHit && !pendingImpact && !pendingBloom && (Number(state.globals.ContinuousCombatStageLoop || 0) === 1 || Number(state.globals.ActionLockUntil || 0) <= Number(state.globals.time || 0));\n        };",
+      )
+      .replace(
+        "    const enemyAction = state.globals.EnemyAction;",
+        "    const enemyAction = state.globals.EnemyAction;\n    const completeEnemyTurn = (releaseDelay = 0.05) => {\n      if (Number(state.globals.ContinuousCombatStageLoop || 0) === 1) {\n        applyTurnGateGlobals({ IsPlayerBusy: 0, ActionInProgress: 0, ActionActorUID: 0, DeferAdvance: 0, AdvanceAfterAction: 0, ActionOwnerUID: 0 });\n        callFunctionWithContext(fnContext, 'AdvanceTurn');\n      } else {\n        applyTurnGateIntent(createEnemyTurnIdleRecovery, {\n          now: Number(state.globals.time || 0),\n          currentTurnUID: callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0,\n          releaseDelay,\n        });\n      }\n    };",
+      )
+      .replace(
+        "        applyTurnGateIntent(createEnemyTurnIdleRecovery, {\n          now: Number(state.globals.time || 0),\n          currentTurnUID: callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0,\n        });",
+        "        completeEnemyTurn();",
+      )
+      .replace(
+        "          applyTurnGateIntent(createEnemyTurnIdleRecovery, {\n            now: Number(state.globals.time || 0),\n            currentTurnUID: callFunctionWithContext(fnContext, 'GetCurrentTurn') || 0,\n            releaseDelay: 0.35,\n          });",
+        "          completeEnemyTurn(0.35);",
       )
       .replace(
         "        if (enemy.originY == null) enemy.originY = enemy.y ?? 0;",

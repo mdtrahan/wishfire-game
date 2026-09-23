@@ -17,9 +17,9 @@ export function selectRealtimeReadyActor({ actors = [], readyAt = {}, now = 0, c
     const prior = finite(readyAt[key], NaN);
     nextReadyAt[key] = Number.isFinite(prior)
       ? prior
-      : finite(now) + (Number(actor?.type || 0) === 0
-        ? realtimeCooldownSeconds(actor)
-        : 0.2 + initialCooldownPhase(actor.uid) * realtimeCooldownSeconds(actor));
+      : Number(actor?.type || 0) === 0
+        ? finite(now) + initialCooldownPhase(actor.uid) * 1.5
+        : finite(now);
     if (key === completedKey) nextReadyAt[key] = finite(now) + realtimeCooldownSeconds(actor);
   }
   const selected = selectionEnabled && living

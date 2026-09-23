@@ -80,8 +80,9 @@ export function deriveCombatFormationAnchors({ globals = {}, entities = [], hero
       const gap = 8;
       const availableH = maxY - minY;
       heroH = Math.min(enemySize, (availableH - gap * Math.max(0, count - 1)) / count);
-      const firstY = arenaBounds.visibleTopY + heroH * 1.05;
-      const lastY = arenaBounds.visibleBottomY - heroH * 0.5;
+      const heroRenderHalfH = heroH * 1.55 / 2;
+      const firstY = arenaBounds.visibleTopY + heroRenderHalfH;
+      const lastY = arenaBounds.visibleBottomY - heroRenderHalfH;
       for (let index = 0; index < count; index += 1) {
         heroYs.push(count === 1 ? (firstY + lastY) / 2 : firstY + index * ((lastY - firstY) / (count - 1)));
       }

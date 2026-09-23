@@ -109,8 +109,8 @@ test('runtime-shaped formation anchors keep both factions inside the shared visi
   });
   assert.deepEqual(anchors.enemyYs, [190, 272.5, 355]);
   assert.equal(anchors.arenaBounds.visibleTopY - 10, 160);
-  assert.equal(anchors.heroYs[0] + anchors.heroH / 2 - anchors.heroH * 1.55, anchors.arenaBounds.visibleTopY);
-  assert.equal(anchors.heroYs.at(-1) + anchors.heroH / 2, anchors.arenaBounds.visibleBottomY);
+  assert.equal(anchors.heroYs[0] - anchors.heroH * 1.55 / 2, anchors.arenaBounds.visibleTopY);
+  assert.equal(anchors.heroYs.at(-1) + anchors.heroH * 1.55 / 2, anchors.arenaBounds.visibleBottomY);
   assert.equal(anchors.enemyYs[0] - globals.EnemySize / 2, anchors.arenaBounds.visibleTopY);
   assert.equal(anchors.enemyYs.at(-1) + globals.EnemySize / 2, anchors.arenaBounds.visibleBottomY);
   assert.equal(projection.enemyTranslateY, 0);
@@ -120,6 +120,8 @@ test('runtime-shaped formation anchors keep both factions inside the shared visi
   assert.equal(shiftedEnemyYs[2] - shiftedEnemyYs[1], anchors.enemyYs[2] - anchors.enemyYs[1]);
   assert.equal(shiftedEnemyYs[1], anchors.enemyYs[1]);
   const renderer = fs.readFileSync(path.join(root, 'web-runner', 'systems', 'renderRuntime.js'), 'utf8');
+  assert.match(renderer, /const footY = pos\.y \+ h \* 1\.55 \/ 2/);
+  assert.match(renderer, /restFeetByUID\[hero\.uid\] = \{ x: baseX, y: yWorld \+ hWorld \* 1\.55 \/ 2 \}/);
   assert.match(renderer, /i % 2 === 0\\n\s+\? combatFormationAnchors\.arenaBounds\.heroRightEdgeX[\s\S]{0,160}: combatFormationAnchors\.arenaBounds\.heroBackCenterX/);
 });
 

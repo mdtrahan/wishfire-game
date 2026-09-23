@@ -24,6 +24,8 @@
 - Combat actor orientation must project canonical left-wise anchors through `src/core/combatOrientation.mjs`; mirror actor-attached x offsets, never combat rules or canonical positions. Right-wise actor sprite pixels mirror about each oriented pivot so both teams face inward and asymmetric art remains visually reflected.
 - The dev-tool orientation control stages the next combat orientation and uses the existing fresh combat-refresh path when changed during combat; never flip a live combat frame in place.
 - Right-wise rendering consumes the shared formation projection: both teams use the same `-40` logical-X translation after reflection and preserve the shared canonical Y homes. Structural formation anchors do not recenter after death or refill.
+- The numbered combat grid, hero formation centers, and enemy actor centers share logical canvas coordinates. Derive hero feet from the rendered sprite half-height so effects keep their ground anchor.
+- Continuous combat projectiles travel linearly through contact. An enemy action completes and re-arms its cooldown after its own presentation clears, regardless of simultaneous hero basic effects.
 - Render modules may read state and draw presentation; they must not become owners of deterministic combat rules.
 - Hero rendering publishes each caster's resting sprite-base anchor before applying lunge offsets so attached effects such as Arcane Pulse remain planted.
 - Impact presentation uses the pale diffused glance ring for non-critical damage at or below 5% target max HP. Keep that ring at the target's rendered midpoint on Y while retaining the attacker-facing contact X. Stronger physical basics use the red-orange melee flare on the common contact line, 17% of actor size above that midpoint.
